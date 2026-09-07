@@ -16,7 +16,7 @@
 // A roster, like a mission, is therefore read ONCE and can only change by
 // loading the page again. That is why the tab bar's board buttons are
 // navigations rather than tab switches.
-import { useRoster, ROSTERS, DEFAULT_ROSTER_ID } from './towers.js?v=26d54d57';
+import { useRoster, ROSTERS, DEFAULT_ROSTER_ID } from './towers.js';
 
 // THE SENTRY BOARD IS THE DEFAULT NOW (operator, 2026-09-06: "we've done so
 // much work on it, that we could make it the default"). Everything recent

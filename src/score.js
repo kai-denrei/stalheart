@@ -1,3 +1,4 @@
+import { storage as localStorage } from './storage.js';
 // score.js — points, as distinct from biomass. Biomass buys towers; points
 // are the bragging number, and they lean the OTHER way on purpose: the
 // economy already pays tank kills double, and the scoreboard triples them,

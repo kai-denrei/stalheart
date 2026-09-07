@@ -1,15 +1,30 @@
 {
-  "name": "Spherical Stålberg Grid",
-  "short_name": "SphereGrid",
-  "start_url": "./?src=pwa",
+  "name": "Stalheart",
+  "short_name": "Stalheart",
+  "start_url": "./index.html?src=pwa",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#10131a",
   "theme_color": "#10131a",
   "icons": [
-    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "./icons/icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
-  ]
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "./icons/icon-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "id": "./",
+  "description": "Defend the heart. Hunt the gates. Reclaim the planet."
 }

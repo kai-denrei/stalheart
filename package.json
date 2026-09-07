@@ -1,10 +1,22 @@
 {
-  "name": "spherical-stalberg-grid",
+  "name": "stalheart",
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node test/smoke.mjs && node test/maze.mjs && node test/creatures.mjs && node test/units.mjs && node test/tdcore.mjs && node test/tanks.mjs && node test/tanks2.mjs && node test/audiomix.mjs && node test/audiomanifest.mjs && node test/postfx.mjs && node test/segkey.mjs && node test/buildcam.mjs && node test/bloomweights.mjs && node test/towerlooks.mjs && node test/tankfeel.mjs && node test/knobs.mjs && node test/strike.mjs && node test/radar.mjs && node test/stargate.mjs && node test/ranks.mjs && node test/score.mjs && node test/lore.mjs && node test/achievements.mjs && node test/berths.mjs && node test/autofire.mjs && node test/printpath.mjs && node test/audiogate.mjs && node test/isaobriefs.mjs && node test/beamranks.mjs && node test/arc.mjs && node test/beamburn.mjs && node test/portalfx.mjs && node test/perftier.mjs && node test/pwa.mjs && node test/lab.mjs && node test/galaxyseed.mjs && node test/rail.mjs && node test/governor.mjs && node test/stick.mjs && node test/weathered.mjs && node test/sound.mjs && node test/scripts.mjs && node test/mines.mjs && node test/shield.mjs && node test/impactfx.mjs && node test/sentryfx.mjs && node test/fitmodel.mjs && node test/jelly.mjs && node test/beamshot.mjs && node test/url.mjs && node test/rescue.mjs && node test/deeplink.mjs && node test/sentry.mjs && node test/ballistics.mjs && node test/lockon.mjs && node test/roster.mjs && node test/heptapod.mjs",
-    "serve": "python3 -m http.server 8144",
-    "bust": "./scripts/bust.sh"
+    "dev": "node scripts/serve.mjs",
+    "serve": "node scripts/serve.mjs",
+    "build": "node scripts/build.mjs",
+    "preview": "node scripts/serve.mjs --dir dist",
+    "test": "node scripts/test.mjs",
+    "check": "node scripts/check.mjs",
+    "test:browser": "node scripts/browser-test.mjs",
+    "log": "node scripts/log.mjs",
+    "log:check": "node scripts/log.mjs check",
+    "assets:check": "node scripts/assets.mjs check"
+  },
+  "version": "0.1.0",
+  "description": "Spherical action tower defense",
+  "engines": {
+    "node": ">=22"
   }
 }

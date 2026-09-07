@@ -1,0 +1,241 @@
+{
+  "note": "Static closure follows src imports; vendor modules are leaves. Dynamic assets and bootstrap imports are excluded.",
+  "sourceFiles": 110,
+  "sourceBytes": 2572867,
+  "tdLines": 17403,
+  "closureFiles": 82,
+  "closureSourceFiles": 71,
+  "closureBytes": 3155445,
+  "closure": [
+    "src/achievements.js",
+    "src/arc.js",
+    "src/audio.js",
+    "src/audiogate.js",
+    "src/audiomanifest.js",
+    "src/audiomix.js",
+    "src/autofire.js",
+    "src/beamburn.js",
+    "src/beamdraw.js",
+    "src/beamfx.js",
+    "src/beamranks.js",
+    "src/berths.js",
+    "src/bloomweights.js",
+    "src/braillelab.js",
+    "src/cellindex.js",
+    "src/cine/kit.js",
+    "src/cine/materials.js",
+    "src/cine/rail.js",
+    "src/cine/scripts.js",
+    "src/cine/sound.js",
+    "src/creatures.js",
+    "src/deeplink.js",
+    "src/dungeon.js",
+    "src/economy.js",
+    "src/emotions.js",
+    "src/enemyspec.js",
+    "src/feelstore.js",
+    "src/fonts.js",
+    "src/fx/corona.frag.js",
+    "src/fx/wormhole.frag.js",
+    "src/galaxybake.js",
+    "src/galaxyseed.js",
+    "src/glbmodels.js",
+    "src/grid.js",
+    "src/heptapod.js",
+    "src/hull.js",
+    "src/impactfx.js",
+    "src/isaobriefs.js",
+    "src/jelly.js",
+    "src/knobs.js",
+    "src/lab.js",
+    "src/lockon.js",
+    "src/looks.js",
+    "src/mines.js",
+    "src/perftier.js",
+    "src/pickups.js",
+    "src/portalfx.js",
+    "src/postfx.js",
+    "src/printpath.js",
+    "src/pwa.js",
+    "src/radar.js",
+    "src/ranks.js",
+    "src/rescue.js",
+    "src/rng.js",
+    "src/sample.js",
+    "src/score.js",
+    "src/sentry.js",
+    "src/sentryfx.js",
+    "src/shield.js",
+    "src/shotfx.js",
+    "src/stargate.js",
+    "src/stick.js",
+    "src/strike.js",
+    "src/tankfeel.js",
+    "src/td-tab.js",
+    "src/towerfeel.js",
+    "src/towerlooks.js",
+    "src/towers.js",
+    "src/units.js",
+    "src/vec3.js",
+    "src/weathered.js",
+    "vendor/BufferGeometryUtils.js",
+    "vendor/ConvexHull.js",
+    "vendor/EffectComposer.js",
+    "vendor/GLTFLoader.js",
+    "vendor/OutputPass.js",
+    "vendor/RenderPass.js",
+    "vendor/ShaderPass.js",
+    "vendor/UnrealBloomPass.js",
+    "vendor/lil-gui.esm.js",
+    "vendor/meshopt_decoder.module.js",
+    "vendor/three.module.js"
+  ],
+  "wavePlans": [
+    {
+      "wave": 1,
+      "sector": 1,
+      "headline": "phage",
+      "count": 4,
+      "hp": 4,
+      "soft": 4
+    },
+    {
+      "wave": 2,
+      "sector": 1,
+      "headline": "ghost",
+      "count": 8,
+      "hp": 8,
+      "soft": 8
+    },
+    {
+      "wave": 3,
+      "sector": 1,
+      "headline": "scoutufo",
+      "count": 14,
+      "hp": 14,
+      "soft": 14
+    },
+    {
+      "wave": 8,
+      "sector": 1,
+      "headline": "corona",
+      "count": 20,
+      "hp": 33,
+      "soft": 14
+    },
+    {
+      "wave": 9,
+      "sector": 1,
+      "headline": "barbed",
+      "count": 65,
+      "hp": 98,
+      "soft": 54
+    },
+    {
+      "wave": 12,
+      "sector": 1,
+      "headline": "knot",
+      "count": 135,
+      "hp": 139,
+      "soft": 134
+    },
+    {
+      "wave": 15,
+      "sector": 1,
+      "headline": "phantom",
+      "count": 239,
+      "hp": 256,
+      "soft": 222
+    },
+    {
+      "wave": 16,
+      "sector": 2,
+      "headline": "phantom",
+      "count": 189,
+      "hp": 230,
+      "soft": 158
+    },
+    {
+      "wave": 30,
+      "sector": 2,
+      "headline": "phantom",
+      "count": 1024,
+      "hp": 1278,
+      "soft": 978
+    },
+    {
+      "wave": 31,
+      "sector": 3,
+      "headline": "phantom",
+      "count": 935,
+      "hp": 1026,
+      "soft": 870
+    },
+    {
+      "wave": 45,
+      "sector": 3,
+      "headline": "phantom",
+      "count": 2374,
+      "hp": 2952,
+      "soft": 2288
+    },
+    {
+      "wave": 60,
+      "sector": 4,
+      "headline": "phantom",
+      "count": 3409,
+      "hp": 3644,
+      "soft": 3226
+    },
+    {
+      "wave": 75,
+      "sector": 5,
+      "headline": "phantom",
+      "count": 5334,
+      "hp": 5774,
+      "soft": 5098
+    }
+  ],
+  "nominalTowers": [
+    {
+      "key": "rotor",
+      "cost": 45,
+      "damageTimesRate": 0.22000000000000003
+    },
+    {
+      "key": "plasma",
+      "cost": 80,
+      "damageTimesRate": 0.26666666666666666
+    },
+    {
+      "key": "quiver",
+      "cost": 90,
+      "damageTimesRate": 0.1733333333333333
+    },
+    {
+      "key": "relay",
+      "cost": 100,
+      "damageTimesRate": 0
+    },
+    {
+      "key": "mortar",
+      "cost": 110,
+      "damageTimesRate": 0.12
+    },
+    {
+      "key": "lancer",
+      "cost": 130,
+      "damageTimesRate": 0.15
+    },
+    {
+      "key": "howitzer",
+      "cost": 220,
+      "damageTimesRate": 0.17
+    },
+    {
+      "key": "heptapod",
+      "cost": 260,
+      "damageTimesRate": 0.32
+    }
+  ]
+}

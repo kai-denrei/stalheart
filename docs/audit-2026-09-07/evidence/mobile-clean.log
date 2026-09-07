@@ -1,0 +1,23 @@
+COARSE simulated at init: 0 media blocks now apply
+AUDIO armed (context and decode both wait for a gesture) muted=false master=0.7
+AUDIO ledger origin=http://localhost:8144 loads=1 contexts created=0 closed=0 LEAKED=0 — healthy (audio.resetLedger() to zero it)
+SKY seed=54504 face=512 scale=0.25 galaxies=2 core=0.021 arms=2 palette="Ember Veil" bakeMs=94.1 (cpu, incl. compile)
+sector 1: 97 open cells
+METAL dressed 0 on mesh env=true
+heart sector in 135ms — 97 open cells, 14 orbs, spawn→heart 19 hops
+METAL dressed 0 on mesh env=true
+METAL dressed 0 on mesh env=true
+AUDIO silent: no AudioContext — the gesture never armed it (first blocked sound: tank_spool_up) ctx=none muted=false master=0.7 loadStarted=false
+RING instanced parts kept whole: Shell_Instanced, Block_Instanced, Face_Block_Instanced, RotorA_Instanced, RotorA_Glow_Instanced, RotorB_Instanced, RotorB_Glow_Instanced
+METAL dressed 35 on Group env=true
+METAL dressed 7 on Group env=true
+METAL dressed 4 on fixture env=true
+METAL dressed 4 on fixture env=true
+METAL dressed 4 on fixture env=true
+CONTAINERS placed=3 cells=1002,1001,1069 spares=2 exits=1070,377,1070
+METAL dressed 7 on Group env=true
+METAL dressed 10 on mesh env=true
+METAL dressed 4 on fixture env=true
+METAL dressed 4 on fixture env=true
+METAL dressed 4 on fixture env=true
+CONTAINERS placed=3 cells=1002,1001,1069 spares=2 exits=1070,377,1070

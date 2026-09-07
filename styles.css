@@ -5,22 +5,22 @@
    back to a system face until the subset is rebuilt. */
 @font-face {
   font-family: 'VT323';
-  src: url('assets/fonts/VT323.woff2?v=26d54d57') format('woff2');
+  src: url('assets/fonts/VT323.woff2') format('woff2');
   font-weight: 400; font-style: normal; font-display: swap;
 }
 @font-face {
   font-family: 'Press Start 2P';
-  src: url('assets/fonts/PressStart2P.woff2?v=26d54d57') format('woff2');
+  src: url('assets/fonts/PressStart2P.woff2') format('woff2');
   font-weight: 400; font-style: normal; font-display: swap;
 }
 @font-face {
   font-family: 'Share Tech Mono';
-  src: url('assets/fonts/ShareTechMono.woff2?v=26d54d57') format('woff2');
+  src: url('assets/fonts/ShareTechMono.woff2') format('woff2');
   font-weight: 400; font-style: normal; font-display: swap;
 }
 @font-face {
   font-family: 'DotGothic16';
-  src: url('assets/fonts/DotGothic16.woff2?v=26d54d57') format('woff2');
+  src: url('assets/fonts/DotGothic16.woff2') format('woff2');
   font-weight: 400; font-style: normal; font-display: swap;
 }
 

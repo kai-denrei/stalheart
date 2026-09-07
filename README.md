@@ -1,73 +1,63 @@
-# spherical-stalberg-grid
+# Stalheart
 
-Proof of concept: the Oskar Stålberg organic irregular quad grid
-(tri→quad merge → subdivide → relax), ported from the 2D plane to the
-surface of a sphere. Standalone, vanilla ES modules, no build step.
+Drive the tank. Defend the heart. Hunt the gates. Reclaim a planet built on an irregular spherical grid.
 
-Ported from the working 2D implementation in `~/Dev/oskar-procedure`.
-
-**[Dev Log](DEVLOG.md)** — per-commit highlights and technical deep-dives.
+Stalheart is the independently maintained game extracted from [spherical-stalberg-grid](https://github.com/kai-denrei/spherical-stalberg-grid). The original Git history is retained. Sentry is the default roster; classic, rescue and raid remain playable.
 
 ## Run
 
-```bash
-npm run serve        # python3 -m http.server 8144
-# open http://localhost:8144
+Requires Node 22 or newer and no npm dependencies.
+
+```sh
+npm run dev
+# http://127.0.0.1:8155/
 ```
 
-```bash
-npm test             # node test/smoke.mjs — pipeline invariants
-./scripts/bust.sh    # bump the cache-bust token (assets + module imports)
+The game opens at `/`; asset/weapon labs live at `/labs.html`. Settings provide record import/export and local diagnostics. No analytics service or backend is required.
+
+```sh
+npm test               # isolated Node suites
+npm run check          # syntax, module identity, kernel, logs, asset hashes
+npm run build          # deterministic release in dist/; leaves source untouched
+npm run preview        # serve dist/ on port 8155 (stop dev first)
+npm run test:browser   # owns server + Chrome; sequential acceptance scenarios
+node scripts/browser-test.mjs --dist  # release acceptance under /stalheart/
 ```
 
-## Pipeline (src/grid.js)
+Browser tests use Google Chrome at the standard macOS path; set `CHROME` to another installed Chrome/Chromium binary. Screenshots, full console/network logs and result JSON go to ignored `artifacts/`. Do not use software rendering timings as device-performance claims.
 
-1. **Sample** — Mitchell best-candidate blue noise on S² (`sample.js`).
-   Replaces 2D Bridson Poisson-disk.
-2. **Triangulate** — spherical Delaunay = 3D convex hull of on-sphere
-   points (`hull.js`, three.js quickhull). Replaces planar Delaunator.
-   The 2D sliver filter is gone: dropping faces on a closed surface
-   would tear holes.
-3. **Merge** — random tabu-driven dissolve of triangle pairs into quads.
-   Legality checked in the candidate quad's tangent plane. Identical
-   bookkeeping to 2D.
-4. **Subdivide** — every face → quads (tri→3, quad→4), midpoints shared,
-   new vertices projected back onto the sphere. Winding normalized so
-   Newell normals point outward.
-5. **Relax** — the 2D closed-form closest-square fit, run per quad in
-   its own tangent plane; vertices reprojected to the sphere after each
-   step.
+## Development memory
 
-## Invariants (test/smoke.mjs)
+Read the [migration handoff](docs/MIGRATION.md), [current state](docs/STATE.md) and [development instructions](AGENTS.md). `/deban` is installed locally for Claude and linked for compatible agent skill discovery. It writes validated immutable entries; [DEVLOG.md](DEVLOG.md) is generated from them.
 
-- all faces are quads; mesh is watertight (every edge in exactly 2 quads)
-- Euler characteristic V − E + F = 2
-- defect law: Σ(4 − valence) = 8 — irregular vertices are *forced* by
-  sphere topology; the dashboard marks them (orange v3, cyan v5,
-  magenta v6+)
-- relaxation reduces squareness error; vertices stay on the sphere
+```sh
+npm run log -- add /tmp/entry.json
+npm run log:check
+npm run log -- render
+```
 
-## Dashboard (grid tab)
+Corrections supersede prior IDs. No repeated role indexes, mandatory log-only commits, or per-frame text logs. Historical public notes live in `docs/archive/`; original private Deban history remains ignored in `.deban/legacy/` on this checkout.
 
-seed / sample count / blue-noise k / merge bias · live relaxation
-(pull rate, cell size, iters per frame) · face color modes: random
-cells, squareness heatmap, plain · toggles for faces, wireframe,
-defect markers.
+## Assets and research
 
-## Maze tab (`/#maze`)
+[SentryTowers_A6](https://jelaludo.github.io/SentryTowers_A6/) is the preferred direction for industrial assets, including Terraformer 3000. Existing matching sentries and all four Terraformer destruction variants are pinned in [the asset lock](docs/sentry-assets.lock.json). Run `npm run assets:check`; `node scripts/assets.mjs fetch` restores missing pinned assets without updating their revision.
 
-Second PoC: rooms-and-hallways carved over the grid's **cell graph**,
-method ported from HokorobiTawaa — *we don't draw hallways, we find
-them*. Cells connect only across a full shared edge; every cell starts
-'blocked' (elevated wall); room seeds are farthest-point-sampled and
-connected by BFS corridors; spawn and heart are the double-BFS diameter
-endpoints of the open subgraph (`src/dungeon.js`, Node-tested in
-`test/maze.mjs`).
+Try the authored Terraformer in the real game with `/?terraformer=a6#td`. It remains opt-in: the intact asset is 165,404 triangles / about 11 MB before release transfer compression. D0–D3 are damage states, not LODs. Animation and the intact scale/origin are preserved across states. No runtime hotlinks or Three.js upgrade were needed. See [asset direction](docs/ASSETS.md).
 
-- **Trench PoV** — the camera rides in the corridor slot below the wall
-  tops, staring down the throat of the maze.
-- **Minimap** — the whole sphere in a bottom-left inset, player-centred,
-  heading-up, with breadcrumbs.
-- A **half-dotted heart** pulses at the graph-farthest cell; walk to it
-  with arrows/WASD or the on-screen D-pad. ☆ pulses the next cell of
-  the shortest route. `?walk=N` auto-walks N hops (demo/debug).
+The sphere kernel stays pinned in place for this first extraction; [provenance](docs/kernel-provenance.json) records checksums and the research commit. Standalone operation needs no sibling checkout, symlinked runtime files, or research server.
+
+## Existing records
+
+On the same origin, Settings can import the original research keys without overwriting current Stalheart records. On a different origin, open the research game and run this in its browser console:
+
+```js
+import('./scripts/export-stalheart-records.js')
+```
+
+Then import the downloaded JSON through Stalheart Settings. The helper was added to the original research checkout; it must be served there before using it on the hosted research site. Original keys are never deleted.
+
+## Release
+
+Deploy the contents of `dist/`, not the repository. It contains no private decision records, source audio originals, tests or archived documents. `release.json` records the deterministic build and every shipped file's checksum. The worker caches visited resources, waits before updating, and only deletes this app's own cache namespace. Complete offline installation is not yet promised.
+
+There is no remote or public deployment configured by the migration. The game is ready for local development; deployment can be configured independently of research.

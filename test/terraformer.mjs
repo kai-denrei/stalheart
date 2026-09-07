@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import * as THREE from '../vendor/three.module.js';
+import { prepareTerraformer, terraformerState } from '../src/terraformer.js';
+const make=height=>{const scene=new THREE.Group(),pivot=new THREE.Group();pivot.name='GANTRY';scene.add(pivot);const mesh=new THREE.Mesh(new THREE.BoxGeometry(2,height,2),new THREE.MeshStandardMaterial());mesh.position.y=height/2;pivot.add(mesh);return scene;};
+const track=new THREE.NumberKeyframeTrack('GANTRY.position[x]',[0,1],[0,2]);
+const clip=new THREE.AnimationClip('Terraforming_Cycle',1,[track]);
+const intact=prepareTerraformer(make(4),[clip]);assert(intact.model.getObjectByName('GANTRY'));
+const mixer=new THREE.AnimationMixer(intact.model);mixer.clipAction(clip).play();mixer.setTime(.5);assert.equal(intact.model.getObjectByName('GANTRY').position.x,1);
+const broken=prepareTerraformer(make(1),[],intact.fit);assert.deepEqual(broken.fit,intact.fit);
+assert.deepEqual([1,.6,.2,0].map(terraformerState),[0,1,2,3]);
+console.log('Terraformer animation preservation, damage scale and state thresholds pass.');

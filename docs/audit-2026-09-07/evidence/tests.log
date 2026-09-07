@@ -1,0 +1,2473 @@
+
+> test
+> node test/smoke.mjs && node test/maze.mjs && node test/creatures.mjs && node test/units.mjs && node test/tdcore.mjs && node test/tanks.mjs && node test/tanks2.mjs && node test/audiomix.mjs && node test/audiomanifest.mjs && node test/postfx.mjs && node test/segkey.mjs && node test/buildcam.mjs && node test/bloomweights.mjs && node test/towerlooks.mjs && node test/tankfeel.mjs && node test/knobs.mjs && node test/strike.mjs && node test/radar.mjs && node test/stargate.mjs && node test/ranks.mjs && node test/score.mjs && node test/lore.mjs && node test/achievements.mjs && node test/berths.mjs && node test/autofire.mjs && node test/printpath.mjs && node test/audiogate.mjs && node test/isaobriefs.mjs && node test/beamranks.mjs && node test/arc.mjs && node test/beamburn.mjs && node test/portalfx.mjs && node test/perftier.mjs && node test/pwa.mjs && node test/lab.mjs && node test/galaxyseed.mjs && node test/rail.mjs && node test/governor.mjs && node test/stick.mjs && node test/weathered.mjs && node test/sound.mjs && node test/scripts.mjs && node test/mines.mjs && node test/shield.mjs && node test/impactfx.mjs && node test/sentryfx.mjs && node test/fitmodel.mjs && node test/jelly.mjs && node test/beamshot.mjs && node test/url.mjs && node test/rescue.mjs && node test/deeplink.mjs && node test/sentry.mjs && node test/ballistics.mjs && node test/lockon.mjs && node test/roster.mjs && node test/heptapod.mjs
+
+seed 0:
+  ok   has quads
+  ok   all faces are quads with 4 distinct verts
+  ok   watertight (every edge in exactly 2 quads)
+  ok   Euler V−E+F=2
+  ok   Σ(4−valence)=8
+  ok   all vertices on sphere (pre-relax)
+  ok   relax reduces squareness error
+  ok   no NaN after relax
+  ok   all vertices on sphere (post-relax)
+  info: V=1330 E=2656 F=1328 err 0.2555 -> 0.1421
+seed 1:
+  ok   has quads
+  ok   all faces are quads with 4 distinct verts
+  ok   watertight (every edge in exactly 2 quads)
+  ok   Euler V−E+F=2
+  ok   Σ(4−valence)=8
+  ok   all vertices on sphere (pre-relax)
+  ok   relax reduces squareness error
+  ok   no NaN after relax
+  ok   all vertices on sphere (post-relax)
+  info: V=1336 E=2668 F=1334 err 0.2561 -> 0.1484
+seed 42:
+  ok   has quads
+  ok   all faces are quads with 4 distinct verts
+  ok   watertight (every edge in exactly 2 quads)
+  ok   Euler V−E+F=2
+  ok   Σ(4−valence)=8
+  ok   all vertices on sphere (pre-relax)
+  ok   relax reduces squareness error
+  ok   no NaN after relax
+  ok   all vertices on sphere (post-relax)
+  info: V=1324 E=2644 F=1322 err 0.2553 -> 0.1451
+
+all invariants hold
+seed 0:
+  ok   adjacency symmetric & bounded
+  ok   has open cells and walls
+  ok   spawn/heart open and distinct
+  ok   open subgraph fully connected
+  ok   spawn is far from heart
+  ok   deterministic per seed
+  info: cells=1328 open=170 spawn→heart=59 hops
+seed 7:
+  ok   adjacency symmetric & bounded
+  ok   has open cells and walls
+  ok   spawn/heart open and distinct
+  ok   open subgraph fully connected
+  ok   spawn is far from heart
+  ok   deterministic per seed
+  info: cells=1330 open=169 spawn→heart=39 hops
+corridorWidth:
+  ok   width 1: open connected
+  ok   width 2: open connected
+  ok   width 3: open connected
+  ok   openness grows with width
+
+maze invariants hold
+amoeba:
+  ok   has points
+  ok   all finite
+  ok   unit radius
+  ok   has highlight dots
+  ok   treatment output finite
+  ok   treatment bounded (<1.6)
+  ok   reach output finite
+  ok   reach extends +X beyond rest pose
+  ok   reach bounded (<3.2)
+phage:
+  ok   has points
+  ok   all finite
+  ok   unit radius
+  ok   has highlight dots
+  ok   treatment output finite
+  ok   treatment bounded (<1.6)
+  ok   reach output finite
+  ok   reach extends +X beyond rest pose
+  ok   reach bounded (<3.2)
+jellyfish:
+  ok   has points
+  ok   all finite
+  ok   unit radius
+  ok   treatment output finite
+  ok   treatment bounded (<1.6)
+  ok   reach output finite
+  ok   reach extends +X beyond rest pose
+  ok   reach bounded (<3.2)
+
+creature invariants hold
+amoeba (cloud):
+  ok   builds
+  ok   has baseScale
+  ok   has lift
+  ok   unit radius (≤1.05)
+  ok   tick runs
+phage (cloud):
+  ok   builds
+  ok   has baseScale
+  ok   has lift
+  ok   unit radius (≤1.05)
+  ok   tick runs
+jellyfish (cloud):
+  ok   builds
+  ok   has baseScale
+  ok   has lift
+  ok   unit radius (≤1.05)
+  ok   tick runs
+tank (mesh):
+  ok   builds
+  ok   has baseScale
+  ok   has lift
+  ok   unit radius (≤1.05)
+  ok   tick runs
+mkcx (mesh):
+  ok   builds
+  ok   has baseScale
+  ok   has lift
+  ok   unit radius (≤1.05)
+  ok   tick runs
+mkcx2 (mesh):
+  ok   builds
+  ok   has baseScale
+  ok   has lift
+  ok   unit radius (≤1.05)
+  ok   tick runs
+drone (mesh):
+  ok   builds
+  ok   has baseScale
+  ok   has lift
+  ok   unit radius (≤1.05)
+  ok   tick runs
+ghost (mesh):
+  ok   builds
+  ok   has baseScale
+  ok   has lift
+  ok   unit radius (≤1.05)
+  ok   tick runs
+scoutufo (mesh):
+  ok   builds
+  ok   has baseScale
+  ok   has lift
+  ok   unit radius (≤1.05)
+  ok   tick runs
+gslime (mesh):
+  ok   builds
+  ok   has baseScale
+  ok   has lift
+  ok   unit radius (≤1.05)
+  ok   tick runs
+drifter (mesh):
+  ok   builds
+  ok   has baseScale
+  ok   has lift
+  ok   unit radius (≤1.05)
+  ok   tick runs
+corona (mesh):
+  ok   builds
+  ok   has baseScale
+  ok   has lift
+  ok   unit radius (≤1.05)
+  ok   tick runs
+jelly (mesh):
+  ok   builds
+  ok   has baseScale
+  ok   has lift
+  ok   unit radius (≤1.05)
+  ok   tick runs
+barbed (mesh):
+  ok   builds
+  ok   has baseScale
+  ok   has lift
+  ok   unit radius (≤1.05)
+  ok   tick runs
+rolling (mesh):
+  ok   builds
+  ok   has baseScale
+  ok   has lift
+  ok   unit radius (≤1.05)
+  ok   tick runs
+prime (mesh):
+  ok   builds
+  ok   has baseScale
+  ok   has lift
+  ok   unit radius (≤1.05)
+  ok   tick runs
+knot (mesh):
+  ok   builds
+  ok   has baseScale
+  ok   has lift
+  ok   unit radius (≤1.05)
+  ok   tick runs
+
+unit invariants hold
+enemyspec:
+  ok   every intro type has a spec
+  ok   every unshelved spec type has an intro
+  ok   a shelved spec is NOT in the programme
+  ok   intro waves are 1..12 in order
+  ok   every intro type has spec and tint
+  ok   boss is not rammable
+  ok   bounties positive everywhere
+  ok   hp and speed sane
+towers:
+  ok   8 towers
+  ok   keys unique + lookup
+  ok   laser is the capstone cost
+  ok   every projectile tower has its own tempo
+  ok   upgrade costs HK-exact (70%/120%, then maxed)
+  ok   tier growth: +55% dmg, +8% range, +10% rate
+  ok   tier-2 specials: +2 pellets / +40% splash / +30% range / +20% rate
+  ok   targeting picks nearest ALIVE within range
+  ok   targeting null when field empty
+  ok   shot interval = 1/rate
+enemy colour rule:
+  ok   every enemy has a tint
+  ok   rammable enemies wear a SAFE hue (grey/white/blue/yellow)
+  ok   solid enemies wear an ALARM hue (orange/green/brown/purple/dark red)
+  ok   the two palettes never overlap
+  ok   dark solid enemies accent from the ALARM palette, never white
+  ok   bright enemies keep the plain white highlight
+economy:
+  ok   starts at START_BIOMASS
+  ok   first kill pays bounty × 1.05
+  ok   leak resets the streak
+  ok   multiplier caps at x3
+  ok   ram premium x1.25
+  ok   spend guards affordability
+  ok   sell refund = 75% of spent
+  ok   wave-clear bonus grows
+  ok   early-call bonus caps
+tower unlocks:
+  ok   wave 1 unlocks single only
+  ok   wave 2 unlocks single+rapid
+  ok   unlock clamps below 1
+  ok   wave N grants N towers (cumulative, ladder only)
+  ok   the wave clock NEVER unlocks a gated tower
+  ok   the first relay win decrypts the gate
+  ok   wins beyond the gate push the ladder
+  ok   full kit = ladder by clock + gate by relay
+  ok   every unlocked key is a real tower
+  ok   towerUnlockWave: gated keys have NO wave
+  ok   TOWER_ORDER covers the roster
+  ok   wave 1 plan is a single type
+  ok   headline is the newest available type
+  ok   ladder waves = 1 + up to 2 supports
+  ok   invasion waves flood past the ladder cap
+  ok   the flood is rammable fodder
+  ok   the invasion swells the total hard
+  ok   supports are earlier types, never the headline
+  ok   wave plan is deterministic
+  ok   all wave-plan counts are >= 1
+  ok   typesByWave grows with wave, caps at the roster
+
+td-core invariants hold
+arenas:
+  ok   three classics
+  ok   classics are 26×20
+  ok   classics connected
+  ok   open: 26×20 world, no blocks
+  ok   open: spawns face each other
+  ok   open: spawns at cell centers
+  ok   brackets: has blocks, one row tall each (run-merged)
+  ok   brackets: blocks in bounds
+  ok   parse throws without spawns
+  ok   parse throws on ragged rows
+  ok   proc: 26×20
+  ok   proc: mirrored
+  ok   proc: connected with 2 spawns
+  ok   proc: deterministic
+  ok   proc: seed changes layout
+kinematics:
+  ok   turn rate exact
+  ok   left turn symmetric
+  ok   forward speed exact
+  ok   reverse is half speed
+  ok   perimeter clamps at tank radius
+  ok   block stops tank at expanded AABB
+  ok   axis-separated slide
+  ok   tank-tank collision holds 2R
+shells:
+  ok   fire spawns one shell + event
+  ok   one in flight: second fire ignored
+  ok   shell speed is SHELL_SPEED
+  ok   range-limited flight time
+  ok   wall kills shell without ricochet
+  ok   ricochet reflects: dx flips, dz preserved, speed unchanged
+  ok   bounce counted
+  ok   bounces capped at MAX_BOUNCES
+  ok   range accumulates across bounces
+match flow:
+  ok   point-blank hit scores
+  ok   victim dying + knocked in shell direction
+  ok   knockback slid the victim
+  ok   respawn: both back at spawns, invulnerable
+  ok   invulnerable tank cannot be hit
+  ok   match ends at pointsToWin
+  ok   post-match state frozen
+  ok   deterministic replay (10s, AI L1, ricochet)
+ai 1-2:
+  ok   LOS clear along empty lane
+  ok   LOS blocked by side bracket
+  ok   LOS blocked by center bar
+  ok   L1 wanders
+  ok   L1 fires on a timer
+  ok   L2 turns toward the player
+  ok   L2 only fires with LOS
+  ok   L1 fires blind in a maze
+ai 3-4:
+  ok   intercept math exact
+  ok   intercept arrival times agree
+  ok   no intercept on faster receding target
+  ok   fixture: direct LOS blocked
+  ok   bank shot found off top wall
+  ok   bounce point exact
+  ok   aim is the mirrored target
+  ok   L3 fired
+  ok   L3 leads the target
+  ok   L3 only fires with LOS
+  ok   L4 ambushes (holds position without LOS)
+
+tank invariants hold
+planet:
+  ok   rotAbout quarter turn
+  ok   tangentAt orthonormalizes
+  ok   tangentDir points along tangent
+  ok   tangentDir degenerate -> null
+  ok   arcBetween right angle
+  ok   planet has cells + centers + adj
+  ok   centers are unit
+  ok   some walls, not too many
+  ok   spawns far apart (>120°)
+  ok   spawn cells open
+  ok   walls clear of spawn rings (>2.5 sides)
+  ok   spawn heads are unit tangents
+  ok   open cells connected spawn-to-spawn
+  ok   deterministic
+  ok   seed changes walls
+  ok   bare planet option
+kinematics:
+  ok   turn rate exact + tangent
+  ok   drive rate exact
+  ok   reverse half speed
+  ok   pos stays unit
+  ok   head stays unit tangent
+  ok   pos stays unit
+  ok   head stays unit tangent
+  ok   never inside wall margin
+  ok   blocked flag fired at the wall
+  ok   tank-tank holds 2·TANK_ANG
+shells + LOS:
+  ok   LOS true near + clear
+  ok   horizon blocks at 60° even with no walls
+  ok   wall on the arc blocks LOS
+  ok   fire spawns shell: unit pos, unit tangent dir
+  ok   one in flight
+  ok   no LOS at fire time
+  ok   over-the-horizon hit lands
+  ok   range-capped flight time
+  ok   staging: wall cell is not the muzzle cell
+  ok   ricochet bounces, dir stays unit tangent
+match flow:
+  ok   close-range hit scores
+  ok   victim dying with tangent knockDir
+  ok   respawn: both at spawns, invulnerable, shells cleared
+  ok   invulnerable tank cannot be hit
+  ok   match ends at pointsToWin
+  ok   post-match frozen, events empty
+  ok   deterministic replay (10s, L1, ricochet)
+ai:
+  ok   interceptPos converges on the moving target
+  ok   L1 wanders the planet
+  ok   L1 fires blind on a timer
+  ok   L2 only fires with LOS
+  ok   L3 only fires with LOS
+  ok   L4 fires over the horizon at the ghost
+  ok   L4 holds without a shot
+  ok   range accumulates across bounces
+  ok   staging: pocket cells distinct from each other + tank + muzzle cells
+  ok   bounce cap kills on the third impact
+
+tank2 invariants hold
+distanceGain:
+  ok   unity at zero distance
+  ok   half at d = k
+  ok   monotonically decreasing
+  ok   never zero, never negative
+  ok   finite for absurd input
+min-interval gating:
+  ok   first call admitted
+  ok   retrigger inside the window is dropped
+  ok   retrigger at the window edge is admitted
+  ok   the window is per-key, not global
+per-key voice cap:
+  ok   over the cap, admitted anyway
+  ok   over the cap, steals the OLDEST voice
+  ok   the cap counts only this key
+global ceiling:
+  ok   at the ceiling, admitted by stealing
+  ok   the ceiling steals the globally oldest
+  ok   under the ceiling steals nothing
+bookkeeping:
+  ok   dropVoice removes exactly one
+  ok   dropping an unknown id is a no-op
+
+audio mix invariants hold
+schema:
+  ok   has entries
+  ok   every entry passes the schema
+files on disk:
+  ok   tower_single exists
+  ok   tower_rapid exists
+  ok   tower_spread exists
+  ok   tower_homing exists
+  ok   tower_slow exists
+  ok   tower_laser exists
+  ok   tower_aoe exists
+  ok   tower_sniper exists
+  ok   minigun_ready exists
+  ok   minigun_fire exists
+  ok   tower_upgrade exists
+  ok   tank_main exists
+  ok   tank_secondary exists
+  ok   tank_beam exists
+  ok   tank_destroyed exists
+  ok   tank_pickup exists
+  ok   tank_shells exists
+  ok   tank_spool_up exists
+  ok   tank_spool_down exists
+  ok   tank_thruster exists
+  ok   tank_engine exists
+  ok   portal_warn exists
+  ok   boss_tension exists
+  ok   laser_click exists
+  ok   server_dialup exists
+  ok   danger_alert exists
+  ok   enemy_die_a exists
+  ok   enemy_die_b exists
+  ok   enemy_die_c exists
+tower coverage:
+  ok   board 1: 'single' has a sound (tower_single)
+  ok   board 1: 'rapid' has a sound (tower_rapid)
+  ok   board 1: 'spread' has a sound (tower_spread)
+  ok   board 1: 'homing' has a sound (tower_homing)
+  ok   board 1: 'slow' has a sound (tower_slow)
+  ok   board 1: 'aoe' has a sound (tower_aoe)
+  ok   board 1: 'sniper' has a sound (tower_sniper)
+  ok   board 1: 'laser' has a sound (tower_laser)
+  ok   board 2: 'rotor' has a sound (minigun_fire)
+  ok   board 2: 'plasma' has a sound (tower_laser)
+  ok   board 2: 'quiver' has a sound (tower_homing)
+  ok   board 2: 'relay' has a sound (tower_slow)
+  ok   board 2: 'mortar' has a sound (tower_aoe)
+  ok   board 2: 'lancer' has a sound (tower_sniper)
+  ok   board 2: 'howitzer' has a sound (tank_main)
+  ok   board 2: 'heptapod' has a sound (tower_homing)
+  ok   tower_upgrade exists
+constants:
+  ok   three death sounds
+  ok   death keys all resolve
+  ok   global cap is sane
+  ok   distance k is positive
+
+audio manifest invariants hold
+device-pixel scaling:
+  ok   dpr 1, full scale = css size
+  ok   dpr 2, full scale DOUBLES the target (the bug: it did not)
+  ok   dpr 3 scales by 3
+the phone half-res path still works, now relative to device px:
+  ok   dpr 2, scale 0.5 = css size (half of device)
+  ok   dpr 1, scale 0.5 = half css
+degenerate input never produces a zero-size target:
+  ok   zero width clamps to 1
+  ok   tiny scale clamps to 1
+  ok   always integral
+
+postfx sizing invariants hold
+order independence (the whole point):
+  ok   a->b and b->a give the SAME key
+distinctness:
+  ok   different segments differ
+  ok   a degenerate segment is still a key
+  ok   near-identical but distinct points differ
+quantization absorbs float noise:
+  ok   float dust collapses to one key
+real duplicate rate on an actual board:
+       6016 emitted -> 4019 unique (1.50x duplication)
+  ok   dedupe actually removes ~a third of the segments
+  ok   dedupe keeps every distinct edge
+
+segment-key invariants hold
+the old derived up-vector (why this had to change):
+  ok   fine near the Heart
+  ok   COLLAPSES near the antipode
+  ok   exactly zero AT the antipode
+
+the carried frame:
+  ok   starts centred on the Heart
+  ok   starts orthonormal
+  ok   stays orthonormal through 720 drag steps
+  ok   up NEVER collapses, antipode included
+  ok   can sit exactly at the antipode
+  ok   and still has a valid up there
+  ok   and it is still orthogonal to the view
+
+build-camera frame invariants hold
+constants:
+  ok   five groups
+  ok   effects is a group (the default)
+  ok   every group has a default weight
+  ok   map starts dimmer than enemies
+clampWeight:
+  ok   passes a normal value
+  ok   clamps negative to 0
+  ok   clamps above 3
+  ok   NaN falls back to 1
+  ok   undefined falls back to 1
+buildWeightMap — inheritance:
+  ok   root gets its group weight
+  ok   child inherits
+  ok   grandchild inherits
+buildWeightMap — separation:
+  ok   each root gets its own weight
+  ok   unlisted nodes are absent (caller applies the default)
+buildWeightMap — robustness:
+  ok   a node in two groups keeps the FIRST
+  ok   null/undefined roots are skipped, not thrown on
+  ok   a cycle terminates
+materialConflicts — the silent-bug tripwire:
+  ok   detects one material under two weights
+  ok   reports both weights
+  ok   silent when the shared material agrees
+  ok   silent on materialless nodes
+
+bloom weight invariants hold
+registry shape:
+  ok   at least two looks — a registry of one proves nothing
+  ok   the default is a real look
+  ok   braille: has a label
+  ok   braille: build is a function
+  ok   braille: preload, if present, is a function
+  ok   solid: has a label
+  ok   solid: build is a function
+  ok   solid: preload, if present, is a function
+  ok   heptapod: has a label
+  ok   heptapod: build is a function
+  ok   heptapod: preload, if present, is a function
+  ok   sentry: has a label
+  ok   sentry: build is a function
+  ok   sentry: preload, if present, is a function
+every look builds every tower in the roster:
+  ok   braille builds all 8
+  ok   solid builds all 8
+  ok   heptapod builds all 8
+  ok   sentry builds all 8
+the contract td-tab actually relies on:
+  ok   baseScale is positive
+  ok   tick is callable without throwing
+  ok   contains meshes, so tap-to-select can raycast it
+degrading safely:
+  ok   an unknown look falls back rather than returning null
+  ok   an unknown look still yields a usable object
+  ok   lookReady is true for a look with no async assets
+  ok   lookReady is false for an unknown name
+looks are actually DIFFERENT (a swap you cannot see is not a swap):
+  ok   braille has a Points head
+  ok   solid has no Points head
+  ok   solid has more meshes than braille
+
+tower look invariants hold
+hover:
+  ok   starts settled
+  ok   spools up to full
+  ok   spools back down
+  ok   one frame delivers a fraction, not the move
+  ok   and it eases in over several frames
+  ok   settle is at least as quick as spool-up
+hover geometry:
+  ok   body rises
+  ok   gear drops
+  ok   gap is rise + gearDrop
+  ok   travel stays subtle
+recoil:
+  ok   turret rests at baseZ
+  ok   fire arms the full kick
+  ok   turret slides back
+  ok   body noses up
+  ok   recoil expires
+  ok   turret returns to baseZ
+recoil without a hover split:
+  ok   turret still slides
+  ok   missing baseZ reads as 0
+rock + recoil compose:
+  ok   landing rocks the body
+  ok   recoil adds to the rock
+  ok   roll is untouched by recoil
+vibration:
+  ok   still when stopped
+  ok   vibrates when running
+  ok   vibration stays under the rise
+the three-tier rig:
+  ok   the hull takes the vibration
+  ok   the guns take less of it
+  ok   the guns take the declared share
+  ok   the body itself does not translate sideways
+  ok   the body still rises
+  ok   the skirt still settles
+  ok   the emitters stay planted
+  ok   the body noses up on firing
+  ok   share 0 cancels the pitch entirely
+  ok   share 1 lets them ride it
+  ok   half share is half the cancel
+tolerates the units that have none of this:
+  ok   no throw on bare units
+knob schema:
+  ok   every tunable has a knob
+  ok   every knob names a real constant
+  ok   no duplicate keys
+  ok   every knob is fully described
+  ok   defaults sit inside their own ranges
+  ok   makeFeelParams copies the defaults
+  ok   and is a copy, not a view
+  ok   clamps above max
+  ok   clamps below min
+  ok   ignores non-numeric
+  ok   ignores unknown keys
+  ok   an empty blob changes nothing
+  ok   emits a pasteable block
+  ok   emits every knob
+  ok   rounds to slider precision
+health colour:
+  ok   full health reads blue
+  ok   dead reads red
+  ok   midpoint is orange
+  ok   clamps below 0
+  ok   clamps above 1
+  ok   blue rises monotonically with health
+health paint:
+  ok   paints colour
+  ok   emissive leads colour
+  ok   emissive is the full hue
+  ok   diffuse keeps the hue
+  ok   paints every material
+  ok   accepts a bare material
+  ok   accepts an array of meshes
+
+all tankfeel invariants hold
+the shared machinery:
+  ok   no problems in a sound table
+  ok   makeParams copies
+  ok   and is a copy
+  ok   clamps above max
+  ok   clamps below min
+  ok   ignores non-numeric
+  ok   ignores unknown keys
+  ok   rounds to step
+  ok   integers stay integers
+  ok   emits a pasteable block
+  ok   quotes a choice value
+  ok   does not quote a number
+bool knobs:
+  ok   bool table is sound
+  ok   a non-boolean default is flagged
+  ok   restores a boolean
+  ok   accepts '1' as true
+  ok   ignores junk
+  ok   formats as bare true/false
+problem detection:
+  ok   spots a duplicate key
+  ok   spots a knob naming nothing
+  ok   spots a default outside its range
+  ok   spots a missing label
+  ok   spots a tunable with no knob
+the shipped tables:
+  ok   tank table is sound
+  ok   tower table is sound
+  ok   tank block round-trips
+  ok   tower block round-trips
+tower heads:
+  ok   picker offers as-shipped plus every kind
+  ok   every head builds finite, non-degenerate points
+  ok   dot count scales every head
+  ok   a smaller spacing means more highlights
+  ok   a degenerate spacing is refused
+  ok   no assignment keeps the shipped shape
+  ok   an assignment wins
+  ok   another tower is unaffected
+  ok   as-shipped is not an override
+  ok   an unknown shape is refused
+  ok   a shapeless tower falls back to sphere
+  ok   cleanHeads keeps a real override
+  ok   drops one equal to the shipped shape
+  ok   drops an unknown shape
+  ok   drops an unknown tower
+  ok   emits every tower, not just overrides
+  ok   marks the one that changed
+  ok   and marks nothing when nothing changed
+  ok   cleanHeads does not mutate its input
+
+all knob invariants hold
+schema:
+  ok   knob table is sound
+rationing:
+  ok   starts empty
+  ok   two portals grant one
+  ok   five portals grant two
+  ok   one portal still grants the minimum
+  ok   granted as reserved, not ready
+  ok   both promote over two windows
+  ok   each promotion announces once
+  ok   window pauses at the ready cap
+  ok   and the gauge holds still
+the ritual:
+  ok   cannot arm an empty tube
+  ok   cannot paint unarmed
+  ok   cannot launch cold
+  ok   arms with a missile loaded
+  ok   launch still refused without a lock
+  ok   paints while armed
+  ok   repainting moves the lock
+  ok   a bad cell is refused
+  ok   disarming clears the target
+  ok   launch returns the cell
+  ok   launch spends the missile
+  ok   the safety re-engages on launch
+  ok   the lock is consumed
+  ok   the strike is in the air
+  ok   a second launch while one falls is refused
+the fall:
+  ok   progress starts at 0
+  ok   lands on the painted cell
+  ok   lands exactly once
+  ok   progress reads 1 after landing
+  ok   skip lands next frame
+  ok   skip on nothing is harmless
+the blast:
+  ok   full damage at ground zero
+  ok   zero at the edge
+  ok   zero outside
+  ok   falloff is monotonic
+  ok   half radius still hits for most of the centre
+  ok   a zero radius damages nothing
+the re-orbit cooldown:
+  ok   launch starts the cooldown
+  ok   a stacked second strike must wait
+  ok   progress reads the return
+  ok   halfway back
+  ok   the window promotes while the platform repositions
+  ok   back in orbit, arming works again
+  ok   progress reads 1 when idle
+the re-aim burst:
+  ok   refused when nothing is in the air
+  ok   the launch loads the burst
+  ok   a bad cell is refused
+  ok   vectors onto the new cell
+  ok   the burst is spent
+  ok   a second re-aim is refused
+  ok   lands on the RE-AIMED cell
+  ok   skip after a re-aim lands on the new cell
+
+all strike invariants hold
+basis:
+  ok   fwd is the heading
+  ok   right is starboard
+  ok   basis is orthonormal
+  ok   up hint is projected to the tangent
+projection:
+  ok   ahead is screen-up
+  ok   starboard is screen-right
+  ok   in range is not clamped
+  ok   beyond range pins to the rim
+  ok   the rim keeps the direction
+bearing + sweep:
+  ok   north is bearing 0
+  ok   east is +90deg
+  ok   sweep wraps
+  ok   quarter period is a quarter turn
+phosphor:
+  ok   the beam lights what it touches
+  ok   just-passed is nearly full
+  ok   half a turn behind is dim
+  ok   never fully dark
+  ok   decay is monotonic behind the beam
+proximity sensor:
+  ok   four sectors, all quiet with nothing in range
+  ok   ahead lands in sector 0
+  ok   starboard lands in sector 1
+  ok   astern lands in sector 2
+  ok   port lands in sector 3
+  ok   44° is still AHEAD, 46° is starboard
+  ok   level 1 outer third, 2 middle, 3 inner
+  ok   beyond the reach is 0, and so is garbage
+  ok   at the rim exactly is still a warning
+  ok   the NEAREST contact in a sector sets its level
+  ok   a contact past the reach does not register
+  ok   sector count is 4
+  ok   nothing beyond 4 cells
+  ok   blue at 4 cells (level 1)
+  ok   orange at 3 (level 2)
+  ok   red at 2 and closer (level 3)
+  ok   garbage is nothing
+  ok   the rings are nearest-first
+  ok   with a cell side: 5/4/3/2 cells -> 0/1/2/3 (nothing/blue/orange/red)
+  ok   ...and the scope reach no longer gates (4 cells > 0.25 reach still blue)
+  ok   ...cells are reported
+
+all radar invariants hold
+ring:
+  ok   point order is a drawing order (stroke before chevrons)
+horizon, called the way the GAME calls it (i0 = ring length):
+  ok   t=0: fills exactly HORIZON_N dots
+  ok   t=0: no dot is dark
+  ok   t=0: disc stays in the ring plane
+  ok   t=0: radii span the throat
+  ok   t=1.1: fills exactly HORIZON_N dots
+  ok   t=1.1: no dot is dark
+  ok   t=1.1: disc stays in the ring plane
+  ok   t=1.1: radii span the throat
+  ok   t=3.5: fills exactly HORIZON_N dots
+  ok   t=3.5: no dot is dark
+  ok   t=3.5: disc stays in the ring plane
+  ok   t=3.5: radii span the throat
+  ok   t=7: fills exactly HORIZON_N dots
+  ok   t=7: no dot is dark
+  ok   t=7: disc stays in the ring plane
+  ok   t=7: radii span the throat
+  ok   the centre is animated (dots move between ticks)
+stargate: all good
+ladder:
+  ok   thresholds climb, never dip
+  ok   rank 0 exists below the first threshold
+  ok   first threshold promotes
+  ok   every rank reachable at exactly its requirements
+  ok   more kills never demote
+gold gate (hands-on elites):
+  ok   kills alone cap at the top of silver
+  ok   each elite pair opens one more gold level
+  ok   bronze and silver need no elites
+  ok   the top demands the most
+tiers:
+  ok   1..5 bronze
+  ok   6..10 silver
+  ok   11..15 gold
+  ok   level wraps 1..5
+  ok   labels read tier + level
+dice pips (the one asked-for change):
+  ok   1 star(s) sit in a row
+  ok   2 star(s) sit in a row
+  ok   3 star(s) sit in a row
+  ok   4 stars form a 2x2 square
+  ok   5 stars form a quincunx (2x2 + centre)
+  ok   pips are narrower than the row they replaced
+badges:
+  ok   unranked draws nothing
+  ok   all 15 badges render
+  ok   gold star count = level; lower tiers have none
+  ok   size parameter lands on the tag
+ranks: all good
+weights:
+  ok   tank kills outscore tower kills
+  ok   tank kills outscore strike kills
+  ok   the weight reaches the number
+  ok   a ram pays its premium on top
+  ok   unknown sources fall back to tower weight
+field multiplier:
+  ok   an empty field multiplies by 1
+  ok   more enemies never pay less
+  ok   the cap holds
+  ok   a swarmed kill outscores a lone one
+waves:
+  ok   deeper waves are worth more
+the counter:
+  ok   kills accumulate
+  ok   best holds while points are below it
+  ok   best follows a new record live
+  ok   reset clears points, keeps the best
+  ok   points scale is chunky (x10 bounty)
+score: all good
+coverage:
+  ok   every catalogue entry has lore
+substance:
+  ok   every entry has name, tag, a real body, a real visual prompt
+  ok   loreText carries both registers
+  ok   loreAll contains the world and every unit
+lore: all good
+table:
+  ok   ids are unique
+  ok   every entry has a name and a note
+  ok   every group is a declared group
+nothing is earned by doing nothing:
+  ok   a blank run earns nothing
+  ok   an EMPTY object earns nothing
+each condition, on and off:
+  ok   streak ladder is cumulative
+  ok   streak 99 earns nothing
+  ok   the boss hands-on pays twice — personal AND the red belt
+  ok   black belt needs the cloaked one specifically
+  ok   general is the top rank only
+  ok   K-KILL 0 needs a CLEARED sector, not just a clean run
+  ok   I LOVE YOU needs an untouched heart
+  ok   half the shell needs three sectors
+  ok   desk officer needs a cleared sector with NO hands-on kills
+  ok   retro-gamer needs all three protocols
+  ok   hacker is finding the relay, not beating it
+  ok   deepwatch needs a portal killed from orbit
+  ok   the planet is its own thing
+  ok   quartermaster is a peak, not a total
+  ok   the last berth means two hulls gone
+freshness:
+  ok   already-held ones are not re-announced
+  ok   order follows the table, so a ladder announces in order
+  ok   nothing new is an empty list
+storage is untrusted input:
+  ok   a non-array record does not throw
+  ok   a null record does not throw
+  ok   a non-array list does not throw
+  ok   sanitise drops non-arrays
+  ok   sanitise drops unknown and non-string ids
+achievements: all good
+berths:
+  ok   full life picks Container #3
+  ok   two hulls picks Container #2
+  ok   last hull picks Container #1
+  ok   zero clamps to Container #1
+  ok   over-max clamps to Container #3
+  ok   finds a three-berth chain
+  ok   every berth is open ground
+  ok   every berth has an exit
+  ok   an exit is never another berth
+  ok   exits are open ground
+  ok   the chain is adjacent, in painted order
+  ok   same board gives the same camp
+berths: all good (12 checks)
+autofire:
+  ok   wander fires the secondary at a rammable target
+  ok   wander fires the secondary at a hard target
+  ok   avoid fires the secondary at a rammable target
+  ok   avoid fires the secondary at a hard target
+  ok   conserve fires the secondary at a rammable target
+  ok   conserve fires the secondary at a hard target
+  ok   home fires the secondary at a rammable target
+  ok   home fires the secondary at a hard target
+  ok   portal fires the secondary at a rammable target
+  ok   portal fires the secondary at a hard target
+  ok   RAM holds fire on a rammable target
+  ok   RAM still fires on a hard target
+  ok   RAM with both present fires (the hard one qualifies)
+  ok   out of range does not fire
+  ok   behind the hull does not fire
+  ok   exactly on the arc edge fires
+  ok   just inside the arc edge does not
+  ok   nothing in range does not fire
+  ok   wander spends shells freely
+  ok   avoid spends shells freely
+  ok   home spends shells freely
+  ok   portal spends shells freely
+  ok   conserve rations shells
+  ok   ram rations shells
+autofire: all good (24 checks)
+printpath:
+  ok   three patterns, in order
+  ok   starts on zigzag
+  ok   second slice is spiral
+  ok   third slice is blink
+  ok   wraps back to zigzag
+  ok   u runs 0..1 inside a slice
+  ok   negative time still names a pattern
+  ok   negative time keeps u in 0..1
+  ok   zigzag never leaves the bed
+  ok   spiral never leaves the bed
+  ok   blink never leaves the bed
+  ok   u past 1 clamps
+  ok   u below 0 clamps
+  ok   zigzag rows alternate direction
+  ok   zigzag steps down the bed
+  ok   zigzag spans the bed width
+  ok   spiral starts at the centre
+  ok   spiral radius grows
+  ok   spiral actually turns
+  ok   blink parks at discrete stops
+  ok   blink moves between stops
+  ok   blink extrudes at a stop
+  ok   blink stops extruding on the hop
+  ok   the spiral is one continuous bead
+  ok   zigzag retracts at a turnaround
+  ok   zigzag extrudes mid-row
+  ok   zigzag is mostly extruding
+  ok   blink is off a meaningful share
+  ok   a 0.6s build shows all three patterns
+  ok   a 1s build shows all three patterns
+  ok   a 2s build shows all three patterns
+  ok   a 2.9s build shows all three patterns
+  ok   a 4s build shows all three patterns
+  ok   a 6.5s build shows all three patterns
+  ok   a 12s build shows all three patterns
+  ok   a long build keeps the steady cadence
+  ok   a short build compresses the cadence
+  ok   a zero-length build cannot divide by zero
+printpath: all good (38 checks)
+audiogate:
+  ok   running is done
+  ok   running stops listening
+  ok   shouldListen agrees
+  ok   no context rebuilds
+  ok   undefined context rebuilds
+  ok   a closed context rebuilds
+  ok   suspended resumes
+  ok   iOS interrupted resumes
+  ok   suspended keeps listening
+  ok   null never stops listening
+  ok   shouldListen(null) is true
+  ok   closed never stops listening
+  ok   shouldListen(closed) is true
+  ok   suspended never stops listening
+  ok   shouldListen(suspended) is true
+  ok   interrupted never stops listening
+  ok   shouldListen(interrupted) is true
+  ok   suspended after 0 failures still listens
+  ok   suspended after 1 failures still listens
+  ok   suspended after 2 failures still listens
+  ok   suspended after 3 failures still listens
+  ok   suspended after 4 failures still listens
+  ok   suspended after 5 failures still listens
+  ok   suspended after 6 failures still listens
+  ok   under 2 failures still resumes
+  ok   at 2 failures rebuilds
+  ok   more failures still rebuilds
+  ok   rebuilds are capped, then it keeps resuming
+  ok   capped rebuild still listens
+  ok   no context past the cap gives up
+  ok   giving up stops listening
+  ok   a lapsed context asks to resume again
+  ok   and listens again
+audiogate: all good (33 checks)
+  ok   arrival keys its own id
+  ok   arrival has a title
+  ok   arrival has a face
+  ok   arrival has at least one line
+  ok   arrival lines are all non-empty strings
+  ok   stalheart keys its own id
+  ok   stalheart has a title
+  ok   stalheart has a face
+  ok   stalheart has at least one line
+  ok   stalheart lines are all non-empty strings
+  ok   harvest keys its own id
+  ok   harvest has a title
+  ok   harvest has a face
+  ok   harvest has at least one line
+  ok   harvest lines are all non-empty strings
+  ok   motive keys its own id
+  ok   motive has a title
+  ok   motive has a face
+  ok   motive has at least one line
+  ok   motive lines are all non-empty strings
+  ok   printer keys its own id
+  ok   printer has a title
+  ok   printer has a face
+  ok   printer has at least one line
+  ok   printer lines are all non-empty strings
+  ok   relay keys its own id
+  ok   relay has a title
+  ok   relay has a face
+  ok   relay has at least one line
+  ok   relay lines are all non-empty strings
+  ok   biomass keys its own id
+  ok   biomass has a title
+  ok   biomass has a face
+  ok   biomass has at least one line
+  ok   biomass lines are all non-empty strings
+  ok   gates keys its own id
+  ok   gates has a title
+  ok   gates has a face
+  ok   gates has at least one line
+  ok   gates lines are all non-empty strings
+  ok   brief() returns null for an unknown id
+  ok   arrival uses a real emotion (scan)
+  ok   stalheart uses a real emotion (awe)
+  ok   harvest uses a real emotion (focused)
+  ok   motive uses a real emotion (determined)
+  ok   printer uses a real emotion (focused)
+  ok   relay uses a real emotion (surprised)
+  ok   biomass uses a real emotion (frustrated)
+  ok   gates uses a real emotion (determined)
+  ok   the face check can fail — a made-up id is not in the roster
+  ok   an empty line still holds the floor
+  ok   a null line does not throw
+  ok   a short line holds the floor, not less
+  ok   a very long line is capped
+  ok   longer lines hold longer, in the band
+  ok   the curve is the stated reading speed
+  ok   the floor really is below the cap
+  ok   a 16-word line lands strictly inside the band — the curve is live, not clamped
+  ok   arrival plays itself out in a sane time (14.9s)
+  ok   stalheart plays itself out in a sane time (15.1s)
+  ok   harvest plays itself out in a sane time (16.9s)
+  ok   motive plays itself out in a sane time (13.6s)
+  ok   printer plays itself out in a sane time (22.4s)
+  ok   relay plays itself out in a sane time (14.9s)
+  ok   biomass plays itself out in a sane time (11.4s)
+  ok   gates plays itself out in a sane time (23.6s)
+isaobriefs: all good (66 checks)
+the operator's table, verbatim:
+  ok   four steps, no more
+  ok   rank 1: #666100 at 4 cells
+  ok   rank 5: #006d8f at 6 cells
+  ok   rank 10: #d357fe at 8 cells
+  ok   rank 15: #b51a00 at 10 cells
+resolution:
+  ok   unranked still has a gun (rank 0 -> first step)
+  ok   a rank sits in the highest step it clears (4 -> step 0)
+  ok   the step boundary is inclusive (5 -> step 1)
+  ok   9 has not stepped yet
+  ok   10 steps
+  ok   14 has not stepped yet
+  ok   RANK_MAX is the last step
+  ok   above the ladder clamps rather than falling off
+  ok   garbage in resolves rather than returning undefined
+  ok   every rank -1..16 resolves to a usable step
+the ladder climbs:
+  ok   minRank, reach and dps all strictly climb
+  ok   rank 1 keeps today's shipped dps — the opening of a run does not move
+  ok   the steps after entry are all tier ceilings
+  ok   the first step is entry, rank 1
+isBeamStep asks the right question:
+  ok   exactly ranks 1, 5, 10, 15 rearm the beam
+  ok   11 of 15 promotions are badge-only
+penetration survives the length climb:
+  ok   the hard fraction is big enough that three would end any beam
+  ok   ...and small enough that two would not, at every step
+  ok   fodder stays nearly free at every step
+  ok   hard:soft ratio is identical at every step
+  ok   the fractions reproduce the shipped 2.6-cell tuning
+  ok   the naive absolute-cell version WOULD have broken at rank 15
+the climb is a career, not a cheat:
+  ok   reach grows 2.5x end to end
+  ok   dps grows less than reach does — length is the reward, not damage
+  ok   dps stays under 2x — the beam is not a different weapon at 15
+beamranks: all good
+the arc stays on the sphere:
+  ok   every point is EXACTLY unit length, no normalise needed
+  ok   the tangent is unit and perpendicular to the point
+  ok   s=0 is the muzzle
+  ok   the tangent at 0 is the aim direction
+  ok   arc length composes (0.4 then 0.3 == 0.7)
+projectToArc inverts it:
+  ok   a point ON the arc projects back to its own s, off=0
+  ok   a point behind the muzzle reports NEGATIVE s
+  ok   something hovering above the arc is OFF it
+  ok   ...but still at the right s
+the bug this replaces, measured:
+  ok   the old chord floated >3 cells off the ground at rank 15
+  ok   the old chord was invisible at the ORIGINAL 2.6-cell reach
+  ok   the normalised wall walk under-reached by >1 cell at rank 15
+  ok   a body 8 cells out was beyond ANY hit radius on the old chord
+segmenting for the renderer:
+  ok   a flat-enough arc needs one segment
+  ok   the segment count really holds sag under a tenth of a cell
+  ok   and it is capped, so a beam never costs 20 draw calls
+  ok   degenerate input returns 1 rather than NaN or Infinity
+  ok   chordSag is zero at zero and grows
+the toe that makes them cross:
+  ok   solve then invert lands back on the asked distance
+  ok   a nearer crossing needs a WIDER toe
+  ok   a wider muzzle gap needs a wider toe
+  ok   a FIXED toe crosses at wildly different fractions of the reach
+  ok   the solved toe crosses at the SAME fraction at every step
+  ok   solved per step, every rank crosses inside its own reach
+  ok   degenerate input returns 0 rather than NaN
+  ok   a zero toe never crosses
+  ok   the chord sags almost exactly one hit radius at mid-range
+  ok   ...which left 3% of the radius for the target being off-line
+  ok   on the ARC a body on the beam measures zero off it
+  ok   the arc recovers the whole sag
+  ok   the far end of the reach is still on the beam
+  ok   a body off to one side is still not hit
+arc: all good
+it pierces the safe tier:
+  ok   all three are burned, not just the first
+  ok   nothing stopped it
+  ok   ...but it paid: the beam is shorter than it started
+...but it pays to:
+  ok   each soft body takes another bite
+  ok   a hard body costs more than a soft one
+  ok   fodder is nearly free (<15% of reach)
+ONE solid core stops it dead:
+  ok   the FIRST solid core is where it dies
+  ok   it stops AT that body, not past it
+  ok   the core itself is still burned — it takes the frame it stopped
+  ok   everything behind it is untouched, soft or hard
+  ok   one core stops it at EVERY rank step
+  ok   a beam through fodder alone is not stopped
+what is behind armour is never reached:
+  ok   the far body is not burned
+  ok   one core was enough to shadow it
+  ok   ...and the report names it as missed
+  ok   the beam ends short of it
+order is the mechanic:
+  ok   a shuffled list burns identically
+  ok   the hits come back nearest-first regardless
+  ok   soft bodies in front of armour all burn, and so does the armour
+  ok   ...and the armour is where it stops
+a wall bites in the same currency:
+  ok   a wall at the tip barely bites
+  ok   a wall at point-blank bites hard
+  ok   the bite is clamped, never negative
+  ok   a degenerate reach returns 0 rather than NaN
+  ok   a wall drags even with nothing in the beam
+  ok   the wall drags exactly like one hard body
+  ok   rock at the very TIP still stalls the sweep
+  ok   ...and that is a change: the old proportional rule gave it almost none
+  ok   a wall exactly at the reach still counts — the flag decides, not the bite
+  ok   no wall means no wall drag
+  ok   one hard body alone already caps the sweep — "entirely slowed"
+drag slows the sweep but never stalls it:
+  ok   a clear beam sweeps at full rate
+  ok   a loaded beam sweeps slower
+  ok   it always CREEPS — never zero, however loaded
+  ok   the cap is what stops the stall
+  ok   soft bodies barely slow it, hard ones bog it
+the readout says WHAT is holding the sweep:
+  ok   rock is named
+  ok   a solid core is named
+  ok   a clear beam is not stalled at all
+  ok   fodder alone does not stall it
+the lab readout matches the game:
+  ok   report and burn agree on where the beam ends
+  ok   report and burn agree on drag
+  ok   report and burn agree on what was hit
+  ok   every row carries its own cost
+  ok   rows and misses partition the input
+degenerate input does not throw:
+  ok   an empty beam is fine
+  ok   a zero-length beam burns nothing
+  ok   a body exactly at the tip is reached
+  ok   the input array is not mutated
+beamburn: all good
+the ramp says what the operator said:
+  ok   idle at rest, far from a wave
+  ok   still idle at exactly the lead
+  ok   max at arrival
+  ok   max=6, lead=5, idle=0 — the operator's numbers
+  ok   never exceeds max, even past arrival
+  ok   garbage in returns idle rather than NaN
+...and it climbs smoothly, without announcing itself:
+  ok   monotonic from lead to arrival
+  ok   always between idle and max
+  ok   it leaves idle gently, not with a step
+  ok   ...and arrives hard
+  ok   halfway through the window it is halfway up
+the phase integrates, so a rate is a rate:
+  ok   no rate, no travel
+  ok   twice the rate, twice the distance
+  ok   idling first costs nothing, however long you idle
+  ok   the fast stretch adds only its own distance
+  ok   timeScale scales the distance travelled per second
+  ok   spin integrates on its own clock
+the tuned preset is the operator's, verbatim:
+  ok   every uniform matches the bench export
+  ok   render settings are the board's cost decision, 384 @ 30Hz
+  ok   ...and the LOOK is untouched by that decision
+  ok   ring spin carried across too
+       (cost: 212M sine-folds per rendered frame)
+  ok   the cost is knowable and non-zero
+portalfx: all good
+the phone pays less on every axis, and it is written down:
+  ok   pixel ratio cap lower
+  ok   no MSAA on the phone
+  ok   wormhole smaller AND slower
+  ok   bloom at half res
+  ok   the plan's numbers: 256@24
+  ok   desktop wormhole IS portalfx's cost decision (one source)
+the pick:
+  ok   coarse + phone-class short side -> phone
+  ok   coarse tablet (short side 900+) -> desktop
+  ok   fine pointer, any size -> desktop
+  ok   forced by name wins
+  ok   an unknown name is ignored, not a crash
+  ok   no facts at all -> desktop
+the cost, so the tier is a number and not a feeling:
+       desktop 212M/frame 6.37G/s · phone 94M/frame 2.26G/s · ratio 0.356
+  ok   phone wormhole under 40% of desktop per second
+  ok   ...and the LOOK is untouched (steps/octaves are the preset's, not the tier's)
+perftier: all good
+       index.html cb=26d54d57 · sw.js CB_TOKEN=26d54d57
+  ok   index.html carries a build token
+  ok   sw.js carries a cache key
+  ok   they are the same token (bust.sh stamps both)
+  ok   the worker never skips waiting on its own
+  ok   the worker never caches cross-origin
+  ok   the registration URL is relative (a project path on Pages)
+pwa: all good
+lab:
+  ok   knob table validates against its defaults
+  ok   no flag, no lab
+  ok   the lab opens on the game's own sky
+  ok   ?lab=0 is not the lab
+  ok   bare ?lab=1 opens on the defaults
+  ok   portal knobs open on the tier, not the constant
+  ok   labwave= seeds the multiplier
+  ok   labbg= / labfx= pick choices
+  ok   labseed= seeds the galaxy
+  ok   labscale= / labgalaxies= size and count the sky
+  ok   galaxy count clamps to 8
+  ok   labcore= scales the core
+  ok   lab<Key>= reaches any knob
+  ok   out-of-range clamps, unknown choices are ignored
+  ok   the console line names every field
+  ok   a missing gpu number prints as a dash, not NaN
+wave multiplier:
+  ok   mult 1 is the game, byte for byte
+  ok   mult 4 at wave 2 is ~4x the bodies (3.88)
+  ok   mult 4 at wave 5 is ~4x the bodies (3.91)
+  ok   mult 4 at wave 9 is ~4x the bodies (3.91)
+  ok   mult 4 at wave 14 is ~4x the bodies (4.03)
+  ok   mult never empties a wave
+  ok   the headline type does not change with the multiplier
+lab: all green
+galaxyseed:
+  ok   same seed, same stars
+  ok   next seed, different stars
+  ok   arrays are sized 4/4/1 per star
+  ok   no NaN anywhere
+  ok   about 17% bulge (16.9%)
+  ok   orbit radius fraction stays in [0, 1]
+  ok   dust: deterministic, sized, finite
+  ok   field stars sit on the 150..260 shell
+  ok   params inside the demo's clamps
+  ok   params deterministic
+  ok   cores are small for every seed
+  ok   seeds reach more than one arm count (2,3,0,4,5)
+layout:
+  ok   one galaxy is the home galaxy at the tuned placement
+  ok   eight galaxies, the first still home
+  ok   every extra galaxy has its own seed
+  ok   no two galaxies within ~35° of each other
+  ok   directions are unit vectors, distances beyond the home disc
+  ok   layout is deterministic
+galaxyseed: all green
+a two-key rail:
+  ok   duration is the last key
+  ok   before the first key: the first key
+  ok   after the last key: the last key
+  ok   halfway in time is halfway in space (smoothstep is symmetric)
+  ok   fov interpolates too
+  ok   quarter time is LESS than a quarter of the way — it eases in
+  ok   eye and look move independently
+three keys, inheritance, ordering:
+  ok   keys are sorted by t
+  ok   fov and up inherit forward
+  ok   the middle key is hit exactly
+  ok   no corner: just after a key moves slowly
+  ok   monotonic through the whole rail
+linear ease when asked:
+  ok   a linear segment is linear
+  ok   no keys is an error
+rail: all good
+calibration -> a size, from measured numbers:
+  ok   the M4 rate is ~40 G/s
+  ok   60 fps march budget ~6.7 ms
+       M4 @60fps -> 384px (5.3 ms)
+  ok   ...which is 384 (512 would cost 9.4 ms — over)
+  ok   at 30 fps the same machine affords 512
+  ok   a phone at a tenth of the M4, 30 fps -> the floor (256)
+  ok   the floor is the floor: no rate is below it
+  ok   garbage in -> the floor, not NaN
+  ok   a lighter look affords more pixels (steps 60)
+governing: down fast, up slow, never two steps in a gap, never up on the locked beat:
+  ok   at budget: holds
+  ok   over for half a second: not yet (the hold is 1 s)
+  ok   over for more than a second: one step down
+  ok   still over inside the 3 s gap: no second step yet
+  ok   ...then the next step down
+  ok   headroom for more than 5 s: one step up
+  ok   headroom on the LOCKED beat: no step up
+  ok   ...but over budget on the locked beat still steps DOWN
+  ok   every step is on the record with a reason
+the floor and the ceiling hold:
+  ok   cannot go below the smallest size
+  ok   cannot go above the largest
+governor: all good
+the stick:
+  ok   inside the dead zone it is not a stick (a tap stays a tap)
+  ok   straight up at the ring = full throttle, no steer
+  ok   half up = half throttle
+  ok   past the ring clamps to 1
+  ok   straight down = reverse, capped at the reverse fraction
+  ok   a little down is a little reverse, still under the cap
+  ok   left of the band steers left
+  ok   right of the band steers right
+  ok   inside the band does not steer
+  ok   the knob clamps to the ring
+stick: all good
+weathered metal:
+  ok   value noise stays in [0,1] and is finite
+  ok   same seed, same noise
+  ok   a different seed is a different field
+  ok   the lattice wraps at its period
+  ok   per-axis periods wrap independently
+  ok   fbm stays in [0,1] over three octaves
+  ok   same seed, same metal
+  ok   next seed, different metal
+  ok   three RGBA maps, sized
+  ok   alpha is opaque everywhere
+  ok   metalness spans its band (128..242 of 255)
+  ok   oxide takes patches, not the surface (36.7%)
+  ok   roughness inside its band (66..244 of 255)
+  ok   the plate is a medium grey: mean albedo in 70..150
+  ok   albedo tiles (seam 1.5/255)
+  ok   orm tiles (seam 1.5/255)
+  ok   normal tiles (seam 2.0/255)
+  ok   normals decode to unit length (max error 0.0042)
+  ok   normals point OUT: +Z everywhere
+  ok   rubber is barely metal (mean 26 vs gunmetal 227)
+  ok   rubber is rougher than steel is rougher than gunmetal (138 < 152 < 230)
+  ok   the bias ladder orders coverage: rubber <= steel <= gunmetal (0.0% <= 0.0% <= 12.5%)
+  ok   an explicit knob overrides the preset
+  ok   a 1024 set is 12 MB of RAM and 0 bytes on the wire
+weathered: all good
+sound rails:
+  ok   gate: every cue inside the 12 s
+  ok   gate: cues sorted by t
+  ok   gate: every key is in the manifest
+  ok   gate: gains in (0, 1]
+  ok   planet: every cue inside the 12 s
+  ok   planet: cues sorted by t
+  ok   planet: every key is in the manifest
+  ok   planet: gains in (0, 1]
+  ok   tank: every cue inside the 12 s
+  ok   tank: cues sorted by t
+  ok   tank: every key is in the manifest
+  ok   tank: gains in (0, 1]
+  ok   a frame crossing 7.5 fires the alert once
+  ok   a frame that crosses nothing fires nothing
+  ok   a seek is not a crossing: (t, t] is empty
+  ok   the loop wrap crosses the head of the rail
+  ok   the planet is mostly silence
+sound: all good
+director scripts:
+  ok   ram: length, seed, hud
+  ok   ram: every cue inside the script
+  ok   ram: cues sorted
+  ok   ram: every verb known
+  ok   ram: the rail spans the script (30 s)
+  ok   ram: a pose mid-way is finite
+  ok   ram: the camera never sits inside the tank
+  ok   ram: every anchor known
+  ok   strike: length, seed, hud
+  ok   strike: every cue inside the script
+  ok   strike: cues sorted
+  ok   strike: every verb known
+  ok   strike: the rail spans the script (32 s)
+  ok   strike: a pose mid-way is finite
+  ok   strike: the camera never sits inside the tank
+  ok   strike: every anchor known
+  ok   tank: length, seed, hud
+  ok   tank: every cue inside the script
+  ok   tank: cues sorted
+  ok   tank: every verb known
+  ok   tank: the rail spans the script (24 s)
+  ok   tank: a pose mid-way is finite
+  ok   tank: the camera never sits inside the tank
+  ok   tank: every anchor known
+  ok   planet: length, seed, hud
+  ok   planet: every cue inside the script
+  ok   planet: cues sorted
+  ok   planet: every verb known
+  ok   planet: the rail spans the script (30 s)
+  ok   planet: a pose mid-way is finite
+  ok   planet: the camera never sits inside the tank
+  ok   planet: every anchor known
+  ok   gate: length, seed, hud
+  ok   gate: every cue inside the script
+  ok   gate: cues sorted
+  ok   gate: every verb known
+  ok   gate: the rail spans the script (22 s)
+  ok   gate: a pose mid-way is finite
+  ok   gate: the camera never sits inside the tank
+  ok   gate: every anchor known
+scripts: all good
+schema:
+  ok   knob table is sound
+supply and refusals:
+  ok   starts with the rack full
+  ok   lays
+  ok   the drop costs one
+  ok   a wall refuses
+  ok   a blocked drop costs nothing
+  ok   the same cell refuses
+  ok   a tower on the cell refuses
+  ok   an empty rack refuses
+  ok   mineAt finds the laid one
+the rack caps:
+  ok   a case fits under the cap
+  ok   the case over the cap is clipped
+  ok   ...and nothing more goes in
+the arming window:
+  ok   nothing arms early
+  ok   a dead mine does not trip
+  ok   the point survived the arming window
+  ok   it arms on time
+  ok   it announces once
+  ok   the same point trips it now
+  ok   a tripped mine is gone
+the trigger fan:
+  ok   a body in the fan trips it
+  ok   a body just past the fan does not
+  ok   a body beside the fan does not
+  ok   ...but is still inside the blast arc
+the blast arc:
+  ok   2.4 cells at 50 degrees is caught
+  ok   2.6 cells straight ahead is not
+  ok   2.4 cells at 70 degrees is not
+  ok   nothing directly behind is caught
+  ok   nothing behind and to one side is caught
+  ok   the polar distance IS arc length
+friendly fire:
+  ok   the tank in the arc comes back as a target
+the chain:
+  ok   both mines in the arc chain
+  ok   nearest first
+  ok   the one behind is untouched
+  ok   queueing the same id twice does not double it
+  ok   the queue hands them back one per frame, nearest first
+  ok   ...then the far one
+  ok   the queue empties
+  ok   a mine that died first is skipped in the queue
+
+all mine invariants hold
+schema:
+  ok   knob table is sound
+the meter:
+  ok   starts empty
+  ok   a pickup charges it
+  ok   the meter holds it
+  ok   the cap clamps
+  ok   and reports what it actually took
+  ok   a zero charge is a no-op
+the rack and its refusals:
+  ok   starts with two charges
+  ok   S deploys
+  ok   a charge is spent
+  ok   and buys ten seconds
+  ok   S refuses while the shield is up
+  ok   the refusal costs no charge
+  ok   it drops after deploySecs
+  ok   the cooldown is stamped at the drop, not the deploy
+  ok   S refuses inside the seam
+  ok   and works the moment it closes
+  ok   an empty rack refuses
+  ok   a case restocks
+  ok   the rack cap holds and the overflow is lost
+  ok   the seam is inside the 4s ram-combo window
+  ok   two charges are exactly one full meter
+the slow-tower tap:
+  ok   a second parked pays tapRate
+  ok   and the meter has it
+  ok   that tower is offline while tapped
+  ok   and stays offline through the outage
+  ok   then comes back
+  ok   an untapped tower is never offline
+  ok   a full meter takes nothing
+the heart station:
+  ok   a second on the pad pays stationRate
+  ok   the budget went down by it
+  ok   the budget is the ceiling
+  ok   an exhausted pad pays nothing
+  ok   the next wave refills it
+the shove:
+  ok   the shove is a unit vector
+  ok   perpendicular to the heading
+  ok   tangent to the sphere
+  ok   it pushes the enemy the way it is already leaning
+  ok   an enemy on the other side goes the other way
+  ok   a dead-ahead enemy still gets a real push
+  ok   a fresh shove is at full magnitude
+  ok   a spent shove is zero
+  ok   and it decays monotonically in between
+
+all shield invariants hold
+schema:
+  ok   knob table is sound
+  ok   every knob names a real constant
+  ok   every family has at least one knob
+recipes:
+  ok   "shell" names only families that exist
+  ok   "shell" is not empty
+  ok   "laser" names only families that exist
+  ok   "laser" is not empty
+  ok   "plasma" names only families that exist
+  ok   "plasma" is not empty
+  ok   "light" names only families that exist
+  ok   "light" is not empty
+  ok   every family is reachable from at least one recipe
+params round-trip:
+  ok   params carry every knob
+  ok   an absurd count is clamped to the knob max
+  ok   a negative life is clamped to the knob min
+  ok   a value the source never mentioned keeps its default
+the tune is sane:
+  ok   spark spread stays inside a hemisphere
+  ok   the flash is the shortest-lived family — a flash you can look at is a lamp
+  ok   the scorch outlives every fast family — it is the record of your aim
+  ok   embers outlast the bang
+  ok   bounce keeps energy from being created
+
+all impact invariants hold
+the split holds:
+  ok   no tower def carries "projPx" any more
+  ok   no tower def carries "trail" any more
+  ok   no tower def carries "projSpeed" any more
+  ok   no tower def carries "beamColor" any more
+  ok   no tower def carries "plasma" any more
+  ok   towers.js keeps `color` — that is identity, not an effect
+every tower resolves a profile:
+  ok   single has one
+  ok   single is not silently falling back
+  ok   rapid has one
+  ok   rapid is not silently falling back
+  ok   spread has one
+  ok   spread is not silently falling back
+  ok   homing has one
+  ok   homing is not silently falling back
+  ok   slow has one
+  ok   slow is not silently falling back
+  ok   aoe has one
+  ok   aoe is not silently falling back
+  ok   sniper has one
+  ok   sniper is not silently falling back
+  ok   laser has one
+  ok   laser is not silently falling back
+  ok   rotor has one
+  ok   rotor is not silently falling back
+  ok   plasma has one
+  ok   plasma is not silently falling back
+  ok   quiver has one
+  ok   quiver is not silently falling back
+  ok   relay has one
+  ok   relay is not silently falling back
+  ok   mortar has one
+  ok   mortar is not silently falling back
+  ok   lancer has one
+  ok   lancer is not silently falling back
+  ok   howitzer has one
+  ok   howitzer is not silently falling back
+  ok   heptapod has one
+  ok   heptapod is not silently falling back
+  ok   an unknown tower still resolves
+  ok   a missing def does not throw
+the profiles are well formed:
+  ok   single has shot, muzzle and impact
+  ok   single.muzzle names a real recipe or family list
+  ok   single.muzzle names only families that exist
+  ok   single.muzzle size is a sane number
+  ok   single.muzzle colour key "flash" is a real family
+  ok   single.impact names a real recipe or family list
+  ok   single.impact names only families that exist
+  ok   single.impact size is a sane number
+  ok   single.impact colour key "spark" is a real family
+  ok   rapid has shot, muzzle and impact
+  ok   rapid.muzzle names a real recipe or family list
+  ok   rapid.muzzle names only families that exist
+  ok   rapid.muzzle size is a sane number
+  ok   rapid.muzzle tune key "flashLife" is a real IMPACT_TUNE knob
+  ok   rapid.muzzle colour key "flash" is a real family
+  ok   rapid.impact names a real recipe or family list
+  ok   rapid.impact names only families that exist
+  ok   rapid.impact size is a sane number
+  ok   rapid.impact colour key "spark" is a real family
+  ok   spread has shot, muzzle and impact
+  ok   spread.muzzle names a real recipe or family list
+  ok   spread.muzzle names only families that exist
+  ok   spread.muzzle size is a sane number
+  ok   spread.muzzle tune key "sparkSpread" is a real IMPACT_TUNE knob
+  ok   spread.muzzle colour key "flash" is a real family
+  ok   spread.impact names a real recipe or family list
+  ok   spread.impact names only families that exist
+  ok   spread.impact size is a sane number
+  ok   spread.impact colour key "spark" is a real family
+  ok   homing has shot, muzzle and impact
+  ok   homing.muzzle names a real recipe or family list
+  ok   homing.muzzle names only families that exist
+  ok   homing.muzzle size is a sane number
+  ok   homing.muzzle colour key "flash" is a real family
+  ok   homing.muzzle colour key "ember" is a real family
+  ok   homing.impact names a real recipe or family list
+  ok   homing.impact names only families that exist
+  ok   homing.impact size is a sane number
+  ok   homing.impact colour key "spark" is a real family
+  ok   slow has shot, muzzle and impact
+  ok   slow.muzzle names a real recipe or family list
+  ok   slow.muzzle names only families that exist
+  ok   slow.muzzle size is a sane number
+  ok   slow.impact names a real recipe or family list
+  ok   slow.impact names only families that exist
+  ok   slow.impact size is a sane number
+  ok   aoe has shot, muzzle and impact
+  ok   aoe.muzzle names a real recipe or family list
+  ok   aoe.muzzle names only families that exist
+  ok   aoe.muzzle size is a sane number
+  ok   aoe.muzzle colour key "flash" is a real family
+  ok   aoe.muzzle colour key "ember" is a real family
+  ok   aoe.impact names a real recipe or family list
+  ok   aoe.impact names only families that exist
+  ok   aoe.impact size is a sane number
+  ok   aoe.impact tune key "ringEnd" is a real IMPACT_TUNE knob
+  ok   aoe.impact tune key "debrisCount" is a real IMPACT_TUNE knob
+  ok   aoe.impact colour key "spark" is a real family
+  ok   sniper has shot, muzzle and impact
+  ok   sniper.muzzle names a real recipe or family list
+  ok   sniper.muzzle names only families that exist
+  ok   sniper.muzzle size is a sane number
+  ok   sniper.muzzle tune key "flashLife" is a real IMPACT_TUNE knob
+  ok   sniper.muzzle colour key "flash" is a real family
+  ok   sniper.impact names a real recipe or family list
+  ok   sniper.impact names only families that exist
+  ok   sniper.impact size is a sane number
+  ok   sniper.impact tune key "sparkSpeed" is a real IMPACT_TUNE knob
+  ok   sniper.impact colour key "spark" is a real family
+  ok   laser has shot, muzzle and impact
+  ok   laser.muzzle names a real recipe or family list
+  ok   laser.muzzle names only families that exist
+  ok   laser.muzzle size is a sane number
+  ok   laser.muzzle colour key "flash" is a real family
+  ok   laser.impact names a real recipe or family list
+  ok   laser.impact names only families that exist
+  ok   laser.impact size is a sane number
+  ok   laser.impact colour key "spark" is a real family
+  ok   laser.impact colour key "splash" is a real family
+  ok   rotor has shot, muzzle and impact
+  ok   rotor.muzzle names a real recipe or family list
+  ok   rotor.muzzle names only families that exist
+  ok   rotor.muzzle size is a sane number
+  ok   rotor.muzzle tune key "flashLife" is a real IMPACT_TUNE knob
+  ok   rotor.muzzle tune key "sparkCount" is a real IMPACT_TUNE knob
+  ok   rotor.muzzle colour key "flash" is a real family
+  ok   rotor.impact names a real recipe or family list
+  ok   rotor.impact names only families that exist
+  ok   rotor.impact size is a sane number
+  ok   rotor.impact colour key "spark" is a real family
+  ok   plasma has shot, muzzle and impact
+  ok   plasma.muzzle names a real recipe or family list
+  ok   plasma.muzzle names only families that exist
+  ok   plasma.muzzle size is a sane number
+  ok   plasma.muzzle colour key "flash" is a real family
+  ok   plasma.muzzle colour key "ember" is a real family
+  ok   plasma.impact names a real recipe or family list
+  ok   plasma.impact names only families that exist
+  ok   plasma.impact size is a sane number
+  ok   plasma.impact colour key "splash" is a real family
+  ok   plasma.impact colour key "ember" is a real family
+  ok   quiver has shot, muzzle and impact
+  ok   quiver.muzzle names a real recipe or family list
+  ok   quiver.muzzle names only families that exist
+  ok   quiver.muzzle size is a sane number
+  ok   quiver.muzzle tune key "emberCount" is a real IMPACT_TUNE knob
+  ok   quiver.muzzle tune key "emberLife" is a real IMPACT_TUNE knob
+  ok   quiver.muzzle colour key "flash" is a real family
+  ok   quiver.muzzle colour key "ember" is a real family
+  ok   quiver.impact names a real recipe or family list
+  ok   quiver.impact names only families that exist
+  ok   quiver.impact size is a sane number
+  ok   quiver.impact tune key "ringEnd" is a real IMPACT_TUNE knob
+  ok   quiver.impact colour key "spark" is a real family
+  ok   relay has shot, muzzle and impact
+  ok   relay.muzzle names a real recipe or family list
+  ok   relay.muzzle names only families that exist
+  ok   relay.muzzle size is a sane number
+  ok   relay.impact names a real recipe or family list
+  ok   relay.impact names only families that exist
+  ok   relay.impact size is a sane number
+  ok   mortar has shot, muzzle and impact
+  ok   mortar.muzzle names a real recipe or family list
+  ok   mortar.muzzle names only families that exist
+  ok   mortar.muzzle size is a sane number
+  ok   mortar.muzzle tune key "emberCount" is a real IMPACT_TUNE knob
+  ok   mortar.muzzle colour key "flash" is a real family
+  ok   mortar.muzzle colour key "ember" is a real family
+  ok   mortar.impact names a real recipe or family list
+  ok   mortar.impact names only families that exist
+  ok   mortar.impact size is a sane number
+  ok   mortar.impact tune key "ringEnd" is a real IMPACT_TUNE knob
+  ok   mortar.impact tune key "debrisCount" is a real IMPACT_TUNE knob
+  ok   mortar.impact colour key "spark" is a real family
+  ok   lancer has shot, muzzle and impact
+  ok   lancer.muzzle names a real recipe or family list
+  ok   lancer.muzzle names only families that exist
+  ok   lancer.muzzle size is a sane number
+  ok   lancer.muzzle tune key "flashLife" is a real IMPACT_TUNE knob
+  ok   lancer.muzzle colour key "flash" is a real family
+  ok   lancer.impact names a real recipe or family list
+  ok   lancer.impact names only families that exist
+  ok   lancer.impact size is a sane number
+  ok   lancer.impact tune key "sparkCount" is a real IMPACT_TUNE knob
+  ok   lancer.impact tune key "sparkSpeed" is a real IMPACT_TUNE knob
+  ok   lancer.impact tune key "sparkSpread" is a real IMPACT_TUNE knob
+  ok   lancer.impact tune key "sparkGravity" is a real IMPACT_TUNE knob
+  ok   lancer.impact tune key "sparkBounce" is a real IMPACT_TUNE knob
+  ok   lancer.impact tune key "sparkSize" is a real IMPACT_TUNE knob
+  ok   lancer.impact tune key "flashLife" is a real IMPACT_TUNE knob
+  ok   lancer.impact tune key "flashSize" is a real IMPACT_TUNE knob
+  ok   lancer.impact tune key "flashRings" is a real IMPACT_TUNE knob
+  ok   lancer.impact tune key "ringEnd" is a real IMPACT_TUNE knob
+  ok   lancer.impact tune key "ringWidth" is a real IMPACT_TUNE knob
+  ok   lancer.impact tune key "scorchSize" is a real IMPACT_TUNE knob
+  ok   lancer.impact tune key "debrisSpeed" is a real IMPACT_TUNE knob
+  ok   lancer.impact tune key "splashCount" is a real IMPACT_TUNE knob
+  ok   lancer.impact tune key "splashLife" is a real IMPACT_TUNE knob
+  ok   lancer.impact tune key "splashCling" is a real IMPACT_TUNE knob
+  ok   lancer.impact tune key "splashSag" is a real IMPACT_TUNE knob
+  ok   lancer.impact tune key "emberCount" is a real IMPACT_TUNE knob
+  ok   lancer.impact tune key "emberLife" is a real IMPACT_TUNE knob
+  ok   lancer.impact tune key "emberRise" is a real IMPACT_TUNE knob
+  ok   lancer.impact tune key "emberDrag" is a real IMPACT_TUNE knob
+  ok   lancer.impact colour key "spark" is a real family
+  ok   lancer.impact colour key "splash" is a real family
+  ok   lancer.impact colour key "ember" is a real family
+  ok   howitzer has shot, muzzle and impact
+  ok   howitzer.muzzle names a real recipe or family list
+  ok   howitzer.muzzle names only families that exist
+  ok   howitzer.muzzle size is a sane number
+  ok   howitzer.muzzle tune key "flashLife" is a real IMPACT_TUNE knob
+  ok   howitzer.muzzle tune key "emberCount" is a real IMPACT_TUNE knob
+  ok   howitzer.muzzle colour key "flash" is a real family
+  ok   howitzer.muzzle colour key "ember" is a real family
+  ok   howitzer.impact names a real recipe or family list
+  ok   howitzer.impact names only families that exist
+  ok   howitzer.impact size is a sane number
+  ok   howitzer.impact tune key "ringEnd" is a real IMPACT_TUNE knob
+  ok   howitzer.impact tune key "debrisCount" is a real IMPACT_TUNE knob
+  ok   howitzer.impact colour key "spark" is a real family
+  ok   heptapod has shot, muzzle and impact
+  ok   heptapod.muzzle names a real recipe or family list
+  ok   heptapod.muzzle names only families that exist
+  ok   heptapod.muzzle size is a sane number
+  ok   heptapod.muzzle tune key "emberCount" is a real IMPACT_TUNE knob
+  ok   heptapod.muzzle colour key "flash" is a real family
+  ok   heptapod.muzzle colour key "ember" is a real family
+  ok   heptapod.impact names a real recipe or family list
+  ok   heptapod.impact names only families that exist
+  ok   heptapod.impact size is a sane number
+  ok   heptapod.impact colour key "spark" is a real family
+a weapon that throws nothing draws nothing:
+  ok   slow has no impact — a field weapon never lands anywhere
+  ok   relay has no impact — a field weapon never lands anywhere
+who owns which colour:
+  ok   every family resolves for every weapon
+  ok   no weapon inherits the splash fallback green
+  ok   the Lancer's splash is still its own green
+  ok   the Plasma keeps its cyan
+  ok   a weapon with no splash colour gets the WEAPON, not a constant
+  ok   sparks still come off the SURFACE where unnamed
+tune folding:
+  ok   a delta wins over the base
+  ok   everything else is the base
+  ok   the base is not mutated
+  ok   no profile is required to have a tune
+the export ACTUALLY round-trips:
+  ok   all 16 families round-trip exactly
+the export round-trips:
+  ok   emits a single object entry
+  ok   keeps beamColor as hex
+  ok   quotes the weapon kind
+  ok   the whole table emits one line per family
+
+all sentry-fx invariants hold
+one fit:
+  ok   a 170-unit model is fitted to its height cap
+  ok   it reports the scale it used
+TWO fits — the bug:
+  ok   the second fit gives the SAME size as the first
+  ok   ...and it is not enormous
+  ok   a third fit is still stable
+a different target size still works after a fit:
+  ok   re-fitting to a smaller height is honoured, not compounded
+degenerate models are refused, not exploded:
+[glbmodels] fitModel: refusing to scale a model that measures 0x0x0 — its geometry is missing or degenerate
+  ok   an empty model is refused
+  ok   ...and left at 1:1 rather than scaled to infinity
+[glbmodels] fitModel: refusing to scale a model that measures 9.999999974752427e-7x9.999999974752427e-7x9.999999974752427e-7 — its geometry is missing or degenerate
+  ok   a near-zero model is refused rather than blown up a million times
+
+all fitModel invariants hold
+the budget:
+  ok   it is a few thousand triangles, not a hundred thousand
+  ok   ...which is under 5% of the model that was refused
+  ok   ONE mesh — the appendages are the body, not parts bolted on
+the geometry is sane:
+  ok   no NaN or infinite vertices
+  ok   normalised to a unit extent, so cellSide * size means what it means
+  ok   nothing collapses to the origin
+  ok   it is a MASS with appendages, not a star of limbs
+  ok   ...and not a plain sphere either
+  ok   normals were computed
+deterministic:
+  ok   the same seed builds the same body — no Math.random anywhere
+  ok   a different seed builds a different body
+the tune is coherent:
+  ok   the appendages are lobes, not spikes — a sharp falloff still leaves a body
+  ok   the wobble is a wobble, not a pulse that turns it inside out
+  ok   a hit swells it without doubling it
+
+all jelly invariants hold
+beamshot:
+  ok   a beam is built from links
+  ok   the widest link matches the width asked for
+  ok   width scales linearly with the argument
+  ok   a lance is thinner than a throw by the shared ratio
+  ok   a lance does not jitter and a throw does
+  ok   a lance is steadier than a throw
+  ok   only the first link caps at the start
+  ok   only the last link caps at the end
+  ok   the beam opens from muzzle to target
+  ok   link 0 starts at the muzzle
+  ok   the last link ends at the target
+  ok   links are contiguous
+  ok   setFade reaches the uniform
+  ok   update does not undo the fade
+  ok   update advances the shader clock
+
+all beamshot invariants hold
+lifting a query out of the fragment:
+  ok   the params land in the search
+  ok   the tab survives as the fragment
+  ok   a value containing a colon is intact
+nothing to do:
+  ok   a normal URL is untouched
+  ok   no query anywhere gives an empty search
+  ok   no hash at all does not throw
+collisions:
+  ok   the search wins over the fragment
+  ok   ...and non-colliding fragment params still arrive
+odd shapes:
+  ok   a bare fragment query with no tab still works
+  ok   a second ? in the fragment is part of the query, not a crash
+
+all url invariants hold
+schema:
+  ok   knob table is sound
+placement:
+  ok   places the whole party
+  ok   nobody strands outside the band
+  ok   a field, not a huddle
+  ok   nothing short on a board that fits them
+  ok   ...at the spacing it was asked for
+  ok   a tight board still strands the whole party
+  ok   ...by giving up spacing, and saying what it managed
+  ok   deterministic per seed
+  ok   a different seed strands them elsewhere
+  ok   a thin board places fewer
+  ok   ...and reports the shortfall
+  ok   nothing outside the band is used
+boarding — the stop clause:
+  ok   driving past does nothing
+  ok   parked out of reach does nothing
+  ok   near and slow starts the clock
+  ok   an interruption resets the clock
+  ok   ...so half a second more is not enough
+  ok   a full second boards
+  ok   one aboard
+  ok   an aboard survivor is no longer standing
+  ok   the second seat fills
+  ok   the third is refused
+  ok   ...and the refusal does not bank time
+  ok   disembarking saves the pair
+  ok   saved counted, seats free
+  ok   saving again saves nobody
+  ok   a saved survivor cannot be re-boarded
+the grab window:
+  ok   contact announces once
+  ok   ...and only once
+  ok   the ring reads the window
+  ok   killing the grabber frees them
+  ok   ...and they are standing again
+  ok   the clock restarts from zero
+  ok   ...and does not run out early
+  ok   letting it run out loses them
+  ok   counted lost
+  ok   a lost survivor cannot be grabbed twice
+  ok   a grabbed survivor cannot be boarded
+the bet:
+  ok   two aboard
+  ok   the hull takes them with it
+  ok   ...counted lost, not saved
+  ok   an empty hull loses nobody
+lock-on:
+  ok   inside the lock radius peels off
+  ok   outside it does not
+  ok   nothing peels off for someone in the hatch
+the mix:
+  ok   mostly rammable at every wave
+  ok   wave 1 has no hard core
+  ok   the hard core arrives at wave 2
+  ok   ...and caps
+  ok   the soft count climbs
+the end:
+  ok   not over while anyone stands
+  ok   over when nothing stands
+  ok   the card scores out of what was PLACED
+  ok   a total loss is not a clean sweep
+  ok   someone in the hatch keeps the mission alive
+  ok   ...and delivering them ends it
+  ok   a clean sweep is the whole party
+rescue 2 — camps:
+  ok   places every camp
+  ok   each camp holds a small group
+  ok   the roster is every group, flattened
+  ok   everyone starts inside
+  ok   camps are spread
+  ok   deterministic per seed
+  ok   nothing camps inside the heart’s exclusion
+  ok   a tight board still gets every camp
+  ok   ...by giving up spread
+rescue 2 — shot distance and the garrison:
+  ok   out of shot distance it stays shut
+  ok   nobody walks out of a shut container
+  ok   inside it, it opens
+  ok   ...and only announces once
+  ok   the first steps out at once
+  ok   the second waits its turn
+  ok   ...then follows
+  ok   the whole group is out
+  ok   an empty container gives nothing more
+  ok   a far camp is asleep
+  ok   a near tank wakes it
+  ok   ...and it stays awake
+rescue 2 — the walk, the save and the run-over:
+  ok   a walker closes the distance
+  ok   ...and it points where it is going
+  ok   it arrives
+  ok   it follows a tank that repositioned
+  ok   a parked hull runs nobody over
+  ok   a moving hull at the SAME distance does
+  ok   ...but only on contact
+  ok   someone still in the container cannot be run over
+  ok   a held walker does not walk
+
+all rescue invariants hold
+values:
+  ok   a boolean is 1/0
+  ok   float noise is dropped
+  ok   a round number stays round
+  ok   an integer-valued float loses its point
+  ok   a colour loses its hash
+  ok   a plain string is left alone
+  ok   the encoded form is what "same" means
+only what differs:
+  ok   an untouched panel writes nothing
+  ok   one moved knob writes one key
+  ok   keys are sorted, so the same state is the same link
+  ok   a colour survives as a bare hex
+  ok   a key with no default is always written
+  ok   skip drops a key entirely
+  ok   functions and objects are never written
+  ok   null and undefined are never written
+the whole address:
+  ok   a default panel is just the tab
+  ok   the hash goes last
+  ok   a bare hash name is accepted
+  ok   context is carried
+  ok   the live panel beats a stale copy in the URL
+  ok   a knob returned to its default is not carried
+  ok   probes are dropped
+  ok   a capture flag is dropped
+  ok   the drop list can be replaced
+one parameter, set or cleared:
+  ok   setting it writes it
+  ok   context comes along
+  ok   an empty value clears it
+  ok   ...and clears it even when it was not there
+round trip:
+  ok   no raw hash reached the link
+  ok   every knob comes back
+  ok   the drop list is not empty
+
+all deeplink invariants hold
+schema:
+  ok   knob table is sound
+  ok   eleven families
+  ok   the fixed ones are the mast and the walker
+  ok   every family names a model that exists on disk
+  ok   the lobbers are the mortar and the howitzer
+  ok   ...and each names an arc height
+  ok   the url is the workshop’s own path
+the lob:
+  ok   a 4.6-cell arc over 3.5 cells leaves near seventy
+  ok   the same arc over a longer range is shallower
+  ok   a higher arc over the same range is steeper
+  ok   it is always UP — a lob never points below the horizontal
+  ok   and never past vertical
+angles:
+  ok   wrap keeps the half-open turn
+  ok   wrap folds past a turn
+  ok   the short way across the seam
+  ok   ...and back
+  ok   the short way is still the short way inside the range
+  ok   a half turn does not flip-flop
+where to point:
+  ok   dead ahead is zero
+  ok   +X is a quarter turn right
+  ok   -X is a quarter turn left
+  ok   behind is a half turn
+  ok   above is positive elevation
+  ok   below is negative elevation
+  ok   straight up is ninety
+the envelope:
+  ok   level is inside
+  ok   the model’s ceiling is respected
+  ok   ...and its floor
+  ok   just inside the ceiling is engageable
+the drive:
+  ok   it turns at its rate
+  ok   ...and is not on target yet
+  ok   it crosses the seam forwards
+  ok   ...and gets nearer, not further
+  ok   and it arrives
+  ok   it cannot drive past its stops
+  ok   an axis that is off is off
+tracking:
+  ok   it wants the bearing
+  ok   an unreachable target still turns it
+  ok   ...clamped at the stop
+  ok   ...and the caller can tell
+the gun:
+  ok   a cold gun on target may fire
+  ok   ...but not at an unreachable target
+  ok   it fires from the first muzzle
+  ok   ...and goes hot
+  ok   ...and recoils
+  ok   it cools
+  ok   the barrels walk
+  ok   ...and wrap
+  ok   a single-muzzle model always fires from 0
+  ok   zero muzzles does not divide by zero
+  ok   the recoil returns
+  ok   rounds are counted
+the range:
+  ok   it fills to the count
+  ok   everything is up
+  ok   they stand on the ring
+  ok   nothing pops below the floor
+  ok   the same seed sets the same problem
+  ok   the old ones drop and say so
+  ok   ...and the range refills
+  ok   ...with new ones
+  ok   it picks the nearest it can point at
+  ok   it keeps the target it has, even when something nearer pops
+  ok   ...but not one that went down
+  ok   ...nor one it cannot reach
+  ok   ...nor one that is not there
+  ok   nothing reachable is no target
+  ok   a round on the target lands
+  ok   ...and just inside the radius
+  ok   ...but not just outside it
+  ok   a round with nothing to land on misses
+  ok   a hit wounds
+  ok   the next one kills
+  ok   ...and it is down
+  ok   a dead target cannot be hit again
+  ok   a miss on nothing is null
+the battery:
+  ok   one stands at the origin
+  ok   three stand on a ring
+  ok   ...spread apart, not stacked
+  ok   a wall lifts them all
+  ok   one on a wall is lifted too
+a wall changes what it can reach:
+  ok   from the ground it is level
+  ok   from a wall it is below the horizon
+  ok   ...and past a -10 depression stop
+  ok   the far ground is still reachable from the wall
+  ok   the range’s own stop reaches it
+  ok   a tight stop skips what it cannot depress to
+  ok   ...and the ground gun takes the near one
+  ok   two sentries do not agree about a bearing
+lead:
+  ok   the aim point moves along the target’s travel
+  ok   ...by one time-of-flight
+  ok   a stationary target needs no lead
+  ok   no velocity at all is no lead
+  ok   an instant round needs almost none
+  ok   a slow round needs a lot
+  ok   aiming where it is, misses
+  ok   aiming where it will be, lands
+the dead zone a wall buys:
+  ok   a gun at ground level has none
+  ok   a floor sentry at -10 is still blind to 7.9
+  ok   ...which is why the range does not use -10
+  ok   at the range’s own stop it can cover its ring
+  ok   a 2-unit wall at -10 is blind to 11.3 units
+  ok   ...which is the WHOLE range
+  ok   more depression shrinks it
+  ok   45 degrees of depression sees its own wall height
+  ok   no depression at all is blind everywhere
+  ok   inside the zone the envelope refuses
+  ok   outside it the envelope allows
+waves:
+  ok   the first wave is the first size
+  ok   they start out on the ring
+  ok   they can die
+  ok   ...and they walk
+  ok   a step brings them nearer
+  ok   ...and does not move them off their bearing
+  ok   one that reaches the guns is through
+  ok   ...and is off the field
+  ok   the first wave comes at once
+  ok   nothing more while the field is busy
+  ok   a cleared field waits the gap
+  ok   ...then sends a BIGGER one
+  ok   the wave counter advances
+
+all sentry invariants hold
+schema:
+  ok   knob table is sound
+  ok   mrad round-trips
+  ok   a milliradian is a metre at a kilometre
+drop:
+  ok   a level shot falls as ½gt²
+  ok   ...and takes the time it should
+  ok   drop grows faster than range
+  ok   a faster round drops less
+  ok   no gravity, no drop
+  ok   drag costs time
+the zero:
+  ok   the zero is a small angle up
+  ok   the round crosses the sight line AT the zero
+  ok   inside the zero it shoots high
+  ok   past the zero it shoots low
+  ok   a longer zero needs more angle
+the firing solution:
+  ok   no hold at the zero
+  ok   hold UP past the zero
+  ok   hold DOWN inside it
+  ok   dialling the hold puts the round on the line
+  ok   an unreachable range says so
+wind:
+  ok   a calm shot does not drift
+  ok   a cross wind pushes it
+  ok   ...to the right, from the left
+  ok   the other side pushes the other way
+  ok   a head wind barely deflects
+  ok   twice the wind is about twice the drift
+  ok   drift grows faster than range
+  ok   a drag-free round ignores the wind
+  ok   the gust changes the wind
+  ok   ...and comes back round
+  ok   no gust is a steady wind
+the weapons:
+  ok   five of them
+  ok   the seeker is declared as one
+  ok   a weapon changes the round, not the range
+  ok   a laser has no drop, no drift and no flight
+  ok   the rail gun barely drops
+  ok   ...and gets there far sooner
+  ok   a lobbed round has two answers
+  ok   ...a flat one and a high one
+  ok   it takes the high one
+  ok   ...and the flat one when asked
+  ok   the high arc lands on the target
+  ok   ...and takes much longer to arrive
+  ok   the mortar reports its whole launch angle as the hold
+  ok   a near miss still counts with splash
+  ok   ...and does not without
+  ok   a far miss counts for nobody
+  ok   the cached answer is the same answer
+the pop-up plate:
+  ok   the next plate is somewhere else
+  ok   ...but not far
+  ok   ...and it shifts across too
+  ok   the shift is bounded
+  ok   it stays on the range it was given
+  ok   every plate moves, four hundred times running
+  ok   at the far end it comes back
+  ok   at the near end it goes out
+the shooter:
+  ok   a fresh shooter has a full breath
+  ok   holding is holding
+  ok   a held breath steadies the reticle
+  ok   ...but never stops it
+  ok   the breath runs out
+  ok   ...and leaning on the button does not refill it
+  ok   ...and the reticle opens again
+  ok   letting go recovers it
+  ok   the sway is bounded
+  ok   ...and does not trace one loop
+the rangefinder:
+  ok   known height and subtense give the range
+  ok   half the subtense is twice the range
+  ok   nothing subtended is out of sight
+  ok   it inverts toMrad
+hits:
+  ok   dead centre hits
+  ok   the edge hits
+  ok   past it misses
+every weapon obeys its own solution:
+  ok   lancer @0s: its own solution arrives (0.00 m)
+  ok   lancer @1.4s: its own solution arrives (0.00 m)
+  ok   lancer @3.9s: its own solution arrives (0.00 m)
+  ok   laser @0s: a beam has no hold
+  ok   laser @1.4s: a beam has no hold
+  ok   laser @3.9s: a beam has no hold
+  ok   mortar @0s: its own solution arrives (0.07 m)
+  ok   mortar @1.4s: its own solution arrives (0.39 m)
+  ok   mortar @3.9s: its own solution arrives (0.03 m)
+  ok   railgun @0s: its own solution arrives (0.00 m)
+  ok   railgun @1.4s: its own solution arrives (0.00 m)
+  ok   railgun @3.9s: its own solution arrives (0.00 m)
+  ok   javelin @0s: a seeker has no hold
+  ok   javelin @1.4s: a seeker has no hold
+  ok   javelin @3.9s: a seeker has no hold
+  ok   a lob is solved past forty-five degrees
+  ok   the same question twice is the same answer
+
+all ballistics invariants hold
+the gate:
+  ok   dead on the cross is nothing off
+  ok   ten milliradians reads as ten
+  ok   it does not care about the distance, only the angle
+  ok   behind you is far off
+filling the lock:
+  ok   half the time is half the meter
+  ok   the full time locks it
+  ok   outside the gate it never fills
+  ok   nothing under the cross never fills
+  ok   too far never fills
+  ok   too close never fills
+losing it:
+  ok   a wobble drains it but does not empty it
+  ok   the drain is slower than the fill
+  ok   long enough off target forgets which target it was
+  ok   a new target starts a new meter
+holding it:
+  ok   a LOCKED seeker holds outside the gate
+  ok   ...but not past the break angle
+  ok   a locked seeker does not jump targets
+the guidance law:
+  ok   a collision course commands nothing
+  ok   a target crossing right is led right
+  ok   and crossing left, left
+  ok   the command is clamped to what the fins can pull
+top attack:
+  ok   it aims high on the way out
+  ok   and comes back down onto it at the end
+  ok   the lift starts at nothing
+it arrives:
+  ok   a stationary target at 700 m (0.33 m)
+  ok   one crossing at 8 m/s (0.02 m)
+  ok   one closing at 12 m/s (0.13 m)
+  ok   one opening at 10 m/s (0.42 m)
+  ok   a near one at 200 m (1.32 m)
+  ok   off to the side at 700 m (0.56 m)
+  ok   a long one at 1600 m (0.37 m)
+  ok   one running away at 1200 m (0.45 m)
+  ok   one high on a wall (0.26 m)
+  ok   the warhead does not need to touch it
+  ok   ...but it is not unlimited
+the same missile in a smaller world:
+  ok   the shape survives the scaling (0.02 vs 0.02 m)
+  ok   and so does the flight time
+  ok   the warhead scales with the world
+  ok   dead ahead at 8 units (0.006 units)
+  ok   crossing at 1.6 units/s (0.002 units)
+  ok   close in at 3.5 units (0.003 units)
+determinism:
+  ok   the same shot twice is the same shot
+
+all lock-on invariants hold
+the boards:
+  ok   there are two
+  ok   the default is the campaign
+  ok   the campaign roster is the one it always was
+  ok   and switching away and back does not touch it
+  ok   an unknown board is the DEFAULT board, not nothing
+every board is complete:
+  ok   board 1: keys are unique
+  ok   board 1: TOWERS is the live binding
+  ok   board 1: TOWER_BY_KEY covers it
+  ok   board 1: the order names only towers that exist
+  ok   board 1: every tower is on the order
+  ok   board 1: the gated keys exist
+  ok   board 1: the starter is the cheapest
+  ok   board 1: every def is complete
+  ok   board 1: costs ascend — the ladder reads cheap to capstone
+  ok   board 1: wave 1 gives exactly one tower
+  ok   board 1: the ladder saturates
+  ok   board 1: a gated key has no wave
+  ok   board 1: upgrades still terminate
+  ok   board 1: tier 2 is stronger than tier 0
+  ok   board 2: keys are unique
+  ok   board 2: TOWERS is the live binding
+  ok   board 2: TOWER_BY_KEY covers it
+  ok   board 2: the order names only towers that exist
+  ok   board 2: every tower is on the order
+  ok   board 2: the gated keys exist
+  ok   board 2: the starter is the cheapest
+  ok   board 2: every def is complete
+  ok   board 2: costs ascend — the ladder reads cheap to capstone
+  ok   board 2: wave 1 gives exactly one tower
+  ok   board 2: the ladder saturates
+  ok   board 2: a gated key has no wave
+  ok   board 2: upgrades still terminate
+  ok   board 2: tier 2 is stronger than tier 0
+the second board is what the operator asked for:
+  ok   Rapid is gone
+  ok   the Rotor leads
+  ok   the Plasma Thrower is a BEAM, not a spread
+  ok   ...and it is the shortest-ranged thing on the board
+  ok   the Rotor out-fires every GUN, which is Rapid's job
+  ok   ...and the Plasma Thrower re-lights faster than it strobes
+  ok   the sustained weapon's DPS is what it always was
+  ok   the Howitzer lobs, and further than the Mortar
+  ok   the Lancer reaches furthest
+  ok   the Lancer pierces and is aimed down a line
+  ok   ...in ONE long burst, not a stream
+  ok   ...and it is the slowest thing on the board
+  ok   the lance has a beam colour of its own
+  ok   ...and it is green
+  ok   the Quiver locks before it fires
+  ok   ...and it is the only one that has to
+  ok   every tower names a model
+  ok   and the campaign board names none
+
+all roster invariants hold
+the geometry:
+  ok   arc is radians on a unit sphere
+  ok   a step that overshoots LANDS, it does not orbit
+  ok   a partial step gets exactly that far
+  ok   stepping to where you are is where you are
+  ok   a point near the berth is that far from it
+  ok   every step is still a unit vector
+the cassette:
+  ok   six, eight, ten by tier
+  ok   a silly tier still gives a magazine
+  ok   it starts full and at its berth
+the loop:
+  ok   it emptied the cassette (6 rockets)
+  ok   ...and exactly one emit per round, never one more
+  ok   it is on its way home, dry
+  ok   the salvo was spaced, not dumped
+  ok   it went home and reloaded
+  ok   and fired again on the new magazine (18 total)
+going home is unconditional:
+  ok   a dry A6 fires nothing, however good the target
+  ok   ...and it got home
+  ok   it is still reloading a second short
+  ok   and full a second long
+the safety:
+  ok   held: nothing fired
+  ok   ...and nothing spent
+  ok   ...and it says why
+  ok   released: it fires
+  ok   a closing A6 is engaging, not holding
+  ok   no gate at all still fires
+the leash:
+  ok   it never left the leash (2.75 cells, leash 5.5)
+  ok   and never shot at something it could not reach
+  ok   it walks to the fence and shoots over it
+patrol:
+  ok   with nothing to shoot it patrols
+  ok   it does not park (42 cells walked)
+  ok   and it stays near the berth (3.1 cells)
+  ok   a patrolling A6 has no target
+  ok   it still patrols on a stubbed stream (42 cells)
+what the HUD says:
+  ok   it names the state and the load
+  ok   and says why it is walking away
+  ok   and how long the reload has left
+determinism:
+  ok   the same patrol twice is the same patrol
+
+all heptapod invariants hold

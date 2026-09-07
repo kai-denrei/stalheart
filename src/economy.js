@@ -51,11 +51,14 @@ export function makeEconomy(opts = {}) {
   // kills and bonuses; `spent` is every successful spend.
   let earned = 0, spent = 0, peak = biomass;
 
+  const ledger = { bounty: 0, grants: 0, refunds: 0, breachGrants: 0 };
   const multiplier = () =>
     Math.min(STREAK_CAP, 1 + STREAK_STEP * streak);
 
   return {
     get biomass() { return biomass; },
+    get starting() { return startBiomass; },
+    get ledger() { return { ...ledger }; },
     get streak() { return streak; },
     get score() { return score; },
     multiplier,
@@ -66,19 +69,28 @@ export function makeEconomy(opts = {}) {
       const amount = Math.round(bounty * (ram ? RAM_PREMIUM : 1) * multiplier());
       biomass += amount;
       score += amount;
-      earned += amount; if (biomass > peak) peak = biomass;
+      earned += amount; ledger.bounty += amount; if (biomass > peak) peak = biomass;
       return amount;
     },
     // an enemy reached the Heart: the streak dies with the moment
     leak() { streak = 0; },
-    canAfford(cost) { return biomass >= cost; },
+    canAfford(cost) { return Number.isFinite(cost) && cost >= 0 && biomass >= cost; },
     spend(cost) {
-      if (biomass < cost) return false;
+      if (!Number.isFinite(cost) || cost < 0 || biomass < cost) return false;
       biomass -= cost;
       spent += cost;
       return true;
     },
-    addBiomass(n) { biomass += n; score += Math.max(0, n); earned += Math.max(0, n); if (biomass > peak) peak = biomass; },
+    addBiomass(n, { category = 'grant' } = {}) {
+      if (!Number.isFinite(n) || n < 0) throw new Error('Biomass credit must be finite and nonnegative');
+      biomass += n;
+      if (category === 'refund') ledger.refunds += n;
+      else {
+        earned += n; score += n;
+        if (category === 'breach-grant') ledger.breachGrants += n; else ledger.grants += n;
+      }
+      if (biomass > peak) peak = biomass;
+    },
     get earned() { return earned; },
     get spent() { return spent; },
     get peak() { return peak; },

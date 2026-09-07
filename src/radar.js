@@ -9,7 +9,7 @@
 // Ours scopes a SPHERE, so a contact is projected onto the tangent plane of
 // the scope's centre — player-centred heading-up, or heart-centred.
 
-import { sub3, scale3, dot3, cross3, norm3 } from './vec3.js?v=26d54d57';
+import { sub3, scale3, dot3, cross3, norm3 } from './vec3.js';
 
 export const SWEEP_PERIOD = 2.6;   // seconds per revolution
 export const PHOSPHOR_DECAY = 1.12; // brightness lost per full turn behind the beam

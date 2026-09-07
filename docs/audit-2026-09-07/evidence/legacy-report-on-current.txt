@@ -1,0 +1,13 @@
+
+=== style1 · 3 runs ===
+outcomes: {"loss":3} · median final wave 3 · median score 3742
+wave |  n | heart | credit | towers | clear-t | Δt
+   1 |  3 |     8 | undefined |      2 |      29 | 
+   2 |  3 |     2 | undefined |      2 |      62 |   33
+no credit flood detected in the sampled window
+
+=== style2 · 1 runs ===
+outcomes: {"loss":1} · median final wave 2 · median score 330
+wave |  n | heart | credit | towers | clear-t | Δt
+   1 |  1 |     8 | undefined |      2 |      30 | 
+no credit flood detected in the sampled window

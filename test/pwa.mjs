@@ -1,28 +1,16 @@
-// pwa.mjs — the service worker's cache key must be THE build token.
-//
-// The roadmap blocked installed-PWA on exactly this: a worker whose cache is
-// not keyed off the token serves stale modules and defeats the badge.
-// scripts/bust.sh stamps sw.js on every bump; this fails the suite if the
-// stamp ever stops matching index.html's <meta name="cb">.
+import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-
-let failures = 0;
-const check = (name, cond, detail = '') => {
-  if (cond) console.log(`  ok   ${name}`);
-  else { console.error(`  FAIL ${name} ${detail}`); failures++; }
-};
-
-const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
-const meta = (html.match(/<meta name="cb" content="([0-9a-f]{8})">/) || [])[1];
-const key = (sw.match(/const CB_TOKEN = '([0-9a-f]{8})'/) || [])[1];
-console.log(`       index.html cb=${meta} · sw.js CB_TOKEN=${key}`);
-check('index.html carries a build token', !!meta);
-check('sw.js carries a cache key', !!key);
-check('they are the same token (bust.sh stamps both)', meta === key);
-check('the worker never skips waiting on its own', !/^\s*self\.skipWaiting\(\)/m.test(sw));
-check('the worker never caches cross-origin', /url\.origin !== self\.location\.origin/.test(sw));
-check('the registration URL is relative (a project path on Pages)', /register\('\.\/sw\.js'/.test(readFileSync(new URL('../src/pwa.js', import.meta.url), 'utf8')));
-
-if (failures) { console.error(`pwa: ${failures} FAILED`); process.exit(1); }
-console.log('pwa: all good');
+import vm from 'node:vm';
+const events={},deleted=[],stores=new Map();
+for(const key of ['stalberg-old','unrelated-app','stalheart:/other/:old','stalheart:/game/:old'])stores.set(key,new Map());
+const caches={keys:async()=>[...stores.keys()],delete:async k=>{deleted.push(k);stores.delete(k);},open:async k=>{
+ if(!stores.has(k))stores.set(k,new Map());const m=stores.get(k);return {match:async r=>m.get(r.url||r)?.clone(),put:async(r,v)=>m.set(r.url||r,v)};
+}};
+const self={registration:{scope:'https://host.test/game/'},location:{origin:'https://host.test'},clients:{claim:async()=>{}},addEventListener:(name,fn)=>events[name]=fn,skipWaiting:()=>{throw Error('unexpected update');}};
+vm.runInNewContext(readFileSync(new URL('../sw.js',import.meta.url),'utf8'),{self,caches,URL,Response,fetch:async()=>new Response('fresh')});
+let wait;events.activate({waitUntil:p=>wait=p});await wait;assert.deepEqual(deleted,['stalheart:/game/:old']);
+for(const url of ['https://host.test/other/a','https://another.test/game/a']){
+ let intercepted=false;events.fetch({request:{url,method:'GET'},respondWith:()=>intercepted=true});assert.equal(intercepted,false);
+}
+let response,pending;events.fetch({request:{url:'https://host.test/game/a.js?v=00000000',method:'GET'},respondWith:p=>response=p,waitUntil:p=>pending=p});assert.equal(await (await response).text(),'fresh');await pending;
+console.log('Service worker isolates cache ownership and scope; caches current responses.');

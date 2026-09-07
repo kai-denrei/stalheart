@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Stalheart Workshop</title>
+  <meta name="theme-color" content="#10131a">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Stalheart">
+  <link rel="stylesheet" href="./styles.css">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <meta name="cb" content="00000000">
+  <link rel="stylesheet" href="./app.css">
+</head>
+<body data-workshop="true">
+<nav id="tabbar"><button data-page="index.html">Stalheart</button><button data-tab="units">units</button><button data-tab="beam">beam</button><button data-tab="impact">impact</button><button data-tab="metal">metal</button><button data-tab="astro">astro</button><button data-tab="sentry">sentry</button><button data-tab="sniper">sniper</button><button data-tab="portal">portal</button><button data-tab="cine">cine</button><button data-tab="sim">sim</button><button data-page="settings.html">settings</button></nav>
+<div id="tab-units" class="tab tab-hidden">
+    <div id="units-app"></div>
+    <div id="units-callouts" class="hidden" aria-hidden="true"></div>
+    <div id="units-chrome">
+      <div id="units-groups"></div>
+      <div id="units-stage">
+        <button id="units-prev" title="previous (←)">&lsaquo;</button>
+        <div id="units-id">
+          <div id="units-name">—</div>
+          <button id="units-link" type="button" title="copy a link straight to this unit">
+            <span class="glyph" aria-hidden="true">&#x29C9;</span><span class="label">link</span>
+          </button>
+          <div id="units-note"></div>
+          <div id="units-count">0 / 0</div>
+        </div>
+        <button id="units-next" title="next (→)">&rsaquo;</button>
+      </div>
+      <div id="units-sounds" class="hidden"></div>
+      <div id="units-bench" class="hidden">
+        <button id="units-engine" type="button">engine off</button>
+        <button id="units-destroy" type="button">destroy</button>
+        <label>health <input id="units-health" type="range" min="0" max="1" step="0.05" value="1"></label>
+      </div>
+      <div id="units-opts">
+        <label id="units-look-wrap">tower look <select id="units-look"></select></label>
+        <button id="units-spin" class="on" title="toggle auto-rotate">spin</button>
+        <button id="units-tune" type="button" title="tune the tank's feel">tune</button>
+        <button id="units-labels" type="button" title="blueprint callouts — name the parts">labels</button>
+        <button id="units-sweep" class="on" type="button" title="toggle the unit's own in-game animation (swim, sweep, sway)">animation</button>
+        <button id="units-lore" type="button" title="the codex — every unit described as it exists, plus a visual prompt">lore</button>
+        <button id="units-export" type="button" title="reverse export — this unit as the game dresses it (rack, gauges, outlines, tint), as .glb">export</button>
+        <button id="units-fonts-open" type="button" title="the type bench — every message the game shouts, all at once, with the sliders">fonts</button>
+      </div>
+      <!-- THE TYPE BENCH. The message layer is impossible to judge in a real
+           game: a streak shout lives 1.2 seconds and the defeat card only
+           shows when you lose. Here every message the game raises its voice
+           with is on screen at once, in the REAL markup and the REAL classes,
+           while the sliders move. What you tune here is what ships. -->
+      <div id="units-fonts" class="fonts-hidden" role="dialog" aria-label="message type">
+        <header>
+          <span class="fb-title">message type</span>
+          <label class="fb-pack">shout <select id="units-font-shout"></select></label>
+          <label class="fb-pack">banner <select id="units-font-pack"></select></label>
+          <button id="units-fonts-close" type="button" aria-label="close">&times;</button>
+        </header>
+        <div id="units-fonts-stage">
+          <section class="fb-block">
+            <p class="fb-cap">streak shouts &middot; 1.2s in game</p>
+            <div class="callout co-reckless">RECKLESS!</div>
+            <!-- kana AND kanji, deliberately. Kana are open shapes that
+                 survive almost any face; a four-kanji compound at shout size
+                 is the hardest thing this layer ever has to draw, and if the
+                 type works there it works everywhere. Both are real strings
+                 from RECKLESS_MSGS. -->
+            <div class="callout co-heart">&#12377;&#12370;&#12316;&#65281;</div>
+            <div class="callout co-reckless">&#21361;&#27231;&#19968;&#39658;</div>
+            <div class="callout co-streak">STREAK &times;1.45</div>
+            <div class="callout co-milestone">RAM &times;50</div>
+          </section>
+
+          <section class="fb-block">
+            <p class="fb-cap">the ram ladder &middot; every rung</p>
+            <div class="fb-ladder combobox">
+              <span data-tier="0">&times;3</span>
+              <span data-tier="1">&times;12</span>
+              <span data-tier="2">&times;24</span>
+              <span data-tier="3">&times;35</span>
+              <span data-tier="4">&times;46</span>
+              <span data-tier="5">&times;57</span>
+            </div>
+          </section>
+
+          <section class="fb-block">
+            <p class="fb-cap">wave banner</p>
+            <div class="fb-wavebox wavebox">
+              <div class="wave-num">wave 7 &middot; incoming</div>
+              <div class="wave-name">THE KNOT</div>
+              <div class="wave-role">boss &middot; armoured, and it does not care about your walls</div>
+              <div class="wave-ram">DO NOT RAM &middot; &#21361;&#27231;&#19968;&#39658;</div>
+            </div>
+          </section>
+
+          <section class="fb-block">
+            <p class="fb-cap">toast &middot; system message</p>
+            <div class="fb-toast">
+              <div class="wave-num">BLACK MARKET OPEN</div>
+              <div class="wave-role">the relay sells missiles now &mdash; expensive, and worth it</div>
+            </div>
+          </section>
+
+          <section class="fb-block">
+            <p class="fb-cap">defeat card</p>
+            <div class="msg-head">last transmission</div>
+            <div class="go-snafu">SNAFU &middot; K-KILL &times;2</div>
+            <div class="go-verdict">they will find the wreck FACING them</div>
+          </section>
+
+          <section class="fb-block">
+            <p class="fb-cap">instrument panel &middot; three reading distances</p>
+            <div class="fb-hud hud-panel">
+              <div class="hud-meta">SCORE <b>3,140</b> &middot; BEST 9,802</div>
+              <div class="hud-vitals"><span class="hp-heart">&hearts;&hearts;&hearts;&hearts;&hearts;</span> <span class="hud-lbl">HEART</span> <span class="hp-you">&hearts;3</span> <span class="hp-ammo">&#10022;7</span></div>
+              <div class="hud-res"><span class="hud-biomass">970kg &times;1.45</span><span class="hud-wave">WAVE <b>7</b> &middot; R2</span></div>
+              <div class="hud-obj">portals 2/2 &middot; built 6 &middot; 4/8 towers</div>
+              <div class="hud-obj hud-bobby">BOBBY &#9656; printing laser 28% +1</div>
+              <div class="hud-alert">&#9888; DANGER &middot; SOLID CONTACT</div>
+            </div>
+          </section>
+        </div>
+        <footer>
+          <button id="units-fonts-reset" type="button">reset</button>
+          <button id="units-fonts-copy" type="button" title="copy as source, ready to paste into fonts.js">
+            <span class="glyph" aria-hidden="true">&#x29C9;</span><span class="label">copy code</span>
+          </button>
+        </footer>
+      </div>
+
+      <div id="units-tuner" class="tuner-hidden" role="dialog" aria-label="tank feel">
+        <header>
+          <span id="units-tuner-title">tank feel</span>
+          <button id="units-tune-close" type="button" aria-label="close">×</button>
+        </header>
+        <div id="units-tuner-knobs"></div>
+        <footer>
+          <button id="units-tune-reset" type="button">reset</button>
+          <button id="units-tune-copy" type="button" title="copy as source, ready to paste into tankfeel.js">
+            <span class="glyph" aria-hidden="true">&#x29C9;</span><span class="label">copy code</span>
+          </button>
+        </footer>
+      </div>
+      <div id="units-hint">drag to orbit · scroll to zoom · ← → to change unit</div>
+    </div>
+  </div>
+<div id="tab-beam" class="tab tab-hidden">
+    <div id="beam-app"></div>
+    <div id="beam-hud"></div>
+    <button id="beam-link" class="lab-link" type="button" title="deep link: copy this lab's current settings as a URL">&#8599;</button>
+    <button id="beam-copy" type="button" title="copy the preset to the clipboard">⧉</button>
+  </div>
+<div id="tab-impact" class="tab tab-hidden">
+    <div id="impact-app"></div>
+    <div id="impact-hud"></div>
+    <button id="impact-link" class="lab-link" type="button" title="deep link: copy this lab's current settings as a URL">&#8599;</button>
+    <button id="impact-copy" type="button" title="copy the tune to the clipboard">&#10697;</button>
+  </div>
+<div id="tab-metal" class="tab tab-hidden">
+    <div id="metal-app"></div>
+    <div id="metal-hud"></div>
+    <button id="metal-link" class="lab-link" type="button" title="deep link: copy this lab's current settings as a URL">&#8599;</button>
+    <button id="metal-copy" type="button" title="copy the preset to the clipboard">⧉</button>
+    <button id="metal-gear" type="button" title="show / hide the sliders">⚙</button>
+    <pre id="metal-src" class="hidden"></pre>
+  </div>
+<div id="tab-astro" class="tab tab-hidden">
+    <div id="astro-app"></div>
+    <div id="astro-hud"></div>
+    <button id="astro-link" class="lab-link" type="button" title="deep link: copy this lab's current settings as a URL">&#8599;</button>
+    <button id="astro-gear" type="button" title="show / hide the sliders">⚙</button>
+  </div>
+<div id="tab-sentry" class="tab tab-hidden">
+    <div id="sentry-app"></div>
+    <div id="sentry-hud"></div>
+    <button id="sentry-link" class="lab-link" type="button" title="deep link: copy this lab's current settings as a URL">&#8599;</button>
+    <button id="sentry-center" class="lab-center" type="button" title="re-centre the view on the sentry">&#9678; CTR</button>
+    <button id="sentry-gear" type="button" title="show / hide the sliders">&#9881;</button>
+  </div>
+<div id="tab-sniper" class="tab tab-hidden">
+    <div id="sniper-app"></div>
+    <div id="sniper-reticle" aria-hidden="true"></div>
+    <div id="sniper-vig" aria-hidden="true"></div>
+    <!-- the fire-control HUD. Corner readouts with two borders each, so they
+         read as BRACKETS rather than boxes — the idiom is lifted from
+         ~/Dev/onkochishin/atelier/hud-targeting, on the operator's steer. -->
+    <div id="sniper-fcs" aria-hidden="true">
+      <div class="fcs-strip">
+        <span class="fcs-mid">&#9670; FCS // OPTIC</span>
+        <span class="fcs-right" id="fcs-phase">PHASE 1</span>
+      </div>
+      <div class="fcs-tape"><span id="fcs-bearing">000</span></div>
+      <div class="ro r-tl">
+        <div class="r-head">Scope</div>
+        <div class="field"><span class="k">Zero</span><b class="v" id="f-zero">—</b></div>
+        <div class="field"><span class="k">Mag</span><b class="v" id="f-mag">—</b></div>
+        <div class="field"><span class="k">Weapon</span><b class="v" id="f-weapon">—</b></div>
+        <div class="field"><span class="k">Hold up</span><b class="v" id="f-holdup">—</b></div>
+        <div class="field"><span class="k">Hold side</span><b class="v" id="f-holdside">—</b></div>
+        <div class="field"><span class="k">Breath</span><b class="v" id="f-breath">—</b></div>
+        <div class="meter"><i id="f-breathbar"></i></div>
+      </div>
+      <div class="ro r-tr">
+        <div class="r-head split"><span>Track</span><b id="f-trackid">—</b></div>
+        <div class="field"><span class="k">Range</span><b class="v" id="f-range">—</b></div>
+        <div class="field"><span class="k">Bearing</span><b class="v" id="f-bearing">—</b></div>
+        <div class="field"><span class="k">Crossing</span><b class="v" id="f-cross">—</b></div>
+        <div class="field"><span class="k">Subtense</span><b class="v" id="f-subtense">—</b></div>
+      </div>
+      <div class="ro r-bl">
+        <div class="r-head">Ballistics</div>
+        <div class="field"><span class="k">Drop</span><b class="v" id="f-drop">—</b></div>
+        <div class="field"><span class="k">Drift</span><b class="v" id="f-drift">—</b></div>
+        <div class="field"><span class="k">Flight</span><b class="v" id="f-flight">—</b></div>
+        <div class="field"><span class="k">Wind</span><b class="v" id="f-wind">—</b></div>
+      </div>
+      <div class="ro r-br">
+        <div class="r-head split"><span>Acquisition</span><b id="f-acq">—</b></div>
+        <div class="field"><span class="k">String</span><b class="v" id="f-string">—</b></div>
+        <div class="field"><span class="k">Group</span><b class="v" id="f-group">—</b></div>
+        <div class="field"><span class="k">Correction</span><b class="v" id="f-corr">—</b></div>
+        <div class="chips" id="f-chips"></div>
+      </div>
+      <div class="ro fcs-cu" id="f-closeup"><div class="r-head">Optic &middot; target</div></div>
+      <div class="ro fcs-radar" id="f-radarbox"><div class="r-head">Scan</div>
+        <canvas id="f-radar" width="150" height="150"></canvas></div>
+      <div class="fcs-note" id="f-note">take a shot</div>
+    </div>
+    <button id="sniper-breath" type="button" title="hold your breath (Shift)">&#9679; BREATH</button>
+    <button id="sniper-real" type="button" title="spawn a REAL enemy, on the board's own spec (T)">&#9888; REAL</button>
+    <button id="sniper-spawn" type="button" title="spawn a plain mover (E)">&#9888; SPAWN</button>
+    <button id="sniper-fire" type="button" title="fire (Space)">FIRE</button>
+    <button id="sniper-link" class="lab-link" type="button" title="deep link: copy this lab's current settings as a URL">&#8599;</button>
+    <button id="sniper-gear" type="button" title="show / hide the sliders">&#9881;</button>
+  </div>
+<div id="tab-portal" class="tab tab-hidden">
+    <div id="portal-app"></div>
+    <div id="portal-gui"></div>
+    <div id="portal-hud"></div>
+    <button id="portal-link" class="lab-link" type="button" title="deep link: copy this lab's current settings as a URL">&#8599;</button>
+  </div>
+<div id="tab-cine" class="tab tab-hidden">
+    <div id="cine-app"></div>
+    <div id="cine-hud"></div>
+    <button id="cine-link" class="lab-link" type="button" title="deep link: copy this lab's current settings as a URL">&#8599;</button>
+    </div>
+<div id="tab-sim" class="tab tab-hidden">
+    <div id="sim-panel">
+      <div class="sim-head">&#9626; GAMEPLAY SIMULATOR &middot; tier 1 &middot; the real game, played by policy</div>
+      <div class="sim-controls">
+        <label>style
+          <select id="sim-style">
+            <option value="style1">style 1 — the operator (ram + slow/aoe chokepoints + snipers)</option>
+            <option value="style2">style 2 — builder (avoid + spend everything on towers)</option>
+            <option value="style0">style 0 — floor baseline (wander, no towers)</option>
+          </select></label>
+        <label>seeds <input id="sim-seeds" type="number" value="10" min="1" max="200"></label>
+        <label>speed &times;<input id="sim-fast" type="number" value="50" min="1" max="120"></label>
+        <button id="sim-run" type="button">&#9654; RUN BATCH</button>
+        <button id="sim-stop" type="button">&#9632; STOP</button>
+        <span id="sim-status">idle</span>
+      </div>
+      <div id="sim-agg"></div>
+      <table id="sim-table"><thead><tr>
+        <th>seed</th><th>outcome</th><th>wave</th><th>round</th><th>score</th>
+        <th>heart</th><th>lives</th><th>towers</th><th>biomass</th><th>sim s</th>
+      </tr></thead><tbody id="sim-rows"></tbody></table>
+    </div>
+    <iframe id="sim-frame" title="simulation run"></iframe>
+  </div>
+<div id="units-lorepanel" class="hidden">
+    <div class="lp-bar">
+      <span class="lp-title">&#9626; CODEX &middot; OBJECT ST&Aring;LBERG-9</span>
+      <span>
+        <button id="lore-copyall" class="log-copy" type="button" title="copy the whole codex">&#10697; copy all</button>
+        <button id="lore-close" class="log-copy" type="button">&#10005;</button>
+      </span>
+    </div>
+    <div id="lore-body"></div>
+  </div>
+<script type="module" src="./src/main.js"></script>
+</body></html>

@@ -1,0 +1,15 @@
+# Stalheart development
+
+This repository owns the game. Read `docs/STATE.md` first; use `docs/log/entries/` for current decisions. `DEVLOG.md` is generated. Research notes and the original CLAUDE rules are historical references in `docs/archive/`, not current operating instructions.
+
+- Run `npm test`, `npm run check` and `npm run build` for substantive runtime changes. Use `npm run test:browser` for boot/input/render/asset changes. Browser tests own their server and Chrome through `scripts/chrome-proc.mjs`; do not leak capture processes.
+- Native ESM source uses canonical URLs without `?v=`. Build hashes go into `dist/` only. Never run the old research bust script or manually edit release tokens.
+- The grid kernel is pinned in `docs/kernel-provenance.json`. Keep seed/topology behavior stable unless explicitly updating that contract. Keep one vendored Three.js version.
+- Default roster is sentry (2); classic (1) remains a regression variant. The game and Workshop import the same rules/assets/presets. URL normalization and roster selection run before consumers load.
+- Ground distances are sphere arcs; imported assets use meters, +Y up, +Z forward. Preserve animated pivots. Unit tick takes absolute time. Visual facing comes from actual render transforms.
+- Game stores use `src/storage.js`. Diagnostics are bounded and local (`src/diagnostics.js`). No source console logging of private data. Keep private legacy Deban records ignored.
+- Record substantive decisions, failures and validation using the project `/deban` skill or `npm run log -- add FILE`. Append immutable entries; never rewrite history. Keep `docs/STATE.md` short and current. No per-commit mandatory second commit.
+- The source asset direction is SentryTowers_A6, including Terraformer 3000. Pin downloads and validate hashes with `npm run assets:check`; do not hotlink mutable upstream assets into gameplay. D0–D3 are destruction states, not LODs.
+- Preserve the gate-hunting/income trade, Isao's travel-and-print orders, pilot rank across hulls, and distinct mission supply rules. Foundations and new progression systems are not part of this migration.
+- No colored emoji in product UI; keep the monochrome visual vocabulary.
+- Do not send messages, publish, or push without explicit authorization. There is no upstream remote configured for Stalheart yet.

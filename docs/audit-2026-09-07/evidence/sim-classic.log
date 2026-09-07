@@ -1,0 +1,26 @@
+AUDIO armed (context and decode both wait for a gesture) muted=false master=0.7
+AUDIO ledger origin=http://localhost:8144 loads=1 contexts created=0 closed=0 LEAKED=0 — healthy (audio.resetLedger() to zero it)
+SIMBOOT style=style1 fast=50 cap=180
+SKY seed=27904 face=1024 scale=0.25 galaxies=2 core=0.024 arms=5 palette="Andromeda" bakeMs=98.2 (cpu, incl. compile)
+sector 1: 221 open cells
+METAL dressed 0 on mesh env=true
+heart sector in 137ms — 221 open cells, 14 orbs, spawn→heart 23 hops
+METAL dressed 0 on mesh env=true
+METAL dressed 0 on mesh env=true
+AUDIO silent: no AudioContext — the gesture never armed it (first blocked sound: tank_shells) ctx=none muted=true master=0.7 loadStarted=false
+RING instanced parts kept whole: Shell_Instanced, Block_Instanced, Face_Block_Instanced, RotorA_Instanced, RotorA_Glow_Instanced, RotorB_Instanced, RotorB_Glow_Instanced
+METAL dressed 35 on Group env=true
+METAL dressed 35 on Group env=true
+METAL dressed 7 on Group env=true
+METAL dressed 4 on fixture env=true
+METAL dressed 4 on fixture env=true
+METAL dressed 4 on fixture env=true
+CONTAINERS placed=3 cells=130,1597,1999 spares=2 exits=131,1598,1163
+METAL dressed 7 on Group env=true
+METAL dressed 10 on mesh env=true
+METAL dressed 4 on fixture env=true
+METAL dressed 4 on fixture env=true
+METAL dressed 4 on fixture env=true
+CONTAINERS placed=3 cells=130,1597,1999 spares=2 exits=131,1598,1163
+METAL dressed 4 on fixture env=true
+SIMRESULT {"style":"style1","seed":1000,"outcome":"loss","wave":3,"round":1,"score":3742,"heart":-1,"lives":3,"towers":2,"biomass":249,"simT":87,"curve":[{"w":1,"t":29,"heart":8,"biomass":178,"towers":2,"score":433},{"w":2,"t":62,"heart":2,"biomass":190,"towers":2,"score":1112}],"economy":{"earned":159,"spent":80,"peak":250,"held":249,"spendRatio":0.5,"affordable":1,"perWave":53}}

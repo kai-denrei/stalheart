@@ -1,0 +1,232 @@
+{
+  "version": 1,
+  "units": "meters",
+  "up": "+Y",
+  "forward": "+Z",
+  "assets": [
+    {
+      "id": "terraformer_3000_d0",
+      "name": "Terraformer 3000 / St\u00e5lheart",
+      "state": "Intact",
+      "file": "terraformer_3000_d0.glb",
+      "plot_m": [
+        48,
+        56
+      ],
+      "description": "36 m tall planetary printer: rail-mounted portal, transverse carriage, vertical ram, six articulated joints, twin pressure silos and three side monitoring balconies. 16-second operating loop.",
+      "sockets": [
+        {
+          "id": "MATERIAL_INPUT",
+          "kind": "material",
+          "position_m": [
+            16,
+            1,
+            -24
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ],
+          "available": true,
+          "width_m": null
+        }
+      ],
+      "colliders": [
+        {
+          "id": "reserved_machine_envelope",
+          "center_m": [
+            0,
+            18,
+            0
+          ],
+          "size_m": [
+            44,
+            36,
+            22
+          ],
+          "condition": "coarse_only"
+        }
+      ],
+      "clearance": [],
+      "animations": [
+        "Terraforming_Cycle"
+      ],
+      "family": "terraformer_3000",
+      "damage_level": 0,
+      "functional": true,
+      "height_m": 36.1,
+      "collision_quality": "blockout",
+      "arm_dof": 6,
+      "bytes": 11086528,
+      "triangles": 165404
+    },
+    {
+      "id": "terraformer_3000_d1",
+      "name": "Terraformer 3000 / St\u00e5lheart",
+      "state": "Damaged",
+      "file": "terraformer_3000_d1.glb",
+      "plot_m": [
+        48,
+        56
+      ],
+      "description": "Operational impact state: scarred armor, fallen fragments and warning telemetry. Rail, carriage and six-joint arm remain animated.",
+      "sockets": [
+        {
+          "id": "MATERIAL_INPUT",
+          "kind": "material",
+          "position_m": [
+            16,
+            1,
+            -24
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ],
+          "available": true,
+          "width_m": null
+        }
+      ],
+      "colliders": [
+        {
+          "id": "reserved_machine_envelope",
+          "center_m": [
+            0,
+            18,
+            0
+          ],
+          "size_m": [
+            44,
+            36,
+            22
+          ],
+          "condition": "coarse_only"
+        }
+      ],
+      "clearance": [],
+      "animations": [
+        "Terraforming_Cycle"
+      ],
+      "family": "terraformer_3000",
+      "damage_level": 1,
+      "functional": true,
+      "height_m": 36.1,
+      "collision_quality": "blockout",
+      "arm_dof": 6,
+      "bytes": 11245684,
+      "triangles": 167564
+    },
+    {
+      "id": "terraformer_3000_d2",
+      "name": "Terraformer 3000 / St\u00e5lheart",
+      "state": "Critical",
+      "file": "terraformer_3000_d2.glb",
+      "plot_m": [
+        48,
+        56
+      ],
+      "description": "Disabled critical state: ruptured reservoir, exposed tank ribs, broken nozzle feed, folded arm and dead monitors.",
+      "sockets": [
+        {
+          "id": "MATERIAL_INPUT",
+          "kind": "material",
+          "position_m": [
+            16,
+            1,
+            -24
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ],
+          "available": false,
+          "width_m": null
+        }
+      ],
+      "colliders": [
+        {
+          "id": "reserved_machine_envelope",
+          "center_m": [
+            0,
+            18,
+            0
+          ],
+          "size_m": [
+            44,
+            36,
+            22
+          ],
+          "condition": "coarse_only"
+        }
+      ],
+      "clearance": [],
+      "animations": [],
+      "family": "terraformer_3000",
+      "damage_level": 2,
+      "functional": false,
+      "height_m": 36.1,
+      "collision_quality": "blockout",
+      "arm_dof": 6,
+      "bytes": 10049324,
+      "triangles": 160836
+    },
+    {
+      "id": "terraformer_3000_d3",
+      "name": "Terraformer 3000 / St\u00e5lheart",
+      "state": "Destroyed",
+      "file": "terraformer_3000_d3.glb",
+      "plot_m": [
+        48,
+        56
+      ],
+      "description": "Collapsed state: fallen named bridge, detached reservoirs, broken arm segments, tower stumps and torn cabling.",
+      "sockets": [
+        {
+          "id": "MATERIAL_INPUT",
+          "kind": "material",
+          "position_m": [
+            16,
+            1,
+            -24
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ],
+          "available": false,
+          "width_m": null
+        }
+      ],
+      "colliders": [
+        {
+          "id": "reserved_machine_envelope",
+          "center_m": [
+            0,
+            18,
+            0
+          ],
+          "size_m": [
+            44,
+            36,
+            22
+          ],
+          "condition": "coarse_only"
+        }
+      ],
+      "clearance": [],
+      "animations": [],
+      "family": "terraformer_3000",
+      "damage_level": 3,
+      "functional": false,
+      "height_m": 36.1,
+      "collision_quality": "blockout",
+      "arm_dof": 6,
+      "bytes": 4395512,
+      "triangles": 70732
+    }
+  ]
+}

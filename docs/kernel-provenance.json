@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/kai-denrei/spherical-stalberg-grid",
+  "commit": "1900c9ddcad99cc7004fe423d89dd812e6589efc",
+  "policy": "Pinned in src; explicit kernel updates only. Import query tokens removed; algorithms unchanged.",
+  "files": {
+    "src/grid.js": "8491b15567117211ea1da5a114777a345fb8771dcf17d1a41ac999a7b44d2c80",
+    "src/sample.js": "4804339f8f1cae4d788958b4d926182bcb09a982b88db8fd8a4ea092635983d2",
+    "src/hull.js": "fb669224c9625698438238552b170d9ccab6ac4799045608f8ba95e49709ed58",
+    "src/vec3.js": "e106fd048bd44e7e4cd1531a03279355e9510f1eb8a39ce64e7f397f32087c06",
+    "src/rng.js": "3be9778a93ec8176ae313a9a4098d8ea2e207f7df31b556be919440ff75bd9ef",
+    "src/cellindex.js": "c862df95fe0aa948b5d22a362a3807a133c3db01592b6872d6d7810ea095c0fc",
+    "src/dungeon.js": "de13a7c9b61cf8f781a23db83f13cd4628f92a90cca9174a7baf9d175e3f8037"
+  }
+}

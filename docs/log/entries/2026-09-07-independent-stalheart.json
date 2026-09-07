@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "id": "2026-09-07-independent-stalheart",
+  "date": "2026-09-07T06:00:00Z",
+  "type": "decision",
+  "status": "accepted",
+  "title": "Stalheart becomes the independently maintained game",
+  "context": "The spherical-grid research prototype grew into a game with its own asset, gameplay and release needs. The project owner requested migration into a dedicated Stalheart project, simpler robust development memory, and progressive reuse of SentryTowers_A6 assets including its Terraformer.",
+  "outcome": "Preserve Git history and a pinned sphere kernel, move the game and game-facing labs into Stalheart, keep the original research checkout as its archive, and use independent entry points, storage and release output. Use one immutable validated log entry per substantive outcome instead of duplicated role indexes. Adopt Sentry assets through pinned local files and explicit adapters; integrate Terraformer 3000 as an opt-in candidate until device measurements support default promotion.",
+  "alternatives": [
+    "A clean-room rewrite would discard tested gameplay and asset contracts during an organizational move.",
+    "A second unmodified copy would retain the research shell, cache identity problems and log drift.",
+    "Hotlinking upstream models would make game behavior depend on a moving remote revision.",
+    "Changing the difficulty curve during extraction would erase the parity baseline. Keep that as the next measured experiment."
+  ],
+  "evidence": [
+    "docs/audit-2026-09-07/README.md and EXTRACTION.md: original audit and migration proposal",
+    "docs/kernel-provenance.json: research commit and normalized-source hashes",
+    "docs/sentry-assets.lock.json: 33 existing sentries match upstream; four authored Terraformer damage states pinned",
+    "docs/STATE.md: current boundaries and next priorities"
+  ],
+  "supersedes": []
+}

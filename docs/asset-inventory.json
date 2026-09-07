@@ -1,0 +1,683 @@
+{
+  "schema": 1,
+  "files": [
+    {
+      "path": "assets/audio/boss_tension.mp3",
+      "bytes": 257715,
+      "sha256": "fc38f147e269a10fd9d66d90a2af2e82d172fdf24e20f11385a3030c1db7a04f",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/danger_alert.mp3",
+      "bytes": 12896,
+      "sha256": "d501907fcb7fa6aa8080bd6d24d64e2719e5c05f049931034e2ab936dd20bb8f",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/enemy_die_a.mp3",
+      "bytes": 6940,
+      "sha256": "13d4fdcd3f7eae31e0775783003bf61e55828c8ab8b766f36131209768b4f75a",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/enemy_die_b.mp3",
+      "bytes": 7567,
+      "sha256": "cf2d24b1382cbcaa4d34d0cec1a637afc5d76034864a4a4f7dd86ec55421bd54",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/enemy_die_c.mp3",
+      "bytes": 4746,
+      "sha256": "3bafcc231db258707f1a2b9e91725dc1c5a0729d9b2e63427cf168a76bb066bb",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/laser_click.mp3",
+      "bytes": 1946,
+      "sha256": "147107feb911c6c9d7df07071643412fb255170ed228b579a09253f6f689c3ca",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/minigun_fire.mp3",
+      "bytes": 2865,
+      "sha256": "a41f5eeabd730dc70161feb6cad6336571b3204fe09d396cdf5f632ff0443d7e",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/minigun_ready.mp3",
+      "bytes": 20106,
+      "sha256": "3b0540d480d710d1db67705bf791ebea742e14b77d058882bc15833dc7ba641a",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/portal_warn.mp3",
+      "bytes": 45183,
+      "sha256": "6a41f2f3f5a98412bcbf6115503d98c19d93ba9d0df081d8fa4d3be000a813d3",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/server_dialup.mp3",
+      "bytes": 74649,
+      "sha256": "3f169780ca8f64c1e4d45b3a0f911a1b681f8c8f34b5a3391aba6dfc5ec18c2d",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/src/BossTension_tension-scapes-brass.mp3",
+      "bytes": 685453,
+      "sha256": "f93df58997fe202520ccb1b28c70624a314fe855aca93eb72786dadff3b12f62",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/src/Danger_klaxon-gamestudio.mp3",
+      "bytes": 32600,
+      "sha256": "b51faf03a08418aa53a3ed5697d6abe1580ee9de6988f2ef56de9c6ca072da7a",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/src/Minigun_Firing_freesound_36769.mp3",
+      "bytes": 134880,
+      "sha256": "fe1d17dd7ba7279b2274143095eccaaf9a3d5e51dff8882fd489caffdee015ac",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/src/Minigun_Ready_244784.mp3",
+      "bytes": 155480,
+      "sha256": "55ce5105a013b65d2f1fa9737d20ff4b7f8a4ea76f61aff30451d12707eafd02",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/src/Portal_WaveWarning_freezing_gush_01.wav",
+      "bytes": 1443342,
+      "sha256": "938947b9b62c34d04efc0a9968c2edb316741a6151347a9b59b66c9b6a5e527c",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/src/Server_dialup-handshake.mp3",
+      "bytes": 198112,
+      "sha256": "6856193d54aaeacc5ad9779f368fb12b3f969196905e59594ea9f7e056362696",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/src/Tank_Engine_teleport.wav",
+      "bytes": 286726,
+      "sha256": "dc50fb2448b3d7134a894562bc52d75b40f1c601cd358fb9a6fb138214ec156f",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/src/Tank_MainWeapon_heavy-blast-15.wav",
+      "bytes": 274392,
+      "sha256": "47a577b7005a55112b1dca8618d146bf949e46b5691a2e4df6c60412801ce9ed",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/src/Tank_PickUpItem_handling-26.wav",
+      "bytes": 79088,
+      "sha256": "99822a099888fd70291c4237aafb068d44cbeb7d2030d67ba713610d6b5de373",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/src/Tank_PickUpNewShells_reload-02.wav",
+      "bytes": 161378,
+      "sha256": "ae6f4aebf330db1496ad3647447fe3e1afe92b7adc0cebea0dd2ffba88c03a3c",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/src/Tank_Secondary_light-blast-09.wav",
+      "bytes": 192304,
+      "sha256": "e173fb7ede83afc0b2d21c166d7718f2de327ff5511a95ebfe10ecb0c7a2d517",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/src/Tower_AoE_heavy-blast-03.wav",
+      "bytes": 367128,
+      "sha256": "8ec506a8b45a5dbcfc2776e652280761ed6c07ff74d893345e875564fc5b7afe",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/src/Tower_Homing_heavy-blast-14.wav",
+      "bytes": 120908,
+      "sha256": "fe0c4a9488a6ae8fca6b32ae481a55b4aed53c9b0f24ceaee29762f5db4ad8e2",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/src/Tower_Laser_beam-05.wav",
+      "bytes": 826360,
+      "sha256": "c22216b237cbecbe79bc3223dd79ee0d5348e112a0e1b6389c359a7c0c3828a9",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/src/Tower_Rapid_Ice_casting_55.wav",
+      "bytes": 592094,
+      "sha256": "1990045a6f1accf275b4382bf289838f650fe8f746de16d001cb9dc9694cba55",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/src/Tower_Single_shot_muffled.wav",
+      "bytes": 98860,
+      "sha256": "3fdf89b7e99c91ce8a4c5ab72889f5d07a94fd7bd34de35118e059a63ac148c3",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/src/Tower_Slow_beam-05.wav",
+      "bytes": 826360,
+      "sha256": "c22216b237cbecbe79bc3223dd79ee0d5348e112a0e1b6389c359a7c0c3828a9",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/src/Tower_Sniper_heavy-blast-05.wav",
+      "bytes": 329724,
+      "sha256": "4475df5d76fc1f5d813a321efe38a50142555131796eabb4639ce2b228713de3",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/src/Tower_Spread_light-blast-07.wav",
+      "bytes": 138572,
+      "sha256": "00e2238f86662e48cf77a75004cbe4568f4cd0983b6fb4c9ba49799994bcabcc",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/src/Tower_upgrade.wav",
+      "bytes": 139308,
+      "sha256": "74d130ceb849b6f60f24913587f5349415c22f4b8948e69a572eadebbfc5a77a",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/src/hydraulic_down.wav",
+      "bytes": 165932,
+      "sha256": "d0e596c4060d57475a12e73cbc73d5f75a48bac4f5091b2e594483eb19d6ae75",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/src/hydraulic_up.wav",
+      "bytes": 198700,
+      "sha256": "ce5774f75c26c1b343591475d5e5ae5d91a9fecd680fe1aff798a86c6c769e6a",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/src/slime-organic.wav",
+      "bytes": 100718,
+      "sha256": "3300339026fe9885fac9e5e6ef3496c0c2f52963175ad35d462970d56bddf54b",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/src/slime-pop.wav",
+      "bytes": 44178,
+      "sha256": "457828871d54472195c440d396c0872447046c9453210b297478bb7d3de147bd",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/src/splat_quick.wav",
+      "bytes": 57388,
+      "sha256": "b2a0c484d3bdf4c893a2956db7f14a8959350c49a67cc3136fccbdd2de851a7c",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/src/thruster.wav",
+      "bytes": 441078,
+      "sha256": "21aa273fd6b23325b94ed61a0e14a38ff2adfd8b7925e339927d88ef72cb313d",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/tank_beam.mp3",
+      "bytes": 214831,
+      "sha256": "073744a9212b4c6cfe1beee3acf00f0553c007e3be162d02a63b2692e9a74859",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/tank_destroyed.mp3",
+      "bytes": 19516,
+      "sha256": "926a9242f56450e3b2065a42307ec633b02a51e6ec634c1b0b31532f040e1488",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/tank_engine.mp3",
+      "bytes": 13209,
+      "sha256": "d6a29830f421bf822b399b3f88a6abed229128a62a62654fc51deb4184290bbd",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/tank_main.mp3",
+      "bytes": 15127,
+      "sha256": "42b1a64bd219b1bc60a5dd5dd10cf41ae368edffbf49695d93779649396ba67f",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/tank_pickup.mp3",
+      "bytes": 6350,
+      "sha256": "5628855e335d97686ca81e9a7efd9d38c4d44f0db18b841111f5538cd40e1a21",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/tank_secondary.mp3",
+      "bytes": 2588,
+      "sha256": "76ad882994671d166c47794e0970f9df2b1fd6b6289ad0e114482d76261b8960",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/tank_shells.mp3",
+      "bytes": 11664,
+      "sha256": "c9583c02e1f5456950e9192fe1c9f739cec1dd9d12e267b40f71a6012eae264b",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/tank_spool_down.mp3",
+      "bytes": 11955,
+      "sha256": "f425b180ea254640d4388e5c23f3e749b4855cb3821cf176ec469b583a18e264",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/tank_spool_up.mp3",
+      "bytes": 14150,
+      "sha256": "b3369537336209526a3fc407373ccca3de64e4d7f6fcf62abe3c0b2511076932",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/tank_thruster.mp3",
+      "bytes": 35779,
+      "sha256": "689f3e27e314ea0402b5b15074b3c4a38e2bf64cde7de7abd7da425a8b44db32",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/tower_aoe.mp3",
+      "bytes": 11679,
+      "sha256": "00b0e149e43e3bf2e5fe7560efbe18e0d69951fe55252764fa5394a270654d08",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/tower_homing.mp3",
+      "bytes": 8858,
+      "sha256": "540940df71330e2b29c5c81324dfbbfc09cd429879f7b03011e4ba6cce9be78c",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/tower_laser.mp3",
+      "bytes": 6365,
+      "sha256": "220ea7b86523b9b6635125ce8fd9405d804abd91fb66e32f6a0823e723ecf5a0",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/tower_rapid.mp3",
+      "bytes": 3492,
+      "sha256": "108ff31ff179a807fcd8f7d701f87bdb0ea10dd6dfaac8411620f9896ad9761c",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/tower_single.mp3",
+      "bytes": 6313,
+      "sha256": "0d6ce4e593e092a9356ffddf52a915ba1727a53b7017d035b96aab2252729b68",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/tower_slow.mp3",
+      "bytes": 10440,
+      "sha256": "eea59b619ee4e0fe9b3a11372ff017457cdf380f3a7c9bb789eb4a8d3788b195",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/tower_sniper.mp3",
+      "bytes": 12306,
+      "sha256": "833bde8f01818378d933bbd4a0bb2611dbb34fa61f03127f062d399d3a40ea9c",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/tower_spread.mp3",
+      "bytes": 10112,
+      "sha256": "7663960b53e1387e90d3d3447b53031c3f684ea4cb06e536f8c80bf3299c891f",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/audio/tower_upgrade.mp3",
+      "bytes": 10388,
+      "sha256": "eb298c9bf69917840b8157319354d4e653a34b90ea996bc47d32c5a0c7d467c3",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/beam-2026-09-01.json",
+      "bytes": 686,
+      "sha256": "0b72a679e52e56c84ff041e88ea7518a61238593397c24d1395773dc213e046b",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/fonts/DotGothic16.woff2",
+      "bytes": 14792,
+      "sha256": "5cc820e3c9074fe35b0277e1c567190c135094e708762f7af97a99796d9520d8",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/fonts/LICENSES.md",
+      "bytes": 5639,
+      "sha256": "68772023e9595e0d8f933ed1d3b69ec77f50b823169d09ed4c30e90219eb8a18",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/fonts/PressStart2P.woff2",
+      "bytes": 4704,
+      "sha256": "42144b97bd2942ea606e5d880684eae0f7be5c804bdd57b1faac5a8d7699ae6e",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/fonts/ShareTechMono.woff2",
+      "bytes": 7408,
+      "sha256": "73b87eb7b02dfec4cb1ddfabad6e625d9c77b3c81015064420de88d8dd04816c",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/fonts/VT323.woff2",
+      "bytes": 7192,
+      "sha256": "043a60145af2ddbcd0a6452625cb0bfc4e18b222c76dcd1d4a0106715472faba",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/models/astronaut-compact.glb",
+      "bytes": 4156676,
+      "sha256": "66824bd0221490a6c6ae9b5e2f561529c66e8a5b5451454bd8f7ab512f1789ab",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/models/astronaut.glb",
+      "bytes": 3734028,
+      "sha256": "41863ee4d5f41a628b384832fd96a4b75a439e53de306464478569ca2cda4b4c",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/models/container.glb",
+      "bytes": 650572,
+      "sha256": "a70f0d8b00e5df14e9f48580606d4130c3b3981dd8c5ffb15d46f541157d0245",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/models/dish70.glb",
+      "bytes": 2216584,
+      "sha256": "36ff56a7a2bfd1c278f6f4774d32128d5931f2c22fe58241d00ee7d1815634bb",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/models/fabricator.glb",
+      "bytes": 865156,
+      "sha256": "980a85219607a4468b8416bd9c96840757745f58b4e3f193eea4f7818eb1aca7",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/models/heptapod.glb",
+      "bytes": 598652,
+      "sha256": "396b93e7fbbb5955ddcd90916c90f7d52a1079d0dbf6d9a202b207e85301c403",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/models/mkcx.glb",
+      "bytes": 446768,
+      "sha256": "c41f5dba2be9b11d7704aa68e505bf605c4b2fc91d609ea965dc3fa0c83ac2a7",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/models/mkcx2.glb",
+      "bytes": 475264,
+      "sha256": "312b926ee7122778c39a623ab1c0d9b9ba807cd8835fc7d7d21d8401e38129f9",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/models/portalring.glb",
+      "bytes": 841744,
+      "sha256": "126480ce2c14e6635630a962a12f681bd23091ccf0fda46e13179371ea84b062",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/models/sentries/heptapod_a6_t1.glb",
+      "bytes": 295520,
+      "sha256": "98d1b84cd83502e4846563c848d08b68fd53ab60b5328492e94ba75d11a1e4ef",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/heptapod_a6_t2.glb",
+      "bytes": 343392,
+      "sha256": "9440368ff060dfd6dedeb8cfbd62db0202ee929024c5e5787bfa25920c413a94",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/heptapod_a6_t3.glb",
+      "bytes": 365900,
+      "sha256": "8bfeae29b1ddf4916ad3d76fa1e2e8d3942b84ce516d7a3ea250c8453e832560",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/howitzer_t1.glb",
+      "bytes": 62216,
+      "sha256": "e77b4c6faf587151e2dcb4baeb320681e20ca84deefba19890c96f3ec1040ac2",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/howitzer_t2.glb",
+      "bytes": 63676,
+      "sha256": "92383514a38ddefac991538b3cfbd3a0c879eb7579a906832b641eeecbc043a7",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/howitzer_t3.glb",
+      "bytes": 65012,
+      "sha256": "1031fb8499024d991e68f24ceaf03c1c33731c23b8461c9c5cdd1e984b1286a6",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/kiln_t1.glb",
+      "bytes": 50244,
+      "sha256": "b08f6f8a64b1c8d1f3906460730363b56d3f992a614d597a790ab1d83f789cf7",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/kiln_t2.glb",
+      "bytes": 66880,
+      "sha256": "762db2723fb0ea2732e67d1c630455241efc8aaf585231b12088eeaa15ebe267",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/kiln_t3.glb",
+      "bytes": 76028,
+      "sha256": "e9276ef9aaad1dce15f738253c7901d6734c631f83038994bc0e4517db80f1e9",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/lancer_t1.glb",
+      "bytes": 42892,
+      "sha256": "6d155e2d3620c05205262ad04adae9713259f6f680c5f61e4f8fdf1d2077ebc2",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/lancer_t2.glb",
+      "bytes": 58048,
+      "sha256": "1f7f29cb137e1c7b6966ed80da0e9492150191a2c880d35b7089db01e0cbbe8b",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/lancer_t3.glb",
+      "bytes": 75916,
+      "sha256": "1c3e4998e80eb11b1945ce82e297dfdcca0d94a2a2f22e7f366b8e8ec608df3a",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/mortar_t1.glb",
+      "bytes": 47668,
+      "sha256": "22123aabb7e708387b3479b081bb9328d8b52c99299f8ba9811744162ee84905",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/mortar_t2.glb",
+      "bytes": 52672,
+      "sha256": "78113f2169be8b616cffc4f36f41465e084cebc1d7afa22dc32814a545b115da",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/mortar_t3.glb",
+      "bytes": 57796,
+      "sha256": "b789cf62323fe404b8834e7f2a502871db34a9122c2b0dccf77ef72bc75b8b63",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/needle_t1.glb",
+      "bytes": 39676,
+      "sha256": "a33b8cea4e4bb1443e6f5f40bf72de2d06da50da6f3fa19b395784a455f5310a",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/needle_t2.glb",
+      "bytes": 49100,
+      "sha256": "82a6bd3e835096fb8429d19f439b756882cfab139cb42fd78e31ad8f7e2490fd",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/needle_t3.glb",
+      "bytes": 61440,
+      "sha256": "03796bf2e0978236dabf7dfd4bb3980f532fd5b38f7910130d8e7647ab9c6835",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/plasma_t1.glb",
+      "bytes": 296996,
+      "sha256": "6661ef7111fe2a85f09170f735248f6ffdda791a087286138d4b95fd94daa60b",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/plasma_t2.glb",
+      "bytes": 370160,
+      "sha256": "824e4640dbec923b5f439d3eadb54dbed0de340011ddf331d897038df0df1648",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/plasma_t3.glb",
+      "bytes": 443416,
+      "sha256": "b7ce988b52297b9206edc4487816e73840753cdad8f3d65e8bef3464a6cc2e65",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/quiver_t1.glb",
+      "bytes": 62532,
+      "sha256": "53531761dfd855885c1fd730cf3ead718e0c3cb3d9811ecaef21d9264214ba21",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/quiver_t2.glb",
+      "bytes": 86052,
+      "sha256": "ab0bb9a28ce2939d862e3b40fc56cdf2a6d3b61ffa06e7042ba38963f8d2426b",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/quiver_t3.glb",
+      "bytes": 112696,
+      "sha256": "305723d789bf23bb7c9bc47f6af5eb6628ad2c84be6d8e0f4c86d84c8c3aa92d",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/railgun_t1.glb",
+      "bytes": 45380,
+      "sha256": "f96ba392e83c75c5cf9f235040aa3163a384cf99c2e12f5ce7faa31eefa79d7f",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/railgun_t2.glb",
+      "bytes": 53568,
+      "sha256": "cf2c2eb12e34b79dd17628b6e7a620cea6c9365154cff3072b98dae99d58a73d",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/railgun_t3.glb",
+      "bytes": 61632,
+      "sha256": "f07de783f83de77bc89fc24205d5820620930f03e80f762c6c72743564113bb6",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/relay_t1.glb",
+      "bytes": 120564,
+      "sha256": "0aa2ed71dad5ef618d7f57812c300ee7ce3e38475e696f4cd76824a5980fd952",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/relay_t2.glb",
+      "bytes": 240616,
+      "sha256": "d89075b4960d5c651fbb10fc30f5cf7e4c0d9ef58aa1e310baa5f5b16f97a34b",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/relay_t3.glb",
+      "bytes": 405508,
+      "sha256": "7ebaeb583cc5d624855432833feb678dc1b1f766ab4d4779b3f873bed6e4c320",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/rotor_t1.glb",
+      "bytes": 76268,
+      "sha256": "d4d0de97d7c0d0b61510e67a888999fe0d7cfb4bc15e212465fa8f1c437d66a9",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/rotor_t2.glb",
+      "bytes": 96304,
+      "sha256": "dde8170653b96b79425b1c68ea348d41756ce7291173d2c3c5b9e367d7ab7a98",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentries/rotor_t3.glb",
+      "bytes": 133488,
+      "sha256": "9920db7335a6df01ffb369d91021281804f55283cd1289943cb6f50ce2d871f7",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentry-terraformer/README.md",
+      "bytes": 2759,
+      "sha256": "dda9b283bbf9ab68b94d47b49f8f8138a44d82af96cc356f9ede3420a198d8dc",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/models/sentry-terraformer/manifest.json",
+      "bytes": 5263,
+      "sha256": "20ff37488c1f291064594d1c2e087802a66667e86b429740249feab8a9def541",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/models/sentry-terraformer/terraformer_3000_d0.glb",
+      "bytes": 11086528,
+      "sha256": "72ec3c06fcfdce3e6a4be87db0437de062158413eeb299da56a1abb36f42744e",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentry-terraformer/terraformer_3000_d1.glb",
+      "bytes": 11245684,
+      "sha256": "020932faa393a4e19a16f1a53b50281cf9cd565cbbeff11b446c0a8f943a5a3f",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentry-terraformer/terraformer_3000_d2.glb",
+      "bytes": 10049324,
+      "sha256": "5257666d62ec8f98cad87b22ab7b889cc49389ff7fd0ae1028083d049202aa46",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/sentry-terraformer/terraformer_3000_d3.glb",
+      "bytes": 4395512,
+      "sha256": "c24003dc987626595f7a9af5842cf43db010f757411020247407d9e3d8f27e53",
+      "source": "SentryTowers_A6 pinned lock"
+    },
+    {
+      "path": "assets/models/server.glb",
+      "bytes": 1098780,
+      "sha256": "bfd8ece2a4fe3a3ffa718d477f768ef40a54525b3d3220cbbe3f759628439312",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/models/terraformer.glb",
+      "bytes": 1140012,
+      "sha256": "059056d87737b52cee11ed538ff40a29f5b833eeb7c5c0db4192c3ac099c73cd",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/ui/switch-off.png",
+      "bytes": 13948,
+      "sha256": "887561fb6b63954be91e16c0680a7b02c93c0348b400f6d8372c6b547cac9905",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    },
+    {
+      "path": "assets/ui/switch-on.png",
+      "bytes": 13240,
+      "sha256": "c63e4194798347656455ff94ed03dc10e5b35025fec27a818d295e7cfbcce412",
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+    }
+  ]
+}

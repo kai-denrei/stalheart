@@ -1,3 +1,4 @@
+import { storage as localStorage } from './storage.js';
 // knobs.js — the machinery behind a tuning panel, with no opinion about what
 // is being tuned.
 //

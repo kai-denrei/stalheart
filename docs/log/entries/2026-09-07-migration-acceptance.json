@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "id": "2026-09-07-migration-acceptance",
+  "date": "2026-09-07T06:20:00Z",
+  "type": "change",
+  "status": "resolved",
+  "title": "Independent game migration passes source and release acceptance",
+  "context": "The extraction needed to preserve a playable baseline while removing research-shell coupling, unsafe cross-app caching, ambiguous simulator outcomes and duplicated decision indexes. The first browser checks exposed a tutorial proof gate in the acceptance setup and mobile-only service-worker registration in the product.",
+  "outcome": "Stalheart now has independent game, Workshop and Settings entries, canonical module identity, deterministic dist output, scoped storage/cache ownership, typed economy accounting, protected sector-breach funding, validated simulation results, local diagnostic export and an immutable development log. The browser fixture ends the tutorial before forcing a sector clear; real cold-open interaction is tested separately. PWA startup moved to the shared application entry and now installs on desktop as well as mobile. Terraformer 3000 preserves animated pivots, common damage-state scale and authored palette with a faint own-color fill for the dark board. Sixty Node test programs passed. Source acceptance and release acceptance under /stalheart/ passed, including actual sector buttons, retry, both rosters, mobile input probe, both missions, three hacks, four labs, all Terraformer states and release service-worker control. Two builds produced identical release manifests: d7606185, 380 files, 63,924,970 bytes. No remote or deployment was created.",
+  "alternatives": [
+    "Preserve the inherited wave formula during migration. Passing short bot loss baselines is not evidence that all five sectors are balanced or winnable.",
+    "Keep Terraformer 3000 opt-in until real-device performance and visual review support promotion. D0 has 78 merged meshes and 165,404 triangles; D1/D2/D3 are damage states, not performance LODs.",
+    "Use full-page route ownership to prevent hidden renderer accumulation now; extraction of the remaining combat/render/tutorial closure and sector suspend/resume remain next-phase work."
+  ],
+  "evidence": [
+    "npm test: 60 isolated programs passed; includes campaign solvency/accounting, storage migration, result identity, log integrity, asset animation and scoped service-worker behavior.",
+    "npm run check: syntax, canonical source imports, unchanged kernel hashes, development log and 37 pinned Sentry assets passed.",
+    "npm run build: d7606185; repeat build byte-identical release.json. Release payload excludes private logs, docs, tests and source audio originals.",
+    "npm run test:browser: source acceptance passed; artifacts/browser contains screenshots, full console/network logs and sim-1.json/sim-2.json.",
+    "node scripts/browser-test.mjs --dist: nested-path release acceptance and PWA control passed; artifacts/browser-dist contains equivalent evidence.",
+    "Both seed-1000 style1 roster baselines end in loss at wave 3, approximately 87 simulation seconds, consistent with the research baseline; no full campaign success is claimed.",
+    "Project deban SKILL.md passed skill-creator quick_validate.py in an isolated temporary Python environment.",
+    "Original research: test/pwa.mjs, check-tokens.sh and export-helper syntax passed after its scoped cache and handoff edits.",
+    "docs/MIGRATION.md and docs/STATE.md list remaining limitations: real iOS/touch/audio, campaign playtesting, difficulty tuning, monolith extraction, asset optimization, suspend/resume and complete offline installation."
+  ],
+  "supersedes": []
+}

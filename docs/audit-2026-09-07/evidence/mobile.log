@@ -1,0 +1,54 @@
+COARSE simulated at init: 0 media blocks now apply
+AUDIO armed (context and decode both wait for a gesture) muted=false master=0.7
+AUDIO ledger origin=http://localhost:8144 loads=1 contexts created=0 closed=0 LEAKED=0 — healthy (audio.resetLedger() to zero it)
+SKY seed=62918 face=512 scale=0.25 galaxies=2 core=0.033 arms=0 palette="Ember Veil" bakeMs=103.1 (cpu, incl. compile)
+sector 1: 97 open cells
+METAL dressed 0 on mesh env=true
+heart sector in 144ms — 97 open cells, 14 orbs, spawn→heart 19 hops
+METAL dressed 0 on mesh env=true
+METAL dressed 0 on mesh env=true
+COARSE simulated at measure: 2 media blocks now apply
+STATE t= 0s paused=false shot=- build=false msg=false brief=false sitrep=false tut=setup/false deploy=#2@0.17 intro=false tutorial=false hp=3 lostDeploys=0 down=false cur=1069(open) next=1070 auto=false thr=0.00 goto=-1 view=third unit=mkcx2 camToTank=2.2cells tankVisible=true inFrustum=true tankScreen=(0.02,-0.21) canvas=844x390 inner=844x390 visual=844x390@0 dpr=1 view=third camToTank=2.2c thr=0.00 stick=false laser=false
+AUDIO silent: no AudioContext — the gesture never armed it (first blocked sound: tank_spool_up) ctx=none muted=false master=0.7 loadStarted=false
+RING instanced parts kept whole: Shell_Instanced, Block_Instanced, Face_Block_Instanced, RotorA_Instanced, RotorA_Glow_Instanced, RotorB_Instanced, RotorB_Glow_Instanced
+METAL dressed 35 on Group env=true
+METAL dressed 35 on Group env=true
+METAL dressed 7 on Group env=true
+METAL dressed 4 on fixture env=true
+METAL dressed 4 on fixture env=true
+METAL dressed 4 on fixture env=true
+CONTAINERS placed=3 cells=1002,1001,1069 spares=2 exits=1070,377,1070
+METAL dressed 7 on Group env=true
+METAL dressed 10 on mesh env=true
+METAL dressed 4 on fixture env=true
+METAL dressed 4 on fixture env=true
+METAL dressed 4 on fixture env=true
+CONTAINERS placed=3 cells=1002,1001,1069 spares=2 exits=1070,377,1070
+LAYOUT menu      x 10..43  y 10..40
+LAYOUT hud       x 14..308  y 46..110
+LAYOUT map       x 732..830  y 68..166
+LAYOUT tut       x 452..728  y 52..120
+LAYOUT fire      x 766..830  y 312..376
+LAYOUT laser     x 688..752  y 304..368
+LAYOUT mine      x 770..826  y 246..302
+LAYOUT shield    x 720..762  y 190..232
+LAYOUT launch    x 398..446  y 52..112
+LAYOUT next      x 344..500  y 8..47
+LAYOUT mode      x 734..830  y 12..60
+LAYOUT toast     x 124..446  y 237..290
+LAYOUT viewport 844x390 coarse=false (SIMULATED) dpr=1 — 0 overlaps
+STATE t= 2s paused=false shot=- build=false msg=false brief=false sitrep=false tut=setup/false deploy=- intro=false tutorial=false hp=3 lostDeploys=0 down=false cur=1070(open) next=1070 auto=false thr=0.00 goto=-1 view=third unit=mkcx2 camToTank=3.5cells tankVisible=true inFrustum=true tankScreen=(-0.00,-0.25) canvas=844x390 inner=844x390 visual=844x390@0 dpr=1 view=third camToTank=3.5c thr=0.00 stick=false laser=false
+STATE t= 4s paused=false shot=- build=false msg=false brief=false sitrep=false tut=setup/false deploy=- intro=false tutorial=false hp=3 lostDeploys=0 down=false cur=1070(open) next=1070 auto=false thr=0.00 goto=-1 view=third unit=mkcx2 camToTank=3.5cells tankVisible=true inFrustum=true tankScreen=(-0.00,-0.25) canvas=844x390 inner=844x390 visual=844x390@0 dpr=1 view=third camToTank=3.5c thr=0.00 stick=false laser=false
+STATE t= 6s paused=false shot=- build=false msg=false brief=true sitrep=false tut=setup/false deploy=- intro=false tutorial=false hp=3 lostDeploys=0 down=false cur=1070(open) next=1070 auto=false thr=0.00 goto=-1 view=third unit=mkcx2 camToTank=3.5cells tankVisible=true inFrustum=true tankScreen=(-0.00,-0.25) canvas=844x390 inner=844x390 visual=844x390@0 dpr=1 view=third camToTank=3.5c thr=0.00 stick=false laser=false
+KEYPROBE control call = ok (must be 'ok' before the keys mean anything)
+AUDIO gesture 1 (keydown): ctx=null -> rebuild
+AUDIO primed (silent buffer played inside the gesture)
+AUDIO gesture 2 (keyup): ctx=suspended -> resume
+AUDIO gesture 3 (keydown): ctx=suspended -> resume
+KEYPROBE rack 2 -> S:2 -> T:1 s-spent=0 t-spent=1 direct=ok OK — S drives, T shields
+AUDIO ready ctx=suspended decoded=29/29
+AUDIO ready ctx=suspended decoded=29/29
+AUDIO ready ctx=suspended decoded=29/29
+AUDIO ready ctx=suspended decoded=29/29
+STATE t= 8s paused=false shot=- build=false msg=false brief=true sitrep=false tut=setup/false deploy=- intro=false tutorial=false hp=3 lostDeploys=0 down=false cur=1070(open) next=1070 auto=false thr=0.00 goto=-1 view=third unit=mkcx2 camToTank=3.5cells tankVisible=true inFrustum=true tankScreen=(-0.00,-0.25) canvas=844x390 inner=844x390 visual=844x390@0 dpr=1 view=third camToTank=3.5c thr=0.00 stick=false laser=false
+STATE t=10s paused=false shot=- build=false msg=false brief=true sitrep=false tut=setup/false deploy=- intro=false tutorial=false hp=3 lostDeploys=0 down=false cur=1070(open) next=1070 auto=false thr=0.00 goto=-1 view=third unit=mkcx2 camToTank=3.5cells tankVisible=true inFrustum=true tankScreen=(-0.00,-0.25) canvas=844x390 inner=844x390 visual=844x390@0 dpr=1 view=third camToTank=3.5c thr=0.00 stick=false laser=false

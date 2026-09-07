@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { createStorage, exportRecords, importRecords, STORAGE_PREFIX } from '../src/storage.js';
+const data=new Map([['td.best','100'],['unrelated','private']]);
+const backing={get length(){return data.size;},key:i=>[...data.keys()][i],getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,String(v)),removeItem:k=>data.delete(k)};
+const s=createStorage(()=>backing);assert.equal(s.getItem('td.best'),null);s.setItem('td.best','200');assert.equal(data.get('td.best'),'100');
+const bundle=exportRecords(backing,true);assert.deepEqual(bundle.records,{'td.best':'100'});
+assert.equal(importRecords(bundle,backing),0);assert.equal(s.getItem('td.best'),'200');
+assert.equal(importRecords(bundle,backing,{overwrite:true}),1);assert.equal(s.getItem('td.best'),'100');
+assert.throws(()=>importRecords({...bundle,records:{'td.best':'300',unrelated:'leak'}},backing));assert.equal(s.getItem('td.best'),'100');
+const unavailable=createStorage(()=>{throw Error('denied');});assert.equal(unavailable.getItem('td.best'),null);unavailable.setItem('td.best','1');
+assert.deepEqual(exportRecords(backing).records,{'td.best':'100'});
+console.log('Storage isolation, explicit migration and malformed-file rejection pass.');

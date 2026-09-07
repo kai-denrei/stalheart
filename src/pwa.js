@@ -14,6 +14,10 @@ export function isStandalone() {
 // `waiting` until the user says so (onUpdateReady gets an `apply` that asks).
 export async function registerServiceWorker(onUpdateReady) {
   registerServiceWorker.why = '';
+  if (document.querySelector('meta[name="cb"]')?.content === '00000000'
+      && new URLSearchParams(location.search).get('sw') !== '1') {
+    registerServiceWorker.why = 'development build'; return null;
+  }
   if (!('serviceWorker' in navigator)) { registerServiceWorker.why = 'unsupported'; return null; }
   if (location.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(location.hostname)) {
     registerServiceWorker.why = 'insecure origin'; return null;

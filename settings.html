@@ -1,0 +1,7 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="cb" content="00000000"><title>Stalheart settings</title><link rel="stylesheet" href="app.css"><link rel="icon" href="favicon.svg"></head>
+<body class="settings-page"><main><a href="index.html">Back to Stalheart</a><h1>Settings & records</h1><p>Your records stay on this device. Back them up before changing browsers or clearing storage.</p>
+<button id="export-records">Export records</button><label class="file-button">Import records<input id="import-records" type="file" accept="application/json"></label>
+<p>Import fills missing records without replacing existing Stalheart records.</p><button id="import-legacy">Import research-project records on this origin</button><p>If the research game is on another origin, use its record-export helper first, then import that file here.</p>
+<h2>Diagnostics</h2><button id="export-diagnostics">Export last game diagnostics</button><p>Local, bounded event history. Nothing is uploaded.</p>
+<h2>Workshop</h2><a href="labs.html">Open game asset and weapon labs</a><p><a href="index.html?terraformer=a6#td">Try the Sentry Terraformer 3000</a> · experimental asset, larger download; current gameplay rules.</p>
+<p id="settings-status" role="status"></p></main><script type="module" src="src/settings.js"></script></body></html>

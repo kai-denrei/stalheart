@@ -45,3 +45,7 @@ worth knowing if the loader is ever replaced.
   Safe to vendor in a way a versioned three.js addon is not: standalone code
   with embedded WASM and no three.js imports, so it cannot disagree with our
   r160.
+
+## Sentry Workshop — Terraformer 3000 and sentry models
+
+Source: https://github.com/jelaludo/SentryTowers_A6 at commit `90da0f2e45f69d3fab51318e16c70c39e335e97a`. The project owner's requested asset source. Exact transferred files and hashes are recorded in `docs/sentry-assets.lock.json`; upstream Terraformer integration notes are retained with the models. Stalheart adapts these assets to the sphere and preserves authored animation/pivots. No endorsement is implied.

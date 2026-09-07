@@ -1,3 +1,4 @@
+import { storage as localStorage } from './storage.js';
 // recordtab.js — THE RECORD as a page of its own.
 //
 // It already existed as a sheet off the briefing, and the operator could not

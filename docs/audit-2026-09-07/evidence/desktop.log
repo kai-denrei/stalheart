@@ -1,0 +1,28 @@
+AUDIO armed (context and decode both wait for a gesture) muted=false master=0.7
+AUDIO ledger origin=http://localhost:8144 loads=1 contexts created=0 closed=0 LEAKED=0 — healthy (audio.resetLedger() to zero it)
+SKY seed=93482 face=1024 scale=0.25 galaxies=2 core=0.026 arms=5 palette="Ember Veil" bakeMs=113.4 (cpu, incl. compile)
+sector 1: 97 open cells
+METAL dressed 0 on mesh env=true
+heart sector in 184ms — 97 open cells, 14 orbs, spawn→heart 19 hops
+METAL dressed 0 on mesh env=true
+METAL dressed 0 on mesh env=true
+STATE t= 0s paused=false shot=cinematic build=false msg=false brief=false sitrep=false tut=setup/false deploy=#2@0.17 intro=false tutorial=false hp=3 lostDeploys=0 down=false cur=1069(open) next=1070 auto=false thr=0.00 goto=-1 view=third unit=mkcx2 camToTank=2.3cells tankVisible=true inFrustum=true tankScreen=(0.03,-0.21) canvas=1440x900 inner=1440x900 visual=1440x900@0 dpr=1 view=third camToTank=2.3c thr=0.00 stick=false laser=false
+AUDIO silent: no AudioContext — the gesture never armed it (first blocked sound: tank_spool_up) ctx=none muted=false master=0.7 loadStarted=false
+RING instanced parts kept whole: Shell_Instanced, Block_Instanced, Face_Block_Instanced, RotorA_Instanced, RotorA_Glow_Instanced, RotorB_Instanced, RotorB_Glow_Instanced
+METAL dressed 35 on Group env=true
+METAL dressed 35 on Group env=true
+METAL dressed 7 on Group env=true
+METAL dressed 7 on Group env=true
+METAL dressed 10 on mesh env=true
+METAL dressed 4 on fixture env=true
+METAL dressed 4 on fixture env=true
+METAL dressed 4 on fixture env=true
+CONTAINERS placed=3 cells=1002,1001,1069 spares=2 exits=1070,377,1070
+STATE t= 2s paused=false shot=cinematic build=false msg=false brief=false sitrep=false tut=setup/false deploy=- intro=false tutorial=false hp=3 lostDeploys=0 down=false cur=1070(open) next=1070 auto=false thr=0.00 goto=-1 view=third unit=mkcx2 camToTank=22.3cells tankVisible=true inFrustum=true tankScreen=(-0.01,-0.06) canvas=1440x900 inner=1440x900 visual=1440x900@0 dpr=1 view=third camToTank=22.3c thr=0.00 stick=false laser=false
+STATE t= 4s paused=false shot=cinematic build=false msg=false brief=false sitrep=false tut=setup/false deploy=- intro=false tutorial=false hp=3 lostDeploys=0 down=false cur=1070(open) next=1070 auto=false thr=0.00 goto=-1 view=third unit=mkcx2 camToTank=25.7cells tankVisible=true inFrustum=true tankScreen=(-0.01,-0.06) canvas=1440x900 inner=1440x900 visual=1440x900@0 dpr=1 view=third camToTank=25.7c thr=0.00 stick=false laser=false
+STATE t= 6s paused=false shot=cinematic build=false msg=false brief=false sitrep=false tut=setup/false deploy=- intro=false tutorial=false hp=3 lostDeploys=0 down=false cur=1070(open) next=1070 auto=false thr=0.00 goto=-1 view=third unit=mkcx2 camToTank=3.2cells tankVisible=true inFrustum=true tankScreen=(-0.01,-0.51) canvas=1440x900 inner=1440x900 visual=1440x900@0 dpr=1 view=third camToTank=3.2c thr=0.00 stick=false laser=false
+STATE t= 8s paused=true shot=- build=false msg=false brief=false sitrep=false tut=setup/false deploy=#2@0.03 intro=true tutorial=false hp=3 lostDeploys=0 down=false cur=1069(open) next=1070 auto=false thr=0.00 goto=-1 view=third unit=mkcx2 camToTank=2.5cells tankVisible=true inFrustum=true tankScreen=(0.00,-0.14) canvas=1440x900 inner=1440x900 visual=1440x900@0 dpr=1 view=third camToTank=2.5c thr=0.00 stick=false laser=false
+STATE t=10s paused=true shot=- build=false msg=false brief=false sitrep=false tut=setup/false deploy=#2@0.03 intro=true tutorial=false hp=3 lostDeploys=0 down=false cur=1069(open) next=1070 auto=false thr=0.00 goto=-1 view=third unit=mkcx2 camToTank=2.5cells tankVisible=true inFrustum=true tankScreen=(0.00,-0.14) canvas=1440x900 inner=1440x900 visual=1440x900@0 dpr=1 view=third camToTank=2.5c thr=0.00 stick=false laser=false
+STATE t=12s paused=true shot=- build=false msg=false brief=false sitrep=false tut=setup/false deploy=#2@0.03 intro=true tutorial=false hp=3 lostDeploys=0 down=false cur=1069(open) next=1070 auto=false thr=0.00 goto=-1 view=third unit=mkcx2 camToTank=2.5cells tankVisible=true inFrustum=true tankScreen=(0.00,-0.14) canvas=1440x900 inner=1440x900 visual=1440x900@0 dpr=1 view=third camToTank=2.5c thr=0.00 stick=false laser=false
+STATE t=14s paused=true shot=- build=false msg=false brief=false sitrep=false tut=setup/false deploy=#2@0.03 intro=true tutorial=false hp=3 lostDeploys=0 down=false cur=1069(open) next=1070 auto=false thr=0.00 goto=-1 view=third unit=mkcx2 camToTank=2.5cells tankVisible=true inFrustum=true tankScreen=(0.00,-0.14) canvas=1440x900 inner=1440x900 visual=1440x900@0 dpr=1 view=third camToTank=2.5c thr=0.00 stick=false laser=false
+STATE t=16s paused=true shot=- build=false msg=false brief=false sitrep=false tut=setup/false deploy=#2@0.03 intro=true tutorial=false hp=3 lostDeploys=0 down=false cur=1069(open) next=1070 auto=false thr=0.00 goto=-1 view=third unit=mkcx2 camToTank=2.5cells tankVisible=true inFrustum=true tankScreen=(0.00,-0.14) canvas=1440x900 inner=1440x900 visual=1440x900@0 dpr=1 view=third camToTank=2.5c thr=0.00 stick=false laser=false

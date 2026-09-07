@@ -1,0 +1,267 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/jelaludo/SentryTowers_A6",
+  "revision": "90da0f2e45f69d3fab51318e16c70c39e335e97a",
+  "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/90da0f2e45f69d3fab51318e16c70c39e335e97a/",
+  "files": [
+    {
+      "path": "assets/models/sentry-terraformer/terraformer_3000_d0.glb",
+      "sourcePath": "assets/terraformer/terraformer_3000_d0.glb",
+      "sha256": "72ec3c06fcfdce3e6a4be87db0437de062158413eeb299da56a1abb36f42744e",
+      "bytes": 11086528,
+      "damageLevel": 0
+    },
+    {
+      "path": "assets/models/sentry-terraformer/terraformer_3000_d1.glb",
+      "sourcePath": "assets/terraformer/terraformer_3000_d1.glb",
+      "sha256": "020932faa393a4e19a16f1a53b50281cf9cd565cbbeff11b446c0a8f943a5a3f",
+      "bytes": 11245684,
+      "damageLevel": 1
+    },
+    {
+      "path": "assets/models/sentry-terraformer/terraformer_3000_d2.glb",
+      "sourcePath": "assets/terraformer/terraformer_3000_d2.glb",
+      "sha256": "5257666d62ec8f98cad87b22ab7b889cc49389ff7fd0ae1028083d049202aa46",
+      "bytes": 10049324,
+      "damageLevel": 2
+    },
+    {
+      "path": "assets/models/sentry-terraformer/terraformer_3000_d3.glb",
+      "sourcePath": "assets/terraformer/terraformer_3000_d3.glb",
+      "sha256": "c24003dc987626595f7a9af5842cf43db010f757411020247407d9e3d8f27e53",
+      "bytes": 4395512,
+      "damageLevel": 3
+    },
+    {
+      "path": "assets/models/sentries/heptapod_a6_t1.glb",
+      "sourcePath": "assets/heptapod_a6_t1.glb",
+      "sha256": "98d1b84cd83502e4846563c848d08b68fd53ab60b5328492e94ba75d11a1e4ef",
+      "bytes": 295520,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/heptapod_a6_t2.glb",
+      "sourcePath": "assets/heptapod_a6_t2.glb",
+      "sha256": "9440368ff060dfd6dedeb8cfbd62db0202ee929024c5e5787bfa25920c413a94",
+      "bytes": 343392,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/heptapod_a6_t3.glb",
+      "sourcePath": "assets/heptapod_a6_t3.glb",
+      "sha256": "8bfeae29b1ddf4916ad3d76fa1e2e8d3942b84ce516d7a3ea250c8453e832560",
+      "bytes": 365900,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/howitzer_t1.glb",
+      "sourcePath": "assets/howitzer_t1.glb",
+      "sha256": "e77b4c6faf587151e2dcb4baeb320681e20ca84deefba19890c96f3ec1040ac2",
+      "bytes": 62216,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/howitzer_t2.glb",
+      "sourcePath": "assets/howitzer_t2.glb",
+      "sha256": "92383514a38ddefac991538b3cfbd3a0c879eb7579a906832b641eeecbc043a7",
+      "bytes": 63676,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/howitzer_t3.glb",
+      "sourcePath": "assets/howitzer_t3.glb",
+      "sha256": "1031fb8499024d991e68f24ceaf03c1c33731c23b8461c9c5cdd1e984b1286a6",
+      "bytes": 65012,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/kiln_t1.glb",
+      "sourcePath": "assets/kiln_t1.glb",
+      "sha256": "b08f6f8a64b1c8d1f3906460730363b56d3f992a614d597a790ab1d83f789cf7",
+      "bytes": 50244,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/kiln_t2.glb",
+      "sourcePath": "assets/kiln_t2.glb",
+      "sha256": "762db2723fb0ea2732e67d1c630455241efc8aaf585231b12088eeaa15ebe267",
+      "bytes": 66880,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/kiln_t3.glb",
+      "sourcePath": "assets/kiln_t3.glb",
+      "sha256": "e9276ef9aaad1dce15f738253c7901d6734c631f83038994bc0e4517db80f1e9",
+      "bytes": 76028,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/lancer_t1.glb",
+      "sourcePath": "assets/lancer_t1.glb",
+      "sha256": "6d155e2d3620c05205262ad04adae9713259f6f680c5f61e4f8fdf1d2077ebc2",
+      "bytes": 42892,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/lancer_t2.glb",
+      "sourcePath": "assets/lancer_t2.glb",
+      "sha256": "1f7f29cb137e1c7b6966ed80da0e9492150191a2c880d35b7089db01e0cbbe8b",
+      "bytes": 58048,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/lancer_t3.glb",
+      "sourcePath": "assets/lancer_t3.glb",
+      "sha256": "1c3e4998e80eb11b1945ce82e297dfdcca0d94a2a2f22e7f366b8e8ec608df3a",
+      "bytes": 75916,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/mortar_t1.glb",
+      "sourcePath": "assets/mortar_t1.glb",
+      "sha256": "22123aabb7e708387b3479b081bb9328d8b52c99299f8ba9811744162ee84905",
+      "bytes": 47668,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/mortar_t2.glb",
+      "sourcePath": "assets/mortar_t2.glb",
+      "sha256": "78113f2169be8b616cffc4f36f41465e084cebc1d7afa22dc32814a545b115da",
+      "bytes": 52672,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/mortar_t3.glb",
+      "sourcePath": "assets/mortar_t3.glb",
+      "sha256": "b789cf62323fe404b8834e7f2a502871db34a9122c2b0dccf77ef72bc75b8b63",
+      "bytes": 57796,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/needle_t1.glb",
+      "sourcePath": "assets/needle_t1.glb",
+      "sha256": "a33b8cea4e4bb1443e6f5f40bf72de2d06da50da6f3fa19b395784a455f5310a",
+      "bytes": 39676,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/needle_t2.glb",
+      "sourcePath": "assets/needle_t2.glb",
+      "sha256": "82a6bd3e835096fb8429d19f439b756882cfab139cb42fd78e31ad8f7e2490fd",
+      "bytes": 49100,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/needle_t3.glb",
+      "sourcePath": "assets/needle_t3.glb",
+      "sha256": "03796bf2e0978236dabf7dfd4bb3980f532fd5b38f7910130d8e7647ab9c6835",
+      "bytes": 61440,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/plasma_t1.glb",
+      "sourcePath": "assets/plasma_t1.glb",
+      "sha256": "6661ef7111fe2a85f09170f735248f6ffdda791a087286138d4b95fd94daa60b",
+      "bytes": 296996,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/plasma_t2.glb",
+      "sourcePath": "assets/plasma_t2.glb",
+      "sha256": "824e4640dbec923b5f439d3eadb54dbed0de340011ddf331d897038df0df1648",
+      "bytes": 370160,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/plasma_t3.glb",
+      "sourcePath": "assets/plasma_t3.glb",
+      "sha256": "b7ce988b52297b9206edc4487816e73840753cdad8f3d65e8bef3464a6cc2e65",
+      "bytes": 443416,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/quiver_t1.glb",
+      "sourcePath": "assets/quiver_t1.glb",
+      "sha256": "53531761dfd855885c1fd730cf3ead718e0c3cb3d9811ecaef21d9264214ba21",
+      "bytes": 62532,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/quiver_t2.glb",
+      "sourcePath": "assets/quiver_t2.glb",
+      "sha256": "ab0bb9a28ce2939d862e3b40fc56cdf2a6d3b61ffa06e7042ba38963f8d2426b",
+      "bytes": 86052,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/quiver_t3.glb",
+      "sourcePath": "assets/quiver_t3.glb",
+      "sha256": "305723d789bf23bb7c9bc47f6af5eb6628ad2c84be6d8e0f4c86d84c8c3aa92d",
+      "bytes": 112696,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/railgun_t1.glb",
+      "sourcePath": "assets/railgun_t1.glb",
+      "sha256": "f96ba392e83c75c5cf9f235040aa3163a384cf99c2e12f5ce7faa31eefa79d7f",
+      "bytes": 45380,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/railgun_t2.glb",
+      "sourcePath": "assets/railgun_t2.glb",
+      "sha256": "cf2c2eb12e34b79dd17628b6e7a620cea6c9365154cff3072b98dae99d58a73d",
+      "bytes": 53568,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/railgun_t3.glb",
+      "sourcePath": "assets/railgun_t3.glb",
+      "sha256": "f07de783f83de77bc89fc24205d5820620930f03e80f762c6c72743564113bb6",
+      "bytes": 61632,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/relay_t1.glb",
+      "sourcePath": "assets/relay_t1.glb",
+      "sha256": "0aa2ed71dad5ef618d7f57812c300ee7ce3e38475e696f4cd76824a5980fd952",
+      "bytes": 120564,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/relay_t2.glb",
+      "sourcePath": "assets/relay_t2.glb",
+      "sha256": "d89075b4960d5c651fbb10fc30f5cf7e4c0d9ef58aa1e310baa5f5b16f97a34b",
+      "bytes": 240616,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/relay_t3.glb",
+      "sourcePath": "assets/relay_t3.glb",
+      "sha256": "7ebaeb583cc5d624855432833feb678dc1b1f766ab4d4779b3f873bed6e4c320",
+      "bytes": 405508,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/rotor_t1.glb",
+      "sourcePath": "assets/rotor_t1.glb",
+      "sha256": "d4d0de97d7c0d0b61510e67a888999fe0d7cfb4bc15e212465fa8f1c437d66a9",
+      "bytes": 76268,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/rotor_t2.glb",
+      "sourcePath": "assets/rotor_t2.glb",
+      "sha256": "dde8170653b96b79425b1c68ea348d41756ce7291173d2c3c5b9e367d7ab7a98",
+      "bytes": 96304,
+      "family": "sentry"
+    },
+    {
+      "path": "assets/models/sentries/rotor_t3.glb",
+      "sourcePath": "assets/rotor_t3.glb",
+      "sha256": "9920db7335a6df01ffb369d91021281804f55283cd1289943cb6f50ce2d871f7",
+      "bytes": 133488,
+      "family": "sentry"
+    }
+  ]
+}
