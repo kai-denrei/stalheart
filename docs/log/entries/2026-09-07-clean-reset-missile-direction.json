@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "id": "2026-09-07-clean-reset-missile-direction",
+  "date": "2026-09-07T08:00:51.503809+00:00",
+  "type": "decision",
+  "status": "accepted",
+  "title": "Resume with one Stalheart server; adopt A6 missile motion for Quiver and Heptapod",
+  "context": "The owner reported high machine memory usage and requested closing applications before restarting only Stalheart. The next visual task is the A6 missile-lab animation: a small low-triangle projectile for Quiver #3, a larger rocket for Heptapod #8, and possible static rocket-mesh reuse for main tank shells.",
+  "outcome": "Saved docs/MISSILES.md and updated STATE with the next lab task. The upstream integration notes describe independent mesh detail and flight profiles; DART (188 triangles including optional exhaust) is the first low-budget candidate, while larger Heptapod rendering need not require more triangles. Final clip timing is still to be tuned. Tank-shell reuse remains exploratory. No missile runtime integration or asset import was performed during the memory reset. Stop/start inspection confirmed one Stalheart development server at 127.0.0.1:8155 with HTTP 200 and no other development listener. Old Safari and previous agent sessions were closed; other project servers were gone by the stop step. Safari was relaunched fresh with the Stalheart Sentry-lab URL. TextEdit had a pending save/quit dialog, cmux canceled quitting, and a separate newly active agent session remained; these are explicitly unresolved and require user handling rather than discarding unsaved work. A Safari automation read did not return and was canceled; final browser tab count was not verified.",
+  "alternatives": [
+    "Start a full missile implementation before resetting: defer until the clean development session; preserve a concrete handoff now.",
+    "Force-quit unsaved apps: leave their save/close dialogs for the owner.",
+    "Treat larger Heptapod rockets as automatically higher-poly: separate rendered scale from mesh complexity."
+  ],
+  "evidence": [
+    "Inspected the linked missile-lab HTML and assets/missile-kit/README.md using curl after the web opener failed. URLs and observed upstream specifications are in docs/MISSILES.md; the remote content is not yet pinned.",
+    "Local process and listening-port inventory before/after reset; server HTTP 200 at http://127.0.0.1:8155/labs.html. One Node development listener remained on port 8155.",
+    "16 GiB machine: vm_stat free pages increased from 244851 to 492755 (16 KiB pages; approximately 3.7 to 7.5 GiB) immediately after cleanup; later Safari startup reduced free pages to 386490 (approximately 5.9 GiB). Swap usage initially fell from 727.62 MB to 370.62 MB. These are snapshots, not comparable percentages to the user’s memory-monitor reading.",
+    "Graceful quit returned a TextEdit timeout and a cmux cancellation. Requested the owner resolve those dialogs. No OS restart and no forced discard of documents.",
+    "Documentation/log-only project changes; no new test-browser fleet was launched for this reset."
+  ],
+  "supersedes": []
+}

@@ -19,6 +19,8 @@ Updated 2026-09-07. Owner: the Stalheart development project; this repo is now a
 
 Owner-directed sequence: **architecture → visual/sound labs and clean exports → UX → playability**. [Architecture and implementation boundaries](ARCHITECTURE.md) are the current technical plan.
 
+Immediate next lab task (owner direction): adapt the [A6 missile lab](https://jelaludo.github.io/SentryTowers_A6/missile-lab/) motion for **3. Quiver** using a small, low-triangle rocket and **8. Heptapod** using a larger rocket. Consider the rocket mesh alone for main tank shells; that option is exploratory. See [the missile integration brief](MISSILES.md). Resume from a single Stalheart server at `http://127.0.0.1:8155/`; do not restart the research servers or test-browser fleet by default.
+
 1. Continue extracting run state, commands/events and resource lifetimes from `td-tab.js`, behind enforced pure-domain and adapter boundaries. Preserve the existing gameplay baseline.
 2. Extend the new versioned FX package workflow from weapon impacts/audio to beams, materials, portals and cinematics; unify stage scale, lighting and clock contracts. Keep Sentry asset optimization in this phase.
 3. Rework HUD/tutorial competition, control feedback, off-screen threats and Isao order status on the stable foundation.
