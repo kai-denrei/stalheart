@@ -9,7 +9,7 @@
 //
 // None of this needs the model. It is graph maths over cells, so it runs
 // synchronously with the board and the model merely decorates the answer.
-import { dot3, tangentDir } from './vec3.js';
+import { dot3, tangentDir, dist3, norm3 } from './vec3.js';
 import { BLOCKED } from './dungeon.js';
 
 const tangentDirTo = (graph, from, to) =>
@@ -23,12 +23,28 @@ export function berthIndexFor(hp, max = 3) {
   return Math.min(max - 1, Math.max(0, hp - 1));
 }
 
-// A chain of three mutually adjacent cells out at distToHeart 3-4, hugging a
-// wall. Returns them in painted order (#1, #2, #3) with each one's exit lane,
+// A chain of three adjacent cells, normally at distToHeart 3-4; a physical
+// footprint may move it out to 7. Prefer nearby wall-side ground. Returns them in painted order (#1, #2, #3) with each one's exit lane,
 // or [] when the board has no chain that satisfies the escape rule.
-export function computeBerths(dungeon, graph) {
+export function computeBerths(dungeon, graph, { footprintRadius = 0, cellSide = 0 } = {}) {
+  // Reserve physical space for the box, hull and steering after handover.
+  // Resolve this before GLBs load, using the selected asset's footprint.
+  const center = graph.centers[dungeon.heart];
+  const clear = ci => !footprintRadius || dist3(graph.centers[ci], center) >= footprintRadius + cellSide * 1.2;
+  const laneClear = (from, to) => {
+    if (!clear(to)) return false;
+    if (!footprintRadius) return true;
+    const a = graph.centers[from], b = graph.centers[to];
+    for (let i = 0; i <= 12; i++) {
+      const t = i / 12;
+      const p = norm3(a.map((v, k) => v + (b[k] - v) * t));
+      if (dist3(p, center) < footprintRadius + cellSide * 0.7) return false;
+    }
+    return true;
+  };
   const inRange = (c2) => dungeon.tags[c2] !== BLOCKED && c2 !== dungeon.spawn
-    && dungeon.distToHeart[c2] >= 3 && dungeon.distToHeart[c2] <= 4;
+    && dungeon.distToHeart[c2] >= 3 && dungeon.distToHeart[c2] <= (footprintRadius ? 7 : 4)
+    && clear(c2);
   const open = (c2) => graph.adj[c2].filter((k2) => dungeon.tags[k2] !== BLOCKED).length;
   // EVERY BERTH KEEPS A LANE. Scoring for minimum openness alone was doing its
   // job too well — a berth whose only open neighbours are its two sibling
@@ -37,7 +53,7 @@ export function computeBerths(dungeon, graph) {
   // ties among chains that have one. It still hugs a wall; it can no longer
   // wall itself in.
   const escapes = (c2, chain) => graph.adj[c2]
-    .filter((k2) => dungeon.tags[k2] !== BLOCKED && !chain.includes(k2)).length;
+    .filter((k2) => dungeon.tags[k2] !== BLOCKED && !chain.includes(k2) && laneClear(c2, k2)).length;
 
   let best = null, bestScore = Infinity;
   for (let j = 0; j < dungeon.tags.length; j++) {
@@ -47,7 +63,8 @@ export function computeBerths(dungeon, graph) {
       for (let b = a + 1; b < nbs.length; b++) {
         const chain = [nbs[a], j, nbs[b]];
         if (chain.some((c2) => escapes(c2, chain) === 0)) continue;
-        const sc = open(nbs[a]) + open(j) + open(nbs[b]);
+        const sc = open(nbs[a]) + open(j) + open(nbs[b])
+          + (footprintRadius ? chain.reduce((n, ci) => n + dungeon.distToHeart[ci], 0) : 0);
         if (sc < bestScore) { bestScore = sc; best = chain; }
       }
     }
@@ -64,7 +81,7 @@ export function computeBerths(dungeon, graph) {
     const toHeart = tangentDirTo(graph, c2, dungeon.heart);
     let bestE = -1, bestD = -Infinity;
     for (const nb of graph.adj[c2]) {
-      if (dungeon.tags[nb] === BLOCKED || best.includes(nb)) continue;
+      if (dungeon.tags[nb] === BLOCKED || best.includes(nb) || !laneClear(c2, nb)) continue;
       const d = dot3(tangentDirTo(graph, c2, nb), toHeart);
       if (d > bestD) { bestD = d; bestE = nb; }
     }

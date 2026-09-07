@@ -610,7 +610,7 @@ export function initTdTab(root) {
   // unitcatalog, and the reason this could be tried without touching
   // heartHit, the minimap, the bastion camera or the win condition.
   const HEART_LOOKS = {
-    sentryTerraformer: { label: 'Terraformer 3000 (Sentry)', preload: () => preloadSentryTerraformer(), make: makeSentryTerraformer, scale: 1.9, lift: 0.16 },
+    sentryTerraformer: { label: 'Terraformer 3000 (Sentry)', preload: () => preloadSentryTerraformer(), make: makeSentryTerraformer, footprint: 1.12, scale: 1.9, lift: 0.16 },
     terraformer: {
       label: 'terraformer',
       preload: preloadTerraformer,
@@ -1426,6 +1426,7 @@ export function initTdTab(root) {
   // re-export follows. Enemies are NOT kept out — they have to reach the
   // heart — so the cells stay open and only the TANK is turned away.
   function pedestalRadius() {
+    if (heartLook().footprint) return heartLook().footprint * heartLook().scale * cellSide;
     return heartSprite && heartSprite.userData.padR
       ? heartSprite.userData.padR * heartSprite.userData.sizeScale : cellSide * 1.4;
   }
@@ -5725,7 +5726,9 @@ export function initTdTab(root) {
     // so they are known now rather than whenever the container model
     // happens to land — which is what lets a reset place the tank once
     // instead of standing it beside the Heart and teleporting it later.
-    berths = computeBerths(dungeon, graph);
+    const footprintRadius = (heartLook().footprint || 0) * heartLook().scale * cellSide;
+    berths = computeBerths(dungeon, graph, { footprintRadius, cellSide });
+    record('camp.placed', { heartLook: params.heartLook, footprintRadius, cellSide, berths });
     // LANES (HT): keep the dungeon carve — rooms joined by WIDE corridors
     // are the monster lanes, and the wall mass between them is the HIGH
     // GROUND where towers mount. generateDungeon already supplies heart,
@@ -11871,8 +11874,9 @@ export function initTdTab(root) {
   const directiveCtrl = gui.add(params, 'directive', DIRECTIVES).name('auto directive').onChange(syncDirectiveChip);
   gui.add(params, 'recoil', 0, 8, 0.1).name('shell recoil');
   gui.add(params, 'callouts').name('callout messages').onChange(syncCalloutMode);
-  gui.add(params, 'heartLook', Object.keys(HEART_LOOKS)).name('stalheart')
-    .onFinishChange(() => { buildActors(); placeActors(); });
+  // Changing the physical footprint needs a new camp and spawn layout.
+  gui.add(params, 'heartLook', Object.keys(HEART_LOOKS)).name('stalheart (new run)')
+    .onFinishChange(regenerate);
   gui.add(params, 'waveSize', 1, 6, 1).name('wave size').onFinishChange(regenerate);
   gui.add(params, 'wavesPerSector', 5, 40, 1).name('waves per sector');
   gui.add(params, 'waveGap', 3, 20, 1).name('wave gap (s)');
@@ -17416,7 +17420,11 @@ export function initTdTab(root) {
         roster: ROSTER.id, mission: missionOn, buildMode,
         heartAsset: heartSprite?.userData.asset || params.heartLook,
         heartAssetState: heartSprite?.userData.assetState,
-        drawCalls: renderer.info.render.calls }),
+        drawCalls: renderer.info.render.calls,
+        playerPosition: player.pos.slice(), playerCell: player.cur, deploying: !!deploy,
+        playerBlocked: freeBlocked(player.pos),
+        camp: berths.map(b => ({ ...b, open: dungeon.tags[b.ci] !== BLOCKED && dungeon.tags[b.exit] !== BLOCKED,
+          clearance: dist3(graph.centers[b.exit], graph.centers[dungeon.heart]) - pedestalRadius() })) }),
       begin: () => { endShot(); dismissIntro(); paused = false; tutorial.frozen = false; },
       clearSector: () => {
         endShot(); dismissIntro();
@@ -17429,6 +17437,7 @@ export function initTdTab(root) {
         checkVictory(); endShot(); renderVerdict(round >= SECTORS_TOTAL);
       },
       focusHeart: () => { endShot(); dismissIntro(); if (tutorialActive) endTutorial(); setView('orbit'); centerBuildOnHeart(); followSuspend = true; buildDist = 1.65; },
+      deployHull: n => { endShot(); dismissIntro(); if (tutorialActive) endTutorial(); paused = false; tutorial.frozen = false; deployStart(n); },
       restart: () => regenerate(),
       heartHealth: fraction => { heartHP = Math.max(0, Math.min(HEART_MAX, fraction * HEART_MAX)); heartSprite.userData.setHealth?.(fraction); },
     };

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "id": "2026-09-07-terraformer-camp-clearance",
+  "date": "2026-09-07T06:30:47.354311+00:00",
+  "type": "issue",
+  "status": "resolved",
+  "title": "Keep crate exits outside the A6 Terraformer footprint",
+  "context": "The player reported being stuck beside the new Stalheart immediately after deployment. Migration acceptance verified asset load and damage swaps but did not exercise manual movement from each crate. On seed 7, two legacy exits were 0.083 cell widths inside the A6 pad radius before the tank collision margin was even added.",
+  "outcome": "Give the A6 look an explicit footprint available before asynchronous model loading. Use that same radius for collision and camp selection; reserve crate/steering space and sample the spherical drive-out path. The selected row can move farther from the heart. On seed 7 the three new exits clear the pad by 2.530, 1.534 and 1.416 cell widths. Changing the heart model through settings now starts a new run so physical placement is rebuilt. Browser acceptance deploys all three hulls and holds a real W key after handover; all move. The improvement backlog is a proposal with priorities and completion criteria.",
+  "alternatives": [
+    "Disabling Terraformer collision would hide the placement fault and allow driving through the machine.",
+    "Merely checking for an open graph neighbor missed physical overlap; retaining the old asset-load-only acceptance would miss this regression again."
+  ],
+  "evidence": [
+    "test/berths.mjs: legacy behavior retained; A6 drive-out geometry checked at 101 points per path for seeds 7, 42, 1000 and 2026.",
+    "npm test: 60 test programs passed. npm run check: source, kernel, logs and pinned assets passed.",
+    "npm run test:browser: all three A6 hulls clear collision and move under real forward-key input; source acceptance passed.",
+    "node scripts/browser-test.mjs --dist: nested-path release acceptance, all-hull drive-out and PWA checks passed. Build 43d2fbdc.",
+    "artifacts/browser/terraformer.log and artifacts/browser-dist/terraformer.log: CAMP_DRIVE movement and clearance measurements.",
+    "docs/IMPROVEMENTS.md: proposed usability, difficulty, threat feedback, Isao orders, assets, architecture, saves and offline work."
+  ],
+  "supersedes": []
+}

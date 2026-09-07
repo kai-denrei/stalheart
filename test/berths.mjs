@@ -48,3 +48,25 @@ check('same board gives the same camp',
   JSON.stringify(again) === JSON.stringify(berths));
 
 console.log(`berths: ${process.exitCode ? 'FAILURES' : 'all good'} (${pass} checks)`);
+
+// The A6 pad spans several irregular cells. Topology alone is insufficient:
+// sample every drive-out segment against the actual physical exclusion area.
+for (const seed of [7, 42, 1000, 2026]) {
+  const m = generateSphereMesh({ seed, n: 500, k: 12 });
+  relax(m, { n_iters: 80, PULL_RATE: 0.25 });
+  const d = generateDungeon(m, { seed, rooms: 16, roomRadius: 4, extraCorridors: 8, corridorWidth: 1 });
+  const radius = 1.12 * 1.9 * m.defaultSide;
+  const camp = computeBerths(d, d.graph, { footprintRadius: radius, cellSide: m.defaultSide });
+  check(`A6 seed ${seed}: three berths`, camp.length === 3);
+  for (const b of camp) {
+    const a = d.graph.centers[b.ci], z = d.graph.centers[b.exit], h = d.graph.centers[d.heart];
+    let safe = true;
+    for (let i = 0; i <= 100; i++) {
+      const p = a.map((v,k) => v + (z[k]-v)*i/100);
+      const l = Math.hypot(...p);
+      const distance = Math.hypot(...p.map((v,k)=>v/l-h[k]));
+      if (distance < radius + m.defaultSide * .65) safe = false;
+    }
+    check(`A6 seed ${seed}: berth ${b.ci} drive-out clears pad`, safe);
+  }
+}

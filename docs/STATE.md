@@ -15,6 +15,8 @@ Updated 2026-09-07. Owner: the Stalheart development project; this repo is now a
 
 ## Next priorities
 
+See [the prioritized improvement backlog](IMPROVEMENTS.md) for completion criteria.
+
 1. Keep the migration acceptance matrix green; exercise Safari/iOS and real touch/audio. Chrome headless is not a phone playtest.
 2. Tune campaign threat budgets and release throughput: the inherited full-hold wave formula still grows to 5,334 scheduled bodies at global wave 75. This migration intentionally did not invent a new difficulty curve.
 3. Separate more simulation state/commands from `td-tab.js`. Campaign purchase policy, result validation, storage and diagnostics now have boundaries; combat/render/tutorial integration remains a large closure.

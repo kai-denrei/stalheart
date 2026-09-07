@@ -89,7 +89,22 @@ try{
  }
  await go('terraformer','index.html?sw=0&cine=0&terraformer=a6&acceptance=1#td');
  await until('window.__stalheartTest.state().heartAsset === "sentry-terraformer"',30000);
- await evaluate('window.__stalheartTest.begin();window.__stalheartTest.focusHeart()');await delay(1500);await finish();
+ // Each spare hull must deploy onto open ground and respond to real input.
+ for (const hull of [2,1,0]) {
+  await evaluate(`window.__stalheartTest.deployHull(${hull})`);
+  await until('!window.__stalheartTest.state().deploying');
+  const before = await evaluate('window.__stalheartTest.state()');
+  assert.equal(before.camp.length,3);assert(before.camp.every(b=>b.open));
+  assert.equal(before.playerBlocked,false,`Hull ${hull+1} deployed into collision`);
+  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'w',code:'KeyW',windowsVirtualKeyCode:87});
+  await delay(750);
+  await send('Input.dispatchKeyEvent',{type:'keyUp',key:'w',code:'KeyW',windowsVirtualKeyCode:87});
+  const after=await evaluate('window.__stalheartTest.state()');
+  const moved=Math.hypot(...after.playerPosition.map((v,i)=>v-before.playerPosition[i]));
+  assert(moved>.01,`Hull ${hull+1} stuck after handover: ${moved}`);
+  consoleLines.push(`CAMP_DRIVE hull=${hull+1} moved=${moved} clearance=${before.camp[hull].clearance}`);
+ }
+ await evaluate('window.__stalheartTest.focusHeart()');await delay(1500);await finish();
  for(const [hp,state] of [[.6,1],[.2,2],[0,3]]){
   await evaluate(`window.__stalheartTest.heartHealth(${hp})`);await until(`window.__stalheartTest.state().heartAssetState === ${state}`,30000);
  }
