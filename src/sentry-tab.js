@@ -1,4 +1,4 @@
-// sentry-tab.js — THE SENTRY RANGE. Six modular turret families from the
+// sentry-tab.js — THE SENTRY RANGE. Eight numbered Sentry families from the
 // Sentry Workshop (https://jelaludo.github.io/SentryTowers_A6/) on a range
 // where units pop up, and the turret has to find them, turn to them, and
 // shoot them with its own articulation.
@@ -88,7 +88,7 @@ export function initSentryTab(root) {
   const postfx = makeBloom(renderer, scene, camera, { scale: 1, strength: 0.35, radius: 0.5, threshold: 0.35 });
 
   const P = {
-    family: 'needle', tier: 1,
+    family: 'rotor', tier: 1,
     live: true,            // the range runs; off freezes it for a look
     autoFire: true,
     mode: 'waves',         // waves | pop — what the range presents
@@ -113,6 +113,9 @@ export function initSentryTab(root) {
     }
   }
 
+  P.family = familyById(P.family).id;
+  P.tier = Math.max(1, Math.min(3, Math.round(P.tier)));
+
   // --- state ---------------------------------------------------------------
   // THE BATTERY. One entry per sentry: its state (from the pure module), its
   // own clone of the model, and its own pivots and muzzles — because two
@@ -120,7 +123,7 @@ export function initSentryTab(root) {
   // one tracks, cools and recoils on its own clock.
   // EVERY FAMILY HAS A VOICE, and which one is the TABLE's business: the tab
   // only knows there is a `fire` key and maybe a `ready` one. Adding a
-  // seventh family with a new sound then needs no change here at all.
+  // new family with a new sound then needs no change here at all.
   const sfx = makeAudio({ seed: 7 });
   sfx.arm();
   // ?voiceprobe=1 — WHICH SOUND, WHEN. A headless run cannot hear anything,
@@ -353,6 +356,7 @@ export function initSentryTab(root) {
   }
 
   function loadSentry() {
+    root.dataset.modelReady = 'false';
     const ticket = ++modelSerial;
     const url = sentryUrl(P.family, P.tier);
     loader.load(url, (gltf) => {
@@ -376,6 +380,8 @@ export function initSentryTab(root) {
         }
       });
       rebuildBattery();
+      root.dataset.sentry = familyById(P.family).key;
+      root.dataset.modelReady = 'true';
       console.log(`SENTRY ${P.family} t${P.tier}: ${battery[0] ? battery[0].muzzles.length : 0} muzzle(s)`
         + ` yaw=${!!(battery[0] && battery[0].yaw)} pitch=${!!(battery[0] && battery[0].pitch)}`
         + ` recoil=${!!(battery[0] && battery[0].recoil)} rotor=${!!(battery[0] && battery[0].rotor)}`
@@ -855,7 +861,7 @@ export function initSentryTab(root) {
 
   // --- the panel -----------------------------------------------------------
   const gui = new GUI({ title: 'SENTRY RANGE', container: root });
-  gui.add(P, 'family', SENTRY_FAMILIES.map((f) => f.id)).onChange(() => loadSentry());
+  gui.add(P, 'family', Object.fromEntries(SENTRY_FAMILIES.map(f => [f.label,f.id]))).onChange(() => loadSentry());
   gui.add(P, 'tier', SENTRY_TIERS).onChange(() => loadSentry());
   gui.add(P, 'mode', ['waves', 'pop']).name('range mode').onChange(() => resetRange());
   gui.add(P, 'live').name('range live');

@@ -104,10 +104,7 @@ export function initTdTab(root) {
   let wasPlaying = false; // drives body.playing (mobile hides ALL chrome)
 
   const params = {
-    // THE SECOND BOARD'S DEFAULT LOOK IS ITS MODELS. A roster whose entries
-    // name a GLB each is a roster that exists to be seen; landing on it with
-    // braille masts would show none of what changed.
-    towerLook: ROSTER.towers.some((d) => d.model) ? 'sentry' : DEFAULT_TOWER_LOOK,
+    towerLook: DEFAULT_TOWER_LOOK,
     // app-wide, but it lives in this GUI because this is the tab whose
     // messages the packs were chosen for (src/fonts.js owns the table)
     font: currentFontPack(),
@@ -3385,9 +3382,7 @@ export function initTdTab(root) {
     if (down && shopCi !== -1) {
       if (k === 'escape') { closeShop(); ev.preventDefault(); return; }
       const d = parseInt(k, 10);
-      // indexed by the WHEEL's own order (TOWERS), not TOWER_ORDER — the
-      // two differ (slow/homing swap), and the digit badge the player
-      // reads sits on the wheel: what the badge says is what the key does
+      // Catalog numbers, radial slots and keyboard digits share one order.
       if (d >= 1 && d <= TOWERS.length && !towerByCell.get(shopCi)) {
         const def = TOWERS[d - 1];
         const tkey = def.key;
@@ -3666,7 +3661,7 @@ export function initTdTab(root) {
     else if (orderUpgrade(tw)) { note = `+1 ordered &middot; ${cost}kg`; sfx.play('laser_click'); }
     else note = 'could not order';
     closeShop();
-    showToast(`<div class="wave-num">${tw.def.key.toUpperCase()} &middot; TIER ${tw.tier}</div>`
+    showToast(`<div class="wave-num">${tw.def.label} &middot; TIER ${tw.tier}</div>`
       + `<div class="wave-role">${note}</div>`, 2200);
   }
   // A REFUSED PLACEMENT SAYS WHY, on the shell (PLAYTEST-TODO §1). The
@@ -6128,7 +6123,7 @@ export function initTdTab(root) {
   const GATE_RECOIL = 0.22;   // seconds of shove, eased out by stepGates
   function gateTakesHit(sp) {
     const nrm = norm3(graph.centers[sp.ci]);
-    sfx.play('tower_aoe');            // the concussion
+    sfx.play('blast_fire');            // the concussion
     whKick = WH_KICK;                 // ...and the throat lurches
     popPods(sp, PODS_PER_HIT);
     // a broad flash at the gate's mouth, over and above the pod bursts
@@ -6628,7 +6623,7 @@ export function initTdTab(root) {
   function isaoLine() {
     if (!orders.length) return '';
     const o = orders[0];
-    const what = o.kind === 'upgrade' ? `${o.tower.def.key}+1` : o.key;
+    const what = o.kind === 'upgrade' ? `${o.tower.def.label}+1` : TOWER_BY_KEY[o.key].label;
     const rest = orders.length > 1 ? ` +${orders.length - 1}` : '';
     // its OWN row, not an appendix to the objectives line: that line already
     // runs to the edge of the box on a phone, and an overflowing status is
@@ -6643,7 +6638,7 @@ export function initTdTab(root) {
     if (!assistant) return '';
     const o = assistant.order;
     if (!o) return `<div class="hud-obj hud-isao">DRONE 2 &#9656; on shift</div>`;
-    const what = o.kind === 'upgrade' ? `${o.tower.def.key}+1` : o.key;
+    const what = o.kind === 'upgrade' ? `${o.tower.def.label}+1` : TOWER_BY_KEY[o.key].label;
     if (assistant.state === 'build') {
       const pct = Math.round(Math.min(1, assistant.t / Math.max(0.001, assistant.dur)) * 100);
       return `<div class="hud-obj hud-isao">DRONE 2 &#9656; printing ${what} ${pct}%</div>`;
@@ -7281,7 +7276,7 @@ export function initTdTab(root) {
       const gr = stepGrab(rescue, i, survivorHeld(sv), dt, rescueTune);
       if (g) g.userData.setGrabbed(sv.grabT > 0);
       if (gr === 'grabbed') {
-        sfx.play('tower_slow');
+        sfx.play('field_pulse');
         showCallout(`BEACON ${sv.id} &#9656; GRABBED`, 'co-heart');
       }
       if (gr === 'lost') {
@@ -7650,7 +7645,7 @@ export function initTdTab(root) {
         updateHud();
         continue;
       }
-      if (gr === 'grabbed') sfx.play('tower_slow');
+      if (gr === 'grabbed') sfx.play('field_pulse');
       if (walkStep(sv, player.pos, dt, cellSide, rescue2Tune) === 'saved') {
         rescue.saved++;
         sfx.play('tank_spool_up');
@@ -7900,7 +7895,7 @@ export function initTdTab(root) {
       const m = mineField.mines.find((x) => x.id === id);
       if (m) syncMineObj(m);
     }
-    if (armed.length) sfx.play('tower_slow');
+    if (armed.length) sfx.play('field_pulse');
     const queued = nextChained(mineField);
     if (queued) { blowMine(queued, tNow); return; }
     for (const m of mineField.mines) {
@@ -8031,7 +8026,7 @@ export function initTdTab(root) {
           // an explosion you can HEAR and SEE: the heavy blast lands at
           // the impact (fire already played tank_main at the muzzle), and
           // the strike's full three-ring language at shell scale
-          sfx.play('tower_aoe', { dist: camDist(p.pos) });
+          sfx.play('blast_fire', { dist: camDist(p.pos) });
           const sci = cellIndex(p.pos);
           if (sci !== -1) {
             warnRing(sci, 0xffffff, 0.55, SHELL_R * 1.1);
@@ -8683,7 +8678,7 @@ export function initTdTab(root) {
   // HOW BIG A TOWER IS, as a knob rather than a constant baked into a
   // multiply (operator: "the towers feel too big and bulky compared to the
   // tank... smaller and more detailed, more like precision engineering").
-  // The models carry far more detail than the old braille masts did, and
+  // The models carry far more detail than the old procedural masts did, and
   // detail reads better small — a bulky machine looks moulded, a small one
   // looks machined. ?towerscale= is here so the number can be argued with
   // rather than guessed at once.
@@ -11203,7 +11198,7 @@ export function initTdTab(root) {
       // standing over it, and then half of it is in the nozzle.
       const live = orders[0] === pending && isao && isao.state === 'build';
       const back = live ? Math.round(pending.cost * 0.5) : pending.cost;
-      const what = pending.kind === 'upgrade' ? `${pending.tower.def.key} +1` : pending.key;
+      const what = pending.kind === 'upgrade' ? `${pending.tower.def.label} +1` : TOWER_BY_KEY[pending.key].label;
       center = `<div class="radial-center">${what}<br>${live ? 'printing' : 'ordered'}</div>`;
       items = [
         { cls: 'shop-sell', txt: `cancel<br>+${back}kg`, cancel: true },
@@ -11211,7 +11206,7 @@ export function initTdTab(root) {
       ];
     } else if (existing) {
       const cost = upgradeCost(existing.def, existing.tier);
-      center = `<div class="radial-center">${existing.def.key}<br>tier ${existing.tier}</div>`;
+      center = `<div class="radial-center">${existing.def.label}<br>tier ${existing.tier}</div>`;
       items = [
         cost !== null
           ? { cls: 'shop-up', txt: `upgrade<br>${cost}kg`, dis: !eco.canAfford(cost) }
@@ -11230,8 +11225,8 @@ export function initTdTab(root) {
           cls: locked ? 'shop-buy locked' : 'shop-buy',
           key: def.key,
           txt: locked
-            ? `${def.key}<br>${towerUnlockWave(def.key) === null ? '&#8961; RELAY' : 'W' + towerUnlockWave(def.key)}`
-            : `${def.key}<br>${def.cost}kg`,
+            ? `${def.label}<br>${towerUnlockWave(def.key) === null ? '&#8961; RELAY' : 'W' + towerUnlockWave(def.key)}`
+            : `${def.label}<br>${def.cost}kg`,
           dis: locked || !!err || !eco.canAfford(def.cost),
           bc: '#' + def.color.toString(16).padStart(6, '0'),
         };
@@ -11249,7 +11244,7 @@ export function initTdTab(root) {
       // only when there is an A6 to send.
       const walker = towers.find((tw) => tw.a6);
       if (walker && !err) {
-        items.unshift({ cls: 'shop-move', txt: 'post A6<br>here' });
+        items.unshift({ cls: 'shop-move', txt: `${TOWER_BY_KEY.heptapod.label}<br>post here` });
       }
       items.push({ cls: 'shop-close', txt: '×' });
     }
@@ -11262,7 +11257,7 @@ export function initTdTab(root) {
         `${it.key ? ` data-key="${it.key}"` : ''}${it.cancel ? ' data-cancel="1"' : ''}` +
         `${it.dis ? ' disabled' : ''} ` +
         `style="left:${x}px;top:${y}px;${it.bc ? `border-color:${it.bc}aa;` : ''}">` +
-        `${it.key ? `<i class="rk">${i + 1}</i>` : ''}${it.txt}</button>`;
+        `${it.txt}</button>`;
     }).join('') + `<div class="shop-note" style="top:${R + 44}px">one new tower each wave</div>`;
     shopEl.classList.remove('hidden');
   }
@@ -13850,8 +13845,8 @@ export function initTdTab(root) {
   // PRELOAD THE LOOK AT BOOT. applyTowerLook() was reachable only from the
   // panel and from ?towerlook=, so a board whose DEFAULT look has async
   // assets never started the load at all: every tower built came up as the
-  // braille fallback and nothing ever rebuilt it. Harmless while the default
-  // was braille; the whole of the second board while it is the models.
+  // loading marker and nothing ever rebuilt it. Harmless while the default
+  // was procedural; required for authored models.
   applyTowerLook();
 
   // AFTER ?tower= on purpose: this then exercises the live applyTowerLook()
@@ -15769,7 +15764,7 @@ export function initTdTab(root) {
   // looked at rather than described. It also answers the question the
   // rosterprobe cannot: whether the board's OWN boot path preloads the look,
   // which it did not until this — applyTowerLook was reachable only from the
-  // panel, so every tower came up as the braille fallback and stayed there.
+  // panel, so every tower came up as the loading marker and stayed there.
   if (urlParams.get('alltowers') === '1') {
     setTimeout(() => {
       // BOTH CURTAINS. The board starts behind the landing brief AND the
@@ -15793,13 +15788,8 @@ export function initTdTab(root) {
         tw.obj.traverse((o) => { if (o.isPoints) points++; if (o.isMesh) meshes++; });
       }
       console.log(`ALLTOWERS placed ${towers.length}/${TOWERS.length} · look=${params.towerLook}`
-        // ...and only call it a fault on a board that ASKED for models. The
-        // campaign's towers are dot clouds on purpose, and a probe that
-        // shouts about it is a probe that gets ignored on the day it is right.
         + ` ready=${lookReady(params.towerLook)} · ${meshes} mesh ${points} points`
-        + (params.towerLook === 'sentry'
-          ? (points > 0 ? ' — SOME FELL BACK TO BRAILLE' : ' — all models')
-          : ' — braille board, as intended'));
+        + (towers.some(tw => tw.obj.userData.loading) ? ' — models loading' : ' — all models'));
       for (const tw of towers) {
         let m = 0, pt = 0;
         const shades = [];
@@ -17426,6 +17416,12 @@ export function initTdTab(root) {
         playerBlocked: freeBlocked(player.pos),
         camp: berths.map(b => ({ ...b, open: dungeon.tags[b.ci] !== BLOCKED && dungeon.tags[b.exit] !== BLOCKED,
           clearance: dist3(graph.centers[b.exit], graph.centers[dungeon.heart]) - pedestalRadius() })) }),
+      openBuildMenu: () => {
+        endShot(); dismissIntro(); if (tutorialActive) endTutorial();
+        const ci = dungeon.tags.findIndex((tag, i) => !placeError(i) && !towerByCell.has(i));
+        if (ci < 0) return false;
+        openShop(ci, innerWidth / 2, innerHeight / 2); return true;
+      },
       begin: () => { endShot(); dismissIntro(); paused = false; tutorial.frozen = false; },
       clearSector: () => {
         endShot(); dismissIntro();

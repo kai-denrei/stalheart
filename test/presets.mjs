@@ -4,11 +4,11 @@ import { CONTENT, selectContent, SENTRY_FX, SOUNDS } from '../src/content/runtim
 import { createPresetRepository } from '../src/platform/preset-repository.js';
 const previousContent=CONTENT;
 const p=baselinePreset('test-export');
-p.weapons.lancer.impact.size=.93;p.audio.tower_single.gain=.42;
+p.weapons.lancer.impact.size=.93;p.audio.kinetic_fire.gain=.42;
 assert.deepEqual(parsePreset(serializePreset(p)),p);
 assert.equal(serializePreset({...p,audio:clone(p.audio)}),serializePreset(p));
 for(const mutate of [
- p=>p.schema=2,p=>p.base='unknown',p=>p.id='../escape',p=>p.audio.tower_single.file='https://elsewhere/',
+ p=>p.schema=2,p=>p.base='unknown',p=>p.id='../escape',p=>p.audio.kinetic_fire.file='https://elsewhere/',
  p=>p.weapons.lancer.shot.projSpeed=999,p=>p.weapons.lancer.shot.kind='field',
  p=>p.weapons.lancer.impact.size=Infinity,p=>p.weapons.lancer.impact.colors.flash=-1,
  p=>p.weapons.lancer.impact.tune.sparkCount=1.5,p=>p.weapons.lancer.impact.recipe=['unknown'],
@@ -21,9 +21,9 @@ assert.throws(()=>repo.write({...p,id:'INVALID'}));assert.deepEqual([...values.e
 const blocked=createPresetRepository(()=>({setItem(){throw Error('quota');}}));assert.throws(()=>blocked.write(p),/quota/);
 assert.equal(CONTENT,previousContent); // writing a draft never selects runtime content
 selectContent(repo.read());assert.equal(CONTENT.id,'test-export');
-assert.equal(SENTRY_FX.lancer.impact.size,.93);assert.equal(SOUNDS.tower_single.gain,.42);
-assert.equal(SOUNDS.tower_single.file,'assets/audio/tower_single.mp3');
-assert.equal(resolveSounds(p).tower_single.bus,'towers');
+assert.equal(SENTRY_FX.lancer.impact.size,.93);assert.equal(SOUNDS.kinetic_fire.gain,.42);
+assert.equal(SOUNDS.kinetic_fire.file,'assets/audio/kinetic_fire.mp3');
+assert.equal(resolveSounds(p).kinetic_fire.bus,'towers');
 assert.throws(()=>SENTRY_FX.lancer.impact.size=2);p.weapons.lancer.impact.size=2;assert.equal(SENTRY_FX.lancer.impact.size,.93);
 assert.throws(()=>selectContent(p),/already selected/);
 repo.clear();assert.equal(repo.read(),null);

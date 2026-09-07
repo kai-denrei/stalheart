@@ -2,8 +2,7 @@
 // of looks.js / units.js: the table is the source of truth, the engine
 // knows nothing about the game.
 //
-// Because tower keys are `tower_${def.key}` and towers.js already carries
-// def.key, ONE call site in stepTowers() covers all eight towers.
+// Sentry fire cues are owned by content/sentries.js and shared by game and labs.
 //
 // Per-entry budget fields (see audiomix.js):
 //   gain        — artistic level. The encode is peak-normalized, so this
@@ -25,14 +24,11 @@ export const SOUNDS = {
   // --- towers ------------------------------------------------------------
   // tier-2 intervals: single .496 rapid .231 spread .833 homing .694
   //                   slow .833 aoe .926 sniper .992 laser .556
-  tower_single:  { file: `${A}/tower_single.mp3`,  bus: 'towers', gain: 0.55, maxVoices: 4, minInterval: 0.06, rateJitter: 0.06 },
-  tower_rapid:   { file: `${A}/tower_rapid.mp3`,   bus: 'towers', gain: 0.34, maxVoices: 5, minInterval: 0.05, rateJitter: 0.08 },
-  tower_spread:  { file: `${A}/tower_spread.mp3`,  bus: 'towers', gain: 0.55, maxVoices: 3, minInterval: 0.09, rateJitter: 0.05 },
-  tower_homing:  { file: `${A}/tower_homing.mp3`,  bus: 'towers', gain: 0.50, maxVoices: 3, minInterval: 0.09, rateJitter: 0.05 },
-  tower_slow:    { file: `${A}/tower_slow.mp3`,    bus: 'towers', gain: 0.42, maxVoices: 2, minInterval: 0.14, rateJitter: 0.04 },
-  tower_laser:   { file: `${A}/tower_laser.mp3`,   bus: 'towers', gain: 0.40, maxVoices: 3, minInterval: 0.08, rateJitter: 0.03 },
-  tower_aoe:     { file: `${A}/tower_aoe.mp3`,     bus: 'towers', gain: 0.70, maxVoices: 2, minInterval: 0.14, rateJitter: 0.05 },
-  tower_sniper:  { file: `${A}/tower_sniper.mp3`,  bus: 'towers', gain: 0.75, maxVoices: 2, minInterval: 0.16, rateJitter: 0.04 },
+  kinetic_fire:  { file: `${A}/kinetic_fire.mp3`,  bus: 'towers', gain: 0.55, maxVoices: 4, minInterval: 0.06, rateJitter: 0.06 },
+  seeker_fire:  { file: `${A}/seeker_fire.mp3`,  bus: 'towers', gain: 0.50, maxVoices: 3, minInterval: 0.09, rateJitter: 0.05 },
+  field_pulse:    { file: `${A}/field_pulse.mp3`,    bus: 'towers', gain: 0.42, maxVoices: 2, minInterval: 0.14, rateJitter: 0.04 },
+  plasma_fire:   { file: `${A}/plasma_fire.mp3`,   bus: 'towers', gain: 0.40, maxVoices: 3, minInterval: 0.08, rateJitter: 0.03 },
+  blast_fire:     { file: `${A}/blast_fire.mp3`,     bus: 'towers', gain: 0.70, maxVoices: 2, minInterval: 0.14, rateJitter: 0.05 },
 
   // --- the rotor's minigun (operator's samples) ---------------------------
   // The spin-up is the DOWNTIME voice: it plays as the barrels come up to
@@ -110,3 +106,13 @@ export const DISTANCE_K = 0.9;
 
 // bus defaults; overridden by whatever the player last left in the mixer
 export const DEFAULT_LEVELS = { master: 0.7, towers: 0.5, tank: 0.8, enemies: 0.6, ui: 0.4 };
+
+// Cue identities are per Sentry; shared sample files do not couple their tuning.
+SOUNDS.sentry_rotor = { ...SOUNDS.minigun_fire };
+SOUNDS.sentry_plasma = { ...SOUNDS.plasma_fire };
+SOUNDS.sentry_quiver = { ...SOUNDS.seeker_fire };
+SOUNDS.sentry_relay = { ...SOUNDS.field_pulse };
+SOUNDS.sentry_mortar = { ...SOUNDS.blast_fire };
+SOUNDS.sentry_lancer = { ...SOUNDS.plasma_fire };
+SOUNDS.sentry_howitzer = { ...SOUNDS.tank_main };
+SOUNDS.sentry_heptapod = { ...SOUNDS.seeker_fire };

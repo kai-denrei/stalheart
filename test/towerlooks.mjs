@@ -17,8 +17,7 @@ const check = (name, cond, detail = '') => {
 };
 
 console.log('registry shape:');
-check('at least two looks — a registry of one proves nothing',
-  TOWER_LOOK_NAMES.length >= 2, TOWER_LOOK_NAMES.join(','));
+check('only the authored Sentry look remains', TOWER_LOOK_NAMES.join() === 'sentry');
 check('the default is a real look', TOWER_LOOK_NAMES.includes(DEFAULT_TOWER_LOOK));
 for (const n of TOWER_LOOK_NAMES) {
   const L = TOWER_LOOKS[n];
@@ -60,19 +59,13 @@ check('an unknown look falls back rather than returning null',
   !!buildTowerLook('no-such-look', TOWERS[0]));
 check('an unknown look still yields a usable object',
   buildTowerLook('no-such-look', TOWERS[0]).userData.baseScale > 0);
-check('lookReady is true for a look with no async assets', lookReady(DEFAULT_TOWER_LOOK));
+check('Sentry waits for its assets', !lookReady(DEFAULT_TOWER_LOOK));
 check('lookReady is false for an unknown name', lookReady('no-such-look') === false);
 
-console.log('looks are actually DIFFERENT (a swap you cannot see is not a swap):');
-{
-  const a = buildTowerLook('braille', TOWERS[0]);
-  const b = buildTowerLook('solid', TOWERS[0]);
-  const count = (o, pred) => { let n = 0; o.traverse((c) => { if (pred(c)) n++; }); return n; };
-  check('braille has a Points head', count(a, (c) => c.isPoints) > 0);
-  check('solid has no Points head', count(b, (c) => c.isPoints) === 0);
-  check('solid has more meshes than braille',
-    count(b, (c) => c.isMesh) > count(a, (c) => c.isMesh));
-}
+const pending = buildTowerLook('braille', TOWERS[0]);
+check('stale look preferences resolve to a loading marker', pending.userData.loading === true);
+let points = 0; pending.traverse(o => { if (o.isPoints) points++; });
+check('no retired dotted tower is constructed', points === 0);
 
 if (failures > 0) { console.error(`\n${failures} failure(s)`); process.exit(1); }
 console.log('\ntower look invariants hold');

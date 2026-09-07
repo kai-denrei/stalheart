@@ -626,7 +626,7 @@ export function initSniperTab(root) {
     scene.add(mesh);
     m.mesh = mesh;
     missiles.push(m);
-    if (P.sound) sfx.play('tower_homing');
+    if (P.sound) sfx.play('seeker_fire');
     cool = W.cooldown;
     recoil = RECOIL_KICK * 0.45;
     shooter.shots++;
@@ -750,7 +750,7 @@ export function initSniperTab(root) {
         t.hp = (t.hp ?? 1) - 1;
         if (t.hp > 0) {
           hudNote = `HIT ${t.id} — still up (${t.hp} more)`;
-          if (P.sound) sfx.play('tower_single');
+          if (P.sound) sfx.play('kinetic_fire');
         } else {
           if (P.sound) sfx.play(DEATHS[(t.id + shooter.hits) % DEATHS.length]);
           killBody(t);

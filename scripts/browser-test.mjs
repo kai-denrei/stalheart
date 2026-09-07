@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { launchChrome } from './chrome-proc.mjs';
 import assert from 'node:assert/strict';
+import { SENTRIES } from '../src/content/sentries.js';
 import { CONTENT } from '../src/content/runtime.js';
 import { clone, serializePreset } from '../src/content/preset.js';
 const args=process.argv.slice(2),production=args.includes('--dist');
@@ -28,12 +29,13 @@ const evaluate=async expression=>{
  return r.result?.value;
 };
 async function until(expression,timeout=25000){const start=Date.now();while(Date.now()-start<timeout){if(await evaluate(expression))return;await delay(150);}throw Error(`Timed out: ${expression}`);}
-async function go(name,path,width=1440,height=900){
+async function go(name,path,width=1440,height=900,expectedPath=path){
  current=name;consoleLines.length=0;errors.length=0;requests.length=0;
  await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});
+ if(await evaluate('location.href')===urlRoot+path){await send('Page.navigate',{url:'about:blank'});await until('location.href === "about:blank"');}
  await evaluate('window.__stalheartReady = false');
  await send('Page.navigate',{url:urlRoot+path});
- await until(`location.href === ${JSON.stringify(urlRoot+path)} && window.__stalheartReady === true`);
+ await until(`location.href === ${JSON.stringify(urlRoot+expectedPath)} && window.__stalheartReady === true`);
 }
 async function finish(){
  writeFileSync(join(output,current+'.log'),consoleLines.join('\n')+'\n');
@@ -75,12 +77,16 @@ try{
  await click('.msg-next');await until('window.__stalheartTest.state().round === 2');await finish();
  const generation=await evaluate('window.__stalheartTest.state().runGen');
  await evaluate('window.__stalheartTest.restart()');await until(`window.__stalheartTest.state().runGen > ${generation}`);assert.equal(await evaluate('window.__stalheartTest.state().round'),1);
- for(const roster of [1,2]){
+ for(const roster of [2]){
   await go(`sim-roster-${roster}`,`index.html?sw=0&sim=style1&seed=1000&simfast=50&simcap=180&roster=${roster}#td`,844,390);
   await until('!!window.__stalheartSimResult',30000);
   const result=await evaluate('window.__stalheartSimResult');assert.equal(result.schema,2);assert.equal(result.roster,roster);assert.equal(result.outcome,'loss');
   writeFileSync(join(output,`sim-${roster}.json`),JSON.stringify(result,null,2));await finish();
  }
+ await go('numbered-radial','index.html?sw=0&cine=0&acceptance=1&roster=2#td',844,390);
+ assert(await evaluate('window.__stalheartTest.openBuildMenu()'));
+ assert.deepEqual(await evaluate('Array.from(document.querySelectorAll("#td-shop .shop-buy"),b=>b.innerText.split("\\n")[0])'),SENTRIES.map(s=>s.label));
+ await finish();
  await go('mobile-input','index.html?sw=0&cine=0&mobile=1&coarse=1&keyprobe=1&layout=1#td',844,390);
  const start=Date.now();while(!consoleLines.some(x=>x.includes('S drives, T shields'))&&Date.now()-start<12000)await delay(200);
  assert(consoleLines.some(x=>x.includes('S drives, T shields')));await finish();
@@ -117,8 +123,25 @@ try{
  writeFileSync(join(output,'terraformer-states.log'),consoleLines.join('\n'));
  for(const name of ['units','impact','sentry','sim']){await go('lab-'+name,`labs.html?sw=0#${name}`);await delay(1500);await finish();}
  }
+ // All three visual entry points must resolve the same eight actual GLBs.
+ for(const lab of ['units','sentry','impact']) {
+  await go('catalog-'+lab,`labs.html?sw=0#${lab}`);
+  for(const [i,s] of SENTRIES.entries()) {
+   if(lab==='units') { if(i) await click('#units-next'); }
+   else {
+    assert.deepEqual(await evaluate(`Array.from(document.querySelector('#tab-${lab} select').options,o=>o.textContent)`),SENTRIES.map(s=>s.label));
+    await evaluate(`(()=>{const select=document.querySelector('#tab-${lab} select');select.selectedIndex=${i};select.dispatchEvent(new Event('change'));})()`);
+   }
+   await until(`!!document.querySelector('[data-sentry="${s.key}"][data-model-ready="true"]')`);
+   if(lab==='units') assert.equal(await evaluate('document.querySelector("#units-name").textContent'),s.label);
+  }
+  await finish();
+ }
+ await go('retired-roster-link','index.html?sw=0&cine=0&roster=1#td',844,390,'index.html?sw=0&cine=0&roster=2#td');
+ assert.equal(await evaluate('new URLSearchParams(location.search).get("roster")'),'2');
+ await finish();
  // Real file import -> lab working copy -> shared draft -> actual game selection.
- const draft=clone(CONTENT);draft.id='browser-fx';draft.weapons.lancer.impact.size=.93;draft.audio.tower_single.gain=.37;
+ const draft=clone(CONTENT);draft.id='browser-fx';draft.weapons.lancer.impact.size=.93;draft.audio.kinetic_fire.gain=.37;
  const fixture=join(output,'browser-fx.json');writeFileSync(fixture,serializePreset(draft));
  await go('preset-import','labs.html?sw=0#impact');
  const doc=await send('DOM.getDocument');
@@ -127,6 +150,7 @@ try{
  await until('document.querySelector("[data-preset-id]").value === "browser-fx"');
  await click('[data-preset-save]');await finish();
  await go('lab-audio','labs.html?sw=0&acceptance=1#audio');
+ await evaluate('(()=>{const s=document.querySelector("#audio-cue");s.value="kinetic_fire";s.dispatchEvent(new Event("change"));})()');
  await click('[data-preset-load]');
  assert.equal(await evaluate('document.querySelector("[data-audio-knob=gain]").value'),'0.37');
  await evaluate('(()=>{const i=document.querySelector("[data-audio-knob=gain]");i.value="0.42";i.dispatchEvent(new Event("change"));})()');
@@ -140,7 +164,7 @@ try{
  current='preset-preview';consoleLines.length=0;errors.length=0;requests.length=0;
  await click('[data-preset-preview]');
  await until('location.pathname.endsWith("index.html") && window.__stalheartReady === true && window.__stalheartContent?.id === "browser-fx"');
- const selected=await evaluate(`(async()=>{const token=document.querySelector('meta[name=cb]').content;const m=await import('./src/content/runtime.js'+(token==='00000000'?'':'?v='+token));return {gain:m.SOUNDS.tower_single.gain,size:m.SENTRY_FX.lancer.impact.size};})()`);
+ const selected=await evaluate(`(async()=>{const token=document.querySelector('meta[name=cb]').content;const m=await import('./src/content/runtime.js'+(token==='00000000'?'':'?v='+token));return {gain:m.SOUNDS.kinetic_fire.gain,size:m.SENTRY_FX.lancer.impact.size};})()`);
  assert.equal(selected.gain,.42);assert.equal(selected.size,.93);await finish();
  await go('preset-isolation','index.html?sw=0&cine=0#td');
  assert.equal(await evaluate('window.__stalheartContent.id'),CONTENT.id);await finish();

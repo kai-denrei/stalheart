@@ -12,7 +12,7 @@ try {
   cpSync('scripts/presets.mjs',join(dir,'scripts/presets.mjs'));
   const run=(...args)=>spawnSync(process.execPath,['scripts/presets.mjs',...args],{cwd:dir,encoding:'utf8'});
   assert.equal(run('export','before.json').status,0);
-  const p=JSON.parse(readFileSync(join(dir,'before.json'),'utf8'));p.id='promotion-check';p.audio.tower_single.gain=.41;p.weapons.lancer.impact.size=.92;
+  const p=JSON.parse(readFileSync(join(dir,'before.json'),'utf8'));p.id='promotion-check';p.audio.kinetic_fire.gain=.41;p.weapons.lancer.impact.size=.92;
   writeFileSync(join(dir,'candidate.json'),JSON.stringify(p));
   assert.equal(run('promote','candidate.json').status,0);
   assert.equal(run('export','after.json').status,0);

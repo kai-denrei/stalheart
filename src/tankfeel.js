@@ -53,7 +53,7 @@ export const TANK_FEEL_KNOBS = [
   { key: 'recoilSecondary', label: 'secondaries take', group: 'recoil', min: 0,  max: 1,    step: 0.05 },
 ];
 
-// The four schema operations are shared with towerfeel via knobs.js — this
+// The four schema operations are provided by knobs.js — this
 // module keeps the NAMES because three files import them, but not a second
 // implementation. That was the duplication the shared module exists to stop.
 export const makeFeelParams = (src = TANK_FEEL) => makeParams(TANK_FEEL_KNOBS, src);

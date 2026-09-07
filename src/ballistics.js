@@ -242,7 +242,7 @@ export const WEAPONS = {
     cooldown: 0.35, splash: 0, charge: 0, hitscan: true, loft: false, sound: 'tank_beam',
     maxTime: 6, step: 0.004 },
   mortar: { id: 'mortar', label: 'Mortar', muzzleVel: 150, gravity: 9.81, drag: 0.0004,
-    cooldown: 2.2, splash: 14, charge: 0, hitscan: false, loft: true, sound: 'tower_aoe',
+    cooldown: 2.2, splash: 14, charge: 0, hitscan: false, loft: true, sound: 'blast_fire',
     maxTime: 60, step: 0.02 },
   railgun: { id: 'railgun', label: 'Rail gun', muzzleVel: 2400, gravity: 9.81, drag: 0.0002,
     cooldown: 1.2, splash: 0, charge: 1.6, hitscan: false, loft: false, sound: 'tank_secondary',

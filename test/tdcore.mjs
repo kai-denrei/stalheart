@@ -41,14 +41,14 @@ check('hp and speed sane',
 // ladder, its unlock order and its hack gate — so it names the roster instead
 // of inheriting whichever one happens to be the default. It used to inherit,
 // and the day the default moved to the sentry board it stopped testing
-// anything and started throwing on `TOWER_BY_KEY.sniper`. A test that depends
+// anything and started throwing on `TOWER_BY_KEY.lancer`. A test that depends
 // on an implicit default is a test that silently changes subject.
-useRoster(1);
+useRoster(2);
 console.log('towers:');
 check('8 towers', TOWERS.length === 8);
 check('keys unique + lookup', new Set(TOWERS.map((t) => t.key)).size === 8
-  && TOWER_BY_KEY.sniper.cost === 130);
-check('laser is the capstone cost', Math.max(...TOWERS.map((t) => t.cost)) === TOWER_BY_KEY.laser.cost);
+  && TOWER_BY_KEY.lancer.cost === 130);
+check('Heptapod is the capstone cost', Math.max(...TOWERS.map((t) => t.cost)) === TOWER_BY_KEY.heptapod.cost);
 // TEMPO MOVED, the assertion did not. projSpeed lives in sentryfx.js now —
 // towers.js keeps what a weapon does, sentryfx.js how it looks — so this reads
 // through shotOf. The relationships are the point and they are unchanged: a
@@ -56,30 +56,28 @@ check('laser is the capstone cost', Math.max(...TOWERS.map((t) => t.cost)) === T
 check('every projectile tower has its own tempo',
   TOWERS.filter((t) => !['beam', 'slowfield'].includes(t.attack))
     .every((t) => shotOf(t).projSpeed > 0)
-  && shotOf(TOWER_BY_KEY.sniper).projSpeed > shotOf(TOWER_BY_KEY.single).projSpeed
-  && shotOf(TOWER_BY_KEY.aoe).projSpeed < shotOf(TOWER_BY_KEY.homing).projSpeed);
+  && shotOf(TOWER_BY_KEY.lancer).projSpeed > shotOf(TOWER_BY_KEY.rotor).projSpeed
+  && shotOf(TOWER_BY_KEY.mortar).projSpeed < shotOf(TOWER_BY_KEY.quiver).projSpeed);
 check('upgrade costs HK-exact (70%/120%, then maxed)',
-  upgradeCost(TOWER_BY_KEY.single, 0) === 28
-  && upgradeCost(TOWER_BY_KEY.single, 1) === 48
-  && upgradeCost(TOWER_BY_KEY.single, MAX_TIER) === null);
+  upgradeCost(TOWER_BY_KEY.rotor, 0) === 31
+  && upgradeCost(TOWER_BY_KEY.rotor, 1) === 54
+  && upgradeCost(TOWER_BY_KEY.rotor, MAX_TIER) === null);
 {
-  const t0 = effectiveStats(TOWER_BY_KEY.single, 0);
-  const t1 = effectiveStats(TOWER_BY_KEY.single, 1);
+  const t0 = effectiveStats(TOWER_BY_KEY.rotor, 0);
+  const t1 = effectiveStats(TOWER_BY_KEY.rotor, 1);
   check('tier growth: +55% dmg, +8% range, +10% rate',
     Math.abs(t1.dmg / t0.dmg - 1.55) < 1e-9
     && Math.abs(t1.range / t0.range - 1.08) < 1e-9
     && Math.abs(t1.rate / t0.rate - 1.10) < 1e-9);
 }
 {
-  const spread2 = effectiveStats(TOWER_BY_KEY.spread, 2);
-  const aoe2 = effectiveStats(TOWER_BY_KEY.aoe, 2);
-  const beam2 = effectiveStats(TOWER_BY_KEY.laser, 2);
-  const single2 = effectiveStats(TOWER_BY_KEY.single, 2);
-  check('tier-2 specials: +2 pellets / +40% splash / +30% range / +20% rate',
-    spread2.pellets === 7
-    && Math.abs(aoe2.splash / (TOWER_BY_KEY.aoe.splash * (1))) > 1.39
-    && Math.abs(beam2.range / (TOWER_BY_KEY.laser.range * 1.16) - 1.3) < 1e-9
-    && Math.abs(single2.rate / (TOWER_BY_KEY.single.rate * 1.2) - 1.2) < 1e-9);
+  const mortar2 = effectiveStats(TOWER_BY_KEY.mortar, 2);
+  const beam2 = effectiveStats(TOWER_BY_KEY.plasma, 2);
+  const rotor2 = effectiveStats(TOWER_BY_KEY.rotor, 2);
+  check('tier-2 splash, beam range and rotary cadence bonuses',
+    mortar2.splash / TOWER_BY_KEY.mortar.splash > 1.39
+    && Math.abs(beam2.range / (TOWER_BY_KEY.plasma.range * 1.16) - 1.3) < 1e-9
+    && Math.abs(rotor2.rate / (TOWER_BY_KEY.rotor.rate * 1.2) - 1.2) < 1e-9);
 }
 {
   // targeting: nearest alive in range, injected metric
@@ -156,10 +154,10 @@ console.log('economy:');
 
 // --- tower-unlock ladder -------------------------------------------------
 console.log('tower unlocks:');
-check('wave 1 unlocks single only', JSON.stringify(unlockedTowerKeys(1)) === JSON.stringify(['single']));
-check('wave 2 unlocks single+rapid', JSON.stringify(unlockedTowerKeys(2)) === JSON.stringify(['single', 'rapid']));
-check('unlock clamps below 1', JSON.stringify(unlockedTowerKeys(0)) === JSON.stringify(['single'])
-  && JSON.stringify(unlockedTowerKeys(-3)) === JSON.stringify(['single']));
+check('wave 1 unlocks single only', JSON.stringify(unlockedTowerKeys(1)) === JSON.stringify(['rotor']));
+check('wave 2 unlocks single+rapid', JSON.stringify(unlockedTowerKeys(2)) === JSON.stringify(['rotor', 'plasma']));
+check('unlock clamps below 1', JSON.stringify(unlockedTowerKeys(0)) === JSON.stringify(['rotor'])
+  && JSON.stringify(unlockedTowerKeys(-3)) === JSON.stringify(['rotor']));
 const LADDER_N = TOWER_ORDER.length - HACK_GATED.length;
 check('wave N grants N towers (cumulative, ladder only)',
   Array.from({ length: LADDER_N }, (_, i) => i + 1).every((w) => unlockedTowerKeys(w).length === w));
@@ -174,7 +172,7 @@ check('full kit = ladder by clock + gate by relay',
 check('every unlocked key is a real tower', unlockedTowerKeys(99, 9).every((k) => TOWER_BY_KEY[k]));
 check('towerUnlockWave: gated keys have NO wave',
   HACK_GATED.every((k) => towerUnlockWave(k) === null)
-  && towerUnlockWave('single') === 1 && towerUnlockWave('laser') === LADDER_N);
+  && towerUnlockWave('rotor') === 1 && towerUnlockWave('heptapod') === LADDER_N);
 check('TOWER_ORDER covers the roster', TOWER_ORDER.length === TOWERS.length && TOWER_ORDER.every((k) => TOWER_BY_KEY[k]));
 
 // --- wave plan -----------------------------------------------------------

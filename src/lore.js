@@ -1,3 +1,4 @@
+import { SENTRIES } from './content/sentries.js';
 // lore.js — the codex. Every unit described twice: once as it EXISTS in
 // the fiction (survey-log register, sci-fi realistic), once as a dense
 // visual prompt fit for a txt2img model. The game's dot-render is, in
@@ -204,83 +205,6 @@ export const LORE = {
       + 'with an extruder nozzle, hovering in a dark hangar, retro-futurist '
       + 'hard sci-fi, 8k',
   },
-  single: {
-    name: 'ARM, SIX-AXIS',
-    tag: 'single-shot emplacement',
-    body: 'A factory manipulator that learned violence. Pedestal, shoulder, '
-      + 'elbow, wrist, tool-flange — and where a welder should sit, a '
-      + 'single-shot accelerator that punches one round at a time with a '
-      + 'machinist’s patience. It aims the way it used to reach for '
-      + 'parts: exactly, without hurry, forever.',
-    visual: 'industrial six-axis robotic arm mounted on a stone wall '
-      + 'pedestal, converted into a gun emplacement, tool flange replaced '
-      + 'by a compact railgun, hydraulic joints, warning stripes worn to '
-      + 'grey, single muzzle flash, night operations lighting, hard '
-      + 'sci-fi realism, 8k',
-  },
-  rapid: {
-    name: 'DELTA FRAME',
-    tag: 'rapid-fire emplacement',
-    body: 'Three parallel arms falling from a fixed triangle, built to pick '
-      + 'and place four times a second. The conversion kept the cadence and '
-      + 'swapped the suction cup for a repeater. Watching it fire is '
-      + 'watching a pastry chef work: blurred, rhythmic, indifferent to '
-      + 'what it is actually doing.',
-    visual: 'delta robot with three carbon parallel arms on a triangular '
-      + 'frame, mounted on a defensive pedestal, rapid-fire kinetic '
-      + 'repeater at the effector, muzzle flashes in burst, motion blur on '
-      + 'the arms, cold industrial lighting, high-speed photography look, '
-      + 'sci-fi realistic, 8k',
-  },
-  spread: {
-    name: 'RIPPLE ANTENNA',
-    tag: 'spread emplacement',
-    body: 'Concentric rings frozen mid-splash, as if a stone had been '
-      + 'thrown into standing metal. It fires the way it looks: a fan of '
-      + 'pellets on the ring-normals, wasteful and wide, the shotgun '
-      + 'argument made in radio-telescope grammar.',
-    visual: 'sculptural antenna of concentric metal rings like a frozen '
-      + 'water ripple, mounted on a wall pedestal, firing a fan of glowing '
-      + 'pellets, standing on asteroid high ground, backlit by muzzle '
-      + 'glow, elegant brutalism, sci-fi product render, 8k',
-  },
-  slow: {
-    name: 'BROADCAST MAST',
-    tag: 'suppression field',
-    body: 'A tapered mast under a stack of radiators, transmitting nothing '
-      + 'a receiver would call signal. What it broadcasts is reluctance: a '
-      + 'field that thickens time around every organism in range, tethering '
-      + 'them in threads of pale lightning while the guns do arithmetic.',
-    visual: 'tall broadcast antenna tower with stacked radiator elements, '
-      + 'emitting a visible field distortion, pale electric tethers '
-      + 'arcing to translucent alien creatures below, slow-motion '
-      + 'atmosphere, blue-white energy, defensive installation on stone '
-      + 'ridge, sci-fi realism, volumetric light, 8k',
-  },
-  homing: {
-    name: 'GRIPPER ARM',
-    tag: 'seeker battery',
-    body: 'A long-reach manipulator ending in a two-finger claw, repurposed '
-      + 'as a launch rail. The claw does not grip cargo any more; it grips '
-      + 'the seeker until the lock is clean, then opens. Its missiles '
-      + 'chase the way debts chase: patiently, around corners, to the end.',
-    visual: 'robotic gripper arm with two-finger claw holding a small '
-      + 'glowing missile, mounted turret base, missile launching with a '
-      + 'curved light trail chasing a translucent alien, smoke ring at '
-      + 'release, kinetic action shot, military sci-fi realism, 8k',
-  },
-  aoe: {
-    name: 'MORTAR, TUBE-AND-BASEPLATE',
-    tag: 'area denial',
-    body: 'The oldest silhouette in the codex: a tube on a plate, aimed by '
-      + 'faith and mathematics. Its shells go up sentimental and come down '
-      + 'statistical, marking the landing cell a heartbeat early — threat '
-      + 'you can read, and step out of, which the organisms never learn.',
-    visual: 'compact sci-fi mortar, thick launch tube on a baseplate '
-      + 'mounted on stone battlements, lobbing a glowing spherical shell '
-      + 'in a high arc, target ring projected on the ground below, night '
-      + 'battle, tracer arc long exposure, realistic military hardware, 8k',
-  },
   // --- THE SENTRY BOARD (roster 2, the default) ----------------------------
   // Eight towers that arrived as Workshop models with no codex behind them.
   // The board became the default on 2026-09-06 and the gap became visible the
@@ -381,34 +305,6 @@ export const LORE = {
     visual: 'six-legged walking weapons platform striding across asteroid '
       + 'tiles, vertical launch cells on its back firing a rocket upward, '
       + 'articulated legs mid-gait, amber running lights, hard sci-fi, 8k',
-  },
-  sniper: {
-    name: 'GUYED MAST',
-    tag: 'railgun overwatch',
-    body: 'A needle of a tower held vertical by tensioned stays, with one '
-      + 'long accelerator laid along its spine. It does not shoot through '
-      + 'walls and resents that it cannot. One round, one lane, one '
-      + 'organism subtracted — the slug crosses the whole sightline before '
-      + 'the sound does.',
-    visual: 'extremely tall thin guyed mast tower with tension cables, '
-      + 'integrated vertical railgun, single luminous slug streaking flat '
-      + 'across the frame with ghost trail, watchtower on asteroid ridge '
-      + 'at dusk, minimalist composition, hard sci-fi, 8k',
-  },
-  laser: {
-    name: 'THE OBELISK',
-    tag: 'beam emplacement',
-    body: 'Tapered stone shoulders, pyramidion cap, and no visible weapon '
-      + 'at all until the cap splits its light down a lane. We built the '
-      + 'others; the Obelisk we mostly excavated, added a trigger, and '
-      + 'chose not to ask. It hums in the same key as the Relay’s '
-      + 'handshake. Nobody has put those two facts in one report before '
-      + 'this one.',
-    visual: 'black monolithic obelisk with a glowing pyramidion apex, '
-      + 'firing a continuous vertical-split energy beam across a dark '
-      + 'plain, hieroglyph-like etched seams glowing faintly, ancient '
-      + 'alien technology fused with military mount, ominous sci-fi '
-      + 'realism, dramatic silhouette, 8k',
   },
 
   // --- pickups ------------------------------------------------------------
@@ -728,3 +624,6 @@ export function loreAll(ids) {
   for (const id of ids) if (LORE[id]) parts.push(loreText(LORE[id]));
   return parts.join('\n\n' + '─'.repeat(40) + '\n\n');
 }
+
+// Display identities follow the radial catalog, including codex exports.
+for (const sentry of SENTRIES) if (LORE[sentry.key]) LORE[sentry.key].name = sentry.label;

@@ -21,10 +21,7 @@ import { buildUnit, preloadMkcx, makeDebris, makeDotBurst, makeBulletCloud,
   preloadFabricator, makeFabricatorDrone, makeIsaoDrone } from './units.js';
 import { TANK_FEEL, TANK_FEEL_KNOBS, formatFeelCode, makeTankFeel, stepTankFeel,
   landTankFeel, fireTankFeel, applyTankFeel, applyTankHealth } from './tankfeel.js';
-import { FEEL, loadFeel, saveFeel, resetFeel,
-  TOWER, HEADS, loadTower, saveTower, resetTower } from './feelstore.js';
-import { TOWER_FEEL_KNOBS, formatTowerFeel, clampTowerParams,
-  formatTowerHeads, HEAD_CHOICES, HEAD_AS_SHIPPED } from './towerfeel.js';
+import { FEEL, loadFeel, saveFeel, resetFeel } from './feelstore.js';
 import { CREATURE_TINTS, accentFor } from './enemyspec.js';
 import { buildTowerLook, TOWER_LOOK_NAMES, DEFAULT_TOWER_LOOK, preloadLook } from './towerlooks.js';
 import { TOWER_BY_KEY, TOWERS } from './towers.js';
@@ -462,6 +459,8 @@ export function initUnitsTab(root) {
     currentEntry = e;
     if (tunerApi) tunerApi.setSubject(e.kind === 'tower' ? 'tower' : 'tank');
     current = buildEntry(e);
+    root.dataset.sentry = e.kind === 'tower' ? e.id : '';
+    root.dataset.modelReady = String(!!current && !current.userData.loading);
     if (Number.isFinite(yawQ) && current) {
       current.rotation.y = (yawQ * Math.PI) / 180;
       state.spin = false;
@@ -518,7 +517,7 @@ export function initUnitsTab(root) {
     applyTankHealth(current, health);
     buildCallouts();   // labels belong to THIS unit's markers, not the last one's
     countEl.textContent = `${state.index + 1} / ${list.length}`;
-    lookSel.parentElement.classList.toggle('hidden', e.kind !== 'tower');
+    lookSel.parentElement.classList.add('hidden');
   }
 
   // Rebuild the shown object without touching the camera. Head shape, dot
@@ -804,38 +803,31 @@ export function initUnitsTab(root) {
     fx.push({ p: p.clone(), v: vel.clone(), t: 0, life, col, grav });
   }
 
-  // The pattern each attack actually makes. This is the point of the preview:
-  // a spread that does not visibly fan, or a mortar whose arc lands short, is
-  // a tuning problem you can only see by watching it happen.
+  // A schematic range preview uses the shared weapon kind. The Sentry and
+  // Impact labs own articulated firing and detailed visual-effect authoring.
   function towerShot(def, origin) {
     const reach = (def.range || 3) * CELL;
     const speed = (shotOf(def).projSpeed || 12) * CELL;
     const col = new THREE.Color(def.color || 0xffffff);
     const dir = new THREE.Vector3(0, 0, 1);
     const life = Math.max(0.25, reach / Math.max(0.001, speed));
-    switch (def.attack) {
-      case 'spread': {
-        for (let i = -2; i <= 2; i++) {
-          const a = i * 0.30;
-          addFx(origin, new THREE.Vector3(Math.sin(a), 0, Math.cos(a)).multiplyScalar(speed), life, col);
-        }
-        break;
-      }
-      case 'homing': {
+    switch (shotOf(def).kind) {
+      case 'seeker': {
         // curves as it goes, which is the whole tell
         const shot = { p: origin.clone(), v: dir.clone().multiplyScalar(speed * 0.8) };
         addFx(shot.p, shot.v, life * 1.6, col);
         fx[fx.length - 1].curve = 2.6;
         break;
       }
-      case 'mortar': {
+      case 'lob': {
         // a lob: up and out, gravity brings it down, and it BURSTS
         const t = life * 1.9;
         addFx(origin, new THREE.Vector3(0, reach * 0.9 / t, reach / t), t, col, -2 * (reach * 0.9) / (t * t));
         fx[fx.length - 1].burst = { n: 40, col, r: reach * 0.32 };
         break;
       }
-      case 'beam': {
+      case 'throw':
+      case 'lance': {
         // no travel time: the whole line arrives at once and fades
         const N = 90;
         for (let i = 0; i < N; i++) {
@@ -844,7 +836,7 @@ export function initUnitsTab(root) {
         }
         break;
       }
-      case 'slowfield': {
+      case 'field': {
         // a pulse expanding to the edge of its reach
         const N = 64;
         for (let i = 0; i < N; i++) {
@@ -1095,7 +1087,7 @@ export function initUnitsTab(root) {
   // and nothing to sync — what is in front of you is what ships, mid-drag.
   //
   // Which table it shows follows the selection: a tank gets TANK_FEEL_KNOBS,
-  // a tower gets TOWER_FEEL_KNOBS. Two panels would have been two sets of
+  // Tank and type each provide their own pure knob schema;
   // wiring to keep in step for no gain.
   tunerApi = (function wireTuner() {
     const panel = root.querySelector('#units-tuner');
@@ -1104,7 +1096,6 @@ export function initUnitsTab(root) {
     const open = root.querySelector('#units-tune');
     if (!panel || !list || !open) return { setSubject() {}, isOpen: () => false };
     loadFeel();
-    loadTower();
     // the type values live in the same localStorage the game reads, so a
     // setting found on this bench is already in force next time you play —
     // restored through the schema's own clamp, because our own storage is
@@ -1116,43 +1107,11 @@ export function initUnitsTab(root) {
     const saveType = () => saveTypeFeel(TYPE);
     const resetType = () => { Object.assign(TYPE, makeTypeParams(TYPE_FEEL)); saveType(); };
     applyType();
-    // ?head=<kind> presets the head override, so a candidate shape can be
-    // screenshotted without a pointer. Validated against the knob's own
-    // choices — an unknown name would ask the generator for a shape it does
-    // not have and quietly get a sphere back.
-    const q = new URLSearchParams(location.search);
-    // ?head=<kind> assigns to the tower named by ?unit=, so a candidate can be
-    // screenshotted without a pointer. Scoped to that one tower now, like the
-    // control it stands in for.
-    const wantHead = q.get('head');
-    const wantUnit = q.get('unit');
-    if (wantHead && wantUnit && HEAD_CHOICES.includes(wantHead)) HEADS[wantUnit] = wantHead;
-    // ?towerknobs=dots=380,headScale=0.66 — presets the numeric knobs so a
-    // candidate can be judged at a chosen density without a pointer. Folded
-    // through the same clamp storage uses: unknown keys and out-of-range
-    // values are dropped rather than trusted.
-    const blob = {};
-    for (const kv of (q.get('towerknobs') || '').split(',')) {
-      const [k, v] = kv.split('=');
-      if (k && v !== undefined) blob[k.trim()] = v;
-    }
-    if (Object.keys(blob).length) clampTowerParams(TOWER, blob);
-
     const SUBJECTS = {
       tank: {
         title: 'tank feel', knobs: TANK_FEEL_KNOBS, values: FEEL,
         save: saveFeel, reset: resetFeel, format: () => formatFeelCode(FEEL),
         onChange: null,   // the driver reads FEEL every frame; nothing to rebuild
-      },
-      tower: {
-        title: 'tower look', knobs: TOWER_FEEL_KNOBS, values: TOWER,
-        save: saveTower, reset: resetTower,
-        // both halves: the look, and which tower wears which head
-        format: () => `${formatTowerFeel(TOWER)}\n\n${formatTowerHeads(HEADS, TOWERS)}`,
-        // dot count, head shape and highlight spacing are baked at BUILD
-        // time, so the head has to be remade. Cheap — one Points cloud — and
-        // rebuilding unconditionally beats a per-knob rule that goes stale.
-        onChange: () => rebuildCurrent(),
       },
     };
     // THE TYPE BENCH is a third subject, not a second tuner. Everything the
@@ -1167,45 +1126,10 @@ export function initUnitsTab(root) {
     let subject = SUBJECTS.tank;
     let rows = [];
 
-    // The head picker is not a knob: it belongs to ONE tower, not to the
-    // look as a whole, and it is the thing you are actually choosing when you
-    // use this panel. Built separately, above the sliders, and labelled with
-    // the tower it will change so an assignment is never made by accident.
-    function buildHeadRow() {
-      if (subject !== SUBJECTS.tower || !currentEntry) return;
-      const def = TOWER_BY_KEY[currentEntry.id];
-      if (!def) return;
-      const h = document.createElement('div');
-      h.className = 'tuner-group';
-      h.textContent = `head · ${currentEntry.label}`;
-      const row = document.createElement('label');
-      row.className = 'tuner-row choice';
-      const name = document.createElement('span');
-      name.className = 'tuner-name';
-      name.textContent = 'shape';
-      const sel = document.createElement('select');
-      for (const c of HEAD_CHOICES) {
-        const o = document.createElement('option');
-        o.value = c;
-        o.textContent = c === HEAD_AS_SHIPPED ? `${HEAD_AS_SHIPPED} (${def.shape})` : c;
-        sel.appendChild(o);
-      }
-      sel.value = HEADS[def.key] || HEAD_AS_SHIPPED;
-      sel.addEventListener('change', () => {
-        if (sel.value === HEAD_AS_SHIPPED) delete HEADS[def.key];
-        else HEADS[def.key] = sel.value;
-        saveTower();
-        rebuildCurrent();
-      });
-      row.append(name, sel);
-      list.append(h, row);
-    }
-
     function build() {
       list.textContent = '';
       rows = [];
       titleEl.textContent = subject.title;
-      buildHeadRow();
       let group = null;
       for (const k of subject.knobs) {
         if (k.group !== group) {
@@ -1354,7 +1278,7 @@ export function initUnitsTab(root) {
     });
 
     // Copy as SOURCE, not JSON: the destination is tankfeel.js or
-    // towerfeel.js, and a blob you have to hand-translate is a blob nobody
+    // the schema, and a blob you have to hand-translate is a blob nobody
     // transcribes.
     const copy = root.querySelector('#units-tune-copy');
     const label = copy.querySelector('.label');
@@ -1380,6 +1304,8 @@ export function initUnitsTab(root) {
         // unusable
         const fp = root.querySelector('#units-fonts');
         if (fp && !fp.classList.contains('fonts-hidden')) return;
+        open.hidden = which === 'tower';
+        if (which === 'tower') { setOpen(false); return; }
         const next = SUBJECTS[which] || SUBJECTS.tank;
         // rebuild even when the subject is unchanged: stepping from one tower
         // to the next keeps the subject 'tower' but the head row belongs to a
@@ -1406,6 +1332,7 @@ export function initUnitsTab(root) {
       if (i !== -1) { setGroup(g); state.index = i; show(); break; }
     }
   }
+  preloadLook(DEFAULT_TOWER_LOOK).then(() => { if (active) show(); });
   // async models arrive late; refresh once they land so the first look is real
   for (const id of ['mkcx', 'mkcx2']) preloadMkcx(id).then(() => { if (active) show(); });
 

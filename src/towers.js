@@ -1,233 +1,93 @@
-// towers.js — HokorobiTawaa's tower roster and combat MATH, re-based for
-// the sphere. Pure module: no DOM, no three.js, Node-testable. The TD tab
-// owns rendering, projectile flight, and placement UI; this module owns
-// the numbers and the decisions.
-//
-// Unit conversions from HK (source: HokorobiTawaa src/units/roster.ts):
-// - range: HK board units → CELLS (HK board ≈ 22 cells across, ×22,
-//   rounded to a tidy first-pass value; M5 tunes).
-// - damage: HK hp scale (20–500) → our fractional scale (1–6 hp):
-//   dmg_ours = dmg_HK / 90 (Single Shot ≈ 0.16 → 6 shots kill a phage;
-//   Sniper ≈ 0.69 one-shots nothing but wounds everything).
-
-// shape = the half-dotted head silhouette (creatures.js towerHeadPts,
-// HK's tower shapes); spin = head idle rate; projPx/trail = HK's
-// projectile identity (tracer px size, ghost-trail length); projSpeed
-// is PER-TOWER in cells/s (HK's board-unit values ×22) — the tempo IS
-// the identity: singles snap, homing glides, the mortar lobs; arc
-// marks the mortar's lofted flight.
-const ROSTER_V1 = [
-  { key: 'single', label: 'Single Shot', color: 0xeaf2ff, cost: 40,
-    dmg: 14 / 90, range: 3.7, rate: 1.4, attack: 'single',
-    // a six-axis arm: it points at ONE thing and swings to the next, which
-    // is what a single-shot tower does. Ported from the Braille lab.
-    shape: 'sixaxis' }, // HK 0.9 — fast, near-hitscan
-  { key: 'rapid',  label: 'Rapid',       color: 0x6fe6ff, cost: 70,
-    dmg: 7 / 90,  range: 3.5, rate: 3.0, attack: 'single',
-    // a delta robot: three arms working in parallel, the fastest mechanism
-    // on any production line. Rapid fire, made visible.
-    shape: 'delta', spin: 1.5 }, // HK 1.2
-  { key: 'spread', label: 'Spread',      color: 0x2fe6d0, cost: 80,
-    dmg: 6 / 90,  range: 3.1, rate: 1.0, attack: 'spread', pellets: 5,
-    // a struck-water ripple: concentric rings travelling outward. That IS
-    // a spread — one event reaching several places at once.
-    shape: 'ripple' }, // HK 0.7
-  { key: 'homing', label: 'Homing',      color: 0x5a9bff, cost: 90,
-    dmg: 9 / 90,  range: 3.5, rate: 1.2, attack: 'homing',
-    // a gripper arm: it reaches out and takes hold of a specific thing,
-    // which is what a homing shot does once it has picked its target.
-    shape: 'gripper', spin: 0.9 }, // HK 0.6 — guided, unhurried
-  { key: 'slow',   label: 'Slow',        color: 0xc4e6ff, cost: 100,
-    // ZERO damage (operator, 2026-09-02: "the slow towers do dmg instead of
-    // purely slowing down"). It carried 4/90 a tick — small enough to look
-    // like nothing on the panel and large enough to finish wounded fodder,
-    // which is a kill the SLOW tower has no business taking.
-    dmg: 0,       range: 3.5, rate: 1.0, attack: 'slowfield',
-    slowFactor: 0.45, slowDur: 1.6,
-    // a broadcast antenna: it emits over an area rather than aiming, which
-    // is exactly what a slow FIELD does. Ported from the Braille lab.
-    shape: 'broadcast', spin: 0.3 },
-  { key: 'aoe',    label: 'AoE',         color: 0x9fc4ff, cost: 110,
-    dmg: 12 / 90, range: 3.5, rate: 0.9, attack: 'mortar', splash: 1.5,
-    // a MORTAR, literally: tube and baseplate, the thing whose entire job
-    // is the lobbed shell this tower fires. The launcher read as generic
-    // ordnance; this one is the attack, sculpted.
-    // fat round, real smoke: the heaviest shell on the board should read
-    // as one in flight, not only on impact
-    shape: 'mortar', spin: 0.7, arc: true }, // a slow deliberate LOB
-  { key: 'sniper', label: 'Sniper',      color: 0xffffff, cost: 130,
-    // hitscan: the shot IS the trace. A one-off this strong crossing the
-    // board as a dot read like everyone else's bullet, only lonelier.
-    dmg: 62 / 90, range: 7.0, rate: 0.7, attack: 'single', hitscan: true,
-    // a guyed mast: the tallest, thinnest thing here, built to reach. The
-    // longest range on the board should look like it out-reaches the rest.
-    shape: 'guyed' }, // HK 1.9 — a streak
-  { key: 'laser',  label: 'Laser',       color: 0x9ff5ff, cost: 220,
-    dmg: 18 / 90, range: 5.3, rate: 1.5, attack: 'beam',
-    // an obelisk: a standing monolith, the one head with no moving parts.
-    // A beam weapon does not traverse or reload — it simply channels.
-    shape: 'obelisk', spin: 0.5 },
-];
-
-// --- ROSTER 2: the sentry-model board ------------------------------------
-// A VARIANT, NOT A REPLACEMENT. Roster 1 above is untouched and still the
-// default, because the development history is worth keeping and because
-// fifteen thousand lines of TD tab should not be forked to change eight
-// numbers and eight names. One board, two rosters, chosen once at boot.
-//
-// The operator's mapping, slot by slot, with Rapid removed and everything
-// after it shifted up:
-//
-//   1 Single  → ROTOR            5 AoE    → MORTAR
-//   2 Rapid   → (out)            6 Sniper → LANCER
-//   3 Spread  → PLASMA THROWER   7 Laser  → HOWITZER
-//   4 Homing  → QUIVER           8 (new)  → HEPTAPOD A6
-//     Slow    → RELAY
-//
-// Three of those are more than a rename and are called out where they sit:
-// the Rotor absorbs Rapid's job, the Plasma Thrower is a beam, and the
-// Howitzer is artillery rather than the beam its slot used to hold.
-//
-// `model` names the GLB in assets/models/sentries/ — the Sentry Workshop's
-// own contract, which the sentry lab already loads.
-const ROSTER_V2 = [
-  // ROTOR — the starter, and RAPID'S JOB IS NOW ITS JOB. Removing Rapid
-  // took the board's cheap high-rate answer to fodder with it, so the Rotor
-  // is Single's slot fired at a rotary cadence: less per round, many more
-  // rounds. Revert by putting rate back to 1.4 and dmg to 14/90.
-  { key: 'rotor', label: 'Rotor', color: 0xeaf2ff, cost: 45,
-    dmg: 9 / 90, range: 3.6, rate: 2.2, attack: 'single',
-    model: 'rotor', sound: 'minigun_fire',
-    shape: 'sixaxis' },
-  // PLASMA THROWER — a BEAM, not a spread: the tank's secondary with the
-  // reach taken off it. Short range is the whole trade; it out-damages
-  // everything at knife distance and covers almost nothing.
-  // PLASMA THROWER — the tank's secondary, bolted to a wall and pointed DOWN
-  // (operator). Not a laser line: the same plasma the pilot sweeps with, and
-  // it is thrown from the wall top onto the ground the enemies walk on, which
-  // is what a short-ranged emplaced version of that weapon IS.
-  //
-  // A SUSTAINED WEAPON HAS TO TICK FAST. At 1.6 shots a second the beam
-  // would light for a sixth of a second and go dark for half of one — a
-  // strobe, not a stream. Six ticks a second at a quarter of the damage is
-  // the same DPS (0.267) drawn as one continuous throw, which is the whole
-  // point of the weapon reading as a beam rather than as a gun.
-  { key: 'plasma', label: 'Plasma Thrower', color: 0x2fe6d0, cost: 80,
-    dmg: 4 / 90, range: 2.6, rate: 6, attack: 'beam', model: 'plasma', sound: 'tower_laser', shape: 'ripple', spin: 0.8 },
-  // QUIVER — the sentry lab's launcher, on the board (operator). Not the
-  // old `homing` tower shot: it must LOCK before it will fire, and what
-  // leaves the cell then flies its own top-attack intercept out of
-  // src/lockon.js. Same weapon the sniper aims by hand and the range aims
-  // by drive, which is the whole shape of the automation arc.
-  { key: 'quiver', label: 'Quiver', color: 0x5a9bff, cost: 90,
-    dmg: 13 / 90, range: 3.5, rate: 1.2, attack: 'seeker', lock: true,
-    model: 'quiver', sound: 'tower_homing',
-    shape: 'gripper', spin: 0.9 },
-  { key: 'relay', label: 'Relay', color: 0xc4e6ff, cost: 100,
-    dmg: 0, range: 3.5, rate: 1.0, attack: 'slowfield',
-    slowFactor: 0.45, slowDur: 1.6,
-    model: 'relay', sound: 'tower_slow', shape: 'broadcast', spin: 0.3 },
-  { key: 'mortar', label: 'Mortar', color: 0x9fc4ff, cost: 110,
-    dmg: 12 / 90, range: 3.5, rate: 0.9, attack: 'mortar', splash: 1.5,
-    model: 'mortar', sound: 'tower_aoe',
-    shape: 'mortar', spin: 0.7, arc: true },
-  // LANCER — the laser, and the one weapon on the board that is aimed at a
-  // LINE rather than at a target (operator). It shoots THROUGH things: one
-  // long burst, dead straight, out to its full seven cells, and everything
-  // standing on that line pays. That makes where you put it a real decision
-  // — a Lancer covering a corridor is worth three covering a corner — and it
-  // is the reason its rate is so low. You get one lance every two seconds
-  // and it matters which way it points.
-  { key: 'lancer', label: 'Lancer', color: 0xffffff, cost: 130,
-    dmg: 30 / 90, range: 7.0, rate: 0.45, attack: 'lance', pierce: true,
-    burst: 0.8,          // seconds the beam stays lit — ONE long burst
-    // THE BEAM IS GREEN, and the tower is not (operator). Separate keys on
-    // purpose: `color` is the tower's identity — the range ring, the shop
-    // icon, the model's own tint — and the beam is what it throws. A laser
-    // is allowed a colour of its own without repainting the machine.
-    model: 'lancer', sound: 'tower_sniper',
-    shape: 'guyed' },
-  // HOWITZER — the slot Laser used to hold, and a howitzer is not a beam.
-  // It is the Mortar's big sister: further, heavier, wider, and slow enough
-  // that a wave can walk through the gap between shells. That gives the
-  // board TWO lobbed weapons that are actually different rather than one
-  // renamed twice.
-  { key: 'howitzer', label: 'Howitzer', color: 0x9ff5ff, cost: 220,
-    dmg: 34 / 90, range: 5.6, rate: 0.45, attack: 'mortar', splash: 2.4,
-    // the loudest gun on the board, because it is a siege piece firing
-    // every two seconds — it will not stack on itself
-    model: 'howitzer', sound: 'tank_main',
-    shape: 'mortar', spin: 0.4, arc: true },
-  // THE HEPTAPOD A6 — the only thing on either board that is not a
-  // position. You place a PATROL: it walks a leash around its berth, empties
-  // a cassette of six / eight / ten rockets by tier, walks home and reloads.
-  // `attack: 'walker'` is the flag the tab reads to give it a life instead
-  // of a cooldown; the rules are src/heptapod.js. `rate` is what it fires at
-  // WHILE it has rockets — the cassette and the walk home are the real
-  // limiter, and they are the reason this is not simply the best tower.
-  { key: 'heptapod', label: 'Heptapod A6', color: 0xffb45e, cost: 260,
-    dmg: 16 / 90, range: 3.4, rate: 1.8, attack: 'walker',
-    // IT CAN BE KILLED. Everything else the player builds is furniture the
-    // enemy walks past; the A6 leaves its wall and goes to meet them, so it
-    // takes what a tank takes. `hullHp` is the number of contacts from the
-    // dangerous tier it survives — the fodder it ignores cannot hurt it
-    // either, which is the same asymmetry the tank lives under.
-    hullHp: 9,
-    model: 'heptapod_a6', sound: 'tower_homing',
-    shape: 'gripper' },
-];
-
-// --- the live roster ------------------------------------------------------
-// These are LET bindings on purpose: an ES module export is a live binding,
-// so every importer sees the switch without any of them holding a stale
-// copy — which is what lets one 15k-line tab serve both boards. The pick is
-// made ONCE, before the tab is imported (src/roster.js), and never again;
-// nothing here is reactive and nothing should be.
-export const ROSTERS = {
-  1: { id: 1, label: 'campaign', towers: ROSTER_V1,
-       order: ['single', 'rapid', 'spread', 'slow', 'homing', 'aoe', 'sniper', 'laser'],
-       hackGated: ['aoe'] },
-  2: { id: 2, label: 'sentry board', towers: ROSTER_V2,
-       order: ['rotor', 'plasma', 'quiver', 'relay', 'mortar', 'lancer', 'howitzer', 'heptapod'],
-       hackGated: ['mortar'] },
+// Sentry combat rules. Identity, numbering and radial order have one content owner.
+import { SENTRIES, SENTRY_ORDER } from './content/sentries.js';
+const COMBAT = {
+  "rotor": {
+    "color": 15397631,
+    "cost": 45,
+    "dmg": 0.1,
+    "range": 3.6,
+    "rate": 2.2,
+    "attack": "single"
+  },
+  "plasma": {
+    "color": 3139280,
+    "cost": 80,
+    "dmg": 0.044444444444444446,
+    "range": 2.6,
+    "rate": 6,
+    "attack": "beam"
+  },
+  "quiver": {
+    "color": 5938175,
+    "cost": 90,
+    "dmg": 0.14444444444444443,
+    "range": 3.5,
+    "rate": 1.2,
+    "attack": "seeker",
+    "lock": true
+  },
+  "relay": {
+    "color": 12904191,
+    "cost": 100,
+    "dmg": 0,
+    "range": 3.5,
+    "rate": 1,
+    "attack": "slowfield",
+    "slowFactor": 0.45,
+    "slowDur": 1.6
+  },
+  "mortar": {
+    "color": 10470655,
+    "cost": 110,
+    "dmg": 0.13333333333333333,
+    "range": 3.5,
+    "rate": 0.9,
+    "attack": "mortar",
+    "splash": 1.5,
+    "arc": true
+  },
+  "lancer": {
+    "color": 16777215,
+    "cost": 130,
+    "dmg": 0.3333333333333333,
+    "range": 7,
+    "rate": 0.45,
+    "attack": "lance",
+    "pierce": true,
+    "burst": 0.8
+  },
+  "howitzer": {
+    "color": 10483199,
+    "cost": 220,
+    "dmg": 0.37777777777777777,
+    "range": 5.6,
+    "rate": 0.45,
+    "attack": "mortar",
+    "splash": 2.4,
+    "arc": true
+  },
+  "heptapod": {
+    "color": 16757854,
+    "cost": 260,
+    "dmg": 0.17777777777777778,
+    "range": 3.4,
+    "rate": 1.8,
+    "attack": "walker",
+    "hullHp": 9
+  }
 };
-
-// ONE DEFAULT, STATED ONCE, HERE. roster.js applies the URL override, but it
-// is DOM-aware and Node cannot import it — so if the default lived only there
-// the test suite would run against roster 1 while the game shipped roster 2,
-// and every assertion would be about a board nobody plays. The tests and the
-// browser have to agree about what "no parameter" means.
+export const TOWERS = SENTRIES.map(s => Object.freeze({ ...COMBAT[s.key], ...s, sound:s.fire }));
+export const TOWER_BY_KEY = Object.fromEntries(TOWERS.map(t => [t.key,t]));
+export const TOWER_ORDER = SENTRY_ORDER;
+export const HACK_GATED = ['mortar'];
+const WAVE_LADDER = TOWER_ORDER.filter(k => !HACK_GATED.includes(k));
+// Retain the numeric identity for existing result files; retired roster URLs resolve here.
 export const DEFAULT_ROSTER_ID = 2;
-export let ROSTER = ROSTERS[DEFAULT_ROSTER_ID];
-export let TOWERS = ROSTER.towers;
-export let TOWER_BY_KEY = Object.fromEntries(TOWERS.map((t) => [t.key, t]));
-export let TOWER_ORDER = ROSTER.order;
-export let HACK_GATED = ROSTER.hackGated;
-let WAVE_LADDER = TOWER_ORDER.filter((k) => !HACK_GATED.includes(k));
-
-// Never throws: an unknown id is the DEFAULT board, because a stale URL should
-// land you on a board that exists rather than on nothing.
-export function useRoster(id) {
-  ROSTER = ROSTERS[id] || ROSTERS[DEFAULT_ROSTER_ID];
-  TOWERS = ROSTER.towers;
-  TOWER_BY_KEY = Object.fromEntries(TOWERS.map((t) => [t.key, t]));
-  TOWER_ORDER = ROSTER.order;
-  HACK_GATED = ROSTER.hackGated;
-  WAVE_LADDER = TOWER_ORDER.filter((k) => !HACK_GATED.includes(k));
-  return ROSTER;
-}
-
-// THE STARTER TOWER, by position rather than by name. Several call sites
-// wanted "the cheapest one" and said `TOWER_BY_KEY.single` — which is a key
-// that does not exist on the second board.
+export const ROSTER = { id:2, label:'Sentries', towers:TOWERS, order:TOWER_ORDER, hackGated:HACK_GATED };
+export const ROSTERS = { 2:ROSTER };
+export const useRoster = () => ROSTER;
 export const starterTower = () => TOWERS[0];
-
-// WHAT A TOWER SOUNDS LIKE. `tower_${key}` was the whole rule and it worked
-// because the campaign roster's eight keys and the manifest's eight tower
-// samples were the same eight words. A second roster breaks that silently —
-// there is no `tower_rotor` — so a def may name its own sample and the
-// convention is the fallback rather than the law.
-export const towerSound = (def) => def.sound || `tower_${def.key}`;
+export const towerSound = def => def.sound;
 
 // upgrade economics, HK-exact: tier1 = 70% of purchase, tier2 = 120%,
 // two tiers max. Returns null when maxed.

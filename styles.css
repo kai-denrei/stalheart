@@ -3394,28 +3394,6 @@ body.hacking #chrome-toggle { display: none !important; }
   #td-hack-rotate, #td-hack-abort { flex: 0 0 auto; }
 }
 
-/* the radial's keyboard hint: the digit that places this tower */
-.radial-item .rk {
-  position: absolute;
-  top: -7px;
-  left: -7px;
-  width: 15px;
-  height: 15px;
-  line-height: 15px;
-  font-style: normal;
-  font-size: 10px;
-  font-weight: bold;
-  text-align: center;
-  color: #08140a;
-  background: #86ff9e;
-  border-radius: 50%;
-  pointer-events: none;
-}
-.radial-item.locked .rk, .radial-item[disabled] .rk { opacity: 0.35; }
-@media (pointer: coarse), (max-width: 560px) {
-  .radial-item .rk { display: none; } /* no keyboard, no hint */
-}
-
 /* --- the SIM tab: console-family batch runner ---------------------------- */
 #tab-sim { color: #86ff9e; font: 13px/1.7 ui-monospace, Menlo, monospace; }
 #sim-panel { max-width: 860px; margin: 60px auto 0; padding: 0 16px; }

@@ -14,7 +14,7 @@
 #    cheaper and more predictable than fighting the pile-up at runtime.
 #
 # 2. PITCH CHANGES DURATION. asetrate at 0.70 makes a slice ~1.43x
-#    longer, so source trim = output duration * rate. tower_slow wants
+#    longer, so source trim = output duration * rate. field_pulse wants
 #    0.80s out at 0.70, so it trims 0.56s of source.
 #
 # Peak-normalize rather than loudnorm: peak preserves the transients that
@@ -53,14 +53,11 @@ apeak () {
 # in front of the loop-worthy body; trimming from zero would give a slice
 # that is mostly silence and a transient that is not the one wanted.
 TABLE=$(cat <<'EOF'
-tower_single|Tower_Single_shot_muffled.wav|0.45|1.00
-tower_rapid|Tower_Rapid_Ice_casting_55.wav|0.22|1.00
-tower_spread|Tower_Spread_light-blast-07.wav|0.78|1.00
-tower_homing|Tower_Homing_heavy-blast-14.wav|0.66|1.00
-tower_slow|Tower_Slow_beam-05.wav|0.80|0.70
-tower_laser|Tower_Laser_beam-05.wav|0.45|1.00
-tower_aoe|Tower_AoE_heavy-blast-03.wav|0.90|1.00
-tower_sniper|Tower_Sniper_heavy-blast-05.wav|0.95|1.00
+kinetic_fire|Tower_Single_shot_muffled.wav|0.45|1.00
+seeker_fire|Tower_Homing_heavy-blast-14.wav|0.66|1.00
+field_pulse|Tower_Slow_beam-05.wav|0.80|0.70
+plasma_fire|Tower_Laser_beam-05.wav|0.45|1.00
+blast_fire|Tower_AoE_heavy-blast-03.wav|0.90|1.00
 tower_upgrade|Tower_upgrade.wav|0.79|1.00
 tank_main|Tank_MainWeapon_heavy-blast-15.wav|1.20|1.00
 tank_secondary|Tank_Secondary_light-blast-09.wav|0.14|1.00

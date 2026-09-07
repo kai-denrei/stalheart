@@ -10,17 +10,8 @@
 //               tint), not an effect.
 //   sentryfx.js how the shot is drawn, what leaves the barrel, and what
 //               happens where it lands.
-//   towerlooks  the tower's BODY — `shape` and `spin` stay with towers.js
-//               because they describe the braille fallback's head geometry,
-//               which is a different subsystem with its own tuner.
-//
-// THERE IS NO SECOND COPY. Nothing here is duplicated from towers.js; these
-// fields were MOVED, and test/sentryfx.mjs fails if a tower def grows one
-// back. That guard is the point — this codebase has been bitten before by two
-// copies of one number drifting, and a half-migration is worse than none.
-//
-// Keyed by tower KEY rather than by model id, because roster 1 has no models
-// at all and still has to draw its shots.
+//   towerlooks  the authored Sentry body, tier and animation pivots.
+// Identity and display order live in content/sentries.js. Profiles use stable keys.
 import { IMPACT_TUNE } from './content/impact-schema.js';
 
 import { SENTRY_FX } from './content/runtime.js';
@@ -28,7 +19,7 @@ import { DEFAULT_FX, WEAPON_KINDS } from './content/weapon-defaults.js';
 export { SENTRY_FX, DEFAULT_FX, WEAPON_KINDS };
 
 // Resolve a tower def to its profile. The ONE door — a call site that reads
-// SENTRY_FX directly will miss the fallback and crash on a roster-1 tower.
+// Unknown diagnostic subjects receive a neutral fallback profile.
 export function fxFor(def) {
   if (!def) return DEFAULT_FX;
   return SENTRY_FX[def.key] || DEFAULT_FX;
@@ -40,16 +31,11 @@ export function fxFor(def) {
 // rather than a second table: a second table is how the range came to
 // disagree with the board about what a Plasma throws.
 const FAMILY_ALIAS = { heptapod_a6: 'heptapod' };
-// ...and the range carries four families the board has no tower for. They are
-// entries here rather than a special case at the call site, so `weaponKind`
-// answers for everything the range can select.
-const RANGE_ONLY = { needle: 'round', kiln: 'throw', railgun: 'round' };
-
 export function weaponKind(idOrKey) {
   const key = FAMILY_ALIAS[idOrKey] || idOrKey;
   const p = SENTRY_FX[key];
   if (p && p.shot && p.shot.kind) return p.shot.kind;
-  return RANGE_ONLY[key] || 'round';
+  return 'round';
 }
 export const fxForFamily = (id) => SENTRY_FX[FAMILY_ALIAS[id] || id] || DEFAULT_FX;
 
@@ -104,8 +90,7 @@ export function resolveImpactColors(profile, { surface = {}, weapon = 0xffd08a }
 }
 
 // A weapon's own colour: what it THROWS if that differs from its identity,
-// otherwise its identity. Falls back rather than throwing, because roster 1
-// has towers this table does not model.
+// otherwise its identity. Unknown keys retain the supplied identity colour.
 export function weaponColor(key, identityHex = 0xffd08a) {
   const p = SENTRY_FX[FAMILY_ALIAS[key] || key];
   return (p && p.shot && p.shot.beamColor) || identityHex;

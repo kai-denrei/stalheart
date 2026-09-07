@@ -5,7 +5,7 @@ This repository owns the game. Read `docs/STATE.md` and `docs/ARCHITECTURE.md` f
 - Run `npm test`, `npm run check` and `npm run build` for substantive runtime changes. Use `npm run test:browser` for boot/input/render/asset changes. Browser tests own their server and Chrome through `scripts/chrome-proc.mjs`; do not leak capture processes.
 - Native ESM source uses canonical URLs without `?v=`. Build hashes go into `dist/` only. Never run the old research bust script or manually edit release tokens.
 - The grid kernel is pinned in `docs/kernel-provenance.json`. Keep seed/topology behavior stable unless explicitly updating that contract. Keep one vendored Three.js version.
-- Default roster is sentry (2); classic (1) remains a regression variant. The game and Workshop import the same rules/assets/presets. URL normalization and roster selection run before consumers load.
+- The only roster is the eight numbered Sentries in `src/content/sentries.js`; retired roster URLs normalize to 2. The game and Workshop import the same rules/assets/presets. URL normalization and roster selection run before consumers load.
 - Ground distances are sphere arcs; imported assets use meters, +Y up, +Z forward. Preserve animated pivots. Unit tick takes absolute time. Visual facing comes from actual render transforms.
 - Game stores use `src/storage.js`. Diagnostics are bounded and local (`src/diagnostics.js`). No source console logging of private data. Keep private legacy Deban records ignored.
 - Record substantive decisions, failures and validation using the project `/deban` skill or `npm run log -- add FILE`. Append immutable entries; never rewrite history. Keep `docs/STATE.md` short and current. No per-commit mandatory second commit.

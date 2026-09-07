@@ -18,7 +18,7 @@ const check = (name, cond, detail = '') => {
   else { console.error(`  FAIL ${name} ${detail}`); failures++; }
 };
 
-const allTowers = [...ROSTERS[1].towers, ...ROSTERS[2].towers];
+const allTowers = ROSTERS[2].towers;
 
 console.log('the split holds:');
 for (const f of MOVED_FIELDS) {
@@ -64,7 +64,7 @@ for (const [key, p] of Object.entries(SENTRY_FX)) {
 }
 
 console.log('a weapon that throws nothing draws nothing:');
-for (const key of ['slow', 'relay']) {
+for (const key of ['relay']) {
   const p = SENTRY_FX[key];
   const names = Array.isArray(p.impact.recipe) ? p.impact.recipe : IMPACT_RECIPES[p.impact.recipe];
   check(`${key} has no impact — a field weapon never lands anywhere`, names.length === 0);

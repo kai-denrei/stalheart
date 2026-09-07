@@ -16,7 +16,7 @@
 // built on buildUnit was showing a drifter the player will never meet — and
 // none of the rammable/not tells, which live only on the cloud.
 import { ENEMY_SPEC } from './enemyspec.js';
-import { TOWERS } from './towers.js';
+import { TOWERS, towerSound } from './towers.js';
 import { PICKUPS, SHELL_PICKUP } from './pickups.js';
 
 export const GROUPS = ['friendly', 'neutral', 'hostile'];
@@ -72,9 +72,9 @@ const PLAYER_UNITS = [
 // Built through the look registry, which is why they carry kind:'tower'.
 const TOWER_UNITS = TOWERS.map((t) => ({
   id: t.key, kind: 'tower', label: t.label,
-  note: `tower · ${t.cost}kg · range ${t.range} · ${t.attack}`,
+  note: `sentry · ${t.cost}kg · range ${t.range} · ${t.note}`,
   sounds: [
-    { key: `tower_${t.key}`, label: 'fire' },
+    { key: towerSound(t), label: 'fire' },
     { key: 'tower_upgrade', label: 'upgrade' },
   ],
 }));
@@ -132,7 +132,7 @@ const PORTAL_UNIT = [
 ];
 
 export const UNIT_CATALOG = {
-  friendly: [...PLAYER_UNITS, ...TOWER_UNITS],
+  friendly: [...TOWER_UNITS, ...PLAYER_UNITS],
   neutral: [...PICKUP_UNITS, ...STRUCTURE_UNITS],
   hostile: [...HOSTILE_UNITS, ...PORTAL_UNIT],
 };

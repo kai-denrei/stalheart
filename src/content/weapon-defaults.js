@@ -20,7 +20,7 @@ const SHOT = (kind, projPx, trail, projSpeed, extra = {}) =>
 //   seeker  a missile that locks first and then homes
 //   throw   a wide jittery spray, thrown DOWN onto a body (Plasma)
 //   lance   a thin straight held beam that pierces (Lancer)
-//   field   nothing leaves it at all (Relay, Slow)
+//   field   nothing leaves it at all (Relay)
 export const WEAPON_KINDS = ['round', 'lob', 'seeker', 'throw', 'lance', 'field'];
 
 // MUZZLE and IMPACT are both `{ recipe, size, colors, tune }`:
@@ -33,37 +33,8 @@ export const WEAPON_KINDS = ['round', 'lob', 'seeker', 'throw', 'lance', 'field'
 const FX = (recipe, size, colors = {}, tune = {}) => ({ recipe, size, colors, tune });
 
 export const SENTRY_FX = {
-  // --- roster 1, the campaign ---------------------------------------------
-  single:   { shot: SHOT('round', 5, 0, 20),
-    muzzle: FX('light', 0.5, { flash: 0xffe6b0 }),
-    impact: FX('shell', 0.7, { spark: 0xffd08a }) },
-  rapid:    { shot: SHOT('round', 4, 3, 26),
-    // a fast gun's muzzle has to be SMALL: at four shots a second a big flash
-    // is a strobe, and the eye stops reading individual shots
-    muzzle: FX('light', 0.32, { flash: 0xfff0cc }, { flashLife: 0.07 }),
-    impact: FX('light', 0.5, { spark: 0xffd08a }) },
-  spread:   { shot: SHOT('round', 3.5, 0, 15),
-    muzzle: FX('light', 0.55, { flash: 0xffdca0 }, { sparkSpread: 1.2 }),
-    impact: FX('light', 0.45, { spark: 0xffc888 }) },
-  homing:   { shot: SHOT('seeker', 5, 6, 13),
-    muzzle: FX(['flash', 'ember'], 0.6, { flash: 0xcfe0ff, ember: 0xff9a5c }),
-    impact: FX('shell', 0.85, { spark: 0xcfe8ff }) },
-  slow:     { shot: SHOT('field', 0, 0, 0),
-    // a field weapon has no muzzle and no impact: nothing leaves it
-    muzzle: FX([], 0), impact: FX([], 0) },
-  aoe:      { shot: SHOT('lob', 12, 6, 3.5),
-    muzzle: FX(['flash', 'ember'], 0.9, { flash: 0xffd9a0, ember: 0xff8a44 }),
-    impact: FX('shell', 1.3, { spark: 0xffb066 }, { ringEnd: 0.95, debrisCount: 14 }) },
-  sniper:   { shot: SHOT('round', 7, 11, 42),
-    muzzle: FX('light', 0.7, { flash: 0xdff2ff }, { flashLife: 0.09 }),
-    impact: FX('shell', 0.8, { spark: 0xdff2ff }, { sparkSpeed: 3.2 }) },
-  laser:    { shot: SHOT('lance', 0, 0, 0),
-    muzzle: FX(['flash'], 0.4, { flash: 0x9dffcf }),
-    impact: FX('laser', 0.6, { spark: 0x9dffcf, splash: 0x9dffcf }) },
-
-  // --- roster 2, the sentry board -----------------------------------------
   rotor:    { shot: SHOT('round', 4, 2, 24),
-    // the minigun. Same reasoning as `rapid`, harder: six barrels at speed
+    // the minigun. six barrels at speed
     muzzle: FX('light', 0.3, { flash: 0xffe4a8 }, { flashLife: 0.06, sparkCount: 10 }),
     impact: FX('light', 0.45, { spark: 0xffd08a }) },
   plasma:   { shot: SHOT('throw', 0, 0, 0, { plasma: true }),

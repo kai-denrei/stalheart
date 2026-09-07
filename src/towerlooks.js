@@ -1,129 +1,14 @@
-// towerlooks.js — the tower VISUAL registry.
-//
-// Tower combat math lives in towers.js and must never be touched to change
-// how a tower looks. This file is the seam: a look is a named builder that
-// turns a tower def into an Object3D, and swapping looks rebuilds only the
-// `obj` on a tower — key, def, tier, cell, cooldown and spend are game
-// state and stay exactly where they were.
-//
-// The contract a look MUST satisfy, read off td-tab's call sites:
-//   - returns a THREE.Group that raycasts (tap-to-select hits it)
-//   - userData.baseScale : placement multiplies by this
-//   - userData.tick(t)   : optional idle animation
-//   - userData.lift      : optional, how far off the surface
-// Every look shares the same MAST (base, column, collar) so they read as
-// one family of machine and only the head changes.
-//
-// `preload` is optional and returns a Promise. It exists for looks whose
-// assets arrive asynchronously — a GLB, say — so those can drop in later
-// without reshaping this interface. A look with no preload is ready
-// immediately; a look whose preload has not resolved falls back.
+// The game's Sentry models use the same pinned GLBs and rig names as labs #sentry.
 import * as THREE from '../vendor/three.module.js';
-import { loadGlb, loadGlbWithClips, mergeByMaterial, fitModel, tintModel } from './glbmodels.js';
+import { loadGlb, loadGlbWithClips, mergeByMaterial, fitModel } from './glbmodels.js';
 import { TOWERS } from './towers.js';
-import { makeTowerMast, makeTowerUnit } from './units.js';
-import { TOWER, HEADS, loadTower } from './feelstore.js';
-
-// def.shape -> a solid primitive, so the SOLID look keeps each tower's
-// silhouette identity from towers.js rather than inventing its own.
-function solidHeadGeometry(shape) {
-  switch (shape) {
-    case 'cone':      return new THREE.ConeGeometry(0.42, 0.86, 7);
-    case 'pyramid':   return new THREE.ConeGeometry(0.46, 0.8, 4);
-    case 'teardrop':  return new THREE.ConeGeometry(0.36, 0.95, 10);
-    case 'bipyramid': return new THREE.OctahedronGeometry(0.5);
-    case 'gear':      return new THREE.TorusGeometry(0.34, 0.16, 6, 8);
-    case 'spiral':    return new THREE.TorusKnotGeometry(0.3, 0.1, 48, 6, 2, 3);
-    case 'dspiral':   return new THREE.TorusKnotGeometry(0.3, 0.1, 48, 6, 3, 2);
-    case 'sphere':
-    default:          return new THREE.IcosahedronGeometry(0.46, 0);
-  }
+// A temporary loading marker, never an alternate tower model.
+function makeLoadingMarker(def) {
+  const root=new THREE.Group();
+  const mesh=new THREE.Mesh(new THREE.CylinderGeometry(.3,.3,.08,8),new THREE.MeshBasicMaterial({color:def.color,wireframe:true}));
+  root.add(mesh);root.userData.baseScale=1/1.55;root.userData.lift=.02;root.userData.kind='loading';root.userData.loading=true;
+  return root;
 }
-
-// SOLID: the same mast, but a faceted tinted head with bright edges
-// instead of the dot cloud. Reads as machined hardware rather than a
-// hovering swarm — the clearest possible contrast at a glance, which is
-// what makes it useful for judging the swap.
-function makeTowerSolid(def) {
-  const { g, head, edge } = makeTowerMast(def);
-  const body = new THREE.MeshLambertMaterial({
-    color: def.color, emissive: new THREE.Color(def.color).multiplyScalar(0.18),
-  });
-  const geo = solidHeadGeometry(def.shape);
-  const mesh = new THREE.Mesh(geo, body);
-  mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), edge));
-  head.add(mesh);
-  // slower than the cloud and with no bob: solid mass should feel heavier
-  const spin = (def.spin ?? 0.6) * 0.45;
-  g.userData.tick = (t) => { head.rotation.y = t * spin; };
-  return g;
-}
-
-// --- GLB looks ------------------------------------------------------------
-// Models arrive asynchronously, which is the whole reason the registry has
-// preload/lookReady: until the bytes land, build() falls back to braille so
-// a tower is never invisible.
-
-function makeGlbLook({ label, url, height, maxSpan, drop = [] }) {
-  let proto = null;
-  const look = {
-    label,
-    loaded: false,
-    preload() {
-      if (look._p) return look._p;
-      look._p = loadGlb(url).then((scene) => {
-        if (!scene) return false;
-        // no pivots preserved: a tower that has dug in holds still, and a
-        // fully merged model is ~6 draw calls instead of ~109
-        proto = fitModel(mergeByMaterial(scene, [], drop), { height, maxSpan });
-        look.loaded = true;
-        return true;
-      });
-      return look._p;
-    },
-    build(def) {
-      if (!proto) return makeTowerUnit(def); // bytes not in yet — never nothing
-      const g = proto.clone(true);
-      tintModel(g, def.color);
-      g.userData.baseScale = 1 / 1.55;   // same envelope convention as the mast
-      g.userData.lift = 0.02;
-      g.userData.kind = 'mesh';
-      return g;
-    },
-  };
-  return look;
-}
-
-// SENTRY: one GLB PER TOWER, named by the roster's own `model` field. The
-// heptapod look above is one model worn by every tower on the board; this
-// is the opposite, and it is what the second roster is for — eight machines
-// that look like eight different machines, from the Sentry Workshop, under
-// the contract the sentry lab already loads them by.
-//
-// The models are cached by URL rather than per look, so six Rotors on a
-// board are one download and one upload, and a tower whose bytes have not
-// landed still gets a braille mast rather than nothing.
-// THE LAB'S LOOK, ON THE BOARD (operator: "the texture and colors look much
-// better in sentry lab mode; let's aim for a similar look in game").
-//
-// The reason the lab looked better is that the lab does NOTHING to these
-// models. It loads them and lights them, and what you see is what the
-// Workshop authored: blue-grey armour, a lighter edge, copper fittings, an
-// orange signal, a red identification stripe. Six materials that were
-// designed to sit together.
-//
-// The board was running them through tintModel, which re-hues every surface
-// to the TOWER's colour and keeps only lightness — a system built for the
-// mkcx tank, whose four materials are all muddy olive and genuinely need
-// pulling apart. Applied to a palette that was already good, it threw the
-// palette away and returned a monochrome machine.
-//
-// So: keep the authored colours, lift them a little because the board is a
-// darker room than the lab's studio, and spend the tower's identity colour
-// where it costs nothing — the SIGNAL and IDENTIFICATION surfaces, which are
-// the indicator panels and are meant to be read. A Rotor and a Quiver are
-// still told apart at a glance, and both still look like the machines the
-// workshop drew.
 const SENTRY_HOT = /signal|identification/i;
 const SENTRY_LIFT = 1.35;    // the board is dimmer than the lab's three lights
 const SENTRY_GLOW = 0.07;    // ...and pure Lambert in near-black reads as black
@@ -254,25 +139,23 @@ const sentryLook = {
   loaded: false,
   preload() {
     if (sentryLook._p) return sentryLook._p;
-    // every model the LIVE roster names — a roster with no models (the
-    // campaign board) resolves immediately and falls back to braille
     // TIER 1 UP FRONT, the rest on demand. Three tiers of eight families is
     // twenty-four models and about four megabytes; a board that downloads
     // the Maximum variant of a tower nobody has upgraded is paying for
     // hardware that is not on the table.
     const first = sentryPin ?? 1;
     sentryLook._p = Promise.all(TOWERS.filter((d) => d.model).map((d) => loadSentryModel(d, first)))
-      .then((all) => { sentryLook.loaded = all.length > 0 && all.some(Boolean); return sentryLook.loaded; });
+      .then((all) => { sentryLook.loaded = all.length > 0 && all.every(Boolean); return sentryLook.loaded; });
     return sentryLook._p;
   },
   build(def, tier = 0) {
-    if (!def.model) return makeTowerUnit(def);
+    if (!def.model) return makeLoadingMarker(def);
     const { have, want } = sentryTierFor(def, tier);
     // start the tier we do not have yet; wear the best one we do
     if (have !== want) loadSentryModel(def, want);
     const url = have ? sentryUrlFor(def, have) : null;
     const proto = url ? sentryProtos.get(url) : null;
-    if (!proto) return makeTowerUnit(def);   // bytes not in yet — never nothing
+    if (!proto) return makeLoadingMarker(def);   // bytes not in yet — never nothing
     const g = proto.clone(true);
     dressSentry(g, def.color);
     g.userData.baseScale = 1 / 1.55;
@@ -297,7 +180,7 @@ const sentryLook = {
     g.traverse((o) => { if (/^MUZZLE_\d+$/.test(o.name || '')) muzzles.push(o); });
     muzzles.sort((a, b) => a.name.localeCompare(b.name));
     if (yaw) {
-      // the same seam the braille look offers, so aimTower needs no new
+      // the shared aiming seam, so aimTower needs no new
       // code path: a head to turn and the facing it is turned relative to
       g.userData.head = yaw;
       g.userData.headFacing = 0;
@@ -341,25 +224,10 @@ const sentryLook = {
   },
 };
 
-export const TOWER_LOOKS = {
-  // built against the LIVE tuning object, so what the viewer's tower panel
-  // shows is what the board raises — no apply step, nothing to sync
-  braille: { label: 'braille', build: (def) => makeTowerUnit(def, loadTower(), HEADS) },
-  solid:   { label: 'solid',   build: makeTowerSolid },
-  heptapod: makeGlbLook({
-    label: 'heptapod',
-    url: 'assets/models/heptapod.glb',
-    height: 1.35,  // mast units — the braille mast is 1.55 tall
-    maxSpan: 2.2,  // but never sprawl wider than this over its neighbours
-    // a 12-triangle physics proxy the exporter left visible — drawing it
-    // lays two big triangles over the model with corners poking out
-    drop: ['Hull_Collision'],
-  }),
-  sentry: sentryLook,
-};
+export const TOWER_LOOKS = { sentry:sentryLook };
 
 export const TOWER_LOOK_NAMES = Object.keys(TOWER_LOOKS);
-export const DEFAULT_TOWER_LOOK = 'braille';
+export const DEFAULT_TOWER_LOOK = 'sentry';
 
 // Never throws and never returns null: an unknown name (a stale URL hook,
 // a saved preference for a look that has since been removed) falls back to

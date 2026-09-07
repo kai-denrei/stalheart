@@ -2,7 +2,7 @@
 
 Drive the tank. Defend the heart. Hunt the gates. Reclaim a planet built on an irregular spherical grid.
 
-Stalheart is the independently maintained game extracted from [spherical-stalberg-grid](https://github.com/kai-denrei/spherical-stalberg-grid). The original Git history is retained. Sentry is the default roster; classic, rescue and raid remain playable.
+Stalheart is the independently maintained game extracted from [spherical-stalberg-grid](https://github.com/kai-denrei/spherical-stalberg-grid). The original Git history is retained. The eight numbered Sentries are the shared game/lab roster; rescue and raid remain playable. See [the Sentry catalog](docs/SENTRIES.md).
 
 ## Run
 

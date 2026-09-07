@@ -1,3 +1,4 @@
+import { SENTRIES } from '../content/sentries.js';
 import { makeAudio } from '../audio.js';
 import { CONTENT } from '../content/runtime.js';
 import { AUDIO_KNOBS, clone, resolveSounds } from '../content/preset.js';
@@ -11,7 +12,7 @@ export function initAudioTab(root) {
   panel.innerHTML='<h1>Sound lab</h1><p>The game’s samples and voice mixer. Tune a cue, audition it, then export the complete FX package.</p><label>Cue <select id="audio-cue"></select></label><div id="audio-knobs"></div><button id="audio-play">Play cue</button><button id="audio-stop">Stop</button><output id="audio-status" aria-live="polite">Click Play cue to enable audio.</output>';
   root.append(panel);
   const select=panel.querySelector('select'),knobs=panel.querySelector('#audio-knobs'),status=panel.querySelector('output');
-  for(const key of Object.keys(definitions)){const option=document.createElement('option');option.value=key;option.textContent=key;select.append(option);}
+  for(const key of [...SENTRIES.map(s=>s.fire), ...Object.keys(definitions).filter(key=>!SENTRIES.some(s=>s.fire===key))]){const option=document.createElement('option');option.value=key;option.textContent=SENTRIES.find(s=>s.fire===key)?.label+' — fire';if(!SENTRIES.some(s=>s.fire===key))option.textContent=key;select.append(option);}
   function refresh() {
     knobs.replaceChildren();
     const key=select.value;

@@ -20,8 +20,7 @@ import { EMOTION_IDS, emotion, phosphorFor } from './emotions.js';
 import { printPhase, printOffset, printOn } from './printpath.js';
 import { loadGlb, loadGlbWithClips, mergeByMaterial, fitModel, tintModel, makeShellRack,
   addEdgeOutlines, makeHeatSleeve } from './glbmodels.js';
-import { CREATURES, waveJelly, swimWave, spherePts, bulletPts, missilePts, heartPts, torusPts, towerHeadPts, enemyDotPts, portalPts, personPts } from './creatures.js';
-import { TOWER_FEEL, TOWER_HEADS, headKindFor } from './towerfeel.js';
+import { CREATURES, waveJelly, swimWave, spherePts, bulletPts, missilePts, heartPts, torusPts, cloudFormPoints, enemyDotPts, portalPts, personPts } from './creatures.js';
 import { STARGATE_PTS, STARGATE_STROKE,
   HORIZON_N, stargateHorizon } from './stargate.js';
 import { ENEMY_SPEC } from './enemyspec.js';
@@ -531,130 +530,6 @@ export function makeDebris(obj, outwardN) {
   return mesh;
 }
 
-// tower — TD defense: a HALF-DOTTED head (creatures.js towerHeadPts,
-// one silhouette per HokorobiTawaa tower shape) mounted on an elevated
-// mesh pedestal — slab, tapered column, neon-edged. The dot cloud is
-// STATIC: idle animation is transform-only (spin + bob on the head
-// group), so ~190 dots per tower cost nothing per frame — cheaper than
-// one portal. userData.head is the aim/emit point.
-// The tower MAST — base, column, collar — shared by every tower look so
-// they all read as the same family of machine. A look supplies only the
-// head; see towerlooks.js.
-export function makeTowerMast(def) {
-  const steel = new THREE.MeshLambertMaterial({ color: 0x27303f });
-  const tintM = new THREE.MeshLambertMaterial({ color: def.color });
-  const edge = new THREE.LineBasicMaterial({
-    color: def.color, transparent: true, opacity: 0.7,
-  });
-  const g = new THREE.Group();
-  const outline = (mesh) => {
-    mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry), edge));
-  };
-  // THE PEDESTAL IS THE TIER READ (operator ruling): square slab when
-  // built, hexagon at the first upgrade, circle at the second — the
-  // upgrade state visible from any camera without a label. EdgesGeometry's
-  // default threshold culls the smooth sides of the round bases, so the
-  // hexagon keeps its corners and the circle reads as two clean rings.
-  const TIER_BASE = [
-    () => new THREE.BoxGeometry(0.8, 0.16, 0.8),
-    () => new THREE.CylinderGeometry(0.46, 0.46, 0.16, 6),
-    () => new THREE.CylinderGeometry(0.44, 0.44, 0.16, 28),
-  ];
-  let base = null;
-  const setTier = (t) => {
-    if (base) {
-      g.remove(base);
-      base.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
-    }
-    const idx = Math.max(0, Math.min(TIER_BASE.length - 1, t | 0));
-    base = new THREE.Mesh(TIER_BASE[idx](), steel);
-    base.position.y = 0.08;
-    outline(base);
-    g.add(base);
-  };
-  setTier(0);
-  const column = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.2, 0.62, 6), steel);
-  column.position.y = 0.47;
-  g.add(column);
-  const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.06, 6), tintM);
-  collar.position.y = 0.8;
-  outline(collar);
-  g.add(collar);
-  // the head floats above the mast; a look fills this group
-  const head = new THREE.Group();
-  head.position.y = 1.12;
-  g.add(head);
-  // hand-normalized: total height ~1.55 (head top), footprint 0.8 —
-  // normalizeToUnit only measures meshes and would ignore a dot cloud
-  g.scale.setScalar(1 / 1.55);
-  g.userData.baseScale = 1 / 1.55;
-  g.userData.head = head;
-  g.userData.lift = 0.02;
-  g.userData.kind = 'mesh';
-  g.userData.setTier = setTier;
-  return { g, head, tintM, edge, outline };
-}
-
-// `feel` is the live tuning object when one is passed, and the shipped
-// defaults otherwise — so this function is equally usable from the game, the
-// bench, and a Node test with no store in sight.
-export function makeTowerUnit(def, feel = TOWER_FEEL, heads = TOWER_HEADS) {
-  const { g, head } = makeTowerMast(def);
-  // the half-dotted head, floating above the mast
-  const kind = headKindFor(def, heads);
-  const pts = towerHeadPts(kind, Math.round(feel.dots), feel.hiEvery);
-  const pos = new Float32Array(pts.length * 3);
-  const col = new Float32Array(pts.length * 3);
-  const cBody = new THREE.Color(def.color);
-  const cHi = new THREE.Color(0xffffff);
-  for (let i = 0; i < pts.length; i++) {
-    pos[i * 3] = pts[i][0]; pos[i * 3 + 1] = pts[i][1]; pos[i * 3 + 2] = pts[i][2];
-    const c = pts[i][3] === 1 ? cHi : cBody;
-    col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  const cloud = new THREE.Points(geo, new THREE.PointsMaterial({
-    size: feel.dotSize, sizeAttenuation: false, vertexColors: true,
-    transparent: true, opacity: 0.95,
-  }));
-  cloud.scale.setScalar(feel.headScale);
-  // a flat cog seen edge-on is a line; tip it so the teeth read
-  if (kind === 'gear') cloud.rotation.x = 0.28;
-  head.add(cloud);
-
-  // Which way this head FACES, derived from its own points rather than
-  // assumed. The six-axis arm reaches along +X and the launcher's tubes point
-  // somewhere else again — a tracking tower that assumed +Z would aim every
-  // shape ninety degrees wrong and look deliberate about it.
-  //
-  // The business end is the upper part of the shape; its horizontal offset
-  // from the mast axis is the direction it points. A radially symmetric head
-  // averages to nothing, which correctly reads as "no facing".
-  {
-    let hy = -Infinity, ly = Infinity;
-    for (const p of pts) { if (p[1] > hy) hy = p[1]; if (p[1] < ly) ly = p[1]; }
-    const band = ly + (hy - ly) * 0.65;
-    let sx = 0, sz = 0, c = 0;
-    for (const p of pts) if (p[1] >= band) { sx += p[0]; sz += p[2]; c++; }
-    const mx = c ? sx / c : 0, mz = c ? sz / c : 0;
-    g.userData.headFacing = Math.hypot(mx, mz) > 0.08 ? Math.atan2(mx, mz) : 0;
-  }
-  // A tower's own `spin` still wins where towers.js sets one — that is per
-  // tower character, not a global look setting. The knob is the default for
-  // everything that does not care.
-  const spin = def.spin ?? feel.spin;
-  const lift = feel.headLift;
-  g.userData.tick = (t) => {
-    head.rotation.y = t * spin;
-    head.position.y = lift + feel.bob * Math.sin(t * feel.bobRate);
-  };
-  head.position.y = lift;
-  g.userData.headCloud = cloud;
-  return g;
-}
-
 // dot enemies — the WHOLE TD roster as half-dotted STATIC clouds.
 // The original three creatures use their rich generators (posed once,
 // never re-posed); the borrowed types use enemyDotPts silhouettes.
@@ -677,7 +552,7 @@ const DOT_SHAPES = {
   // quaternion, so a rotation set on the object would be thrown away. The
   // model runs along X with the flagella at -X; enemies face +Z; so
   // (x, y, z) -> (-z, y, x) puts the head forward and the tail behind.
-  scoutufo: (d = 1) => towerHeadPts('bacterium', Math.round(170 * d))
+  scoutufo: (d = 1) => cloudFormPoints('bacterium', Math.round(170 * d))
     .map((p) => (p.length > 3 ? [-p[2], p[1], p[0], p[3]] : [-p[2], p[1], p[0]])),
   gslime: (d = 1) => enemyDotPts('slime', Math.round(150 * d)),
   drifter: (d = 1) => enemyDotPts('saturn', Math.round(150 * d)),
@@ -695,7 +570,7 @@ const DOT_SHAPES = {
   // solid core renders at the origin — uncentred, the core floated beside
   // the shell instead of inside it
   shellback: (d = 1) => {
-    const pts = towerHeadPts('shell', Math.round(400 * d)); // a spiral is all surface — it needs density
+    const pts = cloudFormPoints('shell', Math.round(400 * d)); // a spiral is all surface — it needs density
     let cx = 0, cy = 0, cz = 0;
     for (const p of pts) { cx += p[0]; cy += p[1]; cz += p[2]; }
     cx /= pts.length; cy /= pts.length; cz /= pts.length;

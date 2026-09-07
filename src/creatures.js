@@ -1,4 +1,4 @@
-import { BRAILLE_SHAPES, BRAILLE_SHAPE_KINDS } from './braillelab.js';
+import { ORGANIC_FORMS } from './organic-forms.js';
 // creatures.js — organic dot-cloud units, ported from ~/Dev/Braille
 // fun-shapes (half-dotted > organic): amoeba, bacteriophage, jellyfish.
 // Each generator returns unit-radius points [x,y,z,(hi)] where hi===1 marks a
@@ -267,20 +267,9 @@ export function enemyDotPts(kind, n = 150) {
   return fitUnit(pts);
 }
 
-// tower heads — half-dotted silhouettes for the TD defense roster, one
-// per HokorobiTawaa tower shape. All fitUnit-normalized, every 12th dot
-// hi. These are STATIC clouds: the game animates them with transform
-// spin/bob only, so dot count costs nothing per frame.
-// Lab shapes arrive at whatever density their author chose (506 to 2689
-// points across the nine ported so far) and several carry no highlights at
-// all. Resampling on the way in gives them BOTH: the dot-count knob applies,
-// and they speak the half-dotted language the rest of the game does.
-//
-// The authored highlight flags are dropped deliberately. Three of the nine
-// have none, so honouring them would leave those shapes reading as flat dust
-// — and the whole point of `hiEvery` is that it is a knob.
+// Density-controlled point forms for organic enemies.
 function resampleLab(src, n, emit) {
-  // Anchoring is seatHead's job, once, for every head — see below.
+  // Anchoring is seatForm's job, once, for every head — see below.
   const step = src.length / Math.max(1, n);
   for (let i = 0; i < n; i++) {
     const p = src[Math.min(src.length - 1, Math.round(i * step))];
@@ -288,37 +277,7 @@ function resampleLab(src, n, emit) {
   }
 }
 
-// Spread `n` points evenly along a list of 3D segments, proportional to
-// LENGTH. Line-built shapes (a lattice, an arm) otherwise get whatever count
-// their structure happens to imply — which ignores the dot-count knob and
-// leaves long members sparse while short ones clot.
-function strokePts(segs, n, emit) {
-  const len = segs.map(([a, b]) =>
-    Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]));
-  const total = len.reduce((s2, v) => s2 + v, 0) || 1;
-  let i = 0;
-  for (let k = 0; k < segs.length; k++) {
-    const [a, b] = segs[k];
-    // at least 2 per member, so a short strut never vanishes entirely
-    const cnt = Math.max(2, Math.round((len[k] / total) * n));
-    for (let j = 0; j < cnt; j++) {
-      const f = cnt === 1 ? 0 : j / (cnt - 1);
-      emit(a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f, i++);
-    }
-  }
-}
-
-// Every head STANDS on its base, and stands on the mast's centreline.
-//
-// Two separate mistakes were being made before. fitUnit normalises by
-// distance from the origin, which says nothing about where a shape's mass
-// sits, so off-origin shapes hung off the side of the collar. Centring on the
-// bounding box fixed that and introduced the second: an arm reaches forward,
-// so its silhouette's centre is well in front of its pedestal — centring the
-// BODY hangs the FOOT off the mast. These are machines that stand on
-// something, so the base is what gets centred and the base is what sits at
-// the anchor.
-function seatHead(pts) {
+function seatForm(pts) {
   if (!pts.length) return pts;
   let minY = Infinity, maxY = -Infinity;
   for (const p of pts) { if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1]; }
@@ -332,202 +291,18 @@ function seatHead(pts) {
     : [p[0] - cx, p[1] - minY, p[2] - cz]));
 }
 
-export function towerHeadPts(kind, n = 190, hiEvery = 12) {
-  return seatHead(towerHeadPtsRaw(kind, n, hiEvery));
+export function cloudFormPoints(kind, n = 190, hiEvery = 12) {
+  return seatForm(cloudFormPointsRaw(kind, n, hiEvery));
 }
 
-function towerHeadPtsRaw(kind, n = 190, hiEvery = 12) {
-  const pts = [];
-  const GA = Math.PI * (3 - Math.sqrt(5));
-  // every `hiEvery`th dot is a highlight — the half-dotted read. Guarded
-  // against 0 and 1: a modulus of either turns EVERY dot white and the shape
-  // stops reading as half-dotted at all.
-  const every = Math.max(2, Math.round(hiEvery) || 12);
-  const P = (x, y, z, i) => pts.push(i % every === 0 ? [x, y, z, 1] : [x, y, z]);
-  // Re-emitted through P rather than returned straight from spherePts: that
-  // helper carries its own fixed highlight rule, so returning it early made
-  // `hiEvery` decorative for the sphere — which is the DEFAULT head for the
-  // spread tower, i.e. the one shape where the knob mattered most.
-  const asSphere = () => {
-    const sp = spherePts(n);
-    for (let i = 0; i < sp.length; i++) P(sp[i][0], sp[i][1], sp[i][2], i);
-    return fitUnit(pts);
-  };
-  if (kind === 'sphere') return asSphere();
-  // ported lab shapes come first: they are whole authored models, not a case
-  // in the switch below
-  if (BRAILLE_SHAPES[kind]) {
-    resampleLab(BRAILLE_SHAPES[kind](), n, P);
-    return fitUnit(pts);
-  }
-  if (kind === 'cone') {
-    for (let i = 0; i < n; i++) {
-      const f = i / n;
-      const r = f, th = i * GA;
-      P(r * Math.cos(th), 1 - 2 * f, r * Math.sin(th), i);
-    }
-  } else if (kind === 'bipyramid') {
-    for (let i = 0; i < n; i++) {
-      const f = i / n;                 // 0..1 sweeps bottom tip → top tip
-      const y = -1 + 2 * f;
-      const r = 1 - Math.abs(y), th = i * GA;
-      P(r * Math.cos(th), y, r * Math.sin(th), i);
-    }
-  } else if (kind === 'teardrop') {
-    for (let i = 0; i < n; i++) {
-      const f = i / n;
-      const y = -1 + 2 * f;
-      // fat base, drawn point: teardrop of revolution
-      const r = Math.sqrt(Math.max(0, 1 - y)) * (1 + y) * 0.62;
-      const th = i * GA;
-      P(r * Math.cos(th), y, r * Math.sin(th), i);
-    }
-  } else if (kind === 'pyramid') {
-    // square shells: levels of shrinking square outlines, apex up
-    const L = 12;
-    let i = 0;
-    for (let lv = 0; lv < L; lv++) {
-      const y = -1 + (2 * lv) / L;
-      const s = 1 - (lv / L);
-      const per = Math.max(4, Math.round((n / L) / 1));
-      for (let k = 0; k < per; k++, i++) {
-        const u = (k / per) * 4;      // 0..4 around the square perimeter
-        const edge = Math.floor(u), fr = u - edge;
-        const a = -s + 2 * s * fr;
-        const [x, z] = edge === 0 ? [a, -s] : edge === 1 ? [s, a]
-          : edge === 2 ? [-a, s] : [-s, -a];
-        P(x, y, z, i);
-      }
-    }
-  } else if (kind === 'gear') {
-    // flat cog: toothed outer ring + hub ring, lying in the X-Z plane
-    const outer = Math.round(n * 0.72);
-    for (let i = 0; i < outer; i++) {
-      const th = (i / outer) * 2 * Math.PI;
-      const r = 0.72 + (Math.sin(th * 8) > 0.15 ? 0.28 : 0);
-      P(r * Math.cos(th), 0, r * Math.sin(th), i);
-    }
-    for (let i = 0; i < n - outer; i++) {
-      const th = (i / (n - outer)) * 2 * Math.PI;
-      P(0.34 * Math.cos(th), 0, 0.34 * Math.sin(th), i + outer);
-    }
-  } else if (kind === 'spiral' || kind === 'dspiral') {
-    const strands = kind === 'dspiral' ? 2 : 1;
-    const per = Math.floor(n / strands);
-    let i = 0;
-    for (let sd = 0; sd < strands; sd++) {
-      for (let k = 0; k < per; k++, i++) {
-        const f = k / per;
-        const th = f * Math.PI * 6 + sd * Math.PI;
-        P(0.62 * Math.cos(th), -1 + 2 * f, 0.62 * Math.sin(th), i);
-      }
-    }
-  } else if (kind === 'lattice') {
-    // A guyed lattice mast: four tapering corner rails with X bracing between
-    // levels. Straight lines of dots read as STRUCTURE where every other head
-    // here reads as a body — the clearest silhouette in the set at distance.
-    const L = 5, rails = 4;
-    const corner = (lv, c) => {
-      const y = -1 + (2 * lv) / L;
-      const r = 0.62 * (1 - 0.45 * (lv / L));   // tapers toward the top
-      const a = (c / rails) * 2 * Math.PI + Math.PI / 4;
-      return [r * Math.cos(a), y, r * Math.sin(a)];
-    };
-    const segs = [];
-    for (let lv = 0; lv < L; lv++) {
-      for (let c = 0; c < rails; c++) {
-        segs.push([corner(lv, c), corner(lv + 1, c)]);                    // rail
-        segs.push([corner(lv, c), corner(lv + 1, (c + 1) % rails)]);      // brace
-        segs.push([corner(lv, (c + 1) % rails), corner(lv + 1, c)]);      // and back
-      }
-    }
-    strokePts(segs, n, P);
-    } else if (kind === 'dish') {
-    // parabolic dish on a short stalk, face up — a listening post
-    const bowl = Math.round(n * 0.72);
-    for (let k = 0; k < bowl; k++) {
-      const f = k / bowl, th = k * GA;
-      const r = Math.sqrt(f);                 // even area across the disc
-      P(r * Math.cos(th), -0.35 + r * r * 0.85, r * Math.sin(th), k);
-    }
-    for (let k = 0; k < n - bowl; k++) {      // the feed horn on its stalk
-      const f = k / (n - bowl);
-      P(0, -0.35 + f * 1.15, 0, bowl + k);
-    }
-  } else if (kind === 'arm') {
-    // A robotic arm: shoulder collar, upper arm, elbow, forearm, gripper.
-    // Jointed rather than radial, so it reads as MACHINERY — and it is the
-    // one head here with a FRONT, which makes its rotation legible.
-    const shoulder = [0, -0.92, 0];
-    const elbow = [0.30, -0.10, 0.30];
-    const wrist = [-0.22, 0.62, 0.10];
-    const segs = [];
-    // the collar, as a ring of chords rather than a single stroke
-    const ring = 14;
-    for (let k = 0; k < ring; k++) {
-      const a0 = (k / ring) * 2 * Math.PI, a1 = ((k + 1) / ring) * 2 * Math.PI;
-      segs.push([[0.34 * Math.cos(a0), -0.92, 0.34 * Math.sin(a0)],
-                 [0.34 * Math.cos(a1), -0.92, 0.34 * Math.sin(a1)]]);
-    }
-    // limbs doubled as a narrow pair, so a member reads as a strut and not a
-    // hairline — a single row of dots disappears at play distance
-    for (const off of [-0.055, 0.055]) {
-      segs.push([[shoulder[0] + off, shoulder[1], shoulder[2]], [elbow[0] + off, elbow[1], elbow[2]]]);
-      segs.push([[elbow[0] + off, elbow[1], elbow[2]], [wrist[0] + off, wrist[1], wrist[2]]]);
-    }
-    for (let c = 0; c < 3; c++) {
-      const a = (c / 3) * 2 * Math.PI;
-      segs.push([wrist, [wrist[0] + 0.30 * Math.cos(a), 0.98, wrist[2] + 0.30 * Math.sin(a)]]);
-    }
-    strokePts(segs, n, P);
-    } else if (kind === 'claw') {
-    // Just the gripper, scaled up: four fingers curling around a hub. Reads
-    // as a HAND rather than a tower, which is the point of having it.
-    const hub = Math.round(n * 0.18);
-    for (let k = 0; k < hub; k++) {
-      const th = (k / hub) * 2 * Math.PI;
-      P(0.22 * Math.cos(th), -0.85, 0.22 * Math.sin(th), k);
-    }
-    const fingers = 4;
-    const per = Math.max(3, Math.floor((n - hub) / fingers));
-    let i = hub;
-    for (let c = 0; c < fingers; c++) {
-      const a = (c / fingers) * 2 * Math.PI + Math.PI / 4;
-      for (let k = 0; k < per; k++, i++) {
-        const f = k / per;
-        // bows outward then back in, so the tips face each other
-        const r = 0.22 + Math.sin(f * Math.PI) * 0.62;
-        P(r * Math.cos(a), -0.85 + f * 1.75, r * Math.sin(a), i);
-      }
-    }
-  } else if (kind === 'sentry') {
-    // boxy housing with a barrel out the front — the most literal "gun"
-    const box = Math.round(n * 0.62);
-    for (let k = 0; k < box; k++) {
-      const f = k / box, th = k * GA;
-      const y = -0.55 + f * 0.9;
-      const r = 0.6 * Math.sqrt(Math.max(0, 1 - ((y + 0.1) / 0.75) ** 2));
-      P(r * Math.cos(th), y, r * 0.75 * Math.sin(th), k);
-    }
-    for (let k = 0; k < n - box; k++) {
-      const f = k / (n - box), th = k * GA;
-      P(0.09 * Math.cos(th), -0.1 + 0.09 * Math.sin(th), 0.45 + f * 0.95, box + k);
-    }
-  } else {
-    return asSphere();
-  }
+function cloudFormPointsRaw(kind, n = 190, hiEvery = 12) {
+  const pts = [], every = Math.max(2, Math.round(hiEvery) || 12);
+  const emit = (x,y,z,i) => pts.push(i % every === 0 ? [x,y,z,1] : [x,y,z]);
+  const form = ORGANIC_FORMS[kind];
+  if (!form) throw Error(`Unknown organic form: ${kind}`);
+  resampleLab(form(),n,emit);
   return fitUnit(pts);
 }
-
-// Every head shape this generator knows, in one place so a picker can list
-// them without a second table drifting out of step with the switch above.
-export const TOWER_HEAD_KINDS = [
-  // grown here
-  'sphere', 'cone', 'bipyramid', 'teardrop', 'pyramid', 'gear',
-  'spiral', 'dspiral', 'lattice', 'dish', 'arm', 'claw', 'sentry',
-  // ported from the Braille lab — see src/braillelab.js
-  ...BRAILLE_SHAPE_KINDS,
-];
 
 // portal shape — the Stargate: chevroned ring + event-horizon fill,
 // half-dotted, upright in the X-Y plane (align +Y to the surface

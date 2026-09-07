@@ -1,3 +1,4 @@
+import { SENTRIES, SENTRY_BY_KEY } from './content/sentries.js';
 import { CONTENT } from './content/runtime.js';
 import { clone } from './content/preset.js';
 import { mountPresetPanel } from './labs/preset-panel.js';
@@ -6,7 +7,7 @@ import { mountPresetPanel } from './labs/preset-panel.js';
 // It began as an impact lab and grew into the whole shot, which is what the
 // operator asked for: "we agreed on ONE LAB to work on both the type/shapes/FX
 // of each sentry's weapons, and the impact." So it now covers all three parts
-// a weapon has, for any of the sixteen families:
+// a weapon has, for any of the eight numbered Sentries:
 //
 //   MUZZLE   what leaves the barrel, and the machine kicking as it does
 //   FLIGHT   the shot itself — a lance is light, a throw is matter, a round
@@ -58,7 +59,6 @@ import {
   makeImpactParams, clampImpactParams, formatImpactTune,
   makeImpactBurst, orientImpact,
 } from './impactfx.js';
-import { buildCreature, preloadMkcx } from './units.js';
 import { sentryUrl, SENTRY_FAMILIES } from './sentry.js';
 import { loadGlb } from './glbmodels.js';
 import { TOWERS, TOWER_BY_KEY } from './towers.js';
@@ -126,8 +126,8 @@ export function initImpactTab(root) {
   // WORKING COPY of that family's profile rather than a free-floating tune —
   // otherwise "export" has nothing to export and the operator is transcribing
   // numbers by hand, which is the friction this is meant to remove.
-  const FX_KEYS = Object.keys(SENTRY_FX);
-  let subject = FX_KEYS.includes(q.get('sentry')) ? q.get('sentry') : 'lancer';
+  const FX_KEYS = SENTRIES.map(s => s.key);
+  let subject = FX_KEYS.includes(q.get('sentry')) ? q.get('sentry') : 'rotor';
   // deep copies: editing the live table would make "revert" impossible and
   // would silently change the running game from a lab panel
   const work = {};
@@ -245,9 +245,8 @@ export function initImpactTab(root) {
   // --- who is shooting ------------------------------------------------------
   // The lab carries the actual shooters rather than a marker, because the
   // MUZZLE HEIGHT and the stand-off decide the incidence angle as much as the
-  // wall's own rotation does — a sentry shoots down at a wall the tank shoots
-  // level at, and the sparks come off differently.
-  const shooters = { tank: null, sentry: null };
+  // wall's own rotation does. Each Sentry supplies its authored muzzle pose.
+  const shooters = { sentry: null };
   let rig = null;                 // the selected sentry's articulation
   // the barrel tips, in world space. They track the shooters' own stand-off:
   // a muzzle flash that fires where the gun is not is worse than none.
@@ -259,13 +258,13 @@ export function initImpactTab(root) {
   // plate, and the CAMERA is what moves off-axis, so the whole flight is
   // side-on and a beam is something you can see the length of.
   const STANDOFF = 4.6;
-  const MUZZLE = { tank: [0, 0.55, STANDOFF - 0.5], sentry: [0, 1.15, STANDOFF - 0.5] };
+  const MUZZLE = { sentry: [0, 1.15, STANDOFF - 0.5] };
   // THE REAL BARREL, when the model has one. The Workshop's contract puts a
   // MUZZLE_nn empty at every aperture, and the board's rule is that a shot
   // leaves one of those — this lab extracted them and then fired from a
   // HARDCODED height anyway, so the Lancer's beam left a point above and
-  // behind its own cannon. The constants stay as the fallback for the tank
-  // and for any model without the empties.
+  // behind its own cannon. The constant is used while loading or for a
+  // model without muzzle empties.
   const _mz = new THREE.Vector3();
   function muzzlePoint() {
     if (shooters.sentry && shooters.sentry.visible && rig && rig.muzzles.length) {
@@ -276,22 +275,9 @@ export function initImpactTab(root) {
       rig.muzzles[0].getWorldPosition(_mz);
       return [_mz.x, _mz.y, _mz.z];
     }
-    return shooters.sentry ? MUZZLE.sentry : MUZZLE.tank;
+    return MUZZLE.sentry;
   }
-  preloadMkcx('mkcx2').then(() => {
-    const t = buildCreature('mkcx2', {});
-    if (!t) return;
-    t.scale.setScalar(0.9);
-    t.position.set(0, 0, STANDOFF);
-    t.rotation.y = Math.PI;      // facing the wall
-    shooters.tank = t;
-    scene.add(t);
-    syncShooter();
-  }).catch(() => {});
-  // THE SELECTED SENTRY'S OWN MODEL, loaded through the shared cache — the
-  // same door the towers use, so the lab looks at what the game ships. Not
-  // every FX key has a model (roster 1 has none at all), so a missing one is
-  // a normal outcome and leaves the tank standing in.
+  // Every selectable subject has an authoritative Sentry model.
   const MODEL_FOR = Object.fromEntries(SENTRY_FAMILIES.map((f) => [f.id, f.id]));
   function modelIdFor(key) {
     const def = TOWER_BY_KEY[key] || TOWERS.find((t) => t.key === key);
@@ -299,6 +285,7 @@ export function initImpactTab(root) {
     return MODEL_FOR[key] || null;
   }
   function loadSentryModel() {
+    root.dataset.modelReady = 'false';
     const id = modelIdFor(subject);
     if (shooters.sentry) { scene.remove(shooters.sentry); shooters.sentry = null; }
     if (!id) { syncShooter(); return; }
@@ -327,6 +314,8 @@ export function initImpactTab(root) {
       o.traverse((n2) => { if (/^MUZZLE_\d+$/.test(n2.name || '')) rig.muzzles.push(n2); });
       rig.muzzles.sort((a2, b2) => a2.name.localeCompare(b2.name));
       shooters.sentry = o;
+      root.dataset.sentry = subject;
+      root.dataset.modelReady = 'true';
       scene.add(o);
       syncShooter();
       if (probeOn) {
@@ -344,14 +333,11 @@ export function initImpactTab(root) {
   // Two controls for one idea, and the wrong one won by default.
   //
   // Now the selected family's own model stands, and the tank is a FALLBACK
-  // for the roster-1 towers, which have no model at all — visible rather
-  // than an empty stage, and honest about which it is because the HUD says.
+  // is not used; a loading message identifies an asset still arriving.
   function syncShooter() {
-    const haveSentry = !!shooters.sentry;
     if (shooters.sentry) shooters.sentry.visible = true;
-    if (shooters.tank) shooters.tank.visible = !haveSentry;
   }
-  const shooterLabel = () => (shooters.sentry ? subject : `tank (no model for ${subject})`);
+  const shooterLabel = () => `${SENTRY_BY_KEY[subject].label}${shooters.sentry ? '' : ' (loading)'}`;
 
   // --- THE SHOT ------------------------------------------------------------
   //
@@ -659,7 +645,7 @@ export function initImpactTab(root) {
     }
     if (probeOn) {
       console.log(`IMPACTPROBE shot=${shots} sentry=${subject} slot=${P.slot} recipe=${P.recipe} [${names.join(',')}]`
-        + ` shooter=${shooters.sentry ? 'sentry' : 'tank'} surface=${P.surface} wall=${P.wall} angle=${P.wallAngle}`
+        + ` shooter=${shooters.sentry ? 'sentry' : 'loading'} surface=${P.surface} wall=${P.wall} angle=${P.wallAngle}`
         + ` at=(${point.map((v) => v.toFixed(2)).join(',')})`
         + ` n=(${normal.map((v) => v.toFixed(2)).join(',')}) live=${live.length}`);
     }
@@ -700,7 +686,7 @@ export function initImpactTab(root) {
     ...guiL.controllersRecursive(), ...guiR.controllersRecursive()] };
 
   // ---- LEFT: the stage -------------------------------------------------
-  guiL.add({ sentry: subject }, 'sentry', FX_KEYS).name('sentry').onChange((v) => {
+  guiL.add({ sentry: subject }, 'sentry', Object.fromEntries(SENTRIES.map(s => [s.label,s.key]))).name('sentry').onChange((v) => {
     subject = v;
     P.recipe = 'profile';
     pullFromProfile();
@@ -798,7 +784,7 @@ export function initImpactTab(root) {
     };
     P.recipe = 'profile';
     pullFromProfile();
-    flash(`${subject} reverted to its shipped profile`);
+    flash(`${SENTRY_BY_KEY[subject].label} reverted to its shipped profile`);
   } }, 'revert').name('revert this sentry');
   wireDeepLink(root.querySelector('#impact-link'),
     () => deepLink({ base: location.origin + location.pathname, hash: 'impact', params: P, defaults: P0 }),

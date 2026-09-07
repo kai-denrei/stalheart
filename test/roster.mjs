@@ -1,9 +1,4 @@
-// roster.mjs — TWO BOARDS, ONE TAB. The second roster exists so the tower
-// table can change without forking fifteen thousand lines of TD tab, and
-// these are the invariants that make that safe: the campaign board is not
-// disturbed by the variant, the variant is complete enough for the tab's
-// call sites, and nothing addresses a tower by a key that only one of them
-// has.
+// One numbered Sentry roster: combat contracts and retired-ID compatibility.
 import {
   ROSTERS, ROSTER, TOWERS, TOWER_BY_KEY, TOWER_ORDER, HACK_GATED, DEFAULT_ROSTER_ID,
   useRoster, starterTower, unlockedTowerKeys, towerUnlockWave,
@@ -17,29 +12,11 @@ const check = (what, ok) => {
   console.log(`  ${ok ? 'ok  ' : 'FAIL'} ${what}`);
 };
 
-console.log('the boards:');
-{
-  check('there are two', Object.keys(ROSTERS).length === 2);
-  check('the default is the campaign', useRoster(1).id === 1);
-  check('the campaign roster is the one it always was',
-    useRoster(1).towers.map((t) => t.key).join(' ')
-      === 'single rapid spread homing slow aoe sniper laser');
-  // THE VARIANT MUST NOT DISTURB THE ORIGINAL. The whole reason for a
-  // roster rather than a forked tab is that the history stays intact.
-  const before = JSON.stringify(ROSTERS[1].towers);
-  useRoster(2); useRoster(1);
-  check('and switching away and back does not touch it',
-    JSON.stringify(ROSTERS[1].towers) === before);
-  // the rule is "a stale URL lands on a board that EXISTS", not "on board 1" —
-  // it was written when the campaign was the default and quietly encoded that
-  // rather than the intent, so flipping the default made a correct fallback
-  // look broken
-  check('an unknown board is the DEFAULT board, not nothing',
-    useRoster(99).id === DEFAULT_ROSTER_ID);
-}
+check('one authoritative roster', Object.keys(ROSTERS).join() === '2');
+check('retired links resolve to Sentries', useRoster(1) === ROSTER && useRoster(99) === ROSTER);
 
 console.log('every board is complete:');
-for (const id of [1, 2]) {
+for (const id of [2]) {
   const r = useRoster(id);
   const keys = r.towers.map((t) => t.key);
   check(`board ${id}: keys are unique`, new Set(keys).size === keys.length);
@@ -72,7 +49,7 @@ for (const id of [1, 2]) {
     r.towers.every((d) => effectiveStats(d, 2).range >= effectiveStats(d, 0).range));
 }
 
-console.log('the second board is what the operator asked for:');
+console.log('the active Sentry roster:');
 {
   useRoster(2);
   const keys = TOWERS.map((t) => t.key);
@@ -133,8 +110,6 @@ console.log('the second board is what the operator asked for:');
     TOWERS.filter((d) => d.lock).length === 1);
   // the models are the point of this board
   check('every tower names a model', TOWERS.every((d) => typeof d.model === 'string' && d.model));
-  check('and the campaign board names none',
-    useRoster(1).towers.every((d) => d.model === undefined));
 }
 
 useRoster(1);

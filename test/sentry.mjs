@@ -28,7 +28,7 @@ const mulberry32 = (a) => () => {
 
 console.log('schema:');
 check('knob table is sound', sentryKnobProblems().length === 0, sentryKnobProblems().join('; '));
-check('eleven families', SENTRY_FAMILIES.length === 11);
+check('eight families', SENTRY_FAMILIES.length === 8);
 // FIXED means no articulation to drive. The Relay is a mast; the A6 carries
 // its cells vertically and walks instead of traversing.
 check('the fixed ones are the mast and the walker',
@@ -39,7 +39,7 @@ check('every family names a model that exists on disk',
 // A LOBBER MUST DECLARE ITS ARC, because the barrel's angle is derived from
 // it — a lob with no height would aim flat and stop being a lob.
 check('the lobbers are the mortar and the howitzer',
-  SENTRY_FAMILIES.filter((f) => f.lob).map((f) => f.id).join(',') === 'howitzer,mortar');
+  SENTRY_FAMILIES.filter((f) => f.lob).map((f) => f.id).join(',') === 'mortar,howitzer');
 check('...and each names an arc height',
   SENTRY_FAMILIES.filter((f) => f.lob).every((f) => f.arcCells > 0));
 check('the url is the workshop’s own path', sentryUrl('rotor', 3) === 'assets/models/sentries/rotor_t3.glb');
@@ -242,8 +242,8 @@ console.log('the battery:');
 
 console.log('a wall changes what it can reach:');
 {
-  const ground = makeSentry('needle', 1, [0, 0, 0]);
-  const wall = makeSentry('needle', 1, [0, 4, 0]);
+  const ground = makeSentry('rotor', 1, [0, 0, 0]);
+  const wall = makeSentry('rotor', 1, [0, 4, 0]);
   const t = { id: 1, pos: [0, 0, 6], up: true, hp: 2 };
   check('from the ground it is level', Math.abs(aimAt(relTo(ground, t.pos)).elev) < 1e-9);
   // ...and from four units up the SAME target is well below the horizon
@@ -272,7 +272,7 @@ console.log('a wall changes what it can reach:');
   check('...and the ground gun takes the near one',
     r.targets[pickTarget(r, tight, -1, ground)].id === 1);
   // a battery member off to one side has its own bearing
-  const east = makeSentry('needle', 1, [5, 0, 0]);
+  const east = makeSentry('rotor', 1, [5, 0, 0]);
   check('two sentries do not agree about a bearing',
     Math.abs(aimAt(relTo(ground, t.pos)).yaw - aimAt(relTo(east, t.pos)).yaw) > 20);
 }
@@ -324,7 +324,7 @@ console.log('the dead zone a wall buys:');
   check('no depression at all is blind everywhere',
     deadZone({ ...SENTRY_TUNE, elevMin: 0 }, 2) === Infinity);
   // and it agrees with the envelope test, which is the thing that acts on it
-  const wall = makeSentry('needle', 1, [0, 2, 0]);
+  const wall = makeSentry('rotor', 1, [0, 2, 0]);
   const tune = { ...SENTRY_TUNE, mount: 2, elevMin: -10 };
   const inside = { pos: [0, 0, d - 1] }, outside = { pos: [0, 0, d + 1] };
   check('inside the zone the envelope refuses', !inEnvelope(aimAt(relTo(wall, inside.pos)), tune));

@@ -4,11 +4,11 @@ Updated 2026-09-07. Owner: the Stalheart development project; this repo is now a
 
 ## Working baseline
 
-- Foundation v1: pure core/domain/content layers with dependency guards; shared immutable FX packages; JSON import/export, explicit draft preview and deterministic promotion; impact and sound labs use the game's runtime builders/mixer.
+- Foundation v1: pure core/domain/content layers with dependency guards; shared immutable FX packages (base `stalheart-fx-2`); JSON import/export, explicit draft preview and deterministic promotion; impact and sound labs use the game's runtime builders/mixer.
 
 - Independent game and lazy Workshop entries; research-only tabs removed from this checkout, original Git history retained.
 - Native ESM, vendored Three.js r160, Node 22+ tools with no npm dependencies. Source has canonical imports; `dist/` owns release tokens and a file manifest.
-- Sentry roster 2 default; classic 1, rescue, raid and all three hacking games retained. Sphere math pinned to research commit `1900c9d` with import tokens removed, algorithms unchanged.
+- One numbered Sentry roster shared by radial, Sentry/Impact/Audio labs and Friendly units; classic roster and old tower renderers retired. Rescue, raid and all three hacking games retained. Sphere math pinned to research commit `1900c9d` with import tokens removed, algorithms unchanged.
 - Isolated `stalheart:v1:` records; explicit import/export; local diagnostics ring and export; scope-specific service-worker caches.
 - Immutable, validated `docs/log/entries/*.json`; generated DEVLOG; short AGENTS/CLAUDE instructions and project `/deban`. Historical private logs remain ignored locally.
 - Simulator schema 2 separates sector/planet/mission outcomes, validates frame origin/source/run ID, supports cancellation and export, and advances campaign sectors. Reports explicitly migrate historical currency fields and label legacy wins.

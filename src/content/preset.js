@@ -2,7 +2,7 @@
 import { SENTRY_FX as WEAPONS } from './weapon-defaults.js';
 import { SOUNDS } from './audio-defaults.js';
 import { IMPACT_KNOBS, IMPACT_FAMILIES, IMPACT_RECIPES } from './impact-schema.js';
-export const PRESET_BASE = 'stalheart-fx-1';
+export const PRESET_BASE = 'stalheart-fx-2';
 export const AUDIO_KNOBS = Object.freeze([
   { key:'gain', min:0, max:2, step:.01 },
   { key:'maxVoices', min:1, max:32, step:1 },

@@ -278,52 +278,34 @@
       "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
     },
     {
-      "path": "assets/audio/tower_aoe.mp3",
+      "path": "assets/audio/blast_fire.mp3",
       "bytes": 11679,
       "sha256": "00b0e149e43e3bf2e5fe7560efbe18e0d69951fe55252764fa5394a270654d08",
-      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history; renamed from assets/audio/tower_aoe.mp3 during Sentry cleanup"
     },
     {
-      "path": "assets/audio/tower_homing.mp3",
+      "path": "assets/audio/seeker_fire.mp3",
       "bytes": 8858,
       "sha256": "540940df71330e2b29c5c81324dfbbfc09cd429879f7b03011e4ba6cce9be78c",
-      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history; renamed from assets/audio/tower_homing.mp3 during Sentry cleanup"
     },
     {
-      "path": "assets/audio/tower_laser.mp3",
+      "path": "assets/audio/plasma_fire.mp3",
       "bytes": 6365,
       "sha256": "220ea7b86523b9b6635125ce8fd9405d804abd91fb66e32f6a0823e723ecf5a0",
-      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history; renamed from assets/audio/tower_laser.mp3 during Sentry cleanup"
     },
     {
-      "path": "assets/audio/tower_rapid.mp3",
-      "bytes": 3492,
-      "sha256": "108ff31ff179a807fcd8f7d701f87bdb0ea10dd6dfaac8411620f9896ad9761c",
-      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
-    },
-    {
-      "path": "assets/audio/tower_single.mp3",
+      "path": "assets/audio/kinetic_fire.mp3",
       "bytes": 6313,
       "sha256": "0d6ce4e593e092a9356ffddf52a915ba1727a53b7017d035b96aab2252729b68",
-      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history; renamed from assets/audio/tower_single.mp3 during Sentry cleanup"
     },
     {
-      "path": "assets/audio/tower_slow.mp3",
+      "path": "assets/audio/field_pulse.mp3",
       "bytes": 10440,
       "sha256": "eea59b619ee4e0fe9b3a11372ff017457cdf380f3a7c9bb789eb4a8d3788b195",
-      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
-    },
-    {
-      "path": "assets/audio/tower_sniper.mp3",
-      "bytes": 12306,
-      "sha256": "833bde8f01818378d933bbd4a0bb2611dbb34fa61f03127f062d399d3a40ea9c",
-      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
-    },
-    {
-      "path": "assets/audio/tower_spread.mp3",
-      "bytes": 10112,
-      "sha256": "7663960b53e1387e90d3d3447b53031c3f684ea4cb06e536f8c80bf3299c891f",
-      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
+      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history; renamed from assets/audio/tower_slow.mp3 during Sentry cleanup"
     },
     {
       "path": "assets/audio/tower_upgrade.mp3",
@@ -398,12 +380,6 @@
       "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
     },
     {
-      "path": "assets/models/heptapod.glb",
-      "bytes": 598652,
-      "sha256": "396b93e7fbbb5955ddcd90916c90f7d52a1079d0dbf6d9a202b207e85301c403",
-      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
-    },
-    {
       "path": "assets/models/mkcx.glb",
       "bytes": 446768,
       "sha256": "c41f5dba2be9b11d7704aa68e505bf605c4b2fc91d609ea965dc3fa0c83ac2a7",
@@ -458,24 +434,6 @@
       "source": "SentryTowers_A6 pinned lock"
     },
     {
-      "path": "assets/models/sentries/kiln_t1.glb",
-      "bytes": 50244,
-      "sha256": "b08f6f8a64b1c8d1f3906460730363b56d3f992a614d597a790ab1d83f789cf7",
-      "source": "SentryTowers_A6 pinned lock"
-    },
-    {
-      "path": "assets/models/sentries/kiln_t2.glb",
-      "bytes": 66880,
-      "sha256": "762db2723fb0ea2732e67d1c630455241efc8aaf585231b12088eeaa15ebe267",
-      "source": "SentryTowers_A6 pinned lock"
-    },
-    {
-      "path": "assets/models/sentries/kiln_t3.glb",
-      "bytes": 76028,
-      "sha256": "e9276ef9aaad1dce15f738253c7901d6734c631f83038994bc0e4517db80f1e9",
-      "source": "SentryTowers_A6 pinned lock"
-    },
-    {
       "path": "assets/models/sentries/lancer_t1.glb",
       "bytes": 42892,
       "sha256": "6d155e2d3620c05205262ad04adae9713259f6f680c5f61e4f8fdf1d2077ebc2",
@@ -512,24 +470,6 @@
       "source": "SentryTowers_A6 pinned lock"
     },
     {
-      "path": "assets/models/sentries/needle_t1.glb",
-      "bytes": 39676,
-      "sha256": "a33b8cea4e4bb1443e6f5f40bf72de2d06da50da6f3fa19b395784a455f5310a",
-      "source": "SentryTowers_A6 pinned lock"
-    },
-    {
-      "path": "assets/models/sentries/needle_t2.glb",
-      "bytes": 49100,
-      "sha256": "82a6bd3e835096fb8429d19f439b756882cfab139cb42fd78e31ad8f7e2490fd",
-      "source": "SentryTowers_A6 pinned lock"
-    },
-    {
-      "path": "assets/models/sentries/needle_t3.glb",
-      "bytes": 61440,
-      "sha256": "03796bf2e0978236dabf7dfd4bb3980f532fd5b38f7910130d8e7647ab9c6835",
-      "source": "SentryTowers_A6 pinned lock"
-    },
-    {
       "path": "assets/models/sentries/plasma_t1.glb",
       "bytes": 296996,
       "sha256": "6661ef7111fe2a85f09170f735248f6ffdda791a087286138d4b95fd94daa60b",
@@ -563,24 +503,6 @@
       "path": "assets/models/sentries/quiver_t3.glb",
       "bytes": 112696,
       "sha256": "305723d789bf23bb7c9bc47f6af5eb6628ad2c84be6d8e0f4c86d84c8c3aa92d",
-      "source": "SentryTowers_A6 pinned lock"
-    },
-    {
-      "path": "assets/models/sentries/railgun_t1.glb",
-      "bytes": 45380,
-      "sha256": "f96ba392e83c75c5cf9f235040aa3163a384cf99c2e12f5ce7faa31eefa79d7f",
-      "source": "SentryTowers_A6 pinned lock"
-    },
-    {
-      "path": "assets/models/sentries/railgun_t2.glb",
-      "bytes": 53568,
-      "sha256": "cf2c2eb12e34b79dd17628b6e7a620cea6c9365154cff3072b98dae99d58a73d",
-      "source": "SentryTowers_A6 pinned lock"
-    },
-    {
-      "path": "assets/models/sentries/railgun_t3.glb",
-      "bytes": 61632,
-      "sha256": "f07de783f83de77bc89fc24205d5820620930f03e80f762c6c72743564113bb6",
       "source": "SentryTowers_A6 pinned lock"
     },
     {

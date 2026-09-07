@@ -22,7 +22,7 @@
 
 import { makeParams, clampParams, formatKnobs, knobProblems } from './knobs.js';
 
-// The workshop's six families. `fixed` is its own ruling — the Relay is a
+// The eight numbered Sentry families. `fixed` is its own ruling — the Relay is a
 // structure, not a gun, and a range that pretends otherwise is a range that
 // lies about what it tested.
 // EACH FAMILY HAS A VOICE, and the table is where it is decided — the tab
@@ -34,36 +34,11 @@ import { makeParams, clampParams, formatKnobs, knobProblems } from './knobs.js';
 // before it will shoot, and what leaves the tube then flies its own
 // intercept (src/lockon.js). It is the same weapon the sniper lab aims by
 // hand, at the other end of the same ladder: manual there, automatic here.
-export const SENTRY_FAMILIES = [
-  { id: 'needle', label: 'Needle', note: 'single accelerator — one muzzle, long and thin',
-    fire: 'tower_sniper' },
-  { id: 'rotor', label: 'Rotor', note: 'rotary barrels — six muzzles, fed from drums',
-    fire: 'minigun_fire', ready: 'minigun_ready' },
-  { id: 'kiln', label: 'Kiln', note: 'twin projectors — recessed throats',
-    fire: 'tower_aoe' },
-  { id: 'quiver', label: 'Quiver', note: 'missile cells — six capped tubes · locks on, then homes',
-    fire: 'tower_homing', missile: true },
-  { id: 'lancer', label: 'Lancer', note: 'rail and focusing collars — one aperture',
-    fire: 'tower_laser' },
-  { id: 'relay', label: 'Relay', note: 'a mast, not a weapon: fixed, no articulation', fixed: true },
-  // THE FIVE THE WORKSHOP ADDED. Same contract, same tiers, vendored
-  // alongside the first six. The two LOBBERS are the reason this matters
-  // beyond the roster: a mortar does not point at what it is shooting, and
-  // the range is where that gets looked at.
-  { id: 'railgun', label: 'Railgun', note: 'mass driver — induction track, one aperture',
-    fire: 'tower_sniper' },
-  { id: 'howitzer', label: 'Howitzer', note: 'siege barrel — lobs, and points UP to do it',
-    fire: 'tank_main', lob: true, arcCells: 3.4 },
-  { id: 'mortar', label: 'Mortar', note: 'tube and baseplate — the steepest arc on the range',
-    fire: 'tower_aoe', lob: true, arcCells: 4.6 },
-  { id: 'plasma', label: 'Plasma', note: 'perforated nozzle — a thrower, not a gun',
-    fire: 'tower_laser' },
-  { id: 'heptapod_a6', label: 'Heptapod A6', note: 'six legs, vertical launch cells — walks, fixed turret',
-    fire: 'tower_homing', fixed: true },
-];
+import { SENTRIES } from './content/sentries.js';
+export const SENTRY_FAMILIES = SENTRIES.map(s => ({...s,id:s.model}));
 export const SENTRY_TIERS = [1, 2, 3];
-export const familyById = (id) => SENTRY_FAMILIES.find((f) => f.id === id) || SENTRY_FAMILIES[0];
-export const sentryUrl = (id, tier) => `assets/models/sentries/${id}_t${tier}.glb`;
+export const familyById = (id) => SENTRY_FAMILIES.find((f) => f.id === id || f.key === id || String(f.number) === String(id)) || SENTRY_FAMILIES[0];
+export const sentryUrl = (id, tier) => `assets/models/sentries/${familyById(id).id}_t${tier}.glb`;
 
 export const SENTRY_TUNE = {
   // ELEVATION STOPS. The workshop's viewer offers -10 to +65, and +65 is
@@ -218,7 +193,7 @@ export function deadZone(tune = SENTRY_TUNE, gunHeight = tune.mount) {
 
 // --- the turret -----------------------------------------------------------
 
-export function makeSentry(family = 'needle', tier = 1, pos = [0, 0, 0]) {
+export function makeSentry(family = 'rotor', tier = 1, pos = [0, 0, 0]) {
   return {
     family, tier,
     // WHERE IT STANDS, and the whole reason a wall changes anything: every

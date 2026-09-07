@@ -4,7 +4,7 @@
 // reference/FABLE-SHOWCASE/galaxy-forge), ported VERBATIM apart from one
 // thing: the demo seeds its stream with a constant (0xC0FFEE) and reads its
 // look off the URL hash; here both come from ONE seed, so a board seed
-// names a sky the way it names a maze. Same idiom as braillelab.js — copy,
+// names a sky the way it names a maze. Copy,
 // don't improve, so a re-port stays mechanical.
 //
 // Pure: no three.js, no DOM. The bake (galaxybake.js) uploads these as

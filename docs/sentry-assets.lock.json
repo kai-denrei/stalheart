@@ -75,27 +75,6 @@
       "family": "sentry"
     },
     {
-      "path": "assets/models/sentries/kiln_t1.glb",
-      "sourcePath": "assets/kiln_t1.glb",
-      "sha256": "b08f6f8a64b1c8d1f3906460730363b56d3f992a614d597a790ab1d83f789cf7",
-      "bytes": 50244,
-      "family": "sentry"
-    },
-    {
-      "path": "assets/models/sentries/kiln_t2.glb",
-      "sourcePath": "assets/kiln_t2.glb",
-      "sha256": "762db2723fb0ea2732e67d1c630455241efc8aaf585231b12088eeaa15ebe267",
-      "bytes": 66880,
-      "family": "sentry"
-    },
-    {
-      "path": "assets/models/sentries/kiln_t3.glb",
-      "sourcePath": "assets/kiln_t3.glb",
-      "sha256": "e9276ef9aaad1dce15f738253c7901d6734c631f83038994bc0e4517db80f1e9",
-      "bytes": 76028,
-      "family": "sentry"
-    },
-    {
       "path": "assets/models/sentries/lancer_t1.glb",
       "sourcePath": "assets/lancer_t1.glb",
       "sha256": "6d155e2d3620c05205262ad04adae9713259f6f680c5f61e4f8fdf1d2077ebc2",
@@ -138,27 +117,6 @@
       "family": "sentry"
     },
     {
-      "path": "assets/models/sentries/needle_t1.glb",
-      "sourcePath": "assets/needle_t1.glb",
-      "sha256": "a33b8cea4e4bb1443e6f5f40bf72de2d06da50da6f3fa19b395784a455f5310a",
-      "bytes": 39676,
-      "family": "sentry"
-    },
-    {
-      "path": "assets/models/sentries/needle_t2.glb",
-      "sourcePath": "assets/needle_t2.glb",
-      "sha256": "82a6bd3e835096fb8429d19f439b756882cfab139cb42fd78e31ad8f7e2490fd",
-      "bytes": 49100,
-      "family": "sentry"
-    },
-    {
-      "path": "assets/models/sentries/needle_t3.glb",
-      "sourcePath": "assets/needle_t3.glb",
-      "sha256": "03796bf2e0978236dabf7dfd4bb3980f532fd5b38f7910130d8e7647ab9c6835",
-      "bytes": 61440,
-      "family": "sentry"
-    },
-    {
       "path": "assets/models/sentries/plasma_t1.glb",
       "sourcePath": "assets/plasma_t1.glb",
       "sha256": "6661ef7111fe2a85f09170f735248f6ffdda791a087286138d4b95fd94daa60b",
@@ -198,27 +156,6 @@
       "sourcePath": "assets/quiver_t3.glb",
       "sha256": "305723d789bf23bb7c9bc47f6af5eb6628ad2c84be6d8e0f4c86d84c8c3aa92d",
       "bytes": 112696,
-      "family": "sentry"
-    },
-    {
-      "path": "assets/models/sentries/railgun_t1.glb",
-      "sourcePath": "assets/railgun_t1.glb",
-      "sha256": "f96ba392e83c75c5cf9f235040aa3163a384cf99c2e12f5ce7faa31eefa79d7f",
-      "bytes": 45380,
-      "family": "sentry"
-    },
-    {
-      "path": "assets/models/sentries/railgun_t2.glb",
-      "sourcePath": "assets/railgun_t2.glb",
-      "sha256": "cf2c2eb12e34b79dd17628b6e7a620cea6c9365154cff3072b98dae99d58a73d",
-      "bytes": 53568,
-      "family": "sentry"
-    },
-    {
-      "path": "assets/models/sentries/railgun_t3.glb",
-      "sourcePath": "assets/railgun_t3.glb",
-      "sha256": "f07de783f83de77bc89fc24205d5820620930f03e80f762c6c72743564113bb6",
-      "bytes": 61632,
       "family": "sentry"
     },
     {

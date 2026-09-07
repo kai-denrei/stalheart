@@ -48,7 +48,7 @@ A schema-1 FX package has `application`, `base`, `id`, `weapons` and `audio`. It
 - Selection clones and freezes the entire package. A draft cannot mutate the selected game's content. A second selection in the same lifetime is refused.
 - A preset ID is a human label, not a content hash. Release build fingerprints identify shipped bytes; retain the exported JSON when comparing drafts with reused names.
 
-The base is `stalheart-fx-1`. Schema changes require an explicit migration or a new base. Never silently coerce an incompatible artifact into a different-looking result.
+The base is `stalheart-fx-2`. Schema changes require an explicit migration or a new base. Never silently coerce an incompatible artifact into a different-looking result.
 
 ## Actual workflow
 
@@ -83,3 +83,5 @@ The next runtime extraction must centralize scope ownership for render loops, DO
 4. **Playability.** Tune threat budgets, gate economy and progression using repeatable scenarios and human playtests. The inherited late-wave growth remains known debt; this phase has not changed the difficulty curve.
 
 Critical regressions are fixed as they arise, but they do not reorder the rebuild into a general balance or UX pass.
+
+Sentry identity, numbering and radial order live in `src/content/sentries.js`. Version 2 retires classic weapon profiles and assigns each Sentry its own audio cue. Version 1 exports are rejected explicitly; recreate those edits against the current eight-Sentry package.
