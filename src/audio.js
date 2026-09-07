@@ -37,6 +37,8 @@ function bustToken() {
 }
 
 export function makeAudio(opts = {}) {
+  const soundDefs = opts.sounds ?? SOUNDS;
+  let disposed = false, releaseAudio = null, restoreAudio = null;
   const base = opts.base ?? '';
   let ctx = null;
   let master = null;
@@ -54,7 +56,7 @@ export function makeAudio(opts = {}) {
   const levels = { ...DEFAULT_LEVELS };
   let muted = false;
   try {
-    const saved = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
+    const saved = opts.persist === false ? null : JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
     if (saved && typeof saved === 'object') {
       for (const k of Object.keys(levels)) {
         if (typeof saved[k] === 'number') levels[k] = Math.min(1, Math.max(0, saved[k]));
@@ -64,6 +66,7 @@ export function makeAudio(opts = {}) {
   } catch { /* private mode, corrupt value — defaults are fine */ }
 
   function persist() {
+    if (opts.persist === false) return;
     try { localStorage.setItem(STORE_KEY, JSON.stringify({ ...levels, muted })); } catch { /* ignore */ }
   }
 
@@ -116,6 +119,7 @@ export function makeAudio(opts = {}) {
   }
 
   function ensureCtx() {
+    if (disposed) return false;
     if (ctx) return ctx;
     const Ctor = window.AudioContext || window.webkitAudioContext;
     if (!Ctor) return null;
@@ -316,9 +320,9 @@ export function makeAudio(opts = {}) {
     if (ctx && ctx.state === 'running') {
       while (readyCbs.length) { try { readyCbs.shift()(); } catch { /* caller's problem */ } }
     }
-    const total = Object.keys(SOUNDS).length;
+    const total = Object.keys(soundDefs).length;
     let ok = 0, failed = 0;
-    for (const k of Object.keys(SOUNDS)) {
+    for (const k of Object.keys(soundDefs)) {
       if (buffers[k] === 'failed') failed++;
       else if (buffers[k]) ok++;
     }
@@ -414,14 +418,16 @@ export function makeAudio(opts = {}) {
       failedResumes = 0;
       if (armed) startListening();   // whatever happens next, we can rebuild
     };
+    releaseAudio = release;
     addEventListener('pagehide', release);
     // restored from the back/forward cache: the context is gone, so listen
     // for the gesture that will rebuild it
-    addEventListener('pageshow', (ev) => { if (ev.persisted && armed) startListening(); });
+    restoreAudio = ev => { if (ev.persisted && armed) startListening(); };
+    addEventListener('pageshow', restoreAudio);
   }
 
   function arm() {
-    if (armed) return;
+    if (armed || disposed) return;
     armed = true;
     hookUnload();
     // Nothing to do until a gesture: the context is born there (Safari will
@@ -462,7 +468,7 @@ export function makeAudio(opts = {}) {
   }
 
   async function decodeOne(key) {
-    const spec = SOUNDS[key];
+    const spec = soundDefs[key];
     try {
       const res = await fetch(`${base}${spec.file}${bustToken()}`);
       if (!res.ok) throw new Error(`${res.status}`);
@@ -489,7 +495,7 @@ export function makeAudio(opts = {}) {
     if (loadPromise) return loadPromise;
     if (!decodeContext()) return Promise.resolve();
     loadStarted = true;
-    loadPromise = Promise.all(Object.keys(SOUNDS).map(decodeOne));
+    loadPromise = Promise.all(Object.keys(soundDefs).map(decodeOne));
     return loadPromise;
   }
 
@@ -541,7 +547,7 @@ export function makeAudio(opts = {}) {
   }
 
   function start(key, o, looping) {
-    const spec = SOUNDS[key];
+    const spec = soundDefs[key];
     if (!spec) return null;
     nRequested++;
     if (!ctx) { reportSilence('no AudioContext — the gesture never armed it', key); return null; }
@@ -629,6 +635,15 @@ export function makeAudio(opts = {}) {
   }
 
   return {
+    dispose() {
+      if (disposed) return;
+      disposed = true; armed = false; stopListening();
+      for (const id of [...live.keys()]) stopVoice(id, 0);
+      releaseAudio?.();
+      if (releaseAudio) removeEventListener('pagehide', releaseAudio);
+      if (restoreAudio) removeEventListener('pageshow', restoreAudio);
+      runningCbs.length = 0; readyCbs.length = 0;
+    },
     arm,
     load,
     get ready() { return !!ctx; },
@@ -723,7 +738,7 @@ export function makeAudio(opts = {}) {
           try {
             const t = now();
             // short ramps, not steps: a per-frame jump in gain zippers
-            v.gain.gain.setTargetAtTime(Math.max(0, gain) * SOUNDS[key].gain, t, 0.05);
+            v.gain.gain.setTargetAtTime(Math.max(0, gain) * soundDefs[key].gain, t, 0.05);
             v.src.playbackRate.setTargetAtTime(Math.max(0.05, rate), t, 0.08);
           } catch { /* context died */ }
         },

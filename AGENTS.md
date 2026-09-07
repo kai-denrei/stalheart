@@ -1,6 +1,6 @@
 # Stalheart development
 
-This repository owns the game. Read `docs/STATE.md` first; use `docs/log/entries/` for current decisions. `DEVLOG.md` is generated. Research notes and the original CLAUDE rules are historical references in `docs/archive/`, not current operating instructions.
+This repository owns the game. Read `docs/STATE.md` and `docs/ARCHITECTURE.md` first; use `docs/log/entries/` for current decisions. `DEVLOG.md` is generated. Research notes and the original CLAUDE rules are historical references in `docs/archive/`, not current operating instructions.
 
 - Run `npm test`, `npm run check` and `npm run build` for substantive runtime changes. Use `npm run test:browser` for boot/input/render/asset changes. Browser tests own their server and Chrome through `scripts/chrome-proc.mjs`; do not leak capture processes.
 - Native ESM source uses canonical URLs without `?v=`. Build hashes go into `dist/` only. Never run the old research bust script or manually edit release tokens.
@@ -13,3 +13,7 @@ This repository owns the game. Read `docs/STATE.md` first; use `docs/log/entries
 - Preserve the gate-hunting/income trade, Isao's travel-and-print orders, pilot rank across hulls, and distinct mission supply rules. Foundations and new progression systems are not part of this migration.
 - No colored emoji in product UI; keep the monochrome visual vocabulary.
 - Do not send messages, publish, or push without explicit authorization. There is no upstream remote configured for Stalheart yet.
+
+- Current delivery order is architecture, then visual/sound labs and clean exports, then UX, then playability. Do not start a general balance pass during the foundation work.
+- Pure modules belong in `src/core/`, `src/domain/` and `src/content/`. `npm run architecture` enforces their dependencies. Top-level compatibility facades must not grow a second implementation.
+- Labs edit working copies and export schema-validated FX JSON. Shipped content is immutable; previews require `?preset=draft`. Promote through `npm run presets -- promote FILE`, review the resulting content diff, and run checks/build. Do not introduce a new copy/paste preset format.

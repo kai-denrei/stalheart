@@ -30,6 +30,6 @@ Use `/?terraformer=a6#td` to review it. D0 is 165,404 triangles and 78 merged me
 
 The migration log records the final checks and limitations. Browser evidence is reproducible through `npm run test:browser` and `node scripts/browser-test.mjs --dist`; full console/network records, screenshots and simulation results go to ignored `artifacts/`.
 
-The next development slice should establish campaign threat budgets and playtest telemetry, then extract simulation commands/state from the large TD closure in small tested steps. Preserve the pinned kernel and both roster baselines while doing that. Real iOS/touch/audio testing, complete five-sector human playthroughs, suspend/resume and full offline installation remain outstanding product work.
+The owner has since prioritized architecture and lab/export contracts before UX and playability; see [the active architecture plan](ARCHITECTURE.md). Campaign threat budgets remain later work. Preserve the pinned kernel and both roster baselines while doing that. Real iOS/touch/audio testing, complete five-sector human playthroughs, suspend/resume and full offline installation remain outstanding product work.
 
 No public deployment or remote is configured. `npm run dev` serves the game locally; `npm run build` creates the independent deployment payload in `dist/`.

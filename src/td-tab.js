@@ -1,3 +1,4 @@
+import { CONTENT } from './content/runtime.js';
 import { preloadSentryTerraformer, makeSentryTerraformer } from './terraformer.js';
 import { GAME_START_BIOMASS, SINK, tollFor, breachGrant, debriefAffordable, simOutcome } from './campaign.js';
 import { record } from './diagnostics.js';
@@ -1207,7 +1208,7 @@ export function initTdTab(root) {
     const payload = { schema: 2, application: 'stalheart',
       build: document.querySelector('meta[name="cb"]')?.content || 'source',
       scope: new URLSearchParams(location.search).get('simscope') === 'sector' ? 'sector' : 'campaign',
-      balance: 'migration-1', generator: 'research-1900c9d', roster: ROSTER.id,
+      balance: 'migration-1', content: CONTENT.id, generator: 'research-1900c9d', roster: ROSTER.id,
       mission: new URLSearchParams(location.search).get('mission') || 'defense',
       runId: new URLSearchParams(location.search).get('runid') || 'standalone',
       config: { ...params }, simulationStep: 1 / 30,

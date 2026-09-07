@@ -1,3 +1,6 @@
+import { CONTENT } from './content/runtime.js';
+import { clone } from './content/preset.js';
+import { mountPresetPanel } from './labs/preset-panel.js';
 // impact-tab.js — THE SHOOTING LAB. One weapon, end to end.
 //
 // It began as an impact lab and grew into the whole shot, which is what the
@@ -136,6 +139,7 @@ export function initImpactTab(root) {
       impact: { ...p0.impact, colors: { ...p0.impact.colors }, tune: { ...p0.impact.tune } },
     };
   }
+  let packageDraft = clone(CONTENT);
   const prof = () => work[subject];
   const slotOf = () => (P.slot === 'muzzle' ? prof().muzzle : prof().impact);
 
@@ -782,9 +786,9 @@ export function initImpactTab(root) {
   const copyBtn = root.querySelector('#impact-copy');
   if (copyBtn) copyBtn.addEventListener('click', () => copyOut(exportOne(), subject));
   guiR.add({ exp: () => copyOut(exportOne(), subject) }, 'exp')
-    .name('EXPORT this sentry');
+    .name('legacy source: this sentry');
   guiR.add({ expAll: () => copyOut(exportAll(), 'the whole table') }, 'expAll')
-    .name('export ALL families');
+    .name('legacy source: all families');
   guiR.add({ revert: () => {
     const p0 = SENTRY_FX[subject];
     work[subject] = {
@@ -802,6 +806,11 @@ export function initImpactTab(root) {
 
   let flashMsg = '', flashT = 0;
   function flash(m) { flashMsg = m; flashT = 2.0; }
+
+  mountPresetPanel(root, {
+    read: () => { pushToProfile(); return { ...packageDraft, weapons: clone(work) }; },
+    write: p => { packageDraft=p; for(const k of FX_KEYS) work[k]=clone(p.weapons[k]); P.recipe='profile'; pullFromProfile(); syncKnobFolders(); },
+  });
 
   // open on the SUBJECT's own numbers, not on IMPACT_TUNE's — otherwise the
   // first thing the lab shows is a weapon nobody ships

@@ -1,6 +1,6 @@
 // sound.mjs — the rails are well-formed, and a live clock finds its cues.
 import { SOUND_RAILS, cuesBetween } from '../src/cine/sound.js';
-import { readFileSync } from 'node:fs';
+import { SOUNDS } from '../src/audiomanifest.js';
 
 let failures = 0;
 const check = (name, cond, detail = '') => {
@@ -8,12 +8,11 @@ const check = (name, cond, detail = '') => {
   else { console.error(`  FAIL ${name} ${detail}`); failures++; }
 };
 console.log('sound rails:');
-const manifest = readFileSync(new URL('../src/audiomanifest.js', import.meta.url), 'utf8');
 for (const [scene, rail] of Object.entries(SOUND_RAILS)) {
   check(`${scene}: every cue inside the 12 s`, rail.every((c) => c.t >= 0 && c.t < 12));
   check(`${scene}: cues sorted by t`, rail.every((c, i) => i === 0 || rail[i - 1].t <= c.t));
-  check(`${scene}: every key is in the manifest`, rail.every((c) => new RegExp(`^\\s+${c.key}:`, 'm').test(manifest)),
-    rail.filter((c) => !new RegExp(`^\\s+${c.key}:`, 'm').test(manifest)).map((c) => c.key).join(','));
+  check(`${scene}: every key is in the manifest`, rail.every((c) => Object.hasOwn(SOUNDS, c.key)),
+    rail.filter((c) => !Object.hasOwn(SOUNDS, c.key)).map((c) => c.key).join(','));
   check(`${scene}: gains in (0, 1]`, rail.every((c) => (c.gain ?? 1) > 0 && (c.gain ?? 1) <= 1));
 }
 const g = SOUND_RAILS.gate;

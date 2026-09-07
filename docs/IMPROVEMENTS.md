@@ -1,6 +1,6 @@
 # Stalheart improvement backlog
 
-Updated 2026-09-07. Proposed priorities, grounded in the research audit and migration findings. This is a work list, not a claim that the features already exist.
+Updated 2026-09-07. The owner has set the delivery order: **architecture → labs and clean exports → UX → playability**. The P0–P3 labels below describe issue severity, not the delivery sequence. See [the architecture plan](ARCHITECTURE.md) for the active work. This is a work list, not a claim that all features exist.
 
 | Priority | Improvement | Completion evidence |
 | --- | --- | --- |
@@ -17,6 +17,6 @@ Updated 2026-09-07. Proposed priorities, grounded in the research audit and migr
 | P2 | Better playtest reports | One local export includes build, seed, roster, mode, outcome, economic ledger and recent errors; distinguish human/bot evidence and incomplete runs |
 | P3 | Complete offline install/update flow | All required release resources available offline; interrupted updates preserve a working version; device-tested recovery |
 
-Suggested sequence: unblock movement, run a short human playtest, fix the most common usability failures, then tune the first two sectors before extending a new curve to all five. Keep architectural extraction small and tied to those changes. Promote the A6 Terraformer to default after its performance and footprint are verified on target devices.
+Delivery sequence: strengthen run-state and adapter boundaries; make every lab export a validated artifact consumed by the game; improve UX; then tune difficulty and progression. Fix blocking regressions as needed while preserving that order.
 
 Evidence: [original audit](audit-2026-09-07/README.md), [current state](STATE.md), [asset direction](ASSETS.md), and [development log](../DEVLOG.md).

@@ -1,1 +1,13 @@
 .settings-page{margin:0;background:#080e10;color:#d2e9e5;font:16px/1.6 system-ui,sans-serif}.settings-page main{max-width:760px;margin:40px auto;padding:0 22px}.settings-page a{color:#66ded0}.settings-page button,.file-button{display:inline-block;background:#172b2d;color:#d2e9e5;border:1px solid #408783;border-radius:6px;padding:12px;margin:5px;cursor:pointer;font:inherit}.file-button input{display:block;max-width:240px}.boot-error{position:fixed;inset:20%;padding:30px;background:#15282b;color:#fff;z-index:9999;font:18px/1.6 monospace}
+
+/* Authoring controls belong to labs, independent of the game's HUD. */
+.preset-panel { position:fixed; bottom:12px; left:12px; z-index:120; display:flex; flex-wrap:wrap; align-items:center; gap:8px; max-width:min(740px,calc(100vw - 24px)); padding:12px; border:1px solid #46616c; background:#111b22f5; color:#d8e6e8; font:12px ui-monospace,monospace; }
+.preset-panel input:not([type=file]) { width:130px; }
+.preset-panel output { flex-basis:100%; min-height:1em; }
+.preset-panel button,.preset-import { padding:6px; background:#20343c; color:inherit; border:1px solid #46616c; cursor:pointer; }
+.preset-import input { width:180px; }
+.audio-lab { max-width:780px; margin:80px auto 230px; padding:24px; color:#d8e6e8; font:15px ui-monospace,monospace; }
+.audio-lab label { display:block; margin:15px 0; }
+.audio-lab input { width:100px; }
+.audio-lab output { display:block; margin-top:18px; }
+.audio-lab button,.audio-lab select,.audio-lab input { padding:8px; background:#20343c; color:inherit; border:1px solid #46616c; }

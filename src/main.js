@@ -1,6 +1,7 @@
 // A document owns one renderer/session. Navigating modes releases its whole lifetime.
 import './url.js';
 import './roster.js';
+import { bootstrapContent } from './platform/content-bootstrap.js';
 import { registerServiceWorker } from './pwa.js';
 import { storage as localStorage } from './storage.js';
 import { installDiagnostics, record } from './diagnostics.js';
@@ -20,6 +21,7 @@ if (q.get('sw') !== '0') {
 }
 const workshop = document.body.dataset.workshop === 'true';
 const routes = {
+  audio: () => import('./labs/audio-tab.js').then(m => m.initAudioTab),
   td: () => import('./td-tab.js').then(m => m.initTdTab),
   record: () => import('./recordtab.js').then(m => m.initRecordTab),
   units: () => import('./units-tab.js').then(m => m.initUnitsTab),
@@ -90,10 +92,13 @@ if (!root) {
   addEventListener('hashchange', () => location.reload());
   root.classList.remove('tab-hidden');
   try {
+    const content = bootstrapContent();
     const init = await routes[target]();
     const api = init(root);
     api?.setActive?.(true);
-    record('app.ready', { route: target, workshop });
+    addEventListener('pagehide', e => { if (!e.persisted) api?.dispose?.(); });
+    record('app.ready', { route: target, workshop, content: content.id });
+    window.__stalheartContent = { id: content.id, base: content.base, preview: q.get('preset') === 'draft' };
     window.__stalheartReady = true;
   } catch (err) {
     record('app.failed', { message: err.message, stack: err.stack });

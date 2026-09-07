@@ -26,6 +26,12 @@ node scripts/browser-test.mjs --dist  # release acceptance under /stalheart/
 
 Browser tests use Google Chrome at the standard macOS path; set `CHROME` to another installed Chrome/Chromium binary. Screenshots, full console/network logs and result JSON go to ignored `artifacts/`. Do not use software rendering timings as device-performance claims.
 
+## Technical foundation and labs
+
+Development order is architecture, visual/sound labs with clean exports, UX, then playability. Read [the architecture plan](docs/ARCHITECTURE.md) for implemented boundaries and the next extraction steps.
+
+The impact and sound labs share a versioned FX package. Export/import JSON, save a draft, and choose **Preview in game** to test it explicitly. Normal play uses shipped content. Promote a reviewed export with `npm run presets -- promote FILE`, then run checks and build. Beam/material/cinematic exporters are next to join this contract.
+
 ## Development memory
 
 Read the [migration handoff](docs/MIGRATION.md), [current state](docs/STATE.md) and [development instructions](AGENTS.md). `/deban` is installed locally for Claude and linked for compatible agent skill discovery. It writes validated immutable entries; [DEVLOG.md](DEVLOG.md) is generated from them.

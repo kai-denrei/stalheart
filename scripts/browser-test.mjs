@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { launchChrome } from './chrome-proc.mjs';
 import assert from 'node:assert/strict';
+import { CONTENT } from '../src/content/runtime.js';
+import { clone, serializePreset } from '../src/content/preset.js';
 const args=process.argv.slice(2),production=args.includes('--dist');
 const port=18155,base=production?'/stalheart/':'/';
 const origin=`http://127.0.0.1:${port}`,urlRoot=origin+base;
@@ -29,8 +31,9 @@ async function until(expression,timeout=25000){const start=Date.now();while(Date
 async function go(name,path,width=1440,height=900){
  current=name;consoleLines.length=0;errors.length=0;requests.length=0;
  await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});
+ await evaluate('window.__stalheartReady = false');
  await send('Page.navigate',{url:urlRoot+path});
- await until('window.__stalheartReady === true');
+ await until(`location.href === ${JSON.stringify(urlRoot+path)} && window.__stalheartReady === true`);
 }
 async function finish(){
  writeFileSync(join(output,current+'.log'),consoleLines.join('\n')+'\n');
@@ -57,6 +60,7 @@ try{
   if(m.method==='Network.responseReceived')requests.push({url:m.params.response.url,status:m.params.response.status});
  });
  for(const method of ['Runtime.enable','Page.enable','Network.enable'])await send(method);
+ if(!args.includes('--authoring')) {
  await go('cold-open','index.html?sw=0&acceptance=1#td');
  await until("document.getElementById('td-intro') && !document.getElementById('td-intro').classList.contains('hidden')",20000);
  await click('#td-intro');await until('window.__stalheartTest.state().paused === false');
@@ -112,6 +116,34 @@ try{
  assert.deepEqual(errors,[], 'Terraformer damage transitions');
  writeFileSync(join(output,'terraformer-states.log'),consoleLines.join('\n'));
  for(const name of ['units','impact','sentry','sim']){await go('lab-'+name,`labs.html?sw=0#${name}`);await delay(1500);await finish();}
+ }
+ // Real file import -> lab working copy -> shared draft -> actual game selection.
+ const draft=clone(CONTENT);draft.id='browser-fx';draft.weapons.lancer.impact.size=.93;draft.audio.tower_single.gain=.37;
+ const fixture=join(output,'browser-fx.json');writeFileSync(fixture,serializePreset(draft));
+ await go('preset-import','labs.html?sw=0#impact');
+ const doc=await send('DOM.getDocument');
+ const input=await send('DOM.querySelector',{nodeId:doc.root.nodeId,selector:'[data-preset-import]'});
+ await send('DOM.setFileInputFiles',{nodeId:input.nodeId,files:[fixture]});
+ await until('document.querySelector("[data-preset-id]").value === "browser-fx"');
+ await click('[data-preset-save]');await finish();
+ await go('lab-audio','labs.html?sw=0&acceptance=1#audio');
+ await click('[data-preset-load]');
+ assert.equal(await evaluate('document.querySelector("[data-audio-knob=gain]").value'),'0.37');
+ await evaluate('(()=>{const i=document.querySelector("[data-audio-knob=gain]");i.value="0.42";i.dispatchEvent(new Event("change"));})()');
+ await click('[data-preset-save]');
+ await evaluate('(()=>{const s=document.querySelector("#audio-cue");s.value="tank_engine";s.dispatchEvent(new Event("change"));})()');
+ await click('#audio-play');await until('document.querySelector("#audio-status").textContent.startsWith("Playing")',30000);
+ assert((await evaluate('window.__stalheartAudioTest.state().context')).startsWith('running'));
+ await evaluate('window.__stalheartAudioTest.measure()');await delay(1100);
+ assert(consoleLines.some(l=>{const m=l.match(/AUDIO LEVEL peak=([0-9.]+) over (\d+) frames/);return m && Number(m[1])>.0005 && Number(m[2])>=10;}),'Audio signal missing or measurement inconclusive');
+ await finish();
+ current='preset-preview';consoleLines.length=0;errors.length=0;requests.length=0;
+ await click('[data-preset-preview]');
+ await until('location.pathname.endsWith("index.html") && window.__stalheartReady === true && window.__stalheartContent?.id === "browser-fx"');
+ const selected=await evaluate(`(async()=>{const token=document.querySelector('meta[name=cb]').content;const m=await import('./src/content/runtime.js'+(token==='00000000'?'':'?v='+token));return {gain:m.SOUNDS.tower_single.gain,size:m.SENTRY_FX.lancer.impact.size};})()`);
+ assert.equal(selected.gain,.42);assert.equal(selected.size,.93);await finish();
+ await go('preset-isolation','index.html?sw=0&cine=0#td');
+ assert.equal(await evaluate('window.__stalheartContent.id'),CONTENT.id);await finish();
  // Source asset cache checks run as Node tests; browser exercises installation too.
  if(production){
   await go('pwa','index.html?cine=0#td');await until('navigator.serviceWorker.controller !== null',15000);await finish();

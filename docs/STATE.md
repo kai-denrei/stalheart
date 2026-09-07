@@ -4,6 +4,8 @@ Updated 2026-09-07. Owner: the Stalheart development project; this repo is now a
 
 ## Working baseline
 
+- Foundation v1: pure core/domain/content layers with dependency guards; shared immutable FX packages; JSON import/export, explicit draft preview and deterministic promotion; impact and sound labs use the game's runtime builders/mixer.
+
 - Independent game and lazy Workshop entries; research-only tabs removed from this checkout, original Git history retained.
 - Native ESM, vendored Three.js r160, Node 22+ tools with no npm dependencies. Source has canonical imports; `dist/` owns release tokens and a file manifest.
 - Sentry roster 2 default; classic 1, rescue, raid and all three hacking games retained. Sphere math pinned to research commit `1900c9d` with import tokens removed, algorithms unchanged.
@@ -15,14 +17,14 @@ Updated 2026-09-07. Owner: the Stalheart development project; this repo is now a
 
 ## Next priorities
 
-See [the prioritized improvement backlog](IMPROVEMENTS.md) for completion criteria.
+Owner-directed sequence: **architecture → visual/sound labs and clean exports → UX → playability**. [Architecture and implementation boundaries](ARCHITECTURE.md) are the current technical plan.
 
-1. Keep the migration acceptance matrix green; exercise Safari/iOS and real touch/audio. Chrome headless is not a phone playtest.
-2. Tune campaign threat budgets and release throughput: the inherited full-hold wave formula still grows to 5,334 scheduled bodies at global wave 75. This migration intentionally did not invent a new difficulty curve.
-3. Separate more simulation state/commands from `td-tab.js`. Campaign purchase policy, result validation, storage and diagnostics now have boundaries; combat/render/tutorial integration remains a large closure.
-4. Measure Terraformer 3000 in-game on target devices. Its 78 merged meshes / 165,404 triangles in D0 are not a mobile budget. Produce actual LODs upstream; damage variants do not serve that purpose. Review animation speed, footprint and readability before promoting default.
-5. Reduce instruction/HUD competition, improve order readiness/ETA and clarify off-screen threats. Keep pilot rank wording consistent.
-6. Add versioned sector-boundary suspend/resume, and a complete offline release manifest if the product needs offline installation.
+1. Continue extracting run state, commands/events and resource lifetimes from `td-tab.js`, behind enforced pure-domain and adapter boundaries. Preserve the existing gameplay baseline.
+2. Extend the new versioned FX package workflow from weapon impacts/audio to beams, materials, portals and cinematics; unify stage scale, lighting and clock contracts. Keep Sentry asset optimization in this phase.
+3. Rework HUD/tutorial competition, control feedback, off-screen threats and Isao order status on the stable foundation.
+4. Tune difficulty, economy and progression after the architecture and authoring tools support repeatable experiments. The inherited formula still reaches 5,334 scheduled bodies at wave 75.
+
+[Improvement backlog](IMPROVEMENTS.md) retains the detailed completion criteria. Real device checks remain acceptance work throughout; they do not turn this phase into a gameplay retuning pass.
 
 ## Boundaries
 

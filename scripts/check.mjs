@@ -9,7 +9,7 @@ for(const file of walk('src').filter(p=>p.endsWith('.js'))){
 }
 const kernel=JSON.parse(readFileSync('docs/kernel-provenance.json','utf8'));
 for(const [p,sha] of Object.entries(kernel.files))if(createHash('sha256').update(readFileSync(p)).digest('hex')!==sha)throw Error(`Pinned kernel changed: ${p}`);
-for(const script of ['log.mjs','assets.mjs']){
+for(const script of ['log.mjs','assets.mjs','architecture.mjs','presets.mjs']){
  const r=spawnSync(process.execPath,[`scripts/${script}`,'check'],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1);
 }
 console.log('Syntax, source module identity, pinned kernel, logs and assets checked.');
