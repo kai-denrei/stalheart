@@ -26,6 +26,8 @@ Sinkhole is a separate genre in the Portal Lab (`labs.html?genre=sinkhole#portal
 
 Astro now defaults to a station diorama: nine mixed station crew with authored walk/run/point/kneel clips, footprint-aware routes between MÖRK, Stålheart, Hugin and the SKYWARD array, camera focus controls and 0–60 crew. FPS/frame-time, whole-frame rendering counters and per-group mesh budgets support visibility/animation/shadow/bloom comparisons with a local baseline. The site also contains assembly, cargo, solar and open-reactor areas linked by instanced Fortification foundations. Press 1 for free camera and 3 to drive MÖRK with a chase view; WASD/arrows steer. New scene controls travel in the shared scene link. See [ASTRO.md](ASTRO.md).
 
+Sentry Control is an opt-in actual-game experiment at `index.html?sentryPilot=1#td`: the first TD map and waves, six manually controlled wall posts, shared combat and effects, parked tank, and memory-only practice records. The separate Sniper bench remains available. See [SENTRY-CONTROL.md](SENTRY-CONTROL.md).
+
 ## Next priorities
 
 Owner-directed sequence: **architecture → visual/sound labs and clean exports → UX → playability**. [Architecture and implementation boundaries](ARCHITECTURE.md) are the current technical plan.

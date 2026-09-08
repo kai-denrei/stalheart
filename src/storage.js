@@ -8,7 +8,10 @@ export function createStorage(backing, prefix = STORAGE_PREFIX) {
     removeItem(key) { try { backing()?.removeItem(prefix + key); } catch { /* unavailable */ } },
   };
 }
-export const storage = createStorage(() => globalThis.localStorage);
+// Practice uses memory only: no score, rank or settings leak into a campaign.
+const practice = new URLSearchParams(globalThis.location?.search || '').get('sentryPilot') === '1';
+const practiceRecords = new Map();
+export const storage = createStorage(() => practice ? {getItem:k=>practiceRecords.get(k)??null,setItem:(k,v)=>practiceRecords.set(k,v),removeItem:k=>practiceRecords.delete(k)} : globalThis.localStorage);
 export function exportRecords(backing = globalThis.localStorage, legacy = false) {
   const records = {};
   for (let i = 0; i < backing.length; i++) {

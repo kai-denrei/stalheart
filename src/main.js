@@ -72,6 +72,7 @@ if (!root) {
     b.addEventListener('click', () => {
       const url = new URL(b.dataset.page || location.pathname, location.href);
       url.search = location.search;
+      url.searchParams.delete('sentryPilot');
       for (const key of ['mission', 'roster']) if (key in b.dataset) {
         if (b.dataset[key]) url.searchParams.set(key, b.dataset[key]);
         else url.searchParams.delete(key);

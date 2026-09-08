@@ -65,7 +65,41 @@ try{
   if(m.method==='Network.responseReceived')requests.push({url:m.params.response.url,status:m.params.response.status});
  });
  for(const method of ['Runtime.enable','Page.enable','Network.enable'])await send(method);
- if(args.includes('--breach-game')) {
+ if(args.includes('--sentry-pilot')) {
+ await go('sentry-pilot','index.html?sw=0&acceptance=1&sentryPilot=1#td');
+ await until('window.__stalheartPilotTest?.state().posts.length > 0');
+ const initial=await evaluate('window.__stalheartPilotTest.state()');
+ assert.equal(initial.seed,7);assert.equal(initial.points,500);assert.equal(initial.sector,1);assert.equal(initial.key,'needle');
+ await delay(1500);
+ assert.equal(await evaluate('window.__stalheartPilotTest.state().shots'),0,'Manual mount stays silent');
+ assert.deepEqual(await evaluate('window.__stalheartPilotTest.state().tank'),initial.tank,'Tank remains parked');
+ await send('Input.dispatchKeyEvent',{type:'keyDown',code:'Space',key:' '});
+ await until('window.__stalheartPilotTest.state().shots > 0');
+ await send('Input.dispatchKeyEvent',{type:'keyUp',code:'Space',key:' '});
+ assert.equal(await evaluate('window.__stalheartPilotTest.state().held'),false);
+ await send('Input.dispatchKeyEvent',{type:'keyDown',code:'KeyE',key:'e'});
+ await send('Input.dispatchKeyEvent',{type:'keyUp',code:'KeyE',key:'e'});
+ assert.notEqual(await evaluate('window.__stalheartPilotTest.state().ci'),initial.ci);
+ for(const s of SENTRIES){await click(`[data-weapon="${s.key}"]`);assert.equal(await evaluate('window.__stalheartPilotTest.state().key'),s.key);await until('window.__stalheartPilotTest.state().ready');}
+ await click('[data-weapon="needle"]');
+ await until('window.__stalheartPilotTest.state().wave > 0 && window.__stalheartPilotTest.state().enemies > 0',30000);
+ let victim=null;
+ for(let i=0;i<6&&!victim;i++){
+   victim=await evaluate('window.__stalheartPilotTest.aimEnemy()');
+   if(!victim)await click('[data-post="1"]');
+ }
+ assert(victim,'A live wave enemy is visible and in range from a real wall post');
+ await until('(()=>{window.__stalheartPilotTest.aimEnemy();return window.__stalheartPilotTest.state().target !== null;})()');
+ await send('Input.dispatchKeyEvent',{type:'keyDown',code:'Space',key:' '});
+ await until(`(()=>{window.__stalheartPilotTest.aimEnemy();const e=window.__stalheartPilotTest.enemy(${victim.id});return !e || e.hp<${victim.hp};})()`);
+ await send('Input.dispatchKeyEvent',{type:'keyUp',code:'Space',key:' '});
+ await send('Input.dispatchKeyEvent',{type:'keyDown',code:'KeyM',key:'m'});
+ await send('Input.dispatchKeyEvent',{type:'keyUp',code:'KeyM',key:'m'});
+ assert(await evaluate('document.querySelector(".pilot-map") !== null'));
+ await send('Input.dispatchKeyEvent',{type:'keyDown',code:'KeyM',key:'m'});
+ await send('Input.dispatchKeyEvent',{type:'keyUp',code:'KeyM',key:'m'});
+ await finish();
+ } else if(args.includes('--breach-game')) {
  await go('game-breach-load','index.html?sw=0&acceptance=1&cine=0#td');
  await until('window.__stalheartTest?.state().breaches.length>0');
  await evaluate('window.__stalheartTest.breachScenario()');

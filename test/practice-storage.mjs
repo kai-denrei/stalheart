@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+globalThis.location={search:'?sentryPilot=1'};
+let touched=false;
+globalThis.localStorage={getItem(){touched=true;return 'campaign';},setItem(){touched=true;},removeItem(){touched=true;}};
+const {storage}=await import('../src/storage.js');
+assert.equal(storage.getItem('td.best'),null);
+storage.setItem('td.best','20');assert.equal(storage.getItem('td.best'),'20');
+storage.removeItem('td.best');assert.equal(storage.getItem('td.best'),null);
+assert.equal(touched,false);
+console.log('Sentry practice never reads or writes campaign records.');

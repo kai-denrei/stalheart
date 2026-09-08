@@ -1,3 +1,4 @@
+import { createSentryPilot } from './sentry-pilot.js';
 import { DEFAULT_TANK } from './content/tank.js';
 import { createGameBreaches } from './game-breaches.js';
 import { BREACH_SOUNDS } from './content/breach-defaults.js';
@@ -115,6 +116,10 @@ import { makeAudio } from './audio.js';
 import { DEATH_KEYS } from './audiomanifest.js';
 
 export function initTdTab(root) {
+  const pilotMode = new URLSearchParams(location.search).get('sentryPilot') === '1';
+  let pilot = null;
+  let pilotPosts = [], pilotPost = 0;
+  const pilotMounts = [];
   let active = false;
   let wasPlaying = false; // drives body.playing (mobile hides ALL chrome)
 
@@ -785,6 +790,7 @@ export function initTdTab(root) {
           + ` · SPACE shell · N mine · no resupply`;
     }
   }
+  let nextEnemyId=1;
   const enemies = [];      // { cur, prev, next, prog, pos, dir, obj, alive }
   const projectiles = [];  // { pos, dir, dist, mesh }
   const debris = [];       // scatter effects, tick(dt) -> alive
@@ -2775,6 +2781,7 @@ export function initTdTab(root) {
   }
 
   function updateCameraGoal() {
+    if (pilot?.state.tower && pilot.pose(pilot.state.tower, camGoal)) return;
     // DEPLOY eases the doorway framing into the gameplay framing over its own
     // progress, so at u=1 the two ARE the same pose and handing the controls
     // over changes nothing on screen.
@@ -3352,7 +3359,7 @@ export function initTdTab(root) {
   }
 
   function onKeyEvent(ev, down) {
-    if (!active) return;
+    if (!active || pilotMode) return;
     // a clicked button (lil-gui title, d-pad, modal regen) keeps FOCUS, and
     // the browser "clicks" the focused button again on Space — which is the
     // fire key. That's how the panel kept "opening by itself" mid-battle.
@@ -4247,7 +4254,7 @@ export function initTdTab(root) {
           obj: eObj, alive: true, phase: whim() * 6.283,
           hp: spec.hp, behMult: 1, behUntil: -1, touchCd: -1, slowFactor: 1, slowUntil: -1,
         };
-        enemies.push(e); this.fodder.push(e); made.push(e);
+        e.id ??= nextEnemyId++; enemies.push(e); this.fodder.push(e); made.push(e);
       }
       return made;
     },
@@ -5662,6 +5669,7 @@ export function initTdTab(root) {
 
   // --- generation ----------------------------------------------------------
   function regenerate() {
+    if(pilot){location.reload();return;}
     // a fresh sky for a fresh board. Bakes only when the seed changed, so a
     // rebuild that keeps the run keeps the sky.
     skySeed = skyQ != null ? (parseInt(skyQ, 10) >>> 0) % 100000 : randomSeed() % 100000;
@@ -6292,6 +6300,7 @@ export function initTdTab(root) {
       scene.add(obj);
       const exits = openNeighbors(sp.ci);
       enemies.push({
+        id: nextEnemyId++,
         type, spec, scale0, size,breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:0,
         cur: sp.ci, prev: -1,
         next: exits.length ? exits[Math.floor(whim() * exits.length)] : sp.ci,
@@ -7480,6 +7489,7 @@ export function initTdTab(root) {
       scene.add(obj);
       const exits = openNeighbors(ci);
       enemies.push({
+        id: nextEnemyId++,
         type, spec, scale0: s0, size: spec.size,
         cur: ci, prev: -1, next: exits.length ? exits[Math.floor(rng() * exits.length)] : ci,
         prog: rng() * 0.4, pos: graph.centers[ci].slice(), dir: [0, 1, 0],
@@ -9609,17 +9619,27 @@ export function initTdTab(root) {
     const head = ud.head;
     const facing = ud.headFacing;
     const config = CONTENT.missiles[tw.key] ? engagementConfig(tw) : null;
-    const acquired = config ? acquireMissileTarget(tw, graph.centers[tw.ci], config) : null;
-    if (config && (!acquired || !head || facing === undefined)) {
+    const manual = pilotMode && pilot?.state.tower === tw;
+    const manualTarget = manual ? pilot.target(enemies, effectiveStats(tw.def,tw.tier).range*cellSide, cellSide) : null;
+    tw.pilotTarget = manualTarget;
+    const acquired = config ? (manual ? (manualTarget.pilotAim ? null : manualTarget) : acquireMissileTarget(tw, graph.centers[tw.ci], config)) : null;
+    if (manual) tw.missileTarget = acquired;
+    if (config && (!acquired || (!manual && (!head || facing === undefined)))) {
       tw.lock = makeLock(); tw.aimErr = Infinity;
       if (!acquired) tw.aim = undefined;
     }
-    if (!head || facing === undefined) return;
+    if (!head || facing === undefined) {
+      if (manual) {
+        tw.aimErr=0;
+        if(config){if(!tw.lock)tw.lock=makeLock();stepMissileLock(tw.lock,dt,acquired,acquired?missileDistance(graph.centers[tw.ci],acquired.pos):Infinity,0,config);}
+      }
+      return;
+    }
     tw.aimT = (tw.aimT ?? 0) - dt;
-    if (config || tw.aimT <= 0) {
+    if (manual || config || tw.aimT <= 0) {
       tw.aimT = TRACK_EVERY;
       const eff = effectiveStats(tw.def, tw.tier);
-      const target = config ? acquired : pickTarget(graph.centers[tw.ci], eff.range * cellSide, enemies, chord);
+      const target = manual ? manualTarget : config ? acquired : pickTarget(graph.centers[tw.ci], eff.range * cellSide, enemies, chord);
       if (target) {
         aimV.set(target.pos[0], target.pos[1], target.pos[2]);
         tw.obj.worldToLocal(aimV);
@@ -9999,6 +10019,14 @@ export function initTdTab(root) {
   function stepPlasmaBeams(tNow) {
     for (const [tw, ent] of plasmaBeams) {
       const live = tNow < ent.until && towerByCell.get(tw.ci) === tw;
+      if(live && pilotMode && pilot?.state.tower===tw && tw.key==='lancer'){
+        const until=ent.until,range=effectiveStats(tw.def,tw.tier).range*cellSide;
+        const from=tw.lastMuzzle?.getWorldPosition(new THREE.Vector3()).toArray() || tw.obj.position.toArray();
+        const aim=tw.pilotTarget?.pos || add3(from,camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(range).toArray());
+        const dir=norm3(sub3(aim,from)),stop=rayToTerrain(from,dir,range,tw.ci);
+        lanceBeam(tw,from,dir,stop.len,tNow,tw.lastStruck??0,null);
+        ent.until=until; // steering does not extend the burst or apply extra damage
+      }
       for (const bm of ent.links) {
         if (!live) { bm.mesh.visible = false; continue; }
         bm.update(tNow);
@@ -10123,6 +10151,7 @@ export function initTdTab(root) {
     stepPlasmaBeams(tNow);
     stepTowerSeekers(dt, tNow);
     for (const tw of towers) {
+      if (pilotMode && tw !== pilot?.state.tower) {tw.cooldown=Math.max(0,tw.cooldown-dt);continue;}
       // idle first, aim second: the idle sets rotation.y unconditionally, and
       // a tracking head must have the last word on where it looks
       if (tw.obj.userData.tick) tw.obj.userData.tick(tNow + tw.ci);
@@ -10130,23 +10159,31 @@ export function initTdTab(root) {
       // it has no cooldown the tab owns, no fixed cell to shoot from, and no
       // head to aim. Everything it decides is heptapod.js's; everything it
       // DOES — the rocket, the sound, the model — is the board's.
-      if (tw.a6) { stepWalker(tw, dt, tNow); continue; }
+      if (tw.a6 && !pilotMode) { stepWalker(tw, dt, tNow); continue; }
       if(tw.def.attack==='slowfield' && towerOffline(shield,tw.id,tNow))continue;
       aimTower(tw, dt);
       if(tw.key==='rotor'){
-        const spin=!!pickTarget(graph.centers[tw.ci],effectiveStats(tw.def,tw.tier).range*cellSide,enemies,chord);
+        const spin=pilotMode ? !!pilot?.state.held : !!pickTarget(graph.centers[tw.ci],effectiveStats(tw.def,tw.tier).range*cellSide,enemies,chord);
         if(spin!==!!tw.spinning)sfx.play('minigun_ready',{dist:camDist(graph.centers[tw.ci])});
         tw.spinning=spin;
       }
       tw.cooldown -= dt;
+      if (pilotMode) {
+        const distance=tw.pilotTarget && !tw.pilotTarget.pilotAim ? missileDistance(graph.centers[tw.ci],tw.pilotTarget.pos) : null;
+        const maxRange=effectiveStats(tw.def,tw.tier).range*METRES_PER_CELL;
+        const status=tw.obj.userData.loading?'LOADING':distance!==null && distance>maxRange?'OUT OF RANGE':tw.cooldown>0?`COOLING ${tw.cooldown.toFixed(1)} s`:CONTENT.missiles[tw.key] && !tw.lock?.locked?'ACQUIRING':tw.aimErr>SENTRY_TUNE.tolerance?'TRAVERSING':'READY';
+        pilot.update(`${tw.def.label} · POST ${pilotPost+1}/${pilotPosts.length} · WAVE ${wave} · HEART ${Math.ceil(heartHP)}\nMAX ${Math.round(maxRange)} m · ${distance===null?'NO TARGET':`TRACK ${Math.round(distance)} m`} · ${status}`);
+        if (!pilot.state.held || pilot.isMap()) continue;
+      }
       if (tw.cooldown > 0) continue;
       const eff = effectiveStats(tw.def, tw.tier);
       const range = eff.range * cellSide;
       const tp = graph.centers[tw.ci];
-      let target = CONTENT.missiles[tw.key] ? tw.missileTarget : pickTarget(tp, range, enemies, chord);
+      let target = pilotMode ? (CONTENT.missiles[tw.key] ? tw.missileTarget : tw.pilotTarget) : CONTENT.missiles[tw.key] ? tw.missileTarget : pickTarget(tp, range, enemies, chord);
+      if (pilotMode && target && !target.pilotAim && missileDistance(tp,target.pos) > eff.range*METRES_PER_CELL) continue;
       // the railgun does not shoot THROUGH walls: if the nearest pick is
       // occluded by high ground, take the nearest VISIBLE enemy instead
-      if (target && tw.def.hitscan && !losClear(tw.ci, target.pos)) {
+      if (!pilotMode && target && tw.def.hitscan && !losClear(tw.ci, target.pos)) {
         target = null;
         let bd = Infinity;
         for (const e of enemies) {
@@ -10190,6 +10227,7 @@ export function initTdTab(root) {
       }
       if (tw.def.hitscan && (tw.aimErr ?? 99) > SENTRY_TUNE.tolerance) continue;
       tw.cooldown = shotInterval(eff.rate);
+      if (pilotMode) pilot.state.shots++;
       // one line, every tower: the key IS the def key, unless the def says
       // otherwise — which the second roster's do, since there is no
       // `tower_rotor` and a missing sample is silence nobody notices
@@ -10209,14 +10247,14 @@ export function initTdTab(root) {
       }
       const raw = sub3(target.pos, tp);
       const flat = norm3(sub3(raw, scale3(norm3(tp), dot3(raw, norm3(tp)))));
-      const atk = tw.def.attack;
+      const atk = pilotMode && tw.key==='heptapod' ? 'seeker' : tw.def.attack;
       if (tw.def.hitscan) {
         // THE SNIPER IS A HEAVY SHOT, not a beam. The beam pair read as a
         // laser (operator ruling), so now the damage still lands this frame
         // — a sniper does not miss — but what you SEE is one fat slug
         // crossing the whole line in ~0.13s, trailing ghosts, with the
         // impact fx landing when the slug does. Straight line, one round.
-        damageEnemy(target, tNow, eff.dmg, true);
+        if (!target.pilotAim) damageEnemy(target, tNow, eff.dmg, true);
         const hitP = add3(target.pos, scale3(norm3(target.pos), cellSide * 0.3));
         spawnSlug(muzzle, hitP, tw.def.color, cellIndex(target.pos));
         warnRing(tw.ci, tw.def.color, 0.35, cellSide * 0.9); // muzzle pulse
@@ -10285,7 +10323,7 @@ export function initTdTab(root) {
         lanceBeam(tw, from3, dir3, stop.len, tNow, struck, stop.hit);
       } else if (atk === 'beam') {
         // hitscan: damage now, draw the light
-        damageEnemy(target, tNow, eff.dmg, true);
+        if (!target.pilotAim) damageEnemy(target, tNow, eff.dmg, true);
         const at = add3(target.pos, scale3(norm3(target.pos), cellSide * 0.3));
         if (shotOf(tw.def).plasma) throwPlasma(tw, muzzle, at, tNow);
         else spawnBeam(muzzle, at, tw.def.color);
@@ -12135,7 +12173,7 @@ export function initTdTab(root) {
     perfFps = perfFps ? perfFps * 0.5 + fps * 0.5 : fps;
     if (gpuN) { const g = gpuAcc / gpuN; perfGpu = perfGpu ? perfGpu * 0.5 + g * 0.5 : g; gpuAcc = 0; gpuN = 0; }
     const r = renderer.info.render;
-    perfEl.style.top=`${Math.max(48,statsEl.getBoundingClientRect().bottom+6)}px`;
+    perfEl.style.top=`${pilotMode ? 220 : Math.max(48,statsEl.getBoundingClientRect().bottom+6)}px`;
     if(performance.now()-perfGroupAt>=2000){perfGroupAt=performance.now();perfGroups=performanceGroups();}
     const groups=perfGroups;
     perfSample={wave,fps:perfFps,frameMs:1000/perfFps,gpuMs:gpuExt && perfGpu>0?perfGpu:null,
@@ -12231,6 +12269,7 @@ export function initTdTab(root) {
     // heart moods, debris) and the camera transition keep breathing.
     // Mid-assault the same toggle is camera-only.
     stepBriefClock(dt);
+    if (pilotMode && shot) endShot();
     stepShot(dt);
     // ANY control input thaws the frozen tutorial opening — checked BEFORE
     // the frozen gate, since updateLasers itself is skipped while frozen.
@@ -12274,8 +12313,9 @@ export function initTdTab(root) {
     // hand on the wheel closes it, same rule as the tutorial's opening hold.
     if (shopCi !== -1 && (keys.fast || keys.slow || keys.left || keys.right
       || cruise || throttle !== 0 || keys.fire || keys.laser)) closeShop();
+    if (pilotMode) deploy = null;
     if (deploy) deployStep(dt);
-    else if (!driveFrozen) advanceMotion(dt);
+    else if (!driveFrozen && !pilotMode) advanceMotion(dt);
     ctlWatch(dt);
     // Isao keeps his shift through the build downtime — the war may be
     // frozen there, but construction is the thing you came to do. A
@@ -12506,8 +12546,7 @@ export function initTdTab(root) {
       if (!sp.found && dist3(player.pos, graph.centers[sp.ci]) < cellSide * 5) sp.found = true;
     }
     if (simStyle && !simDone) simPolicy(dt);
-    autoSecondary();
-    autoGunner(t);
+    if (!pilotMode) { autoSecondary(); autoGunner(t); }
     checkVictory(); // ram kills and heart-contact deaths can end it too
     // DOM is the sim's tax collector: an innerHTML rebuild per SIM STEP
     // (120 per painted frame) throttled the fast-forward to ~2s per batch.
@@ -12544,7 +12583,9 @@ export function initTdTab(root) {
     buildFollowTank(dt);
     updateCameraGoal();
 
-    if (director && shot && shot.id === 'director') {
+    if (pilotMode && pilot && !pilot.isMap()) {
+      camera.position.copy(camGoal.pos); camera.quaternion.copy(camGoal.quat);
+    } else if (director && shot && shot.id === 'director') {
       // THE DIRECTOR'S RAIL IS THE CAMERA: no ease, no lag, the pose is the pose
       camera.position.copy(camGoal.pos);
       camera.quaternion.copy(camGoal.quat);
@@ -12553,7 +12594,7 @@ export function initTdTab(root) {
       camera.quaternion.slerp(camGoal.quat, 0.14);
     }
     if (director) directorFrame(dt);
-    if (urlParams.get('viewwatch') !== '0') viewWatch(dt);
+    if (!pilotMode && urlParams.get('viewwatch') !== '0') viewWatch(dt);
     diagTick(dt);
 
     heartSprite.userData.tick(t);
@@ -12597,12 +12638,15 @@ export function initTdTab(root) {
       cpos = graph.centers[dungeon.heart]; up = t1;
       // eslint-disable-next-line no-unused-vars
       void hn;
+    } else if(pilot?.state.tower) {
+      cpos=graph.centers[pilot.state.tower.ci];
+      up=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion).toArray();
     } else {
       cpos = player.pos;
       up = player.smoothDir;
     }
     const basis = radarBasis(cpos, up);
-    const range = mapMode === 'heart' ? 2.02 : 1.15;
+    const range = mapMode === 'heart' ? 2.02 : pilotMode ? cellSide*12 : 1.15;
     const sweep = sweepAngle(t);
 
     // ground: near-black green, three range rings, crosshair, rim
@@ -14188,10 +14232,10 @@ export function initTdTab(root) {
     }, 2000);
   }
 
-  const debugging = ['walk', 'tick', 'wave', 'blast', 'laser', 'found', 'recoil', 'mode', 'map', 'tower', 'biomass', 'credit', 'driveout', 'order', 'isao', 'bobby', 'record', 'debrief', 'armed', 'brief', 'planet', 'shop', 'sector', 'reveal', 'portal', 'lose', 'charge', 'layout', 'perf', 'strike', 'strikefall', 'strikecam', 'gateprobe', 'rank', 'danger', 'callout', 'sitrep', 'server', 'hack', 'shield', 'sim']
+  const debugging = pilotMode || ['walk', 'tick', 'wave', 'blast', 'laser', 'found', 'recoil', 'mode', 'map', 'tower', 'biomass', 'credit', 'driveout', 'order', 'isao', 'bobby', 'record', 'debrief', 'armed', 'brief', 'planet', 'shop', 'sector', 'reveal', 'portal', 'lose', 'charge', 'layout', 'perf', 'strike', 'strikefall', 'strikecam', 'gateprobe', 'rank', 'danger', 'callout', 'sitrep', 'server', 'hack', 'shield', 'sim']
     .some((k) => urlParams.get(k));
   const tutParam = urlParams.get('tutorial');
-  runTutorial = tutParam === '1' || (tutParam !== '0' && !debugging);
+  runTutorial = !pilotMode && (tutParam === '1' || (tutParam !== '0' && !debugging));
   // ?intro=1 forces the manual even under debug hooks (screenshot path);
   // ?intro=0 skips it. On a clean load it fronts whatever comes next.
   const introParam = urlParams.get('intro');
@@ -14200,9 +14244,9 @@ export function initTdTab(root) {
   // deliberately NOT gated on `debugging`: a hook like ?tick has no opinion
   // about the opening, and the cinematic is the thing being verified.
   const cineParam = urlParams.get('cine');
-  const wantCine = cineParam !== '0' && (cineParam !== null || !debugging);
+  const wantCine = !pilotMode && cineParam !== '0' && (cineParam !== null || !debugging);
   let opening = null;
-  if (introParam === '1') opening = () => showIntro();
+  if (!pilotMode && introParam === '1') opening = () => showIntro();
   else if (!debugging && introParam !== '0' && !mobileShell) {
     // not on the shell: the manual PAUSES the game with the tank in its
     // berth at the deploy framing (operator's phone: "starts in this view
@@ -15684,6 +15728,7 @@ export function initTdTab(root) {
         obj.scale.setScalar(s0); obj.userData.s0 = s0;
         scene.add(obj);
         enemies.push({
+          id: nextEnemyId++,
           type: hardType, spec, scale0: s0, size: spec.size,
           cur: near, prev: -1, next: near, prog: 0,
           pos: graph.centers[near].slice(), dir: [0, 1, 0],
@@ -16298,7 +16343,7 @@ export function initTdTab(root) {
           pos: p0, dir: d0.slice(), obj, alive: true, phase: 0,
           paceJitter: 1, hp: spec.hp, behMult: 1, behUntil: -1, touchCd: -1,
           slowFactor: 1, slowUntil: -1 };
-        enemies.push(e);
+        e.id ??= nextEnemyId++; enemies.push(e);
         for (let k = 0; k <= steps; k++) {
           tt += 0.05;
           if (e.alive) {
@@ -16546,6 +16591,7 @@ export function initTdTab(root) {
           obj.userData.s0 = s0;
           scene.add(obj);
           enemies.push({
+            id: nextEnemyId++,
             type: wantType, spec, scale0: s0, size: spec.size,
             cur: ci, prev: -1, next: ci, prog: 0,
             pos: graph.centers[ci].slice(), dir: [0, 1, 0],
@@ -16800,7 +16846,7 @@ export function initTdTab(root) {
         hp: 40, behMult: 1, behUntil: -1, touchCd: -1,
         slowFactor: 1, slowUntil: -1,
       };
-      enemies.push(e);
+      e.id ??= nextEnemyId++; enemies.push(e);
       const lane = [...e.pos];
       e.shove = { dir: shoveVec(e.pos, player.pos, player.heading), t: shieldTune.shoveLife };
       e.stagUntil = runContext.time + shieldTune.shoveStun;
@@ -17520,11 +17566,57 @@ export function initTdTab(root) {
     };
   }
 
+  if (pilotMode) {
+    function installPilot(key) {
+      const old=pilotMounts[pilotPost];
+      if(old?.key===key){const sp=spawnPoints.filter(sp=>sp.alive).sort((a,b)=>chord(graph.centers[old.ci],graph.centers[a.ci])-chord(graph.centers[old.ci],graph.centers[b.ci]))[0];pilot.attach(old,graph.centers[sp?.ci??dungeon.spawn]);return;}
+      if(old){
+        if(old.spinning)sfx.play('minigun_ready',{dist:camDist(graph.centers[old.ci])});
+        scene.remove(old.obj);disposeObj(old.obj);
+        const index=towers.indexOf(old);if(index>=0)towers.splice(index,1);
+        towerByCell.delete(old.ci);towerCells.delete(old.ci);
+      }
+      const tw=commitTower(key,pilotPosts[pilotPost],0);
+      // Heptapod is tethered to the emplacement in this experiment.
+      tw.a6=null;placeTowerObj(tw);pilotMounts[pilotPost]=tw;
+      const near=spawnPoints.filter(sp=>sp.alive).sort((a,b)=>chord(graph.centers[tw.ci],graph.centers[a.ci])-chord(graph.centers[tw.ci],graph.centers[b.ci]))[0];
+      pilot.attach(tw,graph.centers[near?.ci ?? dungeon.spawn]);
+    }
+    pilot=createSentryPilot(root,{
+      select:installPilot,
+      post:delta=>{pilotPost=(pilotPost+delta+pilotPosts.length)%pilotPosts.length;pilot.select(pilotMounts[pilotPost]?.key || pilot.state.tower.key);},
+      map:on=>setView(on?'orbit':'bastion'),pause:()=>{paused=!paused;pilot.state.held=false;},
+      wake:()=>holdWake(),cellSide:()=>cellSide,
+      zoom:z=>{camera.fov=60/z;camera.updateProjectionMatrix();},
+      visible:e=>pilot.state.tower && losClear(pilot.state.tower.ci,e.pos),
+      aimPoint:(eye,dir,range)=>{const hit=rayToTerrain(eye.toArray(),dir.toArray(),range,pilot.state.tower.ci);return eye.clone().addScaledVector(dir,hit.len).toArray();},
+      cameraPose:(eye,dir,up,goal)=>{tmpCam.position.copy(eye);tmpCam.up.copy(up);tmpCam.lookAt(eye.clone().add(dir));goal.quat.copy(tmpCam.quaternion);}
+    });
+    // Real first-sector wall cells, prioritised beside incoming routes.
+    const lanes=spawnPoints.filter(sp=>sp.alive).map(sp=>sp.ci);
+    const walls=Array.from(dungeon.tags,(_,ci)=>ci).filter(ci=>!placeError(ci));
+    const candidates=walls.map(ci=>({ci,d:Math.min(...lanes.map(sp=>chord(graph.centers[ci],graph.centers[sp])))})).sort((a,b)=>a.d-b.d);
+    pilotPosts=[];
+    for(const v of candidates){
+      if(v.d<cellSide*4 || !lanes.some(ci=>losClear(v.ci,graph.centers[ci])) || pilotPosts.some(ci=>chord(graph.centers[ci],graph.centers[v.ci])<cellSide*1.5))continue;
+      pilotPosts.push(v.ci);if(pilotPosts.length===6)break;
+    }
+    if(pilotPosts.length<6){for(const v of candidates){if(v.d>=cellSide*4 && !pilotPosts.includes(v.ci))pilotPosts.push(v.ci);if(pilotPosts.length===6)break;}}
+    if(!pilotPosts.length)pilotPosts=walls.slice(0,1);
+    deploy=null;endShot();dismissIntro();paused=false;tutorial.frozen=false;runTutorial=false;
+    for(let i=0;i<pilotPosts.length;i++)pilotMounts[i]=commitTower('needle',pilotPosts[i],0);
+    clearBriefs();params.callouts=false;setView('bastion');pilot.select('needle');hideRangeRing();snapCamera();
+    if(urlParams.get('acceptance')==='1')window.__stalheartPilotTest={state:()=>({paused,seed:params.seed,points:params.points,sector:round,posts:pilotPosts.slice(),ci:pilot.state.tower.ci,key:pilot.state.tower.key,shots:pilot.state.shots,held:pilot.state.held,wave,enemies:enemies.filter(e=>e.alive).length,tank:player.pos.slice(),camera:camera.position.toArray(),target:pilot.state.target?.id??null,ready:!pilot.state.tower.obj.userData.loading,aimError:pilot.state.tower.aimErr,lock:pilot.state.tower.lock,heart:heartHP}),select:key=>pilot.select(key),
+      aimEnemy:()=>{const tw=pilot.state.tower;const e=enemies.find(e=>e.alive&&missileDistance(graph.centers[tw.ci],e.pos)<effectiveStats(tw.def,tw.tier).range*10&&losClear(tw.ci,e.pos));if(!e)return null;pilot.aimAt(add3(e.pos,scale3(norm3(e.pos),cellSide*.3)));return {id:e.id,hp:e.hp};},
+      enemy:id=>{const e=enemies.find(e=>e.id===id);return e?{hp:e.hp,alive:e.alive}:null;}
+    };
+  }
+
   resize();
   animate();
 
   return {
-    dispose() { active = false; gameBreaches.dispose();runTimers.dispose(); runContext.dispose(); missilesDisposed=true; missilePool?.dispose(); setPerfOverlay(false,false); },
+    dispose() { pilot?.dispose(); active = false; gameBreaches.dispose();runTimers.dispose(); runContext.dispose(); missilesDisposed=true; missilePool?.dispose(); setPerfOverlay(false,false); },
     setActive(on) {
       active = on;
       if (!on) stopEngine(0.1, true); // quiet: leaving the tab is not a landing

@@ -61,3 +61,15 @@
 .preset-backup summary { cursor:pointer; padding:6px; }
 .preset-backup[open] { flex-basis:100%; }
 .preset-backup[open] > label,.preset-backup[open] > button { margin:4px; display:inline-block; }
+
+/* Actual TD map / manual sentry experiment. */
+#sentry-pilot{position:absolute;inset:58px 14px auto;z-index:80;color:#e4ecec;font:12px monospace;pointer-events:none;text-shadow:0 1px 3px #000}
+#sentry-pilot header{font-size:17px;letter-spacing:2px}#sentry-pilot small{font-size:10px;margin-left:12px}
+#sentry-pilot button,#sentry-pilot a{pointer-events:auto;background:#10191de8;color:#e4ecec;border:1px solid #657479;padding:7px;cursor:pointer;font:inherit}
+#sentry-pilot button.on{background:#d7e3e5;color:#111}#sentry-pilot .pilot-weapons{display:flex;gap:4px;flex-wrap:wrap;margin-top:10px}
+#sentry-pilot output{display:block;white-space:pre-line;padding:10px 0}#sentry-pilot footer{position:fixed;bottom:25px;left:50%;transform:translateX(-50%);white-space:nowrap;background:#10191de8;padding:9px}
+.pilot-cross{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font-size:30px;font-weight:200}.pilot-map .pilot-cross{display:none}
+.sentry-pilot-mode #td-pad,.sentry-pilot-mode #td-throttle,.sentry-pilot-mode #td-coach,.sentry-pilot-mode #td-tut-banner{display:none!important}
+.sentry-pilot-mode #td-stats,.sentry-pilot-mode #td-tower,.sentry-pilot-mode #td-wave,.sentry-pilot-mode #td-launch,.sentry-pilot-mode .tc-util,.sentry-pilot-mode #td-brief,.sentry-pilot-mode #td-tut,.sentry-pilot-mode #td-hint,.sentry-pilot-mode #td-stick,.sentry-pilot-mode .tzone,.sentry-pilot-mode .tfire{display:none!important}
+.sentry-pilot-mode #td-perf{top:215px;left:14px}.sentry-pilot-mode #td-next{right:20px;left:auto;transform:none}
+#tabbar>a{color:inherit;text-decoration:none;border:1px solid #536169;padding:6px 10px;font:inherit}
