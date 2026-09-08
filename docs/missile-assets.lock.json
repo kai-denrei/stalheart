@@ -20,6 +20,12 @@
       "sourcePath": "missile-lab/flight.mjs",
       "sha256": "db9ca1b3ee7ae9fc1678db4ae301c41b13f11c1b52e71ef0eb6ee551112fc228",
       "bytes": 3731
+    },
+    {
+      "path": "assets/models/missile-kit/talon.glb",
+      "sourcePath": "assets/missile-kit/talon.glb",
+      "sha256": "73e1c32df49ce30f3e1c2bac1c9eb2e5c33cee76ee1b1f88b44a3850b14d21db",
+      "bytes": 149136
     }
   ]
 }

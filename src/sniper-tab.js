@@ -26,7 +26,7 @@ import { makeBloom } from './postfx.js';
 import { bakeGalaxyCube } from './galaxybake.js';
 import { SKY_PRESET } from './galaxyseed.js';
 import { LOOKS } from './looks.js';
-import { makeDotEnemy } from './units.js';
+import { makeDotEnemy, makeDotBurst } from './units.js';
 import { CREATURE_TINTS, accentFor, ENEMY_SPEC } from './enemyspec.js';
 import { mulberry32 } from './rng.js';
 import { makeAudio } from './audio.js';
@@ -65,10 +65,11 @@ export function initSniperTab(root) {
   let active = false, disposed = false, frameId = 0, modelSerial = 0;
   const listeners = new AbortController();
   const listen = (target,event,fn,options={}) => target.addEventListener(event,fn,{...options,signal:listeners.signal});
-  let draft=clone(CONTENT), missilePool=null;
+  let draft=clone(CONTENT), missilePool=null,talonPool=null;
   const sequence=makeSequence(),cueLog=[];let heldBeam=null;
   const metrics={launched:0,arrived:0,last:null,impacts:0};
   createMissilePool().then(pool=>{if(disposed)pool.dispose();else missilePool=pool;}).catch(error=>{root.dataset.assetError=error.message;});
+  createMissilePool({mesh:'talon',capacity:8}).then(pool=>{if(disposed)pool.dispose();else talonPool=pool;}).catch(error=>{root.dataset.assetError=error.message;});
   const q = new URLSearchParams(location.search);
   const container = root.querySelector('#sniper-app');
   const hud = root.querySelector('#sniper-hud');
@@ -121,9 +122,10 @@ export function initSniperTab(root) {
     range: 60,            // where the next target stands
     spread: 6,           // ...± this
     targets: 4,
+    columnCount:14,columnToughness:.2,
     targetR: 0.55,         // metres — the kill radius
     seed: 4414,
-    quiverPrototype:true,prototypeRange:1000,
+    quiverPrototype:true,prototypeRange:1000,quiverTalon:true,talonSeconds:6,talonLength:1.8,
     tracer: true,
     traceHold: 1.5,
     // PHASE 1 IS CALIBRATION. A black-and-white target at a known distance
@@ -162,10 +164,12 @@ export function initSniperTab(root) {
   const legacyWeapon={javelin:'quiver',laser:'lancer',railgun:'needle',howitzer:'needle'};
   P.weapon=legacyWeapon[P.weapon] || (TOWER_BY_KEY[P.weapon]?P.weapon:'lancer');
   P.tier=Math.max(1,Math.min(3,Math.round(P.tier)));
+  P.columnToughness=Math.max(.05,Math.min(1,P.columnToughness));
   const profile=()=>draft.weapons[P.weapon];
   const configuration=()=>{const def=TOWER_BY_KEY[P.weapon],base=draft.missiles[P.weapon];
     if(!base)return null;const config=missileLimits(base,effectiveStats(def,P.tier-1).range/def.range);
     if(P.weapon==='quiver'&&P.quiverPrototype){config.maxRange=Math.max(100,Math.min(2000,P.prototypeRange));config.aimTolerance=Math.max(config.aimTolerance,config.lockGate);}
+    if(P.weapon==='quiver'&&P.quiverTalon)Object.assign(config,{mesh:'talon',profile:'heavy',duration:Math.max(4,Math.min(12,P.talonSeconds)),length:Math.max(.8,Math.min(4,P.talonLength))});
     return config;};
   function weaponSpec(){const def=TOWER_BY_KEY[P.weapon],w=manualWeapon(def,effectiveStats(def,P.tier-1),profile(),draft.missiles[P.weapon],METRES_PER_CELL),config=configuration();if(config){w.range=config.maxRange;w.minRange=config.minRange;}return w;}
   let W=weaponSpec();
@@ -176,7 +180,12 @@ export function initSniperTab(root) {
   }
   stageDefaults();
   let mortarAim=[0,0,Math.min(P.range||20,W.range*.95)];
-  const mortarMap=createMortarMap(container,renderer,scene,point=>{const distance=Math.hypot(point[0],point[2]);if(distance<=W.range&&distance>1)mortarAim=point;else hudNote='AIM WITHIN MORTAR RANGE';});
+  const mortarMap=createMortarMap(container,renderer,scene,point=>{const distance=Math.hypot(point[0],point[2]);if(distance<=W.range&&distance>1){mortarAim=point;focusMortar(point);}else hudNote='AIM WITHIN MORTAR RANGE';});
+  function focusMortar(point){
+    const target=targets.filter(t=>t.alive).sort((a,b)=>Math.hypot(a.pos[0]-point[0],a.pos[2]-point[2])-Math.hypot(b.pos[0]-point[0],b.pos[2]-point[2]))[0];
+    const height=target?.pos[1]||1;
+    aimYaw=Math.atan2(point[0],point[2]);aimPitch=Math.atan2(height-muzzleHeight(),Math.hypot(point[0],point[2]));
+  }
   function applyRound(){P.muzzleVel=W.muzzleVel;P.maxTime=60;P.step=STEP;}
   applyRound();
   let cool = 0, charging = 0, cassette=magFor(P.tier-1);
@@ -334,10 +343,13 @@ export function initSniperTab(root) {
         const d=P.range*(.8+i*.1),x=P.range*[-.10,.10,.18][i],cy=Math.max(1.6,P.targetR*FACE_R+.15),obj=makeCalTarget(P.targetR);
         obj.position.set(x,cy,d);scene.add(obj);targets.push({id:i+1,obj,pos:[x,cy,d],alive:true,d,cal:true});
       }
-      for(const [i,type] of ['phage','ghost','barbed','shellback','knot'].entries()){
-        const t=spawnReal(type,{distance:P.range*(.48+i*.10),bearing:0,quiet:true});t.closing*=.25;
+      const column=['phage','ghost','phage','scoutufo','barbed','ghost','shellback','phage','corona','ghost','barbed','shellback','prime','knot'];
+      const count=Math.max(5,Math.min(32,Math.round(P.columnCount)));
+      for(let i=0;i<count;i++){
+        const t=spawnReal(column[i%column.length],{distance:P.range*(.30+.68*i/(count-1)),bearing:0,quiet:true});
+        t.closing*=.15;t.hp*=P.columnToughness;t.maxHp=t.hp;
       }
-      hudNote='LIVE FIRE · three plates / one mixed column · R resets';return;
+      hudNote=`LIVE FIRE · ${count} creatures · target HP ×${P.columnToughness.toFixed(2)} · R resets`;return;
     }
     if (P.phase === 'calibrate') {
       // ONE target, dead ahead, at a known distance. A calibration is not a
@@ -353,6 +365,7 @@ export function initSniperTab(root) {
       obj.position.set(0, cy, d);
       scene.add(obj);
       targets.push({ id: 1, obj, pos: [0, cy, d], alive: true, d, cal: true });
+      if(W.loft){mortarAim=[0,0,d];focusMortar(mortarAim);}
       hudNote = `CALIBRATION · ${Math.round(P.allotted)} shots at ${d.toFixed(0)} m`;
       return;
     }
@@ -413,6 +426,12 @@ export function initSniperTab(root) {
     t.falling = 0;
     t.dying = true;
     t.alive = false;
+    metrics.kills=(metrics.kills||0)+1;
+    hudNote=`${(t.kind||'CONTACT').toUpperCase()} DOWN · ${metrics.kills} kills`;
+    const cue=DEATHS[(t.id+metrics.kills)%DEATHS.length];
+    if(P.sound){sfx.play(cue);cueLog.push(cue);if(cueLog.length>80)cueLog.shift();}
+    const burst=makeDotBurst(CREATURE_TINTS[t.kind]||0xffffff,[0,1,0],32);
+    burst.position.fromArray(t.pos);burst.scale.setScalar(Math.max(.3,t.h||1));scene.add(burst);fx.push({obj:burst,tick:burst.userData.tick});
     t.spin = (t.pos[0] >= 0 ? 1 : -1) * (0.6 + rng() * 0.5);
     plateFalls.push(t);
   }
@@ -547,11 +566,11 @@ export function initSniperTab(root) {
 
   // The target under the reticle, and how far away it is — the rangefinder's
   // job, done the same way whether a chip prints it or the player mils it.
-  function underReticle(maxOff = 12) {
+  function underReticle(maxOff = 12, requireEngagement = true) {
     let best = null, bd = Infinity;
     for (const t of targets) {
       if (!t.alive) continue;
-      if(W.homing&&!missileDistanceInRange(Math.hypot(t.pos[0],t.pos[2]),configuration()))continue;
+      if(requireEngagement&&W.homing&&!missileDistanceInRange(Math.hypot(t.pos[0],t.pos[2]),configuration()))continue;
       const dx = t.pos[0], dz = t.pos[2];
       // measured from the OPTIC's height, not from the ground: a target
       // whose centre is level with the scope is at zero elevation, and the
@@ -621,11 +640,11 @@ export function initSniperTab(root) {
     if (W.homing) { launchSeeker(yaw, pitch); return; }
     const shot=profile().shot;
     const mesh=makeTracerMesh(TOWER_BY_KEY[W.id].color,shot.projPx,shot.trail);
-    const trace=W.id==='needle'?createShotTrace():null;
+    const trace=W.id==='needle'||W.loft?createShotTrace():null;
     if(trace){trace.sample(s.p);mesh.add(trace.group);}
     mesh.visible = P.tracer;
     scene.add(mesh);
-    const shell=W.loft?makeOrdnanceShell(.65):null;if(shell){scene.add(shell);shell.position.fromArray(s.p);}
+    const shell=W.loft?makeOrdnanceShell(1.1):null;if(shell){scene.add(shell);shell.position.fromArray(s.p);}
     rounds.push({ s, mesh, trace, shell, aim:[...mortarAim],trail: [], weapon:{...W},profile:clone(profile()),tune:{...P} });
     // The Sentry owns its cue and cadence; scope recoil belongs to this stage.
     weaponVoice.shot(W.id);
@@ -653,7 +672,7 @@ export function initSniperTab(root) {
     mortarMap?.reset();
     sequence.left=0;sequence.gap=0;heldBeam=null;weaponVoice.dispose();
     Object.assign(lock,makeLock());
-    for(const m of missiles){scene.remove(m.mesh);missilePool?.release(m.mesh);}missiles.length=0;
+    for(const m of missiles){scene.remove(m.mesh);m.pool.release(m.mesh);}missiles.length=0;
     for(const r of rounds){scene.remove(r.mesh);disposeObj(r.mesh);if(r.shell){scene.remove(r.shell);disposeObj(r.shell);}}rounds.length=0;
     for(const f of fx){scene.remove(f.obj);disposeObj(f.obj);}fx.length=0;
   }
@@ -670,20 +689,20 @@ export function initSniperTab(root) {
     while(fx.length>128){const index=fx.findIndex(f=>f.obj!==heldBeam?.obj);if(index<0)break;const [old]=fx.splice(index,1);scene.remove(old.obj);disposeObj(old.obj);}
   }
   function launchSeeker(yaw,pitch){
-    const config=configuration(),u=underReticle(config.lockBreak*Math.PI/180*MRAD);
+    const config=configuration(),pool=config.mesh==='talon'?talonPool:missilePool,u=underReticle(config.lockBreak*Math.PI/180*MRAD);
     const target=targets.find(t=>t.alive&&t.id===lock.id);
     const error=u&&target&&u.t===target?u.off/MRAD*180/Math.PI:Infinity;
     const distance=target?Math.hypot(target.pos[0],target.pos[2]):Infinity;
-    if(!missileCanFire(lock,target,distance,error,config,cool,!!missilePool?.available)){
+    if(!missileCanFire(lock,target,distance,error,config,cool,!!pool?.available)){
       hudNote=lock.locked?`LOCKED · centre target within ${config.aimTolerance.toFixed(1)}° to fire`:`NO LOCK · acquire at ${config.minRange.toFixed(1)}–${config.maxRange.toFixed(0)} m`;return;
     }
     const from=new THREE.Vector3(0,muzzleHeight(),0),direction=new THREE.Vector3(0,1,0);
     rifle.updateMatrixWorld(true);
     if(muzzleNode){muzzleNode.getWorldPosition(from);muzzleNode.getWorldQuaternion(tmpQ);direction.set(0,0,1).applyQuaternion(tmpQ);}
     if(W.id==='quiver'&&P.quiverPrototype)config.duration=Math.max(config.duration,Math.min(6,distance/180));
-    const m=launchDart(missilePool,{config,from:from.toArray(),target:target.pos,direction:direction.toArray()});
+    const m=launchDart(pool,{config,from:from.toArray(),target:target.pos,direction:direction.toArray()});
     if(!m)return;
-    Object.assign(m,{tid:target.id,weapon:{...W},profile:clone(profile())});
+    Object.assign(m,{pool,tid:target.id,weapon:{...W},profile:clone(profile())});
     scene.add(m.mesh);missiles.push(m);Object.assign(lock,makeLock());
     if(TOWER_BY_KEY[W.id].attack==='walker')cassette--;
     metrics.launched++;metrics.last={key:W.id,config:{...config},direction:direction.toArray(),model:TOWER_BY_KEY[W.id].model};
@@ -693,16 +712,16 @@ export function initSniperTab(root) {
   function stepMissiles(dt){
     for(let i=missiles.length-1;i>=0;i--){
       const m=missiles[i],target=targets.find(t=>t.alive&&t.id===m.tid);
-      const arrived=advanceDart(missilePool,m,dt,target?target.pos:m.target);m.mesh.visible=P.tracer;
+      const arrived=advanceDart(m.pool,m,dt,target?target.pos:m.target);m.mesh.visible=P.tracer;
       if(!arrived)continue;
       if(target)resolveHit(target,0,new THREE.Vector3(...m.target),m.weapon,m.profile);
       else emitEffect('impact',m.target,[0,1,0],m.profile);
-      metrics.arrived++;scene.remove(m.mesh);missilePool.release(m.mesh);missiles.splice(i,1);
+      metrics.arrived++;scene.remove(m.mesh);m.pool.release(m.mesh);missiles.splice(i,1);
     }
   }
   function stepSeeker(dt){
     if(!W.lock){Object.assign(lock,makeLock());return;}
-    const config=configuration(),u=underReticle(config.lockBreak*Math.PI/180*MRAD);
+    const config=configuration(),pool=config.mesh==='talon'?talonPool:missilePool,u=underReticle(config.lockBreak*Math.PI/180*MRAD);
     const was=lock.locked;
     stepMissileLock(lock,dt,u?.t||null,u?.range??Infinity,(u?.off??Infinity)/MRAD*180/Math.PI,config);
     if(lock.locked&&!was){if(P.sound)sfx.play('laser_click');hudNote='TARGET LOCKED';lockNote=clock;}
@@ -793,7 +812,7 @@ export function initSniperTab(root) {
       for(const victim of affected){
         if(victim.cal){if(P.sound)sfx.play('tank_shells');knockDown(victim);continue;}
         victim.hp=(victim.hp??1)-weapon.damage;
-        if(victim.hp<=0){if(P.sound)sfx.play(DEATHS[(victim.id+shooter.hits)%DEATHS.length]);killBody(victim);}
+        if(victim.hp<=0)killBody(victim);
       }
       if(!t.cal && t.hp>0){
         hudNote=`HIT ${t.id} — ${t.hp.toFixed(2)} hp remaining`;
@@ -850,7 +869,13 @@ export function initSniperTab(root) {
       if(r.shell){r.shell.position.fromArray(r.s.p);r.shell.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),new THREE.Vector3(...r.s.v).normalize());}
       const done = r.spent || r.s.p[1] < 0 || r.s.t > (P.maxTime || MAX_T) || (!W.loft&&Math.hypot(r.s.p[0],r.s.p[2]) > W.range);
       if (!done) continue;
-      if(W.loft&&r.grounded)mortarMap.mark([r.s.p[0],0,r.s.p[2]],W.splash,r.aim);
+      if(W.loft&&r.grounded){
+        const point=[r.s.p[0],.04,r.s.p[2]];mortarMap.mark(point,W.splash,r.aim);
+        const ring=new THREE.Mesh(new THREE.RingGeometry(W.splash*.97,W.splash,64),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.8,side:THREE.DoubleSide,depthWrite:false}));
+        ring.rotation.x=-Math.PI/2;ring.position.fromArray(point);scene.add(ring);let left=5;
+        fx.push({obj:ring,splash:true,tick:dt=>{left-=dt;ring.material.opacity=.8*Math.min(1,left/2);return left>0;}});
+        const dust=makeDotBurst(0xc4b8a3,[0,1,0],48);dust.position.fromArray(point);dust.scale.setScalar(2.4);scene.add(dust);fx.push({obj:dust,tick:dust.userData.tick});
+      }
       if(r.shell){scene.remove(r.shell);disposeObj(r.shell);}
       if (!r.spent && r.s.p[1] < 0 && r.s.p[2] < GROUND) {
         // a round in the dirt: a splash weapon still gets its say, because a
@@ -986,7 +1011,12 @@ export function initSniperTab(root) {
     // a seeker gets its own glass, and it REPLACES the ruler rather than
     // being drawn over it: the mil dots are a holdover instrument and a
     // homing round has no holdover
-    if(W.loft){reticleEl.innerHTML='';return;}
+    if(W.loft){
+      const w=container.clientWidth||1,cx=w/2,cy=h/2;
+      const shell=rounds.find(r=>r.shell),v=shell?new THREE.Vector3(...shell.s.p).project(camera):null;
+      const sx=v?Math.max(25,Math.min(w-25,(v.x+1)*w/2)):cx,sy=v?Math.max(h*.34,Math.min(h-35,(1-v.y)*h/2)):cy;
+      reticleEl.innerHTML=`<svg width="100%" height="100%"><path d="M ${cx-6} ${cy} h 12 M ${cx} ${cy-6} v 12" stroke="white" opacity=".45"/>${shell?`<text x="${sx}" y="${sy-12}" fill="white" font-size="11" text-anchor="middle">SHELL ${shell.s.v[1]<0?'↓':'↑'} ${Math.max(0,shell.s.p[1]).toFixed(0)} M</text>`:''}</svg>`;return;
+    }
     if(W.id==='lancer'){
       const cx=(container.clientWidth||1)/2,cy=h/2,r=Math.max(38,Math.min(76,h*.09));
       const brackets=[[-1,-1],[-1,1],[1,-1],[1,1]].map(([x,y])=>`<path d="M ${cx+x*(r+18)} ${cy+y*r} h ${-x*18} v ${-y*18}"/>`).join('');
@@ -1151,7 +1181,7 @@ export function initSniperTab(root) {
 
   function hudLine() {
     const g0 = group();
-    const u = underReticle();
+    const u = underReticle(12,false);
     const w = windAt(clock, P);
     const wSpeed = Math.hypot(w[0], w[2]);
     const sol = u ? solution(u.range, P, clock, W.field?{hitscan:true}:W) : null;
@@ -1187,6 +1217,11 @@ export function initSniperTab(root) {
     // TRACK — what is under the cross. The RANGE is the rangefinder chip's
     // to print; without it the player gets the SUBTENSE and mils it himself,
     // which is the manual half of the same job.
+    const distance=W.loft?Math.hypot(mortarAim[0],mortarAim[2]):u?.range;
+    const rangeState=distance===undefined?'none':distance>W.range?'far':distance<(W.minRange||0)?'close':distance>=W.range*.9?'edge':'inside';
+    put('f-maxrange',`${W.range.toFixed(0)} m`);
+    put('f-envelope',({none:'NO TARGET',far:'OUT OF RANGE',close:'TOO CLOSE',edge:'NEAR LIMIT',inside:'IN RANGE'})[rangeState]);
+    for(const id of ['f-maxrange','f-envelope','f-range']){const node=f(id);if(node){node.dataset.range=rangeState;node.style.color=rangeState==='far'?'#ff5454':['close','edge'].includes(rangeState)?'#ffb43d':'';}}
     put('f-trackid', u ? `TGT-${String(u.t.id).padStart(2, '0')}` : '— — —');
     put('f-range', u ? (P.rangefinder ? `${u.range.toFixed(0)} m` : 'MIL IT') : '—',
       !!u && P.rangefinder);
@@ -1240,6 +1275,9 @@ export function initSniperTab(root) {
   gui.add(P, 'mag', 1, 25, 1).name('magnification').onChange(() => { camera.fov = 60 / P.mag; camera.updateProjectionMatrix(); });
   const weaponControl=gui.add(P,'weapon',Object.fromEntries(SENTRIES.map(s=>[s.label,s.key]))).name('Sentry').onChange(setWeapon);
   gui.add(P,'quiverPrototype').name('Quiver: Javelin prototype').onChange(()=>setWeapon(P.weapon));
+  gui.add(P,'quiverTalon').name('Quiver: TALON slow preview').onChange(()=>setWeapon(P.weapon));
+  gui.add(P,'talonSeconds',4,12,.5).name('TALON flight (s)');
+  gui.add(P,'talonLength',.8,4,.1).name('TALON length (m)');
   gui.add(P,'prototypeRange',100,2000,100).name('prototype reach (m)').onChange(()=>setWeapon(P.weapon));
   gui.add(P,'tier',1,3,1).name('equipment tier').onChange(()=>setWeapon(P.weapon));
   const effectsPanel=mountSentryEffects(gui,profile);
@@ -1274,6 +1312,8 @@ export function initSniperTab(root) {
     phaseEdited=true;
     spawnTargets(); shooter.shots = 0; shooter.hits = 0; shooter.best = Infinity;
   });
+  gp.add(P,'columnCount',5,32,1).name('column length').onChange(spawnTargets);
+  gp.add(P,'columnToughness',.05,1,.05).name('range target HP ×').onChange(spawnTargets);
   gp.add(P, 'allotted', 3, 20, 1).name('shots in a string');
   gp.add(P, 'moverSpeed', 0, 12, 0.2).name('crossing speed (m/s)');
   gp.add(P, 'sound').name('gun sound');
@@ -1344,8 +1384,10 @@ export function initSniperTab(root) {
   const cuBox = root.querySelector('#f-closeup');
   function renderCloseup() {
     if (!cuBox) return;
-    const t = (underReticle() || {}).t || targets.find((x) => x.alive);
+    const flight=missiles.find(m=>m.config.mesh==='talon');
+    const t = flight?{pos:flight.pose.position,cal:false}:(underReticle() || {}).t || targets.find((x) => x.alive);
     const on = P.closeup && !P.showRifle && !!t;
+    cuBox.querySelector('.r-head').textContent=flight?`TALON · ${flight.pose.phase} · ${flight.t.toFixed(1)} s`:'Optic · target';
     cuBox.style.display = on ? '' : 'none';
     if (!on) return;
     const r = cuBox.getBoundingClientRect();
@@ -1361,6 +1403,7 @@ export function initSniperTab(root) {
     closeCam.aspect = r.width / r.height;
     closeCam.position.copy(camera.position);
     closeCam.lookAt(t.pos[0], t.pos[1], t.pos[2]);
+    if(flight){closeCam.position.fromArray(t.pos).add(new THREE.Vector3(5,2,-4));closeCam.lookAt(...t.pos);closeCam.fov=38;}
     closeCam.updateProjectionMatrix();
     const dpr = renderer.getPixelRatio();
     renderer.setRenderTarget(null);
@@ -1391,7 +1434,8 @@ export function initSniperTab(root) {
     if (!P.scan || P.showRifle) { scanBox.style.display = 'none'; return; }
     scanBox.style.display = '';
     const m = scanCv.width, cx = m / 2, cy = m / 2, R = m / 2 - 4;
-    const range = Math.max(200, P.range + P.spread + 200);
+    const range = W.loft?Math.max(20,W.range*1.2):Math.max(200, P.range + P.spread + 200);
+    const heading=W.loft?0:aimYaw;
     const ctx = scanCtx;
     ctx.clearRect(0, 0, m, m);
     ctx.fillStyle = '#03100a';
@@ -1405,7 +1449,7 @@ export function initSniperTab(root) {
     const half = (camera.fov * Math.PI / 180) * (camera.aspect || 1.6) / 2;
     ctx.fillStyle = 'rgba(95,230,214,0.10)';
     ctx.beginPath(); ctx.moveTo(cx, cy);
-    ctx.arc(cx, cy, R, -Math.PI / 2 + aimYaw - half, -Math.PI / 2 + aimYaw + half);
+    ctx.arc(cx, cy, R, -Math.PI / 2 + heading - half, -Math.PI / 2 + heading + half);
     ctx.closePath(); ctx.fill();
     const sweep = sweepAngle(clock);
     const phi = sweep - Math.PI / 2;
@@ -1423,10 +1467,10 @@ export function initSniperTab(root) {
     for (const t of targets) {
       if (!t.alive) continue;
       const d = Math.hypot(t.pos[0], t.pos[2]) / range;
-      const b = Math.atan2(t.pos[0], t.pos[2]);
+      const b = Math.atan2(t.pos[0], t.pos[2])-(W.loft?aimYaw:0);
       const bx = cx + Math.sin(b) * R * Math.min(1, d);
       const by = cy - Math.cos(b) * R * Math.min(1, d);
-      ctx.globalAlpha = radarPhosphor(b, sweep);
+      ctx.globalAlpha = Math.max(W.loft?.5:0,radarPhosphor(b, sweep));
       ctx.fillStyle = t.cal ? '#5ab7ff' : '#ff8a5c';
       const sz = t.cal ? 5 : 4;
       ctx.fillRect(bx - sz / 2, by - sz / 2, sz, sz);
@@ -1435,9 +1479,9 @@ export function initSniperTab(root) {
     // YOU, at the centre, facing up the scope's own bearing
     ctx.fillStyle = '#e8f4f2';
     ctx.beginPath();
-    ctx.moveTo(cx + Math.sin(aimYaw) * 7, cy - Math.cos(aimYaw) * 7);
-    ctx.lineTo(cx + Math.sin(aimYaw + 2.5) * 5, cy - Math.cos(aimYaw + 2.5) * 5);
-    ctx.lineTo(cx + Math.sin(aimYaw - 2.5) * 5, cy - Math.cos(aimYaw - 2.5) * 5);
+    ctx.moveTo(cx + Math.sin(heading) * 7, cy - Math.cos(heading) * 7);
+    ctx.lineTo(cx + Math.sin(heading + 2.5) * 5, cy - Math.cos(heading + 2.5) * 5);
+    ctx.lineTo(cx + Math.sin(heading - 2.5) * 5, cy - Math.cos(heading - 2.5) * 5);
     ctx.closePath(); ctx.fill();
   }
 
@@ -1564,7 +1608,7 @@ export function initSniperTab(root) {
     paintReticle();
     postfx.render();
     if(!W.loft)renderCloseup();else if(cuBox)cuBox.style.display='none';
-    mortarMap.set(W.loft&&!P.showRifle,mortarAim,W.range,targets.filter(t=>t.alive).map(t=>t.pos),{time:clock,cool,wind:Math.hypot(...windAt(clock,P)),splash:W.splash,rounds:rounds.length});mortarMap.render();
+    mortarMap.set(W.loft&&!P.showRifle,mortarAim,W.range,targets.filter(t=>t.alive).map(t=>t.pos),{time:clock,yaw:aimYaw,cool,wind:Math.hypot(...windAt(clock,P)),splash:W.splash,rounds:rounds.length});mortarMap.render();
     drawScan();
     hudT += dt; if (hudT > 0.15) { hudT = 0; hudLine(); }
   }
@@ -1580,20 +1624,20 @@ export function initSniperTab(root) {
   }
 
   if(q.get('acceptance')==='1')window.__stalheartSniperTest={
-    state:()=>({weapon:P.weapon,label:W.label,kind:W.kind,model:TOWER_BY_KEY[P.weapon].model,ready:root.dataset.modelReady==='true',
+    state:()=>({weaponMaxRange:W.range,weapon:P.weapon,label:W.label,kind:W.kind,model:TOWER_BY_KEY[P.weapon].model,ready:root.dataset.modelReady==='true',
       roster:SENTRIES.map(s=>({number:s.number,key:s.key,label:s.label})),lock:{...lock},cool,cassette,shots:shooter.shots,hits:shooter.hits,
-      mortar:mortarMap.state(),prototype:P.weapon==='quiver'&&P.quiverPrototype,engagement:configuration(),traceGuides:fx.filter(f=>f.trace).map(f=>({...f.trace.state(),visible:f.obj.visible})),opticHeight,cameraHeight:camera.position.y,recoil,
-      sequence:{...sequence},beam:heldBeam?{left:heldBeam.left,key:heldBeam.key,screen:heldBeam.from.clone().lerp(heldBeam.end,.1).project(camera).toArray()}:null,cues:cueLog.slice(),audioVoices:sfx.voices,voiceDetails:sfx.activeVoices,audioState:sfx.contextState,disposed,time:clock,range:P.range,phase:P.phase,targets:targets.map(t=>({id:t.id,kind:t.kind,pos:[...t.pos],alive:t.alive,hp:t.hp,slowUntil:t.slowUntil||0})),profile:clone(profile()),missiles:clone(draft.missiles),pool:missilePool?.stats(),live:missiles.length,rounds:rounds.length,...metrics}),
+      worldSplashes:fx.filter(f=>f.splash).length,mortar:mortarMap.state(),prototype:P.weapon==='quiver'&&P.quiverPrototype,engagement:configuration(),traceGuides:fx.filter(f=>f.trace).map(f=>({...f.trace.state(),visible:f.obj.visible})),opticHeight,cameraHeight:camera.position.y,recoil,
+      sequence:{...sequence},beam:heldBeam?{left:heldBeam.left,key:heldBeam.key,screen:heldBeam.from.clone().lerp(heldBeam.end,.1).project(camera).toArray()}:null,cues:cueLog.slice(),audioVoices:sfx.voices,voiceDetails:sfx.activeVoices,audioState:sfx.contextState,disposed,time:clock,range:P.range,phase:P.phase,targets:targets.map(t=>({id:t.id,kind:t.kind,pos:[...t.pos],alive:t.alive,hp:t.hp,dying:!!t.dying,falling:t.falling,rotation:t.obj.rotation.x,slowUntil:t.slowUntil||0})),profile:clone(profile()),missiles:clone(draft.missiles),talonPool:talonPool?.stats(),flights:missiles.map(m=>({mesh:m.config.mesh,profile:m.config.profile,t:m.t,duration:m.config.duration,length:m.config.length,phase:m.pose.phase,position:m.pose.position})),pool:missilePool?.stats(),live:missiles.length,rounds:rounds.length,...metrics}),
     dispose:()=>disposeSniper(),
     select:key=>{weaponControl.setValue(key);},fire:()=>fire(),reset:()=>spawnTargets(),
-    aim:()=>{const t=targets.find(t=>t.alive);if(t){aimYaw=Math.atan2(t.pos[0],t.pos[2]);aimPitch=Math.atan2(t.pos[1]-muzzleHeight(),Math.hypot(t.pos[0],t.pos[2]));}},
+    aim:(kind)=>{const t=targets.find(t=>t.alive&&(!kind||t.kind===kind));if(t){aimYaw=Math.atan2(t.pos[0],t.pos[2]);aimPitch=Math.atan2(t.pos[1]-muzzleHeight(),Math.hypot(t.pos[0],t.pos[2]));}},
     distance:value=>{rangeEdited=true;P.range=value;P.spread=0;spawnTargets();},
     pan:(yaw,pitch)=>{aimYaw=yaw;aimPitch=pitch;},
     tracer:value=>{P.tracer=value;},mortarAim:point=>{mortarAim=point;},
   };
   function disposeSniper(){
     if(disposed)return;disposed=true;active=false;modelSerial++;cancelAnimationFrame(frameId);listeners.abort();
-    clearShots();mortarMap.dispose();plateFalls.length=0;clearTargets();missilePool?.dispose();transfer.dispose();gui.destroy();sfx.dispose();
+    clearShots();mortarMap.dispose();plateFalls.length=0;clearTargets();missilePool?.dispose();talonPool?.dispose();transfer.dispose();gui.destroy();sfx.dispose();
     disposeObj(scene);postfx.dispose();environment.dispose();pmrem.dispose();sky.dispose();renderer.dispose();renderer.domElement.remove();
   }
   return {setActive(on){if(disposed)return;active=on;if(on){resize();clockT.getDelta();}},dispose:disposeSniper};

@@ -4474,5 +4474,4 @@ body:not(.chrome-open) #tabbar .tabgroup:not(:has(button.active)) { display: non
 
 /* The drone feed owns telemetry while aiming indirect fire. */
 #tab-sniper.sniper-drone #sniper-fcs .r-br,
-#tab-sniper.sniper-drone #sniper-fcs .r-tr,
 #tab-sniper.sniper-drone #sniper-fcs .r-bl { display: none; }

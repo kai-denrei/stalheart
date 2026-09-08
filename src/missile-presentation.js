@@ -4,8 +4,9 @@ import { mergeGeometries, deinterleaveGeometry } from '../vendor/BufferGeometryU
 
 // One pinned geometry upload, three body batches and one optional exhaust batch.
 // Instances share resources. A shot never disposes the pool's geometry/materials.
-export async function createMissilePool({ capacity = 64 } = {}) {
-  const gltf = await new GLTFLoader().loadAsync('assets/models/missile-kit/dart.glb');
+export async function createMissilePool({ capacity = 64, mesh:variant = 'dart' } = {}) {
+  if(!['dart','talon'].includes(variant))throw Error('Unknown missile mesh');
+  const gltf = await new GLTFLoader().loadAsync(`assets/models/missile-kit/${variant}.glb`);
   const source = gltf.scene;
   source.getObjectByName('EXHAUST_FX').scale.setScalar(1);
   source.updateMatrixWorld(true);
@@ -28,7 +29,7 @@ export async function createMissilePool({ capacity = 64 } = {}) {
     for (const g of batch.geometries) g.dispose();
     if (!geometry) throw Error('DART material batch could not be merged');
     const mesh = new THREE.Mesh(geometry, batch.material);
-    mesh.name = batch.exhaust ? 'EXHAUST_FX' : 'DART_BODY';
+    mesh.name = batch.exhaust ? 'EXHAUST_FX' : variant.toUpperCase()+'_BODY';
     if (batch.exhaust) mesh.visible = false;
     triangles += (geometry.index?.count ?? geometry.attributes.position.count) / 3;
     prototype.add(mesh);

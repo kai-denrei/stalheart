@@ -1,12 +1,12 @@
 import * as THREE from '../../vendor/three.module.js';
 // One overhead render target composited over the scope; no extra renderer/context.
 export function createMortarMap(container,renderer,scene,onAim){
- const panel=document.createElement('div');panel.id='sniper-mortar-map';panel.style.cssText='position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);width:min(80vw,840px);height:min(68vh,540px);border:1px solid #a8babc;pointer-events:auto;display:none;touch-action:none;z-index:3';
- panel.innerHTML=`<div style="position:absolute;inset:0;pointer-events:none;color:#eee;font:11px/1.6 ui-monospace,monospace;letter-spacing:.08em;background:repeating-linear-gradient(0deg,transparent 0px,transparent 3px,#0002 4px)">
- <div style="position:absolute;top:12px;left:14px">MORTAR / OBSERVATION FEED<br>DRONE 01 · WHITE HOT<br><span data-feed></span></div>
+ const panel=document.createElement('div');panel.id='sniper-mortar-map';panel.style.cssText='position:absolute;left:46%;top:36px;transform:translateX(-50%);width:min(40vw,440px);height:min(27vh,240px);border:1px solid #a8babc;pointer-events:auto;display:none;touch-action:none;z-index:3';
+ panel.innerHTML=`<div style="position:absolute;inset:0;pointer-events:none;color:#eee;font:9px/1.4 ui-monospace,monospace;letter-spacing:.08em;background:repeating-linear-gradient(0deg,transparent 0px,transparent 3px,#0002 4px)">
+ <div style="position:absolute;top:12px;left:14px">MORTAR / AIMING FEED<br>FRONT UP<br><span data-feed></span></div>
  <div data-telemetry style="position:absolute;right:14px;top:12px;text-align:right;white-space:pre"></div>
  <div data-impact style="position:absolute;left:14px;bottom:36px;white-space:pre"></div>
- <div style="position:absolute;bottom:12px;left:14px">DRAG DESIGNATOR · FIRE TO LAUNCH · R RESET</div>
+ <div style="position:absolute;bottom:12px;left:14px">DRAG AIM · FIRE · R RESET</div>
  <div data-status style="position:absolute;bottom:12px;right:14px"></div></div><svg width="100%" height="100%" style="position:absolute;pointer-events:none"></svg>`;container.appendChild(panel);
  const camera=new THREE.OrthographicCamera(-30,30,30,-30,.1,2000),target=new THREE.WebGLRenderTarget(640,480);
  const overlay=new THREE.Scene(),ortho=new THREE.OrthographicCamera(-1,1,1,-1,0,2),quad=new THREE.Mesh(new THREE.PlaneGeometry(2,2),new THREE.ShaderMaterial({uniforms:{feed:{value:target.texture}},vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',fragmentShader:'uniform sampler2D feed;varying vec2 vUv;void main(){vec3 c=texture2D(feed,vUv).rgb;float l=dot(c,vec3(.2126,.7152,.0722));l=pow(max(l,0.0),.45);l=clamp((l-.5)*1.3+.5,0.0,1.0)*1.12;gl_FragColor=vec4(vec3(l),1.0);}',transparent:true,depthTest:false,depthWrite:false}));ortho.position.z=1;overlay.add(quad);
@@ -18,7 +18,7 @@ export function createMortarMap(container,renderer,scene,onAim){
  return {set(on,point,range,targets=[],values={}){telemetry=values;targetPoints=targets;enabled=on;panel.style.display=on?'':'none';aim=point;center=range*.48;half=range*.6;},
   mark(point,radius,shotAim=aim){marks.push({point:[...point],radius,aim:[...shotAim],at:telemetry.time||0});if(marks.length>8)marks.shift();},reset(){marks=[];lastHud=-Infinity;},
   render(){if(!enabled)return;const r=panel.getBoundingClientRect(),canvas=renderer.domElement.getBoundingClientRect(),aspect=r.width/r.height;
-   camera.left=-half*aspect;camera.right=half*aspect;camera.top=half;camera.bottom=-half;camera.position.set(0,600,center);camera.up.set(0,0,-1);camera.lookAt(0,0,center);camera.updateProjectionMatrix();camera.updateMatrixWorld(true);
+   camera.left=-half*aspect;camera.right=half*aspect;camera.top=half;camera.bottom=-half;const yaw=telemetry.yaw||0,cx=Math.sin(yaw)*center,cz=Math.cos(yaw)*center;camera.position.set(cx,600,cz);camera.up.set(Math.sin(yaw),0,Math.cos(yaw));camera.lookAt(cx,0,cz);camera.updateProjectionMatrix();camera.updateMatrixWorld(true);
    const old=renderer.getRenderTarget(),clear=renderer.autoClear;renderer.getViewport(viewport);renderer.getScissor(scissor);const scissorOn=renderer.getScissorTest();
    renderer.setScissorTest(false);renderer.setRenderTarget(target);renderer.autoClear=true;renderer.render(scene,camera);
    renderer.setRenderTarget(old);renderer.autoClear=false;renderer.setViewport(r.left-canvas.left,canvas.bottom-r.bottom,r.width,r.height);renderer.render(overlay,ortho);

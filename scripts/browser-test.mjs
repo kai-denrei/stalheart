@@ -161,8 +161,33 @@ try{
  await go('sniper-showcase','labs.html?sw=0&acceptance=1&swaySlow=0&swayFast=0#sniper');
  await until('window.__stalheartSniperTest?.state().ready');
  const defaults=await evaluate('window.__stalheartSniperTest.state()');
- assert(defaults.range>=50&&defaults.phase==='showcase');assert(defaults.targets.length>=8);assert(defaults.targets.some(t=>t.kind==='shellback'));assert(defaults.targets.some(t=>t.kind==='knot'));await finish();
- await go('sniper-roster','labs.html?sw=0&acceptance=1&phase=calibrate&range=20&sound=1&swaySlow=0&swayFast=0#sniper');
+ assert(defaults.range>=50&&defaults.phase==='showcase');assert.equal(defaults.targets.filter(t=>t.kind).length,14);assert(defaults.targets.some(t=>t.kind==='shellback'));assert(defaults.targets.some(t=>t.kind==='knot'));await finish();
+ await evaluate('window.__stalheartSniperTest.aim("phage")');await click('#sniper-fire');
+ await until('window.__stalheartSniperTest.state().kills>0',15000);
+ const death=await evaluate('window.__stalheartSniperTest.state()');
+ assert(death.targets.some(t=>t.dying&&!t.alive),'Laser starts the creature death animation');
+ assert(death.cues.some(c=>c.startsWith('enemy_die_')),'Kill emits a death cue');
+ assert(death.voiceDetails.some(v=>v.key.startsWith('enemy_die_')),'Death sound has an active audio voice');
+ await until('window.__stalheartSniperTest.state().targets.some(t=>t.dying&&Math.abs(t.rotation)>.1)');current='sniper-creature-death';await finish();
+ const victim=death.targets.find(t=>t.dying).id;
+ await until(`!window.__stalheartSniperTest.state().targets.some(t=>t.id===${victim})`);
+ await until('window.__stalheartSniperTest.state().sequence.left===0 && !window.__stalheartSniperTest.state().beam');
+ const coreId=await evaluate('window.__stalheartSniperTest.state().targets.find(t=>t.kind==="shellback").id');
+ for(let shot=0;shot<2;shot++){
+   await evaluate('window.__stalheartSniperTest.aim("shellback")');await click('#sniper-fire');
+   await until('window.__stalheartSniperTest.state().sequence.left===0 && !window.__stalheartSniperTest.state().beam');
+ }
+ assert(await evaluate(`!window.__stalheartSniperTest.state().targets.some(t=>t.id===${coreId}&&t.alive)`),'Hard-core enemy can be killed by sustained fire');
+ await evaluate('window.__stalheartSniperTest.select("quiver")');
+ await until('window.__stalheartSniperTest.state().ready && window.__stalheartSniperTest.state().talonPool');
+ await evaluate('window.__stalheartSniperTest.aim()');await until('window.__stalheartSniperTest.state().lock.locked');await click('#sniper-fire');
+ await until('window.__stalheartSniperTest.state().flights.some(f=>f.t>1.5)');
+ const talon=await evaluate('window.__stalheartSniperTest.state().flights[0]');
+ assert.equal(talon.mesh,'talon');assert.equal(talon.profile,'heavy');assert.equal(talon.duration,6);assert.equal(talon.length,1.8);
+ assert.equal(await evaluate('window.__stalheartSniperTest.state().talonPool.triangles'),1340);current='sniper-talon-coast';await finish();
+ await until('window.__stalheartSniperTest.state().flights.some(f=>f.t>4)');current='sniper-talon-crest';await finish();
+ await until('window.__stalheartSniperTest.state().talonPool.active===0');
+ await go('sniper-roster','labs.html?sw=0&acceptance=1&phase=calibrate&range=20&quiverTalon=0&sound=1&swaySlow=0&swayFast=0#sniper');
  await until('window.__stalheartSniperTest?.state().ready && window.__stalheartSniperTest.state().pool');
  assert.deepEqual((await evaluate('window.__stalheartSniperTest.state().roster')).map(s=>s.key),SENTRIES.map(s=>s.key));
  for(const sentry of SENTRIES){
@@ -173,6 +198,13 @@ try{
    const state=await evaluate('window.__stalheartSniperTest.state()');
    assert.equal(state.label,sentry.label);assert.equal(state.model,sentry.model);
    assert.deepEqual(state.profile,CONTENT.weapons[sentry.key]);
+   await until('Number.parseFloat(document.querySelector("#f-maxrange").textContent)===Math.round(window.__stalheartSniperTest.state().weaponMaxRange)');
+   const maxRange=await evaluate('Number.parseFloat(document.querySelector("#f-maxrange").textContent)');
+   await evaluate(`window.__stalheartSniperTest.distance(${maxRange+30});window.__stalheartSniperTest.aim()`);
+   await until('document.querySelector("#f-envelope").dataset.range==="far"');
+   assert.equal(await evaluate('document.querySelector("#f-envelope").textContent'),'OUT OF RANGE');
+   await evaluate('window.__stalheartSniperTest.distance(20);window.__stalheartSniperTest.aim()');
+
    await evaluate('window.__stalheartSniperTest.aim()');
    if(CONTENT.missiles[sentry.key]){
      await until('window.__stalheartSniperTest.state().lock.locked');
@@ -241,11 +273,13 @@ try{
  await until('window.__stalheartSniperTest.state().ready');
  assert(await evaluate('!!document.querySelector("#sniper-mortar-map")?.getBoundingClientRect().width'),'Mortar map survives range resets');
  assert(await evaluate('window.__stalheartSniperTest.state().mortar.monochrome'));
+ assert(await evaluate('document.querySelector("#sniper-mortar-map").getBoundingClientRect().bottom<innerHeight*.4'),'Mortar map leaves the central POV clear');
  await until('document.querySelector("[data-telemetry]").textContent.includes("GROUND")');
  await evaluate('window.__stalheartSniperTest.mortarAim([4,0,20])');await click('#sniper-fire');
  await evaluate('window.__stalheartSniperTest.mortarAim([-4,0,15])');
  await until('window.__stalheartSniperTest.state().mortar.impacts.length>0',60000);
  const landing=await evaluate('window.__stalheartSniperTest.state().mortar.impacts[0]');assert(landing.radius>0);assert(Math.abs(landing.point[0]-4)<3);assert.deepEqual(landing.aim,[4,0,20],'Impact error retains launch-time aim');
+ assert(await evaluate('window.__stalheartSniperTest.state().worldSplashes>0'),'Impact leaves a splash ring in the main world');
  current='sniper-mortar-landing';await finish();
  await evaluate('window.__stalheartSniperTest.select("quiver");window.__stalheartSniperTest.distance(20)');await until('window.__stalheartSniperTest.state().ready');
 
