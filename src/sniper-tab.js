@@ -117,8 +117,8 @@ export function initSniperTab(root) {
     tier: 1,
     weapon: 'lancer',
     mag: 2,               // scope magnification
-    ...BALLISTICS_TUNE, zero:20, wind:0,
-    range: 20,            // where the next target stands
+    ...BALLISTICS_TUNE, zero:60, wind:0,
+    range: 60,            // where the next target stands
     spread: 6,           // ...± this
     targets: 4,
     targetR: 0.55,         // metres — the kill radius
@@ -169,7 +169,13 @@ export function initSniperTab(root) {
     return config;};
   function weaponSpec(){const def=TOWER_BY_KEY[P.weapon],w=manualWeapon(def,effectiveStats(def,P.tier-1),profile(),draft.missiles[P.weapon],METRES_PER_CELL),config=configuration();if(config){w.range=config.maxRange;w.minRange=config.minRange;}return w;}
   let W=weaponSpec();
-  let mortarAim=[0,0,Math.min(P.range||20,W.range*.6)];
+  let rangeEdited=q.has('range'),phaseEdited=q.has('phase');
+  function stageDefaults(){
+    if(!rangeEdited)P.range=Math.round(Math.min(150,W.range*.85));
+    if(!phaseEdited)P.phase=W.hitscan?'showcase':'calibrate';
+  }
+  stageDefaults();
+  let mortarAim=[0,0,Math.min(P.range||20,W.range*.95)];
   const mortarMap=createMortarMap(container,renderer,scene,point=>{const distance=Math.hypot(point[0],point[2]);if(distance<=W.range&&distance>1)mortarAim=point;else hudNote='AIM WITHIN MORTAR RANGE';});
   function applyRound(){P.muzzleVel=W.muzzleVel;P.maxTime=60;P.step=STEP;}
   applyRound();
@@ -181,11 +187,11 @@ export function initSniperTab(root) {
   const missiles = [];
   let lockNote = 0;
   function setWeapon(id) {
-    P.weapon=TOWER_BY_KEY[id]?id:'lancer';W=weaponSpec();applyRound();
-    clearShots();mortarAim=[0,0,Math.min(P.range||20,W.range*.6)];cool=0;charging=0;cassette=magFor(P.tier-1);holdUp=0;holdSide=0;
+    P.weapon=TOWER_BY_KEY[id]?id:'lancer';W=weaponSpec();applyRound();stageDefaults();
+    clearShots();mortarAim=[0,0,Math.min(P.range||20,W.range*.95)];cool=0;charging=0;cassette=magFor(P.tier-1);holdUp=0;holdSide=0;
     Object.assign(soundDefs,resolveSounds(draft));
     loadRifle();effectsPanel.refresh();
-    nameWeapon();
+    nameWeapon();spawnTargets();
     gui.controllersRecursive().forEach((c) => c.updateDisplay());
     hudNote = `${W.label.toUpperCase()} — ${W.hitscan ? 'no drop, no wind, no lead'
       : W.loft ? 'lobbed; wait for it' : W.charge ? 'charge, then it is nearly flat' : 'drop and wind'}`;
@@ -323,6 +329,16 @@ export function initSniperTab(root) {
     clearShots();plateFalls.length=0;clearTargets();cool=0;cassette=magFor(P.tier-1);
     rng = mulberry32(P.seed >>> 0);
     string.length = 0;
+    if(P.phase==='showcase'){
+      for(let i=0;i<3;i++){
+        const d=P.range*(.8+i*.1),x=P.range*[-.10,.10,.18][i],cy=Math.max(1.6,P.targetR*FACE_R+.15),obj=makeCalTarget(P.targetR);
+        obj.position.set(x,cy,d);scene.add(obj);targets.push({id:i+1,obj,pos:[x,cy,d],alive:true,d,cal:true});
+      }
+      for(const [i,type] of ['phage','ghost','barbed','shellback','knot'].entries()){
+        const t=spawnReal(type,{distance:P.range*(.48+i*.10),bearing:0,quiet:true});t.closing*=.25;
+      }
+      hudNote='LIVE FIRE · three plates / one mixed column · R resets';return;
+    }
     if (P.phase === 'calibrate') {
       // ONE target, dead ahead, at a known distance. A calibration is not a
       // hunt: the range is given, the conditions are given, and the only
@@ -473,12 +489,12 @@ export function initSniperTab(root) {
   // minus the SHELVED ones — the point of this list is that it is the board's
   // roster, so it has to track the shelf as well as the additions.
   const REAL_TYPES = Object.keys(ENEMY_SPEC).filter((k) => !ENEMY_SPEC[k].shelved);
-  function spawnReal(type) {
+  function spawnReal(type,options={}) {
     const id = type && ENEMY_SPEC[type] ? type
       : REAL_TYPES[Math.floor(rng() * REAL_TYPES.length) % REAL_TYPES.length];
     const spec = ENEMY_SPEC[id];
-    const d = P.range + P.spread * (0.6 + rng() * 0.5);
-    const bearing = aimYaw + (rng() * 2 - 1) * 0.05;
+    const d = options.distance??(P.range + P.spread * (0.6 + rng() * 0.5));
+    const bearing = options.bearing??(aimYaw + (rng() * 2 - 1) * 0.05);
     const grp = new THREE.Group();
     const obj = makeDotEnemy(id, { walker: CREATURE_TINTS[id], walkerHi: accentFor(id) });
     const h = TARGET_H * (spec.size || 1) * 0.6;
@@ -500,7 +516,7 @@ export function initSniperTab(root) {
     targets.push(t);
     hudNote = `${id.toUpperCase()} inbound at ${d.toFixed(0)} m · ${spec.hp} hp`
       + `${spec.cloaked ? ' · OPTICAL CAMO' : ''}${spec.rammable ? '' : ' · SOLID'}`;
-    if (P.sound) sfx.play('danger_alert');
+    if (P.sound&&!options.quiet) sfx.play('danger_alert');
     return t;
   }
 
@@ -610,7 +626,7 @@ export function initSniperTab(root) {
     mesh.visible = P.tracer;
     scene.add(mesh);
     const shell=W.loft?makeOrdnanceShell(.65):null;if(shell){scene.add(shell);shell.position.fromArray(s.p);}
-    rounds.push({ s, mesh, trace, shell, trail: [], weapon:{...W},profile:clone(profile()),tune:{...P} });
+    rounds.push({ s, mesh, trace, shell, aim:[...mortarAim],trail: [], weapon:{...W},profile:clone(profile()),tune:{...P} });
     // The Sentry owns its cue and cadence; scope recoil belongs to this stage.
     weaponVoice.shot(W.id);
     cool = W.cooldown;
@@ -644,9 +660,14 @@ export function initSniperTab(root) {
   function emitEffect(slot,point,normal,weapon=profile()){
     const effect=weapon[slot];
     const obj=makeImpactBurst(effect.recipe,tuneFor(effect),resolveImpactColors(effect,{weapon:weapon.shot.beamColor||0xffffff}),metrics.impacts+shooter.shots+1,effect.size);
-    orientImpact(obj,point,normal);scene.add(obj);fx.push({obj,tick:obj.userData.tick});
+    orientImpact(obj,point,normal);scene.add(obj);
+    const follows=slot==='muzzle'&&W.hitscan,direction=new THREE.Vector3();
+    fx.push({obj,muzzle:follows,tick:dt=>{
+      if(follows&&!P.showRifle){camera.getWorldDirection(direction);orientImpact(obj,camera.position.toArray(),direction.toArray());}
+      return obj.userData.tick(dt);
+    }});
     if(slot==='impact')metrics.impacts++;
-    while(fx.length>128){const old=fx.shift();scene.remove(old.obj);disposeObj(old.obj);}
+    while(fx.length>128){const index=fx.findIndex(f=>f.obj!==heldBeam?.obj);if(index<0)break;const [old]=fx.splice(index,1);scene.remove(old.obj);disposeObj(old.obj);}
   }
   function launchSeeker(yaw,pitch){
     const config=configuration(),u=underReticle(config.lockBreak*Math.PI/180*MRAD);
@@ -701,7 +722,7 @@ export function initSniperTab(root) {
   // THE LASER. Nothing to integrate: it lands where the barrel points, at the
   // range of whatever is under it, this frame. The beam is drawn for a
   // quarter of a second so there is something to have seen.
-  function hitscan(yaw, pitch) {
+  function hitscan(yaw, pitch, tracking=false,damageScale=1) {
     const from = new THREE.Vector3(0, muzzleHeight(), 0);
     const dir = new THREE.Vector3(
       Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch));
@@ -725,7 +746,13 @@ export function initSniperTab(root) {
       if(opticGlow){const at=from.clone().addScaledVector(dir,camera.near*2);opticGlow.geometry.attributes.position.setXYZ(0,at.x,at.y,at.z);opticGlow.geometry.attributes.position.needsUpdate=true;opticGlow.geometry.computeBoundingSphere();beam.add(opticGlow);}
       heldBeam={obj:beam,left:life,key:W.id};scene.add(beam);
       const entry=heldBeam;fx.push({obj:beam,tick:dt=>{
-        entry.left-=dt;beam.userData.update(clock);
+        entry.left-=dt;
+        if(entry.key==='lancer'&&entry.left>0){
+          camera.getWorldDirection(glowPosition);
+          entry.damageClock=(entry.damageClock||0)+dt;const elapsed=entry.damageClock>=.1?entry.damageClock:0;
+          hitscan(Math.atan2(glowPosition.x,glowPosition.z),Math.asin(glowPosition.y),true,elapsed/W.cooldown);if(elapsed)entry.damageClock=0;
+        }
+        beam.userData.update(clock);
         if(opticGlow){
           opticGlow.visible=!P.showRifle;opticGlow.material.opacity=.95*Math.min(1,Math.max(0,entry.left)/.12);
           camera.getWorldDirection(glowPosition).multiplyScalar(camera.near*2).add(camera.position);
@@ -736,12 +763,16 @@ export function initSniperTab(root) {
         if(entry.left<=0){if(heldBeam===entry)heldBeam=null;return false;}return true;
       }});
     }
-    heldBeam.left=life;heldBeam.from=from.clone();heldBeam.end=end.clone();heldBeam.obj.userData.setEndpoints(from,end);
-    if(W.pierce && pierced.length){for(const hit of pierced)resolveHit(hit.target,hit.miss,new THREE.Vector3(...hit.target.pos));}
-    else if(reach<=W.range)resolveHit(best,bMiss,end);
-    else emitEffect('impact',end.toArray(),[0,1,0]);
-    emitEffect('muzzle',from.toArray(),dir.toArray());
-    cool=W.id==='lancer'?firingFor(W.id).duration:W.cooldown;shooter.shots++;recoil=W.id==='lancer'?0:RECOIL_KICK;weaponVoice.shot(W.id);
+    if(!tracking)heldBeam.left=life;heldBeam.from=from.clone();heldBeam.end=end.clone();heldBeam.obj.userData.setEndpoints(from,end);
+    if(W.id!=='lancer'||tracking&&damageScale>0){
+      const damageWeapon={...W,damage:W.damage*damageScale};
+      if(W.pierce && pierced.length){for(const hit of pierced)resolveHit(hit.target,hit.miss,new THREE.Vector3(...hit.target.pos),damageWeapon);}
+      else if(reach<=W.range)resolveHit(best,bMiss,end,damageWeapon);
+    }
+    if(!tracking){
+      emitEffect('muzzle',from.toArray(),dir.toArray());
+      cool=W.id==='lancer'?firingFor(W.id).duration:W.cooldown;shooter.shots++;recoil=W.id==='lancer'?0:RECOIL_KICK;weaponVoice.shot(W.id);
+    }
 
   }
 
@@ -819,7 +850,7 @@ export function initSniperTab(root) {
       if(r.shell){r.shell.position.fromArray(r.s.p);r.shell.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),new THREE.Vector3(...r.s.v).normalize());}
       const done = r.spent || r.s.p[1] < 0 || r.s.t > (P.maxTime || MAX_T) || (!W.loft&&Math.hypot(r.s.p[0],r.s.p[2]) > W.range);
       if (!done) continue;
-      if(W.loft&&r.grounded)mortarMap.mark([r.s.p[0],0,r.s.p[2]],W.splash);
+      if(W.loft&&r.grounded)mortarMap.mark([r.s.p[0],0,r.s.p[2]],W.splash,r.aim);
       if(r.shell){scene.remove(r.shell);disposeObj(r.shell);}
       if (!r.spent && r.s.p[1] < 0 && r.s.p[2] < GROUND) {
         // a round in the dirt: a splash weapon still gets its say, because a
@@ -1126,7 +1157,7 @@ export function initSniperTab(root) {
     const sol = u ? solution(u.range, P, clock, W.field?{hitscan:true}:W) : null;
     const cal = P.phase === 'calibrate';
 
-    put('fcs-phase', cal ? `PHASE 1 · CALIBRATE` : `PHASE 2 · CONTACT`);
+    put('fcs-phase', P.phase==='showcase'?'LIVE FIRE · MIXED COLUMN':cal ? `PHASE 1 · CALIBRATE` : `PHASE 2 · CONTACT`);
     put('fcs-bearing', `${((aimYaw * 180 / Math.PI + 360) % 360).toFixed(0).padStart(3, '0')}`);
 
     // SCOPE
@@ -1239,7 +1270,8 @@ export function initSniperTab(root) {
   gs.add(P, 'hold', 0, 1, 0.02).name('held-breath ×');
   gs.add(P, 'holdSecs', 1, 20, 0.5).name('breath (s)');
   const gp = gui.addFolder('phase');
-  gp.add(P, 'phase', ['calibrate', 'contact']).name('phase').onChange(() => {
+  gp.add(P, 'phase', ['calibrate', 'contact','showcase']).name('phase').onChange(() => {
+    phaseEdited=true;
     spawnTargets(); shooter.shots = 0; shooter.hits = 0; shooter.best = Infinity;
   });
   gp.add(P, 'allotted', 3, 20, 1).name('shots in a string');
@@ -1249,7 +1281,7 @@ export function initSniperTab(root) {
   gp.add({ real: () => spawnReal() }, 'real').name('spawn a REAL enemy (T)');
 
   const gt = gui.addFolder('the range');
-  gt.add(P, 'range', 1, 1800, 1).name('distance').onChange(spawnTargets);
+  gt.add(P, 'range', 1, 1800, 1).name('distance').onChange(()=>{rangeEdited=true;spawnTargets();});
   gt.add(P, 'spread', 0, 800, 1).name('± spread').onChange(spawnTargets);
   gt.add(P, 'targets', 1, 8, 1).name('targets').onChange(spawnTargets);
   gt.add(P, 'targetR', 0.1, 3, 0.05).name('kill radius (m)');
@@ -1528,10 +1560,11 @@ export function initSniperTab(root) {
       if (t.obj.userData.plate) t.obj.userData.plate.lookAt(camera.position);
       if (t.obj.userData.tick) t.obj.userData.tick(clock + t.id);
     }
+    root.classList.toggle('sniper-drone',W.loft&&!P.showRifle);
     paintReticle();
     postfx.render();
     if(!W.loft)renderCloseup();else if(cuBox)cuBox.style.display='none';
-    mortarMap.set(W.loft&&!P.showRifle,mortarAim,W.range,targets.filter(t=>t.alive).map(t=>t.pos));mortarMap.render();
+    mortarMap.set(W.loft&&!P.showRifle,mortarAim,W.range,targets.filter(t=>t.alive).map(t=>t.pos),{time:clock,cool,wind:Math.hypot(...windAt(clock,P)),splash:W.splash,rounds:rounds.length});mortarMap.render();
     drawScan();
     hudT += dt; if (hudT > 0.15) { hudT = 0; hudLine(); }
   }
@@ -1550,11 +1583,12 @@ export function initSniperTab(root) {
     state:()=>({weapon:P.weapon,label:W.label,kind:W.kind,model:TOWER_BY_KEY[P.weapon].model,ready:root.dataset.modelReady==='true',
       roster:SENTRIES.map(s=>({number:s.number,key:s.key,label:s.label})),lock:{...lock},cool,cassette,shots:shooter.shots,hits:shooter.hits,
       mortar:mortarMap.state(),prototype:P.weapon==='quiver'&&P.quiverPrototype,engagement:configuration(),traceGuides:fx.filter(f=>f.trace).map(f=>({...f.trace.state(),visible:f.obj.visible})),opticHeight,cameraHeight:camera.position.y,recoil,
-      sequence:{...sequence},beam:heldBeam?{left:heldBeam.left,key:heldBeam.key,screen:heldBeam.from.clone().lerp(heldBeam.end,.1).project(camera).toArray()}:null,cues:cueLog.slice(),audioVoices:sfx.voices,voiceDetails:sfx.activeVoices,audioState:sfx.contextState,disposed,time:clock,targets:targets.map(t=>({id:t.id,alive:t.alive,hp:t.hp,slowUntil:t.slowUntil||0})),profile:clone(profile()),missiles:clone(draft.missiles),pool:missilePool?.stats(),live:missiles.length,rounds:rounds.length,...metrics}),
+      sequence:{...sequence},beam:heldBeam?{left:heldBeam.left,key:heldBeam.key,screen:heldBeam.from.clone().lerp(heldBeam.end,.1).project(camera).toArray()}:null,cues:cueLog.slice(),audioVoices:sfx.voices,voiceDetails:sfx.activeVoices,audioState:sfx.contextState,disposed,time:clock,range:P.range,phase:P.phase,targets:targets.map(t=>({id:t.id,kind:t.kind,pos:[...t.pos],alive:t.alive,hp:t.hp,slowUntil:t.slowUntil||0})),profile:clone(profile()),missiles:clone(draft.missiles),pool:missilePool?.stats(),live:missiles.length,rounds:rounds.length,...metrics}),
     dispose:()=>disposeSniper(),
     select:key=>{weaponControl.setValue(key);},fire:()=>fire(),reset:()=>spawnTargets(),
     aim:()=>{const t=targets.find(t=>t.alive);if(t){aimYaw=Math.atan2(t.pos[0],t.pos[2]);aimPitch=Math.atan2(t.pos[1]-muzzleHeight(),Math.hypot(t.pos[0],t.pos[2]));}},
-    distance:value=>{P.range=value;P.spread=0;spawnTargets();},
+    distance:value=>{rangeEdited=true;P.range=value;P.spread=0;spawnTargets();},
+    pan:(yaw,pitch)=>{aimYaw=yaw;aimPitch=pitch;},
     tracer:value=>{P.tracer=value;},mortarAim:point=>{mortarAim=point;},
   };
   function disposeSniper(){

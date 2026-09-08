@@ -75,7 +75,24 @@ try{
  assert(await evaluate(`window.__stalheartTest.state().wallCount<${before}`),'Breach removes real wall cells');current='game-breach-clear';await finish();
  await until('window.__stalheartTest.state().wave>=1 && window.__stalheartTest.state().emerging>0',30000);current='game-breach-emergence';await finish();
  await until('window.__stalheartTest.state().breaches.every(b=>b.age>=8)',30000);current='game-breach-open';await finish();assert(await evaluate('window.__stalheartTest.state().breaches.every(b=>Number.isFinite(b.materialPeak)&&b.materialPeak<=2)'),'Bloom restores shared breach materials without accumulating brightness');
- await evaluate('window.__stalheartTest.restart()');assert.equal((await evaluate('window.__stalheartTest.state().breaches')).length,2);current='game-breach-reset';await finish();
+ const age=await evaluate('window.__stalheartTest.state().breaches[0].age');
+ await evaluate('window.__stalheartTest.breachNextWave();window.__stalheartTest.breachShell()');
+ assert(await evaluate(`window.__stalheartTest.state().breaches.every(b=>b.age>=${age}&&b.ready)`),'Later waves and shells leave the breach open');
+ await evaluate('window.__stalheartTest.breachNew()');
+ await until('window.__stalheartTest.state().shot==="breach"');current='game-breach-camera';await finish();
+ await until('window.__stalheartTest.state().breaches.every(b=>b.ready)',30000);
+ const sources=await evaluate('window.__stalheartTest.state().breaches.length');
+ await evaluate('window.__stalheartTest.breachStrike()');
+ assert(await evaluate('window.__stalheartTest.state().breachRubble.caps>=1'),'Orbital strike seals the hole');
+ assert.equal(await evaluate('window.__stalheartTest.state().breachRubble.drawCalls'),1);
+ await evaluate('new Promise(resolve=>setTimeout(resolve,2200))');
+ assert(await evaluate('window.__stalheartTest.state().breachRubble.caps>=1'));
+ current='game-breach-rubble';await finish();
+ await evaluate('window.__stalheartTest.breachSpent()');
+ assert.equal(await evaluate('window.__stalheartTest.state().breaches.length'),0);
+ assert.equal(await evaluate('window.__stalheartTest.state().breachRubble.caps'),sources);
+ await evaluate('window.__stalheartTest.restart()');assert.equal((await evaluate('window.__stalheartTest.state().breaches')).length,2);
+ assert.equal(await evaluate('window.__stalheartTest.state().breachRubble.caps'),0);current='game-breach-reset';await finish();
  } else if(args.includes('--sinkhole')) {
  await go('sinkhole-load','labs.html?sw=0&acceptance=1&genre=sinkhole#portal');
  await until('window.__stalheartPortalTest?.state().sinkhole?.ready',45000);
@@ -141,7 +158,11 @@ try{
  current='sinkhole-return-portals';await finish();
  await evaluate('window.__stalheartPortalTest.dispose()');
  } else if(args.includes('--sniper')) {
- await go('sniper-roster','labs.html?sw=0&acceptance=1&sound=1&swaySlow=0&swayFast=0#sniper');
+ await go('sniper-showcase','labs.html?sw=0&acceptance=1&swaySlow=0&swayFast=0#sniper');
+ await until('window.__stalheartSniperTest?.state().ready');
+ const defaults=await evaluate('window.__stalheartSniperTest.state()');
+ assert(defaults.range>=50&&defaults.phase==='showcase');assert(defaults.targets.length>=8);assert(defaults.targets.some(t=>t.kind==='shellback'));assert(defaults.targets.some(t=>t.kind==='knot'));await finish();
+ await go('sniper-roster','labs.html?sw=0&acceptance=1&phase=calibrate&range=20&sound=1&swaySlow=0&swayFast=0#sniper');
  await until('window.__stalheartSniperTest?.state().ready && window.__stalheartSniperTest.state().pool');
  assert.deepEqual((await evaluate('window.__stalheartSniperTest.state().roster')).map(s=>s.key),SENTRIES.map(s=>s.key));
  for(const sentry of SENTRIES){
@@ -177,6 +198,10 @@ try{
          assert(Math.abs(early.beam.screen[0])<.001&&Math.abs(early.beam.screen[1])<.001,'Lancer starts at scope centre');
          assert(await evaluate(`!!document.querySelector('#sniper-reticle [data-reticle="lancer"]')`));
          current='sniper-lancer-start';await finish();
+         await evaluate('window.__stalheartSniperTest.pan(.18,.07)');await delay(150);
+         const moved=await evaluate('window.__stalheartSniperTest.state()');
+         assert(Math.abs(moved.beam.screen[0])<.001&&Math.abs(moved.beam.screen[1])<.001,'Beam follows the moving scope');current='sniper-lancer-pan';await finish();
+         await evaluate('window.__stalheartSniperTest.aim()');
        }
        await delay(2200);
        const running=await evaluate('window.__stalheartSniperTest.state()');
@@ -215,9 +240,12 @@ try{
  await evaluate('window.__stalheartSniperTest.distance(20);window.__stalheartSniperTest.select("mortar")');
  await until('window.__stalheartSniperTest.state().ready');
  assert(await evaluate('!!document.querySelector("#sniper-mortar-map")?.getBoundingClientRect().width'),'Mortar map survives range resets');
+ assert(await evaluate('window.__stalheartSniperTest.state().mortar.monochrome'));
+ await until('document.querySelector("[data-telemetry]").textContent.includes("GROUND")');
  await evaluate('window.__stalheartSniperTest.mortarAim([4,0,20])');await click('#sniper-fire');
+ await evaluate('window.__stalheartSniperTest.mortarAim([-4,0,15])');
  await until('window.__stalheartSniperTest.state().mortar.impacts.length>0',60000);
- const landing=await evaluate('window.__stalheartSniperTest.state().mortar.impacts[0]');assert(landing.radius>0);assert(Math.abs(landing.point[0]-4)<3);
+ const landing=await evaluate('window.__stalheartSniperTest.state().mortar.impacts[0]');assert(landing.radius>0);assert(Math.abs(landing.point[0]-4)<3);assert.deepEqual(landing.aim,[4,0,20],'Impact error retains launch-time aim');
  current='sniper-mortar-landing';await finish();
  await evaluate('window.__stalheartSniperTest.select("quiver");window.__stalheartSniperTest.distance(20)');await until('window.__stalheartSniperTest.state().ready');
 

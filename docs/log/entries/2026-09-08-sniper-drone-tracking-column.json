@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "id": "2026-09-08-sniper-drone-tracking-column",
+  "date": "2026-09-08T05:02:47.524450+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "Track the held Lancer and equip the mortar drone feed",
+  "context": "The owner reported the Lancer effect detached when panning, requested farther targets and a mixed column including hard-core enemies, and wanted an orbital-style monochrome mortar HUD with useful telemetry.",
+  "outcome": "Held Lancer endpoints and scope-side muzzle FX follow the current camera aim. Bounded damage samples integrate elapsed time against shared damage/rate, while the firing sequence and continuous audio remain single-lived. Beam views default to three plates plus one phage/ghost/barbed/shellback/knot column using shared enemy health and appearance. Default distance is 85% of shared weapon reach, capped at 150 m; explicit operator distances and phase choices persist. The mortar drone feed uses grayscale contrast, a scale/grid, contact distances, ground/slant range, bearing, wind, splash footprint, reload/in-flight state and impact errors against each shell’s launch-time aim. It reuses one render target/context and hides overlapping scope panels.",
+  "alternatives": [
+    "The previous held beam kept its original endpoints and its muzzle effect stayed at a world-space orientation. Panning tests now cover live projection rather than only a stationary camera.",
+    "A linear monochrome conversion crushed the dark ground to black; encode luminance before the orbital-style contrast treatment.",
+    "Aim must be captured on firing, not on landing, or moving the designator changes the reported miss distance."
+  ],
+  "evidence": [
+    "npm test: 78 programs passed",
+    "npm run check and npm run build passed",
+    "npm run test:browser passed for the combined game/lab source build",
+    "node scripts/browser-test.mjs --sniper passed all eight weapons, moving Lancer projection, showcase defaults, continuous audio, missile bounds, tracer persistence, mortar and draft isolation",
+    "node scripts/browser-test.mjs --dist --sniper passed, including launch-time mortar aim retention after retargeting; release 38cd2f46"
+  ],
+  "supersedes": []
+}

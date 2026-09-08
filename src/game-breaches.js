@@ -1,3 +1,4 @@
+import { createBreachRubble } from './breach-rubble.js';
 import * as THREE from '../vendor/three.module.js';
 import { createSinkhole } from './sinkhole.js';
 import { CONTENT } from './content/runtime.js';
@@ -7,6 +8,7 @@ import { SINKHOLE_BOUNDARY_GLSL } from './core/sinkhole-shape.js';
 // Game owns walls, navigation, wave counts and health. This adapter owns ground visuals.
 export function createGameBreaches(scene,camera,sounds){
  const entries=new Set(),limit=32,matrices={value:Array.from({length:limit},()=>new THREE.Matrix4())},holes={value:Array(limit).fill(0)},count={value:0},radius={value:1};
+ const rubble=createBreachRubble(scene);
  let clock=0;const patched=new WeakSet();
  function sync(){let i=0;for(const e of entries){if(i===limit)break;matrices.value[i].copy(e.fx.inverseFrame.value);holes.value[i]=e.fx.hole.value;i++;}count.value=i;}
  return {
@@ -23,14 +25,15 @@ export function createGameBreaches(scene,camera,sounds){
    obj.userData.dispose=()=>{entries.delete(entry);fx.dispose();sync();};
    return obj;
   },
-  trigger(obj){const e=obj.userData.breach;if(!e)return;e.pending=true;e.started=false;e.age=0;e.cleared=false;e.fx.reset();},
-  update(dt,onClear){clock+=dt;
+  seal(obj){const e=obj.userData.breach;if(!e||!entries.has(e))return false;rubble.add(obj,e.fx.tune.craterRadius);obj.userData.dispose();return true;},
+  rubbleState:()=>rubble.state(),
+  update(dt,onClear,onOpen=()=>{}){clock+=dt;const opened=[];
    for(const e of entries){
-    if(e.pending&&e.fx.ready()){e.pending=false;e.started=true;e.fx.trigger();}
+    if(dt>0&&e.pending&&e.fx.ready()){e.pending=false;e.started=true;e.fx.trigger();opened.push(e.obj);}
     if(e.started)e.age+=dt;
     e.fx.update(dt,clock);
     if(e.started&&!e.cleared&&e.age>=e.fx.tune.preRoll){e.cleared=true;onClear(e.obj);}
-   }sync();
+   }sync();if(opened.length)onOpen(opened);
   },
   ready(obj){const e=obj.userData.breach;return !e||e.started&&e.age>=e.fx.tune.duration;},
   patch(material){if(patched.has(material))return;patched.add(material);const previous=material.onBeforeCompile;
@@ -41,7 +44,8 @@ export function createGameBreaches(scene,camera,sounds){
      .replace('#include <clipping_planes_fragment>',`#include <clipping_planes_fragment>\nfor(int i=0;i<${limit};i++){if(i>=uBreachCount)break;vec3 p=breachUnwrap((uBreachInverseFrames[i]*vec4(vBreachGround,1.0)).xyz);if(length(p.xz)<uBreachHoles[i]*sinkholeRim(atan(p.z,p.x)))discard;}`);
    };material.customProgramCacheKey=()=> 'game-breach-ground-v1';material.needsUpdate=true;
   },
-  state:()=>[...entries].map(e=>{let materialPeak=0;e.obj.traverse(o=>{if(o.material?.color)materialPeak=Math.max(materialPeak,o.material.color.r,o.material.color.g,o.material.color.b);});return {materialPeak,age:e.age,cleared:e.cleared,ready:e.started&&e.age>=e.fx.tune.duration,...e.fx.state()};}),
-  reset(){for(const e of [...entries])e.obj.userData.dispose();sync();},
+  state:()=>[...entries].map(e=>{let materialPeak=0;e.obj.traverse(o=>{if(o.material?.color)materialPeak=Math.max(materialPeak,o.material.color.r,o.material.color.g,o.material.color.b);});return {...e.fx.state(),materialPeak,age:e.age,cleared:e.cleared,ready:e.started&&e.age>=e.fx.tune.duration};}),
+  reset(){for(const e of [...entries])e.obj.userData.dispose();rubble.reset();sync();},
+  dispose(){for(const e of [...entries])e.obj.userData.dispose();rubble.dispose();sync();},
  };
 }

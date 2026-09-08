@@ -798,13 +798,9 @@ export function initTdTab(root) {
   //                  many it has; when they are spent, no more come.
   //   THE GATES      kill every one and the sector is yours, at ANY point.
   //
-  // Gates are never immune. Drive out, put three shells in one, and it is
-  // down — that is the whole of the aggressive line, and it is meant to
-  // work. It is also NOT free, which is why it needs no rule to restrain
-  // it: every gate you close early is a wave that never arrives, and the
-  // kills, the biomass and the score in it never arrive either. Hold the
-  // line and you finish rich; end it early and you finish alive. The game
-  // balances that on its own, and an immune portal was me not trusting it.
+  // Orbital strikes seal ground breaches early, sacrificing their future
+  // kills, biomass and score. Holding every wave seals them on exhaustion.
+
   //
   // Clearing sector 5 is the planet, and the planet is the win.
   //
@@ -2457,10 +2453,12 @@ export function initTdTab(root) {
   // second time you see it
   const shotSkipKey = (ev) => {
     if (!shot || !shot.skippable) return;
+    if(shot.id==='breach'){endShot();return;}
     ev.preventDefault(); ev.stopImmediatePropagation(); endShot();
   };
   const shotSkipTap = (ev) => {
     if (!shot || !shot.skippable) return;
+    if(shot.id==='breach'){endShot();return;}
     ev.stopImmediatePropagation(); endShot();
   };
 
@@ -4030,7 +4028,7 @@ export function initTdTab(root) {
     for (const sp of spawnPoints) {
       if (sp.alive && dist3(c, graph.centers[sp.ci]) < radius) {
         sp.found = true;
-        killPortal(sp);
+        killPortal(sp,'strike');
       }
     }
     // THE REPLAY IS RECORDED AT IMPACT, not reconstructed later: every body
@@ -4836,7 +4834,7 @@ export function initTdTab(root) {
       glossCard('#ffb000', spriteShot('triad', makeTriadIcon), 'missile triads', 'drive over = +3 shells · shells also blast walls open') +
       glossCard('#66ff88', spriteShot('phage', unitIcon('phage', CREATURE_TINTS.phage)), 'fodder', 'soft creatures — RAM them, it’s free') +
       glossCard('#ff5340', spriteShot('barbed', unitIcon('barbed', CREATURE_TINTS.barbed)), 'spiked reds', 'armored — ramming hurts YOU · shells only') +
-      glossCard('#ffffff', spriteShot('portal', () => makePortalCloud({ body: 0xcfd8ff, hi: 0xffffff })), 'portals', 'the enemy sources · 3 shells each · dim as they die') +
+      glossCard('#ffffff', spriteShot('portal', () => makePortalCloud({ body: 0xcfd8ff, hi: 0xffffff })), 'breaches', 'enemy sources · orbital strikes seal them · exhausted waves close them') +
       `</div>` +
       GAMEPLAY_TIPS +
       `<b>WIN = CLOSE EVERY BREACH.</b> reaching the heart wins nothing — it's home.` +
@@ -4890,7 +4888,7 @@ export function initTdTab(root) {
     }).join('');
     msgEl.innerHTML = `<div class="msg-head">glossary · hostiles</div>` +
       `<div class="gcards">${cards}` +
-      glossCard('#ffffff', spriteShot('portal', () => makePortalCloud({ body: 0xcfd8ff, hi: 0xffffff })), 'portal', 'where they pour from · 3 shells to destroy · dims with each hit · pulses on the minimap once found') +
+      glossCard('#ffffff', spriteShot('portal', () => makePortalCloud({ body: 0xcfd8ff, hi: 0xffffff })), 'breach', 'where they emerge · seal with an orbital strike · closes when waves are spent') +
       `</div><button class="msg-back">← back to briefing</button>`;
     msgEl.classList.remove('hidden');
   }
@@ -6082,16 +6080,8 @@ export function initTdTab(root) {
   // fixed set; the wave plan decides what pours out of them
   function seedPortals(n) { for (let i = 0; i < n; i++) addSpawnPoint(); }
 
-  // One place a gate dies, however it died — shells ground it down before,
-  // and now a strike vaporises it whole. Both end here.
-  // One place a gate dies, however it died. NOTHING on this board is immune —
-  // walls breach, towers fall, the strike vaporises. A gate that shrugged off
-  // three well-placed shells was the only exception, and it was mine, and it
-  // was wrong (operator). Get close, put three in it, and it is down.
-  // TWO POWER CORES PER HIT (operator). Eight pods, three hits: two go on the
-  // first, two more on the second, and the third takes the whole gate — so a
-  // player can read how close a gate is to falling by counting what is left
-  // of it, without a health bar.
+  // Legacy portal probes retain their three-hit pod animation. Normal ground
+  // breaches accept only orbital strikes or wave exhaustion as closure.
   const PODS_PER_HIT = 2;
   function popPods(sp, n) {
     const pods = sp.obj.userData.pods;
@@ -6122,6 +6112,7 @@ export function initTdTab(root) {
   // "as 1 shell" against a portal — which is only true if it goes through
   // exactly this function rather than through a second copy of it.
   function gateTakesShell(sp) {
+    if(sp.obj.userData.breach){sp.found=true;return false;}
     sp.found = true;          // a hit also marks the source on the scope
     sp.hp--;
     if (sp.hp <= 0) { killPortal(sp); return true; }
@@ -6156,7 +6147,9 @@ export function initTdTab(root) {
     sp.recoil = GATE_RECOIL;
   }
 
-  function killPortal(sp) {
+  function killPortal(sp,reason='impact') {
+    if(!sp.alive)return;
+    if(sp.obj.userData.breach&&reason!=='strike'&&reason!=='exhausted')return;
     sp.alive = false;
     // THE GATE GOES LIKE THE TANK GOES (operator): its own wreckage, a big
     // burst in its own colour, and the heavy sound — the same three parts as
@@ -6173,8 +6166,8 @@ export function initTdTab(root) {
       burst.position.set(bp[0], bp[1], bp[2]);
       scene.add(burst); debris.push(burst);
     }
-    scene.remove(sp.obj);
-    disposeObj(sp.obj);
+    if(sp.obj.userData.breach)gameBreaches.seal(sp.obj);
+    else {scene.remove(sp.obj);disposeObj(sp.obj);}
     if (sp.mapMarker) { scene.remove(sp.mapMarker); disposeObj(sp.mapMarker); }
     sp.mapMarker = null;
     recomputePortalDist();
@@ -6211,14 +6204,6 @@ export function initTdTab(root) {
     waveIn = WAVE_WARN;
     warnBeat = 0;
     waveCharge = 0;
-    // one cue, at the nearest opening gate, so it carries a distance and two
-    // gates do not announce twice
-    let near = Infinity;
-    for (const sp of spawnPoints) {
-      if (sp.alive) near = Math.min(near, camDist(graph.centers[sp.ci]));
-    }
-    if (near < Infinity) sfx.play('sinkhole_quake', { dist: near });
-    for(const sp of spawnPoints)if(sp.alive&&sp.obj.userData.breach)gameBreaches.trigger(sp.obj);
   }
 
   function spawnWave() {
@@ -11301,13 +11286,13 @@ export function initTdTab(root) {
 
   // THE PROGRAMME IS SPENT. Not a modal — it is an event on the board, not a
   // decision to make, and pausing for it would break a run that is going
-  // well. What changes is that nothing more is coming: the gates standing
-  // are the last of it.
+  // well. Exhausted ground breaches seal once their final wave is held.
   function programmeSpent() {
+    for(const sp of spawnPoints)if(sp.alive&&sp.obj.userData.breach)killPortal(sp,'exhausted');
     sfx.play('boss_tension');
     showToast(`<div class="wave-num">THE WAVES ARE SPENT &middot; SECTOR ${round}</div>`
       + `<div class="wave-role">${params.wavesPerSector} sent, ${params.wavesPerSector} held. `
-      + `nothing more is coming &mdash; close the gates and the sector is yours</div>`, 4200);
+      + `nothing more is coming &mdash; the breaches have sealed</div>`, 4200);
     updateHud();
   }
 
@@ -12264,7 +12249,7 @@ export function initTdTab(root) {
     // open's rule (a shot holds the world still) is exactly wrong for a
     // scripted run — the first RAM capture had 200 queued and none alive
     const dirShot = !!(director && shot && shot.id === 'director');
-    const frozen = buildFrozen() || (shotActive() && !dirShot) || tutorial.frozen;
+    const frozen = buildFrozen() || (shotActive() && !dirShot && shotId()!=='breach') || tutorial.frozen;
     // The BUILD pause holds the WORLD still, not the DRIVER. Planning with
     // the tank parked where the last wave left it meant switching out of
     // build, repositioning, and switching back — three actions for one
@@ -12274,7 +12259,7 @@ export function initTdTab(root) {
     // the third — beat three IS the tank driving itself out of the berth
     // DEPLOY drives THROUGH a shot — that is how the cinematic's last frame
     // and DEPLOY's first frame meet — so the gate only stops free driving
-    const driveFrozen = (shotActive() && !dirShot) || tutorial.frozen;
+    const driveFrozen = (shotActive() && !dirShot && shotId()!=='breach') || tutorial.frozen;
 
     bumpLeft = Math.max(0, bumpLeft - dt);
     recoilLeft = Math.max(0, recoilLeft - dt);
@@ -12375,6 +12360,18 @@ export function initTdTab(root) {
       let changed=false;const centre=norm3(obj.position.toArray()),reach=CONTENT.breach.clearRadius*cellSide;
       for(let ci=0;ci<graph.centers.length;ci++)if(dungeon.tags[ci]===BLOCKED&&!orderByCell.has(ci)&&Math.acos(Math.max(-1,Math.min(1,dot3(centre,norm3(graph.centers[ci])))))<=reach)changed=breachWallCell(ci)||changed;
       if(changed){rebuildAfterBreach();recomputePortalDist();}
+    },opened=>{
+      sfx.play('sinkhole_quake',{dist:Math.min(...opened.map(obj=>camDist(obj.position.toArray())))});
+      // One skippable establishing shot per new group, never per wave.
+      if(wave>0&&!paused&&!shotActive()&&!tutorialActive&&(!introEl||introEl.classList.contains('hidden'))){
+        const direction=opened[0].position.clone().normalize(),returnPos=camera.position.clone(),returnQuat=camera.quaternion.clone();
+        const far=direction.clone().multiplyScalar(3.3),up=camera.up.clone();
+        startShot({id:'breach',dur:CONTENT.breach.preRoll+1.8,poseAt:(u,out)=>{
+          const blend=u*u*(3-2*u);out.pos.copy(far).lerp(returnPos,blend);
+          tmpCam.position.copy(far);tmpCam.up.copy(up);tmpCam.lookAt(0,0,0);
+          out.quat.copy(tmpCam.quaternion).slerp(returnQuat,blend);
+        }});
+      }
     });
     updateWormhole(dt, t);
     if (!frozen) tfTick(dt);
@@ -16771,7 +16768,7 @@ export function initTdTab(root) {
       // AUTO drives itself, which is what this needs and what a player who
       // has let go of the wheel is doing anyway.
       // AND THE DRIVE HAS TWO MORE GATES, both invisible from outside:
-      // driveFrozen is `(shotActive() && !dirShot) || tutorial.frozen`, so the
+      // driveFrozen is `(shotActive() && !dirShot && shotId()!=='breach') || tutorial.frozen`, so the
       // COLD OPEN and the tutorial's opening hold each freeze the tank on
       // their own. A probe that needs &cine=0&tutstep=9 in its URL to work is
       // a probe that will be run without them and quietly report WRONG, so it
@@ -17421,7 +17418,7 @@ export function initTdTab(root) {
   // Tests use the real commands/transitions, and inspect serializable state.
   if (urlParams.get('acceptance') === '1') {
     window.__stalheartTest = {
-      state: () => ({ breaches:gameBreaches.state(),queued:spawnQueue.length,wallCount:dungeon.tags.filter(tag=>tag===BLOCKED).length,emerging:enemies.filter(e=>e.alive&&e.emergeAge<1.2).length,round, wave, runGen: runContext.generation, heart: heartHP, hulls: playerHP,
+      state: () => ({ shot:shotId(),breachRubble:gameBreaches.rubbleState(),breaches:gameBreaches.state(),queued:spawnQueue.length,wallCount:dungeon.tags.filter(tag=>tag===BLOCKED).length,emerging:enemies.filter(e=>e.alive&&e.emergeAge<1.2).length,round, wave, runGen: runContext.generation, heart: heartHP, hulls: playerHP,
         biomass: eco.biomass, towers: towers.length, won: player.won, paused,
         roster: ROSTER.id, mission: missionOn, buildMode,
         playerAsset: playerMesh?.userData.asset || params.creature,
@@ -17442,6 +17439,11 @@ export function initTdTab(root) {
         playerBlocked: freeBlocked(player.pos),
         camp: berths.map(b => ({ ...b, open: dungeon.tags[b.ci] !== BLOCKED && dungeon.tags[b.exit] !== BLOCKED,
           clearance: dist3(graph.centers[b.exit], graph.centers[dungeon.heart]) - pedestalRadius() })) }),
+      breachNew:()=>seedPortals(1),
+      breachNextWave:()=>{waveIn=-1;armWave();},
+      breachStrike:()=>{const sp=spawnPoints.find(s=>s.alive&&s.obj.userData.breach);if(sp)executeStrike(sp.ci,t);},
+      breachShell:()=>{const sp=spawnPoints.find(s=>s.alive&&s.obj.userData.breach);if(sp)gateTakesShell(sp);},
+      breachSpent:programmeSpent,
       breachScenario:()=>{endShot();dismissIntro();if(tutorialActive)endTutorial();paused=false;tutorial.frozen=false;setView('orbit');followSuspend=true;const sp=spawnPoints.find(s=>s.alive);if(sp){buildQ.setFromUnitVectors(BQ_Z,new THREE.Vector3(...graph.centers[sp.ci]).normalize());buildDist=1.65;}waveIn=-1;armWave();},
       shieldScenario: () => {
         endShot();dismissIntro();if(tutorialActive)endTutorial();paused=true;
@@ -17520,7 +17522,7 @@ export function initTdTab(root) {
   animate();
 
   return {
-    dispose() { active = false; gameBreaches.reset();runTimers.dispose(); runContext.dispose(); missilesDisposed=true; missilePool?.dispose(); setPerfOverlay(false,false); },
+    dispose() { active = false; gameBreaches.dispose();runTimers.dispose(); runContext.dispose(); missilesDisposed=true; missilePool?.dispose(); setPerfOverlay(false,false); },
     setActive(on) {
       active = on;
       if (!on) stopEngine(0.1, true); // quiet: leaving the tab is not a landing

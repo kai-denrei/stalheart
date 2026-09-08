@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "2026-09-08-persistent-breach-rubble",
+  "date": "2026-09-08T04:50:32.612245+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "Open breaches once and seal them with persistent instanced rubble",
+  "context": "The owner requested smaller fragments, a planet zoom for new breaches, one opening per source, and permanent low-cost rubble after orbital strikes.",
+  "outcome": "Quake fragments shrink from 0.28 to 0.12. New opening groups trigger one quake and a skippable planet-to-gameplay zoom when gameplay owns the camera. Breach shots let the simulation advance and pass skipping input through to the controls. Subsequent waves reuse the existing hole. Ordinary shells no longer seal normal breaches; orbital strikes or exhausted sector waves dispose the animated effect and leave a rubble cap until restart. All caps share one instanced mesh: 24 rocks / 864 triangles each, one draw call total, no per-rock update or physics. Legacy portal probes retain their old hit effects. Help text reflects the new closure rules.",
+  "alternatives": [
+    "An early camera hook intercepted the cold-open instruction click; restrict the hook to active gameplay without existing cinematic or tutorial ownership.",
+    "The generic cinematic skip handler swallowed the first movement key; breach shots now pass that input through.",
+    "Scaling generic wall debris would scale baked world positions toward the planet centre; keep generic wall destruction unchanged and shrink the quake fragment setting."
+  ],
+  "evidence": [
+    "npm test: 78 programs passed",
+    "npm run check and npm run build passed",
+    "Rubble unit test validates shared buffer growth, radial placement, reset and disposal",
+    "Targeted source breach acceptance validates persistent openings, shell immunity, strike rubble, exhaustion and reset",
+    "npm run test:browser: full source suite passed after camera/input fixes",
+    "node scripts/browser-test.mjs --dist --breach-game passed, including new opening camera and settled rubble screenshot"
+  ],
+  "supersedes": []
+}

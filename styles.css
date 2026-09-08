@@ -4471,3 +4471,8 @@ body:not(.chrome-open) #tabbar .tabgroup:not(:has(button.active)) { display: non
 #td-perf summary, #td-perf button { cursor: pointer; }
 #td-perf button { margin-top: 6px; }
 #td-perf textarea { display: block; width: 95%; height: 8em; }
+
+/* The drone feed owns telemetry while aiming indirect fire. */
+#tab-sniper.sniper-drone #sniper-fcs .r-br,
+#tab-sniper.sniper-drone #sniper-fcs .r-tr,
+#tab-sniper.sniper-drone #sniper-fcs .r-bl { display: none; }

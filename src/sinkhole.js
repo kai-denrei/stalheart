@@ -48,7 +48,7 @@ export function createSinkhole(scene,camera,{game=false,sounds=null}={}){
   scars.uniforms.uHoleRadius=hole;
   scars.fragmentShader=`uniform float uHoleRadius;\n${SINKHOLE_BOUNDARY_GLSL}\n`+scars.fragmentShader.replace('void main() {','void main() {\nif(length(vWorld.xz)<uHoleRadius*sinkholeRim(atan(vWorld.z,vWorld.x))+.025)discard;');
   let time=0,lead=-1,opened=false,disposed=false,waveConfig=null;
-  const tune={look:'textured',walls:true,wallHeight:1.2,clearRadius:6,crackLength:5,preRoll:1.6,sound:true,...QUAKE_BASE,fissureLife:600,environment:'planet',planetRadius:14,spawnWaves:true,kind:'mixed',waves:3,count:8,spacing:.45,gap:3,delay:2,emerge:1.2,speed:1.3,...CONTENT.breach,spawnWaves:!game};
+  const tune={look:'textured',walls:true,wallHeight:1.2,clearRadius:6,crackLength:5,preRoll:1.6,sound:true,...QUAKE_BASE,shrapnelSize:.12,fissureLife:600,environment:'planet',planetRadius:14,spawnWaves:true,kind:'mixed',waves:3,count:8,spacing:.45,gap:3,delay:2,emerge:1.2,speed:1.3,...CONTENT.breach,spawnWaves:!game};
   function reset(){enemies.reset();soundGeneration++;if(!sounds)sound.panic();ability.destroy();ctx.particles.reset();ctx.lights.reset();ctx.decals.clear();hole.value=0;collapse.value=0;lead=-1;opened=false;ctx.shake.trauma=0;rig.shakeOffset.set(0,0,0);rig.shakeRoll=0;terrain.update();walls.update(tune,-1);}
   function trigger(){if(disposed||getStoneTextures().state.loaded<4)return;reset();waveConfig={...tune};lead=0;const generation=soundGeneration;
     sound.whenReady(()=>{if(!disposed&&generation===soundGeneration&&tune.sound)sound.play('sinkhole_quake');});}
