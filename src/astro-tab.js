@@ -1,3 +1,5 @@
+import { createAstroDiorama, modelBudget } from './labs/astro-diorama.js';
+import { createAstroPerformance } from './labs/astro-performance.js';
 import { DEFAULT_TANK } from './content/tank.js';
 // astro-tab.js — THE ASTRONAUT STUDY. A rigged, animated GLB on the lab
 // stage: does its animation work for a rescue mission — astronauts in a
@@ -34,7 +36,7 @@ export const ASTRO_URL = 'assets/models/astronaut.glb';
 const TANK_LEN_M = 10.0, PERSON_M = 1.8;
 
 export function initAstroTab(root) {
-  let active = false;
+  let active = false, disposed=false, frameId=0, stageTime=0;
   const q = new URLSearchParams(location.search);
   const container = root.querySelector('#astro-app');
   const hud = root.querySelector('#astro-hud');
@@ -48,7 +50,7 @@ export function initAstroTab(root) {
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(38, 1, 0.02, 200);
+  const camera = new THREE.PerspectiveCamera(38, 1, 0.02, 1000);
   const az = (parseFloat(q.get('az')) || 32) * Math.PI / 180, el = (parseFloat(q.get('el')) || 12) * Math.PI / 180;
   // THE FRAME FOLLOWS THE SLIDERS. A fixed 5.2 m was right for a 5.3 m tank
   // and puts the lens inside a 10 m one — and the tank's size is a knob now,
@@ -68,7 +70,7 @@ export function initAstroTab(root) {
   const sky = bakeGalaxyCube(renderer, { ...SKY_PRESET, seed: 4414, face: 1024, galaxies: 2 });
   scene.background = sky.texture;
   const pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromCubemap(sky.texture).texture;
+  const environment=pmrem.fromCubemap(sky.texture);scene.environment = environment.texture;
   // the environment is a KNOB here for the same reason the exposure is: a
   // dressed hull and a suited figure are both PBR surfaces that show mostly
   // what they reflect, and at 0.5 the astronaut read as a black silhouette
@@ -93,8 +95,8 @@ export function initAstroTab(root) {
     const r = Math.max(4, Math.ceil(radius));
     floor.scale.setScalar(r);
     if (grid) { scene.remove(grid); grid.geometry.dispose(); grid.material.dispose(); }
-    grid = new THREE.GridHelper(r * 2, r * 2, look.edges.color, look.edges.color);
-    grid.material.transparent = true; grid.material.opacity = 0.22;
+    grid = new THREE.GridHelper(r * 2, P.path==='diorama'?Math.ceil(r*2/5):r*2, look.edges.color, look.edges.color);
+    grid.material.transparent = true; grid.material.opacity = P.path==='diorama'?.09:.22;
     grid.position.y = 0.002; grid.visible = P.wire;
     scene.add(grid);
     // the key's shadow box has to cover the same ground or the walker
@@ -116,7 +118,7 @@ export function initAstroTab(root) {
     // on the thing it is now for. It was also actively misleading: the panel
     // showed a "crew wander" folder reading `astronauts: 2` while the mode was
     // off, so the URL promised two people and drew none.
-    path: 'crew',           // crew | perimeter | straight | spot
+    path: 'diorama',           // crew | perimeter | straight | spot
     crew: 2,                // astronauts in the crew wander
     cast: 'mixed',          // mixed | classic | compact — which bodies walk
     runMul: 2.3,            // a run is this many times the walk's stride
@@ -125,7 +127,7 @@ export function initAstroTab(root) {
     // this tab's query took the router to the grid tab instead of here.
     crewSeed: 7,            // the wander's stream — same seed, same shift
     turret: true, cargo: true,   // the things they walk BETWEEN
-    dish: true, dishH: 22,       // NASA's 70 m DSN antenna, and its height in metres
+    dish: false, dishH: 22,       // NASA's 70 m DSN antenna, and its height in metres
     showSolids: false,      // draw the discs the walkers route around
     personH: PERSON_M,      // metres, tall
     tankLen: TANK_LEN_M,    // metres, longest dimension
@@ -155,7 +157,10 @@ export function initAstroTab(root) {
   const stage = new THREE.Group(); scene.add(stage);
   let astro = null, mixer = null, clips = [], action = null, height = 1, walkT = 0, bones = 0;
   const astroBox = new THREE.Box3();      // the file's own box, before any scaling
+  let legacyLoading=false;
+  function loadLegacy(){if(legacyLoading||disposed)return;legacyLoading=true;
   new GLTFLoader().load(ASTRO_URL, (gltf) => {
+    if(disposed)return;
     astro = gltf.scene;
     clips = gltf.animations || [];
     astro.updateMatrixWorld(true);
@@ -184,10 +189,13 @@ export function initAstroTab(root) {
   // naive clones deform identically AND stand in the same place, which looks
   // exactly like the second model failing to load.
   preloadAstronauts().then((protos) => {
+    if(disposed)return;
     if (!protos.length) return;
     crewProtos = protos;
     if (P.path === 'crew') { buildProps(); buildDish(); buildCrew(); syncMode(); }
   });
+
+  }
 
   // Re-sizing has to be re-doable, not a one-shot at load: the slider moves
   // it. Both the scale and the recentre are derived from the ORIGINAL box
@@ -219,9 +227,13 @@ export function initAstroTab(root) {
   // it can light its own metal, which is exactly the condition the dark
   // CINE_BASE was written for.
   let tank = null, tankR = 2.5;      // tankR: footprint radius, metres
+  const diorama=createAstroDiorama(scene,{tankBounds:()=>tank?new THREE.Box3().setFromObject(tank):null});
+  const yardDefaults={...diorama.settings};
+  for(const [key,value] of Object.entries(yardDefaults)){const v=q.get('yard_'+key);if(v===null)continue;diorama.settings[key]=typeof value==='boolean'?v!=='0':typeof value==='number'?Math.max(0,Math.min(60,Number(v)||0)):['Auto','Idle','Walk','Run','Point','Kneel','Scared','Lie'].includes(v)?v:value;}
+  const perf=createAstroPerformance(root,renderer,()=>[...diorama.state().groups,{id:'MÖRK',visible:!!tank?.visible,...modelBudget(tank)}]);
   const tankBox = new THREE.Box3();  // ...before any scaling, like the astronaut's
   preloadMork().then((ok) => {
-    if (!ok) return;
+    if (!ok||disposed) return;
     tank = buildCreature(DEFAULT_TANK, { walker: look.walker, walkerHi: look.walkerHi });
     tank.updateMatrixWorld(true);
     tankBox.setFromObject(tank);
@@ -297,6 +309,7 @@ export function initAstroTab(root) {
     const floorReach = P.path === 'crew' && P.dish ? Math.max(ring, crewRing() * 2.6) : reach;
     layFloor(floorReach);
     frame(P.path === 'crew' ? reach * 1.15 : metres);
+    if(P.path==='diorama'){layFloor(280);diorama.focus(q.get('yard_view')||'Crew',camera,controls);}
     placeProps();   // the stations are derived from tankR, so they move with it
   }
 
@@ -655,7 +668,8 @@ export function initAstroTab(root) {
   // switch hides whichever is not being asked.
   function syncMode() {
     const on = P.path === 'crew';
-    stage.visible = !on;
+    const station=P.path==='diorama';diorama.setEnabled(station);if(!station)loadLegacy();
+    stage.visible = !on&&!station;
     if (turret) turret.visible = on && P.turret;
     if (cargo) cargo.visible = on && P.cargo;
     if (dish) dish.visible = on && P.dish;
@@ -740,6 +754,7 @@ export function initAstroTab(root) {
 
   function hudLine() {
     if (performance.now() < flashUntil) return;   // a flash outlives the 0.25 s refresh
+    if(P.path==='diorama'){const state=diorama.state();hud.textContent=state.errors.length?state.errors.join(' · '):`${state.ready?'STATION ACTIVE':'Loading station assets…'} · ${state.crew.length} crew · Walk / Run / Point / Kneel · metres, +Y up, +Z forward · Models by jelaludo`;return;}
     hud.textContent = astro
       ? `${clips.length} clip(s) · ${P.clip || '-'} · ${action ? (action.time % (action.getClip().duration || 1)).toFixed(2) : '0.00'} s · ${bones} bones`
         + ` · person ${P.personH.toFixed(2)} m · tank ${P.tankLen.toFixed(1)} m`
@@ -753,14 +768,23 @@ export function initAstroTab(root) {
       : 'loading astronaut.glb…';
   }
 
-  const gui = new GUI({ title: 'ASTRONAUT', container: root });
-  const clipCtrl = gui.add(P, 'clip', ['-']).name('clip').onChange((v) => playClip(v));
+  const gui = new GUI({ title: 'ASTRO DIORAMA', container: root });
+  const stationGui=gui.addFolder('station diorama');
+  stationGui.add(diorama.settings,'count',0,60,1).name('station crew').onChange(()=>diorama.rebuild());
+  for(const key of ['crew','stalheart','hugin','antenna'])stationGui.add(diorama.settings,key).name(key==='stalheart'?'Stålheart':key).onChange(()=>diorama.rebuild());
+  stationGui.add(diorama.settings,'motion').name('animate station');
+  stationGui.add(diorama.settings,'gait',['Auto','Idle','Walk','Run','Point','Kneel','Scared','Lie']).name('crew animation').onChange(()=>diorama.rebuild());
+  const views={view:q.get('yard_view')||'Crew'};stationGui.add(views,'view',['Crew','Overview','Stalheart','Hugin','Antenna']).name('camera focus').onChange(v=>diorama.focus(v,camera,controls));
+  const rendering={bloom:q.get('yard_bloom')!=='0',shadows:q.get('yard_shadows')!=='0'};renderer.shadowMap.enabled=rendering.shadows;
+  stationGui.add(rendering,'shadows').onChange(v=>{renderer.shadowMap.enabled=v;});stationGui.add(rendering,'bloom');
+  const legacy=gui.addFolder('legacy astronaut study');legacy.close();
+  const clipCtrl = legacy.add(P, 'clip', ['-']).name('clip').onChange((v) => playClip(v));
   gui.add(P, 'play').onChange((v) => { if (action) action.paused = !v; });
   gui.add(P, 'speed', 0, 3, 0.05).onChange((v) => { if (mixer) mixer.timeScale = v; });
-  gui.add(P, 'loop').onChange(() => playClip(P.clip));
-  gui.add(P, 'path', ['crew', 'perimeter', 'straight', 'spot'])
+  legacy.add(P, 'loop').onChange(() => playClip(P.clip));
+  gui.add(P, 'path', ['diorama', 'crew', 'perimeter', 'straight', 'spot'])
     .name('walk path').onChange(() => { syncMode(); });
-  const gCrew = gui.addFolder('crew wander');
+  const gCrew = legacy.addFolder('crew wander');gCrew.close();
   gCrew.add(P, 'crew', 0, 4, 1).name('astronauts').onChange(() => buildCrew());
   gCrew.add(P, 'cast', ['mixed', ...ASTRONAUT_IDS]).name('cast').onChange(() => buildCrew());
   gCrew.add(P, 'runMul', 1, 4, 0.1).name('run x walk');
@@ -771,17 +795,17 @@ export function initAstroTab(root) {
   gCrew.add(P, 'dish').name('70 m dish').onChange(() => { buildDish(); syncMode(); });
   gCrew.add(P, 'dishH', 5, 80, 1).name('dish height (m)').onChange(() => placeProps());
   gCrew.add(P, 'showSolids').name('show solid discs').onChange(() => { rebuildSolids(); });
-  gui.add(P, 'stride', 0.2, 4, 0.05).name('metres / s');
-  gui.add(P, 'personH', 0.4, 4, 0.05).name('person height (m)').onChange((v) => sizeAstro(v));
-  gui.add(P, 'tankLen', 2, 20, 0.1).name('tank length (m)').onChange((v) => sizeTank(v));
-  gui.add(P, 'clear', 0, 4, 0.05).name('clearance (m)').onChange(() => sizeTank(P.tankLen));
+  legacy.add(P, 'stride', 0.2, 4, 0.05).name('metres / s');
+  legacy.add(P, 'personH', 0.4, 4, 0.05).name('person height (m)').onChange((v) => sizeAstro(v));
+  gui.add(P, 'tankLen', 2, 20, 0.1).name('tank length (m)').onChange((v) => {sizeTank(v);diorama.rebuild();});
+  legacy.add(P, 'clear', 0, 4, 0.05).name('clearance (m)').onChange(() => sizeTank(P.tankLen));
   gui.add(P, 'outline', 0, 1, 0.02).name('hull edge lines').onChange(() => dressCast());
   gui.add(P, 'exposure', 0.2, 2, 0.05).name('exposure').onChange((v) => { renderer.toneMappingExposure = v; });
   gui.add(P, 'env', 0, 3, 0.05).name('sky reflected').onChange((v) => { scene.environmentIntensity = v; });
   gui.add(P, 'spin').name('turntable');
   gui.add(P, 'tank').name('tank for scale').onChange((v) => { if (tank) tank.visible = v; });
   gui.add(P, 'wire').name('floor wire').onChange((v) => { if (grid) grid.visible = v; });
-  gui.add(P, 'scan').name('bones (skeleton)').onChange((v) => {
+  legacy.add(P, 'scan').name('bones (skeleton)').onChange((v) => {
     if (v && astro && !astro.userData.skel) { astro.userData.skel = new THREE.SkeletonHelper(astro); scene.add(astro.userData.skel); }
     if (astro && astro.userData.skel) astro.userData.skel.visible = v;
   });
@@ -790,7 +814,7 @@ export function initAstroTab(root) {
   // read them off a screenshot.
   let flashUntil = 0;
   wireDeepLink(root.querySelector('#astro-link'), () => deepLink({
-    base: location.origin + location.pathname, hash: 'astro', params: P, defaults: P0,
+    base: location.origin + location.pathname, hash: 'astro', params: {...P,...Object.fromEntries(Object.entries(diorama.settings).map(([k,v])=>['yard_'+k,v])),yard_view:views.view,yard_bloom:rendering.bloom,yard_shadows:rendering.shadows}, defaults: {...P0,...Object.fromEntries(Object.entries(yardDefaults).map(([k,v])=>['yard_'+k,v])),yard_view:'Crew',yard_bloom:true,yard_shadows:true},
     carry: location.search,
     // `clip` is chosen by the FILE, not by the panel — writing it into a link
     // pins a name that belongs to whatever .glb is loaded that day
@@ -811,10 +835,11 @@ export function initAstroTab(root) {
   const clock = new THREE.Clock();
   let hudT = 0;
   function animate() {
-    requestAnimationFrame(animate);
+    if(disposed)return;frameId=requestAnimationFrame(animate);
     if (!active) return;
-    const dt = Math.min(0.05, clock.getDelta());
-    if (mixer && P.play) mixer.update(dt);
+    const frameStart=perf.begin();
+    const dt = Math.min(0.05, clock.getDelta());stageTime+=P.play?dt*P.speed:0;diorama.tick(stageTime);
+    if (mixer && P.play && P.path!=='diorama') mixer.update(dt);
     // ROOT MOTION. The clip walks on the spot; the study carries the stage,
     // so the walk is judged as a walk and not as a treadmill.
     //
@@ -825,7 +850,7 @@ export function initAstroTab(root) {
     // diagonal, so it stays honest when either size slider moves — "without
     // touching it" has to hold at every ratio the sliders can make, not just
     // at the one it opens on.
-    if (astro && P.play && P.path !== 'spot') {
+    if (astro && P.play && P.path !== 'spot' && P.path!=='diorama') {
       walkT += dt * P.stride * P.speed;
       if (P.path === 'perimeter') {
         const R = tankR + Math.max(0, P.clear);
@@ -844,12 +869,15 @@ export function initAstroTab(root) {
     if (P.path === 'crew') stepCrew(dt);
     if (P.spin) stage.rotation.y += dt * 0.4;
     controls.update();
-    postfx.render();
+    if(rendering.bloom)postfx.render();else renderer.render(scene,camera);perf.end(frameStart);
     hudT += dt; if (hudT > 0.25) { hudT = 0; hudLine(); }
   }
-  animate();
+  function disposeAstro(){if(disposed)return;disposed=true;active=false;cancelAnimationFrame(frameId);removeEventListener('resize',resize);diorama.dispose();perf.dispose();for(const m of crew)m.obj.userData.dispose?.();mixer?.stopAllAction();if(astro)mixer?.uncacheRoot(astro);const geometries=new Set(),materials=new Set(),textures=new Set();scene.traverse(o=>{if(o.geometry)geometries.add(o.geometry);for(const m of [o.material].flat().filter(Boolean)){materials.add(m);for(const v of Object.values(m))if(v?.isTexture)textures.add(v);}});for(const g of geometries)g.dispose();for(const m of materials)m.dispose();for(const t of textures)t.dispose();controls.dispose();gui.destroy();postfx.dispose();environment.dispose();pmrem.dispose();sky.dispose();renderer.dispose();renderer.domElement.remove();}
+  syncMode();animate();
+  if(q.get('acceptance')==='1')window.__stalheartAstroTest={dispose:disposeAstro,state:()=>({...diorama.state(),performance:perf.state(),mode:P.path,disposed}),count:n=>{diorama.settings.count=n;diorama.rebuild();},toggle:(key,on)=>{diorama.settings[key]=on;diorama.rebuild();},focus:v=>diorama.focus(v,camera,controls),motion:on=>{diorama.settings.motion=on;}};
 
   return {
-    setActive(on) { active = on; if (on) { resize(); clock.getDelta(); } },
+    setActive(on) { active = on; if (on) { resize(); clock.getDelta();perf.reset(); } },
+    dispose:disposeAstro,
   };
 }

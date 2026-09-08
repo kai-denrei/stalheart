@@ -157,6 +157,23 @@ try{
  assert.equal(await evaluate('window.__stalheartPortalTest.state().sinkhole.audioVoices'),0);
  current='sinkhole-return-portals';await finish();
  await evaluate('window.__stalheartPortalTest.dispose()');
+ } else if(args.includes('--astro')) {
+ await go('astro-station','labs.html?sw=0&acceptance=1#astro');
+ await until('window.__stalheartAstroTest?.state().ready',60000);await delay(1000);
+ await until('window.__stalheartAstroTest.state().performance.fps>0');
+ const first=await evaluate('window.__stalheartAstroTest.state()');
+ assert.equal(first.mode,'diorama');assert.equal(first.crew.length,9);assert.deepEqual([...new Set(first.crew.map(c=>c.role))].sort(),['astronaut','scientist','worker']);assert.deepEqual(first.errors,[]);
+ assert(first.groups.find(g=>g.id==='antenna').triangles>0);assert(first.groups.every(g=>g.batches>0));await finish();
+ await delay(4500);const moved=await evaluate('window.__stalheartAstroTest.state()');assert.notDeepEqual(moved.crew.map(c=>c.position),first.crew.map(c=>c.position));assert(moved.crew.some(c=>c.history.includes('Walk')));assert(moved.crew.some(c=>c.history.includes('Run')));assert(moved.crew.some(c=>c.history.includes('Point')));
+ assert(moved.groups.filter(g=>g.clips).every(g=>g.time>0),'Landmark clips advance');
+ await evaluate('window.__stalheartAstroTest.focus("Overview")');await delay(300);current='astro-overview';await finish();
+ await evaluate('window.__stalheartAstroTest.motion(false)');await delay(100);const frozen=await evaluate('window.__stalheartAstroTest.state().crew.map(c=>c.position)');await delay(500);assert.deepEqual(await evaluate('window.__stalheartAstroTest.state().crew.map(c=>c.position)'),frozen);
+ await evaluate('window.__stalheartAstroTest.toggle("antenna",false);window.__stalheartAstroTest.count(30)');await delay(1000);assert.equal(await evaluate('window.__stalheartAstroTest.state().crew.length'),30);assert.equal(await evaluate('window.__stalheartAstroTest.state().groups.find(g=>g.id==="antenna").triangles'),0);
+ assert(await evaluate('window.__stalheartAstroTest.state().performance.samples<=120'));current='astro-load-comparison';await finish();
+ await evaluate('window.__stalheartAstroTest.count(9);window.__stalheartAstroTest.toggle("antenna",true);window.__stalheartAstroTest.motion(true);window.__stalheartAstroTest.focus("Crew")');await delay(500);current='astro-return-crew';assert(await evaluate('window.__stalheartAstroTest.state().performance.textures')<=first.performance.textures+4,'Crew resize releases old skeleton textures');await finish();
+ await go('astro-shared-settings','labs.html?sw=0&acceptance=1&yard_count=6&yard_antenna=0&yard_gait=Point#astro');await until('window.__stalheartAstroTest?.state().ready',60000);await delay(300);const shared=await evaluate('window.__stalheartAstroTest.state()');assert.equal(shared.crew.length,6);assert(shared.crew.every(c=>c.clip==='Point'));assert.equal(shared.groups.find(g=>g.id==='antenna').visible,false);await finish();
+ await evaluate('window.__stalheartAstroTest.dispose()');const stopped=await evaluate('window.__stalheartAstroTest.state().time');await delay(200);assert.equal(await evaluate('window.__stalheartAstroTest.state().time'),stopped);assert.equal(await evaluate('window.__stalheartAstroTest.state().crew.length'),0);
+
  } else if(args.includes('--sniper')) {
  await go('sniper-showcase','labs.html?sw=0&acceptance=1&swaySlow=0&swayFast=0#sniper');
  await until('window.__stalheartSniperTest?.state().ready');

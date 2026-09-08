@@ -24,6 +24,8 @@ The default FPS readout expands into CPU/GPU totals and estimated rendering work
 
 Sinkhole is a separate genre in the Portal Lab (`labs.html?genre=sinkhole#portal`): the supplied quake sound, fracture, an irregular textured bowl with a gentler approach into darkness, clipped fissures, settling dust and debris. The pinned Monolith Rift import uses the existing Three r160 with zero monoliths and no kinetic warp. The preview now wraps around a curved planet and emits bounded creature waves, with independent crack width/length, wall-clearance fixtures and TRON/Battlezone palette comparisons. Normal gameplay now uses the shared sinkhole effect, wall clearance and emerging creatures; breaches now open once and seal only after orbital strikes or exhausted waves, leaving a shared instanced rubble pile until restart. Airborne debris is smaller; new opening groups receive a skippable planet zoom when the camera is free. Base 7 presets include breach settings and the Portal Lab has working copy/review/apply and copy feedback. See [SINKHOLE.md](SINKHOLE.md).
 
+Astro now defaults to a station diorama: nine mixed station crew with authored walk/run/point/kneel clips, footprint-aware routes between MÖRK, Stålheart, Hugin and the SKYWARD array, camera focus controls and 0–60 crew. FPS/frame-time, whole-frame rendering counters and per-group mesh budgets support visibility/animation/shadow/bloom comparisons with a local baseline. New controls travel in the shared scene link. See [ASTRO.md](ASTRO.md).
+
 ## Next priorities
 
 Owner-directed sequence: **architecture → visual/sound labs and clean exports → UX → playability**. [Architecture and implementation boundaries](ARCHITECTURE.md) are the current technical plan.

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "id": "2026-09-08-astro-station-diorama",
+  "date": "2026-09-08T07:08:53.313046+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "Build an animated Astro station and measure its rendering cost",
+  "context": "The owner requested station crew with walking/running/pointing and landmark travel, Stålheart, Hugin, the antenna array and FPS comparisons in Astro.",
+  "outcome": "Astro defaults to nine independently animated astronaut/scientist/worker crew, game-detail Stålheart and Hugin, the seven-dish SKYWARD array and MÖRK. Six self-contained GLBs are pinned to upstream b22a8c9a6e04d40819b68859624f362d6bff8680 with credits and clip/hash validation. Crew use authored animation crossfades and metre-per-second gait speeds with a pure visibility-graph route solver around expanded prop footprints. Landmark cycles play through preserved pivots. The scene supports 0–60 crew, per-group visibility, animation pause, clip auditions, camera focus, shadow/bloom toggles and portable scene links. Bounded local FPS/frame-time/p95/CPU-submit samples, whole-frame draw/triangle counters and per-group mesh budgets support a baseline comparison. Legacy astronaut studies load lazily and stay separate; gameplay assets/presets are unchanged.",
+  "alternatives": [
+    "The original one-metre grid produced distracting aliasing across the larger yard; the station uses a fainter five-metre grid.",
+    "No per-object GPU-time claim: group rows report visible mesh budgets before extra passes, and CPU/submission duration is labelled separately.",
+    "Crew instances share geometry/materials and own skeletons/mixers; rebuilding the population releases old skeleton textures."
+  ],
+  "evidence": [
+    "npm test: 81 test programs passed",
+    "npm run check and build passed; pinned asset hashes and authored clips validated",
+    "npm run test:browser: full source acceptance passed",
+    "node scripts/browser-test.mjs --dist --astro passed: six assets, role/clip variety, movement, landmark cycles, pause, group exclusion, count changes, released skeleton textures, shared URL settings and disposal",
+    "docs/ASTRO.md; docs/astro-assets.lock.json"
+  ],
+  "supersedes": []
+}

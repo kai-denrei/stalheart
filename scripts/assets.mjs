@@ -6,7 +6,7 @@ const root=fileURLToPath(new URL('../',import.meta.url));
 
 const sha=data=>createHash('sha256').update(data).digest('hex');
 const fetchMissing=process.argv[2]==='fetch';
-for(const lockFile of ['docs/sentry-assets.lock.json','docs/missile-assets.lock.json','docs/hover-tank-assets.lock.json','docs/needle-assets.lock.json']) {
+for(const lockFile of ['docs/sentry-assets.lock.json','docs/missile-assets.lock.json','docs/hover-tank-assets.lock.json','docs/needle-assets.lock.json','docs/astro-assets.lock.json']) {
 const lock=JSON.parse(readFileSync(resolve(root,lockFile),'utf8'));
 for(const file of lock.files){
  const path=resolve(root,file.path);
@@ -32,6 +32,7 @@ for(const file of lock.files){
    for(const name of ['Power_On','Power_Off','Hover_Idle','Fire_Heavy','Plasma_Sweep','Turret_Aim'])if(!json.animations.some(a=>a.name===name))throw Error('Missing MORK clip');
    for(const name of ['HOVER_RIG','HULL_SUSPENSION','TURRET_YAW','GUN_PITCH','GUN_RECOIL','MUZZLE_00','PLASMA_MUZZLE_L','PLASMA_MUZZLE_R',...Array.from({length:9},(_,i)=>'AMMO_PORT_LIGHT_'+String(i).padStart(2,'0'))])if(!json.nodes.some(n=>n.name===name))throw Error('Missing MORK articulation/socket');
   }
+  if(file.clips)for(const clip of file.clips)if(!(json.animations||[]).some(a=>a.name===clip))throw Error('Missing Astro clip: '+clip);
   if(file.damageLevel<2 && !(json.animations||[]).some(a=>a.name==='Terraforming_Cycle'))throw Error('Missing authored cycle');
  }
 }

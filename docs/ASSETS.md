@@ -18,3 +18,9 @@ Priority reuse path:
 4. Adopt damaged building states as presentation first; introduce new supply/collision/gameplay effects only through deliberate mission rules.
 
 Do not use the upstream viewer's CDN Three.js modules in Stalheart; the GLBs are renderer-independent inputs, and the game remains on one vendored renderer. Never infer LOD from a file's D-number. Never switch a pinned revision without checksums, a visual/animation acceptance pass and a decision entry. Keep bulky source `.blend` files in the authoring project rather than this release.
+
+## Astro station diorama
+
+Models and animations by **jelaludo** — https://jelaludo.github.io/SentryTowers_A6/. Reuse is permitted with attribution under the upstream `ASSET-LICENSE.md`. The six self-contained GLBs in `docs/astro-assets.lock.json` are pinned to `b22a8c9a6e04d40819b68859624f362d6bff8680`: three station crew roles, intact game versions of Stålheart/Hugin and the complete low-detail SKYWARD array. They retain authored metre scale, +Y up, +Z forward, skeletal rigs and clips. No upstream JavaScript or second Three.js version is imported. These assets are Astro-only; the gameplay Terraformer remains on its existing pinned adapter.
+
+Measured visible mesh budgets before shadow/post passes: Stålheart 40,506 triangles / 105 batches; Hugin 39,731 / 90; SKYWARD seven-dish array 25,620 / 81. Crew roles have 1,496–1,568 triangles and seven material batches each. D0 is an intact destruction state, not an LOD.

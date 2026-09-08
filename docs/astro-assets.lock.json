@@ -1,0 +1,81 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/jelaludo/SentryTowers_A6",
+  "revision": "b22a8c9a6e04d40819b68859624f362d6bff8680",
+  "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/b22a8c9a6e04d40819b68859624f362d6bff8680/",
+  "credit": "Models and animations by jelaludo",
+  "files": [
+    {
+      "path": "assets/models/astro/astronaut_station.glb",
+      "sourcePath": "assets/characters-station/astronaut_station.glb",
+      "sha256": "1554151c8386e418a16b4c41eec93c6ecfa7e6f09f77ee80d88e802aaa6fe4aa",
+      "bytes": 255008,
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Kneel",
+        "Scared",
+        "Point",
+        "Lie"
+      ]
+    },
+    {
+      "path": "assets/models/astro/scientist_station.glb",
+      "sourcePath": "assets/characters-station/scientist_station.glb",
+      "sha256": "957aa79ca0ba2588f9f6655bbd9a5285770985f56264c6dea6843b05776b1a5b",
+      "bytes": 252064,
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Kneel",
+        "Scared",
+        "Point",
+        "Lie"
+      ]
+    },
+    {
+      "path": "assets/models/astro/worker_station.glb",
+      "sourcePath": "assets/characters-station/worker_station.glb",
+      "sha256": "0edd210eac989950397dc8eccadaffc2da6f155b2aeea71cc39e017b3b6decc4",
+      "bytes": 248584,
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Kneel",
+        "Scared",
+        "Point",
+        "Lie"
+      ]
+    },
+    {
+      "path": "assets/models/astro/terraformer_3000_d0_game.glb",
+      "sourcePath": "assets/game-ready/terraformer_3000_d0_game.glb",
+      "sha256": "fca5494177ef776cc5d0201ba0530285b4c992a7d4944ada980fe58676edc339",
+      "bytes": 4108224,
+      "clips": [
+        "Terraforming_Cycle"
+      ]
+    },
+    {
+      "path": "assets/models/astro/hugin_launchpad_d0_game.glb",
+      "sourcePath": "assets/game-ready/hugin_launchpad_d0_game.glb",
+      "sha256": "e9bb58e5de49a96e82f5c06310a61dbb5da9a63998f14246399e21ec120f44cd",
+      "bytes": 3244492,
+      "clips": [
+        "Cargo_Recovery_Cycle"
+      ]
+    },
+    {
+      "path": "assets/models/astro/skyward_array.glb",
+      "sourcePath": "assets/antenna-array/skyward_array.glb",
+      "sha256": "661a4af7c91462fe20c08f31d72bddb1ddf48833aee15dd370826f7080905e9b",
+      "bytes": 916584,
+      "clips": [
+        "Array_Slew"
+      ]
+    }
+  ]
+}
