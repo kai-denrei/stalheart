@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/jelaludo/SentryTowers_A6",
+  "revision": "b22a8c9a6e04d40819b68859624f362d6bff8680",
+  "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/b22a8c9a6e04d40819b68859624f362d6bff8680/",
+  "credit": "Models and animations by jelaludo",
+  "files": [
+    {
+      "path": "assets/models/astro/robotic_assembly_line_d0.glb",
+      "sourcePath": "assets/assembly-line/robotic_assembly_line_d0.glb",
+      "sha256": "2003d59d484756ccdbc13022db18b885b6b2d04df98cd8e7d735e5908fede371",
+      "bytes": 7164356,
+      "clips": [
+        "Assembly_Cycle"
+      ]
+    },
+    {
+      "path": "assets/models/astro/warehouse_scene_d0.glb",
+      "sourcePath": "assets/warehouse-props/warehouse_scene_d0.glb",
+      "sha256": "acb3a036ea86c1f82e5fac48052795898843997c9f15d9eb5e74ad60902373ad",
+      "bytes": 1394224,
+      "clips": []
+    },
+    {
+      "path": "assets/models/astro/solar_power_complex_d0.glb",
+      "sourcePath": "assets/solar-power/solar_power_complex_d0.glb",
+      "sha256": "50ed2bd545c08a34a613871744779d938b1378013987a6e7b9001792fff4b24e",
+      "bytes": 9203540,
+      "clips": []
+    },
+    {
+      "path": "assets/models/astro/micro_reactor_complex_d0.glb",
+      "sourcePath": "assets/micro-reactor/micro_reactor_complex_d0.glb",
+      "sha256": "0deb1b03dd97ae9c92eae4b4e3596bbc89b1988056904e9c2ff1c2e14d3ebc35",
+      "bytes": 1343596,
+      "clips": []
+    },
+    {
+      "path": "assets/models/astro/foundation_flat_d0.glb",
+      "sourcePath": "assets/base-kit/foundation_flat_d0.glb",
+      "sha256": "8ade066a51c468bab9c9064702f1ff69c9a22ec1bd143a5620020fd86ad29152",
+      "bytes": 149596,
+      "clips": []
+    }
+  ]
+}

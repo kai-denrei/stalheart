@@ -6,7 +6,7 @@ const root=fileURLToPath(new URL('../',import.meta.url));
 
 const sha=data=>createHash('sha256').update(data).digest('hex');
 const fetchMissing=process.argv[2]==='fetch';
-for(const lockFile of ['docs/sentry-assets.lock.json','docs/missile-assets.lock.json','docs/hover-tank-assets.lock.json','docs/needle-assets.lock.json','docs/astro-assets.lock.json']) {
+for(const lockFile of ['docs/sentry-assets.lock.json','docs/missile-assets.lock.json','docs/hover-tank-assets.lock.json','docs/needle-assets.lock.json','docs/astro-assets.lock.json','docs/astro-industry-assets.lock.json']) {
 const lock=JSON.parse(readFileSync(resolve(root,lockFile),'utf8'));
 for(const file of lock.files){
  const path=resolve(root,file.path);

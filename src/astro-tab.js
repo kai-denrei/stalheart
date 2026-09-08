@@ -1,3 +1,4 @@
+import { createAstroDrive } from './labs/astro-drive.js';
 import { createAstroDiorama, modelBudget } from './labs/astro-diorama.js';
 import { createAstroPerformance } from './labs/astro-performance.js';
 import { DEFAULT_TANK } from './content/tank.js';
@@ -228,6 +229,7 @@ export function initAstroTab(root) {
   // CINE_BASE was written for.
   let tank = null, tankR = 2.5;      // tankR: footprint radius, metres
   const diorama=createAstroDiorama(scene,{tankBounds:()=>tank?new THREE.Box3().setFromObject(tank):null});
+  const drive=createAstroDrive(root,{camera,controls,getTank:()=>tank,obstacles:()=>diorama.obstacles()});
   const yardDefaults={...diorama.settings};
   for(const [key,value] of Object.entries(yardDefaults)){const v=q.get('yard_'+key);if(v===null)continue;diorama.settings[key]=typeof value==='boolean'?v!=='0':typeof value==='number'?Math.max(0,Math.min(60,Number(v)||0)):['Auto','Idle','Walk','Run','Point','Kneel','Scared','Lie'].includes(v)?v:value;}
   const perf=createAstroPerformance(root,renderer,()=>[...diorama.state().groups,{id:'MÖRK',visible:!!tank?.visible,...modelBudget(tank)}]);
@@ -254,7 +256,7 @@ export function initAstroTab(root) {
     dressCast();
     tank.visible = P.tank;
     scene.add(tank);
-    sizeTank(P.tankLen);
+    sizeTank(P.tankLen);if(P.path==='diorama')tank.rotation.y=Math.PI;
   });
 
   function dressCast() {
@@ -668,7 +670,7 @@ export function initAstroTab(root) {
   // switch hides whichever is not being asked.
   function syncMode() {
     const on = P.path === 'crew';
-    const station=P.path==='diorama';diorama.setEnabled(station);if(!station)loadLegacy();
+    const station=P.path==='diorama';diorama.setEnabled(station);if(!station){drive.setMode('free');loadLegacy();}
     stage.visible = !on&&!station;
     if (turret) turret.visible = on && P.turret;
     if (cargo) cargo.visible = on && P.cargo;
@@ -771,10 +773,10 @@ export function initAstroTab(root) {
   const gui = new GUI({ title: 'ASTRO DIORAMA', container: root });
   const stationGui=gui.addFolder('station diorama');
   stationGui.add(diorama.settings,'count',0,60,1).name('station crew').onChange(()=>diorama.rebuild());
-  for(const key of ['crew','stalheart','hugin','antenna'])stationGui.add(diorama.settings,key).name(key==='stalheart'?'Stålheart':key).onChange(()=>diorama.rebuild());
+  for(const key of ['crew','stalheart','hugin','antenna','assembly','cargo','solar','reactor','foundations'])stationGui.add(diorama.settings,key).name(key==='stalheart'?'Stålheart':key).onChange(()=>diorama.rebuild());
   stationGui.add(diorama.settings,'motion').name('animate station');
   stationGui.add(diorama.settings,'gait',['Auto','Idle','Walk','Run','Point','Kneel','Scared','Lie']).name('crew animation').onChange(()=>diorama.rebuild());
-  const views={view:q.get('yard_view')||'Crew'};stationGui.add(views,'view',['Crew','Overview','Stalheart','Hugin','Antenna']).name('camera focus').onChange(v=>diorama.focus(v,camera,controls));
+  const views={view:q.get('yard_view')||'Crew'};stationGui.add(views,'view',['Crew','Overview','Stalheart','Hugin','Antenna','Assembly','Cargo','Solar','Reactor']).name('camera focus').onChange(v=>{drive.setMode('free');diorama.focus(v,camera,controls);});
   const rendering={bloom:q.get('yard_bloom')!=='0',shadows:q.get('yard_shadows')!=='0'};renderer.shadowMap.enabled=rendering.shadows;
   stationGui.add(rendering,'shadows').onChange(v=>{renderer.shadowMap.enabled=v;});stationGui.add(rendering,'bloom');
   const legacy=gui.addFolder('legacy astronaut study');legacy.close();
@@ -797,7 +799,7 @@ export function initAstroTab(root) {
   gCrew.add(P, 'showSolids').name('show solid discs').onChange(() => { rebuildSolids(); });
   legacy.add(P, 'stride', 0.2, 4, 0.05).name('metres / s');
   legacy.add(P, 'personH', 0.4, 4, 0.05).name('person height (m)').onChange((v) => sizeAstro(v));
-  gui.add(P, 'tankLen', 2, 20, 0.1).name('tank length (m)').onChange((v) => {sizeTank(v);diorama.rebuild();});
+  gui.add(P, 'tankLen', 2, 20, 0.1).name('tank length (m)').onChange((v) => {sizeTank(v);drive.resize();diorama.rebuild();});
   legacy.add(P, 'clear', 0, 4, 0.05).name('clearance (m)').onChange(() => sizeTank(P.tankLen));
   gui.add(P, 'outline', 0, 1, 0.02).name('hull edge lines').onChange(() => dressCast());
   gui.add(P, 'exposure', 0.2, 2, 0.05).name('exposure').onChange((v) => { renderer.toneMappingExposure = v; });
@@ -838,7 +840,7 @@ export function initAstroTab(root) {
     if(disposed)return;frameId=requestAnimationFrame(animate);
     if (!active) return;
     const frameStart=perf.begin();
-    const dt = Math.min(0.05, clock.getDelta());stageTime+=P.play?dt*P.speed:0;diorama.tick(stageTime);
+    const dt = Math.min(0.05, clock.getDelta());drive.tick(P.play?dt:0);stageTime+=P.play?dt*P.speed:0;diorama.tick(stageTime);
     if (mixer && P.play && P.path!=='diorama') mixer.update(dt);
     // ROOT MOTION. The clip walks on the spot; the study carries the stage,
     // so the walk is judged as a walk and not as a treadmill.
@@ -868,16 +870,16 @@ export function initAstroTab(root) {
     }
     if (P.path === 'crew') stepCrew(dt);
     if (P.spin) stage.rotation.y += dt * 0.4;
-    controls.update();
+    if(drive.state().mode==='free')controls.update();
     if(rendering.bloom)postfx.render();else renderer.render(scene,camera);perf.end(frameStart);
     hudT += dt; if (hudT > 0.25) { hudT = 0; hudLine(); }
   }
-  function disposeAstro(){if(disposed)return;disposed=true;active=false;cancelAnimationFrame(frameId);removeEventListener('resize',resize);diorama.dispose();perf.dispose();for(const m of crew)m.obj.userData.dispose?.();mixer?.stopAllAction();if(astro)mixer?.uncacheRoot(astro);const geometries=new Set(),materials=new Set(),textures=new Set();scene.traverse(o=>{if(o.geometry)geometries.add(o.geometry);for(const m of [o.material].flat().filter(Boolean)){materials.add(m);for(const v of Object.values(m))if(v?.isTexture)textures.add(v);}});for(const g of geometries)g.dispose();for(const m of materials)m.dispose();for(const t of textures)t.dispose();controls.dispose();gui.destroy();postfx.dispose();environment.dispose();pmrem.dispose();sky.dispose();renderer.dispose();renderer.domElement.remove();}
+  function disposeAstro(){if(disposed)return;disposed=true;active=false;cancelAnimationFrame(frameId);removeEventListener('resize',resize);drive.dispose();diorama.dispose();perf.dispose();for(const m of crew)m.obj.userData.dispose?.();mixer?.stopAllAction();if(astro)mixer?.uncacheRoot(astro);const geometries=new Set(),materials=new Set(),textures=new Set();scene.traverse(o=>{if(o.geometry)geometries.add(o.geometry);for(const m of [o.material].flat().filter(Boolean)){materials.add(m);for(const v of Object.values(m))if(v?.isTexture)textures.add(v);}});for(const g of geometries)g.dispose();for(const m of materials)m.dispose();for(const t of textures)t.dispose();controls.dispose();gui.destroy();postfx.dispose();environment.dispose();pmrem.dispose();sky.dispose();renderer.dispose();renderer.domElement.remove();}
   syncMode();animate();
-  if(q.get('acceptance')==='1')window.__stalheartAstroTest={dispose:disposeAstro,state:()=>({...diorama.state(),performance:perf.state(),mode:P.path,disposed}),count:n=>{diorama.settings.count=n;diorama.rebuild();},toggle:(key,on)=>{diorama.settings[key]=on;diorama.rebuild();},focus:v=>diorama.focus(v,camera,controls),motion:on=>{diorama.settings.motion=on;}};
+  if(q.get('acceptance')==='1')window.__stalheartAstroTest={dispose:disposeAstro,state:()=>({...diorama.state(),drive:drive.state(),performance:perf.state(),mode:P.path,disposed}),count:n=>{diorama.settings.count=n;diorama.rebuild();},toggle:(key,on)=>{diorama.settings[key]=on;diorama.rebuild();},focus:v=>{drive.setMode('free');diorama.focus(v,camera,controls);},motion:on=>{diorama.settings.motion=on;}};
 
   return {
-    setActive(on) { active = on; if (on) { resize(); clock.getDelta();perf.reset(); } },
+    setActive(on) { active = on;drive.setActive(on); if (on) { resize(); clock.getDelta();perf.reset(); } },
     dispose:disposeAstro,
   };
 }
