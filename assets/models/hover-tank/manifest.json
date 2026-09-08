@@ -1,0 +1,390 @@
+{
+  "version": 1,
+  "units": "meters",
+  "up": "+Y",
+  "forward": "+Z",
+  "assets": [
+    {
+      "id": "mork_hover_tank_d0",
+      "name": "MÖRK / Heavy hover tank",
+      "state": "Intact",
+      "file": "mork_hover_tank_d0.glb",
+      "plot_m": [
+        18,
+        18
+      ],
+      "description": "Lean, elongated hover tank: long recoiling cannon, lean traversing turret, two low front plasma projectors, streamlined nacelles, cyan lift fields and nine rear-deck ammunition lenses with four color states each.",
+      "sockets": [
+        {
+          "id": "SERVICE",
+          "kind": "service",
+          "position_m": [
+            0,
+            0.8,
+            -4.7
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ],
+          "available": true,
+          "width_m": null
+        }
+      ],
+      "colliders": [
+        {
+          "id": "hull",
+          "center_m": [
+            0,
+            1.1,
+            0.5
+          ],
+          "size_m": [
+            6.1,
+            2.2,
+            10.6
+          ],
+          "condition": "always"
+        }
+      ],
+      "clearance": [],
+      "animations": [
+        "Power_On",
+        "Power_Off",
+        "Fire_Heavy",
+        "Turret_Aim",
+        "Plasma_Sweep",
+        "Hover_Idle"
+      ],
+      "family": "mork_hover_tank",
+      "damage_level": 0,
+      "functional": true,
+      "clips": [
+        {
+          "name": "Power_On",
+          "duration_s": 2,
+          "loop": false
+        },
+        {
+          "name": "Power_Off",
+          "duration_s": 1.2,
+          "loop": false
+        },
+        {
+          "name": "Fire_Heavy",
+          "duration_s": 1.4,
+          "loop": false
+        },
+        {
+          "name": "Turret_Aim",
+          "duration_s": 8,
+          "loop": true
+        },
+        {
+          "name": "Plasma_Sweep",
+          "duration_s": 4,
+          "loop": true
+        },
+        {
+          "name": "Hover_Idle",
+          "duration_s": 3,
+          "loop": true
+        }
+      ],
+      "shell_capacity": 27,
+      "ammo_ports": 9,
+      "shells_per_port": 3,
+      "hover_lift_m": 0.55,
+      "recoil_travel_m": 0.82,
+      "turret_yaw_deg": [
+        -180,
+        180
+      ],
+      "turret_elevation_deg": [
+        -5,
+        25
+      ],
+      "plasma_yaw_deg": [
+        -12,
+        12
+      ],
+      "collision_quality": "blockout",
+      "bytes": 1022268,
+      "triangles": 24196,
+      "exported_clips": [
+        "Power_On",
+        "Power_Off",
+        "Hover_Idle",
+        "Fire_Heavy",
+        "Plasma_Sweep",
+        "Turret_Aim"
+      ],
+      "draw_calls": 70
+    },
+    {
+      "id": "mork_hover_tank_d1",
+      "name": "MÖRK / Heavy hover tank",
+      "state": "Damaged",
+      "file": "mork_hover_tank_d1.glb",
+      "plot_m": [
+        18,
+        18
+      ],
+      "description": "Operational damage with gouged armor. All weapons, lift/settle clips and the 27-shell magazine display remain usable.",
+      "sockets": [
+        {
+          "id": "SERVICE",
+          "kind": "service",
+          "position_m": [
+            0,
+            0.8,
+            -4.7
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ],
+          "available": true,
+          "width_m": null
+        }
+      ],
+      "colliders": [
+        {
+          "id": "hull",
+          "center_m": [
+            0,
+            1.1,
+            0.5
+          ],
+          "size_m": [
+            6.1,
+            2.2,
+            10.6
+          ],
+          "condition": "always"
+        }
+      ],
+      "clearance": [],
+      "animations": [
+        "Power_On",
+        "Power_Off",
+        "Fire_Heavy",
+        "Turret_Aim",
+        "Plasma_Sweep",
+        "Hover_Idle"
+      ],
+      "family": "mork_hover_tank",
+      "damage_level": 1,
+      "functional": true,
+      "clips": [
+        {
+          "name": "Power_On",
+          "duration_s": 2,
+          "loop": false
+        },
+        {
+          "name": "Power_Off",
+          "duration_s": 1.2,
+          "loop": false
+        },
+        {
+          "name": "Fire_Heavy",
+          "duration_s": 1.4,
+          "loop": false
+        },
+        {
+          "name": "Turret_Aim",
+          "duration_s": 8,
+          "loop": true
+        },
+        {
+          "name": "Plasma_Sweep",
+          "duration_s": 4,
+          "loop": true
+        },
+        {
+          "name": "Hover_Idle",
+          "duration_s": 3,
+          "loop": true
+        }
+      ],
+      "shell_capacity": 27,
+      "ammo_ports": 9,
+      "shells_per_port": 3,
+      "hover_lift_m": 0.55,
+      "recoil_travel_m": 0.82,
+      "turret_yaw_deg": [
+        -180,
+        180
+      ],
+      "turret_elevation_deg": [
+        -5,
+        25
+      ],
+      "plasma_yaw_deg": [
+        -12,
+        12
+      ],
+      "collision_quality": "blockout",
+      "bytes": 1068672,
+      "triangles": 24844,
+      "exported_clips": [
+        "Power_On",
+        "Power_Off",
+        "Hover_Idle",
+        "Fire_Heavy",
+        "Plasma_Sweep",
+        "Turret_Aim"
+      ],
+      "draw_calls": 71
+    },
+    {
+      "id": "mork_hover_tank_d2",
+      "name": "MÖRK / Heavy hover tank",
+      "state": "Critical",
+      "file": "mork_hover_tank_d2.glb",
+      "plot_m": [
+        18,
+        18
+      ],
+      "description": "Disabled critical state: shortened damaged cannon, scorched hull penetration and severed service line. Emitters and ammunition display are dark.",
+      "sockets": [
+        {
+          "id": "SERVICE",
+          "kind": "service",
+          "position_m": [
+            0,
+            0.8,
+            -4.7
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ],
+          "available": false,
+          "width_m": null
+        }
+      ],
+      "colliders": [
+        {
+          "id": "hull",
+          "center_m": [
+            0,
+            1.1,
+            0.5
+          ],
+          "size_m": [
+            6.1,
+            2.2,
+            10.6
+          ],
+          "condition": "always"
+        }
+      ],
+      "clearance": [],
+      "animations": [],
+      "family": "mork_hover_tank",
+      "damage_level": 2,
+      "functional": false,
+      "clips": [],
+      "shell_capacity": 27,
+      "ammo_ports": 9,
+      "shells_per_port": 3,
+      "hover_lift_m": 0.55,
+      "recoil_travel_m": 0.82,
+      "turret_yaw_deg": [
+        -180,
+        180
+      ],
+      "turret_elevation_deg": [
+        -5,
+        25
+      ],
+      "plasma_yaw_deg": [
+        -12,
+        12
+      ],
+      "collision_quality": "blockout",
+      "bytes": 1071404,
+      "triangles": 26256,
+      "exported_clips": [],
+      "draw_calls": 80
+    },
+    {
+      "id": "mork_hover_tank_d3",
+      "name": "MÖRK / Heavy hover tank",
+      "state": "Destroyed",
+      "file": "mork_hover_tank_d3.glb",
+      "plot_m": [
+        18,
+        18
+      ],
+      "description": "Destroyed state: fallen turret, sheared cannon, detached right nacelle, damaged plasma mounts and scattered armor.",
+      "sockets": [
+        {
+          "id": "SERVICE",
+          "kind": "service",
+          "position_m": [
+            0,
+            0.8,
+            -4.7
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ],
+          "available": false,
+          "width_m": null
+        }
+      ],
+      "colliders": [
+        {
+          "id": "hull",
+          "center_m": [
+            0,
+            1.1,
+            0.5
+          ],
+          "size_m": [
+            6.1,
+            2.2,
+            10.6
+          ],
+          "condition": "always"
+        }
+      ],
+      "clearance": [],
+      "animations": [],
+      "family": "mork_hover_tank",
+      "damage_level": 3,
+      "functional": false,
+      "clips": [],
+      "shell_capacity": 27,
+      "ammo_ports": 9,
+      "shells_per_port": 3,
+      "hover_lift_m": 0.55,
+      "recoil_travel_m": 0.82,
+      "turret_yaw_deg": [
+        -180,
+        180
+      ],
+      "turret_elevation_deg": [
+        -5,
+        25
+      ],
+      "plasma_yaw_deg": [
+        -12,
+        12
+      ],
+      "collision_quality": "blockout",
+      "bytes": 1065300,
+      "triangles": 23048,
+      "exported_clips": [],
+      "draw_calls": 72
+    }
+  ]
+}

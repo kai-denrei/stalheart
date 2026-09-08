@@ -210,5 +210,20 @@ console.log('determinism:');
     JSON.stringify(one.pos) === JSON.stringify(two.pos) && s1.length === s2.length);
 }
 
+console.log('narrow engagement bands and pause:');
+{
+  const a6=makeA6(BERTH,0), target={id:700,pos:pointNear(BERTH,2.9*CELL,0)};
+  let fired=0;
+  const ctx={range:3*CELL,minRange:2.8*CELL,cellSide:CELL,sense:()=>target,
+    ready:()=>true,emit:()=>fired++,rand:()=>.5};
+  const before=JSON.stringify(a6);stepA6(a6,0,ctx);
+  check('paused walker spends no ammo or movement',JSON.stringify(a6)===before && fired===0);
+  for(let i=0;i<120;i++)stepA6(a6,1/60,ctx);
+  check('a narrow valid band can fire without walking into the blind zone',fired>0 && arc(a6.pos,target.pos)>=ctx.minRange);
+  const held=makeA6(BERTH,0);let spent=0;
+  for(let i=0;i<600;i++)stepA6(held,1/60,{...ctx,ready:()=>false,emit:()=>spent++});
+  check('unavailable launcher keeps its cassette intact',held.ammo===held.mag && spent===0);
+}
+
 console.log(failures ? `\n${failures} FAILURES` : '\nall heptapod invariants hold');
 process.exit(failures ? 1 : 0);

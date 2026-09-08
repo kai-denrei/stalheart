@@ -10,6 +10,7 @@ try {
   writeFileSync(join(dir,'package.json'),'{"type":"module"}');
   cpSync('src/content',join(dir,'src/content'),{recursive:true});cpSync('src/core',join(dir,'src/core'),{recursive:true});
   cpSync('scripts/presets.mjs',join(dir,'scripts/presets.mjs'));
+  cpSync('scripts/preset-store.mjs',join(dir,'scripts/preset-store.mjs'));
   const run=(...args)=>spawnSync(process.execPath,['scripts/presets.mjs',...args],{cwd:dir,encoding:'utf8'});
   assert.equal(run('export','before.json').status,0);
   const p=JSON.parse(readFileSync(join(dir,'before.json'),'utf8'));p.id='promotion-check';p.audio.kinetic_fire.gain=.41;p.weapons.lancer.impact.size=.92;

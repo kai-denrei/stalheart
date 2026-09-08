@@ -1,3 +1,4 @@
+import { firingFor } from './content/firing-defaults.js';
 // Sentry combat rules. Identity, numbering and radial order have one content owner.
 import { SENTRIES, SENTRY_ORDER } from './content/sentries.js';
 const COMBAT = {
@@ -54,17 +55,16 @@ const COMBAT = {
     "rate": 0.45,
     "attack": "lance",
     "pierce": true,
-    "burst": 0.8
+    "burst": 3
   },
-  "howitzer": {
-    "color": 10483199,
+  "needle": {
+    "color": 13102079,
     "cost": 220,
     "dmg": 0.37777777777777777,
-    "range": 5.6,
+    "range": 8,
     "rate": 0.45,
-    "attack": "mortar",
-    "splash": 2.4,
-    "arc": true
+    "attack": "sniper",
+    "hitscan": true
   },
   "heptapod": {
     "color": 16757854,
@@ -121,6 +121,8 @@ export function effectiveStats(def, tier) {
     else if (def.attack === 'beam' || def.attack === 'homing') s.range *= 1.3;
     else if (def.attack === 'single') s.rate *= 1.2;
   }
+  const rounds=firingFor(def.key).rounds||1;
+  s.rate*=rounds;s.dmg/=rounds;
   return s;
 }
 

@@ -7,13 +7,19 @@
 // the shooting lab, and the units viewer — and each time the answer was "you
 // typed it wrong", which is a poor answer when the wrong form is the one
 // people keep typing.
-import { mergeHashQuery } from '../src/url.js';
+import { mergeHashQuery, mergeImpactRoute, normalizeRetiredSentry } from '../src/url.js';
 
 let failures = 0;
 const check = (name, cond, detail = '') => {
   if (cond) console.log(`  ok   ${name}`);
   else { console.error(`  FAIL ${name} ${detail}`); failures++; }
 };
+
+const impact = mergeImpactRoute('?sentry=quiver&preset=draft', '#impact');
+check('Impact links use the shared range', impact.hash === 'sentry');
+check('Impact links retain selected Sentry and draft', new URLSearchParams(impact.search).get('family') === 'quiver' && new URLSearchParams(impact.search).get('preset') === 'draft');
+check('Impact defaults to armour fixture', new URLSearchParams(impact.search).get('mode') === 'armour');
+check('Explicit target mode survives alias', new URLSearchParams(mergeImpactRoute('?mode=wall', '#impact').search).get('mode') === 'wall');
 
 console.log('lifting a query out of the fragment:');
 {
@@ -58,3 +64,5 @@ console.log('odd shapes:');
 
 console.log(failures ? `\n${failures} FAILURES` : '\nall url invariants hold');
 process.exit(failures ? 1 : 0);
+
+if(new URLSearchParams(normalizeRetiredSentry('?family=howitzer&unit=howitzer&preset=draft')).get('family')!=='needle')throw Error('Retired Needle route');

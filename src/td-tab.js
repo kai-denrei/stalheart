@@ -1,3 +1,12 @@
+import { makeOrdnanceShell } from './shell.js';
+import { firingFor } from './content/firing-defaults.js';
+import { METRES_PER_CELL, arcToMetres, metresToArc } from './core/stage-units.js';
+import { pickMissileTarget, missileLimits, stepMissileLock, missileCanFire } from './domain/missile-targeting.js';
+import { createRunContext } from './domain/run-context.js';
+import { createRunTimers } from './platform/run-timers.js';
+import { createMissilePool, launchDart, advanceDart } from './missiles.js';
+import { MISSILE_LAUNCH_ELEVATION } from './content/missile-defaults.js';
+import { renderWorkload, performanceSummary } from './render-workload.js';
 import { CONTENT } from './content/runtime.js';
 import { preloadSentryTerraformer, makeSentryTerraformer } from './terraformer.js';
 import { GAME_START_BIOMASS, SINK, tollFor, breachGrant, debriefAffordable, simOutcome } from './campaign.js';
@@ -46,7 +55,7 @@ import { ACHIEVEMENTS, ACHV_GROUPS, achievement, blankRun, earned, freshlyEarned
 import { applyFontPack, currentFontPack, FONT_NAMES,
   loadTypeFeel } from './fonts.js';
 import { SECONDARY_TOE, applySecondaryToe } from './units.js';
-import { UNITS, UNIT_NAMES, buildUnit, buildCreature, preloadMkcx, preloadServer, makeServerFixture, makeShieldShell, preloadContainer, makeContainerFixture, preloadFabricator, makeIsaoDrone, makeBulletCloud, makeRewardSolid, makeShellSolid, makeDebris, makeDotBurst, makePortalCloud, preloadPortalRing, makePortalRing, makeHeartCloud, makeDotEnemy, makeSurvivor, preloadAstronaut, preloadAstronauts, makeAstronaut, preloadTerraformer, makeTerraformerFixture } from './units.js';
+import { UNITS, UNIT_NAMES, buildUnit, buildCreature, preloadMkcx, preloadMork, preloadServer, makeServerFixture, makeShieldShell, preloadContainer, makeContainerFixture, preloadFabricator, makeIsaoDrone, makeBulletCloud, makeRewardSolid, makeShellSolid, makeDebris, makeDotBurst, makePortalCloud, preloadPortalRing, makePortalRing, makeHeartCloud, makeDotEnemy, makeSurvivor, preloadAstronaut, preloadAstronauts, makeAstronaut, preloadTerraformer, makeTerraformerFixture } from './units.js';
 import { LOOKS, LOOK_NAMES } from './looks.js';
 import { makeCellIndex } from './cellindex.js';
 import { CREATURE_TINTS, ENEMY_SPEC, INTROS, computeWavePlan, accentFor } from './enemyspec.js';
@@ -61,7 +70,7 @@ import { shotOf, muzzleOf, impactOf, tuneFor } from './sentryfx.js';
 import { makeTracerMesh, makeLightningMesh, makeSeekerMesh, aimSeeker,
   LANCE_LOOK as SHOT_LANCE_LOOK, THROW_LOOK as SHOT_THROW_LOOK } from './shotfx.js';
 import { SHIELD_TUNE, SHIELD_KNOBS, makeShield, charge as chargeShield,
-  deploy as deployShield, tickShield, restockShield, tapTower, towerOffline,
+  deploy as deployShield, tickShield, stepShieldFrame, restockShield, tapTower, towerOffline,
   stationDraw, waveReset as shieldWaveReset, shoveVec, shoveMag } from './shield.js';
 import { deepLink, wireDeepLink } from './deeplink.js';
 import { RESCUE_TUNE, makeRescue, placeSurvivors, stepBoard, stepGrab,
@@ -78,7 +87,7 @@ import { labLine, parseLabQuery } from './lab.js';
 import { bakeGalaxyCube } from './galaxybake.js';
 import { SKY_PRESET } from './galaxyseed.js';
 import { makeScore } from './score.js';
-import { TOWERS, TOWER_BY_KEY, MAX_TIER, upgradeCost, effectiveStats, pickTarget, shotInterval, unlockedTowerKeys, towerUnlockWave, TOWER_ORDER, HACK_GATED, starterTower, towerSound, ROSTER } from './towers.js';
+import { TOWERS, TOWER_BY_KEY, MAX_TIER, upgradeCost, effectiveStats as baseEffectiveStats, pickTarget, shotInterval, unlockedTowerKeys, towerUnlockWave, TOWER_ORDER, HACK_GATED, starterTower, towerSound, ROSTER } from './towers.js';
 import { makeEconomy, sellRefund } from './economy.js';
 import { pickTier } from './perftier.js';
 import { applyWeatheredMaterial } from './cine/materials.js';
@@ -94,7 +103,7 @@ import { radarBasis, radarProject, radarBearing, sweepAngle, radarPhosphor,
 import { BLOOM_GROUPS } from './bloomweights.js';
 import { A6_TUNE, magFor, makeA6, stepA6, arc as a6Arc, a6Line } from './heptapod.js';
 import { SENTRY_TUNE } from './sentry.js';
-import { MISSILE_TUNE, scaleMissile, makeLock, stepLock, launchMissile, stepMissile } from './lockon.js';
+import { makeLock } from './lockon.js';
 import { TOWER_LOOK_NAMES, DEFAULT_TOWER_LOOK, buildTowerLook, preloadLook, lookReady, setSentryTier } from './towerlooks.js';
 import { makeAudio } from './audio.js';
 import { DEATH_KEYS } from './audiomanifest.js';
@@ -1245,7 +1254,7 @@ export function initTdTab(root) {
 
   let ws = null;
   function resetWaveStats() {
-    ws = { t0: simTime, kills: {}, bySrc: { tank: 0, tower: 0, strike: 0 },
+    ws = { t0: runContext.time, kills: {}, bySrc: { tank: 0, tower: 0, strike: 0 },
       rams: 0, points0: score.points, maxMult: 1, leaks: 0,
       bins: new Array(16).fill(0) };
   }
@@ -1260,7 +1269,7 @@ export function initTdTab(root) {
     if (!ws) return;
     ws.kills[type] = (ws.kills[type] || 0) + 1;
     ws.bySrc[src] = (ws.bySrc[src] || 0) + 1;
-    ws.bins[Math.min(15, Math.floor((simTime - ws.t0) / 3))]++;
+    ws.bins[Math.min(15, Math.floor((runContext.time - ws.t0) / 3))]++;
     ws.maxMult = Math.max(ws.maxMult, eco.multiplier());
   }
 
@@ -1590,13 +1599,14 @@ export function initTdTab(root) {
   // RUN GENERATION. Deferred work started by one run must never land on the
   // next: a timer that repositions the tank is a timer that can reposition
   // somebody else's tank. Bumped by regenerate.
-  let runGen = 0;
+  const runContext = createRunContext();
+  const runTimers = createRunTimers(runContext);
   let deployCount = 0;
   let deploysDone = 0;   // berth exits completed — the director waits for the first
   // counted separately: a death-hold deploy is the one that must never
   // cross a run, and a fresh run's own deploy would mask it in a total
   let tankLostDeploys = 0;
-  const ctlState = (tag) => `CTL[${tag}] gen=${runGen} deploys=${deployCount}`
+  const ctlState = (tag) => `CTL[${tag}] gen=${runContext.generation} deploys=${deployCount}`
     + ` won=${player.won} down=${playerDown} next=${player.next}`
     + ` free=${player.freeMode} cur=${player.cur}`
     + ` auto=${autoMode} cruise=${cruise} deploying=${deployActive()}`
@@ -2323,7 +2333,7 @@ export function initTdTab(root) {
     // 2 world units, about THIRTY cells across. One tick settles it before
     // anything is drawn.
     heartSprite.userData.setHealth?.(heartHP / HEART_MAX);
-    if (heartSprite.userData.tick) heartSprite.userData.tick(simTime);
+    if (heartSprite.userData.tick) heartSprite.userData.tick(runContext.time);
     tmpN.set(hn[0], hn[1], hn[2]);
     heartSprite.quaternion.setFromUnitVectors(Y_AXIS, tmpN);
 
@@ -2331,7 +2341,7 @@ export function initTdTab(root) {
     // lift: the unit's own floor offset plus its hover profile
     const prof = MOVES[params.creature];
     const baseLift = creatureGeo ? 0.85 : (playerMesh.userData.lift ?? 0.05);
-    const lift = unitScale * (baseLift + (prof ? prof.hover(simTime) : 0));
+    const lift = unitScale * (baseLift + (prof ? prof.hover(runContext.time) : 0));
     let p = add3(player.pos, scale3(n, lift));
     // recoil, reworked: the TURRET takes the kick — it slams back with a
     // high-frequency shudder — while the hull only rocks (pitch below) and
@@ -2356,7 +2366,7 @@ export function initTdTab(root) {
       // sized off the CELL, not unitScale — measured on screen, unitScale
       // put the bubble five cells wide (the mkcx normalization rides it)
       shieldObj.scale.setScalar(cellSide * 0.85);
-      shieldObj.userData.tick(simTime, shield.t / shieldTune.cap);
+      shieldObj.userData.tick(t, shield.t / shieldTune.cap);
     } else if (shieldObj) shieldObj.visible = false;
     // marker floats above the wall tops so nothing on the map occludes it
     const mp = scale3(player.pos, 1 + params.wallHeight * 1.6);
@@ -3132,7 +3142,7 @@ export function initTdTab(root) {
   // called once per frame: steer, glide (creature-paced), respawn, absorb
   function advanceMotion(dt) {
     if (player.won || playerDown || player.next === -1) return;
-    simTime += dt;
+    runContext.advance(dt);
 
     // continuous steering while held; ANY key claims manual control —
     // and an engaged cruise keeps manual alive without touching a key
@@ -3254,7 +3264,7 @@ export function initTdTab(root) {
     // locomotion profile modulates the pace on top.
     // manual: motion only while W/S are held; auto: the creature's own pace
     const prof = MOVES[params.creature];
-    const pace = params.speed * speedBonus * (prof ? prof.speed(simTime) : 1)
+    const pace = params.speed * speedBonus * (prof ? prof.speed(runContext.time) : 1)
       * (1 - 0.65 * bumpFactor()); // the run-over drag
     player.prog += (pace * cellSide * dt) / player.segLen;
     while (player.prog >= 1 && !player.won) {
@@ -3291,7 +3301,6 @@ export function initTdTab(root) {
     updateSmoothDir(dt);
     checkAbsorb();
   }
-  let simTime = 0;
 
   // ram bump: running something over has WEIGHT — a short window where the
   // tank loses pace and the camera dips, like the suspension taking it.
@@ -5188,8 +5197,7 @@ export function initTdTab(root) {
         : `<b class="hk-lost">&#10005; TRACED &mdash; LOCKED OUT</b>`;
     }
     sfx.play(won ? 'tower_upgrade' : 'danger_alert');
-    const endingGen = runGen;
-    setTimeout(() => { if (endingGen !== runGen) return; hackEnding = false; closeHack(won); }, 1600);
+    runTimers.after(1600, () => { hackEnding = false; closeHack(won); });
   }
   function setHackGame(g) {
     if (!HACK_GAMES[g]) g = 'hdt';
@@ -5348,7 +5356,7 @@ export function initTdTab(root) {
     if (!sitrepEl || !ws) return;
     const total = Object.values(ws.kills).reduce((a, b) => a + b, 0);
     if (total === 0) return; // nothing happened; say nothing
-    const dur = Math.max(1, Math.round(simTime - ws.t0));
+    const dur = Math.max(1, Math.round(runContext.time - ws.t0));
     const top = Math.max(1, ...Object.values(ws.kills));
     const rows = Object.entries(ws.kills).sort((a, b) => b[1] - a[1])
       .map(([type, k]) => {
@@ -5425,8 +5433,8 @@ export function initTdTab(root) {
     const shieldBar = shieldUp()
       ? `<b class="sh-bar" style="--sh:${Math.max(0, Math.min(1, shield.t / shieldTune.cap))}">`
         + `◈ SHIELD ${Math.ceil(shield.t)}s</b> ${shieldPips}`
-      : (simTime < shield.coolUntil
-        ? `<span class="sh-cool">◈ SHIELD COOLING ${(shield.coolUntil - simTime).toFixed(1)}s</span> ${shieldPips}`
+      : (t < shield.coolUntil
+        ? `<span class="sh-cool">◈ SHIELD COOLING ${(shield.coolUntil - t).toFixed(1)}s</span> ${shieldPips}`
         : `<span class="sh-idle">◈ SHIELD</span> <b class="sh-ready">T</b> ${shieldPips}`);
     const alerts = [shieldBar,
       carryingRegen ? '⬤ REGEN CARRIED' : '',
@@ -5462,6 +5470,7 @@ export function initTdTab(root) {
     }
     // diegetic shell rack: the 3×3 turret dots ARE the ammo counter —
     // neon white loaded, faded grey spent (allies stay full: infinite ammo)
+    playerMesh?.userData.setAmmo?.(ammo);
     const dots = playerMesh && playerMesh.userData.ammoDots;
     if (dots) {
       for (let i = 0; i < dots.length; i++) {
@@ -5653,7 +5662,8 @@ export function initTdTab(root) {
     if (!lab.on) applySky();
     const t0 = performance.now();
     ctlLog('regenerate:before');
-    runGen++;
+    runTimers.clear();
+    runContext.begin();
     record('run.start', { seed: params.seed, mission: new URLSearchParams(location.search).get('mission') || 'defense', roster: ROSTER.id, points: params.points });   // anything the old run left in flight is now stale by number
     // a regenerate is a FRESH RUN: sector 1, towers gone, fresh purse.
     // (Round expansion never comes through here — expandRound reveals the
@@ -5868,7 +5878,8 @@ export function initTdTab(root) {
     // overwrites the campaign's supply rather than being overwritten by it
     startRescue();
     startRescue2();
-    shield.t = 0; shield.coolUntil = -Infinity;
+    shield.t = 0; shield.coolUntil = -Infinity; shield.taps.clear();
+    shield.rack=Math.min(shieldTune.rackCap,shieldTune.rackStart);shield.stationLeft=shieldTune.stationBudget;shieldDrops=0;
     resetTankRank();
     carryingRegen = false;
     speedBonus = 1;
@@ -5877,7 +5888,7 @@ export function initTdTab(root) {
     laserClock = 0;
     orbRng = mulberry32((params.seed ^ 0x0b0b5) >>> 0);
     respawnClock = 0;
-    simTime = 0;
+    runContext.resetClock();
 
     buildGeometry();
     buildActors();
@@ -6373,7 +6384,7 @@ export function initTdTab(root) {
           e.tacUntil = tNow + 0.5 + e.phase * 0.1;
           let covered = false;
           for (const tw of towers) {
-            const r = effectiveStats(tw).range * cellSide;
+            const r = effectiveStats(tw.def, tw.tier).range * cellSide;
             if (chord(graph.centers[tw.ci], e.pos) < r + cellSide * 1.2) { covered = true; break; }
           }
           if (!covered) e.tacMult = 1;
@@ -6855,7 +6866,7 @@ export function initTdTab(root) {
     ensureBeams().draw(i, {
       from, dir, len, heat: heatFrac,
       lift: lift ?? (1 + params.wallHeight * 0.5),
-      scale: cellSide, time: simTime, peak: BEAM_PEAK,
+      scale: cellSide, time: runContext.time, peak: BEAM_PEAK,
     });
   }
 
@@ -7136,7 +7147,7 @@ export function initTdTab(root) {
       dir = player.smoothDir.slice(); // turretless units fire straight ahead
     }
     // the Braille bullet, nose along the flight direction
-    const mesh = makeBulletCloud({ body: look().walkerHi, hi: 0xffffff });
+    const mesh = makeOrdnanceShell(2,'y');
     mesh.scale.setScalar(cellSide * 0.16);
     scene.add(mesh);
     projectiles.push({ pos: player.pos.slice(), dir, dist: 0, mesh });
@@ -7799,9 +7810,34 @@ export function initTdTab(root) {
   // the refusal comes from the module and is SHOWN, because three of the four
   // things S can do are refuse, and a dead key that says nothing is
   // indistinguishable from a broken one.
+  let shieldDrops=0;
+  function stepShieldDynamics(dt,now) {
+    const relays=[];
+    if(!playerDown && player.pos)for(const tw of towers){
+      if(tw.def.attack!=='slowfield')continue;
+      const range=effectiveStats(tw.def,tw.tier).range*cellSide;
+      if(a6Arc(graph.centers[tw.ci],player.pos)>range)continue;
+      relays.push(tw.id);
+      // Keep feedback at the tower's cadence; energy is continuous.
+      if(now >= (tw.nextTapFx ?? -Infinity)){
+        tw.nextTapFx=now+shotInterval(effectiveStats(tw.def,tw.tier).rate);
+        const from=towerMuzzle(tw,graph.centers[tw.ci]);
+        spawnLightning(from,player.pos,tw.def.color,now);
+      }
+    }
+    const station=!playerDown && player.pos && graph && dungeon.heart!=null
+      && a6Arc(player.pos,graph.centers[dungeon.heart])<cellSide*.55;
+    if(stepShieldFrame(shield,dt,now,{relays,station},shieldTune)){
+      shieldDrops++;
+      showToast(`<div class="wave-num">SHIELD DOWN</div>`
+        + `<div class="wave-role">${shieldTune.coolSecs}s before another charge will take</div>`,1400);
+      record('shield.drop',{wave,now,coolUntil:shield.coolUntil,relays:relays.length});
+    }
+  }
+
   function deployShieldNow() {
     if (player.won || playerDown || paused || deploy || !player.pos) return 'frozen';
-    const r = deployShield(shield, simTime, shieldTune);
+    const r = deployShield(shield, t, shieldTune);
     if (r === 'ok') {
       sfx.play('tank_pickup');
       pulseButton('#td-pad-shield');
@@ -7810,7 +7846,7 @@ export function initTdTab(root) {
     } else if (r === 'up') {
       showToast(`<div class="wave-role">the shield is already up &mdash; a charge cannot top it up</div>`, 1400);
     } else if (r === 'cooling') {
-      showToast(`<div class="wave-role">emitter cooling &middot; ${(shield.coolUntil - simTime).toFixed(1)}s</div>`, 1200);
+      showToast(`<div class="wave-role">emitter cooling &middot; ${(shield.coolUntil - t).toFixed(1)}s</div>`, 1200);
     } else {
       showToast(`<div class="wave-role">no shield charges &mdash; buy a case on the debrief</div>`, 1400);
     }
@@ -7925,7 +7961,7 @@ export function initTdTab(root) {
 
   function killProjectile(i) {
     scene.remove(projectiles[i].mesh);
-    projectiles[i].mesh.geometry.dispose();
+    projectiles[i].mesh.geometry.dispose();projectiles[i].mesh.material.dispose();
     projectiles.splice(i, 1);
   }
 
@@ -8134,9 +8170,9 @@ export function initTdTab(root) {
   // replacement on the far field after a beat; placement reuses the same
   // whim() stream, so a replayed seed regrows identically.
   const REGROW_TIME = 50; // s from pickup to the replacement appearing
-  const regrowQueue = []; // { type, t } in simTime
+  const regrowQueue = []; // { type, t } in runContext.time
   function stepRegrow() {
-    while (regrowQueue.length && simTime >= regrowQueue[0].t) {
+    while (regrowQueue.length && runContext.time >= regrowQueue[0].t) {
       const job = regrowQueue.shift();
       const spec = REWARD_TYPES.find((sp) => sp.type === job.type);
       const far = farCells();
@@ -8164,7 +8200,7 @@ export function initTdTab(root) {
           + `<div class="wave-role">${shieldTune.pickup}s — touch damage bounces off</div>`, 2200);
       }
       if (r.type === 'health' || r.type === 'regen' || r.type === 'shield') {
-        regrowQueue.push({ type: r.type, t: simTime + REGROW_TIME });
+        regrowQueue.push({ type: r.type, t: runContext.time + REGROW_TIME });
       }
       updateHud();
     }
@@ -8175,7 +8211,7 @@ export function initTdTab(root) {
       updateHud();
     }
     stepRegrow();
-    for (const orb of rewardMeshes.values()) orb.obj.userData.tick(simTime);
+    for (const orb of rewardMeshes.values()) orb.obj.userData.tick(runContext.time);
   }
 
   // --- enemy fire ------------------------------------------------------------
@@ -8213,15 +8249,13 @@ export function initTdTab(root) {
   function previewDestruction() {
     if (player.won || !playerMesh) return;
     destroyPlayer();
-    const previewGen = runGen;  // same rule as loseTank: a run owns its timers
-    setTimeout(() => {
-      if (previewGen !== runGen) return;     // the run it was previewing is gone
+    runTimers.after(DEATH_HOLD * 1000, () => {
       if (player.won || !playerMesh) return; // a real death happened meanwhile
       playerMesh.visible = true;
       playerDown = false;
       feel.hoverT = 0;
       landTankFeel(feel);   // it drops back in and settles
-    }, DEATH_HOLD * 1000);
+    });
   }
 
   // hover (or tap) a killer's icon on the last transmission: its dossier
@@ -8421,9 +8455,7 @@ export function initTdTab(root) {
     // and it used to fire regardless, repositioning a brand-new tank,
     // snapping the camera to orbit and toasting on a run that had lost
     // nothing. Measured, not supposed: ?ctlprobe=1.
-    const deathGen = runGen;
-    setTimeout(() => {
-      if (deathGen !== runGen) return;         // this belonged to a run that is over
+    runTimers.after(DEATH_HOLD * 1000, () => {
       if (player.won || !playerMesh) return;   // a real death happened meanwhile
       const n = berthIndexFor(playerHP);
       // the view the next hull will be driven in — chosen BEFORE the dash, so
@@ -8454,7 +8486,7 @@ export function initTdTab(root) {
           deployStart(n);   // no snapCamera: DEPLOY blends on from here
         },
       });
-    }, DEATH_HOLD * 1000);
+    });
   }
 
   // Respawn beside the HEART, not at the spawn gate. The gate is enemy
@@ -8749,8 +8781,8 @@ export function initTdTab(root) {
   // the choice is instant and the tank is never missing.
   function applyCreature() {
     const chosen = params.creature;
-    if (chosen === 'mkcx' || chosen === 'mkcx2') {   // both castings are async
-      preloadMkcx(chosen).then((ok) => {
+    if (chosen === 'mkcx' || chosen === 'mkcx2' || chosen === 'mork') {
+      (chosen === 'mork' ? preloadMork() : preloadMkcx(chosen)).then((ok) => {
         if (ok && params.creature === chosen) { buildActors(); placeActors(); }
       });
     }
@@ -9548,23 +9580,43 @@ export function initTdTab(root) {
   // and the numbers come from SENTRY_TUNE so the lab and the board cannot
   // drift apart.
   //
-  // What is NOT here is the lab's state machine. A tower already has
-  // pickTarget, a cooldown and a range from towers.js; giving it a second
-  // opinion about what it is shooting at would be two authorities on one
-  // question. The lab owns how a turret MOVES; the board owns what it
-  // moves toward.
+  // The board adapts world positions and actual articulation to shared
+  // missile engagement rules. Other weapons retain their existing target
+  // policy; damage, upgrades and cadence remain game-owned.
   const RAD = Math.PI / 180;
   const gunV = new THREE.Vector3();
+  function effectiveStats(def, tier) {
+    const stats = baseEffectiveStats(def, tier);
+    const config = CONTENT.missiles[def.key];
+    if (config) stats.range = config.maxRange / METRES_PER_CELL * (stats.range / def.range);
+    return stats;
+  }
+  const missileDistance = (from, to) => arcToMetres(a6Arc(from, to), cellSide);
+  function engagementConfig(tw) {
+    const def = tw.def;
+    return missileLimits(CONTENT.missiles[tw.key], baseEffectiveStats(def, tw.tier).range / def.range);
+  }
+  function acquireMissileTarget(tw, from, config) {
+    const i = pickMissileTarget(enemies, from, tw.missileTarget?.id, config, missileDistance,
+      e => e.alive && (!tw.a6 || !e.spec.rammable));
+    return tw.missileTarget = i < 0 ? null : enemies[i];
+  }
   function aimTower(tw, dt) {
     const ud = tw.obj.userData;
     const head = ud.head;
     const facing = ud.headFacing;
+    const config = CONTENT.missiles[tw.key] ? engagementConfig(tw) : null;
+    const acquired = config ? acquireMissileTarget(tw, graph.centers[tw.ci], config) : null;
+    if (config && (!acquired || !head || facing === undefined)) {
+      tw.lock = makeLock(); tw.aimErr = Infinity;
+      if (!acquired) tw.aim = undefined;
+    }
     if (!head || facing === undefined) return;
     tw.aimT = (tw.aimT ?? 0) - dt;
-    if (tw.aimT <= 0) {
+    if (config || tw.aimT <= 0) {
       tw.aimT = TRACK_EVERY;
       const eff = effectiveStats(tw.def, tw.tier);
-      const target = pickTarget(graph.centers[tw.ci], eff.range * cellSide, enemies, chord);
+      const target = config ? acquired : pickTarget(graph.centers[tw.ci], eff.range * cellSide, enemies, chord);
       if (target) {
         aimV.set(target.pos[0], target.pos[1], target.pos[2]);
         tw.obj.worldToLocal(aimV);
@@ -9598,7 +9650,9 @@ export function initTdTab(root) {
           // (The Sentry Workshop's own viewer agrees: it opens a Mortar at
           // 68 degrees and will not let it below 45.)
           let want;
-          if (tw.def.arc) {
+          if (tw.def.attack === 'seeker') {
+            want = MISSILE_LAUNCH_ELEVATION * RAD;
+          } else if (tw.def.arc) {
             const d = Math.max(cellSide * 0.5, chord(graph.centers[tw.ci], target.pos));
             want = Math.atan(4 * (cellSide * 2.3) / d);
           } else {
@@ -9647,17 +9701,12 @@ export function initTdTab(root) {
     // HOW FAR THE BARREL STILL IS from where it wants to be, in degrees —
     // the sentry range's own quantity, and the thing a weapon that fires
     // ALONG ITS BARREL has to consult before pulling the trigger.
-    tw.aimErr = Math.hypot(d, (tw.elev ?? 0) + (ud.pitchNode ? ud.pitchNode.rotation.x : 0))
+    tw.aimErr = Math.hypot(Math.atan2(Math.sin(tw.aim-head.rotation.y), Math.cos(tw.aim-head.rotation.y)), (tw.elev ?? 0) + (ud.pitchNode ? ud.pitchNode.rotation.x : 0))
       * 180 / Math.PI;
-    if (tw.def.lock) {
+    if (config) {
       if (!tw.lock) tw.lock = makeLock();
-      const err = tw.aimErr;
-      const has = tw.aim !== undefined && enemies.some((e) => e.alive
-        && chord(graph.centers[tw.ci], e.pos) <= effectiveStats(tw.def, tw.tier).range * cellSide);
-      stepLock(tw.lock, dt, has ? { id: tw.ci, off: err, range: 1 } : null, {
-        gateMrad: SENTRY_TUNE.lockGate, lockTime: SENTRY_TUNE.lockTime, drain: 1.6,
-        breakMrad: SENTRY_TUNE.lockBreak, minRange: 0, maxRange: Infinity,
-      });
+      stepMissileLock(tw.lock, dt, acquired,
+        acquired ? missileDistance(graph.centers[tw.ci], acquired.pos) : Infinity, tw.aimErr, config);
     }
   }
 
@@ -9745,113 +9794,37 @@ export function initTdTab(root) {
   // logic) without pulling on any stream something else is counting on.
   const a6Rng = mulberry32((params.seed >>> 0) ^ 0x0a600a6);
 
-  // --- the QUIVER's seekers ------------------------------------------------
-  // THE SENTRY LAB'S LAUNCHER, ON THE BOARD. Not a second implementation:
-  // the same lockon.js the sniper aims by hand and the range aims by drive,
-  // put through the same dimensional scaler. The board's world is the UNIT
-  // SPHERE, so a 3.5-cell reach is 0.157 radians — four thousand times
-  // smaller than the sniper's seven hundred metres — and a tune written in
-  // metres and seconds is simply wrong here. `scaleMissile` makes it right
-  // by dimension rather than by a second table of hand-picked numbers.
-  //
-  // tau is chosen so a full-reach flight takes about a second: long enough
-  // to see the arc, short enough that the launcher is not shooting at where
-  // something used to be.
-  const MSL_K = (3.5 * cellSide) / 700;
-  const TOWER_MSL = scaleMissile(MISSILE_TUNE, MSL_K, 1 / 5.5);
+  // Shared DART presentation; the board retains target selection and damage.
   const towerSeekers = [];
-  let seekerHits = 0, seekerLost = 0;
+  let missilePool=null, missilesDisposed=false;
+  let seekerHits=0,seekerLost=0;
+  createMissilePool({capacity:256}).then(pool=>{
+    if(missilesDisposed)pool.dispose();else missilePool=pool;
+  }).catch(error=>record('asset.missile.failed',{message:error.message}));
 
   function launchTowerSeeker(tw, from, target, tNow) {
-    const n = norm3(from);
-    const raw = sub3(target.pos, from);
-    const dir = norm3(sub3(raw, scale3(n, dot3(raw, n) * 0.35)));   // mostly flat, nose up
-    const m = launchMissile(from, dir, TOWER_MSL.launchSpeed, 0);
-    m.tid = target.id;
-    m.by = tw;
-    m.carry = 0;
-    m.launchRange = len3(raw);
-    // A MISSILE, NOT A PUFF OF DOTS (operator). makeBulletCloud is the
-    // board's idiom for a ROUND — a hot head and a couple of ghosts — and it
-    // read as "half-dotted" on a thing that is meant to be a Javelin
-    // climbing into the air. This is the same cone the sentry lab flies, so
-    // the launcher throws the same object in both places.
-    const mesh = new THREE.Mesh(
-      new THREE.ConeGeometry(cellSide * 0.11, cellSide * 0.6, 7),
-      new THREE.MeshLambertMaterial({
-        color: tw.def.color,
-        emissive: new THREE.Color(tw.def.color).multiplyScalar(0.5),
-      }));
-    mesh.position.set(from[0], from[1], from[2]);
-    scene.add(mesh);
-    m.mesh = mesh;
-    towerSeekers.push(m);
+    const config=CONTENT.missiles[tw.key];
+    if(!config || !missilePool?.available || tw.obj.userData.loading)return false;
+    const direction=towerBarrel(tw,norm3(from));
+    const scale=tw.lastMuzzle?.getWorldScale(new THREE.Vector3()).x ?? tw.obj.scale.x;
+    const m=launchDart(missilePool,{config,from,target:target.pos,direction,scale,sphere:true});
+    Object.assign(m,{tid:target.id,by:tw,p:from.slice()});
+    scene.add(m.mesh);towerSeekers.push(m);
+    return true;
   }
 
-  function stepTowerSeekers(dt, tNow) {
-    for (let i = towerSeekers.length - 1; i >= 0; i--) {
-      const m = towerSeekers[i];
-      const t = enemies.find((e) => e.id === m.tid && e.alive);
-      // the target died: the missile goes stupid and flies on, which is
-      // more honest than deleting it mid-air
-      const tp = t ? t.pos : [m.p[0] + m.v[0], m.p[1] + m.v[1], m.p[2] + m.v[2]];
-      const tv = t && t.vel ? t.vel : [0, 0, 0];
-      const h = TOWER_MSL.step;
-      m.carry += dt;
-      for (let k = 0; k < 400 && !m.spent && m.carry >= h - 1e-9; k++) {
-        m.carry -= h;
-        stepMissile(m, h, tp, tv, m.launchRange, TOWER_MSL);
-        if (t && m.t > TOWER_MSL.arm) {
-          const miss = Math.hypot(tp[0] - m.p[0], tp[1] - m.p[1], tp[2] - m.p[2]);
-          // the BOARD's own hit radius, not the warhead's: a missile that
-          // kills at a different distance from every other shot on the
-          // board is a board that cannot be reasoned about
-          if (miss <= cellSide * 0.7) {
-            const eff2 = effectiveStats(m.by.def, m.by.tier);
-            damageEnemy(t, tNow, eff2.dmg, true);
-            m.spent = true;
-            seekerHits++;
-          }
-        }
-      }
-      m.mesh.position.set(m.p[0], m.p[1], m.p[2]);
-      // NOSE ALONG THE FLIGHT. A cone models +Y, so the nose is rotated onto
-      // the velocity rather than the velocity onto the cone — and a Javelin
-      // that climbs and then dives should look like it is doing both.
-      if (!m.spent) {
-        tmpV.set(m.v[0], m.v[1], m.v[2]);
-        if (tmpV.lengthSq() > 1e-12) {
-          tmpV.normalize();
-          m.mesh.quaternion.setFromUnitVectors(Y_AXIS, tmpV);
-        }
-      }
-      // IT IS ALLOWED UNDER THE SURFACE. A top-attack round comes DOWN on
-      // something standing on the ground, so the last part of its dive is
-      // below the radius the ground sits at — and culling at exactly 1.0
-      // killed three seekers in four, each of them still closing and none
-      // of them further than a cell away. The floor is a third of a cell
-      // down, which is under the terrain and past any body on it.
-      const alt = len3(m.p);
-      const floor = 1 - cellSide * 0.35;
-      if (!(m.spent || alt < floor || m.t > TOWER_MSL.maxTime)) continue;
-      if (!m.spent) {
-        seekerLost++;
-        if (urlParams.get('plasmaprobe') === '1') {
-          const tgt = enemies.find((e) => e.id === m.tid && e.alive);
-          console.log(`SEEKERLOST t=${m.t.toFixed(2)} alt=${alt.toFixed(4)}`
-            + ` maxT=${TOWER_MSL.maxTime.toFixed(2)}`
-            + ` why=${alt < floor ? 'GROUND' : m.t > TOWER_MSL.maxTime ? 'TIMEOUT' : '?'}`
-            + ` target=${tgt ? 'alive' : 'gone'}`
-            + ` miss=${tgt ? (Math.hypot(tgt.pos[0] - m.p[0], tgt.pos[1] - m.p[1], tgt.pos[2] - m.p[2]) / cellSide).toFixed(2) + ' cells' : '-'}`
-            + ` speed=${(len3(m.v) / cellSide).toFixed(2)} cells/s`);
-        }
-      }
-      const burst = makeDotBurst(m.spent ? 0xffd27f : 0x6f8ea0, norm3(m.p), m.spent ? 22 : 10);
-      burst.scale.setScalar(cellSide * (m.spent ? 2.4 : 1.2));
-      burst.position.set(m.p[0], m.p[1], m.p[2]);
-      scene.add(burst); debris.push(burst);
-      scene.remove(m.mesh); disposeObj(m.mesh);
-      towerSeekers.splice(i, 1);
+  function stepTowerSeekers(dt,tNow) {
+    for(let i=towerSeekers.length-1;i>=0;i--){
+      const m=towerSeekers[i],target=enemies.find(e=>e.id===m.tid && e.alive);
+      const arrived=advanceDart(missilePool,m,dt,target?.pos ?? m.target);
+      m.p=m.pose.position;
+      if(!arrived)continue;
+      if(target){damageEnemy(target,tNow,effectiveStats(m.by.def,m.by.tier).dmg,true);seekerHits++;}
+      else seekerLost++;
+      const burst=makeDotBurst(target?0xffd27f:0x6f8ea0,norm3(m.p),target?22:10);
+      burst.scale.setScalar(cellSide*(target?2.4:1.2));burst.position.fromArray(m.p);
+      scene.add(burst);debris.push(burst);
+      missilePool.release(m.mesh);towerSeekers.splice(i,1);
     }
   }
 
@@ -9927,7 +9900,7 @@ export function initTdTab(root) {
     // HELD PAST THE TICK. The weapon fires six times a second and the hold
     // is longer than the gap, so what the player sees is one continuous
     // throw that ends when the tower stops firing rather than a strobe.
-    ent.until = tNow + 0.3;
+    ent.until = tNow + firingFor('plasma').beamHold;
     const a = scale3(from, 1);
     for (let k = 0; k < PLASMA_LINKS; k++) {
       const f0 = k / PLASMA_LINKS, f1 = (k + 1) / PLASMA_LINKS;
@@ -9966,7 +9939,7 @@ export function initTdTab(root) {
       ent = { links: makePlasmaLinks(tw, LANCE_LOOK), until: 0 };
       plasmaBeams.set(tw, ent);
     }
-    ent.until = tNow + (tw.def.burst ?? 0.6);
+    ent.until = tNow + firingFor('lancer').beamHold;
     // IT HUGS THE PLANET (operator: lasers "too often pierce through the
     // curvature and it looks uncanny"). It was drawn as a straight world
     // CHORD, and a chord across seven cells dives 0.49 CELLS below the
@@ -10050,50 +10023,41 @@ export function initTdTab(root) {
       tw.a6.mag = want;
       tw.a6.ammo = Math.max(0, Math.min(want, tw.a6.ammo));
     }
+    const config = engagementConfig(tw);
+    if (!tw.lock) tw.lock = makeLock();
+    let lockStepped = false;
     stepA6(tw.a6, dt, {
-      range, cellSide, tune: A6_TUNE, rand: a6Rng,
-      // HARD TARGETS ONLY (operator). The A6 carries eight rockets and takes
-      // seven seconds to reload; spending one on something the tank could
-      // have run over is the worst trade on the board. `rammable` is the
-      // board's own word for the soft tier — the same read the colour
-      // already carries — so this is the existing distinction, not a new one.
-      sense: (from) => {
-        let best = null, bd = Infinity;
-        for (const e of enemies) {
-          if (!e.alive || e.spec.rammable) continue;
-          const d = a6Arc(from, e.pos);
-          if (d < bd) { bd = d; best = e; }
-        }
-        return best ? { id: best.id, pos: best.pos, dist: bd, e: best } : null;
+      range, minRange: metresToArc(config.minRange, cellSide), cellSide, tune: A6_TUNE, rand: a6Rng,
+      // Retain a living hard target inside the same metre band used by the lab.
+      sense: from => {
+        const e = acquireMissileTarget(tw, from, config);
+        if (!e || tw.lock.id !== e.id) tw.lock = makeLock();
+        return e ? { id: e.id, pos: e.pos, e } : null;
       },
-      // ...AND IT LOCKS FIRST. The A6 has no turret to aim — its cells fire
-      // straight up — so what it locks with is TIME ON TARGET: how long it
-      // has held the same hard unit inside its envelope. Same lockon.js the
-      // sniper fills by hand and the Quiver fills with its drive.
-      ready: (seen) => {
-        if (!tw.lock) tw.lock = makeLock();
-        stepLock(tw.lock, dt, { id: seen.id, off: 0, range: 1 }, {
-          gateMrad: 1, lockTime: SENTRY_TUNE.lockTime, drain: 1.6,
-          breakMrad: 2, minRange: 0, maxRange: Infinity,
-        });
-        return tw.lock.locked;
+      ready: seen => {
+        const distance = missileDistance(tw.a6.pos, seen.pos);
+        stepMissileLock(tw.lock, dt, seen, distance, 0, config);
+        lockStepped = true;
+        return missileCanFire(tw.lock, seen, distance, 0, config, 0,
+          !!missilePool?.available && !tw.obj.userData.loading);
       },
       emit: (seen) => {
         const target = seen.e;
         if (!target || !target.alive) return;
         const p = tw.a6.pos;
         const n = norm3(p);
-        const muzzle = add3(scale3(p, 1 + params.wallHeight), scale3(n, cellSide * 0.5));
-        // A JAVELIN OUT OF A VERTICAL CELL (operator): up, forward, down.
-        // The board's homing shot flies a flat curve at the target, which is
-        // a guided bullet — this is the sentry lab's own seeker, the same
-        // lockon.js the sniper aims by hand, and its top-attack arc IS the
-        // weapon. Fire-and-forget: the lock drops with the cell.
+        const muzzle = towerMuzzle(tw, add3(scale3(p, 1 + params.wallHeight), scale3(n, cellSide * 0.5)));
+        // The shared DART flight leaves the actual vertical cassette socket.
+        // The board owns its target; the lock drops when the cell fires.
         launchTowerSeeker(tw, muzzle, target, tNow);
         tw.lock = makeLock();
         sfx.play(towerSound(tw.def), { dist: camDist(p) });
       },
     });
+    if (!lockStepped) tw.lock = makeLock();
+    if (tw.a6.target === null || tw.a6.state === 'home' || tw.a6.state === 'refill') {
+      tw.missileTarget = null; tw.lock = makeLock();
+    }
     tw.a6.steps = (tw.a6.steps || 0) + 1;
     // THE CASSETTE IS THE GAUGE (operator: "diegetic view of missiles
     // remaining"). The Workshop drew six readiness rings and six silo caps
@@ -10152,6 +10116,7 @@ export function initTdTab(root) {
   }
 
   function stepTowers(dt, tNow) {
+    if (dt <= 0) return;
     stepPlasmaBeams(tNow);
     stepTowerSeekers(dt, tNow);
     for (const tw of towers) {
@@ -10163,13 +10128,19 @@ export function initTdTab(root) {
       // head to aim. Everything it decides is heptapod.js's; everything it
       // DOES — the rocket, the sound, the model — is the board's.
       if (tw.a6) { stepWalker(tw, dt, tNow); continue; }
+      if(tw.def.attack==='slowfield' && towerOffline(shield,tw.id,tNow))continue;
       aimTower(tw, dt);
+      if(tw.key==='rotor'){
+        const spin=!!pickTarget(graph.centers[tw.ci],effectiveStats(tw.def,tw.tier).range*cellSide,enemies,chord);
+        if(spin!==!!tw.spinning)sfx.play('minigun_ready',{dist:camDist(graph.centers[tw.ci])});
+        tw.spinning=spin;
+      }
       tw.cooldown -= dt;
       if (tw.cooldown > 0) continue;
       const eff = effectiveStats(tw.def, tw.tier);
       const range = eff.range * cellSide;
       const tp = graph.centers[tw.ci];
-      let target = pickTarget(tp, range, enemies, chord);
+      let target = CONTENT.missiles[tw.key] ? tw.missileTarget : pickTarget(tp, range, enemies, chord);
       // the railgun does not shoot THROUGH walls: if the nearest pick is
       // occluded by high ground, take the nearest VISIBLE enemy instead
       if (target && tw.def.hitscan && !losClear(tw.ci, target.pos)) {
@@ -10185,6 +10156,9 @@ export function initTdTab(root) {
       // ...and a LAUNCHER waits for its lock. Everything else fires the
       // moment it has something in range.
       if (tw.def.lock && !(tw.lock && tw.lock.locked)) continue;
+      if (CONTENT.missiles[tw.key] && !missileCanFire(tw.lock, target,
+        missileDistance(tp, target.pos), tw.aimErr, engagementConfig(tw), tw.cooldown,
+        !!missilePool?.available && !tw.obj.userData.loading)) continue;
       // A LANCE WILL NOT FIRE INTO DIRT. It is a straight line stopped by
       // terrain, so a target behind a rise is a target it cannot reach —
       // and firing anyway spends a two-second burst on a beam that ends in
@@ -10211,6 +10185,7 @@ export function initTdTab(root) {
           if (los.len < need - cellSide * 0.3) continue;
         }
       }
+      if (tw.def.hitscan && (tw.aimErr ?? 99) > SENTRY_TUNE.tolerance) continue;
       tw.cooldown = shotInterval(eff.rate);
       // one line, every tower: the key IS the def key, unless the def says
       // otherwise — which the second roster's do, since there is no
@@ -10312,27 +10287,8 @@ export function initTdTab(root) {
         if (shotOf(tw.def).plasma) throwPlasma(tw, muzzle, at, tNow);
         else spawnBeam(muzzle, at, tw.def.color);
       } else if (atk === 'slowfield') {
-        // THE TAP. Park the hull in the field and this tower stops working on
-        // the crowd — it is being drained into your shield instead. The cost
-        // is real and it is DEFERRED: the tower stays out of order for
-        // tapOutage seconds after you drive away, so you cannot sip.
-        //
-        // `continue`, never `break`: the chain sits at the end of a
-        // `for (const tw of towers)` body, so a break would silently stop
-        // every tower after this one from firing at all.
-        if (!playerDown && player.pos && chord(tp, player.pos) <= range) {
-          const got = tapTower(shield, tw.id, tNow, dt, shieldTune);
-          // the picture is the explanation: the bolts point at the TANK, so
-          // you can see which tower you are draining and that it has stopped
-          // working on the horde
-          spawnLightning(muzzle, player.pos, tw.def.color, tNow);
-          if (got > 0) updateHud();
-          if (shieldProbeOn) {
-            console.log(`SHIELDPROBE tap tower=${tw.id} got=${got.toFixed(3)} t=${shield.t.toFixed(2)}`);
-          }
-          continue;   // no slowing from this tower this tick
-        }
-        if (towerOffline(shield, tw.id, tNow)) continue;   // still out of order
+        // Continuous shield transfer runs outside the attack cadence.
+        if (towerOffline(shield, tw.id, tNow)) continue;
         // THE FIELD IS UNIVERSAL, THE PICTURE IS THREE BOLTS. Every hostile
         // in range is still slowed — that is two numbers written on an
         // enemy and it costs nothing. What cost tower × enemy was the
@@ -10432,14 +10388,15 @@ export function initTdTab(root) {
 
   function spawnTowerShot(pos, dir, tw, eff, homing, arcTotal = 0) {
     const sfx2 = shotOf(tw.def);
-    const mesh = makeTracer(tw.def.color, sfx2.projPx ?? 5, sfx2.trail ?? 0);
+    const shell=tw.def.key==='mortar';
+    const mesh = shell?makeOrdnanceShell(cellSide*.28):makeTracer(tw.def.color, sfx2.projPx ?? 5, sfx2.trail ?? 0);
     const p0 = norm3(pos);
     const lift0 = 1 + params.wallHeight * 0.5;
     const attr = mesh.geometry.getAttribute('position');
-    for (let i = 0; i < attr.count; i++) {
+    for (let i = 0; !shell && i < attr.count; i++) {
       attr.setXYZ(i, p0[0] * lift0, p0[1] * lift0, p0[2] * lift0);
     }
-    attr.needsUpdate = true;
+    attr.needsUpdate = true;if(shell)mesh.position.set(p0[0]*lift0,p0[1]*lift0,p0[2]*lift0);
     scene.add(mesh);
     // a lobbed shell knows where it will land before it leaves the tube —
     // the marker on that cell is most of the mortar's feel: threat you can
@@ -10447,7 +10404,7 @@ export function initTdTab(root) {
     const landCi = arcTotal > 0
       ? cellIndex(norm3(add3(p0, scale3(dir, arcTotal)))) : -1;
     towerShots.push({
-      pos: p0, dir, dist: 0, mesh,
+      pos: p0, dir, dist: 0, mesh, shell,
       dmg: eff.dmg, splash: (eff.splash || 0) * cellSide, homing,
       range: eff.range * cellSide * 1.35,
       speed: (sfx2.projSpeed ?? 16) * cellSide, // per-tower tempo
@@ -10517,7 +10474,7 @@ export function initTdTab(root) {
       const lift = 1 + params.wallHeight * 0.5 + arc;
       // the shell SWELLS toward apex — nearer the top-down camera, and it
       // sells the height even from the chase cam
-      if (p.arcTotal > 0) p.mesh.material.size = p.px * (1 + 1.1 * (arc / p.arcH));
+      if (p.arcTotal > 0 && !p.shell) p.mesh.material.size = p.px * (1 + 1.1 * (arc / p.arcH));
       // the landing cell blinks while the shell is up: readable threat,
       // through the same pooled rings as everything else
       if (p.landCi >= 0) {
@@ -10528,12 +10485,17 @@ export function initTdTab(root) {
         }
       }
       // tracer: ghosts shift back one slot, the head takes the new point
+      if(p.shell){
+        const previous=p.mesh.position.clone();p.mesh.position.set(p.pos[0]*lift,p.pos[1]*lift,p.pos[2]*lift);
+        const direction=p.mesh.position.clone().sub(previous).normalize();if(direction.lengthSq()>0)p.mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),direction);
+      }else{
       const attr = p.mesh.geometry.getAttribute('position');
       for (let k = attr.count - 1; k > 0; k--) {
         attr.setXYZ(k, attr.getX(k - 1), attr.getY(k - 1), attr.getZ(k - 1));
       }
       attr.setXYZ(0, p.pos[0] * lift, p.pos[1] * lift, p.pos[2] * lift);
       attr.needsUpdate = true;
+      }
       // mortar detonates at the end of its arc, hit or not
       if (p.arcTotal > 0 && p.dist >= p.arcTotal) {
         detonate(p, tNow);
@@ -10657,6 +10619,8 @@ export function initTdTab(root) {
       isao = null;
     }
     for (const tw of towers) { scene.remove(tw.obj); disposeObj(tw.obj); }
+    for (const m of towerSeekers) missilePool?.release(m.mesh);
+    towerSeekers.length=0;
     towers.length = 0;
     towerByCell.clear();
     towerCells.clear();
@@ -11541,7 +11505,7 @@ export function initTdTab(root) {
   }
   function winRecords() {
     const bs = (rs && rs.bestShell) || { kills: 0 }, bk = (rs && rs.bestStrike) || { kills: 0 };
-    const tile = (n, label) => `<div class="dbf-tile"><b>${n}</b><span>${label}</span></div>`;
+    const tile = (n, label) => `<div class="dbf-tile dbf-record${n > 1000 ? ' dbf-record--rainbow' : ''}"><b>${n}</b><span>${label}</span></div>`;
     return `<div class="dbf-win"><div class="dbf-head">RECORDS</div><div class="dbf-tiles">`
       + tile(bs.kills, `most by one shell${bs.wave ? ` · w${bs.wave}` : ''}`)
       + tile(bk.kills, `most by one strike${bk.wave ? ` · w${bk.wave}` : ''}`)
@@ -11645,7 +11609,7 @@ export function initTdTab(root) {
     const by = (rs && rs.bySrc) || { tank: 0, tower: 0, strike: 0 };
     const now = { kills, tank: by.tank, tower: by.tower, strike: by.strike,
       earned: eco.earned, spent: eco.spent, hullsLost: run.hullsLost || 0,
-      heartHits: run.heartHits || 0, t: simTime, wave };
+      heartHits: run.heartHits || 0, t: runContext.time, wave };
     const prev = campPrev || { kills: 0, tank: 0, tower: 0, strike: 0, earned: 0, spent: 0,
       hullsLost: 0, heartHits: 0, t: 0, wave: 0 };
     campaign.push({
@@ -12093,6 +12057,31 @@ export function initTdTab(root) {
   // nothing. Half-second EMA so the digits are readable rather than jittery.
   const perfEl = root.querySelector('#td-perf');
   let perfOn = false, perfFrames = 0, perfAcc = 0, perfFps = 0;
+  let perfSample=null,perfDetails=false,perfSampleAt=-Infinity,perfGroupAt=-Infinity,perfGroups=[];
+  const perfCpu={enemies:0,towers:0,frame:0};
+  function performanceGroups(){
+    return renderWorkload([
+      ...TOWERS.map(def=>({label:def.label,objects:towers.filter(tw=>tw.key===def.key).map(tw=>tw.obj)})),
+      {label:'Tank',objects:playerMesh?[playerMesh]:[]},
+      {label:'Terraformer',objects:heartSprite?[heartSprite]:[]},
+      {label:'Enemies',objects:enemies.filter(e=>e.alive).map(e=>e.obj)},
+      {label:'Portals',objects:spawnPoints.filter(p=>p.alive).map(p=>p.obj)},
+      {label:'Beams / lightning',objects:[...beams.map(b=>b.mesh),...[...plasmaBeams.values()].flatMap(e=>e.links.map(b=>b.mesh))]},
+      {label:'Projectiles',objects:[...towerSeekers,...towerShots,...projectiles].map(p=>p.mesh)},
+      {label:'Debris / bursts',objects:debris},
+      {label:'Shield',objects:shieldObj?[shieldObj]:[]},
+      {label:'World / other',objects:[scene]},
+    ]);
+  }
+  perfEl?.addEventListener('pointerdown',e=>e.stopPropagation());
+  perfEl?.addEventListener('toggle',e=>{if(e.target.isConnected && e.target.tagName==='DETAILS')perfDetails=e.target.open;},true);
+  perfEl?.addEventListener('click',async e=>{
+    e.stopPropagation();
+    if(!e.target.closest('[data-copy-perf]'))return;
+    const summary=performanceSummary(perfSample);
+    try{await navigator.clipboard.writeText(summary);e.target.textContent='Copied';}
+    catch{const box=document.createElement('textarea');box.value=summary;box.readOnly=true;perfEl.append(box);box.focus();box.select();box.addEventListener('blur',()=>box.remove(),{once:true});}
+  });
   const PERF_KEY = 'ssg.td.perf';
   function setPerfOverlay(on, persist = true) {
     perfOn = !!on;
@@ -12103,6 +12092,7 @@ export function initTdTab(root) {
       if (perfOn && !perfEl.textContent) perfEl.textContent = 'measuring…';
     }
     renderer.info.autoReset = !perfOn;
+    if(!perfOn){for(const query of gpuPending)gl.deleteQuery(query);gpuPending.length=0;}
     if (persist) { try { localStorage.setItem(PERF_KEY, perfOn ? '1' : '0'); } catch { /* fine */ } }
     if (perfCtl) perfCtl.updateDisplay();
   }
@@ -12116,12 +12106,15 @@ export function initTdTab(root) {
   const gpuPending = [];
   let gpuOpen = null, perfGpu = 0, gpuAcc = 0, gpuN = 0;
   function gpuBegin() {
-    if (!perfOn || !gpuExt || gpuOpen) return;
+    if (!perfOn || !gpuExt || gpuOpen || gpuPending.length>=8) return;
     gpuOpen = gl.createQuery(); gl.beginQuery(gpuExt.TIME_ELAPSED_EXT, gpuOpen);
   }
   function gpuEnd() {
     if (!gpuOpen) return;
     gl.endQuery(gpuExt.TIME_ELAPSED_EXT); gpuPending.push(gpuOpen); gpuOpen = null;
+    if(gl.getParameter(gpuExt.GPU_DISJOINT_EXT)){
+      for(const query of gpuPending)gl.deleteQuery(query);gpuPending.length=0;gpuAcc=0;gpuN=0;perfGpu=0;return;
+    }
     for (let i = gpuPending.length - 1; i >= 0; i--) {
       const q = gpuPending[i];
       if (!gl.getQueryParameter(q, gl.QUERY_RESULT_AVAILABLE)) continue;
@@ -12138,12 +12131,25 @@ export function initTdTab(root) {
     perfFps = perfFps ? perfFps * 0.5 + fps * 0.5 : fps;
     if (gpuN) { const g = gpuAcc / gpuN; perfGpu = perfGpu ? perfGpu * 0.5 + g * 0.5 : g; gpuAcc = 0; gpuN = 0; }
     const r = renderer.info.render;
-    perfEl.innerHTML = `<b>${perfFps.toFixed(0)}</b> fps · ${(1000 / perfFps).toFixed(1)} ms`
+    perfEl.style.top=`${Math.max(48,statsEl.getBoundingClientRect().bottom+6)}px`;
+    if(performance.now()-perfGroupAt>=2000){perfGroupAt=performance.now();perfGroups=performanceGroups();}
+    const groups=perfGroups;
+    perfSample={wave,fps:perfFps,frameMs:1000/perfFps,gpuMs:gpuExt && perfGpu>0?perfGpu:null,
+      calls:r.calls,triangles:r.triangles,enemies:enemies.filter(e=>e.alive).length,
+      cpu:{enemies:perfCpu.enemies/perfFrames,towers:perfCpu.towers/perfFrames,frame:perfCpu.frame/perfFrames},groups};
+    perfCpu.enemies=perfCpu.towers=perfCpu.frame=0;
+    if(performance.now()-perfSampleAt>=5000){perfSampleAt=performance.now();record('performance.sample',perfSample);}
+    if(!perfEl.querySelector('textarea'))perfEl.innerHTML = `<b>${perfFps.toFixed(0)}</b> fps · ${(1000 / perfFps).toFixed(1)} ms`
       + (gpuExt ? ` · gpu ${perfGpu.toFixed(1)} ms` : '')
       + ` · <b>${r.calls}</b> calls · ${(r.triangles / 1000).toFixed(1)}k tris`
       + ` · ${(r.points / 1000).toFixed(1)}k pts`
       + (whRt ? ` · wh ${whRender.size}@${whRender.updateHz}` : '')
-      + (lab.on ? ` · <b>LAB</b> ×${lab.waveMult}` : '');
+      + (lab.on ? ` · <b>LAB</b> ×${lab.waveMult}` : '')
+      + `<details ${perfDetails?'open':''}><summary>Wave ${wave} · ${perfSample.enemies} enemies · workload</summary>`
+      + `<div>CPU ms: enemies ${perfSample.cpu.enemies.toFixed(1)} · towers ${perfSample.cpu.towers.toFixed(1)} · frame ${perfSample.cpu.frame.toFixed(1)}</div>`
+      + `<div>Scene estimates before culling; GPU cost varies by shader.</div>`
+      + groups.map(row=>`<div>${row.label} ×${row.objects}: ${row.batches} batches · ${(row.triangles/1000).toFixed(1)}k tris · ${(row.points/1000).toFixed(1)}k points</div>`).join('')
+      + `<button type="button" data-copy-perf>Copy performance</button></details>`;
     // the lab's line, every 2 s, for a headless run to grep
     labLineAcc += perfAcc;
     if (lab.on && labLineAcc >= 2) {
@@ -12177,7 +12183,7 @@ export function initTdTab(root) {
     const now = performance.now();
     const dt = Math.min((now - lastFrame) / 1000, 0.1); // clamp tab-switch gaps
     if (director && director.held) { lastFrame = now; return; }   // the capture steps the clock, not the loop
-    perfTick(dt);   // the readout rides the loop's OWN dt — it must not take a second one
+    perfTick(Math.max(0,(now-lastFrame)/1000));   // the readout rides the loop's OWN dt — it must not take a second one
     updateEngine(dt);
     lastFrame = now;
     // SIM fast-forward: K fixed-dt update passes per painted frame, and
@@ -12194,7 +12200,9 @@ export function initTdTab(root) {
       return;
     }
     gpuBegin();
+    const cpuStart=perfOn?performance.now():0;
     frame(dt, false);
+    if(perfOn)perfCpu.frame+=performance.now()-cpuStart;
     gpuEnd();
   }
 
@@ -12355,12 +12363,17 @@ export function initTdTab(root) {
     coachTick(dt);
     if (!frozen && eco) { ecoClockT += dt; if (eco.biomass >= CHEAPEST_TOWER) ecoAffordT += dt; }
     if (tutorialActive) tutorial.tick(dt);
+    stepShieldDynamics(dt,t);
     if (!frozen) {
+      let cpuStart=perfOn?performance.now():0;
       if (!(lab.on && lab.freezeEnemies)) updateEnemies(dt, t);
+      if(perfOn)perfCpu.enemies+=performance.now()-cpuStart;
       checkRewards();
       updateProjectiles(dt, t);
       updateLasers(dt, t);
+      cpuStart=perfOn?performance.now():0;
       stepTowers(dt, t);
+      if(perfOn)perfCpu.towers+=performance.now()-cpuStart;
       updateTowerShots(dt, t);
     }
     // MINES ARM THROUGH THE BUILD DOWNTIME, deliberately outside the block
@@ -12400,32 +12413,10 @@ export function initTdTab(root) {
     if (strikeGrace > 0) strikeGrace -= dt;
     if (shopMute > 0) shopMute -= dt;
     if (heartCalloutCd > 0) heartCalloutCd -= dt;
-    // THE HEART PAD. Stand on it and the shield fills, out of a budget that
-    // refills each wave. It costs no biomass — the cost is being at the heart
-    // instead of at the front, the same pull the regen charge already makes,
-    // and unlike the regen charge you get nothing for the trip but the bubble.
-    if (!playerDown && player.pos && shield.stationLeft > 0 && graph && dungeon.heart != null
-        && dist3(player.pos, graph.centers[dungeon.heart]) < cellSide * 0.55) {
-      const got = stationDraw(shield, dt, shieldTune);
-      if (got > 0) updateHud();
-      if (shieldProbeOn) {
-        console.log(`SHIELDPROBE station got=${got.toFixed(3)} left=${shield.stationLeft.toFixed(2)}`
-          + ` t=${shield.t.toFixed(2)}`);
-      }
-    }
     if (stationRing) {
       stationRing.material.opacity = shield.stationLeft > 0
-        ? 0.5 + 0.3 * Math.sin(simTime * 3)
+        ? 0.5 + 0.3 * Math.sin(runContext.time * 3)
         : 0.12;
-    }
-    if (shield.t > 0 && tickShield(shield, dt, simTime, shieldTune)) {
-      // THE DROP IS AN EVENT. The bubble quietly ceasing to exist was the one
-      // moment the player most needed to notice, and it had no sound and no
-      // toast — and now the 2s seam starts here, so it is also the moment the
-      // chain has to be timed from.
-      showToast(`<div class="wave-num">SHIELD DOWN</div>`
-        + `<div class="wave-role">${shieldTune.coolSecs}s before another charge will take</div>`, 1400);
-      updateHud();
     }
     if (rs) {
       rs.binClock += dt;
@@ -12829,7 +12820,7 @@ export function initTdTab(root) {
   applyLook();
   // a unit whose model loads asynchronously needs its bytes kicked off; it
   // renders the procedural fallback until they arrive
-  if (params.creature === 'mkcx' || params.creature === 'mkcx2') applyCreature();
+  if (['mkcx', 'mkcx2', 'mork'].includes(params.creature)) applyCreature();
 
   // ?walk=N teleports the wanderer N hops along the shortest route (demo)
   const walkN = parseInt(urlParams.get('walk') || '0', 10);
@@ -14329,7 +14320,7 @@ export function initTdTab(root) {
   {
     let saved = null;
     try { saved = localStorage.getItem(PERF_KEY); } catch { /* fine */ }
-    if (urlParams.get('fps') === '1' || saved === '1') setPerfOverlay(true);
+    if (urlParams.get('fps') === '1' || (urlParams.get('fps') !== '0' && saved !== '0')) setPerfOverlay(true,false);
     if (urlParams.get('fps') === '1') {
       console.log(`PERFOVERLAY on=${perfOn} el=${!!perfEl}`
         + ` hidden=${perfEl ? perfEl.classList.contains('hidden') : '?'}`
@@ -14363,10 +14354,10 @@ export function initTdTab(root) {
       console.log(`PERF tier=${tier.name} renderDpr=${renderer.getPixelRatio()} aa=${tier.antialias}`
         + ` wormhole=${whRender.size}@${whRender.updateHz} bloom=${tier.bloomScale}`
         + ` shell=${mobileShell}`);
-      // simTime only advances inside advanceMotion, so it is the honest
+      // runContext.time only advances inside advanceMotion, so it is the honest
       // answer to "is the driver live right now"
       console.log(`PERF build=${buildMode} frozenWorld=${buildFrozen()}`
-        + ` simTime=${simTime.toFixed(2)}`);
+        + ` simTime=${runContext.time.toFixed(2)}`);
       console.log(`PERF main calls=${r.calls} tris=${r.triangles} pts=${r.points}`
         + ` | radar=2D, no second WebGL context`
         + ` | scene objects=${objs} clouds=${clouds} cloudVerts=${points}`
@@ -15847,7 +15838,7 @@ export function initTdTab(root) {
       // twenty-four cells from the lane with nothing in its seven-cell reach
       // and reported "never fired", which says nothing about the weapon and
       // everything about where the probe put it.
-      const wants = ['plasma', 'lancer', 'quiver', 'mortar', 'howitzer'];
+      const wants = ['plasma', 'lancer', 'quiver', 'mortar', 'needle'];
       const sites = [];
       for (let i = 0; i < dungeon.tags.length; i++) {
         if (!placeError(i) && !towerByCell.get(i)) sites.push(i);
@@ -16376,7 +16367,7 @@ export function initTdTab(root) {
     ws.bySrc = { tank: 7, tower: 9, strike: 1 };
     ws.rams = 5; ws.leaks = 1; ws.maxMult = 1.65;
     ws.bins = [0, 2, 5, 4, 3, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-    ws.t0 = simTime - 42;
+    ws.t0 = runContext.time - 42;
     showSitrep();
   }
 
@@ -16697,7 +16688,7 @@ export function initTdTab(root) {
         + ` ${shield.t === shieldTune.cap ? 'OK' : 'WRONG'}`);
       // B
       shield.t = 0; shield.coolUntil = -Infinity; shield.rack = 2;
-      const now = simTime;
+      const now = runContext.time;
       const r1 = deployShield(shield, now, shieldTune);
       const upRefusal = deployShield(shield, now + 1, shieldTune);
       shield.t = 0;
@@ -16713,9 +16704,9 @@ export function initTdTab(root) {
       if (!slowTw) console.log('SHIELDPROBE C no slow tower on the board (add &stress=6:0)');
       else {
         shield.t = 0;
-        const got = tapTower(shield, slowTw.id, simTime, 1, shieldTune);
-        const offNow = towerOffline(shield, slowTw.id, simTime);
-        const offLater = towerOffline(shield, slowTw.id, simTime + shieldTune.tapOutage + 0.1);
+        const got = tapTower(shield, slowTw.id, runContext.time, 1, shieldTune);
+        const offNow = towerOffline(shield, slowTw.id, runContext.time);
+        const offLater = towerOffline(shield, slowTw.id, runContext.time + shieldTune.tapOutage + 0.1);
         console.log(`SHIELDPROBE C tap got=${got.toFixed(2)} offline-now=${offNow}`
           + ` offline-after-outage=${offLater} ${got > 0 && offNow && !offLater ? 'OK' : 'WRONG'}`);
       }
@@ -16750,7 +16741,7 @@ export function initTdTab(root) {
       if (!graph || !player.pos) { console.log('SHOVEPROBE no board'); return; }
       // THE CLOCK ONLY RUNS WHILE THE TANK IS DRIVING. advanceMotion returns
       // early on `player.next === -1`, so a probe that merely unpauses the
-      // board measures a frozen one: simTime stays at 0.00, the creature step
+      // board measures a frozen one: runContext.time stays at 0.00, the creature step
       // never runs, and the shove it just wrote never decays. Put the machine
       // on the road and leave it there for the probe's whole duration —
       // AUTO drives itself, which is what this needs and what a player who
@@ -16790,7 +16781,7 @@ export function initTdTab(root) {
       enemies.push(e);
       const lane = [...e.pos];
       e.shove = { dir: shoveVec(e.pos, player.pos, player.heading), t: shieldTune.shoveLife };
-      e.stagUntil = simTime + shieldTune.shoveStun;
+      e.stagUntil = runContext.time + shieldTune.shoveStun;
       const peak = shoveMag({ t: shieldTune.shoveLife }, shieldTune) * cellSide;
       ehp0 = e.hp;
       console.log(`SHOVEPROBE planted a hard ${hardType} at cell ${near}, shield=${shield.t.toFixed(1)}s`);
@@ -16798,7 +16789,7 @@ export function initTdTab(root) {
         const away = dist3(e.pos, lane);
         console.log(`SHOVEPROBE thrown ${away.toFixed(4)} of ${peak.toFixed(4)}`
           + ` shoveT=${e.shove ? e.shove.t.toFixed(2) : 'gone'} prog=${e.prog.toFixed(3)}`
-          + ` simTime=${simTime.toFixed(2)} paused=${paused} alive=${e.alive}`
+          + ` simTime=${runContext.time.toFixed(2)} paused=${paused} alive=${e.alive}`
           // ehp is REPORTED, not asserted. The probe drives the tank so the
           // clock runs, and a driving tank shoots — so the body loses health
           // to the guns, which says nothing about the shove. What the shove
@@ -16812,10 +16803,10 @@ export function initTdTab(root) {
         // on a working shove, with the offset going UP between the two reads.
         // Bar it from being shoved again and the decay is the only thing left
         // moving, which is what this beat is actually asking about.
-        e.touchCd = simTime + 999;
+        e.touchCd = runContext.time + 999;
         setTimeout(() => {
           console.log(`SHOVEPROBE back shove=${e.shove ? `still held ${e.shove.t.toFixed(2)}` : 'decayed'}`
-            + ` simTime=${simTime.toFixed(2)} next=${player.next}`
+            + ` simTime=${runContext.time.toFixed(2)} next=${player.next}`
             + ` hull=${playerHP}/${hp0} combo=${ramCombo}/${combo0}`
             + ` alive=${e.alive}${e.alive ? '' : ' (a tower or the heart got it — not the shove)'}`
             + ` ${!e.shove && playerHP === hp0 && ramCombo === combo0 ? 'OK' : 'WRONG'}`);
@@ -17406,16 +17397,76 @@ export function initTdTab(root) {
   // Tests use the real commands/transitions, and inspect serializable state.
   if (urlParams.get('acceptance') === '1') {
     window.__stalheartTest = {
-      state: () => ({ round, wave, runGen, heart: heartHP, hulls: playerHP,
+      state: () => ({ round, wave, runGen: runContext.generation, heart: heartHP, hulls: playerHP,
         biomass: eco.biomass, towers: towers.length, won: player.won, paused,
         roster: ROSTER.id, mission: missionOn, buildMode,
+        playerAsset: playerMesh?.userData.asset || params.creature,
+        playerAssetReady: !playerMesh?.userData.loading,
+        playerModelStats: playerMesh?.userData.modelStats,
         heartAsset: heartSprite?.userData.asset || params.heartLook,
         heartAssetState: heartSprite?.userData.assetState,
+        performance:perfSample,shieldClock:t,motionClock:runContext.time,shield:{seconds:shield.t,rack:shield.rack,cooldown:Math.max(0,shield.coolUntil-t),drops:shieldDrops,visible:shieldObj?.visible},
+        cannonHeat,ammo,cannonColor:playerMesh?.userData.heatSleeve?.material.color.getHex(),
+        engagement:towers.filter(tw=>CONTENT.missiles[tw.key]).map(tw=>({key:tw.key,config:engagementConfig(tw),
+          target:tw.missileTarget?.id??null,lock:tw.lock,aim:tw.aimErr,cooldown:tw.cooldown,
+          ammo:tw.a6?.ammo,fired:tw.a6?.fired,trips:tw.a6?.trips,walkerState:tw.a6?.state})),
+        missileReady:!!missilePool,missilePool:missilePool?.stats(),seekerHits,seekerLost,
+        missiles:towerSeekers.map(m=>({key:m.by.key,config:m.config,t:m.t,name:m.mesh.name,
+          position:m.mesh.position.toArray(),ignition:m.mesh.getObjectByName('EXHAUST_FX').visible})),
         drawCalls: renderer.info.render.calls,
         playerPosition: player.pos.slice(), playerCell: player.cur, deploying: !!deploy,
         playerBlocked: freeBlocked(player.pos),
         camp: berths.map(b => ({ ...b, open: dungeon.tags[b.ci] !== BLOCKED && dungeon.tags[b.exit] !== BLOCKED,
           clearance: dist3(graph.centers[b.exit], graph.centers[dungeon.heart]) - pedestalRadius() })) }),
+      shieldScenario: () => {
+        endShot();dismissIntro();if(tutorialActive)endTutorial();paused=true;
+        for(const e of enemies){e.alive=false;scene.remove(e.obj);}spawnQueue.length=0;
+        const ci=dungeon.tags.findIndex((tag,i)=>!placeError(i) && !towerByCell.has(i));
+        if(ci<0)return false;
+        const tw=commitTower('relay',ci,0);player.pos=graph.centers[ci].slice();
+        shield.t=0;shield.coolUntil=-Infinity;shield.rack=2;shield.stationLeft=0;shield.taps.clear();shieldDrops=0;
+        return tw.id;
+      },
+      shieldAdvance: seconds => {for(let left=seconds;left>1e-9;){const dt=Math.min(1/60,left);left-=dt;t+=dt;stepShieldDynamics(dt,t);stepTowers(dt,t);updateBeams(dt);}updateHud();placeActors();},
+      leaveRelay: () => {player.pos=player.pos.map(v=>-v);},
+      relayOffline: id => towerOffline(shield,id,t),
+      deployShield: () => {const was=paused;paused=false;const result=deployShieldNow();paused=was;return result;},
+      fireShell: () => fire(),
+      showRecordTest: () => {
+        rs.bestShell={kills:1000};rs.bestStrike={kills:1001};run.bestStreak=999;rs.maxCombo=1200;
+        renderAnalysis(false);
+      },
+      missileScenario: key => {
+        endShot();dismissIntro();if(tutorialActive)endTutorial();paused=true;
+        clearTowers();for(const e of enemies){e.alive=false;scene.remove(e.obj);}enemies.length=0;spawnQueue.length=0;
+        const ci=dungeon.tags.findIndex((tag,i)=>!placeError(i) && !towerByCell.has(i));
+        if(ci<0)return false;
+        const tw=commitTower(key,ci,0);
+        for(const id of [-901,-902])enemies.push({id,alive:true,hp:1000,spec:{rammable:false},pos:graph.centers[ci].slice(),obj:new THREE.Group()});
+        return !!tw;
+      },
+      missileTargets: distances => {
+        const tw=towers.find(tw=>CONTENT.missiles[tw.key]);if(!tw)return;
+        const from=norm3(tw.a6?.pos || graph.centers[tw.ci]);
+        const ref=Math.abs(from[1])<.9?[0,1,0]:[1,0,0],forward=norm3(cross3(from,ref));
+        for(let i=0;i<2;i++){
+          const e=enemies.find(e=>e.id===-901-i);if(!e)continue;
+          const angle=metresToArc(distances[i],cellSide);e.alive=true;
+          e.pos=add3(scale3(from,Math.cos(angle)),scale3(forward,Math.sin(angle)));
+        }
+      },
+      missileAdvance: seconds => {for(let left=seconds;left>1e-9;){const dt=Math.min(1/60,left);left-=dt;t+=dt;stepTowers(dt,t);}},
+      fireMissile: key => {
+        if(!CONTENT.missiles[key] || !lookReady(params.towerLook) || !missilePool?.available)return false;
+        const ci=dungeon.tags.findIndex((tag,i)=>!placeError(i) && !towerByCell.has(i));
+        if(ci<0)return false;
+        const tw=commitTower(key,ci,0);
+        if(tw.obj.userData.pitchNode)tw.obj.userData.pitchNode.rotation.x=-MISSILE_LAUNCH_ELEVATION*Math.PI/180;
+        const from=towerMuzzle(tw,graph.centers[ci]);
+        const up=norm3(from),ref=Math.abs(up[1])<.9?[0,1,0]:[1,0,0],forward=norm3(cross3(up,ref));
+        const target={id:-1000,pos:add3(scale3(up,Math.cos(cellSide*3)),scale3(forward,Math.sin(cellSide*3)))};
+        return launchTowerSeeker(tw,from,target,runContext.time);
+      },
       openBuildMenu: () => {
         endShot(); dismissIntro(); if (tutorialActive) endTutorial();
         const ci = dungeon.tags.findIndex((tag, i) => !placeError(i) && !towerByCell.has(i));
@@ -17444,6 +17495,7 @@ export function initTdTab(root) {
   animate();
 
   return {
+    dispose() { active = false; runTimers.dispose(); runContext.dispose(); missilesDisposed=true; missilePool?.dispose(); setPerfOverlay(false,false); },
     setActive(on) {
       active = on;
       if (!on) stopEngine(0.1, true); // quiet: leaving the tab is not a landing

@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "2026-09-08-sniper-shared-sentries",
+  "date": "2026-09-08",
+  "type": "change",
+  "status": "resolved",
+  "title": "Bring Sniper into the numbered Sentry roster and shared weapon presentation",
+  "context": "Owner wants Sniper to become a game within the game, using the same numbered weapons and effects before tuning its environment. Its independent five-weapon catalog, fixed Lancer model and old Javelin guidance/presentation had drifted from the game and Sentry lab.",
+  "outcome": "Sniper now offers all eight numbered Sentries via the shared selector and keys 1–8, loads each pinned model/tier, uses shared Sentry sound cues and FX working packages, and derives kind, damage, cadence, reach, splash and pierce from shared game inputs. Quiver and Heptapod use the existing DART pool, launch snapshots, flight profiles, arrival and engagement/lock rules; the scope supplies manual aim in converted degrees. Heptapod retains shared cassette sizes/salvo/reload timing for stationary manual operation; the board walker still owns its travel/home loop. Relay is a non-damaging slow field, Lancer pierces and lobbers resolve nearby bodies through shared splash radii. Tracers, beams, lightning, muzzle and impact effects use shared builders. Sniper imports and reviews the same canonical per-Sentry FX package; explicit draft preview retains weapon selection and normal launches remain isolated. Default target range/zero are 20 m and magnification 2x to match shared engagement metres; longer environment experiments remain possible without extending weapon reach. Scope wind, gravity, drag, sway, breath, target exercise and manual hold remain stage-specific rules, not a claim of full board-combat parity. The old runtime weapon catalog was retired; historical numerical fixtures moved to test-only data and ballistics moved into a pure domain owner behind a facade. Reset clears flights, locks and falling plates; async model loads are guarded; disposal releases frame/listener/audio/model/pool/sky/post-processing ownership. No saved project draft was promoted and no sniper replacement, factory or automation progression was introduced.",
+  "alternatives": [
+    "Keeping Javelin as a separate weapon was rejected because the accepted DART presentation and numbered roster supersede it; legacy links normalize to Quiver.",
+    "Scaling missile reach to the old 700 m scene would undermine the shared metre contract; the initial exercise moved to 20 m instead.",
+    "An acceptance probe initially returned a GUI controller that CDP could not serialize; commands now return no controller references.",
+    "A blind-zone test exposed a null-candidate comparison in manual launch eligibility; missing candidate and target now explicitly refuse fire before reading angular error."
+  ],
+  "evidence": [
+    "npm test: 74 test programs pass, including shared manual-weapon derivation and historical ballistic solver invariants.",
+    "npm run check: source syntax/identity, 26 pure-layer modules, pinned kernel/assets and preset validation pass.",
+    "npm run test:browser: full source acceptance passes; default smoke coverage now includes Sniper.",
+    "node scripts/browser-test.mjs --sniper: all eight number-key selections, model/profile parity, firing, Relay support, both upward DART variants, blind-zone refusal, pool reset, draft import/preview/isolation and repeat disposal pass.",
+    "docs/SNIPER.md documents shared ownership and remaining stage-specific behavior."
+  ],
+  "supersedes": []
+}

@@ -4,6 +4,10 @@ Drive the tank. Defend the heart. Hunt the gates. Reclaim a planet built on an i
 
 Stalheart is the independently maintained game extracted from [spherical-stalberg-grid](https://github.com/kai-denrei/spherical-stalberg-grid). The original Git history is retained. The eight numbered Sentries are the shared game/lab roster; rescue and raid remain playable. See [the Sentry catalog](docs/SENTRIES.md).
 
+[Play Stalheart](https://kai-denrei.github.io/stalheart/) · [Workshop](https://kai-denrei.github.io/stalheart/labs.html)
+
+For a separate rocket-landing prototype, use the [planet compatibility handoff](docs/ROCKET-PLANET.md).
+
 ## Run
 
 Requires Node 22 or newer and no npm dependencies.

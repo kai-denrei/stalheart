@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "id": "2026-09-08-sniper-trace-centred-lancer",
+  "date": "2026-09-08",
+  "type": "change",
+  "status": "resolved",
+  "title": "Readable Needle shot traces and centred Lancer optics",
+  "context": "The owner could not follow long-distance Needle shots to correct aim, and reported the Lancer starting high then flattening. Lancer also needed a reticle related to Quiver without lock behavior.",
+  "outcome": "Needle now samples its actual fixed-step flight into a bounded visual trace with a bright pixel-sized head and 1.5-second afterimage, adjustable from zero to three seconds. Visibility toggle, expiry and reset own its lifetime. Lancer scope height is independent of animated muzzle height, ballistic recoil/hold offsets are removed from that optic, and fixed circular brackets replace the mil ruler without lock indicators. A steady central emission glow keeps the head-on ribbon visible. Projectile speed, weapon reach and shared damage remain unchanged.",
+  "alternatives": [
+    "Do not slow Needle to make its tracer visible; retain the real trajectory briefly instead.",
+    "Exact head-on ribbons collapse visually; the scope adds a small emission glow beyond the near plane, rather than offsetting the beam upward.",
+    "A reset browser assertion raced the next target acquisition frame; the test now snapshots reset state atomically."
+  ],
+  "evidence": [
+    "npm test: 75 test programs passed.",
+    "npm run check and npm run build passed.",
+    "npm run test:browser passed full source suite.",
+    "Sniper source/release browser checks exercise 70 m trace retention, visibility and expiry, initial/two-second Lancer centring, reticle identity, audio, reset and draft isolation.",
+    "artifacts/browser-dist/sniper-lancer-start.png and sniper-needle-trace.png visually inspected."
+  ],
+  "supersedes": []
+}

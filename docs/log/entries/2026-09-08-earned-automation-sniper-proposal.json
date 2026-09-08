@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "2026-09-08-earned-automation-sniper-proposal",
+  "date": "2026-09-08",
+  "type": "decision",
+  "status": "proposed",
+  "title": "Prototype an earned automation opening and a dedicated sniper Sentry",
+  "context": "Owner wants a satisfying sniper tower and suggests replacing Howitzer with Needle or Railgun. Owner proposes a slow opening with only Isao and Tank, manual turret operation inspired by Sniper Lab, Isao constructing the Terraformer/Stalheart, and chip production subsequently enabling turret automation. This extends the prior build-capacity ideation without selecting its final rules.",
+  "outcome": "Retain two connected playability experiments after architecture/parity: compare Needle and Railgun for a deliberate, readable sniper shot; evaluate manual weapons before site establishment and chip-enabled automation so powerful autonomous towers feel earned. Keep operator aiming/input separate from target acquisition commands while sharing firing eligibility, cooldown, projectile and damage rules. Decide later whether chips are a one-time unlock, per-turret component or production constraint. No roster, early-game tutorial, build prerequisites, factories, economy or progression was changed. Current history records retiring Needle/Railgun in the numbered-roster migration; no current entry found for this chip-factory opening. The upstream viewer currently lists Needle, Railgun and Howitzer, but their assets were not downloaded into gameplay.",
+  "alternatives": [
+    "Replace Howitzer with Needle after a side-by-side manual-fire prototype.",
+    "Replace Howitzer with Railgun after a side-by-side manual-fire prototype.",
+    "Test manual-to-automatic progression separately from prepared sites and power capacity before combining constraints."
+  ],
+  "evidence": [
+    "Owner proposal in this session, 2026-09-08.",
+    "docs/log/entries/2026-09-07-numbered-sentry-catalog.json",
+    "docs/log/entries/2026-09-08-playtest-progression-build-capacity.json",
+    "https://jelaludo.github.io/SentryTowers_A6/sentries/ retrieved 2026-09-08; family selector includes Needle, Railgun and Howitzer."
+  ],
+  "supersedes": []
+}

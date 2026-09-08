@@ -111,7 +111,7 @@ console.log('who owns which colour:');
     resolveImpactColors(SENTRY_FX.plasma.impact, { surface: SURF, weapon: WEAPON }).splash
       === SENTRY_FX.plasma.impact.colors.splash);
   check('a weapon with no splash colour gets the WEAPON, not a constant',
-    resolveImpactColors(SENTRY_FX.howitzer.impact, { surface: SURF, weapon: WEAPON }).splash
+    resolveImpactColors(SENTRY_FX.mortar.impact, { surface: SURF, weapon: WEAPON }).splash
       === WEAPON);
   check('sparks still come off the SURFACE where unnamed',
     resolveImpactColors(SENTRY_FX.rotor.impact, { surface: SURF, weapon: WEAPON }).debris
@@ -120,8 +120,8 @@ console.log('who owns which colour:');
 
 console.log('tune folding:');
 {
-  const folded = tuneFor(SENTRY_FX.howitzer.impact);
-  check('a delta wins over the base', folded.ringEnd === SENTRY_FX.howitzer.impact.tune.ringEnd);
+  const folded = tuneFor(SENTRY_FX.mortar.impact);
+  check('a delta wins over the base', folded.ringEnd === SENTRY_FX.mortar.impact.tune.ringEnd);
   check('everything else is the base', folded.sparkLife === IMPACT_TUNE.sparkLife);
   check('the base is not mutated', IMPACT_TUNE.ringEnd !== folded.ringEnd);
   check('no profile is required to have a tune', Object.keys(tuneFor(SENTRY_FX.relay.impact)).length > 0);

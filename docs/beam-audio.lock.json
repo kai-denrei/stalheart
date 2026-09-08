@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "sourcePath": "assets/audio/src/Tower_Laser_beam-05.wav",
+  "sourceSha256": "c22216b237cbecbe79bc3223dd79ee0d5348e112a0e1b6389c359a7c0c3828a9",
+  "derivation": "Mono 44.1 kHz; 1.0\u20132.4 s sustain; 120 ms equal-power overlap loop; PCM16",
+  "files": [
+    {
+      "path": "assets/audio/sentry_beam_sustain.wav",
+      "sha256": "fa809c11ec5192091aed67f679f5f3d78d775e42905a666154838b84c604693b",
+      "bytes": 112940
+    }
+  ]
+}

@@ -1,3 +1,7 @@
+import { makeOrdnanceShell } from './shell.js';
+import { createWeaponVoice } from './weapon-voice.js';
+import { firingFor } from './content/firing-defaults.js';
+import { makeBeamShot } from './shotfx.js';
 import { storage as localStorage } from './storage.js';
 // units-tab.js — a carousel for looking at one unit at a time, up close,
 // and turning it over.
@@ -11,11 +15,14 @@ import { storage as localStorage } from './storage.js';
 // WebGL context each and browsers cap those in the teens; a carousel costs
 // one context no matter how long the roster grows.
 import * as THREE from '../vendor/three.module.js';
+import { CONTENT } from './content/runtime.js';
+import { MISSILE_LAUNCH_ELEVATION } from './content/missile-defaults.js';
+import { createMissilePool, launchDart, advanceDart } from './missiles.js';
 import { shotOf } from './sentryfx.js';
 import { OrbitControls } from '../vendor/OrbitControls.js';
 import { GLTFExporter } from '../vendor/GLTFExporter.js';
 import { ENEMY_SPEC } from './enemyspec.js';
-import { buildUnit, preloadMkcx, makeDebris, makeDotBurst, makeBulletCloud,
+import { buildUnit, preloadMkcx, preloadMork, makeDebris, makeDotBurst, makeBulletCloud,
   makeDotEnemy, makeRewardSolid, makeShellSolid, makePortalCloud,
   preloadServer, makeServerFixture, preloadContainer, makeContainerFixture,
   preloadFabricator, makeFabricatorDrone, makeIsaoDrone } from './units.js';
@@ -24,7 +31,7 @@ import { TANK_FEEL, TANK_FEEL_KNOBS, formatFeelCode, makeTankFeel, stepTankFeel,
 import { FEEL, loadFeel, saveFeel, resetFeel } from './feelstore.js';
 import { CREATURE_TINTS, accentFor } from './enemyspec.js';
 import { buildTowerLook, TOWER_LOOK_NAMES, DEFAULT_TOWER_LOOK, preloadLook } from './towerlooks.js';
-import { TOWER_BY_KEY, TOWERS } from './towers.js';
+import { TOWER_BY_KEY, TOWERS, effectiveStats } from './towers.js';
 import { LOOKS } from './looks.js';
 import { makeBloom } from './postfx.js';
 import { makeAudio } from './audio.js';
@@ -117,7 +124,12 @@ export function initUnitsTab(root) {
   scene.add(fxObj);
   const fx = [];              // live particles
   let rangeRing = null;       // the reach, drawn while previewing
+  let missilePool=null,missilesDisposed=false,missileIndex=0;
+  const missiles=[];
+  createMissilePool().then(pool=>{if(missilesDisposed)pool.dispose();else missilePool=pool;})
+    .catch(error=>{root.querySelector('#units-note').textContent=`Missile kit failed to load: ${error.message}`;});
   let fireLeft = 0;           // seconds of preview remaining
+  const heldBeams=[];
   let fireGap = 0;            // seconds until the next shot in the burst
   // One board cell IS the tower's footprint, so a range in cells converts by
   // the mast's own base width. Without this the pattern would be pretty and
@@ -143,6 +155,7 @@ export function initUnitsTab(root) {
   // tuning and player lore. Its own mixer instance, so nothing here can
   // disturb the game tab's levels or its voice budget.
   const sfx = makeAudio({ seed: 1 });
+  const weaponVoice=createWeaponVoice(sfx);
   sfx.arm();
   let bed = null;          // the one looping sound a unit may have
   let bedBtn = null;
@@ -211,8 +224,12 @@ export function initUnitsTab(root) {
     shells.length = 0;
     heat = 0;
     // a pattern belongs to the tower that fired it
+    for(const m of missiles)missilePool?.release(m.mesh);
+    missiles.length=0;missileIndex=0;
+    for(const f of fx)if(f.shell){scene.remove(f.shell);f.shell.geometry.dispose();f.shell.material.dispose();}
     fx.length = 0;
-    fireLeft = 0;
+    fireLeft = 0;weaponVoice.dispose();
+    for(const e of heldBeams){scene.remove(e.obj);e.obj.traverse(o=>{o.geometry?.dispose();o.material?.dispose();});}heldBeams.length=0;
     fxGeo.setDrawRange(0, 0);
     if (rangeRing) rangeRing.visible = false;
   }
@@ -509,6 +526,10 @@ export function initUnitsTab(root) {
     frame(current);
     nameEl.textContent = e.label;
     noteEl.textContent = e.note || '';
+    if (current.userData.modelStats) {
+      const s = current.userData.modelStats;
+      noteEl.textContent += ` · ${s.triangles.toLocaleString()} triangles · ${s.batches} batches`;
+    }
     buildSoundRow(e);
     // the bench only means anything for a unit with a hover split
     const bench = !!(current && current.userData.hoverBody);
@@ -803,37 +824,45 @@ export function initUnitsTab(root) {
     fx.push({ p: p.clone(), v: vel.clone(), t: 0, life, col, grav });
   }
 
-  // A schematic range preview uses the shared weapon kind. The Sentry and
-  // Impact labs own articulated firing and detailed visual-effect authoring.
+  // Missiles use the shared flight owner and actual sockets. Other weapon
+  // kinds retain the catalogue schematic preview.
   function towerShot(def, origin) {
+    const config=CONTENT.missiles[def.key];
+    if(config){
+      if(!missilePool?.available || current?.userData.loading)return;
+      const muzzle=current.userData.muzzles?.[missileIndex++ % current.userData.muzzles.length];
+      if(!muzzle)return;
+      if(current.userData.pitchNode)current.userData.pitchNode.rotation.x=-MISSILE_LAUNCH_ELEVATION*Math.PI/180;
+      current.updateMatrixWorld(true);
+      const from=muzzle.getWorldPosition(new THREE.Vector3());
+      const direction=new THREE.Vector3(0,0,1).applyQuaternion(muzzle.getWorldQuaternion(new THREE.Quaternion()));
+      const scale=muzzle.getWorldScale(new THREE.Vector3()).x;
+      const target=current.localToWorld(new THREE.Vector3(0,0,(def.range || 3)*CELL));
+      const m=launchDart(missilePool,{config,from:from.toArray(),target:target.toArray(),direction:direction.toArray(),scale});
+      scene.add(m.mesh);missiles.push(m);return;
+    }
     const reach = (def.range || 3) * CELL;
     const speed = (shotOf(def).projSpeed || 12) * CELL;
     const col = new THREE.Color(def.color || 0xffffff);
     const dir = new THREE.Vector3(0, 0, 1);
     const life = Math.max(0.25, reach / Math.max(0.001, speed));
     switch (shotOf(def).kind) {
-      case 'seeker': {
-        // curves as it goes, which is the whole tell
-        const shot = { p: origin.clone(), v: dir.clone().multiplyScalar(speed * 0.8) };
-        addFx(shot.p, shot.v, life * 1.6, col);
-        fx[fx.length - 1].curve = 2.6;
-        break;
-      }
       case 'lob': {
         // a lob: up and out, gravity brings it down, and it BURSTS
         const t = life * 1.9;
+        const count=fx.length;
         addFx(origin, new THREE.Vector3(0, reach * 0.9 / t, reach / t), t, col, -2 * (reach * 0.9) / (t * t));
+        if(fx.length===count)break;
         fx[fx.length - 1].burst = { n: 40, col, r: reach * 0.32 };
+        const shell=makeOrdnanceShell(CELL*.28);scene.add(shell);fx[fx.length-1].shell=shell;
         break;
       }
       case 'throw':
       case 'lance': {
-        // no travel time: the whole line arrives at once and fades
-        const N = 90;
-        for (let i = 0; i < N; i++) {
-          const p = origin.clone().addScaledVector(dir, (i / N) * reach);
-          addFx(p, new THREE.Vector3(), 0.22, col);
-        }
+        let entry=heldBeams.find(e=>e.key===def.key);
+        const end=origin.clone().addScaledVector(dir,reach);
+        if(!entry){const obj=makeBeamShot(origin,end,shotOf(def).beamColor||def.color,shotOf(def).kind,{glowWidth:CELL*.6});scene.add(obj);entry={obj,key:def.key,left:0};heldBeams.push(entry);}
+        entry.obj.userData.setEndpoints(origin,end);entry.left=firingFor(def.key).beamHold;
         break;
       }
       case 'field': {
@@ -854,7 +883,8 @@ export function initUnitsTab(root) {
     if (!currentEntry || currentEntry.kind !== 'tower') return;
     const def = TOWER_BY_KEY[currentEntry.id];
     if (!def || !current) return;
-    fireLeft = 4;                       // watch the cadence, not one shot
+    fireLeft = firingFor(def.key).duration||4;
+                           // watch the cadence, not one shot
     fireGap = 0;
     if (!rangeRing) {
       const g = new THREE.BufferGeometry();
@@ -876,24 +906,34 @@ export function initUnitsTab(root) {
   }
 
   function stepFire(dt) {
+    for(let i=heldBeams.length-1;i>=0;i--){const e=heldBeams[i];e.left-=dt;e.obj.userData.update(performance.now()/1000);
+      if(e.left<=0){scene.remove(e.obj);e.obj.traverse(o=>{o.geometry?.dispose();o.material?.dispose();});heldBeams.splice(i,1);}}
+
+    for(let i=missiles.length-1;i>=0;i--){
+      if(advanceDart(missilePool,missiles[i],dt)){missilePool.release(missiles[i].mesh);missiles.splice(i,1);}
+    }
     if (fireLeft > 0) {
       fireLeft -= dt;
       fireGap -= dt;
       const def = currentEntry && TOWER_BY_KEY[currentEntry.id];
       if (def && fireGap <= 0) {
-        fireGap = 1 / Math.max(0.2, def.rate || 1);
+        fireGap = Math.max(def.key==='lancer'?firingFor(def.key).duration:0,1 / effectiveStats(def,0).rate);
+        weaponVoice.shot(def.key);
         towerShot(def, towerMuzzle(current));
       }
-      if (fireLeft <= 0 && rangeRing) rangeRing.visible = false;
+      if (fireLeft <= 0){if(rangeRing)rangeRing.visible=false;}
     }
+    const activeDef=currentEntry&&TOWER_BY_KEY[currentEntry.id];
+    weaponVoice.update(activeDef?.key||'',!!activeDef&&(fireLeft>0||heldBeams.length>0));
     let k = 0;
     for (let i = fx.length - 1; i >= 0; i--) {
       const f = fx[i];
       f.t += dt;
-      if (f.curve) f.v.x += f.curve * dt * (f.v.z > 0 ? 1 : -1);
       if (f.grav) f.v.y += f.grav * dt;
       f.p.addScaledVector(f.v, dt);
+      if(f.shell){f.shell.position.copy(f.p);f.shell.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),f.v.clone().normalize());}
       if (f.t >= f.life) {
+        if(f.shell){scene.remove(f.shell);f.shell.geometry.dispose();f.shell.material.dispose();}
         if (f.burst) {
           const { n: bn, col, r } = f.burst;
           for (let b = 0; b < bn; b++) {
@@ -927,7 +967,7 @@ export function initUnitsTab(root) {
     heat = HEAT_COOL;
     const muzzle = current.userData.muzzle;
     if (!muzzle) return;
-    const shell = makeBulletCloud(cols);
+    const shell = makeOrdnanceShell(2,'y');
     const span = new THREE.Box3().setFromObject(current).getSize(new THREE.Vector3());
     shell.scale.setScalar(Math.max(span.x, span.y, span.z) * 0.03);
     muzzle.getWorldPosition(shell.position);
@@ -1335,8 +1375,22 @@ export function initUnitsTab(root) {
   preloadLook(DEFAULT_TOWER_LOOK).then(() => { if (active) show(); });
   // async models arrive late; refresh once they land so the first look is real
   for (const id of ['mkcx', 'mkcx2']) preloadMkcx(id).then(() => { if (active) show(); });
+  preloadMork().then(ok => { if (ok && active && currentEntry?.id === 'mork') show(); });
+
+  if (q.get('acceptance') === '1') window.__stalheartUnits = {
+    state: () => ({ asset: current?.userData.asset, stats: current?.userData.modelStats,
+      hover: current?.getObjectByName('HOVER_RIG')?.position.y,
+      recoil: current?.getObjectByName('GUN_RECOIL')?.position.z,
+      muzzle: current?.userData.muzzle?.getWorldPosition(new THREE.Vector3()).toArray(),
+      guns: current?.userData.laserGuns?.length, running,
+      heat,cannonColor:current?.userData.heatSleeve?.material.color.getHex(),
+      missileReady:!!missilePool,modelReady:!current?.userData.loading,
+      missiles:missiles.map(m=>({config:m.config,t:m.t,name:m.mesh.name,position:m.mesh.position.toArray(),ignition:m.mesh.getObjectByName('EXHAUST_FX').visible})) }),
+    fire: () => currentEntry?.kind==='tower'?firePattern():fireShell(),
+  };
 
   return {
+    dispose(){active=false;missilesDisposed=true;clear();missilePool?.dispose();},
     setActive(on) {
       active = on;
       if (on) { resize(); show(); }

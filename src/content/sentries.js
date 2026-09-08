@@ -61,14 +61,12 @@ export const SENTRIES = Object.freeze([
   },
   {
     "number": 7,
-    "key": "howitzer",
-    "model": "howitzer",
-    "name": "Howitzer",
-    "label": "7. Howitzer",
-    "note": "siege barrel \u2014 lobs, and points UP to do it",
-    "fire": "sentry_howitzer",
-    "lob": true,
-    "arcCells": 3.4
+    "key": "needle",
+    "model": "needle",
+    "name": "Needle",
+    "label": "7. Needle",
+    "note": "dedicated sniper — long range, one precise heavy shot",
+    "fire": "sentry_needle"
   },
   {
     "number": 8,

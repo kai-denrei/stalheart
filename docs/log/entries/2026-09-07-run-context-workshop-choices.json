@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "id": "2026-09-07-run-context-workshop-choices",
+  "date": "2026-09-07T08:16:54.821476+00:00",
+  "type": "change",
+  "status": "resolved",
+  "title": "Extract run clock and delayed work; share searchable Workshop choices",
+  "context": "Continue the architecture-first foundation while improving the long, difficult-to-navigate lab dropdowns. Visual labs use lil-gui and sound/units also have native controls.",
+  "outcome": "The pure run context owns motion time, restart generation and stale-callback guards. A platform timer adapter cancels hack endings, destruction previews and death holds on restart and disposal, preserving the original advance/reset sites. A Workshop-only host enhances selects with eight or more options through one searchable modal, retaining existing value/change/preset paths. It supports keyboard navigation, explicit Escape close, current selection, disabled options, dynamic controls and observer cleanup. Commands/events, random streams, full renderer disposal, broader panel organization and missile integration remain pending.",
+  "alternatives": [
+    "Avoid separate picker implementations in every lab and edits to vendored lil-gui; retain native selects as the existing value owners.",
+    "Keep generation advance and clock reset at their existing separate rebuild points, avoiding a gameplay timing change."
+  ],
+  "evidence": [
+    "npm test: 65 test programs passed, including restart/disposal and already-queued callback coverage.",
+    "npm run check: syntax, architecture, kernel, assets and presets passed.",
+    "npm run build: release 9ad8d927.",
+    "npm run test:browser: full source acceptance passed, including keyboard selection, Escape, no-match filtering, dynamic option thresholds, disabled controls, removal and phone-width dialog bounds.",
+    "node scripts/browser-test.mjs --dist: full nested-path release acceptance; see artifacts/browser-dist/.",
+    "Browser iteration: Enter needed a complete CDP key input including carriage-return text. The subsequent Escape check exposed a close failure with isolated lab key events; an explicit Escape handler fixed it.",
+    "Lab JSON import, audio edit, draft preview and normal-game isolation remain verified.",
+    "docs/ARCHITECTURE.md describes the extracted ownership and remaining boundaries."
+  ],
+  "supersedes": []
+}

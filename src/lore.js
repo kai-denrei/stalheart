@@ -159,6 +159,11 @@ export const LORE = {
       + 'mecha-realism concept art, dramatic three-quarter view, '
       + 'cinematic HDR, 8k',
   },
+  mork: {
+    name: 'MÖRK', tag: 'the heavy hover tank · A6 test',
+    body: 'A long, low hull suspended over paired lift fields. The forward turret carries a recoiling cannon; two plasma projectors cover the front. Nine rear-deck lenses show the shells available to the pilot.',
+    visual: 'elongated armored hover tank, sloping glacis, pointed nacelles, low swept turret, long cannon, twin front plasma projectors and luminous rear-deck ammunition lenses',
+  },
   mkcx2: {
     name: 'MK-CX/2 "DENREI-KAI"',
     tag: 'the MK-CX with the top taken off',
@@ -281,17 +286,11 @@ export const LORE = {
       + 'mount, single thin green beam held straight across the whole frame '
       + 'piercing several bodies, hard sci-fi, high contrast, 8k',
   },
-  howitzer: {
-    name: 'HOWITZER',
-    tag: 'siege barrel — the loudest thing on the board',
-    body: 'The Mortar grown up: further, heavier, wider, and slow enough '
-      + 'that a wave can walk through the gap between shells. It is a siege '
-      + 'piece doing sentry work and it has never pretended otherwise. Two '
-      + 'seconds between rounds is a long time to be right about where the '
-      + 'horde will be.',
-    visual: 'enormous siege howitzer on a braced sentry emplacement, huge '
-      + 'barrel elevated, massive muzzle blast and dust displacement, shell '
-      + 'arcing away over asteroid terrain, hard sci-fi, 8k',
+  needle: {
+    name: 'Needle',
+    tag: 'One precise heavy shot.',
+    body: 'A long-range direct-fire Sentry. Holds its aim, fires a fast heavy slug and waits for the next clear shot. It trades the former siege emplacement’s splash for a deliberate line of fire: expose a distant hard target, hold the barrel steady, and let one heavy round do the work.',
+    visual: 'slim articulated sniper barrel, reinforced receiver and precision muzzle, hard-surface metal armor, compact angular base and restrained identification lights against dark terrain',
   },
   heptapod: {
     name: 'HEPTAPOD A6',

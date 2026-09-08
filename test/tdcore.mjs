@@ -77,7 +77,7 @@ check('upgrade costs HK-exact (70%/120%, then maxed)',
   check('tier-2 splash, beam range and rotary cadence bonuses',
     mortar2.splash / TOWER_BY_KEY.mortar.splash > 1.39
     && Math.abs(beam2.range / (TOWER_BY_KEY.plasma.range * 1.16) - 1.3) < 1e-9
-    && Math.abs(rotor2.rate / (TOWER_BY_KEY.rotor.rate * 1.2) - 1.2) < 1e-9);
+    && Math.abs(rotor2.rate / (effectiveStats(TOWER_BY_KEY.rotor,0).rate * 1.2) - 1.2) < 1e-9);
 }
 {
   // targeting: nearest alive in range, injected metric

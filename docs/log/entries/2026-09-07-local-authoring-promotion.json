@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "id": "2026-09-07-local-authoring-promotion",
+  "date": "2026-09-07",
+  "type": "change",
+  "status": "accepted",
+  "title": "Local lab review/apply/undo through one promotion writer",
+  "context": "Owner requested architecture for Lab > test > fine-tune > decide > apply, without transferring a 9 KB complete preset for a few Quiver edits.",
+  "outcome": "Added pure per-subject diffs and three-way merging, a localhost authoring API, and a shared CLI/server promotion writer. Source labs save canonical working copies into the project, review only selected Sentry/cue edits, apply exact reviewed snapshots with source-revision checks, run checks/build, and support inverse review/undo with persisted recovery. Failed validation restores prior source if no external edit intervened. Other subjects and independent newer changes survive. Copy now emits a small human-readable changed-values summary; full JSON is under Backup / transfer. API guards host/origin/token/body/subject and is disabled for release/read-only serving. Browser storage is a fallback; project saves work even if its quota fails. The source server on port8155 was restarted with authoring enabled. Actual user defaults were not promoted. Coverage remains existing FX/audio/missile schema; drive/lock and scene controls are explicitly outside promotion pending consumer/schema work.",
+  "alternatives": [
+    "Per-tab full-package overwrite would lose other subjects and stale-tab changes; selected-field three-way merging avoids that.",
+    "A second compact preset import format was not introduced; summaries are for human review, canonical JSON remains the stored/backup artifact.",
+    "The existing CLI idempotence test exposed the need to preserve successful no-op promotions after extracting the shared writer; that contract is retained."
+  ],
+  "evidence": [
+    "npm test: 70 programs passed; authoring and CLI promotion tests also rerun after final writer changes.",
+    "npm run check: 20 pure-layer modules and existing module/kernel/assets/preset/log checks passed.",
+    "node scripts/browser-test.mjs --local-authoring: temporary-workspace save/review/apply/check/build/reload/undo passed, including quota-blocked browser storage and preserved unrelated edits.",
+    "npm run test:browser passed game/model/range flows; a changed select-value assumption in the compact-copy test was corrected and authoring coverage rerun on the nested release.",
+    "node scripts/browser-test.mjs --dist --authoring: full authoring/radial/help/copy/audio/preview/isolation/PWA coverage passed.",
+    "npm run build: 4dd6c5e0, 406 files.",
+    "GET http://127.0.0.1:8155/__authoring/state: available true, actual defaults baseline and no undo receipt.",
+    "docs/AUTHORING.md; git diff --check"
+  ],
+  "supersedes": [
+    "2026-09-07-copy-preset-for-codex"
+  ]
+}

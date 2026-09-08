@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "id": "2026-09-07-missile-engagement-ranges",
+  "date": "2026-09-07T09:13:32.797591+00:00",
+  "type": "change",
+  "status": "resolved",
+  "title": "Add per-Sentry missile acquisition and minimum engagement distances",
+  "context": "Owner requested minimum engagement and maximum acquisition controls for Quiver and Heptapod after confirming the existing range knobs only governed test-target spawning and escape.",
+  "outcome": "Missiles / lock now exposes min engage (m) and max acquire (m), defaulting to 3 and 30 meters for each family. A pure targeting module filters targets by inclusive flat-ground distance from each individual launcher before retaining or choosing the nearest eligible target. Crossing a bound immediately drops acquisition and lock; an articulated launcher holds its direction when no eligible target remains. Existing rockets continue. Quiver and Heptapod edits are independent, have hover help and appear in the range readout. UI edits cannot invert the band; strict FX v4 validation rejects invalid, missing or out-of-bounds distances. Version 2/3 imports preserve existing edits and gain the new defaults. This remains a Sentry-lab experiment; game rules are unchanged. The release check also exposed a queued-close race in the shared picker; a stale close event can no longer clear a newly reopened picker.",
+  "alternatives": [
+    "Filter before selecting so an ignored close target cannot starve farther eligible targets.",
+    "Measure horizontal ground distance from each launcher in the flat lab rather than from battery center or using height-dependent slant distance. Sphere gameplay adoption will require arc distances.",
+    "Keep separate saved per-family values rather than a global pair that changes when switching Sentries."
+  ],
+  "evidence": [
+    "npm test: 67 test programs passed. New targeting coverage includes both exact boundaries, dead targets, too-close targets, retained targets crossing either limit and different launcher positions.",
+    "Preset tests cover version 2/3 migration, retained missile edits, range round trips, missing fields, non-finite/out-of-bounds values and inverted bands.",
+    "npm run check and npm run build passed; build c51c8149.",
+    "npm run test:browser: full source acceptance passed. New live GUI checks verify distant acquisition, immediate lock clearing, no new launches outside either bound, continuing in-flight rockets, bound clamping and independent family settings.",
+    "node scripts/browser-test.mjs --dist --authoring: nested release authoring/browser checks passed, including imported range values, saved draft preview and visible controls.",
+    "docs/MISSILES.md documents the controls, 3–30 m defaults, inclusive bounds and separation from Range / farthest and Range / through at.",
+    "The initial release run passed the new range checks but exposed an intermittent existing picker reopen failure. A deterministic close/reopen-in-one-task regression now passes with the queued-close guard; source authoring was rerun after the fix."
+  ],
+  "supersedes": []
+}

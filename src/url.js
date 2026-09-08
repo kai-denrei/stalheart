@@ -41,3 +41,28 @@ if (typeof location !== 'undefined' && location.hash.includes('?')) {
       `${location.pathname}${search}${hash ? `#${hash}` : ''}`);
   } catch { /* a file:// origin refuses replaceState; the URL stays as typed */ }
 }
+
+// Impact is now a target setup in the shared Sentry range, before consumers load.
+export function mergeImpactRoute(search, hash) {
+  const route = mergeHashQuery(search, hash);
+  if (route.hash !== 'impact') return route;
+  const q = new URLSearchParams(route.search);
+  if (!q.has('mode')) q.set('mode', q.get('surface') === 'hull' ? 'hull' : q.get('surface') === 'rock' ? 'wall' : 'armour');
+  if (!q.has('family') && q.has('sentry')) q.set('family', q.get('sentry'));
+  return { search: '?' + q.toString(), hash: 'sentry' };
+}
+if (typeof location !== 'undefined' && location.hash === '#impact') {
+  const route = mergeImpactRoute(location.search, location.hash);
+  history.replaceState(null, '', `${location.pathname}${route.search}#${route.hash}`);
+}
+
+// The seventh slot is now Needle. Retired links resolve before any lab loads.
+export function normalizeRetiredSentry(search){
+  const q=new URLSearchParams(search);
+  for(const key of ['family','sentry','weapon','unit'])if(q.get(key)==='howitzer')q.set(key,'needle');
+  return q.size?'?'+q.toString():'';
+}
+if(typeof location!=='undefined'){
+  const search=normalizeRetiredSentry(location.search);
+  if(search!==location.search)history.replaceState(null,'',location.pathname+search+location.hash);
+}

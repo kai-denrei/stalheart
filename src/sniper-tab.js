@@ -1,9 +1,15 @@
-// sniper-tab.js — THE SNIPER RANGE. First person down a Lancer's optic, at
+import { createMortarMap } from './labs/mortar-map.js';
+import { makeOrdnanceShell } from './shell.js';
+import { createShotTrace } from './labs/shot-trace.js';
+import { firingFor } from './content/firing-defaults.js';
+import { makeSequence, beginSequence, stepSequence } from './domain/trigger-sequence.js';
+import { createWeaponVoice } from './weapon-voice.js';
+// sniper-tab.js — manual operation of the shared Sentry roster, with an optic aimed at
 // things a long way off, with the physics that make the shot interesting:
 // drop, time of flight, an alien crosswind that gusts, a reticle that will
 // not hold still, a zero you set and a rangefinder you may or may not have.
 //
-// src/ballistics.js owns every number and is Node-tested. This owns the
+// Shared Sentry content owns weapons; domain/ballistics.js owns the environment integrator. This owns the
 // scope, the reticle and the rifle — and the ONE rule that matters here is
 // that the round the player watches and the hold the HUD prints come out of
 // the same integrator. A sniper mechanic is a promise that the number on the
@@ -20,7 +26,7 @@ import { makeBloom } from './postfx.js';
 import { bakeGalaxyCube } from './galaxybake.js';
 import { SKY_PRESET } from './galaxyseed.js';
 import { LOOKS } from './looks.js';
-import { makeDotEnemy, makeDotBurst } from './units.js';
+import { makeDotEnemy } from './units.js';
 import { CREATURE_TINTS, accentFor, ENEMY_SPEC } from './enemyspec.js';
 import { mulberry32 } from './rng.js';
 import { makeAudio } from './audio.js';
@@ -28,14 +34,26 @@ import { deepLink, wireDeepLink } from './deeplink.js';
 import { sentryUrl } from './sentry.js';
 import { sweepAngle, radarPhosphor } from './radar.js';
 import {
-  BALLISTICS_TUNE, MRAD, toMrad, windAt, launch, step, solution, zeroAngle,
-  makeShooter, stepBreath, sway, rangeFromMrad, hitsAt, STEP, MAX_T, nextPlate,
-  WEAPONS, WEAPON_IDS, applyWeapon, splashHits, launchAngleFor,
-} from './ballistics.js';
-import {
-  LOCK_TUNE, MISSILE_TUNE, makeLock, stepLock, offsetMrad,
-  launchMissile, stepMissile, warheadHits,
-} from './lockon.js';
+  launchAngleFor, BALLISTICS_TUNE, MRAD, toMrad, windAt, launch, step, solution, zeroAngle,
+  makeShooter, stepBreath, sway, rangeFromMrad, STEP, MAX_T, nextPlate,
+  splashHits,
+} from './domain/ballistics.js';
+import { makeLock } from './domain/lockon.js';
+import { missileLimits, stepMissileLock, missileCanFire, missileDistanceInRange } from './domain/missile-targeting.js';
+import { manualWeapon } from './domain/manual-weapon.js';
+import { METRES_PER_CELL } from './core/stage-units.js';
+import { SENTRIES } from './content/sentries.js';
+import { TOWER_BY_KEY, effectiveStats } from './towers.js';
+import { CONTENT } from './content/runtime.js';
+import { clone, resolveSounds } from './content/preset.js';
+import { A6_TUNE, magFor } from './domain/heptapod.js';
+import { MISSILE_LAUNCH_ELEVATION } from './content/missile-defaults.js';
+import { createMissilePool, launchDart, advanceDart } from './missiles.js';
+import { makeTracerMesh, makeBeamShot, makeLightningMesh } from './shotfx.js';
+import { makeImpactBurst, orientImpact } from './impactfx.js';
+import { tuneFor, resolveImpactColors } from './sentryfx.js';
+import { mountPresetPanel } from './labs/preset-panel.js';
+import { mountSentryEffects } from './labs/sentry-effects.js';
 
 const TARGET_TYPES = ['phage', 'ghost', 'corona', 'barbed'];
 const TARGET_H = 1.9;      // metres — what the rangefinder mil-relation uses
@@ -44,7 +62,13 @@ const TARGET_H = 1.9;      // metres — what the rangefinder mil-relation uses
 const DEATHS = ['enemy_die_a', 'enemy_die_b', 'enemy_die_c'];
 
 export function initSniperTab(root) {
-  let active = false;
+  let active = false, disposed = false, frameId = 0, modelSerial = 0;
+  const listeners = new AbortController();
+  const listen = (target,event,fn,options={}) => target.addEventListener(event,fn,{...options,signal:listeners.signal});
+  let draft=clone(CONTENT), missilePool=null;
+  const sequence=makeSequence(),cueLog=[];let heldBeam=null;
+  const metrics={launched:0,arrived:0,last:null,impacts:0};
+  createMissilePool().then(pool=>{if(disposed)pool.dispose();else missilePool=pool;}).catch(error=>{root.dataset.assetError=error.message;});
   const q = new URLSearchParams(location.search);
   const container = root.querySelector('#sniper-app');
   const hud = root.querySelector('#sniper-hud');
@@ -63,7 +87,8 @@ export function initSniperTab(root) {
   const sky = bakeGalaxyCube(renderer, { ...SKY_PRESET, seed: 4414, face: 1024, galaxies: 2 });
   scene.background = sky.texture;
   const pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromCubemap(sky.texture).texture;
+  const environment=pmrem.fromCubemap(sky.texture);
+  scene.environment = environment.texture;
   scene.environmentIntensity = 0.7;
   const sun = new THREE.DirectionalLight(0xffe9cf, 2.6); sun.position.set(-40, 60, 30); scene.add(sun);
   const fill = new THREE.DirectionalLight(0x8ab4ff, 0.7); fill.position.set(50, 20, -20); scene.add(fill);
@@ -89,16 +114,18 @@ export function initSniperTab(root) {
   const postfx = makeBloom(renderer, scene, camera, { scale: 1, strength: 0.22, radius: 0.5, threshold: 0.5 });
 
   const P = {
-    tier: 2,
-    weapon: 'lancer',      // lancer | laser | mortar | railgun
-    mag: 10,               // scope magnification
-    ...BALLISTICS_TUNE,
-    range: 700,            // where the next target stands
-    spread: 260,           // ...± this
+    tier: 1,
+    weapon: 'lancer',
+    mag: 2,               // scope magnification
+    ...BALLISTICS_TUNE, zero:20, wind:0,
+    range: 20,            // where the next target stands
+    spread: 6,           // ...± this
     targets: 4,
     targetR: 0.55,         // metres — the kill radius
     seed: 4414,
+    quiverPrototype:true,prototypeRange:1000,
     tracer: true,
+    traceHold: 1.5,
     // PHASE 1 IS CALIBRATION. A black-and-white target at a known distance
     // and a fixed number of shots: read the conditions, dial the hold, and
     // see your group. Phase 2 is what the calibration was FOR.
@@ -130,10 +157,23 @@ export function initSniperTab(root) {
   }
 
   // --- state ---------------------------------------------------------------
+  let opticHeight=1.5;
   let rifle = null, yawNode = null, pitchNode = null, muzzleNode = null, recoilNode = null;
-  let W = WEAPONS[WEAPONS[P.weapon] ? P.weapon : 'lancer'];
-  applyWeapon(P, W.id);
-  let cool = 0, charging = 0;
+  const legacyWeapon={javelin:'quiver',laser:'lancer',railgun:'needle',howitzer:'needle'};
+  P.weapon=legacyWeapon[P.weapon] || (TOWER_BY_KEY[P.weapon]?P.weapon:'lancer');
+  P.tier=Math.max(1,Math.min(3,Math.round(P.tier)));
+  const profile=()=>draft.weapons[P.weapon];
+  const configuration=()=>{const def=TOWER_BY_KEY[P.weapon],base=draft.missiles[P.weapon];
+    if(!base)return null;const config=missileLimits(base,effectiveStats(def,P.tier-1).range/def.range);
+    if(P.weapon==='quiver'&&P.quiverPrototype){config.maxRange=Math.max(100,Math.min(2000,P.prototypeRange));config.aimTolerance=Math.max(config.aimTolerance,config.lockGate);}
+    return config;};
+  function weaponSpec(){const def=TOWER_BY_KEY[P.weapon],w=manualWeapon(def,effectiveStats(def,P.tier-1),profile(),draft.missiles[P.weapon],METRES_PER_CELL),config=configuration();if(config){w.range=config.maxRange;w.minRange=config.minRange;}return w;}
+  let W=weaponSpec();
+  let mortarAim=[0,0,Math.min(P.range||20,W.range*.6)];
+  const mortarMap=createMortarMap(container,renderer,scene,point=>{const distance=Math.hypot(point[0],point[2]);if(distance<=W.range&&distance>1)mortarAim=point;else hudNote='AIM WITHIN MORTAR RANGE';});
+  function applyRound(){P.muzzleVel=W.muzzleVel;P.maxTime=60;P.step=STEP;}
+  applyRound();
+  let cool = 0, charging = 0, cassette=magFor(P.tier-1);
   // THE SEEKER. One lock per shooter, and a list of missiles in the air —
   // they are not `rounds`, because nothing about them is ballistic: they
   // carry their own target and their own guidance and they ignore the hold.
@@ -141,22 +181,24 @@ export function initSniperTab(root) {
   const missiles = [];
   let lockNote = 0;
   function setWeapon(id) {
-    W = WEAPONS[id] || WEAPONS.lancer;
-    applyWeapon(P, W.id);
-    cool = 0; charging = 0;
+    P.weapon=TOWER_BY_KEY[id]?id:'lancer';W=weaponSpec();applyRound();
+    clearShots();mortarAim=[0,0,Math.min(P.range||20,W.range*.6)];cool=0;charging=0;cassette=magFor(P.tier-1);holdUp=0;holdSide=0;
+    Object.assign(soundDefs,resolveSounds(draft));
+    loadRifle();effectsPanel.refresh();
     nameWeapon();
     gui.controllersRecursive().forEach((c) => c.updateDisplay());
     hudNote = `${W.label.toUpperCase()} — ${W.hitscan ? 'no drop, no wind, no lead'
       : W.loft ? 'lobbed; wait for it' : W.charge ? 'charge, then it is nearly flat' : 'drop and wind'}`;
   }
 
-  const sfx = makeAudio({ seed: 1 });
+  const soundDefs=resolveSounds(draft);
+  const sfx = makeAudio({ seed: 1, sounds:soundDefs, persist:false });
   // ARM IT. A browser will not start an AudioContext without a gesture, and
   // `makeAudio` only listens for one once it has been asked to — every other
   // tab with sound calls this and the sniper did not, so the gun was silent
   // and nothing said why.
   sfx.arm();
-  let saidAudio = false;
+  const weaponVoice=createWeaponVoice(sfx,()=>P.sound,cue=>{cueLog.push(cue);if(cueLog.length>80)cueLog.shift();});
   const shooter = makeShooter();
   // THE STRING: a calibration is a fixed number of shots, and what you learn
   // from it is the GROUP — where the rounds went together, not where any one
@@ -189,28 +231,23 @@ export function initSniperTab(root) {
   // The Lancer, from the sentry workshop, under its own name contract. The
   // camera rides the PITCH node, so the scope moves with the barrel — which
   // is what makes the recoil kick the view and the sway move the shot.
-  new GLTFLoader().load(sentryUrl('lancer', P.tier), (gltf) => {
-    rifle = gltf.scene;
-    yawNode = rifle.getObjectByName('YAW');
-    pitchNode = rifle.getObjectByName('PITCH');
-    recoilNode = rifle.getObjectByName('RECOIL');
-    rifle.traverse((o) => { if (/^MUZZLE_\d+$/.test(o.name || '')) muzzleNode = muzzleNode || o; });
-    rifle.traverse((o) => {
-      if (!o.isMesh) return;
-      for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
-        if (!m || m.userData.lit) continue;
-        m.userData.lit = true;
-        if (/^(Signal|Identification)$/.test(m.name || '') && m.emissive) {
-          m.emissive.copy(m.color).multiplyScalar(0.8); m.needsUpdate = true;
-        }
-      }
-    });
-    rifle.visible = P.showRifle;
-    scene.add(rifle);
-    if (P.showRifle) frameRifle();
-    console.log(`SNIPER lancer t${P.tier}: yaw=${!!yawNode} pitch=${!!pitchNode}`
-      + ` muzzle=${!!muzzleNode} recoil=${!!recoilNode}`);
-  }, undefined, (e) => { hud.textContent = `lancer: failed to load (${e && e.message})`; });
+  function loadRifle(){
+    const serial=++modelSerial;root.dataset.modelReady='false';
+    if(rifle){scene.remove(rifle);disposeObj(rifle);}
+    rifle=yawNode=pitchNode=muzzleNode=recoilNode=null;
+    new GLTFLoader().load(sentryUrl(TOWER_BY_KEY[P.weapon].model,P.tier),gltf=>{
+      if(disposed||serial!==modelSerial){disposeObj(gltf.scene);return;}
+      rifle=gltf.scene;yawNode=rifle.getObjectByName('YAW');pitchNode=rifle.getObjectByName('PITCH');
+      recoilNode=rifle.getObjectByName('RECOIL');
+      rifle.traverse(o=>{if(/^MUZZLE_\d+$/.test(o.name||''))muzzleNode ||= o;});
+      rifle.visible=P.showRifle;scene.add(rifle);
+      rifle.updateMatrixWorld(true);if(muzzleNode){muzzleNode.getWorldPosition(tmpV);opticHeight=tmpV.y;}
+      root.dataset.modelReady='true';
+      if(P.showRifle)frameRifle();
+    },undefined,error=>{if(serial===modelSerial){const note=hud||root.querySelector('#f-note');if(note)note.textContent=`Model failed to load: ${error.message}`;}});
+  }
+  loadRifle();
+
 
   // A BLACK AND WHITE TARGET, because "it is unclear what we are shooting
   // at" (operator) — and because a calibration needs rings to read a group
@@ -283,7 +320,7 @@ export function initSniperTab(root) {
     while (targets.length) { const t = targets.pop(); scene.remove(t.obj); disposeObj(t.obj); }
   }
   function spawnTargets() {
-    clearTargets();
+    clearShots();plateFalls.length=0;clearTargets();cool=0;cassette=magFor(P.tier-1);
     rng = mulberry32(P.seed >>> 0);
     string.length = 0;
     if (P.phase === 'calibrate') {
@@ -344,12 +381,8 @@ export function initSniperTab(root) {
   // where the round takes a second and a half to arrive, and the new plate
   // being SOMEWHERE ELSE is the re-calibration the whole exercise is for.
   const FALL = 0.55, RISE = 0.5, DIE = 0.9;
-  // the probe measures BALLISTICS, and it re-stands its target between runs;
-  // letting that fight the plate cycle produced two plates at once and a
-  // TRACK panel disagreeing with its own note
-  let probing = false;
   function knockDown(t) {
-    if (probing || t.falling !== undefined) return;
+    if (t.falling !== undefined) return;
     t.falling = 0;
     t.alive = false;             // no more hits on a plate already going down
     plateFalls.push(t);
@@ -412,7 +445,7 @@ export function initSniperTab(root) {
   function popPlate(prev) {
     const p2 = nextPlate(
       { range: Math.hypot(prev.pos[0], prev.pos[2]), bearing: Math.atan2(prev.pos[0], prev.pos[2]) },
-      rng, P, [Math.max(60, P.range - P.spread), P.range + P.spread]);
+      rng, P, [Math.max(1, P.range - P.spread), P.range + P.spread]);
     const cy = Math.max(1.6, P.targetR * FACE_R + 0.15);
     const obj = makeCalTarget(P.targetR);
     obj.position.set(Math.sin(p2.bearing) * p2.range, cy, Math.cos(p2.bearing) * p2.range);
@@ -502,6 +535,7 @@ export function initSniperTab(root) {
     let best = null, bd = Infinity;
     for (const t of targets) {
       if (!t.alive) continue;
+      if(W.homing&&!missileDistanceInRange(Math.hypot(t.pos[0],t.pos[2]),configuration()))continue;
       const dx = t.pos[0], dz = t.pos[2];
       // measured from the OPTIC's height, not from the ground: a target
       // whose centre is level with the scope is at zero elevation, and the
@@ -519,8 +553,15 @@ export function initSniperTab(root) {
   // The round leaves along the SHOOTER'S aim plus the dialled hold plus the
   // sway — and then it is the integrator's, not the renderer's. Every frame
   // it is stepped by the same function the HUD's solution used.
-  function fire(released = false) {
-    if (cool > 0) return;
+  function fire(){
+    const p=firingFor(W.id);
+    if(p.duration){if(beginSequence(sequence,p))weaponVoice.update(W.id,true);return;}
+    fireRound();
+  }
+  function fireRound(released = false) {
+    if (cool > 0 || disposed || root.dataset.modelReady!=='true') return;
+    if(W.field){activateField();return;}
+    if(TOWER_BY_KEY[W.id].attack==='walker' && cassette<=0){hudNote='CASSETTE RELOADING';return;}
     // THE RAIL GUN'S COST IS NOT ITS DROP, IT IS THE WAIT. Charging holds you
     // still and pointed for a second and a half — which in a crosswind, with
     // a target closing, is the whole weapon.
@@ -531,7 +572,7 @@ export function initSniperTab(root) {
       return;
     }
     const sw = sway(clock, shooter, P);
-    const yaw = aimYaw + holdSide / MRAD + sw[0] / MRAD;
+    let yaw = aimYaw + (W.id==='lancer'?0:holdSide) / MRAD + sw[0] / MRAD;
     // a lobbed weapon has no flat zero to hold over — its whole launch angle
     // IS the hold, so the zero term drops out and the dialled hold is the arc
     // ...and a BEAM has no zero either: it does not drop, so a rifle's
@@ -543,7 +584,9 @@ export function initSniperTab(root) {
     // it puts the barrel a couple of milliradians high — which on the far
     // side of the arc is fifteen metres short at seven hundred.
     const base = W.loft ? 0 : aimPitch;
-    const pitch = base + holdUp / MRAD + sw[1] / MRAD + zed;
+    let pitch = base + (W.id==='lancer'?0:holdUp) / MRAD + sw[1] / MRAD + zed;
+    if(W.loft){const range=Math.hypot(mortarAim[0],mortarAim[2]);pitch=launchAngleFor(range,P,true)+holdUp/MRAD;yaw=Math.atan2(mortarAim[0],mortarAim[2])+holdSide/MRAD;
+      if(!Number.isFinite(pitch)){hudNote='NO MORTAR SOLUTION';return;}}
     const s = launch(0, 0, P, clock);
     // re-aim the launch into world space: the module fires down +Z, the range
     // is a world with a bearing
@@ -558,44 +601,27 @@ export function initSniperTab(root) {
     // along the barrel, and drawn as a beam that fades — so the laser tests
     // only the sway, which is the point of having it.
     if (W.hitscan) { hitscan(yaw, pitch); return; }
-    // A MISSILE NEEDS PERMISSION. Not ammunition, not a hold — a lock, held
-    // by the player's own hands for the better part of two seconds. Firing
-    // without one does nothing except say so, because a Javelin that flew
-    // straight when unlocked would just be a slow, bad shell.
+    // Guided shots use the shared engagement gate with the operator's aim.
     if (W.homing) { launchSeeker(yaw, pitch); return; }
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(W.loft ? 0.35 : 0.09, 6, 5),
-      new THREE.MeshBasicMaterial({ color: W.id === 'railgun' ? 0xa8e8ff : 0xfff0c0 }));
+    const shot=profile().shot;
+    const mesh=makeTracerMesh(TOWER_BY_KEY[W.id].color,shot.projPx,shot.trail);
+    const trace=W.id==='needle'?createShotTrace():null;
+    if(trace){trace.sample(s.p);mesh.add(trace.group);}
     mesh.visible = P.tracer;
     scene.add(mesh);
-    rounds.push({ s, mesh, trail: [] });
-    // THE MAIN SHELL'S OWN RECOIL AND VOICE (operator). `tank_main` is the
-    // board's cannon — the same sample, at full presence, because this IS
-    // that gun with a scope on it. The kick is the board's shape too: a hard
-    // impulse that eases out, not a constant offset, so the glass jumps and
-    // settles rather than sitting displaced.
-    if (P.sound) sfx.play(W.sound);
+    const shell=W.loft?makeOrdnanceShell(.65):null;if(shell){scene.add(shell);shell.position.fromArray(s.p);}
+    rounds.push({ s, mesh, trace, shell, trail: [], weapon:{...W},profile:clone(profile()),tune:{...P} });
+    // The Sentry owns its cue and cadence; scope recoil belongs to this stage.
+    weaponVoice.shot(W.id);
     cool = W.cooldown;
-    // ...and say ONCE what the audio context actually did. A browser will not
-    // start one without a gesture, so "no sound" has two very different
-    // causes — not armed, or armed and still suspended because nothing has
-    // been tapped yet — and they are indistinguishable from the outside.
-    if (!saidAudio) {
-      saidAudio = true;
-      console.log(`SNIPER audio: ctx=${sfx.contextState} ready=${sfx.ready}`
-        + `${P.sound ? '' : ' (gun sound is OFF in the panel)'}`);
-    }
     recoil = RECOIL_KICK;
     shooter.shots++;
     lastShot = { yaw, pitch, at: clock };
-    // the muzzle flash, in the game's own dots
-    const f = makeDotBurst(0xffe6a8, [0, 0, 1], 14);
-    f.scale.setScalar(0.5);
-    f.position.set(0, muzzleHeight(), 1.2);
-    scene.add(f);
-    fx.push({ obj: f, tick: f.userData.tick });
+    emitEffect('muzzle',[0,muzzleHeight(),0],[Math.sin(yaw),Math.sin(pitch),Math.cos(yaw)]);
   }
 
   const muzzleHeight = () => {
+    if(W.id==='lancer'&&!P.showRifle)return opticHeight;
     if (!muzzleNode) return 1.5;
     muzzleNode.updateWorldMatrix(true, false);
     muzzleNode.getWorldPosition(tmpV);
@@ -607,97 +633,69 @@ export function initSniperTab(root) {
   // slowly, along the aim, and from the second step onward it is flying its
   // own intercept on the target the lock named — which is why the reward for
   // holding the reticle still is that you no longer have to aim.
-  function launchSeeker(yaw, pitch) {
-    const t = targets.find((x) => x.alive && x.id === lock.id);
-    if (!lock.locked || !t) {
-      hudNote = lock.meter > 0 ? `SEEKING — ${(lock.meter * 100).toFixed(0)}%` : 'NO LOCK';
-      if (P.sound) sfx.play('laser_click');
-      return;
-    }
-    const from = [0, muzzleHeight(), 0];
-    const dir = [Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)];
-    const m = launchMissile(from, dir, 40, clock);
-    m.tid = t.id;
-    m.launchRange = Math.hypot(t.pos[0] - from[0], t.pos[1] - from[1], t.pos[2] - from[2]);
-    m.carry = 0;
-    const mesh = new THREE.Mesh(new THREE.ConeGeometry(0.28, 1.5, 7),
-      new THREE.MeshBasicMaterial({ color: 0xffd08a }));
-    mesh.visible = P.tracer;
-    scene.add(mesh);
-    m.mesh = mesh;
-    missiles.push(m);
-    if (P.sound) sfx.play('seeker_fire');
-    cool = W.cooldown;
-    recoil = RECOIL_KICK * 0.45;
-    shooter.shots++;
-    hudNote = 'AWAY';
-    const f = makeDotBurst(0xffe6a8, [0, 0, 1], 20);
-    f.scale.setScalar(0.7);
-    f.position.set(0, muzzleHeight(), 1.2);
-    scene.add(f);
-    fx.push({ obj: f, tick: f.userData.tick });
+  function clearShots(){
+    mortarMap?.reset();
+    sequence.left=0;sequence.gap=0;heldBeam=null;weaponVoice.dispose();
+    Object.assign(lock,makeLock());
+    for(const m of missiles){scene.remove(m.mesh);missilePool?.release(m.mesh);}missiles.length=0;
+    for(const r of rounds){scene.remove(r.mesh);disposeObj(r.mesh);if(r.shell){scene.remove(r.shell);disposeObj(r.shell);}}rounds.length=0;
+    for(const f of fx){scene.remove(f.obj);disposeObj(f.obj);}fx.length=0;
   }
-
-  function stepMissiles(dt) {
-    for (let i = missiles.length - 1; i >= 0; i--) {
-      const m = missiles[i];
-      const t = targets.find((x) => x.id === m.tid && x.alive);
-      // the target died or was taken by something else: the missile goes
-      // stupid and flies on, which is more honest than deleting it
-      const tp = t ? t.pos : [m.p[0] + m.v[0], m.p[1] + m.v[1], m.p[2] + m.v[2]];
-      const tv = t && t.vel ? t.vel : [0, 0, 0];
-      const h = MISSILE_TUNE.step;
-      m.carry += dt;
-      for (let k = 0; k < 400 && !m.spent && m.carry >= h - 1e-9; k++) {
-        m.carry -= h;
-        stepMissile(m, h, tp, tv, m.launchRange, MISSILE_TUNE);
-        if (t && m.t > MISSILE_TUNE.arm) {
-          const miss = Math.hypot(tp[0] - m.p[0], tp[1] - m.p[1], tp[2] - m.p[2]);
-          if (warheadHits(miss, MISSILE_TUNE)) {
-            resolveHit(t, 0, new THREE.Vector3(tp[0], tp[1], tp[2]));
-            m.spent = true;
-          }
-        }
-      }
-      m.mesh.position.set(m.p[0], m.p[1], m.p[2]);
-      m.mesh.visible = P.tracer;
-      // point it where it is going — a cone models +Y, so the nose is
-      // rotated onto the velocity rather than the velocity onto the cone
-      if (!m.spent) {
-        const v = new THREE.Vector3(m.v[0], m.v[1], m.v[2]).normalize();
-        m.mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), v);
-      }
-      const done = m.spent || m.p[1] < 0 || m.t > MISSILE_TUNE.maxTime;
-      if (!done) continue;
-      if (!m.spent) {
-        const b = makeDotBurst(0xffc07a, [0, 1, 0], 34);
-        b.scale.setScalar(2.2);
-        b.position.set(m.p[0], 0.05, m.p[2]);
-        scene.add(b); fx.push({ obj: b, tick: b.userData.tick });
-        if (!hudNote.startsWith('HIT')) hudNote = 'MISSILE LOST';
-      }
-      scene.remove(m.mesh); disposeObj(m.mesh);
-      missiles.splice(i, 1);
+  function emitEffect(slot,point,normal,weapon=profile()){
+    const effect=weapon[slot];
+    const obj=makeImpactBurst(effect.recipe,tuneFor(effect),resolveImpactColors(effect,{weapon:weapon.shot.beamColor||0xffffff}),metrics.impacts+shooter.shots+1,effect.size);
+    orientImpact(obj,point,normal);scene.add(obj);fx.push({obj,tick:obj.userData.tick});
+    if(slot==='impact')metrics.impacts++;
+    while(fx.length>128){const old=fx.shift();scene.remove(old.obj);disposeObj(old.obj);}
+  }
+  function launchSeeker(yaw,pitch){
+    const config=configuration(),u=underReticle(config.lockBreak*Math.PI/180*MRAD);
+    const target=targets.find(t=>t.alive&&t.id===lock.id);
+    const error=u&&target&&u.t===target?u.off/MRAD*180/Math.PI:Infinity;
+    const distance=target?Math.hypot(target.pos[0],target.pos[2]):Infinity;
+    if(!missileCanFire(lock,target,distance,error,config,cool,!!missilePool?.available)){
+      hudNote=lock.locked?`LOCKED · centre target within ${config.aimTolerance.toFixed(1)}° to fire`:`NO LOCK · acquire at ${config.minRange.toFixed(1)}–${config.maxRange.toFixed(0)} m`;return;
+    }
+    const from=new THREE.Vector3(0,muzzleHeight(),0),direction=new THREE.Vector3(0,1,0);
+    rifle.updateMatrixWorld(true);
+    if(muzzleNode){muzzleNode.getWorldPosition(from);muzzleNode.getWorldQuaternion(tmpQ);direction.set(0,0,1).applyQuaternion(tmpQ);}
+    if(W.id==='quiver'&&P.quiverPrototype)config.duration=Math.max(config.duration,Math.min(6,distance/180));
+    const m=launchDart(missilePool,{config,from:from.toArray(),target:target.pos,direction:direction.toArray()});
+    if(!m)return;
+    Object.assign(m,{tid:target.id,weapon:{...W},profile:clone(profile())});
+    scene.add(m.mesh);missiles.push(m);Object.assign(lock,makeLock());
+    if(TOWER_BY_KEY[W.id].attack==='walker')cassette--;
+    metrics.launched++;metrics.last={key:W.id,config:{...config},direction:direction.toArray(),model:TOWER_BY_KEY[W.id].model};
+    weaponVoice.shot(W.id);cool=cassette===0?A6_TUNE.refillSecs:W.cooldown;recoil=RECOIL_KICK*.45;shooter.shots++;hudNote='AWAY';
+    emitEffect('muzzle',from.toArray(),direction.toArray());
+  }
+  function stepMissiles(dt){
+    for(let i=missiles.length-1;i>=0;i--){
+      const m=missiles[i],target=targets.find(t=>t.alive&&t.id===m.tid);
+      const arrived=advanceDart(missilePool,m,dt,target?target.pos:m.target);m.mesh.visible=P.tracer;
+      if(!arrived)continue;
+      if(target)resolveHit(target,0,new THREE.Vector3(...m.target),m.weapon,m.profile);
+      else emitEffect('impact',m.target,[0,1,0],m.profile);
+      metrics.arrived++;scene.remove(m.mesh);missilePool.release(m.mesh);missiles.splice(i,1);
     }
   }
-
-  // ONE STEP OF THE LOCK. The candidate is whatever is nearest the cross out
-  // to the BREAK angle, not the gate — a locked seeker has to keep seeing
-  // the thing it is holding even after the player's hands have taken it out
-  // of the gate, which is the whole difference between a lock and a hitbox.
-  function stepSeeker(dt) {
-    if (!W.lock) { lock.locked = false; lock.meter = 0; lock.id = null; return; }
-    const u = underReticle(LOCK_TUNE.breakMrad + 4);
-    const was = lock.locked;
-    stepLock(lock, dt, u ? { id: u.t.id, off: u.off, range: u.range } : null, LOCK_TUNE);
-    if (lock.locked && !was) {
-      if (P.sound) sfx.play('laser_click');
-      hudNote = 'TARGET LOCKED';
-      lockNote = clock;
-    } else if (was && !lock.locked) {
-      if (P.sound) sfx.play('tank_spool_down');
-      hudNote = 'LOCK BROKEN';
+  function stepSeeker(dt){
+    if(!W.lock){Object.assign(lock,makeLock());return;}
+    const config=configuration(),u=underReticle(config.lockBreak*Math.PI/180*MRAD);
+    const was=lock.locked;
+    stepMissileLock(lock,dt,u?.t||null,u?.range??Infinity,(u?.off??Infinity)/MRAD*180/Math.PI,config);
+    if(lock.locked&&!was){if(P.sound)sfx.play('laser_click');hudNote='TARGET LOCKED';lockNote=clock;}
+    else if(was&&!lock.locked)hudNote='LOCK BROKEN';
+  }
+  function activateField(){
+    // Relay emits a local slow field; it never becomes a damaging sniper round.
+    for(const target of targets){
+      if(!target.alive||Math.hypot(target.pos[0],target.pos[2])>W.range)continue;
+      target.slowUntil=clock+TOWER_BY_KEY.relay.slowDur;
+      const obj=makeLightningMesh([0,muzzleHeight(),0],target.pos,TOWER_BY_KEY.relay.color);
+      scene.add(obj);let life=0;fx.push({obj,tick:dt=>(life+=dt)<.25});
     }
+    cool=W.cooldown;weaponVoice.shot(W.id);hudNote='RELAY FIELD · nearby contacts slowed';
   }
 
   // THE LASER. Nothing to integrate: it lands where the barrel points, at the
@@ -707,68 +705,78 @@ export function initSniperTab(root) {
     const from = new THREE.Vector3(0, muzzleHeight(), 0);
     const dir = new THREE.Vector3(
       Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch));
-    let best = null, bd = Infinity, bMiss = 0;
+    let best = null, bd = Infinity, bMiss = 0;const pierced=[];
     for (const t of targets) {
-      if (!t.alive) continue;
+      if (!t.alive || Math.hypot(t.pos[0],t.pos[2])>W.range) continue;
       const to = new THREE.Vector3(t.pos[0] - from.x, t.pos[1] - from.y, t.pos[2] - from.z);
       const along = to.dot(dir);
       if (along <= 0) continue;
       const miss = Math.sqrt(Math.max(0, to.lengthSq() - along * along));
+      if(W.pierce && miss<=P.targetR)pierced.push({target:t,miss});
       if (miss < bd) { bd = miss; best = t; bMiss = miss; }
     }
     const reach = best ? Math.hypot(best.pos[0], best.pos[1] - from.y, best.pos[2]) : GROUND;
     const end = from.clone().addScaledVector(dir, reach);
-    const geo = new THREE.BufferGeometry().setFromPoints([from, end]);
-    const beam = new THREE.Line(geo, new THREE.LineBasicMaterial({
-      color: 0xff6a4a, transparent: true, opacity: 0.9 }));
-    scene.add(beam);
-    let life = 0;
-    fx.push({ obj: beam, tick: (d2) => { life += d2; beam.material.opacity = Math.max(0, 0.9 - life * 3.6); return life < 0.25; } });
-    resolveHit(best, bMiss, end);
+    end.copy(from).addScaledVector(dir,W.pierce?W.range:Math.min(reach,W.range));
+    const life=firingFor(W.id).beamHold;
+    if(!heldBeam){
+      const beam=makeBeamShot(from,end,profile().shot.beamColor||TOWER_BY_KEY[W.id].color,W.kind,{glowWidth:.6});
+      const opticGlow=W.id==='lancer'?makeTracerMesh(profile().shot.beamColor||0x66ff88,24,0):null,glowPosition=new THREE.Vector3();
+      if(opticGlow){const at=from.clone().addScaledVector(dir,camera.near*2);opticGlow.geometry.attributes.position.setXYZ(0,at.x,at.y,at.z);opticGlow.geometry.attributes.position.needsUpdate=true;opticGlow.geometry.computeBoundingSphere();beam.add(opticGlow);}
+      heldBeam={obj:beam,left:life,key:W.id};scene.add(beam);
+      const entry=heldBeam;fx.push({obj:beam,tick:dt=>{
+        entry.left-=dt;beam.userData.update(clock);
+        if(opticGlow){
+          opticGlow.visible=!P.showRifle;opticGlow.material.opacity=.95*Math.min(1,Math.max(0,entry.left)/.12);
+          camera.getWorldDirection(glowPosition).multiplyScalar(camera.near*2).add(camera.position);
+          opticGlow.geometry.attributes.position.setXYZ(0,glowPosition.x,glowPosition.y,glowPosition.z);
+          opticGlow.geometry.attributes.position.needsUpdate=true;opticGlow.geometry.computeBoundingSphere();
+        }
+        beam.userData.setFade(Math.min(1,Math.max(0,entry.left)/.12));
+        if(entry.left<=0){if(heldBeam===entry)heldBeam=null;return false;}return true;
+      }});
+    }
+    heldBeam.left=life;heldBeam.from=from.clone();heldBeam.end=end.clone();heldBeam.obj.userData.setEndpoints(from,end);
+    if(W.pierce && pierced.length){for(const hit of pierced)resolveHit(hit.target,hit.miss,new THREE.Vector3(...hit.target.pos));}
+    else if(reach<=W.range)resolveHit(best,bMiss,end);
+    else emitEffect('impact',end.toArray(),[0,1,0]);
+    emitEffect('muzzle',from.toArray(),dir.toArray());
+    cool=W.id==='lancer'?firingFor(W.id).duration:W.cooldown;shooter.shots++;recoil=W.id==='lancer'?0:RECOIL_KICK;weaponVoice.shot(W.id);
+
   }
 
   // ONE DOOR for "a round arrived here", so the laser, the shell and the
   // mortar cannot disagree about what counts as a hit.
-  function resolveHit(t, miss, at) {
+  function resolveHit(t, miss, at, weapon=W, shotProfile=profile()) {
     if (t && t.cal) {
       const rr = Math.hypot(t.pos[0], t.pos[2]);
       recordShot({ dx: at.x - t.pos[0], dy: at.y - t.pos[1], range: rr,
         mradX: toMrad(at.x - t.pos[0], rr), mradY: toMrad(at.y - t.pos[1], rr) });
     }
-    if (t && splashHits(miss, P.targetR, W.splash)) {
+    if (t && splashHits(miss, P.targetR, weapon.splash)) {
       shooter.hits++;
       shooter.best = Math.min(shooter.best, miss);
-      const b = makeDotBurst(0xffb45e, [0, 1, 0], W.splash ? 46 : 30);
-      b.scale.setScalar(W.splash ? 3.2 : 1.2);
-      b.position.set(t.pos[0], t.pos[1], t.pos[2]);
-      scene.add(b); fx.push({ obj: b, tick: b.userData.tick });
+      emitEffect('impact',t.pos,[0,1,0],shotProfile);
       hudNote = `HIT ${t.id} at ${Math.hypot(t.pos[0], t.pos[2]).toFixed(0)} m · ${(miss * 100).toFixed(0)} cm off centre`;
-      if (t.cal) { if (P.sound) sfx.play('tank_shells'); knockDown(t); }
-      else {
-        // REAL ENEMIES SOAK. A spec'd body carries the board's own hp, so a
-        // phage drops to one round and a shellback does not.
-        t.hp = (t.hp ?? 1) - 1;
-        if (t.hp > 0) {
-          hudNote = `HIT ${t.id} — still up (${t.hp} more)`;
-          if (P.sound) sfx.play('kinetic_fire');
-        } else {
-          if (P.sound) sfx.play(DEATHS[(t.id + shooter.hits) % DEATHS.length]);
-          killBody(t);
-        }
+      const affected=weapon.splash>0 ? targets.filter(other=>other.alive && (other===t || Math.hypot(other.pos[0]-at.x,other.pos[2]-at.z)<=weapon.splash)) : [t];
+      for(const victim of affected){
+        if(victim.cal){if(P.sound)sfx.play('tank_shells');knockDown(victim);continue;}
+        victim.hp=(victim.hp??1)-weapon.damage;
+        if(victim.hp<=0){if(P.sound)sfx.play(DEATHS[(victim.id+shooter.hits)%DEATHS.length]);killBody(victim);}
+      }
+      if(!t.cal && t.hp>0){
+        hudNote=`HIT ${t.id} — ${t.hp.toFixed(2)} hp remaining`;
       }
       return true;
     }
-    const b = makeDotBurst(0x9a8b6a, [0, 1, 0], 12);
-    b.scale.setScalar(0.9);
-    b.position.copy(at);
-    scene.add(b); fx.push({ obj: b, tick: b.userData.tick });
+    emitEffect('impact',at.toArray(),[0,1,0],shotProfile);
     if (t) hudNote = `MISS by ${(miss * 100).toFixed(0)} cm at ${Math.hypot(t.pos[0], t.pos[2]).toFixed(0)} m`;
     return false;
   }
 
   function stepRounds(dt) {
     for (let i = rounds.length - 1; i >= 0; i--) {
-      const r = rounds[i];
+      const r = rounds[i], W=r.weapon;
       // THE SAME INTEGRATOR THE SOLUTION USED — and at the same FIXED step,
       // not the frame's. Sub-dividing `dt` gave a step that varied with the
       // frame rate and never matched the solver's: over a mortar's
@@ -776,17 +784,19 @@ export function initSniperTab(root) {
       // landed short of a firing solution that was itself correct. A carried
       // remainder makes the flight a property of the weapon rather than of
       // the browser's frame time.
-      const h = P.step || STEP;
+      const h = r.tune.step || STEP;
       r.carry = (r.carry || 0) + dt;
-      for (let k = 0; k < 400 && !r.spent && r.carry >= h - 1e-9; k++) {
+      for (let k = 0; k < 400 && !r.spent && !r.grounded && r.carry >= h - 1e-9; k++) {
         r.carry -= h;
         const before = r.s.p.slice();
-        step(r.s, h, P, r.s.wind);
+        step(r.s, h, r.tune, r.s.wind);
+        if(W.loft&&r.s.p[1]<=0&&before[1]>0){const f=before[1]/(before[1]-r.s.p[1]);r.s.p=[before[0]+(r.s.p[0]-before[0])*f,-.00001,before[2]+(r.s.p[2]-before[2])*f];r.grounded=true;}
         // did it cross a target's plane between the two positions? Resolved
         // through the SAME door the laser uses, so the weapons cannot
         // disagree about what counts as a hit.
         for (const t of targets) {
-          if (!t.alive || r.spent) continue;
+          if(W.loft)break;
+          if (!t.alive || r.spent || Math.hypot(t.pos[0],t.pos[2])>W.range) continue;
           const d0 = before[2], d1 = r.s.p[2], tz = t.pos[2];
           if (!(d0 <= tz && d1 >= tz)) continue;
           const f = (tz - d0) / Math.max(1e-9, d1 - d0);
@@ -795,15 +805,22 @@ export function initSniperTab(root) {
           const miss = Math.hypot(x - t.pos[0], y - t.pos[1]);
           // near enough to be worth resolving; resolveHit decides hit or miss
           if (miss < P.targetR + W.splash + 8) {
-            resolveHit(t, miss, new THREE.Vector3(x, y, tz));
-            r.spent = true;
+            resolveHit(t, miss, new THREE.Vector3(x, y, tz),r.weapon,r.profile);
+            r.s.p=[x,y,tz];r.spent = true;
           }
         }
+        r.trace?.sample(r.s.p);
       }
-      r.mesh.position.set(r.s.p[0], r.s.p[1], r.s.p[2]);
+      r.trail.unshift(r.s.p.slice());r.trail.length=Math.min(r.trail.length,r.mesh.geometry.attributes.position.count);
+      const positions=r.mesh.geometry.attributes.position;
+      for(let j=0;j<positions.count;j++)positions.setXYZ(j,...(r.trail[j]||r.s.p));
+      positions.needsUpdate=true;r.mesh.geometry.computeBoundingSphere();
       r.mesh.visible = P.tracer;
-      const done = r.spent || r.s.p[1] < 0 || r.s.t > (P.maxTime || MAX_T) || r.s.p[2] > GROUND;
+      if(r.shell){r.shell.position.fromArray(r.s.p);r.shell.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),new THREE.Vector3(...r.s.v).normalize());}
+      const done = r.spent || r.s.p[1] < 0 || r.s.t > (P.maxTime || MAX_T) || (!W.loft&&Math.hypot(r.s.p[0],r.s.p[2]) > W.range);
       if (!done) continue;
+      if(W.loft&&r.grounded)mortarMap.mark([r.s.p[0],0,r.s.p[2]],W.splash);
+      if(r.shell){scene.remove(r.shell);disposeObj(r.shell);}
       if (!r.spent && r.s.p[1] < 0 && r.s.p[2] < GROUND) {
         // a round in the dirt: a splash weapon still gets its say, because a
         // mortar that lands short of a body may very well have killed it
@@ -812,7 +829,7 @@ export function initSniperTab(root) {
           for (const t of targets) {
             if (!t.alive) continue;
             const md = Math.hypot(t.pos[0] - r.s.p[0], t.pos[2] - r.s.p[2]);
-            if (md <= W.splash) { resolveHit(t, md, new THREE.Vector3(t.pos[0], t.pos[1], t.pos[2])); splashed = true; }
+            if (md <= W.splash) { resolveHit(t, md, new THREE.Vector3(r.s.p[0],0,r.s.p[2]),r.weapon,r.profile); splashed = true; break; }
           }
         }
         // THE FALL OF SHOT. A lobbed round that lands short never crosses
@@ -826,21 +843,18 @@ export function initSniperTab(root) {
           const over = r.s.p[2] - cal.pos[2], side = r.s.p[0] - cal.pos[0];
           hudNote = `FALL — ${Math.abs(over).toFixed(0)} m ${over < 0 ? 'short' : 'long'}`
             + `, ${Math.abs(side).toFixed(0)} m ${side < 0 ? 'left' : 'right'}`;
-          const b = makeDotBurst(0xffc07a, [0, 1, 0], 40);
-          b.scale.setScalar(2.6);
-          b.position.set(r.s.p[0], 0.05, r.s.p[2]);
-          scene.add(b); fx.push({ obj: b, tick: b.userData.tick });
+          emitEffect('impact',[r.s.p[0],.05,r.s.p[2]],[0,1,0],r.profile);
           splashed = true;   // it has had its say; do not also print SHORT
         }
         if (!splashed) {
-          const b = makeDotBurst(W.splash ? 0xffc07a : 0x9a8b6a, [0, 1, 0], W.splash ? 40 : 16);
-          b.scale.setScalar(W.splash ? 2.6 : 0.9);
-          b.position.set(r.s.p[0], 0.05, r.s.p[2]);
-          scene.add(b); fx.push({ obj: b, tick: b.userData.tick });
+          emitEffect('impact',[r.s.p[0],.05,r.s.p[2]],[0,1,0],r.profile);
           if (!hudNote.startsWith('HIT')) hudNote = `SHORT — struck the ground at ${r.s.p[2].toFixed(0)} m`;
         }
       }
-      scene.remove(r.mesh); disposeObj(r.mesh);
+      if(r.trace&&P.traceHold>0){
+        const duration=P.traceHold;let left=duration;
+        fx.push({obj:r.mesh,trace:r.trace,tick:dt=>{left-=dt;r.mesh.visible=P.tracer;r.trace.fade(Math.min(1,Math.max(0,left)/.4));r.mesh.material.opacity=.95*Math.min(1,Math.max(0,left)/.4);return left>0;}});
+      }else{scene.remove(r.mesh);disposeObj(r.mesh);}
       rounds.splice(i, 1);
     }
   }
@@ -883,12 +897,12 @@ export function initSniperTab(root) {
   // move half as fast per pixel as a 10x one, or the aim is unusable at the
   // zoom that needs it most.
   let drag = null;
-  container.addEventListener('pointerdown', (ev) => {
+  listen(container,'pointerdown', (ev) => {
     if (ev.target.closest && ev.target.closest('button')) return;
     drag = { id: ev.pointerId, x: ev.clientX, y: ev.clientY };
     container.setPointerCapture(ev.pointerId);
   });
-  container.addEventListener('pointermove', (ev) => {
+  listen(container,'pointermove', (ev) => {
     if (!drag || ev.pointerId !== drag.id) return;
     const k = (camera.fov * Math.PI / 180) / Math.max(1, container.clientHeight);
     aimYaw -= (ev.clientX - drag.x) * k;
@@ -897,26 +911,28 @@ export function initSniperTab(root) {
     drag.x = ev.clientX; drag.y = ev.clientY;
   });
   for (const e of ['pointerup', 'pointercancel']) {
-    container.addEventListener(e, () => { drag = null; });
+    listen(container,e, () => { drag = null; });
   }
   // THE WHEEL IS THE ZOOM RING. A scope's magnification is the one control a
   // shooter reaches for constantly — find the target wide, then wind it in to
   // shoot — and it was buried in a slider.
-  container.addEventListener('wheel', (ev) => {
+  listen(container,'wheel', (ev) => {
     ev.preventDefault();
     // proportional, so a step is the same FRACTION of the zoom at 4x and 25x;
     // a fixed step is coarse at the bottom and useless at the top
     const k = Math.exp(-Math.sign(ev.deltaY) * 0.12);
-    P.mag = Math.max(4, Math.min(25, P.mag * k));
+    P.mag = Math.max(1, Math.min(25, P.mag * k));
     camera.fov = 60 / P.mag;
     camera.updateProjectionMatrix();
     gui.controllersRecursive().forEach((c) => c.updateDisplay());
   }, { passive: false });
 
   const keys = { hold: false };
-  addEventListener('keydown', (ev) => {
+  listen(window,'keydown', (ev) => {
     if (!active) return;
+    if(ev.target?.closest?.('input,textarea,select,.lil-gui,dialog'))return;
     const k = ev.key.toLowerCase();
+    if(/^[1-8]$/.test(k)){weaponControl.setValue(SENTRIES[Number(k)-1].key);ev.preventDefault();return;}
     if (k === 'shift') keys.hold = true;
     if (k === ' ' || k === 'spacebar') { fire(); ev.preventDefault(); }
     if (k === 'r') { spawnTargets(); shooter.shots = 0; shooter.hits = 0; }
@@ -928,7 +944,7 @@ export function initSniperTab(root) {
     if (k === 'arrowleft') holdSide -= 0.25;
     if (k === 'arrowright') holdSide += 0.25;
   });
-  addEventListener('keyup', (ev) => { if (ev.key.toLowerCase() === 'shift') keys.hold = false; });
+  listen(window,'keyup', (ev) => { if (ev.key.toLowerCase() === 'shift') keys.hold = false; });
 
   // --- the reticle ---------------------------------------------------------
   // Drawn in CSS pixels from MILLIRADIANS, so a mil dot is a mil dot at any
@@ -939,6 +955,13 @@ export function initSniperTab(root) {
     // a seeker gets its own glass, and it REPLACES the ruler rather than
     // being drawn over it: the mil dots are a holdover instrument and a
     // homing round has no holdover
+    if(W.loft){reticleEl.innerHTML='';return;}
+    if(W.id==='lancer'){
+      const cx=(container.clientWidth||1)/2,cy=h/2,r=Math.max(38,Math.min(76,h*.09));
+      const brackets=[[-1,-1],[-1,1],[1,-1],[1,1]].map(([x,y])=>`<path d="M ${cx+x*(r+18)} ${cy+y*r} h ${-x*18} v ${-y*18}"/>`).join('');
+      reticleEl.innerHTML=`<svg data-reticle="lancer" width="100%" height="100%"><g fill="none" stroke="#dfe9ec" stroke-width="1.2" opacity=".8"><circle cx="${cx}" cy="${cy}" r="${r}"/>${brackets}<path d="M ${cx-7} ${cy} h 14 M ${cx} ${cy-7} v 14"/></g></svg>`;
+      return;
+    }
     if (W.lock) {
       reticleEl.innerHTML = `<svg width="100%" height="100%">`
         + `${paintSeeker(container.clientWidth || 1, h).join('')}</svg>`;
@@ -969,7 +992,7 @@ export function initSniperTab(root) {
     // ...and, if the chip is printed, where it SHOULD go
     const u = underReticle();
     if (P.firingSolution && u) {
-      const sol = solution(u.range, P, clock, W);
+      const sol = solution(u.range, P, clock, W.field?{hitscan:true}:W);
       if (sol.reached) {
         const sx = cx + sol.holdSide * pxPerMrad, sy = cy - sol.holdUp * pxPerMrad;
         parts.push(`<circle cx="${sx}" cy="${sy}" r="8" fill="none" stroke="#66ff88" stroke-width="1.5" opacity="0.9"/>`);
@@ -1090,7 +1113,7 @@ export function initSniperTab(root) {
   // which is the one label on screen that cannot be allowed to disagree with
   // what is about to leave the barrel.
   const weaponName = () => `${W.label.toUpperCase()} · `
-    + (W.hitscan ? 'BEAM' : W.homing ? 'GUIDED' : W.loft ? 'INDIRECT' : 'DIRECT');
+    + (W.id==='quiver'&&P.quiverPrototype?'JAVELIN PROTOTYPE':W.field?'SUPPORT FIELD':W.hitscan ? 'BEAM' : W.homing ? 'GUIDED' : W.loft ? 'INDIRECT' : 'DIRECT');
   function nameWeapon() { /* the SCOPE box reads it every frame; nothing to push */ }
 
   nameWeapon();
@@ -1100,7 +1123,7 @@ export function initSniperTab(root) {
     const u = underReticle();
     const w = windAt(clock, P);
     const wSpeed = Math.hypot(w[0], w[2]);
-    const sol = u ? solution(u.range, P, clock, W) : null;
+    const sol = u ? solution(u.range, P, clock, W.field?{hitscan:true}:W) : null;
     const cal = P.phase === 'calibrate';
 
     put('fcs-phase', cal ? `PHASE 1 · CALIBRATE` : `PHASE 2 · CONTACT`);
@@ -1183,9 +1206,14 @@ export function initSniperTab(root) {
 
   // --- the panel -----------------------------------------------------------
   const gui = new GUI({ title: 'SNIPER', container: root });
-  gui.add(P, 'mag', 4, 25, 1).name('magnification').onChange(() => { camera.fov = 60 / P.mag; camera.updateProjectionMatrix(); });
-  gui.add(P, 'weapon', WEAPON_IDS).name('weapon').onChange((v) => setWeapon(v));
-  gui.add(P, 'zero', 50, 1500, 10).name('zero (m)');
+  gui.add(P, 'mag', 1, 25, 1).name('magnification').onChange(() => { camera.fov = 60 / P.mag; camera.updateProjectionMatrix(); });
+  const weaponControl=gui.add(P,'weapon',Object.fromEntries(SENTRIES.map(s=>[s.label,s.key]))).name('Sentry').onChange(setWeapon);
+  gui.add(P,'quiverPrototype').name('Quiver: Javelin prototype').onChange(()=>setWeapon(P.weapon));
+  gui.add(P,'prototypeRange',100,2000,100).name('prototype reach (m)').onChange(()=>setWeapon(P.weapon));
+  gui.add(P,'tier',1,3,1).name('equipment tier').onChange(()=>setWeapon(P.weapon));
+  const effectsPanel=mountSentryEffects(gui,profile);
+  const transfer=mountPresetPanel(root,{subject:()=>({kind:'sentry',key:P.weapon}),read:()=>draft,write:p=>{draft=p;setWeapon(P.weapon);},preview:'sniper'});
+  gui.add(P, 'zero', 1, 1500, 1).name('zero (m)');
   gui.add(P, 'showRifle').name('inspect the rig').onChange((v) => {
     if (rifle) rifle.visible = v;
     if (v) frameRifle(); else camera.fov = 60 / P.mag;
@@ -1197,7 +1225,7 @@ export function initSniperTab(root) {
   ga.add(P, 'firingSolution').name('firing solution');
   ga.add(P, 'autoHold').name('auto-dial the hold');
   const gr2 = gui.addFolder('the round');
-  gr2.add(P, 'muzzleVel', 120, 1400, 10).name('muzzle velocity');
+  gr2.add(P, 'muzzleVel').name('shared muzzle m/s').disable();
   gr2.add(P, 'gravity', 0, 30, 0.1).name('gravity');
   gr2.add(P, 'drag', 0, 0.01, 0.0001).name('drag');
   const gw = gui.addFolder('alien wind');
@@ -1221,13 +1249,14 @@ export function initSniperTab(root) {
   gp.add({ real: () => spawnReal() }, 'real').name('spawn a REAL enemy (T)');
 
   const gt = gui.addFolder('the range');
-  gt.add(P, 'range', 100, 1800, 10).name('distance').onChange(spawnTargets);
-  gt.add(P, 'spread', 0, 800, 10).name('± spread').onChange(spawnTargets);
+  gt.add(P, 'range', 1, 1800, 1).name('distance').onChange(spawnTargets);
+  gt.add(P, 'spread', 0, 800, 1).name('± spread').onChange(spawnTargets);
   gt.add(P, 'targets', 1, 8, 1).name('targets').onChange(spawnTargets);
   gt.add(P, 'targetR', 0.1, 3, 0.05).name('kill radius (m)');
   gt.add(P, 'seed', 1, 9999, 1).onChange(spawnTargets);
   gt.add({ again: () => { spawnTargets(); shooter.shots = 0; shooter.hits = 0; shooter.best = Infinity; } }, 'again').name('reset the range');
   gui.add(P, 'tracer').name('show the tracer');
+  gui.add(P,'traceHold',0,3,.1).name('Needle trace linger (s)');
   gui.add(P, 'closeup').name('spotting monitor');
   gui.add(P, 'scan').name('scan');
 
@@ -1237,18 +1266,18 @@ export function initSniperTab(root) {
   }), { label: 'SNIPER', flash: (m) => { hudNote = m; } });
 
   const gear = root.querySelector('#sniper-gear');
-  if (gear) gear.addEventListener('click', () => root.classList.toggle('panel-hidden'));
+  if (gear) listen(gear,'click', () => root.classList.toggle('panel-hidden'));
   const fireBtn = root.querySelector('#sniper-fire');
-  if (fireBtn) fireBtn.addEventListener('click', () => fire());
+  if (fireBtn) listen(fireBtn,'click', () => fire());
   const spawnBtn = root.querySelector('#sniper-spawn');
-  if (spawnBtn) spawnBtn.addEventListener('click', () => spawnEnemy());
+  if (spawnBtn) listen(spawnBtn,'click', () => spawnEnemy());
   const realBtn = root.querySelector('#sniper-real');
-  if (realBtn) realBtn.addEventListener('click', () => spawnReal());
+  if (realBtn) listen(realBtn,'click', () => spawnReal());
 
   const breathBtn = root.querySelector('#sniper-breath');
   if (breathBtn) {
-    for (const e of ['pointerdown']) breathBtn.addEventListener(e, () => { keys.hold = true; });
-    for (const e of ['pointerup', 'pointerleave', 'pointercancel']) breathBtn.addEventListener(e, () => { keys.hold = false; });
+    for (const e of ['pointerdown']) listen(breathBtn,e, () => { keys.hold = true; });
+    for (const e of ['pointerup', 'pointerleave', 'pointercancel']) listen(breathBtn,e, () => { keys.hold = false; });
   }
   if (matchMedia('(pointer: coarse)').matches || q.get('mobile') === '1' || innerWidth <= 700) {
     root.classList.add('panel-hidden');
@@ -1269,7 +1298,7 @@ export function initSniperTab(root) {
     camera.aspect = w / h; camera.updateProjectionMatrix();
     postfx.setSize(w, h);
   }
-  addEventListener('resize', resize);
+  listen(window,'resize', resize);
 
   camera.fov = 60 / P.mag;
   camera.updateProjectionMatrix();
@@ -1383,12 +1412,18 @@ export function initSniperTab(root) {
   const clockT = new THREE.Clock();
   let hudT = 0;
   function animate() {
-    requestAnimationFrame(animate);
+    if(disposed)return;frameId=requestAnimationFrame(animate);
     if (!active) return;
     const dt = Math.min(0.05, clockT.getDelta());
     clock += dt;
     stepBreath(shooter, dt, keys.hold, P);
     if (cool > 0) cool = Math.max(0, cool - dt);
+    if(cassette===0 && cool===0)cassette=magFor(P.tier-1);
+    const firing=firingFor(W.id);
+    const pulses=stepSequence(sequence,dt,W.id==='lancer'?firing.duration:W.cooldown);
+    for(let i=0;i<pulses;i++){cool=0;fireRound();}
+    weaponVoice.update(W.id,sequence.left>0||!!heldBeam);
+
     if (charging > 0) {
       charging = Math.max(0, charging - dt);
       if (charging === 0) fire(true);   // it goes off when it is ready, like a rail gun
@@ -1400,7 +1435,7 @@ export function initSniperTab(root) {
     if (P.autoHold) {
       const u = underReticle();
       if (u) {
-        const sol = solution(u.range, P, clock, W);
+        const sol = solution(u.range, P, clock, W.field?{hitscan:true}:W);
         if (sol.reached) { holdUp = sol.holdUp; holdSide = sol.holdSide; }
       }
     }
@@ -1411,7 +1446,7 @@ export function initSniperTab(root) {
     // the kick is in MILLIRADIANS of glass, so it reads the same at 4x and
     // at 25x — a recoil expressed in world angle is invisible zoomed out and
     // unusable zoomed in
-    const kick = recoil * 26;
+    const kick = W.id==='lancer'?0:recoil * 26;
     // A CAMERA LOOKS DOWN ITS OWN -Z. Everything else here — the ballistics
     // module, the rifle model, the targets — is built on +Z forward, which is
     // this project's own written rule and the workshop's stated convention.
@@ -1426,7 +1461,7 @@ export function initSniperTab(root) {
       aimPitch + (sw[1] + kick) / MRAD,
       Math.PI + aimYaw + (sw[0] + kick * 0.22) / MRAD, 0, 'YXZ');
     if (yawNode) yawNode.rotation.y = aimYaw;
-    if (pitchNode) pitchNode.rotation.x = -(aimPitch + zeroAngle(P.zero, P));
+    if (pitchNode) pitchNode.rotation.x = -(W.homing ? MISSILE_LAUNCH_ELEVATION*Math.PI/180 : aimPitch + (W.hitscan?0:zeroAngle(P.zero,P)));
     if (recoilNode) recoilNode.position.z = -recoil;
     // INSPECT IS ITS OWN CAMERA — and it runs AFTER the pivots, so the rig
     // articulates while you look at it. Backing the eye off but keeping the
@@ -1437,6 +1472,7 @@ export function initSniperTab(root) {
       camera.position.set(Math.sin(t2) * 3.4, muzzleHeight() + 1.15, Math.cos(t2) * 3.4 - 0.4);
       camera.lookAt(0, muzzleHeight() * 0.7, 0.3);
     }
+    if(rifle)rifle.updateMatrixWorld(true);
     stepSeeker(dt);
     stepRounds(dt);
     stepMissiles(dt);
@@ -1450,7 +1486,7 @@ export function initSniperTab(root) {
     for (const t of targets) {
       if (!t.alive) continue;
       if (t.vx) {
-        t.pos[0] += t.vx * dt;
+        t.pos[0] += t.vx * dt * (clock<(t.slowUntil||0)?TOWER_BY_KEY.relay.slowFactor:1);
         const lane = Math.max(40, t.d * 0.05);
         if (Math.abs(t.pos[0]) > lane) { t.pos[0] = Math.sign(t.pos[0]) * lane; t.vx = -t.vx; }
         t.obj.position.x = t.pos[0];
@@ -1481,7 +1517,7 @@ export function initSniperTab(root) {
           if (P.sound) sfx.play('danger_alert');
           continue;
         }
-        const step2 = Math.min(d - 12, t.closing * pace * dt);
+        const step2 = Math.min(d - 12, t.closing * pace * dt * (clock<(t.slowUntil||0)?TOWER_BY_KEY.relay.slowFactor:1));
         t.pos[0] -= (t.pos[0] / d) * step2;
         t.pos[2] -= (t.pos[2] / d) * step2;
         t.obj.position.set(t.pos[0], 0, t.pos[2]);
@@ -1494,7 +1530,8 @@ export function initSniperTab(root) {
     }
     paintReticle();
     postfx.render();
-    renderCloseup();
+    if(!W.loft)renderCloseup();else if(cuBox)cuBox.style.display='none';
+    mortarMap.set(W.loft&&!P.showRifle,mortarAim,W.range,targets.filter(t=>t.alive).map(t=>t.pos));mortarMap.render();
     drawScan();
     hudT += dt; if (hudT > 0.15) { hudT = 0; hudLine(); }
   }
@@ -1504,158 +1541,26 @@ export function initSniperTab(root) {
   // look at the closing behaviour without reaching for the button.
   {
     const n = parseInt(q.get('spawn') || '0', 10);
-    if (n > 0) setTimeout(() => { for (let i = 0; i < n; i++) spawnEnemy(); }, 1200);
+    if(n>0)for(let i=0;i<Math.min(n,32);i++)spawnEnemy();
     const nr = parseInt(q.get('real') || '0', 10);
-    if (nr > 0) setTimeout(() => { for (let i = 0; i < nr; i++) spawnReal(); }, 1200);
+    if(nr>0)for(let i=0;i<Math.min(nr,32);i++)spawnReal();
   }
 
-  // ?sniperprobe=1 — the shot, in numbers. A sniper mechanic is a claim that
-  // the HUD's solution and the bullet agree; this fires with the solution
-  // dialled and reports where the round actually landed.
-  // ?javprobe=1 — THE LOCK AND THE MISSILE, in the tab rather than in Node.
-  // The pure module proves the rules; this proves they are WIRED — that the
-  // thing under the cross becomes a candidate, that the meter fills from the
-  // frame loop, that firing without a lock is refused, and that a missile
-  // launched down the barrel finds a target it was never aimed at.
-  if (q.get('javprobe') === '1') {
-    setTimeout(() => {
-      setWeapon('javelin');
-      const t = targets[0];
-      if (!t) { console.log('JAVPROBE no targets'); return; }
-      const range = Math.hypot(t.pos[0], t.pos[2]);
-      aimYaw = Math.atan2(t.pos[0], t.pos[2]);
-      aimPitch = Math.atan2(t.pos[1] - muzzleHeight(), range);
-      const keep = [P.swayFast, P.swaySlow];
-      P.swayFast = 0; P.swaySlow = 0;
-      probing = true;
-
-      // firing with nothing held must do NOTHING but say so
-      cool = 0;
-      const before = missiles.length;
-      fire();
-      console.log(`JAVPROBE unlocked: fired=${missiles.length > before} note="${hudNote}"`);
-
-      for (let i = 0; i < Math.round((LOCK_TUNE.lockTime + 0.3) * 60); i++) stepSeeker(1 / 60);
-      console.log(`JAVPROBE lock: ${lock.locked ? 'LOCKED' : 'no'} on ${lock.id}`
-        + ` · meter ${lock.meter.toFixed(2)} · target ${range.toFixed(0)} m`);
-
-      cool = 0;
-      fire();
-      console.log(`JAVPROBE launch: ${missiles.length} away`);
-      let flew = 0;
-      const hits0 = shooter.hits;
-      for (let k = 0; k < 4000 && missiles.length; k++) { stepMissiles(0.01); flew += 0.01; }
-      console.log(`JAVPROBE flight: ${shooter.hits > hits0 ? 'HIT' : 'miss'}`
-        + ` after ${flew.toFixed(2)} s — ${hudNote}`);
-
-      // ...and the lock must let go when the barrel is taken far enough off
-      t.alive = true;
-      for (let i = 0; i < 120; i++) stepSeeker(1 / 60);
-      const wasLocked = lock.locked;
-      aimYaw += (LOCK_TUNE.breakMrad + 10) / MRAD;
-      for (let i = 0; i < 30; i++) stepSeeker(1 / 60);
-      console.log(`JAVPROBE break: was=${wasLocked} now=${lock.locked}`
-        + ` ${wasLocked && !lock.locked ? 'LET GO AS IT SHOULD' : 'WRONG'}`);
-      P.swayFast = keep[0]; P.swaySlow = keep[1];
-      probing = false;
-    }, 900);
+  if(q.get('acceptance')==='1')window.__stalheartSniperTest={
+    state:()=>({weapon:P.weapon,label:W.label,kind:W.kind,model:TOWER_BY_KEY[P.weapon].model,ready:root.dataset.modelReady==='true',
+      roster:SENTRIES.map(s=>({number:s.number,key:s.key,label:s.label})),lock:{...lock},cool,cassette,shots:shooter.shots,hits:shooter.hits,
+      mortar:mortarMap.state(),prototype:P.weapon==='quiver'&&P.quiverPrototype,engagement:configuration(),traceGuides:fx.filter(f=>f.trace).map(f=>({...f.trace.state(),visible:f.obj.visible})),opticHeight,cameraHeight:camera.position.y,recoil,
+      sequence:{...sequence},beam:heldBeam?{left:heldBeam.left,key:heldBeam.key,screen:heldBeam.from.clone().lerp(heldBeam.end,.1).project(camera).toArray()}:null,cues:cueLog.slice(),audioVoices:sfx.voices,voiceDetails:sfx.activeVoices,audioState:sfx.contextState,disposed,time:clock,targets:targets.map(t=>({id:t.id,alive:t.alive,hp:t.hp,slowUntil:t.slowUntil||0})),profile:clone(profile()),missiles:clone(draft.missiles),pool:missilePool?.stats(),live:missiles.length,rounds:rounds.length,...metrics}),
+    dispose:()=>disposeSniper(),
+    select:key=>{weaponControl.setValue(key);},fire:()=>fire(),reset:()=>spawnTargets(),
+    aim:()=>{const t=targets.find(t=>t.alive);if(t){aimYaw=Math.atan2(t.pos[0],t.pos[2]);aimPitch=Math.atan2(t.pos[1]-muzzleHeight(),Math.hypot(t.pos[0],t.pos[2]));}},
+    distance:value=>{P.range=value;P.spread=0;spawnTargets();},
+    tracer:value=>{P.tracer=value;},mortarAim:point=>{mortarAim=point;},
+  };
+  function disposeSniper(){
+    if(disposed)return;disposed=true;active=false;modelSerial++;cancelAnimationFrame(frameId);listeners.abort();
+    clearShots();mortarMap.dispose();plateFalls.length=0;clearTargets();missilePool?.dispose();transfer.dispose();gui.destroy();sfx.dispose();
+    disposeObj(scene);postfx.dispose();environment.dispose();pmrem.dispose();sky.dispose();renderer.dispose();renderer.domElement.remove();
   }
-
-  if (q.get('sniperprobe') === '1') {
-    setTimeout(() => {
-      const t = targets[0];
-      if (!t) { console.log('SNIPERPROBE no targets'); return; }
-      const range = Math.hypot(t.pos[0], t.pos[2]);
-      aimYaw = Math.atan2(t.pos[0], t.pos[2]);
-      aimPitch = Math.atan2(t.pos[1] - muzzleHeight(), Math.hypot(t.pos[0], t.pos[2]));
-      const sol = solution(range, P, clock, W);
-      console.log(`SNIPERPROBE target ${range.toFixed(0)} m · solution ${sol.holdUp.toFixed(2)} up`
-        + ` ${sol.holdSide.toFixed(2)} right · ${sol.time.toFixed(2)} s`
-        + ` · drop ${sol.drop.toFixed(2)} m drift ${sol.drift.toFixed(2)} m`);
-      // fire it three ways: no hold, the dialled hold, and the chip's
-      const runs = [['no hold', 0, 0], ['solution', sol.holdUp, sol.holdSide]];
-      const wasPhase = P.phase;
-      probing = true;
-      for (const [tag, hu, hs] of runs) {
-        holdUp = hu; holdSide = hs;
-        const before = shooter.hits;
-        // a still shooter, so the probe measures the PHYSICS and not the sway
-        const keep = [P.swayFast, P.swaySlow];
-        P.swayFast = 0; P.swaySlow = 0;
-        // the probe measures PHYSICS, not rate of fire: its tick loop never
-        // runs the frame that decrements these, so a weapon with a cooldown
-        // or a charge would refuse every shot after the first and the probe
-        // would report the previous shot's note as if it were a new result
-        cool = 0; charging = 0;
-        fire();
-        if (charging > 0) { charging = 0; fire(true); }
-        for (let k = 0; k < 6000 && rounds.length; k++) stepRounds(0.01);
-        P.swayFast = keep[0]; P.swaySlow = keep[1];
-        console.log(`SNIPERPROBE ${tag}: ${shooter.hits > before ? 'HIT' : 'miss'} — ${hudNote}`);
-        t.alive = true;   // stand it back up for the next run
-      }
-      // ...and the CALIBRATION STRING, which is what phase 1 is for: fire the
-      // allotment with the solution dialled and report the group the shooter
-      // would read off the card.
-      if (wasPhase === 'calibrate') {
-        string.length = 0;
-        holdUp = sol.holdUp; holdSide = sol.holdSide;
-        // A PHYSICS PROBE, NOT A SKILL PROBE: the sway is off, and the clock
-        // ADVANCES between shots. What is left in the group is therefore the
-        // GUST and nothing else — which is the number worth knowing, because
-        // it is the part of the spread no amount of dialling can remove.
-        const keepSway = [P.swayFast, P.swaySlow];
-        P.swayFast = 0; P.swaySlow = 0;
-        for (let n = 0; n < Math.round(P.allotted); n++) {
-          clock += 1.7;
-          cool = 0; charging = 0;
-          fire();
-          if (charging > 0) { charging = 0; fire(true); }
-          for (let k = 0; k < 6000 && rounds.length; k++) stepRounds(0.01);
-          t.alive = true;
-        }
-        P.swayFast = keepSway[0]; P.swaySlow = keepSway[1];
-        const g = group();
-        console.log(`SNIPERPROBE string ${g ? `${g.n} shots · group ${(g.ext * 100).toFixed(0)} cm`
-          + ` · correction ${(-g.my).toFixed(2)} up ${(-g.mx).toFixed(2)} right` : 'NOTHING RECORDED'}`
-          + ` · spent=${stringDone()}`);
-      }
-      // A BODY MUST DIE ON SCREEN, not vanish. Shoot one and watch: it
-      // should be off the roster only after the fall has played, so the
-      // count is unchanged the instant it is hit and one lower a second
-      // later. A target removed on the frame it was hit passes "it died"
-      // and fails this.
-      const body = targets.find((x) => !x.cal && x.alive);
-      if (body) {
-        const n0 = targets.length;
-        killBody(body);
-        const mid = targets.length;
-        setTimeout(() => {
-          console.log(`SNIPERPROBE death: roster ${n0} -> ${mid} on the hit`
-            + ` -> ${targets.length} after the fall · dying=${plateFalls.length}`
-            + ` ${mid === n0 && targets.length === n0 - 1 ? 'IT WENT OVER, THEN LEFT' : '<-- vanished or stuck'}`);
-        }, 1500);
-      }
-
-      // ...and now the RANGE's own cycle, at real speed: one hit, and the
-      // plate must go down and a different one come up. The count is the
-      // thing that catches a plate that forgot to leave.
-      probing = false;
-      string.length = 0;
-      const before = targets.filter((x) => x.cal).map((x) => Math.hypot(x.pos[0], x.pos[2]).toFixed(0));
-      const live = targets.find((x) => x.cal && x.alive);
-      if (live) {
-        knockDown(live);
-        setTimeout(() => {
-          const now = targets.filter((x) => x.cal);
-          console.log(`SNIPERPROBE plate: was [${before.join()}] now`
-            + ` [${now.map((x) => Math.hypot(x.pos[0], x.pos[2]).toFixed(0)).join()}]`
-            + ` count=${now.length} falling=${plateFalls.length}`
-            + ` ${now.length === 1 && now[0] !== live ? 'DOWN AND ANOTHER UP' : '<-- wrong count'}`);
-        }, 1600);
-      }
-    }, 2500);
-  }
-
-  return { setActive(on) { active = on; if (on) { resize(); clockT.getDelta(); } } };
+  return {setActive(on){if(disposed)return;active=on;if(on){resize();clockT.getDelta();}},dispose:disposeSniper};
 }

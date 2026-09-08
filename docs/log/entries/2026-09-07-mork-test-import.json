@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "2026-09-07-mork-test-import",
+  "date": "2026-09-07",
+  "type": "change",
+  "status": "accepted",
+  "title": "Optional pinned MÖRK tank test in Workshop and game",
+  "context": "Owner requested local import of the A6 hover tank for comparison with MK-CX/2.",
+  "outcome": "Pinned intact D0 at 8de41ecf6405ee46ca0cba3c51dc1c78a00c7043. Adapter retains 24,196 triangles and all animated pivots/muzzles, merges 70 batches to 50, samples authored power/recoil transforms from host time, maps nine game shells to nine independent lenses, and exposes optional mork selection in Units and game. Existing default and game rules remain. Damage assets and physical-device performance measurements are deferred.",
+  "alternatives": [
+    "Replacing the default before device comparison was not selected.",
+    "Raw interleaved geometry is unpacked before merging to preserve all mesh attributes."
+  ],
+  "evidence": [
+    "npm test: 68 programs passed, including pinned GLB articulation, recoil, independent ammo, actual muzzle and plasma toe tests.",
+    "npm run check passed: source identity, pinned assets/kernel, architecture and presets.",
+    "npm run test:browser passed: MÖRK game movement, Workshop lift/recoil/settle, carousel revisit and existing acceptance suite.",
+    "npm run build: 922d0ffc, 401 files.",
+    "artifacts/browser/mork-workshop.png and mork-game.png; docs/hover-tank-assets.lock.json"
+  ],
+  "supersedes": []
+}

@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "date": "2026-09-08",
+  "type": "change",
+  "status": "resolved",
+  "supersedes": [],
+  "id": "2026-09-08-continuous-relay-shield",
+  "title": "Continuous Relay shield transfer and one shield clock",
+  "context": "Owner saw repeated SHIELD DOWN / 2s messages, erratic shield animation and refusal to deploy near Relay during a crowded wave. The Relay tap was inside its enemy-targeted attack cadence, crediting only one frame of energy per attack. Shield drain used frame dt but cooldown used the vehicle-motion clock, which can stop independently.",
+  "outcome": "A pure frame transaction combines continuous Relay/heart input and shield drain. Tiny sub-frame inputs that never sustain a bubble do not report repeated drops. The game gathers nearby Relays every frame independently of enemy targeting, attack cooldown and build downtime; transfer feedback stays at tower cadence. Shield recharge/drain, cooldown, outage and animation now use the gameplay frame clock. Tapped Relays stop attacks and stay offline five seconds after leaving. Restart clears taps and resets rack/station resources. Rates, cap, two-second rack seam and four-second ram combo remain unchanged.",
+  "alternatives": [
+    "Debouncing SHIELD DOWN would hide the repeated energy/drop bug without repairing recharge.",
+    "Increasing charge duration or lowering cooldown would change balance instead of correcting the timing owners."
+  ],
+  "evidence": [
+    "test/shield-sources.mjs checks 10/30/60/144 Hz charging, net 0.5 s/s from one Relay, one drop after leaving, cooldown recovery, weak inputs and exhausted station remainder.",
+    "node scripts/browser-test.mjs --shield-perf exercises actual Relay proximity, no enemies, shader visibility, one drop and rack redeploy with a stationary motion clock.",
+    "npm test: 73 programs; npm run check; npm run test:browser; npm run build.",
+    "The first browser fixture froze an in-progress hull deployment, correctly refusing input; the final fixture waits for deployment to finish before pausing its controlled scenario."
+  ]
+}

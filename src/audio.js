@@ -467,17 +467,17 @@ export function makeAudio(opts = {}) {
     return ctx;
   }
 
-  async function decodeOne(key) {
+  async function decodeOne(key, file=soundDefs[key].file, bufferKey=key) {
     const spec = soundDefs[key];
     try {
-      const res = await fetch(`${base}${spec.file}${bustToken()}`);
+      const res = await fetch(`${base}${file}${bustToken()}`);
       if (!res.ok) throw new Error(`${res.status}`);
       const bytes = await res.arrayBuffer();
       const dc = decodeContext();
       if (!dc) throw new Error('no context to decode with');
-      buffers[key] = await dc.decodeAudioData(bytes);
+      buffers[bufferKey] = await dc.decodeAudioData(bytes);
     } catch (err) {
-      buffers[key] = 'failed';
+      buffers[bufferKey] = 'failed';
       if (!loggedFail) {
         loggedFail = true;
         console.warn(`[audio] ${key} failed to load; that sound is off for this session`, err);
@@ -495,7 +495,7 @@ export function makeAudio(opts = {}) {
     if (loadPromise) return loadPromise;
     if (!decodeContext()) return Promise.resolve();
     loadStarted = true;
-    loadPromise = Promise.all(Object.keys(soundDefs).map(decodeOne));
+    loadPromise = Promise.all(Object.keys(soundDefs).flatMap(key=>[decodeOne(key),...(soundDefs[key].loopFile?[decodeOne(key,soundDefs[key].loopFile,key+':loop')]:[])]));
     return loadPromise;
   }
 
@@ -567,7 +567,7 @@ export function makeAudio(opts = {}) {
       reportSilence(`context is ${ctx.state}, not running`, key);
       return null;
     }
-    const buf = buffers[key];
+    const buf = buffers[looping&&spec.loopFile?key+':loop':key];
     if (!buf || buf === 'failed') {
       reportSilence(buf === 'failed' ? 'sample failed to decode' : 'sample not decoded yet', key);
       return null;
@@ -588,7 +588,7 @@ export function makeAudio(opts = {}) {
       src = ctx.createBufferSource();
       src.buffer = buf;
       src.loop = looping;
-      src.playbackRate.value = rate;
+      src.playbackRate.value = looping&&spec.loopFile?(o.rate??1):rate;
       gain = ctx.createGain();
       gain.gain.value = g;
       src.connect(gain);
@@ -616,7 +616,7 @@ export function makeAudio(opts = {}) {
     }
     const id = nextId++;
     addVoice(state, key, t, id);
-    live.set(id, { src, gain });
+    live.set(id, { src, gain, key, looping });
     if (!looping) {
       src.onended = () => {
         live.delete(id);
@@ -650,6 +650,7 @@ export function makeAudio(opts = {}) {
     // What the graph is actually carrying. Without this the only evidence
     // of an audio leak is "it sounds worse now", which is not evidence.
     get voices() { return live.size; },
+    get activeVoices(){return [...live.values()].map(v=>({key:v.key,loop:v.looping,duration:v.src.buffer?.duration||0}));},
     get contextState() { return ctx ? `${ctx.state} @${ctx.sampleRate}Hz` : 'none'; },
     // THE LEAK LEDGER, reachable from the console. `audio.ledger` at the
     // moment of a silence is the measurement that two days of this bug never

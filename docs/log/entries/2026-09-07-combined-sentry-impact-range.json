@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "2026-09-07-combined-sentry-impact-range",
+  "date": "2026-09-07",
+  "type": "change",
+  "status": "accepted",
+  "title": "One Sentry and Impact preview with material targets",
+  "context": "Owner identified outdated Quiver and Heptapod animations in the separate Impact lab and requested a combined range with Waves, Pop, Wall, Armour and Hull targets.",
+  "outcome": "The Sentry range now owns the sole firing preview and complete working FX package. A separate effects-panel module edits each selected weapon, and the game impact factories draw muzzle/arrival recipes. DART Swift/Hook timing is shared for all targets. Wall/Armour/Hull are persistent material fixtures with surface-normal contacts; Waves/Pop retain enemy behavior. Effects are bounded to 128 groups. Legacy #impact links normalize before content/route consumers load, retaining family and draft; the old controller is a compatibility export. One menu entry and transfer panel remain. The tank Beam lab stays separate. Old Impact-only curvature is retired pending a shared sphere-stage contract.",
+  "alternatives": [
+    "Keeping a second missile preview or merely renaming its menu would preserve the animation drift.",
+    "Initial expanded effects controls obscured range-label hover targets; detailed folders now start collapsed.",
+    "The original overhead camera hid fixed targets below the transfer panel; material modes now frame both ends of the firing lane from the side."
+  ],
+  "evidence": [
+    "npm test: 69 programs passed, including pinned MORK rig and material contact/normal tests.",
+    "npm run check: canonical modules, 19 pure-layer boundaries, pinned assets/kernel, presets and logs passed.",
+    "npm run test:browser: source acceptance passed, including material modes, both missile durations, live effect-size edits, shared FX/missile draft persistence, legacy Impact routing and MORK movement/lift/recoil.",
+    "node scripts/browser-test.mjs --dist: full nested-release acceptance passed, including MORK, combined material targets, both missiles, live profile edits, radial/help controls, draft transfer and service-worker installation.",
+    "npm run build: a07d9d91, 403 files.",
+    "artifacts/browser/combined-wall.png, combined-armour.png, combined-hull.png and impact-alias.png"
+  ],
+  "supersedes": []
+}

@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/jelaludo/SentryTowers_A6",
+  "revision": "722e49d59772597c7addd6db1de1880afd516885",
+  "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/722e49d59772597c7addd6db1de1880afd516885/",
+  "files": [
+    {
+      "path": "assets/models/sentries/needle_t1.glb",
+      "sourcePath": "assets/needle_t1.glb",
+      "sha256": "1cfdc1bd0b0225f93b5f74fd3936ce2853d42f54fb58f1bb23a1cd118eb46fe9",
+      "bytes": 102632
+    },
+    {
+      "path": "assets/models/sentries/needle_t2.glb",
+      "sourcePath": "assets/needle_t2.glb",
+      "sha256": "a060a7dd9b3625302e1543632ca7f18ea05021245768145421cab01c7ef6e279",
+      "bytes": 102712
+    },
+    {
+      "path": "assets/models/sentries/needle_t3.glb",
+      "sourcePath": "assets/needle_t3.glb",
+      "sha256": "b7ce54641d646149e723732cdc370e43f088093d151a3f1975ef6f01372c046f",
+      "bytes": 102728
+    }
+  ]
+}

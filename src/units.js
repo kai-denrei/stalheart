@@ -1,3 +1,4 @@
+import { makeOrdnanceShell } from './shell.js';
 // units.js — the unit roster. Two construction kinds:
 //
 //   cloud — Braille dot-clouds (creatures.js): ~500–700 points re-posed on
@@ -15,6 +16,8 @@
 // tick(t) (idle animation) }.
 
 import * as THREE from '../vendor/three.module.js';
+import { makeMork } from './mork.js';
+export { preloadMork } from './mork.js';
 import { makeJelly } from './jelly.js';
 import { EMOTION_IDS, emotion, phosphorFor } from './emotions.js';
 import { printPhase, printOffset, printOn } from './printpath.js';
@@ -1258,6 +1261,7 @@ export function applySecondaryToe(g, angle) {
 // every measurement. Both tanks expose `userData.laserGuns`; that is the
 // handle the beams themselves are found by, so it is the right one here too.
 export function secondaryPivots(g) {
+  if (g.userData?.secondaryPivots) return g.userData.secondaryPivots;
   const named = ['Secondary_L_Pivot', 'Secondary_R_Pivot']
     .map((nm) => g.getObjectByName(nm)).filter(Boolean);
   if (named.length >= 2) return named;
@@ -2884,14 +2888,7 @@ export function makeRewardSolid(shape, cols, phase = 0) {
 
 // One solid shell: a cone nose on a short body. Three of these make a triad.
 export function makeShellSolid(cols) {
-  const g = new THREE.Group();
-  const body = solidWithEdges(new THREE.CylinderGeometry(0.34, 0.34, 1.0, 8), cols.body, cols.hi ?? 0xffffff);
-  g.add(body);
-  const nose = solidWithEdges(new THREE.ConeGeometry(0.34, 0.62, 8), cols.body, cols.hi ?? 0xffffff);
-  nose.position.y = 0.81;
-  g.add(nose);
-  g.userData.kind = 'mesh';
-  return g;
+  return makeOrdnanceShell(1.62,'y');
 }
 
 // The roster the tab dropdowns are built from, and the `kind` the board tabs
@@ -2914,6 +2911,11 @@ export const UNITS = {
   tank: { kind: 'mesh', make: makeTank },
   mkcx: { kind: 'mesh', make: (cols) => makeMkcx(cols, 'mkcx') },     // the relic
   mkcx2: { kind: 'mesh', make: (cols) => makeMkcx(cols, 'mkcx2') },   // the fielded unit
+  mork: { kind: 'mesh', make: cols => {
+    const model = makeMork();
+    if (model) return model;
+    const fallback = makeTank(cols); fallback.userData.loading = true; return fallback;
+  } },
   drone: { kind: 'mesh', make: makeDrone },
   ghost: { kind: 'mesh', make: makeGhost },
   scoutufo: { kind: 'mesh', make: makeUfo },

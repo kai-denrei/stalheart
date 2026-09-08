@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "revision": "8de41ecf6405ee46ca0cba3c51dc1c78a00c7043",
+  "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/8de41ecf6405ee46ca0cba3c51dc1c78a00c7043/",
+  "files": [
+    {
+      "path": "assets/models/hover-tank/mork_hover_tank_d0.glb",
+      "sourcePath": "assets/hover-tank/mork_hover_tank_d0.glb",
+      "sha256": "8f9973e5785ee33f46efc81ad117752116977c64c5e8a0d475416b3dc0947520",
+      "bytes": 1022268
+    },
+    {
+      "path": "assets/models/hover-tank/README.md",
+      "sourcePath": "assets/hover-tank/README.md",
+      "sha256": "4ea10ca37edf3faa0dc0c1ed2533d49fb5458feddd9b4a185d7db235de0b9b6f",
+      "bytes": 6010
+    },
+    {
+      "path": "assets/models/hover-tank/manifest.json",
+      "sourcePath": "assets/hover-tank/manifest.json",
+      "sha256": "917811dc8ed2c3d9904a5d7e662fe5bf84ee4f54be6975203fa43cd5075e0290",
+      "bytes": 8284
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "date": "2026-09-08",
+  "type": "change",
+  "status": "resolved",
+  "supersedes": [],
+  "id": "2026-09-08-playtest-performance-breakdown",
+  "title": "Playtest frame metrics and grouped rendering workload",
+  "context": "Owner reported slowdown near wave 42 and suspected numerous ray towers. Existing optional FPS overlay had aggregate render counts, but no grouped workload or retained wave samples; clamped simulation dt could hide frame rates below 10 FPS.",
+  "outcome": "Enable the compact FPS overlay by default unless the player has disabled it; backtick and the existing tuning switch still toggle it. FPS uses unclamped real frame intervals. Expand workload for enemy count, measured enemy/tower/game-frame CPU times, total GPU time when available and a descending batch inventory by Sentry family, tank, Terraformer, enemies, portals, beams/lightning, projectiles, debris, shield and remaining world. Counts are estimates before culling, not per-item GPU timings, and omit shader/overdraw pricing. Inventory is cached for two seconds. Samples are recorded every five seconds in bounded local diagnostics; Copy performance shares a short human-readable snapshot with selected-text fallback. GPU queries are capped at eight, reject disjoint measurements and release pending queries on toggle/disposal. Overlay follows the HUD lower edge.",
+  "alternatives": [
+    "Do not attribute slowdown to Relay or Lancer without runtime measurements.",
+    "Per-draw GPU queries would add cost and can misrepresent tiled rendering; retain total GPU timing and explicitly labeled geometry estimates."
+  ],
+  "evidence": [
+    "test/render-workload.mjs covers instancing, draw ranges, inherited visibility and no duplicate counts across category roots.",
+    "Browser --shield-perf verifies the expanded Relay row, persistent open state, actual clipboard copy and recorded performance samples.",
+    "npm test: 73 programs; npm run check; npm run test:browser; npm run build."
+  ]
+}

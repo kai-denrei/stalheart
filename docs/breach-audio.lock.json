@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "source": "Owner-provided local audio",
+  "originalFilename": "freesound_community-quake-and-break-99034.mp3",
+  "files": [
+    {
+      "path": "assets/audio/sinkhole_quake.mp3",
+      "sha256": "d3a6eb6c03a367d3c84b932d75cd1fdc1e586238a2d2bbab0f6802ae30e32f1d",
+      "bytes": 139680,
+      "durationSeconds": 6.984
+    }
+  ]
+}

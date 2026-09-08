@@ -6,7 +6,7 @@ import { SENTRY_FAMILIES, familyById, sentryUrl } from '../src/sentry.js';
 import { SENTRY_FX } from '../src/sentryfx.js';
 import { SOUNDS } from '../src/content/audio-defaults.js';
 import { UNIT_CATALOG } from '../src/unitcatalog.js';
-const names=['Rotor','Plasma','Quiver','Relay','Mortar','Lancer','Howitzer','Heptapod'];
+const names=['Rotor','Plasma','Quiver','Relay','Mortar','Lancer','Needle','Heptapod'];
 const labels=names.map((name,i)=>`${i+1}. ${name}`);
 assert.deepEqual(SENTRIES.map(s=>s.label),labels);
 assert.deepEqual(TOWERS.map(s=>s.label),labels);
@@ -24,5 +24,5 @@ for(const s of SENTRIES){
 }
 assert.deepEqual(readdirSync('assets/models/sentries').filter(n=>n.endsWith('.glb')).sort(),expected.sort());
 assert.equal(existsSync('assets/models/heptapod.glb'),false);
-assert.equal(sentryUrl('needle',1),'assets/models/sentries/rotor_t1.glb');
+assert.equal(sentryUrl('needle',1),'assets/models/sentries/needle_t1.glb');
 console.log('Shared numbered catalog, sound wiring and retained model inventory pass.');

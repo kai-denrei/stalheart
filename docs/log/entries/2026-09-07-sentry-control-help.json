@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "id": "2026-09-07-sentry-control-help",
+  "date": "2026-09-07T08:56:22.122548+00:00",
+  "type": "change",
+  "status": "resolved",
+  "title": "Explain every Sentry control on label hover and focus",
+  "context": "Owner requested brief explanations when hovering Sentry variable titles, including range/through at and missiles/lock/breaks at degrees.",
+  "outcome": "Every Sentry GUI variable and action has property-keyed explanatory text covering purpose, units, mode restrictions and relevant effects. One shared floating help card opens on label hover, keyboard focus or touch/click, remains readable when hovered, closes with Escape/outside click and stays within the viewport. Disabled labels remain readable. Clicking a boolean help label does not toggle its value. Persistent accessible descriptions and disposal of help listeners/nodes are provided. No settings or simulation rules changed.",
+  "alternatives": [
+    "Use one hover card without taking focus from the current control; a focus-trapping modal on every hover would interrupt editing.",
+    "Use stable controller property keys for text rather than matching display labels or changing the vendored GUI library."
+  ],
+  "evidence": [
+    "npm test: all 66 test programs passed.",
+    "npm run check and npm run build passed; release d60ffb3b.",
+    "npm run test:browser: full source acceptance passed. Tests cover help on every controller, actual hover, movement onto the card, Escape, keyboard focus, disabled controls, outside dismissal and unchanged boolean values.",
+    "node scripts/browser-test.mjs --dist --authoring: nested release authoring and service-worker checks passed.",
+    "Desktop and 390px viewport captures reviewed: artifacts/browser/sentry-control-help.png and artifacts/browser/sentry-help-mobile.png.",
+    "Explanations checked against src/sentry.js, src/sentry-tab.js and src/lockon.js. In particular, reachRadius is measured from battery center and lockBreak governs an acquired launcher lock rather than in-flight guidance."
+  ],
+  "supersedes": []
+}

@@ -212,6 +212,9 @@ export function makeBeamShot(from, to, colorHex, kind = 'lance', opts = {}) {
     grp.add(bm.mesh);
     beams.push(bm);
   }
+  grp.userData.setEndpoints=(from,to)=>{
+    for(let k=0;k<links;k++){a.lerpVectors(from,to,k/links);b.lerpVectors(from,to,(k+1)/links);beams[k].setEndpoints(a,b);}
+  };
   // The fade is a UNIFORM, not `material.opacity`. A ShaderMaterial has an
   // `opacity` property and writing it does exactly nothing, which is how a
   // beam survives its own fade-out and vanishes only when it is removed.

@@ -89,6 +89,7 @@ export function fireTankFeel(st, p = TANK_FEEL) { st.recoil = p.recoilLen; }
 // procedural tank) are left alone — they have no suspension to compress.
 export function applyTankFeel(unit, st, p = TANK_FEEL) {
   if (!unit || !unit.userData) return;
+  if (unit.userData.applyFeel) { unit.userData.applyFeel(st, p); return; }
 
   // --- recoil. The turret takes the kick; it works on any unit with one,
   // hover split or not, so it is handled before the early return below.

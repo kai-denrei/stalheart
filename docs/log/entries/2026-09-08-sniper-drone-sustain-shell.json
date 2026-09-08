@@ -1,0 +1,21 @@
+{
+  "id": "2026-09-08-sniper-drone-sustain-shell",
+  "type": "change",
+  "status": "accepted",
+  "title": "Continuous beam audio, Javelin range and shared finless ordnance",
+  "context": "The owner reported repeated beam-sound attacks, unusable long-range Quiver locking and a Mortar that needed indirect-fire feedback; they requested finless green missile-derived ammunition for both Mortar and Tank.",
+  "outcome": "Beam loops use a pinned sustain-only crossfade sample. Sniper labels a Quiver/Javelin prototype with 1000 m acquisition, one manual shot per lock and unchanged damage; automated stats are unchanged. Mortar aims through a translucent overhead map and records actual ballistic ground-impact splash circles. Its physical shell shares one 76-triangle olive DART-derived factory with Tank, Sentry and Units. A range-reset disposal bug discovered during acceptance was fixed so the Mortar map survives resets. Source-derived shell files reproduce byte-for-byte with scripts/derive-shell.mjs.",
+  "evidence": [
+    "npm test: 77 programs passed",
+    "npm run check, npm run build, npm run test:browser passed (source)",
+    "node scripts/browser-test.mjs --sniper passed all eight weapons, continuous loop-buffer assertion, 500 m Javelin arrival, Mortar map survival and landing feedback, draft isolation and disposal",
+    "npm run assets:check passed after shell regeneration",
+    "docs/SNIPER.md",
+    "docs/shell-assets.lock.json",
+    "docs/beam-audio.lock.json"
+  ],
+  "schema": 1,
+  "date": "2026-09-08T03:45:00.000Z",
+  "alternatives": [],
+  "supersedes": []
+}

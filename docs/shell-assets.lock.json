@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "sourcePath": "assets/models/missile-kit/dart.glb",
+  "sourceSha256": "eb7483c947577800d17ea6197cfa61e3dd776b8ef66ba64e01ab2acd2534b44a",
+  "revision": "4a75269d325c8ec12b87e38667d81bae124adeb4",
+  "derivation": "Keep transformed shell and band; omit merged fin/nozzle assembly and exhaust; olive green, no emission; normalize to one metre +Z.",
+  "triangles": 76,
+  "files": [
+    {
+      "path": "assets/models/ordnance/olive-shell.glb",
+      "sha256": "86706a79eb504e30124494950065c495ec80714bd97b76f701317b3b9d038078",
+      "bytes": 9376
+    },
+    {
+      "path": "src/content/shell-geometry.js",
+      "sha256": "5e637ad8b12d46bb82e30966110a932270be48a084edbe6058c238fa350f56ad",
+      "bytes": 15878
+    }
+  ]
+}

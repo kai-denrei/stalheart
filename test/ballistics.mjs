@@ -1,3 +1,4 @@
+import { WEAPONS, WEAPON_IDS, applyWeapon } from './fixtures/ballistics-reference.js';
 // ballistics.mjs — the sniper's physics as invariants. The whole promise of
 // a sniper mechanic is that the number on the scope is the number the bullet
 // obeys, so most of these are about ONE integrator answering every question:
@@ -7,7 +8,7 @@ import {
   BALLISTICS_TUNE, toMrad, fromMrad, windAt, launch, step, flyTo,
   zeroAngle, solution, makeShooter, stepBreath, sway, rangeFromMrad, hitsAt,
   ballisticsKnobProblems, MRAD, nextPlate,
-  WEAPONS, WEAPON_IDS, applyWeapon, solveAngles, launchAngleFor, splashHits,
+  solveAngles, launchAngleFor, splashHits,
   refineAngle,
 } from '../src/ballistics.js';
 
@@ -115,10 +116,8 @@ console.log('wind:');
     Math.abs(windAt(3, { ...T, gust: 0 })[0] - windAt(9, { ...T, gust: 0 })[0]) < 1e-9);
 }
 
-console.log('the weapons:');
+console.log('historical integrator reference cases:');
 {
-  check('five of them', WEAPON_IDS.length === 5 && WEAPONS.lancer && WEAPONS.laser
-    && WEAPONS.mortar && WEAPONS.railgun && WEAPONS.javelin);
   // the Javelin's PHYSICS live in lockon.js; what it owes this table is a
   // name, a cadence and an honest "there is nothing to hold"
   check('the seeker is declared as one', WEAPONS.javelin.homing && WEAPONS.javelin.lock);

@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-09-08-public-pages-rocket-handoff",
+  "date": "2026-09-08T03:50:00.000Z",
+  "type": "decision",
+  "status": "accepted",
+  "title": "Authorize public Stalheart repository and separate rocket-planet handoff",
+  "context": "The owner explicitly requested initialization, commit, push and a public playable page, plus a small note for a separate rocket-landing experiment on the same planet.",
+  "outcome": "Existing Git history is retained. Created public kai-denrei/stalheart, configured origin and GitHub Pages, and added a pinned Actions workflow that tests/checks/builds before deploying dist. Ignored private Deban records, local working presets and captures are excluded. docs/ROCKET-PLANET.md records the main seed, pinned grid/dungeon recipe, unit sphere, scale conversion, rendering identity and flight integration boundaries. The rocket game itself is a separate future experiment, not integrated into this snapshot.",
+  "alternatives": [],
+  "supersedes": [],
+  "evidence": [
+    "https://github.com/kai-denrei/stalheart",
+    "https://kai-denrei.github.io/stalheart/",
+    ".github/workflows/pages.yml",
+    "docs/ROCKET-PLANET.md",
+    "npm test, npm run check, npm run build and npm run test:browser passed locally; targeted Sniper and Sinkhole source acceptance passed"
+  ]
+}

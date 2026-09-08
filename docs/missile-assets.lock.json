@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "revision": "4a75269d325c8ec12b87e38667d81bae124adeb4",
+  "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/4a75269d325c8ec12b87e38667d81bae124adeb4/",
+  "files": [
+    {
+      "path": "assets/models/missile-kit/dart.glb",
+      "sourcePath": "assets/missile-kit/dart.glb",
+      "sha256": "eb7483c947577800d17ea6197cfa61e3dd776b8ef66ba64e01ab2acd2534b44a",
+      "bytes": 44552
+    },
+    {
+      "path": "assets/models/missile-kit/README.md",
+      "sourcePath": "assets/missile-kit/README.md",
+      "sha256": "a7de025010d62849dcaf19b4143d0cebd264c159fb1e4f91f7d6dcd05077e368",
+      "bytes": 5136
+    },
+    {
+      "path": "src/core/a6-missile-flight.js",
+      "sourcePath": "missile-lab/flight.mjs",
+      "sha256": "db9ca1b3ee7ae9fc1678db4ae301c41b13f11c1b52e71ef0eb6ee551112fc228",
+      "bytes": 3731
+    }
+  ]
+}

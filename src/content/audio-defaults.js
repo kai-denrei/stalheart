@@ -109,10 +109,10 @@ export const DEFAULT_LEVELS = { master: 0.7, towers: 0.5, tank: 0.8, enemies: 0.
 
 // Cue identities are per Sentry; shared sample files do not couple their tuning.
 SOUNDS.sentry_rotor = { ...SOUNDS.minigun_fire };
-SOUNDS.sentry_plasma = { ...SOUNDS.plasma_fire };
+SOUNDS.sentry_plasma = { ...SOUNDS.plasma_fire, loopFile: `${A}/sentry_beam_sustain.wav` };
 SOUNDS.sentry_quiver = { ...SOUNDS.seeker_fire };
 SOUNDS.sentry_relay = { ...SOUNDS.field_pulse };
 SOUNDS.sentry_mortar = { ...SOUNDS.blast_fire };
-SOUNDS.sentry_lancer = { ...SOUNDS.plasma_fire };
-SOUNDS.sentry_howitzer = { ...SOUNDS.tank_main };
+SOUNDS.sentry_lancer = { ...SOUNDS.plasma_fire, loopFile: `${A}/sentry_beam_sustain.wav` };
+SOUNDS.sentry_needle = { ...SOUNDS.tank_main };
 SOUNDS.sentry_heptapod = { ...SOUNDS.seeker_fire };

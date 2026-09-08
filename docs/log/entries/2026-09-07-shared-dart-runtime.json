@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "id": "2026-09-07-shared-dart-runtime",
+  "date": "2026-09-07",
+  "type": "change",
+  "status": "resolved",
+  "title": "Share DART projectile flight across game, Sentry range and Units",
+  "context": "Quiver and Heptapod still used procedural cones in the real game and curved points in Units while the Sentry range used the pinned DART model. The owner requested unified projectiles.",
+  "outcome": "Added one launch/timing/presentation owner, used by all three consumers. A pure sphere log/exp adapter preserves ground arcs, radial heights, measured muzzle launch direction and moving endpoints in gameplay. Game missile damage lands on configured arrival for a surviving target; dead targets retain their last endpoint without retargeted damage. Quiver uses the shared upward launch elevation; Heptapod launches from real vertical cassette sockets. Instances return to bounded pools on arrival, restart, unit changes or disposal. Units and game read immutable shipped settings; no user working copy was promoted. Acquisition/lock rules remain existing game rules; lab engagement bounds still require a separate board-unit contract.",
+  "alternatives": [
+    "Replacing only the cone/dot meshes would preserve the three divergent flight implementations and leave timing/ignition inconsistent.",
+    "Tank shells and other Units schematic weapon previews remain outside this missile correction."
+  ],
+  "evidence": [
+    "npm test: 71 test programs passed.",
+    "npm run check and npm run build.",
+    "npm run test:browser: gameplay DART with A6 Terraformer and MORK, Quiver/Heptapod Units previews, pool cleanup and existing Sentry flight checks.",
+    "test/sphere-missile-flight.mjs: poles, antipodal endpoints, moving targets, finite unit directions, exact endpoints and flat parity.",
+    "Browser screenshots: artifacts/browser/units-dart-quiver.png and units-dart-heptapod.png.",
+    "Initial browser runs failed the MORK recoil assertion: the expanded acceptance hook returned fireShell instead of invoking it. Corrected the hook; the ordinary fire button was unaffected. Replaced the fixed 120 ms assertion with a bounded wait for recoil."
+  ],
+  "supersedes": []
+}

@@ -1,0 +1,210 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/achrefelouafi/LinearAbiltyCastingExtendedThreeJS",
+  "revision": "364c9ce70ba784809291e87981ca83a19560f73d",
+  "files": [
+    {
+      "sourcePath": "src/abilities/Ability.js",
+      "path": "src/fx/sinkhole/abilities/Ability.js",
+      "sourceSha256": "05de78bf4782cfc0fef0f7b5e3b30314757a54df4fa7fdfa7c3678c4cc240f65",
+      "sha256": "b14d96b718372868c2179ec624222bf8790e1e4e9d845ad7164eaced36e78728",
+      "bytes": 8799
+    },
+    {
+      "sourcePath": "src/abilities/MonolithRiftAbility.js",
+      "path": "src/fx/sinkhole/abilities/MonolithRiftAbility.js",
+      "sourceSha256": "58414ed57b793ce2e758e8421233160470a9d7a88b01a8dec1350fcd9fe8ffb3",
+      "sha256": "655b0554dc0434933753a31857256873a3b27230058753155753c36ba34539d9",
+      "bytes": 54126
+    },
+    {
+      "sourcePath": "src/assets/MonolithGeometry.js",
+      "path": "src/fx/sinkhole/assets/MonolithGeometry.js",
+      "sourceSha256": "4542b19957a29480638202cb04ea0d741165d0942db8831160282e8a0f73233e",
+      "sha256": "3a866c50e25269eda32ec6acae8dfaed7295079bd5815f4eb7d61f9b1ccbc1c6",
+      "bytes": 10439
+    },
+    {
+      "sourcePath": "src/assets/ProceduralGeometry.js",
+      "path": "src/fx/sinkhole/assets/ProceduralGeometry.js",
+      "sourceSha256": "37dc99e1fe30ecea0d0673930d71dc75b5a6975ad9cb6de95afa69c90d1bb6ca",
+      "sha256": "7df68659492079ac20753a5c9fbd3a54f8fb4a518fc5a87c6d3b24ea7f6b17dd",
+      "bytes": 15337
+    },
+    {
+      "sourcePath": "src/assets/ShatterGeometry.js",
+      "path": "src/fx/sinkhole/assets/ShatterGeometry.js",
+      "sourceSha256": "b0ba30d52083dfdf998d4125ddf52266ceb42740e6d035015060f9ab1c7d5062",
+      "sha256": "2612e311aaf1f074b72ca60f05d3edfdc2c5a75bb646e606d3115081d3bd2aef",
+      "bytes": 7816
+    },
+    {
+      "sourcePath": "src/materials/MonolithStoneMaterial.js",
+      "path": "src/fx/sinkhole/materials/MonolithStoneMaterial.js",
+      "sourceSha256": "c58fa996d62a0e89462f027a6bcd8be9c0644d921b344a31605306f802b25584",
+      "sha256": "fb8919d964fb4fe149d1dbcdc0e89f918edff301a01409326a8763d243f38434",
+      "bytes": 29914
+    },
+    {
+      "sourcePath": "src/effects/RiftCrater.js",
+      "path": "src/fx/sinkhole/effects/RiftCrater.js",
+      "sourceSha256": "5d220e6bd0b7f0e15c3cea3fe6ea2dc545d8696742aa851dd1077a5226776bf8",
+      "sha256": "34e0d9f4cf4af8bc0f17c471628e16bce46b64d05e75324d20b368d1ba4770d1",
+      "bytes": 4507
+    },
+    {
+      "sourcePath": "src/effects/RiftFissures.js",
+      "path": "src/fx/sinkhole/effects/RiftFissures.js",
+      "sourceSha256": "a077bc290421db39d67f231d53bcca42ab351cbd20a310a6f8928d94b3de15da",
+      "sha256": "d7c8689e78b750cfdca89cc357e74018279c9b0c268d5cdd52033595b2debebb",
+      "bytes": 16935
+    },
+    {
+      "sourcePath": "src/effects/CameraShake.js",
+      "path": "src/fx/sinkhole/effects/CameraShake.js",
+      "sourceSha256": "f49b9edd182e743ef0555bf17fdcad10a1fe491986e234cc63ad331d48658dbf",
+      "sha256": "506508dcdbc5c89f240dbce9f12a7a3a85f458f49ae7274c2c3e99ab5915dd3d",
+      "bytes": 2158
+    },
+    {
+      "sourcePath": "src/effects/GroundDecals.js",
+      "path": "src/fx/sinkhole/effects/GroundDecals.js",
+      "sourceSha256": "c8f5c251d045ce3c79c94fd187175e37e480e0697e162542a46838e7ed8566b4",
+      "sha256": "9ea11bb83813f8fe9613d3b1acb9f90a0117bdeb470e4812e62894431aadce6c",
+      "bytes": 16211
+    },
+    {
+      "sourcePath": "src/effects/LightPool.js",
+      "path": "src/fx/sinkhole/effects/LightPool.js",
+      "sourceSha256": "5bc6ecdf052cb63fe0ce421ea32cd2fd0b3e2a8c215b5ee1dc5b3f5f5a02d516",
+      "sha256": "530ce33b512a3d794a4332f5ffb7416f5d001ef3c187a4e0f4a4210d842e1218",
+      "bytes": 2351
+    },
+    {
+      "sourcePath": "src/effects/ScreenFlash.js",
+      "path": "src/fx/sinkhole/effects/ScreenFlash.js",
+      "sourceSha256": "6f63b7d09d3f68ffd67db86788d1b0c603009137dd94bccf115f81041b91853d",
+      "sha256": "b18f005c6397570841fe4c8b81b9215b25cec97b6f073277d019710d4d6cc553",
+      "bytes": 1063
+    },
+    {
+      "sourcePath": "src/particles/ParticleEngine.js",
+      "path": "src/fx/sinkhole/particles/ParticleEngine.js",
+      "sourceSha256": "6dd347816fb56163c6037cdb167abc7c6348c56a46995e0df7a1982882755bba",
+      "sha256": "6dd347816fb56163c6037cdb167abc7c6348c56a46995e0df7a1982882755bba",
+      "bytes": 2340
+    },
+    {
+      "sourcePath": "src/particles/ParticleSystem.js",
+      "path": "src/fx/sinkhole/particles/ParticleSystem.js",
+      "sourceSha256": "3d47a6c0169b8ad3fe1bf0dd60e5f5ac70c318ff564ca628dfe433b20b5c068f",
+      "sha256": "dbb357d5904e80b4eace97777768d4b89399fd92675f5cec044e817e27cdec40",
+      "bytes": 21505
+    },
+    {
+      "sourcePath": "src/loaders/StoneTextures.js",
+      "path": "src/fx/sinkhole/loaders/StoneTextures.js",
+      "sourceSha256": "9a6150e2abf51f623fecd95400fb8594dd4920e9f85d25ce0cae322dad4cb9a0",
+      "sha256": "2605cc49bac15b56807a83e1396d489ba407f22755746beedc64240f96fa769e",
+      "bytes": 3427
+    },
+    {
+      "sourcePath": "src/shaders/lib/noise.glsl.js",
+      "path": "src/fx/sinkhole/shaders/lib/noise.glsl.js",
+      "sourceSha256": "5c2c7c2f25f05b9a3d877efd12a39e7ab8a0f59dab54e22f09323a811989f3c2",
+      "sha256": "5c2c7c2f25f05b9a3d877efd12a39e7ab8a0f59dab54e22f09323a811989f3c2",
+      "bytes": 5040
+    },
+    {
+      "sourcePath": "src/shaders/lib/common.glsl.js",
+      "path": "src/fx/sinkhole/shaders/lib/common.glsl.js",
+      "sourceSha256": "21dfd8ba599787bebedd856bc9dff368c493e71a7ad3b1ec23ad258d432c418b",
+      "sha256": "21dfd8ba599787bebedd856bc9dff368c493e71a7ad3b1ec23ad258d432c418b",
+      "bytes": 2226
+    },
+    {
+      "sourcePath": "src/core/FrameUniforms.js",
+      "path": "src/fx/sinkhole/core/FrameUniforms.js",
+      "sourceSha256": "2966eff10179e526b03fb33a7cfc737ae2b620674e40f0950d20377fadadb99b",
+      "sha256": "323a75b3ac117dd8d6bf512145189c289fe95b6e9b8cfaa56d343a4d670589d3",
+      "bytes": 1682
+    },
+    {
+      "sourcePath": "src/core/Layers.js",
+      "path": "src/fx/sinkhole/core/Layers.js",
+      "sourceSha256": "bf389198c236e273a7bc101eebe30f0a2595bdbf71027090e824eb0fee1e647d",
+      "sha256": "bf389198c236e273a7bc101eebe30f0a2595bdbf71027090e824eb0fee1e647d",
+      "bytes": 1528
+    },
+    {
+      "sourcePath": "src/utils/math.js",
+      "path": "src/fx/sinkhole/utils/math.js",
+      "sourceSha256": "4e2ef77bc88f9adcfbf96eddcff1c892bc592216462b95da11fa4acb0490415d",
+      "sha256": "4e2ef77bc88f9adcfbf96eddcff1c892bc592216462b95da11fa4acb0490415d",
+      "bytes": 2181
+    },
+    {
+      "sourcePath": "src/utils/color.js",
+      "path": "src/fx/sinkhole/utils/color.js",
+      "sourceSha256": "6e1a5c9d33d69259caa7486a59dc6155a52d4b37b5f4ba3fd60df856e8bebc4c",
+      "sha256": "6e744a41827e4f0cb20dd64c23b49b01d3dacac14cda32e789babce44101a732",
+      "bytes": 1040
+    },
+    {
+      "sourcePath": "src/utils/ObjectPool.js",
+      "path": "src/fx/sinkhole/utils/ObjectPool.js",
+      "sourceSha256": "ab2d5bd02f05e02a40de5fbf5eb336a39702a8ab289f5bb89729eeaadd1ba791",
+      "sha256": "ab2d5bd02f05e02a40de5fbf5eb336a39702a8ab289f5bb89729eeaadd1ba791",
+      "bytes": 1070
+    },
+    {
+      "sourcePath": "src/utils/shaderPatch.js",
+      "path": "src/fx/sinkhole/utils/shaderPatch.js",
+      "sourceSha256": "c2f91c3a515f3c43d00b386c5906c122ac8b960a828c9d6ac66fb7604c8850ec",
+      "sha256": "c2f91c3a515f3c43d00b386c5906c122ac8b960a828c9d6ac66fb7604c8850ec",
+      "bytes": 2477
+    },
+    {
+      "sourcePath": "src/utils/dispose.js",
+      "path": "src/fx/sinkhole/utils/dispose.js",
+      "sourceSha256": "c4604728a9076f804261e64157da2e22937d6bc46a5595356e24b3e118bf15cc",
+      "sha256": "c4604728a9076f804261e64157da2e22937d6bc46a5595356e24b3e118bf15cc",
+      "bytes": 1320
+    },
+    {
+      "sourcePath": "src/config/settings.js",
+      "path": "src/fx/sinkhole/config/settings.js",
+      "sourceSha256": "15472a6717aa7eba2ab0e786efcc0799d1796682e31b7716cb6fb3cd6af95305",
+      "sha256": "4c2a86cc2f1a612ccdfe60e3d540952ac8e0ec6e782f5186a4e3d812ede677d8",
+      "bytes": 5317
+    },
+    {
+      "sourcePath": "public/textures/cathedral/color.jpg",
+      "path": "assets/textures/sinkhole/color.jpg",
+      "sourceSha256": "1dca8a336518ce0adca4b5cbe2ab30819c8769388f1c15278082a99f022c615a",
+      "sha256": "1dca8a336518ce0adca4b5cbe2ab30819c8769388f1c15278082a99f022c615a",
+      "bytes": 1483352
+    },
+    {
+      "sourcePath": "public/textures/cathedral/normal.jpg",
+      "path": "assets/textures/sinkhole/normal.jpg",
+      "sourceSha256": "8fd1d22eb6c7b6e4a374196c0de791f724538b8b86eb9c7a946fec1f5834cb94",
+      "sha256": "8fd1d22eb6c7b6e4a374196c0de791f724538b8b86eb9c7a946fec1f5834cb94",
+      "bytes": 2528233
+    },
+    {
+      "sourcePath": "public/textures/cathedral/roughness.jpg",
+      "path": "assets/textures/sinkhole/roughness.jpg",
+      "sourceSha256": "f37850f72994458994716d084683d80611528d1685264bde3071569e8ca53489",
+      "sha256": "f37850f72994458994716d084683d80611528d1685264bde3071569e8ca53489",
+      "bytes": 669875
+    },
+    {
+      "sourcePath": "public/textures/cathedral/ao.jpg",
+      "path": "assets/textures/sinkhole/ao.jpg",
+      "sourceSha256": "405ab1943485560bc01cd0c6c10065195adf7ef9c554f9b24914c3311751dde6",
+      "sha256": "405ab1943485560bc01cd0c6c10065195adf7ef9c554f9b24914c3311751dde6",
+      "bytes": 568556
+    }
+  ]
+}

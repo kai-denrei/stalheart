@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-09-07-debrief-rainbow-records",
+  "date": "2026-09-07",
+  "type": "change",
+  "status": "accepted",
+  "title": "Rainbow debrief records above 1000",
+  "context": "The owner requested blue debrief records by default and a rainbow treatment above 1000 to celebrate results such as Best Ram Combo.",
+  "outcome": "All four positive record tiles—most kills by one shell, most by one strike, longest streak and best ram combo—retain blue through 1000 and use rainbow text above 1000. Labels and defence/loss statistics retain their existing styling. No thresholds affect gameplay or scores.",
+  "alternatives": [
+    "A strict greater-than threshold keeps exactly 1000 blue, matching the requested above-1000 rule."
+  ],
+  "evidence": [
+    "Browser acceptance renders record values 999, 1000, 1001 and 1200 and verifies the class/color/gradient boundary.",
+    "Screenshot: artifacts/browser/debrief-records.png.",
+    "npm test; npm run check; npm run build; npm run test:browser."
+  ],
+  "supersedes": []
+}

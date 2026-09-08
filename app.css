@@ -11,3 +11,53 @@
 .audio-lab input { width:100px; }
 .audio-lab output { display:block; margin-top:18px; }
 .audio-lab button,.audio-lab select,.audio-lab input { padding:8px; background:#20343c; color:inherit; border:1px solid #46616c; }
+
+/* One bounded choice browser for both lil-gui and native Workshop controls. */
+.lab-choice-native { display:none !important; }
+.widget:has(> .lab-choice-native) > .display { display:none !important; }
+.lab-choice-trigger { max-width:100%; width:100%; min-height:32px; padding:6px 9px !important; text-align:left; white-space:normal; overflow-wrap:anywhere; cursor:pointer; background:#292d32; color:#eee; border:1px solid #73777c; border-radius:3px; font:inherit; }
+.lab-choice-trigger::after { content:' ›'; }
+.lab-choice-trigger[hidden] { display:none !important; }
+.lab-choice-dialog { box-sizing:border-box; width:min(620px,calc(100vw - 24px)); max-height:calc(100dvh - 32px); padding:20px; border:1px solid #888; border-radius:8px; background:#17191d; color:#eee; font:15px/1.45 system-ui,sans-serif; }
+.lab-choice-dialog::backdrop { background:#000b; }
+.lab-choice-dialog header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:16px; }
+.lab-choice-dialog h2 { margin:0; font-size:18px; }
+.lab-choice-dialog input { box-sizing:border-box; width:100%; padding:12px; background:#25282d; color:inherit; border:1px solid #888; border-radius:3px; font:inherit; }
+.lab-choice-dialog [role=status] { margin:10px 0; color:#bbb; font-size:13px; }
+.lab-choice-results { display:grid; gap:6px; max-height:55dvh; overflow-y:auto; overscroll-behavior:contain; }
+.lab-choice-dialog button { padding:10px 12px; min-height:44px; background:#282b30; color:inherit; border:1px solid #555; border-radius:3px; font:inherit; cursor:pointer; text-align:left; overflow-wrap:anywhere; }
+.lab-choice-dialog button[aria-pressed=true] { border-color:#eee; background:#41454a; }
+.lab-choice-dialog button[aria-pressed=true]::before { content:'✓ '; }
+.lab-choice-dialog :focus-visible,.lab-choice-trigger:focus-visible { outline:2px solid #fff; outline-offset:2px; }
+.lab-choice-dialog button:disabled { opacity:.45; cursor:default; }
+
+.sentry-radial { box-sizing:border-box; position:fixed; margin:0; padding:0; max-width:none; max-height:none; border:1px solid #888; border-radius:50%; background:#11161bf2; color:#eee; overflow:visible; }
+.sentry-radial::backdrop { background:#0006; }
+.sentry-radial button { position:absolute; transform:translate(-50%,-50%); border-radius:50%; background:#252c32; color:#eee; border:1px solid #7d858c; cursor:pointer; font:11px/1.3 ui-monospace,monospace; white-space:pre-line; touch-action:manipulation; }
+.sentry-radial-item { width:23%; height:23%; padding:4px; }
+.sentry-radial-center { left:50%; top:50%; width:23%; height:23%; padding:4px; }
+.sentry-radial button[aria-pressed=true],.sentry-radial button:hover { background:#46505a; border-color:#fff; }
+.sentry-radial button:focus-visible { outline:2px solid white; outline-offset:3px; }
+#sentry-missile-status { position:absolute; left:12px; top:55px; max-width:calc(100% - 300px); color:#eee; background:#111b; padding:8px; font:12px/1.5 ui-monospace,monospace; pointer-events:none; }
+@media(max-width:700px) { #sentry-missile-status { max-width:calc(100% - 24px); top:55px; } }
+
+#sentry-missile-status { white-space:pre-line; }
+#tab-sentry #sentry-hud { bottom:150px; }
+@media(max-width:700px) { #tab-sentry #sentry-hud { bottom:230px; font-size:10px; } }
+
+.lab-help-label { cursor:help; text-decoration:underline dotted #8b949c; text-underline-offset:3px; }
+.lab-help-label:focus-visible { outline:1px solid #ddd; outline-offset:-1px; }
+.lab-control-help { position:fixed; z-index:1000; box-sizing:border-box; width:min(320px,calc(100vw - 16px)); max-height:calc(100dvh - 16px); overflow:auto; padding:14px 16px; border:1px solid #89939c; border-radius:6px; background:#171d23; color:#eee; box-shadow:0 8px 30px #0008; font:13px/1.5 system-ui,sans-serif; }
+.lab-control-help[hidden] { display:none; }
+.lab-control-help strong { display:block; font-size:13px; }
+.lab-control-help p { margin:8px 0 0; }
+.lil-gui .controller.disabled .lab-help-label { pointer-events:auto !important; }
+.authoring-review { color:#d8e6e8; background:#111b22; border:1px solid #71838b; width:min(760px,calc(100vw - 40px)); max-height:85vh; overflow:auto; padding:20px; }
+.authoring-review::backdrop { background:#000b; }
+.authoring-review table { width:100%; border-collapse:collapse; font:12px ui-monospace,monospace; }
+.authoring-review th,.authoring-review td { padding:8px; border-bottom:1px solid #40505a; text-align:left; overflow-wrap:anywhere; }
+.authoring-review button { padding:9px 12px; color:inherit; background:#25333c; border:1px solid #71838b; }
+.authoring-review [data-authoring-status] { white-space:pre-wrap; }
+.preset-backup summary { cursor:pointer; padding:6px; }
+.preset-backup[open] { flex-basis:100%; }
+.preset-backup[open] > label,.preset-backup[open] > button { margin:4px; display:inline-block; }

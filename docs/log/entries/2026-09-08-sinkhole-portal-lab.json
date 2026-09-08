@@ -1,0 +1,22 @@
+{
+  "id": "2026-09-08-sinkhole-portal-lab",
+  "type": "experiment",
+  "status": "observed",
+  "title": "Sinkhole ground-breach genre in Portal Lab",
+  "context": "The owner intends enemies to breach from the ground and requested an initial effect study using the Monolith Rift import guide. Gameplay spawn replacement is later work.",
+  "outcome": "Added separate Sinkhole genre with rumble pre-roll, crater fracture and subsidence, radial fissures, dust and debris. Pinned imported source/textures from 364c9ce70ba784809291e87981ca83a19560f73d, retained MIT attribution and adapted to existing Three r160. Monolith clamp permits zero; warp is omitted. Host cuts a real opening in its planar floor and supplies a dark cavity. Reset clears event resources and reuses the ability. Controls remain preview-only; no second export format or game-spawn change.",
+  "alternatives": [
+    "Original negative-heave plate behind an intact floor cannot provide a visible hole; host floor discard and central slab descent are required.",
+    "Initial subsidence used the wrong cell coordinate pair and retained too much plate; corrected aCell.xy and inspected the settled browser capture.",
+    "No distortion post pass or second Three version introduced."
+  ],
+  "evidence": [
+    "node scripts/browser-test.mjs --sinkhole passed texture/shader load, rumble, opening/subsidence, zero monoliths, reset/reopen, return to portals and disposal.",
+    "artifacts/browser/sinkhole-open.png visually inspected.",
+    "npm run assets:check validates original import provenance and adapted checksums.",
+    "docs/SINKHOLE.md documents planar-host boundary and preview-only controls."
+  ],
+  "supersedes": [],
+  "schema": 1,
+  "date": "2026-09-08"
+}

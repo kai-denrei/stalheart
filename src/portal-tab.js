@@ -1,3 +1,4 @@
+import { BREACH_ENEMY_TYPES } from './breach-enemies.js';
 // portal-tab.js — TEMPORARY. A sidequest bench, not a game tab.
 //
 // Two questions, and this tab exists to answer the second one:
@@ -266,6 +267,7 @@ export function initPortalTab(root) {
   });
 
   function fitView() {
+    if(P.genre==='sinkhole')return;
     const box = new THREE.Box3().setFromObject(rings);
     if (box.isEmpty()) return;
     const c = box.getCenter(new THREE.Vector3());
@@ -277,6 +279,7 @@ export function initPortalTab(root) {
 
   // --- the knobs -----------------------------------------------------------
   const P = {
+    genre: new URLSearchParams(location.search).get('genre')==='sinkhole'?'sinkhole':'portals',
     corona: true,
     rtSize: 512,
     updateHz: 60,        // the corona need not run at display rate
@@ -315,7 +318,53 @@ export function initPortalTab(root) {
 
 
   const gui = new GUI({ container: root.querySelector('#portal-gui') || undefined, width: 268 });
-  gui.title('portal + corona');
+  gui.title('Portal / breach lab');
+  let sinkhole=null,sinkholeLoading=null;
+  async function setGenre(){
+    if(P.genre==='sinkhole'&&!sinkhole){
+      sinkholeLoading ||= import('./sinkhole.js').then(m=>m.createSinkhole(scene,camera));
+      try{sinkhole=await sinkholeLoading;}catch(error){flashNote('Sinkhole failed: '+error.message);return;}
+    }
+    const on=P.genre==='sinkhole';rings.visible=!on;grid.visible=!on;
+    if(sinkhole){sinkhole.group.visible=on;if(!on)sinkhole.reset();}
+    if(on){camera.layers.enable(1);frameBreach('planet');sun.intensity=2;hemi.intensity=1.2;}
+    else {scene.background.set(0x04070d);camera.layers.disable(1);camera.position.set(0,5.2,16);controls.target.set(0,4,0);sun.intensity=.35;hemi.intensity=.55;}
+    for(const folder of gui.folders)folder.show(folder===ground?on:!on);
+    for(const c of gui.controllers)if(['copyPreset','downloadPreset'].includes(c.property))c.disable(on);
+    controls.update();
+  }
+  function frameBreach(view){
+    if(view==='planet'&&sinkhole?.tune.environment==='planet'){const r=sinkhole.tune.planetRadius;camera.position.set(r*1.7,r*1.15,r*2.15);controls.target.set(0,-r,0);}
+    else{camera.position.set(10,11,14);controls.target.set(0,0,0);}
+    controls.update();
+  }
+  gui.add(P,'genre',{Portals:'portals',Sinkhole:'sinkhole'}).name('genre').onChange(setGenre);
+  const ground=gui.addFolder('Sinkhole · ground breach');
+  const breach={look:'textured',walls:true,wallHeight:1.2,clearRadius:6,crackLength:5,crackWidth:.5,arms:9,environment:'planet',planetRadius:14,spawnWaves:true,kind:'mixed',waves:3,count:8,spacing:.45,gap:3,delay:2,emerge:1.2,speed:1.3,sound:true,open:()=>sinkhole?.trigger(),reset:()=>sinkhole?.reset(),preRoll:1.6,radius:3.5,heave:-.12,cracks:.7,debris:24};
+  const note=document.createElement('div');note.textContent='Preview · wave settings apply on the next breach';note.style.cssText='padding:6px 8px;color:#aaa';ground.$children.prepend(note);
+  ground.add(breach,'open').name('rumble → breach').domElement.querySelector('button').dataset.sinkholeOpen='';
+  ground.add(breach,'sound').name('quake sound').onChange(value=>{if(sinkhole)sinkhole.setSound(value);});ground.add(breach,'reset').name('reset ground');
+  for(const [key,field,min,max,step] of [['preRoll','preRoll',0,4,.1],['radius','craterRadius',1,8,.1],['heave','plateHeave',-.8,0,.01],['crackWidth','fissureWidth',.1,2,.05],['crackLength','crackLength',.1,10,.1],['arms','fissureArms',3,18,1],['debris','shrapnelCount',0,100,1]])
+    ground.add(breach,key,min,max,step).name(key==='preRoll'?'rumble lead-in (s)':key).onChange(value=>{if(sinkhole)sinkhole.tune[field]=value;});
+  const world=ground.addFolder('Environment');
+  world.add(breach,'look',{'Textured':'textured','TRON palette':'tronColors','Battlezone':'battlezone'}).name('rendering').onChange(value=>{if(sinkhole)sinkhole.tune.look=value;});
+  const wallTest=ground.addFolder('Wall clearance');
+  wallTest.add(breach,'walls').name('show wall fixtures').onChange(value=>{if(sinkhole)sinkhole.tune.walls=value;});
+  for(const [key,min,max,step] of [['wallHeight',.3,3,.1],['clearRadius',1,12,.25]])wallTest.add(breach,key,min,max,step).onChange(value=>{if(sinkhole)sinkhole.tune[key]=value;});
+  world.add(breach,'environment',{Planet:'planet','Flat reference':'flat'}).onChange(value=>{if(sinkhole){sinkhole.reset();sinkhole.tune.environment=value;frameBreach(value==='planet'?'planet':'breach');}});
+  world.add(breach,'planetRadius',10,28,1).name('planet radius (m)').onChange(value=>{if(sinkhole){sinkhole.reset();sinkhole.tune.planetRadius=value;frameBreach('planet');}});
+  world.add({planet:()=>frameBreach('planet')},'planet').name('view planet');
+  world.add({breach:()=>frameBreach('breach')},'breach').name('view breach');
+  const waves=ground.addFolder('Creature waves');
+  waves.add(breach,'spawnWaves').name('enable waves').onChange(value=>{if(sinkhole)sinkhole.tune.spawnWaves=value;});
+  waves.add(breach,'kind',Object.fromEntries(['mixed',...BREACH_ENEMY_TYPES].map(k=>[k==='mixed'?'Mixed creatures':k,k]))).name('creatures').onChange(value=>{if(sinkhole)sinkhole.tune.kind=value;});
+  for(const [key,label,min,max,step] of [['waves','waves',1,4,1],['count','creatures per wave',1,24,1],['spacing','spawn spacing (s)',.1,2,.05],['gap','between waves (s)',0,10,.5],['delay','after opening (s)',1.5,8,.25],['emerge','fade / grow (s)',.3,3,.1],['speed','travel speed (m/s)',.3,3,.1]])
+    waves.add(breach,key,min,max,step).name(label).onChange(value=>{if(sinkhole)sinkhole.tune[key]=value;});
+  setGenre();
+  if(new URLSearchParams(location.search).get('acceptance')==='1')window.__stalheartPortalTest={
+    state:()=>({genre:P.genre,sinkhole:sinkhole?.state()}),open:()=>sinkhole?.trigger(),reset:()=>sinkhole?.reset(),
+    genre:value=>{P.genre=value;return setGenre();},view:frameBreach,configure:values=>{sinkhole.reset();Object.assign(sinkhole.tune,values);},dispose:()=>sinkhole?.dispose(),
+  };
   const fx = gui.addFolder('effect');
   fx.add(P, 'corona').name('effect on');
   fx.add(P, 'effect', Object.keys(EFFECTS)).name('which').onChange(setEffect);
@@ -513,6 +562,7 @@ export function initPortalTab(root) {
 
     if (flashT > 0) flashT -= dt;
     advancePhase(dt);
+    if(P.genre==='sinkhole'){controls.update();sinkhole?.update(dt);return;}
     coronaMs = 0;
     if (P.corona) {
       const period = 1 / Math.max(1, P.updateHz);
@@ -529,6 +579,9 @@ export function initPortalTab(root) {
 
   function paintHud() {
     if (!hud) return;
+    if(P.genre==='sinkhole'){
+      const state=sinkhole?.state();hud.textContent=state?`SINKHOLE · ${state.ready?state.phase:'loading stone textures'} · ${state.holeRadius.toFixed(2)} m opening · wave ${state.enemies.wave} · ${state.enemies.live} creatures · ${renderer.info.render.calls} draws`:'Loading sinkhole…';return;
+    }
     if (flashT > 0) { hud.innerHTML = `<b>${flashMsg}</b>`; return; }
     const r = renderer.info.render;
     const work = fragmentWork();
@@ -557,7 +610,9 @@ export function initPortalTab(root) {
     const t0 = performance.now();
     step(dt, simT + dt);
     postfx.setEnabled(P.bloom);
-    postfx.render();
+    const cameraBase=camera.position.clone(),rotationBase=camera.quaternion.clone();
+    if(P.genre==='sinkhole'&&sinkhole){camera.position.add(sinkhole.rig.shakeOffset);camera.rotateZ(sinkhole.rig.shakeRoll);}
+    postfx.render();camera.position.copy(cameraBase);camera.quaternion.copy(rotationBase);
     frameMs = performance.now() - t0;
     times.push(frameMs);
     if (times.length > 90) times.shift();

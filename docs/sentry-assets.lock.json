@@ -54,27 +54,6 @@
       "family": "sentry"
     },
     {
-      "path": "assets/models/sentries/howitzer_t1.glb",
-      "sourcePath": "assets/howitzer_t1.glb",
-      "sha256": "e77b4c6faf587151e2dcb4baeb320681e20ca84deefba19890c96f3ec1040ac2",
-      "bytes": 62216,
-      "family": "sentry"
-    },
-    {
-      "path": "assets/models/sentries/howitzer_t2.glb",
-      "sourcePath": "assets/howitzer_t2.glb",
-      "sha256": "92383514a38ddefac991538b3cfbd3a0c879eb7579a906832b641eeecbc043a7",
-      "bytes": 63676,
-      "family": "sentry"
-    },
-    {
-      "path": "assets/models/sentries/howitzer_t3.glb",
-      "sourcePath": "assets/howitzer_t3.glb",
-      "sha256": "1031fb8499024d991e68f24ceaf03c1c33731c23b8461c9c5cdd1e984b1286a6",
-      "bytes": 65012,
-      "family": "sentry"
-    },
-    {
       "path": "assets/models/sentries/lancer_t1.glb",
       "sourcePath": "assets/lancer_t1.glb",
       "sha256": "6d155e2d3620c05205262ad04adae9713259f6f680c5f61e4f8fdf1d2077ebc2",

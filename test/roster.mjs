@@ -70,12 +70,11 @@ console.log('the active Sentry roster:');
     TOWER_BY_KEY.plasma.rate >= 5);
   check('the sustained weapon\'s DPS is what it always was',
     Math.abs(TOWER_BY_KEY.plasma.dmg * TOWER_BY_KEY.plasma.rate - (15 / 90) * 1.6) < 0.02);
-  check('the Howitzer lobs, and further than the Mortar',
-    TOWER_BY_KEY.howitzer.attack === 'mortar'
-    && TOWER_BY_KEY.howitzer.range > TOWER_BY_KEY.mortar.range
-    && TOWER_BY_KEY.howitzer.splash > TOWER_BY_KEY.mortar.splash
-    && TOWER_BY_KEY.howitzer.rate < TOWER_BY_KEY.mortar.rate);
-  check('the Lancer reaches furthest', TOWERS.every((d) => d.range <= TOWER_BY_KEY.lancer.range));
+  check('Needle is a precise sniper with greater reach than Mortar',
+    TOWER_BY_KEY.needle.hitscan && !TOWER_BY_KEY.needle.arc
+    && TOWER_BY_KEY.needle.range > TOWER_BY_KEY.lancer.range
+    && !TOWER_BY_KEY.needle.splash);
+  check('Needle has the longest base reach', TOWERS.every(d=>d.range<=TOWER_BY_KEY.needle.range));
   // THE LANCE IS AIMED AT A LINE, NOT A BODY. It pierces, so its value is
   // in how many things happen to be standing on the line — which only pays
   // if it is slow enough that pointing it is a decision, and long enough
@@ -83,8 +82,7 @@ console.log('the active Sentry roster:');
   check('the Lancer pierces and is aimed down a line',
     TOWER_BY_KEY.lancer.attack === 'lance' && TOWER_BY_KEY.lancer.pierce === true);
   check('...in ONE long burst, not a stream',
-    TOWER_BY_KEY.lancer.burst >= 0.5
-    && TOWER_BY_KEY.lancer.burst < 1 / TOWER_BY_KEY.lancer.rate);
+    TOWER_BY_KEY.lancer.burst === 3);
   check('...and it is the slowest thing on the board',
     TOWERS.every((d) => d.rate >= TOWER_BY_KEY.lancer.rate));
   // A LASER IS GREEN AND A TOWER IS NOT (operator). Two keys, so the beam can

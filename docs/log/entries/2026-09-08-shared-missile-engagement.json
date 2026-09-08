@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "id": "2026-09-08-shared-missile-engagement",
+  "date": "2026-09-08",
+  "type": "change",
+  "status": "resolved",
+  "title": "Share Quiver and Heptapod engagement rules and promote range/lock settings",
+  "context": "Owner requested architecture/parity after repeated lab/game drift. DART presentation was shared, but gameplay ignored authored engagement bands and Quiver accumulated a lock against its tower cell rather than the acquired enemy. Lock knobs were not represented in reviewed defaults.",
+  "outcome": "The pure missile-targeting owner now handles target retention, inclusive ground-distance bands, immediate lock reset after target loss/switch and firing eligibility. Lock/guidance and the Heptapod loop moved behind top-level compatibility facades into domain modules. Gameplay supplies sphere arcs and actual post-slew aim; lab supplies flat ground metres. A fixed 10 authoring metres per cell is independent of fitted asset scale. The shipped 30 m maximum therefore becomes three base cells, replacing old game Quiver 3.5/Heptapod 3.4 ranges; existing 8% upgrade range growth remains and minimum range stays fixed. Version 5 adds per-family lock gate/time/break and aim tolerance to reviewed presets, with strict v2/v3/v4 migration including saved metadata baselines and generated content. Heptapod retains hard-target policy, cassette, standoff, leash and return/reload, and cannot walk into a narrow blind zone. Game damage/economy/progression and cadence are preserved; lab fixtures remain general test targets and drive speed/recoil/cadence controls are explicitly preview-only. This is missile engagement/presentation parity, not full combat-engine extraction. User project drafts remain v4 on disk, readable as v5 with their Quiver 9–40 m and Heptapod 9–36 m values intact; neither was promoted. One local source server was restarted at port 8155 for the updated schema.",
+  "alternatives": [
+    "Deriving engagement reach from fitted model size was rejected because mesh replacement or tier appearance would change combat range.",
+    "Keeping separate lab and game locks was rejected because progress could transfer between enemies and authored changes remained misleading.",
+    "A strict floating-point comparison initially excluded sphere endpoints a few ulps beyond the band; a one-nanometre conversion tolerance preserves inclusive boundaries without a gameplay-sized margin."
+  ],
+  "evidence": [
+    "npm test: 73 test programs pass, including old lock/guidance and Heptapod lifecycle invariants.",
+    "npm run check: 24 pure-layer modules, canonical module identity, pinned kernel/assets and current preset validation pass.",
+    "npm run test:browser: complete source acceptance passes.",
+    "node scripts/browser-test.mjs --missile-parity: actual Quiver/Heptapod combat targeting, arrivals, blind-zone exclusion, pause and restart pool cleanup pass.",
+    "node scripts/browser-test.mjs --local-authoring: real GUI lock edit, isolated save/review/apply, gameplay consumption of promoted range/lock settings, checks/build and exact undo pass.",
+    "test/missile-targeting.mjs: flat/sphere selection equivalence, exact endpoints, target changes, cooldown, unavailable pool and paused lock progress.",
+    "test/heptapod.mjs: narrow engagement band, paused state and unavailable-launcher cassette preservation.",
+    "Local server state returns stalheart-fx-5; both existing project draft files and their original baselines parse without writes."
+  ],
+  "supersedes": []
+}

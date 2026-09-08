@@ -1,3 +1,20 @@
+import { makeOrdnanceShell } from './shell.js';
+import { createWeaponVoice } from './weapon-voice.js';
+import { firingFor } from './content/firing-defaults.js';
+import { TOWER_BY_KEY, effectiveStats } from './towers.js';
+import { mountSentryEffects, EFFECT_HELP } from './labs/sentry-effects.js';
+import { RANGE_SURFACES, makeRangeSurface, surfaceNormal } from './labs/range-surfaces.js';
+import { makeImpactBurst, orientImpact } from './impactfx.js';
+import { tuneFor, resolveImpactColors } from './sentryfx.js';
+import { pickMissileTarget, missileGroundDistance, missileLimits as scaledMissileLimits, stepMissileLock, missileCanFire } from './domain/missile-targeting.js';
+import { mountControlHelp } from './labs/control-help.js';
+import { SENTRY_HELP } from './labs/sentry-help.js';
+import { CONTENT } from './content/runtime.js';
+import { clone } from './content/preset.js';
+import { MISSILE_LAUNCH_ELEVATION } from './content/missile-defaults.js';
+import { createMissilePool, launchDart, advanceDart } from './missiles.js';
+import { mountPresetPanel } from './labs/preset-panel.js';
+import { mountSentryRadial } from './labs/sentry-radial.js';
 // sentry-tab.js — THE SENTRY RANGE. Eight numbered Sentry families from the
 // Sentry Workshop (https://jelaludo.github.io/SentryTowers_A6/) on a range
 // where units pop up, and the turret has to find them, turn to them, and
@@ -40,10 +57,10 @@ import {
   canFire, fire, hitTarget, landedOn, aimAt, inEnvelope, aimError,
   placeBattery, relTo, stepWaves, stepWalkers, deadZone, leadPoint,
 } from './sentry.js';
-import { weaponKind, fxForFamily } from './sentryfx.js';
+import { weaponKind } from './sentryfx.js';
 import { makeAudio } from './audio.js';
 import {
-  MISSILE_TUNE, scaleMissile, makeLock, stepLock, launchMissile, stepMissile,
+  makeLock,
 } from './lockon.js';
 
 // the pop-up units, from the game's own roster — this is a range for OUR
@@ -51,7 +68,15 @@ import {
 const TARGET_TYPES = ['phage', 'ghost', 'corona', 'barbed'];
 
 export function initSentryTab(root) {
-  let active = false;
+  let active = false, disposed = false;
+  let draft = clone(CONTENT), missilePool = null;
+  const missileStats = { launched: 0, arrived: 0, last: null };
+  const missileStatus = document.createElement('output');
+  missileStatus.id = 'sentry-missile-status'; root.append(missileStatus);
+  const isMissile = () => Object.hasOwn(draft.missiles, familyById(P.family).key);
+  createMissilePool().then(pool => {
+    if(disposed){pool.dispose();return;} missilePool=pool; missileStatus.textContent='Click a tower to select all Sentries.';
+  }).catch(error => { missileStatus.textContent=`Missile kit failed to load: ${error.message}`; });
   const q = new URLSearchParams(location.search);
   const container = root.querySelector('#sentry-app');
   const hud = root.querySelector('#sentry-hud');
@@ -91,7 +116,7 @@ export function initSentryTab(root) {
     family: 'rotor', tier: 1,
     live: true,            // the range runs; off freezes it for a look
     autoFire: true,
-    mode: 'waves',         // waves | pop — what the range presents
+    mode: 'waves', surfaceDistance: 12, surfaceSize: 3, surfaceAngle: 0, timeScale: 1,         // waves | pop — what the range presents
     walls: true,           // draw the plinth a mounted sentry stands on
     lead: true,            // aim where it WILL be — see leadPoint
     manual: false,         // drive the turret by hand instead of tracking
@@ -113,7 +138,21 @@ export function initSentryTab(root) {
     }
   }
 
+  if (q.has('sentry') && !q.has('family')) P.family = q.get('sentry');
   P.family = familyById(P.family).id;
+  // Legacy experiment URLs seed only the selected working copy, never shipped content.
+  const initialMissile = draft.missiles[familyById(P.family).key];
+  if (initialMissile) {
+    for (const [key, query, min, max] of [['lockGate','lockGate',.5,30],['lockTime','lockTime',.1,6],
+      ['lockBreak','lockBreak',1,90],['aimTolerance','tolerance',.2,15]]) {
+      if (q.has(query)) initialMissile[key] = Math.max(min, Math.min(max, P[query]));
+    }
+    initialMissile.lockBreak = Math.max(initialMissile.lockBreak, initialMissile.lockGate);
+  }
+
+  if (!['waves', 'pop', ...Object.keys(RANGE_SURFACES)].includes(P.mode)) P.mode = 'waves';
+  for (const [key, min, max] of [['surfaceDistance', 1, 60], ['surfaceSize', 1, 8], ['surfaceAngle', -80, 80], ['timeScale', 0.1, 1]])
+    P[key] = Math.max(min, Math.min(max, P[key]));
   P.tier = Math.max(1, Math.min(3, Math.round(P.tier)));
 
   // --- state ---------------------------------------------------------------
@@ -126,6 +165,7 @@ export function initSentryTab(root) {
   // new family with a new sound then needs no change here at all.
   const sfx = makeAudio({ seed: 7 });
   sfx.arm();
+  const beamVoice=createWeaponVoice(sfx,()=>P.sound);
   // ?voiceprobe=1 — WHICH SOUND, WHEN. A headless run cannot hear anything,
   // so the only way to check that a family's voice is wired (and that the
   // Rotor's spin-up fires on the edge rather than every frame) is to log the
@@ -141,10 +181,6 @@ export function initSentryTab(root) {
     if (P.sound) sfx.play(key);
   };
 
-  // THE QUIVER'S SEEKERS, in the range's own units. The tune is the sniper's
-  // own, scaled — see scaleMissile — so a retune of the Javelin follows here
-  // rather than drifting away from it.
-  const MSL = scaleMissile(MISSILE_TUNE, 1 / 70, 1 / 2.5);
   const seekers = [];
 
   let proto = null;            // the loaded GLB, cloned per sentry
@@ -176,10 +212,10 @@ export function initSentryTab(root) {
   // the shared looks, so this is the one number the range owns
   const RANGE_BEAM_W = 0.6;
   function spawnRangeBeam(from, to, kind, colorHex, target, b) {
-    const grp = makeBeamShot(from, to, colorHex, kind, { glowWidth: RANGE_BEAM_W });
-    scene.add(grp);
-    const life = kind === 'lance' ? 0.55 : 0.16;
-    beams.push({ obj: grp, left: life, dur: life });
+    const life=firingFor(familyById(P.family).key).beamHold;
+    let entry=beams.find(e=>e.owner===b);
+    if(!entry){const obj=makeBeamShot(from,to,colorHex,kind,{glowWidth:RANGE_BEAM_W});scene.add(obj);entry={obj,owner:b};beams.push(entry);}
+    entry.obj.userData.setEndpoints(from,to);entry.left=life;entry.dur=life;
 
     // THE HIT IS SCORED THE SAME WAY A ROUND'S IS — the drawing changed, not
     // the accuracy. A beam that always hit would make the range lie about the
@@ -190,20 +226,17 @@ export function initSentryTab(root) {
     const aimed = target && target.id >= 0
       ? range.targets.find((x) => x.id === target.id) : null;
     const res = aimed && landedOn([to.x, to.y, to.z], aimed, P)
-      ? hitTarget(b ? b.st : st, range, target.id) : null;
-    const burst = makeDotBurst(res ? 0xffd27f : 0x6f8ea0, [0, 1, 0], res ? 26 : 12);
-    burst.scale.setScalar(res ? 0.4 : 0.2);
-    burst.position.copy(to);
-    scene.add(burst);
-    fx.push({ obj: burst, tick: burst.userData.tick });
+      ? rangeHit(b ? b.st : st, range, target.id) : null;
+    emitEffect('impact', to.toArray(), contactNormal(aimed, from.toArray()));
     if (res === 'kill') dropTarget(target.id, true);
   }
 
   function stepBeams(dt) {
+    beamVoice.update(familyById(P.family).key,beams.length>0);
     for (let i = beams.length - 1; i >= 0; i--) {
       const e = beams[i];
       e.left -= dt;
-      const u = Math.max(0, e.left / e.dur);
+      const u = Math.min(1,Math.max(0, e.left / .12));
       // setFade, not material.opacity: these are ShaderMaterials and writing
       // `opacity` on one does nothing at all
       if (e.obj.userData.update) e.obj.userData.update(clock.getElapsedTime());
@@ -271,6 +304,14 @@ export function initSentryTab(root) {
   // to turn and two to zoom, and a few seconds of that leaves the range
   // somewhere behind you with no way back.
   function frameHome() {
+    if (Object.hasOwn(RANGE_SURFACES, P.mode)) {
+      // Frame both ends of the firing lane, with room above for the missile arc.
+      const span = Math.max(10, P.surfaceDistance + P.surfaceSize);
+      controls.target.set(0, 2, P.surfaceDistance * 0.5);
+      camera.position.set(span * 0.95, span * 0.7, P.surfaceDistance * 0.5 - span * 1.15);
+      camera.lookAt(controls.target); controls.update();
+      return;
+    }
     // SOLVED, not guessed: back off far enough that the outer ring fits the
     // frame's HEIGHT (the narrow axis on every phone in landscape), then sit
     // at 58 degrees. A hand-picked distance framed the ring at 9 units and
@@ -290,7 +331,7 @@ export function initSentryTab(root) {
   function clearBattery() {
     while (battery.length) {
       const b = battery.pop();
-      scene.remove(b.obj); disposeObj(b.obj);
+      scene.remove(b.obj); // Geometry/materials are owned by proto, shared by the battery.
       if (b.wall) { scene.remove(b.wall); b.wall.geometry.dispose(); }
     }
   }
@@ -357,10 +398,11 @@ export function initSentryTab(root) {
 
   function loadSentry() {
     root.dataset.modelReady = 'false';
+    resetRange();
     const ticket = ++modelSerial;
     const url = sentryUrl(P.family, P.tier);
     loader.load(url, (gltf) => {
-      if (ticket !== modelSerial) { disposeObj(gltf.scene); return; }
+      if (disposed || ticket !== modelSerial) { disposeObj(gltf.scene); return; }
       clearBattery();
       if (proto) disposeObj(proto);
       proto = gltf.scene;
@@ -380,6 +422,8 @@ export function initSentryTab(root) {
         }
       });
       rebuildBattery();
+      syncMissileControls();
+      effectsPanel.refresh();
       root.dataset.sentry = familyById(P.family).key;
       root.dataset.modelReady = 'true';
       console.log(`SENTRY ${P.family} t${P.tier}: ${battery[0] ? battery[0].muzzles.length : 0} muzzle(s)`
@@ -392,15 +436,44 @@ export function initSentryTab(root) {
   }
 
   // --- the range -----------------------------------------------------------
+  const profile = () => draft.weapons[familyById(P.family).key];
+  const surfaceMode = () => Object.hasOwn(RANGE_SURFACES, P.mode);
+  const effectStats = { impacts: 0, muzzles: 0, last: null };
+  function emitEffect(slot, point, normal, weapon = profile()) {
+    const effect = weapon[slot];
+    const surface = RANGE_SURFACES[P.mode] || RANGE_SURFACES.hull;
+    const colors = resolveImpactColors(effect, { surface, weapon: weapon.shot.beamColor || look.walkerHi });
+    const object = makeImpactBurst(effect.recipe, tuneFor(effect), colors, effectStats.impacts + effectStats.muzzles + 1, effect.size);
+    orientImpact(object, point, normal);
+    scene.add(object); fx.push({ obj: object, tick: object.userData.tick });
+    while (fx.length > 128) { const old = fx.shift(); scene.remove(old.obj); disposeObj(old.obj); }
+    effectStats[slot === 'impact' ? 'impacts' : 'muzzles']++;
+    if (slot === 'impact') effectStats.last = { size: effect.size, recipe: clone(effect.recipe), point: point.slice(), normal: normal.slice(), mode: P.mode };
+  }
+  function contactNormal(target, from) {
+    const object = target && targetObjs.get(target.id);
+    if (object?.userData.surface) return surfaceNormal(object, from);
+    const p = target?.pos || [0, 0, 0];
+    return new THREE.Vector3().fromArray(from).sub(new THREE.Vector3().fromArray(p)).normalize().toArray();
+  }
+  function rangeHit(owner, targets, id) {
+    if (surfaceMode()) { owner.hits++; return 'hit'; }
+    return hitTarget(owner, targets, id);
+  }
   function resetRange() {
     for (const [, o] of targetObjs) { scene.remove(o); disposeObj(o); }
     targetObjs.clear();
     for (const t of tracers) { scene.remove(t.mesh); disposeObj(t.mesh); }
     tracers.length = 0;
-    for (const m of seekers) { scene.remove(m.mesh); disposeObj(m.mesh); }
+    for (const m of seekers) missilePool?.release(m.mesh);
     seekers.length = 0;
+    for(const beam of beams){scene.remove(beam.obj);disposeObj(beam.obj);}
+    beams.length=0;beamVoice.dispose();
+    for(const effect of fx){scene.remove(effect.obj);disposeObj(effect.obj);}
+    fx.length=0;
     for (const b of battery) { b.lock = makeLock(); b.spooled = false; }
     range = makeRange();
+    if (surfaceMode()) range.targets.push({ id: 0, up: true, hp: P.hp, pos: [0, P.surfaceSize * 0.325, P.surfaceDistance], vel: [0, 0, 0], age: 1 });
     rng = mulberry32(P.seed >>> 0);
     st.rounds = 0; st.hits = 0; st.kills = 0;
     for (const b of battery) { b.st.rounds = 0; b.st.hits = 0; b.st.kills = 0; b.st.target = -1; }
@@ -408,8 +481,9 @@ export function initSentryTab(root) {
 
   function targetMesh(t) {
     const type = TARGET_TYPES[t.id % TARGET_TYPES.length];
-    const o = makeDotEnemy(type, { walker: CREATURE_TINTS[type], walkerHi: accentFor(type) });
-    o.scale.setScalar(0.42);
+    const o = surfaceMode() ? makeRangeSurface(P.mode, P.surfaceSize, P.surfaceAngle)
+      : makeDotEnemy(type, { walker: CREATURE_TINTS[type], walkerHi: accentFor(type) });
+    if (!surfaceMode()) o.scale.setScalar(0.42);
     o.userData.popT = 0;
     scene.add(o);
     targetObjs.set(t.id, o);
@@ -460,89 +534,44 @@ export function initSentryTab(root) {
     }
   }
 
-  // THE QUIVER DOES NOT FIRE A ROUND, IT RELEASES ONE. What leaves the tube
-  // has its own motor and its own guidance and it will arrive whether or not
-  // the barrel stayed pointed — which is why the family has to LOCK first and
-  // why its rate of fire is beside the point. It is the sniper lab's Javelin
-  // with the aiming automated, which is the whole shape of the arc: the
-  // player learns a weapon by hand and then Isao prints the chip that flies
-  // it for them.
   function launchSeeker(b, mi, target) {
+    if (!missilePool?.available) return;
+    const config = clone(draft.missiles[familyById(P.family).key]);
     const mz = b.muzzles[Math.min(mi, b.muzzles.length - 1)];
-    const from = new THREE.Vector3();
-    if (mz) mz.getWorldPosition(from);
-    else from.set(b.st.pos[0], b.st.pos[1] + 1.4, b.st.pos[2]);
-    gunFrame(b);
-    const dir = borePt.copy(pivotW).addScaledVector(boreDir, 1).sub(from);
-    if (dir.lengthSq() < 1e-9) dir.set(0, 0, 1);
-    dir.normalize();
-    const m = launchMissile([from.x, from.y, from.z], [dir.x, dir.y, dir.z], MSL.launchSpeed, 0);
-    m.tid = target ? target.id : -1;
-    m.by = b;
-    m.carry = 0;
-    m.launchRange = target
-      ? Math.hypot(target.pos[0] - from.x, target.pos[1] - from.y, target.pos[2] - from.z)
-      : P.ringMax;
-    const mesh = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.26, 6),
-      new THREE.MeshBasicMaterial({ color: 0xffd08a }));
-    mesh.visible = P.tracers;
-    mesh.position.copy(from);
-    scene.add(mesh);
-    m.mesh = mesh;
-    seekers.push(m);
-    // FIRE AND FORGET. The missile carries the target it was launched at, so
-    // the launcher has no reason to keep looking at it — and every reason not
-    // to: holding the lock let it put six rounds into one walker while the
-    // rest of the wave went past. Dropping the lock the instant a cell is
-    // away is what makes the weapon slow to its FIRST shot and quick after,
-    // which is the character a launcher is supposed to have.
-    b.lock = makeLock();
-    b.st.target = -1;
-    voice(familyById(P.family).fire);
-    const f = makeDotBurst(0xffe6a8, [dir.x, dir.y, dir.z], 18);
-    f.scale.setScalar(0.25);
-    f.position.copy(from);
-    scene.add(f);
-    fx.push({ obj: f, tick: f.userData.tick });
+    const from = new THREE.Vector3(), direction = new THREE.Vector3(0,0,1);
+    b.obj.updateMatrixWorld(true);
+    if(mz){mz.getWorldPosition(from);mz.getWorldQuaternion(tmpQ);direction.applyQuaternion(tmpQ);}
+    else {gunFrame(b);from.copy(pivotW);direction.copy(boreDir);}
+    const object = target ? targetObjs.get(target.id) : null;
+    const endpoint = object ? object.position.toArray() : target ? target.pos.slice()
+      : from.clone().addScaledVector(new THREE.Vector3(direction.x,0,direction.z).normalize(),P.ringMax).toArray();
+    const m = launchDart(missilePool,{config,from:from.toArray(),target:endpoint,direction:direction.toArray()});
+    Object.assign(m,{tid:target?.id ?? -1,by:b,weapon:clone(profile()),origin:from.toArray()});
+    m.mesh.visible=P.tracers;scene.add(m.mesh);seekers.push(m);
+    missileStats.launched++;
+    missileStats.last={family:familyById(P.family).key,profile:config.profile,duration:config.duration,length:config.length,
+      launchPosition:from.toArray(),launchDirection:direction.toArray(),
+      targetDistance:target?missileGroundDistance(b.st.pos,target.pos):null};
+    emitEffect('muzzle', from.toArray(), direction.toArray());
+    b.lock=makeLock();b.st.target=-1;voice(familyById(P.family).fire);
   }
 
   function stepSeekers(dt) {
-    for (let i = seekers.length - 1; i >= 0; i--) {
-      const m = seekers[i];
-      const t = m.tid >= 0 ? range.targets.find((x) => x.id === m.tid) : null;
-      const o = t ? targetObjs.get(t.id) : null;
-      const tp = o ? [o.position.x, o.position.y, o.position.z]
-        : t ? t.pos : [m.p[0] + m.v[0], m.p[1] + m.v[1], m.p[2] + m.v[2]];
-      const tv = t && t.vel ? t.vel : [0, 0, 0];
-      const h = MSL.step;
-      m.carry += dt;
-      for (let k = 0; k < 400 && !m.spent && m.carry >= h - 1e-9; k++) {
-        m.carry -= h;
-        stepMissile(m, h, tp, tv, m.launchRange, MSL);
-        if (t && m.t > MSL.arm) {
-          const miss = Math.hypot(tp[0] - m.p[0], tp[1] - m.p[1], tp[2] - m.p[2]);
-          // the RANGE's own hit radius, not the warhead's: a lab where the
-          // missile kills at a different distance from everything else is a
-          // lab that cannot be compared against itself
-          if (miss <= P.hitRadius) {
-            hitTarget(m.by ? m.by.st : st, range, m.tid);
-            m.spent = true;
-          }
-        }
+    for(let i=seekers.length-1;i>=0;i--){
+      const m=seekers[i],target=range.targets.find(t=>t.id===m.tid && t.up && t.hp>0);
+      const object=target ? targetObjs.get(target.id) : null;
+      if(object)m.target=object.position.toArray();
+      const arrived=advanceDart(missilePool,m,dt),pose=m.pose;
+      m.mesh.visible=P.tracers;
+      if(!arrived)continue;
+      if(target){
+        const result=rangeHit(m.by.st,range,m.tid);
+        if(result==='kill')dropTarget(m.tid,true);
       }
-      m.mesh.position.set(m.p[0], m.p[1], m.p[2]);
-      m.mesh.visible = P.tracers;
-      if (!m.spent) {
-        const v = new THREE.Vector3(m.v[0], m.v[1], m.v[2]).normalize();
-        m.mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), v);
-      }
-      if (!(m.spent || m.p[1] < 0 || m.t > MSL.maxTime)) continue;
-      const burst = makeDotBurst(m.spent ? 0xffd27f : 0x6f8ea0, [0, 1, 0], m.spent ? 30 : 12);
-      burst.scale.setScalar(m.spent ? 0.45 : 0.2);
-      burst.position.set(m.p[0], Math.max(0.03, m.p[1]), m.p[2]);
-      scene.add(burst); fx.push({ obj: burst, tick: burst.userData.tick });
-      scene.remove(m.mesh); disposeObj(m.mesh);
-      seekers.splice(i, 1);
+      missileStats.arrived++;
+      missileStats.lastArrival={family:familyById(m.by.st.family).key,duration:m.t,ignition:pose.ignition,error:Math.hypot(...pose.position.map((v,i)=>v-m.target[i]))};
+      emitEffect('impact', pose.position, contactNormal(target,m.origin), m.weapon);
+      missilePool.release(m.mesh);seekers.splice(i,1);
     }
   }
 
@@ -580,15 +609,15 @@ export function initSentryTab(root) {
     // fired tracers. The kind comes from sentryfx.js, the same table the
     // board and the FX lab read, so the three cannot disagree again.
     const kind = weaponKind(P.family);
-    const fxp = fxForFamily(P.family);
+    const fxp = profile();
+    emitEffect('muzzle', from.toArray(), dir.toArray(), fxp);
     const beamHex = (fxp.shot && fxp.shot.beamColor) || look.walkerHi;
     if (kind === 'lance' || kind === 'throw') {
       spawnRangeBeam(from, borePt, kind, beamHex, target, b);
-      voice(familyById(P.family).fire);
       return;
     }
-    const mesh = makeBulletCloud({ body: look.walkerHi, hi: 0xffffff });
-    mesh.scale.setScalar(0.09);
+    const mesh = kind==='lob'?makeOrdnanceShell(.65):makeBulletCloud({ body: look.walkerHi, hi: 0xffffff });
+    if(kind!=='lob')mesh.scale.setScalar(0.09 * fxp.shot.projPx / 4);
     mesh.position.copy(from);
     scene.add(mesh);
     // it flies to the boresight POINT — so an aim that is off puts the round
@@ -625,14 +654,8 @@ export function initSentryTab(root) {
       };
     }
     tracers.push({ mesh, pos: from.clone(), startY: from.y, dir, left: dist, gone: 0, lob,
-      id: target ? target.id : -1, by: b });
-    // the muzzle flash, in the game's own dots
+      id: target ? target.id : -1, by: b, weapon: clone(fxp), origin: from.toArray() });
     voice(familyById(P.family).fire);
-    const f = makeDotBurst(0xffe6a8, [dir.x, dir.y, dir.z], 16);
-    f.scale.setScalar(0.22);
-    f.position.copy(from);
-    scene.add(f);
-    fx.push({ obj: f, tick: f.userData.tick });
   }
 
   function stepTracers(dt) {
@@ -644,6 +667,7 @@ export function initSentryTab(root) {
       tr.pos.addScaledVector(tr.dir, step);
       tr.left -= step;
       tr.gone += step;
+      const previous=tr.mesh.position.clone();
       tr.mesh.position.copy(tr.pos);
       if (tr.lob && tr.lob.total > 1e-6) {
         // 4u(1-u): nought at the tube, nought at the impact, the arc height
@@ -662,6 +686,7 @@ export function initSentryTab(root) {
         tr.mesh.position.copy(tr.pos);
         tr.mesh.position.y += 4 * u * (1 - u) * tr.lob.h;
       }
+      if(tr.mesh.userData.ordnance){const direction=tr.mesh.position.clone().sub(previous).normalize();if(direction.lengthSq()>0)tr.mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),direction);}
       if (tr.left > 1e-4) continue;
       // DID IT LAND ON IT? The tracer left along the BARREL, and the barrel is
       // only as close as the drive had got it — so a round fired mid-slew
@@ -673,12 +698,8 @@ export function initSentryTab(root) {
       // own totals each frame, so a kill written there was overwritten
       // before anything read it.
       const res = landedOn([tr.pos.x, tr.pos.y, tr.pos.z], aimed, P)
-        ? hitTarget(tr.by ? tr.by.st : st, range, tr.id) : null;
-      const b = makeDotBurst(res ? 0xffd27f : 0x6f8ea0, [0, 1, 0], res ? 26 : 12);
-      b.scale.setScalar(res ? 0.4 : 0.2);
-      b.position.copy(tr.pos);
-      scene.add(b);
-      fx.push({ obj: b, tick: b.userData.tick });
+        ? rangeHit(tr.by ? tr.by.st : st, range, tr.id) : null;
+      emitEffect('impact', tr.pos.toArray(), contactNormal(aimed,tr.origin), tr.weapon);
       if (res === 'kill') dropTarget(tr.id, true);
       scene.remove(tr.mesh); disposeObj(tr.mesh);
       tracers.splice(i, 1);
@@ -687,7 +708,9 @@ export function initSentryTab(root) {
 
   // --- the frame -----------------------------------------------------------
   function stepRangeFrame(dt) {
-    if (P.mode === 'waves') {
+    if (surfaceMode()) {
+      // Persistent material fixtures receive repeated hits without becoming enemies.
+    } else if (P.mode === 'waves') {
       // enemies that walk in and can die. Anything that reaches the guns has
       // GOT THROUGH — it comes off the field and is counted, because a range
       // an enemy walks over and keeps going measures nothing.
@@ -699,6 +722,7 @@ export function initSentryTab(root) {
     }
     for (const t of range.targets) {
       const o = targetObjs.get(t.id) || targetMesh(t);
+      if (surfaceMode()) { o.position.fromArray(t.pos); continue; }
       // POP UP: they rise out of the ground over a third of a second, which
       // is the whole reason the range is a popper — a target that fades in
       // gives the turret no moment to react to
@@ -719,21 +743,29 @@ export function initSentryTab(root) {
   // and it tracks the live knobs because it is spread from them
   let lobDrive = null;
   function aimFrame(dt) {
+    if(root.dataset.modelReady!=='true')return;
     const fam = familyById(P.family);
+    const missile = isMissile();
+    const def = TOWER_BY_KEY[fam.key];
+    const missileLimits = missile ? scaledMissileLimits(draft.missiles[fam.key], effectiveStats(def, P.tier-1).range / def.range) : null;
     lobDrive = fam.lob ? { ...P, elevMax: 85 } : null;
     const fixed = !!fam.fixed;
     let engaged = 0;
     for (const b of battery) {
       const s2 = b.st;
       let inside = false, tgt = null, aimPt = null;
-      if (P.manual || fixed) {
+      if (P.manual || (fixed && !missile)) {
+        if(missile)s2.target=-1;
         s2.wantYaw = fixed ? 0 : P.yaw;
         s2.wantElev = fixed ? 0 : P.elev;
         inside = !fixed;
       } else {
-        const i = pickTarget(range, P, s2.target, s2);
+        const i = missile
+          ? pickMissileTarget(range.targets, s2.pos, s2.target, missileLimits)
+          : pickTarget(range, P, s2.target, s2);
         tgt = i >= 0 ? range.targets[i] : null;
         s2.target = tgt ? tgt.id : -1;
+        if(missile && !tgt){s2.wantYaw=s2.yaw;s2.wantElev=s2.elev;}
         if (tgt) {
           const o = targetObjs.get(tgt.id);
           const p = o ? [o.position.x, o.position.y, o.position.z] : tgt.pos;
@@ -760,7 +792,11 @@ export function initSentryTab(root) {
           // range and wrong for the two that throw. The launch angle comes
           // from the shell's own parabola — lobAngle(range, arc) — so the
           // tube and the round are one number apart and cannot disagree.
-          if (fam.lob) {
+          if (missile) {
+            s2.wantElev=fixed?0:MISSILE_LAUNCH_ELEVATION;
+            if(fixed)s2.wantYaw=0;
+            inside=true;
+          } else if (fam.lob) {
             const rng = Math.hypot(rel[0], rel[1], rel[2]);
             s2.wantElev = lobAngle(rng, fam.arcCells * (P.ringMax / 9));
             inside = true;   // a lob has no line-of-sight envelope to fail
@@ -791,7 +827,7 @@ export function initSentryTab(root) {
         // thing stutter.
         const want = inside && P.live && P.autoFire ? 16 : 0;
         if (want && !b.spooled) { voice(fam.ready); b.spooled = true; }
-        if (!want && b.spinRate < 1.5) b.spooled = false;
+        if (!want && b.spinRate < 1.5 && b.spooled) {voice(fam.ready);b.spooled=false;}
         b.spinRate += (want - b.spinRate) * Math.min(1, dt * 2.2);
         b.spin += b.spinRate * dt;
         b.rotor.rotation.z = b.spin;
@@ -802,17 +838,18 @@ export function initSentryTab(root) {
       // sniper lab, and the two are the same mechanic at different ends of
       // the ladder. Everything else fires the moment it is on target.
       let allowed = inside;
-      if (fam.missile) {
+      if (missile) {
+        const distance = tgt ? missileGroundDistance(s2.pos, tgt.pos) : Infinity;
         const err = aimError(s2);
-        stepLock(b.lock, dt, tgt && inside
-          ? { id: tgt.id, off: err, range: 1 } : null,
-          { gateMrad: P.lockGate, lockTime: P.lockTime, drain: 1.6,
-            breakMrad: P.lockBreak, minRange: 0, maxRange: Infinity });
-        allowed = inside && b.lock.locked && b.lock.id === (tgt ? tgt.id : -1);
+        stepMissileLock(b.lock, dt, inside ? tgt : null, distance, err, missileLimits);
+        allowed = inside && missileCanFire(b.lock, tgt, distance, err, missileLimits, s2.cool,
+          dt > 0 && !!missilePool?.available);
       }
-      if (P.autoFire && !fixed && P.live && canFire(s2, allowed, P)) {
-        const mi = fire(s2, b.muzzles.length, P);
-        if (fam.missile) launchSeeker(b, mi, tgt);
+      const key=familyById(P.family).key;
+      const cadence=['rotor','plasma','lancer'].includes(key)?{...P,cooldown:Math.max(key==='lancer'?firingFor(key).duration:0,1/effectiveStats(TOWER_BY_KEY[key],P.tier-1).rate)}:P;
+      if (P.autoFire && (!fixed || missile) && P.live && (!missile || missilePool?.available) && canFire(s2, allowed, P)) {
+        const mi = fire(s2, b.muzzles.length, cadence);
+        if (missile) launchSeeker(b, mi, tgt);
         else shoot(b, mi, tgt, aimPt);
       }
     }
@@ -847,7 +884,7 @@ export function initSentryTab(root) {
       // A LAUNCHER THAT IS TRACKING BUT NOT SHOOTING looks exactly like a
       // broken one, so it says which: how many of the battery are holding a
       // lock, and how far the rest have got.
-      + `${f.missile ? `\n${battery.filter((b) => b.lock.locked).length}/${n} LOCKED`
+      + `${isMissile() ? `\n${battery.filter((b) => b.lock.locked).length}/${n} LOCKED`
         + ` · ${seekers.length} in the air`
         + `${battery[0] && !battery[0].lock.locked && battery[0].lock.meter > 0
           ? ` · seeking ${(battery[0].lock.meter * 100).toFixed(0)}%` : ''}` : ''}`
@@ -861,10 +898,15 @@ export function initSentryTab(root) {
 
   // --- the panel -----------------------------------------------------------
   const gui = new GUI({ title: 'SENTRY RANGE', container: root });
-  gui.add(P, 'family', Object.fromEntries(SENTRY_FAMILIES.map(f => [f.label,f.id]))).onChange(() => loadSentry());
+  const familyControl = gui.add(P, 'family', Object.fromEntries(SENTRY_FAMILIES.map(f => [f.label,f.id]))).onChange(() => loadSentry());
   gui.add(P, 'tier', SENTRY_TIERS).onChange(() => loadSentry());
-  gui.add(P, 'mode', ['waves', 'pop']).name('range mode').onChange(() => resetRange());
+  gui.add(P, 'mode', { Waves:'waves', Pop:'pop', Wall:'wall', Armour:'armour', Hull:'hull' }).name('targets').onChange(() => { resetRange(); frameHome(); });
   gui.add(P, 'live').name('range live');
+  const surfaceFolder = gui.addFolder('surface target').close();
+  surfaceFolder.add(P, 'surfaceDistance', 1, 60, 0.5).name('distance (m)').onChange(() => { resetRange(); frameHome(); });
+  surfaceFolder.add(P, 'surfaceSize', 1, 8, 0.5).name('size (m)').onChange(resetRange);
+  surfaceFolder.add(P, 'surfaceAngle', -80, 80, 1).name('incidence (deg)').onChange(resetRange);
+  gui.add(P, 'timeScale', 0.1, 1, 0.05).name('time scale');
   gui.add(P, 'autoFire').name('weapons free');
   const gm = gui.addFolder('manual aim');
   gm.add(P, 'manual').name('drive by hand');
@@ -881,18 +923,60 @@ export function initSentryTab(root) {
   const gd = gui.addFolder('drive');
   gd.add(P, 'yawRate', 10, 720, 5).name('yaw deg/s');
   gd.add(P, 'pitchRate', 5, 360, 5).name('elev deg/s');
-  gd.add(P, 'tolerance', 0.2, 15, 0.1).name('on target (deg)');
+  const toleranceControl = gd.add(P, 'tolerance', 0.2, 15, 0.1).name('on target (deg)').onChange(value => {
+    const config=draft.missiles[familyById(P.family).key];if(config)config.aimTolerance=value;
+  });
   gd.add(P, 'elevMin', -80, 0, 1).name('depression stop').onChange(() => layGround());
   gd.add(P, 'elevMax', 5, 89, 1).name('elevation stop');
   const gg = gui.addFolder('gun');
   gg.add(P, 'cooldown', 0.05, 3, 0.05).name('rate of fire (s)');
   gg.add(P, 'recoilKick', 0, 0.6, 0.01).name('recoil');
   gg.add(P, 'recoilBack', 0.05, 2, 0.05).name('recovery');
-  // ...and the launcher's own, which only the Quiver reads
-  const gs = gui.addFolder('seeker (Quiver)');
-  gs.add(P, 'lockGate', 0.5, 30, 0.5).name('lock gate (deg)');
-  gs.add(P, 'lockTime', 0.1, 6, 0.1).name('time to lock (s)');
-  gs.add(P, 'lockBreak', 1, 90, 1).name('breaks at (deg)');
+  const gs = gui.addFolder('missiles / lock');
+  const missileEdit={...draft.missiles.quiver};
+  const missileControls=[];
+  function syncMissileControls(){
+    const config=draft.missiles[familyById(P.family).key];
+    if(config){Object.assign(missileEdit,config);P.tolerance=config.aimTolerance;}
+    else P.tolerance=SENTRY_TUNE.tolerance;
+    toleranceControl.updateDisplay();
+    for(const control of missileControls){control.disable(!config);control.updateDisplay();}
+  }
+  for(const [key,label,min,max,step] of [
+    ['lockGate','lock gate (deg)',.5,30,.5],['lockTime','time to lock (s)',.1,6,.1],
+    ['lockBreak','breaks at (deg)',1,90,1]]) {
+    missileControls.push(gs.add(missileEdit,key,min,max,step).name(label).onChange(value=>{
+      const config=draft.missiles[familyById(P.family).key];if(!config)return;
+      config[key]=value;
+      if(key==='lockGate')config.lockBreak=Math.max(config.lockBreak,value);
+      if(key==='lockBreak')config.lockGate=Math.min(config.lockGate,value);
+      syncMissileControls();
+    }));
+  }
+  for(const [key,label] of [['minRange','min engage (m)'],['maxRange','max acquire (m)']]){
+    missileControls.push(gs.add(missileEdit,key,0,100,.5).name(label).onChange(value=>{
+      const config=draft.missiles[familyById(P.family).key];if(!config)return;
+      const finite=Number.isFinite(value)?value:config[key];
+      config[key]=key==='minRange'?Math.max(0,Math.min(config.maxRange,finite))
+        :Math.min(100,Math.max(config.minRange,finite));
+      syncMissileControls();
+    }));
+  }
+  missileControls.push(gs.add(missileEdit,'profile',['swift','hook','heavy']).onChange(value=>{
+    const config=draft.missiles[familyById(P.family).key];if(!config)return;
+    config.profile=value;config.duration={swift:1.35,hook:2.7,heavy:4}[value];syncMissileControls();
+  }));
+  for(const [key,min,max,step] of [['duration',.5,6,.05],['length',.1,2,.01]]){
+    missileControls.push(gs.add(missileEdit,key,min,max,step).onChange(value=>{
+      const config=draft.missiles[familyById(P.family).key];if(config)config[key]=value;
+    }));
+  }
+  missileControls.push(gs.add(missileEdit,'exhaust').onChange(value=>{
+    const config=draft.missiles[familyById(P.family).key];if(config)config.exhaust=value;
+  }));
+  syncMissileControls();
+  const effectsPanel = mountSentryEffects(gui, profile);
+  const transfer=mountPresetPanel(root,{subject:()=>({kind:'sentry',key:familyById(P.family).key}),read:()=>draft,write:p=>{resetRange();draft=p;syncMissileControls();effectsPanel.refresh();},preview:'sentry'});
   gs.close();
   gg.add(P, 'muzzleVel', 4, 120, 1).name('muzzle velocity');
   gg.add(P, 'lead').name('lead moving targets');
@@ -916,6 +1000,7 @@ export function initSentryTab(root) {
   gv.add(P, 'tracers').name('tracers');
   gv.add({ recentre: () => frameHome() }, 'recentre').name('re-centre the view');
   gv.close();
+  const controlHelp=mountControlHelp(gui,{...SENTRY_HELP,...EFFECT_HELP,mode:'Choose moving waves, pop-up enemies, or a persistent wall, armour plate or hull section for impact tuning.',surfaceDistance:'Ground distance to the fixed target in metres. Missile engagement limits still apply.',surfaceSize:'Width of the fixed wall, armour plate or hull section in metres.',surfaceAngle:'Turn the target surface relative to the incoming shot. Impacts follow its actual outward normal.',timeScale:'Slow the entire preview together: target movement, aiming, projectiles and effects. Does not change saved weapon timing.'});
 
   wireDeepLink(root.querySelector('#sentry-link'), () => deepLink({
     base: location.origin + location.pathname, hash: 'sentry',
@@ -946,17 +1031,40 @@ export function initSentryTab(root) {
   }
   addEventListener('resize', resize);
 
+  const radial=mountSentryRadial({select:id=>familyControl.setValue(id),current:()=>P.family,
+    onOpen:()=>{controls.enabled=false;},onClose:()=>{controls.enabled=true;clock.getDelta();}});
+  renderer.domElement.tabIndex=0;
+  renderer.domElement.setAttribute('aria-label','Sentry range. Click a tower to choose the battery.');
+  const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
+  let press=null;
+  const pointerDown=e=>{if(e.button===0)press={id:e.pointerId,x:e.clientX,y:e.clientY};};
+  const pointerMove=e=>{if(press && (e.pointerId!==press.id || Math.hypot(e.clientX-press.x,e.clientY-press.y)>6))press=null;};
+  const pointerCancel=()=>{press=null;};
+  const pointerUp=e=>{
+    const start=press;press=null;
+    if(!start || e.pointerId!==start.id || Math.hypot(e.clientX-start.x,e.clientY-start.y)>6)return;
+    const rect=renderer.domElement.getBoundingClientRect();
+    pointer.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);
+    raycaster.setFromCamera(pointer,camera);
+    if(raycaster.intersectObjects(battery.map(b=>b.obj),true).length)radial.show(e.clientX,e.clientY,renderer.domElement);
+  };
+  renderer.domElement.addEventListener('pointerdown',pointerDown);
+  renderer.domElement.addEventListener('pointermove',pointerMove);
+  renderer.domElement.addEventListener('pointerup',pointerUp);
+  renderer.domElement.addEventListener('pointercancel',pointerCancel);
   layGround();
   loadSentry();
 
   const clock = new THREE.Clock();
-  let hudT = 0;
+  let hudT = 0, animationFrame = 0;
   function animate() {
-    requestAnimationFrame(animate);
-    if (!active) return;
-    const dt = Math.min(0.05, clock.getDelta());
+    if(disposed)return;
+    animationFrame=requestAnimationFrame(animate);
+    if (!active || disposed) return;
+    const dt = Math.min(0.05, clock.getDelta()) * P.timeScale;
+    if(radial.open)return;
     if (P.live) stepRangeFrame(dt);
-    aimFrame(dt);
+    if (root.dataset.modelReady === 'true') aimFrame(dt);
     stepTracers(dt);
     stepBeams(dt);
     stepSeekers(dt);
@@ -967,7 +1075,11 @@ export function initSentryTab(root) {
     controls.update();
     postfx.render();
     hudT += dt;
-    if (hudT > 0.2 && performance.now() >= flashUntil) { hudT = 0; hudLine(); }
+    if (hudT > 0.2 && performance.now() >= flashUntil) {
+      hudT = 0; if(root.dataset.modelReady==='true')hudLine();
+      if(missilePool){const c=draft.missiles[familyById(P.family).key],stats=missilePool.stats();
+        missileStatus.textContent=c ? `DART · ${c.profile} ${c.duration.toFixed(2)} s · ${c.length.toFixed(2)} m · aim ${familyById(P.family).fixed?'vertical':`${MISSILE_LAUNCH_ELEVATION}°`}\nengage ${c.minRange.toFixed(1)}–${(c.maxRange*effectiveStats(TOWER_BY_KEY[familyById(P.family).key],P.tier-1).range/TOWER_BY_KEY[familyById(P.family).key].range).toFixed(1)} m (tier ${P.tier})\n${stats.triangles} triangles · ${stats.batches} batches / rocket · ${stats.active}/${stats.capacity} active\nClick a tower to change the whole battery. Lab preview.` : 'Click a tower to change the whole battery.';}
+    }
   }
   animate();
 
@@ -1033,7 +1145,25 @@ export function initSentryTab(root) {
     }, 1000);
   }
 
+  if(q.get('acceptance')==='1')window.__stalheartSentryTest={
+    state:()=>({mode:P.mode,effects:clone(effectStats),weapons:clone(draft.weapons),targets:range.targets.map(t=>({id:t.id,pos:t.pos})),family:familyById(P.family).key,battery:battery.map(b=>familyById(b.st.family).key),
+      missiles:clone(draft.missiles),tracking:battery.map(b=>({target:b.st.target,lockId:b.lock.id,locked:b.lock.locked,meter:b.lock.meter})),pool:missilePool?.stats(),...missileStats,
+      live:seekers.map(m=>({u:m.t/m.config.duration,position:m.mesh.position.toArray(),ignition:m.mesh.getObjectByName('EXHAUST_FX').visible}))}),
+    towerPoint:()=>{const b=battery[0];if(!b)return null;const p=new THREE.Box3().setFromObject(b.obj).getCenter(new THREE.Vector3()).project(camera),r=renderer.domElement.getBoundingClientRect();return{x:r.left+(p.x+1)*r.width/2,y:r.top+(1-p.y)*r.height/2};},
+    surfacePoint:()=>{const t=range.targets[0];if(!t)return null;const p=new THREE.Vector3().fromArray(t.pos).project(camera),r=renderer.domElement.getBoundingClientRect();return{x:r.left+(p.x+1)*r.width/2,y:r.top+(1-p.y)*r.height/2,z:p.z};},
+    reset:()=>resetRange(),
+    hold:()=>{P.autoFire=false;},
+  };
   return {
+    dispose(){
+      if(disposed)return;disposed=true;active=false;modelSerial++;cancelAnimationFrame(animationFrame);
+      controlHelp.dispose();radial.dispose();transfer.dispose();resetRange();missilePool?.dispose();
+      renderer.domElement.removeEventListener('pointerdown',pointerDown);
+      renderer.domElement.removeEventListener('pointermove',pointerMove);
+      renderer.domElement.removeEventListener('pointerup',pointerUp);
+      renderer.domElement.removeEventListener('pointercancel',pointerCancel);
+      removeEventListener('resize',resize);controls.dispose();sfx.dispose();gui.destroy();
+    },
     setActive(on) { active = on; if (on) { resize(); clock.getDelta(); } },
   };
 }

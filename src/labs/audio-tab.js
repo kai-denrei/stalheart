@@ -36,6 +36,7 @@ export function initAudioTab(root) {
   };
   panel.querySelector('#audio-stop').onclick=()=>{request++;audio.panic();status.textContent='Stopped.';};
   const transfer=mountPresetPanel(root,{
+    subject:()=>({kind:'audio',key:select.value}),
     read:()=>draft,
     write:p=>{request++;audio.panic();draft=p;Object.assign(definitions,resolveSounds(p));refresh();},
   });

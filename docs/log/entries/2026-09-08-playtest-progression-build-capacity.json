@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "2026-09-08-playtest-progression-build-capacity",
+  "date": "2026-09-08",
+  "type": "decision",
+  "status": "proposed",
+  "title": "Evaluate promotion pacing and strategic build capacity after wave-42 playtest",
+  "context": "Owner reports rapid tank promotion, plentiful biomass with too few meaningful spending choices, and potential tower overload after a 42-wave playtest. Owner explicitly framed prepared sites and power prerequisites as ideation.",
+  "outcome": "Retain these candidates for the later playability phase: slower pilot promotion, Isao-prepared flat build sites, and local power capacity limiting tower load. Evaluate prepared sites and power separately before combining them. No rank thresholds, income rules, foundations, power requirements or build permissions were changed. Existing maximum rank requires 270 hands-on kills and 15 non-rammable kills; pilot rank still persists across hulls. Performance evidence should inform tower-load decisions rather than assuming a specific tower is expensive.",
+  "alternatives": [
+    "Use site preparation time and Isao travel as the initial constraint.",
+    "Use local power capacity as a spatial constraint.",
+    "Change biomass income or prices only after measuring whether build capacity supplies the missing choices."
+  ],
+  "evidence": [
+    "Owner wave-42 playtest impressions in this session.",
+    "src/ranks.js: killReq(15)=270 and eliteReq(15)=15.",
+    "src/td-tab.js: harvestTankKill awards hands-on progress; resetTankRank remains run-scoped."
+  ],
+  "supersedes": []
+}

@@ -12,7 +12,7 @@ This repository owns the game. Read `docs/STATE.md` and `docs/ARCHITECTURE.md` f
 - The source asset direction is SentryTowers_A6, including Terraformer 3000. Pin downloads and validate hashes with `npm run assets:check`; do not hotlink mutable upstream assets into gameplay. D0–D3 are destruction states, not LODs.
 - Preserve the gate-hunting/income trade, Isao's travel-and-print orders, pilot rank across hulls, and distinct mission supply rules. Foundations and new progression systems are not part of this migration.
 - No colored emoji in product UI; keep the monochrome visual vocabulary.
-- Do not send messages, publish, or push without explicit authorization. There is no upstream remote configured for Stalheart yet.
+- Do not send messages, publish, or push without explicit authorization. The public origin is https://github.com/kai-denrei/stalheart; main publishes dist through GitHub Pages.
 
 - Current delivery order is architecture, then visual/sound labs and clean exports, then UX, then playability. Do not start a general balance pass during the foundation work.
 - Pure modules belong in `src/core/`, `src/domain/` and `src/content/`. `npm run architecture` enforces their dependencies. Top-level compatibility facades must not grow a second implementation.

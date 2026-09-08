@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "id": "2026-09-07-mork-cannon-heat",
+  "date": "2026-09-07",
+  "type": "change",
+  "status": "resolved",
+  "title": "Restore the diegetic shell cooldown on the MORK barrel",
+  "context": "The imported tank did not expose the heatSleeve presentation seam used by the previous tank, so the gun could be cooling and unable to fire without a visible barrel indicator.",
+  "outcome": "Preserved the actual Long_cannon_barrel mesh through batching and assigned an instance-owned unlit heat material under GUN_RECOIL. The existing heatSleeve contract now connects MORK to the game cannonHeat countdown and the Units preview heat countdown. The barrel turns red on firing and fades to its cold color over the existing three-second lockout. No new timer or firing rule was added; the model remains 24,196 triangles and 50 batches.",
+  "alternatives": [
+    "Adding a separate cooldown timer or HUD bar would drift from the existing firing gate.",
+    "A new sleeve geometry was unnecessary because the authored barrel can carry the indicator."
+  ],
+  "evidence": [
+    "npm test: 71 test programs passed.",
+    "npm run check; npm run build; npm run test:browser.",
+    "test/mork.mjs verifies the actual barrel remains under recoil, uses a private heat material and does not tint another instance.",
+    "Browser acceptance fires the real cannon, verifies a second shot is blocked while hot, waits for cold color at zero heat, and verifies firing resumes. Units firing also changes the barrel color.",
+    "GLTFLoader sanitizes the authored node name to Long_cannon_barrel; the adapter uses that runtime name.",
+    "Initial browser heat checks ran during the tutorial empty-ammo phase and could not fire; the corrected fixture starts a normal run through the real briefing button."
+  ],
+  "supersedes": []
+}

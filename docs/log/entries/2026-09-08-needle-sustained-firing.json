@@ -1,0 +1,23 @@
+{
+  "id": "2026-09-08-needle-sustained-firing",
+  "type": "change",
+  "status": "resolved",
+  "title": "Needle replaces Howitzer; sustained firing is observable in Sniper",
+  "context": "The owner found that common models and effect builders did not ensure common firing duration, bullet density or audio behavior. Slot 7 is explicitly replaced by the latest Needle as a dedicated sniper.",
+  "outcome": "Pinned three Needle tiers at 722e49d59772597c7addd6db1de1880afd516885, replaced slot 7 and normalized retired links. FX base 6 explicitly migrates v2-v5 packages, retaining seven Sentries and missile edits while installing fresh Needle defaults. Shared firing profiles define three-second Lancer, four-second manual Plasma/Rotor and spool voices; Rotor six-way subdivision preserves tier DPS. Sniper schedules pulses and sustained voices; Sentry/Units reuse held beams and shared timing. Needle uses precision fire without Howitzer splash. Gameplay and manual input remain separate hosts, not a unified combat engine.",
+  "alternatives": [
+    "Prior parity checks tested identity and shots but missed sustained duration/audio; browser tests now measure those behaviors.",
+    "Factories, early manual progression and general balance remain proposals."
+  ],
+  "evidence": [
+    "npm test: 75 programs passed, including frame-rate trigger counts, preserved Rotor DPS and audio edges.",
+    "npm run check passed with FX base 6 and pinned Needle/Sinkhole hashes.",
+    "npm run test:browser passed source suite.",
+    "node scripts/browser-test.mjs --sniper passed all eight models, sustained lifetimes, live audio, spool edges and draft isolation."
+  ],
+  "supersedes": [
+    "2026-09-08-sniper-shared-sentries"
+  ],
+  "schema": 1,
+  "date": "2026-09-08"
+}

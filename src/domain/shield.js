@@ -94,13 +94,25 @@ export function deploy(st, now, tune = SHIELD_TUNE) {
 
 // Returns true only on the tick the bubble DROPS, so the caller can play the
 // sound and repaint once rather than every frame.
-export function tickShield(st, dt, now, tune = SHIELD_TUNE) {
+export function tickShield(st, dt, now, tune = SHIELD_TUNE, wasUp = st.t > 0) {
   if (st.t <= 0) return false;
   st.t -= dt;
   if (st.t > 0) return false;
   st.t = 0;
+  if (!wasUp) return false; // sub-frame field energy never raised a bubble
   st.coolUntil = now + tune.coolSecs;
   return true;
+}
+
+// Sources and drain are one frame transaction. A continuous field is not a
+// tower attack, and a tiny input that cannot cover drain must not emit drops.
+export function stepShieldFrame(st, dt, now, { relays = [], station = false } = {}, tune = SHIELD_TUNE) {
+  const wasUp=st.t>0;
+  for(const id of relays)tapTower(st,id,now,dt,tune);
+  if(station)stationDraw(st,dt,tune);
+  const dropped=tickShield(st,dt,now,tune,wasUp);
+  for(const [id,until] of st.taps)if(until<=now)st.taps.delete(id);
+  return dropped;
 }
 
 export function restockShield(st, n, tune = SHIELD_TUNE) {

@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "id": "2026-09-08-sinkhole-bowl-quake-audio",
+  "date": "2026-09-08",
+  "type": "change",
+  "status": "resolved",
+  "title": "Irregular sinkhole bowl, clipped fissures and supplied quake audio",
+  "context": "The owner found the initial circular cutout unsatisfying and requested a sloping descent toward blackness that reads as climbable, cracks outside the hole and the supplied quake/break MP3.",
+  "outcome": "The floor cut, fissure clip and bowl share one irregular radius contract. A textured bowl with a gentler approach and steeper side walls fades into a small irregular black throat; rim rubble breaks the edge. Opening slabs subside, dust settles and debris collides with the actual slope rather than flat y=0. The unmodified owner-provided 6.984-second clip is pinned locally and played through the shared mixer at pre-roll start; mute, reset, genre exit and disposal stop it. This remains a planar lab effect, with no enemy navigation or gameplay spawn replacement.",
+  "alternatives": [
+    "The old circular void and plate left floating-looking fissures and no readable route into the ground.",
+    "Persistent reference dust obscured the bowl; post-opening emission now decays.",
+    "Use one CPU/GLSL boundary contract rather than separate approximate circles for cracks, floor and slope."
+  ],
+  "evidence": [
+    "npm test: 76 programs passed, including irregularity, monotonic slope and approach-angle tests.",
+    "npm run check and npm run build passed; imported adaptations and supplied audio hashes verified.",
+    "node scripts/browser-test.mjs --sinkhole passed texture/shader load, active quake voice, settled bowl, reset/reopen, genre return and disposal.",
+    "artifacts/browser/sinkhole-settled.png visually inspected.",
+    "docs/SINKHOLE.md records ownership, supplied audio and the future navigation/sphere boundary."
+  ],
+  "supersedes": [
+    "2026-09-08-sinkhole-portal-lab"
+  ]
+}

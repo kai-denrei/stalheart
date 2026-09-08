@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import * as THREE from '../vendor/three.module.js';
+import {renderWorkload,performanceSummary} from '../src/render-workload.js';
+const g=new THREE.BoxGeometry(),m=new THREE.MeshBasicMaterial(),root=new THREE.Group();
+const mesh=new THREE.Mesh(g,m),instances=new THREE.InstancedMesh(g,m,10);root.add(mesh,instances);
+let [r]=renderWorkload([{label:'Relay',objects:[root,mesh]}]);
+assert.equal(r.batches,2);assert.equal(r.triangles,132);
+const rows=renderWorkload([{label:'Tank',objects:[mesh]},{label:'World',objects:[root]}]);
+assert.equal(rows.reduce((sum,r)=>sum+r.triangles,0),132);
+assert.equal(rows.reduce((sum,r)=>sum+r.batches,0),2);
+instances.count=2;mesh.visible=false;
+[r]=renderWorkload([{label:'Relay',objects:[root]}]);assert.equal(r.triangles,24);
+root.visible=false;[r]=renderWorkload([{label:'Relay',objects:[instances]}]);assert.equal(r.batches,0);
+root.visible=true;g.setDrawRange(0,3);[r]=renderWorkload([{label:'Relay',objects:[instances]}]);assert.equal(r.triangles,2);
+assert(performanceSummary(null).includes('collecting'));
+g.dispose();m.dispose();
+console.log('Render estimates respect visibility, instancing, draw ranges and duplicate roots.');

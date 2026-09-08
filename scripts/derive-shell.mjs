@@ -1,0 +1,22 @@
+import fs from 'node:fs';
+import * as THREE from '../vendor/three.module.js';
+import {GLTFLoader} from '../vendor/GLTFLoader.js';
+import {GLTFExporter} from '../vendor/GLTFExporter.js';
+import {createHash} from 'node:crypto';
+const root=new URL('../',import.meta.url).pathname,source='assets/models/missile-kit/dart.glb',bytes=fs.readFileSync(root+source);
+const gltf=await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),'');gltf.scene.updateMatrixWorld(true);
+const kept=[];gltf.scene.traverse(o=>{if(o.isMesh&&/Tapered_missile_shell|Cyan_identification_band/.test(o.name))kept.push(o);});
+const box=new THREE.Box3();for(const o of kept)box.expandByObject(o);const center=box.getCenter(new THREE.Vector3()),length=box.max.z-box.min.z;
+const positions=[],normals=[],colors=[];
+for(const o of kept){const g=o.geometry.toNonIndexed().applyMatrix4(o.matrixWorld);const c=new THREE.Color(o.name.includes('band')?0x8d8450:0x556b2f);
+ for(let i=0;i<g.attributes.position.count;i++){const p=new THREE.Vector3().fromBufferAttribute(g.attributes.position,i).sub(center).divideScalar(length);positions.push(...p.toArray());normals.push(g.attributes.normal.getX(i),g.attributes.normal.getY(i),g.attributes.normal.getZ(i));colors.push(c.r,c.g,c.b);}}
+const data={positions,normals,colors};for(const a of Object.values(data))for(let i=0;i<a.length;i++)a[i]=+a[i].toFixed(6);
+fs.writeFileSync(root+'src/content/shell-geometry.js','// Derived from pinned DART body and band; fin/nozzle assembly and exhaust removed. +Z forward, one metre long.\nexport const SHELL_GEOMETRY='+JSON.stringify(data)+';\n');
+const geo=new THREE.BufferGeometry();for(const [key,values] of Object.entries(data))geo.setAttribute(key==='positions'?'position':key==='normals'?'normal':'color',new THREE.Float32BufferAttribute(values,3));
+const mesh=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:.65,metalness:.4}));mesh.name='OLIVE_SHELL';
+globalThis.FileReader=class{readAsArrayBuffer(blob){blob.arrayBuffer().then(result=>{this.result=result;this.onloadend?.();});}};
+const out=await new GLTFExporter().parseAsync(mesh,{binary:true});const path='assets/models/ordnance/olive-shell.glb';fs.mkdirSync(root+'assets/models/ordnance',{recursive:true});fs.writeFileSync(root+path,Buffer.from(out));
+const hash=b=>createHash('sha256').update(b).digest('hex');
+const files=[path,'src/content/shell-geometry.js'].map(path=>{const b=fs.readFileSync(root+path);return{path,sha256:hash(b),bytes:b.length};});
+fs.writeFileSync(root+'docs/shell-assets.lock.json',JSON.stringify({schema:1,sourcePath:source,sourceSha256:hash(bytes),revision:'4a75269d325c8ec12b87e38667d81bae124adeb4',derivation:'Keep transformed shell and band; omit merged fin/nozzle assembly and exhaust; olive green, no emission; normalize to one metre +Z.',triangles:positions.length/9,files},null,2)+'\n');
+console.log('Derived shell: '+positions.length/9+' triangles.');

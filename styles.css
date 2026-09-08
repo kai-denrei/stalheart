@@ -3881,6 +3881,15 @@ tr.sim-timeout td:nth-child(2), tr.sim-stalled td:nth-child(2) { color: #ffb000;
 #td-msg .dbf-svg { width: 100%; height: 64px; display: block; }
 #td-msg .dbf-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; }
 #td-msg .dbf-tile b { display: block; font-size: 15px; }
+#td-msg .dbf-record b { color: #9fdcff; }
+#td-msg .dbf-record--rainbow b {
+  color: #9fdcff;
+  background: linear-gradient(100deg, #ff7979, #ffcb70, #edee80, #80efb3, #83d8ff, #bfa0ff, #ff9fd5);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  width: fit-content;
+}
 #td-msg .dbf-tile span { display: block; font-size: 9.5px; color: #9aa7bd; letter-spacing: 0.06em; }
 #td-msg .dbf-replay { width: 100%; height: 120px; display: block; border-radius: 4px; background: #020a10; }
 @media (max-width: 560px) { #td-msg .dbf-grid { grid-template-columns: 1fr; } }
@@ -4456,3 +4465,9 @@ body:not(.chrome-open) #tabbar .tabgroup:not(:has(button.active)) { display: non
     width: 100% !important; max-height: 46vh; overflow-y: auto; --widget-height: 36px; --font-size: 15px; --input-font-size: 15px; --name-width: 44%;
     border-radius: 12px 12px 0 0; }
 }
+
+#td-perf { pointer-events: auto; max-width: min(640px, calc(100vw - 24px)); }
+#td-perf details { white-space: normal; max-height: 35vh; overflow: auto; }
+#td-perf summary, #td-perf button { cursor: pointer; }
+#td-perf button { margin-top: 6px; }
+#td-perf textarea { display: block; width: 95%; height: 8em; }

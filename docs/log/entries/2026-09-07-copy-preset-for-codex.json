@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "2026-09-07-copy-preset-for-codex",
+  "date": "2026-09-07",
+  "type": "change",
+  "status": "accepted",
+  "title": "Copy lab presets directly into Codex chat",
+  "context": "Owner prefers clipboard sharing of locally tuned Quiver values over downloading and sharing JSON files.",
+  "outcome": "The shared preset panel now provides Copy for Codex. It validates and serializes the current complete FX package using the existing format, writes it to the clipboard, and instructs the user to paste into chat. Denied clipboard access exposes selected read-only text for manual copying. Load draft recovers previously saved browser values before copying; this action does not save defaults or write to AI memory.",
+  "alternatives": [
+    "A second compact copy/paste format would duplicate the existing authoring schema and was not introduced."
+  ],
+  "evidence": [
+    "npm test: 69 test programs passed.",
+    "npm run check passed.",
+    "npm run build: 607a78ad, 403 files.",
+    "node scripts/browser-test.mjs --authoring passed, including exact clipboard equality with the canonical preset and clipboard-denied manual selection.",
+    "git diff --check passed."
+  ],
+  "supersedes": []
+}

@@ -38,8 +38,8 @@ check('every family names a model that exists on disk',
   SENTRY_FAMILIES.every((f) => existsSync(sentryUrl(f.id, 1).replace(/^/, ''))));
 // A LOBBER MUST DECLARE ITS ARC, because the barrel's angle is derived from
 // it — a lob with no height would aim flat and stop being a lob.
-check('the lobbers are the mortar and the howitzer',
-  SENTRY_FAMILIES.filter((f) => f.lob).map((f) => f.id).join(',') === 'mortar,howitzer');
+check('Mortar is the sole lobber',
+  SENTRY_FAMILIES.filter((f) => f.lob).map((f) => f.id).join(',') === 'mortar');
 check('...and each names an arc height',
   SENTRY_FAMILIES.filter((f) => f.lob).every((f) => f.arcCells > 0));
 check('the url is the workshop’s own path', sentryUrl('rotor', 3) === 'assets/models/sentries/rotor_t3.glb');

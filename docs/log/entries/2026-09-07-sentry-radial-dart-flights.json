@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "id": "2026-09-07-sentry-radial-dart-flights",
+  "date": "2026-09-07T08:41:30.986367+00:00",
+  "type": "change",
+  "status": "resolved",
+  "title": "Sentry battery radial and pinned Swift/Hook DART flight experiments",
+  "context": "Owner requested tower-click radial selection for the entire Sentry lab battery, small low-triangle Quiver rockets with the 1.35-second Swift flight, and larger Heptapod rockets with the 2.7-second sequence.",
+  "outcome": "Click ray picking opens a numbered eight-way modal; one controller selection rebuilds every battery member. Orbit drags are ignored and mouse, number keys and Escape are supported. Quiver tracks with 55.8-degree upward pitch and launches 0.32 m DARTs using Swift/1.35 s. Heptapod preserves fixed vertical sockets and launches 0.80 m DARTs using Hook/2.7 s. The pinned core sampler, pure flat-range adapter and shared-resource pool preserve nose-up falling, ignition, target arrival and bounded shot resources. FX v3 exports carry validated missile settings; v2 imports explicitly retain previous edits and add defaults. Draft preview opens the Sentry lab. Campaign and Impact projectile behavior remain unchanged pending sphere/collision integration.",
+  "alternatives": [
+    "Use one DART mesh at two sizes rather than adding a heavier mesh for Heptapod; 188 triangles and four material batches including exhaust per active rocket.",
+    "Use the upstream sampler instead of playing a baked clip simultaneously; correct its fixed endpoint for lab targets.",
+    "Preserve Heptapod as a fixed vertical launcher rather than inventing yaw/pitch articulation.",
+    "Keep gameplay adoption separate from this requested Workshop evaluation, with an explicit Sentry-lab draft preview."
+  ],
+  "evidence": [
+    "Upstream revision 4a75269d325c8ec12b87e38667d81bae124adeb4; docs/missile-assets.lock.json pins DART (44,552 bytes), README and sampler. npm run assets:check validates hashes, clips, sockets and triangle budget.",
+    "Initial material merging failed on interleaved GLB attributes; explicit deinterleaving allowed the four shared batches.",
+    "Initial Heptapod firing check exposed the inherited fixed-means-nonfiring lab assumption; fixed missile launchers now acquire targets and launch while preserving their actual vertical muzzle transforms.",
+    "npm test: 66 test programs passed, including motion boundaries, moving endpoints, preset validation and v2 migration.",
+    "npm run check and npm run build passed; build a3acfeb1.",
+    "npm run test:browser passed full source acceptance. Actual tower clicks, all-battery selection, drag discrimination, number selection, 390px radial bounds/Escape, real upward launch directions, Swift/Hook durations, exhaust gating, exact arrival and pool return on reset were checked.",
+    "node scripts/browser-test.mjs --dist passed nested /stalheart/ release acceptance, including authoring round trips and service-worker installation.",
+    "Screenshots and request/error logs: artifacts/browser/{sentry-radial,quiver-swift,heptapod-hook,sentry-radial-mobile} and corresponding release artifacts.",
+    "docs/MISSILES.md records the lab-only behavior and remaining gameplay integration gates."
+  ],
+  "supersedes": []
+}

@@ -146,6 +146,11 @@ export function makeBloom(renderer, scene, camera, opts = {}) {
   }
 
   return {
+    dispose() {
+      groupsFn=null;
+      for(const pass of new Set([...bloomComposer.passes,...finalComposer.passes]))pass.dispose?.();
+      bloomComposer.dispose();finalComposer.dispose();
+    },
     render() {
       if (!enabled) { renderer.render(scene, camera); return; }
       if (groupsFn) applyWeights();

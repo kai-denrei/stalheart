@@ -1,0 +1,19 @@
+{
+  "id": "2026-09-08-breach-planet-wall-preview",
+  "type": "experiment",
+  "status": "observed",
+  "title": "Curved breach waves, wall clearance and rendering comparisons",
+  "context": "The owner wants ground breaches to replace wave portals eventually, with short wide fissures, wall destruction, and creatures climbing out on the spherical world.",
+  "outcome": "Portal Lab now wraps the breach onto a planet and schedules up to 96 real creature previews with fade/growth and a scripted slope route. Crack width and outer reach are independent. Eighty-one wall fixtures test radial clearance before the default emergence delay, while TRON and Battlezone palette previews keep dark depth-writing surfaces and bowl contours. Actual dungeon wall mutation, navigation rebuild, portal replacement and FX-schema promotion remain future integration work.",
+  "evidence": [
+    "npm test: 77 programs passed",
+    "npm run check and npm run build passed",
+    "npm run test:browser passed (source)",
+    "node scripts/browser-test.mjs --sinkhole passed planet, emergence, 24-creature waves, flat reference, both rendering palettes, partial wall clearance, reset and disposal",
+    "docs/SINKHOLE.md"
+  ],
+  "schema": 1,
+  "date": "2026-09-08T03:45:00.000Z",
+  "alternatives": [],
+  "supersedes": []
+}

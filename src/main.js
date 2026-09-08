@@ -26,7 +26,6 @@ const routes = {
   record: () => import('./recordtab.js').then(m => m.initRecordTab),
   units: () => import('./units-tab.js').then(m => m.initUnitsTab),
   beam: () => import('./beam-tab.js').then(m => m.initBeamTab),
-  impact: () => import('./impact-tab.js').then(m => m.initImpactTab),
   metal: () => import('./metal-tab.js').then(m => m.initMetalTab),
   astro: () => import('./astro-tab.js').then(m => m.initAstroTab),
   sentry: () => import('./sentry-tab.js').then(m => m.initSentryTab),
@@ -95,8 +94,10 @@ if (!root) {
     const content = bootstrapContent();
     const init = await routes[target]();
     const api = init(root);
+    const choices = workshop
+      ? (await import('./labs/choice-browser.js')).mountChoiceBrowser(root) : null;
     api?.setActive?.(true);
-    addEventListener('pagehide', e => { if (!e.persisted) api?.dispose?.(); });
+    addEventListener('pagehide', e => { if (!e.persisted) { choices?.dispose(); api?.dispose?.(); } });
     record('app.ready', { route: target, workshop, content: content.id });
     window.__stalheartContent = { id: content.id, base: content.base, preview: q.get('preset') === 'draft' };
     window.__stalheartReady = true;
