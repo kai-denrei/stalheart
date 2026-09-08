@@ -506,8 +506,9 @@ try{
   await finish();
   await click('#units-next');assert.equal(await evaluate('window.__stalheartUnits.state().missiles.length'),0);
  }
- await go('mork-game','index.html?sw=0&cine=0&tutorial=0&creature=mork&acceptance=1#td');
+ await go('mork-game','index.html?sw=0&cine=0&tutorial=0&acceptance=1#td');
  await until('window.__stalheartTest.state().playerAsset === "mork" && window.__stalheartTest.state().playerAssetReady');
+ await until('window.__stalheartTest.state().berthAssets.length===3');assert.deepEqual(await evaluate('window.__stalheartTest.state().berthAssets'),['mork','mork','mork']);
  assert.deepEqual(await evaluate('window.__stalheartTest.state().playerModelStats'),{triangles:24196,batches:50});
  await evaluate('document.querySelector(".msg-begin")?.click()');
  await evaluate('window.__stalheartTest.begin()');
@@ -534,7 +535,7 @@ try{
  assert.deepEqual(await evaluate('Array.from(document.querySelectorAll(".dbf-record:not(.dbf-record--rainbow) b"),e=>getComputedStyle(e).color)'),['rgb(159, 220, 255)','rgb(159, 220, 255)']);
  assert(await evaluate('Array.from(document.querySelectorAll(".dbf-record--rainbow b")).every(e=>getComputedStyle(e).backgroundImage.includes("linear-gradient"))'));
  await finish();
- await go('mork-workshop' ,'labs.html?sw=0&unit=mork&acceptance=1#units');
+ await go('mork-workshop' ,'labs.html?sw=0&acceptance=1#units');
  await until('window.__stalheartUnits?.state().asset === "mork"');
  assert.equal(await evaluate('window.__stalheartUnits.state().guns'),2);
  assert(await evaluate('document.querySelector("#units-note").textContent.includes("50 batches")'));
@@ -553,6 +554,9 @@ try{
  await click('#units-next');await click('#units-prev');
  await until('window.__stalheartUnits?.state().asset === "mork"');
  await finish();
+ await go('mork-beam','labs.html?sw=0&acceptance=1#beam');
+ await until('window.__stalheartBeamTest?.state().asset==="mork"');
+ assert.equal(await evaluate('window.__stalheartBeamTest.state().guns'),2);assert.equal(await evaluate('window.__stalheartBeamTest.state().pivots'),2);assert.deepEqual(await evaluate('window.__stalheartBeamTest.state().muzzleOffsets'),[0,0]);await finish();
  for(const name of ['units','sentry','sniper','sim']){await go('lab-'+name,`labs.html?sw=0#${name}`);await delay(1500);await finish();}
  }
  // One shooter/flight/effect pipeline for material targets and moving enemies.
@@ -727,7 +731,7 @@ try{
  await finish();
  // All three visual entry points must resolve the same eight actual GLBs.
  for(const lab of ['units','sentry']) {
-  await go('catalog-'+lab,`labs.html?sw=0#${lab}`);
+  await go('catalog-'+lab,`labs.html?sw=0${lab==='units'?'&unit=rotor':''}#${lab}`);
   for(const [i,s] of SENTRIES.entries()) {
    if(lab==='units') { if(i) await click('#units-next'); }
    else {

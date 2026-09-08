@@ -1,4 +1,4 @@
-// Optional A6 tank presentation. The host owns gameplay, sphere placement and time.
+// Default A6 tank presentation. The host owns gameplay, sphere placement and time.
 import * as THREE from '../vendor/three.module.js';
 import { loadGlbWithClips, mergeByMaterial, fitModel } from './glbmodels.js';
 import { record } from './diagnostics.js';

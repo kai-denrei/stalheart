@@ -160,7 +160,7 @@ export const LORE = {
       + 'cinematic HDR, 8k',
   },
   mork: {
-    name: 'MÖRK', tag: 'the heavy hover tank · A6 test',
+    name: 'MÖRK', tag: 'the fielded heavy hover tank',
     body: 'A long, low hull suspended over paired lift fields. The forward turret carries a recoiling cannon; two plasma projectors cover the front. Nine rear-deck lenses show the shells available to the pilot.',
     visual: 'elongated armored hover tank, sloping glacis, pointed nacelles, low swept turret, long cannon, twin front plasma projectors and luminous rear-deck ammunition lenses',
   },

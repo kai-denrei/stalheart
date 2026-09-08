@@ -1,3 +1,4 @@
+import { DEFAULT_TANK } from './content/tank.js';
 // beam-tab.js — THE BEAM LAB, inside our own world.
 //
 // lab-satisfying-lasers tunes a beam against a neutral stage: near-black
@@ -21,7 +22,7 @@ import GUI from '../vendor/lil-gui.esm.js';
 import { DEFAULTS } from './beamfx.js';
 import { makeBloom } from './postfx.js';
 import { LOOKS } from './looks.js';
-import { buildCreature, preloadMkcx, SECONDARY_TOE,
+import { buildCreature, preloadMork, SECONDARY_TOE,
   applySecondaryToe, secondaryPivots } from './units.js';
 import { BEAM_STEPS, beamStep } from './beamranks.js';
 import { arcPoint, projectToArc, toeForCrossing, crossingForToe } from './arc.js';
@@ -115,7 +116,7 @@ export function initBeamTab(root) {
     // buildCreature takes the look's COLOUR set, not the whole look record —
     // the same two keys every other caller in this project passes
     const L = LOOKS[lookName] || LOOKS.tronColors;
-    tank = buildCreature('mkcx2', { walker: L.walker ?? 0x9fdcff,
+    tank = buildCreature(DEFAULT_TANK, { walker: L.walker ?? 0x9fdcff,
       walkerHi: L.walkerHi ?? 0xffffff });
     // 0.85 of a cell, which is what the board runs — the lab used 1.0 while a
     // cell meant nothing here, and now it means something.
@@ -126,7 +127,7 @@ export function initBeamTab(root) {
     if (guns && guns.length >= 2) { [gunL, gunR] = guns; }
   }
   buildTank('tronColors');
-  preloadMkcx().then(() => { buildTank(P.look); applyToe(); });  // swap in when the bytes land
+  preloadMork().then(() => { buildTank(P.look); applyToe(); });  // swap in when the bytes land
 
   // --- the two beams -------------------------------------------------------
   // Each one belongs to a gun: it leaves that gun's muzzle and runs straight
@@ -640,6 +641,8 @@ export function initBeamTab(root) {
   const tipLocal = new WeakMap();
   const bb = new THREE.Box3();
   function gunTipZ(pivot) {
+    // MÖRK exposes authored muzzle sockets, already at the barrel tip.
+    if(tank.userData.asset===DEFAULT_TANK&&tank.userData.laserGuns.includes(pivot))return 0;
     if (tipLocal.has(pivot)) return tipLocal.get(pivot);
     // the +Z extent of the gun's own subtree, in the pivot's local frame:
     // measured off the model rather than guessed at as an offset
@@ -948,8 +951,8 @@ export function initBeamTab(root) {
       // NAME THE ARTIFACT. This said "mkcx pivots" whenever laserGuns
       // existed — which both tanks have — so every headless measurement was
       // labelled as the authored model while running on the procedural one.
-      const named = !!tank.getObjectByName('Secondary_L_Pivot');
-      const guns = named ? 'mkcx (authored pivots)' : 'PROCEDURAL fallback tank';
+      const named = tank.userData.asset === DEFAULT_TANK;
+      const guns = named ? 'MÖRK (authored pivots)' : 'PROCEDURAL fallback tank';
       console.log(`BEAMPROBE source=${guns} reach=${P.reachCells} cells`
         + ` stage=sphere r=${LAB_R} cells`
         + (toeInfo ? ` | toe=${toeInfo.toe.toFixed(4)} solved for a crossing at`
@@ -1063,6 +1066,7 @@ export function initBeamTab(root) {
       + (r.missed.length ? `  ·  NEVER REACHED: ${r.missed.length}` : '');
   }
   frame();
+  if(new URLSearchParams(location.search).get('acceptance')==='1')window.__stalheartBeamTest={state:()=>({asset:tank?.userData.asset,guns:[gunL,gunR].filter(Boolean).length,pivots:secondaryPivots(tank).length,muzzleOffsets:[gunL,gunR].filter(Boolean).map(gunTipZ)})};
 
   return {
     setActive(on) { active = on; if (on) { resize(); clock.getDelta(); } },

@@ -1,7 +1,8 @@
+import { DEFAULT_TANK } from './content/tank.js';
 // astro-tab.js — THE ASTRONAUT STUDY. A rigged, animated GLB on the lab
 // stage: does its animation work for a rescue mission — astronauts in a
 // structure, scientists carrying blueprints, the tank sent to get them
-// out — and at what scale does a person read next to the MK-CX/2?
+// out — and at what scale does a person read next to the MÖRK?
 //
 // The study asks three things of the file, and answers them on screen:
 // what clips it carries (this one: a 1.03 s walk cycle, 25 joints, a
@@ -16,7 +17,7 @@ import { makeBloom } from './postfx.js';
 import { bakeGalaxyCube } from './galaxybake.js';
 import { SKY_PRESET } from './galaxyseed.js';
 import { LOOKS } from './looks.js';
-import { buildCreature, preloadMkcx, preloadAstronaut, preloadAstronauts, makeAstronaut,
+import { buildCreature, preloadMork, preloadAstronaut, preloadAstronauts, makeAstronaut,
   ASTRONAUT_IDS, preloadContainer, makeContainerFixture,
   preloadDish, makeDishFixture } from './units.js';
 import { mulberry32 } from './rng.js';
@@ -219,9 +220,9 @@ export function initAstroTab(root) {
   // CINE_BASE was written for.
   let tank = null, tankR = 2.5;      // tankR: footprint radius, metres
   const tankBox = new THREE.Box3();  // ...before any scaling, like the astronaut's
-  preloadMkcx('mkcx2').then((ok) => {
+  preloadMork().then((ok) => {
     if (!ok) return;
-    tank = buildCreature('mkcx2', { walker: look.walker, walkerHi: look.walkerHi });
+    tank = buildCreature(DEFAULT_TANK, { walker: look.walker, walkerHi: look.walkerHi });
     tank.updateMatrixWorld(true);
     tankBox.setFromObject(tank);
     try {

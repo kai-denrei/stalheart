@@ -1,3 +1,4 @@
+import { DEFAULT_TANK } from './content/tank.js';
 import { makeOrdnanceShell } from './shell.js';
 import { createWeaponVoice } from './weapon-voice.js';
 import { firingFor } from './content/firing-defaults.js';
@@ -1364,7 +1365,7 @@ export function initUnitsTab(root) {
   //   #units?group=hostile&unit=knot   ·   ?unitgroup=…&unit=… on the query
   const q = new URLSearchParams(location.search);
   const wantGroup = q.get('unitgroup');
-  const wantUnit = q.get('unit');
+  const wantUnit = q.get('unit') || (!wantGroup || wantGroup === 'friendly' ? DEFAULT_TANK : null);
   setGroup(GROUPS.includes(wantGroup) ? wantGroup : 'friendly');
   if (wantUnit) {
     for (const g of GROUPS) {

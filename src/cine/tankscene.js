@@ -1,9 +1,10 @@
+import { DEFAULT_TANK } from '../content/tank.js';
 // cine/tankscene.js — THE TANK. A 12-second cinematic (plan phase 3): the
-// MK-CX/2 low and large, three shells, then the plasma, then rolling out
+// MÖRK low and large, three shells, then the plasma, then rolling out
 // over the wire planet under the galaxy sky.
 //
 // Draws the game's own machine: the cast from units.js (buildCreature
-// 'mkcx2', the same call the beam lab and the board make), the weathered
+// the shared tank default, the same call the beam lab and the board make), the weathered
 // metal from 1b bound by material name, the shell as makeBulletCloud, the
 // recoil as tankfeel's own applyTankFeel, the plasma as beamdraw's rig at
 // a cinema point count — the beam lab's exact client contract: planet at
@@ -15,7 +16,7 @@
 // countdown the game steps by dt; here it is written from the shot times,
 // so a seek lands on the same frame as a play-through.
 import * as THREE from '../../vendor/three.module.js';
-import { buildCreature, preloadMkcx, makeBulletCloud } from '../units.js';
+import { buildCreature, preloadMork, makeBulletCloud } from '../units.js';
 import { bakeGalaxyCube } from '../galaxybake.js';
 import { SKY_PRESET } from '../galaxyseed.js';
 import { LOOKS } from '../looks.js';
@@ -132,9 +133,9 @@ export function createTank({ renderer, scene, camera, tier = {} }) {
 
   let tank = null, turret = null, muzzle = null, guns = null;
   const feel = makeTankFeel();
-  preloadMkcx('mkcx2').then((ok) => {
+  preloadMork().then((ok) => {
     if (!ok) return;
-    tank = buildCreature('mkcx2', { walker: look.walker ?? 0x9fdcff, walkerHi: look.walkerHi ?? 0xffffff });
+    tank = buildCreature(DEFAULT_TANK, { walker: look.walker ?? 0x9fdcff, walkerHi: look.walkerHi ?? 0xffffff });
     tank.scale.setScalar(0.85 * CELL);
     tank.position.copy(T);
     tank.position.y += (tank.userData.lift ?? 0.02) * CELL;

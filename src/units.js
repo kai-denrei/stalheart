@@ -1192,7 +1192,7 @@ export function makeHeartCloud(bodyHex) {
 // (operator, 2026-09-03: flat deck, no turret block, the nine shells racked on
 // the hull, big deck indicators) — authored beside the original in
 // blueprint-to-life as its own subject. THE MK-CX/2 IS THE FIELDED UNIT
-// (operator, later that day): every default below is 'mkcx2'; the MK-CX
+// (historical): these legacy builders default to 'mkcx2'; the MK-CX
 // stays castable as a relic in the units viewer, and nowhere else.
 const MKCX_URLS = { mkcx: 'assets/models/mkcx.glb', mkcx2: 'assets/models/mkcx2.glb' };
 const MKCX_ROOTS = ['MKCX_Root', 'MKCX2_Root'];
@@ -2910,7 +2910,7 @@ export const UNITS = {
   jellyfish: { kind: 'cloud' },
   tank: { kind: 'mesh', make: makeTank },
   mkcx: { kind: 'mesh', make: (cols) => makeMkcx(cols, 'mkcx') },     // the relic
-  mkcx2: { kind: 'mesh', make: (cols) => makeMkcx(cols, 'mkcx2') },   // the fielded unit
+  mkcx2: { kind: 'mesh', make: (cols) => makeMkcx(cols, 'mkcx2') },   // legacy casting
   mork: { kind: 'mesh', make: cols => {
     const model = makeMork();
     if (model) return model;

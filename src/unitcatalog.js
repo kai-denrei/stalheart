@@ -48,17 +48,17 @@ const TANK_SOUNDS = [
 ];
 
 const PLAYER_UNITS = [
+  { id: 'mork', kind: 'unit', label: 'MÖRK',
+    note: 'Default hover tank · authored lift, recoil and twin plasma · nine game shells · intact model only',
+    sounds: TANK_SOUNDS },
   { id: 'tank', kind: 'unit', label: 'tank',
     note: 'the procedural tank — turret sweeps, 9-shell rack, twin mini-guns',
     sounds: TANK_SOUNDS },
   { id: 'mkcx2', kind: 'unit', label: 'mkcx-2',
-    note: 'THE FIELDED TANK: flat deck, blade turret, shells racked in the hull, deck indicators',
+    note: 'Legacy tank: flat deck, blade turret, shells racked in the hull, deck indicators',
     sounds: TANK_SOUNDS },
   { id: 'mkcx', kind: 'unit', label: 'mkcx (relic)',
     note: 'the first casting, retired 2026-09-03 — kept here as a relic; nothing fields it',
-    sounds: TANK_SOUNDS },
-  { id: 'mork', kind: 'unit', label: 'MÖRK (A6 test)',
-    note: 'Optional hover tank · authored lift, recoil and twin plasma · nine game shells · intact model only',
     sounds: TANK_SOUNDS },
   // BOBBY builds everything the player owns, so he belongs on the friendly
   // side with the machines he prints. kind:'fixture' because he is cast the

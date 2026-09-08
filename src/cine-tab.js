@@ -62,7 +62,7 @@ export function initCineTab(root) {
   // drops the pass; ?bars=N ?grain=N ?vignette=N ?title=0 are the knobs.
   // The title waits for the CRT face to load: a card drawn before that is
   // the fallback font, and a capture's single draw must not race it.
-  const TITLES = { gate: ['THE GATE', 'STÅLHEART'], planet: ['THE PLANET', 'STÅLHEART'], tank: ['THE TANK', 'MK-CX/2'] };
+  const TITLES = { gate: ['THE GATE', 'STÅLHEART'], planet: ['THE PLANET', 'STÅLHEART'], tank: ['THE TANK', 'MÖRK'] };
   const filmOn = q.get('film') !== '0';
   const film = filmOn ? createFilmPass({
     bars: q.get('bars') != null ? parseFloat(q.get('bars')) : FILM_DEFAULTS.bars,

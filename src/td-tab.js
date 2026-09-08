@@ -1,3 +1,4 @@
+import { DEFAULT_TANK } from './content/tank.js';
 import { createGameBreaches } from './game-breaches.js';
 import { BREACH_SOUNDS } from './content/breach-defaults.js';
 import { SOUNDS } from './content/runtime.js';
@@ -154,10 +155,10 @@ export function initTdTab(root) {
     // are knobs rather than constants. Units: `hoverRise` is in MODEL units
     // (the tank is ~3.24 tall there), because it moves the body group inside
     // the model, not the unit on the sphere.
-    // mkcx by default: the authored hover tank. Async — buildUnit falls
+    // MÖRK by default: the authored hover tank. Async — buildUnit falls
     // back to the procedural tank until the bytes land, then
-    // onMkcxReady swaps it in.
-    creature: 'mkcx2',
+    // applyCreature swaps it in when ready.
+    creature: DEFAULT_TANK,
     // balance (operator pass): heavier early waves, but a richer field —
     // more triads on the ground and a longer breath between waves
     orbs: 14,
@@ -2166,7 +2167,7 @@ export function initTdTab(root) {
       // hull bays per container; the run's spare tanks rack there, and
       // every spawn — first scene included — drives OUT of a container.
       const cgen = serverGen + 1; // the value ++serverGen produces below
-      preloadContainer().then(() => {
+      Promise.all([preloadContainer(), preloadMork()]).then(() => {
         if (cgen !== serverGen || !dungeon) return; // board changed since
         // the camp was chosen with the board; this only casts the boxes
         if (berths.length !== 3) return;
@@ -2199,7 +2200,7 @@ export function initTdTab(root) {
           tmpObj.up.set(nrm2[0], nrm2[1], nrm2[2]);
           tmpObj.lookAt(ec[0], ec[1], ec[2]);
           g.quaternion.copy(tmpObj.quaternion);
-          const tank = buildCreature('mkcx2', look());   // the fielded unit
+          const tank = buildCreature(DEFAULT_TANK, look());   // the fielded unit
           tank.scale.setScalar(0.32);
           // counter-stretch: the parent's z-squash would flatten the hull
           tank.scale.z /= 0.55;
@@ -8447,7 +8448,7 @@ export function initTdTab(root) {
     // BEAT 1 — the wreck, and the word for it. Losing a hull is the most
     // consequential thing that happens to you and it used to be a toast the
     // size of a wave announcement.
-    showToast(`<div class="td-down">MK-CX DOWN!</div>`
+    showToast(`<div class="td-down">MÖRK DOWN!</div>`
       + `<div class="td-down-sub">${playerHP} left`
       + `${carried ? ` · ${carried} carries over` : ''}</div>`,
       (DEATH_HOLD + DOWN_DASH) * 1000);
@@ -15360,7 +15361,7 @@ export function initTdTab(root) {
         }
       },
     });
-    window.__cineReady = () => !!(playerMesh && mesh && (typeof mkcxReady !== 'function' || mkcxReady('mkcx2')));
+    window.__cineReady = () => !!(playerMesh && mesh && !playerMesh.userData.loading);
     // live: start once the board is up (the berth callback has run)
     if (!capturing) {
       const poll = setInterval(() => {
@@ -17038,7 +17039,7 @@ export function initTdTab(root) {
     // load, so a size measured at a fixed timeout is a size for the
     // PROCEDURAL fallback — a different model with a different scale, which
     // this project has already been burned by once.
-    Promise.all([preloadMkcx(), preloadPortalRing()]).then(([mk, rg]) => {
+    Promise.all([preloadMork(), preloadPortalRing()]).then(([mk, rg]) => {
       const bb = new THREE.Box3(), sz = new THREE.Vector3();
       console.log(`SIZEPROBE artifacts: mkcx=${mk ? 'loaded' : 'FALLBACK'}`
         + ` ring=${rg ? 'loaded' : 'FALLBACK'}`);
@@ -17424,6 +17425,7 @@ export function initTdTab(root) {
         playerAsset: playerMesh?.userData.asset || params.creature,
         playerAssetReady: !playerMesh?.userData.loading,
         playerModelStats: playerMesh?.userData.modelStats,
+        berthAssets:lifeContainers.flatMap(c=>c.tanks.map(t=>t.userData.asset)),
         heartAsset: heartSprite?.userData.asset || params.heartLook,
         heartAssetState: heartSprite?.userData.assetState,
         performance:perfSample,shieldClock:t,motionClock:runContext.time,shield:{seconds:shield.t,rack:shield.rack,cooldown:Math.max(0,shield.coolUntil-t),drops:shieldDrops,visible:shieldObj?.visible},
