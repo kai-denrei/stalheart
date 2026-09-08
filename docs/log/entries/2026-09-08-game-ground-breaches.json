@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "id": "2026-09-08-game-ground-breaches",
+  "date": "2026-09-08T04:25:02.614098+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "Replace gameplay wave portals with shared ground breaches",
+  "context": "The owner requested a quake-length animation, cracks beneath emerging creatures, reliable preset copying, exact TRON settings, and integration into the real game.",
+  "outcome": "Normal wave sources now reuse the Sinkhole Lab effect on the unit sphere. The 6.984-second sequence clears real walls within an arc radius, updates floor cuts and navigation, then releases growing/fading creatures from the cavity. Mounted towers, the server and pending Isao construction are protected; source health, income, wave counts and mission supply rules remain. Accepted defaults: pre-roll 1.6, radius 1, heave -0.12, width 1.15, crack length 2, arms 12, debris 24, TRON. Base 7 presets add a breach subject with v2-v6 migration, full-package exports, compact copy feedback, clipboard fallback and review/apply. Defaults were promoted through the shared writer. The existing user missile working copies remain untouched. Local server restarted to load schema 7.",
+  "alternatives": [
+    "Initial integration left particle billboards at lab scale; scale them with the host frame.",
+    "Shared materials were multiplied repeatedly by bloom, eventually overflowing and producing a black frame. Weight each material once and restore exact colours/visibility.",
+    "Unprotected wall clearance cancelled startup tower orders and failed cold-open acceptance. Pending Isao sites now survive environmental breach clearance."
+  ],
+  "evidence": [
+    "npm test: 77 programs passed",
+    "npm run check and npm run build passed; release 6a1699e8",
+    "npm run test:browser passed (source), including cold-open, missions, shared models and preset isolation",
+    "node scripts/browser-test.mjs --breach-game and --dist --breach-game passed real wall clearance, emergence, stable material colours and restart",
+    "node scripts/browser-test.mjs --sinkhole and --dist --sinkhole passed timing, depth order, waves, both palettes, copy feedback/fallback and cleanup",
+    "node scripts/browser-test.mjs --local-authoring passed review/apply/undo and game reload",
+    "docs/SINKHOLE.md",
+    "docs/ARCHITECTURE.md"
+  ],
+  "supersedes": [
+    "2026-09-08-breach-planet-wall-preview"
+  ]
+}

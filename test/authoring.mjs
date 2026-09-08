@@ -77,3 +77,8 @@ try {
   assert((await readFile(join(root,'src/content/shipped.js'),'utf8')).includes('export default'));
   console.log('Authoring: scoped three-way merges, local security, persisted drafts, stale review rejection, apply/undo and validation rollback pass.');
 } finally { await new Promise(r=>server.close(r)); await rm(root,{recursive:true,force:true}); }
+
+const breachBase=baselinePreset(),breachCandidate=clone(breachBase);breachCandidate.breach.fissureWidth=1.4;breachCandidate.weapons.quiver.impact.size=2;
+const breachOnly=mergeSubject(breachBase,breachCandidate,breachBase,{kind:'breach',key:'sinkhole'});
+assert.equal(breachOnly.breach.fissureWidth,1.4);assert.equal(breachOnly.weapons.quiver.impact.size,breachBase.weapons.quiver.impact.size);
+assert.equal(subjectChanges(breachBase,breachCandidate,{kind:'breach',key:'sinkhole'}).length,1);

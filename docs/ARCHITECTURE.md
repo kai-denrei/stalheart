@@ -41,7 +41,7 @@ Compatibility facades preserve existing imports and tests while each moved imple
 
 ## Authoring contract
 
-A schema-1 FX package has `application`, `base`, `id`, `weapons`, `audio` and `missiles`. It includes every existing weapon profile and sound cue, so moving between the visual and sound labs retains the other half of the package. It contains no camera settings, saved progress, user volume preferences, external URLs or executable snippets.
+A schema-1 FX package has `application`, `base`, `id`, `weapons`, `audio`, `missiles` and `breach`. It includes every existing weapon profile and sound cue, so moving between the visual and sound labs retains the other half of the package. It contains no camera settings, saved progress, user volume preferences, external URLs or executable snippets.
 
 - Visual fields: tracer appearance, muzzle/impact recipe, scale, color and bounded effect knobs.
 - Audio fields: cue gain, voice cap, retrigger interval and pitch variation. Sample paths and bus assignments remain pinned runtime references.
@@ -50,7 +50,7 @@ A schema-1 FX package has `application`, `base`, `id`, `weapons`, `audio` and `m
 - Selection clones and freezes the entire package. A draft cannot mutate the selected game's content. A second selection in the same lifetime is refused.
 - A preset ID is a human label, not a content hash. Release build fingerprints identify shipped bytes; retain the exported JSON when comparing drafts with reused names.
 
-The base is `stalheart-fx-6`. Version 2 imports retain visual/audio edits and gain the missile lab defaults. Version 3 imports also retain their missile appearance/timing edits and gain the new 3–30 m engagement defaults. Version 4 imports preserve engagement bands and add per-family lock/tolerance defaults. Version 5 imports preserve the seven retained Sentries and missile edits, retire Howitzer and install fresh Needle visual/audio defaults. Version 1 remains incompatible. Schema changes require an explicit migration or a new base. Never silently coerce an incompatible artifact into a different-looking result.
+The base is `stalheart-fx-7`. Version 6 imports retain weapon/audio/missile edits and gain the shared breach profile. Version 2 imports retain visual/audio edits and gain the missile lab defaults. Version 3 imports also retain their missile appearance/timing edits and gain the new 3–30 m engagement defaults. Version 4 imports preserve engagement bands and add per-family lock/tolerance defaults. Version 5 imports preserve the seven retained Sentries and missile edits, retire Howitzer and install fresh Needle visual/audio defaults. Version 1 remains incompatible. Schema changes require an explicit migration or a new base. Never silently coerce an incompatible artifact into a different-looking result.
 
 ## Actual workflow
 
@@ -71,7 +71,7 @@ npm run check
 npm run build
 ```
 
-The same generated module is consumed in Node validation and the browser release. The combined Sentry / Impact lab uses the validated package workflow; the retired Impact source-copy panel is removed. Beam, material, portal, cinematic and unit-specific exporters have not yet been converted to this schema. Do not describe them as covered until their actual runtime inputs are represented and tested.
+The same generated module is consumed in Node validation and the browser release. The combined Sentry / Impact lab uses the validated package workflow; the retired Impact source-copy panel is removed. The Sinkhole genre uses this schema and its own breach subject. Beam, material, legacy portal, cinematic and unit-specific exporters have not yet been converted to this schema. Do not describe them as covered until their actual runtime inputs are represented and tested.
 
 ## Shared Workshop controls
 
@@ -116,3 +116,8 @@ Sentry control labels now use `src/labs/control-help.js` for a shared hover/focu
 ## Manual Sentry operation
 
 Sniper imports the same roster, game stats, FX packages, shot/impact/audio builders and DART launcher as the other consumers. `src/domain/manual-weapon.js` adapts explicit content/stats to manual operation; `src/domain/ballistics.js` owns scope/environment trajectory math without a second weapon catalog. Scope input supplies aim to shared missile lock and eligibility rules. Stage gravity, wind, sway, optics and target exercises remain local simulation controls. See [SNIPER.md](SNIPER.md) for the manual cassette contract, authoring boundaries and acceptance checks.
+
+
+## Ground breach adapter
+
+`src/game-breaches.js` owns bounded visual source lifetimes and floor-cut uniforms; `src/sinkhole.js` is the shared lab/game effect. The game controller owns the wall-cell mutation, protected structures, order refunds, navigation rebuild and wave queue. Frames map local effect coordinates onto the existing unit sphere without touching the grid kernel. Crack/decal render order precedes transparent actors; particle billboards inherit the host frame scale. The game uses one shared audio context and absolute particle clock. Base 7 carries appearance, total opening duration and clearance radius; fixture layouts and demonstration wave counts stay outside the preset.

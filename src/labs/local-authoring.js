@@ -29,7 +29,7 @@ export function mountLocalAuthoring(box, { read, write, subject, report }) {
   }
   function open(scope, changes, undoing = false) {
     dialog.querySelector('h2').textContent = `${undoing ? 'Undo defaults for' : 'Apply defaults for'} ${subjectLabel(scope)}`;
-    dialog.querySelector('[data-authoring-scope]').textContent = scope.kind === 'sentry'
+    dialog.querySelector('[data-authoring-scope]').textContent = scope.kind === 'breach' ? 'Applies the shared ground-breach appearance, quake duration and wall-clearance radius to game and lab. Creature fixtures remain preview-only.' : scope.kind === 'sentry'
       ? 'Applies this Sentry’s effects, fire cue and missile settings. Missile flight, range, lock and on-target tolerance apply in both lab and game. Scene, drive speed, recoil and gun cooldown controls are preview-only.'
       : 'Applies this sound cue’s saved settings.';
     const table = document.createElement('table');

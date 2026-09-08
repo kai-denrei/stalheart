@@ -65,9 +65,24 @@ try{
   if(m.method==='Network.responseReceived')requests.push({url:m.params.response.url,status:m.params.response.status});
  });
  for(const method of ['Runtime.enable','Page.enable','Network.enable'])await send(method);
- if(args.includes('--sinkhole')) {
+ if(args.includes('--breach-game')) {
+ await go('game-breach-load','index.html?sw=0&acceptance=1&cine=0#td');
+ await until('window.__stalheartTest?.state().breaches.length>0');
+ await evaluate('window.__stalheartTest.breachScenario()');
+ const before=await evaluate('window.__stalheartTest.state().wallCount');
+ await until('window.__stalheartTest.state().breaches.every(b=>b.phase==="rumbling")');current='game-breach-rumble';await finish();
+ await until('window.__stalheartTest.state().breaches.every(b=>b.cleared)',30000);
+ assert(await evaluate(`window.__stalheartTest.state().wallCount<${before}`),'Breach removes real wall cells');current='game-breach-clear';await finish();
+ await until('window.__stalheartTest.state().wave>=1 && window.__stalheartTest.state().emerging>0',30000);current='game-breach-emergence';await finish();
+ await until('window.__stalheartTest.state().breaches.every(b=>b.age>=8)',30000);current='game-breach-open';await finish();assert(await evaluate('window.__stalheartTest.state().breaches.every(b=>Number.isFinite(b.materialPeak)&&b.materialPeak<=2)'),'Bloom restores shared breach materials without accumulating brightness');
+ await evaluate('window.__stalheartTest.restart()');assert.equal((await evaluate('window.__stalheartTest.state().breaches')).length,2);current='game-breach-reset';await finish();
+ } else if(args.includes('--sinkhole')) {
  await go('sinkhole-load','labs.html?sw=0&acceptance=1&genre=sinkhole#portal');
  await until('window.__stalheartPortalTest?.state().sinkhole?.ready',45000);
+ assert.equal(await evaluate('window.__stalheartPortalTest.state().sinkhole.crackWidth'),1.15);
+ assert.equal(await evaluate('window.__stalheartPortalTest.state().sinkhole.crackLength'),2);
+ assert((await evaluate('window.__stalheartPortalTest.state().sinkhole.crackRenderOrder'))<0);
+ await evaluate('window.__stalheartPortalTest.configure({craterRadius:3.5,delay:6})');
  assert.equal(await evaluate('window.__stalheartPortalTest.state().sinkhole.holeRadius'),0);
  assert.equal(await evaluate('window.__stalheartPortalTest.state().sinkhole.environment'),'planet');
  assert.equal(await evaluate('window.__stalheartPortalTest.state().sinkhole.enemies.spawned'),0);
@@ -105,6 +120,13 @@ try{
  assert.equal(await evaluate('window.__stalheartPortalTest.state().sinkhole.planetRadius'),0);
  assert.equal(await evaluate('window.__stalheartPortalTest.state().sinkhole.enemies.spawned'),0);
  current='sinkhole-flat-reference';await finish();
+ await evaluate('Object.defineProperty(navigator,"clipboard",{configurable:true,value:{writeText:async text=>{window.__breachCopied=text;}}})');
+ await click('[data-preset-copy]');await until('document.querySelector(".preset-panel output").textContent.includes("Copied changed values")');
+ assert((await evaluate('window.__breachCopied')).includes('3.5'),'Copied summary contains the edited crater radius');
+ await evaluate('navigator.clipboard.writeText=async()=>{throw Error("denied");}');await click('[data-preset-copy]');
+ assert(await evaluate('!document.querySelector("[data-preset-copy-text]").hidden'),'Denied clipboard exposes selected text');
+ current='sinkhole-copy-feedback';await finish();
+
  for(const look of ['tronColors','battlezone']){
   await evaluate(`window.__stalheartPortalTest.configure({environment:"planet",look:${JSON.stringify(look)},crackLength:.6,fissureWidth:1.4,clearRadius:6});window.__stalheartPortalTest.open()`);
   await until('window.__stalheartPortalTest.state().sinkhole.openingAge>2 && window.__stalheartPortalTest.state().sinkhole.phase==="open"');

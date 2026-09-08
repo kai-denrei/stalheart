@@ -5,7 +5,7 @@ import * as THREE from '../vendor/three.module.js';
 import { rimRadius,bowlHeight,SINKHOLE_INNER,SINKHOLE_DEPTH,SINKHOLE_BOUNDARY_GLSL } from './core/sinkhole-shape.js';
 import { getStoneTextures,STONE_TILE_METRES } from './fx/sinkhole/loaders/StoneTextures.js';
 
-export function makeSinkholeTerrain(hole,radius){
+export function makeSinkholeTerrain(hole,radius,{ground=true}={}){
   const textures=getStoneTextures(),group=new THREE.Group(),bowl=new THREE.Group();group.add(bowl);
   const segments=192,rings=24,positions=[],colors=[],uv=[],indices=[];
   const earth=new THREE.Color(0x978777);
@@ -49,11 +49,11 @@ export function makeSinkholeTerrain(hole,radius){
   };
   floorMaterial.customProgramCacheKey=()=> 'sinkhole-irregular-floor-v2';
   const flat=new THREE.Mesh(floorGeometry,floorMaterial);flat.userData.breachWorld=true;group.add(flat);
-  const globeGeometry=new THREE.SphereGeometry(1,192,128),globe=new THREE.Mesh(globeGeometry,floorMaterial);
+  const globeGeometry=new THREE.SphereGeometry(1,ground?192:8,ground?128:6),globe=new THREE.Mesh(globeGeometry,floorMaterial);
   for(let i=0;i<globeGeometry.attributes.uv.count;i++){const uv=globeGeometry.attributes.uv;uv.setXY(i,uv.getX(i)*32,uv.getY(i)*16);}
   globe.userData.breachWorld=true;group.add(globe);
   // Same pinned organic quad kernel as the game, used only for a visual grid.
-  const grid=generateSphereMesh({seed:7,n:90});relax(grid,{n_iters:15});const lines=[],seen=new Set();
+  const grid=ground?generateSphereMesh({seed:7,n:90}):{quads:[],vertices:[]};if(ground)relax(grid,{n_iters:15});const lines=[],seen=new Set();
   for(const q of grid.quads)for(let i=0;i<q.length;i++){
     const a=q[i],b=q[(i+1)%q.length],key=[Math.min(a,b),Math.max(a,b)].join(':');if(seen.has(key))continue;seen.add(key);
     const start=new THREE.Vector3(...grid.vertices[a]),end=new THREE.Vector3(...grid.vertices[b]);
@@ -72,7 +72,7 @@ export function makeSinkholeTerrain(hole,radius){
     contours.visible=!!look;contours.material.color.set(look?.edges.color??0xffffff);contours.material.blending=gridMaterial.blending;
     const c=geometry.attributes.color,base=look?new THREE.Color(...look.floors.room):earth;
     for(let i=0;i<c.count;i++){const shade=Math.pow(1-Math.min(1,-positions[i*3+1]/SINKHOLE_DEPTH),1.2);c.setXYZ(i,base.r*shade,base.g*shade,base.b*shade);}c.needsUpdate=true;
-  },update(){bowl.visible=hole.value>0;bowl.scale.setScalar(hole.value);flat.visible=radius.value<=0;
-    for(const o of [globe,gridMesh]){o.visible=radius.value>0;o.scale.setScalar(radius.value||1);o.position.y=-radius.value;}
+  },update(){bowl.visible=hole.value>0;bowl.scale.setScalar(hole.value);flat.visible=ground&&radius.value<=0;
+    for(const o of [globe,gridMesh]){o.visible=ground&&radius.value>0;o.scale.setScalar(radius.value||1);o.position.y=-radius.value;}
   },dispose(){group.traverse(o=>{o.geometry?.dispose();o.material?.dispose();if(o.isInstancedMesh)o.dispose();});group.removeFromParent();}};
 }

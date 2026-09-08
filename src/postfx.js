@@ -120,15 +120,17 @@ export function makeBloom(renderer, scene, camera, opts = {}) {
       }
     }
     const dflt = clampWeight(weights.effects);
+    const weightedMaterials=new Set();
     scene.traverse((obj) => {
       const mat = obj.material;
       if (!mat) return;
       const w = map.has(obj) ? map.get(obj) : dflt;
-      if (w === 0) { savedVis.push(obj); obj.visible = false; return; }
+      if (w === 0) { savedVis.push({obj,visible:obj.visible}); obj.visible = false; return; }
       if (w === 1) return; // nothing to do — the common case, kept cheap
       const mats = Array.isArray(mat) ? mat : [mat];
       for (const m of mats) {
-        if (!m.color) continue;
+        if (!m.color || weightedMaterials.has(m)) continue;
+        weightedMaterials.add(m);
         saved.push({ mat: m, r: m.color.r, g: m.color.g, b: m.color.b });
         m.color.setRGB(m.color.r * w, m.color.g * w, m.color.b * w);
       }
@@ -140,7 +142,7 @@ export function makeBloom(renderer, scene, camera, opts = {}) {
   function restoreWeights() {
     for (const s of saved) s.mat.color.setRGB(s.r, s.g, s.b);
     saved.length = 0;
-    for (const obj of savedVis) obj.visible = true;
+    for (const {obj,visible} of savedVis) obj.visible = visible;
     savedVis.length = 0;
     scene.background = sceneBgSaved;
   }

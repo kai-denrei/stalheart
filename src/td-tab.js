@@ -1,3 +1,8 @@
+import { createGameBreaches } from './game-breaches.js';
+import { BREACH_SOUNDS } from './content/breach-defaults.js';
+import { SOUNDS } from './content/runtime.js';
+import { emergence } from './domain/breach-waves.js';
+import { sinkholeGroundHeight } from './core/sinkhole-shape.js';
 import { makeOrdnanceShell } from './shell.js';
 import { firingFor } from './content/firing-defaults.js';
 import { METRES_PER_CELL, arcToMetres, metresToArc } from './core/stage-units.js';
@@ -362,7 +367,8 @@ export function initTdTab(root) {
   // sound. The context can only be born on a user gesture, so arm() wires
   // one-shot listeners and the first tap/keypress creates it. Until then
   // every play() is a silent no-op -- the game never waits on audio.
-  const sfx = makeAudio({ seed: 1 });
+  const sfx = makeAudio({ seed: 1, sounds:{...SOUNDS,...BREACH_SOUNDS} });
+  const gameBreaches=createGameBreaches(scene,camera,sfx);
   sfx.arm();
   // THE ALARM IS THE PROOF OF LIFE. Operator, 2026-09-01: waiting out the
   // cold open to find out whether sound works makes every test cycle cost
@@ -435,7 +441,7 @@ export function initTdTab(root) {
   // 3.0 exactly: the warning sound is 3.7s long and starts here, so it is
   // still running as the first enemy clears the gate — the cue hands over
   // to the thing it warned about rather than stopping a frame before it.
-  const WAVE_WARN = 3.0;      // seconds of charge before the wave lands
+  const WAVE_WARN = CONTENT.breach.duration;      // seconds of charge before the wave lands
   let waveCharge = 0;         // 0..1 over that window
   let warnBeat = 0;           // seconds until the next shock ring
   // >= 0 means a wave is ARMED and counting down. Every route to spawnWave
@@ -1283,6 +1289,7 @@ export function initTdTab(root) {
 
   // groups (bullet triads, mesh units) carry geometry in children
   function disposeObj(obj) {
+    if(obj?.userData?.breach){obj.userData.dispose();return;}
     obj.traverse((o) => {
       if (o.geometry) o.geometry.dispose();
       if (o.material) o.material.dispose();
@@ -2061,7 +2068,7 @@ export function initTdTab(root) {
     }
 
     for (const [geo, obj] of [[floorGeo, floorMesh], [wallGeo, wallMesh], [edgeGeo, edgeMesh], [topGeo, topMesh]]) {
-      if (obj) scene.remove(obj);
+      if (obj) {scene.remove(obj);obj.material.dispose();}
       if (geo) geo.dispose();
     }
     const faceMat = () => new THREE.MeshLambertMaterial({
@@ -2073,7 +2080,7 @@ export function initTdTab(root) {
     floorGeo.setAttribute('color', new THREE.Float32BufferAttribute(fCol, 3));
     floorGeo.computeVertexNormals();
     floorMesh = new THREE.Mesh(floorGeo, faceMat());
-    scene.add(floorMesh);
+    gameBreaches.patch(floorMesh.material);scene.add(floorMesh);
 
     wallGeo = new THREE.BufferGeometry();
     wallGeo.setAttribute('position', new THREE.Float32BufferAttribute(wPos, 3));
@@ -2092,7 +2099,7 @@ export function initTdTab(root) {
         depthWrite: !E.additive,
       }));
     edgeMesh.visible = E.show;
-    scene.add(edgeMesh);
+    gameBreaches.patch(edgeMesh.material);scene.add(edgeMesh);
 
     topGeo = new THREE.BufferGeometry();
     topGeo.setAttribute('position', new THREE.Float32BufferAttribute(tPos, 3));
@@ -4832,7 +4839,7 @@ export function initTdTab(root) {
       glossCard('#ffffff', spriteShot('portal', () => makePortalCloud({ body: 0xcfd8ff, hi: 0xffffff })), 'portals', 'the enemy sources · 3 shells each · dim as they die') +
       `</div>` +
       GAMEPLAY_TIPS +
-      `<b>WIN = DESTROY EVERY PORTAL.</b> reaching the heart wins nothing — it's home.` +
+      `<b>WIN = CLOSE EVERY BREACH.</b> reaching the heart wins nothing — it's home.` +
       `</div>` +
       `<div class="msg-foot">` +
       `<button class="msg-glenemy">enemy glossary</button> ` +
@@ -5453,7 +5460,7 @@ export function initTdTab(root) {
       + ` ×${eco.multiplier().toFixed(2)}</span>`
       + `<span class="hud-wave">WAVE <b>${wave}</b> · R${round}</span></div>`
       + (missionOn ? rescueLine()
-        : `<div class="hud-obj">portals ${spAlive}/${spawnPoints.length}`
+        : `<div class="hud-obj">breaches ${spAlive}/${spawnPoints.length}`
         + ` · ${programmeDone() ? 'WAVES SPENT — CLOSE THE GATES'
           : `wave ${sectorWave() + 1}/${params.wavesPerSector} of sector ${round}`}`
         + ` · built ${towers.length}</div>`)
@@ -6010,6 +6017,7 @@ export function initTdTab(root) {
     // battle reset — clear all enemies and gates, then seed the starting
     // neutral portals; the wave plan decides what pours out of them
     clearEnemies();
+    gameBreaches.reset();
     spawnQueue.length = 0; spawnClock = 0;
     for (const sp of spawnPoints) {
       scene.remove(sp.obj);
@@ -6158,8 +6166,7 @@ export function initTdTab(root) {
     sfx.play('tank_destroyed');
     whKick = WH_KICK * 1.6;           // the throat convulses as it collapses
     if (sp.obj) {
-      const fx = makeDebris(sp.obj, nrm);
-      scene.add(fx); debris.push(fx);
+      if(!sp.obj.userData.breach){const fx = makeDebris(sp.obj, nrm);scene.add(fx);debris.push(fx);}
       const burst = makeDotBurst(0x8fe8ff, nrm, 90);
       burst.scale.setScalar(cellSide * 1.6);
       const bp = scale3(nrm, 1 + cellSide * 0.6);
@@ -6210,7 +6217,8 @@ export function initTdTab(root) {
     for (const sp of spawnPoints) {
       if (sp.alive) near = Math.min(near, camDist(graph.centers[sp.ci]));
     }
-    if (near < Infinity) sfx.play('portal_warn', { dist: near });
+    if (near < Infinity) sfx.play('sinkhole_quake', { dist: near });
+    for(const sp of spawnPoints)if(sp.alive&&sp.obj.userData.breach)gameBreaches.trigger(sp.obj);
   }
 
   function spawnWave() {
@@ -6289,6 +6297,7 @@ export function initTdTab(root) {
     while (spawnQueue.length && spawnQueue[0].at <= spawnClock) {
       const { type, sp } = spawnQueue.shift();
       if (!sp.alive) continue;   // its gate died while it was queued
+      if(!gameBreaches.ready(sp.obj)){spawnQueue.unshift({type,sp,at:spawnClock});break;}
       const spec = ENEMY_SPEC[type];
       const obj = makeDotEnemy(type, { walker: CREATURE_TINTS[type], walkerHi: accentFor(type) });
       const size = spec.size * 0.7;
@@ -6297,10 +6306,10 @@ export function initTdTab(root) {
       scene.add(obj);
       const exits = openNeighbors(sp.ci);
       enemies.push({
-        type, spec, scale0, size,
+        type, spec, scale0, size,breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:0,
         cur: sp.ci, prev: -1,
         next: exits.length ? exits[Math.floor(whim() * exits.length)] : sp.ci,
-        prog: whim() * 0.4, pos: graph.centers[sp.ci].slice(), dir: [0, 1, 0],
+        prog: sp.obj.userData.breach?0:whim() * 0.4, pos: graph.centers[sp.ci].slice(), dir: [0, 1, 0],
         obj, alive: true, phase: whim() * 6.283,
         // a deterministic pace of its own: identical speeds are what let a
         // clump that chose the same exit stay one silhouette all the way in
@@ -6333,6 +6342,12 @@ export function initTdTab(root) {
     for (const e of enemies) {
       if (!e.alive) continue;
       const spec = e.spec;
+      if(e.breachSource&&e.emergeAge<1.2){
+        e.emergeAge+=dt;const f=emergence(e.emergeAge,1.2),entry=e.breachSource.userData.breach;
+        const height=-CONTENT.breach.craterRadius*.55*cellSide+e.scale0*(e.obj.userData.lift??.85)*f.rise-e.scale0*(1-f.rise);
+        const n=norm3(graph.centers[e.cur]);e.pos=n;e.obj.position.fromArray(scale3(n,1+height));e.obj.scale.setScalar(e.scale0*f.scale);e.obj.material.opacity=.95*f.opacity;
+        e.obj.quaternion.copy(e.breachSource.quaternion);e.obj.userData.tick?.(tNow+e.phase);continue;
+      }
       // HK healOOC: regenerators knit themselves back together while
       // nothing has hit them for 1.2 s — burst them down or ram them
       if (spec.regen && e.hp < spec.hp && tNow - (e.lastHitT ?? -9) > 1.2) {
@@ -6472,7 +6487,9 @@ export function initTdTab(root) {
       const l = Math.hypot(flat[0], flat[1], flat[2]);
       if (l > 1e-9) e.dir = scale3(flat, 1 / l);
       const s = cellSide * (e.size ?? spec.size);
-      const lift = s * (e.obj.userData.lift ?? 0.85);
+      let lift = s * (e.obj.userData.lift ?? 0.85);
+      if(e.breachSource){const entry=e.breachSource.userData.breach;if(entry){const local=new THREE.Vector3(...e.pos).applyMatrix4(entry.fx.inverseFrame.value),r=entry.fx.tune.planetRadius;local.y+=r;const a=Math.atan2(Math.hypot(local.x,local.z),local.y)*r,angle=Math.atan2(local.z,local.x);lift+=sinkholeGroundHeight(Math.cos(angle)*a,Math.sin(angle)*a,entry.fx.hole.value)*cellSide;}}
+
       e.obj.position.set(e.pos[0] + n[0] * lift, e.pos[1] + n[1] * lift, e.pos[2] + n[2] * lift);
       tmpObj.position.copy(e.obj.position);
       tmpObj.up.set(n[0], n[1], n[2]);
@@ -10991,7 +11008,7 @@ export function initTdTab(root) {
   // drawing itself in does not snap to full size.
   let ringSwapped = false;
   function swapGatesToRing() {
-    if (ringSwapped || !graph || !dungeon) return;
+    if (ringSwapped || !graph || !dungeon || !['gateprobe','portal'].some(k=>new URLSearchParams(location.search).has(k))) return;
     ringSwapped = true;
     for (const sp of spawnPoints) {
       if (!sp.obj) continue;
@@ -11042,6 +11059,7 @@ export function initTdTab(root) {
   }
 
   function buildPortalObj(ci, phase) {
+    if(!['gateprobe','portal'].some(k=>new URLSearchParams(location.search).has(k))){const n=norm3(graph.centers[ci]),target=graph.centers[dungeon.heart],dir=sub3(target,n);return gameBreaches.create(n,dir,cellSide);}
     const obj = makeGateBody(phase);
     // starts unformed; stepGates draws it in
     obj.userData.dial = 0;
@@ -11812,7 +11830,7 @@ export function initTdTab(root) {
     waveEl.style.color = '#ffffff';
     waveEl.innerHTML = `<div class="wave-num">SECTOR ${round}</div>` +
       `<div class="wave-name">THE WORLD GROWS</div>` +
-      `<div class="wave-role">new ground · new portals · your towers hold</div>`;
+      `<div class="wave-role">new ground · new breaches · your towers hold</div>`;
     waveEl.classList.remove('hidden');
     clearTimeout(waveTimer);
     waveTimer = setTimeout(() => waveEl.classList.add('hidden'), 3200);
@@ -12065,7 +12083,7 @@ export function initTdTab(root) {
       {label:'Tank',objects:playerMesh?[playerMesh]:[]},
       {label:'Terraformer',objects:heartSprite?[heartSprite]:[]},
       {label:'Enemies',objects:enemies.filter(e=>e.alive).map(e=>e.obj)},
-      {label:'Portals',objects:spawnPoints.filter(p=>p.alive).map(p=>p.obj)},
+      {label:'Breaches',objects:spawnPoints.filter(p=>p.alive).map(p=>p.obj)},
       {label:'Beams / lightning',objects:[...beams.map(b=>b.mesh),...[...plasmaBeams.values()].flatMap(e=>e.links.map(b=>b.mesh))]},
       {label:'Projectiles',objects:[...towerSeekers,...towerShots,...projectiles].map(p=>p.mesh)},
       {label:'Debris / bursts',objects:debris},
@@ -12353,6 +12371,11 @@ export function initTdTab(root) {
         if (secsToWave() <= 10) { bossCued = true; sfx.play('boss_tension'); }
       }
     }
+    gameBreaches.update(frozen?0:dt,obj=>{
+      let changed=false;const centre=norm3(obj.position.toArray()),reach=CONTENT.breach.clearRadius*cellSide;
+      for(let ci=0;ci<graph.centers.length;ci++)if(dungeon.tags[ci]===BLOCKED&&!orderByCell.has(ci)&&Math.acos(Math.max(-1,Math.min(1,dot3(centre,norm3(graph.centers[ci])))))<=reach)changed=breachWallCell(ci)||changed;
+      if(changed){rebuildAfterBreach();recomputePortalDist();}
+    });
     updateWormhole(dt, t);
     if (!frozen) tfTick(dt);
     if (!frozen) autoUpgradeTick(dt);
@@ -12394,7 +12417,7 @@ export function initTdTab(root) {
     for (const sp of spawnPoints) {
       if (!sp.alive || !sp.obj) continue;
       if (sp.obj.userData.tick) sp.obj.userData.tick(t, dt);
-      if (sp.recoil > 0) {
+      if (sp.recoil > 0 && !sp.obj.userData.breach) {
         sp.recoil = Math.max(0, sp.recoil - dt);
         const u = sp.recoil / GATE_RECOIL;          // 1 at impact, 0 at rest
         const push = Math.sin(u * Math.PI) * cellSide * 0.28;
@@ -12459,6 +12482,7 @@ export function initTdTab(root) {
       // dial in, then behave normally. The idle twinkle would fight the
       // drawing head for the colour buffer, so it waits its turn.
       const ud = sp.obj.userData;
+      if(ud.breach){if(!sp.found&&dist3(player.pos,graph.centers[sp.ci])<cellSide*5)sp.found=true;continue;}
       if (ud.setForm && ud.dial < 1) {
         ud.dial = Math.min(1, ud.dial + dt / GATE_DIAL);
         ud.setForm(ud.dial);
@@ -17397,7 +17421,7 @@ export function initTdTab(root) {
   // Tests use the real commands/transitions, and inspect serializable state.
   if (urlParams.get('acceptance') === '1') {
     window.__stalheartTest = {
-      state: () => ({ round, wave, runGen: runContext.generation, heart: heartHP, hulls: playerHP,
+      state: () => ({ breaches:gameBreaches.state(),queued:spawnQueue.length,wallCount:dungeon.tags.filter(tag=>tag===BLOCKED).length,emerging:enemies.filter(e=>e.alive&&e.emergeAge<1.2).length,round, wave, runGen: runContext.generation, heart: heartHP, hulls: playerHP,
         biomass: eco.biomass, towers: towers.length, won: player.won, paused,
         roster: ROSTER.id, mission: missionOn, buildMode,
         playerAsset: playerMesh?.userData.asset || params.creature,
@@ -17418,6 +17442,7 @@ export function initTdTab(root) {
         playerBlocked: freeBlocked(player.pos),
         camp: berths.map(b => ({ ...b, open: dungeon.tags[b.ci] !== BLOCKED && dungeon.tags[b.exit] !== BLOCKED,
           clearance: dist3(graph.centers[b.exit], graph.centers[dungeon.heart]) - pedestalRadius() })) }),
+      breachScenario:()=>{endShot();dismissIntro();if(tutorialActive)endTutorial();paused=false;tutorial.frozen=false;setView('orbit');followSuspend=true;const sp=spawnPoints.find(s=>s.alive);if(sp){buildQ.setFromUnitVectors(BQ_Z,new THREE.Vector3(...graph.centers[sp.ci]).normalize());buildDist=1.65;}waveIn=-1;armWave();},
       shieldScenario: () => {
         endShot();dismissIntro();if(tutorialActive)endTutorial();paused=true;
         for(const e of enemies){e.alive=false;scene.remove(e.obj);}spawnQueue.length=0;
@@ -17480,7 +17505,7 @@ export function initTdTab(root) {
         paused = false; tutorial.frozen = false;
         spawnQueue.length = 0;
         for (const e of enemies) { e.alive = false; scene.remove(e.obj); }
-        for (const sp of spawnPoints) { sp.alive = false; scene.remove(sp.obj); }
+        for (const sp of spawnPoints) { sp.alive = false; scene.remove(sp.obj);disposeObj(sp.obj); }
         eco.spend(eco.biomass); // exercise the zero-income early-clear case
         checkVictory(); endShot(); renderVerdict(round >= SECTORS_TOTAL);
       },
@@ -17495,7 +17520,7 @@ export function initTdTab(root) {
   animate();
 
   return {
-    dispose() { active = false; runTimers.dispose(); runContext.dispose(); missilesDisposed=true; missilePool?.dispose(); setPerfOverlay(false,false); },
+    dispose() { active = false; gameBreaches.reset();runTimers.dispose(); runContext.dispose(); missilesDisposed=true; missilePool?.dispose(); setPerfOverlay(false,false); },
     setActive(on) {
       active = on;
       if (!on) stopEngine(0.1, true); // quiet: leaving the tab is not a landing

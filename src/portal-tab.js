@@ -1,3 +1,6 @@
+import { CONTENT } from './content/runtime.js';
+import { clone } from './content/preset.js';
+import { mountPresetPanel } from './labs/preset-panel.js';
 import { BREACH_ENEMY_TYPES } from './breach-enemies.js';
 // portal-tab.js — TEMPORARY. A sidequest bench, not a game tab.
 //
@@ -319,18 +322,19 @@ export function initPortalTab(root) {
 
   const gui = new GUI({ container: root.querySelector('#portal-gui') || undefined, width: 268 });
   gui.title('Portal / breach lab');
-  let sinkhole=null,sinkholeLoading=null;
+  let sinkhole=null,sinkholeLoading=null;let breachDraft=clone(CONTENT);const breachPanel=document.createElement('div');root.append(breachPanel);breachPanel.hidden=true;
+  const transfer=mountPresetPanel(breachPanel,{subject:()=>({kind:'breach',key:'sinkhole'}),read:()=>{const p=clone(breachDraft);if(sinkhole)for(const k of Object.keys(p.breach))p.breach[k]=sinkhole.tune[k];return p;},write:p=>{breachDraft=p;if(sinkhole){sinkhole.reset();Object.assign(sinkhole.tune,p.breach);}syncBreachControls();}});
   async function setGenre(){
     if(P.genre==='sinkhole'&&!sinkhole){
       sinkholeLoading ||= import('./sinkhole.js').then(m=>m.createSinkhole(scene,camera));
       try{sinkhole=await sinkholeLoading;}catch(error){flashNote('Sinkhole failed: '+error.message);return;}
     }
     const on=P.genre==='sinkhole';rings.visible=!on;grid.visible=!on;
-    if(sinkhole){sinkhole.group.visible=on;if(!on)sinkhole.reset();}
-    if(on){camera.layers.enable(1);frameBreach('planet');sun.intensity=2;hemi.intensity=1.2;}
+    if(sinkhole){if(sinkhole.group.visible&&!on)for(const k of Object.keys(breachDraft.breach))breachDraft.breach[k]=sinkhole.tune[k];sinkhole.group.visible=on;if(!on)sinkhole.reset();}
+    if(on){Object.assign(sinkhole.tune,breachDraft.breach);syncBreachControls();camera.layers.enable(1);frameBreach('planet');sun.intensity=2;hemi.intensity=1.2;}
     else {scene.background.set(0x04070d);camera.layers.disable(1);camera.position.set(0,5.2,16);controls.target.set(0,4,0);sun.intensity=.35;hemi.intensity=.55;}
     for(const folder of gui.folders)folder.show(folder===ground?on:!on);
-    for(const c of gui.controllers)if(['copyPreset','downloadPreset'].includes(c.property))c.disable(on);
+    breachPanel.hidden=!on;
     controls.update();
   }
   function frameBreach(view){
@@ -340,8 +344,9 @@ export function initPortalTab(root) {
   }
   gui.add(P,'genre',{Portals:'portals',Sinkhole:'sinkhole'}).name('genre').onChange(setGenre);
   const ground=gui.addFolder('Sinkhole · ground breach');
-  const breach={look:'textured',walls:true,wallHeight:1.2,clearRadius:6,crackLength:5,crackWidth:.5,arms:9,environment:'planet',planetRadius:14,spawnWaves:true,kind:'mixed',waves:3,count:8,spacing:.45,gap:3,delay:2,emerge:1.2,speed:1.3,sound:true,open:()=>sinkhole?.trigger(),reset:()=>sinkhole?.reset(),preRoll:1.6,radius:3.5,heave:-.12,cracks:.7,debris:24};
-  const note=document.createElement('div');note.textContent='Preview · wave settings apply on the next breach';note.style.cssText='padding:6px 8px;color:#aaa';ground.$children.prepend(note);
+  const breach={look:'tronColors',walls:true,wallHeight:1.2,clearRadius:6,crackLength:2,crackWidth:1.15,arms:12,environment:'planet',planetRadius:14,spawnWaves:true,kind:'mixed',waves:3,count:8,spacing:.45,gap:3,delay:2,emerge:1.2,speed:1.3,sound:true,open:()=>sinkhole?.trigger(),reset:()=>sinkhole?.reset(),preRoll:1.6,radius:1,heave:-.12,cracks:.7,debris:24};
+  function syncBreachControls(){if(!sinkhole)return;Object.assign(breach,sinkhole.tune,{radius:sinkhole.tune.craterRadius,heave:sinkhole.tune.plateHeave,crackWidth:sinkhole.tune.fissureWidth,arms:sinkhole.tune.fissureArms,debris:sinkhole.tune.shrapnelCount});for(const c of ground.controllersRecursive())c.updateDisplay();}
+  const note=document.createElement('div');note.textContent='Shared game breach · wave fixtures remain preview only';note.style.cssText='padding:6px 8px;color:#aaa';ground.$children.prepend(note);
   ground.add(breach,'open').name('rumble → breach').domElement.querySelector('button').dataset.sinkholeOpen='';
   ground.add(breach,'sound').name('quake sound').onChange(value=>{if(sinkhole)sinkhole.setSound(value);});ground.add(breach,'reset').name('reset ground');
   for(const [key,field,min,max,step] of [['preRoll','preRoll',0,4,.1],['radius','craterRadius',1,8,.1],['heave','plateHeave',-.8,0,.01],['crackWidth','fissureWidth',.1,2,.05],['crackLength','crackLength',.1,10,.1],['arms','fissureArms',3,18,1],['debris','shrapnelCount',0,100,1]])
@@ -363,7 +368,7 @@ export function initPortalTab(root) {
   setGenre();
   if(new URLSearchParams(location.search).get('acceptance')==='1')window.__stalheartPortalTest={
     state:()=>({genre:P.genre,sinkhole:sinkhole?.state()}),open:()=>sinkhole?.trigger(),reset:()=>sinkhole?.reset(),
-    genre:value=>{P.genre=value;return setGenre();},view:frameBreach,configure:values=>{sinkhole.reset();Object.assign(sinkhole.tune,values);},dispose:()=>sinkhole?.dispose(),
+    genre:value=>{P.genre=value;return setGenre();},view:frameBreach,configure:values=>{sinkhole.reset();Object.assign(sinkhole.tune,values);},dispose:()=>{transfer.dispose();sinkhole?.dispose();},
   };
   const fx = gui.addFolder('effect');
   fx.add(P, 'corona').name('effect on');
@@ -428,6 +433,7 @@ export function initPortalTab(root) {
     base: location.origin + location.pathname, hash: 'portal', params: P, defaults: P0, carry: location.search,
   }), { label: 'PORTAL', flash: flashNote });
   P.copyPreset = () => {
+    if(P.genre==='sinkhole'){breachPanel.querySelector('[data-preset-copy]').click();return;}
     const json = presetJson();
     const ok = () => { flashNote('preset copied to clipboard'); console.log('PORTAL preset:\n' + json); };
     const fail = (why) => {
@@ -445,6 +451,7 @@ export function initPortalTab(root) {
     else fail('unavailable');
   };
   P.downloadPreset = () => {
+    if(P.genre==='sinkhole'){breachPanel.querySelector('[data-preset-export]').click();return;}
     const blob = new Blob([presetJson()], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a2 = document.createElement('a');

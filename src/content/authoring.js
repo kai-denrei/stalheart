@@ -9,6 +9,7 @@ export function subjectPaths(subject, preset) {
     if (Object.hasOwn(preset.missiles, subject.key)) paths.push(['missiles', subject.key]);
     return paths;
   }
+  if (subject.kind === 'breach' && subject.key === 'sinkhole') return [['breach']];
   if (subject.kind === 'audio' && Object.hasOwn(preset.audio, subject.key)) return [['audio', subject.key]];
   throw Error('Unknown authoring subject');
 }

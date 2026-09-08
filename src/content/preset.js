@@ -1,10 +1,11 @@
+import { BREACH_DEFAULTS, BREACH_KNOBS } from './breach-defaults.js';
 import { RETIRED_HOWITZER } from './retired-howitzer.js';
 import { MISSILE_DEFAULTS } from './missile-defaults.js';
 // Portable authoring contract. No renderer, browser, storage or executable data.
 import { SENTRY_FX as WEAPONS } from './weapon-defaults.js';
 import { SOUNDS } from './audio-defaults.js';
 import { IMPACT_KNOBS, IMPACT_FAMILIES, IMPACT_RECIPES } from './impact-schema.js';
-export const PRESET_BASE = 'stalheart-fx-6';
+export const PRESET_BASE = 'stalheart-fx-7';
 export const AUDIO_KNOBS = Object.freeze([
   { key:'gain', min:0, max:2, step:.01 },
   { key:'maxVoices', min:1, max:32, step:1 },
@@ -42,7 +43,8 @@ function effect(fx,path) {
   for (const k of IMPACT_KNOBS) if (Object.hasOwn(fx.tune,k.key)) number(fx.tune[k.key],k.min,k.max,`${path}.tune.${k.key}`,k.step===1);
 }
 function validatePackage(p,baseId,weaponDefs,audioDefs) {
-  keys(p,['schema','application','base','id','weapons','audio','missiles'],'preset');
+  keys(p,['schema','application','base','id','weapons','audio','missiles',...(baseId===PRESET_BASE?['breach']:[])],'preset');
+  if(baseId===PRESET_BASE){keys(p.breach,Object.keys(BREACH_DEFAULTS),'breach');for(const [key,[min,max]] of Object.entries(BREACH_KNOBS))number(p.breach[key],min,max,'breach.'+key,['fissureArms','shrapnelCount'].includes(key));if(!['tronColors','battlezone','textured'].includes(p.breach.look))throw Error('breach.look: unknown palette');}
   if (p.schema!==1 || p.application!=='stalheart' || p.base!==baseId) throw Error('Unsupported preset schema or base');
   if (typeof p.id!=='string' || !/^[a-z0-9][a-z0-9-]{0,79}$/.test(p.id)) throw Error('Preset id must be a short lowercase slug');
   keys(p.weapons,Object.keys(weaponDefs),'weapons');
@@ -83,7 +85,7 @@ function validatePackage(p,baseId,weaponDefs,audioDefs) {
 export const validatePreset=p=>validatePackage(p,PRESET_BASE,WEAPONS,SOUNDS);
 export function baselinePreset(id='baseline') {
   const audio=Object.fromEntries(Object.entries(SOUNDS).map(([key,s])=>[key,Object.fromEntries(AUDIO_KNOBS.map(k=>[k.key,s[k.key]]))]));
-  return validatePreset({schema:1,application:'stalheart',base:PRESET_BASE,id,weapons:clone(WEAPONS),audio,missiles:clone(MISSILE_DEFAULTS)});
+  return validatePreset({schema:1,application:'stalheart',base:PRESET_BASE,id,weapons:clone(WEAPONS),audio,missiles:clone(MISSILE_DEFAULTS),breach:clone(BREACH_DEFAULTS)});
 }
 function canonical(v) {
   if (Array.isArray(v)) return v.map(canonical);
@@ -112,8 +114,9 @@ export function parsePreset(text) {
     const {needle,...oldWeapons}=WEAPONS,{sentry_needle,...oldSounds}=SOUNDS;
     validatePackage(p,'stalheart-fx-5',{...oldWeapons,howitzer:RETIRED_HOWITZER},{...oldSounds,sentry_howitzer:SOUNDS.tank_main});
     const {howitzer,...weapons}=p.weapons,{sentry_howitzer,...audio}=p.audio;
-    p={...p,base:PRESET_BASE,weapons:{...weapons,needle:clone(needle)},audio:{...audio,sentry_needle:clone(baselinePreset().audio.sentry_needle)}};
+    p={...p,base:'stalheart-fx-6',weapons:{...weapons,needle:clone(needle)},audio:{...audio,sentry_needle:clone(baselinePreset().audio.sentry_needle)}};
   }
+  if(p?.base==='stalheart-fx-6'){validatePackage(p,'stalheart-fx-6',WEAPONS,SOUNDS);p={...p,base:PRESET_BASE,breach:clone(BREACH_DEFAULTS)};}
   return validatePreset(p);
 }
 export function resolveSounds(p) {
