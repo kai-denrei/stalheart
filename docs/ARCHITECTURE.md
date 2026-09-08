@@ -115,7 +115,7 @@ Sentry control labels now use `src/labs/control-help.js` for a shared hover/focu
 
 ## Manual Sentry operation
 
-Sniper imports the same roster, game stats, FX packages, shot/impact/audio builders and DART launcher as the other consumers. `src/domain/manual-weapon.js` adapts explicit content/stats to manual operation; `src/domain/ballistics.js` owns scope/environment trajectory math without a second weapon catalog. Scope input supplies aim to shared missile lock and eligibility rules. Stage gravity, wind, sway, optics and target exercises remain local simulation controls. See [SNIPER.md](SNIPER.md) for the manual cassette contract, authoring boundaries and acceptance checks.
+Sniper imports the same roster, game stats, FX packages, shot/impact/audio builders and DART launcher as the other consumers. `src/domain/manual-weapon.js` adapts explicit content/stats to manual operation; `src/domain/ballistics.js` owns scope/environment trajectory math without a second weapon catalog. Scope input supplies aim to shared missile lock and eligibility rules. Stage gravity, wind, sway, optics and target exercises remain local simulation controls. `sniper-scale.js` applies isolated manual reach/speed scaling, `mortar-ground.js` solves raised-muzzle ground impacts through the existing integrator, and `labs/sniper-environment.js` owns the planet terrace, instanced canyon walls, mounted shared models and cover intersections. See [SNIPER.md](SNIPER.md) for the manual cassette contract, authoring boundaries and acceptance checks.
 
 
 ## Ground breach adapter

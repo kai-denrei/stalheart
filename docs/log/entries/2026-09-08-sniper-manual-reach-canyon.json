@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "2026-09-08-sniper-manual-reach-canyon",
+  "date": "2026-09-08T05:51:45.499919+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "Extend manual Sniper reach and build a planet canyon firing range",
+  "context": "The owner requested longer aiming distances in the introductory manual stage, isolated from automated-game balance, plus walls, wall-mounted sentries and a planet environment with a long canyon.",
+  "outcome": "Sniper defaults to 5× maximum/minimum reach with 1×/3×/5× controls and farther default targets. Projectile velocity scales by sqrt(reach multiplier); damage, cadence and immutable content remain shared. The explicit 1000 m Quiver prototype remains an absolute override. A 2600 m radius planet uses the pinned grid kernel and TRON palette around a prepared tangent firing terrace, a 1400 m canyon, instanced walls, distant fortifications and six shared mounted Quiver/Lancer models. The optic is mounted six metres above the floor. Walls stop beams, rounds and missiles. Mortar high arcs solve actual ground landing from muzzle height through the existing integrator.",
+  "alternatives": [
+    "Full spherical ballistics remain out of scope: the canyon firing surface uses local metre coordinates, with the planet curving away beyond it.",
+    "Initial raised-platform mortar test exposed the old same-height solution landing long; replaced it with an integrator-backed ground solution.",
+    "The preset-duration browser fixture inherited TALON and longer-distance flight overrides after the new long-range case; it now reloads an explicit 20 m, Game 1× setup with TALON preview off before checking imported duration."
+  ],
+  "evidence": [
+    "npm test: 80 test programs passed",
+    "npm run check and npm run build passed",
+    "npm run test:browser: full source suite passed",
+    "node scripts/browser-test.mjs --dist --sniper: built Sniper suite passed, including 5× defaults, mounted assets, wall obstruction, distant mortar ground landing, Game 1× roster parity and draft isolation"
+  ],
+  "supersedes": []
+}

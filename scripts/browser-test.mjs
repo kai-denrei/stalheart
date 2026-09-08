@@ -160,8 +160,16 @@ try{
  } else if(args.includes('--sniper')) {
  await go('sniper-showcase','labs.html?sw=0&acceptance=1&swaySlow=0&swayFast=0#sniper');
  await until('window.__stalheartSniperTest?.state().ready');
+ await until('window.__stalheartSniperTest.state().environment.mounted===6',30000);
  const defaults=await evaluate('window.__stalheartSniperTest.state()');
+ assert.equal(defaults.rangeScale,5);assert.equal(defaults.weaponMaxRange,350);assert(defaults.environment.wallCount>100);assert.equal(defaults.environment.canyonLength,1400);
  assert(defaults.range>=50&&defaults.phase==='showcase');assert.equal(defaults.targets.filter(t=>t.kind).length,14);assert(defaults.targets.some(t=>t.kind==='shellback'));assert(defaults.targets.some(t=>t.kind==='knot'));await finish();
+ await evaluate('window.__stalheartSniperTest.overview(true)');await delay(200);current='sniper-planet-overview';await finish();
+ await evaluate('window.__stalheartSniperTest.overview(false)');
+ await evaluate('window.__stalheartSniperTest.pan(Math.atan2(70,250),0)');await click('#sniper-fire');
+ await until('!!window.__stalheartSniperTest.state().beam');
+ assert(await evaluate('window.__stalheartSniperTest.state().beam.reach<300'), 'Canyon walls stop the beam before maximum range');
+ await until('!window.__stalheartSniperTest.state().beam && window.__stalheartSniperTest.state().sequence.left===0');
  await evaluate('window.__stalheartSniperTest.aim("phage")');await click('#sniper-fire');
  await until('window.__stalheartSniperTest.state().kills>0',15000);
  const death=await evaluate('window.__stalheartSniperTest.state()');
@@ -187,7 +195,7 @@ try{
  assert.equal(await evaluate('window.__stalheartSniperTest.state().talonPool.triangles'),1340);current='sniper-talon-coast';await finish();
  await until('window.__stalheartSniperTest.state().flights.some(f=>f.t>4)');current='sniper-talon-crest';await finish();
  await until('window.__stalheartSniperTest.state().talonPool.active===0');
- await go('sniper-roster','labs.html?sw=0&acceptance=1&phase=calibrate&range=20&quiverTalon=0&sound=1&swaySlow=0&swayFast=0#sniper');
+ await go('sniper-roster','labs.html?sw=0&acceptance=1&phase=calibrate&range=20&rangeScale=1&quiverTalon=0&sound=1&swaySlow=0&swayFast=0#sniper');
  await until('window.__stalheartSniperTest?.state().ready && window.__stalheartSniperTest.state().pool');
  assert.deepEqual((await evaluate('window.__stalheartSniperTest.state().roster')).map(s=>s.key),SENTRIES.map(s=>s.key));
  for(const sentry of SENTRIES){
@@ -281,7 +289,13 @@ try{
  const landing=await evaluate('window.__stalheartSniperTest.state().mortar.impacts[0]');assert(landing.radius>0);assert(Math.abs(landing.point[0]-4)<3);assert.deepEqual(landing.aim,[4,0,20],'Impact error retains launch-time aim');
  assert(await evaluate('window.__stalheartSniperTest.state().worldSplashes>0'),'Impact leaves a splash ring in the main world');
  current='sniper-mortar-landing';await finish();
- await evaluate('window.__stalheartSniperTest.select("quiver");window.__stalheartSniperTest.distance(20)');await until('window.__stalheartSniperTest.state().ready');
+ await go('sniper-mortar-long-range','labs.html?sw=0&acceptance=1&weapon=mortar&rangeScale=5&quiverTalon=0&wind=0&swaySlow=0&swayFast=0#sniper');
+ await until('window.__stalheartSniperTest?.state().ready');
+ assert.equal(await evaluate('window.__stalheartSniperTest.state().weaponMaxRange'),175);
+ await evaluate('window.__stalheartSniperTest.mortarAim([0,0,149])');await click('#sniper-fire');
+ await until('window.__stalheartSniperTest.state().mortar.impacts.length>0',60000);
+ assert(await evaluate('Math.abs(window.__stalheartSniperTest.state().mortar.impacts[0].point[2]-149)<3'),'Manual 5× mortar reaches distant ground target');await finish();
+ await go('sniper-import-fixture','labs.html?sw=0&acceptance=1&weapon=quiver&rangeScale=1&range=20&phase=calibrate&quiverTalon=0#sniper');await until('window.__stalheartSniperTest?.state().ready');
 
  const draft=clone(CONTENT);draft.id='sniper-browser';draft.missiles.quiver.duration=1.7;
  draft.missiles.quiver.length=.51;draft.weapons.quiver.impact.size=1.13;
