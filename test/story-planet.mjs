@@ -19,6 +19,13 @@ assert.ok(open.cells.length <= clearing.mouthMaxCells, 'open mouth is gate sized
 const c = p.graph.centers[open.cells[0]];
 const local = p.worldToFrame([c[0] * p.radius, c[1] * p.radius - p.radius, c[2] * p.radius]);
 assert.ok(local[2] < 0 && Math.abs(local[0]) < p.cellSide * p.radius * 1.5, `open mouth on -Z: ${local}`);
+// the open mouth is the only way out: seal it and nothing outside the clearing is reachable
+{
+  const tags = Array.from(p.dungeon.tags); for (const ci of open.cells) tags[ci] = BLOCKED;
+  const seen = new Set(p.clearing.cells), stack = [...p.clearing.cells];
+  while (stack.length) { const c = stack.pop(); for (const nb of p.graph.adj[c]) if (!seen.has(nb) && tags[nb] !== BLOCKED) { seen.add(nb); stack.push(nb); } }
+  for (const ci of seen) assert.ok(p.clearing.cells.has(ci) || p.arcOfCell(ci) < clearing.radiusMetres + 3 * p.cellMetres, `no second exit through cell ${ci}`);
+}
 // determinism
 const q = buildStoryPlanet(small, clearing);
 assert.deepEqual(Array.from(q.dungeon.tags), Array.from(p.dungeon.tags));

@@ -222,7 +222,7 @@ try{
  const rest=await evaluate('window.__stalheartStoryTest.state()');
  assert.equal(rest.cells,71314);assert.equal(rest.openMouths,1);assert(rest.mouths>=6,'lane mouths found');assert.deepEqual(rest.errors,[]);
  assert.equal(rest.phase,'done');assert.equal(rest.landing.clips.Top_Door_Open,1.8,'door held open at rest');assert(rest.landing.isao?.visible,'Isao is out at rest');
- await until('window.__stalheartStoryTest.state().tiles>200',20000);
+ assert(rest.gateMarker,'gate-sized marker at the open mouth');
  assert(rest.counts.floorTriangles>20000&&rest.counts.rockTriangles>20000&&rest.counts.edgeSegments>100000,'lattice geometry built');
  await finish();
  await evaluate('window.__stalheartStoryTest.seek(8)');await delay(300);current='story-descent';await finish();

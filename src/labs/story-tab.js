@@ -2,7 +2,6 @@
 // tiled pad and the SH02 arrival. Metres; pole at the origin.
 import * as THREE from '../../vendor/three.module.js';
 import { OrbitControls } from '../../vendor/OrbitControls.js';
-import { GLTFLoader } from '../../vendor/GLTFLoader.js';
 import { LOOKS } from '../looks.js';
 import { STORY_RECIPE, STORY_CLEARING, LANDING_DEFAULTS, STORY_SOUNDS } from '../content/story-defaults.js';
 import { SOUNDS } from '../audiomanifest.js';
@@ -10,18 +9,18 @@ import { makeAudio } from '../audio.js';
 import { buildStoryPlanet } from '../domain/story-planet.js';
 import { makeLandingSequence } from '../domain/landing-sequence.js';
 import { compileRail } from '../cine/rail.js';
-import { buildStoryPlanetMesh, buildPadTiles } from './story-planet-mesh.js';
+import { buildStoryPlanetMesh, buildMouthMarker } from './story-planet-mesh.js';
 import { createStoryLanding } from './story-landing.js';
 
-const TILE_URL = 'assets/models/astro/foundation_flat_d0.glb';
 // camera rail in pad metres: orbit, descent chase, touchdown, the door, Isao
 const RAIL = [
   { t: 0, pos: [0, 1500, 900], look: [0, 0, 0], fov: 40 },
   { t: 4, pos: [180, 140, 260], look: [0, 150, 0], fov: 40 },
   { t: 9, pos: [90, 50, 140], look: [0, 40, 0] },
-  { t: 12, pos: [60, 22, 95], look: [0, 12, 0] },
-  { t: 16, pos: [45, 26, 60], look: [0, 16, 0] },
-  { t: 20.8, pos: [34, 30, 44], look: [0, 22, 0] },
+  { t: 12, pos: [70, 26, 110], look: [0, 16, 0] },
+  { t: 16, pos: [52, 34, 70], look: [0, 24, 0] },
+  { t: 18, pos: [30, 40, 42], look: [0, 34, 0] },
+  { t: 22.8, pos: [36, 44, 50], look: [0, 38, 0] },
 ];
 
 export function initStoryTab(root) {
@@ -38,7 +37,7 @@ export function initStoryTab(root) {
   const sun = new THREE.DirectionalLight(0xfff0dc, 1.6); sun.position.set(120, 260, 90); scene.add(sun);
   const fill = new THREE.DirectionalLight(look.sun[0], 0.5); fill.position.set(-200, 120, -160); scene.add(fill);
 
-  let active = false, disposed = false, frameId = 0, planet = null, planetMesh = null, tiles = null, landing = null, errors = [];
+  let active = false, disposed = false, frameId = 0, planet = null, planetMesh = null, marker = null, landing = null, errors = [];
   // the thrust bed loops under the descent and cuts at touchdown; the tank's
   // pneumatics stand in for the legs, the landing and the door
   const sfx = makeAudio({ seed: 3, persist: false, sounds: { ...STORY_SOUNDS, tank_spool_up: SOUNDS.tank_spool_up, tank_spool_down: SOUNDS.tank_spool_down } });
@@ -95,13 +94,9 @@ export function initStoryTab(root) {
     planetMesh = buildStoryPlanetMesh(planet, look, { wallMetres: STORY_RECIPE.wallMetres }); scene.add(planetMesh);
     landing = createStoryLanding(scene, { padFloor: planet.padFloor, yaw: planet.clearing.yaw });
     landing.ready.then(() => { seek(t); });
-    new GLTFLoader().loadAsync(TILE_URL).then((gltf) => {
-      if (disposed) return;
-      tiles = buildPadTiles(gltf.scene, { tiles: STORY_CLEARING.padTiles, tileMetres: STORY_CLEARING.tileMetres, padFloor: planet.padFloor, yaw: planet.clearing.yaw });
-      scene.add(tiles);
-    }).catch((e) => errors.push(String(e)));
+    marker = buildMouthMarker(planet, look); if (marker) scene.add(marker);
     const c = planetMesh.userData.counts;
-    status.textContent = `${c.cells.toLocaleString()} cells, radius ${planet.radius.toFixed(0)} m, built in ${(built / 1000).toFixed(1)} s. ${planet.clearing.mouths.length} lane mouths, one open. L to land.`;
+    status.textContent = `${c.cells.toLocaleString()} cells, radius ${planet.radius.toFixed(0)} m, built in ${(built / 1000).toFixed(1)} s. ${planet.clearing.mouths.length} lane mouths, one open and gate-sized. L to land.`;
     reset();
   }
   controls.addEventListener('start', () => { onRail = false; });
@@ -130,11 +125,11 @@ export function initStoryTab(root) {
     dispose() {
       if (disposed) return; disposed = true; active = false; cancelAnimationFrame(frameId);
       removeEventListener('resize', resize); removeEventListener('keydown', onKey);
-      thrust?.stop(0); sfx.dispose(); landing?.dispose(); planetMesh?.userData.dispose(); tiles?.userData.dispose(); controls.dispose(); renderer.dispose(); renderer.domElement.remove();
+      thrust?.stop(0); sfx.dispose(); landing?.dispose(); planetMesh?.userData.dispose(); marker?.userData.dispose(); controls.dispose(); renderer.dispose(); renderer.domElement.remove();
     },
   };
   if (q.get('acceptance') === '1') window.__stalheartStoryTest = {
-    state: () => ({ ready: !!planet && !!landing?.state().loaded, cells: planet?.dungeon.tags.length ?? 0, mouths: planet?.clearing.mouths.length ?? 0, openMouths: planet?.clearing.mouths.filter((m) => m.open).length ?? 0, tiles: tiles?.userData.tiles ?? 0, counts: planetMesh?.userData.counts ?? null, t, phase: sequence.stateAt(t).phase, playing, landing: landing?.state() ?? null, cues: cueLog.slice(), audioState: sfx.contextState, errors }),
+    state: () => ({ ready: !!planet && !!landing?.state().loaded, cells: planet?.dungeon.tags.length ?? 0, mouths: planet?.clearing.mouths.length ?? 0, openMouths: planet?.clearing.mouths.filter((m) => m.open).length ?? 0, gateMarker: !!marker, counts: planetMesh?.userData.counts ?? null, t, phase: sequence.stateAt(t).phase, playing, landing: landing?.state() ?? null, cues: cueLog.slice(), audioState: sfx.contextState, errors }),
     land, skip, seek: (time) => { onRail = true; seek(time); }, reset, dispose: api.dispose,
   };
   resize();

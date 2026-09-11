@@ -67,3 +67,23 @@ export function buildPadTiles(source, { tiles, tileMetres, padFloor, yaw }) {
   group.userData.dispose = () => group.traverse((o) => { if (o.isInstancedMesh) o.dispose(); });
   return group;
 }
+
+// A gate-sized outline in the open lane mouth: 12 x 8 m, the armored gate's
+// plot, laid across the lane with its road axis pointing into the clearing.
+export function buildMouthMarker(planet, look, { plot = [12, 8] } = {}) {
+  const { graph, radius, clearing } = planet;
+  const m = clearing.openMouth; if (!m) return null;
+  const c = m.cells.map((ci) => graph.centers[ci]).reduce((a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]], [0, 0, 0]).map((v) => v / m.cells.length);
+  const n = new THREE.Vector3(c[0], c[1], c[2]).normalize();
+  const centre = n.clone().multiplyScalar(radius + 0.3); centre.y -= radius;
+  // road axis: toward the pole along the surface; across: perpendicular in the tangent plane
+  const pole = new THREE.Vector3(0, 1, 0);
+  const road = pole.clone().sub(n.clone().multiplyScalar(pole.dot(n))).normalize();
+  const across = new THREE.Vector3().crossVectors(n, road).normalize();
+  const pts = [[-1, -1], [1, -1], [1, 1], [-1, 1], [-1, -1]].map(([u, v]) => centre.clone().addScaledVector(across, u * plot[0] / 2).addScaledVector(road, v * plot[1] / 2));
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: look.floors ? 0xffffff : 0xffffff, transparent: true, opacity: 0.9 }));
+  line.name = 'Gate marker';
+  line.userData.dispose = () => { geo.dispose(); line.material.dispose(); };
+  return line;
+}
