@@ -49,3 +49,7 @@ export const PLUME_CLUSTER = Object.freeze([
 // Presentation scale. The SH02 is authored at 21.4 m; the story shows it
 // larger so a game-sized Isao reads small and clears the cargo well.
 export const STORY_SCALE = Object.freeze({ rocket: 1.5, isaoMetres: 1.8 });
+
+// The piloted sentry in the story: a denser stream of rounds, each one
+// heavy enough that cannon fodder drops in two hits.
+export const STORY_PILOT = Object.freeze({ rateMul: 2.5, dmgMul: 5 });

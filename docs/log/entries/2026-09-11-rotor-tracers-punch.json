@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-09-11-rotor-tracers-punch",
+  "date": "2026-09-11T16:30:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "Denser Rotor tracers through the package path; the story's piloted sentry streams heavier rounds",
+  "context": "Owner: more tracers in the bullets, stronger bullets against low-level enemies. The Rotor's auto rate is 2.2 rounds/s at 0.1 damage, ten hits per phage.",
+  "outcome": "STORY_PILOT in content sets rateMul 2.5 and dmgMul 5 for the piloted sentry in the story world, applied at the cooldown and the round's damage; a phage drops in two hits. The Rotor's shot appearance (projPx 4 to 6, trail 2 to 7) was promoted as package id rotor-tracer-dense through npm run presets, the diff reviewed as exactly those fields. The acceptance hook gains hold(on); the story-world acceptance aims at fodder, holds fire and confirms the kill. Global tower balance is unchanged.",
+  "alternatives": [
+    "Change the Rotor's def damage in towers.js: rejected, a global balance change; the story tune is scoped to the piloted sentry."
+  ],
+  "evidence": [
+    "git diff src/content/shipped.js: id and the two shot fields only",
+    "node scripts/browser-test.mjs --story-world: PASS story-world-rotor-kill",
+    "npm test 89, check, build"
+  ],
+  "supersedes": []
+}

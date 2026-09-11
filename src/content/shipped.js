@@ -220,7 +220,7 @@ export default {
     "preRoll": 1.6,
     "shrapnelCount": 24
   },
-  "id": "baseline",
+  "id": "rotor-tracer-dense",
   "missiles": {
     "heptapod": {
       "aimTolerance": 2.5,
@@ -514,9 +514,9 @@ export default {
       },
       "shot": {
         "kind": "round",
-        "projPx": 4,
+        "projPx": 6,
         "projSpeed": 24,
-        "trail": 2
+        "trail": 7
       }
     }
   }

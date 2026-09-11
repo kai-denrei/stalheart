@@ -10221,7 +10221,7 @@ export function initTdTab(root) {
         }
       }
       if (tw.def.hitscan && (tw.aimErr ?? 99) > SENTRY_TUNE.tolerance) continue;
-      tw.cooldown = shotInterval(eff.rate);
+      tw.cooldown = shotInterval(eff.rate * (pilotMode ? story?.pilot.rateMul ?? 1 : 1));   // the story's piloted sentry streams rounds
       if (pilotMode) pilot.state.shots++;
       // one line, every tower: the key IS the def key, unless the def says
       // otherwise — which the second roster's do, since there is no
@@ -10441,7 +10441,7 @@ export function initTdTab(root) {
       ? cellIndex(norm3(add3(p0, scale3(dir, arcTotal)))) : -1;
     towerShots.push({
       pos: p0, dir, dist: 0, mesh, shell,
-      dmg: eff.dmg, splash: (eff.splash || 0) * cellSide, homing,
+      dmg: eff.dmg * (pilotMode ? story?.pilot.dmgMul ?? 1 : 1), splash: (eff.splash || 0) * cellSide, homing,   // ...and each round hits harder
       range: eff.range * cellSide * 1.35,
       speed: (sfx2.projSpeed ?? 16) * cellSide, // per-tower tempo
       arcTotal, arcH: cellSide * 2.3, color: tw.def.color, // a lob, not a moonshot
@@ -17604,7 +17604,7 @@ export function initTdTab(root) {
     clearBriefs();params.callouts=false;setView('bastion');pilot.select(posts?pilotMounts[0]?.key||'rotor':'needle');hideRangeRing();snapCamera();
     if(urlParams.get('acceptance')==='1')window.__stalheartPilotTest={state:()=>({paused,seed:params.seed,points:params.points,sector:round,posts:pilotPosts.slice(),ci:pilot.state.tower.ci,key:pilot.state.tower.key,shots:pilot.state.shots,held:pilot.state.held,wave,enemies:enemies.filter(e=>e.alive).length,tank:player.pos.slice(),camera:camera.position.toArray(),target:pilot.state.target?.id??null,ready:!pilot.state.tower.obj.userData.loading,aimError:pilot.state.tower.aimErr,lock:pilot.state.tower.lock,heart:heartHP}),select:key=>pilot.select(key),
       aimEnemy:()=>{const tw=pilot.state.tower;const e=enemies.find(e=>e.alive&&missileDistance(graph.centers[tw.ci],e.pos)<effectiveStats(tw.def,tw.tier).range*10&&losClear(tw.ci,e.pos));if(!e)return null;pilot.aimAt(add3(e.pos,scale3(norm3(e.pos),cellSide*.3)));return {id:e.id,hp:e.hp};},
-      enemy:id=>{const e=enemies.find(e=>e.id===id);return e?{hp:e.hp,alive:e.alive}:null;}
+      enemy:id=>{const e=enemies.find(e=>e.id===id);return e?{hp:e.hp,alive:e.alive}:null;},hold:on=>{pilot.state.held=!!on;}
     };
   } if (pilotMode) enterPilot(null);
 
