@@ -21,7 +21,7 @@ const RAIL = [
   { t: 4, pos: [180, 140, 260], look: [0, 150, 0], fov: 40 },
   { t: 9, pos: [90, 50, 140], look: [0, 40, 0] },
   { t: 12, pos: [70, 26, 110], look: [0, 16, 0] },
-  { t: 16, pos: [15, 42, 18], look: [0.5, 38.5, 0], fov: 40 },   // medium-close on the nose, held: the door opens, Isao comes out, angry then happy, no zoom
+  { t: 16, pos: [14, 44, 17], look: [0.5, 35.5, 0], fov: 42 },   // medium-close on the nose, held: the door opens, Isao comes out, angry then happy, no zoom
 ];
 
 export function initStoryTab(root) {
