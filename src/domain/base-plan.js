@@ -25,14 +25,19 @@ export function planBase(planet, layout, stage) {
     const r = Math.hypot(f[0], f[2]), phi0 = Math.atan2(f[0], -f[2]);
     const at = (rr, phi) => [rr * Math.sin(phi), -rr * Math.cos(phi)];
     const inward = (phi) => [-Math.sin(phi), Math.cos(phi)];
-    gate = { x: f[0], z: f[2], y: 0, heading: inward(phi0) };
+    // nearest lattice cells: walls block them for everyone, the gate cell stays open and the gate itself decides
+    const cellAt = (x, z) => { const w = planet.frameToWorld([x, 0, z]); let best = -1, bd = Infinity; for (const ci of candidates) { const c = planet.graph.centers[ci]; const d = (c[0] * radius - w[0]) ** 2 + (c[1] * radius - radius - w[1]) ** 2 + (c[2] * radius - w[2]) ** 2; if (d < bd) { bd = d; best = ci; } } return best; };
+    const candidates = [...planet.clearing.cells, ...m.cells];
+    gate = { x: f[0], z: f[2], y: 0, heading: inward(phi0), cell: cellAt(f[0], f[2]), openRadius: 22 };
     const rw = r - layout.kit.wallInset;
     for (let side = -1; side <= 1; side += 2) for (let k = 0; k < layout.kit.wallsPerSide; k++) {
       const arc = layout.kit.gatePlot[0] / 2 + layout.kit.wallLength * (k + 0.5) + 0.5;
       const phi = phi0 + side * arc / rw;
       const [x, z] = at(rw, phi);
-      walls.push({ x, z, y: 0, heading: inward(phi) });
+      walls.push({ x, z, y: 0, heading: inward(phi), cell: cellAt(x, z) });
     }
+    // a wall whose nearest cell is the gate's cell is dressing on the gate cell, not a block
+    for (const w of walls) if (w.cell === gate.cell) w.cell = -1;
   }
   return { stage, islands, structures, walls, gate };
 }

@@ -243,12 +243,17 @@ try{
  assert(base.playUrl.includes('stage=7'),'play carries the stage');
  await evaluate('window.__stalheartStoryTest.reset()');await delay(300);current='story-stage-7';await finish();
  await evaluate('window.__stalheartStoryTest.overview()');await delay(400);current='story-stage-7-overview';await finish();
+ await evaluate('window.__stalheartStoryTest.setStage(4)');await evaluate('window.__stalheartStoryTest.baseReady()');await delay(300);
+ assert.equal((await evaluate('window.__stalheartStoryTest.state()')).base.gate.present,true,'gate loaded with its clip');
+ await evaluate('window.__stalheartStoryTest.gate(true)');await delay(2200);const opened=await evaluate('window.__stalheartStoryTest.state()');assert.equal(opened.base.gate.open,true,'gate opens');
+ await evaluate('window.__stalheartStoryTest.gate(false)');await delay(2200);assert.equal((await evaluate('window.__stalheartStoryTest.state()')).base.gate.open,false,'gate closes');
  await evaluate('window.__stalheartStoryTest.setStage(1)');await evaluate('window.__stalheartStoryTest.baseReady()');await delay(300);const s1=await evaluate('window.__stalheartStoryTest.state()');assert.equal(s1.base.islands,0);assert.equal(s1.base.structures,0);
  await evaluate('window.__stalheartStoryTest.dispose()');
  } else if(args.includes('--story-world')) {
- await go('story-world','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=cloud&stage=6#td');
+ await go('story-world','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=6#td');
  await until('!!window.__stalheartTest',90000);await delay(3000);
  const w=await evaluate('window.__stalheartTest.state()');
+ assert.equal(w.heartAsset,'none','no dot-cloud heart in the story world');assert.deepEqual(w.berthAssets,[],'no camp containers');assert.equal(w.queued,0,'no enemies queued');
  assert(w.wallCount>40000&&w.wallCount<71314,`story world rock count ${w.wallCount}`);assert(w.performance.fps>20,'story world renders');assert(w.playerAssetReady,'tank landed on the story world');
  await finish();
  await send('Input.dispatchKeyEvent',{type:'keyDown',key:' ',code:'Space'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:' ',code:'Space'});await delay(800);
@@ -257,7 +262,11 @@ try{
  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'3',code:'Digit3'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'3',code:'Digit3'});await delay(1200);
  current='story-world-tank';await finish();
  assert.equal(await evaluate('document.querySelectorAll("canvas").length>0'),true);
- const stageOne=await (async()=>{await go('story-world-stage1','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=cloud&stage=1#td');await until('!!window.__stalheartTest',90000);await delay(2500);return true;})();assert(stageOne);await finish();
+ await go('story-world-stage1','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=1#td');await until('!!window.__stalheartTest',90000);await delay(2500);
+ const one=await evaluate('window.__stalheartTest.state()');assert.equal(one.towers,0);assert.equal(one.queued,0);await finish();
+ await go('story-world-gate','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=4#td');await until('!!window.__stalheartTest',90000);await delay(2500);
+ const four=await evaluate('window.__stalheartTest.state()');assert.equal(four.wallCount-w.wallCount,0,'stage 4 and 6 block the same wall cells');assert(four.wallCount>one.wallCount,'walls are rock to the pathfinder');
+ await delay(8000);const later=await evaluate('window.__stalheartTest.state()');assert.equal(later.queued,0,'still no enemies after the opening wait');await finish();
  await go('story-world-default','index.html?sw=0&acceptance=1&cine=0#td');
  await until('!!window.__stalheartTest',60000);await delay(1500);
  const d=await evaluate('window.__stalheartTest.state()');assert(d.wallCount>1500&&d.wallCount<2236,`default world unchanged ${d.wallCount}`);

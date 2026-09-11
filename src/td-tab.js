@@ -638,6 +638,7 @@ export function initTdTab(root) {
       scale: 1.9,
       lift: 0.16,
     },
+    none: { label: 'none (story base owns the Stalheart)', preload: () => Promise.resolve(true), make: () => Object.assign(new THREE.Group(), { userData: { tick() {}, asset: 'none' } }), scale: 1, lift: 0 },
     cloud: {
       label: 'dot cloud',
       preload: () => Promise.resolve(true),
@@ -2176,7 +2177,7 @@ export function initTdTab(root) {
       Promise.all([preloadContainer(), preloadMork()]).then(() => {
         if (cgen !== serverGen || !dungeon) return; // board changed since
         // the camp was chosen with the board; this only casts the boxes
-        if (berths.length !== 3) return;
+        if (berths.length !== 3 || storyMode) return;
         for (let bi = 0; bi < berths.length; bi++) {
           const ci = berths[bi].ci;
           // THE DOORS FACE THE LANE THE HULL LEAVES BY. They used to face
@@ -6081,7 +6082,7 @@ export function initTdTab(root) {
 
   // a sector's gates are spatial sources, not type-bound — seed a small
   // fixed set; the wave plan decides what pours out of them
-  function seedPortals(n) { for (let i = 0; i < n; i++) addSpawnPoint(); }
+  function seedPortals(n) { if (storyMode) return; for (let i = 0; i < n; i++) addSpawnPoint(); }
 
   // Legacy portal probes retain their three-hit pod animation. Normal ground
   // breaches accept only orbital strikes or wave exhaustion as closure.
@@ -9489,7 +9490,7 @@ export function initTdTab(root) {
   let stationRing = null;
   function buildStationRing() {
     if (stationRing) { scene.remove(stationRing); disposeObj(stationRing); stationRing = null; }
-    if (!graph || dungeon.heart == null) return;
+    if (!graph || dungeon.heart == null || storyMode) return;
     const c = graph.centers[dungeon.heart];
     const n = graph.normals[dungeon.heart];
     const theta = cellSide * 0.55;
@@ -10720,7 +10721,7 @@ export function initTdTab(root) {
     }
     return best;
   }
-  function tfStart(kind) {
+  function tfStart(kind) { if (storyMode) return;
     if (tfJob) { tfQueue.push(kind); return; }
     if (kind === 'hull' && playerHP >= PLAYER_MAX) kind = 'container';   // full: build the other thing
     if (kind === 'container' && tfYard.length >= TF.yardMax) return;     // the yard is the clock; it has a face
@@ -10800,7 +10801,7 @@ export function initTdTab(root) {
   function tfMilestone(w) {
     // A RESCUE HAS NO SUPPLY LINE. No hull, no store, no mine case: the
     // budget is what you were given, which is the whole tactical statement.
-    if (missionOn) return;
+    if (missionOn || storyMode) return;
     if (w > 0 && w % TF.hullEvery === 0) tfStart('hull');
     else if (w > 0 && w % TF.containerEvery === 0) tfStart('container');
     // THE MINE CASE RIDES ITS OWN CLOCK, deliberately outside the else-if
@@ -12371,7 +12372,7 @@ export function initTdTab(root) {
             programmeSpent();
             showBrief('gates');
           } else showSitrep(); // the recap IS the cleared card now
-        } else if (waveAge >= params.waveCap && spawnPoints.some((s) => s.alive) && !(lab.on && lab.holdWaves)) {
+        } else if (waveAge >= params.waveCap && spawnPoints.some((s) => s.alive) && !(lab.on && lab.holdWaves) && !storyMode) {
           armWave(); // safety: the field is stalled — but it still announces
         }
       } else if (spawnPoints.some((s) => s.alive)) {
@@ -12379,7 +12380,7 @@ export function initTdTab(root) {
         // arm early enough that the countdown consumes the last WAVE_WARN of
         // the gap — the total wait from cleared to spawned is unchanged
         const gap = params.waveGap * (wave < 2 ? 1.6 : 1); // breathe early
-        if (interClock >= gap - WAVE_WARN && !(lab.on && lab.holdWaves)) armWave();
+        if (interClock >= gap - WAVE_WARN && !(lab.on && lab.holdWaves) && !storyMode) armWave();
       } else if (waveIn < 0) {
         waveCharge = 0;
       }
@@ -12391,8 +12392,7 @@ export function initTdTab(root) {
         if (secsToWave() <= 10) { bossCued = true; sfx.play('boss_tension'); }
       }
     }
-    storyBase?.tick(frozen ? 0 : dt);
-    gameBreaches.update(frozen?0:dt,obj=>{
+    storyBase?.tick(frozen ? 0 : dt, player.pos); gameBreaches.update(frozen?0:dt,obj=>{
       let changed=false;const centre=norm3(obj.position.toArray()),reach=CONTENT.breach.clearRadius*cellSide;
       for(let ci=0;ci<graph.centers.length;ci++)if(dungeon.tags[ci]===BLOCKED&&!orderByCell.has(ci)&&Math.acos(Math.max(-1,Math.min(1,dot3(centre,norm3(graph.centers[ci])))))<=reach)changed=breachWallCell(ci)||changed;
       if(changed){rebuildAfterBreach();recomputePortalDist();}
@@ -12845,7 +12845,7 @@ export function initTdTab(root) {
   if (Number.isFinite(pointsOverride)) params.points = Math.min(16000, Math.max(150, pointsOverride));
   const seedOverride = parseInt(urlParams.get('seed') || '', 10);
   if (Number.isFinite(seedOverride)) params.seed = seedOverride >>> 0;
-  const storyQuery = readStoryQuery(location.search), threatMult = storyQuery.threat;
+  const storyQuery = readStoryQuery(location.search), threatMult = storyQuery.threat, storyMode = storyQuery.world === 'story';   // tabula rasa past the landing: no old heart, waves, portals, camp or yard
   const simParam = urlParams.get('sim');
   if (simParam) {
     simStyle = simParam;

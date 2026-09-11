@@ -8,7 +8,8 @@ import { batchStaticAsset } from './asset-batching.js';
 
 const loader = new GLTFLoader();
 const cache = new Map();
-const load = (url) => { if (!cache.has(url)) cache.set(url, loader.loadAsync(url)); return cache.get(url); };
+// no document means Node: the plan is still computed and reported, nothing is fetched
+const load = (url) => { if (typeof document === 'undefined') return Promise.resolve(null); if (!cache.has(url)) cache.set(url, loader.loadAsync(url)); return cache.get(url); };
 
 // world basis at a frame point: local +Y is the sphere normal, local +Z the frame heading
 function basisAt(placer, x, z, heading) {
@@ -46,8 +47,18 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, rocket =
     obj.matrixWorldNeedsUpdate = true;
   };
   const counts = { islands: plan.islands.length, walls: plan.walls.length, structures: 0, gate: !!plan.gate };
+  // the gate opens when something friendly is inside its radius and closes again behind it
+  const gate = { mixer: null, action: null, duration: 0, position: null, radius: 0, open: false, want: false, t: 0 };
+  function driveGate(dt) {
+    if (!gate.action) return;
+    gate.t = Math.max(0, Math.min(gate.duration, gate.t + (gate.want ? dt : -dt)));
+    if (!gate.action.isRunning() && gate.t > 0) { gate.action.play(); }
+    gate.action.paused = true; gate.action.time = gate.t; gate.mixer.update(0);
+    gate.open = gate.t >= gate.duration - 1e-6;
+  }
   const ready = Promise.all([
     plan.islands.length ? load(kit.slab).then((gltf) => {
+      if (!gltf) return;
       const src = gltf.scene; src.updateMatrixWorld(true);
       const sizes = new Float32Array(plan.islands.flatMap((i) => [i.w, i.d]));
       src.traverse((o) => {
@@ -64,6 +75,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, rocket =
       });
     }) : null,
     plan.walls.length ? load(kit.wall).then((gltf) => {
+      if (!gltf) return;
       const src = gltf.scene; src.updateMatrixWorld(true);
       src.traverse((o) => {
         if (!o.isMesh) return;
@@ -73,9 +85,14 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, rocket =
       });
     }) : null,
     plan.gate ? load(kit.gate).then((gltf) => {
+      if (!gltf) return;
       const g = gltf.scene.clone(true); own(g); place(g, plan.gate.x, plan.gate.z, plan.gate.y, plan.gate.heading); g.name = 'gate'; group.add(g);
+      const clip = gltf.animations.find((c) => c.name === 'Gate_Open');
+      if (clip) { gate.mixer = new THREE.AnimationMixer(g); gate.action = gate.mixer.clipAction(clip); gate.action.setLoop(THREE.LoopOnce, 1); gate.action.clampWhenFinished = true; gate.duration = clip.duration; }
+      gate.position = placer.toWorld([plan.gate.x, 0, plan.gate.z]); gate.radius = plan.gate.openRadius * metres;
     }) : null,
     ...plan.structures.filter((s) => rocket || s.id !== 'sh02').map((s) => load(s.asset).then((gltf) => {
+      if (!gltf) return;
       const root = s.batch ? batchStaticAsset(gltf.scene, gltf.animations) : gltf.scene.clone(true);
       own(root); root.name = s.id;
       for (const name of s.hide ?? []) { const n = root.getObjectByName(name); if (n) n.visible = false; }
@@ -96,7 +113,12 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, rocket =
   ]);
   return {
     ready, group, counts, errors,
-    tick(dt) { for (const m of mixers) m.update(dt); },
-    dispose() { for (const m of mixers) m.stopAllAction(); for (const r of owned) r.dispose(); scene.remove(group); },
+    tick(dt, near = null, force = null) {
+      for (const m of mixers) m.update(dt);
+      if (gate.position) gate.want = force ?? (Array.isArray(near) && Math.hypot(near[0] - gate.position.x, near[1] - gate.position.y, near[2] - gate.position.z) < gate.radius);
+      driveGate(dt);
+    },
+    gate: () => ({ present: !!gate.action, open: gate.open, want: gate.want, t: +gate.t.toFixed(2) }),
+    dispose() { for (const m of mixers) m.stopAllAction(); gate.mixer?.stopAllAction(); for (const r of owned) r.dispose(); scene.remove(group); },
   };
 }

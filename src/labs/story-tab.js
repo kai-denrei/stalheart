@@ -69,11 +69,11 @@ export function initStoryTab(root) {
   const clock = { time: 0 };
 
   hud.innerHTML = '<div class="story-lines"><b>STORY PLANET</b><span id="story-status">generating 16,000-point planet...</span><span id="story-stage"></span></div>'
-    + '<div class="story-keys"><button id="story-land" type="button">L land</button><button id="story-skip" type="button">K skip</button><button id="story-reset" type="button">R reset</button><button id="story-overview" type="button">O overview</button><button id="story-play" type="button">P play here</button><span>drag to orbit, wheel to zoom</span></div>'
+    + '<div class="story-keys"><button id="story-land" type="button">L land</button><button id="story-skip" type="button">K skip</button><button id="story-reset" type="button">R reset</button><button id="story-overview" type="button">O overview</button><button id="story-gate" type="button">G gate</button><button id="story-play" type="button">P play here</button><span>drag to orbit, wheel to zoom</span></div>'
     + '<div class="story-keys" id="story-stages"></div>';
   const status = hud.querySelector('#story-status'), stageLine = hud.querySelector('#story-stage'), stageBar = hud.querySelector('#story-stages');
   const LAYOUT = { islands: ISLANDS, structures: STRUCTURES, kit: KIT, stages: STAGES };
-  let stage = Math.min(STAGES.length - 1, Math.max(0, parseInt(q.get('stage') || '', 10) || 1)), base = null;
+  let stage = Math.min(STAGES.length - 1, Math.max(0, parseInt(q.get('stage') || '', 10) || 1)), base = null, gateForced = false;
   for (const st of STAGES) { const b = document.createElement('button'); b.type = 'button'; b.textContent = `${st.n} ${st.name}`; b.dataset.stage = st.n; b.onclick = () => setStage(st.n); stageBar.appendChild(b); }
   function setStage(n) {
     stage = Math.min(STAGES.length - 1, Math.max(0, n));
@@ -120,12 +120,12 @@ export function initStoryTab(root) {
   }
   controls.addEventListener('start', () => { onRail = false; });
   // the same planet in the actual game, with sparse waves
-  const playUrl = () => `index.html?world=story&threat=0.35&cine=0&heart=cloud&stage=${stage}#td`;
+  const playUrl = () => `index.html?world=story&threat=0.35&cine=0&heart=none&stage=${stage}#td`;
   const play = () => { location.href = playUrl(); };
-  hud.querySelector('#story-land').onclick = land; hud.querySelector('#story-skip').onclick = skip; hud.querySelector('#story-reset').onclick = reset; hud.querySelector('#story-overview').onclick = overview; hud.querySelector('#story-play').onclick = play;
+  hud.querySelector('#story-land').onclick = land; hud.querySelector('#story-skip').onclick = skip; hud.querySelector('#story-reset').onclick = reset; hud.querySelector('#story-overview').onclick = overview; hud.querySelector('#story-gate').onclick = () => { gateForced = !gateForced; }; hud.querySelector('#story-play').onclick = play;
   function onKey(e) {
     if (e.target.closest?.('input,textarea,select')) return;
-    if (e.key === 'l' || e.key === 'L') land(); else if (e.key === 'k' || e.key === 'K') skip(); else if (e.key === 'r' || e.key === 'R') reset(); else if (e.key === 'o' || e.key === 'O') overview(); else if (e.key === 'p' || e.key === 'P') play(); else if (/^[0-7]$/.test(e.key)) setStage(Number(e.key));
+    if (e.key === 'l' || e.key === 'L') land(); else if (e.key === 'k' || e.key === 'K') skip(); else if (e.key === 'r' || e.key === 'R') reset(); else if (e.key === 'o' || e.key === 'O') overview(); else if (e.key === 'g' || e.key === 'G') gateForced = !gateForced; else if (e.key === 'p' || e.key === 'P') play(); else if (/^[0-7]$/.test(e.key)) setStage(Number(e.key));
   }
   addEventListener('keydown', onKey);
   function resize() {
@@ -138,7 +138,7 @@ export function initStoryTab(root) {
     frameId = requestAnimationFrame(loop);
     const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000); last = now; clock.time += dt;
     if (playing) { seek(t + dt); if (t >= sequence.duration) { playing = false; onRail = false; audioSync(sequence.stateAt(t), false); } }
-    landing?.tick(dt, camera); base?.tick(dt);
+    landing?.tick(dt, camera); base?.tick(dt, null, gateForced);
     if (!onRail) controls.update();
     renderer.render(scene, camera);
   }
@@ -151,8 +151,8 @@ export function initStoryTab(root) {
     },
   };
   if (q.get('acceptance') === '1') window.__stalheartStoryTest = {
-    state: () => ({ ready: !!planet && !!landing?.state().loaded, cells: planet?.dungeon.tags.length ?? 0, mouths: planet?.clearing.mouths.length ?? 0, openMouths: planet?.clearing.mouths.filter((m) => m.open).length ?? 0, gateMarker: !!marker, playUrl: playUrl(), stage, base: base ? { ...base.counts, errors: base.errors.slice(), children: base.group.children.length } : null, counts: planetMesh?.userData.counts ?? null, t, phase: sequence.stateAt(t).phase, playing, landing: landing?.state() ?? null, cues: cueLog.slice(), audioState: sfx.contextState, errors }),
-    land, skip, seek: (time) => { onRail = true; seek(time); }, reset, overview, setStage, baseReady: () => base?.ready, dispose: api.dispose,
+    state: () => ({ ready: !!planet && !!landing?.state().loaded, cells: planet?.dungeon.tags.length ?? 0, mouths: planet?.clearing.mouths.length ?? 0, openMouths: planet?.clearing.mouths.filter((m) => m.open).length ?? 0, gateMarker: !!marker, playUrl: playUrl(), stage, base: base ? { ...base.counts, errors: base.errors.slice(), children: base.group.children.length, gate: base.gate() } : null, counts: planetMesh?.userData.counts ?? null, t, phase: sequence.stateAt(t).phase, playing, landing: landing?.state() ?? null, cues: cueLog.slice(), audioState: sfx.contextState, errors }),
+    land, skip, seek: (time) => { onRail = true; seek(time); }, reset, overview, setStage, gate: (on) => { gateForced = on; }, baseReady: () => base?.ready, dispose: api.dispose,
   };
   resize();
   setTimeout(build, 30);

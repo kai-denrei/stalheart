@@ -8,6 +8,7 @@ import { planBase } from '../domain/base-plan.js';
 import { STORY_RECIPE, STORY_CLEARING } from '../content/story-defaults.js';
 import { ISLANDS, STRUCTURES, KIT, STAGES } from '../content/base-layout.js';
 import { createStoryBase } from '../fx/story-base.js';
+import { BLOCKED } from '../dungeon.js';
 
 export const STORY_LAYOUT = { islands: ISLANDS, structures: STRUCTURES, kit: KIT, stages: STAGES };
 
@@ -26,6 +27,9 @@ export function buildGameWorld({ world, params, stage, scene }) {
   const { planet } = built;
   // the game draws the unit sphere at the origin with the pole at +Y
   const placer = { toWorld: ([x, y, z]) => { const p = planet.frameToWorld([x, y, z]); return new THREE.Vector3(p[0] / planet.radius, p[1] / planet.radius + 1, p[2] / planet.radius); } };
-  const base = createStoryBase(scene, { plan: planBase(planet, STORY_LAYOUT, stage), placer, metres: 1 / planet.radius, kit: KIT, rocket: true });
-  return { ...built, base };
+  const plan = planBase(planet, STORY_LAYOUT, stage);
+  // walls are rock to the pathfinder and the tank alike; the gate's cell stays open and the gate opens for the tank
+  for (const w of plan.walls) if (w.cell >= 0) built.dungeon.tags[w.cell] = BLOCKED;
+  const base = createStoryBase(scene, { plan, placer, metres: 1 / planet.radius, kit: KIT, rocket: true });
+  return { ...built, base, plan };
 }

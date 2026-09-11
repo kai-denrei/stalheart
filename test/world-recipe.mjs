@@ -19,3 +19,16 @@ assert.ok(Math.abs(s.wallHeight - STORY_RECIPE.wallMetres / s.planet.radius) < 1
 // unknown world falls back to the default recipe
 assert.equal(buildWorld({ world: 'nope', params }).world, 'default');
 console.log(`World recipe: default ${d.dungeon.tags.length} cells; story ${s.dungeon.tags.length} cells, heart ${s.dungeon.heart} at the pole, spawn ${s.dungeon.distToHeart[s.dungeon.spawn]} hops out.`);
+// the game-side composition blocks the wall cells at stage 4 without touching the gate cell
+import { buildGameWorld } from '../src/platform/story-world.js';
+{
+  const fake = { add() {}, remove() {} };
+  const g4 = buildGameWorld({ world: 'story', params, stage: 4, scene: fake });
+  const g1 = buildGameWorld({ world: 'story', params, stage: 1, scene: fake });
+  const rock = (w) => w.dungeon.tags.filter((t) => t === BLOCKED).length;
+  assert.ok(rock(g4) > rock(g1), 'walls add rock');
+  assert.ok(rock(g4) - rock(g1) <= g4.plan.walls.length, 'at most one cell per wall');
+  assert.notEqual(g4.dungeon.tags[g4.plan.gate.cell], BLOCKED, 'gate cell stays open');
+  g4.base?.dispose(); g1.base?.dispose();
+}
+console.log('Story world composition blocks wall cells and keeps the gate open.');

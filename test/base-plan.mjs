@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { STORY_RECIPE, STORY_CLEARING } from '../src/content/story-defaults.js';
 import { ISLANDS, STRUCTURES, KIT, STAGES } from '../src/content/base-layout.js';
-import { buildStoryPlanet } from '../src/domain/story-planet.js';
+import { buildStoryPlanet, frameToWorld } from '../src/domain/story-planet.js';
 import { planBase } from '../src/domain/base-plan.js';
+import { BLOCKED } from '../src/dungeon.js';
 const planet = buildStoryPlanet({ ...STORY_RECIPE, points: 800, rooms: 24, extraCorridors: 12 }, STORY_CLEARING);
 const layout = { islands: ISLANDS, structures: STRUCTURES, kit: KIT, stages: STAGES };
 // islands never overlap and stay inside the clearing
@@ -26,7 +27,7 @@ assert.equal(full.islands.length, ISLANDS.length); assert.equal(full.structures.
 assert.equal(full.walls.length, KIT.wallsPerSide * 2);
 // islands are tangent at their centre; on the real planet the corner sag stays under the 1.2 m skirt
 for (const i of full.islands) assert.equal(i.top, 0);
-{ const real = { radius: 753.3, clearing: planet.clearing, graph: planet.graph, worldToFrame: planet.worldToFrame }; for (const i of planBase(real, layout, 7).islands) assert.ok(i.sag > 0 && i.sag <= 1.2, `${i.id} sag ${i.sag.toFixed(2)} m under the skirt`); }
+{ const real = { ...planet, radius: 753.3, frameToWorld: (p) => frameToWorld(p, 753.3, planet.clearing.yaw) }; for (const i of planBase(real, layout, 7).islands) assert.ok(i.sag > 0 && i.sag <= 1.2, `${i.id} sag ${i.sag.toFixed(2)} m under the skirt`); }
 // the gate sits on the open mouth, road axis toward the pole; walls flank it along the rim
 const mouth = planet.clearing.openMouth;
 const c = mouth.cells.map((ci) => planet.graph.centers[ci]).reduce((a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]]).map((v) => v / mouth.cells.length);
@@ -38,4 +39,6 @@ for (const w of full.walls) { assert.ok(Math.abs(Math.hypot(w.x, w.z) - (rg - KI
 // structures stand on their island top with the island's frame
 for (const s of full.structures) assert.equal(s.y, 0);
 assert.equal(one.structures[0].y, 0, 'the rocket stands on natural ground');
+// walls map to distinct lattice cells that are open floor today; the gate keeps its own cell
+{ const cells = full.walls.map((w) => w.cell).filter((c) => c >= 0); assert.ok(cells.length >= 2 && new Set(cells).size >= 2, 'walls block cells on both sides'); for (const c of cells) assert.notEqual(planet.dungeon.tags[c], BLOCKED, 'wall stands on floor'); assert.ok(full.gate.cell >= 0 && !cells.includes(full.gate.cell), 'gate cell is not a wall cell'); assert.ok(full.gate.openRadius > 10); }
 console.log(`Base plan: ${full.islands.length} islands, ${full.structures.length} structures, ${full.walls.length} walls, gate at ${full.gate.x.toFixed(0)},${full.gate.z.toFixed(0)}.`);
