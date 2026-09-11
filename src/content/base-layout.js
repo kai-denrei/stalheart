@@ -9,7 +9,7 @@ export const STAGES = Object.freeze([
   { n: 4, name: 'Gate and walls' },
   { n: 5, name: 'HUGIN arm' },
   { n: 6, name: 'Stalheart' },
-  { n: 7, name: 'Assembly line' },
+  { n: 7, name: 'Assembly line and radar' },
 ]);
 
 // islands: id, plot in metres, centre, stage the slab appears
@@ -20,6 +20,7 @@ export const ISLANDS = Object.freeze([
   { id: 'hugin', w: 40, d: 40, x: -52, z: -40, stage: 5 },
   { id: 'stalheart', w: 48, d: 56, x: 0, z: 0, stage: 6 },
   { id: 'assembly', w: 20, d: 32, x: 56, z: 6, stage: 7 },
+  { id: 'radar', w: 20, d: 20, x: -56, z: 34, stage: 7 },
 ]);
 
 // structures: asset, island they stand on, stage, model offset to centre the
@@ -31,6 +32,7 @@ export const STRUCTURES = Object.freeze([
   { id: 'hugin', asset: 'assets/models/astro/hugin_launchpad_d0_game.glb', island: 'hugin', stage: 5, scale: 1, offset: [-3, 0, 8], hide: ['REUSABLE_BOOSTER'], clips: ['Cargo_Recovery_Cycle'] },
   { id: 'stalheart', asset: 'assets/models/astro/terraformer_3000_d0_game.glb', island: 'stalheart', stage: 6, scale: 1, offset: [14.5, 0, 0], clips: ['Terraforming_Cycle'] },
   { id: 'assembly', asset: 'assets/models/astro/robotic_assembly_line_d0.glb', island: 'assembly', stage: 7, scale: 1, offset: [0, 0, 0], batch: true, clips: ['Assembly_Cycle'] },
+  { id: 'radar', asset: 'assets/models/kit/skyward_low_d0.glb', island: 'radar', stage: 7, scale: 1, offset: [0, 0, 0], clips: ['Array_Slew'] },
 ]);
 
 export const KIT = Object.freeze({

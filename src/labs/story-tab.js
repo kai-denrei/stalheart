@@ -80,7 +80,7 @@ export function initStoryTab(root) {
     if (!planet) return;
     base?.dispose();
     // the landing scene owns the rocket in the lab; the base draws everything else
-    base = createStoryBase(scene, { plan: planBase(planet, LAYOUT, stage), placer: { toWorld: (p) => new THREE.Vector3(...planet.frameToWorld(p)) }, metres: 1, kit: KIT, rocket: false });
+    base = createStoryBase(scene, { plan: planBase(planet, LAYOUT, stage), placer: { toWorld: (p) => new THREE.Vector3(...planet.frameToWorld(p)) }, metres: 1, kit: KIT, skip: ['sh02'] });
     for (const b of stageBar.children) b.classList.toggle('on', Number(b.dataset.stage) === stage);
     stageLine.textContent = `Stage ${stage}: ${STAGES[stage].name}. Digits 0-7 change the stage; play opens the game at this stage.`;
     landing?.setLanded(stage >= 1);

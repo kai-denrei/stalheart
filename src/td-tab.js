@@ -622,7 +622,7 @@ export function initTdTab(root) {
   let edgeGeo = null, edgeMesh = null;
   let topGeo = null, topMesh = null; // interior wall-top wires, dimmable
   let floorOffsets = null; // cell -> [start,count] into floor color attr (verts)
-  let heartSprite = null, playerMesh = null, markerMesh = null, storyBase = null;
+  let heartSprite = null, playerMesh = null, markerMesh = null, storyBase = null, story = null;
   // WHAT STANDS AT THE POLE. Both entries satisfy one contract — sizeScale,
   // tick(t), hit() — so swapping them changes how the Stalheart LOOKS and
   // never what it DOES. Same registry seam as looks / towerlooks /
@@ -5734,7 +5734,7 @@ export function initTdTab(root) {
     breachedCells.clear(); // a NEW world owes nothing to the old one's holes
     const built = buildGameWorld({ world: storyQuery.world, params, stage: storyQuery.stage, scene });
     mesh = built.mesh; dungeon = built.dungeon; if (built.wallHeight) params.wallHeight = built.wallHeight;   // 4 m on the story sphere
-    storyBase?.dispose(); storyBase = built.base;   // the story's islands and structures at the requested stage
+    storyBase?.dispose(); storyBase = built.base; story = built.story ?? null;   // the story's islands, structures, sockets and beats at the requested stage
     graph = dungeon.graph;
     cellSide = mesh.defaultSide;
     // THE CAMP, BEFORE ANY ACTOR IS PLACED. Berth cells are graph maths,
@@ -6192,7 +6192,7 @@ export function initTdTab(root) {
     dangerTimer = setTimeout(() => dangerEl.classList.add('hidden'), 1900);
   }
 
-  function armWave() {
+  function armWave() { if (storyMode) return;   // the story world has no wave clock yet
     // A RAID SENDS NOTHING. The brief names the threat as pre-placed groups;
     // a wave clock on top of that turns a puzzle back into the defence we
     // already have. The gates stand as scenery and as targets.
@@ -8700,7 +8700,7 @@ export function initTdTab(root) {
     // and a tower went up at wall height over open floor. That is the
     // hovering tower. `breachedCells` is the missing half, and it is already
     // permanent across rounds because demolition is.
-    if (tdFullTags[ci] !== BLOCKED || breachedCells.has(ci)) {
+    if ((tdFullTags[ci] !== BLOCKED || breachedCells.has(ci)) && !story?.sockets.has(ci)) {
       return 'towers need HIGH GROUND';
     }
     if (towerByCell.has(ci)) return 'occupied';
@@ -8775,7 +8775,7 @@ export function initTdTab(root) {
     }
     const c = graph.centers[tower.ci];
     const nrm = graph.normals[tower.ci];
-    const top = 1 + params.wallHeight; // mounted on the wall's roof
+    const top = 1 + (story?.sockets.has(tower.ci) ? story.socketLift : params.wallHeight); // the wall's roof, or a story socket on the floor
     obj.position.set(c[0] * top, c[1] * top, c[2] * top);
     tmpN.set(nrm[0], nrm[1], nrm[2]);
     obj.quaternion.setFromUnitVectors(Y_AXIS, tmpN);
@@ -8988,7 +8988,7 @@ export function initTdTab(root) {
       const obj = makeIsaoDrone(ISAO_TINT);
       if (!obj) return;
       obj.scale.setScalar(cellSide * 1.15);
-      const dir = norm3(graph.centers[dungeon.heart]);
+      const dir = norm3(graph.centers[story?.home ?? dungeon.heart]);
       isao = { obj, dir, state: 'idle', t: 0, dur: 0, order: null, loiter: dir.slice(), gleeT: 0 };
       placeIsao();
       scene.add(obj);
@@ -12392,7 +12392,7 @@ export function initTdTab(root) {
         if (secsToWave() <= 10) { bossCued = true; sfx.play('boss_tension'); }
       }
     }
-    storyBase?.tick(frozen ? 0 : dt, player.pos); gameBreaches.update(frozen?0:dt,obj=>{
+    storyBase?.tick(frozen ? 0 : dt, player.pos); story?.beats.tick(frozen ? 0 : dt, storyApi); gameBreaches.update(frozen?0:dt,obj=>{
       let changed=false;const centre=norm3(obj.position.toArray()),reach=CONTENT.breach.clearRadius*cellSide;
       for(let ci=0;ci<graph.centers.length;ci++)if(dungeon.tags[ci]===BLOCKED&&!orderByCell.has(ci)&&Math.acos(Math.max(-1,Math.min(1,dot3(centre,norm3(graph.centers[ci])))))<=reach)changed=breachWallCell(ci)||changed;
       if(changed){rebuildAfterBreach();recomputePortalDist();}
@@ -12844,8 +12844,8 @@ export function initTdTab(root) {
   const pointsOverride = parseInt(urlParams.get('points') || '', 10);
   if (Number.isFinite(pointsOverride)) params.points = Math.min(16000, Math.max(150, pointsOverride));
   const seedOverride = parseInt(urlParams.get('seed') || '', 10);
-  if (Number.isFinite(seedOverride)) params.seed = seedOverride >>> 0;
-  const storyQuery = readStoryQuery(location.search), threatMult = storyQuery.threat, storyMode = storyQuery.world === 'story';   // tabula rasa past the landing: no old heart, waves, portals, camp or yard
+  if (Number.isFinite(seedOverride)) params.seed = seedOverride >>> 0; const storyQuery = readStoryQuery(location.search), threatMult = storyQuery.threat, storyMode = storyQuery.world === 'story';   // tabula rasa past the landing: no old heart, waves, portals, camp or yard
+  const storyApi = { order: (key, ci) => orderTower(key, ci, { quiet: true }), grant: (n) => { if (n > 0) eco.addBiomass(n, { category: 'grant' }); }, built: (ci) => towerByCell.has(ci), cost: (key) => TOWER_BY_KEY[key]?.cost ?? 0, isao: () => !!isao };
   const simParam = urlParams.get('sim');
   if (simParam) {
     simStyle = simParam;
@@ -14231,7 +14231,7 @@ export function initTdTab(root) {
   const debugging = pilotMode || ['walk', 'tick', 'wave', 'blast', 'laser', 'found', 'recoil', 'mode', 'map', 'tower', 'biomass', 'credit', 'driveout', 'order', 'isao', 'bobby', 'record', 'debrief', 'armed', 'brief', 'planet', 'shop', 'sector', 'reveal', 'portal', 'lose', 'charge', 'layout', 'perf', 'strike', 'strikefall', 'strikecam', 'gateprobe', 'rank', 'danger', 'callout', 'sitrep', 'server', 'hack', 'shield', 'sim']
     .some((k) => urlParams.get(k));
   const tutParam = urlParams.get('tutorial');
-  runTutorial = !pilotMode && (tutParam === '1' || (tutParam !== '0' && !debugging));
+  runTutorial = !pilotMode && !storyMode && (tutParam === '1' || (tutParam !== '0' && !debugging));
   // ?intro=1 forces the manual even under debug hooks (screenshot path);
   // ?intro=0 skips it. On a clean load it fronts whatever comes next.
   const introParam = urlParams.get('intro');
@@ -14242,7 +14242,7 @@ export function initTdTab(root) {
   const cineParam = urlParams.get('cine');
   const wantCine = !pilotMode && cineParam !== '0' && (cineParam !== null || !debugging);
   let opening = null;
-  if (!pilotMode && introParam === '1') opening = () => showIntro();
+  if (storyMode) opening = null; /* no field manual in the story world; a new one comes with the pieces */ else if (!pilotMode && introParam === '1') opening = () => showIntro();
   else if (!debugging && introParam !== '0' && !mobileShell) {
     // not on the shell: the manual PAUSES the game with the tank in its
     // berth at the deploy framing (operator's phone: "starts in this view

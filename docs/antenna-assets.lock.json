@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/jelaludo/SentryTowers_A6",
+  "revision": "e846906954abc1c3600c2bccd812857a75874073",
+  "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/e846906954abc1c3600c2bccd812857a75874073/",
+  "credit": "Models and animations by jelaludo (https://jelaludo.github.io/SentryTowers_A6/), reused with attribution under the upstream ASSET-LICENSE.md",
+  "files": [
+    {
+      "path": "assets/models/kit/skyward_low_d0.glb",
+      "sourcePath": "assets/antenna-array/skyward_low_d0.glb",
+      "sha256": "9799adf1abfb762bcd9e26a26b652a55c3faa5a4e508a497d9e1f06c06cdbced",
+      "bytes": 115972,
+      "clips": [
+        "Array_Slew"
+      ]
+    }
+  ]
+}

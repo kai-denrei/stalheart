@@ -9,13 +9,17 @@ import { drop } from '../core/terrace-profile.js';
 // sag, which the slab's 1.2 m skirt covers.
 export function planBase(planet, layout, stage) {
   const { radius } = planet;
+  const nearestCell = (x, z) => { const w = planet.frameToWorld([x, 0, z]); let best = -1, bd = Infinity; for (const ci of planet.clearing.cells) { const c = planet.graph.centers[ci]; const d = (c[0] * radius - w[0]) ** 2 + (c[1] * radius - radius - w[1]) ** 2 + (c[2] * radius - w[2]) ** 2; if (d < bd) { bd = d; best = ci; } } return best; };
   const islands = layout.islands.filter((i) => i.stage <= stage).map((i) => ({
-    ...i, top: 0, sag: drop(Math.hypot(i.w, i.d) / 2, radius), heading: [0, 1],
+    ...i, top: 0, sag: drop(Math.hypot(i.w, i.d) / 2, radius), heading: [0, 1], cell: nearestCell(i.x, i.z),
   }));
+  // every island's lattice cell, whether or not its slab is placed yet: the beats need them from the landing on
+  const cells = Object.fromEntries(layout.islands.map((i) => [i.id, nearestCell(i.x, i.z)]));
   const islandById = new Map(layout.islands.map((i) => [i.id, i]));
   const structures = layout.structures.filter((s) => s.stage <= stage).map((s) => {
     const i = islandById.get(s.island);
-    return { ...s, x: i.x, z: i.z, y: 0, heading: [0, 1] };
+    // a hair above the slab so coplanar floors do not z-fight; the rocket stands on natural ground
+    return { ...s, x: i.x, z: i.z, y: s.stage >= i.stage ? 0.06 : 0, heading: [0, 1] };
   });
   let gate = null, walls = [];
   if (stage >= layout.kit.stage && planet.clearing.openMouth) {
@@ -39,5 +43,5 @@ export function planBase(planet, layout, stage) {
     // a wall whose nearest cell is the gate's cell is dressing on the gate cell, not a block
     for (const w of walls) if (w.cell === gate.cell) w.cell = -1;
   }
-  return { stage, islands, structures, walls, gate };
+  return { stage, islands, structures, walls, gate, cells };
 }

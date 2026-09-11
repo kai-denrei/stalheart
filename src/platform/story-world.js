@@ -8,6 +8,7 @@ import { planBase } from '../domain/base-plan.js';
 import { STORY_RECIPE, STORY_CLEARING } from '../content/story-defaults.js';
 import { ISLANDS, STRUCTURES, KIT, STAGES } from '../content/base-layout.js';
 import { createStoryBase } from '../fx/story-base.js';
+import { makeStoryBeats } from '../domain/story-beats.js';
 import { BLOCKED } from '../dungeon.js';
 
 export const STORY_LAYOUT = { islands: ISLANDS, structures: STRUCTURES, kit: KIT, stages: STAGES };
@@ -30,6 +31,12 @@ export function buildGameWorld({ world, params, stage, scene }) {
   const plan = planBase(planet, STORY_LAYOUT, stage);
   // walls are rock to the pathfinder and the tank alike; the gate's cell stays open and the gate opens for the tank
   for (const w of plan.walls) if (w.cell >= 0) built.dungeon.tags[w.cell] = BLOCKED;
-  const base = createStoryBase(scene, { plan, placer, metres: 1 / planet.radius, kit: KIT, rocket: true });
-  return { ...built, base, plan };
+  // the game prints the real Rotor; the static model stays a lab thing
+  const base = createStoryBase(scene, { plan, placer, metres: 1 / planet.radius, kit: KIT, skip: ['rotor'] });
+  // story state for the controller: floor sockets towers may mount on, Isao's home cell, and the scripted beats
+  const story = stage >= 1 ? {
+    sockets: new Set([plan.cells.rotor]), home: plan.cells.landing, socketLift: 0,
+    beats: makeStoryBeats({ socket: plan.cells.rotor, rotorDelay: 2.5, key: 'rotor' }),
+  } : null;
+  return { ...built, base, plan, story };
 }

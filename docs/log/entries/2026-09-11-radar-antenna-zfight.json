@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-09-11-radar-antenna-zfight",
+  "date": "2026-09-11T11:30:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "Single game-tier antenna on a radar island; coplanar z-fighting fixed; story world never arms a wave",
+  "context": "The owner reported moire flicker under the solar generator and on the assembly line floor, and offered the 1,632-triangle single antenna as the radar instead of the 157 m seven-dish array. A screenshot after the Rotor print also showed a wave countdown: the run start arms a wave outside the two loop conditions already guarded.",
+  "outcome": "docs/antenna-assets.lock.json pins skyward_low_d0.glb (18 m dish, Array_Slew clip) at upstream e846906; the layout gains a 20 x 20 m radar island at (-56, 34) for stage 7. Structures on slabs are placed 6 cm above the pad and the slab materials use a polygon offset, which removes the coplanar flicker. armWave returns immediately in story mode, and the acceptance asserts wave 0 six seconds after the Rotor print.",
+  "alternatives": [
+    "Keep the seven-dish array: rejected, it is larger than the base."
+  ],
+  "evidence": [
+    "node scripts/browser-test.mjs --story-world: PASS story-world-rotor with wave 0",
+    "test/base-plan.mjs: 7 islands, 7 structures",
+    "npm run assets:check verifies the antenna checksum"
+  ],
+  "supersedes": []
+}

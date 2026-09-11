@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-09-11-encounter-rotor-beat",
+  "date": "2026-09-11T10:50:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "Encounter first beat: Isao prints a real Rotor on a floor socket; no field manual in the story world; new-world fiction confirmed",
+  "context": "The owner confirmed the fiction (a new natural world; Stalheart is the machine), asked to build the encounter starting with Isao printing the Rotor, and retired the field manual for the story world until a new one is written from the finished pieces.",
+  "outcome": "src/domain/story-beats.js is a pure beat script driven by a five-call host API (cost, grant, order, built, isao), tested for the wait, single grant and order, retry of a refused order and the print notice. base-plan now reports every island's lattice cell; platform/story-world composes story state: the Rotor island cell as a floor socket, the landing island as Isao's home, and the beats. In td-tab.js the placement rule and tower mount height accept story sockets at floor level, Isao spawns at the story home, the beats tick beside the base, the tutorial and the opening manual are skipped in story mode; controller size unchanged at 17,626. The game's static Rotor model is skipped so the printed tower is the only one. Acceptance: no manual, Isao prints the Rotor within the wait, the socket stays floor, no enemies. Known gap: the Rotor island slab appears only at stage 3 in the static views, so at stage 1 the tower stands on natural ground; the slab print becomes a beat later. Briefs and codex text are still the old fiction.",
+  "alternatives": [
+    "Mark the socket cell as rock so the existing high-ground rule applies: rejected, the slab would sit inside 4 m of rock.",
+    "Place the Rotor instantly with the director's tower verb: rejected, the print loop is the beat."
+  ],
+  "evidence": [
+    "test/story-beats.mjs, test/base-plan.mjs, test/world-recipe.mjs pass; npm test 89 programs",
+    "node scripts/browser-test.mjs --story-world: PASS story-world-rotor (towers 1, socket floor, intro hidden)",
+    "docs/architecture-budget.json: td-tab.js at 17,626 lines"
+  ],
+  "supersedes": []
+}

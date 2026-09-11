@@ -37,7 +37,7 @@ function gridShader(material) {
   return material;
 }
 
-export function createStoryBase(scene, { plan, placer, metres = 1, kit, rocket = true }) {
+export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [] }) {
   const group = new THREE.Group(); group.name = 'Story base'; scene.add(group);
   const mixers = [], owned = new Set(), errors = [];
   const own = (root) => root.traverse((o) => { if (o.geometry) owned.add(o.geometry); for (const m of [o.material].flat().filter(Boolean)) owned.add(m); });
@@ -64,7 +64,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, rocket =
       src.traverse((o) => {
         if (!o.isMesh) return;
         const geo = o.geometry.clone(); geo.setAttribute('aIsland', new THREE.InstancedBufferAttribute(sizes, 2));
-        const mat = o.material.clone(); if (o.name === 'SLAB') gridShader(mat);
+        const mat = o.material.clone(); mat.polygonOffset = true; mat.polygonOffsetFactor = 1; mat.polygonOffsetUnits = 2; if (o.name === 'SLAB') gridShader(mat);
         const inst = new THREE.InstancedMesh(geo, mat, plan.islands.length); inst.name = `island ${o.name}`;
         plan.islands.forEach((i, k) => {
           const m = basisAt(placer, i.x, i.z, i.heading).multiply(new THREE.Matrix4().makeTranslation(0, i.top * metres, 0))
@@ -91,7 +91,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, rocket =
       if (clip) { gate.mixer = new THREE.AnimationMixer(g); gate.action = gate.mixer.clipAction(clip); gate.action.setLoop(THREE.LoopOnce, 1); gate.action.clampWhenFinished = true; gate.duration = clip.duration; }
       gate.position = placer.toWorld([plan.gate.x, 0, plan.gate.z]); gate.radius = plan.gate.openRadius * metres;
     }) : null,
-    ...plan.structures.filter((s) => rocket || s.id !== 'sh02').map((s) => load(s.asset).then((gltf) => {
+    ...plan.structures.filter((s) => !skip.includes(s.id)).map((s) => load(s.asset).then((gltf) => {
       if (!gltf) return;
       const root = s.batch ? batchStaticAsset(gltf.scene, gltf.animations) : gltf.scene.clone(true);
       own(root); root.name = s.id;

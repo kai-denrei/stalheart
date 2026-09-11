@@ -239,7 +239,7 @@ try{
  await evaluate('window.__stalheartStoryTest.skip()');await delay(300);const done=await evaluate('window.__stalheartStoryTest.state()');
  assert.equal(done.phase,'done');assert.equal(done.landing.isao.visible,true);current='story-isao-out';await finish();
  await evaluate('window.__stalheartStoryTest.setStage(7)');await evaluate('window.__stalheartStoryTest.baseReady()');await delay(1500);
- const base=await evaluate('window.__stalheartStoryTest.state()');assert.equal(base.stage,7);assert.deepEqual(base.base.errors,[]);assert.equal(base.base.islands,6);assert.equal(base.base.walls,12);assert(base.base.gate);assert.equal(base.base.structures,5,'five landmarks at stage 7 in the lab (the landing scene owns the rocket)');
+ const base=await evaluate('window.__stalheartStoryTest.state()');assert.equal(base.stage,7);assert.deepEqual(base.base.errors,[]);assert.equal(base.base.islands,7);assert.equal(base.base.walls,12);assert(base.base.gate);assert.equal(base.base.structures,6,'six landmarks at stage 7 in the lab (the landing scene owns the rocket)');
  assert(base.playUrl.includes('stage=7'),'play carries the stage');
  await evaluate('window.__stalheartStoryTest.reset()');await delay(300);current='story-stage-7';await finish();
  await evaluate('window.__stalheartStoryTest.overview()');await delay(400);current='story-stage-7-overview';await finish();
@@ -263,7 +263,12 @@ try{
  current='story-world-tank';await finish();
  assert.equal(await evaluate('document.querySelectorAll("canvas").length>0'),true);
  await go('story-world-stage1','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=1#td');await until('!!window.__stalheartTest',90000);await delay(2500);
- const one=await evaluate('window.__stalheartTest.state()');assert.equal(one.towers,0);assert.equal(one.queued,0);await finish();
+ const one=await evaluate('window.__stalheartTest.state()');assert.equal(one.towers,0);assert.equal(one.queued,0);
+ assert.equal(await evaluate('document.querySelector("#td-intro").classList.contains("hidden")'),true,'no field manual in the story world');
+ await finish();
+ await until('window.__stalheartTest.state().towers===1',90000);const printed=await evaluate('window.__stalheartTest.state()');
+ assert.equal(printed.towers,1,'Isao printed the Rotor');assert.equal(printed.wallCount,one.wallCount,'the socket is floor, not rock');assert.equal(printed.queued,0);
+ await delay(6000);const settled=await evaluate('window.__stalheartTest.state()');assert.equal(settled.queued,0);assert.equal(settled.performance.wave,0,'no wave arms after the print');current='story-world-rotor';await finish();
  await go('story-world-gate','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=4#td');await until('!!window.__stalheartTest',90000);await delay(2500);
  const four=await evaluate('window.__stalheartTest.state()');assert.equal(four.wallCount-w.wallCount,0,'stage 4 and 6 block the same wall cells');assert(four.wallCount>one.wallCount,'walls are rock to the pathfinder');
  await delay(8000);const later=await evaluate('window.__stalheartTest.state()');assert.equal(later.queued,0,'still no enemies after the opening wait');await finish();
