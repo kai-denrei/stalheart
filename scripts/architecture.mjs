@@ -4,8 +4,16 @@ import { posix, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const controlled=p=>/^src\/(core|domain|content)\//.test(p);
-export function analyzeArchitecture(sources,kernel=[]) {
-  const graph={},problems=[];
+export function analyzeArchitecture(sources,kernel=[],{lineBudgets={},topLevelModules=null}={}) {
+  const graph={},problems=[],hints=[];
+  for(const [file,budget] of Object.entries(lineBudgets)) {
+    if(!Object.hasOwn(sources,file))continue;
+    const lines=(sources[file].match(/\n/g)||[]).length;
+    if(lines>budget)problems.push(`${file}: ${lines} lines exceeds line budget ${budget}; extract instead of growing`);
+    else if(lines<budget)hints.push(`${file}: ${lines} lines; lower its line budget to ${lines}`);
+  }
+  if(topLevelModules)for(const file of Object.keys(sources))
+    if(/^src\/[^/]+\.js$/.test(file)&&!topLevelModules.includes(file))problems.push(`${file}: new top-level module; place it in a named layer directory`);
   for(const [file,text] of Object.entries(sources)) {
     const code=text.replace(/\/\*[\s\S]*?\*\//g,'').replace(/^\s*\/\/.*$/gm,'');
     const specs=[...code.matchAll(/(?:\bfrom\s*|\bimport\s*(?:\(\s*)?)(['"])([^'"\n]+)\1/g)].map(m=>m[2]);
@@ -33,14 +41,16 @@ export function analyzeArchitecture(sources,kernel=[]) {
   if(reaches('src/td-tab.js',p=>p.startsWith('src/labs/')||/-tab\.js$/.test(p)&&p!=='src/td-tab.js')) problems.push('Game imports a lab controller');
   for(const file of Object.keys(graph).filter(p=>p.startsWith('src/labs/')))
     if(reaches(file,p=>p==='src/td-tab.js'))problems.push(`${file}: lab depends on the game controller`);
-  return {graph,problems:[...new Set(problems)],controlled:Object.keys(graph).filter(controlled)};
+  return {graph,problems:[...new Set(problems)],hints,controlled:Object.keys(graph).filter(controlled)};
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
   const walk=dir=>readdirSync(resolve(root,dir),{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(`${dir}/${e.name}`):[`${dir}/${e.name}`]);
   const sources=Object.fromEntries(walk('src').filter(p=>p.endsWith('.js')).map(p=>[p,readFileSync(resolve(root,p),'utf8')]));
   const kernel=Object.keys(JSON.parse(readFileSync(resolve(root,'docs/kernel-provenance.json'),'utf8')).files);
-  const result=analyzeArchitecture(sources,kernel);
+  const budget=JSON.parse(readFileSync(resolve(root,'docs/architecture-budget.json'),'utf8'));
+  const result=analyzeArchitecture(sources,kernel,budget);
+  for(const hint of result.hints)console.log(`Ratchet: ${hint} in docs/architecture-budget.json`);
   if(process.argv.includes('--report')){mkdirSync(resolve(root,'artifacts'),{recursive:true});writeFileSync(resolve(root,'artifacts/architecture.json'),JSON.stringify(result,null,2)+'\n');}
   if(result.problems.length){console.error(result.problems.join('\n'));process.exitCode=1;}
-  else console.log(`Architecture: ${result.controlled.length} pure-layer modules checked; game/lab controller boundaries hold.`);
+  else console.log(`Architecture: ${result.controlled.length} pure-layer modules checked; game/lab controller boundaries, line budgets and top-level placement hold.`);
 }

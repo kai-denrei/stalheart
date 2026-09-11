@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "id": "2026-09-10-architecture-ratchet-and-project-skills",
+  "date": "2026-09-10T12:50:00+00:00",
+  "type": "decision",
+  "status": "accepted",
+  "title": "Growth ratchet on the TD controller, frozen top-level module list, and three project skills for structural work",
+  "context": "The owner raised maintainability and separation of concerns as projects grow and offered a generic seven-skill coding micro-skills pack for consideration. Assessment: four of the pack's skills (bug-fix, test-and-validate, implement-feature, refactor) duplicate already-installed process skills and would create competing instructions; the real structural risk is src/td-tab.js at 17,630 lines (34% of 51,919 source lines) with only src/core, src/domain and src/content under mechanical dependency guards.",
+  "outcome": "npm run architecture now reads docs/architecture-budget.json: lineBudgets pins src/td-tab.js at 17,630 lines and fails on growth, printing a lower-the-budget hint when the file shrinks; topLevelModules freezes the 100 existing src/*.js files so a new top-level module fails and new code must go into a layer directory. Three project-local skills were adopted under .claude/skills/: add-module, remove-dead-code and architecture-review, each adapted to the Stalheart layers and the ratchet. Each skill was baseline-tested with a read-only planning scenario before writing: the add-module baseline skipped the owner search and planned a hookup that grows the controller; the architecture-review baseline missed the 92-line controller growth in ae88ea2 and the existing src/domain/manual-weapon.js beside the new pilot aiming; the remove-dead-code baseline called two actively imported compatibility facades safe to delete without classifying them. Verification runs with the skills present addressed those gaps. Documented in docs/ARCHITECTURE.md and AGENTS.md.",
+  "alternatives": [
+    "Install all seven pack skills verbatim: rejected, overlapping and sometimes contradicting installed TDD/debugging/verification skills; the files also lack skill frontmatter and would not register.",
+    "Rely on prose rules alone without the ratchet: rejected, two thirds of the source sits outside the enforced layers so advice has nothing to check against.",
+    "Auto-lower the budget on every run: deferred; a hint keeps the budget change an explicit reviewed edit."
+  ],
+  "evidence": [
+    "node test/architecture.mjs: new assertions for line budgets and top-level placement pass",
+    "node scripts/architecture.mjs with a probe line appended to src/td-tab.js and a stray src/zz-probe.js: both failures reported, exit 1; restored tree passes",
+    "npm run check passes with the budget file in place",
+    "git show --stat ae88ea2 -- src/td-tab.js: 120 insertions, 28 deletions",
+    "grep manual-weapon: imported by src/sniper-tab.js only; src/sentry-pilot.js imports THREE and content/sentries.js"
+  ],
+  "supersedes": []
+}

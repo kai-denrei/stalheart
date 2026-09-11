@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "2026-09-08-sniper-modes-playtest-unresolved",
+  "date": "2026-09-08T14:48:47.130630+00:00",
+  "type": "issue",
+  "status": "observed",
+  "title": "Sniper modes remain unsatisfactory and require further playtesting and fixes",
+  "context": "After delivery of the first-map Sentry Control experiment, the owner explicitly reports that the sniper modes are not quite working yet and asks that this be captured in the development log. This applies to the Sniper range and the new actual-map manual-sentry experiment.",
+  "outcome": "Treat both sniper modes as unfinished experiments with unresolved functional and playability issues. Automated boot, input, asset and sampled combat checks are useful evidence for those limited paths; passing them does not establish that either mode works satisfactorily in play or has owner acceptance. The accepted implementation entry 2026-09-08-sentry-control-first-map is not a playability sign-off. The owner has not specified the current individual failures in this report, so no root causes or fixes are asserted. Follow-up work must reproduce the playtest problems, record concrete symptoms per mode and weapon, fix them, and obtain fresh playtest feedback before describing the modes as working satisfactorily.",
+  "alternatives": [],
+  "evidence": [
+    "Owner report: \"the sniper modes are not quite working yet\"",
+    "docs/log/entries/2026-09-08-sentry-control-first-map.json records implementation and limited automated validation, not owner playtest acceptance",
+    "docs/STATE.md now explicitly lists the unresolved status of both sniper modes"
+  ],
+  "supersedes": []
+}

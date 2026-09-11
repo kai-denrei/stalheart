@@ -37,6 +37,8 @@ flowchart TD
 
 `npm run architecture` enforces dependency rules and cycles in the migrated pure layers and rejects game/lab controller coupling. `npm run architecture -- --report` writes the dependency graph to `artifacts/architecture.json`. These are static import/browser-dependency checks, not a replacement for runtime tests. Legacy files outside the named layers remain an explicit migration boundary.
 
+`docs/architecture-budget.json` is a growth ratchet for that boundary. `lineBudgets` pins the maximum line count of `src/td-tab.js`; the guard fails when the controller grows and prints a hint to lower the budget when it shrinks, so budgets only move down. `topLevelModules` freezes the existing top-level `src/*.js` files; a new top-level module fails the guard, so new code goes into `src/core`, `src/domain`, `src/content`, `src/platform`, `src/fx` or `src/labs`, and files leave the list when they are extracted or deleted. When a directory is fully extracted, add it to the controlled set in `scripts/architecture.mjs` so the dependency rules grow with the extraction.
+
 Compatibility facades preserve existing imports and tests while each moved implementation has one owner. Avoid copying an implementation into both paths. New pure code should import the owned module directly.
 
 ## Authoring contract
