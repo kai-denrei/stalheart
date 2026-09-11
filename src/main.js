@@ -68,13 +68,15 @@ if (!root) {
   }
   for (const b of document.querySelectorAll('#tabbar button')) {
     b.classList.toggle('active', b.dataset.tab === target
+      && (('story' in b.dataset) === (q.get('story') !== null))   // the story entry owns the story world, the others never show active there
       && (!('mission' in b.dataset) || b.dataset.mission === (q.get('mission') || ''))
       && (!('roster' in b.dataset) || b.dataset.roster === (q.get('roster') || '2')));
     b.addEventListener('click', () => {
       const url = new URL(b.dataset.page || location.pathname, location.href);
       url.search = location.search;
       url.searchParams.delete('sentryPilot');
-      for (const key of ['mission', 'roster']) if (key in b.dataset) {
+      for (const key of ['story', 'stage', 'world', 'heart', 'threat']) url.searchParams.delete(key);   // leaving the story world drops its switches
+      for (const key of ['mission', 'roster', 'story']) if (key in b.dataset) {
         if (b.dataset[key]) url.searchParams.set(key, b.dataset[key]);
         else url.searchParams.delete(key);
       }

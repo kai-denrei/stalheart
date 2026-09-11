@@ -292,7 +292,8 @@ try{
  // the phone deep link: ?story=N alone means the story world at that stage, no old heart, no cold open, sparse waves
  await go('story-world-deeplink','index.html?sw=0&acceptance=1&story=4#td');await until('!!window.__stalheartTest',90000);await delay(1500);
  const dl=await evaluate('window.__stalheartTest.state()');assert.equal(dl.heartAsset,'none');assert(dl.story&&dl.story.phase,'story beats run from the deep link');assert(dl.wallCount>40000);
- assert.equal(await evaluate('document.querySelector("#td-intro").classList.contains("hidden")'),true);await finish();
+ assert.equal(await evaluate('document.querySelector("#td-intro").classList.contains("hidden")'),true);
+ assert.equal(await evaluate('document.querySelector("#tabbar [data-story]").classList.contains("active")'),true,'the burger marks story as the active mode');assert.equal(await evaluate('document.querySelector("#tabbar [data-mission=\\"\\"]").classList.contains("active")'),false);await finish();
  await go('story-world-default','index.html?sw=0&acceptance=1&cine=0#td');
  await until('!!window.__stalheartTest',60000);await delay(1500);
  const d=await evaluate('window.__stalheartTest.state()');assert(d.wallCount>1500&&d.wallCount<2236,`default world unchanged ${d.wallCount}`);
