@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "2026-09-11-foundation-islands",
+  "date": "2026-09-11T05:10:00+00:00",
+  "type": "decision",
+  "status": "accepted",
+  "title": "Foundations only under key structures, with a simpler game-ready tile",
+  "context": "After the first story lab, the owner set the build stages (landing, foundations, solar with one Rotor, gate and walls, Stalheart, HUGIN arm, later assembly line and radar), asked for a larger rocket and a slow Isao emergence, and rejected pre-existing foundations at landing. The compute review showed the pinned Fortification tile at 2,200 triangles makes tiles the dominant cost: 563,000 triangles for the 64 x 64 m pad and about 5 million for a fully tiled 240 x 160 m base.",
+  "outcome": "Foundations become islands under each key structure, sized to the structure's plot, printed by Isao as the stage begins. The owner will author a simpler game-ready foundation tile; the current Fortification tile remains an Astro-only asset. Consequences: no continuous plate, so the eight-level terrace design collapses to one locally flat pad per island with under one metre of cut and fill, and the natural lattice remains the ground between islands; the landing sequence removes the pre-tiled pad; the tile budget drops to roughly 400 tiles for the planned structures.",
+  "alternatives": [
+    "Tile the whole base with the detailed tile: rejected, 5 million triangles.",
+    "Keep whole-base tiling with a low-detail field tile: not needed once foundations are islands.",
+    "Keep terrace bands across the clearing: unnecessary when each island levels only its own plot."
+  ],
+  "evidence": [
+    "assets/models/astro/foundation_flat_d0.glb: 18 meshes, 5 materials, 2,200 triangles",
+    "terrace analysis in scratch: 56 m island corner drop 0.9 m at radius 753 m",
+    "docs/superpowers/specs/2026-09-11-story-planet-arrival-design.md amendments"
+  ],
+  "supersedes": []
+}

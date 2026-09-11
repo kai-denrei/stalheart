@@ -68,3 +68,10 @@ No module imports the game controller. The lab exposes `window.__stalheartStoryT
 ## Out of scope
 
 Enemies, Isao's orders, the armored gate, the kit connection graph, audio samples, chunked planet rendering, the raymarch governor, and the FX package schema revision.
+
+## Amendments (2026-09-11, owner)
+
+- The SH02 lands on natural ground at the pole. No foundations exist at landing; Isao prints them later.
+- Foundations go only under key structures, as islands sized to each structure's plot, not across the whole base. The owner will author a simpler game-ready foundation tile to replace the 2,200-triangle Fortification tile.
+- The rocket is scaled up (about 1.5x) and Isao down (about 1.8 m) for scale. Isao waits inside the cargo well when the door opens and rises slowly, instead of appearing above the rim.
+- Build stages: landing, foundations, solar with one Rotor, gate and walls, HUGIN arm, Stalheart, then assembly line and radar. The HUGIN arm before the Stalheart is a proposal, not yet decided.
