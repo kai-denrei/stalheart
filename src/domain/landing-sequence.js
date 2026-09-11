@@ -9,20 +9,22 @@ export function makeLandingSequence(tune) {
   const doorAt = touchdown + shock + settle;
   const isaoAt = doorAt + door;
   const duration = isaoAt + isao;
-  // altitude eases out quadratically, so the descent slows into touchdown
+  // the rocket is already burning and falling when the orbit shot opens:
+  // altitude eases out quadratically over the whole approach, so the
+  // descent slows into touchdown
   const altitudeAt = (t) => {
-    if (t <= orbit) return startAltitude;
+    if (t <= 0) return startAltitude;
     if (t >= touchdown) return 0;
-    const u = (t - orbit) / descent;
+    const u = t / touchdown;
     return startAltitude * (1 - u) * (1 - u);
   };
-  const legsStart = orbit + descent * (1 - Math.sqrt(deployAltitude / startAltitude));
+  const legsStart = touchdown * (1 - Math.sqrt(deployAltitude / startAltitude));
   const clipTime = (t, start, length) => (t < start ? null : Math.min(t - start, length));
   const stateAt = (t) => ({
     phase: t < orbit ? 'orbit' : t < touchdown ? 'descent' : t < touchdown + shock ? 'touchdown'
       : t < doorAt ? 'settle' : t < isaoAt ? 'door' : t < duration ? 'isao' : 'done',
     altitude: altitudeAt(t),
-    plume: t < orbit || t >= touchdown ? 0 : smooth((t - orbit) / 0.6),
+    plume: t < 0 || t >= touchdown ? 0 : smooth((t + 0.3) / 0.6),
     clips: {
       Legs_Deploy: clipTime(t, legsStart, legsDeploy),
       Landing_Shock: clipTime(t, touchdown, shock),

@@ -96,3 +96,7 @@ Lightweight foundation, wall (D0-D3), corner and vehicle gate exports plus the s
 ## Single SKYWARD antenna, game tier — jelaludo
 
 The 18 m steerable antenna at its low/game detail (1,632 triangles) with its `Array_Slew` clip, from [SentryTowers_A6](https://github.com/jelaludo/SentryTowers_A6/tree/e846906954abc1c3600c2bccd812857a75874073/assets/antenna-array), revision `e846906954abc1c3600c2bccd812857a75874073`. Models and animations by jelaludo, reused with attribution under the upstream `ASSET-LICENSE.md`. Pinned checksum: `docs/antenna-assets.lock.json`. It stands on the story base's radar island; the seven-dish array remains an Astro-only diorama.
+
+## Gate sounds
+
+Two operator clips reused from the karyoku project, unchanged: `assets/audio/gate_hydraulics.mp3` is karyoku's `assembly_hydraulics.mp3` (built there from the operator's hydraulic master) and `assets/audio/gate_slam.mp3` is karyoku's `crush_slam.mp3` (universfield 123784, trimmed, mono). Checksums in `docs/story-audio.lock.json`. The armored gate plays the hydraulics when it starts opening and the slam when it has closed.

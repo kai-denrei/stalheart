@@ -9,7 +9,7 @@ const layout = { islands: ISLANDS, structures: STRUCTURES, kit: KIT, stages: STA
 // islands never overlap and stay inside the clearing
 for (const a of ISLANDS) {
   for (const b of ISLANDS) if (a !== b) assert.ok(Math.abs(a.x - b.x) >= (a.w + b.w) / 2 + 4 || Math.abs(a.z - b.z) >= (a.d + b.d) / 2 + 4, `${a.id} overlaps ${b.id}`);
-  assert.ok(Math.hypot(Math.abs(a.x) + a.w / 2, Math.abs(a.z) + a.d / 2) < STORY_CLEARING.radiusMetres - 8, `${a.id} inside the clearing`);
+  if (!a.anchor) assert.ok(Math.hypot(Math.abs(a.x) + a.w / 2, Math.abs(a.z) + a.d / 2) < STORY_CLEARING.radiusMetres - 8, `${a.id} inside the clearing`);
 }
 for (const s of STRUCTURES) assert.ok(ISLANDS.some((i) => i.id === s.island), `${s.id} has an island`);
 // stages are monotonic: everything at stage n is still there at n + 1
@@ -41,4 +41,6 @@ for (const s of full.structures) if (s.id !== 'sh02') assert.ok(s.y > 0 && s.y <
 assert.equal(one.structures[0].y, 0, 'the rocket stands on natural ground');
 // walls map to distinct lattice cells that are open floor today; the gate keeps its own cell
 { const cells = full.walls.map((w) => w.cell).filter((c) => c >= 0); assert.ok(cells.length >= 2 && new Set(cells).size >= 2, 'walls block cells on both sides'); for (const c of cells) assert.notEqual(planet.dungeon.tags[c], BLOCKED, 'wall stands on floor'); assert.ok(full.gate.cell >= 0 && !cells.includes(full.gate.cell), 'gate cell is not a wall cell'); assert.ok(full.gate.openRadius > 10); }
+// the Rotor's socket is the lane cell one step past the gate: outside the clearing, touching the mouth
+{ const rc = full.cells.rotor; assert.ok(rc >= 0 && !planet.clearing.cells.has(rc), 'rotor socket outside the clearing'); assert.ok(mouth.cells.some((ci) => planet.graph.adj[ci].includes(rc)), 'rotor socket touches the mouth'); assert.ok(planet.arcOfCell(rc) > planet.arcOfCell(mouth.cells[0]) - 1e-9, 'rotor socket is outward of the mouth'); const ri = full.islands.find((i) => i.id === 'rotor'); assert.equal(ri.cell, rc); }
 console.log(`Base plan: ${full.islands.length} islands, ${full.structures.length} structures, ${full.walls.length} walls, gate at ${full.gate.x.toFixed(0)},${full.gate.z.toFixed(0)}.`);

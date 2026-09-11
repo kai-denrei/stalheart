@@ -80,18 +80,20 @@ export function initStoryTab(root) {
     if (!planet) return;
     base?.dispose();
     // the landing scene owns the rocket in the lab; the base draws everything else
-    base = createStoryBase(scene, { plan: planBase(planet, LAYOUT, stage), placer: { toWorld: (p) => new THREE.Vector3(...planet.frameToWorld(p)) }, metres: 1, kit: KIT, skip: ['sh02'] });
+    base = createStoryBase(scene, { plan: planBase(planet, LAYOUT, stage), placer: { toWorld: (p) => new THREE.Vector3(...planet.frameToWorld(p)) }, metres: 1, kit: KIT, skip: ['sh02'], sfx });
     for (const b of stageBar.children) b.classList.toggle('on', Number(b.dataset.stage) === stage);
     stageLine.textContent = `Stage ${stage}: ${STAGES[stage].name}. Digits 0-7 change the stage; play opens the game at this stage.`;
     landing?.setLanded(stage >= 1);
   }
 
-  function frameCamera(pose) {
+  function frameCamera(pose, about = null) {
+    // rail keys are metres around the landing site (or the pole for the overview), rotated with the base frame
+    const site = about ?? ISLANDS.find((i) => i.id === 'landing');
     const c = Math.cos(planet.clearing.yaw), s = Math.sin(planet.clearing.yaw);
-    const rot = ([x, y, z]) => [x * c + z * s, y, -x * s + z * c];
+    const rot = ([x, y, z]) => { const px = x + site.x, pz = z + site.z; return [px * c + pz * s, y, -px * s + pz * c]; };
     const p = rot(pose.pos), l = rot(pose.look);
-    camera.position.set(p[0], p[1] + planet.padFloor, p[2]); camera.fov = pose.fov; camera.updateProjectionMatrix();
-    controls.target.set(l[0], l[1] + planet.padFloor, l[2]); camera.lookAt(controls.target);
+    camera.position.set(p[0], p[1], p[2]); camera.fov = pose.fov; camera.updateProjectionMatrix();
+    controls.target.set(l[0], l[1], l[2]); camera.lookAt(controls.target);
   }
   function seek(time) {
     t = Math.max(0, Math.min(sequence.duration, time));
@@ -103,14 +105,15 @@ export function initStoryTab(root) {
   function land() { onRail = true; playing = true; heard = null; seek(0); }
   function skip() { playing = false; onRail = true; seek(sequence.duration); onRail = false; controls.update(); }
   function reset() { playing = false; onRail = false; seek(sequence.duration); frameCamera(rail.poseAt(sequence.duration)); controls.update(); }
-  function overview() { playing = false; onRail = false; seek(sequence.duration); frameCamera({ pos: [120, 210, 300], look: [0, 0, -40], fov: 40 }); controls.update(); }
+  function overview() { playing = false; onRail = false; seek(sequence.duration); frameCamera({ pos: [120, 210, 300], look: [0, 0, -40], fov: 40 }, { x: 0, z: 0 }); controls.update(); }
 
   function build() {
     const t0 = performance.now();
     planet = buildStoryPlanet(STORY_RECIPE, STORY_CLEARING);
     const built = performance.now() - t0;
     planetMesh = buildStoryPlanetMesh(planet, look, { wallMetres: STORY_RECIPE.wallMetres }); scene.add(planetMesh);
-    landing = createStoryLanding(scene, { padFloor: planet.padFloor, yaw: planet.clearing.yaw });
+    const site = ISLANDS.find((i) => i.id === 'landing');
+    landing = createStoryLanding(scene, { placer: { toWorld: (p) => new THREE.Vector3(...planet.frameToWorld(p)) }, site: [site.x, site.z] });
     landing.ready.then(() => { seek(t); });
     marker = buildMouthMarker(planet, look); if (marker) scene.add(marker);
     setStage(stage);

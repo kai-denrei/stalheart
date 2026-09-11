@@ -41,7 +41,7 @@ import { storage as localStorage } from './storage.js';
 import * as THREE from '../vendor/three.module.js';
 import GUI from '../vendor/lil-gui.esm.js';
 import { bfsDist, BLOCKED, PATH, ROOM } from './dungeon.js';
-import { buildGameWorld, readStoryQuery } from './platform/story-world.js';
+import { buildGameWorld, readStoryQuery, STORY_SOUNDS } from './platform/story-world.js';
 import { compileRail } from './cine/rail.js';
 import { SCRIPTS } from './cine/scripts.js';
 import { cuesBetween } from './cine/sound.js';
@@ -373,7 +373,7 @@ export function initTdTab(root) {
   // sound. The context can only be born on a user gesture, so arm() wires
   // one-shot listeners and the first tap/keypress creates it. Until then
   // every play() is a silent no-op -- the game never waits on audio.
-  const sfx = makeAudio({ seed: 1, sounds:{...SOUNDS,...BREACH_SOUNDS} });
+  const sfx = makeAudio({ seed: 1, sounds:{...SOUNDS,...BREACH_SOUNDS,...(location.search.includes('world=story')?STORY_SOUNDS:{})} });   // story cues only in the story world
   const gameBreaches=createGameBreaches(scene,camera,sfx);
   sfx.arm();
   // THE ALARM IS THE PROOF OF LIFE. Operator, 2026-09-01: waiting out the
@@ -5732,7 +5732,7 @@ export function initTdTab(root) {
     heartCalloutCd = 0; streakMark = 0;
     ramCombo = 0; ramComboT = 0; syncCombo();
     breachedCells.clear(); // a NEW world owes nothing to the old one's holes
-    const built = buildGameWorld({ world: storyQuery.world, params, stage: storyQuery.stage, scene });
+    const built = buildGameWorld({ world: storyQuery.world, params, stage: storyQuery.stage, scene, sfx });
     mesh = built.mesh; dungeon = built.dungeon; if (built.wallHeight) params.wallHeight = built.wallHeight;   // 4 m on the story sphere
     storyBase?.dispose(); storyBase = built.base; story = built.story ?? null;   // the story's islands, structures, sockets and beats at the requested stage
     graph = dungeon.graph;

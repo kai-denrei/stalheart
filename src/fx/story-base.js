@@ -12,7 +12,7 @@ const cache = new Map();
 const load = (url) => { if (typeof document === 'undefined') return Promise.resolve(null); if (!cache.has(url)) cache.set(url, loader.loadAsync(url)); return cache.get(url); };
 
 // world basis at a frame point: local +Y is the sphere normal, local +Z the frame heading
-function basisAt(placer, x, z, heading) {
+export function basisAt(placer, x, z, heading) {
   const o = placer.toWorld([x, 0, z]);
   const up = placer.toWorld([x, 1, z]).sub(o).normalize();
   const fwd = placer.toWorld([x + heading[0], 0, z + heading[1]]).sub(o).normalize();
@@ -37,7 +37,7 @@ function gridShader(material) {
   return material;
 }
 
-export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [] }) {
+export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [], sfx = null }) {
   const group = new THREE.Group(); group.name = 'Story base'; scene.add(group);
   const mixers = [], owned = new Set(), errors = [];
   const own = (root) => root.traverse((o) => { if (o.geometry) owned.add(o.geometry); for (const m of [o.material].flat().filter(Boolean)) owned.add(m); });
@@ -51,7 +51,10 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
   const gate = { mixer: null, action: null, duration: 0, position: null, radius: 0, open: false, want: false, t: 0 };
   function driveGate(dt) {
     if (!gate.action) return;
+    const before = gate.t;
     gate.t = Math.max(0, Math.min(gate.duration, gate.t + (gate.want ? dt : -dt)));
+    if (gate.want && before === 0 && gate.t > 0) sfx?.play('gate_hydraulics');
+    if (!gate.want && before > 0 && gate.t === 0) sfx?.play('gate_slam');
     if (!gate.action.isRunning() && gate.t > 0) { gate.action.play(); }
     gate.action.paused = true; gate.action.time = gate.t; gate.mixer.update(0);
     gate.open = gate.t >= gate.duration - 1e-6;

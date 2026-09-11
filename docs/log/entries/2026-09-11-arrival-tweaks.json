@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-09-11-arrival-tweaks",
+  "date": "2026-09-11T13:10:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "Arrival tweaks: lit and moving from the first frame, Isao from deep in the tube, forward Rotor socket, rocket off the pole, karyoku gate sounds",
+  "context": "Owner review of the previous pass: the rocket was static and unlit when the orbit shot found it; Isao appeared at the rim; the first Rotor should stand forward, one cell past the gate; the Stalheart was built on top of the rocket in the lab; various effects should reuse karyoku's sounds.",
+  "outcome": "The landing timeline eases altitude from 900 m over the whole 12 s approach with the plume lit from t=0 (the orbit beat is now a camera beat only). Isao starts 9 m below the cargo well floor inside the hull and climbs for 80% of a 7 s beat before drifting. base-plan computes a forward socket (the open lane cell one step outward of the mouth) and anchors the Rotor island there; the beat orders the Rotor on that cell. The lab's arrival scene is seated on the landing island 60 m from the pole with the camera rail keyed around it, so the Stalheart keeps the pole. The lattice is natural by default (terraces off) so islands and ground agree. Two karyoku clips are pinned as gate_hydraulics and gate_slam and play on the gate's open start and close end through an audio engine handed to the base in both hosts.",
+  "alternatives": [
+    "Add story cues to the shared SOUNDS table: rejected, every cue is part of the validated FX package."
+  ],
+  "evidence": [
+    "test/landing-sequence.mjs, test/base-plan.mjs, test/story-planet.mjs updated and passing; npm test 89",
+    "node scripts/browser-test.mjs --story and --story-world: all PASS",
+    "artifacts/browser/story-descent.png shows the six-engine burn at 8 s"
+  ],
+  "supersedes": []
+}

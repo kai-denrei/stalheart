@@ -65,6 +65,13 @@ for(const file of rocketAudio.files){
  if(bytes.length!==file.bytes||sha(bytes)!==file.sha256)throw Error('Rocket audio checksum mismatch');
 }
 console.log('Pinned owner-provided rocket thrust audio verified.');
+const storyAudio=JSON.parse(readFileSync(resolve(root,'docs/story-audio.lock.json'),'utf8'));
+for(const file of storyAudio.files){
+ if(!/^assets\/audio\/gate_[a-z]+\.mp3$/.test(file.path))throw Error('Unexpected story audio path');
+ const bytes=readFileSync(resolve(root,file.path));
+ if(bytes.length!==file.bytes||sha(bytes)!==file.sha256)throw Error('Story audio checksum mismatch: '+file.path);
+}
+console.log('Pinned story gate audio verified.');
 
 for(const lockFile of ['docs/shell-assets.lock.json','docs/beam-audio.lock.json']){
  const lock=JSON.parse(readFileSync(resolve(root,lockFile),'utf8'));

@@ -6,14 +6,16 @@ import { createLaunchPlume } from '../fx/launch-plume.js';
 import { makeScorch, makeEmbers, IMPACT_TUNE } from '../impactfx.js';
 import { makeIsaoDrone, preloadFabricator } from '../units.js';
 import { PLUME_CLUSTER, STORY_SCALE } from '../content/story-defaults.js';
+import { basisAt } from '../fx/story-base.js';
 
 const ROCKET_URL = 'assets/models/story/sh_rocket.glb';
 const BELL_HEIGHT = 2.0;          // engine bells above the touchdown plane, authored metres
 const WELL_FLOOR = 19.0;          // cargo well floor above the touchdown plane, authored metres
 const WELL_RIM = 23.5;            // door rim, authored metres
 
-export function createStoryLanding(scene, { padFloor, yaw, dustTint = 0x9a8f7a }) {
-  const root = new THREE.Group(); root.name = 'Arrival'; root.rotation.y = yaw; root.position.y = padFloor; scene.add(root);
+export function createStoryLanding(scene, { placer, site = [0, 0], dustTint = 0x9a8f7a }) {
+  // the whole arrival stands on the landing island, tangent to the sphere there
+  const root = new THREE.Group(); root.name = 'Arrival'; root.matrixAutoUpdate = false; root.matrix.copy(basisAt(placer, site[0], site[1], [0, 1])); root.matrixWorldNeedsUpdate = true; scene.add(root);
   const lift = new THREE.Group(); lift.name = 'Descent'; root.add(lift);
   // the hull group carries the presentation scale: rocket, plumes and the
   // well positions all scale together, so a bigger rocket is one number
@@ -82,8 +84,10 @@ export function createStoryLanding(scene, { padFloor, yaw, dustTint = 0x9a8f7a }
       // then drifts clear of the nose
       const doorOpening = state.clips.Top_Door_Open !== null;
       isao.visible = doorOpening || state.isaoRise > 0;
-      const r = state.isaoRise, climb = Math.min(1, r / 0.6), drift = Math.max(0, (r - 0.6) / 0.4);
-      const y = (WELL_FLOOR + 0.6) * S + climb * ((WELL_RIM + 4) * S - (WELL_FLOOR + 0.6) * S) + drift * 3;
+      // starts deep in the hull tube, well below the rim, climbs straight up for most of the beat, then drifts clear
+      const r = state.isaoRise, climb = Math.min(1, r / 0.8), drift = Math.max(0, (r - 0.8) / 0.2);
+      const y0 = (WELL_FLOOR - 9) * S, y1 = (WELL_RIM + 4) * S;
+      const y = y0 + climb * (y1 - y0) + drift * 3;
       isao.position.set(9 * drift, y, -3 * drift);
       isao.userData.spinRotors?.(1 / 60, r);
       isao.userData.setWork?.(r > 0.95 ? 0.6 : 0);

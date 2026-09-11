@@ -10,12 +10,25 @@ import { drop } from '../core/terrace-profile.js';
 export function planBase(planet, layout, stage) {
   const { radius } = planet;
   const nearestCell = (x, z) => { const w = planet.frameToWorld([x, 0, z]); let best = -1, bd = Infinity; for (const ci of planet.clearing.cells) { const c = planet.graph.centers[ci]; const d = (c[0] * radius - w[0]) ** 2 + (c[1] * radius - radius - w[1]) ** 2 + (c[2] * radius - w[2]) ** 2; if (d < bd) { bd = d; best = ci; } } return best; };
-  const islands = layout.islands.filter((i) => i.stage <= stage).map((i) => ({
-    ...i, top: 0, sag: drop(Math.hypot(i.w, i.d) / 2, radius), heading: [0, 1], cell: nearestCell(i.x, i.z),
+  // a forward socket: the lane cell one step past the open mouth, outward; islands anchored there follow it
+  const forwardCell = (() => {
+    const m = planet.clearing.openMouth; if (!m) return -1;
+    let best = -1, bestArc = -Infinity;
+    for (const ci of m.cells) for (const nb of planet.graph.adj[ci]) {
+      if (planet.clearing.cells.has(nb) || m.cells.includes(nb)) continue;
+      const c = planet.graph.centers[nb], arc = Math.acos(Math.max(-1, Math.min(1, c[1] / Math.hypot(c[0], c[1], c[2]))));
+      if (planet.dungeon.tags[nb] !== 0 && arc > bestArc) { bestArc = arc; best = nb; }
+    }
+    return best;
+  })();
+  const frameOf = (ci) => { const c = planet.graph.centers[ci]; const f = planet.worldToFrame([c[0] * radius, c[1] * radius - radius, c[2] * radius]); return [f[0], f[2]]; };
+  const anchored = layout.islands.map((i) => (i.anchor === 'forward' && forwardCell >= 0 ? { ...i, x: frameOf(forwardCell)[0], z: frameOf(forwardCell)[1] } : i));
+  const islands = anchored.filter((i) => i.stage <= stage).map((i) => ({
+    ...i, top: 0, sag: drop(Math.hypot(i.w, i.d) / 2, radius), heading: [0, 1], cell: i.anchor === 'forward' && forwardCell >= 0 ? forwardCell : nearestCell(i.x, i.z),
   }));
   // every island's lattice cell, whether or not its slab is placed yet: the beats need them from the landing on
-  const cells = Object.fromEntries(layout.islands.map((i) => [i.id, nearestCell(i.x, i.z)]));
-  const islandById = new Map(layout.islands.map((i) => [i.id, i]));
+  const cells = Object.fromEntries(anchored.map((i) => [i.id, i.anchor === 'forward' && forwardCell >= 0 ? forwardCell : nearestCell(i.x, i.z)]));
+  const islandById = new Map(anchored.map((i) => [i.id, i]));
   const structures = layout.structures.filter((s) => s.stage <= stage).map((s) => {
     const i = islandById.get(s.island);
     // a hair above the slab so coplanar floors do not z-fight; the rocket stands on natural ground

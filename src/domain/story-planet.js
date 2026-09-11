@@ -85,12 +85,13 @@ export function buildStoryPlanet(recipe, clearing) {
     const tx = dx / h * d, tz = dz / h * d, c = Math.cos(-yaw), s = Math.sin(-yaw);
     return [tx * c + tz * s, len - radius, -tx * s + tz * c];
   };
+  const terraced = clearing.terraces !== false;   // islands level their own plots; the lattice stays natural by default
   return {
     mesh, dungeon, graph, radius, cellSide, cellMetres,
     clearing: { cells, mouths, openMouth: chosen, yaw },
-    padFloor: terraceFloor(0, opts),
+    padFloor: terraced ? terraceFloor(0, opts) : 0,
     arcOfCell: (ci) => arcOfCell[ci],
-    altitudeOf: (vi) => terraceAltitude(vertexArc[vi], opts),
+    altitudeOf: (vi) => (terraced ? terraceAltitude(vertexArc[vi], opts) : 0),
     frameToWorld: (p) => frameToWorld(p, radius, yaw),
     worldToFrame,
   };

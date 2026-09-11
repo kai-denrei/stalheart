@@ -5,17 +5,18 @@ const seq = makeLandingSequence(LANDING_DEFAULTS);
 const T = LANDING_DEFAULTS, touchdown = T.orbit + T.descent;
 assert.equal(seq.touchdown, touchdown);
 assert.equal(seq.duration, touchdown + T.shock + T.settle + T.door + T.isao);
-// orbit: no rocket motion yet, altitude at start
+// orbit is a camera beat: the rocket is already burning and falling when it opens
 const s0 = seq.stateAt(1);
-assert.equal(s0.phase, 'orbit'); assert.equal(s0.altitude, T.startAltitude); assert.equal(s0.plume, 0);
+assert.equal(s0.phase, 'orbit'); assert.ok(s0.altitude < T.startAltitude && s0.altitude > 0, 'already descending'); assert.ok(s0.plume > 0.9, 'thrusters lit from the first frame');
+assert.equal(seq.stateAt(0).plume > 0, true);
 // descent: altitude falls monotonically to zero, plume on
 let prev = Infinity;
-for (let t = T.orbit; t <= touchdown; t += 0.05) { const s = seq.stateAt(t); assert.ok(s.altitude <= prev + 1e-9, `altitude falls at ${t}`); prev = s.altitude; }
+for (let t = 0; t <= touchdown; t += 0.05) { const s = seq.stateAt(t); assert.ok(s.altitude <= prev + 1e-9, `altitude falls at ${t}`); prev = s.altitude; }
 assert.equal(seq.stateAt(touchdown).altitude, 0);
 assert.ok(seq.stateAt(T.orbit + 2).plume > 0.5, 'plume burns during descent');
 assert.equal(seq.stateAt(touchdown + 0.01).plume, 0, 'plume cut at touchdown');
 // legs: deploy starts when altitude reaches deployAltitude and completes before touchdown
-assert.ok(seq.legsStart > T.orbit && seq.legsStart + T.legsDeploy <= touchdown, `legs deploy ${seq.legsStart} finishes before ${touchdown}`);
+assert.ok(seq.legsStart > 0 && seq.legsStart + T.legsDeploy <= touchdown, `legs deploy ${seq.legsStart} finishes before ${touchdown}`);
 assert.ok(Math.abs(seq.stateAt(seq.legsStart).altitude - T.deployAltitude) < 0.5, 'deploy begins at the deploy altitude');
 assert.equal(seq.stateAt(seq.legsStart - 0.01).clips.Legs_Deploy, null);
 assert.equal(seq.stateAt(touchdown).clips.Legs_Deploy, T.legsDeploy, 'deploy clip held at its end');

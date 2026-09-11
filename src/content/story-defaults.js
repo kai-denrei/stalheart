@@ -14,6 +14,7 @@ export const STORY_CLEARING = Object.freeze({
   mouthBand: 1.5,      // cells outside the clearing rim that count as a mouth
   mouthMaxCells: 2,    // the open mouth must fit the armored gate
   mouthReachShare: 0.5, // the open mouth must lead to at least half of the reachable world
+  terraces: false,     // islands level their own plots; the lattice stays natural
   tileMetres: 4,       // Fortification foundation tile
   padTiles: 16,        // 16 x 16 tiles = 64 x 64 m
 });
@@ -22,14 +23,16 @@ export const STORY_CLEARING = Object.freeze({
 export const STORY_SANITY = Object.freeze({ cells: 71314, heart: 8123, cellSide: 0.013274480493795838 });
 
 export const LANDING_DEFAULTS = Object.freeze({
-  orbit: 4, descent: 8, startAltitude: 300, deployAltitude: 40,
-  legsDeploy: 2.4, shock: 2, settle: 2, door: 1.8, isao: 5, dustSeconds: 1.2,
+  orbit: 4, descent: 8, startAltitude: 900, deployAltitude: 40,
+  legsDeploy: 2.4, shock: 2, settle: 2, door: 1.8, isao: 7, dustSeconds: 1.2,
 });
 
 // Story-only cues; the lab merges these with the tank pneumatics from the
 // shared manifest. Same budget fields as audiomanifest.js.
 export const STORY_SOUNDS = Object.freeze({
   rocket_thrust: { file: 'assets/audio/rocket_thrust.mp3', bus: 'tank', gain: 0.9, maxVoices: 1, minInterval: 0, rateJitter: 0 },
+  gate_hydraulics: { file: 'assets/audio/gate_hydraulics.mp3', bus: 'ui', gain: 0.7, maxVoices: 1, minInterval: 0.5, rateJitter: 0.02 },
+  gate_slam: { file: 'assets/audio/gate_slam.mp3', bus: 'ui', gain: 0.8, maxVoices: 1, minInterval: 0.5, rateJitter: 0.03 },
 });
 
 // Six engines under the skirt, each with its own cadence, so the cluster

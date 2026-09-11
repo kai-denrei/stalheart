@@ -5,7 +5,8 @@
 import * as THREE from '../../vendor/three.module.js';
 import { buildWorld } from '../domain/world-recipe.js';
 import { planBase } from '../domain/base-plan.js';
-import { STORY_RECIPE, STORY_CLEARING } from '../content/story-defaults.js';
+import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS } from '../content/story-defaults.js';
+export { STORY_SOUNDS };
 import { ISLANDS, STRUCTURES, KIT, STAGES } from '../content/base-layout.js';
 import { createStoryBase } from '../fx/story-base.js';
 import { makeStoryBeats } from '../domain/story-beats.js';
@@ -22,7 +23,7 @@ export function readStoryQuery(search) {
   };
 }
 
-export function buildGameWorld({ world, params, stage, scene }) {
+export function buildGameWorld({ world, params, stage, scene, sfx = null }) {
   const built = buildWorld({ world, params, story: { recipe: STORY_RECIPE, clearing: STORY_CLEARING } });
   if (!built.planet) return { ...built, base: null };
   const { planet } = built;
@@ -32,7 +33,7 @@ export function buildGameWorld({ world, params, stage, scene }) {
   // walls are rock to the pathfinder and the tank alike; the gate's cell stays open and the gate opens for the tank
   for (const w of plan.walls) if (w.cell >= 0) built.dungeon.tags[w.cell] = BLOCKED;
   // the game prints the real Rotor; the static model stays a lab thing
-  const base = createStoryBase(scene, { plan, placer, metres: 1 / planet.radius, kit: KIT, skip: ['rotor'] });
+  const base = createStoryBase(scene, { plan, placer, metres: 1 / planet.radius, kit: KIT, skip: ['rotor'], sfx });
   // story state for the controller: floor sockets towers may mount on, Isao's home cell, and the scripted beats
   const story = stage >= 1 ? {
     sockets: new Set([plan.cells.rotor]), home: plan.cells.landing, socketLift: 0,

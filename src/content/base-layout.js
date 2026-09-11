@@ -16,7 +16,7 @@ export const STAGES = Object.freeze([
 export const ISLANDS = Object.freeze([
   { id: 'landing', w: 16, d: 16, x: 0, z: -60, stage: 2 },
   { id: 'solar', w: 20, d: 20, x: 44, z: -60, stage: 3 },
-  { id: 'rotor', w: 8, d: 8, x: -24, z: -96, stage: 3 },
+  { id: 'rotor', w: 8, d: 8, x: 0, z: -170, stage: 3, anchor: 'forward' },   // one cell past the gate, in the lane
   { id: 'hugin', w: 40, d: 40, x: -52, z: -40, stage: 5 },
   { id: 'stalheart', w: 48, d: 56, x: 0, z: 0, stage: 6 },
   { id: 'assembly', w: 20, d: 32, x: 56, z: 6, stage: 7 },

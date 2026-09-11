@@ -42,7 +42,8 @@ assert.equal(q.clearing.yaw, p.clearing.yaw);
 let pole = 0; for (let i = 1; i < p.mesh.vertices.length; i++) if (p.mesh.vertices[i][1] > p.mesh.vertices[pole][1]) pole = i;
 const poleArc = Math.acos(p.mesh.vertices[pole][1]) * p.radius;
 assert.ok(poleArc < clearing.padRadius, 'highest vertex is on the pad');
-assert.ok(Math.abs(p.altitudeOf(pole) - (drop(poleArc, p.radius) + p.padFloor)) < 1e-6, 'pad vertex is lifted onto the pad plane');
+assert.equal(p.altitudeOf(pole), 0, 'natural lattice: no terrace cut by default');
+{ const t = buildStoryPlanet(small, { ...clearing, terraces: true }); assert.ok(Math.abs(t.altitudeOf(pole) - (drop(poleArc, t.radius) + t.padFloor)) < 1e-6, 'terraces lift the pad vertex when asked for'); }
 assert.equal(p.altitudeOf(p.mesh.vertices.findIndex(v => v[1] < -0.9)), 0, 'south pole untouched');
 // frame mapping: origin at the pole, -Z arc lands on the sphere at radius
 const w = frameToWorld([0, 0, 0], p.radius, p.clearing.yaw);
