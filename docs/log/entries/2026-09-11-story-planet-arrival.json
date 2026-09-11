@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "id": "2026-09-11-story-planet-arrival",
+  "date": "2026-09-11T04:05:00+00:00",
+  "type": "decision",
+  "status": "accepted",
+  "title": "Story opening: larger planet on the same kernel, terraced polar clearing, SH02 arrival lab",
+  "context": "The owner wants a better initial story: the rocket lands on a larger planet, only Isao is there, the base grows slowly on 4 m foundations, and defenses emerge later. Planning questions settled: substrate, terrain approach, full base size, player role, and the SH02 landing with a borrowed plume effect. The owner asked for a localhost version before further design sections.",
+  "outcome": "Decisions: a new larger sphere on the pinned grid kernel (16,000 points, 71,314 cells, radius 753 m at 10 m per cell, lane density matching the defense map) rather than a flat world or a separate flat stage; a medium planet with 2 m terraces rather than a kilometre-scale planet with wide lanes; a full base the size of the Astro yard (about 240 x 160 m, eight terrace levels) rather than karyoku's 400 x 304 m; the opening encounter as Isao prints a Rotor the player aims by hand, an armored gate closes the natural entry and weak enemies pile up outside. Built: content/core/domain modules for the recipe, terrace profile, clearing with one open lane mouth and the arrival timeline, all Node-tested; the SH02 pinned by checksum at upstream d39f3a78e; a labs.html#story tab rendering the lattice, tiled pad, rocket, ported MIT plume, dust, scorch and Isao at 2.5 m; a --story browser acceptance with screenshots. Planet generation takes about 4 s in the browser. Deferred: sound, chunked rendering, raymarch governor, kit retaining edges/ramps/piers, the encounter, construction and emergence. The fiction assumption (a new natural world; Stålheart is the machine) is recorded in the spec and awaits owner confirmation.",
+  "alternatives": [
+    "Give up the sphere for flat terrain: rejected, retires the shell fiction, pole heart, antipode relay and sphere-arc distances.",
+    "Separate flat story stage: rejected, story and defense would run on two worlds.",
+    "Large 2.6-4.8 km planet with 35-64 m cells: rejected for now, lane width and enemy scale no longer match the defense game and lane mouths need walls to narrow them.",
+    "Karyoku-size base: rejected on the medium planet, it stacks 22 terrace levels and 43 m of drop."
+  ],
+  "evidence": [
+    "scratch kernel timing: n=16000 relax80=2.0 s, dungeon 384 rooms 1.6 s, total 4.0 s on the M4",
+    "test/story-planet.mjs: 71,314 cells, heart 8123, 18 lane mouths, one open, yaw 1.482",
+    "test/landing-sequence.mjs: legs deploy 9.08-11.48 s before touchdown at 12 s; skip equals end state",
+    "node scripts/browser-test.mjs --story: PASS story-arrival, story-descent, story-touchdown, story-isao-out; artifacts/browser/story-*.png",
+    "npm run assets:check verifies docs/sh-rocket-assets.lock.json sha256 9c777de6...",
+    "docs/superpowers/specs/2026-09-11-story-planet-arrival-design.md and plans/2026-09-11-story-planet-arrival.md"
+  ],
+  "supersedes": []
+}

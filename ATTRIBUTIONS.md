@@ -76,3 +76,11 @@ Owner-provided `freesound_community-quake-and-break-99034.mp3`, retained unchang
 `assets/models/ordnance/olive-shell.glb` and `src/content/shell-geometry.js` derive from the pinned SentryTowers_A6 DART asset credited above: body and band only, fin/nozzle assembly removed, olive recolour. See `docs/shell-assets.lock.json` and `scripts/derive-shell.mjs`.
 
 `assets/audio/sentry_beam_sustain.wav` derives from the existing `Tower_Laser_beam-05.wav` source, using a sustain-only crossfade loop. It retains the source's asset terms; source and derived hashes are in `docs/beam-audio.lock.json`.
+
+## SH02 rocket — jelaludo
+
+Standalone SH02 vehicle with its five authored clips from [SentryTowers_A6](https://github.com/jelaludo/SentryTowers_A6/tree/d39f3a78e7d7022c532d8428dd4e1bcea4fb54e2/assets/sh-rocket), revision `d39f3a78e7d7022c532d8428dd4e1bcea4fb54e2`. Models and animations by jelaludo, reused with attribution under the upstream `ASSET-LICENSE.md`. Pinned checksum: `docs/sh-rocket-assets.lock.json`. The story lab plays the clips as authored and adds descent, effects and Isao at runtime.
+
+## Launch plume shader — pulkitxm/claude-directory
+
+`src/fx/launch-plume.js` ports the raymarched plume from [pulkitxm/claude-directory](https://github.com/pulkitxm/claude-directory) (`shaders/launch-shader`), MIT, as studied in the local onkochishin atelier (`atelier/launch`). The march loop and its constants are kept; the ray setup is rewritten for a camera-facing quad in a Three.js scene and an intensity uniform is added.

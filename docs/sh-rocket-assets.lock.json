@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/jelaludo/SentryTowers_A6",
+  "revision": "d39f3a78e7d7022c532d8428dd4e1bcea4fb54e2",
+  "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/d39f3a78e7d7022c532d8428dd4e1bcea4fb54e2/",
+  "credit": "Model and animations by jelaludo (https://jelaludo.github.io/SentryTowers_A6/), reused with attribution under the upstream ASSET-LICENSE.md",
+  "files": [
+    {
+      "path": "assets/models/story/sh_rocket.glb",
+      "sourcePath": "assets/sh-rocket/sh_rocket.glb",
+      "sha256": "9c777de6f9f766539915fa1132bbc72e0a5383aae369b7e5f416545c74ce3c33",
+      "bytes": 1587456,
+      "clips": ["Legs_Deploy", "Legs_Retract", "Landing_Shock", "Top_Door_Open", "Top_Door_Close"]
+    }
+  ]
+}

@@ -1,8 +1,10 @@
 # Stalheart current state
 
-Updated 2026-09-08. Owner: the Stalheart development project; this repo is now authoritative for the game.
+Updated 2026-09-10. Owner: the Stalheart development project; this repo is now authoritative for the game.
 
 ## Working baseline
+
+**Open playtest issue:** the owner reports that both the Sniper range and first-map Sentry Control are not yet working satisfactorily. They remain unfinished experiments; automated checks are not playability acceptance. Specific current failures still need reproduction and fixes. See `2026-09-08-sniper-modes-playtest-unresolved`.
 
 - Foundation v1: pure core/domain/content layers with dependency guards; shared immutable FX packages (base `stalheart-fx-7`); local per-subject review/apply/undo, project working copies, compact change summaries, JSON backups, explicit draft preview and deterministic promotion; impact and sound labs use the game's runtime builders/mixer.
 
@@ -25,6 +27,8 @@ The default FPS readout expands into CPU/GPU totals and estimated rendering work
 Sinkhole is a separate genre in the Portal Lab (`labs.html?genre=sinkhole#portal`): the supplied quake sound, fracture, an irregular textured bowl with a gentler approach into darkness, clipped fissures, settling dust and debris. The pinned Monolith Rift import uses the existing Three r160 with zero monoliths and no kinetic warp. The preview now wraps around a curved planet and emits bounded creature waves, with independent crack width/length, wall-clearance fixtures and TRON/Battlezone palette comparisons. Normal gameplay now uses the shared sinkhole effect, wall clearance and emerging creatures; breaches now open once and seal only after orbital strikes or exhausted waves, leaving a shared instanced rubble pile until restart. Airborne debris is smaller; new opening groups receive a skippable planet zoom when the camera is free. Base 7 presets include breach settings and the Portal Lab has working copy/review/apply and copy feedback. See [SINKHOLE.md](SINKHOLE.md).
 
 Astro now defaults to a station diorama: nine mixed station crew with authored walk/run/point/kneel clips, footprint-aware routes between MÖRK, Stålheart, Hugin and the SKYWARD array, camera focus controls and 0–60 crew. FPS/frame-time, whole-frame rendering counters and per-group mesh budgets support visibility/animation/shadow/bloom comparisons with a local baseline. The site also contains assembly, cargo, solar and open-reactor areas linked by instanced Fortification foundations. Press 1 for free camera and 3 to drive MÖRK with a chase view; WASD/arrows steer. New scene controls travel in the shared scene link. See [ASTRO.md](ASTRO.md).
+
+The story opening now has a planet and an arrival: `labs.html#story` generates a 753 m, 71,314-cell story planet on the pinned kernel with a polar clearing, terraces, a tiled pad and one open lane mouth, and plays the SH02 landing with plume, dust, door and Isao rising out. The opening encounter, construction and emergence are designed but not built. See [STORY.md](STORY.md).
 
 Sentry Control is an opt-in actual-game experiment at `index.html?sentryPilot=1#td`: the first TD map and waves, six manually controlled wall posts, shared combat and effects, parked tank, and memory-only practice records. The separate Sniper bench remains available. See [SENTRY-CONTROL.md](SENTRY-CONTROL.md).
 
@@ -53,4 +57,4 @@ The original source repo remains a research/archive checkout. Its broad service-
 
 ## Evidence
 
-Run `npm test`, `npm run check`, `npm run build`, `npm run test:browser`, and `node scripts/browser-test.mjs --dist`. See the migration log for measured outcomes and known limits. Browser artifacts are in `artifacts/`; the earlier research audit is preserved under `docs/audit-2026-09-07/` as baseline history, not a live description of the migrated code.
+Run `npm test`, `npm run check`, `npm run build`, `npm run test:browser`, and `node scripts/browser-test.mjs --dist`. `npm run check` includes the architecture guard, which now also enforces the `src/td-tab.js` line budget and the frozen top-level module list in `docs/architecture-budget.json`; see `2026-09-10-architecture-ratchet-and-project-skills`. See the migration log for measured outcomes and known limits. Browser artifacts are in `artifacts/`; the earlier research audit is preserved under `docs/audit-2026-09-07/` as baseline history, not a live description of the migrated code.

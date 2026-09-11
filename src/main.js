@@ -28,6 +28,7 @@ const routes = {
   beam: () => import('./beam-tab.js').then(m => m.initBeamTab),
   metal: () => import('./metal-tab.js').then(m => m.initMetalTab),
   astro: () => import('./astro-tab.js').then(m => m.initAstroTab),
+  story: () => import('./labs/story-tab.js').then(m => m.initStoryTab),
   sentry: () => import('./sentry-tab.js').then(m => m.initSentryTab),
   sniper: () => import('./sniper-tab.js').then(m => m.initSniperTab),
   portal: () => import('./portal-tab.js').then(m => m.initPortalTab),

@@ -216,6 +216,25 @@ try{
  await go('astro-shared-settings','labs.html?sw=0&acceptance=1&yard_count=6&yard_antenna=0&yard_gait=Point#astro');await until('window.__stalheartAstroTest?.state().ready',60000);await delay(300);const shared=await evaluate('window.__stalheartAstroTest.state()');assert.equal(shared.crew.length,6);assert(shared.crew.every(c=>c.clip==='Point'));assert.equal(shared.groups.find(g=>g.id==='antenna').visible,false);await finish();
  await evaluate('window.__stalheartAstroTest.dispose()');const stopped=await evaluate('window.__stalheartAstroTest.state().time');await delay(200);assert.equal(await evaluate('window.__stalheartAstroTest.state().time'),stopped);assert.equal(await evaluate('window.__stalheartAstroTest.state().crew.length'),0);
 
+ } else if(args.includes('--story')) {
+ await go('story-arrival','labs.html?sw=0&acceptance=1#story');
+ await until('window.__stalheartStoryTest?.state().ready',90000);await delay(800);
+ const rest=await evaluate('window.__stalheartStoryTest.state()');
+ assert.equal(rest.cells,71314);assert.equal(rest.openMouths,1);assert(rest.mouths>=6,'lane mouths found');assert.deepEqual(rest.errors,[]);
+ assert.equal(rest.phase,'done');assert.equal(rest.landing.clips.Top_Door_Open,1.8,'door held open at rest');assert(rest.landing.isao?.visible,'Isao is out at rest');
+ await until('window.__stalheartStoryTest.state().tiles>200',20000);
+ assert(rest.counts.floorTriangles>20000&&rest.counts.rockTriangles>20000&&rest.counts.edgeSegments>100000,'lattice geometry built');
+ await finish();
+ await evaluate('window.__stalheartStoryTest.seek(8)');await delay(300);current='story-descent';await finish();
+ const descent=await evaluate('window.__stalheartStoryTest.state()');
+ assert.equal(descent.phase,'descent');assert(descent.landing.altitude>0&&descent.landing.altitude<300,'rocket descending');assert.equal(descent.landing.clips.Landing_Shock,null);
+ await evaluate('window.__stalheartStoryTest.seek(12.6)');await delay(300);current='story-touchdown';await finish();
+ const down=await evaluate('window.__stalheartStoryTest.state()');
+ assert.equal(down.landing.altitude,0);assert(down.landing.clips.Landing_Shock>0.5,'shock clip running');assert(down.landing.scorch,'scorch under the bells');assert.equal(down.landing.clips.Legs_Deploy,null,'deploy released to the shock clip');
+ await evaluate('window.__stalheartStoryTest.land()');await delay(1500);const live=await evaluate('window.__stalheartStoryTest.state()');assert(live.playing&&live.t>1,'landing plays in real time');
+ await evaluate('window.__stalheartStoryTest.skip()');await delay(300);const done=await evaluate('window.__stalheartStoryTest.state()');
+ assert.equal(done.phase,'done');assert.equal(done.landing.isao.visible,true);current='story-isao-out';await finish();
+ await evaluate('window.__stalheartStoryTest.dispose()');
  } else if(args.includes('--sniper')) {
  await go('sniper-showcase','labs.html?sw=0&acceptance=1&swaySlow=0&swayFast=0#sniper');
  await until('window.__stalheartSniperTest?.state().ready');
