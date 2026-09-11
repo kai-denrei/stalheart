@@ -73,7 +73,7 @@ import { burn, sweepAdvance, wallBite as wallBiteFor } from './beamburn.js';
 import { arcPoint, projectToArc, toeForCrossing, crossingForToe } from './arc.js';
 import { MINE_TUNE, makeField, layMine, armMines, restock, mineAt,
   inFan, trip, chain, nextChained, minePolar } from './mines.js';
-import { shotOf, muzzleOf, impactOf, tuneFor } from './sentryfx.js';
+import { shotOf, muzzleOf, impactOf, tuneFor, resolveImpactColors } from './sentryfx.js'; import { makeImpactBurst, orientImpact } from './impactfx.js';   // the package's muzzle recipe is the one master setting
 import { makeTracerMesh, makeLightningMesh, makeSeekerMesh, aimSeeker,
   LANCE_LOOK as SHOT_LANCE_LOOK, THROW_LOOK as SHOT_THROW_LOOK } from './shotfx.js';
 import { SHIELD_TUNE, SHIELD_KNOBS, makeShield, charge as chargeShield,
@@ -10230,13 +10230,13 @@ export function initTdTab(root) {
       // the gun rides back on every round, and the flash leaves the barrel
       tw.recoil = 1;
       if (tw.obj.userData.muzzles && tw.obj.userData.muzzles.length) {
-        const raw0 = sub3(target.pos, muzzle);
-        const f0 = norm3(raw0);
-        const fl = makeDotBurst(0xffe6a8, [f0[0], f0[1], f0[2]], 12);
-        fl.scale.setScalar(cellSide * 3.2);
-        fl.position.set(muzzle[0], muzzle[1], muzzle[2]);
-        scene.add(fl);
-        debris.push(fl);   // the board's own transient list, ticked and reaped
+        // THE SAME MUZZLE AS THE WORKSHOP: the package's recipe, tune and colours, authored in lab metres
+        // and scaled onto the sphere. One master setting for every mode; no spark reads as a bullet.
+        const f0 = norm3(sub3(target.pos, muzzle)), mz = muzzleOf(tw.def);
+        const fl = makeImpactBurst(mz.recipe, tuneFor(mz), resolveImpactColors(mz, { weapon: shotOf(tw.def).beamColor ?? tw.def.color }), tw.id, mz.size);
+        orientImpact(fl, muzzle, f0); fl.scale.multiplyScalar(cellSide / METRES_PER_CELL);
+        fl.geometry = { dispose: () => { for (const c of fl.children) disposeObj(c); } };   // the reaper disposes a geometry; a burst is a group of them
+        scene.add(fl); debris.push(fl);   // the board's own transient list, ticked and reaped
       }
       const raw = sub3(target.pos, tp);
       const flat = norm3(sub3(raw, scale3(norm3(tp), dot3(raw, norm3(tp)))));

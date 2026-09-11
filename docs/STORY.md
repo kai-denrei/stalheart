@@ -24,6 +24,8 @@ Validation: `test/terrace-profile.mjs`, `test/story-planet.mjs`, `test/landing-s
 
 **Stages from the menu.** In the story, the burger shows a stage strip under the tab bar: 0 to 7 plus the arrival cinematic, each a click away, no URL editing.
 
+**One muzzle for every mode.** The game now draws a sentry's muzzle flash from the package's muzzle recipe, tune and colours, exactly as the Sentry / Impact lab does, scaled from lab metres onto the sphere; the old dot burst that threw sparks three cells wide is gone. In the lab, round projectiles fly nose first and their calibre follows the tracer size squared, so a Rotor round is under half a Needle's.
+
 **Rounds stop at rock.** A sentry round's range is capped at the first rock it would fly into (its own parapet excepted), and it lands with a ring and a spark burst there instead of passing through.
 
 **Encounter, the opening beats.** Isao's faces play over the landing in the game too: "Rough landing!" angry, then "So much to build!" delighted, as briefs. In the lab the camera closes on his face as he clears the rim, his CRT goes red then green, and a comms line shows the words. After the Rotor stands on a gated world: a tremor contact pulses on the radar far out past the tunnel, with Isao's line; the ground opens at the fodder cell with the breach effect and the game's own orbit shot; the first easy enemies emerge from it and walk up the lane; only when one reaches the closed gate does Isao say the sentries are not ready for auto-targeting and the manual override hands the Rotor over. Without a gate the override comes straight after the print.

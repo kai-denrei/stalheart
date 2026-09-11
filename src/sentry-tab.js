@@ -617,7 +617,8 @@ export function initSentryTab(root) {
       return;
     }
     const mesh = kind==='lob'?makeOrdnanceShell(.65):makeBulletCloud({ body: look.walkerHi, hi: 0xffffff });
-    if(kind!=='lob')mesh.scale.setScalar(0.09 * fxp.shot.projPx / 4);
+    // CALIBRE FOLLOWS THE TRACER SIZE, squared: a Rotor round (6 px) is under half a Needle's (9 px). The bullet's nose is +Y; it flies nose first.
+    if(kind!=='lob'){mesh.scale.setScalar(0.09 * (fxp.shot.projPx / 9) ** 2);mesh.userData.nose=new THREE.Vector3(0,1,0);}else mesh.userData.nose=new THREE.Vector3(0,0,1);
     mesh.position.copy(from);
     scene.add(mesh);
     // it flies to the boresight POINT — so an aim that is off puts the round
@@ -686,7 +687,7 @@ export function initSentryTab(root) {
         tr.mesh.position.copy(tr.pos);
         tr.mesh.position.y += 4 * u * (1 - u) * tr.lob.h;
       }
-      if(tr.mesh.userData.ordnance){const direction=tr.mesh.position.clone().sub(previous).normalize();if(direction.lengthSq()>0)tr.mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),direction);}
+      if(tr.mesh.userData.nose){const direction=tr.mesh.position.clone().sub(previous).normalize();if(direction.lengthSq()>0)tr.mesh.quaternion.setFromUnitVectors(tr.mesh.userData.nose,direction);}
       if (tr.left > 1e-4) continue;
       // DID IT LAND ON IT? The tracer left along the BARREL, and the barrel is
       // only as close as the drive had got it — so a round fired mid-slew
