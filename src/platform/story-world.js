@@ -35,9 +35,31 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null }) {
   // the game prints the real Rotor; the static model stays a lab thing
   const base = createStoryBase(scene, { plan, placer, metres: 1 / planet.radius, kit: KIT, skip: ['rotor'], sfx });
   // story state for the controller: floor sockets towers may mount on, Isao's home cell, and the scripted beats
+  // the lane end is the story's spawn: the optic faces it, and the fodder comes from it once a gate stands
+  if (plan.cells.fodder >= 0) built.dungeon.spawn = plan.cells.fodder;
   const story = stage >= 1 ? {
-    sockets: new Set([plan.cells.rotor]), home: plan.cells.landing, socketLift: 0,
-    beats: makeStoryBeats({ socket: plan.cells.rotor, rotorDelay: 2.5, key: 'rotor' }),
+    sockets: new Set(), home: plan.cells.landing, socketLift: 0,
+    beats: makeStoryBeats({ socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, rotorDelay: 2.5, key: 'rotor' }),
+    // the closed gate's cell is impassable to enemies; the tank opens it
+    sealed: (ci) => plan.gate !== null && ci === plan.gate.cell && !base.gate().open,
+    inside: (ci) => planet.clearing.cells.has(ci),
   } : null;
   return { ...built, base, plan, story };
+}
+
+// Take-control shot: three quarters of a turn around the sentry, settling
+// behind it and looking down the lane. Positions are host units on the
+// unit sphere; the pose is written into the host's camera goal.
+export function takeControlPose(centre, normal, lane, cellSide, wallHeight) {
+  const c = new THREE.Vector3(...centre).multiplyScalar(1 + wallHeight), n = new THREE.Vector3(...normal).normalize();
+  const toLane = new THREE.Vector3(...lane).sub(new THREE.Vector3(...centre)); toLane.sub(n.clone().multiplyScalar(toLane.dot(n))).normalize();
+  const side = new THREE.Vector3().crossVectors(n, toLane).normalize();
+  const radius = cellSide * 2.1, height = cellSide * 0.9, tmp = new THREE.Matrix4();
+  return (u, goal) => {
+    const e = u * u * (3 - 2 * u), theta = Math.PI * 0.25 + e * Math.PI * 0.75;   // from beside the lane round to behind
+    const r = radius * (1.15 - 0.35 * e), h = height * (1.2 - 0.4 * e);
+    goal.pos.copy(c).addScaledVector(n, h).addScaledVector(toLane, Math.cos(theta) * r).addScaledVector(side, Math.sin(theta) * r);
+    const look = c.clone().addScaledVector(n, cellSide * 0.35).addScaledVector(toLane, e * cellSide * 1.5);
+    tmp.lookAt(goal.pos, look, n); goal.quat.setFromRotationMatrix(tmp);
+  };
 }

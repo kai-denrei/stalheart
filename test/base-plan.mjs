@@ -11,7 +11,6 @@ for (const a of ISLANDS) {
   for (const b of ISLANDS) if (a !== b) assert.ok(Math.abs(a.x - b.x) >= (a.w + b.w) / 2 + 4 || Math.abs(a.z - b.z) >= (a.d + b.d) / 2 + 4, `${a.id} overlaps ${b.id}`);
   if (!a.anchor) assert.ok(Math.hypot(Math.abs(a.x) + a.w / 2, Math.abs(a.z) + a.d / 2) < STORY_CLEARING.radiusMetres - 8, `${a.id} inside the clearing`);
 }
-for (const s of STRUCTURES) assert.ok(ISLANDS.some((i) => i.id === s.island), `${s.id} has an island`);
 // stages are monotonic: everything at stage n is still there at n + 1
 let prev = planBase(planet, layout, 0);
 assert.equal(prev.islands.length, 0); assert.equal(prev.structures.length, 0); assert.equal(prev.walls.length, 0); assert.equal(prev.gate, null);
@@ -24,6 +23,7 @@ const one = planBase(planet, layout, 1);
 assert.deepEqual(one.structures.map((s) => s.id), ['sh02']); assert.equal(one.islands.length, 0, 'rocket lands on natural ground');
 const full = planBase(planet, layout, 7);
 assert.equal(full.islands.length, ISLANDS.length); assert.equal(full.structures.length, STRUCTURES.length);
+for (const s of STRUCTURES) if (s.island) assert.ok(ISLANDS.some((i) => i.id === s.island), `${s.id} has an island`);
 assert.equal(full.walls.length, KIT.wallsPerSide * 2);
 // islands are tangent at their centre; on the real planet the corner sag stays under the 1.2 m skirt
 for (const i of full.islands) assert.equal(i.top, 0);
@@ -37,10 +37,16 @@ assert.ok(full.gate.heading[1] > 0.9, 'gate faces the pole');
 const rg = Math.hypot(full.gate.x, full.gate.z);
 for (const w of full.walls) { assert.ok(Math.abs(Math.hypot(w.x, w.z) - (rg - KIT.wallInset)) < 0.5, 'wall on the rim'); assert.ok(Math.hypot(w.x - full.gate.x, w.z - full.gate.z) > KIT.gatePlot[0] / 2, 'wall clears the gate'); }
 // structures stand on their island top with the island's frame
-for (const s of full.structures) if (s.id !== 'sh02') assert.ok(s.y > 0 && s.y < 0.1, `${s.id} rides a hair above its slab`);
+for (const s of full.structures) if (s.id !== 'sh02' && s.id !== 'rotor') assert.ok(s.y > 0 && s.y < 0.1, `${s.id} rides a hair above its slab`);
 assert.equal(one.structures[0].y, 0, 'the rocket stands on natural ground');
 // walls map to distinct lattice cells that are open floor today; the gate keeps its own cell
 { const cells = full.walls.map((w) => w.cell).filter((c) => c >= 0); assert.ok(cells.length >= 2 && new Set(cells).size >= 2, 'walls block cells on both sides'); for (const c of cells) assert.notEqual(planet.dungeon.tags[c], BLOCKED, 'wall stands on floor'); assert.ok(full.gate.cell >= 0 && !cells.includes(full.gate.cell), 'gate cell is not a wall cell'); assert.ok(full.gate.openRadius > 10); }
-// the Rotor's socket is the lane cell one step past the gate: outside the clearing, touching the mouth
-{ const rc = full.cells.rotor; assert.ok(rc >= 0 && !planet.clearing.cells.has(rc), 'rotor socket outside the clearing'); assert.ok(mouth.cells.some((ci) => planet.graph.adj[ci].includes(rc)), 'rotor socket touches the mouth'); assert.ok(planet.arcOfCell(rc) > planet.arcOfCell(mouth.cells[0]) - 1e-9, 'rotor socket is outward of the mouth'); const ri = full.islands.find((i) => i.id === 'rotor'); assert.equal(ri.cell, rc); }
+// the Rotor stands on the wall beside the tunnel mouth: a rock cell touching the forward lane cell, outside the clearing
+{ const fc = full.cells.forward, rc = full.cells.rotor, fd = full.cells.fodder;
+  assert.ok(fc >= 0 && !planet.clearing.cells.has(fc) && mouth.cells.some((ci) => planet.graph.adj[ci].includes(fc)), 'forward lane cell touches the mouth');
+  assert.ok(rc >= 0 && planet.dungeon.tags[rc] === BLOCKED, 'rotor cell is rock (high ground)');
+  assert.ok(planet.graph.adj[fc].includes(rc), 'rotor wall touches the forward lane cell');
+  assert.ok(fd >= 0 && fd !== fc && planet.dungeon.tags[fd] !== BLOCKED && planet.arcOfCell(fd) > planet.arcOfCell(fc), 'fodder cell is open ground farther down the lane');
+  const rs = full.structures.find((s) => s.id === 'rotor'); assert.equal(rs.cell, rc); assert.equal(rs.y, KIT.wallMetres);
+  assert.ok(!full.islands.some((i) => i.id === 'rotor'), 'no slab on the wall'); }
 console.log(`Base plan: ${full.islands.length} islands, ${full.structures.length} structures, ${full.walls.length} walls, gate at ${full.gate.x.toFixed(0)},${full.gate.z.toFixed(0)}.`);

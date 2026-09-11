@@ -41,7 +41,7 @@ import { storage as localStorage } from './storage.js';
 import * as THREE from '../vendor/three.module.js';
 import GUI from '../vendor/lil-gui.esm.js';
 import { bfsDist, BLOCKED, PATH, ROOM } from './dungeon.js';
-import { buildGameWorld, readStoryQuery, STORY_SOUNDS } from './platform/story-world.js';
+import { buildGameWorld, readStoryQuery, STORY_SOUNDS, takeControlPose } from './platform/story-world.js';
 import { compileRail } from './cine/rail.js';
 import { SCRIPTS } from './cine/scripts.js';
 import { cuesBetween } from './cine/sound.js';
@@ -116,7 +116,7 @@ import { makeAudio } from './audio.js';
 import { DEATH_KEYS } from './audiomanifest.js';
 
 export function initTdTab(root) {
-  const pilotMode = new URLSearchParams(location.search).get('sentryPilot') === '1';
+  let pilotMode = new URLSearchParams(location.search).get('sentryPilot') === '1';   // the story enters it at runtime
   let pilot = null;
   let pilotPosts = [], pilotPost = 0;
   const pilotMounts = [];
@@ -5627,7 +5627,7 @@ export function initTdTab(root) {
       const nm = (INTROS.find((iv) => iv.type === e.type)?.label || e.type).toLowerCase();
       return `<span class="nx-chip" style="color:${tint}">${mark} ${nm} ×${e.count}</span>`;
     }).join('');
-    const frozen = buildFrozen() || shotId() === 'reveal';
+    if (storyMode) { nextEl.classList.add('hidden'); return; } const frozen = buildFrozen() || shotId() === 'reveal';   // the story world has no wave clock to count down
     let when;
     if (frozen) when = 'ready · leave BUILD to engage';
     else if (waveActive && !enemies.every((e) => !e.alive)) {
@@ -5720,8 +5720,8 @@ export function initTdTab(root) {
     // are placed, so orderTower's own spend nets to zero and every other
     // rule (the queue, the travel, the print clock) applies unchanged.
     queueMicrotask(() => {
-      eco.addBiomass(starterTower().cost * 2);
-      for (const ci of garrisonSites(2)) orderTower(starterTower().key, ci, { quiet: true });
+      if (!storyMode) eco.addBiomass(starterTower().cost * 2);   // the story's first print is Isao's Rotor on the wall, nothing before it
+      if (!storyMode) for (const ci of garrisonSites(2)) orderTower(starterTower().key, ci, { quiet: true });
       spawnIsao();   // on shift from the first second, order or no order
     });
     hackedUnlocks = 0; hackedRound = false; syncHackBtn();
@@ -6428,7 +6428,7 @@ export function initTdTab(root) {
         e.cur = e.next;
         // heart-seeking: drawn HARD toward the heart — only a sliver of
         // wobble left so the streams braid but visibly converge
-        const exits = openNeighbors(e.cur);
+        const exits = openNeighbors(e.cur).filter((c) => !story?.sealed(c));   // a closed story gate is a wall to them
         // RESCUE: a survivor standing in the lane pulls the horde off it.
         // A short LOCAL override of the heart-seeking choice, deliberately
         // not a second BFS field — the stranded stand in the flow the horde
@@ -12845,7 +12845,7 @@ export function initTdTab(root) {
   if (Number.isFinite(pointsOverride)) params.points = Math.min(16000, Math.max(150, pointsOverride));
   const seedOverride = parseInt(urlParams.get('seed') || '', 10);
   if (Number.isFinite(seedOverride)) params.seed = seedOverride >>> 0; const storyQuery = readStoryQuery(location.search), threatMult = storyQuery.threat, storyMode = storyQuery.world === 'story';   // tabula rasa past the landing: no old heart, waves, portals, camp or yard
-  const storyApi = { order: (key, ci) => orderTower(key, ci, { quiet: true }), grant: (n) => { if (n > 0) eco.addBiomass(n, { category: 'grant' }); }, built: (ci) => towerByCell.has(ci), cost: (key) => TOWER_BY_KEY[key]?.cost ?? 0, isao: () => !!isao };
+  const storyApi = { order: (key, ci) => orderTower(key, ci, { quiet: true }), grant: (n) => { if (n > 0) eco.addBiomass(n, { category: 'grant' }); }, built: (ci) => towerByCell.has(ci), cost: (key) => TOWER_BY_KEY[key]?.cost ?? 0, isao: () => !!isao, enemies: () => enemies.filter((e) => e.alive).length, spawn: (type, ci) => { spawnQueue.push({ type, sp: { ci, alive: true, obj: new THREE.Group() }, at: spawnClock }); }, pilot: (ci, laneCi) => { enterPilot([ci]); startShot({ id: 'takeControl', dur: 3.2, poseAt: takeControlPose(graph.centers[ci], graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight), onEnd: () => { setView('bastion'); snapCamera(); } }); } };
   const simParam = urlParams.get('sim');
   if (simParam) {
     simStyle = simParam;
@@ -17463,7 +17463,7 @@ export function initTdTab(root) {
     window.__stalheartTest = {
       state: () => ({ shot:shotId(),breachRubble:gameBreaches.rubbleState(),breaches:gameBreaches.state(),queued:spawnQueue.length,wallCount:dungeon.tags.filter(tag=>tag===BLOCKED).length,emerging:enemies.filter(e=>e.alive&&e.emergeAge<1.2).length,round, wave, runGen: runContext.generation, heart: heartHP, hulls: playerHP,
         biomass: eco.biomass, towers: towers.length, won: player.won, paused,
-        roster: ROSTER.id, mission: missionOn, buildMode,
+        roster: ROSTER.id, mission: missionOn, buildMode, story: story?.beats.state() ?? null, towerCells: towers.map((t) => [t.key, t.ci]), insideEnemies: story ? enemies.filter((e) => e.alive && story.inside(e.cur)).length : 0,
         playerAsset: playerMesh?.userData.asset || params.creature,
         playerAssetReady: !playerMesh?.userData.loading,
         playerModelStats: playerMesh?.userData.modelStats,
@@ -17562,7 +17562,7 @@ export function initTdTab(root) {
     };
   }
 
-  if (pilotMode) {
+  function enterPilot(posts) { pilotMode = true;   // practice mode computes six posts; the story hands over the Rotor it printed
     function installPilot(key) {
       const old=pilotMounts[pilotPost];
       if(old?.key===key){const sp=spawnPoints.filter(sp=>sp.alive).sort((a,b)=>chord(graph.centers[old.ci],graph.centers[a.ci])-chord(graph.centers[old.ci],graph.centers[b.ci]))[0];pilot.attach(old,graph.centers[sp?.ci??dungeon.spawn]);return;}
@@ -17579,7 +17579,7 @@ export function initTdTab(root) {
       pilot.attach(tw,graph.centers[near?.ci ?? dungeon.spawn]);
     }
     pilot=createSentryPilot(root,{
-      select:installPilot,
+      story:!!posts,select:installPilot,
       post:delta=>{pilotPost=(pilotPost+delta+pilotPosts.length)%pilotPosts.length;pilot.select(pilotMounts[pilotPost]?.key || pilot.state.tower.key);},
       map:on=>setView(on?'orbit':'bastion'),pause:()=>{paused=!paused;pilot.state.held=false;},
       wake:()=>holdWake(),cellSide:()=>cellSide,
@@ -17592,21 +17592,21 @@ export function initTdTab(root) {
     const lanes=spawnPoints.filter(sp=>sp.alive).map(sp=>sp.ci);
     const walls=Array.from(dungeon.tags,(_,ci)=>ci).filter(ci=>!placeError(ci));
     const candidates=walls.map(ci=>({ci,d:Math.min(...lanes.map(sp=>chord(graph.centers[ci],graph.centers[sp])))})).sort((a,b)=>a.d-b.d);
-    pilotPosts=[];
-    for(const v of candidates){
+    pilotPosts=posts?posts.slice():[];
+    if(!posts)for(const v of candidates){
       if(v.d<cellSide*4 || !lanes.some(ci=>losClear(v.ci,graph.centers[ci])) || pilotPosts.some(ci=>chord(graph.centers[ci],graph.centers[v.ci])<cellSide*1.5))continue;
       pilotPosts.push(v.ci);if(pilotPosts.length===6)break;
     }
-    if(pilotPosts.length<6){for(const v of candidates){if(v.d>=cellSide*4 && !pilotPosts.includes(v.ci))pilotPosts.push(v.ci);if(pilotPosts.length===6)break;}}
+    if(!posts&&pilotPosts.length<6){for(const v of candidates){if(v.d>=cellSide*4 && !pilotPosts.includes(v.ci))pilotPosts.push(v.ci);if(pilotPosts.length===6)break;}}
     if(!pilotPosts.length)pilotPosts=walls.slice(0,1);
     deploy=null;endShot();dismissIntro();paused=false;tutorial.frozen=false;runTutorial=false;
-    for(let i=0;i<pilotPosts.length;i++)pilotMounts[i]=commitTower('needle',pilotPosts[i],0);
-    clearBriefs();params.callouts=false;setView('bastion');pilot.select('needle');hideRangeRing();snapCamera();
+    for(let i=0;i<pilotPosts.length;i++)pilotMounts[i]=posts?towerByCell.get(pilotPosts[i]):commitTower('needle',pilotPosts[i],0);
+    clearBriefs();params.callouts=false;setView('bastion');pilot.select(posts?pilotMounts[0]?.key||'rotor':'needle');hideRangeRing();snapCamera();
     if(urlParams.get('acceptance')==='1')window.__stalheartPilotTest={state:()=>({paused,seed:params.seed,points:params.points,sector:round,posts:pilotPosts.slice(),ci:pilot.state.tower.ci,key:pilot.state.tower.key,shots:pilot.state.shots,held:pilot.state.held,wave,enemies:enemies.filter(e=>e.alive).length,tank:player.pos.slice(),camera:camera.position.toArray(),target:pilot.state.target?.id??null,ready:!pilot.state.tower.obj.userData.loading,aimError:pilot.state.tower.aimErr,lock:pilot.state.tower.lock,heart:heartHP}),select:key=>pilot.select(key),
       aimEnemy:()=>{const tw=pilot.state.tower;const e=enemies.find(e=>e.alive&&missileDistance(graph.centers[tw.ci],e.pos)<effectiveStats(tw.def,tw.tier).range*10&&losClear(tw.ci,e.pos));if(!e)return null;pilot.aimAt(add3(e.pos,scale3(norm3(e.pos),cellSide*.3)));return {id:e.id,hp:e.hp};},
       enemy:id=>{const e=enemies.find(e=>e.id===id);return e?{hp:e.hp,alive:e.alive}:null;}
     };
-  }
+  } if (pilotMode) enterPilot(null);
 
   resize();
   animate();

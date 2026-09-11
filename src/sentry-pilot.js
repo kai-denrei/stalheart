@@ -6,6 +6,8 @@ export function createSentryPilot(root, host) {
   const panel=document.createElement('section'); panel.id='sentry-pilot';
   panel.innerHTML=`<header>SENTRY CONTROL · SECTOR 01 <small>LIVE TD MAP · PRACTICE</small></header><div class="pilot-weapons">${SENTRIES.map(s=>`<button data-weapon="${s.key}">${s.label}</button>`).join('')}</div><p><button data-post="-1">Q · Previous post</button> <button data-post="1">E · Next post</button> <button data-map>Map / optic · M</button> <button data-restart>Restart</button> <a href="labs.html#sniper">Range bench</a></p><output></output><footer>Right-drag to aim · hold Space / left mouse to fire · wheel to zoom · 1–8 weapon · P pause</footer><div class="pilot-cross">＋</div>`;
   root.append(panel);root.classList.add('sentry-pilot-mode');
+  // the story hands over one printed sentry: no weapon swaps, no posts, no bench
+  if(host.story){panel.querySelector('header').innerHTML='SENTRY CONTROL <small>THE ROTOR ON THE WALL</small>';panel.querySelector('.pilot-weapons').style.display='none';panel.querySelectorAll('[data-post],[data-restart],a[href]').forEach(b=>{b.style.display='none';});panel.querySelector('footer').textContent='Right-drag to aim · hold Space / left mouse to fire · wheel to zoom · M map · P pause';}
   const up=new THREE.Vector3(),forward=new THREE.Vector3(),direction=new THREE.Vector3(),eye=new THREE.Vector3(),v=new THREE.Vector3();
   let dragging=false,map=false,lastX=0,lastY=0;
   const abort=new AbortController(),listen=(el,key,fn,options={})=>el.addEventListener(key,fn,{...options,signal:abort.signal});
@@ -21,7 +23,7 @@ export function createSentryPilot(root, host) {
     e.stopImmediatePropagation();
     if(e.code==='Space'){e.preventDefault();state.held=!map;}
     if(e.repeat)return;
-    const s=SENTRIES.find(s=>String(s.number)===e.key);if(s)select(s.key);
+    const s=SENTRIES.find(s=>String(s.number)===e.key);if(s&&!host.story)select(s.key);
     if(e.code==='KeyQ')host.post(-1);if(e.code==='KeyE')host.post(1);
     if(e.code==='KeyM')toggleMap();if(e.code==='KeyP')host.pause();
   },{capture:true});

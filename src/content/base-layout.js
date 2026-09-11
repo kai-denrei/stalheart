@@ -16,7 +16,6 @@ export const STAGES = Object.freeze([
 export const ISLANDS = Object.freeze([
   { id: 'landing', w: 16, d: 16, x: 0, z: -60, stage: 2 },
   { id: 'solar', w: 20, d: 20, x: 44, z: -60, stage: 3 },
-  { id: 'rotor', w: 8, d: 8, x: 0, z: -170, stage: 3, anchor: 'forward' },   // one cell past the gate, in the lane
   { id: 'hugin', w: 40, d: 40, x: -52, z: -40, stage: 5 },
   { id: 'stalheart', w: 48, d: 56, x: 0, z: 0, stage: 6 },
   { id: 'assembly', w: 20, d: 32, x: 56, z: 6, stage: 7 },
@@ -28,7 +27,7 @@ export const ISLANDS = Object.freeze([
 export const STRUCTURES = Object.freeze([
   { id: 'sh02', asset: 'assets/models/story/sh_rocket.glb', island: 'landing', stage: 1, scale: 1.5, offset: [0, 0, 0], clips: ['Legs_Deploy', 'Top_Door_Open'], hold: true },
   { id: 'solar', asset: 'assets/models/astro/solar_power_complex_d0.glb', island: 'solar', stage: 3, scale: 1, offset: [0, 0, -1.6], batch: true },
-  { id: 'rotor', asset: 'assets/models/sentries/rotor_t1.glb', island: 'rotor', stage: 3, scale: 3, offset: [0, 0, 0] },
+  { id: 'rotor', asset: 'assets/models/sentries/rotor_t1.glb', island: null, anchor: 'wall', stage: 3, scale: 3, offset: [0, 0, 0] },   // high ground: the rock beside the tunnel mouth
   { id: 'hugin', asset: 'assets/models/astro/hugin_launchpad_d0_game.glb', island: 'hugin', stage: 5, scale: 1, offset: [-3, 0, 8], hide: ['REUSABLE_BOOSTER'], clips: ['Cargo_Recovery_Cycle'] },
   { id: 'stalheart', asset: 'assets/models/astro/terraformer_3000_d0_game.glb', island: 'stalheart', stage: 6, scale: 1, offset: [14.5, 0, 0], clips: ['Terraforming_Cycle'] },
   { id: 'assembly', asset: 'assets/models/astro/robotic_assembly_line_d0.glb', island: 'assembly', stage: 7, scale: 1, offset: [0, 0, 0], batch: true, clips: ['Assembly_Cycle'] },
@@ -40,4 +39,6 @@ export const KIT = Object.freeze({
   wall: 'assets/models/kit/wall_standard_d0.glb', wallLength: 4,
   gate: 'assets/models/kit/gate_vehicle_d0.glb', gatePlot: [12, 8],
   stage: 4, wallsPerSide: 6, wallInset: 3,   // walls flank the gate along the rim, inset from the rock
+  wallMetres: 4,                              // the lattice rock's roof height, where sentries mount
+  fodderSteps: 6,                             // lane cells outward from the mouth where the fodder appears
 });

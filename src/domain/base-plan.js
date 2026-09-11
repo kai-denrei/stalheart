@@ -22,6 +22,24 @@ export function planBase(planet, layout, stage) {
     return best;
   })();
   const frameOf = (ci) => { const c = planet.graph.centers[ci]; const f = planet.worldToFrame([c[0] * radius, c[1] * radius - radius, c[2] * radius]); return [f[0], f[2]]; };
+  const arcOf = (ci) => { const c = planet.graph.centers[ci]; return Math.acos(Math.max(-1, Math.min(1, c[1] / Math.hypot(c[0], c[1], c[2])))); };
+  // the wall beside the tunnel mouth: a rock neighbour of the forward lane cell, the one furthest to the side
+  const wallCell = (() => {
+    if (forwardCell < 0) return -1;
+    let best = -1, bx = -Infinity;
+    for (const nb of planet.graph.adj[forwardCell]) { if (planet.dungeon.tags[nb] !== 0) continue; const x = Math.abs(frameOf(nb)[0]); if (x > bx) { bx = x; best = nb; } }
+    return best;
+  })();
+  // down the lane: walk outward from the forward cell, always to the open neighbour farthest from the pole
+  const fodderCell = (() => {
+    let ci = forwardCell, prev = -1;
+    for (let k = 0; k < (layout.kit.fodderSteps ?? 6) && ci >= 0; k++) {
+      let next = -1, ba = arcOf(ci);
+      for (const nb of planet.graph.adj[ci]) if (nb !== prev && planet.dungeon.tags[nb] !== 0 && !planet.clearing.cells.has(nb) && arcOf(nb) > ba) { ba = arcOf(nb); next = nb; }
+      if (next < 0) break; prev = ci; ci = next;
+    }
+    return ci;
+  })();
   const anchored = layout.islands.map((i) => (i.anchor === 'forward' && forwardCell >= 0 ? { ...i, x: frameOf(forwardCell)[0], z: frameOf(forwardCell)[1] } : i));
   const islands = anchored.filter((i) => i.stage <= stage).map((i) => ({
     ...i, top: 0, sag: drop(Math.hypot(i.w, i.d) / 2, radius), heading: [0, 1], cell: i.anchor === 'forward' && forwardCell >= 0 ? forwardCell : nearestCell(i.x, i.z),
@@ -30,10 +48,12 @@ export function planBase(planet, layout, stage) {
   const cells = Object.fromEntries(anchored.map((i) => [i.id, i.anchor === 'forward' && forwardCell >= 0 ? forwardCell : nearestCell(i.x, i.z)]));
   const islandById = new Map(anchored.map((i) => [i.id, i]));
   const structures = layout.structures.filter((s) => s.stage <= stage).map((s) => {
+    if (s.anchor === 'wall' && wallCell >= 0) { const [x, z] = frameOf(wallCell); return { ...s, x, z, y: layout.kit.wallMetres ?? 4, heading: [0, 1], cell: wallCell }; }
     const i = islandById.get(s.island);
     // a hair above the slab so coplanar floors do not z-fight; the rocket stands on natural ground
     return { ...s, x: i.x, z: i.z, y: s.stage >= i.stage ? 0.06 : 0, heading: [0, 1] };
   });
+  cells.forward = forwardCell; cells.rotor = wallCell; cells.fodder = fodderCell;
   let gate = null, walls = [];
   if (stage >= layout.kit.stage && planet.clearing.openMouth) {
     const m = planet.clearing.openMouth;
