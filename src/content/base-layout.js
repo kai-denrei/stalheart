@@ -40,5 +40,5 @@ export const KIT = Object.freeze({
   gate: 'assets/models/kit/gate_vehicle_d0.glb', gatePlot: [12, 8],
   stage: 4, wallsPerSide: 6, wallInset: 3,   // walls flank the gate along the rim, inset from the rock
   wallMetres: 4,                              // the lattice rock's roof height, where sentries mount
-  fodderSteps: 6,                             // lane cells outward from the mouth where the fodder appears
+  fodderSteps: 14,                            // lane cells outward from the mouth where the ground opens: far enough for a tank trip
 });

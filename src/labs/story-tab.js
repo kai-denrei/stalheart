@@ -22,9 +22,7 @@ const RAIL = [
   { t: 9, pos: [90, 50, 140], look: [0, 40, 0] },
   { t: 12, pos: [70, 26, 110], look: [0, 16, 0] },
   { t: 16, pos: [52, 34, 70], look: [0, 24, 0] },
-  { t: 18, pos: [30, 40, 42], look: [0, 34, 0] },
-  { t: 20.5, pos: [10, 41, 14], look: [0, 39, 0], fov: 34 },   // close on Isao's face as he clears the rim
-  { t: 23.8, pos: [9, 42, 12], look: [1, 41, 0], fov: 34 },
+  { t: 18, pos: [30, 40, 42], look: [0, 34, 0] },   // from here the follow shot owns the camera: it stays on Isao's face
 ];
 
 export function initStoryTab(root) {
@@ -100,12 +98,29 @@ export function initStoryTab(root) {
     camera.position.set(p[0], p[1], p[2]); camera.fov = pose.fov; camera.updateProjectionMatrix();
     controls.target.set(l[0], l[1], l[2]); camera.lookAt(controls.target);
   }
+  // the follow shot: in front of Isao's screen, close, blending in from the rail over a second and a half
+  function frameIsao() {
+    const at = landing?.isaoWorld(); if (!at) return false;
+    const site = ISLANDS.find((i) => i.id === 'landing');
+    const o = new THREE.Vector3(...planet.frameToWorld([site.x, 0, site.z]));
+    const fwd = new THREE.Vector3(...planet.frameToWorld([site.x, 0, site.z + 1])).sub(o).normalize();
+    const up = new THREE.Vector3(...planet.frameToWorld([site.x, 1, site.z])).sub(o).normalize();
+    const pos = at.clone().addScaledVector(fwd, 7.5).addScaledVector(up, 1.4);
+    // never inside the hull: while he climbs the tube the camera waits above the rim, looking down at him
+    const rim = landing.rocketTop() + 3, h = pos.clone().sub(o).dot(up);
+    if (h < rim) pos.addScaledVector(up, rim - h);
+    const blend = Math.min(1, Math.max(0, (t - sequence.isaoAt) / 1.5));
+    frameCamera(rail.poseAt(t));
+    camera.position.lerp(pos, blend); controls.target.lerp(at, blend); camera.lookAt(controls.target);
+    camera.fov = 40 - 8 * blend; camera.updateProjectionMatrix();
+    return true;
+  }
   function seek(time) {
     t = Math.max(0, Math.min(sequence.duration, time));
     const state = sequence.stateAt(t);
     landing?.apply(state, t);
     audioSync(state, playing);
-    if (onRail) frameCamera(rail.poseAt(t));
+    if (onRail && !(t >= sequence.isaoAt && frameIsao())) frameCamera(rail.poseAt(t));
   }
   function land() { onRail = true; playing = true; heard = null; seek(0); }
   function skip() { playing = false; onRail = true; seek(sequence.duration); onRail = false; controls.update(); }

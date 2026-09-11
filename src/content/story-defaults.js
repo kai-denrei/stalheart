@@ -24,7 +24,7 @@ export const STORY_SANITY = Object.freeze({ cells: 71314, heart: 8123, cellSide:
 
 export const LANDING_DEFAULTS = Object.freeze({
   orbit: 4, descent: 8, startAltitude: 900, deployAltitude: 40,
-  legsDeploy: 2.4, shock: 2, settle: 2, door: 1.8, isao: 7, dustSeconds: 1.2,
+  legsDeploy: 2.4, shock: 2, settle: 2, door: 1.8, isao: 9, isaoHold: 3.5, dustSeconds: 1.2,
 });
 
 // Story-only cues; the lab merges these with the tank pneumatics from the

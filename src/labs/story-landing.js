@@ -86,7 +86,7 @@ export function createStoryLanding(scene, { placer, site = [0, 0], dustTint = 0x
       const doorOpening = state.clips.Top_Door_Open !== null;
       isao.visible = doorOpening || state.isaoRise > 0;
       // red with anger as he clears the rim, then delighted by the work ahead
-      const face = state.isaoRise <= 0 ? 'neutral' : state.isaoRise < 0.62 ? 'angry' : 'glee';
+      const face = state.isaoRise <= 0 ? 'neutral' : state.isaoRise < 0.93 ? 'angry' : 'glee';   // angry all the way up and for a beat past the rim, delighted once he is clear
       if (face !== isaoFace) { isaoFace = face; isao.userData.setFace?.(face); onFace?.(face); }
       // starts deep in the hull tube, well below the rim, climbs straight up for most of the beat, then drifts clear
       const r = state.isaoRise, climb = Math.min(1, r / 0.8), drift = Math.max(0, (r - 0.8) / 0.2);
@@ -108,6 +108,7 @@ export function createStoryLanding(scene, { placer, site = [0, 0], dustTint = 0x
     },
     state: () => ({ loaded: !!rocket, error, face: isaoFace, plumes: plumes.length, burning: plumes.filter((p) => p.visible).length, clips: Object.fromEntries(Object.keys(actions).map((k) => [k, held.has(k) ? +held.get(k).toFixed(3) : null])), altitude: lift.position.y, isao: isao ? { visible: isao.visible, y: +isao.position.y.toFixed(2) } : null, scorch: !!scorch, dust: !!dust, t: lastT }),
     rocketTop: () => WELL_RIM * S,
+    isaoWorld: () => (isao && isao.visible ? isao.getWorldPosition(new THREE.Vector3()) : null),
     setLanded(on) { lift.visible = on; if (isao) isao.visible = on && isao.visible; },
     dispose() {
       mixer?.stopAllAction(); if (rocket) mixer?.uncacheRoot(rocket);

@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "2026-09-12-isao-follow-shot",
+  "date": "2026-09-12T02:40:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "The arrival camera stays on Isao's face through the rise and the angry-to-happy change; the breach opens fourteen cells out",
+  "context": "Owner: the camera must stay on Isao as he comes out and show the angry face and its change to happy; the breach should be further away so investigating it later needs a tank trip.",
+  "outcome": "The landing sequence gains a hold after Isao is out (isao 9 s, isaoHold 3.5 s, phase 'hold'). The lab replaces the last rail keys with a follow shot in front of Isao's screen that blends in from the rail over 1.5 s and never drops below the door rim plus three metres, so it looks down into the well while he climbs. His screen stays angry until 93% of the rise, a beat past the rim, then glee for the drift and the hold. The fodder cell is fourteen lane cells outward instead of six. Acceptance frames: angry just out of the tube, happy during the hold.",
+  "alternatives": [],
+  "evidence": [
+    "node scripts/browser-test.mjs --story: PASS story-isao-angry, story-isao-happy",
+    "node scripts/browser-test.mjs --story-world: PASS through the chain with the far breach",
+    "test/landing-sequence.mjs hold phase"
+  ],
+  "supersedes": []
+}

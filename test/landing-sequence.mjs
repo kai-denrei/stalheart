@@ -4,7 +4,7 @@ import { makeLandingSequence } from '../src/domain/landing-sequence.js';
 const seq = makeLandingSequence(LANDING_DEFAULTS);
 const T = LANDING_DEFAULTS, touchdown = T.orbit + T.descent;
 assert.equal(seq.touchdown, touchdown);
-assert.equal(seq.duration, touchdown + T.shock + T.settle + T.door + T.isao);
+assert.equal(seq.duration, touchdown + T.shock + T.settle + T.door + T.isao + T.isaoHold);
 // orbit is a camera beat: the rocket is already burning and falling when it opens
 const s0 = seq.stateAt(1);
 assert.equal(s0.phase, 'orbit'); assert.ok(s0.altitude < T.startAltitude && s0.altitude > 0, 'already descending'); assert.ok(s0.plume > 0.9, 'thrusters lit from the first frame');
@@ -37,6 +37,7 @@ const end = seq.stateAt(seq.duration + 10);
 assert.equal(end.phase, 'done'); assert.equal(end.isaoRise, 1); assert.equal(end.clips.Top_Door_Open, T.door); assert.equal(end.altitude, 0);
 assert.deepEqual(seq.skip(), seq.stateAt(seq.duration));
 // phases in order
-const phases = [1, 5, 12.5, 15, 16.5, 19, 30].map(t => seq.stateAt(t).phase);
-assert.deepEqual(phases, ['orbit', 'descent', 'touchdown', 'settle', 'door', 'isao', 'done']);
+const phases = [1, 5, 12.5, 15, 16.5, 19, 28, 40].map(t => seq.stateAt(t).phase);
+assert.deepEqual(phases, ['orbit', 'descent', 'touchdown', 'settle', 'door', 'isao', 'hold', 'done']);
+assert.equal(seq.stateAt(28).isaoRise, 1, 'he stays out through the hold');
 console.log('Landing sequence: legs deploy before touchdown, plume cut, dust window, door then Isao, skip equals end.');

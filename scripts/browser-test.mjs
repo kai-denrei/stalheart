@@ -19,6 +19,7 @@ if(authoringWorkspace) for(const path of ['src','scripts','test','docs','vendor'
 const server=spawn(process.execPath,['scripts/serve.mjs',...(authoringWorkspace?[]:['--read-only']),'--port',String(port),'--dir',authoringWorkspace || (production?'dist':'.'),'--base',base],{stdio:['ignore','pipe','pipe']});
 let browser,ws,counter=0;const pending=new Map(),consoleLines=[],errors=[],requests=[];let current='boot';
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
+const landing_rim=()=>23.5*1.5;   // the SH02's door rim in the story lab's local metres
 function cleanup(){try{ws?.close();}catch{}browser?.kill();server.kill('SIGTERM');try{rmSync(profile,{recursive:true,force:true});if(authoringWorkspace)rmSync(authoringWorkspace,{recursive:true,force:true});}catch{}}
 process.once('exit',cleanup);
 const send=(method,params={})=>new Promise((resolve,reject)=>{
@@ -236,9 +237,10 @@ try{
  await evaluate('window.__stalheartStoryTest.seek(6)');await delay(200);const burning=await evaluate('window.__stalheartStoryTest.state()');assert.equal(burning.landing.burning,6,'all six engines burn in descent');assert(burning.cues.includes('rocket_thrust'),'thrust bed started');
  current='story-six-engines';await finish();
  await evaluate('window.__stalheartStoryTest.seek(12.2)');await delay(200);const cut=await evaluate('window.__stalheartStoryTest.state()');assert.equal(cut.landing.burning,0,'engines cut at touchdown');assert(cut.cues.includes('tank_spool_up')&&cut.cues.includes('tank_spool_down'),'legs and landing pneumatics fired');
- await evaluate('window.__stalheartStoryTest.seek(20)');await delay(300);const mid=await evaluate('window.__stalheartStoryTest.state()');assert.equal(mid.landing.face,'angry','red with anger as he clears the rim');assert(mid.comms&&mid.comms.includes('Rough landing'),'the comms line');current='story-isao-angry';await finish();
+ await evaluate('window.__stalheartStoryTest.seek(24.6)');await delay(300);const mid=await evaluate('window.__stalheartStoryTest.state()');assert.equal(mid.landing.face,'angry','red with anger as he clears the rim');assert(mid.comms&&mid.comms.includes('Rough landing'),'the comms line');assert(mid.landing.isao.y>landing_rim(mid),'he is out of the tube');current='story-isao-angry';await finish();
+ await evaluate('window.__stalheartStoryTest.seek(27.5)');await delay(300);const late=await evaluate('window.__stalheartStoryTest.state()');assert.equal(late.phase,'hold');assert.equal(late.landing.face,'glee','delighted once he is clear');assert(late.comms.includes('So much to build'));current='story-isao-happy';await finish();
  await evaluate('window.__stalheartStoryTest.skip()');await delay(300);const done=await evaluate('window.__stalheartStoryTest.state()');
- assert.equal(done.phase,'done');assert.equal(done.landing.isao.visible,true);assert.equal(done.landing.face,'glee');assert(done.comms.includes('So much to build'));current='story-isao-out';await finish();
+ assert.equal(done.phase,'done');assert.equal(done.landing.isao.visible,true);assert.equal(done.landing.face,'glee');current='story-isao-out';await finish();
  await evaluate('window.__stalheartStoryTest.setStage(7)');await evaluate('window.__stalheartStoryTest.baseReady()');await delay(1500);
  const base=await evaluate('window.__stalheartStoryTest.state()');assert.equal(base.stage,7);assert.deepEqual(base.base.errors,[]);assert.equal(base.base.islands,6);assert.equal(base.base.walls,12);assert(base.base.gate);assert.equal(base.base.structures,6,'six landmarks at stage 7 in the lab (the landing scene owns the rocket)');
  assert(base.playUrl.includes('story=7'),'play carries the stage');
