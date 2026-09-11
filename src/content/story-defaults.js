@@ -13,6 +13,7 @@ export const STORY_CLEARING = Object.freeze({
   blend: 20,           // metres over which the cut fades back to the sphere
   mouthBand: 1.5,      // cells outside the clearing rim that count as a mouth
   mouthMaxCells: 2,    // the open mouth must fit the armored gate
+  mouthReachShare: 0.5, // the open mouth must lead to at least half of the reachable world
   tileMetres: 4,       // Fortification foundation tile
   padTiles: 16,        // 16 x 16 tiles = 64 x 64 m
 });

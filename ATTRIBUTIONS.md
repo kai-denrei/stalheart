@@ -88,3 +88,7 @@ Standalone SH02 vehicle with its five authored clips from [SentryTowers_A6](http
 ## Rocket thrust sound
 
 Owner-provided `jci21-rocket-launch-sfx-253937.mp3`, retained unchanged as `assets/audio/rocket_thrust.mp3`. Original filename, duration and checksum are recorded in `docs/rocket-audio.lock.json`. The story lab loops it under the SH02 descent and cuts it at touchdown; the tank's own spool-up and spool-down pneumatics cover leg deployment, landing and the door.
+
+## Game-ready base kit and island slab — jelaludo
+
+Lightweight foundation, wall (D0-D3), corner and vehicle gate exports plus the scalable 28-triangle island slab from [SentryTowers_A6](https://github.com/jelaludo/SentryTowers_A6/tree/2de929660f014b5e56a66bce04d9a9707958b4fe/assets/base-kit-game), revision `2de929660f014b5e56a66bce04d9a9707958b4fe`. Models by jelaludo, reused with attribution under the upstream `ASSET-LICENSE.md`. Pinned checksums: `docs/base-kit-assets.lock.json`. The slab is scaled per island in X and Z with Y kept at 1, and the 4 m grid is drawn by the game's shader as specified in `docs/FOUNDATION-SLAB-BRIEF.md`.

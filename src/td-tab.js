@@ -40,8 +40,9 @@ import { storage as localStorage } from './storage.js';
 
 import * as THREE from '../vendor/three.module.js';
 import GUI from '../vendor/lil-gui.esm.js';
-import { generateSphereMesh, relax } from './grid.js';
-import { generateDungeon, bfsDist, BLOCKED, PATH, ROOM } from './dungeon.js';
+import { bfsDist, BLOCKED, PATH, ROOM } from './dungeon.js';
+import { buildWorld } from './domain/world-recipe.js';
+import { STORY_RECIPE, STORY_CLEARING } from './content/story-defaults.js';
 import { compileRail } from './cine/rail.js';
 import { SCRIPTS } from './cine/scripts.js';
 import { cuesBetween } from './cine/sound.js';
@@ -5619,7 +5620,7 @@ export function initTdTab(root) {
     // and it sat at "in 0s" forever, which reads as a stuck game
     if (player.won || tutorialActive || rescue2On || !nextEl) { nextEl && nextEl.classList.add('hidden'); return; }
     const n = wave + 1;
-    const plan = rescueOn ? rescueWavePlan(n) : computeWavePlan(n, round, params.waveSize);
+    const plan = rescueOn ? rescueWavePlan(n) : computeWavePlan(n, round, params.waveSize, threatMult);
     const chips = plan.entries.map((e, i) => {
       const tint = '#' + CREATURE_TINTS[e.type].toString(16).padStart(6, '0');
       const mark = i === 0 ? '◈' : '●';
@@ -5731,15 +5732,9 @@ export function initTdTab(root) {
     heartCalloutCd = 0; streakMark = 0;
     ramCombo = 0; ramComboT = 0; syncCombo();
     breachedCells.clear(); // a NEW world owes nothing to the old one's holes
-    mesh = generateSphereMesh({ seed: params.seed >>> 0, n: params.points, k: 12 });
-    relax(mesh, { n_iters: params.relaxIters, PULL_RATE: 0.25 });
-    dungeon = generateDungeon(mesh, {
-      seed: params.seed >>> 0,
-      rooms: params.rooms,
-      roomRadius: params.roomRadius,
-      extraCorridors: params.extraCorridors,
-      corridorWidth: params.corridorWidth,
-    });
+    const built = buildWorld({ world: worldMode, params, story: { recipe: STORY_RECIPE, clearing: STORY_CLEARING } });
+    mesh = built.mesh; dungeon = built.dungeon;
+    if (built.wallHeight) params.wallHeight = built.wallHeight;   // 4 m on the story sphere
     graph = dungeon.graph;
     cellSide = mesh.defaultSide;
     // THE CAMP, BEFORE ANY ACTOR IS PLACED. Berth cells are graph maths,
@@ -6234,7 +6229,7 @@ export function initTdTab(root) {
     waveActive = true; waveAge = 0;
     tfMilestone(wave);   // the Terraformer keeps time in waves
     const plan = rescueOn ? rescueWavePlan(wave)
-      : computeWavePlan(wave, round, params.waveSize, lab.on ? lab.waveMult : 1);
+      : computeWavePlan(wave, round, params.waveSize, (lab.on ? lab.waveMult : 1) * threatMult);
     // NEW THREAT reveal the first time a headline type appears
     if (!seenTypes.has(plan.headline)) {
       seenTypes.add(plan.headline);
@@ -12850,6 +12845,7 @@ export function initTdTab(root) {
   if (Number.isFinite(pointsOverride)) params.points = Math.min(16000, Math.max(150, pointsOverride));
   const seedOverride = parseInt(urlParams.get('seed') || '', 10);
   if (Number.isFinite(seedOverride)) params.seed = seedOverride >>> 0;
+  const worldMode = urlParams.get('world') === 'story' ? 'story' : 'default', threatMult = Math.min(4, Math.max(0.1, parseFloat(urlParams.get('threat') || '') || 1));
   const simParam = urlParams.get('sim');
   if (simParam) {
     simStyle = simParam;

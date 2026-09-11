@@ -1,7 +1,7 @@
 {
   "note": "Growth ratchet enforced by npm run architecture. Line budgets may only go down; lower a budget when the file shrinks. topLevelModules is the frozen list of existing src/*.js files: new modules go into src/core, src/domain, src/content, src/platform, src/fx or src/labs.",
   "lineBudgets": {
-    "src/td-tab.js": 17630
+    "src/td-tab.js": 17626
   },
   "topLevelModules": [
     "src/achievements.js",

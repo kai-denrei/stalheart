@@ -49,8 +49,22 @@ export function buildStoryPlanet(recipe, clearing) {
     const cx = run.reduce((s, c) => s + graph.centers[c][0], 0), cz = run.reduce((s, c) => s + graph.centers[c][2], 0);
     mouths.push({ cells: run, azimuth: Math.atan2(cx, cz), open: false });
   }
-  mouths.sort((a, b) => a.cells.length - b.cells.length || a.azimuth - b.azimuth);
-  const chosen = mouths.find((m) => m.cells.length <= clearing.mouthMaxCells) ?? mouths[0];
+  // a usable mouth touches the clearing by a full edge and leads somewhere:
+  // its outward reach, through open cells beyond the band, must be a real
+  // share of the world and not a pocket
+  const outwardReach = (run) => {
+    const seen = new Set(run), stack = [...run];
+    while (stack.length) { const c = stack.pop(); for (const nb of graph.adj[c]) if (!seen.has(nb) && !cells.has(nb) && dungeon.tags[nb] !== BLOCKED) { seen.add(nb); stack.push(nb); } }
+    return seen.size - run.length;
+  };
+  for (const m of mouths) {
+    m.touches = m.cells.some((c) => graph.adj[c].some((nb) => cells.has(nb)));
+    m.reach = outwardReach(m.cells);
+  }
+  const bestReach = Math.max(0, ...mouths.map((m) => m.reach));
+  const usable = mouths.filter((m) => m.touches && m.reach >= bestReach * clearing.mouthReachShare);
+  usable.sort((a, b) => a.cells.length - b.cells.length || a.azimuth - b.azimuth);
+  const chosen = usable.find((m) => m.cells.length <= clearing.mouthMaxCells) ?? usable[0] ?? mouths[0];
   for (const m of mouths) {
     if (m === chosen) { m.open = true; continue; }
     for (const ci of m.cells) dungeon.tags[ci] = BLOCKED;

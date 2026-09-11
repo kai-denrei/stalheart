@@ -66,7 +66,7 @@ export function initStoryTab(root) {
   const clock = { time: 0 };
 
   hud.innerHTML = '<div class="story-lines"><b>STORY PLANET</b><span id="story-status">generating 16,000-point planet...</span></div>'
-    + '<div class="story-keys"><button id="story-land" type="button">L land</button><button id="story-skip" type="button">K skip</button><button id="story-reset" type="button">R reset</button><span>drag to orbit, wheel to zoom</span></div>';
+    + '<div class="story-keys"><button id="story-land" type="button">L land</button><button id="story-skip" type="button">K skip</button><button id="story-reset" type="button">R reset</button><button id="story-play" type="button">P play here</button><span>drag to orbit, wheel to zoom</span></div>';
   const status = hud.querySelector('#story-status');
 
   function frameCamera(pose) {
@@ -100,10 +100,13 @@ export function initStoryTab(root) {
     reset();
   }
   controls.addEventListener('start', () => { onRail = false; });
-  hud.querySelector('#story-land').onclick = land; hud.querySelector('#story-skip').onclick = skip; hud.querySelector('#story-reset').onclick = reset;
+  // the same planet in the actual game, with sparse waves
+  const PLAY_URL = 'index.html?world=story&threat=0.35&cine=0#td';
+  const play = () => { location.href = PLAY_URL; };
+  hud.querySelector('#story-land').onclick = land; hud.querySelector('#story-skip').onclick = skip; hud.querySelector('#story-reset').onclick = reset; hud.querySelector('#story-play').onclick = play;
   function onKey(e) {
     if (e.target.closest?.('input,textarea,select')) return;
-    if (e.key === 'l' || e.key === 'L') land(); else if (e.key === 'k' || e.key === 'K') skip(); else if (e.key === 'r' || e.key === 'R') reset();
+    if (e.key === 'l' || e.key === 'L') land(); else if (e.key === 'k' || e.key === 'K') skip(); else if (e.key === 'r' || e.key === 'R') reset(); else if (e.key === 'p' || e.key === 'P') play();
   }
   addEventListener('keydown', onKey);
   function resize() {
@@ -129,7 +132,7 @@ export function initStoryTab(root) {
     },
   };
   if (q.get('acceptance') === '1') window.__stalheartStoryTest = {
-    state: () => ({ ready: !!planet && !!landing?.state().loaded, cells: planet?.dungeon.tags.length ?? 0, mouths: planet?.clearing.mouths.length ?? 0, openMouths: planet?.clearing.mouths.filter((m) => m.open).length ?? 0, gateMarker: !!marker, counts: planetMesh?.userData.counts ?? null, t, phase: sequence.stateAt(t).phase, playing, landing: landing?.state() ?? null, cues: cueLog.slice(), audioState: sfx.contextState, errors }),
+    state: () => ({ ready: !!planet && !!landing?.state().loaded, cells: planet?.dungeon.tags.length ?? 0, mouths: planet?.clearing.mouths.length ?? 0, openMouths: planet?.clearing.mouths.filter((m) => m.open).length ?? 0, gateMarker: !!marker, playUrl: PLAY_URL, counts: planetMesh?.userData.counts ?? null, t, phase: sequence.stateAt(t).phase, playing, landing: landing?.state() ?? null, cues: cueLog.slice(), audioState: sfx.contextState, errors }),
     land, skip, seek: (time) => { onRail = true; seek(time); }, reset, dispose: api.dispose,
   };
   resize();

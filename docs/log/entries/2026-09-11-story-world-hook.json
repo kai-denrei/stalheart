@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "2026-09-11-story-world-hook",
+  "date": "2026-09-11T06:40:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "Run the existing game on the story planet through a world recipe hook",
+  "context": "The owner asked for the map hook first so the screen past the arrival's skip reuses the existing game's logic on the story planet with fewer enemies. A headless measurement showed the unmodified controller boots a 16,000-point planet in 3.3 s at 60 fps with no errors, so the integration is a map substitution, not a rewrite. The owner also delivered game-ready kit assets (walls 376 triangles, floor 120, 28-triangle scalable island slab).",
+  "outcome": "src/domain/world-recipe.js builds either the pinned default recipe or the story planet; for the story world it sets the heart to the pole cell, recomputes heart distances, places spawn at the farthest reachable cell and returns a 4 m wall height for the 753 m sphere. td-tab.js calls it instead of generating mesh and dungeon itself (net -4 lines; budget lowered to 17,626) and reads world=story and threat=0.1..4 from the URL, the latter multiplying computeWavePlan. The story lab's P key opens index.html?world=story&threat=0.35&cine=0#td. Fixing this exposed that the clearing's chosen mouth did not touch the clearing, so the planet had no exit; the rule now requires a full-edge touch and outward reach of at least half the best mouth's, and the test proves the world beyond is reachable. The game-ready kit is pinned at upstream 2de929660. Sector reveal, gate placement, islands and encounter beats remain the game's defaults or future work.",
+  "alternatives": [
+    "A separate story controller duplicating gameplay: rejected, two implementations of the same rules.",
+    "Growing td-tab.js with story branches: rejected by the line budget; the hook shrinks it instead."
+  ],
+  "evidence": [
+    "scratch td-big-map.mjs: points 500/8000/16000 boot 0.9/1.7/3.3 s at 60 fps, no errors",
+    "test/world-recipe.mjs: default 2236 cells heart 700; story 71314 cells, heart at the pole, spawn 277 hops out",
+    "test/story-planet.mjs: open mouth touches the clearing and reaches more than 10% of cells",
+    "node scripts/browser-test.mjs --story-world: PASS story-world at 59 fps, 455k triangles, 763 calls",
+    "docs/base-kit-assets.lock.json verified by npm run assets:check"
+  ],
+  "supersedes": []
+}

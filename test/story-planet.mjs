@@ -26,6 +26,14 @@ assert.ok(local[2] < 0 && Math.abs(local[0]) < p.cellSide * p.radius * 1.5, `ope
   while (stack.length) { const c = stack.pop(); for (const nb of p.graph.adj[c]) if (!seen.has(nb) && tags[nb] !== BLOCKED) { seen.add(nb); stack.push(nb); } }
   for (const ci of seen) assert.ok(p.clearing.cells.has(ci) || p.arcOfCell(ci) < clearing.radiusMetres + 3 * p.cellMetres, `no second exit through cell ${ci}`);
 }
+// ...and with it open, the world beyond is reachable from the clearing
+{
+  const seen = new Set(p.clearing.cells), stack = [...p.clearing.cells];
+  while (stack.length) { const c = stack.pop(); for (const nb of p.graph.adj[c]) if (!seen.has(nb) && p.dungeon.tags[nb] !== BLOCKED) { seen.add(nb); stack.push(nb); } }
+  const outside = [...seen].filter((ci) => !p.clearing.cells.has(ci)).length;
+  assert.ok(outside > p.dungeon.tags.length * 0.1, `the open mouth leads out: ${outside} cells beyond the clearing`);
+  assert.ok(open.touches && open.reach > 0, 'open mouth touches the clearing and leads somewhere');
+}
 // determinism
 const q = buildStoryPlanet(small, clearing);
 assert.deepEqual(Array.from(q.dungeon.tags), Array.from(p.dungeon.tags));

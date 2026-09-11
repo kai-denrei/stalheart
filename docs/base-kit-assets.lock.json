@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/jelaludo/SentryTowers_A6",
+  "revision": "2de929660f014b5e56a66bce04d9a9707958b4fe",
+  "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/2de929660f014b5e56a66bce04d9a9707958b4fe/",
+  "credit": "Models by jelaludo (https://jelaludo.github.io/SentryTowers_A6/), game-ready base kit and scalable island slab, reused with attribution under the upstream ASSET-LICENSE.md",
+  "files": [
+    {
+      "path": "assets/models/kit/foundation_slab.glb",
+      "sourcePath": "assets/base-kit-game/foundation_slab.glb",
+      "sha256": "fa933dc763da4196beb5a24642de47cf315427e8e6730c2908a4711af394d5e1",
+      "bytes": 3592
+    },
+    {
+      "path": "assets/models/kit/foundation_flat_d0.glb",
+      "sourcePath": "assets/base-kit-game/foundation_flat_d0.glb",
+      "sha256": "81e984d92f2e7c190e8fac63508b771ef529670b9faebb59e3c6b5ff1c50f4e4",
+      "bytes": 13452
+    },
+    {
+      "path": "assets/models/kit/wall_standard_d0.glb",
+      "sourcePath": "assets/base-kit-game/wall_standard_d0.glb",
+      "sha256": "c4c9ceb5f9ff1c6e64c9c25929ff9783f960b30f12258ef662d639fd3ceb562e",
+      "bytes": 35736
+    },
+    {
+      "path": "assets/models/kit/wall_standard_d1.glb",
+      "sourcePath": "assets/base-kit-game/wall_standard_d1.glb",
+      "sha256": "e9b542808c11ba461086552f0f0b58862a2019054c645d4e41c402bd1c6438d6",
+      "bytes": 64720
+    },
+    {
+      "path": "assets/models/kit/wall_standard_d2.glb",
+      "sourcePath": "assets/base-kit-game/wall_standard_d2.glb",
+      "sha256": "f2594e6f0a53963a76606a9533c8a80143ff75f948d135c79176351e9ac115a9",
+      "bytes": 83484
+    },
+    {
+      "path": "assets/models/kit/wall_standard_d3.glb",
+      "sourcePath": "assets/base-kit-game/wall_standard_d3.glb",
+      "sha256": "6748166eee02a27040310cd13e99136acd1cabf73337ffa6890fcc1e5845141a",
+      "bytes": 65712
+    },
+    {
+      "path": "assets/models/kit/wall_corner_d0.glb",
+      "sourcePath": "assets/base-kit-game/wall_corner_d0.glb",
+      "sha256": "9b6c4e550742500fadf36ee2ba401bd023fe21c39842a2965fba2df1066e1114",
+      "bytes": 50376
+    },
+    {
+      "path": "assets/models/kit/gate_vehicle_d0.glb",
+      "sourcePath": "assets/base-kit-game/gate_vehicle_d0.glb",
+      "sha256": "21cec1fc0fa5fcb09b761a1db99dc477f63e6e46f1a13ec959a8a18f7100b00c",
+      "bytes": 119496,
+      "clips": [
+        "Gate_Open"
+      ]
+    }
+  ]
+}

@@ -12,6 +12,10 @@ Ownership: `src/content/story-defaults.js` (recipe and tunables), `src/core/terr
 
 Validation: `test/terrace-profile.mjs`, `test/story-planet.mjs`, `test/landing-sequence.mjs`; `node scripts/browser-test.mjs --story` drives the real page through rest, descent, touchdown, live play and skip with screenshots.
 
+**Play here.** P, or the button, opens the actual game on this planet: `index.html?world=story&threat=0.35&cine=0#td`. `world=story` routes the controller's map through `src/domain/world-recipe.js`, which returns the story planet with the heart at the pole cell and 4 m walls; `threat` multiplies wave size (0.1 to 4). The default world is unchanged. The game's own sector reveal, gate placement and camp still apply; islands, the story build stages and the encounter beats are not in the game yet.
+
+**Kit.** The game-ready base kit (walls D0-D3, corner, vehicle gate, 4 m tile) and the 28-triangle scalable island slab are pinned in `docs/base-kit-assets.lock.json` under `assets/models/kit/`.
+
 **Sound.** The owner-provided rocket thrust sample loops under the descent, scaled by plume intensity, and cuts at touchdown. The tank's spool-up plays for leg deployment and the door, spool-down for the landing. Cues are pinned in `docs/rocket-audio.lock.json`. Six plume quads hang under the skirt, each breathing on its own cadence.
 
 Not yet: chunked rendering for phones, the raymarch governor, the opening encounter (first prints, manual Rotor, weak enemies, the armored gate), base construction and emergence. Design: `docs/superpowers/specs/2026-09-11-story-planet-arrival-design.md`.
