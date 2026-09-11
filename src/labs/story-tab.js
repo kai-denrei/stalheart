@@ -21,7 +21,7 @@ const RAIL = [
   { t: 4, pos: [180, 140, 260], look: [0, 150, 0], fov: 40 },
   { t: 9, pos: [90, 50, 140], look: [0, 40, 0] },
   { t: 12, pos: [70, 26, 110], look: [0, 16, 0] },
-  { t: 16, pos: [14, 44, 17], look: [0.5, 35.5, 0], fov: 42 },   // medium-close on the nose, held: the door opens, Isao comes out, angry then happy, no zoom
+  { t: 16, pos: [14, 41, 17], look: [0.5, 36.5, 0], fov: 40 },   // medium-close on the nose, held: the door opens, Isao comes out, angry then happy, no zoom
 ];
 
 export function initStoryTab(root) {
@@ -89,10 +89,10 @@ export function initStoryTab(root) {
   }
 
   function frameCamera(pose, about = null) {
-    // rail keys are metres around the landing site (or the pole for the overview), rotated with the base frame
+    // rail keys are metres around the landing site (or the pole for the overview): x/z along the surface,
+    // y along the local vertical there, so a key at the rim's height is at the rim wherever the site sits
     const site = about ?? ISLANDS.find((i) => i.id === 'landing');
-    const c = Math.cos(planet.clearing.yaw), s = Math.sin(planet.clearing.yaw);
-    const rot = ([x, y, z]) => { const px = x + site.x, pz = z + site.z; return [px * c + pz * s, y, -px * s + pz * c]; };
+    const rot = ([x, y, z]) => planet.frameToWorld([site.x + x, y, site.z + z]);
     const p = rot(pose.pos), l = rot(pose.look);
     camera.position.set(p[0], p[1], p[2]); camera.fov = pose.fov; camera.updateProjectionMatrix();
     controls.target.set(l[0], l[1], l[2]); camera.lookAt(controls.target);

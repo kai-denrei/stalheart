@@ -90,8 +90,8 @@ export function createStoryLanding(scene, { placer, site = [0, 0], dustTint = 0x
       if (face !== isaoFace) { isaoFace = face; isao.userData.setFace?.(face); onFace?.(face); }
       // starts deep in the hull tube, well below the rim, climbs straight up for most of the beat, then drifts clear
       const r = state.isaoRise, climb = Math.min(1, r / 0.8), drift = Math.max(0, (r - 0.8) / 0.2);
-      const y0 = (WELL_FLOOR - 9) * S, y1 = (WELL_RIM + 4) * S;
-      const y = y0 + climb * (y1 - y0) + drift * 3;
+      const y0 = (WELL_FLOOR - 9) * S, y1 = (WELL_RIM + 2.5) * S;   // out to just above the rim, then a small lift
+      const y = y0 + climb * (y1 - y0) + drift * 1.2;
       isao.position.set(5 * drift, y, -2 * drift);   // a short drift, so he stays beside the nose in the held shot
       isao.userData.spinRotors?.(1 / 60, r);
       isao.userData.setWork?.(r > 0.95 ? 0.6 : 0);
