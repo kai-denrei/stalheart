@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-09-11-story-default-route",
+  "date": "2026-09-11T21:30:00+00:00",
+  "type": "decision",
+  "status": "accepted",
+  "title": "The story is the game's default entry; legacy modes name themselves; arrival reachable from the menu",
+  "context": "The owner opened index.html?cine=1 expecting the story's cinematic and saw the legacy gantry Stalheart and containers, and said none of those assets should be referenced anymore. The earlier menu entry made the story one mode among the legacy ones.",
+  "outcome": "src/core/story-route.js decides the route: a bare page is the story world at stage 1; classic, mission, sentryPilot, acceptance, sim and director keep the legacy game, so every existing acceptance run (which passes acceptance=1) is unchanged. readStoryQuery and the router share the rule. The burger lists story, arrival, classic, rescue and raid; leaving a mode drops its switches; in the story ?cine=1 goes to the arrival lab (labs.html?land=1#story), which now autoplays the landing and carries a link back to the game. The legacy gantry heart and containers are still used by classic, rescue and raid; retiring them from those modes is a separate decision.",
+  "alternatives": [
+    "Replace the legacy heart and containers inside the campaign: not done, the campaign is a different game and the owner's statement concerned the story's front door."
+  ],
+  "evidence": [
+    "test/story-route.mjs",
+    "node scripts/browser-test.mjs --story-world: default route and cine redirect steps",
+    "default game acceptance (44 steps) with acceptance=1 unchanged"
+  ],
+  "supersedes": []
+}

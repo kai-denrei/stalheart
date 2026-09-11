@@ -5,6 +5,7 @@ import { bootstrapContent } from './platform/content-bootstrap.js';
 import { registerServiceWorker } from './pwa.js';
 import { storage as localStorage } from './storage.js';
 import { installDiagnostics, record } from './diagnostics.js';
+import { isStoryRoute } from './core/story-route.js';
 import { applyFontPack, DEFAULT_FONT, DEFAULT_SHOUT_FONT, loadTypeFeel } from './fonts.js';
 
 installDiagnostics();
@@ -36,6 +37,13 @@ const routes = {
   sim: () => import('./sim-tab.js').then(m => m.initSimTab),
 };
 const name = location.hash.slice(1) || (workshop ? 'units' : 'td');
+// in the story, "the cinematic" is the arrival: ?cine=1 goes to the lab playing it, not the legacy cold open
+if (!workshop && name === 'td' && isStoryRoute(location.search) && q.get('cine') === '1') {
+  const to = new URL('./labs.html', location.href);
+  for (const key of ['sw', 'acceptance']) if (q.has(key)) to.searchParams.set(key, q.get(key));   // the harness switches ride along
+  to.searchParams.set('land', '1'); to.hash = 'story';
+  location.replace(to.href);
+}
 const target = routes[name] ? name : (workshop ? 'units' : 'td');
 const root = document.getElementById(`tab-${target}`);
 const gameRoutes = new Set(['td', 'record']);
@@ -68,15 +76,15 @@ if (!root) {
   }
   for (const b of document.querySelectorAll('#tabbar button')) {
     b.classList.toggle('active', b.dataset.tab === target
-      && (('story' in b.dataset) === (q.get('story') !== null))   // the story entry owns the story world, the others never show active there
+      && (('story' in b.dataset) === (target === 'td' && isStoryRoute(location.search)))   // the story entry owns the story world, the others never show active there
       && (!('mission' in b.dataset) || b.dataset.mission === (q.get('mission') || ''))
       && (!('roster' in b.dataset) || b.dataset.roster === (q.get('roster') || '2')));
     b.addEventListener('click', () => {
       const url = new URL(b.dataset.page || location.pathname, location.href);
       url.search = location.search;
       url.searchParams.delete('sentryPilot');
-      for (const key of ['story', 'stage', 'world', 'heart', 'threat']) url.searchParams.delete(key);   // leaving the story world drops its switches
-      for (const key of ['mission', 'roster', 'story']) if (key in b.dataset) {
+      for (const key of ['story', 'stage', 'world', 'heart', 'threat', 'land', 'classic', 'cine']) url.searchParams.delete(key);   // leaving a mode drops its switches
+      for (const key of ['mission', 'roster', 'story', 'land', 'classic']) if (key in b.dataset) {
         if (b.dataset[key]) url.searchParams.set(key, b.dataset[key]);
         else url.searchParams.delete(key);
       }

@@ -240,7 +240,7 @@ try{
  assert.equal(done.phase,'done');assert.equal(done.landing.isao.visible,true);current='story-isao-out';await finish();
  await evaluate('window.__stalheartStoryTest.setStage(7)');await evaluate('window.__stalheartStoryTest.baseReady()');await delay(1500);
  const base=await evaluate('window.__stalheartStoryTest.state()');assert.equal(base.stage,7);assert.deepEqual(base.base.errors,[]);assert.equal(base.base.islands,6);assert.equal(base.base.walls,12);assert(base.base.gate);assert.equal(base.base.structures,6,'six landmarks at stage 7 in the lab (the landing scene owns the rocket)');
- assert(base.playUrl.includes('stage=7'),'play carries the stage');
+ assert(base.playUrl.includes('story=7'),'play carries the stage');
  await evaluate('window.__stalheartStoryTest.reset()');await delay(300);current='story-stage-7';await finish();
  await evaluate('window.__stalheartStoryTest.overview()');await delay(400);current='story-stage-7-overview';await finish();
  await evaluate('window.__stalheartStoryTest.setStage(4)');await evaluate('window.__stalheartStoryTest.baseReady()');await delay(300);
@@ -248,6 +248,9 @@ try{
  await evaluate('window.__stalheartStoryTest.gate(true)');await delay(2200);const opened=await evaluate('window.__stalheartStoryTest.state()');assert.equal(opened.base.gate.open,true,'gate opens');
  await evaluate('window.__stalheartStoryTest.gate(false)');await delay(2200);assert.equal((await evaluate('window.__stalheartStoryTest.state()')).base.gate.open,false,'gate closes');
  await evaluate('window.__stalheartStoryTest.setStage(1)');await evaluate('window.__stalheartStoryTest.baseReady()');await delay(300);const s1=await evaluate('window.__stalheartStoryTest.state()');assert.equal(s1.base.islands,0);assert.equal(s1.base.structures,0);
+ // the menu's arrival entry: ?land=1 opens straight on the cinematic
+ await go('story-arrival-link','labs.html?sw=0&acceptance=1&land=1#story');await until('window.__stalheartStoryTest?.state().ready',90000);await delay(1200);
+ const auto=await evaluate('window.__stalheartStoryTest.state()');assert(auto.playing&&auto.t>0.5,'the cinematic plays on load');assert(await evaluate('!!document.querySelector("#story-hud a.story-back")'),'a way back to the game');
  await evaluate('window.__stalheartStoryTest.dispose()');
  } else if(args.includes('--story-world')) {
  await go('story-world','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=6#td');
@@ -293,7 +296,11 @@ try{
  await go('story-world-deeplink','index.html?sw=0&acceptance=1&story=4#td');await until('!!window.__stalheartTest',90000);await delay(1500);
  const dl=await evaluate('window.__stalheartTest.state()');assert.equal(dl.heartAsset,'none');assert(dl.story&&dl.story.phase,'story beats run from the deep link');assert(dl.wallCount>40000);
  assert.equal(await evaluate('document.querySelector("#td-intro").classList.contains("hidden")'),true);
- assert.equal(await evaluate('document.querySelector("#tabbar [data-story]").classList.contains("active")'),true,'the burger marks story as the active mode');assert.equal(await evaluate('document.querySelector("#tabbar [data-mission=\\"\\"]").classList.contains("active")'),false);await finish();
+ assert.equal(await evaluate('document.querySelector("#tabbar [data-story]").classList.contains("active")'),true,'the burger marks story as the active mode');
+ assert.equal(await evaluate('document.querySelector("#tabbar [data-classic]").classList.contains("active")'),false,'classic is not active in the story');await finish();
+ await go('story-default-route','index.html?sw=0#td');await until('document.querySelector("#tabbar [data-story]")!==null');await delay(2500);
+ assert.equal(await evaluate('document.querySelector("#tabbar [data-story]").classList.contains("active")'),true,'a bare index.html is the story');assert.equal(await evaluate('document.querySelector("#td-intro").classList.contains("hidden")'),true);
+ await go('story-cine-redirect','index.html?sw=0&acceptance=1&story=4&cine=1#td',1440,900,'labs.html?sw=0&acceptance=1&land=1#story');await until('window.__stalheartStoryTest?.state().ready',90000);await delay(1500);assert(await evaluate('window.__stalheartStoryTest.state().playing'),'the story cine switch plays the arrival');await finish();
  await go('story-world-default','index.html?sw=0&acceptance=1&cine=0#td');
  await until('!!window.__stalheartTest',60000);await delay(1500);
  const d=await evaluate('window.__stalheartTest.state()');assert(d.wallCount>1500&&d.wallCount<2236,`default world unchanged ${d.wallCount}`);

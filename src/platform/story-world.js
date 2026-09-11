@@ -9,6 +9,7 @@ import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT } from '../cont
 export { STORY_SOUNDS };
 import { ISLANDS, STRUCTURES, KIT, STAGES } from '../content/base-layout.js';
 import { createStoryBase } from '../fx/story-base.js';
+import { isStoryRoute } from '../core/story-route.js';
 import { makeStoryBeats } from '../domain/story-beats.js';
 import { BLOCKED } from '../dungeon.js';
 
@@ -16,13 +17,15 @@ export const STORY_LAYOUT = { islands: ISLANDS, structures: STRUCTURES, kit: KIT
 
 export function readStoryQuery(search) {
   const q = new URLSearchParams(search);
-  // ?story=N is the deep link: the story world at stage N, sparse waves, no old heart, no cold open
-  const short = q.get('story') !== null;
+  // ?story=N is the deep link: the story world at stage N, sparse waves, no old heart, no cold open.
+  // A bare page is the story too; the legacy game names itself (classic, mission, ...).
+  const story = isStoryRoute(search);
+  const short = story && q.get('world') !== 'story';
   return {
     short,
-    world: short || q.get('world') === 'story' ? 'story' : 'default',
+    world: story ? 'story' : 'default',
     threat: Math.min(4, Math.max(0.1, parseFloat(q.get('threat') || '') || (short ? 0.35 : 1))),
-    stage: Math.min(STAGES.length - 1, Math.max(0, parseInt(q.get('stage') ?? q.get('story') ?? '', 10) || 0)),
+    stage: Math.min(STAGES.length - 1, Math.max(0, parseInt(q.get('stage') ?? q.get('story') ?? '', 10) || (story ? 1 : 0))),
   };
 }
 

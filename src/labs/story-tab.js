@@ -69,7 +69,7 @@ export function initStoryTab(root) {
   const clock = { time: 0 };
 
   hud.innerHTML = '<div class="story-lines"><b>STORY PLANET</b><span id="story-status">generating 16,000-point planet...</span><span id="story-stage"></span></div>'
-    + '<div class="story-keys"><button id="story-land" type="button">L land</button><button id="story-skip" type="button">K skip</button><button id="story-reset" type="button">R reset</button><button id="story-overview" type="button">O overview</button><button id="story-gate" type="button">G gate</button><button id="story-play" type="button">P play here</button><span>drag to orbit, wheel to zoom</span></div>'
+    + '<div class="story-keys"><a class="story-back" href="index.html?story=4#td">back to the game</a><button id="story-land" type="button">L land</button><button id="story-skip" type="button">K skip</button><button id="story-reset" type="button">R reset</button><button id="story-overview" type="button">O overview</button><button id="story-gate" type="button">G gate</button><button id="story-play" type="button">P play here</button><span>drag to orbit, wheel to zoom</span></div>'
     + '<div class="story-keys" id="story-stages"></div>';
   const status = hud.querySelector('#story-status'), stageLine = hud.querySelector('#story-stage'), stageBar = hud.querySelector('#story-stages');
   const LAYOUT = { islands: ISLANDS, structures: STRUCTURES, kit: KIT, stages: STAGES };
@@ -114,7 +114,7 @@ export function initStoryTab(root) {
     planetMesh = buildStoryPlanetMesh(planet, look, { wallMetres: STORY_RECIPE.wallMetres }); scene.add(planetMesh);
     const site = ISLANDS.find((i) => i.id === 'landing');
     landing = createStoryLanding(scene, { placer: { toWorld: (p) => new THREE.Vector3(...planet.frameToWorld(p)) }, site: [site.x, site.z] });
-    landing.ready.then(() => { seek(t); });
+    landing.ready.then(() => { seek(t); if (q.get('land') === '1') land(); });   // ?land=1 opens on the cinematic
     marker = buildMouthMarker(planet, look); if (marker) scene.add(marker);
     setStage(stage);
     const c = planetMesh.userData.counts;

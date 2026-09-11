@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { isStoryRoute, LEGACY_SWITCHES } from '../src/core/story-route.js';
+assert.equal(isStoryRoute(''), true, 'a bare index.html is the story');
+assert.equal(isStoryRoute('?sw=0'), true);
+assert.equal(isStoryRoute('?story=4'), true);
+assert.equal(isStoryRoute('?world=story&stage=2'), true);
+assert.equal(isStoryRoute('?story=1&acceptance=1'), true, 'an explicit story wins over probe switches');
+for (const key of LEGACY_SWITCHES) assert.equal(isStoryRoute(`?${key}=1`), false, `${key} keeps the legacy game`);
+assert.equal(isStoryRoute('?mission=rescue'), false);
+assert.equal(isStoryRoute('?classic=1&cine=1'), false);
+console.log('Story route: the story is the default; legacy modes need an explicit switch.');
