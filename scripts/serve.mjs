@@ -32,5 +32,6 @@ const server = createServer(async (req,res) => {
     res.end(req.method === 'HEAD' ? undefined : data);
   } catch { res.writeHead(404).end('Not found'); }
 });
-server.listen(port, '127.0.0.1', () => console.log(`Stalheart: http://127.0.0.1:${port}${base}`));
+const host = arg('--host', '127.0.0.1');   // --host 0.0.0.0 opens it to the LAN for phone tests
+server.listen(port, host, () => console.log(`Stalheart: http://${host === '0.0.0.0' ? '<lan-ip>' : host}:${port}${base}`));
 for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => server.close(() => process.exit(0)));

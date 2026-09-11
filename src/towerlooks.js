@@ -125,7 +125,7 @@ function loadSentryModel(def, tier = 1) {
       // track, could not elevate, and could not recoil. The MUZZLEs are
       // empties and survive the merge on their own.
       sentryProtos.set(url,
-        fitModel(mergeByMaterial(scene, ['YAW', 'PITCH', 'RECOIL']),
+        fitModel(mergeByMaterial(scene, ['YAW', 'PITCH', 'RECOIL', 'ROTOR']),
           { height: 1.35, maxSpan: 2.2 }));
     }
     return true;

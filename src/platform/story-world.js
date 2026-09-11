@@ -16,10 +16,13 @@ export const STORY_LAYOUT = { islands: ISLANDS, structures: STRUCTURES, kit: KIT
 
 export function readStoryQuery(search) {
   const q = new URLSearchParams(search);
+  // ?story=N is the deep link: the story world at stage N, sparse waves, no old heart, no cold open
+  const short = q.get('story') !== null;
   return {
-    world: q.get('world') === 'story' ? 'story' : 'default',
-    threat: Math.min(4, Math.max(0.1, parseFloat(q.get('threat') || '') || 1)),
-    stage: Math.min(STAGES.length - 1, Math.max(0, parseInt(q.get('stage') || '', 10) || 0)),
+    short,
+    world: short || q.get('world') === 'story' ? 'story' : 'default',
+    threat: Math.min(4, Math.max(0.1, parseFloat(q.get('threat') || '') || (short ? 0.35 : 1))),
+    stage: Math.min(STAGES.length - 1, Math.max(0, parseInt(q.get('stage') ?? q.get('story') ?? '', 10) || 0)),
   };
 }
 

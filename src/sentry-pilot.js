@@ -7,9 +7,11 @@ export function createSentryPilot(root, host) {
   panel.innerHTML=`<header>SENTRY CONTROL · SECTOR 01 <small>LIVE TD MAP · PRACTICE</small></header><div class="pilot-weapons">${SENTRIES.map(s=>`<button data-weapon="${s.key}">${s.label}</button>`).join('')}</div><p><button data-post="-1">Q · Previous post</button> <button data-post="1">E · Next post</button> <button data-map>Map / optic · M</button> <button data-restart>Restart</button> <a href="labs.html#sniper">Range bench</a></p><output></output><footer>Right-drag to aim · hold Space / left mouse to fire · wheel to zoom · 1–8 weapon · P pause</footer><div class="pilot-cross">＋</div>`;
   root.append(panel);root.classList.add('sentry-pilot-mode');
   // the story hands over one printed sentry: no weapon swaps, no posts, no bench
-  if(host.story){panel.querySelector('header').innerHTML='SENTRY CONTROL <small>THE ROTOR ON THE WALL</small>';panel.querySelector('.pilot-weapons').style.display='none';panel.querySelectorAll('[data-post],[data-restart],a[href]').forEach(b=>{b.style.display='none';});panel.querySelector('footer').textContent='Right-drag to aim · hold Space / left mouse to fire · wheel to zoom · 1 map · 2 PoV · 3 third · P pause';}
+  if(host.story){panel.querySelector('header').innerHTML='SENTRY CONTROL <small>THE ROTOR ON THE WALL</small>';panel.querySelector('.pilot-weapons').style.display='none';panel.querySelectorAll('[data-post],[data-restart],a[href]').forEach(b=>{b.style.display='none';});panel.querySelector('footer').textContent=host.mobile?'Drag to aim · ‹ › turn · ◉ fire · MAP':'Click to lock the mouse, move it to aim · Space fires · wheel zoom · 1 map · 2 PoV · 3 third · P pause';}
   const up=new THREE.Vector3(),forward=new THREE.Vector3(),direction=new THREE.Vector3(),eye=new THREE.Vector3(),camEye=new THREE.Vector3(),v=new THREE.Vector3();
-  let dragging=false,map=false,lastX=0,lastY=0;
+  let dragging=false,map=false,lastX=0,lastY=0,lastT=performance.now();
+  const locked=()=>document.pointerLockElement===root;
+  state.turn=0;   // -1..1 from the tank pad's side zones on touch
   const abort=new AbortController(),listen=(el,key,fn,options={})=>el.addEventListener(key,fn,{...options,signal:abort.signal});
   function select(key){state.held=false;host.select(key);panel.querySelectorAll('[data-weapon]').forEach(b=>b.classList.toggle('on',b.dataset.weapon===key));}
   panel.querySelectorAll('[data-weapon]').forEach(b=>listen(b,'click',()=>select(b.dataset.weapon)));
@@ -31,17 +33,28 @@ export function createSentryPilot(root, host) {
   },{capture:true});
   listen(window,'keyup',e=>{if(editable(e))return;e.stopImmediatePropagation();if(e.code==='Space'){e.preventDefault();state.held=false;}},{capture:true});
   listen(root,'pointerdown',e=>{
-    if(map||e.target.closest('button,a,input,select,.lil-gui'))return;
-    e.stopImmediatePropagation();e.preventDefault();dragging=true;state.held=e.button===0;lastX=e.clientX;lastY=e.clientY;
+    if(map||e.target.closest('button,a,input,select,.lil-gui,.tzone,.tfire'))return;
+    e.stopImmediatePropagation();e.preventDefault();dragging=true;lastX=e.clientX;lastY=e.clientY;
+    // moving and shooting are separate: a mouse click locks the pointer so the mouse aims; the trigger is Space (or the pad's fire button)
+    if(e.pointerType==='mouse'&&e.button===0&&!locked())root.requestPointerLock?.();
     e.target.setPointerCapture?.(e.pointerId);host.wake();
   },{capture:true});
-  listen(window,'pointermove',e=>{if(!dragging)return;e.stopImmediatePropagation();state.yaw-=(e.clientX-lastX)*.004/state.zoom;state.pitch=Math.max(-1.25,Math.min(.9,state.pitch-(e.clientY-lastY)*.004/state.zoom));lastX=e.clientX;lastY=e.clientY;},{capture:true});
-  listen(window,'pointerup',()=>{dragging=false;state.held=false;},{capture:true});
+  listen(window,'pointermove',e=>{if(!dragging&&!locked())return;if(map)return;e.stopImmediatePropagation();const dx=locked()?e.movementX:e.clientX-lastX,dy=locked()?e.movementY:e.clientY-lastY;state.yaw-=dx*.004/state.zoom;state.pitch=Math.max(-1.25,Math.min(.9,state.pitch-dy*.004/state.zoom));lastX=e.clientX;lastY=e.clientY;},{capture:true});
+  listen(window,'pointerup',()=>{dragging=false;},{capture:true});
+  // the tank pad on touch: the fire button holds the trigger, the side zones turn the mount; their clicks never reach the tank
+  for(const [sel,down,up] of [['#td-pad-fire',()=>{state.held=!map;},()=>{state.held=false;}],['#td-pad-left',()=>{state.turn=-1;},()=>{state.turn=0;}],['#td-pad-right',()=>{state.turn=1;},()=>{state.turn=0;}]]){
+    const el=root.querySelector(sel);if(!el)continue;
+    listen(el,'pointerdown',e=>{e.stopImmediatePropagation();e.preventDefault();down();host.wake();},{capture:true});
+    for(const evt of ['pointerup','pointerleave','pointercancel'])listen(el,evt,e=>{e.stopImmediatePropagation();up();},{capture:true});
+    listen(el,'click',e=>{e.stopImmediatePropagation();e.preventDefault();},{capture:true});
+  }
   listen(root,'contextmenu',e=>{if(!map)e.preventDefault();});
   listen(window,'blur',()=>{dragging=false;state.held=false;});
   listen(root,'wheel',e=>{if(map||e.target.closest('#sentry-pilot'))return;e.preventDefault();e.stopImmediatePropagation();state.zoom=Math.max(1,Math.min(5,state.zoom+(e.deltaY<0?.25:-.25)));host.zoom(state.zoom);},{capture:true,passive:false});
   function pose(tw,goal){
     if(!tw)return false;
+    const now=performance.now(),dt=Math.min(.05,(now-lastT)/1000);lastT=now;
+    if(state.turn)state.yaw-=state.turn*1.6*dt;
     up.copy(tw.obj.position).normalize();
     forward.set(Math.sin(state.yaw),0,Math.cos(state.yaw)).applyQuaternion(tw.obj.quaternion).normalize();
     direction.copy(forward).multiplyScalar(Math.cos(state.pitch)).addScaledVector(up,Math.sin(state.pitch)).normalize();
@@ -73,6 +86,6 @@ export function createSentryPilot(root, host) {
   return {state,pose,target,attach,select,setView,isMap:()=>map,
     aimAt:pos=>{const {held,target}=state;attach(state.tower,pos);state.held=held;state.target=target;},
     update(text){panel.querySelector('output').textContent=text;},
-    dispose(){abort.abort();panel.remove();root.classList.remove('sentry-pilot-mode');}
+    dispose(){abort.abort();if(locked())document.exitPointerLock?.();panel.remove();root.classList.remove('sentry-pilot-mode');}
   };
 }

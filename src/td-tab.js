@@ -2709,7 +2709,7 @@ export function initTdTab(root) {
     // caption lane — and the operator was riding him without knowing it:
     // "the tank is below the frame, I only see the tip of its plasma, the
     // POV looks too high". ?view= keeps its say, for probes.
-    if (mobileShell && (v === 'pov' || v === 'drone' || v === 'bastion') && !viewOverride) v = 'third';
+    if (mobileShell && (v === 'pov' || v === 'drone' || v === 'bastion') && !viewOverride && !pilotMode) v = 'third';
     // the drone view needs a drone: he is normally on shift from the first
     // second, but a board that has not finished loading his bytes yet would
     // hand you an empty camera. Ask for him, and fall through to orbit —
@@ -10160,7 +10160,7 @@ export function initTdTab(root) {
       if(tw.key==='rotor'){
         const spin=pilotMode ? !!pilot?.state.held : !!pickTarget(graph.centers[tw.ci],effectiveStats(tw.def,tw.tier).range*cellSide,enemies,chord);
         if(spin!==!!tw.spinning)sfx.play('minigun_ready',{dist:camDist(graph.centers[tw.ci])});
-        tw.spinning=spin;
+        tw.spinning=spin; tw.spinRate=(tw.spinRate??0)+((spin?34:0)-(tw.spinRate??0))*Math.min(1,dt*2.5); if(tw.spinRate>0.05)(tw.rotorNode??=tw.obj.getObjectByName('ROTOR'))?.rotateZ(tw.spinRate*dt);   // the barrel cluster winds up and down
       }
       tw.cooldown -= dt;
       if (pilotMode) {
@@ -12868,7 +12868,7 @@ export function initTdTab(root) {
   }
   if (urlParams.get('callouts') === '0') params.callouts = false;
   syncCalloutMode();
-  const heartOverride = urlParams.get('heart');
+  const heartOverride = urlParams.get('heart') ?? (storyQuery.short ? 'none' : null);   // ?story=N implies the story's empty heart
   if (HEART_LOOKS[heartOverride]) params.heartLook = heartOverride;
   const lookOverride = urlParams.get('look');
   if (LOOKS[lookOverride]) params.look = lookOverride;
@@ -14239,7 +14239,7 @@ export function initTdTab(root) {
   // screenshot path — beats land at ~1 / ~5 / ~8); ?cine=0 skips it. It is
   // deliberately NOT gated on `debugging`: a hook like ?tick has no opinion
   // about the opening, and the cinematic is the thing being verified.
-  const cineParam = urlParams.get('cine');
+  const cineParam = urlParams.get('cine') ?? (storyQuery.short ? '0' : null);   // ...and no cold open
   const wantCine = !pilotMode && cineParam !== '0' && (cineParam !== null || !debugging);
   let opening = null;
   if (storyMode) opening = null; /* no field manual in the story world; a new one comes with the pieces */ else if (!pilotMode && introParam === '1') opening = () => showIntro();
@@ -17579,7 +17579,7 @@ export function initTdTab(root) {
       pilot.attach(tw,graph.centers[near?.ci ?? dungeon.spawn]);
     }
     pilot=createSentryPilot(root,{
-      story:!!posts,select:installPilot,
+      story:!!posts,mobile:mobileShell,select:installPilot,
       post:delta=>{pilotPost=(pilotPost+delta+pilotPosts.length)%pilotPosts.length;pilot.select(pilotMounts[pilotPost]?.key || pilot.state.tower.key);},
       map:on=>setView(on?'orbit':'bastion'),pause:()=>{paused=!paused;pilot.state.held=false;},
       wake:()=>holdWake(),cellSide:()=>cellSide,

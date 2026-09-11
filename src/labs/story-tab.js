@@ -123,7 +123,7 @@ export function initStoryTab(root) {
   }
   controls.addEventListener('start', () => { onRail = false; });
   // the same planet in the actual game, with sparse waves
-  const playUrl = () => `index.html?world=story&threat=0.35&cine=0&heart=none&stage=${stage}#td`;
+  const playUrl = () => `index.html?story=${stage}#td`;
   const play = () => { location.href = playUrl(); };
   hud.querySelector('#story-land').onclick = land; hud.querySelector('#story-skip').onclick = skip; hud.querySelector('#story-reset').onclick = reset; hud.querySelector('#story-overview').onclick = overview; hud.querySelector('#story-gate').onclick = () => { gateForced = !gateForced; }; hud.querySelector('#story-play').onclick = play;
   function onKey(e) {

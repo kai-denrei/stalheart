@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "2026-09-11-sentry-controls-deeplink",
+  "date": "2026-09-11T18:40:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "Sentry control: barrel spin, mouse aims and Space fires, tank pad on the phone, ?story=N deep link, LAN dev server",
+  "context": "Owner: the barrel amount in PoV is right, add the rotation; separate move and shoot (mouse aims, Space fires; on mobile the same controls as the tank); a deep link for phone tests; commit and push.",
+  "outcome": "towerlooks keeps the Rotor's ROTOR node as a pivot and td-tab winds it up to 34 rad/s while the trigger is held and down after (one line). sentry-pilot: a left click requests pointer lock and mouse movement aims (movementX/Y when locked, drag deltas otherwise); the left button no longer fires; Space and the tank pad's fire button hold the trigger; the pad's side zones turn the mount at 1.6 rad/s; pad clicks never reach the tank. The bastion view is no longer forced to third on the mobile shell while piloting. readStoryQuery accepts ?story=N as the deep link (story world, stage N, threat 0.35, heart none, cine 0) and the lab's play link uses it. scripts/serve.mjs takes --host for LAN tests. Acceptance boots the deep link and checks the empty heart, running beats and hidden manual.",
+  "alternatives": [
+    "Keep left-click firing alongside Space: rejected, the owner asked for separate move and shoot."
+  ],
+  "evidence": [
+    "node scripts/browser-test.mjs --story-world: PASS through story-world-deeplink",
+    "npm test 89, check, build"
+  ],
+  "supersedes": []
+}
