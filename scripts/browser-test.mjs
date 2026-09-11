@@ -272,7 +272,10 @@ try{
  try{await until('!!window.__stalheartPilotTest',30000);}catch(e){console.log('STORY BEATS',JSON.stringify(await evaluate('(s=>({story:s.story,towers:s.towerCells,biomass:s.biomass}))(window.__stalheartTest.state())')));throw e;}await delay(500);const took=await evaluate('window.__stalheartPilotTest.state()');
  assert.equal(took.key,'rotor','control taken of the printed Rotor');assert.equal(took.posts.length,1);assert.deepEqual(printed.towerCells,[['rotor',took.ci]],'the only tower is the one under control');
  await delay(3800);current='story-world-control';await finish();
- await delay(8000);assert.equal((await evaluate('window.__stalheartTest.state()')).performance.enemies,0,'no fodder before a gate stands');
+ await evaluate('window.__stalheartPilotTest.view("third")');await delay(600);assert.equal(await evaluate('window.__stalheartPilotTest.state().view'),'third');current='story-world-third';await finish();
+ await evaluate('window.__stalheartPilotTest.view("map")');await delay(600);current='story-world-map';await finish();
+ await evaluate('window.__stalheartPilotTest.view("pov")');await delay(600);assert.equal(await evaluate('window.__stalheartPilotTest.state().view'),'pov');
+ await delay(6000);assert.equal((await evaluate('window.__stalheartTest.state()')).performance.enemies,0,'no fodder before a gate stands');
  await go('story-world-gate','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=4#td');await until('!!window.__stalheartTest',90000);await delay(2500);
  const four=await evaluate('window.__stalheartTest.state()');assert.equal(four.wallCount-w.wallCount,0,'stage 4 and 6 block the same wall cells');assert(four.wallCount>one.wallCount,'walls are rock to the pathfinder');
  await finish();
