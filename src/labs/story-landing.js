@@ -100,6 +100,7 @@ export function createStoryLanding(scene, { padFloor, yaw, dustTint = 0x9a8f7a }
     },
     state: () => ({ loaded: !!rocket, error, plumes: plumes.length, burning: plumes.filter((p) => p.visible).length, clips: Object.fromEntries(Object.keys(actions).map((k) => [k, held.has(k) ? +held.get(k).toFixed(3) : null])), altitude: lift.position.y, isao: isao ? { visible: isao.visible, y: +isao.position.y.toFixed(2) } : null, scorch: !!scorch, dust: !!dust, t: lastT }),
     rocketTop: () => WELL_RIM * S,
+    setLanded(on) { lift.visible = on; if (isao) isao.visible = on && isao.visible; },
     dispose() {
       mixer?.stopAllAction(); if (rocket) mixer?.uncacheRoot(rocket);
       for (const p of plumes) p.userData.dispose(); for (const g of geometries) g.dispose(); for (const m of materials) m.dispose();

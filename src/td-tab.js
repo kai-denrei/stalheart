@@ -41,8 +41,7 @@ import { storage as localStorage } from './storage.js';
 import * as THREE from '../vendor/three.module.js';
 import GUI from '../vendor/lil-gui.esm.js';
 import { bfsDist, BLOCKED, PATH, ROOM } from './dungeon.js';
-import { buildWorld } from './domain/world-recipe.js';
-import { STORY_RECIPE, STORY_CLEARING } from './content/story-defaults.js';
+import { buildGameWorld, readStoryQuery } from './platform/story-world.js';
 import { compileRail } from './cine/rail.js';
 import { SCRIPTS } from './cine/scripts.js';
 import { cuesBetween } from './cine/sound.js';
@@ -623,7 +622,7 @@ export function initTdTab(root) {
   let edgeGeo = null, edgeMesh = null;
   let topGeo = null, topMesh = null; // interior wall-top wires, dimmable
   let floorOffsets = null; // cell -> [start,count] into floor color attr (verts)
-  let heartSprite = null, playerMesh = null, markerMesh = null;
+  let heartSprite = null, playerMesh = null, markerMesh = null, storyBase = null;
   // WHAT STANDS AT THE POLE. Both entries satisfy one contract — sizeScale,
   // tick(t), hit() — so swapping them changes how the Stalheart LOOKS and
   // never what it DOES. Same registry seam as looks / towerlooks /
@@ -5732,9 +5731,9 @@ export function initTdTab(root) {
     heartCalloutCd = 0; streakMark = 0;
     ramCombo = 0; ramComboT = 0; syncCombo();
     breachedCells.clear(); // a NEW world owes nothing to the old one's holes
-    const built = buildWorld({ world: worldMode, params, story: { recipe: STORY_RECIPE, clearing: STORY_CLEARING } });
-    mesh = built.mesh; dungeon = built.dungeon;
-    if (built.wallHeight) params.wallHeight = built.wallHeight;   // 4 m on the story sphere
+    const built = buildGameWorld({ world: storyQuery.world, params, stage: storyQuery.stage, scene });
+    mesh = built.mesh; dungeon = built.dungeon; if (built.wallHeight) params.wallHeight = built.wallHeight;   // 4 m on the story sphere
+    storyBase?.dispose(); storyBase = built.base;   // the story's islands and structures at the requested stage
     graph = dungeon.graph;
     cellSide = mesh.defaultSide;
     // THE CAMP, BEFORE ANY ACTOR IS PLACED. Berth cells are graph maths,
@@ -12392,6 +12391,7 @@ export function initTdTab(root) {
         if (secsToWave() <= 10) { bossCued = true; sfx.play('boss_tension'); }
       }
     }
+    storyBase?.tick(frozen ? 0 : dt);
     gameBreaches.update(frozen?0:dt,obj=>{
       let changed=false;const centre=norm3(obj.position.toArray()),reach=CONTENT.breach.clearRadius*cellSide;
       for(let ci=0;ci<graph.centers.length;ci++)if(dungeon.tags[ci]===BLOCKED&&!orderByCell.has(ci)&&Math.acos(Math.max(-1,Math.min(1,dot3(centre,norm3(graph.centers[ci])))))<=reach)changed=breachWallCell(ci)||changed;
@@ -12845,7 +12845,7 @@ export function initTdTab(root) {
   if (Number.isFinite(pointsOverride)) params.points = Math.min(16000, Math.max(150, pointsOverride));
   const seedOverride = parseInt(urlParams.get('seed') || '', 10);
   if (Number.isFinite(seedOverride)) params.seed = seedOverride >>> 0;
-  const worldMode = urlParams.get('world') === 'story' ? 'story' : 'default', threatMult = Math.min(4, Math.max(0.1, parseFloat(urlParams.get('threat') || '') || 1));
+  const storyQuery = readStoryQuery(location.search), threatMult = storyQuery.threat;
   const simParam = urlParams.get('sim');
   if (simParam) {
     simStyle = simParam;
@@ -17612,7 +17612,7 @@ export function initTdTab(root) {
   animate();
 
   return {
-    dispose() { pilot?.dispose(); active = false; gameBreaches.dispose();runTimers.dispose(); runContext.dispose(); missilesDisposed=true; missilePool?.dispose(); setPerfOverlay(false,false); },
+    dispose() { pilot?.dispose(); active = false; storyBase?.dispose(); gameBreaches.dispose();runTimers.dispose(); runContext.dispose(); missilesDisposed=true; missilePool?.dispose(); setPerfOverlay(false,false); },
     setActive(on) {
       active = on;
       if (!on) stopEngine(0.1, true); // quiet: leaving the tab is not a landing

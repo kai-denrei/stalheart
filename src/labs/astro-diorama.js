@@ -1,4 +1,4 @@
-import { batchAstroAsset } from './astro-batching.js';
+import { batchStaticAsset as batchAstroAsset } from '../fx/asset-batching.js';
 import { createAstroFoundations } from './astro-foundations.js';
 import * as THREE from '../../vendor/three.module.js';
 import { GLTFLoader } from '../../vendor/GLTFLoader.js';

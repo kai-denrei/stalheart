@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "2026-09-11-story-stages-islands",
+  "date": "2026-09-11T08:20:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "Stage selector and tangent island slabs, shared by the story lab and the game",
+  "context": "The owner asked for the base's growth stages in the lab and for the game to show the space exactly as the chosen stage leaves it, with base pieces from the upstream base kit and the former gantry Stalheart model retired for the story.",
+  "outcome": "src/content/base-layout.js declares seven stages, six islands and six structures in the base frame; src/domain/base-plan.js places them, the gate on the open mouth and twelve flanking walls, with islands tangent to the sphere at their own centre so corner sag stays under the slab's 1.2 m skirt (the first draft measured islands against the pole plane and failed its own test at 1.27 m). src/fx/story-base.js renders a plan for any host through a placer: instanced slabs with a shader 4 m grid, instanced walls, the gate, landmark models with their cycles; static batching moved from labs to fx/asset-batching.js because the game may not import a lab module. src/platform/story-world.js composes the game side; td-tab.js creates, ticks and disposes the base with a stage URL parameter at no net line growth. The story lab's play link carries the stage and heart=cloud. Acceptance: lab stage 7 counts, overview capture, game at stages 6 and 1.",
+  "alternatives": [
+    "Islands parallel to the pole's tangent plane: rejected, off-pole islands tilt with the sphere and the skirt cannot cover the fill.",
+    "A separate game-side renderer for the base: rejected, one presentation module serves both hosts."
+  ],
+  "evidence": [
+    "test/base-plan.mjs: 6 islands, 6 structures, 12 walls, gate at the mouth, sag under 1.2 m on the 753 m planet",
+    "node scripts/browser-test.mjs --story: PASS story-stage-7, story-stage-7-overview",
+    "node scripts/browser-test.mjs --story-world: PASS at stage 6 (60 fps, 952k triangles, 1318 calls) and stage 1",
+    "docs/architecture-budget.json: td-tab.js at 17,626 lines after the change"
+  ],
+  "supersedes": []
+}

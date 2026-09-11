@@ -4494,3 +4494,4 @@ body:not(.chrome-open) #tabbar .tabgroup:not(:has(button.active)) { display: non
 }
 #story-hud .story-keys button:hover { background: rgba(22, 50, 74, 0.95); color: #dff4ff; }
 #story-hud .story-keys span { color: #6a94b0; }
+#story-hud .story-keys button.on { background: rgba(40, 90, 120, 0.95); color: #dff4ff; border-color: #6fc3ff; }
