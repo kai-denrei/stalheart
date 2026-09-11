@@ -236,8 +236,9 @@ try{
  await evaluate('window.__stalheartStoryTest.seek(6)');await delay(200);const burning=await evaluate('window.__stalheartStoryTest.state()');assert.equal(burning.landing.burning,6,'all six engines burn in descent');assert(burning.cues.includes('rocket_thrust'),'thrust bed started');
  current='story-six-engines';await finish();
  await evaluate('window.__stalheartStoryTest.seek(12.2)');await delay(200);const cut=await evaluate('window.__stalheartStoryTest.state()');assert.equal(cut.landing.burning,0,'engines cut at touchdown');assert(cut.cues.includes('tank_spool_up')&&cut.cues.includes('tank_spool_down'),'legs and landing pneumatics fired');
+ await evaluate('window.__stalheartStoryTest.seek(20)');await delay(300);const mid=await evaluate('window.__stalheartStoryTest.state()');assert.equal(mid.landing.face,'angry','red with anger as he clears the rim');assert(mid.comms&&mid.comms.includes('Rough landing'),'the comms line');current='story-isao-angry';await finish();
  await evaluate('window.__stalheartStoryTest.skip()');await delay(300);const done=await evaluate('window.__stalheartStoryTest.state()');
- assert.equal(done.phase,'done');assert.equal(done.landing.isao.visible,true);current='story-isao-out';await finish();
+ assert.equal(done.phase,'done');assert.equal(done.landing.isao.visible,true);assert.equal(done.landing.face,'glee');assert(done.comms.includes('So much to build'));current='story-isao-out';await finish();
  await evaluate('window.__stalheartStoryTest.setStage(7)');await evaluate('window.__stalheartStoryTest.baseReady()');await delay(1500);
  const base=await evaluate('window.__stalheartStoryTest.state()');assert.equal(base.stage,7);assert.deepEqual(base.base.errors,[]);assert.equal(base.base.islands,6);assert.equal(base.base.walls,12);assert(base.base.gate);assert.equal(base.base.structures,6,'six landmarks at stage 7 in the lab (the landing scene owns the rocket)');
  assert(base.playUrl.includes('story=7'),'play carries the stage');
@@ -282,8 +283,14 @@ try{
  await go('story-world-gate','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=4#td');await until('!!window.__stalheartTest',90000);await delay(2500);
  const four=await evaluate('window.__stalheartTest.state()');assert.equal(four.wallCount-w.wallCount,0,'stage 4 and 6 block the same wall cells');assert(four.wallCount>one.wallCount,'walls are rock to the pathfinder');
  await finish();
- await until('window.__stalheartTest.state().towers===1',90000);await until('!!window.__stalheartPilotTest',30000);
- await until('window.__stalheartTest.state().performance.enemies>0',60000);await delay(14000);
+ await until('window.__stalheartTest.state().towers===1',90000);
+ await until('window.__stalheartTest.state().story.phase==="tremor"',20000);await delay(600);current='story-world-tremor';await finish();
+ await until('window.__stalheartTest.state().story.phase==="breach"',20000);await until('window.__stalheartTest.state().shot==="breach"',15000);await delay(1200);
+ assert((await evaluate('window.__stalheartTest.state().breaches')).length>0,'the ground opened');current='story-world-breach';await finish();
+ await until('window.__stalheartTest.state().story.phase==="override"',90000);await delay(800);
+ assert.equal(await evaluate('document.querySelector("#td-brief").classList.contains("hidden")'),false,'Isao speaks the override line');current='story-world-override';await finish();
+ assert.equal(await evaluate('typeof window.__stalheartPilotTest'),'undefined','no control before the override');
+ await until('!!window.__stalheartPilotTest',30000);await until('window.__stalheartTest.state().performance.enemies>0',60000);await delay(14000);
  const fodder=await evaluate('window.__stalheartTest.state()');assert(fodder.performance.enemies>=2&&fodder.performance.enemies<=8,`fodder alive ${fodder.performance.enemies}`);assert.equal(fodder.performance.wave,0,'no wave arms');
  assert.equal(fodder.insideEnemies,0,'the closed gate holds the fodder outside');assert.equal(fodder.queued,0);
  current='story-world-fodder';await finish();

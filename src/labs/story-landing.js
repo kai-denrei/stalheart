@@ -13,7 +13,8 @@ const BELL_HEIGHT = 2.0;          // engine bells above the touchdown plane, aut
 const WELL_FLOOR = 19.0;          // cargo well floor above the touchdown plane, authored metres
 const WELL_RIM = 23.5;            // door rim, authored metres
 
-export function createStoryLanding(scene, { placer, site = [0, 0], dustTint = 0x9a8f7a }) {
+export function createStoryLanding(scene, { placer, site = [0, 0], dustTint = 0x9a8f7a, onFace = null }) {
+  let isaoFace = 'neutral';
   // the whole arrival stands on the landing island, tangent to the sphere there
   const root = new THREE.Group(); root.name = 'Arrival'; root.matrixAutoUpdate = false; root.matrix.copy(basisAt(placer, site[0], site[1], [0, 1])); root.matrixWorldNeedsUpdate = true; scene.add(root);
   const lift = new THREE.Group(); lift.name = 'Descent'; root.add(lift);
@@ -84,6 +85,9 @@ export function createStoryLanding(scene, { placer, site = [0, 0], dustTint = 0x
       // then drifts clear of the nose
       const doorOpening = state.clips.Top_Door_Open !== null;
       isao.visible = doorOpening || state.isaoRise > 0;
+      // red with anger as he clears the rim, then delighted by the work ahead
+      const face = state.isaoRise <= 0 ? 'neutral' : state.isaoRise < 0.62 ? 'angry' : 'glee';
+      if (face !== isaoFace) { isaoFace = face; isao.userData.setFace?.(face); onFace?.(face); }
       // starts deep in the hull tube, well below the rim, climbs straight up for most of the beat, then drifts clear
       const r = state.isaoRise, climb = Math.min(1, r / 0.8), drift = Math.max(0, (r - 0.8) / 0.2);
       const y0 = (WELL_FLOOR - 9) * S, y1 = (WELL_RIM + 4) * S;
@@ -102,7 +106,7 @@ export function createStoryLanding(scene, { placer, site = [0, 0], dustTint = 0x
       if (dust) { if (!dust.userData.tick(dt)) { effects.remove(dust); dust.geometry.dispose(); dust.material.dispose(); dust = null; } }
       if (isao?.visible) { isao.userData.spinRotors?.(dt, 0.4); isao.userData.tickFace?.(dt); }
     },
-    state: () => ({ loaded: !!rocket, error, plumes: plumes.length, burning: plumes.filter((p) => p.visible).length, clips: Object.fromEntries(Object.keys(actions).map((k) => [k, held.has(k) ? +held.get(k).toFixed(3) : null])), altitude: lift.position.y, isao: isao ? { visible: isao.visible, y: +isao.position.y.toFixed(2) } : null, scorch: !!scorch, dust: !!dust, t: lastT }),
+    state: () => ({ loaded: !!rocket, error, face: isaoFace, plumes: plumes.length, burning: plumes.filter((p) => p.visible).length, clips: Object.fromEntries(Object.keys(actions).map((k) => [k, held.has(k) ? +held.get(k).toFixed(3) : null])), altitude: lift.position.y, isao: isao ? { visible: isao.visible, y: +isao.position.y.toFixed(2) } : null, scorch: !!scorch, dust: !!dust, t: lastT }),
     rocketTop: () => WELL_RIM * S,
     setLanded(on) { lift.visible = on; if (isao) isao.visible = on && isao.visible; },
     dispose() {

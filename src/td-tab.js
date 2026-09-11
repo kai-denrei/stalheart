@@ -5720,8 +5720,7 @@ export function initTdTab(root) {
     // are placed, so orderTower's own spend nets to zero and every other
     // rule (the queue, the travel, the print clock) applies unchanged.
     queueMicrotask(() => {
-      if (!storyMode) eco.addBiomass(starterTower().cost * 2);   // the story's first print is Isao's Rotor on the wall, nothing before it
-      if (!storyMode) for (const ci of garrisonSites(2)) orderTower(starterTower().key, ci, { quiet: true });
+      if (!storyMode) { eco.addBiomass(starterTower().cost * 2); for (const ci of garrisonSites(2)) orderTower(starterTower().key, ci, { quiet: true }); }   // the story's first print is Isao's Rotor on the wall, nothing before it
       spawnIsao();   // on shift from the first second, order or no order
     });
     hackedUnlocks = 0; hackedRound = false; syncHackBtn();
@@ -5733,8 +5732,7 @@ export function initTdTab(root) {
     ramCombo = 0; ramComboT = 0; syncCombo();
     breachedCells.clear(); // a NEW world owes nothing to the old one's holes
     const built = buildGameWorld({ world: storyQuery.world, params, stage: storyQuery.stage, scene, sfx });
-    mesh = built.mesh; dungeon = built.dungeon; if (built.wallHeight) params.wallHeight = built.wallHeight;   // 4 m on the story sphere
-    storyBase?.dispose(); storyBase = built.base; story = built.story ?? null;   // the story's islands, structures, sockets and beats at the requested stage
+    mesh = built.mesh; dungeon = built.dungeon; if (built.wallHeight) params.wallHeight = built.wallHeight; storyBase?.dispose(); storyBase = built.base; story = built.story ?? null;   // 4 m walls on the story sphere; the story's islands, structures, sockets and beats at the requested stage
     graph = dungeon.graph;
     cellSide = mesh.defaultSide;
     // THE CAMP, BEFORE ANY ACTOR IS PLACED. Berth cells are graph maths,
@@ -10442,7 +10440,7 @@ export function initTdTab(root) {
     towerShots.push({
       pos: p0, dir, dist: 0, mesh, shell,
       dmg: eff.dmg * (pilotMode ? story?.pilot.dmgMul ?? 1 : 1), splash: (eff.splash || 0) * cellSide, homing,   // ...and each round hits harder
-      range: eff.range * cellSide * 1.35,
+      range: Math.min(eff.range * cellSide * 1.35, rayToTerrain(scale3(p0, lift0), dir, eff.range * cellSide * 1.35, tw.ci).len), terrain: true,   // a round stops at the first rock it flies into
       speed: (sfx2.projSpeed ?? 16) * cellSide, // per-tower tempo
       arcTotal, arcH: cellSide * 2.3, color: tw.def.color, // a lob, not a moonshot
       landCi, markT: 0, px: sfx2.projPx ?? 5,
@@ -10554,7 +10552,7 @@ export function initTdTab(root) {
           break;
         }
       }
-      if (hit || p.dist > p.range) killTowerShot(i);
+      if (hit || p.dist > p.range) { if (!hit && p.terrain && p.arcTotal <= 0) { const ci = cellIndex(p.pos); warnRing(ci, p.color, 0.3, cellSide * 0.6); const fl = makeDotBurst(p.color, norm3(p.pos), 8); fl.scale.setScalar(cellSide * 1.6); fl.position.set(p.pos[0], p.pos[1], p.pos[2]); scene.add(fl); debris.push(fl); } killTowerShot(i); }
     }
   }
 
@@ -12399,7 +12397,7 @@ export function initTdTab(root) {
     },opened=>{
       sfx.play('sinkhole_quake',{dist:Math.min(...opened.map(obj=>camDist(obj.position.toArray())))});
       // One skippable establishing shot per new group, never per wave.
-      if(wave>0&&!paused&&!shotActive()&&!tutorialActive&&(!introEl||introEl.classList.contains('hidden'))){
+      if((wave>0||storyMode)&&!paused&&!shotActive()&&!tutorialActive&&(!introEl||introEl.classList.contains('hidden'))){
         const direction=opened[0].position.clone().normalize(),returnPos=camera.position.clone(),returnQuat=camera.quaternion.clone();
         const far=direction.clone().multiplyScalar(3.3),up=camera.up.clone();
         startShot({id:'breach',dur:CONTENT.breach.preRoll+1.8,poseAt:(u,out)=>{
@@ -12612,7 +12610,7 @@ export function initTdTab(root) {
     playerMesh.visible = params.view !== 'pov';
     postfx.render();
 
-    drawRadar(t);
+    drawRadar(t); story?.hud.paint(radarCtx, { m: radarCss, cpos: pilot?.state.tower ? graph.centers[pilot.state.tower.ci] : player.pos, up: pilot?.state.tower ? new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray() : player.smoothDir, range: mapMode === 'heart' ? 2.02 : pilotMode ? cellSide * 12 : 1.15, t, mapMode });
   }
 
   // The scope. Player mode is heading-up around the tank; heart mode (M) is
@@ -12845,7 +12843,7 @@ export function initTdTab(root) {
   if (Number.isFinite(pointsOverride)) params.points = Math.min(16000, Math.max(150, pointsOverride));
   const seedOverride = parseInt(urlParams.get('seed') || '', 10);
   if (Number.isFinite(seedOverride)) params.seed = seedOverride >>> 0; const storyQuery = readStoryQuery(location.search), threatMult = storyQuery.threat, storyMode = storyQuery.world === 'story';   // tabula rasa past the landing: no old heart, waves, portals, camp or yard
-  const storyApi = { order: (key, ci) => orderTower(key, ci, { quiet: true }), grant: (n) => { if (n > 0) eco.addBiomass(n, { category: 'grant' }); }, built: (ci) => towerByCell.has(ci), cost: (key) => TOWER_BY_KEY[key]?.cost ?? 0, isao: () => !!isao, enemies: () => enemies.filter((e) => e.alive).length, spawn: (type, ci) => { spawnQueue.push({ type, sp: { ci, alive: true, obj: new THREE.Group() }, at: spawnClock }); }, pilot: (ci, laneCi) => { enterPilot([ci]); startShot({ id: 'takeControl', dur: 3.2, poseAt: takeControlPose(graph.centers[ci], graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight), onEnd: () => { setView('bastion'); snapCamera(); } }); } };
+  const storyApi = { order: (key, ci) => orderTower(key, ci, { quiet: true }), grant: (n) => { if (n > 0) eco.addBiomass(n, { category: 'grant' }); }, built: (ci) => towerByCell.has(ci), cost: (key) => TOWER_BY_KEY[key]?.cost ?? 0, isao: () => !!isao, enemies: () => enemies.filter((e) => e.alive).length, spawn: (type, ci) => { spawnQueue.push({ type, sp: story?.source ?? { ci, alive: true, obj: new THREE.Group() }, at: spawnClock }); }, brief: (id) => showBrief(id), tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null), breach: (ci) => { const obj = buildPortalObj(ci, 0); scene.add(obj); story.source = { ci, alive: true, obj, hp: 3, found: true }; }, near: (ci) => enemies.some((e) => e.alive && chord(e.pos, graph.centers[ci]) < cellSide * 2.2), pilot: (ci, laneCi) => { enterPilot([ci]); startShot({ id: 'takeControl', dur: 3.2, poseAt: takeControlPose(graph.centers[ci], graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight), onEnd: () => { setView('bastion'); snapCamera(); } }); } };
   const simParam = urlParams.get('sim');
   if (simParam) {
     simStyle = simParam;

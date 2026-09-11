@@ -23,7 +23,8 @@ const RAIL = [
   { t: 12, pos: [70, 26, 110], look: [0, 16, 0] },
   { t: 16, pos: [52, 34, 70], look: [0, 24, 0] },
   { t: 18, pos: [30, 40, 42], look: [0, 34, 0] },
-  { t: 22.8, pos: [36, 44, 50], look: [0, 38, 0] },
+  { t: 20.5, pos: [10, 41, 14], look: [0, 39, 0], fov: 34 },   // close on Isao's face as he clears the rim
+  { t: 23.8, pos: [9, 42, 12], look: [1, 41, 0], fov: 34 },
 ];
 
 export function initStoryTab(root) {
@@ -72,6 +73,10 @@ export function initStoryTab(root) {
     + '<div class="story-keys"><a class="story-back" href="index.html?story=4#td">back to the game</a><button id="story-land" type="button">L land</button><button id="story-skip" type="button">K skip</button><button id="story-reset" type="button">R reset</button><button id="story-overview" type="button">O overview</button><button id="story-gate" type="button">G gate</button><button id="story-play" type="button">P play here</button><span>drag to orbit, wheel to zoom</span></div>'
     + '<div class="story-keys" id="story-stages"></div>';
   const status = hud.querySelector('#story-status'), stageLine = hud.querySelector('#story-stage'), stageBar = hud.querySelector('#story-stages');
+  // Isao's comms as he comes out: the line the face is saying
+  const commsEl = document.createElement('div'); commsEl.id = 'story-comms'; commsEl.hidden = true; hud.prepend(commsEl);
+  const COMMS = { angry: ['#ff6a6a', 'Rough landing!'], glee: ['#7dff9e', 'So much to build!'] };
+  function comms(face) { const c = COMMS[face]; commsEl.hidden = !c; if (c) { commsEl.style.color = c[0]; commsEl.style.borderColor = c[0]; commsEl.textContent = `ISAO · ${c[1]}`; } }
   const LAYOUT = { islands: ISLANDS, structures: STRUCTURES, kit: KIT, stages: STAGES };
   let stage = Math.min(STAGES.length - 1, Math.max(0, parseInt(q.get('stage') || '', 10) || 1)), base = null, gateForced = false;
   for (const st of STAGES) { const b = document.createElement('button'); b.type = 'button'; b.textContent = `${st.n} ${st.name}`; b.dataset.stage = st.n; b.onclick = () => setStage(st.n); stageBar.appendChild(b); }
@@ -113,7 +118,7 @@ export function initStoryTab(root) {
     const built = performance.now() - t0;
     planetMesh = buildStoryPlanetMesh(planet, look, { wallMetres: STORY_RECIPE.wallMetres }); scene.add(planetMesh);
     const site = ISLANDS.find((i) => i.id === 'landing');
-    landing = createStoryLanding(scene, { placer: { toWorld: (p) => new THREE.Vector3(...planet.frameToWorld(p)) }, site: [site.x, site.z] });
+    landing = createStoryLanding(scene, { placer: { toWorld: (p) => new THREE.Vector3(...planet.frameToWorld(p)) }, site: [site.x, site.z], onFace: comms });
     landing.ready.then(() => { seek(t); if (q.get('land') === '1') land(); });   // ?land=1 opens on the cinematic
     marker = buildMouthMarker(planet, look); if (marker) scene.add(marker);
     setStage(stage);
@@ -154,7 +159,7 @@ export function initStoryTab(root) {
     },
   };
   if (q.get('acceptance') === '1') window.__stalheartStoryTest = {
-    state: () => ({ ready: !!planet && !!landing?.state().loaded, cells: planet?.dungeon.tags.length ?? 0, mouths: planet?.clearing.mouths.length ?? 0, openMouths: planet?.clearing.mouths.filter((m) => m.open).length ?? 0, gateMarker: !!marker, playUrl: playUrl(), stage, base: base ? { ...base.counts, errors: base.errors.slice(), children: base.group.children.length, gate: base.gate() } : null, counts: planetMesh?.userData.counts ?? null, t, phase: sequence.stateAt(t).phase, playing, landing: landing?.state() ?? null, cues: cueLog.slice(), audioState: sfx.contextState, errors }),
+    state: () => ({ ready: !!planet && !!landing?.state().loaded, cells: planet?.dungeon.tags.length ?? 0, mouths: planet?.clearing.mouths.length ?? 0, openMouths: planet?.clearing.mouths.filter((m) => m.open).length ?? 0, gateMarker: !!marker, playUrl: playUrl(), stage, comms: commsEl.hidden ? null : commsEl.textContent, base: base ? { ...base.counts, errors: base.errors.slice(), children: base.group.children.length, gate: base.gate() } : null, counts: planetMesh?.userData.counts ?? null, t, phase: sequence.stateAt(t).phase, playing, landing: landing?.state() ?? null, cues: cueLog.slice(), audioState: sfx.contextState, errors }),
     land, skip, seek: (time) => { onRail = true; seek(time); }, reset, overview, setStage, gate: (on) => { gateForced = on; }, baseReady: () => base?.ready, dispose: api.dispose,
   };
   resize();

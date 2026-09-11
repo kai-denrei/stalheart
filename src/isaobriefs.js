@@ -86,6 +86,27 @@ export const BRIEFS = {
     ],
   },
 
+  // --- THE STORY OPENING (new world, 2026-09-11) ----------------------------
+  // Isao out of the rocket: first the landing he did not enjoy, then the
+  // work he does. Then the tremor, and the line that hands the player the
+  // Rotor. All short, all spoken once per browser except the override.
+  rough_landing: {
+    id: 'rough_landing', face: 'angry', title: 'COMMS · ISAO', once: true,
+    lines: ['Rough landing!'],
+  },
+  so_much_to_build: {
+    id: 'so_much_to_build', face: 'glee', title: 'COMMS · ISAO', once: true,
+    lines: ['So much to build!'],
+  },
+  tremor: {
+    id: 'tremor', face: 'scan', title: 'TREMOR DETECTED', once: true,
+    lines: ['Tremor on the radar. Far out, past the tunnel.', 'Something is coming up through the ground.'],
+  },
+  manual_override: {
+    id: 'manual_override', face: 'focused', title: 'MANUAL OVERRIDE',
+    lines: ['The sentries are not ready for auto-targeting yet.', 'Manual override. The Rotor is yours.'],
+  },
+
   // 0 — the printer. Fires the first time an order goes on the book, which
   // is the first moment the mechanic is a thing the player has DONE rather
   // than a thing they have been told.

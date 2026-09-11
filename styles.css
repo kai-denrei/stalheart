@@ -4496,3 +4496,8 @@ body:not(.chrome-open) #tabbar .tabgroup:not(:has(button.active)) { display: non
 #story-hud .story-keys span { color: #6a94b0; }
 #story-hud .story-keys a.story-back { color: #9fdcff; text-decoration: none; border: 1px solid #2b6b96; border-radius: 8px; padding: 8px 12px; min-height: 40px; display: inline-flex; align-items: center; background: rgba(12, 26, 38, 0.85); }
 #story-hud .story-keys button.on { background: rgba(40, 90, 120, 0.95); color: #dff4ff; border-color: #6fc3ff; }
+#story-hud #story-comms { font: 600 14px ui-monospace, Menlo, monospace; letter-spacing: 0.08em; border: 1px solid; border-radius: 8px; padding: 8px 12px; background: rgba(6, 12, 18, 0.85); text-shadow: 0 0 10px currentColor; }
+#story-stages-nav { display: none; flex-wrap: wrap; gap: 6px; padding: 8px 12px; background: rgba(8, 14, 20, 0.92); }
+body.chrome-open #story-stages-nav { display: flex; }
+#story-stages-nav button { font: 600 12px ui-monospace, Menlo, monospace; color: #9fdcff; background: rgba(12, 26, 38, 0.85); border: 1px solid #2b6b96; border-radius: 8px; padding: 8px 10px; cursor: pointer; }
+#story-stages-nav button.active { background: rgba(40, 90, 120, 0.95); color: #dff4ff; border-color: #6fc3ff; }

@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-09-11-story-opening-beats",
+  "date": "2026-09-12T00:30:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "Opening beats: Isao's two faces, tremor on the radar, breach from orbit, override before control; rounds stop at rock; stage strip in the menu",
+  "context": "Owner: an easier way to reach each stage without editing URLs; the manual Rotor shoots through walls and its own roof; new story elements: Isao red with anger ('Rough landing!') then happy ('So much to build!'), a TREMOR DETECTED contact on the radar, a breach seen from orbit with the base in frame, the first easy enemies emerging, and only when they reach the closed gate Isao's 'not ready for auto-targeting, manual override' before the shooting.",
+  "outcome": "story-beats gains phases tremor, breach, approach and override on gated worlds (gate cell known), with the face briefs at 0.6 s and 4 s; ungated worlds keep the direct hand-off. The controller's story API grew brief, tremor, breach (a breach portal at the fodder cell becomes the fodder's spawn source, so they emerge through the sinkhole) and near (gate proximity); the breach's establishing orbit shot now also plays in story mode. fx/story-hud.js paints a pulsing TREMOR DETECTED contact on the radar after the game's own paint. Tower rounds cap their range at the first rock along their flat path and land with a ring and spark burst. The lab's arrival closes on Isao's face, switches his CRT to angry then glee, and shows the comms line. The game menu carries a stage strip (0 to 7 plus the arrival) in the story. Four briefs added. Controller at 17,624 lines, budget lowered.",
+  "alternatives": [
+    "Elevate the whole pedestal to stop rounds passing through the roof: not needed once rounds stop at rock; the own-cell parapet is the only pass-through, by design."
+  ],
+  "evidence": [
+    "test/story-beats.mjs rewritten for the phase chain",
+    "node scripts/browser-test.mjs --story-world: PASS story-world-tremor, story-world-breach, story-world-override, then control, fodder, kill, deep link, cine redirect",
+    "node scripts/browser-test.mjs --story: PASS story-isao-angry, story-isao-out",
+    "legacy acceptance 44 steps PASS; npm test 90; check; build"
+  ],
+  "supersedes": []
+}

@@ -92,6 +92,15 @@ if (!root) {
       navigate(url);
     });
   }
+  // the story's stages, right in the menu: no URL editing while the beats are being built
+  if (!workshop && target === 'td' && isStoryRoute(location.search)) {
+    const strip = document.createElement('div'); strip.id = 'story-stages-nav';
+    const names = ['empty pole', 'landing', 'foundations', 'solar and Rotor', 'gate and walls', 'HUGIN arm', 'Stalheart', 'assembly and radar'];
+    const current = parseInt(q.get('stage') ?? q.get('story') ?? '1', 10);
+    names.forEach((name, n) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = `${n} ${name}`; b.classList.toggle('active', n === current); b.addEventListener('click', () => navigate(new URL(`./index.html?story=${n}#td`, location.href))); strip.append(b); });
+    const arrival = document.createElement('button'); arrival.type = 'button'; arrival.textContent = 'arrival cinematic'; arrival.addEventListener('click', () => navigate(new URL('./labs.html?land=1#story', location.href))); strip.append(arrival);
+    document.getElementById('tabbar')?.after(strip);
+  }
   const menu = document.createElement('button');
   menu.id = 'chrome-toggle'; menu.textContent = '☰'; menu.title = 'game menu';
   menu.setAttribute('aria-label', 'Game menu');
