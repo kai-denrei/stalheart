@@ -12,4 +12,6 @@ Ownership: `src/content/story-defaults.js` (recipe and tunables), `src/core/terr
 
 Validation: `test/terrace-profile.mjs`, `test/story-planet.mjs`, `test/landing-sequence.mjs`; `node scripts/browser-test.mjs --story` drives the real page through rest, descent, touchdown, live play and skip with screenshots.
 
-Not yet: sound, chunked rendering for phones, the raymarch governor, the opening encounter (first prints, manual Rotor, weak enemies, the armored gate), base construction and emergence. Design: `docs/superpowers/specs/2026-09-11-story-planet-arrival-design.md`.
+**Sound.** The owner-provided rocket thrust sample loops under the descent, scaled by plume intensity, and cuts at touchdown. The tank's spool-up plays for leg deployment and the door, spool-down for the landing. Cues are pinned in `docs/rocket-audio.lock.json`. Six plume quads hang under the skirt, each breathing on its own cadence.
+
+Not yet: chunked rendering for phones, the raymarch governor, the opening encounter (first prints, manual Rotor, weak enemies, the armored gate), base construction and emergence. Design: `docs/superpowers/specs/2026-09-11-story-planet-arrival-design.md`.

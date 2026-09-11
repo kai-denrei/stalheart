@@ -232,6 +232,10 @@ try{
  const down=await evaluate('window.__stalheartStoryTest.state()');
  assert.equal(down.landing.altitude,0);assert(down.landing.clips.Landing_Shock>0.5,'shock clip running');assert(down.landing.scorch,'scorch under the bells');assert.equal(down.landing.clips.Legs_Deploy,null,'deploy released to the shock clip');
  await evaluate('window.__stalheartStoryTest.land()');await delay(1500);const live=await evaluate('window.__stalheartStoryTest.state()');assert(live.playing&&live.t>1,'landing plays in real time');
+ assert.equal(live.landing.plumes,6,'six engine plumes');
+ await evaluate('window.__stalheartStoryTest.seek(6)');await delay(200);const burning=await evaluate('window.__stalheartStoryTest.state()');assert.equal(burning.landing.burning,6,'all six engines burn in descent');assert(burning.cues.includes('rocket_thrust'),'thrust bed started');
+ current='story-six-engines';await finish();
+ await evaluate('window.__stalheartStoryTest.seek(12.2)');await delay(200);const cut=await evaluate('window.__stalheartStoryTest.state()');assert.equal(cut.landing.burning,0,'engines cut at touchdown');assert(cut.cues.includes('tank_spool_up')&&cut.cues.includes('tank_spool_down'),'legs and landing pneumatics fired');
  await evaluate('window.__stalheartStoryTest.skip()');await delay(300);const done=await evaluate('window.__stalheartStoryTest.state()');
  assert.equal(done.phase,'done');assert.equal(done.landing.isao.visible,true);current='story-isao-out';await finish();
  await evaluate('window.__stalheartStoryTest.dispose()');

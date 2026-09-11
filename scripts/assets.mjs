@@ -58,6 +58,13 @@ for(const file of breachAudio.files){
  if(bytes.length!==file.bytes||sha(bytes)!==file.sha256)throw Error('Breach audio checksum mismatch');
 }
 console.log('Pinned owner-provided quake audio verified.');
+const rocketAudio=JSON.parse(readFileSync(resolve(root,'docs/rocket-audio.lock.json'),'utf8'));
+for(const file of rocketAudio.files){
+ if(file.path!=='assets/audio/rocket_thrust.mp3')throw Error('Unexpected rocket audio path');
+ const bytes=readFileSync(resolve(root,file.path));
+ if(bytes.length!==file.bytes||sha(bytes)!==file.sha256)throw Error('Rocket audio checksum mismatch');
+}
+console.log('Pinned owner-provided rocket thrust audio verified.');
 
 for(const lockFile of ['docs/shell-assets.lock.json','docs/beam-audio.lock.json']){
  const lock=JSON.parse(readFileSync(resolve(root,lockFile),'utf8'));

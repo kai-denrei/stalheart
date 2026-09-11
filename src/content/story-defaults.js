@@ -24,3 +24,20 @@ export const LANDING_DEFAULTS = Object.freeze({
   orbit: 4, descent: 8, startAltitude: 300, deployAltitude: 40,
   legsDeploy: 2.4, shock: 2, settle: 2, door: 1.8, isao: 3, dustSeconds: 1.2,
 });
+
+// Story-only cues; the lab merges these with the tank pneumatics from the
+// shared manifest. Same budget fields as audiomanifest.js.
+export const STORY_SOUNDS = Object.freeze({
+  rocket_thrust: { file: 'assets/audio/rocket_thrust.mp3', bus: 'tank', gain: 0.9, maxVoices: 1, minInterval: 0, rateJitter: 0 },
+});
+
+// Six engines under the skirt, each with its own cadence, so the cluster
+// never flickers as one lamp.
+export const PLUME_CLUSTER = Object.freeze([
+  { angle: 0, radius: 1.25, width: 7, height: 24, phase: 0.0, cadence: 11, depth: 0.14 },
+  { angle: 60, radius: 1.25, width: 6, height: 21, phase: 1.7, cadence: 13, depth: 0.2 },
+  { angle: 120, radius: 1.25, width: 6.5, height: 23, phase: 3.1, cadence: 9, depth: 0.16 },
+  { angle: 180, radius: 1.25, width: 7, height: 25, phase: 4.4, cadence: 12, depth: 0.12 },
+  { angle: 240, radius: 1.25, width: 6, height: 20, phase: 0.9, cadence: 15, depth: 0.22 },
+  { angle: 300, radius: 1.25, width: 6.5, height: 22, phase: 2.3, cadence: 10, depth: 0.18 },
+]);

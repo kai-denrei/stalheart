@@ -5,6 +5,7 @@ import { GLTFLoader } from '../../vendor/GLTFLoader.js';
 import { createLaunchPlume } from '../fx/launch-plume.js';
 import { makeScorch, makeEmbers, IMPACT_TUNE } from '../impactfx.js';
 import { makeIsaoDrone, preloadFabricator } from '../units.js';
+import { PLUME_CLUSTER } from '../content/story-defaults.js';
 
 const ROCKET_URL = 'assets/models/story/sh_rocket.glb';
 const ISAO_METRES = 2.5;          // fits the 3.6 m cargo well
@@ -14,7 +15,16 @@ const WELL_HEIGHT = 19.0;         // cargo well floor above the touchdown plane
 export function createStoryLanding(scene, { padFloor, yaw, dustTint = 0x9a8f7a }) {
   const root = new THREE.Group(); root.name = 'Arrival'; root.rotation.y = yaw; root.position.y = padFloor; scene.add(root);
   const lift = new THREE.Group(); lift.name = 'Descent'; root.add(lift);
-  const plume = createLaunchPlume(); plume.position.y = BELL_HEIGHT - 13; lift.add(plume);
+  // six engines: each plume hangs from its own point under the skirt and
+  // breathes on its own cadence; intensities differ so the cluster reads as
+  // several engines rather than one lamp
+  const plumes = PLUME_CLUSTER.map((e) => {
+    const p = createLaunchPlume({ width: e.width, height: e.height });
+    const a = e.angle * Math.PI / 180;
+    p.position.set(Math.cos(a) * e.radius, BELL_HEIGHT - e.height / 2 + 1, Math.sin(a) * e.radius);
+    p.userData.engine = e; lift.add(p); return p;
+  });
+  const burn = (level, t) => { for (const p of plumes) { const e = p.userData.engine; p.userData.setIntensity(level * (1 - e.depth + e.depth * Math.sin(t * e.cadence + e.phase)) * 0.55); p.userData.tick(t + e.phase); } };
   const effects = new THREE.Group(); root.add(effects);
   let rocket = null, mixer = null, actions = {}, isao = null, scorch = null, dust = null, dustAt = -1, error = null;
   const geometries = new Set(), materials = new Set();
@@ -42,7 +52,7 @@ export function createStoryLanding(scene, { padFloor, yaw, dustTint = 0x9a8f7a }
   }
   function apply(state, t) {
     lift.position.y = state.altitude;
-    plume.userData.setIntensity(state.plume); plume.userData.tick(t);
+    burn(state.plume, t);
     if (mixer) {
       // stowed until deploy begins; the shock clip owns the legs after touchdown
       const shockOn = state.clips.Landing_Shock !== null;
@@ -75,15 +85,15 @@ export function createStoryLanding(scene, { padFloor, yaw, dustTint = 0x9a8f7a }
     ready,
     apply(state, t) { lastT = t; apply(state, t); },
     tick(dt, camera) {
-      plume.userData.face(camera);
+      for (const p of plumes) p.userData.face(camera);
       if (dust) { if (!dust.userData.tick(dt)) { effects.remove(dust); dust.geometry.dispose(); dust.material.dispose(); dust = null; } }
       if (isao?.visible) { isao.userData.spinRotors?.(dt, 0.4); isao.userData.tickFace?.(dt); }
     },
-    state: () => ({ loaded: !!rocket, error, clips: Object.fromEntries(Object.keys(actions).map((k) => [k, held.has(k) ? +held.get(k).toFixed(3) : null])), altitude: lift.position.y, isao: isao ? { visible: isao.visible, y: +isao.position.y.toFixed(2) } : null, scorch: !!scorch, dust: !!dust, t: lastT }),
+    state: () => ({ loaded: !!rocket, error, plumes: plumes.length, burning: plumes.filter((p) => p.visible).length, clips: Object.fromEntries(Object.keys(actions).map((k) => [k, held.has(k) ? +held.get(k).toFixed(3) : null])), altitude: lift.position.y, isao: isao ? { visible: isao.visible, y: +isao.position.y.toFixed(2) } : null, scorch: !!scorch, dust: !!dust, t: lastT }),
     rocketTop: () => WELL_HEIGHT,
     dispose() {
       mixer?.stopAllAction(); if (rocket) mixer?.uncacheRoot(rocket);
-      plume.userData.dispose(); for (const g of geometries) g.dispose(); for (const m of materials) m.dispose();
+      for (const p of plumes) p.userData.dispose(); for (const g of geometries) g.dispose(); for (const m of materials) m.dispose();
       scene.remove(root);
     },
   };

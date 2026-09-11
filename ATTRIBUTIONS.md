@@ -84,3 +84,7 @@ Standalone SH02 vehicle with its five authored clips from [SentryTowers_A6](http
 ## Launch plume shader — pulkitxm/claude-directory
 
 `src/fx/launch-plume.js` ports the raymarched plume from [pulkitxm/claude-directory](https://github.com/pulkitxm/claude-directory) (`shaders/launch-shader`), MIT, as studied in the local onkochishin atelier (`atelier/launch`). The march loop and its constants are kept; the ray setup is rewritten for a camera-facing quad in a Three.js scene and an intensity uniform is added.
+
+## Rocket thrust sound
+
+Owner-provided `jci21-rocket-launch-sfx-253937.mp3`, retained unchanged as `assets/audio/rocket_thrust.mp3`. Original filename, duration and checksum are recorded in `docs/rocket-audio.lock.json`. The story lab loops it under the SH02 descent and cuts it at touchdown; the tank's own spool-up and spool-down pneumatics cover leg deployment, landing and the door.

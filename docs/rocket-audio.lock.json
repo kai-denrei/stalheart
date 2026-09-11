@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "source": "Owner-provided local audio",
+  "originalFilename": "jci21-rocket-launch-sfx-253937.mp3",
+  "files": [
+    {
+      "path": "assets/audio/rocket_thrust.mp3",
+      "sha256": "afc2bffaf9c7d48272561b28b69035c147fd61dc032a61dab6505c885c791460",
+      "bytes": 850129,
+      "durationSeconds": 26.567
+    }
+  ]
+}

@@ -4,7 +4,9 @@ import * as THREE from '../../vendor/three.module.js';
 import { OrbitControls } from '../../vendor/OrbitControls.js';
 import { GLTFLoader } from '../../vendor/GLTFLoader.js';
 import { LOOKS } from '../looks.js';
-import { STORY_RECIPE, STORY_CLEARING, LANDING_DEFAULTS } from '../content/story-defaults.js';
+import { STORY_RECIPE, STORY_CLEARING, LANDING_DEFAULTS, STORY_SOUNDS } from '../content/story-defaults.js';
+import { SOUNDS } from '../audiomanifest.js';
+import { makeAudio } from '../audio.js';
 import { buildStoryPlanet } from '../domain/story-planet.js';
 import { makeLandingSequence } from '../domain/landing-sequence.js';
 import { compileRail } from '../cine/rail.js';
@@ -37,6 +39,28 @@ export function initStoryTab(root) {
   const fill = new THREE.DirectionalLight(look.sun[0], 0.5); fill.position.set(-200, 120, -160); scene.add(fill);
 
   let active = false, disposed = false, frameId = 0, planet = null, planetMesh = null, tiles = null, landing = null, errors = [];
+  // the thrust bed loops under the descent and cuts at touchdown; the tank's
+  // pneumatics stand in for the legs, the landing and the door
+  const sfx = makeAudio({ seed: 3, persist: false, sounds: { ...STORY_SOUNDS, tank_spool_up: SOUNDS.tank_spool_up, tank_spool_down: SOUNDS.tank_spool_down } });
+  sfx.arm();
+  const cueLog = [];
+  const cue = (key, o) => { cueLog.push(key); if (cueLog.length > 40) cueLog.shift(); sfx.play(key, o); };
+  let thrust = null, heard = null, thrustAsked = false;
+  function audioSync(state, live) {
+    if (!live) { thrust?.stop(0.1); thrust = null; heard = null; thrustAsked = false; return; }
+    if (state.plume > 0) {
+      // loop() returns null until the buffer has decoded and the context is
+      // unlocked; log the intent once and keep asking each frame
+      if (!thrustAsked) { cueLog.push('rocket_thrust'); thrustAsked = true; }
+      if (!thrust) thrust = sfx.loop('rocket_thrust', { gain: 0 });
+      thrust?.set(0.4 + 0.6 * state.plume, 0.96 + 0.06 * state.plume);
+    } else { thrustAsked = false; if (thrust) { thrust.stop(0.08); thrust = null; } }
+    const was = heard; heard = { legs: state.clips.Legs_Deploy !== null, down: state.clips.Landing_Shock !== null, door: state.clips.Top_Door_Open !== null };
+    if (!was) return;
+    if (heard.legs && !was.legs) cue('tank_spool_up');
+    if (heard.down && !was.down) cue('tank_spool_down');
+    if (heard.door && !was.door) cue('tank_spool_up', { rate: 0.85 });
+  }
   const sequence = makeLandingSequence(LANDING_DEFAULTS);
   const rail = compileRail(RAIL);
   let t = sequence.duration, playing = false, onRail = false, last = performance.now();
@@ -55,10 +79,12 @@ export function initStoryTab(root) {
   }
   function seek(time) {
     t = Math.max(0, Math.min(sequence.duration, time));
-    landing?.apply(sequence.stateAt(t), t);
+    const state = sequence.stateAt(t);
+    landing?.apply(state, t);
+    audioSync(state, playing);
     if (onRail) frameCamera(rail.poseAt(t));
   }
-  function land() { onRail = true; playing = true; seek(0); }
+  function land() { onRail = true; playing = true; heard = null; seek(0); }
   function skip() { playing = false; onRail = true; seek(sequence.duration); onRail = false; controls.update(); }
   function reset() { playing = false; onRail = false; seek(sequence.duration); frameCamera(rail.poseAt(sequence.duration)); controls.update(); }
 
@@ -94,7 +120,7 @@ export function initStoryTab(root) {
     if (!active || disposed) return;
     frameId = requestAnimationFrame(loop);
     const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000); last = now; clock.time += dt;
-    if (playing) { seek(t + dt); if (t >= sequence.duration) { playing = false; onRail = false; } }
+    if (playing) { seek(t + dt); if (t >= sequence.duration) { playing = false; onRail = false; audioSync(sequence.stateAt(t), false); } }
     landing?.tick(dt, camera);
     if (!onRail) controls.update();
     renderer.render(scene, camera);
@@ -104,11 +130,11 @@ export function initStoryTab(root) {
     dispose() {
       if (disposed) return; disposed = true; active = false; cancelAnimationFrame(frameId);
       removeEventListener('resize', resize); removeEventListener('keydown', onKey);
-      landing?.dispose(); planetMesh?.userData.dispose(); tiles?.userData.dispose(); controls.dispose(); renderer.dispose(); renderer.domElement.remove();
+      thrust?.stop(0); sfx.dispose(); landing?.dispose(); planetMesh?.userData.dispose(); tiles?.userData.dispose(); controls.dispose(); renderer.dispose(); renderer.domElement.remove();
     },
   };
   if (q.get('acceptance') === '1') window.__stalheartStoryTest = {
-    state: () => ({ ready: !!planet && !!landing?.state().loaded, cells: planet?.dungeon.tags.length ?? 0, mouths: planet?.clearing.mouths.length ?? 0, openMouths: planet?.clearing.mouths.filter((m) => m.open).length ?? 0, tiles: tiles?.userData.tiles ?? 0, counts: planetMesh?.userData.counts ?? null, t, phase: sequence.stateAt(t).phase, playing, landing: landing?.state() ?? null, errors }),
+    state: () => ({ ready: !!planet && !!landing?.state().loaded, cells: planet?.dungeon.tags.length ?? 0, mouths: planet?.clearing.mouths.length ?? 0, openMouths: planet?.clearing.mouths.filter((m) => m.open).length ?? 0, tiles: tiles?.userData.tiles ?? 0, counts: planetMesh?.userData.counts ?? null, t, phase: sequence.stateAt(t).phase, playing, landing: landing?.state() ?? null, cues: cueLog.slice(), audioState: sfx.contextState, errors }),
     land, skip, seek: (time) => { onRail = true; seek(time); }, reset, dispose: api.dispose,
   };
   resize();
