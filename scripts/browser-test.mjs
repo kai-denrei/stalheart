@@ -290,7 +290,8 @@ try{
  await until('window.__stalheartTest.state().story.phase==="breach"',20000);await until('window.__stalheartTest.state().shot==="breach"',15000);await delay(1200);
  assert((await evaluate('window.__stalheartTest.state().breaches')).length>0,'the ground opened');current='story-world-breach';await finish();
  await until('window.__stalheartTest.state().story.phase==="override"',90000);await delay(800);
- assert.equal(await evaluate('document.querySelector("#td-brief").classList.contains("hidden")'),false,'Isao speaks the override line');current='story-world-override';await finish();
+ assert.equal(await evaluate('document.querySelector("#td-brief").classList.contains("hidden")'),false,'Isao speaks the override line');
+ const held=await evaluate('window.__stalheartTest.state()');assert.equal(held.performance.enemies,held.story.spawned,'the sentry did not fire on its own: every spawned enemy is still alive');current='story-world-override';await finish();
  assert.equal(await evaluate('typeof window.__stalheartPilotTest'),'undefined','no control before the override');
  await until('!!window.__stalheartPilotTest',30000);await until('window.__stalheartTest.state().performance.enemies>0',60000);await delay(14000);
  const fodder=await evaluate('window.__stalheartTest.state()');assert(fodder.performance.enemies>=2&&fodder.performance.enemies<=8,`fodder alive ${fodder.performance.enemies}`);assert.equal(fodder.performance.wave,0,'no wave arms');
@@ -301,6 +302,11 @@ try{
  // the fodder keeps walking, so re-aim each poll until this one drops
  await until(`(()=>{const t=window.__stalheartPilotTest;const e=t.enemy(${victim.id});if(!e||!e.alive)return true;t.aimEnemy();return false;})()`,8000);await evaluate('window.__stalheartPilotTest.hold(false)');
  const shots=await evaluate('window.__stalheartPilotTest.state().shots');assert(shots>=2,'the Rotor streamed rounds');current='story-world-rotor-kill';await finish();
+ // keep shooting: the fifth kill brings the comms study, the tenth the biomass line
+ await evaluate('window.__stalheartPilotTest.hold(true)');
+ await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("harvest_biomass"))return true;window.__stalheartPilotTest.aimEnemy();return false;})()',120000);
+ await evaluate('window.__stalheartPilotTest.hold(false)');const said=await evaluate('window.__stalheartTest.state().story.said');assert(said.includes('alien_comms')&&said.includes('harvest_biomass'),'both lines said');
+ await delay(400);current='story-world-harvest';await finish();
  // the phone deep link: ?story=N alone means the story world at that stage, no old heart, no cold open, sparse waves
  await go('story-world-deeplink','index.html?sw=0&acceptance=1&story=4#td');await until('!!window.__stalheartTest',90000);await delay(1500);
  const dl=await evaluate('window.__stalheartTest.state()');assert.equal(dl.heartAsset,'none');assert(dl.story&&dl.story.phase,'story beats run from the deep link');assert(dl.wallCount>40000);

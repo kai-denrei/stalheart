@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import { makeStoryBeats } from '../src/domain/story-beats.js';
 // a fake game: records everything; a tower stands N seconds after the order; fodder reaches the gate M seconds after the first spawn
 function fakeGame({ printSeconds = 6, cost = 45, walk = 3 } = {}) {
-  const log = []; let orderedAt = null, clock = 0, alive = 0, firstSpawn = null;
-  return { log, tick: (dt) => { clock += dt; }, kill: (n) => { alive = Math.max(0, alive - n); }, api: {
-    cost: () => cost, isao: () => true, enemies: () => alive,
+  const log = []; let orderedAt = null, clock = 0, alive = 0, firstSpawn = null, killed = 0;
+  return { log, tick: (dt) => { clock += dt; }, kill: (n) => { alive = Math.max(0, alive - n); killed += n; }, api: {
+    cost: () => cost, isao: () => true, enemies: () => alive, kills: () => killed,
     grant: (n) => { log.push(['grant', n]); },
     order: (key, ci) => { log.push(['order', key, ci]); orderedAt = clock; return true; },
     built: () => orderedAt !== null && clock - orderedAt >= printSeconds,
@@ -38,6 +38,11 @@ const kinds = (g, k) => g.log.filter((l) => l[0] === k);
   g.kill(3); run(beats, g, 10); assert.equal(kinds(g, 'spawn').length, 5, 'total cap holds');
   assert.ok(kinds(g, 'spawn').every((l) => l[1] === 'phage' && l[2] === 4300));
   assert.equal(kinds(g, 'pilot').length, 1, 'control taken once');
+  // the fifth kill: the comms study; the tenth: the biomass line; each once
+  g.kill(1); run(beats, g, 0.5); assert.ok(!kinds(g, 'brief').some((l) => l[1] === 'alien_comms'), 'five kills first');
+  g.kill(1); run(beats, g, 0.5); assert.equal(kinds(g, 'brief').at(-1)[1], 'alien_comms');
+  g.kill(5); run(beats, g, 0.5); assert.equal(kinds(g, 'brief').at(-1)[1], 'harvest_biomass');
+  run(beats, g, 5); assert.equal(kinds(g, 'brief').filter((l) => l[1] === 'harvest_biomass').length, 1, 'said once');
 }
 // ungated world (no gate yet): straight to control, no fodder
 {

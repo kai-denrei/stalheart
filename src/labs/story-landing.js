@@ -92,7 +92,7 @@ export function createStoryLanding(scene, { placer, site = [0, 0], dustTint = 0x
       const r = state.isaoRise, climb = Math.min(1, r / 0.8), drift = Math.max(0, (r - 0.8) / 0.2);
       const y0 = (WELL_FLOOR - 9) * S, y1 = (WELL_RIM + 4) * S;
       const y = y0 + climb * (y1 - y0) + drift * 3;
-      isao.position.set(9 * drift, y, -3 * drift);
+      isao.position.set(5 * drift, y, -2 * drift);   // a short drift, so he stays beside the nose in the held shot
       isao.userData.spinRotors?.(1 / 60, r);
       isao.userData.setWork?.(r > 0.95 ? 0.6 : 0);
     }
@@ -108,7 +108,6 @@ export function createStoryLanding(scene, { placer, site = [0, 0], dustTint = 0x
     },
     state: () => ({ loaded: !!rocket, error, face: isaoFace, plumes: plumes.length, burning: plumes.filter((p) => p.visible).length, clips: Object.fromEntries(Object.keys(actions).map((k) => [k, held.has(k) ? +held.get(k).toFixed(3) : null])), altitude: lift.position.y, isao: isao ? { visible: isao.visible, y: +isao.position.y.toFixed(2) } : null, scorch: !!scorch, dust: !!dust, t: lastT }),
     rocketTop: () => WELL_RIM * S,
-    isaoWorld: () => (isao && isao.visible ? isao.getWorldPosition(new THREE.Vector3()) : null),
     setLanded(on) { lift.visible = on; if (isao) isao.visible = on && isao.visible; },
     dispose() {
       mixer?.stopAllAction(); if (rocket) mixer?.uncacheRoot(rocket);

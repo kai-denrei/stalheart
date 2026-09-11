@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "2026-09-12-reveal-and-hold-fire",
+  "date": "2026-09-12T03:40:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "Isao reveal as one held shot; tremor twice as far; sentries hold fire until the override; comms-study and biomass lines",
+  "context": "Owner: the zoom inside the rocket showed there is little to see; stay on a medium-close shot of the rocket and watch Isao come out angry then happy, no zoom. The tremor should be about twice as far. The enemies pile up at the gate and the sentry must not fire, that being the point of the override. After ten kills Isao says their biomass is a printing ingredient; a throwaway line says he detected some form of communication and will study the pattern, seeding a later story beat about reverse-engineering the alien language with ML (visuals from ~/Documents/Dev/synthetic-learningx58, seven CRT-styled neural-net demos).",
+  "outcome": "The lab rail ends on a medium-close shot of the nose at 16 s and holds it through the door, the rise and both faces; the follow shot is removed. fodderSteps 28, so the tremor and breach sit about 280 m past the mouth. Story sentries skip their fire path while not piloted, and the acceptance proves every spawned enemy is still alive at the override. Two briefs: alien_comms on the fifth kill, harvest_biomass on the tenth, said once each, driven by a kills counter on the story API; the acceptance keeps firing until both are said.",
+  "alternatives": [],
+  "evidence": [
+    "node scripts/browser-test.mjs --story: PASS story-isao-angry, story-isao-happy",
+    "node scripts/browser-test.mjs --story-world: PASS override (no deaths before it), rotor-kill, harvest",
+    "test/story-beats.mjs kills thresholds; npm test 90; check; build"
+  ],
+  "supersedes": []
+}

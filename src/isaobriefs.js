@@ -106,6 +106,17 @@ export const BRIEFS = {
     id: 'manual_override', face: 'focused', title: 'MANUAL OVERRIDE',
     lines: ['The sentries are not ready for auto-targeting yet.', 'Manual override. The Rotor is yours.'],
   },
+  // a throwaway, on the fifth kill: the seed of a much later story beat about
+  // reverse-engineering their language
+  alien_comms: {
+    id: 'alien_comms', face: 'curious', title: 'COMMS · ISAO', once: true,
+    lines: ['They are talking to each other. Some form of communication.', 'I am starting a study of the pattern. It will take a while.'],
+  },
+  // the tenth kill: what the bodies are for
+  harvest_biomass: {
+    id: 'harvest_biomass', face: 'focused', title: 'COMMS · ISAO', once: true,
+    lines: ['Their biomass will do as a printing ingredient.', 'Keep them coming.'],
+  },
 
   // 0 — the printer. Fires the first time an order goes on the book, which
   // is the first moment the mechanic is a thing the player has DONE rather

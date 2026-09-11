@@ -13,10 +13,10 @@ export function makeStoryBeats({
   socket, lane = -1, fodder = -1, gate = -1, rotorDelay = 2, key = 'rotor',
   fodderType = 'phage', fodderEvery = 2.5, fodderAlive = 8, fodderTotal = 20,
   controlDelay = 1.5, tremorDelay = 1.5, breachDelay = 4, overrideDelay = 2.5,
-  faceDelays = [0.6, 4],
+  faceDelays = [0.6, 4], commsKills = 5, harvestKills = 10,
 }) {
   const gated = gate >= 0 && fodder >= 0;
-  let phase = 'landed', clock = 0, orderedAt = null, readyAt = null, spawned = 0, nextSpawn = 0, at = 0, faces = 0;
+  let phase = 'landed', clock = 0, orderedAt = null, readyAt = null, spawned = 0, nextSpawn = 0, at = 0, faces = 0, said = new Set();
   const enter = (p) => { phase = p; at = clock; };
   const spawnTick = (api) => {
     if (spawned >= fodderTotal || clock < nextSpawn) return;
@@ -40,8 +40,13 @@ export function makeStoryBeats({
       else if (phase === 'breach') { spawnTick(api); if (spawned > 0) enter('approach'); }
       else if (phase === 'approach') { spawnTick(api); if (api.near?.(gate)) { api.brief?.('manual_override'); enter('override'); } }
       else if (phase === 'override') { spawnTick(api); if (clock - at >= overrideDelay) { api.pilot?.(socket, lane); enter('piloting'); } }
-      else if (phase === 'piloting' && fodder >= 0) spawnTick(api);
+      else if (phase === 'piloting' && fodder >= 0) {
+        spawnTick(api);
+        const kills = api.kills?.() ?? 0;
+        if (kills >= commsKills && !said.has('alien_comms')) { api.brief?.('alien_comms'); said.add('alien_comms'); }
+        if (kills >= harvestKills && !said.has('harvest_biomass')) { api.brief?.('harvest_biomass'); said.add('harvest_biomass'); }
+      }
     },
-    state: () => ({ phase, clock: +clock.toFixed(2), socket, orderedAt, readyAt, spawned, gated }),
+    state: () => ({ phase, clock: +clock.toFixed(2), socket, orderedAt, readyAt, spawned, gated, said: [...said] }),
   };
 }
