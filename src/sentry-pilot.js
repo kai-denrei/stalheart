@@ -67,15 +67,19 @@ export function createSentryPilot(root, host) {
     return !map;
   }
   function setView(v){if(v==='map'){if(!map)toggleMap();return;}state.view=v==='third'?'third':'pov';if(map)toggleMap();}
-  // a guided mount acquires anything in range inside a cone around the optic (host.cone, the tangent of its half-angle): the override steers the
-  // optic, the seeker does the finding. A gun still needs the reticle on the body.
+  // A GUIDED MOUNT USES THE LOCK BOX (host.cone, the tangent of its half-angle): whatever is inside it is the target, and it STAYS the
+  // target while it stays inside. Swapping to whichever body is momentarily nearest was the frustration: every swap reset the timer, so
+  // a lock looked random. A gun still needs the reticle on the body itself.
+  const inBox=(e,cone,cellSide)=>{
+    v.fromArray(e.pos).addScaledVector(v.clone().normalize(),cellSide*.3).sub(eye);
+    const along=v.dot(direction),off=v.clone().addScaledVector(direction,-along).length();
+    return along>0&&(cone?off<along*cone:off<cellSide*Math.max(.22,(e.size??e.spec.size)*.55))&&host.visible(e)?along:-1;
+  };
   function target(enemies,range,cellSide){
     let best=null,near=Infinity;const cone=host.cone?.()||0;
-    for(const e of enemies){if(!e.alive)continue;
-      v.fromArray(e.pos).addScaledVector(v.clone().normalize(),cellSide*.3).sub(eye);
-      const along=v.dot(direction),off=v.clone().addScaledVector(direction,-along).length();
-      if(along>0&&along<near&&(cone?off<along*cone:off<cellSide*Math.max(.22,(e.size??e.spec.size)*.55))&&host.visible(e)){near=along;best=e;}
-    }
+    const held=cone&&state.target?.alive?enemies.find(e=>e===state.target):null;   // the one being locked keeps the box until it leaves it
+    if(held&&inBox(held,cone,cellSide)>0)best=held;
+    else for(const e of enemies){if(!e.alive)continue;const along=inBox(e,cone,cellSide);if(along>0&&along<near){near=along;best=e;}}
     state.target=best;
     return best||{pilotAim:true,pos:host.aimPoint(eye,direction,range)};
   }

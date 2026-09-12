@@ -22,4 +22,4 @@ localhost build. Owner's observations, dated; this page is rendered into
 - The breach: the camera should dive fast to the sinkhole as the eruption starts, not stay in orbit (done, see the story doc).
 - The tank's turret traverse: it swung almost 180 degrees; it should be 90 (done).
 - The tank's shell is much too slow (done: faster shell).
-- The Quiver's click-to-lock feels unintuitive: the seeker should acquire anything kept in range, the override only steers the optic (done: a cone).
+- The Quiver's lock was "the opposite of satisfying; frustrating, seemingly random, no skill, no agency". Cause: the target switched to whichever body was momentarily nearest and every switch reset the meter, and the range test reset it again. Now: the lock square is the rule, the body in it stays the target, no range gates (done).

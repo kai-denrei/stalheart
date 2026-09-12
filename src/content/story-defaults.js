@@ -65,8 +65,10 @@ export const STORY_DAY = Object.freeze({ seconds: 300, dayShare: 0.6, tilt: 60, 
 // after the other, and the piloted Quiver fires the lab's TALON (a heavier, slower guided round) instead of the game's dart
 // hold: the hard cores stop short of the gate and mill about between these lane hops outside the forward cell, within the Quiver's
 // reach but never at the wall (while the lock is being tuned); nearCells: how close to the gate one must come for the override
-// coneDeg: the seeker's half-angle around the optic: anything in range inside it is acquired; the override only steers the optic
-export const STORY_QUIVER = Object.freeze({ key: 'quiver', delay: 4, hardcore: 'barbed', secondDelay: 9, hold: [5, 9], nearCells: 12, zoom: 2, studyDelay: 3, coneDeg: 18, missile: Object.freeze({ mesh: 'talon', profile: 'heavy', duration: 6, length: 1.0, dmgMul: 25, maxRange: 120, lockTime: 0.4, aimTolerance: 5 }) });   // a heavy payload (one round, one solid core), a long reach (the hard cores hold 50 to 90 m out), and a quick first-encounter lock: 0.4 s inside a 5 degree cone
+// coneDeg: the half-angle of the LOCK BOX drawn on the optic. Anything inside it is the target, it stays the target while it stays
+// inside (no flicker between bodies), a timer runs, and at full it is locked. No minimum or maximum range: on a 753 m planet the
+// horizon from a 4 m mount is about 80 m, so a 400 m reach is no limit at all, and the range test can never reset the timer.
+export const STORY_QUIVER = Object.freeze({ key: 'quiver', delay: 4, hardcore: 'barbed', secondDelay: 9, hold: [5, 9], nearCells: 12, zoom: 2, studyDelay: 3, coneDeg: 10, missile: Object.freeze({ mesh: 'talon', profile: 'heavy', duration: 6, length: 1.0, dmgMul: 25, minRange: 0, maxRange: 400, lockTime: 0.9, lockGate: 1e4, lockBreak: 1e4, aimTolerance: 180 }) });   // the box is the gate; the code's mrad gates are opened out of the way   // a heavy payload (one round, one solid core), a long reach (the hard cores hold 50 to 90 m out), and a quick first-encounter lock: 0.4 s inside a 5 degree cone
 
 // The piloted sentry in the story: a denser stream of rounds, each one
 // heavy enough that cannon fodder drops in two hits.

@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "2026-09-13-lock-is-the-box",
+  "date": "2026-09-13T12:00:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "The Quiver's lock is the box: sticky target, no range gates, a timer on the square; the study screen keeps four panels",
+  "context": "Owner, after playtesting: the Quiver's lock-in is the opposite of satisfying, frustrating, seemingly random, no skill, no agency; possibly the minimum or maximum distances. The rule he wants: no minimum or maximum distance, and if a unit is within the lock square a timer shows and it locks, then fire. Separately, the synthetic-learning study screen should show only four panels: two-seq, NBB-XOR, LIN-TFM, EM-SEG.",
+  "outcome": "The randomness was not the ranges alone. sentry-pilot's target pick chose the nearest body in the cone every frame, and stepLock zeroes the meter whenever the candidate id changes, so two hard cores crossing in the cone reset the timer repeatedly; the range test (min 3 m, max 120 m) reset it again at the edges. Now the box is sticky: the body inside it stays the target while it stays inside, whatever else enters. STORY_QUIVER.missile sets minRange 0, maxRange 400 (the horizon from a 4 m mount on a 753 m planet is about 80 m, so it can never bite) and opens the mrad gates (lockGate and lockBreak 1e4, aimTolerance 180), leaving leaving-the-square as the only reset. lockTime 0.9 s. The scope draws the square at the seeker's true angular size, 10 degree half-angle through the camera's own fov, with the timer filling along its top edge, LOCKING percent above it and TARGET LOCKED below; the TRACK panel reads IN BOX or EMPTY instead of an envelope. The study modal keeps the owner's four panels at twice the size in a 2x2 grid.",
+  "alternatives": [
+    "Widen the milliradian gate only: rejected, the gate was already passing (manual aim reports zero error); the resets came from target switching and range.",
+    "Auto-fire on lock: rejected, firing stays the player's Space; only the finding is automatic."
+  ],
+  "evidence": [
+    "code read: stepLock resets on id change and out of range; manual path passes off 0 so the gate never bit",
+    "npm test 93, npm run check, browser --story-world PASS (two hard cores, two rounds), --dist legacy PASS"
+  ],
+  "supersedes": [
+    "2026-09-13-seeker-cone-shell-pace-strike-fills-sinkhole"
+  ]
+}

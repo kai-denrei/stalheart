@@ -337,7 +337,7 @@ try{
  await evaluate('window.__stalheartPilotTest.hold(false)');const settled=await evaluate('window.__stalheartTest.state()');assert.equal(settled.kills-killsBefore,2,'two hard cores, two rounds');assert(settled.monitorShown>0,'the seeker feed showed during a flight');
  await delay(500);current='story-world-quiver-settled';await finish();
  // ISAO's study: the synthetic-learning terminal opens over the game a few seconds after the Quiver beat settles, pauses it, and CONTINUE closes it
- await until('window.__stalheartTest.state().screenOpen',10000);await delay(1200);assert(await evaluate('window.__stalheartTest.state().paused'),'the game pauses under the screen');assert.equal(await evaluate('document.querySelectorAll("#synthetic-modal canvas").length'),7,'seven panels');
+ await until('window.__stalheartTest.state().screenOpen',10000);await delay(1200);assert(await evaluate('window.__stalheartTest.state().paused'),'the game pauses under the screen');assert.equal(await evaluate('document.querySelectorAll("#synthetic-modal canvas").length'),4,'four panels');
  current='story-world-study';await finish();
  await click('#synthetic-modal [data-continue]');await delay(400);const afterScreen=await evaluate('window.__stalheartTest.state()');assert(!afterScreen.screenOpen&&!afterScreen.paused,'CONTINUE closes it and the game resumes');assert.equal(afterScreen.screensOpened,1);
  assert.equal(await evaluate('getComputedStyle(document.querySelector("#synthetic-modal")).display'),'none','the closed screen is really gone, not a transparent sheet over the strip');
