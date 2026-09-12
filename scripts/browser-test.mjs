@@ -56,7 +56,7 @@ async function click(selector){
 }
 try{
  await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Server did not start')),10000);server.stdout.once('data',()=>{clearTimeout(timer);resolve();});server.once('error',reject);server.once('exit',code=>{if(code)reject(Error(`Server exited ${code}`));});});
- browser=launchChrome(['--headless=new','--remote-debugging-port=0',`--user-data-dir=${profile}`,'--window-size=1440,987','--hide-scrollbars','--mute-audio'],{watchdogMs:360000});
+ browser=launchChrome(['--headless=new','--remote-debugging-port=0',`--user-data-dir=${profile}`,'--window-size=1440,987','--hide-scrollbars','--mute-audio'],{watchdogMs:1200000});
  const chromePort=await browser.port;
  const targets=await(await fetch(`http://127.0.0.1:${chromePort}/json`)).json();
  ws=new WebSocket(targets.find(t=>t.type==='page').webSocketDebuggerUrl);await new Promise(r=>ws.addEventListener('open',r,{once:true}));
@@ -306,7 +306,7 @@ try{
  const fodder=await evaluate('window.__stalheartTest.state()');assert(fodder.performance.enemies>=2&&fodder.performance.enemies<=8,`fodder alive ${fodder.performance.enemies}`);assert.equal(fodder.performance.wave,0,'no wave arms');
  assert.equal(fodder.insideEnemies,0,'the closed gate holds the fodder outside');assert.equal(fodder.queued,0);
  current='story-world-fodder';await finish();
- const victim=await evaluate('window.__stalheartPilotTest.aimEnemy()');assert(victim!==null,'a phage is in reach and sight of the Rotor');
+ await until('window.__stalheartPilotTest.aimEnemy()!==null',15000);const victim=await evaluate('window.__stalheartPilotTest.aimEnemy()');assert(victim!==null,'a phage is in reach and sight of the Rotor');   // the pile at the gate shuffles; give it a moment
  await evaluate('window.__stalheartPilotTest.hold(true)');
  // the fodder keeps walking, so re-aim each poll until this one drops
  await until(`(()=>{const t=window.__stalheartPilotTest;const e=t.enemy(${victim.id});if(!e||!e.alive)return true;t.aimEnemy();return false;})()`,8000);await evaluate('window.__stalheartPilotTest.hold(false)');
@@ -326,6 +326,17 @@ try{
  await click('#story-views [data-view="tank"]');await until('typeof window.__stalheartPilotTest==="undefined" && !document.querySelector("#sentry-pilot")',5000);await delay(800);current='story-world-views-tank';await finish();
  await click('#story-views [data-view="sentry"]');await until('!!window.__stalheartPilotTest && !!document.querySelector("#sentry-pilot")',5000);await delay(600);current='story-world-views-sentry';await finish();
  await click('#story-views [data-view="map"]');await until('!!document.querySelector(".pilot-map")',5000);await delay(600);current='story-world-views-map';await finish();
+ // THE QUIVER: Isao prints it across the lane, a hard core reaches the gate, the override hands over the Quiver's optic (its post first,
+ // the Rotor's behind it), two TALON shots with the seeker feed riding along, then settled and the strip is back
+ await until('window.__stalheartTest.state().story.phase==="quiver-piloting"',120000);await delay(600);
+ const qp=await evaluate('window.__stalheartPilotTest.state()');assert.equal(qp.key,'quiver','the Quiver optic first');assert.equal(qp.posts.length,2,'both mounts are posts');
+ const killsBefore=(await evaluate('window.__stalheartTest.state()')).kills;await evaluate('window.__stalheartPilotTest.hold(true)');
+ // re-aim every half second, not every poll: each re-aim re-slews the launcher, and a lock needs the reticle held still on the target
+ try{await until('(()=>{const s=window.__stalheartTest.state();if(s.story.phase==="settled")return true;if(!window.__aimAt||Date.now()-window.__aimAt>500){window.__aimAt=Date.now();window.__stalheartPilotTest.aimEnemy();}return false;})()',150000);}
+ catch(e){console.log('QUIVER DUMP',JSON.stringify(await evaluate('(()=>{const s=window.__stalheartTest.state(),p=window.__stalheartPilotTest?.state();return {story:s.story,kills:s.kills,enemies:s.performance.enemies,towers:s.towerCells,engagement:s.engagement,pilot:p&&{key:p.key,ci:p.ci,posts:p.posts,held:p.held,shots:p.shots,view:p.view},reach:window.__stalheartPilotTest?.reach(),monitor:s.monitorShown,shot:s.shot};})()')));throw e;}
+ await evaluate('window.__stalheartPilotTest.hold(false)');const settled=await evaluate('window.__stalheartTest.state()');assert.equal(settled.kills-killsBefore,2,'two hard cores, two rounds');assert(settled.monitorShown>0,'the seeker feed showed during a flight');
+ await delay(500);current='story-world-quiver-settled';await finish();
+ await click('#story-views [data-view="sentry"]');await delay(500);assert.equal(await evaluate('window.__stalheartPilotTest.state().key'),'rotor','SENTRY cycles to the next mount');current='story-world-views-cycle';await finish();
  // THE THREE HULLS ARE THE THREE LIVES: at stage 7 the bays are the berths; the first hull starts inside bay 3 and rolls out of its doors,
  // bay 3's parked hull is hidden the moment it is the one being driven, bays 1 and 2 keep theirs (1 sealed and empty by construction)
  await go('story-world-bays','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=7#td');await until('!!window.__stalheartTest',90000);

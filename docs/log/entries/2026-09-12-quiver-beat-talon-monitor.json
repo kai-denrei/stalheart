@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-09-12-quiver-beat-talon-monitor",
+  "date": "2026-09-12T20:30:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "Isao introduces the Quiver: two hard cores, two TALON shots with a seeker feed, then the mounts cycle",
+  "context": "Owner: Isao introduces the Quiver turret; import its target-lock mechanism including the Talon's animation in a small low-res side screen; spawn two hard-cored enemies with enough delay to lock each in turn; same cinematics (Isao builds, manual override because the auto-targeting chips are not ready); two shots; then back to cycling tank, sentries and the map.",
+  "outcome": "base-plan adds a second socket on the rock beside the lane one step nearer the gate, on the Rotor's side (cells.quiver, KIT.quiverSteps): the rock across the lane had no sightline to the gate pile, found through a reach dump in the acceptance (both hard cores at 22 m, los false). Beats: cleared -> quiver-printing (brief, grant, order) -> quiver-ready (spawn barbed) -> quiver-override at the gate -> quiver-piloting (pilot on the Quiver with the Rotor as second post; second barbed after secondDelay) -> settled when both are down (brief, views unlocked again). STORY_QUIVER carries the Talon config (mesh talon, profile heavy, 6 s, length 1.8, dmgMul 25); story-world hands the controller story.missiles and a missileOf(key) replaces the eleven CONTENT.missiles reads; a talon pool is created on first demand and each seeker keeps its pool. src/fx/story-monitor.js renders the scene a second time behind a flying TALON, scissored into a corner box, after postfx at both render sites. The strip's SENTRY cycles the pilot host's posts when already piloting. Acceptance drives the whole beat; the harness watchdog rose to twenty minutes for the longer suite. In the story the launcher holds fire while one of its rounds is guided (the first cut fired both Talons at the first hard core during the six-second flight), the story lock is 0.6 s in a 4 degree cone with a 42 m reach, and the acceptance's aim hook uses the missile reach and re-aims every half second so a lock can take.",
+  "alternatives": [
+    "Fire the game's dart from the story Quiver: rejected, the owner asked for the Talon and its animation.",
+    "Render the monitor to a low-resolution target and blit: deferred, the small scissored box is already cheap."
+  ],
+  "evidence": [
+    "npm test 92 (story-beats extended through settled), npm run check",
+    "node scripts/browser-test.mjs --story-world: quiver optic first with two posts, two kills from two rounds, the feed shown, SENTRY cycling to the Rotor",
+    "browser --dist legacy PASS after the missileOf change"
+  ],
+  "supersedes": []
+}

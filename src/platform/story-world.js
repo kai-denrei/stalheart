@@ -5,7 +5,8 @@
 import * as THREE from '../../vendor/three.module.js';
 import { buildWorld } from '../domain/world-recipe.js';
 import { planBase } from '../domain/base-plan.js';
-import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT, STORY_SCALE, STORY_BREACH } from '../content/story-defaults.js';
+import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT, STORY_SCALE, STORY_BREACH, STORY_QUIVER } from '../content/story-defaults.js';
+import { CONTENT } from '../content/runtime.js';
 export { STORY_SOUNDS };
 import { ISLANDS, STRUCTURES, KIT, STAGES } from '../content/base-layout.js';
 import { createStoryBase } from '../fx/story-base.js';
@@ -47,7 +48,9 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null }) {
   if (plan.cells.fodder >= 0) built.dungeon.spawn = plan.cells.fodder;
   const story = stage >= 1 ? {
     sockets: new Set(), home: plan.cells.landing, socketLift: 0,
-    beats: makeStoryBeats({ socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, rotorDelay: 2.5, key: 'rotor' }),
+    beats: makeStoryBeats({ socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, rotorDelay: 2.5, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER }),
+    // the story's Quiver fires the TALON: the game's quiver config with the lab's heavy round on top
+    missiles: { quiver: { ...CONTENT.missiles.quiver, ...STORY_QUIVER.missile } },
     hud: createStoryHud(), source: null,   // the radar overlay, and the breach the fodder comes from once it opens
     // the closed gate's cell is impassable to enemies; the tank opens it
     sealed: (ci) => plan.gate !== null && ci === plan.gate.cell && !base.gate().open,

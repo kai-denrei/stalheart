@@ -46,7 +46,16 @@ export function planBase(planet, layout, stage) {
   const fodderCell = walkOut(layout.kit.fodderSteps ?? 6);
   // the mount stands off the cell centre toward the lane, so the barrels look over the edge rather than into their own rock
   const edge = layout.kit.rotorEdge ?? 0, socketPos = (ci, toward) => { const c = planet.graph.centers[ci], t = planet.graph.centers[toward]; const v = c.map((x, k) => x + (t[k] - x) * edge), l = Math.hypot(...v); return v.map((x) => x / l); };
-  const sockets = wallCell >= 0 ? [{ cell: wallCell, toward: rotorLane, pos: socketPos(wallCell, rotorLane) }] : [];
+  // the second socket, for the Quiver: the rock beside the lane cell `quiverSteps` out, on the Rotor's side (the rock across the lane
+  // turned out to have no sightline to the gate pile), the farthest to that side that is not the Rotor's own cell
+  const quiverLane = walkOut(layout.kit.quiverSteps ?? 1);
+  const wallCell2 = (() => {
+    if (quiverLane < 0 || wallCell < 0) return -1;
+    const side = Math.sign(frameOf(wallCell)[0]) || 1; let best = -1, bx = -Infinity;
+    for (const nb of planet.graph.adj[quiverLane]) { if (planet.dungeon.tags[nb] !== 0 || nb === wallCell) continue; const x = frameOf(nb)[0] * side; if (x > bx) { bx = x; best = nb; } }
+    return best;
+  })();
+  const sockets = [[wallCell, rotorLane], [wallCell2, quiverLane]].filter(([c]) => c >= 0).map(([c, lane]) => ({ cell: c, toward: lane, pos: socketPos(c, lane) }));
   const anchored = layout.islands.map((i) => (i.anchor === 'forward' && forwardCell >= 0 ? { ...i, x: frameOf(forwardCell)[0], z: frameOf(forwardCell)[1] } : i));
   const islands = anchored.filter((i) => i.stage <= stage).map((i) => ({
     ...i, top: 0, sag: drop(Math.hypot(i.w, i.d) / 2, radius), heading: [0, 1], cell: i.anchor === 'forward' && forwardCell >= 0 ? forwardCell : nearestCell(i.x, i.z),
@@ -63,7 +72,7 @@ export function planBase(planet, layout, stage) {
     // a hair above the slab so coplanar floors do not z-fight; the rocket stands on natural ground
     return { ...s, x: i.x, z: i.z, y: s.stage >= i.stage ? 0.06 : 0, heading: s.heading ?? [0, 1] };
   });
-  cells.forward = forwardCell; cells.rotor = wallCell; cells.rotorLane = rotorLane; cells.fodder = fodderCell;
+  cells.forward = forwardCell; cells.rotor = wallCell; cells.quiver = wallCell2; cells.rotorLane = rotorLane; cells.fodder = fodderCell;
   // THE BERTHS: each bay's centre along the container model's X, its doors along the structure heading, and
   // the straight run a hull drives out of them. Unit-sphere points, so the game can start a hull in the bay
   // itself rather than at the nearest lattice centre, with the lattice cells carried for the board's bookkeeping.

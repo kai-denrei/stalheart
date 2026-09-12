@@ -46,12 +46,24 @@ const kinds = (g, k) => g.log.filter((l) => l[0] === k);
 }
 // a longer wave: the tenth kill brings the biomass line, said once, and the wave is not cleared while any of it stands
 {
-  const beats = makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, rotorDelay: 2, fodderEvery: 1, fodderAlive: 4, fodderTotal: 12, tremorDelay: 1, breachDelay: 2, overrideDelay: 1 });
-  const g = fakeGame({ walk: 3 });
+  const quiver = { key: 'quiver', delay: 2, hardcore: 'barbed', secondDelay: 4, missile: {} };
+  const beats = makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, rotorDelay: 2, fodderEvery: 1, fodderAlive: 4, fodderTotal: 12, tremorDelay: 1, breachDelay: 2, overrideDelay: 1, quiverSocket: 4244, quiver });
+  const g = fakeGame({ walk: 3, printSeconds: 3 });
   run(beats, g, 17); assert.equal(beats.state().phase, 'piloting');
   for (let k = 0; k < 10; k++) { g.kill(1); run(beats, g, 1); }
   assert.equal(kinds(g, 'brief').filter((l) => l[1] === 'harvest_biomass').length, 1, 'the tenth kill, once'); assert.equal(beats.state().phase, 'piloting', 'two of twelve still to come');
-  g.kill(2); run(beats, g, 3); assert.equal(beats.state().phase, 'cleared'); assert.equal(kinds(g, 'brief').at(-1)[1], 'wave_cleared');
+  g.kill(2); run(beats, g, 0.5); assert.equal(beats.state().phase, 'cleared'); assert.equal(kinds(g, 'brief').at(-1)[1], 'wave_cleared');
+  // THE QUIVER: introduced and ordered across the lane, a hard core spawned once it stands, the override when it reaches the gate,
+  // the optic handed over, a second hard core later, and settled once both are down, with the views unlocked again
+  const orders = kinds(g, 'order').length, spawns = kinds(g, 'spawn').length;
+  run(beats, g, 2.1); assert.equal(beats.state().phase, 'quiver-printing'); assert.deepEqual(kinds(g, 'order').at(-1), ['order', 'quiver', 4244]); assert.equal(kinds(g, 'brief').at(-1)[1], 'quiver_intro'); assert.equal(kinds(g, 'order').length, orders + 1);
+  // the fake's gate is already reached (its clock runs from the first spawn), so ready and override follow on consecutive ticks
+  run(beats, g, 3.2); assert.equal(beats.state().phase, 'quiver-override'); assert.deepEqual(kinds(g, 'spawn').at(-1), ['spawn', 'barbed', 4300]); assert.equal(kinds(g, 'spawn').length, spawns + 1, 'one hard core first'); assert.equal(kinds(g, 'brief').at(-1)[1], 'quiver_override');
+  run(beats, g, 1.1); assert.equal(beats.state().phase, 'quiver-piloting'); assert.deepEqual(kinds(g, 'pilot').at(-1), ['pilot', 4244, 4243]);
+  run(beats, g, 3); assert.equal(kinds(g, 'spawn').length, spawns + 1, 'the second waits its delay'); run(beats, g, 1.5); assert.equal(kinds(g, 'spawn').length, spawns + 2, 'then the second hard core');
+  g.kill(1); run(beats, g, 1); assert.equal(beats.state().phase, 'quiver-piloting', 'one still standing');
+  g.kill(1); run(beats, g, 1); assert.equal(beats.state().phase, 'settled'); assert.equal(kinds(g, 'brief').at(-1)[1], 'quiver_cleared'); assert.deepEqual(kinds(g, 'unlock'), [['unlock', 'views'], ['unlock', 'views']]);
+  run(beats, g, 5); assert.equal(kinds(g, 'spawn').length, spawns + 2, 'nothing more comes');
 }
 // ungated world (no gate yet): straight to control, no fodder
 {

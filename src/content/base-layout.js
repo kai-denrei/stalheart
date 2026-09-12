@@ -58,7 +58,7 @@ export const KIT = Object.freeze({
   stage: 4, wallsPerSide: 6, wallInset: 3,   // walls flank the gate along the rim, inset from the rock
   wallMetres: 4,                              // the lattice rock's roof height, where sentries mount
   fodderSteps: 28,                            // lane cells outward from the mouth where the ground opens: a tank trip to investigate
-  rotorSteps: 2, rotorEdge: 0.4,              // the first Rotor's wall cell touches the lane cell this many steps past the forward cell; the lab's static model stands this share of the way toward the lane (the game perches every tower on its wall's edge)
+  rotorSteps: 2, quiverSteps: 1, rotorEdge: 0.4,   // the Quiver's wall cell touches the lane one step nearer the gate, on the Rotor's side: the sightline to the gate pile is proven there              // the first Rotor's wall cell touches the lane cell this many steps past the forward cell; the lab's static model stands this share of the way toward the lane (the game perches every tower on its wall's edge)
   bay: { roll: 2, doorSeconds: 2.4, rollOutMetres: 19, rollOutSeconds: 8 },
   lod: { metres: 150, hysteresis: 1.3, ratio: 0.1 },   // camera closer than this shows the near tier (and first fetches it); it stays until 1.3x that; far tiers keep a tenth of the triangles   // a hull rolls two lane cells straight out of its doors; bay 03's authored roll-out carries the hull 19 model metres in 8 s
 });

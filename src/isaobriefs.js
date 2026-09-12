@@ -117,6 +117,19 @@ export const BRIEFS = {
     id: 'wave_cleared', face: 'glee', title: 'COMMS · ISAO', once: true,
     lines: ['Clear. Not one of them through the gate.', 'Take the tank whenever you like: TANK, SENTRY and MAP switch the view.'],
   },
+  // the Quiver: introduced, handed over, and two for two
+  quiver_intro: {
+    id: 'quiver_intro', face: 'focused', title: 'COMMS · ISAO', once: true,
+    lines: ['Something heavier is coming up the lane. Solid cores.', 'Printing a Quiver across the lane: guided rounds, one lock at a time.'],
+  },
+  quiver_override: {
+    id: 'quiver_override', face: 'focused', title: 'MANUAL OVERRIDE', once: true,
+    lines: ['Its targeting chips are not ready either.', 'Manual override. Hold the reticle on it until the lock takes, then fire.'],
+  },
+  quiver_cleared: {
+    id: 'quiver_cleared', face: 'glee', title: 'COMMS · ISAO', once: true,
+    lines: ['Two for two.', 'The wall is yours: TANK, SENTRY cycles the mounts, MAP for the whole planet.'],
+  },
   // the tenth kill: what the bodies are for
   harvest_biomass: {
     id: 'harvest_biomass', face: 'focused', title: 'COMMS · ISAO', once: true,
