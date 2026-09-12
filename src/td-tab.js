@@ -6434,10 +6434,9 @@ export function initTdTab(root) {
           const toward = exits.filter((c) => dist3(graph.centers[c], player.pos) < here);
           if (toward.length) pool = toward;
         }
-        if (!pool) {
-          const down = exits.filter((c) => dungeon.distToHeart[c] < dungeon.distToHeart[e.cur]);
-          pool = (down.length && whim() > 0.05) ? down : exits;
-        }
+        if (!pool) { const down = exits.filter((c) => dungeon.distToHeart[c] < dungeon.distToHeart[e.cur]); pool = (down.length && whim() > 0.05) ? down : exits; }
+        // THE STORY'S HARD CORES HOLD OFF THE WALL: once inside the holding ring they only wander within it (operator, while the lock is tuned)
+        if (story?.ring.size && e.type === story.hardcore && story.ring.has(e.cur)) { const stay = exits.filter((c) => story.ring.has(c)); pool = stay.length ? stay : [e.cur]; }
         e.next = pool.length ? pool[Math.floor(whim() * pool.length)] : e.cur;
       }
       const a = graph.centers[e.cur];
@@ -10160,13 +10159,13 @@ export function initTdTab(root) {
       if (pilotMode && target && !target.pilotAim && missileDistance(tp,target.pos) > eff.range*METRES_PER_CELL) continue;
       // the railgun does not shoot THROUGH walls: if the nearest pick is
       // occluded by high ground, take the nearest VISIBLE enemy instead
-      if (!pilotMode && target && tw.def.hitscan && !losClear(tw.ci, target.pos)) {
+      if (!pilotMode && target && tw.def.hitscan && !losClear(tw.ci, target.pos, perchOf(tw))) {
         target = null;
         let bd = Infinity;
         for (const e of enemies) {
           if (!e.alive) continue;
           const d = chord(tp, e.pos);
-          if (d <= range && d < bd && losClear(tw.ci, e.pos)) { bd = d; target = e; }
+          if (d <= range && d < bd && losClear(tw.ci, e.pos, perchOf(tw))) { bd = d; target = e; }
         }
       }
       if (!target) continue;
@@ -10360,11 +10359,11 @@ export function initTdTab(root) {
   // the tower's own — the mast stands ON high ground) refuses the shot.
   // Adjacent ridge cells block a shot along the ridge, which is correct:
   // that is what 'not through walls' means for a gun at wall height.
-  function losClear(fromCi, toPos) {
-    const a = graph.centers[fromCi];
+  // `from` may be the mount's perch: a gun standing at the lane edge of its rock sights along the lane, not along its own ridge
+  function losClear(fromCi, toPos, from = graph.centers[fromCi]) {
+    const a = from;
     const steps = Math.max(2, Math.ceil(dist3(a, toPos) / (cellSide * 0.45)));
-    for (let i = 1; i < steps; i++) {
-      const t = i / steps;
+    for (let i = 1; i < steps; i++) { const t = i / steps;
       const pmid = norm3([
         a[0] + (toPos[0] - a[0]) * t,
         a[1] + (toPos[1] - a[1]) * t,
@@ -12828,7 +12827,7 @@ export function initTdTab(root) {
   if (Number.isFinite(pointsOverride)) params.points = Math.min(16000, Math.max(150, pointsOverride));
   const seedOverride = parseInt(urlParams.get('seed') || '', 10);
   if (Number.isFinite(seedOverride)) params.seed = seedOverride >>> 0; const storyQuery = readStoryQuery(location.search), threatMult = storyQuery.threat, storyMode = storyQuery.world === 'story';   // tabula rasa past the landing: no old heart, waves, portals, camp or yard
-  const storyApi = { order: (key, ci) => orderTower(key, ci, { quiet: true }), grant: (n) => { if (n > 0) eco.addBiomass(n, { category: 'grant' }); }, built: (ci) => towerByCell.has(ci), cost: (key) => TOWER_BY_KEY[key]?.cost ?? 0, isao: () => !!isao, enemies: () => enemies.filter((e) => e.alive).length, spawn: (type, ci) => { spawnQueue.push({ type, sp: story?.source ?? { ci, alive: true, obj: new THREE.Group() }, at: spawnClock }); }, brief: (id) => showBrief(id), tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null), breach: (ci) => { const obj = buildPortalObj(ci, 0); scene.add(obj); story.source = { ci, alive: true, obj, hp: 3, found: true }; }, near: (ci) => enemies.some((e) => e.alive && chord(e.pos, graph.centers[ci]) < cellSide * 2.2), kills: () => rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike, unlock: (what) => { if (what === 'views' && !storyViews) { storyViews = createStoryViews(root, { tank: () => leavePilot(), sentry: () => { if (pilotMode) pilotHost?.post(1); else enterPilot(towers.map((t) => t.ci)); }, map: () => (pilotMode ? pilot.setView('map') : setView('orbit')) }); storyViews.active('sentry'); } }, pilot: (ci, laneCi) => { enterPilot([ci, ...towers.map((t) => t.ci).filter((c) => c !== ci)]); startShot({ id: 'takeControl', dur: 3.2, poseAt: takeControlPose(perchOf(towerByCell.get(ci) ?? { ci }), graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight), onEnd: () => { setView('bastion'); snapCamera(); } }); } };
+  const storyApi = { order: (key, ci) => orderTower(key, ci, { quiet: true }), grant: (n) => { if (n > 0) eco.addBiomass(n, { category: 'grant' }); }, built: (ci) => towerByCell.has(ci), cost: (key) => TOWER_BY_KEY[key]?.cost ?? 0, isao: () => !!isao, enemies: () => enemies.filter((e) => e.alive).length, spawn: (type, ci) => { spawnQueue.push({ type, sp: story?.source ?? { ci, alive: true, obj: new THREE.Group() }, at: spawnClock }); }, brief: (id) => showBrief(id), tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null), breach: (ci) => { const obj = buildPortalObj(ci, 0); scene.add(obj); story.source = { ci, alive: true, obj, hp: 3, found: true }; }, near: (ci, r = 2.2) => enemies.some((e) => e.alive && chord(e.pos, graph.centers[ci]) < cellSide * r), kills: () => rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike, unlock: (what) => { if (what === 'views') { storyViews ??= createStoryViews(root, { tank: () => leavePilot(), mount: (key) => { if (pilotMode) pilotHost?.pick(key); else { const tw = towers.find((t) => t.key === key); if (tw) enterPilot([tw.ci, ...towers.map((t) => t.ci).filter((c) => c !== tw.ci)]); } }, map: () => (pilotMode ? pilot.setView('map') : setView('orbit')) }); storyViews.mounts(towers.map((t) => ({ key: t.key, label: t.def.label.replace(/^\d+\.\s*/, '') }))); storyViews.active(pilot?.state.tower?.key ?? 'tank'); } }, pilot: (ci, laneCi) => { enterPilot([ci, ...towers.map((t) => t.ci).filter((c) => c !== ci)]); startShot({ id: 'takeControl', dur: 3.2, poseAt: takeControlPose(perchOf(towerByCell.get(ci) ?? { ci }), graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight), onEnd: () => { setView('bastion'); snapCamera(); } }); } };
   const simParam = urlParams.get('sim');
   if (simParam) {
     simStyle = simParam;
@@ -17564,11 +17563,11 @@ export function initTdTab(root) {
     }
     pilot=createSentryPilot(root,pilotHost={
       story:!!posts,mobile:mobileShell,select:installPilot,
-      post:delta=>{pilotPost=(pilotPost+delta+pilotPosts.length)%pilotPosts.length;pilot.select(pilotMounts[pilotPost]?.key || pilot.state.tower.key);},
+      post:delta=>{pilotPost=(pilotPost+delta+pilotPosts.length)%pilotPosts.length;pilot.select(pilotMounts[pilotPost]?.key || pilot.state.tower.key);}, pick:key=>{const i=pilotMounts.findIndex(m=>m?.key===key);if(i>=0){pilotPost=i;pilot.select(key);}},   // the story's strip names a mount
       map:on=>setView(on?'orbit':'bastion'),pause:()=>{paused=!paused;pilot.state.held=false;},
       wake:()=>holdWake(),cellSide:()=>cellSide,
       zoom:z=>{camera.fov=60/z;camera.updateProjectionMatrix();},
-      visible:e=>pilot.state.tower && losClear(pilot.state.tower.ci,e.pos),
+      visible:e=>pilot.state.tower && losClear(pilot.state.tower.ci,e.pos,perchOf(pilot.state.tower)),
       aimPoint:(eye,dir,range)=>{const hit=rayToTerrain(eye.toArray(),dir.toArray(),range,pilot.state.tower.ci);return eye.clone().addScaledVector(dir,hit.len).toArray();},
       cameraPose:(eye,dir,up,goal)=>{tmpCam.position.copy(eye);tmpCam.up.copy(up);tmpCam.lookAt(eye.clone().add(dir));goal.quat.copy(tmpCam.quaternion);}
     });
@@ -17587,8 +17586,8 @@ export function initTdTab(root) {
     for(let i=0;i<pilotPosts.length;i++)pilotMounts[i]=posts?towerByCell.get(pilotPosts[i]):commitTower('needle',pilotPosts[i],0);
     clearBriefs();params.callouts=false;setView('bastion');pilot.select(posts?pilotMounts[0]?.key||'rotor':'needle');hideRangeRing();snapCamera();
     if(urlParams.get('acceptance')==='1')window.__stalheartPilotTest={state:()=>({paused,seed:params.seed,points:params.points,sector:round,posts:pilotPosts.slice(),view:pilot.state.view,ci:pilot.state.tower.ci,key:pilot.state.tower.key,shots:pilot.state.shots,held:pilot.state.held,heat:pilot.state.tower.heat??0,overheated:!!pilot.state.tower.overheated,wave,enemies:enemies.filter(e=>e.alive).length,tank:player.pos.slice(),camera:camera.position.toArray(),target:pilot.state.target?.id??null,ready:!pilot.state.tower.obj.userData.loading,aimError:pilot.state.tower.aimErr,lock:pilot.state.tower.lock,heart:heartHP}),select:key=>pilot.select(key),
-      aimEnemy:()=>{const tw=pilot.state.tower;const e=enemies.find(e=>e.alive&&missileDistance(graph.centers[tw.ci],e.pos)<(missileOf(tw.key)?.maxRange??effectiveStats(tw.def,tw.tier).range*10)&&losClear(tw.ci,e.pos));if(!e)return null;pilot.aimAt(add3(e.pos,scale3(norm3(e.pos),cellSide*.3)));return {id:e.id,hp:e.hp};},
-      enemy:id=>{const e=enemies.find(e=>e.id===id);return e?{hp:e.hp,alive:e.alive}:null;},hold:on=>{pilot.state.held=!!on;},view:v=>pilot.setView(v), reach:()=>{const tw=pilot.state.tower;return enemies.filter(e=>e.alive).map(e=>({id:e.id,type:e.type,m:+missileDistance(graph.centers[tw.ci],e.pos).toFixed(1),los:losClear(tw.ci,e.pos),cell:e.cur}));}
+      aimEnemy:()=>{const tw=pilot.state.tower;const e=enemies.find(e=>e.alive&&missileDistance(graph.centers[tw.ci],e.pos)<(missileOf(tw.key)?.maxRange??effectiveStats(tw.def,tw.tier).range*10)&&losClear(tw.ci,e.pos,perchOf(tw)));if(!e)return null;pilot.aimAt(add3(e.pos,scale3(norm3(e.pos),cellSide*.3)));return {id:e.id,hp:e.hp};},
+      enemy:id=>{const e=enemies.find(e=>e.id===id);return e?{hp:e.hp,alive:e.alive}:null;},hold:on=>{pilot.state.held=!!on;},view:v=>pilot.setView(v), reach:()=>{const tw=pilot.state.tower;return enemies.filter(e=>e.alive).map(e=>({id:e.id,type:e.type,m:+missileDistance(graph.centers[tw.ci],e.pos).toFixed(1),los:losClear(tw.ci,e.pos,perchOf(tw)),cell:e.cur}));}
     };
   } if (pilotMode) enterPilot(null);
 

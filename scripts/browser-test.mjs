@@ -324,7 +324,7 @@ try{
  await evaluate('window.__stalheartPilotTest.hold(false)');const cleared=await evaluate('window.__stalheartTest.state()');assert(cleared.story.said.includes('wave_cleared'));await until('window.__stalheartTest.state().performance.enemies===0',5000);   // the performance block is a periodic sample
  await until('!!document.querySelector("#story-views")',5000);await delay(600);current='story-world-cleared';await finish();
  await click('#story-views [data-view="tank"]');await until('typeof window.__stalheartPilotTest==="undefined" && !document.querySelector("#sentry-pilot")',5000);await delay(800);current='story-world-views-tank';await finish();
- await click('#story-views [data-view="sentry"]');await until('!!window.__stalheartPilotTest && !!document.querySelector("#sentry-pilot")',5000);await delay(600);current='story-world-views-sentry';await finish();
+ await click('#story-views [data-mount="rotor"]');await until('!!window.__stalheartPilotTest && !!document.querySelector("#sentry-pilot")',5000);await delay(600);assert.equal(await evaluate('window.__stalheartPilotTest.state().key'),'rotor','the ROTOR button takes the Rotor');current='story-world-views-sentry';await finish();
  await click('#story-views [data-view="map"]');await until('!!document.querySelector(".pilot-map")',5000);await delay(600);current='story-world-views-map';await finish();
  // THE QUIVER: Isao prints it across the lane, a hard core reaches the gate, the override hands over the Quiver's optic (its post first,
  // the Rotor's behind it), two TALON shots with the seeker feed riding along, then settled and the strip is back
@@ -336,7 +336,8 @@ try{
  catch(e){console.log('QUIVER DUMP',JSON.stringify(await evaluate('(()=>{const s=window.__stalheartTest.state(),p=window.__stalheartPilotTest?.state();return {story:s.story,kills:s.kills,enemies:s.performance.enemies,towers:s.towerCells,engagement:s.engagement,pilot:p&&{key:p.key,ci:p.ci,posts:p.posts,held:p.held,shots:p.shots,view:p.view},reach:window.__stalheartPilotTest?.reach(),monitor:s.monitorShown,shot:s.shot};})()')));throw e;}
  await evaluate('window.__stalheartPilotTest.hold(false)');const settled=await evaluate('window.__stalheartTest.state()');assert.equal(settled.kills-killsBefore,2,'two hard cores, two rounds');assert(settled.monitorShown>0,'the seeker feed showed during a flight');
  await delay(500);current='story-world-quiver-settled';await finish();
- await click('#story-views [data-view="sentry"]');await delay(500);assert.equal(await evaluate('window.__stalheartPilotTest.state().key'),'rotor','SENTRY cycles to the next mount');current='story-world-views-cycle';await finish();
+ assert.equal(await evaluate('document.querySelectorAll("#story-views [data-mount]").length'),2,'one button per mount');
+ await click('#story-views [data-mount="rotor"]');await delay(500);assert.equal(await evaluate('window.__stalheartPilotTest.state().key'),'rotor','ROTOR picks that mount while piloting');await click('#story-views [data-mount="quiver"]');await delay(500);assert.equal(await evaluate('window.__stalheartPilotTest.state().key'),'quiver','and back');current='story-world-views-cycle';await finish();
  // THE THREE HULLS ARE THE THREE LIVES: at stage 7 the bays are the berths; the first hull starts inside bay 3 and rolls out of its doors,
  // bay 3's parked hull is hidden the moment it is the one being driven, bays 1 and 2 keep theirs (1 sealed and empty by construction)
  await go('story-world-bays','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=7#td');await until('!!window.__stalheartTest',90000);

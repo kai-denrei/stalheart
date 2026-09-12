@@ -52,7 +52,7 @@ export function makeStoryBeats({
       } else if (phase === 'cleared' && quiver && quiverSocket >= 0 && gated && clock - at >= quiver.delay) {
         api.brief?.('quiver_intro'); api.grant(api.cost(quiver.key)); if (api.order(quiver.key, quiverSocket)) enter('quiver-printing');
       } else if (phase === 'quiver-printing' && api.built(quiverSocket)) { api.spawn(quiver.hardcore, fodder); hardcores = 1; enter('quiver-ready'); }
-      else if (phase === 'quiver-ready' && api.near?.(gate)) { api.brief?.('quiver_override'); enter('quiver-override'); }
+      else if (phase === 'quiver-ready' && api.near?.(gate, quiver.nearCells ?? 2.2)) { api.brief?.('quiver_override'); enter('quiver-override'); }   // the hard cores hold off the wall, so 'near' is wider here
       else if (phase === 'quiver-override' && clock - at >= overrideDelay) { api.pilot?.(quiverSocket, lane); enter('quiver-piloting'); nextSpawn = clock + quiver.secondDelay; }
       else if (phase === 'quiver-piloting') {
         if (hardcores < 2 && clock >= nextSpawn) { api.spawn(quiver.hardcore, fodder); hardcores = 2; }

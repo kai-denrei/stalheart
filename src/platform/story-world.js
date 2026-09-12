@@ -32,6 +32,18 @@ export function readStoryQuery(search) {
   };
 }
 
+// lane cells between `lo` and `hi` hops outward from `from`, over open ground outside the clearing
+function holdRing(built, planet, from, [lo, hi]) {
+  const ring = new Set(); if (from < 0) return ring;
+  const hop = new Map([[from, 0]]); let frontier = [from];
+  for (let k = 1; k <= hi && frontier.length; k++) {
+    const next = [];
+    for (const ci of frontier) for (const nb of planet.graph.adj[ci]) if (!hop.has(nb) && built.dungeon.tags[nb] !== BLOCKED && !planet.clearing.cells.has(nb)) { hop.set(nb, k); next.push(nb); if (k >= lo) ring.add(nb); }
+    frontier = next;
+  }
+  return ring;
+}
+
 export function buildGameWorld({ world, params, stage, scene, sfx = null }) {
   const built = buildWorld({ world, params, story: { recipe: STORY_RECIPE, clearing: STORY_CLEARING, bake: planetBake() } });
   if (!built.planet) return { ...built, base: null };
@@ -51,6 +63,8 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null }) {
     beats: makeStoryBeats({ socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, rotorDelay: 2.5, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER }),
     // the story's Quiver fires the TALON: the game's quiver config with the lab's heavy round on top
     missiles: { quiver: { ...CONTENT.missiles.quiver, ...STORY_QUIVER.missile } },
+    // the hard cores' holding ring: lane cells hold[0]..hold[1] hops outside the forward cell; a held one only wanders within it
+    ring: holdRing(built, planet, plan.cells.forward, STORY_QUIVER.hold), hardcore: STORY_QUIVER.hardcore,
     hud: createStoryHud(), source: null,   // the radar overlay, and the breach the fodder comes from once it opens
     // the closed gate's cell is impassable to enemies; the tank opens it
     sealed: (ci) => plan.gate !== null && ci === plan.gate.cell && !base.gate().open,

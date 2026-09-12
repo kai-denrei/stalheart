@@ -61,7 +61,9 @@ export const STORY_DAY = Object.freeze({ seconds: 300, dayShare: 0.6, tilt: 60, 
 
 // The Quiver's introduction after the first wave: Isao prints it on the wall across the lane, two hard-cored enemies come one
 // after the other, and the piloted Quiver fires the lab's TALON (a heavier, slower guided round) instead of the game's dart
-export const STORY_QUIVER = Object.freeze({ key: 'quiver', delay: 4, hardcore: 'barbed', secondDelay: 9, missile: Object.freeze({ mesh: 'talon', profile: 'heavy', duration: 6, length: 1.8, dmgMul: 25, maxRange: 42, lockTime: 0.6, aimTolerance: 4 }) });   // a heavy payload (one round, one solid core), the reach to the gate pile from across the lane, and a first-encounter lock: a shorter hold, a wider cone
+// hold: the hard cores stop short of the gate and mill about between these lane hops outside the forward cell, within the Quiver's
+// reach but never at the wall (while the lock is being tuned); nearCells: how close to the gate one must come for the override
+export const STORY_QUIVER = Object.freeze({ key: 'quiver', delay: 4, hardcore: 'barbed', secondDelay: 9, hold: [2, 4], nearCells: 5, missile: Object.freeze({ mesh: 'talon', profile: 'heavy', duration: 6, length: 1.8, dmgMul: 25, maxRange: 42, lockTime: 0.6, aimTolerance: 4 }) });   // a heavy payload (one round, one solid core), the reach to the gate pile from across the lane, and a first-encounter lock: a shorter hold, a wider cone
 
 // The piloted sentry in the story: a denser stream of rounds, each one
 // heavy enough that cannon fodder drops in two hits.
