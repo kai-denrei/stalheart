@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/jelaludo/SentryTowers_A6",
+  "revision": "8ae723dfe91d437c817ae73cff0d5dcca3e16b46",
+  "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/8ae723dfe91d437c817ae73cff0d5dcca3e16b46/",
+  "credit": "Models by jelaludo (https://jelaludo.github.io/SentryTowers_A6/), A6 ammunition library, game tier, reused with attribution under the upstream ASSET-LICENSE.md",
+  "files": [
+    {
+      "path": "assets/models/ammunition/rotor_light_case_game.glb",
+      "sourcePath": "assets/ammunition/rotor_light_case_game.glb",
+      "sha256": "34812c89b2c22173161e10d83af268f58de669b1e1bc888a9c36670a7d9e83fb",
+      "bytes": 4060,
+      "triangles": 94,
+      "note": "the ejected brass of the Rotor in sentry control; 41 mm long, origin at the base face, +Z forward"
+    }
+  ]
+}

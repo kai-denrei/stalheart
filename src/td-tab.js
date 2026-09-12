@@ -41,7 +41,7 @@ import { storage as localStorage } from './storage.js';
 import * as THREE from '../vendor/three.module.js';
 import GUI from '../vendor/lil-gui.esm.js';
 import { bfsDist, BLOCKED, PATH, ROOM } from './dungeon.js';
-import { buildGameWorld, readStoryQuery, STORY_SOUNDS, takeControlPose } from './platform/story-world.js'; import { SENTRY_HEAT } from './content/sentry-heat.js'; import { coolHeat } from './core/heat.js'; import { paintBarrelHeat } from './fx/barrel-heat.js'; import { createStoryViews } from './fx/story-views.js'; import { createStoryMonitor } from './fx/story-monitor.js'; import { createDaylight } from './fx/daylight.js'; import { createStoryScope } from './fx/story-scope.js'; import { createSyntheticModal } from './fx/synthetic-modal.js';
+import { buildGameWorld, readStoryQuery, STORY_SOUNDS, takeControlPose } from './platform/story-world.js'; import { SENTRY_HEAT } from './content/sentry-heat.js'; import { coolHeat } from './core/heat.js'; import { paintBarrelHeat } from './fx/barrel-heat.js'; import { createStoryViews } from './fx/story-views.js'; import { createStoryMonitor } from './fx/story-monitor.js'; import { createDaylight } from './fx/daylight.js'; import { createStoryScope } from './fx/story-scope.js'; import { createSyntheticModal } from './fx/synthetic-modal.js'; import { createBrass } from './fx/brass.js';
 import { compileRail } from './cine/rail.js';
 import { SCRIPTS } from './cine/scripts.js';
 import { cuesBetween } from './cine/sound.js';
@@ -116,7 +116,7 @@ import { makeAudio } from './audio.js';
 import { DEATH_KEYS } from './audiomanifest.js';
 
 export function initTdTab(root) {
-  let pilotMode = new URLSearchParams(location.search).get('sentryPilot') === '1', storyViews = null, pilotHost = null, storyMonitor = null, daylight = null, storyScope = null, syntheticModal = null;   // the story enters it at runtime; the view strip unlocks after the first wave
+  let pilotMode = new URLSearchParams(location.search).get('sentryPilot') === '1', storyViews = null, pilotHost = null, storyMonitor = null, daylight = null, storyScope = null, syntheticModal = null, brass = null;   // the story enters it at runtime; the view strip unlocks after the first wave
   let pilot = null;
   let pilotPosts = [], pilotPost = 0;
   const pilotMounts = [];
@@ -10211,8 +10211,8 @@ export function initTdTab(root) {
       sfx.play(towerSound(tw.def), { dist: camDist(tp) });
       const n = graph.normals[tw.ci];
       const muzzle = towerMuzzle(tw, add3(tp, scale3(n, cellSide * 0.55)));
-      // the gun rides back on every round, and the flash leaves the barrel
-      tw.recoil = 1;
+      // the gun rides back on every round, and the flash leaves the barrel; a Rotor also spits its case sideways when the camera is close enough to see it (docs/AMMUNITION.md)
+      tw.recoil = 1; if (tw.key === 'rotor' && tw.rotorNode && camDist(tp) < cellSide * 8) { brass ??= createBrass(scene, { metres: cellSide / METRES_PER_CELL }); brass.eject(tw.rotorNode, { side: 1, floorR: len3(perchOf(tw)) * (1 + params.wallHeight) }); }
       if (tw.obj.userData.muzzles && tw.obj.userData.muzzles.length) {
         // THE SAME MUZZLE AS THE WORKSHOP: the package's recipe, tune and colours, authored in lab metres
         // and scaled onto the sphere. One master setting for every mode; no spark reads as a bullet.
@@ -12299,7 +12299,7 @@ export function initTdTab(root) {
     // reveal or the cold open still stops him: those are the game
     // speaking, and nothing should be printing over the top of it.
     if (!frozen) updateIsao(dt);
-    for (const orb of orbMeshes.values()) orb.userData.tick(t);
+    for (const orb of orbMeshes.values()) orb.userData.tick(t); brass?.tick(frozen ? 0 : dt);   // spent cases fall and settle with the rest of the transients
     for (let i = debris.length - 1; i >= 0; i--) {
       if (!debris[i].userData.tick(dt)) {
         scene.remove(debris[i]);
@@ -17450,7 +17450,7 @@ export function initTdTab(root) {
         playerAsset: playerMesh?.userData.asset || params.creature, playerSpan: (() => { if (!playerMesh) return null; const b = new THREE.Box3().setFromObject(playerMesh); return Number.isFinite(b.max.x) ? +(b.getSize(new THREE.Vector3()).length() / (unitScale || 1)).toFixed(2) : null; })(),   // the hull's true size over its scale: exploded geometry reads absurd here
         playerAssetReady: !playerMesh?.userData.loading,
         playerModelStats: playerMesh?.userData.modelStats,
-        berthAssets:lifeContainers.flatMap(c=>c.tanks.map(t=>t.userData.asset)), bays: lifeContainers.map((c) => ({ ci: c.ci, hasTank: c.tanks.length > 0, racked: !!c.tanks[0]?.visible })), berthCells: berths.map((b) => b.ci), kills: rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike, monitorShown: storyMonitor?.shown() ?? 0, screenOpen: !!syntheticModal?.isOpen(), screensOpened: syntheticModal?.opened() ?? 0, daylight: daylight?.state() ?? null,
+        berthAssets:lifeContainers.flatMap(c=>c.tanks.map(t=>t.userData.asset)), bays: lifeContainers.map((c) => ({ ci: c.ci, hasTank: c.tanks.length > 0, racked: !!c.tanks[0]?.visible })), berthCells: berths.map((b) => b.ci), kills: rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike, monitorShown: storyMonitor?.shown() ?? 0, screenOpen: !!syntheticModal?.isOpen(), screensOpened: syntheticModal?.opened() ?? 0, brassLive: brass?.live() ?? 0, daylight: daylight?.state() ?? null,
         heartAsset: heartSprite?.userData.asset || params.heartLook,
         heartAssetState: heartSprite?.userData.assetState,
         performance:perfSample,shieldClock:t,motionClock:runContext.time,shield:{seconds:shield.t,rack:shield.rack,cooldown:Math.max(0,shield.coolUntil-t),drops:shieldDrops,visible:shieldObj?.visible},

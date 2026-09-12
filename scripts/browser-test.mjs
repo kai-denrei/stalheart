@@ -310,7 +310,7 @@ try{
  await evaluate('window.__stalheartPilotTest.hold(true)');
  // the fodder keeps walking, so re-aim each poll until this one drops
  await until(`(()=>{const t=window.__stalheartPilotTest;const e=t.enemy(${victim.id});if(!e||!e.alive)return true;t.aimEnemy();return false;})()`,8000);await evaluate('window.__stalheartPilotTest.hold(false)');
- const shots=await evaluate('window.__stalheartPilotTest.state().shots');assert(shots>=2,'the Rotor streamed rounds');current='story-world-rotor-kill';await finish();
+ const shots=await evaluate('window.__stalheartPilotTest.state().shots');assert(shots>=2,'the Rotor streamed rounds');assert((await evaluate('window.__stalheartTest.state().brassLive'))>0,'spent cases fell from the Rotor in sentry control (docs/AMMUNITION.md)');current='story-world-rotor-kill';await finish();
  // keep shooting: the fifth kill brings the comms study, the tenth the biomass line
  await evaluate('window.__stalheartPilotTest.hold(true)');
  await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("harvest_biomass"))return true;window.__stalheartPilotTest.aimEnemy();return false;})()',120000);
