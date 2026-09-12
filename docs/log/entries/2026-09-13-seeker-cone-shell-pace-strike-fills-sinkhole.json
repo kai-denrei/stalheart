@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "2026-09-13-seeker-cone-shell-pace-strike-fills-sinkhole",
+  "date": "2026-09-13T10:30:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "A guided mount acquires inside a cone; a faster tank shell; an orbital strike fills the story's sinkhole; the round belt filed",
+  "context": "Owner playtest: the tank shell is much too slow; the Quiver's click-to-lock feels unintuitive, it should detect anything kept in range and the override should only steer the optic; an orbital strike should always fill a sinkhole as in the other modes; file the rotor round belt as a future feature.",
+  "outcome": "sentry-pilot's target pick takes a host cone: a guided mount acquires the nearest enemy in range inside an 18 degree half-angle around the optic (STORY_QUIVER.coneDeg), a gun still needs the reticle on the body. The tank shell's pace and reach moved to content (SHELL_SPEED 9 cells/s from a literal 3.4, SHELL_REACH 12). The story's breach is pushed into spawnPoints when it opens, so the strike's lock and landing treat it like any portal and seal it; the beats reopen a sealed sinkhole before the hard cores (api.sourceAlive). The round belt sits under Future features in docs/PLAYFEEL.md.",
+  "alternatives": [
+    "Auto-fire on lock: rejected, firing stays the player's Space; only the finding is automatic."
+  ],
+  "evidence": [
+    "npm test (beats: reopened breach after a seal), npm run check, browser --story-world before commit"
+  ],
+  "supersedes": []
+}

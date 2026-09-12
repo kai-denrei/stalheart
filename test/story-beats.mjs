@@ -2,19 +2,20 @@ import assert from 'node:assert/strict';
 import { makeStoryBeats } from '../src/domain/story-beats.js';
 // a fake game: records everything; a tower stands N seconds after the order; fodder reaches the gate M seconds after the first spawn
 function fakeGame({ printSeconds = 6, cost = 45, walk = 3 } = {}) {
-  const log = []; let orderedAt = null, clock = 0, alive = 0, firstSpawn = null, killed = 0;
-  return { log, tick: (dt) => { clock += dt; }, kill: (n) => { alive = Math.max(0, alive - n); killed += n; }, api: {
+  const log = []; let orderedAt = null, clock = 0, alive = 0, firstSpawn = null, killed = 0, sealed = false;
+  return { log, tick: (dt) => { clock += dt; }, kill: (n) => { alive = Math.max(0, alive - n); killed += n; }, seal: () => { sealed = true; }, api: {
     cost: () => cost, isao: () => true, enemies: () => alive, kills: () => killed,
     grant: (n) => { log.push(['grant', n]); },
     order: (key, ci) => { log.push(['order', key, ci]); orderedAt = clock; return true; },
     built: () => orderedAt !== null && clock - orderedAt >= printSeconds,
     brief: (id) => { log.push(['brief', id]); },
     tremor: (ci) => { log.push(['tremor', ci]); },
-    breach: (ci) => { log.push(['breach', ci]); },
+    breach: (ci) => { log.push(['breach', ci]); sealed = false; },
     near: () => firstSpawn !== null && clock - firstSpawn >= walk,
     pilot: (ci, lane) => { log.push(['pilot', ci, lane]); },
     unlock: (what) => { log.push(['unlock', what]); },
     screen: (id) => { log.push(['screen', id]); },
+    sourceAlive: () => sealed === false,
     spawn: (type, ci) => { log.push(['spawn', type, ci]); alive++; if (firstSpawn === null) firstSpawn = clock; },
   } };
 }
@@ -56,10 +57,11 @@ const kinds = (g, k) => g.log.filter((l) => l[0] === k);
   g.kill(2); run(beats, g, 0.5); assert.equal(beats.state().phase, 'cleared'); assert.equal(kinds(g, 'brief').at(-1)[1], 'wave_cleared');
   // THE QUIVER: introduced and ordered across the lane, a hard core spawned once it stands, the override when it reaches the gate,
   // the optic handed over, a second hard core later, and settled once both are down, with the views unlocked again
-  const orders = kinds(g, 'order').length, spawns = kinds(g, 'spawn').length;
+  const orders = kinds(g, 'order').length, spawns = kinds(g, 'spawn').length, breaches = kinds(g, 'breach').length;
+  g.seal();   // the player filled the sinkhole with an orbital strike after the wave
   run(beats, g, 2.1); assert.equal(beats.state().phase, 'quiver-printing'); assert.deepEqual(kinds(g, 'order').at(-1), ['order', 'quiver', 4244]); assert.equal(kinds(g, 'brief').at(-1)[1], 'quiver_intro'); assert.equal(kinds(g, 'order').length, orders + 1);
   // the fake's gate is already reached (its clock runs from the first spawn), so ready and override follow on consecutive ticks
-  run(beats, g, 3.2); assert.equal(beats.state().phase, 'quiver-override'); assert.deepEqual(kinds(g, 'spawn').at(-1), ['spawn', 'barbed', 4300]); assert.equal(kinds(g, 'spawn').length, spawns + 1, 'one hard core first'); assert.equal(kinds(g, 'brief').at(-1)[1], 'quiver_override');
+  run(beats, g, 3.2); assert.equal(kinds(g, 'breach').length, breaches + 1, 'the sinkhole is opened again for the hard cores'); assert.equal(beats.state().phase, 'quiver-override'); assert.deepEqual(kinds(g, 'spawn').at(-1), ['spawn', 'barbed', 4300]); assert.equal(kinds(g, 'spawn').length, spawns + 1, 'one hard core first'); assert.equal(kinds(g, 'brief').at(-1)[1], 'quiver_override');
   run(beats, g, 1.1); assert.equal(beats.state().phase, 'quiver-piloting'); assert.deepEqual(kinds(g, 'pilot').at(-1), ['pilot', 4244, 4243]);
   run(beats, g, 3); assert.equal(kinds(g, 'spawn').length, spawns + 1, 'the second waits its delay'); run(beats, g, 1.5); assert.equal(kinds(g, 'spawn').length, spawns + 2, 'then the second hard core');
   g.kill(1); run(beats, g, 1); assert.equal(beats.state().phase, 'quiver-piloting', 'one still standing');

@@ -70,7 +70,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null }) {
     // the story's Quiver fires the TALON: the game's quiver config with the lab's heavy round on top
     missiles: { quiver: { ...CONTENT.missiles.quiver, ...STORY_QUIVER.missile } },
     // the hard cores' holding ring: lane cells hold[0]..hold[1] hops outside the forward cell; a held one only wanders within it
-    ring: holdRing(built, planet, plan.cells.forward, STORY_QUIVER.hold, plan.sockets[1]?.pos ?? null), hardcore: STORY_QUIVER.hardcore, quiverZoom: STORY_QUIVER.zoom,
+    ring: holdRing(built, planet, plan.cells.forward, STORY_QUIVER.hold, plan.sockets[1]?.pos ?? null), hardcore: STORY_QUIVER.hardcore, quiverZoom: STORY_QUIVER.zoom, quiverCone: Math.tan(STORY_QUIVER.coneDeg * Math.PI / 180),
     hud: createStoryHud(), source: null,   // the radar overlay, and the breach the fodder comes from once it opens
     // the closed gate's cell is impassable to enemies; the tank opens it
     sealed: (ci) => plan.gate !== null && ci === plan.gate.cell && !base.gate().open,

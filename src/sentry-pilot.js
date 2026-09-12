@@ -67,12 +67,14 @@ export function createSentryPilot(root, host) {
     return !map;
   }
   function setView(v){if(v==='map'){if(!map)toggleMap();return;}state.view=v==='third'?'third':'pov';if(map)toggleMap();}
+  // a guided mount acquires anything in range inside a cone around the optic (host.cone, the tangent of its half-angle): the override steers the
+  // optic, the seeker does the finding. A gun still needs the reticle on the body.
   function target(enemies,range,cellSide){
-    let best=null,near=Infinity;
+    let best=null,near=Infinity;const cone=host.cone?.()||0;
     for(const e of enemies){if(!e.alive)continue;
       v.fromArray(e.pos).addScaledVector(v.clone().normalize(),cellSide*.3).sub(eye);
       const along=v.dot(direction),off=v.clone().addScaledVector(direction,-along).length();
-      if(along>0&&along<near&&off<cellSide*Math.max(.22,(e.size??e.spec.size)*.55)&&host.visible(e)){near=along;best=e;}
+      if(along>0&&along<near&&(cone?off<along*cone:off<cellSide*Math.max(.22,(e.size??e.spec.size)*.55))&&host.visible(e)){near=along;best=e;}
     }
     state.target=best;
     return best||{pilotAim:true,pos:host.aimPoint(eye,direction,range)};
