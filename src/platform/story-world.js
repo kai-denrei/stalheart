@@ -32,15 +32,21 @@ export function readStoryQuery(search) {
   };
 }
 
-// lane cells between `lo` and `hi` hops outward from `from`, over open ground outside the clearing
-function holdRing(built, planet, from, [lo, hi]) {
+// lane cells between `lo` and `hi` hops outward from `from`, over open ground outside the clearing, and (given a perch) only the
+// ones a mount at that perch can see: the chord from the perch to the cell crosses no rock, the same test the optic applies
+function holdRing(built, planet, from, [lo, hi], perch = null) {
   const ring = new Set(); if (from < 0) return ring;
-  const hop = new Map([[from, 0]]); let frontier = [from];
+  const { centers, adj } = planet.graph, cell = (p) => { let best = -1, bd = Infinity; for (const nb of near) { const c = centers[nb]; const d = (c[0] - p[0]) ** 2 + (c[1] - p[1]) ** 2 + (c[2] - p[2]) ** 2; if (d < bd) { bd = d; best = nb; } } return best; };
+  let near = [];
+  const seen = (ci) => { if (!perch) return true; const a = perch, b = centers[ci], n = Math.max(2, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]) / (planet.cellSide * 0.45))); for (let i = 1; i < n; i++) { const t = i / n, p = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t], l = Math.hypot(...p); const c = cell(p.map((v) => v / l)); if (c >= 0 && c !== ci && built.dungeon.tags[c] === BLOCKED) return false; } return true; };
+  const hop = new Map([[from, 0]]); let frontier = [from]; const candidates = [];
   for (let k = 1; k <= hi && frontier.length; k++) {
     const next = [];
-    for (const ci of frontier) for (const nb of planet.graph.adj[ci]) if (!hop.has(nb) && built.dungeon.tags[nb] !== BLOCKED && !planet.clearing.cells.has(nb)) { hop.set(nb, k); next.push(nb); if (k >= lo) ring.add(nb); }
+    for (const ci of frontier) for (const nb of adj[ci]) if (!hop.has(nb) && !planet.clearing.cells.has(nb)) { hop.set(nb, k); if (built.dungeon.tags[nb] !== BLOCKED) { next.push(nb); if (k >= lo) candidates.push(nb); } }
     frontier = next;
   }
+  near = [...hop.keys()];   // the chord test looks up cells among everything the walk touched, rock included
+  for (const ci of candidates) if (seen(ci)) ring.add(ci);
   return ring;
 }
 
@@ -64,7 +70,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null }) {
     // the story's Quiver fires the TALON: the game's quiver config with the lab's heavy round on top
     missiles: { quiver: { ...CONTENT.missiles.quiver, ...STORY_QUIVER.missile } },
     // the hard cores' holding ring: lane cells hold[0]..hold[1] hops outside the forward cell; a held one only wanders within it
-    ring: holdRing(built, planet, plan.cells.forward, STORY_QUIVER.hold), hardcore: STORY_QUIVER.hardcore,
+    ring: holdRing(built, planet, plan.cells.forward, STORY_QUIVER.hold, plan.sockets[1]?.pos ?? null), hardcore: STORY_QUIVER.hardcore, quiverZoom: STORY_QUIVER.zoom,
     hud: createStoryHud(), source: null,   // the radar overlay, and the breach the fodder comes from once it opens
     // the closed gate's cell is impassable to enemies; the tank opens it
     sealed: (ci) => plan.gate !== null && ci === plan.gate.cell && !base.gate().open,

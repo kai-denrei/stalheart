@@ -63,7 +63,7 @@ export const STORY_DAY = Object.freeze({ seconds: 300, dayShare: 0.6, tilt: 60, 
 // after the other, and the piloted Quiver fires the lab's TALON (a heavier, slower guided round) instead of the game's dart
 // hold: the hard cores stop short of the gate and mill about between these lane hops outside the forward cell, within the Quiver's
 // reach but never at the wall (while the lock is being tuned); nearCells: how close to the gate one must come for the override
-export const STORY_QUIVER = Object.freeze({ key: 'quiver', delay: 4, hardcore: 'barbed', secondDelay: 9, hold: [2, 4], nearCells: 5, missile: Object.freeze({ mesh: 'talon', profile: 'heavy', duration: 6, length: 1.8, dmgMul: 25, maxRange: 42, lockTime: 0.6, aimTolerance: 4 }) });   // a heavy payload (one round, one solid core), the reach to the gate pile from across the lane, and a first-encounter lock: a shorter hold, a wider cone
+export const STORY_QUIVER = Object.freeze({ key: 'quiver', delay: 4, hardcore: 'barbed', secondDelay: 9, hold: [5, 9], nearCells: 12, zoom: 2, missile: Object.freeze({ mesh: 'talon', profile: 'heavy', duration: 6, length: 1.8, dmgMul: 25, maxRange: 120, lockTime: 0.4, aimTolerance: 5 }) });   // a heavy payload (one round, one solid core), a long reach (the hard cores hold 50 to 90 m out), and a quick first-encounter lock: 0.4 s inside a 5 degree cone
 
 // The piloted sentry in the story: a denser stream of rounds, each one
 // heavy enough that cannon fodder drops in two hits.

@@ -41,7 +41,7 @@ import { storage as localStorage } from './storage.js';
 import * as THREE from '../vendor/three.module.js';
 import GUI from '../vendor/lil-gui.esm.js';
 import { bfsDist, BLOCKED, PATH, ROOM } from './dungeon.js';
-import { buildGameWorld, readStoryQuery, STORY_SOUNDS, takeControlPose } from './platform/story-world.js'; import { SENTRY_HEAT } from './content/sentry-heat.js'; import { coolHeat } from './core/heat.js'; import { paintBarrelHeat } from './fx/barrel-heat.js'; import { createStoryViews } from './fx/story-views.js'; import { createStoryMonitor } from './fx/story-monitor.js'; import { createDaylight } from './fx/daylight.js';
+import { buildGameWorld, readStoryQuery, STORY_SOUNDS, takeControlPose } from './platform/story-world.js'; import { SENTRY_HEAT } from './content/sentry-heat.js'; import { coolHeat } from './core/heat.js'; import { paintBarrelHeat } from './fx/barrel-heat.js'; import { createStoryViews } from './fx/story-views.js'; import { createStoryMonitor } from './fx/story-monitor.js'; import { createDaylight } from './fx/daylight.js'; import { createStoryScope } from './fx/story-scope.js';
 import { compileRail } from './cine/rail.js';
 import { SCRIPTS } from './cine/scripts.js';
 import { cuesBetween } from './cine/sound.js';
@@ -116,7 +116,7 @@ import { makeAudio } from './audio.js';
 import { DEATH_KEYS } from './audiomanifest.js';
 
 export function initTdTab(root) {
-  let pilotMode = new URLSearchParams(location.search).get('sentryPilot') === '1', storyViews = null, pilotHost = null, storyMonitor = null, daylight = null;   // the story enters it at runtime; the view strip unlocks after the first wave
+  let pilotMode = new URLSearchParams(location.search).get('sentryPilot') === '1', storyViews = null, pilotHost = null, storyMonitor = null, daylight = null, storyScope = null;   // the story enters it at runtime; the view strip unlocks after the first wave
   let pilot = null;
   let pilotPosts = [], pilotPost = 0;
   const pilotMounts = [];
@@ -5719,7 +5719,7 @@ export function initTdTab(root) {
     ramCombo = 0; ramComboT = 0; syncCombo();
     breachedCells.clear(); // a NEW world owes nothing to the old one's holes
     const built = buildGameWorld({ world: storyQuery.world, params, stage: storyQuery.stage, scene, sfx });
-    mesh = built.mesh; dungeon = built.dungeon; if (built.wallHeight) params.wallHeight = built.wallHeight; storyBase?.dispose(); storyBase = built.base; story = built.story ?? null; storyMonitor?.dispose(); storyMonitor = story ? createStoryMonitor(root) : null; daylight = story ? createDaylight({ hemi, sun, bg: mainBg, day: story.day.day, tune: story.day }) : null;   // the story planet has a day   // 4 m walls on the story sphere; the story's islands, structures, sockets and beats at the requested stage
+    mesh = built.mesh; dungeon = built.dungeon; if (built.wallHeight) params.wallHeight = built.wallHeight; storyBase?.dispose(); storyBase = built.base; story = built.story ?? null; storyMonitor?.dispose(); storyMonitor = story ? createStoryMonitor(root) : null; storyScope?.dispose(); storyScope = story ? createStoryScope(root) : null; daylight = story ? createDaylight({ hemi, sun, bg: mainBg, day: story.day.day, tune: story.day }) : null;   // the story planet has a day   // 4 m walls on the story sphere; the story's islands, structures, sockets and beats at the requested stage
     graph = dungeon.graph; cellSide = mesh.defaultSide;
     // THE CAMP, BEFORE ANY ACTOR IS PLACED. Berth cells are graph maths,
     // so they are known now rather than whenever the container model
@@ -10149,6 +10149,7 @@ export function initTdTab(root) {
         const maxRange=effectiveStats(tw.def,tw.tier).range*METRES_PER_CELL;
         const status=tw.overheated?`OVERHEATED · ${Math.round(tw.heat*100)}%`:tw.obj.userData.loading?'LOADING':distance!==null && distance>maxRange?'OUT OF RANGE':tw.cooldown>0?`COOLING ${tw.cooldown.toFixed(1)} s`:missileOf(tw.key) && !tw.lock?.locked?'ACQUIRING':tw.aimErr>SENTRY_TUNE.tolerance?'TRAVERSING':'READY';
         pilot.update(`${tw.def.label} · POST ${pilotPost+1}/${pilotPosts.length} · WAVE ${wave} · HEART ${Math.ceil(heartHP)}\nMAX ${Math.round(maxRange)} m · ${distance===null?'NO TARGET':`TRACK ${Math.round(distance)} m`} · ${status}${tw.heat>0.02?` · HEAT ${Math.round(Math.min(1,tw.heat)*100)}%`:''}`);
+        /* THE SCOPE (a guided mount in the story): the workshop's reticle and TRACK panel, fed from the same lock the launcher fires on */ if (storyScope) { const cfg = missileOf(tw.key), t = tw.pilotTarget && !tw.pilotTarget.pilotAim ? tw.pilotTarget : null, bearing = t ? Math.acos(Math.max(-1, Math.min(1, dot3(towerBarrel(tw, norm3(graph.centers[tw.ci])), norm3(sub3(t.pos, graph.centers[tw.ci])))))) * 180 / Math.PI : 0; storyScope.update({ on: !!cfg && !pilot.isMap(), w: innerWidth, h: innerHeight, meter: tw.lock?.meter ?? 0, locked: !!tw.lock?.locked, target: t ? { id: t.id, range: distance ?? 0, bearing, inRange: distance !== null && distance >= (cfg?.minRange ?? 0) && distance <= (cfg?.maxRange ?? maxRange) } : null, max: cfg?.maxRange ?? maxRange, zoom: pilot.state.zoom }); }
         if (!pilot.state.held || pilot.isMap()) continue;
       }
       if (tw.cooldown > 0 || tw.overheated) continue;
@@ -12593,7 +12594,7 @@ export function initTdTab(root) {
     if (simSkip) return; // sim pass: state advanced, nothing painted
     // in PoV the camera sits inside the creature — hide it there
     playerMesh.visible = params.view !== 'pov';
-    postfx.render(); storyMonitor?.render(renderer, scene, towerSeekers.find((m) => m.pool === talonPool && talonPool)?.mesh ?? null, cellSide, dt);   // the seeker feed rides behind a TALON in flight
+    postfx.render(); storyMonitor?.render(renderer, scene, towerSeekers.find((m) => m.pool === talonPool && talonPool)?.mesh ?? null, cellSide, dt, pilotMode && pilot?.state.tower && missileOf(pilot.state.tower.key) && pilot.state.tower.pilotTarget && !pilot.state.tower.pilotTarget.pilotAim ? { from: perchOf(pilot.state.tower), pos: pilot.state.tower.pilotTarget.pos } : null);   // the seeker feed rides behind a TALON in flight; otherwise the optic inset on the tracked target
     drawRadar(t); story?.hud.paint(radarCtx, { m: radarCss, cpos: pilot?.state.tower ? graph.centers[pilot.state.tower.ci] : player.pos, up: pilot?.state.tower ? new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray() : player.smoothDir, range: mapMode === 'heart' ? 2.02 : pilotMode ? cellSide * 12 : 1.15, t, mapMode });
   }
 
@@ -17548,7 +17549,7 @@ export function initTdTab(root) {
   function enterPilot(posts) { pilot?.dispose(); pilotMode = true;   // one optic at a time: a hand-over while already piloting replaces the panel. Practice mode computes six posts; the story hands over its mounts
     function installPilot(key) {
       const old=pilotMounts[pilotPost];
-      if(old?.key===key){const sp=spawnPoints.filter(sp=>sp.alive).sort((a,b)=>chord(graph.centers[old.ci],graph.centers[a.ci])-chord(graph.centers[old.ci],graph.centers[b.ci]))[0];pilot.attach(old,graph.centers[sp?.ci??dungeon.spawn]);return;}
+      if(old?.key===key){const sp=spawnPoints.filter(sp=>sp.alive).sort((a,b)=>chord(graph.centers[old.ci],graph.centers[a.ci])-chord(graph.centers[old.ci],graph.centers[b.ci]))[0];pilot.attach(old,graph.centers[sp?.ci??dungeon.spawn]);if(story?.missiles?.[key]){pilot.state.zoom=story.quiverZoom??2;pilotHost.zoom(pilot.state.zoom);}return;}   // picked: a guided mount opens through its long lens here too
       if(old){
         if(old.spinning)sfx.play('minigun_ready',{dist:camDist(graph.centers[old.ci])});
         scene.remove(old.obj);disposeObj(old.obj);
@@ -17558,8 +17559,7 @@ export function initTdTab(root) {
       const tw=commitTower(key,pilotPosts[pilotPost],0);
       // Heptapod is tethered to the emplacement in this experiment.
       tw.a6=null;placeTowerObj(tw);pilotMounts[pilotPost]=tw;
-      const near=spawnPoints.filter(sp=>sp.alive).sort((a,b)=>chord(graph.centers[tw.ci],graph.centers[a.ci])-chord(graph.centers[tw.ci],graph.centers[b.ci]))[0];
-      pilot.attach(tw,graph.centers[near?.ci ?? dungeon.spawn]);
+      const near=spawnPoints.filter(sp=>sp.alive).sort((a,b)=>chord(graph.centers[tw.ci],graph.centers[a.ci])-chord(graph.centers[tw.ci],graph.centers[b.ci]))[0]; pilot.attach(tw,graph.centers[near?.ci ?? dungeon.spawn]); if(posts&&story?.missiles?.[key]){pilot.state.zoom=story.quiverZoom??2;pilotHost.zoom(pilot.state.zoom);}   // a guided mount opens through its long lens
     }
     pilot=createSentryPilot(root,pilotHost={
       story:!!posts,mobile:mobileShell,select:installPilot,

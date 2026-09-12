@@ -4510,3 +4510,16 @@ body.chrome-open #story-stages-nav { display: flex; }
 /* the story's spotting monitor: a second small render riding behind a guided round */
 #story-monitor { position: fixed; right: 12px; bottom: 64px; width: 224px; height: 140px; border: 1px solid #2b6b96; border-radius: 8px; background: rgba(8, 14, 20, 0.5); z-index: 40; pointer-events: none; }
 #story-monitor .head { position: absolute; left: 6px; top: 4px; font: 600 10px ui-monospace, Menlo, monospace; letter-spacing: 0.08em; color: #9fdcff; text-shadow: 0 0 4px #000; }
+/* the story's fire-control scope for a guided mount: the Sniper workshop's idiom, one panel and a reticle */
+#story-scope { position: fixed; inset: 0; z-index: 38; pointer-events: none; --phosphor: #cfeee9; --dim: #6fa39c; --cyan: #5fe6d6; --lock: #ffb43d; }
+#story-scope .reticle { position: absolute; inset: 0; width: 100%; height: 100%; }
+#story-scope .ro { position: absolute; right: 18px; top: 200px; width: 27vw; max-width: 236px; min-width: 152px; padding: 10px 12px; font: 11px ui-monospace, Menlo, monospace; color: var(--phosphor); border-right: 1px solid rgba(95, 230, 214, .28); border-top: 1px solid rgba(95, 230, 214, .28); background: linear-gradient(180deg, rgba(8, 16, 15, .66), rgba(8, 16, 15, .30)); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
+#story-scope .r-head { font-size: 10px; letter-spacing: .24em; text-transform: uppercase; color: var(--cyan); margin-bottom: 4px; }
+#story-scope .r-head.split { display: flex; justify-content: space-between; align-items: baseline; }
+#story-scope .r-head.split b { color: var(--lock); letter-spacing: .16em; }
+#story-scope .field { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; line-height: 1.65; }
+#story-scope .field .k { font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
+#story-scope .field .v { font-size: 12px; font-weight: 500; color: var(--phosphor); }
+#story-scope .field .v.hot { color: var(--lock); }
+#story-scope .meter { margin-top: 7px; height: 5px; width: 100%; overflow: hidden; background: rgba(95, 230, 214, .14); }
+#story-scope .meter i { display: block; height: 100%; width: 0; background: var(--cyan); transition: width .18s linear; }
