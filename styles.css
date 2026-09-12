@@ -4523,3 +4523,16 @@ body.chrome-open #story-stages-nav { display: flex; }
 #story-scope .field .v.hot { color: var(--lock); }
 #story-scope .meter { margin-top: 7px; height: 5px; width: 100%; overflow: hidden; background: rgba(95, 230, 214, .14); }
 #story-scope .meter i { display: block; height: 100%; width: 0; background: var(--cyan); transition: width .18s linear; }
+/* ISAO's study: the SYNTHETIC LEARNING x58 terminal as a modal */
+#synthetic-modal[hidden] { display: none; }
+#synthetic-modal { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.82); font-family: 'Courier New', ui-monospace, monospace; color: #aaa; }
+#synthetic-modal .sheet { width: min(1180px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; background: #000; border: 1px solid #444; padding: 14px 18px 12px; box-shadow: 0 0 40px rgba(0, 255, 65, 0.08); }
+#synthetic-modal header { border-bottom: 1px solid #444; padding-bottom: 6px; margin-bottom: 10px; }
+#synthetic-modal h1 { margin: 0; color: #00ff41; font-size: 14px; letter-spacing: 2px; text-shadow: 0 0 6px rgba(0, 255, 65, 0.4); }
+#synthetic-modal .sub { margin: 4px 0 0; color: #666; font-size: 10px; letter-spacing: 1px; }
+#synthetic-modal .isao { margin: 0 0 12px; color: #dff4ff; font: 13px/1.5 ui-monospace, Menlo, monospace; border-left: 3px solid #00ff41; padding-left: 10px; }
+#synthetic-modal .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+#synthetic-modal canvas { width: 100%; aspect-ratio: 3 / 2; display: block; background: #050505; border: 1px solid #333; }
+#synthetic-modal footer { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; color: #555; font-size: 10px; letter-spacing: 1px; }
+#synthetic-modal footer button { font: 700 12px ui-monospace, Menlo, monospace; letter-spacing: .12em; color: #00ff41; background: #000; border: 1px solid #00ff41; padding: 7px 14px; cursor: pointer; }
+@media (max-width: 900px) { #synthetic-modal .grid { grid-template-columns: repeat(2, 1fr); } }

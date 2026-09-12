@@ -14,6 +14,7 @@ function fakeGame({ printSeconds = 6, cost = 45, walk = 3 } = {}) {
     near: () => firstSpawn !== null && clock - firstSpawn >= walk,
     pilot: (ci, lane) => { log.push(['pilot', ci, lane]); },
     unlock: (what) => { log.push(['unlock', what]); },
+    screen: (id) => { log.push(['screen', id]); },
     spawn: (type, ci) => { log.push(['spawn', type, ci]); alive++; if (firstSpawn === null) firstSpawn = clock; },
   } };
 }
@@ -46,7 +47,7 @@ const kinds = (g, k) => g.log.filter((l) => l[0] === k);
 }
 // a longer wave: the tenth kill brings the biomass line, said once, and the wave is not cleared while any of it stands
 {
-  const quiver = { key: 'quiver', delay: 2, hardcore: 'barbed', secondDelay: 4, missile: {} };
+  const quiver = { key: 'quiver', delay: 2, hardcore: 'barbed', secondDelay: 4, studyDelay: 2, missile: {} };
   const beats = makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, rotorDelay: 2, fodderEvery: 1, fodderAlive: 4, fodderTotal: 12, tremorDelay: 1, breachDelay: 2, overrideDelay: 1, quiverSocket: 4244, quiver });
   const g = fakeGame({ walk: 3, printSeconds: 3 });
   run(beats, g, 17); assert.equal(beats.state().phase, 'piloting');
@@ -63,7 +64,9 @@ const kinds = (g, k) => g.log.filter((l) => l[0] === k);
   run(beats, g, 3); assert.equal(kinds(g, 'spawn').length, spawns + 1, 'the second waits its delay'); run(beats, g, 1.5); assert.equal(kinds(g, 'spawn').length, spawns + 2, 'then the second hard core');
   g.kill(1); run(beats, g, 1); assert.equal(beats.state().phase, 'quiver-piloting', 'one still standing');
   g.kill(1); run(beats, g, 1); assert.equal(beats.state().phase, 'settled'); assert.equal(kinds(g, 'brief').at(-1)[1], 'quiver_cleared'); assert.deepEqual(kinds(g, 'unlock'), [['unlock', 'views'], ['unlock', 'views']]);
-  run(beats, g, 5); assert.equal(kinds(g, 'spawn').length, spawns + 2, 'nothing more comes');
+  run(beats, g, 0.5); assert.equal(beats.state().phase, 'settled', 'the screen waits its delay'); assert.equal(kinds(g, 'screen').length, 0);
+  run(beats, g, 1); assert.equal(beats.state().phase, 'study'); assert.deepEqual(kinds(g, 'screen'), [['screen', 'synthetic']]); assert.equal(kinds(g, 'brief').at(-1)[1], 'vibration_study');
+  run(beats, g, 5); assert.equal(kinds(g, 'spawn').length, spawns + 2, 'nothing more comes'); assert.equal(kinds(g, 'screen').length, 1, 'shown once');
 }
 // ungated world (no gate yet): straight to control, no fodder
 {

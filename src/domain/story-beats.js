@@ -12,6 +12,7 @@
 //   cleared       the first wave is down: Isao's line, and the views unlock (tank, sentry, map)
 //   quiver-*      Isao introduces the Quiver on the wall across the lane; two hard-cored enemies, one after the other; its
 //                 targeting chips are not ready either, so the override hands over its optic; two TALON shots, then settled
+//   study         Isao's screen: they talk in vibrations, he is reverse-engineering it and needs more compute
 export function makeStoryBeats({
   socket, lane = -1, fodder = -1, gate = -1, rotorDelay = 2, key = 'rotor',
   fodderType = 'phage', fodderEvery = 2.5, fodderAlive = 8, fodderTotal = 20,
@@ -57,7 +58,7 @@ export function makeStoryBeats({
       else if (phase === 'quiver-piloting') {
         if (hardcores < 2 && clock >= nextSpawn) { api.spawn(quiver.hardcore, fodder); hardcores = 2; }
         if (hardcores >= 2 && api.enemies() === 0) { api.brief?.('quiver_cleared'); api.unlock?.('views'); said.add('quiver_cleared'); enter('settled'); }
-      }
+      } else if (phase === 'settled' && quiver && clock - at >= (quiver.studyDelay ?? 3)) { api.brief?.('vibration_study'); api.screen?.('synthetic'); said.add('vibration_study'); enter('study'); }
     },
     state: () => ({ phase, clock: +clock.toFixed(2), socket, orderedAt, readyAt, spawned, gated, said: [...said], hardcores }),
   };

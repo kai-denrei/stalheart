@@ -130,6 +130,11 @@ export const BRIEFS = {
     id: 'quiver_cleared', face: 'glee', title: 'COMMS · ISAO', once: true,
     lines: ['Two for two.', 'The wall is yours: TANK, SENTRY cycles the mounts, MAP for the whole planet.'],
   },
+  // after the Quiver: the study screen
+  vibration_study: {
+    id: 'vibration_study', face: 'curious', title: 'COMMS · ISAO', once: true,
+    lines: ['They talk in vibrations. A pattern under the pattern.', 'I am trying to reverse-engineer it. I need more compute than I have here.'],
+  },
   // the tenth kill: what the bodies are for
   harvest_biomass: {
     id: 'harvest_biomass', face: 'focused', title: 'COMMS · ISAO', once: true,

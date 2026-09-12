@@ -101,6 +101,10 @@ The three-bay armored transport container deployment scene at its game tier (17,
 
 The intact solar power complex at its LOD1 (game: 3,856 triangles, 7 draws) and LOD2 (distance: 2,752 triangles, 1 draw) tiers from [SentryTowers_A6](https://github.com/jelaludo/SentryTowers_A6/tree/b9dc51ad8294aa4ebe2e74d9eceeced71d401ac8/assets/solar-power), revision `b9dc51ad8294aa4ebe2e74d9eceeced71d401ac8`. Models by jelaludo, reused with attribution under the upstream `ASSET-LICENSE.md`. Pinned checksums: `docs/solar-lod-assets.lock.json`. The story base swaps the two by camera distance.
 
+## SYNTHETIC LEARNING x58 — the owner's CRT neural-net panels
+
+`vendor/synthetic-learningx58/` holds the seven Canvas 2D visualisations and their CRT helper from the owner's own [synthetic-learningx58](file:///Users/minikai/Documents/Dev/synthetic-learningx58) (commit `7a627f5`, pure ES modules, no dependencies), unmodified. The story shows them as Isao's study screen after the Quiver beat.
+
 ## Packed release copies and derived far tiers
 
 The release build packs every model with [gltfpack](https://github.com/zeux/meshoptimizer) (MIT, Arseny Kapoulkine): meshopt compression and quantisation, geometry otherwise unchanged. `assets/models/far/*.glb` are simplified copies of the story landmarks above, derived with the same tool at a tenth of the triangles and pinned in `docs/far-tier-assets.lock.json`; the same authors and licence as their sources apply.
