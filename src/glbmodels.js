@@ -121,6 +121,19 @@ function boxProjectUv(g) {
   return new THREE.BufferAttribute(uv, 2);
 }
 
+// A PACKED MODEL STORES ITS ATTRIBUTES AS INTEGERS (KHR_mesh_quantization: 16-bit positions with the scale on the node, normalised
+// bytes for normals and uvs). applyMatrix4 writes floats straight back into such an array and the geometry comes out as garbage
+// (2026-09-12: the release hull rendered as a flat dark polygon). Every attribute becomes float before anything transforms it.
+export function toFloatAttributes(g) {
+  for (const [name, a] of Object.entries(g.attributes)) {
+    if (a.array instanceof Float32Array && !a.normalized) continue;
+    const out = new Float32Array(a.count * a.itemSize);
+    for (let i = 0; i < out.length; i++) out[i] = a.normalized ? THREE.MathUtils.denormalize(a.array[i], a.array) : a.array[i];
+    g.setAttribute(name, new THREE.BufferAttribute(out, a.itemSize, false));
+  }
+  return g;
+}
+
 export function mergeByMaterial(root, pivotNames = [], exclude = []) {
   root.updateMatrixWorld(true);
   // Drop unwanted parts BEFORE merging — afterwards they are welded into a
@@ -148,7 +161,7 @@ export function mergeByMaterial(root, pivotNames = [], exclude = []) {
     // node has to mean preserving it whether it is a group or a mesh.
     if (pivots.includes(o)) return;
     const owner = ownerOf(o);
-    const g = o.geometry.clone();
+    const g = toFloatAttributes(o.geometry.clone());
     // express the geometry in the OWNER's local space, not the world's
     inv.copy(owner.matrixWorld).invert();
     g.applyMatrix4(inv.multiply(o.matrixWorld));

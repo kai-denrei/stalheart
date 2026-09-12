@@ -17446,7 +17446,7 @@ export function initTdTab(root) {
       state: () => ({ shot:shotId(),breachRubble:gameBreaches.rubbleState(),breaches:gameBreaches.state(),queued:spawnQueue.length,wallCount:dungeon.tags.filter(tag=>tag===BLOCKED).length,emerging:enemies.filter(e=>e.alive&&e.emergeAge<1.2).length,round, wave, runGen: runContext.generation, heart: heartHP, hulls: playerHP,
         biomass: eco.biomass, towers: towers.length, won: player.won, paused,
         roster: ROSTER.id, mission: missionOn, buildMode, story: story?.beats.state() ?? null, towerCells: towers.map((t) => [t.key, t.ci]), insideEnemies: story ? enemies.filter((e) => e.alive && story.inside(e.cur)).length : 0,
-        playerAsset: playerMesh?.userData.asset || params.creature,
+        playerAsset: playerMesh?.userData.asset || params.creature, playerSpan: (() => { if (!playerMesh) return null; const b = new THREE.Box3().setFromObject(playerMesh); return Number.isFinite(b.max.x) ? +(b.getSize(new THREE.Vector3()).length() / (unitScale || 1)).toFixed(2) : null; })(),   // the hull's true size over its scale: exploded geometry reads absurd here
         playerAssetReady: !playerMesh?.userData.loading,
         playerModelStats: playerMesh?.userData.modelStats,
         berthAssets:lifeContainers.flatMap(c=>c.tanks.map(t=>t.userData.asset)), bays: lifeContainers.map((c) => ({ ci: c.ci, hasTank: c.tanks.length > 0, racked: !!c.tanks[0]?.visible })), berthCells: berths.map((b) => b.ci), kills: rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike, monitorShown: storyMonitor?.shown() ?? 0, daylight: daylight?.state() ?? null,

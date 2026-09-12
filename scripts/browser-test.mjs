@@ -714,7 +714,8 @@ try{
  await until('window.__stalheartTest.state().playerAsset === "mork" && window.__stalheartTest.state().playerAssetReady');
  await until('window.__stalheartTest.state().berthAssets.length===3');assert.deepEqual(await evaluate('window.__stalheartTest.state().berthAssets'),['mork','mork','mork']);
  // the release copy is meshopt-packed, which drops degenerate triangles: the batches must match exactly, the triangle count within 1 %
- {const ms=await evaluate('window.__stalheartTest.state().playerModelStats');assert.equal(ms.batches,50);if(production)assert(ms.triangles<=24196&&ms.triangles>=24196*0.99,`packed MÖRK triangles ${ms.triangles}`);else assert.equal(ms.triangles,24196);}
+ {const ms=await evaluate('window.__stalheartTest.state().playerModelStats');assert.equal(ms.batches,50);if(production)assert(ms.triangles<=24196&&ms.triangles>=24196*0.99,`packed MÖRK triangles ${ms.triangles}`);else assert.equal(ms.triangles,24196);
+  const span=await evaluate('window.__stalheartTest.state().playerSpan');assert(span>1&&span<4,`the hull's size over its scale is sane (${span}); a packed model whose integer attributes were transformed raw reads absurd here`);}
  await evaluate('document.querySelector(".msg-begin")?.click()');
  await evaluate('window.__stalheartTest.begin()');
  const morkBefore=await evaluate('window.__stalheartTest.state().playerPosition');

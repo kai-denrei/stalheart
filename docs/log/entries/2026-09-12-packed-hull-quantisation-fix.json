@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "2026-09-12-packed-hull-quantisation-fix",
+  "date": "2026-09-13T00:20:00+00:00",
+  "type": "issue",
+  "status": "accepted",
+  "title": "The packed release drew the hull and the drone as broken geometry: integer attributes transformed raw",
+  "context": "Owner screenshot of build 249e1147: the tank rendered as a glowing column, the drone broken. Reproduced on the release build served locally: the hull a flat dark polygon while its triangle count still matched.",
+  "outcome": "gltfpack's default quantisation stores positions as 16-bit integers with the dequantising scale on the node; mergeByMaterial cloned such a geometry and applied a matrix straight into the integer array. Fix in two layers: glbmodels.toFloatAttributes converts every integer or normalised attribute to float before the merge transforms it, and the build packs only the landmark folders (astro, kit, far, story) quantised; units, sentries and legacy props are packed with float attributes (-noq: the hull 480 KB instead of 202, still a fifth of the source). The acceptance's triangle count did not catch this, so the state now carries the hull's bounding span over its scale and the suite asserts it is sane.",
+  "alternatives": [
+    "Disable quantisation everywhere: rejected, the landmarks through the plain loader are correct and three times smaller quantised."
+  ],
+  "evidence": [
+    "release probe before: hull a flat polygon, stats 24082/50; after: hull renders, same stats",
+    "npm test 93; browser --dist legacy and --dist --story-world PASS on the fixed build"
+  ],
+  "supersedes": []
+}

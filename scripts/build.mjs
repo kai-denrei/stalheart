@@ -8,9 +8,12 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 // EVERY MODEL SHIPS MESHOPT-COMPRESSED. Sources stay the pinned upstream bytes; only the release copy is packed
 // (quantised positions, EXT_meshopt_compression), which the loaders decode with the vendored decoder. Named nodes,
 // materials and extras are kept so authored pivots and clips still bind. Typically 5 to 25x smaller.
+// Landmarks (astro, kit, far, story) go through the plain loader and take quantised attributes; units, sentries and the legacy
+// props run custom geometry pipelines (unpacking, merging, retinting) and are packed with float attributes to stay out of their way.
+const QUANTISED = /^assets\/models\/(astro|kit|far|story)\//;
 async function packGlb(bytes, name) {
   let out = null;
-  await pack(['-i', name, '-o', name, '-cc', '-kn', '-km', '-ke'], { read: () => bytes, write: (p, data) => { out = Buffer.from(data); } });
+  await pack(['-i', name, '-o', name, '-cc', ...(QUANTISED.test(name) ? [] : ['-noq']), '-kn', '-km', '-ke'], { read: () => bytes, write: (p, data) => { out = Buffer.from(data); } });
   if (!out || out.length < 20 || out.toString('utf8', 0, 4) !== 'glTF') throw Error(`gltfpack failed on ${name}`);
   return out;
 }
