@@ -5,7 +5,7 @@
 import * as THREE from '../../vendor/three.module.js';
 import { buildWorld } from '../domain/world-recipe.js';
 import { planBase } from '../domain/base-plan.js';
-import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT } from '../content/story-defaults.js';
+import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT, STORY_SCALE } from '../content/story-defaults.js';
 export { STORY_SOUNDS };
 import { ISLANDS, STRUCTURES, KIT, STAGES } from '../content/base-layout.js';
 import { createStoryBase } from '../fx/story-base.js';
@@ -52,6 +52,10 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null }) {
     sealed: (ci) => plan.gate !== null && ci === plan.gate.cell && !base.gate().open,
     inside: (ci) => planet.clearing.cells.has(ci),
     pilot: STORY_PILOT,
+    // the hull's size in this world, and the bays as berths once the tank bay stands: the game's deploy
+    // starts a hull in its bay and drives it straight out of the doors (bay 3 first, then 2, then 1)
+    tankUnit: STORY_SCALE.tankUnit,
+    berths: plan.bays.length ? plan.bays.map((b) => ({ ci: b.cell, exit: b.exit, pos: b.pos, out: b.out })) : null,
   } : null;
   return { ...built, base, plan, story };
 }

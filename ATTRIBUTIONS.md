@@ -93,6 +93,10 @@ Owner-provided `jci21-rocket-launch-sfx-253937.mp3`, retained unchanged as `asse
 
 Lightweight foundation, wall (D0-D3), corner and vehicle gate exports plus the scalable 28-triangle island slab from [SentryTowers_A6](https://github.com/jelaludo/SentryTowers_A6/tree/2de929660f014b5e56a66bce04d9a9707958b4fe/assets/base-kit-game), revision `2de929660f014b5e56a66bce04d9a9707958b4fe`. Models by jelaludo, reused with attribution under the upstream `ASSET-LICENSE.md`. Pinned checksums: `docs/base-kit-assets.lock.json`. The slab is scaled per island in X and Z with Y kept at 1, and the 4 m grid is drawn by the game's shader as specified in `docs/FOUNDATION-SLAB-BRIEF.md`.
 
+## MÖRK transport container diorama, game tier — jelaludo
+
+The three-bay armored transport container deployment scene at its game tier (17,456 triangles, 18 draws) with its `Tank_Roll_Out` clip, from [SentryTowers_A6](https://github.com/jelaludo/SentryTowers_A6/tree/de6c7d38d022598d796d505f024bd50cb454b02b/assets/hover-tank/containers), revision `de6c7d38d022598d796d505f024bd50cb454b02b`. Models and animations by jelaludo, reused with attribution under the upstream `ASSET-LICENSE.md`. Pinned checksum: `docs/container-assets.lock.json`. It stands on the story base's tank bay island; the game hides each parked hull as it is driven out and opens the sealed bay with a door swing authored from the model's own open bay.
+
 ## Single SKYWARD antenna, game tier — jelaludo
 
 The 18 m steerable antenna at its low/game detail (1,632 triangles) with its `Array_Slew` clip, from [SentryTowers_A6](https://github.com/jelaludo/SentryTowers_A6/tree/e846906954abc1c3600c2bccd812857a75874073/assets/antenna-array), revision `e846906954abc1c3600c2bccd812857a75874073`. Models and animations by jelaludo, reused with attribution under the upstream `ASSET-LICENSE.md`. Pinned checksum: `docs/antenna-assets.lock.json`. It stands on the story base's radar island; the seven-dish array remains an Astro-only diorama.

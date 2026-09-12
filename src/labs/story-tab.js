@@ -84,7 +84,7 @@ export function initStoryTab(root) {
     // the landing scene owns the rocket in the lab; the base draws everything else
     base = createStoryBase(scene, { plan: planBase(planet, LAYOUT, stage), placer: { toWorld: (p) => new THREE.Vector3(...planet.frameToWorld(p)) }, metres: 1, kit: KIT, skip: ['sh02'], sfx });
     for (const b of stageBar.children) b.classList.toggle('on', Number(b.dataset.stage) === stage);
-    stageLine.textContent = `Stage ${stage}: ${STAGES[stage].name}. Digits 0-7 change the stage; play opens the game at this stage.`;
+    stageLine.textContent = `Stage ${stage}: ${STAGES[stage].name}. Digits 0-8 change the stage; play opens the game at this stage.`;
     landing?.setLanded(stage >= 1);
   }
 
@@ -130,7 +130,7 @@ export function initStoryTab(root) {
   hud.querySelector('#story-land').onclick = land; hud.querySelector('#story-skip').onclick = skip; hud.querySelector('#story-reset').onclick = reset; hud.querySelector('#story-overview').onclick = overview; hud.querySelector('#story-gate').onclick = () => { gateForced = !gateForced; }; hud.querySelector('#story-play').onclick = play;
   function onKey(e) {
     if (e.target.closest?.('input,textarea,select')) return;
-    if (e.key === 'l' || e.key === 'L') land(); else if (e.key === 'k' || e.key === 'K') skip(); else if (e.key === 'r' || e.key === 'R') reset(); else if (e.key === 'o' || e.key === 'O') overview(); else if (e.key === 'g' || e.key === 'G') gateForced = !gateForced; else if (e.key === 'p' || e.key === 'P') play(); else if (/^[0-7]$/.test(e.key)) setStage(Number(e.key));
+    if (e.key === 'l' || e.key === 'L') land(); else if (e.key === 'k' || e.key === 'K') skip(); else if (e.key === 'r' || e.key === 'R') reset(); else if (e.key === 'o' || e.key === 'O') overview(); else if (e.key === 'g' || e.key === 'G') gateForced = !gateForced; else if (e.key === 'p' || e.key === 'P') play(); else if (/^[0-8]$/.test(e.key)) setStage(Number(e.key));
   }
   addEventListener('keydown', onKey);
   function resize() {
@@ -158,6 +158,7 @@ export function initStoryTab(root) {
   if (q.get('acceptance') === '1') window.__stalheartStoryTest = {
     state: () => ({ ready: !!planet && !!landing?.state().loaded, cells: planet?.dungeon.tags.length ?? 0, mouths: planet?.clearing.mouths.length ?? 0, openMouths: planet?.clearing.mouths.filter((m) => m.open).length ?? 0, gateMarker: !!marker, playUrl: playUrl(), stage, comms: commsEl.hidden ? null : commsEl.textContent, base: base ? { ...base.counts, errors: base.errors.slice(), children: base.group.children.length, gate: base.gate() } : null, counts: planetMesh?.userData.counts ?? null, t, phase: sequence.stateAt(t).phase, playing, landing: landing?.state() ?? null, cues: cueLog.slice(), audioState: sfx.contextState, errors }),
     land, skip, seek: (time) => { onRail = true; seek(time); }, reset, overview, setStage, gate: (on) => { gateForced = on; }, baseReady: () => base?.ready, dispose: api.dispose,
+    frame: (pose, about) => { playing = false; onRail = false; frameCamera(pose, about); controls.update(); },   // a free framing for screenshots: metres around `about` (an island, or {x,z})
   };
   resize();
   setTimeout(build, 30);

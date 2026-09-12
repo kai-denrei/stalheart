@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "2026-09-12-tank-bay-lives",
+  "date": "2026-09-12T10:10:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "The three hulls are the three lives: the kit's container diorama is the story camp, bay 3 rolls out first",
+  "context": "Owner: diegetic lives. Three tanks, each in its container; the first hull leaves container 3 (now empty), the next leaves 2; show organically how many tanks are left; low-poly versions; after the Stalheart in the stage order.",
+  "outcome": "New stage 7 'Tank bay' (assembly and radar move to 8) with the pinned game-tier three-bay diorama (01 sealed, 02 and 03 open with a MORK inside, roll-out clip held at 0) on an island behind the Stalheart, doors toward the gate. base-plan derives three berths from the bays as unit-sphere points with a straight two-cell run out of the doors; story-world hands them to the controller, which uses them in place of computeBerths and treats the bays as the life containers: the parked hull is hidden while it is the one driven, the sealed bay swings open (clip authored from the open twin's node poses) when its turn comes, and the deploy path drives from the point inside the bay rather than the cell centre. The story hull is 10 m (STORY_SCALE.tankMetres) and the diorama is scaled from the kit's 13.28 m MORK to match. Controller stays at its 17,624-line budget.",
+  "alternatives": [
+    "Three copies of the single loaded container: rejected, every door would read 02.",
+    "Play the authored Tank_Roll_Out for bay 03: rejected for now, the game drives its own hull out of every bay the same way.",
+    "Scale the hull to the kit's 13.28 m: rejected, a 13 m hull overhangs the 10 m lanes at every bend; 10 m keeps it inside."
+  ],
+  "evidence": [
+    "npm test 91 programs, npm run check (architecture guard, budget 17624)",
+    "node scripts/browser-test.mjs --story PASS (stage 8: 7 islands, 7 landmarks)",
+    "node scripts/browser-test.mjs --story-world PASS with story-world-bays: bays are the berths, first hull from bay 3, 03's hull hidden, 02's parked, 01 sealed and empty; the roll-out ends and the hull left its bay",
+    "headless probe: ?downprobe=1 at stage 7 hands the next hull out of bay 2 with bay 2's parked hull hidden"
+  ],
+  "supersedes": []
+}

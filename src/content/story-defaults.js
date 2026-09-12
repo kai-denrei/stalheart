@@ -48,7 +48,9 @@ export const PLUME_CLUSTER = Object.freeze([
 
 // Presentation scale. The SH02 is authored at 21.4 m; the story shows it
 // larger so a game-sized Isao reads small and clears the cargo well.
-export const STORY_SCALE = Object.freeze({ rocket: 1.5, isaoMetres: 1.8 });
+// The story hull is 10 m long (the kit's MÖRK is authored at 13.28 m, so kit containers scale to match);
+// tankUnit is the game's unit scale per lattice cell that gives that length: 10 m / (10 m cells x 1.95 span x 0.75 base).
+export const STORY_SCALE = Object.freeze({ rocket: 1.5, isaoMetres: 1.8, tankMetres: 10, tankUnit: 0.684 });
 
 // The piloted sentry in the story: a denser stream of rounds, each one
 // heavy enough that cannon fodder drops in two hits.

@@ -21,7 +21,7 @@ for (let n = 1; n < STAGES.length; n++) {
 }
 const one = planBase(planet, layout, 1);
 assert.deepEqual(one.structures.map((s) => s.id), ['sh02']); assert.equal(one.islands.length, 0, 'rocket lands on natural ground');
-const full = planBase(planet, layout, 7);
+const full = planBase(planet, layout, STAGES.length - 1);
 assert.equal(full.islands.length, ISLANDS.length); assert.equal(full.structures.length, STRUCTURES.length);
 for (const s of STRUCTURES) if (s.island) assert.ok(ISLANDS.some((i) => i.id === s.island), `${s.id} has an island`);
 assert.equal(full.walls.length, KIT.wallsPerSide * 2);
@@ -49,4 +49,18 @@ assert.equal(one.structures[0].y, 0, 'the rocket stands on natural ground');
   assert.ok(fd >= 0 && fd !== fc && planet.dungeon.tags[fd] !== BLOCKED && planet.arcOfCell(fd) > planet.arcOfCell(fc), 'fodder cell is open ground farther down the lane');
   const rs = full.structures.find((s) => s.id === 'rotor'); assert.equal(rs.cell, rc); assert.equal(rs.y, KIT.wallMetres);
   assert.ok(!full.islands.some((i) => i.id === 'rotor'), 'no slab on the wall'); }
+// the tank bay: three berths in painted order, each a point inside its bay with a straight run out of the doors
+// (toward the gate) ending on open ground inside the clearing; the earlier stages have no bays at all
+assert.equal(planBase(planet, layout, 6).bays.length, 0);
+assert.deepEqual(full.bays.map((b) => b.n), [1, 2, 3]);
+{ const bayIsland = ISLANDS.find((i) => i.id === 'bay'), roll = KIT.bay.roll * planet.cellMetres;
+  for (const b of full.bays) {
+    assert.ok(Math.abs(Math.hypot(...b.pos) - 1) < 1e-9 && Math.abs(Math.hypot(...b.out) - 1) < 1e-9, 'unit-sphere points');
+    assert.ok(Math.abs(b.x) <= bayIsland.w / 2 && Math.abs(b.z - bayIsland.z) < 1, `bay ${b.n} sits on the bay island`);
+    assert.ok(b.cell >= 0 && b.exit >= 0 && b.exit !== b.cell && planet.clearing.cells.has(b.exit) && planet.dungeon.tags[b.exit] !== BLOCKED, `bay ${b.n} exits onto open ground`);
+    const run = Math.acos(Math.min(1, b.pos[0] * b.out[0] + b.pos[1] * b.out[1] + b.pos[2] * b.out[2])) * planet.radius;
+    assert.ok(Math.abs(run - roll) < 0.5, `bay ${b.n} run ${run.toFixed(1)} m`);
+    assert.ok(planet.arcOfCell(b.exit) < planet.arcOfCell(b.cell) + 1e-9 || Math.hypot(...planet.worldToFrame([b.out[0] * planet.radius, b.out[1] * planet.radius - planet.radius, b.out[2] * planet.radius])) < Math.hypot(b.x, b.z), `bay ${b.n} rolls toward the pole`);
+  }
+  assert.ok(full.bays[0].doors && !full.bays[0].vehicle && full.bays[1].vehicle && full.bays[2].vehicle, 'bay 1 is sealed and empty, 2 and 3 hold a hull'); }
 console.log(`Base plan: ${full.islands.length} islands, ${full.structures.length} structures, ${full.walls.length} walls, gate at ${full.gate.x.toFixed(0)},${full.gate.z.toFixed(0)}.`);

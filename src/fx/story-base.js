@@ -37,9 +37,23 @@ function gridShader(material) {
   return material;
 }
 
+// A door swing authored from the model itself: every DOOR/RAMP node of bay `from` turns from its own
+// (sealed) pose to the pose of its twin on bay `like`, which stands open. No numbers leave the asset.
+export function swingClip(root, from, like, seconds) {
+  const tracks = [];
+  root.traverse((o) => {
+    const m = /^(DOOR|RAMP)_(\d\d)/.exec(o.name); if (!m || m[2] !== from) return;
+    const twin = root.getObjectByName(o.name.replace(`_${from}`, `_${like}`)); if (!twin) return;
+    tracks.push(new THREE.QuaternionKeyframeTrack(`${o.name}.quaternion`, [0, seconds], [...o.quaternion.toArray(), ...twin.quaternion.toArray()]));
+  });
+  return new THREE.AnimationClip(`Doors_${from}`, seconds, tracks);
+}
+// loader names lose their dots (VEHICLE_02.001 becomes VEHICLE_02001): match the authored name as a prefix
+export const nodeNamed = (root, name) => { let hit = null; root.traverse((o) => { if (!hit && o.name.startsWith(name)) hit = o; }); return hit; };
+
 export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [], sfx = null }) {
   const group = new THREE.Group(); group.name = 'Story base'; scene.add(group);
-  const mixers = [], owned = new Set(), errors = [];
+  const mixers = [], owned = new Set(), errors = [], bays = [];
   const own = (root) => root.traverse((o) => { if (o.geometry) owned.add(o.geometry); for (const m of [o.material].flat().filter(Boolean)) owned.add(m); });
   const place = (obj, x, z, y, heading, scale = 1) => {
     obj.matrixAutoUpdate = false;
@@ -101,16 +115,26 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       for (const name of s.hide ?? []) { const n = root.getObjectByName(name); if (n) n.visible = false; }
       const holder = new THREE.Group(); holder.add(root); root.position.set(...s.offset);
       place(holder, s.x, s.z, s.y, s.heading, s.scale); group.add(holder);
-      if (s.clips?.length) {
-        const mixer = new THREE.AnimationMixer(root);
+      const mixer = s.clips?.length || s.pose || s.bays ? new THREE.AnimationMixer(root) : null;
+      if (mixer) {
         for (const clip of gltf.animations) {
-          if (!s.clips.includes(clip.name)) continue;
+          const at = s.pose?.[clip.name];   // a clip held at a time: the bay's roll-out at 0 keeps every hull inside
+          if (!s.clips?.includes(clip.name) && at === undefined) continue;
           const a = mixer.clipAction(clip);
-          if (s.hold) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; a.play(); a.time = clip.duration; a.paused = true; }
+          if (s.hold || at !== undefined) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; a.play(); a.time = at ?? clip.duration; a.paused = true; }
           else a.play();
         }
         mixer.update(0); mixers.push(mixer);
       }
+      // the bays hand the game their parked hull (hidden once it has driven out) and a one-shot door opening
+      for (const b of s.bays ?? []) {
+        let opened = false;
+        bays.push({ n: b.n, vehicle: b.vehicle ? nodeNamed(root, b.vehicle) : null, open() {
+          if (opened || !b.doors) return; opened = true;
+          const a = mixer.clipAction(swingClip(root, b.doors, b.like, kit.bay?.doorSeconds ?? 2.4)); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; a.play();
+        } });
+      }
+      bays.sort((a, b) => a.n - b.n);
       counts.structures++;
     }).catch((e) => errors.push(`${s.id}: ${e}`))),
   ]);
@@ -122,6 +146,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       driveGate(dt);
     },
     gate: () => ({ present: !!gate.action, open: gate.open, want: gate.want, t: +gate.t.toFixed(2) }),
+    bays: () => bays,
     dispose() { for (const m of mixers) m.stopAllAction(); gate.mixer?.stopAllAction(); for (const r of owned) r.dispose(); scene.remove(group); },
   };
 }

@@ -51,9 +51,19 @@ export function planBase(planet, layout, stage) {
     if (s.anchor === 'wall' && wallCell >= 0) { const [x, z] = frameOf(wallCell); return { ...s, x, z, y: layout.kit.wallMetres ?? 4, heading: [0, 1], cell: wallCell }; }
     const i = islandById.get(s.island);
     // a hair above the slab so coplanar floors do not z-fight; the rocket stands on natural ground
-    return { ...s, x: i.x, z: i.z, y: s.stage >= i.stage ? 0.06 : 0, heading: [0, 1] };
+    return { ...s, x: i.x, z: i.z, y: s.stage >= i.stage ? 0.06 : 0, heading: s.heading ?? [0, 1] };
   });
   cells.forward = forwardCell; cells.rotor = wallCell; cells.fodder = fodderCell;
+  // THE BERTHS: each bay's centre along the container model's X, its doors along the structure heading, and
+  // the straight run a hull drives out of them. Unit-sphere points, so the game can start a hull in the bay
+  // itself rather than at the nearest lattice centre, with the lattice cells carried for the board's bookkeeping.
+  const unit = (f) => { const w = planet.frameToWorld(f); const v = [w[0] / radius, (w[1] + radius) / radius, w[2] / radius]; const l = Math.hypot(...v); return v.map((c) => c / l); };
+  const roll = (layout.kit.bay?.roll ?? 2) * (planet.cellMetres ?? 10);
+  const bays = structures.filter((s) => s.bays).flatMap((s) => s.bays.map((b) => {
+    const [hx, hz] = s.heading, lx = b.x * s.scale, x = s.x + hz * lx, z = s.z - hx * lx;   // right of the heading is [hz, -hx]
+    const pos = unit([x, 0, z]), out = unit([x + hx * roll, 0, z + hz * roll]);
+    return { ...b, x, z, heading: s.heading, cell: nearestCell(x, z), exit: nearestCell(x + hx * roll, z + hz * roll), pos, out };
+  })).sort((a, b) => a.n - b.n);
   let gate = null, walls = [];
   if (stage >= layout.kit.stage && planet.clearing.openMouth) {
     const m = planet.clearing.openMouth;
@@ -76,5 +86,5 @@ export function planBase(planet, layout, stage) {
     // a wall whose nearest cell is the gate's cell is dressing on the gate cell, not a block
     for (const w of walls) if (w.cell === gate.cell) w.cell = -1;
   }
-  return { stage, islands, structures, walls, gate, cells };
+  return { stage, islands, structures, walls, gate, cells, bays };
 }

@@ -5733,15 +5733,16 @@ export function initTdTab(root) {
     breachedCells.clear(); // a NEW world owes nothing to the old one's holes
     const built = buildGameWorld({ world: storyQuery.world, params, stage: storyQuery.stage, scene, sfx });
     mesh = built.mesh; dungeon = built.dungeon; if (built.wallHeight) params.wallHeight = built.wallHeight; storyBase?.dispose(); storyBase = built.base; story = built.story ?? null;   // 4 m walls on the story sphere; the story's islands, structures, sockets and beats at the requested stage
-    graph = dungeon.graph;
-    cellSide = mesh.defaultSide;
+    graph = dungeon.graph; cellSide = mesh.defaultSide;
     // THE CAMP, BEFORE ANY ACTOR IS PLACED. Berth cells are graph maths,
     // so they are known now rather than whenever the container model
     // happens to land — which is what lets a reset place the tank once
     // instead of standing it beside the Heart and teleporting it later.
     const footprintRadius = (heartLook().footprint || 0) * heartLook().scale * cellSide;
-    berths = computeBerths(dungeon, graph, { footprintRadius, cellSide });
+    berths = story?.berths ?? computeBerths(dungeon, graph, { footprintRadius, cellSide });   // the story's tank bay is the camp once it stands
     record('camp.placed', { heartLook: params.heartLook, footprintRadius, cellSide, berths });
+    // THE BAYS ARE THE LIFE CONTAINERS: the parked hull in each is the spare, hidden once it has driven out; the sealed bay opens when its turn comes
+    const sb = storyBase; sb?.ready.then(() => { if (sb !== storyBase || !story?.berths) return; lifeContainers = sb.bays().map((b, i) => ({ obj: Object.assign(new THREE.Object3D(), { userData: { asset: 'bay', setStocked: (racked) => { if (!racked) b.open(); } } }), tanks: b.vehicle ? [Object.assign(b.vehicle, { userData: { asset: 'mork' } })] : [], ci: berths[i].ci, exit: berths[i].exit })); syncLifeContainers(); if (deployCount === 1 && player.moves <= 3) deployStart(berthIndexFor(playerHP)); });   // the first scene: the bays land after the opening roll-out, so roll out again where they can be seen
     // LANES (HT): keep the dungeon carve — rooms joined by WIDE corridors
     // are the monster lanes, and the wall mass between them is the HIGH
     // GROUND where towers mount. generateDungeon already supplies heart,
@@ -5872,7 +5873,7 @@ export function initTdTab(root) {
     player.segLen = Math.max(1e-9, dist3(graph.centers[player.cur], graph.centers[player.next]));
 
     absorbed = 0;
-    baseUnitScale = cellSide * 0.5;
+    baseUnitScale = cellSide * (story?.tankUnit ?? 0.5);   // the story hull is sized to its bays
     unitScale = baseUnitScale;
     ammo = 3;
     clearMines();   // a new run gets a fresh rack and an empty board
@@ -8522,6 +8523,8 @@ export function initTdTab(root) {
   let deploy = null;   // { n, from[3], to[3], segLen, travelled }
   const deployActive = () => deploy !== null;
 
+  // a berth's run: from its cell centre to its exit's, or — a story bay — from the hull's spot inside the bay straight out of the doors
+  const berthSeg = (b) => [b.pos ?? graph.centers[b.ci], b.out ?? graph.centers[b.exit]], berthDir = (b) => { const [f, t] = berthSeg(b); return tangentDir(norm3(f), f, t); };
   function deployStart(n) {
     const b = berths[n];
     if (!b || !graph) return false;
@@ -8531,20 +8534,19 @@ export function initTdTab(root) {
     player.virtualStart = null;
     player.cur = b.ci;
     player.prev = -1;
-    player.pos = graph.centers[b.ci].slice();
+    player.pos = berthSeg(b)[0].slice();
     player.prog = 0;
     player.next = b.exit;
-    player.heading = tangentDirTo(b.ci, b.exit);
+    player.heading = berthDir(b);
     player.travelDir = player.heading.slice();
     player.smoothDir = player.travelDir.slice();
-    player.segLen = Math.max(1e-9, dist3(graph.centers[b.ci], graph.centers[b.exit]));
+    player.segLen = Math.max(1e-9, dist3(...berthSeg(b)));
     throttle = 0; cruise = false; autoMode = false;
     paintThrottle();
     stopEngine(0.1, true);
     // only what is NOT derivable: which berth, and how far out we are. from,
     // to and segLen were all functions of `n` and drifted-by-construction.
-    deploy = { n, travelled: 0 };
-    return true;
+    deploy = { n, travelled: 0 }; return true;
   }
 
   // THE POSE THE WHOLE DESIGN HANGS OFF. Every prelude's last frame is this,
@@ -8555,10 +8557,10 @@ export function initTdTab(root) {
   function deployFramePoseFor(n, out) {
     const b = berths[n];
     if (!b) return;
-    const bc = graph.centers[b.ci];
+    const bc = berthSeg(b)[0];
     const bn = graph.normals[b.ci];
-    const eye = add3(add3(bc, scale3(bn, params.wallHeight * 1.7 + cellSide * 0.55)),
-      scale3(tangentDirTo(b.ci, b.exit), cellSide * 2.1));
+    const eye = add3(add3(bc, scale3(bn, params.wallHeight * 1.7 + cellSide * 0.55)),   // past the end of the run, so a long roll-out still comes toward the lens
+      scale3(berthDir(b), Math.max(cellSide * 2.1, dist3(...berthSeg(b)) + cellSide * 0.8)));
     const look = add3(bc, scale3(bn, params.wallHeight * 0.55));
     out.pos.set(eye[0], eye[1], eye[2]);
     tmpCam.position.copy(out.pos);
@@ -8573,8 +8575,7 @@ export function initTdTab(root) {
     if (!deploy) return 1;
     const b = berths[deploy.n];
     if (!b) return 1;
-    const segLen = Math.max(1e-9,
-      dist3(graph.centers[b.ci], graph.centers[b.exit]));
+    const segLen = Math.max(1e-9, dist3(...berthSeg(b)));
     return Math.min(1, deploy.travelled / segLen);
   }
   function deployEase() {
@@ -8595,7 +8596,7 @@ export function initTdTab(root) {
     if (!b) { deploy = null; return; }
     const v = params.speed * speedBonus * cellSide * 1.6;
     deploy.age = (deploy.age || 0) + dt;
-    const segLen = Math.max(1e-9, dist3(graph.centers[b.ci], graph.centers[b.exit]));
+    const segLen = Math.max(1e-9, dist3(...berthSeg(b)));
     // A DEPLOY WITH NO SPEED IS HUNG BY DEFINITION, so its expected duration
     // is ZERO, not Infinity. The first cut wrote Infinity here — mathematically
     // honest, and it made the one case this check exists for
@@ -8612,11 +8613,10 @@ export function initTdTab(root) {
     }
     deploy.travelled += v * dt;
     const u = deployProgress();
-    const from = graph.centers[b.ci];
-    const to = graph.centers[b.exit];
+    const [from, to] = berthSeg(b);
     const p = [0, 1, 2].map((i) => from[i] + (to[i] - from[i]) * u);
     player.pos = norm3(p);
-    player.heading = tangentDirTo(b.ci, b.exit);
+    player.heading = berthDir(b);
     player.travelDir = player.heading.slice();
     player.smoothDir = player.travelDir.slice();
     const ci = cellIndex(player.pos);
@@ -17465,7 +17465,7 @@ export function initTdTab(root) {
         playerAsset: playerMesh?.userData.asset || params.creature,
         playerAssetReady: !playerMesh?.userData.loading,
         playerModelStats: playerMesh?.userData.modelStats,
-        berthAssets:lifeContainers.flatMap(c=>c.tanks.map(t=>t.userData.asset)),
+        berthAssets:lifeContainers.flatMap(c=>c.tanks.map(t=>t.userData.asset)), bays: lifeContainers.map((c) => ({ ci: c.ci, hasTank: c.tanks.length > 0, racked: !!c.tanks[0]?.visible })), berthCells: berths.map((b) => b.ci),
         heartAsset: heartSprite?.userData.asset || params.heartLook,
         heartAssetState: heartSprite?.userData.assetState,
         performance:perfSample,shieldClock:t,motionClock:runContext.time,shield:{seconds:shield.t,rack:shield.rack,cooldown:Math.max(0,shield.coolUntil-t),drops:shieldDrops,visible:shieldObj?.visible},
@@ -17477,7 +17477,7 @@ export function initTdTab(root) {
         missiles:towerSeekers.map(m=>({key:m.by.key,config:m.config,t:m.t,name:m.mesh.name,
           position:m.mesh.position.toArray(),ignition:m.mesh.getObjectByName('EXHAUST_FX').visible})),
         drawCalls: renderer.info.render.calls,
-        playerPosition: player.pos.slice(), playerCell: player.cur, deploying: !!deploy,
+        playerPosition: player.pos.slice(), playerCell: player.cur, deploying: !!deploy, deployBerth: deploy ? deploy.n : -1,
         playerBlocked: freeBlocked(player.pos),
         camp: berths.map(b => ({ ...b, open: dungeon.tags[b.ci] !== BLOCKED && dungeon.tags[b.exit] !== BLOCKED,
           clearance: dist3(graph.centers[b.exit], graph.centers[dungeon.heart]) - pedestalRadius() })) }),

@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/jelaludo/SentryTowers_A6",
+  "revision": "de6c7d38d022598d796d505f024bd50cb454b02b",
+  "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/de6c7d38d022598d796d505f024bd50cb454b02b/",
+  "credit": "Models and animations by jelaludo (https://jelaludo.github.io/SentryTowers_A6/), game-ready MÖRK transport container diorama, reused with attribution under the upstream ASSET-LICENSE.md",
+  "files": [
+    {
+      "path": "assets/models/kit/mork_container_low_diorama.glb",
+      "sourcePath": "assets/hover-tank/containers/mork_container_low_diorama.glb",
+      "sha256": "0286f8e06ad037b2c3904afd3885cf4c9de2427057bb8fe88d10cdd7a488873a",
+      "bytes": 2075380,
+      "clips": [
+        "Tank_Roll_Out"
+      ]
+    }
+  ]
+}

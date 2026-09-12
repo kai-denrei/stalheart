@@ -241,11 +241,11 @@ try{
  await evaluate('window.__stalheartStoryTest.seek(27.5)');await delay(300);const late=await evaluate('window.__stalheartStoryTest.state()');assert.equal(late.phase,'hold');assert.equal(late.landing.face,'glee','delighted once he is clear');assert(late.comms.includes('So much to build'));current='story-isao-happy';await finish();
  await evaluate('window.__stalheartStoryTest.skip()');await delay(300);const done=await evaluate('window.__stalheartStoryTest.state()');
  assert.equal(done.phase,'done');assert.equal(done.landing.isao.visible,true);assert.equal(done.landing.face,'glee');current='story-isao-out';await finish();
- await evaluate('window.__stalheartStoryTest.setStage(7)');await evaluate('window.__stalheartStoryTest.baseReady()');await delay(1500);
- const base=await evaluate('window.__stalheartStoryTest.state()');assert.equal(base.stage,7);assert.deepEqual(base.base.errors,[]);assert.equal(base.base.islands,6);assert.equal(base.base.walls,12);assert(base.base.gate);assert.equal(base.base.structures,6,'six landmarks at stage 7 in the lab (the landing scene owns the rocket)');
- assert(base.playUrl.includes('story=7'),'play carries the stage');
- await evaluate('window.__stalheartStoryTest.reset()');await delay(300);current='story-stage-7';await finish();
- await evaluate('window.__stalheartStoryTest.overview()');await delay(400);current='story-stage-7-overview';await finish();
+ await evaluate('window.__stalheartStoryTest.setStage(8)');await evaluate('window.__stalheartStoryTest.baseReady()');await delay(2500);
+ const base=await evaluate('window.__stalheartStoryTest.state()');assert.equal(base.stage,8);assert.deepEqual(base.base.errors,[]);assert.equal(base.base.islands,7);assert.equal(base.base.walls,12);assert(base.base.gate);assert.equal(base.base.structures,7,'seven landmarks at stage 8 in the lab (the landing scene owns the rocket)');
+ assert(base.playUrl.includes('story=8'),'play carries the stage');
+ await evaluate('window.__stalheartStoryTest.reset()');await delay(300);current='story-stage-8';await finish();
+ await evaluate('window.__stalheartStoryTest.overview()');await delay(400);current='story-stage-8-overview';await finish();
  await evaluate('window.__stalheartStoryTest.setStage(4)');await evaluate('window.__stalheartStoryTest.baseReady()');await delay(300);
  assert.equal((await evaluate('window.__stalheartStoryTest.state()')).base.gate.present,true,'gate loaded with its clip');
  await evaluate('window.__stalheartStoryTest.gate(true)');await delay(2200);const opened=await evaluate('window.__stalheartStoryTest.state()');assert.equal(opened.base.gate.open,true,'gate opens');
@@ -307,6 +307,15 @@ try{
  await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("harvest_biomass"))return true;window.__stalheartPilotTest.aimEnemy();return false;})()',120000);
  await evaluate('window.__stalheartPilotTest.hold(false)');const said=await evaluate('window.__stalheartTest.state().story.said');assert(said.includes('alien_comms')&&said.includes('harvest_biomass'),'both lines said');
  await delay(400);current='story-world-harvest';await finish();
+ // THE THREE HULLS ARE THE THREE LIVES: at stage 7 the bays are the berths; the first hull starts inside bay 3 and rolls out of its doors,
+ // bay 3's parked hull is hidden the moment it is the one being driven, bays 1 and 2 keep theirs (1 sealed and empty by construction)
+ await go('story-world-bays','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=7#td');await until('!!window.__stalheartTest',90000);
+ const first=await evaluate('window.__stalheartTest.state()');assert.equal(first.deployBerth,2,'the first hull rolls out of bay 3');assert.equal(first.berthCells.length,3);
+ await until('window.__stalheartTest.state().bays.length===3',60000);await delay(400);
+ const bays=await evaluate('window.__stalheartTest.state()');assert.equal(bays.hulls,3);assert.deepEqual(bays.bays.map((b)=>b.hasTank),[false,true,true],'bay 1 sealed and empty, 2 and 3 hold a hull');assert.deepEqual(bays.bays.map((b)=>b.racked),[false,true,false],'the hull you drive is the one missing from bay 3');
+ assert.deepEqual(bays.bays.map((b)=>b.ci),bays.berthCells,'the bays are the berths');assert.deepEqual(bays.berthAssets,['mork','mork']);
+ current='story-world-bays';await finish();
+ await delay(4000);const rolled=await evaluate('window.__stalheartTest.state()');assert(!rolled.deploying,'the roll-out ends');assert.notEqual(rolled.playerCell,first.berthCells[2],'the hull left its bay');current='story-world-bays-out';await finish();
  // the phone deep link: ?story=N alone means the story world at that stage, no old heart, no cold open, sparse waves
  await go('story-world-deeplink','index.html?sw=0&acceptance=1&story=4#td');await until('!!window.__stalheartTest',90000);await delay(1500);
  const dl=await evaluate('window.__stalheartTest.state()');assert.equal(dl.heartAsset,'none');assert(dl.story&&dl.story.phase,'story beats run from the deep link');assert(dl.wallCount>40000);
