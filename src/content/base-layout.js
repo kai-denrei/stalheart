@@ -50,6 +50,6 @@ export const KIT = Object.freeze({
   stage: 4, wallsPerSide: 6, wallInset: 3,   // walls flank the gate along the rim, inset from the rock
   wallMetres: 4,                              // the lattice rock's roof height, where sentries mount
   fodderSteps: 28,                            // lane cells outward from the mouth where the ground opens: a tank trip to investigate
-  rotorSteps: 1, rotorEdge: 0.4,              // the first Rotor's wall cell touches the lane cell this many steps past the forward cell, and the mount stands this share of the way from the cell centre toward the lane: fewer rounds into its own rock
+  rotorSteps: 2, rotorEdge: 0.4,              // the first Rotor's wall cell touches the lane cell this many steps past the forward cell; the lab's static model stands this share of the way toward the lane (the game perches every tower on its wall's edge)
   bay: { roll: 2, doorSeconds: 2.4, rollOutMetres: 19, rollOutSeconds: 8 },   // a hull rolls two lane cells straight out of its doors; bay 03's authored roll-out carries the hull 19 model metres in 8 s
 });

@@ -44,7 +44,7 @@ export function planBase(planet, layout, stage) {
   const fodderCell = walkOut(layout.kit.fodderSteps ?? 6);
   // the mount stands off the cell centre toward the lane, so the barrels look over the edge rather than into their own rock
   const edge = layout.kit.rotorEdge ?? 0, socketPos = (ci, toward) => { const c = planet.graph.centers[ci], t = planet.graph.centers[toward]; const v = c.map((x, k) => x + (t[k] - x) * edge), l = Math.hypot(...v); return v.map((x) => x / l); };
-  const sockets = wallCell >= 0 ? [{ cell: wallCell, pos: socketPos(wallCell, rotorLane) }] : [];
+  const sockets = wallCell >= 0 ? [{ cell: wallCell, toward: rotorLane, pos: socketPos(wallCell, rotorLane) }] : [];
   const anchored = layout.islands.map((i) => (i.anchor === 'forward' && forwardCell >= 0 ? { ...i, x: frameOf(forwardCell)[0], z: frameOf(forwardCell)[1] } : i));
   const islands = anchored.filter((i) => i.stage <= stage).map((i) => ({
     ...i, top: 0, sag: drop(Math.hypot(i.w, i.d) / 2, radius), heading: [0, 1], cell: i.anchor === 'forward' && forwardCell >= 0 ? forwardCell : nearestCell(i.x, i.z),

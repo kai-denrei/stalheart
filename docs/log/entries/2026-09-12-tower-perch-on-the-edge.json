@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-09-12-tower-perch-on-the-edge",
+  "date": "2026-09-12T13:10:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "Every tower perches on its wall's edge, never over; the first Rotor two cells down the lane",
+  "context": "Owner, testing the manual override: place the initial tower one cell further toward the tip, and a rule for all towers in all game modes: the far edge of their pedestals or legs aligns with the edge of the wall, never cantilevered over it, so fewer rounds hit the ground under the sentry.",
+  "outcome": "td-tab's placeTowerObj measures each model's pedestal half-width once (a Box3 at unit scale) and perchOf slides the mount from the cell centre toward the open cell it covers by half the centre distance minus the pedestal radius, clamped at zero: the far edge meets the rock's edge. The covered cell is the story socket's lane (plan.sockets[].toward via story.socketToward) or, elsewhere, the open neighbour with the largest distToHeart. The wreck burst and the take-control shot use the same perch. KIT.rotorSteps 2. The override acceptance now asserts kills === 0 rather than an exact headcount, which raced a spawn still emerging. Controller 17,623 lines, budget lowered.",
+  "alternatives": [
+    "A fixed share of the way to the edge (the earlier 0.4): rejected, it ignores the pedestal's size and the cell's width.",
+    "Raising the platform: kept as the owner's fallback."
+  ],
+  "evidence": [
+    "npm test 92, npm run check",
+    "node scripts/browser-test.mjs --story-world PASS; legacy acceptance run before commit"
+  ],
+  "supersedes": []
+}

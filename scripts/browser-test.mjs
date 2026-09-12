@@ -291,7 +291,7 @@ try{
  assert((await evaluate('window.__stalheartTest.state().breaches')).length>0,'the ground opened');current='story-world-breach';await finish();
  await until('window.__stalheartTest.state().story.phase==="override"',90000);await delay(800);
  assert.equal(await evaluate('document.querySelector("#td-brief").classList.contains("hidden")'),false,'Isao speaks the override line');
- const held=await evaluate('window.__stalheartTest.state()');assert.equal(held.performance.enemies,held.story.spawned,'the sentry did not fire on its own: every spawned enemy is still alive');current='story-world-override';await finish();
+ const held=await evaluate('window.__stalheartTest.state()');assert.equal(held.kills,0,'the sentry did not fire on its own');assert(held.performance.enemies>=held.story.spawned-1&&held.performance.enemies>0,`every spawned enemy is still alive (${held.performance.enemies} of ${held.story.spawned}, the last may still be emerging)`);current='story-world-override';await finish();
  assert.equal(await evaluate('typeof window.__stalheartPilotTest'),'undefined','no control before the override');
  await until('!!window.__stalheartPilotTest',30000);await until('window.__stalheartTest.state().performance.enemies>0',60000);await delay(14000);
  const fodder=await evaluate('window.__stalheartTest.state()');assert(fodder.performance.enemies>=2&&fodder.performance.enemies<=8,`fodder alive ${fodder.performance.enemies}`);assert.equal(fodder.performance.wave,0,'no wave arms');

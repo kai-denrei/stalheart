@@ -8530,10 +8530,8 @@ export function initTdTab(root) {
     if (!b || !graph) return false;
     deployCount++;
     ctlLog(`deploy:#${n + 1}`);
-    player.freeMode = false;
-    player.virtualStart = null;
-    player.cur = b.ci;
-    player.prev = -1;
+    player.freeMode = false; player.virtualStart = null;
+    player.cur = b.ci; player.prev = -1;
     player.pos = berthSeg(b)[0].slice();
     player.prog = 0;
     player.next = b.exit;
@@ -8726,11 +8724,14 @@ export function initTdTab(root) {
     const v = parseFloat(new URLSearchParams(location.search).get('towerscale'));
     return Number.isFinite(v) && v > 0.1 && v < 4 ? v : 0.72;
   })();
+  // EVERY TOWER STANDS AT ITS WALL'S EDGE, NEVER OVER IT (operator, 2026-09-12): the mount slides from the cell centre toward the open cell it covers (the story names it; otherwise the upstream lane) until the far edge of its pedestal meets the rock's edge
+  const perchOf = (tower) => { const ci = tower.ci, c = graph.centers[ci]; let nb = story?.socketToward?.[ci] ?? -1; if (nb < 0) for (const k of graph.adj[ci]) if (dungeon.tags[k] !== BLOCKED && (nb < 0 || dungeon.distToHeart[k] > dungeon.distToHeart[nb])) nb = k; if (nb < 0) return c; const t = graph.centers[nb], d = dist3(c, t), slide = Math.max(0, d * 0.5 - (tower.obj?.userData.footprintR ?? 0)) / d; return norm3(c.map((v, i) => v + (t[i] - v) * slide)); };
   function placeTowerObj(tower) {
     const obj = tower.obj;
-    const s = (obj.userData.baseScale ?? 1) * cellSide * 0.62 * TOWER_SCALE
-      * Math.pow(TIER_BULK, tower.tier);
-    obj.scale.setScalar(s);
+    const s = (obj.userData.baseScale ?? 1) * cellSide * 0.62 * TOWER_SCALE * Math.pow(TIER_BULK, tower.tier); obj.scale.setScalar(s);
+    // the pedestal's half-width in model units, measured once per model, so the perch knows how far it may slide
+    if (obj.userData.footprintUnit === undefined) { const p = obj.position.clone(), q = obj.quaternion.clone(); obj.position.set(0, 0, 0); obj.quaternion.identity(); obj.scale.setScalar(1); const bb = new THREE.Box3().setFromObject(obj); obj.userData.footprintUnit = Number.isFinite(bb.max.x) ? Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) / 2 : 0; obj.position.copy(p); obj.quaternion.copy(q); obj.scale.setScalar(s); }
+    obj.userData.footprintR = obj.userData.footprintUnit * s;
     // ...and a WALKER is wherever it has walked to. Its own position is a
     // unit direction, so it is its own normal — no cell lookup, because it
     // is very often not standing on one.
@@ -8771,8 +8772,7 @@ export function initTdTab(root) {
       }
       return;
     }
-    const c = story?.socketAt?.[tower.ci] ?? graph.centers[tower.ci];   // a story socket may stand off-centre: near the lane edge of its wall cell
-    const nrm = graph.normals[tower.ci];
+    const c = perchOf(tower), nrm = graph.normals[tower.ci];
     const top = 1 + (story?.sockets.has(tower.ci) ? story.socketLift : params.wallHeight); // the wall's roof, or a story socket on the floor
     obj.position.set(c[0] * top, c[1] * top, c[2] * top);
     tmpN.set(nrm[0], nrm[1], nrm[2]);
@@ -9387,8 +9387,7 @@ export function initTdTab(root) {
   // The strike's version of losing a tower: no refund, and the wreck shows.
   // Selling is a decision; this is a consequence.
   function destroyTower(tower) {
-    const c = story?.socketAt?.[tower.ci] ?? graph.centers[tower.ci];
-    const nrm = graph.normals[tower.ci];
+    const c = perchOf(tower), nrm = graph.normals[tower.ci];
     const burst = makeDotBurst(tower.def.color, nrm, 40);
     burst.scale.setScalar(cellSide * 1.1);
     burst.position.set(c[0] + nrm[0] * cellSide * 0.3, c[1] + nrm[1] * cellSide * 0.3,
@@ -12843,7 +12842,7 @@ export function initTdTab(root) {
   if (Number.isFinite(pointsOverride)) params.points = Math.min(16000, Math.max(150, pointsOverride));
   const seedOverride = parseInt(urlParams.get('seed') || '', 10);
   if (Number.isFinite(seedOverride)) params.seed = seedOverride >>> 0; const storyQuery = readStoryQuery(location.search), threatMult = storyQuery.threat, storyMode = storyQuery.world === 'story';   // tabula rasa past the landing: no old heart, waves, portals, camp or yard
-  const storyApi = { order: (key, ci) => orderTower(key, ci, { quiet: true }), grant: (n) => { if (n > 0) eco.addBiomass(n, { category: 'grant' }); }, built: (ci) => towerByCell.has(ci), cost: (key) => TOWER_BY_KEY[key]?.cost ?? 0, isao: () => !!isao, enemies: () => enemies.filter((e) => e.alive).length, spawn: (type, ci) => { spawnQueue.push({ type, sp: story?.source ?? { ci, alive: true, obj: new THREE.Group() }, at: spawnClock }); }, brief: (id) => showBrief(id), tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null), breach: (ci) => { const obj = buildPortalObj(ci, 0); scene.add(obj); story.source = { ci, alive: true, obj, hp: 3, found: true }; }, near: (ci) => enemies.some((e) => e.alive && chord(e.pos, graph.centers[ci]) < cellSide * 2.2), kills: () => rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike, pilot: (ci, laneCi) => { enterPilot([ci]); startShot({ id: 'takeControl', dur: 3.2, poseAt: takeControlPose(story?.socketAt?.[ci] ?? graph.centers[ci], graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight), onEnd: () => { setView('bastion'); snapCamera(); } }); } };
+  const storyApi = { order: (key, ci) => orderTower(key, ci, { quiet: true }), grant: (n) => { if (n > 0) eco.addBiomass(n, { category: 'grant' }); }, built: (ci) => towerByCell.has(ci), cost: (key) => TOWER_BY_KEY[key]?.cost ?? 0, isao: () => !!isao, enemies: () => enemies.filter((e) => e.alive).length, spawn: (type, ci) => { spawnQueue.push({ type, sp: story?.source ?? { ci, alive: true, obj: new THREE.Group() }, at: spawnClock }); }, brief: (id) => showBrief(id), tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null), breach: (ci) => { const obj = buildPortalObj(ci, 0); scene.add(obj); story.source = { ci, alive: true, obj, hp: 3, found: true }; }, near: (ci) => enemies.some((e) => e.alive && chord(e.pos, graph.centers[ci]) < cellSide * 2.2), kills: () => rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike, pilot: (ci, laneCi) => { enterPilot([ci]); startShot({ id: 'takeControl', dur: 3.2, poseAt: takeControlPose(perchOf(towerByCell.get(ci) ?? { ci }), graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight), onEnd: () => { setView('bastion'); snapCamera(); } }); } };
   const simParam = urlParams.get('sim');
   if (simParam) {
     simStyle = simParam;
@@ -17465,7 +17464,7 @@ export function initTdTab(root) {
         playerAsset: playerMesh?.userData.asset || params.creature,
         playerAssetReady: !playerMesh?.userData.loading,
         playerModelStats: playerMesh?.userData.modelStats,
-        berthAssets:lifeContainers.flatMap(c=>c.tanks.map(t=>t.userData.asset)), bays: lifeContainers.map((c) => ({ ci: c.ci, hasTank: c.tanks.length > 0, racked: !!c.tanks[0]?.visible })), berthCells: berths.map((b) => b.ci),
+        berthAssets:lifeContainers.flatMap(c=>c.tanks.map(t=>t.userData.asset)), bays: lifeContainers.map((c) => ({ ci: c.ci, hasTank: c.tanks.length > 0, racked: !!c.tanks[0]?.visible })), berthCells: berths.map((b) => b.ci), kills: rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike,
         heartAsset: heartSprite?.userData.asset || params.heartLook,
         heartAssetState: heartSprite?.userData.assetState,
         performance:perfSample,shieldClock:t,motionClock:runContext.time,shield:{seconds:shield.t,rack:shield.rack,cooldown:Math.max(0,shield.coolUntil-t),drops:shieldDrops,visible:shieldObj?.visible},
