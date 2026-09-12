@@ -6,6 +6,8 @@ import { registerServiceWorker } from './pwa.js';
 import { storage as localStorage } from './storage.js';
 import { installDiagnostics, record } from './diagnostics.js';
 import { isStoryRoute } from './core/story-route.js';
+import { STAGES } from './content/base-layout.js';
+import { loadPlanetBake } from './platform/planet-bake.js';
 import { applyFontPack, DEFAULT_FONT, DEFAULT_SHOUT_FONT, loadTypeFeel } from './fonts.js';
 
 installDiagnostics();
@@ -96,7 +98,7 @@ if (!root) {
   // the story's stages, right in the menu: no URL editing while the beats are being built
   if (!workshop && target === 'td' && isStoryRoute(location.search)) {
     const strip = document.createElement('div'); strip.id = 'story-stages-nav';
-    const names = ['empty pole', 'landing', 'foundations', 'solar and Rotor', 'gate and walls', 'HUGIN arm', 'Stalheart', 'assembly and radar'];
+    const names = STAGES.map((s) => s.name);
     const current = parseInt(q.get('stage') ?? q.get('story') ?? '1', 10);
     names.forEach((name, n) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = `${n} ${name}`; b.classList.toggle('active', n === current); b.addEventListener('click', () => navigate(new URL(`./index.html?story=${n}#td`, location.href))); strip.append(b); });
     const arrival = document.createElement('button'); arrival.type = 'button'; arrival.textContent = 'arrival cinematic'; arrival.addEventListener('click', () => navigate(new URL('./labs.html?land=1#story', location.href))); strip.append(arrival);
@@ -114,6 +116,8 @@ if (!root) {
   root.classList.remove('tab-hidden');
   try {
     const content = bootstrapContent();
+    // the story planet's bake rides in with the module: seconds of relaxing and carving skipped when it is there
+    if ((target === 'td' && isStoryRoute(location.search)) || target === 'story') await loadPlanetBake();
     const init = await routes[target]();
     const api = init(root);
     const choices = workshop

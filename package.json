@@ -14,7 +14,8 @@
     "log:check": "node scripts/log.mjs check",
     "assets:check": "node scripts/assets.mjs check",
     "presets": "node scripts/presets.mjs",
-    "architecture": "node scripts/architecture.mjs"
+    "architecture": "node scripts/architecture.mjs",
+    "bake": "node scripts/bake-planet.mjs"
   },
   "version": "0.1.0",
   "description": "Spherical action tower defense",

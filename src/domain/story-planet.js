@@ -1,7 +1,7 @@
 // The story planet: the pinned grid kernel at a larger point count, a polar
 // clearing cut into terraces, and one open lane mouth for the armored gate.
 import { generateSphereMesh, relax } from '../grid.js';
-import { generateDungeon, BLOCKED, PATH } from '../dungeon.js';
+import { generateDungeon, buildCellGraph, BLOCKED, PATH } from '../dungeon.js';
 import { breachPoint } from '../core/breach-surface.js';
 import { terraceAltitude, terraceFloor } from '../core/terrace-profile.js';
 
@@ -18,13 +18,21 @@ export function terraceOptions(radius, clearing) {
   return { radius, padRadius: clearing.padRadius, step: clearing.step, clearRadius: clearing.radiusMetres, blend: clearing.blend };
 }
 
-export function buildStoryPlanet(recipe, clearing) {
+// With a bake (core/planet-bake.js) of this recipe the relax and the carve are read back instead of run:
+// the lattice topology still comes from the kernel, only the vertex positions and the carve are loaded.
+export function buildStoryPlanet(recipe, clearing, bake = null) {
   const mesh = generateSphereMesh({ seed: recipe.seed >>> 0, n: recipe.points, k: recipe.k });
-  relax(mesh, { n_iters: recipe.relaxIters, PULL_RATE: recipe.pullRate });
-  const dungeon = generateDungeon(mesh, {
-    seed: recipe.seed, rooms: recipe.rooms, roomRadius: recipe.roomRadius,
-    extraCorridors: recipe.extraCorridors, corridorWidth: recipe.corridorWidth,
-  });
+  let dungeon;
+  if (bake && bake.vertices.length === mesh.vertices.length * 3 && bake.cells === mesh.quads.length) {
+    for (let i = 0; i < mesh.vertices.length; i++) mesh.vertices[i] = [bake.vertices[i * 3], bake.vertices[i * 3 + 1], bake.vertices[i * 3 + 2]];
+    dungeon = { graph: buildCellGraph(mesh), tags: Uint8Array.from(bake.tags), seeds: bake.seeds.slice(), spawn: bake.spawn, heart: bake.heart, distToHeart: Int32Array.from(bake.distToHeart, (d) => (d === 65535 ? -1 : d)) };   // the kernel's own array types
+  } else {
+    relax(mesh, { n_iters: recipe.relaxIters, PULL_RATE: recipe.pullRate });
+    dungeon = generateDungeon(mesh, {
+      seed: recipe.seed, rooms: recipe.rooms, roomRadius: recipe.roomRadius,
+      extraCorridors: recipe.extraCorridors, corridorWidth: recipe.corridorWidth,
+    });
+  }
   const { graph } = dungeon;
   const cellSide = mesh.defaultSide;
   const radius = recipe.metresPerCell / cellSide;

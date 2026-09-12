@@ -7,6 +7,7 @@ import { STORY_RECIPE, STORY_CLEARING, LANDING_DEFAULTS, STORY_SOUNDS } from '..
 import { SOUNDS } from '../audiomanifest.js';
 import { makeAudio } from '../audio.js';
 import { buildStoryPlanet } from '../domain/story-planet.js';
+import { planetBake } from '../platform/planet-bake.js';
 import { makeLandingSequence } from '../domain/landing-sequence.js';
 import { compileRail } from '../cine/rail.js';
 import { buildStoryPlanetMesh, buildMouthMarker } from './story-planet-mesh.js';
@@ -111,7 +112,7 @@ export function initStoryTab(root) {
 
   function build() {
     const t0 = performance.now();
-    planet = buildStoryPlanet(STORY_RECIPE, STORY_CLEARING);
+    planet = buildStoryPlanet(STORY_RECIPE, STORY_CLEARING, planetBake());
     const built = performance.now() - t0;
     planetMesh = buildStoryPlanetMesh(planet, look, { wallMetres: STORY_RECIPE.wallMetres }); scene.add(planetMesh);
     const site = ISLANDS.find((i) => i.id === 'landing');

@@ -7,7 +7,7 @@ import { buildStoryPlanet } from './story-planet.js';
 
 export function buildWorld({ world = 'default', params, story = null }) {
   if (world === 'story' && story) {
-    const planet = buildStoryPlanet(story.recipe, story.clearing);
+    const planet = buildStoryPlanet(story.recipe, story.clearing, story.bake ?? null);   // a bake skips the relax and the carve
     const { mesh, dungeon, graph } = planet;
     let heart = 0;
     for (let i = 1; i < graph.centers.length; i++) if (graph.centers[i][1] > graph.centers[heart][1]) heart = i;

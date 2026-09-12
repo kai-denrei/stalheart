@@ -12,6 +12,7 @@ import { createStoryBase } from '../fx/story-base.js';
 import { isStoryRoute } from '../core/story-route.js';
 import { makeStoryBeats } from '../domain/story-beats.js';
 import { createStoryHud } from '../fx/story-hud.js';
+import { planetBake } from './planet-bake.js';
 import { BLOCKED } from '../dungeon.js';
 
 export const STORY_LAYOUT = { islands: ISLANDS, structures: STRUCTURES, kit: KIT, stages: STAGES };
@@ -31,7 +32,7 @@ export function readStoryQuery(search) {
 }
 
 export function buildGameWorld({ world, params, stage, scene, sfx = null }) {
-  const built = buildWorld({ world, params, story: { recipe: STORY_RECIPE, clearing: STORY_CLEARING } });
+  const built = buildWorld({ world, params, story: { recipe: STORY_RECIPE, clearing: STORY_CLEARING, bake: planetBake() } });
   if (!built.planet) return { ...built, base: null };
   const { planet } = built;
   // the game draws the unit sphere at the origin with the pole at +Y
