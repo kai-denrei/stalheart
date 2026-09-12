@@ -8531,8 +8531,7 @@ export function initTdTab(root) {
     deployCount++;
     ctlLog(`deploy:#${n + 1}`);
     player.freeMode = false; player.virtualStart = null;
-    player.cur = b.ci; player.prev = -1;
-    player.pos = berthSeg(b)[0].slice();
+    player.cur = b.ci; player.prev = -1; player.pos = berthSeg(b)[0].slice();
     player.prog = 0; player.next = b.exit;
     player.heading = berthDir(b);
     player.travelDir = player.heading.slice(); player.smoothDir = player.travelDir.slice();
@@ -8624,8 +8623,7 @@ export function initTdTab(root) {
       // forward is the direction the hull is already going, so the handover
       // is continuous rather than a stop.
       if (deploy.clip) { deploy.bay.rolling = false; playerMesh.visible = true; }   // hand over: the authored hull hides, ours stands where it stopped
-      deploy = null; deploysDone++;
-      throttle = 0; cruise = false; autoMode = false; paintThrottle();
+      deploy = null; deploysDone++; throttle = 0; cruise = false; autoMode = false; paintThrottle();
     }
   }
 
@@ -12398,8 +12396,10 @@ export function initTdTab(root) {
       if((wave>0||storyMode)&&!paused&&!shotActive()&&!tutorialActive&&(!introEl||introEl.classList.contains('hidden'))){
         const direction=opened[0].position.clone().normalize(),returnPos=camera.position.clone(),returnQuat=camera.quaternion.clone();
         const far=direction.clone().multiplyScalar(3.3),up=camera.up.clone();
-        startShot({id:'breach',dur:CONTENT.breach.preRoll+1.8,poseAt:(u,out)=>{
-          const blend=u*u*(3-2*u);out.pos.copy(far).lerp(returnPos,blend);
+        // IN THE STORY THE PLANET STAYS IN FRAME: through the whole opening and the first fodder emerging, then a short blend back
+        const hold=storyMode?CONTENT.breach.duration+(story?.breachShot.emergeHold??0):0,tail=storyMode?story?.breachShot.tail??1.8:1.8,dur=CONTENT.breach.preRoll+tail+hold;
+        startShot({id:'breach',dur,poseAt:(u,out)=>{
+          const w=Math.max(0,(u*dur-CONTENT.breach.preRoll-hold)/tail),blend=w*w*(3-2*w);out.pos.copy(far).lerp(returnPos,blend);
           tmpCam.position.copy(far);tmpCam.up.copy(up);tmpCam.lookAt(0,0,0);
           out.quat.copy(tmpCam.quaternion).slerp(returnQuat,blend);
         }});

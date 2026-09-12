@@ -23,15 +23,17 @@ export function planBase(planet, layout, stage) {
   })();
   const frameOf = (ci) => { const c = planet.graph.centers[ci]; const f = planet.worldToFrame([c[0] * radius, c[1] * radius - radius, c[2] * radius]); return [f[0], f[2]]; };
   const arcOf = (ci) => { const c = planet.graph.centers[ci]; return Math.acos(Math.max(-1, Math.min(1, c[1] / Math.hypot(c[0], c[1], c[2])))); };
-  // down the lane: walk outward from the forward cell, always to the open neighbour farthest from the pole
+  // down the lane: the open cell exactly `steps` lane hops out from the forward cell (breadth first over open ground outside the
+  // clearing), the farthest from the pole among them. A greedy walk used to stop at the first wiggle in the lane, nine hops out.
   const walkOut = (steps) => {
-    let ci = forwardCell, prev = -1;
-    for (let k = 0; k < steps && ci >= 0; k++) {
-      let next = -1, ba = arcOf(ci);
-      for (const nb of planet.graph.adj[ci]) if (nb !== prev && planet.dungeon.tags[nb] !== 0 && !planet.clearing.cells.has(nb) && arcOf(nb) > ba) { ba = arcOf(nb); next = nb; }
-      if (next < 0) break; prev = ci; ci = next;
+    if (forwardCell < 0) return -1;
+    const hop = new Map([[forwardCell, 0]]); let ring = [forwardCell], best = forwardCell;
+    for (let k = 0; k < steps && ring.length; k++) {
+      const next = [];
+      for (const ci of ring) for (const nb of planet.graph.adj[ci]) if (!hop.has(nb) && planet.dungeon.tags[nb] !== 0 && !planet.clearing.cells.has(nb)) { hop.set(nb, k + 1); next.push(nb); }
+      if (next.length) { ring = next; best = ring.reduce((a, b) => (arcOf(b) > arcOf(a) ? b : a)); }
     }
-    return ci;
+    return best;
   };
   // the wall down the lane: a rock neighbour of the lane cell `rotorSteps` past the forward cell, the one furthest to the side
   const rotorLane = walkOut(layout.kit.rotorSteps ?? 0);

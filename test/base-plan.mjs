@@ -52,6 +52,9 @@ assert.equal(one.structures[0].y, 0, 'the rocket stands on natural ground');
   const dc = Math.hypot(...sk.pos.map((v, k) => v - planet.graph.centers[rc][k])), dl = Math.hypot(...sk.pos.map((v, k) => v - planet.graph.centers[rl][k]));
   assert.ok(KIT.rotorEdge === 0 ? dc < 1e-9 : dc > 0 && dl < Math.hypot(...planet.graph.centers[rc].map((v, k) => v - planet.graph.centers[rl][k])), 'the mount leans toward the lane');
   assert.ok(fd >= 0 && fd !== fc && planet.dungeon.tags[fd] !== BLOCKED && planet.arcOfCell(fd) > planet.arcOfCell(fc), 'fodder cell is open ground farther down the lane');
+  // the sinkhole is exactly fodderSteps lane hops out (or as far as the lanes reach), not where a greedy walk gave up
+  { const hop = new Map([[fc, 0]]); const q = [fc]; while (q.length) { const a = q.shift(); for (const nb of planet.graph.adj[a]) if (!hop.has(nb) && planet.dungeon.tags[nb] !== BLOCKED && !planet.clearing.cells.has(nb)) { hop.set(nb, hop.get(a) + 1); q.push(nb); } }
+    assert.equal(hop.get(fd), Math.min(KIT.fodderSteps, Math.max(...hop.values())), `fodder ${hop.get(fd)} hops out`); assert.equal(hop.get(rl), KIT.rotorSteps); }
   const rs = full.structures.find((s) => s.id === 'rotor'); assert.equal(rs.cell, rc); assert.equal(rs.y, KIT.wallMetres);
   assert.ok(!full.islands.some((i) => i.id === 'rotor'), 'no slab on the wall'); }
 // the tank bay: three berths in painted order, each a point inside its bay with a straight run out of the doors

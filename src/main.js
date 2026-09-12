@@ -104,6 +104,8 @@ if (!root) {
     const arrival = document.createElement('button'); arrival.type = 'button'; arrival.textContent = 'arrival cinematic'; arrival.addEventListener('click', () => navigate(new URL('./labs.html?land=1#story', location.href))); strip.append(arrival);
     document.getElementById('tabbar')?.after(strip);
   }
+  // WHICH BUILD IS THIS: the release token top right (the file hash the build stamps in), or dev on the source tree
+  const build = document.querySelector('meta[name="cb"]')?.content; const tag = document.createElement('div'); tag.id = 'build-tag'; tag.textContent = build && build !== '00000000' ? `build ${build}` : 'dev'; document.body.append(tag);
   const menu = document.createElement('button');
   menu.id = 'chrome-toggle'; menu.textContent = '☰'; menu.title = 'game menu';
   menu.setAttribute('aria-label', 'Game menu');

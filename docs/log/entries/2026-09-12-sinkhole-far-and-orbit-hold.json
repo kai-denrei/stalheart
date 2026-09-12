@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "2026-09-12-sinkhole-far-and-orbit-hold",
+  "date": "2026-09-12T17:30:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "The sinkhole opens twenty-eight lane hops out for real; the breach shot holds the whole planet through the emergence; a build tag top right",
+  "context": "Owner: put a build number top right for debugging; the sinkhole still appears too close; when it breaches the camera should pan to the whole-planet view and stay there for the entire animation including enemies starting to emerge.",
+  "outcome": "Measured on the real planet: the greedy outward walk stopped at a wiggle in the lane, nine hops out (92 m from the gate). base-plan now walks breadth first over open ground outside the clearing and takes the farthest-from-pole cell at exactly fodderSteps hops: 28 hops, 289 m from the gate; the base-plan test asserts the hop count. In the story the breach shot's duration is preRoll + breach duration + STORY_BREACH.emergeHold (6 s) + a 1.8 s tail, holding the orbit pose until the tail; the story-world acceptance sees the shot still on while the second fodder emerges. main.js stamps a build tag (release token or dev) top right.",
+  "alternatives": [
+    "A metres target instead of hops: rejected for now, hops follow the lane and the tremor contact reads from the same cell."
+  ],
+  "evidence": [
+    "node script over the bake: fodder hops 9 -> 28, chord gate->fodder 92 m -> 289 m",
+    "npm test 92, npm run check, node scripts/browser-test.mjs --story-world with story-world-breach-emerge"
+  ],
+  "supersedes": []
+}

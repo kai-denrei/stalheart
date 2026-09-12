@@ -295,6 +295,9 @@ try{
  await until('window.__stalheartTest.state().story.phase==="tremor"',20000);await delay(600);current='story-world-tremor';await finish();
  await until('window.__stalheartTest.state().story.phase==="breach"',20000);await until('window.__stalheartTest.state().shot==="breach"',15000);await delay(1200);
  assert((await evaluate('window.__stalheartTest.state().breaches')).length>0,'the ground opened');current='story-world-breach';await finish();
+ // THE PLANET STAYS IN FRAME: the orbit shot holds through the opening and the first fodder emerging, then hands back
+ await until('window.__stalheartTest.state().story.spawned>=2',20000);assert.equal(await evaluate('window.__stalheartTest.state().shot'),'breach','still from orbit while the first fodder emerge');current='story-world-breach-emerge';await finish();
+ await until('window.__stalheartTest.state().shot!=="breach"',20000);
  await until('window.__stalheartTest.state().story.phase==="override"',90000);await delay(800);
  assert.equal(await evaluate('document.querySelector("#td-brief").classList.contains("hidden")'),false,'Isao speaks the override line');
  const held=await evaluate('window.__stalheartTest.state()');assert.equal(held.kills,0,'the sentry did not fire on its own');assert(held.performance.enemies>=held.story.spawned-1&&held.performance.enemies>0,`every spawned enemy is still alive (${held.performance.enemies} of ${held.story.spawned}, the last may still be emerging)`);current='story-world-override';await finish();

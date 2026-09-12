@@ -4505,3 +4505,5 @@ body.chrome-open #story-stages-nav { display: flex; }
 #story-views { position: fixed; bottom: 64px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; padding: 6px 8px; background: rgba(8, 14, 20, 0.85); border: 1px solid #2b6b96; border-radius: 10px; z-index: 40; }
 #story-views button { font: 700 12px ui-monospace, Menlo, monospace; letter-spacing: 0.08em; color: #9fdcff; background: rgba(12, 26, 38, 0.85); border: 1px solid #2b6b96; border-radius: 8px; padding: 7px 12px; cursor: pointer; }
 #story-views button.active { background: rgba(40, 90, 120, 0.95); color: #dff4ff; border-color: #6fc3ff; }
+/* the build tag, top right, for debugging which release is in front of you */
+#build-tag { position: fixed; top: 6px; right: 8px; z-index: 60; font: 600 10px ui-monospace, Menlo, monospace; letter-spacing: 0.06em; color: #6fa8c8; background: rgba(8, 14, 20, 0.7); border: 1px solid #234c68; border-radius: 6px; padding: 2px 6px; pointer-events: none; }

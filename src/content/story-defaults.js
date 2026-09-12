@@ -52,6 +52,9 @@ export const PLUME_CLUSTER = Object.freeze([
 // tankUnit is the game's unit scale per lattice cell that gives that length: 10 m / (10 m cells x 1.95 span x 0.75 base).
 export const STORY_SCALE = Object.freeze({ rocket: 1.5, isaoMetres: 1.8, tankMetres: 10, tankUnit: 0.684 });
 
+// The breach seen from orbit: the whole planet stays in frame through the ground opening and the first fodder emerging
+export const STORY_BREACH = Object.freeze({ emergeHold: 6, tail: 1.8 });
+
 // The piloted sentry in the story: a denser stream of rounds, each one
 // heavy enough that cannon fodder drops in two hits.
 export const STORY_PILOT = Object.freeze({ rateMul: 2.5, dmgMul: 5 });
