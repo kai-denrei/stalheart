@@ -12,6 +12,11 @@
 // `face` is an emotion id from emotions.js. `once` means the beat fires a
 // single time per browser, ever, and is remembered; the rest can repeat.
 
+// ISAO'S VOICE (owner, 2026-09-13). The stoic builder: no complaining, just
+// building. Upbeat, techno-optimist, protopian, wise beyond his looks. A loss
+// is a fact and then a plan: "Oh no! They destroyed my RADAR!" (angry)...
+// "Oh well. Rebuild." Two short lines at most; the second line is always what
+// he does next. Curiosity over dread, resources over blame.
 export const BRIEFS = {
   // --- THE STORY -----------------------------------------------------------
   // Four beats the game had no way of saying. All of this was already written
@@ -133,7 +138,7 @@ export const BRIEFS = {
   // after the Quiver: the study screen
   vibration_study: {
     id: 'vibration_study', face: 'curious', title: 'COMMS · ISAO', once: true,
-    lines: ['They talk in vibrations. A pattern under the pattern.', 'I am trying to reverse-engineer it. I need more compute than I have here.'],
+    lines: ['They talk in vibrations. A pattern under the pattern.', 'Reverse-engineering it takes more compute than I have. So: build more compute.'],
   },
   // the tenth kill: what the bodies are for
   harvest_biomass: {

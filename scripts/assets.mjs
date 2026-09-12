@@ -80,11 +80,11 @@ console.log('Pinned story gate audio verified.');
   const bytes=readFileSync(resolve(root,d.path));if(bytes.length!==d.bytes||sha(bytes)!==d.sha256)throw Error(`Far tier changed, run npm run tiers: ${d.path}`);
  }
  console.log(`Derived far tiers verified: ${lock.derivations.length}`);}
-for(const lockFile of ['docs/shell-assets.lock.json','docs/beam-audio.lock.json']){
+for(const lockFile of ['docs/shell-assets.lock.json','docs/beam-audio.lock.json','docs/rotor-audio.lock.json']){
  const lock=JSON.parse(readFileSync(resolve(root,lockFile),'utf8'));
  if(sha(readFileSync(resolve(root,lock.sourcePath)))!==lock.sourceSha256)throw Error(`Derived asset source changed: ${lockFile}`);
  for(const file of lock.files){
-  if(!['assets/models/ordnance/olive-shell.glb','src/content/shell-geometry.js','assets/audio/sentry_beam_sustain.wav'].includes(file.path))throw Error('Unexpected derived asset path');
+  if(!['assets/models/ordnance/olive-shell.glb','src/content/shell-geometry.js','assets/audio/sentry_beam_sustain.wav','assets/audio/rotor_spin.wav'].includes(file.path))throw Error('Unexpected derived asset path');
   const bytes=readFileSync(resolve(root,file.path));if(bytes.length!==file.bytes||sha(bytes)!==file.sha256)throw Error(`Derived asset changed: ${file.path}`);
  }
  console.log(`Derived assets verified: ${lockFile}`);

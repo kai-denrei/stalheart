@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "sourcePath": "scripts/synth-rotor-loop.mjs",
+  "sourceSha256": "ccd8c73096c90267bdcd9d021d65fb4cd80def2f9dd71f8fe682005a1ddbb2e2",
+  "derivation": "Synthesised, no recording: a four-barrel rotary motor at full spin, partials at integer cycles per one-second loop, filtered air noise crossfaded 60 ms over the seam; 44.1 kHz mono PCM16. Regenerate with node scripts/synth-rotor-loop.mjs.",
+  "files": [
+    {
+      "path": "assets/audio/rotor_spin.wav",
+      "sha256": "27386dcd9781f73e268cc5d8ac8439e90c55e791c2302d2bf6e1c64d290825a3",
+      "bytes": 88244
+    }
+  ]
+}
