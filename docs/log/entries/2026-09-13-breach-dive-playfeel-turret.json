@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "2026-09-13-breach-dive-playfeel-turret",
+  "date": "2026-09-13T07:00:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "The breach camera dives to the sinkhole as it opens; a playfeel section in the dev log; the turret sweeps 90 degrees; a smaller Talon",
+  "context": "Owner playtest: the minigun is good, the Quiver needs work (a smaller missile for one); at the first tremor we see a top-down view and as the eruption starts the camera should zoom down fast to the sinkhole as the enemies emerge; a dev-log section for what feels satisfying and what needs work; the tank's turret rotates almost 180 degrees and should be 90.",
+  "outcome": "Story breach shot: the whole planet through the pre-roll, then a 1.4 s eased dive to a pose five cells over the sinkhole pulled four cells toward the base, held through the emergence, then the tail blend (STORY_BREACH.diveSeconds, height, back). docs/PLAYFEEL.md holds the owner's dated notes and the log renderer appends it to DEVLOG.md as its own section. The tank's turret yaw comes from the authored Turret_Aim idle clip; mork's tick now scales the sampled yaw by TURRET_SWEEP (0.5) about the turret's own axis. STORY_QUIVER.missile.length 1.8 to 1.0. Controller folded back to 17,609.",
+  "alternatives": [
+    "Re-author the Turret_Aim clip upstream: deferred, a runtime scale of the sampled yaw does it now and the constant is one line."
+  ],
+  "evidence": [
+    "npm test, npm run check, browser --story-world before commit"
+  ],
+  "supersedes": []
+}

@@ -2,6 +2,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { loadGlbWithClips, mergeByMaterial, fitModel } from './glbmodels.js';
 import { record } from './diagnostics.js';
+import { TURRET_SWEEP } from './content/tank.js';
 
 let prepared, pending;
 const ammoNames = Array.from({ length: 9 }, (_, i) => `AMMO_PORT_LIGHT_${String(i).padStart(2, '0')}`);
@@ -92,7 +93,7 @@ export function makeMork(source = prepared) {
       if (st.hoverT > 0.999) pose('Hover_Idle', st.t % 3);
       if (st.t - shotAt < 1.4) pose('Fire_Heavy', st.t - shotAt);
     },
-    tick(t) { pose('Turret_Aim', t % 8); pose('Plasma_Sweep', t % 4); },
+    tick(t) { pose('Turret_Aim', t % 8); pose('Plasma_Sweep', t % 4); const q = node('TURRET_YAW').quaternion, yaw = 2 * Math.atan2(q.y, q.w); q.set(0, Math.sin(yaw * TURRET_SWEEP / 2), 0, Math.cos(yaw * TURRET_SWEEP / 2)); },   // the sampled sweep, scaled about the turret's own axis
     // Stalheart still carries nine shells: one lens per shell, not upstream's 27.
     setAmmo(count) {
       lights.forEach((light, i) => light.traverse(o => {

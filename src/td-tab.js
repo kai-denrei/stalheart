@@ -12382,14 +12382,14 @@ export function initTdTab(root) {
       sfx.play('sinkhole_quake',{dist:Math.min(...opened.map(obj=>camDist(obj.position.toArray())))});
       // One skippable establishing shot per new group, never per wave.
       if((wave>0||storyMode)&&!paused&&!shotActive()&&!tutorialActive&&(!introEl||introEl.classList.contains('hidden'))){
-        const direction=opened[0].position.clone().normalize(),returnPos=camera.position.clone(),returnQuat=camera.quaternion.clone();
-        const far=direction.clone().multiplyScalar(3.3),up=camera.up.clone();
-        // IN THE STORY THE PLANET STAYS IN FRAME: through the whole opening and the first fodder emerging, then a short blend back
-        const hold=storyMode?CONTENT.breach.duration+(story?.breachShot.emergeHold??0):0,tail=storyMode?story?.breachShot.tail??1.8:1.8,dur=CONTENT.breach.preRoll+tail+hold;
+        const direction=opened[0].position.clone().normalize(),returnPos=camera.position.clone(),returnQuat=camera.quaternion.clone(),far=direction.clone().multiplyScalar(3.3),up=camera.up.clone();
+        // IN THE STORY: the whole planet through the pre-roll, then as the ground opens a FAST DIVE to a close view over the sinkhole, held while the fodder emerge, then a short blend back
+        const sb=storyMode?story?.breachShot:null,hold=sb?CONTENT.breach.duration+(sb.emergeHold??0):0,tail=sb?sb.tail??1.8:1.8,dur=CONTENT.breach.preRoll+tail+hold,ease=(x)=>{const v=Math.max(0,Math.min(1,x));return v*v*(3-2*v);};
+        const toBase=new THREE.Vector3(0,1,0).sub(direction.clone().multiplyScalar(direction.y)).normalize(),near=direction.clone().multiplyScalar(1+cellSide*(sb?.height??5)).addScaledVector(toBase,cellSide*(sb?.back??4)),nearQ=new THREE.Quaternion(); tmpCam.position.copy(near);tmpCam.up.copy(direction);tmpCam.lookAt(direction);nearQ.copy(tmpCam.quaternion);
         startShot({id:'breach',dur,poseAt:(u,out)=>{
-          const w=Math.max(0,(u*dur-CONTENT.breach.preRoll-hold)/tail),blend=w*w*(3-2*w);out.pos.copy(far).lerp(returnPos,blend);
-          tmpCam.position.copy(far);tmpCam.up.copy(up);tmpCam.lookAt(0,0,0);
-          out.quat.copy(tmpCam.quaternion).slerp(returnQuat,blend);
+          const s=u*dur,blend=ease((s-CONTENT.breach.preRoll-hold)/tail); tmpCam.position.copy(far);tmpCam.up.copy(up);tmpCam.lookAt(0,0,0);
+          if(sb){const dive=ease((s-CONTENT.breach.preRoll)/(sb.diveSeconds??1.4));out.pos.copy(far).lerp(near,dive);out.quat.copy(tmpCam.quaternion).slerp(nearQ,dive);}else{out.pos.copy(far);out.quat.copy(tmpCam.quaternion);}
+          out.pos.lerp(returnPos,blend);out.quat.slerp(returnQuat,blend);
         }});
       }
     });
