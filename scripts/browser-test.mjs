@@ -312,10 +312,12 @@ try{
  await go('story-world-bays','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=7#td');await until('!!window.__stalheartTest',90000);
  const first=await evaluate('window.__stalheartTest.state()');assert.equal(first.deployBerth,2,'the first hull rolls out of bay 3');assert.equal(first.berthCells.length,3);
  await until('window.__stalheartTest.state().bays.length===3',60000);await delay(400);
- const bays=await evaluate('window.__stalheartTest.state()');assert.equal(bays.hulls,3);assert.deepEqual(bays.bays.map((b)=>b.hasTank),[false,true,true],'bay 1 sealed and empty, 2 and 3 hold a hull');assert.deepEqual(bays.bays.map((b)=>b.racked),[false,true,false],'the hull you drive is the one missing from bay 3');
+ const bays=await evaluate('window.__stalheartTest.state()');assert.equal(bays.hulls,3);assert.deepEqual(bays.bays.map((b)=>b.hasTank),[false,true,true],'bay 1 sealed and empty, 2 and 3 hold a hull');assert.deepEqual(bays.bays.map((b)=>b.racked),[false,true,true],'bay 3\'s hull is still on show: it is the one rolling out');
  assert.deepEqual(bays.bays.map((b)=>b.ci),bays.berthCells,'the bays are the berths');assert.deepEqual(bays.berthAssets,['mork','mork']);
  current='story-world-bays';await finish();
- await delay(4000);const rolled=await evaluate('window.__stalheartTest.state()');assert(!rolled.deploying,'the roll-out ends');assert.notEqual(rolled.playerCell,first.berthCells[2],'the hull left its bay');current='story-world-bays-out';await finish();
+ assert(bays.deploying&&bays.rollingOut&&bays.deployBerth===2,'once the bays stand, the first hull replays as bay 3\'s authored roll-out');
+ await delay(4000);current='story-world-bays-rolling';await finish();
+ await until('!window.__stalheartTest.state().deploying',15000);const rolled=await evaluate('window.__stalheartTest.state()');assert.equal(rolled.bays[2].racked,false,'the authored hull hides at the hand-over');assert.notEqual(rolled.playerCell,first.berthCells[2],'the hull left its bay');current='story-world-bays-out';await finish();
  // the phone deep link: ?story=N alone means the story world at that stage, no old heart, no cold open, sparse waves
  await go('story-world-deeplink','index.html?sw=0&acceptance=1&story=4#td');await until('!!window.__stalheartTest',90000);await delay(1500);
  const dl=await evaluate('window.__stalheartTest.state()');assert.equal(dl.heartAsset,'none');assert(dl.story&&dl.story.phase,'story beats run from the deep link');assert(dl.wallCount>40000);

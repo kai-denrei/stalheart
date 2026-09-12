@@ -38,7 +38,7 @@ export const STRUCTURES = Object.freeze([
   // MÖRK parked inside; the first hull leaves 03, the next 02, the last opens 01. The diorama is authored
   // at the kit's 13.3 m MÖRK and scaled to the story's 10 m hull; its roll-out clip is held at 0 (all inside).
   { id: 'bays', asset: 'assets/models/kit/mork_container_low_diorama.glb', island: 'bay', stage: 7, scale: STORY_SCALE.tankMetres / 13.28, offset: [0, 0, 0], heading: [0, -1], pose: { Tank_Roll_Out: 0 },
-    bays: [{ n: 1, x: -11, doors: '01', like: '02' }, { n: 2, x: 0, vehicle: 'VEHICLE_02' }, { n: 3, x: 11, vehicle: 'VEHICLE_03' }] },   // bay centres along the model's X, doors at +Z
+    bays: [{ n: 1, x: -11, doors: '01', like: '02' }, { n: 2, x: 0, vehicle: 'VEHICLE_02' }, { n: 3, x: 11, vehicle: 'VEHICLE_03', rollout: 'Tank_Roll_Out' }] },   // bay centres along the model's X, doors at +Z
   { id: 'assembly', asset: 'assets/models/astro/robotic_assembly_line_d0.glb', island: 'assembly', stage: 8, scale: 1, offset: [0, 0, 0], batch: true, clips: ['Assembly_Cycle'] },
   { id: 'radar', asset: 'assets/models/kit/skyward_low_d0.glb', island: 'radar', stage: 8, scale: 1, offset: [0, 0, 0], clips: ['Array_Slew'] },
 ]);
@@ -50,5 +50,6 @@ export const KIT = Object.freeze({
   stage: 4, wallsPerSide: 6, wallInset: 3,   // walls flank the gate along the rim, inset from the rock
   wallMetres: 4,                              // the lattice rock's roof height, where sentries mount
   fodderSteps: 28,                            // lane cells outward from the mouth where the ground opens: a tank trip to investigate
-  bay: { roll: 2, doorSeconds: 2.4 },         // a hull rolls two lane cells straight out of its doors; the sealed bay's doors take 2.4 s
+  rotorSteps: 1, rotorEdge: 0.4,              // the first Rotor's wall cell touches the lane cell this many steps past the forward cell, and the mount stands this share of the way from the cell centre toward the lane: fewer rounds into its own rock
+  bay: { roll: 2, doorSeconds: 2.4, rollOutMetres: 19, rollOutSeconds: 8 },   // a hull rolls two lane cells straight out of its doors; bay 03's authored roll-out carries the hull 19 model metres in 8 s
 });

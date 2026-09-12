@@ -2174,7 +2174,7 @@ export function initTdTab(root) {
       // hull bays per container; the run's spare tanks rack there, and
       // every spawn — first scene included — drives OUT of a container.
       const cgen = serverGen + 1; // the value ++serverGen produces below
-      Promise.all([preloadContainer(), preloadMork()]).then(() => {
+      Promise.all([storyMode || preloadContainer(), preloadMork()]).then(() => {   // the story never shows the old boxes, so it never fetches them
         if (cgen !== serverGen || !dungeon) return; // board changed since
         // the camp was chosen with the board; this only casts the boxes
         if (berths.length !== 3 || storyMode) return;
@@ -2256,8 +2256,8 @@ export function initTdTab(root) {
           + ` exits=${berths.map((b2) => b2.exit).join(',')}`);
       });
       const gen = ++serverGen;
-      preloadServer().then(() => {
-        if (gen !== serverGen || serverCi < 0) return; // board changed meanwhile
+      (storyMode ? Promise.resolve() : preloadServer()).then(() => {   // no relay vault in the story world either
+        if (storyMode || gen !== serverGen || serverCi < 0) return; // board changed meanwhile
         const g = makeServerFixture();
         if (!g) return;
         const sn = graph.normals[serverCi];
@@ -5742,7 +5742,7 @@ export function initTdTab(root) {
     berths = story?.berths ?? computeBerths(dungeon, graph, { footprintRadius, cellSide });   // the story's tank bay is the camp once it stands
     record('camp.placed', { heartLook: params.heartLook, footprintRadius, cellSide, berths });
     // THE BAYS ARE THE LIFE CONTAINERS: the parked hull in each is the spare, hidden once it has driven out; the sealed bay opens when its turn comes
-    const sb = storyBase; sb?.ready.then(() => { if (sb !== storyBase || !story?.berths) return; lifeContainers = sb.bays().map((b, i) => ({ obj: Object.assign(new THREE.Object3D(), { userData: { asset: 'bay', setStocked: (racked) => { if (!racked) b.open(); } } }), tanks: b.vehicle ? [Object.assign(b.vehicle, { userData: { asset: 'mork' } })] : [], ci: berths[i].ci, exit: berths[i].exit })); syncLifeContainers(); if (deployCount === 1 && player.moves <= 3) deployStart(berthIndexFor(playerHP)); });   // the first scene: the bays land after the opening roll-out, so roll out again where they can be seen
+    const sb = storyBase; sb?.ready.then(() => { if (sb !== storyBase || !story?.berths) return; lifeContainers = sb.bays().map((b, i) => ({ obj: Object.assign(new THREE.Object3D(), { userData: { asset: 'bay', setStocked: (racked) => { if (!racked) b.open(); } } }), tanks: b.vehicle ? [Object.assign(b.vehicle, { userData: { asset: 'mork' } })] : [], ci: berths[i].ci, exit: berths[i].exit, rollout: b.rollout, roll: b.roll })); syncLifeContainers(); if (player.moves <= 3 && throttle === 0 && !cruise) deployStart(berthIndexFor(playerHP)); });   // the first scene: the bays land after the opening roll-out, so roll out again where they can be seen
     // LANES (HT): keep the dungeon carve — rooms joined by WIDE corridors
     // are the monster lanes, and the wall mass between them is the HIGH
     // GROUND where towers mount. generateDungeon already supplies heart,
@@ -6628,7 +6628,7 @@ export function initTdTab(root) {
       // empty from the first second and still reads 3 — which is what the
       // painted numerals are for (operator, 2026-08-31).
       const racked = i < spares;
-      if (cc.tanks[0]) cc.tanks[0].visible = racked;
+      if (cc.tanks[0]) cc.tanks[0].visible = racked || !!cc.rolling;   // a hull mid roll-out is the authored one, still on show
       cc.obj.userData.setStocked(racked, null);
       if (cc.obj.userData.setAlive) cc.obj.userData.setAlive(i < playerHP);
     });
@@ -8546,7 +8546,8 @@ export function initTdTab(root) {
     stopEngine(0.1, true);
     // only what is NOT derivable: which berth, and how far out we are. from,
     // to and segLen were all functions of `n` and drifted-by-construction.
-    deploy = { n, travelled: 0 }; return true;
+    // THE FIRST HULL OUT OF A BAY WITH AN AUTHORED ROLL-OUT PLAYS THE CLIP: the parked hull rolls, ours stays hidden until the clip ends where the run ends
+    const cc = lifeContainers[n]; deploy = { n, travelled: 0, age: 0, clip: cc?.rollout && !cc.rolled ? cc.rollout : 0 }; if (deploy.clip) { cc.rolled = cc.rolling = true; cc.roll(0); playerMesh.visible = false; } return true;
   }
 
   // THE POSE THE WHOLE DESIGN HANGS OFF. Every prelude's last frame is this,
@@ -8557,11 +8558,11 @@ export function initTdTab(root) {
   function deployFramePoseFor(n, out) {
     const b = berths[n];
     if (!b) return;
-    const bc = berthSeg(b)[0];
-    const bn = graph.normals[b.ci];
-    const eye = add3(add3(bc, scale3(bn, params.wallHeight * 1.7 + cellSide * 0.55)),   // past the end of the run, so a long roll-out still comes toward the lens
-      scale3(berthDir(b), Math.max(cellSide * 2.1, dist3(...berthSeg(b)) + cellSide * 0.8)));
-    const look = add3(bc, scale3(bn, params.wallHeight * 0.55));
+    // AN AUTHORED ROLL-OUT IS WATCHED FROM BEHIND THE BAY, over its roof, the hull leaving toward the base: the gameplay pose is behind the hull too, so the 8 s blend never swings through it
+    const bc = berthSeg(b)[0], bn = graph.normals[b.ci], dir = berthDir(b), behind = !!(lifeContainers[n]?.rollout && (deploy?.clip || !lifeContainers[n].rolled));
+    const eye = add3(add3(bc, scale3(bn, params.wallHeight * 1.7 + cellSide * (behind ? 1.2 : 0.55))),
+      behind ? add3(scale3(dir, -cellSide * 2.4), scale3(cross3(bn, dir), cellSide * 0.9)) : scale3(dir, Math.max(cellSide * 2.1, dist3(...berthSeg(b)) + cellSide * 0.8)));
+    const look = add3(behind ? add3(bc, scale3(dir, cellSide * 0.9)) : bc, scale3(bn, params.wallHeight * 0.55));
     out.pos.set(eye[0], eye[1], eye[2]);
     tmpCam.position.copy(out.pos);
     tmpCam.up.set(bn[0], bn[1], bn[2]);
@@ -8576,7 +8577,7 @@ export function initTdTab(root) {
     const b = berths[deploy.n];
     if (!b) return 1;
     const segLen = Math.max(1e-9, dist3(...berthSeg(b)));
-    return Math.min(1, deploy.travelled / segLen);
+    return Math.min(1, deploy.clip ? deploy.age / deploy.clip : deploy.travelled / segLen);
   }
   function deployEase() {
     const u = deployProgress();
@@ -8603,7 +8604,7 @@ export function initTdTab(root) {
     // (`params.speed` at 0, the hull never leaving the berth) the one case it
     // could never catch. The ?hangprobe caught that, which is the entire
     // reason a watchdog gets a test that fires it.
-    const expect = v > 1e-9 ? segLen / v : 0;
+    const expect = deploy.clip || (v > 1e-9 ? segLen / v : 0);
     if (deploy.age > expect * 2 + DEPLOY_GRACE) {
       console.warn(`SHOTWATCH deploy hung: ${deploy.age.toFixed(1)}s for a ${Number.isFinite(expect) ? expect.toFixed(1) : '∞'}s`
         + ` run (speed=${params.speed} bonus=${speedBonus}) — handed over`);
@@ -8611,7 +8612,7 @@ export function initTdTab(root) {
       shotWatchLast = `deploy ${deploy.age.toFixed(1)}s/${Number.isFinite(expect) ? expect.toFixed(1) : '∞'}s`;
       deploy.travelled = segLen;   // finish it where it was going, then hand over
     }
-    deploy.travelled += v * dt;
+    deploy.travelled += v * dt; if (deploy.clip) lifeContainers[deploy.n].roll(deploy.age);   // the clip's clock is the deploy's
     const u = deployProgress();
     const [from, to] = berthSeg(b);
     const p = [0, 1, 2].map((i) => from[i] + (to[i] - from[i]) * u);
@@ -8626,10 +8627,9 @@ export function initTdTab(root) {
       // state, a player already leaning on W drives on without a beat — and
       // forward is the direction the hull is already going, so the handover
       // is continuous rather than a stop.
-      deploy = null;
-      deploysDone++;
-      throttle = 0; cruise = false; autoMode = false;
-      paintThrottle();
+      if (deploy.clip) { lifeContainers[deploy.n].rolling = false; playerMesh.visible = true; }   // hand over: the authored hull hides, ours stands where it stopped
+      deploy = null; deploysDone++;
+      throttle = 0; cruise = false; autoMode = false; paintThrottle();
     }
   }
 
@@ -8771,7 +8771,7 @@ export function initTdTab(root) {
       }
       return;
     }
-    const c = graph.centers[tower.ci];
+    const c = story?.socketAt?.[tower.ci] ?? graph.centers[tower.ci];   // a story socket may stand off-centre: near the lane edge of its wall cell
     const nrm = graph.normals[tower.ci];
     const top = 1 + (story?.sockets.has(tower.ci) ? story.socketLift : params.wallHeight); // the wall's roof, or a story socket on the floor
     obj.position.set(c[0] * top, c[1] * top, c[2] * top);
@@ -9387,7 +9387,7 @@ export function initTdTab(root) {
   // The strike's version of losing a tower: no refund, and the wreck shows.
   // Selling is a decision; this is a consequence.
   function destroyTower(tower) {
-    const c = graph.centers[tower.ci];
+    const c = story?.socketAt?.[tower.ci] ?? graph.centers[tower.ci];
     const nrm = graph.normals[tower.ci];
     const burst = makeDotBurst(tower.def.color, nrm, 40);
     burst.scale.setScalar(cellSide * 1.1);
@@ -11037,7 +11037,7 @@ export function initTdTab(root) {
       scene.add(sp.obj);
     }
   }
-  preloadPortalRing().then((ok) => { if (ok) swapGatesToRing(); });
+  if (readStoryQuery(location.search).world !== 'story') preloadPortalRing().then((ok) => { if (ok) swapGatesToRing(); });   // the story has no portal gates to dress
 
   function makeGateBody(phase) {
     const ring = dressMetal(makePortalRing(0x8fe8ff));
@@ -12843,7 +12843,7 @@ export function initTdTab(root) {
   if (Number.isFinite(pointsOverride)) params.points = Math.min(16000, Math.max(150, pointsOverride));
   const seedOverride = parseInt(urlParams.get('seed') || '', 10);
   if (Number.isFinite(seedOverride)) params.seed = seedOverride >>> 0; const storyQuery = readStoryQuery(location.search), threatMult = storyQuery.threat, storyMode = storyQuery.world === 'story';   // tabula rasa past the landing: no old heart, waves, portals, camp or yard
-  const storyApi = { order: (key, ci) => orderTower(key, ci, { quiet: true }), grant: (n) => { if (n > 0) eco.addBiomass(n, { category: 'grant' }); }, built: (ci) => towerByCell.has(ci), cost: (key) => TOWER_BY_KEY[key]?.cost ?? 0, isao: () => !!isao, enemies: () => enemies.filter((e) => e.alive).length, spawn: (type, ci) => { spawnQueue.push({ type, sp: story?.source ?? { ci, alive: true, obj: new THREE.Group() }, at: spawnClock }); }, brief: (id) => showBrief(id), tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null), breach: (ci) => { const obj = buildPortalObj(ci, 0); scene.add(obj); story.source = { ci, alive: true, obj, hp: 3, found: true }; }, near: (ci) => enemies.some((e) => e.alive && chord(e.pos, graph.centers[ci]) < cellSide * 2.2), kills: () => rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike, pilot: (ci, laneCi) => { enterPilot([ci]); startShot({ id: 'takeControl', dur: 3.2, poseAt: takeControlPose(graph.centers[ci], graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight), onEnd: () => { setView('bastion'); snapCamera(); } }); } };
+  const storyApi = { order: (key, ci) => orderTower(key, ci, { quiet: true }), grant: (n) => { if (n > 0) eco.addBiomass(n, { category: 'grant' }); }, built: (ci) => towerByCell.has(ci), cost: (key) => TOWER_BY_KEY[key]?.cost ?? 0, isao: () => !!isao, enemies: () => enemies.filter((e) => e.alive).length, spawn: (type, ci) => { spawnQueue.push({ type, sp: story?.source ?? { ci, alive: true, obj: new THREE.Group() }, at: spawnClock }); }, brief: (id) => showBrief(id), tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null), breach: (ci) => { const obj = buildPortalObj(ci, 0); scene.add(obj); story.source = { ci, alive: true, obj, hp: 3, found: true }; }, near: (ci) => enemies.some((e) => e.alive && chord(e.pos, graph.centers[ci]) < cellSide * 2.2), kills: () => rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike, pilot: (ci, laneCi) => { enterPilot([ci]); startShot({ id: 'takeControl', dur: 3.2, poseAt: takeControlPose(story?.socketAt?.[ci] ?? graph.centers[ci], graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight), onEnd: () => { setView('bastion'); snapCamera(); } }); } };
   const simParam = urlParams.get('sim');
   if (simParam) {
     simStyle = simParam;
@@ -17477,7 +17477,7 @@ export function initTdTab(root) {
         missiles:towerSeekers.map(m=>({key:m.by.key,config:m.config,t:m.t,name:m.mesh.name,
           position:m.mesh.position.toArray(),ignition:m.mesh.getObjectByName('EXHAUST_FX').visible})),
         drawCalls: renderer.info.render.calls,
-        playerPosition: player.pos.slice(), playerCell: player.cur, deploying: !!deploy, deployBerth: deploy ? deploy.n : -1,
+        playerPosition: player.pos.slice(), playerCell: player.cur, deploying: !!deploy, deployBerth: deploy ? deploy.n : -1, rollingOut: !!deploy?.clip,
         playerBlocked: freeBlocked(player.pos),
         camp: berths.map(b => ({ ...b, open: dungeon.tags[b.ci] !== BLOCKED && dungeon.tags[b.exit] !== BLOCKED,
           clearance: dist3(graph.centers[b.exit], graph.centers[dungeon.heart]) - pedestalRadius() })) }),

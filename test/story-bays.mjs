@@ -22,4 +22,11 @@ assert.equal(nodeNamed(root, 'VEHICLE_02').name, 'VEHICLE_02001', 'authored name
 assert.equal(nodeNamed(root, 'VEHICLE_03'), null);
 const bays = STRUCTURES.find((s) => s.id === 'bays');
 assert.deepEqual(bays.bays.map((b) => b.n), [1, 2, 3]); assert.equal(bays.pose.Tank_Roll_Out, 0, 'every hull starts inside');
+// the roll-out clip in the pinned diorama carries the hull exactly as far, and as long, as the content says
+{ const { readFileSync } = await import('node:fs'); const b = readFileSync(new URL('../assets/models/kit/mork_container_low_diorama.glb', import.meta.url));
+  const len = b.readUInt32LE(12), j = JSON.parse(b.subarray(20, 20 + len).toString()), bin = b.subarray(20 + len + 8);
+  const acc = (i) => { const a = j.accessors[i], bv = j.bufferViews[a.bufferView]; return new Float32Array(bin.buffer, bin.byteOffset + (bv.byteOffset || 0) + (a.byteOffset || 0), a.count * ({ SCALAR: 1, VEC3: 3 }[a.type])); };
+  const clip = j.animations.find((a) => a.name === bays.bays[2].rollout); assert.ok(clip, 'bay 3 names a clip in the diorama');
+  const t = acc(clip.samplers[0].input), v = acc(clip.samplers[0].output);
+  assert.equal(t[t.length - 1], KIT.bay.rollOutSeconds); assert.ok(Math.abs((v[v.length - 1] - v[2]) - KIT.bay.rollOutMetres) < 0.05, 'roll-out travel matches the content'); }
 console.log('Story bays: sealed bay 01 swings open like bay 02 in ' + KIT.bay.doorSeconds + ' s.');

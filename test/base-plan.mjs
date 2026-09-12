@@ -42,10 +42,15 @@ assert.equal(one.structures[0].y, 0, 'the rocket stands on natural ground');
 // walls map to distinct lattice cells that are open floor today; the gate keeps its own cell
 { const cells = full.walls.map((w) => w.cell).filter((c) => c >= 0); assert.ok(cells.length >= 2 && new Set(cells).size >= 2, 'walls block cells on both sides'); for (const c of cells) assert.notEqual(planet.dungeon.tags[c], BLOCKED, 'wall stands on floor'); assert.ok(full.gate.cell >= 0 && !cells.includes(full.gate.cell), 'gate cell is not a wall cell'); assert.ok(full.gate.openRadius > 10); }
 // the Rotor stands on the wall beside the tunnel mouth: a rock cell touching the forward lane cell, outside the clearing
-{ const fc = full.cells.forward, rc = full.cells.rotor, fd = full.cells.fodder;
+{ const fc = full.cells.forward, rc = full.cells.rotor, fd = full.cells.fodder, rl = full.cells.rotorLane;
   assert.ok(fc >= 0 && !planet.clearing.cells.has(fc) && mouth.cells.some((ci) => planet.graph.adj[ci].includes(fc)), 'forward lane cell touches the mouth');
   assert.ok(rc >= 0 && planet.dungeon.tags[rc] === BLOCKED, 'rotor cell is rock (high ground)');
-  assert.ok(planet.graph.adj[fc].includes(rc), 'rotor wall touches the forward lane cell');
+  assert.ok(rl >= 0 && planet.dungeon.tags[rl] !== BLOCKED && (KIT.rotorSteps === 0 ? rl === fc : rl !== fc && planet.arcOfCell(rl) > planet.arcOfCell(fc)), 'the rotor lane cell is open ground down the lane');
+  assert.ok(planet.graph.adj[rl].includes(rc), 'rotor wall touches its lane cell');
+  // the mount stands off the cell centre, toward the lane, on the unit sphere
+  const sk = full.sockets[0]; assert.equal(sk.cell, rc); assert.ok(Math.abs(Math.hypot(...sk.pos) - 1) < 1e-9);
+  const dc = Math.hypot(...sk.pos.map((v, k) => v - planet.graph.centers[rc][k])), dl = Math.hypot(...sk.pos.map((v, k) => v - planet.graph.centers[rl][k]));
+  assert.ok(KIT.rotorEdge === 0 ? dc < 1e-9 : dc > 0 && dl < Math.hypot(...planet.graph.centers[rc].map((v, k) => v - planet.graph.centers[rl][k])), 'the mount leans toward the lane');
   assert.ok(fd >= 0 && fd !== fc && planet.dungeon.tags[fd] !== BLOCKED && planet.arcOfCell(fd) > planet.arcOfCell(fc), 'fodder cell is open ground farther down the lane');
   const rs = full.structures.find((s) => s.id === 'rotor'); assert.equal(rs.cell, rc); assert.equal(rs.y, KIT.wallMetres);
   assert.ok(!full.islands.some((i) => i.id === 'rotor'), 'no slab on the wall'); }
@@ -59,7 +64,8 @@ assert.deepEqual(full.bays.map((b) => b.n), [1, 2, 3]);
     assert.ok(Math.abs(b.x) <= bayIsland.w / 2 && Math.abs(b.z - bayIsland.z) < 1, `bay ${b.n} sits on the bay island`);
     assert.ok(b.cell >= 0 && b.exit >= 0 && b.exit !== b.cell && planet.clearing.cells.has(b.exit) && planet.dungeon.tags[b.exit] !== BLOCKED, `bay ${b.n} exits onto open ground`);
     const run = Math.acos(Math.min(1, b.pos[0] * b.out[0] + b.pos[1] * b.out[1] + b.pos[2] * b.out[2])) * planet.radius;
-    assert.ok(Math.abs(run - roll) < 0.5, `bay ${b.n} run ${run.toFixed(1)} m`);
+    const want = b.rollout ? KIT.bay.rollOutMetres * STRUCTURES.find((s) => s.id === 'bays').scale : roll;   // an authored roll-out ends where its clip ends
+    assert.ok(Math.abs(run - want) < 0.5, `bay ${b.n} run ${run.toFixed(1)} m, wanted ${want.toFixed(1)}`);
     assert.ok(planet.arcOfCell(b.exit) < planet.arcOfCell(b.cell) + 1e-9 || Math.hypot(...planet.worldToFrame([b.out[0] * planet.radius, b.out[1] * planet.radius - planet.radius, b.out[2] * planet.radius])) < Math.hypot(b.x, b.z), `bay ${b.n} rolls toward the pole`);
   }
   assert.ok(full.bays[0].doors && !full.bays[0].vehicle && full.bays[1].vehicle && full.bays[2].vehicle, 'bay 1 is sealed and empty, 2 and 3 hold a hull'); }

@@ -115,24 +115,26 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       for (const name of s.hide ?? []) { const n = root.getObjectByName(name); if (n) n.visible = false; }
       const holder = new THREE.Group(); holder.add(root); root.position.set(...s.offset);
       place(holder, s.x, s.z, s.y, s.heading, s.scale); group.add(holder);
-      const mixer = s.clips?.length || s.pose || s.bays ? new THREE.AnimationMixer(root) : null;
+      const mixer = s.clips?.length || s.pose || s.bays ? new THREE.AnimationMixer(root) : null, held = {};
       if (mixer) {
         for (const clip of gltf.animations) {
           const at = s.pose?.[clip.name];   // a clip held at a time: the bay's roll-out at 0 keeps every hull inside
           if (!s.clips?.includes(clip.name) && at === undefined) continue;
           const a = mixer.clipAction(clip);
-          if (s.hold || at !== undefined) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; a.play(); a.time = at ?? clip.duration; a.paused = true; }
+          if (s.hold || at !== undefined) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; a.play(); a.time = at ?? clip.duration; a.paused = true; held[clip.name] = a; }
           else a.play();
         }
         mixer.update(0); mixers.push(mixer);
       }
-      // the bays hand the game their parked hull (hidden once it has driven out) and a one-shot door opening
+      // the bays hand the game their parked hull (hidden once it has driven out), a one-shot door opening, and
+      // for the bay with an authored roll-out its clip length and a scrub: the game's deploy drives the clock
       for (const b of s.bays ?? []) {
         let opened = false;
-        bays.push({ n: b.n, vehicle: b.vehicle ? nodeNamed(root, b.vehicle) : null, open() {
+        const out = b.rollout ? held[b.rollout] : null;
+        bays.push({ n: b.n, vehicle: b.vehicle ? nodeNamed(root, b.vehicle) : null, rollout: out ? out.getClip().duration : 0, open() {
           if (opened || !b.doors) return; opened = true;
           const a = mixer.clipAction(swingClip(root, b.doors, b.like, kit.bay?.doorSeconds ?? 2.4)); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; a.play();
-        } });
+        }, roll(t) { if (out) { out.paused = true; out.time = Math.max(0, Math.min(out.getClip().duration, t)); mixer.update(0); } } });
       }
       bays.sort((a, b) => a.n - b.n);
       counts.structures++;

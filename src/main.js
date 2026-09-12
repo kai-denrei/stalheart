@@ -76,7 +76,8 @@ if (!root) {
   }
   for (const b of document.querySelectorAll('#tabbar button')) {
     b.classList.toggle('active', b.dataset.tab === target
-      && (('story' in b.dataset) === (target === 'td' && isStoryRoute(location.search)))   // the story entry owns the story world, the others never show active there
+      && (('story' in b.dataset) === (target === 'td' && isStoryRoute(location.search)))   // the story entries own the story world, the others never show active there
+      && (!('story' in b.dataset) || (Number(b.dataset.story) >= 8) === (Number(q.get('stage') ?? q.get('story') ?? 1) >= 8))   // defend is the finished base; story, the opening
       && (!('mission' in b.dataset) || b.dataset.mission === (q.get('mission') || ''))
       && (!('roster' in b.dataset) || b.dataset.roster === (q.get('roster') || '2')));
     b.addEventListener('click', () => {

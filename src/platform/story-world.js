@@ -55,6 +55,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null }) {
     // the hull's size in this world, and the bays as berths once the tank bay stands: the game's deploy
     // starts a hull in its bay and drives it straight out of the doors (bay 3 first, then 2, then 1)
     tankUnit: STORY_SCALE.tankUnit,
+    socketAt: Object.fromEntries(plan.sockets.map((s) => [s.cell, s.pos])),   // where a story socket's mount stands: off-centre, toward the lane
     berths: plan.bays.length ? plan.bays.map((b) => ({ ci: b.cell, exit: b.exit, pos: b.pos, out: b.out })) : null,
   } : null;
   return { ...built, base, plan, story };
