@@ -48,6 +48,8 @@ Validation: `test/terrace-profile.mjs`, `test/story-planet.mjs`, `test/landing-s
 
 **Earlier landings.** Three HUGIN boosters stand out past the clearing from the landing on (`docs/hugin-flight-assets.lock.json`): two on their tripods, one wreck on its side (`tilt` and `lift` on the structure), each snapped to the nearest open cell to its frame point (`anchor: 'open'`), with derived far tiers so the map stays cheap. Draft placement until the tank trip beat is written.
 
+**A day on the planet.** The story world has a sun (`src/core/daylight.js`, `src/fx/daylight.js`, `STORY_DAY`): a five-minute period, three of them daylight at the pole, the orbit leaning 60 degrees off the pole so noon stands 60 degrees up and the base gets a real night. Phase 0 is dawn; the night half of the circle turns a little faster so the day share holds. The light rig blends between the look's own night values (whatever the look just applied) and a day set that is the lab's old permanent rig (warm sun 1.6, pale hemisphere 1.5, a deep-blue background), the stars fade to 15 percent by day, and dawn and dusk ramp over about half a minute so nothing snaps. No shadows: three colours and two intensities a frame. The lab runs the same cycle from mid-morning and exposes `daylight()` and `setDay(phase)`; the game's acceptance state carries the phase.
+
 **Build tag.** Top right, every page shows `build <token>` (the file hash the release build stamps into the page) or `dev` on the source tree, so a screenshot says which build it came from.
 
 **Z-fighting.** Structures ride 6 cm above their slab and the slab material carries a polygon offset, so coplanar floors (the assembly line's plate, the solar generator's base) no longer flicker against the slab.

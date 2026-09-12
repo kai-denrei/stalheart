@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-09-12-day-cycle",
+  "date": "2026-09-12T22:10:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "A five-minute day on the story planet, no shadows: the rig blends between the look's night and the lab's day",
+  "context": "Owner: the lab looked like day and the game like night, both good; what would a fast day-night cycle cost? Assessed as free without shadows (the only real cost would be a shadow pass). Owner: do it free without shadows, slightly gradual.",
+  "outcome": "core/daylight.js: sun angle from a phase with a day share (the night half turns faster), a direction in a plane leaning `tilt` off the pole, a smooth daylight scalar of elevation with a half-minute ramp. fx/daylight.js blends hemisphere, sun (position, colour, intensity scaled by elevation) and the background colour between the rig's captured night values and STORY_DAY.day, rebasing after applyLook; the game dims the sky texture by the daylight; the lab runs the same cycle from mid-morning. Test: 60% day at the pole, noon 60 degrees up, worst step 0.031 per second. Controller unchanged at 17,610.",
+  "alternatives": [
+    "Dynamic shadows from the moving sun: rejected for now, a second render of every caster per frame.",
+    "Rotating the planet instead of the sun: rejected, everything on the sphere is placed in world space."
+  ],
+  "evidence": [
+    "node test/daylight.mjs; npm test 93; npm run check (52 pure-layer modules)",
+    "browser --story and --story-world PASS"
+  ],
+  "supersedes": []
+}

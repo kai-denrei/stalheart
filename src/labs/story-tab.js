@@ -3,7 +3,8 @@
 import * as THREE from '../../vendor/three.module.js';
 import { OrbitControls } from '../../vendor/OrbitControls.js';
 import { LOOKS } from '../looks.js';
-import { STORY_RECIPE, STORY_CLEARING, LANDING_DEFAULTS, STORY_SOUNDS } from '../content/story-defaults.js';
+import { STORY_RECIPE, STORY_CLEARING, LANDING_DEFAULTS, STORY_SOUNDS, STORY_DAY } from '../content/story-defaults.js';
+import { createDaylight } from '../fx/daylight.js';
 import { SOUNDS } from '../audiomanifest.js';
 import { makeAudio } from '../audio.js';
 import { buildStoryPlanet } from '../domain/story-planet.js';
@@ -35,9 +36,11 @@ export function initStoryTab(root) {
   const scene = new THREE.Scene(); scene.background = new THREE.Color(look.bg);
   const camera = new THREE.PerspectiveCamera(40, 1, 0.5, 6000);
   const controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.dampingFactor = 0.08;
-  scene.add(new THREE.HemisphereLight(look.hemi[0], look.hemi[1], 1.4));
-  const sun = new THREE.DirectionalLight(0xfff0dc, 1.6); sun.position.set(120, 260, 90); scene.add(sun);
+  // the lab's rig starts on the look's night values and the cycle blends it toward the day set, the same way the game does
+  const hemi = new THREE.HemisphereLight(look.hemi[0], look.hemi[1], look.hemi[2]); scene.add(hemi);
+  const sun = new THREE.DirectionalLight(look.sun[0], look.sun[1]); sun.position.set(120, 260, 90); scene.add(sun);
   const fill = new THREE.DirectionalLight(look.sun[0], 0.5); fill.position.set(-200, 120, -160); scene.add(fill);
+  const daylight = createDaylight({ hemi, sun, bg: scene.background, day: STORY_DAY.day, tune: STORY_DAY, phase: 0.15 });   // the arrival lands mid-morning
 
   let active = false, disposed = false, frameId = 0, planet = null, planetMesh = null, marker = null, landing = null, errors = [];
   // the thrust bed loops under the descent and cuts at touchdown; the tank's
@@ -144,7 +147,7 @@ export function initStoryTab(root) {
     frameId = requestAnimationFrame(loop);
     const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000); last = now; clock.time += dt;
     if (playing) { seek(t + dt); if (t >= sequence.duration) { playing = false; onRail = false; audioSync(sequence.stateAt(t), false); } }
-    landing?.tick(dt, camera); base?.tick(dt, null, gateForced, camera.position);
+    landing?.tick(dt, camera); base?.tick(dt, null, gateForced, camera.position); daylight.tick(dt);
     if (!onRail) controls.update();
     renderer.render(scene, camera);
   }
@@ -160,6 +163,7 @@ export function initStoryTab(root) {
     state: () => ({ ready: !!planet && !!landing?.state().loaded, cells: planet?.dungeon.tags.length ?? 0, mouths: planet?.clearing.mouths.length ?? 0, openMouths: planet?.clearing.mouths.filter((m) => m.open).length ?? 0, gateMarker: !!marker, playUrl: playUrl(), stage, comms: commsEl.hidden ? null : commsEl.textContent, base: base ? { ...base.counts, errors: base.errors.slice(), children: base.group.children.length, gate: base.gate(), lod: base.lod() } : null, counts: planetMesh?.userData.counts ?? null, t, phase: sequence.stateAt(t).phase, playing, landing: landing?.state() ?? null, cues: cueLog.slice(), audioState: sfx.contextState, errors }),
     land, skip, seek: (time) => { onRail = true; seek(time); }, reset, overview, setStage, gate: (on) => { gateForced = on; }, baseReady: () => base?.ready, dispose: api.dispose,
     frame: (pose, about) => { playing = false; onRail = false; frameCamera(pose, about); controls.update(); },   // a free framing for screenshots: metres around `about` (an island, or {x,z})
+    daylight: () => daylight.state(), setDay: (phase) => daylight.set(phase),
   };
   resize();
   setTimeout(build, 30);
