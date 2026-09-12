@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-09-12-sinkhole-no-go-hull-ends-rockets",
+  "date": "2026-09-12T18:40:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "The sinkhole is a no-go for the hull, the hull's nose and tail are cushioned off walls, three earlier landings stand out past the clearing",
+  "context": "Owner: the tank could sit on top of the sinkhole (treat it as a no-go zone or a slope); the tank clips into walls at corners; place three extra low-poly rockets around the map, two landed upright and one down and broken.",
+  "outcome": "game-breaches exposes craters (position, crater radius); the free-move entry test refuses any point within crater + 0.6 cells, the cushion pushes radially off that rim like the pad, the autopilot skips exits on it. The cushion, rewritten compactly, also cushions the hull's nose and tail (half the hull length along smoothDir) against the rock they are in or beside with a 0.72-cell band at 0.6 weight, so corners push the hull out without pinning it in lanes. Upstream hugin-flight deployed and wreck GLBs pinned; three structures with anchor 'open' (nearest open cell outside the clearing), the wreck tilted 92 degrees and lifted 3.6 m, all with derived far tiers (3.3k triangles). Controller shrank to 17,610 lines; budget lowered.",
+  "alternatives": [
+    "Treat the crater as a slope: rejected for now, a no-go reads clearly and matches the pad rule.",
+    "Hard-block the hull's ends: rejected, a 10 m hull cannot take a 60-degree bend in a 10 m lane without some overlap; nudging keeps lanes passable."
+  ],
+  "evidence": [
+    "npm test 92, npm run check (5 far tiers)",
+    "browser: legacy 44 steps, --story (rockets far and unfetched from the base), --story-world PASS"
+  ],
+  "supersedes": []
+}

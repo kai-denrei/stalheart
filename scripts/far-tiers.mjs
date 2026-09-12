@@ -12,7 +12,8 @@ const args = (ratio) => ['-si', String(ratio), '-sa', '-kn', '-km', '-ke'];
 const triangles = (b) => { const len = b.readUInt32LE(12), j = JSON.parse(b.subarray(20, 20 + len).toString()); const use = {}; for (const n of j.nodes) if (n.mesh !== undefined) use[n.mesh] = (use[n.mesh] || 0) + 1; let t = 0; j.meshes.forEach((m, i) => { for (const p of m.primitives) t += (p.indices !== undefined ? j.accessors[p.indices].count : j.accessors[p.attributes.POSITION].count) / 3 * (use[i] || 0); }); return Math.round(t); };
 mkdirSync('assets/models/far', { recursive: true });
 const derivations = [];
-for (const s of STRUCTURES.filter((s) => s.far?.startsWith('assets/models/far/'))) {   // authored far tiers are pinned upstream, not derived
+const done = new Set();
+for (const s of STRUCTURES.filter((s) => s.far?.startsWith('assets/models/far/') && !done.has(s.far) && done.add(s.far))) {   // authored far tiers are pinned upstream, not derived; shared tiers once
   const src = readFileSync(s.asset); let out = null;
   await pack(['-i', s.asset, '-o', s.far, ...args(KIT.lod.ratio)], { read: (p) => (p === s.asset ? src : readFileSync(p)), write: (p, data) => { if (p === s.far) out = Buffer.from(data); } });
   if (!out) throw Error(`gltfpack wrote nothing for ${s.id}`);

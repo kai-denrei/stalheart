@@ -42,6 +42,10 @@ Validation: `test/terrace-profile.mjs`, `test/story-planet.mjs`, `test/landing-s
 
 **The first wave down is the next unlock.** Once the twenty fodder are spent and none stand, the beats enter `cleared`: Isao's line, and a view strip appears under the tab bar (`src/fx/story-views.js`): TANK leaves the optic and hands the hull back (`leavePilot`), SENTRY takes the printed Rotor again without the shot, MAP is the global view (the optic's map while piloting, orbit otherwise). Sentries still hold their fire on their own; auto-targeting is a later beat.
 
+**The hull keeps off the sinkhole and out of the walls.** Every open crater (the breach module lists them with their radius) is a no-go for the tank: the free-move entry test refuses it, the cushion pushes radially off the rim the way it does off the Stalheart's pad, and the autopilot's exits skip cells on it. Enemies still emerge from it. The cushion also knows the hull has a nose and a tail: each end is nudged by the rock it is in or beside, with a band of the cell's edge plus the hull's half width, so a corner pushes the whole hull out while a straight lane leaves it be.
+
+**Earlier landings.** Three HUGIN boosters stand out past the clearing from the landing on (`docs/hugin-flight-assets.lock.json`): two on their tripods, one wreck on its side (`tilt` and `lift` on the structure), each snapped to the nearest open cell to its frame point (`anchor: 'open'`), with derived far tiers so the map stays cheap. Draft placement until the tank trip beat is written.
+
 **Build tag.** Top right, every page shows `build <token>` (the file hash the release build stamps into the page) or `dev` on the source tree, so a screenshot says which build it came from.
 
 **Z-fighting.** Structures ride 6 cm above their slab and the slab material carries a polygon offset, so coplanar floors (the assembly line's plate, the solar generator's base) no longer flicker against the slab.

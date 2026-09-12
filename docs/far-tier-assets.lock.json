@@ -39,6 +39,30 @@
         "source": 97064,
         "far": 6708
       }
+    },
+    {
+      "id": "rocket-a",
+      "sourcePath": "assets/models/story/hugin_deployed.glb",
+      "sourceSha256": "35695f7c1aca75fe9901b70e13f9827d7c82e10c68b9a34a2eee40a10da54bf4",
+      "path": "assets/models/far/hugin_deployed.glb",
+      "sha256": "3089d9a9129b1c6dd93e9fdd44338aa0e11171e9567aefdab249a10616c12cd4",
+      "bytes": 55432,
+      "triangles": {
+        "source": 21424,
+        "far": 3314
+      }
+    },
+    {
+      "id": "wreck",
+      "sourcePath": "assets/models/story/hugin_wreck.glb",
+      "sourceSha256": "8963f37dd07959f0ac160e56053f113d715e4a82a8d1c9c734cbcfdcb188c440",
+      "path": "assets/models/far/hugin_wreck.glb",
+      "sha256": "9b10aa179df0ff6401c50bd3581467ae0c3ad100fde13c13ba82a90683ca5eed",
+      "bytes": 54068,
+      "triangles": {
+        "source": 21412,
+        "far": 3313
+      }
     }
   ]
 }

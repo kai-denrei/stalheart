@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/jelaludo/SentryTowers_A6",
+  "revision": "2fce4744b0c4933e9dd4c2f2ea586bef3bce7092",
+  "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/2fce4744b0c4933e9dd4c2f2ea586bef3bce7092/",
+  "credit": "Models by jelaludo (https://jelaludo.github.io/SentryTowers_A6/), HUGIN flight vehicle in its deployed and wreck poses, reused with attribution under the upstream ASSET-LICENSE.md",
+  "files": [
+    {
+      "path": "assets/models/story/hugin_deployed.glb",
+      "sourcePath": "assets/hugin-flight/hugin_deployed.glb",
+      "sha256": "35695f7c1aca75fe9901b70e13f9827d7c82e10c68b9a34a2eee40a10da54bf4",
+      "bytes": 1226252
+    },
+    {
+      "path": "assets/models/story/hugin_wreck.glb",
+      "sourcePath": "assets/hugin-flight/hugin_wreck.glb",
+      "sha256": "8963f37dd07959f0ac160e56053f113d715e4a82a8d1c9c734cbcfdcb188c440",
+      "bytes": 1226044
+    }
+  ]
+}

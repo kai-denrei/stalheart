@@ -20,7 +20,10 @@ for (let n = 1; n < STAGES.length; n++) {
   prev = plan;
 }
 const one = planBase(planet, layout, 1);
-assert.deepEqual(one.structures.map((s) => s.id), ['sh02']); assert.equal(one.islands.length, 0, 'rocket lands on natural ground');
+assert.deepEqual(one.structures.map((s) => s.id), ['sh02', 'rocket-a', 'rocket-b', 'wreck']); assert.equal(one.islands.length, 0, 'rocket lands on natural ground');
+// the earlier landings stand on open cells out past the clearing, the wreck on its side
+for (const s of one.structures.slice(1)) { assert.ok(s.cell >= 0 && planet.dungeon.tags[s.cell] !== BLOCKED && !planet.clearing.cells.has(s.cell), `${s.id} on open ground outside the clearing`); assert.equal(s.y, 0); }
+assert.equal(one.structures.find((s) => s.id === 'wreck').tilt, 92);
 const full = planBase(planet, layout, STAGES.length - 1);
 assert.equal(full.islands.length, ISLANDS.length); assert.equal(full.structures.length, STRUCTURES.length);
 for (const s of STRUCTURES) if (s.island) assert.ok(ISLANDS.some((i) => i.id === s.island), `${s.id} has an island`);
@@ -37,7 +40,7 @@ assert.ok(full.gate.heading[1] > 0.9, 'gate faces the pole');
 const rg = Math.hypot(full.gate.x, full.gate.z);
 for (const w of full.walls) { assert.ok(Math.abs(Math.hypot(w.x, w.z) - (rg - KIT.wallInset)) < 0.5, 'wall on the rim'); assert.ok(Math.hypot(w.x - full.gate.x, w.z - full.gate.z) > KIT.gatePlot[0] / 2, 'wall clears the gate'); }
 // structures stand on their island top with the island's frame
-for (const s of full.structures) if (s.id !== 'sh02' && s.id !== 'rotor') assert.ok(s.y > 0 && s.y < 0.1, `${s.id} rides a hair above its slab`);
+for (const s of full.structures) if (s.island && s.id !== 'sh02') assert.ok(s.y > 0 && s.y < 0.1, `${s.id} rides a hair above its slab`);   // the rocket landed before its island
 assert.equal(one.structures[0].y, 0, 'the rocket stands on natural ground');
 // walls map to distinct lattice cells that are open floor today; the gate keeps its own cell
 { const cells = full.walls.map((w) => w.cell).filter((c) => c >= 0); assert.ok(cells.length >= 2 && new Set(cells).size >= 2, 'walls block cells on both sides'); for (const c of cells) assert.notEqual(planet.dungeon.tags[c], BLOCKED, 'wall stands on floor'); assert.ok(full.gate.cell >= 0 && !cells.includes(full.gate.cell), 'gate cell is not a wall cell'); assert.ok(full.gate.openRadius > 10); }

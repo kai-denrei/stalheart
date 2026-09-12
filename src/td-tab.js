@@ -1457,7 +1457,7 @@ export function initTdTab(root) {
     // a fixture (operator field report — the tank phased clean through)
     if (ci === -1 || dungeon.tags[ci] === BLOCKED || ci === serverCi
       || containerBlocked(ci)) return true;
-    if (dist3(cand, graph.centers[dungeon.heart]) < pedestalRadius() + cellSide * 0.3) return true;
+    if (dist3(cand, graph.centers[dungeon.heart]) < pedestalRadius() + cellSide * 0.3 || breachBlocked(cand)) return true;   // the pad, and any open sinkhole: no-go
     // wide ground keeps the clipping margin; narrow halls trade a little
     // visual overlap for guaranteed passability
     const margin = cellSide * (openCount(ci) <= 3 ? 0.45 : 0.62);
@@ -1498,50 +1498,37 @@ export function initTdTab(root) {
   //      into centering instead of fighting
   //   3. the applied push is CAPPED per frame well below drive speed —
   //      the cushion corrects clipping over a few frames, never pins
+  const CRATER_PAD = 0.6;   // cells beyond a sinkhole's crater the hull keeps off: the ground there is open, not drivable
+  const breachBlocked = (p, pad = CRATER_PAD) => gameBreaches.craters().some((k) => dist3(p, k.p) < (k.r + pad) * cellSide);
   function wallCushion(pos) {
     const ci = cellIndex(pos);
     if (ci === -1) return pos;
-    // the pedestal first: a hard radial push out of the pad, before the wall
-    // cushion adds its own nudges
-    {
-      const hc = graph.centers[dungeon.heart];
-      const rim = pedestalRadius() + cellSide * 0.35;
-      const d = dist3(pos, hc);
-      if (d < rim) {
-        const away = sub3(pos, hc);
-        const n = norm3(pos);
-        const tg = sub3(away, scale3(n, dot3(away, n)));
-        const l = len3(tg);
-        if (l > 1e-9) pos = norm3(add3(pos, scale3(tg, (rim - d) / l)));
-      }
+    // the pedestal and every open crater first: a hard radial push out of the pad or off the sinkhole's rim, before the wall cushion adds its nudges
+    for (const { c, rim } of [{ c: graph.centers[dungeon.heart], rim: pedestalRadius() + cellSide * 0.35 }, ...gameBreaches.craters().map((k) => ({ c: k.p, rim: (k.r + CRATER_PAD) * cellSide }))]) {
+      const d = dist3(pos, c); if (d >= rim) continue;
+      const away = sub3(pos, c), n = norm3(pos), tg = sub3(away, scale3(n, dot3(away, n))), l = len3(tg);
+      if (l > 1e-9) pos = norm3(add3(pos, scale3(tg, (rim - d) / l)));
     }
-    const narrow = openCount(ci) <= 3;
-    const margin = cellSide * (narrow ? 0.6 : 0.95);
+    const narrow = openCount(ci) <= 3, margin = cellSide * (narrow ? 0.6 : 0.95);
     let px = 0, py = 0, pz = 0;
     const seen = new Set([ci]);
-    const consider = (w) => {
-      const c = graph.centers[w];
-      const d = dist3(pos, c);
-      if (d >= margin) return;
-      const away = sub3(pos, c);
-      const n = norm3(pos);
-      const tg = sub3(away, scale3(n, dot3(away, n)));
-      const l = len3(tg);
-      if (l < 1e-9) return;
-      const f = (margin - d) / margin;
-      px += (tg[0] / l) * f; py += (tg[1] / l) * f; pz += (tg[2] / l) * f;
+    const consider = (w, at = pos, m = margin, k = 1) => {
+      const c = graph.centers[w], d = dist3(at, c); if (d >= m) return;
+      const away = sub3(at, c), n = norm3(at), tg = sub3(away, scale3(n, dot3(away, n))), l = len3(tg); if (l < 1e-9) return;
+      const f = k * (m - d) / m; px += (tg[0] / l) * f; py += (tg[1] / l) * f; pz += (tg[2] / l) * f;
     };
     for (const nb of graph.adj[ci]) {
-      if (seen.has(nb)) continue;
-      seen.add(nb);
+      if (seen.has(nb)) continue; seen.add(nb);
       if (dungeon.tags[nb] === BLOCKED) { consider(nb); continue; }
-      if (!narrow) {
-        for (const nb2 of graph.adj[nb]) {
-          if (seen.has(nb2)) continue;
-          seen.add(nb2);
-          if (dungeon.tags[nb2] === BLOCKED) consider(nb2);
-        }
-      }
+      if (!narrow) for (const nb2 of graph.adj[nb]) { if (seen.has(nb2)) continue; seen.add(nb2); if (dungeon.tags[nb2] === BLOCKED) consider(nb2); }
+    }
+    // THE HULL HAS A NOSE AND A TAIL (operator, 2026-09-12: the tank clips into walls). Each end is cushioned by the rock it is in or beside,
+    // with a band of the cell's edge plus the hull's half width, weighted to nudge rather than pin: a corner pushes the whole hull out, a straight lane leaves it be
+    const half = unitScale * 0.73, band = cellSide * 0.72;
+    for (const end of [norm3(add3(pos, scale3(player.smoothDir, half))), norm3(sub3(pos, scale3(player.smoothDir, half)))]) {
+      const ce = cellIndex(end); if (ce === -1) continue;
+      if (dungeon.tags[ce] === BLOCKED) consider(ce, end, band, 0.6);
+      for (const nb of graph.adj[ce]) if (dungeon.tags[nb] === BLOCKED) consider(nb, end, band, 0.6);
     }
     const mag = Math.hypot(px, py, pz);
     if (mag < 1e-9) return pos;
@@ -3060,7 +3047,7 @@ export function initTdTab(root) {
     let exits = openNeighbors(player.cur);
     // auto never routes THROUGH a berth (free movement already refuses);
     // if the boxes somehow wall the only way out, solidity yields
-    const clear = exits.filter((e2) => !containerBlocked(e2) && !pedestalBlocked(e2));
+    const clear = exits.filter((e2) => !containerBlocked(e2) && !pedestalBlocked(e2) && !breachBlocked(graph.centers[e2], 0.2));   // the autopilot keeps off the sinkholes too
     if (clear.length) exits = clear;
     if (exits.length === 0) return -1;
     // control mode: while the user steers, their intent dominates — the

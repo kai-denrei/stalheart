@@ -54,7 +54,10 @@ export function planBase(planet, layout, stage) {
   // every island's lattice cell, whether or not its slab is placed yet: the beats need them from the landing on
   const cells = Object.fromEntries(anchored.map((i) => [i.id, i.anchor === 'forward' && forwardCell >= 0 ? forwardCell : nearestCell(i.x, i.z)]));
   const islandById = new Map(anchored.map((i) => [i.id, i]));
+  // a field prop snaps to the nearest open cell to its frame point, anywhere on the planet outside the clearing
+  const nearestOpen = (x, z) => { const w = planet.frameToWorld([x, 0, z]); let best = -1, bd = Infinity; for (let ci = 0; ci < planet.graph.centers.length; ci++) { if (planet.dungeon.tags[ci] === 0 || planet.clearing.cells.has(ci)) continue; const c = planet.graph.centers[ci]; const d = (c[0] * radius - w[0]) ** 2 + (c[1] * radius - radius - w[1]) ** 2 + (c[2] * radius - w[2]) ** 2; if (d < bd) { bd = d; best = ci; } } return best; };
   const structures = layout.structures.filter((s) => s.stage <= stage).map((s) => {
+    if (s.anchor === 'open') { const ci = nearestOpen(s.x, s.z); const [x, z] = frameOf(ci); return { ...s, x, z, y: 0, heading: s.heading ?? [0, 1], cell: ci }; }
     if (s.anchor === 'wall' && wallCell >= 0) { const p = sockets[0].pos, f = planet.worldToFrame([p[0] * radius, p[1] * radius - radius, p[2] * radius]); return { ...s, x: f[0], z: f[2], y: layout.kit.wallMetres ?? 4, heading: [0, 1], cell: wallCell }; }
     const i = islandById.get(s.island);
     // a hair above the slab so coplanar floors do not z-fight; the rocket stands on natural ground

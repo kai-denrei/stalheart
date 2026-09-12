@@ -56,9 +56,10 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
   const group = new THREE.Group(); group.name = 'Story base'; scene.add(group);
   const mixers = [], owned = new Set(), errors = [], bays = [], lod = [];
   const own = (root) => root.traverse((o) => { if (o.geometry) owned.add(o.geometry); for (const m of [o.material].flat().filter(Boolean)) owned.add(m); });
-  const place = (obj, x, z, y, heading, scale = 1) => {
+  // tilt (degrees about the local X, a wreck on its side) and lift (metres up, after the tilt) are for props that do not stand on their base
+  const place = (obj, x, z, y, heading, scale = 1, tilt = 0, lift = 0) => {
     obj.matrixAutoUpdate = false;
-    obj.matrix.copy(basisAt(placer, x, z, heading)).multiply(new THREE.Matrix4().makeTranslation(0, y * metres, 0)).multiply(new THREE.Matrix4().makeScale(scale * metres, scale * metres, scale * metres));
+    obj.matrix.copy(basisAt(placer, x, z, heading)).multiply(new THREE.Matrix4().makeTranslation(0, (y + lift) * metres, 0)).multiply(new THREE.Matrix4().makeRotationX(tilt * Math.PI / 180)).multiply(new THREE.Matrix4().makeScale(scale * metres, scale * metres, scale * metres));
     obj.matrixWorldNeedsUpdate = true;
   };
   const counts = { islands: plan.islands.length, walls: plan.walls.length, structures: 0, gate: !!plan.gate };
@@ -113,7 +114,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     // kit.lod.metres, then the two swap by camera distance with hysteresis. Far away (the map, the orbit) the whole base is cheap.
     ...plan.structures.filter((s) => !skip.includes(s.id)).map((s) => load(s.far ?? s.asset).then((gltf) => {
       if (!gltf) return;
-      const holder = new THREE.Group(); place(holder, s.x, s.z, s.y, s.heading, s.scale); group.add(holder);
+      const holder = new THREE.Group(); place(holder, s.x, s.z, s.y, s.heading, s.scale, s.tilt ?? 0, s.lift ?? 0); group.add(holder);
       const root = mount(s, gltf, holder);
       if (s.far) lod.push({ id: s.id, holder, far: root, near: null, loading: false, shown: 'far', at: new THREE.Vector3().setFromMatrixPosition(holder.matrix) });
       counts.structures++;
@@ -153,7 +154,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
   function driveLod(eye) {
     if (!eye) return;
     for (const l of lod) {
-      const d = l.at.distanceTo(eye);
+      const d = l.at.distanceTo(eye); l.d = d;
       if (!l.near && !l.loading && d < lodSwitch * lodHyst) { l.loading = true; const s = plan.structures.find((x) => x.id === l.id); load(s.asset).then((gltf) => { if (!gltf) return; l.near = mount(s, gltf, l.holder); l.near.visible = false; }).catch((e) => errors.push(`${l.id} near: ${e}`)); }
       if (!l.near) continue;
       const near = l.shown === 'near' ? d < lodSwitch * lodHyst : d < lodSwitch;
@@ -170,7 +171,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     },
     gate: () => ({ present: !!gate.action, open: gate.open, want: gate.want, t: +gate.t.toFixed(2) }),
     bays: () => bays,
-    lod: () => lod.map((l) => ({ id: l.id, shown: l.shown, nearLoaded: !!l.near })),
+    lod: () => lod.map((l) => ({ id: l.id, shown: l.shown, nearLoaded: !!l.near, metres: l.d === undefined ? null : +(l.d / metres).toFixed(0) })),
     dispose() { for (const m of mixers) m.stopAllAction(); gate.mixer?.stopAllAction(); for (const r of owned) r.dispose(); scene.remove(group); },
   };
 }

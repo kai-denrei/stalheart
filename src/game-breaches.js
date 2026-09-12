@@ -27,6 +27,7 @@ export function createGameBreaches(scene,camera,sounds){
   },
   seal(obj){const e=obj.userData.breach;if(!e||!entries.has(e))return false;rubble.add(obj,e.fx.tune.craterRadius);obj.userData.dispose();return true;},
   rubbleState:()=>rubble.state(),
+  craters:()=>[...entries].map(e=>({p:e.obj.position.toArray(),r:e.fx.tune.craterRadius})),   // where the ground is open, and how wide: the hull may not drive onto it
   update(dt,onClear,onOpen=()=>{}){clock+=dt;const opened=[];
    for(const e of entries){
     if(dt>0&&e.pending&&e.fx.ready()){e.pending=false;e.started=true;e.fx.trigger();opened.push(e.obj);}
