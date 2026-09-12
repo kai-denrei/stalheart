@@ -41,7 +41,7 @@ import { storage as localStorage } from './storage.js';
 import * as THREE from '../vendor/three.module.js';
 import GUI from '../vendor/lil-gui.esm.js';
 import { bfsDist, BLOCKED, PATH, ROOM } from './dungeon.js';
-import { buildGameWorld, readStoryQuery, STORY_SOUNDS, takeControlPose } from './platform/story-world.js';
+import { buildGameWorld, readStoryQuery, STORY_SOUNDS, takeControlPose } from './platform/story-world.js'; import { SENTRY_HEAT } from './content/sentry-heat.js'; import { coolHeat } from './core/heat.js'; import { paintBarrelHeat } from './fx/barrel-heat.js'; import { createStoryViews } from './fx/story-views.js';
 import { compileRail } from './cine/rail.js';
 import { SCRIPTS } from './cine/scripts.js';
 import { cuesBetween } from './cine/sound.js';
@@ -116,7 +116,7 @@ import { makeAudio } from './audio.js';
 import { DEATH_KEYS } from './audiomanifest.js';
 
 export function initTdTab(root) {
-  let pilotMode = new URLSearchParams(location.search).get('sentryPilot') === '1';   // the story enters it at runtime
+  let pilotMode = new URLSearchParams(location.search).get('sentryPilot') === '1', storyViews = null;   // the story enters it at runtime; the view strip unlocks after the first wave
   let pilot = null;
   let pilotPosts = [], pilotPost = 0;
   const pilotMounts = [];
@@ -8533,11 +8533,9 @@ export function initTdTab(root) {
     player.freeMode = false; player.virtualStart = null;
     player.cur = b.ci; player.prev = -1;
     player.pos = berthSeg(b)[0].slice();
-    player.prog = 0;
-    player.next = b.exit;
+    player.prog = 0; player.next = b.exit;
     player.heading = berthDir(b);
-    player.travelDir = player.heading.slice();
-    player.smoothDir = player.travelDir.slice();
+    player.travelDir = player.heading.slice(); player.smoothDir = player.travelDir.slice();
     player.segLen = Math.max(1e-9, dist3(...berthSeg(b)));
     throttle = 0; cruise = false; autoMode = false;
     paintThrottle();
@@ -10152,6 +10150,7 @@ export function initTdTab(root) {
       // head to aim. Everything it decides is heptapod.js's; everything it
       // DOES — the rocket, the sound, the model — is the board's.
       if (tw.a6 && !pilotMode) { stepWalker(tw, dt, tNow); continue; }
+      if (tw.key === 'rotor') { const h = SENTRY_HEAT.rotor; tw.heat = coolHeat(tw.heat ?? 0, dt, h); if (tw.overheated && tw.heat < h.resume) tw.overheated = false; paintBarrelHeat(tw.obj, tw.heat); }   // RED TO WHITE HOT: the barrels carry their heat, and a mount that ran too hot waits
       if((tw.def.attack==='slowfield' && towerOffline(shield,tw.id,tNow)) || (storyMode && !pilotMode))continue;   // story sentries: no auto-targeting until the manual override
       aimTower(tw, dt);
       if(tw.key==='rotor'){
@@ -10163,11 +10162,11 @@ export function initTdTab(root) {
       if (pilotMode) {
         const distance=tw.pilotTarget && !tw.pilotTarget.pilotAim ? missileDistance(graph.centers[tw.ci],tw.pilotTarget.pos) : null;
         const maxRange=effectiveStats(tw.def,tw.tier).range*METRES_PER_CELL;
-        const status=tw.obj.userData.loading?'LOADING':distance!==null && distance>maxRange?'OUT OF RANGE':tw.cooldown>0?`COOLING ${tw.cooldown.toFixed(1)} s`:CONTENT.missiles[tw.key] && !tw.lock?.locked?'ACQUIRING':tw.aimErr>SENTRY_TUNE.tolerance?'TRAVERSING':'READY';
-        pilot.update(`${tw.def.label} · POST ${pilotPost+1}/${pilotPosts.length} · WAVE ${wave} · HEART ${Math.ceil(heartHP)}\nMAX ${Math.round(maxRange)} m · ${distance===null?'NO TARGET':`TRACK ${Math.round(distance)} m`} · ${status}`);
+        const status=tw.overheated?`OVERHEATED · ${Math.round(tw.heat*100)}%`:tw.obj.userData.loading?'LOADING':distance!==null && distance>maxRange?'OUT OF RANGE':tw.cooldown>0?`COOLING ${tw.cooldown.toFixed(1)} s`:CONTENT.missiles[tw.key] && !tw.lock?.locked?'ACQUIRING':tw.aimErr>SENTRY_TUNE.tolerance?'TRAVERSING':'READY';
+        pilot.update(`${tw.def.label} · POST ${pilotPost+1}/${pilotPosts.length} · WAVE ${wave} · HEART ${Math.ceil(heartHP)}\nMAX ${Math.round(maxRange)} m · ${distance===null?'NO TARGET':`TRACK ${Math.round(distance)} m`} · ${status}${tw.heat>0.02?` · HEAT ${Math.round(Math.min(1,tw.heat)*100)}%`:''}`);
         if (!pilot.state.held || pilot.isMap()) continue;
       }
-      if (tw.cooldown > 0) continue;
+      if (tw.cooldown > 0 || tw.overheated) continue;
       const eff = effectiveStats(tw.def, tw.tier);
       const range = eff.range * cellSide;
       const tp = graph.centers[tw.ci];
@@ -10218,7 +10217,7 @@ export function initTdTab(root) {
         }
       }
       if (tw.def.hitscan && (tw.aimErr ?? 99) > SENTRY_TUNE.tolerance) continue;
-      tw.cooldown = shotInterval(eff.rate * (pilotMode ? story?.pilot.rateMul ?? 1 : 1));   // the story's piloted sentry streams rounds
+      tw.cooldown = shotInterval(eff.rate * (pilotMode ? story?.pilot.rateMul ?? 1 : 1)); if (tw.key === 'rotor') { tw.heat = (tw.heat ?? 0) + SENTRY_HEAT.rotor.perShot; if (tw.heat >= 1) tw.overheated = true; }   // the story's piloted sentry streams rounds; every round heats the barrels
       if (pilotMode) pilot.state.shots++;
       // one line, every tower: the key IS the def key, unless the def says
       // otherwise — which the second roster's do, since there is no
@@ -12842,7 +12841,7 @@ export function initTdTab(root) {
   if (Number.isFinite(pointsOverride)) params.points = Math.min(16000, Math.max(150, pointsOverride));
   const seedOverride = parseInt(urlParams.get('seed') || '', 10);
   if (Number.isFinite(seedOverride)) params.seed = seedOverride >>> 0; const storyQuery = readStoryQuery(location.search), threatMult = storyQuery.threat, storyMode = storyQuery.world === 'story';   // tabula rasa past the landing: no old heart, waves, portals, camp or yard
-  const storyApi = { order: (key, ci) => orderTower(key, ci, { quiet: true }), grant: (n) => { if (n > 0) eco.addBiomass(n, { category: 'grant' }); }, built: (ci) => towerByCell.has(ci), cost: (key) => TOWER_BY_KEY[key]?.cost ?? 0, isao: () => !!isao, enemies: () => enemies.filter((e) => e.alive).length, spawn: (type, ci) => { spawnQueue.push({ type, sp: story?.source ?? { ci, alive: true, obj: new THREE.Group() }, at: spawnClock }); }, brief: (id) => showBrief(id), tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null), breach: (ci) => { const obj = buildPortalObj(ci, 0); scene.add(obj); story.source = { ci, alive: true, obj, hp: 3, found: true }; }, near: (ci) => enemies.some((e) => e.alive && chord(e.pos, graph.centers[ci]) < cellSide * 2.2), kills: () => rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike, pilot: (ci, laneCi) => { enterPilot([ci]); startShot({ id: 'takeControl', dur: 3.2, poseAt: takeControlPose(perchOf(towerByCell.get(ci) ?? { ci }), graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight), onEnd: () => { setView('bastion'); snapCamera(); } }); } };
+  const storyApi = { order: (key, ci) => orderTower(key, ci, { quiet: true }), grant: (n) => { if (n > 0) eco.addBiomass(n, { category: 'grant' }); }, built: (ci) => towerByCell.has(ci), cost: (key) => TOWER_BY_KEY[key]?.cost ?? 0, isao: () => !!isao, enemies: () => enemies.filter((e) => e.alive).length, spawn: (type, ci) => { spawnQueue.push({ type, sp: story?.source ?? { ci, alive: true, obj: new THREE.Group() }, at: spawnClock }); }, brief: (id) => showBrief(id), tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null), breach: (ci) => { const obj = buildPortalObj(ci, 0); scene.add(obj); story.source = { ci, alive: true, obj, hp: 3, found: true }; }, near: (ci) => enemies.some((e) => e.alive && chord(e.pos, graph.centers[ci]) < cellSide * 2.2), kills: () => rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike, unlock: (what) => { if (what === 'views' && !storyViews) { storyViews = createStoryViews(root, { tank: () => leavePilot(), sentry: () => { if (!pilotMode) enterPilot([story.beats.state().socket]); }, map: () => (pilotMode ? pilot.setView('map') : setView('orbit')) }); storyViews.active('sentry'); } }, pilot: (ci, laneCi) => { enterPilot([ci]); startShot({ id: 'takeControl', dur: 3.2, poseAt: takeControlPose(perchOf(towerByCell.get(ci) ?? { ci }), graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight), onEnd: () => { setView('bastion'); snapCamera(); } }); } };
   const simParam = urlParams.get('sim');
   if (simParam) {
     simStyle = simParam;
@@ -17559,6 +17558,7 @@ export function initTdTab(root) {
     };
   }
 
+  function leavePilot() { if (!pilotMode) return; pilot?.dispose(); pilot = null; pilotMode = false; params.callouts = true; delete window.__stalheartPilotTest; setView('third'); snapCamera(); }   // back to the hull
   function enterPilot(posts) { pilotMode = true;   // practice mode computes six posts; the story hands over the Rotor it printed
     function installPilot(key) {
       const old=pilotMounts[pilotPost];
@@ -17599,7 +17599,7 @@ export function initTdTab(root) {
     deploy=null;endShot();dismissIntro();paused=false;tutorial.frozen=false;runTutorial=false;
     for(let i=0;i<pilotPosts.length;i++)pilotMounts[i]=posts?towerByCell.get(pilotPosts[i]):commitTower('needle',pilotPosts[i],0);
     clearBriefs();params.callouts=false;setView('bastion');pilot.select(posts?pilotMounts[0]?.key||'rotor':'needle');hideRangeRing();snapCamera();
-    if(urlParams.get('acceptance')==='1')window.__stalheartPilotTest={state:()=>({paused,seed:params.seed,points:params.points,sector:round,posts:pilotPosts.slice(),view:pilot.state.view,ci:pilot.state.tower.ci,key:pilot.state.tower.key,shots:pilot.state.shots,held:pilot.state.held,wave,enemies:enemies.filter(e=>e.alive).length,tank:player.pos.slice(),camera:camera.position.toArray(),target:pilot.state.target?.id??null,ready:!pilot.state.tower.obj.userData.loading,aimError:pilot.state.tower.aimErr,lock:pilot.state.tower.lock,heart:heartHP}),select:key=>pilot.select(key),
+    if(urlParams.get('acceptance')==='1')window.__stalheartPilotTest={state:()=>({paused,seed:params.seed,points:params.points,sector:round,posts:pilotPosts.slice(),view:pilot.state.view,ci:pilot.state.tower.ci,key:pilot.state.tower.key,shots:pilot.state.shots,held:pilot.state.held,heat:pilot.state.tower.heat??0,overheated:!!pilot.state.tower.overheated,wave,enemies:enemies.filter(e=>e.alive).length,tank:player.pos.slice(),camera:camera.position.toArray(),target:pilot.state.target?.id??null,ready:!pilot.state.tower.obj.userData.loading,aimError:pilot.state.tower.aimErr,lock:pilot.state.tower.lock,heart:heartHP}),select:key=>pilot.select(key),
       aimEnemy:()=>{const tw=pilot.state.tower;const e=enemies.find(e=>e.alive&&missileDistance(graph.centers[tw.ci],e.pos)<effectiveStats(tw.def,tw.tier).range*10&&losClear(tw.ci,e.pos));if(!e)return null;pilot.aimAt(add3(e.pos,scale3(norm3(e.pos),cellSide*.3)));return {id:e.id,hp:e.hp};},
       enemy:id=>{const e=enemies.find(e=>e.id===id);return e?{hp:e.hp,alive:e.alive}:null;},hold:on=>{pilot.state.held=!!on;},view:v=>pilot.setView(v)
     };

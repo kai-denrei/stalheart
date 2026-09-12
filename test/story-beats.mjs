@@ -13,6 +13,7 @@ function fakeGame({ printSeconds = 6, cost = 45, walk = 3 } = {}) {
     breach: (ci) => { log.push(['breach', ci]); },
     near: () => firstSpawn !== null && clock - firstSpawn >= walk,
     pilot: (ci, lane) => { log.push(['pilot', ci, lane]); },
+    unlock: (what) => { log.push(['unlock', what]); },
     spawn: (type, ci) => { log.push(['spawn', type, ci]); alive++; if (firstSpawn === null) firstSpawn = clock; },
   } };
 }
@@ -38,11 +39,19 @@ const kinds = (g, k) => g.log.filter((l) => l[0] === k);
   g.kill(3); run(beats, g, 10); assert.equal(kinds(g, 'spawn').length, 5, 'total cap holds');
   assert.ok(kinds(g, 'spawn').every((l) => l[1] === 'phage' && l[2] === 4300));
   assert.equal(kinds(g, 'pilot').length, 1, 'control taken once');
-  // the fifth kill: the comms study; the tenth: the biomass line; each once
-  g.kill(1); run(beats, g, 0.5); assert.ok(!kinds(g, 'brief').some((l) => l[1] === 'alien_comms'), 'five kills first');
-  g.kill(1); run(beats, g, 0.5); assert.equal(kinds(g, 'brief').at(-1)[1], 'alien_comms');
-  g.kill(5); run(beats, g, 0.5); assert.equal(kinds(g, 'brief').at(-1)[1], 'harvest_biomass');
-  run(beats, g, 5); assert.equal(kinds(g, 'brief').filter((l) => l[1] === 'harvest_biomass').length, 1, 'said once');
+  // the fifth kill: the comms study; and with the five-strong wave spent and nothing standing, the wave is cleared: Isao's line, the views unlock, once
+  g.kill(1); run(beats, g, 0.5); assert.ok(!kinds(g, 'brief').some((l) => l[1] === 'alien_comms'), 'five kills first'); assert.equal(beats.state().phase, 'piloting', 'one still standing');
+  g.kill(1); run(beats, g, 0.5); assert.deepEqual(kinds(g, 'brief').slice(-2).map((l) => l[1]), ['alien_comms', 'wave_cleared']); assert.equal(beats.state().phase, 'cleared'); assert.deepEqual(kinds(g, 'unlock'), [['unlock', 'views']]);
+  run(beats, g, 5); assert.equal(kinds(g, 'brief').filter((l) => l[1] === 'wave_cleared').length, 1, 'said once'); assert.equal(kinds(g, 'unlock').length, 1); assert.ok(!kinds(g, 'brief').some((l) => l[1] === 'harvest_biomass'), 'no tenth kill in a five-strong wave');
+}
+// a longer wave: the tenth kill brings the biomass line, said once, and the wave is not cleared while any of it stands
+{
+  const beats = makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, rotorDelay: 2, fodderEvery: 1, fodderAlive: 4, fodderTotal: 12, tremorDelay: 1, breachDelay: 2, overrideDelay: 1 });
+  const g = fakeGame({ walk: 3 });
+  run(beats, g, 17); assert.equal(beats.state().phase, 'piloting');
+  for (let k = 0; k < 10; k++) { g.kill(1); run(beats, g, 1); }
+  assert.equal(kinds(g, 'brief').filter((l) => l[1] === 'harvest_biomass').length, 1, 'the tenth kill, once'); assert.equal(beats.state().phase, 'piloting', 'two of twelve still to come');
+  g.kill(2); run(beats, g, 3); assert.equal(beats.state().phase, 'cleared'); assert.equal(kinds(g, 'brief').at(-1)[1], 'wave_cleared');
 }
 // ungated world (no gate yet): straight to control, no fodder
 {

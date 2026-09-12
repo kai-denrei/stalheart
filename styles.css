@@ -4501,3 +4501,7 @@ body:not(.chrome-open) #tabbar .tabgroup:not(:has(button.active)) { display: non
 body.chrome-open #story-stages-nav { display: flex; }
 #story-stages-nav button { font: 600 12px ui-monospace, Menlo, monospace; color: #9fdcff; background: rgba(12, 26, 38, 0.85); border: 1px solid #2b6b96; border-radius: 8px; padding: 8px 10px; cursor: pointer; }
 #story-stages-nav button.active { background: rgba(40, 90, 120, 0.95); color: #dff4ff; border-color: #6fc3ff; }
+/* the story's view strip, unlocked after the first wave: TANK / SENTRY / MAP */
+#story-views { position: fixed; bottom: 64px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; padding: 6px 8px; background: rgba(8, 14, 20, 0.85); border: 1px solid #2b6b96; border-radius: 10px; z-index: 40; }
+#story-views button { font: 700 12px ui-monospace, Menlo, monospace; letter-spacing: 0.08em; color: #9fdcff; background: rgba(12, 26, 38, 0.85); border: 1px solid #2b6b96; border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+#story-views button.active { background: rgba(40, 90, 120, 0.95); color: #dff4ff; border-color: #6fc3ff; }

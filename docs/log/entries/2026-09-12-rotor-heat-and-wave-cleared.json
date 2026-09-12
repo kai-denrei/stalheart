@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-09-12-rotor-heat-and-wave-cleared",
+  "date": "2026-09-12T16:20:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "Rotor barrels run red to white hot with an overheat lockout; the first wave cleared unlocks tank / sentry / map switching",
+  "context": "Owner: give the Rotor barrels the red/white hot treatment, running too hot needs a cool-down, generous but realistic. The story was stuck after killing enemies with the sentry: make killing the first wave the next unlock, with view buttons to switch from tank to sentry to global view.",
+  "outcome": "Heat per round with radiative cooling (content SENTRY_HEAT, core coolHeat/heatGlow, fx paintBarrelHeat on the Edge meshes under the ROTOR pivot, materials cloned per model); lockout at 1.0 until under 0.35; the optic shows HEAT % and OVERHEATED. Sized against the measured piloted cadence (about 15 rounds/s; a first cut at 0.045 per round locked after 25 rounds): 0.016 per round gives about ten seconds flat out and four and a half back. Beats: with all fodder spent and none standing, 'cleared' fires Isao's wave_cleared line and api.unlock('views'); the controller builds the TANK / SENTRY / MAP strip, with a new leavePilot that disposes the optic and hands the hull back. Acceptance drives the wave to cleared and clicks all three. Controller at 17,623.",
+  "alternatives": [
+    "Heat by time held rather than per round: rejected, per round follows the cadence and applies to auto fire the same way.",
+    "Auto-targeting after the wave: deferred, a later beat."
+  ],
+  "evidence": [
+    "headless probe: shots/heat/overheated over six samples at the first tuning, then the retune",
+    "npm test 92 (story-beats extended with a twelve-strong wave), npm run check",
+    "node scripts/browser-test.mjs --story-world: heat after a burst, cleared beat, strip, TANK/SENTRY/MAP"
+  ],
+  "supersedes": []
+}

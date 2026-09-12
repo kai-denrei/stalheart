@@ -9,6 +9,7 @@
 //   approach      fodder walks up the lane until one reaches the closed gate
 //   override      Isao: not ready for auto-targeting, manual override
 //   piloting      the player has the Rotor; fodder keeps coming, capped
+//   cleared       the first wave is down: Isao's line, and the views unlock (tank, sentry, map)
 export function makeStoryBeats({
   socket, lane = -1, fodder = -1, gate = -1, rotorDelay = 2, key = 'rotor',
   fodderType = 'phage', fodderEvery = 2.5, fodderAlive = 8, fodderTotal = 20,
@@ -45,6 +46,7 @@ export function makeStoryBeats({
         const kills = api.kills?.() ?? 0;
         if (kills >= commsKills && !said.has('alien_comms')) { api.brief?.('alien_comms'); said.add('alien_comms'); }
         if (kills >= harvestKills && !said.has('harvest_biomass')) { api.brief?.('harvest_biomass'); said.add('harvest_biomass'); }
+        if (spawned >= fodderTotal && api.enemies() === 0) { api.brief?.('wave_cleared'); api.unlock?.('views'); said.add('wave_cleared'); enter('cleared'); }
       }
     },
     state: () => ({ phase, clock: +clock.toFixed(2), socket, orderedAt, readyAt, spawned, gated, said: [...said] }),

@@ -311,8 +311,18 @@ try{
  // keep shooting: the fifth kill brings the comms study, the tenth the biomass line
  await evaluate('window.__stalheartPilotTest.hold(true)');
  await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("harvest_biomass"))return true;window.__stalheartPilotTest.aimEnemy();return false;})()',120000);
+ const hot=await evaluate('window.__stalheartPilotTest.state()');assert(hot.heat>0.05,`the barrels carry heat after a burst (${hot.heat})`);
  await evaluate('window.__stalheartPilotTest.hold(false)');const said=await evaluate('window.__stalheartTest.state().story.said');assert(said.includes('alien_comms')&&said.includes('harvest_biomass'),'both lines said');
  await delay(400);current='story-world-harvest';await finish();
+ // THE FIRST WAVE DOWN IS THE NEXT UNLOCK: keep firing until the twenty are spent and none stand, then Isao's line and the view strip
+ assert.equal(await evaluate('document.querySelector("#story-views")'),null,'no view strip before the wave is cleared');
+ await evaluate('window.__stalheartPilotTest.hold(true)');
+ await until('(()=>{const s=window.__stalheartTest.state();if(s.story.phase==="cleared")return true;const t=window.__stalheartPilotTest;if(t.state().overheated)return false;t.aimEnemy();return false;})()',240000);
+ await evaluate('window.__stalheartPilotTest.hold(false)');const cleared=await evaluate('window.__stalheartTest.state()');assert(cleared.story.said.includes('wave_cleared'));await until('window.__stalheartTest.state().performance.enemies===0',5000);   // the performance block is a periodic sample
+ await until('!!document.querySelector("#story-views")',5000);await delay(600);current='story-world-cleared';await finish();
+ await click('#story-views [data-view="tank"]');await until('typeof window.__stalheartPilotTest==="undefined" && !document.querySelector("#sentry-pilot")',5000);await delay(800);current='story-world-views-tank';await finish();
+ await click('#story-views [data-view="sentry"]');await until('!!window.__stalheartPilotTest && !!document.querySelector("#sentry-pilot")',5000);await delay(600);current='story-world-views-sentry';await finish();
+ await click('#story-views [data-view="map"]');await until('!!document.querySelector(".pilot-map")',5000);await delay(600);current='story-world-views-map';await finish();
  // THE THREE HULLS ARE THE THREE LIVES: at stage 7 the bays are the berths; the first hull starts inside bay 3 and rolls out of its doors,
  // bay 3's parked hull is hidden the moment it is the one being driven, bays 1 and 2 keep theirs (1 sealed and empty by construction)
  await go('story-world-bays','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=7#td');await until('!!window.__stalheartTest',90000);
