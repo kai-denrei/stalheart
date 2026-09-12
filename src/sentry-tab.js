@@ -41,6 +41,7 @@ import { mountSentryRadial } from './labs/sentry-radial.js';
 import * as THREE from '../vendor/three.module.js';
 import { OrbitControls } from '../vendor/OrbitControls.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
+import { MeshoptDecoder } from '../vendor/meshopt_decoder.module.js';
 import GUI from '../vendor/lil-gui.esm.js';
 import { makeBloom } from './postfx.js';
 import { makeBeamShot } from './shotfx.js';
@@ -325,7 +326,7 @@ export function initSentryTab(root) {
   }
 
   // --- the model -----------------------------------------------------------
-  const loader = new GLTFLoader();
+  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
   const wallMat = new THREE.MeshStandardMaterial({ color: 0x2a3138, roughness: 0.85, metalness: 0.15 });
 
   function clearBattery() {

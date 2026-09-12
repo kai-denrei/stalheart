@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "tool": "gltfpack 1.2.0 (meshoptimizer simplifier)",
+  "args": "-si 0.1 -sa -kn -km -ke",
+  "note": "Derived far tiers of the story landmarks: a tenth of the triangles, named nodes, materials and extras kept. Regenerate with npm run tiers.",
+  "derivations": [
+    {
+      "id": "hugin",
+      "sourcePath": "assets/models/astro/hugin_launchpad_d0_game.glb",
+      "sourceSha256": "e9bb58e5de49a96e82f5c06310a61dbb5da9a63998f14246399e21ec120f44cd",
+      "path": "assets/models/far/hugin.glb",
+      "sha256": "99a39ec3ec41f26b4a326db129ba618d705144fba70e660dd49bd1059f1a1a5b",
+      "bytes": 141676,
+      "triangles": {
+        "source": 39731,
+        "far": 4492
+      }
+    },
+    {
+      "id": "stalheart",
+      "sourcePath": "assets/models/astro/terraformer_3000_d0_game.glb",
+      "sourceSha256": "fca5494177ef776cc5d0201ba0530285b4c992a7d4944ada980fe58676edc339",
+      "path": "assets/models/far/stalheart.glb",
+      "sha256": "b71e552d6bb313403a721743f42475bedff38beeb2248fcdddd496828bb78536",
+      "bytes": 789624,
+      "triangles": {
+        "source": 40506,
+        "far": 4998
+      }
+    },
+    {
+      "id": "assembly",
+      "sourcePath": "assets/models/astro/robotic_assembly_line_d0.glb",
+      "sourceSha256": "2003d59d484756ccdbc13022db18b885b6b2d04df98cd8e7d735e5908fede371",
+      "path": "assets/models/far/assembly.glb",
+      "sha256": "d4695d8ed76deb3f567264ab3e08e0d0204f417a3a880f1e4a833baadb13d071",
+      "bytes": 1213036,
+      "triangles": {
+        "source": 97064,
+        "far": 6708
+      }
+    }
+  ]
+}

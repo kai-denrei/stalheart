@@ -30,16 +30,18 @@ export const ISLANDS = Object.freeze([
 // authored origin on the plot, uniform scale, nodes to hide
 export const STRUCTURES = Object.freeze([
   { id: 'sh02', asset: 'assets/models/story/sh_rocket.glb', island: 'landing', stage: 1, scale: 1.5, offset: [0, 0, 0], clips: ['Legs_Deploy', 'Top_Door_Open'], hold: true },
-  { id: 'solar', asset: 'assets/models/astro/solar_power_complex_d0.glb', island: 'solar', stage: 3, scale: 1, offset: [0, 0, -1.6], batch: true },
+  // far: the tier shown beyond KIT.lod.metres; the near tier is only fetched once the camera comes close. Authored tiers where the
+  // owner exports them (solar: LOD1 game, LOD2 distance); elsewhere derived under assets/models/far by npm run tiers (a tenth of the triangles)
+  { id: 'solar', asset: 'assets/models/astro/solar_power_complex_lod1_d0.glb', far: 'assets/models/astro/solar_power_complex_lod2_d0.glb', island: 'solar', stage: 3, scale: 1, offset: [0, 0, -1.6], batch: true },
   { id: 'rotor', asset: 'assets/models/sentries/rotor_t1.glb', island: null, anchor: 'wall', stage: 3, scale: 3, offset: [0, 0, 0] },   // high ground: the rock beside the tunnel mouth
-  { id: 'hugin', asset: 'assets/models/astro/hugin_launchpad_d0_game.glb', island: 'hugin', stage: 5, scale: 1, offset: [-3, 0, 8], hide: ['REUSABLE_BOOSTER'], clips: ['Cargo_Recovery_Cycle'] },
-  { id: 'stalheart', asset: 'assets/models/astro/terraformer_3000_d0_game.glb', island: 'stalheart', stage: 6, scale: 1, offset: [14.5, 0, 0], clips: ['Terraforming_Cycle'] },
+  { id: 'hugin', asset: 'assets/models/astro/hugin_launchpad_d0_game.glb', far: 'assets/models/far/hugin.glb', island: 'hugin', stage: 5, scale: 1, offset: [-3, 0, 8], hide: ['REUSABLE_BOOSTER'], clips: ['Cargo_Recovery_Cycle'] },
+  { id: 'stalheart', asset: 'assets/models/astro/terraformer_3000_d0_game.glb', far: 'assets/models/far/stalheart.glb', island: 'stalheart', stage: 6, scale: 1, offset: [14.5, 0, 0], clips: ['Terraforming_Cycle'] },
   // THE THREE HULLS ARE THE THREE LIVES. The kit's three-bay diorama: 01 sealed, 02 and 03 open with a
   // MÖRK parked inside; the first hull leaves 03, the next 02, the last opens 01. The diorama is authored
   // at the kit's 13.3 m MÖRK and scaled to the story's 10 m hull; its roll-out clip is held at 0 (all inside).
   { id: 'bays', asset: 'assets/models/kit/mork_container_low_diorama.glb', island: 'bay', stage: 7, scale: STORY_SCALE.tankMetres / 13.28, offset: [0, 0, 0], heading: [0, -1], pose: { Tank_Roll_Out: 0 },
     bays: [{ n: 1, x: -11, doors: '01', like: '02' }, { n: 2, x: 0, vehicle: 'VEHICLE_02' }, { n: 3, x: 11, vehicle: 'VEHICLE_03', rollout: 'Tank_Roll_Out' }] },   // bay centres along the model's X, doors at +Z
-  { id: 'assembly', asset: 'assets/models/astro/robotic_assembly_line_d0.glb', island: 'assembly', stage: 8, scale: 1, offset: [0, 0, 0], batch: true, clips: ['Assembly_Cycle'] },
+  { id: 'assembly', asset: 'assets/models/astro/robotic_assembly_line_d0.glb', far: 'assets/models/far/assembly.glb', island: 'assembly', stage: 8, scale: 1, offset: [0, 0, 0], batch: true, clips: ['Assembly_Cycle'] },
   { id: 'radar', asset: 'assets/models/kit/skyward_low_d0.glb', island: 'radar', stage: 8, scale: 1, offset: [0, 0, 0], clips: ['Array_Slew'] },
 ]);
 
@@ -51,5 +53,6 @@ export const KIT = Object.freeze({
   wallMetres: 4,                              // the lattice rock's roof height, where sentries mount
   fodderSteps: 28,                            // lane cells outward from the mouth where the ground opens: a tank trip to investigate
   rotorSteps: 2, rotorEdge: 0.4,              // the first Rotor's wall cell touches the lane cell this many steps past the forward cell; the lab's static model stands this share of the way toward the lane (the game perches every tower on its wall's edge)
-  bay: { roll: 2, doorSeconds: 2.4, rollOutMetres: 19, rollOutSeconds: 8 },   // a hull rolls two lane cells straight out of its doors; bay 03's authored roll-out carries the hull 19 model metres in 8 s
+  bay: { roll: 2, doorSeconds: 2.4, rollOutMetres: 19, rollOutSeconds: 8 },
+  lod: { metres: 150, hysteresis: 1.3, ratio: 0.1 },   // camera closer than this shows the near tier (and first fetches it); it stays until 1.3x that; far tiers keep a tenth of the triangles   // a hull rolls two lane cells straight out of its doors; bay 03's authored roll-out carries the hull 19 model metres in 8 s
 });

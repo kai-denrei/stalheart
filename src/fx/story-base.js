@@ -4,9 +4,10 @@
 // maps frame metres onto whichever sphere the host renders.
 import * as THREE from '../../vendor/three.module.js';
 import { GLTFLoader } from '../../vendor/GLTFLoader.js';
+import { MeshoptDecoder } from '../../vendor/meshopt_decoder.module.js';
 import { batchStaticAsset } from './asset-batching.js';
 
-const loader = new GLTFLoader();
+const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 const cache = new Map();
 // no document means Node: the plan is still computed and reported, nothing is fetched
 const load = (url) => { if (typeof document === 'undefined') return Promise.resolve(null); if (!cache.has(url)) cache.set(url, loader.loadAsync(url)); return cache.get(url); };
@@ -53,7 +54,7 @@ export const nodeNamed = (root, name) => { let hit = null; root.traverse((o) => 
 
 export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [], sfx = null }) {
   const group = new THREE.Group(); group.name = 'Story base'; scene.add(group);
-  const mixers = [], owned = new Set(), errors = [], bays = [];
+  const mixers = [], owned = new Set(), errors = [], bays = [], lod = [];
   const own = (root) => root.traverse((o) => { if (o.geometry) owned.add(o.geometry); for (const m of [o.material].flat().filter(Boolean)) owned.add(m); });
   const place = (obj, x, z, y, heading, scale = 1) => {
     obj.matrixAutoUpdate = false;
@@ -108,13 +109,22 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       if (clip) { gate.mixer = new THREE.AnimationMixer(g); gate.action = gate.mixer.clipAction(clip); gate.action.setLoop(THREE.LoopOnce, 1); gate.action.clampWhenFinished = true; gate.duration = clip.duration; }
       gate.position = placer.toWorld([plan.gate.x, 0, plan.gate.z]); gate.radius = plan.gate.openRadius * metres;
     }) : null,
-    ...plan.structures.filter((s) => !skip.includes(s.id)).map((s) => load(s.asset).then((gltf) => {
+    // A LANDMARK WITH A FAR TIER LOADS THAT FIRST and stands on it; the near tier is fetched only once the camera comes within
+    // kit.lod.metres, then the two swap by camera distance with hysteresis. Far away (the map, the orbit) the whole base is cheap.
+    ...plan.structures.filter((s) => !skip.includes(s.id)).map((s) => load(s.far ?? s.asset).then((gltf) => {
       if (!gltf) return;
+      const holder = new THREE.Group(); place(holder, s.x, s.z, s.y, s.heading, s.scale); group.add(holder);
+      const root = mount(s, gltf, holder);
+      if (s.far) lod.push({ id: s.id, holder, far: root, near: null, loading: false, shown: 'far', at: new THREE.Vector3().setFromMatrixPosition(holder.matrix) });
+      counts.structures++;
+    }).catch((e) => errors.push(`${s.id}: ${e}`))),
+  ]);
+  // one tier of a landmark: batched or cloned, offset, hidden nodes, its clips, and for the bays their hooks
+  function mount(s, gltf, holder) {
       const root = s.batch ? batchStaticAsset(gltf.scene, gltf.animations) : gltf.scene.clone(true);
       own(root); root.name = s.id;
       for (const name of s.hide ?? []) { const n = root.getObjectByName(name); if (n) n.visible = false; }
-      const holder = new THREE.Group(); holder.add(root); root.position.set(...s.offset);
-      place(holder, s.x, s.z, s.y, s.heading, s.scale); group.add(holder);
+      holder.add(root); root.position.set(...s.offset);
       const mixer = s.clips?.length || s.pose || s.bays ? new THREE.AnimationMixer(root) : null, held = {};
       if (mixer) {
         for (const clip of gltf.animations) {
@@ -137,18 +147,30 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
         }, roll(t) { if (out) { out.paused = true; out.time = Math.max(0, Math.min(out.getClip().duration, t)); mixer.update(0); } } });
       }
       bays.sort((a, b) => a.n - b.n);
-      counts.structures++;
-    }).catch((e) => errors.push(`${s.id}: ${e}`))),
-  ]);
+      return root;
+  }
+  const lodSwitch = (kit.lod?.metres ?? 150) * metres, lodHyst = kit.lod?.hysteresis ?? 1.3;
+  function driveLod(eye) {
+    if (!eye) return;
+    for (const l of lod) {
+      const d = l.at.distanceTo(eye);
+      if (!l.near && !l.loading && d < lodSwitch * lodHyst) { l.loading = true; const s = plan.structures.find((x) => x.id === l.id); load(s.asset).then((gltf) => { if (!gltf) return; l.near = mount(s, gltf, l.holder); l.near.visible = false; }).catch((e) => errors.push(`${l.id} near: ${e}`)); }
+      if (!l.near) continue;
+      const near = l.shown === 'near' ? d < lodSwitch * lodHyst : d < lodSwitch;
+      l.shown = near ? 'near' : 'far'; l.near.visible = near; l.far.visible = !near;
+    }
+  }
   return {
     ready, group, counts, errors,
-    tick(dt, near = null, force = null) {
+    tick(dt, near = null, force = null, eye = null) {
       for (const m of mixers) m.update(dt);
+      driveLod(eye);
       if (gate.position) gate.want = force ?? (Array.isArray(near) && Math.hypot(near[0] - gate.position.x, near[1] - gate.position.y, near[2] - gate.position.z) < gate.radius);
       driveGate(dt);
     },
     gate: () => ({ present: !!gate.action, open: gate.open, want: gate.want, t: +gate.t.toFixed(2) }),
     bays: () => bays,
+    lod: () => lod.map((l) => ({ id: l.id, shown: l.shown, nearLoaded: !!l.near })),
     dispose() { for (const m of mixers) m.stopAllAction(); gate.mixer?.stopAllAction(); for (const r of owned) r.dispose(); scene.remove(group); },
   };
 }

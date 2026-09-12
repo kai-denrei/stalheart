@@ -6,7 +6,7 @@ const root=fileURLToPath(new URL('../',import.meta.url));
 
 const sha=data=>createHash('sha256').update(data).digest('hex');
 const fetchMissing=process.argv[2]==='fetch';
-for(const lockFile of ['docs/sentry-assets.lock.json','docs/missile-assets.lock.json','docs/hover-tank-assets.lock.json','docs/needle-assets.lock.json','docs/astro-assets.lock.json','docs/astro-industry-assets.lock.json','docs/sh-rocket-assets.lock.json','docs/base-kit-assets.lock.json','docs/antenna-assets.lock.json','docs/container-assets.lock.json']) {
+for(const lockFile of ['docs/sentry-assets.lock.json','docs/missile-assets.lock.json','docs/hover-tank-assets.lock.json','docs/needle-assets.lock.json','docs/astro-assets.lock.json','docs/astro-industry-assets.lock.json','docs/sh-rocket-assets.lock.json','docs/base-kit-assets.lock.json','docs/antenna-assets.lock.json','docs/container-assets.lock.json','docs/solar-lod-assets.lock.json']) {
 const lock=JSON.parse(readFileSync(resolve(root,lockFile),'utf8'));
 for(const file of lock.files){
  const path=resolve(root,file.path);
@@ -73,6 +73,13 @@ for(const file of storyAudio.files){
 }
 console.log('Pinned story gate audio verified.');
 
+{const lock=JSON.parse(readFileSync(resolve(root,'docs/far-tier-assets.lock.json'),'utf8'));
+ for(const d of lock.derivations){
+  if(!d.path.startsWith('assets/models/far/')||!d.sourcePath.startsWith('assets/models/'))throw Error('Unexpected far tier path');
+  if(sha(readFileSync(resolve(root,d.sourcePath)))!==d.sourceSha256)throw Error(`Far tier source changed, run npm run tiers: ${d.sourcePath}`);
+  const bytes=readFileSync(resolve(root,d.path));if(bytes.length!==d.bytes||sha(bytes)!==d.sha256)throw Error(`Far tier changed, run npm run tiers: ${d.path}`);
+ }
+ console.log(`Derived far tiers verified: ${lock.derivations.length}`);}
 for(const lockFile of ['docs/shell-assets.lock.json','docs/beam-audio.lock.json']){
  const lock=JSON.parse(readFileSync(resolve(root,lockFile),'utf8'));
  if(sha(readFileSync(resolve(root,lock.sourcePath)))!==lock.sourceSha256)throw Error(`Derived asset source changed: ${lockFile}`);

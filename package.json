@@ -15,11 +15,15 @@
     "assets:check": "node scripts/assets.mjs check",
     "presets": "node scripts/presets.mjs",
     "architecture": "node scripts/architecture.mjs",
-    "bake": "node scripts/bake-planet.mjs"
+    "bake": "node scripts/bake-planet.mjs",
+    "tiers": "node scripts/far-tiers.mjs"
   },
   "version": "0.1.0",
   "description": "Spherical action tower defense",
   "engines": {
     "node": ">=22"
+  },
+  "devDependencies": {
+    "gltfpack": "^1.2.0"
   }
 }

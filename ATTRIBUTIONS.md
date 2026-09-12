@@ -97,6 +97,14 @@ Lightweight foundation, wall (D0-D3), corner and vehicle gate exports plus the s
 
 The three-bay armored transport container deployment scene at its game tier (17,456 triangles, 18 draws) with its `Tank_Roll_Out` clip, from [SentryTowers_A6](https://github.com/jelaludo/SentryTowers_A6/tree/de6c7d38d022598d796d505f024bd50cb454b02b/assets/hover-tank/containers), revision `de6c7d38d022598d796d505f024bd50cb454b02b`. Models and animations by jelaludo, reused with attribution under the upstream `ASSET-LICENSE.md`. Pinned checksum: `docs/container-assets.lock.json`. It stands on the story base's tank bay island; the game hides each parked hull as it is driven out and opens the sealed bay with a door swing authored from the model's own open bay.
 
+## Solar power complex, game and distance tiers — jelaludo
+
+The intact solar power complex at its LOD1 (game: 3,856 triangles, 7 draws) and LOD2 (distance: 2,752 triangles, 1 draw) tiers from [SentryTowers_A6](https://github.com/jelaludo/SentryTowers_A6/tree/b9dc51ad8294aa4ebe2e74d9eceeced71d401ac8/assets/solar-power), revision `b9dc51ad8294aa4ebe2e74d9eceeced71d401ac8`. Models by jelaludo, reused with attribution under the upstream `ASSET-LICENSE.md`. Pinned checksums: `docs/solar-lod-assets.lock.json`. The story base swaps the two by camera distance.
+
+## Packed release copies and derived far tiers
+
+The release build packs every model with [gltfpack](https://github.com/zeux/meshoptimizer) (MIT, Arseny Kapoulkine): meshopt compression and quantisation, geometry otherwise unchanged. `assets/models/far/*.glb` are simplified copies of the story landmarks above, derived with the same tool at a tenth of the triangles and pinned in `docs/far-tier-assets.lock.json`; the same authors and licence as their sources apply.
+
 ## Single SKYWARD antenna, game tier — jelaludo
 
 The 18 m steerable antenna at its low/game detail (1,632 triangles) with its `Array_Slew` clip, from [SentryTowers_A6](https://github.com/jelaludo/SentryTowers_A6/tree/e846906954abc1c3600c2bccd812857a75874073/assets/antenna-array), revision `e846906954abc1c3600c2bccd812857a75874073`. Models and animations by jelaludo, reused with attribution under the upstream `ASSET-LICENSE.md`. Pinned checksum: `docs/antenna-assets.lock.json`. It stands on the story base's radar island; the seven-dish array remains an Astro-only diorama.

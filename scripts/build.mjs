@@ -3,7 +3,17 @@ import { readFile, writeFile, readdir, mkdir, rm, copyFile } from 'node:fs/promi
 import { createHash } from 'node:crypto';
 import { resolve, relative, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { pack } from 'gltfpack';
 const root = fileURLToPath(new URL('../', import.meta.url));
+// EVERY MODEL SHIPS MESHOPT-COMPRESSED. Sources stay the pinned upstream bytes; only the release copy is packed
+// (quantised positions, EXT_meshopt_compression), which the loaders decode with the vendored decoder. Named nodes,
+// materials and extras are kept so authored pivots and clips still bind. Typically 5 to 25x smaller.
+async function packGlb(bytes, name) {
+  let out = null;
+  await pack(['-i', name, '-o', name, '-cc', '-kn', '-km', '-ke'], { read: () => bytes, write: (p, data) => { out = Buffer.from(data); } });
+  if (!out || out.length < 20 || out.toString('utf8', 0, 4) !== 'glTF') throw Error(`gltfpack failed on ${name}`);
+  return out;
+}
 const out = resolve(root, 'dist');
 const dirs = ['src', 'vendor', 'assets', 'icons', 'minigames'];
 async function walk(dir) {
@@ -35,7 +45,8 @@ for (const path of paths) {
     }
     if (path.endsWith('.css')) text = text.replace(/url\((['"]?)(\.?\/?assets\/[^)'"?]+)\1\)/g, `url($1$2?v=${token}$1)`);
     await writeFile(dest, text);
-  } else await copyFile(path, dest);
+  } else if (rel.startsWith('assets/models/') && rel.endsWith('.glb')) await writeFile(dest, await packGlb(await readFile(path), rel));
+  else await copyFile(path, dest);
   const bytes = await readFile(dest);
   manifest.push({ path: rel, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') });
 }

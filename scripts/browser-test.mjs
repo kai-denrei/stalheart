@@ -246,6 +246,12 @@ try{
  assert(base.playUrl.includes('story=8'),'play carries the stage');
  await evaluate('window.__stalheartStoryTest.reset()');await delay(300);current='story-stage-8';await finish();
  await evaluate('window.__stalheartStoryTest.overview()');await delay(400);current='story-stage-8-overview';await finish();
+ // far tiers: from the overview every landmark with a far tier stands on it and the near tier was never fetched; framed close to the solar island the near tier loads and takes over
+ const lodFar=await evaluate('window.__stalheartStoryTest.state().base.lod');assert.equal(lodFar.length,4,'four landmarks carry a far tier');assert(lodFar.every((l)=>l.shown==='far'),'from the overview every landmark shows its far tier');
+ await evaluate("window.__stalheartStoryTest.frame({ pos: [0, 12, -30], look: [0, 4, 0], fov: 45 }, { x: 44, z: -60 })");await until('window.__stalheartStoryTest.state().base.lod.find((l)=>l.id==="solar").nearLoaded',60000);await delay(300);
+ const lodNear=await evaluate('window.__stalheartStoryTest.state().base.lod');assert.equal(lodNear.find((l)=>l.id==='solar').shown,'near','close to the solar island its near tier shows');assert(lodNear.every((l)=>l.nearLoaded),'within 150 m of the whole base every near tier has been fetched');
+ current='story-stage-8-solar-near';await finish();
+ await evaluate('window.__stalheartStoryTest.overview()');await delay(300);assert.equal((await evaluate('window.__stalheartStoryTest.state().base.lod')).find((l)=>l.id==='solar').shown,'far','back on the overview the far tier returns');
  await evaluate('window.__stalheartStoryTest.setStage(4)');await evaluate('window.__stalheartStoryTest.baseReady()');await delay(300);
  assert.equal((await evaluate('window.__stalheartStoryTest.state()')).base.gate.present,true,'gate loaded with its clip');
  await evaluate('window.__stalheartStoryTest.gate(true)');await delay(2200);const opened=await evaluate('window.__stalheartStoryTest.state()');assert.equal(opened.base.gate.open,true,'gate opens');
@@ -682,7 +688,8 @@ try{
  await go('mork-game','index.html?sw=0&cine=0&tutorial=0&acceptance=1#td');
  await until('window.__stalheartTest.state().playerAsset === "mork" && window.__stalheartTest.state().playerAssetReady');
  await until('window.__stalheartTest.state().berthAssets.length===3');assert.deepEqual(await evaluate('window.__stalheartTest.state().berthAssets'),['mork','mork','mork']);
- assert.deepEqual(await evaluate('window.__stalheartTest.state().playerModelStats'),{triangles:24196,batches:50});
+ // the release copy is meshopt-packed, which drops degenerate triangles: the batches must match exactly, the triangle count within 1 %
+ {const ms=await evaluate('window.__stalheartTest.state().playerModelStats');assert.equal(ms.batches,50);if(production)assert(ms.triangles<=24196&&ms.triangles>=24196*0.99,`packed MÖRK triangles ${ms.triangles}`);else assert.equal(ms.triangles,24196);}
  await evaluate('document.querySelector(".msg-begin")?.click()');
  await evaluate('window.__stalheartTest.begin()');
  const morkBefore=await evaluate('window.__stalheartTest.state().playerPosition');
@@ -801,7 +808,7 @@ try{
  assert.deepEqual(missile.battery,['quiver','quiver','quiver']);
  assert.equal(missile.last.duration,1.35);assert.equal(missile.last.profile,'swift');assert.equal(missile.last.length,.32);
  assert(missile.last.launchDirection[1]>.6,'Quiver muzzle actually aims upward');
- assert.equal(missile.pool.triangles,188);assert.equal(missile.pool.batches,4);
+ if(production)assert(missile.pool.triangles<=188&&missile.pool.triangles>=188*0.97,`packed DART triangles ${missile.pool.triangles}`);else assert.equal(missile.pool.triangles,188);assert.equal(missile.pool.batches,4);   // the packed release drops degenerate triangles
  await until('window.__stalheartSentryTest.state().live.some(m=>m.u<.32 && !m.ignition) && window.__stalheartSentryTest.state().live.some(m=>m.u>.32 && m.ignition)');
  await until('window.__stalheartSentryTest.state().arrived >= 3');
  const arrival=await evaluate('window.__stalheartSentryTest.state().lastArrival');

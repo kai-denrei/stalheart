@@ -1,12 +1,13 @@
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
+import { MeshoptDecoder } from '../vendor/meshopt_decoder.module.js';
 import { mergeGeometries, deinterleaveGeometry } from '../vendor/BufferGeometryUtils.js';
 
 // One pinned geometry upload, three body batches and one optional exhaust batch.
 // Instances share resources. A shot never disposes the pool's geometry/materials.
 export async function createMissilePool({ capacity = 64, mesh:variant = 'dart' } = {}) {
   if(!['dart','talon'].includes(variant))throw Error('Unknown missile mesh');
-  const gltf = await new GLTFLoader().loadAsync(`assets/models/missile-kit/${variant}.glb`);
+  const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(`assets/models/missile-kit/${variant}.glb`);
   const source = gltf.scene;
   source.getObjectByName('EXHAUST_FX').scale.setScalar(1);
   source.updateMatrixWorld(true);

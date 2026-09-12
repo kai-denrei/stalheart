@@ -144,7 +144,7 @@ export function initStoryTab(root) {
     frameId = requestAnimationFrame(loop);
     const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000); last = now; clock.time += dt;
     if (playing) { seek(t + dt); if (t >= sequence.duration) { playing = false; onRail = false; audioSync(sequence.stateAt(t), false); } }
-    landing?.tick(dt, camera); base?.tick(dt, null, gateForced);
+    landing?.tick(dt, camera); base?.tick(dt, null, gateForced, camera.position);
     if (!onRail) controls.update();
     renderer.render(scene, camera);
   }
@@ -157,7 +157,7 @@ export function initStoryTab(root) {
     },
   };
   if (q.get('acceptance') === '1') window.__stalheartStoryTest = {
-    state: () => ({ ready: !!planet && !!landing?.state().loaded, cells: planet?.dungeon.tags.length ?? 0, mouths: planet?.clearing.mouths.length ?? 0, openMouths: planet?.clearing.mouths.filter((m) => m.open).length ?? 0, gateMarker: !!marker, playUrl: playUrl(), stage, comms: commsEl.hidden ? null : commsEl.textContent, base: base ? { ...base.counts, errors: base.errors.slice(), children: base.group.children.length, gate: base.gate() } : null, counts: planetMesh?.userData.counts ?? null, t, phase: sequence.stateAt(t).phase, playing, landing: landing?.state() ?? null, cues: cueLog.slice(), audioState: sfx.contextState, errors }),
+    state: () => ({ ready: !!planet && !!landing?.state().loaded, cells: planet?.dungeon.tags.length ?? 0, mouths: planet?.clearing.mouths.length ?? 0, openMouths: planet?.clearing.mouths.filter((m) => m.open).length ?? 0, gateMarker: !!marker, playUrl: playUrl(), stage, comms: commsEl.hidden ? null : commsEl.textContent, base: base ? { ...base.counts, errors: base.errors.slice(), children: base.group.children.length, gate: base.gate(), lod: base.lod() } : null, counts: planetMesh?.userData.counts ?? null, t, phase: sequence.stateAt(t).phase, playing, landing: landing?.state() ?? null, cues: cueLog.slice(), audioState: sfx.contextState, errors }),
     land, skip, seek: (time) => { onRail = true; seek(time); }, reset, overview, setStage, gate: (on) => { gateForced = on; }, baseReady: () => base?.ready, dispose: api.dispose,
     frame: (pose, about) => { playing = false; onRail = false; frameCamera(pose, about); controls.update(); },   // a free framing for screenshots: metres around `about` (an island, or {x,z})
   };

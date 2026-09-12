@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/jelaludo/SentryTowers_A6",
+  "revision": "b9dc51ad8294aa4ebe2e74d9eceeced71d401ac8",
+  "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/b9dc51ad8294aa4ebe2e74d9eceeced71d401ac8/",
+  "credit": "Models by jelaludo (https://jelaludo.github.io/SentryTowers_A6/), solar power complex at its game (LOD1) and distance (LOD2) tiers, reused with attribution under the upstream ASSET-LICENSE.md",
+  "files": [
+    {
+      "path": "assets/models/astro/solar_power_complex_lod1_d0.glb",
+      "sourcePath": "assets/solar-power/lod1/solar_power_complex_d0.glb",
+      "sha256": "a2bb245fe39113e3991197c508e63c9fe13c5c5be0636fcdd0953fab1b997115",
+      "bytes": 339812,
+      "triangles": 3856,
+      "drawCalls": 7,
+      "extensions": []
+    },
+    {
+      "path": "assets/models/astro/solar_power_complex_lod2_d0.glb",
+      "sourcePath": "assets/solar-power/lod2/solar_power_complex_d0.glb",
+      "sha256": "a7060b4bd21025e2c257b2c9ec5753f974b4a45172b1cd5ca36aa005b616d968",
+      "bytes": 237088,
+      "triangles": 2752,
+      "drawCalls": 1,
+      "extensions": []
+    }
+  ]
+}

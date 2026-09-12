@@ -2,6 +2,7 @@
 // Isao, driven by one timeline state from domain/landing-sequence.js.
 import * as THREE from '../../vendor/three.module.js';
 import { GLTFLoader } from '../../vendor/GLTFLoader.js';
+import { MeshoptDecoder } from '../../vendor/meshopt_decoder.module.js';
 import { createLaunchPlume } from '../fx/launch-plume.js';
 import { makeScorch, makeEmbers, IMPACT_TUNE } from '../impactfx.js';
 import { makeIsaoDrone, preloadFabricator } from '../units.js';
@@ -37,7 +38,7 @@ export function createStoryLanding(scene, { placer, site = [0, 0], dustTint = 0x
   const geometries = new Set(), materials = new Set();
   const own = (o) => o.traverse((n) => { if (n.geometry) geometries.add(n.geometry); for (const m of [n.material].flat().filter(Boolean)) materials.add(m); });
   const ready = Promise.all([
-    new GLTFLoader().loadAsync(ROCKET_URL).then((gltf) => {
+    new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(ROCKET_URL).then((gltf) => {
       rocket = gltf.scene; rocket.name = 'SH02'; own(rocket); hull.add(rocket);
       rocket.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
       mixer = new THREE.AnimationMixer(rocket);

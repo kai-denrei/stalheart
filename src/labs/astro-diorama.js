@@ -2,6 +2,7 @@ import { batchStaticAsset as batchAstroAsset } from '../fx/asset-batching.js';
 import { createAstroFoundations } from './astro-foundations.js';
 import * as THREE from '../../vendor/three.module.js';
 import { GLTFLoader } from '../../vendor/GLTFLoader.js';
+import { MeshoptDecoder } from '../../vendor/meshopt_decoder.module.js';
 import { cloneSkinned } from '../units.js';
 import { yardRoute } from '../domain/yard-route.js';
 
@@ -12,7 +13,7 @@ export function createAstroDiorama(scene,{tankBounds}){
  const group=new THREE.Group();scene.add(group);const people=new THREE.Group();group.add(people);
  const items=[],prototypes=[],crew=[],errors=[];let disposed=false,enabled=true,time=0,serial=0,foundationSource=null,foundations=null;
  const settings={count:9,crew:true,stalheart:true,hugin:true,antenna:true,assembly:true,cargo:true,solar:true,reactor:true,foundations:true,motion:true,gait:'Auto'};
- const loaders=new GLTFLoader(),geometries=new Set(),materials=new Set(),textures=new Set();
+ const loaders=new GLTFLoader().setMeshoptDecoder(MeshoptDecoder),geometries=new Set(),materials=new Set(),textures=new Set();
  function own(root){root.traverse(o=>{if(o.geometry)geometries.add(o.geometry);for(const m of [o.material].flat().filter(Boolean)){materials.add(m);for(const v of Object.values(m))if(v?.isTexture)textures.add(v);}if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});}
  function label(text,x,y,z){const c=document.createElement('canvas');c.width=512;c.height=64;const ctx=c.getContext('2d');ctx.fillStyle='#081418';ctx.fillRect(0,0,512,64);ctx.fillStyle='#d9ffff';ctx.font='28px monospace';ctx.textAlign='center';ctx.fillText(text,256,42);const texture=new THREE.CanvasTexture(c),material=new THREE.SpriteMaterial({map:texture,depthTest:true});textures.add(texture);materials.add(material);const sprite=new THREE.Sprite(material);sprite.scale.set(12,1.5,1);sprite.position.set(x,y,z);return sprite;}
  const ready=Promise.allSettled([

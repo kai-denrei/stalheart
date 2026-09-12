@@ -1,5 +1,6 @@
 import * as THREE from '../../vendor/three.module.js';
 import { GLTFLoader } from '../../vendor/GLTFLoader.js';
+import { MeshoptDecoder } from '../../vendor/meshopt_decoder.module.js';
 import { generateSphereMesh,relax } from '../grid.js';
 import { LOOKS } from '../looks.js';
 import { sentryUrl } from '../sentry.js';
@@ -31,7 +32,7 @@ export function createSniperEnvironment(scene){
  let disposed=false,mounted=0,error=null;
  const disposeObjects=root=>{const geometries=new Set(),materials=new Set();root.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.material)materials.add(o.material);if(o.isInstancedMesh)o.dispose();});for(const g of geometries)g.dispose();for(const m of materials)m.dispose();};
  const ready=Promise.all(['quiver','lancer'].map(async key=>{
-  const gltf=await new GLTFLoader().loadAsync(sentryUrl(key,1));if(disposed){disposeObjects(gltf.scene);return;}
+  const gltf=await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(sentryUrl(key,1));if(disposed){disposeObjects(gltf.scene);return;}
   for(const p of placements.filter(p=>p.key===key)){const model=gltf.scene.clone(true);model.position.set(p.x,p.y,p.z);model.scale.setScalar(3);const yaw=model.getObjectByName('YAW');if(yaw)yaw.rotation.y=p.x<0?Math.PI/2:-Math.PI/2;model.name=`Wall-mounted ${key}`;group.add(model);mounted++;}
  })).catch(e=>{error=e.message;});
  const ray=new THREE.Ray(),direction=new THREE.Vector3(),hit=new THREE.Vector3();

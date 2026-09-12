@@ -15,6 +15,7 @@ import { DEFAULT_TANK } from './content/tank.js';
 import * as THREE from '../vendor/three.module.js';
 import { OrbitControls } from '../vendor/OrbitControls.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
+import { MeshoptDecoder } from '../vendor/meshopt_decoder.module.js';
 import GUI from '../vendor/lil-gui.esm.js';
 import { makeBloom } from './postfx.js';
 import { bakeGalaxyCube } from './galaxybake.js';
@@ -160,7 +161,7 @@ export function initAstroTab(root) {
   const astroBox = new THREE.Box3();      // the file's own box, before any scaling
   let legacyLoading=false;
   function loadLegacy(){if(legacyLoading||disposed)return;legacyLoading=true;
-  new GLTFLoader().load(ASTRO_URL, (gltf) => {
+  new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(ASTRO_URL, (gltf) => {
     if(disposed)return;
     astro = gltf.scene;
     clips = gltf.animations || [];
@@ -367,7 +368,7 @@ export function initAstroTab(root) {
     // scene ends up with two turrets standing in one another
     if (P.turret && !turret && !turretLoading) {
       turretLoading = true;
-      new GLTFLoader().load('assets/models/sentries/lancer_t2.glb', (g) => {
+      new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load('assets/models/sentries/lancer_t2.glb', (g) => {
         turret = g.scene;
         const b = new THREE.Box3().setFromObject(turret);
         const sz = b.getSize(new THREE.Vector3());

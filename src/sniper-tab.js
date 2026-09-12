@@ -24,6 +24,7 @@ import { createWeaponVoice } from './weapon-voice.js';
 // chips Isao is meant to print.
 import * as THREE from '../vendor/three.module.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
+import { MeshoptDecoder } from '../vendor/meshopt_decoder.module.js';
 import GUI from '../vendor/lil-gui.esm.js';
 import { makeBloom } from './postfx.js';
 import { bakeGalaxyCube } from './galaxybake.js';
@@ -241,7 +242,7 @@ export function initSniperTab(root) {
     const serial=++modelSerial;root.dataset.modelReady='false';
     if(rifle){scene.remove(rifle);disposeObj(rifle);}
     rifle=yawNode=pitchNode=muzzleNode=recoilNode=null;
-    new GLTFLoader().load(sentryUrl(TOWER_BY_KEY[P.weapon].model,P.tier),gltf=>{
+    new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(sentryUrl(TOWER_BY_KEY[P.weapon].model,P.tier),gltf=>{
       if(disposed||serial!==modelSerial){disposeObj(gltf.scene);return;}
       rifle=gltf.scene;rifle.position.y=stageEnvironment.mountHeight;yawNode=rifle.getObjectByName('YAW');pitchNode=rifle.getObjectByName('PITCH');
       recoilNode=rifle.getObjectByName('RECOIL');

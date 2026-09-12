@@ -2135,7 +2135,7 @@ export function initTdTab(root) {
   function buildActors() {
     for (const o of [heartSprite, playerMesh, markerMesh, serverObj]) if (o) { o.userData.dispose?.(); scene.remove(o); }
     for (const c of lifeContainers) scene.remove(c.obj);
-    lifeContainers = [];
+    if (!storyMode) lifeContainers = [];   // the story's bays outlive an actor rebuild (a tank model landing mid roll-out); the base's ready hands in fresh ones
     serverObj = null; serverFound = false;
 
     // the Braille heart: dot-cloud cycling twinkle → breathe → jelly,
@@ -8545,7 +8545,7 @@ export function initTdTab(root) {
     // only what is NOT derivable: which berth, and how far out we are. from,
     // to and segLen were all functions of `n` and drifted-by-construction.
     // THE FIRST HULL OUT OF A BAY WITH AN AUTHORED ROLL-OUT PLAYS THE CLIP: the parked hull rolls, ours stays hidden until the clip ends where the run ends
-    const cc = lifeContainers[n]; deploy = { n, travelled: 0, age: 0, clip: cc?.rollout && !cc.rolled ? cc.rollout : 0 }; if (deploy.clip) { cc.rolled = cc.rolling = true; cc.roll(0); playerMesh.visible = false; } return true;
+    const cc = lifeContainers[n]; deploy = { n, travelled: 0, age: 0, clip: cc?.rollout && !cc.rolled ? cc.rollout : 0, bay: cc }; if (deploy.clip) { cc.rolled = cc.rolling = true; cc.roll(0); playerMesh.visible = false; } return true;
   }
 
   // THE POSE THE WHOLE DESIGN HANGS OFF. Every prelude's last frame is this,
@@ -8610,7 +8610,7 @@ export function initTdTab(root) {
       shotWatchLast = `deploy ${deploy.age.toFixed(1)}s/${Number.isFinite(expect) ? expect.toFixed(1) : '∞'}s`;
       deploy.travelled = segLen;   // finish it where it was going, then hand over
     }
-    deploy.travelled += v * dt; if (deploy.clip) lifeContainers[deploy.n].roll(deploy.age);   // the clip's clock is the deploy's
+    deploy.travelled += v * dt; if (deploy.clip) { deploy.bay.roll(deploy.age); playerMesh.visible = false; }   // the clip's clock is the deploy's; a hull rebuilt meanwhile stays hidden
     const u = deployProgress();
     const [from, to] = berthSeg(b);
     const p = [0, 1, 2].map((i) => from[i] + (to[i] - from[i]) * u);
@@ -8625,7 +8625,7 @@ export function initTdTab(root) {
       // state, a player already leaning on W drives on without a beat — and
       // forward is the direction the hull is already going, so the handover
       // is continuous rather than a stop.
-      if (deploy.clip) { lifeContainers[deploy.n].rolling = false; playerMesh.visible = true; }   // hand over: the authored hull hides, ours stands where it stopped
+      if (deploy.clip) { deploy.bay.rolling = false; playerMesh.visible = true; }   // hand over: the authored hull hides, ours stands where it stopped
       deploy = null; deploysDone++;
       throttle = 0; cruise = false; autoMode = false; paintThrottle();
     }
@@ -12389,7 +12389,7 @@ export function initTdTab(root) {
         if (secsToWave() <= 10) { bossCued = true; sfx.play('boss_tension'); }
       }
     }
-    storyBase?.tick(frozen ? 0 : dt, player.pos); story?.beats.tick(frozen ? 0 : dt, storyApi); gameBreaches.update(frozen?0:dt,obj=>{
+    storyBase?.tick(frozen ? 0 : dt, player.pos, null, camera.position); story?.beats.tick(frozen ? 0 : dt, storyApi); gameBreaches.update(frozen?0:dt,obj=>{
       let changed=false;const centre=norm3(obj.position.toArray()),reach=CONTENT.breach.clearRadius*cellSide;
       for(let ci=0;ci<graph.centers.length;ci++)if(dungeon.tags[ci]===BLOCKED&&!orderByCell.has(ci)&&Math.acos(Math.max(-1,Math.min(1,dot3(centre,norm3(graph.centers[ci])))))<=reach)changed=breachWallCell(ci)||changed;
       if(changed){rebuildAfterBreach();recomputePortalDist();}
