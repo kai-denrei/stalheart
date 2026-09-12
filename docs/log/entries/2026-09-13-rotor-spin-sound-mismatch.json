@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "id": "2026-09-13-rotor-spin-sound-mismatch",
+  "date": "2026-09-13T02:30:00+00:00",
+  "type": "issue",
+  "status": "accepted",
+  "title": "Note: the Rotor's barrel spin and its sound do not agree",
+  "context": "Owner: something feels off between the Rotor sentry's animation and its sound. The sound should keep rolling as long as the barrels are spinning, and start winding down so that silence coincides with the barrels stopping.",
+  "outcome": "Recorded, not fixed. Today the spin is a rate that eases toward 34 rad/s while held and toward 0 after (td-tab, the rotor block in the tower loop), while the sound is one minigun_ready cue at each spin state change. A fix would drive a looped spool sound whose gain and pitch follow tw.spinRate, with the wind-down cue timed to the rate reaching zero rather than to the trigger release; the FX package's spool cues (dense manual burst with spool cues) are the place, through the presets path.",
+  "alternatives": [],
+  "evidence": [
+    "operator observation, 2026-09-12"
+  ],
+  "supersedes": []
+}

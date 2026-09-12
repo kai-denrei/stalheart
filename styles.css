@@ -111,8 +111,8 @@
   display: flex;
   gap: 12px;
   align-items: stretch;
-  width: min(440px, calc(100vw - 24px));
-  padding: 10px 12px;
+  width: min(280px, calc(100vw - 24px));   /* a comms card, not a banner (operator: much shorter) */
+  padding: 8px 10px;
   background: rgba(4, 14, 9, 0.9);
   border: 1px solid var(--p-green-dim);
   border-left: 3px solid var(--p-green);

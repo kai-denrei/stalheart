@@ -29,8 +29,8 @@ export function makeStoryBeats({
   return {
     tick(dt, api) {
       clock += dt;
-      // Isao's two faces play over the landing, whatever else is happening
-      if (faces === 0 && clock >= faceDelays[0]) { api.brief?.('rough_landing'); faces = 1; }
+      // Isao's two faces play over the landing, whatever else is happening: the angry one the moment he is out of the hatch
+      if (faces === 0 && clock >= faceDelays[0] && api.isao()) { api.brief?.('rough_landing'); faces = 1; }
       else if (faces === 1 && clock >= faceDelays[1]) { api.brief?.('so_much_to_build'); faces = 2; }
       if (phase === 'landed' && clock >= rotorDelay) {
         api.grant(api.cost(key));
