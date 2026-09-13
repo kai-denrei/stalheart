@@ -106,7 +106,9 @@
 #td-brief {
   position: absolute;
   left: max(12px, env(safe-area-inset-left));
-  bottom: 84px;
+  /* ABOVE THE RADAR, never over it (2026-09-13: the landing-site triangles were hidden under a comms card): the disc is
+     min(240px, 32% of the short side) at 14px from the corner, the same rule td-tab sizes it by */
+  bottom: calc(max(14px, env(safe-area-inset-bottom)) + min(240px, 32vmin) + 10px);
   z-index: 15;
   display: flex;
   gap: 12px;
@@ -121,6 +123,7 @@
   animation: wave-pop 0.25s ease-out;
 }
 #td-brief.hidden { display: none; }
+@media (max-width: 700px) { #td-brief { bottom: calc(max(14px, env(safe-area-inset-bottom)) + min(138px, 23vmin) + 10px); } }
 #td-brief-face {
   width: 72px; height: 72px;
   flex: 0 0 auto;
@@ -4496,7 +4499,8 @@ body:not(.chrome-open) #tabbar .tabgroup:not(:has(button.active)) { display: non
 #story-hud .story-keys span { color: #6a94b0; }
 #story-hud .story-keys a.story-back { color: #9fdcff; text-decoration: none; border: 1px solid #2b6b96; border-radius: 8px; padding: 8px 12px; min-height: 40px; display: inline-flex; align-items: center; background: rgba(12, 26, 38, 0.85); }
 #story-hud .story-keys button.on { background: rgba(40, 90, 120, 0.95); color: #dff4ff; border-color: #6fc3ff; }
-#story-hud #story-comms { font: 600 14px ui-monospace, Menlo, monospace; letter-spacing: 0.08em; border: 1px solid; border-radius: 8px; padding: 8px 12px; background: rgba(6, 12, 18, 0.85); text-shadow: 0 0 10px currentColor; }
+/* ISAO'S COMMS ARE A SMALL TERMINAL ON THE LEFT, never a banner (owner, recurring: 2026-09-13 "much much too long") — the same card size as the game's #td-brief */
+#story-hud #story-comms { align-self: flex-start; box-sizing: border-box; width: fit-content; max-width: min(280px, calc(100vw - 24px)); font: 600 12px ui-monospace, Menlo, monospace; letter-spacing: 0.06em; line-height: 1.35; border: 1px solid; border-left-width: 3px; border-radius: 8px; padding: 6px 10px; background: rgba(4, 14, 9, 0.9); text-shadow: 0 0 8px currentColor; white-space: normal; }
 #story-stages-nav { display: none; flex-wrap: wrap; gap: 6px; padding: 8px 12px; background: rgba(8, 14, 20, 0.92); }
 body.chrome-open #story-stages-nav { display: flex; }
 #story-stages-nav button { font: 600 12px ui-monospace, Menlo, monospace; color: #9fdcff; background: rgba(12, 26, 38, 0.85); border: 1px solid #2b6b96; border-radius: 8px; padding: 8px 10px; cursor: pointer; }

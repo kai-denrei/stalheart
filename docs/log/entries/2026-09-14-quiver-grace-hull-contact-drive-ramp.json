@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-quiver-grace-hull-contact-drive-ramp",
+  "date": "2026-09-14T07:00:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "The Quiver holds a lock through a sightline blink; the hull checks its own footprint against rock; a long run-up; open ground under landed rockets; a wall breach no longer rebuilds its edge maps from strings",
+  "context": "Owner field report: the Quiver lock climbed to about 62% and reset every time and should be faster or more lenient; from a screenshot, the tank clips into walls; wherever a rocket lands, standing or broken, the ground under it should be open; a tank shell hitting a wall has significant lag before the impact; and the tank should start faster and keep ramping so exploring far is less tedious, which needs better wall interaction.",
+  "outcome": "QUIVER: probed in the real story (stage 4 to quiver-piloting) with drop events recorded — the held hard core never left the box (1-4% of the cone), its line of sight flickered off for about 170 ms every 0.45 s as it grazed a rock edge, and each flicker zeroed a 0.9 s lock. src/sentry-pilot.js now keeps a held body that is still inside the box through a 0.5 s sight blink; STORY_QUIVER lockTime 0.9 -> 0.6 and coneDeg 10 -> 14. The shared stepMissileLock contract is unchanged. ROCKET GROUND: base-layout structures anchored 'open' carry a clear radius (rockets 16 m, wreck 24 m); planBase returns the cells within it and the story world opens them before the gate walls are laid. HULL CONTACT: new src/domain/hull-contact.js — a wall's face is the bisector between the open cell and the wall cell, sampled at the hull centre with half its width and at nose and tail along its facing; freeBlocked refuses a move only when it takes the hull deeper than it already is, so a hull a turn swung into a face can always back or slide out. It replaces the old centre-distance margin that let the nose sit a fifth of a cell inside rock. DRIVE RAMP: new src/domain/drive-ramp.js with TANK_DRIVE in content/tank.js — x1.35 pace at once, easing toward x2.6 (time constant 4 s) while held forward; steering hard gains less, idling or reversing bleeds it, a head-on thud keeps a quarter and a wedge keeps none; the engine level normalises against the full run-up. SHELL LAG: measured as a 430-530 ms main-thread long task on every breach, the 71k-cell planet rebuild; profiled, most of it was a string-keyed directed-edge map rebuilt every time and a rounded-float string per segment for the dedupe. The edge map is now built once per board and segments dedupe on numeric vertex-index keys: the breach long task measured 250 ms after. The remaining cost is full array and GPU re-upload; patching only the breached cells is the next step if it still reads as lag.",
+  "alternatives": [
+    "Drain the lock instead of zeroing it on loss in stepMissileLock: rejected for now, it changes the shared contract every launcher relies on (test/missile-targeting.mjs pins no inherited progress), and the measured cause was the pilot dropping a target that never left the box.",
+    "Stiffen the existing wall cushion: rejected, it is a capped per-frame push by design, and a faster hull outruns any cap that does not also pin it in corridors.",
+    "Incremental geometry patch per breached cell: deferred, a larger refactor of buildGeometry; the cheap profile-led change came first."
+  ],
+  "evidence": [
+    "Quiver probe (story stage 4, quiver-piloting): before, drop events all visible:false with inCone:true; after, tracking pass locked with 0 resets and held through a NOLOS sample.",
+    "Drive probe (story stage 7 after the bay roll-out): pace rose 35 -> 53 milli-arc/s over 6 s of held W; a head-on stop was refused by the hull check, not by the story or a crater.",
+    "Breach long tasks: 488, 527, 478, 444 ms before; 250 ms after the key rewrite. CPU profile before: buildGeometry self 260 ms, firstTime/segKey/ptKey about 115 ms, GC 29 ms.",
+    "test/hull-contact.mjs, test/drive-ramp.mjs, test/base-plan.mjs (open ground within the clear radius) and test/world-recipe.mjs (no rock under a landed rocket on the real planet)."
+  ],
+  "supersedes": []
+}

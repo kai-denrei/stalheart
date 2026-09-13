@@ -136,9 +136,15 @@ export const BRIEFS = {
     lines: ['Two for two.', 'The wall is yours: TANK, SENTRY cycles the mounts, MAP for the whole planet.'],
   },
   // after the Quiver: the study screen
+  // spoken in a close-up before the screen opens (owner, 2026-09-13): the face goes neutral, skeptical, then to work, one per line
   vibration_study: {
-    id: 'vibration_study', face: 'curious', title: 'COMMS · ISAO', once: true,
-    lines: ['They talk in vibrations. A pattern under the pattern.', 'Reverse-engineering it takes more compute than I have. So: build more compute.'],
+    id: 'vibration_study', face: 'neutral', faces: ['neutral', 'skeptical', 'determined'], title: 'COMMS · ISAO', once: true,
+    lines: ['They talk in vibration.', 'I started reverse-engineering it.', 'Need more compute.'],
+  },
+  // after the analysis screen: the next objective, with the planet pulled back and the landing sites on the radar
+  rocket_sites: {
+    id: 'rocket_sites', face: 'focused', title: 'COMMS · ISAO', once: true,
+    lines: ['Compute needs material. The other rockets came down with cargo.', 'Take the tank to the landing sites. The triangles on the radar.'],
   },
   // the tenth kill: what the bodies are for
   harvest_biomass: {

@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-asset-tier-rulings-shelved",
+  "date": "2026-09-14T06:00:00+00:00",
+  "type": "decision",
+  "status": "accepted",
+  "title": "MÖRK LOW and Stålheart's LODs are approved; the switch is shelved while the A6 library is still being updated",
+  "context": "Owner ruling on the three asset items held for review: MÖRK's LOW tier is OK; Stålheart's LOD1/LOD2 should ship (Jelaludo's website is not consistent everywhere with these, but the LODs are available in the Stålheart/MÖRK fabrication build); HUGIN's merged booster is being fixed upstream by Jelaludo. Because the assets are still being updated, the owner asked to shelve changing any of these for now.",
+  "outcome": "Both proposals are accepted in principle and deliberately not wired: the shipped defaults (MÖRK game tier, Stålheart's shipped landmark, HUGIN held back) stay exactly as they are until the upstream library settles. When it does, the switch is pinning the updated revision in the asset locks and flipping the defaults, re-running the tier guards in scripts/assets.mjs and the units-tier and story-world-candidate browser cases. The HUGIN issue stays open until the fixed export lands.",
+  "alternatives": [
+    "Flip the defaults now against the current pinned revision: rejected by the owner, the assets are still changing and a flip now would be redone.",
+    "Leave the proposals unanswered: rejected, the rulings are made; only the timing is deferred."
+  ],
+  "evidence": [
+    "Owner message in session 2026-09-13/14 answering the pending asset decisions.",
+    "docs/A6-ASSET-FEEDBACK.md records what the updated packages need to carry."
+  ],
+  "supersedes": [
+    "2026-09-14-mork-low-as-default",
+    "2026-09-14-stalheart-lods-as-shipped"
+  ]
+}

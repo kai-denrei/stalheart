@@ -3,7 +3,7 @@ import { makeStoryBeats } from '../src/domain/story-beats.js';
 // a fake game: records everything; a tower stands N seconds after the order; fodder reaches the gate M seconds after the first spawn
 function fakeGame({ printSeconds = 6, cost = 45, walk = 3 } = {}) {
   const log = []; let orderedAt = null, clock = 0, alive = 0, firstSpawn = null, killed = 0, sealed = false;
-  return { log, tick: (dt) => { clock += dt; }, kill: (n) => { alive = Math.max(0, alive - n); killed += n; }, seal: () => { sealed = true; }, api: {
+  const g = { log, talking: true, screenUp: true, tick: (dt) => { clock += dt; }, kill: (n) => { alive = Math.max(0, alive - n); killed += n; }, seal: () => { sealed = true; }, api: {
     cost: () => cost, isao: () => true, enemies: () => alive, kills: () => killed,
     grant: (n) => { log.push(['grant', n]); },
     order: (key, ci) => { log.push(['order', key, ci]); orderedAt = clock; return true; },
@@ -16,8 +16,11 @@ function fakeGame({ printSeconds = 6, cost = 45, walk = 3 } = {}) {
     unlock: (what) => { log.push(['unlock', what]); },
     screen: (id) => { log.push(['screen', id]); },
     sourceAlive: () => sealed === false,
-    spawn: (type, ci) => { log.push(['spawn', type, ci]); alive++; if (firstSpawn === null) firstSpawn = clock; },
+    spawn: (type, ci, o) => { log.push(o ? ['spawn', type, ci, o] : ['spawn', type, ci]); alive++; if (firstSpawn === null) firstSpawn = clock; },
+    closeup: (who) => { log.push(['closeup', who]); }, briefing: () => g.talking, screenOpen: () => g.screenUp,
+    sites: () => { log.push(['sites']); }, planetView: () => { log.push(['planetView']); },
   } };
+  return g;
 }
 const run = (beats, g, seconds) => { for (let t = 0; t < seconds - 1e-9; t += 0.1) { g.tick(0.1); beats.tick(0.1, g.api); } };
 const kinds = (g, k) => g.log.filter((l) => l[0] === k);
@@ -48,26 +51,29 @@ const kinds = (g, k) => g.log.filter((l) => l[0] === k);
 }
 // a longer wave: the tenth kill brings the biomass line, said once, and the wave is not cleared while any of it stands
 {
-  const quiver = { key: 'quiver', delay: 2, hardcore: 'barbed', secondDelay: 4, studyDelay: 2, missile: {} };
+  const quiver = { key: 'quiver', delay: 0.6, hardcore: 'barbed', secondDelay: 9, studyDelay: 2, missile: {} };
   const beats = makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, rotorDelay: 2, fodderEvery: 1, fodderAlive: 4, fodderTotal: 12, tremorDelay: 1, breachDelay: 2, overrideDelay: 1, quiverSocket: 4244, quiver });
   const g = fakeGame({ walk: 3, printSeconds: 3 });
   run(beats, g, 17); assert.equal(beats.state().phase, 'piloting');
   for (let k = 0; k < 10; k++) { g.kill(1); run(beats, g, 1); }
   assert.equal(kinds(g, 'brief').filter((l) => l[1] === 'harvest_biomass').length, 1, 'the tenth kill, once'); assert.equal(beats.state().phase, 'piloting', 'two of twelve still to come');
   g.kill(2); run(beats, g, 0.5); assert.equal(beats.state().phase, 'cleared'); assert.equal(kinds(g, 'brief').at(-1)[1], 'wave_cleared');
-  // THE QUIVER: introduced and ordered across the lane, a hard core spawned once it stands, the override when it reaches the gate,
-  // the optic handed over, a second hard core later, and settled once both are down, with the views unlocked again
-  const orders = kinds(g, 'order').length, spawns = kinds(g, 'spawn').length, breaches = kinds(g, 'breach').length;
+  // THE QUIVER: printed across the lane while the wave was fought (ordered the moment the Rotor was handed over), so the moment the wave
+  // is down a hard core rises and the optic is handed over at once; a second hard core later; settled once both are down
+  assert.deepEqual(kinds(g, 'order').at(-1), ['order', 'quiver', 4244], 'the Quiver went on the book when the Rotor was handed over');
+  const spawns = kinds(g, 'spawn').length, breaches = kinds(g, 'breach').length, pilots = kinds(g, 'pilot').length;
   g.seal();   // the player filled the sinkhole with an orbital strike after the wave
-  run(beats, g, 2.1); assert.equal(beats.state().phase, 'quiver-printing'); assert.deepEqual(kinds(g, 'order').at(-1), ['order', 'quiver', 4244]); assert.equal(kinds(g, 'brief').at(-1)[1], 'quiver_intro'); assert.equal(kinds(g, 'order').length, orders + 1);
-  // the fake's gate is already reached (its clock runs from the first spawn), so ready and override follow on consecutive ticks
-  run(beats, g, 3.2); assert.equal(kinds(g, 'breach').length, breaches + 1, 'the sinkhole is opened again for the hard cores'); assert.equal(beats.state().phase, 'quiver-override'); assert.deepEqual(kinds(g, 'spawn').at(-1), ['spawn', 'barbed', 4300]); assert.equal(kinds(g, 'spawn').length, spawns + 1, 'one hard core first'); assert.equal(kinds(g, 'brief').at(-1)[1], 'quiver_override');
-  run(beats, g, 1.1); assert.equal(beats.state().phase, 'quiver-piloting'); assert.deepEqual(kinds(g, 'pilot').at(-1), ['pilot', 4244, 4243]);
-  run(beats, g, 3); assert.equal(kinds(g, 'spawn').length, spawns + 1, 'the second waits its delay'); run(beats, g, 1.5); assert.equal(kinds(g, 'spawn').length, spawns + 2, 'then the second hard core');
+  run(beats, g, 1); assert.equal(beats.state().phase, 'quiver-piloting', 'almost immediate: no printing wait, no walk to the gate');
+  assert.equal(kinds(g, 'breach').length, breaches + 1, 'the sinkhole is opened again for the hard cores'); assert.deepEqual(kinds(g, 'spawn').at(-1), ['spawn', 'barbed', 4300]); assert.equal(kinds(g, 'spawn').length, spawns + 1);
+  assert.deepEqual(kinds(g, 'pilot').at(-1), ['pilot', 4244, 4243]); assert.equal(kinds(g, 'pilot').length, pilots + 1); assert.equal(kinds(g, 'brief').at(-1)[1], 'quiver_override');
+  run(beats, g, 7); assert.equal(kinds(g, 'spawn').length, spawns + 1, 'the second waits its delay'); run(beats, g, 2.5); assert.equal(kinds(g, 'spawn').length, spawns + 2, 'then the second hard core');
   g.kill(1); run(beats, g, 1); assert.equal(beats.state().phase, 'quiver-piloting', 'one still standing');
   g.kill(1); run(beats, g, 1); assert.equal(beats.state().phase, 'settled'); assert.equal(kinds(g, 'brief').at(-1)[1], 'quiver_cleared'); assert.deepEqual(kinds(g, 'unlock'), [['unlock', 'views'], ['unlock', 'views']]);
   run(beats, g, 0.5); assert.equal(beats.state().phase, 'settled', 'the screen waits its delay'); assert.equal(kinds(g, 'screen').length, 0);
-  run(beats, g, 1); assert.equal(beats.state().phase, 'study'); assert.deepEqual(kinds(g, 'screen'), [['screen', 'synthetic']]); assert.equal(kinds(g, 'brief').at(-1)[1], 'vibration_study');
+  run(beats, g, 1); assert.equal(beats.state().phase, 'study-talk', 'a close-up of Isao first'); assert.deepEqual(kinds(g, 'closeup'), [['closeup', 'isao']]); assert.equal(kinds(g, 'brief').at(-1)[1], 'vibration_study'); assert.equal(kinds(g, 'screen').length, 0, 'the screen waits for his lines');
+  g.talking = false; run(beats, g, 1); assert.equal(beats.state().phase, 'study'); assert.deepEqual(kinds(g, 'screen'), [['screen', 'synthetic']]);
+  run(beats, g, 1); assert.equal(beats.state().phase, 'study', 'the screen stays up until it is closed');
+  g.screenUp = false; run(beats, g, 0.5); assert.equal(beats.state().phase, 'expedition'); assert.equal(kinds(g, 'brief').at(-1)[1], 'rocket_sites'); assert.equal(kinds(g, 'sites').length, 1); assert.equal(kinds(g, 'planetView').length, 1, 'the planet pulled back, the landing sites marked');
   run(beats, g, 5); assert.equal(kinds(g, 'spawn').length, spawns + 2, 'nothing more comes'); assert.equal(kinds(g, 'screen').length, 1, 'shown once');
 }
 // ungated world (no gate yet): straight to control, no fodder

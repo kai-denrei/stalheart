@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-quiver-route-sight-isao-birudoron-comms-rotor-report",
+  "date": "2026-09-14T11:00:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "The Quiver sees the whole route from the sinkhole; Isao is the A6 ISAO-Birudorōn; his comms are a small terminal on the left; the Rotor's report plays at the gun's own cadence",
+  "context": "Owner playtest of the story: fifty enemies confirmed; Isao still used the older model instead of ISAO-Birudorōn from SentryTowers_A6; the Isao comms box is much too long and should be a small terminal on the left (a recurring request); the Rotor's firing audio needs to be better (the barrel spin is fine; spherical-stalberg sounded better); one wall still stood in the Quiver's line of sight; and despite a good view the Quiver would not lock until the enemy was really close, when it is a long-range weapon.",
+  "outcome": "SIGHT: measured in node against the real story planet — the Quiver stands beside the lane, so its line to the sinkhole left the centre cut: a rock cell at 44 m (the wall in the owner's screenshot) and one at 157 m hid everything past 59 m. A second cut runs from the Quiver socket to the sinkhole, and then base-plan walks the actual shortest route from the sinkhole to the forward cell, opens every rock cell on a line from the Quiver to a cell of it, and walks again until a pass opens nothing (opening rock once shortened the route onto newly hidden cells, which is why it iterates). The route trace now reports no cell off the cut and none out of sight. LOCK RANGE: the long-range probe showed the lock itself was never range-limited — a held hard core locked at 75 m the moment it was boxed, and the 400 m config stands; the far one was simply hidden from 236 m to 153 m, which the route sight fixes. ISAO: docs/isao-birudoron-assets.lock.json pins LOD1 at SentryTowers_A6 da2f64f (sha256 matches the upstream manifest); src/content/isao-faces.js maps the game's 21 emotion ids onto the model's 14 authored clips (each clip scales its FACE_* LED glyphs and poses body and limbs), and units.js makeIsaoDrone builds it with the same hooks (setFace crossfades the clip, tickFace advances the mixer, spinRotors scales Rotor_Cycle, Hover_Idle always on), fitted to the fabricator's board size, the fabricator staying the fallback. COMMS: #story-comms is a fit-content card at most 280 px on the left, like the game's #td-brief. ROTOR: the sample and its manifest entry are identical to spherical-stalberg; the difference was cadence — six presentation rounds per shot and sentry control's rate multiplier made one short sample fire about fifteen times as often, which the voice cap turned into a buzz; it now plays once per shot of the gun's own rate. RACE, found by the story-world suite once the Quiver could see far: the beats counted enemies as bodies alive, not bodies queued, so the tick the first hard core died the second was still in the spawn queue and the Quiver beat settled with it to come (probe: tower kills 51, hard cores 2, alive 0, the second in sight at 235 m). The story API's enemy count now includes queued spawns, which also guards the first wave's cleared check.",
+  "alternatives": [
+    "Raise the Quiver's lock range or loosen its gate further: rejected, the probe showed range was not the limit; a body behind rock should not lock.",
+    "Widen the centre cut until the diagonal clears: rejected, a blanket width removes far more rock than the actual sightlines need and still misses route cells beside the cut.",
+    "Merge the Isao model for draw calls like the fabricator: rejected, its faces are scaled nodes driven by clips; a merge would weld the LED glyphs away (the test pins the node names)."
+  ],
+  "evidence": [
+    "Node trace on the story planet: blocked cells on the Quiver-to-sinkhole line [] after the cut; route sinkhole->forward 27 hops, none off the cut or out of sight after the route pass.",
+    "Long-range probe (quiver-piloting): first lock at 75.3 m; second hard core in sight at 235 m, hidden 236-153 m before the route pass.",
+    "test/isao-faces.mjs against the pinned GLB; node scripts/assets.mjs check; story lab screenshots show the Birudorōn model with its LED face and the comms card at 215x30 on the left.",
+    "Kill-count probe with killsBySrc on the test hook: phase settled at 7.6 s with hardcores 2, alive 0 and the second hard core in reach at 234.8 m; the story-world suite's 'two hard cores, two rounds' failed 1 !== 2 before the fix."
+  ],
+  "supersedes": []
+}

@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-isao-closeup-face-on-comms-above-radar",
+  "date": "2026-09-14T14:00:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "Isao's close-up frames his face, not his legs; the comms card sits above the radar so the landing-site triangles show",
+  "context": "Checking the story-world suite's own screenshots after the held-faces batch: the isaoTalk close-up put the camera between Isao's legs and the rocket with no face in frame, and the panel still carried the previous line (quiver_cleared) because briefs queue one deep; at the expedition beat the game's comms card sat over the radar, hiding the amber landing-site triangles the owner asked for.",
+  "outcome": "The close-up camera now stands along Isao's own forward (the model's +Z, flattened to the tangent plane), level with the LED panel and one to two drone-sizes out, looking at the face; the queued line is cleared as the shot starts so 'They talk in vibration.' is the first thing on the panel. #td-brief now sits above the radar using the same sizing rule td-tab applies to the disc (min(240px, 32vmin) at 14 px on desktop; min(138px, 23vmin) at 700 px and narrower). Landing plumes verified in the story lab capture: the flames leave from under the base.",
+  "alternatives": [
+    "Move the radar instead of the comms card: rejected, the radar's corner is a long-standing placement other overlays anchor to; the card is the newcomer."
+  ],
+  "evidence": [
+    "artifacts/browser/story-world-isao-talk.png and story-world-expedition.png from the story-world suite; the story lab landing capture."
+  ],
+  "supersedes": []
+}

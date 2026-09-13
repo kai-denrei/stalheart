@@ -29,6 +29,8 @@ import { buildGameWorld } from '../src/platform/story-world.js';
   assert.ok(rock(g4) > rock(g1), 'walls add rock');
   assert.ok(rock(g4) - rock(g1) <= g4.plan.walls.length, 'at most one cell per wall');
   assert.notEqual(g4.dungeon.tags[g4.plan.gate.cell], BLOCKED, 'gate cell stays open');
+  // on the real planet: a landed rocket or the wreck opens a real patch of ground, and none of it is rock in the game's board
+  for (const g of [g1, g4]) { assert.ok(g.plan.open.length > 3, `rocket ground opens more than the three anchor cells (${g.plan.open.length})`); assert.ok(g.plan.open.every((ci) => g.dungeon.tags[ci] !== BLOCKED), 'no rock under a landed rocket'); }
   g4.base?.dispose(); g1.base?.dispose();
 }
 console.log('Story world composition blocks wall cells and keeps the gate open.');

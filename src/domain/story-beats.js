@@ -10,21 +10,26 @@
 //   override      Isao: not ready for auto-targeting, manual override
 //   piloting      the player has the Rotor; fodder keeps coming, capped
 //   cleared       the first wave is down: Isao's line, and the views unlock (tank, sentry, map)
-//   quiver-*      Isao introduces the Quiver on the wall across the lane; two hard-cored enemies, one after the other; its
-//                 targeting chips are not ready either, so the override hands over its optic; two TALON shots, then settled
-//   study         Isao's screen: they talk in vibrations, he is reverse-engineering it and needs more compute
+//   quiver-*      Isao prints the Quiver across the lane WHILE the first wave is fought; the moment the wave is down (and the Quiver
+//                 stands) a hard core rises and the player goes straight from the Rotor into the Quiver's optic (owner, 2026-09-13:
+//                 almost immediate); a second hard core later; two TALON shots, then settled
+//   study-talk    a close-up of Isao saying it, face neutral, skeptical, then to work (owner, 2026-09-13)
+//   study         Isao's screen, retitled: Preliminary Alien Vibration Language Analysis
+//   expedition    the screen closed: Isao sends the tank for material at the other rocket landing sites, the planet pulled back
+//                 and the sites marked on the radar
 export function makeStoryBeats({
   socket, lane = -1, fodder = -1, gate = -1, rotorDelay = 2, key = 'rotor',
-  fodderType = 'phage', fodderEvery = 2.5, fodderAlive = 8, fodderTotal = 20,
+  fodderType = 'phage', fodderEvery = 2.5, fodderAlive = 8, fodderTotal = 20, fodderEmerge = null,
   controlDelay = 1.5, tremorDelay = 1.5, breachDelay = 4, overrideDelay = 2.5,
   faceDelays = [0.6, 4], commsKills = 5, harvestKills = 10, quiverSocket = -1, quiver = null,
 }) {
   const gated = gate >= 0 && fodder >= 0;
+  let quiverOrdered = false;
   let phase = 'landed', clock = 0, orderedAt = null, readyAt = null, spawned = 0, nextSpawn = 0, at = 0, faces = 0, said = new Set(), hardcores = 0;
   const enter = (p) => { phase = p; at = clock; };
   const spawnTick = (api) => {
     if (spawned >= fodderTotal || clock < nextSpawn) return;
-    if (api.enemies() < fodderAlive) { api.spawn(fodderType, fodder); spawned++; }
+    if (api.enemies() < fodderAlive) { api.spawn(fodderType, fodder, fodderEmerge && { harmless: fodderEmerge.harmless, spread: fodderEmerge.spread, delay: ((spawned * 0.618034) % 1) * fodderEmerge.stagger }); spawned++; }   // a swarm rises over a spread of moments, golden-ratio spaced
     nextSpawn = clock + fodderEvery;
   };
   return {
@@ -43,7 +48,7 @@ export function makeStoryBeats({
       } else if (phase === 'tremor' && clock - at >= breachDelay) { api.breach?.(fodder); api.tremor?.(-1); enter('breach'); nextSpawn = clock + 1; }
       else if (phase === 'breach') { spawnTick(api); if (spawned > 0) enter('approach'); }
       else if (phase === 'approach') { spawnTick(api); if (api.near?.(gate)) { api.brief?.('manual_override'); enter('override'); } }
-      else if (phase === 'override') { spawnTick(api); if (clock - at >= overrideDelay) { api.pilot?.(socket, lane); enter('piloting'); } }
+      else if (phase === 'override') { spawnTick(api); if (clock - at >= overrideDelay) { api.pilot?.(socket, lane); enter('piloting'); if (quiver && quiverSocket >= 0) { api.grant(api.cost(quiver.key)); quiverOrdered = !!api.order(quiver.key, quiverSocket); } } }   // Isao prints the Quiver while the wave is fought
       else if (phase === 'piloting' && fodder >= 0) {
         spawnTick(api);
         const kills = api.kills?.() ?? 0;
@@ -51,14 +56,18 @@ export function makeStoryBeats({
         if (kills >= harvestKills && !said.has('harvest_biomass')) { api.brief?.('harvest_biomass'); said.add('harvest_biomass'); }
         if (spawned >= fodderTotal && api.enemies() === 0) { api.brief?.('wave_cleared'); api.unlock?.('views'); said.add('wave_cleared'); enter('cleared'); }
       } else if (phase === 'cleared' && quiver && quiverSocket >= 0 && gated && clock - at >= quiver.delay) {
-        api.brief?.('quiver_intro'); api.grant(api.cost(quiver.key)); if (api.order(quiver.key, quiverSocket)) enter('quiver-printing');
-      } else if (phase === 'quiver-printing' && api.built(quiverSocket)) { if (api.sourceAlive && !api.sourceAlive()) api.breach?.(fodder); api.spawn(quiver.hardcore, fodder); hardcores = 1; enter('quiver-ready'); }   // a strike may have filled the sinkhole: open it again for the hard cores
-      else if (phase === 'quiver-ready' && api.near?.(gate, quiver.nearCells ?? 2.2)) { api.brief?.('quiver_override'); enter('quiver-override'); }   // the hard cores hold off the wall, so 'near' is wider here
-      else if (phase === 'quiver-override' && clock - at >= overrideDelay) { api.pilot?.(quiverSocket, lane); enter('quiver-piloting'); nextSpawn = clock + quiver.secondDelay; }
+        if (!quiverOrdered) { api.brief?.('quiver_intro'); api.grant(api.cost(quiver.key)); quiverOrdered = !!api.order(quiver.key, quiverSocket); }
+        if (api.built(quiverSocket)) {   // straight off the Rotor into the Quiver, the optic on the lane as the hard core rises
+          if (api.sourceAlive && !api.sourceAlive()) api.breach?.(fodder);   // a strike may have filled the sinkhole: the hard cores need it open
+          api.spawn(quiver.hardcore, fodder); hardcores = 1; api.brief?.('quiver_override'); api.pilot?.(quiverSocket, lane); enter('quiver-piloting'); nextSpawn = clock + quiver.secondDelay;
+        }
+      }
       else if (phase === 'quiver-piloting') {
         if (hardcores < 2 && clock >= nextSpawn) { api.spawn(quiver.hardcore, fodder); hardcores = 2; }
         if (hardcores >= 2 && api.enemies() === 0) { api.brief?.('quiver_cleared'); api.unlock?.('views'); said.add('quiver_cleared'); enter('settled'); }
-      } else if (phase === 'settled' && quiver && clock - at >= (quiver.studyDelay ?? 3)) { api.brief?.('vibration_study'); api.screen?.('synthetic'); said.add('vibration_study'); enter('study'); }
+      } else if (phase === 'settled' && quiver && clock - at >= (quiver.studyDelay ?? 3)) { api.closeup?.('isao'); api.brief?.('vibration_study'); said.add('vibration_study'); enter('study-talk'); }
+      else if (phase === 'study-talk' && clock - at >= 0.5 && !api.briefing?.()) { api.screen?.('synthetic'); enter('study'); }   // the lines run out (or were seen before), then the screen
+      else if (phase === 'study' && !api.screenOpen?.()) { api.brief?.('rocket_sites'); api.sites?.(); api.planetView?.(); said.add('rocket_sites'); enter('expedition'); }
     },
     state: () => ({ phase, clock: +clock.toFixed(2), socket, orderedAt, readyAt, spawned, gated, said: [...said], hardcores }),
   };

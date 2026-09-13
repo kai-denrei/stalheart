@@ -70,21 +70,26 @@ export function createSentryPilot(root, host) {
   // A GUIDED MOUNT USES THE LOCK BOX (host.cone, the tangent of its half-angle): whatever is inside it is the target, and it STAYS the
   // target while it stays inside. Swapping to whichever body is momentarily nearest was the frustration: every swap reset the timer, so
   // a lock looked random. A gun still needs the reticle on the body itself.
-  const inBox=(e,cone,cellSide)=>{
+  const inBox=(e,cone,cellSide,sight=true)=>{
     v.fromArray(e.pos).addScaledVector(v.clone().normalize(),cellSide*.3).sub(eye);
     const along=v.dot(direction),off=v.clone().addScaledVector(direction,-along).length();
-    return along>0&&(cone?off<along*cone:off<cellSide*Math.max(.22,(e.size??e.spec.size)*.55))&&host.visible(e)?along:-1;
+    return along>0&&(cone?off<along*cone:off<cellSide*Math.max(.34,(e.size??e.spec.size)*.95))&&(!sight||host.visible(e))?along:-1;   // a gun's box covers the whole dot cloud, top to bottom (owner, 2026-09-13: basic enemies should drop to the Rotor wherever it hits them)
   };
+  // A ROCK EDGE IS NOT A LOSS (operator, 2026-09-13: the Quiver climbed to ~62% and reset, every time). A hard core walking the lane
+  // grazes the rock between it and the optic: measured, it stayed dead centre in the box while its sightline flickered off for ~170 ms
+  // every ~0.45 s, and each flicker zeroed a 0.9 s lock. A held body that is still inside the box keeps it through that long a blink.
+  const SIGHT_GRACE=.5;   // seconds
   function target(enemies,range,cellSide){
-    let best=null,near=Infinity;const cone=host.cone?.()||0;
+    let best=null,near=Infinity;const cone=host.cone?.()||0,now=performance.now()/1000;
     const held=cone&&state.target?.alive?enemies.find(e=>e===state.target):null;   // the one being locked keeps the box until it leaves it
-    if(held&&inBox(held,cone,cellSide)>0)best=held;
-    else for(const e of enemies){if(!e.alive)continue;const along=inBox(e,cone,cellSide);if(along>0&&along<near){near=along;best=e;}}
+    if(held&&inBox(held,cone,cellSide)>0){best=held;state.hidden=null;}
+    else if(held&&inBox(held,cone,cellSide,false)>0&&now-(state.hidden??=now)<SIGHT_GRACE)best=held;   // in the box, behind an edge: held a moment
+    else{state.hidden=null;for(const e of enemies){if(!e.alive)continue;const along=inBox(e,cone,cellSide);if(along>0&&along<near){near=along;best=e;}}}
     state.target=best;
     return best||{pilotAim:true,pos:host.aimPoint(eye,direction,range)};
   }
   function attach(tw,toward){
-    state.tower=tw;state.held=false;state.target=null;
+    state.tower=tw;state.held=false;state.target=null;state.hidden=null;
     v.fromArray(toward);tw.obj.worldToLocal(v);state.yaw=Math.atan2(v.x,v.z);
     up.copy(tw.obj.position).normalize();eye.copy(tw.obj.position).addScaledVector(up,host.cellSide()*.65);
     v.fromArray(toward).sub(eye);state.pitch=Math.atan2(v.dot(up),v.clone().addScaledVector(up,-v.dot(up)).length());

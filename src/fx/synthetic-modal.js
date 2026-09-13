@@ -12,7 +12,7 @@ import linTfm from '../../vendor/synthetic-learningx58/linear-transformers.js';
 const PANELS = [twoSeq, nbbXor, linTfm, emSeg];
 export function createSyntheticModal(root) {
   const el = document.createElement('div'); el.id = 'synthetic-modal'; el.hidden = true;
-  el.innerHTML = `<div class="sheet"><header><h1>&gt; SYNTHETIC LEARNING x58_</h1><p class="sub">CRT terminal // 4 neural-net visualizations // ISAO's study</p></header>
+  el.innerHTML = `<div class="sheet"><header><h1>&gt; PRELIMINARY ALIEN VIBRATION LANGUAGE ANALYSIS_</h1><p class="sub">CRT terminal // 4 neural-net visualizations // ISAO's study</p></header>
     <p class="isao"></p><div class="grid">${PANELS.map(() => '<canvas></canvas>').join('')}</div>
     <footer><span>RENDER LOOP // CANVAS 2D // ES MODULES // NO DEPS</span><button type="button" data-continue>CONTINUE</button></footer></div>`;
   root.append(el);

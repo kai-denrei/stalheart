@@ -54,10 +54,10 @@ assert.equal(one.structures[0].y, 0, 'the rocket stands on natural ground');
   const sk = full.sockets[0]; assert.equal(sk.cell, rc); assert.ok(Math.abs(Math.hypot(...sk.pos) - 1) < 1e-9);
   const dc = Math.hypot(...sk.pos.map((v, k) => v - planet.graph.centers[rc][k])), dl = Math.hypot(...sk.pos.map((v, k) => v - planet.graph.centers[rl][k]));
   assert.ok(KIT.rotorEdge === 0 ? dc < 1e-9 : dc > 0 && dl < Math.hypot(...planet.graph.centers[rc].map((v, k) => v - planet.graph.centers[rl][k])), 'the mount leans toward the lane');
-  assert.ok(fd >= 0 && fd !== fc && planet.dungeon.tags[fd] !== BLOCKED && planet.arcOfCell(fd) > planet.arcOfCell(fc), 'fodder cell is open ground farther down the lane');
-  // the sinkhole is exactly fodderSteps lane hops out (or as far as the lanes reach), not where a greedy walk gave up
+  assert.ok(fd >= 0 && fd !== fc && (planet.dungeon.tags[fd] !== BLOCKED || full.open.includes(fd)) && planet.arcOfCell(fd) > planet.arcOfCell(fc), 'fodder cell is open ground farther down the lane');
+  // without a sightline, the sinkhole is exactly fodderSteps lane hops out (or as far as the lanes reach), not where a greedy walk gave up
   { const hop = new Map([[fc, 0]]); const q = [fc]; while (q.length) { const a = q.shift(); for (const nb of planet.graph.adj[a]) if (!hop.has(nb) && planet.dungeon.tags[nb] !== BLOCKED && !planet.clearing.cells.has(nb)) { hop.set(nb, hop.get(a) + 1); q.push(nb); } }
-    assert.equal(hop.get(fd), Math.min(KIT.fodderSteps, Math.max(...hop.values())), `fodder ${hop.get(fd)} hops out`); assert.equal(hop.get(rl), KIT.rotorSteps); }
+    if (!KIT.sightline) assert.equal(hop.get(fd), Math.min(KIT.fodderSteps, Math.max(...hop.values())), `fodder ${hop.get(fd)} hops out`); assert.equal(hop.get(rl), KIT.rotorSteps); }   // with a sightline the sinkhole ends the cut line instead (tested below)
   const rs = full.structures.find((s) => s.id === 'rotor'); assert.equal(rs.cell, rc); assert.equal(rs.y, KIT.wallMetres);
   assert.ok(!full.islands.some((i) => i.id === 'rotor'), 'no slab on the wall'); }
 // the tank bay: three berths in painted order, each a point inside its bay with a straight run out of the doors
@@ -75,4 +75,17 @@ assert.deepEqual(full.bays.map((b) => b.n), [1, 2, 3]);
     assert.ok(planet.arcOfCell(b.exit) < planet.arcOfCell(b.cell) + 1e-9 || Math.hypot(...planet.worldToFrame([b.out[0] * planet.radius, b.out[1] * planet.radius - planet.radius, b.out[2] * planet.radius])) < Math.hypot(b.x, b.z), `bay ${b.n} rolls toward the pole`);
   }
   assert.ok(full.bays[0].doors && !full.bays[0].vehicle && full.bays[1].vehicle && full.bays[2].vehicle, 'bay 1 is sealed and empty, 2 and 3 hold a hull'); }
+// a landed rocket, standing or broken, never has rock under it: its cell and every cell within its clear radius are opened
+{ const plan = planBase(planet, layout, STAGES.length - 1), landed = plan.structures.filter((s) => s.anchor === 'open');
+  assert.ok(landed.length >= 3 && landed.every((s) => s.clear > 0), 'both rockets and the wreck carry a clear radius');
+  for (const s of landed) {
+    const c = planet.graph.centers[s.cell], arc = (ci) => { const p = planet.graph.centers[ci]; return Math.acos(Math.max(-1, Math.min(1, (p[0] * c[0] + p[1] * c[1] + p[2] * c[2]) / (Math.hypot(...p) * Math.hypot(...c))))) * planet.radius; };
+    assert.ok(plan.open.includes(s.cell), `${s.id} stands on opened ground`);
+    for (let ci = 0; ci < planet.graph.centers.length; ci++) if (arc(ci) < s.clear) assert.ok(plan.open.includes(ci), `${s.id}: cell ${ci} at ${arc(ci).toFixed(1)} m is under the hull`);
+  }
+  assert.ok(plan.open.every((ci) => !planet.clearing.cells.has(ci)), 'the opening never reaches into the clearing'); }
+// the long sightline: a straight cut from the forward cell to the sinkhole, all of it open ground, the sinkhole at its far end
+{ const plan = planBase(planet, layout, 4), f = plan.cells.forward, k = plan.cells.fodder, arc = (a, b) => { const p = planet.graph.centers[a], q = planet.graph.centers[b]; return Math.acos(Math.max(-1, Math.min(1, (p[0] * q[0] + p[1] * q[1] + p[2] * q[2]) / (Math.hypot(...p) * Math.hypot(...q))))) * planet.radius; };
+  assert.ok(f >= 0 && k >= 0 && plan.open.includes(k), 'the sinkhole stands on the opened line');
+  assert.ok(arc(f, k) > KIT.sightline.metres * 0.8, `the sinkhole is far down the line (${arc(f, k).toFixed(0)} m)`); }
 console.log(`Base plan: ${full.islands.length} islands, ${full.structures.length} structures, ${full.walls.length} walls, gate at ${full.gate.x.toFixed(0)},${full.gate.z.toFixed(0)}.`);

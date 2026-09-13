@@ -26,6 +26,7 @@ export { preloadMork, preloadMorkTier, preloadMorkProxy } from './mork.js';
 import { makeJelly } from './jelly.js';
 import { EMOTION_IDS, emotion, phosphorFor } from './emotions.js';
 import { printPhase, printOffset, printOn } from './printpath.js';
+import { ISAO_MODEL, ISAO_FACE_CLIPS, ISAO_IDLE_CLIPS } from './content/isao-faces.js';
 import { loadGlb, loadGlbWithClips, mergeByMaterial, fitModel, tintModel, makeShellRack,
   addEdgeOutlines, makeHeatSleeve } from './glbmodels.js';
 import { CREATURES, thinCloud, spherePts, bulletPts, missilePts, heartPts, torusPts, cloudFormPoints, enemyDotPts, portalPts, personPts } from './creatures.js';
@@ -2114,9 +2115,20 @@ export function makePortalRing(tint = 0x8fe8ff) {
   return g;
 }
 
+// ISAO-BIRUDORŌN (owner, 2026-09-13: Isao still used the older model). The articulated A6 unit, fitted to the fabricator's board size so
+// every placement, beam and camera built around the old drone still frames him; loaded alongside the fabricator, which stays the fallback
+let isaoProto = null, isaoClips = [];
+function preloadBirudoron() {
+  return loadGlbWithClips(ISAO_MODEL).then((got) => {
+    if (!got?.scene) return false;
+    isaoProto = fitModel(got.scene, { height: 0.55, maxSpan: 1.0 }); isaoClips = got.clips;
+    return true;
+  });
+}
 export function preloadFabricator() {
   if (fabLoad) return fabLoad;
-  fabLoad = loadGlb(FAB_URL).then((scene) => {
+  const isaoLoad = preloadBirudoron();
+  fabLoad = Promise.all([loadGlb(FAB_URL), isaoLoad]).then(([scene]) => {
     if (!scene) { fabLoad = null; return false; }
     const merged = mergeByMaterial(scene, FAB_PIVOTS, FAB_DROP);
     // The drone is parented under Airframe_Platform, which sits at y=1.03
@@ -2229,7 +2241,35 @@ function isaoFaceTexture(id, frameIdx = 0) {
   return tex;
 }
 
+// the A6 Isao: a clone with its own mixer; the face is a clip crossfade, the rotors and the hover bob are always-on layers
+function makeBirudoron(tint) {
+  const g = isaoProto.clone(true);
+  if (tint !== 0xbfe6ff) tintModel(g, tint, { wash: 0.12 });   // the assistant keeps its amber so the pair never read as one
+  const mixer = new THREE.AnimationMixer(g), byName = new Map(isaoClips.map((c) => [c.name, c]));
+  const idle = ISAO_IDLE_CLIPS.map((n) => byName.get(n)).filter(Boolean).map((c) => { const a = mixer.clipAction(c); a.play(); return a; });
+  const rotor = idle.find((a) => a.getClip().name === 'Rotor_Cycle');
+  let face = null, action = null;
+  g.userData.faces = EMOTION_IDS;
+  g.userData.setFace = (name) => {
+    if (!EMOTION_IDS.includes(name) || face === name) return;
+    face = name;
+    const clip = byName.get(ISAO_FACE_CLIPS[name]); if (!clip) return;
+    // ONE HELD STATE PER EMOTION (owner, 2026-09-13: minimalism, no constant facial animation): the clip plays once into its pose and holds
+    const next = mixer.clipAction(clip); next.reset(); next.setLoop(THREE.LoopOnce, 1); next.clampWhenFinished = true; next.play();
+    if (action && action !== next) next.crossFadeFrom(action, 0.25, false);
+    action = next;
+  };
+  g.userData.tickFace = (dt) => mixer.update(dt);
+  g.userData.getFace = () => face;
+  g.userData.spinRotors = (dt, load = 0) => { if (rotor) rotor.timeScale = 1 + 1.3 * load; };
+  g.userData.setWork = () => {};
+  g.userData.nozzle = g.getObjectByName('TOOL_TIP') || null;
+  g.userData.kind = 'fixture'; g.userData.asset = 'isao-birudoron';
+  g.userData.setFace('neutral'); mixer.update(0);
+  return g;
+}
 export function makeIsaoDrone(tint = 0xbfe6ff) {
+  if (isaoProto) return makeBirudoron(tint);
   const g = makeFabricatorDrone(tint);
   if (!g) return null;
   // WHERE THE POD WAS. Read the position off the node rather than guessing

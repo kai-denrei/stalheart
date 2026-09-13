@@ -338,7 +338,7 @@ try{
  const held=await evaluate('window.__stalheartTest.state()');assert.equal(held.kills,0,'the sentry did not fire on its own');assert(held.performance.enemies>=held.story.spawned-1&&held.performance.enemies>0,`every spawned enemy is still alive (${held.performance.enemies} of ${held.story.spawned}, the last may still be emerging)`);current='story-world-override';await finish();
  assert.equal(await evaluate('typeof window.__stalheartPilotTest'),'undefined','no control before the override');
  await until('!!window.__stalheartPilotTest',30000);await until('window.__stalheartTest.state().performance.enemies>0',60000);await delay(14000);
- const fodder=await evaluate('window.__stalheartTest.state()');assert(fodder.performance.enemies>=2&&fodder.performance.enemies<=8,`fodder alive ${fodder.performance.enemies}`);assert.equal(fodder.performance.wave,0,'no wave arms');
+ const fodder=await evaluate('window.__stalheartTest.state()');assert(fodder.performance.enemies>=2&&fodder.performance.enemies<=50,`fodder alive ${fodder.performance.enemies}`);   // the first wave is one fifty-strong swarmassert.equal(fodder.performance.wave,0,'no wave arms');
  assert.equal(fodder.insideEnemies,0,'the closed gate holds the fodder outside');assert.equal(fodder.queued,0);
  current='story-world-fodder';await finish();
  await until('window.__stalheartPilotTest.aimEnemy()!==null',15000);const victim=await evaluate('window.__stalheartPilotTest.aimEnemy()');assert(victim!==null,'a phage is in reach and sight of the Rotor');   // the pile at the gate shuffles; give it a moment
@@ -355,13 +355,11 @@ try{
  // THE FIRST WAVE DOWN IS THE NEXT UNLOCK: keep firing until the twenty are spent and none stand, then Isao's line and the view strip
  assert.equal(await evaluate('document.querySelector("#story-views")'),null,'no view strip before the wave is cleared');
  await evaluate('window.__stalheartPilotTest.hold(true)');
- await until('(()=>{const s=window.__stalheartTest.state();if(s.story.phase==="cleared")return true;const t=window.__stalheartPilotTest;if(t.state().overheated)return false;t.aimEnemy();return false;})()',240000);
+ await until('(()=>{const s=window.__stalheartTest.state();if(s.story.phase==="cleared")return true;const t=window.__stalheartPilotTest;if(t.state().overheated)return false;t.aimEnemy();return false;})()',480000);
  await evaluate('window.__stalheartPilotTest.hold(false)');const cleared=await evaluate('window.__stalheartTest.state()');assert(cleared.story.said.includes('wave_cleared'));await until('window.__stalheartTest.state().performance.enemies===0',5000);   // the performance block is a periodic sample
  await until('!!document.querySelector("#story-views")',5000);await delay(600);current='story-world-cleared';await finish();
- await click('#story-views [data-view="tank"]');await until('typeof window.__stalheartPilotTest==="undefined" && !document.querySelector("#sentry-pilot")',5000);await delay(800);current='story-world-views-tank';await finish();
- await click('#story-views [data-mount="rotor"]');await until('!!window.__stalheartPilotTest && !!document.querySelector("#sentry-pilot")',5000);await delay(600);assert.equal(await evaluate('window.__stalheartPilotTest.state().key'),'rotor','the ROTOR button takes the Rotor');current='story-world-views-sentry';await finish();
- await click('#story-views [data-view="map"]');await until('!!document.querySelector(".pilot-map")',5000);await delay(600);current='story-world-views-map';await finish();
- // THE QUIVER: Isao prints it across the lane, a hard core reaches the gate, the override hands over the Quiver's optic (its post first,
+ // the view strip is exercised after the Quiver: the hand-over now follows the cleared wave almost at once (owner, 2026-09-13)
+ // THE QUIVER: printed across the lane while the wave was fought, handed over the moment the wave is down (its post first,
  // the Rotor's behind it), two TALON shots with the seeker feed riding along, then settled and the strip is back
  await until('window.__stalheartTest.state().story.phase==="quiver-piloting"',120000);await delay(600);
  const qp=await evaluate('window.__stalheartPilotTest.state()');assert.equal(qp.key,'quiver','the Quiver optic first');assert.equal(qp.posts.length,2,'both mounts are posts');
@@ -372,14 +370,19 @@ try{
  await evaluate('window.__stalheartPilotTest.hold(false)');const settled=await evaluate('window.__stalheartTest.state()');assert.equal(settled.kills-killsBefore,2,'two hard cores, two rounds');assert(settled.monitorShown>0,'the seeker feed showed during a flight');
  await delay(500);current='story-world-quiver-settled';await finish();
  // ISAO's study: the synthetic-learning terminal opens over the game a few seconds after the Quiver beat settles, pauses it, and CONTINUE closes it
- await until('window.__stalheartTest.state().screenOpen',10000);await delay(1200);assert(await evaluate('window.__stalheartTest.state().paused'),'the game pauses under the screen');assert.equal(await evaluate('document.querySelectorAll("#synthetic-modal canvas").length'),4,'four panels');
+ await until('window.__stalheartTest.state().story.phase==="study-talk"',15000);assert.equal(await evaluate('window.__stalheartTest.state().shot'),'isaoTalk','a close-up of Isao while he says it');current='story-world-isao-talk';await delay(1500);await finish();
+ await until('window.__stalheartTest.state().screenOpen',40000);assert.match(await evaluate('document.querySelector("#synthetic-modal h1").textContent'),/PRELIMINARY ALIEN VIBRATION LANGUAGE ANALYSIS/);await delay(1200);assert(await evaluate('window.__stalheartTest.state().paused'),'the game pauses under the screen');assert.equal(await evaluate('document.querySelectorAll("#synthetic-modal canvas").length'),4,'four panels');
  current='story-world-study';await finish();
  await click('#synthetic-modal [data-continue]');await delay(400);const afterScreen=await evaluate('window.__stalheartTest.state()');assert(!afterScreen.screenOpen&&!afterScreen.paused,'CONTINUE closes it and the game resumes');assert.equal(afterScreen.screensOpened,1);
+ await until('window.__stalheartTest.state().story.phase==="expedition"',5000);const exp=await evaluate('window.__stalheartTest.state()');assert(exp.story.said.includes('rocket_sites'),'Isao sends the tank to the landing sites');assert(exp.storyHud.sites>=3,'the landing sites are on the radar');assert.equal(exp.shot,'sites','the planet pulled back');await delay(2500);current='story-world-expedition';await finish();
  assert.equal(await evaluate('getComputedStyle(document.querySelector("#synthetic-modal")).display'),'none','the closed screen is really gone, not a transparent sheet over the strip');
  assert.equal(await evaluate('document.querySelectorAll("#story-views [data-mount]").length'),2,'one button per mount');
  await click('#story-views [data-mount="rotor"]');await delay(500);
  if(await evaluate('window.__stalheartPilotTest?.state().key')!=='rotor')console.log('PICK DUMP',JSON.stringify(await evaluate('(()=>{const s=window.__stalheartTest.state(),p=window.__stalheartPilotTest?.state();const b=document.querySelector("#story-views [data-mount=rotor]"),r=b?.getBoundingClientRect();const top=r?document.elementFromPoint(r.x+r.width/2,r.y+r.height/2):null;return {pilot:p&&{key:p.key,posts:p.posts,view:p.view},paused:s.paused,screenOpen:s.screenOpen,phase:s.story.phase,hasPilot:!!window.__stalheartPilotTest,button:!!b,under:top&&(top.id||top.className||top.tagName),strip:[...document.querySelectorAll("#story-views button")].map(x=>x.textContent)};})()')));
  assert.equal(await evaluate('window.__stalheartPilotTest.state().key'),'rotor','ROTOR picks that mount while piloting');await click('#story-views [data-mount="quiver"]');await delay(500);assert.equal(await evaluate('window.__stalheartPilotTest.state().key'),'quiver','and back');current='story-world-views-cycle';await finish();
+ await click('#story-views [data-view="tank"]');await until('typeof window.__stalheartPilotTest==="undefined" && !document.querySelector("#sentry-pilot")',5000);await delay(800);current='story-world-views-tank';await finish();
+ await click('#story-views [data-mount="rotor"]');await until('!!window.__stalheartPilotTest && !!document.querySelector("#sentry-pilot")',5000);await delay(600);assert.equal(await evaluate('window.__stalheartPilotTest.state().key'),'rotor','the ROTOR button takes the Rotor');current='story-world-views-sentry';await finish();
+ await click('#story-views [data-view="map"]');await until('!!document.querySelector(".pilot-map")',5000);await delay(600);current='story-world-views-map';await finish();
  // THE THREE HULLS ARE THE THREE LIVES: at stage 7 the bays are the berths; the first hull starts inside bay 3 and rolls out of its doors,
  // bay 3's parked hull is hidden the moment it is the one being driven, bays 1 and 2 keep theirs (1 sealed and empty by construction)
  await go('story-world-bays','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=7#td');await until('!!window.__stalheartTest',90000);

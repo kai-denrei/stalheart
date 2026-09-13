@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-held-faces-plumes-edge-mounts-hitbox-quick-quiver",
+  "date": "2026-09-14T13:00:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "Isao holds one face per state; the landing plumes stay under the skirt; mounts stand at the rock's real edge; a gun's box covers the whole body; the Quiver takes over the moment the first wave is down",
+  "context": "Owner playtest: some landing thrusters appear outside the rocket and should emanate from under it; the Isao animation is too aggressive, with constant facial changes, when it should be minimal — one held state per emotion, only scanning and skeptical briefly animated; confirm the Rotor has separate sounds for its spinning barrels and its firing; Rotor fire sometimes misses enemies that look right there, maybe hitting the wall, and the turret should stand closer to the edge, touching it without being cantilevered; basic enemies should die more easily to the Rotor whether hit high or low; and between the first wave being dead and the Quiver it should be almost immediate, straight off the Rotor into the Quiver with a zoomed view of the next enemy.",
+  "outcome": "PLUMES: each is a camera-facing sheet `width` wide centred `radius` off the axis, and the cluster was 6-7 m wide at 1.25 m out against a 2.1 m hull radius, so the sheets stood well past the skirt; the cluster is now 2.1-2.4 m wide at 0.8 m out, inside the skirt. FACES: ISAO-Birudorōn's emotion clips play once into their pose and hold (they looped, alternating glyphs); the game's per-frame face picker is glee when a print lands, determined while he builds, neutral otherwise (the crowd count and the travel and idle faces changed his face every few seconds); the brief panel draws held faces, animating only scan and skeptical for their first 1.5 s. ROTOR SOUND: confirmed in code, two separate cues — the barrel spin is a loop (minigun_ready with rotor_spin.wav, gain and pitch following the barrels' spin) and the report is the one-shot minigun_fire, capped per key (maxVoices, minInterval), with no bus-level cap that lets one choke the other. MOUNTS: a mount perched halfway between centres minus a footprint taken from the model's longest extent — the barrels — so it sat back from the edge by the barrel length; it now slides to the real shared quad edge minus the pedestal's half width (the model's shorter extent). HIT BOX: a gun's box around a body was max(0.22, size x 0.55) cells about a point 0.3 cells up, smaller than the dot cloud; it is max(0.34, size x 0.95). QUIVER HAND-OVER: the Quiver goes on Isao's book the moment the Rotor is handed over, so it prints while the wave is fought; 0.6 s after the wave is cleared (and once it stands) a hard core rises and the Quiver's optic is handed over at once at 3x zoom — the near-the-gate wait and the override delay are gone.",
+  "alternatives": [
+    "Keep the emotion loops and slow them: rejected, the owner asked for one state, not a slower cycle.",
+    "Raise the Rotor's damage instead of its box: rejected, the report was misses on bodies that looked hit, not bodies that took too many hits.",
+    "Instant-build the Quiver at the clear: rejected, printing it during the wave keeps Isao's printer the one way things are built."
+  ],
+  "evidence": [
+    "test/story-beats.mjs: the Quiver ordered at the Rotor hand-over, quiver-piloting within a second of the clear with the hard core spawned and the optic handed over.",
+    "Measured: SH02 hull radius 2.1 m (sh_rocket.glb bounds); ISAO emotion clips named in the pinned GLB; the story-world suite's Quiver and study steps."
+  ],
+  "supersedes": []
+}

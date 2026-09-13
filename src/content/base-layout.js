@@ -49,9 +49,9 @@ export const STRUCTURES = Object.freeze([
   // EARLIER LANDINGS, out past the clearing on open ground (anchor 'open' snaps to the nearest open cell): two HUGIN boosters standing
   // on their tripods and one wreck on its side. The flight GLBs sit on their mass reference, feet at -6.3 m, hence the offset; the wreck
   // is tilted onto its side and lifted by its hull radius. Draft placement, to be moved once the tank trip beat is written.
-  { id: 'rocket-a', asset: 'assets/models/story/hugin_deployed.glb', far: 'assets/models/far/hugin_deployed.glb', anchor: 'open', x: -300, z: 140, stage: 1, scale: 1.5, offset: [0, 6.3, 0], heading: [0.6, 0.8] },
-  { id: 'rocket-b', asset: 'assets/models/story/hugin_deployed.glb', far: 'assets/models/far/hugin_deployed.glb', anchor: 'open', x: 330, z: -90, stage: 1, scale: 1.5, offset: [0, 6.3, 0], heading: [-0.5, -0.87] },
-  { id: 'wreck', asset: 'assets/models/story/hugin_wreck.glb', far: 'assets/models/far/hugin_wreck.glb', anchor: 'open', x: 120, z: -360, stage: 1, scale: 1.5, offset: [0, 0, 0], tilt: 92, lift: 3.6, heading: [0.9, 0.44] },
+  { id: 'rocket-a', asset: 'assets/models/story/hugin_deployed.glb', far: 'assets/models/far/hugin_deployed.glb', anchor: 'open', clear: 16, x: -300, z: 140, stage: 1, scale: 1.5, offset: [0, 6.3, 0], heading: [0.6, 0.8] },
+  { id: 'rocket-b', asset: 'assets/models/story/hugin_deployed.glb', far: 'assets/models/far/hugin_deployed.glb', anchor: 'open', clear: 16, x: 330, z: -90, stage: 1, scale: 1.5, offset: [0, 6.3, 0], heading: [-0.5, -0.87] },
+  { id: 'wreck', asset: 'assets/models/story/hugin_wreck.glb', far: 'assets/models/far/hugin_wreck.glb', anchor: 'open', clear: 24, x: 120, z: -360, stage: 1, scale: 1.5, offset: [0, 0, 0], tilt: 92, lift: 3.6, heading: [0.9, 0.44] },
 ]);
 
 export const KIT = Object.freeze({
@@ -60,6 +60,7 @@ export const KIT = Object.freeze({
   gate: 'assets/models/kit/gate_vehicle_d0.glb', gatePlot: [12, 8],
   stage: 4, wallsPerSide: 6, wallInset: 3,   // walls flank the gate along the rim, inset from the rock
   wallMetres: 4,                              // the lattice rock's roof height, where sentries mount
+  sightline: { metres: 240, halfWidth: 7 },   // a straight lane cut from the forward cell out to the sinkhole, so the Quiver has a long clear shot (owner, 2026-09-13); replaces the fodderSteps walk
   fodderSteps: 28,                            // lane cells outward from the mouth where the ground opens: a tank trip to investigate
   rotorSteps: 2, quiverSteps: 1, rotorEdge: 0.4,   // the Quiver's wall cell touches the lane one step nearer the gate, on the Rotor's side: the sightline to the gate pile is proven there              // the first Rotor's wall cell touches the lane cell this many steps past the forward cell; the lab's static model stands this share of the way toward the lane (the game perches every tower on its wall's edge)
   bay: { roll: 2, doorSeconds: 2.4, rollOutMetres: 19, rollOutSeconds: 8 },

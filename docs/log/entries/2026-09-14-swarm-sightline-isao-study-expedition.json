@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-swarm-sightline-isao-study-expedition",
+  "date": "2026-09-14T09:00:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "The first wave is one harmless swarm of fifty; a straight sightline to the sinkhole; Isao says the study in a close-up; he sends the tank to the rocket landing sites; the roll-out shows one hull",
+  "context": "Owner review of the story opening: during the get-out-of-the-container animation two turrets show, one static and one sweeping; the first wave is weak and should not hurt the tank or the gate, fifty of them in a single wave, all out of the sinkhole almost at once so it feels like a swarm; the map needs a clear long line of sight to the sinkhole so the Quiver's targeting means something; before the study screen, a close-up of Isao whose face goes neutral, skeptical, then to work as he says 'They talk in vibration', 'I started reverse-engineering it', 'Need more compute', with the screen retitled from SYNTHETIC LEARNING x58 to Preliminary Alien Vibration Language Analysis; then Isao asks the player to fetch material at the other rocket landing sites, the view pulls back to the whole planet and the sites are marked on the radar with triangles.",
+  "outcome": "DOUBLE TURRET: the deploy hid our hull every frame during the bay's authored roll-out, but the frame loop set playerMesh.visible again before rendering, so our hull (turret on its idle sweep) stood inside the authored one (turret still). Both render paths now keep it hidden while a roll-out clip runs. SWARM: STORY_FODDER in content/story-defaults.js (total 50, alive cap 50, one spawn a frame, harmless, spread 0.8 cells, stagger 1.2 s) feeds makeStoryBeats; each spawn carries a golden-ratio-spaced emerge delay and a random scatter across the crater, so the whole crater boils instead of fifty bodies rising from one point; a harmless enemy never calls playerHit (the gate had no damage path). SIGHTLINE: KIT.sightline (240 m, half width 7 m) makes planBase cut a straight lane from the forward cell outward along the mouth's bearing and put the sinkhole at its far end; the cut cells join the opened ground the story world applies before the gate walls. STUDY: the beats gain study-talk (a close-up shot on Isao, the vibration_study brief with per-line faces neutral, skeptical, determined — his in-game working face — worn by the brief panel and the drone alike) before the screen, and expedition after it closes (rocket_sites brief, the landing sites painted as amber triangles on the radar by fx/story-hud.js, a shot pulling back to the whole planet and ending in orbit view).",
+  "alternatives": [
+    "Spawn the fifty in one frame at the sinkhole's centre: rejected, that is exactly the one-silhouette blob the spawn queue was built to avoid; delay and scatter are what make it read as a swarm.",
+    "Re-seed the planet for a straighter natural lane: rejected, it moves every landmark and invalidates the bake; cutting the lane in the plan keeps the world and says what it is for.",
+    "Make the study a new modal with its own portrait: rejected, the brief panel already draws Isao's faces and the drone can wear them in the close-up; one presenter."
+  ],
+  "evidence": [
+    "test/story-beats.mjs: close-up before the screen, the screen waits for his lines, expedition with rocket_sites, sites and planet view once it closes.",
+    "test/base-plan.mjs: the sinkhole ends the cut line more than 80% of its length out, on opened ground.",
+    "scripts/browser-test.mjs --story-world: fodder alive up to fifty, the isaoTalk shot during study-talk, the retitled screen, expedition with at least three radar sites and the sites shot."
+  ],
+  "supersedes": []
+}

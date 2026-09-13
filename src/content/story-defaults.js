@@ -37,13 +37,15 @@ export const STORY_SOUNDS = Object.freeze({
 
 // Six engines under the skirt, each with its own cadence, so the cluster
 // never flickers as one lamp.
+// UNDER THE SKIRT, NOT BESIDE IT (owner, 2026-09-13: some thrusters appeared outside the rocket). The hull is 2.1 m in radius; a plume
+// is a camera-facing sheet `width` wide centred `radius` off the axis, so radius + width / 2 has to stay inside the skirt
 export const PLUME_CLUSTER = Object.freeze([
-  { angle: 0, radius: 1.25, width: 7, height: 24, phase: 0.0, cadence: 11, depth: 0.14 },
-  { angle: 60, radius: 1.25, width: 6, height: 21, phase: 1.7, cadence: 13, depth: 0.2 },
-  { angle: 120, radius: 1.25, width: 6.5, height: 23, phase: 3.1, cadence: 9, depth: 0.16 },
-  { angle: 180, radius: 1.25, width: 7, height: 25, phase: 4.4, cadence: 12, depth: 0.12 },
-  { angle: 240, radius: 1.25, width: 6, height: 20, phase: 0.9, cadence: 15, depth: 0.22 },
-  { angle: 300, radius: 1.25, width: 6.5, height: 22, phase: 2.3, cadence: 10, depth: 0.18 },
+  { angle: 0, radius: 0.8, width: 2.4, height: 24, phase: 0.0, cadence: 11, depth: 0.14 },
+  { angle: 60, radius: 0.8, width: 2.1, height: 21, phase: 1.7, cadence: 13, depth: 0.2 },
+  { angle: 120, radius: 0.8, width: 2.3, height: 23, phase: 3.1, cadence: 9, depth: 0.16 },
+  { angle: 180, radius: 0.8, width: 2.4, height: 25, phase: 4.4, cadence: 12, depth: 0.12 },
+  { angle: 240, radius: 0.8, width: 2.1, height: 20, phase: 0.9, cadence: 15, depth: 0.22 },
+  { angle: 300, radius: 0.8, width: 2.3, height: 22, phase: 2.3, cadence: 10, depth: 0.18 },
 ]);
 
 // Presentation scale. The SH02 is authored at 21.4 m; the story shows it
@@ -55,6 +57,9 @@ export const STORY_SCALE = Object.freeze({ rocket: 1.5, isaoMetres: 1.8, tankMet
 // The breach seen from orbit: the whole planet stays in frame through the ground opening and the first fodder emerging
 // dive: after the pre-roll the camera drops fast from orbit to a close view over the sinkhole (in cells above it, pulled toward the base by `back`),
 // in `diveSeconds`, and holds there while the fodder emerge
+// THE FIRST WAVE (owner, 2026-09-13): fifty weak ones in a single wave, all out of the sinkhole almost at once so it reads as a swarm, and
+// none of them can hurt the tank or the gate. every 0 spawns one a frame; each rises within `stagger` seconds, scattered `spread` cells across the crater
+export const STORY_FODDER = Object.freeze({ total: 50, alive: 50, every: 0, harmless: true, spread: 0.8, stagger: 1.2 });
 export const STORY_BREACH = Object.freeze({ emergeHold: 6, tail: 1.8, diveSeconds: 1.4, height: 5, back: 4 });
 
 // A day on the story planet: five minutes, three of them daylight at the pole, the sun's orbit leaning 60 degrees off the pole so
@@ -68,7 +73,7 @@ export const STORY_DAY = Object.freeze({ seconds: 300, dayShare: 0.6, tilt: 60, 
 // coneDeg: the half-angle of the LOCK BOX drawn on the optic. Anything inside it is the target, it stays the target while it stays
 // inside (no flicker between bodies), a timer runs, and at full it is locked. No minimum or maximum range: on a 753 m planet the
 // horizon from a 4 m mount is about 80 m, so a 400 m reach is no limit at all, and the range test can never reset the timer.
-export const STORY_QUIVER = Object.freeze({ key: 'quiver', delay: 4, hardcore: 'barbed', secondDelay: 9, hold: [5, 9], nearCells: 12, zoom: 2, studyDelay: 3, coneDeg: 10, missile: Object.freeze({ mesh: 'talon', profile: 'heavy', duration: 6, length: 1.0, dmgMul: 25, minRange: 0, maxRange: 400, lockTime: 0.9, lockGate: 1e4, lockBreak: 1e4, aimTolerance: 180 }) });   // the box is the gate; the code's mrad gates are opened out of the way   // a heavy payload (one round, one solid core), a long reach (the hard cores hold 50 to 90 m out), and a quick first-encounter lock: 0.4 s inside a 5 degree cone
+export const STORY_QUIVER = Object.freeze({ key: 'quiver', delay: 0.6, hardcore: 'barbed', secondDelay: 9, hold: [5, 9], nearCells: 12, zoom: 3, studyDelay: 3, coneDeg: 14, missile: Object.freeze({ mesh: 'talon', profile: 'heavy', duration: 6, length: 1.0, dmgMul: 25, minRange: 0, maxRange: 400, lockTime: 0.6, lockGate: 1e4, lockBreak: 1e4, aimTolerance: 180 }) });   // the box is the gate; the code's mrad gates are opened out of the way   // a heavy payload (one round, one solid core), a long reach (the hard cores hold 50 to 90 m out), and a quick first-encounter lock: 0.4 s inside a 5 degree cone
 
 // The piloted sentry in the story: a denser stream of rounds, each one
 // heavy enough that cannon fodder drops in two hits.

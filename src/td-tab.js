@@ -1,5 +1,5 @@
 import { createSentryPilot } from './sentry-pilot.js';
-import { DEFAULT_TANK, SHELL_SPEED, SHELL_REACH } from './content/tank.js';
+import { DEFAULT_TANK, SHELL_SPEED, SHELL_REACH, TANK_DRIVE } from './content/tank.js'; import { makeDriveRamp, stepDriveRamp, scrubDriveRamp } from './domain/drive-ramp.js'; import { hullDepth, deepensContact } from './domain/hull-contact.js';
 import { createGameBreaches } from './game-breaches.js';
 import { BREACH_SOUNDS } from './content/breach-defaults.js';
 import { SOUNDS } from './content/runtime.js';
@@ -621,7 +621,7 @@ export function initTdTab(root) {
   let floorGeo = null, wallGeo = null, floorMesh = null, wallMesh = null;
   let edgeGeo = null, edgeMesh = null;
   let topGeo = null, topMesh = null; // interior wall-top wires, dimmable
-  let floorOffsets = null; // cell -> [start,count] into floor color attr (verts)
+  let floorOffsets = null, edgeOwner = null; // cell -> [start,count] into floor color attr (verts); directed edge -> owning cell, built once per board
   let heartSprite = null, playerMesh = null, markerMesh = null, storyBase = null, story = null;
   // WHAT STANDS AT THE POLE. Both entries satisfy one contract — sizeScale,
   // tick(t), hit() — so swapping them changes how the Stalheart LOOKS and
@@ -861,7 +861,7 @@ export function initTdTab(root) {
     // who has learned to tap keeps tapping, and the auto-advance buys nothing.
     if (briefBar) briefBar.style.width = `${Math.max(0, Math.min(1, briefLeft / briefDwell)) * 100}%`;
     const ctx = briefFace.getContext('2d');
-    drawEmotion(ctx, briefQ.face, { w: briefFace.width, h: briefFace.height, t: briefFaceT });
+    const bf = briefQ.faces?.[briefAt] ?? briefQ.face; drawEmotion(ctx, bf, { w: briefFace.width, h: briefFace.height, t: (bf === 'scan' || bf === 'skeptical') && briefFaceT < 1.5 ? briefFaceT : 0 });   // held faces; only scan and skeptical move, briefly if (isao && briefQ.faces) isao.faceLock = briefQ.faces[briefAt];   // the drone wears the line's face too
   }
   function showBrief(id) {
     if (director) return;   // Isao does not caption a cinematic
@@ -911,7 +911,7 @@ export function initTdTab(root) {
     if (briefLeft <= 0) stepBrief(true); else paintBrief();
   }
   function endBrief() {
-    briefQ = null; briefLeft = 0;
+    briefQ = null; briefLeft = 0; if (isao) isao.faceLock = null;
     if (briefEl) briefEl.classList.add('hidden');
     if (briefPending) { const nxt = briefPending; briefPending = null; showBrief(nxt); }
   }
@@ -1458,15 +1458,14 @@ export function initTdTab(root) {
     if (ci === -1 || dungeon.tags[ci] === BLOCKED || ci === serverCi
       || containerBlocked(ci)) return true;
     if (dist3(cand, graph.centers[dungeon.heart]) < pedestalRadius() + cellSide * 0.3 || breachBlocked(cand)) return true;   // the pad, and any open sinkhole: no-go
-    // wide ground keeps the clipping margin; narrow halls trade a little
-    // visual overlap for guaranteed passability
-    const margin = cellSide * (openCount(ci) <= 3 ? 0.45 : 0.62);
+    // THE HULL'S OWN FOOTPRINT against the rock faces (operator, 2026-09-13: still clipping, and faster now): its centre with half the hull's
+    // width, nose and tail along its facing. A move may not take it deeper into a face than it already is (src/domain/hull-contact.js)
     const crowdedBy = berthed()
       ? (nb) => dungeon.tags[nb] === BLOCKED || nb === serverCi
       : (nb) => dungeon.tags[nb] === BLOCKED || nb === serverCi || containerBlocked(nb);
-    for (const nb of graph.adj[ci]) {
-      if (crowdedBy(nb) && dist3(cand, graph.centers[nb]) < margin) return true;
-    }
+    const half = Math.min(unitScale * 0.73, cellSide * 0.6), hull = (p) => [{ p, clearance: Math.min(unitScale * 0.3, cellSide * 0.3) }, ...[1, -1].map((k) => ({ p: norm3(add3(p, scale3(player.smoothDir, k * half))), clearance: cellSide * 0.04 }))];
+    const board = { cellOf: cellIndex, blocked: (nb) => nb !== ci && crowdedBy(nb), centers: graph.centers, adj: graph.adj };
+    if (deepensContact(hullDepth(hull(player.pos), board), hullDepth(hull(cand), board), cellSide * 0.002)) return true;
     return unitBlocker(cand);
   }
 
@@ -1549,7 +1548,7 @@ export function initTdTab(root) {
   // reverse travel shows you that before you try it.
   const THROTTLE_REV = 0.4;                       // reverse ceiling vs forward
   const THROTTLE_ZERO = 1 / (1 + THROTTLE_REV);   // where 0 sits down the track
-  let throttle = 0;
+  let throttle = 0; const driveRamp = makeDriveRamp();   // the run-up a hull builds held forward (content/tank.js TANK_DRIVE)
   let lastFastTap = -9; // seconds
   function noteFastTap() {
     const s = performance.now() / 1000;
@@ -1977,9 +1976,10 @@ export function initTdTab(root) {
     // what put a bloomed square on every vertex of the floor.
     // One Set for both meshes: a rim segment must not be re-drawn as a
     // wall-top wire either.
-    const seenSeg = new Set();
+    const seenSeg = new Set(), NV = vertices.length, NK = 2 * NV;   // numeric segment keys and the once-per-board edge map: see the walls pass
+    if (edgeOwner?.quads !== quads) { edgeOwner = new Map(); edgeOwner.quads = quads; vertices.forEach((v, vi) => { v.k = 2 * vi; }); for (let ci = 0; ci < quads.length; ci++) for (let i = 0; i < 4; i++) edgeOwner.set(quads[ci][i] * NV + quads[ci][(i + 1) % 4], ci); }
     const firstTime = (p, q2) => {
-      const k = segKey(p, q2);
+      const k = p.k < q2.k ? p.k * NK + q2.k : q2.k * NK + p.k;   // vertex index x level, not a string of rounded floats (see edgeOwner)
       if (seenSeg.has(k)) return false;
       seenSeg.add(k);
       return true;
@@ -2013,14 +2013,11 @@ export function initTdTab(root) {
 
     // walls: blocked cells extruded; top face + skirts on edges facing open cells
     const wPos = [], wCol = [];
-    const edgeToCell = new Map();
-    for (let ci = 0; ci < quads.length; ci++) {
-      const q = quads[ci];
-      for (let i = 0; i < 4; i++) {
-        const a = q[i], b = q[(i + 1) % 4];
-        edgeToCell.set(`${a}-${b}`, ci); // directed edge -> owning cell
-      }
-    }
+    // A WALL BREACH FROZE THE GAME FOR HALF A SECOND on the story planet (71k cells, operator 2026-09-13: "lag before the impact"). Profiled,
+    // the rebuild's own work was string keys: a `${a}-${b}` map of every directed edge rebuilt each time though the topology never changes,
+    // and a rounded-float string per segment for the dedupe. The edge map is now built once per board, and every point carries a numeric
+    // key (k: vertex index x2, +1 on the wall top) that the dedupe combines instead; both are set up before the floor pass, which dedupes first
+    const edgeToCell = edgeOwner;
     const pushQuad = (p0, p1, p2, p3, col, j) => {
       for (const p of [p0, p1, p2, p0, p2, p3]) wPos.push(p[0], p[1], p[2]);
       for (let i = 0; i < 6; i++) wCol.push(col[0] + j, col[1] + j, col[2] + j);
@@ -2028,7 +2025,7 @@ export function initTdTab(root) {
     for (let ci = 0; ci < quads.length; ci++) {
       if (dungeon.tags[ci] !== BLOCKED) continue;
       const q = quads[ci];
-      const top = q.map((vi) => scale3(vertices[vi], H));
+      const top = q.map((vi) => Object.assign(scale3(vertices[vi], H), { k: 2 * vi + 1 }));
       const j = (jr() - 0.5) * 0.08 * look().jitter;
       const nearHall = mode === 'black'
         && graph.adj[ci].some((nb) => dungeon.tags[nb] !== BLOCKED);
@@ -2039,7 +2036,7 @@ export function initTdTab(root) {
       // is what makes walls read as wire, faint slab, or void on the minimap
       for (let i = 0; i < 4; i++) {
         const a = q[i], b = q[(i + 1) % 4];
-        const nb = edgeToCell.get(`${b}-${a}`); // twin edge's owner
+        const nb = edgeToCell.get(b * NV + a); // twin edge's owner
         const facesOpen = nb !== undefined && dungeon.tags[nb] !== BLOCKED;
         if (facesOpen) {
           // skirt facing the open neighbour, wound outward + its outline
@@ -3167,9 +3164,9 @@ export function initTdTab(root) {
       // lever's resting position is the speed
       const drive = keys.slow ? -0.55
         : keys.fast ? (cruise ? 1.45 : 1)
-        : (throttle !== 0 ? throttle : (cruise ? 1 : 0));
+        : (throttle !== 0 ? throttle : (cruise ? 1 : 0)); const rampMul = stepDriveRamp(driveRamp, dt, drive, keys.left || keys.right, TANK_DRIVE);
       if (drive !== 0) {
-        const v = params.speed * speedBonus * cellSide * 1.6 * drive
+        const v = params.speed * speedBonus * cellSide * 1.6 * drive * rampMul
           * (1 - 0.65 * bumpFactor()); // the run-over drag
         const step = scale3(player.heading, v * dt);
         let cand = norm3(add3(player.pos, step));
@@ -3182,7 +3179,7 @@ export function initTdTab(root) {
             // a mostly head-on hit THUDS like running something over;
             // the bumpLeft gate keeps grinding along a wall from
             // re-triggering every frame
-            if (into > 0.55 * len3(step) && bumpLeft <= 0) bumpLeft = BUMP_LEN * 0.8;
+            if (into > 0.55 * len3(step) && bumpLeft <= 0) { bumpLeft = BUMP_LEN * 0.8; scrubDriveRamp(driveRamp, into / len3(step), TANK_DRIVE); }   // a thud spends the run-up
             const slid = sub3(step, scale3(toWall, into));
             cand = norm3(add3(player.pos, slid));
             if (freeBlocked(cand)) cand = null;
@@ -3190,7 +3187,7 @@ export function initTdTab(root) {
           // wedged with nowhere to slide? creep toward the CURRENT cell's
           // center — it is open ground by definition, so the tank can
           // always un-stick itself, shells or no shells
-          if (!cand) {
+          if (!cand) { scrubDriveRamp(driveRamp, 1, TANK_DRIVE);   // wedged: nothing built survives
             const home = graph.centers[player.cur];
             const toHome = sub3(home, player.pos);
             const l = len3(toHome);
@@ -6270,9 +6267,9 @@ export function initTdTab(root) {
   function releaseSpawns(dtSeconds) {
     spawnClock += dtSeconds;
     while (spawnQueue.length && spawnQueue[0].at <= spawnClock) {
-      const { type, sp } = spawnQueue.shift();
+      const entry = spawnQueue.shift(), { type, sp } = entry;   // a story swarm entry also carries delay, spread and harmless
       if (!sp.alive) continue;   // its gate died while it was queued
-      if(!gameBreaches.ready(sp.obj)){spawnQueue.unshift({type,sp,at:spawnClock});break;}
+      if(!gameBreaches.ready(sp.obj)){spawnQueue.unshift({...entry,at:spawnClock});break;}
       const spec = ENEMY_SPEC[type];
       const obj = makeDotEnemy(type, { walker: CREATURE_TINTS[type], walkerHi: accentFor(type) });
       const size = spec.size * 0.7;
@@ -6282,7 +6279,7 @@ export function initTdTab(root) {
       const exits = openNeighbors(sp.ci);
       enemies.push({
         id: nextEnemyId++,
-        type, spec, scale0, size,breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:0,
+        type, spec, scale0, size,breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:-(entry.delay??0),harmless:!!entry.harmless,emergeOff:entry.spread?(()=>{const [u,v]=tangentBasis(norm3(graph.centers[sp.ci])),a=whim()*6.283,r=Math.sqrt(whim())*entry.spread*cellSide;return add3(scale3(u,Math.cos(a)*r),scale3(v,Math.sin(a)*r));})():null,   // THE SWARM (owner, 2026-09-13): the whole crater boils, not one point
         cur: sp.ci, prev: -1,
         next: exits.length ? exits[Math.floor(whim() * exits.length)] : sp.ci,
         prog: sp.obj.userData.breach?0:whim() * 0.4, pos: graph.centers[sp.ci].slice(), dir: [0, 1, 0],
@@ -6319,9 +6316,9 @@ export function initTdTab(root) {
       if (!e.alive) continue;
       const spec = e.spec;
       if(e.breachSource&&e.emergeAge<1.2){
-        e.emergeAge+=dt;const f=emergence(e.emergeAge,1.2),entry=e.breachSource.userData.breach;
+        e.emergeAge+=dt;const f=emergence(Math.max(0,e.emergeAge),1.2),entry=e.breachSource.userData.breach;
         const height=-CONTENT.breach.craterRadius*.55*cellSide+e.scale0*(e.obj.userData.lift??.85)*f.rise-e.scale0*(1-f.rise);
-        const n=norm3(graph.centers[e.cur]);e.pos=n;e.obj.position.fromArray(scale3(n,1+height));e.obj.scale.setScalar(e.scale0*f.scale);e.obj.material.opacity=.95*f.opacity;
+        const n=norm3(e.emergeOff?add3(graph.centers[e.cur],e.emergeOff):graph.centers[e.cur]);e.pos=n;e.obj.position.fromArray(scale3(n,1+height));e.obj.scale.setScalar(e.scale0*f.scale);e.obj.material.opacity=.95*f.opacity;
         e.obj.quaternion.copy(e.breachSource.quaternion);e.obj.userData.tick?.(tNow+e.phase);continue;
       }
       // HK healOOC: regenerators knit themselves back together while
@@ -6551,7 +6548,7 @@ export function initTdTab(root) {
           }
           continue;   // NOT a ram: pays nothing, scores nothing, combo untouched
         }
-        if (tNow > e.touchCd) { e.touchCd = tNow + 1.2; playerHit(e.type, e.pos); }
+        if (tNow > e.touchCd && !e.harmless) { e.touchCd = tNow + 1.2; playerHit(e.type, e.pos); }   // the story's first wave cannot hurt the tank
       }
     }
   }
@@ -8706,12 +8703,12 @@ export function initTdTab(root) {
     return Number.isFinite(v) && v > 0.1 && v < 4 ? v : 0.72;
   })();
   // EVERY TOWER STANDS AT ITS WALL'S EDGE, NEVER OVER IT (operator, 2026-09-12): the mount slides from the cell centre toward the open cell it covers (the story names it; otherwise the upstream lane) until the far edge of its pedestal meets the rock's edge
-  const perchOf = (tower) => { const ci = tower.ci, c = graph.centers[ci]; let nb = story?.socketToward?.[ci] ?? -1; if (nb < 0) for (const k of graph.adj[ci]) if (dungeon.tags[k] !== BLOCKED && (nb < 0 || dungeon.distToHeart[k] > dungeon.distToHeart[nb])) nb = k; if (nb < 0) return c; const t = graph.centers[nb], d = dist3(c, t), slide = Math.max(0, d * 0.5 - (tower.obj?.userData.footprintR ?? 0)) / d; return norm3(c.map((v, i) => v + (t[i] - v) * slide)); };
+  const perchOf = (tower) => { const ci = tower.ci, c = graph.centers[ci]; let nb = story?.socketToward?.[ci] ?? -1; if (nb < 0) for (const k of graph.adj[ci]) if (dungeon.tags[k] !== BLOCKED && (nb < 0 || dungeon.distToHeart[k] > dungeon.distToHeart[nb])) nb = k; if (nb < 0) return c; const t = graph.centers[nb], d = dist3(c, t), qa = mesh?.quads?.[ci], qb = mesh?.quads?.[nb], shared = qa && qb ? qa.filter((v) => qb.includes(v)) : [], face = shared.length === 2 ? dot3(sub3(scale3(add3(mesh.vertices[shared[0]], mesh.vertices[shared[1]]), 0.5), c), sub3(t, c)) / d : d * 0.5, slide = Math.max(0, face - (tower.obj?.userData.footprintR ?? 0)) / d; return norm3(c.map((v, i) => v + (t[i] - v) * slide)); };   // TO THE ROCK'S REAL EDGE (owner, 2026-09-13: touching it, not cantilevered): the shared quad edge, not half the centre distance
   function placeTowerObj(tower) {
     const obj = tower.obj;
     const s = (obj.userData.baseScale ?? 1) * cellSide * 0.62 * TOWER_SCALE * Math.pow(TIER_BULK, tower.tier); obj.scale.setScalar(s);
     // the pedestal's half-width in model units, measured once per model, so the perch knows how far it may slide
-    if (obj.userData.footprintUnit === undefined) { const p = obj.position.clone(), q = obj.quaternion.clone(); obj.position.set(0, 0, 0); obj.quaternion.identity(); obj.scale.setScalar(1); const bb = new THREE.Box3().setFromObject(obj); obj.userData.footprintUnit = Number.isFinite(bb.max.x) ? Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) / 2 : 0; obj.position.copy(p); obj.quaternion.copy(q); obj.scale.setScalar(s); }
+    if (obj.userData.footprintUnit === undefined) { const p = obj.position.clone(), q = obj.quaternion.clone(); obj.position.set(0, 0, 0); obj.quaternion.identity(); obj.scale.setScalar(1); const bb = new THREE.Box3().setFromObject(obj); obj.userData.footprintUnit = Number.isFinite(bb.max.x) ? Math.min(bb.max.x - bb.min.x, bb.max.z - bb.min.z) / 2 : 0;   /* the pedestal's half width: the long axis is the barrels, which may reach over the edge */ obj.position.copy(p); obj.quaternion.copy(q); obj.scale.setScalar(s); }
     obj.userData.footprintR = obj.userData.footprintUnit * s;
     // ...and a WALKER is wherever it has walked to. Its own position is a
     // unit direction, so it is its own normal — no cell lookup, because it
@@ -9302,11 +9299,11 @@ export function initTdTab(root) {
     if (isao.obj.userData.setFace) {
       const enemiesNear = enemies.filter((e) => e.alive).length;
       isao.obj.userData.setFace(
-        isao.gleeT > 0 ? 'glee'
-          : enemiesNear >= 10 ? 'scared'
-            : working ? 'determined'
-              : isao.state === 'travel' ? 'focused'
-                : 'scan');
+        isao.faceLock ?? (isao.gleeT > 0 ? 'glee'   // ONE HELD FACE PER STATE (owner, 2026-09-13: minimalism): glee when a print lands,
+          : working ? 'determined'                  // determined while he builds, neutral otherwise. The crowd count and the
+            : enemiesNear < 0 ? 'scared'            // travel and idle faces (never true now: kept for the lab's face list)
+              // made a new face every few seconds, which read as constant chatter
+                : 'neutral'));
       isao.obj.userData.tickFace(dt);
       if (isao.gleeT > 0) isao.gleeT -= dt;
     }
@@ -10207,7 +10204,7 @@ export function initTdTab(root) {
       // one line, every tower: the key IS the def key, unless the def says
       // otherwise — which the second roster's do, since there is no
       // `tower_rotor` and a missing sample is silence nobody notices
-      sfx.play(towerSound(tw.def), { dist: camDist(tp) });
+      if (tw.key !== 'rotor' || tNow - (tw.soundAt ?? -9) >= shotInterval(tw.def.rate) * 0.98) { tw.soundAt = tNow; sfx.play(towerSound(tw.def), { dist: camDist(tp) }); }   // THE ROTOR'S REPORT AT ITS OWN CADENCE (owner, 2026-09-13: spherical-stalberg sounded better): six rounds a shot and sentry control's rate made the one sample a buzz, so it plays once per shot of the gun's own rate
       const n = graph.normals[tw.ci];
       const muzzle = towerMuzzle(tw, add3(tp, scale3(n, cellSide * 0.55)));
       // the gun rides back on every round, and the flash leaves the barrel; a Rotor also spits its case sideways when the camera is close enough to see it (docs/AMMUNITION.md)
@@ -12032,7 +12029,7 @@ export function initTdTab(root) {
     const moved = dist3(p, enginePrev);
     enginePrev = p.slice();
     const cellsPerSec = moved / dt / cellSide;
-    const top = Math.max(0.001, params.speed * speedBonus * 1.6 * 1.45); // cruise+boost
+    const top = Math.max(0.001, params.speed * speedBonus * 1.6 * 1.45 * TANK_DRIVE.top); // cruise+boost at a full run-up
     const target = Math.min(1, cellsPerSec / top);
 
     // asymmetric smoothing: spin up fast, spool down slow, like an engine
@@ -12231,9 +12228,9 @@ export function initTdTab(root) {
     // lastFrame keeps updating above so resume has no dt spike.
     if (paused) {
       if (!simSkip) {
-        playerMesh.visible = params.view !== 'pov';
+        playerMesh.visible = params.view !== 'pov' && !deploy?.clip;   // an authored roll-out owns the hull on screen: ours would stand in it, turret sweeping
         postfx.render(); storyMonitor?.render(renderer, scene, towerSeekers.find((m) => m.pool === talonPool)?.mesh ?? null, cellSide, 0);
-        playerMesh.visible = true;
+        playerMesh.visible = !deploy?.clip;
         drawRadar(t);   // the sweep keeps turning; a dead scope reads as a crash
       }
       return;
@@ -12592,7 +12589,7 @@ export function initTdTab(root) {
     scene.backgroundIntensity = sky ? (lab.on ? lab.bgIntensity : SKY_PRESET.intensity) : 1; if (daylight) scene.backgroundIntensity *= 1 - daylight.tick(frozen ? 0 : dt) * (1 - story.day.skyDim);   // the stars fade with the day
     if (simSkip) return; // sim pass: state advanced, nothing painted
     // in PoV the camera sits inside the creature — hide it there
-    playerMesh.visible = params.view !== 'pov';
+    playerMesh.visible = params.view !== 'pov' && !deploy?.clip;   // the bay's authored hull rolls out alone (operator, 2026-09-13: two turrets, one static, one sweeping)
     postfx.render(); storyMonitor?.render(renderer, scene, towerSeekers.find((m) => m.pool === talonPool && talonPool)?.mesh ?? null, cellSide, dt, pilotMode && pilot?.state.tower && missileOf(pilot.state.tower.key) && pilot.state.tower.pilotTarget && !pilot.state.tower.pilotTarget.pilotAim ? { from: perchOf(pilot.state.tower), pos: pilot.state.tower.pilotTarget.pos } : null);   // the seeker feed rides behind a TALON in flight; otherwise the optic inset on the tracked target
     drawRadar(t); story?.hud.paint(radarCtx, { m: radarCss, cpos: pilot?.state.tower ? graph.centers[pilot.state.tower.ci] : player.pos, up: pilot?.state.tower ? new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray() : player.smoothDir, range: mapMode === 'heart' ? 2.02 : pilotMode ? cellSide * 12 : 1.15, t, mapMode });
   }
@@ -12827,7 +12824,7 @@ export function initTdTab(root) {
   if (Number.isFinite(pointsOverride)) params.points = Math.min(16000, Math.max(150, pointsOverride));
   const seedOverride = parseInt(urlParams.get('seed') || '', 10);
   if (Number.isFinite(seedOverride)) params.seed = seedOverride >>> 0; const storyQuery = readStoryQuery(location.search), threatMult = storyQuery.threat, storyMode = storyQuery.world === 'story';   // tabula rasa past the landing: no old heart, waves, portals, camp or yard
-  const storyApi = { order: (key, ci) => orderTower(key, ci, { quiet: true }), grant: (n) => { if (n > 0) eco.addBiomass(n, { category: 'grant' }); }, built: (ci) => towerByCell.has(ci), cost: (key) => TOWER_BY_KEY[key]?.cost ?? 0, isao: () => !!isao, enemies: () => enemies.filter((e) => e.alive).length, spawn: (type, ci) => { spawnQueue.push({ type, sp: story?.source ?? { ci, alive: true, obj: new THREE.Group() }, at: spawnClock }); }, brief: (id) => showBrief(id), tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null), breach: (ci) => { const obj = buildPortalObj(ci, 0); scene.add(obj); story.source = { ci, alive: true, obj, hp: 3, found: true }; spawnPoints.push(story.source); }, sourceAlive: () => !!story.source?.alive, /* the sinkhole is a spawn point: an orbital strike on it fills it like any other (operator, 2026-09-13) */ near: (ci, r = 2.2) => enemies.some((e) => e.alive && chord(e.pos, graph.centers[ci]) < cellSide * r), kills: () => rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike, screen: (id) => { if (id !== 'synthetic') return; syntheticModal ??= createSyntheticModal(root); const was = paused; paused = true; syntheticModal.open(BRIEFS.vibration_study.lines, () => { paused = was; }); }, unlock: (what) => { if (what === 'views') { storyViews ??= createStoryViews(root, { tank: () => leavePilot(), mount: (key) => { if (pilotMode) pilotHost?.pick(key); else { const tw = towers.find((t) => t.key === key); if (tw) enterPilot([tw.ci, ...towers.map((t) => t.ci).filter((c) => c !== tw.ci)]); } }, map: () => (pilotMode ? pilot.setView('map') : setView('orbit')) }); storyViews.mounts(towers.map((t) => ({ key: t.key, label: t.def.label.replace(/^\d+\.\s*/, '') }))); storyViews.active(pilot?.state.tower?.key ?? 'tank'); } }, pilot: (ci, laneCi) => { enterPilot([ci, ...towers.map((t) => t.ci).filter((c) => c !== ci)]); startShot({ id: 'takeControl', dur: 3.2, poseAt: takeControlPose(perchOf(towerByCell.get(ci) ?? { ci }), graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight), onEnd: () => { setView('bastion'); snapCamera(); } }); } };
+  const storyApi = { order: (key, ci) => orderTower(key, ci, { quiet: true }), grant: (n) => { if (n > 0) eco.addBiomass(n, { category: 'grant' }); }, built: (ci) => towerByCell.has(ci), cost: (key) => TOWER_BY_KEY[key]?.cost ?? 0, isao: () => !!isao, enemies: () => enemies.filter((e) => e.alive).length + spawnQueue.length, /* a queued spawn is already an enemy to the beats: the second hard core sat in the queue the tick the first died, and the Quiver beat settled with it still to come */ spawn: (type, ci, o = null) => { spawnQueue.push({ type, sp: story?.source ?? { ci, alive: true, obj: new THREE.Group() }, at: spawnClock, ...o }); }, brief: (id) => showBrief(id), tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null), breach: (ci) => { const obj = buildPortalObj(ci, 0); scene.add(obj); story.source = { ci, alive: true, obj, hp: 3, found: true }; spawnPoints.push(story.source); }, sourceAlive: () => !!story.source?.alive, briefing: () => !!briefQ, screenOpen: () => !!syntheticModal?.isOpen(), closeup: () => { if (!isao) return; leavePilot(); storyViews?.active('tank'); clearBriefs(); startShot({ id: 'isaoTalk', dur: 9, poseAt: (u, out) => { const bp = isao.obj.position.toArray(), n = norm3(isao.dir), fw = isao.obj.getWorldDirection(new THREE.Vector3()).toArray(), f = norm3(sub3(fw, scale3(n, dot3(fw, n)))), size = isao.obj.scale.x, face = add3(bp, scale3(n, size * 0.35)), eye = add3(add3(face, scale3(f, size * (1.9 - 0.5 * u))), scale3(n, size * 0.12)); out.pos.set(eye[0], eye[1], eye[2]); tmpCam.position.copy(out.pos); tmpCam.up.set(n[0], n[1], n[2]); tmpCam.lookAt(face[0], face[1], face[2]); out.quat.copy(tmpCam.quaternion); } }); }, /* FACE ON (the first framing sat between his legs and the rocket): in front of the LED panel along his own forward, a drone-size or two out, the queued line cleared so his first line is the first thing on the panel */ sites: () => story.hud.sites(story.sites.map((ci) => norm3(graph.centers[ci]))), planetView: () => { if (!story.sites.length) return; const d = norm3(story.sites.map((ci) => graph.centers[ci]).reduce((a, c) => add3(a, c), [0, 0, 0])), ref = Math.abs(d[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0], up = norm3(cross3(d, ref)); startShot({ id: 'sites', dur: 5, poseAt: (u, out) => { const eye = scale3(d, 1.6 + 1.7 * Math.min(1, u * 1.6)); out.pos.set(eye[0], eye[1], eye[2]); tmpCam.position.copy(out.pos); tmpCam.up.set(up[0], up[1], up[2]); tmpCam.lookAt(0, 0, 0); out.quat.copy(tmpCam.quaternion); }, onEnd: () => setView('orbit') }); }, /* the sinkhole is a spawn point: an orbital strike on it fills it like any other (operator, 2026-09-13) */ near: (ci, r = 2.2) => enemies.some((e) => e.alive && chord(e.pos, graph.centers[ci]) < cellSide * r), kills: () => rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike, screen: (id) => { if (id !== 'synthetic') return; syntheticModal ??= createSyntheticModal(root); const was = paused; paused = true; syntheticModal.open(BRIEFS.vibration_study.lines, () => { paused = was; }); }, unlock: (what) => { if (what === 'views') { storyViews ??= createStoryViews(root, { tank: () => leavePilot(), mount: (key) => { if (pilotMode) pilotHost?.pick(key); else { const tw = towers.find((t) => t.key === key); if (tw) enterPilot([tw.ci, ...towers.map((t) => t.ci).filter((c) => c !== tw.ci)]); } }, map: () => (pilotMode ? pilot.setView('map') : setView('orbit')) }); storyViews.mounts(towers.map((t) => ({ key: t.key, label: t.def.label.replace(/^\d+\.\s*/, '') }))); storyViews.active(pilot?.state.tower?.key ?? 'tank'); } }, pilot: (ci, laneCi) => { enterPilot([ci, ...towers.map((t) => t.ci).filter((c) => c !== ci)]); startShot({ id: 'takeControl', dur: 3.2, poseAt: takeControlPose(perchOf(towerByCell.get(ci) ?? { ci }), graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight), onEnd: () => { setView('bastion'); snapCamera(); } }); } };
   const simParam = urlParams.get('sim');
   if (simParam) {
     simStyle = simParam;
@@ -17445,7 +17442,7 @@ export function initTdTab(root) {
     window.__stalheartTest = {
       state: () => ({ shot:shotId(),breachRubble:gameBreaches.rubbleState(),breaches:gameBreaches.state(),queued:spawnQueue.length,wallCount:dungeon.tags.filter(tag=>tag===BLOCKED).length,emerging:enemies.filter(e=>e.alive&&e.emergeAge<1.2).length,round, wave, runGen: runContext.generation, heart: heartHP, hulls: playerHP,
         biomass: eco.biomass, towers: towers.length, won: player.won, paused,
-        roster: ROSTER.id, mission: missionOn, buildMode, story: story?.beats.state() ?? null, storyLod: storyBase?.lod() ?? null, storyBaseErrors: storyBase?.errors.slice() ?? null, towerCells: towers.map((t) => [t.key, t.ci]), insideEnemies: story ? enemies.filter((e) => e.alive && story.inside(e.cur)).length : 0,
+        roster: ROSTER.id, mission: missionOn, buildMode, story: story?.beats.state() ?? null, storyHud: story?.hud.state() ?? null, killsBySrc: { ...rs.bySrc }, storyLod: storyBase?.lod() ?? null, storyBaseErrors: storyBase?.errors.slice() ?? null, towerCells: towers.map((t) => [t.key, t.ci]), insideEnemies: story ? enemies.filter((e) => e.alive && story.inside(e.cur)).length : 0,
         playerAsset: playerMesh?.userData.asset || params.creature, playerSpan: (() => { if (!playerMesh) return null; const b = new THREE.Box3().setFromObject(playerMesh); return Number.isFinite(b.max.x) ? +(b.getSize(new THREE.Vector3()).length() / (unitScale || 1)).toFixed(2) : null; })(),   // the hull's true size over its scale: exploded geometry reads absurd here
         playerAssetReady: !playerMesh?.userData.loading,
         playerModelStats: playerMesh?.userData.modelStats,

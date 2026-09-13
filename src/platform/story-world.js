@@ -5,7 +5,7 @@
 import * as THREE from '../../vendor/three.module.js';
 import { buildWorld } from '../domain/world-recipe.js';
 import { planBase } from '../domain/base-plan.js';
-import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT, STORY_SCALE, STORY_BREACH, STORY_QUIVER, STORY_DAY } from '../content/story-defaults.js';
+import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT, STORY_SCALE, STORY_BREACH, STORY_QUIVER, STORY_DAY, STORY_FODDER } from '../content/story-defaults.js';
 import { CONTENT } from '../content/runtime.js';
 export { STORY_SOUNDS };
 import { ISLANDS, STRUCTURES, KIT, STAGES, withLandmarkTiers, landmarkTierMode } from '../content/base-layout.js';
@@ -14,7 +14,7 @@ import { isStoryRoute } from '../core/story-route.js';
 import { makeStoryBeats } from '../domain/story-beats.js';
 import { createStoryHud } from '../fx/story-hud.js';
 import { planetBake } from './planet-bake.js';
-import { BLOCKED } from '../dungeon.js';
+import { BLOCKED, PATH } from '../dungeon.js';
 
 export const STORY_LAYOUT = { islands: ISLANDS, structures: STRUCTURES, kit: KIT, stages: STAGES };
 
@@ -60,6 +60,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   // the shipped layout untouched unless a review asks for the candidates; the swap happens before planBase, which spreads it through
   const plan = planBase(planet, landmarks === 'shipped' ? STORY_LAYOUT : { ...STORY_LAYOUT, structures: withLandmarkTiers(STORY_LAYOUT.structures, landmarks) }, stage);
   // walls are rock to the pathfinder and the tank alike; the gate's cell stays open and the gate opens for the tank
+  for (const ci of plan.open) built.dungeon.tags[ci] = PATH;   // the ground under a landed rocket first, then the gate's walls on top
   for (const w of plan.walls) if (w.cell >= 0) built.dungeon.tags[w.cell] = BLOCKED;
   // the game prints the real Rotor; the static model stays a lab thing
   const base = createStoryBase(scene, { plan, placer, metres: 1 / planet.radius, kit: KIT, skip: ['rotor'], sfx });
@@ -68,7 +69,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   if (plan.cells.fodder >= 0) built.dungeon.spawn = plan.cells.fodder;
   const story = stage >= 1 ? {
     sockets: new Set(), home: plan.cells.landing, socketLift: 0,
-    beats: makeStoryBeats({ socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, rotorDelay: 2.5, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER }),
+    beats: makeStoryBeats({ fodderEvery: STORY_FODDER.every, fodderAlive: STORY_FODDER.alive, fodderTotal: STORY_FODDER.total, fodderEmerge: STORY_FODDER, socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, rotorDelay: 2.5, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER }),
     // the story's Quiver fires the TALON: the game's quiver config with the lab's heavy round on top
     missiles: { quiver: { ...CONTENT.missiles.quiver, ...STORY_QUIVER.missile } },
     // the hard cores' holding ring: lane cells hold[0]..hold[1] hops outside the forward cell; a held one only wanders within it
@@ -81,6 +82,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     // the hull's size in this world, and the bays as berths once the tank bay stands: the game's deploy
     // starts a hull in its bay and drives it straight out of the doors (bay 3 first, then 2, then 1)
     tankUnit: STORY_SCALE.tankUnit,
+    sites: plan.structures.filter((s) => s.anchor === 'open' && s.cell >= 0).map((s) => s.cell),   // the rocket landing sites Isao sends the tank to after the analysis
     socketToward: Object.fromEntries(plan.sockets.map((s) => [s.cell, s.toward])),   // the lane a story socket covers: the mount perches on that edge of its wall cell
     berths: plan.bays.length ? plan.bays.map((b) => ({ ci: b.cell, exit: b.exit, pos: b.pos, out: b.out })) : null,
   } : null;

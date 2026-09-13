@@ -43,7 +43,28 @@ export function planBase(planet, layout, stage) {
     for (const nb of planet.graph.adj[rotorLane]) { if (planet.dungeon.tags[nb] !== 0) continue; const x = Math.abs(frameOf(nb)[0]); if (x > bx) { bx = x; best = nb; } }
     return best;
   })();
-  const fodderCell = walkOut(layout.kit.fodderSteps ?? 6);
+  // THE LONG SIGHTLINE (owner, 2026-09-13): a lane that wanders hides the sinkhole from the mounts, and the Quiver's lock means little
+  // at twenty metres. When the kit asks for it, a straight lane is cut from the forward cell outward along the mouth's bearing, and the
+  // ground opens at its far end; the cells within halfWidth of the line are opened like the ground under a landed rocket
+  const sight = [];
+  const fodderCell = (() => {
+    const line = layout.kit.sightline; if (!line || forwardCell < 0) return walkOut(layout.kit.fodderSteps ?? 6);
+    const [fx, fz] = frameOf(forwardCell), l = Math.hypot(fx, fz) || 1, ux = fx / l, uz = fz / l, cells = new Set();
+    const cellW = planet.graph.centers.map((c) => [c[0] * radius, c[1] * radius - radius, c[2] * radius]);
+    let end = -1;
+    for (let d = 0; d <= line.metres + 1e-9; d += 3) {
+      const w = planet.frameToWorld([fx + ux * d, 0, fz + uz * d]); let best = -1, bd = Infinity;
+      for (let ci = 0; ci < cellW.length; ci++) {
+        if (planet.clearing.cells.has(ci)) continue;
+        const q = cellW[ci], e = (q[0] - w[0]) ** 2 + (q[1] - w[1]) ** 2 + (q[2] - w[2]) ** 2;
+        if (e < line.halfWidth ** 2) cells.add(ci);
+        if (e < bd) { bd = e; best = ci; }
+      }
+      if (best >= 0) { cells.add(best); end = best; }
+    }
+    sight.push(...cells);
+    return end;
+  })();
   // the mount stands off the cell centre toward the lane, so the barrels look over the edge rather than into their own rock
   const edge = layout.kit.rotorEdge ?? 0, socketPos = (ci, toward) => { const c = planet.graph.centers[ci], t = planet.graph.centers[toward]; const v = c.map((x, k) => x + (t[k] - x) * edge), l = Math.hypot(...v); return v.map((x) => x / l); };
   // the second socket, for the Quiver: the rock beside the lane cell `quiverSteps` out, on the Rotor's side (the rock across the lane
@@ -56,6 +77,32 @@ export function planBase(planet, layout, stage) {
     return best;
   })();
   const sockets = [[wallCell, rotorLane], [wallCell2, quiverLane]].filter(([c]) => c >= 0).map(([c, lane]) => ({ cell: c, toward: lane, pos: socketPos(c, lane) }));
+  // THE QUIVER'S OWN LINE (owner, 2026-09-13: one wall still stood in the way). The mount stands beside the lane, so its line to the sinkhole
+  // runs diagonally off the centre cut: measured, a rock cell at 44 m and another at 157 m hid everything past 59 m, which is also why the
+  // lock only took once a body was close. A second cut runs from the Quiver's socket to the sinkhole; the mounts' own rock stays
+  if (layout.kit.sightline && sockets[1] && fodderCell >= 0) {
+    const a = sockets[1].pos, b = planet.graph.centers[fodderCell], keep = new Set([wallCell, wallCell2]), hw = layout.kit.sightline.halfWidth / radius, n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]) * radius / 3);
+    for (let i = 2; i <= n; i++) { const t = i / n, q = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t], l = Math.hypot(...q);
+      for (let ci = 0; ci < planet.graph.centers.length; ci++) { if (keep.has(ci) || planet.clearing.cells.has(ci)) continue; const c = planet.graph.centers[ci]; if ((c[0] - q[0] / l) ** 2 + (c[1] - q[1] / l) ** 2 + (c[2] - q[2] / l) ** 2 < hw * hw) sight.push(ci); } }
+  }
+  // ...and the ROUTE, not just the cut (owner, 2026-09-13; measured twice): a body keeps to the shortest way from the sinkhole to the gate,
+  // which may use lane cells beside the cut, and rock at the cut's edge can hide a stretch of it from a mount standing to one side. So:
+  // walk that route, open every rock cell on a line from the Quiver to a cell of it, walk the route again (opening rock can shorten it), and
+  // stop when a pass opens nothing. Bounded, and it only ever removes rock, so the gate, the sockets and the clearing are untouched
+  if (layout.kit.sightline && sockets[1] && fodderCell >= 0 && forwardCell >= 0) {
+    const a = sockets[1].pos, keep = new Set([wallCell, wallCell2]), C = planet.graph.centers, adj = planet.graph.adj, opened = new Set(sight);
+    const passable = (ci) => planet.dungeon.tags[ci] !== 0 || opened.has(ci);
+    const walk = (from, q) => { let ci = from, d = (C[ci][0] - q[0]) ** 2 + (C[ci][1] - q[1]) ** 2 + (C[ci][2] - q[2]) ** 2; for (let moved = true; moved;) { moved = false; for (const nb of adj[ci]) { const e = (C[nb][0] - q[0]) ** 2 + (C[nb][1] - q[1]) ** 2 + (C[nb][2] - q[2]) ** 2; if (e < d) { d = e; ci = nb; moved = true; } } } return ci; };
+    const route = () => { const dist = new Map([[forwardCell, 0]]), q = [forwardCell]; for (let h = 0; h < q.length; h++) for (const nb of adj[q[h]]) if (!dist.has(nb) && passable(nb)) { dist.set(nb, dist.get(q[h]) + 1); q.push(nb); }
+      const out = []; let cur = fodderCell; if (!dist.has(cur)) return out; while (cur !== forwardCell && out.length < 2000) { out.push(cur); let best = cur; for (const nb of adj[cur]) if (dist.has(nb) && dist.get(nb) < dist.get(best)) best = nb; if (best === cur) break; cur = best; } return out; };
+    for (let pass = 0; pass < 8; pass++) {
+      let added = 0;
+      for (const target of route()) { const b = C[target], n = Math.max(2, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]) * radius / 3)); let at = wallCell2 >= 0 ? wallCell2 : forwardCell;
+        for (let i = 1; i < n; i++) { const t = i / n, q = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t], l = Math.hypot(...q); at = walk(at, [q[0] / l, q[1] / l, q[2] / l]);
+          if (!keep.has(at) && !opened.has(at) && !planet.clearing.cells.has(at) && planet.dungeon.tags[at] === 0) { opened.add(at); sight.push(at); added++; } } }
+      if (!added) break;
+    }
+  }
   const anchored = layout.islands.map((i) => (i.anchor === 'forward' && forwardCell >= 0 ? { ...i, x: frameOf(forwardCell)[0], z: frameOf(forwardCell)[1] } : i));
   const islands = anchored.filter((i) => i.stage <= stage).map((i) => ({
     ...i, top: 0, sag: drop(Math.hypot(i.w, i.d) / 2, radius), heading: [0, 1], cell: i.anchor === 'forward' && forwardCell >= 0 ? forwardCell : nearestCell(i.x, i.z),
@@ -106,5 +153,7 @@ export function planBase(planet, layout, stage) {
     // a wall whose nearest cell is the gate's cell is dressing on the gate cell, not a block
     for (const w of walls) if (w.cell === gate.cell) w.cell = -1;
   }
-  return { stage, islands, structures, walls, gate, cells, bays, sockets };
+  // WHEREVER A ROCKET COMES DOWN, standing or broken, the ground under it is open: no rock through a hull (operator, 2026-09-13)
+  const open = [...new Set([...sight, ...structures.filter((s) => s.anchor === 'open' && s.cell >= 0).flatMap((s) => { const c = planet.graph.centers[s.cell], reach = (s.clear ?? 0) / radius; return planet.graph.centers.flatMap((p, ci) => ci === s.cell || Math.acos(Math.max(-1, Math.min(1, (p[0] * c[0] + p[1] * c[1] + p[2] * c[2]) / (Math.hypot(...p) * Math.hypot(...c))))) < reach ? [ci] : []); })])];
+  return { stage, islands, structures, walls, gate, cells, bays, sockets, open };
 }

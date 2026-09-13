@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "revision": "da2f64fa529c3921a34dc992e94e35e13728e3a9",
+  "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/da2f64fa529c3921a34dc992e94e35e13728e3a9/",
+  "note": "ISAO-Birudorōn, the build drone rebuilt in the MÖRK/KORP language (owner, 2026-09-13: Isao still used the older model). The articulated LOD1 is the game unit: fourteen authored emotion clips that scale FACE_* LED glyph nodes and pose the limbs, Hover_Idle, Rotor_Cycle and Tool_Fabricate. Upstream marks it production alpha, pending art-direction and gameplay review; LOD2 (static, one draw) is not pinned yet.",
+  "credit": "Models by jelaludo",
+  "files": [
+    { "path": "assets/models/isao/isao_birudoron_lod1.glb", "sourcePath": "assets/isao-birudoron/isao_birudoron_lod1.glb", "sha256": "2e9a389a4729f625fa9a7fd018bad8b78db86ac3254ebdcff9df230fba344088" }
+  ]
+}
