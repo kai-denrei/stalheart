@@ -127,6 +127,10 @@ export const BRIEFS = {
     id: 'quiver_intro', face: 'focused', title: 'COMMS · ISAO', once: true,
     lines: ['Something heavier is coming up the lane. Solid cores.', 'Printing a Quiver across the lane: guided rounds, one lock at a time.'],
   },
+  gunship_pass: {
+    id: 'gunship_pass', face: 'focused', title: 'COMMS · ISAO', once: true,
+    lines: ['The gunship is overhead. Fuel for a pass, not a landing.', 'I mark what it must not hit.'],
+  },
   quiver_override: {
     id: 'quiver_override', face: 'focused', title: 'MANUAL OVERRIDE', once: true,
     lines: ['Its targeting chips are not ready either.', 'Manual override. Hold the reticle on it until the lock takes, then fire.'],

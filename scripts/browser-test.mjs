@@ -271,6 +271,30 @@ try{
  await go('story-arrival-link','labs.html?sw=0&acceptance=1&land=1#story');await until('window.__stalheartStoryTest?.state().ready',90000);await delay(1200);
  const auto=await evaluate('window.__stalheartStoryTest.state()');assert(auto.playing&&auto.t>0.5,'the cinematic plays on load');assert(await evaluate('!!document.querySelector("#story-hud a.story-back")'),'a way back to the game');
  await evaluate('window.__stalheartStoryTest.dispose()');
+ } else if(args.includes('--gunship')) {
+ // THE GUNSHIP'S SEAT (docs/superpowers/specs/2026-09-13-heavy-gunship-design.md): refused while the platform is on its way in,
+ // taken while it is overhead; the thermal optic and the ground-truth monitor; the pass counting out under the gunner.
+ await go('gunship-off-station','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=6#td');
+ await until('!!window.__stalheartTest && (window.__stalheartTest.state().storyLod||[]).some(l=>l.id==="stalheart")',90000);await delay(1500);
+ {const s=await evaluate('window.__stalheartTest.state().gunship');assert.equal(s.phase,'pass','the platform starts on its way in');assert(!s.station);
+  assert.equal(await evaluate('window.__stalheartTest.mountGunship()'),false,'off station the seat is refused');
+  assert(await evaluate('document.querySelector("#story-views [data-mount=gunship]").disabled'),'the button is dark');
+  assert(/GUNSHIP · \d+ S$/.test(await evaluate('document.querySelector("#story-views [data-mount=gunship]").textContent')),'the next pass counts down on the button');}
+ await finish();
+ await go('gunship-on-station','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=6&gunship=station#td');
+ await until('!!window.__stalheartTest && (window.__stalheartTest.state().storyLod||[]).some(l=>l.id==="stalheart")',90000);await delay(1500);
+ {assert(await evaluate('window.__stalheartTest.mountGunship()'),'on station the seat is taken');await delay(1200);
+  const s=await evaluate('window.__stalheartTest.state().gunship');assert(s.mounted&&s.seat&&s.optic,`thermal optic live ${JSON.stringify(s)}`);
+  assert.equal(await evaluate('document.querySelector("#story-monitor .head").textContent'),'GROUND TRUTH · IMPACT','the monitor shows the impact point');
+  assert(/IN BLAST/.test(await evaluate('document.querySelector("#sentry-pilot output").textContent')),'the danger readout is written');
+  current='gunship-thermal-rotary';await finish();
+  await evaluate('window.__stalheartTest.gunshipGun("heavy")');await delay(400);current='gunship-thermal-heavy';await finish();
+  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'v',code:'KeyV'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'v',code:'KeyV'});await delay(600);current='gunship-third';await finish();
+  // no input reaches the clock: the pass keeps counting out while the gunner sits
+  const a=await evaluate('window.__stalheartTest.state().gunship.left');await delay(1200);const b=await evaluate('window.__stalheartTest.state().gunship.left');assert(b<a,'the pass counts out under the gunner');
+  // the trigger on the rotary: rounds are owed and nothing throws with no enemy under the reticle
+  await evaluate('window.__stalheartTest.gunshipGun("rotary")');await evaluate('window.__stalheartTest.gunshipHold(true)');await delay(700);await evaluate('window.__stalheartTest.gunshipHold(false)');
+  current='gunship-rotary-fired';await finish();}
  } else if(args.includes('--story-world')) {
  // THE STÅLHEART CANDIDATES IN THE GAME CAMERA — the review surface the asset owner asked for. lod() reports the FILE
  // behind each tier, and a far tier only reports once its GLB has loaded, so a switch that quietly loaded the shipped tiers,

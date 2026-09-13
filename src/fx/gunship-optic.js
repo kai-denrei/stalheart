@@ -15,7 +15,7 @@ const KORP_URL = 'assets/models/korp/korp_d0_lod1.glb';
 const deg = (d) => d * Math.PI / 180;
 
 export function createGunshipOptic(scene, { cellSide, metresPerCell = 10 }) {
-  const cold = new THREE.MeshLambertMaterial({ color: 0x3b4d58 });
+  const cold = new THREE.MeshLambertMaterial({ color: 0x8fa3ae, emissive: 0x1c262c });   // lit enough to read the base as cold geometry under the story's night
   const rings = new THREE.Group(); rings.visible = false; scene.add(rings);
   const ringOf = {};
   for (const key of GUNSHIP_GUN_ORDER) {
@@ -41,10 +41,9 @@ export function createGunshipOptic(scene, { cellSide, metresPerCell = 10 }) {
   // the enemies take the hot layer for the two passes and get their own masks back after: the monitor, the map and the
   // next normal frame all see them where they were
   function setLayer(enemies, hot) {
-    for (const e of enemies) {
-      if (!e.alive || !e.obj) continue;
-      e.obj.traverse((o) => { if (hot) { masks.set(o, o.layers.mask); o.layers.set(HOT_LAYER); } else if (masks.has(o)) o.layers.mask = masks.get(o); });
-    }
+    const swap = (o) => { if (hot) { masks.set(o, o.layers.mask); o.layers.set(HOT_LAYER); } else if (masks.has(o)) o.layers.mask = masks.get(o); };
+    for (const e of enemies) if (e.alive && e.obj) e.obj.traverse(swap);
+    if (model) model.traverse(swap);   // the ship is ours and drawn as itself: its guns and lights read over the cold base
     if (!hot) masks.clear();
   }
   return {

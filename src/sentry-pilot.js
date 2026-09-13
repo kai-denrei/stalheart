@@ -63,7 +63,7 @@ export function createSentryPilot(root, host) {
     // The optic stays on the mount for aiming; the camera sits back from it
     // so the barrels are in frame: a little in PoV, the whole turret in third.
     const c=host.cellSide(),back=state.view==='third'?(gunship?6*c:2.4*c):(gunship?0:.34*c),lift=state.view==='third'?(gunship?2.2*c:1.35*c):(gunship?0:.12*c);
-    camEye.copy(eye).addScaledVector(forward,-back).addScaledVector(up,lift);
+    if(gunship&&state.view==='third')camEye.copy(eye).addScaledVector(direction,-6*c).addScaledVector(up,.8*c);else camEye.copy(eye).addScaledVector(forward,-back).addScaledVector(up,lift);   // the gunship's third view backs off along the aim so the KORP sits in frame over its target
     goal.pos.copy(camEye);host.cameraPose(camEye,direction,up,goal);
     return !map;
   }
@@ -134,7 +134,7 @@ export function createSentryPilot(root, host) {
     placePlatform();up.copy(ship.obj.position).normalize();
     forward.set(Math.sin(state.yaw),0,Math.cos(state.yaw)).applyQuaternion(ship.obj.quaternion).normalize();
     direction.copy(forward).multiplyScalar(Math.cos(state.pitch)).addScaledVector(up,Math.sin(state.pitch)).normalize();
-    eye.copy(ship.obj.position);
+    eye.copy(ship.obj.position).addScaledVector(up,host.cellSide()*.65);   // the same eye pose() puts the camera on
     impact=G.aim(eye.toArray(),direction.toArray());
     const ci=impact?G.cell(impact):-1,gun=G.guns[G.state.gun],c=host.cellSide();
     report=impact?Object.fromEntries(G.order.map(k=>[k,G.danger(impact,G.guns[k].dangerCells*c)])):null;
