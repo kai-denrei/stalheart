@@ -1,6 +1,6 @@
 # AFR-01 Seed Foundry — the arrival recycled
 
-Date: 2026-09-14. Status: **proposed, awaiting the owner's answers to §8.**
+Date: 2026-09-14. Status: **agreed by the owner (all four recommendations in §8), not implemented.**
 Assets: AFR-01 Seed Foundry and the SH02 four-piece salvage layout, pinned in
 `docs/arrival-foundry-assets.lock.json` (game and distance tiers, manifests)
 from SentryTowers_A6 revision `1759134`.
@@ -153,7 +153,9 @@ pinned as `far` like the solar complex.
 - The rocket yields exactly three barrels (tank, capsule, Isao module); the
   landing unit stays as the pad.
 
-## 8. For the owner
+## 8. Owner's answers (2026-09-14)
+
+All four recommended options taken: replace the conjured grants; three sections consumed, legs kept; automatic; 16 s for the first cycle, then 24 s.
 
 1. **Economy.** Do the barrels replace the opening's conjured grants (the
    Rotor's and the Quiver's cost come from feedstock), or are they extra on

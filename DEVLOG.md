@@ -189,6 +189,21 @@ Evidence:
 
 Supersedes: 2026-09-14-mork-low-as-default, 2026-09-14-stalheart-lods-as-shipped
 
+## 2026-09-14 — The AFR-01 seed foundry recycles the landed SH02 into the feedstock the opening prints from: barrels replace the conjured grants, three sections consumed, the legs kept, automatic, 16 s then 24 s per barrel
+
+decision · accepted · 2026-09-14-arrival-foundry-recycles-the-sh02
+
+Owner pointed at the A6 arrival-foundry family (AFR-01 Seed Foundry with the SH02 four-piece salvage layout) with the story: Isao arrives on the rocket, rough landing, and recycles the arrival rocket with this foundry to kick-start the colony. Today story-beats conjures the Rotor's and the Quiver's cost with api.grant(api.cost(key)).
+
+Design agreed in docs/superpowers/specs/2026-09-14-arrival-foundry-design.md; assets pinned in docs/arrival-foundry-assets.lock.json (game and distance tiers, manifests, revision 1759134). A foundry phase between landed and printing: Isao deploys the AFR-01 at the landing island's origin, the intact SH02 is replaced by the salvage layout, the arm's Recycle_Panel_To_Barrel cycle runs with the cutter arc, section removal and a barrel at BARREL_READY, and that barrel's feedstock is the biomass the Rotor is printed from. Three sections (tank, capsule, Isao module) become three barrels, the landing unit stays as the pad; the foundry runs on its own, 16 s for the first cycle then 24 s, and idles when the rocket is spent. Pure clock in src/domain/foundry.js with tunables in src/content/foundry.js; fx in src/fx/foundry-fx.js; the host folds storyApi.foundry into td-tab without line growth.
+
+Alternatives: Barrels as extra biomass on top of the conjured grants: rejected, the chain is the point.; Consume the whole rocket: rejected, the legs stay as the arrival's mark.; A one-press deployment by the player: rejected, the opening's lesson is Isao building while the player watches.; Compressing the authored clip: rejected, the first cycle plays as authored; later cycles are spaced by a tunable.
+
+Evidence:
+
+- https://jelaludo.github.io/SentryTowers_A6/arrival-foundry/ and assets/arrival-foundry/README.md, assets/sh02-salvage/README.md at revision 1759134242675fb56b48dc5c56be660928b22ac3: clips, events, sockets, section roots and tier budgets.
+- npm run assets:check verifies the six pinned files, including the manifest budgets for the _lod1/_lod2 tiers.
+
 ## 2026-09-14 — The gunship seat is the orbital strike's own map view in its surveillance look, aimed with the pointer; a skippable wireframe briefing precedes the first seat; the test breach opens a minute's walk out
 
 decision · accepted · 2026-09-14-gunship-seat-is-the-strike-map-with-a-briefing-and-a-far-breach
