@@ -1,9 +1,13 @@
 import { makeOrdnanceShell } from './shell.js';
 // units.js — the unit roster. Two construction kinds:
 //
-//   cloud — Braille dot-clouds (creatures.js): ~500–700 points re-posed on
-//           the CPU every frame by waveJelly. Beautiful, and fine for ONE
-//           hero unit; per-vertex CPU animation does not scale to crowds.
+//   cloud — Braille dot-clouds (creatures.js): ~500–700 points, deformed in
+//           the VERTEX SHADER (fx/dot-material.js, motion in
+//           content/dot-wobble.js). This used to be a CPU re-pose per frame
+//           per instance — 13.6 us and an 8.1 KB upload for one amoeba, which
+//           is why the game left the authored creatures unanimated. Measured
+//           2026-09-13: on the GPU the same motion is unmeasurable, and 2000
+//           merged clouds are one draw call.
 //   mesh  — low-poly polygon groups: static geometry, GPU transforms,
 //           animation is transform-only (userData.tick rotates/bobs parts).
 //           This is the battle-scale path: hundreds of these are cheap,
@@ -16,6 +20,7 @@ import { makeOrdnanceShell } from './shell.js';
 // tick(t) (idle animation) }.
 
 import * as THREE from '../vendor/three.module.js';
+import { makeDotMaterial } from './fx/dot-material.js';
 import { makeMork } from './mork.js';
 export { preloadMork } from './mork.js';
 import { makeJelly } from './jelly.js';
@@ -23,7 +28,7 @@ import { EMOTION_IDS, emotion, phosphorFor } from './emotions.js';
 import { printPhase, printOffset, printOn } from './printpath.js';
 import { loadGlb, loadGlbWithClips, mergeByMaterial, fitModel, tintModel, makeShellRack,
   addEdgeOutlines, makeHeatSleeve } from './glbmodels.js';
-import { CREATURES, waveJelly, swimWave, spherePts, bulletPts, missilePts, heartPts, torusPts, cloudFormPoints, enemyDotPts, portalPts, personPts } from './creatures.js';
+import { CREATURES, spherePts, bulletPts, missilePts, heartPts, torusPts, cloudFormPoints, enemyDotPts, portalPts, personPts } from './creatures.js';
 import { STARGATE_PTS, STARGATE_STROKE,
   HORIZON_N, stargateHorizon } from './stargate.js';
 import { ENEMY_SPEC } from './enemyspec.js';
@@ -344,12 +349,18 @@ function makeKnot(cols) {
   return g;
 }
 
-// cloud units — self-animating Points (each spawned instance pays the CPU
-// re-pose; fine for a handful on display, not for a crowd)
+// cloud units — Points that deform in the vertex shader. One uniform a frame,
+// no buffer upload, so an instance costs what a still one costs.
 function makeCloud(name, cols) {
   const base = CREATURES[name]();
   const out = new Float32Array(base.length * 3);
-  waveJelly(base, 0, out);
+  // THE REST POSE, NOT A POSED FRAME. This used to upload waveJelly(base, 0),
+  // which was right while the CPU owned every frame. The shader wobbles from
+  // whatever it is given, and waveJelly at t=0 is NOT the identity — its
+  // ripple term is spatial — so seeding a posed frame deformed the body twice.
+  for (let i = 0; i < base.length; i++) {
+    out[i * 3] = base[i][0]; out[i * 3 + 1] = base[i][1]; out[i * 3 + 2] = base[i][2];
+  }
   const colors = new Float32Array(base.length * 3);
   const cBody = new THREE.Color(cols.walker);
   const cHi = new THREE.Color(cols.walkerHi);
@@ -360,14 +371,8 @@ function makeCloud(name, cols) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(out, 3));
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  const pts = new THREE.Points(geo, new THREE.PointsMaterial({
-    size: 2.2, sizeAttenuation: false, vertexColors: true,
-    transparent: true, opacity: 0.95,
-  }));
-  pts.userData.tick = (t) => {
-    waveJelly(base, t, out);
-    geo.getAttribute('position').needsUpdate = true;
-  };
+  const pts = new THREE.Points(geo, makeDotMaterial({ size: 2.2, wobble: true }));
+  pts.userData.tick = (t) => pts.material.userData.setTime(t);
   pts.userData.baseScale = 1;
   pts.userData.lift = 0.85;
   pts.userData.kind = 'cloud';
@@ -536,8 +541,9 @@ export function makeDebris(obj, outwardN) {
 // dot enemies — the WHOLE TD roster as half-dotted STATIC clouds.
 // The original three creatures use their rich generators (posed once,
 // never re-posed); the borrowed types use enemyDotPts silhouettes.
-// Animation is transform-only per type (spin / bob / squash), so a
-// hundred of these cost what one waveJelly hero costs.
+// Animation is transform-only per type (spin / bob / squash) except the
+// authored three and the swimmers, which deform on the GPU. Either way a
+// crowd costs what a still crowd costs.
 // Every entry takes a DENSITY factor d (default 1): the game builds at
 // d=1 (crowds), the unit viewer at d=4 — one unit on screen at a time can
 // afford to be generous (operator ruling). The classic CREATURES
@@ -687,6 +693,29 @@ export function makeSurvivor(cols = {}) {
   return grp;
 }
 
+// The bodies that deform. The rest of the roster reads as machinery and keeps
+// its transform-only idle; these three are the authored organic ones.
+const WOBBLERS = new Set(['amoeba', 'phage', 'jellyfish']);
+
+// Per-creature swim tuning. The motion itself is content/dot-wobble.js.
+const SWIM = {
+  scoutufo: { amp: 0.26, beat: 7.0, along: 4.0, jelly: 0.10 },
+  // the shell/wave pairing the operator named: the spiral breathes
+  shellback: { amp: 0.20, beat: 4.6, along: 3.0, jelly: 0.16 },
+};
+
+const spanOf = (swim, base) => {
+  let zMin = Infinity, zMax = -Infinity;
+  for (const p of base) { if (p[2] < zMin) zMin = p[2]; if (p[2] > zMax) zMax = p[2]; }
+  return { ...swim, zMin, zMax };
+};
+
+// A crowd pulsing in lockstep reads as one organism, so every body gets its
+// own offset. Counted, not random: game logic may not call Math.random, and a
+// replay must build the same board twice.
+let dotSeq = 0;
+const dotPhase = () => { dotSeq = (dotSeq + 1) % 1024; return (dotSeq * 2.39996) % 6.28318; };
+
 export function makeDotEnemy(type, cols, dens = 1) {
   const base = dotShapePts(type, dens);
   const pos = new Float32Array(base.length * 3);
@@ -701,30 +730,24 @@ export function makeDotEnemy(type, cols, dens = 1) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  const pts = new THREE.Points(geo, new THREE.PointsMaterial({
-    size: 2.1, sizeAttenuation: false, vertexColors: true,
-    transparent: true, opacity: 0.95,
+  // WHICH BODIES DEFORM. The three authored creatures came over from the
+  // Braille lab with rich generators and no idle at all: in gameplay an
+  // amoeba was a STATIC cloud, because waveJelly only ever ran in the unit
+  // viewer's one-at-a-time carousel. They deform now, on the GPU, which is
+  // the whole point of the port — measured at 13.6 us/frame each on the CPU
+  // and unmeasurable in the vertex shader.
+  const wobble = WOBBLERS.has(type);
+  const swimOpts = SWIM[type] ? spanOf(SWIM[type], base) : null;
+  const pts = new THREE.Points(geo, makeDotMaterial({
+    size: 2.1, wobble, swim: swimOpts, phase: dotPhase(),
   }));
-  // Swimmers deform their POINTS rather than their transform. It costs a
-  // pass over the cloud each frame — 170 points, nothing — and it is the only
-  // way a body can flex: a transform can turn a creature but cannot make it
-  // beat. Everything else keeps the cheaper transform-only idle below.
-  const SWIM = {
-    scoutufo: { amp: 0.26, beat: 7.0, along: 4.0, jelly: 0.10 },
-    // the shell/wave pairing the operator named: the spiral breathes
-    shellback: { amp: 0.20, beat: 4.6, along: 3.0, jelly: 0.16 },
-  };
-  const swim = SWIM[type];
-  if (swim) {
-    let zMin = Infinity, zMax = -Infinity;
-    for (const p of base) { if (p[2] < zMin) zMin = p[2]; if (p[2] > zMax) zMax = p[2]; }
-    const opts = { ...swim, zMin, zMax };
-    // no rotation of any kind: it holds its heading and beats
-    pts.userData.tick = (t) => {
-      swimWave(base, t, pos, opts);
-      geo.getAttribute('position').needsUpdate = true;
-    };
-  }
+  // Swimmers deform their BODY rather than their transform — a transform can
+  // turn a creature but cannot make it beat. That deformation used to be a
+  // CPU pass over the cloud with a buffer upload behind it; it is a vertex
+  // shader now. Everything else keeps the transform-only idle below.
+  // Anything the shader animates ticks by advancing one uniform. No pass over
+  // the cloud, no buffer re-upload: a crowd costs what a still crowd costs.
+  if (wobble || swimOpts) pts.userData.tick = (t) => pts.material.userData.setTime(t);
 
   // transform-only idles, one flavor per family
   const TICKS = {
@@ -756,8 +779,11 @@ export function makeDotEnemy(type, cols, dens = 1) {
     prime: (t) => { pts.rotation.y = t * 0.5; },
     knot: (t) => { pts.rotation.y = t * 0.7; pts.rotation.x = Math.sin(t * 0.8) * 0.3; },
   };
-  // a swimmer already has its tick; the table would put the spin back
-  if (!swim) {
+  // A body the shader animates already has its tick — it advances the time
+  // uniform — and `tick` is one slot, so letting the table overwrite it would
+  // freeze the wobble at t=0 with no error anywhere. The wobble carries its
+  // own slow spin, so nothing is lost by skipping the idle here.
+  if (!swimOpts && !wobble) {
     pts.userData.tick = TICKS[type] || ((t) => { pts.rotation.y = Math.sin(t) * 0.25; });
   }
   pts.userData.s0 = 1; // scale captured by the game after sizing

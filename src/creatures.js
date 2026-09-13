@@ -1,4 +1,5 @@
 import { ORGANIC_FORMS } from './organic-forms.js';
+import { DOT_WOBBLE, DOT_SWIM } from './content/dot-wobble.js';
 // creatures.js — organic dot-cloud units, ported from ~/Dev/Braille
 // fun-shapes (half-dotted > organic): amoeba, bacteriophage, jellyfish.
 // Each generator returns unit-radius points [x,y,z,(hi)] where hi===1 marks a
@@ -480,13 +481,13 @@ export const CREATURES = {
 // of any kind. Body runs along +Z with the tail at -Z, which is the
 // orientation enemies are already given by lookAt.
 export function swimWave(base, t, out, o = {}) {
-  const amp = o.amp ?? 0.22;      // lateral throw at the very tail
-  const beat = o.beat ?? 7.5;     // beats per second-ish
-  const along = o.along ?? 4.2;   // wavelengths down the body
-  const jelly = o.jelly ?? 0.09;  // radial breathe
+  const amp = o.amp ?? DOT_SWIM.amp;      // lateral throw at the very tail
+  const beat = o.beat ?? DOT_SWIM.beat;     // beats per second-ish
+  const along = o.along ?? DOT_SWIM.along;   // wavelengths down the body
+  const jelly = o.jelly ?? DOT_SWIM.jelly;  // radial breathe
   const zMin = o.zMin ?? -1, zMax = o.zMax ?? 1;
   const span = (zMax - zMin) || 1;
-  const pulse = 1 + jelly * Math.sin(t * 2.6);
+  const pulse = 1 + jelly * Math.sin(t * DOT_SWIM.pulseFreq);
   const inv = 1 / Math.sqrt(pulse);   // thicker across means shorter along
   for (let i = 0; i < base.length; i++) {
     const p = base[i];
@@ -501,16 +502,18 @@ export function swimWave(base, t, out, o = {}) {
 }
 
 export function waveJelly(base, t, out, opts = null) {
-  const sy = 1 + 0.18 * Math.sin(t * 3);
+  const W = DOT_WOBBLE;
+  const sy = 1 + W.squashAmp * Math.sin(t * W.squashFreq);
   const sx = 1 / Math.sqrt(sy);
-  const spin = t * 0.3, cs = Math.cos(spin), sn = Math.sin(spin);
+  const spin = t * W.spinRate, cs = Math.cos(spin), sn = Math.sin(spin);
   const rd = opts && opts.reachAmt > 0 ? opts.reachDir : null;
   const ra = rd ? opts.reachAmt : 0;
   // the pseudopod ripples too, so the reach reads as membrane, not a spike
-  const raWob = ra * (1 + 0.15 * Math.sin(t * 5));
+  const raWob = ra * (1 + W.reachWobAmp * Math.sin(t * W.reachWobFreq));
   for (let i = 0; i < base.length; i++) {
     const p = base[i];
-    const d = 1 + 0.14 * Math.sin(3 * Math.atan2(p[2], p[0]) + t * 3 - p[1] * 2);
+    const d = 1 + W.rippleAmp * Math.sin(W.rippleLobes * Math.atan2(p[2], p[0])
+      + t * W.rippleFreq - p[1] * W.rippleYSkew);
     const x0 = p[0] * d * sx, y = p[1] * sy, z0 = p[2] * d * sx;
     let x = x0 * cs + z0 * sn;
     let z = -x0 * sn + z0 * cs;
@@ -519,7 +522,7 @@ export function waveJelly(base, t, out, opts = null) {
       const rl = Math.hypot(x, yy, z) || 1e-6;
       const al = (x * rd[0] + yy * rd[1] + z * rd[2]) / rl;
       if (al > 0) {
-        const f = 1 + raWob * 1.15 * Math.pow(al, 5);
+        const f = 1 + raWob * W.reachGain * Math.pow(al, W.reachPow);
         x *= f; yy *= f; z *= f;
       }
     }
