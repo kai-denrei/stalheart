@@ -7,6 +7,7 @@ import { storage as localStorage } from './storage.js';
 import { installDiagnostics, record } from './diagnostics.js';
 import { isStoryRoute } from './core/story-route.js';
 import { STAGES } from './content/base-layout.js';
+import { createStorySkips } from './fx/story-skips.js';
 import { loadPlanetBake } from './platform/planet-bake.js';
 import { applyFontPack, DEFAULT_FONT, DEFAULT_SHOUT_FONT, loadTypeFeel } from './fonts.js';
 
@@ -106,6 +107,8 @@ if (!root) {
     const arrival = document.createElement('button'); arrival.type = 'button'; arrival.textContent = 'arrival cinematic'; arrival.addEventListener('click', () => navigate(new URL('./labs.html?land=1#story', location.href))); strip.append(arrival);
     document.getElementById('tabbar')?.after(strip);
   }
+  // SKIP TO A STORY POINT, beside the build tag, on the story route and in the story lab: testing a beat should not mean playing up to it
+  if ((!workshop && target === 'td' && isStoryRoute(location.search)) || target === 'story') createStorySkips(document.body, { navigate, query: q });
   // WHICH BUILD IS THIS: the release token top right (the file hash the build stamps in), or dev on the source tree
   const build = document.querySelector('meta[name="cb"]')?.content; const tag = document.createElement('div'); tag.id = 'build-tag'; tag.textContent = build && build !== '00000000' ? `build ${build}` : 'dev'; document.body.append(tag);
   const menu = document.createElement('button');

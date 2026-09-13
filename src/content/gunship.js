@@ -10,9 +10,11 @@ export const GUNSHIP_ORBIT = Object.freeze({ pass: 75, station: 35 });
 // Where the platform rides while on station, in cells; the optic's pitch
 // limits (radians, negative is down); the model's metre.
 export const GUNSHIP_PLATFORM = Object.freeze({
-  altitudeCells: 16,   // above the base heart along its normal
-  driftCells: 10,      // half the ground track crossed while on station
-  pitchMin: -1.5, pitchMax: -0.45,
+  altitudeCells: 12,   // above the ground; the horizon dips 30° from here, and the pitch limits keep every aim on the planet
+  trackShare: 0.5,     // the track's centre, as a share of the way from the heart to the lane's approach
+  driftCells: 8,       // half the ground track crossed while on station
+  zoom: 2,             // the optic's magnification when the seat opens
+  pitchMin: -1.5, pitchMax: -0.7,
   metresPerCell: 10,   // the KORP is authored in metres; the story world is 10 m a cell
 });
 

@@ -295,6 +295,13 @@ try{
   // the trigger on the rotary: rounds are owed and nothing throws with no enemy under the reticle
   await evaluate('window.__stalheartTest.gunshipGun("rotary")');await evaluate('window.__stalheartTest.gunshipHold(true)');await delay(700);await evaluate('window.__stalheartTest.gunshipHold(false)');
   current='gunship-rotary-fired';await finish();}
+ // THE SKIP MARKER: the panel beside the build tag opens the seat by itself and raises enemies, which then read hot in the thermal optic
+ await go('gunship-skip','index.html?sw=0&cine=0&world=story&stage=6&acceptance=1&gunship=station&skip=gunship&enemies=24#td');
+ await until('!!window.__stalheartTest && window.__stalheartTest.state().gunship.seat',120000);await delay(9000);
+ {const s=await evaluate('window.__stalheartTest.state()');assert(s.gunship.seat&&s.gunship.optic,'the skip took the seat');assert(s.performance.enemies>=10,`enemies raised by the skip (${s.performance.enemies})`);
+  assert(await evaluate('document.querySelector("#story-skips [data-skip=gunship]").classList.contains("active")'),'the marker shows where we are');
+  await evaluate('document.querySelector("#story-skips [data-more]").click()');await delay(1500);const more=await evaluate('window.__stalheartTest.state().performance.enemies');assert(more>s.performance.enemies,`the + button raised more (${more})`);}
+ current='gunship-skip-enemies';await finish();
  } else if(args.includes('--story-world')) {
  // THE STÅLHEART CANDIDATES IN THE GAME CAMERA — the review surface the asset owner asked for. lod() reports the FILE
  // behind each tier, and a far tier only reports once its GLB has loaded, so a switch that quietly loaded the shipped tiers,

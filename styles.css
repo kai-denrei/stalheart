@@ -4512,6 +4512,12 @@ body.chrome-open #story-stages-nav { display: flex; }
 #story-views button.gunship:disabled { opacity: 0.45; cursor: default; }
 #story-views button.gunship.live { border-color: #ffb43d; color: #ffd48a; }
 /* the build tag, top right, for debugging which release is in front of you */
+#story-skips { position: fixed; top: 6px; right: 64px; z-index: 60; display: flex; align-items: center; gap: 4px; padding: 3px 6px; font: 600 10px ui-monospace, Menlo, monospace; letter-spacing: 0.06em; color: #6fa8c8; background: rgba(8, 14, 20, 0.7); border: 1px solid #2b6b96; border-radius: 6px; }
+#story-skips .k { margin-right: 2px; opacity: 0.8; }
+#story-skips button { font: inherit; color: #9fdcff; background: rgba(12, 26, 38, 0.85); border: 1px solid #2b6b96; border-radius: 4px; padding: 3px 6px; cursor: pointer; }
+#story-skips button:disabled { opacity: 0.35; cursor: default; }
+#story-skips button.active { background: rgba(40, 90, 120, 0.95); color: #dff4ff; border-color: #6fc3ff; }
+#story-skips input { width: 44px; font: inherit; color: #dff4ff; background: rgba(12, 26, 38, 0.85); border: 1px solid #2b6b96; border-radius: 4px; padding: 2px 4px; }
 #build-tag { position: fixed; top: 6px; right: 8px; z-index: 60; font: 600 10px ui-monospace, Menlo, monospace; letter-spacing: 0.06em; color: #6fa8c8; background: rgba(8, 14, 20, 0.7); border: 1px solid #234c68; border-radius: 6px; padding: 2px 6px; pointer-events: none; }
 /* the story's spotting monitor: a second small render riding behind a guided round */
 #story-monitor { position: fixed; right: 12px; bottom: 64px; width: 224px; height: 140px; border: 1px solid #2b6b96; border-radius: 8px; background: rgba(8, 14, 20, 0.5); z-index: 40; pointer-events: none; }

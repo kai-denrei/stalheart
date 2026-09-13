@@ -62,7 +62,7 @@ export function createSentryPilot(root, host) {
     eye.copy(tw.obj.position).addScaledVector(up,host.cellSide()*.65);
     // The optic stays on the mount for aiming; the camera sits back from it
     // so the barrels are in frame: a little in PoV, the whole turret in third.
-    const c=host.cellSide(),back=state.view==='third'?(gunship?6*c:2.4*c):(gunship?0:.34*c),lift=state.view==='third'?(gunship?2.2*c:1.35*c):(gunship?0:.12*c);
+    const c=host.cellSide(),back=state.view==='third'?(gunship?6*c:2.4*c):(gunship?0:.34*c),lift=state.view==='third'?(gunship?2.2*c:1.35*c):(gunship?(GUNSHIP_EYE-.65)*c:.12*c);   // the gunner's eye is under the belly, with the guns, not inside the hull
     if(gunship&&state.view==='third')camEye.copy(eye).addScaledVector(direction,-6*c).addScaledVector(up,.8*c);else camEye.copy(eye).addScaledVector(forward,-back).addScaledVector(up,lift);   // the gunship's third view backs off along the aim so the KORP sits in frame over its target
     goal.pos.copy(camEye);host.cameraPose(camEye,direction,up,goal);
     return !map;
@@ -100,7 +100,7 @@ export function createSentryPilot(root, host) {
   // wherever it is pointed; the danger report is a readout. The heavy IS the orbital strike: choosing it arms the safety,
   // aiming paints the cell, the trigger launches through strike.js's own ritual.
   const G=host.gunship,ship={key:'gunship',obj:G?G.optic.platformObject():null,ci:-1},aim=new THREE.Vector3(),t1=new THREE.Vector3(),t2=new THREE.Vector3();
-  let gunship=false,impact=null,report=null,rounds=0;
+  let gunship=false,impact=null,report=null,rounds=0;const GUNSHIP_EYE=-.35;   // cells below the platform origin: the belly, where the muzzles are
   const guns=document.createElement('div');guns.className='pilot-guns';guns.style.display='none';
   guns.innerHTML=G?G.order.map((k,i)=>`<button data-gun="${k}">${i+1} · ${G.guns[k].label}</button>`).join(''):'';panel.querySelector('header').after(guns);
   function selectGun(key){if(!G||!G.select(key))return;state.held=false;guns.querySelectorAll('[data-gun]').forEach(b=>b.classList.toggle('on',b.dataset.gun===key));if(G.guns[key].strike){if(!G.strike.armed)G.arm();}else if(G.strike.armed)G.arm();}
@@ -109,8 +109,8 @@ export function createSentryPilot(root, host) {
   const trackAxes=()=>{t1.set(0,0,1).applyQuaternion(ship.obj.quaternion);t2.set(1,0,0).applyQuaternion(ship.obj.quaternion);};
   function mountGunship(){
     if(!G||G.mount()!=='mounted')return 'refused';
-    gunship=true;ship.ci=G.heart();state.tower=ship;state.held=false;state.target=null;state.hidden=null;state.view='pov';state.zoom=1;host.zoom(1);
-    state.yaw=Math.PI;state.pitch=-1.1;   // facing back along the track, looking down at the base
+    gunship=true;ship.ci=G.heart();state.tower=ship;state.held=false;state.target=null;state.hidden=null;state.view='pov';state.zoom=G.platform.zoom??1;host.zoom(state.zoom);
+    attach(ship,G.centers[G.lane()]);state.pitch=Math.max(G.platform.pitchMin,Math.min(G.platform.pitchMax,state.pitch));   // the seat opens on the lane end, where they come from
     guns.style.display='';panel.querySelector('header').innerHTML='KORP / GS01 <small>HEAVY GUNSHIP · ON STATION</small>';panel.querySelector('footer').textContent='1 rotary · 2 bofors · 3 heavy (the strike) · Space fires · V PoV / third · M map · P pause';
     G.optic.mount();host.views?.('gunship');selectGun(G.state.gun);if(map)toggleMap();
     return 'mounted';
@@ -127,7 +127,7 @@ export function createSentryPilot(root, host) {
     trackAxes();up.copy(ship.obj.position).normalize();
     forward.set(Math.sin(state.yaw),0,Math.cos(state.yaw)).applyQuaternion(ship.obj.quaternion).normalize();
     direction.copy(forward).multiplyScalar(Math.cos(state.pitch)).addScaledVector(up,Math.sin(state.pitch)).normalize();
-    eye.copy(ship.obj.position).addScaledVector(up,host.cellSide()*.65);   // the same eye pose() puts the camera on
+    eye.copy(ship.obj.position).addScaledVector(up,host.cellSide()*GUNSHIP_EYE);   // the same eye pose() puts the camera on
     impact=G.aim(eye.toArray(),direction.toArray());
     const ci=impact?G.cell(impact):-1,gun=G.guns[G.state.gun],c=host.cellSide();
     report=impact?Object.fromEntries(G.order.map(k=>[k,G.danger(impact,G.guns[k].dangerCells*c)])):null;
