@@ -202,3 +202,9 @@
 @media (max-width:760px){#notes{flex-direction:column}
   #notes .nt-rail{width:auto;flex:0 0 auto;border-right:0;border-bottom:1px solid #1d2630}
   #notes .nt-toc{display:none}#notes .nt-body{padding:18px 16px 60px}}
+
+#swarm .sw-hud .mode{color:#6b8494}
+#swarm .sw-hud .mode.run{color:#7fe6d0;font-weight:700}
+#swarm .sw-hint{margin:-6px 0 12px;padding-bottom:11px;border-bottom:1px solid #1d2630;
+  color:#6b8494;font-size:10.5px;line-height:1.5}
+#swarm .sw-hint b{color:#7fe6d0;font-weight:600}

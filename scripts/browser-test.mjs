@@ -766,8 +766,13 @@ try{
   // ends with bodies unaccounted for means retire() leaked one.
   await evaluate('window.__stalheartSwarm.set("form","dots");window.__stalheartSwarm.set("type","phage");window.__stalheartSwarm.set("count",8)');
   await until('window.__stalheartSwarm.state().built===8');
+  // The two modes must be distinguishable on screen: the owner read a ram
+  // count far above the population and reasonably concluded the population was
+  // wrong, when it was free play recycling and nothing said so.
+  await until('document.querySelector("#swarm .sw-hud").textContent.includes("FREE PLAY")',10000);
   await evaluate('window.__stalheartSwarm.startRun()');
   await until('window.__stalheartSwarm.state().running===true');
+  await until('document.querySelector("#swarm .sw-hud").textContent.includes("RUN")',10000);
   await until('window.__stalheartSwarm.state().running===false',60000);
   const rec=await evaluate('(()=>{const r=window.__stalheartSwarm.lastRun();return r&&{...r,series:undefined,gpuSeries:undefined};})()');
   assert(rec,'a finished run leaves a record');

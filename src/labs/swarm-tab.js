@@ -62,7 +62,7 @@ export function initSwarmTab(root) {
       <h2>enemy study</h2>
       <label>body <select data-k="type">${TYPES.map((t) => `<option>${t}</option>`).join('')}</select></label>
       <label>form <select data-k="form"><option value="dots">dot cloud</option><option value="jelly">jelly body</option></select></label>
-      <label>in the lane <b data-v="count">100</b><input type="range" data-k="count" min="1" max="1200" step="1" value="100"></label>
+      <label>alive at once <b data-v="count">100</b><input type="range" data-k="count" min="1" max="1200" step="1" value="100"></label>
       <label>density <b data-v="dens">1.0</b>&times;<input type="range" data-k="dens" min="0.2" max="4" step="0.1" value="1"></label>
       <label>file width <b data-v="spread">0.5</b>&times;<input type="range" data-k="spread" min="0.1" max="1.6" step="0.05" value="0.5"></label>
       <label>tank <select data-k="drive"><option value="manual">you drive (WASD)</option><option value="charge">charging</option><option value="patrol">weaving</option><option value="static">parked</option></select></label>
@@ -70,6 +70,10 @@ export function initSwarmTab(root) {
       <label><input type="checkbox" data-k="walls" checked> canyon walls</label>
       <label><input type="checkbox" data-k="sound"> sound</label>
       <button type="button" class="sw-run" data-run>run the lane</button>
+      <p class="sw-hint">Free play keeps that many alive forever, respawning
+      each kill — good for looking at a crowd, useless for scoring one.
+      <b>Run the lane</b> seats them once and ends when the last is dead or
+      past you; only a run is measured.</p>
       <p class="sw-note">Rammable belts go under the treads for a premium;
       solid cores stop the hull dead and break the chain. Ram rules, bounties
       and the splat are the game's own, imported — nothing is re-typed here.</p>
@@ -465,12 +469,15 @@ export function initSwarmTab(root) {
       if (!running) cost = costMs();
       const n = Math.max(1, bodies.length), inf = renderer.info.render;
       const s = spec();
-      hud.innerHTML = `${run.kills} under the treads &middot; ${run.earned}kg`
+      hud.innerHTML = (running
+        ? `<span class="mode run">RUN &middot; ${liveCount()} LEFT</span>`
+        : '<span class="mode">FREE PLAY &middot; RECYCLING</span>')
+        + ` &middot; ${run.kills} under the treads &middot; ${run.earned}kg`
         + ` &middot; best &times;${run.maxCombo}`
         + (run.blocked ? ` &middot; <span class="bad">${run.blocked} blocked</span>` : '')
         + ` &middot; hull ${(run.speed * 100).toFixed(0)}%`
         + ` &middot; ${s.rammable ? 'rammable' : 'SOLID CORE'}`;
-      read.innerHTML = `<b>${n}</b> in the lane &middot; cost <b>${cost.toFixed(2)} ms</b>`
+      read.innerHTML = `<b>${n}</b> alive &middot; cost <b>${cost.toFixed(2)} ms</b>`
         + ` (${(cost * 1000 / n).toFixed(1)} &micro;s each) &middot; ${(cost / 16.67 * 100).toFixed(0)}% of a 60fps frame`
         + `<br>calls <b>${inf.calls}</b> &middot; points ${inf.points.toLocaleString()}`
         + ` &middot; tris ${inf.triangles.toLocaleString()} &middot; motion ${bodies[0]?.obj?.material?.userData?.motion ?? 'shader'}`;
@@ -621,7 +628,7 @@ export function initSwarmTab(root) {
     kept: () => kept.slice(),
     state: () => ({ ...state, built: bodies.length, running, live: liveCount(),
       samples: samples.length, gpuTimer: !!gpuExt, kills: run.kills, combo: run.combo,
-      maxCombo: run.maxCombo, earned: run.earned, blocked: run.blocked,
+      maxCombo: run.maxCombo, earned: run.earned, blocked: run.blocked, escaped: run.escaped,
       hull: +run.speed.toFixed(3), bursts: bursts.length,
       speed: +drive.speed.toFixed(2), yaw: +drive.yaw.toFixed(3), hover: +feel.hoverT.toFixed(3),
       wallBlocked: drive.blocked,
