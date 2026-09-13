@@ -155,6 +155,21 @@ Evidence:
 - scripts/browser-test.mjs units-tier-mork, units-tier-mork-low and units-tier-mork-proxy pass against source and the packed release with the pose frozen and per-tier triangle floors.
 - npm test, npm run check, npm run build, npm run test:browser and node scripts/browser-test.mjs --dist all pass; the release carries the yaw fix and ships PRACTICES.md, ROADMAP.md and DEVLOG.md byte-identical to source.
 
+## 2026-09-14 — The gunship seat shows its contacts: white screen-sized markers per enemy, the map framed between the base and the swarm, a contacts and nearest-range readout, and a two-minute window while we debug
+
+change · observed · 2026-09-14-gunship-seat-contacts-framing-two-minutes
+
+Owner's third playtest (2026-09-14): the briefing is not bad, the map view is right, but the enemies were black on black and could not be seen, nothing moved, the enemies were out of range with no way to track them, and the window was too short to test. Enemy markers on the map exist only for spawn points; the swarm is its dot clouds at orbit distance, which the surveillance filter drowns.
+
+src/fx/gunship-optic.js keeps a Points cloud of up to 600 white 7 px markers (no size attenuation, no depth test, drawn last) lifted a little off the ground, one per living enemy, visible only while the seat is taken. The seat frames the approach: centerBuildOnHeart accepts a normal, the host hook frame(n, d) centres the orbit view on the unit vector between the base and the swarm's centre and, on mount, zooms to hold both (1.25 + span x 2.6, clamped 1.4..4); re-centred every second, the wheel still zooms. The readout adds CONTACTS n and NEAREST m FROM BASE. GUNSHIP_ORBIT.station is 120 s (pass 60 s) while the guns are being debugged. td-tab holds 17558 lines.
+
+Alternatives: Diagnosing the black-on-black clouds: not chased; a dedicated marker is the robust answer on a filtered map at any zoom.
+
+Evidence:
+
+- artifacts/browser/gunship-skip-enemies.png: base upper-left, 72 contacts as a bright cluster right, readout CONTACTS 72 · NEAREST 480 M FROM BASE, 109 S LEFT.
+- browser-test --gunship seven scenarios pass; npm test 103; check; build.
+
 ## 2026-09-14 — The arrival recycled, first pass: the foundry beat between landed and printing, the SH02 cut into its salvage layout beside the AFR-01, barrels paying for the Rotor and the Quiver
 
 change · observed · 2026-09-14-arrival-foundry-beat-landed

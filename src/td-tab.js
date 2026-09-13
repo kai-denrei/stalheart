@@ -2590,9 +2590,9 @@ export function initTdTab(root) {
   // Frame the Heart: eye on the pole axis, the pole's tangent as up. Sets
   // the GOAL only — the loop's camera slerp (0.14/frame) does the easing,
   // so a recenter rides home over ~0.4s without its own animation.
-  function centerBuildOnHeart() {
+  function centerBuildOnHeart(n = null) {   // n: a unit normal to centre on instead of the pole (the gunship frames the approach)
     followSuspend = false;
-    const { hn, t1 } = poleFrame();
+    const { hn, t1 } = n ? { hn: n, t1: norm3(cross3(n, Math.abs(n[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0])) } : poleFrame();
     bqZ.set(hn[0], hn[1], hn[2]).normalize();
     bqY.set(t1[0], t1[1], t1[2]);
     bqX.crossVectors(bqY, bqZ).normalize();
@@ -17517,7 +17517,7 @@ export function initTdTab(root) {
     }
     pilot=createSentryPilot(root,pilotHost={
       story:!!posts,mobile:mobileShell,select:installPilot,views:name=>storyViews?.active(name),leave:()=>leavePilot(),
-      gunship:{state:gunship,strike,guns:GUNSHIP_GUNS,order:GUNSHIP_GUN_ORDER,platform:GUNSHIP_PLATFORM,centers:graph.centers,normals:graph.normals,heart:()=>dungeon.heart,lane:gunshipLane,cell:p=>cellIndex(norm3(p)),cellAt:(x,y)=>cellAtScreen(x,y),enemies:()=>enemies.filter(e=>e.alive&&e.id>0),damage:(e,d)=>damageEnemy(e,t,d,true,'strike'),onStation:()=>onStation(gunship),left:()=>phaseLeft(gunship),progress:()=>passProgress(gunship,GUNSHIP_ORBIT),mount:()=>mountGunship(gunship),dismount:()=>dismountGunship(gunship),select:k=>selectGun(gunship,k,GUNSHIP_GUNS),step:(dt,held)=>stepGun(gunship,dt,held,GUNSHIP_GUNS),aim:aimOnSphere,splash:splashDamage,
+      gunship:{state:gunship,strike,guns:GUNSHIP_GUNS,order:GUNSHIP_GUN_ORDER,platform:GUNSHIP_PLATFORM,centers:graph.centers,normals:graph.normals,heart:()=>dungeon.heart,lane:gunshipLane,cell:p=>cellIndex(norm3(p)),cellAt:(x,y)=>cellAtScreen(x,y),frame:(n,d)=>{centerBuildOnHeart(n);followSuspend=true;if(d)buildDist=Math.min(4,Math.max(1.4,d));},enemies:()=>enemies.filter(e=>e.alive&&e.id>0),damage:(e,d)=>damageEnemy(e,t,d,true,'strike'),onStation:()=>onStation(gunship),left:()=>phaseLeft(gunship),progress:()=>passProgress(gunship,GUNSHIP_ORBIT),mount:()=>mountGunship(gunship),dismount:()=>dismountGunship(gunship),select:k=>selectGun(gunship,k,GUNSHIP_GUNS),step:(dt,held)=>stepGun(gunship,dt,held,GUNSHIP_GUNS),aim:aimOnSphere,splash:splashDamage,
         bodies:()=>[...(gunshipWalls??=Array.from(dungeon.tags,(tg,ci)=>tg===BLOCKED&&(!story||story.inside(ci))?{kind:'wall',pos:graph.centers[ci]}:null).filter(Boolean)),...towers.map(tw=>({kind:'tower',pos:graph.centers[tw.ci]})),{kind:'tank',pos:player.pos},...(isao?[{kind:'isao',pos:isao.obj.position.toArray()}]:[])],danger:(p,r)=>dangerReport(p,r,pilotHost.gunship.bodies()),   // the danger report's bodies: walls cached per pass, the rest live
         arm:()=>safetyEl.click(),paint:ci=>paintTarget(strike,ci)==='locked',launch:()=>{if(!(strike.armed&&strike.target>=0))return false;launchBtn.click();return true;},puff:(ci,hex,life,r)=>{if(ci>=0)warnRing(ci,hex,life,r);},sfx:(name,pos)=>{if(name)sfx.play(name,{dist:camDist(pos)});},
         get optic(){return gunshipOptic??=createGunshipOptic(scene,{cellSide,metresPerCell:GUNSHIP_PLATFORM.metresPerCell});}},

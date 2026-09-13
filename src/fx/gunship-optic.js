@@ -21,6 +21,9 @@ export function createGunshipOptic(scene, { cellSide, metresPerCell = 10 }) {
     m.renderOrder = 5; rings.add(m); ringOf[key] = m;
   }
   const platform = new THREE.Group(); platform.visible = false; scene.add(platform);
+  // contacts: one bright screen-sized point per living enemy, over everything, so the swarm reads on the seat's map at any zoom
+  const contactsGeo = new THREE.BufferGeometry(); contactsGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3 * 600), 3)); contactsGeo.setDrawRange(0, 0);
+  const contacts = new THREE.Points(contactsGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 7, sizeAttenuation: false, depthTest: false, depthWrite: false, transparent: true, opacity: 0.95 })); contacts.visible = false; contacts.renderOrder = 7; contacts.frustumCulled = false; scene.add(contacts);
   let model = null, mixer = null, clips = {}, mounted = false, spin = 0, disposed = false, side = 0;
   // tracers: a small pool of lines, each with a life; the oldest is reused
   const tracers = []; for (let i = 0; i < 24; i++) { const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]); const m = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })); m.visible = false; m.renderOrder = 6; m.userData.life = 0; m.userData.total = 1; scene.add(m); tracers.push(m); }
@@ -39,8 +42,13 @@ export function createGunshipOptic(scene, { cellSide, metresPerCell = 10 }) {
   const node = (n) => model?.getObjectByName(n);
   return {
     active: () => mounted,
-    mount() { mounted = true; rings.visible = true; },
-    dismount() { mounted = false; rings.visible = false; if (model) model.visible = true; },
+    mount() { mounted = true; rings.visible = true; contacts.visible = true; },
+    dismount() { mounted = false; rings.visible = false; contacts.visible = false; if (model) model.visible = true; },
+    contacts(enemies) {
+      const p = contactsGeo.attributes.position; let n = 0;
+      for (const e of enemies) { if (n >= 600) break; const l = Math.hypot(e.pos[0], e.pos[1], e.pos[2]) || 1, k = 1 + cellSide * 0.6; p.setXYZ(n++, e.pos[0] / l * k, e.pos[1] / l * k, e.pos[2] / l * k); }   // lifted a little off the ground so the floor never hides them
+      p.needsUpdate = true; contactsGeo.setDrawRange(0, n); contactsGeo.computeBoundingSphere();
+    },
     hull(on) { if (model) model.visible = on; },
     // the world position of a muzzle socket: the rotary pair alternates, the heavy has one
     muzzle(gun) { const n = gun === 'heavy' ? node('SOCKET_MUZZLE_HEAVY') : node(`SOCKET_MUZZLE_${(side++ & 1) ? 'R' : 'L'}`); (n ?? platform).getWorldPosition(wp); return wp.toArray(); },
@@ -86,6 +94,6 @@ export function createGunshipOptic(scene, { cellSide, metresPerCell = 10 }) {
         m.material.opacity = key === gun ? (bad ? 0.95 : 0.7) : 0.2;
       }
     },
-    dispose() { disposed = true; rings.removeFromParent(); platform.removeFromParent(); for (const m of [...Object.values(ringOf), ...tracers]) { m.removeFromParent(); m.geometry.dispose(); m.material.dispose(); } },
+    dispose() { disposed = true; rings.removeFromParent(); platform.removeFromParent(); contacts.removeFromParent(); contactsGeo.dispose(); contacts.material.dispose(); for (const m of [...Object.values(ringOf), ...tracers]) { m.removeFromParent(); m.geometry.dispose(); m.material.dispose(); } },
   };
 }

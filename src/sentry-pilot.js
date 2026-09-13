@@ -114,7 +114,7 @@ export function createSentryPilot(root, host) {
     gunship=true;ship.ci=G.heart();state.tower=ship;state.held=false;state.target=null;state.hidden=null;state.view='third';state.zoom=1;host.zoom(1);px=innerWidth/2;py=innerHeight/2;
     pendingAim=G.centers[G.lane()];aimShip();   // the seat opens on where they come from; settled again on the first tick, once the platform has taken its track (its frame can swing when a breach opens)
     guns.style.display='';panel.querySelector('header').innerHTML='KORP / GS01 <small>HEAVY GUNSHIP · ON STATION</small>';panel.querySelector('footer').textContent='Point at the ground · click or Space fires · 1 rotary · 2 bofors · 3 heavy (the strike) · V the ship · M back to the map · P pause';
-    G.optic.mount();host.views?.('gunship');selectGun(G.state.gun);if(!map)toggleMap();root.classList.add('gunship-seat');   // the seat IS the orbital strike's map view
+    G.optic.mount();host.views?.('gunship');selectGun(G.state.gun);if(!map)toggleMap();root.classList.add('gunship-seat');frameApproach(true);   // the seat IS the orbital strike's map view
     return 'mounted';
   }
   function dismountGunship(){
@@ -122,6 +122,16 @@ export function createSentryPilot(root, host) {
     if(G.strike.armed)G.arm();   // the safety re-engages when the gunner leaves
   }
   function aimShip(){ship.obj.updateMatrixWorld(true);attach(ship,pendingAim);state.pitch=Math.max(G.platform.pitchMin,Math.min(G.platform.pitchMax,state.pitch));}
+  // THE MAP FRAMES THE APPROACH: centred between the base and the swarm's centre, zoomed on mount to hold both, so what is coming is
+  // in view and moving; the wheel still zooms after that. Returns the swarm's centre and count for the readout.
+  const cen=new THREE.Vector3(),hn=new THREE.Vector3();let frameAt=0;
+  function frameApproach(zoom){
+    const es=G.enemies();hn.fromArray(G.normals[G.heart()]).normalize();cen.set(0,0,0);for(const e of es)cen.add(v.fromArray(e.pos).normalize());
+    if(!es.length){if(zoom)G.frame(hn.toArray(),2.0);return {n:0};}
+    cen.divideScalar(es.length).normalize();const span=Math.acos(Math.max(-1,Math.min(1,cen.dot(hn))));
+    G.frame(v.copy(hn).add(cen).normalize().toArray(),zoom?1.25+span*2.6:0);
+    return {n:es.length,span};
+  }
   // the sim step: the platform's place, the aim, the readout, the rounds
   function gunshipTick(dt){
     if(!G)return;
@@ -132,6 +142,7 @@ export function createSentryPilot(root, host) {
     forward.set(Math.sin(state.yaw),0,Math.cos(state.yaw)).applyQuaternion(ship.obj.quaternion).normalize();
     direction.copy(forward).multiplyScalar(Math.cos(state.pitch)).addScaledVector(up,Math.sin(state.pitch)).normalize();
     eye.copy(ship.obj.position).addScaledVector(up,host.cellSide()*GUNSHIP_EYE);   // the same eye pose() puts the camera on
+    G.optic.contacts(G.enemies());frameAt+=dt;let swarm=null;if(map&&frameAt>=1){frameAt=0;swarm=frameApproach(false);}
     let ci=-1;if(map){ci=G.cellAt(px,py);impact=ci>=0?G.centers[ci].slice():null;}else{impact=G.aim(eye.toArray(),direction.toArray());ci=impact?G.cell(impact):-1;}   // on the map the pointer is the aim; looking at the ship, the optic's ray is
     const gun=G.guns[G.state.gun],c=host.cellSide();
     report=impact?Object.fromEntries(G.order.map(k=>[k,G.danger(impact,G.guns[k].dangerCells*c)])):null;
@@ -155,8 +166,8 @@ export function createSentryPilot(root, host) {
     }
     G.optic.hull(true);G.optic.pose({pitch:state.pitch,gun:G.state.gun,firing:fired,dt});
     const r=report?.[G.state.gun],left=Math.ceil(G.left());
-    const range=impact?Math.round(v.fromArray(impact).distanceTo(ship.obj.position)/c*G.platform.metresPerCell/10)*10:0;
-    panel.querySelector('output').textContent=`${gun.label} · ${gun.cue} · ON STATION ${left} S · RANGE ${String(range).padStart(4,'0')} M`+(gun.strike?` · ${G.strike.ready>0?(G.strike.armed?'ARMED':'READY'):G.strike.cooldown>0?'RE-ORBIT':'NO SHELL'}`:'')+(r?` · IN BLAST: ${r.walls} WALL${r.walls===1?'':'S'} · ${r.towers} SENTR${r.towers===1?'Y':'IES'}${r.tank?' · TANK':''}${r.isao?' · ISAO':''}`:'');
+    const range=impact?Math.round(v.fromArray(impact).distanceTo(ship.obj.position)/c*G.platform.metresPerCell/10)*10:0,es=G.enemies(),hc=G.centers[G.heart()],near=es.reduce((m,e)=>Math.min(m,Math.hypot(e.pos[0]-hc[0],e.pos[1]-hc[1],e.pos[2]-hc[2])),Infinity);
+    panel.querySelector('output').textContent=`${gun.label} · ${gun.cue} · ON STATION ${left} S · RANGE ${String(range).padStart(4,'0')} M · CONTACTS ${es.length}${es.length?` · NEAREST ${Math.round(near/c*G.platform.metresPerCell/10)*10} M FROM BASE`:''}`+(gun.strike?` · ${G.strike.ready>0?(G.strike.armed?'ARMED':'READY'):G.strike.cooldown>0?'RE-ORBIT':'NO SHELL'}`:'')+(r?` · IN BLAST: ${r.walls} WALL${r.walls===1?'':'S'} · ${r.towers} SENTR${r.towers===1?'Y':'IES'}${r.tank?' · TANK':''}${r.isao?' · ISAO':''}`:'');
   }
   const gunshipOptic=()=>gunship&&impact?{from:aim.fromArray(impact).addScaledVector(t1,host.cellSide()*2.2).toArray(),pos:impact,label:'GROUND TRUTH · IMPACT'}:null;
   return {state,pose,target,attach,select,setView,isMap:()=>map,mountGunship,dismountGunship,gunshipTick,gunshipOptic,get gunship(){return gunship;},
