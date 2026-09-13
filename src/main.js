@@ -28,6 +28,7 @@ const routes = {
   td: () => import('./td-tab.js').then(m => m.initTdTab),
   record: () => import('./recordtab.js').then(m => m.initRecordTab),
   units: () => import('./units-tab.js').then(m => m.initUnitsTab),
+  swarm: () => import('./labs/swarm-tab.js').then(m => m.initSwarmTab),
   beam: () => import('./beam-tab.js').then(m => m.initBeamTab),
   metal: () => import('./metal-tab.js').then(m => m.initMetalTab),
   astro: () => import('./astro-tab.js').then(m => m.initAstroTab),

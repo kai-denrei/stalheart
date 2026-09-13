@@ -717,6 +717,33 @@ try{
   await finish();
   await click('#units-next');assert.equal(await evaluate('window.__stalheartUnits.state().missiles.length'),0);
  }
+ // THE ENEMY STUDY. Guards the two things Node cannot see: that the dot
+ // shader compiles and actually draws, and that a crowd stays a crowd when the
+ // controls move. The authored creatures must report 'wobble' — they rendered
+ // STATIC in gameplay until the vertex-shader port, and a silent regression
+ // there looks like nothing at all.
+ await go('swarm-study','labs.html?sw=0&acceptance=1#swarm');
+ await until('window.__stalheartSwarm && window.__stalheartSwarm.state().built > 0');
+ {
+  const s0=await evaluate('window.__stalheartSwarm.state()');
+  assert.equal(s0.built,100,'opens on a hundred bodies');
+  assert.equal(s0.motion,'wobble','the authored creatures deform on the GPU');
+  assert(s0.calls>0&&s0.points>0,'the crowd is actually drawn');
+  assert(await evaluate('window.__stalheartSwarm.set("count",400)'));
+  await until('window.__stalheartSwarm.state().built===400');
+  const s1=await evaluate('window.__stalheartSwarm.state()');
+  assert(s1.points>s0.points,'more bodies draw more points');
+  // a swimmer keeps its own motion, and the roster's static bodies keep theirs
+  await evaluate('window.__stalheartSwarm.set("type","scoutufo")');
+  await until('window.__stalheartSwarm.state().motion==="swim"');
+  await evaluate('window.__stalheartSwarm.set("type","ghost")');
+  await until('window.__stalheartSwarm.state().motion==="static"');
+  // the jelly body is a mesh: triangles, no points
+  await evaluate('window.__stalheartSwarm.set("count",40);window.__stalheartSwarm.set("form","jelly")');
+  await until('window.__stalheartSwarm.state().triangles>0');
+  assert.equal(await evaluate('window.__stalheartSwarm.state().points'),0,'a jelly draws no points');
+ }
+ await finish();
  await go('mork-game','index.html?sw=0&cine=0&tutorial=0&acceptance=1#td');
  await until('window.__stalheartTest.state().playerAsset === "mork" && window.__stalheartTest.state().playerAssetReady');
  await until('window.__stalheartTest.state().berthAssets.length===3');assert.deepEqual(await evaluate('window.__stalheartTest.state().berthAssets'),['mork','mork','mork']);
