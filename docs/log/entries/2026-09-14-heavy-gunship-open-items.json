@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-heavy-gunship-open-items",
+  "date": "2026-09-14T00:35:00+00:00",
+  "type": "issue",
+  "status": "observed",
+  "title": "Open after the gunship mount: untuned guns, unmeasured horde cost, herding unverified, no seat on the practice map, and the story-world Rotor-kill acceptance step fails on main",
+  "context": "The gunship mount landed (2026-09-14-heavy-gunship-mount-landed) against a stage-6 story world with no enemies up, so nothing about its guns has been held against a horde.",
+  "outcome": "Open, in order: (1) the rotary and Bofors damage/blast/cadence numbers in src/content/gunship.js are first guesses and the spec's §9 horde render cost has not been measured; (2) whether sustained rotary fire reads as herding through existing knockback and pathing is unverified, and the spec forbids adding steering to make it so; (3) the practice map (?sentryPilot=1) has no GUNSHIP seat, the strip is story-only; (4) the missile cam does not run while the gunner sits (the pilot pose takes the camera first), so the 105's fall is watched from orbit with the impact in the monitor, which may be right and has not been judged; (5) the KORP's LOD1 flight pose, engine tilt and gun articulation have not had art review in the game camera; (6) scripts/browser-test.mjs --story-world times out at the Rotor-kill step (8 s to drop one phage while re-aiming) on main as well as on this branch, so the story acceptance is not currently green and needs its own reproduction.",
+  "alternatives": [],
+  "evidence": [
+    "artifacts/browser/gunship-thermal-rotary.png and gunship-third.png show the seat with zero enemies (Wave 0 · 0 enemies in the overlay).",
+    "Baseline: git worktree of main, node scripts/browser-test.mjs --story-world, 2026-09-14: PASS through story-world-fodder, then 'Timed out: (()=>{const t=window.__stalheartPilotTest;const e=t.enemy(1);...' identical to the heavy-gunship branch."
+  ],
+  "supersedes": []
+}

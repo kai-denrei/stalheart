@@ -305,7 +305,7 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 9 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 11 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
 
 ### Still open after the story-opening playtest: the breach freeze, the Rotor's sound by ear, Rotor shots into the wall, and ISAO-Birudorōn's review
 
@@ -330,6 +330,18 @@ Stålheart's runtime LODs are pinned at c827eda and verified in the story lab an
 `2026-09-14-mork-low-as-default` · decision · **proposed**
 
 LOW is pinned at 771e166 and verified as a drop-in for src/mork.js by tests, by a real render and against the packed release (see 2026-09-14-mork-tiers-pinned-for-review). ASSETS.md requires a visual and animation acceptance pass before a pinned revision becomes what ships, and the owner's upstream candidates are marked pending game-camera and reference-phone review.
+
+### Open after the gunship mount: untuned guns, unmeasured horde cost, herding unverified, no seat on the practice map, and the story-world Rotor-kill acceptance step fails on main
+
+`2026-09-14-heavy-gunship-open-items` · issue · **observed**
+
+The gunship mount landed (2026-09-14-heavy-gunship-mount-landed) against a stage-6 story world with no enemies up, so nothing about its guns has been held against a horde.
+
+### The heavy gunship mount landed: a fixed pass on the game clock, a gunner-only seat on the story strip, three guns with the 105 as the strike, a thermal optic and soft-warning rings
+
+`2026-09-14-heavy-gunship-mount-landed` · change · **observed**
+
+Owner set the Heavy Gunship as the session's priority per docs/superpowers/specs/2026-09-13-heavy-gunship-design.md and 2026-09-13-heavy-gunship-mount-design. Constraints: no new top-level src module, src/td-tab.js may not grow (budget 17605), src/strike.js unchanged, danger rings are readouts never refusals, no fuel meter, the KORP asset pinned and hash-validated. Plan: docs/superpowers/plans/2026-09-13-heavy-gunship.md, executed on branch heavy-gunship.
 
 ### Sniper modes remain unsatisfactory and require further playtesting and fixes
 

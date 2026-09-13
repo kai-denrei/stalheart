@@ -240,6 +240,38 @@ Evidence:
 - Headless run, 260 phages: 42.2 s, all 260 rammed, chain of 260, 2725 kg, frame gap median 16.7 ms and p95 23.5 ms with 8% late, GPU timer median 6.32 ms. Headless Chrome has no real vsync, so its late-frame share is environmental; the card exists so that is visible rather than assumed.
 - npm test, npm run check, npm run build, npm run test:browser and node scripts/browser-test.mjs --dist all pass.
 
+## 2026-09-14 — Open after the gunship mount: untuned guns, unmeasured horde cost, herding unverified, no seat on the practice map, and the story-world Rotor-kill acceptance step fails on main
+
+issue · observed · 2026-09-14-heavy-gunship-open-items
+
+The gunship mount landed (2026-09-14-heavy-gunship-mount-landed) against a stage-6 story world with no enemies up, so nothing about its guns has been held against a horde.
+
+Open, in order: (1) the rotary and Bofors damage/blast/cadence numbers in src/content/gunship.js are first guesses and the spec's §9 horde render cost has not been measured; (2) whether sustained rotary fire reads as herding through existing knockback and pathing is unverified, and the spec forbids adding steering to make it so; (3) the practice map (?sentryPilot=1) has no GUNSHIP seat, the strip is story-only; (4) the missile cam does not run while the gunner sits (the pilot pose takes the camera first), so the 105's fall is watched from orbit with the impact in the monitor, which may be right and has not been judged; (5) the KORP's LOD1 flight pose, engine tilt and gun articulation have not had art review in the game camera; (6) scripts/browser-test.mjs --story-world times out at the Rotor-kill step (8 s to drop one phage while re-aiming) on main as well as on this branch, so the story acceptance is not currently green and needs its own reproduction.
+
+Evidence:
+
+- artifacts/browser/gunship-thermal-rotary.png and gunship-third.png show the seat with zero enemies (Wave 0 · 0 enemies in the overlay).
+- Baseline: git worktree of main, node scripts/browser-test.mjs --story-world, 2026-09-14: PASS through story-world-fodder, then 'Timed out: (()=>{const t=window.__stalheartPilotTest;const e=t.enemy(1);...' identical to the heavy-gunship branch.
+
+## 2026-09-14 — The heavy gunship mount landed: a fixed pass on the game clock, a gunner-only seat on the story strip, three guns with the 105 as the strike, a thermal optic and soft-warning rings
+
+change · observed · 2026-09-14-heavy-gunship-mount-landed
+
+Owner set the Heavy Gunship as the session's priority per docs/superpowers/specs/2026-09-13-heavy-gunship-design.md and 2026-09-13-heavy-gunship-mount-design. Constraints: no new top-level src module, src/td-tab.js may not grow (budget 17605), src/strike.js unchanged, danger rings are readouts never refusals, no fuel meter, the KORP asset pinned and hash-validated. Plan: docs/superpowers/plans/2026-09-13-heavy-gunship.md, executed on branch heavy-gunship.
+
+Landed on branch heavy-gunship, not merged or pushed. src/content/gunship.js holds GUNSHIP_ORBIT (pass 75 s, station 35 s), GUNSHIP_PLATFORM (16 cells up, 10 cells of drift, pitch -1.5..-0.45) and the three gun profiles (rotary 30 rounds/s x 0.22 over 0.45 cells, Bofors 2.4/s x 2.6 over 1.1 cells, heavy = the strike at 3.2 cells). src/domain/gunship.js owns the schedule (stepGunship is the only clock mutator; mount refused off station; departure ejects the gunner), gun cadence with a forfeited fraction on release, the aim ray onto the sphere, the strike's fat-middle splash, and dangerReport with no refusing verb; test/gunship.mjs covers all of it. src/fx/gunship-optic.js renders thermal as two passes (cold Lambert override with the sky black, then enemies, the KORP and the scene's lights on layer 2 with their own materials, every mask restored after), keeps the three rings on the tangent plane at the impact point, and rides the pinned KORP LOD1 (docs/korp-assets.lock.json, revision fdc4a4a) over the base heart with engines to hover, gear folded and gun pivots following the optic's pitch. src/fx/story-views.js adds GUNSHIP to the strip, dark with the next pass counting down and live for the window. src/sentry-pilot.js hosts the seat as a virtual mount: keys 1/2/3 pick a gun, Space fires, V flips PoV/third, the rotary and Bofors scatter rounds golden-angle inside half the blast and damage through the host as source 'strike', the heavy arms the safety on selection, paints the cell under the reticle every tick and launches through launchBtn.click(), and the readout writes IN BLAST walls/sentries/tank/Isao for the selected gun. td-tab.js changes are folded into existing lines (state beside the strike, schedule beside stepStrike, the strip handler, the render switch, the monitor's ground-truth frame, an acceptance hook) and paid for by extracting the practice post picker into src/domain/pilot-posts.js (test/pilot-posts.mjs); td-tab.js is 17,600 lines and docs/architecture-budget.json was lowered to that. Isao's gunship_pass line shows the first time the seat is taken, not on arrival, because an arrival brief mid-opening would take a story beat's one-deep brief slot. Kit walls in the danger report are BLOCKED cells inside story.inside(); natural rock is not counted.
+
+Alternatives: Isao's line on the platform's arrival: rejected after reading showBrief, which holds one pending beat and drops further arrivals; the line now comes with the seat.; Placing the platform from the pilot host on mount: rejected, the ship was invisible from the ground before the first mount; the optic now rides it every game tick from the folded schedule line, story worlds only.; A MeshBasicMaterial swap for the KORP in thermal: rejected in favour of masking the scene's lights onto the hot layer, which keeps the authored look from the ground.; Rendering enemies on a permanent layer: rejected, the corner monitor and the map would lose them; masks are swapped for the two passes and restored.
+
+Evidence:
+
+- npm test: 102 test programs passed, including test/gunship.mjs and test/pilot-posts.mjs.
+- npm run check and npm run architecture pass with the budget at 17600 (wc -l src/td-tab.js = 17600).
+- npm run assets:check verifies docs/korp-assets.lock.json (korp_d0_lod1.glb 198764 bytes, manifest.json 10515 bytes) and the GLB carries GUN_L/R/HEAVY_PITCH, GUN_L/R_SPIN, ENGINE_*_PITCH, GEAR_* and the four clips.
+- node scripts/browser-test.mjs --gunship passes on source and with --dist: gunship-off-station (seat refused, button disabled, countdown text), gunship-thermal-rotary, gunship-thermal-heavy, gunship-third (the KORP framed over its target), gunship-rotary-fired; screenshots in artifacts/browser/ and artifacts/browser-dist/.
+- node scripts/browser-test.mjs --sentry-pilot passes after the post-picker extraction.
+- node scripts/browser-test.mjs --story-world passes through story-world-fodder and times out at the Rotor-kill step on this branch AND on main at the same step (baseline run in a main worktree, 2026-09-14); the failure predates this work.
+
 ## 2026-09-13 — The enemy study becomes a canyon lane: a file closing on MÖRK, the ram premium, the splat and the hull bogging down
 
 change · accepted · 2026-09-13-swarm-lane-ram-feel

@@ -24,7 +24,7 @@ export function createGunshipOptic(scene, { cellSide, metresPerCell = 10 }) {
     m.layers.set(HOT_LAYER); m.renderOrder = 5; rings.add(m); ringOf[key] = m;
   }
   const platform = new THREE.Group(); platform.visible = false; scene.add(platform);
-  let model = null, mixer = null, clips = {}, mounted = false, spin = 0, disposed = false;
+  let model = null, mixer = null, clips = {}, mounted = false, spin = 0, disposed = false, lights = [];
   const masks = new Map(), up = new THREE.Vector3(), q = new THREE.Quaternion(), zAxis = new THREE.Vector3(0, 0, 1), n3 = new THREE.Vector3(), t1 = new THREE.Vector3(), t2 = new THREE.Vector3(), basis = new THREE.Matrix4();
   if (typeof document !== 'undefined') new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(KORP_URL, (g) => {
     if (disposed) return;
@@ -44,11 +44,12 @@ export function createGunshipOptic(scene, { cellSide, metresPerCell = 10 }) {
     const swap = (o) => { if (hot) { masks.set(o, o.layers.mask); o.layers.set(HOT_LAYER); } else if (masks.has(o)) o.layers.mask = masks.get(o); };
     for (const e of enemies) if (e.alive && e.obj) e.obj.traverse(swap);
     if (model) model.traverse(swap);   // the ship is ours and drawn as itself: its guns and lights read over the cold base
+    for (const l of lights) swap(l);   // the scene's lights come along, or the hot pass is unlit
     if (!hot) masks.clear();
   }
   return {
     active: () => mounted,
-    mount() { mounted = true; rings.visible = true; },
+    mount() { mounted = true; rings.visible = true; lights = []; scene.traverse((o) => { if (o.isLight) lights.push(o); }); },
     dismount() { mounted = false; rings.visible = false; },
     // the platform rides above the base heart along its normal, drifting across the ground track with the pass's
     // progress, its +Z along the track and +Y up. Visible while on station, from the ground as from the seat.
