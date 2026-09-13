@@ -20,7 +20,7 @@ import { SKY_PRESET } from './galaxyseed.js';
 import { LOOKS } from './looks.js';
 import { WEATHER_PRESETS, weatherStats, bakeWeatheredMetal } from './weathered.js';
 import { WEATHER_BY_NAME, applyWeatheredMaterial, makeWeatheredTextures } from './cine/materials.js';
-import { buildCreature, preloadMork, preloadContainer, makeContainerFixture, preloadTerraformer, makeTerraformerFixture,
+import { buildCreature, preloadMork, preloadContainer, makeContainerFixture,
   preloadPortalRing, makePortalRing, preloadFabricator, makeIsaoDrone } from './units.js';
 import { deepLink, wireDeepLink } from './deeplink.js';
 
@@ -29,7 +29,6 @@ const SUBJECTS = {
   tank: { label: 'MÖRK', preload: () => preloadMork(), make: (look) => buildCreature(DEFAULT_TANK, { walker: look.walker, walkerHi: look.walkerHi }) },
   container: { label: 'container', preload: preloadContainer, make: () => makeContainerFixture(3) },
   isao: { label: 'Isao', preload: preloadFabricator, make: () => makeIsaoDrone() },
-  terraformer: { label: 'Terraformer', preload: preloadTerraformer, make: () => makeTerraformerFixture() },
   portal: { label: 'portal ring', preload: preloadPortalRing, make: () => makePortalRing(0xaee8ff) },
 };
 

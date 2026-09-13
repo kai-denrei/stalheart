@@ -584,12 +584,6 @@
       "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
     },
     {
-      "path": "assets/models/terraformer.glb",
-      "bytes": 1140012,
-      "sha256": "059056d87737b52cee11ed538ff40a29f5b833eeb7c5c0db4192c3ac099c73cd",
-      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
-    },
-    {
       "path": "assets/ui/switch-off.png",
       "bytes": 13948,
       "sha256": "887561fb6b63954be91e16c0680a7b02c93c0348b400f6d8372c6b547cac9905",

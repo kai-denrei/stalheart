@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-gunship-view-is-the-planet-not-thermal",
+  "date": "2026-09-14T03:30:00+00:00",
+  "type": "decision",
+  "status": "accepted",
+  "title": "The gunship's view is the planet as the orbital strike sees it; the spec's thermal abstraction is dropped",
+  "context": "Owner playtested the first gunship build (screenshot 2026-09-13 23:43): everything grey, the ship's hull in the gunner's eye, no readable impacts, a 35 s window too short to feel meaningful, and no waves. Spec §4 asked for a thermal optic with the ground truth in the corner monitor.",
+  "outcome": "The thermal two-pass is removed from src/fx/gunship-optic.js; the seat renders the normal scene through postfx like every other view, in the same look the orbital strike's fall cam uses. The KORP is hidden from the gunner's own eye in PoV and shown in the third view. Impacts are made legible: tracer lines from the muzzle sockets (SOCKET_MUZZLE_L/R alternating, SOCKET_MUZZLE_HEAVY) to each round's impact, Bofors rounds draw the strike's ring language one register down (an amber ring at 1.6 blast radii and a white core), the rotary a small ring every third round. The window is 60 s overhead and 60 s away (test asserts at least 45 s overhead). The corner monitor stays as the impact-point inset for now.",
+  "alternatives": [
+    "Keep thermal and lift the cold pass: rejected by the owner; the abstraction read as grey, not as the planet.",
+    "Drop the corner monitor with the thermal: kept for now, it still frames the impact; its value without the abstraction is an open question."
+  ],
+  "evidence": [
+    "artifacts/browser/gunship-skip-enemies.png after the change: the TRON planet, the swarm, the Rotor and the gate in frame, 49 s left on the window.",
+    "node scripts/browser-test.mjs --gunship passes; npm test 102 programs; npm run check; npm run build."
+  ],
+  "supersedes": []
+}

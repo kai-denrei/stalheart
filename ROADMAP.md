@@ -305,7 +305,7 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 12 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 14 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
 
 ### Still open after the story-opening playtest: the breach freeze, the Rotor's sound by ear, Rotor shots into the wall, and ISAO-Birudorōn's review
 
@@ -330,6 +330,18 @@ Stålheart's runtime LODs are pinned at c827eda and verified in the story lab an
 `2026-09-14-mork-low-as-default` · decision · **proposed**
 
 LOW is pinned at 771e166 and verified as a drop-in for src/mork.js by tests, by a real render and against the packed release (see 2026-09-14-mork-tiers-pinned-for-review). ASSETS.md requires a visual and animation acceptance pass before a pinned revision becomes what ships, and the owner's upstream candidates are marked pending game-camera and reference-phone review.
+
+### First swarm-cost number under the gunship: 72 phage in view pulled the headless acceptance run to 28 fps
+
+`2026-09-14-gunship-swarm-cost-first-number` · issue · **observed**
+
+Spec §9 named the horde render cost as the unverified premise. The skip panel now keeps waves coming while the platform is overhead, so the number falls out of the acceptance screenshot.
+
+### The pre-A6 terraformer heart (the wide machine on a round pad) is purged; the Sentry Terraformer 3000 is the Stalheart everywhere and the story world always has the empty heart
+
+`2026-09-14-pre-a6-terraformer-heart-purged` · change · **observed**
+
+Owner saw enemies attacking the old heart model after the gunship's pass ended in the story world and ruled it a relic that must never appear again. Classification before deleting: not dead code. It was the classic mode's default heart look (params.heartLook 'terraformer' unless ?terraformer=a6), listed in the metal lab, and probed by ?heartprobe=1. The story world had built it because the gunship skip URL did not carry heart=none: only ?story=N implied the empty heart.
 
 ### Skip-to markers beside the build tag: GUNSHIP opens the seat on station with a breach and enemies up; the pass runs over the approach and the seat settles its aim after the platform takes its track
 

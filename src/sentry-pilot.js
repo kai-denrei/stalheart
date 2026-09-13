@@ -145,12 +145,13 @@ export function createSentryPilot(root, host) {
         for(let i=0;i<n;i++){   // a golden-angle scatter inside half the blast, so a burst walks rather than drills
           const a=(rounds++)*2.399963,r=gun.blastCells*c*.5*Math.sqrt((rounds%7)/7);
           aim.fromArray(impact).addScaledVector(t1,Math.cos(a)*r).addScaledVector(t2,Math.sin(a)*r);
+          G.optic.tracer(G.optic.muzzle(gun.key),aim.toArray(),gun.ringHex,gun.key==='bofors'?.3:.1);   // the round, seen: muzzle to impact
           for(const e of G.enemies()){const d=aim.distanceTo(v.fromArray(e.pos));if(d<gun.blastCells*c)G.damage(e,G.splash(d,gun.blastCells*c,gun.damage));}
+          if(gun.key==='bofors'){G.puff(ci,gun.ringHex,.7,gun.blastCells*c*1.6);G.puff(ci,0xffffff,.35,gun.blastCells*c*.7);}else if(rounds%3===0)G.puff(ci,gun.ringHex,.22,gun.blastCells*c*.9);   // the impact, seen: the strike's ring language one register down
         }
-        if(gun.key==='bofors'||rounds%6===0)G.puff(ci,gun.ringHex,gun.key==='bofors'?.5:.18,gun.blastCells*c);
       }else if(state.held&&!map)fired='held';
     }
-    G.optic.pose({pitch:state.pitch,gun:G.state.gun,firing:fired,dt});
+    G.optic.hull(state.view!=='pov');G.optic.pose({pitch:state.pitch,gun:G.state.gun,firing:fired,dt});
     const r=report?.[G.state.gun],left=Math.ceil(G.left());
     panel.querySelector('output').textContent=`${gun.label} · ${gun.cue} · ON STATION ${left} S`+(gun.strike?` · ${G.strike.ready>0?(G.strike.armed?'ARMED':'READY'):G.strike.cooldown>0?'RE-ORBIT':'NO SHELL'}`:'')+(r?` · IN BLAST: ${r.walls} WALL${r.walls===1?'':'S'} · ${r.towers} SENTR${r.towers===1?'Y':'IES'}${r.tank?' · TANK':''}${r.isao?' · ISAO':''}`:'');
   }

@@ -16,7 +16,7 @@ console.log('the profiles:');
   check('three guns', Object.keys(GUNSHIP_GUNS).length === 3);
   check('the heavy is the strike', GUNSHIP_GUNS.heavy.strike === true && GUNSHIP_GUNS.heavy.rate === 0);
   check('danger widens with the gun', GUNSHIP_GUNS.rotary.dangerCells < GUNSHIP_GUNS.bofors.dangerCells && GUNSHIP_GUNS.bofors.dangerCells < GUNSHIP_GUNS.heavy.dangerCells);
-  check('the pass is longer than the window', GUNSHIP_ORBIT.pass > GUNSHIP_ORBIT.station);
+  check('the platform is overhead at least 45 s (owner, 2026-09-14)', GUNSHIP_ORBIT.station >= 45 && GUNSHIP_ORBIT.pass > 0);
   check('the platform looks down', GUNSHIP_PLATFORM.pitchMax < 0 && GUNSHIP_PLATFORM.pitchMin < GUNSHIP_PLATFORM.pitchMax);
 }
 

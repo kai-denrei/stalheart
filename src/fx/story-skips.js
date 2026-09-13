@@ -7,7 +7,7 @@ export const STORY_SKIPS = Object.freeze([
   { id: 'rotor', label: 'ROTOR', title: 'the opening: Isao prints the Rotor and hands it over', url: 'index.html?world=story&stage=1#td', wired: true },
   { id: 'quiver', label: 'QUIVER', title: 'not wired yet: the hard cores and the Quiver hand-over', url: null, wired: false },
   { id: 'study', label: 'STUDY', title: 'not wired yet: Isao\'s vibration-language analysis', url: null, wired: false },
-  { id: 'gunship', label: 'GUNSHIP', title: 'the gunship on station with the seat taken and enemies up', url: 'index.html?world=story&stage=6&cine=0&acceptance=1&gunship=station&skip=gunship#td', wired: true },
+  { id: 'gunship', label: 'GUNSHIP', title: 'the gunship on station with the seat taken, enemies up and waves continuing', url: 'index.html?world=story&stage=6&cine=0&acceptance=1&gunship=station&skip=gunship#td', wired: true },
 ]);
 const DEFAULT_ENEMIES = 30;
 
@@ -30,7 +30,9 @@ export function createStorySkips(root, { navigate, query, poll = 250 }) {
   const finish = () => {
     const h = hooks();
     if (!h || !(h.state?.().storyLod || []).some((l) => l.id === 'stalheart')) { if (tries++ < 600) setTimeout(finish, poll); return; }
-    if (skip === 'gunship') { setTimeout(() => { if (enemies) h.spawnFodder?.(enemies); h.mountGunship?.(); nav.querySelector('[data-skip="gunship"]').classList.add('active'); }, 800); }
+    if (skip === 'gunship') { setTimeout(() => { if (enemies) h.spawnFodder?.(enemies); h.mountGunship?.(); nav.querySelector('[data-skip="gunship"]').classList.add('active'); }, 800);
+      // continuous waves while the platform is overhead: another batch whenever the field thins below twice the count
+      setInterval(() => { const g = hooks(), s = g?.state?.(); if (s?.gunship?.station && (s.performance?.enemies ?? 0) < count() * 2) g.spawnFodder?.(count()); }, 6000); }
   };
   if (skip) finish();
   return { dispose() { nav.remove(); } };

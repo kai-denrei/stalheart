@@ -62,7 +62,7 @@ import { ACHIEVEMENTS, ACHV_GROUPS, achievement, blankRun, earned, freshlyEarned
 import { applyFontPack, currentFontPack, FONT_NAMES,
   loadTypeFeel } from './fonts.js';
 import { SECONDARY_TOE, applySecondaryToe } from './units.js';
-import { UNITS, UNIT_NAMES, buildUnit, buildCreature, preloadMkcx, preloadMork, preloadServer, makeServerFixture, makeShieldShell, preloadContainer, makeContainerFixture, preloadFabricator, makeIsaoDrone, makeBulletCloud, makeRewardSolid, makeShellSolid, makeDebris, makeDotBurst, makePortalCloud, preloadPortalRing, makePortalRing, makeHeartCloud, makeDotEnemy, makeSurvivor, preloadAstronaut, preloadAstronauts, makeAstronaut, preloadTerraformer, makeTerraformerFixture } from './units.js';
+import { UNITS, UNIT_NAMES, buildUnit, buildCreature, preloadMkcx, preloadMork, preloadServer, makeServerFixture, makeShieldShell, preloadContainer, makeContainerFixture, preloadFabricator, makeIsaoDrone, makeBulletCloud, makeRewardSolid, makeShellSolid, makeDebris, makeDotBurst, makePortalCloud, preloadPortalRing, makePortalRing, makeHeartCloud, makeDotEnemy, makeSurvivor, preloadAstronaut, preloadAstronauts, makeAstronaut } from './units.js';
 import { LOOKS, LOOK_NAMES } from './looks.js';
 import { makeCellIndex } from './cellindex.js';
 import { CREATURE_TINTS, ENEMY_SPEC, INTROS, computeWavePlan, accentFor } from './enemyspec.js';
@@ -129,7 +129,7 @@ export function initTdTab(root) {
     // messages the packs were chosen for (src/fonts.js owns the table)
     font: currentFontPack(),
     seed: 7,
-    heartLook: new URLSearchParams(location.search).get('terraformer') === 'a6' ? 'sentryTerraformer' : 'terraformer', // what stands at the pole — see HEART_LOOKS
+    heartLook: 'sentryTerraformer', // what stands at the pole — see HEART_LOOKS. The pre-A6 terraformer (the wide machine on a round pad) was purged 2026-09-14
     callouts: true,           // the encouragement layer; numbers survive it going off
     // The whole unlock run — every wave until the last tower unlocks — is
     // a guided tutorial, and it should be played on a TIGHT board: at 3000
@@ -630,14 +630,6 @@ export function initTdTab(root) {
   // heartHit, the minimap, the bastion camera or the win condition.
   const HEART_LOOKS = {
     sentryTerraformer: { label: 'Terraformer 3000 (Sentry)', preload: () => preloadSentryTerraformer(), make: makeSentryTerraformer, footprint: 1.12, scale: 1.9, lift: 0.16 },
-    terraformer: {
-      label: 'terraformer',
-      preload: preloadTerraformer,
-      make: () => dressMetal(makeTerraformerFixture(new THREE.Color(look().heart).getHex())),
-      // a wide machine on a pad wants more room than a dot cloud
-      scale: 1.9,
-      lift: 0.16,
-    },
     none: { label: 'none (story base owns the Stalheart)', preload: () => Promise.resolve(true), make: () => Object.assign(new THREE.Group(), { userData: { tick() {}, asset: 'none' } }), scale: 1, lift: 0 },
     cloud: {
       label: 'dot cloud',
@@ -12590,7 +12582,7 @@ export function initTdTab(root) {
     if (simSkip) return; // sim pass: state advanced, nothing painted
     // in PoV the camera sits inside the creature — hide it there
     playerMesh.visible = params.view !== 'pov' && !deploy?.clip;   // the bay's authored hull rolls out alone (operator, 2026-09-13: two turrets, one static, one sweeping)
-    if (gunshipOptic?.active()) gunshipOptic.render(renderer, camera, enemies); else postfx.render(); storyMonitor?.render(renderer, scene, towerSeekers.find((m) => m.pool === talonPool && talonPool)?.mesh ?? null, cellSide, dt, pilot?.gunship ? pilot.gunshipOptic() : (pilotMode && pilot?.state.tower && missileOf(pilot.state.tower.key) && pilot.state.tower.pilotTarget && !pilot.state.tower.pilotTarget.pilotAim ? { from: perchOf(pilot.state.tower), pos: pilot.state.tower.pilotTarget.pos } : null));   // the seeker feed rides behind a TALON in flight; the gunship's monitor is the ground truth at the impact point; otherwise the optic inset on the tracked target
+    postfx.render(); storyMonitor?.render(renderer, scene, towerSeekers.find((m) => m.pool === talonPool && talonPool)?.mesh ?? null, cellSide, dt, pilot?.gunship ? pilot.gunshipOptic() : (pilotMode && pilot?.state.tower && missileOf(pilot.state.tower.key) && pilot.state.tower.pilotTarget && !pilot.state.tower.pilotTarget.pilotAim ? { from: perchOf(pilot.state.tower), pos: pilot.state.tower.pilotTarget.pos } : null));   // the seeker feed rides behind a TALON in flight; the gunship's monitor is the ground truth at the impact point; otherwise the optic inset on the tracked target
     drawRadar(t); story?.hud.paint(radarCtx, { m: radarCss, cpos: pilot?.state.tower ? graph.centers[pilot.state.tower.ci] : player.pos, up: pilot?.state.tower ? new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray() : player.smoothDir, range: mapMode === 'heart' ? 2.02 : pilotMode ? cellSide * 12 : 1.15, t, mapMode });
   }
 
@@ -12847,7 +12839,7 @@ export function initTdTab(root) {
   }
   if (urlParams.get('callouts') === '0') params.callouts = false;
   syncCalloutMode();
-  const heartOverride = urlParams.get('heart') ?? (storyQuery.short ? 'none' : null);   // ?story=N implies the story's empty heart
+  const heartOverride = urlParams.get('heart') ?? (storyQuery.short || storyMode ? 'none' : null);   // the story world always has the empty heart: its base owns the Stalheart
   if (HEART_LOOKS[heartOverride]) params.heartLook = heartOverride;
   const lookOverride = urlParams.get('look');
   if (LOOKS[lookOverride]) params.look = lookOverride;
@@ -13519,7 +13511,7 @@ export function initTdTab(root) {
     let tries = 0;
     const run = () => {
       const isTerra = heartSprite && heartSprite.type === 'Group';
-      if (!isTerra && params.heartLook === 'terraformer' && tries++ < 200) {
+      if (!isTerra && params.heartLook === 'sentryTerraformer' && tries++ < 200) {
         setTimeout(run, 25); return;      // bytes still in flight
       }
       placeActors();                       // seat and scale it as the board does
@@ -13553,40 +13545,6 @@ export function initTdTab(root) {
       // pole and wrong everywhere else is invisible to a probe that only
       // checks the pole, so this compares the object's own up-axis against
       // the shell normal at its cell, AFTER a tick and a hit.
-      // ACTIVITY IS SUPPOSED TO BE INTERMITTENT. A screensaver and a working
-      // machine both "move"; the difference is whether they ever REST. Sample
-      // each pivot across two minutes and report how much of that time it is
-      // actually moving — low duty with real range is the shape wanted.
-      if (params.heartLook === 'terraformer') {
-        const track = { Travel_Carriage: 'position.z', Traverse_Carriage: 'position.x',
-          Mast_Stage_2: 'position.y', Arm_Swing: 'rotation.y',
-          Arm_Elbow: 'rotation.x', Arm_Wrist: 'rotation.x' };
-        const read = (o, path) => path.split('.').reduce((a2, k) => a2[k], o);
-        const seen = {};
-        for (const k of Object.keys(track)) seen[k] = [];
-        for (let i = 0; i < 1200; i++) {
-          heartSprite.userData.tick(i * 0.1);
-          for (const [name, path] of Object.entries(track)) {
-            const o = heartSprite.getObjectByName(name);
-            if (o) seen[name].push(read(o, path));
-          }
-        }
-        for (const [name, vals] of Object.entries(seen)) {
-          if (!vals.length) { console.log(`HEARTPROBE motion ${name}=ABSENT`); continue; }
-          const mn = Math.min(...vals), mx = Math.max(...vals);
-          const span2 = mx - mn;
-          // "moving" = meaningfully away from its REST value this frame, and
-          // rest is the MEDIAN — not the value nearest zero, which was the
-          // first cut and read the elbow as 97% busy purely because it rests
-          // at a slight bend rather than at 0. With a low duty the median IS
-          // the resting pose, by definition.
-          const restV = [...vals].sort((a2, b2) => a2 - b2)[Math.floor(vals.length / 2)];
-          const busy = vals.filter((v) => Math.abs(v - restV) > span2 * 0.08).length / vals.length;
-          console.log(`HEARTPROBE motion ${name} range=${span2.toFixed(3)}`
-            + ` duty=${(busy * 100).toFixed(0)}%`
-            + ` ${span2 > 1e-4 && busy > 0.02 && busy < 0.6 ? 'OK' : 'CHECK'}`);
-        }
-      }
 
       const hn2 = graph.normals[dungeon.heart];
       const up = new THREE.Vector3(0, 1, 0)

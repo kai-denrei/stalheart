@@ -207,6 +207,48 @@ Evidence:
 - test/thin-cloud.mjs: the three honour the factor, the authored count is a ceiling, each section keeps its share, a thinned cloud is never empty and never grows, thinning is deterministic, and highlight dots survive.
 - npm test, npm run check, npm run build, npm run test:browser and node scripts/browser-test.mjs --dist all pass.
 
+## 2026-09-14 — First swarm-cost number under the gunship: 72 phage in view pulled the headless acceptance run to 28 fps
+
+issue · observed · 2026-09-14-gunship-swarm-cost-first-number
+
+Spec §9 named the horde render cost as the unverified premise. The skip panel now keeps waves coming while the platform is overhead, so the number falls out of the acceptance screenshot.
+
+artifacts/browser/gunship-skip-enemies.png overlay: 28 fps, 36.2 ms, gpu 105.7 ms, 590 calls, 633.8k tris, 98.5k pts with 72 enemies; the same view with 0 enemies reads 60 fps, 378 calls, 515.7k tris. Headless Chrome on kainode without GPU acceleration is not the device; the number says the cost is real, not what it is on a phone. Gun damage and blast are still first guesses.
+
+Evidence:
+
+- artifacts/browser/gunship-skip-enemies.png and gunship-rotary-fired.png, 2026-09-14.
+
+## 2026-09-14 — The pre-A6 terraformer heart (the wide machine on a round pad) is purged; the Sentry Terraformer 3000 is the Stalheart everywhere and the story world always has the empty heart
+
+change · observed · 2026-09-14-pre-a6-terraformer-heart-purged
+
+Owner saw enemies attacking the old heart model after the gunship's pass ended in the story world and ruled it a relic that must never appear again. Classification before deleting: not dead code. It was the classic mode's default heart look (params.heartLook 'terraformer' unless ?terraformer=a6), listed in the metal lab, and probed by ?heartprobe=1. The story world had built it because the gunship skip URL did not carry heart=none: only ?story=N implied the empty heart.
+
+Removed: assets/models/terraformer.glb (git rm; inherited research snapshot, not an A6 library asset), preloadTerraformer, makeTerraformerFixture, terraPedestal, TERRA_PIVOTS and the prototype cache in src/units.js, the terraformer entry of HEART_LOOKS and the pivot duty-cycle probe branch in src/td-tab.js, the metal lab's Terraformer fixture, the ?terraformer=a6 switch (heartLook defaults to sentryTerraformer), the inventory entry in docs/asset-inventory.json, and the a6 switch from two browser-test URLs. The story world now forces heart 'none' whenever the world is the story (storyMode), not only for ?story=N. Kept: src/terraformer.js (the A6 adapter), assets/models/sentry-terraformer, test/terraformer.mjs, the far tier assets/models/far/stalheart.glb, and every history entry. src/td-tab.js fell to 17558 lines; the budget is lowered to that.
+
+Alternatives: Keep the old look selectable behind a switch: rejected, the owner's ruling is that the relic never appears again.
+
+Evidence:
+
+- grep for preloadTerraformer, makeTerraformerFixture, terraformer.glb, TERRA_PIVOTS, terraProto and the 'terraformer' heart key across src, scripts, test and the HTML entries returns only the A6 adapter's diagnostics labels, a mine case name and a scenario name.
+- npm test 102 programs, npm run check, npm run architecture (budget 17558), npm run build; browser-test --sentry-pilot (classic map, A6 heart) and --gunship pass.
+
+## 2026-09-14 — The gunship's view is the planet as the orbital strike sees it; the spec's thermal abstraction is dropped
+
+decision · accepted · 2026-09-14-gunship-view-is-the-planet-not-thermal
+
+Owner playtested the first gunship build (screenshot 2026-09-13 23:43): everything grey, the ship's hull in the gunner's eye, no readable impacts, a 35 s window too short to feel meaningful, and no waves. Spec §4 asked for a thermal optic with the ground truth in the corner monitor.
+
+The thermal two-pass is removed from src/fx/gunship-optic.js; the seat renders the normal scene through postfx like every other view, in the same look the orbital strike's fall cam uses. The KORP is hidden from the gunner's own eye in PoV and shown in the third view. Impacts are made legible: tracer lines from the muzzle sockets (SOCKET_MUZZLE_L/R alternating, SOCKET_MUZZLE_HEAVY) to each round's impact, Bofors rounds draw the strike's ring language one register down (an amber ring at 1.6 blast radii and a white core), the rotary a small ring every third round. The window is 60 s overhead and 60 s away (test asserts at least 45 s overhead). The corner monitor stays as the impact-point inset for now.
+
+Alternatives: Keep thermal and lift the cold pass: rejected by the owner; the abstraction read as grey, not as the planet.; Drop the corner monitor with the thermal: kept for now, it still frames the impact; its value without the abstraction is an open question.
+
+Evidence:
+
+- artifacts/browser/gunship-skip-enemies.png after the change: the TRON planet, the swarm, the Rotor and the gate in frame, 49 s left on the window.
+- node scripts/browser-test.mjs --gunship passes; npm test 102 programs; npm run check; npm run build.
+
 ## 2026-09-14 — The swarm lane drives the real tank instead of a second one, and the roadmap and devlog open in the workshop
 
 change · accepted · 2026-09-14-tank-sourced-and-notes-tab

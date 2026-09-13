@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-gunship-swarm-cost-first-number",
+  "date": "2026-09-14T03:45:00+00:00",
+  "type": "issue",
+  "status": "observed",
+  "title": "First swarm-cost number under the gunship: 72 phage in view pulled the headless acceptance run to 28 fps",
+  "context": "Spec §9 named the horde render cost as the unverified premise. The skip panel now keeps waves coming while the platform is overhead, so the number falls out of the acceptance screenshot.",
+  "outcome": "artifacts/browser/gunship-skip-enemies.png overlay: 28 fps, 36.2 ms, gpu 105.7 ms, 590 calls, 633.8k tris, 98.5k pts with 72 enemies; the same view with 0 enemies reads 60 fps, 378 calls, 515.7k tris. Headless Chrome on kainode without GPU acceleration is not the device; the number says the cost is real, not what it is on a phone. Gun damage and blast are still first guesses.",
+  "alternatives": [],
+  "evidence": [
+    "artifacts/browser/gunship-skip-enemies.png and gunship-rotary-fired.png, 2026-09-14."
+  ],
+  "supersedes": []
+}

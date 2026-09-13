@@ -1,31 +1,30 @@
-// The gunship's optic and body. THERMAL: the world is drawn once through a
-// cold override material with the sky black, then the enemies are drawn
-// again on their own layer with their own materials, hot over cold. The
-// player aims in this abstraction; the corner monitor shows the ground
-// truth. RINGS: three readouts on the tangent plane at the impact point,
-// one per gun; red when something of ours stands inside. The KORP model
-// rides the host's platform object with its guns pitched to the optic.
+// The gunship's optic and body. The view is the planet as the orbital strike
+// sees it (owner, 2026-09-14: not a thermal abstraction). RINGS: three
+// readouts on the tangent plane at the impact point, one per gun; red when
+// something of ours stands inside. TRACERS: short-lived lines from the
+// muzzle sockets to the impact. The KORP model rides the platform with its
+// guns pitched to the optic and is hidden from the gunner's own eye.
 import * as THREE from '../../vendor/three.module.js';
 import { GLTFLoader } from '../../vendor/GLTFLoader.js';
 import { MeshoptDecoder } from '../../vendor/meshopt_decoder.module.js';
 import { GUNSHIP_GUNS, GUNSHIP_GUN_ORDER, GUNSHIP_PLATFORM } from '../content/gunship.js';
 
-const HOT_LAYER = 2;   // the game's map layer is 1; 2 is free
 const KORP_URL = 'assets/models/korp/korp_d0_lod1.glb';
 const deg = (d) => d * Math.PI / 180;
 
 export function createGunshipOptic(scene, { cellSide, metresPerCell = 10 }) {
-  const cold = new THREE.MeshLambertMaterial({ color: 0x8fa3ae, emissive: 0x1c262c });   // lit enough to read the base as cold geometry under the story's night
   const rings = new THREE.Group(); rings.visible = false; scene.add(rings);
   const ringOf = {};
   for (const key of GUNSHIP_GUN_ORDER) {
     const g = GUNSHIP_GUNS[key], r = g.dangerCells * cellSide;
     const m = new THREE.Mesh(new THREE.RingGeometry(r * 0.96, r, 72), new THREE.MeshBasicMaterial({ color: g.ringHex, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false, depthTest: false }));
-    m.layers.set(HOT_LAYER); m.renderOrder = 5; rings.add(m); ringOf[key] = m;
+    m.renderOrder = 5; rings.add(m); ringOf[key] = m;
   }
   const platform = new THREE.Group(); platform.visible = false; scene.add(platform);
-  let model = null, mixer = null, clips = {}, mounted = false, spin = 0, disposed = false, lights = [];
-  const masks = new Map(), up = new THREE.Vector3(), q = new THREE.Quaternion(), zAxis = new THREE.Vector3(0, 0, 1), n3 = new THREE.Vector3(), t1 = new THREE.Vector3(), t2 = new THREE.Vector3(), basis = new THREE.Matrix4();
+  let model = null, mixer = null, clips = {}, mounted = false, spin = 0, disposed = false, side = 0;
+  // tracers: a small pool of lines, each with a life; the oldest is reused
+  const tracers = []; for (let i = 0; i < 24; i++) { const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]); const m = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })); m.visible = false; m.renderOrder = 6; m.userData.life = 0; m.userData.total = 1; scene.add(m); tracers.push(m); }
+  const up = new THREE.Vector3(), wp = new THREE.Vector3(), q = new THREE.Quaternion(), zAxis = new THREE.Vector3(0, 0, 1), n3 = new THREE.Vector3(), t1 = new THREE.Vector3(), t2 = new THREE.Vector3(), basis = new THREE.Matrix4();
   if (typeof document !== 'undefined') new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(KORP_URL, (g) => {
     if (disposed) return;
     model = g.scene; model.scale.setScalar(cellSide / metresPerCell);
@@ -38,19 +37,18 @@ export function createGunshipOptic(scene, { cellSide, metresPerCell = 10 }) {
     platform.add(model);
   });
   const node = (n) => model?.getObjectByName(n);
-  // the enemies take the hot layer for the two passes and get their own masks back after: the monitor, the map and the
-  // next normal frame all see them where they were
-  function setLayer(enemies, hot) {
-    const swap = (o) => { if (hot) { masks.set(o, o.layers.mask); o.layers.set(HOT_LAYER); } else if (masks.has(o)) o.layers.mask = masks.get(o); };
-    for (const e of enemies) if (e.alive && e.obj) e.obj.traverse(swap);
-    if (model) model.traverse(swap);   // the ship is ours and drawn as itself: its guns and lights read over the cold base
-    for (const l of lights) swap(l);   // the scene's lights come along, or the hot pass is unlit
-    if (!hot) masks.clear();
-  }
   return {
     active: () => mounted,
-    mount() { mounted = true; rings.visible = true; lights = []; scene.traverse((o) => { if (o.isLight) lights.push(o); }); },
-    dismount() { mounted = false; rings.visible = false; },
+    mount() { mounted = true; rings.visible = true; },
+    dismount() { mounted = false; rings.visible = false; if (model) model.visible = true; },
+    hull(on) { if (model) model.visible = on; },
+    // the world position of a muzzle socket: the rotary pair alternates, the heavy has one
+    muzzle(gun) { const n = gun === 'heavy' ? node('SOCKET_MUZZLE_HEAVY') : node(`SOCKET_MUZZLE_${(side++ & 1) ? 'R' : 'L'}`); (n ?? platform).getWorldPosition(wp); return wp.toArray(); },
+    tracer(from, to, hex, life = 0.12) {
+      let t = tracers[0]; for (const c of tracers) if (c.userData.life < t.userData.life) t = c;
+      t.geometry.attributes.position.setXYZ(0, from[0], from[1], from[2]); t.geometry.attributes.position.setXYZ(1, to[0], to[1], to[2]); t.geometry.attributes.position.needsUpdate = true; t.geometry.computeBoundingSphere();
+      t.material.color.set(hex); t.material.opacity = 1; t.userData.life = t.userData.total = life; t.visible = true;
+    },
     // the platform rides over the approach: its track runs from the base heart toward the lane end (`toward`), and it
     // drifts along that track with the pass's progress, +Z along the track and +Y up. Visible while on station, from
     // the ground as from the seat.
@@ -72,6 +70,7 @@ export function createGunshipOptic(scene, { cellSide, metresPerCell = 10 }) {
       for (const n of ['L', 'R']) { const s = node(`GUN_${n}_SPIN`); if (s) s.rotation.z += spin * dt * 40; }
       if (firing === 'round' && clips[GUNSHIP_GUNS[gun]?.clip]) clips[GUNSHIP_GUNS[gun].clip].reset().play();
       mixer?.update(dt);
+      for (const t of tracers) if (t.visible) { t.userData.life -= dt; if (t.userData.life <= 0) t.visible = false; else t.material.opacity = t.userData.life / t.userData.total; }
     },
     // report: { [gunKey]: { walls, towers, tank, isao } } or null
     rings(point, normal, gun, report) {
@@ -87,15 +86,6 @@ export function createGunshipOptic(scene, { cellSide, metresPerCell = 10 }) {
         m.material.opacity = key === gun ? (bad ? 0.95 : 0.7) : 0.2;
       }
     },
-    render(renderer, camera, enemies) {
-      const bg = scene.background, mask = camera.layers.mask, clear = renderer.autoClear;
-      setLayer(enemies, true);
-      scene.background = null; scene.overrideMaterial = cold; camera.layers.set(0);
-      renderer.setRenderTarget(null); renderer.autoClear = true; renderer.render(scene, camera);
-      scene.overrideMaterial = null; camera.layers.set(HOT_LAYER); renderer.autoClear = false; renderer.render(scene, camera);
-      renderer.autoClear = clear; camera.layers.mask = mask; scene.background = bg;
-      setLayer(enemies, false);
-    },
-    dispose() { disposed = true; rings.removeFromParent(); platform.removeFromParent(); cold.dispose(); for (const m of Object.values(ringOf)) { m.geometry.dispose(); m.material.dispose(); } },
+    dispose() { disposed = true; rings.removeFromParent(); platform.removeFromParent(); for (const m of [...Object.values(ringOf), ...tracers]) { m.removeFromParent(); m.geometry.dispose(); m.material.dispose(); } },
   };
 }

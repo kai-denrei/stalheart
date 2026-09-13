@@ -740,7 +740,7 @@ try{
   await go('hack-'+hack,`index.html?sw=0&cine=0&hack=${hack}#td`,844,390);await delay(2500);
   assert(requests.some(r=>r.url.includes('/minigames/')));await finish();
  }
- await go('terraformer','index.html?sw=0&cine=0&terraformer=a6&acceptance=1#td');
+ await go('terraformer','index.html?sw=0&cine=0&acceptance=1#td');
  await until('window.__stalheartTest.state().heartAsset === "sentry-terraformer"',30000);
  // Each spare hull must deploy onto open ground and respond to real input.
  for (const hull of [2,1,0]) {
@@ -764,7 +764,7 @@ try{
  assert(consoleLines.filter(l=>l.includes('SENTRY_TERRAFORMER')).length>=4);
  assert.deepEqual(errors,[], 'Terraformer damage transitions');
  writeFileSync(join(output,'terraformer-states.log'),consoleLines.join('\n'));
- await go('game-dart','index.html?sw=0&cine=0&creature=mork&terraformer=a6&acceptance=1#td');
+ await go('game-dart','index.html?sw=0&cine=0&creature=mork&acceptance=1#td');
  await until('window.__stalheartTest.state().missileReady && window.__stalheartTest.state().playerAssetReady && window.__stalheartTest.state().heartAsset === "sentry-terraformer"');
  await evaluate('window.__stalheartTest.begin()');
  for(const key of ['quiver','heptapod']){

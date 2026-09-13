@@ -5,7 +5,7 @@
 // The orbit. It cannot be influenced: the ship is low on fuel and passes
 // over the base on a fixed schedule. `pass` is the time between passes,
 // `station` how long the guns are yours.
-export const GUNSHIP_ORBIT = Object.freeze({ pass: 75, station: 35 });
+export const GUNSHIP_ORBIT = Object.freeze({ pass: 60, station: 60 });   // owner, 2026-09-14: a pass must last long enough to feel meaningful, at least 45 s
 
 // Where the platform rides while on station, in cells; the optic's pitch
 // limits (radians, negative is down); the model's metre.
