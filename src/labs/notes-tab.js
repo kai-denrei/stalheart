@@ -1,4 +1,4 @@
-// notes-tab.js — the roadmap and the development log, in the workshop.
+// notes-tab.js — the roadmap, the practices and the development log, in the workshop.
 //
 // They already exist as files: ROADMAP.md is the forward view and DEVLOG.md is
 // generated from docs/log/entries/. This does not copy either of them, and it
@@ -12,6 +12,7 @@
 // none by choice.
 const DOCS = [
   { key: 'roadmap', file: 'ROADMAP.md', label: 'roadmap', hint: 'where this is going' },
+  { key: 'practices', file: 'PRACTICES.md', label: 'practices', hint: 'what we learned' },
   { key: 'devlog', file: 'DEVLOG.md', label: 'devlog', hint: 'what happened' },
 ];
 

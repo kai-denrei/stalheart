@@ -29,6 +29,8 @@ clean exports → UX → playability**. `docs/STATE.md` holds the detail.
 | FX package workflow | active. Weapons and audio done; beams, materials, portals and cinematics pending |
 | Enemy representation | **unblocked** — see below. Rendering and simulation both measured, neither is the constraint |
 | Heavy Gunship | designed, not built (`docs/superpowers/specs/2026-09-13-heavy-gunship-design.md`) |
+| Asset tiers | MÖRK LOW and the distance proxy pinned at `771e166` for review — `labs.html?unit=mork-low#units`. Shipped hull unchanged |
+| Isao-Birudorōn | production alpha upstream; review before integration |
 | Sniper range / first-map Sentry Control | open playtest failure, unreproduced |
 | HUD, tutorial, off-screen threats | queued behind the architecture work |
 | Difficulty, economy, progression | explicitly last. Not a balance pass yet |
@@ -78,6 +80,113 @@ Collateral is soft warning only. Nothing is added to `td-tab.js`.
 Blocked on nothing. Its damage and blast numbers cannot be tuned until swarm
 scale above 500 is known, but the mount can be built before that.
 
+### Asset tiers: Full / Game-ready / Static distance
+
+Every asset family ships three ways, and they are three different jobs:
+
+| tier | job | loads when |
+| --- | --- | --- |
+| **Full** | close shots, cinematics, recording | chosen by hand |
+| **Game-ready** | anything articulated, damaged or fighting | near, and always before combat |
+| **Static distance** | background, bays, orbital views, loading | far, intact, and still |
+
+D0–D3 are **damage states**, a second axis — never read a LOD off a D-number.
+The distance proxy exists for D0 only.
+
+Landmarks already work this way through the `asset` / `far` pair in
+`src/content/base-layout.js`, which prefers an owner-authored far tier over a
+derived one. This convention names what that schema was already doing.
+
+### MÖRK moves to its LOW tier
+
+Upstream moved from our pin `8de41ec` to `771e166`, and the tank is now a
+tier × damage matrix. **We ship the tier the page calls "Original detail"** —
+our pin predates a game tier existing.
+
+| `771e166` | KB | triangles | prims | nodes | clips | callouts |
+| --- | --- | --- | --- | --- | --- | --- |
+| original d0 | 984 | 18,596 | 44 | 109 | 6 | 142 |
+| **LOW d0** | **448** | **5,208** | 43 | **109** | **6** | **142, byte-identical** |
+| LOD2 d0 | 218 | 1,706 | 1 | 41 | 0 | 0 |
+
+Measured through `prepareMork` itself — the scope `test/mork.mjs` pins — the
+game tier is **24,196 triangles in 50 batches and LOW is 6,742 in 49**: 3.59×
+less vertex work at the same draw-call count. The GLB table above counts unique
+geometry and is not the number a re-pin uses.
+
+LOW is **verified as a drop-in**: every node and clip `src/mork.js` reaches for
+resolves in it, checked through three.js's name sanitization (the raw node
+`"Long cannon barrel"` is what the heat sleeve hangs on). The only node lost
+since our pin is `Turret cheek armor`, which nothing references.
+
+Acceptance is test-enforced, which is the point. `test/mork.mjs` pins
+`triangles === 24196` and the browser test pins `batches === 50`, so the swap
+cannot land silently — those get re-pinned to what `mork.js` itself measures
+on LOW. The heat-sleeve and articulation tests must pass **unchanged**. Concretely: `24196` becomes `6742`, and `batches === 50` becomes `49`.
+
+**Status, 2026-09-14.** Pinned in `docs/hover-tank-tiers-assets.lock.json` and
+guarded by `scripts/assets.mjs`, which now demands all 17 sockets and six clips
+of LOW rather than of the shipped file alone. Reviewable beside the shipped hull
+at `labs.html?unit=mork-low#units` and `?unit=mork#units`. As built units in the
+viewer the two render `1.14 × 0.59 × 2.60` — the same size, so the swap will not
+pop. **What remains is a look by eye** at the lift, recoil and plasma sweep, then
+the re-pin and a decision entry to make it the default.
+
+Measured as built units with the viewer's pose frozen (`?yaw=0&sweep=0`), they
+agree to the fourth decimal: the shipped hull `1.1405 × 0.5905 × 2.6000`, LOW
+`1.1404 × 0.5900 × 2.6000`. Packing for the release removes 114 triangles from
+the hull and 104 from LOW, and the release acceptance run holds both to per-tier
+floors taken from those numbers.
+
+Needs its own lock at `771e166`: the existing lock pins the shipped model at
+`8de41ec`, and one lock is one revision. Then a visual and animation pass by
+eye, and a decision entry.
+
+### The distance proxy in the bays and the orbital views
+
+The owner's proposal, and it is the asset's written policy: *"Recurring intact
+tank displays in containers and other background views. Static D0 proxy only;
+swap to the articulated game tier before combat or visible damage."*
+
+- **Classic base bays** — `td-tab.js` builds a full hull at 0.32 scale inside
+  each container and never animates it. The proxy is a pure win: three hulls,
+  one primitive each.
+- **Story bays** — already on `mork_container_low_diorama.glb`, whose own
+  `Tank_Roll_Out` clip plays the roll-out; the game hands over at the end
+  (*"the authored hull hides, ours stands where it stopped"*). Nothing to change.
+- **Orbital and gunship views** — the tank is a few pixels, cold geometry in
+  thermal. Exactly what a proxy is for.
+
+The rule that keeps it honest: LOD2 has no barrel and no clips, so it can never
+be the hull the player drives. Swap before anything moves, fires or takes damage.
+
+Built in the viewer with the pose frozen, the proxy's footprint matches the hull
+to 0.01% — `1.1404 × 2.6000` against `1.1405 × 2.6000`. Only its height differs,
+by the authored 6.5% raised under Question. Packing removes nothing from it: it
+is one draw with no degenerate triangles to lose.
+
+### Isao-Birudorōn — review before integration
+
+*"Flying construction specialist that assembles the Stålheart Terraformer before
+it fabricates MÖRK vehicles."* ビルドローン — build drone. The author marks it
+**production alpha, for art-direction and gameplay review**, so it goes into a
+review surface first, not the game.
+
+| tier | KB | triangles | prims | clips |
+| --- | --- | --- | --- | --- |
+| LOD0 detailed | 3,284 | 45,780 | 99 | 17 |
+| **LOD1 game** | 1,534 | **17,264** | 49 | 17 |
+| LOD2 distance | 173 | 1,800 | 1 | 0 |
+
+LOD1 lands under its own 25,000-triangle target. Clips: `Hover_Idle`,
+`Rotor_Cycle`, `Tool_Fabricate`, and fourteen `Emotion_*` performances, each an
+LED glyph **with** a body or tool gesture — *"the screen alone is not the
+performance."*
+
+It must swap by **projected screen size**, not by metres: the manifest says
+outright not to assume the landmark 150 m threshold. That is new machinery; the
+landmark system only knows distance.
+
 ## Candidate
 
 ### Large swarms above 500 concurrent
@@ -125,6 +234,23 @@ Not urgent. Worth doing the next time anything touches auto mode.
   `docs/STATE.md` has listed device performance review as open throughout.
 - **Where does simulation actually break?** Rendering is settled; pathing,
   collision and the hard-core proximity sensor at swarm counts are not.
+- **Which emotion system is the source of truth?** The game has
+  `src/emotions.js`: twenty-one 8×8 faces ported verbatim from the Braille lab,
+  with a rule never to hand-edit them. The new Isao carries fourteen *original*
+  8×6 LED glyphs, each paired with a body gesture. Twelve names overlap. The
+  model adds `working` and `alarm`; the game's `awe`, `scared`, `frustrated`,
+  `focused`, `unimpressed`, `suspicious`, `blink`, `scan` and `grin` have no
+  performance. The sharp end: **`focused` is Isao's most-used face in the
+  briefs, six times, and the model has no `focused`** — `working` is the
+  nearest. And `emotion()` falls back to `neutral` without a word, so an
+  unmapped face would go blank silently rather than fail.
+- **Is the MÖRK proxy's lower height deliberate?** In its own metres it stands
+  2.819 against the hull's 3.016 — 6.6% shorter, base about 2 cm higher and top
+  about 18 cm lower — while its footprint matches to 0.1%. That reads like a
+  parked hull settled for a bay, which would be right for where it goes. If it is
+  not deliberate, the fix belongs in the A6 source rather than here. The test
+  pins the measured value instead of widening a tolerance, so either answer is a
+  one-line change.
 
 ---
 
@@ -132,7 +258,13 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 5 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 6 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### Make MÖRK's LOW tier the default hull
+
+`2026-09-14-mork-low-as-default` · decision · **proposed**
+
+LOW is pinned at 771e166 and verified as a drop-in for src/mork.js by tests, by a real render and against the packed release (see 2026-09-14-mork-tiers-pinned-for-review). ASSETS.md requires a visual and animation acceptance pass before a pinned revision becomes what ships, and the owner's upstream candidates are marked pending game-camera and reference-phone review.
 
 ### Sniper modes remain unsatisfactory and require further playtesting and fixes
 

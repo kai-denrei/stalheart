@@ -21,8 +21,8 @@ import { makeOrdnanceShell } from './shell.js';
 
 import * as THREE from '../vendor/three.module.js';
 import { makeDotMaterial } from './fx/dot-material.js';
-import { makeMork } from './mork.js';
-export { preloadMork } from './mork.js';
+import { makeMork, makeMorkTier, makeMorkProxy } from './mork.js';
+export { preloadMork, preloadMorkTier, preloadMorkProxy } from './mork.js';
 import { makeJelly } from './jelly.js';
 import { EMOTION_IDS, emotion, phosphorFor } from './emotions.js';
 import { printPhase, printOffset, printOn } from './printpath.js';
@@ -2942,6 +2942,21 @@ export const UNITS = {
   mkcx2: { kind: 'mesh', make: (cols) => makeMkcx(cols, 'mkcx2') },   // legacy casting
   mork: { kind: 'mesh', make: cols => {
     const model = makeMork();
+    if (model) return model;
+    const fallback = makeTank(cols); fallback.userData.loading = true; return fallback;
+  } },
+  // REVIEW TIERS, pinned at 771e166 (docs/hover-tank-tiers-assets.lock.json).
+  // mork-low is the articulated game tier that would replace the shipped hull;
+  // mork-proxy is the static distance stand-in for bays and orbital views. Both
+  // come out of mork.js's one prepare and one make, so reviewing them here is
+  // reviewing exactly what the game would field — not a lookalike.
+  'mork-low': { kind: 'mesh', make: cols => {
+    const model = makeMorkTier('low');
+    if (model) return model;
+    const fallback = makeTank(cols); fallback.userData.loading = true; return fallback;
+  } },
+  'mork-proxy': { kind: 'mesh', make: cols => {
+    const model = makeMorkProxy();
     if (model) return model;
     const fallback = makeTank(cols); fallback.userData.loading = true; return fallback;
   } },

@@ -809,6 +809,47 @@ try{
   assert(shown>0&&shown<all,`the filter narrows the devlog (${shown} of ${all})`);
  }
  await finish();
+ // THE MÖRK REVIEW TIERS, as the Units viewer builds them. modelReady only turns
+ // true once the real model replaces the placeholder — for a review tier that is
+ // the lazy re-show firing, so if it does not, these time out on the procedural
+ // tank. Sizes are the BUILT unit the viewer shows, not a prepared mesh: the
+ // proxy once carried no baseScale and rendered 1.33x off the hull it stands in
+ // for, while every prepare-level test passed.
+ {
+  const seen = {};
+  for (const [id, tris, batches, floor] of [['mork', 24196, 50, 0.99], ['mork-low', 6742, 49, 0.98], ['mork-proxy', 1706, 1, 1]]) {
+   // FROZEN POSE. The viewer spins the turntable and sweeps the turret every
+   // frame, and an axis-aligned box around a rotating hull is not a size: a first
+   // run read the proxy 4.8% wider than the hull, and the hull itself 8% wider
+   // than at rest, purely from the angle it was caught at. yaw=0 and sweep=0 are
+   // the viewer's own switches for a still, rest-pose unit — and yaw only started
+   // actually holding a tank still once show() stopped overriding it.
+   await go('units-tier-' + id, `labs.html?sw=0&unit=${id}&yaw=0&sweep=0&acceptance=1#units`);
+   await until('window.__stalheartUnits && window.__stalheartUnits.state().modelReady === true');
+   const st = await evaluate('window.__stalheartUnits.state()');
+   // The release meshopt-packs every model, and packing drops degenerate
+   // triangles — how MANY depends on the mesh, so the floor is per tier. Measured
+   // 2026-09-14 against the lockfile-pinned gltfpack 1.2.0: the hull lost 114
+   // (0.47%), LOW lost 104 (1.54%) and the one-draw proxy lost none. A single 1%
+   // floor carried over from the mork-game case passed the hull and failed LOW:
+   // a bound derived for a 24k-triangle model does not transfer to a 6.7k one.
+   // Exact against source; in the release never MORE, and never under the floor.
+   if (production) assert(st.stats.triangles <= tris && st.stats.triangles >= Math.floor(tris * floor),
+     `${id} packed triangles ${st.stats.triangles}, source ${tris}, floor ${Math.floor(tris * floor)}`);
+   else assert.equal(st.stats.triangles, tris, `${id} triangles ${st.stats.triangles}, expected ${tris}`);
+   assert.equal(st.stats.batches, batches, `${id} batches ${st.stats.batches}, expected ${batches}`);   // batches survive packing
+   assert.equal(st.proxy, id === 'mork-proxy', `${id} proxy flag`);
+   assert(Array.isArray(st.size), `${id} reports its built size`);
+   seen[id] = st.size;
+   await finish();
+  }
+  const near = (a, b, tol, what) => assert(Math.abs(a / b - 1) < tol, `${what}: ${a.toFixed(3)} vs ${b.toFixed(3)}`);
+  // LOW would replace the shipped hull, so it must be the same size on every axis
+  ['x', 'y', 'z'].forEach((ax, i) => near(seen['mork-low'][i], seen.mork[i], 0.02, `mork-low ${ax}`));
+  // the proxy must share the ground plan; its height is the pinned authored delta
+  near(seen['mork-proxy'][0], seen.mork[0], 0.02, 'mork-proxy x');
+  near(seen['mork-proxy'][2], seen.mork[2], 0.02, 'mork-proxy z');
+ }
  await go('mork-game','index.html?sw=0&cine=0&tutorial=0&acceptance=1#td');
  await until('window.__stalheartTest.state().playerAsset === "mork" && window.__stalheartTest.state().playerAssetReady');
  await until('window.__stalheartTest.state().berthAssets.length===3');assert.deepEqual(await evaluate('window.__stalheartTest.state().berthAssets'),['mork','mork','mork']);

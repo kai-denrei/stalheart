@@ -1,10 +1,9 @@
 // Default A6 tank presentation. The host owns gameplay, sphere placement and time.
 import * as THREE from '../vendor/three.module.js';
-import { loadGlbWithClips, mergeByMaterial, fitModel } from './glbmodels.js';
+import { loadGlb, loadGlbWithClips, mergeByMaterial, fitModel } from './glbmodels.js';
 import { record } from './diagnostics.js';
 import { TURRET_SWEEP } from './content/tank.js';
 
-let prepared, pending;
 const ammoNames = Array.from({ length: 9 }, (_, i) => `AMMO_PORT_LIGHT_${String(i).padStart(2, '0')}`);
 export function prepareMork(scene, clips) {
   const pivots = [...new Set(['HOVER_RIG', 'HULL_SUSPENSION', 'TURRET_YAW', 'GUN_PITCH', 'GUN_RECOIL',
@@ -29,18 +28,93 @@ export function prepareMork(scene, clips) {
   return { model, clips, stats: { triangles, batches } };
 }
 
-export function preloadMork() {
-  if (prepared) return Promise.resolve(true);
-  if (!pending) pending = loadGlbWithClips('assets/models/hover-tank/mork_hover_tank_d0.glb').then(data => {
+// TIERS ARE DATA, NOT SECOND TANKS. The game tier ships; the LOW tier is pinned
+// at 771e166 for review before it replaces it (docs/hover-tank-tiers-assets
+// .lock.json). Both articulated tiers run through the ONE prepareMork and the
+// ONE makeMork below, cached by path, so a change to how MÖRK is built reaches
+// every tier at once. Verified 2026-09-14: LOW carries all 17 sockets the asset
+// guard enforces, both plasma pivots, all six clips and the heat-sleeve barrel,
+// and prepares to 6,742 triangles in 49 batches against the game tier's 24,196
+// in 50.
+// THE UNIT CONTRACT, ONCE. Consumers size a hull by multiplying its baseScale —
+// td-tab's player placement, the Units viewer's normalization, the swarm lab —
+// and lift it by lift. The distance proxy first shipped without these: it was
+// built the same size as the hull and then SHOWN 1.33x off it, because the
+// viewer divided the hull by 0.75 and the proxy by nothing. Every prepare-level
+// test passed; only a real render showed it. So every builder reads this one
+// object, and a change to how MÖRK is normalized reaches every tier. `asset`
+// stays 'mork' on the proxy: it is the same unit, and only its tier differs.
+export const MORK_UNIT = { kind: 'mesh', asset: 'mork', baseScale: 0.75, lift: 0.02 };
+
+export const MORK_TIERS = {
+  game: 'assets/models/hover-tank/mork_hover_tank_d0.glb',
+  low: 'assets/models/hover-tank/mork_hover_tank_low_d0.glb',
+};
+const preparedBy = new Map(), pendingBy = new Map();
+
+export function preloadMorkTier(tier = 'game') {
+  const url = MORK_TIERS[tier];
+  if (!url) return Promise.resolve(false);
+  if (preparedBy.has(url)) return Promise.resolve(true);
+  if (!pendingBy.has(url)) pendingBy.set(url, loadGlbWithClips(url).then(data => {
     if (!data) return false;
-    prepared = prepareMork(data.scene.clone(true), data.clips);
-    record('asset.ready', { asset: 'mork', ...prepared.stats });
+    const source = prepareMork(data.scene.clone(true), data.clips);
+    preparedBy.set(url, source);
+    // the game tier keeps its original diagnostics name, so nothing reading
+    // asset.ready for 'mork' sees a change
+    record('asset.ready', { asset: tier === 'game' ? 'mork' : `mork-${tier}`, ...source.stats });
     return true;
-  });
-  return pending;
+  }));
+  return pendingBy.get(url);
 }
 
-export function makeMork(source = prepared) {
+export function preloadMork() { return preloadMorkTier('game'); }
+
+export function makeMorkTier(tier) {
+  const source = preparedBy.get(MORK_TIERS[tier]);
+  if (!source) { void preloadMorkTier(tier); return null; }
+  return makeMork(source);
+}
+
+// THE DISTANCE PROXY IS NOT A TANK. A static D0 stand-in for bays, backgrounds
+// and orbital views: one draw, no barrel, no clips. The author's rule travels
+// with it — swap to an articulated tier before combat or visible damage — and
+// makeMork THROWS on it (no barrel to hang the heat sleeve on), which is the
+// point: it cannot be driven by accident. Fitted with the SAME box as the
+// articulated tiers, so a swap between them does not move the hull.
+export const MORK_PROXY = 'assets/models/hover-tank/mork_hover_tank_d0_lod2.glb';
+let proxyPrepared = null, proxyPending = null;
+
+export function prepareMorkProxy(scene) {
+  const model = fitModel(scene, { height: 1.3, maxSpan: 1.95, recentreOn: 'HOVER_RIG' });
+  let triangles = 0, batches = 0;
+  model.traverse(o => { if (o.isMesh) { batches++; triangles += (o.geometry.index?.count ?? o.geometry.attributes.position.count) / 3; } });
+  return { model, stats: { triangles, batches } };
+}
+
+export function preloadMorkProxy() {
+  if (proxyPrepared) return Promise.resolve(true);
+  if (!proxyPending) proxyPending = loadGlb(MORK_PROXY).then(scene => {
+    if (!scene) return false;
+    proxyPrepared = prepareMorkProxy(scene.clone(true));
+    record('asset.ready', { asset: 'mork-proxy', ...proxyPrepared.stats });
+    return true;
+  });
+  return proxyPending;
+}
+
+export function makeMorkProxy(source = proxyPrepared) {
+  if (!source) { void preloadMorkProxy(); return null; }
+  const root = source.model.clone(true);
+  Object.assign(root.userData, MORK_UNIT, { proxy: true, modelStats: { ...source.stats } });
+  // Clones SHARE the proxy's geometry and material: it is static and tiny, so
+  // instances do not need private copies, and disposing a shared buffer here
+  // would blank every other proxy on the board. Nothing to release.
+  root.userData.dispose = () => {};
+  return root;
+}
+
+export function makeMork(source = preparedBy.get(MORK_TIERS.game)) {
   if (!source) { void preloadMork(); return null; }
   const root = source.model.clone(true), materials = new Map();
   // Instances own mutable materials and geometry; the Units lab disposes them.
@@ -72,7 +146,7 @@ export function makeMork(source = prepared) {
   for (const light of lights) light.traverse(o => { if (o.isMesh) o.material = o.material.clone(); });
   let previousHover = 0, falling = false, previousRecoil = 0, shotAt = -Infinity;
   Object.assign(root.userData, {
-    kind: 'mesh', asset: 'mork', baseScale: 0.75, lift: 0.02, heatSleeve,
+    ...MORK_UNIT, heatSleeve,
     turret: node('TURRET_YAW'), muzzle: node('MUZZLE_00'),
     laserGuns: ['L', 'R'].map(s => node(`PLASMA_MUZZLE_${s}`)),
     secondaryPivots: ['L', 'R'].map(s => node(`PLASMA_YAW_${s}`)),

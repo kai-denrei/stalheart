@@ -6,7 +6,7 @@ const root=fileURLToPath(new URL('../',import.meta.url));
 
 const sha=data=>createHash('sha256').update(data).digest('hex');
 const fetchMissing=process.argv[2]==='fetch';
-for(const lockFile of ['docs/sentry-assets.lock.json','docs/missile-assets.lock.json','docs/hover-tank-assets.lock.json','docs/needle-assets.lock.json','docs/astro-assets.lock.json','docs/astro-industry-assets.lock.json','docs/sh-rocket-assets.lock.json','docs/base-kit-assets.lock.json','docs/antenna-assets.lock.json','docs/container-assets.lock.json','docs/solar-lod-assets.lock.json','docs/hugin-flight-assets.lock.json','docs/ammunition-assets.lock.json']) {
+for(const lockFile of ['docs/sentry-assets.lock.json','docs/missile-assets.lock.json','docs/hover-tank-assets.lock.json','docs/needle-assets.lock.json','docs/astro-assets.lock.json','docs/astro-industry-assets.lock.json','docs/sh-rocket-assets.lock.json','docs/base-kit-assets.lock.json','docs/antenna-assets.lock.json','docs/container-assets.lock.json','docs/solar-lod-assets.lock.json','docs/hugin-flight-assets.lock.json','docs/ammunition-assets.lock.json','docs/hover-tank-tiers-assets.lock.json']) {
 const lock=JSON.parse(readFileSync(resolve(root,lockFile),'utf8'));
 for(const file of lock.files){
  const path=resolve(root,file.path);
@@ -28,9 +28,18 @@ for(const file of lock.files){
    const triangles=json.meshes.flatMap(m=>m.primitives).reduce((n,p)=>n+json.accessors[p.indices].count/3,0);
    if(triangles!==188)throw Error('DART triangle budget changed');
   }
-  if(file.path.endsWith('/mork_hover_tank_d0.glb')) {
+  if(/\/mork_hover_tank_(low_)?d0\.glb$/.test(file.path)) {
    for(const name of ['Power_On','Power_Off','Hover_Idle','Fire_Heavy','Plasma_Sweep','Turret_Aim'])if(!json.animations.some(a=>a.name===name))throw Error('Missing MORK clip');
    for(const name of ['HOVER_RIG','HULL_SUSPENSION','TURRET_YAW','GUN_PITCH','GUN_RECOIL','MUZZLE_00','PLASMA_MUZZLE_L','PLASMA_MUZZLE_R',...Array.from({length:9},(_,i)=>'AMMO_PORT_LIGHT_'+String(i).padStart(2,'0'))])if(!json.nodes.some(n=>n.name===name))throw Error('Missing MORK articulation/socket');
+  }
+  // THE DISTANCE TIER IS A PROXY AND MUST STAY ONE. It has no barrel and no clips,
+  // so handing it to mork.js would throw; the author ships it as a static D0,
+  // one-draw background stand-in. If a later revision adds clips it would start
+  // to LOOK driveable, and a single primitive is the whole point of the tier.
+  if(file.path.endsWith('/mork_hover_tank_d0_lod2.glb')) {
+   if((json.animations||[]).length)throw Error('MORK distance proxy must stay static');
+   const prims=json.meshes.flatMap(m=>m.primitives).length;
+   if(prims!==1)throw Error(`MORK distance proxy must be one draw, found ${prims}`);
   }
   if(file.clips)for(const clip of file.clips)if(!(json.animations||[]).some(a=>a.name===clip))throw Error('Missing Astro clip: '+clip);
   if(file.damageLevel<2 && !(json.animations||[]).some(a=>a.name==='Terraforming_Cycle'))throw Error('Missing authored cycle');

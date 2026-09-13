@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "revision": "771e16678fec4fffcec0142d2275948a103acc86",
+  "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/771e16678fec4fffcec0142d2275948a103acc86/",
+  "note": "MORK game and distance tiers, pinned for review. A separate lock because one lock is one revision: docs/hover-tank-assets.lock.json still pins the shipped d0 at 8de41ec, and moving gameplay to the LOW tier needs a visual and animation acceptance pass and a decision entry before it becomes the default. The distance tier is a static D0 proxy only — the author's policy in manifest-distance.json is to swap to the articulated game tier before combat or visible damage.",
+  "files": [
+    {
+      "path": "assets/models/hover-tank/mork_hover_tank_low_d0.glb",
+      "sourcePath": "assets/hover-tank/mork_hover_tank_low_d0.glb",
+      "sha256": "213fc574e953bb71ca87f7fb86c511280b552646407da4d173d39689ad6d300c"
+    },
+    {
+      "path": "assets/models/hover-tank/mork_hover_tank_d0_lod2.glb",
+      "sourcePath": "assets/hover-tank/mork_hover_tank_d0_lod2.glb",
+      "sha256": "24795982205a78acd53cfa716303e89ea874b063c16779713a28eeda00498935"
+    },
+    {
+      "path": "assets/models/hover-tank/manifest-low.json",
+      "sourcePath": "assets/hover-tank/manifest-low.json",
+      "sha256": "c85a945b11f1b0632cb898e9b514c187e2705fe090f5bb51bfe64b3dd4b9da48"
+    },
+    {
+      "path": "assets/models/hover-tank/manifest-distance.json",
+      "sourcePath": "assets/hover-tank/manifest-distance.json",
+      "sha256": "ec156a4d70040f88a977355e5750a66be01956652b5cbcc624a96ad455750ca5"
+    }
+  ]
+}

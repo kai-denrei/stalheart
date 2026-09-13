@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-mork-low-as-default",
+  "date": "2026-09-14T09:05:00+00:00",
+  "type": "decision",
+  "status": "proposed",
+  "title": "Make MÖRK's LOW tier the default hull",
+  "context": "LOW is pinned at 771e166 and verified as a drop-in for src/mork.js by tests, by a real render and against the packed release (see 2026-09-14-mork-tiers-pinned-for-review). ASSETS.md requires a visual and animation acceptance pass before a pinned revision becomes what ships, and the owner's upstream candidates are marked pending game-camera and reference-phone review.",
+  "outcome": "Proposed, not done. Point the game tier at the LOW file; re-pin test/mork.mjs from 24196 to 6742 triangles, the browser mork-game case from 50 to 49 batches and its release floor; and decide whether the 8de41ec original stays pinned for comparison. Expected gain: 3.59x fewer triangles through prepareMork at the same draw count, and a shipped hull of 266 KB instead of 480 KB packed. Blocked only on the owner looking at the lift, recoil and plasma sweep on the game camera and a reference phone at labs.html?unit=mork-low#units beside ?unit=mork#units.",
+  "alternatives": [
+    "Keep the original-detail tier as the game hull and use LOW only on mobile.",
+    "Ship both behind a quality setting."
+  ],
+  "evidence": [
+    "2026-09-14-mork-tiers-pinned-for-review"
+  ],
+  "supersedes": []
+}

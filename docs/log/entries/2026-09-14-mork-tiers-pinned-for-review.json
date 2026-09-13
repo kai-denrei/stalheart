@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-mork-tiers-pinned-for-review",
+  "date": "2026-09-14T09:00:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "MÖRK's game and distance tiers are pinned for review, and verifying them found three bugs no unit test could see",
+  "context": "Owner direction: every asset family ships three classes — Full, Game-ready lower poly, Static distance — and the static distance MÖRK should sit in the containers and show in the orbital views. Upstream SentryTowers_A6 had moved from our pin 8de41ec to 771e166 with a new tier matrix. The owner also asked for the project's learnings to be logged and visible in the workshop, and for the roadmap to track the work.",
+  "outcome": "The author's own manifest-distance.json states the owner's proposal as policy — 'Static D0 proxy only; swap to the articulated game tier before combat or visible damage' — so the answer is yes, with that rule. We were shipping the tier the page calls Original detail. LOW is a verified drop-in: all 17 sockets scripts/assets.mjs enforces, both plasma pivots, all six clips, the same 109 nodes, a byte-identical 142-entry callout file, and the heat-sleeve barrel, whose raw GLB name 'Long cannon barrel' only resolves after three.js sanitizes it (a raw-name check reported it missing and would have blocked a safe adoption). Through prepareMork, the scope test/mork.mjs pins, the hull is 24,196 triangles in 50 batches and LOW is 6,742 in 49: 3.59x less vertex work at the same draw count. LOD2 is 1,706 triangles in one draw with no clips and no barrel, so makeMork throws on it — proof it cannot be driven by accident. Pinned in a new docs/hover-tank-tiers-assets.lock.json at 771e166, because one lock is one revision and the shipped hull stays at 8de41ec until reviewed. The asset guard now validates LOW (its old suffix match would have let LOW ship unchecked) and trips if the proxy ever gains clips or a second draw. src/mork.js serves every tier from one prepare and one make: MORK_TIERS, preloadMorkTier and makeMorkTier, plus a static proxy builder, all reading one MORK_UNIT contract. The Units viewer shows mork-low and mork-proxy as review entries marked variantOf mork; lore coverage folds a variant under its parent and rejects a variant of nothing or of another variant; review tiers load when chosen rather than when the tab opens. Three bugs surfaced only in a real renderer: the proxy builder set no baseScale, so it rendered 1.33x off the hull while every prepare-level test passed, fixed by the shared MORK_UNIT; the viewer's documented ?yaw= deep link had never frozen a tank, because the per-unit spin default ran on the next line and switched the turntable back on, fixed so an explicit yaw wins; and my own size probe measured an axis-aligned box around a spinning hull. With the pose frozen, the built units agree to 0.01%: hull 1.1405 x 0.5905 x 2.6000, LOW 1.1404 x 0.5900 x 2.6000, proxy 1.1404 x 0.5524 x 2.6000. The proxy is authored 6.6% shorter in its own metres with a matching footprint; that delta is pinned in a test and raised with the owner rather than widened away or rescaled. Packing for the release removes 114 triangles from the hull (0.47%), 104 from LOW (1.54%) and none from the proxy, so the release floors are per tier. Pinning costs the release about 338 KB packed; adopting LOW would shrink the shipped hull from 480 KB to 266 KB. PRACTICES.md now records the project's learnings, renders into DEVLOG.md and opens in labs.html#notes beside the roadmap and devlog.",
+  "alternatives": [
+    "Bump the existing hover-tank lock to 771e166: rejected, it would switch the shipped hull without the visual and animation acceptance pass ASSETS.md requires.",
+    "Widen the proxy size tolerance after it failed at 7%: rejected, it would hide a real authored difference; the measured delta is pinned instead.",
+    "Rescale the proxy's height to match the hull: rejected, it would distort what may be a deliberate parked pose.",
+    "Give the proxy its own baseScale literal: rejected, a second copy of 0.75 is the drift MORK_UNIT exists to remove.",
+    "Write lore for the review tiers: rejected, a render tier is not a unit, and an asset-pipeline artefact does not belong in the codex.",
+    "Preload the review tiers when the Units tab opens: rejected, 680 KB nobody has asked to judge yet.",
+    "Keep one 1% packing floor for every tier: rejected on measurement, it passed the hull and failed LOW."
+  ],
+  "evidence": [
+    "test/mork-tiers.mjs: LOW prepares to 6,742/49, drives every clip the hull drives, keeps the rig and heat sleeve, is the hull's size; the proxy is static and one draw, cannot be driven, shares the footprint, carries a pinned 6.5% height delta, and as a built unit carries the hull's unit contract.",
+    "test/lore.mjs: every catalogue entry has lore, folding variants; every variant renders a real catalogue unit.",
+    "scripts/browser-test.mjs units-tier-mork, units-tier-mork-low and units-tier-mork-proxy pass against source and the packed release with the pose frozen and per-tier triangle floors.",
+    "npm test, npm run check, npm run build, npm run test:browser and node scripts/browser-test.mjs --dist all pass; the release carries the yaw fix and ships PRACTICES.md, ROADMAP.md and DEVLOG.md byte-identical to source."
+  ],
+  "supersedes": []
+}

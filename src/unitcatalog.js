@@ -51,6 +51,20 @@ const PLAYER_UNITS = [
   { id: 'mork', kind: 'unit', label: 'MÖRK',
     note: 'Default hover tank · authored lift, recoil and twin plasma · nine game shells · intact model only',
     sounds: TANK_SOUNDS },
+  // Review tiers. Labelled as review in the note, not just the label, because
+  // the viewer is where someone decides whether a tier ships — a picker entry
+  // that looked final would pre-empt that call.
+  //
+  // variantOf names the unit a tier RENDERS. A render tier is not a unit: it has
+  // no codex entry of its own and must never be given one, or an asset-pipeline
+  // artefact ends up in the game's fiction. Anything reading the catalogue folds
+  // a variant under its parent — lore coverage does, and so must any display.
+  { id: 'mork-low', kind: 'unit', variantOf: 'mork', label: 'MÖRK · LOW tier',
+    note: 'REVIEW · the articulated game tier pinned at 771e166 · same 17 sockets, six clips and heat sleeve as the shipped hull · 6,742 triangles against 24,196 · not the default until it passes a visual and animation review',
+    sounds: TANK_SOUNDS },
+  { id: 'mork-proxy', kind: 'unit', variantOf: 'mork', label: 'MÖRK · distance proxy',
+    note: 'REVIEW · static D0 stand-in for bays and orbital views · one draw, 1,706 triangles, no clips, no barrel · never driven: swap to an articulated tier before combat or damage',
+    sounds: TANK_SOUNDS },
   { id: 'tank', kind: 'unit', label: 'tank',
     note: 'the procedural tank — turret sweeps, 9-shell rack, twin mini-guns',
     sounds: TANK_SOUNDS },

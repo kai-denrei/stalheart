@@ -12,10 +12,20 @@ const check = (name, cond, detail = '') => {
 console.log('coverage:');
 {
   const missing = [];
-  for (const g of GROUPS) {
-    for (const e of entriesIn(g)) if (!LORE[e.id]) missing.push(e.id);
+  const all = GROUPS.flatMap((g) => entriesIn(g));
+  const byId = new Map(all.map((e) => [e.id, e]));
+  for (const e of all) {
+    // A render tier (variantOf) is not a unit and gets no lore of its own:
+    // "MÖRK · LOW tier" in the codex would put an asset pipeline into the
+    // fiction. It is covered by the unit it renders, which must have lore.
+    if (!LORE[e.variantOf ?? e.id]) missing.push(e.id);
   }
   check('every catalogue entry has lore', missing.length === 0, missing.join(','));
+  // ...and a variant must render something real, one level deep. Without this
+  // the fold above would quietly cover a typo, or a tier of a tier, with lore
+  // written for a different thing.
+  const bad = all.filter((e) => e.variantOf && (!byId.has(e.variantOf) || byId.get(e.variantOf).variantOf));
+  check('every variant renders a real catalogue unit', bad.length === 0, bad.map((e) => e.id).join(','));
 }
 
 console.log('substance:');

@@ -1,0 +1,130 @@
+{
+  "version": 1,
+  "units": "meters",
+  "up": "+Y",
+  "forward": "+Z",
+  "plain_glb_source_of_truth": true,
+  "lod_policy": {
+    "use": "Recurring intact tank displays in containers and other background views",
+    "swap_note": "Static D0 proxy only; swap to the articulated game tier before combat or visible damage."
+  },
+  "assets": [
+    {
+      "id": "mork_hover_tank_d0_lod2",
+      "family": "mork_hover_tank",
+      "name": "MÖRK / Static container and background proxy",
+      "file": "mork_hover_tank_d0_lod2.glb",
+      "lod": 2,
+      "damage_level": 0,
+      "state": "Intact static distance",
+      "detail": "distance",
+      "static": true,
+      "functional": false,
+      "derived": true,
+      "game_ready": false,
+      "source_file": "mork_hover_tank_low_d0.glb",
+      "source_sha256": "213fc574e953bb71ca87f7fb86c511280b552646407da4d173d39689ad6d300c",
+      "reduction_method": "authored Blender silhouette reduction with merged vertex-color palette",
+      "intended_uses": [
+        "background",
+        "container display",
+        "map or loading view"
+      ],
+      "excluded_uses": [
+        "combat articulation",
+        "damage states D1-D3"
+      ],
+      "plot_m": [
+        18,
+        18
+      ],
+      "bytes": 222796,
+      "sha256": "24795982205a78acd53cfa716303e89ea874b063c16779713a28eeda00498935",
+      "triangles": 1706,
+      "draw_calls": 1,
+      "nodes": 41,
+      "materials": 1,
+      "embedded_textures": 0,
+      "bounds_min_m": [
+        -2.909192,
+        0.019692,
+        -4.626237
+      ],
+      "bounds_max_m": [
+        2.909948,
+        2.838296,
+        8.641124
+      ],
+      "dimensions_m": [
+        5.81914,
+        2.818604,
+        13.267361
+      ],
+      "root": "ROOT",
+      "engine_nodes": [
+        "AMMO_PORT_00",
+        "AMMO_PORT_01",
+        "AMMO_PORT_02",
+        "AMMO_PORT_03",
+        "AMMO_PORT_04",
+        "AMMO_PORT_05",
+        "AMMO_PORT_06",
+        "AMMO_PORT_07",
+        "AMMO_PORT_08",
+        "AMMO_PORT_LIGHT_00",
+        "AMMO_PORT_LIGHT_01",
+        "AMMO_PORT_LIGHT_02",
+        "AMMO_PORT_LIGHT_03",
+        "AMMO_PORT_LIGHT_04",
+        "AMMO_PORT_LIGHT_05",
+        "AMMO_PORT_LIGHT_06",
+        "AMMO_PORT_LIGHT_07",
+        "AMMO_PORT_LIGHT_08",
+        "GUN_PITCH",
+        "GUN_RECOIL",
+        "HOVER_RIG",
+        "HULL_SUSPENSION",
+        "LIFT_EMITTER_L_0",
+        "LIFT_EMITTER_L_1",
+        "LIFT_EMITTER_L_2",
+        "LIFT_EMITTER_L_3",
+        "LIFT_EMITTER_R_4",
+        "LIFT_EMITTER_R_5",
+        "LIFT_EMITTER_R_6",
+        "LIFT_EMITTER_R_7",
+        "MUZZLE_00",
+        "NACELLE_L",
+        "NACELLE_R",
+        "PLASMA_MUZZLE_L",
+        "PLASMA_MUZZLE_R",
+        "PLASMA_YAW_L",
+        "PLASMA_YAW_R",
+        "ROOT",
+        "SOCKET_SERVICE",
+        "TURRET_YAW"
+      ],
+      "sockets": [
+        {
+          "id": "SERVICE",
+          "kind": "service",
+          "position_m": [
+            0,
+            0.8,
+            -4.7
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ],
+          "available": true,
+          "width_m": null
+        }
+      ],
+      "clips": [],
+      "credit": "Models by jelaludo",
+      "notes": "Static one-draw proxy. Engine may translate/rotate the root; child controls do not articulate this tier.",
+      "description": "Static intact MÖRK proxy for repeated tanks in containers and other distant background views."
+    }
+  ]
+}

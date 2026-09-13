@@ -23,7 +23,7 @@ import { shotOf } from './sentryfx.js';
 import { OrbitControls } from '../vendor/OrbitControls.js';
 import { GLTFExporter } from '../vendor/GLTFExporter.js';
 import { ENEMY_SPEC } from './enemyspec.js';
-import { buildUnit, preloadMkcx, preloadMork, makeDebris, makeDotBurst, makeBulletCloud,
+import { buildUnit, preloadMkcx, preloadMork, preloadMorkTier, preloadMorkProxy, makeDebris, makeDotBurst, makeBulletCloud,
   makeDotEnemy, makeRewardSolid, makeShellSolid, makePortalCloud,
   preloadServer, makeServerFixture, preloadContainer, makeContainerFixture,
   preloadFabricator, makeFabricatorDrone, makeIsaoDrone } from './units.js';
@@ -479,14 +479,28 @@ export function initUnitsTab(root) {
     current = buildEntry(e);
     root.dataset.sentry = e.kind === 'tower' ? e.id : '';
     root.dataset.modelReady = String(!!current && !current.userData.loading);
+    // REVIEW TIERS LOAD WHEN CHOSEN, not when the tab opens: 680 KB nobody has
+    // asked to judge yet. The placeholder hull stands in until the tier lands,
+    // then the view refreshes — but only if it is still the one on screen, so a
+    // fast flick past it does not yank the viewer back. Declared here rather
+    // than beside the eager preloads at the bottom, because show() first runs
+    // before that block and a const down there would not exist yet.
+    const late = { 'mork-low': () => preloadMorkTier('low'), 'mork-proxy': () => preloadMorkProxy() }[e.id];
+    if (late && current.userData.loading) {
+      late().then((ok) => { if (ok && active && currentEntry?.id === e.id) show(); });
+    }
     if (Number.isFinite(yawQ) && current) {
       current.rotation.y = (yawQ * Math.PI) / 180;
-      state.spin = false;
     }
     // ENEMIES default to their own game ANIMATION with the turntable OFF —
     // a swimmer under an added spin reads as neither (operator ruling).
     // The toggle still works; the default just re-lands per unit shown.
-    const wantSpin = e.kind !== 'enemy';
+    // AN EXPLICIT ?yaw= HOLDS THE UNIT STILL, and it has to win over this default.
+    // The override used to set spin off just above and then this line ran second
+    // and switched it straight back on for every non-enemy unit — so the yaw deep
+    // link never actually froze a tank. Found when a size read on a "frozen" hull
+    // still drifted by two thirds of a metre in a second and a half.
+    const wantSpin = e.kind !== 'enemy' && !Number.isFinite(yawQ);
     if (state.spin !== wantSpin) {
       state.spin = wantSpin;
       spinBtn.classList.toggle('on', wantSpin);
@@ -1380,6 +1394,14 @@ export function initUnitsTab(root) {
 
   if (q.get('acceptance') === '1') window.__stalheartUnits = {
     state: () => ({ asset: current?.userData.asset, stats: current?.userData.modelStats,
+      // the BUILT unit's box, measured at the moment of asking. Only a SIZE when
+      // the pose is frozen (?yaw=0&sweep=0): the turntable and the turret sweep
+      // move the hull every frame, and an axis-aligned box around a rotating
+      // object grows and shrinks with the angle it is caught at. Preferred over
+      // the UNITSIZE console line, which can still be in flight just after
+      // modelReady turns true and report the placeholder instead.
+      proxy: !!current?.userData.proxy,
+      size: current ? new THREE.Box3().setFromObject(current).getSize(new THREE.Vector3()).toArray() : null,
       hover: current?.getObjectByName('HOVER_RIG')?.position.y,
       recoil: current?.getObjectByName('GUN_RECOIL')?.position.z,
       muzzle: current?.userData.muzzle?.getWorldPosition(new THREE.Vector3()).toArray(),
