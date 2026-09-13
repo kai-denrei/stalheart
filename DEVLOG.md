@@ -108,6 +108,37 @@ Evidence:
 - test/isao-faces.mjs against the pinned GLB; node scripts/assets.mjs check; story lab screenshots show the Birudorōn model with its LED face and the comms card at 215x30 on the left.
 - Kill-count probe with killsBySrc on the test hook: phase settled at 7.6 s with hardcores 2, alive 0 and the second hard core in reach at 234.8 m; the story-world suite's 'two hard cores, two rounds' failed 1 !== 2 before the fix.
 
+## 2026-09-14 — The seat is the PoV from the gunship: the rounds take seconds to reach the ground and land where the gunner aimed, the Bofors paints a red target while its shell flies, the 105 launches from the same eye without a cut
+
+decision · accepted · 2026-09-14-gunship-pov-with-travel-time
+
+Owner's ruling 2026-09-14 01:30: PoV from the gunship; weapons 1 2 3; the rotary a Rotor on steroids with a slight travel delay of about two seconds; the heavier gun also delayed, shoot then a painted red target, two or three seconds, then a large impact; the gunner must guess the enemies' movement; the missile starts from the same PoV, no jump cut.
+
+The seat opens in the belly PoV (eye 0.35 cells under the platform, pitch -1.5..-0.56 so the shallowest aim lands just inside the 30.5° horizon dip at 12 cells), click to lock the mouse and move to aim, Space or the button fires, the wheel zooms, V looks at the ship, M the shelved top view. Rounds are in flight: src/domain/gunship.js fireRound/stepRounds keep { gun, point, at } on the station clock (stepGunship advances it) and a round lands `travel` seconds later at the point aimed at when it left, rotary 2.0 s and Bofors 2.6 s (src/content/gunship.js); what stands there THEN takes the splash, so a moving swarm has to be led. The optic draws each round as a short bright segment sliding from the muzzle socket to the aim over its travel; the Bofors also paints a pulsing red ring at its aim until the shell lands, then the impact rings (amber 1.6 blast radii, white core) and the blast sound at the point. Leaving the seat drops the rounds in the air. The 105 is unchanged: arm on selection, paint the aimed cell, launch on the trigger through strike.js; the pilot's camera takes precedence over the missile cam, so the fall is watched from the seat and the impact in the monitor. The contact markers and the contacts/nearest readout from the top view stay in the PoV.
+
+Alternatives: Instant hits with a visual delay only: rejected, leading the swarm is the skill the owner asked for; the hit is resolved at arrival.; A ballistic arc for the rounds: not now, a straight flight reads at these ranges; the shell geometry family can replace the segment later.
+
+Evidence:
+
+- test/gunship.mjs: rounds land at their times where aimed, and leaving the seat drops them.
+- browser-test --gunship eight scenarios pass (gunship-pov-rotary, gunship-pov-heavy, gunship-top-view, gunship-third, gunship-rotary-fired, gunship-skip-enemies); artifacts/browser/gunship-skip-enemies.png shows the PoV with the 72-strong swarm glowing on the horizon, 109 s left.
+
+Supersedes: 2026-09-14-gunship-seat-is-the-strike-map-with-a-briefing-and-a-far-breach
+
+## 2026-09-14 — The Orbital Gunship Top View is shelved: entertaining potential, but not the look we are after
+
+decision · accepted · 2026-09-14-orbital-gunship-top-view-shelved
+
+The map-based seat (the orbital strike's own map in its surveillance look, the pointer as the aim, the KORP overhead drawing tracers down onto the swarm) reached the owner on 2026-09-14 01:30. Ruling: not at all what was in mind, but it might have a place.
+
+Kept as a secondary view behind M while in the seat (frames the base and the swarm, the pointer aims, the button fires), named the Orbital Gunship Top View, with the owner's note: entertaining potential, but not the look we are after. It is not the default and is not tuned further. The seat's look is the PoV from the gunship, recorded in 2026-09-14-gunship-pov-with-travel-time.
+
+Alternatives: Delete the top view: not done, the owner sees a possible place for it; it costs one key and no lines in td-tab.
+
+Evidence:
+
+- artifacts/browser/gunship-top-view.png (the M view in the acceptance run); the owner's screenshot 2026-09-14 01:30 of the map seat with the KORP's tracers converging on the swarm.
+
 ## 2026-09-14 — Make MÖRK's LOW tier the default hull
 
 decision · proposed · 2026-09-14-mork-low-as-default

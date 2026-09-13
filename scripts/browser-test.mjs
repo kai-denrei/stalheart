@@ -293,8 +293,9 @@ try{
   const s=await evaluate('window.__stalheartTest.state().gunship');assert(s.mounted&&s.seat&&s.optic,`thermal optic live ${JSON.stringify(s)}`);
   assert.equal(await evaluate('document.querySelector("#story-monitor .head").textContent'),'GROUND TRUTH · IMPACT','the monitor shows the impact point');
   assert(/IN BLAST/.test(await evaluate('document.querySelector("#sentry-pilot output").textContent')),'the danger readout is written');
-  current='gunship-map-rotary';await finish();
-  await evaluate('window.__stalheartTest.gunshipGun("heavy")');await delay(400);current='gunship-map-heavy';await finish();
+  current='gunship-pov-rotary';await finish();
+  await evaluate('window.__stalheartTest.gunshipGun("heavy")');await delay(400);current='gunship-pov-heavy';await finish();
+  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'m',code:'KeyM'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'m',code:'KeyM'});await delay(800);current='gunship-top-view';await finish();await send('Input.dispatchKeyEvent',{type:'keyDown',key:'m',code:'KeyM'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'m',code:'KeyM'});await delay(400);
   await send('Input.dispatchKeyEvent',{type:'keyDown',key:'v',code:'KeyV'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'v',code:'KeyV'});await delay(600);current='gunship-third';await finish();
   // no input reaches the clock: the pass keeps counting out while the gunner sits
   const a=await evaluate('window.__stalheartTest.state().gunship.left');await delay(1200);const b=await evaluate('window.__stalheartTest.state().gunship.left');assert(b<a,'the pass counts out under the gunner');

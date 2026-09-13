@@ -15,6 +15,8 @@ export function makeGunship(orbit, { station = false } = {}) {
     gun: 'rotary',
     accum: 0,          // fractional rounds owed by the cadence
     passes: 0,         // overhead passes so far
+    clock: 0,          // seconds of station time, the flight clock for rounds
+    rounds: [],        // rounds in the air: { gun, point, at } arriving at `at` on the clock
   };
 }
 
@@ -22,6 +24,7 @@ export function makeGunship(orbit, { station = false } = {}) {
 // opens, 'depart' on the frame it closes; nothing else moves the schedule.
 export function stepGunship(st, dt, orbit) {
   if (!(dt > 0)) return null;
+  st.clock += dt;
   st.left -= dt;
   if (st.left > 0) return null;
   const over = -st.left;
@@ -29,6 +32,11 @@ export function stepGunship(st, dt, orbit) {
   st.phase = 'pass'; st.left = Math.max(1e-6, orbit.pass - over); st.mounted = false; st.accum = 0;
   return 'depart';
 }
+
+// A round leaves now and lands where the gunner aimed, `travel` seconds later: what stands there THEN takes the hit,
+// so a moving swarm has to be led. Rounds are dropped with the seat.
+export function fireRound(st, gun, point, travel) { st.rounds.push({ gun, point: [point[0], point[1], point[2]], at: st.clock + travel, from: st.clock }); }
+export function stepRounds(st) { const landed = []; st.rounds = st.rounds.filter((r) => { if (r.at <= st.clock) { landed.push(r); return false; } return true; }); return landed; }
 
 export const onStation = (st) => st.phase === 'station';
 export const phaseLeft = (st) => Math.max(0, st.left);
@@ -46,7 +54,7 @@ export function mountGunship(st) {
   st.mounted = true; st.accum = 0;
   return 'mounted';
 }
-export function dismountGunship(st) { st.mounted = false; st.accum = 0; }
+export function dismountGunship(st) { st.mounted = false; st.accum = 0; st.rounds = []; }
 
 export function selectGun(st, key, guns) {
   if (!guns[key]) return false;

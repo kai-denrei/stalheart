@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-orbital-gunship-top-view-shelved",
+  "date": "2026-09-14T10:00:00+00:00",
+  "type": "decision",
+  "status": "accepted",
+  "title": "The Orbital Gunship Top View is shelved: entertaining potential, but not the look we are after",
+  "context": "The map-based seat (the orbital strike's own map in its surveillance look, the pointer as the aim, the KORP overhead drawing tracers down onto the swarm) reached the owner on 2026-09-14 01:30. Ruling: not at all what was in mind, but it might have a place.",
+  "outcome": "Kept as a secondary view behind M while in the seat (frames the base and the swarm, the pointer aims, the button fires), named the Orbital Gunship Top View, with the owner's note: entertaining potential, but not the look we are after. It is not the default and is not tuned further. The seat's look is the PoV from the gunship, recorded in 2026-09-14-gunship-pov-with-travel-time.",
+  "alternatives": [
+    "Delete the top view: not done, the owner sees a possible place for it; it costs one key and no lines in td-tab."
+  ],
+  "evidence": [
+    "artifacts/browser/gunship-top-view.png (the M view in the acceptance run); the owner's screenshot 2026-09-14 01:30 of the map seat with the KORP's tracers converging on the swarm."
+  ],
+  "supersedes": []
+}

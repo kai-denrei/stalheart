@@ -4,7 +4,7 @@
 import { GUNSHIP_ORBIT, GUNSHIP_GUNS, GUNSHIP_PLATFORM } from '../src/content/gunship.js';
 import {
   makeGunship, stepGunship, onStation, phaseLeft, passProgress,
-  mountGunship, dismountGunship, selectGun, stepGun, aimOnSphere, splashDamage, dangerReport,
+  mountGunship, dismountGunship, selectGun, stepGun, aimOnSphere, splashDamage, dangerReport, fireRound, stepRounds,
 } from '../src/domain/gunship.js';
 
 let failures = 0;
@@ -104,5 +104,18 @@ console.log('the danger report:');
   check('an empty ring', none.walls === 0 && none.towers === 0 && !none.tank && none.inside.length === 0);
 }
 
+console.log('rounds in flight:');
+{
+  const st = makeGunship({ pass: 10, station: 40 }, { station: true }); mountGunship(st);
+  fireRound(st, 'rotary', [0, 1, 0], 2); fireRound(st, 'bofors', [0, 0, 1], 2.6);
+  check('nothing lands before its time', stepRounds(st).length === 0 && st.rounds.length === 2);
+  soak(st, 2.01, { pass: 10, station: 40 });
+  const a = stepRounds(st);
+  check('the rotary round lands at two seconds where it was aimed', a.length === 1 && a[0].gun === 'rotary' && a[0].point[1] === 1);
+  soak(st, 0.6, { pass: 10, station: 40 });
+  check('the bofors shell lands at two point six', stepRounds(st).length === 1 && st.rounds.length === 0);
+  fireRound(st, 'rotary', [1, 0, 0], 2); dismountGunship(st);
+  check('leaving the seat drops the rounds in the air', st.rounds.length === 0);
+}
 if (failures) { console.log(`${failures} failure(s)`); process.exit(1); }
 console.log('gunship ok');

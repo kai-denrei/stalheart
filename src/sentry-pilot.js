@@ -25,7 +25,7 @@ export function createSentryPilot(root, host) {
     e.stopImmediatePropagation();
     if(e.code==='Space'){e.preventDefault();state.held=gunship||!map;}
     if(e.repeat)return;
-    if(gunship){if(/^[123]$/.test(e.key))selectGun(G.order[Number(e.key)-1]);if(e.code==='KeyV'||e.code==='KeyM')setView(map?'third':'map');if(e.code==='KeyP')host.pause();return;}   // the gunner's views: the map (the orbital strike's own), or a look at the ship
+    if(gunship){if(/^[123]$/.test(e.key))selectGun(G.order[Number(e.key)-1]);if(e.code==='KeyV')setView(map?'pov':state.view==='third'?'pov':'third');if(e.code==='KeyM'){if(map)setView('pov');else{setView('map');frameApproach(true);}}if(e.code==='KeyP')host.pause();return;}   // the gunner's views: the map (the orbital strike's own), or a look at the ship
     const s=SENTRIES.find(s=>String(s.number)===e.key);if(s&&!host.story)select(s.key);
     // the tank's keys: 1 map, 2 first person, 3 third person
     if(host.story){if(e.key==='1'&&!map)toggleMap();if(e.key==='2')setView('pov');if(e.key==='3')setView('third');}
@@ -35,7 +35,8 @@ export function createSentryPilot(root, host) {
   listen(window,'keyup',e=>{if(editable(e))return;e.stopImmediatePropagation();if(e.code==='Space'){e.preventDefault();state.held=false;}},{capture:true});
   listen(root,'pointerdown',e=>{
     if(e.target.closest('button,a,input,select,.lil-gui,.tzone,.tfire,#story-skips,#gunship-briefing'))return;
-    if(gunship&&map){e.stopImmediatePropagation();e.preventDefault();px=e.clientX;py=e.clientY;state.held=true;host.wake();return;}   // the gunner on the map: the pointer is the aim, the button the trigger, no lock
+    if(gunship&&map){e.stopImmediatePropagation();e.preventDefault();px=e.clientX;py=e.clientY;state.held=true;host.wake();return;}   // the shelved top view: the pointer is the aim, the button the trigger, no lock
+    if(gunship&&locked()&&e.pointerType==='mouse'&&e.button===0){e.stopImmediatePropagation();e.preventDefault();state.held=true;host.wake();return;}   // locked in the seat: the button is the trigger
     if(map)return;
     e.stopImmediatePropagation();e.preventDefault();dragging=true;lastX=e.clientX;lastY=e.clientY;
     // moving and shooting are separate: a mouse click locks the pointer so the mouse aims; the trigger is Space (or the pad's fire button)
@@ -43,7 +44,7 @@ export function createSentryPilot(root, host) {
     e.target.setPointerCapture?.(e.pointerId);host.wake();
   },{capture:true});
   listen(window,'pointermove',e=>{if(gunship&&map){px=e.clientX;py=e.clientY;return;}if(!dragging&&!locked())return;if(map)return;e.stopImmediatePropagation();const dx=locked()?e.movementX:e.clientX-lastX,dy=locked()?e.movementY:e.clientY-lastY;state.yaw-=dx*.004/state.zoom;state.pitch=Math.max(gunship?G.platform.pitchMin:-1.25,Math.min(gunship?G.platform.pitchMax:.9,state.pitch-dy*.004/state.zoom));lastX=e.clientX;lastY=e.clientY;},{capture:true});
-  listen(window,'pointerup',()=>{dragging=false;if(gunship&&map)state.held=false;},{capture:true});
+  listen(window,'pointerup',()=>{dragging=false;if(gunship)state.held=false;},{capture:true});
   // the tank pad on touch: the fire button holds the trigger, the side zones turn the mount; their clicks never reach the tank
   for(const [sel,down,up] of [['#td-pad-fire',()=>{state.held=!map;},()=>{state.held=false;}],['#td-pad-left',()=>{state.turn=-1;},()=>{state.turn=0;}],['#td-pad-right',()=>{state.turn=1;},()=>{state.turn=0;}]]){
     const el=root.querySelector(sel);if(!el)continue;
@@ -69,7 +70,7 @@ export function createSentryPilot(root, host) {
     goal.pos.copy(camEye);host.cameraPose(camEye,direction,up,goal);
     return !map;
   }
-  function setView(v){if(v==='map'){if(!map)toggleMap();return;}state.view=v==='third'||gunship?'third':'pov';if(map)toggleMap();}
+  function setView(v){if(v==='map'){if(!map)toggleMap();return;}state.view=v==='third'?'third':'pov';if(map)toggleMap();}
   // A GUIDED MOUNT USES THE LOCK BOX (host.cone, the tangent of its half-angle): whatever is inside it is the target, and it STAYS the
   // target while it stays inside. Swapping to whichever body is momentarily nearest was the frustration: every swap reset the timer, so
   // a lock looked random. A gun still needs the reticle on the body itself.
@@ -111,10 +112,10 @@ export function createSentryPilot(root, host) {
   const trackAxes=()=>{t1.set(0,0,1).applyQuaternion(ship.obj.quaternion);t2.set(1,0,0).applyQuaternion(ship.obj.quaternion);};
   function mountGunship(){
     if(!G||G.mount()!=='mounted')return 'refused';
-    gunship=true;ship.ci=G.heart();state.tower=ship;state.held=false;state.target=null;state.hidden=null;state.view='third';state.zoom=1;host.zoom(1);px=innerWidth/2;py=innerHeight/2;
+    gunship=true;ship.ci=G.heart();state.tower=ship;state.held=false;state.target=null;state.hidden=null;state.view='pov';state.zoom=G.platform.zoom??1;host.zoom(state.zoom);px=innerWidth/2;py=innerHeight/2;
     pendingAim=G.centers[G.lane()];aimShip();   // the seat opens on where they come from; settled again on the first tick, once the platform has taken its track (its frame can swing when a breach opens)
-    guns.style.display='';panel.querySelector('header').innerHTML='KORP / GS01 <small>HEAVY GUNSHIP · ON STATION</small>';panel.querySelector('footer').textContent='Point at the ground · click or Space fires · 1 rotary · 2 bofors · 3 heavy (the strike) · V the ship · M back to the map · P pause';
-    G.optic.mount();host.views?.('gunship');selectGun(G.state.gun);if(!map)toggleMap();root.classList.add('gunship-seat');frameApproach(true);   // the seat IS the orbital strike's map view
+    guns.style.display='';panel.querySelector('header').innerHTML='KORP / GS01 <small>HEAVY GUNSHIP · ON STATION</small>';panel.querySelector('footer').textContent='Click to lock the mouse, move it to aim · Space or the button fires · rounds take seconds to land: lead them · 1 rotary · 2 bofors · 3 heavy (the strike) · V the ship · M top view · P pause';
+    G.optic.mount();host.views?.('gunship');selectGun(G.state.gun);if(map)toggleMap();root.classList.add('gunship-seat');   // the seat IS the orbital strike's map view
     return 'mounted';
   }
   function dismountGunship(){
@@ -154,17 +155,21 @@ export function createSentryPilot(root, host) {
     }else{
       const n=G.step(dt,state.held);
       if(n>0&&impact){
-        fired='round';G.sfx(gun.sound,impact);
-        for(let i=0;i<n;i++){   // a golden-angle scatter inside half the blast, so a burst walks rather than drills
+        fired='round';G.sfx(gun.sound,ship.obj.position.toArray());
+        for(let i=0;i<n;i++){   // a golden-angle scatter inside half the blast, so a burst walks rather than drills; the round is in the air for `travel` seconds
           const a=(rounds++)*2.399963,r=gun.blastCells*c*.5*Math.sqrt((rounds%7)/7);
           aim.fromArray(impact).addScaledVector(t1,Math.cos(a)*r).addScaledVector(t2,Math.sin(a)*r);
-          G.optic.tracer(G.optic.muzzle(gun.key),aim.toArray(),gun.ringHex,gun.key==='bofors'?.3:.1);   // the round, seen: muzzle to impact
-          for(const e of G.enemies()){const d=aim.distanceTo(v.fromArray(e.pos));if(d<gun.blastCells*c)G.damage(e,G.splash(d,gun.blastCells*c,gun.damage));}
-          if(gun.key==='bofors'){G.puff(ci,gun.ringHex,.7,gun.blastCells*c*1.6);G.puff(ci,0xffffff,.35,gun.blastCells*c*.7);}else if(rounds%3===0)G.puff(ci,gun.ringHex,.22,gun.blastCells*c*.9);   // the impact, seen: the strike's ring language one register down
+          G.fire(gun.key,aim.toArray(),gun.travel);G.optic.flight(G.optic.muzzle(gun.key),aim.toArray(),gun.ringHex,gun.travel,gun.key==='bofors'?.5:.25);
+          if(gun.key==='bofors'&&ci>=0)G.optic.paint(aim.toArray(),G.normals[ci],gun.blastCells*c,gun.travel);   // the shell's target, painted red until it lands
         }
       }else if(state.held)fired='held';
     }
-    G.optic.hull(true);G.optic.pose({pitch:state.pitch,gun:G.state.gun,firing:fired,dt});
+    for(const r of G.landed()){   // what stands where the round was aimed, when it lands
+      const g=G.guns[r.gun],rc=G.cell(r.point);aim.fromArray(r.point);
+      for(const e of G.enemies()){const d=aim.distanceTo(v.fromArray(e.pos));if(d<g.blastCells*c)G.damage(e,G.splash(d,g.blastCells*c,g.damage));}
+      if(g.key==='bofors'){G.puff(rc,g.ringHex,.7,g.blastCells*c*1.6);G.puff(rc,0xffffff,.35,g.blastCells*c*.7);G.sfx('blast_fire',r.point);}else if(rounds%3===0)G.puff(rc,g.ringHex,.22,g.blastCells*c*.9);   // the impact, seen: the strike's ring language one register down
+    }
+    G.optic.hull(state.view!=='pov'||map);G.optic.pose({pitch:state.pitch,gun:G.state.gun,firing:fired,dt});
     const r=report?.[G.state.gun],left=Math.ceil(G.left());
     const range=impact?Math.round(v.fromArray(impact).distanceTo(ship.obj.position)/c*G.platform.metresPerCell/10)*10:0,es=G.enemies(),hc=G.centers[G.heart()],near=es.reduce((m,e)=>Math.min(m,Math.hypot(e.pos[0]-hc[0],e.pos[1]-hc[1],e.pos[2]-hc[2])),Infinity);
     panel.querySelector('output').textContent=`${gun.label} · ${gun.cue} · ON STATION ${left} S · RANGE ${String(range).padStart(4,'0')} M · CONTACTS ${es.length}${es.length?` · NEAREST ${Math.round(near/c*G.platform.metresPerCell/10)*10} M FROM BASE`:''}`+(gun.strike?` · ${G.strike.ready>0?(G.strike.armed?'ARMED':'READY'):G.strike.cooldown>0?'RE-ORBIT':'NO SHELL'}`:'')+(r?` · IN BLAST: ${r.walls} WALL${r.walls===1?'':'S'} · ${r.towers} SENTR${r.towers===1?'Y':'IES'}${r.tank?' · TANK':''}${r.isao?' · ISAO':''}`:'');
