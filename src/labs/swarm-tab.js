@@ -26,6 +26,9 @@ import { makeJelly } from '../jelly.js';
 import { ENEMY_SPEC, CREATURE_TINTS, accentFor } from '../enemyspec.js';
 import { RAM_PREMIUM, STREAK_CAP, STREAK_STEP } from '../domain/economy.js';
 import { makeAudio } from '../audio.js';
+import { stepYardDrive } from '../domain/yard-drive.js';
+import { makeTankFeel, stepTankFeel, applyTankFeel } from '../tankfeel.js';
+import { FEEL, loadFeel } from '../feelstore.js';
 import { applyFontPack, currentFontPack } from '../fonts.js';
 import { storage } from '../storage.js';
 
@@ -39,6 +42,16 @@ const TOUCH = 4.6;          // contact radius: the hull is a wide box, not a sph
 const RAM_COMBO_GAP = 4;    // td-tab's window: a chain lapses after this
 const BUMP = 0.34;          // how much speed one impact takes off the hull
 const BUMP_BACK = 1.9;      // ...and how fast it comes back, per second
+
+// THE TANK IS NOT RE-IMPLEMENTED HERE. A first cut integrated its own x/z and
+// yawed the hull off a sine, which is a second, worse tank: no hover, no
+// settle, no engine, and a feel that could drift from the game's the moment
+// anyone touched TANK_FEEL. Movement is domain/yard-drive.stepYardDrive — the
+// same flat-ground model the astro yard drives — and the hover, idle vibration
+// and touchdown rock are tankfeel.js read through the persisted FEEL, exactly
+// as src/labs/astro-drive.js does it. The SCRIPTED modes are inputs to that
+// same model, never a second path: a charge is a throttle, not a teleport.
+const DRIVE_R = 4.2;        // hull radius handed to the drive's blocker test
 
 // Deterministic: a study you cannot reproduce twice is an anecdote.
 const h = (i, k) => { const s = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return s - Math.floor(s); };
@@ -177,6 +190,17 @@ export function initSwarmTab(root) {
   try { kept = JSON.parse(storage.getItem(RUNS_KEY) || '[]').slice(0, 6); } catch { kept = []; }
 
   let bodies = [], bursts = [], pool = [], disposed = false, raf = 0, rebuild = true;
+  loadFeel();                       // the tuning the unit bench saved
+  const feel = makeTankFeel();
+  // yaw 0 is +Z in the drive model and the file closes from -Z, so the hull
+  // starts facing the lane rather than its own back
+  const drive = { x: 0, z: LANE.endZ - 18, yaw: Math.PI, speed: 0, blocked: false };
+  // the canyon, as the drive model's blockers: [minX, minZ] to [maxX, maxZ]
+  const wallBoxes = [
+    { min: [-LANE.half - 3, -LANE.len / 2], max: [-LANE.half + 0.7, LANE.len / 2] },
+    { min: [LANE.half - 0.7, -LANE.len / 2], max: [LANE.half + 3, LANE.len / 2] },
+  ];
+  let engineOn = false;
   let tankZ = LANE.endZ, tankX = 0, t = 0, cost = 0, acc = 0, lastProbe = 0, lastNow = performance.now();
 
   const spec = () => ENEMY_SPEC[state.type] ?? { speed: 1, bounty: 1, rammable: true, size: 0.4 };
@@ -210,9 +234,16 @@ export function initSwarmTab(root) {
     // the depth runs the whole way back, so the near end is already dying
     // while the far end has not arrived — which is what makes it read as a
     // file closing rather than a field standing.
+    // INSIDE THE CANYON, AND IN FRONT OF THE TANK. The depth used to run
+    // `spawnZ - h * len * 0.92`, which seated bodies as far back as z -396 in
+    // a lane that only spans +/-150: most of the file stood outside the drawn
+    // world, and once the hull stopped at the lane end instead of looping,
+    // they never arrived at all. The column now fills the far two thirds of
+    // the actual lane, so every body is somewhere the tank can reach it.
     const w = LANE.half * 0.62 * state.spread;
+    const far = -LANE.len / 2 + 10, near = LANE.endZ - 34;
     b.x = (h(b.seed, 1) - 0.5) * 2 * w;
-    b.z = LANE.spawnZ - h(b.seed, 2) * LANE.len * 0.92;
+    b.z = far + h(b.seed, 2) * (near - far);
     b.seed = (b.seed * 7 + 13) % 100000;
     b.obj.visible = true;
     b.done = false;
@@ -275,29 +306,40 @@ export function initSwarmTab(root) {
     run.hit = Math.max(0, run.hit - dt * 3);
     if (run.comboT > 0 && (run.comboT -= dt) <= 0) { run.combo = 0; syncCombo(); }
 
-    // THE TANK RUNS STRAIGHT. A first cut yawed it off a sine, which read as
-    // skidding sideways down the lane — the hull pointing one way while it
-    // travelled another. A tracked vehicle points where it goes, so the
-    // heading is the heading and nothing else turns it.
-    const base = 17 * run.speed;
-    const lim = LANE.half - 2.2;
+    // THE TANK IS DRIVEN, NOT PLACED. Every mode produces a throttle and a
+    // turn; stepYardDrive owns what those become. The ram bump scales the
+    // throttle rather than the position, so an impact reads as the engine
+    // losing its bite instead of the world stuttering.
+    const bite = run.speed;
+    let throttle = 0, turn = 0;
     if (state.drive === 'manual') {
-      const ax = (keys.has('d') || keys.has('arrowright') ? 1 : 0) - (keys.has('a') || keys.has('arrowleft') ? 1 : 0);
-      const az = (keys.has('w') || keys.has('arrowup') ? 1 : 0) - (keys.has('s') || keys.has('arrowdown') ? 1 : 0);
-      tankX = Math.max(-lim, Math.min(lim, tankX + ax * base * 0.62 * dt));
-      tankZ -= az * base * dt;
-      if (tankZ < LANE.spawnZ + 12) tankZ = LANE.spawnZ + 12;
-      if (tankZ > LANE.endZ) tankZ = LANE.endZ;
+      throttle = (keys.has('w') || keys.has('arrowup') ? 1 : 0) - (keys.has('s') || keys.has('arrowdown') ? 1 : 0);
+      turn = (keys.has('a') || keys.has('arrowleft') ? 1 : 0) - (keys.has('d') || keys.has('arrowright') ? 1 : 0);
     } else if (state.drive === 'charge') {
-      tankZ -= base * dt;
-      if (tankZ < LANE.spawnZ + 12) tankZ = LANE.endZ;
-      tankX = Math.max(-lim, Math.min(lim, Math.sin(t * 0.55) * LANE.half * 0.52));
+      throttle = 1;
+      // creep back to the middle of the lane rather than steering off a sine:
+      // a scripted tank that swerves is the swerve the operator asked to lose
+      turn = Math.max(-0.4, Math.min(0.4, drive.x * 0.12));
     } else if (state.drive === 'patrol') {
-      tankZ = LANE.endZ - 26 + Math.sin(t * 0.35) * 22;
-      tankX = Math.max(-lim, Math.min(lim, Math.sin(t * 1.25) * LANE.half * 0.55));
-    } else { tankX = 0; tankZ = LANE.endZ - 18; }
-    tank.position.set(tankX, 0.1, tankZ);
-    tank.rotation.y = Math.PI;   // facing the file, always
+      throttle = Math.sin(t * 0.35) > 0 ? 1 : -1;
+      turn = Math.sin(t * 0.5) * 0.5;
+    }
+    stepYardDrive(drive, { throttle: throttle * bite, turn }, dt, wallBoxes, DRIVE_R);
+    // the lane is a corridor: hold the near end so the file always has a target
+    if (drive.z > LANE.endZ) { drive.z = LANE.endZ; drive.speed = 0; }
+    if (drive.z < -LANE.len / 2 + 6) { drive.z = -LANE.len / 2 + 6; drive.speed = 0; }
+    tankX = drive.x; tankZ = drive.z;
+    tank.position.set(drive.x, 0, drive.z);
+    tank.rotation.y = drive.yaw;
+    // hover, idle vibration and the rock on touchdown — the game's own, read
+    // through the persisted tuning so the bench and the board cannot disagree
+    stepTankFeel(feel, dt, Math.abs(drive.speed) > 0.2, FEEL);
+    applyTankFeel(tank, feel, FEEL);
+    if (state.sound) {
+      const want = Math.abs(drive.speed) > 0.2;
+      if (want && !engineOn) { engineOn = true; cue('tank_engine', { loop: true }); }
+      if (!want && engineOn) engineOn = false;
+    }
 
     // the file, closing
     const v = (s.speed ?? 1) * 7;
@@ -449,6 +491,7 @@ export function initSwarmTab(root) {
 
   function startRun() {
     samples = []; frames = []; late = 0; peak = { calls: 0, points: 0, tris: 0 };
+    drive.x = 0; drive.z = LANE.endZ - 18; drive.yaw = Math.PI; drive.speed = 0;
     card.hidden = true; rebuild = true; running = true; runT0 = performance.now();
     // rebuild happens on the next frame; run stats reset with it
   }
@@ -580,6 +623,8 @@ export function initSwarmTab(root) {
       samples: samples.length, gpuTimer: !!gpuExt, kills: run.kills, combo: run.combo,
       maxCombo: run.maxCombo, earned: run.earned, blocked: run.blocked,
       hull: +run.speed.toFixed(3), bursts: bursts.length,
+      speed: +drive.speed.toFixed(2), yaw: +drive.yaw.toFixed(3), hover: +feel.hoverT.toFixed(3),
+      wallBlocked: drive.blocked,
       motion: bodies[0]?.obj?.material?.userData?.motion ?? null,
       calls: renderer.info.render.calls, points: renderer.info.render.points,
       triangles: renderer.info.render.triangles, costMs: cost }),

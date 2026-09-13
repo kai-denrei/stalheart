@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-tank-sourced-and-notes-tab",
+  "date": "2026-09-14T03:00:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "The swarm lane drives the real tank instead of a second one, and the roadmap and devlog open in the workshop",
+  "context": "Owner on labs.html#swarm: the tank's movement is a downgraded version — no swerving wanted, but also no animation, no hover on and off, no sound. To truly test we must RE-USE the tank, not reinvent the wheel. This is the architecture principle everywhere: one source of truth for the sentries, one for the tank, so a change in any module reaches every module because they source at the same spot. Separately, the owner wants the roadmap and devlog visible in the labs UI so everything needed to evaluate the game is on one interface, and accepts that the already-public DEVLOG stays public.",
+  "outcome": "The lab no longer owns a tank. Movement is domain/yard-drive.stepYardDrive — the same flat-ground model the astro yard drives — with the canyon walls handed in as its blocker boxes; hover, idle vibration and the touchdown rock are tankfeel.js applied through the persisted FEEL, which MÖRK answers with its own userData.applyFeel; the engine cue is the shared audio bank. src/labs/astro-drive.js was the pattern followed. Crucially the SCRIPTED modes are inputs to that same model rather than a second path: a charge is a throttle, not a teleport, and the ram bump now scales the throttle instead of the position, so an impact reads as the engine losing its bite. The hand-rolled x/z integration and the sine-driven yaw that read as skidding are gone. Two bugs surfaced while wiring it: bodies were seated as far back as z -396 in a lane spanning +/-150, so most of the file stood outside the drawn world, and the hull stopped at the lane end instead of reaching them — 0 kills in 7 s. With the column seated inside the canyon and the corridor freed, 148 kills in 7 s, speed bitten from the model's 11 down to 3.3 by impacts, yaw held flat. New lab src/labs/notes-tab.js at labs.html#notes: it FETCHES ROADMAP.md and DEVLOG.md rather than holding a copy, with a small markdown subset (headings, lists, tables, fences, rules, quotes, inline code/emphasis/links — no dependency, this repo has none by choice), a contents rail built from the headings, and a filter that hides whole SECTIONS rather than lines because an entry without its outcome is only a headline. Both documents were added to the release allowlist in scripts/build.mjs so the tab works in dist, and a build that forgot them renders an explanation rather than an empty page.",
+  "alternatives": [
+    "Reuse src/labs/astro-drive.js wholesale: rejected, it carries astro's own UI and its 1/3 camera-mode model; the shared truth is the domain and feel modules it calls, and calling them directly is the same single source without dragging a second lab's chrome in.",
+    "Keep the scripted modes as direct position writes: rejected, that is exactly the second tank the owner asked to remove — a scripted drive must be an input to the one model.",
+    "Render the roadmap into HTML at build time: rejected, a fetched document cannot drift from the file, and a generated page can."
+  ],
+  "evidence": [
+    "Headless: drive speed 11 at the model's cap, yaw held at pi across 4 s (no swerving), tankfeel hoverT reaching 1, and 148 kills in 7 s once the seating was fixed.",
+    "scripts/browser-test.mjs case notes-roadmap asserts the Now table renders, the contents rail builds, the generated open block reached the page, both documents fetched, and that the devlog filter narrows without emptying.",
+    "npm test, npm run check, npm run build, npm run test:browser and node scripts/browser-test.mjs --dist all pass; notes-roadmap passes against the release too, which is what proves the build allowlist change."
+  ],
+  "supersedes": []
+}

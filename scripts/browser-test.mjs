@@ -782,6 +782,28 @@ try{
   assert.equal(await evaluate('window.__stalheartSwarm.kept().length'),0,'kept runs can be cleared');
  }
  await finish();
+ // THE ROADMAP AND THE DEVLOG, IN THE WORKSHOP. The tab holds no copy of
+ // either: it fetches the files, so this asserts they are reachable AND that
+ // the generated open-items block reached the page. A release that forgot to
+ // ship them renders an explanation rather than an empty document, which is
+ // the failure this catches.
+ await go('notes-roadmap','labs.html?sw=0&acceptance=1#notes');
+ await until('document.querySelectorAll("#notes .nt-body h2").length > 2');
+ assert(await evaluate('document.querySelectorAll("#notes .nt-body table").length>0'),'the Now table renders');
+ assert(await evaluate('document.querySelectorAll("#notes .nt-toc a").length>2'),'the contents rail is built from the headings');
+ assert(await evaluate('document.body.textContent.includes("Open in the log")'),'the generated block is present');
+ assert(!(await evaluate('document.body.textContent.includes("unavailable")')),'both documents were fetched');
+ {
+  const roadmapHeads=await evaluate('document.querySelectorAll("#notes .nt-body h2").length');
+  await click('#notes [data-doc="devlog"]');
+  await until(`document.querySelectorAll("#notes .nt-body h2").length > ${roadmapHeads}`);
+  // filtering hides whole sections, not lines: an entry without its outcome is a headline
+  const all=await evaluate('document.querySelectorAll("#notes .nt-body>*").length');
+  await evaluate('(()=>{const f=document.querySelector("#notes [data-find]");f.value="ram premium";f.dispatchEvent(new Event("input"));})()');
+  const shown=await evaluate('[...document.querySelectorAll("#notes .nt-body>*")].filter(e=>!e.hidden).length');
+  assert(shown>0&&shown<all,`the filter narrows the devlog (${shown} of ${all})`);
+ }
+ await finish();
  await go('mork-game','index.html?sw=0&cine=0&tutorial=0&acceptance=1#td');
  await until('window.__stalheartTest.state().playerAsset === "mork" && window.__stalheartTest.state().playerAssetReady');
  await until('window.__stalheartTest.state().berthAssets.length===3');assert.deepEqual(await evaluate('window.__stalheartTest.state().berthAssets'),['mork','mork','mork']);

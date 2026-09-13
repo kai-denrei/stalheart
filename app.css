@@ -150,3 +150,55 @@
 #swarm .sw-col dd.hd{color:#4d626f;font-size:9px;letter-spacing:1px;text-transform:uppercase}
 #swarm .sw-col dd.good{color:#7fe6d0}
 #swarm .sw-col dl.sw-gpu{margin-top:8px;padding-top:6px;border-top:1px dotted #141d25;opacity:.75}
+
+/* --- the roadmap / devlog tab -------------------------------------------- */
+#notes{display:flex;height:100%;min-height:0}
+#notes .nt-rail{width:250px;flex:0 0 250px;display:flex;flex-direction:column;
+  padding:58px 14px 14px;border-right:1px solid #1d2630;background:#0a0e12;overflow:auto}
+#notes .nt-rail>[data-doc]{display:block;width:100%;text-align:left;margin:0 0 6px;padding:9px 11px;
+  border:1px solid #1d2630;background:#0c1116;border-radius:2px;cursor:pointer}
+#notes .nt-rail>[data-doc] b{display:block;color:#9fb3c2;font:600 11px/1.4 ui-monospace,Menlo,monospace;
+  letter-spacing:2.5px;text-transform:uppercase}
+#notes .nt-rail>[data-doc] span{display:block;color:#5d7382;font:10px/1.4 ui-monospace,Menlo,monospace}
+#notes .nt-rail>[data-doc]:hover{background:#121a21}
+#notes .nt-rail>[data-doc].on{border-color:#2c6d63;background:#0d1b19}
+#notes .nt-rail>[data-doc].on b{color:#7fe6d0}
+#notes .nt-find{display:block;margin:10px 0 4px;color:#5d7382;
+  font:10px/1.6 ui-monospace,Menlo,monospace;letter-spacing:2px;text-transform:uppercase}
+#notes .nt-find input{width:100%;margin-top:4px;padding:6px 8px;border:1px solid #23303c;
+  background:#06090c;color:#cfe2ec;font:11px/1.4 ui-monospace,Menlo,monospace;border-radius:2px}
+#notes .nt-toc{margin-top:10px;padding-top:10px;border-top:1px solid #1d2630;min-height:0}
+#notes .nt-toc a{display:block;padding:3px 0;color:#6b8494;text-decoration:none;
+  font:10.5px/1.4 ui-monospace,Menlo,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#notes .nt-toc a:hover{color:#7fe6d0}
+/* The reading column is measured, not full-bleed: these are documents, and a
+   1500px line of prose is not one. */
+#notes .nt-body{flex:1 1 auto;min-width:0;overflow:auto;padding:58px 32px 80px;
+  color:#b9cdd9;font:13px/1.65 ui-monospace,Menlo,monospace}
+#notes .nt-body>*{max-width:74ch}
+#notes .nt-body h1{margin:0 0 6px;color:#e8f2f8;font-size:17px;letter-spacing:2px;text-transform:uppercase}
+#notes .nt-body h2{margin:30px 0 8px;padding-top:14px;border-top:1px solid #1d2630;
+  color:#7fe6d0;font-size:14px;letter-spacing:1.5px}
+#notes .nt-body h3{margin:20px 0 6px;color:#cfe2ec;font-size:12.5px;letter-spacing:1px}
+#notes .nt-body h4{margin:16px 0 4px;color:#9fb3c2;font-size:12px}
+#notes .nt-body p{margin:0 0 11px}
+#notes .nt-body ul,#notes .nt-body ol{margin:0 0 12px;padding-left:20px}
+#notes .nt-body li{margin:0 0 4px}
+#notes .nt-body code{padding:1px 4px;background:#0f171d;border:1px solid #1d2630;
+  border-radius:2px;color:#7fe6d0;font-size:12px}
+#notes .nt-body pre{margin:0 0 14px;padding:12px;overflow-x:auto;background:#06090c;
+  border:1px solid #1d2630;border-radius:2px;max-width:100%}
+#notes .nt-body pre code{padding:0;border:0;background:none;color:#9fdcff;line-height:1.5}
+#notes .nt-body strong{color:#e8f2f8}
+#notes .nt-body del{color:#5d7382}
+#notes .nt-body a{color:#7fe6d0}
+#notes .nt-body hr{margin:22px 0;border:0;border-top:1px solid #1d2630}
+#notes .nt-body blockquote{margin:0 0 12px;padding:2px 0 2px 12px;border-left:2px solid #2c6d63;color:#9fb3c2}
+#notes .nt-body table{margin:0 0 14px;border-collapse:collapse;font-size:12px;display:block;overflow-x:auto;max-width:100%}
+#notes .nt-body th,#notes .nt-body td{padding:5px 10px;border:1px solid #1d2630;text-align:left;vertical-align:top}
+#notes .nt-body th{background:#0d141a;color:#7fe6d0;font-weight:600;letter-spacing:1px;
+  text-transform:uppercase;font-size:10.5px}
+#notes .nt-wait{color:#5d7382}
+@media (max-width:760px){#notes{flex-direction:column}
+  #notes .nt-rail{width:auto;flex:0 0 auto;border-right:0;border-bottom:1px solid #1d2630}
+  #notes .nt-toc{display:none}#notes .nt-body{padding:18px 16px 60px}}

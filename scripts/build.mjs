@@ -25,7 +25,7 @@ async function walk(dir) {
   return groups.flat();
 }
 const paths = [...(await Promise.all(dirs.map(d => walk(resolve(root, d))))).flat(),
-  ...['index.html', 'labs.html', 'settings.html', 'styles.css', 'app.css', 'manifest.webmanifest', 'favicon.svg', 'sw.js', 'ATTRIBUTIONS.md'].map(p => resolve(root, p))]
+  ...['index.html', 'labs.html', 'settings.html', 'styles.css', 'app.css', 'manifest.webmanifest', 'favicon.svg', 'sw.js', 'ATTRIBUTIONS.md', 'ROADMAP.md', 'DEVLOG.md'].map(p => resolve(root, p))]
   .filter(p => !p.includes('/assets/audio/src/') && !p.endsWith('.DS_Store') && !p.endsWith('.map')).sort();
 const hash = createHash('sha256');
 for (const path of paths) { hash.update(relative(root, path)); hash.update(await readFile(path)); }
