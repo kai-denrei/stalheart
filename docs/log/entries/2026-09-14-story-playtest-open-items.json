@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-story-playtest-open-items",
+  "date": "2026-09-14T15:00:00+00:00",
+  "type": "issue",
+  "status": "observed",
+  "title": "Still open after the story-opening playtest: the breach freeze, the Rotor's sound by ear, Rotor shots into the wall, and ISAO-Birudorōn's review",
+  "context": "The story-opening playtest batches (commit 89b81b5) fixed what could be measured and verified headlessly. Several items were changed or partly addressed without an acceptance the owner can rely on, and should be picked up rather than assumed done.",
+  "outcome": "1) WALL BREACH FREEZE: a tank shell breaching a wall on the 71k-cell story planet was a 430-530 ms main-thread long task; numeric edge keys built once per board cut it to about 250 ms. The remaining cost is the full floor/wall/edge array rebuild and GPU re-upload; patching only the breached cells is the proposed next step if it still reads as lag. 2) ROTOR SOUND: the spin loop and the per-shot report are confirmed separate cues in code, and the report now plays at the gun's own cadence, but no one has listened to it — the owner's browser audio was suspect. 3) ROTOR MISSES: the owner saw Rotor fire fail to kill enemies that looked hit and suspected rounds hitting the wall; the gun's hit box was widened and the mounts moved to the rock's real edge, but whether rounds were striking the wall was not measured. 4) ISAO-BIRUDORŌN: upstream marks LOD1 production alpha, pending art-direction and gameplay review; LOD2 (static, one draw) is not pinned and no distance swap exists; the emotion clips hold their final pose, which leaves any A/B glyph pair on whichever frame the clip ends. 5) The asset-tier switches (MÖRK LOW, Stålheart LODs) are approved but shelved while the A6 library settles, and HUGIN's booster awaits the upstream fix (2026-09-14-asset-tier-rulings-shelved).",
+  "alternatives": [],
+  "evidence": [
+    "2026-09-14-quiver-grace-hull-contact-drive-ramp (breach long tasks before and after).",
+    "2026-09-14-quiver-route-sight-isao-birudoron-comms-rotor-report and 2026-09-14-held-faces-plumes-edge-mounts-hitbox-quick-quiver (the Rotor, hit box and mount changes).",
+    "docs/isao-birudoron-assets.lock.json (the pinned revision and its review note)."
+  ],
+  "supersedes": []
+}
