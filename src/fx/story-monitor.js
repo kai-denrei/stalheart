@@ -15,7 +15,7 @@ export function createStoryMonitor(root) {
       const on = !!mesh || linger > 0 || !!optic; box.style.display = on ? '' : 'none';
       if (!mesh && !optic) return; shown++;
       const r = box.getBoundingClientRect(), cr = renderer.domElement.getBoundingClientRect(), dpr = renderer.getPixelRatio();
-      const label = mesh ? 'TALON · seeker feed' : 'OPTIC · TARGET'; if (head.textContent !== label) head.textContent = label;
+      const label = mesh ? 'TALON · seeker feed' : (optic.label ?? 'OPTIC · TARGET'); if (head.textContent !== label) head.textContent = label;
       if (mesh) { fwd.set(0, 0, 1).applyQuaternion(mesh.quaternion); up.copy(mesh.position).normalize(); eye.copy(mesh.position).addScaledVector(fwd, -cellSide * 0.9).addScaledVector(up, cellSide * 0.35); cam.fov = 42; tgt.copy(mesh.position); }
       else { from.fromArray(optic.from); up.copy(from).normalize(); eye.copy(from).addScaledVector(up, cellSide * 0.6); tgt.fromArray(optic.pos); cam.fov = Math.max(3, Math.min(30, (2 * Math.atan(cellSide * 1.2 / (2 * eye.distanceTo(tgt))) * 180) / Math.PI)); }
       cam.position.copy(eye); cam.up.copy(up); cam.lookAt(tgt); cam.aspect = r.width / r.height; cam.updateProjectionMatrix();
