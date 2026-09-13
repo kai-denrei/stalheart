@@ -28,7 +28,7 @@ import { EMOTION_IDS, emotion, phosphorFor } from './emotions.js';
 import { printPhase, printOffset, printOn } from './printpath.js';
 import { loadGlb, loadGlbWithClips, mergeByMaterial, fitModel, tintModel, makeShellRack,
   addEdgeOutlines, makeHeatSleeve } from './glbmodels.js';
-import { CREATURES, spherePts, bulletPts, missilePts, heartPts, torusPts, cloudFormPoints, enemyDotPts, portalPts, personPts } from './creatures.js';
+import { CREATURES, thinCloud, spherePts, bulletPts, missilePts, heartPts, torusPts, cloudFormPoints, enemyDotPts, portalPts, personPts } from './creatures.js';
 import { STARGATE_PTS, STARGATE_STROKE,
   HORIZON_N, stargateHorizon } from './stargate.js';
 import { ENEMY_SPEC } from './enemyspec.js';
@@ -546,12 +546,15 @@ export function makeDebris(obj, outwardN) {
 // crowd costs what a still crowd costs.
 // Every entry takes a DENSITY factor d (default 1): the game builds at
 // d=1 (crowds), the unit viewer at d=4 — one unit on screen at a time can
-// afford to be generous (operator ruling). The classic CREATURES
-// generators carry fixed counts and ignore d.
+// afford to be generous (operator ruling). The authored three are THINNED
+// rather than resampled, and cannot go above their written count.
 const DOT_SHAPES = {
-  phage: () => CREATURES.phage(),
-  amoeba: () => CREATURES.amoeba(),
-  jellyfish: () => CREATURES.jellyfish(),
+  // the authored three honour the density factor now, by thinning: they are
+  // the densest bodies on the roster and were the only ones a crowd could not
+  // turn down. See creatures.thinCloud for the measurement behind it.
+  phage: (d = 1) => thinCloud(CREATURES.phage(), d),
+  amoeba: (d = 1) => thinCloud(CREATURES.amoeba(), d),
+  jellyfish: (d = 1) => thinCloud(CREATURES.jellyfish(), d),
   ghost: (d = 1) => enemyDotPts('ghost', Math.round(150 * d)),
   // The flying saucer, replaced by the lab's bacterium — a rod body with
   // flagella. Reverting is this one line: enemyDotPts('ufo').

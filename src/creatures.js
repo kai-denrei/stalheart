@@ -178,6 +178,34 @@ export function spherePts(n = 170) {
   return pts;
 }
 
+// THE AUTHORED THREE CAN BE THINNED. The amoeba, the phage and the jellyfish
+// came over from the Braille lab as hand-written generators with fixed counts,
+// so unlike every borrowed type they ignored the crowd's density factor — and
+// they are the densest things on the roster (692, 494, 578 dots against 150).
+//
+// Measured 2026-09-14 in the swarm lab: 1,200 bodies at 180,000 points hold
+// 60fps and drop 0.1% of frames; the same 1,200 at 592,800 points drop 32%.
+// Draw calls were ruled out in the same sitting — 1,256 calls and 151 calls
+// behave identically at both point counts. Total dots on screen is the wall,
+// so being unable to turn these three down was the one real limit on crowds.
+//
+// A uniform resample rather than a slice: keeping index i only when it opens a
+// new bucket preserves each section's SHARE of the cloud, so a phage thinned to
+// a third keeps a third of its head, a third of its sheath and a third of its
+// legs instead of losing whichever section happened to be authored last.
+//
+// Thinning only. The authored count is the ceiling — there is nothing to
+// interpolate between two dots that would not be invention — so d above 1
+// returns the cloud as written, which is what the unit viewer wants anyway.
+export function thinCloud(pts, d = 1) {
+  if (!(d < 1) || pts.length === 0) return pts;
+  const out = [];
+  for (let i = 0; i < pts.length; i++) {
+    if (Math.floor(i * d) > Math.floor((i - 1) * d)) out.push(pts[i]);
+  }
+  return out.length ? out : [pts[0]];
+}
+
 // enemy dot shapes — half-dotted STATIC silhouettes for the TD roster's
 // borrowed types (the original three creatures have their own rich
 // generators above). Static means the game animates them with transform

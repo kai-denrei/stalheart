@@ -208,3 +208,10 @@
 #swarm .sw-hint{margin:-6px 0 12px;padding-bottom:11px;border-bottom:1px solid #1d2630;
   color:#6b8494;font-size:10.5px;line-height:1.5}
 #swarm .sw-hint b{color:#7fe6d0;font-weight:600}
+
+#swarm .sw-sweep{width:100%;margin:-6px 0 12px;padding:8px;border:1px solid #2a3a47;
+  background:#0c1116;color:#9fb3c2;font:10px/1 ui-monospace,Menlo,monospace;letter-spacing:2px;
+  text-transform:uppercase;border-radius:2px;cursor:pointer}
+#swarm .sw-sweep:hover{background:#141d25;color:#cfe2ec}
+#swarm .sw-build{margin:-4px 0 8px;color:#5d7382;font-size:9.5px;letter-spacing:1px}
+#swarm .sw-build b{color:#ff6b5e;display:block;margin-top:2px}

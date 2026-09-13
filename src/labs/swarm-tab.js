@@ -22,6 +22,8 @@
 import * as THREE from '../../vendor/three.module.js';
 import { OrbitControls } from '../../vendor/OrbitControls.js';
 import { makeDotEnemy, makeDotBurst, buildUnit, preloadMork } from '../units.js';
+import { createDotSwarm } from '../fx/dot-swarm.js';
+import { dotShapePts } from '../units.js';
 import { makeJelly } from '../jelly.js';
 import { ENEMY_SPEC, CREATURE_TINTS, accentFor } from '../enemyspec.js';
 import { RAM_PREMIUM, STREAK_CAP, STREAK_STEP } from '../domain/economy.js';
@@ -67,9 +69,11 @@ export function initSwarmTab(root) {
       <label>file width <b data-v="spread">0.5</b>&times;<input type="range" data-k="spread" min="0.1" max="1.6" step="0.05" value="0.5"></label>
       <label>tank <select data-k="drive"><option value="manual">you drive (WASD)</option><option value="charge">charging</option><option value="patrol">weaving</option><option value="static">parked</option></select></label>
       <label>view <select data-k="view"><option value="chase">chase</option><option value="side">side</option><option value="top">top</option><option value="free">free orbit</option></select></label>
+      <label><input type="checkbox" data-k="merged"> one draw call (instanced)</label>
       <label><input type="checkbox" data-k="walls" checked> canyon walls</label>
       <label><input type="checkbox" data-k="sound"> sound</label>
       <button type="button" class="sw-run" data-run>run the lane</button>
+      <button type="button" class="sw-sweep" data-sweep>sweep 250 &rarr; 1200</button>
       <p class="sw-hint">Free play keeps that many alive forever, respawning
       each kill — good for looking at a crowd, useless for scoring one.
       <b>Run the lane</b> seats them once and ends when the last is dead or
@@ -170,7 +174,7 @@ export function initSwarmTab(root) {
   const cue = (k, o) => { try { audio?.play(k, o); } catch { /* a lab is not worth a throw */ } };
 
   const state = { type: TYPES[0], form: 'dots', count: 100, dens: 1,
-    drive: 'manual', view: 'chase', walls: true, sound: false, spread: 0.5 };
+    drive: 'manual', view: 'chase', walls: true, sound: false, spread: 0.5, merged: false };
   const run = { kills: 0, combo: 0, comboT: 0, maxCombo: 0, earned: 0, blocked: 0, escaped: 0, speed: 1, hit: 0 };
 
   // Held keys, not key events: a tank driven by keydown repeat stutters.
@@ -188,11 +192,15 @@ export function initSwarmTab(root) {
   // the sampler, not about the work. So a run seats `count` bodies once and
   // ends when the last of them is dead or past the tank.
   const RUNS_KEY = 'swarm:runs';
+  let sweepQueue = [], sweeping = false;
   let running = false, runT0 = 0, samples = [], frames = [], late = 0,
     peak = { calls: 0, points: 0, tris: 0 }, lastRun = null;
   let kept = [];
   try { kept = JSON.parse(storage.getItem(RUNS_KEY) || '[]').slice(0, 6); } catch { kept = []; }
 
+  let swarm = null;
+  // which bodies the wobble shader animates, mirroring units.js WOBBLERS
+  const WOBBLE_TYPES = new Set(['amoeba', 'phage', 'jellyfish']);
   let bodies = [], bursts = [], pool = [], disposed = false, raf = 0, rebuild = true;
   loadFeel();                       // the tuning the unit bench saved
   const feel = makeTankFeel();
@@ -214,7 +222,8 @@ export function initSwarmTab(root) {
     o.geometry?.dispose?.(); o.material?.dispose?.();
   }
   function clearBodies() {
-    for (const b of bodies) { scene.remove(b.obj); disposeObj(b.obj); }
+    if (swarm) { scene.remove(swarm.mesh); swarm.dispose(); swarm = null; }
+    for (const b of bodies) { if (b.obj) { scene.remove(b.obj); disposeObj(b.obj); } }
     for (const d of bursts) { scene.remove(d); disposeObj(d); }
     bodies = []; bursts = []; pool = [];
   }
@@ -249,17 +258,36 @@ export function initSwarmTab(root) {
     b.x = (h(b.seed, 1) - 0.5) * 2 * w;
     b.z = far + h(b.seed, 2) * (near - far);
     b.seed = (b.seed * 7 + 13) % 100000;
-    b.obj.visible = true;
+    if (b.obj) b.obj.visible = true;
     b.done = false;
   }
 
   // In a run a body leaves for good. Hidden rather than removed: disposing
   // hundreds of geometries mid-run would measure the allocator.
-  function retire(b) { b.done = true; b.obj.visible = false; }
+  function retire(b) { b.done = true; if (b.obj) b.obj.visible = false; }
   const liveCount = () => { let n = 0; for (const b of bodies) if (!b.done) n++; return n; };
 
   function build() {
     clearBodies();
+    // MERGED: one geometry, one material, one call, and a body is three floats
+    // in an instance buffer. Only dot clouds can take this path — a jelly is a
+    // mesh with its own shader and belongs to itself.
+    if (state.merged && state.form === 'dots') {
+      const base = dotShapePts(state.type, state.dens);
+      const tint = CREATURE_TINTS[state.type] ?? 0xffffff;
+      swarm = createDotSwarm(base, state.count, { size: 2.1,
+        wobble: WOBBLE_TYPES.has(state.type), color: tint,
+        highlight: accentFor(state.type) ?? 0xffffff });
+      scene.add(swarm.mesh);
+      const r = (ENEMY_SPEC[state.type]?.size ?? 0.4) * TANK_R * 0.58;
+      for (let i = 0; i < state.count; i++) {
+        const b = { obj: null, seed: i * 17 + 3, x: 0, z: 0, r, scale: r };
+        seat(b, i); bodies.push(b);
+      }
+      Object.assign(run, { kills: 0, combo: 0, comboT: 0, maxCombo: 0, earned: 0,
+        blocked: 0, escaped: 0, speed: 1, hit: 0 });
+      rebuild = false; return;
+    }
     for (let i = 0; i < state.count; i++) {
       let obj; try { obj = makeBody(); } catch { break; }
       const b = { obj, seed: i * 17 + 3, x: 0, z: 0, r: obj.scale.x * 0.9 };
@@ -353,9 +381,23 @@ export function initSwarmTab(root) {
       const dx = b.x - tankX, dz = b.z - tankZ;
       if (dx * dx + dz * dz < TOUCH * TOUCH) { impact(b); continue; }
       if (b.z > LANE.endZ + 26) { if (running) { run.escaped++; retire(b); } else seat(b); }
-      b.obj.position.set(b.x, b.r, b.z);
-      b.obj.rotation.y = Math.PI;
-      b.obj.userData.tick?.(t);
+      if (b.obj) {
+        b.obj.position.set(b.x, b.r, b.z);
+        b.obj.rotation.y = Math.PI;
+        b.obj.userData.tick?.(t);
+      }
+    }
+
+    // one pass over the crowd, straight into the instance buffer
+    if (swarm) {
+      swarm.setTime(t);
+      swarm.update(bodies.length, (offs, scl) => {
+        for (let i = 0; i < bodies.length; i++) {
+          const b = bodies[i];
+          offs[i * 3] = b.x; offs[i * 3 + 1] = b.r; offs[i * 3 + 2] = b.z;
+          scl[i] = b.done ? 0 : b.scale;
+        }
+      });
     }
 
     for (let i = bursts.length - 1; i >= 0; i--) {
@@ -454,7 +496,9 @@ export function initSwarmTab(root) {
     // run still gets a distribution even if a coarse one
     if (running && !gpuExt && t - lastProbe > 0.25) { lastProbe = t; sample(costMs(3)); }
     if (running && bodies.length && liveCount() === 0) endRun();
-    runBtn.textContent = running ? `running \u2014 ${liveCount()} left` : 'run the lane';
+    runBtn.textContent = running
+      ? `running \u2014 ${liveCount()} left${sweepQueue.length ? ` (${sweepQueue.length} more)` : ''}`
+      : 'run the lane';
     runBtn.classList.toggle('on', running);
 
     acc += dt;
@@ -508,6 +552,8 @@ export function initSwarmTab(root) {
     const st = stats(samples), ft = stats(frames);
     const rec = {
       at: Date.now(), label: `${state.count}x ${state.type}`,
+      build: document.querySelector('#build-tag')?.textContent || 'unknown',
+      timer: !!gpuExt,
       type: state.type, form: state.form, count: state.count, dens: state.dens,
       seconds: +((performance.now() - runT0) / 1000).toFixed(1),
       kills: run.kills, escaped: run.escaped, blocked: run.blocked,
@@ -522,7 +568,12 @@ export function initSwarmTab(root) {
       gpuSeries: samples.slice(-160).map((x) => +x.toFixed(2)),
     };
     lastRun = rec;
+    if (sweeping) {   // a sweep keeps every leg, so the card holds the series
+      kept = [rec, ...kept].slice(0, 6);
+      storage.setItem(RUNS_KEY, JSON.stringify(kept));
+    }
     drawCard();
+    if (sweepQueue.length) setTimeout(nextSweep, 900); else sweeping = false;
   }
 
   // A bar per sample against the 60fps line, because a mean hides the spike
@@ -551,6 +602,8 @@ export function initSwarmTab(root) {
     const g = r.gpu, f = r.frame;
     return `<div class="sw-col${current ? ' now' : ''}">
       <h4>${r.label}${current ? ' <i>this run</i>' : ''}</h4>
+      <p class="sw-build">${r.build || 'unknown build'}${r.timer === false ? ' &middot; no GPU timer' : ''}
+        ${!r.calls ? '<b class="bad">stale build &mdash; reload with ?sw=0</b>' : ''}</p>
       <div class="sw-spark">${spark(r.series)}</div>
       ${f ? `<dl>
         <dt class="hd">frame gap</dt><dd class="hd">wall clock</dd>
@@ -595,12 +648,29 @@ export function initSwarmTab(root) {
       kept = []; storage.setItem(RUNS_KEY, '[]'); drawCard();
     }
     if (b.dataset.keep !== undefined && lastRun) {
-      kept = [lastRun, ...kept].slice(0, 4);
+      kept = [lastRun, ...kept].slice(0, 5);
       storage.setItem(RUNS_KEY, JSON.stringify(kept));
       drawCard();
     }
   });
-  runBtn.addEventListener('click', startRun);
+  runBtn.addEventListener('click', () => { sweepQueue = []; startRun(); });
+
+  // THE SWEEP. One population per run, back to back, every leg kept — so a
+  // comparison is a series taken under one build in one sitting, rather than
+  // four screenshots taken who knows when against who knows what.
+  const SWEEP = [250, 500, 1000, 1200];
+  const sweepBtn = root.querySelector('[data-sweep]');
+  sweepBtn.addEventListener('click', () => {
+    kept = []; storage.setItem(RUNS_KEY, '[]');
+    sweepQueue = SWEEP.slice();
+    nextSweep();
+  });
+  function nextSweep() {
+    const n = sweepQueue.shift();
+    if (n === undefined) { sweeping = false; drawCard(); return; }
+    sweeping = true; api.set('count', n);
+    setTimeout(startRun, 400);   // the rebuild lands on the next frame
+  }
 
   for (const el of root.querySelectorAll('[data-k]')) {
     el.addEventListener('input', () => {
@@ -610,7 +680,7 @@ export function initSwarmTab(root) {
       const out = root.querySelector(`[data-v="${k}"]`);
       if (out) out.textContent = k === 'count' ? el.value : Number(el.value).toFixed(1);
       if (k === 'sound' && state.sound && !audio) { audio = makeAudio({ base: '../' }); audio.resume?.(); }
-      if (['type', 'form', 'count', 'dens'].includes(k)) rebuild = true;
+      if (['type', 'form', 'count', 'dens', 'merged'].includes(k)) rebuild = true;
       if (k === 'spread') for (const b of bodies) seat(b);
     });
   }
@@ -632,7 +702,8 @@ export function initSwarmTab(root) {
       hull: +run.speed.toFixed(3), bursts: bursts.length,
       speed: +drive.speed.toFixed(2), yaw: +drive.yaw.toFixed(3), hover: +feel.hoverT.toFixed(3),
       wallBlocked: drive.blocked,
-      motion: bodies[0]?.obj?.material?.userData?.motion ?? null,
+      merged: !!swarm, instanceDots: swarm?.dots ?? 0,
+      motion: bodies[0]?.obj?.material?.userData?.motion ?? (swarm ? 'wobble' : null),
       calls: renderer.info.render.calls, points: renderer.info.render.points,
       triangles: renderer.info.render.triangles, costMs: cost }),
     types: TYPES.slice(),
