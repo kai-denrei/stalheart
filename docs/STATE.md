@@ -1,6 +1,6 @@
 # Stalheart current state
 
-Updated 2026-09-14. Owner: the Stalheart development project; this repo is now authoritative for the game.
+Updated 2026-09-14 (gunship). Owner: the Stalheart development project; this repo is now authoritative for the game.
 
 ## Working baseline
 
@@ -32,11 +32,13 @@ The story opening now has a planet and an arrival: `labs.html#story` generates a
 
 The story opening now plays through (2026-09-14, commit 89b81b5): Isao is the pinned A6 ISAO-Birudorōn (LOD1, production alpha) holding one face per emotion; the first wave is fifty harmless phage rising across the whole sinkhole; a straight lane and a route-aware sightline let the Quiver see the enemies' whole approach, and the Quiver is printed during the first wave and takes over the moment it clears (lock 0.6 s, 14° cone, held through brief sightline blinks); after two TALON kills Isao explains the vibration language in a face-on close-up, the retitled analysis screen opens, and he sends the tank to the rocket landing sites (open ground under each, amber triangles on the radar). The tank collides by its own footprint, starts faster and builds a long run-up. Still open: a wall breach still costs about 250 ms on the story planet, the Rotor's reworked report has not been checked by ear, Rotor rounds striking walls was not measured, and ISAO-Birudorōn awaits art and gameplay review — see `2026-09-14-story-playtest-open-items`. The MÖRK LOW and Stålheart LOD switches are approved but shelved while the A6 library settles (`2026-09-14-asset-tier-rulings-shelved`).
 
+The Heavy Gunship is on the story's view strip (2026-09-14, branch `heavy-gunship`; [design](superpowers/specs/2026-09-13-heavy-gunship-design.md), `2026-09-13-heavy-gunship-mount-design`). The KORP/GS01 (pinned game tier, `docs/korp-assets.lock.json`) rides a fixed pass over the base heart on the game clock, 75 s away and 35 s overhead (`src/content/gunship.js`); the strip's GUNSHIP button is dark with the next pass counting down and live for the window, and nothing the player does moves that clock. The seat is gunner only: a virtual mount in `src/sentry-pilot.js` with three guns, the 25 mm rotary and 40 mm Bofors free while on station and the 105 mm being the orbital strike itself, armed, painted and launched through `src/strike.js` unchanged. The main view is a thermal two-pass (cold override, enemies and the ship hot, `src/fx/gunship-optic.js`), the corner monitor shows the ground truth at the impact point, and three danger rings with a written readout say what of ours stands inside each blast without refusing any shot. Pure rules and tests live in `src/domain/gunship.js` and `test/gunship.mjs`; the practice post picker moved to `src/domain/pilot-posts.js` to pay for the hooks, and `td-tab.js` fell to 17,600 lines. Open: gun damage and blast are untuned and the horde cost unmeasured (spec §9), the herding read is unverified, the ship is not yet framed against a wave in the acceptance run, and the practice map has no seat.
+
 Sentry Control is an opt-in actual-game experiment at `index.html?sentryPilot=1#td`: the first TD map and waves, six manually controlled wall posts, shared combat and effects, parked tank, and memory-only practice records. The separate Sniper bench remains available. See [SENTRY-CONTROL.md](SENTRY-CONTROL.md).
 
 ## Next priorities
 
-**Next session: the Heavy Gunship** — the orbital mount on the strip that owns the orbital strike and the heavy cannon and howitzer rounds, per [the design spec](superpowers/specs/2026-09-13-heavy-gunship-design.md) and `2026-09-13-heavy-gunship-mount-design`.
+**Next session: hold the gunship against a real horde.** Measure the swarm's render cost first (spec §9), then tune the rotary and Bofors numbers and check that sustained fire reads as herding; give the practice map its seat if it helps the tuning.
 
 Owner-directed sequence: **architecture → visual/sound labs and clean exports → UX → playability**. [Architecture and implementation boundaries](ARCHITECTURE.md) are the current technical plan.
 

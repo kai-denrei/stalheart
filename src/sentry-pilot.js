@@ -99,24 +99,18 @@ export function createSentryPilot(root, host) {
   // the player takes the optic and the guns, never the aircraft. Position is the schedule's, not an input. Every gun fires
   // wherever it is pointed; the danger report is a readout. The heavy IS the orbital strike: choosing it arms the safety,
   // aiming paints the cell, the trigger launches through strike.js's own ritual.
-  const G=host.gunship,ship={key:'gunship',obj:new THREE.Group(),ci:-1},aim=new THREE.Vector3(),n3=new THREE.Vector3(),t1=new THREE.Vector3(),t2=new THREE.Vector3(),basis=new THREE.Matrix4();
+  const G=host.gunship,ship={key:'gunship',obj:G?G.optic.platformObject():null,ci:-1},aim=new THREE.Vector3(),t1=new THREE.Vector3(),t2=new THREE.Vector3();
   let gunship=false,impact=null,report=null,rounds=0;
   const guns=document.createElement('div');guns.className='pilot-guns';guns.style.display='none';
   guns.innerHTML=G?G.order.map((k,i)=>`<button data-gun="${k}">${i+1} · ${G.guns[k].label}</button>`).join(''):'';panel.querySelector('header').after(guns);
   function selectGun(key){if(!G||!G.select(key))return;state.held=false;guns.querySelectorAll('[data-gun]').forEach(b=>b.classList.toggle('on',b.dataset.gun===key));if(G.guns[key].strike){if(!G.strike.armed)G.arm();}else if(G.strike.armed)G.arm();}
   guns.querySelectorAll('[data-gun]').forEach(b=>listen(b,'click',()=>selectGun(b.dataset.gun)));
-  function placePlatform(){   // above the heart along its normal, drifting across the base with the pass's progress
-    const hc=G.centers[G.heart()];n3.fromArray(G.normals[G.heart()]).normalize();
-    t1.set(Math.abs(n3.y)<.9?0:1,Math.abs(n3.y)<.9?1:0,0).cross(n3).normalize();t2.copy(n3).cross(t1);
-    const c=host.cellSide(),drift=(G.progress()*2-1)*G.platform.driftCells*c;
-    ship.obj.position.fromArray(hc).addScaledVector(n3,G.platform.altitudeCells*c).addScaledVector(t1,drift);
-    basis.makeBasis(t2,n3,t1);ship.obj.quaternion.setFromRotationMatrix(basis);ship.ci=G.heart();
-  }
+  // the platform's place is the optic's (host.gunship.optic.ride, driven by the game each tick); the seat only reads it
+  const trackAxes=()=>{t1.set(0,0,1).applyQuaternion(ship.obj.quaternion);t2.set(1,0,0).applyQuaternion(ship.obj.quaternion);};
   function mountGunship(){
     if(!G||G.mount()!=='mounted')return 'refused';
-    if(!ship.obj.parent){G.scene.add(ship.obj);G.optic.platform(ship.obj);}
-    gunship=true;state.tower=ship;state.held=false;state.target=null;state.hidden=null;state.view='pov';state.zoom=1;host.zoom(1);
-    placePlatform();state.yaw=Math.PI;state.pitch=-1.1;   // facing back along the track, looking down at the base
+    gunship=true;ship.ci=G.heart();state.tower=ship;state.held=false;state.target=null;state.hidden=null;state.view='pov';state.zoom=1;host.zoom(1);
+    state.yaw=Math.PI;state.pitch=-1.1;   // facing back along the track, looking down at the base
     guns.style.display='';panel.querySelector('header').innerHTML='KORP / GS01 <small>HEAVY GUNSHIP · ON STATION</small>';panel.querySelector('footer').textContent='1 rotary · 2 bofors · 3 heavy (the strike) · Space fires · V PoV / third · M map · P pause';
     G.optic.mount();host.views?.('gunship');selectGun(G.state.gun);if(map)toggleMap();
     return 'mounted';
@@ -128,10 +122,9 @@ export function createSentryPilot(root, host) {
   // the sim step: the platform's place, the aim, the readout, the rounds
   function gunshipTick(dt){
     if(!G)return;
-    G.optic.station(G.onStation());
     if(!gunship)return;
     if(!G.onStation()){dismountGunship();host.views?.('tank');host.leave?.();return;}
-    placePlatform();up.copy(ship.obj.position).normalize();
+    trackAxes();up.copy(ship.obj.position).normalize();
     forward.set(Math.sin(state.yaw),0,Math.cos(state.yaw)).applyQuaternion(ship.obj.quaternion).normalize();
     direction.copy(forward).multiplyScalar(Math.cos(state.pitch)).addScaledVector(up,Math.sin(state.pitch)).normalize();
     eye.copy(ship.obj.position).addScaledVector(up,host.cellSide()*.65);   // the same eye pose() puts the camera on

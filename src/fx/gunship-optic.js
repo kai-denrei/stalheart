@@ -8,7 +8,7 @@
 import * as THREE from '../../vendor/three.module.js';
 import { GLTFLoader } from '../../vendor/GLTFLoader.js';
 import { MeshoptDecoder } from '../../vendor/meshopt_decoder.module.js';
-import { GUNSHIP_GUNS, GUNSHIP_GUN_ORDER } from '../content/gunship.js';
+import { GUNSHIP_GUNS, GUNSHIP_GUN_ORDER, GUNSHIP_PLATFORM } from '../content/gunship.js';
 
 const HOT_LAYER = 2;   // the game's map layer is 1; 2 is free
 const KORP_URL = 'assets/models/korp/korp_d0_lod1.glb';
@@ -23,9 +23,9 @@ export function createGunshipOptic(scene, { cellSide, metresPerCell = 10 }) {
     const m = new THREE.Mesh(new THREE.RingGeometry(r * 0.96, r, 72), new THREE.MeshBasicMaterial({ color: g.ringHex, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false, depthTest: false }));
     m.layers.set(HOT_LAYER); m.renderOrder = 5; rings.add(m); ringOf[key] = m;
   }
-  const platform = new THREE.Group(); platform.visible = false;
-  let model = null, mixer = null, clips = {}, mounted = false, spin = 0, parent = null, disposed = false;
-  const masks = new Map(), up = new THREE.Vector3(), q = new THREE.Quaternion(), zAxis = new THREE.Vector3(0, 0, 1);
+  const platform = new THREE.Group(); platform.visible = false; scene.add(platform);
+  let model = null, mixer = null, clips = {}, mounted = false, spin = 0, disposed = false;
+  const masks = new Map(), up = new THREE.Vector3(), q = new THREE.Quaternion(), zAxis = new THREE.Vector3(0, 0, 1), n3 = new THREE.Vector3(), t1 = new THREE.Vector3(), t2 = new THREE.Vector3(), basis = new THREE.Matrix4();
   if (typeof document !== 'undefined') new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(KORP_URL, (g) => {
     if (disposed) return;
     model = g.scene; model.scale.setScalar(cellSide / metresPerCell);
@@ -50,9 +50,15 @@ export function createGunshipOptic(scene, { cellSide, metresPerCell = 10 }) {
     active: () => mounted,
     mount() { mounted = true; rings.visible = true; },
     dismount() { mounted = false; rings.visible = false; },
-    station(on) { platform.visible = on; },
-    // the host's platform object carries the model; called once, when the seat is first taken
-    platform(obj) { if (parent === obj) return; parent = obj; obj.add(platform); },
+    // the platform rides above the base heart along its normal, drifting across the ground track with the pass's
+    // progress, its +Z along the track and +Y up. Visible while on station, from the ground as from the seat.
+    ride(center, normal, progress, on) {
+      platform.visible = on; if (!on) return;
+      n3.fromArray(normal).normalize(); t1.set(Math.abs(n3.y) < 0.9 ? 0 : 1, Math.abs(n3.y) < 0.9 ? 1 : 0, 0).cross(n3).normalize(); t2.copy(n3).cross(t1);
+      platform.position.fromArray(center).addScaledVector(n3, GUNSHIP_PLATFORM.altitudeCells * cellSide).addScaledVector(t1, (progress * 2 - 1) * GUNSHIP_PLATFORM.driftCells * cellSide);
+      basis.makeBasis(t2, n3, t1); platform.quaternion.setFromRotationMatrix(basis);
+    },
+    platformObject: () => platform,
     loaded: () => !!model,
     pose({ pitch = 0, gun = 'rotary', firing = null, dt = 0 }) {
       if (!model) return;
