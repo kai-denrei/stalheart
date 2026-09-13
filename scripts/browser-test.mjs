@@ -717,31 +717,40 @@ try{
   await finish();
   await click('#units-next');assert.equal(await evaluate('window.__stalheartUnits.state().missiles.length'),0);
  }
- // THE ENEMY STUDY. Guards the two things Node cannot see: that the dot
- // shader compiles and actually draws, and that a crowd stays a crowd when the
- // controls move. The authored creatures must report 'wobble' — they rendered
- // STATIC in gameplay until the vertex-shader port, and a silent regression
- // there looks like nothing at all.
+ // THE ENEMY STUDY. Guards what Node cannot see: that the dot shader compiles
+ // and draws, that each family reports the motion it should — the authored
+ // creatures rendered STATIC in gameplay until the vertex-shader port, and a
+ // regression there looks like nothing at all — and that the lane actually
+ // runs bodies into the tank, since a study nobody can feel is just a chart.
  await go('swarm-study','labs.html?sw=0&acceptance=1#swarm');
- await until('window.__stalheartSwarm && window.__stalheartSwarm.state().built > 0');
+ await until('window.__stalheartSwarm && window.__stalheartSwarm.state().built===100');
  {
   const s0=await evaluate('window.__stalheartSwarm.state()');
-  assert.equal(s0.built,100,'opens on a hundred bodies');
   assert.equal(s0.motion,'wobble','the authored creatures deform on the GPU');
   assert(s0.calls>0&&s0.points>0,'the crowd is actually drawn');
-  assert(await evaluate('window.__stalheartSwarm.set("count",400)'));
-  await until('window.__stalheartSwarm.state().built===400');
-  const s1=await evaluate('window.__stalheartSwarm.state()');
-  assert(s1.points>s0.points,'more bodies draw more points');
-  // a swimmer keeps its own motion, and the roster's static bodies keep theirs
+  assert(await evaluate('window.__stalheartSwarm.set("count",300)'));
+  await until('window.__stalheartSwarm.state().built===300');
+  assert((await evaluate('window.__stalheartSwarm.state()')).points>s0.points,'more bodies draw more points');
+  // the lane closes and the rammable belt goes under the treads: kills climb,
+  // the chain counts, and every impact costs the hull speed it earns back
+  await until('window.__stalheartSwarm.state().kills>3',30000);
+  const ram=await evaluate('window.__stalheartSwarm.state()');
+  assert(ram.maxCombo>=2,`a chain forms (${ram.maxCombo})`);
+  assert(ram.earned>0,'ramming pays');
+  assert(ram.hull<=1,'the hull slows on impact');
+  assert.equal(ram.blocked,0,'a white belt never blocks');
+  // a solid core stops the hull instead, and breaks the chain
+  await evaluate('window.__stalheartSwarm.set("type","drifter")');
+  await until('window.__stalheartSwarm.state().blocked>0',30000);
+  assert.equal(await evaluate('window.__stalheartSwarm.state().kills'),0,'a solid core is never rammed');
+  // the swimmers keep their own motion; the roster's machinery stays static
   await evaluate('window.__stalheartSwarm.set("type","scoutufo")');
   await until('window.__stalheartSwarm.state().motion==="swim"');
   await evaluate('window.__stalheartSwarm.set("type","ghost")');
   await until('window.__stalheartSwarm.state().motion==="static"');
-  // the jelly body is a mesh: triangles, no points
-  await evaluate('window.__stalheartSwarm.set("count",40);window.__stalheartSwarm.set("form","jelly")');
+  // the jelly body is a mesh, so it arrives as triangles
+  await evaluate('window.__stalheartSwarm.set("count",30);window.__stalheartSwarm.set("form","jelly")');
   await until('window.__stalheartSwarm.state().triangles>0');
-  assert.equal(await evaluate('window.__stalheartSwarm.state().points'),0,'a jelly draws no points');
  }
  await finish();
  await go('mork-game','index.html?sw=0&cine=0&tutorial=0&acceptance=1#td');

@@ -91,3 +91,9 @@
   letter-spacing:.4px;border-radius:2px;pointer-events:none;font-variant-numeric:tabular-nums}
 #swarm .sw-read b{color:#7fe6d0}
 @media (max-width:760px){#swarm{flex-direction:column}#swarm .sw-side{width:auto;flex:0 0 auto;border-right:0;border-bottom:1px solid #1d2630}}
+
+#swarm .sw-hud{position:absolute;right:12px;top:12px;padding:7px 12px;border:1px solid #23303c;
+  background:rgba(6,9,12,.82);color:#cfe2ec;font:12px/1.5 ui-monospace,Menlo,monospace;
+  letter-spacing:1px;border-radius:2px;pointer-events:none;font-variant-numeric:tabular-nums;text-transform:uppercase}
+#swarm .sw-hud .hot{color:#ffb43d;font-weight:700}
+#swarm .sw-hud .bad{color:#ff6b5e}
