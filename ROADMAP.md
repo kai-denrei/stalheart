@@ -305,7 +305,7 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 11 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 12 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
 
 ### Still open after the story-opening playtest: the breach freeze, the Rotor's sound by ear, Rotor shots into the wall, and ISAO-Birudorōn's review
 
@@ -330,6 +330,12 @@ Stålheart's runtime LODs are pinned at c827eda and verified in the story lab an
 `2026-09-14-mork-low-as-default` · decision · **proposed**
 
 LOW is pinned at 771e166 and verified as a drop-in for src/mork.js by tests, by a real render and against the packed release (see 2026-09-14-mork-tiers-pinned-for-review). ASSETS.md requires a visual and animation acceptance pass before a pinned revision becomes what ships, and the owner's upstream candidates are marked pending game-camera and reference-phone review.
+
+### Skip-to markers beside the build tag: GUNSHIP opens the seat on station with a breach and enemies up; the pass runs over the approach and the seat settles its aim after the platform takes its track
+
+`2026-09-14-story-skip-markers-and-gunship-test-route` · change · **observed**
+
+Owner asked where to test the gunship and for skip-to-scene markers next to the [dev] tag (rotor, quiver, study, gunship) so a beat can be tested without playing up to it, with a way to raise more enemies. Only the gunship needed to be reliable now.
 
 ### Open after the gunship mount: untuned guns, unmeasured horde cost, herding unverified, no seat on the practice map, and the story-world Rotor-kill acceptance step fails on main
 

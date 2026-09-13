@@ -223,6 +223,21 @@ Evidence:
 - scripts/browser-test.mjs case notes-roadmap asserts the Now table renders, the contents rail builds, the generated open block reached the page, both documents fetched, and that the devlog filter narrows without emptying.
 - npm test, npm run check, npm run build, npm run test:browser and node scripts/browser-test.mjs --dist all pass; notes-roadmap passes against the release too, which is what proves the build allowlist change.
 
+## 2026-09-14 — Skip-to markers beside the build tag: GUNSHIP opens the seat on station with a breach and enemies up; the pass runs over the approach and the seat settles its aim after the platform takes its track
+
+change · observed · 2026-09-14-story-skip-markers-and-gunship-test-route
+
+Owner asked where to test the gunship and for skip-to-scene markers next to the [dev] tag (rotor, quiver, study, gunship) so a beat can be tested without playing up to it, with a way to raise more enemies. Only the gunship needed to be reliable now.
+
+src/fx/story-skips.js is a DOM-only panel mounted by src/main.js on the story route and in the story lab: ROTOR (the opening, wired), QUIVER and STUDY (listed, disabled, not wired), GUNSHIP (wired), a count field and a + button. A wired marker is a plain link with switches; the gunship one carries acceptance=1, gunship=station and skip=gunship, and the panel finishes the skip through the acceptance hooks once the base is up: spawnFodder(n) opens the story breach on the lane outside the gate if none is live and raises n phage from it (emergence only advances from a real breach: 48 enemies queued against a stand-in source stayed in the emerging state and never drew), then mountGunship() takes the seat. The pass now runs over the approach: the platform's track is centred halfway from the heart to where the enemies come from (the live breach, else the lane outside the gate, else the lane end; one gunshipLane rule in td-tab), altitude 12 cells with pitch limits -1.5..-0.7 so every aim lands on the planet (at 16 cells the horizon dipped below the shallow limit and the ray missed). The gunner's eye sits 0.35 cells under the platform origin, with the muzzles, instead of inside the hull. The seat's yaw is settled again on the first tick after mounting because the platform's frame can swing when the breach opens; computed one tick early it pointed away from the swarm (probe: aim cell 55003 against breach cell 28480, enemies 25 to 28 cells from the aim). The optic opens at 2x. td-tab.js stays at 17600 lines.
+
+Alternatives: Seeking the story beats for QUIVER and STUDY: not done now; those markers are listed and disabled so the panel is the roadmap of what a session can jump to.; Raising enemies at the lane end: rejected, they were out of the optic's reach and radar; they now rise from a breach outside the gate.
+
+Evidence:
+
+- node scripts/browser-test.mjs --gunship (source and --dist): gunship-skip-enemies passes: the seat is taken by the skip, enemies >= 10 after the wait, the marker is active, the + button raises more; artifacts/browser/gunship-skip-enemies.png shows the swarm white-hot under the rings with the radar contact ahead.
+- npm test 102 programs, npm run check, npm run build pass; --story lab scenarios pass with the panel mounted.
+
 ## 2026-09-14 — The lane is driveable and shouts like the game; a run is a fixed population that scores itself against the 60fps line
 
 change · accepted · 2026-09-13-swarm-runs-and-shout-layer
