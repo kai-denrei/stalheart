@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-09-13-swarm-simulation-headroom",
+  "date": "2026-09-13T20:00:00+00:00",
+  "type": "experiment",
+  "status": "accepted",
+  "title": "Swarm headroom: 505 concurrent enemies hold 60 fps in the real game, and the static board costs more than the crowd",
+  "context": "Rendering cost was measured first and found not to be the limit. The remaining unknown was simulation at swarm counts: pathing, collision, hit detection, the hard-core proximity sensor and slow-field tower linking. The owner asked for a harness with an unkillable tank and a wave slider before deciding enemy type and rendering.",
+  "outcome": "No harness was written: the instrument already existed. src/lab.js provides immortalTank, immortalHeart, freezeEnemies, holdWaves and a waveMult slider (1 to 20), switched on with ?lab=1 and driven by ?labwave=N, and labLine already emits fps, frame ms, gpu ms, draw calls, triangles, points and enemy count on one greppable line; ?stress=T:W queues a crowd and ?perf=N reports draw calls. Measured headless on an M4 at 1440x900 with index.html?lab=1&labwave=20&stress=0:4000, waves 4 to 7: frame time stayed 16.7 ms and 60 fps throughout, never dropping a frame, at a peak of 505 concurrent enemies. GPU time was 6.8 to 8.3 ms and did not track population: 7.3 ms at 12 enemies and 7.4 ms at 504. Draw calls ran 1120 to 1976 and points to 272k. The decisive finding is that the static board dominates: with one enemy alive the scene is already 1120 draw calls and 375,000 triangles, so enemies contribute roughly 250 to 800 calls on top and the base, towers and postfx are the larger cost. Concurrency could not be pushed past about 505 because waveMult caps at 20 and enemies are consumed by towers and the Heart as fast as they spawn, so the population reaches equilibrium rather than accumulating; the true ceiling is above 500 and was not found. Note that the 5,334 bodies recorded at wave 75 in docs/STATE.md are scheduled across a wave, not concurrent, and concurrency is what costs.",
+  "alternatives": [
+    "Write a new stress module with invulnerability and a live wave control: rejected, src/lab.js already provides all of it and src/td-tab.js has one line of budget headroom (17608 of 17609), so adding to it would fail the architecture guard.",
+    "Use freezeEnemies to accumulate a larger crowd: rejected for this question, freezing skips updateEnemies and so removes the simulation cost being measured."
+  ],
+  "evidence": [
+    "Headless Chrome via scripts/chrome-proc.mjs against scripts/serve.mjs, ~280 s run, LAB telemetry lines captured from the console.",
+    "Combined with 2026-09-13-enemy-render-cost-measured: rendering is free at 2000 units and simulation is free at 500 concurrent, so enemy representation is now an aesthetic decision rather than a performance-constrained one.",
+    "Not measured: concurrency above about 505, and weaker devices than an M4. The stock harness cannot force accumulation while enemies remain mortal."
+  ],
+  "supersedes": []
+}
