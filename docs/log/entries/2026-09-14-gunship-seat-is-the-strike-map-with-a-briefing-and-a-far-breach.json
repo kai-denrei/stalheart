@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-gunship-seat-is-the-strike-map-with-a-briefing-and-a-far-breach",
+  "date": "2026-09-14T05:00:00+00:00",
+  "type": "decision",
+  "status": "accepted",
+  "title": "The gunship seat is the orbital strike's own map view in its surveillance look, aimed with the pointer; a skippable wireframe briefing precedes the first seat; the test breach opens a minute's walk out",
+  "context": "Owner's second playtest ruling (2026-09-14 00:07): the view the gunship should use already exists, the orbital strike's white map (screenshot: the story planet as a white wireframe with the swarm as dots and a red range readout); the breach must appear much further from the base, a minute's walk, the other side of the map if need be, to leave time to enjoy the action; and the gunship should be introduced with a skippable wireframe 360 briefing of the airframe, its weapons, ammunition and capabilities.",
+  "outcome": "The seat now opens in the map view (the orbit view the strike paints its target on) with the munition feed's grayscale/contrast canvas filter under a `gunship-seat` class on the tab root; the KORP PoV is gone, V shows the ship in third person and M returns to the map. On the map the pointer is the aim: the cell under it (cellAtScreen) is the impact, the rings and the readout follow it (RANGE in metres from the platform), a click or Space is the trigger, no pointer lock; the heavy paints the pointed cell while armed and launches on the trigger. Enemies for the skip rise from a breach on the open cell about 69 hops from the heart (60 s at the phage's 1.15 cells/s) nearest the lane end, or the farthest reachable cell on a smaller planet (gunshipFar in td-tab, one BFS per breach). src/fx/gunship-briefing.js is a modal with its own small renderer: the pinned KORP as a wireframe turning slowly over a grid, engines tilting, six pages (airframe, orbit and fuel, 25 mm, 40 mm, 105 mm as the strike, the gunner's role), SPACE/click/NEXT to advance, SKIP, Escape; the game is paused under it; once per browser (stalheart:v1:gunship-briefing); the seat is taken when it closes if the platform is still overhead. brief=0 on the skip URL skips it for acceptance. td-tab.js stays at 17558 lines.",
+  "alternatives": [
+    "A separate white shader for the seat: rejected, the strike's canvas filter already is the look and costs compositing only.",
+    "Keeping the PoV as the default with the map as an option: rejected by the owner's ruling; the map is the view.",
+    "Placing the story's own gunship breach: not done, the far breach is the skip's; where the encounter's breach opens in the story is the beats' call when the encounter is written."
+  ],
+  "evidence": [
+    "node scripts/browser-test.mjs --gunship: gunship-briefing (the first seat opens the briefing with the game paused; skipping takes the seat), gunship-map-rotary, gunship-map-heavy, gunship-third, gunship-rotary-fired, gunship-skip-enemies (72 enemies rising at the far east edge of the map, 60 fps in the map view) pass; screenshots under artifacts/browser/.",
+    "npm test 102 programs; npm run check; npm run build."
+  ],
+  "supersedes": []
+}

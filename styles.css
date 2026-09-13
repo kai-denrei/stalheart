@@ -2577,7 +2577,8 @@ body.playing:not(.chrome-open) #tabbar { display: none !important; }
    filter on the WebGL canvas (compositing-cost only), a green ops HUD, and
    the range counter in red. pointer-events: none throughout — the tap that
    skips must reach the canvas underneath. */
-#tab-td.striking #td-app canvas {
+#tab-td.striking #td-app canvas,
+#tab-td.gunship-seat #td-app canvas {   /* the gunship's seat is the same surveillance look as the munition feed (owner, 2026-09-14) */
   filter: grayscale(1) contrast(1.3) brightness(1.12);
 }
 /* !important because three.js setSize writes `display: block` INLINE on its
@@ -4537,6 +4538,22 @@ body.chrome-open #story-stages-nav { display: flex; }
 #story-scope .meter i { display: block; height: 100%; width: 0; background: var(--cyan); transition: width .18s linear; }
 /* ISAO's study: the SYNTHETIC LEARNING x58 terminal as a modal */
 #synthetic-modal[hidden] { display: none; }
+#gunship-briefing[hidden] { display: none; }
+#gunship-briefing { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.84); font-family: ui-monospace, Menlo, monospace; }
+#gunship-briefing .sheet { width: min(1040px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; background: #07141a; border: 1px solid #2b6b96; padding: 14px 18px 12px; box-shadow: 0 0 40px rgba(95, 230, 214, 0.12); }
+#gunship-briefing header { border-bottom: 1px solid #1f4a5e; padding-bottom: 6px; margin-bottom: 10px; }
+#gunship-briefing h1 { margin: 0; color: #5fe6d6; font-size: 14px; letter-spacing: 2px; text-shadow: 0 0 6px rgba(95, 230, 214, 0.4); }
+#gunship-briefing .sub { margin: 4px 0 0; color: #6fa8c8; font-size: 10px; letter-spacing: 1px; }
+#gunship-briefing .body { display: grid; grid-template-columns: 3fr 2fr; gap: 14px; align-items: stretch; }
+#gunship-briefing canvas { width: 100%; aspect-ratio: 3 / 2; display: block; background: #0b1e26; border: 1px solid #1f4a5e; cursor: pointer; }
+#gunship-briefing .text h2 { margin: 6px 0 10px; color: #ffd48a; font-size: 13px; letter-spacing: .18em; }
+#gunship-briefing .text ul { margin: 0; padding: 0 0 0 14px; color: #dff4ff; font-size: 13px; line-height: 1.6; }
+#gunship-briefing .dots { margin-top: 12px; display: flex; gap: 6px; }
+#gunship-briefing .dots i { width: 18px; height: 3px; background: #1f4a5e; }
+#gunship-briefing .dots i.on { background: #5fe6d6; }
+#gunship-briefing footer { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; color: #6fa8c8; font-size: 10px; letter-spacing: 1px; }
+#gunship-briefing footer button { font: 700 12px ui-monospace, Menlo, monospace; letter-spacing: .12em; color: #5fe6d6; background: #07141a; border: 1px solid #5fe6d6; padding: 7px 14px; cursor: pointer; }
+@media (max-width: 720px) { #gunship-briefing .body { grid-template-columns: 1fr; } }
 #synthetic-modal { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.82); font-family: 'Courier New', ui-monospace, monospace; color: #aaa; }
 #synthetic-modal .sheet { width: min(980px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; background: #000; border: 1px solid #444; padding: 14px 18px 12px; box-shadow: 0 0 40px rgba(0, 255, 65, 0.08); }
 #synthetic-modal header { border-bottom: 1px solid #444; padding-bottom: 6px; margin-bottom: 10px; }

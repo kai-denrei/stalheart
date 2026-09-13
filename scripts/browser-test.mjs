@@ -283,12 +283,14 @@ try{
  await finish();
  await go('gunship-on-station','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=6&gunship=station#td');
  await until('!!window.__stalheartTest && (window.__stalheartTest.state().storyLod||[]).some(l=>l.id==="stalheart")',90000);await delay(1500);
- {assert(await evaluate('window.__stalheartTest.mountGunship()'),'on station the seat is taken');await delay(1200);
+ {assert.equal(await evaluate('window.__stalheartTest.mountGunship()'),false,'the first seat opens the briefing, not the guns');assert(await evaluate('window.__stalheartTest.state().gunship.briefing'),'the briefing is open');assert(await evaluate('window.__stalheartTest.state().paused'),'the game waits under it');
+  await delay(1500);current='gunship-briefing';await finish();await evaluate('document.querySelector("#gunship-briefing [data-next]").click()');await delay(300);await evaluate('document.querySelector("#gunship-briefing [data-skip]").click()');await delay(1200);
+  assert(await evaluate('window.__stalheartTest.state().gunship.seat'),'skipping the briefing takes the seat');
   const s=await evaluate('window.__stalheartTest.state().gunship');assert(s.mounted&&s.seat&&s.optic,`thermal optic live ${JSON.stringify(s)}`);
   assert.equal(await evaluate('document.querySelector("#story-monitor .head").textContent'),'GROUND TRUTH · IMPACT','the monitor shows the impact point');
   assert(/IN BLAST/.test(await evaluate('document.querySelector("#sentry-pilot output").textContent')),'the danger readout is written');
-  current='gunship-thermal-rotary';await finish();
-  await evaluate('window.__stalheartTest.gunshipGun("heavy")');await delay(400);current='gunship-thermal-heavy';await finish();
+  current='gunship-map-rotary';await finish();
+  await evaluate('window.__stalheartTest.gunshipGun("heavy")');await delay(400);current='gunship-map-heavy';await finish();
   await send('Input.dispatchKeyEvent',{type:'keyDown',key:'v',code:'KeyV'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'v',code:'KeyV'});await delay(600);current='gunship-third';await finish();
   // no input reaches the clock: the pass keeps counting out while the gunner sits
   const a=await evaluate('window.__stalheartTest.state().gunship.left');await delay(1200);const b=await evaluate('window.__stalheartTest.state().gunship.left');assert(b<a,'the pass counts out under the gunner');
@@ -296,7 +298,7 @@ try{
   await evaluate('window.__stalheartTest.gunshipGun("rotary")');await evaluate('window.__stalheartTest.gunshipHold(true)');await delay(700);await evaluate('window.__stalheartTest.gunshipHold(false)');
   current='gunship-rotary-fired';await finish();}
  // THE SKIP MARKER: the panel beside the build tag opens the seat by itself and raises enemies, which then read hot in the thermal optic
- await go('gunship-skip','index.html?sw=0&cine=0&world=story&stage=6&acceptance=1&gunship=station&skip=gunship&enemies=24#td');
+ await go('gunship-skip','index.html?sw=0&cine=0&world=story&stage=6&acceptance=1&gunship=station&skip=gunship&enemies=24&brief=0#td');
  await until('!!window.__stalheartTest && window.__stalheartTest.state().gunship.seat',120000);await delay(9000);
  {const s=await evaluate('window.__stalheartTest.state()');assert(s.gunship.seat&&s.gunship.optic,'the skip took the seat');assert(s.performance.enemies>=10,`enemies raised by the skip (${s.performance.enemies})`);
   assert(await evaluate('document.querySelector("#story-skips [data-skip=gunship]").classList.contains("active")'),'the marker shows where we are');

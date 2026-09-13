@@ -30,7 +30,7 @@ export function createStorySkips(root, { navigate, query, poll = 250 }) {
   const finish = () => {
     const h = hooks();
     if (!h || !(h.state?.().storyLod || []).some((l) => l.id === 'stalheart')) { if (tries++ < 600) setTimeout(finish, poll); return; }
-    if (skip === 'gunship') { setTimeout(() => { if (enemies) h.spawnFodder?.(enemies); h.mountGunship?.(); nav.querySelector('[data-skip="gunship"]').classList.add('active'); }, 800);
+    if (skip === 'gunship') { setTimeout(() => { if (enemies) h.spawnFodder?.(enemies); h.mountGunship?.(); nav.querySelector('[data-skip="gunship"]').classList.add('active'); if (query.get('brief') === '0') document.querySelector('#gunship-briefing [data-skip]')?.click(); }, 800);   // brief=0 skips the briefing straight into the seat
       // continuous waves while the platform is overhead: another batch whenever the field thins below twice the count
       setInterval(() => { const g = hooks(), s = g?.state?.(); if (s?.gunship?.station && (s.performance?.enemies ?? 0) < count() * 2) g.spawnFodder?.(count()); }, 6000); }
   };
