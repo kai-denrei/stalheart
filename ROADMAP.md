@@ -100,6 +100,21 @@ looked at that yet.
 A 16× win on paper (1,092 calls → 1) that is currently saving 1.5 ms nothing is
 short of. Worth doing when a weaker device says so, not before.
 
+### The autopilot is steering, and half of it is already pure
+
+AUTO carries six directives — `wander` / `avoid` / `ram` / `conserve` / `home`
+/ `portal` — and the firing half is already a pure module (`src/autofire.js`,
+"rules, not effects"). The steering half is not: the goal vectors and the
+solid-tier flee vector live inline in `src/td-tab.js` around line 3055.
+
+That asymmetry is the next obvious extraction, and it is the rare one that
+*helps* the ratchet: `td-tab.js` sits at 17,608 against a 17,609 budget that
+can only go down, so moving ~60 lines of pure vector rules into
+`src/domain/autopilot.js` pays the budget rather than spending it. It also
+makes the gunship's GET TO SAFETY beat a call rather than a copy.
+
+Not urgent. Worth doing the next time anything touches auto mode.
+
 ## Question
 
 - **Does the shader wobble read well on the phage?** It deforms now; whether it

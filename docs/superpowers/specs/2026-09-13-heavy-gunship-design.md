@@ -160,9 +160,16 @@ Pure-module coverage that must exist:
 
 ## 8. Out of scope
 
-- The resupply / escort mission (tank out of ammo, crossing to fetch rockets,
-  tank AI that avoids hard cores). Its own spec, written after the guns have
-  been held and tuned.
+- The resupply / escort mission (tank out of ammo, crossing to fetch rockets).
+  Its own spec, written after the guns have been held and tuned.
+
+  **Correction, 2026-09-14.** An earlier draft of this line listed "tank AI
+  that avoids hard cores" as work. It is not: AUTO already carries the six
+  directives (`wander` / `avoid` / `ram` / `conserve` / `home` / `portal`,
+  `src/td-tab.js` `AUTO_OPTIONS`), and an operator ruling filed against
+  seek-home gives *every* directive except RAM and AVOID a proximity-weighted
+  flee vector away from the solid tier. The escort mission — and the gunship's
+  own GET TO SAFETY beat — set a directive; they do not need a new autopilot.
 - Any change to `strike.js` numbers or rules.
 - The VTOL landing and any fuel economy.
 - The half-dotted enemy representation question.
