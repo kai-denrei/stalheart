@@ -221,6 +221,10 @@ try{
  // THE STÅLHEART CANDIDATES IN THE STORY LAB, through the same switch and mapping the game world uses. Checked in both
  // callers because they must agree on which files a review is looking at — that is the point of having one mapping.
  // A far tier only reports once its GLB has loaded, so a candidate that failed to load times out here instead of passing.
+ // THE ARRIVAL RECYCLED: stage 2 shows the AFR-01 and the SH02 cut into sections where the intact rocket stood, for the owner's art review
+ await go('story-lab-foundry','labs.html?sw=0&acceptance=1&stage=2#story');await until('window.__stalheartStoryTest?.state().ready',90000);await delay(1500);await evaluate('window.__stalheartStoryTest.overview()');await delay(1200);
+ {const s=await evaluate('window.__stalheartStoryTest.state()');assert(!(s.base?.errors||[]).length,'the foundry tiers load without error');}
+ await finish();
  await go('story-lab-candidate','labs.html?sw=0&acceptance=1&stage=6&landmarks=candidate#story');
  await until('(window.__stalheartStoryTest?.state().base?.lod||[]).some(l=>l.id==="stalheart")',90000);
  {const s=await evaluate('window.__stalheartStoryTest.state()'),st=s.base.lod.find(l=>l.id==='stalheart');
@@ -252,12 +256,12 @@ try{
  await evaluate('window.__stalheartStoryTest.skip()');await delay(300);const done=await evaluate('window.__stalheartStoryTest.state()');
  assert.equal(done.phase,'done');assert.equal(done.landing.isao.visible,true);assert.equal(done.landing.face,'glee');current='story-isao-out';await finish();
  await evaluate('window.__stalheartStoryTest.setStage(8)');await evaluate('window.__stalheartStoryTest.baseReady()');await delay(2500);
- const base=await evaluate('window.__stalheartStoryTest.state()');assert.equal(base.stage,8);assert.deepEqual(base.base.errors,[]);assert.equal(base.base.islands,7);assert.equal(base.base.walls,12);assert(base.base.gate);assert.equal(base.base.structures,10,'ten landmarks at stage 8 in the lab (the landing scene owns the rocket; three earlier landings out past the clearing)');
+ const base=await evaluate('window.__stalheartStoryTest.state()');assert.equal(base.stage,8);assert.deepEqual(base.base.errors,[]);assert.equal(base.base.islands,7);assert.equal(base.base.walls,12);assert(base.base.gate);assert.equal(base.base.structures,12,'twelve landmarks at stage 8 in the lab (the foundry and the salvage layout stand where the rocket was; the landing scene owns the rocket; three earlier landings out past the clearing)');
  assert(base.playUrl.includes('story=8'),'play carries the stage');
  await evaluate('window.__stalheartStoryTest.reset()');await delay(300);current='story-stage-8';await finish();
  await evaluate('window.__stalheartStoryTest.overview()');await delay(400);current='story-stage-8-overview';await finish();
  // far tiers: from the overview every landmark with a far tier stands on it and the near tier was never fetched; framed close to the solar island the near tier loads and takes over
- const lodFar=await evaluate('window.__stalheartStoryTest.state().base.lod');assert.equal(lodFar.length,7,'seven landmarks carry a far tier');assert(lodFar.every((l)=>l.shown==='far'),'from the overview every landmark shows its far tier');
+ const lodFar=await evaluate('window.__stalheartStoryTest.state().base.lod');assert.equal(lodFar.length,9,'nine landmarks carry a far tier (the foundry and the salvage layout ship distance tiers)');assert(lodFar.every((l)=>l.shown==='far'),'from the overview every landmark shows its far tier');
  await evaluate("window.__stalheartStoryTest.frame({ pos: [0, 12, -30], look: [0, 4, 0], fov: 45 }, { x: 44, z: -60 })");await until('window.__stalheartStoryTest.state().base.lod.find((l)=>l.id==="solar").nearLoaded',60000);await delay(300);
  const lodNear=await evaluate('window.__stalheartStoryTest.state().base.lod');assert.equal(lodNear.find((l)=>l.id==='solar').shown,'near','close to the solar island its near tier shows');assert(lodNear.filter((l)=>!/rocket|wreck/.test(l.id)).every((l)=>l.nearLoaded),'within 150 m of the whole base every landmark near tier has been fetched');assert(lodNear.filter((l)=>/rocket|wreck/.test(l.id)).every((l)=>l.shown==='far'&&!l.nearLoaded),'the earlier landings out past the clearing stay far and unfetched');
  current='story-stage-8-solar-near';await finish();
@@ -266,7 +270,7 @@ try{
  assert.equal((await evaluate('window.__stalheartStoryTest.state()')).base.gate.present,true,'gate loaded with its clip');
  await evaluate('window.__stalheartStoryTest.gate(true)');await delay(2200);const opened=await evaluate('window.__stalheartStoryTest.state()');assert.equal(opened.base.gate.open,true,'gate opens');
  await evaluate('window.__stalheartStoryTest.gate(false)');await delay(2200);assert.equal((await evaluate('window.__stalheartStoryTest.state()')).base.gate.open,false,'gate closes');
- await evaluate('window.__stalheartStoryTest.setStage(1)');await evaluate('window.__stalheartStoryTest.baseReady()');await delay(300);const s1=await evaluate('window.__stalheartStoryTest.state()');assert.equal(s1.base.islands,0);assert.equal(s1.base.structures,3,'only the three earlier landings out past the clearing');
+ await evaluate('window.__stalheartStoryTest.setStage(1)');await evaluate('window.__stalheartStoryTest.baseReady()');await delay(300);const s1=await evaluate('window.__stalheartStoryTest.state()');assert.equal(s1.base.islands,0);assert.equal(s1.base.structures,5,'the three earlier landings out past the clearing, and the foundry and salvage layout loaded hidden for the beat');
  // the menu's arrival entry: ?land=1 opens straight on the cinematic
  await go('story-arrival-link','labs.html?sw=0&acceptance=1&land=1#story');await until('window.__stalheartStoryTest?.state().ready',90000);await delay(1200);
  const auto=await evaluate('window.__stalheartStoryTest.state()');assert(auto.playing&&auto.t>0.5,'the cinematic plays on load');assert(await evaluate('!!document.querySelector("#story-hud a.story-back")'),'a way back to the game');
@@ -347,7 +351,7 @@ try{
  assert.equal(await evaluate('document.querySelector("#td-intro").classList.contains("hidden")'),true,'no field manual in the story world');
  await finish();
  await until('window.__stalheartTest.state().towers===1',90000);const printed=await evaluate('window.__stalheartTest.state()');
- assert.equal(printed.towers,1,'Isao printed the Rotor');assert.equal(printed.wallCount,one.wallCount,'the socket is floor, not rock');assert.equal(printed.queued,0);
+ assert.equal(printed.towers,1,'Isao printed the Rotor');assert(printed.story.foundry&&printed.story.foundry.barrels>=1,`the Rotor was paid for by the foundry's first barrel (${JSON.stringify(printed.story.foundry)})`);assert.equal(printed.wallCount,one.wallCount,'the socket is floor, not rock');assert.equal(printed.queued,0);
  await delay(1500);current='story-world-rotor';await finish();
  try{await until('!!window.__stalheartPilotTest',30000);}catch(e){console.log('STORY BEATS',JSON.stringify(await evaluate('(s=>({story:s.story,towers:s.towerCells,biomass:s.biomass}))(window.__stalheartTest.state())')));throw e;}await delay(500);const took=await evaluate('window.__stalheartPilotTest.state()');
  assert.equal(took.key,'rotor','control taken of the printed Rotor');assert.equal(took.posts.length,1);assert.deepEqual(printed.towerCells,[['rotor',took.ci]],'the only tower is the one under control');

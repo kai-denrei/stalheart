@@ -2,6 +2,7 @@
 // a small API and calls tick with the sim delta; the beats decide what
 // happens next.
 //   landed        Isao out: "rough landing", then "so much to build"
+//   foundry       (with a foundry tune) Isao deploys the AFR-01; the arm cuts the SH02; the first barrel is the Rotor's feedstock
 //   printing      Isao prints the Rotor on the wall beside the tunnel mouth
 //   rotor-ready   the sentry stands
 //   tremor        a contact on the radar, far out (gated worlds only)
@@ -17,13 +18,16 @@
 //   study         Isao's screen, retitled: Preliminary Alien Vibration Language Analysis
 //   expedition    the screen closed: Isao sends the tank for material at the other rocket landing sites, the planet pulled back
 //                 and the sites marked on the radar
+import { makeFoundry, deployFoundry, stepFoundry, foundryState } from './foundry.js';
 export function makeStoryBeats({
-  socket, lane = -1, fodder = -1, gate = -1, rotorDelay = 2, key = 'rotor',
+  socket, foundry = null, lane = -1, fodder = -1, gate = -1, rotorDelay = 2, key = 'rotor',
   fodderType = 'phage', fodderEvery = 2.5, fodderAlive = 8, fodderTotal = 20, fodderEmerge = null,
   controlDelay = 1.5, tremorDelay = 1.5, breachDelay = 4, overrideDelay = 2.5,
   faceDelays = [0.6, 4], commsKills = 5, harvestKills = 10, quiverSocket = -1, quiver = null,
 }) {
   const gated = gate >= 0 && fodder >= 0;
+  // THE FOUNDRY PAYS (owner, 2026-09-14): with a foundry tune the grants are barrels of feedstock cut from the rocket, not conjured
+  const fd = foundry ? makeFoundry(foundry) : null;
   let quiverOrdered = false;
   let phase = 'landed', clock = 0, orderedAt = null, readyAt = null, spawned = 0, nextSpawn = 0, at = 0, faces = 0, said = new Set(), hardcores = 0;
   const enter = (p) => { phase = p; at = clock; };
@@ -38,7 +42,10 @@ export function makeStoryBeats({
       // Isao's two faces play over the landing, whatever else is happening: the angry one the moment he is out of the hatch
       if (faces === 0 && clock >= faceDelays[0] && api.isao()) { api.brief?.('rough_landing'); faces = 1; }
       else if (faces === 1 && clock >= faceDelays[1]) { api.brief?.('so_much_to_build'); faces = 2; }
-      if (phase === 'landed' && clock >= rotorDelay) {
+      if (fd) for (const e of stepFoundry(fd, dt, foundry)) { api.foundry?.(typeof e === 'string' ? e : e.ev, typeof e === 'string' ? null : e); if (e === 'barrel') api.grant(foundry.feedstockPerBarrel); }
+      if (phase === 'landed' && fd && faces === 2 && clock >= rotorDelay) { api.foundry?.(deployFoundry(fd), null); enter('foundry'); }
+      else if (phase === 'foundry' && fd.barrels >= 1) { if (api.order(key, socket)) { enter('printing'); orderedAt = clock; } }
+      else if (phase === 'landed' && !fd && clock >= rotorDelay) {
         api.grant(api.cost(key));
         if (api.order(key, socket)) { enter('printing'); orderedAt = clock; }
       } else if (phase === 'printing' && api.built(socket)) { enter('rotor-ready'); readyAt = clock; }
@@ -56,7 +63,7 @@ export function makeStoryBeats({
         if (kills >= harvestKills && !said.has('harvest_biomass')) { api.brief?.('harvest_biomass'); said.add('harvest_biomass'); }
         if (spawned >= fodderTotal && api.enemies() === 0) { api.brief?.('wave_cleared'); api.unlock?.('views'); said.add('wave_cleared'); enter('cleared'); }
       } else if (phase === 'cleared' && quiver && quiverSocket >= 0 && gated && clock - at >= quiver.delay) {
-        if (!quiverOrdered) { api.brief?.('quiver_intro'); api.grant(api.cost(quiver.key)); quiverOrdered = !!api.order(quiver.key, quiverSocket); }
+        if (!quiverOrdered) { api.brief?.('quiver_intro'); if (!fd) api.grant(api.cost(quiver.key)); quiverOrdered = !!api.order(quiver.key, quiverSocket); }
         if (api.built(quiverSocket)) {   // straight off the Rotor into the Quiver, the optic on the lane as the hard core rises
           if (api.sourceAlive && !api.sourceAlive()) api.breach?.(fodder);   // a strike may have filled the sinkhole: the hard cores need it open
           api.spawn(quiver.hardcore, fodder); hardcores = 1; api.brief?.('quiver_override'); api.pilot?.(quiverSocket, lane); enter('quiver-piloting'); nextSpawn = clock + quiver.secondDelay;
@@ -69,6 +76,6 @@ export function makeStoryBeats({
       else if (phase === 'study-talk' && clock - at >= 0.5 && !api.briefing?.()) { api.screen?.('synthetic'); enter('study'); }   // the lines run out (or were seen before), then the screen
       else if (phase === 'study' && !api.screenOpen?.()) { api.brief?.('rocket_sites'); api.sites?.(); api.planetView?.(); said.add('rocket_sites'); enter('expedition'); }
     },
-    state: () => ({ phase, clock: +clock.toFixed(2), socket, orderedAt, readyAt, spawned, gated, said: [...said], hardcores }),
+    state: () => ({ phase, clock: +clock.toFixed(2), socket, orderedAt, readyAt, spawned, gated, said: [...said], hardcores, foundry: fd ? foundryState(fd) : null }),
   };
 }

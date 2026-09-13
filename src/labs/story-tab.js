@@ -90,7 +90,7 @@ export function initStoryTab(root) {
     base = createStoryBase(scene, { plan: planBase(planet, LAYOUT, stage), placer: { toWorld: (p) => new THREE.Vector3(...planet.frameToWorld(p)) }, metres: 1, kit: KIT, skip: ['sh02'], sfx });
     for (const b of stageBar.children) b.classList.toggle('on', Number(b.dataset.stage) === stage);
     stageLine.textContent = `Stage ${stage}: ${STAGES[stage].name}. Digits 0-8 change the stage; play opens the game at this stage.`;
-    landing?.setLanded(stage >= 1);
+    landing?.setLanded(stage === 1);   // the cinematic's intact rocket stands only at the landing; from stage 2 the base draws it cut into the salvage layout beside the foundry
   }
 
   function frameCamera(pose, about = null) {

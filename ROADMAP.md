@@ -305,7 +305,7 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 14 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 15 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
 
 ### Still open after the story-opening playtest: the breach freeze, the Rotor's sound by ear, Rotor shots into the wall, and ISAO-Birudorōn's review
 
@@ -330,6 +330,12 @@ Stålheart's runtime LODs are pinned at c827eda and verified in the story lab an
 `2026-09-14-mork-low-as-default` · decision · **proposed**
 
 LOW is pinned at 771e166 and verified as a drop-in for src/mork.js by tests, by a real render and against the packed release (see 2026-09-14-mork-tiers-pinned-for-review). ASSETS.md requires a visual and animation acceptance pass before a pinned revision becomes what ships, and the owner's upstream candidates are marked pending game-camera and reference-phone review.
+
+### The arrival recycled, first pass: the foundry beat between landed and printing, the SH02 cut into its salvage layout beside the AFR-01, barrels paying for the Rotor and the Quiver
+
+`2026-09-14-arrival-foundry-beat-landed` · change · **observed**
+
+Design agreed in 2026-09-14-arrival-foundry-recycles-the-sh02. Plan: docs/superpowers/plans/2026-09-14-arrival-foundry.md. Branch heavy-gunship, alongside the gunship work, while the owner playtests.
 
 ### First swarm-cost number under the gunship: 72 phage in view pulled the headless acceptance run to 28 fps
 

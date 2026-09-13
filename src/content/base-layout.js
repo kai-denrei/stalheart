@@ -29,7 +29,11 @@ export const ISLANDS = Object.freeze([
 // structures: asset, island they stand on, stage, model offset to centre the
 // authored origin on the plot, uniform scale, nodes to hide
 export const STRUCTURES = Object.freeze([
-  { id: 'sh02', asset: 'assets/models/story/sh_rocket.glb', island: 'landing', stage: 1, scale: 1.5, offset: [0, 0, 0], clips: ['Legs_Deploy', 'Top_Door_Open'], hold: true },
+  { id: 'sh02', asset: 'assets/models/story/sh_rocket.glb', island: 'landing', stage: 1, until: 2, scale: 1.5, offset: [0, 0, 0], clips: ['Legs_Deploy', 'Top_Door_Open'], hold: true },   // the intact rocket: from stage 2 it is the salvage layout below
+  // THE ARRIVAL RECYCLED (docs/superpowers/specs/2026-09-14-arrival-foundry-design.md): the AFR-01 seed foundry and the SH02 cut into
+  // four sections share the landing island's origin. Loaded at stage 1 but hidden until the foundry beat reveals them; shown outright from stage 2.
+  { id: 'foundry', asset: 'assets/models/story/afr_01_seed_foundry_d0_lod1.glb', far: 'assets/models/story/afr_01_seed_foundry_d0_lod2.glb', island: 'landing', stage: 1, shown: 2, scale: 1.5, offset: [0, 0, 0], pose: { Recycle_Panel_To_Barrel: 0, Foundry_Process_Cycle: 0 } },   // both clips held at 0 until the beat drives them
+  { id: 'sh02-salvage', asset: 'assets/models/story/sh02_salvage_layout_stage1_lod1.glb', far: 'assets/models/story/sh02_salvage_layout_stage1_lod2.glb', island: 'landing', stage: 1, shown: 2, scale: 1.5, offset: [0, 0, 0] },
   // far: the tier shown beyond KIT.lod.metres; the near tier is only fetched once the camera comes close. Authored tiers where the
   // owner exports them (solar: LOD1 game, LOD2 distance); elsewhere derived under assets/models/far by npm run tiers (a tenth of the triangles)
   { id: 'solar', asset: 'assets/models/astro/solar_power_complex_lod1_d0.glb', far: 'assets/models/astro/solar_power_complex_lod2_d0.glb', island: 'solar', stage: 3, scale: 1, offset: [0, 0, -1.6], batch: true },

@@ -55,6 +55,7 @@ export const nodeNamed = (root, name) => { let hit = null; root.traverse((o) => 
 export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [], sfx = null }) {
   const group = new THREE.Group(); group.name = 'Story base'; scene.add(group);
   const mixers = [], owned = new Set(), errors = [], bays = [], lod = [];
+  const records = new Map();   // every landmark by id, for the beats' hands (reveal, conceal, structure)
   const own = (root) => root.traverse((o) => { if (o.geometry) owned.add(o.geometry); for (const m of [o.material].flat().filter(Boolean)) owned.add(m); });
   // tilt (degrees about the local X, a wreck on its side) and lift (metres up, after the tilt) are for props that do not stand on their base
   const place = (obj, x, z, y, heading, scale = 1, tilt = 0, lift = 0) => {
@@ -115,10 +116,11 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     ...plan.structures.filter((s) => !skip.includes(s.id)).map((s) => load(s.far ?? s.asset).then((gltf) => {
       if (!gltf) return;
       const holder = new THREE.Group(); place(holder, s.x, s.z, s.y, s.heading, s.scale, s.tilt ?? 0, s.lift ?? 0); group.add(holder);
-      const root = mount(s, gltf, holder);
+      if (s.shown != null && plan.stage < s.shown) holder.visible = false;   // a structure a beat reveals before the stage that shows it outright
+      const root = mount(s, gltf, holder); records.set(s.id, s.far ? null : { holder, far: null, near: root });
       // the files each tier came from ride on the record: a review switch that quietly loaded the shipped tiers should
       // fail an assertion, and without them lod() could only say which tier is SHOWN, never which file it is
-      if (s.far) lod.push({ id: s.id, holder, far: root, near: null, loading: false, shown: 'far', files: { far: s.far, near: s.asset }, at: new THREE.Vector3().setFromMatrixPosition(holder.matrix) });
+      if (s.far) { const rec = { id: s.id, holder, far: root, near: null, loading: false, shown: 'far', files: { far: s.far, near: s.asset }, at: new THREE.Vector3().setFromMatrixPosition(holder.matrix) }; lod.push(rec); records.set(s.id, rec); }
       counts.structures++;
     }).catch((e) => errors.push(`${s.id}: ${e}`))),
   ]);
@@ -138,6 +140,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
           else a.play();
         }
         mixer.update(0); mixers.push(mixer);
+        root.userData.mixer = mixer; root.userData.actions = Object.fromEntries(gltf.animations.map((c) => [c.name, mixer.existingAction(c) ?? held[c.name] ?? null]).filter(([, a]) => a));   // a beat drives a landmark's clips by name
       }
       // the bays hand the game their parked hull (hidden once it has driven out), a one-shot door opening, and
       // for the bay with an authored roll-out its clip length and a scrub: the game's deploy drives the clock
@@ -172,6 +175,10 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       driveGate(dt);
     },
     gate: () => ({ present: !!gate.action, open: gate.open, want: gate.want, t: +gate.t.toFixed(2) }),
+    // a beat's hand on a landmark: show or hide it, or take its shown tier and clip actions
+    reveal: (id) => { const r = records.get(id); if (r) r.holder.visible = true; },
+    conceal: (id) => { const r = records.get(id); if (r) r.holder.visible = false; },
+    structure: (id) => { const r = records.get(id); return r ? { holder: r.holder, root: r.near ?? r.far, near: r.near, far: r.far } : null; },
     bays: () => bays,
     lod: () => lod.map((l) => ({ id: l.id, shown: l.shown, nearLoaded: !!l.near, files: l.files, metres: l.d === undefined ? null : +(l.d / metres).toFixed(0) })),
     dispose() { for (const m of mixers) m.stopAllAction(); gate.mixer?.stopAllAction(); for (const r of owned) r.dispose(); scene.remove(group); },

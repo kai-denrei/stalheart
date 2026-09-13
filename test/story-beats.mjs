@@ -90,3 +90,25 @@ const kinds = (g, k) => g.log.filter((l) => l[0] === k);
   assert.equal(attempts, 3, 'retries until the order is accepted');
 }
 console.log('Story beats: faces, Rotor print, tremor, breach, approach, override, control, capped fodder.');
+
+// THE FOUNDRY PAYS: with a foundry tune the Rotor is ordered only once the first barrel has landed, funded by that barrel and nothing conjured
+{
+  const tune = { deployDelay: 1, firstCycle: 4, cycleSeconds: 6, feedstockPerBarrel: 60, sections: ['A', 'B', 'C'], targets: ['tA', 'tB', 'tC'], events: { arcOn: 0.5, arcOff: 1, scrap: 2, barrel: 3 } };
+  const g = fakeGame({ printSeconds: 2 }); g.api.foundry = (ev, d) => { g.log.push(['foundry', ev, d?.section ?? null]); };
+  const beats = makeStoryBeats({ socket: 4242, lane: 4243, fodder: -1, gate: -1, rotorDelay: 2, faceDelays: [0.5, 1], foundry: tune });
+  run(beats, g, 2.5);
+  assert.equal(beats.state().phase, 'foundry', 'the foundry beat sits between landed and printing');
+  assert.deepEqual(kinds(g, 'order'), [], 'no order before the first barrel');
+  assert.deepEqual(kinds(g, 'grant'), [], 'nothing conjured');
+  assert.deepEqual(kinds(g, 'foundry').map((l) => l[1]), ['deploy'], 'the deploy went to the host');
+  run(beats, g, 5);
+  assert.deepEqual(kinds(g, 'grant'), [['grant', 60]], 'one barrel, one grant');
+  assert.equal(kinds(g, 'order').length, 1, 'the Rotor is ordered after the first barrel');
+  assert.deepEqual(kinds(g, 'foundry').map((l) => l[1]), ['deploy', 'cycle', 'arc-on', 'arc-off', 'scrap', 'barrel'], 'the cycle\'s cues reached the host in order');
+  assert.equal(kinds(g, 'foundry').find((l) => l[1] === 'scrap')[2], 'A', 'the first section named');
+  assert.equal(beats.state().foundry.barrels, 1);
+  run(beats, g, 20);
+  assert.equal(beats.state().foundry.phase, 'spent', 'three barrels and the rocket is spent');
+  assert.equal(kinds(g, 'grant').length, 3, 'three grants in all, one per barrel');
+}
+console.log('story-beats: the foundry pays');

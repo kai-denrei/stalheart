@@ -11,21 +11,24 @@ for (const a of ISLANDS) {
   for (const b of ISLANDS) if (a !== b) assert.ok(Math.abs(a.x - b.x) >= (a.w + b.w) / 2 + 4 || Math.abs(a.z - b.z) >= (a.d + b.d) / 2 + 4, `${a.id} overlaps ${b.id}`);
   if (!a.anchor) assert.ok(Math.hypot(Math.abs(a.x) + a.w / 2, Math.abs(a.z) + a.d / 2) < STORY_CLEARING.radiusMetres - 8, `${a.id} inside the clearing`);
 }
-// stages are monotonic: everything at stage n is still there at n + 1
+// stages are monotonic: everything at stage n is still there at n + 1, except a structure a later stage replaces (`until`: the
+// intact SH02 becomes the salvage layout at stage 2), which counts as still there
 let prev = planBase(planet, layout, 0);
 assert.equal(prev.islands.length, 0); assert.equal(prev.structures.length, 0); assert.equal(prev.walls.length, 0); assert.equal(prev.gate, null);
 for (let n = 1; n < STAGES.length; n++) {
   const plan = planBase(planet, layout, n);
-  for (const key of ['islands', 'structures', 'walls']) assert.ok(plan[key].length >= prev[key].length, `${key} keep growing at stage ${n}`);
+  const replaced = (m) => layout.structures.filter((s) => s.until != null && s.until <= m).length;
+  for (const key of ['islands', 'structures', 'walls']) assert.ok(plan[key].length + (key === 'structures' ? replaced(n) : 0) >= prev[key].length + (key === 'structures' ? replaced(n - 1) : 0), `${key} keep growing at stage ${n}`);
   prev = plan;
 }
 const one = planBase(planet, layout, 1);
-assert.deepEqual(one.structures.map((s) => s.id), ['sh02', 'rocket-a', 'rocket-b', 'wreck']); assert.equal(one.islands.length, 0, 'rocket lands on natural ground');
+assert.deepEqual(one.structures.map((s) => s.id), ['sh02', 'foundry', 'sh02-salvage', 'rocket-a', 'rocket-b', 'wreck']); assert.equal(one.islands.length, 0, 'rocket lands on natural ground');
+assert.deepEqual(planBase(planet, layout, 2).structures.map((s) => s.id).slice(0, 2), ['foundry', 'sh02-salvage'], 'from stage 2 the intact rocket is the salvage layout');
 // the earlier landings stand on open cells out past the clearing, the wreck on its side
-for (const s of one.structures.slice(1)) { assert.ok(s.cell >= 0 && planet.dungeon.tags[s.cell] !== BLOCKED && !planet.clearing.cells.has(s.cell), `${s.id} on open ground outside the clearing`); assert.equal(s.y, 0); }
+for (const s of one.structures.slice(3)) { assert.ok(s.cell >= 0 && planet.dungeon.tags[s.cell] !== BLOCKED && !planet.clearing.cells.has(s.cell), `${s.id} on open ground outside the clearing`); assert.equal(s.y, 0); }
 assert.equal(one.structures.find((s) => s.id === 'wreck').tilt, 92);
 const full = planBase(planet, layout, STAGES.length - 1);
-assert.equal(full.islands.length, ISLANDS.length); assert.equal(full.structures.length, STRUCTURES.length);
+assert.equal(full.islands.length, ISLANDS.length); assert.equal(full.structures.length, STRUCTURES.filter((s) => s.until == null || s.until > STAGES.length - 1).length, 'every structure but the replaced ones');
 for (const s of STRUCTURES) if (s.island) assert.ok(ISLANDS.some((i) => i.id === s.island), `${s.id} has an island`);
 assert.equal(full.walls.length, KIT.wallsPerSide * 2);
 // islands are tangent at their centre; on the real planet the corner sag stays under the 1.2 m skirt

@@ -155,6 +155,23 @@ Evidence:
 - scripts/browser-test.mjs units-tier-mork, units-tier-mork-low and units-tier-mork-proxy pass against source and the packed release with the pose frozen and per-tier triangle floors.
 - npm test, npm run check, npm run build, npm run test:browser and node scripts/browser-test.mjs --dist all pass; the release carries the yaw fix and ships PRACTICES.md, ROADMAP.md and DEVLOG.md byte-identical to source.
 
+## 2026-09-14 — The arrival recycled, first pass: the foundry beat between landed and printing, the SH02 cut into its salvage layout beside the AFR-01, barrels paying for the Rotor and the Quiver
+
+change · observed · 2026-09-14-arrival-foundry-beat-landed
+
+Design agreed in 2026-09-14-arrival-foundry-recycles-the-sh02. Plan: docs/superpowers/plans/2026-09-14-arrival-foundry.md. Branch heavy-gunship, alongside the gunship work, while the owner playtests.
+
+src/content/foundry.js (FOUNDRY_TUNE: deploy 1.5 s, first cycle 16 s as authored, later cycles every 24 s, 60 biomass a barrel, three sections tank/capsule/Isao module, the clip's cue times) and src/domain/foundry.js (makeFoundry, deployFoundry, stepFoundry emitting cycle, arc-on, arc-off, scrap, barrel, spent; test/foundry.mjs). story-beats gains a foundry option: with it the landed phase deploys the foundry once Isao's two lines have played, the beats step its clock every tick and forward events through api.foundry, each barrel grants feedstockPerBarrel, the Rotor is ordered only after the first barrel, and the Quiver order no longer conjures its cost; without the option the old path is untouched (test/story-beats.mjs). base-layout adds foundry and sh02-salvage on the landing island at stage 1 with shown: 2 (loaded hidden until the beat reveals them, shown outright from stage 2, far tiers pinned as authored) and gives the intact sh02 until: 2; planBase learns until and lifts whatever stands on a placed slab. story-base keeps every landmark by id with reveal, conceal and structure (holder, shown tier, clip actions by name). src/fx/foundry-fx.js turns the events into the swap with the foundry rising, the authored cycle clip then the process loop, a jittered cutter arc between SOCKET_CUTTER_TIP and the section's salvage target, the section shrinking away on scrap, and a placeholder barrel sliding from SOCKET_BARREL_FILL to a rack beside the foundry. td-tab folds storyApi.foundry (with Isao's foundry_deploy line), the fx tick and its reset on a world rebuild; 17558 lines held. The story lab hides its cinematic rocket from stage 2 so the salvage layout is not drawn under an intact one.
+
+Alternatives: A Lancer-family beam for the cutter arc: not used, fx may not import the top-level beam module; a jittered line does the job for now.; A pinned barrel model: none is in the repo; a cylinder stands in until the warehouse-props barrel is pinned.
+
+Evidence:
+
+- npm test 103 programs (test/foundry.mjs, the foundry case in test/story-beats.mjs, base-plan's until rule); npm run check; npm run architecture; npm run build.
+- browser-test --story: story-lab-foundry at stage 2 from the overview shows the sections and the foundry at the landing site with no intact rocket; the lab's counts updated (twelve landmarks at stage 8, nine far tiers, five structures at stage 1).
+- browser-test --story-world passes through story-world-rotor with story.foundry.barrels >= 1 asserted (the Rotor paid by the first barrel) and stops at the pre-existing Rotor-kill step as on main.
+- Not yet seen by eye: the deploy swap, the arc, the section removal and the barrels in the game camera; the composition against the 16 x 16 island (spec §6) is unmeasured.
+
 ## 2026-09-14 — The Quiver holds a lock through a sightline blink; the hull checks its own footprint against rock; a long run-up; open ground under landed rockets; a wall breach no longer rebuilds its edge maps from strings
 
 change · accepted · 2026-09-14-quiver-grace-hull-contact-drive-ramp

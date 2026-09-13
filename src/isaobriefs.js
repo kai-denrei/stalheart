@@ -127,6 +127,10 @@ export const BRIEFS = {
     id: 'quiver_intro', face: 'focused', title: 'COMMS · ISAO', once: true,
     lines: ['Something heavier is coming up the lane. Solid cores.', 'Printing a Quiver across the lane: guided rounds, one lock at a time.'],
   },
+  foundry_deploy: {
+    id: 'foundry_deploy', face: 'focused', title: 'COMMS · ISAO', once: true,
+    lines: ['The rocket got us here.', 'Now it builds the base.'],
+  },
   gunship_pass: {
     id: 'gunship_pass', face: 'focused', title: 'COMMS · ISAO', once: true,
     lines: ['The gunship is overhead. Fuel for a pass, not a landing.', 'I mark what it must not hit.'],
