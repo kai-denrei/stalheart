@@ -305,7 +305,13 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 8 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 9 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### Still open after the story-opening playtest: the breach freeze, the Rotor's sound by ear, Rotor shots into the wall, and ISAO-Birudorōn's review
+
+`2026-09-14-story-playtest-open-items` · issue · **observed**
+
+The story-opening playtest batches (commit 89b81b5) fixed what could be measured and verified headlessly. Several items were changed or partly addressed without an acceptance the owner can rely on, and should be picked up rather than assumed done.
 
 ### HUGIN's runtime LODs merge the booster into static geometry, so the story can no longer hide it
 
