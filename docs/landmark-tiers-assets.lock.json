@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "revision": "c827eda0bd0f2482aaa7500fe87feaf5522c23a8",
+  "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/c827eda0bd0f2482aaa7500fe87feaf5522c23a8/",
+  "note": "Landmark runtime LOD candidates, pinned for game-camera review; the shipped game-ready tiers stay pinned in docs/astro-assets.lock.json. Plain GLB is the author's source of truth, so the plain files are pinned and the build packs them. D0 only: nothing in the game uses D1-D3 yet, and pinning them would add release weight for no reader. Budgets are read from the author's manifest-lods.json pinned here, which is listed first so a fetch verifies it before any tier is measured against it. HUGIN is held back at this revision: its LOD1 and LOD2 keep the REUSABLE_BOOSTER node but merge the booster's geometry into consolidated static meshes (21.9% and 24.5% of their triangles sit in the booster's box, against 1.6% of the shipped model once the booster is removed), so base-layout's hide can no longer remove it — a break of the hideable-part rule in docs/ASSET-COLLABORATION.md, raised with the owner.",
+  "files": [
+    {
+      "path": "assets/models/astro/terraformer-manifest-lods.json",
+      "sourcePath": "assets/terraformer/manifest-lods.json",
+      "sha256": "26121e5fe13d696617719151c8fbd03aa2a27374cd0a98a477fd138690df1138",
+      "bytes": 23128
+    },
+    {
+      "path": "assets/models/astro/terraformer-README-LODS.md",
+      "sourcePath": "assets/terraformer/README-LODS.md",
+      "sha256": "34296dc5a53e102a07e21fab5d6389dae5dfb139b148a946128d5dca0c0b8ba4",
+      "bytes": 2275
+    },
+    {
+      "path": "assets/models/astro/terraformer_3000_d0_lod1.glb",
+      "sourcePath": "assets/terraformer/terraformer_3000_d0_lod1.glb",
+      "sha256": "4886dd497382b50c39cc7455906fcc92e5ef22e0d2fef5907a0372ff2e6410ee",
+      "bytes": 329364,
+      "clips": ["Terraforming_Cycle"],
+      "manifest": "assets/models/astro/terraformer-manifest-lods.json"
+    },
+    {
+      "path": "assets/models/astro/terraformer_3000_d0_lod2.glb",
+      "sourcePath": "assets/terraformer/terraformer_3000_d0_lod2.glb",
+      "sha256": "311820b3b58c53e920b8d6e6699a6fa088c2da279f10b23aa3376293e40f648c",
+      "bytes": 75836,
+      "manifest": "assets/models/astro/terraformer-manifest-lods.json"
+    }
+  ]
+}

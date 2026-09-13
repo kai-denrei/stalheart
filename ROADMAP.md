@@ -31,6 +31,7 @@ clean exports → UX → playability**. `docs/STATE.md` holds the detail.
 | Heavy Gunship | designed, not built (`docs/superpowers/specs/2026-09-13-heavy-gunship-design.md`) |
 | Asset tiers | MÖRK LOW and the distance proxy pinned at `771e166` for review — `labs.html?unit=mork-low#units`. Shipped hull unchanged |
 | Isao-Birudorōn | production alpha upstream; review before integration |
+| Landmark LODs | Stålheart's LOD1/LOD2 pinned for game-camera review at `index.html?world=story&stage=6&landmarks=candidate#td`. HUGIN held back: its booster can no longer be hidden |
 | Sniper range / first-map Sentry Control | open playtest failure, unreproduced |
 | HUD, tutorial, off-screen threats | queued behind the architecture work |
 | Difficulty, economy, progression | explicitly last. Not a balance pass yet |
@@ -187,6 +188,38 @@ It must swap by **projected screen size**, not by metres: the manifest says
 outright not to assume the landmark 150 m threshold. That is new machinery; the
 landmark system only knows distance.
 
+### Stålheart's runtime LODs — in the game camera, for review
+
+The asset owner's roadmap (`jelaludo/SentryTowers_A6`, `docs/ROADMAP.md`) lists
+the HUGIN and Stålheart landmark LODs as **candidate delivered, review active**,
+with what remains being *game-camera, swap-threshold and reference-phone review*.
+That remaining work is this repository's. Stålheart is now set up for it.
+
+| `c827eda` | triangles | draws | plain | packed in the release |
+| --- | --- | --- | --- | --- |
+| shipped game tier | 40,506 | 105 | 4.1 MB | 555.5 KB |
+| **LOD1 candidate** | **7,342** | **10** | 329 KB | **57.7 KB** |
+| **LOD2 candidate** | **2,173** | **1** | 76 KB | **17.9 KB** |
+
+Every figure agrees with the author's own README, counted the same way. The
+budgets are read from the pinned `manifest-lods.json` rather than retyped, and
+`scripts/assets.mjs` fails the check if a tier exceeds them. LOD1 keeps
+`Terraforming_Cycle` on the nine machine controls — gantry, carriage, tool lift
+and J1–J6 — and each still **carries geometry**, not just a name. The forty
+flexible-feed segments are dropped by design.
+
+**How to review it.** `?landmarks=candidate` turns the pinned candidates into
+the structure through one mapping (`withLandmarkTiers` in
+`src/content/base-layout.js`) and one parser, used by both the game world and
+the story lab, so they cannot disagree about which files are under review:
+
+- game camera: `index.html?world=story&stage=6&landmarks=candidate#td`
+- story lab: `labs.html?stage=6&landmarks=candidate#story`
+
+Without the switch, a plain story link still loads the shipped tiers; both
+browser suites assert that. The review itself — swap distance, projected size,
+and frame rate on the reference phone — is yours to do by eye.
+
 ## Candidate
 
 ### Large swarms above 500 concurrent
@@ -251,6 +284,20 @@ Not urgent. Worth doing the next time anything touches auto mode.
   not deliberate, the fix belongs in the A6 source rather than here. The test
   pins the measured value instead of widening a tolerance, so either answer is a
   one-line change.
+- **Can HUGIN's booster be hidden again?** The story places the launchpad with
+  `hide: ['REUSABLE_BOOSTER']`, and `docs/ASSET-COLLABORATION.md` names that part
+  as one the game may hide. At `c827eda` both LOD1 and LOD2 keep the node, but it
+  carries **no triangles** — against 6,572 in the shipped model — while 21.9% and
+  24.5% of their triangles sit inside the booster's box, against 1.6% of the
+  shipped model once the booster is removed. The geometry was merged into
+  consolidated static meshes, so the hide would do nothing and the launchpad would
+  show a booster the story deliberately removes. HUGIN is held back until a
+  revision restores the booster as its own geometry; its motion is otherwise
+  fine, with all six catcher joints still moving geometry.
+- **Which swap threshold?** The game swaps landmark tiers at 150 m and back past
+  **195 m** (`KIT.lod.hysteresis` is a ×1.3 multiplier). The author's provisional
+  contract is 150 m with **20 m** of hysteresis. One of them should move, and the
+  game camera and reference phone are what should decide which.
 
 ---
 
@@ -258,7 +305,19 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 6 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 8 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### HUGIN's runtime LODs merge the booster into static geometry, so the story can no longer hide it
+
+`2026-09-14-hugin-booster-not-hideable` · issue · **observed**
+
+The story places the HUGIN launchpad with hide: ['REUSABLE_BOOSTER'], and docs/ASSET-COLLABORATION.md names REUSABLE_BOOSTER as a part the game may hide. The author's README for the c827eda candidates says static geometry is consolidated separately from the six moving groups, and that LOD2's lookup nodes remain but do not articulate its merged geometry.
+
+### Ship Stålheart's LOD1 and LOD2 as its landmark tiers
+
+`2026-09-14-stalheart-lods-as-shipped` · decision · **proposed**
+
+Stålheart's runtime LODs are pinned at c827eda and verified in the story lab and the real game camera (2026-09-14-stalheart-lods-in-game-camera-review). The author and the owner both mark them pending game-camera and reference-phone review.
 
 ### Make MÖRK's LOW tier the default hull
 

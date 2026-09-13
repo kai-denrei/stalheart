@@ -1,0 +1,942 @@
+{
+  "schema": "jelaludo.asset-family/v2-candidate",
+  "version": 2,
+  "family": "terraformer_3000",
+  "label": "Terraformer 3000 / Stålheart",
+  "status": "contract_candidate_pending_game_camera_reference_phone",
+  "plain_glb_source_of_truth": true,
+  "coordinate_system": {
+    "units": "meters",
+    "up": "+Y",
+    "forward": "+Z",
+    "origin": "ground at plot centre"
+  },
+  "budgets": {
+    "lod1": {
+      "triangles_max": 8000,
+      "draw_calls_max": 10,
+      "plain_bytes_max": 400000
+    },
+    "lod2": {
+      "triangles_max": 3000,
+      "draw_calls_max": 1,
+      "plain_bytes_max": 250000
+    }
+  },
+  "lod_selection": {
+    "initial": "lod2",
+    "approach_distance_m": 150,
+    "hysteresis_m": 20,
+    "review": "Tune with the game camera and reference phone before release."
+  },
+  "derivation": {
+    "method": "topology-preserving Meshoptimizer simplification from preserved detailed plain GLBs; geometry is consolidated by animated control for LOD1 and to one static mesh for LOD2",
+    "flexible_feed_note": "The forty individually keyed hose segments are omitted from LOD1; primary machine motion remains on nine named controls."
+  },
+  "assets": [
+    {
+      "id": "terraformer_3000_d0_lod1",
+      "family": "terraformer_3000",
+      "file": "terraformer_3000_d0_lod1.glb",
+      "meshopt_file": "terraformer_3000_d0_lod1.meshopt.glb",
+      "lod": 1,
+      "quality": "game",
+      "damage_level": 0,
+      "role": "approach_and_game_camera",
+      "derived": true,
+      "derived_from": "terraformer_3000_d0.glb",
+      "source_sha256": "72ec3c06fcfdce3e6a4be87db0437de062158413eeb299da56a1abb36f42744e",
+      "sha256": "4886dd497382b50c39cc7455906fcc92e5ef22e0d2fef5907a0372ff2e6410ee",
+      "bytes": 329364,
+      "meshopt_bytes": 91772,
+      "meshopt_sha256": "5e39a3d1aec1dd883d693b7207ceb8fb0a1e099101efea514fb566da01499af3",
+      "triangles": 7342,
+      "draw_calls": 10,
+      "materials": 1,
+      "textures": 0,
+      "plot_m": [
+        48,
+        56
+      ],
+      "sockets": [
+        {
+          "id": "MATERIAL_INPUT",
+          "kind": "material",
+          "position_m": [
+            16,
+            1,
+            -24
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ],
+          "available": true,
+          "width_m": null
+        }
+      ],
+      "colliders": [
+        {
+          "id": "reserved_machine_envelope",
+          "center_m": [
+            0,
+            18,
+            0
+          ],
+          "size_m": [
+            44,
+            36,
+            22
+          ],
+          "condition": "coarse_only"
+        }
+      ],
+      "clips": [
+        {
+          "name": "Terraforming_Cycle",
+          "duration_s": 16,
+          "loop": true
+        }
+      ],
+      "animations": [
+        "Terraforming_Cycle"
+      ],
+      "required_nodes": [
+        "ROOT",
+        "GANTRY_TRAVEL_Y",
+        "CARRIAGE_TRAVEL_X",
+        "TOOL_LIFT_Z",
+        "J1_BASE_YAW",
+        "J2_SHOULDER",
+        "J3_ELBOW",
+        "J4_FOREARM_ROLL",
+        "J5_WRIST_PITCH",
+        "J6_TOOL_ROLL",
+        "EXTRUSION_TIP",
+        "SOCKET_MATERIAL_INPUT"
+      ],
+      "bounds": {
+        "min": [
+          -21,
+          0,
+          -25.29267692565918
+        ],
+        "max": [
+          21.041555404663086,
+          35.96000289916992,
+          25.299999237060547
+        ],
+        "dimensions_m": [
+          42.041555404663086,
+          35.96000289916992,
+          50.59267616271973
+        ]
+      },
+      "source_bounds": {
+        "min": [
+          -21.04298247300905,
+          0,
+          -25.30000001192093
+        ],
+        "max": [
+          21.042982772058195,
+          35.9600015245378,
+          25.30000001192093
+        ],
+        "dimensions_m": [
+          42.08596524506724,
+          35.9600015245378,
+          50.60000002384186
+        ]
+      },
+      "review_status": "contract_candidate_pending_game_camera_reference_phone",
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "terraformer_3000_d0_lod2",
+      "family": "terraformer_3000",
+      "file": "terraformer_3000_d0_lod2.glb",
+      "meshopt_file": "terraformer_3000_d0_lod2.meshopt.glb",
+      "lod": 2,
+      "quality": "distance",
+      "damage_level": 0,
+      "role": "map_loading_and_far_view",
+      "derived": true,
+      "derived_from": "terraformer_3000_d0.glb",
+      "source_sha256": "72ec3c06fcfdce3e6a4be87db0437de062158413eeb299da56a1abb36f42744e",
+      "sha256": "311820b3b58c53e920b8d6e6699a6fa088c2da279f10b23aa3376293e40f648c",
+      "bytes": 75836,
+      "meshopt_bytes": 26420,
+      "meshopt_sha256": "e0c1ec32dd6ec96ad41d67a1e3828fa73c15ec2b3b4a6cd539f7c4eccdc620f5",
+      "triangles": 2173,
+      "draw_calls": 1,
+      "materials": 1,
+      "textures": 0,
+      "plot_m": [
+        48,
+        56
+      ],
+      "sockets": [
+        {
+          "id": "MATERIAL_INPUT",
+          "kind": "material",
+          "position_m": [
+            16,
+            1,
+            -24
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ],
+          "available": true,
+          "width_m": null
+        }
+      ],
+      "colliders": [
+        {
+          "id": "reserved_machine_envelope",
+          "center_m": [
+            0,
+            18,
+            0
+          ],
+          "size_m": [
+            44,
+            36,
+            22
+          ],
+          "condition": "coarse_only"
+        }
+      ],
+      "clips": [],
+      "animations": [],
+      "required_nodes": [
+        "ROOT",
+        "GANTRY_TRAVEL_Y",
+        "CARRIAGE_TRAVEL_X",
+        "TOOL_LIFT_Z",
+        "J1_BASE_YAW",
+        "J2_SHOULDER",
+        "J3_ELBOW",
+        "J4_FOREARM_ROLL",
+        "J5_WRIST_PITCH",
+        "J6_TOOL_ROLL",
+        "EXTRUSION_TIP",
+        "SOCKET_MATERIAL_INPUT"
+      ],
+      "bounds": {
+        "min": [
+          -21,
+          0,
+          -25.29267692565918
+        ],
+        "max": [
+          21.04178237915039,
+          35.96000289916992,
+          25.29267692565918
+        ],
+        "dimensions_m": [
+          42.04178237915039,
+          35.96000289916992,
+          50.58535385131836
+        ]
+      },
+      "source_bounds": {
+        "min": [
+          -21.04298247300905,
+          0,
+          -25.30000001192093
+        ],
+        "max": [
+          21.042982772058195,
+          35.9600015245378,
+          25.30000001192093
+        ],
+        "dimensions_m": [
+          42.08596524506724,
+          35.9600015245378,
+          50.60000002384186
+        ]
+      },
+      "review_status": "contract_candidate_pending_game_camera_reference_phone",
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "terraformer_3000_d1_lod1",
+      "family": "terraformer_3000",
+      "file": "terraformer_3000_d1_lod1.glb",
+      "meshopt_file": "terraformer_3000_d1_lod1.meshopt.glb",
+      "lod": 1,
+      "quality": "game",
+      "damage_level": 1,
+      "role": "approach_and_game_camera",
+      "derived": true,
+      "derived_from": "terraformer_3000_d1.glb",
+      "source_sha256": "020932faa393a4e19a16f1a53b50281cf9cd565cbbeff11b446c0a8f943a5a3f",
+      "sha256": "9d4ad7b2533fc11427560825eaa9975fdae5b86d1e1f129bf4d34ab5bf9addfe",
+      "bytes": 329980,
+      "meshopt_bytes": 92316,
+      "meshopt_sha256": "06a48c47a96935ef6a0e2d9ced5d67462b7e078395c4a2e207c1d169725079e3",
+      "triangles": 7342,
+      "draw_calls": 10,
+      "materials": 1,
+      "textures": 0,
+      "plot_m": [
+        48,
+        56
+      ],
+      "sockets": [
+        {
+          "id": "MATERIAL_INPUT",
+          "kind": "material",
+          "position_m": [
+            16,
+            1,
+            -24
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ],
+          "available": true,
+          "width_m": null
+        }
+      ],
+      "colliders": [
+        {
+          "id": "reserved_machine_envelope",
+          "center_m": [
+            0,
+            18,
+            0
+          ],
+          "size_m": [
+            44,
+            36,
+            22
+          ],
+          "condition": "coarse_only"
+        }
+      ],
+      "clips": [
+        {
+          "name": "Terraforming_Cycle",
+          "duration_s": 16,
+          "loop": true
+        }
+      ],
+      "animations": [
+        "Terraforming_Cycle"
+      ],
+      "required_nodes": [
+        "ROOT",
+        "GANTRY_TRAVEL_Y",
+        "CARRIAGE_TRAVEL_X",
+        "TOOL_LIFT_Z",
+        "J1_BASE_YAW",
+        "J2_SHOULDER",
+        "J3_ELBOW",
+        "J4_FOREARM_ROLL",
+        "J5_WRIST_PITCH",
+        "J6_TOOL_ROLL",
+        "EXTRUSION_TIP",
+        "SOCKET_MATERIAL_INPUT"
+      ],
+      "bounds": {
+        "min": [
+          -21,
+          -0.06338635832071304,
+          -25.29267692565918
+        ],
+        "max": [
+          21.041555404663086,
+          35.96000289916992,
+          25.299999237060547
+        ],
+        "dimensions_m": [
+          42.041555404663086,
+          36.023389257490635,
+          50.59267616271973
+        ]
+      },
+      "source_bounds": {
+        "min": [
+          -21.04298247300905,
+          -0.07921540118524606,
+          -25.30000001192093
+        ],
+        "max": [
+          21.042982772058195,
+          35.9600015245378,
+          25.30000001192093
+        ],
+        "dimensions_m": [
+          42.08596524506724,
+          36.039216925723046,
+          50.60000002384186
+        ]
+      },
+      "review_status": "contract_candidate_pending_game_camera_reference_phone",
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "terraformer_3000_d1_lod2",
+      "family": "terraformer_3000",
+      "file": "terraformer_3000_d1_lod2.glb",
+      "meshopt_file": "terraformer_3000_d1_lod2.meshopt.glb",
+      "lod": 2,
+      "quality": "distance",
+      "damage_level": 1,
+      "role": "map_loading_and_far_view",
+      "derived": true,
+      "derived_from": "terraformer_3000_d1.glb",
+      "source_sha256": "020932faa393a4e19a16f1a53b50281cf9cd565cbbeff11b446c0a8f943a5a3f",
+      "sha256": "5dd8b54911599a1ea35a3cb32dda0516b43999c5cedc4aba45278b99922a961b",
+      "bytes": 76276,
+      "meshopt_bytes": 26800,
+      "meshopt_sha256": "f0a0274e97c71d2dd3947bd9334a080395fe74eb262f84df253ae50ff9d34f6d",
+      "triangles": 2167,
+      "draw_calls": 1,
+      "materials": 1,
+      "textures": 0,
+      "plot_m": [
+        48,
+        56
+      ],
+      "sockets": [
+        {
+          "id": "MATERIAL_INPUT",
+          "kind": "material",
+          "position_m": [
+            16,
+            1,
+            -24
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ],
+          "available": true,
+          "width_m": null
+        }
+      ],
+      "colliders": [
+        {
+          "id": "reserved_machine_envelope",
+          "center_m": [
+            0,
+            18,
+            0
+          ],
+          "size_m": [
+            44,
+            36,
+            22
+          ],
+          "condition": "coarse_only"
+        }
+      ],
+      "clips": [],
+      "animations": [],
+      "required_nodes": [
+        "ROOT",
+        "GANTRY_TRAVEL_Y",
+        "CARRIAGE_TRAVEL_X",
+        "TOOL_LIFT_Z",
+        "J1_BASE_YAW",
+        "J2_SHOULDER",
+        "J3_ELBOW",
+        "J4_FOREARM_ROLL",
+        "J5_WRIST_PITCH",
+        "J6_TOOL_ROLL",
+        "EXTRUSION_TIP",
+        "SOCKET_MATERIAL_INPUT"
+      ],
+      "bounds": {
+        "min": [
+          -21,
+          -0.0646505057811737,
+          -25.29267692565918
+        ],
+        "max": [
+          21.041555404663086,
+          35.96000289916992,
+          25.299999237060547
+        ],
+        "dimensions_m": [
+          42.041555404663086,
+          36.024653404951096,
+          50.59267616271973
+        ]
+      },
+      "source_bounds": {
+        "min": [
+          -21.04298247300905,
+          -0.07921540118524606,
+          -25.30000001192093
+        ],
+        "max": [
+          21.042982772058195,
+          35.9600015245378,
+          25.30000001192093
+        ],
+        "dimensions_m": [
+          42.08596524506724,
+          36.039216925723046,
+          50.60000002384186
+        ]
+      },
+      "review_status": "contract_candidate_pending_game_camera_reference_phone",
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "terraformer_3000_d2_lod1",
+      "family": "terraformer_3000",
+      "file": "terraformer_3000_d2_lod1.glb",
+      "meshopt_file": "terraformer_3000_d2_lod1.meshopt.glb",
+      "lod": 1,
+      "quality": "game",
+      "damage_level": 2,
+      "role": "approach_and_game_camera",
+      "derived": true,
+      "derived_from": "terraformer_3000_d2.glb",
+      "source_sha256": "5257666d62ec8f98cad87b22ab7b889cc49389ff7fd0ae1028083d049202aa46",
+      "sha256": "375b13b205d543f4547fda3cb2a6fb0bb185ebbf68dcbbf9ac2fb40162c014c5",
+      "bytes": 227376,
+      "meshopt_bytes": 67596,
+      "meshopt_sha256": "09d8e8b24d6caae066155d1bdc46d2116babccbdd5e43f6ce8627545f874838e",
+      "triangles": 7177,
+      "draw_calls": 1,
+      "materials": 1,
+      "textures": 0,
+      "plot_m": [
+        48,
+        56
+      ],
+      "sockets": [
+        {
+          "id": "MATERIAL_INPUT",
+          "kind": "material",
+          "position_m": [
+            16,
+            1,
+            -24
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ],
+          "available": false,
+          "width_m": null
+        }
+      ],
+      "colliders": [
+        {
+          "id": "reserved_machine_envelope",
+          "center_m": [
+            0,
+            18,
+            0
+          ],
+          "size_m": [
+            44,
+            36,
+            22
+          ],
+          "condition": "coarse_only"
+        }
+      ],
+      "clips": [],
+      "animations": [],
+      "required_nodes": [
+        "ROOT",
+        "GANTRY_TRAVEL_Y",
+        "CARRIAGE_TRAVEL_X",
+        "TOOL_LIFT_Z",
+        "J1_BASE_YAW",
+        "J2_SHOULDER",
+        "J3_ELBOW",
+        "J4_FOREARM_ROLL",
+        "J5_WRIST_PITCH",
+        "J6_TOOL_ROLL",
+        "EXTRUSION_TIP",
+        "SOCKET_MATERIAL_INPUT"
+      ],
+      "bounds": {
+        "min": [
+          -21,
+          0,
+          -25.29267692565918
+        ],
+        "max": [
+          21.04298210144043,
+          35.96000289916992,
+          25.299999237060547
+        ],
+        "dimensions_m": [
+          42.04298210144043,
+          35.96000289916992,
+          50.59267616271973
+        ]
+      },
+      "source_bounds": {
+        "min": [
+          -21.04298247300905,
+          -0.01965940076797218,
+          -25.30000001192093
+        ],
+        "max": [
+          21.042982772058195,
+          35.9600015245378,
+          25.30000001192093
+        ],
+        "dimensions_m": [
+          42.08596524506724,
+          35.97966092530577,
+          50.60000002384186
+        ]
+      },
+      "review_status": "contract_candidate_pending_game_camera_reference_phone",
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "terraformer_3000_d2_lod2",
+      "family": "terraformer_3000",
+      "file": "terraformer_3000_d2_lod2.glb",
+      "meshopt_file": "terraformer_3000_d2_lod2.meshopt.glb",
+      "lod": 2,
+      "quality": "distance",
+      "damage_level": 2,
+      "role": "map_loading_and_far_view",
+      "derived": true,
+      "derived_from": "terraformer_3000_d2.glb",
+      "source_sha256": "5257666d62ec8f98cad87b22ab7b889cc49389ff7fd0ae1028083d049202aa46",
+      "sha256": "4f4015678eab666f47115c8302f6cb87656a9112101731667390d6380cf88a45",
+      "bytes": 76780,
+      "meshopt_bytes": 26992,
+      "meshopt_sha256": "2f45e2c5c1c0897f88753f59d95e5c1963c94ea5727a836fde5971fee048659d",
+      "triangles": 2171,
+      "draw_calls": 1,
+      "materials": 1,
+      "textures": 0,
+      "plot_m": [
+        48,
+        56
+      ],
+      "sockets": [
+        {
+          "id": "MATERIAL_INPUT",
+          "kind": "material",
+          "position_m": [
+            16,
+            1,
+            -24
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ],
+          "available": false,
+          "width_m": null
+        }
+      ],
+      "colliders": [
+        {
+          "id": "reserved_machine_envelope",
+          "center_m": [
+            0,
+            18,
+            0
+          ],
+          "size_m": [
+            44,
+            36,
+            22
+          ],
+          "condition": "coarse_only"
+        }
+      ],
+      "clips": [],
+      "animations": [],
+      "required_nodes": [
+        "ROOT",
+        "GANTRY_TRAVEL_Y",
+        "CARRIAGE_TRAVEL_X",
+        "TOOL_LIFT_Z",
+        "J1_BASE_YAW",
+        "J2_SHOULDER",
+        "J3_ELBOW",
+        "J4_FOREARM_ROLL",
+        "J5_WRIST_PITCH",
+        "J6_TOOL_ROLL",
+        "EXTRUSION_TIP",
+        "SOCKET_MATERIAL_INPUT"
+      ],
+      "bounds": {
+        "min": [
+          -21,
+          0,
+          -25.29267692565918
+        ],
+        "max": [
+          21.041555404663086,
+          35.957366943359375,
+          25.299999237060547
+        ],
+        "dimensions_m": [
+          42.041555404663086,
+          35.957366943359375,
+          50.59267616271973
+        ]
+      },
+      "source_bounds": {
+        "min": [
+          -21.04298247300905,
+          -0.01965940076797218,
+          -25.30000001192093
+        ],
+        "max": [
+          21.042982772058195,
+          35.9600015245378,
+          25.30000001192093
+        ],
+        "dimensions_m": [
+          42.08596524506724,
+          35.97966092530577,
+          50.60000002384186
+        ]
+      },
+      "review_status": "contract_candidate_pending_game_camera_reference_phone",
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "terraformer_3000_d3_lod1",
+      "family": "terraformer_3000",
+      "file": "terraformer_3000_d3_lod1.glb",
+      "meshopt_file": "terraformer_3000_d3_lod1.meshopt.glb",
+      "lod": 1,
+      "quality": "game",
+      "damage_level": 3,
+      "role": "approach_and_game_camera",
+      "derived": true,
+      "derived_from": "terraformer_3000_d3.glb",
+      "source_sha256": "c24003dc987626595f7a9af5842cf43db010f757411020247407d9e3d8f27e53",
+      "sha256": "7135813e36497ae5798e3bb68709cf1c8514e5d5e5f0e015f6061618db40a991",
+      "bytes": 210524,
+      "meshopt_bytes": 61492,
+      "meshopt_sha256": "952a73c565a92b8b1528d154873f3dc5843f5f76108ce9319758576dc7df5435",
+      "triangles": 7146,
+      "draw_calls": 1,
+      "materials": 1,
+      "textures": 0,
+      "plot_m": [
+        48,
+        56
+      ],
+      "sockets": [
+        {
+          "id": "MATERIAL_INPUT",
+          "kind": "material",
+          "position_m": [
+            16,
+            1,
+            -24
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ],
+          "available": false,
+          "width_m": null
+        }
+      ],
+      "colliders": [
+        {
+          "id": "reserved_machine_envelope",
+          "center_m": [
+            0,
+            18,
+            0
+          ],
+          "size_m": [
+            44,
+            36,
+            22
+          ],
+          "condition": "coarse_only"
+        }
+      ],
+      "clips": [],
+      "animations": [],
+      "required_nodes": [
+        "ROOT",
+        "GANTRY_TRAVEL_Y",
+        "CARRIAGE_TRAVEL_X",
+        "TOOL_LIFT_Z",
+        "J1_BASE_YAW",
+        "J2_SHOULDER",
+        "J3_ELBOW",
+        "J4_FOREARM_ROLL",
+        "J5_WRIST_PITCH",
+        "J6_TOOL_ROLL",
+        "EXTRUSION_TIP",
+        "SOCKET_MATERIAL_INPUT"
+      ],
+      "bounds": {
+        "min": [
+          -18.23114776611328,
+          -0.05034812167286873,
+          -25.29267692565918
+        ],
+        "max": [
+          21.04298210144043,
+          9.492677688598633,
+          25.299999237060547
+        ],
+        "dimensions_m": [
+          39.27412986755371,
+          9.543025810271502,
+          50.59267616271973
+        ]
+      },
+      "source_bounds": {
+        "min": [
+          -18.244607380079792,
+          -0.06627533826382215,
+          -25.30000001192093
+        ],
+        "max": [
+          21.042982772058195,
+          9.5,
+          25.30000001192093
+        ],
+        "dimensions_m": [
+          39.28759015213799,
+          9.566275338263821,
+          50.60000002384186
+        ]
+      },
+      "review_status": "contract_candidate_pending_game_camera_reference_phone",
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "terraformer_3000_d3_lod2",
+      "family": "terraformer_3000",
+      "file": "terraformer_3000_d3_lod2.glb",
+      "meshopt_file": "terraformer_3000_d3_lod2.meshopt.glb",
+      "lod": 2,
+      "quality": "distance",
+      "damage_level": 3,
+      "role": "map_loading_and_far_view",
+      "derived": true,
+      "derived_from": "terraformer_3000_d3.glb",
+      "source_sha256": "c24003dc987626595f7a9af5842cf43db010f757411020247407d9e3d8f27e53",
+      "sha256": "9b397f08e0d410425c814322a2a5b9ac0ec2f660f97a03679b219259d7eda0ab",
+      "bytes": 73052,
+      "meshopt_bytes": 25576,
+      "meshopt_sha256": "8186f4420d0a0c6d20417f62c2b89e9966cb0629cafc65777b9d99a49cf91923",
+      "triangles": 2196,
+      "draw_calls": 1,
+      "materials": 1,
+      "textures": 0,
+      "plot_m": [
+        48,
+        56
+      ],
+      "sockets": [
+        {
+          "id": "MATERIAL_INPUT",
+          "kind": "material",
+          "position_m": [
+            16,
+            1,
+            -24
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ],
+          "available": false,
+          "width_m": null
+        }
+      ],
+      "colliders": [
+        {
+          "id": "reserved_machine_envelope",
+          "center_m": [
+            0,
+            18,
+            0
+          ],
+          "size_m": [
+            44,
+            36,
+            22
+          ],
+          "condition": "coarse_only"
+        }
+      ],
+      "clips": [],
+      "animations": [],
+      "required_nodes": [
+        "ROOT",
+        "GANTRY_TRAVEL_Y",
+        "CARRIAGE_TRAVEL_X",
+        "TOOL_LIFT_Z",
+        "J1_BASE_YAW",
+        "J2_SHOULDER",
+        "J3_ELBOW",
+        "J4_FOREARM_ROLL",
+        "J5_WRIST_PITCH",
+        "J6_TOOL_ROLL",
+        "EXTRUSION_TIP",
+        "SOCKET_MATERIAL_INPUT"
+      ],
+      "bounds": {
+        "min": [
+          -18.213851928710938,
+          -0.05034812167286873,
+          -25.29267692565918
+        ],
+        "max": [
+          21.04298210144043,
+          9.492677688598633,
+          25.299999237060547
+        ],
+        "dimensions_m": [
+          39.25683403015137,
+          9.543025810271502,
+          50.59267616271973
+        ]
+      },
+      "source_bounds": {
+        "min": [
+          -18.244607380079792,
+          -0.06627533826382215,
+          -25.30000001192093
+        ],
+        "max": [
+          21.042982772058195,
+          9.5,
+          25.30000001192093
+        ],
+        "dimensions_m": [
+          39.28759015213799,
+          9.566275338263821,
+          50.60000002384186
+        ]
+      },
+      "review_status": "contract_candidate_pending_game_camera_reference_phone",
+      "credit": "Models by jelaludo"
+    }
+  ]
+}

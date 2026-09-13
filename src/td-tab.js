@@ -5718,7 +5718,7 @@ export function initTdTab(root) {
     heartCalloutCd = 0; streakMark = 0;
     ramCombo = 0; ramComboT = 0; syncCombo();
     breachedCells.clear(); // a NEW world owes nothing to the old one's holes
-    const built = buildGameWorld({ world: storyQuery.world, params, stage: storyQuery.stage, scene, sfx });
+    const built = buildGameWorld({ world: storyQuery.world, params, stage: storyQuery.stage, landmarks: storyQuery.landmarks, scene, sfx });
     mesh = built.mesh; dungeon = built.dungeon; if (built.wallHeight) params.wallHeight = built.wallHeight; storyBase?.dispose(); storyBase = built.base; story = built.story ?? null; storyMonitor?.dispose(); storyMonitor = story ? createStoryMonitor(root) : null; storyScope?.dispose(); storyScope = story ? createStoryScope(root) : null; daylight = story ? createDaylight({ hemi, sun, bg: mainBg, day: story.day.day, tune: story.day }) : null;   // the story planet has a day   // 4 m walls on the story sphere; the story's islands, structures, sockets and beats at the requested stage
     graph = dungeon.graph; cellSide = mesh.defaultSide;
     // THE CAMP, BEFORE ANY ACTOR IS PLACED. Berth cells are graph maths,
@@ -17445,7 +17445,7 @@ export function initTdTab(root) {
     window.__stalheartTest = {
       state: () => ({ shot:shotId(),breachRubble:gameBreaches.rubbleState(),breaches:gameBreaches.state(),queued:spawnQueue.length,wallCount:dungeon.tags.filter(tag=>tag===BLOCKED).length,emerging:enemies.filter(e=>e.alive&&e.emergeAge<1.2).length,round, wave, runGen: runContext.generation, heart: heartHP, hulls: playerHP,
         biomass: eco.biomass, towers: towers.length, won: player.won, paused,
-        roster: ROSTER.id, mission: missionOn, buildMode, story: story?.beats.state() ?? null, towerCells: towers.map((t) => [t.key, t.ci]), insideEnemies: story ? enemies.filter((e) => e.alive && story.inside(e.cur)).length : 0,
+        roster: ROSTER.id, mission: missionOn, buildMode, story: story?.beats.state() ?? null, storyLod: storyBase?.lod() ?? null, storyBaseErrors: storyBase?.errors.slice() ?? null, towerCells: towers.map((t) => [t.key, t.ci]), insideEnemies: story ? enemies.filter((e) => e.alive && story.inside(e.cur)).length : 0,
         playerAsset: playerMesh?.userData.asset || params.creature, playerSpan: (() => { if (!playerMesh) return null; const b = new THREE.Box3().setFromObject(playerMesh); return Number.isFinite(b.max.x) ? +(b.getSize(new THREE.Vector3()).length() / (unitScale || 1)).toFixed(2) : null; })(),   // the hull's true size over its scale: exploded geometry reads absurd here
         playerAssetReady: !playerMesh?.userData.loading,
         playerModelStats: playerMesh?.userData.modelStats,

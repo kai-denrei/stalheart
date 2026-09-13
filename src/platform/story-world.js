@@ -8,7 +8,7 @@ import { planBase } from '../domain/base-plan.js';
 import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT, STORY_SCALE, STORY_BREACH, STORY_QUIVER, STORY_DAY } from '../content/story-defaults.js';
 import { CONTENT } from '../content/runtime.js';
 export { STORY_SOUNDS };
-import { ISLANDS, STRUCTURES, KIT, STAGES } from '../content/base-layout.js';
+import { ISLANDS, STRUCTURES, KIT, STAGES, withLandmarkTiers, landmarkTierMode } from '../content/base-layout.js';
 import { createStoryBase } from '../fx/story-base.js';
 import { isStoryRoute } from '../core/story-route.js';
 import { makeStoryBeats } from '../domain/story-beats.js';
@@ -29,6 +29,7 @@ export function readStoryQuery(search) {
     world: story ? 'story' : 'default',
     threat: Math.min(4, Math.max(0.1, parseFloat(q.get('threat') || '') || (short ? 0.35 : 1))),
     stage: Math.min(STAGES.length - 1, Math.max(0, parseInt(q.get('stage') ?? q.get('story') ?? '', 10) || (story ? 1 : 0))),
+    landmarks: landmarkTierMode(search),   // ?landmarks=candidate: review the pinned runtime LOD candidates in the game camera
   };
 }
 
@@ -50,13 +51,14 @@ function holdRing(built, planet, from, [lo, hi], perch = null) {
   return ring;
 }
 
-export function buildGameWorld({ world, params, stage, scene, sfx = null }) {
+export function buildGameWorld({ world, params, stage, scene, sfx = null, landmarks = 'shipped' }) {
   const built = buildWorld({ world, params, story: { recipe: STORY_RECIPE, clearing: STORY_CLEARING, bake: planetBake() } });
   if (!built.planet) return { ...built, base: null };
   const { planet } = built;
   // the game draws the unit sphere at the origin with the pole at +Y
   const placer = { toWorld: ([x, y, z]) => { const p = planet.frameToWorld([x, y, z]); return new THREE.Vector3(p[0] / planet.radius, p[1] / planet.radius + 1, p[2] / planet.radius); } };
-  const plan = planBase(planet, STORY_LAYOUT, stage);
+  // the shipped layout untouched unless a review asks for the candidates; the swap happens before planBase, which spreads it through
+  const plan = planBase(planet, landmarks === 'shipped' ? STORY_LAYOUT : { ...STORY_LAYOUT, structures: withLandmarkTiers(STORY_LAYOUT.structures, landmarks) }, stage);
   // walls are rock to the pathfinder and the tank alike; the gate's cell stays open and the gate opens for the tank
   for (const w of plan.walls) if (w.cell >= 0) built.dungeon.tags[w.cell] = BLOCKED;
   // the game prints the real Rotor; the static model stays a lab thing

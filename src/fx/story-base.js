@@ -116,7 +116,9 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       if (!gltf) return;
       const holder = new THREE.Group(); place(holder, s.x, s.z, s.y, s.heading, s.scale, s.tilt ?? 0, s.lift ?? 0); group.add(holder);
       const root = mount(s, gltf, holder);
-      if (s.far) lod.push({ id: s.id, holder, far: root, near: null, loading: false, shown: 'far', at: new THREE.Vector3().setFromMatrixPosition(holder.matrix) });
+      // the files each tier came from ride on the record: a review switch that quietly loaded the shipped tiers should
+      // fail an assertion, and without them lod() could only say which tier is SHOWN, never which file it is
+      if (s.far) lod.push({ id: s.id, holder, far: root, near: null, loading: false, shown: 'far', files: { far: s.far, near: s.asset }, at: new THREE.Vector3().setFromMatrixPosition(holder.matrix) });
       counts.structures++;
     }).catch((e) => errors.push(`${s.id}: ${e}`))),
   ]);
@@ -171,7 +173,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     },
     gate: () => ({ present: !!gate.action, open: gate.open, want: gate.want, t: +gate.t.toFixed(2) }),
     bays: () => bays,
-    lod: () => lod.map((l) => ({ id: l.id, shown: l.shown, nearLoaded: !!l.near, metres: l.d === undefined ? null : +(l.d / metres).toFixed(0) })),
+    lod: () => lod.map((l) => ({ id: l.id, shown: l.shown, nearLoaded: !!l.near, files: l.files, metres: l.d === undefined ? null : +(l.d / metres).toFixed(0) })),
     dispose() { for (const m of mixers) m.stopAllAction(); gate.mixer?.stopAllAction(); for (const r of owned) r.dispose(); scene.remove(group); },
   };
 }

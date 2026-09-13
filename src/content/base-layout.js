@@ -35,7 +35,10 @@ export const STRUCTURES = Object.freeze([
   { id: 'solar', asset: 'assets/models/astro/solar_power_complex_lod1_d0.glb', far: 'assets/models/astro/solar_power_complex_lod2_d0.glb', island: 'solar', stage: 3, scale: 1, offset: [0, 0, -1.6], batch: true },
   { id: 'rotor', asset: 'assets/models/sentries/rotor_t1.glb', island: null, anchor: 'wall', stage: 3, scale: 3, offset: [0, 0, 0] },   // high ground: the rock beside the tunnel mouth
   { id: 'hugin', asset: 'assets/models/astro/hugin_launchpad_d0_game.glb', far: 'assets/models/far/hugin.glb', island: 'hugin', stage: 5, scale: 1, offset: [-3, 0, 8], hide: ['REUSABLE_BOOSTER'], clips: ['Cargo_Recovery_Cycle'] },
-  { id: 'stalheart', asset: 'assets/models/astro/terraformer_3000_d0_game.glb', far: 'assets/models/far/stalheart.glb', island: 'stalheart', stage: 6, scale: 1, offset: [14.5, 0, 0], clips: ['Terraforming_Cycle'] },
+  { id: 'stalheart', asset: 'assets/models/astro/terraformer_3000_d0_game.glb', far: 'assets/models/far/stalheart.glb', island: 'stalheart', stage: 6, scale: 1, offset: [14.5, 0, 0], clips: ['Terraforming_Cycle'],
+    // Runtime LOD candidates pinned at c827eda for game-camera review (docs/landmark-tiers-assets.lock.json). Only
+    // ?landmarks=candidate reads them; asset and far above stay what ships, and far-tiers.mjs keeps deriving that far.
+    candidate: { asset: 'assets/models/astro/terraformer_3000_d0_lod1.glb', far: 'assets/models/astro/terraformer_3000_d0_lod2.glb' } },
   // THE THREE HULLS ARE THE THREE LIVES. The kit's three-bay diorama: 01 sealed, 02 and 03 open with a
   // MÖRK parked inside; the first hull leaves 03, the next 02, the last opens 01. The diorama is authored
   // at the kit's 13.3 m MÖRK and scaled to the story's 10 m hull; its roll-out clip is held at 0 (all inside).
@@ -62,3 +65,19 @@ export const KIT = Object.freeze({
   bay: { roll: 2, doorSeconds: 2.4, rollOutMetres: 19, rollOutSeconds: 8 },
   lod: { metres: 150, hysteresis: 1.3, ratio: 0.1 },   // camera closer than this shows the near tier (and first fetches it); it stays until 1.3x that; far tiers keep a tenth of the triangles   // a hull rolls two lane cells straight out of its doors; bay 03's authored roll-out carries the hull 19 model metres in 8 s
 });
+
+// LANDMARK TIERS UNDER REVIEW. A structure may carry `candidate` tiers: authored runtime LODs pinned for game-camera
+// review before they replace what ships. This is the ONE place a candidate becomes the structure, so the story lab and
+// the game world cannot disagree about which files a review is looking at — both call it on STRUCTURES before planBase,
+// which spreads every field through untouched. Anything but 'candidate' hands back the shipped structures unchanged.
+export const LANDMARK_TIER_MODES = ['shipped', 'candidate'];
+export function withLandmarkTiers(structures, mode = 'shipped') {
+  if (mode !== 'candidate') return structures;
+  return structures.map((s) => (s.candidate ? { ...s, ...s.candidate } : s));
+}
+
+// ONE PARSER FOR THE SWITCH, so the story lab and the game world read ?landmarks= the same way: two copies of this line
+// would be the drift the mapping above exists to prevent. Pure — a search string in, a mode out.
+export function landmarkTierMode(search) {
+  return new URLSearchParams(search || '').get('landmarks') === 'candidate' ? 'candidate' : 'shipped';
+}

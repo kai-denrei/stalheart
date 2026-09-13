@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-stalheart-lods-as-shipped",
+  "date": "2026-09-14T12:05:00+00:00",
+  "type": "decision",
+  "status": "proposed",
+  "title": "Ship Stålheart's LOD1 and LOD2 as its landmark tiers",
+  "context": "Stålheart's runtime LODs are pinned at c827eda and verified in the story lab and the real game camera (2026-09-14-stalheart-lods-in-game-camera-review). The author and the owner both mark them pending game-camera and reference-phone review.",
+  "outcome": "Proposed, not done. Point the Stålheart structure's asset at LOD1 and its far tier at LOD2, drop the derived far tier and its entry in docs/far-tier-assets.lock.json (npm run tiers stops deriving it once far no longer points under assets/models/far/), delete the orphaned derived file so the release does not keep shipping it, and settle the swap threshold. Expected gain: a game tier of 57.7 KB instead of 555.5 KB packed, 7,342 triangles in 10 draws instead of 40,506 in 105, and a one-draw distance tier. Blocked on the owner's review of swap distance, projected size and frame rate on the reference phone at index.html?world=story&stage=6&landmarks=candidate#td.",
+  "alternatives": [
+    "Ship LOD1 only and keep the derived far tier.",
+    "Wait for the upstream assembly-line and SH02 LODs and ship every landmark tier together."
+  ],
+  "evidence": [
+    "2026-09-14-stalheart-lods-in-game-camera-review"
+  ],
+  "supersedes": []
+}

@@ -6,7 +6,7 @@ const root=fileURLToPath(new URL('../',import.meta.url));
 
 const sha=data=>createHash('sha256').update(data).digest('hex');
 const fetchMissing=process.argv[2]==='fetch';
-for(const lockFile of ['docs/sentry-assets.lock.json','docs/missile-assets.lock.json','docs/hover-tank-assets.lock.json','docs/needle-assets.lock.json','docs/astro-assets.lock.json','docs/astro-industry-assets.lock.json','docs/sh-rocket-assets.lock.json','docs/base-kit-assets.lock.json','docs/antenna-assets.lock.json','docs/container-assets.lock.json','docs/solar-lod-assets.lock.json','docs/hugin-flight-assets.lock.json','docs/ammunition-assets.lock.json','docs/hover-tank-tiers-assets.lock.json']) {
+for(const lockFile of ['docs/sentry-assets.lock.json','docs/missile-assets.lock.json','docs/hover-tank-assets.lock.json','docs/needle-assets.lock.json','docs/astro-assets.lock.json','docs/astro-industry-assets.lock.json','docs/sh-rocket-assets.lock.json','docs/base-kit-assets.lock.json','docs/antenna-assets.lock.json','docs/container-assets.lock.json','docs/solar-lod-assets.lock.json','docs/hugin-flight-assets.lock.json','docs/ammunition-assets.lock.json','docs/hover-tank-tiers-assets.lock.json','docs/landmark-tiers-assets.lock.json']) {
 const lock=JSON.parse(readFileSync(resolve(root,lockFile),'utf8'));
 for(const file of lock.files){
  const path=resolve(root,file.path);
@@ -40,6 +40,23 @@ for(const file of lock.files){
    if((json.animations||[]).length)throw Error('MORK distance proxy must stay static');
    const prims=json.meshes.flatMap(m=>m.primitives).length;
    if(prims!==1)throw Error(`MORK distance proxy must be one draw, found ${prims}`);
+  }
+  // LANDMARK TIER BUDGETS COME FROM THE AUTHOR'S MANIFEST, pinned beside the files
+  // and listed first in the lock — not retyped here, since a second copy of 8000
+  // is the drift the manifest exists to remove. Triangles and draws count every
+  // node that uses a mesh, which is how the author's README and far-tiers.mjs
+  // count them; a mesh shared by two nodes is drawn twice.
+  if(file.manifest && /_lod[12]\.glb$/.test(file.path)) {
+   const tier=/_lod1\.glb$/.test(file.path)?'lod1':'lod2';
+   const budget=JSON.parse(readFileSync(resolve(root,file.manifest),'utf8')).budgets?.[tier];
+   if(!budget)throw Error(`No ${tier} budget in ${file.manifest}`);
+   const uses={};for(const n of json.nodes||[])if(n.mesh!==undefined)uses[n.mesh]=(uses[n.mesh]||0)+1;
+   let tris=0,draws=0;
+   (json.meshes||[]).forEach((m,i)=>{for(const p of m.primitives){const u=uses[i]||0;draws+=u;tris+=(p.indices!==undefined?json.accessors[p.indices].count:json.accessors[p.attributes.POSITION].count)/3*u;}});
+   if(tris>budget.triangles_max)throw Error(`${file.path}: ${tris} triangles, over the ${tier} budget of ${budget.triangles_max}`);
+   if(draws>budget.draw_calls_max)throw Error(`${file.path}: ${draws} draws, over the ${tier} budget of ${budget.draw_calls_max}`);
+   if(bytes.length>budget.plain_bytes_max)throw Error(`${file.path}: ${bytes.length} bytes, over the ${tier} budget of ${budget.plain_bytes_max}`);
+   if(tier==='lod2'&&(json.animations||[]).length)throw Error(`${file.path}: a distance tier must stay static`);
   }
   if(file.clips)for(const clip of file.clips)if(!(json.animations||[]).some(a=>a.name===clip))throw Error('Missing Astro clip: '+clip);
   if(file.damageLevel<2 && !(json.animations||[]).some(a=>a.name==='Terraforming_Cycle'))throw Error('Missing authored cycle');

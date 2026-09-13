@@ -85,6 +85,18 @@ removed 114 triangles from the 24,196-triangle hull (0.47%), 104 from the
 floor, written for the hull, passed the hull and failed LOW. The floors are per
 tier now, taken from those measurements, against the lockfile-pinned gltfpack.
 
+**Wait for a condition, not a clock.** The game's frame rate is a moving average
+seeded from zero: at stage 6 it read 0.58 when a landmark tier arrived, 19 half a
+second later, and a locked 60 by six seconds. A check that read it immediately
+failed a base that was fine; an older check behind a fixed three-second sleep read
+22.7 at exactly 3.0 s — passing by a tenth of a second. Both now wait on the
+condition itself.
+
+**A switch must prove which file it loaded.** A review switch that quietly loads
+the shipped tiers looks exactly like one that works. The story base now reports
+the file behind each tier, and a far tier only reports once its file has loaded,
+so the switch is tested on the files themselves rather than on what they look like.
+
 ## Look at it
 
 **Render it and look before calling it done.** Every automated check passed on
@@ -144,6 +156,14 @@ and a large building far away are not the same problem.
 **Check an asset through the loader's eyes.** three.js sanitizes node names on
 load — `"Long cannon barrel"` becomes `Long_cannon_barrel` — so a raw-name check
 reports misses that are not there, and would have blocked a safe adoption.
+
+**A kept node is not a hideable part.** HUGIN's candidate tiers keep the
+`REUSABLE_BOOSTER` node, so every name check passes — but the booster's triangles
+were merged into consolidated meshes, and the node now carries none. Hiding it
+would do nothing. Measure what sits *under* a node, and where the geometry went:
+21.9% of the candidate's triangles sat in the booster's box, where the shipped
+model has 1.6% once the booster is gone. The same test covers animation — a clip
+that still names its nodes but moves nothing plays without anyone noticing.
 
 **A new revision needs checksums, a visual and animation acceptance pass, and a
 decision entry.** Tests that pin exact counts (`test/mork.mjs` expects 24,196

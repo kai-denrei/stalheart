@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-hugin-booster-not-hideable",
+  "date": "2026-09-14T12:10:00+00:00",
+  "type": "issue",
+  "status": "observed",
+  "title": "HUGIN's runtime LODs merge the booster into static geometry, so the story can no longer hide it",
+  "context": "The story places the HUGIN launchpad with hide: ['REUSABLE_BOOSTER'], and docs/ASSET-COLLABORATION.md names REUSABLE_BOOSTER as a part the game may hide. The author's README for the c827eda candidates says static geometry is consolidated separately from the six moving groups, and that LOD2's lookup nodes remain but do not articulate its merged geometry.",
+  "outcome": "Observed at c827eda. In both LOD1 and LOD2 the REUSABLE_BOOSTER node is present but carries 0 triangles, against 6,572 triangles in 26 meshes (16.5% of the model) in the shipped game tier. The booster's geometry was not removed: 21.9% of LOD1's triangles and 24.5% of LOD2's sit inside the booster's box, where the shipped model holds 17.9% with the booster and 1.6% without it. A height test could not decide it, because the booster tops out at 18.4 m below a 33.1 m tower; the density test did. Loading these tiers would leave the launchpad showing a booster the story removes. HUGIN is otherwise sound — all six catcher joints still move geometry in LOD1, and dimensions agree within 0.1% — so it is held back on this alone. A fix belongs in the A6 source: keep the booster as its own geometry under REUSABLE_BOOSTER in both tiers. When that lands, pin it, give HUGIN a candidate, and replace the hold-back test in test/landmark-tiers.mjs with one that measures triangles under REUSABLE_BOOSTER in each tier.",
+  "alternatives": [
+    "Cull triangles inside the booster's box in the game: rejected, guessing at merged geometry on the game side breaks the collaboration contract rather than honouring it.",
+    "Stop hiding the booster: rejected, the story removes it on purpose."
+  ],
+  "evidence": [
+    "Measured with three.js GLTFLoader against the pinned shipped tier and the c827eda LOD1 and LOD2 plain files: triangles under REUSABLE_BOOSTER, and triangle centroids inside the booster's world-space box with and without the booster present.",
+    "test/landmark-tiers.mjs: HUGIN carries no candidate until its booster can be hidden again."
+  ],
+  "supersedes": []
+}

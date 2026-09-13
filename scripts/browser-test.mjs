@@ -218,6 +218,16 @@ try{
  await evaluate('window.__stalheartAstroTest.dispose()');const stopped=await evaluate('window.__stalheartAstroTest.state().time');await delay(200);assert.equal(await evaluate('window.__stalheartAstroTest.state().time'),stopped);assert.equal(await evaluate('window.__stalheartAstroTest.state().crew.length'),0);
 
  } else if(args.includes('--story')) {
+ // THE STÅLHEART CANDIDATES IN THE STORY LAB, through the same switch and mapping the game world uses. Checked in both
+ // callers because they must agree on which files a review is looking at — that is the point of having one mapping.
+ // A far tier only reports once its GLB has loaded, so a candidate that failed to load times out here instead of passing.
+ await go('story-lab-candidate','labs.html?sw=0&acceptance=1&stage=6&landmarks=candidate#story');
+ await until('(window.__stalheartStoryTest?.state().base?.lod||[]).some(l=>l.id==="stalheart")',90000);
+ {const s=await evaluate('window.__stalheartStoryTest.state()'),st=s.base.lod.find(l=>l.id==='stalheart');
+  assert.equal(st.files.far,'assets/models/astro/terraformer_3000_d0_lod2.glb','lab: the candidate distance tier stands first');
+  assert.equal(st.files.near,'assets/models/astro/terraformer_3000_d0_lod1.glb','lab: the candidate game tier is what comes near');
+  assert.deepEqual(s.base.errors,[],'lab: the candidate tiers load without error');}
+ await finish();
  await go('story-arrival','labs.html?sw=0&acceptance=1#story');
  await until('window.__stalheartStoryTest?.state().ready',90000);await delay(800);
  const rest=await evaluate('window.__stalheartStoryTest.state()');
@@ -262,11 +272,36 @@ try{
  const auto=await evaluate('window.__stalheartStoryTest.state()');assert(auto.playing&&auto.t>0.5,'the cinematic plays on load');assert(await evaluate('!!document.querySelector("#story-hud a.story-back")'),'a way back to the game');
  await evaluate('window.__stalheartStoryTest.dispose()');
  } else if(args.includes('--story-world')) {
+ // THE STÅLHEART CANDIDATES IN THE GAME CAMERA — the review surface the asset owner asked for. lod() reports the FILE
+ // behind each tier, and a far tier only reports once its GLB has loaded, so a switch that quietly loaded the shipped tiers,
+ // or a candidate that failed to load, fails here rather than passing on something that merely looks right. The near
+ // tier is fetched by camera distance, so its loading is not required; its file on the record is.
+ await go('story-world-candidate','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=6&landmarks=candidate#td');
+ await until('!!window.__stalheartTest && (window.__stalheartTest.state().storyLod||[]).some(l=>l.id==="stalheart")',90000);
+ {const c=await evaluate('window.__stalheartTest.state()'),st=c.storyLod.find(l=>l.id==='stalheart');
+  assert.equal(st.files.far,'assets/models/astro/terraformer_3000_d0_lod2.glb','game: the candidate distance tier stands first');
+  assert.equal(st.files.near,'assets/models/astro/terraformer_3000_d0_lod1.glb','game: the candidate game tier is what comes near');
+  assert.deepEqual(c.storyBaseErrors,[],'game: the candidate tiers load without error');}
+ // WAIT FOR THE FRAME RATE, DO NOT SLEEP FOR IT. performance.fps is a moving average seeded from zero and halved toward the
+ // truth every half second: measured at stage 6 it read 0.58 when Stålheart's tier landed, 19 half a second later, and a
+ // locked 60 by six seconds — on both the candidate and the shipped tiers. Reading it at once failed a base that was fine.
+ await until('(window.__stalheartTest.state().performance?.fps||0)>20',30000);
+ await finish();
  await go('story-world','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=6#td');
  await until('!!window.__stalheartTest',90000);await delay(3000);
+ await until('(window.__stalheartTest.state().storyLod||[]).some(l=>l.id==="stalheart")',90000);
  const w=await evaluate('window.__stalheartTest.state()');
+ // SHIPPED BY DEFAULT: a plain story link stands Stålheart on its derived distance tier and brings it near as the game-ready
+ // model. The review switch must never leak into a link that did not ask for it.
+ {const st=w.storyLod.find(l=>l.id==='stalheart');
+  assert.equal(st.files.far,'assets/models/far/stalheart.glb','shipped: the derived distance tier');
+  assert.equal(st.files.near,'assets/models/astro/terraformer_3000_d0_game.glb','shipped: the game-ready tier');
+  assert.deepEqual(w.storyBaseErrors,[],'shipped: the base loads without error');}
+ // the same moving average: this used to be asserted after a fixed three-second sleep, and measured it read 22.7 at exactly
+ // 3.0 s — passing by a tenth of a second. A condition, not a sleep.
+ await until('(window.__stalheartTest.state().performance?.fps||0)>20',30000);
  assert.equal(w.heartAsset,'none','no dot-cloud heart in the story world');assert.deepEqual(w.berthAssets,[],'no camp containers');assert.equal(w.queued,0,'no enemies queued');
- assert(w.wallCount>40000&&w.wallCount<71314,`story world rock count ${w.wallCount}`);assert(w.performance.fps>20,'story world renders');assert(w.playerAssetReady,'tank landed on the story world');
+ assert(w.wallCount>40000&&w.wallCount<71314,`story world rock count ${w.wallCount}`);assert(w.playerAssetReady,'tank landed on the story world');
  await finish();
  await send('Input.dispatchKeyEvent',{type:'keyDown',key:' ',code:'Space'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:' ',code:'Space'});await delay(800);
  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'1',code:'Digit1'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'1',code:'Digit1'});await delay(1500);

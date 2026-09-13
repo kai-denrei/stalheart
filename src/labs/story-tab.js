@@ -14,7 +14,7 @@ import { compileRail } from '../cine/rail.js';
 import { buildStoryPlanetMesh, buildMouthMarker } from './story-planet-mesh.js';
 import { createStoryLanding } from './story-landing.js';
 import { planBase } from '../domain/base-plan.js';
-import { ISLANDS, STRUCTURES, KIT, STAGES } from '../content/base-layout.js';
+import { ISLANDS, STRUCTURES, KIT, STAGES, withLandmarkTiers, landmarkTierMode } from '../content/base-layout.js';
 import { createStoryBase } from '../fx/story-base.js';
 
 // camera rail in pad metres: orbit, descent chase, touchdown, the door, Isao
@@ -78,7 +78,8 @@ export function initStoryTab(root) {
   const commsEl = document.createElement('div'); commsEl.id = 'story-comms'; commsEl.hidden = true; hud.prepend(commsEl);
   const COMMS = { angry: ['#ff6a6a', 'Rough landing!'], glee: ['#7dff9e', 'So much to build!'] };
   function comms(face) { const c = COMMS[face]; commsEl.hidden = !c; if (c) { commsEl.style.color = c[0]; commsEl.style.borderColor = c[0]; commsEl.textContent = `ISAO · ${c[1]}`; } }
-  const LAYOUT = { islands: ISLANDS, structures: STRUCTURES, kit: KIT, stages: STAGES };
+  // the same switch and the same mapping the game world uses, so a candidate reviewed here is the file the game would load
+  const LAYOUT = { islands: ISLANDS, structures: withLandmarkTiers(STRUCTURES, landmarkTierMode(location.search)), kit: KIT, stages: STAGES };
   let stage = Math.min(STAGES.length - 1, Math.max(0, parseInt(q.get('stage') || '', 10) || 1)), base = null, gateForced = false;
   for (const st of STAGES) { const b = document.createElement('button'); b.type = 'button'; b.textContent = `${st.n} ${st.name}`; b.dataset.stage = st.n; b.onclick = () => setStage(st.n); stageBar.appendChild(b); }
   function setStage(n) {
