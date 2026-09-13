@@ -13,7 +13,7 @@ export function createSentryPilot(root, host) {
   const locked=()=>document.pointerLockElement===root;
   state.turn=0;   // -1..1 from the tank pad's side zones on touch
   const abort=new AbortController(),listen=(el,key,fn,options={})=>el.addEventListener(key,fn,{...options,signal:abort.signal});
-  function select(key){state.held=false;host.select(key);panel.querySelectorAll('[data-weapon]').forEach(b=>b.classList.toggle('on',b.dataset.weapon===key));}
+  function select(key){dismountGunship();state.held=false;host.select(key);panel.querySelectorAll('[data-weapon]').forEach(b=>b.classList.toggle('on',b.dataset.weapon===key));}
   panel.querySelectorAll('[data-weapon]').forEach(b=>listen(b,'click',()=>select(b.dataset.weapon)));
   panel.querySelectorAll('[data-post]').forEach(b=>listen(b,'click',()=>host.post(Number(b.dataset.post))));
   function toggleMap(){map=!map;state.held=false;root.classList.toggle('pilot-map',map);host.map(map);host.zoom(map?1:state.zoom);}
@@ -25,6 +25,7 @@ export function createSentryPilot(root, host) {
     e.stopImmediatePropagation();
     if(e.code==='Space'){e.preventDefault();state.held=!map;}
     if(e.repeat)return;
+    if(gunship){if(/^[123]$/.test(e.key))selectGun(G.order[Number(e.key)-1]);if(e.code==='KeyV')setView(state.view==='third'?'pov':'third');if(e.code==='KeyM')toggleMap();if(e.code==='KeyP')host.pause();return;}
     const s=SENTRIES.find(s=>String(s.number)===e.key);if(s&&!host.story)select(s.key);
     // the tank's keys: 1 map, 2 first person, 3 third person
     if(host.story){if(e.key==='1'&&!map)toggleMap();if(e.key==='2')setView('pov');if(e.key==='3')setView('third');}
@@ -39,7 +40,7 @@ export function createSentryPilot(root, host) {
     if(e.pointerType==='mouse'&&e.button===0&&!locked())root.requestPointerLock?.();
     e.target.setPointerCapture?.(e.pointerId);host.wake();
   },{capture:true});
-  listen(window,'pointermove',e=>{if(!dragging&&!locked())return;if(map)return;e.stopImmediatePropagation();const dx=locked()?e.movementX:e.clientX-lastX,dy=locked()?e.movementY:e.clientY-lastY;state.yaw-=dx*.004/state.zoom;state.pitch=Math.max(-1.25,Math.min(.9,state.pitch-dy*.004/state.zoom));lastX=e.clientX;lastY=e.clientY;},{capture:true});
+  listen(window,'pointermove',e=>{if(!dragging&&!locked())return;if(map)return;e.stopImmediatePropagation();const dx=locked()?e.movementX:e.clientX-lastX,dy=locked()?e.movementY:e.clientY-lastY;state.yaw-=dx*.004/state.zoom;state.pitch=Math.max(gunship?G.platform.pitchMin:-1.25,Math.min(gunship?G.platform.pitchMax:.9,state.pitch-dy*.004/state.zoom));lastX=e.clientX;lastY=e.clientY;},{capture:true});
   listen(window,'pointerup',()=>{dragging=false;},{capture:true});
   // the tank pad on touch: the fire button holds the trigger, the side zones turn the mount; their clicks never reach the tank
   for(const [sel,down,up] of [['#td-pad-fire',()=>{state.held=!map;},()=>{state.held=false;}],['#td-pad-left',()=>{state.turn=-1;},()=>{state.turn=0;}],['#td-pad-right',()=>{state.turn=1;},()=>{state.turn=0;}]]){
@@ -61,7 +62,7 @@ export function createSentryPilot(root, host) {
     eye.copy(tw.obj.position).addScaledVector(up,host.cellSide()*.65);
     // The optic stays on the mount for aiming; the camera sits back from it
     // so the barrels are in frame: a little in PoV, the whole turret in third.
-    const c=host.cellSide(),back=state.view==='third'?2.4*c:.34*c,lift=state.view==='third'?1.35*c:.12*c;
+    const c=host.cellSide(),back=state.view==='third'?(gunship?6*c:2.4*c):(gunship?0:.34*c),lift=state.view==='third'?(gunship?2.2*c:1.35*c):(gunship?0:.12*c);
     camEye.copy(eye).addScaledVector(forward,-back).addScaledVector(up,lift);
     goal.pos.copy(camEye);host.cameraPose(camEye,direction,up,goal);
     return !map;
@@ -94,9 +95,74 @@ export function createSentryPilot(root, host) {
     up.copy(tw.obj.position).normalize();eye.copy(tw.obj.position).addScaledVector(up,host.cellSide()*.65);
     v.fromArray(toward).sub(eye);state.pitch=Math.atan2(v.dot(up),v.clone().addScaledVector(up,-v.dot(up)).length());
   }
-  return {state,pose,target,attach,select,setView,isMap:()=>map,
+  // THE GUNSHIP (docs/superpowers/specs/2026-09-13-heavy-gunship-design.md). A virtual mount riding the pass over the base:
+  // the player takes the optic and the guns, never the aircraft. Position is the schedule's, not an input. Every gun fires
+  // wherever it is pointed; the danger report is a readout. The heavy IS the orbital strike: choosing it arms the safety,
+  // aiming paints the cell, the trigger launches through strike.js's own ritual.
+  const G=host.gunship,ship={key:'gunship',obj:new THREE.Group(),ci:-1},aim=new THREE.Vector3(),n3=new THREE.Vector3(),t1=new THREE.Vector3(),t2=new THREE.Vector3(),basis=new THREE.Matrix4();
+  let gunship=false,impact=null,report=null,rounds=0;
+  const guns=document.createElement('div');guns.className='pilot-guns';guns.style.display='none';
+  guns.innerHTML=G?G.order.map((k,i)=>`<button data-gun="${k}">${i+1} · ${G.guns[k].label}</button>`).join(''):'';panel.querySelector('header').after(guns);
+  function selectGun(key){if(!G||!G.select(key))return;state.held=false;guns.querySelectorAll('[data-gun]').forEach(b=>b.classList.toggle('on',b.dataset.gun===key));if(G.guns[key].strike){if(!G.strike.armed)G.arm();}else if(G.strike.armed)G.arm();}
+  guns.querySelectorAll('[data-gun]').forEach(b=>listen(b,'click',()=>selectGun(b.dataset.gun)));
+  function placePlatform(){   // above the heart along its normal, drifting across the base with the pass's progress
+    const hc=G.centers[G.heart()];n3.fromArray(G.normals[G.heart()]).normalize();
+    t1.set(Math.abs(n3.y)<.9?0:1,Math.abs(n3.y)<.9?1:0,0).cross(n3).normalize();t2.copy(n3).cross(t1);
+    const c=host.cellSide(),drift=(G.progress()*2-1)*G.platform.driftCells*c;
+    ship.obj.position.fromArray(hc).addScaledVector(n3,G.platform.altitudeCells*c).addScaledVector(t1,drift);
+    basis.makeBasis(t2,n3,t1);ship.obj.quaternion.setFromRotationMatrix(basis);ship.ci=G.heart();
+  }
+  function mountGunship(){
+    if(!G||G.mount()!=='mounted')return 'refused';
+    if(!ship.obj.parent){G.scene.add(ship.obj);G.optic.platform(ship.obj);}
+    gunship=true;state.tower=ship;state.held=false;state.target=null;state.hidden=null;state.view='pov';state.zoom=1;host.zoom(1);
+    placePlatform();state.yaw=Math.PI;state.pitch=-1.1;   // facing back along the track, looking down at the base
+    guns.style.display='';panel.querySelector('header').innerHTML='KORP / GS01 <small>HEAVY GUNSHIP · ON STATION</small>';panel.querySelector('footer').textContent='1 rotary · 2 bofors · 3 heavy (the strike) · Space fires · V PoV / third · M map · P pause';
+    G.optic.mount();host.views?.('gunship');selectGun(G.state.gun);if(map)toggleMap();
+    return 'mounted';
+  }
+  function dismountGunship(){
+    if(!gunship)return;gunship=false;G.dismount();G.optic.dismount();G.optic.rings(null);impact=null;report=null;guns.style.display='none';
+    if(G.strike.armed)G.arm();   // the safety re-engages when the gunner leaves
+  }
+  // the sim step: the platform's place, the aim, the readout, the rounds
+  function gunshipTick(dt){
+    if(!G)return;
+    G.optic.station(G.onStation());
+    if(!gunship)return;
+    if(!G.onStation()){dismountGunship();host.views?.('tank');host.leave?.();return;}
+    placePlatform();up.copy(ship.obj.position).normalize();
+    forward.set(Math.sin(state.yaw),0,Math.cos(state.yaw)).applyQuaternion(ship.obj.quaternion).normalize();
+    direction.copy(forward).multiplyScalar(Math.cos(state.pitch)).addScaledVector(up,Math.sin(state.pitch)).normalize();
+    eye.copy(ship.obj.position);
+    impact=G.aim(eye.toArray(),direction.toArray());
+    const ci=impact?G.cell(impact):-1,gun=G.guns[G.state.gun],c=host.cellSide();
+    report=impact?Object.fromEntries(G.order.map(k=>[k,G.danger(impact,G.guns[k].dangerCells*c)])):null;
+    G.optic.rings(impact,ci>=0?G.normals[ci]:[0,1,0],G.state.gun,report);
+    let fired=null;
+    if(gun.strike){
+      if(ci>=0&&G.strike.armed&&!map)G.paint(ci);
+      if(state.held&&!map){state.held=false;if(G.launch())fired='round';}
+    }else{
+      const n=G.step(dt,state.held&&!map);
+      if(n>0&&impact){
+        fired='round';G.sfx(gun.sound,impact);
+        for(let i=0;i<n;i++){   // a golden-angle scatter inside half the blast, so a burst walks rather than drills
+          const a=(rounds++)*2.399963,r=gun.blastCells*c*.5*Math.sqrt((rounds%7)/7);
+          aim.fromArray(impact).addScaledVector(t1,Math.cos(a)*r).addScaledVector(t2,Math.sin(a)*r);
+          for(const e of G.enemies()){const d=aim.distanceTo(v.fromArray(e.pos));if(d<gun.blastCells*c)G.damage(e,G.splash(d,gun.blastCells*c,gun.damage));}
+        }
+        if(gun.key==='bofors'||rounds%6===0)G.puff(ci,gun.ringHex,gun.key==='bofors'?.5:.18,gun.blastCells*c);
+      }else if(state.held&&!map)fired='held';
+    }
+    G.optic.pose({pitch:state.pitch,gun:G.state.gun,firing:fired,dt});
+    const r=report?.[G.state.gun],left=Math.ceil(G.left());
+    panel.querySelector('output').textContent=`${gun.label} · ${gun.cue} · ON STATION ${left} S`+(gun.strike?` · ${G.strike.ready>0?(G.strike.armed?'ARMED':'READY'):G.strike.cooldown>0?'RE-ORBIT':'NO SHELL'}`:'')+(r?` · IN BLAST: ${r.walls} WALL${r.walls===1?'':'S'} · ${r.towers} SENTR${r.towers===1?'Y':'IES'}${r.tank?' · TANK':''}${r.isao?' · ISAO':''}`:'');
+  }
+  const gunshipOptic=()=>gunship&&impact?{from:aim.fromArray(impact).addScaledVector(t1,host.cellSide()*2.2).toArray(),pos:impact,label:'GROUND TRUTH · IMPACT'}:null;
+  return {state,pose,target,attach,select,setView,isMap:()=>map,mountGunship,dismountGunship,gunshipTick,gunshipOptic,get gunship(){return gunship;},
     aimAt:pos=>{const {held,target}=state;attach(state.tower,pos);state.held=held;state.target=target;},
     update(text){panel.querySelector('output').textContent=text;},
-    dispose(){abort.abort();if(locked())document.exitPointerLock?.();panel.remove();root.classList.remove('sentry-pilot-mode');}
+    dispose(){dismountGunship();abort.abort();if(locked())document.exitPointerLock?.();panel.remove();root.classList.remove('sentry-pilot-mode');}
   };
 }
