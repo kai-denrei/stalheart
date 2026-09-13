@@ -731,6 +731,10 @@ try{
   assert(await evaluate('window.__stalheartSwarm.set("count",300)'));
   await until('window.__stalheartSwarm.state().built===300');
   assert((await evaluate('window.__stalheartSwarm.state()')).points>s0.points,'more bodies draw more points');
+  // the tank must be DRIVEN by default, and the lane must still run without a
+  // hand on it — so the test switches to the scripted charge to make progress
+  assert.equal(s0.drive,'manual','the study opens under the tester\'s hand');
+  await evaluate('window.__stalheartSwarm.set("drive","charge")');
   // the lane closes and the rammable belt goes under the treads: kills climb,
   // the chain counts, and every impact costs the hull speed it earns back
   await until('window.__stalheartSwarm.state().kills>3',30000);
@@ -739,6 +743,11 @@ try{
   assert(ram.earned>0,'ramming pays');
   assert(ram.hull<=1,'the hull slows on impact');
   assert.equal(ram.blocked,0,'a white belt never blocks');
+  // the ladder wears the game's rungs, and the tenth one shouts
+  await until('window.__stalheartSwarm.state().maxCombo>=10',30000);
+  assert.equal(await evaluate('document.querySelector("#swarm [data-combo]").hidden'),false,'the ladder shows');
+  assert(await evaluate('+document.querySelector("#swarm [data-combo] b").dataset.tier>=1'),'the rung climbs');
+  assert(await evaluate('getComputedStyle(document.querySelector("#swarm [data-combo] b")).fontFamily.length>0'),'it wears the shout pack');
   // a solid core stops the hull instead, and breaks the chain
   await evaluate('window.__stalheartSwarm.set("type","drifter")');
   await until('window.__stalheartSwarm.state().blocked>0',30000);
@@ -751,6 +760,26 @@ try{
   // the jelly body is a mesh, so it arrives as triangles
   await evaluate('window.__stalheartSwarm.set("count",30);window.__stalheartSwarm.set("form","jelly")');
   await until('window.__stalheartSwarm.state().triangles>0');
+  // A RUN IS A FIXED POPULATION. Small, so the suite is not held up by it:
+  // the point is that the lane empties and scores itself, not how long it
+  // takes. Every body must end up rammed, escaped or blocked — a run that
+  // ends with bodies unaccounted for means retire() leaked one.
+  await evaluate('window.__stalheartSwarm.set("form","dots");window.__stalheartSwarm.set("type","phage");window.__stalheartSwarm.set("count",8)');
+  await until('window.__stalheartSwarm.state().built===8');
+  await evaluate('window.__stalheartSwarm.startRun()');
+  await until('window.__stalheartSwarm.state().running===true');
+  await until('window.__stalheartSwarm.state().running===false',60000);
+  const rec=await evaluate('(()=>{const r=window.__stalheartSwarm.lastRun();return r&&{...r,series:undefined,gpuSeries:undefined};})()');
+  assert(rec,'a finished run leaves a record');
+  assert.equal(rec.kills+rec.escaped+rec.blocked,8,`every body is accounted for (${JSON.stringify(rec)})`);
+  assert(rec.frame&&rec.frame.n>10,'the run sampled wall-clock frames');
+  assert(rec.seconds>0&&rec.calls>0,'the run recorded its shape');
+  // kept runs persist so the next run can be read against them
+  await evaluate('document.querySelector("#swarm [data-keep]").click()');
+  assert.equal(await evaluate('window.__stalheartSwarm.kept().length'),1,'a run can be kept');
+  assert.equal(await evaluate('document.querySelectorAll("#swarm .sw-col").length'),2,'the card compares it with this run');
+  await evaluate('document.querySelector("#swarm [data-clear]").click()');
+  assert.equal(await evaluate('window.__stalheartSwarm.kept().length'),0,'kept runs can be cleared');
  }
  await finish();
  await go('mork-game','index.html?sw=0&cine=0&tutorial=0&acceptance=1#td');
