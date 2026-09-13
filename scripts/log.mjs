@@ -53,9 +53,36 @@ function renderedLog(entries) {
   return text.trimEnd() + '\n';
 }
 function render(entries) {
-  const text=renderedLog(entries);
-  const path=resolve(root,'DEVLOG.md'),tmp=path+`.${randomUUID()}.tmp`;
+  writeAtomic(resolve(root,'DEVLOG.md'), renderedLog(entries));
+  const road = roadmapWith(entries); if (road !== null) writeAtomic(resolve(root,'ROADMAP.md'), road);
+}
+function writeAtomic(path, text) {
+  const tmp = path+`.${randomUUID()}.tmp`;
   try { writeFileSync(tmp,text); renameSync(tmp,path); } finally { try { unlinkSync(tmp); } catch {} }
+}
+
+// THE ROADMAP IS HAND-WRITTEN, WITH ONE GENERATED BLOCK. The prose is meant to
+// be argued with and a generator cannot argue; but the open decisions are FACTS
+// about the log, and a list of them maintained by hand goes stale the first
+// time somebody resolves an entry and forgets. So everything between the two
+// markers is regenerated from the entries, and `check` fails if it drifted —
+// the same contract DEVLOG has.
+const OPEN_START = '<!-- deban:open:start -->';
+const OPEN_END = '<!-- deban:open:end -->';
+const isOpen = (e) => e.status === 'proposed' || e.status === 'observed';
+function openBlock(entries) {
+  const open = entries.filter(isOpen).slice().reverse();
+  if (!open.length) return `${OPEN_START}\n\nNothing open. Every entry is accepted or resolved.\n\n${OPEN_END}`;
+  const rows = open.map(e =>
+    `### ${e.title}\n\n\`${e.id}\` · ${e.type} · **${e.status}**\n\n${e.context}\n`).join('\n');
+  return `${OPEN_START}\n\n_Generated from \`docs/log/entries/\` by \`npm run log -- render\`. ${open.length} open: `
+    + `\`proposed\` means the decision is not made, \`observed\` means it was seen and not yet resolved._\n\n${rows}\n${OPEN_END}`;
+}
+function roadmapWith(entries) {
+  let current; try { current = readFileSync(resolve(root,'ROADMAP.md'),'utf8'); } catch { return null; }
+  const a = current.indexOf(OPEN_START), b = current.indexOf(OPEN_END);
+  if (a < 0 || b < 0) return null;   // no marked block: leave the file alone
+  return current.slice(0, a) + openBlock(entries) + current.slice(b + OPEN_END.length);
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
@@ -63,7 +90,11 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     if(cmd==='add') { if(!file)throw Error('Usage: log.mjs add entry.json');appendEntry(JSON.parse(readFileSync(file,'utf8'))); }
     else if(!['check','render'].includes(cmd))throw Error('Use add FILE, check, or render');
     const entries=readEntries(); if(cmd!=='check')render(entries);
-    else if (readFileSync(resolve(root,'DEVLOG.md'),'utf8') !== renderedLog(entries)) throw Error('DEVLOG is stale; run npm run log -- render');
+    else {
+      if (readFileSync(resolve(root,'DEVLOG.md'),'utf8') !== renderedLog(entries)) throw Error('DEVLOG is stale; run npm run log -- render');
+      const road = roadmapWith(entries);
+      if (road !== null && road !== readFileSync(resolve(root,'ROADMAP.md'),'utf8')) throw Error('ROADMAP open items are stale; run npm run log -- render');
+    }
     console.log(`${entries.length} valid Stalheart log entries.`);
   } catch(e) { console.error(e.message);process.exit(1); }
 }
