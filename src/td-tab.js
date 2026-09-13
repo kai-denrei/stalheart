@@ -104,7 +104,7 @@ import { TANK_FEEL, TANK_FEEL_KNOBS, makeTankFeel, stepTankFeel, landTankFeel, f
 import { FEEL, loadFeel, saveFeel } from './feelstore.js';
 import { STRIKE_KNOBS, makeStrike, makeStrikeParams, grantStrikes, stepStrike,
   toggleArm, paintTarget, launchStrike, stepFall, skipFall, fallProgress,
-  strikeDamage, retargetStrike, orbitProgress } from './strike.js';
+  strikeDamage, retargetStrike, orbitProgress } from './strike.js'; import { choosePilotPosts } from './domain/pilot-posts.js';
 import { radarBasis, radarProject, radarBearing, sweepAngle, radarPhosphor,
   proximitySectors, SENSOR_LEVELS, sensorColor } from './radar.js';
 import { BLOOM_GROUPS } from './bloomweights.js';
@@ -17568,16 +17568,7 @@ export function initTdTab(root) {
       cameraPose:(eye,dir,up,goal)=>{tmpCam.position.copy(eye);tmpCam.up.copy(up);tmpCam.lookAt(eye.clone().add(dir));goal.quat.copy(tmpCam.quaternion);}
     });
     // Real first-sector wall cells, prioritised beside incoming routes.
-    const lanes=spawnPoints.filter(sp=>sp.alive).map(sp=>sp.ci);
-    const walls=Array.from(dungeon.tags,(_,ci)=>ci).filter(ci=>!placeError(ci));
-    const candidates=walls.map(ci=>({ci,d:Math.min(...lanes.map(sp=>chord(graph.centers[ci],graph.centers[sp])))})).sort((a,b)=>a.d-b.d);
-    pilotPosts=posts?posts.slice():[];
-    if(!posts)for(const v of candidates){
-      if(v.d<cellSide*4 || !lanes.some(ci=>losClear(v.ci,graph.centers[ci])) || pilotPosts.some(ci=>chord(graph.centers[ci],graph.centers[v.ci])<cellSide*1.5))continue;
-      pilotPosts.push(v.ci);if(pilotPosts.length===6)break;
-    }
-    if(!posts&&pilotPosts.length<6){for(const v of candidates){if(v.d>=cellSide*4 && !pilotPosts.includes(v.ci))pilotPosts.push(v.ci);if(pilotPosts.length===6)break;}}
-    if(!pilotPosts.length)pilotPosts=walls.slice(0,1);
+    pilotPosts=posts?posts.slice():choosePilotPosts({walls:Array.from(dungeon.tags,(_,ci)=>ci).filter(ci=>!placeError(ci)),lanes:spawnPoints.filter(sp=>sp.alive).map(sp=>sp.ci),centers:graph.centers,cellSide,chord,losClear});   // the six practice posts: a domain rule (src/domain/pilot-posts.js)
     deploy=null;endShot();dismissIntro();paused=false;tutorial.frozen=false;runTutorial=false;
     for(let i=0;i<pilotPosts.length;i++)pilotMounts[i]=posts?towerByCell.get(pilotPosts[i]):commitTower('needle',pilotPosts[i],0);
     clearBriefs();params.callouts=false;setView('bastion');pilot.select(posts?pilotMounts[0]?.key||'rotor':'needle');hideRangeRing();snapCamera();
