@@ -1,0 +1,636 @@
+{
+  "schema": "jelaludo.asset-family/v2-candidate",
+  "version": 2,
+  "family": "sh02_salvage_layout",
+  "label": "SH02 four-piece salvage layout",
+  "status": "contract_candidate_pending_game_camera_reference_phone",
+  "plain_glb_source_of_truth": true,
+  "coordinate_system": {
+    "units": "meters",
+    "up": "+Y",
+    "forward": "+Z",
+    "origin": "arrival-recycling site ground; composed around AFR-01 service arm"
+  },
+  "budgets": {
+    "lod1": {
+      "triangles_max": 8000,
+      "draw_calls_max": 10,
+      "plain_bytes_max": 400000
+    },
+    "lod2": {
+      "triangles_max": 3000,
+      "draw_calls_max": 1,
+      "plain_bytes_max": 250000
+    }
+  },
+  "state_model": {
+    "damage_level": 0,
+    "salvage_stage": 1,
+    "separate_from_damage_and_lod": true,
+    "description": "Post-landing staging after SH02 separates into four reusable construction-feed assemblies."
+  },
+  "source": {
+    "file": "../sh-rocket/sh_rocket.glb",
+    "sha256": "9c777de6f9f766539915fa1132bbc72e0a5383aae369b7e5f416545c74ce3c33",
+    "preserved": true
+  },
+  "lod_selection": {
+    "initial": "lod2",
+    "approach_distance_m": 150,
+    "hysteresis_m": 20,
+    "review": "Tune with the AFR-01 sequence game camera and reference phone."
+  },
+  "assets": [
+    {
+      "id": "sh02_salvage_layout_stage1_lod0",
+      "family": "sh02_salvage_layout",
+      "name": "SH02 four-piece salvage layout",
+      "file": "sh02_salvage_layout_stage1_lod0.glb",
+      "meshopt_file": "sh02_salvage_layout_stage1_lod0.meshopt.glb",
+      "lod": 0,
+      "quality": "detailed_master",
+      "damage_level": 0,
+      "salvage_stage": 1,
+      "state": "sectioned_staging",
+      "role": "close_review_and_recording",
+      "static": true,
+      "derived": false,
+      "derived_from": "../sh-rocket/sh_rocket.glb",
+      "source_sha256": "9c777de6f9f766539915fa1132bbc72e0a5383aae369b7e5f416545c74ce3c33",
+      "sha256": "75ee104b70075e33fa99439a72cb9d037e3e1612988118370368ff2b2e4cb548",
+      "meshopt_sha256": "4fba670bbb6c31fcebb018fbd44307dfbec909d64182bfeae5f02f8b63d90d99",
+      "bytes": 1721028,
+      "meshopt_bytes": 565172,
+      "triangles": 20418,
+      "draw_calls": 4,
+      "materials": 1,
+      "textures": 0,
+      "bounds": {
+        "min": [
+          -13.218746185302734,
+          -9.536743217353205e-8,
+          -6.600000095367432
+        ],
+        "max": [
+          2.4451689289724596,
+          10.701199885559083,
+          6.559999942779541
+        ],
+        "dimensions_m": [
+          15.663915114275195,
+          10.701199980926514,
+          13.160000038146972
+        ]
+      },
+      "plot_m": [
+        24,
+        18
+      ],
+      "sections": [
+        {
+          "id": "LANDING",
+          "node": "SH02_SALVAGE_SECTION_00_LANDING",
+          "geometry": "SH02_SALVAGE_GEOMETRY_00_LANDING",
+          "label": "Lower landing and engine unit plus lower tank section"
+        },
+        {
+          "id": "TANK",
+          "node": "SH02_SALVAGE_SECTION_01_TANK",
+          "geometry": "SH02_SALVAGE_GEOMETRY_01_TANK",
+          "label": "Upper propellant tank section"
+        },
+        {
+          "id": "CAPSULE",
+          "node": "SH02_SALVAGE_SECTION_02_CAPSULE",
+          "geometry": "SH02_SALVAGE_GEOMETRY_02_CAPSULE",
+          "label": "Top cargo capsule"
+        },
+        {
+          "id": "ISAO_MODULE",
+          "node": "SH02_SALVAGE_SECTION_03_ISAO_MODULE",
+          "geometry": "SH02_SALVAGE_GEOMETRY_03_ISAO_MODULE",
+          "label": "Removable ISAO emergence module"
+        }
+      ],
+      "sockets": [
+        {
+          "id": "SALVAGE_TARGET_00",
+          "node": "SOCKET_SALVAGE_TARGET_00",
+          "section": "LANDING",
+          "position_m": [
+            -5.68,
+            5.7,
+            0
+          ],
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "kind": "salvage_target",
+          "available": true
+        },
+        {
+          "id": "SALVAGE_TARGET_01",
+          "node": "SOCKET_SALVAGE_TARGET_01",
+          "section": "TANK",
+          "position_m": [
+            0.9,
+            2.1,
+            -4.45
+          ],
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "kind": "salvage_target",
+          "available": true
+        },
+        {
+          "id": "SALVAGE_TARGET_02",
+          "node": "SOCKET_SALVAGE_TARGET_02",
+          "section": "CAPSULE",
+          "position_m": [
+            0.8,
+            2.15,
+            4.5
+          ],
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "kind": "salvage_target",
+          "available": true
+        },
+        {
+          "id": "SALVAGE_TARGET_03",
+          "node": "SOCKET_SALVAGE_TARGET_03",
+          "section": "ISAO_MODULE",
+          "position_m": [
+            1.15,
+            0.8,
+            2.72
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ],
+          "kind": "salvage_target",
+          "available": true
+        },
+        {
+          "id": "ISAO_RELEASE",
+          "node": "SOCKET_ISAO_RELEASE",
+          "section": "ISAO_MODULE",
+          "position_m": [
+            1.15,
+            1.05,
+            4.6
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ],
+          "kind": "character_release",
+          "available": true
+        }
+      ],
+      "clips": [],
+      "animations": [],
+      "required_nodes": [
+        "SH02_SALVAGE_LAYOUT_ROOT",
+        "SH02_SALVAGE_SECTION_00_LANDING",
+        "SH02_SALVAGE_GEOMETRY_00_LANDING",
+        "SH02_SALVAGE_SECTION_01_TANK",
+        "SH02_SALVAGE_GEOMETRY_01_TANK",
+        "SH02_SALVAGE_SECTION_02_CAPSULE",
+        "SH02_SALVAGE_GEOMETRY_02_CAPSULE",
+        "SH02_SALVAGE_SECTION_03_ISAO_MODULE",
+        "SH02_SALVAGE_GEOMETRY_03_ISAO_MODULE",
+        "SH02_SALVAGE_DISTANCE_GEOMETRY",
+        "SOCKET_SALVAGE_TARGET_00",
+        "SOCKET_SALVAGE_TARGET_01",
+        "SOCKET_SALVAGE_TARGET_02",
+        "SOCKET_SALVAGE_TARGET_03",
+        "SOCKET_ISAO_RELEASE"
+      ],
+      "engine_nodes": [
+        "SH02_SALVAGE_LAYOUT_ROOT",
+        "SH02_SALVAGE_SECTION_00_LANDING",
+        "SH02_SALVAGE_GEOMETRY_00_LANDING",
+        "SH02_SALVAGE_SECTION_01_TANK",
+        "SH02_SALVAGE_GEOMETRY_01_TANK",
+        "SH02_SALVAGE_SECTION_02_CAPSULE",
+        "SH02_SALVAGE_GEOMETRY_02_CAPSULE",
+        "SH02_SALVAGE_SECTION_03_ISAO_MODULE",
+        "SH02_SALVAGE_GEOMETRY_03_ISAO_MODULE",
+        "SH02_SALVAGE_DISTANCE_GEOMETRY",
+        "SOCKET_SALVAGE_TARGET_00",
+        "SOCKET_SALVAGE_TARGET_01",
+        "SOCKET_SALVAGE_TARGET_02",
+        "SOCKET_SALVAGE_TARGET_03",
+        "SOCKET_ISAO_RELEASE"
+      ],
+      "review_status": "contract_candidate_pending_game_camera_reference_phone",
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "sh02_salvage_layout_stage1_lod1",
+      "family": "sh02_salvage_layout",
+      "name": "SH02 four-piece salvage layout",
+      "file": "sh02_salvage_layout_stage1_lod1.glb",
+      "meshopt_file": "sh02_salvage_layout_stage1_lod1.meshopt.glb",
+      "lod": 1,
+      "quality": "game",
+      "damage_level": 0,
+      "salvage_stage": 1,
+      "state": "sectioned_staging",
+      "role": "arrival_recycling_game_camera",
+      "static": true,
+      "derived": true,
+      "derived_from": "sh02_salvage_layout_stage1_lod0.glb",
+      "source_sha256": "9c777de6f9f766539915fa1132bbc72e0a5383aae369b7e5f416545c74ce3c33",
+      "sha256": "e342f3dc64cf7ecdfc654217eca693c3341b9255c3ae5c7f49dc6ffbcb25ab19",
+      "meshopt_sha256": "d61620073b0ef7b014333b3491bd754c2bad34ef0ff150ca5e67fc898b8f2318",
+      "bytes": 157432,
+      "meshopt_bytes": 50864,
+      "triangles": 4796,
+      "draw_calls": 4,
+      "materials": 1,
+      "textures": 0,
+      "bounds": {
+        "min": [
+          -13.214314937591553,
+          -9.536743217353205e-8,
+          -6.600000095367432
+        ],
+        "max": [
+          2.4451689289724596,
+          10.701199885559083,
+          6.559999942779541
+        ],
+        "dimensions_m": [
+          15.659483866564013,
+          10.701199980926514,
+          13.160000038146972
+        ]
+      },
+      "plot_m": [
+        24,
+        18
+      ],
+      "sections": [
+        {
+          "id": "LANDING",
+          "node": "SH02_SALVAGE_SECTION_00_LANDING",
+          "geometry": "SH02_SALVAGE_GEOMETRY_00_LANDING",
+          "label": "Lower landing and engine unit plus lower tank section"
+        },
+        {
+          "id": "TANK",
+          "node": "SH02_SALVAGE_SECTION_01_TANK",
+          "geometry": "SH02_SALVAGE_GEOMETRY_01_TANK",
+          "label": "Upper propellant tank section"
+        },
+        {
+          "id": "CAPSULE",
+          "node": "SH02_SALVAGE_SECTION_02_CAPSULE",
+          "geometry": "SH02_SALVAGE_GEOMETRY_02_CAPSULE",
+          "label": "Top cargo capsule"
+        },
+        {
+          "id": "ISAO_MODULE",
+          "node": "SH02_SALVAGE_SECTION_03_ISAO_MODULE",
+          "geometry": "SH02_SALVAGE_GEOMETRY_03_ISAO_MODULE",
+          "label": "Removable ISAO emergence module"
+        }
+      ],
+      "sockets": [
+        {
+          "id": "SALVAGE_TARGET_00",
+          "node": "SOCKET_SALVAGE_TARGET_00",
+          "section": "LANDING",
+          "position_m": [
+            -5.68,
+            5.7,
+            0
+          ],
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "kind": "salvage_target",
+          "available": true
+        },
+        {
+          "id": "SALVAGE_TARGET_01",
+          "node": "SOCKET_SALVAGE_TARGET_01",
+          "section": "TANK",
+          "position_m": [
+            0.9,
+            2.1,
+            -4.45
+          ],
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "kind": "salvage_target",
+          "available": true
+        },
+        {
+          "id": "SALVAGE_TARGET_02",
+          "node": "SOCKET_SALVAGE_TARGET_02",
+          "section": "CAPSULE",
+          "position_m": [
+            0.8,
+            2.15,
+            4.5
+          ],
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "kind": "salvage_target",
+          "available": true
+        },
+        {
+          "id": "SALVAGE_TARGET_03",
+          "node": "SOCKET_SALVAGE_TARGET_03",
+          "section": "ISAO_MODULE",
+          "position_m": [
+            1.15,
+            0.8,
+            2.72
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ],
+          "kind": "salvage_target",
+          "available": true
+        },
+        {
+          "id": "ISAO_RELEASE",
+          "node": "SOCKET_ISAO_RELEASE",
+          "section": "ISAO_MODULE",
+          "position_m": [
+            1.15,
+            1.05,
+            4.6
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ],
+          "kind": "character_release",
+          "available": true
+        }
+      ],
+      "clips": [],
+      "animations": [],
+      "required_nodes": [
+        "SH02_SALVAGE_LAYOUT_ROOT",
+        "SH02_SALVAGE_SECTION_00_LANDING",
+        "SH02_SALVAGE_GEOMETRY_00_LANDING",
+        "SH02_SALVAGE_SECTION_01_TANK",
+        "SH02_SALVAGE_GEOMETRY_01_TANK",
+        "SH02_SALVAGE_SECTION_02_CAPSULE",
+        "SH02_SALVAGE_GEOMETRY_02_CAPSULE",
+        "SH02_SALVAGE_SECTION_03_ISAO_MODULE",
+        "SH02_SALVAGE_GEOMETRY_03_ISAO_MODULE",
+        "SH02_SALVAGE_DISTANCE_GEOMETRY",
+        "SOCKET_SALVAGE_TARGET_00",
+        "SOCKET_SALVAGE_TARGET_01",
+        "SOCKET_SALVAGE_TARGET_02",
+        "SOCKET_SALVAGE_TARGET_03",
+        "SOCKET_ISAO_RELEASE"
+      ],
+      "engine_nodes": [
+        "SH02_SALVAGE_LAYOUT_ROOT",
+        "SH02_SALVAGE_SECTION_00_LANDING",
+        "SH02_SALVAGE_GEOMETRY_00_LANDING",
+        "SH02_SALVAGE_SECTION_01_TANK",
+        "SH02_SALVAGE_GEOMETRY_01_TANK",
+        "SH02_SALVAGE_SECTION_02_CAPSULE",
+        "SH02_SALVAGE_GEOMETRY_02_CAPSULE",
+        "SH02_SALVAGE_SECTION_03_ISAO_MODULE",
+        "SH02_SALVAGE_GEOMETRY_03_ISAO_MODULE",
+        "SH02_SALVAGE_DISTANCE_GEOMETRY",
+        "SOCKET_SALVAGE_TARGET_00",
+        "SOCKET_SALVAGE_TARGET_01",
+        "SOCKET_SALVAGE_TARGET_02",
+        "SOCKET_SALVAGE_TARGET_03",
+        "SOCKET_ISAO_RELEASE"
+      ],
+      "review_status": "contract_candidate_pending_game_camera_reference_phone",
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "sh02_salvage_layout_stage1_lod2",
+      "family": "sh02_salvage_layout",
+      "name": "SH02 four-piece salvage layout",
+      "file": "sh02_salvage_layout_stage1_lod2.glb",
+      "meshopt_file": "sh02_salvage_layout_stage1_lod2.meshopt.glb",
+      "lod": 2,
+      "quality": "distance",
+      "damage_level": 0,
+      "salvage_stage": 1,
+      "state": "sectioned_staging",
+      "role": "map_loading_far_view",
+      "static": true,
+      "derived": true,
+      "derived_from": "sh02_salvage_layout_stage1_lod0.glb",
+      "source_sha256": "9c777de6f9f766539915fa1132bbc72e0a5383aae369b7e5f416545c74ce3c33",
+      "sha256": "41d778be42d740a7c312a2f41eab0ec962e0e2002221712a5778a15ef43e4e9b",
+      "meshopt_sha256": "bda194a29d90c00a52aeb7be1a3d74f762050b3f60452eee2d05e0854991524b",
+      "bytes": 69996,
+      "meshopt_bytes": 22560,
+      "triangles": 2398,
+      "draw_calls": 1,
+      "materials": 1,
+      "textures": 0,
+      "bounds": {
+        "min": [
+          -13.214315414428711,
+          -9.536743306171047e-8,
+          -6.599999904632568
+        ],
+        "max": [
+          2.445168972015381,
+          10.701199531555176,
+          6.559999942779541
+        ],
+        "dimensions_m": [
+          15.659484386444092,
+          10.701199626922609,
+          13.15999984741211
+        ]
+      },
+      "plot_m": [
+        24,
+        18
+      ],
+      "sections": [
+        {
+          "id": "LANDING",
+          "node": "SH02_SALVAGE_SECTION_00_LANDING",
+          "geometry": "SH02_SALVAGE_GEOMETRY_00_LANDING",
+          "label": "Lower landing and engine unit plus lower tank section"
+        },
+        {
+          "id": "TANK",
+          "node": "SH02_SALVAGE_SECTION_01_TANK",
+          "geometry": "SH02_SALVAGE_GEOMETRY_01_TANK",
+          "label": "Upper propellant tank section"
+        },
+        {
+          "id": "CAPSULE",
+          "node": "SH02_SALVAGE_SECTION_02_CAPSULE",
+          "geometry": "SH02_SALVAGE_GEOMETRY_02_CAPSULE",
+          "label": "Top cargo capsule"
+        },
+        {
+          "id": "ISAO_MODULE",
+          "node": "SH02_SALVAGE_SECTION_03_ISAO_MODULE",
+          "geometry": "SH02_SALVAGE_GEOMETRY_03_ISAO_MODULE",
+          "label": "Removable ISAO emergence module"
+        }
+      ],
+      "sockets": [
+        {
+          "id": "SALVAGE_TARGET_00",
+          "node": "SOCKET_SALVAGE_TARGET_00",
+          "section": "LANDING",
+          "position_m": [
+            -5.68,
+            5.7,
+            0
+          ],
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "kind": "salvage_target",
+          "available": true
+        },
+        {
+          "id": "SALVAGE_TARGET_01",
+          "node": "SOCKET_SALVAGE_TARGET_01",
+          "section": "TANK",
+          "position_m": [
+            0.9,
+            2.1,
+            -4.45
+          ],
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "kind": "salvage_target",
+          "available": true
+        },
+        {
+          "id": "SALVAGE_TARGET_02",
+          "node": "SOCKET_SALVAGE_TARGET_02",
+          "section": "CAPSULE",
+          "position_m": [
+            0.8,
+            2.15,
+            4.5
+          ],
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "kind": "salvage_target",
+          "available": true
+        },
+        {
+          "id": "SALVAGE_TARGET_03",
+          "node": "SOCKET_SALVAGE_TARGET_03",
+          "section": "ISAO_MODULE",
+          "position_m": [
+            1.15,
+            0.8,
+            2.72
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ],
+          "kind": "salvage_target",
+          "available": true
+        },
+        {
+          "id": "ISAO_RELEASE",
+          "node": "SOCKET_ISAO_RELEASE",
+          "section": "ISAO_MODULE",
+          "position_m": [
+            1.15,
+            1.05,
+            4.6
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ],
+          "kind": "character_release",
+          "available": true
+        }
+      ],
+      "clips": [],
+      "animations": [],
+      "required_nodes": [
+        "SH02_SALVAGE_LAYOUT_ROOT",
+        "SH02_SALVAGE_SECTION_00_LANDING",
+        "SH02_SALVAGE_GEOMETRY_00_LANDING",
+        "SH02_SALVAGE_SECTION_01_TANK",
+        "SH02_SALVAGE_GEOMETRY_01_TANK",
+        "SH02_SALVAGE_SECTION_02_CAPSULE",
+        "SH02_SALVAGE_GEOMETRY_02_CAPSULE",
+        "SH02_SALVAGE_SECTION_03_ISAO_MODULE",
+        "SH02_SALVAGE_GEOMETRY_03_ISAO_MODULE",
+        "SH02_SALVAGE_DISTANCE_GEOMETRY",
+        "SOCKET_SALVAGE_TARGET_00",
+        "SOCKET_SALVAGE_TARGET_01",
+        "SOCKET_SALVAGE_TARGET_02",
+        "SOCKET_SALVAGE_TARGET_03",
+        "SOCKET_ISAO_RELEASE"
+      ],
+      "engine_nodes": [
+        "SH02_SALVAGE_LAYOUT_ROOT",
+        "SH02_SALVAGE_SECTION_00_LANDING",
+        "SH02_SALVAGE_GEOMETRY_00_LANDING",
+        "SH02_SALVAGE_SECTION_01_TANK",
+        "SH02_SALVAGE_GEOMETRY_01_TANK",
+        "SH02_SALVAGE_SECTION_02_CAPSULE",
+        "SH02_SALVAGE_GEOMETRY_02_CAPSULE",
+        "SH02_SALVAGE_SECTION_03_ISAO_MODULE",
+        "SH02_SALVAGE_GEOMETRY_03_ISAO_MODULE",
+        "SH02_SALVAGE_DISTANCE_GEOMETRY",
+        "SOCKET_SALVAGE_TARGET_00",
+        "SOCKET_SALVAGE_TARGET_01",
+        "SOCKET_SALVAGE_TARGET_02",
+        "SOCKET_SALVAGE_TARGET_03",
+        "SOCKET_ISAO_RELEASE"
+      ],
+      "review_status": "contract_candidate_pending_game_camera_reference_phone",
+      "credit": "Models by jelaludo"
+    }
+  ]
+}

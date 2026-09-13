@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/jelaludo/SentryTowers_A6",
+  "revision": "1759134242675fb56b48dc5c56be660928b22ac3",
+  "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/1759134242675fb56b48dc5c56be660928b22ac3/",
+  "credit": "Models by jelaludo (https://jelaludo.github.io/SentryTowers_A6/arrival-foundry/), AFR-01 Seed Foundry and the SH02 four-piece salvage layout, game and distance tiers, reused with attribution under the upstream ASSET-LICENSE.md",
+  "files": [
+    { "path": "assets/models/story/arrival-foundry-manifest.json", "sourcePath": "assets/arrival-foundry/manifest.json", "sha256": "50b5e32e698286f8f670cb228c9c91bea04d1cf109d689ab54d3752c49ec4bcb", "bytes": 14828 },
+    { "path": "assets/models/story/afr_01_seed_foundry_d0_lod1.glb", "sourcePath": "assets/arrival-foundry/afr_01_seed_foundry_d0_lod1.glb", "sha256": "bcaec17de78b0912678250e55898e763e9476e1e8f559b3c56fa220faa1eee5a", "bytes": 92728, "manifest": "assets/models/story/arrival-foundry-manifest.json", "clips": ["Recycle_Panel_To_Barrel", "Foundry_Process_Cycle"] },
+    { "path": "assets/models/story/afr_01_seed_foundry_d0_lod2.glb", "sourcePath": "assets/arrival-foundry/afr_01_seed_foundry_d0_lod2.glb", "sha256": "9059b98d4579a5f472751224fc4688dac09d0dfe5ab618c1283fea1e60114819", "bytes": 52224, "manifest": "assets/models/story/arrival-foundry-manifest.json" },
+    { "path": "assets/models/story/sh02-salvage-manifest.json", "sourcePath": "assets/sh02-salvage/manifest.json", "sha256": "77726e6807152018535f774a1ee73bcef182c90b8cd94ddfc21bb8952b0d42a1", "bytes": 18026 },
+    { "path": "assets/models/story/sh02_salvage_layout_stage1_lod1.glb", "sourcePath": "assets/sh02-salvage/sh02_salvage_layout_stage1_lod1.glb", "sha256": "e342f3dc64cf7ecdfc654217eca693c3341b9255c3ae5c7f49dc6ffbcb25ab19", "bytes": 157432, "manifest": "assets/models/story/sh02-salvage-manifest.json" },
+    { "path": "assets/models/story/sh02_salvage_layout_stage1_lod2.glb", "sourcePath": "assets/sh02-salvage/sh02_salvage_layout_stage1_lod2.glb", "sha256": "41d778be42d740a7c312a2f41eab0ec962e0e2002221712a5778a15ef43e4e9b", "bytes": 69996, "manifest": "assets/models/story/sh02-salvage-manifest.json" }
+  ]
+}

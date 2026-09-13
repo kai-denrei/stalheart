@@ -1,0 +1,604 @@
+{
+  "schema": "jelaludo.asset-family/v2-candidate",
+  "version": 2,
+  "family": "arrival_foundry",
+  "label": "AFR-01 Seed Foundry",
+  "status": "contract_candidate_pending_game_camera_reference_phone",
+  "plain_glb_source_of_truth": true,
+  "coordinate_system": {
+    "units": "meters",
+    "up": "+Y",
+    "forward": "+Z",
+    "origin": "ground at 16 × 12 m module centre"
+  },
+  "budgets": {
+    "lod1": {
+      "triangles_max": 8000,
+      "draw_calls_max": 10,
+      "plain_bytes_max": 400000
+    },
+    "lod2": {
+      "triangles_max": 3000,
+      "draw_calls_max": 1,
+      "plain_bytes_max": 250000
+    }
+  },
+  "lod_selection": {
+    "initial": "lod2",
+    "approach_distance_m": 150,
+    "hysteresis_m": 20,
+    "review": "Tune with the recycling-sequence game camera and reference phone."
+  },
+  "salvage_state": {
+    "separate_from_damage_and_lod": true,
+    "variable": "rocket_salvage_stage",
+    "first_authored_section": "SALVAGE_PANEL_00"
+  },
+  "material_flow": [
+    "recovered rocket structure",
+    "local silicate/regolith",
+    "carried binder and alloying additives",
+    "ferroceramic feedstock"
+  ],
+  "events": [
+    {
+      "name": "CUTTER_ARC_ON",
+      "time_s": 2
+    },
+    {
+      "name": "CUTTER_ARC_OFF",
+      "time_s": 5.1
+    },
+    {
+      "name": "SCRAP_ACCEPTED",
+      "time_s": 10
+    },
+    {
+      "name": "BARREL_READY",
+      "time_s": 15
+    }
+  ],
+  "sources": {
+    "articulated_service_arm": {
+      "file": "../assembly-line/robotic_arm_d0.glb",
+      "sha256": "70c2b0384775dfa92f15954e0164b2658fc74df339813805416d03f365355194",
+      "triangles": 3280,
+      "role": "exact geometry reused in detailed master; articulated proxy derived for game and distance tiers"
+    },
+    "cargo_barrel": {
+      "file": "../warehouse-props/fuel_barrel_d0.glb",
+      "sha256": "994449606eb6f372e0665ab2abbf8b8d7ff77615c59e71d36f7c0c57f73e0768",
+      "triangles": 2412,
+      "role": "structural geometry reused in detailed master with the fuel placard omitted and an AFR collar/material treatment; reduced proxies derived for game and distance tiers"
+    },
+    "sh02_approach_source": {
+      "file": "../sh-rocket/sh_rocket.glb",
+      "sha256": "9c777de6f9f766539915fa1132bbc72e0a5383aae369b7e5f416545c74ce3c33",
+      "role": "preserved animated arrival source; not embedded in AFR exports"
+    },
+    "sh02_salvage_context": {
+      "file": "../sh02-salvage/manifest.json",
+      "sha256": "77726e6807152018535f774a1ee73bcef182c90b8cd94ddfc21bb8952b0d42a1",
+      "role": "external four-piece salvage layout composed tier-for-tier in the Workshop and game scene; not embedded in AFR exports"
+    }
+  },
+  "assets": [
+    {
+      "id": "afr_01_seed_foundry_d0_lod0",
+      "family": "arrival_foundry",
+      "designation": "AFR-01",
+      "name": "AFR-01 Seed Foundry",
+      "file": "afr_01_seed_foundry_d0_lod0.glb",
+      "meshopt_file": "afr_01_seed_foundry_d0_lod0.meshopt.glb",
+      "lod": 0,
+      "quality": "detailed_master",
+      "damage_level": 0,
+      "state": "intact",
+      "role": "close_shots_animation_recording",
+      "static": false,
+      "derived": false,
+      "derived_from": null,
+      "sha256": "627ddcc5977014e2a7cd23638a854be1eb90d58a0b678a5882861c3058857fc7",
+      "meshopt_sha256": "e1745fd33c2ddfff39d06420bd516f52c0fbdf0d09f6e03326d8ce1923f0a780",
+      "bytes": 439772,
+      "meshopt_bytes": 176428,
+      "triangles": 6788,
+      "draw_calls": 41,
+      "materials": 18,
+      "textures": 0,
+      "bounds": {
+        "min": [
+          -2.3400004455224734,
+          -3.5762786065873797e-9,
+          -2.049999952316284
+        ],
+        "max": [
+          7.46999979019165,
+          3.0292820930480957,
+          2.049999952316284
+        ],
+        "dimensions_m": [
+          9.810000235714124,
+          3.0292820966243745,
+          4.099999904632568
+        ]
+      },
+      "plot_m": [
+        16,
+        12
+      ],
+      "sockets": [
+        {
+          "id": "CUTTER_TIP",
+          "node": "SOCKET_CUTTER_TIP",
+          "kind": "vfx_origin",
+          "position_m": [
+            -2.12,
+            2.05,
+            0
+          ],
+          "normal": [
+            -1,
+            0,
+            0
+          ],
+          "available": true
+        },
+        {
+          "id": "SCRAP_INPUT",
+          "node": "SOCKET_SCRAP_INPUT",
+          "kind": "material_input",
+          "position_m": [
+            2.35,
+            1.65,
+            0
+          ],
+          "normal": [
+            -1,
+            0,
+            0
+          ],
+          "available": true
+        },
+        {
+          "id": "REGOLITH_INPUT",
+          "node": "SOCKET_REGOLITH_INPUT",
+          "kind": "material_input",
+          "position_m": [
+            3.65,
+            2.85,
+            -1.15
+          ],
+          "normal": [
+            0,
+            1,
+            0
+          ],
+          "available": true
+        },
+        {
+          "id": "POWER",
+          "node": "SOCKET_POWER",
+          "kind": "power",
+          "position_m": [
+            4.2,
+            0.45,
+            -2.05
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ],
+          "available": true
+        },
+        {
+          "id": "BARREL_FILL",
+          "node": "SOCKET_BARREL_FILL",
+          "kind": "material_output",
+          "position_m": [
+            6.35,
+            1.28,
+            0
+          ],
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "available": true
+        },
+        {
+          "id": "STALHEART_FEED",
+          "node": "SOCKET_STALHEART_FEED",
+          "kind": "cargo_output",
+          "position_m": [
+            6.65,
+            0,
+            0
+          ],
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "available": true
+        }
+      ],
+      "clips": [
+        {
+          "name": "Recycle_Panel_To_Barrel",
+          "duration_s": 16,
+          "loop": false
+        },
+        {
+          "name": "Foundry_Process_Cycle",
+          "duration_s": 4,
+          "loop": true
+        }
+      ],
+      "required_nodes": [
+        "ARRIVAL_FOUNDRY_ROOT",
+        "SALVAGE_ARM_ROOT",
+        "SALVAGE_ARM_WAIST",
+        "SALVAGE_ARM_SHOULDER",
+        "SALVAGE_ARM_ELBOW",
+        "SALVAGE_ARM_WRIST",
+        "SEPARATOR_DRUM",
+        "INDUCTION_CHAMBER",
+        "SALVAGE_PANEL_00",
+        "CUTTER_SPARKS",
+        "BARREL_FILL_INDICATOR",
+        "SOCKET_CUTTER_TIP",
+        "SOCKET_SCRAP_INPUT",
+        "SOCKET_REGOLITH_INPUT",
+        "SOCKET_POWER",
+        "SOCKET_BARREL_FILL",
+        "SOCKET_STALHEART_FEED"
+      ],
+      "review_status": "contract_candidate_pending_game_camera_reference_phone",
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "afr_01_seed_foundry_d0_lod1",
+      "family": "arrival_foundry",
+      "designation": "AFR-01",
+      "name": "AFR-01 Seed Foundry",
+      "file": "afr_01_seed_foundry_d0_lod1.glb",
+      "meshopt_file": "afr_01_seed_foundry_d0_lod1.meshopt.glb",
+      "lod": 1,
+      "quality": "game",
+      "damage_level": 0,
+      "state": "intact",
+      "role": "approach_game_camera",
+      "static": false,
+      "derived": true,
+      "derived_from": "afr_01_seed_foundry_d0_lod0.glb",
+      "sha256": "bcaec17de78b0912678250e55898e763e9476e1e8f559b3c56fa220faa1eee5a",
+      "meshopt_sha256": "354420ecf9896268354d49c62213fb7afea9888500981d6522f7ee4febfa2248",
+      "bytes": 92728,
+      "meshopt_bytes": 42504,
+      "triangles": 1660,
+      "draw_calls": 8,
+      "materials": 2,
+      "textures": 0,
+      "bounds": {
+        "min": [
+          -2.3292324542999268,
+          -3.5762786065873797e-9,
+          -2.049999952316284
+        ],
+        "max": [
+          7.46999979019165,
+          3.0292820930480957,
+          2.049999952316284
+        ],
+        "dimensions_m": [
+          9.799232244491577,
+          3.0292820966243745,
+          4.099999904632568
+        ]
+      },
+      "plot_m": [
+        16,
+        12
+      ],
+      "sockets": [
+        {
+          "id": "CUTTER_TIP",
+          "node": "SOCKET_CUTTER_TIP",
+          "kind": "vfx_origin",
+          "position_m": [
+            -2.12,
+            2.05,
+            0
+          ],
+          "normal": [
+            -1,
+            0,
+            0
+          ],
+          "available": true
+        },
+        {
+          "id": "SCRAP_INPUT",
+          "node": "SOCKET_SCRAP_INPUT",
+          "kind": "material_input",
+          "position_m": [
+            2.35,
+            1.65,
+            0
+          ],
+          "normal": [
+            -1,
+            0,
+            0
+          ],
+          "available": true
+        },
+        {
+          "id": "REGOLITH_INPUT",
+          "node": "SOCKET_REGOLITH_INPUT",
+          "kind": "material_input",
+          "position_m": [
+            3.65,
+            2.85,
+            -1.15
+          ],
+          "normal": [
+            0,
+            1,
+            0
+          ],
+          "available": true
+        },
+        {
+          "id": "POWER",
+          "node": "SOCKET_POWER",
+          "kind": "power",
+          "position_m": [
+            4.2,
+            0.45,
+            -2.05
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ],
+          "available": true
+        },
+        {
+          "id": "BARREL_FILL",
+          "node": "SOCKET_BARREL_FILL",
+          "kind": "material_output",
+          "position_m": [
+            6.35,
+            1.28,
+            0
+          ],
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "available": true
+        },
+        {
+          "id": "STALHEART_FEED",
+          "node": "SOCKET_STALHEART_FEED",
+          "kind": "cargo_output",
+          "position_m": [
+            6.65,
+            0,
+            0
+          ],
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "available": true
+        }
+      ],
+      "clips": [
+        {
+          "name": "Recycle_Panel_To_Barrel",
+          "duration_s": 16,
+          "loop": false
+        },
+        {
+          "name": "Foundry_Process_Cycle",
+          "duration_s": 4,
+          "loop": true
+        }
+      ],
+      "required_nodes": [
+        "ARRIVAL_FOUNDRY_ROOT",
+        "SALVAGE_ARM_ROOT",
+        "SALVAGE_ARM_WAIST",
+        "SALVAGE_ARM_SHOULDER",
+        "SALVAGE_ARM_ELBOW",
+        "SALVAGE_ARM_WRIST",
+        "SEPARATOR_DRUM",
+        "INDUCTION_CHAMBER",
+        "SALVAGE_PANEL_00",
+        "CUTTER_SPARKS",
+        "BARREL_FILL_INDICATOR",
+        "SOCKET_CUTTER_TIP",
+        "SOCKET_SCRAP_INPUT",
+        "SOCKET_REGOLITH_INPUT",
+        "SOCKET_POWER",
+        "SOCKET_BARREL_FILL",
+        "SOCKET_STALHEART_FEED"
+      ],
+      "review_status": "contract_candidate_pending_game_camera_reference_phone",
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "afr_01_seed_foundry_d0_lod2",
+      "family": "arrival_foundry",
+      "designation": "AFR-01",
+      "name": "AFR-01 Seed Foundry",
+      "file": "afr_01_seed_foundry_d0_lod2.glb",
+      "meshopt_file": "afr_01_seed_foundry_d0_lod2.meshopt.glb",
+      "lod": 2,
+      "quality": "distance",
+      "damage_level": 0,
+      "state": "intact",
+      "role": "map_loading_far_view",
+      "static": true,
+      "derived": true,
+      "derived_from": "afr_01_seed_foundry_d0_lod0.glb",
+      "sha256": "9059b98d4579a5f472751224fc4688dac09d0dfe5ab618c1283fea1e60114819",
+      "meshopt_sha256": "7c00fd3893ee0b533132fa86c14bd714dc36ef5a91a6010a123e34715ddc2d8e",
+      "bytes": 52224,
+      "meshopt_bytes": 19336,
+      "triangles": 1228,
+      "draw_calls": 1,
+      "materials": 1,
+      "textures": 0,
+      "bounds": {
+        "min": [
+          -2.2699999809265137,
+          -3.5762786065873797e-9,
+          -2.049999952316284
+        ],
+        "max": [
+          7.46999979019165,
+          3.0292820930480957,
+          2.049999952316284
+        ],
+        "dimensions_m": [
+          9.739999771118164,
+          3.0292820966243745,
+          4.099999904632568
+        ]
+      },
+      "plot_m": [
+        16,
+        12
+      ],
+      "sockets": [
+        {
+          "id": "CUTTER_TIP",
+          "node": "SOCKET_CUTTER_TIP",
+          "kind": "vfx_origin",
+          "position_m": [
+            -2.12,
+            2.05,
+            0
+          ],
+          "normal": [
+            -1,
+            0,
+            0
+          ],
+          "available": true
+        },
+        {
+          "id": "SCRAP_INPUT",
+          "node": "SOCKET_SCRAP_INPUT",
+          "kind": "material_input",
+          "position_m": [
+            2.35,
+            1.65,
+            0
+          ],
+          "normal": [
+            -1,
+            0,
+            0
+          ],
+          "available": true
+        },
+        {
+          "id": "REGOLITH_INPUT",
+          "node": "SOCKET_REGOLITH_INPUT",
+          "kind": "material_input",
+          "position_m": [
+            3.65,
+            2.85,
+            -1.15
+          ],
+          "normal": [
+            0,
+            1,
+            0
+          ],
+          "available": true
+        },
+        {
+          "id": "POWER",
+          "node": "SOCKET_POWER",
+          "kind": "power",
+          "position_m": [
+            4.2,
+            0.45,
+            -2.05
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ],
+          "available": true
+        },
+        {
+          "id": "BARREL_FILL",
+          "node": "SOCKET_BARREL_FILL",
+          "kind": "material_output",
+          "position_m": [
+            6.35,
+            1.28,
+            0
+          ],
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "available": true
+        },
+        {
+          "id": "STALHEART_FEED",
+          "node": "SOCKET_STALHEART_FEED",
+          "kind": "cargo_output",
+          "position_m": [
+            6.65,
+            0,
+            0
+          ],
+          "normal": [
+            1,
+            0,
+            0
+          ],
+          "available": true
+        }
+      ],
+      "clips": [],
+      "required_nodes": [
+        "ARRIVAL_FOUNDRY_ROOT",
+        "SALVAGE_ARM_ROOT",
+        "SALVAGE_ARM_WAIST",
+        "SALVAGE_ARM_SHOULDER",
+        "SALVAGE_ARM_ELBOW",
+        "SALVAGE_ARM_WRIST",
+        "SEPARATOR_DRUM",
+        "INDUCTION_CHAMBER",
+        "SALVAGE_PANEL_00",
+        "CUTTER_SPARKS",
+        "BARREL_FILL_INDICATOR",
+        "SOCKET_CUTTER_TIP",
+        "SOCKET_SCRAP_INPUT",
+        "SOCKET_REGOLITH_INPUT",
+        "SOCKET_POWER",
+        "SOCKET_BARREL_FILL",
+        "SOCKET_STALHEART_FEED"
+      ],
+      "review_status": "contract_candidate_pending_game_camera_reference_phone",
+      "credit": "Models by jelaludo"
+    }
+  ]
+}
