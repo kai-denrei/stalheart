@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/jelaludo/SentryTowers_A6",
+  "revision": "fdc4a4a7aaacdce35664f1cd741de0a0d344c9cc",
+  "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/fdc4a4a7aaacdce35664f1cd741de0a0d344c9cc/",
+  "credit": "Models by jelaludo (https://jelaludo.github.io/SentryTowers_A6/korp/), KORP / GS01 heavy gunship, MÖRK manufacturer family, game tier LOD1, reused with attribution under the upstream ASSET-LICENSE.md",
+  "files": [
+    {
+      "path": "assets/models/korp/manifest.json",
+      "sourcePath": "assets/korp/manifest.json",
+      "sha256": "6f6c29c44ae7f687e8790e54af16a5c8cbf9f9bbefaca7fc7d4633e89418d48c",
+      "bytes": 10515
+    },
+    {
+      "path": "assets/models/korp/korp_d0_lod1.glb",
+      "sourcePath": "assets/korp/korp_d0_lod1.glb",
+      "sha256": "e1dc17e06c53160b95970e79315bf72e75b3047d6522a1a4fd200bdd394165d6",
+      "bytes": 198764,
+      "clips": ["Rotary_Cycle", "Rotary_Fire", "Heavy_Fire", "Gear_Retract"]
+    }
+  ]
+}

@@ -1,0 +1,482 @@
+{
+  "version": 1,
+  "units": "meters",
+  "up": "+Y",
+  "forward": "+Z",
+  "assets": [
+    {
+      "id": "korp_d0_lod0",
+      "family": "korp",
+      "name": "KORP / GS01 heavy gunship",
+      "file": "korp_d0_lod0.glb",
+      "lod": 0,
+      "damage_level": 0,
+      "bytes": 289120,
+      "triangles": 5228,
+      "draw_calls": 50,
+      "plot_m": [
+        30,
+        32
+      ],
+      "sockets": [
+        {
+          "id": "SOCKET_EXHAUST_FL",
+          "position_m": [
+            -11.0,
+            5.400000095367432,
+            -4.699999809265137
+          ]
+        },
+        {
+          "id": "SOCKET_EXHAUST_FR",
+          "position_m": [
+            11.0,
+            5.400000095367432,
+            -4.699999809265137
+          ]
+        },
+        {
+          "id": "SOCKET_EXHAUST_RL",
+          "position_m": [
+            -6.5,
+            5.400000095367432,
+            -11.699999809265137
+          ]
+        },
+        {
+          "id": "SOCKET_EXHAUST_RR",
+          "position_m": [
+            6.5,
+            5.400000095367432,
+            -11.699999809265137
+          ]
+        },
+        {
+          "id": "SOCKET_MUZZLE_HEAVY",
+          "position_m": [
+            0.0,
+            3.0,
+            14.149999618530273
+          ]
+        },
+        {
+          "id": "SOCKET_MUZZLE_L",
+          "position_m": [
+            -2.6500000953674316,
+            3.950000047683716,
+            11.600000381469727
+          ]
+        },
+        {
+          "id": "SOCKET_MUZZLE_R",
+          "position_m": [
+            2.6500000953674316,
+            3.950000047683716,
+            11.600000381469727
+          ]
+        },
+        {
+          "id": "SOCKET_CARGO",
+          "position_m": [
+            0.0,
+            3.7200000286102295,
+            -8.699999809265137
+          ]
+        },
+        {
+          "id": "SOCKET_CENTER_OF_MASS",
+          "position_m": [
+            0.0,
+            5.099999904632568,
+            0.0
+          ]
+        },
+        {
+          "id": "SOCKET_NOSE",
+          "position_m": [
+            0.0,
+            4.599999904632568,
+            14.199999809265137
+          ]
+        }
+      ],
+      "clips": [
+        {
+          "name": "Gear_Retract",
+          "duration_s": 2,
+          "loop": false
+        },
+        {
+          "name": "Gear_Deploy",
+          "duration_s": 2,
+          "loop": false
+        },
+        {
+          "name": "Heavy_Fire",
+          "duration_s": 0.6,
+          "loop": false
+        },
+        {
+          "name": "Rotary_Fire",
+          "duration_s": 0.6,
+          "loop": false
+        },
+        {
+          "name": "Rotary_Cycle",
+          "duration_s": 1,
+          "loop": true
+        },
+        {
+          "name": "Ramp_Open",
+          "duration_s": 2,
+          "loop": false
+        },
+        {
+          "name": "Ramp_Close",
+          "duration_s": 2,
+          "loop": false
+        }
+      ],
+      "credit": "Models by jelaludo",
+      "engine_nodes": [
+        "KORP_ROOT",
+        "HULL",
+        "ENGINE_FL_PITCH",
+        "SOCKET_EXHAUST_FL",
+        "ENGINE_FR_PITCH",
+        "SOCKET_EXHAUST_FR",
+        "ENGINE_RL_PITCH",
+        "SOCKET_EXHAUST_RL",
+        "ENGINE_RR_PITCH",
+        "SOCKET_EXHAUST_RR",
+        "GUN_L_YAW",
+        "GUN_L_PITCH",
+        "GUN_L_RECOIL",
+        "GUN_L_SPIN",
+        "SOCKET_MUZZLE_L",
+        "GUN_R_YAW",
+        "GUN_R_PITCH",
+        "GUN_R_RECOIL",
+        "GUN_R_SPIN",
+        "SOCKET_MUZZLE_R",
+        "GUN_HEAVY_YAW",
+        "GUN_HEAVY_PITCH",
+        "GUN_HEAVY_RECOIL",
+        "SOCKET_MUZZLE_HEAVY",
+        "GEAR_NOSE",
+        "GEAR_L",
+        "GEAR_R",
+        "REAR_RAMP",
+        "MARKING_GS01",
+        "SOCKET_CARGO",
+        "SOCKET_CENTER_OF_MASS",
+        "SOCKET_NOSE"
+      ],
+      "static": false
+    },
+    {
+      "id": "korp_d0_lod1",
+      "family": "korp",
+      "name": "KORP / GS01 heavy gunship",
+      "file": "korp_d0_lod1.glb",
+      "lod": 1,
+      "damage_level": 0,
+      "bytes": 198764,
+      "triangles": 2472,
+      "draw_calls": 16,
+      "plot_m": [
+        30,
+        32
+      ],
+      "sockets": [
+        {
+          "id": "SOCKET_EXHAUST_FL",
+          "position_m": [
+            -11.0,
+            5.400000095367432,
+            -4.699999809265137
+          ]
+        },
+        {
+          "id": "SOCKET_EXHAUST_FR",
+          "position_m": [
+            11.0,
+            5.400000095367432,
+            -4.699999809265137
+          ]
+        },
+        {
+          "id": "SOCKET_EXHAUST_RL",
+          "position_m": [
+            -6.5,
+            5.400000095367432,
+            -11.699999809265137
+          ]
+        },
+        {
+          "id": "SOCKET_EXHAUST_RR",
+          "position_m": [
+            6.5,
+            5.400000095367432,
+            -11.699999809265137
+          ]
+        },
+        {
+          "id": "SOCKET_MUZZLE_HEAVY",
+          "position_m": [
+            0.0,
+            3.0,
+            14.149999618530273
+          ]
+        },
+        {
+          "id": "SOCKET_MUZZLE_L",
+          "position_m": [
+            -2.6500000953674316,
+            3.950000047683716,
+            11.600000381469727
+          ]
+        },
+        {
+          "id": "SOCKET_MUZZLE_R",
+          "position_m": [
+            2.6500000953674316,
+            3.950000047683716,
+            11.600000381469727
+          ]
+        },
+        {
+          "id": "SOCKET_CARGO",
+          "position_m": [
+            0.0,
+            3.7200000286102295,
+            -8.699999809265137
+          ]
+        },
+        {
+          "id": "SOCKET_CENTER_OF_MASS",
+          "position_m": [
+            0.0,
+            5.099999904632568,
+            0.0
+          ]
+        },
+        {
+          "id": "SOCKET_NOSE",
+          "position_m": [
+            0.0,
+            4.599999904632568,
+            14.199999809265137
+          ]
+        }
+      ],
+      "clips": [
+        {
+          "name": "Gear_Retract",
+          "duration_s": 2,
+          "loop": false
+        },
+        {
+          "name": "Gear_Deploy",
+          "duration_s": 2,
+          "loop": false
+        },
+        {
+          "name": "Heavy_Fire",
+          "duration_s": 0.6,
+          "loop": false
+        },
+        {
+          "name": "Rotary_Fire",
+          "duration_s": 0.6,
+          "loop": false
+        },
+        {
+          "name": "Rotary_Cycle",
+          "duration_s": 1,
+          "loop": true
+        },
+        {
+          "name": "Ramp_Open",
+          "duration_s": 2,
+          "loop": false
+        },
+        {
+          "name": "Ramp_Close",
+          "duration_s": 2,
+          "loop": false
+        }
+      ],
+      "credit": "Models by jelaludo",
+      "engine_nodes": [
+        "KORP_ROOT",
+        "HULL",
+        "ENGINE_FL_PITCH",
+        "SOCKET_EXHAUST_FL",
+        "ENGINE_FR_PITCH",
+        "SOCKET_EXHAUST_FR",
+        "ENGINE_RL_PITCH",
+        "SOCKET_EXHAUST_RL",
+        "ENGINE_RR_PITCH",
+        "SOCKET_EXHAUST_RR",
+        "GUN_L_YAW",
+        "GUN_L_PITCH",
+        "GUN_L_RECOIL",
+        "GUN_L_SPIN",
+        "SOCKET_MUZZLE_L",
+        "GUN_R_YAW",
+        "GUN_R_PITCH",
+        "GUN_R_RECOIL",
+        "GUN_R_SPIN",
+        "SOCKET_MUZZLE_R",
+        "GUN_HEAVY_YAW",
+        "GUN_HEAVY_PITCH",
+        "GUN_HEAVY_RECOIL",
+        "SOCKET_MUZZLE_HEAVY",
+        "GEAR_NOSE",
+        "GEAR_L",
+        "GEAR_R",
+        "REAR_RAMP",
+        "MARKING_GS01",
+        "SOCKET_CARGO",
+        "SOCKET_CENTER_OF_MASS",
+        "SOCKET_NOSE"
+      ],
+      "static": false
+    },
+    {
+      "id": "korp_d0_lod2",
+      "family": "korp",
+      "name": "KORP / GS01 heavy gunship",
+      "file": "korp_d0_lod2.glb",
+      "lod": 2,
+      "damage_level": 0,
+      "bytes": 96488,
+      "triangles": 1218,
+      "draw_calls": 1,
+      "plot_m": [
+        30,
+        32
+      ],
+      "sockets": [
+        {
+          "id": "SOCKET_EXHAUST_FL",
+          "position_m": [
+            -11.0,
+            5.400000095367432,
+            -4.699999809265137
+          ]
+        },
+        {
+          "id": "SOCKET_EXHAUST_FR",
+          "position_m": [
+            11.0,
+            5.400000095367432,
+            -4.699999809265137
+          ]
+        },
+        {
+          "id": "SOCKET_EXHAUST_RL",
+          "position_m": [
+            -6.5,
+            5.400000095367432,
+            -11.699999809265137
+          ]
+        },
+        {
+          "id": "SOCKET_EXHAUST_RR",
+          "position_m": [
+            6.5,
+            5.400000095367432,
+            -11.699999809265137
+          ]
+        },
+        {
+          "id": "SOCKET_MUZZLE_HEAVY",
+          "position_m": [
+            0.0,
+            3.0,
+            14.149999618530273
+          ]
+        },
+        {
+          "id": "SOCKET_MUZZLE_L",
+          "position_m": [
+            -2.6500000953674316,
+            3.950000047683716,
+            11.600000381469727
+          ]
+        },
+        {
+          "id": "SOCKET_MUZZLE_R",
+          "position_m": [
+            2.6500000953674316,
+            3.950000047683716,
+            11.600000381469727
+          ]
+        },
+        {
+          "id": "SOCKET_CARGO",
+          "position_m": [
+            0.0,
+            3.7200000286102295,
+            -8.699999809265137
+          ]
+        },
+        {
+          "id": "SOCKET_CENTER_OF_MASS",
+          "position_m": [
+            0.0,
+            5.099999904632568,
+            0.0
+          ]
+        },
+        {
+          "id": "SOCKET_NOSE",
+          "position_m": [
+            0.0,
+            4.599999904632568,
+            14.199999809265137
+          ]
+        }
+      ],
+      "clips": [],
+      "credit": "Models by jelaludo",
+      "engine_nodes": [
+        "KORP_ROOT",
+        "HULL",
+        "ENGINE_FL_PITCH",
+        "SOCKET_EXHAUST_FL",
+        "ENGINE_FR_PITCH",
+        "SOCKET_EXHAUST_FR",
+        "ENGINE_RL_PITCH",
+        "SOCKET_EXHAUST_RL",
+        "ENGINE_RR_PITCH",
+        "SOCKET_EXHAUST_RR",
+        "GUN_L_YAW",
+        "GUN_L_PITCH",
+        "GUN_L_RECOIL",
+        "GUN_L_SPIN",
+        "SOCKET_MUZZLE_L",
+        "GUN_R_YAW",
+        "GUN_R_PITCH",
+        "GUN_R_RECOIL",
+        "GUN_R_SPIN",
+        "SOCKET_MUZZLE_R",
+        "GUN_HEAVY_YAW",
+        "GUN_HEAVY_PITCH",
+        "GUN_HEAVY_RECOIL",
+        "SOCKET_MUZZLE_HEAVY",
+        "GEAR_NOSE",
+        "GEAR_L",
+        "GEAR_R",
+        "REAR_RAMP",
+        "MARKING_GS01",
+        "SOCKET_CARGO",
+        "SOCKET_CENTER_OF_MASS",
+        "SOCKET_NOSE"
+      ],
+      "static": true
+    }
+  ]
+}
