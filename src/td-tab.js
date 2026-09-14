@@ -3,7 +3,7 @@ import { DEFAULT_TANK, SHELL_SPEED, SHELL_REACH, TANK_DRIVE } from './content/ta
 import { createGameBreaches } from './game-breaches.js';
 import { BREACH_SOUNDS } from './content/breach-defaults.js';
 import { SOUNDS } from './content/runtime.js';
-import { emergence } from './domain/breach-waves.js';
+import { emergence } from './domain/breach-waves.js'; import { applyScare, stampScare, scarePace, isScared, towardScare, awayExits } from './domain/impact-scare.js'; import { EXPLOSION_SCARE, SCARE_FREEZE_S } from './content/explosions.js';
 import { sinkholeGroundHeight } from './core/sinkhole-shape.js';
 import { makeOrdnanceShell } from './shell.js';
 import { firingFor } from './content/firing-defaults.js';
@@ -347,7 +347,7 @@ export function initTdTab(root) {
   scene.background = mainBg;
 
   const camera = new THREE.PerspectiveCamera(68, 1, 0.004, 50);
-  const postfx = makeBloom(renderer, scene, camera, { scale: tier.bloomScale }); const explosions = createExplosions(scene, { onError: (error) => record('explosions.unavailable', { message: error.message }) }); const explode = (use, p) => explosions.spawn(use, p, norm3(p), cellSide);   // the lab's explosions (src/fx/explosions.js); callers keep their dot bursts when this returns false
+  const postfx = makeBloom(renderer, scene, camera, { scale: tier.bloomScale }); const explosions = createExplosions(scene, { onError: (error) => record('explosions.unavailable', { message: error.message }) }); const explode = (use, p) => { const sc = EXPLOSION_SCARE[use]; if (sc) applyScare(enemies, p, { radius: sc.cells * cellSide, seconds: sc.seconds }); return explosions.spawn(use, p, norm3(p), cellSide); };   // the lab's explosions (src/fx/explosions.js); callers keep their dot bursts when this returns false
   // sound. The context can only be born on a user gesture, so arm() wires
   // one-shot listeners and the first tap/keypress creates it. Until then
   // every play() is a silent no-op -- the game never waits on audio.
@@ -5118,7 +5118,7 @@ export function initTdTab(root) {
         e.obj.userData.s0 = sv;
       }
       let pace = ENEMY_SPEED * spec.speed * (e.paceJitter ?? 1);
-      if (tNow < e.behUntil) pace *= e.behMult; // on-hit reaction window
+      if (tNow < e.behUntil) pace *= e.behMult; stampScare(e, tNow); pace *= scarePace(e, tNow, SCARE_FREEZE_S); // on-hit reaction window; an impact's scare stops it, then hurries it away (src/domain/impact-scare.js)
       if (tNow < e.slowUntil) pace *= e.slowFactor; // slow-tower debuff
       // the slow READS for its full duration: the whole cloud tints ice —
       // and so does the solid core, or a slowed drifter would show a frozen
@@ -5185,7 +5185,7 @@ export function initTdTab(root) {
         }
         e.decloaked = vis;
       }
-      e.prog += pace * dt;
+      if (isScared(e, tNow) && e.prog < 1 && towardScare(graph.centers[e.cur], graph.centers[e.next], e.scareFrom)) { const back = e.cur; e.cur = e.next; e.next = back; e.prog = 1 - e.prog; } e.prog += pace * dt;
       while (e.prog >= 1) {
         e.prog -= 1;
         e.prev = e.cur;
@@ -5193,7 +5193,7 @@ export function initTdTab(root) {
         // heart-seeking: drawn HARD toward the heart — only a sliver of
         // wobble left so the streams braid but visibly converge
         const exits = openNeighbors(e.cur).filter((c) => !story?.sealed(c));   // a closed story gate is a wall to them
-        let pool = null;
+        let pool = null; if (isScared(e, tNow)) { const away = awayExits(exits, graph.centers, e.cur, e.scareFrom); if (away.length) pool = away; }
         if (!pool) { const down = exits.filter((c) => dungeon.distToHeart[c] < dungeon.distToHeart[e.cur]); pool = (down.length && whim() > 0.05) ? down : exits; }
         // THE STORY'S HARD CORES HOLD OFF THE WALL: once inside the holding ring they only wander within it (operator, while the lock is tuned)
         if (story?.ring.size && e.type === story.hardcore && story.ring.has(e.cur)) { const stay = exits.filter((c) => story.ring.has(c)); pool = stay.length ? stay : [e.cur]; }

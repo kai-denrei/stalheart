@@ -118,6 +118,15 @@ export function createSentryPilot(root, host) {
     if(!gunship)return;gunship=false;root.classList.remove('gunship-seat');for(const m of MODES)root.classList.remove(`gunship-${m}`);fireLoop?.stop(.1);fireLoop=null;hud?.update({on:false});G.laser(-1);panel.querySelector('.pilot-cross').style.display='';G.dismount();G.optic.dismount();G.optic.rings(null);impact=null;report=null;guns.style.display='none';
   }
   function aimShip(){ship.obj.updateMatrixWorld(true);attach(ship,pendingAim);state.pitch=-1.45;}
+  // THE ROUNDS LEAVE FROM UNDER THE GUNNER (owner, 2026-09-14): from the seat the model's muzzle sockets sit above and to the
+  // right of the eye, so every round came in from the top right of the frame. Seen from the seat a round starts just below
+  // the view's centre, the rotary pair a hair left and right, and converges on the aim; the ship and map views keep the sockets.
+  const muz=new THREE.Vector3(),muzR=new THREE.Vector3(),muzU=new THREE.Vector3();let muzSide=0;
+  function muzzleFor(key){
+    if(state.view!=='pov'||map)return G.optic.muzzle(key);
+    const c=host.cellSide();muzR.crossVectors(direction,up);if(muzR.lengthSq()<1e-12)muzR.copy(t2);muzR.normalize();muzU.crossVectors(muzR,direction).normalize();
+    return muz.copy(eye).addScaledVector(direction,c*.6).addScaledVector(muzU,-c*.08).addScaledVector(muzR,key==='heavy'?0:((muzSide++&1)?c*.03:-c*.03)).toArray();
+  }
   // THE MAP FRAMES THE APPROACH: centred between the base and the swarm's centre, zoomed on mount to hold both, so what is coming is
   // in view and moving; the wheel still zooms after that. Returns the swarm's centre and count for the readout.
   const cen=new THREE.Vector3(),hn=new THREE.Vector3();let frameAt=0;
@@ -148,7 +157,7 @@ export function createSentryPilot(root, host) {
       const hs=G.heavyState();
       if(hs.phase==='falling'){if(ci>=0&&!hs.nudged&&G.nudgeHeavy(ci))G.laser(ci);}
       else if(state.held){state.held=false;
-        if(hs.phase==='painted'){const tgt=G.centers[hs.ci];const lc=G.launchHeavy();if(lc>=0){fired='round';G.sfx(gun.sound,ship.obj.position.toArray());G.optic.flight(G.optic.muzzle('heavy'),tgt,gun.ringHex,gun.travel,1.2);G.optic.paint(tgt,G.normals[lc],gun.blastCells*c,gun.travel);}}
+        if(hs.phase==='painted'){const tgt=G.centers[hs.ci];const lc=G.launchHeavy();if(lc>=0){fired='round';G.sfx(gun.sound,ship.obj.position.toArray());G.optic.flight(muzzleFor('heavy'),tgt,gun.ringHex,gun.travel,1.2);G.optic.paint(tgt,G.normals[lc],gun.blastCells*c,gun.travel);}}
         else if(hs.phase==='ready'&&ci>=0&&G.paintHeavy(ci)){G.laser(ci);G.sfx('tank_shells',impact);}
       }
       if(hs.phase!=='falling'&&hs.phase!=='painted')G.laser(-1);
@@ -159,7 +168,7 @@ export function createSentryPilot(root, host) {
         for(let i=0;i<n;i++){   // a golden-angle scatter inside half the blast, so a burst walks rather than drills; the round is in the air for `travel` seconds
           const a=(rounds++)*2.399963,r=gun.blastCells*c*.5*Math.sqrt((rounds%7)/7);
           aim.fromArray(impact).addScaledVector(t1,Math.cos(a)*r).addScaledVector(t2,Math.sin(a)*r);
-          G.fire(gun.key,aim.toArray(),gun.travel);G.optic.flight(G.optic.muzzle(gun.key),aim.toArray(),gun.ringHex,gun.travel,gun.key==='bofors'?.5:.25);
+          G.fire(gun.key,aim.toArray(),gun.travel);G.optic.flight(muzzleFor(gun.key),aim.toArray(),gun.ringHex,gun.travel,gun.key==='bofors'?.5:.25);
           if(gun.key==='bofors'&&ci>=0)G.optic.paint(aim.toArray(),G.normals[ci],gun.blastCells*c,gun.travel);   // the shell's target, painted red until it lands
         }
       }else if(state.held)fired='held';
