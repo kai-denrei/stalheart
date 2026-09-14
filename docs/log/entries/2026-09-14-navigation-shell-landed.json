@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-navigation-shell-landed",
+  "date": "2026-09-14T14:00:00+00:00",
+  "type": "decision",
+  "status": "accepted",
+  "title": "Navigation is two modes, PLAYTEST and DEV, one click apart on every screen",
+  "context": "The owner, after playing the gunship: the flat story/defend/arrival/record/settings/workshop row was confusing, the variables panel had no meaningful home, and the skip panel collided with the build tag. They asked for a higher level first: DEV for workshops, roadmap, FunMap and labs; PLAYTEST for the sections under playtest; either reachable from anywhere.",
+  "outcome": "src/fx/shell-nav.js renders an always-visible PLAYTEST | DEV toggle joined to the build tag and one drawer per mode from src/content/nav.js. Switching modes never navigates. DEV holds the workshop labs, Tuning (the variables modal's pages), the docs overlay (FunMap, roadmap, devlog, practices) and tools (Felt it, copy deep link, frame readout, diagnostics, the jump enemy count). DEV is automatic on the source tree and hidden on a release unless ?dev=1. Backslash toggles the drawer; Esc closes it without reaching the game. The tab bars, the stage strip, the skip panel, the notes tab and the corner menu, gear and link buttons retired. On touch screens PLAYTEST targets are 44 px and DEV is hidden (a phone does not require DEV).",
+  "alternatives": [
+    "Two tabs inside one drawer behind a single menu button (cleaner during play, one more step to switch).",
+    "A player face and a dev face in one long drawer (the first spec, before the owner's higher-level ask)."
+  ],
+  "evidence": [
+    "npm test (100 programs), npm run check, npm run build; browser --nav (including nav-phone and nav-narrow-lab), --nav --dist, --gunship, --story-world, default and --dist passed."
+  ],
+  "supersedes": []
+}

@@ -4,7 +4,7 @@ What this project has learned the hard way, kept so it is learned once. Each
 rule carries the incident that earned it, because a rule without its reason
 gets argued away the first time it is inconvenient. Newest lessons are folded
 into their section rather than appended, so this stays a reference and not a
-second devlog. It renders into `DEVLOG.md` and opens in `labs.html#notes`.
+second devlog. It renders into `DEVLOG.md` and opens in DEV · Docs (the docs overlay).
 
 ---
 

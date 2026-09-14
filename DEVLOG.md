@@ -166,6 +166,20 @@ Evidence:
 - browser-test --gunship twelve scenarios pass: gunship-heavy-falling (the first press paints, the second launches, the seat keeps the camera) and gunship-heavy-reloading (after the fall the gun reloads); --sentry-pilot passes with the bigger tracers.
 - artifacts/browser/gunship-pov-heavy.png (FIRE TO PAINT with the SHELL bar full) and gunship-rotary-fired.png (the HEAT bar after a burst).
 
+## 2026-09-14 — Navigation is two modes, PLAYTEST and DEV, one click apart on every screen
+
+decision · accepted · 2026-09-14-navigation-shell-landed
+
+The owner, after playing the gunship: the flat story/defend/arrival/record/settings/workshop row was confusing, the variables panel had no meaningful home, and the skip panel collided with the build tag. They asked for a higher level first: DEV for workshops, roadmap, FunMap and labs; PLAYTEST for the sections under playtest; either reachable from anywhere.
+
+src/fx/shell-nav.js renders an always-visible PLAYTEST | DEV toggle joined to the build tag and one drawer per mode from src/content/nav.js. Switching modes never navigates. DEV holds the workshop labs, Tuning (the variables modal's pages), the docs overlay (FunMap, roadmap, devlog, practices) and tools (Felt it, copy deep link, frame readout, diagnostics, the jump enemy count). DEV is automatic on the source tree and hidden on a release unless ?dev=1. Backslash toggles the drawer; Esc closes it without reaching the game. The tab bars, the stage strip, the skip panel, the notes tab and the corner menu, gear and link buttons retired. On touch screens PLAYTEST targets are 44 px and DEV is hidden (a phone does not require DEV).
+
+Alternatives: Two tabs inside one drawer behind a single menu button (cleaner during play, one more step to switch).; A player face and a dev face in one long drawer (the first spec, before the owner's higher-level ask).
+
+Evidence:
+
+- npm test (100 programs), npm run check, npm run build; browser --nav (including nav-phone and nav-narrow-lab), --nav --dist, --gunship, --story-world, default and --dist passed.
+
 ## 2026-09-14 — Isao's close-up frames his face, not his legs; the comms card sits above the radar so the landing-site triangles show
 
 change · accepted · 2026-09-14-isao-closeup-face-on-comms-above-radar
@@ -2075,7 +2089,7 @@ What this project has learned the hard way, kept so it is learned once. Each
 rule carries the incident that earned it, because a rule without its reason
 gets argued away the first time it is inconvenient. Newest lessons are folded
 into their section rather than appended, so this stays a reference and not a
-second devlog. It renders into `DEVLOG.md` and opens in `labs.html#notes`.
+second devlog. It renders into `DEVLOG.md` and opens in DEV · Docs (the docs overlay).
 
 ---
 
