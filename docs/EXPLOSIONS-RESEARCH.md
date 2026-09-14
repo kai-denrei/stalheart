@@ -103,3 +103,81 @@ own repository; we pin the winning modules by hash into `src/fx/explosions/`.
    photographic fireball.
 
 Deliver the lab page, the modules, and a one-line cost note per module.
+
+## Answers to the open questions (2026-09-14)
+
+**1. Field of view at 340 m.** The seat's camera is a Three perspective
+camera with a vertical field of view of 60° divided by the gun's zoom:
+rotary 2.6x, Bofors 1.9x, 105 1.3x. Frame heights on the ground at 340 m,
+and pixels per metre on a 1080-tall viewport:
+
+| Gun | vertical FOV | frame height | px per metre | blast diameter on screen |
+| --- | --- | --- | --- | --- |
+| rotary | 23.1° | 139 m | 7.8 | 9 m → 70 px |
+| Bofors | 31.6° | 192 m | 5.6 | 22 m → 124 px |
+| 105 | 46.2° | 290 m | 3.7 | 64 m → 238 px |
+
+So the small blast is 70 px across, not 12; a flash, a ring and a few sparks
+are all readable. Fine detail below about 2 px (a quarter metre for the
+rotary) is wasted.
+
+**2. Bloom.** UnrealBloom from Three r160: strength 0.3, radius 0.5,
+threshold 0.2, mip chain at half resolution on the phone tier. Per-group
+weights multiply the colour fed to the bloom pass only (the scene draws
+unweighted): map 0.35, enemies 1.3, tank 1.0, towers 1.0, effects 1.0 (the
+fallback for anything untagged, which an explosion will be). Bloom is added
+before the night and thermal filters. Put the same pass in the lab with those
+numbers and judge under the filters; expect flat white where several bright
+things overlap under contrast 1.7, and design the attack so the core is
+small and the rest is dimmer.
+
+**3. The device.** There is no named phone in the repo. Until the owner
+names one, the stand-in is Chrome with 4x CPU throttling, device pixel
+ratio capped at 1.5, antialiasing off, bloom at half resolution: that is the
+game's phone tier. Report both the M-series number and the throttled one.
+
+**4. The load that decides.** Pass or fail at the rotary's steady state:
+twelve smalls alive (thirty a second times a 0.4 s life), one medium, one
+large, on the phone stand-in, with the frame under 16.7 ms total including
+the game's own cost. The twenty was a ceiling for the pool size, not the
+test. Say the marginal cost per small; that is the number we will tune with.
+
+**5. The scorch.** Not part of the explosion. The game owns lingering marks
+(its ground rings and scorches live in the weapon recipes and outlive
+effects). An explosion module ends when its tail ends; if a candidate wants
+a mark to remain, export a second builder `createScorch` with the same
+interface and its own life, and the game decides whether to keep it.
+
+**6. The palette.** Pass this object; the game fills it from its look and
+the firing weapon:
+
+```js
+palette = {
+  hot: 0xffffff,     // the core
+  warm: 0xffb347,    // amber, the strike's second ring
+  ember: 0xff3b2f,   // the last red
+  ours: 0x00e5ff,    // cyan, the base's own light
+  weapon: 0xffb347,  // the firing weapon's colour (rotary white, Bofors amber, 105 red-orange)
+}
+```
+
+Under night and thermal only the luminance of these survives, so order them
+by brightness: hot, then warm, then ember.
+
+**Replays.** Compute everything from elapsed time inside `tick`: keep `t += dt`
+and derive positions from `t`, or integrate at a fixed 120 Hz substep inside
+`tick`. The game's frame delta is variable and clamped to 0.1 s.
+
+**Rings on the planet.** The planet's radius is 753 m. The game lifts its
+own ground rings a little and samples them along the curve. Sag over a
+blast radius: 32 m → 0.7 m, 60 m → 2.4 m, 120 m → 9.6 m. Take
+`planetRadiusM` as an option and bend ground-plane elements to
+`y = -(x² + z²) / (2R)`; below 15 m radius a flat ring is fine.
+
+**The nuclear cloud from the ground.** The planet is small: from a 2 m
+eye the ground horizon is 55 m away. A cloud 1 km along the surface is far
+below the horizon whatever its height. Distances that work as a background
+event from the ground: at 150 m the top must clear 15 m, at 250 m 43 m, at
+400 m 120 m. There is no fog and the far plane is effectively infinite, so
+what clears the horizon is seen crisply. Author the cloud to read from
+150 to 300 m away as a column and cap over the horizon.
