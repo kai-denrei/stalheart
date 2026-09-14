@@ -22,12 +22,32 @@ import { WEATHER_PRESETS, weatherStats, bakeWeatheredMetal } from './weathered.j
 import { WEATHER_BY_NAME, applyWeatheredMaterial, makeWeatheredTextures } from './fx/weathered-material.js';
 import { buildCreature, preloadMork, preloadContainer, makeContainerFixture,
   preloadFabricator, makeIsaoDrone } from './units.js';
+import { preloadMorkTier, makeMorkTier } from './mork.js';
+import { loadGlb } from './glbmodels.js';
 import { deepLink, wireDeepLink } from './deeplink.js';
+
+// the container bays the base draws now (the A6 kit), as the lab's own copy:
+// the scene is cloned with private materials, so dressing it here cannot
+// reach a cached source another consumer shares
+const BAYS_URL = 'assets/models/kit/mork_container_low_diorama.glb';
+let baysScene = null;
+function makeBays() {
+  if (!baysScene) return null;
+  const root = baysScene.clone(true), materials = new Map();
+  root.traverse((o) => {
+    if (!o.isMesh) return;
+    const copy = (m) => { if (!materials.has(m)) materials.set(m, m.clone()); return materials.get(m); };
+    o.material = Array.isArray(o.material) ? o.material.map(copy) : copy(o.material);
+  });
+  return root;
+}
 
 // the subjects: how each is cast and roughly how big it stands
 const SUBJECTS = {
-  tank: { label: 'MÖRK', preload: () => preloadMork(), make: (look) => buildCreature(DEFAULT_TANK, { walker: look.walker, walkerHi: look.walkerHi }) },
-  container: { label: 'container', preload: preloadContainer, make: () => makeContainerFixture(3) },
+  tank: { label: 'MÖRK (full)', preload: () => preloadMork(), make: (look) => buildCreature(DEFAULT_TANK, { walker: look.walker, walkerHi: look.walkerHi }) },
+  'tank-low': { label: 'MÖRK (simplified)', preload: () => preloadMorkTier('low'), make: () => makeMorkTier('low') },
+  bays: { label: 'container bays (kit)', preload: () => loadGlb(BAYS_URL).then((scene) => { baysScene = scene || null; }), make: makeBays },
+  container: { label: 'container (legacy)', preload: preloadContainer, make: () => makeContainerFixture(3) },
   isao: { label: 'Isao', preload: preloadFabricator, make: () => makeIsaoDrone() },
 };
 
@@ -169,7 +189,7 @@ export function initMetalTab(root) {
   // dress: the bake at the current knobs, applied by name; a change rebakes
   // (debounced — a slider drag is many changes) and the HUD reports what
   // the bake contains, the way the test does
-  let dressTimer = 0, dressing = false;
+  let dressTimer = 0, dressing = false, lastDressed = 0, dressCount = 0;
   function dress() {
     clearTimeout(dressTimer);
     dressTimer = setTimeout(dressNow, 220);
@@ -196,6 +216,7 @@ export function initMetalTab(root) {
     const st = weatherStats(bakeWeatheredMetal({ seed: P.seed, size: 64, preset: 'gunmetal', ...presets().gunmetal }));
     hud.textContent = `${castName} · ${n} materials dressed · ${P.size}px · ${(performance.now() - t0).toFixed(0)} ms`
       + ` · gunmetal: metal ${st.metalMin}..${st.metalMax} rough ${st.roughMin}..${st.roughMax} oxide ${(st.coverage * 100).toFixed(0)}%`;
+    lastDressed = n; dressCount++;
     dressing = false;
   }
   function applyScene() {
@@ -217,7 +238,7 @@ export function initMetalTab(root) {
     const r = gui.domElement.getBoundingClientRect(), cs = getComputedStyle(gui.domElement);
     console.log(`METAL layout: gui ${Math.round(r.left)}..${Math.round(r.right)} x ${Math.round(r.top)}..${Math.round(r.bottom)} pos=${cs.position} display=${cs.display} vis=${cs.visibility} inner=${innerWidth}x${innerHeight} class=${gui.domElement.className}`);
   }, 2500);
-  gui.add(P, 'subject', Object.keys(SUBJECTS)).onChange(buildCast);
+  gui.add(P, 'subject', Object.fromEntries(Object.entries(SUBJECTS).map(([k, v]) => [v.label, k]))).onChange(buildCast);
   gui.add(P, 'spin');
   gui.add(P, 'weather').name('weathered').onChange(() => { buildCast(); });
   gui.add(P, 'seed', 1, 99999, 1).onChange(dress);
@@ -324,6 +345,24 @@ export function initMetalTab(root) {
   animate();
   applyScene();
   buildCast();
+
+  // ACCEPTANCE: the cast's materials as the dressing left them, and the
+  // GUI's own controllers to drive (setValue runs the same onChange a hand does)
+  if (q.get('acceptance') === '1') window.__stalheartMetalTest = {
+    subjects: () => Object.fromEntries(Object.entries(SUBJECTS).map(([k, v]) => [k, v.label])),
+    select: async (key) => { gui.controllersRecursive().find((c) => c.property === 'subject').setValue(key); },
+    setGui: (prop, value) => { gui.controllersRecursive().find((c) => c.property === prop).setValue(value); },
+    state: () => {
+      const materials = new Map();
+      cast?.traverse((o) => { if (o.isMesh) for (const m of [o.material].flat()) if (m && !materials.has(m)) {
+        let mean = null;
+        const d = m.map?.image?.data;
+        if (d) { let r = 0, g = 0, b = 0, k = 0; for (let i = 0; i < d.length; i += 4 * 97) { r += d[i]; g += d[i + 1]; b += d[i + 2]; k++; } mean = [r / k, g / k, b / k].map((v) => Math.round(v)); }
+        materials.set(m, { name: m.name, type: m.type, uv: !!o.geometry.attributes.uv, color: m.color ? m.color.getHexString() : null, vertexColors: !!m.vertexColors, map: !!m.map, mapMean: mean });
+      } });
+      return { subject: P.subject, castName, ready: !!cast && castName === SUBJECTS[P.subject]?.label, weather: P.weather, gBase: P.gBase, hud: hud.textContent, dressed: lastDressed, dressCount, materials: [...materials.values()] };
+    },
+  };
 
   return {
     setActive(on) { active = on; if (on) { resize(); clock.getDelta(); } },
