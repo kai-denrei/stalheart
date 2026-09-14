@@ -154,4 +154,28 @@ console.log('Story beats: faces, Rotor print, tremor, breach, approach, override
   const src = (await import('node:fs')).readFileSync(new URL('../src/domain/story-beats.js', import.meta.url), 'utf8');
   assert.match(src, /api\.sites\?\.\(\);\s*api\.expeditionsBegin\?\.\(\);/, 'the expedition beat reveals the first sites');
 }
+{
+  // THE EXPEDITION BEAT, BEHAVIOURALLY: the regex above checks source text; this drives the beats through the
+  // Quiver wave and the study to the expedition phase, and checks expeditionsBegin is really called, once, after the sites
+  const quiver = { key: 'quiver', delay: 0.6, hardcore: 'barbed', secondDelay: 9, studyDelay: 2, missile: {} };
+  const beats = makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, rotorDelay: 2, fodderEvery: 1, fodderAlive: 4, fodderTotal: 12, tremorDelay: 1, breachDelay: 2, overrideDelay: 1, quiverSocket: 4244, quiver });
+  const g = fakeGame({ walk: 3, printSeconds: 3 });
+  const calls = [];
+  g.api.sites = () => { calls.push('sites'); };
+  g.api.expeditionsBegin = () => { calls.push('begin'); };
+  run(beats, g, 17); // piloting
+  for (let k = 0; k < 10; k++) { g.kill(1); run(beats, g, 1); }
+  g.kill(2); run(beats, g, 0.5); // the twelve-strong wave is spent: cleared
+  g.seal(); // the sinkhole is filled after the wave, as the earlier blocks do
+  run(beats, g, 1); // the first hard core rises: quiver-piloting
+  run(beats, g, 7); run(beats, g, 2.5); // the second hard core, after its delay
+  g.kill(1); run(beats, g, 1); g.kill(1); run(beats, g, 1); // both hard cores down: settled
+  g.talking = false; g.screenUp = false; // his lines are over and the study screen is closed, so the study beat can hand over
+  const limit = 400;
+  let iterations = 0;
+  while (beats.phase() !== 'expedition' && iterations < limit) { beats.tick(0.1, g.api); iterations++; }
+  assert.equal(beats.phase(), 'expedition', `expected 'expedition' within ${limit} bounded extra ticks, stuck at '${beats.phase()}'`);
+  assert.equal(calls.filter((c) => c === 'begin').length, 1, `expeditionsBegin must run exactly once on the expedition beat, got ${JSON.stringify(calls)}`);
+  assert.deepEqual(calls, ['sites', 'begin'], `the sites are marked before the expeditions begin, got ${JSON.stringify(calls)}`);
+}
 console.log('story-beats: the foundry pays');

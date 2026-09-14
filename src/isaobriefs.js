@@ -243,7 +243,6 @@ export const BRIEFS = {
     id: 'sites_revealed',
     face: 'surprised',
     title: 'MORE LANDING SITES',
-    once: true,
     lines: ['New signals on the radar. More landers came down out there.', 'Same drill: clear the nest, bring the part home.'],
   },
 };
