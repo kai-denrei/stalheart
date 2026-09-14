@@ -46,7 +46,8 @@ export function createGunshipOptic(scene, { cellSide, metresPerCell = 10 }) {
   return {
     active: () => mounted,
     mount() { mounted = true; rings.visible = true; contacts.visible = true; },
-    dismount() { mounted = false; rings.visible = false; contacts.visible = false; if (model) model.visible = true; },
+    // leaving the seat takes the painted targets and the rounds in the air with it: they only fade in pose(), which stops with the seat
+    dismount() { mounted = false; rings.visible = false; contacts.visible = false; if (model) model.visible = true; for (const pt of paints) { pt.m.removeFromParent(); pt.m.material.dispose(); } paints.length = 0; for (const f of flights) { f.line.visible = false; f.line.userData.life = 0; } flights.length = 0; },
     // the seat's view modes: night vision keeps the contacts white; thermal makes them larger and hot
     contactsStyle(mode) { contacts.material.size = mode === 'thermal' ? 10 : 7; contacts.material.color.set(mode === 'thermal' ? 0xffe27a : 0xffffff); contacts.visible = mounted && mode !== 'normal'; },
     contacts(enemies) {

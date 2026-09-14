@@ -305,7 +305,7 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 23 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 24 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
 
 ### The lab's explosions land at the gunship, strike, tank shell and TALON impacts; FLIR thermal; the white amoeba leads the first wave
 
@@ -342,6 +342,12 @@ The story-opening playtest batches (commit 89b81b5) fixed what could be measured
 `2026-09-14-gunship-own-105-downtime-bars-and-rotor-tracers` · change · **observed**
 
 Owner's seventh brief (2026-09-14): the gunship should get its own strike, separate from the orbital strike; overheating and reloading of weapons 1, 2 and 3 must be communicated better, with infinite ammo while testing but downtime; the Rotor's PoV still feels off, add more tracer so where the bullets go is seen; enemies that look hit are not dying, cause unknown (landing wrong, hitbox, the wall under, the angle).
+
+### Idea: an orbital laser as its own weapon; the orbital strike console is hidden meanwhile
+
+`2026-09-14-orbital-laser-idea` · decision · **proposed**
+
+Owner, playing the gunship: the orbital strike console (the ORBIT percentage, the arm switch and the LAUNCH button) is redundant with the gunship, whose 105 already lands through the strike's code. They would like to try an Akira-style weapon in space instead: a powerful continuous laser fired at the planet for brief periods.
 
 ### The gunship seat 340 m up looking straight down, M cycling normal / night vision / thermal, the owner's weapon 1 sample looped, a click that fires at once, the 105 honest about its re-orbit and never cutting away from the seat
 

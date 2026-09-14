@@ -98,7 +98,7 @@ export function createSentryPilot(root, host) {
   const G=host.gunship,ship={key:'gunship',obj:G?G.optic.platformObject():null,ci:-1},aim=new THREE.Vector3(),t1=new THREE.Vector3(),t2=new THREE.Vector3();
   let gunship=false,impact=null,report=null,rounds=0,landedRounds=0,pendingAim=null,px=innerWidth/2,py=innerHeight/2,fireLoop=null;
   const MODES=['normal','night','thermal'];let mode=0;   // M cycles the seat's view: the planet as it is, night vision (dark, contacts white), thermal (hot, contacts yellow)
-  function setMode(i){mode=(i+MODES.length)%MODES.length;for(const m of MODES)root.classList.toggle(`gunship-${m}`,gunship&&MODES[mode]===m);G.optic.contactsStyle(gunship?MODES[mode]:'normal');}const GUNSHIP_EYE=-.35;   // cells below the platform origin: the belly, where the muzzles are
+  function setMode(i){mode=(i+MODES.length)%MODES.length;for(const m of MODES)root.classList.toggle(`gunship-${m}`,gunship&&MODES[mode]===m);G.optic.contactsStyle(gunship?MODES[mode]:'normal');host.thermal?.(gunship&&MODES[mode]==='thermal');}   /* thermal also runs the base warm (src/fx/thermal-heat.js) */const GUNSHIP_EYE=-.35;   // cells below the platform origin: the belly, where the muzzles are
   const hud=G?createGunshipHud(root):null;
   const guns=document.createElement('div');guns.className='pilot-guns';guns.style.display='none';
   guns.innerHTML=G?G.order.map((k,i)=>`<button data-gun="${k}">${i+1} · ${G.guns[k].label}</button>`).join(''):'';panel.querySelector('header').after(guns);
@@ -111,11 +111,11 @@ export function createSentryPilot(root, host) {
     gunship=true;ship.ci=G.heart();state.tower=ship;state.held=false;state.target=null;state.hidden=null;state.view='pov';state.zoom=G.platform.zoom??1;host.zoom(state.zoom);px=innerWidth/2;py=innerHeight/2;
     pendingAim=G.centers[G.lane()];aimShip();state.pitch=-1.45;   // the seat opens looking straight down, the lane's way   // the seat opens on where they come from; settled again on the first tick, once the platform has taken its track (its frame can swing when a breach opens)
     guns.style.display='';panel.querySelector('header').innerHTML='KORP / GS01 <small>HEAVY GUNSHIP · ON STATION</small>';panel.querySelector('footer').textContent='Click to lock the mouse, move it to aim · Space or the button fires · rounds take seconds to land: lead them · 1 rotary · 2 bofors · 3 heavy · M view: normal / night / thermal · V the ship · T top view · P pause';
-    G.optic.mount();host.views?.('gunship');selectGun(G.state.gun);if(map)toggleMap();root.classList.add('gunship-seat');panel.querySelector('.pilot-cross').style.display='none';setMode(1);   // the seat IS the orbital strike's map view
+    G.optic.mount();host.views?.('gunship');selectGun(G.state.gun);if(map)toggleMap();root.classList.add('gunship-seat');panel.querySelector('.pilot-cross').style.display='none';setMode(2);   // the seat opens in thermal, the FLIR ironbow (owner, 2026-09-14)
     return 'mounted';
   }
   function dismountGunship(){
-    if(!gunship)return;gunship=false;root.classList.remove('gunship-seat');for(const m of MODES)root.classList.remove(`gunship-${m}`);fireLoop?.stop(.1);fireLoop=null;hud?.update({on:false});G.laser(-1);panel.querySelector('.pilot-cross').style.display='';G.dismount();G.optic.dismount();G.optic.rings(null);impact=null;report=null;guns.style.display='none';
+    if(!gunship)return;gunship=false;root.classList.remove('gunship-seat');for(const m of MODES)root.classList.remove(`gunship-${m}`);host.thermal?.(false);fireLoop?.stop(.1);fireLoop=null;hud?.update({on:false});G.laser(-1);panel.querySelector('.pilot-cross').style.display='';G.dismount();G.optic.dismount();G.optic.rings(null);impact=null;report=null;guns.style.display='none';
   }
   function aimShip(){ship.obj.updateMatrixWorld(true);attach(ship,pendingAim);state.pitch=-1.45;}
   // THE ROUNDS LEAVE FROM UNDER THE GUNNER (owner, 2026-09-14): from the seat the model's muzzle sockets sit above and to the

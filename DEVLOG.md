@@ -180,6 +180,20 @@ Evidence:
 
 - artifacts/browser/story-world-isao-talk.png and story-world-expedition.png from the story-world suite; the story lab landing capture.
 
+## 2026-09-14 — Idea: an orbital laser as its own weapon; the orbital strike console is hidden meanwhile
+
+decision · proposed · 2026-09-14-orbital-laser-idea
+
+Owner, playing the gunship: the orbital strike console (the ORBIT percentage, the arm switch and the LAUNCH button) is redundant with the gunship, whose 105 already lands through the strike's code. They would like to try an Akira-style weapon in space instead: a powerful continuous laser fired at the planet for brief periods.
+
+The strike console is hidden in the game (styles.css #td-launch); the strike state machine, executeStrike and the acceptance probe stay because the gunship's 105 uses them. Proposed for a later try: the player marks a rough area, then steers a continuous orbital beam for a few seconds, destroying everything in its path, walls and sinkholes included; how it is rationed, its sound and its look are open.
+
+Alternatives: Keep the orbital strike console alongside the gunship: two ways to deliver the same blast.; Delete the strike code outright: the gunship's 105 depends on it.
+
+Evidence:
+
+- Owner, 2026-09-14: remove the orbital strike switch for now, it is redundant with the gunship; we might bring back an orbital laser as a separate weapon.
+
 ## 2026-09-14 — Isao holds one face per state; the landing plumes stay under the skirt; mounts stand at the rock's real edge; a gun's box covers the whole body; the Quiver takes over the moment the first wave is down
 
 change · accepted · 2026-09-14-held-faces-plumes-edge-mounts-hitbox-quick-quiver

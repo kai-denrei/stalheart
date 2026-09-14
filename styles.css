@@ -2259,6 +2259,9 @@ html, body {
    target) -> red (authorised). The ritual is unchanged underneath: this is
    the same arm/paint/launch state machine wearing the instrument it
    deserved. Source: ~/Documents/Dev/centroid-defense. */
+/* RETIRED FROM VIEW (owner, 2026-09-14): the gunship's 105 is the strike now, so the console and its switch are hidden;
+   the strike's code stays (the 105 lands through it). An orbital laser may come back as its own weapon. */
+#td-launch { display: none !important; }
 #td-launch {
   position: absolute;
   left: 50%;
