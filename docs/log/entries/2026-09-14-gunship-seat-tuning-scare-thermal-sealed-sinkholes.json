@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-gunship-seat-tuning-scare-thermal-sealed-sinkholes",
+  "date": "2026-09-14T17:00:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "The gunship seat tuned in play: explosion sizes, sounds, heat, rounds from under the gunner, the impact scare, thermal first, sealed sinkholes that pile up",
+  "context": "Owner playtests of the Heavy Gunship after the lab explosions landed (2026-09-14-explosions-flir-amoeba-landed): the smallest bursts filled half the screen; rounds came in from the top right of the frame; the Rotor overheated too fast; amoeba deaths drowned the gun; a red target lingered after leaving the seat; a 105 on the sinkhole did not close it; the radar lost its green in night vision; Isao stood still after 'so much to build'. The owner also asked for a build reference on the page to be sure of the version under test.",
+  "outcome": "Build tag names the commit: the dev server stamps branch@sha(+dirty) per request, a release stamps its token and commit (bdbf97e). Explosions were orders of magnitude too big because a puff quad is widened after modelViewMatrix, so object.scale never reached it; the adapter now passes scene units through the module's uScale and the planet radius at the impact (e0dba7f), then the owner's sizes: doubled, then half again (rotary ~7.5 m, Bofors ~15 m, 105 ~45 m). rotor_pov_fire 0.55 -> 0.8, enemy_die_a/b/c 0.6 -> 0.3 through presets promote (985c932). Overheat twice as long: gunship rotary heatSeconds 6 -> 12; the Rotor sentry's perShot and cool halved together, resume 0.6 (lock 9.9 -> 20.0 s at 15 rounds/s, recovery ~4.8 s) (eddd236). From the seat rounds start just below the view's centre (e678579). Impacts scare nearby bodies: freeze 0.35 s, turn from the blast, take exits away, then resume (src/domain/impact-scare.js, EXPLOSION_SCARE per use, every explosion use including tank shells by owner choice); the owner confirmed small rounds herd the swarm. The night and thermal filters skip the radar canvas. The seat opens in FLIR thermal and the base runs warm in it, the Stalheart, foundry, assembly and Isao hot (src/fx/thermal-heat.js). A 105 did seal the sinkhole but the gunship route's continuous waves reopened a breach on the same cell; sealed cells are now avoided, and the rubble cap drops in over 1.2 s. Leaving the seat clears painted targets and rounds in flight. The strike console is hidden (2026-09-14-orbital-laser-idea). Isao tends the foundry from its deploy (ec9e4ce, later made robust when he spawns after it in cbe33f6).",
+  "alternatives": [
+    "Tune explosion sizes before finding the scale bug: rejected, the object scale could never reach the view-space quads.",
+    "Halve only the Rotor's per-shot heat: rejected, at 14 rounds/s it would never lock.",
+    "Scare only from the gunship's weapons: offered; the owner kept it for every explosion."
+  ],
+  "evidence": [
+    "Commits bdbf97e, e0dba7f, 985c932, eddd236, e678579, ec9e4ce, cbe33f6; test/impact-scare.mjs, test/breach-rubble.mjs, test/thermal-heat.mjs; browser --gunship and --breach-game passed.",
+    "Rotor heat simulation (15 rounds/s): lock 9.9 -> 20.0 s, recovery 4.6 -> 4.8 s, next burst 7.9 -> 11.9 s; 12 rounds/s and below never lock.",
+    "Owner in play: 'the herding works, enemies scatter from the Bofors'.",
+    "Review of e678579 approved: e.prev is never read for enemies, no oscillation after a turn-back."
+  ],
+  "supersedes": []
+}

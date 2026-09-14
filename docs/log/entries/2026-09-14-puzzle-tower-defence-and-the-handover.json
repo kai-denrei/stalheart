@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-puzzle-tower-defence-and-the-handover",
+  "date": "2026-09-14T19:00:00+00:00",
+  "type": "decision",
+  "status": "accepted",
+  "title": "The post-tutorial tower defence is a placement puzzle; sub-project 1 is the handover, the gunship call-in and expeditions",
+  "context": "The owner wants the tower defence after the tutorial to have better and worse solutions: a laser at the end of a long straight lane piercing many, a slow tower building a bottleneck for area damage. A read-only survey found no player-facing tower defence (the classic entry retired), towers silent in the story unless piloted, no story wave clock, a piloted Rotor about 60x stronger, every tower targeting the nearest, chord range, line of sight for only two towers, a looping map generator, and the expedition beat only a line and a camera shot.",
+  "outcome": "Owner choices in the design dialogue: authored challenges first, then generated waves on the same rules; a better setup is rewarded by economy margin, not grades; the handover comes after the Quiver's hard cores, where every tower turns fully automatic and weaker and can no longer be piloted; the player pilots the MÖRK tank and sometimes the gunship, called in from a meter earned by kills and cleared waves; the tank rams, shells and reshapes lanes; guarded expeditions to the landing sites bring home parts that unlock Relay, Mortar and Lancer, later Plasma, Needle and Heptapod, replacing the wave ladder. Split into sub-projects: 1 handover, gunship call-in and expeditions; 2 tower geometry (targeting, line of sight, range along the lane); 3 authored challenges; 4 generated waves and simulator scoring of margin. Sub-project 1 spec and a 7-task plan are written; implementation has not started.",
+  "alternatives": [
+    "Generated waves only, or authored challenges only.",
+    "Grades per challenge, or survival only, as the payoff.",
+    "Keep piloted towers with a boost, one seat on many fronts, or an overdrive charge.",
+    "Per-tower automation, or a separate defence phase with its own entry.",
+    "A scheduled or biomass-bought gunship.",
+    "Expeditions as their own later sub-project; one generic material for any tower."
+  ],
+  "evidence": [
+    "docs/superpowers/specs/2026-09-14-handover-gunship-call-expeditions-design.md (5de461b)",
+    "docs/superpowers/plans/2026-09-14-handover-gunship-call-expeditions.md (2e1debb)",
+    "Planning found three gaps the spec missed and the plan covers: the story has no wave clock (armWave returns in story mode), the beats offered the views before entering settled, and the beats cannot start past the handover."
+  ],
+  "supersedes": []
+}

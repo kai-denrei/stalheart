@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-beam-metal-labs-and-sinkhole-look",
+  "date": "2026-09-14T18:00:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "Owner side notes: the beam lab opens on the game's plasma preset, game sinkholes follow the look, the metal lab picks tiers and recolours the MÖRK",
+  "context": "Owner notes from the workshop: the Sentry/Impact lab could be its own minigame (idea, no action); the Metal lab used the old container and only the full MÖRK, and changing the base colours did nothing (trying a pink tank); the Beam lab should start from the plasma throwers' settings; the Breach lab's Battlezone and Textured renderings made the owner want them in the game if cheap. Personal tank/Isao colours and stickers were raised as a later idea.",
+  "outcome": "Beam lab opens on and resets to the game's BOARD_PRESET (982a109). Game sinkholes take the game's look through a getter in createGameBreaches, so ?look=battlezone reaches them (28d9cc1); Battlezone was already a game look; a textured planet ground is not cheap and stays out. Metal lab subjects: MÖRK full and simplified tiers, the kit container bays, the legacy container (51ca934). Root cause of the colour bug: both MÖRK files name their materials their own way, not M_*, so the lab weathered 0 materials; a lab-only name map fixes it, pink measured on both tiers (c80e987). Still open: the kit bays use one vertex-palette material the metal knobs cannot change, and the game's own metal look does not weather the MÖRK either for the same naming reason (left unchanged).",
+  "alternatives": [
+    "Rename the MÖRK's materials at import: rejected for now, it would change the game's look without a review.",
+    "A textured planet ground in the game: deferred, needs a real ground material on the baked planet."
+  ],
+  "evidence": [
+    "Commits 982a109, 28d9cc1, 51ca934, c80e987; npm test 102, check; browser default (metal-subjects, metal-tank-low, metal-bays), --breach-game (game-breach-look), --story-world passed.",
+    "Metal lab HUD before the fix: '0 materials dressed' on the MÖRK."
+  ],
+  "supersedes": []
+}

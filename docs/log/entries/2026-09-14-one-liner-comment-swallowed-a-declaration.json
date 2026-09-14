@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-one-liner-comment-swallowed-a-declaration",
+  "date": "2026-09-14T17:30:00+00:00",
+  "type": "issue",
+  "status": "resolved",
+  "title": "A // comment appended mid one-liner silently commented out a declaration; check and tests passed",
+  "context": "While making thermal the gunship seat's default, a hook was appended to sentry-pilot.js's setMode one-liner with a trailing // comment. The rest of that line held `const GUNSHIP_EYE=-.35;`, which became part of the comment.",
+  "outcome": "Not a syntax error: npm run check and npm test passed, and the game threw `ReferenceError: GUNSHIP_EYE is not defined` every frame. It surfaced only as a far-downstream browser assertion (the seat monitor showed the TALON feed instead of the impact) and was found by logging the harness's collected browser errors. Fixed with a block comment before committing (ec9e4ce). Rule for long one-liners in td-tab.js, sentry-pilot.js and similar files: use /* */ inside a line and confirm the line's original tail is still live code.",
+  "alternatives": [
+    "Bisecting the batch by reverting the thermal default: did not isolate it (the failure persisted), which pointed at an error rather than a behaviour change."
+  ],
+  "evidence": [
+    "node scripts/browser-test.mjs --gunship: 'the monitor shows the impact point' failed twice with actual 'TALON · seeker feed'; passed at HEAD without the batch in a scratch worktree; the diagnostic run's errors array held the ReferenceError at sentry-pilot.js:149."
+  ],
+  "supersedes": []
+}

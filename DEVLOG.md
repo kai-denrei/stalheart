@@ -91,6 +91,22 @@ Evidence:
 - https://kai-denrei.github.io/game-design-lessons/#rosewater retrieved 2026-09-14: Rosewater's twenty lessons and Meier's interesting-decisions test, as summarised there.
 - Today's rulings in the log: 2026-09-14-gunship-view-is-the-planet-not-thermal, 2026-09-14-orbital-gunship-top-view-shelved, 2026-09-14-gunship-pov-with-travel-time, 2026-09-14-piloted-rotor-annihilates.
 
+## 2026-09-14 — The post-tutorial tower defence is a placement puzzle; sub-project 1 is the handover, the gunship call-in and expeditions
+
+decision · accepted · 2026-09-14-puzzle-tower-defence-and-the-handover
+
+The owner wants the tower defence after the tutorial to have better and worse solutions: a laser at the end of a long straight lane piercing many, a slow tower building a bottleneck for area damage. A read-only survey found no player-facing tower defence (the classic entry retired), towers silent in the story unless piloted, no story wave clock, a piloted Rotor about 60x stronger, every tower targeting the nearest, chord range, line of sight for only two towers, a looping map generator, and the expedition beat only a line and a camera shot.
+
+Owner choices in the design dialogue: authored challenges first, then generated waves on the same rules; a better setup is rewarded by economy margin, not grades; the handover comes after the Quiver's hard cores, where every tower turns fully automatic and weaker and can no longer be piloted; the player pilots the MÖRK tank and sometimes the gunship, called in from a meter earned by kills and cleared waves; the tank rams, shells and reshapes lanes; guarded expeditions to the landing sites bring home parts that unlock Relay, Mortar and Lancer, later Plasma, Needle and Heptapod, replacing the wave ladder. Split into sub-projects: 1 handover, gunship call-in and expeditions; 2 tower geometry (targeting, line of sight, range along the lane); 3 authored challenges; 4 generated waves and simulator scoring of margin. Sub-project 1 spec and a 7-task plan are written; implementation has not started.
+
+Alternatives: Generated waves only, or authored challenges only.; Grades per challenge, or survival only, as the payoff.; Keep piloted towers with a boost, one seat on many fronts, or an overdrive charge.; Per-tower automation, or a separate defence phase with its own entry.; A scheduled or biomass-bought gunship.; Expeditions as their own later sub-project; one generic material for any tower.
+
+Evidence:
+
+- docs/superpowers/specs/2026-09-14-handover-gunship-call-expeditions-design.md (5de461b)
+- docs/superpowers/plans/2026-09-14-handover-gunship-call-expeditions.md (2e1debb)
+- Planning found three gaps the spec missed and the plan covers: the story has no wave clock (armWave returns in story mode), the beats offered the views before entering settled, and the beats cannot start past the handover.
+
 ## 2026-09-14 — An explosion research brief for outside artists: procedural Three.js r160 modules built in their own lab, imported by contract
 
 change · observed · 2026-09-14-explosion-research-brief
@@ -120,6 +136,52 @@ Evidence:
 - Acceptance probes 2026-09-14 on story-world at the fodder step: {rounds:85,hits:84,kills:4} at dmgMul 5; {rounds:85,hits:84,kills:9} with pass-through; {rounds:38,hits:16,kills:50,roundDmg:8.667} at dmgMul 60; {rounds:61,hits:60,kills:16,roundDmg:0.167} at dmgMul 10 over two seconds.
 - browser-test --story-world passes end to end after the change; --sentry-pilot passes; npm test 103; npm run check; npm run build.
 - The barrel loop's audibility is not verifiable headless; the timing defect is fixed by construction.
+
+## 2026-09-14 — Owner side notes: the beam lab opens on the game's plasma preset, game sinkholes follow the look, the metal lab picks tiers and recolours the MÖRK
+
+change · accepted · 2026-09-14-beam-metal-labs-and-sinkhole-look
+
+Owner notes from the workshop: the Sentry/Impact lab could be its own minigame (idea, no action); the Metal lab used the old container and only the full MÖRK, and changing the base colours did nothing (trying a pink tank); the Beam lab should start from the plasma throwers' settings; the Breach lab's Battlezone and Textured renderings made the owner want them in the game if cheap. Personal tank/Isao colours and stickers were raised as a later idea.
+
+Beam lab opens on and resets to the game's BOARD_PRESET (982a109). Game sinkholes take the game's look through a getter in createGameBreaches, so ?look=battlezone reaches them (28d9cc1); Battlezone was already a game look; a textured planet ground is not cheap and stays out. Metal lab subjects: MÖRK full and simplified tiers, the kit container bays, the legacy container (51ca934). Root cause of the colour bug: both MÖRK files name their materials their own way, not M_*, so the lab weathered 0 materials; a lab-only name map fixes it, pink measured on both tiers (c80e987). Still open: the kit bays use one vertex-palette material the metal knobs cannot change, and the game's own metal look does not weather the MÖRK either for the same naming reason (left unchanged).
+
+Alternatives: Rename the MÖRK's materials at import: rejected for now, it would change the game's look without a review.; A textured planet ground in the game: deferred, needs a real ground material on the baked planet.
+
+Evidence:
+
+- Commits 982a109, 28d9cc1, 51ca934, c80e987; npm test 102, check; browser default (metal-subjects, metal-tank-low, metal-bays), --breach-game (game-breach-look), --story-world passed.
+- Metal lab HUD before the fix: '0 materials dressed' on the MÖRK.
+
+## 2026-09-14 — A // comment appended mid one-liner silently commented out a declaration; check and tests passed
+
+issue · resolved · 2026-09-14-one-liner-comment-swallowed-a-declaration
+
+While making thermal the gunship seat's default, a hook was appended to sentry-pilot.js's setMode one-liner with a trailing // comment. The rest of that line held `const GUNSHIP_EYE=-.35;`, which became part of the comment.
+
+Not a syntax error: npm run check and npm test passed, and the game threw `ReferenceError: GUNSHIP_EYE is not defined` every frame. It surfaced only as a far-downstream browser assertion (the seat monitor showed the TALON feed instead of the impact) and was found by logging the harness's collected browser errors. Fixed with a block comment before committing (ec9e4ce). Rule for long one-liners in td-tab.js, sentry-pilot.js and similar files: use /* */ inside a line and confirm the line's original tail is still live code.
+
+Alternatives: Bisecting the batch by reverting the thermal default: did not isolate it (the failure persisted), which pointed at an error rather than a behaviour change.
+
+Evidence:
+
+- node scripts/browser-test.mjs --gunship: 'the monitor shows the impact point' failed twice with actual 'TALON · seeker feed'; passed at HEAD without the batch in a scratch worktree; the diagnostic run's errors array held the ReferenceError at sentry-pilot.js:149.
+
+## 2026-09-14 — The gunship seat tuned in play: explosion sizes, sounds, heat, rounds from under the gunner, the impact scare, thermal first, sealed sinkholes that pile up
+
+change · accepted · 2026-09-14-gunship-seat-tuning-scare-thermal-sealed-sinkholes
+
+Owner playtests of the Heavy Gunship after the lab explosions landed (2026-09-14-explosions-flir-amoeba-landed): the smallest bursts filled half the screen; rounds came in from the top right of the frame; the Rotor overheated too fast; amoeba deaths drowned the gun; a red target lingered after leaving the seat; a 105 on the sinkhole did not close it; the radar lost its green in night vision; Isao stood still after 'so much to build'. The owner also asked for a build reference on the page to be sure of the version under test.
+
+Build tag names the commit: the dev server stamps branch@sha(+dirty) per request, a release stamps its token and commit (bdbf97e). Explosions were orders of magnitude too big because a puff quad is widened after modelViewMatrix, so object.scale never reached it; the adapter now passes scene units through the module's uScale and the planet radius at the impact (e0dba7f), then the owner's sizes: doubled, then half again (rotary ~7.5 m, Bofors ~15 m, 105 ~45 m). rotor_pov_fire 0.55 -> 0.8, enemy_die_a/b/c 0.6 -> 0.3 through presets promote (985c932). Overheat twice as long: gunship rotary heatSeconds 6 -> 12; the Rotor sentry's perShot and cool halved together, resume 0.6 (lock 9.9 -> 20.0 s at 15 rounds/s, recovery ~4.8 s) (eddd236). From the seat rounds start just below the view's centre (e678579). Impacts scare nearby bodies: freeze 0.35 s, turn from the blast, take exits away, then resume (src/domain/impact-scare.js, EXPLOSION_SCARE per use, every explosion use including tank shells by owner choice); the owner confirmed small rounds herd the swarm. The night and thermal filters skip the radar canvas. The seat opens in FLIR thermal and the base runs warm in it, the Stalheart, foundry, assembly and Isao hot (src/fx/thermal-heat.js). A 105 did seal the sinkhole but the gunship route's continuous waves reopened a breach on the same cell; sealed cells are now avoided, and the rubble cap drops in over 1.2 s. Leaving the seat clears painted targets and rounds in flight. The strike console is hidden (2026-09-14-orbital-laser-idea). Isao tends the foundry from its deploy (ec9e4ce, later made robust when he spawns after it in cbe33f6).
+
+Alternatives: Tune explosion sizes before finding the scale bug: rejected, the object scale could never reach the view-space quads.; Halve only the Rotor's per-shot heat: rejected, at 14 rounds/s it would never lock.; Scare only from the gunship's weapons: offered; the owner kept it for every explosion.
+
+Evidence:
+
+- Commits bdbf97e, e0dba7f, 985c932, eddd236, e678579, ec9e4ce, cbe33f6; test/impact-scare.mjs, test/breach-rubble.mjs, test/thermal-heat.mjs; browser --gunship and --breach-game passed.
+- Rotor heat simulation (15 rounds/s): lock 9.9 -> 20.0 s, recovery 4.6 -> 4.8 s, next burst 7.9 -> 11.9 s; 12 rounds/s and below never lock.
+- Owner in play: 'the herding works, enemies scatter from the Bofors'.
+- Review of e678579 approved: e.prev is never read for enemies, no oscillation after a turn-back.
 
 ## 2026-09-14 — A piloted round flies a straight line in space from the muzzle to the body under the reticle; the story-world acceptance's Rotor-kill step passes for the first time
 
