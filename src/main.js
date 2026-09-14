@@ -104,8 +104,8 @@ if (!root) {
   }
   // SKIP TO A STORY POINT, beside the build tag, on the story route and in the story lab: testing a beat should not mean playing up to it
   if ((!workshop && target === 'td' && isStoryRoute(location.search)) || target === 'story') createStorySkips(document.body, { navigate, query: q });
-  // WHICH BUILD IS THIS: the release token top right (the file hash the build stamps in), or dev on the source tree
-  const build = document.querySelector('meta[name="cb"]')?.content; const tag = document.createElement('div'); tag.id = 'build-tag'; tag.textContent = build && build !== '00000000' ? `build ${build}` : 'dev'; document.body.append(tag);
+  // WHICH BUILD IS THIS, top right: the release token (the file hash the build stamps in) or dev, then the commit (branch@sha, +dirty) the page came from
+  const build = document.querySelector('meta[name="cb"]')?.content, rev = document.querySelector('meta[name="rev"]')?.content; const tag = document.createElement('div'); tag.id = 'build-tag'; tag.textContent = [build && build !== '00000000' ? `build ${build}` : 'dev', rev].filter(Boolean).join(' · '); document.body.append(tag);
   const menu = document.createElement('button');
   menu.id = 'chrome-toggle'; menu.textContent = '☰'; menu.title = 'game menu';
   menu.setAttribute('aria-label', 'Game menu');

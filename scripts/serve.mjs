@@ -3,6 +3,7 @@ import { readFile, stat, realpath } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import { existsSync } from 'node:fs';
 import { createAuthoringService } from './authoring-service.mjs';
+import { gitRev } from './git-rev.mjs';
 const args = process.argv.slice(2);
 const arg = (key, fallback) => args.includes(key) ? args[args.indexOf(key)+1] : fallback;
 const root = await realpath(resolve(arg('--dir', '.')));
@@ -27,7 +28,9 @@ const server = createServer(async (req,res) => {
     if ((await stat(path)).isDirectory()) path = resolve(path, 'index.html');
     path = await realpath(path);
     if (!path.startsWith(root + sep)) { res.writeHead(403).end(); return; }
-    const data = await readFile(path);
+    let data = await readFile(path);
+    // A page served from a checkout names its commit, read per request, so the build tag is never stale; a release keeps its stamp
+    if (extname(path) === '.html') { const rev = gitRev(root); if (rev) data = Buffer.from(data.toString('utf8').replace(/(<meta name="rev" content=")"/, `$1${rev}"`)); }
     res.writeHead(200, { 'Content-Type': mime[extname(path)] || 'application/octet-stream', 'Cache-Control':'no-store', 'Content-Length':data.length });
     res.end(req.method === 'HEAD' ? undefined : data);
   } catch { res.writeHead(404).end('Not found'); }

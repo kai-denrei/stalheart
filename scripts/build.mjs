@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { resolve, relative, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pack } from 'gltfpack';
+import { gitRev } from './git-rev.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 // EVERY MODEL SHIPS MESHOPT-COMPRESSED. Sources stay the pinned upstream bytes; only the release copy is packed
 // (quantised positions, EXT_meshopt_compression), which the loaders decode with the vendored decoder. Named nodes,
@@ -30,6 +31,7 @@ const paths = [...(await Promise.all(dirs.map(d => walk(resolve(root, d))))).fla
 const hash = createHash('sha256');
 for (const path of paths) { hash.update(relative(root, path)); hash.update(await readFile(path)); }
 const token = hash.digest('hex').slice(0, 8);
+const rev = gitRev(root);   // the commit the release came from, for reference only; the token alone names the files
 await rm(out, { recursive: true, force: true }); await mkdir(out, { recursive: true });
 const manifest = [];
 for (const path of paths) {
@@ -43,7 +45,7 @@ for (const path of paths) {
       if (rel === 'sw.js') text = text.replace(/const CB_TOKEN = '[^']+'/g, `const CB_TOKEN = '${token}'`);
     }
     if (path.endsWith('.html')) {
-      text = text.replace(/(<meta name="cb" content=")[^"]+/, `$1${token}`)
+      text = text.replace(/(<meta name="cb" content=")[^"]+/, `$1${token}`).replace(/(<meta name="rev" content=")[^"]*/, `$1${rev}`)
         .replace(/((?:src|href)=['"])(\.?\/?(?:src\/[^'"]+\.js|styles\.css|app\.css))(['"])/g, `$1$2?v=${token}$3`);
     }
     if (path.endsWith('.css')) text = text.replace(/url\((['"]?)(\.?\/?assets\/[^)'"?]+)\1\)/g, `url($1$2?v=${token}$1)`);
@@ -54,5 +56,5 @@ for (const path of paths) {
   manifest.push({ path: rel, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') });
 }
 await writeFile(resolve(out, '.nojekyll'), '');
-await writeFile(resolve(out, 'release.json'), JSON.stringify({ schema: 1, application: 'stalheart', build: token, files: manifest }, null, 2)+'\n');
+await writeFile(resolve(out, 'release.json'), JSON.stringify({ schema: 1, application: 'stalheart', build: token, commit: rev, files: manifest }, null, 2)+'\n');
 console.log(`Stalheart ${token}: ${manifest.length} files, ${manifest.reduce((n,f)=>n+f.bytes,0)} bytes in dist/`);
