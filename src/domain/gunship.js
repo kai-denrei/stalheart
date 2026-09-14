@@ -42,6 +42,14 @@ export function fireRound(st, gun, point, travel) { st.rounds.push({ gun, point:
 export function stepRounds(st) { const landed = []; st.rounds = st.rounds.filter((r) => { if (r.at <= st.clock) { landed.push(r); return false; } return true; }); return landed; }
 
 export const onStation = (st) => st.phase === 'station';
+
+// A CALLED PASS (the post-handover call-in): the platform comes on station now, for the orbit's station seconds.
+export function startStation(st, orbit) {
+  if (st.phase === 'station') return false;
+  st.phase = 'station'; st.left = orbit.station; st.passes++;
+  return true;
+}
+
 export const phaseLeft = (st) => Math.max(0, st.left);
 // 0..1 across the station phase while overhead; 0 otherwise. The platform's ground
 // track is a function of this and nothing else.
