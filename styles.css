@@ -4092,3 +4092,16 @@ body.chrome-open #story-stages-nav { display: flex; }
 #synthetic-modal footer { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; color: #555; font-size: 10px; letter-spacing: 1px; }
 #synthetic-modal footer button { font: 700 12px ui-monospace, Menlo, monospace; letter-spacing: .12em; color: #00ff41; background: #000; border: 1px solid #00ff41; padding: 7px 14px; cursor: pointer; }
 @media (max-width: 720px) { #synthetic-modal .grid { grid-template-columns: 1fr; } }
+
+/* --- DEV SCREENS (src/fx/docs-overlay.js, src/fx/felt-capture.js): over the page, which keeps running --- */
+#docs-overlay { position: fixed; inset: 0; z-index: 90; background: rgba(6, 10, 16, 0.97); }
+#docs-overlay[hidden] { display: none; }
+#docs-overlay #notes { position: relative; height: 100%; }
+#docs-overlay .docs-close { position: absolute; top: 10px; right: 14px; z-index: 1; width: 40px; height: 36px; font: 700 18px ui-monospace, Menlo, monospace; color: #9fdcff; background: rgba(12, 26, 38, 0.85); border: 1px solid #2b6b96; border-radius: 8px; cursor: pointer; }
+#felt-capture { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; background: rgba(6, 10, 16, 0.6); }
+#felt-capture[hidden] { display: none; }
+#felt-capture .felt-card { position: relative; width: min(460px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow-y: auto; box-sizing: border-box; padding: 16px; background: #0c1520; border: 1px solid #2b6b96; border-radius: 10px; color: #d2e9e5; font: 13px ui-monospace, Menlo, monospace; }
+#felt-capture h3 { margin: 0 0 8px; }
+#felt-capture textarea, #felt-capture select { width: 100%; box-sizing: border-box; margin: 6px 0; font: inherit; color: #dff4ff; background: #111b22; border: 1px solid #2b6b96; border-radius: 6px; }
+#felt-capture button { font: inherit; color: #9fdcff; background: rgba(12, 26, 38, 0.85); border: 1px solid #2b6b96; border-radius: 6px; padding: 8px 10px; min-height: 36px; cursor: pointer; }
+#felt-capture .felt-close { position: absolute; top: 8px; right: 8px; }

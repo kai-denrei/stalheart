@@ -23,7 +23,7 @@ const server = createServer(async (req,res) => {
       res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }).end('{"available":false}'); return;
     }
     if (!['GET', 'HEAD'].includes(req.method)) { res.writeHead(405).end(); return; }
-    if (route.split('/').some(p => p.startsWith('.')) || /^(node_modules|docs|test|scripts|artifacts)\//.test(route)) { res.writeHead(404).end(); return; }
+    if (route.split('/').some(p => p.startsWith('.')) || (/^(node_modules|docs|test|scripts|artifacts)\//.test(route) && route !== 'docs/FUNMAP.md')) { res.writeHead(404).end(); return; }   // the FunMap is the one doc the app reads
     let path = resolve(root, route || 'index.html');
     if ((await stat(path)).isDirectory()) path = resolve(path, 'index.html');
     path = await realpath(path);
