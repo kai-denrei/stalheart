@@ -10338,7 +10338,7 @@ export function initTdTab(root) {
         }
       } else {
         spawnTowerShot(muzzle, flat, tw, eff, atk === 'homing' ? target : null,
-          atk === 'mortar' ? chord(tp, target.pos) : 0);
+          atk === 'mortar' ? chord(tp, target.pos) : 0, pilotMode && pilot?.state.tower === tw ? add3(target.pos, scale3(norm3(target.pos), cellSide * 0.3)) : null);   // FROM THE BARREL TO THE RETICLE (owner, 2026-09-14): a piloted round flies a straight line in space from the muzzle to the body under the reticle, not along the surface at wall height
       }
     }
   }
@@ -10392,16 +10392,14 @@ export function initTdTab(root) {
     return roundDotTex;
   }
 
-  function spawnTowerShot(pos, dir, tw, eff, homing, arcTotal = 0) {
+  function spawnTowerShot(pos, dir, tw, eff, homing, arcTotal = 0, straightTo = null) {
     const sfx2 = shotOf(tw.def);
     const shell=tw.def.key==='mortar';
     const manual = pilotMode && pilot?.state.tower === tw, mesh = shell?   /* TRACERS FROM THE OPTIC (owner, 2026-09-14): a piloted round is bigger and drags a longer trail, so where every bullet goes is seen */makeOrdnanceShell(cellSide*.28):makeTracer(tw.def.color, (sfx2.projPx ?? 5) * (manual ? 1.9 : 1), (sfx2.trail ?? 0) + (manual ? 6 : 0));
     const p0 = norm3(pos);
     const lift0 = 1 + params.wallHeight * 0.5;
     const attr = mesh.geometry.getAttribute('position');
-    for (let i = 0; !shell && i < attr.count; i++) {
-      attr.setXYZ(i, p0[0] * lift0, p0[1] * lift0, p0[2] * lift0);
-    }
+    for (let i = 0; !shell && i < attr.count; i++) { const s0 = straightTo ? pos : [p0[0] * lift0, p0[1] * lift0, p0[2] * lift0]; attr.setXYZ(i, s0[0], s0[1], s0[2]); }
     attr.needsUpdate = true;if(shell)mesh.position.set(p0[0]*lift0,p0[1]*lift0,p0[2]*lift0);
     scene.add(mesh);
     // a lobbed shell knows where it will land before it leaves the tube —
@@ -10412,7 +10410,7 @@ export function initTdTab(root) {
     towerShots.push({
       pos: p0, dir, dist: 0, mesh, shell,
       dmg: eff.dmg * (pilotMode ? story?.pilot.dmgMul ?? 1 : 1), splash: (eff.splash || 0) * cellSide, homing,   // ...and each round hits harder
-      range: Math.min(eff.range * cellSide * 1.35, rayToTerrain(scale3(p0, lift0), dir, eff.range * cellSide * 1.35, tw.ci).len), terrain: true,   // a round stops at the first rock it flies into
+      range: straightTo ? rayToTerrain(pos, norm3(sub3(straightTo, pos)), eff.range * cellSide * 1.35, tw.ci).len : Math.min(eff.range * cellSide * 1.35, rayToTerrain(scale3(p0, lift0), dir, eff.range * cellSide * 1.35, tw.ci).len), terrain: true, straight: straightTo ? { p: pos.slice(), d: norm3(sub3(straightTo, pos)) } : null,   // a round stops at the first rock it flies into; a straight round carries its own point and direction in space
       speed: (sfx2.projSpeed ?? 16) * cellSide, // per-tower tempo
       arcTotal, arcH: cellSide * 2.3, color: tw.def.color, // a lob, not a moonshot
       landCi, markT: 0, px: (sfx2.projPx ?? 5) * (manual ? 1.9 : 1), manual,
@@ -10464,7 +10462,7 @@ export function initTdTab(root) {
         const k = Math.min(1, 6 * dt);
         p.dir = norm3(add3(scale3(p.dir, 1 - k), scale3(want, k)));
       }
-      p.pos = norm3(add3(p.pos, scale3(p.dir, v * dt)));
+      if (p.straight) { p.straight.p = add3(p.straight.p, scale3(p.straight.d, v * dt)); p.pos = norm3(p.straight.p); } else p.pos = norm3(add3(p.pos, scale3(p.dir, v * dt)));
       const n = p.pos;
       p.dir = norm3(sub3(p.dir, scale3(n, dot3(p.dir, n))));
       p.dist += v * dt;
@@ -10499,7 +10497,7 @@ export function initTdTab(root) {
       for (let k = attr.count - 1; k > 0; k--) {
         attr.setXYZ(k, attr.getX(k - 1), attr.getY(k - 1), attr.getZ(k - 1));
       }
-      attr.setXYZ(0, p.pos[0] * lift, p.pos[1] * lift, p.pos[2] * lift);
+      const hp = p.straight ? p.straight.p : [p.pos[0] * lift, p.pos[1] * lift, p.pos[2] * lift]; attr.setXYZ(0, hp[0], hp[1], hp[2]);
       attr.needsUpdate = true;
       }
       // mortar detonates at the end of its arc, hit or not
@@ -10511,7 +10509,7 @@ export function initTdTab(root) {
       let hit = false;
       for (const e of enemies) {
         if (!e.alive) continue;
-        if (chord(p.pos, e.pos) < cellSide * Math.max(p.manual ? 0.6 : 0.42, (e.size ?? e.spec.size) * (p.manual ? 1.1 : 0.8))) {   // a piloted round hits a little wider: the reticle on the body is the intent, the cloud's edge is the body
+        if ((p.straight ? dist3(p.straight.p, add3(e.pos, scale3(norm3(e.pos), cellSide * 0.3))) : chord(p.pos, e.pos)) < cellSide * Math.max(p.manual ? 0.6 : 0.42, (e.size ?? e.spec.size) * (p.manual ? 1.1 : 0.8))) {   // a straight round is tested in space against the body's centre; a piloted round hits a little wider: the reticle on the body is the intent, the cloud's edge is the body
           if (p.splash > 0) detonate(p, tNow);
           else {
             damageEnemy(e, tNow, p.dmg, true);
@@ -10519,6 +10517,7 @@ export function initTdTab(root) {
             // lands should flash WHERE it landed, and an object per hit
             // would be churn the pool exists to avoid
             warnRing(cellIndex(e.pos), p.color, 0.22, cellSide * 0.55);
+            if (p.manual) { const b = makeDotBurst(0xffffff, norm3(e.pos), 10); b.scale.setScalar(cellSide * 0.25); b.position.set(e.pos[0], e.pos[1], e.pos[2]).addScaledVector(new THREE.Vector3(...norm3(e.pos)), cellSide * 0.3); scene.add(b); debris.push(b); sfx.play('kinetic_fire', { dist: camDist(e.pos), gain: 0.5, rate: 1.25 }); pilot?.hit?.(); }   /* THE HIT REGISTERED (owner, 2026-09-14): a white spark on the body, a click, and the reticle's flash */
           }
           hit = true;
           break;
