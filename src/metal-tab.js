@@ -19,7 +19,7 @@ import { bakeGalaxyCube } from './galaxybake.js';
 import { SKY_PRESET } from './galaxyseed.js';
 import { LOOKS } from './looks.js';
 import { WEATHER_PRESETS, weatherStats, bakeWeatheredMetal } from './weathered.js';
-import { WEATHER_BY_NAME, applyWeatheredMaterial, makeWeatheredTextures } from './fx/weathered-material.js';
+import { WEATHER_BY_NAME, applyWeatheredMaterial, makeWeatheredTextures, withSurfaceAliases } from './fx/weathered-material.js';
 import { buildCreature, preloadMork, preloadContainer, makeContainerFixture,
   preloadFabricator, makeIsaoDrone } from './units.js';
 import { preloadMorkTier, makeMorkTier } from './mork.js';
@@ -151,10 +151,13 @@ export function initMetalTab(root) {
     const pr = presets();
     // the knobs ride along as overrides so the cache keys differ per change
     const spec = (preset, tint) => ({ preset, tint, ...pr[preset] });
-    return {
+    // ...and the MÖRK's own surface names on the same rungs: its GLB does not
+    // use M_*, so without the aliases the tank dressed nothing and every
+    // colour on this panel was a no-op on it
+    return withSurfaceAliases({
       M_Armour: spec('gunmetal', P.tArmour), M_Turret: spec('gunmetal', P.tTurret), M_Detail: spec('gunmetal', P.tDetail),
       M_Steel: spec('steel', P.tSteel), M_Track: spec('steel', P.tTrack), M_Rubber: spec('rubber', P.tRubber),
-    };
+    });
   }
 
   // THE CAST, large: normalised so its longest side is ~2.6 units and it

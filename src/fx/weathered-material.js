@@ -27,6 +27,28 @@ export const WEATHER_BY_NAME = {
   M_Rubber: { preset: 'rubber', tint: 1.00 },
 };
 
+// THE A6 MÖRK DOES NOT SPEAK THE M_* CONTRACT. Its GLB (both tiers) names its
+// surfaces as the author did — "Mork armor / midnight petrol" and so on — so
+// a walk keyed by M_Armour dressed NOTHING on it (measured in the metal lab,
+// 2026-09-14: "0 materials dressed", every base colour a no-op). This maps
+// those names onto the rungs. Only the structural surfaces: the lift field,
+// stencils, optics and the amber lights keep their authored colours.
+// Callers opt in with withSurfaceAliases; WEATHER_BY_NAME itself is unchanged,
+// so the board's dressing (td-tab) draws exactly what it drew before.
+export const MORK_SURFACES = {
+  'Mork armor / midnight petrol': 'M_Armour',
+  'Mork edge armor / slate': 'M_Turret',
+  'Edge metal / graphite': 'M_Detail',
+  'Structural frame / blue steel': 'M_Steel',
+  'Recess / carbon': 'M_Rubber',
+};
+// byName plus every alias whose rung it has, pointing at that rung's spec
+export function withSurfaceAliases(byName, aliases = MORK_SURFACES) {
+  const out = { ...byName };
+  for (const [name, rung] of Object.entries(aliases)) if (byName[rung] && !(name in out)) out[name] = byName[rung];
+  return out;
+}
+
 // THE DARK BASE. The board's grey ladder lifts every structural material
 // to a light grey WITH a grey emissive so the machines show on an unlit
 // board; under a sun, a sky and ACES that reads white-hot (the first tank

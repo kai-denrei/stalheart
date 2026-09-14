@@ -841,14 +841,20 @@ await go('shell-explosion','index.html?sw=0&cine=0&acceptance=1&blast=1#td');
  assert.equal(await evaluate('window.__stalheartBeamTest.state().guns'),2);assert.equal(await evaluate('window.__stalheartBeamTest.state().pivots'),2);assert.deepEqual(await evaluate('window.__stalheartBeamTest.state().muzzleOffsets'),[0,0]);
  const beamOpen=await evaluate('window.__stalheartBeamTest.state().preset');assert.equal(beamOpen.glowWidth,0.464,'the beam lab opens on the board glow width');assert.equal(beamOpen.coreWidth,0.0025,'the beam lab opens on the board core width');assert.equal(beamOpen.jitterAmount,0.19);
  await evaluate('window.__stalheartBeamTest.set({glowWidth:2,coreWidth:0.3,rankStep:15});window.__stalheartBeamTest.reset()');assert.deepEqual(await evaluate('window.__stalheartBeamTest.state().preset'),beamOpen,'reset returns the beam lab to the board preset');await finish();
- // METAL LAB: both MÖRK tiers and the kit bays are subjects
+ // METAL LAB: both MÖRK tiers and the kit bays are subjects, and a base colour recolours the dressed tank (measured on the baked albedo)
  await go('metal-subjects','labs.html?sw=0&acceptance=1#metal');
  await until('window.__stalheartMetalTest?.state().ready && window.__stalheartMetalTest.state().dressCount>0',60000);
  assert.deepEqual(Object.keys(await evaluate('window.__stalheartMetalTest.subjects()')).sort(),['bays','container','isao','tank','tank-low'],'the metal lab lists both MÖRK tiers and the kit bays');
- await finish();
+ const armour=`window.__stalheartMetalTest.state().materials.find(m=>m.name==="Mork armor / midnight petrol")`;
+ assert(await evaluate(`${armour}.map`),'the full MÖRK armour is dressed');const greyMean=await evaluate(`${armour}.mapMean`);
+ const dressedBefore=await evaluate('window.__stalheartMetalTest.state().dressCount');
+ await evaluate('window.__stalheartMetalTest.setGui("gBase","#ff66cc")');
+ await until(`window.__stalheartMetalTest.state().dressCount>${dressedBefore}`,15000);
+ const pinkMean=await evaluate(`${armour}.mapMean`);
+ assert(pinkMean[0]>greyMean[0]+40&&pinkMean[0]>pinkMean[1]+40,`a pink base recolours the full MÖRK (${greyMean} -> ${pinkMean})`);await finish();
  await evaluate('window.__stalheartMetalTest.select("tank-low")');
  await until('window.__stalheartMetalTest.state().subject==="tank-low" && window.__stalheartMetalTest.state().ready',60000);
- current='metal-tank-low';await finish();
+ await until(`${armour}?.mapMean?.[0]>${greyMean[0]+40}`,15000);current='metal-tank-low';await finish();
  await evaluate('window.__stalheartMetalTest.select("bays")');
  await until('window.__stalheartMetalTest.state().subject==="bays" && window.__stalheartMetalTest.state().ready',60000);
  assert(await evaluate('window.__stalheartMetalTest.state().materials.length>0'),'the kit container bays load');current='metal-bays';await finish();
