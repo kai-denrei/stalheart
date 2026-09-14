@@ -42,7 +42,7 @@ Sentry Control is an opt-in actual-game experiment at `index.html?sentryPilot=1#
 
 ## Next priorities
 
-**Next, not started: a concept audit and a FunMap** (`2026-09-14-concept-audit-and-funmap-proposed`): walk the game's concepts through Rosewater's lessons and Meier's interesting-decisions test, using the owner's playtest rulings as the diagnoses, and keep `docs/FUNMAP.md` beside the roadmap for what feels satisfying and what can be improved. Confirm the shape with the owner before starting. Explosion research for outside artists is briefed in [EXPLOSIONS-RESEARCH.md](EXPLOSIONS-RESEARCH.md).
+**Concept audit, first pass** (`2026-09-14-concept-audit-first-pass`): [FUNMAP.md](FUNMAP.md) reads the game through Rosewater's lessons and Meier's test — a reflection on where the game is going, each concept's emotion and decision, dated felt observations and open questions. Living; add felt lines with a date, never tasks. Explosion research for outside artists is briefed in [EXPLOSIONS-RESEARCH.md](EXPLOSIONS-RESEARCH.md).
 
 **Then: hold the gunship against a real horde.** Measure the swarm's render cost first (spec §9), then tune the rotary and Bofors numbers and check that sustained fire reads as herding; give the practice map its seat if it helps the tuning.
 

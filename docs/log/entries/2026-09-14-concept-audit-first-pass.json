@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-concept-audit-first-pass",
+  "date": "2026-09-14T21:00:00+00:00",
+  "type": "decision",
+  "status": "accepted",
+  "title": "The concept audit's first pass: docs/FUNMAP.md reads the game through Rosewater and Meier, a reflection, a concept walk, dated felt observations and open questions",
+  "context": "Owner launched the proposed audit, expecting it to be subjective, vague and opinionated but food for thought, and offered a self-reading: fitting the game to expected behaviour, bringing emotional resonance, piggybacking on proven fun mechanics and honing them.",
+  "outcome": "docs/FUNMAP.md written as a companion to ROADMAP.md, not a task list. The reflection argues: the project was born as a proof of concept and the log still reads that way (about a dozen of 117 entries are about feel), so R12 is its main exposure; the sphere is interesting but pays emotionally only at scale moments (breach dive, gunship pass, planet pull-back); the story has moved the game from tower defense (placement) toward an operator game (aim, lead, overheat, paint), which risks a box of polished piggybacked minigames without a spine; three spine candidates already exist: attention (which seat, where the piloted x60 matters, and the view switch the 09-01 playtest found too hard), growth (barrels and biomass, hollow per the wave-42 playtest), and the vibration language (the one long-horizon curiosity hook, currently a pausing modal); Isao's protopian voice and the AC-130 military register pull against each other unless the contrast is chosen, with resourceful joy under pressure offered as a candidate emotion; the owner's self-reading is accurate and mostly a strength (R1, R3, R4) but piggybacking earns liking, not love (R11), and the originals (recycled rocket, bays as lives, BJJ belt ladder, ram-combo farming, vibration language, Isao) get a fraction of the attention. The earned-automation proposal is flagged as the most R13-sensitive idea on the roadmap. Each concept (arrival and foundry, Isao printing, Rotor and Quiver, wall and gate, swarm and hard cores, strike and gunship, tank, economy, modes and labs) gets its emotion, fun versus interesting, and whether its decision is real. Nineteen dated felt observations are tagged by lesson, and ten questions are phrased so a playtest could move them. docs/PLAYFEEL.md is kept as the owner's raw notes.",
+  "alternatives": [
+    "Per-lesson walk (twenty sections): rejected as checklist-shaped; the concepts are what the owner playtests, the lessons are lenses on them.",
+    "Prescriptive recommendations: kept to questions, per Rosewater 19 and the proposal's own rule that prescriptions stay the design's."
+  ],
+  "evidence": [
+    "All 117 entries in docs/log/entries read in full; docs/PLAYFEEL.md, docs/PLAYTEST-TODO.md, docs/STORY.md, docs/STATE.md, docs/archive/research-README.md.",
+    "~/Dev/game-design-lessons/MarkRosewater20LessonsMtG.txt for the twenty lessons."
+  ],
+  "supersedes": [
+    "2026-09-14-concept-audit-and-funmap-proposed"
+  ]
+}
