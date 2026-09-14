@@ -3835,6 +3835,7 @@ body.mobile-shell #td-toast .wave-role, body.mobile-shell #td-wave .wave-name, b
 #story-views button.active { background: rgba(40, 90, 120, 0.95); color: #dff4ff; border-color: #6fc3ff; }
 #story-views button.gunship:disabled { opacity: 0.45; cursor: default; }
 #story-views button.gunship.live { border-color: #ffb43d; color: #ffd48a; }
+#story-views button.gunship.ready { border-color: #6fe6ff; color: #dff4ff; }
 /* the build tag, joined to the navigation shell top right, for debugging which release is in front of you */
 #build-tag { font: 600 10px ui-monospace, Menlo, monospace; letter-spacing: 0.06em; color: #6fa8c8; background: rgba(8, 14, 20, 0.7); border: 1px solid #234c68; border-radius: 6px; padding: 2px 6px; pointer-events: none; }
 /* the story's spotting monitor: a second small render riding behind a guided round */

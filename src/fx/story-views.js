@@ -13,6 +13,8 @@ export function createStoryViews(root, on) {
   }
   // the pass: dark with the next arrival counting down, live while the guns are yours. Nothing here can change either.
   function station(on, seconds) { if (!ship) return; ship.disabled = !on; ship.classList.toggle('live', on); const t = `GUNSHIP · ${Math.ceil(seconds)} S${on ? ' LEFT' : ''}`; if (ship.textContent !== t) ship.textContent = t; }
+  // after the handover: the call-in meter fills; full, the button calls the pass (owner, 2026-09-14)
+  function meter(progress, full) { if (!ship) return; ship.disabled = !full; ship.classList.toggle('ready', full); ship.classList.remove('live'); const t = full ? 'GUNSHIP · CALL' : `GUNSHIP · ${Math.round(progress * 100)}%`; if (ship.textContent !== t) ship.textContent = t; }
   mounts([]);
-  return { active, mounts, station, dispose() { nav.remove(); } };
+  return { active, mounts, station, meter, dispose() { nav.remove(); } };
 }
