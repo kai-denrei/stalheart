@@ -11826,7 +11826,7 @@ export function initTdTab(root) {
       const want = {
         // scoped to THIS tab: the sibling tabs carry the same classes, and
         // querySelector was returning a hidden tab's copy and skipping it
-        menu: '#chrome-toggle', modes: '#tab-td .tc-util', hud: '#td-stats',
+        menu: '#shell-bar', modes: '#tab-td .tc-util', hud: '#td-stats',
         map: '#tab-td .minimap', tut: '#td-tut', throttle: '#td-throttle',
         steerL: '#td-pad-left', steerR: '#td-pad-right',
         fire: '#td-pad-fire', laser: '#td-pad-laser',
@@ -11838,7 +11838,7 @@ export function initTdTab(root) {
         shout: '#td-callouts', combo: '#td-combo',
         // the shell's pieces, and the two captions (pinned by ?pin=1)
         mode: '#mob-mode', brief: '#td-brief', toast: '#td-toast',
-        tabbar: '#tabbar',   // the site nav: behind ≡ on the shell, never over the board
+        tabbar: '#shell-nav',   // the navigation drawer: closed during play, never over the board
         wave: '#td-wave', tower: '#td-tower',   // the announcement cards (pinned by ?pin=1)
       };
       const box = {};

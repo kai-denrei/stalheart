@@ -6,8 +6,7 @@ import { registerServiceWorker } from './pwa.js';
 import { storage as localStorage } from './storage.js';
 import { installDiagnostics, record } from './diagnostics.js';
 import { isStoryRoute } from './core/story-route.js';
-import { STAGES } from './content/base-layout.js';
-import { createStorySkips } from './fx/story-skips.js';
+import { mountShellNav } from './fx/shell-nav.js';
 import { loadPlanetBake } from './platform/planet-bake.js';
 import { applyFontPack, DEFAULT_FONT, DEFAULT_SHOUT_FONT, loadTypeFeel } from './fonts.js';
 
@@ -15,7 +14,7 @@ installDiagnostics();
 const q = new URLSearchParams(location.search);
 if (q.get('sw') !== '0') {
   void registerServiceWorker(apply => {
-    const nav = document.getElementById('tabbar');
+    const nav = document.getElementById('shell-bar');
     if (!nav || document.getElementById('app-update')) return;
     const button = document.createElement('button');
     button.id = 'app-update'; button.textContent = 'update & restart';
@@ -30,7 +29,6 @@ const routes = {
   record: () => import('./recordtab.js').then(m => m.initRecordTab),
   units: () => import('./units-tab.js').then(m => m.initUnitsTab),
   swarm: () => import('./labs/swarm-tab.js').then(m => m.initSwarmTab),
-  notes: () => import('./labs/notes-tab.js').then(m => m.initNotesTab),
   beam: () => import('./beam-tab.js').then(m => m.initBeamTab),
   metal: () => import('./metal-tab.js').then(m => m.initMetalTab),
   story: () => import('./labs/story-tab.js').then(m => m.initStoryTab),
@@ -39,6 +37,8 @@ const routes = {
   sim: () => import('./sim-tab.js').then(m => m.initSimTab),
 };
 const name = location.hash.slice(1) || (workshop ? 'units' : 'td');
+// the retired roadmap tab: the workshop opens with the docs overlay on the roadmap
+if (workshop && name === 'notes') { const to = new URL(location.href); to.hash = 'units'; to.searchParams.set('doc', 'roadmap'); location.replace(to.href); }
 // in the story, "the cinematic" is the arrival: ?cine=1 goes to the lab playing it, not the legacy cold open
 if (!workshop && name === 'td' && isStoryRoute(location.search) && q.get('cine') === '1') {
   const to = new URL('./labs.html', location.href);
@@ -76,41 +76,9 @@ if (!root) {
       }
     }
   }
-  for (const b of document.querySelectorAll('#tabbar button')) {
-    b.classList.toggle('active', b.dataset.tab === target
-      && (('story' in b.dataset) === (target === 'td' && isStoryRoute(location.search)))   // the story entries own the story world, the others never show active there
-      && (!('story' in b.dataset) || (Number(b.dataset.story) >= 8) === (Number(q.get('stage') ?? q.get('story') ?? 1) >= 8))   // defend is the finished base; story, the opening
-      && (!('roster' in b.dataset) || b.dataset.roster === (q.get('roster') || '2')));
-    b.addEventListener('click', () => {
-      const url = new URL(b.dataset.page || location.pathname, location.href);
-      url.search = location.search;
-      for (const key of ['story', 'stage', 'world', 'heart', 'threat', 'land', 'cine']) url.searchParams.delete(key);   // leaving a mode drops its switches
-      for (const key of ['roster', 'story', 'land']) if (key in b.dataset) {
-        if (b.dataset[key]) url.searchParams.set(key, b.dataset[key]);
-        else url.searchParams.delete(key);
-      }
-      url.hash = b.dataset.tab || '';
-      navigate(url);
-    });
-  }
-  // the story's stages, right in the menu: no URL editing while the beats are being built
-  if (!workshop && target === 'td' && isStoryRoute(location.search)) {
-    const strip = document.createElement('div'); strip.id = 'story-stages-nav';
-    const names = STAGES.map((s) => s.name);
-    const current = parseInt(q.get('stage') ?? q.get('story') ?? '1', 10);
-    names.forEach((name, n) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = `${n} ${name}`; b.classList.toggle('active', n === current); b.addEventListener('click', () => navigate(new URL(`./index.html?story=${n}#td`, location.href))); strip.append(b); });
-    const arrival = document.createElement('button'); arrival.type = 'button'; arrival.textContent = 'arrival cinematic'; arrival.addEventListener('click', () => navigate(new URL('./labs.html?land=1#story', location.href))); strip.append(arrival);
-    document.getElementById('tabbar')?.after(strip);
-  }
-  // SKIP TO A STORY POINT, beside the build tag, on the story route and in the story lab: testing a beat should not mean playing up to it
-  if ((!workshop && target === 'td' && isStoryRoute(location.search)) || target === 'story') createStorySkips(document.body, { navigate, query: q });
-  // WHICH BUILD IS THIS, top right: the release token (the file hash the build stamps in) or dev, then the commit (branch@sha, +dirty) the page came from
-  const build = document.querySelector('meta[name="cb"]')?.content, rev = document.querySelector('meta[name="rev"]')?.content; const tag = document.createElement('div'); tag.id = 'build-tag'; tag.textContent = [build && build !== '00000000' ? `build ${build}` : 'dev', rev].filter(Boolean).join(' · '); document.body.append(tag);
-  const menu = document.createElement('button');
-  menu.id = 'chrome-toggle'; menu.textContent = '☰'; menu.title = 'game menu';
-  menu.setAttribute('aria-label', 'Game menu');
-  menu.onclick = () => document.body.classList.toggle('chrome-open');
-  document.body.append(menu);
+  // THE NAVIGATION SHELL: PLAYTEST | DEV top right with the build tag, one drawer per mode (src/fx/shell-nav.js)
+  const build = document.querySelector('meta[name="cb"]')?.content, rev = document.querySelector('meta[name="rev"]')?.content;
+  mountShellNav({ navigate, query: q, buildText: [build && build !== '00000000' ? `build ${build}` : 'dev', rev].filter(Boolean).join(' · ') });
   for (const evt of ['gesturestart', 'gesturechange', 'gestureend']) {
     root.addEventListener(evt, e => e.preventDefault(), { passive: false });
   }

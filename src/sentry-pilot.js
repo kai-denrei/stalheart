@@ -27,7 +27,7 @@ export function createSentryPilot(root, host) {
   },{capture:true});
   listen(window,'keyup',e=>{if(editable(e))return;e.stopImmediatePropagation();if(e.code==='Space'){e.preventDefault();state.held=false;}},{capture:true});
   listen(root,'pointerdown',e=>{
-    if(e.target.closest('button,a,input,select,.lil-gui,.tzone,.tfire,#story-skips,#gunship-briefing'))return;
+    if(e.target.closest('button,a,input,select,.lil-gui,.tzone,.tfire,#shell-bar,#shell-nav,#gunship-briefing'))return;
     if(gunship&&map){e.stopImmediatePropagation();e.preventDefault();px=e.clientX;py=e.clientY;state.held=true;host.wake();return;}   // the shelved top view: the pointer is the aim, the button the trigger, no lock
     if(gunship&&locked()&&e.pointerType==='mouse'&&e.button===0){e.stopImmediatePropagation();e.preventDefault();state.held=true;host.wake();return;}   // locked in the seat: the button is the trigger
     if(map)return;

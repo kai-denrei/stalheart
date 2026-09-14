@@ -429,32 +429,6 @@ html, body {
   display: block;
 }
 
-#tabbar {
-  position: fixed;
-  top: max(10px, env(safe-area-inset-top));
-  left: max(12px, env(safe-area-inset-left));
-  z-index: 20;
-  display: flex;
-  gap: 6px;
-}
-
-#tabbar button {
-  background: #1b2130;
-  color: #7f8db0;
-  border: 1px solid #2a3350;
-  border-radius: 6px;
-  font: 12px ui-monospace, Menlo, monospace;
-  padding: 5px 14px;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-#tabbar button.active {
-  background: #2d3a5e;
-  color: #dbe4ff;
-  border-color: #4a5a8a;
-}
-
 #stats, #maze-stats, #o-stats, #b-stats, #h-stats, #td-stats {
   position: absolute;
   top: 46px;
@@ -1167,10 +1141,11 @@ html, body {
   to   { opacity: 1; transform: translateX(-50%) scale(1); }
 }
 
-/* lil-gui inside a tab wrapper */
+/* lil-gui inside a tab wrapper, below the navigation shell's bar, which owns the top right corner */
 .tab .lil-gui.root {
   position: absolute;
-  top: 0;
+  top: calc(max(8px, env(safe-area-inset-top)) + 46px);
+  max-height: calc(100vh - max(8px, env(safe-area-inset-top)) - 54px);   /* lil-gui scrolls its own children once capped */
   right: 0;
   z-index: 10;
 }
@@ -1257,97 +1232,25 @@ html, body {
   bottom: auto !important;
 }
 
-#tabbar {
-  left: calc(max(12px, env(safe-area-inset-left)) + 132px);
-}
-
-/* narrow screens: tab bar drops below the badge; HUD stats drop below both */
+/* narrow screens: HUD stats drop below the badge */
 @media (max-width: 640px) {
-  #tabbar {
-    left: max(12px, env(safe-area-inset-left));
-    top: calc(max(10px, env(safe-area-inset-top)) + 36px);
-  }
   #stats, #maze-stats, #o-stats, #b-stats, #h-stats, #td-stats {
     top: 118px;
   }
 }
 
 /* --- mobile play mode: chrome hides, minimap moves clear of thumbs ------- */
-#chrome-toggle {
-  display: none;
-  position: fixed;
-  top: max(10px, env(safe-area-inset-top));
-  left: max(10px, env(safe-area-inset-left));
-  z-index: 60;
-  width: 40px;
-  height: 36px;
-  background: rgba(27, 33, 48, 0.85);
-  color: #aab8dd;
-  border: 1px solid #2a3350;
-  border-radius: 8px;
-  font-size: 16px;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
 @media (pointer: coarse), (max-width: 700px) {
-  #chrome-toggle { display: block; }
-  /* game chrome hidden while playing; ☰ brings it back */
-  body:not(.chrome-open) #tabbar,
-  body:not(.chrome-open) #cb-badge,
-  body:not(.chrome-open) .tab .lil-gui.root {
+  /* the badge and the lil-gui roots stay hidden on a phone */
+  body #cb-badge,
+  body .tab .lil-gui.root {
     display: none !important;
   }
-  /* the ☰ menu is a VERTICAL game-mode selector — a horizontal row
-     never fit a phone (TD sat off-screen) */
-  #tabbar {
-    top: max(54px, calc(env(safe-area-inset-top) + 46px));
-    left: max(10px, env(safe-area-inset-left));
-    flex-direction: column;
-    width: max-content;
-    background: rgba(10, 16, 26, 0.94);
-    border: 1px solid #2a3350;
-    border-radius: 12px;
-    padding: 8px;
-    z-index: 60;
-  }
-  #tabbar {
-    /* the roster outgrew a phone's height once `units` joined it */
-    max-height: calc(100dvh - 96px);
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, .6);
-  }
-  #tabbar button {
-    text-align: left;
-    padding: 11px 18px;
-    font-size: 14px;
-  }
-  /* the mode you are in should be obvious in a list you scroll */
-  #tabbar button.active {
-    background: rgba(111, 230, 255, .16);
-    border-color: #6fe6ff;
-    color: #cdf3ff;
-  }
-  /* the badge shares the top edge with ☰ — shove it right of the button */
-  body.chrome-open #cb-badge { left: 60px !important; }
-  /* ACTIVE PLAY hides the panels and the badge — but NOT the ☰. Hiding it
-     left a phone with no way to change mode, reach the unit viewer, or get
-     back to the menu without first pausing. It stays, shrunk and faded, and
-     goes solid the moment the drawer is open. */
-  body.playing #tabbar,
+  /* ACTIVE PLAY hides the panels and the badge */
   body.playing #cb-badge,
   body.playing .tab .lil-gui.root {
     display: none !important;
   }
-  body.playing.chrome-open #tabbar { display: flex !important; }
-  body.playing #chrome-toggle {
-    opacity: 0.32;
-    transform: scale(0.82);
-    transform-origin: top left;
-  }
-  body.playing.chrome-open #chrome-toggle { opacity: 1; transform: none; }
   /* the hint line fights the thumb clusters for the bottom edge, and the
      briefing already teaches everything it says */
   #h-hint, #td-hint { display: none !important; }
@@ -1371,31 +1274,6 @@ html, body {
        and a gap, so the wave line stops rather than running underneath */
     max-width: calc(100vw - min(240px, 32vmin) - 36px);
   }
-}
-
-/* --- desktop: collapse the mode chooser behind ☰ too ---------------------
-   A game view shouldn't wear the dev tab-row across its top. On desktop the
-   ☰ (sitting right of the cache badge) reveals the tabs as a dropdown; the
-   settings panel and badge stay put — only the tab list hides. Mobile keeps
-   its own fuller collapse above. */
-@media (pointer: fine) and (min-width: 701px) {
-  #chrome-toggle {
-    display: block;
-    left: calc(max(12px, env(safe-area-inset-left)) + 132px);
-  }
-  body:not(.chrome-open) #tabbar { display: none !important; }
-  body.chrome-open #tabbar {
-    top: calc(max(10px, env(safe-area-inset-top)) + 44px);
-    left: calc(max(12px, env(safe-area-inset-left)) + 132px);
-    flex-direction: column;
-    width: max-content;
-    background: rgba(10, 16, 26, 0.94);
-    border: 1px solid #2a3350;
-    border-radius: 12px;
-    padding: 8px;
-    z-index: 60;
-  }
-  body.chrome-open #tabbar button { text-align: left; padding: 9px 16px; }
 }
 
 /* tank / tank2 tabs: shared Combat-style HUD classes */
@@ -1972,31 +1850,7 @@ html, body {
   #stack-copy, #roadmap-copy { transition: none; }
 }
 
-/* ── HOME LAUNCHER ───────────────────────────────────────────────────────
-   Twelve modes in a flat bar told a visitor nothing — "tank2" is not a
-   description. The bar now shows only HOME and where you are; the full list
-   is still one tap away behind ☰, and the launcher explains what each mode
-   demonstrates. The buttons all stay in the DOM (hidden, not removed) because
-   the launcher navigates by clicking them — one code path for changing mode. */
-/* The collapsed bar is HOME + where you are. Both the desktop and mobile
-   rules above hide #tabbar ENTIRELY until ☰ is open, which would have taken
-   the home button with it — so the container is forced back and the buttons
-   are hidden individually instead. ☰ still reveals the full list. */
-body:not(.chrome-open) #tabbar {
-  display: flex !important;
-  /* sits right of the badge + ☰, which own the top-left corner */
-  left: calc(max(12px, env(safe-area-inset-left)) + 316px);
-  background: none; border: 0; padding: 0; width: auto;
-  flex-direction: row; max-height: none; overflow: visible; box-shadow: none;
-}
-body:not(.chrome-open) #tabbar button:not(.nav-home):not(.active) { display: none; }
-#tabbar button.nav-home { color: #6fe6ff; border-color: rgba(111, 230, 255, .45); }
-/* active mode reads as a label here, not a button you press to stay put */
-body:not(.chrome-open) #tabbar button.active {
-  background: none; border-color: transparent; color: #7f93ab; cursor: default;
-}
-/* active play still owns the whole screen on a phone */
-body.playing:not(.chrome-open) #tabbar { display: none !important; }
+/* ── HOME LAUNCHER ─────────────────────────────────────────────────────── */
 
 #home-scroll {
   position: absolute; inset: 0;
@@ -3491,7 +3345,7 @@ tr.sim-timeout td:nth-child(2), tr.sim-stalled td:nth-child(2) { color: #ffb000;
    thirty controls and four folders, scrolled by feel. It is re-homed into a
    centred modal: a nav column of PAGES on the left, one page at a time on
    the right. The lil-gui elements are MOVED, not rebuilt, so every slider's
-   behaviour is untouched. Opens with the ≡ (body.chrome-open), closes on ×
+   behaviour is untouched. Opens from DEV · Tuning in the navigation shell, closes on ×
    or Esc, and — unlike the old column — is allowed to open while playing,
    because a toggle you cannot use mid-run is not a toggle. --- */
 #td-vars {
@@ -3511,37 +3365,6 @@ tr.sim-timeout td:nth-child(2), tr.sim-stalled td:nth-child(2) { color: #ffb000;
   backdrop-filter: blur(4px);
 }
 #td-vars.hidden, body:not(.vars-open) #td-vars { display: none; }
-/* the ⚙, a sibling of ≡ in look and row */
-#vars-toggle {
-  position: fixed;
-  top: max(10px, env(safe-area-inset-top));
-  left: 194px;   /* right of the ≡ as it actually renders (x≈145-183) */
-  z-index: 60;
-  width: 40px; height: 36px;
-  font: 700 18px ui-monospace, Menlo, monospace;
-  color: #9fdcff;
-  background: rgba(27, 33, 48, 0.85);
-  border: 1px solid rgba(0, 208, 255, 0.3);
-  border-radius: 8px;
-  cursor: pointer;
-}
-#vars-toggle:hover, body.vars-open #vars-toggle { color: #fff; border-color: #00d0ff; }
-/* THE BOARD'S DEEP LINK. Beside the variables button rather than on the left
-   edge with the labs' — that edge is the throttle, the radar and Isao's
-   caption on this tab, and a control the thumb can hit while steering is a
-   control that gets hit while steering. */
-#td-link {
-  position: fixed;
-  top: max(10px, env(safe-area-inset-top));
-  left: 240px;
-  z-index: 60;
-  width: 40px; height: 36px;
-  font: 700 16px ui-monospace, Menlo, monospace; line-height: 1;
-  color: #9fdcff; background: rgba(27, 33, 48, 0.85);
-  border: 1px solid #2b6b96; border-radius: 8px; cursor: pointer;
-}
-#td-link:hover { color: #fff; border-color: #00d0ff; }
-#td-link:active { transform: translateY(1px); }
 #td-vars .vars-nav {
   display: flex; flex-direction: column; gap: 2px;
   padding: 44px 8px 8px;
@@ -3822,10 +3645,6 @@ body.mobile-shell #tab-td #td-wave .wave-ram { display: inline; font-size: 10px;
 body.mobile-shell #tab-td #td-wave .wave-name::before, body.mobile-shell #tab-td #td-tower .wave-name::before,
 body.mobile-shell #tab-td #td-wave .wave-role::before, body.mobile-shell #tab-td #td-tower .wave-role::before,
 body.mobile-shell #tab-td #td-wave .wave-ram::before { content: ' · '; opacity: 0.6; }
-/* the site's tab bar (home / grid / maze...) is hidden by body.playing, and
-   the debrief is not "playing" — so it surfaced over the verdict's header.
-   On the shell it lives behind ≡ in EVERY state (plan §2.6). */
-body.mobile-shell:not(.chrome-open) #tabbar { display: none !important; }
 /* the vertical budget at 844x303 (the ruler's landscape) is the top band
    (~150), a lane (~55) and Isao (~85): Isao is wide and small so his long
    lines wrap to two, not three */
@@ -3931,23 +3750,6 @@ body.mobile-shell #td-toast .wave-role, body.mobile-shell #td-wave .wave-name, b
   #metal-src { top: calc(env(safe-area-inset-top, 0px) + 168px); font-size: 13px; }
 }
 
-/* THE TAB BAR IN GROUPS (operator, 2026-09-04: "we have some game modes,
-   some tweaks, some cine, tech stack, research projects… we need to
-   organize"). A group is a labelled run of buttons: inline on the desktop
-   with a dim name and a hairline before it, a titled section in the
-   phone's drawer. activate() still finds buttons by data-tab. */
-#tabbar .tabgroup { display: flex; gap: 6px; align-items: center; padding-left: 10px; margin-left: 4px; border-left: 1px solid #2a3350; }
-/* collapsed (the burger closed): home and the active tab only, as before —
-   the group names and their hairlines go with the hidden buttons */
-body:not(.chrome-open) #tabbar .tabgroup { padding-left: 0; margin-left: 0; border-left: 0; }
-body:not(.chrome-open) #tabbar .tabgroup-name { display: none; }
-body:not(.chrome-open) #tabbar .tabgroup:not(:has(button.active)) { display: none; }
-#tabbar .tabgroup-name { color: #4f5b7a; font: 10px ui-monospace, Menlo, monospace; letter-spacing: .12em; text-transform: uppercase; margin-right: 2px; }
-@media (pointer: coarse), (max-width: 700px) {
-  #tabbar .tabgroup { flex-direction: column; align-items: stretch; gap: 4px; padding: 6px 0 4px; margin: 4px 0 0; border-left: 0; border-top: 1px solid #2a3350; }
-  #tabbar .tabgroup-name { padding: 2px 18px 4px; color: #6a789c; }
-}
-
 /* RE-CENTRE. Orbit controls on a phone are one finger to turn and two to
    zoom, and a few seconds of that puts the range somewhere behind you with
    no way back — the same problem the board solved with its two CTR buttons,
@@ -4017,24 +3819,14 @@ body:not(.chrome-open) #tabbar .tabgroup:not(:has(button.active)) { display: non
 #story-hud .story-keys button.on { background: rgba(40, 90, 120, 0.95); color: #dff4ff; border-color: #6fc3ff; }
 /* ISAO'S COMMS ARE A SMALL TERMINAL ON THE LEFT, never a banner (owner, recurring: 2026-09-13 "much much too long") — the same card size as the game's #td-brief */
 #story-hud #story-comms { align-self: flex-start; box-sizing: border-box; width: fit-content; max-width: min(280px, calc(100vw - 24px)); font: 600 12px ui-monospace, Menlo, monospace; letter-spacing: 0.06em; line-height: 1.35; border: 1px solid; border-left-width: 3px; border-radius: 8px; padding: 6px 10px; background: rgba(4, 14, 9, 0.9); text-shadow: 0 0 8px currentColor; white-space: normal; }
-#story-stages-nav { display: none; flex-wrap: wrap; gap: 6px; padding: 8px 12px; background: rgba(8, 14, 20, 0.92); }
-body.chrome-open #story-stages-nav { display: flex; }
-#story-stages-nav button { font: 600 12px ui-monospace, Menlo, monospace; color: #9fdcff; background: rgba(12, 26, 38, 0.85); border: 1px solid #2b6b96; border-radius: 8px; padding: 8px 10px; cursor: pointer; }
-#story-stages-nav button.active { background: rgba(40, 90, 120, 0.95); color: #dff4ff; border-color: #6fc3ff; }
 /* the story's view strip, unlocked after the first wave: TANK / SENTRY / MAP */
 #story-views { position: fixed; bottom: 64px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; padding: 6px 8px; background: rgba(8, 14, 20, 0.85); border: 1px solid #2b6b96; border-radius: 10px; z-index: 40; }
 #story-views button { font: 700 12px ui-monospace, Menlo, monospace; letter-spacing: 0.08em; color: #9fdcff; background: rgba(12, 26, 38, 0.85); border: 1px solid #2b6b96; border-radius: 8px; padding: 7px 12px; cursor: pointer; }
 #story-views button.active { background: rgba(40, 90, 120, 0.95); color: #dff4ff; border-color: #6fc3ff; }
 #story-views button.gunship:disabled { opacity: 0.45; cursor: default; }
 #story-views button.gunship.live { border-color: #ffb43d; color: #ffd48a; }
-/* the build tag, top right, for debugging which release is in front of you */
-#story-skips { position: fixed; top: 6px; right: 64px; z-index: 60; display: flex; align-items: center; gap: 4px; padding: 3px 6px; font: 600 10px ui-monospace, Menlo, monospace; letter-spacing: 0.06em; color: #6fa8c8; background: rgba(8, 14, 20, 0.7); border: 1px solid #2b6b96; border-radius: 6px; }
-#story-skips .k { margin-right: 2px; opacity: 0.8; }
-#story-skips button { font: inherit; color: #9fdcff; background: rgba(12, 26, 38, 0.85); border: 1px solid #2b6b96; border-radius: 4px; padding: 3px 6px; cursor: pointer; }
-#story-skips button:disabled { opacity: 0.35; cursor: default; }
-#story-skips button.active { background: rgba(40, 90, 120, 0.95); color: #dff4ff; border-color: #6fc3ff; }
-#story-skips input { width: 44px; font: inherit; color: #dff4ff; background: rgba(12, 26, 38, 0.85); border: 1px solid #2b6b96; border-radius: 4px; padding: 2px 4px; }
-#build-tag { position: fixed; top: 6px; right: 8px; z-index: 60; font: 600 10px ui-monospace, Menlo, monospace; letter-spacing: 0.06em; color: #6fa8c8; background: rgba(8, 14, 20, 0.7); border: 1px solid #234c68; border-radius: 6px; padding: 2px 6px; pointer-events: none; }
+/* the build tag, joined to the navigation shell top right, for debugging which release is in front of you */
+#build-tag { font: 600 10px ui-monospace, Menlo, monospace; letter-spacing: 0.06em; color: #6fa8c8; background: rgba(8, 14, 20, 0.7); border: 1px solid #234c68; border-radius: 6px; padding: 2px 6px; pointer-events: none; }
 /* the story's spotting monitor: a second small render riding behind a guided round */
 #story-monitor { position: fixed; right: 12px; bottom: 64px; width: 224px; height: 140px; border: 1px solid #2b6b96; border-radius: 8px; background: rgba(8, 14, 20, 0.5); z-index: 40; pointer-events: none; }
 #story-monitor .head { position: absolute; left: 6px; top: 4px; font: 600 10px ui-monospace, Menlo, monospace; letter-spacing: 0.08em; color: #9fdcff; text-shadow: 0 0 4px #000; }
@@ -4105,3 +3897,28 @@ body.chrome-open #story-stages-nav { display: flex; }
 #felt-capture textarea, #felt-capture select { width: 100%; box-sizing: border-box; margin: 6px 0; font: inherit; color: #dff4ff; background: #111b22; border: 1px solid #2b6b96; border-radius: 6px; }
 #felt-capture button { font: inherit; color: #9fdcff; background: rgba(12, 26, 38, 0.85); border: 1px solid #2b6b96; border-radius: 6px; padding: 8px 10px; min-height: 36px; cursor: pointer; }
 #felt-capture .felt-close { position: absolute; top: 8px; right: 8px; }
+/* --- THE NAVIGATION SHELL (src/fx/shell-nav.js): PLAYTEST | DEV top right, joined to the build tag --- */
+#shell-bar { position: fixed; top: max(8px, env(safe-area-inset-top)); right: max(8px, env(safe-area-inset-right)); z-index: 80; display: flex; align-items: center; gap: 8px; font: 600 11px ui-monospace, Menlo, monospace; letter-spacing: 0.06em; }
+#shell-bar .shell-toggle { display: flex; border: 1px solid #2b6b96; border-radius: 8px; overflow: hidden; background: rgba(8, 14, 20, 0.85); }
+#shell-bar .shell-toggle button { font: inherit; color: #6fa8c8; background: none; border: 0; padding: 8px 12px; min-height: 36px; cursor: pointer; touch-action: manipulation; }
+#shell-bar .shell-toggle button + button { border-left: 1px solid #2b6b96; }
+#shell-bar .shell-toggle button.current { color: #dff4ff; background: rgba(40, 90, 120, 0.95); }
+#shell-bar .shell-place { color: #9fdcff; background: rgba(8, 14, 20, 0.7); border-radius: 6px; padding: 2px 6px; }
+#shell-bar .shell-place:empty { display: none; }
+#shell-nav { position: fixed; top: calc(max(8px, env(safe-area-inset-top)) + 46px); right: max(8px, env(safe-area-inset-right)); z-index: 80; box-sizing: border-box; width: min(340px, calc(100vw - 16px)); max-height: calc(100vh - 70px); overflow-y: auto; padding: 10px; background: rgba(10, 16, 26, 0.96); border: 1px solid #2a3350; border-radius: 10px; font: 12px ui-monospace, Menlo, monospace; color: #aab8dd; }
+#shell-nav[hidden], #shell-nav [hidden] { display: none !important; }
+#shell-nav .shell-group { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 0; border-bottom: 1px solid #1d2438; }
+#shell-nav .shell-group:last-child { border-bottom: 0; }
+#shell-nav h3 { width: 100%; margin: 2px 0; font: 600 10px ui-monospace, Menlo, monospace; letter-spacing: 0.12em; text-transform: uppercase; color: #6a789c; }
+#shell-nav button { font: inherit; color: #9fdcff; background: rgba(12, 26, 38, 0.85); border: 1px solid #2b6b96; border-radius: 6px; cursor: pointer; touch-action: manipulation; }
+#shell-nav .shell-big { flex: 1 1 100%; text-align: left; padding: 10px 12px; min-height: 44px; }
+#shell-nav [data-group="footer"] .shell-big { flex: 1 1 0; }
+#shell-nav .shell-small { min-width: 36px; min-height: 36px; padding: 4px 8px; }
+#shell-nav .shell-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; width: 100%; }
+#shell-nav .shell-row > span { width: 56px; color: #6a789c; }
+#shell-nav button.active { color: #dff4ff; background: rgba(40, 90, 120, 0.95); border-color: #6fc3ff; }
+#shell-nav button:disabled { opacity: 0.35; cursor: default; }
+#shell-nav .shell-count { display: flex; align-items: center; gap: 6px; width: 100%; }
+#shell-nav .shell-count input { width: 64px; font: inherit; color: #dff4ff; background: rgba(12, 26, 38, 0.85); border: 1px solid #2b6b96; border-radius: 6px; padding: 6px; }
+body.playing:not(.shell-open) #shell-bar { opacity: 0.32; }
+#vars-toggle, #td-link { display: none !important; }

@@ -259,9 +259,69 @@ try{
  await go('gunship-skip','index.html?sw=0&cine=0&world=story&stage=6&acceptance=1&gunship=station&skip=gunship&enemies=24&brief=0#td');
  await until('!!window.__stalheartTest && window.__stalheartTest.state().gunship.seat',120000);await delay(9000);
  {const s=await evaluate('window.__stalheartTest.state()');assert(s.gunship.seat&&s.gunship.optic,'the skip took the seat');assert(s.performance.enemies>=10,`enemies raised by the skip (${s.performance.enemies})`);assert.deepEqual(s.enemyTypes,['amoeba'],'the skip raises the white amoeba swarm');
-  assert(await evaluate('document.querySelector("#story-skips [data-skip=gunship]").classList.contains("active")'),'the marker shows where we are');
-  await evaluate('document.querySelector("#story-skips [data-more]").click()');await delay(1500);const more=await evaluate('window.__stalheartTest.state().performance.enemies');assert(more>s.performance.enemies,`the + button raised more (${more})`);}
+  assert(await evaluate('document.querySelector("#shell-nav [data-entry=jump-gunship]").classList.contains("active")'),'the drawer marks the jump we came from');
+  await evaluate('document.querySelector("#shell-nav [data-tool=raise]").click()');await delay(1500);const more=await evaluate('window.__stalheartTest.state().performance.enemies');assert(more>s.performance.enemies,`the + button raised more (${more})`);}
  current='gunship-skip-enemies';await finish();
+ } else if(args.includes('--nav')) {
+ // THE NAVIGATION SHELL: PLAYTEST | DEV on every screen, the drawer by toggle and backslash, an Esc that never reaches
+ // the game, tuning and docs over a running game without navigating, a felt-it note that survives a reload
+ const key=async(k,code)=>{await send('Input.dispatchKeyEvent',{type:'keyDown',key:k,code});await send('Input.dispatchKeyEvent',{type:'keyUp',key:k,code});await delay(250);};
+ const visible=sel=>evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(sel)});if(!e)return false;const r=e.getBoundingClientRect();return getComputedStyle(e).display!=="none"&&r.width>0&&r.height>0;})()`);
+ const open=()=>evaluate('document.body.classList.contains("shell-open")');
+ const tap=async sel=>{await evaluate(`document.querySelector(${JSON.stringify(sel)}).scrollIntoView({block:"nearest"})`);await click(sel);};   // the DEV drawer scrolls once tuning fills it
+ await go('nav-game','index.html?sw=0&acceptance=1&story=1#td');await until('!!window.__stalheartTest',90000);await delay(1500);
+ assert(await visible('#shell-bar .shell-toggle'),'the toggle is on the game');
+ assert(await evaluate('!!document.querySelector("#shell-bar #build-tag")'),'the build tag is joined to the toggle');
+ assert(!(await visible('#vars-toggle'))&&!(await visible('#td-link'))&&!(await evaluate('!!document.querySelector("#tabbar,#chrome-toggle,#story-skips")')),'no tab bar, menu, gear, link or skip panel remains');
+ assert.equal(await evaluate('document.querySelector("#shell-bar [data-mode=playtest]").classList.contains("current")'),true,'a story stage loads in PLAYTEST');
+ assert.equal(await evaluate('!!document.querySelector("#shell-bar [data-mode=dev]")'),!production,'DEV is offered on the source tree and hidden on a release');
+ const href=await evaluate('location.href');
+ await key('\\','Backslash');assert(await open(),'backslash opens the drawer');
+ assert(await visible('#shell-nav [data-entry=story].active'),'the drawer marks where we are');
+ await evaluate('window.__escSeen=0;document.addEventListener("keydown",e=>{if(e.key==="Escape")window.__escSeen++;})');
+ await key('Escape','Escape');assert.equal(await open(),false,'Esc closes the drawer');assert.equal(await evaluate('window.__escSeen'),0,'the Esc that closed the drawer never reached the game');
+ await finish();
+ if(!production){
+  await click('#shell-bar [data-mode=dev]');await delay(300);
+  assert(await visible('#shell-nav section[data-mode=dev]')&&!(await visible('#shell-nav section[data-mode=playtest]')),'DEV opens its own drawer');
+  await click('#shell-bar [data-mode=playtest]');await delay(300);
+  assert(await visible('#shell-nav section[data-mode=playtest]')&&await open(),'PLAYTEST opens its drawer again');
+  assert.equal(await evaluate('location.href'),href,'switching modes never navigates');
+  current='nav-switch';await finish();
+  await click('#shell-bar [data-mode=dev]');await delay(300);await until('!!document.querySelector("#shell-nav [data-tuning=bloom]")');
+  await click('#shell-nav [data-tuning=bloom]');await delay(300);
+  assert(await evaluate('document.body.classList.contains("vars-open")'),'DEV · Tuning · bloom opens the variables');
+  assert.equal(await evaluate('document.querySelector("#td-vars .vars-nav button.active").textContent'),'bloom','on its bloom page');
+  await evaluate('document.querySelector("#td-vars .vars-page.active input").focus()');await key('\\','Backslash');
+  assert.equal(await open(),false,'a backslash typed into a variable does not open the drawer');
+  current='nav-tuning';await finish();
+  await evaluate('document.body.classList.remove("vars-open");document.activeElement?.blur()');
+  await click('#shell-bar [data-mode=dev]');await delay(300);
+  await tap('#shell-nav [data-entry=doc-funmap]');await until('document.querySelectorAll("#docs-overlay .nt-body h2").length>2');
+  assert(!(await evaluate('document.querySelector("#docs-overlay").textContent.includes("unavailable")')),'the FunMap was fetched');
+  assert.equal(await evaluate('location.href'),href,'the docs open over the game without navigating');
+  current='nav-funmap';await finish();
+  await key('Escape','Escape');assert(await evaluate('document.querySelector("#docs-overlay").hidden'),'Esc closes the docs');
+  await click('#shell-bar [data-mode=dev]');await delay(300);await tap('#shell-nav [data-entry=tool-felt]');await until('!!document.querySelector("#felt-capture:not([hidden])")');
+  await evaluate('(()=>{document.querySelector("#felt-capture [data-text]").value="the first rotor burst felt great";document.querySelector("#felt-capture [data-lesson]").value="R13";})()');
+  await click('#felt-capture [data-save]');await delay(200);
+  await go('nav-felt-reload','index.html?sw=0&acceptance=1&story=1#td');await delay(1500);
+  await click('#shell-bar [data-mode=dev]');await delay(300);await tap('#shell-nav [data-entry=tool-felt]');await until('!!document.querySelector("#felt-capture:not([hidden])")');
+  assert(await evaluate('document.querySelector("#felt-capture [data-list]").textContent.includes("the first rotor burst felt great")'),'a felt-it note survives a reload');
+  await click('#felt-capture [data-copy=md]');await delay(200);
+  assert.match(await evaluate('document.querySelector("#felt-capture [data-export]").value'),/^- \d{4}-\d{2}-\d{2} · the first rotor burst felt great · R13$/m,'it copies as a FunMap line');
+  await finish();
+  await go('nav-lab','labs.html?sw=0#beam');await delay(1000);
+  assert.equal(await evaluate('document.querySelector("#shell-bar [data-mode=dev]").classList.contains("current")'),true,'a workshop lab loads in DEV');
+  await click('#shell-bar [data-mode=dev]');await delay(300);
+  assert(!(await visible('#shell-nav [data-group=tuning]')),'no tuning where the page has no variables');
+  await finish();
+ } else {
+  await go('nav-dist-dev','index.html?sw=0&acceptance=1&story=1&dev=1#td');await delay(1000);
+  assert(await evaluate('!!document.querySelector("#shell-bar [data-mode=dev]")'),'?dev=1 offers DEV on a release');await finish();
+  await go('nav-dist-remembered','index.html?sw=0&acceptance=1&story=1#td');await delay(1000);
+  assert(await evaluate('!!document.querySelector("#shell-bar [data-mode=dev]")'),'and remembers it');await finish();
+ }
  } else if(args.includes('--story-world')) {
  // THE STÅLHEART CANDIDATES IN THE GAME CAMERA — the review surface the asset owner asked for. lod() reports the FILE
  // behind each tier, and a far tier only reports once its GLB has loaded, so a switch that quietly loaded the shipped tiers,
@@ -389,10 +449,10 @@ try{
  await go('story-world-deeplink','index.html?sw=0&acceptance=1&story=4#td');await until('!!window.__stalheartTest',90000);await delay(1500);
  const dl=await evaluate('window.__stalheartTest.state()');assert.equal(dl.heartAsset,'none');assert(dl.story&&dl.story.phase,'story beats run from the deep link');assert(dl.wallCount>40000);
  assert.equal(await evaluate('!document.querySelector("#td-intro")'),true);
- assert.equal(await evaluate('document.querySelector("#tabbar [data-story]").classList.contains("active")'),true,'the burger marks story as the active mode');
+ assert.equal(await evaluate('document.querySelector("#shell-nav [data-entry=story]").classList.contains("active")'),true,'the drawer marks story as the active entry');
  await finish();
- await go('story-default-route','index.html?sw=0#td');await until('document.querySelector("#tabbar [data-story]")!==null');await delay(2500);
- assert.equal(await evaluate('document.querySelector("#tabbar [data-story]").classList.contains("active")'),true,'a bare index.html is the story');assert.equal(await evaluate('!document.querySelector("#td-intro")'),true);
+ await go('story-default-route','index.html?sw=0#td');await until('document.querySelector("#shell-nav [data-entry=story]")!==null');await delay(2500);
+ assert.equal(await evaluate('document.querySelector("#shell-nav [data-entry=story]").classList.contains("active")'),true,'a bare index.html is the story');assert.equal(await evaluate('!document.querySelector("#td-intro")'),true);
  await go('story-cine-redirect','index.html?sw=0&acceptance=1&story=4&cine=1#td',1440,900,'labs.html?sw=0&acceptance=1&land=1#story');await until('window.__stalheartStoryTest?.state().ready',90000);await delay(1500);assert(await evaluate('window.__stalheartStoryTest.state().playing'),'the story cine switch plays the arrival');await finish();
  await go('story-world-default','index.html?sw=0&acceptance=1&cine=0#td');
  await until('!!window.__stalheartTest',60000);await delay(1500);
@@ -646,12 +706,12 @@ await go('shell-explosion','index.html?sw=0&cine=0&acceptance=1&blast=1#td');
   assert.equal(await evaluate('window.__stalheartSwarm.kept().length'),0,'kept runs can be cleared');
  }
  await finish();
- // THE ROADMAP AND THE DEVLOG, IN THE WORKSHOP. The tab holds no copy of
+ // THE ROADMAP AND THE DEVLOG, AS THE DEV DOCS OVERLAY. The overlay holds no copy of
  // either: it fetches the files, so this asserts they are reachable AND that
  // the generated open-items block reached the page. A release that forgot to
  // ship them renders an explanation rather than an empty document, which is
- // the failure this catches.
- await go('notes-roadmap','labs.html?sw=0&acceptance=1#notes');
+ // the failure this catches. The retired #notes route redirects here.
+ await go('docs-roadmap','labs.html?sw=0&acceptance=1&dev=1&doc=roadmap#units');
  await until('document.querySelectorAll("#notes .nt-body h2").length > 2');
  assert(await evaluate('document.querySelectorAll("#notes .nt-body table").length>0'),'the Now table renders');
  assert(await evaluate('document.querySelectorAll("#notes .nt-toc a").length>2'),'the contents rail is built from the headings');
