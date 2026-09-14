@@ -21,19 +21,19 @@ export default {
       "rateJitter": 0
     },
     "enemy_die_a": {
-      "gain": 0.6,
+      "gain": 0.3,
       "maxVoices": 3,
       "minInterval": 0.04,
       "rateJitter": 0.12
     },
     "enemy_die_b": {
-      "gain": 0.6,
+      "gain": 0.3,
       "maxVoices": 3,
       "minInterval": 0.04,
       "rateJitter": 0.12
     },
     "enemy_die_c": {
-      "gain": 0.6,
+      "gain": 0.3,
       "maxVoices": 3,
       "minInterval": 0.04,
       "rateJitter": 0.12
@@ -93,7 +93,7 @@ export default {
       "rateJitter": 0
     },
     "rotor_pov_fire": {
-      "gain": 0.55,
+      "gain": 0.8,
       "maxVoices": 1,
       "minInterval": 0.1,
       "rateJitter": 0

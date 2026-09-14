@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three.module.js';
 import { createExplosions } from '../src/fx/explosions.js';
+import { EXPLOSION_USES } from '../src/content/explosions.js';
 
 const cellSide = 10 / 753;   // the story planet: 753 m, 10 m a cell
 const scene = new THREE.Scene();
@@ -11,7 +12,7 @@ const obj = scene.children.at(-1);
 assert.deepEqual(obj.position.toArray(), [0, 1, 0]);
 assert.equal(obj.scale.x, 1, 'no object scale: it would not reach the puff quads');
 for (const layer of obj.children) {
-  assert.ok(Math.abs(layer.material.uniforms.uScale.value - 0.45 * cellSide / 10) < 1e-12, 'metres become scene units in the shader');
+  assert.ok(Math.abs(layer.material.uniforms.uScale.value - EXPLOSION_USES['gunship.bofors'].scale * cellSide / 10) < 1e-12, 'metres become scene units in the shader');
   assert.ok(Math.abs(layer.material.uniforms.uPlanetR.value - 1) < 1e-12, 'the bend radius is the impact distance in scene units');
 }
 fx.spawn('tank.shell', [1, 0, 0], [1, 0, 0], cellSide);
