@@ -44,8 +44,8 @@ export const ALARM_HUES = {
 
 export const CREATURE_TINTS = {
   // --- rammable, up the safe belts -----------------------------------------
-  phage: SAFE_HUES.white,          // wave 1 swarm — the white belt
-  amoeba: SAFE_HUES.grey,          // slow crawler
+  amoeba: SAFE_HUES.white,         // wave 1 swarm — the white belt (owner, 2026-09-14: the amoeba leads)
+  phage: SAFE_HUES.grey,           // slow crawler
   ghost: SAFE_HUES.yellowPale,     // agile flyer
   scoutufo: SAFE_HUES.yellow,      // fast scout
   saucer: SAFE_HUES.bluePale,      // interceptor — jinks
@@ -121,10 +121,10 @@ export const isAlarmHue = (hex) => Object.values(ALARM_HUES).includes(hex);
 // healOOC (hp/s while unhit for 1.2 s); heavy = epic tier, spawns sparse.
 // bounty = HK's credit values, verbatim — the TD economy pays them as biomass.
 export const ENEMY_SPEC = {
-  phage:     { hp: 1, speed: 1.15, size: 0.4,  rammable: true,  heartDmg: 1, erratic: true, bounty: 3 },
+  amoeba:    { hp: 1, speed: 1.15, size: 0.5,  rammable: true,  heartDmg: 1, erratic: true, bounty: 3 },
   ghost:     { hp: 1, speed: 1.25, size: 0.42, rammable: true,  heartDmg: 1, erratic: true, bounty: 6 },
   scoutufo:  { hp: 1, speed: 1.4,  size: 0.42, rammable: true,  heartDmg: 1, erratic: true, bounty: 7 },
-  amoeba:    { hp: 1, speed: 0.75, size: 0.5,  rammable: true,  heartDmg: 1, bounty: 16 },
+  phage:     { hp: 1, speed: 0.75, size: 0.4,  rammable: true,  heartDmg: 1, bounty: 16 },
   jellyfish: { hp: 1, speed: 0.95, size: 0.45, rammable: true,  heartDmg: 1, bounty: 14 },
   gslime:    { hp: 2, speed: 0.7,  size: 0.5,  rammable: true,  heartDmg: 1, regen: 0.25, bounty: 12 },
   drifter:   { hp: 2, speed: 0.85, size: 0.52, rammable: false, heartDmg: 1, erratic: true, bounty: 15 },
@@ -159,10 +159,10 @@ export const ENEMY_SPEC = {
 // created at announce time. role = flavor only; the announce card's ram
 // badge (from ENEMY_SPEC) owns the run-over verdict.
 export const INTROS = [
-  { wave: 1,  type: 'phage',     label: 'THE PHAGE',           role: 'agile swarm · hunt its source' },
+  { wave: 1,  type: 'amoeba',    label: 'THE AMOEBA',          role: 'agile swarm · hunt its source' },
   { wave: 2,  type: 'ghost',     label: 'WAVE GHOST',          role: 'agile flyer' },
   { wave: 3,  type: 'scoutufo',  label: 'SCOUT UFO',           role: 'fast scout' },
-  { wave: 4,  type: 'amoeba',    label: 'THE AMOEBA',          role: 'crawler · destroy the spawn' },
+  { wave: 4,  type: 'phage',     label: 'THE PHAGE',           role: 'crawler · destroy the spawn' },
   { wave: 5,  type: 'jellyfish', label: 'THE JELLYFISH',       role: 'pulse drifter' },
   { wave: 6,  type: 'gslime',    label: 'GREEN SLIME',         role: 'regenerator — ram it before it heals' },
   { wave: 7,  type: 'drifter',   label: 'WAVE SATURN',         role: 'erratic drifter' },
@@ -241,7 +241,7 @@ export function computeWavePlan(wave, round = 1, waveSize = 4, mult = 1) {
       const sp = ENEMY_SPEC[e.type];
       e.count = Math.round(e.count * (sp.rammable ? 1.6 * surge : Math.sqrt(surge)));
     }
-    for (const t of ['phage', 'ghost']) {
+    for (const t of ['amoeba', 'ghost']) {
       if (avail.includes(t)) entries.push({ type: t, count: Math.round(base * 1.2 * surge) });
     }
   }

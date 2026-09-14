@@ -128,7 +128,7 @@ console.log('enemy colour rule:');
   }
   check('dark solid enemies accent from the ALARM palette, never white', accentOk);
   check('bright enemies keep the plain white highlight',
-    accentFor('phage') === 0xffffff && accentFor('drifter') === 0xffffff);
+    accentFor('amoeba') === 0xffffff && accentFor('drifter') === 0xffffff);
 }
 
 // --- economy -------------------------------------------------------------
@@ -168,7 +168,7 @@ check('towerUnlockWave: the ladder position',
 check('TOWER_ORDER covers the roster', TOWER_ORDER.length === TOWERS.length && TOWER_ORDER.every((k) => TOWER_BY_KEY[k]));
 
 // --- wave plan -----------------------------------------------------------
-check('wave 1 plan is a single type', (() => { const p = computeWavePlan(1, 1, 4); return p.entries.length === 1 && p.headline === 'phage'; })());
+check('wave 1 plan is a single type', (() => { const p = computeWavePlan(1, 1, 4); return p.entries.length === 1 && p.headline === 'amoeba'; })());
 check('headline is the newest available type', [2, 5, 9, 12].every((w) => computeWavePlan(w, 1, 4).headline === INTROS[Math.min(w, INTROS.length) - 1].type));
 // through wave 8 (the unlock ladder) the shape stays learnable; past it the
 // INVASION adds flood entries on top, so the cap only binds the ladder
@@ -176,7 +176,7 @@ check('ladder waves = 1 + up to 2 supports', [1, 2, 3, 8].every((w) => { const n
 check('invasion waves flood past the ladder cap', computeWavePlan(12, 1, 4).entries.length > 3);
 check('the flood is rammable fodder', (() => {
   const p = computeWavePlan(12, 1, 4);
-  return p.entries.slice(-2).every((e) => ['phage', 'ghost'].includes(e.type) && e.count >= 10);
+  return p.entries.slice(-2).every((e) => ['amoeba', 'ghost'].includes(e.type) && e.count >= 10);
 })());
 check('the invasion swells the total hard', (() => {
   const tot = (w) => computeWavePlan(w, 1, 4).entries.reduce((a, e) => a + e.count, 0);
@@ -186,6 +186,11 @@ check('supports are earlier types, never the headline', [3, 8, 12].every((w) => 
 check('wave plan is deterministic', JSON.stringify(computeWavePlan(7, 2, 4)) === JSON.stringify(computeWavePlan(7, 2, 4)));
 check('all wave-plan counts are >= 1', [1, 4, 8, 12, 20].every((w) => computeWavePlan(w, 2, 4).entries.every((e) => e.count >= 1)));
 check('typesByWave grows with wave, caps at the roster', typesByWave(1).length === 1 && typesByWave(5).length === 5 && typesByWave(99).length === INTROS.length);
+
+check('the first enemy is the white amoeba, the phage the grey crawler',
+  INTROS[0].type === 'amoeba' && CREATURE_TINTS.amoeba === 0xf4f8ff && ENEMY_SPEC.amoeba.speed === 1.15 && ENEMY_SPEC.amoeba.erratic === true
+  && ENEMY_SPEC.amoeba.bounty === 3 && ENEMY_SPEC.amoeba.size === 0.5 && ENEMY_SPEC.phage.speed === 0.75 && ENEMY_SPEC.phage.bounty === 16
+  && ENEMY_SPEC.phage.size === 0.4 && !ENEMY_SPEC.phage.erratic && INTROS.find((i) => i.wave === 4).type === 'phage');
 
 if (failures > 0) { console.error(`\n${failures} failure(s)`); process.exit(1); }
 console.log('\ntd-core invariants hold');

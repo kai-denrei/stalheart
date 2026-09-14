@@ -42,7 +42,7 @@ const kinds = (g, k) => g.log.filter((l) => l[0] === k);
   run(beats, g, 1.1); assert.equal(beats.state().phase, 'piloting'); assert.deepEqual(kinds(g, 'pilot'), [['pilot', 4242, 4243]]);
   run(beats, g, 6); assert.equal(kinds(g, 'spawn').length, 3, 'cap on living fodder holds');
   g.kill(3); run(beats, g, 10); assert.equal(kinds(g, 'spawn').length, 5, 'total cap holds');
-  assert.ok(kinds(g, 'spawn').every((l) => l[1] === 'phage' && l[2] === 4300));
+  assert.ok(kinds(g, 'spawn').every((l) => l[1] === 'amoeba' && l[2] === 4300));
   assert.equal(kinds(g, 'pilot').length, 1, 'control taken once');
   // the fifth kill: the comms study; and with the five-strong wave spent and nothing standing, the wave is cleared: Isao's line, the views unlock, once
   g.kill(1); run(beats, g, 0.5); assert.ok(!kinds(g, 'brief').some((l) => l[1] === 'alien_comms'), 'five kills first'); assert.equal(beats.state().phase, 'piloting', 'one still standing');

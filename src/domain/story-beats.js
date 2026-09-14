@@ -21,7 +21,7 @@
 import { makeFoundry, deployFoundry, stepFoundry, foundryState } from './foundry.js';
 export function makeStoryBeats({
   socket, foundry = null, lane = -1, fodder = -1, gate = -1, rotorDelay = 2, key = 'rotor',
-  fodderType = 'phage', fodderEvery = 2.5, fodderAlive = 8, fodderTotal = 20, fodderEmerge = null,
+  fodderType = 'amoeba', fodderEvery = 2.5, fodderAlive = 8, fodderTotal = 20, fodderEmerge = null,
   controlDelay = 1.5, tremorDelay = 1.5, breachDelay = 4, overrideDelay = 2.5,
   faceDelays = [0.6, 4], commsKills = 5, harvestKills = 10, quiverSocket = -1, quiver = null,
 }) {
