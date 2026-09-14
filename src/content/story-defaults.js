@@ -77,4 +77,4 @@ export const STORY_QUIVER = Object.freeze({ key: 'quiver', delay: 0.6, hardcore:
 
 // The piloted sentry in the story: a denser stream of rounds, each one
 // heavy enough that cannon fodder drops in two hits.
-export const STORY_PILOT = Object.freeze({ rateMul: 2.5, dmgMul: 5 });
+export const STORY_PILOT = Object.freeze({ rateMul: 2.5, dmgMul: 60 });   // a piloted round is worth one phage before the kill combo (owner, 2026-09-14: fish in a barrel must be annihilated): the base is 0.0167 a round, measured on the story swarm, see 2026-09-14-piloted-rotor-annihilates

@@ -400,7 +400,7 @@ try{
  await evaluate('window.__stalheartPilotTest.hold(false)');const said=await evaluate('window.__stalheartTest.state().story.said');assert(said.includes('alien_comms')&&said.includes('harvest_biomass'),'both lines said');
  await delay(400);current='story-world-harvest';await finish();
  // THE FIRST WAVE DOWN IS THE NEXT UNLOCK: keep firing until the twenty are spent and none stand, then Isao's line and the view strip
- assert.equal(await evaluate('document.querySelector("#story-views")'),null,'no view strip before the wave is cleared');
+ if((await evaluate('window.__stalheartTest.state().story.phase'))!=='cleared')assert.equal(await evaluate('document.querySelector("#story-views")'),null,'no view strip before the wave is cleared');   // a piloted Rotor can clear the whole wave during the kills above (2026-09-14)
  await evaluate('window.__stalheartPilotTest.hold(true)');
  await until('(()=>{const s=window.__stalheartTest.state();if(s.story.phase==="cleared")return true;const t=window.__stalheartPilotTest;if(t.state().overheated)return false;t.aimEnemy();return false;})()',480000);
  await evaluate('window.__stalheartPilotTest.hold(false)');const cleared=await evaluate('window.__stalheartTest.state()');assert(cleared.story.said.includes('wave_cleared'));await until('window.__stalheartTest.state().performance.enemies===0',5000);   // the performance block is a periodic sample

@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-piloted-rotor-annihilates",
+  "date": "2026-09-14T18:00:00+00:00",
+  "type": "change",
+  "status": "resolved",
+  "title": "The piloted Rotor annihilates fish in a barrel: a round is worth one phage and passes through three bodies, tracers are streaks, the barrel loop holds between shots",
+  "context": "Owner (2026-09-14 11:27, two screenshots): a fully cooled Rotor fired point blank into the packed first wave until overheat dropped two or three; the tracers felt too round; no secondary bullet sound over the rotors. Measured on the story swarm with a four-second burst through the acceptance hooks: 85 rounds, 84 hits, 4 kills. So aim and hit detection were fine after the straight-line fix; the damage was not: a piloted round did 0.083 against a phage of 1 hp (base 0.0167 from the Rotor's def.dmg 0.1 split over its burst, times the story pilot multiplier of 5), and each round stopped at the first body, so hits spread across the pile and almost nothing died.",
+  "outcome": "STORY_PILOT.dmgMul 5 -> 60 (src/content/story-defaults.js): a piloted round is worth one phage before the kill combo (the combo multiplies further; a reading of 8.7 a round mid-chain was the combo, not the base). A piloted round now passes through up to three bodies (td-tab's tower shot hit loop, manual only) and counts each. Measured after: a four-second burst of 38 rounds landed 16 hits and killed 50, the whole wave; at a multiplier of 10 the same burst killed 16, judged too little for the owner's brief. The piloted round's tracer is a THREE.Line streak through its trail points (additive) instead of round point sprites. The Rotor's barrel loop is held 0.6 s past the last report instead of 0.35 s, which was shorter than the shot interval and made the loop stop and restart between shots while a single allowed voice was still fading, so it refused to restart and went silent; rotor_pov_fire allows two voices with a 0.05 s minimum interval. Auto sentries are untouched: the multiplier and the pass-through apply to the piloted mount only. The story-world scenario's strip assertion is conditional on the wave still standing, since the Rotor can now clear it during the kill steps. td-tab.js stays at 17557 lines.",
+  "alternatives": [
+    "Raising the Rotor's def.dmg: rejected, that changes every auto Rotor and the balance pass is not open; the story pilot multiplier is the piloted mount's own number.",
+    "Widening the hit radius further: it was already near-certain (84 of 85); the damage was the defect."
+  ],
+  "evidence": [
+    "Acceptance probes 2026-09-14 on story-world at the fodder step: {rounds:85,hits:84,kills:4} at dmgMul 5; {rounds:85,hits:84,kills:9} with pass-through; {rounds:38,hits:16,kills:50,roundDmg:8.667} at dmgMul 60; {rounds:61,hits:60,kills:16,roundDmg:0.167} at dmgMul 10 over two seconds.",
+    "browser-test --story-world passes end to end after the change; --sentry-pilot passes; npm test 103; npm run check; npm run build.",
+    "The barrel loop's audibility is not verifiable headless; the timing defect is fixed by construction."
+  ],
+  "supersedes": []
+}

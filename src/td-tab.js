@@ -10129,7 +10129,7 @@ export function initTdTab(root) {
         const spin=pilotMode ? !!pilot?.state.held : !!pickTarget(graph.centers[tw.ci],effectiveStats(tw.def,tw.tier).range*cellSide,enemies,chord);
         tw.spinning=spin; tw.spinRate=(tw.spinRate??0)+((spin?34:0)-(tw.spinRate??0))*Math.min(1,dt*2.5); if(tw.spinRate>0.05)(tw.rotorNode??=tw.obj.getObjectByName('ROTOR'))?.rotateZ(tw.spinRate*dt);   // the barrel cluster winds up and down
         // THE SPOOL FOLLOWS THE BARRELS (operator, 2026-09-12): a looped spool voice whose gain and pitch ride the spin rate, so it rolls while they turn and dies as they stop; one-shot cues could not
-        const s01=(tw.spinRate??0)/34, att=1/(1+(camDist(graph.centers[tw.ci])/(cellSide*6))**2); if(s01>0.03){tw.spool??=sfx.loop('minigun_ready',{gain:0.001,rate:0.5}); tw.spool?.set(s01*att,0.5+0.5*s01);} else if(tw.spool){tw.spool.stop(0.2);tw.spool=null;} const povFiring=pilotMode&&pilot?.state.tower===tw&&tNow-(tw.soundAt??-9)<0.35; if(povFiring){tw.povFire??=sfx.loop('rotor_pov_fire',{gain:0.9,lowpass:1400});} else if(tw.povFire){tw.povFire.stop(0.15);tw.povFire=null;}   /* THE BARRELS, NOT THE ROTORS (owner, 2026-09-14): from the optic the firing is its own muffled sound over the spin */
+        const s01=(tw.spinRate??0)/34, att=1/(1+(camDist(graph.centers[tw.ci])/(cellSide*6))**2); if(s01>0.03){tw.spool??=sfx.loop('minigun_ready',{gain:0.001,rate:0.5}); tw.spool?.set(s01*att,0.5+0.5*s01);} else if(tw.spool){tw.spool.stop(0.2);tw.spool=null;} const povFiring=pilotMode&&pilot?.state.tower===tw&&tNow-(tw.soundAt??-9)<0.6; if(povFiring){tw.povFire??=sfx.loop('rotor_pov_fire',{gain:0.9,lowpass:1400});} else if(tw.povFire){tw.povFire.stop(0.15);tw.povFire=null;}   /* THE BARRELS, NOT THE ROTORS (owner, 2026-09-14): from the optic the firing is its own muffled sound over the spin */
       }
       tw.cooldown -= dt;
       if (pilotMode) {
@@ -10395,7 +10395,7 @@ export function initTdTab(root) {
   function spawnTowerShot(pos, dir, tw, eff, homing, arcTotal = 0, straightTo = null) {
     const sfx2 = shotOf(tw.def);
     const shell=tw.def.key==='mortar';
-    const manual = pilotMode && pilot?.state.tower === tw, mesh = shell?   /* TRACERS FROM THE OPTIC (owner, 2026-09-14): a piloted round is bigger and drags a longer trail, so where every bullet goes is seen */makeOrdnanceShell(cellSide*.28):makeTracer(tw.def.color, (sfx2.projPx ?? 5) * (manual ? 1.9 : 1), (sfx2.trail ?? 0) + (manual ? 6 : 0));
+    const manual = pilotMode && pilot?.state.tower === tw, mesh = manual && !shell ? new THREE.Line(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(3 * ((sfx2.trail ?? 0) + 9)), 3)), new THREE.LineBasicMaterial({ color: tw.def.color, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false })) : shell?   /* TRACERS FROM THE OPTIC (owner, 2026-09-14): a piloted round is a STREAK, a line through its trail points, not a round dot */makeOrdnanceShell(cellSide*.28):makeTracer(tw.def.color, (sfx2.projPx ?? 5) * (manual ? 1.9 : 1), (sfx2.trail ?? 0) + (manual ? 6 : 0));
     const p0 = norm3(pos);
     const lift0 = 1 + params.wallHeight * 0.5;
     const attr = mesh.geometry.getAttribute('position');
@@ -10520,10 +10520,10 @@ export function initTdTab(root) {
             if (p.manual) { const b = makeDotBurst(0xffffff, norm3(e.pos), 10); b.scale.setScalar(cellSide * 0.25); b.position.set(e.pos[0], e.pos[1], e.pos[2]).addScaledVector(new THREE.Vector3(...norm3(e.pos)), cellSide * 0.3); scene.add(b); debris.push(b); sfx.play('kinetic_fire', { dist: camDist(e.pos), gain: 0.5, rate: 1.25 }); pilot?.hit?.(); }   /* THE HIT REGISTERED (owner, 2026-09-14): a white spark on the body, a click, and the reticle's flash */
           }
           hit = true;
-          break;
+          if (!p.manual || (p.through = (p.through ?? 0) + 1) >= 3) break;   // a piloted round goes on through the pile: up to three bodies (owner, 2026-09-14: fish in a barrel)
         }
       }
-      if (hit || p.dist > p.range) { if (p.manual) { rs.pilotRounds = (rs.pilotRounds ?? 0) + 1; if (hit) rs.pilotHits = (rs.pilotHits ?? 0) + 1; } if (!hit && p.terrain && p.arcTotal <= 0) { const ci = cellIndex(p.pos); warnRing(ci, p.color, 0.3, cellSide * 0.6); const fl = makeDotBurst(p.color, norm3(p.pos), 8); fl.scale.setScalar(cellSide * 1.6); fl.position.set(p.pos[0], p.pos[1], p.pos[2]); scene.add(fl); debris.push(fl); } killTowerShot(i); }
+      if (hit && p.manual && (p.through ?? 0) < 3 && p.dist <= p.range) hit = false; /* still flying */ if (hit || p.dist > p.range) { if (p.manual) { rs.pilotRounds = (rs.pilotRounds ?? 0) + 1; if (hit) rs.pilotHits = (rs.pilotHits ?? 0) + 1; } if (!hit && p.terrain && p.arcTotal <= 0) { const ci = cellIndex(p.pos); warnRing(ci, p.color, 0.3, cellSide * 0.6); const fl = makeDotBurst(p.color, norm3(p.pos), 8); fl.scale.setScalar(cellSide * 1.6); fl.position.set(p.pos[0], p.pos[1], p.pos[2]); scene.add(fl); debris.push(fl); } killTowerShot(i); }
     }
   }
 
@@ -17533,7 +17533,7 @@ export function initTdTab(root) {
     deploy=null;endShot();dismissIntro();paused=false;tutorial.frozen=false;runTutorial=false;
     for(let i=0;i<pilotPosts.length;i++)pilotMounts[i]=posts?towerByCell.get(pilotPosts[i]):commitTower('needle',pilotPosts[i],0);
     clearBriefs();params.callouts=false;setView('bastion');if(pilotPosts.length)pilot.select(posts?pilotMounts[0]?.key||'rotor':'needle');hideRangeRing();snapCamera();   // no posts yet (the gunship's seat before any sentry stands): nothing to install
-    if(urlParams.get('acceptance')==='1')window.__stalheartPilotTest={state:()=>({paused,seed:params.seed,points:params.points,sector:round,posts:pilotPosts.slice(),view:pilot.state.view,ci:pilot.state.tower.ci,key:pilot.state.tower.key,shots:pilot.state.shots,held:pilot.state.held,heat:pilot.state.tower.heat??0,overheated:!!pilot.state.tower.overheated,wave,enemies:enemies.filter(e=>e.alive).length,tank:player.pos.slice(),camera:camera.position.toArray(),target:pilot.state.target?.id??null,ready:!pilot.state.tower.obj.userData.loading,aimError:pilot.state.tower.aimErr,lock:pilot.state.tower.lock,heart:heartHP}),select:key=>pilot.select(key),
+    if(urlParams.get('acceptance')==='1')window.__stalheartPilotTest={state:()=>({paused,seed:params.seed,points:params.points,sector:round,posts:pilotPosts.slice(),view:pilot.state.view,ci:pilot.state.tower.ci,key:pilot.state.tower.key,shots:pilot.state.shots,held:pilot.state.held,heat:pilot.state.tower.heat??0,overheated:!!pilot.state.tower.overheated,roundDmg:+(effectiveStats(pilot.state.tower.def,pilot.state.tower.tier).dmg*(story?.pilot.dmgMul??1)).toFixed(3),enemyHp:enemies.find(e=>e.alive&&e.id>0)?.spec.hp??null,wave,enemies:enemies.filter(e=>e.alive).length,tank:player.pos.slice(),camera:camera.position.toArray(),target:pilot.state.target?.id??null,ready:!pilot.state.tower.obj.userData.loading,aimError:pilot.state.tower.aimErr,lock:pilot.state.tower.lock,heart:heartHP}),select:key=>pilot.select(key),
       aimEnemy:()=>{const tw=pilot.state.tower;const e=enemies.find(e=>e.alive&&missileDistance(graph.centers[tw.ci],e.pos)<(missileOf(tw.key)?.maxRange??effectiveStats(tw.def,tw.tier).range*10)&&losClear(tw.ci,e.pos,perchOf(tw)));if(!e)return null;pilot.aimAt(add3(e.pos,scale3(norm3(e.pos),cellSide*.3)));return {id:e.id,hp:e.hp};},
       enemy:id=>{const e=enemies.find(e=>e.id===id);return e?{hp:e.hp,alive:e.alive}:null;},hold:on=>{pilot.state.held=!!on;},view:v=>pilot.setView(v), reach:()=>{const tw=pilot.state.tower;return enemies.filter(e=>e.alive).map(e=>({id:e.id,type:e.type,m:+missileDistance(graph.centers[tw.ci],e.pos).toFixed(1),los:losClear(tw.ci,e.pos,perchOf(tw)),cell:e.cur,pos:e.pos.map(v=>+v.toFixed(5))}));}
     };
