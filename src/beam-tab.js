@@ -27,7 +27,7 @@ import { buildCreature, preloadMork, SECONDARY_TOE,
 import { BEAM_STEPS, beamStep } from './beamranks.js';
 import { arcPoint, projectToArc, toeForCrossing, crossingForToe } from './arc.js';
 import { burnReport, sweepAdvance } from './beamburn.js';
-import { createBeamRig, PLASMA_DEFAULTS } from './beamdraw.js';
+import { createBeamRig, PLASMA_DEFAULTS, BOARD_PRESET } from './beamdraw.js';
 import { SAFE_HUES, ALARM_HUES } from './enemyspec.js';
 import { deepLink, wireDeepLink } from './deeplink.js';
 
@@ -135,22 +135,22 @@ export function initBeamTab(root) {
   // the gun's world transform — the standing rule here, and the trap this
   // project has hit three times. Whether they converge is then the toe-in's
   // business, not the beam code's.
-  // THE WIDTHS ARE THE BOARD'S, VERBATIM.
+  // THE LAB OPENS ON THE GAME'S PLASMA THROWER. The beam half of `P` is
+  // beamdraw.js's BOARD_PRESET — the very object td-tab copies into its
+  // BEAM_PRESET — laid over beamfx's generic DEFAULTS (which only supply any
+  // key the board preset leaves out). One unit is one CELL here, the unit
+  // the preset is written in, so the numbers transfer untouched.
   //
-  // They used to be lab-scaled — glowWidth 0.055 against beamfx's own 0.47 —
-  // because this stage measured in arbitrary world units and the tank was one
-  // of them. One unit is one CELL now, which is exactly the unit the game's
-  // BEAM_PRESET is written in, so the scaling is not merely unnecessary, it
-  // was making the beam eighteen times too thin to see. These are td-tab's
-  // numbers, copied across as the numbers they are.
-  const WORLD_SCALED = {
-    glowWidth: 1.0,
-    coreWidth: 0.06,
-    jitterAmount: 0.19,
-    // The stage opens on the beam a rank-1 pilot actually fires. beamfx's
-    // own default glow is #006d8f — which is now the RANK 5 colour, so
-    // leaving it would have shown a silver-tier beam and called it the base.
+  // The one field overridden is the colour: BOARD_PRESET.glowColor is a
+  // placeholder, and the board recolours its rig to the pilot's rank
+  // (td-tab applyBeamRank -> beamStepNow.color). A new pilot fires the
+  // rank-1 colour, so the stage opens on that beam, and `reset` returns here.
+  const BEAM_START = {
+    ...DEFAULTS,
+    ...BOARD_PRESET,
     glowColor: BEAM_STEPS[0].color,
+    rankStep: BEAM_STEPS[0].minRank,
+    reachCells: BEAM_STEPS[0].reach,
   };
   // Length is measured in CELLS now, on both surfaces. The lab used to scale
   // a world-unit slider by the step's reach relative to rank 1 and note in a
@@ -158,8 +158,7 @@ export function initBeamTab(root) {
   // stopped being necessary the moment one unit became one cell.
 
   const P = {
-    ...DEFAULTS,
-    ...WORLD_SCALED,
+    ...BEAM_START,
     // --- the world side, which the lab has no way to show you -------------
     look: 'tronColors',
     toneMapping: 'none',        // THE decision the beam spec is blocked on
@@ -227,7 +226,7 @@ export function initBeamTab(root) {
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       flash('saved .json');
     },
-    reset: () => { Object.assign(P, DEFAULTS, WORLD_SCALED); gui.controllersRecursive().forEach((c) => c.updateDisplay()); },
+    reset: () => { Object.assign(P, BEAM_START); gui.controllersRecursive().forEach((c) => c.updateDisplay()); },
   };
   // THE PANEL, FROM THE URL. One generic pass over every knob the panel
   // owns, so a deep link can put the lab back exactly where it was — the
@@ -1066,7 +1065,7 @@ export function initBeamTab(root) {
       + (r.missed.length ? `  ·  NEVER REACHED: ${r.missed.length}` : '');
   }
   frame();
-  if(new URLSearchParams(location.search).get('acceptance')==='1')window.__stalheartBeamTest={state:()=>({asset:tank?.userData.asset,guns:[gunL,gunR].filter(Boolean).length,pivots:secondaryPivots(tank).length,muzzleOffsets:[gunL,gunR].filter(Boolean).map(gunTipZ)})};
+  if(new URLSearchParams(location.search).get('acceptance')==='1')window.__stalheartBeamTest={reset:()=>P.reset(),set:(o)=>Object.assign(P,o),state:()=>({preset:{glowWidth:P.glowWidth,coreWidth:P.coreWidth,glowColor:P.glowColor,jitterAmount:P.jitterAmount,rankStep:P.rankStep,reachCells:P.reachCells},asset:tank?.userData.asset,guns:[gunL,gunR].filter(Boolean).length,pivots:secondaryPivots(tank).length,muzzleOffsets:[gunL,gunR].filter(Boolean).map(gunTipZ)})};
 
   return {
     setActive(on) { active = on; if (on) { resize(); clock.getDelta(); } },

@@ -834,7 +834,9 @@ await go('shell-explosion','index.html?sw=0&cine=0&acceptance=1&blast=1#td');
  await finish();
  await go('mork-beam','labs.html?sw=0&acceptance=1#beam');
  await until('window.__stalheartBeamTest?.state().asset==="mork"');
- assert.equal(await evaluate('window.__stalheartBeamTest.state().guns'),2);assert.equal(await evaluate('window.__stalheartBeamTest.state().pivots'),2);assert.deepEqual(await evaluate('window.__stalheartBeamTest.state().muzzleOffsets'),[0,0]);await finish();
+ assert.equal(await evaluate('window.__stalheartBeamTest.state().guns'),2);assert.equal(await evaluate('window.__stalheartBeamTest.state().pivots'),2);assert.deepEqual(await evaluate('window.__stalheartBeamTest.state().muzzleOffsets'),[0,0]);
+ const beamOpen=await evaluate('window.__stalheartBeamTest.state().preset');assert.equal(beamOpen.glowWidth,0.464,'the beam lab opens on the board glow width');assert.equal(beamOpen.coreWidth,0.0025,'the beam lab opens on the board core width');assert.equal(beamOpen.jitterAmount,0.19);
+ await evaluate('window.__stalheartBeamTest.set({glowWidth:2,coreWidth:0.3,rankStep:15});window.__stalheartBeamTest.reset()');assert.deepEqual(await evaluate('window.__stalheartBeamTest.state().preset'),beamOpen,'reset returns the beam lab to the board preset');await finish();
  for(const name of ['units','sentry','portal','sim']){await go('lab-'+name,`labs.html?sw=0#${name}`);await delay(1500);await finish();}
  }
  // One shooter/flight/effect pipeline for material targets and moving enemies.
