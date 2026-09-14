@@ -136,6 +136,20 @@ Evidence:
 - browser-test --story-world: every step passes through story-cine-redirect, with story-world-rotor-kill and story-world-fodder green; --sentry-pilot passes; npm test 103; npm run check; npm run architecture with the budget at 17557.
 - docs/log/entries/2026-09-14-heavy-gunship-open-items.json item 6 and 2026-09-14-gunship-own-105-downtime-bars-and-rotor-tracers named the miss as open; this resolves it.
 
+## 2026-09-14 — The navigation shell landed differently from its spec in four places
+
+decision · accepted · 2026-09-14-navigation-shell-spec-changes
+
+The final whole-branch review of the navigation shell (2026-09-14-navigation-shell-landed) compared the shipped src/fx/shell-nav.js against the navigation spec and found behaviours the spec described that the build does not have. They are recorded here so the spec is not read as the current contract.
+
+DEV's groups (labs, tuning, docs, tools) are always expanded, not collapsible: collapsing was not carried into the plan. The drawer is a right-hand dropdown under the PLAYTEST | DEV toggle on desktop, not a left panel. On phones it is a height-capped dropdown rather than a full-height sheet: DEV is hidden on touch and PLAYTEST is short enough not to need one. The Sound toggle in the drawer footer was dropped, because the game has no single mute for it to drive.
+
+Alternatives: Collapsible DEV groups, as the spec drew them.; A left-hand panel on desktop and a full-height sheet on phones, as the spec drew them.; A footer Sound toggle, which would first need one mute across the game's audio paths.
+
+Evidence:
+
+- src/fx/shell-nav.js and app.css as landed on poc-cleanup; browser --nav (nav-phone, nav-narrow-lab) covers the phone dropdown and the hidden DEV.
+
 ## 2026-09-14 — Still open after the story-opening playtest: the breach freeze, the Rotor's sound by ear, Rotor shots into the wall, and ISAO-Birudorōn's review
 
 issue · observed · 2026-09-14-story-playtest-open-items

@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-navigation-shell-spec-changes",
+  "date": "2026-09-14T16:00:00+00:00",
+  "type": "decision",
+  "status": "accepted",
+  "title": "The navigation shell landed differently from its spec in four places",
+  "context": "The final whole-branch review of the navigation shell (2026-09-14-navigation-shell-landed) compared the shipped src/fx/shell-nav.js against the navigation spec and found behaviours the spec described that the build does not have. They are recorded here so the spec is not read as the current contract.",
+  "outcome": "DEV's groups (labs, tuning, docs, tools) are always expanded, not collapsible: collapsing was not carried into the plan. The drawer is a right-hand dropdown under the PLAYTEST | DEV toggle on desktop, not a left panel. On phones it is a height-capped dropdown rather than a full-height sheet: DEV is hidden on touch and PLAYTEST is short enough not to need one. The Sound toggle in the drawer footer was dropped, because the game has no single mute for it to drive.",
+  "alternatives": [
+    "Collapsible DEV groups, as the spec drew them.",
+    "A left-hand panel on desktop and a full-height sheet on phones, as the spec drew them.",
+    "A footer Sound toggle, which would first need one mute across the game's audio paths."
+  ],
+  "evidence": [
+    "src/fx/shell-nav.js and app.css as landed on poc-cleanup; browser --nav (nav-phone, nav-narrow-lab) covers the phone dropdown and the hidden DEV."
+  ],
+  "supersedes": []
+}
