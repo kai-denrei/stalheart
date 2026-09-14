@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "upstream": "~/Dev/lab-explosions",
+  "revision": "5f7c5437bc511d6e3531673bf1b53ffcb417a2aa",
+  "files": [
+    {
+      "sourcePath": "explosions/common.js",
+      "path": "src/fx/explosions/common.js",
+      "sourceSha256": "ba4137f198c6a9c47254ac6eb71b053d0f28e1cfcff925c6ae603b8276b245de",
+      "sha256": "02da79ffda9c7f6eb8e55a68c453afc67a73a8baf418b5378bfee6def8afdf4c",
+      "bytes": 16373
+    },
+    {
+      "sourcePath": "explosions/rotary-pop.js",
+      "path": "src/fx/explosions/rotary-pop.js",
+      "sourceSha256": "32f27b3003f032dc926c175880f0a5e02d227a15e227591317e723752d3bdf18",
+      "sha256": "32f27b3003f032dc926c175880f0a5e02d227a15e227591317e723752d3bdf18",
+      "bytes": 2055
+    },
+    {
+      "sourcePath": "explosions/bofors-burst.js",
+      "path": "src/fx/explosions/bofors-burst.js",
+      "sourceSha256": "caf1e8bc631537f895d35fe032a62fd2145dc86d3535b8cde838a975394ffcab",
+      "sha256": "caf1e8bc631537f895d35fe032a62fd2145dc86d3535b8cde838a975394ffcab",
+      "bytes": 2601
+    },
+    {
+      "sourcePath": "explosions/howitzer-blast.js",
+      "path": "src/fx/explosions/howitzer-blast.js",
+      "sourceSha256": "eef4c18c30a3d8122393469e464e901a6138cfdda9472fbbad1615bad0ee8b46",
+      "sha256": "eef4c18c30a3d8122393469e464e901a6138cfdda9472fbbad1615bad0ee8b46",
+      "bytes": 2668
+    },
+    {
+      "sourcePath": "explosions/orbital-strike.js",
+      "path": "src/fx/explosions/orbital-strike.js",
+      "sourceSha256": "51b8cd3f55116b6619f7bbf4e212cc949bdbd108e467c064524c718c037bcb4b",
+      "sha256": "51b8cd3f55116b6619f7bbf4e212cc949bdbd108e467c064524c718c037bcb4b",
+      "bytes": 3649
+    }
+  ]
+}

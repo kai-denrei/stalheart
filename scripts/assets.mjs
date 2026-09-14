@@ -77,6 +77,15 @@ for(const file of sinkhole.files){
 }
 console.log(`${sinkhole.files.length} pinned Sinkhole imports verified (${sinkhole.revision}).`);
 
+const explosions=JSON.parse(readFileSync(resolve(root,'docs/explosion-assets.lock.json'),'utf8'));
+for(const file of explosions.files){
+ const path=resolve(root,file.path);
+ if(!path.startsWith(resolve(root,'src/fx/explosions')+'/'))throw Error('Explosion path outside pinned paths');
+ const bytes=readFileSync(path);
+ if(bytes.length!==file.bytes||sha(bytes)!==file.sha256)throw Error(`Explosion import changed: ${file.path}`);
+}
+console.log(`${explosions.files.length} pinned explosion modules verified (${explosions.revision.slice(0,7)}).`);
+
 const breachAudio=JSON.parse(readFileSync(resolve(root,'docs/breach-audio.lock.json'),'utf8'));
 for(const file of breachAudio.files){
  if(file.path!=='assets/audio/sinkhole_quake.mp3')throw Error('Unexpected breach audio path');
