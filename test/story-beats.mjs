@@ -150,4 +150,8 @@ console.log('Story beats: faces, Rotor print, tremor, breach, approach, override
   assert.equal(beats.phase(), 'settled', `expected 'settled' within ${limit} bounded extra ticks, stuck at '${beats.phase()}'`);
   assert.equal(seen.at(-1), 'settled', 'the last phase recorded at a views unlock must be settled, not an earlier phase');
 }
+{
+  const src = (await import('node:fs')).readFileSync(new URL('../src/domain/story-beats.js', import.meta.url), 'utf8');
+  assert.match(src, /api\.sites\?\.\(\);\s*api\.expeditionsBegin\?\.\(\);/, 'the expedition beat reveals the first sites');
+}
 console.log('story-beats: the foundry pays');

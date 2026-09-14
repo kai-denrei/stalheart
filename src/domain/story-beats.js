@@ -79,7 +79,7 @@ export function makeStoryBeats({
         if (hardcores >= 2 && api.enemies() === 0) { api.brief?.('quiver_cleared'); said.add('quiver_cleared'); enter('settled'); api.unlock?.('views'); }
       } else if (phase === 'settled' && quiver && clock - at >= (quiver.studyDelay ?? 3)) { api.closeup?.('isao'); api.brief?.('vibration_study'); said.add('vibration_study'); enter('study-talk'); }
       else if (phase === 'study-talk' && clock - at >= 0.5 && !api.briefing?.()) { api.screen?.('synthetic'); enter('study'); }   // the lines run out (or were seen before), then the screen
-      else if (phase === 'study' && !api.screenOpen?.()) { api.brief?.('rocket_sites'); api.sites?.(); api.planetView?.(); said.add('rocket_sites'); enter('expedition'); }
+      else if (phase === 'study' && !api.screenOpen?.()) { api.brief?.('rocket_sites'); api.sites?.(); api.expeditionsBegin?.(); api.planetView?.(); said.add('rocket_sites'); enter('expedition'); }
     },
     phase: () => phase,
     state: () => ({ phase, clock: +clock.toFixed(2), socket, orderedAt, readyAt, spawned, gated, said: [...said], hardcores, foundry: fd ? foundryState(fd) : null }),

@@ -223,6 +223,29 @@ export const BRIEFS = {
       'Your call. I only build what you can pay for.',
     ],
   },
+
+  // THE EXPEDITIONS. Each landing site holds one tower's part behind a nest:
+  // the nest goes down, the tank drives in, the part comes home to the
+  // foundry, and Isao can print that tower. Three lines, one per step.
+  site_cleared: {
+    id: 'site_cleared',
+    face: 'surprised',
+    title: 'THE PART IS THERE',
+    lines: ['Nest cleared. I can see the part.', 'Drive in, grab it, bring it home to the foundry.'],
+  },
+  part_home: {
+    id: 'part_home',
+    face: 'glee',
+    title: 'PART HOME',
+    lines: ['That is the piece I was missing.', 'I can print it now. Pick a wall.'],
+  },
+  sites_revealed: {
+    id: 'sites_revealed',
+    face: 'surprised',
+    title: 'MORE LANDING SITES',
+    once: true,
+    lines: ['New signals on the radar. More landers came down out there.', 'Same drill: clear the nest, bring the part home.'],
+  },
 };
 
 // HOW LONG A LINE HOLDS. Isao's running commentary used to wait for a tap —
