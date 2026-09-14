@@ -305,7 +305,7 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 16 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 17 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
 
 ### Still open after the story-opening playtest: the breach freeze, the Rotor's sound by ear, Rotor shots into the wall, and ISAO-Birudorōn's review
 
@@ -324,6 +324,12 @@ The story places the HUGIN launchpad with hide: ['REUSABLE_BOOSTER'], and docs/A
 `2026-09-14-stalheart-lods-as-shipped` · decision · **proposed**
 
 Stålheart's runtime LODs are pinned at c827eda and verified in the story lab and the real game camera (2026-09-14-stalheart-lods-in-game-camera-review). The author and the owner both mark them pending game-camera and reference-phone review.
+
+### Three reticles and a fire-control HUD for the gunship, per-gun zoom, the owner's 40 mm report and the Rotor's own muffled firing sound from its optic, impacts that land seconds after the report, and the 105's paint-then-guide flow; FX package base 8
+
+`2026-09-14-gunship-reticles-hud-sounds-and-the-rotor-optic-firing-sound` · change · **observed**
+
+Owner's brief 2026-09-14: from the Rotor's PoV add the supplied HeavyMachineGun_RotorGunPOVSound.mp3 only while it fires, muffled, over the spin-up and spin-down, separating the rotors turning from the barrels firing; in the gunship PoV three reticles to tell the selected weapon apart, more HUD (distance, contacts, planet coordinates, calibres), each gun its own zoom, the rotary closer with lots of impact feedback and rotor-like sounds slightly deeper, the 40 mm with the supplied GunshipWeapon2Blast.mp3 and small area explosions that decimate groups, the 105 keeping the strike's sounds and effects but starting from the seat with its own reticle as a one-two: paint a red laser area, then launch and guide as the current strike does; fire 1 and 2 with a lag between the report at the gunship and the impact on the ground.
 
 ### Make MÖRK's LOW tier the default hull
 

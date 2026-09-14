@@ -44,6 +44,12 @@ export default {
       "minInterval": 0.14,
       "rateJitter": 0.04
     },
+    "gunship_bofors_fire": {
+      "gain": 0.6,
+      "maxVoices": 2,
+      "minInterval": 0.12,
+      "rateJitter": 0.04
+    },
     "kinetic_fire": {
       "gain": 0.55,
       "maxVoices": 4,
@@ -78,6 +84,12 @@ export default {
       "gain": 0.75,
       "maxVoices": 1,
       "minInterval": 2.5,
+      "rateJitter": 0
+    },
+    "rotor_pov_fire": {
+      "gain": 0.55,
+      "maxVoices": 1,
+      "minInterval": 0.1,
       "rateJitter": 0
     },
     "seeker_fire": {
@@ -207,7 +219,7 @@ export default {
       "rateJitter": 0
     }
   },
-  "base": "stalheart-fx-7",
+  "base": "stalheart-fx-8",
   "breach": {
     "clearRadius": 6,
     "crackLength": 2,
@@ -220,7 +232,7 @@ export default {
     "preRoll": 1.6,
     "shrapnelCount": 24
   },
-  "id": "rotor-tracer-dense",
+  "id": "gunship-and-rotor-optic-sounds",
   "missiles": {
     "heptapod": {
       "aimTolerance": 2.5,

@@ -23,8 +23,8 @@ export const GUNSHIP_PLATFORM = Object.freeze({
 // seconds a round takes to reach the ground from orbit: the gunner leads. The heavy has no
 // cadence here: it is the orbital strike, rationed by src/strike.js.
 export const GUNSHIP_GUNS = Object.freeze({
-  rotary: Object.freeze({ key: 'rotary', label: '25MM', cue: 'trrrrrrrrrr', rate: 30, damage: 0.22, blastCells: 0.45, dangerCells: 0.8, travel: 2.0, sound: 'minigun_fire', ringHex: 0xdfe8ee, clip: 'Rotary_Fire', strike: false }),
-  bofors: Object.freeze({ key: 'bofors', label: '40MM', cue: 'TOH-TOH-TOH', rate: 2.4, damage: 2.6, blastCells: 1.1, dangerCells: 1.6, travel: 2.6, sound: 'blast_fire', ringHex: 0xffb347, clip: 'Rotary_Fire', strike: false }),
-  heavy: Object.freeze({ key: 'heavy', label: '105MM', cue: 'sssshhh-BAAAM', rate: 0, damage: 0, blastCells: 3.2, dangerCells: 3.2, sound: null, ringHex: 0xff6a4d, clip: 'Heavy_Fire', strike: true }),
+  rotary: Object.freeze({ key: 'rotary', label: '25MM', cue: 'trrrrrrrrrr', rate: 30, damage: 0.22, blastCells: 0.45, dangerCells: 0.8, travel: 2.0, zoom: 2.6, sound: 'minigun_fire', pitch: 0.8, impact: 'kinetic_fire', ringHex: 0xdfe8ee, clip: 'Rotary_Fire', strike: false }),
+  bofors: Object.freeze({ key: 'bofors', label: '40MM', cue: 'TOH-TOH-TOH', rate: 2.4, damage: 2.6, blastCells: 1.1, dangerCells: 1.6, travel: 2.6, zoom: 1.9, sound: 'gunship_bofors_fire', pitch: 1, impact: 'blast_fire', ringHex: 0xffb347, clip: 'Rotary_Fire', strike: false }),
+  heavy: Object.freeze({ key: 'heavy', label: '105MM', cue: 'sssshhh-BAAAM', rate: 0, damage: 0, blastCells: 3.2, dangerCells: 3.2, zoom: 1.3, sound: null, ringHex: 0xff6a4d, clip: 'Heavy_Fire', strike: true }),
 });
 export const GUNSHIP_GUN_ORDER = Object.freeze(['rotary', 'bofors', 'heavy']);

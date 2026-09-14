@@ -591,7 +591,8 @@ export function makeAudio(opts = {}) {
       src.playbackRate.value = looping&&spec.loopFile?(o.rate??1):rate;
       gain = ctx.createGain();
       gain.gain.value = g;
-      src.connect(gain);
+      if (o.lowpass) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = o.lowpass; src.connect(f); f.connect(gain); }   // muffled: a voice heard through a hull
+      else src.connect(gain);
       gain.connect(busGain[spec.bus] ?? master);
       src.start();
     } catch {

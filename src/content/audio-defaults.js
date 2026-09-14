@@ -42,6 +42,11 @@ export const SOUNDS = {
   // overlap: six barrels firing four times a second is the easiest sound in
   // this game to make unbearable, and "not too loud" was the brief.
   minigun_fire:  { file: `${A}/minigun_fire.mp3`,  bus: 'towers', gain: 0.22, maxVoices: 5, minInterval: 0.04, rateJitter: 0.07 },
+  // THE BARRELS, NOT THE ROTORS (owner, 2026-09-14): from the Rotor's own optic the firing is its own sound, looped only while
+  // rounds leave and muffled through a low-pass, over the spin bed and the spool cues, which stay the rotors turning.
+  rotor_pov_fire: { file: `${A}/rotor_pov_fire.mp3`, bus: 'towers', gain: 0.55, maxVoices: 1, minInterval: 0.1, rateJitter: 0 },
+  // the gunship's 40 mm report, heard from the seat; its impact lands seconds later, down on the planet
+  gunship_bofors_fire: { file: `${A}/gunship_bofors_fire.mp3`, bus: 'towers', gain: 0.6, maxVoices: 2, minInterval: 0.12, rateJitter: 0.04 },
 
   // --- ui ----------------------------------------------------------------
   tower_upgrade: { file: `${A}/tower_upgrade.mp3`, bus: 'ui', gain: 0.70, maxVoices: 2, minInterval: 0.08, rateJitter: 0 },

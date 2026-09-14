@@ -5,7 +5,9 @@ import { MISSILE_DEFAULTS } from './missile-defaults.js';
 import { SENTRY_FX as WEAPONS } from './weapon-defaults.js';
 import { SOUNDS } from './audio-defaults.js';
 import { IMPACT_KNOBS, IMPACT_FAMILIES, IMPACT_RECIPES } from './impact-schema.js';
-export const PRESET_BASE = 'stalheart-fx-7';
+export const PRESET_BASE = 'stalheart-fx-8';
+// the sound keys version 8 added (the Rotor's own firing from its optic, the gunship's 40 mm): a version 7 package gains them at the baseline
+const V8_SOUNDS = ['rotor_pov_fire', 'gunship_bofors_fire'];
 export const AUDIO_KNOBS = Object.freeze([
   { key:'gain', min:0, max:2, step:.01 },
   { key:'maxVoices', min:1, max:32, step:1 },
@@ -43,7 +45,7 @@ function effect(fx,path) {
   for (const k of IMPACT_KNOBS) if (Object.hasOwn(fx.tune,k.key)) number(fx.tune[k.key],k.min,k.max,`${path}.tune.${k.key}`,k.step===1);
 }
 function validatePackage(p,baseId,weaponDefs,audioDefs) {
-  keys(p,['schema','application','base','id','weapons','audio','missiles',...(baseId===PRESET_BASE?['breach']:[])],'preset');
+  keys(p,['schema','application','base','id','weapons','audio','missiles',...(['stalheart-fx-7',PRESET_BASE].includes(baseId)?['breach']:[])],'preset');
   if(baseId===PRESET_BASE){keys(p.breach,Object.keys(BREACH_DEFAULTS),'breach');for(const [key,[min,max]] of Object.entries(BREACH_KNOBS))number(p.breach[key],min,max,'breach.'+key,['fissureArms','shrapnelCount'].includes(key));if(!['tronColors','battlezone','textured'].includes(p.breach.look))throw Error('breach.look: unknown palette');}
   if (p.schema!==1 || p.application!=='stalheart' || p.base!==baseId) throw Error('Unsupported preset schema or base');
   if (typeof p.id!=='string' || !/^[a-z0-9][a-z0-9-]{0,79}$/.test(p.id)) throw Error('Preset id must be a short lowercase slug');
@@ -116,7 +118,9 @@ export function parsePreset(text) {
     const {howitzer,...weapons}=p.weapons,{sentry_howitzer,...audio}=p.audio;
     p={...p,base:'stalheart-fx-6',weapons:{...weapons,needle:clone(needle)},audio:{...audio,sentry_needle:clone(baselinePreset().audio.sentry_needle)}};
   }
-  if(p?.base==='stalheart-fx-6'){validatePackage(p,'stalheart-fx-6',WEAPONS,SOUNDS);p={...p,base:PRESET_BASE,breach:clone(BREACH_DEFAULTS)};}
+  if(p?.base==='stalheart-fx-6'){const v7Sounds=Object.fromEntries(Object.entries(SOUNDS).filter(([k])=>!V8_SOUNDS.includes(k)||Object.hasOwn(p.audio??{},k)));validatePackage(p,'stalheart-fx-6',WEAPONS,v7Sounds);p={...p,base:'stalheart-fx-7',breach:clone(BREACH_DEFAULTS)};}
+  // version 7 to 8: additive, the two new sounds at their baseline; every edit in the package survives
+  if(p?.base==='stalheart-fx-7'){const v7Sounds=Object.fromEntries(Object.entries(SOUNDS).filter(([k])=>!V8_SOUNDS.includes(k)||Object.hasOwn(p.audio??{},k)));validatePackage(p,'stalheart-fx-7',WEAPONS,v7Sounds);const added=Object.fromEntries(V8_SOUNDS.filter(k=>!Object.hasOwn(p.audio,k)).map(k=>[k,clone(baselinePreset().audio[k])]));p={...p,base:PRESET_BASE,audio:{...p.audio,...added}};}   // a 7 that already carries a version 8 sound keeps it
   return validatePreset(p);
 }
 export function resolveSounds(p) {

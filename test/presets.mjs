@@ -6,13 +6,13 @@ import { createPresetRepository } from '../src/platform/preset-repository.js';
 const oldPreset=id=>{const p=baselinePreset(id);delete p.breach;p.weapons.howitzer=clone(RETIRED_HOWITZER);delete p.weapons.needle;p.audio.sentry_howitzer=clone(p.audio.sentry_needle);delete p.audio.sentry_needle;return p;};
 const legacy=oldPreset('legacy');delete legacy.missiles;legacy.base='stalheart-fx-2';
 const migrated=parsePreset(JSON.stringify(legacy));
-assert.equal(migrated.base,'stalheart-fx-7');assert.equal(migrated.missiles.quiver.duration,1.35);
+assert.equal(migrated.base,'stalheart-fx-8');assert.ok(migrated.audio.rotor_pov_fire&&migrated.audio.gunship_bofors_fire,'version 8 sounds added on migration');assert.equal(migrated.missiles.quiver.duration,1.35);
 assert.deepEqual(migrated.weapons.quiver,legacy.weapons.quiver);assert(!migrated.weapons.howitzer);assert.deepEqual(migrated.weapons.needle,baselinePreset().weapons.needle);
 const version3=oldPreset('version-three');version3.base='stalheart-fx-3';
 for(const m of Object.values(version3.missiles)){for(const key of ['minRange','maxRange','lockGate','lockTime','lockBreak','aimTolerance'])delete m[key];}
 version3.missiles.quiver.length=.7;version3.missiles.heptapod.duration=3.5;
 const upgraded=parsePreset(JSON.stringify(version3));
-assert.equal(upgraded.base,'stalheart-fx-7');
+assert.equal(upgraded.base,'stalheart-fx-8');
 assert.equal(upgraded.missiles.quiver.length,.7);assert.equal(upgraded.missiles.heptapod.duration,3.5);
 assert.equal(upgraded.missiles.quiver.minRange,3);assert.equal(upgraded.missiles.heptapod.maxRange,30);
 assert.deepEqual(upgraded.weapons.quiver,version3.weapons.quiver);assert.deepEqual(upgraded.audio.sentry_quiver,version3.audio.sentry_quiver);
@@ -62,5 +62,5 @@ repo.clear();assert.equal(repo.read(),null);
 console.log('Preset round-trip, strict validation, draft isolation, immutable selection and fixed sound references pass.');
 
 const v6=baselinePreset('before-breaches');delete v6.breach;v6.base='stalheart-fx-6';v6.missiles.quiver.length=.67;
-const v7=parsePreset(JSON.stringify(v6));assert.equal(v7.base,'stalheart-fx-7');assert.equal(v7.missiles.quiver.length,.67);assert.equal(v7.breach.craterRadius,1);assert.equal(v7.breach.fissureWidth,1.15);
+const v7=parsePreset(JSON.stringify(v6));assert.equal(v7.base,'stalheart-fx-8');assert.equal(v7.missiles.quiver.length,.67);assert.equal(v7.breach.craterRadius,1);assert.equal(v7.breach.fissureWidth,1.15);
 for(const change of [{duration:NaN},{look:'unknown'},{fissureArms:3.5},{extra:1}]){const p=baselinePreset();Object.assign(p.breach,change);assert.throws(()=>validatePreset(p));}
