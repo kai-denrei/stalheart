@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-gunship-higher-straight-down-three-views-and-the-105-from-the-seat",
+  "date": "2026-09-14T13:00:00+00:00",
+  "type": "change",
+  "status": "observed",
+  "title": "The gunship seat 340 m up looking straight down, M cycling normal / night vision / thermal, the owner's weapon 1 sample looped, a click that fires at once, the 105 honest about its re-orbit and never cutting away from the seat",
+  "context": "Owner's sixth brief (2026-09-14): the view should feel much higher and straight down; try GunShip_Weapon01_Test2.mp3 for weapon 1; weapon 2 needed a long click; weapon 3 launched unreliably and read 'paint the target' while a cooldown ran; the camera MUST start from the same PoV for weapon 3, no jump cut to the orbital strike, the gunship gets its own animation; M did nothing and should cycle normal, night vision (dark, enemies white) and thermal (enemies in yellow/red heat).",
+  "outcome": "GUNSHIP_PLATFORM: 34 cells up, pitch -1.5708..-0.95, the seat opens looking straight down along the lane. assets/audio/gunship_rotary_fire.mp3 pinned (docs/gunship-audio.lock.json) and looped through the host's loop hook while the rotary's trigger is down, stopped on release or leaving the seat; the shipped package re-promoted as gunship-weapon-sounds, still base stalheart-fx-8 (the migration also fills a version 8 package missing a version 8 sound). stepGun fires one round at once on a fresh press (a click is a shot), tested. The 105: the safety re-arms itself as soon as the platform has re-orbited and a shell is ready; the reticle and the HUD say RE-ORBIT n S, NO SHELL · ORBIT n%, FIRE TO PAINT, TARGET PAINTED · FIRE TO LAUNCH, SHELL FALLING · NUDGE; on launch the camera stays in the seat (the earlier yield to the strike cam is removed, the munition feed HUD hidden under the seat), the shell is drawn falling from the heavy muzzle to the painted cell over the strike's fall time with the red target ring held until impact, and one nudge is allowed while it falls (retargetStrike through a host hook when the aim moves to another cell); the strike's own blast, damage and wall rules are untouched. M cycles gunship-normal / gunship-night / gunship-thermal classes on the tab root (night: grayscale, dark, high contrast; thermal: grayscale, dark, sepia-saturated warm palette) and the contact markers follow (white 7 px in night, hot yellow 10 px in thermal, off in normal); the shelved top view moved to T. td-tab holds 17558 lines.",
+  "alternatives": [
+    "Its own projectile and blast for the 105 instead of strike.js: not yet; the strike's ration, fall time and blast rules stay the source, only the camera and the seen shell are the gunship's. A full separation is the next step if the owner wants different numbers.",
+    "Thermal by a second render pass: rejected, a canvas filter with a sepia-saturated palette gives the heat read at compositing cost."
+  ],
+  "evidence": [
+    "npm test 103 programs (the instant first round tested); npm run check; npm run build; browser-test --gunship ten scenarios pass (gunship-thermal and gunship-normal assert the M cycle); --sentry-pilot passes.",
+    "artifacts/browser/gunship-skip-enemies.png (night, straight down from 340 m, 72 contacts), gunship-thermal.png, gunship-normal.png (the 105 reticle reading NO SHELL · ORBIT 11%)."
+  ],
+  "supersedes": []
+}

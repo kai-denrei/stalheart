@@ -2,7 +2,26 @@
   "schema": 1,
   "source": "Owner-provided local audio (2026-09-14)",
   "files": [
-    { "path": "assets/audio/rotor_pov_fire.mp3", "originalFilename": "HeavyMachineGun_RotorGunPOVSound.mp3", "sha256": "9dea437a980b72dbfc607045279088c5aa585d8353bef7f2d06274a5a282d558", "bytes": 111840, "use": "the Rotor's barrels firing, heard from its own optic, muffled over the spin bed" },
-    { "path": "assets/audio/gunship_bofors_fire.mp3", "originalFilename": "GunshipWeapon2Blast.mp3", "sha256": "f6c8eb5e4077b1be09c9bc6f7fd0064f2cbf9ea2fafa32778a0e5f0ec5a35370", "bytes": 42240, "use": "the gunship's 40 mm report" }
+    {
+      "path": "assets/audio/rotor_pov_fire.mp3",
+      "originalFilename": "HeavyMachineGun_RotorGunPOVSound.mp3",
+      "sha256": "9dea437a980b72dbfc607045279088c5aa585d8353bef7f2d06274a5a282d558",
+      "bytes": 111840,
+      "use": "the Rotor's barrels firing, heard from its own optic, muffled over the spin bed"
+    },
+    {
+      "path": "assets/audio/gunship_bofors_fire.mp3",
+      "originalFilename": "GunshipWeapon2Blast.mp3",
+      "sha256": "f6c8eb5e4077b1be09c9bc6f7fd0064f2cbf9ea2fafa32778a0e5f0ec5a35370",
+      "bytes": 42240,
+      "use": "the gunship's 40 mm report"
+    },
+    {
+      "path": "assets/audio/gunship_rotary_fire.mp3",
+      "originalFilename": "GunShip_Weapon01_Test2.mp3",
+      "sha256": "f350a3641952c72c27433023244cb7c36d329ac3372f1d6ea61721536a876963",
+      "bytes": 62880,
+      "use": "the gunship's 25 mm rotary, looped while the trigger is down"
+    }
   ]
 }

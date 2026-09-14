@@ -2577,10 +2577,13 @@ body.playing:not(.chrome-open) #tabbar { display: none !important; }
    filter on the WebGL canvas (compositing-cost only), a green ops HUD, and
    the range counter in red. pointer-events: none throughout — the tap that
    skips must reach the canvas underneath. */
-#tab-td.striking #td-app canvas,
-#tab-td.gunship-seat #td-app canvas {   /* the gunship's seat is the same surveillance look as the munition feed (owner, 2026-09-14) */
+#tab-td.striking #td-app canvas {
   filter: grayscale(1) contrast(1.3) brightness(1.12);
 }
+/* the gunship seat's views (owner, 2026-09-14): normal, night vision (dark, the contacts white), thermal (hot, the contacts yellow) */
+#tab-td.gunship-night #td-app canvas { filter: grayscale(1) brightness(0.62) contrast(1.7); }
+#tab-td.gunship-thermal #td-app canvas { filter: grayscale(1) brightness(0.5) contrast(1.6) sepia(1) saturate(5) hue-rotate(-18deg); }
+#tab-td.gunship-seat #td-strikecam { display: none !important; }   /* the 105 is watched from the seat, not the munition feed */
 /* !important because three.js setSize writes `display: block` INLINE on its
    canvas, and an inline style beats any sheet rule. Found by probing the
    element's cssText — the selector matched and still lost. */

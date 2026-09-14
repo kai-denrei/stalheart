@@ -47,6 +47,8 @@ export function createGunshipOptic(scene, { cellSide, metresPerCell = 10 }) {
     active: () => mounted,
     mount() { mounted = true; rings.visible = true; contacts.visible = true; },
     dismount() { mounted = false; rings.visible = false; contacts.visible = false; if (model) model.visible = true; },
+    // the seat's view modes: night vision keeps the contacts white; thermal makes them larger and hot
+    contactsStyle(mode) { contacts.material.size = mode === 'thermal' ? 10 : 7; contacts.material.color.set(mode === 'thermal' ? 0xffe27a : 0xffffff); contacts.visible = mounted && mode !== 'normal'; },
     contacts(enemies) {
       const p = contactsGeo.attributes.position; let n = 0;
       for (const e of enemies) { if (n >= 600) break; const l = Math.hypot(e.pos[0], e.pos[1], e.pos[2]) || 1, k = 1 + cellSide * 0.6; p.setXYZ(n++, e.pos[0] / l * k, e.pos[1] / l * k, e.pos[2] / l * k); }   // lifted a little off the ground so the floor never hides them

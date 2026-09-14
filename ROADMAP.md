@@ -305,13 +305,19 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 17 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 18 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
 
 ### Still open after the story-opening playtest: the breach freeze, the Rotor's sound by ear, Rotor shots into the wall, and ISAO-Birudorōn's review
 
 `2026-09-14-story-playtest-open-items` · issue · **observed**
 
 The story-opening playtest batches (commit 89b81b5) fixed what could be measured and verified headlessly. Several items were changed or partly addressed without an acceptance the owner can rely on, and should be picked up rather than assumed done.
+
+### The gunship seat 340 m up looking straight down, M cycling normal / night vision / thermal, the owner's weapon 1 sample looped, a click that fires at once, the 105 honest about its re-orbit and never cutting away from the seat
+
+`2026-09-14-gunship-higher-straight-down-three-views-and-the-105-from-the-seat` · change · **observed**
+
+Owner's sixth brief (2026-09-14): the view should feel much higher and straight down; try GunShip_Weapon01_Test2.mp3 for weapon 1; weapon 2 needed a long click; weapon 3 launched unreliably and read 'paint the target' while a cooldown ran; the camera MUST start from the same PoV for weapon 3, no jump cut to the orbital strike, the gunship gets its own animation; M did nothing and should cycle normal, night vision (dark, enemies white) and thermal (enemies in yellow/red heat).
 
 ### HUGIN's runtime LODs merge the booster into static geometry, so the story can no longer hide it
 

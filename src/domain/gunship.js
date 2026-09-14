@@ -66,7 +66,9 @@ export function selectGun(st, key, guns) {
 // trigger forfeits the fraction so a tap cannot bank a burst.
 export function stepGun(st, dt, held, guns) {
   const gun = guns[st.gun];
-  if (!held || !st.mounted || st.phase !== 'station' || !gun || !(gun.rate > 0) || !(dt > 0)) { st.accum = 0; return 0; }
+  if (!held || !st.mounted || st.phase !== 'station' || !gun || !(gun.rate > 0) || !(dt > 0)) { st.accum = 0; st.wasHeld = false; return 0; }
+  if (!st.wasHeld) st.accum = Math.max(st.accum, 1);   // a fresh press fires at once: a click is a shot, not a fraction of one (owner, 2026-09-14)
+  st.wasHeld = true;
   st.accum += gun.rate * dt;
   const n = Math.floor(st.accum);
   st.accum -= n;

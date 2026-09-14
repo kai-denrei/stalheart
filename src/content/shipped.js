@@ -50,6 +50,12 @@ export default {
       "minInterval": 0.12,
       "rateJitter": 0.04
     },
+    "gunship_rotary_fire": {
+      "gain": 0.7,
+      "maxVoices": 1,
+      "minInterval": 0.1,
+      "rateJitter": 0
+    },
     "kinetic_fire": {
       "gain": 0.55,
       "maxVoices": 4,
@@ -232,7 +238,7 @@ export default {
     "preRoll": 1.6,
     "shrapnelCount": 24
   },
-  "id": "gunship-and-rotor-optic-sounds",
+  "id": "gunship-weapon-sounds",
   "missiles": {
     "heptapod": {
       "aimTolerance": 2.5,

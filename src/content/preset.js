@@ -7,7 +7,7 @@ import { SOUNDS } from './audio-defaults.js';
 import { IMPACT_KNOBS, IMPACT_FAMILIES, IMPACT_RECIPES } from './impact-schema.js';
 export const PRESET_BASE = 'stalheart-fx-8';
 // the sound keys version 8 added (the Rotor's own firing from its optic, the gunship's 40 mm): a version 7 package gains them at the baseline
-const V8_SOUNDS = ['rotor_pov_fire', 'gunship_bofors_fire'];
+const V8_SOUNDS = ['rotor_pov_fire', 'gunship_bofors_fire', 'gunship_rotary_fire'];
 export const AUDIO_KNOBS = Object.freeze([
   { key:'gain', min:0, max:2, step:.01 },
   { key:'maxVoices', min:1, max:32, step:1 },
@@ -119,7 +119,9 @@ export function parsePreset(text) {
     p={...p,base:'stalheart-fx-6',weapons:{...weapons,needle:clone(needle)},audio:{...audio,sentry_needle:clone(baselinePreset().audio.sentry_needle)}};
   }
   if(p?.base==='stalheart-fx-6'){const v7Sounds=Object.fromEntries(Object.entries(SOUNDS).filter(([k])=>!V8_SOUNDS.includes(k)||Object.hasOwn(p.audio??{},k)));validatePackage(p,'stalheart-fx-6',WEAPONS,v7Sounds);p={...p,base:'stalheart-fx-7',breach:clone(BREACH_DEFAULTS)};}
-  // version 7 to 8: additive, the two new sounds at their baseline; every edit in the package survives
+  // version 7 to 8: additive, the new sounds at their baseline; every edit in the package survives. A version 8 package from
+  // before the third sound was added gains it the same way.
+  if(p?.base===PRESET_BASE&&V8_SOUNDS.some(k=>!Object.hasOwn(p.audio??{},k)))p={...p,base:'stalheart-fx-7'};
   if(p?.base==='stalheart-fx-7'){const v7Sounds=Object.fromEntries(Object.entries(SOUNDS).filter(([k])=>!V8_SOUNDS.includes(k)||Object.hasOwn(p.audio??{},k)));validatePackage(p,'stalheart-fx-7',WEAPONS,v7Sounds);const added=Object.fromEntries(V8_SOUNDS.filter(k=>!Object.hasOwn(p.audio,k)).map(k=>[k,clone(baselinePreset().audio[k])]));p={...p,base:PRESET_BASE,audio:{...p.audio,...added}};}   // a 7 that already carries a version 8 sound keeps it
   return validatePreset(p);
 }

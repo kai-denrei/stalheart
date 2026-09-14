@@ -72,6 +72,7 @@ console.log('the guns:');
   selectGun(st, 'rotary', GUNSHIP_GUNS); rounds = 0; for (let i = 0; i < 60; i++) rounds += stepGun(st, 1 / 60, true, GUNSHIP_GUNS);
   check('the rotary owes thirty a second', Math.abs(rounds - GUNSHIP_GUNS.rotary.rate) <= 1);
   check('a released trigger drops the owed fraction', (stepGun(st, 0.02, false, GUNSHIP_GUNS), st.accum === 0));
+  selectGun(st, 'bofors', GUNSHIP_GUNS); check('a fresh click fires one round at once', stepGun(st, 0.016, true, GUNSHIP_GUNS) === 1 && stepGun(st, 0.016, true, GUNSHIP_GUNS) === 0);
   selectGun(st, 'heavy', GUNSHIP_GUNS);
   check('the heavy has no cadence here', stepGun(st, 1, true, GUNSHIP_GUNS) === 0);
   const off = makeGunship({ pass: 10, station: 4 }); off.mounted = true;
