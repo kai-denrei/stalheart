@@ -169,7 +169,7 @@ export function createSentryPilot(root, host) {
     for(const r of G.landed()){   // what stands where the round was aimed, when it lands
       const g=G.guns[r.gun],rc=G.cell(r.point);aim.fromArray(r.point);
       for(const e of G.enemies()){const d=aim.distanceTo(v.fromArray(e.pos));if(d<g.blastCells*c)G.damage(e,G.splash(d,g.blastCells*c,g.damage));}
-      if(g.key==='bofors'){G.puff(rc,g.ringHex,.7,g.blastCells*c*1.6);G.puff(rc,0xffffff,.35,g.blastCells*c*.7);G.burst(r.point,0xffd08a,44,.5);G.sfx(g.impact,r.point,{rate:.7});}else{G.puff(rc,g.ringHex,.16,g.blastCells*c*.9);G.burst(r.point,0xdfe8ee,7,.18);if(landedRounds++%2===0)G.sfx(g.impact,r.point,{rate:.9,gain:.5});}   // the impact, seen and heard where the round lands: the strike's ring language one register down
+      if(g.key==='bofors'){G.puff(rc,g.ringHex,.7,g.blastCells*c*1.6);G.puff(rc,0xffffff,.35,g.blastCells*c*.7);if(!G.explode('gunship.bofors',r.point))G.burst(r.point,0xffd08a,44,.5);G.sfx(g.impact,r.point,{rate:.7});}else{G.puff(rc,g.ringHex,.16,g.blastCells*c*.9);if(!G.explode('gunship.rotary',r.point))G.burst(r.point,0xdfe8ee,7,.18);if(landedRounds++%2===0)G.sfx(g.impact,r.point,{rate:.9,gain:.5});}   // the impact, seen and heard where the round lands: the strike's ring language one register down
     }
     G.optic.hull(state.view!=='pov'||map);G.optic.pose({pitch:state.pitch,gun:G.state.gun,firing:fired,dt});
     const r=report?.[G.state.gun],left=Math.ceil(G.left());

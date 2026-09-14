@@ -88,7 +88,7 @@ import { TANK_FEEL, TANK_FEEL_KNOBS, makeTankFeel, stepTankFeel, landTankFeel, f
 import { FEEL, loadFeel, saveFeel } from './feelstore.js';
 import { STRIKE_KNOBS, makeStrike, makeStrikeParams, grantStrikes, stepStrike,
   toggleArm, paintTarget, launchStrike, stepFall, skipFall, fallProgress,
-  strikeDamage, retargetStrike, orbitProgress } from './strike.js'; import { makeGunship, stepGunship, onStation, phaseLeft, passProgress, mountGunship, dismountGunship, selectGun, stepGun, aimOnSphere, splashDamage, dangerReport, fireRound, stepRounds, paintHeavy, launchHeavy, nudgeHeavy, stepHeavy, heavyState } from './domain/gunship.js'; import { GUNSHIP_GUNS, GUNSHIP_GUN_ORDER, GUNSHIP_PLATFORM, GUNSHIP_ORBIT } from './content/gunship.js'; import { createGunshipOptic } from './fx/gunship-optic.js'; import { createGunshipBriefing } from './fx/gunship-briefing.js'; import { createFoundryFx } from './fx/foundry-fx.js';
+  strikeDamage, retargetStrike, orbitProgress } from './strike.js'; import { makeGunship, stepGunship, onStation, phaseLeft, passProgress, mountGunship, dismountGunship, selectGun, stepGun, aimOnSphere, splashDamage, dangerReport, fireRound, stepRounds, paintHeavy, launchHeavy, nudgeHeavy, stepHeavy, heavyState } from './domain/gunship.js'; import { GUNSHIP_GUNS, GUNSHIP_GUN_ORDER, GUNSHIP_PLATFORM, GUNSHIP_ORBIT } from './content/gunship.js'; import { createGunshipOptic } from './fx/gunship-optic.js'; import { createGunshipBriefing } from './fx/gunship-briefing.js'; import { createFoundryFx } from './fx/foundry-fx.js'; import { createExplosions } from './fx/explosions.js';
 import { radarBasis, radarProject, radarBearing, sweepAngle, radarPhosphor,
   proximitySectors, SENSOR_LEVELS, sensorColor } from './radar.js';
 import { BLOOM_GROUPS } from './bloomweights.js';
@@ -347,7 +347,7 @@ export function initTdTab(root) {
   scene.background = mainBg;
 
   const camera = new THREE.PerspectiveCamera(68, 1, 0.004, 50);
-  const postfx = makeBloom(renderer, scene, camera, { scale: tier.bloomScale });
+  const postfx = makeBloom(renderer, scene, camera, { scale: tier.bloomScale }); const explosions = createExplosions(scene, { onError: (error) => record('explosions.unavailable', { message: error.message }) }); explosions.prewarm(renderer, camera); const explode = (use, p) => explosions.spawn(use, p, norm3(p), cellSide);   // the lab's explosions (src/fx/explosions.js); callers keep their dot bursts when this returns false
   // sound. The context can only be born on a user gesture, so arm() wires
   // one-shot listeners and the first tap/keypress creates it. Until then
   // every play() is a silent no-op -- the game never waits on audio.
@@ -3671,7 +3671,7 @@ export function initTdTab(root) {
   // DESTROYED, which is the reason the weapon exists. Enemies take squared
   // falloff. The world does the announcing: rings, a kick of the same shock
   // cloud the wave telegraph uses, and the loudest sample in the manifest.
-  function executeStrike(ci, tNow) {
+  function executeStrike(ci, tNow, use = 'strike.orbital') {
     const before = {
       portals: spawnPoints.filter((q) => q.alive).length,
       enemies: enemies.filter((e) => e.alive).length,
@@ -3692,15 +3692,10 @@ export function initTdTab(root) {
     flashEl.classList.remove('on');
     void flashEl.offsetWidth;
     flashEl.classList.add('on');
-    // the firework: staged dot-burst shells, white core out to ember red,
-    // each larger and sparser than the last. One strike per gate means this
-    // can afford to be extravagant — it is a set piece, not a particle tax.
+    // the lab's explosion for this use; the old dot-burst firework only when it could not load
     const bn = graph.normals[ci];
     const bp = add3(c, scale3(bn, cellSide * 0.35));
-    for (const [hex, sc, cnt] of [
-      [0xffffff, 1.5, 140], [0xfff2c0, 2.4, 110],
-      [0xffb347, 3.4, 90], [0xff7744, 4.4, 70], [0xff4433, 5.4, 50],
-    ]) {
+    if (!explode(use, c)) for (const [hex, sc, cnt] of [[0xffffff, 1.5, 140], [0xfff2c0, 2.4, 110], [0xffb347, 3.4, 90], [0xff7744, 4.4, 70], [0xff4433, 5.4, 50]]) {
       const burst = makeDotBurst(hex, bn, cnt);
       burst.scale.setScalar(cellSide * sc);
       burst.position.set(bp[0], bp[1], bp[2]);
@@ -5966,7 +5961,7 @@ export function initTdTab(root) {
   // heart-distance field is re-laid — everyone's nav sees the new gap,
   // enemies included. Clearing your path can shorten theirs.
   function blastWall(ci) {
-    if (!breachWallCell(ci)) return;
+    if (!breachWallCell(ci)) return; explode('tank.shell', graph.centers[ci]);
     rebuildAfterBreach();
   }
 
@@ -6063,12 +6058,7 @@ export function initTdTab(root) {
             warnRing(sci, 0xffb347, 0.4, SHELL_R * 0.65);
             warnRing(sci, 0xfff2c0, 0.28, SHELL_R * 0.35);
           }
-          const clip = makeDotBurst(0xfff2c0, norm3(p.pos), 90);
-          clip.scale.setScalar(cellSide * 1.6);
-          const cp = add3(p.pos, scale3(norm3(p.pos), cellSide * 0.15));
-          clip.position.set(cp[0], cp[1], cp[2]);
-          scene.add(clip);
-          debris.push(clip);
+          if (!explode('tank.shell', norm3(p.pos))) { const clip = makeDotBurst(0xfff2c0, norm3(p.pos), 90); clip.scale.setScalar(cellSide * 1.6); const cp = add3(p.pos, scale3(norm3(p.pos), cellSide * 0.15)); clip.position.set(cp[0], cp[1], cp[2]); scene.add(clip); debris.push(clip); }
           hit = true;
           break;
         }
@@ -7777,9 +7767,7 @@ export function initTdTab(root) {
       if(!arrived)continue;
       if(target){damageEnemy(target,tNow,effectiveStats(m.by.def,m.by.tier).dmg*(m.config.dmgMul??1),true);seekerHits++;}   // the story's TALON carries a heavy payload
       else seekerLost++;
-      const burst=makeDotBurst(target?0xffd27f:0x6f8ea0,norm3(m.p),target?22:10);
-      burst.scale.setScalar(cellSide*(target?2.4:1.2));burst.position.fromArray(m.p);
-      scene.add(burst);debris.push(burst);
+      if(!(target&&m.config.mesh==='talon'&&explode('quiver.talon',norm3(target.pos)))){const burst=makeDotBurst(target?0xffd27f:0x6f8ea0,norm3(m.p),target?22:10);burst.scale.setScalar(cellSide*(target?2.4:1.2));burst.position.fromArray(m.p);scene.add(burst);debris.push(burst);}   // a TALON hit bursts on its target; a miss keeps the small puff
       m.pool.release(m.mesh);towerSeekers.splice(i,1);
     }
   }
@@ -9962,7 +9950,7 @@ export function initTdTab(root) {
     // reveal or the cold open still stops him: those are the game
     // speaking, and nothing should be printing over the top of it.
     if (!frozen) updateIsao(dt);
-    for (const orb of orbMeshes.values()) orb.userData.tick(t); brass?.tick(frozen ? 0 : dt);   // spent cases fall and settle with the rest of the transients
+    for (const orb of orbMeshes.values()) orb.userData.tick(t); brass?.tick(frozen ? 0 : dt); explosions.tick(frozen ? 0 : dt);   // spent cases and explosions run on the world's clock
     for (let i = debris.length - 1; i >= 0; i--) {
       if (!debris[i].userData.tick(dt)) {
         scene.remove(debris[i]);
@@ -13810,7 +13798,7 @@ export function initTdTab(root) {
   // Tests use the real commands/transitions, and inspect serializable state.
   if (urlParams.get('acceptance') === '1') {
     window.__stalheartTest = {
-      state: () => ({ pilotRounds: rs?.pilotRounds ?? 0, pilotHits: rs?.pilotHits ?? 0, gunship: { phase: gunship.phase, left: +gunship.left.toFixed(2), mounted: gunship.mounted, gun: gunship.gun, passes: gunship.passes, optic: !!gunshipOptic?.active(), station: onStation(gunship), seat: !!pilot?.gunship, heavy: heavyState(gunship, GUNSHIP_GUNS), heat: +gunship.heat.toFixed(2), overheated: gunship.overheated, mag: gunship.mag, briefing: !!gunshipBriefing?.isOpen(), lane: pilotHost?.gunship?.lane() ?? -1, aim: pilot?.gunshipOptic?.()?.pos ?? null, aimCell: pilot?.gunshipOptic?.()?.pos ? cellIndex(norm3(pilot.gunshipOptic().pos)) : -1 }, shot:shotId(),breachRubble:gameBreaches.rubbleState(),breaches:gameBreaches.state(),queued:spawnQueue.length,wallCount:dungeon.tags.filter(tag=>tag===BLOCKED).length,emerging:enemies.filter(e=>e.alive&&e.emergeAge<1.2).length,round, wave, runGen: runContext.generation, heart: heartHP, hulls: playerHP,
+      state: () => ({ explosions: explosions.state(), pilotRounds: rs?.pilotRounds ?? 0, pilotHits: rs?.pilotHits ?? 0, gunship: { phase: gunship.phase, left: +gunship.left.toFixed(2), mounted: gunship.mounted, gun: gunship.gun, passes: gunship.passes, optic: !!gunshipOptic?.active(), station: onStation(gunship), seat: !!pilot?.gunship, heavy: heavyState(gunship, GUNSHIP_GUNS), heat: +gunship.heat.toFixed(2), overheated: gunship.overheated, mag: gunship.mag, briefing: !!gunshipBriefing?.isOpen(), lane: pilotHost?.gunship?.lane() ?? -1, aim: pilot?.gunshipOptic?.()?.pos ?? null, aimCell: pilot?.gunshipOptic?.()?.pos ? cellIndex(norm3(pilot.gunshipOptic().pos)) : -1 }, shot:shotId(),breachRubble:gameBreaches.rubbleState(),breaches:gameBreaches.state(),queued:spawnQueue.length,wallCount:dungeon.tags.filter(tag=>tag===BLOCKED).length,emerging:enemies.filter(e=>e.alive&&e.emergeAge<1.2).length,round, wave, runGen: runContext.generation, heart: heartHP, hulls: playerHP,
         biomass: eco.biomass, towers: towers.length, won: player.won, paused,
         roster: ROSTER.id, buildMode, story: story?.beats.state() ?? null, storyHud: story?.hud.state() ?? null, killsBySrc: { ...rs.bySrc }, storyLod: storyBase?.lod() ?? null, storyBaseErrors: storyBase?.errors.slice() ?? null, towerCells: towers.map((t) => [t.key, t.ci]), insideEnemies: story ? enemies.filter((e) => e.alive && story.inside(e.cur)).length : 0,
         playerAsset: playerMesh?.userData.asset || params.creature, playerSpan: (() => { if (!playerMesh) return null; const b = new THREE.Box3().setFromObject(playerMesh); return Number.isFinite(b.max.x) ? +(b.getSize(new THREE.Vector3()).length() / (unitScale || 1)).toFixed(2) : null; })(),   // the hull's true size over its scale: exploded geometry reads absurd here
@@ -13931,7 +13919,7 @@ export function initTdTab(root) {
       story:!!posts,mobile:mobileShell,select:installPilot,views:name=>storyViews?.active(name),leave:()=>leavePilot(),
       gunship:{state:gunship,strike,tune:strikeTune,guns:GUNSHIP_GUNS,order:GUNSHIP_GUN_ORDER,platform:GUNSHIP_PLATFORM,centers:graph.centers,normals:graph.normals,heart:()=>dungeon.heart,lane:gunshipLane,cell:p=>cellIndex(norm3(p)),cellAt:(x,y)=>cellAtScreen(x,y),frame:(n,d)=>{centerBuildOnHeart(n);followSuspend=true;if(d)buildDist=Math.min(4,Math.max(1.4,d));},enemies:()=>enemies.filter(e=>e.alive&&e.id>0),damage:(e,d)=>damageEnemy(e,t,d,true,'strike'),onStation:()=>onStation(gunship),left:()=>phaseLeft(gunship),progress:()=>passProgress(gunship,GUNSHIP_ORBIT),mount:()=>mountGunship(gunship),dismount:()=>dismountGunship(gunship),select:k=>selectGun(gunship,k,GUNSHIP_GUNS),step:(dt,held)=>stepGun(gunship,dt,held,GUNSHIP_GUNS),fire:(g,p,travel)=>fireRound(gunship,g,p,travel),landed:()=>stepRounds(gunship),aim:aimOnSphere,splash:splashDamage,
         bodies:()=>[...(gunshipWalls??=Array.from(dungeon.tags,(tg,ci)=>tg===BLOCKED&&(!story||story.inside(ci))?{kind:'wall',pos:graph.centers[ci]}:null).filter(Boolean)),...towers.map(tw=>({kind:'tower',pos:graph.centers[tw.ci]})),{kind:'tank',pos:player.pos},...(isao?[{kind:'isao',pos:isao.obj.position.toArray()}]:[])],danger:(p,r)=>dangerReport(p,r,pilotHost.gunship.bodies()),   // the danger report's bodies: walls cached per pass, the rest live
-        blast:ci=>{if(ci>=0)executeStrike(ci,t);},puff:(ci,hex,life,r)=>{if(ci>=0)warnRing(ci,hex,life,r);},sfx:(name,pos,o)=>{if(name)sfx.play(name,{dist:camDist(pos),...o});},burst:(p,hex,n,scale)=>{const b=makeDotBurst(hex,norm3(p),n);b.scale.setScalar(cellSide*scale);b.position.set(p[0],p[1],p[2]);scene.add(b);debris.push(b);},laser:ci=>{if(ci>=0)showRangeRing(ci,strikeTune.blastCells,0xff2a1a);else hideRangeRing();},loop:(name,o)=>sfx.loop(name,o),paintHeavy:ci=>paintHeavy(gunship,ci,GUNSHIP_GUNS),launchHeavy:()=>launchHeavy(gunship,GUNSHIP_GUNS),nudgeHeavy:ci=>nudgeHeavy(gunship,ci),stepHeavy:()=>stepHeavy(gunship),heavyState:()=>heavyState(gunship,GUNSHIP_GUNS),
+        blast:ci=>{if(ci>=0)executeStrike(ci,t,'gunship.heavy');},explode:(use,p)=>explode(use,p),puff:(ci,hex,life,r)=>{if(ci>=0)warnRing(ci,hex,life,r);},sfx:(name,pos,o)=>{if(name)sfx.play(name,{dist:camDist(pos),...o});},burst:(p,hex,n,scale)=>{const b=makeDotBurst(hex,norm3(p),n);b.scale.setScalar(cellSide*scale);b.position.set(p[0],p[1],p[2]);scene.add(b);debris.push(b);},laser:ci=>{if(ci>=0)showRangeRing(ci,strikeTune.blastCells,0xff2a1a);else hideRangeRing();},loop:(name,o)=>sfx.loop(name,o),paintHeavy:ci=>paintHeavy(gunship,ci,GUNSHIP_GUNS),launchHeavy:()=>launchHeavy(gunship,GUNSHIP_GUNS),nudgeHeavy:ci=>nudgeHeavy(gunship,ci),stepHeavy:()=>stepHeavy(gunship),heavyState:()=>heavyState(gunship,GUNSHIP_GUNS),
         get optic(){return gunshipOptic??=createGunshipOptic(scene,{cellSide,metresPerCell:GUNSHIP_PLATFORM.metresPerCell});}},
       post:delta=>{pilotPost=(pilotPost+delta+pilotPosts.length)%pilotPosts.length;pilot.select(pilotMounts[pilotPost]?.key || pilot.state.tower.key);}, pick:key=>{const i=pilotMounts.findIndex(m=>m?.key===key);if(i>=0){pilotPost=i;pilot.select(key);}},   // the story's strip names a mount
       map:on=>setView(on?'orbit':'bastion'),pause:()=>{paused=!paused;pilot.state.held=false;},

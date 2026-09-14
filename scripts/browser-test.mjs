@@ -85,6 +85,7 @@ try{
  const sources=await evaluate('window.__stalheartTest.state().breaches.length');
  await evaluate('window.__stalheartTest.breachStrike()');
  assert(await evaluate('window.__stalheartTest.state().breachRubble.caps>=1'),'Orbital strike seals the hole');
+ assert.equal(await evaluate('window.__stalheartTest.state().explosions.spawned["strike.orbital"]'),1,'the orbital strike lands as the nuclear cloud');
  assert.equal(await evaluate('window.__stalheartTest.state().breachRubble.drawCalls'),1);
  await evaluate('new Promise(resolve=>setTimeout(resolve,2200))');
  assert(await evaluate('window.__stalheartTest.state().breachRubble.caps>=1'));
@@ -243,12 +244,16 @@ try{
   const a=await evaluate('window.__stalheartTest.state().gunship.left');await delay(1200);const b=await evaluate('window.__stalheartTest.state().gunship.left');assert(b<a,'the pass counts out under the gunner');
   // the trigger on the rotary: rounds are owed and nothing throws with no enemy under the reticle
   await evaluate('window.__stalheartTest.gunshipGun("rotary")');await evaluate('window.__stalheartTest.gunshipHold(true)');await delay(700);await evaluate('window.__stalheartTest.gunshipHold(false)');
+  await delay(2400);{const x=await evaluate('window.__stalheartTest.state().explosions');assert(x.available&&x.spawned['gunship.rotary']>0,`rotary rounds burst where they land (${JSON.stringify(x)})`);}
   current='gunship-rotary-fired';await finish();
+  await evaluate('window.__stalheartTest.gunshipGun("bofors")');await evaluate('window.__stalheartTest.gunshipHold(true)');await delay(400);await evaluate('window.__stalheartTest.gunshipHold(false)');
+  await delay(3000);{const x=await evaluate('window.__stalheartTest.state().explosions');assert(x.spawned['gunship.bofors']>0,`the Bofors shell bursts on landing (${JSON.stringify(x)})`);}
+  current='gunship-bofors-burst';await finish();
   // THE GUNSHIP'S OWN 105: paint, launch, the shell falls from the seat, the blast lands, then the reload is read
   await evaluate('window.__stalheartTest.gunshipGun("heavy")');await delay(300);await evaluate('window.__stalheartTest.gunshipHold(true)');await delay(200);
   assert.equal((await evaluate('window.__stalheartTest.state().gunship.heavy')).phase,'painted','the first press paints');
   await evaluate('window.__stalheartTest.gunshipHold(true)');await delay(300);const fl=await evaluate('window.__stalheartTest.state().gunship');assert.equal(fl.heavy.phase,'falling','the second press launches');assert(fl.seat,'the camera never left the seat');
-  current='gunship-heavy-falling';await finish();await delay(3800);const rl=await evaluate('window.__stalheartTest.state().gunship');assert.equal(rl.heavy.phase,'reloading',`after the fall the gun reloads (${JSON.stringify(rl.heavy)})`);current='gunship-heavy-reloading';await finish();}
+  current='gunship-heavy-falling';await finish();await delay(3800);assert.equal((await evaluate('window.__stalheartTest.state().explosions')).spawned['gunship.heavy'],1,'the 105 lands as the howitzer blast');const rl=await evaluate('window.__stalheartTest.state().gunship');assert.equal(rl.heavy.phase,'reloading',`after the fall the gun reloads (${JSON.stringify(rl.heavy)})`);current='gunship-heavy-reloading';await finish();}
  // THE SKIP MARKER: the panel beside the build tag opens the seat by itself and raises enemies, which then read hot in the thermal optic
  await go('gunship-skip','index.html?sw=0&cine=0&world=story&stage=6&acceptance=1&gunship=station&skip=gunship&enemies=24&brief=0#td');
  await until('!!window.__stalheartTest && window.__stalheartTest.state().gunship.seat',120000);await delay(9000);
@@ -522,6 +527,8 @@ try{
  await go('mobile-input','index.html?sw=0&cine=0&mobile=1&coarse=1&keyprobe=1&layout=1#td',844,390);
  const start=Date.now();while(!consoleLines.some(x=>x.includes('S drives, T shields'))&&Date.now()-start<12000)await delay(200);
  assert(consoleLines.some(x=>x.includes('S drives, T shields')));await finish();
+await go('shell-explosion','index.html?sw=0&cine=0&acceptance=1&blast=1#td');
+ await until('window.__stalheartTest?.state().explosions?.spawned["tank.shell"]===1',30000);await finish();
  await go('terraformer','index.html?sw=0&cine=0&acceptance=1#td');
  await until('window.__stalheartTest.state().heartAsset === "sentry-terraformer"',30000);
  // Each spare hull must deploy onto open ground and respond to real input.
