@@ -360,6 +360,54 @@ try{
   await go('nav-dist-remembered','index.html?sw=0&acceptance=1&story=1#td');await delay(1000);
   assert(await evaluate('!!document.querySelector("#shell-bar [data-mode=dev]")'),'and remembers it');await finish();
  }
+ } else if(args.includes('--defense')) {
+ // THE HANDOVER (docs/superpowers/specs/2026-09-14-handover-gunship-call-expeditions-design.md): past the Quiver the towers fire
+ // on their own and the wave clock runs; the gunship waits for an earned call; the tank clears a nest and brings a part home
+ await go('defense-handover','index.html?sw=0&acceptance=1&cine=0&world=story&stage=6&phase=expedition#td');
+ await until('!!window.__stalheartTest && (window.__stalheartTest.state().storyLod||[]).some(l=>l.id==="stalheart")',90000);await delay(2500);
+ {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.story.phase,'expedition','the jump lands past the handover');assert.equal(s.automated,true,'automated');
+  assert.equal(await evaluate('document.querySelectorAll("#story-views [data-mount]:not([data-mount=gunship])").length'),0,'no tower mounts after the handover');
+  assert(await evaluate('!!document.querySelector("#story-views [data-view=tank]")'),'the tank is offered');
+  assert(/GUNSHIP · \d+%$/.test(await evaluate('document.querySelector("#story-views [data-mount=gunship]").textContent')),'the gunship button shows the call-in meter');
+  assert(s.expeditions.sites.filter(x=>x.state==='guarded').length===3,'the first three sites are guarded');}
+ await finish();
+ // towers fire on their own: a Rotor on its story socket kills raised fodder with no pilot
+ {const ci=await evaluate('window.__stalheartTest.state().story.socket');assert(await evaluate(`window.__stalheartTest.commitTower('rotor',${JSON.stringify(ci)})`),'a Rotor stands on the story socket');
+  const before=await evaluate('window.__stalheartTest.state().killsBySrc.tower');await evaluate('window.__stalheartTest.spawnFodder(20)');
+  await until(`window.__stalheartTest.state().killsBySrc.tower>${before}`,120000).catch(async()=>assert.fail(`no unpiloted tower kill (${JSON.stringify(await evaluate('window.__stalheartTest.state().killsBySrc'))})`));}
+ current='defense-towers-fire';await finish();
+ // the call-in: fill, call, take the seat
+ await evaluate('window.__stalheartTest.fillGunshipCall(100000)');await delay(400);
+ assert.equal(await evaluate('document.querySelector("#story-views [data-mount=gunship]").textContent'),'GUNSHIP · CALL','a full meter lights the call');
+ await evaluate('document.querySelector("#story-views [data-mount=gunship]").click()');await delay(1200);
+ await evaluate('document.querySelector("#gunship-briefing [data-skip]")?.click()');
+ await until('window.__stalheartTest.state().gunship.station && window.__stalheartTest.state().gunship.seat',15000);
+ assert.equal((await evaluate('window.__stalheartTest.state().gunshipCall')).overhead,true,'the pass is overhead');
+ current='defense-gunship-called';await finish();
+ // THE TOWERS ARE NOT SILENCED BY THE SEAT: the gunship is ridden and its trigger untouched, and a tower still kills on its own
+ {const before=await evaluate('window.__stalheartTest.state().killsBySrc.tower');await evaluate('window.__stalheartTest.spawnFodder(20)');
+  await until(`window.__stalheartTest.state().killsBySrc.tower>${before}`,60000).catch(async()=>assert.fail(`towers keep firing while the gunship is ridden (${JSON.stringify(await evaluate('window.__stalheartTest.state().killsBySrc'))})`));}
+ current='defense-towers-under-gunship';await finish();
+ await evaluate('document.querySelector("#story-views [data-view=tank]").click()');await delay(800);
+ // an expedition: clear rocket-a's nest, reach the site, bring the part to the foundry
+ {const cells=await evaluate('window.__stalheartTest.siteCells()');
+  await until('window.__stalheartTest.state().expeditions.sites.find(s=>s.id==="rocket-a").state==="guarded"',5000);
+  await delay(4000);await evaluate('window.__stalheartTest.killGuards("rocket-a")');
+  await until('window.__stalheartTest.state().expeditions.sites.find(s=>s.id==="rocket-a").state==="cleared"',10000);
+  await evaluate(`window.__stalheartTest.placeTank(${cells['rocket-a'].cell})`);
+  await until('window.__stalheartTest.state().expeditions.carrying==="rocket-a"',10000);
+  current='defense-part-carried';await finish();
+  await evaluate('window.__stalheartTest.placeTank(window.__stalheartTest.state().storyHome)');
+  await until('window.__stalheartTest.state().expeditions.sites.find(s=>s.id==="rocket-a").state==="delivered"',10000);
+  const unlocked=await evaluate('window.__stalheartTest.state().unlocked');assert(unlocked.includes('relay'),`the Relay unlocks (${unlocked})`);
+  // a hull lost while carrying drops the part back at its site
+  await delay(4000);await evaluate('window.__stalheartTest.killGuards("rocket-b")');
+  await until('window.__stalheartTest.state().expeditions.sites.find(s=>s.id==="rocket-b").state==="cleared"',10000);
+  await evaluate(`window.__stalheartTest.placeTank(${cells['rocket-b'].cell})`);
+  await until('window.__stalheartTest.state().expeditions.carrying==="rocket-b"',10000);
+  await evaluate('window.__stalheartTest.hitTank()');await delay(600);
+  assert.equal(await evaluate('window.__stalheartTest.state().expeditions.sites.find(s=>s.id==="rocket-b").state'),'cleared','the part is back at its site');}
+ current='defense-part-dropped';await finish();
  } else if(args.includes('--story-world')) {
  // THE STÅLHEART CANDIDATES IN THE GAME CAMERA — the review surface the asset owner asked for. lod() reports the FILE
  // behind each tier, and a far tier only reports once its GLB has loaded, so a switch that quietly loaded the shipped tiers,

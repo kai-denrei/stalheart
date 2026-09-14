@@ -76,6 +76,20 @@ Evidence:
 
 Supersedes: 2026-09-14-concept-audit-and-funmap-proposed
 
+## 2026-09-14 — The post-tutorial handover: automatic towers, an earned gunship call-in, expeditions that unlock towers
+
+change · accepted · 2026-09-14-handover-gunship-call-expeditions-landed
+
+Sub-project 1 of the puzzle tower defence (docs/superpowers/specs/2026-09-14-handover-gunship-call-expeditions-design.md). The story had no automated phase: towers stayed silent unless piloted, the story had no wave clock, a piloted Rotor hit 60 times harder, and towers unlocked on the wave ladder.
+
+Past the Quiver's hard cores (phase settled, or the Defend stage) every tower fires on its own at normal strength and the wave clock runs from a far breach; pilot multipliers apply only before the handover; tower mounts leave the views strip. The gunship waits in reserve: a meter fills from kill biomass (streak included) and cleared waves, a full meter calls a 120 s pass, and it restarts empty. Guarded nests stand at the landing sites; the tank clears one, carries its part to the foundry and Isao can print that tower (rocket-a Relay, rocket-b Mortar, wreck Lancer; later sites Plasma, Needle, Heptapod); a lost hull drops the part back at its site. A DEFENSE jump lands past the handover. New pure modules: automation, gunship-call, expeditions.
+
+Alternatives: Per-tower automation after each tower's own tutorial beat.; A separate defence phase with its own entry, splitting story and defence into two worlds again.; The gunship on a fixed timetable, or bought with biomass.
+
+Evidence:
+
+- npm test, npm run check, npm run build; browser --defense, --story-world, --gunship, --nav, default and --dist passed.
+
 ## 2026-09-14 — Next, not yet started: an audit of the game's concepts, not its code, through Rosewater's lessons, and a FunMap kept beside the roadmap
 
 decision · proposed · 2026-09-14-concept-audit-and-funmap-proposed

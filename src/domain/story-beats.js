@@ -43,7 +43,7 @@ export function makeStoryBeats({
   return {
     tick(dt, api) {
       clock += dt;
-      if (late && !offered) { api.unlock?.('views'); offered = true; }
+      if (late && !offered) { api.unlock?.('views'); if (phase === 'expedition') api.expeditionsBegin?.(); offered = true; }   // a jump straight into the expedition phase never crossed the study beat, so its sites open here
       // Isao's two faces play over the landing, whatever else is happening: the angry one the moment he is out of the hatch
       if (faces === 0 && clock >= faceDelays[0] && api.isao()) { api.brief?.('rough_landing'); faces = 1; }
       else if (faces === 1 && clock >= faceDelays[1]) { api.brief?.('so_much_to_build'); faces = 2; }
