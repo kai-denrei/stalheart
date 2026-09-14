@@ -22,7 +22,7 @@ Updated 2026-09-14 (PoC cleanup). Owner: the Stalheart development project; this
 ## Next priorities
 
 1. **Navigation rework** (owner, 2026-09-14): easy navigation for the player and for development, with the roadmap and the FunMap one step away.
-2. **Explosions**: the owner's new effects in `~/Dev/lab-explosions`, first for the gunship, then the Quiver and tank shells. Brief: [EXPLOSIONS-RESEARCH.md](EXPLOSIONS-RESEARCH.md).
+2. **Explosions landed** (`2026-09-14-explosions-flir-amoeba-landed`): the lab's modules at the gunship, orbital strike, tank shell and TALON impacts, the FLIR thermal view, the white amoeba first. Next: judge the look in the seat, then the FX-package explosion section and a lab picker; phone GPU cost is unmeasured.
 3. **Hold the gunship against a real horde**: measure the swarm's render cost, tune the rotary and Bofors, check that sustained fire reads as herding.
 4. Still open from the story playtests: the wall-breach freeze (~250 ms on the story planet), the Rotor's report by ear, ISAO-Birudorōn's review, the foundry in the game camera (`2026-09-14-story-playtest-open-items`).
 

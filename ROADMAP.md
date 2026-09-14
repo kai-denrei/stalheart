@@ -305,7 +305,13 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 22 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 23 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### The lab's explosions land at the gunship, strike, tank shell and TALON impacts; FLIR thermal; the white amoeba leads the first wave
+
+`2026-09-14-explosions-flir-amoeba-landed` · change · **observed**
+
+Owner: the new explosion effects in ~/Dev/lab-explosions, especially for the gunship, also the Quiver and tank shells; adopt FLIR; make the first enemy a white amoeba swapped with the phage. Spec docs/superpowers/specs/2026-09-14-explosions-flir-amoeba-design.md, plan docs/superpowers/plans/2026-09-14-explosions-flir-amoeba.md.
 
 ### Direction: leave the spherical Stålberg grid and go back to a flat world; the sphere may seed a spin-off
 
