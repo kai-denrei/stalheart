@@ -46,11 +46,12 @@ what the gunner sees; from the ground game, the side silhouette matters too.
 | large | 32 m | the gunship's 105 mm shell and the orbital strike |
 | nuclear | 60 to 120 m | the orbital strike's set piece: a column, a cap, a ground ring, a slow fade |
 
-The small one must be cheap enough to have twenty alive at once. The large
+The small one must be cheap enough to have twelve alive at once (a pool of twenty). The large
 and nuclear ones are rare and can spend: a rising column, a mushroom cap,
 a shockwave ring on the ground, embers, a lingering scorch. The nuclear cloud
-should also read as a distant background event in ordinary missions, seen
-from a tank at ground level a kilometre away.
+should also read as a background event in ordinary missions, seen from a
+tank at ground level 150 to 300 m away as a column and cap over the horizon
+(see the answers below on the planet's curvature).
 
 ## Timing
 
@@ -82,8 +83,9 @@ export function createExplosion({ palette, scale = 1, seed = 1 } = {}) {
   `tick`.
 - `seed` makes it deterministic, so two runs look the same for a screenshot.
 - `dispose` must free everything; we reap by `alive()`.
-- Record the measured cost: frame time on a mid phone with five smalls, one
-  medium and one large alive. Write it in `meta.budget`.
+- Record the measured cost: frame time on the phone stand-in (answer 3) at
+  the deciding load (answer 4): twelve smalls, one medium, one large alive.
+  Write it in `meta.budget`, with the marginal cost per small.
 
 ## The lab you build
 
