@@ -79,11 +79,9 @@ function build() {
   el.querySelector('.nt-rail').addEventListener('click', (e) => {
     const b = e.target.closest('[data-doc]'); if (b) show(b.dataset.doc);
   });
-  // typing in the find box is not a game key
-  el.addEventListener('keydown', (e) => { if (e.key !== 'Escape') e.stopPropagation(); });
+  // the keyboard while this is open (Esc closes, nothing reaches the game) is src/fx/shell-nav.js's to route
   const close = () => { el.hidden = true; };
   el.querySelector('[data-close]').addEventListener('click', close);
-  addEventListener('keydown', (e) => { if (e.key === 'Escape' && !el.hidden) { e.preventDefault(); e.stopImmediatePropagation(); close(); } }, true);
 
   function show(key) {
     el.hidden = false; current = key;

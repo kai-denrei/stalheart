@@ -33,9 +33,9 @@
 </svg>
 <div id="tab-td" class="tab tab-hidden">
     <div id="td-app"></div>
-    <!-- ⚙ opens the variables modal; ≡ stays the game-mode menu. Two buttons
-         because they are two different things, and the first cut hung the
-         modal off ≡ and buried its own nav under the tab list. -->
+    <!-- hidden: td-tab still wires the variables modal to #vars-toggle and the
+         deep link to #td-link; players reach both from the navigation shell's
+         DEV · Tuning and DEV · Tools (src/fx/shell-nav.js). -->
     <button id="vars-toggle" type="button" title="variables (V-less: ⚙)">⚙</button>
     <button id="td-link" type="button" title="deep link: copy this board — mission and seed — as a URL">&#8599;</button>
     <!-- the mobile shell's own pieces: a rotate prompt (landscape only, ruling

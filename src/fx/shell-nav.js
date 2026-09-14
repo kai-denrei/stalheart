@@ -12,6 +12,8 @@ import { DEFAULT_ENEMIES, finishJump, raiseEnemies } from './jump-to.js';
 const MODE_KEY = 'ssg.nav-mode', DEV_KEY = 'ssg.dev-face';
 // where a backslash is typing, not a menu key
 const TYPING = 'input, textarea, select, [contenteditable=""], [contenteditable="true"], .lil-gui, dialog, [role="dialog"]';
+// the overlays this shell opens over a running page; while one is up it owns the keyboard (see the keydown listener)
+const MODALS = ['docs-overlay', 'felt-capture'];
 
 export function mountShellNav({ navigate, buildText, query = new URLSearchParams(location.search) }) {
   const loc = { page: location.pathname, hash: location.hash.slice(1), search: location.search };
@@ -86,14 +88,16 @@ export function mountShellNav({ navigate, buildText, query = new URLSearchParams
     // the game's own deep link knows the board and the seed; elsewhere this page's address is the link
     link: (b) => {
       const own = document.querySelector('#td-link');
-      if (own) { own.click(); flash(b, 'copied'); return; }
-      navigator.clipboard?.writeText(location.href).then(() => flash(b, 'copied'), () => flash(b, 'copy refused'));
+      if (own) { own.click(); flash(b, 'link ready'); return; }   // the game's button writes the link into the address bar; whether it also copied is its own to say
+      if (!navigator.clipboard) { flash(b, 'no clipboard'); return; }
+      navigator.clipboard.writeText(location.href).then(() => flash(b, 'copied'), () => flash(b, 'copy refused'));
     },
     fps: () => document.dispatchEvent(new KeyboardEvent('keydown', { key: '`', bubbles: true })),
     diagnostics: (b) => {
       const raw = sessionStorage.getItem('stalheart:diagnostics');
       if (!raw) { flash(b, 'no game yet'); return; }
-      downloadJSON(JSON.parse(raw), 'stalheart-diagnostics.json');
+      let data; try { data = JSON.parse(raw); } catch { flash(b, 'unreadable'); return; }
+      downloadJSON(data, 'stalheart-diagnostics.json');
     },
     raise: (b) => flash(b, raiseEnemies(count) ? 'raised' : 'no hooks'),
   };
@@ -112,12 +116,25 @@ export function mountShellNav({ navigate, buildText, query = new URLSearchParams
 
   // capture on the window: these run before the game's own key handlers and stop the ones they use
   addEventListener('keydown', (ev) => {
+    // THE DOCS AND FELT IT ARE MODAL, AND THIS IS THE ONE PLACE THAT SAYS SO. Registered before any route, this listener
+    // runs ahead of a sentry mount's or the gunship seat's (re-added on every mount) and the game's: Esc closes the open
+    // overlay, and every other key stops here, so reading the FunMap in the seat never fires the gun. Stopping propagation
+    // cancels no default action, so typing into the find box or a note still types.
+    const modal = MODALS.map((id) => document.getElementById(id)).find((el) => el && !el.hidden);
+    if (modal) {
+      ev.stopImmediatePropagation();
+      if (ev.key === 'Escape') { ev.preventDefault(); modal.hidden = true; }   // an overlay closes by hiding
+      return;
+    }
     if (ev.key === '\\' && !ev.target.closest?.(TYPING) && !document.activeElement?.closest?.(TYPING)) {
       ev.preventDefault(); ev.stopImmediatePropagation(); setOpen(!isOpen()); return;
     }
     if (ev.key === 'Escape' && isOpen()) { ev.preventDefault(); ev.stopImmediatePropagation(); setOpen(false); }
   }, true);
-  document.addEventListener('pointerdown', (ev) => { if (isOpen() && !nav.contains(ev.target) && !bar.contains(ev.target)) setOpen(false); }, true);
+  document.addEventListener('pointerdown', (ev) => {
+    if (!isOpen() || nav.contains(ev.target) || bar.contains(ev.target)) return;
+    setOpen(false); ev.preventDefault(); ev.stopImmediatePropagation();   // the click that closes the drawer is not also a shot from the seat
+  }, true);
 
   render();
   const jump = finishJump({ query, count: () => count });

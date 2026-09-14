@@ -38,13 +38,15 @@ const routes = {
 };
 const name = location.hash.slice(1) || (workshop ? 'units' : 'td');
 // the retired roadmap tab: the workshop opens with the docs overlay on the roadmap
-if (workshop && name === 'notes') { const to = new URL(location.href); to.hash = 'units'; to.searchParams.set('doc', 'roadmap'); location.replace(to.href); }
+// a page being replaced boots nothing: location.replace() does not stop this script, and a lab would build its renderer
+let leaving = false;
+if (workshop && name === 'notes') { const to = new URL(location.href); to.hash = 'units'; to.searchParams.set('doc', 'roadmap'); location.replace(to.href); leaving = true; }
 // in the story, "the cinematic" is the arrival: ?cine=1 goes to the lab playing it, not the legacy cold open
 if (!workshop && name === 'td' && isStoryRoute(location.search) && q.get('cine') === '1') {
   const to = new URL('./labs.html', location.href);
   for (const key of ['sw', 'acceptance']) if (q.has(key)) to.searchParams.set(key, q.get(key));   // the harness switches ride along
   to.searchParams.set('land', '1'); to.hash = 'story';
-  location.replace(to.href);
+  location.replace(to.href); leaving = true;
 }
 const target = routes[name] ? name : (workshop ? 'units' : 'td');
 const root = document.getElementById(`tab-${target}`);
@@ -55,7 +57,9 @@ function navigate(url) {
   location.href = next.href;
   if (same) location.reload();
 }
-if (!root) {
+if (leaving) {
+  // one of the redirects above is replacing this page
+} else if (!root) {
   const url = new URL(gameRoutes.has(target) ? './index.html' : './labs.html', location.href);
   url.search = location.search; url.hash = target;
   location.replace(url);

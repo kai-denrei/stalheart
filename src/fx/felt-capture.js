@@ -55,11 +55,9 @@ function build() {
     out.focus(); out.select();   // the selection is the fallback where the clipboard refuses
     navigator.clipboard?.writeText(out.value).then(() => { status.textContent = 'copied'; }, () => { status.textContent = 'selected: copy it by hand'; });
   });
-  // typing a note is not a game key
-  el.addEventListener('keydown', (e) => { if (e.key !== 'Escape') e.stopPropagation(); });
+  // the keyboard while this is open (Esc closes, typing a note is not a game key) is src/fx/shell-nav.js's to route
   const close = () => { el.hidden = true; };
   el.querySelector('[data-close]').addEventListener('click', close);
-  addEventListener('keydown', (e) => { if (e.key === 'Escape' && !el.hidden) { e.preventDefault(); e.stopImmediatePropagation(); close(); } }, true);
   renderList();
   return el;
 }

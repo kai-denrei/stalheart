@@ -332,6 +332,28 @@ try{
   await go('nav-narrow-lab','labs.html?sw=0#beam',680,800);await delay(1500);
   assert(await evaluate('(()=>{const e=document.querySelector(".tab:not(.tab-hidden) .lil-gui.root")||document.querySelector(".lil-gui.root");return !!e&&getComputedStyle(e).display!=="none";})()'),'the beam lab panel opens in a narrow desktop window');
   await finish();
+  // THE OVERLAYS OWN THE KEYBOARD IN THE SEAT: the seat's key listener is added after the shell's, and it used to swallow
+  // Esc and take Space as the trigger while the FunMap was open. Read the FunMap from the gunship: Space does not fire,
+  // typing into find still types, Esc closes it, and Space is the trigger again once it is gone.
+  await go('nav-seat-docs','index.html?sw=0&cine=0&world=story&stage=6&acceptance=1&gunship=station&skip=gunship&enemies=0&brief=0#td');
+  await until('!!window.__stalheartTest && window.__stalheartTest.state().gunship.seat',120000);await delay(1500);
+  await evaluate('window.__stalheartTest.gunshipGun("rotary")');await delay(300);
+  {const rotary=async()=>(await evaluate('window.__stalheartTest.state().explosions')).spawned?.['gunship.rotary']??0;
+   const trigger=async()=>{await send('Input.dispatchKeyEvent',{type:'keyDown',key:' ',code:'Space'});await delay(700);await send('Input.dispatchKeyEvent',{type:'keyUp',key:' ',code:'Space'});await delay(2400);};
+   await click('#shell-bar [data-mode=dev]');await delay(300);await tap('#shell-nav [data-entry=doc-funmap]');await until('document.querySelectorAll("#docs-overlay .nt-body h2").length>2');
+   await evaluate('document.activeElement?.blur()');
+   const before=await rotary(),heat=(await evaluate('window.__stalheartTest.state().gunship')).heat;await trigger();
+   assert.equal(await rotary(),before,'Space over the FunMap in the seat does not fire the gun');
+   assert.equal((await evaluate('window.__stalheartTest.state().gunship')).heat,heat,'nor heat the barrels');
+   await evaluate('document.querySelector("#docs-overlay [data-find]").focus()');
+   for(const c of 'ram')await send('Input.dispatchKeyEvent',{type:'keyDown',key:c,code:'Key'+c.toUpperCase(),text:c}),await send('Input.dispatchKeyEvent',{type:'keyUp',key:c,code:'Key'+c.toUpperCase()});
+   assert.equal(await evaluate('document.querySelector("#docs-overlay [data-find]").value'),'ram','typing into find still types');
+   current='nav-seat-docs';await finish();
+   await key('Escape','Escape');assert(await evaluate('document.querySelector("#docs-overlay").hidden'),'Esc closes the docs in the seat');
+   assert(await evaluate('window.__stalheartTest.state().gunship.seat'),'and the gunner is still seated');
+   await evaluate('document.activeElement?.blur()');await trigger();
+   assert(await rotary()>before,`Space fires again once the docs are closed (${JSON.stringify(await evaluate('window.__stalheartTest.state().explosions'))})`);}
+  current='nav-seat-fires';await finish();
  } else {
   await go('nav-dist-dev','index.html?sw=0&acceptance=1&story=1&dev=1#td');await delay(1000);
   assert(await evaluate('!!document.querySelector("#shell-bar [data-mode=dev]")'),'?dev=1 offers DEV on a release');await finish();
