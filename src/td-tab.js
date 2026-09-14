@@ -12357,7 +12357,7 @@ export function initTdTab(root) {
       const gate = spawnPoints.filter((sp) => sp.alive).sort((a, b) => dh[a.ci] - dh[b.ci])[0];
       if (gate) for (let i = 0; i < W; i++) spawnQueue.push({ type: 'amoeba', sp: gate, at: spawnClock + i * 0.05 });
       waveActive = true;
-      console.log(`STRESS placed ${Math.min(T, roofs.length)} slow towers, queued ${gate ? W : 0} phages at gate ${gate ? gate.ci : '-'}`);
+      console.log(`STRESS placed ${Math.min(T, roofs.length)} slow towers, queued ${gate ? W : 0} amoebas at gate ${gate ? gate.ci : '-'}`);
     }, 1200);
     const perfAtS = parseFloat(urlParams.get('perf') || '6');
     setTimeout(() => {
@@ -13881,7 +13881,7 @@ export function initTdTab(root) {
         if (ci < 0) return false;
         openShop(ci, innerWidth / 2, innerHeight / 2); return true;
       },
-      begin: () => { endShot(); paused = false; }, mountGunship: () => { if (!storyViews) storyApi.unlock('views'); storyViews.station(onStation(gunship), phaseLeft(gunship)); document.querySelector('#story-views [data-mount="gunship"]')?.click(); return !!pilot?.gunship; }, gunshipHold: (on) => { if (pilot) pilot.state.held = !!on; }, gunshipGun: (k) => selectGun(gunship, k, GUNSHIP_GUNS), spawnFodder: (n, type = 'phage') => { if (!story) return 0; if (!story.source?.alive) storyApi.breach(gunshipFar()); for (let i = 0; i < n; i++) storyApi.spawn(type, story.source.ci, { spread: 0.8, delay: i * 0.12 }); return n; },   /* the skip panel's enemies: a breach opens on the lane outside the gate if none is live, and they rise out of it staggered (emergence only runs from a real breach) */
+      begin: () => { endShot(); paused = false; }, mountGunship: () => { if (!storyViews) storyApi.unlock('views'); storyViews.station(onStation(gunship), phaseLeft(gunship)); document.querySelector('#story-views [data-mount="gunship"]')?.click(); return !!pilot?.gunship; }, gunshipHold: (on) => { if (pilot) pilot.state.held = !!on; }, gunshipGun: (k) => selectGun(gunship, k, GUNSHIP_GUNS), spawnFodder: (n, type = 'amoeba') => { if (!story) return 0; if (!story.source?.alive) storyApi.breach(gunshipFar()); for (let i = 0; i < n; i++) storyApi.spawn(type, story.source.ci, { spread: 0.8, delay: i * 0.12 }); return n; },   /* the skip panel's enemies: a breach opens on the lane outside the gate if none is live, and they rise out of it staggered (emergence only runs from a real breach) */
       clearSector: () => {
         endShot(); 
         
