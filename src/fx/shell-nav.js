@@ -17,6 +17,10 @@ export function mountShellNav({ navigate, buildText, query = new URLSearchParams
   const loc = { page: location.pathname, hash: location.hash.slice(1), search: location.search };
   const dev = devModeOn({ buildToken: document.querySelector('meta[name="cb"]')?.content, search: location.search, stored: storage.getItem(DEV_KEY) });
   if (dev.store === '1') storage.setItem(DEV_KEY, '1'); else if (dev.store === '') storage.removeItem(DEV_KEY);
+  // a phone does not need DEV: labs, tuning, docs and tools are desktop-only furniture. CSS alone would hide the
+  // toggle and the drawer section but leave `mode` stuck on 'dev' for a lab page opened on a phone, which reads as
+  // an empty drawer; turning DEV off here also makes currentMode() fall back to playtest.
+  if (matchMedia('(pointer: coarse)').matches) dev.on = false;
   const active = activeEntry(NAV_ENTRIES, loc);
   let mode = currentMode(NAV_ENTRIES, loc, { stored: storage.getItem(MODE_KEY), devOn: dev.on });
   const onStory = active === 'story' || active === 'defend' || !!active?.startsWith('jump-');

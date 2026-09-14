@@ -316,6 +316,18 @@ try{
   await click('#shell-bar [data-mode=dev]');await delay(300);
   assert(!(await visible('#shell-nav [data-group=tuning]')),'no tuning where the page has no variables');
   await finish();
+  // TOUCH: no DEV on a phone, and PLAYTEST's own targets meet the 44px minimum
+  await go('nav-phone','index.html?sw=0&acceptance=1&story=1&coarse=1#td',844,390);await delay(1500);
+  assert(!(await visible('#shell-bar [data-mode=dev]')),'no DEV toggle on a phone');
+  assert((await evaluate('document.querySelector("#shell-bar [data-mode=playtest]").getBoundingClientRect().height'))>=44,'the PLAYTEST toggle meets the 44px touch target');
+  await click('#shell-bar [data-mode=playtest]');await delay(300);
+  const stage=await evaluate('(()=>{const r=document.querySelector("#shell-nav .shell-small").getBoundingClientRect();return {w:r.width,h:r.height};})()');
+  assert(stage.h>=44&&stage.w>=44,`a .shell-small stage button meets the 44px touch target (${JSON.stringify(stage)})`);
+  await finish();
+  // NARROW DESKTOP: a fine pointer under 700px wide still gets the beam lab's lil-gui panel
+  await go('nav-narrow-lab','labs.html?sw=0#beam',680,800);await delay(1500);
+  assert(await evaluate('(()=>{const e=document.querySelector(".tab:not(.tab-hidden) .lil-gui.root")||document.querySelector(".lil-gui.root");return !!e&&getComputedStyle(e).display!=="none";})()'),'the beam lab panel opens in a narrow desktop window');
+  await finish();
  } else {
   await go('nav-dist-dev','index.html?sw=0&acceptance=1&story=1&dev=1#td');await delay(1000);
   assert(await evaluate('!!document.querySelector("#shell-bar [data-mode=dev]")'),'?dev=1 offers DEV on a release');await finish();

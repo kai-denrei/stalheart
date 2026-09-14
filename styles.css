@@ -1224,7 +1224,7 @@ html, body {
   z-index: 5;
 }
 
-/* --- cache badge: top-left, before the tab bar (its own styles are inline) --- */
+/* --- cache badge: top-left, clear of the navigation shell's bar (its own styles are inline) --- */
 #cb-badge {
   top: max(10px, env(safe-area-inset-top)) !important;
   left: max(12px, env(safe-area-inset-left)) !important;
@@ -1241,9 +1241,8 @@ html, body {
 
 /* --- mobile play mode: chrome hides, minimap moves clear of thumbs ------- */
 @media (pointer: coarse), (max-width: 700px) {
-  /* the badge and the lil-gui roots stay hidden on a phone */
-  body #cb-badge,
-  body .tab .lil-gui.root {
+  /* the badge stays hidden on a phone, and in any narrow window */
+  body #cb-badge {
     display: none !important;
   }
   /* ACTIVE PLAY hides the panels and the badge */
@@ -1273,6 +1272,14 @@ html, body {
     /* the map is min(240px, 32vmin) wide plus its 12px inset; leave that
        and a gap, so the wave line stops rather than running underneath */
     max-width: calc(100vw - min(240px, 32vmin) - 36px);
+  }
+}
+
+/* lab lil-gui panels are DEV-only furniture: hide them on a real phone, but a
+   narrow desktop window with a mouse still needs to open them */
+@media (pointer: coarse) {
+  body .tab .lil-gui.root {
+    display: none !important;
   }
 }
 
@@ -1455,15 +1462,15 @@ html, body {
 /* SPECIFICITY, twice over. These have to out-rank `.tab .lil-gui.root`
    (0,3,0) up at line 1170, which pins every lab panel to top:0 right:0 —
    a `.lil-gui.lab-gui-left` rule (0,2,0) lost to it silently, and the symptom
-   was the panel moving LEFT while its top stayed at 0, still under the ☰.
+   was the panel moving LEFT while its top stayed at 0, still under the shell bar.
    Losing half a rule is a good deal harder to read than losing all of it. */
 .tab .lil-gui.root.lab-gui-left,
 .tab .lil-gui.root.lab-gui-right {
   position: absolute; overflow-y: auto;
 }
-/* the LEFT one starts BELOW the top strip: the hamburger and the home/tab
-   buttons live there and sat straight on the first control, which is how the
-   sentry selector ended up unreadable behind a ☰ */
+/* the LEFT one starts BELOW the top strip: the navigation shell's bar lives
+   there and sat straight on the first control, which is how the sentry
+   selector ended up unreadable behind it */
 .tab .lil-gui.root.lab-gui-left {
   left: 8px; right: auto; top: 62px; max-height: calc(100vh - 100px);
 }
@@ -3736,7 +3743,7 @@ body.mobile-shell #td-toast .wave-role, body.mobile-shell #td-wave .wave-name, b
     border-radius: 12px 12px 0 0; box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.5);
   }
   #tab-metal .lil-gui.root .controller { touch-action: pan-y; }
-  #metal-hud { bottom: auto; top: 104px; left: 12px; right: 12px; font-size: 11px; }   /* under the tab bar's home button */
+  #metal-hud { bottom: auto; top: 104px; left: 12px; right: 12px; font-size: 11px; }   /* under the navigation shell's bar */
   #metal-copy { top: 12px; bottom: auto; left: auto; right: 64px; }
 }
 
@@ -3925,3 +3932,15 @@ body.mobile-shell #td-toast .wave-role, body.mobile-shell #td-wave .wave-name, b
 #shell-nav .shell-count input { width: 64px; font: inherit; color: #dff4ff; background: rgba(12, 26, 38, 0.85); border: 1px solid #2b6b96; border-radius: 6px; padding: 6px; }
 body.playing:not(.shell-open) #shell-bar { opacity: 0.32; }
 #vars-toggle, #td-link { display: none !important; }
+
+/* touch only: DEV (labs, tuning, docs, tools) is desktop-only, so a phone
+   never sees its toggle or drawer section, and PLAYTEST's own targets grow
+   to the 44px touch minimum. Desktop sizes are untouched. */
+@media (pointer: coarse) {
+  #shell-bar .shell-toggle button[data-mode="dev"],
+  #shell-nav section[data-mode="dev"] {
+    display: none !important;
+  }
+  #shell-bar .shell-toggle button { min-height: 44px; }
+  #shell-nav .shell-small { min-width: 44px; min-height: 44px; }
+}
