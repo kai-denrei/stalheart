@@ -43,7 +43,6 @@
     "src/grid.js",
     "src/heptapod.js",
     "src/hull.js",
-    "src/impact-tab.js",
     "src/impactfx.js",
     "src/isaobriefs.js",
     "src/jelly.js",

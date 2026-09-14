@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { buildWorld } from '../src/domain/world-recipe.js';
 import { STORY_RECIPE, STORY_CLEARING, STORY_SANITY } from '../src/content/story-defaults.js';
 import { BLOCKED } from '../src/dungeon.js';
-// the default world is the game's pinned recipe (docs/ROCKET-PLANET.md sanity)
+// the default world is the game's pinned recipe (seed 7, 500 points)
 const params = { seed: 7, points: 500, relaxIters: 80, rooms: 16, roomRadius: 4, extraCorridors: 8, corridorWidth: 1 };
 const d = buildWorld({ world: 'default', params });
 assert.equal(d.world, 'default'); assert.equal(d.dungeon.tags.length, 2236); assert.equal(d.dungeon.heart, 700); assert.equal(d.wallHeight, null); assert.equal(d.planet, null);

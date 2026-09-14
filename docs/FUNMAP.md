@@ -1,5 +1,7 @@
 # FunMap
 
+**Identity: resourceful joy under pressure** (owner, 2026-09-14, `2026-09-14-identity-resourceful-joy-under-pressure`). The pressure is the swarm, the clock and the hardware; the joy is Isao, the builder who rebuilds, and a colony grown out of the wreck it arrived in. Every component answers to one or the other.
+
 A companion to `ROADMAP.md`. The roadmap lists open items; this page is about how the game feels. Each line is a felt observation, dated, tagged with the lesson it touches. It is not a task list. Diagnoses come from the owner's playtests; the prescriptions stay with the design (Rosewater 19).
 
 Lenses: Mark Rosewater's twenty lessons (R1–R20, from `~/Dev/game-design-lessons`) and Sid Meier's test that a game is a series of interesting decisions (M). `docs/PLAYFEEL.md` still holds the owner's raw notes; this page reads them together with the log.
