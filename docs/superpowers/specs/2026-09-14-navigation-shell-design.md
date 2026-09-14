@@ -25,7 +25,7 @@ The owner wants easy navigation for playing and for developing, with the roadmap
   - PLAYTEST · **Story**: Story (`index.html?story=1#td`); Stages 0–8 as one row of small buttons; jump points Rotor, Quiver, Study, Gunship (the entries of today's `STORY_SKIPS`, same URLs; unwired ones listed and disabled).
   - PLAYTEST · **Defend**: the finished base (`?story=8`).
   - PLAYTEST · **Arrival**: the landing cinematic (`labs.html?land=1#story`).
-  - PLAYTEST · footer row: Record (`#record`), Settings (`settings.html`), Sound (toggles the existing mute).
+  - PLAYTEST · footer row: Record (`#record`), Settings (`settings.html`). (A Sound toggle was dropped at planning: the game has no single mute to point it at, and building one is not a navigation change.)
   - DEV · **Workshop**: units, swarm, beam, audio, metal, story, sentry / impact, breach, sim.
   - DEV · **Docs**: FunMap, Roadmap, Devlog, Practices.
   - DEV · **Tuning** (game pages only; absent where the page has no variables panel): Game, Hover, Recoil, Orbital strike, Plasma, Bloom, Sound, and Lab when `lab` is on. Each opens the existing `#td-vars` modal on that page (`{ tool: 'vars', page }`); the modal, its pages and every control stay as they are, only the way in changes. The list is read from the modal's own pages at runtime, so a new lil-gui folder shows up without touching `nav.js`.
