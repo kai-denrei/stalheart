@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { NAV_ENTRIES } from '../src/content/nav.js';
-import { activeEntry, currentMode, entryUrl, modeOf, placeLabel, storyStage } from '../src/core/nav-match.js';
+import { activeEntry, currentMode, entryUrl, modeOf, placeLabel, storyStage, MODE_SWITCHES } from '../src/core/nav-match.js';
 
 const loc = (page, hash, search = '') => ({ page, hash, search });
 const at = (...a) => activeEntry(NAV_ENTRIES, loc(...a));
@@ -40,4 +40,6 @@ assert.equal(entryUrl({ url: 'index.html?world=story&stage=6&skip=gunship#td' },
   'index.html?sw=0&world=story&stage=6&skip=gunship&enemies=24#td');
 assert.equal(entryUrl({ page: 'labs.html', hash: 'beam', params: {} }, '?story=4&sw=0'), 'labs.html?sw=0#beam');
 assert.equal(entryUrl({ page: 'settings.html', hash: '', params: {} }, ''), 'settings.html');
+assert.ok(MODE_SWITCHES.includes('phase'), 'a story phase is a mode switch');
+assert.equal(entryUrl({ page: 'index.html', hash: 'td', params: { story: '1' } }, '?sw=0&phase=expedition'), 'index.html?sw=0&story=1#td', 'leaving drops the phase');
 console.log('Nav match: routes, modes, place labels and entry URLs hold.');

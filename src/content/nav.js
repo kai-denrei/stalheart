@@ -12,6 +12,7 @@ export const STORY_JUMPS = Object.freeze([
   { id: 'quiver', label: 'QUIVER', title: 'not wired yet: the hard cores and the Quiver hand-over', url: null, wired: false },
   { id: 'study', label: 'STUDY', title: 'not wired yet: Isao\'s vibration-language analysis', url: null, wired: false },
   { id: 'gunship', label: 'GUNSHIP', title: 'the gunship on station with the seat taken, enemies up and waves continuing', url: 'index.html?world=story&stage=6&cine=0&acceptance=1&gunship=station&skip=gunship#td', wired: true },
+  { id: 'defense', label: 'DEFENSE', title: 'after the handover: automatic towers, the tank, the gunship call-in, the expeditions', url: 'index.html?world=story&stage=6&cine=0&acceptance=1&phase=expedition#td', wired: true },
 ].map(Object.freeze));
 
 export const NAV_DOCS = Object.freeze([

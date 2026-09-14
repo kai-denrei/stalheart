@@ -5,7 +5,7 @@
 import * as THREE from '../../vendor/three.module.js';
 import { buildWorld } from '../domain/world-recipe.js';
 import { planBase } from '../domain/base-plan.js';
-import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT, STORY_SCALE, STORY_BREACH, STORY_QUIVER, STORY_DAY, STORY_FODDER } from '../content/story-defaults.js';
+import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT, STORY_SCALE, STORY_BREACH, STORY_QUIVER, STORY_DAY, STORY_FODDER, STORY_HANDOVER, STORY_EXPEDITIONS } from '../content/story-defaults.js';
 import { CONTENT } from '../content/runtime.js';
 import { FOUNDRY_TUNE } from '../content/foundry.js';
 export { STORY_SOUNDS };
@@ -13,6 +13,8 @@ import { ISLANDS, STRUCTURES, KIT, STAGES, withLandmarkTiers, landmarkTierMode }
 import { createStoryBase } from '../fx/story-base.js';
 import { isStoryRoute } from '../core/story-route.js';
 import { makeStoryBeats } from '../domain/story-beats.js';
+import { STORY_PHASES } from '../domain/automation.js';
+import { makeExpeditions } from '../domain/expeditions.js';
 import { createStoryHud } from '../fx/story-hud.js';
 import { planetBake } from './planet-bake.js';
 import { BLOCKED, PATH } from '../dungeon.js';
@@ -31,6 +33,7 @@ export function readStoryQuery(search) {
     threat: Math.min(4, Math.max(0.1, parseFloat(q.get('threat') || '') || (short ? 0.35 : 1))),
     stage: Math.min(STAGES.length - 1, Math.max(0, parseInt(q.get('stage') ?? q.get('story') ?? '', 10) || (story ? 1 : 0))),
     landmarks: landmarkTierMode(search),   // ?landmarks=candidate: review the pinned runtime LOD candidates in the game camera
+    phase: STORY_PHASES.includes(q.get('phase')) ? q.get('phase') : null,   // ?phase=expedition: a jump past the handover starts the beats there
   };
 }
 
@@ -52,7 +55,7 @@ function holdRing(built, planet, from, [lo, hi], perch = null) {
   return ring;
 }
 
-export function buildGameWorld({ world, params, stage, scene, sfx = null, landmarks = 'shipped' }) {
+export function buildGameWorld({ world, params, stage, scene, sfx = null, landmarks = 'shipped', phase = null }) {
   const built = buildWorld({ world, params, story: { recipe: STORY_RECIPE, clearing: STORY_CLEARING, bake: planetBake() } });
   if (!built.planet) return { ...built, base: null };
   const { planet } = built;
@@ -70,7 +73,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   if (plan.cells.fodder >= 0) built.dungeon.spawn = plan.cells.fodder;
   const story = stage >= 1 ? {
     sockets: new Set(), home: plan.cells.landing, socketLift: 0,
-    beats: makeStoryBeats({ fodderEvery: STORY_FODDER.every, fodderAlive: STORY_FODDER.alive, fodderTotal: STORY_FODDER.total, fodderEmerge: STORY_FODDER, socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, rotorDelay: 2.5, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER, foundry: FOUNDRY_TUNE }),
+    beats: makeStoryBeats({ fodderEvery: STORY_FODDER.every, fodderAlive: STORY_FODDER.alive, fodderTotal: STORY_FODDER.total, fodderEmerge: STORY_FODDER, socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, rotorDelay: 2.5, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER, foundry: FOUNDRY_TUNE, startPhase: phase ?? 'landed' }),
     // the story's Quiver fires the TALON: the game's quiver config with the lab's heavy round on top
     missiles: { quiver: { ...CONTENT.missiles.quiver, ...STORY_QUIVER.missile } },
     // the hard cores' holding ring: lane cells hold[0]..hold[1] hops outside the forward cell; a held one only wanders within it
@@ -80,6 +83,9 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     sealed: (ci) => plan.gate !== null && ci === plan.gate.cell && !base.gate().open,
     inside: (ci) => planet.clearing.cells.has(ci),
     pilot: STORY_PILOT, breachShot: STORY_BREACH, day: STORY_DAY,
+    handover: { ...STORY_HANDOVER, stage },   // the phase and stage the towers turn automatic (src/domain/automation.js)
+    expeditions: makeExpeditions(STORY_EXPEDITIONS.sites),
+    siteCells: Object.fromEntries(plan.structures.filter((s) => s.anchor === 'open' && s.cell >= 0).map((s) => [s.id, { cell: s.cell, clear: s.clear }])),
     // the hull's size in this world, and the bays as berths once the tank bay stands: the game's deploy
     // starts a hull in its bay and drives it straight out of the doors (bay 3 first, then 2, then 1)
     tankUnit: STORY_SCALE.tankUnit,

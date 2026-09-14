@@ -23,13 +23,17 @@ export function makeStoryBeats({
   socket, foundry = null, lane = -1, fodder = -1, gate = -1, rotorDelay = 2, key = 'rotor',
   fodderType = 'amoeba', fodderEvery = 2.5, fodderAlive = 8, fodderTotal = 20, fodderEmerge = null,
   controlDelay = 1.5, tremorDelay = 1.5, breachDelay = 4, overrideDelay = 2.5,
-  faceDelays = [0.6, 4], commsKills = 5, harvestKills = 10, quiverSocket = -1, quiver = null,
+  faceDelays = [0.6, 4], commsKills = 5, harvestKills = 10, quiverSocket = -1, quiver = null, startPhase = 'landed',
 }) {
   const gated = gate >= 0 && fodder >= 0;
   // THE FOUNDRY PAYS (owner, 2026-09-14): with a foundry tune the grants are barrels of feedstock cut from the rocket, not conjured
   const fd = foundry ? makeFoundry(foundry) : null;
   let quiverOrdered = false;
-  let phase = 'landed', clock = 0, orderedAt = null, readyAt = null, spawned = 0, nextSpawn = 0, at = 0, faces = 0, said = new Set(), hardcores = 0;
+  let phase = startPhase, clock = 0, orderedAt = null, readyAt = null, spawned = 0, nextSpawn = 0, at = 0, faces = 0, said = new Set(), hardcores = 0;
+  // A LATE START (a jump past the handover): the landing faces are already said, and the views strip is offered on the first tick
+  const late = startPhase !== 'landed';
+  let offered = false;
+  if (late) faces = 2;
   const enter = (p) => { phase = p; at = clock; };
   const spawnTick = (api) => {
     if (spawned >= fodderTotal || clock < nextSpawn) return;
@@ -39,6 +43,7 @@ export function makeStoryBeats({
   return {
     tick(dt, api) {
       clock += dt;
+      if (late && !offered) { api.unlock?.('views'); offered = true; }
       // Isao's two faces play over the landing, whatever else is happening: the angry one the moment he is out of the hatch
       if (faces === 0 && clock >= faceDelays[0] && api.isao()) { api.brief?.('rough_landing'); faces = 1; }
       else if (faces === 1 && clock >= faceDelays[1]) { api.brief?.('so_much_to_build'); faces = 2; }
@@ -71,11 +76,12 @@ export function makeStoryBeats({
       }
       else if (phase === 'quiver-piloting') {
         if (hardcores < 2 && clock >= nextSpawn) { api.spawn(quiver.hardcore, fodder); hardcores = 2; }
-        if (hardcores >= 2 && api.enemies() === 0) { api.brief?.('quiver_cleared'); api.unlock?.('views'); said.add('quiver_cleared'); enter('settled'); }
+        if (hardcores >= 2 && api.enemies() === 0) { api.brief?.('quiver_cleared'); said.add('quiver_cleared'); enter('settled'); api.unlock?.('views'); }
       } else if (phase === 'settled' && quiver && clock - at >= (quiver.studyDelay ?? 3)) { api.closeup?.('isao'); api.brief?.('vibration_study'); said.add('vibration_study'); enter('study-talk'); }
       else if (phase === 'study-talk' && clock - at >= 0.5 && !api.briefing?.()) { api.screen?.('synthetic'); enter('study'); }   // the lines run out (or were seen before), then the screen
       else if (phase === 'study' && !api.screenOpen?.()) { api.brief?.('rocket_sites'); api.sites?.(); api.planetView?.(); said.add('rocket_sites'); enter('expedition'); }
     },
+    phase: () => phase,
     state: () => ({ phase, clock: +clock.toFixed(2), socket, orderedAt, readyAt, spawned, gated, said: [...said], hardcores, foundry: fd ? foundryState(fd) : null }),
   };
 }

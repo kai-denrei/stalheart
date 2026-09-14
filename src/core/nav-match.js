@@ -3,7 +3,7 @@
 import { isStoryRoute } from './story-route.js';
 
 // the switches that belong to a mode; leaving a mode drops them, harness switches (sw, acceptance, dev, fps) ride along
-export const MODE_SWITCHES = Object.freeze(['story', 'stage', 'world', 'heart', 'threat', 'land', 'cine', 'skip', 'gunship', 'brief', 'enemies', 'doc']);
+export const MODE_SWITCHES = Object.freeze(['story', 'stage', 'world', 'heart', 'threat', 'land', 'cine', 'skip', 'gunship', 'brief', 'enemies', 'doc', 'phase']);
 
 const pageOf = (page) => (/labs\.html$/.test(page) ? 'labs.html' : /settings\.html$/.test(page) ? 'settings.html' : 'index.html');
 

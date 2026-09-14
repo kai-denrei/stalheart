@@ -4627,7 +4627,7 @@ export function initTdTab(root) {
     heartCalloutCd = 0; streakMark = 0;
     ramCombo = 0; ramComboT = 0; syncCombo();
     breachedCells.clear(); explosions.clear(); sealedBreachCells.clear(); // a NEW world owes nothing to the old one's holes, its fire or its sealed sinkholes
-    const built = buildGameWorld({ world: storyQuery.world, params, stage: storyQuery.stage, landmarks: storyQuery.landmarks, scene, sfx });
+    const built = buildGameWorld({ world: storyQuery.world, params, stage: storyQuery.stage, landmarks: storyQuery.landmarks, phase: storyQuery.phase, scene, sfx });
     mesh = built.mesh; dungeon = built.dungeon; if (built.wallHeight) params.wallHeight = built.wallHeight; storyBase?.dispose(); storyBase = built.base; foundryFx?.dispose(); foundryFx = null; story = built.story ?? null; storyMonitor?.dispose(); storyMonitor = story ? createStoryMonitor(root) : null; storyScope?.dispose(); storyScope = story ? createStoryScope(root) : null; daylight = story ? createDaylight({ hemi, sun, bg: mainBg, day: story.day.day, tune: story.day }) : null;   // the story planet has a day   // 4 m walls on the story sphere; the story's islands, structures, sockets and beats at the requested stage
     graph = dungeon.graph; cellSide = mesh.defaultSide;
     // THE CAMP, BEFORE ANY ACTOR IS PLACED. Berth cells are graph maths,

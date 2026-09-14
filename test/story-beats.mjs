@@ -111,4 +111,21 @@ console.log('Story beats: faces, Rotor print, tremor, breach, approach, override
   assert.equal(beats.state().foundry.phase, 'spent', 'three barrels and the rocket is spent');
   assert.equal(kinds(g, 'grant').length, 3, 'three grants in all, one per barrel');
 }
+{
+  // A JUMP PAST THE HANDOVER: the beats start at a later phase, offer the views once, replay no landing faces
+  const g = fakeGame();
+  const unlocks = [];
+  g.api.unlock = (what) => { unlocks.push(what); };
+  const beats = makeStoryBeats({ socket: 1, startPhase: 'expedition' });
+  assert.equal(beats.phase(), 'expedition');
+  beats.tick(0.5, g.api); beats.tick(0.5, g.api);
+  assert.equal(beats.phase(), 'expedition', 'nothing moves it back');
+  assert.deepEqual(unlocks, ['views'], 'the views strip is offered once on a late start');
+  assert.ok(!g.log.some((l) => l[0] === 'brief' && (l[1] === 'rough_landing' || l[1] === 'so_much_to_build')), 'no landing faces on a late start');
+}
+{
+  // THE HANDOVER ORDER: the Quiver's wave clears into `settled` BEFORE the views are offered again, so the strip sees the automated phase
+  const src = (await import('node:fs')).readFileSync(new URL('../src/domain/story-beats.js', import.meta.url), 'utf8');
+  assert.match(src, /enter\('settled'\);\s*api\.unlock\?\.\('views'\)/, 'settled is entered before the views are offered');
+}
 console.log('story-beats: the foundry pays');
