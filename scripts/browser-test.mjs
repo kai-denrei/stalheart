@@ -249,6 +249,7 @@ try{
   await evaluate('window.__stalheartTest.gunshipGun("bofors")');await evaluate('window.__stalheartTest.gunshipHold(true)');await delay(400);await evaluate('window.__stalheartTest.gunshipHold(false)');
   await delay(3000);{const x=await evaluate('window.__stalheartTest.state().explosions');assert(x.spawned['gunship.bofors']>0,`the Bofors shell bursts on landing (${JSON.stringify(x)})`);}
   current='gunship-bofors-burst';await finish();
+  await until('window.__stalheartTest.state().explosions.live===0',5000).catch(async()=>assert.fail(`the bursts are reaped once they burn out (${JSON.stringify(await evaluate('window.__stalheartTest.state().explosions'))})`));
   // THE GUNSHIP'S OWN 105: paint, launch, the shell falls from the seat, the blast lands, then the reload is read
   await evaluate('window.__stalheartTest.gunshipGun("heavy")');await delay(300);await evaluate('window.__stalheartTest.gunshipHold(true)');await delay(200);
   assert.equal((await evaluate('window.__stalheartTest.state().gunship.heavy')).phase,'painted','the first press paints');

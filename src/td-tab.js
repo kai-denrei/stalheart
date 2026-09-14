@@ -347,7 +347,7 @@ export function initTdTab(root) {
   scene.background = mainBg;
 
   const camera = new THREE.PerspectiveCamera(68, 1, 0.004, 50);
-  const postfx = makeBloom(renderer, scene, camera, { scale: tier.bloomScale }); const explosions = createExplosions(scene, { onError: (error) => record('explosions.unavailable', { message: error.message }) }); explosions.prewarm(renderer, camera); const explode = (use, p) => explosions.spawn(use, p, norm3(p), cellSide);   // the lab's explosions (src/fx/explosions.js); callers keep their dot bursts when this returns false
+  const postfx = makeBloom(renderer, scene, camera, { scale: tier.bloomScale }); const explosions = createExplosions(scene, { onError: (error) => record('explosions.unavailable', { message: error.message }) }); const explode = (use, p) => explosions.spawn(use, p, norm3(p), cellSide);   // the lab's explosions (src/fx/explosions.js); callers keep their dot bursts when this returns false
   // sound. The context can only be born on a user gesture, so arm() wires
   // one-shot listeners and the first tap/keypress creates it. Until then
   // every play() is a silent no-op -- the game never waits on audio.
@@ -565,7 +565,7 @@ export function initTdTab(root) {
   scene.add(sun);
   const fill = new THREE.DirectionalLight(0x8a96c8, 0.8);
   fill.position.set(-2.5, -1.5, -3);
-  scene.add(fill);
+  scene.add(fill); explosions.prewarm(renderer, camera);
 
   function resize() {
     const w = container.clientWidth || 1;
@@ -4626,7 +4626,7 @@ export function initTdTab(root) {
     dangerWarnedWave = -1;
     heartCalloutCd = 0; streakMark = 0;
     ramCombo = 0; ramComboT = 0; syncCombo();
-    breachedCells.clear(); // a NEW world owes nothing to the old one's holes
+    breachedCells.clear(); explosions.clear(); // a NEW world owes nothing to the old one's holes, or its fire
     const built = buildGameWorld({ world: storyQuery.world, params, stage: storyQuery.stage, landmarks: storyQuery.landmarks, scene, sfx });
     mesh = built.mesh; dungeon = built.dungeon; if (built.wallHeight) params.wallHeight = built.wallHeight; storyBase?.dispose(); storyBase = built.base; foundryFx?.dispose(); foundryFx = null; story = built.story ?? null; storyMonitor?.dispose(); storyMonitor = story ? createStoryMonitor(root) : null; storyScope?.dispose(); storyScope = story ? createStoryScope(root) : null; daylight = story ? createDaylight({ hemi, sun, bg: mainBg, day: story.day.day, tune: story.day }) : null;   // the story planet has a day   // 4 m walls on the story sphere; the story's islands, structures, sockets and beats at the requested stage
     graph = dungeon.graph; cellSide = mesh.defaultSide;
