@@ -128,4 +128,26 @@ console.log('Story beats: faces, Rotor print, tremor, breach, approach, override
   const src = (await import('node:fs')).readFileSync(new URL('../src/domain/story-beats.js', import.meta.url), 'utf8');
   assert.match(src, /enter\('settled'\);\s*api\.unlock\?\.\('views'\)/, 'settled is entered before the views are offered');
 }
+{
+  // THE HANDOVER ORDER, BEHAVIOURALLY: the regex above checks source text; this drives the beats through the
+  // same Quiver wave (two hard cores down, enemies() back to 0) and checks the views unlock actually lands on settled
+  const quiver = { key: 'quiver', delay: 0.6, hardcore: 'barbed', secondDelay: 9, studyDelay: 2, missile: {} };
+  const beats = makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, rotorDelay: 2, fodderEvery: 1, fodderAlive: 4, fodderTotal: 12, tremorDelay: 1, breachDelay: 2, overrideDelay: 1, quiverSocket: 4244, quiver });
+  const g = fakeGame({ walk: 3, printSeconds: 3 });
+  const seen = [];
+  g.api.unlock = (what) => { if (what === 'views') seen.push(beats.phase()); };
+  run(beats, g, 17); // piloting
+  for (let k = 0; k < 10; k++) { g.kill(1); run(beats, g, 1); }
+  g.kill(2); run(beats, g, 0.5); // the twelve-strong wave is spent: cleared, first views unlock
+  g.seal(); // the sinkhole is filled after the wave, as the earlier block does
+  run(beats, g, 1); // the first hard core rises: quiver-piloting
+  run(beats, g, 7); run(beats, g, 2.5); // the second hard core, after its delay
+  g.kill(1); run(beats, g, 1); // one hard core down, one still standing
+  g.kill(1); run(beats, g, 1); // the second hard core: enemies() is 0, the wave should settle
+  const limit = 200;
+  let iterations = 0;
+  while (beats.phase() !== 'settled' && iterations < limit) { beats.tick(0.1, g.api); iterations++; }
+  assert.equal(beats.phase(), 'settled', `expected 'settled' within ${limit} bounded extra ticks, stuck at '${beats.phase()}'`);
+  assert.equal(seen.at(-1), 'settled', 'the last phase recorded at a views unlock must be settled, not an earlier phase');
+}
 console.log('story-beats: the foundry pays');
