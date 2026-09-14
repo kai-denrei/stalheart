@@ -22,7 +22,7 @@ for (let n = 1; n < STAGES.length; n++) {
   prev = plan;
 }
 const one = planBase(planet, layout, 1);
-assert.deepEqual(one.structures.map((s) => s.id), ['sh02', 'foundry', 'sh02-salvage', 'rocket-a', 'rocket-b', 'wreck']); assert.equal(one.islands.length, 0, 'rocket lands on natural ground');
+assert.deepEqual(one.structures.map((s) => s.id), ['sh02', 'foundry', 'sh02-salvage', 'rocket-a', 'rocket-b', 'wreck', 'rocket-c', 'rocket-d', 'wreck-b']); assert.equal(one.islands.length, 0, 'rocket lands on natural ground');
 assert.deepEqual(planBase(planet, layout, 2).structures.map((s) => s.id).slice(0, 2), ['foundry', 'sh02-salvage'], 'from stage 2 the intact rocket is the salvage layout');
 // the earlier landings stand on open cells out past the clearing, the wreck on its side
 for (const s of one.structures.slice(3)) { assert.ok(s.cell >= 0 && planet.dungeon.tags[s.cell] !== BLOCKED && !planet.clearing.cells.has(s.cell), `${s.id} on open ground outside the clearing`); assert.equal(s.y, 0); }

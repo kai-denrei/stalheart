@@ -56,6 +56,9 @@ export const STRUCTURES = Object.freeze([
   { id: 'rocket-a', asset: 'assets/models/story/hugin_deployed.glb', far: 'assets/models/far/hugin_deployed.glb', anchor: 'open', clear: 16, x: -300, z: 140, stage: 1, scale: 1.5, offset: [0, 6.3, 0], heading: [0.6, 0.8] },
   { id: 'rocket-b', asset: 'assets/models/story/hugin_deployed.glb', far: 'assets/models/far/hugin_deployed.glb', anchor: 'open', clear: 16, x: 330, z: -90, stage: 1, scale: 1.5, offset: [0, 6.3, 0], heading: [-0.5, -0.87] },
   { id: 'wreck', asset: 'assets/models/story/hugin_wreck.glb', far: 'assets/models/far/hugin_wreck.glb', anchor: 'open', clear: 24, x: 120, z: -360, stage: 1, scale: 1.5, offset: [0, 0, 0], tilt: 92, lift: 3.6, heading: [0.9, 0.44] },
+  { id: 'rocket-c', asset: 'assets/models/story/hugin_deployed.glb', far: 'assets/models/far/hugin_deployed.glb', anchor: 'open', clear: 16, x: -430, z: -250, stage: 1, scale: 1.5, offset: [0, 6.3, 0], heading: [0.7, -0.7], shown: 2 },   // later site, revealed after three parts are home
+  { id: 'rocket-d', asset: 'assets/models/story/hugin_deployed.glb', far: 'assets/models/far/hugin_deployed.glb', anchor: 'open', clear: 16, x: 400, z: 320, stage: 1, scale: 1.5, offset: [0, 6.3, 0], heading: [-0.6, -0.8], shown: 2 },   // later site, revealed after three parts are home
+  { id: 'wreck-b', asset: 'assets/models/story/hugin_wreck.glb', far: 'assets/models/far/hugin_wreck.glb', anchor: 'open', clear: 24, x: -90, z: 520, stage: 1, scale: 1.5, offset: [0, 0, 0], tilt: 92, lift: 3.6, heading: [0.2, -0.98], shown: 2 },   // revealed after five parts
 ]);
 
 export const KIT = Object.freeze({

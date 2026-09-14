@@ -81,3 +81,18 @@ export const STORY_PILOT = Object.freeze({ rateMul: 2.5, dmgMul: 60 });   // a p
 
 // the handover (docs/superpowers/specs/2026-09-14-handover-gunship-call-expeditions-design.md): the first automated phase and the Defend stage
 export const STORY_HANDOVER = Object.freeze({ from: 'settled', defendStage: 8 });
+
+// EXPEDITIONS (docs/superpowers/specs/2026-09-14-handover-gunship-call-expeditions-design.md): the landing sites, the tower each
+// part unlocks, the guard nest, and when a later site reveals (after N parts are home). The Rotor and Quiver are the base.
+export const STORY_EXPEDITIONS = Object.freeze({
+  base: Object.freeze(['rotor', 'quiver']),
+  deliverCells: 3,   // how close to the landing (the foundry) a carried part counts as home, in cells
+  sites: Object.freeze([
+    { id: 'rocket-a', tower: 'relay', part: 'field coil', reveal: null, guards: [{ type: 'barbed', count: 2 }, { type: 'amoeba', count: 8 }] },
+    { id: 'rocket-b', tower: 'mortar', part: 'breech', reveal: null, guards: [{ type: 'barbed', count: 2 }, { type: 'amoeba', count: 10 }] },
+    { id: 'wreck', tower: 'lancer', part: 'lens', reveal: null, guards: [{ type: 'barbed', count: 3 }, { type: 'amoeba', count: 12 }] },
+    { id: 'rocket-c', tower: 'plasma', part: 'coil stack', reveal: { after: 3 }, guards: [{ type: 'barbed', count: 3 }, { type: 'amoeba', count: 14 }] },
+    { id: 'rocket-d', tower: 'needle', part: 'optic', reveal: { after: 3 }, guards: [{ type: 'barbed', count: 3 }, { type: 'amoeba', count: 14 }] },
+    { id: 'wreck-b', tower: 'heptapod', part: 'walker core', reveal: { after: 5 }, guards: [{ type: 'barbed', count: 4 }, { type: 'amoeba', count: 18 }] },
+  ].map(Object.freeze)),
+});
