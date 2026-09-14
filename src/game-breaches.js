@@ -6,7 +6,9 @@ import { BREACH_SURFACE_GLSL } from './core/breach-surface.js';
 import { SINKHOLE_BOUNDARY_GLSL } from './core/sinkhole-shape.js';
 
 // Game owns walls, navigation, wave counts and health. This adapter owns ground visuals.
-export function createGameBreaches(scene,camera,sounds){
+// `look` (optional getter): the game's visual identity (params.look), re-read on create and every update so a sinkhole
+// wears the board's look (Battlezone, TRON...) instead of CONTENT.breach's textured stone. `makeSinkhole` is a test seam.
+export function createGameBreaches(scene,camera,sounds,{look=null,makeSinkhole=createSinkhole}={}){
  const entries=new Set(),limit=32,matrices={value:Array.from({length:limit},()=>new THREE.Matrix4())},holes={value:Array(limit).fill(0)},count={value:0},radius={value:1};
  const rubble=createBreachRubble(scene);
  let clock=0;const patched=new WeakSet();
@@ -14,12 +16,12 @@ export function createGameBreaches(scene,camera,sounds){
  return {
   create(normal,forward,scale){
    if(entries.size>=limit)throw Error('Ground breach capacity exceeded');
-   const fx=createSinkhole(scene,camera,{game:true,sounds}),obj=fx.group;
+   const fx=makeSinkhole(scene,camera,{game:true,sounds}),obj=fx.group;
    const up=new THREE.Vector3(...normal).normalize(),z=new THREE.Vector3(...forward).projectOnPlane(up).normalize();
    if(z.lengthSq()<.1)z.set(1,0,0).projectOnPlane(up).normalize();
    const x=new THREE.Vector3().crossVectors(up,z).normalize();z.crossVectors(x,up);
    obj.position.copy(up);obj.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x,up,z));obj.rotateY(1-Math.PI/2);obj.scale.setScalar(scale);obj.visible=true;
-   Object.assign(fx.tune,CONTENT.breach,{planetRadius:1/scale,spawnWaves:false,sound:false});radius.value=1/scale;
+   Object.assign(fx.tune,CONTENT.breach,{planetRadius:1/scale,spawnWaves:false,sound:false});if(look)fx.tune.look=look();radius.value=1/scale;
    const entry={fx,obj,age:0,started:false,cleared:false,pending:true};entries.add(entry);
    obj.userData.breach=entry;obj.userData.grounded=true;obj.userData.sizeScale=scale;obj.userData.tick=()=>{};
    obj.userData.dispose=()=>{entries.delete(entry);fx.dispose();sync();};
@@ -32,6 +34,7 @@ export function createGameBreaches(scene,camera,sounds){
    for(const e of entries){
     if(dt>0&&e.pending&&e.fx.ready()){e.pending=false;e.started=true;e.fx.trigger();opened.push(e.obj);}
     if(e.started)e.age+=dt;
+    if(look)e.fx.tune.look=look();   // the sinkhole setLook returns early when unchanged
     e.fx.update(dt,clock);
     if(e.started&&!e.cleared&&e.age>=e.fx.tune.preRoll){e.cleared=true;onClear(e.obj);}
    }sync();if(opened.length)onOpen(opened);

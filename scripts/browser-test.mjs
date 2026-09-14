@@ -95,6 +95,10 @@ try{
  assert.equal(await evaluate('window.__stalheartTest.state().breachRubble.caps'),sources);
  await evaluate('window.__stalheartTest.restart()');assert.equal((await evaluate('window.__stalheartTest.state().breaches')).length,2);
  assert.equal(await evaluate('window.__stalheartTest.state().breachRubble.caps'),0);current='game-breach-reset';await finish();
+ await go('game-breach-look','index.html?sw=0&acceptance=1&cine=0&look=battlezone#td');
+ await until('window.__stalheartTest?.state().breaches.length>0');await evaluate('window.__stalheartTest.breachScenario()');
+ await until('window.__stalheartTest.state().breaches.length>0&&window.__stalheartTest.state().breaches.every(b=>b.phase==="rumbling")');
+ assert.deepEqual([...new Set(await evaluate('window.__stalheartTest.state().breaches.map(b=>b.look)'))],['battlezone'],'game sinkholes follow ?look=battlezone');await finish();
  } else if(args.includes('--sinkhole')) {
  await go('sinkhole-load','labs.html?sw=0&acceptance=1&genre=sinkhole#portal');
  await until('window.__stalheartPortalTest?.state().sinkhole?.ready',45000);

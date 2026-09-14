@@ -352,7 +352,7 @@ export function initTdTab(root) {
   // one-shot listeners and the first tap/keypress creates it. Until then
   // every play() is a silent no-op -- the game never waits on audio.
   const sfx = makeAudio({ seed: 1, sounds:{...SOUNDS,...BREACH_SOUNDS,...(location.search.includes('world=story')?STORY_SOUNDS:{})} });   // story cues only in the story world
-  const gameBreaches=createGameBreaches(scene,camera,sfx);
+  const gameBreaches=createGameBreaches(scene,camera,sfx,{look:()=>params.look});
   sfx.arm();
   // THE ALARM IS THE PROOF OF LIFE. Operator, 2026-09-01: waiting out the
   // cold open to find out whether sound works makes every test cycle cost
