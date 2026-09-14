@@ -4991,14 +4991,14 @@ export function initTdTab(root) {
     dangerTimer = setTimeout(() => dangerEl.classList.add('hidden'), 1900);
   }
 
-  function armWave() { if (storyMode && !automated()) return;   // the story world has no wave clock until the handover; past it a wave needs a live breach to rise from
+  function armWave() { if (storyMode && !automated()) return;   // the story world has no wave clock until the handover
     if (waveIn >= 0) return;
     // THE SECTOR HAS A FIXED PROGRAMME. Once it is spent no more waves are
     // sent, whatever the clock thinks — the remaining gates are a mop-up,
     // not a siege, and a sector that kept sending waves forever would make
     // the wave count meaningless again.
     if (programmeDone()) return;
-    if (storyMode && !story.source?.alive) storyApi.breach(gunshipFar()); hideSitrep(); // the telegraph outranks the recap
+    if (storyMode && !story.source?.alive) storyApi.breach(gunshipFar()); hideSitrep(); // a wave rises from a live breach, so one is opened if none is left; and the telegraph outranks the recap
     showBrief('motive');   // why they come, as the first one is dialled
     waveIn = WAVE_WARN;
     warnBeat = 0;
@@ -8072,7 +8072,7 @@ export function initTdTab(root) {
     stepPlasmaBeams(tNow);
     stepTowerSeekers(dt, tNow);
     for (const tw of towers) {
-      if (pilotMode && tw !== pilot?.state.tower) {tw.cooldown=Math.max(0,tw.cooldown-dt);continue;}
+      const manual = pilotMode && !automated(); if (manual && tw !== pilot?.state.tower) {tw.cooldown=Math.max(0,tw.cooldown-dt);continue;}   // only a HAND on a mount parks the others: past the handover every tower keeps working while the gunship is ridden
       // idle first, aim second: the idle sets rotation.y unconditionally, and
       // a tracking head must have the last word on where it looks
       if (tw.obj.userData.tick) tw.obj.userData.tick(tNow + tw.ci);
@@ -8080,18 +8080,18 @@ export function initTdTab(root) {
       // it has no cooldown the tab owns, no fixed cell to shoot from, and no
       // head to aim. Everything it decides is heptapod.js's; everything it
       // DOES — the rocket, the sound, the model — is the board's.
-      if (tw.a6 && !pilotMode) { stepWalker(tw, dt, tNow); continue; }
+      if (tw.a6 && !manual) { stepWalker(tw, dt, tNow); continue; }
       if (tw.key === 'rotor') { const h = SENTRY_HEAT.rotor; tw.heat = coolHeat(tw.heat ?? 0, dt, h); if (tw.overheated && tw.heat < h.resume) tw.overheated = false; paintBarrelHeat(tw.obj, tw.heat); }   // RED TO WHITE HOT: the barrels carry their heat, and a mount that ran too hot waits
       if((tw.def.attack==='slowfield' && towerOffline(shield,tw.id,tNow)) || (storyMode && !pilotMode && !automated()))continue;   // story sentries: no auto-targeting until the manual override
       aimTower(tw, dt);
       if(tw.key==='rotor'){
-        const spin=pilotMode ? !!pilot?.state.held : !!pickTarget(graph.centers[tw.ci],effectiveStats(tw.def,tw.tier).range*cellSide,enemies,chord);
+        const spin=manual ? !!pilot?.state.held : !!pickTarget(graph.centers[tw.ci],effectiveStats(tw.def,tw.tier).range*cellSide,enemies,chord);
         tw.spinning=spin; tw.spinRate=(tw.spinRate??0)+((spin?34:0)-(tw.spinRate??0))*Math.min(1,dt*2.5); if(tw.spinRate>0.05)(tw.rotorNode??=tw.obj.getObjectByName('ROTOR'))?.rotateZ(tw.spinRate*dt);   // the barrel cluster winds up and down
         // THE SPOOL FOLLOWS THE BARRELS (operator, 2026-09-12): a looped spool voice whose gain and pitch ride the spin rate, so it rolls while they turn and dies as they stop; one-shot cues could not
         const s01=(tw.spinRate??0)/34, att=1/(1+(camDist(graph.centers[tw.ci])/(cellSide*6))**2); if(s01>0.03){tw.spool??=sfx.loop('minigun_ready',{gain:0.001,rate:0.5}); tw.spool?.set(s01*att,0.5+0.5*s01);} else if(tw.spool){tw.spool.stop(0.2);tw.spool=null;} const povFiring=pilotMode&&pilot?.state.tower===tw&&tNow-(tw.soundAt??-9)<0.6; if(povFiring){tw.povFire??=sfx.loop('rotor_pov_fire',{gain:0.9,lowpass:1400});} else if(tw.povFire){tw.povFire.stop(0.15);tw.povFire=null;}   /* THE BARRELS, NOT THE ROTORS (owner, 2026-09-14): from the optic the firing is its own muffled sound over the spin */
       }
       tw.cooldown -= dt;
-      if (pilotMode) {
+      if (manual) {
         const distance=tw.pilotTarget && !tw.pilotTarget.pilotAim ? missileDistance(graph.centers[tw.ci],tw.pilotTarget.pos) : null;
         const maxRange=effectiveStats(tw.def,tw.tier).range*METRES_PER_CELL;
         const status=tw.overheated?`OVERHEATED · ${Math.round(tw.heat*100)}%`:tw.obj.userData.loading?'LOADING':distance!==null && distance>maxRange?'OUT OF RANGE':tw.cooldown>0?`COOLING ${tw.cooldown.toFixed(1)} s`:missileOf(tw.key) && !tw.lock?.locked?'ACQUIRING':tw.aimErr>SENTRY_TUNE.tolerance?'TRAVERSING':'READY';
@@ -8103,11 +8103,11 @@ export function initTdTab(root) {
       const eff = effectiveStats(tw.def, tw.tier);
       const range = eff.range * cellSide;
       const tp = graph.centers[tw.ci];
-      let target = pilotMode ? (missileOf(tw.key) ? tw.missileTarget : tw.pilotTarget) : missileOf(tw.key) ? tw.missileTarget : pickTarget(tp, range, enemies, chord);
-      if (pilotMode && target && !target.pilotAim && missileDistance(tp,target.pos) > eff.range*METRES_PER_CELL) continue;
+      let target = manual ? (missileOf(tw.key) ? tw.missileTarget : tw.pilotTarget) : missileOf(tw.key) ? tw.missileTarget : pickTarget(tp, range, enemies, chord);
+      if (manual && target && !target.pilotAim && missileDistance(tp,target.pos) > eff.range*METRES_PER_CELL) continue;
       // the railgun does not shoot THROUGH walls: if the nearest pick is
       // occluded by high ground, take the nearest VISIBLE enemy instead
-      if (!pilotMode && target && tw.def.hitscan && !losClear(tw.ci, target.pos, perchOf(tw))) {
+      if (!manual && target && tw.def.hitscan && !losClear(tw.ci, target.pos, perchOf(tw))) {
         target = null;
         let bd = Infinity;
         for (const e of enemies) {
@@ -8150,8 +8150,8 @@ export function initTdTab(root) {
         }
       }
       if (tw.def.hitscan && (tw.aimErr ?? 99) > SENTRY_TUNE.tolerance) continue;
-      tw.cooldown = shotInterval(eff.rate * (pilotMode ? pilotMultipliers(automated(), story?.pilot).rateMul : 1)); if (tw.key === 'rotor') { tw.heat = (tw.heat ?? 0) + SENTRY_HEAT.rotor.perShot; if (tw.heat >= 1) tw.overheated = true; }   // the story's piloted sentry streams rounds; every round heats the barrels
-      if (pilotMode) pilot.state.shots++;
+      tw.cooldown = shotInterval(eff.rate * (manual ? pilotMultipliers(automated(), story?.pilot).rateMul : 1)); if (tw.key === 'rotor') { tw.heat = (tw.heat ?? 0) + SENTRY_HEAT.rotor.perShot; if (tw.heat >= 1) tw.overheated = true; }   // the story's piloted sentry streams rounds; every round heats the barrels
+      if (manual) pilot.state.shots++;
       // one line, every tower: the key IS the def key, unless the def says
       // otherwise — which the second roster's do, since there is no
       // `tower_rotor` and a missing sample is silence nobody notices
@@ -8171,7 +8171,7 @@ export function initTdTab(root) {
       }
       const raw = sub3(target.pos, tp);
       const flat = norm3(sub3(raw, scale3(norm3(tp), dot3(raw, norm3(tp)))));
-      const atk = pilotMode && tw.key==='heptapod' ? 'seeker' : tw.def.attack;
+      const atk = manual && tw.key==='heptapod' ? 'seeker' : tw.def.attack;
       if (tw.def.hitscan) {
         // THE SNIPER IS A HEAVY SHOT, not a beam. The beam pair read as a
         // laser (operator ruling), so now the damage still lands this frame
@@ -13881,7 +13881,7 @@ export function initTdTab(root) {
         if (ci < 0) return false;
         openShop(ci, innerWidth / 2, innerHeight / 2); return true;
       },
-      begin: () => { endShot(); paused = false; }, mountGunship: () => { if (!storyViews) storyApi.unlock('views'); storyViews.station(onStation(gunship), phaseLeft(gunship)); document.querySelector('#story-views [data-mount="gunship"]')?.click(); return !!pilot?.gunship; }, gunshipHold: (on) => { if (pilot) pilot.state.held = !!on; }, gunshipGun: (k) => selectGun(gunship, k, GUNSHIP_GUNS), fillGunshipCall: (n) => fillFromKill(gunshipCall, n, GUNSHIP_CALL), spawnFodder: (n, type = 'amoeba') => { if (!story) return 0; if (!story.source?.alive) storyApi.breach(gunshipFar()); for (let i = 0; i < n; i++) storyApi.spawn(type, story.source.ci, { spread: 0.8, delay: i * 0.12 }); return n; },   /* the skip panel's enemies: a breach opens on the lane outside the gate if none is live, and they rise out of it staggered (emergence only runs from a real breach) */
+      begin: () => { endShot(); paused = false; }, mountGunship: () => { if (!storyViews) storyApi.unlock('views'); if (automated() && !onStation(gunship)) storyViews.meter(callProgress(gunshipCall), callFull(gunshipCall)); else storyViews.station(onStation(gunship), phaseLeft(gunship)); document.querySelector('#story-views [data-mount="gunship"]')?.click(); return !!pilot?.gunship; }, gunshipHold: (on) => { if (pilot) pilot.state.held = !!on; }, gunshipGun: (k) => selectGun(gunship, k, GUNSHIP_GUNS), fillGunshipCall: (n) => fillFromKill(gunshipCall, n, GUNSHIP_CALL), spawnFodder: (n, type = 'amoeba') => { if (!story) return 0; if (!story.source?.alive) storyApi.breach(gunshipFar()); for (let i = 0; i < n; i++) storyApi.spawn(type, story.source.ci, { spread: 0.8, delay: i * 0.12 }); return n; },   /* the skip panel's enemies: a breach opens on the lane outside the gate if none is live, and they rise out of it staggered (emergence only runs from a real breach) */
       clearSector: () => {
         endShot(); 
         
