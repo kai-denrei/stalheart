@@ -11,6 +11,7 @@ The owner wants easy navigation for playing and for developing, with the roadmap
 - One shell on every page with two top-level modes, **PLAYTEST** and **DEV** (owner, 2026-09-14, after playing the gunship: "story/defend/arrival/record/setting/workshop" as one flat row is confusing; "first we need higher level").
 - **PLAYTEST** holds the sections under playtest (Story with its stages and jump points, Defend, Arrival), with Record and Settings as a footer row. It keeps everything the cleanup kept, tidier, with an easy jump to key moments.
 - **DEV** holds everything for building: the workshop labs, the docs (FunMap, roadmap, devlog, practices) and tools, including a quick felt-it capture that saves locally and exports for `docs/FUNMAP.md`. No backend.
+- **Tuning lives under DEV** (owner, 2026-09-14: "all those settings should also be somewhere meaningful under DEV"): the variables panel behind today's ⚙ (Game, Hover, Recoil, Orbital strike, Plasma, Bloom, Sound, Lab) is reached from DEV · Tuning, one entry per page. The ⚙ and ↗ buttons leave the top-left corner.
 - **From any screen either mode is one click away**: an always-visible `PLAYTEST | DEV` toggle sits top right beside the build tag. Clicking the other mode switches to it and opens its drawer; clicking the current mode toggles its drawer.
 - DEV shows automatically on the source tree and is hidden on a release build unless `?dev=1` was used once (remembered; `?dev=0` clears it). With DEV hidden the toggle shows PLAYTEST alone.
 - One nav module drives both pages from one data table.
@@ -27,7 +28,8 @@ The owner wants easy navigation for playing and for developing, with the roadmap
   - PLAYTEST · footer row: Record (`#record`), Settings (`settings.html`), Sound (toggles the existing mute).
   - DEV · **Workshop**: units, swarm, beam, audio, metal, story, sentry / impact, breach, sim.
   - DEV · **Docs**: FunMap, Roadmap, Devlog, Practices.
-  - DEV · **Tools**: Felt it, Jump-to enemy count, Copy deep link.
+  - DEV · **Tuning** (game pages only; absent where the page has no variables panel): Game, Hover, Recoil, Orbital strike, Plasma, Bloom, Sound, and Lab when `lab` is on. Each opens the existing `#td-vars` modal on that page (`{ tool: 'vars', page }`); the modal, its pages and every control stay as they are, only the way in changes. The list is read from the modal's own pages at runtime, so a new lil-gui folder shows up without touching `nav.js`.
+  - DEV · **Tools**: Felt it, Jump-to enemy count, Copy deep link (today's ↗, same `wireDeepLink` behaviour), Frame readout (today's backtick toggle), Diagnostics (the export from `settings.html`).
   - A new playtest section is one entry block in `nav.js`; nothing else changes.
 - `src/core/nav-match.js` — `activeEntry(entries, { page, hash, search })` returns the id of the entry the current URL is; `modeOf(entry)` gives its mode, which is the mode the toggle shows as current on load (a workshop lab is DEV, a story stage PLAYTEST; a page matching no entry falls back to the last mode used, stored as `ssg.nav-mode`). Rules: story versus defend by `stage`/`story` (≥ 8 is Defend); a lab by its hash; a jump-to by `skip=`; retired `classic=` and `mission=` links resolve to Story. Also `placeLabel(...)` for the closed button ("story · stage 1", "lab · breach").
 - `src/core/dev-mode.js` — `devModeOn({ buildToken, search, stored })` returns `{ on, store }` (whether DEV is offered at all): on when the build token is the source placeholder `00000000`; otherwise on when `?dev=1` or a stored flag; `?dev=0` clears the flag. The flag is stored through `src/storage.js` as `ssg.dev-face` (the store only accepts `td.`/`ssg.` keys).
@@ -44,6 +46,7 @@ The owner wants easy navigation for playing and for developing, with the roadmap
 
 - `src/labs/notes-tab.js` and its route: `labs.html#notes` opens the workshop with the overlay on the Roadmap.
 - The `#tabbar` markup in `index.html` and `labs.html`, the stage strip and tab wiring in `src/main.js`, `src/fx/story-skips.js`.
+- The top-left `#chrome-toggle` (☰), `#vars-toggle` (⚙) and `#td-link` (↗) buttons; their jobs move to the toggle, DEV · Tuning and DEV · Tools. The V and backtick hotkeys keep working.
 - The old `#tabbar`, `#chrome-toggle`, home-launcher and `#story-stages-nav` rules in `styles.css`, replaced by one drawer stylesheet section.
 
 ### Release
@@ -63,7 +66,7 @@ The owner wants easy navigation for playing and for developing, with the roadmap
 ## Testing
 
 - Node: `test/nav-match.mjs` (every current route and retired link), `test/dev-mode.mjs`, `test/markdown.mjs` (pins the renderer's current output before the move, including escaping inside fences), `test/felt-notes.mjs` (validation, dates, export shape, JSON round trip, malformed storage), `test/nav-content.mjs` (every entry complete; every workshop hash is a route in `main.js`; every jump-to URL parses).
-- Browser, new `--nav` suite: the toggle visible on the game, in the workshop and during the gunship seat, not overlapping the build tag; switching PLAYTEST → DEV → PLAYTEST from a running game opens each drawer and does not navigate; a workshop lab loads with DEV current and a story stage with PLAYTEST current; the toggle and `\` open and close the drawer; `\` typed into a lil-gui field does not; Escape closes without pausing; the dev face present on source and absent under `--dist` until `?dev=1`; the Gunship jump reaches the seat; the overlay opens the FunMap over a running game without navigating; a felt-it note survives a reload and copies as markdown.
+- Browser, new `--nav` suite: the toggle visible on the game, in the workshop and during the gunship seat, not overlapping the build tag; switching PLAYTEST → DEV → PLAYTEST from a running game opens each drawer and does not navigate; a workshop lab loads with DEV current and a story stage with PLAYTEST current; DEV · Tuning · Bloom opens the variables modal on its Bloom page over a running game, and no ⚙ or ↗ button remains top left; the toggle and `\` open and close the drawer; `\` typed into a lil-gui field does not; Escape closes without pausing; the dev face present on source and absent under `--dist` until `?dev=1`; the Gunship jump reaches the seat; the overlay opens the FunMap over a running game without navigating; a felt-it note survives a reload and copies as markdown.
 - Existing scenarios updated: the two `#tabbar [data-story]` assertions in `--story-world` read the drawer's active entry; the gunship scenario's skip-panel checks use Jump to and the Tools count; `notes-roadmap` becomes an overlay check.
 - Architecture: new code only in `core/`, `domain/`, `content/`, `fx/`; no new top-level `src/` module; `src/td-tab.js` does not grow.
 - Gates before done: `npm test`, `npm run check`, `npm run build`, browser default, `--story-world`, `--gunship`, `--nav`, and `--dist`.
