@@ -305,7 +305,19 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 19 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 21 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### Next, not yet started: an audit of the game's concepts, not its code, through Rosewater's lessons, and a FunMap kept beside the roadmap
+
+`2026-09-14-concept-audit-and-funmap-proposed` · decision · **proposed**
+
+Owner, at the end of the 2026-09-14 session: after the gunship, the foundry and the Rotor fixes, try something new. An audit, but of the concepts of the game rather than the code, inspired by https://kai-denrei.github.io/game-design-lessons/#rosewater: a reflection, through the early development, on where the game is going. Possibly a separate roadmap kept as a FunMap, logging what feels satisfying and what can be improved.
+
+### An explosion research brief for outside artists: procedural Three.js r160 modules built in their own lab, imported by contract
+
+`2026-09-14-explosion-research-brief` · change · **observed**
+
+Owner wants satisfying explosions, first from the gunship's seat, then in the ground game, with mini nuclear clouds for the orbital strike; asked whether artists could research procedural r160 explosions and we import the best. The researcher's first pass came back with six open questions (field of view, bloom, the device, the deciding load, scorches, the palette) and three risks (replays, rings on a curved planet, a cloud at a kilometre).
 
 ### Still open after the story-opening playtest: the breach freeze, the Rotor's sound by ear, Rotor shots into the wall, and ISAO-Birudorōn's review
 

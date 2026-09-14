@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-concept-audit-and-funmap-proposed",
+  "date": "2026-09-14T19:10:00+00:00",
+  "type": "decision",
+  "status": "proposed",
+  "title": "Next, not yet started: an audit of the game's concepts, not its code, through Rosewater's lessons, and a FunMap kept beside the roadmap",
+  "context": "Owner, at the end of the 2026-09-14 session: after the gunship, the foundry and the Rotor fixes, try something new. An audit, but of the concepts of the game rather than the code, inspired by https://kai-denrei.github.io/game-design-lessons/#rosewater: a reflection, through the early development, on where the game is going. Possibly a separate roadmap kept as a FunMap, logging what feels satisfying and what can be improved.",
+  "outcome": "Recorded as the next thing to try; nothing done. Shape to confirm with the owner before starting: take Rosewater's twenty (design for the human you have; know the emotion each component evokes or cut it; don't confuse interesting with fun; make the fun path the winning path; fear boredom more than challenge; players spot problems, not solutions; the details are where they fall in love) and Meier's interesting-decisions test, and walk the game's concepts as they stand: the arrival and the foundry, Isao printing, the piloted sentries, the wall and the gate, the swarm and the hard cores, the strike and the gunship's pass, the tank, the economy of barrels and biomass. For each, say the emotion it is for, whether it is fun or merely interesting, what the player decides and whether the decision is real, and what today's playtests said felt satisfying (the Rotor annihilating the pile, the gunship's paint-then-launch) or did not (the grey seat, the static top view, rounds that seemed to miss). Output: docs/FUNMAP.md as a living companion to ROADMAP.md, each line a felt observation with its date and the lesson it touches, never a task list; and a short reflection at the top on where the game is going. The audit reads the owner's playtest rulings from the log as its primary evidence: those are the diagnoses, and per Rosewater the prescriptions stay the design's.",
+  "alternatives": [
+    "Folding fun notes into ROADMAP.md: the owner suggests a separate FunMap, since the roadmap is generated from open items and a feeling is not an item.",
+    "A code audit: explicitly not the ask; the architecture guard already audits the code."
+  ],
+  "evidence": [
+    "https://kai-denrei.github.io/game-design-lessons/#rosewater retrieved 2026-09-14: Rosewater's twenty lessons and Meier's interesting-decisions test, as summarised there.",
+    "Today's rulings in the log: 2026-09-14-gunship-view-is-the-planet-not-thermal, 2026-09-14-orbital-gunship-top-view-shelved, 2026-09-14-gunship-pov-with-travel-time, 2026-09-14-piloted-rotor-annihilates."
+  ],
+  "supersedes": []
+}

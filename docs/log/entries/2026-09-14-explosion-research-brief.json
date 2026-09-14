@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-explosion-research-brief",
+  "date": "2026-09-14T19:00:00+00:00",
+  "type": "change",
+  "status": "observed",
+  "title": "An explosion research brief for outside artists: procedural Three.js r160 modules built in their own lab, imported by contract",
+  "context": "Owner wants satisfying explosions, first from the gunship's seat, then in the ground game, with mini nuclear clouds for the orbital strike; asked whether artists could research procedural r160 explosions and we import the best. The researcher's first pass came back with six open questions (field of view, bloom, the device, the deciding load, scorches, the palette) and three risks (replays, rings on a curved planet, a cloud at a kilometre).",
+  "outcome": "docs/EXPLOSIONS-RESEARCH.md (copied to the owner's Desktop): the stack (r160 native ESM, no textures, bloom applied by the game, the monochrome palette as an option), the three seat views with their exact canvas filters and the consequence that shape must live in luminance, the four sizes (4.5, 11, 32, 60 to 120 m) with lifetimes, the module contract (createExplosion with object, tick, alive, dispose; meta with budget; seed), the lab to build, the five judgements, and the answers: vertical FOV 60 over the gun's zoom (23.1, 31.6, 46.2 degrees; a small blast is 70 px across from 340 m, not 12); UnrealBloom 0.3 / 0.5 / 0.2 with group weights map 0.35, enemies 1.3, others 1.0, applied before the filters; the phone stand-in is Chrome at 4x CPU throttle with the phone tier's settings until the owner names a device; the deciding load is twelve smalls, one medium, one large under 16.7 ms; scorches belong to the game; a concrete palette object ordered by brightness; motion from elapsed time or fixed substeps; a planetRadiusM option with the sag table (0.7 m at 32 m, 9.6 m at 120 m); and the finding that on a 753 m planet the ground horizon from a 2 m eye is 55 m away, so a cloud a kilometre off is invisible and the background event must read from 150 to 300 m as a column and cap over the horizon.",
+  "alternatives": [
+    "Adopting an external particle tool or flipbooks: rejected, no loader, no texture pipeline, and a look the game does not have."
+  ],
+  "evidence": [
+    "src/td-tab.js zoom hook (fov 60 / zoom), src/content/gunship.js zooms, src/postfx.js and src/bloomweights.js defaults, src/perftier.js tiers, src/looks.js, the story planet's 753 m radius; the horizon and sag numbers computed from them."
+  ],
+  "supersedes": []
+}
