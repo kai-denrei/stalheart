@@ -16,6 +16,22 @@ Evidence:
 - 2026-09-14-quiver-route-sight-isao-birudoron-comms-rotor-report and 2026-09-14-held-faces-plumes-edge-mounts-hitbox-quick-quiver (the Rotor, hit box and mount changes).
 - docs/isao-birudoron-assets.lock.json (the pinned revision and its review note).
 
+## 2026-09-14 — The gunship's own 105, separate from the orbital strike; heat, magazine and reload downtime for all three guns read on the HUD; the piloted Rotor's rounds seen as bigger, longer tracers with a wider hit and hit counters
+
+change · observed · 2026-09-14-gunship-own-105-downtime-bars-and-rotor-tracers
+
+Owner's seventh brief (2026-09-14): the gunship should get its own strike, separate from the orbital strike; overheating and reloading of weapons 1, 2 and 3 must be communicated better, with infinite ammo while testing but downtime; the Rotor's PoV still feels off, add more tracer so where the bullets go is seen; enemies that look hit are not dying, cause unknown (landing wrong, hitbox, the wall under, the angle).
+
+src/domain/gunship.js owns the 105 now: paintHeavy, launchHeavy (the shell falls `travel` 3.5 s, then `reload` 14 s, ammo not counted), nudgeHeavy (one steer while it falls), stepHeavy (the landing cell), heavyState (ready / painted / falling / reloading with time left); strike.js is no longer touched by the seat (its arm, paint, launch and retarget hooks are gone from the pilot host). The host lends the blast: on landing executeStrike(ci) runs the orbital strike's own rings, firework, damage and wall rules on the cell, so the blast language is shared and the ration is not. Downtime: the rotary heats for every moment the trigger is down (6 s to overheat, 3.5 s to cool, tested); the Bofors carries a six-round magazine and reloads 2.8 s (tested); the HUD's readout gains a bar (HEAT, MAG, SHELL / FALL / RELOAD) that turns red in downtime, and both the reticle caption and the FIRE field say READY, FIRING · HEAT n%, OVERHEATED · COOLING, READY · n / 6, RELOADING n S, FIRE TO PAINT, PAINTED · FIRE TO LAUNCH, SHELL FALLING · NUDGE ONCE. The Rotor from its optic: a piloted round's tracer is 1.9x the size with six more trail ghosts, its hit radius is 0.6 cells or 1.1x the body instead of 0.42 / 0.8x, and rounds and hits are counted (pilotRounds / pilotHits in the acceptance state) so the owner's miss report can be measured rather than guessed. The cause of the felt misses is not established: the round flies along the surface at half wall height from a wall-top mount and hits by a 2D proximity test, so the two suspects left are the tight box that decides whether the round is aimed at the body at all, and rounds dying at the parapet when the muzzle points along the rampart.
+
+Alternatives: Keep the 105 on strike.js with its ration: rejected by the owner; the gunship's 105 has its own reload and unlimited ammo while testing.; A separate blast for the 105: not now; executeStrike's rings, firework, damage and wall rules are the right blast, only the ration and the camera differ.
+
+Evidence:
+
+- test/gunship.mjs: overheat at heatSeconds, cooling, the magazine emptying and reloading, paint / launch / nudge / land / reload for the 105; npm test 103 programs; npm run check; npm run build.
+- browser-test --gunship twelve scenarios pass: gunship-heavy-falling (the first press paints, the second launches, the seat keeps the camera) and gunship-heavy-reloading (after the fall the gun reloads); --sentry-pilot passes with the bigger tracers.
+- artifacts/browser/gunship-pov-heavy.png (FIRE TO PAINT with the SHELL bar full) and gunship-rotary-fired.png (the HEAT bar after a burst).
+
 ## 2026-09-14 — Isao's close-up frames his face, not his legs; the comms card sits above the radar so the landing-site triangles show
 
 change · accepted · 2026-09-14-isao-closeup-face-on-comms-above-radar

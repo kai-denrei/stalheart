@@ -305,7 +305,12 @@ try{
   const a=await evaluate('window.__stalheartTest.state().gunship.left');await delay(1200);const b=await evaluate('window.__stalheartTest.state().gunship.left');assert(b<a,'the pass counts out under the gunner');
   // the trigger on the rotary: rounds are owed and nothing throws with no enemy under the reticle
   await evaluate('window.__stalheartTest.gunshipGun("rotary")');await evaluate('window.__stalheartTest.gunshipHold(true)');await delay(700);await evaluate('window.__stalheartTest.gunshipHold(false)');
-  current='gunship-rotary-fired';await finish();}
+  current='gunship-rotary-fired';await finish();
+  // THE GUNSHIP'S OWN 105: paint, launch, the shell falls from the seat, the blast lands, then the reload is read
+  await evaluate('window.__stalheartTest.gunshipGun("heavy")');await delay(300);await evaluate('window.__stalheartTest.gunshipHold(true)');await delay(200);
+  assert.equal((await evaluate('window.__stalheartTest.state().gunship.heavy')).phase,'painted','the first press paints');
+  await evaluate('window.__stalheartTest.gunshipHold(true)');await delay(300);const fl=await evaluate('window.__stalheartTest.state().gunship');assert.equal(fl.heavy.phase,'falling','the second press launches');assert(fl.seat,'the camera never left the seat');
+  current='gunship-heavy-falling';await finish();await delay(3800);const rl=await evaluate('window.__stalheartTest.state().gunship');assert.equal(rl.heavy.phase,'reloading',`after the fall the gun reloads (${JSON.stringify(rl.heavy)})`);current='gunship-heavy-reloading';await finish();}
  // THE SKIP MARKER: the panel beside the build tag opens the seat by itself and raises enemies, which then read hot in the thermal optic
  await go('gunship-skip','index.html?sw=0&cine=0&world=story&stage=6&acceptance=1&gunship=station&skip=gunship&enemies=24&brief=0#td');
  await until('!!window.__stalheartTest && window.__stalheartTest.state().gunship.seat',120000);await delay(9000);

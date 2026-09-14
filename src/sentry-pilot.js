@@ -104,13 +104,13 @@ export function createSentryPilot(root, host) {
   // wherever it is pointed; the danger report is a readout. The heavy IS the orbital strike: choosing it arms the safety,
   // aiming paints the cell, the trigger launches through strike.js's own ritual.
   const G=host.gunship,ship={key:'gunship',obj:G?G.optic.platformObject():null,ci:-1},aim=new THREE.Vector3(),t1=new THREE.Vector3(),t2=new THREE.Vector3();
-  let gunship=false,impact=null,report=null,rounds=0,landedRounds=0,pendingAim=null,px=innerWidth/2,py=innerHeight/2,fireLoop=null,steered=false;
+  let gunship=false,impact=null,report=null,rounds=0,landedRounds=0,pendingAim=null,px=innerWidth/2,py=innerHeight/2,fireLoop=null;
   const MODES=['normal','night','thermal'];let mode=0;   // M cycles the seat's view: the planet as it is, night vision (dark, contacts white), thermal (hot, contacts yellow)
   function setMode(i){mode=(i+MODES.length)%MODES.length;for(const m of MODES)root.classList.toggle(`gunship-${m}`,gunship&&MODES[mode]===m);G.optic.contactsStyle(gunship?MODES[mode]:'normal');}const GUNSHIP_EYE=-.35;   // cells below the platform origin: the belly, where the muzzles are
   const hud=G?createGunshipHud(root):null;
   const guns=document.createElement('div');guns.className='pilot-guns';guns.style.display='none';
   guns.innerHTML=G?G.order.map((k,i)=>`<button data-gun="${k}">${i+1} · ${G.guns[k].label}</button>`).join(''):'';panel.querySelector('header').after(guns);
-  function selectGun(key){if(!G||!G.select(key))return;state.held=false;guns.querySelectorAll('[data-gun]').forEach(b=>b.classList.toggle('on',b.dataset.gun===key));if(G.guns[key].strike){if(!G.strike.armed)G.arm();}else{if(G.strike.armed)G.arm();G.laser(-1);}if(gunship&&!map){state.zoom=G.guns[key].zoom??state.zoom;host.zoom(state.zoom);}}   // each gun its own magnification
+  function selectGun(key){if(!G||!G.select(key))return;state.held=false;guns.querySelectorAll('[data-gun]').forEach(b=>b.classList.toggle('on',b.dataset.gun===key));if(!G.guns[key].strike)G.laser(-1);if(gunship&&!map){state.zoom=G.guns[key].zoom??state.zoom;host.zoom(state.zoom);}}   // each gun its own magnification
   guns.querySelectorAll('[data-gun]').forEach(b=>listen(b,'click',()=>selectGun(b.dataset.gun)));
   // the platform's place is the optic's (host.gunship.optic.ride, driven by the game each tick); the seat only reads it
   const trackAxes=()=>{t1.set(0,0,1).applyQuaternion(ship.obj.quaternion);t2.set(1,0,0).applyQuaternion(ship.obj.quaternion);};
@@ -124,7 +124,6 @@ export function createSentryPilot(root, host) {
   }
   function dismountGunship(){
     if(!gunship)return;gunship=false;root.classList.remove('gunship-seat');for(const m of MODES)root.classList.remove(`gunship-${m}`);fireLoop?.stop(.1);fireLoop=null;hud?.update({on:false});G.laser(-1);panel.querySelector('.pilot-cross').style.display='';G.dismount();G.optic.dismount();G.optic.rings(null);impact=null;report=null;guns.style.display='none';
-    if(G.strike.armed)G.arm();   // the safety re-engages when the gunner leaves
   }
   function aimShip(){ship.obj.updateMatrixWorld(true);attach(ship,pendingAim);state.pitch=-1.45;}
   // THE MAP FRAMES THE APPROACH: centred between the base and the swarm's centre, zoomed on mount to hold both, so what is coming is
@@ -153,14 +152,14 @@ export function createSentryPilot(root, host) {
     report=impact?Object.fromEntries(G.order.map(k=>[k,G.danger(impact,G.guns[k].dangerCells*c)])):null;
     G.optic.rings(impact,ci>=0?G.normals[ci]:[0,1,0],G.state.gun,report);
     let fired=null;
-    if(gun.strike){   // one-two: the first press paints a red area on the ground, the second launches; the camera stays in the seat, the shell is seen
-      if(!G.strike.armed&&G.strike.ready>0&&G.strike.cooldown<=0&&!G.falling())G.arm();   // the safety re-engages after every launch: back on as soon as the platform can
-      if(G.falling()){if(ci>=0&&!steered&&ci!==G.strike.fallCi&&G.retarget(ci)){steered=true;G.laser(ci);}}   // one nudge while it falls, as the strike allows
+    if(gun.strike){   // THE GUNSHIP'S OWN 105: paint, then launch; the camera stays in the seat, the shell is seen falling; one nudge; then the reload
+      const hs=G.heavyState();
+      if(hs.phase==='falling'){if(ci>=0&&!hs.nudged&&G.nudgeHeavy(ci))G.laser(ci);}
       else if(state.held){state.held=false;
-        if(G.strike.target>=0&&G.strike.armed){const tgt=G.centers[G.strike.target];if(G.launch()){fired='round';steered=false;G.optic.flight(G.optic.muzzle('heavy'),tgt,gun.ringHex,G.tune.fallTime,1.2);G.optic.paint(tgt,G.normals[G.strike.fallCi>=0?G.strike.fallCi:ci],gun.blastCells*c,G.tune.fallTime);}}
-        else if(ci>=0&&G.strike.armed&&G.paint(ci)){G.laser(ci);G.sfx('tank_shells',impact);}
+        if(hs.phase==='painted'){const tgt=G.centers[hs.ci];const lc=G.launchHeavy();if(lc>=0){fired='round';G.sfx(gun.sound,ship.obj.position.toArray());G.optic.flight(G.optic.muzzle('heavy'),tgt,gun.ringHex,gun.travel,1.2);G.optic.paint(tgt,G.normals[lc],gun.blastCells*c,gun.travel);}}
+        else if(hs.phase==='ready'&&ci>=0&&G.paintHeavy(ci)){G.laser(ci);G.sfx('tank_shells',impact);}
       }
-      if(!G.falling()&&G.strike.target<0)G.laser(-1);
+      if(hs.phase!=='falling'&&hs.phase!=='painted')G.laser(-1);
     }else{
       const n=G.step(dt,state.held);
       if(n>0&&impact){
@@ -174,6 +173,7 @@ export function createSentryPilot(root, host) {
       }else if(state.held)fired='held';
       if(gun.loop&&state.held){fireLoop??=G.loop(gun.sound,{gain:1});}else if(fireLoop){fireLoop.stop(.12);fireLoop=null;}   // the sustained gun sounds as long as the trigger is down
     }
+    {const lc=G.stepHeavy();if(lc>=0){G.blast(lc);G.laser(-1);}}   // the 105 lands: the strike's blast, the gunship's shell
     for(const r of G.landed()){   // what stands where the round was aimed, when it lands
       const g=G.guns[r.gun],rc=G.cell(r.point);aim.fromArray(r.point);
       for(const e of G.enemies()){const d=aim.distanceTo(v.fromArray(e.pos));if(d<g.blastCells*c)G.damage(e,G.splash(d,g.blastCells*c,g.damage));}
@@ -181,9 +181,9 @@ export function createSentryPilot(root, host) {
     }
     G.optic.hull(state.view!=='pov'||map);G.optic.pose({pitch:state.pitch,gun:G.state.gun,firing:fired,dt});
     const r=report?.[G.state.gun],left=Math.ceil(G.left());
-    const range=impact?Math.round(v.fromArray(impact).distanceTo(ship.obj.position)/c*G.platform.metresPerCell/10)*10:0,es=G.enemies(),hc=G.centers[G.heart()],near=es.reduce((m,e)=>Math.min(m,Math.hypot(e.pos[0]-hc[0],e.pos[1]-hc[1],e.pos[2]-hc[2])),Infinity);
+    const hsNow=G.heavyState(),range=impact?Math.round(v.fromArray(impact).distanceTo(ship.obj.position)/c*G.platform.metresPerCell/10)*10:0,es=G.enemies(),hc=G.centers[G.heart()],near=es.reduce((m,e)=>Math.min(m,Math.hypot(e.pos[0]-hc[0],e.pos[1]-hc[1],e.pos[2]-hc[2])),Infinity);
     panel.querySelector('output').textContent=`${gun.label} · ${gun.cue}`;
-    hud?.update({on:!map,w:innerWidth,h:innerHeight,gun:G.state.gun,hot:state.held||fired==='round',painted:gun.strike?G.strike.target>=0:G.state.rounds.some(x=>x.gun==='bofors'),spinning:G.state.gun==='rotary'&&(state.held||fired==='round')?1:0,dt,range,coords:impact?planetCoords(v.fromArray(impact).normalize().toArray()):'—',contacts:es.length,nearest:es.length?near/c*G.platform.metresPerCell:null,blast:r&&(r.walls||r.towers||r.tank||r.isao)?`${r.walls} wall${r.walls===1?'':'s'} · ${r.towers} sentr${r.towers===1?'y':'ies'}${r.tank?' · TANK':''}${r.isao?' · ISAO':''}`:'clear',left:G.left(),state:gun.strike?(G.falling()?'SHELL FALLING · NUDGE':G.strike.cooldown>0?`RE-ORBIT ${Math.ceil(G.strike.cooldown)} S`:G.strike.target>=0?'PAINTED · FIRE TO LAUNCH':G.strike.ready>0?'FIRE TO PAINT':G.strike.reserved>0?`NO SHELL · ORBIT ${Math.round(G.strike.gauge*100)}%`:'NO SHELL'):(state.held?'FIRING':'READY'),zoom:state.zoom});
+    hud?.update({on:!map,w:innerWidth,h:innerHeight,gun:G.state.gun,hot:state.held||fired==='round',spinning:G.state.gun==='rotary'&&(state.held||fired==='round')?1:0,dt,range,coords:impact?planetCoords(v.fromArray(impact).normalize().toArray()):'—',contacts:es.length,nearest:es.length?near/c*G.platform.metresPerCell:null,blast:r&&(r.walls||r.towers||r.tank||r.isao)?`${r.walls} wall${r.walls===1?'':'s'} · ${r.towers} sentr${r.towers===1?'y':'ies'}${r.tank?' · TANK':''}${r.isao?' · ISAO':''}`:'clear',left:G.left(),state:gun.strike?({falling:`SHELL FALLING · ${hsNow.nudged?'NUDGED':'NUDGE ONCE'}`,reloading:`RELOADING ${Math.ceil(hsNow.left??0)} S`,painted:'PAINTED · FIRE TO LAUNCH',ready:'FIRE TO PAINT'})[hsNow.phase]:gun.magazine?(G.state.mag===0||G.state.clock<G.state.reloadUntil?`RELOADING ${Math.ceil(G.state.reloadUntil-G.state.clock)} S`:state.held?`FIRING · ${G.state.mag<0?gun.magazine:G.state.mag} LEFT`:`READY · ${G.state.mag<0?gun.magazine:G.state.mag} / ${gun.magazine}`):(G.state.overheated?'OVERHEATED · COOLING':state.held?`FIRING · HEAT ${Math.round(G.state.heat*100)}%`:'READY'),bar:gun.strike?(hsNow.phase==='reloading'?1-hsNow.left/gun.reload:hsNow.phase==='falling'?1-hsNow.left/gun.travel:1):gun.magazine?(G.state.mag===0||G.state.clock<G.state.reloadUntil?1-Math.max(0,G.state.reloadUntil-G.state.clock)/gun.reload:(G.state.mag<0?gun.magazine:G.state.mag)/gun.magazine):G.state.heat,barHot:gun.strike?hsNow.phase!=='ready':gun.magazine?(G.state.mag===0||G.state.clock<G.state.reloadUntil):G.state.overheated,barLabel:gun.strike?(hsNow.phase==='reloading'?'RELOAD':hsNow.phase==='falling'?'FALL':'SHELL'):gun.magazine?'MAG':'HEAT',painted:gun.strike?hsNow.phase==='painted'||hsNow.phase==='falling':G.state.rounds.some(x=>x.gun==='bofors'),zoom:state.zoom});
   }
   const gunshipOptic=()=>gunship&&impact?{from:aim.fromArray(impact).addScaledVector(t1,host.cellSide()*2.2).toArray(),pos:impact,label:'GROUND TRUTH · IMPACT'}:null;
   return {state,pose,target,attach,select,setView,isMap:()=>map,mountGunship,dismountGunship,gunshipTick,gunshipOptic,get gunship(){return gunship;},

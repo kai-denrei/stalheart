@@ -17,6 +17,9 @@ export function makeGunship(orbit, { station = false } = {}) {
     passes: 0,         // overhead passes so far
     clock: 0,          // seconds of station time, the flight clock for rounds
     rounds: [],        // rounds in the air: { gun, point, at } arriving at `at` on the clock
+    heat: 0, overheated: false,   // the rotary
+    mag: -1, reloadUntil: 0,      // the Bofors: rounds left in the magazine (-1: full, not yet counted), reloading until
+    heavyPaint: null, heavyReadyAt: 0, heavyFalling: null,   // the 105: the painted cell, when the next shell is ready, the shell in the air
   };
 }
 
@@ -54,7 +57,7 @@ export function mountGunship(st) {
   st.mounted = true; st.accum = 0;
   return 'mounted';
 }
-export function dismountGunship(st) { st.mounted = false; st.accum = 0; st.rounds = []; }
+export function dismountGunship(st) { st.mounted = false; st.accum = 0; st.rounds = []; st.heavyPaint = null; }
 
 export function selectGun(st, key, guns) {
   if (!guns[key]) return false;
@@ -66,13 +69,41 @@ export function selectGun(st, key, guns) {
 // trigger forfeits the fraction so a tap cannot bank a burst.
 export function stepGun(st, dt, held, guns) {
   const gun = guns[st.gun];
-  if (!held || !st.mounted || st.phase !== 'station' || !gun || !(gun.rate > 0) || !(dt > 0)) { st.accum = 0; st.wasHeld = false; return 0; }
+  if (!(dt > 0)) return 0;
+  // downtime runs whether or not the trigger is down: heat cools, a magazine reloads
+  for (const g of Object.values(guns)) {
+    if (g.heatSeconds && (!held || st.gun !== g.key || st.overheated)) { st.heat = Math.max(0, st.heat - dt / g.coolSeconds); if (st.overheated && st.heat <= 0) st.overheated = false; }
+    if (g.magazine && st.mag === 0 && st.clock >= st.reloadUntil) st.mag = g.magazine;
+  }
+  if (!held || !st.mounted || st.phase !== 'station' || !gun || !(gun.rate > 0)) { st.accum = 0; st.wasHeld = false; return 0; }
+  if (gun.heatSeconds && st.overheated) { st.accum = 0; return 0; }
+  if (gun.magazine && (st.mag === 0 || st.clock < st.reloadUntil)) { st.accum = 0; return 0; }
   if (!st.wasHeld) st.accum = Math.max(st.accum, 1);   // a fresh press fires at once: a click is a shot, not a fraction of one (owner, 2026-09-14)
   st.wasHeld = true;
   st.accum += gun.rate * dt;
-  const n = Math.floor(st.accum);
+  let n = Math.floor(st.accum);
   st.accum -= n;
+  if (gun.heatSeconds) { st.heat = Math.min(1, st.heat + dt / gun.heatSeconds); if (st.heat >= 1) { st.overheated = true; st.accum = 0; } }   // heat rises for every moment the trigger is down
+  if (gun.magazine) { if (st.mag < 0) st.mag = gun.magazine; n = Math.min(n, st.mag); st.mag -= n; if (st.mag === 0) st.reloadUntil = st.clock + gun.reload; }
   return n;
+}
+
+// THE GUNSHIP'S OWN 105 (owner, 2026-09-14): a one-two. Paint a cell, then launch: the shell falls `travel` seconds and
+// lands on the painted cell (the host applies the blast); the gun reloads for `reload` seconds. Ammo is unlimited.
+export function paintHeavy(st, ci, guns) { if (!st.mounted || st.phase !== 'station' || ci < 0 || st.heavyFalling || st.clock < st.heavyReadyAt) return false; st.heavyPaint = ci; return true; }
+export function launchHeavy(st, guns) {
+  const gun = guns.heavy; if (!st.mounted || st.phase !== 'station' || st.heavyPaint == null || st.heavyFalling || st.clock < st.heavyReadyAt) return -1;
+  const ci = st.heavyPaint; st.heavyPaint = null; st.heavyFalling = { ci, at: st.clock + gun.travel, from: st.clock }; st.heavyReadyAt = st.clock + gun.travel + gun.reload;
+  return ci;
+}
+// one nudge while it falls: the shell is steered onto another cell, once
+export function nudgeHeavy(st, ci) { if (!st.heavyFalling || st.heavyFalling.nudged || ci < 0 || ci === st.heavyFalling.ci) return false; st.heavyFalling.ci = ci; st.heavyFalling.nudged = true; return true; }
+// returns the cell the shell lands on this tick, or -1
+export function stepHeavy(st) { if (st.heavyFalling && st.clock >= st.heavyFalling.at) { const ci = st.heavyFalling.ci; st.heavyFalling = null; return ci; } return -1; }
+export function heavyState(st, guns) {
+  if (st.heavyFalling) return { phase: 'falling', left: st.heavyFalling.at - st.clock, ci: st.heavyFalling.ci, nudged: !!st.heavyFalling.nudged };
+  if (st.clock < st.heavyReadyAt) return { phase: 'reloading', left: st.heavyReadyAt - st.clock, total: guns.heavy.reload };
+  return st.heavyPaint != null ? { phase: 'painted', ci: st.heavyPaint } : { phase: 'ready' };
 }
 
 // Where a ray from the platform meets the planet: the nearer root of

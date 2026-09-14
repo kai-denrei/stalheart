@@ -5,6 +5,7 @@ import { GUNSHIP_ORBIT, GUNSHIP_GUNS, GUNSHIP_PLATFORM } from '../src/content/gu
 import {
   makeGunship, stepGunship, onStation, phaseLeft, passProgress,
   mountGunship, dismountGunship, selectGun, stepGun, aimOnSphere, splashDamage, dangerReport, fireRound, stepRounds,
+  paintHeavy, launchHeavy, nudgeHeavy, stepHeavy, heavyState,
 } from '../src/domain/gunship.js';
 
 let failures = 0;
@@ -117,6 +118,31 @@ console.log('rounds in flight:');
   check('the bofors shell lands at two point six', stepRounds(st).length === 1 && st.rounds.length === 0);
   fireRound(st, 'rotary', [1, 0, 0], 2); dismountGunship(st);
   check('leaving the seat drops the rounds in the air', st.rounds.length === 0);
+}
+console.log('downtime:');
+{
+  const O = { pass: 10, station: 400 }, st = makeGunship(O, { station: true }); mountGunship(st);
+  let fired = 0, ticks = 0; while (!st.overheated && ticks++ < 60 * 20) { fired += stepGun(st, 1 / 60, true, GUNSHIP_GUNS); stepGunship(st, 1 / 60, O); }
+  check('the rotary overheats after its heat seconds', st.overheated && Math.abs(ticks / 60 - GUNSHIP_GUNS.rotary.heatSeconds) < 0.1 && fired > 100);
+  check('overheated: the trigger does nothing', stepGun(st, 1 / 60, true, GUNSHIP_GUNS) === 0);
+  for (let i = 0; i < Math.round(GUNSHIP_GUNS.rotary.coolSeconds * 60) + 2; i++) { stepGun(st, 1 / 60, false, GUNSHIP_GUNS); stepGunship(st, 1 / 60, O); }
+  check('cooled: it fires again', !st.overheated && stepGun(st, 1 / 60, true, GUNSHIP_GUNS) === 1);
+  selectGun(st, 'bofors', GUNSHIP_GUNS); let shots = 0; for (let i = 0; i < 60 * 2.6; i++) { shots += stepGun(st, 1 / 60, true, GUNSHIP_GUNS); stepGunship(st, 1 / 60, O); }
+  check('the bofors empties its magazine and waits', shots === GUNSHIP_GUNS.bofors.magazine && st.mag === 0);
+  for (let i = 0; i < Math.round(GUNSHIP_GUNS.bofors.reload * 60) + 2; i++) { stepGun(st, 1 / 60, false, GUNSHIP_GUNS); stepGunship(st, 1 / 60, O); }
+  check('reloaded: a full magazine', stepGun(st, 1 / 60, true, GUNSHIP_GUNS) === 1 && st.mag === GUNSHIP_GUNS.bofors.magazine - 1);
+}
+console.log('the gunship\'s own 105:');
+{
+  const O = { pass: 10, station: 400 }, st = makeGunship(O, { station: true }); mountGunship(st);
+  check('ready, nothing painted', heavyState(st, GUNSHIP_GUNS).phase === 'ready' && launchHeavy(st, GUNSHIP_GUNS) === -1);
+  check('paint, then the state says so', paintHeavy(st, 42, GUNSHIP_GUNS) && heavyState(st, GUNSHIP_GUNS).phase === 'painted');
+  check('launch lands on the painted cell after its fall', launchHeavy(st, GUNSHIP_GUNS) === 42 && heavyState(st, GUNSHIP_GUNS).phase === 'falling' && stepHeavy(st) === -1);
+  check('one nudge, no more', nudgeHeavy(st, 43) && !nudgeHeavy(st, 44) && st.heavyFalling.ci === 43);
+  let landed = -1; for (let i = 0; i < Math.round(GUNSHIP_GUNS.heavy.travel * 60) + 2 && landed < 0; i++) { stepGunship(st, 1 / 60, O); landed = stepHeavy(st); }
+  check('it lands where it was nudged, then reloads', landed === 43 && heavyState(st, GUNSHIP_GUNS).phase === 'reloading' && !paintHeavy(st, 1, GUNSHIP_GUNS));
+  for (let i = 0; i < Math.round(GUNSHIP_GUNS.heavy.reload * 60) + 2; i++) stepGunship(st, 1 / 60, O);
+  check('reloaded: it paints again', heavyState(st, GUNSHIP_GUNS).phase === 'ready' && paintHeavy(st, 1, GUNSHIP_GUNS));
 }
 if (failures) { console.log(`${failures} failure(s)`); process.exit(1); }
 console.log('gunship ok');

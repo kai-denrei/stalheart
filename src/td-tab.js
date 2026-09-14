@@ -104,7 +104,7 @@ import { TANK_FEEL, TANK_FEEL_KNOBS, makeTankFeel, stepTankFeel, landTankFeel, f
 import { FEEL, loadFeel, saveFeel } from './feelstore.js';
 import { STRIKE_KNOBS, makeStrike, makeStrikeParams, grantStrikes, stepStrike,
   toggleArm, paintTarget, launchStrike, stepFall, skipFall, fallProgress,
-  strikeDamage, retargetStrike, orbitProgress } from './strike.js'; import { choosePilotPosts } from './domain/pilot-posts.js'; import { makeGunship, stepGunship, onStation, phaseLeft, passProgress, mountGunship, dismountGunship, selectGun, stepGun, aimOnSphere, splashDamage, dangerReport, fireRound, stepRounds } from './domain/gunship.js'; import { GUNSHIP_GUNS, GUNSHIP_GUN_ORDER, GUNSHIP_PLATFORM, GUNSHIP_ORBIT } from './content/gunship.js'; import { createGunshipOptic } from './fx/gunship-optic.js'; import { createGunshipBriefing } from './fx/gunship-briefing.js'; import { createFoundryFx } from './fx/foundry-fx.js';
+  strikeDamage, retargetStrike, orbitProgress } from './strike.js'; import { choosePilotPosts } from './domain/pilot-posts.js'; import { makeGunship, stepGunship, onStation, phaseLeft, passProgress, mountGunship, dismountGunship, selectGun, stepGun, aimOnSphere, splashDamage, dangerReport, fireRound, stepRounds, paintHeavy, launchHeavy, nudgeHeavy, stepHeavy, heavyState } from './domain/gunship.js'; import { GUNSHIP_GUNS, GUNSHIP_GUN_ORDER, GUNSHIP_PLATFORM, GUNSHIP_ORBIT } from './content/gunship.js'; import { createGunshipOptic } from './fx/gunship-optic.js'; import { createGunshipBriefing } from './fx/gunship-briefing.js'; import { createFoundryFx } from './fx/foundry-fx.js';
 import { radarBasis, radarProject, radarBearing, sweepAngle, radarPhosphor,
   proximitySectors, SENSOR_LEVELS, sensorColor } from './radar.js';
 import { BLOOM_GROUPS } from './bloomweights.js';
@@ -10395,7 +10395,7 @@ export function initTdTab(root) {
   function spawnTowerShot(pos, dir, tw, eff, homing, arcTotal = 0) {
     const sfx2 = shotOf(tw.def);
     const shell=tw.def.key==='mortar';
-    const mesh = shell?makeOrdnanceShell(cellSide*.28):makeTracer(tw.def.color, sfx2.projPx ?? 5, sfx2.trail ?? 0);
+    const manual = pilotMode && pilot?.state.tower === tw, mesh = shell?   /* TRACERS FROM THE OPTIC (owner, 2026-09-14): a piloted round is bigger and drags a longer trail, so where every bullet goes is seen */makeOrdnanceShell(cellSide*.28):makeTracer(tw.def.color, (sfx2.projPx ?? 5) * (manual ? 1.9 : 1), (sfx2.trail ?? 0) + (manual ? 6 : 0));
     const p0 = norm3(pos);
     const lift0 = 1 + params.wallHeight * 0.5;
     const attr = mesh.geometry.getAttribute('position');
@@ -10415,7 +10415,7 @@ export function initTdTab(root) {
       range: Math.min(eff.range * cellSide * 1.35, rayToTerrain(scale3(p0, lift0), dir, eff.range * cellSide * 1.35, tw.ci).len), terrain: true,   // a round stops at the first rock it flies into
       speed: (sfx2.projSpeed ?? 16) * cellSide, // per-tower tempo
       arcTotal, arcH: cellSide * 2.3, color: tw.def.color, // a lob, not a moonshot
-      landCi, markT: 0, px: sfx2.projPx ?? 5,
+      landCi, markT: 0, px: (sfx2.projPx ?? 5) * (manual ? 1.9 : 1), manual,
     });
   }
 
@@ -10511,7 +10511,7 @@ export function initTdTab(root) {
       let hit = false;
       for (const e of enemies) {
         if (!e.alive) continue;
-        if (chord(p.pos, e.pos) < cellSide * Math.max(0.42, (e.size ?? e.spec.size) * 0.8)) {
+        if (chord(p.pos, e.pos) < cellSide * Math.max(p.manual ? 0.6 : 0.42, (e.size ?? e.spec.size) * (p.manual ? 1.1 : 0.8))) {   // a piloted round hits a little wider: the reticle on the body is the intent, the cloud's edge is the body
           if (p.splash > 0) detonate(p, tNow);
           else {
             damageEnemy(e, tNow, p.dmg, true);
@@ -10524,7 +10524,7 @@ export function initTdTab(root) {
           break;
         }
       }
-      if (hit || p.dist > p.range) { if (!hit && p.terrain && p.arcTotal <= 0) { const ci = cellIndex(p.pos); warnRing(ci, p.color, 0.3, cellSide * 0.6); const fl = makeDotBurst(p.color, norm3(p.pos), 8); fl.scale.setScalar(cellSide * 1.6); fl.position.set(p.pos[0], p.pos[1], p.pos[2]); scene.add(fl); debris.push(fl); } killTowerShot(i); }
+      if (hit || p.dist > p.range) { if (p.manual) { rs.pilotRounds = (rs.pilotRounds ?? 0) + 1; if (hit) rs.pilotHits = (rs.pilotHits ?? 0) + 1; } if (!hit && p.terrain && p.arcTotal <= 0) { const ci = cellIndex(p.pos); warnRing(ci, p.color, 0.3, cellSide * 0.6); const fl = makeDotBurst(p.color, norm3(p.pos), 8); fl.scale.setScalar(cellSide * 1.6); fl.position.set(p.pos[0], p.pos[1], p.pos[2]); scene.add(fl); debris.push(fl); } killTowerShot(i); }
     }
   }
 
@@ -17398,7 +17398,7 @@ export function initTdTab(root) {
   // Tests use the real commands/transitions, and inspect serializable state.
   if (urlParams.get('acceptance') === '1') {
     window.__stalheartTest = {
-      state: () => ({ gunship: { phase: gunship.phase, left: +gunship.left.toFixed(2), mounted: gunship.mounted, gun: gunship.gun, passes: gunship.passes, optic: !!gunshipOptic?.active(), station: onStation(gunship), seat: !!pilot?.gunship, briefing: !!gunshipBriefing?.isOpen(), lane: pilotHost?.gunship?.lane() ?? -1, aim: pilot?.gunshipOptic?.()?.pos ?? null, aimCell: pilot?.gunshipOptic?.()?.pos ? cellIndex(norm3(pilot.gunshipOptic().pos)) : -1 }, shot:shotId(),breachRubble:gameBreaches.rubbleState(),breaches:gameBreaches.state(),queued:spawnQueue.length,wallCount:dungeon.tags.filter(tag=>tag===BLOCKED).length,emerging:enemies.filter(e=>e.alive&&e.emergeAge<1.2).length,round, wave, runGen: runContext.generation, heart: heartHP, hulls: playerHP,
+      state: () => ({ pilotRounds: rs?.pilotRounds ?? 0, pilotHits: rs?.pilotHits ?? 0, gunship: { phase: gunship.phase, left: +gunship.left.toFixed(2), mounted: gunship.mounted, gun: gunship.gun, passes: gunship.passes, optic: !!gunshipOptic?.active(), station: onStation(gunship), seat: !!pilot?.gunship, heavy: heavyState(gunship, GUNSHIP_GUNS), heat: +gunship.heat.toFixed(2), overheated: gunship.overheated, mag: gunship.mag, briefing: !!gunshipBriefing?.isOpen(), lane: pilotHost?.gunship?.lane() ?? -1, aim: pilot?.gunshipOptic?.()?.pos ?? null, aimCell: pilot?.gunshipOptic?.()?.pos ? cellIndex(norm3(pilot.gunshipOptic().pos)) : -1 }, shot:shotId(),breachRubble:gameBreaches.rubbleState(),breaches:gameBreaches.state(),queued:spawnQueue.length,wallCount:dungeon.tags.filter(tag=>tag===BLOCKED).length,emerging:enemies.filter(e=>e.alive&&e.emergeAge<1.2).length,round, wave, runGen: runContext.generation, heart: heartHP, hulls: playerHP,
         biomass: eco.biomass, towers: towers.length, won: player.won, paused,
         roster: ROSTER.id, mission: missionOn, buildMode, story: story?.beats.state() ?? null, storyHud: story?.hud.state() ?? null, killsBySrc: { ...rs.bySrc }, storyLod: storyBase?.lod() ?? null, storyBaseErrors: storyBase?.errors.slice() ?? null, towerCells: towers.map((t) => [t.key, t.ci]), insideEnemies: story ? enemies.filter((e) => e.alive && story.inside(e.cur)).length : 0,
         playerAsset: playerMesh?.userData.asset || params.creature, playerSpan: (() => { if (!playerMesh) return null; const b = new THREE.Box3().setFromObject(playerMesh); return Number.isFinite(b.max.x) ? +(b.getSize(new THREE.Vector3()).length() / (unitScale || 1)).toFixed(2) : null; })(),   // the hull's true size over its scale: exploded geometry reads absurd here
@@ -17519,7 +17519,7 @@ export function initTdTab(root) {
       story:!!posts,mobile:mobileShell,select:installPilot,views:name=>storyViews?.active(name),leave:()=>leavePilot(),
       gunship:{state:gunship,strike,tune:strikeTune,guns:GUNSHIP_GUNS,order:GUNSHIP_GUN_ORDER,platform:GUNSHIP_PLATFORM,centers:graph.centers,normals:graph.normals,heart:()=>dungeon.heart,lane:gunshipLane,cell:p=>cellIndex(norm3(p)),cellAt:(x,y)=>cellAtScreen(x,y),frame:(n,d)=>{centerBuildOnHeart(n);followSuspend=true;if(d)buildDist=Math.min(4,Math.max(1.4,d));},enemies:()=>enemies.filter(e=>e.alive&&e.id>0),damage:(e,d)=>damageEnemy(e,t,d,true,'strike'),onStation:()=>onStation(gunship),left:()=>phaseLeft(gunship),progress:()=>passProgress(gunship,GUNSHIP_ORBIT),mount:()=>mountGunship(gunship),dismount:()=>dismountGunship(gunship),select:k=>selectGun(gunship,k,GUNSHIP_GUNS),step:(dt,held)=>stepGun(gunship,dt,held,GUNSHIP_GUNS),fire:(g,p,travel)=>fireRound(gunship,g,p,travel),landed:()=>stepRounds(gunship),aim:aimOnSphere,splash:splashDamage,
         bodies:()=>[...(gunshipWalls??=Array.from(dungeon.tags,(tg,ci)=>tg===BLOCKED&&(!story||story.inside(ci))?{kind:'wall',pos:graph.centers[ci]}:null).filter(Boolean)),...towers.map(tw=>({kind:'tower',pos:graph.centers[tw.ci]})),{kind:'tank',pos:player.pos},...(isao?[{kind:'isao',pos:isao.obj.position.toArray()}]:[])],danger:(p,r)=>dangerReport(p,r,pilotHost.gunship.bodies()),   // the danger report's bodies: walls cached per pass, the rest live
-        arm:()=>safetyEl.click(),paint:ci=>paintTarget(strike,ci)==='locked',launch:()=>{if(!(strike.armed&&strike.target>=0))return false;launchBtn.click();return true;},puff:(ci,hex,life,r)=>{if(ci>=0)warnRing(ci,hex,life,r);},sfx:(name,pos,o)=>{if(name)sfx.play(name,{dist:camDist(pos),...o});},burst:(p,hex,n,scale)=>{const b=makeDotBurst(hex,norm3(p),n);b.scale.setScalar(cellSide*scale);b.position.set(p[0],p[1],p[2]);scene.add(b);debris.push(b);},laser:ci=>{if(ci>=0)showRangeRing(ci,strikeTune.blastCells,0xff2a1a);else hideRangeRing();},falling:()=>strike.falling>0,retarget:ci=>retargetStrike(strike,ci),loop:(name,o)=>sfx.loop(name,o),
+        blast:ci=>{if(ci>=0)executeStrike(ci,t);},puff:(ci,hex,life,r)=>{if(ci>=0)warnRing(ci,hex,life,r);},sfx:(name,pos,o)=>{if(name)sfx.play(name,{dist:camDist(pos),...o});},burst:(p,hex,n,scale)=>{const b=makeDotBurst(hex,norm3(p),n);b.scale.setScalar(cellSide*scale);b.position.set(p[0],p[1],p[2]);scene.add(b);debris.push(b);},laser:ci=>{if(ci>=0)showRangeRing(ci,strikeTune.blastCells,0xff2a1a);else hideRangeRing();},loop:(name,o)=>sfx.loop(name,o),paintHeavy:ci=>paintHeavy(gunship,ci,GUNSHIP_GUNS),launchHeavy:()=>launchHeavy(gunship,GUNSHIP_GUNS),nudgeHeavy:ci=>nudgeHeavy(gunship,ci),stepHeavy:()=>stepHeavy(gunship),heavyState:()=>heavyState(gunship,GUNSHIP_GUNS),
         get optic(){return gunshipOptic??=createGunshipOptic(scene,{cellSide,metresPerCell:GUNSHIP_PLATFORM.metresPerCell});}},
       post:delta=>{pilotPost=(pilotPost+delta+pilotPosts.length)%pilotPosts.length;pilot.select(pilotMounts[pilotPost]?.key || pilot.state.tower.key);}, pick:key=>{const i=pilotMounts.findIndex(m=>m?.key===key);if(i>=0){pilotPost=i;pilot.select(key);}},   // the story's strip names a mount
       map:on=>setView(on?'orbit':'bastion'),pause:()=>{paused=!paused;pilot.state.held=false;},

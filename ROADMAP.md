@@ -305,13 +305,19 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 18 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 19 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
 
 ### Still open after the story-opening playtest: the breach freeze, the Rotor's sound by ear, Rotor shots into the wall, and ISAO-Birudorōn's review
 
 `2026-09-14-story-playtest-open-items` · issue · **observed**
 
 The story-opening playtest batches (commit 89b81b5) fixed what could be measured and verified headlessly. Several items were changed or partly addressed without an acceptance the owner can rely on, and should be picked up rather than assumed done.
+
+### The gunship's own 105, separate from the orbital strike; heat, magazine and reload downtime for all three guns read on the HUD; the piloted Rotor's rounds seen as bigger, longer tracers with a wider hit and hit counters
+
+`2026-09-14-gunship-own-105-downtime-bars-and-rotor-tracers` · change · **observed**
+
+Owner's seventh brief (2026-09-14): the gunship should get its own strike, separate from the orbital strike; overheating and reloading of weapons 1, 2 and 3 must be communicated better, with infinite ammo while testing but downtime; the Rotor's PoV still feels off, add more tracer so where the bullets go is seen; enemies that look hit are not dying, cause unknown (landing wrong, hitbox, the wall under, the angle).
 
 ### The gunship seat 340 m up looking straight down, M cycling normal / night vision / thermal, the owner's weapon 1 sample looped, a click that fires at once, the 105 honest about its re-orbit and never cutting away from the seat
 
