@@ -89,7 +89,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     // the hull's size in this world, and the bays as berths once the tank bay stands: the game's deploy
     // starts a hull in its bay and drives it straight out of the doors (bay 3 first, then 2, then 1)
     tankUnit: STORY_SCALE.tankUnit,
-    sites: plan.structures.filter((s) => s.anchor === 'open' && s.cell >= 0).map((s) => s.cell),   // the rocket landing sites Isao sends the tank to after the analysis
+    sites: (() => { const first = new Set(STORY_EXPEDITIONS.sites.filter((s) => !s.reveal).map((s) => s.id)); return plan.structures.filter((s) => s.anchor === 'open' && s.cell >= 0 && first.has(s.id)).map((s) => s.cell); })(),   // only the first-wave landing sites: the reveal beat's radar marks and framing leave the concealed ones out
     socketToward: Object.fromEntries(plan.sockets.map((s) => [s.cell, s.toward])),   // the lane a story socket covers: the mount perches on that edge of its wall cell
     berths: plan.bays.length ? plan.bays.map((b) => ({ ci: b.cell, exit: b.exit, pos: b.pos, out: b.out })) : null,
   } : null;

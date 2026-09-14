@@ -38,4 +38,4 @@ A browser document owns one game or lab lifetime; route changes reload. The reus
 
 ## Evidence
 
-Run `npm test`, `npm run check`, `npm run build`, `npm run test:browser` (plus `--story`, `--story-world`, `--gunship`, `--sinkhole`, `--breach-game`), and `node scripts/browser-test.mjs --dist`. `npm run check` includes the architecture guard: the `src/td-tab.js` line budget and the frozen top-level module list in `docs/architecture-budget.json`. Browser artifacts are in `artifacts/`.
+Run `npm test`, `npm run check`, `npm run build`, `npm run test:browser` (plus `--story`, `--story-world`, `--defense`, `--nav`, `--gunship`, `--sinkhole`, `--breach-game`), and `node scripts/browser-test.mjs --dist`. `npm run check` includes the architecture guard: the `src/td-tab.js` line budget and the frozen top-level module list in `docs/architecture-budget.json`. Browser artifacts are in `artifacts/`.

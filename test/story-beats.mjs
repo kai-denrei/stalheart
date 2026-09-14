@@ -112,16 +112,34 @@ console.log('Story beats: faces, Rotor print, tremor, breach, approach, override
   assert.equal(kinds(g, 'grant').length, 3, 'three grants in all, one per barrel');
 }
 {
-  // A JUMP PAST THE HANDOVER: the beats start at a later phase, offer the views once, replay no landing faces
+  // A JUMP PAST THE HANDOVER: the beats start at a later phase, offer the views once, replay no landing faces,
+  // and — because a late start never crossed the study beat — open the first-wave sites here, exactly once
   const g = fakeGame();
   const unlocks = [];
+  let begun = 0;
   g.api.unlock = (what) => { unlocks.push(what); };
+  g.api.expeditionsBegin = () => { begun++; };
   const beats = makeStoryBeats({ socket: 1, startPhase: 'expedition' });
   assert.equal(beats.phase(), 'expedition');
   beats.tick(0.5, g.api); beats.tick(0.5, g.api);
   assert.equal(beats.phase(), 'expedition', 'nothing moves it back');
   assert.deepEqual(unlocks, ['views'], 'the views strip is offered once on a late start');
+  assert.equal(begun, 1, `a late start at 'expedition' opens the first sites exactly once, got ${begun}`);
   assert.ok(!g.log.some((l) => l[0] === 'brief' && (l[1] === 'rough_landing' || l[1] === 'so_much_to_build')), 'no landing faces on a late start');
+}
+{
+  // A LATER JUMP STILL: starting at 'settled' the sites are already behind the player, so nothing opens them again
+  const g = fakeGame();
+  const unlocks = [];
+  let begun = 0;
+  g.api.unlock = (what) => { unlocks.push(what); };
+  g.api.expeditionsBegin = () => { begun++; };
+  const beats = makeStoryBeats({ socket: 1, startPhase: 'settled' });
+  assert.equal(beats.phase(), 'settled');
+  for (let k = 0; k < 6; k++) beats.tick(0.5, g.api);
+  assert.equal(begun, 0, `a late start at 'settled' must not reopen the expedition sites, got ${begun}`);
+  assert.deepEqual(unlocks, ['views'], 'the views strip is still offered once');
+  assert.equal(beats.phase(), 'settled', 'nothing moves it back');
 }
 {
   // THE HANDOVER ORDER: the Quiver's wave clears into `settled` BEFORE the views are offered again, so the strip sees the automated phase

@@ -4353,7 +4353,7 @@ export function initTdTab(root) {
         ? `<span class="sh-cool">◈ SHIELD COOLING ${(shield.coolUntil - t).toFixed(1)}s</span> ${shieldPips}`
         : `<span class="sh-idle">◈ SHIELD</span> <b class="sh-ready">T</b> ${shieldPips}`);
     const alerts = [shieldBar,
-      carryingRegen ? '⬤ REGEN CARRIED' : '',
+      carryingRegen ? '⬤ REGEN CARRIED' : '', story?.expeditions?.carrying ? '⬤ PART CARRIED' : '',
       cannonHeat > 0 ? 'CANNON HOT' : '',
       laserOverheat ? 'LASER COOLING' : ''].filter(Boolean).join(' · ');
     const hearts = `<span class="hp-heart">${'♥'.repeat(Math.max(0, heartHP))}</span>`
@@ -8368,7 +8368,7 @@ export function initTdTab(root) {
       ? cellIndex(norm3(add3(p0, scale3(dir, arcTotal)))) : -1;
     towerShots.push({
       pos: p0, dir, dist: 0, mesh, shell,
-      dmg: eff.dmg * (pilotMode ? pilotMultipliers(automated(), story?.pilot).dmgMul : 1), splash: (eff.splash || 0) * cellSide, homing,   // ...and each round hits harder
+      dmg: eff.dmg * (manual ? pilotMultipliers(automated(), story?.pilot).dmgMul : 1), splash: (eff.splash || 0) * cellSide, homing,   // ...and each round hits harder
       range: straightTo ? rayToTerrain(pos, norm3(sub3(straightTo, pos)), eff.range * cellSide * 1.35, tw.ci).len : Math.min(eff.range * cellSide * 1.35, rayToTerrain(scale3(p0, lift0), dir, eff.range * cellSide * 1.35, tw.ci).len), terrain: true, straight: straightTo ? { p: pos.slice(), d: norm3(sub3(straightTo, pos)) } : null,   // a round stops at the first rock it flies into; a straight round carries its own point and direction in space
       speed: (sfx2.projSpeed ?? 16) * cellSide, // per-tower tempo
       arcTotal, arcH: cellSide * 2.3, color: tw.def.color, // a lob, not a moonshot
@@ -8890,7 +8890,7 @@ export function initTdTab(root) {
           cls: locked ? 'shop-buy locked' : 'shop-buy',
           key: def.key,
           txt: locked
-            ? `${def.label}<br>${towerUnlockWave(def.key) === null ? '&#8961; RELAY' : 'W' + towerUnlockWave(def.key)}`
+            ? `${def.label}<br>${automated() ? 'PART OUT' : towerUnlockWave(def.key) === null ? '&#8961; RELAY' : 'W' + towerUnlockWave(def.key)}`   /* after the handover a lock is an undelivered part, not a wave */
             : `${def.label}<br>${def.cost}kg`,
           dis: locked || !!err || !eco.canAfford(def.cost),
           bc: '#' + def.color.toString(16).padStart(6, '0'),
