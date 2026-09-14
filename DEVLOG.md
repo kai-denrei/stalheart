@@ -136,6 +136,23 @@ Evidence:
 - browser-test --story-world: every step passes through story-cine-redirect, with story-world-rotor-kill and story-world-fodder green; --sentry-pilot passes; npm test 103; npm run check; npm run architecture with the budget at 17557.
 - docs/log/entries/2026-09-14-heavy-gunship-open-items.json item 6 and 2026-09-14-gunship-own-105-downtime-bars-and-rotor-tracers named the miss as open; this resolves it.
 
+## 2026-09-14 — Stay on the sphere: the flat-world reform is not needed
+
+decision · accepted · 2026-09-14-stay-on-the-sphere
+
+The owner had proposed leaving the spherical planet for a flat playing field (2026-09-14-flat-world-direction), then refined it to keep the Stålberg grid on a plane, and asked for a cost map. docs/SPHERE-TO-FLAT-COST-MAP.md sized it: the grid kernel, story planet seam and effects flatten cheaply; the real costs are a bounded planar kernel, triaging 190 radial-up sites in td-tab, and redesigning the orbit build camera and whole-planet shots. Asked what flat gains long term, the assessment was: little frame rate (the frame budget is enemy dot clouds, bloom and draw calls, not sphere maths; a plane loses the free horizon), modest code simplicity mostly for future features, and the real long-term gain is design freedom (authored maps, conventional cameras, borrowed tools). The owner said huge fps or code-simplicity gains could have swayed them; they are not there.
+
+Owner: switching is not necessary; decision made. The game stays on the spherical planet with the Stålberg grid. The cost map stays in docs as the reference if the question returns. Recommended regardless of the world shape: route radial up through one helper so the per-feature sphere tax (aim rays, reprojection, bend shaders, local up for cameras) is paid in one place.
+
+Alternatives: Flat playing field keeping the Stålberg grid: modest gains, costs concentrated in a bounded kernel, td-tab's radial up and two cameras that are spherical by design.; Flat world without the Stålberg grid (the original proposal): larger change, loses the grid identity.
+
+Evidence:
+
+- docs/SPHERE-TO-FLAT-COST-MAP.md (commit 9438ab1): four read-only sweeps and direct counts on 1f582fb.
+- Frame measurements this session: 60 fps with 72 enemies (headless gunship skip, 185 calls); 44 fps with 89 enemies and 113.5k points in the owner's browser, budget dominated by points and bloom.
+
+Supersedes: 2026-09-14-flat-world-direction
+
 ## 2026-09-14 — The navigation shell landed differently from its spec in four places
 
 decision · accepted · 2026-09-14-navigation-shell-spec-changes
