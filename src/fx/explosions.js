@@ -48,11 +48,14 @@ export function createExplosions(scene, { modules = MODULES, onError = () => {} 
     for (let i = 0; i < live.length; i++) if (live[i].size === size && count++ === 0) oldest = i;
     if (count >= EXPLOSION_CAPS[size]) { live[oldest].fx.dispose(); live.splice(oldest, 1); }
     let fx;
-    try { fx = mod.createExplosion({ palette: EXPLOSION_PALETTE, scale: spec.scale, seed: seed++, planetRadius: METRES_PER_CELL / cellSide }); }
+    // Metres become scene units through the module's own uScale, never object.scale: a puff's quad is widened after
+    // modelViewMatrix, in view space, so an object scale shrinks where puffs sit but not how big they are. With uScale
+    // in scene units the bend's radius is in scene units too: the distance from the planet's centre to the impact.
+    const units = spec.scale * cellSide / METRES_PER_CELL;
+    try { fx = mod.createExplosion({ palette: EXPLOSION_PALETTE, scale: units, seed: seed++, planetRadius: Math.hypot(point[0], point[1], point[2]) }); }
     catch (error) { available = false; onError(error); return false; }
     fx.object.position.set(point[0], point[1], point[2]);
     fx.object.quaternion.setFromUnitVectors(Y, normal.set(surfaceNormal[0], surfaceNormal[1], surfaceNormal[2]).normalize());
-    fx.object.scale.setScalar(cellSide / METRES_PER_CELL);
     scene.add(fx.object);
     live.push({ fx, size });
     spawned[use] = (spawned[use] || 0) + 1;

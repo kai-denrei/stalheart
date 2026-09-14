@@ -9,7 +9,11 @@ const fx = createExplosions(scene);
 assert.equal(fx.spawn('gunship.bofors', [0, 1, 0], [0, 1, 0], cellSide), true);
 const obj = scene.children.at(-1);
 assert.deepEqual(obj.position.toArray(), [0, 1, 0]);
-assert.ok(Math.abs(obj.scale.x - cellSide / 10) < 1e-12, 'metres become scene units');
+assert.equal(obj.scale.x, 1, 'no object scale: it would not reach the puff quads');
+for (const layer of obj.children) {
+  assert.ok(Math.abs(layer.material.uniforms.uScale.value - 0.45 * cellSide / 10) < 1e-12, 'metres become scene units in the shader');
+  assert.ok(Math.abs(layer.material.uniforms.uPlanetR.value - 1) < 1e-12, 'the bend radius is the impact distance in scene units');
+}
 fx.spawn('tank.shell', [1, 0, 0], [1, 0, 0], cellSide);
 {
   const up = new THREE.Vector3(0, 1, 0).applyQuaternion(scene.children.at(-1).quaternion);
