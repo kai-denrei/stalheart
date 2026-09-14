@@ -350,51 +350,15 @@
       "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
     },
     {
-      "path": "assets/models/astronaut-compact.glb",
-      "bytes": 4156676,
-      "sha256": "66824bd0221490a6c6ae9b5e2f561529c66e8a5b5451454bd8f7ab512f1789ab",
-      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
-    },
-    {
-      "path": "assets/models/astronaut.glb",
-      "bytes": 3734028,
-      "sha256": "41863ee4d5f41a628b384832fd96a4b75a439e53de306464478569ca2cda4b4c",
-      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
-    },
-    {
       "path": "assets/models/container.glb",
       "bytes": 650572,
       "sha256": "a70f0d8b00e5df14e9f48580606d4130c3b3981dd8c5ffb15d46f541157d0245",
       "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
     },
     {
-      "path": "assets/models/dish70.glb",
-      "bytes": 2216584,
-      "sha256": "36ff56a7a2bfd1c278f6f4774d32128d5931f2c22fe58241d00ee7d1815634bb",
-      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
-    },
-    {
       "path": "assets/models/fabricator.glb",
       "bytes": 865156,
       "sha256": "980a85219607a4468b8416bd9c96840757745f58b4e3f193eea4f7818eb1aca7",
-      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
-    },
-    {
-      "path": "assets/models/mkcx.glb",
-      "bytes": 446768,
-      "sha256": "c41f5dba2be9b11d7704aa68e505bf605c4b2fc91d609ea965dc3fa0c83ac2a7",
-      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
-    },
-    {
-      "path": "assets/models/mkcx2.glb",
-      "bytes": 475264,
-      "sha256": "312b926ee7122778c39a623ab1c0d9b9ba807cd8835fc7d7d21d8401e38129f9",
-      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
-    },
-    {
-      "path": "assets/models/portalring.glb",
-      "bytes": 841744,
-      "sha256": "126480ce2c14e6635630a962a12f681bd23091ccf0fda46e13179371ea84b062",
       "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
     },
     {
@@ -576,12 +540,6 @@
       "bytes": 4395512,
       "sha256": "c24003dc987626595f7a9af5842cf43db010f757411020247407d9e3d8f27e53",
       "source": "SentryTowers_A6 pinned lock"
-    },
-    {
-      "path": "assets/models/server.glb",
-      "bytes": 1098780,
-      "sha256": "bfd8ece2a4fe3a3ffa718d477f768ef40a54525b3d3220cbbe3f759628439312",
-      "source": "inherited research snapshot 1900c9d; see ATTRIBUTIONS.md and original history"
     },
     {
       "path": "assets/ui/switch-off.png",

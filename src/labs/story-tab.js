@@ -10,7 +10,7 @@ import { makeAudio } from '../audio.js';
 import { buildStoryPlanet } from '../domain/story-planet.js';
 import { planetBake } from '../platform/planet-bake.js';
 import { makeLandingSequence } from '../domain/landing-sequence.js';
-import { compileRail } from '../cine/rail.js';
+import { compileRail } from '../core/rail.js';
 import { buildStoryPlanetMesh, buildMouthMarker } from './story-planet-mesh.js';
 import { createStoryLanding } from './story-landing.js';
 import { planBase } from '../domain/base-plan.js';

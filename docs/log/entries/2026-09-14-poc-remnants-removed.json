@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-09-14-poc-remnants-removed",
+  "date": "2026-09-14T23:30:00+00:00",
+  "type": "decision",
+  "status": "accepted",
+  "title": "PoC remnants removed: missions, mines, hacks, the relay, the classic entry and tutorial, cine and portals, MK-CX and old props, Astro, Sniper and Sentry Control practice",
+  "context": "Owner: since the game was forked, anything lost can be recovered from history; clean out what we have outlived, part clean-up and part refactor, a stronger base for early days. Owner's choices: cut rescue, raid and mines (mines may return), the hacking minigames, legacy cinematics and portals, the MK-CX tanks and old props, the classic campaign entry, the Astro diorama (crew to return as lower-poly exports), the Sniper bench and Sentry Control practice; keep the wave simulator; delete stale docs. Three read-only maps were made first, classifying each target per the remove-dead-code skill.",
+  "outcome": "On branch poc-cleanup. td-tab.js 17,557 -> 13,979 lines (budget lowered). Deleted modules: rescue, mines, stargate, portalfx, cine-tab and cine scenes (rail moved to core/rail.js, the weathered material to fx/weathered-material.js), astro-tab and its labs, sniper-tab with ballistics/sniper-scale/mortar-ground/mortar-map/shot-trace/sniper-environment and the ballistics facade, domain/pilot-posts, domain/yard-route, wormhole and corona shaders, impact-tab, two unused sinkhole helpers; minigames/hdt and minigames/pzk; 15 models (mkcx x2, server, portalring, astronaut x2, dish70 and eight Astro-only landmarks) with their lock and inventory entries; 13 test programs and 71 stale docs. The campaign board stays for ?acceptance and ?sim: LEGACY_SWITCHES is now acceptance and sim; retired classic= and mission= links open the story. Gameplay consequences: the Mortar's hack gate is gone, so the wave ladder is the whole roster (Mortar at wave 5, Heptapod at 8); the black market and hack/relay achievements are gone (stored ids drop through sanitiseRecord); the server vault carve is gone, so seeded campaign maps and older sim comparisons shift; the tutorial, field manual and cold open are gone, so the campaign board opens on the briefing. The portal tab is now the breach lab (sinkhole only, same route). The lab stress mode lost its wormhole knobs, the perf tiers their wormhole budgets. index/labs pages, styles (151 rules), main.js menu handling, the pilot panel's practice chrome and the browser scenarios followed. Kept deliberately: the portal_warn and server_dialup cues (keys in the shipped FX package, need a package migration), fabricator.glb (Isao's load fallback), container.glb (campaign life containers), the weathered metal (dresses the live tank). npm test (90 programs) and npm run check pass; browser acceptance recorded in the commit.",
+  "alternatives": [
+    "Keeping the classic campaign board as a mode: the simulator and most acceptance runs need its rules, so the board stays; only its player-facing entry and onboarding were removed.",
+    "Deleting fabricator.glb with the other props: it is Isao's hard load fallback; unpicking that is its own refactor."
+  ],
+  "evidence": [
+    "Three read-only footprint maps (missions/mines/hacks; cine/portals/MK-CX/props; classic entry/Astro/Sniper/pilot) before any edit; every scripted cut anchored on exact line content and refused on mismatch.",
+    "Baselines before the change: default browser suite, --story, --story-world and --gunship all passed."
+  ],
+  "supersedes": []
+}

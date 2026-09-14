@@ -1,6 +1,6 @@
 // One numbered Sentry roster: combat contracts and retired-ID compatibility.
 import {
-  ROSTERS, ROSTER, TOWERS, TOWER_BY_KEY, TOWER_ORDER, HACK_GATED, DEFAULT_ROSTER_ID,
+  ROSTERS, ROSTER, TOWERS, TOWER_BY_KEY, TOWER_ORDER, DEFAULT_ROSTER_ID,
   useRoster, starterTower, unlockedTowerKeys, towerUnlockWave,
   effectiveStats, upgradeCost, MAX_TIER,
 } from '../src/towers.js';
@@ -27,7 +27,6 @@ for (const id of [2]) {
     TOWER_ORDER.every((k) => keys.includes(k)));
   check(`board ${id}: every tower is on the order`,
     keys.every((k) => TOWER_ORDER.includes(k)));
-  check(`board ${id}: the gated keys exist`, HACK_GATED.every((k) => keys.includes(k)));
   check(`board ${id}: the starter is the cheapest`,
     starterTower().cost === Math.min(...r.towers.map((t) => t.cost)));
   // the fields the tab reads off a def on every frame, for every tower
@@ -40,9 +39,7 @@ for (const id of [2]) {
   // ...and the ladder still hands one out per wave and terminates
   check(`board ${id}: wave 1 gives exactly one tower`, unlockedTowerKeys(1).length === 1);
   check(`board ${id}: the ladder saturates`,
-    unlockedTowerKeys(99, 9).length === keys.length);
-  check(`board ${id}: a gated key has no wave`,
-    HACK_GATED.every((k) => towerUnlockWave(k) === null));
+    unlockedTowerKeys(99).length === keys.length);
   check(`board ${id}: upgrades still terminate`,
     upgradeCost(r.towers[0], MAX_TIER) === null);
   check(`board ${id}: tier 2 is stronger than tier 0`,

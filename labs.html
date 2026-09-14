@@ -19,7 +19,7 @@
   <link rel="stylesheet" href="./app.css">
 </head>
 <body data-workshop="true">
-<nav id="tabbar"><button data-page="index.html">Stalheart</button><button data-tab="units">units</button><button data-tab="swarm">swarm</button><button data-tab="beam">beam</button><button data-tab="audio">audio</button><button data-tab="metal">metal</button><button data-tab="astro">astro</button><button data-tab="story">story</button><button data-tab="sentry">sentry / impact</button><button data-tab="sniper">sniper</button><a href="index.html?sentryPilot=1#td">sentry control</a><button data-tab="portal">portal</button><button data-tab="cine">cine</button><button data-tab="sim">sim</button><button data-tab="notes">roadmap</button><button data-page="settings.html">settings</button></nav>
+<nav id="tabbar"><button data-page="index.html">Stalheart</button><button data-tab="units">units</button><button data-tab="swarm">swarm</button><button data-tab="beam">beam</button><button data-tab="audio">audio</button><button data-tab="metal">metal</button><button data-tab="story">story</button><button data-tab="sentry">sentry / impact</button><button data-tab="portal">breach</button><button data-tab="sim">sim</button><button data-tab="notes">roadmap</button><button data-page="settings.html">settings</button></nav>
 <div id="tab-audio" class="tab tab-hidden"></div>
 <div id="tab-swarm" class="tab tab-hidden"></div>
 <div id="tab-notes" class="tab tab-hidden"></div>
@@ -171,12 +171,6 @@
     <button id="metal-gear" type="button" title="show / hide the sliders">⚙</button>
     <pre id="metal-src" class="hidden"></pre>
   </div>
-<div id="tab-astro" class="tab tab-hidden">
-    <div id="astro-app"></div>
-    <div id="astro-hud"></div>
-    <button id="astro-link" class="lab-link" type="button" title="deep link: copy this lab's current settings as a URL">&#8599;</button>
-    <button id="astro-gear" type="button" title="show / hide the sliders">⚙</button>
-  </div>
 <div id="tab-story" class="tab tab-hidden">
     <div id="story-app"></div>
     <div id="story-hud"></div>
@@ -188,75 +182,12 @@
     <button id="sentry-center" class="lab-center" type="button" title="re-centre the view on the sentry">&#9678; CTR</button>
     <button id="sentry-gear" type="button" title="show / hide the sliders">&#9881;</button>
   </div>
-<div id="tab-sniper" class="tab tab-hidden">
-    <div id="sniper-app"></div>
-    <div id="sniper-reticle" aria-hidden="true"></div>
-    <div id="sniper-vig" aria-hidden="true"></div>
-    <!-- the fire-control HUD. Corner readouts with two borders each, so they
-         read as BRACKETS rather than boxes — the idiom is lifted from
-         ~/Dev/onkochishin/atelier/hud-targeting, on the operator's steer. -->
-    <div id="sniper-fcs" aria-hidden="true">
-      <div class="fcs-strip">
-        <span class="fcs-mid">&#9670; FCS // OPTIC</span>
-        <span class="fcs-right" id="fcs-phase">PHASE 1</span>
-      </div>
-      <div class="fcs-tape"><span id="fcs-bearing">000</span></div>
-      <div class="ro r-tl">
-        <div class="r-head">Scope</div>
-        <div class="field"><span class="k">Zero</span><b class="v" id="f-zero">—</b></div>
-        <div class="field"><span class="k">Mag</span><b class="v" id="f-mag">—</b></div>
-        <div class="field"><span class="k">Weapon</span><b class="v" id="f-weapon">—</b></div>
-        <div class="field"><span class="k">Hold up</span><b class="v" id="f-holdup">—</b></div>
-        <div class="field"><span class="k">Hold side</span><b class="v" id="f-holdside">—</b></div>
-        <div class="field"><span class="k">Breath</span><b class="v" id="f-breath">—</b></div>
-        <div class="meter"><i id="f-breathbar"></i></div>
-      </div>
-      <div class="ro r-tr">
-        <div class="r-head split"><span>Track</span><b id="f-trackid">—</b></div>
-        <div class="field"><span class="k">Range</span><b class="v" id="f-range">—</b></div>
-        <div class="field"><span class="k">Weapon max</span><b class="v" id="f-maxrange">—</b></div>
-        <div class="field"><span class="k">Envelope</span><b class="v" id="f-envelope">—</b></div>
-        <div class="field"><span class="k">Bearing</span><b class="v" id="f-bearing">—</b></div>
-        <div class="field"><span class="k">Crossing</span><b class="v" id="f-cross">—</b></div>
-        <div class="field"><span class="k">Subtense</span><b class="v" id="f-subtense">—</b></div>
-      </div>
-      <div class="ro r-bl">
-        <div class="r-head">Ballistics</div>
-        <div class="field"><span class="k">Drop</span><b class="v" id="f-drop">—</b></div>
-        <div class="field"><span class="k">Drift</span><b class="v" id="f-drift">—</b></div>
-        <div class="field"><span class="k">Flight</span><b class="v" id="f-flight">—</b></div>
-        <div class="field"><span class="k">Wind</span><b class="v" id="f-wind">—</b></div>
-      </div>
-      <div class="ro r-br">
-        <div class="r-head split"><span>Acquisition</span><b id="f-acq">—</b></div>
-        <div class="field"><span class="k">String</span><b class="v" id="f-string">—</b></div>
-        <div class="field"><span class="k">Group</span><b class="v" id="f-group">—</b></div>
-        <div class="field"><span class="k">Correction</span><b class="v" id="f-corr">—</b></div>
-        <div class="chips" id="f-chips"></div>
-      </div>
-      <div class="ro fcs-cu" id="f-closeup"><div class="r-head">Optic &middot; target</div></div>
-      <div class="ro fcs-radar" id="f-radarbox"><div class="r-head">Scan</div>
-        <canvas id="f-radar" width="150" height="150"></canvas></div>
-      <div class="fcs-note" id="f-note">take a shot</div>
-    </div>
-    <button id="sniper-breath" type="button" title="hold your breath (Shift)">&#9679; BREATH</button>
-    <button id="sniper-real" type="button" title="spawn a REAL enemy, on the board's own spec (T)">&#9888; REAL</button>
-    <button id="sniper-spawn" type="button" title="spawn a plain mover (E)">&#9888; SPAWN</button>
-    <button id="sniper-fire" type="button" title="fire (Space)">FIRE</button>
-    <button id="sniper-link" class="lab-link" type="button" title="deep link: copy this lab's current settings as a URL">&#8599;</button>
-    <button id="sniper-gear" type="button" title="show / hide the sliders">&#9881;</button>
-  </div>
 <div id="tab-portal" class="tab tab-hidden">
     <div id="portal-app"></div>
     <div id="portal-gui"></div>
     <div id="portal-hud"></div>
     <button id="portal-link" class="lab-link" type="button" title="deep link: copy this lab's current settings as a URL">&#8599;</button>
   </div>
-<div id="tab-cine" class="tab tab-hidden">
-    <div id="cine-app"></div>
-    <div id="cine-hud"></div>
-    <button id="cine-link" class="lab-link" type="button" title="deep link: copy this lab's current settings as a URL">&#8599;</button>
-    </div>
 <div id="tab-sim" class="tab tab-hidden">
     <div id="sim-panel">
       <div class="sim-head">&#9626; GAMEPLAY SIMULATOR &middot; tier 1 &middot; the real game, played by policy</div>

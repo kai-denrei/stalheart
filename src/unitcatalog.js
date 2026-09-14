@@ -68,12 +68,6 @@ const PLAYER_UNITS = [
   { id: 'tank', kind: 'unit', label: 'tank',
     note: 'the procedural tank — turret sweeps, 9-shell rack, twin mini-guns',
     sounds: TANK_SOUNDS },
-  { id: 'mkcx2', kind: 'unit', label: 'mkcx-2',
-    note: 'Legacy tank: flat deck, blade turret, shells racked in the hull, deck indicators',
-    sounds: TANK_SOUNDS },
-  { id: 'mkcx', kind: 'unit', label: 'mkcx (relic)',
-    note: 'the first casting, retired 2026-09-03 — kept here as a relic; nothing fields it',
-    sounds: TANK_SOUNDS },
   // BOBBY builds everything the player owns, so he belongs on the friendly
   // side with the machines he prints. kind:'fixture' because he is cast the
   // same way the server and the containers are — an authored .glb loaded
@@ -136,22 +130,13 @@ const PICKUP_UNITS = [
 // relay and the life container are nobody's soldiers), the gate with the
 // hostiles — it is where they come from.
 const STRUCTURE_UNITS = [
-  { id: 'server', kind: 'fixture', label: 'the antipode relay',
-    note: 'invincible server at the far pole — win a protocol, decrypt a tower',
-    sounds: [{ key: 'server_dialup', label: 'handshake' }] },
   { id: 'container', kind: 'fixture', label: 'life container',
     note: 'three shallow berths in a row by the heart, one hull each — the racked spares are your lives' },
 ];
-const PORTAL_UNIT = [
-  { id: 'portal', kind: 'portal', label: 'the gate',
-    note: 'draws itself in, locks nine chevrons, opens — 3 shells close it',
-    sounds: [{ key: 'portal_warn', label: 'wave warning' }] },
-];
-
 export const UNIT_CATALOG = {
   friendly: [...TOWER_UNITS, ...PLAYER_UNITS],
   neutral: [...PICKUP_UNITS, ...STRUCTURE_UNITS],
-  hostile: [...HOSTILE_UNITS, ...PORTAL_UNIT],
+  hostile: [...HOSTILE_UNITS],
 };
 
 export function groupOf(id) {

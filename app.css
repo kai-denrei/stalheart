@@ -68,7 +68,7 @@
 #sentry-pilot button,#sentry-pilot a{pointer-events:auto;background:#10191de8;color:#e4ecec;border:1px solid #657479;padding:7px;cursor:pointer;font:inherit}
 #sentry-pilot .pilot-cross.hit{color:#ff3b2f;transform:translate(-50%,-50%) scale(1.5)}
 #sentry-pilot .pilot-guns{display:flex;gap:6px;margin:6px 0}#sentry-pilot .pilot-guns button.on{background:#2a2416;border-color:#ffb43d;color:#ffd48a}
-#sentry-pilot button.on{background:#d7e3e5;color:#111}#sentry-pilot .pilot-weapons{display:flex;gap:4px;flex-wrap:wrap;margin-top:10px}
+#sentry-pilot button.on{background:#d7e3e5;color:#111}
 #sentry-pilot output{display:block;white-space:pre-line;padding:10px 0}#sentry-pilot footer{position:fixed;bottom:25px;left:50%;transform:translateX(-50%);white-space:nowrap;background:#10191de8;padding:9px}
 .pilot-cross{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font-size:30px;font-weight:200}.pilot-map .pilot-cross{display:none}
 .sentry-pilot-mode #td-pad,.sentry-pilot-mode #td-throttle,.sentry-pilot-mode #td-coach,.sentry-pilot-mode #td-tut-banner{display:none!important}

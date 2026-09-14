@@ -79,11 +79,10 @@ const COMBAT = {
 export const TOWERS = SENTRIES.map(s => Object.freeze({ ...COMBAT[s.key], ...s, sound:s.fire }));
 export const TOWER_BY_KEY = Object.fromEntries(TOWERS.map(t => [t.key,t]));
 export const TOWER_ORDER = SENTRY_ORDER;
-export const HACK_GATED = ['mortar'];
-const WAVE_LADDER = TOWER_ORDER.filter(k => !HACK_GATED.includes(k));
+const WAVE_LADDER = TOWER_ORDER;
 // Retain the numeric identity for existing result files; retired roster URLs resolve here.
 export const DEFAULT_ROSTER_ID = 2;
-export const ROSTER = { id:2, label:'Sentries', towers:TOWERS, order:TOWER_ORDER, hackGated:HACK_GATED };
+export const ROSTER = { id:2, label:'Sentries', towers:TOWERS, order:TOWER_ORDER };
 export const ROSTERS = { 2:ROSTER };
 export const useRoster = () => ROSTER;
 export const starterTower = () => TOWERS[0];
@@ -146,32 +145,15 @@ export const shotInterval = (rate) => 1 / rate;
 // --- progressive unlock ladder -------------------------------------------
 // Towers unlock by WAVE: ONE new tower each wave, cheap → capstone.
 // Cumulative: wave N grants the first N towers (capped at the roster).
-// TOWER_ORDER / HACK_GATED / WAVE_LADDER are the live roster's, above.
-//
-// HACK-GATED: never unlocked by the wave clock — the only source is
-// winning a protocol at the Antipode Relay. Sim batch 2026-08-30 showed
-// the mid-game locking solid once the full kit arrives by timetable; the
-// operator's ruling gates the OP half of the slow+aoe combo behind the
-// errand. The wave ladder is TOWER_ORDER minus these, so the capstones
-// each arrive one wave earlier than before.
+// WAVE_LADDER is the live roster's order, above. (The Antipode Relay's hack
+// gate on the Mortar retired with the relay, 2026-09-14.)
 
-export function unlockedTowerKeys(wave, hacks = 0) {
+export function unlockedTowerKeys(wave) {
   const n = Math.max(1, Math.min(WAVE_LADDER.length, Math.floor(wave) || 1));
-  const out = WAVE_LADDER.slice(0, n);
-  // relay wins decrypt the gated kit first, in gate order; wins beyond
-  // that push the wave ladder ahead of the clock
-  const h = Math.max(0, Math.floor(hacks));
-  for (let i = 0; i < Math.min(h, HACK_GATED.length); i++) out.push(HACK_GATED[i]);
-  const extra = h - HACK_GATED.length;
-  if (extra > 0) {
-    const m = Math.min(WAVE_LADDER.length, n + extra);
-    for (const k of WAVE_LADDER.slice(n, m)) out.push(k);
-  }
-  return out;
+  return WAVE_LADDER.slice(0, n);
 }
 
-// The wave a key unlocks on — null for hack-gated keys, which have no
-// wave at all (the radial shows the relay glyph instead of a W number).
+// The wave a key unlocks on; null for a key that is not on the ladder.
 export function towerUnlockWave(key) {
   const i = WAVE_LADDER.indexOf(key);
   return i < 0 ? null : i + 1;

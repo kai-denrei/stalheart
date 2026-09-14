@@ -54,7 +54,6 @@
   --ui-adjust: 0.53;
 }
 
-
 /* --- DESKTOP HAS A KEYBOARD ---------------------------------------------
    The thumb pads — the two steer zones and the two fire buttons — are dead
    weight on a laptop, where W/A/S/D, Space and Shift already do the job
@@ -66,7 +65,7 @@
    The THROTTLE stays. It is a drag control that works fine with a mouse,
    and on desktop it is the only visible thing that says the tank drives. */
 @media (hover: hover) and (pointer: fine) and (min-width: 900px) {
-  #td-pad-left, #td-pad-right, #td-pad-fire, #td-pad-laser, #td-pad-mine { display: none; }
+  #td-pad-left, #td-pad-right, #td-pad-fire, #td-pad-laser { display: none; }
 }
 
 /* the victory lap's way back — a single chip, bottom centre, out of the way
@@ -982,7 +981,6 @@ html, body {
 }
 .msg-regen:hover { background: rgba(53, 255, 208, 0.22); color: #fff; }
 
-
 #maze-msg.hidden, #o-msg.hidden, #b-msg.hidden, #h-msg.hidden, #td-msg.hidden {
   display: none;
 }
@@ -1478,17 +1476,7 @@ html, body {
   cursor: pointer;
 }
 .toast-yes:hover { background: rgba(51, 255, 119, 0.26); }
-#td-tut .tut-skip {
-  pointer-events: auto;
-  margin-top: 10px;
-  padding: 6px 16px;
-  font: 12px ui-monospace, monospace;
-  background: rgba(53, 255, 208, 0.1);
-  color: #aefce8;
-  border: 1px solid #35ffd0;
-  border-radius: 8px;
-  cursor: pointer;
-}
+
 #td-tut.tut-flash {
   top: 134px;
   font: 700 30px ui-monospace, monospace;
@@ -2429,8 +2417,7 @@ body.playing:not(.chrome-open) #tabbar { display: none !important; }
   width: 296px;
   font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
 }
-/* the tutorial banner owns the same band; the console waits its turn */
-#tab-td.tutoring #td-launch { display: none; }
+
 .caution-frame {
   border: 4px solid transparent;
   border-image: repeating-linear-gradient(45deg, #ffc548 0 10px, #1a1a1a 10px 20px) 4;
@@ -2789,82 +2776,7 @@ body.playing:not(.chrome-open) #tabbar { display: none !important; }
   #td-danger { animation: none; }
 }
 
-/* --- the field manual: one CRT screen before the tutorial ----------------
-   Laconic by design — every line is a rule of play, not a paragraph.
-   Green phosphor to the danger warning's red: information, not alarm. */
-#td-intro {
-  position: absolute;
-  inset: 0;
-  z-index: 45;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(2, 8, 4, 0.9);
-  cursor: pointer;
-}
-#td-intro.hidden { display: none; }
-.fm-frame {
-  position: relative;
-  max-width: min(88vw, 520px);
-  max-height: 86vh;
-  overflow-y: auto;
-  padding: 18px 26px 16px;
-  border: 1px solid rgba(110, 255, 140, 0.5);
-  border-radius: 8px;
-  background: rgba(3, 14, 7, 0.92);
-  color: #86ff9e;
-  font: 13px/1.85 ui-monospace, SFMono-Regular, Menlo, monospace;
-  text-shadow: 0 0 7px rgba(110, 255, 140, 0.45);
-  box-shadow: 0 0 40px rgba(60, 255, 120, 0.12) inset;
-}
-.fm-frame::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: repeating-linear-gradient(0deg,
-    rgba(0, 0, 0, 0) 0 2px, rgba(0, 0, 0, 0.28) 2px 4px);
-  border-radius: 8px;
-}
-.fm-head {
-  letter-spacing: 0.3em;
-  font-weight: bold;
-  margin-bottom: 10px;
-  color: #b8ffca;
-  animation: dg-flicker 2.4s steps(3) infinite;
-}
-.fm-line b { color: #d6ffdf; }
-.fm-warn { color: #ff5340; text-shadow: 0 0 7px rgba(255, 83, 64, 0.5); }
-.fm-keys {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 0 18px;
-  margin: 10px 0 2px;
-  padding-top: 8px;
-  border-top: 1px dashed rgba(110, 255, 140, 0.35);
-  color: #6fe387;
-}
-.fm-keys span:nth-child(odd) { color: #d6ffdf; }
-.fm-foot {
-  margin-top: 12px;
-  text-align: center;
-  letter-spacing: 0.2em;
-  color: #b8ffca;
-  animation: pulse-soft 1.6s ease-in-out infinite;
-}
 @keyframes pulse-soft { 50% { opacity: 0.45; } }
-/* keyboard table only where there IS a keyboard; the touch line only where
-   there is not (coarse alone is untestable on desktop — width pairs it) */
-.fm-touch { display: none; }
-.fm-shell { display: none; }   /* the mobile shell's controls; shown under body.mobile-shell */
-@media (pointer: coarse), (max-width: 560px) {
-  .fm-desktop { display: none; }
-  .fm-touch { display: block; }
-  .fm-frame { font-size: 12px; line-height: 1.75; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .fm-head, .fm-foot { animation: none; }
-}
 
 /* --- kill callouts + the ram combo counter -------------------------------
    Quick bragging text: pops big, settles, drifts up and out inside 1.2s.
@@ -3195,102 +3107,6 @@ body.td-victory #td-tut {
   #td-sitrep { font-size: 11px; line-height: 1.5; padding: 8px 12px 8px; }
 }
 
-/* --- the server hack -----------------------------------------------------
-   The HACK button joins the console family on the left rail; the breach
-   overlay is a full-screen terminal frame around the minigame iframe. */
-#td-hack {
-  position: absolute;
-  left: 14px;
-  top: 160px;
-  z-index: 8;
-  padding: 8px 14px;
-  font: bold 12px ui-monospace, Menlo, monospace;
-  letter-spacing: 0.14em;
-  background: rgba(3, 14, 7, 0.85);
-  color: #b8ffca;
-  border: 1px solid rgba(110, 255, 140, 0.55);
-  border-radius: 6px;
-  cursor: pointer;
-  text-shadow: 0 0 7px rgba(110, 255, 140, 0.4);
-  animation: pulse-soft 2.2s ease-in-out infinite;
-}
-#td-hack.hidden { display: none; }
-#td-hackwrap {
-  position: fixed;
-  inset: 0;
-  z-index: 70;
-  display: flex;
-  flex-direction: column;
-  background: rgba(2, 8, 4, 0.97);
-  /* a TURNED board is laid out wider than the screen and rotated back into
-     it, so the box it occupies before the transform must not scroll */
-  overflow: hidden;
-}
-#td-hackwrap.hidden { display: none; }
-
-.hk-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 14px;
-  font: bold 12px ui-monospace, Menlo, monospace;
-  letter-spacing: 0.18em;
-  color: #b8ffca;
-  border-bottom: 1px solid rgba(110, 255, 140, 0.4);
-  text-shadow: 0 0 7px rgba(110, 255, 140, 0.4);
-}
-/* THE TURN BUTTON IS FOR PHONES: on a desktop the overlay is already wider
-   than it is tall and there is nothing to solve. The enabling rule has to
-   come AFTER this one — the first cut declared it above and the base
-   display:none won on source order, so the button never appeared on the one
-   device it exists for. Same trap as #td-tut's base rule. */
-#td-hack-rotate { display: none; }
-@media (pointer: coarse), (max-width: 700px) {
-  #td-hack-rotate { display: inline-block; }
-}
-.hk-bar button {
-  font: bold 11px ui-monospace, Menlo, monospace;
-  letter-spacing: 0.12em;
-  color: #ff5340;
-  background: transparent;
-  border: 1px solid rgba(255, 83, 64, 0.5);
-  border-radius: 5px;
-  padding: 4px 10px;
-  cursor: pointer;
-}
-/* the bar's readout: what the game will not tell you itself */
-.hk-readout { display: flex; gap: 10px; align-items: baseline; margin-left: auto; margin-right: 10px; }
-.hk-readout b {
-  font: bold 11px ui-monospace, Menlo, monospace;
-  letter-spacing: 0.1em;
-  padding: 2px 7px;
-  border-radius: 4px;
-  border: 1px solid transparent;
-}
-.hk-you { color: #9dffbe; border-color: rgba(47, 187, 96, 0.45); }
-.hk-you.low { color: #ffd0d0; border-color: rgba(255, 70, 70, 0.6); background: rgba(255, 70, 70, 0.12); }
-.hk-them { color: #ff8f80; border-color: rgba(255, 100, 90, 0.35); }
-.hk-clock { color: #cfe6ff; }
-.hk-phase { color: #5f7180; }
-.hk-won { color: #33ff77; }
-.hk-lost { color: #ff5340; }
-@media (pointer: coarse), (max-width: 700px) {
-  .hk-readout { gap: 5px; margin-right: 4px; }
-  .hk-readout b { font-size: 9px; padding: 2px 4px; letter-spacing: 0.04em; }
-  .hk-phase { display: none; }   /* the two budgets and the clock are the read */
-}
-
-#td-hackframe {
-  flex: 1;
-  width: 100%;
-  border: 0;
-  background: #08080d;
-}
-@media (pointer: coarse), (max-width: 700px) {
-  /* phone: the left column below the launch console slot */
-  #td-hack { left: max(12px, env(safe-area-inset-left)); top: calc(max(8px, env(safe-area-inset-top)) + 310px); }
-}
-
 /* --- phone columns v2 ----------------------------------------------------
    The launch console folds VERTICAL under the radar (right column) — it
    was a 296px bar eating the left column. The announcement lane moves to
@@ -3311,13 +3127,7 @@ body.td-victory #td-tut {
   #td-launch-readout .status { font-size: 10px; }
   #td-launch-readout .target { font-size: 9px; }
   .launch-button { width: 86px; height: 42px; }
-  #td-hack {
-    left: auto;
-    right: max(8px, env(safe-area-inset-right));
-    top: calc(max(8px, env(safe-area-inset-top)) + 410px);
-    padding: 7px 10px;
-    font-size: 11px;
-  }
+
   #td-sitrep, #td-wave, #td-toast, #td-tower {
     left: max(12px, env(safe-area-inset-left));
     right: auto;
@@ -3343,63 +3153,6 @@ body.td-victory #td-tut {
   vertical-align: 1px;
 }
 .log-copy:hover { border-color: rgba(160, 180, 200, 0.7); }
-
-/* the relay's interact prompt: what to press, said AT the machine */
-#td-hackprompt {
-  position: absolute;
-  top: 63%;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 12;
-  padding: 7px 14px;
-  font: bold 13px ui-monospace, Menlo, monospace;
-  letter-spacing: 0.14em;
-  color: #b8ffca;
-  background: rgba(3, 14, 7, 0.85);
-  border: 1px solid rgba(110, 255, 140, 0.55);
-  border-radius: 6px;
-  text-shadow: 0 0 8px rgba(110, 255, 140, 0.45);
-  cursor: pointer;
-  animation: pulse-soft 1.8s ease-in-out infinite;
-}
-#td-hackprompt.hidden { display: none; }
-
-/* protocol tabs on the breach bar */
-.hk-tabs { display: flex; gap: 6px; }
-.hk-tab {
-  font: bold 11px ui-monospace, Menlo, monospace;
-  letter-spacing: 0.12em;
-  color: #6fe387;
-  background: transparent;
-  border: 1px solid rgba(110, 255, 140, 0.35);
-  border-radius: 5px;
-  padding: 4px 10px;
-  cursor: pointer;
-}
-.hk-tab.active {
-  color: #08140a;
-  background: #86ff9e;
-  border-color: #86ff9e;
-}
-/* NOTHING OF THE GAME'S OWN CHROME OVER THE BREACH. The hamburger is a
-   child of <body> and the overlay is a child of the tab, so their z-indexes
-   are in different stacking contexts and never compare — it sat on top of
-   the bar whatever number it was given. */
-body.hacking #chrome-toggle { display: none !important; }
-
-@media (max-width: 560px) {
-  .hk-title { display: none; } /* the tabs are the title on a phone */
-  /* AND EVERYTHING ELSE HAS TO FIT. At 430px the bar was pushing the active
-     tab out one end and the TURN button out the other, which is the two
-     controls a player on a phone actually needs. Tighter type, tighter
-     padding, and the readout is the thing allowed to shrink. */
-  .hk-bar { padding: 6px 8px; gap: 6px; }
-  .hk-tabs { gap: 4px; flex: 0 0 auto; }
-  .hk-tab { padding: 4px 6px; font-size: 10px; letter-spacing: 0.04em; }
-  .hk-readout { min-width: 0; overflow: hidden; }
-  .hk-bar button { padding: 4px 7px; font-size: 10px; letter-spacing: 0.04em; }
-  #td-hack-rotate, #td-hack-abort { flex: 0 0 auto; }
-}
 
 /* --- the SIM tab: console-family batch runner ---------------------------- */
 #tab-sim { color: #86ff9e; font: 13px/1.7 ui-monospace, Menlo, monospace; }
@@ -3527,17 +3280,14 @@ tr.sim-timeout td:nth-child(2), tr.sim-stalled td:nth-child(2) { color: #ffb000;
   #td-launch-readout .target { font-size: 8px; }
   .launch-button { width: 62px; height: 34px; }
   .launch-button .latin { font-size: 7px; }
-  #td-hack { top: calc(max(8px, env(safe-area-inset-top)) + 316px); padding: 5px 8px; font-size: 10px; }
+
   /* the wheel: whole radial scaled down uniformly */
   #td-shop { transform: scale(0.76); }
   .shop-note { display: none; }
   /* throttle lever: smaller footprint */
   #td-throttle { transform: scale(0.82); transform-origin: bottom left; }
   /* the radial is a FOCUSED task: transient furniture clears out under it */
-  #tab-td.shopping #td-sitrep, #tab-td.shopping #td-wave,
-  #tab-td.shopping #td-toast, #tab-td.shopping #td-tower,
-  #tab-td.shopping #td-launch, #tab-td.shopping #td-next,
-  #tab-td.shopping #td-hackprompt, #tab-td.shopping #td-hack {
+  #tab-td.shopping #td-sitrep, #tab-td.shopping #td-wave, #tab-td.shopping #td-toast, #tab-td.shopping #td-tower, #tab-td.shopping #td-launch, #tab-td.shopping #td-next {
     display: none;
   }
 }
@@ -3583,18 +3333,6 @@ tr.sim-timeout td:nth-child(2), tr.sim-stalled td:nth-child(2) { color: #ffb000;
 .lp-entry p { margin: 3px 0; }
 .lp-visual { color: #5aa86e; font-style: italic; font-size: 12px; }
 
-/* the black market's buy button, riding the launch console */
-#td-buy-missile {
-  font: bold 10px ui-monospace, Menlo, monospace;
-  letter-spacing: 0.08em;
-  color: #ffb000;
-  background: rgba(20, 12, 2, 0.8);
-  border: 1px solid rgba(255, 176, 0, 0.5);
-  border-radius: 5px;
-  padding: 4px 7px;
-  cursor: pointer;
-}
-#td-buy-missile.hidden { display: none; }
 /* the killer dossier on the last transmission */
 .go-kinfo { margin-top: 5px; font-size: 12px; color: #cfe2ee; min-height: 18px; }
 .go-noram { color: #ff5340; font-weight: bold; }
@@ -3648,7 +3386,6 @@ tr.sim-timeout td:nth-child(2), tr.sim-stalled td:nth-child(2) { color: #ffb000;
   /* six option buttons wrap to two rows rather than running off the side */
   #units-opts { gap: 6px; row-gap: 6px; }
 }
-
 
 /* --- THE LAUNCH CONSOLE ON A PHONE --------------------------------------
    It was taking a third of the width and a fifth of the height of a 430pt
@@ -3704,7 +3441,6 @@ tr.sim-timeout td:nth-child(2), tr.sim-stalled td:nth-child(2) { color: #ffb000;
   #td-launch-readout .target { font-size: 8px; }
 }
 
-
 /* --- PORTAL BENCH (temporary sidequest tab) ------------------------------
    Same shape as the beam lab: the canvas fills the tab, lil-gui docks right,
    and the readout sits bottom-left where the GUI cannot cover it. */
@@ -3725,7 +3461,6 @@ tr.sim-timeout td:nth-child(2), tr.sim-stalled td:nth-child(2) { color: #ffb000;
   max-width: min(560px, calc(100vw - 24px));
 }
 #portal-hud b { color: var(--p-white, #fff); }
-
 
 /* --- TD frame readout (2026-09-02) ------------------------------------
    Top-left, tucked beside the ≡ button so it never sits on the score.
@@ -3861,7 +3596,6 @@ tr.sim-timeout td:nth-child(2), tr.sim-stalled td:nth-child(2) { color: #ffb000;
   #td-vars .vars-body { padding-top: 10px; }
 }
 
-
 /* --- TD after-action board (2026-09-02) --------------------------------
    Six small windows in the debrief, read like an analyst's desk: roster,
    attribution, tempo, records, the best-strike replay, defence. Then one
@@ -3901,7 +3635,6 @@ tr.sim-timeout td:nth-child(2), tr.sim-stalled td:nth-child(2) { color: #ffb000;
 #td-msg .dbf-replay { width: 100%; height: 120px; display: block; border-radius: 4px; background: #020a10; }
 @media (max-width: 560px) { #td-msg .dbf-grid { grid-template-columns: 1fr; } }
 
-
 /* --- TD campaign debrief (2026-09-02) ------------------------------------
    Every round on one table, then the retro decision. --- */
 #td-msg .camp-wrap { width: min(680px, 86vw); margin: 6px auto 10px; overflow-x: auto; }
@@ -3926,7 +3659,6 @@ tr.sim-timeout td:nth-child(2), tr.sim-stalled td:nth-child(2) { color: #ffb000;
 @keyframes td-blink { to { visibility: hidden; } }
 #td-msg button[disabled] { opacity: 0.45; cursor: default; }
 
-
 /* --- THE MOBILE SHELL (docs/MOBILE-PORT-PLAN.md) ----------------------------
    Scoped under body.mobile-shell so desktop is byte-identical. Phase 2 cut:
    DRIVE keeps fire, plasma, radar, the mode switch and the menu; the steering
@@ -3948,7 +3680,7 @@ body.mobile-shell #td-pad-dir, body.mobile-shell #td-pad-tank, body.mobile-shell
 body.mobile-shell #td-pad-map, body.mobile-shell #td-pad-ctrheart, body.mobile-shell #td-pad-ctrtank,
 body.mobile-shell #td-pad-sound { display: none !important; }
 body.mobile-shell #td-pad-fire, body.mobile-shell #td-pad-laser { min-width: 64px; min-height: 64px; font-size: 22px; }
-body.mobile-shell #td-pad-mine { min-width: 56px; min-height: 56px; font-size: 20px; }
+
 body.mobile-shell #td-app { touch-action: none; }
 /* Phase 4 — HUD SUBTRACTION PER MODE, AND CAPTIONS.
    DRIVE shows what a sub-second read needs: vitals + resources, the wave
@@ -3973,10 +3705,7 @@ body.mobile-shell:not(.mob-build) #td-stats.hud-panel .hud-obj { display: none; 
 body.mobile-shell #td-launch { top: 52px; width: auto; min-height: 0; padding: 4px 8px; gap: 8px; }
 body.mobile-shell #td-launch-readout .target { display: none; }
 body.mobile-shell #td-launch-readout .status { font-size: 9px; }
-body.mobile-shell.mob-build #td-pad-fire, body.mobile-shell.mob-build #td-pad-laser,
-body.mobile-shell.mob-build #td-pad-mine,
-body.mobile-shell.mob-build #td-launch, body.mobile-shell.mob-build #tab-td .minimap,
-body.mobile-shell.mob-build #td-hack, body.mobile-shell.mob-build #td-hackprompt { display: none !important; }
+body.mobile-shell.mob-build #td-pad-fire, body.mobile-shell.mob-build #td-pad-laser, body.mobile-shell.mob-build #td-launch, body.mobile-shell.mob-build #tab-td .minimap { display: none !important; }
 /* captions: Isao beside the radar on the bottom edge, the lane just above him */
 body.mobile-shell #td-brief {
   left: 124px; bottom: max(8px, env(safe-area-inset-bottom));
@@ -4008,9 +3737,7 @@ body.mobile-shell #td-msg button { min-height: 44px; padding: 8px 16px; font-siz
 body.mobile-shell #td-msg .msg-glenemy, body.mobile-shell #td-msg .msg-glfriend { min-height: 40px; }
 body.mobile-shell #td-msg .dbf-win { min-height: 0; }
 body.mobile-shell #td-msg .dbf-grid { width: min(700px, 90vw); }
-body.mobile-shell .fm-frame { box-sizing: border-box; max-height: calc(100dvh - 12px); padding: 12px 18px 12px; font-size: 12px; line-height: 1.6; }
-body.mobile-shell .fm-desktop, body.mobile-shell .fm-touch { display: none !important; }
-body.mobile-shell .fm-shell { display: block; }
+
 body.mobile-shell #td-vars {
   width: calc(100vw - 12px); height: calc(100dvh - 12px);
   grid-template-columns: 124px minmax(0, 1fr);
@@ -4034,10 +3761,7 @@ body.mobile-shell #td-vars .vars-close { width: 44px; height: 44px; }
 body.mobile-shell #tab-td .minimap { left: auto; bottom: auto; right: 14px; top: 68px; }
 body.mobile-shell #tab-td #td-pad-fire { right: 14px; bottom: 14px; left: auto; top: auto; }
 body.mobile-shell #tab-td #td-pad-laser { right: 92px; bottom: 22px; left: auto; top: auto; }
-/* the mine pad stacks ABOVE the fire button rather than beside the laser:
-   the bottom row is the two the thumb holds, and a tap control in that row
-   is a tap control you hit while steering. */
-body.mobile-shell #tab-td #td-pad-mine { right: 18px; bottom: 88px; left: auto; top: auto; }
+
 /* the floating stick */
 #td-stick { display: none; }
 body.mobile-shell #td-stick { display: block; position: fixed; z-index: 40; width: 0; height: 0; pointer-events: none; }
@@ -4061,7 +3785,7 @@ body.mobile-shell #tab-td #td-launch .launch-button { width: 64px; height: 44px;
    itself, so the ruler and the phone see the same 48px console */
 body.mobile-shell #tab-td #td-launch-readout { display: none; }
 body.mobile-shell #tab-td #td-launch:not(.armed) .launch-button { display: none; }
-body.mobile-shell #tab-td #td-hack { left: 14px; right: auto; top: 104px; }
+
 /* the coach / tutorial banner: right of the launch console, above the
    thumbs — the only slot at the ruler's 303px height that touches neither
    the console (ends 136) nor the caption lane (starts ~160) */
@@ -4125,33 +3849,6 @@ body.mobile-shell #td-toast .wave-role, body.mobile-shell #td-wave .wave-name, b
   body.mobile-shell #td-rotate p { margin: 0; line-height: 1.6; max-width: 82vw; }   /* clipped at 390px without this */
 }
 @keyframes td-rotate-hint { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-90deg); } }
-
-/* --- cinematic capture (src/cine/kit.js): the frame is the picture ------- */
-body.cine-capture #tabbar, body.cine-capture #chrome-toggle, body.cine-capture #cb-badge,
-body.cine-capture #vars-toggle, body.cine-capture .lil-gui, body.cine-capture #portal-gui,
-body.cine-capture #portal-hud { display: none !important; }
-
-/* --- the cinematics tab ---------------------------------------------- */
-#cine-app { position: absolute; inset: 0; }
-#cine-app canvas { display: block; width: 100%; height: 100%; }
-#cine-hud { position: absolute; left: 14px; bottom: 12px; z-index: 5; font: 12px ui-monospace, Menlo, monospace;
-  color: #9fdcff; background: rgba(4, 8, 14, 0.6); padding: 5px 9px; border-radius: 6px; pointer-events: none; }
-body.cine-capture #cine-hud { display: none !important; }
-
-/* THE DIRECTOR's HUD (td-tab ?director=): a script asks for the full HUD,
-   the radar alone, or nothing. The scope scales in place for the zoom. */
-body.dir-hud-none #td-stats, body.dir-hud-none #td-wave, body.dir-hud-none #td-next, body.dir-hud-none #td-combo,
-body.dir-hud-none #td-danger, body.dir-hud-none #td-hint, body.dir-hud-none #td-throttle, body.dir-hud-none #td-callouts,
-body.dir-hud-none #td-sitrep, body.dir-hud-none #td-perf, body.dir-hud-none #td-lap, body.dir-hud-none #td-msg,
-body.dir-hud-none #td-toast, body.dir-hud-none #td-tower, body.dir-hud-none #td-tut, body.dir-hud-none #td-launch,
-body.dir-hud-none #td-safety, body.dir-hud-none #td-auto-radial, body.dir-hud-none .minimap, body.dir-hud-none #td-brief,
-body.dir-hud-none [id^="td-pad-"], body.dir-hud-none #td-stick, body.dir-hud-none #td-rotate { display: none !important; }
-body.dir-hud-radar #td-stats, body.dir-hud-radar #td-wave, body.dir-hud-radar #td-next, body.dir-hud-radar #td-combo,
-body.dir-hud-radar #td-hint, body.dir-hud-radar #td-throttle, body.dir-hud-radar #td-callouts,
-body.dir-hud-radar #td-sitrep, body.dir-hud-radar #td-perf, body.dir-hud-radar #td-lap, body.dir-hud-radar #td-msg,
-body.dir-hud-radar #td-toast, body.dir-hud-radar #td-tower, body.dir-hud-radar #td-tut, body.dir-hud-radar #td-launch,
-body.dir-hud-radar #td-safety, body.dir-hud-radar #td-auto-radial, body.dir-hud-radar #td-brief,
-body.dir-hud-radar [id^="td-pad-"], body.dir-hud-radar #td-stick, body.dir-hud-radar #td-rotate { display: none !important; }
 
 /* THE METAL LAB (metal-tab.js): the beam lab's chrome, same rules */
 #metal-app { position: absolute; inset: 0; }
@@ -4251,31 +3948,6 @@ body:not(.chrome-open) #tabbar .tabgroup:not(:has(button.active)) { display: non
   #tabbar .tabgroup-name { padding: 2px 18px 4px; color: #6a789c; }
 }
 
-/* THE ASTRONAUT STUDY (astro-tab.js): the metal lab's chrome */
-#astro-app { position: absolute; inset: 0; }
-#astro-app canvas { display: block; width: 100%; height: 100%; }
-#astro-copy {
-  /* LEFT, not right: the lil-gui panel owns the right edge and swallowed it
-     there — the button existed and could not be clicked. */
-  position: absolute; left: 12px; bottom: 40px; z-index: 7;
-  width: 40px; height: 40px; padding: 0;
-  font: 600 18px ui-monospace, Menlo, monospace; line-height: 1;
-  color: #9fdcff; background: rgba(12, 26, 38, 0.85);
-  border: 1px solid #2b6b96; border-radius: 8px; cursor: pointer;
-}
-#astro-copy:hover { background: rgba(22, 50, 74, 0.95); color: #dff4ff; }
-#astro-copy:active { transform: translateY(1px); }
-#astro-hud.flash { color: #66ff88; text-shadow: 0 0 10px rgba(102, 255, 136, 0.6); }
-#astro-hud {
-  position: absolute; left: 12px; bottom: 12px; z-index: 6;
-  font: 600 12px ui-monospace, Menlo, monospace; letter-spacing: 0.08em;
-  color: #9fdcff; text-shadow: 0 0 8px rgba(0, 180, 255, 0.5);
-  pointer-events: none;
-  /* the drop-off readout is three lines: where the beam ends, what it
-     burned, and what it never reached. Without this they run off the edge
-     as one line and the last two are simply not there. */
-  white-space: pre-line; max-width: 60vw; line-height: 1.5;
-}
 /* RE-CENTRE. Orbit controls on a phone are one finger to turn and two to
    zoom, and a few seconds of that puts the range somewhere behind you with
    no way back — the same problem the board solved with its two CTR buttons,
@@ -4292,152 +3964,6 @@ body:not(.chrome-open) #tabbar .tabgroup:not(:has(button.active)) { display: non
 .lab-center:active { transform: translateY(1px); }
 @media (pointer: coarse), (max-width: 700px) {
   .lab-center { left: auto; right: 12px; bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 164px); height: 44px; font-size: 13px; }
-}
-
-/* THE SNIPER. The reticle is an SVG overlay rather than geometry: it must be
-   drawn in CSS pixels from milliradians so a mil dot is a mil dot at every
-   magnification, and a reticle that scales with the scene cannot be ranged
-   with. It never takes a pointer — the drag under it is the aim. */
-#sniper-app { position: absolute; inset: 0; touch-action: none; }
-#sniper-reticle { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
-/* THE FIRE-CONTROL HUD. Corner readouts carry only TWO borders each, so they
-   read as brackets rather than boxes — the idiom, the two-tier label/value
-   field and the palette are taken from ~/Dev/onkochishin/atelier/hud-targeting
-   on the operator's steer, and rebuilt here rather than vendored. */
-#sniper-hud { display: none; }
-#sniper-vig {
-  position: absolute; inset: 0; z-index: 4; pointer-events: none;
-  background: radial-gradient(120% 90% at 50% 45%, transparent 38%, rgba(6, 8, 9, .55) 78%, rgba(6, 8, 9, .92) 100%);
-}
-#sniper-fcs {
-  position: absolute; inset: 0; z-index: 6; pointer-events: none;
-  --phosphor: #e8f4f2; --dim: #9fb6b2; --cyan: #5fe6d6; --lock: #ffb43d; --alarm: #ff4d4d;
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  font-variant-numeric: tabular-nums;
-}
-#sniper-fcs .fcs-strip {
-  /* the ☰ owns the top-left corner and the tab pill owns the middle of the
-     top edge, so there is no room here for a third label: the weapon's name
-     and nature live in the SCOPE box, which is where a shooter reads them.
-     What is left of the strip is right-aligned and stays out of both. */
-  position: absolute; left: 0; right: 0; top: 8px; display: flex; justify-content: flex-end;
-  gap: 24px; padding: 0 268px 0 18px; font-size: 9px; letter-spacing: .26em; text-transform: uppercase; color: var(--dim);
-}
-#sniper-fcs .fcs-mid { color: var(--cyan); }
-#sniper-fcs .fcs-right { color: var(--lock); }
-#sniper-fcs .fcs-tape {
-  position: absolute; left: 50%; top: 26px; transform: translateX(-50%);
-  font-size: 10px; letter-spacing: .18em; color: var(--lock);
-}
-#sniper-fcs .fcs-tape::after {
-  content: "\25BC"; display: block; text-align: center; font-size: 8px; color: var(--lock); margin-top: -2px;
-}
-#sniper-fcs .ro {
-  position: absolute; width: 27vw; max-width: 236px; min-width: 152px; padding: 10px 12px;
-  border-color: rgba(95, 230, 214, .28);
-  background: linear-gradient(180deg, rgba(8, 16, 15, .66), rgba(8, 16, 15, .30));
-  backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
-}
-#sniper-fcs .r-tl { left: 18px; top: 56px; border-left: 1px solid; border-top: 1px solid; }
-/* the right-hand pair sits clear of the lil-gui, which owns that edge on a
-   desktop; the coarse block below puts them back, where the panel is a
-   bottom drawer instead */
-#sniper-fcs .r-tr { right: 268px; top: 56px; border-right: 1px solid; border-top: 1px solid; }
-/* THE BOTTOM CORNERS BELONG TO THE CONTROLS. The deep-link button sits in
-   one and the four-high button stack in the other, so both readouts start
-   above them — a readout drawn under a button is a readout that is not
-   there. The stack tops out at 206 + 52; the link button is 52 tall. */
-#sniper-fcs .r-bl { left: 18px; bottom: 124px; border-left: 1px solid; border-bottom: 1px solid; }
-#sniper-fcs .r-br { right: 268px; bottom: 268px; border-right: 1px solid; border-bottom: 1px solid; }
-#sniper-fcs .r-head {
-  margin-bottom: 7px; font-size: 10px; font-weight: 700; letter-spacing: .28em;
-  text-transform: uppercase; color: var(--cyan);
-}
-#sniper-fcs .r-head.split { display: flex; justify-content: space-between; align-items: baseline; }
-#sniper-fcs .r-head.split b { color: var(--lock); letter-spacing: .16em; }
-#sniper-fcs .field { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; line-height: 1.65; }
-#sniper-fcs .field .k { font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
-#sniper-fcs .field .v { font-size: 12px; font-weight: 500; color: var(--phosphor); }
-#sniper-fcs .field .v.hot { color: var(--lock); }
-#sniper-fcs .meter { margin-top: 7px; height: 5px; width: 100%; overflow: hidden; background: rgba(95, 230, 214, .14); }
-#sniper-fcs .meter i { display: block; height: 100%; width: 0; background: var(--cyan); transition: width .18s linear; }
-#sniper-fcs .chips { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px; }
-#sniper-fcs .chip {
-  font-size: 8px; letter-spacing: .16em; text-transform: uppercase;
-  padding: 2px 5px; border: 1px solid rgba(159, 182, 178, .35); color: var(--dim);
-}
-#sniper-fcs .chip.on { border-color: var(--lock); color: var(--lock); }
-/* THE CLOSE-UP is a second render of the same scene through a long lens,
-   scissored into this box — a spotting monitor beside the optic. The box is
-   a frame only; the pixels come from the renderer. */
-#sniper-fcs .fcs-cu {
-  /* the free column between the left readouts and TRACK — centred, it ran
-     under the track panel's labels */
-  left: 282px; top: 52px;
-  width: 248px; height: 178px; padding: 0;
-  border: 1px solid rgba(95, 230, 214, .28); background: rgba(4, 8, 8, .35);
-}
-#sniper-fcs .fcs-cu .r-head {
-  position: absolute; left: 8px; top: 6px; margin: 0; z-index: 1;
-  text-shadow: 0 0 6px rgba(0, 0, 0, .95);
-}
-#sniper-fcs .fcs-radar {
-  left: 18px; top: 50%; transform: translateY(-50%);
-  width: 172px; height: auto; padding: 8px 10px 10px;
-  border: 1px solid rgba(95, 230, 214, .28);
-}
-#sniper-fcs .fcs-radar canvas { display: block; width: 150px; height: 150px; }
-
-#sniper-fcs .fcs-note {
-  position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%);
-  font-size: 11px; letter-spacing: .1em; color: var(--phosphor);
-  background: rgba(8, 16, 15, .72); border: 1px solid rgba(95, 230, 214, .3);
-  padding: 5px 12px; white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis;
-}
-#sniper-fcs .fcs-note.hit { border-color: var(--lock); color: var(--lock); }
-#sniper-fcs .fcs-note.miss { border-color: var(--alarm); color: var(--alarm); }
-@media (pointer: coarse), (max-width: 700px) {
-  #sniper-fcs .ro { width: 34vw; min-width: 0; padding: 7px 8px; font-size: 10px; }
-  #sniper-fcs .r-tl, #sniper-fcs .r-tr { top: 46px; }
-  #sniper-fcs .fcs-strip { padding-right: 18px; }
-  #sniper-fcs .r-bl { bottom: 116px; }
-  #sniper-fcs .r-br { bottom: 260px; }
-  #sniper-fcs .r-tr, #sniper-fcs .r-br { right: 18px; }
-  #sniper-fcs .field .v { font-size: 10px; }
-  #sniper-fcs .field .k { font-size: 8px; letter-spacing: .12em; }
-  #sniper-fcs .fcs-cu { width: 150px; height: 106px; top: 44px; left: auto; right: 18px; }
-  #sniper-fcs .fcs-radar { width: 116px; padding: 6px; top: auto; bottom: 96px; transform: none; }
-  #sniper-fcs .fcs-radar canvas { width: 100px; height: 100px; }
-  #sniper-fcs .fcs-note { font-size: 10px; bottom: 10px; }
-}
-#sniper-fire, #sniper-breath, #sniper-spawn, #sniper-real {
-  /* clear of the lil-gui panel, which owns the right edge on a desktop; the
-     coarse block below puts them back on the thumb's edge, where the panel
-     is a bottom drawer instead */
-  position: absolute; z-index: 7; right: 268px;
-  height: 52px; padding: 0 16px;
-  font: 700 13px ui-monospace, Menlo, monospace; letter-spacing: 0.1em;
-  color: #cfe8ff; background: rgba(12, 26, 38, 0.85);
-  border: 1px solid #2b6b96; border-radius: 10px; cursor: pointer;
-  touch-action: manipulation;
-}
-#sniper-fire { bottom: 14px; }
-#sniper-breath { bottom: 78px; }
-/* the spawn button takes the lock colour: it is the one control here that
-   makes the range more dangerous rather than less */
-#sniper-real { bottom: 206px; color: #ff8a5c; border-color: rgba(255,138,92,.55); }
-#sniper-spawn { bottom: 142px; color: #ffb43d; border-color: rgba(255, 180, 61, .55); }
-#sniper-fire:active, #sniper-breath:active, #sniper-spawn:active, #sniper-real:active { background: rgba(90, 200, 180, 0.5); color: #fff; }
-#sniper-gear { position: absolute; right: 12px; top: 12px; z-index: 8; width: 44px; height: 44px; border-radius: 10px;
-  border: 1px solid rgba(120, 200, 255, 0.35); background: rgba(10, 22, 34, 0.85); color: #9fdcff; font-size: 20px; display: none; }
-#tab-sniper.panel-hidden .lil-gui.root { display: none !important; }
-@media (pointer: coarse), (max-width: 700px) {
-  #sniper-gear { display: block; top: calc(env(safe-area-inset-top, 0px) + 112px); right: 12px; }
-  #sniper-fire, #sniper-breath, #sniper-spawn, #sniper-real { right: 14px; }
-  #sniper-hud { font-size: 11px; max-width: calc(100vw - 130px); }
-  #tab-sniper .lil-gui.root { display: block !important; position: fixed !important; left: 0 !important; right: 0 !important; bottom: 0 !important; top: auto !important;
-    width: 100% !important; max-height: 46vh; overflow-y: auto; --widget-height: 36px; --font-size: 15px; --input-font-size: 15px; --name-width: 44%;
-    border-radius: 12px 12px 0 0; }
 }
 
 /* the SENTRY RANGE, on the astronaut study's furniture — same stage, same
@@ -4462,26 +3988,12 @@ body:not(.chrome-open) #tabbar .tabgroup:not(:has(button.active)) { display: non
     width: 100% !important; max-height: 46vh; overflow-y: auto; --widget-height: 36px; --font-size: 15px; --input-font-size: 15px; --name-width: 44%;
     border-radius: 12px 12px 0 0; }
 }
-#astro-gear { position: absolute; right: 12px; top: 12px; z-index: 8; width: 44px; height: 44px; border-radius: 10px;
-  border: 1px solid rgba(120, 200, 255, 0.35); background: rgba(10, 22, 34, 0.85); color: #9fdcff; font-size: 20px; display: none; }
-#tab-astro.panel-hidden .lil-gui.root { display: none !important; }
-@media (pointer: coarse), (max-width: 700px) {
-  #astro-gear { display: block; top: calc(env(safe-area-inset-top, 0px) + 112px); right: 12px; }
-  #astro-hud { bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 168px); left: 12px; right: 12px; font-size: 11px; }
-  #tab-astro .lil-gui.root { display: block !important; position: fixed !important; left: 0 !important; right: 0 !important; bottom: 0 !important; top: auto !important;
-    width: 100% !important; max-height: 46vh; overflow-y: auto; --widget-height: 36px; --font-size: 15px; --input-font-size: 15px; --name-width: 44%;
-    border-radius: 12px 12px 0 0; }
-}
 
 #td-perf { pointer-events: auto; max-width: min(640px, calc(100vw - 24px)); }
 #td-perf details { white-space: normal; max-height: 35vh; overflow: auto; }
 #td-perf summary, #td-perf button { cursor: pointer; }
 #td-perf button { margin-top: 6px; }
 #td-perf textarea { display: block; width: 95%; height: 8em; }
-
-/* The drone feed owns telemetry while aiming indirect fire. */
-#tab-sniper.sniper-drone #sniper-fcs .r-br,
-#tab-sniper.sniper-drone #sniper-fcs .r-bl { display: none; }
 
 /* THE STORY LAB (labs/story-tab.js): planet, clearing, arrival */
 #story-app { position: absolute; inset: 0; }

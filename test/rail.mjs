@@ -1,5 +1,5 @@
 // rail.mjs — the camera rail: keys in, an eased pose out.
-import { compileRail, smooth } from '../src/cine/rail.js';
+import { compileRail, smooth } from '../src/core/rail.js';
 
 let failures = 0;
 const check = (name, cond, detail = '') => {

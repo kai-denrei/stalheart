@@ -1,25 +1,19 @@
 // Game-owned input/optic adapter. Combat, map and wave ownership stay in TD.
 import * as THREE from '../vendor/three.module.js';
-import { SENTRIES } from './content/sentries.js';
 import { createGunshipHud, planetCoords } from './fx/gunship-hud.js';
 export function createSentryPilot(root, host) {
   const state = { tower:null, held:false, yaw:0, pitch:-.2, zoom:1, target:null, shots:0, view:'pov' };   // view: pov (over the barrels) | third (behind the turret)
   const panel=document.createElement('section'); panel.id='sentry-pilot';
-  panel.innerHTML=`<header>SENTRY CONTROL · SECTOR 01 <small>LIVE TD MAP · PRACTICE</small></header><div class="pilot-weapons">${SENTRIES.map(s=>`<button data-weapon="${s.key}">${s.label}</button>`).join('')}</div><p><button data-post="-1">Q · Previous post</button> <button data-post="1">E · Next post</button> <button data-map>Map / optic · M</button> <button data-restart>Restart</button> <a href="labs.html#sniper">Range bench</a></p><output></output><footer>Right-drag to aim · hold Space / left mouse to fire · wheel to zoom · 1–8 weapon · P pause</footer><div class="pilot-cross">＋</div>`;
+  panel.innerHTML=`<header>SENTRY CONTROL <small>THE MOUNTS ON THE WALL</small></header><p><button data-map>Map / optic · M</button></p><output></output><footer>${host.mobile?'Drag to aim · ‹ › turn · ◉ fire · MAP':'Click to lock the mouse, move it to aim · Space fires · wheel zoom · 1 map · 2 PoV · 3 third · P pause'}</footer><div class="pilot-cross">＋</div>`;
   root.append(panel);root.classList.add('sentry-pilot-mode');
-  // the story hands over one printed sentry: no weapon swaps, no posts, no bench
-  if(host.story){panel.querySelector('header').innerHTML='SENTRY CONTROL <small>THE MOUNTS ON THE WALL</small>';panel.querySelector('.pilot-weapons').style.display='none';panel.querySelectorAll('[data-post],[data-restart],a[href]').forEach(b=>{b.style.display='none';});panel.querySelector('footer').textContent=host.mobile?'Drag to aim · ‹ › turn · ◉ fire · MAP':'Click to lock the mouse, move it to aim · Space fires · wheel zoom · 1 map · 2 PoV · 3 third · P pause';}
   const up=new THREE.Vector3(),forward=new THREE.Vector3(),direction=new THREE.Vector3(),eye=new THREE.Vector3(),camEye=new THREE.Vector3(),v=new THREE.Vector3();
   let dragging=false,map=false,lastX=0,lastY=0,lastT=performance.now();
   const locked=()=>document.pointerLockElement===root;
   state.turn=0;   // -1..1 from the tank pad's side zones on touch
   const abort=new AbortController(),listen=(el,key,fn,options={})=>el.addEventListener(key,fn,{...options,signal:abort.signal});
   function select(key){dismountGunship();state.held=false;host.select(key);panel.querySelectorAll('[data-weapon]').forEach(b=>b.classList.toggle('on',b.dataset.weapon===key));}
-  panel.querySelectorAll('[data-weapon]').forEach(b=>listen(b,'click',()=>select(b.dataset.weapon)));
-  panel.querySelectorAll('[data-post]').forEach(b=>listen(b,'click',()=>host.post(Number(b.dataset.post))));
   function toggleMap(){map=!map;state.held=false;root.classList.toggle('pilot-map',map);host.map(map);host.zoom(map?1:state.zoom);}
   listen(panel.querySelector('[data-map]'),'click',toggleMap);
-  listen(panel.querySelector('[data-restart]'),'click',()=>location.reload());
   const editable=e=>/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)||e.target.isContentEditable;
   listen(window,'keydown',e=>{
     if(editable(e))return;
@@ -27,10 +21,8 @@ export function createSentryPilot(root, host) {
     if(e.code==='Space'){e.preventDefault();state.held=gunship||!map;}
     if(e.repeat)return;
     if(gunship){if(/^[123]$/.test(e.key))selectGun(G.order[Number(e.key)-1]);if(e.code==='KeyV')setView(map?'pov':state.view==='third'?'pov':'third');if(e.code==='KeyM')setMode(mode+1);if(e.code==='KeyT'){if(map)setView('pov');else{setView('map');frameApproach(true);}}if(e.code==='KeyP')host.pause();return;}   // the gunner's views: the map (the orbital strike's own), or a look at the ship
-    const s=SENTRIES.find(s=>String(s.number)===e.key);if(s&&!host.story)select(s.key);
     // the tank's keys: 1 map, 2 first person, 3 third person
-    if(host.story){if(e.key==='1'&&!map)toggleMap();if(e.key==='2')setView('pov');if(e.key==='3')setView('third');}
-    if(e.code==='KeyQ')host.post(-1);if(e.code==='KeyE')host.post(1);
+    if(e.key==='1'&&!map)toggleMap();if(e.key==='2')setView('pov');if(e.key==='3')setView('third');
     if(e.code==='KeyM')toggleMap();if(e.code==='KeyP')host.pause();
   },{capture:true});
   listen(window,'keyup',e=>{if(editable(e))return;e.stopImmediatePropagation();if(e.code==='Space'){e.preventDefault();state.held=false;}},{capture:true});

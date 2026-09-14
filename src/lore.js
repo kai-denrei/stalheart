@@ -87,41 +87,6 @@ export const LORE_WORLD = [
       + 'condensation on steel, biohazard stencils, cold work lighting, '
       + 'hard sci-fi realism, macro shot, 8k',
   },
-  {
-    id: 'portal',
-    name: 'THE GATES',
-    tag: 'enemy ingress',
-    body: 'They arrive by ring. A gate begins as a pencil-line of light that '
-      + 'draws itself in a circle, locks nine chevron masses around its rim, '
-      + 'then fills with a disc of standing liquid that is not liquid — the '
-      + 'event horizon, surface-tension over elsewhere. Gates dim as they '
-      + 'are wounded and die like lamps. Three shells close one. What dials '
-      + 'them from the far side has never shown itself, and the Relay, '
-      + 'when asked, answers only with handshake tones.',
-    visual: 'alien stargate ring standing on an asteroid plain, glowing '
-      + 'white-blue toroidal frame with nine locked chevrons, rippling '
-      + 'liquid-light event horizon, concentric shimmering rings inside, '
-      + 'cold mist at the base, star field behind, sci-fi realism, long '
-      + 'exposure glow, dramatic low angle, 8k render',
-  },
-  {
-    id: 'server',
-    name: 'THE ANTIPODE RELAY',
-    tag: 'the mysterious server · south pole',
-    body: 'At the exact antipode of the Cardion, sunk in a carved vault the '
-      + 'shell grew around it, stands a server rack that predates every '
-      + 'protocol we brought. It is invincible in the practical sense: '
-      + 'ordnance marks the dust, never the chassis. Approach and it wakes, '
-      + 'negotiating in fifty-six-kilobaud handshake song, offering a '
-      + 'terminal and a wager. Win its games and it decrypts tower '
-      + 'schematics it has no business holding. The Relay and the Heart '
-      + 'have never been observed to communicate. Nobody believes that.',
-    visual: 'ancient alien server rack in a carved stone vault, matte black '
-      + 'monolithic chassis with amber status LEDs, dust motes in a single '
-      + 'shaft of light, cables fused into rock, green CRT terminal glow, '
-      + 'brutalist sci-fi archaeology, moody chiaroscuro, photorealistic, '
-      + 'medium format look',
-  },
 ];
 
 export const LORE = {
@@ -143,45 +108,11 @@ export const LORE = {
       + 'grounded military sci-fi realism, dust kicked by thrusters, '
       + 'golden hour rim light, 8k',
   },
-  mkcx: {
-    name: 'MK-CX "DENREI"',
-    tag: 'the authored hover tank',
-    body: 'Someone loved this machine before we found its plans. An '
-      + 'articulated turret that never stops hunting, secondary gun pods '
-      + 'that track independently, a skirt of nacelles that kneel and rise '
-      + 'on hydraulic song. Its glow-strips are a single circuit — deck, '
-      + 'hull, gun rings, headlights — wired to report damage as colour, '
-      + 'ember-red at the end. Crews talk to it. Crews are not wrong to.',
-    visual: 'sleek articulated hover tank, low wide chassis with hydraulic '
-      + 'nacelle skirt, rotating turret with long cannon, twin secondary '
-      + 'gun pods, continuous neon glow strips tracing the hull, cyan '
-      + 'accents on gunmetal, floating over engineered stone tiles, '
-      + 'mecha-realism concept art, dramatic three-quarter view, '
-      + 'cinematic HDR, 8k',
-  },
   mork: {
     name: 'MÖRK', tag: 'the fielded heavy hover tank',
     body: 'A long, low hull suspended over paired lift fields. The forward turret carries a recoiling cannon; two plasma projectors cover the front. Nine rear-deck lenses show the shells available to the pilot.',
     visual: 'elongated armored hover tank, sloping glacis, pointed nacelles, low swept turret, long cannon, twin front plasma projectors and luminous rear-deck ammunition lenses',
   },
-  mkcx2: {
-    name: 'MK-CX/2 "DENREI-KAI"',
-    tag: 'the MK-CX with the top taken off',
-    body: 'The same machine, re-skinned by a yard that had seen it fight. '
-      + 'The turret block is gone; the gun rides a blade a hand high on a '
-      + 'deck that runs flat from the knife of the nose to the tail. Nine '
-      + 'shells sit flush in the rear deck where a hand can count them, and '
-      + 'two indicator strips the length of the roof say from orbit what '
-      + 'the hull has left. Lower, wider, harder to hit. The crews call it '
-      + 'the razor.',
-    visual: 'streamlined flat-deck hover tank, supercar wedge silhouette, '
-      + 'blade-thin turret with long cannon, nine shells recessed in the '
-      + 'rear deck, two long cyan indicator strips along the roof, nacelle '
-      + 'skirt with lift emitters, hard chamfers, gunmetal with cyan neon, '
-      + 'mecha-realism concept art, dramatic three-quarter view, '
-      + 'cinematic HDR, 8k',
-  },
-
   // --- towers -------------------------------------------------------------
   isao: {
     name: 'FABRICATOR UNIT "ISAO"',

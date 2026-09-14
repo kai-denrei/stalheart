@@ -87,7 +87,7 @@ The current application owns one game or lab document. Navigation releases that 
 
 The first run-lifetime slice now lives in `src/domain/run-context.js`: read-only motion time and generation, explicit advancement/reset, stale-callback guards and disposal. `td-tab.js` advances and resets time at the same call sites as before. Generation begins before rebuilding, while the clock resets at its original later point; these are deliberately separate operations to preserve reconstruction behavior.
 
-`src/platform/run-timers.js` owns the delayed hack ending, destruction preview and death-hold callbacks. Restart clears pending timers, and a generation guard also suppresses callbacks that were already queued. Completed timers release their handles. This is partial lifetime ownership: random streams, commands/events, other UI/probe timers, render loops and GPU disposal still belong to the legacy controller. The controller's disposal currently covers the extracted run resources and deactivates simulation; document teardown still releases the rest.
+`src/platform/run-timers.js` owns the destruction preview and death-hold callbacks. Restart clears pending timers, and a generation guard also suppresses callbacks that were already queued. Completed timers release their handles. This is partial lifetime ownership: random streams, commands/events, other UI/probe timers, render loops and GPU disposal still belong to the legacy controller. The controller's disposal currently covers the extracted run resources and deactivates simulation; document teardown still releases the rest.
 
 The next runtime extraction must centralize scope ownership for render loops, DOM listeners, timers, audio voices and disposable GPU resources. Existing effect factories already have useful local-space contracts, but their lifecycle conventions differ: impact effects tick by delta time while articulated units receive absolute time. Preserve this distinction in an explicit adapter before unifying interfaces.
 
@@ -117,8 +117,7 @@ Sentry control labels now use `src/labs/control-help.js` for a shared hover/focu
 
 ## Manual Sentry operation
 
-Sniper imports the same roster, game stats, FX packages, shot/impact/audio builders and DART launcher as the other consumers. `src/domain/manual-weapon.js` adapts explicit content/stats to manual operation; `src/domain/ballistics.js` owns scope/environment trajectory math without a second weapon catalog. Scope input supplies aim to shared missile lock and eligibility rules. Stage gravity, wind, sway, optics and target exercises remain local simulation controls. `sniper-scale.js` applies isolated manual reach/speed scaling, `mortar-ground.js` solves raised-muzzle ground impacts through the existing integrator, and `labs/sniper-environment.js` owns the planet terrace, instanced canyon walls, mounted shared models and cover intersections. See [SNIPER.md](SNIPER.md) for the manual cassette contract, authoring boundaries and acceptance checks.
-
+The story's piloted mounts and the gunship seat share `src/sentry-pilot.js`, the game-owned input/optic adapter. `src/domain/manual-weapon.js` adapts explicit content/stats to manual operation; aim feeds the shared missile lock and eligibility rules. The Sniper bench and its ballistics/scale/mortar modules retired on 2026-09-14.
 
 ## Ground breach adapter
 
@@ -128,6 +127,4 @@ Ground breaches have a one-way runtime lifecycle: pending opening, open, sealed/
 
 `src/content/tank.js` selects the default tank presentation for gameplay, spare hulls and Workshop/cinematic tank scenes. It is MÖRK; legacy castings remain explicit unit choices. Consumers preload the selected authored asset and use its muzzle/pivot contract rather than assuming MK-CX node names.
 
-Astro station presentation lives in `src/labs/astro-diorama.js`; `src/domain/yard-route.js` finds visibility-graph routes around expanded prop footprints. Rigged instances share immutable geometry/materials and own their skeletons and mixers. The host supplies absolute stage time; hidden groups stop animation work. `astro-performance.js` owns a bounded 120-frame local sample window, complete renderer frame counters and baseline feedback. Per-group mesh budgets are estimates before shadow/post passes, and CPU submission time is explicitly not GPU timing.
-
-Astro industrial imports use `fx/asset-batching.js` (shared with the story base) to preserve animated owners during static material merging, and `astro-foundations.js` instances authored tiles on one non-overlapping lattice. `domain/yard-drive.js` isolates flat-yard acceleration/braking/collision from main-game movement; `labs/astro-drive.js` owns mode-scoped input and chase-camera lifetime while reusing the game tank-feel adapter. No industrial power, logistics or construction gameplay is introduced.
+`domain/yard-drive.js` isolates flat-yard acceleration/braking/collision from main-game movement; the swarm lab drives the real tank through it. The Astro diorama and its yard lab retired on 2026-09-14.

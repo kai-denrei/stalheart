@@ -38,7 +38,7 @@ SKIP = ('.png', '.jpg', '.jpeg', '.glb', '.mp3', '.ogg', '.wav',
         '.woff', '.woff2', '.ttf', '.zip', '.webm', '.mp4', '.ico')
 out = []
 for p in files:
-    if p.endswith(SKIP) or p.startswith(('vendor/', 'minigames/')):
+    if p.endswith(SKIP) or p.startswith(('vendor/',)):
         continue
     if p == 'scripts/check-emoji.sh':      # this file names what it bans
         continue

@@ -33,12 +33,9 @@ const routes = {
   notes: () => import('./labs/notes-tab.js').then(m => m.initNotesTab),
   beam: () => import('./beam-tab.js').then(m => m.initBeamTab),
   metal: () => import('./metal-tab.js').then(m => m.initMetalTab),
-  astro: () => import('./astro-tab.js').then(m => m.initAstroTab),
   story: () => import('./labs/story-tab.js').then(m => m.initStoryTab),
   sentry: () => import('./sentry-tab.js').then(m => m.initSentryTab),
-  sniper: () => import('./sniper-tab.js').then(m => m.initSniperTab),
   portal: () => import('./portal-tab.js').then(m => m.initPortalTab),
-  cine: () => import('./cine-tab.js').then(m => m.initCineTab),
   sim: () => import('./sim-tab.js').then(m => m.initSimTab),
 };
 const name = location.hash.slice(1) || (workshop ? 'units' : 'td');
@@ -83,14 +80,12 @@ if (!root) {
     b.classList.toggle('active', b.dataset.tab === target
       && (('story' in b.dataset) === (target === 'td' && isStoryRoute(location.search)))   // the story entries own the story world, the others never show active there
       && (!('story' in b.dataset) || (Number(b.dataset.story) >= 8) === (Number(q.get('stage') ?? q.get('story') ?? 1) >= 8))   // defend is the finished base; story, the opening
-      && (!('mission' in b.dataset) || b.dataset.mission === (q.get('mission') || ''))
       && (!('roster' in b.dataset) || b.dataset.roster === (q.get('roster') || '2')));
     b.addEventListener('click', () => {
       const url = new URL(b.dataset.page || location.pathname, location.href);
       url.search = location.search;
-      url.searchParams.delete('sentryPilot');
-      for (const key of ['story', 'stage', 'world', 'heart', 'threat', 'land', 'classic', 'cine']) url.searchParams.delete(key);   // leaving a mode drops its switches
-      for (const key of ['mission', 'roster', 'story', 'land', 'classic']) if (key in b.dataset) {
+      for (const key of ['story', 'stage', 'world', 'heart', 'threat', 'land', 'cine']) url.searchParams.delete(key);   // leaving a mode drops its switches
+      for (const key of ['roster', 'story', 'land']) if (key in b.dataset) {
         if (b.dataset[key]) url.searchParams.set(key, b.dataset[key]);
         else url.searchParams.delete(key);
       }

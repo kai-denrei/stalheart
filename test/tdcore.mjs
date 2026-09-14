@@ -5,7 +5,7 @@
 import { ENEMY_SPEC, INTROS, typesByWave, computeWavePlan, CREATURE_TINTS,
   SAFE_HUES, ALARM_HUES, isSafeHue, isAlarmHue, accentFor, hueLuma, DARK_LUMA, ACCENT_ALARM }
   from '../src/enemyspec.js';
-import { useRoster, TOWERS, TOWER_BY_KEY, MAX_TIER, upgradeCost, effectiveStats, pickTarget, shotInterval, unlockedTowerKeys, towerUnlockWave, TOWER_ORDER, HACK_GATED } from '../src/towers.js';
+import { useRoster, TOWERS, TOWER_BY_KEY, MAX_TIER, upgradeCost, effectiveStats, pickTarget, shotInterval, unlockedTowerKeys, towerUnlockWave, TOWER_ORDER,  } from '../src/towers.js';
 import { shotOf } from '../src/sentryfx.js';
 import { makeEconomy, sellRefund, waveClearBonus, earlyCallBonus, START_BIOMASS, RAM_PREMIUM, STREAK_CAP } from '../src/economy.js';
 
@@ -158,21 +158,13 @@ check('wave 1 unlocks single only', JSON.stringify(unlockedTowerKeys(1)) === JSO
 check('wave 2 unlocks single+rapid', JSON.stringify(unlockedTowerKeys(2)) === JSON.stringify(['rotor', 'plasma']));
 check('unlock clamps below 1', JSON.stringify(unlockedTowerKeys(0)) === JSON.stringify(['rotor'])
   && JSON.stringify(unlockedTowerKeys(-3)) === JSON.stringify(['rotor']));
-const LADDER_N = TOWER_ORDER.length - HACK_GATED.length;
-check('wave N grants N towers (cumulative, ladder only)',
+const LADDER_N = TOWER_ORDER.length;
+check('wave N grants N towers (cumulative)',
   Array.from({ length: LADDER_N }, (_, i) => i + 1).every((w) => unlockedTowerKeys(w).length === w));
-check('the wave clock NEVER unlocks a gated tower',
-  HACK_GATED.every((k) => !unlockedTowerKeys(99).includes(k)));
-check('the first relay win decrypts the gate',
-  HACK_GATED.every((k) => unlockedTowerKeys(1, 1).includes(k)));
-check('wins beyond the gate push the ladder',
-  unlockedTowerKeys(2, 2).length === 2 + 1 + 1); // wave 2 + gate + 1 early
-check('full kit = ladder by clock + gate by relay',
-  unlockedTowerKeys(99, HACK_GATED.length).length === TOWER_ORDER.length);
-check('every unlocked key is a real tower', unlockedTowerKeys(99, 9).every((k) => TOWER_BY_KEY[k]));
-check('towerUnlockWave: gated keys have NO wave',
-  HACK_GATED.every((k) => towerUnlockWave(k) === null)
-  && towerUnlockWave('rotor') === 1 && towerUnlockWave('heptapod') === LADDER_N);
+check('the ladder saturates at the whole order', unlockedTowerKeys(99).length === TOWER_ORDER.length);
+check('every unlocked key is a real tower', unlockedTowerKeys(99).every((k) => TOWER_BY_KEY[k]));
+check('towerUnlockWave: the ladder position',
+  towerUnlockWave('rotor') === 1 && towerUnlockWave('heptapod') === LADDER_N && towerUnlockWave('nope') === null);
 check('TOWER_ORDER covers the roster', TOWER_ORDER.length === TOWERS.length && TOWER_ORDER.every((k) => TOWER_BY_KEY[k]));
 
 // --- wave plan -----------------------------------------------------------

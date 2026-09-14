@@ -305,7 +305,13 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 21 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 22 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### Direction: leave the spherical Stålberg grid and go back to a flat world; the sphere may seed a spin-off
+
+`2026-09-14-flat-world-direction` · decision · **proposed**
+
+Owner, after the PoC cleanup and the concept audit (2026-09-14-concept-audit-first-pass, which found the sphere interesting but paying emotionally only in a few scale moments while costing everywhere): leaning towards a major reform and simplification; abandon the spherical Stålberg grid as a PoC that is interesting but not fun enough to justify its complexity; go back to flat for this project; the sphere might be used for a spin-off. The full FunMap audit is to be reviewed together first.
 
 ### Next, not yet started: an audit of the game's concepts, not its code, through Rosewater's lessons, and a FunMap kept beside the roadmap
 

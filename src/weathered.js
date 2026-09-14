@@ -7,7 +7,7 @@
 //
 // Pure: no three.js, no DOM, no canvas — three typed arrays out, Node-tested
 // (test/weathered.mjs). The three.js side (DataTextures, the material, the
-// apply-by-name walk) is src/cine/materials.js. Same split as
+// apply-by-name walk) is src/fx/weathered-material.js. Same split as
 // galaxyseed.js / galaxybake.js, and for the same reason: the numbers are
 // testable and the upload is not.
 //

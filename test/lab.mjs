@@ -19,25 +19,22 @@ check('?lab=0 is not the lab', parseLabQuery('?lab=0') === null);
 const bare = parseLabQuery('?lab=1');
 check('bare ?lab=1 opens on the defaults', bare && bare.on === true
   && LAB_KNOBS.every((k) => bare[k.key] === LAB_DEFAULTS[k.key]));
-const tier = { wormhole: { size: 256, updateHz: 24 } };
-const onPhone = parseLabQuery('?lab=1', tier);
-check('portal knobs open on the tier, not the constant', onPhone.whSize === 256 && onPhone.whHz === 24);
-const seeded = parseLabQuery('?lab=1&labwave=8&labbg=galaxy&labfx=corona&labseed=77&labHoldWaves=1&labWhSize=192&labBloom=0');
+const seeded = parseLabQuery('?lab=1&labwave=8&labbg=galaxy&labseed=77&labHoldWaves=1&labBloom=0');
 check('labwave= seeds the multiplier', seeded.waveMult === 8);
-check('labbg= / labfx= pick choices', seeded.bg === 'galaxy' && seeded.fx === 'corona');
+check('labbg= picks a choice', seeded.bg === 'galaxy');
 check('labseed= seeds the galaxy', seeded.galaxySeed === 77);
 const sky = parseLabQuery('?lab=1&labscale=2.5&labgalaxies=5');
 check('labscale= / labgalaxies= size and count the sky', sky.galaxyScale === 2.5 && sky.galaxies === 5);
 check('galaxy count clamps to 8', parseLabQuery('?lab=1&labgalaxies=40').galaxies === 8);
 check('labcore= scales the core', parseLabQuery('?lab=1&labcore=0.5').galaxyCore === 0.5);
-check('lab<Key>= reaches any knob', seeded.holdWaves === true && seeded.whSize === 192 && seeded.bloom === false);
-const clamped = parseLabQuery('?lab=1&labwave=999&labbg=nebula&labWhSize=300&labOctaves=-4');
+check('lab<Key>= reaches any knob', seeded.holdWaves === true && seeded.bloom === false);
+const clamped = parseLabQuery('?lab=1&labwave=999&labbg=nebula&labGalaxies=-4');
 check('out-of-range clamps, unknown choices are ignored', clamped.waveMult === 20 && clamped.bg === 'galaxy'
-  && clamped.whSize === 384 && clamped.octaves === 1);
+  && clamped.galaxies === 1);
 const line = labLine({ fps: 59.6, ms: 16.78, gpuMs: 4.21, calls: 1117, tris: 400000, pts: 90000, enemies: 240,
-  wave: 7, waveMult: 8, bg: 'galaxy', fx: 'corona', whSize: 384, whHz: 30, steps: 120, octaves: 12, bloom: true });
+  wave: 7, waveMult: 8, bg: 'galaxy', bloom: true });
 check('the console line names every field', ['fps=60', 'ms=16.8', 'gpu=4.2', 'calls=1117', 'enemies=240', 'wave=7',
-  'mult=8', 'bg=galaxy', 'fx=corona', 'wh=384@30', 'steps=120', 'oct=12', 'bloom=1'].every((f) => line.includes(f)), line);
+  'mult=8', 'bg=galaxy', 'bloom=1'].every((f) => line.includes(f)), line);
 check('a missing gpu number prints as a dash, not NaN', labLine({}).includes('gpu=—') && !labLine({}).includes('NaN'));
 
 console.log('wave multiplier:');

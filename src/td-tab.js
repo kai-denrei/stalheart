@@ -42,10 +42,6 @@ import * as THREE from '../vendor/three.module.js';
 import GUI from '../vendor/lil-gui.esm.js';
 import { bfsDist, BLOCKED, PATH, ROOM } from './dungeon.js';
 import { buildGameWorld, readStoryQuery, STORY_SOUNDS, takeControlPose } from './platform/story-world.js'; import { SENTRY_HEAT } from './content/sentry-heat.js'; import { coolHeat } from './core/heat.js'; import { paintBarrelHeat } from './fx/barrel-heat.js'; import { createStoryViews } from './fx/story-views.js'; import { createStoryMonitor } from './fx/story-monitor.js'; import { createDaylight } from './fx/daylight.js'; import { createStoryScope } from './fx/story-scope.js'; import { createSyntheticModal } from './fx/synthetic-modal.js'; import { createBrass } from './fx/brass.js';
-import { compileRail } from './cine/rail.js';
-import { SCRIPTS } from './cine/scripts.js';
-import { cuesBetween } from './cine/sound.js';
-import { installCine } from './cine/kit.js';
 import { mulberry32, randomSeed } from './rng.js';
 import { computeBerths, berthIndexFor } from './berths.js';
 import { wantsSecondary, shellsForAll } from './autofire.js';
@@ -62,7 +58,7 @@ import { ACHIEVEMENTS, ACHV_GROUPS, achievement, blankRun, earned, freshlyEarned
 import { applyFontPack, currentFontPack, FONT_NAMES,
   loadTypeFeel } from './fonts.js';
 import { SECONDARY_TOE, applySecondaryToe } from './units.js';
-import { UNITS, UNIT_NAMES, buildUnit, buildCreature, preloadMkcx, preloadMork, preloadServer, makeServerFixture, makeShieldShell, preloadContainer, makeContainerFixture, preloadFabricator, makeIsaoDrone, makeBulletCloud, makeRewardSolid, makeShellSolid, makeDebris, makeDotBurst, makePortalCloud, preloadPortalRing, makePortalRing, makeHeartCloud, makeDotEnemy, makeSurvivor, preloadAstronaut, preloadAstronauts, makeAstronaut } from './units.js';
+import { UNITS, UNIT_NAMES, buildUnit, buildCreature, preloadMork, makeShieldShell, preloadContainer, makeContainerFixture, preloadFabricator, makeIsaoDrone, makeBulletCloud, makeRewardSolid, makeShellSolid, makeDebris, makeDotBurst, makeHeartCloud, makeDotEnemy } from './units.js';
 import { LOOKS, LOOK_NAMES } from './looks.js';
 import { makeCellIndex } from './cellindex.js';
 import { CREATURE_TINTS, ENEMY_SPEC, INTROS, computeWavePlan, accentFor } from './enemyspec.js';
@@ -71,8 +67,6 @@ import { rankFor, rankLabel, badgeSVG, killReq, eliteReq } from './ranks.js';
 import { beamStep, isBeamStep, PEN_SOFT_FRAC, PEN_HARD_FRAC } from './beamranks.js';
 import { burn, sweepAdvance, wallBite as wallBiteFor } from './beamburn.js';
 import { arcPoint, projectToArc, toeForCrossing, crossingForToe } from './arc.js';
-import { MINE_TUNE, makeField, layMine, armMines, restock, mineAt,
-  inFan, trip, chain, nextChained, minePolar } from './mines.js';
 import { shotOf, muzzleOf, impactOf, tuneFor, resolveImpactColors } from './sentryfx.js'; import { makeImpactBurst, orientImpact } from './impactfx.js';   // the package's muzzle recipe is the one master setting
 import { makeTracerMesh, makeLightningMesh, makeSeekerMesh, aimSeeker,
   LANCE_LOOK as SHOT_LANCE_LOOK, THROW_LOOK as SHOT_THROW_LOOK } from './shotfx.js';
@@ -80,31 +74,21 @@ import { SHIELD_TUNE, SHIELD_KNOBS, makeShield, charge as chargeShield,
   deploy as deployShield, tickShield, stepShieldFrame, restockShield, tapTower, towerOffline,
   stationDraw, waveReset as shieldWaveReset, shoveVec, shoveMag } from './shield.js';
 import { deepLink, wireDeepLink } from './deeplink.js';
-import { RESCUE_TUNE, makeRescue, placeSurvivors, stepBoard, stepGrab,
-  disembark, loseCarried, lockOn, waveMix, standing as standingSurv,
-  aboard as aboardSurv, missionOver, verdict as rescueVerdict,
-  grabProgress, remaining as remainingSurv, exposed as exposedSurv,
-  RESCUE2_TUNE, makeCamps, stepCall, stepEmerge, walkStep, runOver,
-  awake as campAwake } from './rescue.js';
-import { WORMHOLE_PRESET, WORMHOLE_UNIFORM_DEFAULTS, RING_SPIN, TRAVEL,
-  travelRate, advancePhase } from './portalfx.js';
-import { WORMHOLE_FRAG } from './fx/wormhole.frag.js';
-import { CORONA_FRAG } from './fx/corona.frag.js';
 import { labLine, parseLabQuery } from './lab.js';
 import { bakeGalaxyCube } from './galaxybake.js';
 import { SKY_PRESET } from './galaxyseed.js';
 import { makeScore } from './score.js';
-import { TOWERS, TOWER_BY_KEY, MAX_TIER, upgradeCost, effectiveStats as baseEffectiveStats, pickTarget, shotInterval, unlockedTowerKeys, towerUnlockWave, TOWER_ORDER, HACK_GATED, starterTower, towerSound, ROSTER } from './towers.js';
+import { TOWERS, TOWER_BY_KEY, MAX_TIER, upgradeCost, effectiveStats as baseEffectiveStats, pickTarget, shotInterval, unlockedTowerKeys, towerUnlockWave, TOWER_ORDER, starterTower, towerSound, ROSTER } from './towers.js';
 import { makeEconomy, sellRefund } from './economy.js';
 import { pickTier } from './perftier.js';
-import { applyWeatheredMaterial } from './cine/materials.js';
+import { applyWeatheredMaterial } from './fx/weathered-material.js';
 import { STICK, stickVector, knobOffset } from './stick.js';
 import { makeBloom } from './postfx.js';
 import { TANK_FEEL, TANK_FEEL_KNOBS, makeTankFeel, stepTankFeel, landTankFeel, fireTankFeel, applyTankFeel, applyTankHealth } from './tankfeel.js';
 import { FEEL, loadFeel, saveFeel } from './feelstore.js';
 import { STRIKE_KNOBS, makeStrike, makeStrikeParams, grantStrikes, stepStrike,
   toggleArm, paintTarget, launchStrike, stepFall, skipFall, fallProgress,
-  strikeDamage, retargetStrike, orbitProgress } from './strike.js'; import { choosePilotPosts } from './domain/pilot-posts.js'; import { makeGunship, stepGunship, onStation, phaseLeft, passProgress, mountGunship, dismountGunship, selectGun, stepGun, aimOnSphere, splashDamage, dangerReport, fireRound, stepRounds, paintHeavy, launchHeavy, nudgeHeavy, stepHeavy, heavyState } from './domain/gunship.js'; import { GUNSHIP_GUNS, GUNSHIP_GUN_ORDER, GUNSHIP_PLATFORM, GUNSHIP_ORBIT } from './content/gunship.js'; import { createGunshipOptic } from './fx/gunship-optic.js'; import { createGunshipBriefing } from './fx/gunship-briefing.js'; import { createFoundryFx } from './fx/foundry-fx.js';
+  strikeDamage, retargetStrike, orbitProgress } from './strike.js'; import { makeGunship, stepGunship, onStation, phaseLeft, passProgress, mountGunship, dismountGunship, selectGun, stepGun, aimOnSphere, splashDamage, dangerReport, fireRound, stepRounds, paintHeavy, launchHeavy, nudgeHeavy, stepHeavy, heavyState } from './domain/gunship.js'; import { GUNSHIP_GUNS, GUNSHIP_GUN_ORDER, GUNSHIP_PLATFORM, GUNSHIP_ORBIT } from './content/gunship.js'; import { createGunshipOptic } from './fx/gunship-optic.js'; import { createGunshipBriefing } from './fx/gunship-briefing.js'; import { createFoundryFx } from './fx/foundry-fx.js';
 import { radarBasis, radarProject, radarBearing, sweepAngle, radarPhosphor,
   proximitySectors, SENSOR_LEVELS, sensorColor } from './radar.js';
 import { BLOOM_GROUPS } from './bloomweights.js';
@@ -116,7 +100,7 @@ import { makeAudio } from './audio.js';
 import { DEATH_KEYS } from './audiomanifest.js';
 
 export function initTdTab(root) {
-  let pilotMode = new URLSearchParams(location.search).get('sentryPilot') === '1', storyViews = null, pilotHost = null, storyMonitor = null, daylight = null, storyScope = null, syntheticModal = null, brass = null;   // the story enters it at runtime; the view strip unlocks after the first wave
+  let pilotMode = false, storyViews = null, pilotHost = null, storyMonitor = null, daylight = null, storyScope = null, syntheticModal = null, brass = null;   // the story enters it at runtime; the view strip unlocks after the first wave
   let pilot = null;
   let pilotPosts = [], pilotPost = 0;
   const pilotMounts = [];
@@ -149,10 +133,6 @@ export function initTdTab(root) {
     autoUpgrade: false, // the drones spend excess biomass on tiers by themselves
     look: 'tronColors', // visual identity, see looks.js
     wallTops: 'black', // obstacles read as voids; silhouettes matter here
-    // THE MINE'S ARC IS DRAWN. Off is a real mode, not a debug flag: a
-    // field you cannot see is the pvp/ambush game the operator named, and
-    // the fan is the only thing that makes a laid mine legible at all.
-    mineArcs: true,
     speed: 1.1, // cells per second, wanderer pace
     recoil: 8, // shell-recoil intensity, dialed to MAX per operator
     directive: 'wander', // auto-mode order: wander/avoid/ram/conserve/home/portal
@@ -324,14 +304,12 @@ export function initTdTab(root) {
     forced: new URLSearchParams(location.search).get('tier')
       || (mobileParam === '1' ? 'phone' : mobileParam === '0' ? 'desktop' : null),
   });
-  const whRender = { ...tier.wormhole };
 
   // THE STRESS LAB (operator, 2026-09-03; src/lab.js). `?lab=1` and nothing
   // else changes: every branch below is `lab.on && …`, so a run without the
   // flag executes the code it executed yesterday. The lab opens on the
   // tier's own portal numbers; a URL may override them (`?labWhSize=`).
   const lab = parseLabQuery(location.search, tier) || { on: false };
-  if (lab.on) { whRender.size = lab.whSize; whRender.updateHz = lab.whHz; }
   // THE SKY: a seeded galaxy field baked into a cubemap once per run (see
   // galaxybake.js; measured +0.2 ms a frame at 1x). The seed is fresh on every
   // reset — the sky is dressing, not game logic. The lab's knobs drive the same
@@ -641,10 +619,7 @@ export function initTdTab(root) {
   };
   const heartLook = () => HEART_LOOKS[params.heartLook] || HEART_LOOKS.cloud;
   let heartGen = 0;   // a board rebuild invalidates an in-flight model load
-  // THE SERVER: an invincible fixture at the heart's exact antipode.
-  // Finding it offers the HACK — the HDT circuit duel in an overlay —
-  // and a win decrypts the next tower ahead of its wave gate.
-  let serverObj = null, serverCi = -1, serverGen = 0;
+  let containerGen = 0;   // a board rebuild invalidates an in-flight life-container load
   // the LIFE CONTAINERS: 3 near the heart, each { obj, tank } — the spare
   // hulls ARE the lives counter (playerHP - 1 spares stocked)
   let lifeContainers = [];
@@ -652,16 +627,10 @@ export function initTdTab(root) {
   // container models decorate these cells; they never choose them, which is
   // what lets a reset place the tank once instead of teleporting it later.
   let berths = [];
-  let serverChamber = []; // the carved vault: floor cells, walls all round
   // walls the PLAYER opened (shells, strikes) stay open across rounds —
   // demolition is permanent (operator ruling: a breach you paid for does
   // not grow back at the next frontier shift)
   const breachedCells = new Set();
-  let serverFound = false, hackedRound = false, hackedUnlocks = 0;
-  let hackWins = 0;              // total protocol wins this run
-  let missileShop = false;       // hack #2 opens it
-  let missilesBought = 0;        // the price climbs with each purchase
-  const missileCost = () => 500 + 250 * missilesBought;
   let playerSize = 0.06; // set per-generation in buildActors
 
   // creature dot-cloud + gameplay state
@@ -691,47 +660,8 @@ export function initTdTab(root) {
   // --- battle state --------------------------------------------------------
   const AMMO_MAX = 9;
   let ammo = 3;
-  // THE MINE RACK. The field is the pure module's; everything three.js
-  // about a mine lives in mineObjs, keyed by the module's id — so the
-  // rules and the discs can never disagree about how many there are.
-  const mineTune = { ...MINE_TUNE };
-  {
-    const mq = new URLSearchParams(location.search);   // urlParams is a TDZ trap here
-    const n = parseInt(mq.get('mines'), 10);
-    if (Number.isFinite(n)) mineTune.start = Math.max(0, Math.min(mineTune.cap, n));
-    if (mq.get('minearcs') === '0') params.mineArcs = false;
-  }
-  let mineField = makeField(mineTune);
-  const mineObjs = new Map();   // id -> { grp, disc, ring, fan }
-  const mineProbeOn = new URLSearchParams(location.search).get('mineprobe') === '1';
   const shieldProbeOn = new URLSearchParams(location.search).get('shieldprobe') === '1';
 
-  // --- THE RESCUE MISSION --------------------------------------------------
-  // `?mission=rescue`. A mission is a VARIANT of this board, not a second
-  // copy of it: same planet, same tank, same gates, same mines. Two things
-  // change — the objective and the supply — and everything else the board
-  // already does is what a rescue needs. `mission` is the seam every later
-  // one hangs on.
-  const rescueTune = { ...RESCUE_TUNE };
-  const missionName = new URLSearchParams(location.search).get('mission') || '';
-  const rescueOn = missionName === 'rescue';
-  // RESCUE 2 — the raid (docs/superpowers/specs/2026-09-05-rescue-2.md). Both
-  // missions stay, so they can be played against each other. `missionOn` is
-  // the guard everything they SHARE reads — the suppressed campaign systems,
-  // the briefing, the endings — while each mission's own rules key off its
-  // own flag. Writing the shared ones as `rescueOn || rescue2On` at fourteen
-  // sites is how the third mission breaks one of them.
-  const rescue2On = missionName === 'rescue2';
-  const missionOn = rescueOn || rescue2On;
-  {
-    const rq = new URLSearchParams(location.search);
-    const ns = parseInt(rq.get('survivors'), 10);
-    if (Number.isFinite(ns)) rescueTune.survivors = Math.max(1, Math.min(12, ns));
-    if (rq.get('lasers') === '1') rescueTune.lasers = true;
-    // THE BUDGET IS THE MISSION. Set on the tune before makeField reads it,
-    // so the rack starts at the mission's number and not the campaign's.
-    if (rescueOn) { mineTune.start = rescueTune.mines; mineField = makeField(mineTune); }
-  }
   // THE BOARD'S DEEP LINK. A board is only reproducible with its SEED, and
   // the seed can move under you — a regenerate, a new planet — so it is
   // always written rather than diffed against the opening default. The
@@ -739,50 +669,10 @@ export function initTdTab(root) {
   wireDeepLink(root.querySelector('#td-link'), () => deepLink({
     base: location.origin + location.pathname, hash: 'td',
     carry: location.search,
-    params: { seed: params.seed, mission: missionName },
-    defaults: { mission: '' },
+    params: { seed: params.seed },
+    defaults: {},
   }), { label: 'TD', flash: (m) => showToast(`<div class="wave-role">${m}</div>`, 2600) });
 
-  const rescue2Tune = { ...RESCUE2_TUNE };
-  {
-    const rq = new URLSearchParams(location.search);
-    const nc = parseInt(rq.get('camps'), 10);
-    if (Number.isFinite(nc)) rescue2Tune.camps = Math.max(1, Math.min(8, nc));
-    const ng = parseInt(rq.get('garrison'), 10);
-    if (Number.isFinite(ng)) rescue2Tune.garrison = Math.max(0, ng);
-    if (rq.get('lasers') === '1') rescue2Tune.lasers = true;
-    if (rescue2On) { mineTune.start = rescue2Tune.mines; mineField = makeField(mineTune); }
-  }
-  // A LARGER MAP WITH MORE CLEARINGS (the brief). `rooms` is what "clearings"
-  // means on this generator, so that is the number that moves most. Set on
-  // `params` HERE, before the first regenerate, because the board is built
-  // from them and a mission that resizes the map after the build resizes
-  // nothing. `?points=` and friends still win — a probe must be able to
-  // shrink it.
-  if (rescue2On) {
-    const rq = new URLSearchParams(location.search);
-    if (!rq.get('points')) params.points = 1600;
-    if (!rq.get('rooms')) params.rooms = 26;
-    params.roomRadius = 5;
-    params.obstacles = 0.16;
-  }
-  let rescue = makeRescue(rescueTune);
-  const survObjs = new Map();      // survivor id -> Group
-  let rescueEnded = false;
-  if (missionOn) {
-    // the key legend is the one line of chrome that TELLS you what game you
-    // are playing; on a mission with no towers and no build mode it must not
-    // still be advertising them
-    const hintEl = root.querySelector('#td-hint');
-    if (hintEl) {
-      hintEl.textContent = rescue2On
-        ? `RAID · drive up to a container to open it · then STAND STILL while they walk out`
-          + ` · MOVING kills them · ram the soft ones · SPACE shell · N mine · no resupply`
-        : `RESCUE · drive to a beacon and STOP to load`
-          + ` · ${rescueTune.seats} seats · deliver at the Stålheart`
-          + ` · SPACE shell · N mine · no resupply`;
-    }
-  }
   let nextEnemyId=1;
   const enemies = [];      // { cur, prev, next, prog, pos, dir, obj, alive }
   const projectiles = [];  // { pos, dir, dist, mesh }
@@ -856,8 +746,6 @@ export function initTdTab(root) {
     const bf = briefQ.faces?.[briefAt] ?? briefQ.face; drawEmotion(ctx, bf, { w: briefFace.width, h: briefFace.height, t: (bf === 'scan' || bf === 'skeptical') && briefFaceT < 1.5 ? briefFaceT : 0 });   // held faces; only scan and skeptical move, briefly if (isao && briefQ.faces) isao.faceLock = briefQ.faces[briefAt];   // the drone wears the line's face too
   }
   function showBrief(id) {
-    if (director) return;   // Isao does not caption a cinematic
-
     const b = brief(id);
     if (!b || !briefEl) return;
     if (b.once && briefSeen.includes(id)) return;
@@ -955,14 +843,6 @@ export function initTdTab(root) {
   // unseals, farther portals rise, the wave counter keeps counting, and
   // YOUR TOWERS AND PURSE STAY. Two more threat types unlock per round.
   let round = 1;
-  let tutorialActive = false;
-  // THE DIRECTOR (declared here, assigned far below): the guards that yield
-  // to it — heartHit, loseTank, showBrief, checkVictory, the engine's idle
-  // stop — run from anywhere, including boot; a `let` down at the director
-  // block was a TDZ ReferenceError for any caller before it (?view=orbit at
-  // boot: showBrief threw, the tab half-initialised, the camera stuck)
-  let director = null;
-  let runTutorial = true; // resolved from ?tutorial in the URL-hook block
   const tutEl = root.querySelector('#td-tut');
   let tdFullTags = null;  // the true world, pre-sealing
   let tdFullDist = null;  // heart-distance over the full world
@@ -977,10 +857,7 @@ export function initTdTab(root) {
   // player start (only at run start — expansions don't teleport you)
   function applySector(resetSpawn = false) {
     for (let i = 0; i < dungeon.tags.length; i++) {
-      // A RAID HAS NOWHERE TO PROGRESS TO. Sector gating is the campaign's
-      // spine; on rescue 2 the whole shell is the mission's ground from the
-      // first frame, so the sector clause simply does not apply.
-      dungeon.tags[i] = (tdFullTags[i] !== BLOCKED && (rescue2On || tdSectorId[i] <= round))
+      dungeon.tags[i] = (tdFullTags[i] !== BLOCKED && tdSectorId[i] <= round)
         ? tdFullTags[i] : BLOCKED;
     }
     let d = bfsDist(graph.adj, [dungeon.heart],
@@ -991,17 +868,11 @@ export function initTdTab(root) {
     for (let i = 0; i < dungeon.tags.length; i++) {
       if (dungeon.tags[i] !== BLOCKED && d[i] === -1) dungeon.tags[i] = BLOCKED;
     }
-    // THE VAULT IS ALWAYS FLOOR. The chamber is exempt from the band gate
-    // AND the reachability seal: it renders as an open room inside the
-    // rock from round 1, unreachable until a wall is blasted or the
-    // frontier arrives — the operator's stated design. Its cells keep
-    // distToHeart -1, so nav, rewards, and portal picks all ignore it.
-    for (const ci of serverChamber) dungeon.tags[ci] = ROOM;
     // ...and so are the player's breaches: paid-for demolition survives
     // the frontier shift. (Before the seal on purpose — a breach tunnel
     // that connects to the open network is thereby REACHABLE and stays.)
     for (const ci of breachedCells) {
-      if (ci !== serverCi && !towerByCell.has(ci)) dungeon.tags[ci] = PATH;
+      if (!towerByCell.has(ci)) dungeon.tags[ci] = PATH;
     }
     dungeon.distToHeart = d;
     {
@@ -1118,7 +989,7 @@ export function initTdTab(root) {
   function simBuild() {
     const trunk = simTrunk();
     if (!trunk.length) return;
-    const unlockedSet = new Set(unlockedTowerKeys(wave, hackedUnlocks));
+    const unlockedSet = new Set(unlockedTowerKeys(wave));
     const have = (k) => towers.reduce((a, tw) => a + (tw.def.key === k ? 1 : 0), 0);
     // ISAO'S POLICY IS A SHAPE, NOT A SHOPPING LIST. It was three literal
     // keys, which is a policy that silently builds nothing on any board
@@ -1139,7 +1010,7 @@ export function initTdTab(root) {
     // NOTHING and loses the heart by wave 2 — so until the kit arrives,
     // keep pace with the waves using the newest thing unlocked
     if (towers.length < Math.min(4, wave)) {
-      wants.unshift(unlockedTowerKeys(wave, hackedUnlocks).pop());
+      wants.unshift(unlockedTowerKeys(wave).pop());
     }
     for (const k of wants) {
       if (!unlockedSet.has(k)) continue;
@@ -1166,7 +1037,7 @@ export function initTdTab(root) {
   function simBuildAll() {
     const trunk = simTrunk();
     if (!trunk.length) return;
-    const keys2 = unlockedTowerKeys(wave, hackedUnlocks).slice().reverse();
+    const keys2 = unlockedTowerKeys(wave).slice().reverse();
     for (const k of keys2) {
       const def = TOWER_BY_KEY[k];
       if (!eco.canAfford(def.cost)) continue;
@@ -1199,8 +1070,7 @@ export function initTdTab(root) {
   function simWatch() {
     if (simDone) return;
     if (player.won) {
-      const outcome = missionOn ? (heartHP <= 0 || playerHP <= 0 ? 'loss' : 'mission-complete')
-        : simOutcome({ heart: heartHP, lives: playerHP, round, total: SECTORS_TOTAL });
+      const outcome = simOutcome({ heart: heartHP, lives: playerHP, round, total: SECTORS_TOTAL });
       if (outcome === 'sector-clear' && new URLSearchParams(location.search).get('simscope') !== 'sector') {
         endShot();
         if (!breachNextSector()) { simEmit('stalled'); return; }
@@ -1445,16 +1315,13 @@ export function initTdTab(root) {
   }
   function freeBlocked(cand) {
     const ci = cellIndex(cand);
-    // the SERVER is solid: a machine you can drive through is a prop, not
-    // a fixture (operator field report — the tank phased clean through)
-    if (ci === -1 || dungeon.tags[ci] === BLOCKED || ci === serverCi
-      || containerBlocked(ci)) return true;
+    if (ci === -1 || dungeon.tags[ci] === BLOCKED || containerBlocked(ci)) return true;
     if (dist3(cand, graph.centers[dungeon.heart]) < pedestalRadius() + cellSide * 0.3 || breachBlocked(cand)) return true;   // the pad, and any open sinkhole: no-go
     // THE HULL'S OWN FOOTPRINT against the rock faces (operator, 2026-09-13: still clipping, and faster now): its centre with half the hull's
     // width, nose and tail along its facing. A move may not take it deeper into a face than it already is (src/domain/hull-contact.js)
     const crowdedBy = berthed()
-      ? (nb) => dungeon.tags[nb] === BLOCKED || nb === serverCi
-      : (nb) => dungeon.tags[nb] === BLOCKED || nb === serverCi || containerBlocked(nb);
+      ? (nb) => dungeon.tags[nb] === BLOCKED
+      : (nb) => dungeon.tags[nb] === BLOCKED || containerBlocked(nb);
     const half = Math.min(unitScale * 0.73, cellSide * 0.6), hull = (p) => [{ p, clearance: Math.min(unitScale * 0.3, cellSide * 0.3) }, ...[1, -1].map((k) => ({ p: norm3(add3(p, scale3(player.smoothDir, k * half))), clearance: cellSide * 0.04 }))];
     const board = { cellOf: cellIndex, blocked: (nb) => nb !== ci && crowdedBy(nb), centers: graph.centers, adj: graph.adj };
     if (deepensContact(hullDepth(hull(player.pos), board), hullDepth(hull(cand), board), cellSide * 0.002)) return true;
@@ -1601,7 +1468,7 @@ export function initTdTab(root) {
     + ` auto=${autoMode} cruise=${cruise} deploying=${deployActive()}`
     + ` throttle=${throttle.toFixed(2)} keys=${Object.entries(keys)
       .filter(([, v]) => v).map(([k2]) => k2).join('+') || '-'}`
-    + ` paused=${paused} tutFrozen=${tutorial.frozen}`
+    + ` paused=${paused}`
     + ` shot=${shotId() || '-'}`
     + ` buildMode=${buildMode} active=${active}`;
   const ctlLog = (tag) => { if (CTL_DEBUG) console.log(ctlState(tag)); };
@@ -1788,7 +1655,7 @@ export function initTdTab(root) {
         + ` deploy=${deploy ? `${(deploy.age || 0).toFixed(1)}s` : '-'}`,
       `t=${t.toFixed(1)} build=${(document.querySelector('script[src*="main.js"]')?.src.match(/v=([0-9a-f]{8})/) || [, '?'])[1]} shell=${mobileShell}`,
       `view=${params.view} buildMode=${buildMode} shot=${shot ? shot.id + '@' + (1 - shot.left / shot.dur).toFixed(2) : '-'} deploy=${deploy ? `#${deploy.n}@${deployProgress().toFixed(2)}` : '-'}`,
-      `paused=${paused} frozen=${tutorial.frozen} tutorial=${tutorialActive}/${tutorial.phase} down=${!!playerDown} won=${player.won} intro=${!!(introEl && !introEl.classList.contains('hidden'))} msg=${!!(msgEl && !msgEl.classList.contains('hidden'))}`,
+      `paused=${paused} down=${!!playerDown} won=${player.won} msg=${!!(msgEl && !msgEl.classList.contains('hidden'))}`,
       `tank cur=${player.cur} next=${player.next} free=${!!player.freeMode} thr=${throttle.toFixed(2)} cruise=${cruise} auto=${autoMode} goto=${gotoCi} keys=${['left', 'right', 'fast', 'slow', 'fire', 'laser'].filter((k) => keys[k]).join(',') || '-'} stick=${!!stick}`,
       `mesh vis=${!!(pm && pm.visible)} inScene=${!!(pm && pm.parent === scene)} scale=${pm ? pm.scale.x.toFixed(4) : '-'} unitScale=${unitScale.toFixed(4)} base=${pm ? (pm.userData.baseScale ?? 1) : '-'} pos=${pp.map((v) => v.toFixed(3)).join(',')}`,
       `cam pos=${cp.x.toFixed(3)},${cp.y.toFixed(3)},${cp.z.toFixed(3)} toTank=${(cp.distanceTo(diagNdc.set(pp[0], pp[1], pp[2])) / cellSide).toFixed(2)}c fov=${camera.fov} aspect=${camera.aspect.toFixed(3)} far=${camera.far}`,
@@ -2109,10 +1976,9 @@ export function initTdTab(root) {
 
 
   function buildActors() {
-    for (const o of [heartSprite, playerMesh, markerMesh, serverObj]) if (o) { o.userData.dispose?.(); scene.remove(o); }
+    for (const o of [heartSprite, playerMesh, markerMesh]) if (o) { o.userData.dispose?.(); scene.remove(o); }
     for (const c of lifeContainers) scene.remove(c.obj);
     if (!storyMode) lifeContainers = [];   // the story's bays outlive an actor rebuild (a tank model landing mid roll-out); the base's ready hands in fresh ones
-    serverObj = null; serverFound = false;
 
     // the Braille heart: dot-cloud cycling twinkle → breathe → jelly,
     // flaring orange/red under Wave when hit
@@ -2138,20 +2004,16 @@ export function initTdTab(root) {
         placeActors();
       });
     }
-    // the server sits at the cell whose centre is FARTHEST round the
-    // sphere from the heart — the literal antipode, found by minimum dot
     {
-      // serverCi was chosen at world build (applySector needs it);
-      // this block only casts and seats the model
       // THE LIFE CONTAINERS v2 (operator's staging): TWO containers, side
       // by side on the EMPTIEST flank of the heart's chamber — adjacent
       // open cells at distToHeart 2-3, the pair chosen for the fewest
       // open neighbours (a wall-side berth, clear of the lanes). Two
       // hull bays per container; the run's spare tanks rack there, and
       // every spawn — first scene included — drives OUT of a container.
-      const cgen = serverGen + 1; // the value ++serverGen produces below
+      const cgen = ++containerGen;
       Promise.all([storyMode || preloadContainer(), preloadMork()]).then(() => {   // the story never shows the old boxes, so it never fetches them
-        if (cgen !== serverGen || !dungeon) return; // board changed since
+        if (cgen !== containerGen || !dungeon) return; // board changed since
         // the camp was chosen with the board; this only casts the boxes
         if (berths.length !== 3 || storyMode) return;
         for (let bi = 0; bi < berths.length; bi++) {
@@ -2230,19 +2092,6 @@ export function initTdTab(root) {
           + ` cells=${berths.map((b2) => b2.ci).join(',')}`
           + ` spares=${Math.max(0, playerHP - 1)}`
           + ` exits=${berths.map((b2) => b2.exit).join(',')}`);
-      });
-      const gen = ++serverGen;
-      (storyMode ? Promise.resolve() : preloadServer()).then(() => {   // no relay vault in the story world either
-        if (storyMode || gen !== serverGen || serverCi < 0) return; // board changed meanwhile
-        const g = makeServerFixture();
-        if (!g) return;
-        const sn = graph.normals[serverCi];
-        g.scale.setScalar(cellSide * 2.0);
-        tmpN.set(sn[0], sn[1], sn[2]);
-        g.quaternion.setFromUnitVectors(Y_AXIS, tmpN);
-        scene.add(g);
-        serverObj = g;
-        syncServerLift();
       });
     }
 
@@ -2406,7 +2255,6 @@ export function initTdTab(root) {
   // So: one shot at a time, one teardown path, and the latch is the shot
   // ITSELF — never a clock somebody else has already advanced past.
   let shot = null;        // { id, dur, left, poseAt, onEnd, skippable }
-  let shotHold = false;   // ?cine=N parks the clock for a screenshot
   const shotActive = () => shot !== null;
   const shotId = () => (shot ? shot.id : null);
 
@@ -2464,7 +2312,7 @@ export function initTdTab(root) {
   // a cut cinematic and being absent costs the whole session.
   const SHOT_GRACE = 4.0;
   function stepShot(dt) {
-    if (!shot || shotHold) return;
+    if (!shot) return;
     shot.age += dt;
     shot.left -= dt;
     if (shot.left <= 0) { endShot(); return; }
@@ -2481,75 +2329,6 @@ export function initTdTab(root) {
   const REVEAL_LEN = 3.2;
   let revealDir = null;
   let revealCells = [];
-
-  // --- THE COLD OPEN -------------------------------------------------------
-  // Operator (2026-08-31): the run opens on a cinematic, tutorial or not.
-  // Three beats, and they are the three things a player needs to know before
-  // anything else: WHERE you are (pull back until the whole vessel is in
-  // frame), WHERE you start (dive onto the berth row), and WHO you are (the
-  // hero hull drives itself out of berth 3 while you watch).
-  //
-  // Beat three is not animation. Driving is unfrozen for it and the tank is
-  // Two beats now, not three. The old beat 3 — hold the hull frozen and
-  // watch it drive itself out — IS the game: DEPLOY does that live, with the
-  // player's hand a moment away. So the cinematic ends where DEPLOY begins,
-  // and its last frame is the game's first frame.
-  const CINE_OUT = 3.0, CINE_DIVE = 3.4;
-  const CINE_LEN = CINE_OUT + CINE_DIVE;
-
-  function playCinematic(after, scrub = 0) {
-    const n = berthIndexFor(playerHP);
-    if (!graph || !dungeon || !berths[n]) { if (after) after(); return; }
-    const b = berths[n];
-    const bc = graph.centers[b.ci];
-    const bn = graph.normals[b.ci];
-    const ref = Math.abs(bn[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
-    const wUp = norm3(cross3(bn, ref));
-    const smooth = (x) => x * x * (3 - 2 * x);
-    const look = add3(bc, scale3(bn, params.wallHeight * 0.55));
-    startShot({
-      id: 'cinematic',
-      dur: Math.max(0.001, CINE_LEN - scrub),
-      poseAt: (u, out) => {
-        const e = scrub + u * (CINE_LEN - scrub);
-        if (e < CINE_OUT) {
-          // BEAT 1 pulls straight out along the berth's own normal, so the
-          // wide shot is still centred on the place it is about to dive back
-          // into and the pull-back reads as one continuous move.
-          const r = 1.26 + (3.30 - 1.26) * smooth(e / CINE_OUT);
-          out.pos.set(bn[0] * r, bn[1] * r, bn[2] * r);
-          tmpCam.position.copy(out.pos);
-          tmpCam.up.set(wUp[0], wUp[1], wUp[2]);
-          tmpCam.lookAt(0, 0, 0);
-          out.quat.copy(tmpCam.quaternion);
-          return;
-        }
-        // BEAT 2 does NOT slerp between two framings — that swings the
-        // subject out of frame in the middle, which is what the first cut of
-        // this did. It moves the EYE and keeps looking at the camp the whole
-        // way down, so the box only ever grows. The seam with beat 1 is
-        // invisible because the wide eye sits ON the berth's normal.
-        //
-        // It lands on deployFramePoseFor — the SAME pose DEPLOY opens with,
-        // read from one place rather than authored twice. That is what makes
-        // "the cinematic's last frame is the first frame of the reset state"
-        // true by construction instead of true until someone edits one of
-        // them.
-        const w = smooth(Math.min(1, (e - CINE_OUT) / CINE_DIVE));
-        deployFramePoseFor(n, camA);
-        const wide = scale3(bn, 3.30);
-        out.pos.set(wide[0] + (camA.pos.x - wide[0]) * w,
-          wide[1] + (camA.pos.y - wide[1]) * w,
-          wide[2] + (camA.pos.z - wide[2]) * w);
-        tmpCam.position.copy(out.pos);
-        const up = norm3([0, 1, 2].map((i) => wUp[i] + (bn[i] - wUp[i]) * w));
-        tmpCam.up.set(up[0], up[1], up[2]);
-        tmpCam.lookAt(look[0], look[1], look[2]);
-        out.quat.copy(tmpCam.quaternion);
-      },
-      onEnd: () => { deployStart(n); if (after) after(); },
-    });
-  }
 
   // AUTO DIRECTIVES: high-level orders for the wanderer
   const DIRECTIVES = ['wander', 'avoid', 'ram', 'conserve', 'home', 'portal'];
@@ -2614,16 +2393,6 @@ export function initTdTab(root) {
   // explore'). Driving again — or an explicit recenter — re-arms it,
   // which keeps top-down as a real control mode exactly when it is one.
   let followSuspend = false;
-  // sealed under a round's frontier the relay stands ON the high ground;
-  // when its band reveals, it settles onto the lane floor with it
-  function syncServerLift() {
-    if (!serverObj || serverCi < 0) return;
-    const sc = graph.centers[serverCi];
-    const sn = graph.normals[serverCi];
-    const lift = dungeon.tags[serverCi] === BLOCKED ? params.wallHeight : 0;
-    serverObj.position.set(sc[0] + sn[0] * lift, sc[1] + sn[1] * lift, sc[2] + sn[2] * lift);
-  }
-
   function buildFollowTank(dt) {
     if (!buildMode || strike.falling > 0 || !player.pos) return;
     if (buildPointers.size > 0) return;
@@ -2675,7 +2444,7 @@ export function initTdTab(root) {
     if (viewLog) {
       const who = (new Error().stack || '').split('\n')[2] || '';
       console.log(`VIEWLOG ${params.view} -> ${v} build=${buildMode}`
-        + ` shot=${shot ? shot.id : '-'} deploy=${!!deploy} tut=${tutorialActive}/${tutorial && tutorial.phase}`
+        + ` shot=${shot ? shot.id : '-'} deploy=${!!deploy}`
         + ` by${who.replace(/^\s*at\s*/, ' ').replace(/https?:\/\/[^)]*\//, '').slice(0, 60)}`);
     }
     // THE SHELL HAS TWO VIEWS (ruling 3): DRIVE is third person, BUILD is
@@ -3385,7 +3154,7 @@ export function initTdTab(root) {
       if (d >= 1 && d <= TOWERS.length && !towerByCell.get(shopCi)) {
         const def = TOWERS[d - 1];
         const tkey = def.key;
-        const unlocked = new Set(unlockedTowerKeys(wave, hackedUnlocks));
+        const unlocked = new Set(unlockedTowerKeys(wave));
         if (unlocked.has(tkey) && !placeError(shopCi) && eco.canAfford(def.cost)) {
           if (orderTower(tkey, shopCi)) closeShop();
         }
@@ -3404,7 +3173,6 @@ export function initTdTab(root) {
       return;
     }
     if (down && (k === ' ' || k === 'spacebar')) { fire(); ev.preventDefault(); return; }
-    if (down && k === 'n') { layMineNow(); ev.preventDefault(); return; }
     // T FOR TATE (盾), not S. S is REVERSE — it is in CTL_DRIVE_KEYS with w/a/d
     // — so binding the shield to it meant every time the player backed up they
     // also spent a charge. My earlier check grepped for `k === 's'` and found
@@ -3414,7 +3182,6 @@ export function initTdTab(root) {
     if (down && k === 't') { deployShieldNow(); ev.preventDefault(); return; }
     if (down && k === 'h') pulseHint();
     if (down && k === 'v') toggleView();
-    if (down && k === 'x' && serverFound && !hackedRound) openHack();
     // views land on number keys and on the letters that say them: 1/M/O all
     // read as "map" and go to orbit, 2 is first person, 3 third person (T is
     // the SHIELD now, and V still cycles). The radar's heart/player toggle
@@ -3776,29 +3543,9 @@ export function initTdTab(root) {
       }
       // the shop opens under EVERY camera — building is not a mode
       const ci = cellAtScreen(ev.clientX, ev.clientY);
-      // TAP-TO-GO, on the shell, while driving. The relay's own cells keep
-      // their tap (below); everything else on open ground is a destination.
-      if (mobileShell && !buildMode && wasTap && ci !== -1
-          && !(serverCi >= 0 && (ci === serverCi || graph.adj[serverCi].includes(ci)))) {
+      // TAP-TO-GO, on the shell, while driving: open ground is a destination.
+      if (mobileShell && !buildMode && wasTap && ci !== -1) {
         if (gotoCell(ci)) return;
-      }
-      // tapping the SERVER (its cell or a neighbour) is the interaction:
-      // hack if it is awake, and say why not if it is not — a silent
-      // nothing was exactly the operator's 'cannot find how to interact'
-      if (ci !== -1 && serverCi >= 0
-          && (ci === serverCi || graph.adj[serverCi].includes(ci))) {
-        if (serverFound && !hackedRound) openHack();
-        else if (serverFound) {
-          showToast(`<div class="wave-num">RELAY PATCHED</div>`
-            + `<div class="wave-role">one hack per round — come back next round</div>`, 2200);
-        } else if (dungeon.tags[serverCi] === BLOCKED) {
-          showToast(`<div class="wave-num">DORMANT RELAY</div>`
-            + `<div class="wave-role">beyond the frontier — push the rounds to reach it</div>`, 2600);
-        } else {
-          showToast(`<div class="wave-num">DORMANT RELAY</div>`
-            + `<div class="wave-role">drive the tank closer to wake it</div>`, 2200);
-        }
-        return;
       }
       if (mobileShell && buildMode && ci !== -1 && !towerByCell.get(ci) && !orderByCell.get(ci)) {
         const why = placeError(ci);
@@ -3833,10 +3580,6 @@ export function initTdTab(root) {
   }, { passive: false });
   root.querySelector('#td-pad-fire').addEventListener('click', () => fire());
   {
-    // the third pad. A TAP, not a hold: laying is a discrete act and a held
-    // mine pad would empty the rack in a second.
-    const mb = root.querySelector('#td-pad-mine');
-    if (mb) mb.addEventListener('click', () => layMineNow());
     // the fourth pad. Same tap-not-hold rule: a held shield pad would burn
     // the rack into a bubble that was already up, which the module refuses
     // anyway — but refusing four times a second is not feedback.
@@ -3849,11 +3592,6 @@ export function initTdTab(root) {
   // grey -> orange (needs a target) -> red (authorised). Same ritual, real
   // instrument. armBtn keeps its name: it gates syncArmUi in the loop.
   const armBtn = root.querySelector('#td-launch');
-  // NO ORBITAL ASSET ON A RESCUE. Hidden rather than disabled: a dead
-  // readout in the middle of the screen is worse than no readout, and this
-  // one occupies the exact strip the beacons are read across. `display` and
-  // not a class, because syncArmUi owns the class and would put it back.
-  if (missionOn && armBtn) armBtn.style.display = 'none';
   const safetyEl = root.querySelector('#td-safety');
   const safetyImg = root.querySelector('#td-safety-img');
   const launchBtn = root.querySelector('#td-launch-btn');
@@ -3867,29 +3605,8 @@ export function initTdTab(root) {
     armBtn.classList.add('flicker');
   }
   let armUiKey = '';
-  const buyMissileEl = root.querySelector('#td-buy-missile');
-  if (buyMissileEl) buyMissileEl.addEventListener('click', () => {
-    if (!missileShop) return;
-    const cost = missileCost();
-    if (!eco.spend(cost)) {
-      showToast(`<div class="wave-num">INSUFFICIENT FUNDS</div>`
-        + `<div class="wave-role">the market wants ${fmt(cost)}kg</div>`, 2000);
-      return;
-    }
-    missilesBought++;
-    strike.reserved += 1;
-    sfx.play('tank_shells');
-    showToast(`<div class="wave-num">MISSILE PURCHASED</div>`
-      + `<div class="wave-role">entering the queue — next one costs ${fmt(missileCost())}kg</div>`, 2400);
-    updateHud(); syncArmUi();
-  });
 
   function syncArmUi() {
-    if (missionOn) return;   // there is no console to sync
-    if (buyMissileEl) {
-      buyMissileEl.classList.toggle('hidden', !missileShop);
-      if (missileShop) buyMissileEl.textContent = `+ ${missileCost()}kg`;
-    }
     // narrate the state; write the DOM only when the state actually moves
     const orbit = strike.reserved > 0 ? Math.round(strike.gauge * 100) : -1;
     const reorbit = strike.cooldown > 0 ? Math.round(orbitProgress(strike) * 100) : -1;
@@ -4065,9 +3782,8 @@ export function initTdTab(root) {
 
   // ☆ flash the neighbouring cell that is one hop closer to the heart
   let hintTimer = null;
-  // non-freezing tutorial callout; flash = big centred, skip = show Skip, hold = no auto-hide
+  // the coach's callout; flash = big centred, hold = no auto-hide
   let tutTimer = null;
-  const TUT_BEAT = 4.0;   // seconds of quiet between lessons
   // THE SHELL'S WORDS. The tutorial teaches treads, lasers, shell, throttle,
   // build — in the desktop's vocabulary. On the shell there is no throttle
   // and no key; the same lessons are said in the shell's terms here, at the
@@ -4091,11 +3807,8 @@ export function initTdTab(root) {
   function tutBanner(html, opts = {}) {
     html = shellWords(html);
     tutEl.className = opts.flash ? 'tut-flash' : '';
-    tutEl.innerHTML = html + (opts.skip
-      ? '<div><button class="tut-skip">skip tutorial</button></div>' : '');
+    tutEl.innerHTML = html;
     tutEl.classList.remove('hidden');
-    const sk = tutEl.querySelector('.tut-skip');
-    if (sk) sk.addEventListener('click', skipTutorial);
     clearTimeout(tutTimer);
     if (!opts.hold) tutTimer = setTimeout(() => tutEl.classList.add('hidden'), 4500);
   }
@@ -4109,332 +3822,6 @@ export function initTdTab(root) {
     if (mobileShell && sel === '#td-pad-map') sel = '#mob-mode';
     pulsedBtn = sel ? root.querySelector(sel) : null;
     if (pulsedBtn) pulsedBtn.classList.add('tutorial-pulse');
-  }
-  const safeSeen = () => { try { return localStorage.getItem('td.tutorialSeen'); } catch (e) { return null; } };
-
-  // Scripted onboarding. A linear phase machine driven from animate() while
-  // tutorialActive. Phase bodies land in later tasks; this is the frame.
-  const tutorial = {
-    phase: 'setup',
-    portal: null,   // the scripted spawn point
-    fodder: [],     // the 3 scripted enemies
-    tShown: 0,
-    frozen: false,
-    frozenT: 0,
-    setup() {
-      // wipe any seeded neutral gates so the tutorial has exactly its one
-      // scripted portal (the plan-driven wave engine seeds these at run-start;
-      // the tutorial overrides with a hand-scripted phage portal instead)
-      for (const sp of spawnPoints) {
-        scene.remove(sp.obj); disposeObj(sp.obj);
-        if (sp.mapMarker) { scene.remove(sp.mapMarker); disposeObj(sp.mapMarker); }
-      }
-      spawnPoints.length = 0;
-      // player starts very close to the heart (distToHeart 1..2)
-      let startCi = dungeon.heart;
-      for (let d = 1; d <= 2 && startCi === dungeon.heart; d++) {
-        for (let i = 0; i < dungeon.tags.length; i++) {
-          if (dungeon.tags[i] !== BLOCKED && dungeon.distToHeart[i] === d) { startCi = i; break; }
-        }
-      }
-      player.cur = startCi;
-      player.prev = -1;
-      player.pos = graph.centers[startCi].slice();
-      player.visited = new Set([startCi]);
-      const exits = openNeighbors(startCi);
-      let e0 = exits[0] ?? startCi;
-      for (const e of exits) {
-        if (dungeon.distToHeart[e] === dungeon.distToHeart[startCi] - 1) { e0 = e; break; }
-      }
-      player.heading = tangentDirTo(startCi, e0);
-      player.travelDir = player.heading.slice();
-      player.smoothDir = player.travelDir.slice();
-      player.next = e0;
-      player.prog = 0;
-      player.segLen = Math.max(1e-9, dist3(graph.centers[startCi], graph.centers[player.next]));
-
-      ammo = 0; updateHud();
-      clearOrbs();
-
-      // portal 20–30 hops DOWN THE HALL from the heart (target 25); the
-      // fodder march back toward the heart and the player intercepts.
-      let portalCi = startCi, bestBand = Infinity, farCi = startCi, farD = -1;
-      for (let i = 0; i < dungeon.tags.length; i++) {
-        if (dungeon.tags[i] === BLOCKED) continue;
-        const d = dungeon.distToHeart[i];
-        if (d < 0) continue;
-        if (d > farD) { farD = d; farCi = i; }
-        if (d >= 20 && d <= 30) {
-          const off = Math.abs(d - 25);
-          if (off < bestBand) { bestBand = off; portalCi = i; }
-        }
-      }
-      if (bestBand === Infinity) portalCi = farCi; // small map: use the farthest cell
-      const obj = buildPortalObj(portalCi, whim() * 6.283);
-      scene.add(obj);
-      const mm = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 10),
-        new THREE.MeshBasicMaterial({ color: CREATURE_TINTS.phage }));
-      const mmp = scale3(graph.centers[portalCi], 1 + params.wallHeight * 1.6);
-      mm.position.set(mmp[0], mmp[1], mmp[2]);
-      mm.visible = true; mm.layers.set(MAP_LAYER); scene.add(mm);
-      this.portal = { type: 'phage', ci: portalCi, hp: 3, obj, alive: true, found: true, mapMarker: mm };
-      spawnPoints.push(this.portal);
-      recomputePortalDist();
-      wave = 1; // the scripted wave counts as wave 1, so the BUILD-phase
-                // spawnWave() (task 5) introduces the wave-2 enemy type
-
-      // The first pair comes in FAR down the lane. They walk to you, and the
-      // walk is the lesson: a pair arriving at arm's length teaches nothing
-      // but panic, while eight hops of empty corridor is long enough to look
-      // around, find the throttle and decide what to do about them.
-      this.startCi = startCi;
-      this.fodder = [];
-      this.spawnFodder(2, 7, 11);
-      this.frozen = true; this.frozenT = 0;
-      this.gapT = 0; this.pending = null;
-      tutBanner('RAM THEM · drive straight through them', { flash: true, hold: true, skip: !!safeSeen() });
-      pulseButton('#td-throttle');
-      this.tShown = 0; this.phase = 'ram';
-    },
-
-    // A pair of phage in the lane ahead, `dMin`..`dMax` hops FURTHER from the
-    // heart than the player — so they march back down the corridor toward
-    // both the player and the thing being defended.
-    spawnFodder(count, dMin, dMax) {
-      const spec = ENEMY_SPEC.phage;
-      const sd = dungeon.distToHeart[this.startCi];
-      const ahead = [];
-      for (let pass = 0; pass < 2 && ahead.length < count; pass++) {
-        // second pass widens the band: a small board may not have cells at
-        // the preferred distance at all, and an empty wave stalls the phase
-        const lo = sd + (pass ? Math.max(2, dMin - 4) : dMin);
-        const hi = sd + (pass ? dMax + 8 : dMax);
-        for (let i = 0; i < dungeon.tags.length && ahead.length < count; i++) {
-          if (dungeon.tags[i] === BLOCKED || ahead.includes(i)) continue;
-          const d = dungeon.distToHeart[i];
-          if (d >= lo && d <= hi) ahead.push(i);
-        }
-      }
-      while (ahead.length < count) ahead.push(this.portal ? this.portal.ci : this.startCi);
-      const made = [];
-      for (let k = 0; k < count; k++) {
-        const ci = ahead[k];
-        const eObj = makeDotEnemy('phage', { walker: CREATURE_TINTS.phage, walkerHi: accentFor('phage') });
-        const size = spec.size * 0.7; const scale0 = cellSide * size;
-        eObj.scale.setScalar(scale0); eObj.userData.s0 = scale0; scene.add(eObj);
-        const nx = openNeighbors(ci);
-        const e = {
-          type: 'phage', spec, scale0, size,
-          cur: ci, prev: -1,
-          next: nx.length ? nx[Math.floor(whim() * nx.length)] : ci,
-          prog: whim() * 0.4, pos: graph.centers[ci].slice(), dir: [0, 1, 0],
-          obj: eObj, alive: true, phase: whim() * 6.283,
-          hp: spec.hp, behMult: 1, behUntil: -1, touchCd: -1, slowFactor: 1, slowUntil: -1,
-        };
-        e.id ??= nextEnemyId++; enemies.push(e); this.fodder.push(e); made.push(e);
-      }
-      return made;
-    },
-    // a phase is cleared when every enemy it spawned is down
-    fodderClear() { return this.fodder.every((e) => !e.alive); },
-
-    // A BEAT between lessons. Clearing a pair used to hand out the next
-    // instruction and the next pair in the same frame, so three lessons went
-    // by in the time it takes to read one — no pause to look at the HUD, no
-    // moment to notice which control had just lit up. Now the kill lands, a
-    // short confirmation says what you just used, and the field stays empty
-    // for a few seconds before the next instruction arrives.
-    beat(confirm, fn) {
-      tutBanner(confirm, { hold: true });
-      pulseButton(null);
-      this.pending = fn;
-      this.gapT = TUT_BEAT;
-    },
-    // One weapon per pair, in order of how much they cost you: the treads are
-    // free, the lasers are free but need aim, the shell is scarce and heats
-    // the barrel for three seconds. Two enemies each, so the lesson is a
-    // rehearsal rather than a fight — the player is never learning a control
-    // and losing at the same time.
-    tick(dt) {
-      // the opening hold is longer than a banner's read time on purpose: it
-      // is also the first look at the board
-      if (this.frozen) { this.frozenT += dt; if (this.frozenT > 5.5) { this.frozen = false; } return; }
-
-      // a beat is running: nothing spawns, nothing is asked of the player
-      if (this.gapT > 0) {
-        this.gapT -= dt;
-        if (this.gapT <= 0 && this.pending) {
-          const go = this.pending; this.pending = null; go();
-        }
-        return;
-      }
-
-      if (this.phase === 'ram') {
-        if (this.fodderClear()) {
-          this.phase = 'laser';
-          this.beat('Treads done — ramming is free, and it is always available.', () => {
-            this.spawnFodder(2, 5, 8);
-            tutBanner('Now the SECONDARIES · hold to sweep them with the lasers',
-              { hold: true, skip: !!safeSeen() });
-            pulseButton('#td-pad-laser');
-          });
-        }
-      } else if (this.phase === 'laser') {
-        if (this.fodderClear()) {
-          // Shells are scarce, so the lesson hands you some rather than
-          // hoping you find a pickup: a tutorial step you can fail to even
-          // ATTEMPT is not a tutorial step. Orbs go down beside you as well,
-          // because where shells come from is the other half of the lesson.
-          this.phase = 'shell';
-          this.beat('Lasers done — free to fire, but they need you pointed at it.', () => {
-            // Shells are scarce, so the lesson hands you some rather than
-            // hoping you find a pickup: a step you can fail to even ATTEMPT
-            // is not a step. Orbs go down beside you too, because where
-            // shells come from is the other half of the lesson.
-            ammo = Math.max(ammo, 3); updateHud();
-            const near = openNeighbors(player.cur).slice(0, 2);
-            for (const ci of (near.length ? near : [player.cur])) spawnOrbAt(ci);
-            this.spawnFodder(2, 5, 8);
-            tutBanner('And the SHELL · overkill on these two, but it is how you '
-              + 'breach a wall. Shells come from the glowing pickups — you have 3.',
-              { hold: true, skip: !!safeSeen() });
-            pulseButton('#td-pad-fire');
-          });
-        }
-      } else if (this.phase === 'shell') {
-        if (this.fodderClear()) {
-          this.collapsePortal();   // clear the field: the next beat has no enemies
-          this.phase = 'speed';
-          this.beat('Shell done. That is the whole kit: treads, lasers, shell.', () => {
-            tutBanner('THROTTLE · drag to set your speed, flick up for full. '
-              + 'Below zero reverses — slower than forward, same lever.',
-              { hold: true, skip: !!safeSeen() });
-            pulseButton('#td-throttle');
-            this.speedT = 0;
-            this.speedFrom = throttle;
-          });
-        }
-      } else if (this.phase === 'speed') {
-        // Advance on USE, not on a timer — the point is that they touch it.
-        // The timer is only there so a player who will not is not stranded.
-        this.speedT += dt;
-        // on the shell this lesson is TAP TO GO (shellWords): passed by a
-        // destination accepted, not by a throttle that is not on screen
-        if (Math.abs(throttle - this.speedFrom) > 0.15 || this.speedT > 16
-            || (mobileShell && gotoCi >= 0)) {
-          hideTutBanner();
-          this.startBuild();
-        }
-      } else if (this.phase === 'build' || this.phase === 'done') {
-        this.tickBuild(dt);
-      }
-    },
-
-    // The scripted gate has done its job once the three pairs are down. It
-    // collapses rather than being shot: destroying it was the old shell
-    // lesson, and that lesson now lives on the enemies instead.
-    collapsePortal() {
-      const p = this.portal;
-      if (!p || !p.alive) return;
-      p.alive = false;
-      scene.remove(p.obj); disposeObj(p.obj);
-      if (p.mapMarker) { scene.remove(p.mapMarker); disposeObj(p.mapMarker); }
-      const idx = spawnPoints.indexOf(p);
-      if (idx >= 0) spawnPoints.splice(idx, 1);
-      recomputePortalDist();
-    },
-    startBuild() {
-      this.phase = 'build';
-      // the wave engine spawns only from LIVE gates and no longer self-seeds
-      // one per wave — the scripted gate is dead by now, so raise a fresh gate
-      // before the 2nd wave or the field is empty and checkVictory false-fires
-      seedPortals(1);
-      spawnWave(); // a real 2nd wave: fresh gate + normal enemies (war is live)
-      tutBanner('Build Towers — tap any HIGH GROUND cell, from any camera. '
-        + 'The flashing cells are legal.', { skip: !!safeSeen() });
-      // no button to pulse: building stopped being a mode. The orbit view is
-      // just the best vantage for the lesson, so swing there.
-      setView('orbit');
-      snapCamera();
-      pulseButton(null);
-      this.animateLegalSpots();
-    },
-    animateLegalSpots() {
-      const legal = [];
-      for (let ci = 0; ci < dungeon.tags.length; ci++) {
-        if (!placeError(ci)) legal.push(ci);
-      }
-      // pulse a bounded set near the player so it reads on a small planet
-      legal.sort((a, b) =>
-        dist3(graph.centers[a], player.pos) - dist3(graph.centers[b], player.pos));
-      const show = legal.slice(0, 24);
-      let pulses = 0;
-      const beat = () => {
-        const on = pulses % 2 === 0;
-        for (const ci of show) paintCell(ci, on ? look().floors.hintFlash : floorColorOf(ci));
-        pulses++;
-        if (pulses < 6) setTimeout(beat, 420);
-        else for (const ci of show) paintCell(ci, floorColorOf(ci));
-      };
-      beat();
-    },
-    tickBuild() {
-      // handoff on the first tower built OR when wave-2 enemies are cleared
-      if (this.phase !== 'build') return;
-      if (towerByCell.size > 0
-        || (spawnPoints.every((s) => !s.alive) && enemies.every((e) => !e.alive))) {
-        this.phase = 'done';
-        hideTutBanner();
-        pulseButton(null);
-        endTutorial(); // normal wave clock + orbs resume, heart guard lifts
-        // THE HANDOFF HANDS BACK DRIVE. The build phase put the camera in
-        // orbit and nothing ever took it out: on the shell, where orbit IS
-        // the build eye, a fresh player finished the tutorial parked high
-        // over the board with BUILD lit (operator's phone, 2026-09-04:
-        // "the camera starts too high, third person does not work for
-        // drive"). The desktop keeps its post-build framing.
-        if (mobileShell && urlParams.get('handoff') !== '0') setView('third');   // ?handoff=0 — the negative control
-      }
-    },
-    teardown() { pulseButton(null); hideTutBanner(); },
-  };
-
-  function startTutorial() {
-    // THE CAMPAIGN'S TUTORIAL TEACHES THE CAMPAIGN — towers, build mode, the
-    // gates. Every sentence of it is false on a mission, and it would be the
-    // FIRST thing an operator opening ?mission=rescue on a cold browser saw.
-    if (missionOn) return;
-    tutorialActive = true;
-    root.classList.add('tutoring');
-    tutorial.phase = 'setup';
-    tutorial.setup();
-  }
-  function endTutorial() {
-    tutorialActive = false;
-    // a tutorial COMPLETED on the shell taught the shell; a skipped one did not
-    if (mobileShell && !tutorial.skipped) coachFinish();
-    root.classList.remove('tutoring');
-    waveActive = enemies.some((e) => e.alive); waveAge = 0; interClock = 0;
-    tutorial.teardown();
-    if (orbMeshes.size === 0) spawnOrbs(); // restore the normal shell field
-    try { localStorage.setItem('td.tutorialSeen', '1'); } catch (e) { /* private mode */ }
-  }
-  function skipTutorial() {
-    tutorial.skipped = true;
-    // tear down tutorial-only entities, then hand to a clean normal round
-    for (const e of tutorial.fodder) { if (e.alive) { e.alive = false; scene.remove(e.obj); } }
-    if (tutorial.portal && tutorial.portal.alive) {
-      tutorial.portal.alive = false;
-      scene.remove(tutorial.portal.obj);
-      const idx = spawnPoints.indexOf(tutorial.portal);
-      if (idx >= 0) spawnPoints.splice(idx, 1);
-    }
-    clearOrbs();
-    endTutorial();
-    regenerate(); // fresh normal game
-  }
-  function maybeStartTutorial() {
-    if (runTutorial) startTutorial();
   }
 
   function pulseHint() {
@@ -4513,8 +3900,7 @@ export function initTdTab(root) {
     return best;
   }
   function coachTick(dt) {
-    if (!mobileShell || coach.done || tutorialActive || paused || !graph) return;
-    if (introEl && !introEl.classList.contains('hidden')) return;
+    if (!mobileShell || coach.done || paused || !graph) return;
     coach.t += dt;
     if (coach.step === 0) {
       if (!coach.shown) { coach.shown = true; tutBanner('TAP THE GROUND &middot; the tank drives there &middot; or DRAG on the left to drive it yourself', { hold: true }); }
@@ -4537,7 +3923,7 @@ export function initTdTab(root) {
       }
     } else if (coach.step === 2) {
       if (!coach.shown) {
-        const keys = unlockedTowerKeys(wave, hackedUnlocks);
+        const keys = unlockedTowerKeys(wave);
         const cheapest = keys.length ? Math.min(...keys.map((k) => TOWER_BY_KEY[k].cost)) : Infinity;
         if (eco.biomass < cheapest || buildMode) return;
         coach.shown = true; coach.t = 0;
@@ -4619,12 +4005,6 @@ export function initTdTab(root) {
     }
     else if (cl.contains('msg-buystrike')) {
       if (spendDebrief(SINK.strike)) { strike.reserved += 1; syncArmUi(); renderVerdict(false); }
-    }
-    else if (cl.contains('msg-buymines')) {
-      if (mineField.count < mineTune.cap && spendDebrief(SINK.mines)) {
-        restock(mineField, mineTune.caseSize, mineTune);
-        updateHud(); renderVerdict(false);
-      }
     }
     else if (cl.contains('msg-buyshields')) {
       if (shield.rack < shieldTune.rackCap && spendDebrief(SINK.shields)) {
@@ -4710,97 +4090,6 @@ export function initTdTab(root) {
     `B = build/tank · M = map view · in BUILD tap HIGH GROUND to place towers<br>` +
     `ESC pause · RAM the small ones · shells breach walls</div>`;
 
-  // The field manual: one laconic CRT screen shown BEFORE the tutorial on a
-  // clean load. Dismiss by tap or any key; whatever was queued (tutorial or
-  // briefing) runs after. The sim is frozen while it is up.
-  const introEl = root.querySelector('#td-intro');
-  // THE FIELD MANUAL IS A BRIEFING, so on a mission it must brief THAT
-  // mission. Every line of the campaign's manual — protect the heart, grab
-  // triads, destroy all portals, build on the high ground — is false here,
-  // and it is the first thing anyone opening `?mission=rescue` on a cold
-  // browser reads. Same frame, same keys block, different sheet of paper.
-  if (missionOn && introEl) {
-    const head = introEl.querySelector('.fm-head');
-    const body = introEl.querySelector('.fm-body');
-    if (head) head.innerHTML = `&#9626; MISSION BRIEF &middot; ${rescue2On ? 'RAID' : 'RESCUE'}`;
-    if (body && rescue2On) {
-      const keys = body.querySelector('.fm-keys');
-      body.innerHTML =
-        `<div class="fm-line"><b>${rescue2Tune.camps} CAMPS</b> &mdash; a container in a clearing, astronauts hiding inside</div>`
-        + `<div class="fm-line">a big group of soft enemies is standing around each one</div>`
-        + `<div class="fm-line">RAM them &mdash; free, unlimited, and what they are there for</div>`
-        + `<div class="fm-line fm-warn">&#9888; DO NOT RAM units with SOLID elements &mdash; shells and mines only</div>`
-        + `<div class="fm-line">get close and the container <b>OPENS</b>. They walk out to you.</div>`
-        + `<div class="fm-line fm-warn">&#9888; <b>STAND STILL.</b> A moving hull runs them over, and the red stays on the floor</div>`
-        + `<div class="fm-line">reaching the tank is a save. There is no drive home.</div>`
-        + `<div class="fm-line"><b>NO RESUPPLY.</b> ${rescue2Tune.hulls} hulls &middot; ${rescue2Tune.shells} shells`
-        + ` &middot; ${rescue2Tune.mines} mines${rescue2Tune.lasers ? '' : ' &middot; no secondaries'}</div>`
-        + `<div class="fm-line">no towers, no orbital, no waves &mdash; the whole map is open, take your time</div>`;
-      if (keys) {
-        keys.innerHTML = '<span>W A S D / arrows</span><span>drive</span>'
-          + `<span>SPACE</span><span>shell &mdash; you have ${rescue2Tune.shells}</span>`
-          + '<span>N</span><span>lay a MINE one cell ahead</span>'
-          + '<span>T</span><span>deploy a SHIELD (10s) &mdash; hard cores bounce off</span>'
-          + '<span>Q / E</span><span>cruise up / down</span>'
-          + '<span>1 / 2 / 3</span><span>orbit &middot; 1st &middot; 3rd</span>'
-          + '<span>M / V</span><span>map / cycle view</span>'
-          + '<span>H / ESC</span><span>hint / pause</span>';
-        body.appendChild(keys);
-      }
-    } else if (body) {
-      // the keys block is rebuilt too, not reused: it still offered SHIFT for
-      // lasers that are not fitted and U to upgrade towers that cannot be
-      // built, and a control legend that lists controls you do not have is
-      // the same lie as the manual it sits under
-      const keys = body.querySelector('.fm-keys');
-      if (keys) {
-        keys.innerHTML = '<span>W A S D / arrows</span><span>drive</span>'
-          + '<span>SPACE</span><span>shell &mdash; you have ' + rescueTune.shells + '</span>'
-          + (rescueTune.lasers ? '<span>SHIFT</span><span>lasers</span>' : '')
-          + '<span>N</span><span>lay a MINE one cell ahead</span>'
-          + '<span>T</span><span>deploy a SHIELD (10s) &mdash; hard cores bounce off</span>'
-          + '<span>Q / E</span><span>cruise up / down</span>'
-          + '<span>1 / 2 / 3</span><span>orbit &middot; 1st &middot; 3rd</span>'
-          + '<span>M / V</span><span>map / cycle view</span>'
-          + '<span>H / ESC</span><span>hint / pause</span>';
-      }
-      body.innerHTML =
-        `<div class="fm-line"><b>${rescueTune.survivors} STRANDED</b> &mdash; orange beacons, out along the lanes</div>`
-        + `<div class="fm-line">drive to one and <b>STOP</b> &mdash; a second parked, and they board</div>`
-        + `<div class="fm-line">the hull seats <b>${rescueTune.seats}</b> &middot; deliver them at the St&aring;lheart</div>`
-        + `<div class="fm-line fm-warn">&#9888; lose the hull with someone aboard and they go with it</div>`
-        + `<div class="fm-line">something reaching a beacon <b>GRABS</b> them &mdash; kill it and they get up</div>`
-        + `<div class="fm-line">RAM the soft ones &middot; free, and there are a lot of them</div>`
-        + `<div class="fm-line fm-warn">&#9888; DO NOT RAM units with SOLID elements &mdash; shells and mines only</div>`
-        + `<div class="fm-line"><b>NO RESUPPLY.</b> ${rescueTune.hulls} hulls &middot; ${rescueTune.shells} shells`
-        + ` &middot; ${rescueTune.mines} mines${rescueTune.lasers ? '' : ' &middot; no secondaries'}</div>`
-        + `<div class="fm-line">no towers, no orbital, no Terraformer &mdash; that is the whole budget</div>`
-        + `<div class="fm-line">the gates keep sending. Taking your time IS the way to lose</div>`;
-      if (keys) body.appendChild(keys);
-    }
-  }
-  let introAfter = null;
-  function dismissIntro() {
-    if (!introEl || introEl.classList.contains('hidden')) return;
-    introEl.classList.add('hidden');
-    removeEventListener('keydown', introKey, true);
-    paused = false;
-    const after = introAfter; introAfter = null;
-    if (after) after();
-  }
-  function introKey(ev) {
-    ev.preventDefault();
-    ev.stopImmediatePropagation(); // ESC must dismiss, not open the pause menu
-    dismissIntro();
-  }
-  function showIntro(after) {
-    if (!introEl) { if (after) after(); return; }
-    introAfter = after || null;
-    paused = true;
-    introEl.classList.remove('hidden');
-    introEl.addEventListener('pointerdown', dismissIntro, { once: true });
-    addEventListener('keydown', introKey, true);
-  }
 
   // opening briefing: the pieces as cards, the ONE win condition, and two
   // clickable glossaries. The sim stays frozen until the player begins.
@@ -4819,7 +4108,7 @@ export function initTdTab(root) {
       glossCard('#ffb000', spriteShot('triad', makeTriadIcon), 'missile triads', 'drive over = +3 shells · shells also blast walls open') +
       glossCard('#66ff88', spriteShot('phage', unitIcon('phage', CREATURE_TINTS.phage)), 'fodder', 'soft creatures — RAM them, it’s free') +
       glossCard('#ff5340', spriteShot('barbed', unitIcon('barbed', CREATURE_TINTS.barbed)), 'spiked reds', 'armored — ramming hurts YOU · shells only') +
-      glossCard('#ffffff', spriteShot('portal', () => makePortalCloud({ body: 0xcfd8ff, hi: 0xffffff })), 'breaches', 'enemy sources · orbital strikes seal them · exhausted waves close them') +
+      glossCard('#ffffff', spriteShot('breach', () => makeDotBurst(0xcfd8ff, [0, 1, 0], 90)), 'breaches', 'enemy sources · orbital strikes seal them · exhausted waves close them') +
       `</div>` +
       GAMEPLAY_TIPS +
       `<b>WIN = CLOSE EVERY BREACH.</b> reaching the heart wins nothing — it's home.` +
@@ -4873,7 +4162,7 @@ export function initTdTab(root) {
     }).join('');
     msgEl.innerHTML = `<div class="msg-head">glossary · hostiles</div>` +
       `<div class="gcards">${cards}` +
-      glossCard('#ffffff', spriteShot('portal', () => makePortalCloud({ body: 0xcfd8ff, hi: 0xffffff })), 'breach', 'where they emerge · seal with an orbital strike · closes when waves are spent') +
+      glossCard('#ffffff', spriteShot('breach', () => makeDotBurst(0xcfd8ff, [0, 1, 0], 90)), 'breach', 'where they emerge · seal with an orbital strike · closes when waves are spent') +
       `</div><button class="msg-back">← back to briefing</button>`;
     msgEl.classList.remove('hidden');
   }
@@ -4893,364 +4182,6 @@ export function initTdTab(root) {
       `</div><button class="msg-back">← back to briefing</button>`;
     msgEl.classList.remove('hidden');
   }
-  // THE HACK: the vendored HDT circuit duel in a same-origin iframe.
-  // 3.html is the deep link — the minigame's router parses digits out of
-  // the path, so a copy under that name boots straight into game 3 with
-  // zero source patching. Same origin means the parent can simply READ
-  // the game's own state (window.__cx.game().phase) instead of needing a
-  // postMessage protocol added to a finished game.
-  // THREE PROTOCOLS on the relay: the HDT circuit duel, and two grid
-  // puzzles from pazorukore (BRIDGE = hashiwokakero, SHIKAKU) — vendored
-  // build-free at minigames/pzk, selected by its own ?game= query. Win
-  // states differ by engine: the duel exposes __cx.game().phase
-  // ('WON'/'LOST'); pazorukore exposes __pazoru.phase ('solved' — its
-  // puzzles cannot be lost, only abandoned).
-  const HACK_GAMES = {
-    hdt: { src: 'minigames/hdt/3.html' },
-    bridges: { src: 'minigames/pzk/index.html?game=bridges&skin=futuristic' },
-    shikaku: { src: 'minigames/pzk/index.html?game=shikaku&skin=futuristic' },
-  };
-  let hackGame = 'hdt';
-  // A DIFFERENT BOARD EVERY BREACH (operator: "it's always the same game").
-  // Both engines shipped with a constant seed — pazorukore's defaultParams
-  // hardcodes `seed: 1`, and the duel's specs carry the string seeds "hdt",
-  // "net" and "orbs" — so every hack served the identical puzzle. Neither
-  // is fixed by reloading: the constant is inside the game.
-  //
-  // The seed is still DERIVED, not random: the house rule is one mulberry32
-  // stream off params.seed and no Math.random in game logic, so a replayed
-  // run breaches the same puzzles in the same order. hackOpens is what
-  // moves it — the count of breaches this run.
-  let hackOpens = 0;
-  function hackSeed() {
-    const rng = mulberry32((params.seed | 0) * 7919 + hackOpens * 104729 + round * 31);
-    return (rng() * 0xffffffff) >>> 0;
-  }
-  // The duel has no URL seed, but its bridge exposes regenerate(spec, seed)
-  // — the same call it makes on a DEADLOCK — and game().board carries the
-  // spec. So the parent rebuilds the board after the frame boots rather
-  // than patching a minified bundle it does not own.
-  function reseedHdt(seed, tries = 0) {
-    try {
-      const w = hackFrameEl && hackFrameEl.contentWindow;
-      const cx = w && w.__cx;
-      const b = cx && cx.game && cx.game().board;
-      if (b && b.spec && cx.regenerate) { cx.regenerate(b.spec, `hdt-${seed}`); return; }
-    } catch { /* frame still booting */ }
-    if (tries < 40) setTimeout(() => reseedHdt(seed, tries + 1), 120);
-  }
-  // THE BAR READS THE GAME OUT. The duel keeps a budget for each side and a
-  // clock, and showed none of it — the operator could not tell how many
-  // attempts they had left, how many the host had, or how close the thing
-  // was to ending, so it always ended abruptly. All three are already on
-  // the bridge; nobody was asking for them.
-  const hackReadEl = root.querySelector('#td-hack-readout');
-  function syncHackReadout() {
-    if (!hackReadEl) return;
-    let txt = '';
-    try {
-      const w = hackFrameEl && hackFrameEl.contentWindow;
-      if (hackGame === 'hdt' && w && w.__cx && w.__cx.game) {
-        const g = w.__cx.game();
-        if (g && g.pBudget !== undefined) {
-          const low = g.pBudget <= 2 ? ' low' : '';
-          txt = `<b class="hk-you${low}">YOU ${g.pBudget}</b>`
-            + `<b class="hk-them">HOST ${g.eBudget}</b>`
-            + (g.timeLeft !== undefined ? `<b class="hk-clock">${Math.ceil(g.timeLeft)}s</b>` : '')
-            + (g.phase ? `<b class="hk-phase">${g.phase}</b>` : '');
-        }
-      } else if (w && w.__pazoru) {
-        const ph = w.__pazoru.phase;
-        if (ph) txt = `<b class="hk-phase">${String(ph).toUpperCase()}</b>`;
-      }
-    } catch { /* frame still booting, or gone */ }
-    if (hackReadEl.innerHTML !== txt) hackReadEl.innerHTML = txt;
-  }
-
-  // FIT THE GAME TO THE FRAME. These are embedded pages with their own
-  // responsive layouts, and on a phone the board simply ran off the right
-  // edge — the operator saw the logo and a sliver of grid. Rather than
-  // fight three separate layouts, the frame is given the width the games
-  // were designed for and scaled down to whatever the wrapper actually is.
-  const HACK_LOGICAL_W = 560;   // the fallback, for a frame not yet readable
-  // TURN THE BOARD SIDEWAYS ON A PORTRAIT PHONE (operator: "on mobile, when
-  // reaching the server, the games are hard to play because they're not full
-  // screen").
-  //
-  // They are not full screen because they are LANDSCAPE games and a phone
-  // held upright is not. Fitted upright, a 560-wide board on a 430-wide
-  // screen runs at 77% with a hundred and fifty pixels of letterbox above
-  // and below — it works, and everything in it is too small to hit.
-  //
-  // Rotated, the same board gets the phone's LONG axis and needs no
-  // downscaling at all: it is handed exactly `availH x availW` and turned
-  // back into the screen, so it fills it at 1:1. Pointer events come through
-  // a CSS transform correctly, so the games need no idea this happened.
-  //
-  // It is a TOGGLE and not a rule, because "turn your phone" is a taste
-  // question and the operator should be able to answer it with a thumb
-  // rather than a reload. Default: on where the screen is portrait enough
-  // that fitting upright would cost more than a quarter of the size.
-  //
-  // AND IT IS PER GAME, because the three genuinely differ. HDT is a wide
-  // circuit board — measured, it fills a 908x418 landscape phone at scale 1
-  // — so turning it is pure gain. The two pazorukore puzzles are squarish
-  // boards with side panels: handed a 2:1 viewport they clip their own grid
-  // internally, which the iframe cannot see (the child reports no overflow;
-  // it simply lays out wrong). Turning those makes them worse, so by
-  // default they stay upright and the button is there if the operator
-  // disagrees.
-  const HACK_LANDSCAPE = { hdt: true, bridges: false, shikaku: false };
-  let hackTurn = null;   // null = decide from the shape; true/false = the player has
-  const hackRotEl = root.querySelector('#td-hack-rotate');
-  function hackTurned(availW, availH, logical) {
-    if (hackTurn !== null) return hackTurn;
-    const forced = urlParams.get('hackrot');
-    if (forced === '0') return false;
-    if (forced === '1') return true;
-    if (!HACK_LANDSCAPE[hackGame]) return false;
-    return availH > availW * 1.15 && availW / logical < 0.78;
-  }
-  if (hackRotEl) {
-    hackRotEl.addEventListener('click', () => {
-      const wrap = hackWrapEl.getBoundingClientRect();
-      const bar = hackWrapEl.querySelector('.hk-bar');
-      const barH = bar ? bar.getBoundingClientRect().height : 0;
-      hackTurn = !hackTurned(wrap.width, Math.max(120, wrap.height - barH), HACK_LOGICAL_W);
-      fitHackFrame();
-    });
-  }
-  function fitHackFrame() {
-    if (!hackFrameEl || !hackWrapEl || hackWrapEl.classList.contains('hidden')) return;
-    const wrap = hackWrapEl.getBoundingClientRect();
-    const bar = hackWrapEl.querySelector('.hk-bar');
-    const barH = bar ? bar.getBoundingClientRect().height : 0;
-    const availW = wrap.width, availH = Math.max(120, wrap.height - barH);
-    // ASK THE GAME how wide it wants to be rather than guessing. 560 fitted
-    // the duel and left the pazorukore board hanging off the side — they are
-    // three different layouts and a single constant was never going to serve
-    // all of them. Same-origin, so the child's own scrollWidth is readable;
-    // the constant is only the fallback for a frame that has not painted.
-    let logical = HACK_LOGICAL_W;
-    try {
-      const d = hackFrameEl.contentDocument;
-      if (d && d.documentElement) {
-        logical = Math.max(logical, d.documentElement.scrollWidth, d.body ? d.body.scrollWidth : 0);
-      }
-    } catch { /* not readable yet */ }
-    // THE TURNED PATH, and it is simpler than the upright one because there
-    // is nothing to compromise: the frame is given the screen's long axis as
-    // its width and its short axis as its height, then rotated back into it.
-    // With transform-origin at the top left, translate(availW, 0) rotate(90)
-    // maps the frame's local (x, y) onto (availW - y, x) — so local x runs
-    // down the screen and local y runs back across it, exactly filling.
-    if (hackTurned(availW, availH, logical)) {
-      // TURNED IS NOT AUTOMATICALLY 1:1. Handing the child the phone's long
-      // axis is usually enough — HDT and the duel fill it exactly — but
-      // pazorukore's board lays a grid out beside two side panels and can
-      // still want more width than that. So the turned path asks the same
-      // question the upright one does (how wide does the game SAY it is)
-      // and scales the long axis to fit, rather than assuming.
-      //
-      // With transform-origin at the top left, translate(availW,0) rotate(90)
-      // scale(s) maps the frame's local (x, y) onto (availW - s*y, s*x): local
-      // x runs down the screen, local y runs back across it. Both axes fill
-      // exactly when the frame is sized (availH/s) x (availW/s).
-      const LW = Math.max(availH, logical);
-      const ts = Math.min(1, availH / LW);
-      const LH = availW / ts;
-      hackFrameEl.style.width = `${Math.round(LW)}px`;
-      hackFrameEl.style.height = `${Math.round(LH)}px`;
-      hackFrameEl.style.transformOrigin = 'top left';
-      hackFrameEl.style.transform =
-        `translate(${Math.round(availW)}px, 0) rotate(90deg) scale(${ts})`;
-      if (urlParams.get('hack')) {
-        console.log(`HACKFIT TURNED avail=${Math.round(availW)}x${Math.round(availH)}`
-          + ` logical=${logical} frame=${Math.round(LW)}x${Math.round(LH)}`
-          + ` scale=${ts.toFixed(3)}`);
-      }
-      return;
-    }
-    const scale = Math.min(1, availW / logical);
-    if (scale >= 1) {
-      // desktop has the room: leave the frame alone entirely
-      hackFrameEl.style.width = '';
-      hackFrameEl.style.height = '';
-      hackFrameEl.style.transform = '';
-      return;
-    }
-    // AND CAP THE HEIGHT. The first cut scaled width only and handed the
-    // child a 560x866 viewport — phone-shaped. The pazorukore board sizes
-    // its cells from the AVAILABLE HEIGHT, so a very tall frame grew them
-    // until the board ran off the side, which is the clipping the operator
-    // saw. Capped to a shape those games were actually laid out in, and
-    // letterboxed down the middle rather than stretched.
-    const logicalH = Math.min(availH / scale, logical * 1.28);
-    const usedH = logicalH * scale;
-    const padY = Math.max(0, (availH - usedH) / 2);
-    hackFrameEl.style.width = `${logical}px`;
-    hackFrameEl.style.height = `${logicalH}px`;
-    hackFrameEl.style.transformOrigin = 'top left';
-    hackFrameEl.style.transform = `translateY(${padY / scale}px) scale(${scale})`;
-    if (urlParams.get('hack')) {
-      let child = '';
-      try {
-        const d = hackFrameEl.contentDocument;
-        const de = d && d.documentElement;
-        if (de) {
-          child = ` child=${de.scrollWidth}x${de.scrollHeight}`
-            + ` client=${de.clientWidth}x${de.clientHeight}`
-            + ` overflows=${de.scrollWidth > de.clientWidth + 1}`;
-        }
-      } catch { child = ' child=unreadable'; }
-      console.log(`HACKFIT avail=${Math.round(availW)}x${Math.round(availH)}`
-        + ` logical=${logical} scale=${scale.toFixed(3)}`
-        + ` frame=${Math.round(hackFrameEl.getBoundingClientRect().width)}` + child);
-    }
-  }
-  addEventListener('resize', fitHackFrame);
-
-
-  function readHackPhase() {
-    try {
-      const w = hackFrameEl.contentWindow;
-      if (!w) return null;
-      if (hackGame === 'hdt') {
-        const cx = w.__cx;
-        if (cx && cx.game) {
-          const ph = cx.game().phase;
-          if (ph === 'WON') return 'won';
-          if (ph === 'LOST') return 'lost';
-        }
-      } else if (w.__pazoru && w.__pazoru.phase === 'solved') return 'won';
-    } catch { /* frame still booting */ }
-    return null;
-  }
-  const hackBtnEl = root.querySelector('#td-hack');
-  const hackPromptEl = root.querySelector('#td-hackprompt');
-  let hackPromptForce = false;
-  if (hackPromptEl) hackPromptEl.addEventListener('pointerdown', () => openHack());
-  const hackWrapEl = root.querySelector('#td-hackwrap');
-  const hackFrameEl = root.querySelector('#td-hackframe');
-  let hackPoll = null;
-  function syncHackBtn() {
-    if (hackBtnEl) hackBtnEl.classList.toggle('hidden', !(serverFound && !hackedRound));
-  }
-  function openHack() {
-    if (!hackWrapEl || !hackFrameEl || hackedRound) return;
-    if (!hackWrapEl.classList.contains('hidden')) return; // already breaching
-    paused = true;
-    sfx.play('server_dialup'); // six seconds of negotiation IS the fiction
-    hackOpens++;               // moves the seed: a new board every breach
-    setHackGame(hackGame);
-    hackWrapEl.classList.remove('hidden');
-    // THE GAME'S OWN CHROME GETS OUT OF THE WAY. The hamburger is appended
-    // to <body> and the overlay lives inside the tab, so their z-indexes
-    // never compare — on a phone the ☰ sat squarely on top of the breach
-    // bar, over the tab of the game you were actually playing.
-    document.body.classList.add('hacking');
-    fitHackFrame();
-    if (hackFrameEl) {
-      hackFrameEl.addEventListener('load', () => {
-        // twice: once on load, once after the child has laid itself out.
-        // Measuring a document that has not painted returns the viewport
-        // width, which is the answer that makes the fit a no-op — and the
-        // TURNED path depends on this settle just as much, since it is the
-        // second pass that discovers pazorukore wants more than the phone's
-        // long axis and scales it down.
-        fitHackFrame();
-        setTimeout(fitHackFrame, 250);
-        setTimeout(fitHackFrame, 900);
-      }, { once: true });
-    }
-    clearInterval(hackPoll);
-    hackPoll = setInterval(() => {
-      syncHackReadout();
-      const ph = readHackPhase();
-      if (ph === 'won' || ph === 'lost') endHack(ph === 'won');
-    }, 600);
-  }
-
-  // A BREACH ENDS ON A BEAT, not on a cut. The overlay used to vanish the
-  // instant the game's phase flipped, so a win and a loss felt identical
-  // from the outside: the screen you were reading was simply gone
-  // (operator). The bar says what happened and holds it for a moment with
-  // the board still behind it, then closes.
-  let hackEnding = false;
-  function endHack(won) {
-    if (hackEnding) return;
-    hackEnding = true;
-    clearInterval(hackPoll); hackPoll = null;
-    if (hackReadEl) {
-      hackReadEl.innerHTML = won
-        ? `<b class="hk-won">&#10022; BREACHED</b>`
-        : `<b class="hk-lost">&#10005; TRACED &mdash; LOCKED OUT</b>`;
-    }
-    sfx.play(won ? 'tower_upgrade' : 'danger_alert');
-    runTimers.after(1600, () => { hackEnding = false; closeHack(won); });
-  }
-  function setHackGame(g) {
-    if (!HACK_GAMES[g]) g = 'hdt';
-    hackGame = g;
-    // A TURN IS AN ANSWER ABOUT ONE BOARD. Switching games throws it away
-    // and asks the shape again — holding a player's "turn it" from the
-    // circuit duel over onto a pazorukore grid applies their answer to a
-    // question they were not asked.
-    hackTurn = null;
-    const seed = hackSeed();
-    if (hackFrameEl) {
-      // the pazorukore games take the seed on their own query string; the
-      // duel is reseeded through its bridge once it has booted
-      hackFrameEl.src = g === 'hdt'
-        ? HACK_GAMES[g].src
-        : `${HACK_GAMES[g].src}&seed=${seed}`;
-      if (g === 'hdt') reseedHdt(seed);
-    }
-    for (const b of root.querySelectorAll('.hk-tab')) {
-      b.classList.toggle('active', b.dataset.hack === g);
-    }
-  }
-  for (const b of root.querySelectorAll('.hk-tab')) {
-    b.addEventListener('click', () => setHackGame(b.dataset.hack));
-  }
-  function closeHack(won) {
-    hackEnding = false;
-    clearInterval(hackPoll); hackPoll = null;
-    if (hackWrapEl) hackWrapEl.classList.add('hidden');
-    document.body.classList.remove('hacking');
-    if (hackFrameEl) hackFrameEl.src = 'about:blank';
-    paused = false;
-    if (won === true) {
-      hackedRound = true;
-      hackWins++;
-      if (!run.minigamesWon.includes(hackGame)) run.minigamesWon.push(hackGame);
-      checkAchievements();
-      if (hackWins === 2) {
-        // the SECOND win opens the black market: missiles for biomass
-        missileShop = true;
-        showToast(`<div class="wave-num">BLACK MARKET OPEN</div>`
-          + `<div class="wave-role">the relay sells missiles now — expensive, and worth it</div>`, 3600);
-        syncArmUi();
-      } else {
-        hackedUnlocks++;
-        const ks = unlockedTowerKeys(wave, hackedUnlocks);
-        showTowerToast(ks[ks.length - 1]);
-        showToast(`<div class="wave-num">FIRMWARE PATCHED</div>`
-          + `<div class="wave-role">${hackedUnlocks <= 1
-            ? 'AOE schematics decrypted — the relay held the OP half of the combo'
-            : 'a tower unlocked ahead of its wave'}</div>`, 3400);
-      }
-      updateHud();
-    } else if (won === false) {
-      showToast(`<div class="wave-num">TRACE COMPLETE</div>`
-        + `<div class="wave-role">connection dropped — the relay resets, try again</div>`, 2800);
-    }
-    syncHackBtn();
-  }
-  if (hackBtnEl) hackBtnEl.addEventListener('click', openHack);
-  const hackAbortEl = root.querySelector('#td-hack-abort');
-  if (hackAbortEl) hackAbortEl.addEventListener('click', () => closeHack(null));
-
   // callout pop-ups + the ram combo counter (both pointer-transparent)
   const calloutsEl = root.querySelector('#td-callouts');
   const comboEl = root.querySelector('#td-combo');
@@ -5437,19 +4368,17 @@ export function initTdTab(root) {
       + `${rankBadgeHud ? ' ' + rankBadgeHud : ''}</div>`
       + `<div class="hud-vitals">${hearts} <span class="hud-lbl">HEART</span>`
       + ` <span class="hp-you">♥${playerHP}</span>`
-      + ` <span class="hp-ammo${ammo === 0 ? ' out' : ''}">✦${ammo}</span>`
-      + ` <span class="hp-ammo hp-mine${mineField.count === 0 ? ' out' : ''}">⌖${mineField.count}</span></div>`
+      + ` <span class="hp-ammo${ammo === 0 ? ' out' : ''}">✦${ammo}</span></div>`
       + `<div class="hud-res"><span class="hud-biomass">${eco.biomass}kg`
       + ` ×${eco.multiplier().toFixed(2)}</span>`
       + `<span class="hud-wave">WAVE <b>${wave}</b> · R${round}</span></div>`
-      + (missionOn ? rescueLine()
-        : `<div class="hud-obj">breaches ${spAlive}/${spawnPoints.length}`
-        + ` · ${programmeDone() ? 'WAVES SPENT — CLOSE THE GATES'
-          : `wave ${sectorWave() + 1}/${params.wavesPerSector} of sector ${round}`}`
-        + ` · built ${towers.length}</div>`)
-      + (missionOn ? '' : isaoLine())
+      + `<div class="hud-obj">breaches ${spAlive}/${spawnPoints.length}`
+      + ` · ${programmeDone() ? 'WAVES SPENT — CLOSE THE GATES'
+        : `wave ${sectorWave() + 1}/${params.wavesPerSector} of sector ${round}`}`
+      + ` · built ${towers.length}</div>`
+      + isaoLine()
       + assistantLine()
-      + (missionOn ? '' : terraLine())
+      + terraLine()
       + (alerts ? `<div class="hud-alert">${alerts}</div>` : '');
     if (dirBtnEl) {
       const eng = !manualActive();
@@ -5592,11 +4521,9 @@ export function initTdTab(root) {
 
   const nextEl = root.querySelector('#td-next');
   function updateNextPreview() {
-    // a raid sends no waves, so the preview is a countdown to nothing —
-    // and it sat at "in 0s" forever, which reads as a stuck game
-    if (player.won || tutorialActive || rescue2On || !nextEl) { nextEl && nextEl.classList.add('hidden'); return; }
+    if (player.won || !nextEl) { nextEl && nextEl.classList.add('hidden'); return; }
     const n = wave + 1;
-    const plan = rescueOn ? rescueWavePlan(n) : computeWavePlan(n, round, params.waveSize, threatMult);
+    const plan = computeWavePlan(n, round, params.waveSize, threatMult);
     const chips = plan.entries.map((e, i) => {
       const tint = '#' + CREATURE_TINTS[e.type].toString(16).padStart(6, '0');
       const mark = i === 0 ? '◈' : '●';
@@ -5699,8 +4626,6 @@ export function initTdTab(root) {
       if (!storyMode) { eco.addBiomass(starterTower().cost * 2); for (const ci of garrisonSites(2)) orderTower(starterTower().key, ci, { quiet: true }); }   // the story's first print is Isao's Rotor on the wall, nothing before it
       spawnIsao();   // on shift from the first second, order or no order
     });
-    hackedUnlocks = 0; hackedRound = false; syncHackBtn();
-    hackWins = 0; missileShop = false; missilesBought = 0;
     resetRunStats();
     bossCued = false;
     dangerWarnedWave = -1;
@@ -5730,33 +4655,6 @@ export function initTdTab(root) {
     tdMaxD = 0;
     for (let i = 0; i < dungeon.tags.length; i++) {
       if (tdFullTags[i] !== BLOCKED) tdMaxD = Math.max(tdMaxD, tdFullDist[i]);
-    }
-    // THE SERVER'S VAULT (operator's desired pattern, third field report):
-    // take the TRUE antipode cell — no walkable filter, the literal pole —
-    // and carve an empty CHAMBER into the full world around it: every cell
-    // within two hops, a floor disc at least five cells across, ringed by
-    // whatever rock was already there. The room may be sealed off at
-    // first ON PURPOSE — walls blast open, and a vault you have to breach
-    // is the fiction working for us.
-    {
-      const hc = norm3(graph.centers[dungeon.heart]);
-      let best = Infinity; serverCi = -1;
-      for (let i = 0; i < graph.centers.length; i++) {
-        const d = dot3(norm3(graph.centers[i]), hc);
-        if (d < best) { best = d; serverCi = i; }
-      }
-      serverChamber = [];
-      const depth = new Map([[serverCi, 0]]);
-      const q = [serverCi];
-      while (q.length) {
-        const ci = q.shift();
-        serverChamber.push(ci);
-        if (depth.get(ci) >= 2) continue;
-        for (const nb of graph.adj[ci]) {
-          if (!depth.has(nb)) { depth.set(nb, depth.get(ci) + 1); q.push(nb); }
-        }
-      }
-      for (const ci of serverChamber) tdFullTags[ci] = ROOM;
     }
     // carve the sector map. Raw azimuth wedges fail on a lane world
     // (corridors cross wedge borders and re-seal as unreachable), and
@@ -5852,16 +4750,11 @@ export function initTdTab(root) {
     baseUnitScale = cellSide * (story?.tankUnit ?? 0.5);   // the story hull is sized to its bays
     unitScale = baseUnitScale;
     ammo = 3;
-    clearMines();   // a new run gets a fresh rack and an empty board
     sfx.reseed(params.seed); // pitch jitter is deterministic per seed
     deathPick = mulberry32((params.seed >>> 0) ^ 0x9e3779b9);
     heartHP = HEART_MAX;
     playerHP = PLAYER_MAX;
     playerDown = false;
-    // the mission strands its people and hands out its budget LAST, so it
-    // overwrites the campaign's supply rather than being overwritten by it
-    startRescue();
-    startRescue2();
     shield.t = 0; shield.coolUntil = -Infinity; shield.taps.clear();
     shield.rack=Math.min(shieldTune.rackCap,shieldTune.rackStart);shield.stationLeft=shieldTune.stationBudget;shieldDrops=0;
     resetTankRank();
@@ -6012,7 +4905,7 @@ export function initTdTab(root) {
     // a new game means a new magazine: leftovers do not survive regenerate
     strike.reserved = 0; strike.ready = 0; strike.gauge = 0;
     strike.armed = false; strike.target = -1; strike.falling = -1;
-    if (!missionOn) grantStrikes(strike, spawnPoints.filter((sp2) => sp2.alive).length, strikeTune);
+    grantStrikes(strike, spawnPoints.filter((sp2) => sp2.alive).length, strikeTune);
   }
 
   // cheap hop estimate for spreading spawn points (chord distance in cells)
@@ -6022,7 +4915,7 @@ export function initTdTab(root) {
 
   // a sector's gates are spatial sources, not type-bound — place one far
   // from the heart, spread from existing gates; 3 hits to destroy
-  function addSpawnPoint(atCi = -1) {
+  function addSpawnPoint() {
     let maxD = 0;
     for (let i = 0; i < dungeon.tags.length; i++) {
       if (dungeon.tags[i] !== BLOCKED) maxD = Math.max(maxD, dungeon.distToHeart[i]);
@@ -6036,8 +4929,6 @@ export function initTdTab(root) {
       if (s > bs) { bs = s; best = ci; }
     }
     if (best === -1) best = dungeon.spawn;
-    // the director raises gates WHERE the shot wants them (a dual portal)
-    if (atCi >= 0 && dungeon.tags[atCi] !== BLOCKED && !spawnPoints.some((s) => s.ci === atCi)) best = atCi;
     // the source is a PORTAL, standing upright like a gate (local +Y =
     // surface normal); neutral tint — the wave plan decides what pours out
     const obj = buildPortalObj(best, whim() * 6.283);
@@ -6059,71 +4950,10 @@ export function initTdTab(root) {
   // fixed set; the wave plan decides what pours out of them
   function seedPortals(n) { if (storyMode) return; for (let i = 0; i < n; i++) addSpawnPoint(); }
 
-  // Legacy portal probes retain their three-hit pod animation. Normal ground
-  // breaches accept only orbital strikes or wave exhaustion as closure.
-  const PODS_PER_HIT = 2;
-  function popPods(sp, n) {
-    const pods = sp.obj.userData.pods;
-    if (!pods || !pods.length) return 0;
-    let popped = 0;
-    for (const pod of pods) {
-      if (popped >= n) break;
-      if (!pod.visible) continue;          // already gone
-      pod.updateWorldMatrix(true, false);
-      const wp = new THREE.Vector3();
-      pod.getWorldPosition(wp);
-      const nrm = norm3([wp.x, wp.y, wp.z]);
-      // the pod's own wreckage, then a flash of its glow colour
-      const fx = makeDebris(pod, nrm);
-      scene.add(fx); debris.push(fx);
-      const burst = makeDotBurst(0x8fe8ff, nrm, 26);
-      burst.scale.setScalar(cellSide * 0.5);
-      burst.position.copy(wp);
-      scene.add(burst); debris.push(burst);
-      pod.visible = false;
-      popped++;
-    }
-    return popped;
-  }
-
-  // ONE DOOR for "a shell's worth landed on a gate", so the cannon and the
-  // mine cannot drift apart. The operator's ruling on the mine is that it is
-  // "as 1 shell" against a portal — which is only true if it goes through
-  // exactly this function rather than through a second copy of it.
+  // a ground breach closes only to an orbital strike or wave exhaustion; a shell on it marks it on the scope
   function gateTakesShell(sp) {
-    if(sp.obj.userData.breach){sp.found=true;return false;}
-    sp.found = true;          // a hit also marks the source on the scope
-    sp.hp--;
-    if (sp.hp <= 0) { killPortal(sp); return true; }
-    // wounded: it loses two power cores, takes a shove, and its light dims —
-    // a dying gate fades before it falls. The SHRINK is gone for a standing
-    // ring: architecture does not get smaller when you shoot it, it loses
-    // pieces.
-    gateTakesHit(sp);
-    if (!sp.obj.userData.grounded) {
-      sp.obj.scale.setScalar(sp.obj.userData.sizeScale * (0.65 + 0.35 * (sp.hp / 3)));
-    }
-    if (sp.obj.userData.setDim) sp.obj.userData.setDim(0.2 + 0.8 * (sp.hp / 3));
+    sp.found = true;
     return false;
-  }
-
-  // WHAT A SHELL LANDING ON A GATE FEELS LIKE. It used to be a scale step and
-  // a dim — a wounded gate got quieter, which is the opposite of heavy.
-  const GATE_RECOIL = 0.22;   // seconds of shove, eased out by stepGates
-  function gateTakesHit(sp) {
-    const nrm = norm3(graph.centers[sp.ci]);
-    sfx.play('blast_fire');            // the concussion
-    whKick = WH_KICK;                 // ...and the throat lurches
-    popPods(sp, PODS_PER_HIT);
-    // a broad flash at the gate's mouth, over and above the pod bursts
-    const burst = makeDotBurst(0xfff2c0, nrm, 70);
-    burst.scale.setScalar(cellSide * 1.1);
-    const bp = scale3(nrm, 1 + cellSide * 0.5);
-    burst.position.set(bp[0], bp[1], bp[2]);
-    scene.add(burst); debris.push(burst);
-    // and the ring is SHOVED — a recoil the frame loop eases back out, so the
-    // weight is in the motion rather than in a bigger particle count
-    sp.recoil = GATE_RECOIL;
   }
 
   function killPortal(sp,reason='impact') {
@@ -6136,7 +4966,6 @@ export function initTdTab(root) {
     // "something substantial just ended".
     const nrm = norm3(graph.centers[sp.ci]);
     sfx.play('tank_destroyed');
-    whKick = WH_KICK * 1.6;           // the throat convulses as it collapses
     if (sp.obj) {
       if(!sp.obj.userData.breach){const fx = makeDebris(sp.obj, nrm);scene.add(fx);debris.push(fx);}
       const burst = makeDotBurst(0x8fe8ff, nrm, 90);
@@ -6168,10 +4997,6 @@ export function initTdTab(root) {
   }
 
   function armWave() { if (storyMode) return;   // the story world has no wave clock yet
-    // A RAID SENDS NOTHING. The brief names the threat as pre-placed groups;
-    // a wave clock on top of that turns a puzzle back into the defence we
-    // already have. The gates stand as scenery and as targets.
-    if (rescue2On) return;
     if (waveIn >= 0) return;
     // THE SECTOR HAS A FIXED PROGRAMME. Once it is spent no more waves are
     // sent, whatever the clock thinks — the remaining gates are a mop-up,
@@ -6203,8 +5028,7 @@ export function initTdTab(root) {
     shieldWaveReset(shield, shieldTune);   // the heart pad refills each wave
     waveActive = true; waveAge = 0;
     tfMilestone(wave);   // the Terraformer keeps time in waves
-    const plan = rescueOn ? rescueWavePlan(wave)
-      : computeWavePlan(wave, round, params.waveSize, (lab.on ? lab.waveMult : 1) * threatMult);
+    const plan = computeWavePlan(wave, round, params.waveSize, (lab.on ? lab.waveMult : 1) * threatMult);
     // NEW THREAT reveal the first time a headline type appears
     if (!seenTypes.has(plan.headline)) {
       seenTypes.add(plan.headline);
@@ -6231,29 +5055,6 @@ export function initTdTab(root) {
       releaseSpawns(0);
     }
     updateHud();
-  }
-
-  // THE MISSION'S OWN CURVE: mostly rammable, with a small growing hard
-  // core — the brief's "lots of rammable enemies and just a handful of more
-  // difficult one to manage". The types come off the `rammable` flag rather
-  // than a second hand-written list: the colour already carries that read and
-  // a test already enforces it, so a new enemy joins the right half of the
-  // mission the day it is added.
-  function rescueWavePlan(w) {
-    // SHELVED units are excluded here too. The mission draws its roster from
-    // the flags rather than a hand list precisely so a new enemy joins it
-    // automatically — which means a shelved one would join it automatically
-    // as well, and be "not in the game" everywhere except the two missions.
-    const kinds = Object.keys(ENEMY_SPEC).filter((k) => !ENEMY_SPEC[k].shelved);
-    const soft = kinds.filter((k) => ENEMY_SPEC[k].rammable);
-    const hard = kinds.filter((k) => !ENEMY_SPEC[k].rammable);
-    const mix = waveMix(w);
-    const pick = (list, i) => (list.length ? list[i % list.length] : kinds[0]);
-    const st = pick(soft, w - 1), ht = pick(hard, Math.floor((w - 1) / 2));
-    const entries = [];
-    if (mix.soft > 0) entries.push({ type: st, count: mix.soft });
-    if (mix.hard > 0) entries.push({ type: ht, count: mix.hard });
-    return { entries, headline: mix.hard > 0 ? ht : st };
   }
 
   function releaseSpawns(dtSeconds) {
@@ -6318,17 +5119,10 @@ export function initTdTab(root) {
       if (spec.regen && e.hp < spec.hp && tNow - (e.lastHitT ?? -9) > 1.2) {
         e.hp = Math.min(spec.hp, e.hp + spec.regen * dt);
         const sv = e.scale0 * (0.7 + 0.3 * e.hp / spec.hp);
-        e.obj.scale.setScalar(sv * (e.dirScale || 1));   // the director may enlarge a type (a boss, for a shot)
+        e.obj.scale.setScalar(sv);
         e.obj.userData.s0 = sv;
       }
       let pace = ENEMY_SPEED * spec.speed * (e.paceJitter ?? 1);
-      // A GARRISON HOLDS ITS CAMP until the tank comes to it. A camp you have
-      // not reached should not be walking across the map at you — that is
-      // what makes them camps and not a wave. Once up, it stays up.
-      if (e.campId) {
-        const camp = campById(e.campId);
-        if (camp && !campAwake(camp, player.pos, cellSide, rescue2Tune)) pace = 0;
-      }
       if (tNow < e.behUntil) pace *= e.behMult; // on-hit reaction window
       if (tNow < e.slowUntil) pace *= e.slowFactor; // slow-tower debuff
       // the slow READS for its full duration: the whole cloud tints ice —
@@ -6404,25 +5198,7 @@ export function initTdTab(root) {
         // heart-seeking: drawn HARD toward the heart — only a sliver of
         // wobble left so the streams braid but visibly converge
         const exits = openNeighbors(e.cur).filter((c) => !story?.sealed(c));   // a closed story gate is a wall to them
-        // RESCUE: a survivor standing in the lane pulls the horde off it.
-        // A short LOCAL override of the heart-seeking choice, deliberately
-        // not a second BFS field — the stranded stand in the flow the horde
-        // is already walking, which is the whole reason they are placed there.
         let pool = null;
-        const lk = lockedSurvivor(e.pos);
-        if (lk) {
-          const here = dist3(graph.centers[e.cur], lk.pos);
-          const toward = exits.filter((c) => dist3(graph.centers[c], lk.pos) < here);
-          if (toward.length) pool = toward;
-        }
-        // ...and an awake garrison hunts the TANK, not the heart: it is
-        // guarding a container, and the thing that came for the container is
-        // the thing it walks at.
-        if (!pool && e.campId && player.pos) {
-          const here = dist3(graph.centers[e.cur], player.pos);
-          const toward = exits.filter((c) => dist3(graph.centers[c], player.pos) < here);
-          if (toward.length) pool = toward;
-        }
         if (!pool) { const down = exits.filter((c) => dungeon.distToHeart[c] < dungeon.distToHeart[e.cur]); pool = (down.length && whim() > 0.05) ? down : exits; }
         // THE STORY'S HARD CORES HOLD OFF THE WALL: once inside the holding ring they only wander within it (operator, while the lock is tuned)
         if (story?.ring.size && e.type === story.hardcore && story.ring.has(e.cur)) { const stay = exits.filter((c) => story.ring.has(c)); pool = stay.length ? stay : [e.cur]; }
@@ -6581,10 +5357,7 @@ export function initTdTab(root) {
   // so passive income is what got cheaper — getting close is what pays now.
   // Rams keep their premium on top; the orbital strike pays base, because
   // nothing about it is close.
-  // A MINE PAYS BETWEEN THE TWO. It is the player's own act — you drove
-  // there, you spent the mine, you chose the chokepoint — but it is not
-  // the hull going through them, which is what the full rate is for.
-  const KILL_PAY = { tank: 1.0, tower: 0.5, strike: 0.5, mine: 0.75 };
+  const KILL_PAY = { tank: 1.0, tower: 0.5, strike: 0.5 };
 
   // --- field promotion ------------------------------------------------------
   // HUD badge only. The first cut ALSO floated a sprite over the hull —
@@ -6905,12 +5678,8 @@ export function initTdTab(root) {
     const guns = playerMesh && playerMesh.userData.laserGuns;
     // auto holds the SAME trigger the player does, so there is one firing
     // path, one heat model and one overheat lockout — not a parallel copy
-    // THE RESCUE HULL IS A TRANSPORT. The beams cost heat, not ammo, so
-    // with them fitted "limited shells" means nothing at all and the mission
-    // is a driving exercise. One clause, one knob (`?lasers=1` refits them).
     const wantFire = (keys.laser || autoLaserWant) && guns
-      && !player.won && !playerDown
-      && (!missionOn || rescueTune.lasers);
+      && !player.won && !playerDown;
     // heat: build while firing, shed otherwise; overheat locks the trigger
     // until the tubes are fully cold (no feathering the cap)
     if (laserOverheat) {
@@ -7137,657 +5906,6 @@ export function initTdTab(root) {
 
 
 
-  // --- THE RESCUE MISSION, on the board -------------------------------------
-  // src/rescue.js owns the rules: where they strand, the stop clause, the grab
-  // window, the seats, the mix, the verdict. This owns the figures, the
-  // beacons, the chevrons, the sounds, and the four places the mission
-  // touches the campaign board (supply, nav, the hull's death, the end card).
-  const SURV_ORANGE = 0xffb45e, SURV_ALARM = 0xff4d5e;
-
-  // WHERE THEY STRAND. Open cells in the hop band that are not dead-end nubs
-  // and not something else's ground. "On the lanes" needs no test of its own:
-  // in this dungeon every open cell with a finite heart distance IS on a
-  // lane, which is exactly why the horde walks over them.
-  function survivorCandidates() {
-    const out = [];
-    if (!graph || !dungeon) return out;
-    const taken = new Set([dungeon.heart, dungeon.spawn, serverCi,
-      ...spawnPoints.map((sp) => sp.ci), ...berths.map((b) => b.ci)]);
-    for (let i = 0; i < dungeon.tags.length; i++) {
-      if (dungeon.tags[i] === BLOCKED || taken.has(i)) continue;
-      const d = dungeon.distToHeart[i];
-      if (!(d > 0)) continue;
-      if (openCount(i) < 2) continue;            // a nub is not a lane
-      out.push({ ci: i, d, pos: norm3(graph.centers[i]) });
-    }
-    return out;
-  }
-
-  function clearSurvivors() {
-    for (const [, g] of survObjs) { scene.remove(g); disposeObj(g); }
-    survObjs.clear();
-  }
-
-  function dropSurvivor(id) {
-    const g = survObjs.get(id);
-    if (!g) return;
-    scene.remove(g); disposeObj(g);
-    survObjs.delete(id);
-  }
-
-  function makeSurvivorObj(sv) {
-    const g = makeSurvivor({ body: SURV_ORANGE, hi: 0xfff4d6, alarm: SURV_ALARM });
-    // stood UP on the surface: the figure is built feet-at-origin along +Y,
-    // so the group's own up is the cell normal and nothing else needs saying
-    g.scale.setScalar(cellSide * 0.55);
-    const n = norm3(sv.pos);
-    g.position.set(sv.pos[0], sv.pos[1], sv.pos[2]);
-    tmpObj.position.copy(g.position);
-    tmpObj.up.set(0, 1, 0);
-    tmpObj.lookAt(0, 0, 0);
-    g.quaternion.setFromUnitVectors(Y_AXIS, tmpN.set(n[0], n[1], n[2]));
-    scene.add(g);
-    survObjs.set(sv.id, g);
-    return g;
-  }
-
-  // Called from regenerate, once the dungeon and its heart field exist.
-  function startRescue() {
-    clearSurvivors();
-    rescue = makeRescue(rescueTune);
-    rescueEnded = false;
-    if (!rescueOn) return;
-    const rng = mulberry32((params.seed >>> 0) ^ 0x5e5cae);
-    placeSurvivors(rescue, survivorCandidates(), rng, cellSide, rescueTune);
-    for (const sv of rescue.survivors) makeSurvivorObj(sv);
-    // THE BUDGET. Everything the mission gives you, given once.
-    ammo = rescueTune.shells;
-    playerHP = Math.max(1, Math.round(rescueTune.hulls));
-    console.log(`RESCUE stranded=${rescue.survivors.length}/${rescueTune.survivors}`
-      + `${rescue.short ? ` short=${rescue.short}` : ''} apart=${rescue.apart}c`
-      + ` cells=[${rescue.survivors.map((sv) => sv.ci).join(',')}]`
-      + ` shells=${ammo} mines=${mineField.count} hulls=${playerHP}`
-      + ` lasers=${rescueTune.lasers ? 'on' : 'OFF'}`);
-    // a board that cannot hold the party is a fact the player should be told,
-    // not one the verdict quietly scores around
-    if (rescue.short > 0) {
-      showToast(`<div class="wave-num">RESCUE &#9656; ${rescue.survivors.length} BEACONS</div>`
-        + `<div class="wave-role">the board could only hold ${rescue.survivors.length}`
-        + ` of ${rescueTune.survivors}</div>`, 3000);
-    }
-    updateHud();
-  }
-
-  // Is anything in contact with this survivor RIGHT NOW. The whole grab model
-  // is that question asked every frame — which is why killing the grabber
-  // frees them with no bookkeeping at all.
-  function survivorHeld(sv) {
-    for (const e of enemies) {
-      if (!e.alive) continue;
-      if (e.spec.cloaked && !e.decloaked) continue;
-      if (dist3(e.pos, sv.pos) < cellSide * 0.6) return true;
-    }
-    return false;
-  }
-
-  // The nearest standing survivor this enemy should peel off the lane for.
-  // A short LOCAL override, not a second BFS field.
-  function lockedSurvivor(pos) {
-    if (!rescueOn || rescue.over) return null;
-    let best = null, bd = Infinity;
-    for (const sv of rescue.survivors) {
-      if (!lockOn(sv, pos, cellSide, rescueTune)) continue;
-      const d = dist3(sv.pos, pos);
-      if (d < bd) { bd = d; best = sv; }
-    }
-    return best;
-  }
-
-  let survPingT = 0;
-  let rescueLastPos = null;
-  function stepRescue(dt, tNow) {
-    if (!rescueOn || rescueEnded || !graph || !player.pos) return;
-    // the stop clause, read off the CONTROL rather than off the motion: the
-    // player's hand on the lever is the thing they can feel, and a tank
-    // coasting to a halt with the throttle open has not stopped, it is about
-    // to move again.
-    const asking = Math.abs(throttle) > rescueTune.boardThrottle || cruise
-      || keys.fast || keys.slow || gotoCi >= 0;
-    const movedCells = rescueLastPos ? dist3(player.pos, rescueLastPos) / cellSide : 0;
-    rescueLastPos = player.pos.slice();
-    const moving = dt > 0 && movedCells / dt > rescueTune.boardSpeed;
-    const slow = !asking && !moving;
-    survPingT -= dt;
-    const ping = survPingT <= 0;
-    if (ping) survPingT = 0.55;
-    for (let i = 0; i < rescue.survivors.length; i++) {
-      const sv = rescue.survivors[i];
-      if (sv.state !== 'standing') { dropSurvivor(sv.id); continue; }
-      const g = survObjs.get(sv.id);
-      if (g) g.userData.tick(tNow);
-      const gr = stepGrab(rescue, i, survivorHeld(sv), dt, rescueTune);
-      if (g) g.userData.setGrabbed(sv.grabT > 0);
-      if (gr === 'grabbed') {
-        sfx.play('field_pulse');
-        showCallout(`BEACON ${sv.id} &#9656; GRABBED`, 'co-heart');
-      }
-      if (gr === 'lost') {
-        const nrm = norm3(sv.pos);
-        const burst = makeDotBurst(SURV_ALARM, nrm, 40);
-        burst.scale.setScalar(cellSide * 0.7);
-        burst.position.set(sv.pos[0], sv.pos[1], sv.pos[2]);
-        scene.add(burst); debris.push(burst);
-        warnRing(sv.ci, SURV_ALARM, 0.6, cellSide * 1.4);
-        sfx.play('danger_alert');
-        showToast(`<div class="td-down">BEACON ${sv.id} LOST</div>`
-          + `<div class="td-down-sub">${standingSurv(rescue)} still down there</div>`, 2600);
-        dropSurvivor(sv.id);
-        updateHud();
-        continue;
-      }
-      // the red ring counts the window down ON THE GROUND, where the player
-      // is looking, rather than only in the HUD
-      if (sv.grabT > 0 && ping) {
-        warnRing(sv.ci, SURV_ALARM, 0.4, cellSide * (1.4 - 0.9 * grabProgress(sv, rescueTune)));
-      }
-      const near = !playerDown
-        && dist3(player.pos, sv.pos) < cellSide * rescueTune.boardCells;
-      const br = stepBoard(rescue, i, { near, slow }, dt, rescueTune);
-      if (br === 'boarding' && ping) warnRing(sv.ci, SURV_ORANGE, 0.4, cellSide * 0.9);
-      if (br === 'aboard') {
-        sfx.play('tank_pickup');
-        const nrm = norm3(sv.pos);
-        const burst = makeDotBurst(SURV_ORANGE, nrm, 30);
-        burst.scale.setScalar(cellSide * 0.6);
-        burst.position.set(sv.pos[0], sv.pos[1], sv.pos[2]);
-        scene.add(burst); debris.push(burst);
-        showCallout(`BEACON ${sv.id} &#9656; ABOARD`, 'co-milestone');
-        dropSurvivor(sv.id);
-        updateHud();
-      }
-    }
-    // HOME. The Stalheart's pad is the airlock — the same radius the board
-    // already calls "on the pedestal", so there is one answer to "am I there".
-    if (aboardSurv(rescue) > 0 && !playerDown
-        && dist3(player.pos, graph.centers[dungeon.heart]) < pedestalRadius() + cellSide * 0.7) {
-      const n = disembark(rescue);
-      if (n > 0) {
-        sfx.play('tank_spool_up');
-        showToast(`<div class="wave-num">${n} SAFE &#9656; ${rescue.saved}/${rescue.survivors.length}</div>`
-          + `<div class="wave-role">${standingSurv(rescue)} still down there</div>`, 2600);
-        updateHud();
-      }
-    }
-    if (missionOver(rescue)) endRescue('the field is clear');
-  }
-
-  // The card. A rescue ends with a NUMBER, always — "four of six, and the
-  // fifth was in the hatch" is the story the mode exists to produce, so a
-  // lost hull ends it with a score rather than with a game-over.
-  function endRescue(why) {
-    if (rescueEnded) return;
-    rescueEnded = true;
-    rescue.over = true;
-    // the run is OVER, not merely scored: without this the board kept
-    // spawning waves at a player with nothing left to do on it
-    player.won = true;
-    clearSurvivors();
-    const v = rescueVerdict(rescue);
-    const head = v.clean ? 'EVERYONE CAME HOME'
-      : v.none ? 'NOBODY CAME HOME' : `${v.saved} OF ${v.total} CAME HOME`;
-    showToast(`<div class="wave-num">${head}</div>`
-      + `<div class="wave-role">${why} &middot; lost ${v.lost}`
-      + `${v.lostIds.length ? ` (beacon ${v.lostIds.join(', ')})` : ''}`
-      + ` &middot; ${ammo} shell${ammo === 1 ? '' : 's'} and ${mineField.count} mine${mineField.count === 1 ? '' : 's'} left`
-      + ` &middot; ${playerHP} hull${playerHP === 1 ? '' : 's'}</div>`, 9000);
-    console.log(`RESCUE END ${why}: saved=${v.saved}/${v.total} lost=${v.lost}`
-      + ` lostIds=[${v.lostIds.join(',')}] clean=${v.clean}`
-      + ` shells=${ammo} mines=${mineField.count} hulls=${playerHP}`);
-    updateHud();
-  }
-
-  // The objectives row, in place of the campaign's. Everything the campaign
-  // measures — portals, sectors, towers built — is not what this mission is,
-  // and a HUD that reads out the wrong objective is worse than a blank one.
-  function rescueLine() {
-    if (rescue2On) return rescue2Line();
-    if (!rescueOn) return '';
-    const total = rescue.survivors.length;
-    const held = rescue.survivors.filter((s) => s.state === 'standing' && s.grabT > 0).length;
-    return `<div class="hud-obj">SAVED <b>${rescue.saved}/${total}</b>`
-      + ` &middot; aboard ${aboardSurv(rescue)}/${rescueTune.seats}`
-      + ` &middot; standing ${standingSurv(rescue)}`
-      + (held ? ` &middot; <b class="hp-heart">${held} GRABBED</b>` : '')
-      + (rescue.lost ? ` &middot; lost ${rescue.lost}` : '')
-      + `</div>`;
-  }
-
-
-  // --- RESCUE 2: THE RAID ---------------------------------------------------
-  // Rescue 1 is a defence with a ferry; this is a raid. The map is static, the
-  // threat is pre-placed, and every camp is the same three beats: drive in
-  // (ramming the garrison is free — that is what it is for), get inside SHOT
-  // DISTANCE so the container opens, then STAND STILL while they walk out to
-  // you. The inversion that makes it a different game: in Rescue 1 stopping
-  // is how you pick someone up; here stopping is how you avoid killing them.
-  const campObjs = new Map();    // camp id -> { obj, doorT, open }
-  const astroObjs = new Map();   // survivor id -> the GLB clone
-  const splashes = [];           // red on the floor, for the rest of the run
-  // EVERY BODY WE HAVE, so the people you rescue are not one person repeated.
-  // A crowd of identical survivors reads as a placeholder no matter how good
-  // the model is — the variety is doing more work here than the fidelity.
-  let astroProtos = [];
-  let tankSpeedCells = 0;        // measured off the hull, in cells/s
-  let tankLastPos = null;
-
-  const campById = (id) => rescue.camps.find((k) => k.id === id) || null;
-
-  function clearRescue2() {
-    for (const [, v] of campObjs) { scene.remove(v.obj); disposeObj(v.obj); }
-    campObjs.clear();
-    for (const [, o] of astroObjs) {
-      if (o.userData.dispose) o.userData.dispose();
-      scene.remove(o); disposeObj(o);
-    }
-    astroObjs.clear();
-    for (const sp of splashes) { scene.remove(sp); sp.geometry.dispose(); sp.material.dispose(); }
-    splashes.length = 0;
-  }
-
-  // A LITTLE SPLASH OF RED ON THE FLOOR (the brief). It does NOT fade: this
-  // is the record of a mistake, and a mission about carrying people out
-  // should keep the ones it did not.
-  function bloodSplash(pos) {
-    const n = norm3(pos);
-    let t1 = cross3(n, [0, 1, 0]);
-    if (len3(t1) < 1e-3) t1 = cross3(n, [1, 0, 0]);
-    t1 = norm3(t1);
-    const t2 = norm3(cross3(n, t1));
-    const N = 54, arr = new Float32Array(N * 3), col = new Float32Array(N * 3);
-    const c = new THREE.Color(0xb3121b);
-    for (let i = 0; i < N; i++) {
-      // a hash, not Math.random: a replayed board must splash identically
-      const h = (k) => { const v = Math.sin(i * 12.9898 + k * 78.233 + pos[0] * 37.7) * 43758.5453; return v - Math.floor(v); };
-      const a = h(1) * Math.PI * 2;
-      const r = cellSide * 0.30 * Math.pow(h(2), 0.55);   // dense at the centre
-      const p = add3(scale3(n, 1 + cellSide * 0.02), add3(scale3(t1, Math.cos(a) * r), scale3(t2, Math.sin(a) * r)));
-      arr[i * 3] = p[0]; arr[i * 3 + 1] = p[1]; arr[i * 3 + 2] = p[2];
-      const b = 0.55 + 0.45 * h(3);
-      col[i * 3] = c.r * b; col[i * 3 + 1] = c.g * b; col[i * 3 + 2] = c.b * b;
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(arr, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    const pts = new THREE.Points(geo, new THREE.PointsMaterial({
-      size: 3.2, sizeAttenuation: false, vertexColors: true, transparent: true, opacity: 0.95 }));
-    scene.add(pts);
-    splashes.push(pts);
-    return pts;
-  }
-
-  // Open cells within `cells` of a centre — the ring a garrison stands in and
-  // nothing else. O(C) per camp at init, three times; not worth an index.
-  function cellsNear(ci, cells, skip = new Set()) {
-    const c0 = graph.centers[ci], r = cellSide * cells;
-    const out = [];
-    for (let i = 0; i < dungeon.tags.length; i++) {
-      if (dungeon.tags[i] === BLOCKED || skip.has(i)) continue;
-      if (dist3(graph.centers[i], c0) <= r) out.push(i);
-    }
-    return out;
-  }
-
-  // The garrison: a large group of RAMMABLE units ringed around the
-  // container, and from the second camp a solid one that must be shot. They
-  // are ordinary enemies in every respect except that they carry a campId,
-  // which is the only thing the nav reads.
-  function spawnGarrison(camp, rng) {
-    const kinds = Object.keys(ENEMY_SPEC).filter((k) => !ENEMY_SPEC[k].shelved);
-    const soft = kinds.filter((k) => ENEMY_SPEC[k].rammable && !ENEMY_SPEC[k].cloaked);
-    const hard = kinds.filter((k) => !ENEMY_SPEC[k].rammable);
-    const ring = cellsNear(camp.ci, rescue2Tune.garrisonCells, new Set([camp.ci]));
-    if (!ring.length) return 0;
-    let made = 0;
-    const put = (type) => {
-      const spec = ENEMY_SPEC[type];
-      if (!spec) return;
-      const ci = ring[Math.floor(rng() * ring.length) % ring.length];
-      const s0 = cellSide * spec.size * 0.7;
-      const obj = makeDotEnemy(type, { walker: CREATURE_TINTS[type], walkerHi: accentFor(type) });
-      obj.scale.setScalar(s0); obj.userData.s0 = s0;
-      scene.add(obj);
-      const exits = openNeighbors(ci);
-      enemies.push({
-        id: nextEnemyId++,
-        type, spec, scale0: s0, size: spec.size,
-        cur: ci, prev: -1, next: exits.length ? exits[Math.floor(rng() * exits.length)] : ci,
-        prog: rng() * 0.4, pos: graph.centers[ci].slice(), dir: [0, 1, 0],
-        obj, alive: true, phase: rng() * 6.283, paceJitter: 0.9 + rng() * 0.22,
-        hp: spec.hp, behMult: 1, behUntil: -1, touchCd: -1,
-        slowFactor: 1, slowUntil: -1,
-        campId: camp.id,          // the whole difference from a wave spawn
-      });
-      made++;
-    };
-    for (let i = 0; i < Math.round(rescue2Tune.garrison); i++) put(soft[i % soft.length]);
-    if (camp.id > 1) for (let i = 0; i < Math.round(rescue2Tune.hard); i++) put(hard[i % hard.length]);
-    return made;
-  }
-
-  function buildCamp(camp) {
-    const g = dressMetal(makeContainerFixture(0));
-    if (!g) {
-      // the bytes have not landed; the same wait tfStart does
-      preloadContainer().then((ok) => { if (ok && rescue2On && !campObjs.has(camp.id)) buildCamp(camp); });
-      return;
-    }
-    shutDoors(g);
-    const c = graph.centers[camp.ci], n = graph.normals[camp.ci], hc = graph.centers[dungeon.heart];
-    const f = cellSide * 0.55;
-    g.scale.set(f, f, f * 0.55);
-    g.position.set(c[0], c[1], c[2]);
-    tmpObj.position.copy(g.position); tmpObj.up.set(n[0], n[1], n[2]);
-    tmpObj.lookAt(hc[0], hc[1], hc[2]);
-    g.quaternion.copy(tmpObj.quaternion);
-    scene.add(g);
-    campObjs.set(camp.id, { obj: g, doorT: 0 });
-  }
-
-  // The doors swing to the angle the SHUT search found, plus a throw — so a
-  // container opens from wherever its authored rest pose happened to be
-  // rather than from an assumed zero. Same measurement, used backwards.
-  function stepCampDoors(dt) {
-    for (const camp of rescue.camps) {
-      const v = campObjs.get(camp.id);
-      if (!v || !camp.open) continue;
-      if (v.doorT >= 1) continue;
-      v.doorT = Math.min(1, v.doorT + dt / 0.7);
-      const e = v.doorT * v.doorT * (3 - 2 * v.doorT);
-      for (const [name, sign] of [['Door_L_Pivot', 1], ['Door_R_Pivot', -1]]) {
-        const piv = v.obj.getObjectByName(name);
-        if (!piv) continue;
-        const shut = piv.userData.shutAngle ?? 0;
-        piv.rotation.y = shut + sign * 1.15 * e;
-      }
-    }
-  }
-
-  function startRescue2() {
-    // THE GUARD COMES FIRST. Both missions share the `rescue` object, and
-    // this runs AFTER startRescue in regenerate — so resetting before the
-    // guard wiped Rescue 1's survivors on every board it built, which the
-    // probe reported as "nobody stranded". A shared object is reset by the
-    // owner of the mode, never by its neighbour.
-    if (!rescue2On) return;
-    clearRescue2();
-    rescue = makeRescue(rescue2Tune);
-    rescueEnded = false;
-    tankLastPos = null; tankSpeedCells = 0;
-    const rng = mulberry32((params.seed >>> 0) ^ 0x2a1de5);
-    const taken = new Set([dungeon.heart, dungeon.spawn, serverCi,
-      ...spawnPoints.map((sp) => sp.ci), ...berths.map((b) => b.ci)]);
-    // THE CLEARINGS ARE THE ROOM SEEDS. dungeon.seeds is exactly the
-    // farthest-point set the carve grew its rooms from, so "a camp in a
-    // clearing" needs no second notion of what a clearing is.
-    const cands = (dungeon.seeds || [])
-      .filter((ci) => dungeon.tags[ci] !== BLOCKED && !taken.has(ci) && dungeon.distToHeart[ci] > 0)
-      .map((ci) => ({ ci, d: dungeon.distToHeart[ci], pos: norm3(graph.centers[ci]) }));
-    makeCamps(rescue, cands, rng, cellSide, rescue2Tune);
-    let garrison = 0;
-    for (const camp of rescue.camps) { buildCamp(camp); garrison += spawnGarrison(camp, rng); }
-    ammo = Math.round(rescue2Tune.shells);
-    playerHP = Math.max(1, Math.round(rescue2Tune.hulls));
-    preloadAstronauts().then((pr) => {
-      astroProtos = pr;
-      console.log(`RESCUE2 astronauts ${pr.length ? pr.map((x) => `${x.id}(${x.clips.length} clip, ${x.tris}t)`).join(' + ') : 'FAILED to load'}`);
-    });
-    console.log(`RESCUE2 camps=${rescue.camps.length}/${rescue2Tune.camps}`
-      + `${rescue.short ? ` short=${rescue.short}` : ''} apart=${rescue.campApart}c`
-      + ` survivors=${rescue.survivors.length} garrison=${garrison}`
-      + ` cells=[${rescue.camps.map((k) => k.ci).join(',')}]`
-      + ` groups=[${rescue.camps.map((k) => k.group.length).join(',')}]`
-      + ` shells=${ammo} mines=${mineField.count} hulls=${playerHP}`
-      + ` lasers=${rescue2Tune.lasers ? 'on' : 'OFF'}`
-      + ` board=${dungeon.tags.filter((t) => t !== BLOCKED).length} open cells`);
-    updateHud();
-  }
-
-  function spawnAstronaut(sv) {
-    if (!astroProtos.length) return null;
-    // WHICH BODY IS A PROPERTY OF THE SURVIVOR, not of the spawn order: the
-    // same person must come back as the same person after a re-render, and a
-    // counter would reshuffle everyone the first time one was picked up.
-    // Deterministic off the id, house rule — no Math.random in game logic.
-    const pick = astroProtos[Math.abs(sv.id | 0) % astroProtos.length];
-    const o = makeAstronaut(pick);
-    if (!o) return null;
-    // a person, in cells: the study settled the ratio at about a sixth of the
-    // hull, and the hull is 0.85 of a cell
-    o.scale.setScalar(cellSide * 0.30);
-    astroObjs.set(sv.id, o);
-    scene.add(o);
-    placeAstronaut(sv, o);
-    return o;
-  }
-
-  function placeAstronaut(sv, o = astroObjs.get(sv.id)) {
-    if (!o) return;
-    const n = norm3(sv.pos);
-    o.position.set(sv.pos[0], sv.pos[1], sv.pos[2]);
-    // stood on the surface and facing where it is walking — the heading comes
-    // from the module's own step direction, never re-derived here
-    tmpObj.position.copy(o.position);
-    tmpObj.up.set(n[0], n[1], n[2]);
-    const d = sv.dir || [0, 0, 1];
-    tmpObj.lookAt(o.position.x + d[0], o.position.y + d[1], o.position.z + d[2]);
-    o.quaternion.copy(tmpObj.quaternion);
-  }
-
-  function dropAstronaut(id) {
-    const o = astroObjs.get(id);
-    if (!o) return;
-    if (o.userData.dispose) o.userData.dispose();
-    scene.remove(o); disposeObj(o);
-    astroObjs.delete(id);
-  }
-
-  function stepRescue2(dt, tNow) {
-    if (!rescue2On || rescueEnded || !graph || !player.pos) return;
-    // THE HULL'S OWN SPEED, in cells per second. Measured, not read off the
-    // throttle — the phone has no throttle, and this is the number that
-    // decides whether contact saves someone or kills them.
-    if (tankLastPos && dt > 0) tankSpeedCells = (dist3(player.pos, tankLastPos) / cellSide) / dt;
-    tankLastPos = player.pos.slice();
-    stepCampDoors(dt);
-    for (const camp of rescue.camps) {
-      campAwake(camp, player.pos, cellSide, rescue2Tune);
-      if (stepCall(camp, player.pos, cellSide, rescue2Tune) === 'open') {
-        sfx.play('tank_spool_up');
-        warnRing(camp.ci, 0xffb45e, 0.8, cellSide * 2.0);
-        showToast(`<div class="wave-num">CAMP ${camp.id} &#9656; HATCH OPEN</div>`
-          + `<div class="wave-role">${camp.group.length} coming out &middot; HOLD STILL</div>`, 2600);
-      }
-      const out = stepEmerge(camp, dt, rescue2Tune);
-      if (out) { spawnAstronaut(out); sfx.play('tank_pickup'); }
-    }
-    for (let i = 0; i < rescue.survivors.length; i++) {
-      const sv = rescue.survivors[i];
-      if (sv.state !== 'walking') { if (sv.state !== 'inside') dropAstronaut(sv.id); continue; }
-      const o = astroObjs.get(sv.id) || spawnAstronaut(sv);
-      // RUN OVER — before the walk and before the save, because the same
-      // contact radius does all three and the only difference is the hull's
-      // speed. Checking it first is what makes "not static" the loss.
-      if (runOver(sv, player.pos, tankSpeedCells, cellSide, rescue2Tune)) {
-        sv.state = 'lost'; rescue.lost++;
-        bloodSplash(sv.pos);
-        sfx.play('enemy_die_c');
-        bumpLeft = Math.max(bumpLeft, BUMP_LEN * 0.5);
-        showToast(`<div class="td-down">RUN OVER</div>`
-          + `<div class="td-down-sub">${remainingSurv(rescue)} still out there &middot; STOP to load</div>`, 2600);
-        dropAstronaut(sv.id);
-        updateHud();
-        continue;
-      }
-      const gr = stepGrab(rescue, i, survivorHeld(sv), dt, rescue2Tune);
-      if (gr === 'lost') {
-        bloodSplash(sv.pos);
-        sfx.play('danger_alert');
-        showToast(`<div class="td-down">ASTRONAUT ${sv.id} KILLED</div>`
-          + `<div class="td-down-sub">${remainingSurv(rescue)} still out there</div>`, 2400);
-        dropAstronaut(sv.id);
-        updateHud();
-        continue;
-      }
-      if (gr === 'grabbed') sfx.play('field_pulse');
-      if (walkStep(sv, player.pos, dt, cellSide, rescue2Tune) === 'saved') {
-        rescue.saved++;
-        sfx.play('tank_spool_up');
-        const burst = makeDotBurst(0xffb45e, norm3(sv.pos), 26);
-        burst.scale.setScalar(cellSide * 0.5);
-        burst.position.set(sv.pos[0], sv.pos[1], sv.pos[2]);
-        scene.add(burst); debris.push(burst);
-        showCallout(`ASTRONAUT ${sv.id} &#9656; ABOARD`, 'co-milestone');
-        dropAstronaut(sv.id);
-        updateHud();
-        continue;
-      }
-      if (o) { o.userData.tick(dt); placeAstronaut(sv, o); }
-    }
-    if (missionOver(rescue)) endRescue('every camp is accounted for');
-  }
-
-  function rescue2Line() {
-    const total = rescue.survivors.length;
-    const walking = rescue.survivors.filter((s) => s.state === 'walking').length;
-    const held = rescue.survivors.filter((s) => exposedSurv(s) && s.grabT > 0).length;
-    const opened = rescue.camps.filter((k) => k.open).length;
-    return `<div class="hud-obj">SAVED <b>${rescue.saved}/${total}</b>`
-      + ` &middot; camps ${opened}/${rescue.camps.length}`
-      + (walking ? ` &middot; <b>${walking} WALKING &mdash; HOLD STILL</b>` : '')
-      + (held ? ` &middot; <b class="hp-heart">${held} GRABBED</b>` : '')
-      + (rescue.lost ? ` &middot; lost ${rescue.lost}` : '')
-      + `</div>`;
-  }
-
-  // --- THE MINES ------------------------------------------------------------
-  // src/mines.js owns every rule and every refusal; this owns the discs, the
-  // fan on the ground, the sounds, and the four damage doors a blast can go
-  // through (enemy, gate, tank, another mine). Operator's ruling, 2026-09-04:
-  // a CLAYMORE — instant on trigger, directional, no fuse, an arming window
-  // after the drop; laid one cell in FRONT of the tank facing its heading, so
-  // laying them while reversing builds a field between you and what you are
-  // backing away from. It trips on you too, and it hurts.
-  const MINE_BLUE = 0x6fd3ff;   // friendly: the disc, the ring, the scope
-  const MINE_RED = 0xff5a4a;    // the arc it will throw
-
-  // The mine's own polar coordinates, run BACKWARDS: given a distance in
-  // cells and a bearing off the axis, where is that on the ground? Every line
-  // of the fan and every dot of the disc is placed with this, so the drawing
-  // and minePolar's hit test are one geometry rather than two that have to be
-  // kept in agreement by hand — the mistake the beam made three times.
-  function minePoint(m, cells, th, lift = 0.16) {
-    const n = m.pos, d = m.dir;
-    const side = norm3(cross3(n, d));
-    const ct = Math.cos(th), st = Math.sin(th);
-    const u = [d[0] * ct + side[0] * st, d[1] * ct + side[1] * st, d[2] * ct + side[2] * st];
-    const a = cells * cellSide, ca = Math.cos(a), sa = Math.sin(a);
-    const r = 1 + cellSide * lift;
-    return [(n[0] * ca + u[0] * sa) * r, (n[1] * ca + u[1] * sa) * r, (n[2] * ca + u[2] * sa) * r];
-  }
-
-  const mineArcsShown = () => params.mineArcs;
-
-  const MINE_FAN_RAYS = 5, MINE_FAN_SEGS = 5, MINE_FAN_ARC = 18;
-  function makeMineFan(m) {
-    const half = (mineTune.arcDeg * Math.PI) / 360;
-    const v = [];
-    const push = (a, b) => { v.push(a[0], a[1], a[2], b[0], b[1], b[2]); };
-    // the rays, each a polyline along its own great circle — one straight
-    // line to the tip would sink through the ground over 2.5 cells
-    for (let r = 0; r < MINE_FAN_RAYS; r++) {
-      const th = -half + (2 * half * r) / (MINE_FAN_RAYS - 1);
-      for (let k = 0; k < MINE_FAN_SEGS; k++) {
-        const c0 = 0.3 + (mineTune.reach - 0.3) * (k / MINE_FAN_SEGS);
-        const c1 = 0.3 + (mineTune.reach - 0.3) * ((k + 1) / MINE_FAN_SEGS);
-        push(minePoint(m, c0, th), minePoint(m, c1, th));
-      }
-    }
-    // ...and the outer edge, so the reach is a line you can stand behind
-    for (let i = 0; i < MINE_FAN_ARC; i++) {
-      const t0 = -half + (2 * half * i) / MINE_FAN_ARC;
-      const t1 = -half + (2 * half * (i + 1)) / MINE_FAN_ARC;
-      push(minePoint(m, mineTune.reach, t0), minePoint(m, mineTune.reach, t1));
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(v), 3));
-    return new THREE.LineSegments(geo, new THREE.LineBasicMaterial({
-      color: MINE_RED, transparent: true, opacity: 0.22 }));
-  }
-
-  function makeMineObj(m) {
-    const grp = new THREE.Group();
-    // the body: a small dot-cloud disc lying on the ground, the Braille idiom
-    const N = 26, dp = new Float32Array(N * 3);
-    for (let i = 0; i < N; i++) {
-      // golden angle: evenly covered, and no visible rings at this dot count
-      const q = minePoint(m, 0.06 + 0.16 * Math.sqrt((i + 0.5) / N), i * 2.399963);
-      dp[i * 3] = q[0]; dp[i * 3 + 1] = q[1]; dp[i * 3 + 2] = q[2];
-    }
-    const dgeo = new THREE.BufferGeometry();
-    dgeo.setAttribute('position', new THREE.BufferAttribute(dp, 3));
-    const disc = new THREE.Points(dgeo, new THREE.PointsMaterial({
-      color: MINE_BLUE, size: 2.6, sizeAttenuation: false, transparent: true, opacity: 0.55 }));
-    grp.add(disc);
-    // the ring: dim while arming, lit when live. This is the whole readout.
-    const R = 28, rp = new Float32Array(R * 3);
-    for (let i = 0; i < R; i++) {
-      const q = minePoint(m, 0.30, (i / R) * Math.PI * 2);
-      rp[i * 3] = q[0]; rp[i * 3 + 1] = q[1]; rp[i * 3 + 2] = q[2];
-    }
-    const rgeo = new THREE.BufferGeometry();
-    rgeo.setAttribute('position', new THREE.BufferAttribute(rp, 3));
-    const ring = new THREE.LineLoop(rgeo, new THREE.LineBasicMaterial({
-      color: MINE_BLUE, transparent: true, opacity: 0.3 }));
-    grp.add(ring);
-    const fan = makeMineFan(m);
-    grp.add(fan);
-    scene.add(grp);
-    const v = { grp, disc, ring, fan };
-    mineObjs.set(m.id, v);
-    syncMineObj(m, v);
-    return v;
-  }
-
-  function syncMineObj(m, v = mineObjs.get(m.id)) {
-    if (!v) return;
-    v.ring.material.opacity = m.live ? 0.85 : 0.3;
-    v.disc.material.opacity = m.live ? 0.9 : 0.45;
-    v.fan.visible = mineArcsShown();
-    v.fan.material.opacity = m.live ? 0.22 : 0.08;
-  }
-
-  function dropMineObj(id) {
-    const v = mineObjs.get(id);
-    if (!v) return;
-    scene.remove(v.grp);
-    v.grp.traverse((o) => {
-      if (o.geometry) o.geometry.dispose();
-      if (o.material) o.material.dispose();
-    });
-    mineObjs.delete(id);
-  }
-
-  function clearMines() {
-    for (const id of [...mineObjs.keys()]) dropMineObj(id);
-    mineField = makeField(mineTune);
-  }
-
-  // LAY ONE. The drop is one cell ahead ALONG THE GROUND — arcPoint, not
-  // pos + dir*cellSide, for the same reason the beam stopped using a chord.
-  // Frozen under exactly the gate the guns obey: a deploy, a shot, a pause,
-  // the tutorial's opening hold. Build mode is NOT on that list — the
-  // operator's brief is "place them at chokepoints during downtime", and
-  // downtime is build mode.
   // S — spend a charge. A TAP, not a hold, and the same shape as layMineNow:
   // the refusal comes from the module and is SHOWN, because three of the four
   // things S can do are refuse, and a dead key that says nothing is
@@ -7837,110 +5955,6 @@ export function initTdTab(root) {
     return r;
   }
 
-  function layMineNow() {
-    if (player.won || playerDown || paused || deploy || !player.pos) return 'frozen';
-    if ((shotActive() && !(director && shot && shot.id === 'director')) || tutorial.frozen) return 'frozen';
-    const n = norm3(player.pos);
-    const d = norm3(sub3(player.smoothDir, scale3(n, dot3(player.smoothDir, n))));
-    const pos = arcPoint(n, d, cellSide);
-    const ci = cellIndex(pos);
-    const blocked = ci < 0 || dungeon.tags[ci] === BLOCKED;
-    const occupied = ci >= 0 && (towerByCell.has(ci) || ci === serverCi);
-    const r = layMine(mineField, { pos, dir: d, cellAhead: ci, blocked, occupied }, t, mineTune);
-    if (r === 'laid') {
-      makeMineObj(mineField.mines[mineField.mines.length - 1]);
-      sfx.play('tank_pickup');
-      pulseButton('#td-pad-mine');
-    }
-    updateHud();
-    if (mineProbeOn) console.log(`MINEPROBE lay ${r} ci=${ci} left=${mineField.count}`);
-    return r;
-  }
-
-  // THE BLAST. One array of points goes to the module and one array of
-  // indices comes back; the ORDER of that array is the contract that says
-  // which door each target goes through — enemies, then live gates, then the
-  // tank. Building it in one place is what keeps the three from disagreeing.
-  function blowMine(m, tNow) {
-    const live = enemies.filter((e) => e.alive);
-    const gates = spawnPoints.filter((sp) => sp.alive);
-    const pts = live.map((e) => e.pos)
-      .concat(gates.map((sp) => graph.centers[sp.ci]))
-      .concat([playerDown ? null : player.pos]);
-    const { targets, chain: chained } = trip(mineField, m, pts, cellSide, mineTune);
-    dropMineObj(m.id);
-    const ci = m.ci >= 0 ? m.ci : cellIndex(m.pos);
-    if (ci >= 0) warnRing(ci, MINE_RED, 0.45, cellSide * mineTune.reach);
-    sfx.play('tank_main');
-    let kills = 0, gateHits = 0, tankHit = false, hurt = 0;
-    for (const i of targets) {
-      if (i < live.length) {
-        const e = live[i];
-        const burst = makeDotBurst(MINE_RED, norm3(e.pos), 24);
-        burst.scale.setScalar(cellSide * 0.5);
-        burst.position.set(e.pos[0], e.pos[1], e.pos[2]);
-        scene.add(burst); debris.push(burst);
-        hurt++;
-        if (damageEnemy(e, tNow, mineTune.damage, true, 'mine')) kills++;
-      } else if (i < live.length + gates.length) {
-        gateTakesShell(gates[i - live.length]);
-        gateHits++;
-      } else {
-        // FRIENDLY FIRE IS THE POINT (operator). A claymore does not know
-        // whose it is; the same door a ram hit uses, so the shield and the
-        // lab's immortal tank behave identically.
-        tankHit = true;
-        playerHit('mine');
-      }
-    }
-    if (chained.length) chain(mineField, chained);
-    if (mineProbeOn) {
-      console.log(`MINEPROBE blast id=${m.id} targets=${targets.length} hurt=${hurt}`
-        + ` kills=${kills} gates=${gateHits} tank=${tankHit ? 'HIT' : '-'} hp=${playerHP}`
-        + ` chain=[${chained.join(',')}] rack=${mineField.count}`);
-    }
-    updateHud();
-    checkVictory();
-  }
-
-  // Per frame, after the enemies have moved. A chained mine owes its blast
-  // FIRST and one per frame, so a laid row goes off as a row rather than as
-  // one flash — the reason chain() is a queue and not a loop.
-  function stepMines(dt, tNow) {
-    if (!graph || !mineField.mines.length) return;
-    const armed = armMines(mineField, tNow, mineTune);
-    for (const id of armed) {
-      const m = mineField.mines.find((x) => x.id === id);
-      if (m) syncMineObj(m);
-    }
-    if (armed.length) sfx.play('field_pulse');
-    const queued = nextChained(mineField);
-    if (queued) { blowMine(queued, tNow); return; }
-    for (const m of mineField.mines) {
-      if (!m.alive || !m.live) continue;
-      let trod = false;
-      for (const e of enemies) {
-        if (!e.alive) continue;
-        if (inFan(m, e.pos, cellSide, mineTune)) { trod = true; break; }
-      }
-      if (!trod && !playerDown && player.pos && inFan(m, player.pos, cellSide, mineTune)) trod = true;
-      if (trod) { blowMine(m, tNow); return; }   // one detonation per frame
-    }
-  }
-
-  // A case from the yard or the debrief. What does not fit is LOST and said
-  // so — the cap is a decision about when to spend, not a silent ceiling.
-  function mineCase(where) {
-    const got = restock(mineField, mineTune.caseSize, mineTune);
-    const lost = mineTune.caseSize - got;
-    showToast(`<div class="wave-num">MINE CASE &#9656; +${got}</div>`
-      + `<div class="wave-role">${where} &middot; rack ${mineField.count}/${mineTune.cap}`
-      + `${lost ? ` &middot; ${lost} over the cap, lost` : ''}</div>`, 2400);
-    sfx.play('tank_pickup');
-    updateHud();
-    return got;
-  }
-
   function killProjectile(i) {
     scene.remove(projectiles[i].mesh);
     projectiles[i].mesh.geometry.dispose();projectiles[i].mesh.material.dispose();
@@ -7960,7 +5974,6 @@ export function initTdTab(root) {
   // breaches half a dozen cells pays for one BFS and one geometry build,
   // not six of each.
   function breachWallCell(ci) {
-    if (ci === serverCi) return false; // the server is INVINCIBLE — no missile opens it
     if (towerByCell.has(ci)) return false; // a mounted tower anchors its wall
     // ...but an ORDER is not a tower. A queued build does not anchor anything,
     // so the wall goes and Isao is left flying to a site that no longer
@@ -8134,9 +6147,6 @@ export function initTdTab(root) {
 
   function spawnRewards() {
     clearRewards();
-    // ...and on a rescue, nothing regrows either: the shell rack is the
-    // mission's currency and a triad lying in a corridor refunds it.
-    if (missionOn) return;
     regrowQueue.length = 0; // a new board owes nothing to the old one's picks
     const far = farCells();
     for (let k = 0; k < params.rewards && far.length > 0; k++) {
@@ -8202,8 +6212,6 @@ export function initTdTab(root) {
   // dialog box rather than a destruction.
   const DEATH_HOLD = 1.15; // s of wreck before the modal
   function destroyPlayer() {
-    if (director && director.sc.immune !== false) return;   // a scripted run cannot be lost
-
     if (!playerMesh) return;
     stopEngine(0.12, true);   // quiet: the hydraulics don't get to set it down
     feel.hoverT = 0;          // hover fails instantly — it DROPS
@@ -8295,20 +6303,7 @@ export function initTdTab(root) {
     'send THIS transmission twice',
   ];
   function loseGame(reason) {
-    if (director && director.sc.immune !== false) return;   // a scripted run cannot be lost
-
     if (player.won) return;
-    // A RESCUE ALWAYS ENDS WITH A NUMBER, and with ITS OWN CARD. "Four of
-    // six, and the fifth was in the hatch" is the story the mode exists to
-    // produce, so the last hull going is an ENDING with a score rather than a
-    // game over with none — and the campaign's verdict, which counts sectors,
-    // towers and portals this mission never had, must not run on top of it.
-    if (missionOn) {
-      player.won = true;      // the run is over; the same flag every ending uses
-      destroyPlayer();
-      endRescue(reason);
-      return;
-    }
     player.won = true; // stops motion; same flag, sadder modal
     destroyPlayer();
     ramCombo = 0; ramComboT = 0; syncCombo(); // no brag over a lost heart
@@ -8398,8 +6393,6 @@ export function initTdTab(root) {
   const DOWN_DASH = 1.0;   // seconds of camera, wreck -> camp
 
   function loseTank() {
-    if (director && director.sc.immune !== false) return;   // a scripted run is not a run that can be lost
-
     // THE RANK SURVIVES THE HULL (operator, 2026-09-02). It used to be
     // stripped here — "the insignia belonged to that hull" — and that was a
     // read of who the tank IS. The tank is not the pilot. The pilot is the
@@ -8409,16 +6402,6 @@ export function initTdTab(root) {
     //
     // What still dies with the wreck is the RAM COMBO, because that one is
     // genuinely the machine's momentum and nothing carries it out.
-    // THE BET, COLLECTED. Anyone in the hatch is lost with the hull — the
-    // only way a survivor who was already safe dies, and the reason carrying
-    // a pair is a bet rather than an optimisation.
-    if (rescueOn) {
-      const gone = loseCarried(rescue);
-      if (gone > 0) {
-        showToast(`<div class="td-down">${gone} LOST WITH THE HULL</div>`
-          + `<div class="td-down-sub">they were aboard</div>`, 3000);
-      }
-    }
     const carried = tankRank > 0 ? rankLabel(tankRank) : '';
     destroyPlayer();
     ramCombo = 0; ramComboT = 0; syncCombo(); // the combo died with it
@@ -8602,23 +6585,12 @@ export function initTdTab(root) {
   }
 
   function heartHit(dmg = 1) {
-    if (director && director.sc.immune !== false) return;
-    // ON A RESCUE THE STALHEART IS THE AIRLOCK, NOT THE OBJECTIVE. The
-    // creature is still consumed at the call site — the field clears the same
-    // way — but the shell takes no damage, because "and also defend the base"
-    // is a second objective the brief did not ask for, and a mission about
-    // carrying people out should not be lost by something you were not there
-    // to stop. A soak proved the point: two minutes on the auto-pilot ended
-    // "the heart is lost" at 0/6 with a survivor still standing in the road.
-    // The mission ends when the people are accounted for, or when the last
-    // hull goes, and at no other moment.
-    if (missionOn) return;
 
     run.heartHits += dmg;
     eco.leak(); // a breach kills the streak — HK's rule, our Heart
     streakMark = 0;
     if (ws) ws.leaks++;
-    if (!tutorialActive && !(lab.on && lab.immortalHeart)) heartHP -= dmg;
+    if (!(lab.on && lab.immortalHeart)) heartHP -= dmg;
     heartSprite.userData.hit(); // orange/red Wave flare
     updateHud();
     if (heartHP <= 0) loseGame('the heart is lost');
@@ -8657,7 +6629,6 @@ export function initTdTab(root) {
   // carry enemy pathing, so a tower can never dam a lane.
   function placeError(ci) {
     if (ci === -1) return 'nothing there';
-    if (ci === serverCi) return 'the server holds this cell';
     // HIGH GROUND MEANS THERE IS STILL A WALL THERE. This asked tdFullTags —
     // the ORIGINAL map — because dungeon.tags is sector-gated and would call
     // every unrevealed cell blocked. But tdFullTags never learns about a
@@ -8757,8 +6728,8 @@ export function initTdTab(root) {
   // the choice is instant and the tank is never missing.
   function applyCreature() {
     const chosen = params.creature;
-    if (chosen === 'mkcx' || chosen === 'mkcx2' || chosen === 'mork') {
-      (chosen === 'mork' ? preloadMork() : preloadMkcx(chosen)).then((ok) => {
+    if (chosen === 'mork') {
+      preloadMork().then((ok) => {
         if (ok && params.creature === chosen) { buildActors(); placeActors(); }
       });
     }
@@ -10640,16 +8611,6 @@ export function initTdTab(root) {
     closeShop();
   }
 
-  // --- shop / upgrade panel (build mode, tap a cell) ----------------------
-  // portal object factory — shared by creation and live re-shaping.
-  // Orientation: upright (local +Y = surface normal) AND the gate's open
-  // face turned down the lane — toward the open neighbor nearest the
-  // Heart, where its creatures will march — never sideways into walls.
-  // How long a gate takes to draw itself. Long enough to watch — a gate
-  // appearing is the most consequential thing that happens on this board and
-  // it used to take no time at all.
-  const GATE_DIAL = 1.6;
-
   // --- THE TERRAFORMER BUILDS (operator, 2026-09-02) ---------------------
   // "give the image that the Terraformer is active by having it build things,
   // this also acts as a time-keeping milestone of sorts. small containers, a
@@ -10768,16 +8729,9 @@ export function initTdTab(root) {
     if (bestT) orderUpgrade(bestT);
   }
   function tfMilestone(w) {
-    // A RESCUE HAS NO SUPPLY LINE. No hull, no store, no mine case: the
-    // budget is what you were given, which is the whole tactical statement.
-    if (missionOn || storyMode) return;
+    if (storyMode) return;
     if (w > 0 && w % TF.hullEvery === 0) tfStart('hull');
     else if (w > 0 && w % TF.containerEvery === 0) tfStart('container');
-    // THE MINE CASE RIDES ITS OWN CLOCK, deliberately outside the else-if
-    // chain above. A case is not a container and does not occupy the bed, so
-    // making it compete for the milestone would starve the YARD — and the
-    // yard is the clock the player counts. Every third wave, always.
-    if (w > 0 && w % TF.caseEvery === 0) mineCase('terraformer');
   }
   function tfTick(dt) {
     if (!tfJob) { if (tfQueue.length) tfStart(tfQueue.shift()); return; }
@@ -10835,15 +8789,8 @@ export function initTdTab(root) {
       return `<div class="hud-obj hud-isao">TERRAFORMER &#9656; printing ${tfJob.kind === 'hull' ? 'a new hull' : `store ${tfContainers + 1}`} ${pct}%</div>`;
     }
     const left = TF.hullEvery - (wave % TF.hullEvery);
-    const mleft = TF.caseEvery - (wave % TF.caseEvery);
-    return `<div class="hud-obj hud-isao">TERRAFORMER &#9656; yard ${tfYard.length} · next hull in ${left} wave${left === 1 ? '' : 's'}`
-      + ` · mines in ${mleft}</div>`;
+    return `<div class="hud-obj hud-isao">TERRAFORMER &#9656; yard ${tfYard.length} · next hull in ${left} wave${left === 1 ? '' : 's'}</div>`;
   }
-
-  // How tall a standing gate is, in cells. Bigger than the tank (~0.85) on
-  // purpose — it is a doorway, and the thing coming through it should look
-  // like it fits.
-  const GATE_HEIGHT = 1.6;
 
   // HOW LONG UNTIL THE NEXT WAVE, in seconds. Infinity while one is already
   // running, and while the board has no live gate to send it. Factored out of
@@ -10856,246 +8803,10 @@ export function initTdTab(root) {
     return params.waveGap - interClock;
   }
 
-  // --- THE WORMHOLE, ONCE FOR THE WHOLE BOARD ----------------------------
-  //
-  // One render target, one march, however many gates are standing — the cost
-  // does not scale with the number of portals because they all sample the
-  // same texture. That was the load-bearing claim the #portal bench was built
-  // to test, and it is the only reason a 377M-sine-fold effect can be on a
-  // board that also has a game to draw.
-  //
-  // Rendered into an OFFSCREEN target with the main renderer, then bound as a
-  // map. The target is sRGB on purpose: the effect writes display-referred
-  // values and a material sampling it expects linear, so three has to convert
-  // on read. Getting that backwards is the single most common cause of "right
-  // in the sandbox, wrong in my scene" (PORTING.md).
-  let whRt = null, whMat = null, whScene = null, whCam = null, whLastAt = -1e9;
-  const whPhase = { travel: 0, spin: 0 };
-  let whTravelRate = 0;   // reported by the probe; driven by the wave clock
-  // A HIT SPINS THE WORMHOLE UP (operator, 2026-09-02). The dot-cloud gate
-  // vibrated when it was struck; a solid ring cannot shudder convincingly, so
-  // the tell moves INSIDE — the throat lurches and winds back down.
-  //
-  // It is the SHARED target, so every gate on the board flares together. That
-  // is the cost of one march for all of them, and it is worth naming: you are
-  // almost always shooting one gate at a time, and a board-wide lurch reads as
-  // the network noticing rather than as a bug.
-  let whKick = 0;
-  const WH_KICK = 9;        // travel added at the instant of a hit
-  const WH_KICK_DECAY = 2.2; // ...bled off this fast, in units per second
-  const whUniforms = {
-    uResolution: { value: new THREE.Vector3(1, 1, 1) },
-    uTime: { value: 0 },
-    uMouse: { value: new THREE.Vector4() },
-    uTravel: { value: 0 },
-    uSpinPhase: { value: 0 },
-  };
-  // the secondary uniforms come from portalfx (one source with the bench and
-  // the cinematics); a preset overrides them below
-  for (const [k, v] of Object.entries(WORMHOLE_UNIFORM_DEFAULTS)) whUniforms[k] = { value: v };
-  for (const [k, v] of Object.entries(WORMHOLE_PRESET)) whUniforms[k] = { value: v };
-  // the UNION with the corona's uniforms (the bench's rule, portal-tab.js):
-  // a uniform a program declares and the object lacks is a hard failure, so
-  // switching effects must never remove one. The lab is the only switcher.
-  whUniforms.uRingRadius = { value: 1.0 };
-  const BOARD_FX = { wormhole: { frag: WORMHOLE_FRAG, exposure: WORMHOLE_PRESET.uExposure },
-                     corona: { frag: CORONA_FRAG, exposure: 30 } };
-  function setBoardEffect(name) {
-    const spec = BOARD_FX[name];
-    if (!spec || !whMat) return;
-    whMat.fragmentShader = spec.frag;
-    whMat.needsUpdate = true;
-    whUniforms.uExposure.value = spec.exposure;   // they differ ~5x; corona's 30 on the wormhole is a white disc
-    whLastAt = -1e9;                              // march now, whatever the Hz
-  }
 
-  function ensureWormhole() {
-    if (whRt) return whRt;
-    const n = whRender.size;
-    whRt = new THREE.WebGLRenderTarget(n, n, {
-      minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter,
-      depthBuffer: false, stencilBuffer: false,
-    });
-    whRt.texture.colorSpace = THREE.SRGBColorSpace;
-    whUniforms.uResolution.value.set(n, n, 1);
-    whScene = new THREE.Scene();
-    whCam = new THREE.Camera();
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(
-      new Float32Array([-1, -1, 0, 3, -1, 0, -1, 3, 0]), 3));
-    whMat = new THREE.ShaderMaterial({
-      // NOT OPTIONAL: tanh() and `out` are GLSL ES 3.00 only, and the
-      // shader's tonemap is built on tanh.
-      glslVersion: THREE.GLSL3,
-      vertexShader: 'void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }',
-      fragmentShader: WORMHOLE_FRAG,
-      uniforms: whUniforms,
-      depthTest: false, depthWrite: false,
-    });
-    whScene.add(new THREE.Mesh(g, whMat));
-    return whRt;
-  }
-
-  // THE RAMP. Travel sits at 0 and winds to 6 across the last five seconds
-  // before a wave lands (portalfx.travelRate) — the gate is a mouth that
-  // starts to pull just before something comes out of it. The rate is
-  // integrated into a phase here rather than multiplied by elapsed time in
-  // the shader: a rate that multiplies accumulated time rewrites its own
-  // history every frame it changes, which makes a ramp impossible.
-  const whFrustum = new THREE.Frustum();
-  const whProj = new THREE.Matrix4();
-  const whDiscPos = new THREE.Vector3();
-  function anyGateVisible() {
-    if (document.hidden) return false;
-    camera.updateMatrixWorld();
-    whProj.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
-    whFrustum.setFromProjectionMatrix(whProj);
-    for (const sp of spawnPoints) {
-      if (!sp.alive || !sp.obj) continue;
-      const disc = sp.obj.userData.disc;
-      if (!disc) continue;
-      disc.getWorldPosition(whDiscPos);
-      // sphere-vs-frustum with the gate's own size as the radius: visible
-      // unless some plane pushes the whole gate outside
-      const r = sp.obj.userData.sizeScale ?? cellSide;
-      if (whFrustum.planes.every((pl) => pl.distanceToPoint(whDiscPos) > -r)) return true;
-    }
-    return false;
-  }
-
-  function updateWormhole(dt, tNow) {
-    if (!whRt) return;
-    whKick = Math.max(0, whKick - WH_KICK_DECAY * dt);
-    whTravelRate = travelRate(secsToWave(), TRAVEL) + whKick;
-    advancePhase(whPhase, dt, whTravelRate, WORMHOLE_PRESET.uTimeScale);
-    const period = 1 / Math.max(1, whRender.updateHz);
-    if (tNow - whLastAt < period) return;
-    // NOTHING TO SHOW, NOTHING TO MARCH. The phase keeps advancing above so a
-    // gate scrolling back into view is where it should be — but the 377M
-    // sine-folds are only spent when a live gate's disc is inside the camera
-    // frustum. Driving away from the gates is most of the game.
-    if (!anyGateVisible()) return;
-    whLastAt = tNow;
-    whUniforms.uTime.value = tNow;
-    whUniforms.uTravel.value = whPhase.travel;
-    whUniforms.uSpinPhase.value = whPhase.spin;
-    renderer.setRenderTarget(whRt);
-    renderer.render(whScene, whCam);
-    renderer.setRenderTarget(null);
-  }
-
-  // The authored ring, with the wormhole in the hole the blueprint reserves,
-  // falling back to the dot cloud until the bytes land — a gate you cannot
-  // see is a gate you cannot shoot, so "nothing yet" is not an option.
-  // WHEN THE BYTES LAND LATE, SWAP THE GATES THAT ARE ALREADY UP.
-  //
-  // A gate can be seeded before the GLB resolves — the tutorial seeds one in
-  // the first frames — and those would keep the dot cloud for the whole run
-  // while later gates wore the ring. One board, two kinds of gate, is worse
-  // than either. Rebuild in place, carrying the dial so a gate that is still
-  // drawing itself in does not snap to full size.
-  let ringSwapped = false;
-  function swapGatesToRing() {
-    if (ringSwapped || !graph || !dungeon || !['gateprobe','portal'].some(k=>new URLSearchParams(location.search).has(k))) return;
-    ringSwapped = true;
-    for (const sp of spawnPoints) {
-      if (!sp.obj) continue;
-      const dial = sp.obj.userData.dial ?? 1;
-      scene.remove(sp.obj);
-      sp.obj = buildPortalObj(sp.ci, whim() * 6.283);
-      sp.obj.userData.dial = dial;
-      if (sp.obj.userData.setForm) sp.obj.userData.setForm(dial);
-      scene.add(sp.obj);
-    }
-  }
-  if (readStoryQuery(location.search).world !== 'story') preloadPortalRing().then((ok) => { if (ok) swapGatesToRing(); });   // the story has no portal gates to dress
-
-  function makeGateBody(phase) {
-    const ring = dressMetal(makePortalRing(0x8fe8ff));
-    if (!ring) return makePortalCloud({ body: 0xcfd8ff, hi: 0xffffff }, phase);
-    ensureWormhole();
-    const disc = new THREE.Mesh(
-      new THREE.CircleGeometry(1, 64),
-      new THREE.MeshBasicMaterial({
-        map: whRt.texture,
-        // The effect is authored on black, so ADDITIVE makes the black the
-        // transparency — no alpha channel, and the rim spills onto the ring's
-        // inner liner the way a real one would.
-        blending: THREE.AdditiveBlending,
-        transparent: true, depthWrite: false,
-        side: THREE.DoubleSide, toneMapped: false,
-      }));
-    const vol = ring.userData.aperture;
-    // unit radius under the aperture node, which carries the authored size
-    if (vol) vol.add(disc); else { disc.scale.setScalar(1.8); ring.add(disc); }
-    ring.userData.disc = disc;
-    // the ring's own idle, at the bench's tuned rates
-    ring.userData.tick = (t, dt) => {
-      const d = dt ?? 1 / 60;
-      if (ring.userData.rotorA) ring.userData.rotorA.rotation.z += RING_SPIN.rotorA * d;
-      if (ring.userData.rotorB) ring.userData.rotorB.rotation.z += RING_SPIN.rotorB * d;
-      if (ring.userData.yaw) ring.userData.yaw.rotation.y += RING_SPIN.yaw * d;
-    };
-    // the dial the gate is drawn in with — the cloud exposes setForm, the
-    // ring scales instead, so both answer the same call
-    ring.userData.setForm = (f) => {
-      const k = Math.max(0.001, f);
-      ring.scale.setScalar((ring.userData.sizeScale ?? 1) * k);
-    };
-    ring.userData.grounded = true;   // its origin IS its base (fitModel)
-    return ring;
-  }
-
-  function buildPortalObj(ci, phase) {
-    if(!['gateprobe','portal'].some(k=>new URLSearchParams(location.search).has(k))){const n=norm3(graph.centers[ci]),target=graph.centers[dungeon.heart],dir=sub3(target,n);return gameBreaches.create(n,dir,cellSide);}
-    const obj = makeGateBody(phase);
-    // starts unformed; stepGates draws it in
-    obj.userData.dial = 0;
-    if (obj.userData.setForm) obj.userData.setForm(0);
-    // A GATE IS A DOORWAY, SO IT STANDS ON THE GROUND (operator, 2026-09-02).
-    //
-    // The dot cloud was an orb and was floated clear of the surface to read as
-    // one. The ring is architecture: fitModel seats its origin at its own
-    // base, so the surface point IS where it goes — measured, the old offset
-    // left it hanging 0.63 cells in the air. And it is taller than the tank
-    // on purpose; the thing driving through a gate should be smaller than the
-    // gate.
-    const grounded = obj.userData.grounded === true;
-    const r = cellSide * (grounded ? GATE_HEIGHT : 0.7);
-    obj.scale.setScalar(r);
-    obj.userData.sizeScale = r;
-    const c = graph.centers[ci];
-    const n = graph.normals[ci];
-    if (grounded) obj.position.set(c[0], c[1], c[2]);
-    else obj.position.set(c[0] + n[0] * r * 0.9, c[1] + n[1] * r * 0.9, c[2] + n[2] * r * 0.9);
-    // FACE AN EMPTY SPOT, not merely a downhill one. The old rule took the
-    // open neighbour nearest the Heart, which can be a cell with rock right
-    // behind it — a gate whose mouth opens into a wall two steps on. Score
-    // each open neighbour by how open ITS OWN neighbourhood is, and let the
-    // distance to the Heart break ties, so the gate still points down the
-    // lane when the lane is clear.
-    let face = null, bestScore = -Infinity;
-    for (const nb of graph.adj[ci]) {
-      if (dungeon.tags[nb] === BLOCKED) continue;
-      const d = dungeon.distToHeart[nb];
-      if (d === -1) continue;
-      let open = 0, total = 0;
-      for (const nn of graph.adj[nb]) { total++; if (dungeon.tags[nn] !== BLOCKED) open++; }
-      // openness dominates; distance only separates equally open directions
-      const score = (total ? open / total : 0) * 100 - d;
-      if (score > bestScore) { bestScore = score; face = nb; }
-    }
-    if (face !== null) {
-      const fdir = tangentDirTo(ci, face);
-      tmpObj.position.copy(obj.position);
-      tmpObj.up.set(n[0], n[1], n[2]);
-      tmpObj.lookAt(obj.position.x + fdir[0], obj.position.y + fdir[1], obj.position.z + fdir[2]);
-      obj.quaternion.copy(tmpObj.quaternion); // gate axis (+Z) down the lane
-    } else {
-      tmpN.set(n[0], n[1], n[2]);
-      obj.quaternion.setFromUnitVectors(Y_AXIS, tmpN);
-    }
-    return obj;
+  function buildPortalObj(ci) {
+    const n = norm3(graph.centers[ci]), dir = sub3(graph.centers[dungeon.heart], n);
+    return gameBreaches.create(n, dir, cellSide);
   }
 
   // BFS field to the nearest LIVE portal — the 'portal' directive's map.
@@ -11133,10 +8844,6 @@ export function initTdTab(root) {
   // R follows HK's sizing (max(66, min(104, 0.3·viewport-min))); the
   // anchor clamps so the ring never leaves the screen.
   function openShop(ci, sx, sy) {
-    // NOTHING IS BUILT ON A RESCUE. The budget is the shells and the mines
-    // you were given; a tower would answer the mission's only question for
-    // you and it would answer it by waiting.
-    if (missionOn) return;
     root.classList.add('shopping');
     // The strike owns the board while it is armed, flying, or just landed.
     // The tap DISPATCH already tries to route around the shop, but a modal
@@ -11188,7 +8895,7 @@ export function initTdTab(root) {
     } else {
       const err = placeError(ci);
       center = `<div class="radial-center">${err ? 'blocked' : eco.biomass + 'kg'}</div>`;
-      const unlocked = new Set(unlockedTowerKeys(wave, hackedUnlocks));
+      const unlocked = new Set(unlockedTowerKeys(wave));
       items = TOWERS.map((def) => {
         const locked = !unlocked.has(def.key);
         return {
@@ -11338,14 +9045,7 @@ export function initTdTab(root) {
   if (lapEl) lapEl.addEventListener('click', endLap);
 
   function checkVictory() {
-    if (director) return;   // a scripted run has no end but its length
-
-    if (player.won || tutorialActive) return; // the tutorial is failure/win-proof
-    // A RESCUE IS NOT WON BY KILLING THE GATES. Shutting the spawns off so
-    // you can ferry at leisure is a legitimate plan and a rather good one —
-    // but the people are still down there, and the mission ends when they are
-    // accounted for and at no other moment.
-    if (missionOn) return;
+    if (player.won) return;
     if (spawnPoints.length > 0 && spawnPoints.every((s) => !s.alive) && enemies.every((e) => !e.alive)) {
       player.won = true;
       const grant = breachGrant(eco.biomass, round, SECTORS_TOTAL);
@@ -11674,7 +9374,7 @@ export function initTdTab(root) {
   const spendDebrief = cost => debriefAffordable(eco.biomass, cost, round) && eco.spend(cost);
   function breachNextSector() {
     if (!eco.spend(sectorToll())) return false;
-    round++; hackedRound = false; syncHackBtn();
+    round++;
     sectorStartWave = wave; strike.reserved += 1;
     expandRound(); syncArmUi();
     record('sector.begin', { sector: round, wave, biomass: eco.biomass });
@@ -11690,9 +9390,6 @@ export function initTdTab(root) {
       + (playerHP < PLAYER_MAX ? btn('msg-buyhull', '&#9881; print a spare hull', SINK.hull)
         : `<button disabled>&#9881; hulls full ${playerHP}/${PLAYER_MAX}</button>`)
       + btn('msg-buystrike', '&#10022; resupply one orbital strike', SINK.strike)
-      + (mineField.count >= mineTune.cap
-        ? `<button disabled>&#8982; mine rack full ${mineField.count}/${mineTune.cap}</button>`
-        : btn('msg-buymines', `&#8982; a case of ${mineTune.caseSize} mines &mdash; rack ${mineField.count}/${mineTune.cap}`, SINK.mines))
       + (shield.rack >= shieldTune.rackCap
         ? `<button disabled>&#9672; shield rack full ${shield.rack}/${shieldTune.rackCap}</button>`
         : btn('msg-buyshields', `&#9672; a case of ${shieldTune.caseSize} shield charges &mdash; rack ${shield.rack}/${shieldTune.rackCap}`, SINK.shields))
@@ -11789,7 +9486,6 @@ export function initTdTab(root) {
       },
     });
     buildGeometry();
-    syncServerLift();
     // THE SAFETY NET. Breach persistence keeps corridors open, but a tank
     // parked on a later-band lane it reached THROUGH a breach can still
     // have the band gate reseal the ground under it — walls closing over
@@ -11808,7 +9504,7 @@ export function initTdTab(root) {
     seedPortals(2); // fresh neutral gates in the new band
     // the new sector's budget arrives with its gates; unspent strikes carry —
     // hoarding one for the next sector is a legitimate play
-    if (!missionOn) grantStrikes(strike, spawnPoints.filter((sp2) => sp2.alive).length, strikeTune);
+    grantStrikes(strike, spawnPoints.filter((sp2) => sp2.alive).length, strikeTune);
     recomputePortalDist();
     waveActive = false; interClock = 0;
     player.won = false;
@@ -12044,7 +9740,7 @@ export function initTdTab(root) {
     if (moving && !engineHandle) {
       engineHandle = sfx.loop('tank_thruster', { gain: 0.001, rate: 0.92 });
     }
-    if (!moving && engineIdle >= ENGINE_STOP && !(director && director.engineHold)) {
+    if (!moving && engineIdle >= ENGINE_STOP) {
       stopEngine();
     } else if (engineHandle) {
       // gain is nearly linear in level; pitch spans 0.92..1.14 so the bed is
@@ -12149,7 +9845,6 @@ export function initTdTab(root) {
       + (gpuExt ? ` · gpu ${perfGpu.toFixed(1)} ms` : '')
       + ` · <b>${r.calls}</b> calls · ${(r.triangles / 1000).toFixed(1)}k tris`
       + ` · ${(r.points / 1000).toFixed(1)}k pts`
-      + (whRt ? ` · wh ${whRender.size}@${whRender.updateHz}` : '')
       + (lab.on ? ` · <b>LAB</b> ×${lab.waveMult}` : '')
       + `<details ${perfDetails?'open':''}><summary>Wave ${wave} · ${perfSample.enemies} enemies · workload</summary>`
       + `<div>CPU ms: enemies ${perfSample.cpu.enemies.toFixed(1)} · towers ${perfSample.cpu.towers.toFixed(1)} · frame ${perfSample.cpu.frame.toFixed(1)}</div>`
@@ -12163,8 +9858,8 @@ export function initTdTab(root) {
       console.log(labLine({ fps: perfFps, ms: 1000 / perfFps, gpuMs: gpuExt ? perfGpu : NaN,
         calls: r.calls, tris: r.triangles, pts: r.points,
         enemies: enemies.reduce((n, e) => n + (e.alive ? 1 : 0), 0), wave,
-        waveMult: lab.waveMult, bg: lab.bg, fx: lab.fx, whSize: whRender.size, whHz: whRender.updateHz,
-        steps: whUniforms.uSteps.value, octaves: whUniforms.uTurbOctaves.value, bloom: lab.bloom }));
+        waveMult: lab.waveMult, bg: lab.bg,
+        bloom: lab.bloom }));
     }
     perfFrames = 0; perfAcc = 0;
     renderer.info.reset();
@@ -12188,7 +9883,6 @@ export function initTdTab(root) {
     }
     const now = performance.now();
     const dt = Math.min((now - lastFrame) / 1000, 0.1); // clamp tab-switch gaps
-    if (director && director.held) { lastFrame = now; return; }   // the capture steps the clock, not the loop
     perfTick(Math.max(0,(now-lastFrame)/1000));   // the readout rides the loop's OWN dt — it must not take a second one
     updateEngine(dt);
     lastFrame = now;
@@ -12235,25 +9929,7 @@ export function initTdTab(root) {
     stepBriefClock(dt);
     if (pilotMode && shot) endShot();
     stepShot(dt);
-    // ANY control input thaws the frozen tutorial opening — checked BEFORE
-    // the frozen gate, since updateLasers itself is skipped while frozen.
-    //
-    // It used to be the LASER key alone, which is the one control the
-    // opening does not ask for: the banner says "RAM THEM · drive straight
-    // through them" and the throttle is pulsing. So a player who did exactly
-    // what they were told pressed W, got nothing back, and read the game as
-    // broken for the five or ten seconds it took to try something else
-    // (operator, 2026-08-31). The hold is there to give the lane time to
-    // matter, not to make the tank feel dead — so the moment a hand touches
-    // anything, it is over.
-    const handOn = keys.laser || keys.fast || keys.slow || keys.left || keys.right
-      || throttle !== 0;
-    if (tutorial.frozen && (handOn || cruise)) { tutorial.frozen = false; hideTutBanner(); }
-    // THE DIRECTOR'S SHOT FILMS THE SIM, it does not freeze it: the cold
-    // open's rule (a shot holds the world still) is exactly wrong for a
-    // scripted run — the first RAM capture had 200 queued and none alive
-    const dirShot = !!(director && shot && shot.id === 'director');
-    const frozen = buildFrozen() || (shotActive() && !dirShot && shotId()!=='breach') || tutorial.frozen;
+    const frozen = buildFrozen() || (shotActive() && shotId() !== 'breach');
     // The BUILD pause holds the WORLD still, not the DRIVER. Planning with
     // the tank parked where the last wave left it meant switching out of
     // build, repositioning, and switching back — three actions for one
@@ -12263,7 +9939,7 @@ export function initTdTab(root) {
     // the third — beat three IS the tank driving itself out of the berth
     // DEPLOY drives THROUGH a shot — that is how the cinematic's last frame
     // and DEPLOY's first frame meet — so the gate only stops free driving
-    const driveFrozen = (shotActive() && !dirShot && shotId()!=='breach') || tutorial.frozen;
+    const driveFrozen = shotActive() && shotId() !== 'breach';
 
     bumpLeft = Math.max(0, bumpLeft - dt);
     recoilLeft = Math.max(0, recoilLeft - dt);
@@ -12294,7 +9970,7 @@ export function initTdTab(root) {
         debris.splice(i, 1);
       }
     }
-    if (!player.won && !frozen && !tutorialActive) {
+    if (!player.won && !frozen) {
       // An armed wave always gets its full lead-in, whoever asked for it.
       // This used to live inside the between-waves branch, so the stall
       // safety below — which fires while a wave is STILL live — spawned with
@@ -12331,10 +10007,7 @@ export function initTdTab(root) {
             simCurve.push({ w: wave, t: Math.round(t), heart: heartHP,
               biomass: eco.biomass, towers: towers.length, score: score.points });
           }
-          if (tutorialActive) {
-            showToast(`<div class="wave-num">WAVE ${wave} CLEARED</div>` +
-              `<div class="wave-role">brace — the next wave is coming</div>`, 2200);
-          } else if (sectorWave() === params.wavesPerSector) {
+          if (sectorWave() === params.wavesPerSector) {
             // the HOLD is over: the gates lose their seals and the sector
             // becomes a hunt. This is the loudest beat in a sector and it
             // gets the loudest card the toast layer has.
@@ -12368,7 +10041,7 @@ export function initTdTab(root) {
     },opened=>{
       sfx.play('sinkhole_quake',{dist:Math.min(...opened.map(obj=>camDist(obj.position.toArray())))});
       // One skippable establishing shot per new group, never per wave.
-      if((wave>0||storyMode)&&!paused&&!shotActive()&&!tutorialActive&&(!introEl||introEl.classList.contains('hidden'))){
+      if((wave>0||storyMode)&&!paused&&!shotActive()){
         const direction=opened[0].position.clone().normalize(),returnPos=camera.position.clone(),returnQuat=camera.quaternion.clone(),far=direction.clone().multiplyScalar(3.3),up=camera.up.clone();
         // IN THE STORY: the whole planet through the pre-roll, then as the ground opens a FAST DIVE to a close view over the sinkhole, held while the fodder emerge, then a short blend back
         const sb=storyMode?story?.breachShot:null,hold=sb?CONTENT.breach.duration+(sb.emergeHold??0):0,tail=sb?sb.tail??1.8:1.8,dur=CONTENT.breach.preRoll+tail+hold,ease=(x)=>{const v=Math.max(0,Math.min(1,x));return v*v*(3-2*v);};
@@ -12380,7 +10053,6 @@ export function initTdTab(root) {
         }});
       }
     });
-    updateWormhole(dt, t);
     if (!frozen) tfTick(dt);
     if (!frozen) autoUpgradeTick(dt);
     if (gotoCi >= 0 && player.cur === gotoCi) stopGoto();   // arrived: hand back, stop
@@ -12389,7 +10061,6 @@ export function initTdTab(root) {
     if (mobModeEl && (buildMode ? 1 : 0) !== mobModeLast) { mobModeLast = buildMode ? 1 : 0; syncMobMode(); }
     coachTick(dt);
     if (!frozen && eco) { ecoClockT += dt; if (eco.biomass >= CHEAPEST_TOWER) ecoAffordT += dt; }
-    if (tutorialActive) tutorial.tick(dt);
     stepShieldDynamics(dt,t);
     if (!frozen) {
       let cpuStart=perfOn?performance.now():0;
@@ -12403,34 +10074,8 @@ export function initTdTab(root) {
       if(perfOn)perfCpu.towers+=performance.now()-cpuStart;
       updateTowerShots(dt, t);
     }
-    // MINES ARM THROUGH THE BUILD DOWNTIME, deliberately outside the block
-    // above. The operator's brief is "place them at chokepoints during
-    // downtime" — a mine that only starts its two seconds when the next wave
-    // opens is a mine you cannot pre-place, which is the whole feature. The
-    // war being frozen costs nothing here: nothing is moving to trip them
-    // except the tank, which DOES drive in build mode, and driving over your
-    // own mine going off is correct. A shot or the tutorial's hold still
-    // stops it — those are the game speaking.
-    if (!driveFrozen) stepMines(dt, t);   // arm, trip, chain — after the bodies moved
-    if (!frozen) stepRescue(dt, t);       // board, grab, deliver
-    if (!frozen) stepRescue2(dt, t);      // call, emerge, walk, save — or run over
-    // THE GATES' OWN MOTION: the ring's rotors turn, and a struck gate rides
-    // out its recoil. The recoil is a SHOVE along its own normal that eases
-    // back — the weight of a shell landing lives in that motion, not in a
-    // bigger particle count.
-    for (const sp of spawnPoints) {
-      if (!sp.alive || !sp.obj) continue;
-      if (sp.obj.userData.tick) sp.obj.userData.tick(t, dt);
-      if (sp.recoil > 0 && !sp.obj.userData.breach) {
-        sp.recoil = Math.max(0, sp.recoil - dt);
-        const u = sp.recoil / GATE_RECOIL;          // 1 at impact, 0 at rest
-        const push = Math.sin(u * Math.PI) * cellSide * 0.28;
-        const c = graph.centers[sp.ci];
-        const n2 = graph.normals[sp.ci];
-        // shoved back and slightly up, then let down
-        sp.obj.position.set(c[0] + n2[0] * push, c[1] + n2[1] * push, c[2] + n2[2] * push);
-      }
-    }
+    // the breaches' own motion
+    for (const sp of spawnPoints) if (sp.alive && sp.obj?.userData.tick) sp.obj.userData.tick(t, dt);
     updateBeams(dt); // fx fade even during downtime
     stepSlugs(dt);
     if (rangeRingTtl > 0) {
@@ -12448,21 +10093,6 @@ export function initTdTab(root) {
     if (rs) {
       rs.binClock += dt;
       if (rs.binClock >= 5) { rs.binClock = 0; rs.scoreBins.push(score.points); }
-    }
-    if (!serverFound && serverCi >= 0 && !playerDown
-        && dist3(player.pos, graph.centers[serverCi]) < cellSide * 4) {
-      serverFound = true;
-      showToast(`<div class="wave-num">SERVER FOUND</div>`
-        + `<div class="wave-role">an antipode relay — HACK it for tower firmware</div>`, 3400);
-      syncHackBtn();
-    }
-    // standing at the relay, the game says WHAT TO PRESS — the rail
-    // button alone was invisible to a player looking at the machine
-    if (hackPromptEl && !simSkip) {
-      const near = hackPromptForce || (serverFound && !hackedRound && serverCi >= 0
-        && (!hackWrapEl || hackWrapEl.classList.contains('hidden'))
-        && dist3(player.pos, graph.centers[serverCi]) < cellSide * 4.5);
-      hackPromptEl.classList.toggle('hidden', !near);
     }
     if (ramComboT > 0) {
       ramComboT -= dt;
@@ -12483,33 +10113,6 @@ export function initTdTab(root) {
     stepWarnFx(dt);
     for (const sp of spawnPoints) {
       if (!sp.alive) continue;
-      // dial in, then behave normally. The idle twinkle would fight the
-      // drawing head for the colour buffer, so it waits its turn.
-      const ud = sp.obj.userData;
-      if(ud.breach){if(!sp.found&&dist3(player.pos,graph.centers[sp.ci])<cellSide*5)sp.found=true;continue;}
-      if (ud.setForm && ud.dial < 1) {
-        ud.dial = Math.min(1, ud.dial + dt / GATE_DIAL);
-        ud.setForm(ud.dial);
-        // ease the swell in with it, so an opening gate grows as it draws
-        const s0 = ud.sizeScale ?? 1;
-        sp.obj.scale.setScalar(s0 * (0.55 + 0.45 * ud.dial));
-        continue;
-      }
-      // the charge runs the gate's own idle FASTER, rather than adding a
-      // second animation on top of it — one thing accelerating reads as
-      // building pressure; two things moving reads as noise
-      sp.obj.userData.tick(t * (1 + 2.2 * waveCharge));
-      if (sp.obj.userData.setDim) sp.obj.userData.setDim(1 + 1.5 * waveCharge);
-      // THE SHAKE IS GONE (operator, 2026-09-02). A scale pulse used to beat
-      // here as the charge built — right for a dot-cloud orb, wrong for a
-      // standing ring, which is architecture and should not throb. The ring's
-      // pre-wave tell is the wormhole winding up (portalfx.travelRate); adding
-      // a shake on top was the "two things moving reads as noise" this very
-      // comment warns about.
-      const s0 = sp.obj.userData.sizeScale ?? 1;
-      sp.obj.scale.setScalar(s0);
-      // proximity discovers the source: the minimap beacon lights up
-      if (!sp.found && dist3(player.pos, graph.centers[sp.ci]) < cellSide * 5) sp.found = true;
     }
     if (simStyle && !simDone) simPolicy(dt);
     if (!pilotMode) { autoSecondary(); autoGunner(t); }
@@ -12551,15 +10154,10 @@ export function initTdTab(root) {
 
     if (pilotMode && pilot && !pilot.isMap()) {
       camera.position.copy(camGoal.pos); camera.quaternion.copy(camGoal.quat);
-    } else if (director && shot && shot.id === 'director') {
-      // THE DIRECTOR'S RAIL IS THE CAMERA: no ease, no lag, the pose is the pose
-      camera.position.copy(camGoal.pos);
-      camera.quaternion.copy(camGoal.quat);
     } else {
       camera.position.lerp(camGoal.pos, 0.14);
       camera.quaternion.slerp(camGoal.quat, 0.14);
     }
-    if (director) directorFrame(dt);
     if (!pilotMode && urlParams.get('viewwatch') !== '0') viewWatch(dt);
     diagTick(dt);
 
@@ -12704,69 +10302,6 @@ export function initTdTab(root) {
       ctx.globalAlpha = 1;
     }
 
-    // THE CAMPS: a hollow orange box, always lit, filled once opened. On a
-    // raid this is the whole map — three of them on a board with no waves.
-    for (const camp of rescue.camps) {
-      const q = radarProject(camp.pos, cpos, basis, range);
-      const bx = cx + q.x * R, by = cy + q.y * R;
-      const left = camp.group.filter((sv) => sv.state === 'inside' || sv.state === 'walking').length;
-      ctx.globalAlpha = q.clamped ? 0.6 : 1;
-      ctx.strokeStyle = left ? '#ffb45e' : '#4a5560';
-      ctx.fillStyle = '#ffb45e';
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.rect(bx - 4.5, by - 4.5, 9, 9);
-      if (camp.open && left) ctx.fill(); else ctx.stroke();
-      ctx.globalAlpha = 1;
-    }
-
-    // THE STRANDED: orange, always lit. A survivor is not a contact you have
-    // to sweep for — the phosphor decay that makes an enemy blip breathe
-    // would make a person flicker, and a flickering person reads as noise.
-    // Grabbed turns it red and fills it, which is the countdown at a glance.
-    for (const sv of rescue.survivors) {
-      if (sv.state !== 'standing') continue;
-      const q = radarProject(sv.pos, cpos, basis, range);
-      const bx = cx + q.x * R, by = cy + q.y * R;
-      const held = sv.grabT > 0;
-      ctx.globalAlpha = q.clamped ? 0.6 : 1;
-      ctx.strokeStyle = held ? '#ff4d5e' : '#ffb45e';
-      ctx.fillStyle = held ? '#ff4d5e' : '#ffb45e';
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.moveTo(bx, by - 6);
-      ctx.lineTo(bx + 5, by + 4);
-      ctx.lineTo(bx, by + 1.5);
-      ctx.lineTo(bx - 5, by + 4);
-      ctx.closePath();
-      if (held) ctx.fill(); else ctx.stroke();
-      ctx.globalAlpha = 1;
-    }
-
-    // LAID MINES: friendly blue, an arrowhead pointing along the arc, hollow
-    // while it is still arming. A field reads across the scope as a row of
-    // heads all facing the same way, which is what a laid field IS.
-    for (const m of mineField.mines) {
-      if (!m.alive) continue;
-      const q = radarProject(m.pos, cpos, basis, range);
-      // the head points along the mine's own axis, projected onto the scope:
-      // derived from the SAME dir the blast uses, never re-guessed here
-      const tip = radarProject(minePoint(m, 0.9, 0, 0), cpos, basis, range);
-      const hx = tip.x - q.x, hy = tip.y - q.y;
-      const hl = Math.hypot(hx, hy) || 1;
-      const ux = hx / hl, uy = hy / hl;
-      const bx = cx + q.x * R, by = cy + q.y * R;
-      const S = 5;
-      ctx.globalAlpha = 0.45 + 0.55 * radarPhosphor(radarBearing(q.x, q.y), sweep);
-      ctx.beginPath();
-      ctx.moveTo(bx + ux * S, by + uy * S);
-      ctx.lineTo(bx - ux * S * 0.5 - uy * S * 0.6, by - uy * S * 0.5 + ux * S * 0.6);
-      ctx.lineTo(bx - ux * S * 0.5 + uy * S * 0.6, by - uy * S * 0.5 - ux * S * 0.6);
-      ctx.closePath();
-      if (m.live) { ctx.fillStyle = '#6fd3ff'; ctx.fill(); }
-      else { ctx.strokeStyle = '#6fd3ff'; ctx.lineWidth = 1.2; ctx.stroke(); }
-      ctx.globalAlpha = 1;
-    }
 
     for (const sp of spawnPoints) {
       if (!sp.alive || !sp.found) continue;
@@ -12852,7 +10387,7 @@ export function initTdTab(root) {
   applyLook();
   // a unit whose model loads asynchronously needs its bytes kicked off; it
   // renders the procedural fallback until they arrive
-  if (['mkcx', 'mkcx2', 'mork'].includes(params.creature)) applyCreature();
+  if (params.creature === 'mork') applyCreature();
 
   // ?walk=N teleports the wanderer N hops along the shortest route (demo)
   const walkN = parseInt(urlParams.get('walk') || '0', 10);
@@ -13689,7 +11224,7 @@ export function initTdTab(root) {
     let tries = 0;
     const run = () => {
       if (!active && tries++ < 200) { setTimeout(run, 25); return; }
-      dismissIntro();
+      
       if (msgEl && !msgEl.classList.contains('hidden')) {
         paused = false; msgEl.classList.add('hidden');
       }
@@ -13937,7 +11472,7 @@ export function initTdTab(root) {
     let tries = 0;
     const run = () => {
       if (!active && tries++ < 200) { setTimeout(run, 25); return; }
-      dismissIntro();
+      
       if (msgEl && !msgEl.classList.contains('hidden')) {
         paused = false; msgEl.classList.add('hidden');
       }
@@ -13971,7 +11506,7 @@ export function initTdTab(root) {
     let tries = 0;
     const run = () => {
       if (!active && tries++ < 200) { setTimeout(run, 25); return; }
-      dismissIntro();
+      
       if (msgEl && !msgEl.classList.contains('hidden')) {
         paused = false; msgEl.classList.add('hidden');
       }
@@ -14005,7 +11540,7 @@ export function initTdTab(root) {
       // clear the opening first: the briefing legitimately holds the keyboard
       // until dismissed, and this probe is about camShot's teardown, not about
       // the modal's. Testing through a modal measures the wrong thing.
-      dismissIntro();
+      
       if (msgEl && !msgEl.classList.contains('hidden')) {
         paused = false; msgEl.classList.add('hidden');
       }
@@ -14027,53 +11562,6 @@ export function initTdTab(root) {
     run();
   }
 
-  // ?cineprobe=1 — TWO QUESTIONS ABOUT THE COLD OPEN.
-  //
-  // 1. CAN THE PLAYER MOVE AFTER IT. The operator's report, made a check.
-  //    It cannot wait the shot out: under a virtual-time budget
-  //    performance.now() does not advance, so the frame loop's dt stays ~0
-  //    and the shot never ends on its own. So it reproduces the NATURAL END
-  //    exactly as animate leaves it — clock past zero, then stepShot.
-  // 2. IS THE LAST FRAME THE FIRST FRAME. The cinematic's final pose must BE
-  //    the pose DEPLOY opens on, or the hand-off is a cut.
-  if (urlParams.get('cineprobe') === '1') {
-    let tries = 0;
-    const run = () => {
-      if (shotId() !== 'cinematic' && tries++ < 200) { setTimeout(run, 25); return; }
-      if (shotId() !== 'cinematic') {
-        console.log('CINEPROBE inconclusive=no cinematic started'); return;
-      }
-      // asked BEFORE the shot ends, while its poseAt still exists
-      const n = berthIndexFor(playerHP);
-      shot.poseAt(1, camB);
-      deployFramePoseFor(n, camA);
-      const dp = camB.pos.distanceTo(camA.pos);
-      const dq = camB.quat.angleTo(camA.quat);
-      const cont = dp < 1e-6 && dq < 1e-6;
-      console.log(`CINEPROBE continuity=${cont ? 'PASS' : 'FAIL'}`
-        + ` (pos ${dp.toExponential(2)}, angle ${dq.toExponential(2)}, want ~0)`);
-
-      shot.left = -0.05;   // exactly what `shot.left -= dt` leaves behind
-      stepShot(0);         // ...and exactly what animate calls next
-      const deployed = deployActive();
-
-      // AFTER THE INTRO MEANS AFTER ITS HANDOFF TOO. The cold open hands to
-      // the briefing, which legitimately captures the keyboard until it is
-      // dismissed — so testing the key the instant the shot ends tests the
-      // wrong moment. Dismiss it the way a player does, then ask.
-      const introUp = introEl && !introEl.classList.contains('hidden');
-      dismissIntro();
-      const msgUp = msgEl && !msgEl.classList.contains('hidden');
-      if (msgUp) { paused = false; msgEl.classList.add('hidden'); }
-      console.log(`CINEPROBE handoff-shape introUp=${introUp} briefingUp=${msgUp}`);
-      const reached = probeKeyReaches();
-      console.log(`CINEPROBE move-after-intro=${reached ? 'PASS' : 'FAIL'}`
-        + ` (W reached the game: ${reached}, want true)`);
-      console.log(`CINEPROBE handoff-ran=${deployed ? 'PASS' : 'FAIL'}`
-        + ` (the cinematic must hand straight to DEPLOY, not strand it)`);
-    };
-    run();
-  }
   if (urlParams.get('ctlprobe') === '1') {
     ctlLog('probe:start');
     loseTank();
@@ -14164,49 +11652,12 @@ export function initTdTab(root) {
     }, 2000);
   }
 
-  const debugging = pilotMode || ['walk', 'tick', 'wave', 'blast', 'laser', 'found', 'recoil', 'mode', 'map', 'tower', 'biomass', 'credit', 'driveout', 'order', 'isao', 'bobby', 'record', 'debrief', 'armed', 'brief', 'planet', 'shop', 'sector', 'reveal', 'portal', 'lose', 'charge', 'layout', 'perf', 'strike', 'strikefall', 'strikecam', 'gateprobe', 'rank', 'danger', 'callout', 'sitrep', 'server', 'hack', 'shield', 'sim']
+  const debugging = pilotMode || ['walk', 'tick', 'wave', 'blast', 'laser', 'found', 'recoil', 'mode', 'map', 'tower', 'biomass', 'credit', 'driveout', 'order', 'isao', 'bobby', 'record', 'debrief', 'armed', 'brief', 'planet', 'shop', 'sector', 'reveal', 'lose', 'charge', 'layout', 'perf', 'strike', 'strikefall', 'strikecam', 'rank', 'danger', 'callout', 'sitrep', 'shield', 'sim']
     .some((k) => urlParams.get(k));
-  const tutParam = urlParams.get('tutorial');
-  runTutorial = !pilotMode && !storyMode && (tutParam === '1' || (tutParam !== '0' && !debugging));
-  // ?intro=1 forces the manual even under debug hooks (screenshot path);
-  // ?intro=0 skips it. On a clean load it fronts whatever comes next.
-  const introParam = urlParams.get('intro');
-  // THE COLD OPEN fronts all of it. ?cine=N scrubs N seconds into it (the
-  // screenshot path — beats land at ~1 / ~5 / ~8); ?cine=0 skips it. It is
-  // deliberately NOT gated on `debugging`: a hook like ?tick has no opinion
-  // about the opening, and the cinematic is the thing being verified.
-  const cineParam = urlParams.get('cine') ?? (storyQuery.short ? '0' : null);   // ...and no cold open
-  const wantCine = !pilotMode && cineParam !== '0' && (cineParam !== null || !debugging);
-  let opening = null;
-  if (storyMode) opening = null; /* no field manual in the story world; a new one comes with the pieces */ else if (!pilotMode && introParam === '1') opening = () => showIntro();
-  else if (!debugging && introParam !== '0' && !mobileShell) {
-    // not on the shell: the manual PAUSES the game with the tank in its
-    // berth at the deploy framing (operator's phone: "starts in this view
-    // and impossible to move"); the coach and the tutorial's shell words
-    // teach there, without a modal
-    opening = () => showIntro(() => { if (runTutorial) startTutorial(); else showBriefing(); });
-  } else if (mobileShell && !debugging && introParam !== '0') {
-    opening = () => { if (runTutorial) startTutorial(); else showBriefing(); };
-  } else if (runTutorial) opening = () => startTutorial();
-  else if (!debugging) opening = () => showBriefing();
+  // the campaign board opens on the briefing; the story and every debug hook go straight to the game
+  deployStart(berthIndexFor(playerHP));
+  if (!storyMode && !debugging) showBriefing();
 
-  if (wantCine) {
-    // held until the berths land (or the frame loop's safety net fires) —
-    // the opening shot needs the thing it is a shot OF
-    const scrub = parseFloat(cineParam || '0');
-    if (scrub > 0) shotHold = true;   // ?cine=N parks the clock on that beat
-    // nothing to wait for any more: the camp is known with the board, so the
-    // opening shot has its subject the moment the tab exists
-    playCinematic(opening || (() => {}), scrub);
-  } else {
-    deployStart(berthIndexFor(playerHP));
-    if (opening) opening();
-  }
-
-  // ?tutstep=N — clear N scripted pairs, so the later tutorial beats can be
-  // reached without a pair of hands. Every other phase here is gated on
-  // killing something, which headless verification cannot do, and a beat you
-  // cannot screenshot is a beat nobody checks.
   // ?perf=N — after N seconds, report what the frame actually costs. Written
   // because "is the dot count a performance limit?" is a question that should
   // be answered with the renderer's own numbers, not with an instinct.
@@ -14236,19 +11687,9 @@ export function initTdTab(root) {
     f.add(lab, 'galaxies', 1, 8, 1).name('galaxies').onFinishChange(applyLabSky);
     f.add(lab, 'galaxyCore', 0.25, 3, 0.05).name('core size ×').onFinishChange(applyLabSky);
     f.add(lab, 'bgIntensity', 0, 1.5, 0.05).name('sky intensity');
-    f.add(lab, 'fx', ['wormhole', 'corona']).name('portal effect').onChange((v) => { ensureWormhole(); setBoardEffect(v); });
-    f.add(lab, 'whSize', [128, 192, 256, 384, 512, 768]).name('portal target px').onChange((n) => {
-      // setSize keeps the texture object, so the gates' materials stay bound
-      whRender.size = n; if (whRt) { whRt.setSize(n, n); whUniforms.uResolution.value.set(n, n, 1); whLastAt = -1e9; }
-    });
-    f.add(lab, 'whHz', 1, 60, 1).name('portal update Hz').onChange((v) => { whRender.updateHz = v; });
-    f.add(lab, 'steps', 8, 240, 1).name('march steps').onChange((v) => { whUniforms.uSteps.value = v; whLastAt = -1e9; });
-    f.add(lab, 'octaves', 1, 16, 1).name('turbulence octaves').onChange((v) => { whUniforms.uTurbOctaves.value = v; whLastAt = -1e9; });
     f.add(lab, 'bloom').name('bloom').onChange((v) => postfx.setEnabled(v));
     // what the URL asked for, applied once the board exists
     applyLabSky();
-    if (lab.fx !== 'wormhole') { ensureWormhole(); setBoardEffect(lab.fx); }
-    whUniforms.uSteps.value = lab.steps; whUniforms.uTurbOctaves.value = lab.octaves;
     postfx.setEnabled(lab.bloom);
   }
   (function buildVarsModal() {
@@ -14311,7 +11752,7 @@ export function initTdTab(root) {
       if (i >= 0) show(i);
       document.body.classList.add('vars-open');
       setPerfOverlay(true, false);   // the lab reads the readout; it does not set your preference
-      console.log(`LAB on mult=${lab.waveMult} bg=${lab.bg} fx=${lab.fx} wh=${whRender.size}@${whRender.updateHz}`
+      console.log(`LAB on mult=${lab.waveMult} bg=${lab.bg}`
         + ` immortal=${lab.immortalHeart ? 'heart' : ''}${lab.immortalTank ? '+tank' : ''} gpuQuery=${!!gpuExt}`);
     }
   })();
@@ -14350,7 +11791,7 @@ export function initTdTab(root) {
       });
       console.log(`PERF viewport=${innerWidth}x${innerHeight} dpr=${devicePixelRatio}`);
       console.log(`PERF tier=${tier.name} renderDpr=${renderer.getPixelRatio()} aa=${tier.antialias}`
-        + ` wormhole=${whRender.size}@${whRender.updateHz} bloom=${tier.bloomScale}`
+        + ` bloom=${tier.bloomScale}`
         + ` shell=${mobileShell}`);
       // runContext.time only advances inside advanceMotion, so it is the honest
       // answer to "is the driver live right now"
@@ -14400,9 +11841,9 @@ export function initTdTab(root) {
         menu: '#chrome-toggle', modes: '#tab-td .tc-util', hud: '#td-stats',
         map: '#tab-td .minimap', tut: '#td-tut', throttle: '#td-throttle',
         steerL: '#td-pad-left', steerR: '#td-pad-right',
-        fire: '#td-pad-fire', laser: '#td-pad-laser', mine: '#td-pad-mine',
+        fire: '#td-pad-fire', laser: '#td-pad-laser',
         shield: '#td-pad-shield',   // a pad the ruler cannot see is a pad nobody checked
-        launch: '#td-launch', next: '#td-next', card: '#td-sitrep', hack: '#td-hack',
+        launch: '#td-launch', next: '#td-next', card: '#td-sitrep',
         // the two number slots, which only leave the centre when the
         // encouragement is switched off — and are exactly the pair most
         // likely to land on the HUD when they move
@@ -14543,36 +11984,6 @@ export function initTdTab(root) {
     ramComboT = 9999; // pinned: the expiry timer outruns headless paints
   }
 
-  // ?server=1 — report the antipode placement, force discovery (button check)
-  if (urlParams.get('server') === '1') {
-    const anti = serverCi >= 0
-      ? dot3(norm3(graph.centers[serverCi]), norm3(graph.centers[dungeon.heart])).toFixed(3) : '-';
-    // how close does the FULL world's carve get to the pole? If lanes never
-    // reach it, the server is a landmark nobody can ever touch — a design
-    // fact worth measuring, not assuming
-    let fullMin = 1;
-    const hc2 = norm3(graph.centers[dungeon.heart]);
-    for (let i = 0; i < tdFullTags.length; i++) {
-      if (tdFullTags[i] !== BLOCKED) fullMin = Math.min(fullMin, dot3(norm3(graph.centers[i]), hc2));
-    }
-    const clear = serverChamber.filter((ci) => dungeon.tags[ci] !== BLOCKED).length;
-    console.log(`SERVER ci=${serverCi} dot=${anti}`
-      + ` chamber=${clear}/${serverChamber.length} clear`
-      + ` ground=${serverCi >= 0 && dungeon.tags[serverCi] !== BLOCKED ? 'OPEN' : 'sealed'}`);
-    serverFound = true; run.serverFound = true; checkAchievements(); syncHackBtn();
-    showBrief('relay');
-    hackPromptForce = true; // pin the prompt for the layout screenshot
-    // the model loads async — report again once it should be in the scene
-    setTimeout(() => console.log(`SERVER2 placed=${!!serverObj}`
-      + `${serverObj ? ` scale=${serverObj.scale.x.toFixed(4)}` : ''}`), 5000);
-  }
-  // ?hack=1|hdt|bridges|shikaku — straight into the breach (boot checks)
-  const hackParam = urlParams.get('hack');
-  if (hackParam) {
-    serverFound = true; run.serverFound = true; checkAchievements(); syncHackBtn();
-    if (HACK_GAMES[hackParam]) hackGame = hackParam;
-    openHack();
-  }
 
   // ?debrief=1 — the analyst's board with fabricated run stats, through the
   // real renderer, so its six windows and the replay can be looked at
@@ -14580,7 +11991,7 @@ export function initTdTab(root) {
   const debriefWant = parseInt(urlParams.get('debrief') || '0', 10);
   if (debriefWant > 0) {
     setTimeout(() => {
-      dismissIntro();
+      
       rs.kills = { phage: 23, ghost: 11, scoutufo: 6, drifter: 3, corona: 2 };
       rs.bySrc = { tank: 19, tower: 21, strike: 5 };
       rs.rams = 14; rs.shells = 6; rs.strikes = 1; rs.maxCombo = 4;
@@ -14666,7 +12077,7 @@ export function initTdTab(root) {
   // on the coin.
   if (urlParams.get('campaign') === '1') {
     setTimeout(() => {
-      dismissIntro();
+      
       setCoins(0);
       const mk = (r, k, e, sp, hl) => ({ round: r, waves: 15, secs: 200 + r * 40, kills: k, tank: Math.round(k * 0.4),
         tower: Math.round(k * 0.5), strike: k - Math.round(k * 0.4) - Math.round(k * 0.5), earned: e, spent: sp,
@@ -14698,7 +12109,7 @@ export function initTdTab(root) {
   // control back (directive restored, auto off).
   if (urlParams.get('goto') === '1') {
     setTimeout(() => {
-      dismissIntro();
+      
       const d0 = bfsDist(graph.adj, [player.cur], (i) => dungeon.tags[i] !== BLOCKED);
       let target = -1;
       for (let i = 0; i < d0.length; i++) if (d0[i] === 6) { target = i; break; }
@@ -14790,7 +12201,7 @@ export function initTdTab(root) {
         + ` ${sum.n < 12 ? 'INCONCLUSIVE (sample too small)' : pct >= 95 ? 'PASS' : '<-- BELOW 95%'}`);
     };
     setTimeout(() => {
-      dismissIntro();
+      
       // updateCameraGoal answers shots and DEPLOY before the orbit — the
       // drone probe found this — so the stepper converged on the berth
       // framing at radius 1.10 until both were cleared
@@ -14819,7 +12230,7 @@ export function initTdTab(root) {
     }));
     let towerCi = -1, floorCi = -1;
     setTimeout(() => {
-      dismissIntro(); setView('orbit');
+      setView('orbit');
       // the placeable roof nearest the Heart: the orbit pose centres there
       const dh = bfsDist(graph.adj, [dungeon.heart], () => true);
       let best = Infinity;
@@ -14866,13 +12277,12 @@ export function initTdTab(root) {
   }
 
   // ?coach=1 — walk the three coach marks by doing what each one asks, and
-  // print the banner at every step. Forces the tutorial off (the coach is
+  // print the banner at every step. Clears the seen flag (the coach is
   // for the player who is past it) and the seen-flag clear.
   if (urlParams.get('coach') === '1') {
     setTimeout(() => {
-      dismissIntro();
       try { localStorage.removeItem(COACH_KEY); } catch { /* */ }
-      coach.done = false; tutorialActive = false; root.classList.remove('tutoring'); paused = false;
+      coach.done = false; paused = false;
       const banner = () => tutEl.classList.contains('hidden') ? '(hidden)' : tutEl.textContent.replace(/\s+/g, ' ').trim();
       const tick = (n) => { for (let i = 0; i < n; i++) coachTick(1 / 30); };
       tick(2);
@@ -14902,7 +12312,7 @@ export function initTdTab(root) {
   // land on third; the toast's TAKE CONTROL never appears on a tap.
   if (urlParams.get('viewprobe') === '1') {
     setTimeout(() => {
-      dismissIntro(); endShot(); deploy = null;
+      endShot(); deploy = null;
       const before = params.view;
       setView('drone'); const a = params.view;
       setView('pov'); const b = params.view;
@@ -14920,7 +12330,7 @@ export function initTdTab(root) {
   // clear on release; and a plain tap (no travel) to leave throttle at 0.
   if (urlParams.get('stickprobe') === '1') {
     setTimeout(() => {
-      dismissIntro(); endShot(); deploy = null; if (buildMode) setView('third');
+      endShot(); deploy = null; if (buildMode) setView('third');
       const ev = (type, x, y) => container.dispatchEvent(new PointerEvent(type, {
         clientX: x, clientY: y, pointerId: 11, pointerType: 'touch', isPrimary: true, bubbles: true, button: 0 }));
       const x0 = innerWidth * 0.25, y0 = innerHeight * 0.6;
@@ -14948,7 +12358,7 @@ export function initTdTab(root) {
   if (urlParams.get('stress')) {
     const [T, W] = urlParams.get('stress').split(':').map(Number);
     setTimeout(() => {
-      dismissIntro(); endShot(); deploy = null;
+      endShot(); deploy = null;
       eco.addBiomass(99999);
       const dh = bfsDist(graph.adj, [dungeon.heart], () => true);
       const roofs = [];
@@ -14977,378 +12387,6 @@ export function initTdTab(root) {
     }, perfAtS * 1000 - 20);
   }
 
-  // ============================================================================
-  // THE DIRECTOR (docs/CINEMATICS-PLAN.md §9). ?director=NAME runs one of
-  // src/cine/scripts.js on THIS board: a seeded, scripted run with a camera
-  // rail on top, the input off, the HUD as the script wants it, and — with
-  // ?capture=1 — the sim stepped at a fixed dt by the capture harness
-  // (installCine seek) so two renders are the same clip. Every item the
-  // operator asked for is the game; this is how the game gets filmed
-  // without a second copy of the board.
-  //
-  // The rail is a CHASE RIG: keys are in cells, in the tank's own frame at
-  // every frame — x right, y up off the surface, z the heading — so a shot
-  // authored "behind-left, low" stays behind-left as the tank drives.
-  // ============================================================================
-  const directorName = urlParams.get('director');
-  if (directorName && SCRIPTS[directorName]) {
-    const sc = SCRIPTS[directorName];
-    const rail = compileRail(sc.rail, { fov: 42 });
-    director = {
-      name: directorName, sc, rail, t0: -1, dirT: 0, held: false, engineHold: false,
-      radar: null,            // { t0, from, to, over }
-      scales: {},             // type -> visual scale the script asked for
-      raised: [],             // gates the script raised (a dual portal)
-      target: -1,             // the last strike's cell
-      strikeShotResume: false,
-    };
-    const dRight = new THREE.Vector3(), dUp = new THREE.Vector3(), dFwd = new THREE.Vector3();
-    const dEye = new THREE.Vector3(), dLook = new THREE.Vector3(), dM = new THREE.Matrix4();
-    // THE FRAME a key is authored in. 'tank' (default): up = the radial,
-    // forward = the smoothed heading, origin = the tank. 'gates': origin =
-    // the midpoint of the gates the script raised, forward = toward the
-    // tank. 'target': origin = the last strike's cell, forward = toward
-    // the tank. A key carries `at`; the frame switches at the key (a cut).
-    function anchorFrame(name) {
-      let o = player.pos, toward = null;
-      if (name === 'gates' && director.raised.length) {
-        const a = graph.centers[director.raised[0].ci], b = graph.centers[director.raised[director.raised.length - 1].ci];
-        const r = len3(a);
-        o = scale3(norm3(scale3(add3(a, b), 0.5)), r);
-        toward = player.pos;
-      } else if (name === 'target' && director.target >= 0) {
-        o = graph.centers[director.target];
-        toward = player.pos;
-      } else if (name === 'orbit') {
-        // the planet's frame: origin at its centre; z out through the
-        // HEART, so a key at [0, 0, 40] hangs 40 cells above the sector
-        // (world axes put the sector on the limb — the first orbit still);
-        // y is world-up projected off that axis, x completes it
-        const hc = norm3(graph.centers[dungeon.heart]);
-        dFwd.set(hc[0], hc[1], hc[2]);
-        dUp.set(0, 1, 0).addScaledVector(dFwd, -dFwd.y).normalize();
-        if (dUp.lengthSq() < 1e-6) dUp.set(1, 0, 0);
-        dRight.crossVectors(dUp, dFwd).normalize();
-        return [0, 0, 0];
-      }
-      const n = norm3(o);
-      dUp.set(n[0], n[1], n[2]);
-      const h = toward ? sub3(toward, o) : (player.smoothDir || [0, 0, 1]);
-      dFwd.set(h[0], h[1], h[2]);
-      dFwd.addScaledVector(dUp, -dFwd.dot(dUp)).normalize();
-      if (dFwd.lengthSq() < 1e-6) dFwd.set(1, 0, 0).addScaledVector(dUp, -dUp.x).normalize();
-      dRight.crossVectors(dFwd, dUp).normalize();
-      return o;
-    }
-    function anchorAt(tt) {
-      let at = 'tank';
-      for (const k of sc.rail) if (k.t <= tt + 1e-6) at = k.at || 'tank';
-      return at;
-    }
-    function placeRel(out, rel, base) {
-      out.copy(base)
-        .addScaledVector(dRight, rel[0] * cellSide)
-        .addScaledVector(dUp, rel[1] * cellSide)
-        .addScaledVector(dFwd, rel[2] * cellSide);
-    }
-    const dBase = new THREE.Vector3();
-    function railPose(u, out) {
-      const tt = u * sc.len;
-      let p = rail.poseAt(tt);
-      // NO INTERPOLATION ACROSS A CUT: between two keys in different frames
-      // the rail holds the earlier key's pose until the later key's time.
-      // Blending a tank-relative pose toward a target-relative one moved
-      // the camera 4.5 cells ahead of the tank, into the Terraformer.
-      let ki = -1;
-      for (let i = 0; i < sc.rail.length; i++) if (sc.rail[i].t <= tt + 1e-6) ki = i;
-      const kA = sc.rail[ki], kB = sc.rail[ki + 1];
-      if (kA && kB && (kA.at || 'tank') !== (kB.at || 'tank')) p = rail.poseAt(kA.t);
-      const o = anchorFrame(anchorAt(tt));
-      dBase.set(o[0], o[1], o[2]);
-      placeRel(dEye, p.pos, dBase);
-      placeRel(dLook, p.look, dBase);
-      out.pos.copy(dEye);
-      dM.lookAt(dEye, dLook, dUp);          // camera convention: looks down -Z
-      out.quat.setFromRotationMatrix(dM);
-      if (camera.fov !== p.fov) { camera.fov = p.fov; camera.updateProjectionMatrix(); }
-    }
-    function beginDirectorShot() {
-      startShot({ id: 'director', dur: sc.len, poseAt: railPose, skippable: false });
-      // the shot's clock is ours: keep it in step with dirT
-      shot.left = Math.max(1e-3, sc.len - director.dirT);
-    }
-    const dh = () => bfsDist(graph.adj, [player.cur], () => true);
-    const aliveGates = () => spawnPoints.filter((sp) => sp.alive);
-    function gateFor(sel) {
-      const gs = aliveGates();
-      if (!gs.length) return null;
-      const d = dh();
-      const sorted = gs.slice().sort((a, b) => d[a.ci] - d[b.ci]);
-      if (sel === 'far') return sorted[sorted.length - 1];
-      if (typeof sel === 'number') return sorted[Math.min(sel, sorted.length - 1)];
-      return sorted[0];
-    }
-    function crowdCell() {
-      const count = new Map();
-      for (const e of enemies) if (e.alive) count.set(e.cur, (count.get(e.cur) || 0) + 1);
-      let best = -1, bn = 0;
-      for (const [ci, n] of count) if (n > bn) { bn = n; best = ci; }
-      return best;
-    }
-    function bossCell() {
-      const b = enemies.find((e) => e.alive && e.type === 'knot');
-      return b ? b.cur : -1;
-    }
-    const VERB = {
-      biomass: (c) => eco.addBiomass(c.n),
-      hud: (c) => { document.body.classList.remove('dir-hud-none', 'dir-hud-radar'); if (c.show !== 'full') document.body.classList.add(`dir-hud-${c.show}`); },
-      spawn: (c) => {
-        const raised = c.gate === 'raised' && director.raised.length ? director.raised : null;
-        const g = raised ? null : gateFor(c.gate);
-        if (!g && !raised) return;
-        if (c.scale) director.scales[c.type] = c.scale;
-        for (let i = 0; i < c.count; i++) {
-          const sp = raised ? raised[i % raised.length] : g;   // a dual portal pours from both
-          spawnQueue.push({ type: c.type, sp, at: spawnClock + i * (c.every ?? 0.1) });
-        }
-        waveActive = true;
-      },
-      // gate { count, hops: [lo, hi] }: raise gates side by side, `hops`
-      // from the tank — a dual portal for a shot. The first stands on the
-      // openest cell in range, the rest on open cells two hops from it.
-      gate: (c) => {
-        const d = dh();
-        const open = (i) => dungeon.tags[i] !== BLOCKED && !spawnPoints.some((s) => s.ci === i);
-        const [lo, hi] = c.hops || [8, 13];
-        let best = -1, bn = -1;
-        for (let i = 0; i < graph.centers.length; i++) {
-          if (!open(i) || d[i] < lo || d[i] > hi) continue;
-          const n = graph.adj[i].filter(open).length;
-          if (n > bn) { bn = n; best = i; }
-        }
-        if (best < 0) return;
-        const cells = [best];
-        const ring2 = new Set();
-        for (const a of graph.adj[best]) for (const b of graph.adj[a]) if (b !== best && !graph.adj[best].includes(b) && open(b)) ring2.add(b);
-        for (const b of ring2) { if (cells.length >= (c.count ?? 2)) break; cells.push(b); }
-        for (const ci of cells) { addSpawnPoint(ci); director.raised.push(spawnPoints[spawnPoints.length - 1]); }
-      },
-      tower: (c) => {
-        const d = dh();
-        const roofs = [];
-        for (let ci = 0; ci < graph.centers.length; ci++) if (!placeError(ci)) roofs.push(ci);
-        const anchor = c.near === 'heart' ? bfsDist(graph.adj, [dungeon.heart], () => true)
-          : c.near === 'gate' ? (gateFor('nearest') ? bfsDist(graph.adj, [gateFor('nearest').ci], () => true) : d) : d;
-        roofs.sort((a, b) => anchor[a] - anchor[b]);
-        for (let i = 0; i < Math.min(c.count, roofs.length); i++) commitTower(c.key, roofs[i]);
-      },
-      goto: (c) => {
-        let ci = -1;
-        if (c.to === 'gate') { const g = gateFor('nearest'); ci = g ? g.ci : -1; }
-        else if (c.to === 'far') { const g = gateFor('far'); ci = g ? g.ci : -1; }
-        else if (c.to === 'heart') ci = dungeon.heart;
-        else if (c.to === 'boss') ci = bossCell();
-        else if (c.to === 'crowd') ci = crowdCell();
-        else if (typeof c.to === 'number') ci = c.to;
-        if (ci < 0 || !gotoCell(ci)) director.pendingGoto = c;   // no path yet (berthed): retry per frame
-        else director.pendingGoto = null;
-      },
-      throttle: (c) => { stopGoto(); autoMode = false; cruise = false; throttle = c.v; },
-      steer: (c) => { keys.left = c.v < 0; keys.right = c.v > 0; },
-      fire: () => fire(),
-      laser: (c) => { keys.laser = !!c.on; },
-      engine: (c) => {
-        if (c.on) { director.engineHold = true; if (!engineRunning) { sfx.play('tank_spool_up'); engineRunning = true; } }
-        else { director.engineHold = false; stopEngine(); }
-      },
-      view: (c) => setView(c.name),
-      strike: (c) => {
-        const ci = c.target === 'gate' ? (gateFor('nearest') ? gateFor('nearest').ci : -1)
-          : c.target === 'gates' ? (director.raised.length ? director.raised[0].ci : -1)
-          : c.target === 'tank' ? player.cur : crowdCell();
-        if (ci < 0) return;
-        director.target = ci;
-        strike.ready = Math.max(1, strike.ready); strike.reserved = 0;
-        if (!strike.armed) safetyEl.click();
-        if (paintTarget(strike, ci) === 'locked') { armUiKey = ''; syncArmUi(); }
-        // the board's own strike camera rides the munition down; the rail
-        // yields to it and takes the camera back at impact
-        endShot();
-        director.strikeShotResume = true;
-        launchBtn.click();
-      },
-      radar: (c) => { director.radar = { t0: director.dirT, from: director.radar ? director.radar.to : 1, to: c.zoom, over: c.over ?? 2 }; },
-      // warp: the tank set down on a cell, stopped, the way the deploy sets
-      // it down at a berth (same fields, same order). 'open' is the cell
-      // 4..9 hops out with the most open neighbours — room for a hero shot
-      // that the berth cluster does not have.
-      warp: (c) => {
-        let ci = -1;
-        if (typeof c.to === 'number') ci = c.to;
-        else {
-          const d = dh();
-          const open = (i) => dungeon.tags[i] !== BLOCKED;
-          let best = -1, bn = -1;
-          for (let i = 0; i < graph.centers.length; i++) {
-            if (!open(i) || d[i] < 4 || d[i] > 9) continue;
-            const n = graph.adj[i].filter(open).length;
-            if (n > bn) { bn = n; best = i; }
-          }
-          ci = best;
-        }
-        if (ci < 0) return;
-        stopGoto();
-        const nb = graph.adj[ci].find((i) => dungeon.tags[i] !== BLOCKED) ?? ci;
-        player.freeMode = false; player.virtualStart = null;
-        player.cur = ci; player.prev = -1;
-        player.pos = graph.centers[ci].slice(); player.prog = 0;
-        player.next = nb;
-        player.heading = tangentDirTo(ci, nb);
-        player.travelDir = player.heading.slice(); player.smoothDir = player.travelDir.slice();
-        player.segLen = Math.max(1e-9, dist3(graph.centers[ci], graph.centers[nb]));
-        throttle = 0; cruise = false; autoMode = false;
-        placeActors();
-      },
-    };
-    // a clean board: no intro, no cold open, no berth, no tutorial — the
-    // same three lines every probe uses
-    // THE DEPLOY IS THE BERTH EXIT (deployStep drives the tank out and hands
-    // it back stopped), so the director lets it finish and starts its clock
-    // on the far side: every script opens on a tank standing free.
-    // the boot's modals — the intro and the briefing — pause the board; a
-    // script wants neither, and the briefing has no flag to skip it
-    function directorUnpause() {
-      dismissIntro();
-      msgEl.classList.add('hidden');
-      paused = false;
-    }
-    // THE GLOBE: the board draws only the carved sector, so an orbit shot
-    // sees a lit fragment on nothing. A script with globe:true draws every
-    // quad edge of the board's OWN sphere mesh, faint, under the sector —
-    // the planet the wire sector is cut into. The game's pipeline, not a
-    // second one (cine/planet.js does the same for the cine tab).
-    let globe = null;
-    function buildGlobe() {
-      if (globe || !mesh) return;
-      const seen = new Set(); const pos = [];
-      const { vertices, quads } = mesh;
-      for (const qd of quads) for (let i = 0; i < 4; i++) {
-        const a = qd[i], b = qd[(i + 1) % 4];
-        const key = a < b ? a * 65536 + b : b * 65536 + a;
-        if (seen.has(key)) continue; seen.add(key);
-        const p1 = vertices[a], p2 = vertices[b];
-        pos.push(p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]);
-      }
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-      const gop = parseFloat(urlParams.get('globeop')) || 0.22;   // ?globeop=1 — a bisect knob
-      globe = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({
-        color: look().edges.color, transparent: gop < 1, opacity: gop, blending: gop < 1 ? THREE.AdditiveBlending : THREE.NormalBlending, depthWrite: false }));
-      // ABOVE THE WALL TOPS: the uncarved cells are drawn as dark rock with
-      // walls, so anything at the planet's radius is under their tops. The
-      // first globe, at 0.995 and then 1.004, drew nothing at any opacity;
-      // at 1.6 it filled the frame. ?glober=N is the bisect knob that found it.
-      globe.scale.setScalar(parseFloat(urlParams.get('glober')) || (1 + params.wallHeight * 1.15));
-      scene.add(globe);
-      console.log(`DIRECTOR globe: ${pos.length / 6} edges, r=${len3(vertices[0]).toFixed(3)}`);
-    }
-    function directorStart() {
-      directorUnpause(); endShot(); clearBriefs();
-      if (sc.globe) buildGlobe();
-      // the board's camera clips at a few units: right for a tank on the
-      // ground, wrong for an orbit at 3 radii — the first planet capture saw
-      // only the near cap of the sector and nothing of the globe
-      if (camera.far < 60) { camera.far = 60; camera.updateProjectionMatrix(); }
-      tutorialActive = false;
-      throttle = 0; keys.laser = false;
-      director.t0 = t; director.dirT = 0;
-      // cues at t = 0 fire before the first frame, so the first frame is
-      // already the scene (a crowd queued, the HUD set)
-      for (const c of sc.cues) if (c.t === 0) VERB[c.do] && VERB[c.do](c);
-      beginDirectorShot();
-      snapCamera();
-      console.log(`DIRECTOR ${directorName}: ${sc.len} s, ${sc.cues.length} cues, hud=${sc.hud}, capture=${urlParams.get('capture') === '1'}`
-        + ` deploysDone=${deploysDone} deploy=${!!deploy} cur=${player.cur} next=${player.next} gates=${aliveGates().length}`);
-    }
-    // per frame, from the loop: cues on the clock, the radar zoom, the
-    // strike's hand-back
-    window.__directorFrame = (dt) => {
-      if (director.t0 < 0) return;
-      const prev = director.dirT;
-      director.dirT = t - director.t0;
-      for (const c of cuesBetween(sc.cues, prev, director.dirT)) if (c.t > 0 && VERB[c.do]) VERB[c.do](c);
-      if (director.radar) {
-        const r = director.radar;
-        const u = Math.min(1, Math.max(0, (director.dirT - r.t0) / r.over));
-        const k = r.from + (r.to - r.from) * (u * u * (3 - 2 * u));
-        radarEl.style.transformOrigin = 'right bottom';
-        radarEl.style.transform = `scale(${k.toFixed(3)})`;
-      }
-      if (director.pendingGoto && !deploy) { const c = director.pendingGoto; director.pendingGoto = null; VERB.goto(c); }
-      for (const e of enemies) if (e.alive && !e.dirScale && director.scales[e.type]) e.dirScale = director.scales[e.type];
-      // a script with waves:false holds the board's own wave clock; the
-      // director's spawns still go through the queue
-      if (sc.waves === false) { waveIn = Math.max(waveIn, 1e6); interClock = 0; }
-      // ?dirlog=1 — the run's state every 2 s: what the stills cannot say
-      if (urlParams.get('dirlog') === '1' && Math.floor(director.dirT / 2) !== Math.floor(prev / 2)) {
-        console.log(`DIRLOG t=${director.dirT.toFixed(1)} cur=${player.cur} next=${player.next} goto=${gotoCi} auto=${autoMode} thr=${throttle.toFixed(2)}`
-          + ` cruise=${cruise} deploy=${!!deploy} pending=${!!director.pendingGoto} enemies=${enemies.filter((e) => e.alive).length} queued=${spawnQueue.length}`
-          + ` waveActive=${waveActive} shot=${shot ? shot.id : '-'} paused=${paused} frozen=${tutorial.frozen} won=${player.won} down=${!!playerDown}`
-        );
-        console.log(`DIRGLOBE ${globe ? `${globe.parent === scene ? 'in-scene' : 'ORPHAN'} vis=${globe.visible} op=${globe.material.opacity} r=${globe.geometry.boundingSphere ? globe.geometry.boundingSphere.radius.toFixed(2) : '?'}` : 'none'}`
-          + ` cam=${camera.position.length().toFixed(2)}u far=${camera.far} near=${camera.near} layers=${camera.layers.mask} sceneKids=${scene.children.length} camAt=${camera.position.x.toFixed(2)},${camera.position.y.toFixed(2)},${camera.position.z.toFixed(2)}`);
-      }
-      if (director.strikeShotResume && strike.falling < 0 && !shot) { director.strikeShotResume = false; beginDirectorShot(); }
-      else if (!shot && !director.strikeShotResume && director.dirT < sc.len) beginDirectorShot();   // whatever ended it, the rail comes back
-      if (shot && shot.id === 'director') shot.left = Math.max(1e-3, sc.len - director.dirT);
-    };
-    // THE CAPTURE SEAM. seek(at) steps the sim from where it is to `at` at
-    // 1/30 s and renders; the harness captures the page after each. With
-    // ?capture=1 the loop is HELD from the start so the clock only moves
-    // under seeks — the live loop advancing before the first seek would
-    // put a different number of frames into every render.
-    const capturing = urlParams.get('capture') === '1';
-    if (capturing) { director.held = true; document.body.classList.add('cine-capture'); }
-    installCine({
-      hold: (on) => { director.held = on; },
-      seek: (at) => {
-        if (director.t0 < 0) {
-          directorUnpause();
-          // the berth exit is staged AFTER the models land and takes seconds;
-          // wait for one to have started AND finished, at the fixed step
-          let g = 0;
-          while ((deploysDone < 1 || deploy) && g++ < 1500) { directorUnpause(); frame(1 / 30, false); }
-          if (deploysDone < 1) console.warn('DIRECTOR: no berth exit happened in 50 s of pre-roll');
-          directorStart();
-        }
-        let guard = 0;
-        while (director.dirT < at - 1e-4 && guard++ < 4000) {
-          const step = Math.min(1 / 30, at - director.dirT);
-          const tBefore = t;
-          frame(step, false);
-          if (director.t0 >= 0) director.dirT = t - director.t0;
-          if (t === tBefore) {
-            // frame() refused the step: something holds the clock. Say what,
-            // once, rather than spin 4000 renders (the first capture did)
-            console.warn(`DIRECTOR seek stalled at ${director.dirT.toFixed(2)}s: paused=${paused} active=${active} mesh=${!!mesh}`
-              + ` deploy=${!!deploy} intro=${!!(introEl && !introEl.classList.contains('hidden'))} won=${player.won}`);
-            break;
-          }
-        }
-      },
-    });
-    window.__cineReady = () => !!(playerMesh && mesh && !playerMesh.userData.loading);
-    // live: start once the board is up (the berth callback has run)
-    if (!capturing) {
-      const poll = setInterval(() => {
-        if (director.t0 >= 0) { clearInterval(poll); return; }
-        directorUnpause();
-        if (deploysDone >= 1 && !deploy && playerMesh) { clearInterval(poll); directorStart(); }
-      }, 250);
-    }
-  }
-  function directorFrame(dt) { if (window.__directorFrame) window.__directorFrame(dt); }
-
   // ?stateprobe=1 — the boot, as a log: every 2 s for 24 s, what state the
   // game is in. For "it starts and I cannot move" reports, where the
   // question is WHICH thing is holding the tank — a pause, a shot, a deploy
@@ -15369,9 +12407,9 @@ export function initTdTab(root) {
         + ` thr=${throttle.toFixed(2)} stick=${!!stick} laser=${keys.laser}`;
       onScreen(`t=${k * 2}s ${extra}`);
       console.log(`STATE t=${(k * 2).toString().padStart(2)}s paused=${paused} shot=${shot ? shot.id : '-'} build=${buildMode}`
-        + ` msg=${!!(msgEl && !msgEl.classList.contains('hidden'))} brief=${!!(briefEl && !briefEl.classList.contains('hidden'))} sitrep=${!!(sitrepEl && !sitrepEl.classList.contains('hidden'))} tut=${tutorial.phase}/${tutorial.frozen}`
-        + ` deploy=${deploy ? `#${deploy.n}@${deployProgress().toFixed(2)}` : '-'} intro=${introEl && !introEl.classList.contains('hidden')}`
-        + ` tutorial=${tutorialActive} hp=${playerHP} lostDeploys=${tankLostDeploys} down=${!!playerDown}`
+        + ` msg=${!!(msgEl && !msgEl.classList.contains('hidden'))} brief=${!!(briefEl && !briefEl.classList.contains('hidden'))} sitrep=${!!(sitrepEl && !sitrepEl.classList.contains('hidden'))}`
+        + ` deploy=${deploy ? `#${deploy.n}@${deployProgress().toFixed(2)}` : '-'}`
+        + ` hp=${playerHP} lostDeploys=${tankLostDeploys} down=${!!playerDown}`
         + ` cur=${player.cur}(${dungeon.tags[player.cur] === BLOCKED ? 'BLOCKED' : 'open'}) next=${player.next}`
         + ` auto=${autoMode} thr=${throttle.toFixed(2)} goto=${gotoCi} view=${params.view} unit=${params.creature}`
         + ` camToTank=${(cp.distanceTo(new THREE.Vector3(...player.pos)) / cellSide).toFixed(1)}cells`
@@ -15563,7 +12601,6 @@ export function initTdTab(root) {
           + ` buttons=${btns.length} byScroll=${byScroll} unreachable=${lost.length}${lost.length ? ' [' + lost.join(' ') + ']' : ''}`
           + ` small=${small} ${ok && (small === 0 || !mobileShell) ? 'OK' : '<-- FAIL'}`);   // 40px is a thumb rule
       };
-      showIntro(() => {}); report('manual', root.querySelector('#td-intro .fm-frame')); dismissIntro();
       togglePause(); report('pause', msgEl); togglePause();
       showRecord(); report('record', msgEl); msgEl.classList.add('hidden'); paused = false;
       // the debrief, both stages, on the ?debrief fixtures
@@ -15612,7 +12649,7 @@ export function initTdTab(root) {
           + ` → ${meshes} mesh ${points} points`
           + `${points > 0 ? ' FELL BACK TO BRAILLE' : ''}`);
       }
-      console.log(`ROSTERPROBE ladder ${TOWER_ORDER.join(' ')} · gated ${HACK_GATED.join(' ') || '-'}`);
+      console.log(`ROSTERPROBE ladder ${TOWER_ORDER.join(' ')}`);
     });
   }
 
@@ -15630,7 +12667,7 @@ export function initTdTab(root) {
       // field manual, and hiding one leaves the other over the picture — a
       // probe that is meant to produce a photograph has to clear what is in
       // front of the camera, not just what is pausing the clock.
-      for (const id of ['#td-msg', '#td-intro']) {
+      for (const id of ['#td-msg']) {
         const el = root.querySelector(id);
         if (el) el.classList.add('hidden');
       }
@@ -15761,7 +12798,7 @@ export function initTdTab(root) {
       // field manual, and hiding one leaves the other over the picture — a
       // probe that is meant to produce a photograph has to clear what is in
       // front of the camera, not just what is pausing the clock.
-      for (const id of ['#td-msg', '#td-intro']) {
+      for (const id of ['#td-msg']) {
         const el = root.querySelector(id);
         if (el) el.classList.add('hidden');
       }
@@ -15824,7 +12861,7 @@ export function initTdTab(root) {
   // and therefore whether the throw actually descends.
   if (urlParams.get('plasmaprobe') === '1') {
     setTimeout(() => {
-      for (const id of ['#td-msg', '#td-intro']) {
+      for (const id of ['#td-msg']) {
         const el = root.querySelector(id);
         if (el) el.classList.add('hidden');
       }
@@ -15938,7 +12975,7 @@ export function initTdTab(root) {
   // nobody could answer without a phone.
   if (urlParams.get('vpprobe') === '1') {
     setTimeout(() => {
-      for (const el of ['#td-msg', '#td-intro']) {
+      for (const el of ['#td-msg']) {
         const e = root.querySelector(el);
         if (e) e.classList.add('hidden');
       }
@@ -16027,308 +13064,6 @@ export function initTdTab(root) {
   }
 
   // ?pedprobe=1 — push the tank straight at the heart through the cushion and
-  // ?campgo=N — park the hull just inside camp N's shot distance and leave it
-  // there. The probe blows through the whole sequence in one tick, so there
-  // is no frame in it where a container is standing open with people walking
-  // out of it; this is that frame.
-  {
-    const cg = parseInt(urlParams.get('campgo') || '0', 10);
-    if (cg > 0) {
-      setTimeout(() => {
-        const camp = rescue.camps[cg - 1];
-        if (!camp) { console.log(`CAMPGO no camp ${cg}`); return; }
-        const nn = norm3(camp.pos);
-        let t1 = cross3(nn, [0, 1, 0]);
-        if (len3(t1) < 1e-3) t1 = cross3(nn, [1, 0, 0]);
-        const p2 = arcPoint(nn, norm3(t1), (rescue2Tune.callCells - 0.6) * cellSide);
-        const ci = cellIndex(p2);
-        player.pos = p2;
-        player.cur = ci >= 0 ? ci : player.cur;
-        player.next = player.cur;
-        player.prog = 0;
-        player.freeMode = true;
-        throttle = 0; cruise = false; autoMode = false;
-        paintThrottle();
-        setView('third');
-        console.log(`CAMPGO parked at camp ${cg} cell ${ci}, asked for ${(rescue2Tune.callCells - 0.6).toFixed(1)} cells`
-          + ` got ${(dist3(player.pos, camp.pos) / cellSide).toFixed(2)}c deploy=${!!deploy}`);
-        // ...and say every second what the mission thinks is happening, so a
-        // still that shows a shut container says WHY
-        let n2 = 0;
-        const tick = setInterval(() => {
-          if (++n2 > 8) { clearInterval(tick); return; }
-          console.log(`CAMPGO t+${n2}s dist=${(dist3(player.pos, camp.pos) / cellSide).toFixed(2)}c`
-            + ` call=${rescue2Tune.callCells} open=${camp.open} out=${camp.out}`
-            + ` models=${astroObjs.size} frozen=${buildFrozen()} shot=${shotActive()} won=${player.won}`
-            + ` box=${campObjs.has(camp.id)}`);
-        }, 1000);
-      }, 5000);   // AFTER the berth deploy, which drives the hull and would undo this
-    }
-  }
-
-  // ?rescue2probe=1 — the raid's own log line. Drives the board's stepRescue2,
-  // so shot distance, the doors, the emerge stagger, the walk, the save and
-  // the run-over are all exercised through the code the player touches.
-  if (urlParams.get('rescue2probe') === '1') {
-    preloadAstronauts().then(() => setTimeout(() => {
-      if (!rescue2On) { console.log('RESCUE2PROBE needs ?mission=rescue2'); return; }
-      const camp = rescue.camps[0];
-      if (!camp) { console.log('RESCUE2PROBE no camps'); return; }
-      const keepPos = player.pos.slice(), keepThr = throttle;
-      throttle = 0; cruise = false;
-      let tt = 300;
-      // hold the tank at `where` for n steps: set it BEFORE each step so the
-      // measured hull speed is honestly zero
-      const hold = (where, n) => {
-        for (let k = 0; k < n; k++) { tt += 0.05; player.pos = where.slice(); stepRescue2(0.05, tt); }
-      };
-      const along = (from, cells) => {
-        const nn = norm3(from);
-        let t1 = cross3(nn, [0, 1, 0]);
-        if (len3(t1) < 1e-3) t1 = cross3(nn, [1, 0, 0]);
-        t1 = norm3(t1);
-        return arcPoint(nn, t1, cells * cellSide);
-      };
-
-      // 1. OUT OF SHOT DISTANCE the container stays shut
-      hold(along(camp.pos, rescue2Tune.callCells + 1.0), 20);
-      console.log(`RESCUE2PROBE far   open=${camp.open} out=${camp.out}`
-        + ` ${!camp.open ? 'SHUT — correct' : '<-- opened from out of range'}`);
-
-      // 2. INSIDE IT, it opens and they start coming out
-      const near = along(camp.pos, rescue2Tune.callCells - 0.5);
-      hold(near, 60);
-      console.log(`RESCUE2PROBE call  open=${camp.open} out=${camp.out}/${camp.group.length}`
-        + ` doors=${(campObjs.get(camp.id) || {}).doorT?.toFixed?.(2) ?? '-'}`
-        + ` models=${astroObjs.size}`
-        + ` ${camp.open && camp.out > 0 && astroObjs.size > 0 ? 'OPEN, WALKING, RENDERED' : '<-- nobody came out'}`);
-
-      // 3. HOLD STILL and they arrive
-      const saved0 = rescue.saved;
-      hold(near, 900);
-      console.log(`RESCUE2PROBE hold  saved=${rescue.saved} (was ${saved0}) lost=${rescue.lost}`
-        + ` walking=${rescue.survivors.filter((x) => x.state === 'walking').length}`
-        + ` ${rescue.saved > saved0 ? 'THEY REACHED THE TANK' : '<-- nobody arrived'}`);
-
-      // 4. THE RUN-OVER. A second camp, opened, and then the hull MOVES
-      // through the walker instead of waiting for it.
-      const c2 = rescue.camps[1];
-      if (c2) {
-        const n2 = along(c2.pos, rescue2Tune.callCells - 0.5);
-        hold(n2, 60);
-        const sv = c2.group.find((x) => x.state === 'walking');
-        const lost0 = rescue.lost, splash0 = splashes.length;
-        if (sv) {
-          // drive THROUGH where the walker is standing: two steps a whole
-          // cell apart, which is far faster than runoverSpeed
-          for (let k = 0; k < 6; k++) {
-            tt += 0.05;
-            player.pos = arcPoint(norm3(sv.pos), norm3(cross3(norm3(sv.pos), [0, 1, 0])), cellSide * (0.6 - k * 0.25));
-            stepRescue2(0.05, tt);
-          }
-        }
-        console.log(`RESCUE2PROBE over  lost=${rescue.lost} (was ${lost0})`
-          + ` splashes=${splashes.length} (was ${splash0}) speed=${tankSpeedCells.toFixed(2)} c/s`
-          + ` ${rescue.lost > lost0 && splashes.length > splash0 ? 'RUN OVER, AND THE RED STAYS' : '<-- nothing was run over'}`);
-      }
-
-      // 5. the roster runs out and the card fires on its own
-      for (const x of rescue.survivors) {
-        if (x.state === 'inside' || x.state === 'walking') { x.state = 'lost'; rescue.lost++; dropAstronaut(x.id); }
-      }
-      hold(keepPos, 2);
-      console.log(`RESCUE2PROBE end   ended=${rescueEnded} saved=${rescue.saved} lost=${rescue.lost}`
-        + ` ${rescueEnded ? 'THE CARD FIRED' : '<-- mission did not end'}`);
-      player.pos = keepPos; throttle = keepThr;
-    }, 2200));
-  }
-
-  // ?rescueprobe=1 — the mission's own log line. Drives the board's stepRescue
-  // rather than the module, so the stop clause, the seats, the delivery and
-  // the end card are exercised through the code the player touches.
-  if (urlParams.get('rescueprobe') === '1') {
-    setTimeout(() => {
-      if (!rescueOn) { console.log('RESCUEPROBE needs ?mission=rescue'); return; }
-      const sv = rescue.survivors[0], sv2 = rescue.survivors[1];
-      if (!sv) { console.log('RESCUEPROBE nobody stranded'); return; }
-      const keepPos = player.pos.slice(), keepThr = throttle;
-      let tt = 200;
-      const run = (n) => { for (let k = 0; k < n; k++) { tt += 0.05; stepRescue(0.05, tt); } };
-
-      // 1. THE STOP CLAUSE. Standing right on top of a beacon at full
-      // throttle must do nothing at all — that is the whole clause.
-      throttle = 1; cruise = false;
-      player.pos = sv.pos.slice();
-      run(40);
-      console.log(`RESCUEPROBE past  throttle=1 aboard=${aboardSurv(rescue)}`
-        + ` boardT=${sv.boardT.toFixed(2)}`
-        + ` ${aboardSurv(rescue) === 0 && sv.boardT === 0 ? 'NOTHING HAPPENS — correct' : '<-- boarded while driving'}`);
-
-      // 1b. THE PHONE'S DRIVE-BY. Lever at zero — the shell has no lever —
-      // but the hull moving. This is the case the throttle clause alone
-      // cannot see, and the case the phone would hit every single time.
-      throttle = 0;
-      const n0 = norm3(sv.pos);
-      const t0 = norm3([-n0[2], 0, n0[0]]);
-      for (let k = 0; k < 40; k++) {
-        tt += 0.05;
-        player.pos = arcPoint(n0, t0, cellSide * (-0.9 + k * 0.045));
-        stepRescue(0.05, tt);
-      }
-      console.log(`RESCUEPROBE roll  lever=0 but MOVING aboard=${aboardSurv(rescue)}`
-        + ` boardT=${sv.boardT.toFixed(2)}`
-        + ` ${aboardSurv(rescue) === 0 ? 'NOTHING HAPPENS — correct' : '<-- boarded on the roll'}`);
-
-      // 2. stop on it
-      player.pos = sv.pos.slice();
-      throttle = 0;
-      run(40);
-      console.log(`RESCUEPROBE load  stopped aboard=${aboardSurv(rescue)} state=${sv.state}`
-        + ` ${sv.state === 'aboard' ? 'ABOARD' : '<-- did not board'}`);
-
-      // 3. the second seat, then a third refused
-      if (sv2) { player.pos = sv2.pos.slice(); run(40); }
-      const third = rescue.survivors[2];
-      if (third) { player.pos = third.pos.slice(); run(40); }
-      console.log(`RESCUEPROBE seats aboard=${aboardSurv(rescue)}/${rescueTune.seats}`
-        + ` third=${third ? third.state : '-'}`
-        + ` ${aboardSurv(rescue) === rescueTune.seats ? 'THE HATCH IS FULL' : '<-- seats wrong'}`);
-
-      // 4. home
-      player.pos = graph.centers[dungeon.heart].slice();
-      run(10);
-      console.log(`RESCUEPROBE home  saved=${rescue.saved} aboard=${aboardSurv(rescue)}`
-        + ` standing=${standingSurv(rescue)}`
-        + ` ${rescue.saved === rescueTune.seats ? 'DELIVERED' : '<-- not delivered'}`);
-
-      // 5. the end card: everyone still down there is written off, and the
-      // mission must notice on its own
-      player.pos = keepPos.slice();
-      for (const x of rescue.survivors) {
-        if (x.state === 'standing') { x.state = 'lost'; rescue.lost++; dropSurvivor(x.id); }
-      }
-      run(2);
-      console.log(`RESCUEPROBE end   ended=${rescueEnded} saved=${rescue.saved}`
-        + ` lost=${rescue.lost} ${rescueEnded ? 'THE CARD FIRED' : '<-- mission did not end'}`);
-      throttle = keepThr;
-    }, 2000);
-  }
-
-  // ?minelay=N — lay a row of N ahead of the tank and leave them there. The
-  // probe above blows everything it lays, so there is no frame in it where a
-  // field is standing to be LOOKED at; this is that frame.
-  {
-    const nlay = parseInt(urlParams.get('minelay') || '0', 10);
-    if (nlay > 0) {
-      setTimeout(() => {
-        if (!graph || !player.pos) return;
-        const n0 = norm3(player.pos);
-        const d0 = norm3(sub3(player.smoothDir, scale3(n0, dot3(player.smoothDir, n0))));
-        for (let i = 1; i <= nlay; i++) {
-          const pos = arcPoint(n0, d0, cellSide * i * 1.4);
-          const r = layMine(mineField, { pos, dir: d0, cellAhead: cellIndex(pos) }, t, mineTune);
-          if (r === 'laid') makeMineObj(mineField.mines[mineField.mines.length - 1]);
-        }
-        console.log(`MINELAY ${nlay} rack=${mineField.count} live=${mineField.mines.filter((m) => m.alive).length}`);
-      }, 1500);
-    }
-  }
-
-  // ?mineprobe=1 — THE FIRST RUN OF THE FEATURE IS A LOG LINE, not a play
-  // session. Three beats, each the board's own stepMines rather than a second
-  // copy of the rules:
-  //   A  a row of three, a phage walking in from the FRONT — the ordinary
-  //      case. The front mine trips and NOTHING chains, because a claymore's
-  //      arc points away from the mines behind it. That is the shape, not a
-  //      bug, and the probe says so out loud.
-  //   B  a fresh row, a phage coming from BEHIND — the nearest mine trips and
-  //      its arc holds the other two, so the row goes off as a row.
-  //   C  the tank walked around IN FRONT of its own live mine. It trips, and
-  //      it takes the hull down one. Friendly fire is the operator's ruling
-  //      and it is the one thing a unit test cannot show landing on a HULL.
-  if (urlParams.get('mineprobe') === '1') {
-    setTimeout(() => {
-      if (!graph || !player.pos) { console.log('MINEPROBE no board'); return; }
-      const n0 = norm3(player.pos);
-      const d0 = norm3(sub3(player.smoothDir, scale3(n0, dot3(player.smoothDir, n0))));
-      let tt = 100;
-      const spec = ENEMY_SPEC.phage;
-      const s0 = cellSide * spec.size * 0.7;
-      const layRow = () => {
-        const out = [];
-        for (let i = 1; i <= 3; i++) {
-          const pos = arcPoint(n0, d0, cellSide * i * 1.2);
-          const r = layMine(mineField, { pos, dir: d0, cellAhead: cellIndex(pos) }, tt, mineTune);
-          out.push(`${i}:${r}`);
-          if (r === 'laid') makeMineObj(mineField.mines[mineField.mines.length - 1]);
-        }
-        return out.join(' ');
-      };
-      const aliveMines = () => mineField.mines.filter((m) => m.alive).length;
-      const walk = (from, to, steps) => {
-        const obj = makeDotEnemy('phage', { walker: CREATURE_TINTS.phage, walkerHi: accentFor('phage') });
-        obj.scale.setScalar(s0);
-        scene.add(obj);
-        const p0 = arcPoint(n0, d0, cellSide * from);
-        const e = { type: 'phage', spec, scale0: s0, size: spec.size,
-          cur: cellIndex(p0), prev: -1, next: cellIndex(p0), prog: 0,
-          pos: p0, dir: d0.slice(), obj, alive: true, phase: 0,
-          paceJitter: 1, hp: spec.hp, behMult: 1, behUntil: -1, touchCd: -1,
-          slowFactor: 1, slowUntil: -1 };
-        e.id ??= nextEnemyId++; enemies.push(e);
-        for (let k = 0; k <= steps; k++) {
-          tt += 0.05;
-          if (e.alive) {
-            const q = arcPoint(n0, d0, cellSide * (from + (to - from) * (k / steps)));
-            e.pos = q;
-            e.obj.position.set(q[0], q[1], q[2]);
-          }
-          stepMines(0.05, tt);
-        }
-        return e;
-      };
-
-      console.log(`MINEPROBE A laid ${layRow()} rack=${mineField.count} hp=${playerHP}`
-        + ` arcs=${params.mineArcs ? 'on' : 'off'}`);
-      let n = aliveMines();
-      let e = walk(5, -1, 220);
-      console.log(`MINEPROBE A done blown=${n - aliveMines()}/${n}`
-        + ` phage=${e.alive ? `alive hp=${e.hp}` : 'DEAD'} tankHP=${playerHP}`
-        + ` ${n - aliveMines() === 1 ? 'ONE trip, no chain — the arc points away from the row'
-          : '<-- expected exactly one'}`);
-
-      // B — the same row, walked from behind: the near mine's arc holds the
-      // other two, so the queue empties one blast per frame
-      tt += 5;
-      console.log(`MINEPROBE B laid ${layRow()} rack=${mineField.count}`);
-      n = aliveMines();
-      e = walk(-1, 5, 220);
-      console.log(`MINEPROBE B done blown=${n - aliveMines()}/${n}`
-        + ` phage=${e.alive ? `alive hp=${e.hp}` : 'DEAD'} queue=${mineField.queue.length}`
-        + ` ${aliveMines() === 0 ? 'THE ROW WENT OFF AS A ROW' : '<-- mines left standing'}`);
-
-      // C — friendly fire. The hull is moved around in front of its own live
-      // mine; nothing else about the tank is touched.
-      tt += 5;
-      const cpos = arcPoint(n0, d0, cellSide * 1.2);
-      const cres = layMine(mineField, { pos: cpos, dir: d0, cellAhead: cellIndex(cpos) }, tt, mineTune);
-      if (cres === 'laid') makeMineObj(mineField.mines[mineField.mines.length - 1]);
-      const keep = player.pos.slice();
-      const hpC = playerHP;
-      // behind it first, to prove the tank can sit at its own mine's back
-      player.pos = arcPoint(n0, d0, cellSide * 0.6);
-      for (let k = 0; k < 60; k++) { tt += 0.05; stepMines(0.05, tt); }
-      const behindSafe = aliveMines() > 0;
-      player.pos = arcPoint(n0, d0, cellSide * 1.9);
-      for (let k = 0; k < 40; k++) { tt += 0.05; stepMines(0.05, tt); }
-      console.log(`MINEPROBE C lay=${cres} behind=${behindSafe ? 'SAFE' : '<-- tripped from behind'}`
-        + ` inFront hull ${hpC}->${playerHP}`
-        + ` ${playerHP === hpC - 1 ? 'FRIENDLY FIRE LANDS' : '<-- the tank took nothing'}`
-        + ` rack=${mineField.count}`);
-      player.pos = keep;
-    }, 1800);
-  }
-
   // report how close it gets, against the pad radius.
   if (urlParams.get('pedprobe') === '1') {
     setTimeout(() => {
@@ -16398,12 +13133,12 @@ export function initTdTab(root) {
   // camera's DISTANCE over the move and asserts it climbs.
   if (urlParams.get('winprobe') === '1') {
     setTimeout(() => {
-      for (const id of ['#td-msg', '#td-intro']) {
+      for (const id of ['#td-msg']) {
         const el = root.querySelector(id);
         if (el) el.classList.add('hidden');
       }
       paused = false;
-      tutorial.frozen = false;
+      
       if (!graph) { console.log('WINPROBE no board'); return; }
       const r0 = camera.position.length();
       for (const sp of spawnPoints) sp.alive = false;
@@ -16470,12 +13205,12 @@ export function initTdTab(root) {
       const away = distPart === undefined ? 0
         : Math.max(0, Math.min(40, parseInt(distPart, 10) || 0));
       setTimeout(() => {
-        for (const id of ['#td-msg', '#td-intro']) {
+        for (const id of ['#td-msg']) {
           const el = root.querySelector(id);
           if (el) el.classList.add('hidden');
         }
         paused = false;
-        tutorial.frozen = false;
+        
         shot = null;
         deploy = null;
         const spec = ENEMY_SPEC[wantType];
@@ -16575,12 +13310,12 @@ export function initTdTab(root) {
   // source search and obvious to a keypress.
   if (urlParams.get('keyprobe') === '1') {
     setTimeout(() => {
-      for (const id of ['#td-msg', '#td-intro']) {
+      for (const id of ['#td-msg']) {
         const el = root.querySelector(id);
         if (el) el.classList.add('hidden');
       }
       paused = false;
-      tutorial.frozen = false;
+      
       shot = null;
       const press = (key) => {
         dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
@@ -16624,7 +13359,7 @@ export function initTdTab(root) {
   // flag was right in isolation and the SEQUENCE was what failed.
   if (urlParams.get('hoverprobe') === '1') {
     setTimeout(() => {
-      for (const id of ['#td-msg', '#td-intro']) {
+      for (const id of ['#td-msg']) {
         const el = root.querySelector(id);
         if (el) el.classList.add('hidden');
       }
@@ -16733,7 +13468,7 @@ export function initTdTab(root) {
     setTimeout(() => {
       // the board starts PAUSED behind the landing brief and the field
       // manual; a probe that does not clear both measures a frozen game
-      for (const id of ['#td-msg', '#td-intro']) {
+      for (const id of ['#td-msg']) {
         const el = root.querySelector(id);
         if (el) el.classList.add('hidden');
       }
@@ -16752,7 +13487,7 @@ export function initTdTab(root) {
       // their own. A probe that needs &cine=0&tutstep=9 in its URL to work is
       // a probe that will be run without them and quietly report WRONG, so it
       // clears them itself.
-      tutorial.frozen = false;
+      
       shot = null;
       autoMode = true;
       if (player.next === -1) {
@@ -16855,126 +13590,6 @@ export function initTdTab(root) {
     } else console.log('TOE not applied (no gun pivots on this tank)');
   }
 
-  // ?ringdump=1 — WHAT IS ACTUALLY IN THE PORTAL RING?
-  //
-  // Operator: "the portal metallic frame model is entirely black, it should
-  // be shades of grey", and the power cores need to blow one pair at a time.
-  // Both of those are questions about the authored model's OWN names — which
-  // materials the tint ladder is failing to match, and what the cores are
-  // called — and guessing at names is how the last three model jobs went
-  // wrong. Dump them.
-  if (urlParams.get('ringdump') === '1') {
-    preloadPortalRing().then((ok) => {
-      if (!ok) { console.log('RINGDUMP model failed to load'); return; }
-      const g = makePortalRing(0x8fe8ff);
-      if (!g) { console.log('RINGDUMP no proto'); return; }
-      const mats = new Map();
-      const names = [];
-      g.traverse((o) => {
-        if (o.name) names.push(`${o.name}${o.isMesh ? '*' : ''}`);
-        if (!o.isMesh || !o.material) return;
-        for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
-          if (mats.has(m.name || '(unnamed)')) continue;
-          const c = m.color || { r: 0, g: 0, b: 0 };
-          const e = m.emissive || { r: 0, g: 0, b: 0 };
-          mats.set(m.name || '(unnamed)', {
-            lum: 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b,
-            elum: 0.2126 * e.r + 0.7152 * e.g + 0.0722 * e.b,
-            ei: m.emissiveIntensity ?? 0,
-          });
-        }
-      });
-      for (const [n2, v] of mats) {
-        console.log(`RINGDUMP material ${n2.padEnd(22)} colour lum ${v.lum.toFixed(3)}`
-          + ` | emissive lum ${v.elum.toFixed(3)} x${v.ei.toFixed(2)}`
-          + ` ${v.lum < 0.08 && v.elum < 0.02 ? '<-- READS BLACK' : ''}`);
-      }
-      // WHICH NODE IS THE GIANT? A blueprint model carries helpers — collision
-      // proxies, callout cards, an aux scene — that the bench never draws. A
-      // merge that keeps everything keeps those too, and a lit collision box
-      // is exactly a giant white square. Measure every named node.
-      const nb = new THREE.Box3(), ns = new THREE.Vector3();
-      g.updateMatrixWorld(true);
-      nb.setFromObject(g); nb.getSize(ns);
-      const whole = ns.length();
-      const rows = [];
-      g.traverse((o) => {
-        if (!o.name) return;
-        nb.setFromObject(o); nb.getSize(ns);
-        const span = ns.length();
-        if (span > whole * 0.25) rows.push(`${o.name}=${(span / whole * 100).toFixed(0)}%`);
-      });
-      console.log(`RINGDUMP big nodes (>25% of the model): ${rows.join(' ')}`);
-      // WHAT SITS IN THE MOUTH? Operator: "an unwanted grey block in the
-      // center of the portal." List every mesh — named or not, since the merge
-      // strips names — whose centre lies inside the aperture's radius.
-      const ap = g.userData.aperture;
-      if (ap) {
-        const apC = new THREE.Vector3(); ap.getWorldPosition(apC);
-        const apS = new THREE.Vector3(); ap.getWorldScale(apS);
-        const apR = Math.max(apS.x, apS.y);
-        const mb = new THREE.Box3(), mc = new THREE.Vector3(), msz = new THREE.Vector3();
-        const inMouth = [];
-        g.traverse((o) => {
-          if (!o.isMesh || o === g.userData.disc) return;
-          mb.setFromObject(o); mb.getCenter(mc); mb.getSize(msz);
-          const off = mc.distanceTo(apC);
-          if (off < apR * 0.6 && msz.length() > 1e-6) {
-            const mats = (Array.isArray(o.material) ? o.material : [o.material]).map((m) => m.name).join('+');
-            inMouth.push(`[${o.name || 'unnamed'} parent=${o.parent && o.parent.name || '?'} mat=${mats} size=${(msz.length() / apR).toFixed(2)}xR off=${(off / apR).toFixed(2)}R]`);
-          }
-        });
-        console.log(`RINGDUMP in the mouth (centre within 0.6R of the aperture): ${inMouth.join(' ') || 'nothing'}`);
-      }
-      // (A "raw file" pass used to sit here. It was not raw: loadGlb caches
-      // the parsed scene and mergeByMaterial mutates it in place, so it dumped
-      // the merged model and called it the source. The honest pre-merge look
-      // is the RING log lines from preloadPortalRing itself.)
-      console.log(`RINGDUMP nodes (${names.length}), meshes marked *:`
-        + ` ${names.filter((x) => x.endsWith('*')).join(' ') || 'NONE — everything merged away'}`);
-      // ADDRESSABLE IS NOT THE SAME AS HAVING GEOMETRY. A preserved pivot can
-      // be an empty transform whose meshes were welded into the global batch,
-      // and hiding that hides nothing — which is the failure this whole
-      // pivot list exists to avoid. So measure each pod's box.
-      const pb = new THREE.Box3(), ps = new THREE.Vector3();
-      let solid = 0;
-      for (const pod of g.userData.pods || []) {
-        pb.setFromObject(pod); pb.getSize(ps);
-        if (ps.length() > 1e-6) solid++;
-      }
-      console.log(`RINGDUMP pods addressable ${(g.userData.pods || []).length}/8,`
-        + ` of which ${solid} actually carry geometry`
-        + ` ${solid === 8 ? '(hiding one will remove a pod)' : '<-- EMPTY TRANSFORMS, hiding them does nothing'}`);
-    });
-  }
-
-  // ?hitprobe=1 — THE THREE HITS, AS THEY ACTUALLY LAND.
-  //
-  // Operator: two power cores per hit, then two more, then a destruction like
-  // the tank's. Every part of that is a side effect — pods hidden, debris
-  // pushed, a sound played — so it is checked by counting the effects rather
-  // than by looking at a frame.
-  if (urlParams.get('hitprobe') === '1') {
-    preloadPortalRing().then(() => {
-      swapGatesToRing();
-      const sp = spawnPoints.find((x) => x.alive);
-      if (!sp) { console.log('HITPROBE no live gate'); return; }
-      if (sp.obj.userData.setForm) sp.obj.userData.setForm(1);
-      const pods = () => (sp.obj.userData.pods || []).filter((p2) => p2.visible).length;
-      console.log(`HITPROBE start: hp=${sp.hp} pods=${pods()}/8 debris=${debris.length}`);
-      for (let h = 1; h <= 3; h++) {
-        const d0 = debris.length, k0 = whKick;
-        sp.hp--;
-        if (sp.hp <= 0) killPortal(sp); else gateTakesHit(sp);
-        console.log(`HITPROBE hit ${h}: hp=${sp.hp} pods=${pods()}/8`
-          + ` debris +${debris.length - d0}`
-          + ` wormhole kick ${k0.toFixed(1)} -> ${whKick.toFixed(1)}`
-          + ` recoil ${(sp.recoil ?? 0).toFixed(2)}s`
-          + (sp.alive ? '' : ' | GATE DESTROYED'));
-      }
-    });
-  }
-
   // ?breachprobe=1 — DOES A SHELL STILL BREACH THE WALL IT LANDS ON?
   //
   // The wall-impact test moved from a scan of every cell to the voxel hash
@@ -17004,106 +13619,6 @@ export function initTdTab(root) {
         + ` ${after === before + 1 && breachedCells.has(wall) ? 'THAT cell, exactly (cellIndex agrees with the old scan)'
           : after === before ? '<-- NO BREACH: cellIndex missed the wall' : '<-- breached the WRONG cell(s)'}`);
     }, 1500);
-  }
-
-  // ?sizeprobe=1 — HOW BIG IS EVERYTHING, IN CELLS?
-  //
-  // Operator: "we made the tank enormous". A screenshot cannot separate a
-  // scaled-up model from a camera sitting inside one, and those want opposite
-  // fixes — so measure the world bounding box of each actor and divide by the
-  // cell. The tank's design size is about 0.85 of a cell.
-  if (urlParams.get('sizeprobe') === '1') {
-    // NAME THE ARTIFACT AND WAIT FOR IT. Headless rarely finishes the GLB
-    // load, so a size measured at a fixed timeout is a size for the
-    // PROCEDURAL fallback — a different model with a different scale, which
-    // this project has already been burned by once.
-    Promise.all([preloadMork(), preloadPortalRing()]).then(([mk, rg]) => {
-      const bb = new THREE.Box3(), sz = new THREE.Vector3();
-      console.log(`SIZEPROBE artifacts: mkcx=${mk ? 'loaded' : 'FALLBACK'}`
-        + ` ring=${rg ? 'loaded' : 'FALLBACK'}`);
-      const say = (label, obj, want) => {
-        if (!obj) { console.log(`SIZEPROBE ${label}: absent`); return; }
-        obj.updateMatrixWorld(true);
-        bb.setFromObject(obj); bb.getSize(sz);
-        const span = Math.max(sz.x, sz.y, sz.z) / cellSide;
-        console.log(`SIZEPROBE ${label.padEnd(14)} ${span.toFixed(2)} cells across`
-          + (want ? `  (want ~${want}) ${Math.abs(span - want) > want * 0.6 ? '<-- WRONG' : 'ok'}` : '')
-          + `  | scale ${obj.scale.x.toFixed(4)}`
-          + ` baseScale ${(obj.userData.baseScale ?? 1).toFixed(4)}`);
-      };
-      say('tank', playerMesh, 0.85);
-      const gate = spawnPoints[0] && spawnPoints[0].obj;
-      // FORM IT FIRST. A gate spends its opening seconds dialling in from
-      // nothing, so measuring on a timer reports 0.00 cells and calls the
-      // model broken — which is exactly what the first reading did.
-      if (gate && gate.userData.setForm) gate.userData.setForm(1);
-      say('gate', gate, GATE_HEIGHT);
-      if (gate) {
-        // ...and where it sits relative to the ground it should stand on
-        const r = Math.hypot(gate.position.x, gate.position.y, gate.position.z);
-        console.log(`SIZEPROBE gate origin sits ${((r - 1) / cellSide).toFixed(2)}`
-          + ` cells off the surface (a grounded ring wants ~0)`);
-      }
-      // THE APERTURE, which is what decides whether the wormhole fills the
-      // hole or spills out over the ring. Its reserved volume lives in the
-      // node's SCALE, and a merge can reparent a preserved pivot and drop an
-      // ancestor's transform on the way — so the number is read off the live
-      // object rather than trusted from the blueprint.
-      if (gate && gate.userData.aperture) {
-        const ap = gate.userData.aperture;
-        const ws = new THREE.Vector3();
-        ap.getWorldScale(ws);
-        gate.updateMatrixWorld(true);
-        bb.setFromObject(gate); bb.getSize(sz);
-        const ringSpan = Math.max(sz.x, sz.y, sz.z);
-        console.log(`SIZEPROBE aperture world scale ${ws.x.toFixed(4)}`
-          + ` -> disc diameter ${(2 * ws.x / cellSide).toFixed(2)} cells`
-          + ` vs ring span ${(ringSpan / cellSide).toFixed(2)} cells`
-          + ` ${2 * ws.x > ringSpan ? '<-- THE HOLE IS BIGGER THAN THE RING' : 'fits'}`);
-      }
-      console.log(`SIZEPROBE cellSide=${cellSide.toFixed(4)} unitScale=${unitScale.toFixed(4)}`);
-    });
-  }
-
-  // ?gateprobe2=1 — ARE THE GATES WEARING THE RING, AND DOES THE RAMP RUN?
-  //
-  // Two things a screenshot cannot settle: whether the gates got the authored
-  // model or fell back to the dot cloud, and whether travel actually winds up
-  // in the last five seconds before a wave. The ramp is driven by a clock, so
-  // it is checked by asking the clock, not by waiting.
-  if (urlParams.get('gateprobe2') === '1') {
-    preloadPortalRing().then((ok) => {
-      swapGatesToRing();
-      const wearing = spawnPoints.filter((sp) => sp.obj && sp.obj.userData.disc).length;
-      console.log(`GATEPROBE2 ring loaded=${ok}`
-        + ` | ${wearing}/${spawnPoints.length} gates wearing the ring`
-        + ` ${wearing === spawnPoints.length && spawnPoints.length ? '' : '<-- some fell back to the cloud'}`
-        + ` | one shared target ${whRt ? `${whRender.size}px` : 'NOT BUILT'}`
-        + ` for all of them`);
-      // the ramp, read straight off travelRate at each second of the lead
-      const row = [];
-      for (let sec = 7; sec >= 0; sec--) row.push(`${sec}s:${travelRate(sec).toFixed(2)}`);
-      console.log(`GATEPROBE2 travel ramp (seconds before the wave) ${row.join('  ')}`);
-      // ...and that the phase actually accumulates through it
-      const p0 = whPhase.travel;
-      for (let i = 0; i < 300; i++) advancePhase(whPhase, 1 / 60, travelRate(5 - i / 60));
-      console.log(`GATEPROBE2 five seconds of ramp moved the phase`
-        + ` ${(whPhase.travel - p0).toFixed(3)}`
-        + ` ${whPhase.travel - p0 > 0 ? '(travel is live)' : '<-- PHASE NEVER MOVED'}`);
-      const folds = whRender.size ** 2 * WORMHOLE_PRESET.uSteps * WORMHOLE_PRESET.uTurbOctaves;
-      console.log(`GATEPROBE2 cost ${(folds / 1e6).toFixed(0)}M sine-folds per rendered frame,`
-        + ` ONCE for the board (not per gate), at ${whRender.updateHz}Hz`);
-      // THE FRUSTUM GATE. The march is skipped when no live gate is on screen;
-      // a gate that is on screen and NOT marched is a black hole in the ring,
-      // so the visibility test has to be right in both directions.
-      const vis = anyGateVisible();
-      const marchedBefore = whLastAt;
-      updateWormhole(1 / 30, (whLastAt || 0) + 1);   // force past the period
-      console.log(`GATEPROBE2 visibility: a gate is ${vis ? 'IN' : 'OUT of'} the frustum`
-        + ` -> march ${whLastAt !== marchedBefore ? 'RAN' : 'SKIPPED'}`
-        + ` ${(vis && whLastAt !== marchedBefore) || (!vis && whLastAt === marchedBefore)
-          ? '(consistent)' : '<-- GATE VISIBLE BUT NOT MARCHED, or vice versa'}`);
-    });
   }
 
   // ?garrison=1 — WHERE THE OPENING TWO GO, AND WHO BUILDS THEM.
@@ -17187,7 +13702,7 @@ export function initTdTab(root) {
   // is invisible-but-alive exactly as described.
   if (urlParams.get('ghostprobe') === '1') {
     const gpWave = Math.max(1, parseInt(urlParams.get('ghostwave') || '2', 10));
-    dismissIntro();
+    
     for (let w = 0; w < gpWave; w++) spawnWave();
     for (let i = 0; i < 400; i++) releaseSpawns(0.02);
     for (let i = 0; i < 60; i++) updateEnemies(1 / 60, i / 60);
@@ -17291,115 +13806,13 @@ export function initTdTab(root) {
       + ` | (a NEW RUN still starts unranked — that reset lives in regenerate)`);
   }
 
-  // ?gateprobe=1 — report a live gate's geometry: drawRange, and where its
-  // horizon dots actually sit. The horizon rendered in the module bench, so
-  // if it is missing in game the difference is in THIS file's handling.
-  if (urlParams.get('gateprobe')) {
-    // rAF-counted, not timer-based: under a virtual-time budget every timer
-    // can fire before the FIRST frame renders, and the first cut of this
-    // probe reported dial=0 on a gate that simply had not been given a frame
-    let gpFrames = 0;
-    const gpWait = () => {
-      gpFrames++;
-      if (gpFrames === 3) {
-        // then FORCE formation and tick once — swiftshader cannot render 70
-        // frames inside the watchdog, and the question is whether the game
-        // path positions the horizon, not how fast headless paints
-        const sp = spawnPoints.find((q) => q.alive);
-        if (sp && sp.obj.userData.setForm) {
-          sp.obj.userData.dial = 1;
-          sp.obj.userData.setForm(1);
-          sp.obj.userData.tick(2.2);
-          gpReport();
-        }
-      }
-      if (gpFrames < 3) requestAnimationFrame(gpWait);
-    };
-    requestAnimationFrame(gpWait);
-    const gpReport = () => {
-      const sp = spawnPoints.find((q) => q.alive);
-      if (!sp) { console.log('GATE none'); return; }
-      const g = sp.obj.geometry;
-      const a = g.getAttribute('position');
-      const H0 = 435;
-      let minR = Infinity, maxR = 0, zeros = 0;
-      for (let i = H0; i < a.count; i++) {
-        const r = Math.hypot(a.getX(i), a.getY(i), a.getZ(i));
-        if (r < 1e-6) zeros++;
-        minR = Math.min(minR, r); maxR = Math.max(maxR, r);
-      }
-      console.log(`GATE count=${a.count} drawRange=${g.drawRange.count}`
-        + ` dial=${sp.obj.userData.dial} horizonR=${minR.toFixed(3)}..${maxR.toFixed(3)}`
-        + ` zeros=${zeros} scale=${sp.obj.scale.x.toFixed(3)}`);
-      // positions passed three probes while the screen stayed empty — so
-      // this pass checks everything ELSE a dot needs: color, material,
-      // visibility, and where it lands on SCREEN through the live camera
-      const cAttr = g.getAttribute('color');
-      const cs = [];
-      for (const i of [H0, H0 + 1, H0 + 80, H0 + 173, 0, 200]) {
-        cs.push(`i${i}=(${cAttr.getX(i).toFixed(2)},${cAttr.getY(i).toFixed(2)},${cAttr.getZ(i).toFixed(2)})`);
-      }
-      const m = sp.obj.material;
-      console.log(`GATE2 ${cs.join(' ')} matCol=${m.color.getHexString()}`
-        + ` op=${m.opacity} vis=${sp.obj.visible} size=${m.size}`);
-      sp.obj.updateWorldMatrix(true, false);
-      const scr = [];
-      for (const i of [H0, H0 + 80, H0 + 173, 0]) {
-        const v = new THREE.Vector3(a.getX(i), a.getY(i), a.getZ(i))
-          .applyMatrix4(sp.obj.matrixWorld).project(camera);
-        scr.push(`i${i}=(${v.x.toFixed(2)},${v.y.toFixed(2)},${v.z.toFixed(3)})`);
-      }
-      console.log(`GATE3 screen ${scr.join(' ')}`);
-    };
-  }
-
-  const tutSteps = parseInt(urlParams.get('tutstep') || '0', 10);
-  if (runTutorial && tutSteps > 0) {
-    let left = tutSteps;
-    // Wait for the PHASE to change before clearing the next pair. A fixed
-    // delay looks right and is not: under a virtual-time budget the timer
-    // chain runs far faster than the render loop, so two clears land between
-    // one pair of ticks, the phase advances once, and the run silently ends
-    // up short. Poll the thing being driven, never a clock.
-    const step = () => {
-      if (left-- <= 0) return;
-      // the build phase ends on a tower, which no clear can stand in for:
-      // put one on the nearest legal cell so the replica reaches the handoff
-      if (tutorial.phase === 'build') {
-        let best = -1, bd = Infinity;
-        for (let ci = 0; ci < dungeon.tags.length; ci++) {
-          if (placeError(ci)) continue;
-          const d = dist3(graph.centers[ci], player.pos);
-          if (d < bd) { bd = d; best = ci; }
-        }
-        if (best >= 0) { eco.addBiomass(500); commitTower(starterTower().key, best); tutorial.tickBuild(); }
-        setTimeout(step, 120);
-        return;
-      }
-      tutorial.frozen = false;   // the opening hold would swallow the first
-      for (const e of tutorial.fodder) {
-        if (e.alive) { e.alive = false; scene.remove(e.obj); }
-      }
-      // Drive the phase machine DIRECTLY rather than waiting for animate()
-      // to notice. Under a virtual-time budget, timers run on virtual time
-      // while requestAnimationFrame is throttled, so a wait-for-the-loop
-      // poll times out and the run silently ends up a phase or two short —
-      // which is exactly how this hook failed the first two times.
-      tutorial.tick(1 / 60);   // register the clear — this opens the beat
-      tutorial.tick(TUT_BEAT + 1);  // ...and run the beat out, so the next
-                                    // lesson has actually landed to look at
-      setTimeout(step, 120);
-    };
-    setTimeout(step, 900);
-  }
-
   // Browser acceptance adapter, available only when explicitly requested.
   // Tests use the real commands/transitions, and inspect serializable state.
   if (urlParams.get('acceptance') === '1') {
     window.__stalheartTest = {
       state: () => ({ pilotRounds: rs?.pilotRounds ?? 0, pilotHits: rs?.pilotHits ?? 0, gunship: { phase: gunship.phase, left: +gunship.left.toFixed(2), mounted: gunship.mounted, gun: gunship.gun, passes: gunship.passes, optic: !!gunshipOptic?.active(), station: onStation(gunship), seat: !!pilot?.gunship, heavy: heavyState(gunship, GUNSHIP_GUNS), heat: +gunship.heat.toFixed(2), overheated: gunship.overheated, mag: gunship.mag, briefing: !!gunshipBriefing?.isOpen(), lane: pilotHost?.gunship?.lane() ?? -1, aim: pilot?.gunshipOptic?.()?.pos ?? null, aimCell: pilot?.gunshipOptic?.()?.pos ? cellIndex(norm3(pilot.gunshipOptic().pos)) : -1 }, shot:shotId(),breachRubble:gameBreaches.rubbleState(),breaches:gameBreaches.state(),queued:spawnQueue.length,wallCount:dungeon.tags.filter(tag=>tag===BLOCKED).length,emerging:enemies.filter(e=>e.alive&&e.emergeAge<1.2).length,round, wave, runGen: runContext.generation, heart: heartHP, hulls: playerHP,
         biomass: eco.biomass, towers: towers.length, won: player.won, paused,
-        roster: ROSTER.id, mission: missionOn, buildMode, story: story?.beats.state() ?? null, storyHud: story?.hud.state() ?? null, killsBySrc: { ...rs.bySrc }, storyLod: storyBase?.lod() ?? null, storyBaseErrors: storyBase?.errors.slice() ?? null, towerCells: towers.map((t) => [t.key, t.ci]), insideEnemies: story ? enemies.filter((e) => e.alive && story.inside(e.cur)).length : 0,
+        roster: ROSTER.id, buildMode, story: story?.beats.state() ?? null, storyHud: story?.hud.state() ?? null, killsBySrc: { ...rs.bySrc }, storyLod: storyBase?.lod() ?? null, storyBaseErrors: storyBase?.errors.slice() ?? null, towerCells: towers.map((t) => [t.key, t.ci]), insideEnemies: story ? enemies.filter((e) => e.alive && story.inside(e.cur)).length : 0,
         playerAsset: playerMesh?.userData.asset || params.creature, playerSpan: (() => { if (!playerMesh) return null; const b = new THREE.Box3().setFromObject(playerMesh); return Number.isFinite(b.max.x) ? +(b.getSize(new THREE.Vector3()).length() / (unitScale || 1)).toFixed(2) : null; })(),   // the hull's true size over its scale: exploded geometry reads absurd here
         playerAssetReady: !playerMesh?.userData.loading,
         playerModelStats: playerMesh?.userData.modelStats,
@@ -17424,9 +13837,9 @@ export function initTdTab(root) {
       breachStrike:()=>{const sp=spawnPoints.find(s=>s.alive&&s.obj.userData.breach);if(sp)executeStrike(sp.ci,t);},
       breachShell:()=>{const sp=spawnPoints.find(s=>s.alive&&s.obj.userData.breach);if(sp)gateTakesShell(sp);},
       breachSpent:programmeSpent,
-      breachScenario:()=>{endShot();dismissIntro();if(tutorialActive)endTutorial();paused=false;tutorial.frozen=false;setView('orbit');followSuspend=true;const sp=spawnPoints.find(s=>s.alive);if(sp){buildQ.setFromUnitVectors(BQ_Z,new THREE.Vector3(...graph.centers[sp.ci]).normalize());buildDist=1.65;}waveIn=-1;armWave();},
+      breachScenario:()=>{endShot();paused=false;setView('orbit');followSuspend=true;const sp=spawnPoints.find(s=>s.alive);if(sp){buildQ.setFromUnitVectors(BQ_Z,new THREE.Vector3(...graph.centers[sp.ci]).normalize());buildDist=1.65;}waveIn=-1;armWave();},
       shieldScenario: () => {
-        endShot();dismissIntro();if(tutorialActive)endTutorial();paused=true;
+        endShot();paused=true;
         for(const e of enemies){e.alive=false;scene.remove(e.obj);}spawnQueue.length=0;
         const ci=dungeon.tags.findIndex((tag,i)=>!placeError(i) && !towerByCell.has(i));
         if(ci<0)return false;
@@ -17444,7 +13857,7 @@ export function initTdTab(root) {
         renderAnalysis(false);
       },
       missileScenario: key => {
-        endShot();dismissIntro();if(tutorialActive)endTutorial();paused=true;
+        endShot();paused=true;
         clearTowers();for(const e of enemies){e.alive=false;scene.remove(e.obj);}enemies.length=0;spawnQueue.length=0;
         const ci=dungeon.tags.findIndex((tag,i)=>!placeError(i) && !towerByCell.has(i));
         if(ci<0)return false;
@@ -17475,31 +13888,31 @@ export function initTdTab(root) {
         return launchTowerSeeker(tw,from,target,runContext.time);
       },
       openBuildMenu: () => {
-        endShot(); dismissIntro(); if (tutorialActive) endTutorial();
+        endShot(); 
         const ci = dungeon.tags.findIndex((tag, i) => !placeError(i) && !towerByCell.has(i));
         if (ci < 0) return false;
         openShop(ci, innerWidth / 2, innerHeight / 2); return true;
       },
-      begin: () => { endShot(); dismissIntro(); paused = false; tutorial.frozen = false; }, mountGunship: () => { if (!storyViews) storyApi.unlock('views'); storyViews.station(onStation(gunship), phaseLeft(gunship)); document.querySelector('#story-views [data-mount="gunship"]')?.click(); return !!pilot?.gunship; }, gunshipHold: (on) => { if (pilot) pilot.state.held = !!on; }, gunshipGun: (k) => selectGun(gunship, k, GUNSHIP_GUNS), spawnFodder: (n, type = 'phage') => { if (!story) return 0; if (!story.source?.alive) storyApi.breach(gunshipFar()); for (let i = 0; i < n; i++) storyApi.spawn(type, story.source.ci, { spread: 0.8, delay: i * 0.12 }); return n; },   /* the skip panel's enemies: a breach opens on the lane outside the gate if none is live, and they rise out of it staggered (emergence only runs from a real breach) */
+      begin: () => { endShot(); paused = false; }, mountGunship: () => { if (!storyViews) storyApi.unlock('views'); storyViews.station(onStation(gunship), phaseLeft(gunship)); document.querySelector('#story-views [data-mount="gunship"]')?.click(); return !!pilot?.gunship; }, gunshipHold: (on) => { if (pilot) pilot.state.held = !!on; }, gunshipGun: (k) => selectGun(gunship, k, GUNSHIP_GUNS), spawnFodder: (n, type = 'phage') => { if (!story) return 0; if (!story.source?.alive) storyApi.breach(gunshipFar()); for (let i = 0; i < n; i++) storyApi.spawn(type, story.source.ci, { spread: 0.8, delay: i * 0.12 }); return n; },   /* the skip panel's enemies: a breach opens on the lane outside the gate if none is live, and they rise out of it staggered (emergence only runs from a real breach) */
       clearSector: () => {
-        endShot(); dismissIntro();
-        if (tutorialActive) endTutorial();
-        paused = false; tutorial.frozen = false;
+        endShot(); 
+        
+        paused = false; 
         spawnQueue.length = 0;
         for (const e of enemies) { e.alive = false; scene.remove(e.obj); }
         for (const sp of spawnPoints) { sp.alive = false; scene.remove(sp.obj);disposeObj(sp.obj); }
         eco.spend(eco.biomass); // exercise the zero-income early-clear case
         checkVictory(); endShot(); renderVerdict(round >= SECTORS_TOTAL);
       },
-      focusHeart: () => { endShot(); dismissIntro(); if (tutorialActive) endTutorial(); setView('orbit'); centerBuildOnHeart(); followSuspend = true; buildDist = 1.65; },
-      deployHull: n => { endShot(); dismissIntro(); if (tutorialActive) endTutorial(); paused = false; tutorial.frozen = false; deployStart(n); },
+      focusHeart: () => { endShot(); setView('orbit'); centerBuildOnHeart(); followSuspend = true; buildDist = 1.65; },
+      deployHull: n => { endShot(); paused = false; deployStart(n); },
       restart: () => regenerate(),
       heartHealth: fraction => { heartHP = Math.max(0, Math.min(HEART_MAX, fraction * HEART_MAX)); heartSprite.userData.setHealth?.(fraction); },
     };
   }
 
   function leavePilot() { if (!pilotMode) return; pilot?.dispose(); for (const tw of towers) { tw.povFire?.stop(0.1); tw.povFire = null; } pilot = null; pilotHost = null; pilotMode = false; storyScope?.update({ on: false }); /* the scope leaves with the optic */ params.callouts = true; delete window.__stalheartPilotTest; setView('third'); snapCamera(); }   // back to the hull
-  function enterPilot(posts) { pilot?.dispose(); pilotMode = true;   // one optic at a time: a hand-over while already piloting replaces the panel. Practice mode computes six posts; the story hands over its mounts
+  function enterPilot(posts) { pilot?.dispose(); pilotMode = true;   // one optic at a time: a hand-over while already piloting replaces the panel. the story hands over its mounts
     function installPilot(key) {
       const old=pilotMounts[pilotPost];
       if(old?.key===key){const sp=spawnPoints.filter(sp=>sp.alive).sort((a,b)=>chord(graph.centers[old.ci],graph.centers[a.ci])-chord(graph.centers[old.ci],graph.centers[b.ci]))[0];pilot.attach(old,graph.centers[sp?.ci??dungeon.spawn]);if(story?.missiles?.[key]){pilot.state.zoom=story.quiverZoom??2;pilotHost.zoom(pilot.state.zoom);}return;}   // picked: a guided mount opens through its long lens here too
@@ -17528,16 +13941,15 @@ export function initTdTab(root) {
       aimPoint:(eye,dir,range)=>{const hit=rayToTerrain(eye.toArray(),dir.toArray(),range,pilot.state.tower.ci);return eye.clone().addScaledVector(dir,hit.len).toArray();},
       cameraPose:(eye,dir,up,goal)=>{tmpCam.position.copy(eye);tmpCam.up.copy(up);tmpCam.lookAt(eye.clone().add(dir));goal.quat.copy(tmpCam.quaternion);}
     });
-    // Real first-sector wall cells, prioritised beside incoming routes.
-    pilotPosts=posts?posts.slice():choosePilotPosts({walls:Array.from(dungeon.tags,(_,ci)=>ci).filter(ci=>!placeError(ci)),lanes:spawnPoints.filter(sp=>sp.alive).map(sp=>sp.ci),centers:graph.centers,cellSide,chord,losClear});   // the six practice posts: a domain rule (src/domain/pilot-posts.js)
-    deploy=null;endShot();dismissIntro();paused=false;tutorial.frozen=false;runTutorial=false;
-    for(let i=0;i<pilotPosts.length;i++)pilotMounts[i]=posts?towerByCell.get(pilotPosts[i]):commitTower('needle',pilotPosts[i],0);
-    clearBriefs();params.callouts=false;setView('bastion');if(pilotPosts.length)pilot.select(posts?pilotMounts[0]?.key||'rotor':'needle');hideRangeRing();snapCamera();   // no posts yet (the gunship's seat before any sentry stands): nothing to install
+    pilotPosts=(posts??[]).slice();   // the story hands over its printed mounts
+    deploy=null;endShot();paused=false;
+    for(let i=0;i<pilotPosts.length;i++)pilotMounts[i]=towerByCell.get(pilotPosts[i]);
+    clearBriefs();params.callouts=false;setView('bastion');if(pilotPosts.length)pilot.select(pilotMounts[0]?.key||'rotor');hideRangeRing();snapCamera();   // no posts yet (the gunship's seat before any sentry stands): nothing to install
     if(urlParams.get('acceptance')==='1')window.__stalheartPilotTest={state:()=>({paused,seed:params.seed,points:params.points,sector:round,posts:pilotPosts.slice(),view:pilot.state.view,ci:pilot.state.tower.ci,key:pilot.state.tower.key,shots:pilot.state.shots,held:pilot.state.held,heat:pilot.state.tower.heat??0,overheated:!!pilot.state.tower.overheated,roundDmg:+(effectiveStats(pilot.state.tower.def,pilot.state.tower.tier).dmg*(story?.pilot.dmgMul??1)).toFixed(3),enemyHp:enemies.find(e=>e.alive&&e.id>0)?.spec.hp??null,wave,enemies:enemies.filter(e=>e.alive).length,tank:player.pos.slice(),camera:camera.position.toArray(),target:pilot.state.target?.id??null,ready:!pilot.state.tower.obj.userData.loading,aimError:pilot.state.tower.aimErr,lock:pilot.state.tower.lock,heart:heartHP}),select:key=>pilot.select(key),
       aimEnemy:()=>{const tw=pilot.state.tower;const e=enemies.find(e=>e.alive&&missileDistance(graph.centers[tw.ci],e.pos)<(missileOf(tw.key)?.maxRange??effectiveStats(tw.def,tw.tier).range*10)&&losClear(tw.ci,e.pos,perchOf(tw)));if(!e)return null;pilot.aimAt(add3(e.pos,scale3(norm3(e.pos),cellSide*.3)));return {id:e.id,hp:e.hp};},
       enemy:id=>{const e=enemies.find(e=>e.id===id);return e?{hp:e.hp,alive:e.alive}:null;},hold:on=>{pilot.state.held=!!on;},view:v=>pilot.setView(v), reach:()=>{const tw=pilot.state.tower;return enemies.filter(e=>e.alive).map(e=>({id:e.id,type:e.type,m:+missileDistance(graph.centers[tw.ci],e.pos).toFixed(1),los:losClear(tw.ci,e.pos,perchOf(tw)),cell:e.cur,pos:e.pos.map(v=>+v.toFixed(5))}));}
     };
-  } if (pilotMode) enterPilot(null);
+  }
 
   resize();
   animate();

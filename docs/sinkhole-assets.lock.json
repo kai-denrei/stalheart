@@ -81,13 +81,6 @@
       "bytes": 2351
     },
     {
-      "sourcePath": "src/effects/ScreenFlash.js",
-      "path": "src/fx/sinkhole/effects/ScreenFlash.js",
-      "sourceSha256": "6f63b7d09d3f68ffd67db86788d1b0c603009137dd94bccf115f81041b91853d",
-      "sha256": "b18f005c6397570841fe4c8b81b9215b25cec97b6f073277d019710d4d6cc553",
-      "bytes": 1063
-    },
-    {
       "sourcePath": "src/particles/ParticleEngine.js",
       "path": "src/fx/sinkhole/particles/ParticleEngine.js",
       "sourceSha256": "6dd347816fb56163c6037cdb167abc7c6348c56a46995e0df7a1982882755bba",
@@ -163,13 +156,6 @@
       "sourceSha256": "c2f91c3a515f3c43d00b386c5906c122ac8b960a828c9d6ac66fb7604c8850ec",
       "sha256": "c2f91c3a515f3c43d00b386c5906c122ac8b960a828c9d6ac66fb7604c8850ec",
       "bytes": 2477
-    },
-    {
-      "sourcePath": "src/utils/dispose.js",
-      "path": "src/fx/sinkhole/utils/dispose.js",
-      "sourceSha256": "c4604728a9076f804261e64157da2e22937d6bc46a5595356e24b3e118bf15cc",
-      "sha256": "c4604728a9076f804261e64157da2e22937d6bc46a5595356e24b3e118bf15cc",
-      "bytes": 1320
     },
     {
       "sourcePath": "src/config/settings.js",

@@ -68,12 +68,6 @@ export const ACHIEVEMENTS = [
     test: (s) => s.planetCleared },
 
   // --- curiosity -----------------------------------------------------------
-  { id: 'hacker', name: 'HACKER', group: 'curiosity',
-    note: 'found the relay at the far pole. nobody told you it was there',
-    test: (s) => s.serverFound },
-  { id: 'retrogamer', name: 'RETRO-GAMER', group: 'curiosity',
-    note: 'beat all three protocols on the relay',
-    test: (s) => s.minigamesWon && s.minigamesWon.length >= 3 },
   { id: 'orbital', name: 'DEEPWATCH', group: 'curiosity',
     note: 'took a portal off the board with a munition from orbit',
     test: (s) => s.strikePortalKills > 0 },
@@ -108,8 +102,6 @@ export function blankRun() {
     sectorCleared: false,
     sectorsCleared: 0,
     planetCleared: false,
-    serverFound: false,
-    minigamesWon: [],
     strikePortalKills: 0,
     maxQueue: 0,
     peakBiomass: 0,

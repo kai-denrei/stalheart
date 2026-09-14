@@ -23,9 +23,9 @@ import { shotOf } from './sentryfx.js';
 import { OrbitControls } from '../vendor/OrbitControls.js';
 import { GLTFExporter } from '../vendor/GLTFExporter.js';
 import { ENEMY_SPEC } from './enemyspec.js';
-import { buildUnit, preloadMkcx, preloadMork, preloadMorkTier, preloadMorkProxy, makeDebris, makeDotBurst, makeBulletCloud,
-  makeDotEnemy, makeRewardSolid, makeShellSolid, makePortalCloud,
-  preloadServer, makeServerFixture, preloadContainer, makeContainerFixture,
+import { buildUnit, preloadMork, preloadMorkTier, preloadMorkProxy, makeDebris, makeDotBurst, makeBulletCloud,
+  makeDotEnemy, makeRewardSolid, makeShellSolid,
+  preloadContainer, makeContainerFixture,
   preloadFabricator, makeFabricatorDrone, makeIsaoDrone } from './units.js';
 import { TANK_FEEL, TANK_FEEL_KNOBS, formatFeelCode, makeTankFeel, stepTankFeel,
   landTankFeel, fireTankFeel, applyTankFeel, applyTankHealth } from './tankfeel.js';
@@ -285,16 +285,10 @@ export function initUnitsTab(root) {
   // exists only on the cloud.
   function buildEntry(e) {
     if (e.kind === 'tower') return buildTowerLook(state.towerLook, TOWER_BY_KEY[e.id]);
-    if (e.kind === 'portal') {
-      const p = makePortalCloud({ body: 0xcfd8ff, hi: 0xffffff });
-      p.userData.baseScale = 1;
-      return p;
-    }
     if (e.kind === 'fixture') {
       // fixtures preload async; by the time anyone pages to them the
       // bytes have almost always landed — the placeholder covers the gap
       const FIXTURES = {
-        server: [makeServerFixture, preloadServer, undefined],
         bobby: [makeFabricatorDrone, preloadFabricator, 0xffc24a],
         isao: [makeIsaoDrone, preloadFabricator, 0xbfe6ff],
       };
@@ -756,7 +750,6 @@ export function initUnitsTab(root) {
     });
   }
 
-  preloadServer();
   preloadContainer();
   preloadFabricator();   // Bobby is in the roster now; start his bytes with the rest
 
@@ -1389,7 +1382,6 @@ export function initUnitsTab(root) {
   }
   preloadLook(DEFAULT_TOWER_LOOK).then(() => { if (active) show(); });
   // async models arrive late; refresh once they land so the first look is real
-  for (const id of ['mkcx', 'mkcx2']) preloadMkcx(id).then(() => { if (active) show(); });
   preloadMork().then(ok => { if (ok && active && currentEntry?.id === 'mork') show(); });
 
   if (q.get('acceptance') === '1') window.__stalheartUnits = {

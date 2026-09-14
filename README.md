@@ -1,12 +1,10 @@
 # Stalheart
 
-Drive the tank. Defend the heart. Hunt the gates. Reclaim a planet built on an irregular spherical grid.
+Land on a new world, recycle the rocket, print the first guns and hold the gate. A colony built on an irregular spherical grid: resourceful joy under pressure.
 
-Stalheart is the independently maintained game extracted from [spherical-stalberg-grid](https://github.com/kai-denrei/spherical-stalberg-grid). The original Git history is retained. The eight numbered Sentries are the shared game/lab roster; rescue and raid remain playable. See [the Sentry catalog](docs/SENTRIES.md).
+Stalheart is the independently maintained game extracted from [spherical-stalberg-grid](https://github.com/kai-denrei/spherical-stalberg-grid). The original Git history is retained. The eight numbered Sentries are the shared game/lab roster. See [the Sentry catalog](docs/SENTRIES.md) and [the current state](docs/STATE.md).
 
 [Play Stalheart](https://kai-denrei.github.io/stalheart/) · [Workshop](https://kai-denrei.github.io/stalheart/labs.html)
-
-For a separate rocket-landing prototype, use the [planet compatibility handoff](docs/ROCKET-PLANET.md).
 
 ## Run
 
@@ -38,7 +36,7 @@ The impact and sound labs share a versioned FX package. Export/import JSON, save
 
 ## Development memory
 
-Read the [migration handoff](docs/MIGRATION.md), [current state](docs/STATE.md) and [development instructions](AGENTS.md). `/deban` is installed locally for Claude and linked for compatible agent skill discovery. It writes validated immutable entries; [DEVLOG.md](DEVLOG.md) is generated from them.
+Read the [current state](docs/STATE.md), the [FunMap](docs/FUNMAP.md) and the [development instructions](AGENTS.md). `/deban` is installed locally for Claude and linked for compatible agent skill discovery. It writes validated immutable entries; [DEVLOG.md](DEVLOG.md) is generated from them.
 
 ```sh
 npm run log -- add /tmp/entry.json
@@ -52,7 +50,7 @@ Corrections supersede prior IDs. No repeated role indexes, mandatory log-only co
 
 [SentryTowers_A6](https://jelaludo.github.io/SentryTowers_A6/) is the preferred direction for industrial assets, including Terraformer 3000. Existing matching sentries and all four Terraformer destruction variants are pinned in [the asset lock](docs/sentry-assets.lock.json). Run `npm run assets:check`; `node scripts/assets.mjs fetch` restores missing pinned assets without updating their revision.
 
-Try the authored Terraformer in the real game with `/?terraformer=a6#td`. It remains opt-in: the intact asset is 165,404 triangles / about 11 MB before release transfer compression. D0–D3 are damage states, not LODs. Animation and the intact scale/origin are preserved across states. No runtime hotlinks or Three.js upgrade were needed. See [asset direction](docs/ASSETS.md).
+The authored Terraformer 3000 is the Stalheart everywhere. D0–D3 are damage states, not LODs. Animation and the intact scale/origin are preserved across states. No runtime hotlinks or Three.js upgrade were needed. See [asset direction](docs/ASSETS.md).
 
 The sphere kernel stays pinned in place for this first extraction; [provenance](docs/kernel-provenance.json) records checksums and the research commit. Standalone operation needs no sibling checkout, symlinked runtime files, or research server.
 
@@ -70,4 +68,4 @@ Then import the downloaded JSON through Stalheart Settings. The helper was added
 
 Deploy the contents of `dist/`, not the repository. It contains no private decision records, source audio originals, tests or archived documents. `release.json` records the deterministic build and every shipped file's checksum. The worker caches visited resources, waits before updating, and only deletes this app's own cache namespace. Complete offline installation is not yet promised.
 
-There is no remote or public deployment configured by the migration. The game is ready for local development; deployment can be configured independently of research.
+`main` publishes `dist/` to GitHub Pages through the pinned Actions workflow.

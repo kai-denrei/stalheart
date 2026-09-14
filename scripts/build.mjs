@@ -18,7 +18,7 @@ async function packGlb(bytes, name) {
   return out;
 }
 const out = resolve(root, 'dist');
-const dirs = ['src', 'vendor', 'assets', 'icons', 'minigames'];
+const dirs = ['src', 'vendor', 'assets', 'icons'];
 async function walk(dir) {
   const entries = await readdir(dir, { withFileTypes: true });
   const groups = await Promise.all(entries.map(e => e.isDirectory() ? walk(resolve(dir, e.name)) : e.isFile() ? [resolve(dir, e.name)] : []));
@@ -35,7 +35,7 @@ const manifest = [];
 for (const path of paths) {
   const rel = relative(root, path); const dest = resolve(out, rel);
   await mkdir(dirname(dest), { recursive: true });
-  if (/\.(js|html|css)$/.test(path) && !rel.startsWith('minigames/')) {
+  if (/\.(js|html|css)$/.test(path)) {
     let text = await readFile(path, 'utf8');
     if (path.endsWith('.js')) {
       // Every source and vendor ESM import has one identity, including dynamic imports.

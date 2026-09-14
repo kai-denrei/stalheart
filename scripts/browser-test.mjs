@@ -15,7 +15,7 @@ const origin=`http://127.0.0.1:${port}`,urlRoot=origin+base;
 const output=resolve('artifacts/browser'+(production?'-dist':''));mkdirSync(output,{recursive:true});
 const profile=mkdtempSync(join(tmpdir(),'stalheart-chrome-'));
 const authoringWorkspace=args.includes('--local-authoring')?mkdtempSync(join(tmpdir(),'stalheart-authoring-browser-')):null;
-if(authoringWorkspace) for(const path of ['src','scripts','test','docs','vendor','assets','icons','minigames','index.html','labs.html','settings.html','styles.css','app.css','manifest.webmanifest','favicon.svg','sw.js','ATTRIBUTIONS.md','DEVLOG.md','package.json']) cpSync(resolve(path),join(authoringWorkspace,path),{recursive:true});
+if(authoringWorkspace) for(const path of ['src','scripts','test','docs','vendor','assets','icons','index.html','labs.html','settings.html','styles.css','app.css','manifest.webmanifest','favicon.svg','sw.js','ATTRIBUTIONS.md','DEVLOG.md','package.json']) cpSync(resolve(path),join(authoringWorkspace,path),{recursive:true});
 const server=spawn(process.execPath,['scripts/serve.mjs',...(authoringWorkspace?[]:['--read-only']),'--port',String(port),'--dir',authoringWorkspace || (production?'dist':'.'),'--base',base],{stdio:['ignore','pipe','pipe']});
 let browser,ws,counter=0;const pending=new Map(),consoleLines=[],errors=[],requests=[];let current='boot';
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
@@ -66,41 +66,7 @@ try{
   if(m.method==='Network.responseReceived')requests.push({url:m.params.response.url,status:m.params.response.status});
  });
  for(const method of ['Runtime.enable','Page.enable','Network.enable'])await send(method);
- if(args.includes('--sentry-pilot')) {
- await go('sentry-pilot','index.html?sw=0&acceptance=1&sentryPilot=1#td');
- await until('window.__stalheartPilotTest?.state().posts.length > 0');
- const initial=await evaluate('window.__stalheartPilotTest.state()');
- assert.equal(initial.seed,7);assert.equal(initial.points,500);assert.equal(initial.sector,1);assert.equal(initial.key,'needle');
- await delay(1500);
- assert.equal(await evaluate('window.__stalheartPilotTest.state().shots'),0,'Manual mount stays silent');
- assert.deepEqual(await evaluate('window.__stalheartPilotTest.state().tank'),initial.tank,'Tank remains parked');
- await send('Input.dispatchKeyEvent',{type:'keyDown',code:'Space',key:' '});
- await until('window.__stalheartPilotTest.state().shots > 0');
- await send('Input.dispatchKeyEvent',{type:'keyUp',code:'Space',key:' '});
- assert.equal(await evaluate('window.__stalheartPilotTest.state().held'),false);
- await send('Input.dispatchKeyEvent',{type:'keyDown',code:'KeyE',key:'e'});
- await send('Input.dispatchKeyEvent',{type:'keyUp',code:'KeyE',key:'e'});
- assert.notEqual(await evaluate('window.__stalheartPilotTest.state().ci'),initial.ci);
- for(const s of SENTRIES){await click(`[data-weapon="${s.key}"]`);assert.equal(await evaluate('window.__stalheartPilotTest.state().key'),s.key);await until('window.__stalheartPilotTest.state().ready');}
- await click('[data-weapon="needle"]');
- await until('window.__stalheartPilotTest.state().wave > 0 && window.__stalheartPilotTest.state().enemies > 0',30000);
- let victim=null;
- for(let i=0;i<6&&!victim;i++){
-   victim=await evaluate('window.__stalheartPilotTest.aimEnemy()');
-   if(!victim)await click('[data-post="1"]');
- }
- assert(victim,'A live wave enemy is visible and in range from a real wall post');
- await until('(()=>{window.__stalheartPilotTest.aimEnemy();return window.__stalheartPilotTest.state().target !== null;})()');
- await send('Input.dispatchKeyEvent',{type:'keyDown',code:'Space',key:' '});
- await until(`(()=>{window.__stalheartPilotTest.aimEnemy();const e=window.__stalheartPilotTest.enemy(${victim.id});return !e || e.hp<${victim.hp};})()`);
- await send('Input.dispatchKeyEvent',{type:'keyUp',code:'Space',key:' '});
- await send('Input.dispatchKeyEvent',{type:'keyDown',code:'KeyM',key:'m'});
- await send('Input.dispatchKeyEvent',{type:'keyUp',code:'KeyM',key:'m'});
- assert(await evaluate('document.querySelector(".pilot-map") !== null'));
- await send('Input.dispatchKeyEvent',{type:'keyDown',code:'KeyM',key:'m'});
- await send('Input.dispatchKeyEvent',{type:'keyUp',code:'KeyM',key:'m'});
- await finish();
- } else if(args.includes('--breach-game')) {
+ if(args.includes('--breach-game')) {
  await go('game-breach-load','index.html?sw=0&acceptance=1&cine=0#td');
  await until('window.__stalheartTest?.state().breaches.length>0');
  await evaluate('window.__stalheartTest.breachScenario()');
@@ -188,35 +154,7 @@ try{
   current='sinkhole-'+look;await finish();
  }
 
- await evaluate('window.__stalheartPortalTest.genre("portals")');await delay(200);
- assert.equal(await evaluate('window.__stalheartPortalTest.state().sinkhole.audioVoices'),0);
- current='sinkhole-return-portals';await finish();
  await evaluate('window.__stalheartPortalTest.dispose()');
- } else if(args.includes('--astro')) {
- await go('astro-station','labs.html?sw=0&acceptance=1#astro');
- await until('window.__stalheartAstroTest?.state().ready',60000);await delay(1000);
- await until('window.__stalheartAstroTest.state().performance.fps>0');
- const first=await evaluate('window.__stalheartAstroTest.state()');
- assert.equal(first.mode,'diorama');assert.equal(first.crew.length,9);assert.deepEqual([...new Set(first.crew.map(c=>c.role))].sort(),['astronaut','scientist','worker']);assert.deepEqual(first.errors,[]);
- assert(first.groups.find(g=>g.id==='antenna').triangles>0);assert(first.groups.every(g=>g.batches>0));await finish();
- await delay(4500);const moved=await evaluate('window.__stalheartAstroTest.state()');assert.notDeepEqual(moved.crew.map(c=>c.position),first.crew.map(c=>c.position));assert(moved.crew.some(c=>c.history.includes('Walk')));assert(moved.crew.some(c=>c.history.includes('Run')));assert(moved.crew.some(c=>c.history.includes('Point')));
- assert(moved.groups.filter(g=>g.clips).every(g=>g.time>0),'Landmark clips advance');
- assert(first.foundationTiles>100);for(const id of ['assembly','cargo','solar','reactor','foundations'])assert(first.groups.some(g=>g.id===id&&g.triangles>0));
- const solarBudget=first.groups.find(g=>g.id==='solar');assert(solarBudget.batches<100,'Solar static geometry is batched');
- await send('Input.dispatchKeyEvent',{type:'keyDown',key:'3',code:'Digit3'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'3',code:'Digit3'});await delay(200);assert.equal(await evaluate('window.__stalheartAstroTest.state().drive.mode'),'tank');
- const parked=await evaluate('window.__stalheartAstroTest.state().drive');await send('Input.dispatchKeyEvent',{type:'keyDown',key:'w',code:'KeyW'});await delay(1000);await send('Input.dispatchKeyEvent',{type:'keyUp',key:'w',code:'KeyW'});const driven=await evaluate('window.__stalheartAstroTest.state().drive');assert(Math.hypot(driven.z-parked.z,driven.x-parked.x)>2);assert(driven.hover>.5);current='astro-tank-drive';await finish();
- await send('Input.dispatchKeyEvent',{type:'keyDown',key:'a',code:'KeyA'});await delay(500);await send('Input.dispatchKeyEvent',{type:'keyUp',key:'a',code:'KeyA'});assert(await evaluate('window.__stalheartAstroTest.state().drive.yaw')>driven.yaw);
- await send('Input.dispatchKeyEvent',{type:'keyDown',key:'1',code:'Digit1'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'1',code:'Digit1'});const free=await evaluate('window.__stalheartAstroTest.state().drive');assert.equal(free.mode,'free');await send('Input.dispatchKeyEvent',{type:'keyDown',key:'w',code:'KeyW'});await delay(400);await send('Input.dispatchKeyEvent',{type:'keyUp',key:'w',code:'KeyW'});assert.equal(await evaluate('window.__stalheartAstroTest.state().drive.z'),free.z);
- await evaluate('document.querySelector("#tab-astro .lil-gui input").focus()');await send('Input.dispatchKeyEvent',{type:'keyDown',key:'3',code:'Digit3'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'3',code:'Digit3'});assert.equal(await evaluate('window.__stalheartAstroTest.state().drive.mode'),'free');await evaluate('document.activeElement.blur()');
-
- await evaluate('window.__stalheartAstroTest.focus("Overview")');await delay(300);current='astro-overview';await finish();
- await evaluate('window.__stalheartAstroTest.motion(false)');await delay(100);const frozen=await evaluate('window.__stalheartAstroTest.state().crew.map(c=>c.position)');await delay(500);assert.deepEqual(await evaluate('window.__stalheartAstroTest.state().crew.map(c=>c.position)'),frozen);
- await evaluate('window.__stalheartAstroTest.toggle("antenna",false);window.__stalheartAstroTest.count(30)');await delay(1000);assert.equal(await evaluate('window.__stalheartAstroTest.state().crew.length'),30);assert.equal(await evaluate('window.__stalheartAstroTest.state().groups.find(g=>g.id==="antenna").triangles'),0);
- assert(await evaluate('window.__stalheartAstroTest.state().performance.samples<=120'));current='astro-load-comparison';await finish();
- await evaluate('window.__stalheartAstroTest.count(9);window.__stalheartAstroTest.toggle("antenna",true);window.__stalheartAstroTest.motion(true);window.__stalheartAstroTest.focus("Crew")');await delay(500);current='astro-return-crew';assert(await evaluate('window.__stalheartAstroTest.state().performance.textures')<=first.performance.textures+4,'Crew resize releases old skeleton textures');await finish();
- await go('astro-shared-settings','labs.html?sw=0&acceptance=1&yard_count=6&yard_antenna=0&yard_gait=Point#astro');await until('window.__stalheartAstroTest?.state().ready',60000);await delay(300);const shared=await evaluate('window.__stalheartAstroTest.state()');assert.equal(shared.crew.length,6);assert(shared.crew.every(c=>c.clip==='Point'));assert.equal(shared.groups.find(g=>g.id==='antenna').visible,false);await finish();
- await evaluate('window.__stalheartAstroTest.dispose()');const stopped=await evaluate('window.__stalheartAstroTest.state().time');await delay(200);assert.equal(await evaluate('window.__stalheartAstroTest.state().time'),stopped);assert.equal(await evaluate('window.__stalheartAstroTest.state().crew.length'),0);
-
  } else if(args.includes('--story')) {
  // THE STÅLHEART CANDIDATES IN THE STORY LAB, through the same switch and mapping the game world uses. Checked in both
  // callers because they must agree on which files a review is looking at — that is the point of having one mapping.
@@ -358,7 +296,7 @@ try{
  assert.equal(await evaluate('document.querySelectorAll("canvas").length>0'),true);
  await go('story-world-stage1','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=1#td');await until('!!window.__stalheartTest',90000);await delay(2500);
  const one=await evaluate('window.__stalheartTest.state()');assert.equal(one.towers,0);assert.equal(one.queued,0);
- assert.equal(await evaluate('document.querySelector("#td-intro").classList.contains("hidden")'),true,'no field manual in the story world');
+ assert.equal(await evaluate('!document.querySelector("#td-intro")'),true,'no field manual in the story world');
  await finish();
  await until('window.__stalheartTest.state().towers===1',90000);const printed=await evaluate('window.__stalheartTest.state()');
  assert.equal(printed.towers,1,'Isao printed the Rotor');assert(printed.story.foundry&&printed.story.foundry.barrels>=1,`the Rotor was paid for by the foundry's first barrel (${JSON.stringify(printed.story.foundry)})`);assert.equal(printed.wallCount,one.wallCount,'the socket is floor, not rock');assert.equal(printed.queued,0);
@@ -444,180 +382,15 @@ try{
  // the phone deep link: ?story=N alone means the story world at that stage, no old heart, no cold open, sparse waves
  await go('story-world-deeplink','index.html?sw=0&acceptance=1&story=4#td');await until('!!window.__stalheartTest',90000);await delay(1500);
  const dl=await evaluate('window.__stalheartTest.state()');assert.equal(dl.heartAsset,'none');assert(dl.story&&dl.story.phase,'story beats run from the deep link');assert(dl.wallCount>40000);
- assert.equal(await evaluate('document.querySelector("#td-intro").classList.contains("hidden")'),true);
+ assert.equal(await evaluate('!document.querySelector("#td-intro")'),true);
  assert.equal(await evaluate('document.querySelector("#tabbar [data-story]").classList.contains("active")'),true,'the burger marks story as the active mode');
- assert.equal(await evaluate('document.querySelector("#tabbar [data-classic]").classList.contains("active")'),false,'classic is not active in the story');await finish();
+ await finish();
  await go('story-default-route','index.html?sw=0#td');await until('document.querySelector("#tabbar [data-story]")!==null');await delay(2500);
- assert.equal(await evaluate('document.querySelector("#tabbar [data-story]").classList.contains("active")'),true,'a bare index.html is the story');assert.equal(await evaluate('document.querySelector("#td-intro").classList.contains("hidden")'),true);
+ assert.equal(await evaluate('document.querySelector("#tabbar [data-story]").classList.contains("active")'),true,'a bare index.html is the story');assert.equal(await evaluate('!document.querySelector("#td-intro")'),true);
  await go('story-cine-redirect','index.html?sw=0&acceptance=1&story=4&cine=1#td',1440,900,'labs.html?sw=0&acceptance=1&land=1#story');await until('window.__stalheartStoryTest?.state().ready',90000);await delay(1500);assert(await evaluate('window.__stalheartStoryTest.state().playing'),'the story cine switch plays the arrival');await finish();
  await go('story-world-default','index.html?sw=0&acceptance=1&cine=0#td');
  await until('!!window.__stalheartTest',60000);await delay(1500);
  const d=await evaluate('window.__stalheartTest.state()');assert(d.wallCount>1500&&d.wallCount<2236,`default world unchanged ${d.wallCount}`);
- } else if(args.includes('--sniper')) {
- await go('sniper-showcase','labs.html?sw=0&acceptance=1&swaySlow=0&swayFast=0#sniper');
- await until('window.__stalheartSniperTest?.state().ready');
- await until('window.__stalheartSniperTest.state().environment.mounted===6',30000);
- const defaults=await evaluate('window.__stalheartSniperTest.state()');
- assert.equal(defaults.rangeScale,5);assert.equal(defaults.weaponMaxRange,350);assert(defaults.environment.wallCount>100);assert.equal(defaults.environment.canyonLength,1400);
- assert(defaults.range>=50&&defaults.phase==='showcase');assert.equal(defaults.targets.filter(t=>t.kind).length,14);assert(defaults.targets.some(t=>t.kind==='shellback'));assert(defaults.targets.some(t=>t.kind==='knot'));await finish();
- await evaluate('window.__stalheartSniperTest.overview(true)');await delay(200);current='sniper-planet-overview';await finish();
- await evaluate('window.__stalheartSniperTest.overview(false)');
- await evaluate('window.__stalheartSniperTest.pan(Math.atan2(70,250),0)');await click('#sniper-fire');
- await until('!!window.__stalheartSniperTest.state().beam');
- assert(await evaluate('window.__stalheartSniperTest.state().beam.reach<300'), 'Canyon walls stop the beam before maximum range');
- await until('!window.__stalheartSniperTest.state().beam && window.__stalheartSniperTest.state().sequence.left===0');
- await evaluate('window.__stalheartSniperTest.aim("phage")');await click('#sniper-fire');
- await until('window.__stalheartSniperTest.state().kills>0',15000);
- const death=await evaluate('window.__stalheartSniperTest.state()');
- assert(death.targets.some(t=>t.dying&&!t.alive),'Laser starts the creature death animation');
- assert(death.cues.some(c=>c.startsWith('enemy_die_')),'Kill emits a death cue');
- assert(death.voiceDetails.some(v=>v.key.startsWith('enemy_die_')),'Death sound has an active audio voice');
- await until('window.__stalheartSniperTest.state().targets.some(t=>t.dying&&Math.abs(t.rotation)>.1)');current='sniper-creature-death';await finish();
- const victim=death.targets.find(t=>t.dying).id;
- await until(`!window.__stalheartSniperTest.state().targets.some(t=>t.id===${victim})`);
- await until('window.__stalheartSniperTest.state().sequence.left===0 && !window.__stalheartSniperTest.state().beam');
- const coreId=await evaluate('window.__stalheartSniperTest.state().targets.find(t=>t.kind==="shellback").id');
- for(let shot=0;shot<2;shot++){
-   await evaluate('window.__stalheartSniperTest.aim("shellback")');await click('#sniper-fire');
-   await until('window.__stalheartSniperTest.state().sequence.left===0 && !window.__stalheartSniperTest.state().beam');
- }
- assert(await evaluate(`!window.__stalheartSniperTest.state().targets.some(t=>t.id===${coreId}&&t.alive)`),'Hard-core enemy can be killed by sustained fire');
- await evaluate('window.__stalheartSniperTest.select("quiver")');
- await until('window.__stalheartSniperTest.state().ready && window.__stalheartSniperTest.state().talonPool');
- await evaluate('window.__stalheartSniperTest.aim()');await until('window.__stalheartSniperTest.state().lock.locked');await click('#sniper-fire');
- await until('window.__stalheartSniperTest.state().flights.some(f=>f.t>1.5)');
- const talon=await evaluate('window.__stalheartSniperTest.state().flights[0]');
- assert.equal(talon.mesh,'talon');assert.equal(talon.profile,'heavy');assert.equal(talon.duration,6);assert.equal(talon.length,1.8);
- assert.equal(await evaluate('window.__stalheartSniperTest.state().talonPool.triangles'),1340);current='sniper-talon-coast';await finish();
- await until('window.__stalheartSniperTest.state().flights.some(f=>f.t>4)');current='sniper-talon-crest';await finish();
- await until('window.__stalheartSniperTest.state().talonPool.active===0');
- await go('sniper-roster','labs.html?sw=0&acceptance=1&phase=calibrate&range=20&rangeScale=1&quiverTalon=0&sound=1&swaySlow=0&swayFast=0#sniper');
- await until('window.__stalheartSniperTest?.state().ready && window.__stalheartSniperTest.state().pool');
- assert.deepEqual((await evaluate('window.__stalheartSniperTest.state().roster')).map(s=>s.key),SENTRIES.map(s=>s.key));
- for(const sentry of SENTRIES){
-   await send('Input.dispatchKeyEvent',{type:'keyDown',key:String(sentry.number),code:'Digit'+sentry.number});
-   await send('Input.dispatchKeyEvent',{type:'keyUp',key:String(sentry.number),code:'Digit'+sentry.number});
-   await until(`window.__stalheartSniperTest.state().weapon===${JSON.stringify(sentry.key)}`);
-   await until('window.__stalheartSniperTest.state().ready');
-   const state=await evaluate('window.__stalheartSniperTest.state()');
-   assert.equal(state.label,sentry.label);assert.equal(state.model,sentry.model);
-   assert.deepEqual(state.profile,CONTENT.weapons[sentry.key]);
-   await until('Number.parseFloat(document.querySelector("#f-maxrange").textContent)===Math.round(window.__stalheartSniperTest.state().weaponMaxRange)');
-   const maxRange=await evaluate('Number.parseFloat(document.querySelector("#f-maxrange").textContent)');
-   await evaluate(`window.__stalheartSniperTest.distance(${maxRange+30});window.__stalheartSniperTest.aim()`);
-   await until('document.querySelector("#f-envelope").dataset.range==="far"');
-   assert.equal(await evaluate('document.querySelector("#f-envelope").textContent'),'OUT OF RANGE');
-   await evaluate('window.__stalheartSniperTest.distance(20);window.__stalheartSniperTest.aim()');
-
-   await evaluate('window.__stalheartSniperTest.aim()');
-   if(CONTENT.missiles[sentry.key]){
-     await until('window.__stalheartSniperTest.state().lock.locked');
-     const before=await evaluate('window.__stalheartSniperTest.state().arrived');
-     await click('#sniper-fire');
-     await until(`window.__stalheartSniperTest.state().arrived > ${before}`);
-     const shot=await evaluate('window.__stalheartSniperTest.state().last');
-     assert.equal(shot.key,sentry.key);assert.equal(shot.config.duration,CONTENT.missiles[sentry.key].duration);
-     assert(shot.direction[1]>.6,'Missile uses upward authored launch socket');
-     await evaluate('window.__stalheartSniperTest.distance(1);window.__stalheartSniperTest.aim()');
-     await until('!window.__stalheartSniperTest.state().lock.locked');
-     const count=await evaluate('window.__stalheartSniperTest.state().launched');await click('#sniper-fire');
-     assert.equal(await evaluate('window.__stalheartSniperTest.state().launched'),count);
-     await evaluate('window.__stalheartSniperTest.distance(20)');
-   }else {
-     const shots=await evaluate('window.__stalheartSniperTest.state().shots');
-     await click('#sniper-fire');
-     if(['rotor','plasma','lancer'].includes(sentry.key)){
-       await until(`window.__stalheartSniperTest.state().shots>${shots}`);
-       if(sentry.key==='lancer'){
-         const early=await evaluate('window.__stalheartSniperTest.state()');
-         assert.equal(early.recoil,0);assert.equal(early.cameraHeight,early.opticHeight);
-         assert(Math.abs(early.beam.screen[0])<.001&&Math.abs(early.beam.screen[1])<.001,'Lancer starts at scope centre');
-         assert(await evaluate(`!!document.querySelector('#sniper-reticle [data-reticle="lancer"]')`));
-         current='sniper-lancer-start';await finish();
-         await evaluate('window.__stalheartSniperTest.pan(.18,.07)');await delay(150);
-         const moved=await evaluate('window.__stalheartSniperTest.state()');
-         assert(Math.abs(moved.beam.screen[0])<.001&&Math.abs(moved.beam.screen[1])<.001,'Beam follows the moving scope');current='sniper-lancer-pan';await finish();
-         await evaluate('window.__stalheartSniperTest.aim()');
-       }
-       await delay(2200);
-       const running=await evaluate('window.__stalheartSniperTest.state()');
-       assert(running.audioVoices>0,'Firing has a live audio voice');
-       if(sentry.key==='rotor'){assert(running.shots-shots>=20);assert(running.cues.includes('minigun_ready'));}
-       else {assert(running.beam && running.beam.key===sentry.key,'Beam remains continuous after two seconds');assert(running.voiceDetails.some(v=>v.loop&&v.duration>1),'Continuous sustain buffer is used');}
-       if(sentry.key==='lancer'){assert.equal(running.shots-shots,1,'One sustained Lancer beam');assert(Math.abs(running.beam.screen[0])<.001&&Math.abs(running.beam.screen[1])<.001,'Lancer stays centred');}
-       await until('window.__stalheartSniperTest.state().sequence.left===0 && !window.__stalheartSniperTest.state().beam');
-       if(sentry.key==='rotor')assert((await evaluate('window.__stalheartSniperTest.state().cues')).filter(c=>c==='minigun_ready').length>=2);
-     }else assert.equal(await evaluate('window.__stalheartSniperTest.state().shots'),shots+(sentry.key==='relay'?0:1));
-     if(sentry.key==='relay')assert(await evaluate('window.__stalheartSniperTest.state().targets.some(t=>t.slowUntil>window.__stalheartSniperTest.state().time)'));
-   }
-   current='sniper-'+sentry.key;await finish();
- }
- await evaluate('window.__stalheartSniperTest.select("needle")');await until('window.__stalheartSniperTest.state().ready');
- await evaluate('window.__stalheartSniperTest.distance(70);window.__stalheartSniperTest.aim();window.__stalheartSniperTest.fire()');
- await until('window.__stalheartSniperTest.state().traceGuides.length===1');
- const trace=await evaluate('window.__stalheartSniperTest.state().traceGuides[0]');
- assert(trace.samples>2&&trace.end[2]>=69&&trace.end[2]<=81,'Needle retains its actual long-range path');
- current='sniper-needle-trace';await finish();
- await evaluate('window.__stalheartSniperTest.tracer(false)');await delay(80);
- assert.equal(await evaluate('window.__stalheartSniperTest.state().traceGuides[0].visible'),false);
- await evaluate('window.__stalheartSniperTest.tracer(true)');
- await until('window.__stalheartSniperTest.state().traceGuides.length===0');
- await evaluate('window.__stalheartSniperTest.reset();window.__stalheartSniperTest.distance(20)');
- await evaluate('window.__stalheartSniperTest.select("quiver")');await until('window.__stalheartSniperTest.state().ready');
- await evaluate('window.__stalheartSniperTest.aim()');await until('window.__stalheartSniperTest.state().lock.locked');
- await click('#sniper-fire');
- const resetState=await evaluate('window.__stalheartSniperTest.reset();window.__stalheartSniperTest.state()');
- assert.equal(resetState.pool.active,0);assert.equal(resetState.lock.id,null);
- current='sniper-reset';await finish();
- await evaluate('window.__stalheartSniperTest.distance(500);window.__stalheartSniperTest.aim()');
- await until('window.__stalheartSniperTest.state().lock.locked');
- const farBefore=await evaluate('window.__stalheartSniperTest.state().arrived');await click('#sniper-fire');
- await until(`window.__stalheartSniperTest.state().arrived>${farBefore}`,15000);current='sniper-javelin-range';await finish();
- await evaluate('window.__stalheartSniperTest.distance(20);window.__stalheartSniperTest.select("mortar")');
- await until('window.__stalheartSniperTest.state().ready');
- assert(await evaluate('!!document.querySelector("#sniper-mortar-map")?.getBoundingClientRect().width'),'Mortar map survives range resets');
- assert(await evaluate('window.__stalheartSniperTest.state().mortar.monochrome'));
- assert(await evaluate('document.querySelector("#sniper-mortar-map").getBoundingClientRect().bottom<innerHeight*.4'),'Mortar map leaves the central POV clear');
- await until('document.querySelector("[data-telemetry]").textContent.includes("GROUND")');
- await evaluate('window.__stalheartSniperTest.mortarAim([4,0,20])');await click('#sniper-fire');
- await evaluate('window.__stalheartSniperTest.mortarAim([-4,0,15])');
- await until('window.__stalheartSniperTest.state().mortar.impacts.length>0',60000);
- const landing=await evaluate('window.__stalheartSniperTest.state().mortar.impacts[0]');assert(landing.radius>0);assert(Math.abs(landing.point[0]-4)<3);assert.deepEqual(landing.aim,[4,0,20],'Impact error retains launch-time aim');
- assert(await evaluate('window.__stalheartSniperTest.state().worldSplashes>0'),'Impact leaves a splash ring in the main world');
- current='sniper-mortar-landing';await finish();
- await go('sniper-mortar-long-range','labs.html?sw=0&acceptance=1&weapon=mortar&rangeScale=5&quiverTalon=0&wind=0&swaySlow=0&swayFast=0#sniper');
- await until('window.__stalheartSniperTest?.state().ready');
- assert.equal(await evaluate('window.__stalheartSniperTest.state().weaponMaxRange'),175);
- await evaluate('window.__stalheartSniperTest.mortarAim([0,0,149])');await click('#sniper-fire');
- await until('window.__stalheartSniperTest.state().mortar.impacts.length>0',60000);
- assert(await evaluate('Math.abs(window.__stalheartSniperTest.state().mortar.impacts[0].point[2]-149)<3'),'Manual 5× mortar reaches distant ground target');await finish();
- await go('sniper-import-fixture','labs.html?sw=0&acceptance=1&weapon=quiver&rangeScale=1&range=20&phase=calibrate&quiverTalon=0#sniper');await until('window.__stalheartSniperTest?.state().ready');
-
- const draft=clone(CONTENT);draft.id='sniper-browser';draft.missiles.quiver.duration=1.7;
- draft.missiles.quiver.length=.51;draft.weapons.quiver.impact.size=1.13;
- const file=join(output,'sniper-browser.json');writeFileSync(file,serializePreset(draft));
- const doc=await send('DOM.getDocument');const input=await send('DOM.querySelector',{nodeId:doc.root.nodeId,selector:'[data-preset-import]'});
- await send('DOM.setFileInputFiles',{nodeId:input.nodeId,files:[file]});
- await until('document.querySelector("[data-preset-id]").value==="sniper-browser"');
- assert.equal(await evaluate('window.__stalheartSniperTest.state().profile.impact.size'),1.13);
- await click('[data-preset-preview]');
- await until('window.__stalheartReady && window.__stalheartSniperTest?.state().ready && window.__stalheartContent?.id==="sniper-browser"');
- assert.equal(await evaluate('window.__stalheartSniperTest.state().weapon'),'quiver');
- await evaluate('window.__stalheartSniperTest.aim()');await until('window.__stalheartSniperTest.state().lock.locked');
- await click('#sniper-fire');await until('window.__stalheartSniperTest.state().arrived>0');
- assert.equal(await evaluate('window.__stalheartSniperTest.state().last.config.duration'),1.7);
- assert.equal(await evaluate('window.__stalheartSniperTest.state().last.config.length'),.51);
- current='sniper-draft';await finish();
- await evaluate('window.__stalheartSniperTest.dispose()');
- const stopped=await evaluate('window.__stalheartSniperTest.state().time');await delay(120);
- assert.equal(await evaluate('window.__stalheartSniperTest.state().time'),stopped);
- assert.equal(await evaluate('window.__stalheartSniperTest.state().pool.active'),0);
- await evaluate('window.__stalheartSniperTest.dispose()');
- await go('sniper-default-isolation','labs.html?sw=0&acceptance=1&weapon=quiver#sniper');
- await until('window.__stalheartSniperTest?.state().ready');
- assert.equal(await evaluate('window.__stalheartSniperTest.state().missiles.quiver.duration'),CONTENT.missiles.quiver.duration);
- await finish();
-
  } else if(args.includes('--shield-perf')) {
  await go('shield-relay','index.html?sw=0&tutorial=0&cine=0&fps=1&creature=mork&acceptance=1#td');
  await evaluate('document.querySelector(".msg-begin")?.click();window.__stalheartTest.begin()');
@@ -723,8 +496,8 @@ try{
  } else {
  if(!args.includes('--authoring')) {
  await go('cold-open','index.html?sw=0&acceptance=1#td');
- await until("document.getElementById('td-intro') && !document.getElementById('td-intro').classList.contains('hidden')",20000);
- await click('#td-intro');await until('window.__stalheartTest.state().paused === false');
+ await until("!!document.querySelector('#td-msg .msg-begin')",20000);
+ await click('#td-msg .msg-begin');await until('window.__stalheartTest.state().paused === false');
  await until('window.__stalheartTest.state().towers >= 2',20000);await finish();
  assert(!requests.some(r=>/\/(?:sentry|impact|grid|units|beam)-tab\.js/.test(r.url)),'Game downloaded a lab');
  // Exercise a zero-cash victory and the actual next-sector button.
@@ -749,13 +522,6 @@ try{
  await go('mobile-input','index.html?sw=0&cine=0&mobile=1&coarse=1&keyprobe=1&layout=1#td',844,390);
  const start=Date.now();while(!consoleLines.some(x=>x.includes('S drives, T shields'))&&Date.now()-start<12000)await delay(200);
  assert(consoleLines.some(x=>x.includes('S drives, T shields')));await finish();
- for(const mission of ['rescue','rescue2']){
-  await go(mission,`index.html?sw=0&cine=0&mission=${mission}&acceptance=1#td`,844,390);await delay(1500);assert(await evaluate('!!window.__stalheartTest.state().mission'));await finish();
- }
- for(const hack of ['hdt','bridges','shikaku']){
-  await go('hack-'+hack,`index.html?sw=0&cine=0&hack=${hack}#td`,844,390);await delay(2500);
-  assert(requests.some(r=>r.url.includes('/minigames/')));await finish();
- }
  await go('terraformer','index.html?sw=0&cine=0&acceptance=1#td');
  await until('window.__stalheartTest.state().heartAsset === "sentry-terraformer"',30000);
  // Each spare hull must deploy onto open ground and respond to real input.
@@ -988,7 +754,7 @@ try{
  await go('mork-beam','labs.html?sw=0&acceptance=1#beam');
  await until('window.__stalheartBeamTest?.state().asset==="mork"');
  assert.equal(await evaluate('window.__stalheartBeamTest.state().guns'),2);assert.equal(await evaluate('window.__stalheartBeamTest.state().pivots'),2);assert.deepEqual(await evaluate('window.__stalheartBeamTest.state().muzzleOffsets'),[0,0]);await finish();
- for(const name of ['units','sentry','sniper','sim']){await go('lab-'+name,`labs.html?sw=0#${name}`);await delay(1500);await finish();}
+ for(const name of ['units','sentry','portal','sim']){await go('lab-'+name,`labs.html?sw=0#${name}`);await delay(1500);await finish();}
  }
  // One shooter/flight/effect pipeline for material targets and moving enemies.
  for (const [mode, family, duration] of [['wall','quiver',1.35],['armour','heptapod',2.7],['hull','quiver',1.35]]) {

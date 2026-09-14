@@ -19,7 +19,7 @@
   <link rel="stylesheet" href="./app.css">
 </head>
 <body>
-<nav id="tabbar"><button data-tab="td" data-mission="" data-roster="2" data-classic="1" title="the legacy campaign">classic</button><button data-tab="td" data-mission="rescue">rescue</button><button data-tab="td" data-mission="rescue2">raid</button><button data-tab="td" data-story="1" title="the story opening: land, print the Rotor, hold the gate">story</button><button data-tab="td" data-story="8" title="skip the story: the finished base, the first hull rolls out of its bay">defend</button><button data-page="labs.html" data-tab="story" data-land="1" title="the arrival cinematic: the SH02 lands and Isao comes out">arrival</button><button data-tab="record">record</button><button data-page="settings.html">settings</button><button data-page="labs.html">workshop</button></nav>
+<nav id="tabbar"><button data-tab="td" data-story="1" title="the story opening: land, print the Rotor, hold the gate">story</button><button data-tab="td" data-story="8" title="skip the story: the finished base, the first hull rolls out of its bay">defend</button><button data-page="labs.html" data-tab="story" data-land="1" title="the arrival cinematic: the SH02 lands and Isao comes out">arrival</button><button data-tab="record">record</button><button data-page="settings.html">settings</button><button data-page="labs.html">workshop</button></nav>
 <div id="tab-td" class="tab tab-hidden">
     <div id="td-app"></div>
     <!-- ⚙ opens the variables modal; ≡ stays the game-mode menu. Two buttons
@@ -60,54 +60,6 @@
     <div id="td-toast" class="hidden"></div>
     <!-- the victory lap's way back: the debrief is PARKED, not dismissed -->
     <button id="td-lap" class="hidden">&rsaquo; back to the debrief</button>
-    <div id="td-intro" class="hidden" role="dialog" aria-label="field manual">
-      <div class="fm-frame">
-        <div class="fm-head">&#9626; FIELD MANUAL</div>
-        <div class="fm-body">
-          <div class="fm-line"><b>PROTECT THE HEART</b> &mdash; towers + your tank</div>
-          <div class="fm-line">RAM soft units &middot; free kills</div>
-          <div class="fm-line fm-warn">&#9888; DO NOT RAM units with SOLID elements</div>
-          <div class="fm-line">grab missile triads &middot; shells max 9 &middot; shells open walls</div>
-          <div class="fm-line"><b>DESTROY ALL PORTALS</b> &mdash; the only win</div>
-          <div class="fm-line">tank kills score &times;3 &middot; swarms multiply points</div>
-          <div class="fm-line">hands-on kills earn insignia &middot; kept when a hull is lost</div>
-          <div class="fm-line">ORBITAL STRIKE: charge &rarr; ARM &rarr; tap target &rarr; &#30330;&#23556;</div>
-          <div class="fm-line">set CRUISE (dbl-tap W / Q-E) &mdash; steer and shoot, not throttle</div>
-          <div class="fm-line">BUILD: tap HIGH GROUND in orbit view &middot; upgrade twice</div>
-          <div class="fm-line">a SERVER hides at the far pole &middot; HACK it &mdash; beat one of three protocols, decrypt a tower early</div>
-          <div class="fm-keys fm-desktop">
-            <span>W A S D / arrows</span><span>drive</span>
-            <span>SPACE / SHIFT</span><span>shell / lasers</span>
-            <span>N</span><span>lay a MINE one cell ahead</span>
-            <span>Q / E</span><span>cruise up / down</span>
-            <span>1 / 2 / 3</span><span>orbit &middot; 1st &middot; 3rd</span>
-            <span>M / V</span><span>map / cycle view</span>
-            <span>U / H / ESC</span><span>upgrade / hint / pause</span>
-            <span>X</span><span>hack the relay (in range)</span>
-          </div>
-          <div class="fm-line fm-touch">side zones steer &middot; &#9673; shell &middot; &#8767; lasers &middot; &#8982; mine &middot; &#9672; shield &middot; lever = throttle</div>
-          <div class="fm-line fm-shell">DRIVE: tap where to go &middot; &#9673; shell &middot; &#8767; lasers &middot; &#8982; mine &middot; &#9672; shield<br>BUILD: tap HIGH GROUND &middot; hold a tower to upgrade &middot; drag orbits, pinch zooms</div>
-        </div>
-        <div class="fm-foot">[ TAP OR ANY KEY &mdash; ENGAGE ]</div>
-      </div>
-    </div>
-    <button id="td-hack" class="hidden" title="connect to the antipode relay">&#8961; HACK SERVER</button>
-    <div id="td-hackprompt" class="hidden" aria-hidden="true">&#8961; RELAY IN RANGE
-      <span class="fm-desktop">&middot; press X to hack</span>
-      <span class="fm-touch">&middot; tap here to hack</span></div>
-    <div id="td-hackwrap" class="hidden" role="dialog" aria-label="server breach">
-      <div class="hk-bar">
-        <span class="hk-title">SERVER BREACH</span>
-        <span class="hk-tabs">
-          <button class="hk-tab active" data-hack="hdt" type="button">HDT</button>
-          <button class="hk-tab" data-hack="bridges" type="button">BRIDGE</button>
-          <button class="hk-tab" data-hack="shikaku" type="button">SHIKAKU</button>
-        </span>
-        <span id="td-hack-readout" class="hk-readout"></span>
-        <button id="td-hack-rotate" type="button" title="turn the board sideways to fill a portrait phone">&#8635; TURN</button>
-        <button id="td-hack-abort" type="button">&#10005; ABORT</button></div>
-      <iframe id="td-hackframe" title="hacking minigame"></iframe>
-    </div>
     <div id="td-sitrep" class="hidden" role="status"></div>
     <div id="td-callouts" aria-hidden="true"></div>
     <div id="td-combo" class="hidden" aria-hidden="true"></div>
@@ -130,8 +82,6 @@
         <span class="kanji">&#30330;&#23556;</span>
         <span class="latin" id="td-launch-latin">LAUNCH</span>
       </button>
-      <button id="td-buy-missile" class="hidden" type="button"
-        title="black market — one missile into the reserve">+ BUY</button>
     </div>
     <div id="td-strikecam" class="hidden" aria-hidden="true">
       <div class="sc-scan"></div>
@@ -154,7 +104,6 @@
     </div>
     <button id="td-pad-fire" class="tfire tfire-primary" title="FIRE shell (Space)">&#9673;</button>
     <button id="td-pad-laser" class="tfire tfire-secondary" title="hold: lasers (Shift)">&#8767;</button>
-    <button id="td-pad-mine" class="tfire tfire-tertiary" title="lay a MINE one cell ahead (N)">&#8982;</button>
     <button id="td-pad-shield" class="tfire tfire-tertiary" title="deploy a SHIELD (T)">&#9672;</button>
     <div class="tc-util">
       <button id="td-pad-ctrheart" title="centre the view on the heart">&#9829; CTR</button>
@@ -165,7 +114,7 @@
       <button id="td-pad-orbit" title="camera: orbital — the whole shell">ORBIT</button>
       <button id="td-pad-sound" title="mute / unmute sound">&#9834;</button>
     </div>
-    <div id="td-hint">TD · towers mount the HIGH GROUND · B build · M threat map · N mine</div>
+    <div id="td-hint">TD · towers mount the HIGH GROUND · B build · M threat map</div>
   </div>
 <div id="tab-record" class="tab tab-hidden">
     <div id="record-scroll">

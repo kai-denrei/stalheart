@@ -1,6 +1,6 @@
 import { DEFAULT_TANK } from './content/tank.js';
 // metal-tab.js — THE METAL LAB. The weathered material (src/weathered.js,
-// src/cine/materials.js) on the game's own big casts — the MÖRK, the
+// src/fx/weathered-material.js) on the game's own big casts — the MÖRK, the
 // container, Isao, the Terraformer, the portal ring — large, under the
 // cinematics' light (the galaxy bake as environment, a sun, ACES), with
 // every knob of the bake and the binding on a slider, and a COPY button
@@ -19,9 +19,9 @@ import { bakeGalaxyCube } from './galaxybake.js';
 import { SKY_PRESET } from './galaxyseed.js';
 import { LOOKS } from './looks.js';
 import { WEATHER_PRESETS, weatherStats, bakeWeatheredMetal } from './weathered.js';
-import { WEATHER_BY_NAME, applyWeatheredMaterial, makeWeatheredTextures } from './cine/materials.js';
+import { WEATHER_BY_NAME, applyWeatheredMaterial, makeWeatheredTextures } from './fx/weathered-material.js';
 import { buildCreature, preloadMork, preloadContainer, makeContainerFixture,
-  preloadPortalRing, makePortalRing, preloadFabricator, makeIsaoDrone } from './units.js';
+  preloadFabricator, makeIsaoDrone } from './units.js';
 import { deepLink, wireDeepLink } from './deeplink.js';
 
 // the subjects: how each is cast and roughly how big it stands
@@ -29,7 +29,6 @@ const SUBJECTS = {
   tank: { label: 'MÖRK', preload: () => preloadMork(), make: (look) => buildCreature(DEFAULT_TANK, { walker: look.walker, walkerHi: look.walkerHi }) },
   container: { label: 'container', preload: preloadContainer, make: () => makeContainerFixture(3) },
   isao: { label: 'Isao', preload: preloadFabricator, make: () => makeIsaoDrone() },
-  portal: { label: 'portal ring', preload: preloadPortalRing, make: () => makePortalRing(0xaee8ff) },
 };
 
 export function initMetalTab(root) {

@@ -1,4 +1,4 @@
-// cine/materials.js — THE THREE.JS SIDE OF THE WEATHERED METAL.
+// fx/weathered-material.js — THE THREE.JS SIDE OF THE WEATHERED METAL.
 //
 // src/weathered.js bakes the maps as bytes and knows nothing about the GPU;
 // this uploads them, and dresses a model IN PLACE by material name. The name

@@ -1,7 +1,7 @@
-// Which game index.html opens. The story is the default; the legacy campaign,
-// its missions, the sentry practice mode and the automated probes all name
+// Which game index.html opens. The story is the default; the campaign board
+// is kept for the automated acceptance runs and the wave simulator, which name
 // themselves in the query, so a bare page is the story world.
-export const LEGACY_SWITCHES = Object.freeze(['classic', 'mission', 'sentryPilot', 'acceptance', 'sim', 'director']);
+export const LEGACY_SWITCHES = Object.freeze(['acceptance', 'sim']);
 
 export function isStoryRoute(search) {
   const q = new URLSearchParams(search);

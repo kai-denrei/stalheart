@@ -171,7 +171,7 @@ export function mergeByMaterial(root, pivotNames = [], exclude = []) {
     // and uv IF the whole batch carries one (decided below, per batch).
     // uv used to be dropped here with everything else, which is why no
     // merged model could wear a texture: the cinematics' weathered metal
-    // (cine/materials.js) found every batch uv-less (2026-09-04). The board
+    // (fx/weathered-material.js) found every batch uv-less (2026-09-04). The board
     // binds no maps, so a kept uv is inert there.
     for (const name of Object.keys(g.attributes)) {
       if (name !== 'position' && name !== 'normal' && name !== 'uv') g.deleteAttribute(name);

@@ -1,4 +1,4 @@
-// cine/rail.js — A CAMERA RAIL AS DATA.
+// core/rail.js — A CAMERA RAIL AS DATA.
 //
 // The cold open authored its camera as code inside poseAt (td-tab): two
 // beats, each a hand-written interpolation. That was right for one shot and

@@ -8,12 +8,12 @@
 | 2 | Plasma | plasma | Wave 2 |
 | 3 | Quiver | quiver | Wave 3 |
 | 4 | Relay | relay | Wave 4 |
-| 5 | Mortar | mortar | Antipode relay hack |
-| 6 | Lancer | lancer | Wave 5 |
-| 7 | Needle | needle | Wave 6 |
-| 8 | Heptapod | heptapod_a6 | Wave 7 |
+| 5 | Mortar | mortar | Wave 5 |
+| 6 | Lancer | lancer | Wave 6 |
+| 7 | Needle | needle | Wave 7 |
+| 8 | Heptapod | heptapod_a6 | Wave 8 |
 
-Numbers identify the requested radial order. Existing progression rules remain: Mortar is hack-gated, and additional hack wins accelerate the wave ladder. This cleanup does not retune combat values.
+Numbers identify the requested radial order. One Sentry unlocks per wave in this order. The Mortar's hack gate retired with the antipode relay on 2026-09-14; combat values are unchanged.
 
 Use `labs.html#sentry` for the reference models, articulation, projectile flights and muzzle/impact effects, `labs.html#audio` for the eight independently tunable fire cues, and `labs.html#units` → Friendly for the game-rendered models and export. All use the same numbered labels. Stable keys and pinned upstream filenames remain unnumbered so file identity does not depend on typography. Sentry links also accept `?family=1` through `?family=8`.
 

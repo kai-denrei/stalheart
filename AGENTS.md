@@ -10,7 +10,7 @@ This repository owns the game. Read `docs/STATE.md` and `docs/ARCHITECTURE.md` f
 - Game stores use `src/storage.js`. Diagnostics are bounded and local (`src/diagnostics.js`). No source console logging of private data. Keep private legacy Deban records ignored.
 - Record substantive decisions, failures and validation using the project `/deban` skill or `npm run log -- add FILE`. Append immutable entries; never rewrite history. Keep `docs/STATE.md` short and current. No per-commit mandatory second commit.
 - The source asset direction is SentryTowers_A6, including Terraformer 3000. Pin downloads and validate hashes with `npm run assets:check`; do not hotlink mutable upstream assets into gameplay. D0–D3 are destruction states, not LODs.
-- Preserve the gate-hunting/income trade, Isao's travel-and-print orders, pilot rank across hulls, and distinct mission supply rules. Foundations and new progression systems are not part of this migration.
+- The story is the game; the campaign board under it serves the acceptance runs and the wave simulator. Preserve Isao's travel-and-print orders and pilot rank across hulls. Retired modes (missions, hacks, cine, portals, Astro, Sniper, Sentry Control practice) live in Git history; bring one back through a decision entry, not by reviving old code paths.
 - No colored emoji in product UI; keep the monochrome visual vocabulary.
 - Do not send messages, publish, or push without explicit authorization. The public origin is https://github.com/kai-denrei/stalheart; main publishes dist through GitHub Pages.
 

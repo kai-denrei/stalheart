@@ -54,11 +54,6 @@ console.log('each condition, on and off:');
   check('desk officer needs a cleared sector with NO hands-on kills',
     on({ sectorCleared: true, tankKills: 0 }).includes('nohands')
     && !on({ sectorCleared: true, tankKills: 1 }).includes('nohands'));
-  check('retro-gamer needs all three protocols',
-    on({ minigamesWon: ['hdt', 'bridges', 'shikaku'] }).includes('retrogamer')
-    && !on({ minigamesWon: ['hdt', 'bridges'] }).includes('retrogamer'));
-  check('hacker is finding the relay, not beating it',
-    on({ serverFound: true }).includes('hacker'));
   check('deepwatch needs a portal killed from orbit',
     on({ strikePortalKills: 1 }).includes('orbital'));
   check('the planet is its own thing', on({ planetCleared: true }).includes('planet'));
@@ -71,9 +66,9 @@ console.log('each condition, on and off:');
 
 console.log('freshness:');
 {
-  const list = ['streak100', 'streak200', 'hacker'];
+  const list = ['streak100', 'streak200', 'orbital'];
   check('already-held ones are not re-announced',
-    freshlyEarned(['streak100'], list).join(',') === 'streak200,hacker');
+    freshlyEarned(['streak100'], list).join(',') === 'streak200,orbital');
   check('order follows the table, so a ladder announces in order',
     freshlyEarned([], ['streak200', 'streak100']).join(',') === 'streak100,streak200');
   check('nothing new is an empty list', freshlyEarned(list, list).length === 0);
@@ -81,12 +76,12 @@ console.log('freshness:');
 
 console.log('storage is untrusted input:');
 {
-  check('a non-array record does not throw', freshlyEarned({ a: 1 }, ['hacker']).length === 1);
-  check('a null record does not throw', freshlyEarned(null, ['hacker']).length === 1);
+  check('a non-array record does not throw', freshlyEarned({ a: 1 }, ['orbital']).length === 1);
+  check('a null record does not throw', freshlyEarned(null, ['orbital']).length === 1);
   check('a non-array list does not throw', freshlyEarned([], null).length === 0);
   check('sanitise drops non-arrays', sanitiseRecord({ x: 1 }).length === 0);
   check('sanitise drops unknown and non-string ids',
-    sanitiseRecord(['hacker', 'gone-in-v2', 7, null]).join(',') === 'hacker');
+    sanitiseRecord(['orbital', 'gone-in-v2', 7, null]).join(',') === 'orbital');
 }
 
 if (failures) { console.error(`\nachievements: ${failures} FAILED`); process.exit(1); }
