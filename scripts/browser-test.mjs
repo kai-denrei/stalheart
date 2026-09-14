@@ -394,19 +394,20 @@ try{
  current='story-world-fodder';await finish();
  await until('window.__stalheartPilotTest.aimEnemy()!==null',15000);const victim=await evaluate('window.__stalheartPilotTest.aimEnemy()');assert(victim!==null,'an amoeba is in reach and sight of the Rotor');   // the pile at the gate shuffles; give it a moment
  await evaluate('window.__stalheartPilotTest.hold(true)');
- // the fodder keeps walking, so re-aim each poll until this one drops
- await until(`(()=>{const t=window.__stalheartPilotTest;const e=t.enemy(${victim.id});if(!e||!e.alive)return true;t.aimEnemy();return false;})()`,8000);await evaluate('window.__stalheartPilotTest.hold(false)');
+ // the fodder keeps walking, so re-aim each poll until this one drops; every poll also banks the Rotor's own heat peak (see below)
+ await until(`(()=>{const t=window.__stalheartPilotTest;const p=t.state();if(p.key==='rotor')window.__rotorHeatMax=Math.max(window.__rotorHeatMax||0,p.heat);const e=t.enemy(${victim.id});if(!e||!e.alive)return true;t.aimEnemy();return false;})()`,8000);await evaluate('window.__stalheartPilotTest.hold(false)');
  const shots=await evaluate('window.__stalheartPilotTest.state().shots');assert(shots>=2,'the Rotor streamed rounds');assert((await evaluate('window.__stalheartTest.state().brassLive'))>0,'spent cases fell from the Rotor in sentry control (docs/AMMUNITION.md)');current='story-world-rotor-kill';await finish();
  // keep shooting: the fifth kill brings the comms study, the tenth the biomass line
  await evaluate('window.__stalheartPilotTest.hold(true)');
- await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("harvest_biomass"))return true;window.__stalheartPilotTest.aimEnemy();return false;})()',120000);
- const hot=await evaluate('window.__stalheartPilotTest.state()');assert(hot.heat>0.05,`the barrels carry heat after a burst (${hot.heat})`);
+ await until('(()=>{const s=window.__stalheartTest.state();const p=window.__stalheartPilotTest.state();if(p.key==="rotor")window.__rotorHeatMax=Math.max(window.__rotorHeatMax||0,p.heat);if(s.story.said.includes("harvest_biomass"))return true;window.__stalheartPilotTest.aimEnemy();return false;})()',120000);
  await evaluate('window.__stalheartPilotTest.hold(false)');const said=await evaluate('window.__stalheartTest.state().story.said');assert(said.includes('alien_comms')&&said.includes('harvest_biomass'),'both lines said');
+ // THE HEAT CHECK READS THE ROTOR'S OWN PEAK, NOT A FRESH BURST (owner, 2026-09-14): confirmed live that a piloted Rotor can clear the whole wave during the waits above and the game hands control to the Quiver 0.6s later (STORY_QUIVER.delay) — read here, `state().key` is already 'quiver', heat 0, held reset by the hand-over's own attach(). A burst fired at THIS point fires the wrong mount, so every poll above banked the Rotor's own heat while it was still the Rotor, and the peak it reached is what is asserted on
+ const heatPeak=await evaluate('window.__rotorHeatMax||0');assert(heatPeak>0.05,`the barrels carry heat after a burst (${heatPeak})`);
  await delay(400);current='story-world-harvest';await finish();
  // THE FIRST WAVE DOWN IS THE NEXT UNLOCK: keep firing until the twenty are spent and none stand, then Isao's line and the view strip
- if((await evaluate('window.__stalheartTest.state().story.phase'))!=='cleared')assert.equal(await evaluate('document.querySelector("#story-views")'),null,'no view strip before the wave is cleared');   // a piloted Rotor can clear the whole wave during the kills above (2026-09-14)
+ if(!(await evaluate('window.__stalheartTest.state().story.said')).includes('wave_cleared'))assert.equal(await evaluate('document.querySelector("#story-views")'),null,'no view strip before the wave is cleared');   // a piloted Rotor can clear the whole wave during the kills above (2026-09-14), and phase can move past 'cleared' to 'quiver-piloting' the same tick it is set, so said is checked instead of the exact phase
  await evaluate('window.__stalheartPilotTest.hold(true)');
- await until('(()=>{const s=window.__stalheartTest.state();if(s.story.phase==="cleared")return true;const t=window.__stalheartPilotTest;if(t.state().overheated)return false;t.aimEnemy();return false;})()',480000);
+ await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("wave_cleared"))return true;const t=window.__stalheartPilotTest;if(t.state().overheated)return false;t.aimEnemy();return false;})()',480000);
  await evaluate('window.__stalheartPilotTest.hold(false)');const cleared=await evaluate('window.__stalheartTest.state()');assert(cleared.story.said.includes('wave_cleared'));await until('window.__stalheartTest.state().performance.enemies===0',5000);   // the performance block is a periodic sample
  await until('!!document.querySelector("#story-views")',5000);await delay(600);current='story-world-cleared';await finish();
  // the view strip is exercised after the Quiver: the hand-over now follows the cleared wave almost at once (owner, 2026-09-13)
