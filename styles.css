@@ -2569,7 +2569,7 @@ body.playing:not(.chrome-open) #tabbar { display: none !important; }
 }
 /* the gunship seat's views (owner, 2026-09-14): normal, night vision (dark, the contacts white), thermal (hot, the contacts yellow) */
 #tab-td.gunship-night #td-app canvas { filter: grayscale(1) brightness(0.62) contrast(1.7); }
-#tab-td.gunship-thermal #td-app canvas { filter: grayscale(1) brightness(0.5) contrast(1.6) sepia(1) saturate(5) hue-rotate(-18deg); }
+#tab-td.gunship-thermal #td-app canvas { filter: url(#flir); }   /* FLIR ironbow (index.html #flir, from the explosion lab) */
 #tab-td.gunship-seat #td-strikecam { display: none !important; }   /* the 105 is watched from the seat, not the munition feed */
 /* !important because three.js setSize writes `display: block` INLINE on its
    canvas, and an inline style beats any sheet rule. Found by probing the
