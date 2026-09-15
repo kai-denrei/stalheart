@@ -6431,7 +6431,7 @@ export function initTdTab(root) {
     streakMark = 0;
     if (ws) ws.leaks++; sectorRun?.heartHit(dmg);
     if (!(lab.on && lab.immortalHeart)) heartHP -= dmg;
-    heartSprite.userData.hit(); // orange/red Wave flare
+    heartSprite.userData.hit?.(); // orange/red Wave flare (the story's Stalheart has none: a leak there used to throw every frame)
     updateHud();
     if (heartHP <= 0) loseGame('the heart is lost');
   }
