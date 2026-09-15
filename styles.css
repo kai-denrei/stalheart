@@ -4389,7 +4389,7 @@ body.playing:not(.shell-open) #shell-bar { opacity: 0.32; }
 /* the campaign card */
 /* the sector table and Isao's send-off share a row on a wide card, and stack on a narrow one */
 .sdb-camp-row { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(220px, 1fr); align-items: start; gap: clamp(14px, 2.6cqi, 32px); margin-top: clamp(14px, 2.4cqi, 26px); }
-.sdb-camp-row > .sdb-isao { grid-template-columns: minmax(0, 1fr); margin-top: 0; }
+.sdb-camp-row > .sdb-isao { grid-column: auto; grid-template-columns: minmax(0, 1fr); margin-top: 0; }
 .sdb-camp-row > .sdb-isao > b { grid-row: auto; }
 .sdb-camp-row > .sdb-isao > p { font-size: clamp(18px, 1.9cqi, 23px); }
 .sdb-table-wrap { overflow-x: auto; }
