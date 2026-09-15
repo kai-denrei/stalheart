@@ -98,7 +98,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     hud: createStoryHud(), source: null,   // the radar overlay, and the breach the fodder comes from once it opens
     // the closed gate's cell is impassable to enemies; the tank opens it
     sealed: (ci) => plan.gate !== null && ci === plan.gate.cell && base.gate().built && !base.gate().open,
-    inside: (ci) => planet.clearing.cells.has(ci),
+    inside: (ci) => planet.clearing.cells.has(ci), gateCell: plan.gate ? plan.gate.cell : -1,   // the gate's cell: the sector loop wears it down under pressure (src/fx/sector-run.js)
     pilot: STORY_PILOT, breachShot: STORY_BREACH, day: STORY_DAY,
     handover: { ...STORY_HANDOVER, stage },   // the phase and stage the towers turn automatic (src/domain/automation.js)
     expeditions: makeExpeditions(STORY_EXPEDITIONS.sites),

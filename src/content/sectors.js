@@ -47,6 +47,19 @@ export const SECTOR_PLACEMENT = freeze({ minSeparationCells: 12, exclusionCells:
 // wave assumed killed (1: all of it), streak the multiplier assumed on the bounty (1: no streak credit, the economy's floor)
 export const SECTOR_FORFEIT = freeze({ killShare: 1, streak: 1 });
 
+// THE SECTOR'S CLOCK in the story (src/fx/sector-run.js): briefSeconds the brief card holds before the breaches open;
+// staggerSeconds between two openings (one breach-opening spike at a time, QA 2026-09-16); backDoorLead the least time
+// between the back mouth collapsing and a breach opening behind it; securePause the SECTOR SECURE callout before the debrief;
+// lostHold the wreck on screen before LAST TRANSMISSION
+export const SECTOR_TIMING = freeze({ briefSeconds: 6, staggerSeconds: 1.5, backDoorLead: 8, securePause: 3, lostHold: 2.5 });
+
+// THE GATE TAKES THE PRESSURE (QA 2026-09-16: a closed gate held a pile of 116 forever and a sector could not be lost).
+// Enemies within pressCells of the gate cell wear it down: dps per soft body, per solid core. At zero it breaks and stands
+// open (the pathfinder lets them through). Isao mends it at repairPerSecond while no enemy is within quietCells; a broken
+// gate closes again once it is back to closeAt of its hp. Numbers are a first cut: a dozen bodies break it in about ten
+// seconds, a hard core alone in about twenty.
+export const SECTOR_GATE = freeze({ hp: 60, pressCells: 2.5, softDps: 0.5, coreDps: 3, repairPerSecond: 3, quietCells: 8, closeAt: 0.6 });
+
 // who closes a breach, and how the debrief names it
 export const BREACH_CLOSERS = freeze({ gunship: '105', laser: 'SOL-82', shells: 'SHELLS', strike: 'STRIKE', held: 'HELD' });
 

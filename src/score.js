@@ -44,6 +44,12 @@ export function makeScore(best = 0) {
       if (points > best) best = points;
       return points;
     },
+    // a flat bonus (a story sector's HELD breach)
+    addBonus(n) {
+      points += Math.max(0, Math.round(n) || 0);
+      if (points > best) best = points;
+      return points;
+    },
     // a fresh run: the counter clears, the best stays earned
     reset() { points = 0; },
   };
