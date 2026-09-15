@@ -8,8 +8,10 @@ const ease = (x) => { const v = Math.max(0, Math.min(1, x)); return v * v * (3 -
 
 // hooks: { camera, startShot, cellSide }. `direction` is a unit THREE.Vector3 on the ground point. `dive` is
 // { height, back, diveSeconds } (STORY_BREACH: cells above the point, pulled toward the pole by `back`) or null for the
-// orbit-only shot. The pose leaves orbit after `preRoll`, holds `hold` seconds, blends home over `tail`. Returns the length.
-export function startDiveShot({ camera, startShot, cellSide }, direction, { id = 'breach', preRoll = 0, hold = 0, tail = 1.8, dive = null, onEnd = null } = {}) {
+// orbit-only shot. The pose leaves orbit after `preRoll`, holds `hold` seconds, blends home over `tail`. `fromCamera` glides
+// from where the camera already is instead of cutting to orbit first: a whole-planet frame on the cut cost a >100 ms frame
+// when the point is beside the base (the back door). Returns the length.
+export function startDiveShot({ camera, startShot, cellSide }, direction, { id = 'breach', preRoll = 0, hold = 0, tail = 1.8, dive = null, onEnd = null, fromCamera = false } = {}) {
   const returnPos = camera.position.clone(), returnQuat = camera.quaternion.clone(), far = direction.clone().multiplyScalar(3.3), up = camera.up.clone();
   const dur = preRoll + tail + hold;
   const toBase = new THREE.Vector3(0, 1, 0).sub(direction.clone().multiplyScalar(direction.y)).normalize();
@@ -18,7 +20,7 @@ export function startDiveShot({ camera, startShot, cellSide }, direction, { id =
   startShot({ id, dur, onEnd, poseAt: (u, out) => {
     const s = u * dur, blend = ease((s - preRoll - hold) / tail);
     tmpCam.position.copy(far); tmpCam.up.copy(up); tmpCam.lookAt(0, 0, 0);
-    if (dive) { const k = ease((s - preRoll) / (dive.diveSeconds ?? 1.4)); out.pos.copy(far).lerp(near, k); out.quat.copy(tmpCam.quaternion).slerp(nearQ, k); } else { out.pos.copy(far); out.quat.copy(tmpCam.quaternion); }
+    if (dive) { const k = ease((s - preRoll) / (dive.diveSeconds ?? 1.4)); out.pos.copy(fromCamera ? returnPos : far).lerp(near, k); out.quat.copy(fromCamera ? returnQuat : tmpCam.quaternion).slerp(nearQ, k); } else { out.pos.copy(far); out.quat.copy(tmpCam.quaternion); }
     out.pos.lerp(returnPos, blend); out.quat.slerp(returnQuat, blend);
   } });
   return dur;
