@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { LASER_ORBIT, LASER_BEAM, LASER_BURN, LASER_VIEW, LASER_PRESET, LASER_TRAIL, LASER_TRAIL_SMOKE, LASER_CONTACT_RATE, LASER_SMOKE_RATE, LASER_TELEMETRY } from '../src/content/orbital-laser.js';
-import { makeLaser, stepLaser, aimLaser, burnLaser, burnContacts, laserProgress } from '../src/domain/orbital-laser.js';
+import { makeLaser, stepLaser, aimLaser, burnLaser, burnContacts, laserProgress, clampToRange } from '../src/domain/orbital-laser.js';
 import { len3, dot3, norm3 } from '../src/vec3.js';
 
 /* the owner's first values, pinned so a tuning session has to come through a decision entry */
 assert.deepEqual({ ...LASER_ORBIT }, { period: 180, overhead: 20 });
-assert.deepEqual({ ...LASER_BEAM }, { energy: 10, radius: 6, slew: 10, accel: 5 });
+assert.deepEqual({ ...LASER_BEAM }, { energy: 10, radius: 6, slew: 10, accel: 5, range: 320 });
 assert.deepEqual({ ...LASER_BURN }, { soft: 0, hard: 1, wall: 0.5, rock: 0.5, tower: 1.5, seal: 1, tank: 1, heart: 3 });
 assert.deepEqual({ ...LASER_VIEW }, { altitude: 4, fov: 20, inset: 0.44, groundBack: 120, groundUp: 60 });
 assert.deepEqual({ ...LASER_TRAIL }, { every: 0.8, quads: 1000, seconds: 60, hot: 4, restamp: 0.4 });
@@ -99,6 +99,20 @@ assert.equal(LASER_PRESET.glowWidth, 10);
   /* the close forgets the speed with the contact */
   stepLaser(st2, 20, LASER_ORBIT, beam);
   assert.equal(st2.speed, 0);
+}
+
+/* --- the range ------------------------------------------------------------ */
+{
+  const R = 753, at = (arc, az) => [R * Math.sin(arc / R) * Math.cos(az), R * Math.cos(arc / R), R * Math.sin(arc / R) * Math.sin(az)];
+  const arcOf = (p) => R * Math.acos(Math.max(-1, Math.min(1, p[1] / len3(p))));
+  const inside = clampToRange(at(200, 1), 320);
+  assert.deepEqual(inside.target, at(200, 1), 'an aim inside the range is left alone');
+  assert.ok(Math.abs(inside.arc - 200) < 1e-6);
+  const out = clampToRange(at(450, 2), 320);
+  assert.ok(Math.abs(out.arc - 450) < 1e-6, 'the unclamped distance is reported');
+  assert.ok(Math.abs(arcOf(out.target) - 320) < 1e-6 && Math.abs(len3(out.target) - R) < 1e-6, 'an aim beyond it sits on the limit, on the sphere');
+  assert.ok(Math.abs(Math.atan2(out.target[2], out.target[0]) - 2) < 1e-9, 'along the same bearing from the base');
+  assert.deepEqual(clampToRange(at(900, 0.5), 0).target, at(900, 0.5), 'range 0 is no limit');
 }
 
 /* --- the burn accumulator ------------------------------------------------ */

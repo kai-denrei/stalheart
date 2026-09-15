@@ -39,13 +39,14 @@ import { createOrbitalLaser } from '../fx/orbital-laser.js';
 import { makeDotEnemy, makeDotBurst } from '../units.js';
 import { loadGlbWithClips } from '../glbmodels.js';
 import { LASER_ORBIT, LASER_BEAM, LASER_BURN, LASER_VIEW, LASER_PRESET, LASER_CONTACT_RATE, LASER_SMOKE_RATE, LASER_TELEMETRY } from '../content/orbital-laser.js';
-import { makeLaser, stepLaser, aimLaser, burnLaser, burnContacts, laserProgress } from '../domain/orbital-laser.js';
+import { makeLaser, stepLaser, aimLaser, burnLaser, burnContacts, laserProgress, clampToRange } from '../domain/orbital-laser.js';
 import { deepLink, wireDeepLink } from '../deeplink.js';
 import { norm3 } from '../vec3.js';
 import { BLOCKED, PATH } from '../dungeon.js';
 
 const STAGE = 6;                                   /* the Stalheart's stage: the whole base stands */
-const BODIES = 20;
+const BODIES = 20;                                 /* the default; the panel's enemies slider runs 10 to 1000 */
+const CROWD_METRES = 160;                          /* bodies beyond the trench's queue stand on floor within this of its mouth */
 const BODY_SPEED = 2.2;                            /* metres per second up the trench */
 const BODY_GAP = 3.4;                              /* single file: metres between one body and the next */
 const TRENCH_WIDTH = 4, TRENCH_DEPTH = 1.5;
@@ -62,6 +63,7 @@ export function initLaserTab(root) {
   const container = root.querySelector('#laser-app'), hud = root.querySelector('#laser-hud');
   const look = LOOKS.tronColors;
   const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.info.autoReset = false;
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   container.appendChild(renderer.domElement);
   /* the satellite inset's sight and telemetry, a 2D canvas over the 3D one */
@@ -76,7 +78,8 @@ export function initLaserTab(root) {
   /* the panel's working copy of the content; the panel edits this, never the frozen tables */
   const P = {
     period: LASER_ORBIT.period, overhead: LASER_ORBIT.overhead,
-    energy: LASER_BEAM.energy, radius: LASER_BEAM.radius, slew: LASER_BEAM.slew, accel: LASER_BEAM.accel,
+    energy: LASER_BEAM.energy, radius: LASER_BEAM.radius, slew: LASER_BEAM.slew, accel: LASER_BEAM.accel, range: LASER_BEAM.range,
+    enemies: BODIES,
     altitude: LASER_VIEW.altitude, fov: LASER_VIEW.fov, inset: LASER_VIEW.inset,
     groundBack: LASER_VIEW.groundBack, groundUp: LASER_VIEW.groundUp,
     burnSoft: LASER_BURN.soft, burnHard: LASER_BURN.hard, burnWall: LASER_BURN.wall,
@@ -127,6 +130,9 @@ export function initLaserTab(root) {
      the cells a structure or socket stands on (never breached, the way a mounted tower anchors its wall). The planet is
      createStoryPlanetSurface, so a breach patches its cell in place instead of rebuilding the planet. */
   let rockTags0 = null, rockAnchors = new Set();
+  /* the aim's distance from the base before the range clamp, for the scope's colour; the frame timing for the perf line */
+  let aimArc = 0, frameMs = 16.7, crowdCells = null;
+  const perf = { fps: 0, ms: 0, draws: 0, triangles: 0 };
   const st = makeLaser(orbit(), beamCfg());
   let steerN = [0.5, 0.5], steering = false;
 
@@ -157,6 +163,7 @@ export function initLaserTab(root) {
     + '<span id="laser-read">—</span>'
     + '<span id="laser-lost" hidden>COLONY LOST</span>'
     + '<span id="laser-flash"></span>'
+    + '<span id="laser-perf"></span>'
     + '</div>'
     + '<div class="laser-keys"><button id="laser-pass" type="button">PASS NOW</button>'
     + '<button id="laser-revive" type="button">REVIVE</button>'
@@ -165,7 +172,7 @@ export function initLaserTab(root) {
   const elState = hud.querySelector('#laser-state'), elWindow = hud.querySelector('#laser-window');
   const elEnergy = hud.querySelector('#laser-energy'), elRead = hud.querySelector('#laser-read');
   const elLost = hud.querySelector('#laser-lost'), elEnergyLabel = hud.querySelector('#laser-energy-label');
-  const elFlash = hud.querySelector('#laser-flash');
+  const elFlash = hud.querySelector('#laser-flash'), elPerf = hud.querySelector('#laser-perf');
   const style = document.createElement('style');
   /* the canvas fills the tab the way every other lab's does (styles.css #story-app), injected so the lab owns it */
   style.textContent = '#laser-app{position:absolute;inset:0}'
@@ -207,6 +214,8 @@ export function initLaserTab(root) {
     elLost.hidden = run.heart !== 'LOST';
     const note = flashT > 0 ? flashMsg : '';
     if (elFlash.textContent !== note) elFlash.textContent = note;
+    const perfLine = `fps ${perf.fps} · ${perf.ms.toFixed(1)} ms · ${perf.draws} draws · ${bodies.length} bodies`;
+    if (elPerf.textContent !== perfLine) elPerf.textContent = perfLine;
   }
 
   /* --- the trench --------------------------------------------------------- */
@@ -271,17 +280,48 @@ export function initLaserTab(root) {
     b.obj.quaternion.setFromUnitVectors(Y, normalOf(w));
   }
 
+  // THE SWARM: P.enemies bodies (the panel runs 10 to 1000, to find where the frame rate gives). The trench holds a
+  // single-file queue as before; the rest are a crowd standing on floor cells within CROWD_METRES of the trench's
+  // mouth, each on its own cell (jittered when there are more bodies than cells), idle-animated and burnable.
+  function floorNearMouth() {
+    if (crowdCells) return crowdCells;
+    const mouth = normalOf(toWorld([trench.from[0], 0, trench.from[1]])), cosReach = Math.cos(CROWD_METRES / R);
+    const tags = planet.dungeon.tags, centers = planet.graph.centers, out = [];
+    for (let ci = 0; ci < centers.length; ci++) {
+      const c = centers[ci];
+      if (tags[ci] !== BLOCKED && c[0] * mouth.x + c[1] * mouth.y + c[2] * mouth.z >= cosReach) out.push(ci);
+    }
+    for (let i = out.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [out[i], out[j]] = [out[j], out[i]]; }
+    return (crowdCells = out);
+  }
+
   function buildBodies() {
     for (const b of bodies) if (b.obj) { scene.remove(b.obj); b.obj.geometry.dispose(); b.obj.material.dispose(); }
     bodies = [];
-    for (let i = 0; i < BODIES; i++) {
+    const count = Math.max(1, Math.round(P.enemies));
+    const queue = Math.min(count, Math.max(1, Math.floor((trench.length - 4) / BODY_GAP) + 1));
+    const cells = count > queue ? floorNearMouth() : [];
+    for (let i = 0; i < count; i++) {
       const type = BODY_TYPES[i % BODY_TYPES.length];
       let obj = null;
       try { obj = makeDotEnemy(type, BODY_COLS, 1); } catch (e) { errors.push(`body ${i}: ${e}`); }
       if (obj) { obj.scale.setScalar(1.7); scene.add(obj); }
-      const b = { id: `body-${i}`, type, obj, alive: true, s: trench.length - 4 - i * BODY_GAP, pos: [0, 0, 0] };
-      b.s = Math.max(0, b.s);
-      seatBody(b);
+      if (i < queue || !cells.length) {
+        const b = { id: `body-${i}`, type, obj, alive: true, crowd: false, s: Math.max(0, trench.length - 4 - i * BODY_GAP), pos: [0, 0, 0] };
+        seatBody(b);
+        bodies.push(b);
+        continue;
+      }
+      const ci = cells[(i - queue) % cells.length], c = planet.graph.centers[ci];
+      let alt = 0;
+      for (const vi of planet.mesh.quads[ci]) alt += planet.altitudeOf(vi) / 4;
+      const n = new THREE.Vector3(c[0], c[1], c[2]).normalize();
+      const across = new THREE.Vector3().crossVectors(n, north).normalize(), along = new THREE.Vector3().crossVectors(n, across);
+      const spread = i - queue >= cells.length ? 3.5 : 0;
+      const w = n.clone().multiplyScalar(R + alt + 0.6).add(tmpB.set(0, -R, 0))
+        .addScaledVector(across, (Math.random() - 0.5) * 2 * spread).addScaledVector(along, (Math.random() - 0.5) * 2 * spread);
+      const b = { id: `body-${i}`, type, obj, alive: true, crowd: true, s: 0, pos: [w.x, w.y, w.z] };
+      if (obj) { obj.position.copy(w); obj.quaternion.setFromUnitVectors(Y, n); }
       bodies.push(b);
     }
   }
@@ -290,6 +330,7 @@ export function initLaserTab(root) {
     let ahead = trench.length;
     for (const b of bodies) {
       if (!b.alive) continue;
+      if (b.crowd) { b.obj?.userData.tick?.(clock); continue; }
       stampScare(b, now);
       const pace = scarePace(b, now, SCARE_FREEZE_S);
       const dir = isScared(b, now) ? -1 : 1;
@@ -575,7 +616,14 @@ void main(){
     if (!active || disposed) return;
     frameId = requestAnimationFrame(loop);
     const now = performance.now(), dt = Math.min(0.05, (now - last) / 1000);
+    frameMs += ((now - last) - frameMs) * 0.1;
     last = now;
+    perf.ms = frameMs;
+    perf.fps = Math.round(1000 / Math.max(1, frameMs));
+    /* info counts every render of the frame (ground, satellite, lens), so reset it once here, not per render */
+    perf.draws = renderer.info.render.calls;
+    perf.triangles = renderer.info.render.triangles;
+    renderer.info.reset();
     clock += dt;
     if (!ready) { renderer.render(scene, ground); return; }
     step(dt);
@@ -605,7 +653,7 @@ void main(){
     const rangeM = sat.position.distanceTo(anchor);
     const p = laserProgress(st, orbit(), beamCfg());
     return {
-      rect: r, aim, contact, footprintPx, lagM,
+      rect: r, aim, contact, footprintPx, lagM, aiming, limitM: P.range, aimArcM: aimArc,
       phase: st.phase, infinite: P.infinite, left: st.left, pass01: p.pass,
       energy: st.energy, energy01: p.energy, burning: st.burning,
       speed: P.accel > 0 ? (st.speed || 0) : (st.burning || aiming ? P.slew : 0), slew: P.slew, radiusM: P.radius,
@@ -731,7 +779,10 @@ void main(){
   /* --- the beam, per frame -------------------------------------------------- */
   function applyBurn(dt) {
     const hit = steering || held ? targetFromInset(steerN[0], steerN[1]) : null;
-    if (hit) aimLaser(st, toCentre(hit), dt, beamCfg());
+    /* the range: an aim beyond it is held at the limit, and the scope is told how far out it was */
+    const ranged = hit ? clampToRange(toCentre(hit), P.range) : null;
+    aimArc = ranged ? ranged.arc : 0;
+    if (ranged) aimLaser(st, ranged.target, dt, beamCfg());
     const burning = burnLaser(st, held, dt);
     const point = st.contact ? fromCentre(st.contact) : null;
     if (!burning || !point) {
@@ -873,6 +924,10 @@ void main(){
   gb.add(P, 'radius', 1, 30, 0.5).name('footprint (m)').onChange(retune);
   gb.add(P, 'slew', 1, 200, 0.5).name('top speed (m/s)');
   gb.add(P, 'accel', 0, 60, 0.5).name('acceleration (m/s², 0 = instant)');
+  gb.add(P, 'range', 50, 800, 10).name('range from the base (m)');
+  const gs = gui.addFolder('the swarm');
+  gs.add(P, 'enemies', 10, 1000, 10).name('enemies').onFinishChange(() => { if (ready) buildBodies(); });
+  gs.open();
   gb.open();
   /* live: each change goes straight to the column's uniforms through tune(), and COPY PRESET and the deep link carry it */
   const gw = gui.addFolder('the beam look');
@@ -919,7 +974,7 @@ void main(){
   function presetJson() {
     return JSON.stringify({
       LASER_ORBIT: { period: P.period, overhead: P.overhead },
-      LASER_BEAM: { energy: P.energy, radius: P.radius, slew: P.slew, accel: P.accel },
+      LASER_BEAM: { energy: P.energy, radius: P.radius, slew: P.slew, accel: P.accel, range: P.range },
       LASER_BURN: burnCfg(),
       LASER_VIEW: { altitude: P.altitude, fov: P.fov, inset: P.inset, groundBack: P.groundBack, groundUp: P.groundUp },
       LASER_PRESET: { ...LASER_PRESET, coreWidth: P.coreWidth, glowWidth: P.glowWidth, coreIntensity: P.coreIntensity, glowIntensity: P.glowIntensity, noiseAmount: P.noiseAmount },
@@ -982,6 +1037,7 @@ void main(){
       structsStanding: structs.filter((s) => !s.gone).length,
       infinite: P.infinite,
       under: { ...under },
+      perf: { ...perf, bodies: bodies.length },
       /* the column's live uniforms, in scene units, so a check can see that a slider actually reached the shader */
       look: laser ? laser.look() : null,
       /* standing sentries: a burned one is `gone` in structs */

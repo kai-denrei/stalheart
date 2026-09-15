@@ -16,7 +16,9 @@ const Y = new THREE.Vector3(0, 1, 0);
 const WIDTH_KEYS = new Set(['coreWidth', 'glowWidth', 'jitterAmount']);
 /* the column ends this far UNDER the contact, so its last sliver of taper is inside the ground and it meets the surface
    at full width */
-const BURY_METRES = 2;
+const BURY_METRES = 1;
+/* the column's last metres fade to nothing where it meets the ground */
+const GROUND_FADE_METRES = 6;
 /* the contact glow's radius as a multiple of the column's glow width: it spreads a little where it lands */
 const DISC_SPREAD = 1.3;
 
@@ -42,6 +44,17 @@ export function createOrbitalLaser(scene, { cellSide = 10, metresPerCell = 10 } 
   if (beam.mesh.material.fragmentShader.includes(GLOW_LINE)) {
     beam.mesh.material.fragmentShader = beam.mesh.material.fragmentShader.replace(GLOW_LINE,
       'float glow = pow(max(0.0, 1.0 - avT), uGlowFalloff) * (1.0 - smoothstep(0.55, 1.0, avT));');
+  }
+  /* THE COLUMN FADES INTO THE GROUND. Where a flat camera-facing ribbon meets terrain the depth test cuts it with a hard
+     line whatever its width (owner, 2026-09-15: "this effect is still showing"). The last GROUND_FADE_METRES fade to
+     nothing, so the ground only ever meets an invisible sliver; the contact glow disc carries the landing. */
+  const material = beam.mesh.material;
+  material.uniforms.uGroundFade = { value: 0.02 };
+  const ALPHA_DECL = 'uniform float uAlpha;', COLOUR_OUT = 'col *= lenMask * flick * uAlpha;';
+  if (material.fragmentShader.includes(ALPHA_DECL) && material.fragmentShader.includes(COLOUR_OUT)) {
+    material.fragmentShader = material.fragmentShader
+      .replace(ALPHA_DECL, `${ALPHA_DECL}\nuniform float uGroundFade;`)
+      .replace(COLOUR_OUT, `${COLOUR_OUT}\n  col *= smoothstep(0.0, 1.0, (1.0 - vU) / max(uGroundFade, 1e-4));`);
   }
   beam.mesh.visible = false;
   group.add(beam.mesh);
@@ -235,6 +248,7 @@ void main(){
     up.copy(normal).normalize();
     sky.copy(at).addScaledVector(up, LASER_SKY_METRES * unit);
     beam.setEndpoints(sky, end.copy(at).addScaledVector(up, -BURY_METRES * unit));
+    material.uniforms.uGroundFade.value = ((GROUND_FADE_METRES + BURY_METRES) * unit) / sky.distanceTo(end);
     ring.position.copy(at).addScaledVector(up, 0.08 * unit);
     ring.quaternion.setFromUnitVectors(Y, up);
     disc.position.copy(at).addScaledVector(up, 0.12 * unit);

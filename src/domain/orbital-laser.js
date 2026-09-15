@@ -95,6 +95,17 @@ export function aimLaser(st, target, dt, beam) {
   return st.contact;
 }
 
+// Keeps a target within rangeM metres of arc from the pole (the base): a target beyond it moves back along the great
+// circle through the pole onto the limit. Returns { target, arc }, where arc is the UNclamped distance, so the scope
+// can say how far out the aim is. A range of 0 or less is no limit.
+export function clampToRange(target, rangeM) {
+  const R = len3(target) || 1, n = scale3(target, 1 / R);
+  const arc = Math.acos(Math.max(-1, Math.min(1, n[1]))) * R;
+  if (!(rangeM > 0) || arc <= rangeM) return { target: [target[0], target[1], target[2]], arc };
+  const h = Math.hypot(n[0], n[2]) || 1, angle = rangeM / R;
+  return { target: [(n[0] / h) * Math.sin(angle) * R, Math.cos(angle) * R, (n[2] / h) * Math.sin(angle) * R], arc };
+}
+
 // Burning is held AND overhead AND still funded. Returns whether it burned this frame; drains the budget by dt.
 export function burnLaser(st, held, dt) {
   const on = !!held && st.phase === 'overhead' && st.energy > 0;
