@@ -89,6 +89,10 @@ export function initLaserTab(root) {
     period: LASER_ORBIT.period, overhead: LASER_ORBIT.overhead,
     energy: LASER_BEAM.energy, radius: LASER_BEAM.radius, slew: LASER_BEAM.slew, accel: LASER_BEAM.accel, range: LASER_BEAM.range,
     enemies: BODIES,
+    /* the range is feedback unless this holds the beam at it */
+    holdRange: false,
+    /* WASD / arrows pre-position the beam this fast (m/s) while it is not firing */
+    padSpeed: 120,
     altitude: LASER_VIEW.altitude, fov: LASER_VIEW.fov, inset: LASER_VIEW.inset,
     groundBack: LASER_VIEW.groundBack, groundUp: LASER_VIEW.groundUp,
     burnSoft: LASER_BURN.soft, burnHard: LASER_BURN.hard, burnWall: LASER_BURN.wall,
@@ -109,6 +113,7 @@ export function initLaserTab(root) {
     if (v !== null && Number.isFinite(Number(v))) P[key] = Number(v);
   }
   P.infinite = !!P.infinite;
+  P.holdRange = !!P.holdRange;
   P.sound = !!P.sound;
   if (['all', 'rim', 'none'].includes(q.get('rockLines'))) P.rockLines = q.get('rockLines');
   /* what tune() takes: the column's live uniforms and the footprint ring */
@@ -788,13 +793,55 @@ void main(){
     return dir.multiplyScalar(R + h).add(tmpB.set(0, -R, 0));
   }
 
+  // THE KEYS PRE-POSITION (owner, 2026-09-15: "WASD could be an additional fast way to pre-position the laser, and the
+  // current method the firing method"). While the beam is not firing, W/A/S/D or the arrows slide the contact straight
+  // across the ground at P.padSpeed, north up as the scope shows it, ignoring the slew and its inertia; a key takes the
+  // aim from the pointer until the pointer moves again. While it fires, the keys do nothing: the hold is the weapon.
+  const keys = new Set();
+  const PAD_KEYS = { KeyW: [0, 1], ArrowUp: [0, 1], KeyS: [0, -1], ArrowDown: [0, -1], KeyA: [-1, 0], ArrowLeft: [-1, 0], KeyD: [1, 0], ArrowRight: [1, 0] };
+  const typing = (e) => /^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName || '') || e.target?.isContentEditable;
+  const onKeyDown = (e) => {
+    if (!active || typing(e) || !PAD_KEYS[e.code]) return;
+    keys.add(e.code);
+    steering = false;
+    e.preventDefault();
+  };
+  const onKeyUp = (e) => { keys.delete(e.code); };
+  const onBlur = () => keys.clear();
+  addEventListener('keydown', onKeyDown);
+  addEventListener('keyup', onKeyUp);
+  addEventListener('blur', onBlur);
+
+  function padContact(east, north, seconds) {
+    if (held || st.burning || (!east && !north)) return;
+    const len = Math.hypot(east, north) || 1;
+    const from = st.contact ? fromCentre(st.contact) : trenchPoint(queueTail());
+    const n = normalOf(from);
+    const northT = north.clone().addScaledVector(n, -north.dot(n)).normalize();
+    const eastT = new THREE.Vector3().crossVectors(northT, n);
+    const step = P.padSpeed * seconds / len;
+    const moved = toCentre(from.clone().addScaledVector(eastT, east * step).addScaledVector(northT, north * step));
+    let target = norm3(moved).map((c) => c * R);
+    if (P.holdRange) target = clampToRange(target, P.range).target;
+    st.contact = target;
+    st.fresh = false;
+    st.speed = 0;
+    st.axis = null;
+  }
+
+  function padFromKeys(dt) {
+    let east = 0, north = 0;
+    for (const code of keys) { const d = PAD_KEYS[code]; east += d[0]; north += d[1]; }
+    padContact(east, north, dt);
+  }
+
   /* --- the beam, per frame -------------------------------------------------- */
   function applyBurn(dt) {
     const hit = steering || held ? targetFromInset(steerN[0], steerN[1]) : null;
     /* the range: an aim beyond it is held at the limit, and the scope is told how far out it was */
     const ranged = hit ? clampToRange(toCentre(hit), P.range) : null;
     aimArc = ranged ? ranged.arc : 0;
-    if (ranged) aimLaser(st, ranged.target, dt, beamCfg());
+    if (ranged) aimLaser(st, P.holdRange ? ranged.target : toCentre(hit), dt, beamCfg());
     const burning = burnLaser(st, held, dt);
     const point = st.contact ? fromCentre(st.contact) : null;
     if (!burning || !point) {
@@ -849,6 +896,7 @@ void main(){
     if (edge === 'close') laser.lift();
     /* the sinkhole opens itself once its stone textures are in: nothing else polls it here */
     if (!sinkOpened && !sealed && sink.ready()) { sink.trigger(); sinkOpened = true; }
+    padFromKeys(dt);
     applyBurn(dt);
     stepBodies(dt, clock);
     stepBursts(dt);
@@ -908,6 +956,9 @@ void main(){
       removeEventListener('resize', resize);
       removeEventListener('pointerup', onPointerUp);
       removeEventListener('pointercancel', onPointerUp);
+      removeEventListener('keydown', onKeyDown);
+      removeEventListener('keyup', onKeyUp);
+      removeEventListener('blur', onBlur);
       thermal?.dispose();
       laser?.dispose();
       sink?.dispose();
@@ -947,6 +998,8 @@ void main(){
   gb.add(P, 'slew', 1, 200, 0.5).name('top speed (m/s)');
   gb.add(P, 'accel', 0, 60, 0.5).name('acceleration (m/s², 0 = instant)');
   gb.add(P, 'range', 50, 800, 10).name('range from the base (m)');
+  gb.add(P, 'holdRange').name('hold at range');
+  gb.add(P, 'padSpeed', 10, 400, 5).name('WASD pre-position (m/s)');
   const gs = gui.addFolder('the swarm');
   gs.add(P, 'enemies', 10, 1000, 10).name('enemies').onFinishChange(() => { if (ready) buildBodies(); });
   gs.open();
@@ -1075,6 +1128,8 @@ void main(){
     tune: (look) => { Object.assign(P, look); laser?.tune(lookOf()); },
     infinite: (on) => { P.infinite = !!on; keepInfinite(); },
     steer: (nx, ny) => steerTo(nx, ny),
+    /* the keys' path without a keyboard: slide the contact east/north (unit-free direction) for `seconds` */
+    pad: (east, north, seconds) => padContact(east, north, seconds),
     hold: (on) => { held = !!on; if (!on) steering = false; },
     reset: () => { location.reload(); },
     dispose: () => api.dispose(),

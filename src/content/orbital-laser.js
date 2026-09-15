@@ -9,8 +9,9 @@ export const LASER_ORBIT = Object.freeze({ period: 180, overhead: 20 });
 // m/s; accel: how fast it reaches that speed and brakes to arrive, m/s² (0 = the old constant-rate chase).
 // Slow and inexorable, not hectic (owner, 2026-09-15): 10 m/s reached in two seconds, where 40 m/s at once read as a
 // mouse cursor.
-// range: how far from the base (arc metres from the pole) the beam may be laid; an aim beyond it is held at the limit and
-// the scope turns amber (owner, 2026-09-15). 320 m covers the clearing, the trench and the sinkhole at its far end.
+// range: how far from the base (arc metres from the pole) the scope calls the aim in range; beyond it the scope turns amber
+// (owner, 2026-09-15). It is FEEDBACK, not a wall: the player must feel in total control, so the beam goes wherever it
+// is aimed unless the lab's "hold at range" is on. 320 m covers the clearing, the trench and the sinkhole at its far end.
 export const LASER_BEAM = Object.freeze({ energy: 10, radius: 6, slew: 10, accel: 5, range: 320 });
 
 // seconds of contact needed to destroy each kind. A body dies the instant the footprint touches it; the Stalheart
