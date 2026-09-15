@@ -47,8 +47,9 @@ import { norm3 } from '../vec3.js';
 import { BLOCKED, PATH } from '../dungeon.js';
 
 const STAGE = 6;                                   /* the Stalheart's stage: the whole base stands */
-const BODIES = 20;                                 /* the default; the panel's enemies slider runs 10 to 1000 */
-const CROWD_METRES = 160;                          /* bodies beyond the trench's queue stand on floor within this of its mouth */
+const BODIES = 20;                                 /* the single-file queue in the trench (the --laser browser step burns these) */
+const WALK_RING = [380, 600];                      /* arc metres from the base where the walking swarm spawns, beyond the range */
+const ARRIVE_HOPS = 3;                             /* a walker this few cells from the heart has arrived, and respawns far out */
 const BODY_SPEED = 2.2;                            /* metres per second up the trench */
 const BODY_GAP = 3.4;                              /* single file: metres between one body and the next */
 const TRENCH_WIDTH = 4, TRENCH_DEPTH = 1.5;
@@ -91,7 +92,9 @@ export function initLaserTab(root) {
   const P = {
     period: LASER_ORBIT.period, overhead: LASER_ORBIT.overhead,
     energy: LASER_BEAM.energy, radius: LASER_BEAM.radius, slew: LASER_BEAM.slew, accel: LASER_BEAM.accel, range: LASER_BEAM.range,
-    enemies: BODIES,
+    /* the swarm: the trench queue, then walkers that come in from far away along the route field */
+    enemies: 500,
+    walkSpeed: 4,
     /* the range is feedback unless this holds the beam at it */
     holdRange: false,
     /* WASD / arrows pre-position the beam this fast (m/s) while it is not firing */
@@ -151,7 +154,8 @@ export function initLaserTab(root) {
      createStoryPlanetSurface, so a breach patches its cell in place instead of rebuilding the planet. */
   let rockTags0 = null, rockAnchors = new Set();
   /* the aim's distance from the base before the range clamp, for the scope's colour; the frame timing for the perf line */
-  let aimArc = 0, frameMs = 16.7, crowdCells = null;
+  let aimArc = 0, frameMs = 16.7, walkCells = null;
+  const cellSpots = new Map();
   const perf = { fps: 0, ms: 0, draws: 0, triangles: 0 };
   const st = makeLaser(orbit(), beamCfg());
   let steerN = [0.5, 0.5], steering = false;
@@ -301,48 +305,94 @@ export function initLaserTab(root) {
     b.obj.quaternion.setFromUnitVectors(Y, normalOf(w));
   }
 
-  // THE SWARM: P.enemies bodies (the panel runs 10 to 1000, to find where the frame rate gives). The trench holds a
-  // single-file queue as before; the rest are a crowd standing on floor cells within CROWD_METRES of the trench's
-  // mouth, each on its own cell (jittered when there are more bodies than cells), idle-animated and burnable.
-  function floorNearMouth() {
-    if (crowdCells) return crowdCells;
-    const mouth = normalOf(toWorld([trench.from[0], 0, trench.from[1]])), cosReach = Math.cos(CROWD_METRES / R);
-    const tags = planet.dungeon.tags, centers = planet.graph.centers, out = [];
+  // THE SWARM (owner, 2026-09-15: 500 by default, active, moving the way they do, spawning far from the base). The first
+  // BODIES walk single file up the trench as before. The rest are walkers: they spawn on open floor WALK_RING metres out
+  // and step cell to cell down the planet's own route field (dungeon.distToHeart, the field the game routes the swarm
+  // by), turning away while scared; one that reaches the heart respawns far out, so the swarm keeps coming.
+  function spawnCells() {
+    if (walkCells) return walkCells;
+    const centers = planet.graph.centers, tags = planet.dungeon.tags, dist = planet.dungeon.distToHeart, out = [];
     for (let ci = 0; ci < centers.length; ci++) {
-      const c = centers[ci];
-      if (tags[ci] !== BLOCKED && c[0] * mouth.x + c[1] * mouth.y + c[2] * mouth.z >= cosReach) out.push(ci);
+      if (tags[ci] === BLOCKED || !(dist[ci] > ARRIVE_HOPS)) continue;
+      const arc = Math.acos(Math.max(-1, Math.min(1, centers[ci][1]))) * R;
+      if (arc >= WALK_RING[0] && arc <= WALK_RING[1]) out.push(ci);
     }
-    for (let i = out.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [out[i], out[j]] = [out[j], out[i]]; }
-    return (crowdCells = out);
+    return (walkCells = out);
+  }
+
+  // a walker's footing on a cell: its centre on the ground, a hair above the floor
+  function cellSpot(ci) {
+    let spot = cellSpots.get(ci);
+    if (spot) return spot;
+    const c = planet.graph.centers[ci];
+    let alt = 0;
+    for (const vi of planet.mesh.quads[ci]) alt += planet.altitudeOf(vi) / 4;
+    spot = new THREE.Vector3(c[0], c[1], c[2]).normalize().multiplyScalar(R + alt + 0.6).add(tmpB.set(0, -R, 0));
+    cellSpots.set(ci, spot);
+    return spot;
+  }
+
+  // the next cell: down the route field toward the heart (a random one of the best, so the swarm spreads), or up it while scared
+  function nextCell(ci, away) {
+    const tags = planet.dungeon.tags, dist = planet.dungeon.distToHeart;
+    let best = [], bestD = away ? -Infinity : Infinity;
+    for (const nb of planet.graph.adj[ci]) {
+      if (tags[nb] === BLOCKED || dist[nb] < 0) continue;
+      const d = dist[nb];
+      if (away ? d > bestD : d < bestD) { bestD = d; best = [nb]; } else if (d === bestD) best.push(nb);
+    }
+    return best.length ? best[Math.floor(Math.random() * best.length)] : ci;
+  }
+
+  function spawnWalker(b) {
+    const cells = spawnCells();
+    b.ci = cells.length ? cells[Math.floor(Math.random() * cells.length)] : 0;
+    b.next = nextCell(b.ci, false);
+    b.t = Math.random();
+    placeWalker(b);
+  }
+
+  function placeWalker(b) {
+    const w = tmpA.copy(cellSpot(b.ci)).lerp(cellSpot(b.next), b.t);
+    b.pos = [w.x, w.y, w.z];
+    if (!b.obj) return;
+    b.obj.position.copy(w);
+    b.obj.quaternion.setFromUnitVectors(Y, normalOf(w));
+  }
+
+  function stepWalker(b, dt, now) {
+    stampScare(b, now);
+    const pace = scarePace(b, now, SCARE_FREEZE_S), away = isScared(b, now);
+    const leg = cellSpot(b.ci).distanceTo(cellSpot(b.next)) || 1;
+    b.t += (P.walkSpeed * pace * dt) / leg;
+    while (b.t >= 1) {
+      b.t -= 1;
+      b.ci = b.next;
+      if (planet.dungeon.distToHeart[b.ci] <= ARRIVE_HOPS) { spawnWalker(b); return; }
+      b.next = nextCell(b.ci, away);
+      if (b.next === b.ci) { b.t = 0; break; }
+    }
+    placeWalker(b);
   }
 
   function buildBodies() {
     for (const b of bodies) if (b.obj) { scene.remove(b.obj); b.obj.geometry.dispose(); b.obj.material.dispose(); }
     bodies = [];
     const count = Math.max(1, Math.round(P.enemies));
-    const queue = Math.min(count, Math.max(1, Math.floor((trench.length - 4) / BODY_GAP) + 1));
-    const cells = count > queue ? floorNearMouth() : [];
+    const queue = Math.min(count, BODIES, Math.max(1, Math.floor((trench.length - 4) / BODY_GAP) + 1));
     for (let i = 0; i < count; i++) {
       const type = BODY_TYPES[i % BODY_TYPES.length];
       let obj = null;
       try { obj = makeDotEnemy(type, BODY_COLS, 1); } catch (e) { errors.push(`body ${i}: ${e}`); }
       if (obj) { obj.scale.setScalar(1.7); scene.add(obj); }
-      if (i < queue || !cells.length) {
-        const b = { id: `body-${i}`, type, obj, alive: true, crowd: false, s: Math.max(0, trench.length - 4 - i * BODY_GAP), pos: [0, 0, 0] };
+      if (i < queue) {
+        const b = { id: `body-${i}`, type, obj, alive: true, walker: false, s: Math.max(0, trench.length - 4 - i * BODY_GAP), pos: [0, 0, 0] };
         seatBody(b);
         bodies.push(b);
         continue;
       }
-      const ci = cells[(i - queue) % cells.length], c = planet.graph.centers[ci];
-      let alt = 0;
-      for (const vi of planet.mesh.quads[ci]) alt += planet.altitudeOf(vi) / 4;
-      const n = new THREE.Vector3(c[0], c[1], c[2]).normalize();
-      const across = new THREE.Vector3().crossVectors(n, north).normalize(), along = new THREE.Vector3().crossVectors(n, across);
-      const spread = i - queue >= cells.length ? 3.5 : 0;
-      const w = n.clone().multiplyScalar(R + alt + 0.6).add(tmpB.set(0, -R, 0))
-        .addScaledVector(across, (Math.random() - 0.5) * 2 * spread).addScaledVector(along, (Math.random() - 0.5) * 2 * spread);
-      const b = { id: `body-${i}`, type, obj, alive: true, crowd: true, s: 0, pos: [w.x, w.y, w.z] };
-      if (obj) { obj.position.copy(w); obj.quaternion.setFromUnitVectors(Y, n); }
+      const b = { id: `body-${i}`, type, obj, alive: true, walker: true, ci: 0, next: 0, t: 0, pos: [0, 0, 0] };
+      spawnWalker(b);
       bodies.push(b);
     }
   }
@@ -351,7 +401,7 @@ export function initLaserTab(root) {
     let ahead = trench.length;
     for (const b of bodies) {
       if (!b.alive) continue;
-      if (b.crowd) { b.obj?.userData.tick?.(clock); continue; }
+      if (b.walker) { stepWalker(b, dt, now); b.obj?.userData.tick?.(clock); continue; }
       stampScare(b, now);
       const pace = scarePace(b, now, SCARE_FREEZE_S);
       const dir = isScared(b, now) ? -1 : 1;
@@ -569,11 +619,15 @@ export function initLaserTab(root) {
   }
 
   function onPointer(e) {
+    /* a press on the view takes keyboard focus back from the panel: a slider or number field left focused made the key
+       handler read every WASD press as typing and ignore it (owner, 2026-09-15: "WASD seems unresponsive") */
+    if (e.type === 'pointerdown' && document.activeElement && document.activeElement !== document.body) document.activeElement.blur?.();
     const r = insetRect(), box = renderer.domElement.getBoundingClientRect();
     const x = e.clientX - box.left, y = e.clientY - box.top;
     /* the lens is round: only a pointer inside the circle steers */
     const inside = Math.hypot(x - (r.x + r.w / 2), y - (r.y + r.h / 2)) <= r.w / 2;
-    steering = inside;
+    /* while a movement key is held the keys own the aim: a mouse twitch in the scope must not drag the beam back */
+    steering = inside && !keys.size;
     if (!inside) return;
     steerTo((x - r.x) / r.w, (y - r.y) / r.h);
     if (e.type === 'pointerdown') held = true;
@@ -1062,6 +1116,7 @@ void main(){
   gb.add(P, 'padSpeed', 10, 400, 5).name('WASD pre-position (m/s)');
   const gs = gui.addFolder('the swarm');
   gs.add(P, 'enemies', 10, 1000, 10).name('enemies').onFinishChange(() => { if (ready) buildBodies(); });
+  gs.add(P, 'walkSpeed', 0, 15, 0.5).name('walk speed (m/s)');
   gs.open();
   gb.open();
   /* live: each change goes straight to the column's uniforms through tune(), and COPY PRESET and the deep link carry it */
@@ -1173,6 +1228,8 @@ void main(){
       infinite: P.infinite,
       under: { ...under },
       perf: { ...perf, bodies: bodies.length },
+      walkers: bodies.filter((b) => b.walker && b.alive).length,
+      keys: [...keys],
       /* the column's live uniforms, in scene units, so a check can see that a slider actually reached the shader */
       look: laser ? laser.look() : null,
       /* standing sentries: a burned one is `gone` in structs */
