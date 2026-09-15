@@ -15,6 +15,7 @@ import { makeGateIntegrity, pressGate, mendGate, gateShare } from '../domain/gat
 import { computeWavePlan, ENEMY_SPEC } from '../enemyspec.js';
 import { POINT_SCALE, waveScore } from '../score.js';
 import { waveClearBonus } from '../domain/economy.js';
+import { createSectorDebrief } from './sector-debrief.js';
 
 export const SECTOR_BESTS_KEY = 'td.story.sector-bests';
 const LETTERS = 'ABCDEFGHIJ';
@@ -35,42 +36,6 @@ export function killSource(src, via = null) {
   return { source: 'other' };
 }
 
-// THE STAND-IN DEBRIEF: a plain overlay with the createSectorDebrief API, until src/fx/sector-debrief.js is merged. With no
-// host (Node) it keeps the calls and draws nothing.
-export function plainDebrief(host, { onContinue, onNewRun, onKeepHolding } = {}) {
-  let open = false, last = null;
-  const el = host && typeof document !== 'undefined' ? document.createElement('div') : null;
-  if (el) {
-    el.id = 'sector-debrief'; el.hidden = true;
-    el.style.cssText = 'position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.84);font:13px/1.5 ui-monospace,Menlo,monospace;color:#d8e6ea';
-    el.addEventListener('click', (ev) => { const act = ev.target.closest?.('[data-act]')?.dataset.act; if (act === 'continue') onContinue?.(); else if (act === 'new') onNewRun?.(); else if (act === 'hold') onKeepHolding?.(); });
-    host.append(el);
-  }
-  const sheet = (html) => { if (!el) return; el.innerHTML = `<div style="width:min(720px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;background:#07141a;border:1px solid #4d6a74;padding:14px 18px">${html}</div>`; el.hidden = false; };
-  const btn = (act, label) => `<button type="button" data-act="${act}" style="font:inherit;margin:8px 8px 0 0;padding:6px 12px;background:#0d2229;color:#e8f2f4;border:1px solid #6d8a94">${label}</button>`;
-  const row = (k, v) => `<div style="display:flex;justify-content:space-between;gap:16px"><span style="opacity:.7">${k}</span><b>${v}</b></div>`;
-  return {
-    show(r) {
-      last = r; open = true;
-      const lost = r.outcome === 'lost';
-      sheet(`<h2 style="margin:0 0 8px;letter-spacing:.12em">${lost ? 'LAST TRANSMISSION' : `SECTOR ${r.sector} SECURE`} · ${r.name}</h2>`
-        + row('TIME', `${r.seconds} s`) + row('SCORE', r.score.total) + row('BIOMASS EARNED', `${r.biomass.earned} kg`) + row('LEFT IN THE FIELD', `${r.biomass.leftInField} kg`)
-        + r.breaches.map((b) => row(`BREACH ${b.id} · ${b.side.toUpperCase()}`, `${b.wavesFought}/${b.wavesPlanned} · ${b.kills} kills · ${b.closedBy ? BREACH_CLOSERS[b.closedBy] : 'OPEN'}`)).join('')
-        + row('KILLS', r.kills.total) + row('STAMPS', r.stamps.join(' · ').toUpperCase() || '—')
-        + (lost ? btn('new', 'NEW RUN') : btn('continue', 'CONTINUE')));
-    },
-    showCampaign({ reports, totals }) {
-      open = true;
-      sheet(`<h2 style="margin:0 0 8px;letter-spacing:.12em">THE COLONY HOLDS</h2>`
-        + reports.map((r) => row(`SECTOR ${r.sector} · ${r.name}`, `${r.score.total} · ${r.kills.total} kills · ${r.seconds} s`)).join('')
-        + row('SECTORS SECURE', totals.totals.secure) + btn('hold', 'KEEP HOLDING') + btn('new', 'NEW RUN'));
-    },
-    hide() { open = false; if (el) el.hidden = true; },
-    isOpen: () => open, next() {}, back() {}, last: () => last,
-    dispose() { el?.remove(); },
-  };
-}
-
 // hooks: see the controller's createSectorRun call (src/td-tab.js). Every one is required unless marked optional there.
 export function createSectorRun(h) {
   const story = h.story, api = h.api ?? {};
@@ -88,8 +53,9 @@ export function createSectorRun(h) {
   const estimate = (i, threat) => waveYield(computeWavePlan(i, 1, h.waveSize, threat * (h.threatMult ?? 1)), { bounty: BOUNTY, pointScale: POINT_SCALE, ...SECTOR_FORFEIT, clearKg: waveClearBonus(i), clearPoints: waveScore(i) });
   const note = (ev) => (stats ? record(stats, ev) : false);
   const retarget = () => { if (sps.size && [...sps.values()].includes(story.source) && story.source.alive) return; const live = [...sps.values()].find((s) => s.alive); if (live) story.source = live; };
-  const debrief = () => (story.debrief ??= (h.makeDebrief ?? plainDebrief)(h.host, {
-    play: h.sfx, beep: h.sfx, reducedMotion: !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+  const nextLines = () => [...sectorDef((def?.n ?? 0) + 1, SECTORS, SECTOR_GENERATOR).brief];   // Isao's two lines about the next sector, for the card's last page
+  const debrief = () => (story.debrief ??= (h.makeDebrief ?? createSectorDebrief)(h.host, {
+    play: h.sfx, beep: h.beep, reducedMotion: !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
     onContinue: () => cont(), onNewRun: () => h.reload(), onKeepHolding: () => next(),
   }));
   const loadBests = () => { try { const v = JSON.parse(h.store?.getItem(SECTOR_BESTS_KEY) || '{}'); return v && typeof v === 'object' ? v : {}; } catch { return {}; } };
@@ -118,7 +84,7 @@ export function createSectorRun(h) {
     def = sectorDef(n, SECTORS, SECTOR_GENERATOR); story.sectorN = n;
     sector = null; sps.clear(); pending = []; lastPoll = null;
     stats = makeSectorStats(def, now(), SECTOR_STATS);
-    api.refillArrays?.(); api.setLaserOnline?.(!!def.laser);
+    (h.refill ?? api.refillArrays)?.(); api.setLaserOnline?.(!!def.laser);   // the solar array's reserve refills at every sector start
     if (def.backDoor && backOpenedAt === null) { api.openBackDoor?.(); backOpenedAt = now(); }
     const sides = Object.entries(def.breaches).map(([side, k]) => `${k} ${side === 'back' ? 'BEHIND THE BAYS' : 'ON THE GATE SIDE'}`).join(' · ');
     card([`SECTOR ${n} · ${def.name}`, `BREACHES ${Object.values(def.breaches).reduce((a, b) => a + b, 0)} · ${sides}`, 'CLOSE ONE EARLY AND ITS REMAINING WAVES PAY NOTHING']);
@@ -175,7 +141,7 @@ export function createSectorRun(h) {
     if (lastPoll) {
       for (let k = lastPoll.passes; k < p.passes; k++) note({ type: 'gunshipPass' });
       if (p.shieldUp) note({ type: 'shield', seconds: dt });
-      if (p.reserve < lastPoll.reserve) note({ type: 'shield', seconds: dt, station: true });
+      if ((p.drawn ?? 0) > (lastPoll.drawn ?? 0)) note({ type: 'shield', seconds: p.drawn - lastPoll.drawn, station: true });   // drawn at the solar array's pad
       for (const id of p.delivered) if (!lastPoll.delivered.includes(id)) note({ type: 'partHome', part: id });
       if (p.laser && lastPoll.laser) { for (let k = lastPoll.laser.passes ?? 0; k < (p.laser.passes ?? 0); k++) note({ type: 'laserPass' }); if ((p.laser.seconds ?? 0) > (lastPoll.laser.seconds ?? 0)) note({ type: 'laserBurn', seconds: p.laser.seconds - lastPoll.laser.seconds }); }
       if (p.earned > lastPoll.earned || p.spent > lastPoll.spent) note({ type: 'biomass', earned: Math.max(0, p.earned - lastPoll.earned), spent: Math.max(0, p.spent - lastPoll.spent) });
@@ -190,13 +156,13 @@ export function createSectorRun(h) {
     reports.push(r); lastReport = r;
     phase = outcome === 'lost' ? 'lost-shown' : 'debrief';
     h.pause(true);
-    debrief().show(r);
+    debrief().show(r, { isao: outcome === 'lost' ? undefined : nextLines() });
     h.hud();
   }
   function next() { if (phase !== 'debrief' && phase !== 'campaign') return; debrief().hide(); h.pause(false); begin(def.n + 1); }
   function cont() {
     if (phase === 'lost-shown') { h.reload(); return; }
-    if (phase === 'debrief' && def.n === SECTORS.length && !campaignShown) { campaignShown = true; phase = 'campaign'; debrief().showCampaign({ reports: reports.slice(), totals: campaignTotals(reports) }); return; }
+    if (phase === 'debrief' && def.n === SECTORS.length && !campaignShown) { campaignShown = true; phase = 'campaign'; debrief().showCampaign({ reports: reports.slice(), totals: campaignTotals(reports) }, { isao: nextLines() }); return; }
     next();
   }
 

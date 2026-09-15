@@ -261,6 +261,17 @@ export const BRIEFS = {
     id: 'gate_mended', face: 'glee', title: 'GATE MENDED',
     lines: ['Gate is back on its hinges.', 'I keep a patch kit on it from now on.'],
   },
+  // THE ARRAY STATION (V1 session design, section 3): the solar complex's pad
+  // feeds the shield from a reserve that refills once a sector. Said the first
+  // time it takes, and every time it runs dry.
+  array_charging: {
+    id: 'array_charging', face: 'focused', title: 'COMMS · ISAO', once: true,
+    lines: ['The solar array is feeding your shield. Sit still on the pad.', 'I keep the panels on the sun.'],
+  },
+  array_dry: {
+    id: 'array_dry', face: 'determined', title: 'COMMS · ISAO',
+    lines: ['The array is dry. That was all the sun it had stored.', 'I will have it charged for the next sector.'],
+  },
 };
 
 // HOW LONG A LINE HOLDS. Isao's running commentary used to wait for a tap —

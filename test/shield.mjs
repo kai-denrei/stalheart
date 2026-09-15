@@ -8,6 +8,8 @@ import {
   tapTower, towerOffline, stationDraw, waveReset, shoveVec, shoveMag,
   shieldKnobProblems,
 } from '../src/shield.js';
+import { makeArrayStation, arrayDraw, refillArray, stepShieldFrame } from '../src/domain/shield.js';
+import { SHIELD_ARRAY } from '../src/content/shield-array.js';
 
 let failures = 0;
 const check = (name, cond, detail = '') => {
@@ -104,6 +106,84 @@ console.log('the heart station:');
   check('an exhausted pad pays nothing', near(stationDraw(st, 1), 0));
   waveReset(st);
   check('the next wave refills it', near(st.stationLeft, SHIELD_TUNE.stationBudget));
+}
+
+console.log('the array station:');
+{
+  // THE SOLAR ARRAY (V1 session design, section 3): rechargeable, not infinite.
+  const A = SHIELD_ARRAY;
+  const parked = { metres: 0, speed: 0 };
+  {
+    const st = makeShield(), sta = makeArrayStation(A);
+    check('a station starts with its reserve', near(sta.reserve, A.reserve));
+    st.rack = 0;
+    const got = arrayDraw(st, sta, 1, parked, A);
+    check('a second parked pays the rate', near(got, A.rate), `got=${got}`);
+    check('into the next rack charge', near(st.rackFill, A.rate) && st.rack === 0);
+    check('out of the reserve', near(sta.reserve, A.reserve - A.rate));
+    check('the first paying step says start', sta.event === 'start' && sta.charging === true);
+    let charged = false;
+    for (let i = 0; i < 100 && st.rack === 0; i++) { arrayDraw(st, sta, 0.25, parked, A); if (sta.event === 'charge') charged = true; }
+    check('a full charge lands in the rack', st.rack === 1 && charged, `rack=${st.rack}`);
+  }
+  {
+    const st = makeShield(), sta = makeArrayStation(A);
+    st.rack = 0;
+    check('nothing while moving fast', arrayDraw(st, sta, 1, { metres: 0, speed: A.maxSpeed + 0.5 }, A) === 0 && sta.charging === false);
+    check('nothing outside the pad', arrayDraw(st, sta, 1, { metres: A.radiusMetres + 1, speed: 0 }, A) === 0);
+    check('and the reserve is untouched', near(sta.reserve, A.reserve));
+    check('a crawl still charges', arrayDraw(st, sta, 1, { metres: A.radiusMetres - 1, speed: A.maxSpeed * 0.5 }, A) > 0);
+  }
+  {
+    const st = makeShield(), sta = makeArrayStation(A);
+    deploy(st, 0);
+    const before = st.t, rack = st.rack;
+    arrayDraw(st, sta, 1, parked, A);
+    check('an active bubble fills first', near(st.t, before + A.rate) && st.rack === rack && st.rackFill === 0);
+    st.t = SHIELD_TUNE.cap;
+    arrayDraw(st, sta, 1, parked, A);
+    check('a capped bubble passes the rest to the rack', near(st.rackFill, A.rate));
+  }
+  {
+    const st = makeShield(), sta = makeArrayStation(A);
+    st.rack = SHIELD_TUNE.rackCap;
+    check('a full rack draws nothing', arrayDraw(st, sta, 1, parked, A) === 0 && near(sta.reserve, A.reserve));
+    st.rack = SHIELD_TUNE.rackCap - 1;
+    for (let i = 0; i < 400; i++) arrayDraw(st, sta, 0.1, parked, A);
+    check('the rack cap holds', st.rack === SHIELD_TUNE.rackCap, `rack=${st.rack}`);
+    check('and the pad stops paying at the cap', near(A.reserve - sta.reserve, SHIELD_TUNE.deploySecs), `drawn=${A.reserve - sta.reserve}`);
+  }
+  {
+    const st = makeShield(), sta = makeArrayStation(A);
+    st.rack = 0;
+    let events = [];
+    for (let i = 0; i < 2000; i++) { arrayDraw(st, sta, 1 / 30, parked, A); if (sta.event) events.push(sta.event); }
+    check('the reserve is finite: it runs to zero and stops', sta.reserve === 0 && near(sta.drawn, Math.min(A.reserve, SHIELD_TUNE.rackCap * SHIELD_TUNE.deploySecs)), `reserve=${sta.reserve} drawn=${sta.drawn}`);
+    check('it pays exactly its reserve in charges', st.rack === Math.min(SHIELD_TUNE.rackCap, Math.floor(A.reserve / SHIELD_TUNE.deploySecs)), `rack=${st.rack}`);
+    check('running dry is said once', events.filter((e) => e === 'dry').length === 1, events.join(','));
+    const rack = st.rack;
+    st.rack = 0;
+    for (let i = 0; i < 600; i++) arrayDraw(st, sta, 1, parked, A);
+    check('a dry pad never refills itself', sta.reserve === 0 && st.rack === 0 && st.rackFill === 0);
+    refillArray(sta, A);
+    check('refillArray is the only way back', near(sta.reserve, A.reserve));
+    check('and it charges again', arrayDraw(st, sta, 1, parked, A) > 0);
+    st.rack = rack;
+  }
+  {
+    // the pad feeds the rack, never the seam: a charge banked on the array
+    // still waits out the cooldown, and the frame transaction carries it
+    const st = makeShield(), sta = makeArrayStation(A);
+    deploy(st, 0);
+    let dropped = 0;
+    for (let t = 0; t < 30; t += 0.1) if (stepShieldFrame(st, 0.1, t, { array: { station: sta, tune: A, metres: 99, speed: 0 } })) dropped++;
+    check('off the pad the bubble still drops once', dropped === 1 && st.t === 0);
+    st.coolUntil = 100;
+    stepShieldFrame(st, 1, 99, { array: { station: sta, tune: A, ...parked } });
+    check('the pad charges the rack through the frame step', st.rackFill > 0 || st.rack > SHIELD_TUNE.rackStart - 1);
+    check('and a banked charge still respects the seam', deploy(st, 99.5) === 'cooling');
+    check('the station knows how much it gave', sta.drawn > 0);
+  }
 }
 
 console.log('the shove:');

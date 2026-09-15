@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "id": "2026-09-16-sector-rules-and-stats",
+  "date": "2026-09-16",
+  "type": "decision",
+  "status": "accepted",
+  "title": "Sector rules and the sector stats accumulator: pure, Node-tested, not yet wired",
+  "context": "The V1 session design (docs/superpowers/specs/2026-09-15-v1-session-design.md, sections 2 and 4) needs a sector programme of two breaches with a forfeit rule, a secure test, a breach placement policy, and a debrief report contract with stamps and records. The game controller is at its line budget, so the rules land as pure modules first and the integrator wires them into src/td-tab.js later.",
+  "outcome": "src/content/sectors.js holds the SECTORS table (THE LANE, THE BACK DOOR, BOTH WALLS), the sector 4+ generator, placement in cells (12 apart, 6 from a sealed breach, a 3-hop band), the forfeit assumptions, the belt of every enemy type, closer and source labels, nine stamps and six records. src/domain/sectors.js owns sectorDef, makeSector, releaseWave, nextWaveIndex, breachLive, closeBreach, spendBreach, isSecure, summary, forfeitOf, waveYield and pickBreachCells. src/domain/sector-stats.js owns makeSectorStats, record, report, reportMetrics, stampEarned, mergeBests, checkReport and campaignTotals. src/content/debrief-fixtures.js carries four generated reports as DEBRIEF_FIXTURES { secure, flawless, lost, campaign }. Calls made without the owner: (1) the wave ladder does not add up across sectors. Added up, sector 3 fights ladder waves 8 to 12, about 670 bodies a breach once the invasion surge starts at wave 9. Instead each sector starts at ladderStart (0, 1, 3; generated 3) and every wave is capped at ladder wave 8, so the threat does the growing. (2) The spec's 'waves 5 + n' counts n past the authored table: 6, 7, 8 waves. (3) 'Alternating sides' means the generated pair alternates sectors, both on the gate side and then both at the back. (4) A record's best is the standing best before the sector (null when none); mergeBests returns the store to persist. (5) The report adds kills.byGun { rotary, bofors, heavy } to the contract for the debrief's gunship 25/40/105 bars. (6) The extra stamps are NOT A SCRATCH (secure, 10+ tank or ram kills, no damage, no hull lost), SPECIAL DELIVERY (a part home) and CLOSE AIR SUPPORT (30+ gunship kills). (7) Stamp rules are data, [metric, op, value] triples, so the content stays a frozen table.",
+  "alternatives": [
+    "Continue the ladder across sectors (waveBase = the sum of earlier waves): rejected, it reaches the invasion surge in sector 3 and thousands of bodies by sector 4",
+    "Restart every sector at ladder wave 1: rejected, sector 3 would bring only the first three enemy types",
+    "Stamp rules as functions in content: rejected for a frozen, serialisable table"
+  ],
+  "evidence": [
+    "node test/sectors.mjs",
+    "node test/sector-stats.mjs",
+    "npm test",
+    "npm run check",
+    "computeWavePlan totals at threat 1.7: wave 8 = 32, wave 9 = 106, wave 12 = 227"
+  ],
+  "supersedes": []
+}
