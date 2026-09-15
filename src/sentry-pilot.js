@@ -1,6 +1,7 @@
 // Game-owned input/optic adapter. Combat, map and wave ownership stay in TD.
 import * as THREE from '../vendor/three.module.js';
 import { createGunshipHud, planetCoords } from './fx/gunship-hud.js';
+import { headingTurn } from './domain/gunship-track.js';
 export function createSentryPilot(root, host) {
   const state = { tower:null, held:false, yaw:0, pitch:-.2, zoom:1, target:null, shots:0, view:'pov' };   // view: pov (over the barrels) | third (behind the turret)
   const panel=document.createElement('section'); panel.id='sentry-pilot';
@@ -50,6 +51,7 @@ export function createSentryPilot(root, host) {
   listen(root,'wheel',e=>{if(map||e.target.closest('#sentry-pilot'))return;e.preventDefault();e.stopImmediatePropagation();const z=Math.max(1,Math.min(5,(gunship?state.zoomGoal??state.zoom:state.zoom)+(e.deltaY<0?.25:-.25)));if(gunship)state.zoomGoal=z;else{state.zoom=z;host.zoom(state.zoom);};},{capture:true,passive:false});
   function pose(tw,goal){
     if(!tw)return false;
+    if(gunship&&tw===ship)holdAim();
     const now=performance.now(),dt=Math.min(.05,(now-lastT)/1000);lastT=now;
     if(state.turn)state.yaw-=state.turn*1.6*dt;
     up.copy(tw.obj.position).normalize();
@@ -86,7 +88,7 @@ export function createSentryPilot(root, host) {
     return best||{pilotAim:true,pos:host.aimPoint(eye,direction,range)};
   }
   function attach(tw,toward){
-    state.tower=tw;state.held=false;state.target=null;state.hidden=null;
+    state.tower=tw;state.held=false;state.target=null;state.hidden=null;headSeen=false;   // the yaw below is against the mount's frame as it is now
     v.fromArray(toward);tw.obj.worldToLocal(v);state.yaw=Math.atan2(v.x,v.z);
     up.copy(tw.obj.position).normalize();eye.copy(tw.obj.position).addScaledVector(up,host.cellSide()*.65);
     v.fromArray(toward).sub(eye);state.pitch=Math.atan2(v.dot(up),v.clone().addScaledVector(up,-v.dot(up)).length());
@@ -106,6 +108,11 @@ export function createSentryPilot(root, host) {
   guns.querySelectorAll('[data-gun]').forEach(b=>listen(b,'click',()=>selectGun(b.dataset.gun)));
   // the platform's place is the optic's (host.gunship.optic.ride, driven by the game each tick); the seat only reads it
   const trackAxes=()=>{t1.set(0,0,1).applyQuaternion(ship.obj.quaternion);t2.set(1,0,0).applyQuaternion(ship.obj.quaternion);};
+  // THE SEAT HOLDS ITS WORLD AIM (owner, 2026-09-15: the gunship creeps toward the breaches). The yaw stays relative to the platform, and the
+  // platform now turns (slowly, src/domain/gunship-track.js): every frame the yaw gives back what the heading turned, so the view stays where the
+  // gunner left it and never swings with the hull. Called from the tick and from pose(); a second call in a frame finds no turn.
+  const headWas=new THREE.Vector3(),headNow=new THREE.Vector3(),headUp=new THREE.Vector3();let headSeen=false;
+  function holdAim(){if(!ship.obj)return;headNow.set(0,0,1).applyQuaternion(ship.obj.quaternion);headUp.copy(ship.obj.position).normalize();if(headSeen)state.yaw-=headingTurn(headWas.toArray(),headNow.toArray(),headUp.toArray());headWas.copy(headNow);headSeen=true;}
   function mountGunship(){
     if(!G||G.mount()!=='mounted')return 'refused';
     gunship=true;ship.ci=G.heart();state.tower=ship;state.held=false;state.target=null;state.hidden=null;state.view='pov';state.zoom=G.platform.zoom??1;state.zoomGoal=state.zoom;host.zoom(state.zoom);px=innerWidth/2;py=innerHeight/2;
@@ -115,7 +122,7 @@ export function createSentryPilot(root, host) {
     return 'mounted';
   }
   function dismountGunship(){
-    if(!gunship)return;gunship=false;root.classList.remove('gunship-seat');for(const m of MODES)root.classList.remove(`gunship-${m}`);host.thermal?.(false);fireLoop?.stop(.1);fireLoop=null;hud?.update({on:false});G.laser(-1);panel.querySelector('.pilot-cross').style.display='';G.dismount();G.optic.dismount();G.optic.rings(null);impact=null;report=null;guns.style.display='none';
+    if(!gunship)return;gunship=false;headSeen=false;root.classList.remove('gunship-seat');for(const m of MODES)root.classList.remove(`gunship-${m}`);host.thermal?.(false);fireLoop?.stop(.1);fireLoop=null;hud?.update({on:false});G.laser(-1);panel.querySelector('.pilot-cross').style.display='';G.dismount();G.optic.dismount();G.optic.rings(null);impact=null;report=null;guns.style.display='none';
   }
   function aimShip(){ship.obj.updateMatrixWorld(true);attach(ship,pendingAim);state.pitch=-1.45;}
   // THE ROUNDS LEAVE FROM UNDER THE GUNNER (owner, 2026-09-14): from the seat the model's muzzle sockets sit above and to the
@@ -145,7 +152,7 @@ export function createSentryPilot(root, host) {
     if(!map&&state.zoomGoal!=null&&Math.abs(state.zoom-state.zoomGoal)>1e-3){state.zoom+=(state.zoomGoal-state.zoom)*(1-Math.exp(-dt/0.14));if(Math.abs(state.zoom-state.zoomGoal)<0.005)state.zoom=state.zoomGoal;host.zoom(state.zoom);}
     if(pendingAim){aimShip();pendingAim=null;}
     if(!G.onStation()){dismountGunship();host.views?.('tank');host.leave?.();return;}
-    trackAxes();up.copy(ship.obj.position).normalize();
+    holdAim();trackAxes();up.copy(ship.obj.position).normalize();
     forward.set(Math.sin(state.yaw),0,Math.cos(state.yaw)).applyQuaternion(ship.obj.quaternion).normalize();
     direction.copy(forward).multiplyScalar(Math.cos(state.pitch)).addScaledVector(up,Math.sin(state.pitch)).normalize();
     eye.copy(ship.obj.position).addScaledVector(up,host.cellSide()*GUNSHIP_EYE);   // the same eye pose() puts the camera on

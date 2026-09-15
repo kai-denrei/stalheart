@@ -15,11 +15,22 @@ export const GUNSHIP_CALL = Object.freeze({ perBiomass: 1, perWaveClear: 40, fir
 // limits (radians, negative is down); the model's metre.
 export const GUNSHIP_PLATFORM = Object.freeze({
   altitudeCells: 34,   // much higher (owner, 2026-09-14): 340 m up, the eye straight down
-  trackShare: 0.5,     // the track's centre, as a share of the way from the heart to the lane's approach
-  driftCells: 8,       // half the ground track crossed while on station
   zoom: 2,             // the optic's magnification when the seat opens
   pitchMin: -1.5708, pitchMax: -0.95,   // straight down to 54° down; the horizon dips 42° at 34 cells, so every aim lands
   metresPerCell: 10,   // the KORP is authored in metres; the story world is 10 m a cell
+});
+
+// THE GROUND TRACK (owner, 2026-09-15: the gunship feels too static, it should move slowly towards the breaches).
+// src/domain/gunship-track.js flies the platform's ground point toward the live breach with the most enemies near it,
+// else back over the base. Distances in cells, speeds in cells/s (a cell is 10 m on the story planet), yaw in deg/s.
+export const GUNSHIP_TRACK = Object.freeze({
+  speedCells: 1.2,        // top ground speed, 12 m/s: about 35 s from over the base to a breach 45 cells out
+  accelCells: 0.2,        // cells/s²: six seconds from rest to top speed, and the same curve to brake onto the circle
+  loiterCells: 8,         // the orbit round the target: the breach stays in the optic's cone, never straight under the eye
+  loiterSpeedCells: 0.6,  // round the circle, anticlockwise from above (the left pylon turn): a lap in about 80 s
+  yawRateDeg: 8,          // the hull turns no faster than this
+  nearCells: 6,           // enemies within this many cells of a breach count toward it
+  switchMargin: 3,        // another breach needs this many more enemies near it to take the ship off its current one
 });
 
 // The three guns. `rate` in rounds per second, `damage` per round at the
