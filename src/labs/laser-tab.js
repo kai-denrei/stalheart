@@ -12,6 +12,12 @@
 // createBreachRubble normalizes its footprint, so both assume a CENTRE-at-origin scene. Everything that assumes that
 // hangs off `sphereRoot`, a group at (0, -radius, 0), and is handed planet-centred points; everything else uses the
 // pole-origin world metres the base and the planet mesh are drawn in.
+//
+// THE RUBBLE IS STRICTER STILL. createBreachRubble writes its caps at radius 1 + height in the frame of the object it
+// was handed, and it reads the cap's direction off source.matrixWorld.normalize(). So it wants two things the game
+// gives it for free and the lab has to build: a host whose unit sphere IS the planet (`rubbleHost`, the planet centre
+// scaled to R metres) and a source whose WORLD matrix is a place on a unit sphere about the origin (`rubbleFrame`, an
+// unparented carrier — sink.group sits in metres and would put the cap near the planet's core).
 import * as THREE from '../../vendor/three.module.js';
 import GUI from '../../vendor/lil-gui.esm.js';
 import { LOOKS } from '../looks.js';
@@ -90,7 +96,7 @@ export function initLaserTab(root) {
   let bodies = [], bursts = [], trench = null, trenchMesh = null;
   let ready = false, held = false, burningWas = false, contactTimer = 0, sealed = false, sinkOpened = false;
   const errors = [];
-  const run = { bodies: 0, walls: 0, towers: 0, sealed: 0, heart: 'INTACT' };
+  const run = { bodies: 0, walls: 0, towers: 0, heart: 'INTACT' };
   const st = makeLaser(orbit(), beamCfg());
   let steerN = [0.5, 0.5], steering = false;
 
@@ -285,7 +291,12 @@ export function initLaserTab(root) {
     sphereRoot.position.set(0, -R, 0);
     scene.add(sphereRoot);
     explosions = createExplosions(sphereRoot, { onError: (e) => errors.push(`explosions: ${e.message}`) });
-    rubble = createBreachRubble(sphereRoot);
+    /* the rubble's own frame: unit-sphere local coordinates, R metres to the unit, centred on the planet */
+    const rubbleHost = new THREE.Group();
+    rubbleHost.name = 'Rubble unit sphere';
+    rubbleHost.scale.setScalar(R);
+    sphereRoot.add(rubbleHost);
+    rubble = createBreachRubble(rubbleHost);
 
     const LAYOUT = { islands: ISLANDS, structures: STRUCTURES, kit: KIT, stages: STAGES };
     plan = planBase(planet, LAYOUT, STAGE);
@@ -356,6 +367,9 @@ export function initLaserTab(root) {
   }
 
   let sinkPoint = new THREE.Vector3();
+  /* the cap's frame, never in the graph: its matrixWorld is its own local matrix, a place on the unit sphere about the
+     origin, scaled so one sinkhole unit is cellSide metres — the same footprint the game's breach seals with */
+  const rubbleFrame = new THREE.Object3D();
 
   function hotRoots() {
     const out = [];
@@ -521,10 +535,12 @@ export function initLaserTab(root) {
     }
     if (thing.sink) {
       sealed = true;
-      try { rubble.add(sink.group, sink.tune.craterRadius ?? 6); } catch (e) { errors.push(`rubble: ${e.message}`); }
+      rubbleFrame.position.copy(normalOf(sinkPoint));
+      rubbleFrame.quaternion.copy(sink.group.quaternion);
+      rubbleFrame.scale.setScalar(cellSide / R);
+      try { rubble.add(rubbleFrame, sink.tune.craterRadius ?? 1); } catch (e) { errors.push(`rubble: ${e.message}`); }
       sink.group.visible = false;
       fire('laser.ignite', sinkPoint);
-      run.sealed++;
     }
   }
 
@@ -535,7 +551,8 @@ export function initLaserTab(root) {
     const burning = burnLaser(st, held, dt);
     const point = st.contact ? fromCentre(st.contact) : null;
     if (!burning || !point) {
-      if (burningWas) { laser.lift(); thermal.set(false); }
+      /* the burn does not survive the lift: a re-laid beam starts every contact from zero seconds */
+      if (burningWas) { laser.lift(); thermal.set(false); st.contacts.clear(); }
       burningWas = false;
       contactTimer = 0;
       return;
@@ -566,6 +583,7 @@ export function initLaserTab(root) {
     stepBodies(dt, clock);
     stepBursts(dt);
     explosions?.tick(dt);
+    rubble?.update(dt);
     sink?.update(dt, clock);
     base?.tick(dt, null, false, ground.position);
     laser.tick(dt, laserProgress(st, orbit(), beamCfg()).energy);
