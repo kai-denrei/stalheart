@@ -13,8 +13,9 @@ export const LASER_BEAM = Object.freeze({ energy: 10, radius: 6, slew: 10, accel
 
 // seconds of contact needed to destroy each kind. A body dies the instant the footprint touches it; the Stalheart
 // takes three seconds of deliberate dragging, which is long enough that nobody loses the colony by accident.
-// wall is a BASE WALL cell (the kit wall segments either side of the gate); rock is a ROCK cell, the planet's own raised
-// lattice (a BLOCKED cell), which the laser breaks as a tank shell does (owner, 2026-09-15).
+// The owner's names (2026-09-15): FLOOR is open ground, ROCK the planet's own raised lattice (a BLOCKED cell), WALL the
+// man-made segments either side of the GATE. wall is a wall cell; rock is a rock cell, which the laser breaks as a tank
+// shell does.
 export const LASER_BURN = Object.freeze({ soft: 0, hard: 1.0, wall: 0.5, rock: 0.5, tower: 1.5, seal: 1.0, tank: 1.0, heart: 3.0 });
 
 // altitude is in planet radii above the surface; fov in degrees; inset as a share of the viewport width;
