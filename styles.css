@@ -4487,3 +4487,14 @@ body.playing:not(.shell-open) #shell-bar { opacity: 0.32; }
 /* THE STORY WORLD WEARS NO CAMPAIGN FURNITURE (2026-09-16): the centre/auto/orbit/map/tank chips and the old key hint do nothing a player
    needs there; the strip names the views. The sound chip stays, alone. */
 #tab-td.story-world .tc-util button:not(#td-pad-sound), #tab-td.story-world #td-hint { display: none !important; }
+
+/* ==== CONTROLS CARD (src/fx/controls-card.js): the tank's keys, once past the handover; H or ? again ==== */
+#controls-card { position: absolute; right: 16px; top: 60px; z-index: 40; width: min(300px, calc(100vw - 32px)); padding: 10px 12px 12px; background: rgba(8, 12, 16, 0.86); border: 1px solid rgba(220, 235, 240, 0.28); color: #dfe8ec; font: 12px/1.45 ui-monospace, Menlo, monospace; pointer-events: auto; }
+#controls-card[hidden] { display: none; }
+#controls-card header { display: flex; justify-content: space-between; align-items: center; font-weight: 700; letter-spacing: 0.14em; margin-bottom: 6px; }
+#controls-card header button { background: none; border: 0; color: inherit; font: inherit; font-size: 16px; line-height: 1; cursor: pointer; padding: 0 2px; }
+#controls-card dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin: 0; }
+#controls-card dt { color: #fff; font-weight: 700; white-space: nowrap; }
+#controls-card dd { margin: 0; color: #aab6bb; }
+#tab-td.pad-labelled [data-label]::after { content: attr(data-label); position: absolute; left: 50%; bottom: calc(100% + 4px); transform: translateX(-50%); font: 700 10px/1 ui-monospace, Menlo, monospace; letter-spacing: 0.12em; color: #fff; background: rgba(8, 12, 16, 0.8); padding: 3px 5px; white-space: nowrap; pointer-events: none; }
+/* ==== end CONTROLS CARD ==== */

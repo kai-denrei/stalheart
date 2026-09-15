@@ -386,6 +386,12 @@ try{
   assert(/GUNSHIP · \d+%$/.test(await evaluate('document.querySelector("#story-views [data-mount=gunship]").textContent')),'the gunship button shows the call-in meter');
   assert(s.expeditions.sites.filter(x=>x.state==='guarded').length===3,'the first three sites are guarded');}
  await finish();
+ // THE CONTROLS ARE TAUGHT (src/fx/controls-card.js): the tank is ours past the handover, so the card is up once; H hides it and brings it back
+ assert.equal(await evaluate('document.querySelector("#controls-card")?.hidden'),false,'the controls card shows the first time the tank is ours');
+ assert.match(await evaluate('document.querySelector("#controls-card").textContent'),/Space\s*fire a shell/,'the card lists the real keys');
+ current='defense-controls-card';await finish();
+ for(const shown of [false,true]){await send('Input.dispatchKeyEvent',{type:'keyDown',key:'h',code:'KeyH'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'h',code:'KeyH'});await delay(150);assert.equal(await evaluate('!document.querySelector("#controls-card").hidden'),shown,`H ${shown?'brings the card back':'hides it'}`);}
+ await evaluate('document.querySelector("#controls-card [data-close]").click()');
  // towers fire on their own: a Rotor on its story socket kills raised fodder with no pilot
  {const ci=await evaluate('window.__stalheartTest.state().story.socket');assert(await evaluate(`window.__stalheartTest.commitTower('rotor',${JSON.stringify(ci)})`),'a Rotor stands on the story socket');
   const before=await evaluate('window.__stalheartTest.state().killsBySrc.tower');await evaluate('window.__stalheartTest.spawnFodder(20)');

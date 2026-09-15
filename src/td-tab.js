@@ -5,7 +5,7 @@ import { createBoardSurface } from './fx/board-surface.js';
 import { BREACH_SOUNDS } from './content/breach-defaults.js';
 import { SOUNDS } from './content/runtime.js';
 import { emergence } from './domain/breach-waves.js'; import { applyScare, stampScare, scarePace, isScared, towardScare, awayExits } from './domain/impact-scare.js'; import { EXPLOSION_SCARE, SCARE_FREEZE_S } from './content/explosions.js'; import { createThermalHeat } from './fx/thermal-heat.js'; import { isAutomated, pilotMultipliers } from './domain/automation.js'; import { makeGunshipCall, fillFromKill, fillFromWaveClear, isFull as callFull, callGunship, passEnded, callProgress } from './domain/gunship-call.js'; import { GUNSHIP_CALL } from './content/gunship.js'; import { reveal, guardsCleared, reach as reachSite, deliver, hullLost, unlockedTowers, nextReveals } from './domain/expeditions.js'; import { STORY_EXPEDITIONS } from './content/story-defaults.js';
-import { sinkholeGroundHeight } from './core/sinkhole-shape.js'; import { devModeOn } from './core/dev-mode.js';
+import { sinkholeGroundHeight } from './core/sinkhole-shape.js'; import { devModeOn } from './core/dev-mode.js'; import { createControlsCard } from './fx/controls-card.js';
 import { makeOrdnanceShell } from './shell.js';
 import { firingFor } from './content/firing-defaults.js';
 import { METRES_PER_CELL, arcToMetres, metresToArc } from './core/stage-units.js';
@@ -101,7 +101,7 @@ import { makeAudio } from './audio.js';
 import { DEATH_KEYS } from './audiomanifest.js';
 
 export function initTdTab(root) {
-  let pilotMode = false, storyViews = null, pilotHost = null, storyMonitor = null, daylight = null, storyScope = null, syntheticModal = null, brass = null;   // the story enters it at runtime; the view strip unlocks after the first wave
+  let controlsCard = null, pilotMode = false, storyViews = null, pilotHost = null, storyMonitor = null, daylight = null, storyScope = null, syntheticModal = null, brass = null;   // the story enters it at runtime; the view strip unlocks after the first wave
   let pilot = null;
   let pilotPosts = [], pilotPost = 0;
   const pilotMounts = [];
@@ -5820,7 +5820,7 @@ export function initTdTab(root) {
       sfx.play('tank_pickup');
       pulseButton('#td-pad-shield');
       showToast(`<div class="wave-num">SHIELD UP</div>`
-        + `<div class="wave-role">${shieldTune.deploySecs}s &middot; ${shield.rack} charge${shield.rack === 1 ? '' : 's'} left</div>`, 1800);
+        + `<div class="wave-role">${shieldTune.deploySecs}s &middot; ${shield.rack} charge${shield.rack === 1 ? '' : 's'} left</div>`, 1800); if (!shield.rack) controlsCard?.rackEmpty(() => showToast(`<div class="wave-num">SHIELD UP · RACK EMPTY</div><div class="wave-role">${story?.arrayPad?.standing ? 'park on the solar array to recharge' : 'the next charge comes with the debrief'}</div>`, 3200));   /* said once, the first time the rack runs dry */
     } else if (r === 'up') {
       showToast(`<div class="wave-role">the shield is already up &mdash; a charge cannot top it up</div>`, 1400);
     } else if (r === 'cooling') {
@@ -9998,7 +9998,7 @@ export function initTdTab(root) {
     } else if (playerMesh.userData.tick) {
       playerMesh.userData.tick(t);
     }
-    buildFollowTank(dt);
+    buildFollowTank(dt); if (story) (controlsCard ??= createControlsCard(root, { mobile: mobileShell })).tick(automated() && !pilotMode);   /* the tank's keys, taught once past the handover (src/fx/controls-card.js) */
     updateCameraGoal();
 
     if (pilotMode && pilot && !pilot.isMap()) {
