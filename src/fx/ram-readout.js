@@ -24,9 +24,12 @@ export function createRamReadout(root, { project, max = 6, ms = 1100 } = {}) {
       const d = pool[i];
       d.textContent = last = `+${kg} kg ×${combo}`;
       d.dataset.tier = String(Math.min(5, Math.floor(combo / 10)));
-      // successive rams fan out left, centre, right so a chain stays readable
-      d.style.left = `${((q.x + 1) / 2) * r.width + ((shown % 3) - 1) * 34}px`;
-      d.style.top = `${((1 - q.y) / 2) * r.height - 28}px`;
+      // beside the hull, not over it: the combo counter and the callouts own the
+      // screen's centre column (a rise through it made both unreadable in the
+      // first capture); successive rams step out and down so a chain stays legible
+      // clamped on screen: a hull at the edge of the frame must not float a clipped label
+      d.style.left = `${Math.min(r.width - 90, Math.max(90, ((q.x + 1) / 2) * r.width + 124 + (shown % 3) * 26))}px`;
+      d.style.top = `${Math.min(r.height - 20, Math.max(80, ((1 - q.y) / 2) * r.height + (shown % 3) * 22))}px`;
       d.classList.remove('hidden', 'go');
       void d.offsetWidth;   // restart the rise
       d.classList.add('go');
