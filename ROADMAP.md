@@ -38,6 +38,16 @@ clean exports → UX → playability**. `docs/STATE.md` holds the detail.
 
 ## Committed
 
+### The V1 session (built overnight 2026-09-16, awaiting the owner's playtest)
+
+A bare `index.html` now plays start to finish: the opening grows the base as Isao prints it, sectors of two breaches follow the handover (close early and forfeit, hold and collect), the swarm wears the gate down, sector 2 cracks the back door and brings SOL-82 online, and every sector ends on the animated debrief. Design: `docs/superpowers/specs/2026-09-15-v1-session-design.md`; the 2026-09-16 log entries record each piece and its evidence.
+
+**Committed next:** the owner's playtest with friends decides the numbers. Every sector, gate, forfeit and HELD value is a first cut; nothing was balance-tuned.
+
+**Candidate:** a second gate for the back door; Isao animating the gate repair; SOL-82 burning every building rather than only the Stålheart; the gunship seat's first-use hitch; a clipping-plane print.
+
+**Question:** does closing a breach early read as a choice in play, or do players always hold (or always close)? One playtest can answer it.
+
 ### The enemy representation decision — now an aesthetic call
 
 Measured 2026-09-13, twice, and both measurements overturned an assumption.

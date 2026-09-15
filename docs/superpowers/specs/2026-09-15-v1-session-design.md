@@ -1,6 +1,6 @@
 # V1 session: hold the Stalheart
 
-Status: design for the overnight build of 2026-09-15/16. Owner brief (paraphrased): package a playable V1 session for the owner and friends: story, then sectors of two breaches each with exciting end-of-sector debriefs; pickups that are seen and heard; a gunship that creeps toward the breaches; the orbital laser in the arsenal; a tank shield that recharges at the array station but not forever, with the ram bonuses live; a second front on the other side of the base; Isao building all the time. Creative license granted.
+Status: built overnight 2026-09-15/16 on branch `v1-loop` (see the 2026-09-16 log entries); awaiting the owner's playtest. Numbers are first cuts. Owner brief (paraphrased): package a playable V1 session for the owner and friends: story, then sectors of two breaches each with exciting end-of-sector debriefs; pickups that are seen and heard; a gunship that creeps toward the breaches; the orbital laser in the arsenal; a tank shield that recharges at the array station but not forever, with the ram bonuses live; a second front on the other side of the base; Isao building all the time. Creative license granted.
 
 Identity check (`docs/FUNMAP.md`): **resourceful joy under pressure.** The sectors, the forfeit rule and the second front are the pressure; Isao growing the colony, the flags and crates coming home and the debrief's celebration are the joy.
 

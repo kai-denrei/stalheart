@@ -1,43 +1,38 @@
 # Stalheart current state
 
-Updated 2026-09-15 (the orbital laser lab). Owner: the Stalheart development project; this repo is authoritative for the game.
+Updated 2026-09-16 (the V1 session, overnight build). Owner: the Stalheart development project; this repo is authoritative for the game.
 
 **Identity: resourceful joy under pressure** (`2026-09-14-identity-resourceful-joy-under-pressure`). The pressure is the swarm, the clock and the hardware; the joy is Isao, the builder who rebuilds, and a colony grown out of the wreck it arrived in. See [FUNMAP.md](FUNMAP.md).
 
-## What the game is now
+## What the game is now: the V1 session
 
-- **The story is the game.** A bare `index.html` is the story world: the SH02 lands on the baked 753 m planet, the AFR-01 foundry recycles it into feedstock, Isao prints the Rotor and the Quiver, the first swarm rises from a sinkhole, the study screen and the expedition follow. PLAYTEST · Defend opens the finished base (stage 8). See [STORY.md](STORY.md).
-- **Piloted sentries and the gunship.** The story hands over its printed mounts (`src/sentry-pilot.js`); the Heavy Gunship rides a fixed pass on the view strip, gunner only, with the rotary, the Bofors and its own 105 (`src/domain/gunship.js`, `src/content/gunship.js`, `src/fx/gunship-*.js`). Piloted rounds fly straight from the barrel; a piloted Rotor round is worth one first-wave body and passes through three bodies.
-- **The campaign board stays underneath.** Sectors, waves, economy, the debrief and ground breaches run on `src/td-tab.js` for the automated acceptance runs (`?acceptance=1`) and the wave simulator (`?sim=`, `labs.html#sim`). It has no player-facing entry.
-- **Retired on 2026-09-14** (`2026-09-14-poc-remnants-removed`; Git history keeps all of it): rescue and raid missions, mines, the three hacking minigames and the antipode relay, the Mortar's hack gate and the black market, the classic entry with its tutorial, field manual and cold open, the director and the cine lab, portal rings and the wormhole/corona shaders, the MK-CX tanks and the pre-A6 props (server, dish, astronauts), the Astro diorama, the Sniper bench and the Sentry Control practice map. The Mortar now unlocks on the normal wave ladder.
+Design: `docs/superpowers/specs/2026-09-15-v1-session-design.md`. A bare `index.html` plays start to finish:
+
+- **The opening grows the base.** The SH02 lands, the foundry recycles it, Isao prints the Rotor, then prints the gate and walls (the tremor waits for the gate), the Stålheart, the solar array, the bays, HUGIN, the radar and the assembly line through his travel-and-print loop; each printed step switches on a perk (`src/content/base-programme.js`, `src/domain/build-programme.js`, `src/fx/base-print.js`). Explicit `stage=N` links stay static.
+- **Sectors are the loop past the handover** (`src/content/sectors.js`, `src/domain/sectors.js`, `src/fx/sector-run.js`): each sector opens two breaches with their own wave programmes; a breach closed early (the gunship's 105, the strike, tank shells, SOL-82) books what its remaining waves would have paid as LEFT IN THE FIELD; a breach held to the end collapses and pays HELD. The swarm wears the gate down (`src/domain/gate-integrity.js`) and walks in when it breaks. Sector 2 cracks the sealed mouth behind the bays (`src/domain/back-door.js`) and brings SOL-82 online; sector 3 fights on both sides; KEEP HOLDING generates more.
+- **The debrief** (`src/fx/sector-debrief.js`, lab `labs.html#debrief`): five animated pages (SECURE, the breaches, the kills, the tank, the colony) with count-ups and stamps, fed by the sector books (`src/domain/sector-stats.js`); THE COLONY HOLDS after sector 3; LAST TRANSMISSION on a loss.
+- **The arsenal:** the MÖRK tank with the shield, which recharges at the solar array's pad from a reserve refilled each sector, and the ram readout (`src/domain/shield.js` arrayDraw, `src/fx/shield-array.js`, `src/fx/ram-readout.js`); automatic towers ordered through Isao; the Heavy Gunship, called from its meter, now creeping toward the busiest breach (`src/domain/gunship-track.js`); SOL-82, the orbital laser, on its pass clock with its own seat on the views strip (`src/fx/laser-arsenal.js`, `src/fx/laser-seat.js`, `src/fx/laser-station.js`).
+- **Expeditions you can see:** our flag rises at a cleared site, the part rides home as a crate on the MÖRK's back and drops at the foundry with the unlock callout; trophy flags stand at home (`src/fx/cargo.js`, `src/fx/expedition-glue.js`; SentryTowers_A6 assets pinned in `docs/cargo-assets.lock.json`).
+- **A readable first run:** the Quiver's round stays in frame through launch (`src/core/round-framing.js`), campaign clutter is off in the story, and a controls card teaches the tank's keys once (`src/fx/controls-card.js`).
+- **The campaign board stays underneath** for the acceptance runs and the wave simulator (`?acceptance=1`, `?sim=`); its debrief now lives in `src/fx/campaign-debrief.js`.
 
 ## Working baseline
 
-- Foundation v1: pure core/domain/content layers with dependency guards; shared immutable FX packages (base `stalheart-fx-8`); local per-subject review/apply/undo, project working copies, compact change summaries, JSON backups, explicit draft preview and deterministic promotion.
-- Native ESM, vendored Three.js r160, Node 22+ tools. Source has canonical imports; `dist/` owns release tokens and a file manifest. Every model ships meshopt-packed; big landmarks swap derived far tiers by distance.
-- One numbered Sentry roster (`src/content/sentries.js`) shared by the game and the labs. Sentry Terraformer 3000 is the Stalheart everywhere. MÖRK is the only tank.
-- Workshop labs: units, swarm, beam, audio, metal, story, sentry/impact, breach (`labs.html#portal`, the sinkhole), orbital laser (`labs.html#laser`, a timed satellite beam burning the real base from a satellite inset — rules in `src/domain/orbital-laser.js`, numbers in `src/content/orbital-laser.js`, browser step `npm run test:browser -- --laser`), sim and the docs overlay (FunMap, roadmap, devlog, practices) under DEV.
-- Isolated `stalheart:v1:` records; local diagnostics; scope-specific service-worker caches. Immutable validated `docs/log/entries/*.json`; generated DEVLOG and ROADMAP.
+Unchanged from the foundation: pure core/domain/content layers with dependency guards, shared immutable FX packages (base `stalheart-fx-8`), native ESM with vendored Three.js r160, one numbered Sentry roster, the baked story planet, meshopt-packed release models, local diagnostics and isolated storage. Workshop labs: units, swarm, beam, audio, metal, story, sentry/impact, breach, gunship, orbital laser, debrief, sim, and the docs overlay under DEV.
 
 ## Next priorities
 
-1. **The puzzle tower defence** (`2026-09-14-puzzle-tower-defence-and-the-handover`): sub-project 1, the post-tutorial handover, landed on 2026-09-14 (item 2). Plan: `docs/superpowers/plans/2026-09-14-handover-gunship-call-expeditions.md` (7 tasks). After it: 2 tower geometry, 3 authored challenges, 4 generated waves scored on margin.
-2. **The orbital laser lab landed** (`2026-09-15-orbital-laser-lab-landed`, feel notes `2026-09-15-laser-lab-feel-owner-notes`): `labs.html#laser`, the rules in `src/domain/orbital-laser.js`, the look in the lab. Sub-project 2 (the strip button, the story window, the game hooks) waits on the owner's judgement of the lab.
-
-3. **The handover landed** (`2026-09-14-handover-gunship-call-expeditions-landed`): past the Quiver's hard cores the towers fire on their own and the wave clock runs; piloting is the tank and an earned gunship call-in; guarded expeditions to the landing sites bring home parts that unlock Relay, Mortar and Lancer (then Plasma, Needle, Heptapod). Next: sub-project 2, tower geometry (targeting, line of sight, range along the lane).
-4. **Navigation shell landed** (`2026-09-14-navigation-shell-landed`, `2026-09-14-navigation-shell-spec-changes`): `PLAYTEST | DEV` top right on every game and workshop page with the build tag. Next: use it in the seat and prune what nobody opens.
-5. **Gunship seat tuned in play** (`2026-09-14-gunship-seat-tuning-scare-thermal-sealed-sinkholes`): explosions sized by the owner, the impact scare herds the swarm (confirmed), thermal first with the base running warm, sealed sinkholes stay sealed. Still to do: measure the swarm's render cost under a real horde; the FX-package explosion section and a lab picker; phone GPU cost is unmeasured.
-6. **The world stays a sphere** (`2026-09-14-stay-on-the-sphere`; cost map `docs/SPHERE-TO-FLAT-COST-MAP.md`). Recommended either way: route radial up through one helper.
-6. Still open from the story playtests: the wall-breach freeze (~250 ms on the story planet), the Rotor's report by ear, ISAO-Birudorōn's review, the foundry in the game camera (`2026-09-14-story-playtest-open-items`). From the labs (`2026-09-14-beam-metal-labs-and-sinkhole-look`): the kit bays take no metal colours (one vertex-palette material) and the game does not weather the MÖRK (its materials are not named M_*).
-
-Follow-ups left by the cleanup: the `portal_warn` and `server_dialup` cues are still keys in the shipped FX package and need a package migration to retire; `fabricator.glb` is still Isao's load fallback; `container.glb` still dresses the campaign board's life containers.
+1. **Owner playtest of the V1 session** with friends: session length, sector difficulty (every sector, gate and forfeit number is a first cut), whether closing early feels like a choice, whether the debrief lands.
+2. **Known gaps from the overnight build** (see the 2026-09-16 log entries): no second gate (the back stays open); Isao's gate repair is not animated; SOL-82 burns only the Stålheart among buildings, reads "in range" at 640 m, and its scorch survives NEW RUN; the gunship seat still costs ~100 ms the first time it is taken; the crate on the hull was verified by numbers, not seen in a screenshot; touch labels on the pad are untested; a print is a Y-scale rise without a clipping plane.
+3. The puzzle tower defence (`2026-09-14-puzzle-tower-defence-and-the-handover`): tower geometry, authored challenges and generated waves scored on margin now sit on top of the sector loop.
+4. Still open from before: the phage's movement, MÖRK LOW re-pin, Isao-Birudorōn review, landmark LOD review, the sphere-helper refactor (`docs/SPHERE-TO-FLAT-COST-MAP.md`).
 
 Owner-directed sequence remains **architecture → visual/sound labs and clean exports → UX → playability**. [Architecture and implementation boundaries](ARCHITECTURE.md) are the technical plan.
 
 ## Boundaries
 
-A browser document owns one game or lab lifetime; route changes reload. The reusable kernel is pinned in `src/`, not yet a published dependency. No arbitrary-surface expansion, tower foundations, multiplayer or renderer replacement is underway. Public GitHub repository and Pages publication are authorized.
+A browser document owns one game or lab lifetime; route changes reload. The reusable kernel is pinned in `src/`, not yet a published dependency. No arbitrary-surface expansion, tower foundations, multiplayer or renderer replacement is underway. Public GitHub repository and Pages publication are authorized; the V1 branch was built locally and is not pushed without the owner's OK.
 
 ## Evidence
 
-Run `npm test`, `npm run check`, `npm run build`, `npm run test:browser` (plus `--story`, `--story-world`, `--defense`, `--nav`, `--gunship`, `--sinkhole`, `--breach-game`, `--laser`), and `node scripts/browser-test.mjs --dist`. `npm run check` includes the architecture guard: the `src/td-tab.js` line budget and the frozen top-level module list in `docs/architecture-budget.json`. Browser artifacts are in `artifacts/`.
+Run `npm test`, `npm run check`, `npm run build`, `npm run test:browser` (plus `--story`, `--story-world`, `--defense`, `--sectors`, `--grow`, `--backdoor`, `--laser-game`, `--laser`, `--shield-story`, `--quiver-frame`, `--debrief`, `--nav`, `--gunship`, `--sinkhole`, `--breach-game`), and `node scripts/browser-test.mjs --dist`. Browser suites can run two at a time through `scripts/browser-lock.sh`. `npm run check` includes the architecture guard. Browser artifacts are in `artifacts/`.
