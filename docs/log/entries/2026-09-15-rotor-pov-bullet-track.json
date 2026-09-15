@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-09-15-rotor-pov-bullet-track",
+  "date": "2026-09-16T03:00:00+00:00",
+  "type": "issue",
+  "status": "resolved",
+  "title": "The Rotor's first-person bullet sound follows the rounds fired, not the report's cadence",
+  "context": "Owner, 2026-09-15: in first person the Rotor's bullet sound stops while it keeps firing and hitting enemies. The owner wants two tracks: the spin revving up and down with the rotor, and the bullet sound for as long as it fires.",
+  "outcome": "8fc3ebd. Three cues were in play: the spin loop (minigun_ready with rotor_spin.wav, gain and pitch on the barrels' spin), the one-shot report (minigun_fire, gated to the Rotor's base cadence since 2026-09-14 so it does not buzz), and the first-person firing loop rotor_pov_fire. That loop ran only while tNow was within 0.6 s of tw.soundAt, the gated report's timestamp, so it starved between reports while the piloted Rotor kept firing at its multiplied rate. Each shot now stamps tw.firedAt and its gap, and the loop runs while the last round left within max(0.2 s, 1.8 gaps). The spin and report cues are unchanged.",
+  "alternatives": [
+    "Play the one-shot report on every piloted round; rejected: that is the buzz the 2026-09-14 fix removed.",
+    "Widen the 0.6 s window; rejected: any fixed window is either longer than a report gap at some rate or keeps the loop running after the trigger is released."
+  ],
+  "evidence": [
+    "src/td-tab.js: the povFiring test read tw.soundAt, which the report gate updates at shotInterval(tw.def.rate), not at the piloted cooldown.",
+    "npm test (107 test programs) and npm run check green on 8fc3ebd; td-tab.js line count unchanged.",
+    "NOT browser-verified (memory guardrail at WARN); the owner checks it in the Rotor's first-person seat."
+  ],
+  "supersedes": []
+}
