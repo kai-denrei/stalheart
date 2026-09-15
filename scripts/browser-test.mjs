@@ -409,19 +409,49 @@ try{
   await until('window.__stalheartTest.state().expeditions.sites.find(s=>s.id==="rocket-a").state==="guarded"',5000);
   await delay(4000);await evaluate('window.__stalheartTest.killGuards("rocket-a")');
   await until('window.__stalheartTest.state().expeditions.sites.find(s=>s.id==="rocket-a").state==="cleared"',10000);
-  await evaluate(`window.__stalheartTest.placeTank(${cells['rocket-a'].cell})`);
+  // SEEN AND HEARD (docs/superpowers/specs/2026-09-15-v1-session-design.md section 3): our flag goes up over the cleared site
+  await until('(window.__stalheartTest.state().cargo?.flags||[]).some(f=>f.id==="rocket-a"&&f.state==="up"&&f.ready)',30000).catch(async()=>assert.fail(`the flag is raised (${JSON.stringify(await evaluate('window.__stalheartTest.state().cargo'))})`));
+  {const v=await evaluate('window.__stalheartTest.cargoView("flag","rocket-a")');assert(v,'a close look at the site flag');writeFileSync(join(output,'defense-flag-raised-view.json'),JSON.stringify(v,null,1));}await delay(500);
+  current='defense-flag-raised';await finish();
+  await evaluate('window.__stalheartTest.cargoView(null)');
+  // the site's own cell is the lander: stand beside it, within reach, so the tank camera sees the crate come aboard
+  {const stand=await evaluate('window.__stalheartTest.cargoStand("site","rocket-a")');assert(stand>=0&&stand!==cells['rocket-a'].cell,`a stand cell beside rocket-a (${stand})`);
+   await evaluate(`window.__stalheartTest.placeTank(${stand})`);}
   await until('window.__stalheartTest.state().expeditions.carrying==="rocket-a"',10000);
+  await until('window.__stalheartTest.state().cargo.attached===true',10000).catch(async()=>assert.fail(`the crate rides the back deck (${JSON.stringify(await evaluate('window.__stalheartTest.state().cargo'))})`));
+  {const c=await evaluate('window.__stalheartTest.state().cargo');assert.equal(c.carrying,'rocket-a','the crate on the deck is the site\'s part');assert.deepEqual(c.errors,[],'the cargo assets load');
+   assert(/PART SECURED · FIELD COIL/.test(await evaluate('document.querySelector("#td-callouts")?.textContent||""')),'the pickup callout');}
+  await evaluate('window.__stalheartTest.cargoView(null)');await delay(700);   // the teleport left the chase camera behind: snap it to the tank
+  writeFileSync(join(output,'defense-part-carried-view.json'),JSON.stringify(await evaluate('window.__stalheartTest.cargoView("tank")'),null,1));await delay(300);
   current='defense-part-carried';await finish();
-  await evaluate('window.__stalheartTest.placeTank(window.__stalheartTest.state().storyHome)');
+  {const v=await evaluate('window.__stalheartTest.cargoView("crate")');assert(v,'a close look at the crate on the hull');writeFileSync(join(output,'defense-crate-on-hull-view.json'),JSON.stringify(v,null,1));}await delay(500);
+  current='defense-crate-on-hull';await finish();
+  await evaluate('window.__stalheartTest.cargoView(null)');
+  // home is the foundry's own cell: deliver from open floor on the landing island, within the delivery radius
+  {const stand=await evaluate('window.__stalheartTest.cargoStand("home")');assert(stand>=0,`a stand cell at home (${stand})`);
+   await evaluate(`window.__stalheartTest.placeTank(${stand})`);}
   await until('window.__stalheartTest.state().expeditions.sites.find(s=>s.id==="rocket-a").state==="delivered"',10000);
   const unlocked=await evaluate('window.__stalheartTest.state().unlocked');assert(unlocked.includes('relay'),`the Relay unlocks (${unlocked})`);
+  // home: off the back deck, a landing, RELAY UNLOCKED, a trophy flag on the landing island
+  await until('(s=>s.carrying===null&&s.crates.some(p=>p==="rest"))(window.__stalheartTest.state().cargo)',10000).catch(async()=>assert.fail(`the crate drops and sits (${JSON.stringify(await evaluate('window.__stalheartTest.state().cargo'))})`));
+  assert(/RELAY UNLOCKED/.test(await evaluate('document.querySelector("#td-callouts")?.textContent||""')),'the unlock callout');
+  {const v=await evaluate('window.__stalheartTest.cargoView("drop")');assert(v,'a close look at the dropped crate');writeFileSync(join(output,'defense-crate-dropped-view.json'),JSON.stringify(v,null,1));}await delay(500);
+  current='defense-crate-dropped';await finish();
+  await evaluate('window.__stalheartTest.cargoView(null)');
+  await until('window.__stalheartTest.state().cargo.trophies===1',10000);await delay(2600);
+  assert(await evaluate('window.__stalheartTest.cargoView("trophy")'),'a close look at the trophy flag');await delay(500);
+  current='defense-trophy';await finish();
+  await evaluate('window.__stalheartTest.cargoView(null)');
   // a hull lost while carrying drops the part back at its site
   await delay(4000);await evaluate('window.__stalheartTest.killGuards("rocket-b")');
   await until('window.__stalheartTest.state().expeditions.sites.find(s=>s.id==="rocket-b").state==="cleared"',10000);
-  await evaluate(`window.__stalheartTest.placeTank(${cells['rocket-b'].cell})`);
+  await evaluate('window.__stalheartTest.placeTank(window.__stalheartTest.cargoStand("site","rocket-b"))');
   await until('window.__stalheartTest.state().expeditions.carrying==="rocket-b"',10000);
   await evaluate('window.__stalheartTest.hitTank()');await delay(600);
-  assert.equal(await evaluate('window.__stalheartTest.state().expeditions.sites.find(s=>s.id==="rocket-b").state'),'cleared','the part is back at its site');}
+  assert.equal(await evaluate('window.__stalheartTest.state().expeditions.sites.find(s=>s.id==="rocket-b").state'),'cleared','the part is back at its site');
+  {const c=await evaluate('window.__stalheartTest.state().cargo');assert.equal(c.carrying,null,'the lost hull throws the crate off');
+   assert(c.crates.some(p=>p==='tumble'||p==='fade'),`the crate tumbles (${c.crates})`);
+   assert.equal(c.flags.find(f=>f.id==='rocket-b')?.state,'lowering','the site flag comes down');}}
  current='defense-part-dropped';await finish();
  } else if(args.includes('--shield-story')) {
  // THE TANK'S SHIELD IN THE STORY (V1 session design, section 3): T and the pad deploy a rack of two, the solar array's pad
