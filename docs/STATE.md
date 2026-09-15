@@ -16,7 +16,7 @@ Updated 2026-09-14 (PoC cleanup). Owner: the Stalheart development project; this
 - Foundation v1: pure core/domain/content layers with dependency guards; shared immutable FX packages (base `stalheart-fx-8`); local per-subject review/apply/undo, project working copies, compact change summaries, JSON backups, explicit draft preview and deterministic promotion.
 - Native ESM, vendored Three.js r160, Node 22+ tools. Source has canonical imports; `dist/` owns release tokens and a file manifest. Every model ships meshopt-packed; big landmarks swap derived far tiers by distance.
 - One numbered Sentry roster (`src/content/sentries.js`) shared by the game and the labs. Sentry Terraformer 3000 is the Stalheart everywhere. MÖRK is the only tank.
-- Workshop labs: units, swarm, beam, audio, metal, story, sentry/impact, breach (`labs.html#portal`, the sinkhole), sim and the docs overlay (FunMap, roadmap, devlog, practices) under DEV.
+- Workshop labs: units, swarm, beam, audio, metal, story, sentry/impact, breach (`labs.html#portal`, the sinkhole), orbital laser (`labs.html#laser`, a timed satellite beam burning the real base from a satellite inset — rules in `src/domain/orbital-laser.js`, numbers in `src/content/orbital-laser.js`, browser step `npm run test:browser -- --laser`), sim and the docs overlay (FunMap, roadmap, devlog, practices) under DEV.
 - Isolated `stalheart:v1:` records; local diagnostics; scope-specific service-worker caches. Immutable validated `docs/log/entries/*.json`; generated DEVLOG and ROADMAP.
 
 ## Next priorities
@@ -38,4 +38,4 @@ A browser document owns one game or lab lifetime; route changes reload. The reus
 
 ## Evidence
 
-Run `npm test`, `npm run check`, `npm run build`, `npm run test:browser` (plus `--story`, `--story-world`, `--defense`, `--nav`, `--gunship`, `--sinkhole`, `--breach-game`), and `node scripts/browser-test.mjs --dist`. `npm run check` includes the architecture guard: the `src/td-tab.js` line budget and the frozen top-level module list in `docs/architecture-budget.json`. Browser artifacts are in `artifacts/`.
+Run `npm test`, `npm run check`, `npm run build`, `npm run test:browser` (plus `--story`, `--story-world`, `--defense`, `--nav`, `--gunship`, `--sinkhole`, `--breach-game`, `--laser`), and `node scripts/browser-test.mjs --dist`. `npm run check` includes the architecture guard: the `src/td-tab.js` line budget and the frozen top-level module list in `docs/architecture-budget.json`. Browser artifacts are in `artifacts/`.

@@ -28,7 +28,12 @@ export const LASER_PRESET = Object.freeze({
   glowIntensity: 4.6,
   glowFalloff: 2.6,
   capStart: 0.02,
-  capEnd: 0.985,
+  // BOTH CAPS ARE FRACTIONS OF THE BEAM'S OWN LENGTH, and the shader tapers the WIDTH across them
+  // (src/beamfx.js: capB = 1 - smoothstep(1 - capEnd, 1, vU)). 0.985 therefore started the tail taper 1.5 % in and
+  // ran it for the other 98.5 %: on a 400 m column that is a 394 m needle, invisible from a camera standing 28 m
+  // from where it lands. 0.02 is the same eight metres of tip the head gets (browser round, Task 7); the beam lab's
+  // own slider stops at 0.4 for the same reason.
+  capEnd: 0.02,
   blast: 0.4,
   scrollSpeed: -9,
   noiseScale: 21,

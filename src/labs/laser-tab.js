@@ -94,6 +94,9 @@ export function initLaserTab(root) {
   let explosions = null, rubble = null, sink = null, laser = null, thermal = null;
   let wallMeshes = [], wallCells = [], structs = [], sentries = [];
   let bodies = [], bursts = [], trench = null, trenchMesh = null;
+  /* the world direction that walks back down the trench, measured at its mouth; frameGround tips it onto the tangent
+     plane wherever it is framing */
+  let trenchBack = new THREE.Vector3(0, 0, 1);
   let ready = false, held = false, burningWas = false, contactTimer = 0, sealed = false, sinkOpened = false;
   /* declared with the rest of the state, not with the panel below, because paintHud reads them */
   let flashT = 0, flashMsg = '';
@@ -140,7 +143,9 @@ export function initLaserTab(root) {
   /* the canvas fills the tab the way every other lab's does (styles.css #story-app), injected so the lab owns it */
   style.textContent = '#laser-app{position:absolute;inset:0}'
     + '#laser-app canvas{display:block;width:100%;height:100%}'
-    + '#laser-hud{position:absolute;left:0;top:0;right:0;padding:10px 14px;pointer-events:none;'
+    /* right:auto with a cap, not right:0: the navigation shell owns the top right corner (styles.css, the bar with
+       PLAYTEST | DEV and the build tag) and a full-width readout ran straight under it */
+    + '#laser-hud{position:absolute;left:0;top:0;right:auto;max-width:min(100%,860px);padding:10px 14px;pointer-events:none;'
     + 'font:12px ui-monospace,Menlo,monospace;letter-spacing:1px;color:#dfe8ee;text-transform:uppercase}'
     + '#laser-hud .laser-lines{display:flex;gap:14px;align-items:center;flex-wrap:wrap}'
     + '#laser-hud .laser-bar{display:inline-block;width:120px;height:6px;border:1px solid #6d7b85;background:#0b0f12}'
@@ -218,6 +223,11 @@ export function initLaserTab(root) {
     scene.add(mesh);
     return { mesh, from, dir, length, floorY: -TRENCH_DEPTH };
   }
+
+  // WHERE THE LAB LOOKS WHEN NOTHING IS BURNING. The queue stacks against the gate (body i sits at length - 4 - i gaps),
+  // so the tail is the one place from which the whole line, the gate and the wall behind it are all in front of the
+  // camera. The trench is 250 m long and its midpoint showed nothing but empty floor.
+  const queueTail = () => Math.max(0, trench.length - 4 - (BODIES - 1) * BODY_GAP);
 
   const trenchPoint = (s) => {
     const t = Math.max(0, Math.min(trench.length, s));
@@ -359,6 +369,8 @@ export function initLaserTab(root) {
     const gateF = plan.gate ? [plan.gate.x, plan.gate.z] : [0, -120];
     trench = buildTrench(holeF, gateF);
     trenchMesh = trench.mesh;
+    trenchBack = toWorld([trench.from[0] - trench.dir[0], 0, trench.from[1] - trench.dir[1]])
+      .sub(toWorld([trench.from[0], 0, trench.from[1]])).normalize();
     buildBodies();
 
     /* the sinkhole at the far end, standing on the planet, opened */
@@ -368,14 +380,18 @@ export function initLaserTab(root) {
     sink.group.position.set(holeW.x, holeW.y + R, holeW.z);
     sink.group.quaternion.setFromUnitVectors(Y, holeN);
     sink.group.visible = true;
-    sink.tune.planetRadius = R;
+    /* the game's scale (src/game-breaches.js:20-27): the group is a cell wide, so every sinkhole number reads in
+       CELLS — craterRadius 1 is a cellSide-metre hole, clearRadius 6 a six-cell clearing — and planetRadius is the
+       planet measured in those same units. Hosting it at metre scale drew a one-metre crater under a ten-metre cap. */
+    sink.group.scale.setScalar(cellSide);
+    sink.tune.planetRadius = R / cellSide;
     sink.tune.sound = false;
     sinkPoint = holeW.clone();
 
     laser = createOrbitalLaser(scene, { cellSide, metresPerCell: 10 });
     thermal = createThermalHeat(() => ({ warm: [], hot: hotRoots() }), { every: 250 });
 
-    frameGround(trenchPoint(trench.length * 0.5));
+    frameGround(trenchPoint(queueTail()));
     ready = true;
   }
 
@@ -394,12 +410,15 @@ export function initLaserTab(root) {
   }
 
   /* --- the two cameras ------------------------------------------------------ */
+  // BEHIND THE CONTACT, ALONG THE TRENCH, AND ON THE LOCAL HORIZONTAL. trenchBack is one world direction, measured
+  // at the trench's mouth; 250 m of trench is a third of a radian of planet, so that direction dips nineteen degrees
+  // below the tangent plane at the gate. Stepping 28 m along it from there put the camera 9 m DOWN — under its own
+  // 9 m lift, i.e. inside the ground, where the terrain occludes the column and the footprint ring and the view is a
+  // flat plane with the base poking over the horizon. Projecting it onto the tangent plane at `point` is the fix.
   function frameGround(point) {
     const n = normalOf(point);
-    /* behind the contact along the trench, so the column is always framed with the trench it is cutting */
-    const back = tmpA.set(-trench.dir[0], 0, -trench.dir[1]);
-    const backW = toWorld([trench.from[0] + back.x, 0, trench.from[1] + back.z]).sub(toWorld([trench.from[0], 0, trench.from[1]])).normalize();
-    ground.position.copy(point).addScaledVector(backW, P.groundBack).addScaledVector(n, P.groundUp);
+    const back = tmpA.copy(trenchBack).addScaledVector(n, -trenchBack.dot(n)).normalize();
+    ground.position.copy(point).addScaledVector(back, P.groundBack).addScaledVector(n, P.groundUp);
     ground.up.copy(n);
     ground.lookAt(point);
   }
@@ -413,11 +432,18 @@ export function initLaserTab(root) {
     sat.updateProjectionMatrix();
   }
 
+  /* BOTTOM LEFT, and both edges are taken for a reason. The lil-gui panel owns the right edge (styles.css
+     .tab .lil-gui.root) and swallowed the inset there; moving the inset just clear of the panel put it over the
+     MIDDLE of the screen, which is exactly where frameGround holds the contact. The left column below the HUD is the
+     only corner that hides neither the panel nor the thing being burned; 64 px in clears the lab's two corner
+     buttons (the deep link and COPY PRESET), which stack against the left edge. */
+  const INSET_LEFT = 64;
+
   function insetRect() {
     const w = container.clientWidth || innerWidth, h = container.clientHeight || innerHeight;
     if (h > w) return { x: 0, y: 0, w, h: Math.round(h * 0.4) };      /* portrait: a band across the top */
-    const s = Math.round(w * P.inset);
-    return { x: w - s - 12, y: h - s - 12, w: s, h: s };
+    const s = Math.min(Math.round(w * P.inset), h - 24);
+    return { x: INSET_LEFT, y: h - s - 12, w: s, h: s };
   }
 
   // screen-to-sphere on the FAR camera: the inset is the only surface that steers
@@ -608,7 +634,7 @@ export function initLaserTab(root) {
     sink?.update(dt, clock);
     base?.tick(dt, null, false, ground.position);
     laser.tick(dt, laserProgress(st, orbit(), beamCfg()).energy);
-    const anchor = st.contact ? fromCentre(st.contact) : trenchPoint(trench.length * 0.5);
+    const anchor = st.contact ? fromCentre(st.contact) : trenchPoint(queueTail());
     frameSat(anchor);
     frameGround(anchor);
     paintHud();
@@ -751,6 +777,13 @@ export function initLaserTab(root) {
       towers: run.towers,
       heart: run.heart,
       sealed,
+      /* where the hole is, in the same pole-origin metres as `contact`, and whether its crater has actually opened:
+         the beam cannot be aimed at a thing whose place the caller cannot ask for, and the sinkhole only opens once
+         its four stone textures have loaded and step() has polled sink.ready() */
+      sink: sinkPoint.toArray().map((v) => +v.toFixed(2)),
+      sinkPhase: sink ? sink.state().phase : null,
+      /* the trench's other end, the gate the queue is walking at: the wall cells stand a few metres behind it */
+      gate: trench ? trenchPoint(trench.length).toArray().map((v) => +v.toFixed(2)) : null,
       lost: run.heart === 'LOST',
       alive: bodies.filter((b) => b.alive).length,
       wallsStanding: wallCells.filter((w) => !w.gone).length,

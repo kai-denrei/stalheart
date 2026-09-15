@@ -9,6 +9,7 @@ import { SENTRIES } from '../src/content/sentries.js';
 import { CONTENT } from '../src/content/runtime.js';
 import { changeSummary } from '../src/content/authoring.js';
 import { clone, serializePreset } from '../src/content/preset.js';
+import { LASER_VIEW } from '../src/content/orbital-laser.js';
 const args=process.argv.slice(2),production=args.includes('--dist');
 const port=18155,base=production?'/stalheart/':'/';
 const origin=`http://127.0.0.1:${port}`,urlRoot=origin+base;
@@ -594,6 +595,99 @@ try{
    assert.equal((await evaluate('window.__stalheartTest.state()')).missilePool.active,0);
    await finish();
  }
+ } else if(args.includes('--laser')) {
+ // THE ORBITAL LASER LAB. Open it, wait for the real base and for the sinkhole's crater to actually open, jump the
+ // clock to a pass, then hold the beam and drag it up the trench through the test hook — the pointer only steers
+ // inside the inset, so the hook speaks in inset-normalised coordinates. The assertion is the point of the lab:
+ // bodies burn, the wall gives way, and the hole takes its rubble cap.
+ //
+ // THE INSET CHASES THE CONTACT. frameSat re-centres the satellite view on the contact every frame (and on the
+ // queue's tail while there is none), so (0.5, 0.5) IS the contact and a steer held off-centre is a constant drag in
+ // that direction at the slew rate, not a move to a fixed spot. Everything below is written as a closed loop on
+ // state(): read where the contact is, aim at the world point we want, steer again.
+ const laserState=()=>evaluate('window.__stalheartLaserTest.state()');
+ const laserSteer=(nx,ny)=>evaluate(`window.__stalheartLaserTest.steer(${nx.toFixed(4)},${ny.toFixed(4)})`);
+ const laserHold=on=>evaluate(`window.__stalheartLaserTest.hold(${on})`);
+ const clamp01=v=>Math.min(1,Math.max(0,v));
+ // how much ground the square inset covers: 2 tan(fov/2) * altitude * radius, in LASER_VIEW's own numbers against the
+ // story planet's 753 m radius. This is only the GAIN of the aim loop below, which re-reads the contact every step:
+ // being out by a third changes how fast it converges and nothing else, so it never needs measuring in the browser.
+ const laserSpan=2*Math.tan(LASER_VIEW.fov*Math.PI/360)*LASER_VIEW.altitude*753;
+ // screen up is +z and screen left is +x (the satellite's up is the frame's north and it looks straight down)
+ const laserAim=(state,to)=>laserSteer(clamp01(.5-(to[0]-state.contact[0])/laserSpan),clamp01(.5-(to[2]-state.contact[2])/laserSpan));
+ const laserNear=(state,to)=>Math.hypot(to[0]-state.contact[0],to[1]-state.contact[1],to[2]-state.contact[2]);
+ const laserWalk=async(to,steps,burn)=>{   // drag the contact onto a world point; unheld it costs no energy
+  if(burn)await laserHold(true);
+  for(let i=0;i<steps;i++){const s=await laserState();if(!s.contact||laserNear(s,to(s))<3)break;await laserAim(s,to(s));await delay(120);}
+ };
+ await go('laser-lab-load','labs.html?sw=0&acceptance=1#laser');
+ await until('window.__stalheartLaserTest?.state().ready',120000);
+ {const s=await laserState();
+  assert.deepEqual(s.errors,[],'the lab builds the base without error');
+  assert(s.alive>=20,`the trench queues its bodies (${s.alive})`);
+  assert(s.wallsStanding>=10,`the shipped walls stand (${s.wallsStanding})`);
+  assert(s.structsStanding>=6,`the base structures and the sentries are pickable (${s.structsStanding})`);
+  assert.equal(s.sentries,2,'both sentries stand on their story sockets');
+  assert.equal(s.phase,'away');assert.equal(s.heart,'INTACT');}
+ // the four stone textures have to land before createSinkhole will trigger, and then the crater takes its pre-roll
+ await until('window.__stalheartLaserTest.state().sinkPhase==="open"',60000);
+ await finish();
+ // makeLaser starts `fresh`, so the lab's very first aim SNAPS to the pick instead of slewing (aimLaser). Dead
+ // centre is the anchor, and with no contact yet the anchor is the queue's tail: one steer, still in the away phase
+ // where nothing can burn, puts the beam down behind twenty bodies and reports where they start.
+ await laserSteer(.5,.5);await delay(300);
+ const tail=(await laserState()).contact;
+ assert(tail,'the first aim of the lab lands a contact');
+ await evaluate('window.__stalheartLaserTest.passNow()');
+ await until('window.__stalheartLaserTest.state().phase==="overhead"');
+ current='laser-lab-overhead';await finish();
+ {const s=await laserState();
+  console.log(`  laser: tail ${tail.join()} gate ${s.gate.join()} sink ${s.sink.join()}`);
+  console.log(`  laser: tail to gate ${Math.hypot(s.gate[0]-tail[0],s.gate[1]-tail[1],s.gate[2]-tail[2]).toFixed(1)} m,`
+   +` tail to sink ${Math.hypot(s.sink[0]-tail[0],s.sink[1]-tail[1],s.sink[2]-tail[2]).toFixed(1)} m, ${s.alive} alive`);}
+ await laserWalk(s=>s.gate,30,true);                      // down the queue to the gate: soft bodies die on touch
+ await laserSteer(.5,.5);await delay(200);                // aim at the contact itself: the beam stands still to be photographed
+ {const s=await laserState();console.log(`  laser: at the gate with ${s.bodies} burned, ${s.alive} alive, ${s.energy} s of energy`);}
+ current='laser-lab-burn';await finish();                 // mid-burn: the column in the trench, the reticle in the inset
+ // THEN ACROSS THE GATE MOUTH, IN STEPS. The twelve wall cells stand either side of the trench's own line, so no drag
+ // along the trench reaches one — and a cell needs half a second of contact, which a 40 m/s drag through a 6 m
+ // footprint never gives it (0.24 s at best). The beam nudges sideways and then stands still, the way a hand would.
+ for(let i=0;i<8;i++){
+  await laserSteer(.44,.5);await delay(140);
+  await laserSteer(.5,.5);await delay(560);
+  const s=await laserState();
+  if(s.walls>0&&i>=3)break;
+ }
+ await laserHold(false);
+ {const s=await laserState();
+  assert(s.bodies>0,`the beam burned bodies (${s.bodies})`);
+  assert(s.walls>0,`the beam cut the wall (${s.walls})`);
+  assert(s.trail>0,`the scorch trail was laid (${s.trail})`);
+  assert(s.energy<10,`the pass spent energy (${s.energy})`);
+  assert.deepEqual(s.errors,[],'burning raises no errors');
+  console.log(`  laser: ${s.bodies} bodies, ${s.walls} walls, ${s.towers} towers, ${s.trail} scorch quads, ${s.energy} s left`);}
+ // a second pass for the seal: the hole is most of the trench back up the line, further than one pass's energy would
+ // carry a held beam, and lifting the beam forgets every second it had accumulated anyway
+ await laserSteer(.5,.5);
+ await until('window.__stalheartLaserTest.state().phase==="away"',40000);
+ await evaluate('window.__stalheartLaserTest.passNow()');
+ await until('window.__stalheartLaserTest.state().phase==="overhead"');
+ await laserWalk(s=>s.sink,60,true);
+ for(let i=0;i<40;i++){const s=await laserState();if(s.sealed)break;await laserAim(s,s.sink);await delay(120);}
+ await laserHold(false);
+ // and aim at the contact itself. steer() leaves `steering` on for good, and applyBurn aims whether or not the beam
+ // is held, so any residual lean keeps dragging the contact at the slew rate: four seconds of it walked the view a
+ // hundred metres off the hole it had just sealed.
+ await laserSteer(.5,.5);
+ await delay(4000);                                       // breach-rubble settles its cap over SETTLE_S, and the
+                                                          // touchdown cloud has to clear before the cap can be seen
+ current='laser-lab-sealed';await finish();
+ {const s=await laserState();
+  assert(s.sealed,'the beam sealed the sinkhole');
+  assert.equal(s.heart,'INTACT','the Stalheart was never in the footprint');
+  assert.equal(s.lost,false,'the colony stands');
+  assert.deepEqual(s.errors,[],'the seal raises no errors');}
+ await evaluate('window.__stalheartLaserTest.dispose()');
  } else if(authoringWorkspace) {
  await go('local-authoring','labs.html?sw=0&acceptance=1&mode=armour&family=quiver#sentry');
  await until('document.querySelector("[data-authoring-review]")?.hidden === false && document.querySelector("#tab-sentry").dataset.modelReady === "true"');

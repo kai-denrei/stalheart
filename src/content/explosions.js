@@ -11,10 +11,13 @@ export const EXPLOSION_USES = Object.freeze({
   'tank.shell': Object.freeze({ module: 'bofors-burst', scale: 0.405 }),     // ~4.5 m, the Bofors' ratio kept
   'quiver.talon': Object.freeze({ module: 'bofors-burst', scale: 0.54 }),    // ~6 m, the Bofors' ratio kept
   'strike.orbital': Object.freeze({ module: 'orbital-strike', scale: 1.5 }), // 135 m, 10 s
-  // THE ORBITAL LASER (owner, 2026-09-15): the touchdown of a lay is the orbital strike's cloud at half size, and
-  // the contact point sheds rotary pops at LASER_CONTACT_RATE per second while it burns, so a line drawn across the
-  // ground is a line of small blasts with one big one where the beam came down.
-  'laser.ignite': Object.freeze({ module: 'orbital-strike', scale: 0.5 }),
+  // THE ORBITAL LASER (owner, 2026-09-15): the touchdown of a lay is the orbital strike's cloud, and the contact
+  // point sheds rotary pops at LASER_CONTACT_RATE per second while it burns, so a line drawn across the ground is a
+  // line of small blasts with one big one where the beam came down.
+  // 0.18, not the half size first written: the strike's own 1.5 is 135 m, so a half-size cloud is 45 m across a
+  // 6 m footprint — wide enough to swallow the lab's ground camera, which stands 28 m back (browser round, Task 7).
+  // 0.18 is ~16 m: still twice the footprint, and the column and the burning ground stay visible through it.
+  'laser.ignite': Object.freeze({ module: 'orbital-strike', scale: 0.18 }),
   'laser.contact': Object.freeze({ module: 'rotary-pop', scale: 0.6 }),
 });
 
