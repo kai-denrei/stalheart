@@ -620,7 +620,7 @@ try{
   if(burn)await laserHold(true);
   for(let i=0;i<steps;i++){const s=await laserState();if(!s.contact||laserNear(s,to(s))<3)break;await laserAim(s,to(s));await delay(120);}
  };
- await go('laser-lab-load','labs.html?sw=0&acceptance=1#laser');
+ await go('laser-lab-load','labs.html?sw=0&acceptance=1&slew=40&accel=0#laser');
  await until('window.__stalheartLaserTest?.state().ready',120000);
  {const s=await laserState();
   assert.deepEqual(s.errors,[],'the lab builds the base without error');
