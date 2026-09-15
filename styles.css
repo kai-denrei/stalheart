@@ -2723,6 +2723,15 @@ body.td-victory #td-tut {
      whole shout tier, so a rung and a shout read as the same machine */
   text-shadow: var(--shout-halo);
 }
+/* THE CARGO SHOUT: a part secured, a tower unlocked. Information, not praise,
+   so it outlives the praise switch and holds long enough to read the name */
+.co-cargo {
+  color: var(--p-white);
+  --r: 1.45;
+  letter-spacing: 0.14em;
+  text-shadow: var(--shout-halo);
+  animation-duration: 2.6s;
+}
 @keyframes co-pop {
   0% { opacity: 0; transform: scale(1.9); }
   14% { opacity: 1; transform: scale(1); }
