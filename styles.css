@@ -3874,6 +3874,29 @@ body.mobile-shell #td-toast .wave-role, body.mobile-shell #td-wave .wave-name, b
 #story-scope .meter i { display: block; height: 100%; width: 0; background: var(--cyan); transition: width .18s linear; }
 /* ISAO's study: the SYNTHETIC LEARNING x58 terminal as a modal */
 #synthetic-modal[hidden] { display: none; }
+/* SOL-82's briefing (src/fx/sol82-briefing.js): the gunship briefing's sheet, with labels riding the model on the view */
+#sol82-briefing[hidden] { display: none; }
+#sol82-briefing { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.84); font-family: ui-monospace, Menlo, monospace; }
+#sol82-briefing .sheet { width: min(1100px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; background: #07141a; border: 1px solid #2b6b96; padding: 14px 18px 12px; box-shadow: 0 0 30px rgba(95, 230, 214, 0.12); }
+#sol82-briefing header { border-bottom: 1px solid #1f4a5e; padding-bottom: 6px; margin-bottom: 10px; }
+#sol82-briefing h1 { margin: 0; color: #62d7ff; font-size: 14px; letter-spacing: 2px; text-shadow: 0 0 6px rgba(98, 215, 255, 0.4); }
+#sol82-briefing .sub { margin: 4px 0 0; color: #6fa8c8; font-size: 10px; letter-spacing: 1px; }
+#sol82-briefing .body { display: grid; grid-template-columns: 3fr 2fr; gap: 14px; align-items: stretch; }
+#sol82-briefing .view { position: relative; }
+#sol82-briefing canvas { width: 100%; aspect-ratio: 3 / 2; display: block; background: #0b1e26; border: 1px solid #1f4a5e; cursor: pointer; }
+#sol82-briefing .labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+#sol82-briefing .labels svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+#sol82-briefing .labels line { stroke: rgba(98, 215, 255, 0.6); stroke-width: 1; }
+#sol82-briefing .labels circle { fill: #62d7ff; }
+#sol82-briefing .label { position: absolute; transform: translate(-50%, -50%); padding: 2px 6px; border: 1px solid rgba(98, 215, 255, 0.55); background: rgba(4, 12, 16, 0.82); color: #bfeaff; font-size: 10px; letter-spacing: 0.12em; white-space: nowrap; }
+#sol82-briefing .text h2 { margin: 6px 0 10px; color: #ffd48a; font-size: 13px; letter-spacing: .18em; }
+#sol82-briefing .text ul { margin: 0; padding: 0 0 0 14px; color: #dff4ff; font-size: 13px; line-height: 1.6; }
+#sol82-briefing .dots { margin-top: 12px; display: flex; gap: 6px; }
+#sol82-briefing .dots i { width: 18px; height: 3px; background: #1f4a5e; }
+#sol82-briefing .dots i.on { background: #62d7ff; }
+#sol82-briefing footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 1px solid #1f4a5e; color: #6fa8c8; font-size: 10px; letter-spacing: 1px; }
+#sol82-briefing button { font: inherit; color: #dff4ff; background: #0b1e26; border: 1px solid #2b6b96; padding: 4px 12px; cursor: pointer; letter-spacing: 1px; }
+@media (max-width: 720px) { #sol82-briefing .body { grid-template-columns: 1fr; } }
 #gunship-briefing[hidden] { display: none; }
 #gunship-briefing { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.84); font-family: ui-monospace, Menlo, monospace; }
 #gunship-briefing .sheet { width: min(1040px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; background: #07141a; border: 1px solid #2b6b96; padding: 14px 18px 12px; box-shadow: 0 0 40px rgba(95, 230, 214, 0.12); }

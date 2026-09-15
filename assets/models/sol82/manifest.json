@@ -1,0 +1,749 @@
+{
+  "schema": "jelaludo.asset-family/v2-candidate",
+  "version": 2,
+  "family": "sol82_platform",
+  "label": "SOL-82 orbital laser platform",
+  "status": "contract_candidate_pending_laser_lab_ground_camera_close_orbit_reference_phone",
+  "plain_glb_source_of_truth": true,
+  "coordinate_system": {
+    "units": "meters",
+    "up": "+Y",
+    "forward": "+Z",
+    "origin": "centre of beam exit aperture",
+    "beam_direction": "-Y"
+  },
+  "supported_damage_levels": [
+    0
+  ],
+  "missing_damage_states_reason": "SOL-82 cannot be damaged in the current game; D1-D3 require a future gameplay request.",
+  "budgets": {
+    "lod1": {
+      "triangles_max": 8000,
+      "draw_calls_max": 10,
+      "plain_bytes_max": 400000
+    },
+    "lod2": {
+      "triangles_max": 3000,
+      "draw_calls_max": 1,
+      "plain_bytes_max": 250000
+    }
+  },
+  "lod_selection": {
+    "initial": "lod2",
+    "approach_distance_m": 150,
+    "hysteresis_m": 20,
+    "detailed": "manual cinematic selection",
+    "review": "Tune from the laser lab ground camera, close orbit cut-in and reference phone."
+  },
+  "presentation": {
+    "primary": "wireframe material override in game and Workshop",
+    "full_material_asset": true,
+    "wireframe_geometry_duplicate": false,
+    "note": "The same topology supports the primary cyan wireframe read and the full carbon/gunmetal close-up treatment without shipping duplicate geometry."
+  },
+  "gameplay": {
+    "pass_interval_s": 180,
+    "overhead_window_s": 20,
+    "burn_budget_s": 10,
+    "beam_wavelength_um": 1.064,
+    "optical_output_mw": 120,
+    "beam_vfx_external": true,
+    "footprint_radius_m": 6,
+    "aim_range_m": 320
+  },
+  "lore": {
+    "energy": "A shielded continuous-power core charges a 1.2 GJ pulse store between passes; solar wings run the bus, cryocoolers and optical control.",
+    "thermal": "Phase-change heat sinks absorb a burn, then the paired radiator vanes unfold and reject heat before the next firing opportunity.",
+    "optics": "A two-axis ventral telescope steers a continuous 1.064 µm beam. The engine drives OPTICS_YAW and OPTICS_PITCH and creates all beam and ground effects.",
+    "name": "The owner named SOL-82 as an homage to SOL-740 and 1982."
+  },
+  "compression": {
+    "extension": "EXT_meshopt_compression",
+    "required": true,
+    "source_of_truth": "plain_glb"
+  },
+  "assets": [
+    {
+      "id": "sol82_platform_d0_lod0",
+      "family": "sol82_platform",
+      "designation": "SOL-82",
+      "name": "SOL-82 orbital laser platform",
+      "file": "lod0/sol82_platform_detailed.glb",
+      "meshopt_file": "lod0/sol82_platform_detailed.meshopt.glb",
+      "lod": 0,
+      "quality": "detailed_master",
+      "damage_level": 0,
+      "state": "intact",
+      "role": "close_cinematic_recording",
+      "static": false,
+      "derived": false,
+      "derived_from": null,
+      "sha256": "c64fe484698d6f58470cf47ac61ca70f9cc1520c681e37d035c5f1b98de559d9",
+      "meshopt_sha256": "205b8945f20d0cc91688f41ad80eb812ea55208e0dc942f9e40e82a19e5308ed",
+      "bytes": 447372,
+      "meshopt_bytes": 100504,
+      "triangles": 9436,
+      "draw_calls": 7,
+      "materials": [
+        "M_Hull_Carbon",
+        "M_Hull_Gunmetal",
+        "M_Ours_Cyan",
+        "M_Warning_Amber",
+        "M_Radiator_Glow",
+        "M_Aperture_Glow",
+        "M_Nav_Light"
+      ],
+      "textures": 0,
+      "skins": 1,
+      "bounds": {
+        "min": [
+          -26.274999618530273,
+          -0.12124359607696533,
+          -8.875
+        ],
+        "max": [
+          26.274999618530273,
+          8.059999465942383,
+          9.600000381469727
+        ],
+        "dimensions_m": [
+          52.54999923706055,
+          8.181243062019348,
+          18.475000381469727
+        ]
+      },
+      "span_m": 52.55,
+      "main_bus_length_m": 17.95,
+      "origin": "centre of beam exit aperture",
+      "fire_direction": "-Y",
+      "forward": "+Z",
+      "up": "+Y",
+      "plot_m": [
+        60,
+        24
+      ],
+      "sockets": [
+        {
+          "id": "APERTURE",
+          "node": "APERTURE",
+          "kind": "beam_origin",
+          "position_m": [
+            0,
+            0,
+            0
+          ],
+          "normal": [
+            0,
+            -1,
+            0
+          ],
+          "available": true
+        },
+        {
+          "id": "ENERGY_CORE",
+          "node": "SOCKET_ENERGY_CORE",
+          "kind": "energy_core",
+          "position_m": [
+            0,
+            5.1,
+            0
+          ],
+          "normal": [
+            0,
+            1,
+            0
+          ],
+          "available": true
+        },
+        {
+          "id": "SENSOR_FORWARD",
+          "node": "SOCKET_SENSOR_FORWARD",
+          "kind": "sensor",
+          "position_m": [
+            0,
+            4.8,
+            9
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ],
+          "available": true
+        },
+        {
+          "id": "THRUSTER_REAR",
+          "node": "SOCKET_THRUSTER_REAR",
+          "kind": "propulsion",
+          "position_m": [
+            0,
+            4.8,
+            -9
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ],
+          "available": true
+        }
+      ],
+      "colliders": [
+        {
+          "id": "main_bus",
+          "center_m": [
+            0,
+            4.8,
+            0
+          ],
+          "size_m": [
+            7.2,
+            6.2,
+            18
+          ],
+          "condition": "D0"
+        },
+        {
+          "id": "array_envelope",
+          "center_m": [
+            0,
+            4.8,
+            0
+          ],
+          "size_m": [
+            52.55,
+            0.5,
+            8
+          ],
+          "condition": "arrays_deployed"
+        }
+      ],
+      "clips": [
+        {
+          "name": "Arrays_Deploy",
+          "duration_s": 2.5,
+          "loop": false
+        },
+        {
+          "name": "Aperture_Open",
+          "duration_s": 0.6,
+          "loop": false
+        },
+        {
+          "name": "Aperture_Close",
+          "duration_s": 0.6,
+          "loop": false
+        },
+        {
+          "name": "Idle_Cycle",
+          "duration_s": 8,
+          "loop": true
+        }
+      ],
+      "animations": [
+        "Arrays_Deploy",
+        "Aperture_Open",
+        "Aperture_Close",
+        "Idle_Cycle"
+      ],
+      "required_nodes": [
+        "ROOT",
+        "SOL82_RIG_ROOT",
+        "OPTICS_YAW",
+        "OPTICS_PITCH",
+        "APERTURE_IRIS",
+        "APERTURE",
+        "ARRAY_L",
+        "ARRAY_R",
+        "RADIATOR_L",
+        "RADIATOR_R",
+        "NAV_LIGHT_L",
+        "NAV_LIGHT_R",
+        "ENERGY_SPINE",
+        "SOL82_ARTICULATED_HARDWARE",
+        "SOL82_CARBON_ARMOR",
+        "SOL82_CYAN_ACCENTS",
+        "SOL82_WARNING_MARKS",
+        "SOL82_RADIATOR_SURFACES",
+        "SOL82_APERTURE_GLOW",
+        "NAV_LIGHTS_GEOMETRY",
+        "SOL82_DISTANCE_GEOMETRY",
+        "SOCKET_ENERGY_CORE",
+        "SOCKET_SENSOR_FORWARD",
+        "SOCKET_THRUSTER_REAR"
+      ],
+      "engine_nodes": [
+        "ROOT",
+        "SOL82_RIG_ROOT",
+        "OPTICS_YAW",
+        "OPTICS_PITCH",
+        "APERTURE_IRIS",
+        "APERTURE",
+        "ARRAY_L",
+        "ARRAY_R",
+        "RADIATOR_L",
+        "RADIATOR_R",
+        "NAV_LIGHT_L",
+        "NAV_LIGHT_R",
+        "ENERGY_SPINE",
+        "SOL82_ARTICULATED_HARDWARE",
+        "SOL82_CARBON_ARMOR",
+        "SOL82_CYAN_ACCENTS",
+        "SOL82_WARNING_MARKS",
+        "SOL82_RADIATOR_SURFACES",
+        "SOL82_APERTURE_GLOW",
+        "NAV_LIGHTS_GEOMETRY",
+        "SOL82_DISTANCE_GEOMETRY",
+        "SOCKET_ENERGY_CORE",
+        "SOCKET_SENSOR_FORWARD",
+        "SOCKET_THRUSTER_REAR"
+      ],
+      "review_status": "contract_candidate_pending_laser_lab_ground_camera_close_orbit_reference_phone",
+      "credit": "Model by jelaludo"
+    },
+    {
+      "id": "sol82_platform_d0_lod1",
+      "family": "sol82_platform",
+      "designation": "SOL-82",
+      "name": "SOL-82 orbital laser platform",
+      "file": "lod1/sol82_platform_game.glb",
+      "meshopt_file": "lod1/sol82_platform_game.meshopt.glb",
+      "lod": 1,
+      "quality": "game",
+      "damage_level": 0,
+      "state": "intact",
+      "role": "arrival_departure_and_close_orbit",
+      "static": false,
+      "derived": false,
+      "derived_from": null,
+      "sha256": "25039485ec09da435d7811bb5a928b20f9eb47aa731c234533fbbfecc83370b6",
+      "meshopt_sha256": "781b2fcbbcbde0b27a1020bd0abafc43add494b5ff3db01fdd1ee22b75afb235",
+      "bytes": 264808,
+      "meshopt_bytes": 69912,
+      "triangles": 4940,
+      "draw_calls": 7,
+      "materials": [
+        "M_Hull_Carbon",
+        "M_Hull_Gunmetal",
+        "M_Ours_Cyan",
+        "M_Warning_Amber",
+        "M_Radiator_Glow",
+        "M_Aperture_Glow",
+        "M_Nav_Light"
+      ],
+      "textures": 0,
+      "skins": 1,
+      "bounds": {
+        "min": [
+          -26.274999618530273,
+          -0.12124359607696533,
+          -8.875
+        ],
+        "max": [
+          26.274999618530273,
+          8.059999465942383,
+          9.600000381469727
+        ],
+        "dimensions_m": [
+          52.54999923706055,
+          8.181243062019348,
+          18.475000381469727
+        ]
+      },
+      "span_m": 52.55,
+      "main_bus_length_m": 17.95,
+      "origin": "centre of beam exit aperture",
+      "fire_direction": "-Y",
+      "forward": "+Z",
+      "up": "+Y",
+      "plot_m": [
+        60,
+        24
+      ],
+      "sockets": [
+        {
+          "id": "APERTURE",
+          "node": "APERTURE",
+          "kind": "beam_origin",
+          "position_m": [
+            0,
+            0,
+            0
+          ],
+          "normal": [
+            0,
+            -1,
+            0
+          ],
+          "available": true
+        },
+        {
+          "id": "ENERGY_CORE",
+          "node": "SOCKET_ENERGY_CORE",
+          "kind": "energy_core",
+          "position_m": [
+            0,
+            5.1,
+            0
+          ],
+          "normal": [
+            0,
+            1,
+            0
+          ],
+          "available": true
+        },
+        {
+          "id": "SENSOR_FORWARD",
+          "node": "SOCKET_SENSOR_FORWARD",
+          "kind": "sensor",
+          "position_m": [
+            0,
+            4.8,
+            9
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ],
+          "available": true
+        },
+        {
+          "id": "THRUSTER_REAR",
+          "node": "SOCKET_THRUSTER_REAR",
+          "kind": "propulsion",
+          "position_m": [
+            0,
+            4.8,
+            -9
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ],
+          "available": true
+        }
+      ],
+      "colliders": [
+        {
+          "id": "main_bus",
+          "center_m": [
+            0,
+            4.8,
+            0
+          ],
+          "size_m": [
+            7.2,
+            6.2,
+            18
+          ],
+          "condition": "D0"
+        },
+        {
+          "id": "array_envelope",
+          "center_m": [
+            0,
+            4.8,
+            0
+          ],
+          "size_m": [
+            52.55,
+            0.5,
+            8
+          ],
+          "condition": "arrays_deployed"
+        }
+      ],
+      "clips": [
+        {
+          "name": "Arrays_Deploy",
+          "duration_s": 2.5,
+          "loop": false
+        },
+        {
+          "name": "Aperture_Open",
+          "duration_s": 0.6,
+          "loop": false
+        },
+        {
+          "name": "Aperture_Close",
+          "duration_s": 0.6,
+          "loop": false
+        },
+        {
+          "name": "Idle_Cycle",
+          "duration_s": 8,
+          "loop": true
+        }
+      ],
+      "animations": [
+        "Arrays_Deploy",
+        "Aperture_Open",
+        "Aperture_Close",
+        "Idle_Cycle"
+      ],
+      "required_nodes": [
+        "ROOT",
+        "SOL82_RIG_ROOT",
+        "OPTICS_YAW",
+        "OPTICS_PITCH",
+        "APERTURE_IRIS",
+        "APERTURE",
+        "ARRAY_L",
+        "ARRAY_R",
+        "RADIATOR_L",
+        "RADIATOR_R",
+        "NAV_LIGHT_L",
+        "NAV_LIGHT_R",
+        "ENERGY_SPINE",
+        "SOL82_ARTICULATED_HARDWARE",
+        "SOL82_CARBON_ARMOR",
+        "SOL82_CYAN_ACCENTS",
+        "SOL82_WARNING_MARKS",
+        "SOL82_RADIATOR_SURFACES",
+        "SOL82_APERTURE_GLOW",
+        "NAV_LIGHTS_GEOMETRY",
+        "SOL82_DISTANCE_GEOMETRY",
+        "SOCKET_ENERGY_CORE",
+        "SOCKET_SENSOR_FORWARD",
+        "SOCKET_THRUSTER_REAR"
+      ],
+      "engine_nodes": [
+        "ROOT",
+        "SOL82_RIG_ROOT",
+        "OPTICS_YAW",
+        "OPTICS_PITCH",
+        "APERTURE_IRIS",
+        "APERTURE",
+        "ARRAY_L",
+        "ARRAY_R",
+        "RADIATOR_L",
+        "RADIATOR_R",
+        "NAV_LIGHT_L",
+        "NAV_LIGHT_R",
+        "ENERGY_SPINE",
+        "SOL82_ARTICULATED_HARDWARE",
+        "SOL82_CARBON_ARMOR",
+        "SOL82_CYAN_ACCENTS",
+        "SOL82_WARNING_MARKS",
+        "SOL82_RADIATOR_SURFACES",
+        "SOL82_APERTURE_GLOW",
+        "NAV_LIGHTS_GEOMETRY",
+        "SOL82_DISTANCE_GEOMETRY",
+        "SOCKET_ENERGY_CORE",
+        "SOCKET_SENSOR_FORWARD",
+        "SOCKET_THRUSTER_REAR"
+      ],
+      "review_status": "contract_candidate_pending_laser_lab_ground_camera_close_orbit_reference_phone",
+      "credit": "Model by jelaludo"
+    },
+    {
+      "id": "sol82_platform_d0_lod2",
+      "family": "sol82_platform",
+      "designation": "SOL-82",
+      "name": "SOL-82 orbital laser platform",
+      "file": "lod2/sol82_platform_distance.glb",
+      "meshopt_file": "lod2/sol82_platform_distance.meshopt.glb",
+      "lod": 2,
+      "quality": "distance",
+      "damage_level": 0,
+      "state": "intact",
+      "role": "sky_silhouette_glint_and_loading",
+      "static": true,
+      "derived": true,
+      "derived_from": "lod1/sol82_platform_game.glb",
+      "sha256": "523242901d2ee056bf6e31efa6f45a398adac1486327898267ab0a77a4de75ab",
+      "meshopt_sha256": "c57bed1195cd0d41d92c6567b9fdfe9e27fe7c93f83ee0d420369cd7bcd5ed82",
+      "bytes": 78936,
+      "meshopt_bytes": 24272,
+      "triangles": 2700,
+      "draw_calls": 1,
+      "materials": [
+        "M_SOL82_DISTANCE_VERTEX_PALETTE"
+      ],
+      "textures": 0,
+      "skins": 0,
+      "bounds": {
+        "min": [
+          -26.274999618530273,
+          -0.12124359607696533,
+          -8.875
+        ],
+        "max": [
+          26.274999618530273,
+          8,
+          9.600000381469727
+        ],
+        "dimensions_m": [
+          52.54999923706055,
+          8.121243596076965,
+          18.475000381469727
+        ]
+      },
+      "span_m": 52.55,
+      "main_bus_length_m": 17.95,
+      "origin": "centre of beam exit aperture",
+      "fire_direction": "-Y",
+      "forward": "+Z",
+      "up": "+Y",
+      "plot_m": [
+        60,
+        24
+      ],
+      "sockets": [
+        {
+          "id": "APERTURE",
+          "node": "APERTURE",
+          "kind": "beam_origin",
+          "position_m": [
+            0,
+            0,
+            0
+          ],
+          "normal": [
+            0,
+            -1,
+            0
+          ],
+          "available": true
+        },
+        {
+          "id": "ENERGY_CORE",
+          "node": "SOCKET_ENERGY_CORE",
+          "kind": "energy_core",
+          "position_m": [
+            0,
+            5.1,
+            0
+          ],
+          "normal": [
+            0,
+            1,
+            0
+          ],
+          "available": true
+        },
+        {
+          "id": "SENSOR_FORWARD",
+          "node": "SOCKET_SENSOR_FORWARD",
+          "kind": "sensor",
+          "position_m": [
+            0,
+            4.8,
+            9
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ],
+          "available": true
+        },
+        {
+          "id": "THRUSTER_REAR",
+          "node": "SOCKET_THRUSTER_REAR",
+          "kind": "propulsion",
+          "position_m": [
+            0,
+            4.8,
+            -9
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ],
+          "available": true
+        }
+      ],
+      "colliders": [
+        {
+          "id": "main_bus",
+          "center_m": [
+            0,
+            4.8,
+            0
+          ],
+          "size_m": [
+            7.2,
+            6.2,
+            18
+          ],
+          "condition": "D0"
+        },
+        {
+          "id": "array_envelope",
+          "center_m": [
+            0,
+            4.8,
+            0
+          ],
+          "size_m": [
+            52.55,
+            0.5,
+            8
+          ],
+          "condition": "arrays_deployed"
+        }
+      ],
+      "clips": [],
+      "animations": [],
+      "required_nodes": [
+        "ROOT",
+        "SOL82_RIG_ROOT",
+        "OPTICS_YAW",
+        "OPTICS_PITCH",
+        "APERTURE_IRIS",
+        "APERTURE",
+        "ARRAY_L",
+        "ARRAY_R",
+        "RADIATOR_L",
+        "RADIATOR_R",
+        "NAV_LIGHT_L",
+        "NAV_LIGHT_R",
+        "ENERGY_SPINE",
+        "SOL82_ARTICULATED_HARDWARE",
+        "SOL82_CARBON_ARMOR",
+        "SOL82_CYAN_ACCENTS",
+        "SOL82_WARNING_MARKS",
+        "SOL82_RADIATOR_SURFACES",
+        "SOL82_APERTURE_GLOW",
+        "NAV_LIGHTS_GEOMETRY",
+        "SOL82_DISTANCE_GEOMETRY",
+        "SOCKET_ENERGY_CORE",
+        "SOCKET_SENSOR_FORWARD",
+        "SOCKET_THRUSTER_REAR"
+      ],
+      "engine_nodes": [
+        "ROOT",
+        "SOL82_RIG_ROOT",
+        "OPTICS_YAW",
+        "OPTICS_PITCH",
+        "APERTURE_IRIS",
+        "APERTURE",
+        "ARRAY_L",
+        "ARRAY_R",
+        "RADIATOR_L",
+        "RADIATOR_R",
+        "NAV_LIGHT_L",
+        "NAV_LIGHT_R",
+        "ENERGY_SPINE",
+        "SOL82_ARTICULATED_HARDWARE",
+        "SOL82_CARBON_ARMOR",
+        "SOL82_CYAN_ACCENTS",
+        "SOL82_WARNING_MARKS",
+        "SOL82_RADIATOR_SURFACES",
+        "SOL82_APERTURE_GLOW",
+        "NAV_LIGHTS_GEOMETRY",
+        "SOL82_DISTANCE_GEOMETRY",
+        "SOCKET_ENERGY_CORE",
+        "SOCKET_SENSOR_FORWARD",
+        "SOCKET_THRUSTER_REAR"
+      ],
+      "review_status": "contract_candidate_pending_laser_lab_ground_camera_close_orbit_reference_phone",
+      "credit": "Model by jelaludo"
+    }
+  ]
+}

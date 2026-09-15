@@ -27,6 +27,7 @@ import { planetBake } from '../platform/planet-bake.js';
 import { createStoryPlanetSurface } from './story-planet-mesh.js';
 import { createInsetHud } from './laser-inset-hud.js';
 import { makeAudio } from '../audio.js';
+import { createSol82Briefing } from '../fx/sol82-briefing.js';
 import { planBase } from '../domain/base-plan.js';
 import { ISLANDS, STRUCTURES, KIT, STAGES } from '../content/base-layout.js';
 import { createStoryBase } from '../fx/story-base.js';
@@ -77,6 +78,8 @@ export function initLaserTab(root) {
   sfx.arm();
   let burnVoice = null;
   const stopBurnVoice = (fade = 0.35) => { burnVoice?.stop(fade); burnVoice = null; };
+  /* SOL-82's briefing: the combat satellite introduced the way the gunship is; once per browser, and on the HUD button */
+  const briefing = createSol82Briefing(root);
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(look.bg);
   scene.add(new THREE.HemisphereLight(look.hemi[0], look.hemi[1], look.hemi[2]));
@@ -183,6 +186,7 @@ export function initLaserTab(root) {
     + '<span id="laser-perf"></span>'
     + '</div>'
     + '<div class="laser-keys"><button id="laser-pass" type="button">PASS NOW</button>'
+    + '<button id="laser-brief" type="button">SOL-82 BRIEF</button>'
     + '<button id="laser-revive" type="button">REVIVE</button>'
     + '<button id="laser-reset" type="button">RESET</button>'
     + '<span>hold the pointer in the inset to burn</span></div>';
@@ -484,6 +488,8 @@ export function initLaserTab(root) {
 
     frameGround(trenchPoint(queueTail()));
     ready = true;
+    /* the first visit opens the briefing (?briefing=1 always does); a browser under automation never gets it, so harness runs stay unblocked */
+    if (q.get('briefing') === '1' || (!briefing.seen() && !navigator.webdriver)) briefing.open();
   }
 
   let sinkPoint = new THREE.Vector3();
@@ -1026,6 +1032,7 @@ void main(){
       if (window.__stalheartLaserTest === hooks) delete window.__stalheartLaserTest;
       stopBurnVoice(0);
       sfx.dispose?.();
+      briefing.dispose();
       insetHud.dispose();
       satTarget.dispose();
       lensGeo.dispose();
@@ -1191,6 +1198,7 @@ void main(){
 
   hud.querySelector('#laser-pass').onclick = passNow;
   hud.querySelector('#laser-revive').onclick = revive;
+  hud.querySelector('#laser-brief').onclick = () => briefing.open();
   hud.querySelector('#laser-reset').onclick = () => { location.reload(); };
   resize();
   build().catch((e) => { errors.push(`build: ${e.message}`); });

@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/jelaludo/SentryTowers_A6",
+  "revision": "b3fe793e35cf94b10c481e262fb2e3324b4dfce4",
+  "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/b3fe793e35cf94b10c481e262fb2e3324b4dfce4/",
+  "credit": "Models by jelaludo (https://jelaludo.github.io/SentryTowers_A6/sol82/), SOL-82 orbital laser platform, detailed master LOD0, reused with attribution under the upstream ASSET-LICENSE.md",
+  "files": [
+    {
+      "path": "assets/models/sol82/manifest.json",
+      "sourcePath": "assets/sol82/manifest.json",
+      "sha256": "0e679df17e4f2f224588f25dc9c8b17a2c682854d1bc06599ce9e2846debbf42",
+      "bytes": 18239
+    },
+    {
+      "path": "assets/models/sol82/sol82_platform_detailed.glb",
+      "sourcePath": "assets/sol82/lod0/sol82_platform_detailed.glb",
+      "sha256": "c64fe484698d6f58470cf47ac61ca70f9cc1520c681e37d035c5f1b98de559d9",
+      "bytes": 447372,
+      "clips": [
+        "Arrays_Deploy",
+        "Aperture_Open",
+        "Aperture_Close",
+        "Idle_Cycle"
+      ]
+    }
+  ]
+}

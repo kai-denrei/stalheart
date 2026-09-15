@@ -90,3 +90,7 @@ The 18 m steerable antenna at its low/game detail (1,632 triangles) with its `Ar
 ## Gate sounds
 
 Two operator clips reused from the karyoku project, unchanged: `assets/audio/gate_hydraulics.mp3` is karyoku's `assembly_hydraulics.mp3` (built there from the operator's hydraulic master) and `assets/audio/gate_slam.mp3` is karyoku's `crush_slam.mp3` (universfield 123784, trimmed, mono). Checksums in `docs/story-audio.lock.json`. The armored gate plays the hydraulics when it starts opening and the slam when it has closed.
+
+## SOL-82 orbital laser platform — jelaludo
+
+The detailed master tier (LOD0) and manifest of the SOL-82 orbital laser combat satellite from [SentryTowers_A6](https://github.com/jelaludo/SentryTowers_A6/tree/b3fe793e35cf94b10c481e262fb2e3324b4dfce4/assets/sol82), revision `b3fe793e35cf94b10c481e262fb2e3324b4dfce4`, the owner's requested source. Models and animations by jelaludo, reused with attribution under the upstream `ASSET-LICENSE.md`. Pinned checksums: `docs/sol82-assets.lock.json`. Used for the laser lab's SOL-82 briefing (`src/fx/sol82-briefing.js`), drawn as cyan wireframe.
