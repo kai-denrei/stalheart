@@ -537,8 +537,8 @@ try{
  await until('window.__stalheartTest.state().programme.active==="solar"',90000);await delay(7000);await shotBase('grow-solar-rising');
  await until('window.__stalheartTest.state().programme.printed.includes("solar")',90000);await mark('solar stands');
  {const s=await evaluate('window.__stalheartTest.state()');assert(s.programme.perks.includes('station'),'the array station is on');assert.equal(s.programme.next,'bays');}
- await delay(8000);assert.equal(await evaluate('window.__stalheartTest.state().programme.active'),null,'the bays wait for sector 1');
- await evaluate('window.__stalheartTest.setSector(1)');   // the sectors own story.sectorN; the test stands in for them
+ await delay(8000);{const s=await evaluate('window.__stalheartTest.state()');assert(s.programme.active===null||(s.sector?.n??0)>=1,`the bays wait for sector 1 (active ${s.programme.active}, sector ${s.sector?.n})`);}
+ await evaluate('(window.__stalheartTest.state().sector?.n??0)>=1||window.__stalheartTest.setSector(1)');   // the sector loop owns story.sectorN once sector 1 starts; the test only stands in if it has not
  await until('window.__stalheartTest.state().programme.printed.includes("bays")',240000);await mark('bays stand');
  await until('window.__stalheartTest.state().bays.length===3',20000);{const s=await evaluate('window.__stalheartTest.state()');assert.deepEqual(s.bays.map(b=>b.ci),s.berthCells,'the printed bays are the berths');}
  await shotBase('grow-bays');
@@ -621,6 +621,7 @@ try{
  assert.equal(await evaluate('window.__stalheartTest.backDoorOpen()'),false,'sealed before the call');
  const shut=await evaluate('window.__stalheartTest.backCandidates()');assert(shut.length>0&&shut.every(c=>c.side==='back'&&c.route>c.hops+15),`before the collapse the back lanes route through the gate (${JSON.stringify(shut[0])})`);
  await until('!window.__stalheartTest.state().deploying',30000);await delay(500);   // a hull rolling out of its bay owns the camera over any shot
+ await evaluate('window.__stalheartTest.sectorQuiet(true)');await until('(()=>{const s=window.__stalheartTest.state().sector;return !!s&&s.breaches.length>=2&&s.breaches.every(b=>b.live)})()',90000);await delay(1500);   // sector 1 opens its own two breaches and their sinkholes clear rock: measure after they stand
  const walls0=await evaluate('window.__stalheartTest.state().wallCount');
  // the frame cost: rAF deltas and long tasks for 2.5 s before the call (baseline) and 2.5 s from the call
  const watch=call=>evaluate(`new Promise(resolve=>{const long=[];const po=new PerformanceObserver(l=>{for(const e of l.getEntries())long.push(+e.duration.toFixed(1));});po.observe({type:'longtask'});let callMs=0,cells=0,last=0,max=0,maxAt=0,frames=0,t0=0;const longAt=[];const tick=()=>{const now=performance.now();if(now-last>max){max=now-last;maxAt=Math.round(now-t0);}last=now;frames++;if(now-t0<2500)requestAnimationFrame(tick);else setTimeout(()=>{po.disconnect();for(const e of performance.getEntriesByType?.('longtask')??[])longAt.push(Math.round(e.startTime-t0));resolve({long,longAt:longAt.filter(v=>v>=0),maxFrame:+max.toFixed(1),maxAt,frames,callMs,cells});},50);};requestAnimationFrame(()=>{t0=last=performance.now();${call?'const a=performance.now();cells=window.__stalheartTest.openBackDoor();callMs=+(performance.now()-a).toFixed(1);':''}requestAnimationFrame(tick);});})`);
