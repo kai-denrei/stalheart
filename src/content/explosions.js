@@ -11,6 +11,11 @@ export const EXPLOSION_USES = Object.freeze({
   'tank.shell': Object.freeze({ module: 'bofors-burst', scale: 0.405 }),     // ~4.5 m, the Bofors' ratio kept
   'quiver.talon': Object.freeze({ module: 'bofors-burst', scale: 0.54 }),    // ~6 m, the Bofors' ratio kept
   'strike.orbital': Object.freeze({ module: 'orbital-strike', scale: 1.5 }), // 135 m, 10 s
+  // THE ORBITAL LASER (owner, 2026-09-15): the touchdown of a lay is the orbital strike's cloud at half size, and
+  // the contact point sheds rotary pops at LASER_CONTACT_RATE per second while it burns, so a line drawn across the
+  // ground is a line of small blasts with one big one where the beam came down.
+  'laser.ignite': Object.freeze({ module: 'orbital-strike', scale: 0.5 }),
+  'laser.contact': Object.freeze({ module: 'rotary-pop', scale: 0.6 }),
 });
 
 // THE IMPACT SCARES (owner, 2026-09-14): bodies within `cells` of a landing freeze for SCARE_FREEZE_S, then turn from it
@@ -23,6 +28,8 @@ export const EXPLOSION_SCARE = Object.freeze({
   'tank.shell': Object.freeze({ cells: 2, seconds: 1.2 }),
   'quiver.talon': Object.freeze({ cells: 2.5, seconds: 1.5 }),
   'strike.orbital': Object.freeze({ cells: 12, seconds: 3 }),
+  'laser.ignite': Object.freeze({ cells: 8, seconds: 2 }),
+  'laser.contact': Object.freeze({ cells: 3, seconds: 0.6 }),
 });
 export const SCARE_FREEZE_S = 0.35;
 
