@@ -1,6 +1,6 @@
 # Stalheart current state
 
-Updated 2026-09-14 (PoC cleanup). Owner: the Stalheart development project; this repo is authoritative for the game.
+Updated 2026-09-15 (the orbital laser lab). Owner: the Stalheart development project; this repo is authoritative for the game.
 
 **Identity: resourceful joy under pressure** (`2026-09-14-identity-resourceful-joy-under-pressure`). The pressure is the swarm, the clock and the hardware; the joy is Isao, the builder who rebuilds, and a colony grown out of the wreck it arrived in. See [FUNMAP.md](FUNMAP.md).
 
@@ -22,10 +22,12 @@ Updated 2026-09-14 (PoC cleanup). Owner: the Stalheart development project; this
 ## Next priorities
 
 1. **The puzzle tower defence** (`2026-09-14-puzzle-tower-defence-and-the-handover`): sub-project 1, the post-tutorial handover, landed on 2026-09-14 (item 2). Plan: `docs/superpowers/plans/2026-09-14-handover-gunship-call-expeditions.md` (7 tasks). After it: 2 tower geometry, 3 authored challenges, 4 generated waves scored on margin.
-2. **The handover landed** (`2026-09-14-handover-gunship-call-expeditions-landed`): past the Quiver's hard cores the towers fire on their own and the wave clock runs; piloting is the tank and an earned gunship call-in; guarded expeditions to the landing sites bring home parts that unlock Relay, Mortar and Lancer (then Plasma, Needle, Heptapod). Next: sub-project 2, tower geometry (targeting, line of sight, range along the lane).
-3. **Navigation shell landed** (`2026-09-14-navigation-shell-landed`, `2026-09-14-navigation-shell-spec-changes`): `PLAYTEST | DEV` top right on every game and workshop page with the build tag. Next: use it in the seat and prune what nobody opens.
-4. **Gunship seat tuned in play** (`2026-09-14-gunship-seat-tuning-scare-thermal-sealed-sinkholes`): explosions sized by the owner, the impact scare herds the swarm (confirmed), thermal first with the base running warm, sealed sinkholes stay sealed. Still to do: measure the swarm's render cost under a real horde; the FX-package explosion section and a lab picker; phone GPU cost is unmeasured.
-5. **The world stays a sphere** (`2026-09-14-stay-on-the-sphere`; cost map `docs/SPHERE-TO-FLAT-COST-MAP.md`). Recommended either way: route radial up through one helper.
+2. **The orbital laser lab landed** (`2026-09-15-orbital-laser-lab-landed`, feel notes `2026-09-15-laser-lab-feel-owner-notes`): `labs.html#laser`, the rules in `src/domain/orbital-laser.js`, the look in the lab. Sub-project 2 (the strip button, the story window, the game hooks) waits on the owner's judgement of the lab.
+
+3. **The handover landed** (`2026-09-14-handover-gunship-call-expeditions-landed`): past the Quiver's hard cores the towers fire on their own and the wave clock runs; piloting is the tank and an earned gunship call-in; guarded expeditions to the landing sites bring home parts that unlock Relay, Mortar and Lancer (then Plasma, Needle, Heptapod). Next: sub-project 2, tower geometry (targeting, line of sight, range along the lane).
+4. **Navigation shell landed** (`2026-09-14-navigation-shell-landed`, `2026-09-14-navigation-shell-spec-changes`): `PLAYTEST | DEV` top right on every game and workshop page with the build tag. Next: use it in the seat and prune what nobody opens.
+5. **Gunship seat tuned in play** (`2026-09-14-gunship-seat-tuning-scare-thermal-sealed-sinkholes`): explosions sized by the owner, the impact scare herds the swarm (confirmed), thermal first with the base running warm, sealed sinkholes stay sealed. Still to do: measure the swarm's render cost under a real horde; the FX-package explosion section and a lab picker; phone GPU cost is unmeasured.
+6. **The world stays a sphere** (`2026-09-14-stay-on-the-sphere`; cost map `docs/SPHERE-TO-FLAT-COST-MAP.md`). Recommended either way: route radial up through one helper.
 6. Still open from the story playtests: the wall-breach freeze (~250 ms on the story planet), the Rotor's report by ear, ISAO-Birudorōn's review, the foundry in the game camera (`2026-09-14-story-playtest-open-items`). From the labs (`2026-09-14-beam-metal-labs-and-sinkhole-look`): the kit bays take no metal colours (one vertex-palette material) and the game does not weather the MÖRK (its materials are not named M_*).
 
 Follow-ups left by the cleanup: the `portal_warn` and `server_dialup` cues are still keys in the shipped FX package and need a package migration to retire; `fabricator.glb` is still Isao's load fallback; `container.glb` still dresses the campaign board's life containers.

@@ -40,6 +40,21 @@ Evidence:
 - A wall cell needs 0.5 s of contact and a 40 m/s drag gives a 6 m footprint only 0.24 s over one, so the browser step nudges and then stands still across the gate mouth; that is what a hand has to do too, and it is the first measured statement about how the weapon plays.
 - The story world puts the pole at the origin (src/domain/base-plan.js:12) while createExplosions (planetRadius: Math.hypot(point)) and createBreachRubble (.normalize()) assume a centre-at-origin scene; the lab parents both to one sphereRoot group at (0, -radius, 0) and hands them planet-centred points.
 
+## 2026-09-15 — The --nav failure at the bloom tuning button was caused by this branch's tenth Workshop lab, not a standing break
+
+issue · resolved · 2026-09-15-nav-suite-tenth-lab-bloom-button
+
+2026-09-15-orbital-laser-lab-landed recorded --nav failing at 'DEV · Tuning · bloom opens the variables' as a standing branch failure because it also failed on the commit before. The investigation (.superpowers/sdd/nav-investigation.md, read-only, no browser run under the memory guardrail) dated the break from artifacts/browser/: --nav passed at f2d7d78 with nine labs and first failed after 1ef4366 added the orbital laser lab as the tenth Workshop entry.
+
+The DEV drawer (#shell-nav) is clipped at calc(100vh - 70px); with ten Workshop buttons the sixth tuning button, bloom, sits about one pixel past the clip at the suite's 1440x900, so the raw-coordinate click landed on the canvas and the drawer's outside-click closer shut it. 3289bb2 changes that step from click to the suite's own tap() helper, which scrolls the target into view first, as every drawer step below bloom already did. Corrects the earlier entry's causation; the run itself waits for the memory guardrail.
+
+Alternatives: Fold scrollIntoView into click() itself and retire tap(): the durable fix, not taken as the minimal one.; Drop the bloom assertion: rejected, it covers the tuning panel.
+
+Evidence:
+
+- artifacts/browser timestamps: nav-tuning and later screenshots at 08:19 JST before 1ef4366; nav-switch-failure.json at 12:40 JST after it, error 'DEV · Tuning · bloom opens the variables', no console errors.
+- styles.css:3919 (max-height calc(100vh - 70px)), :3921/:3925 (50 px button pitch); scripts/browser-test.mjs:97 (raw-centre click), :276 (tap), src/fx/shell-nav.js:134-137 (outside-click closer).
+
 ## 2026-09-15 — Idea: the Mortar can lay suppressing fire on a chosen area to scare and herd the swarm
 
 decision · proposed · 2026-09-15-mortar-suppressing-fire-idea
