@@ -82,7 +82,10 @@ export function createSectorRun(h) {
 
   function begin(n) {
     def = sectorDef(n, SECTORS, SECTOR_GENERATOR); story.sectorN = n;
-    sector = null; sps.clear(); pending = []; lastPoll = null;
+    sector = null; sps.clear(); pending = []; lastPoll = null; lastReport = null;   // the last sector's report goes with it
+    // every live breach in play belongs to the sector: the opening's sinkhole (or any other stray) caves in as the sector begins
+    const strays = (h.breaches?.() ?? []).filter((sp) => sp.alive);
+    if (strays.length) { for (const sp of strays) h.collapse(sp); h.callout('THE OLD BREACH CAVES IN', 'co-victory-sub'); h.brief('old_breach'); }
     stats = makeSectorStats(def, now(), SECTOR_STATS);
     (h.refill ?? api.refillArrays)?.(); api.setLaserOnline?.(!!def.laser);   // the solar array's reserve refills at every sector start
     if (def.backDoor && backOpenedAt === null) { api.openBackDoor?.(); backOpenedAt = now(); }
@@ -234,7 +237,7 @@ export function createSectorRun(h) {
     // the colony is lost: LAST TRANSMISSION after the wreck has played. False when no sector is running (the caller shows its own)
     lose() { if (!['brief', 'fighting', 'secure'].includes(phase)) return false; phase = 'lost'; left = SECTOR_TIMING.lostHold; h.hud(); return true; },
     state: () => ({
-      phase, n: def?.n ?? 0, name: def?.name ?? null, secure: ['secure', 'debrief', 'campaign'].includes(phase), debriefOpen: !!story.debrief?.isOpen(), reports: reports.length,
+      phase, n: def?.n ?? 0, name: def?.name ?? null, strays: phase === 'idle' ? 0 : (h.breaches?.() ?? []).filter((sp) => sp.alive && idOf(sp) === null).length, secure: ['secure', 'debrief', 'campaign'].includes(phase), debriefOpen: !!story.debrief?.isOpen(), reports: reports.length,
       gate: gate ? { hp: +gate.hp.toFixed(1), broken: gate.broken, breaks: gate.breaks } : null,
       breaches: (sector?.breaches ?? []).map((b) => ({ id: b.id, side: b.side, cell: b.cell, opened: sps.has(b.id), live: b.state === 'open' && !!sps.get(b.id)?.alive, wavesReleased: b.wavesReleased, wavesPlanned: b.wavesPlanned, closedBy: b.closedBy, leftInField: { ...b.leftInField }, bonus: { ...b.bonus } })),
     }),

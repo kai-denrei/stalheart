@@ -310,6 +310,11 @@ export const BRIEFS = {
     id: 'array_dry', face: 'determined', title: 'COMMS · ISAO',
     lines: ['The array is dry. That was all the sun it had stored.', 'I will have it charged for the next sector.'],
   },
+  // THE SECTORS OWN THE BREACHES: the opening's sinkhole caves in as sector 1 begins, so every live breach is the sector's
+  old_breach: {
+    id: 'old_breach', face: 'focused', title: 'COMMS · ISAO',
+    lines: ['The first sinkhole caved in.', 'Two new ones are opening.'],
+  },
   // THE SECOND FRONT: the swarm cracks the sealed mouth behind the bays. A fact, then the plan.
   back_door: {
     id: 'back_door',

@@ -361,7 +361,7 @@ export function initTdTab(root) {
     online: LASER_GAME.online || new URLSearchParams(location.search).get('laser') === 'online', get mobile() { return mobileShell; },
     cellSide: () => cellSide, wallHeight: () => params.wallHeight, centers: () => graph.centers, adj: () => graph.adj, tags: () => dungeon.tags, cellAt: (p) => cellIndex(norm3(p)),
     heart: () => graph.centers[dungeon.heart], heartCell: () => dungeon.heart, lane: () => graph.centers[gunshipLane()], tank: () => player.pos,
-    enemies: () => enemies, breaches: () => spawnPoints.filter((sp) => sp.alive && sp.obj?.userData.breach), towers: () => towers, walls: () => storyBase?.walls?.() ?? [], anchors: () => storyBase?.anchors?.() ?? new Set(),
+    enemies: () => enemies, breaches: () => spawnPoints.filter((sp) => sp.alive && sp.obj?.userData.breach).sort((a, b) => (sectorRun?.owns(b) ? 1 : 0) - (sectorRun?.owns(a) ? 1 : 0)), towers: () => towers, walls: () => storyBase?.walls?.() ?? [], anchors: () => storyBase?.anchors?.() ?? new Set(),
     burnBody: (e) => damageEnemy(e, t, e.hp + 1, true, 'laser'), seal: (sp) => killPortal(sp, 'laser'), burnTower: (tw) => destroyTower(tw), burnWall: (w) => storyBase?.dropWall(w.index),
     breakCells: (cells) => { if (cells.filter((ci) => breachWallCell(ci)).length) rebuildAfterBreach(); }, burnHeart: () => heartHit(heartHP), burnTank: (p) => playerHit('laser', p),
     explode: (use, p) => explode(use, p), brief: (id) => showBrief(id), loop: (key) => sfx.loop(key), views: () => storyViews, canvas: () => renderer.domElement, fov: () => camera.fov,
@@ -9874,7 +9874,7 @@ export function initTdTab(root) {
       seal: (sp, by) => { if (by === 'strike' || by === 'gunship') executeStrike(sp.ci, t, by === 'gunship' ? 'gunship.heavy' : 'strike.orbital'); else if (by === 'shells') for (let k = 0; k < 3 && sp.alive; k++) gateTakesShell(sp); else killPortal(sp, by); },   /* the real seal paths, for the acceptance hooks */
       pay: ({ kg, points }) => { eco.addBiomass(kg, { category: 'sector-held' }); score.addBonus(points); persistBest(); updateHud(); },
       brief: (id) => showBrief(id), callout: (text, cls) => showCallout(text, cls), sfx: (name) => sfx.play(name, { dist: 0 }), hud: () => updateHud(), pause: (on) => { paused = on; },
-      refill: () => refillArrays(),
+      refill: () => refillArrays(), breaches: () => spawnPoints.filter((sp) => sp.alive && sp.obj?.userData.breach),   /* every live sinkhole, the sector's own and strays */
       poll: () => ({ passes: gunship.passes, shieldUp: shieldUp(), drawn: arrayStation.drawn ?? 0, earned: eco.earned, spent: eco.spent, delivered: (story.expeditions?.sites ?? []).filter((s) => s.state === 'delivered').map((s) => s.id), laser: laserStation.stats?.() ?? null }),   /* SOL-82's books: { passes, seconds } */
     });
   }
