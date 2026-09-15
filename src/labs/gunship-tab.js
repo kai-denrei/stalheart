@@ -32,7 +32,7 @@ import {
 } from '../domain/gunship.js';
 import { deepLink, wireDeepLink } from '../deeplink.js';
 import { norm3 } from '../vec3.js';
-import { BLOCKED, PATH } from '../dungeon.js';
+import { BLOCKED, PATH, bfsDist } from '../dungeon.js';
 
 const STAGE = 6;
 const BODY_SPEED = 2.2, BODY_GAP = 3.4, TRENCH_WIDTH = 4, TRENCH_DEPTH = 1.5;
@@ -289,6 +289,14 @@ export function initGunshipTab(root) {
     explosions = createExplosions(sphereRoot, { onError: (e) => errors.push(`explosions: ${e.message}`) });
 
     plan = planBase(planet, { islands: ISLANDS, structures: STRUCTURES, kit: KIT, stages: STAGES }, STAGE);
+    /* THE GROUND UNDER A LANDED ROCKET IS FLOOR (owner, 2026-09-15: the rockets on rock). The game's story world opens
+       plan.open, every cell within each landing site's clear radius and the long sightline to the sinkhole, before it
+       builds the base (src/platform/story-world.js); the lab now does the same, patches those cells into the surface, and
+       re-lays the route field so the swarm walks over the opened ground. Wall cells stay the lab's own kit pieces. */
+    const opened = plan.open.filter((ci) => planet.dungeon.tags[ci] === BLOCKED);
+    for (const ci of plan.open) planet.dungeon.tags[ci] = PATH;
+    if (opened.length) planetMesh.userData.refreshCells(opened);
+    planet.dungeon.distToHeart = bfsDist(planet.graph.adj, [planet.dungeon.heart], (i) => planet.dungeon.tags[i] !== BLOCKED);
     base = createStoryBase(scene, { plan, placer: { toWorld }, metres: 1, kit: KIT, skip: ['sh02'], sfx: null });
     await base.ready;
     for (const e of base.errors) errors.push(`base: ${e}`);
