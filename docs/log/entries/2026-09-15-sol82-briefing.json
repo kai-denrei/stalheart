@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "2026-09-15-sol82-briefing",
+  "date": "2026-09-16T01:00:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "SOL-82's asset family is pinned and introduced in a wireframe briefing with labelled parts",
+  "context": "Owner, 2026-09-15: new SOL-82 assets are published (jelaludo.github.io/SentryTowers_A6/sol82). The model may never be shown in play, but it should introduce the orbital laser combat satellite the way the gunship is introduced: wireframe, different angles, labels explaining its elements (cryocoolers, phase-change sinks and so on) and the 1.2 gigajoules it delivers.",
+  "outcome": "cba4d0f pins the detailed master LOD0 and manifest at SentryTowers_A6 b3fe793 (docs/sol82-assets.lock.json, verified by npm run assets:check) and adds src/fx/sol82-briefing.js: seven pages (platform, pulse store, wings and cryocoolers, sinks and radiators, optics and aperture, the pass, the operator), a camera angle per page, labels anchored to the model's nodes, the delivered clips (Arrays_Deploy then Idle_Cycle, Aperture_Open on the optics page), and numbers read from src/content/orbital-laser.js (1.2 GJ = 120 MW for 10 s). The laser lab shows it once per browser, on ?briefing=1 and from a SOL-82 BRIEF button; the game does not show it yet, because the orbital laser is not in play.",
+  "alternatives": [
+    "Pin the game tier LOD1 instead of the detailed master; not chosen because the manifest reserves LOD0 for manual cinematic selection, which is what a close, slow briefing is.",
+    "Reuse src/fx/gunship-briefing.js with SOL-82 text; rejected because it has no per-page camera or labels, and the owner asked for both.",
+    "Hand-place label positions in screen space; rejected because node-anchored labels follow the deploying arrays and every camera angle."
+  ],
+  "evidence": [
+    "The downloaded LOD0 matches the manifest's sha256 c64fe484...; npm run assets:check verifies the lock.",
+    "npm test, npm run check and npm run build green on cba4d0f; dist carries assets/models/sol82/.",
+    "NOT browser-verified: the memory guardrail stayed at WARN. The label placement for parts without nodes (cryocoolers, phase-change sinks, capacitor drums) is inferred from the upstream README, not from geometry."
+  ],
+  "supersedes": []
+}
