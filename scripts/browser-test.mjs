@@ -10,8 +10,9 @@ import { CONTENT } from '../src/content/runtime.js';
 import { changeSummary } from '../src/content/authoring.js';
 import { clone, serializePreset } from '../src/content/preset.js';
 import { LASER_VIEW } from '../src/content/orbital-laser.js';
+import { GUNSHIP_TRACK } from '../src/content/gunship.js';
 const args=process.argv.slice(2),production=args.includes('--dist');
-const port=18155,base=production?'/stalheart/':'/';
+const port=+process.env.STALHEART_BROWSER_PORT||18155,base=production?'/stalheart/':'/';
 const origin=`http://127.0.0.1:${port}`,urlRoot=origin+base;
 const output=resolve('artifacts/browser'+(production?'-dist':''));mkdirSync(output,{recursive:true});
 const profile=mkdtempSync(join(tmpdir(),'stalheart-chrome-'));
@@ -267,6 +268,19 @@ try{
   assert(await evaluate('document.querySelector("#shell-nav [data-entry=jump-gunship]").classList.contains("active")'),'the drawer marks the jump we came from');
   await evaluate('document.querySelector("#shell-nav [data-tool=raise]").click()');await delay(1500);const more=await evaluate('window.__stalheartTest.state().performance.enemies');assert(more>s.performance.enemies,`the + button raised more (${more})`);}
  current='gunship-skip-enemies';await finish();
+ // THE SHIP CREEPS TOWARD THE BREACHES (docs/superpowers/specs/2026-09-15-v1-session-design.md, section 3): over ~10 s the platform's ground point
+ // closes on the live breach, or holds its loiter circle round it, while the gunner holds still and the seat's camera never jumps
+ {const arc=(a,b)=>Math.atan2(Math.hypot(a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]),a[0]*b[0]+a[1]*b[1]+a[2]*b[2]);
+  const k0=(await evaluate('window.__stalheartTest.state().gunship')).track;assert(k0&&k0.target&&!k0.home,`the track has a live breach to go to (${JSON.stringify(k0)})`);
+  const d0=arc(k0.pos,k0.target)/k0.cellSide;current='gunship-track-before';await finish();
+  const probe=await evaluate(`new Promise(res=>{const T=window.__stalheartTest,start=performance.now();let prev=null,max=0,sum=0,n=0;const f=()=>{const q=T.gunshipCam();if(prev){const a=2*Math.acos(Math.min(1,Math.abs(q[0]*prev[0]+q[1]*prev[1]+q[2]*prev[2]+q[3]*prev[3])));max=Math.max(max,a);sum+=a;}prev=q;n++;if(performance.now()-start<9000)requestAnimationFrame(f);else res({max,sum,n});};requestAnimationFrame(f);})`);
+  await delay(800);const k1=(await evaluate('window.__stalheartTest.state().gunship')).track,d1=arc(k1.pos,k1.target)/k1.cellSide,deg=r=>(r*180/Math.PI).toFixed(3);
+  console.log(`gunship track: ${d0.toFixed(2)} -> ${d1.toFixed(2)} cells from the breach, moved ${(arc(k0.pos,k1.pos)/k1.cellSide).toFixed(2)} cells at ${k1.speed.toFixed(2)} cells/s, hull turned ${deg(arc(k0.heading,k1.heading))} deg; seat camera: max ${deg(probe.max)} deg/frame, ${deg(probe.sum)} deg in all over ${probe.n} frames`);
+  assert(arc(k0.target,k1.target)<1e-6,'the same breach all the while');
+  assert(d1<d0-1||Math.abs(d1-GUNSHIP_TRACK.loiterCells)<0.6,`the ground point closes on the breach or circles it (${d0.toFixed(2)} -> ${d1.toFixed(2)} cells)`);
+  assert(probe.n>=90,`the probe saw the frames (${probe.n})`);assert(probe.max<0.25*Math.PI/180,`the seat's camera never jumps while the gunner holds still (max ${deg(probe.max)} deg in a frame)`);
+  assert(await evaluate('window.__stalheartTest.state().gunship.seat'),'still seated');
+  current='gunship-track-after';await finish();}
  } else if(args.includes('--nav')) {
  // THE NAVIGATION SHELL: PLAYTEST | DEV on every screen, the drawer by toggle and backslash, an Esc that never reaches
  // the game, tuning and docs over a running game without navigating, a felt-it note that survives a reload
