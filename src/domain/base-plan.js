@@ -7,7 +7,11 @@ import { drop } from '../core/terrace-profile.js';
 // altitude above the natural surface there. An island's pad touches the
 // ground at its centre and the sphere falls away toward the corners by the
 // sag, which the slab's 1.2 m skirt covers.
-export function planBase(planet, layout, stage) {
+// ISAO GROWS THE BASE IN PLAY (V1, 2026-09-16): `reach` places everything up to a later stage, and whatever lies above the current
+// stage is marked `pending: true` for the build programme to print. `until` still reads the current stage, so a grown base keeps the
+// intact SH02. With the default reach (the stage itself) the plan is exactly what it was.
+export function planBase(planet, layout, stage, { reach = stage } = {}) {
+  const pending = (n) => (n > stage ? { pending: true } : {});
   const { radius } = planet;
   const nearestCell = (x, z) => { const w = planet.frameToWorld([x, 0, z]); let best = -1, bd = Infinity; for (const ci of planet.clearing.cells) { const c = planet.graph.centers[ci]; const d = (c[0] * radius - w[0]) ** 2 + (c[1] * radius - radius - w[1]) ** 2 + (c[2] * radius - w[2]) ** 2; if (d < bd) { bd = d; best = ci; } } return best; };
   // a forward socket: the lane cell one step past the open mouth, outward; islands anchored there follow it
@@ -104,20 +108,20 @@ export function planBase(planet, layout, stage) {
     }
   }
   const anchored = layout.islands.map((i) => (i.anchor === 'forward' && forwardCell >= 0 ? { ...i, x: frameOf(forwardCell)[0], z: frameOf(forwardCell)[1] } : i));
-  const islands = anchored.filter((i) => i.stage <= stage).map((i) => ({
-    ...i, top: 0, sag: drop(Math.hypot(i.w, i.d) / 2, radius), heading: [0, 1], cell: i.anchor === 'forward' && forwardCell >= 0 ? forwardCell : nearestCell(i.x, i.z),
+  const islands = anchored.filter((i) => i.stage <= reach).map((i) => ({
+    ...i, top: 0, sag: drop(Math.hypot(i.w, i.d) / 2, radius), heading: [0, 1], cell: i.anchor === 'forward' && forwardCell >= 0 ? forwardCell : nearestCell(i.x, i.z), ...pending(i.stage),
   }));
   // every island's lattice cell, whether or not its slab is placed yet: the beats need them from the landing on
   const cells = Object.fromEntries(anchored.map((i) => [i.id, i.anchor === 'forward' && forwardCell >= 0 ? forwardCell : nearestCell(i.x, i.z)]));
   const islandById = new Map(anchored.map((i) => [i.id, i]));
   // a field prop snaps to the nearest open cell to its frame point, anywhere on the planet outside the clearing
   const nearestOpen = (x, z) => { const w = planet.frameToWorld([x, 0, z]); let best = -1, bd = Infinity; for (let ci = 0; ci < planet.graph.centers.length; ci++) { if (planet.dungeon.tags[ci] === 0 || planet.clearing.cells.has(ci)) continue; const c = planet.graph.centers[ci]; const d = (c[0] * radius - w[0]) ** 2 + (c[1] * radius - radius - w[1]) ** 2 + (c[2] * radius - w[2]) ** 2; if (d < bd) { bd = d; best = ci; } } return best; };
-  const structures = layout.structures.filter((s) => s.stage <= stage && (s.until == null || stage < s.until)).map((s) => {   // `until`: a structure a later stage replaces
-    if (s.anchor === 'open') { const ci = nearestOpen(s.x, s.z); const [x, z] = frameOf(ci); return { ...s, x, z, y: 0, heading: s.heading ?? [0, 1], cell: ci }; }
-    if (s.anchor === 'wall' && wallCell >= 0) { const p = sockets[0].pos, f = planet.worldToFrame([p[0] * radius, p[1] * radius - radius, p[2] * radius]); return { ...s, x: f[0], z: f[2], y: layout.kit.wallMetres ?? 4, heading: [0, 1], cell: wallCell }; }
+  const structures = layout.structures.filter((s) => s.stage <= reach && (s.until == null || stage < s.until)).map((s) => {   // `until`: a structure a later stage replaces
+    if (s.anchor === 'open') { const ci = nearestOpen(s.x, s.z); const [x, z] = frameOf(ci); return { ...s, x, z, y: 0, heading: s.heading ?? [0, 1], cell: ci, ...pending(s.stage) }; }
+    if (s.anchor === 'wall' && wallCell >= 0) { const p = sockets[0].pos, f = planet.worldToFrame([p[0] * radius, p[1] * radius - radius, p[2] * radius]); return { ...s, x: f[0], z: f[2], y: layout.kit.wallMetres ?? 4, heading: [0, 1], cell: wallCell, ...pending(s.stage) }; }
     const i = islandById.get(s.island);
     // a hair above the slab so coplanar floors do not z-fight; the rocket stands on natural ground
-    return { ...s, x: i.x, z: i.z, y: stage >= i.stage ? 0.06 : 0, heading: s.heading ?? [0, 1] };   // once the slab is placed, whatever stands on it rides a hair above; before that, natural ground
+    return { ...s, x: i.x, z: i.z, y: reach >= i.stage ? 0.06 : 0, heading: s.heading ?? [0, 1], ...pending(s.stage) };   // once the slab is placed (or will be, in a grown base), whatever stands on it rides a hair above; before that, natural ground
   });
   cells.forward = forwardCell; cells.rotor = wallCell; cells.quiver = wallCell2; cells.rotorLane = rotorLane; cells.fodder = fodderCell;
   // THE BERTHS: each bay's centre along the container model's X, its doors along the structure heading, and
@@ -129,10 +133,10 @@ export function planBase(planet, layout, stage) {
     const [hx, hz] = s.heading, lx = b.x * s.scale, x = s.x + hz * lx, z = s.z - hx * lx;   // right of the heading is [hz, -hx]
     const run = b.rollout ? (layout.kit.bay?.rollOutMetres ?? 19) * s.scale : roll;   // an authored roll-out ends where its clip ends
     const pos = unit([x, 0, z]), out = unit([x + hx * run, 0, z + hz * run]);
-    return { ...b, x, z, heading: s.heading, cell: nearestCell(x, z), exit: nearestCell(x + hx * run, z + hz * run), pos, out };
+    return { ...b, x, z, heading: s.heading, cell: nearestCell(x, z), exit: nearestCell(x + hx * run, z + hz * run), pos, out, ...pending(s.stage) };
   })).sort((a, b) => a.n - b.n);
   let gate = null, walls = [];
-  if (stage >= layout.kit.stage && planet.clearing.openMouth) {
+  if (reach >= layout.kit.stage && planet.clearing.openMouth) {
     const m = planet.clearing.openMouth;
     const c = m.cells.map((ci) => planet.graph.centers[ci]).reduce((a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]]).map((v) => v / m.cells.length);
     const f = planet.worldToFrame([c[0] * radius, c[1] * radius - radius, c[2] * radius]);
@@ -142,18 +146,18 @@ export function planBase(planet, layout, stage) {
     // nearest lattice cells: walls block them for everyone, the gate cell stays open and the gate itself decides
     const cellAt = (x, z) => { const w = planet.frameToWorld([x, 0, z]); let best = -1, bd = Infinity; for (const ci of candidates) { const c = planet.graph.centers[ci]; const d = (c[0] * radius - w[0]) ** 2 + (c[1] * radius - radius - w[1]) ** 2 + (c[2] * radius - w[2]) ** 2; if (d < bd) { bd = d; best = ci; } } return best; };
     const candidates = [...planet.clearing.cells, ...m.cells];
-    gate = { x: f[0], z: f[2], y: 0, heading: inward(phi0), cell: cellAt(f[0], f[2]), openRadius: 22 };
+    gate = { x: f[0], z: f[2], y: 0, heading: inward(phi0), cell: cellAt(f[0], f[2]), openRadius: 22, ...pending(layout.kit.stage) };
     const rw = r - layout.kit.wallInset;
     for (let side = -1; side <= 1; side += 2) for (let k = 0; k < layout.kit.wallsPerSide; k++) {
       const arc = layout.kit.gatePlot[0] / 2 + layout.kit.wallLength * (k + 0.5) + 0.5;
       const phi = phi0 + side * arc / rw;
       const [x, z] = at(rw, phi);
-      walls.push({ x, z, y: 0, heading: inward(phi), cell: cellAt(x, z) });
+      walls.push({ x, z, y: 0, heading: inward(phi), cell: cellAt(x, z), ...pending(layout.kit.stage) });
     }
     // a wall whose nearest cell is the gate's cell is dressing on the gate cell, not a block
     for (const w of walls) if (w.cell === gate.cell) w.cell = -1;
   }
   // WHEREVER A ROCKET COMES DOWN, standing or broken, the ground under it is open: no rock through a hull (operator, 2026-09-13)
-  const open = [...new Set([...sight, ...structures.filter((s) => s.anchor === 'open' && s.cell >= 0).flatMap((s) => { const c = planet.graph.centers[s.cell], reach = (s.clear ?? 0) / radius; return planet.graph.centers.flatMap((p, ci) => ci === s.cell || Math.acos(Math.max(-1, Math.min(1, (p[0] * c[0] + p[1] * c[1] + p[2] * c[2]) / (Math.hypot(...p) * Math.hypot(...c))))) < reach ? [ci] : []); })])];
-  return { stage, islands, structures, walls, gate, cells, bays, sockets, open };
+  const open = [...new Set([...sight, ...structures.filter((s) => s.anchor === 'open' && s.cell >= 0 && !s.pending).flatMap((s) => { const c = planet.graph.centers[s.cell], reach = (s.clear ?? 0) / radius; return planet.graph.centers.flatMap((p, ci) => ci === s.cell || Math.acos(Math.max(-1, Math.min(1, (p[0] * c[0] + p[1] * c[1] + p[2] * c[2]) / (Math.hypot(...p) * Math.hypot(...c))))) < reach ? [ci] : []); })])];
+  return { stage, ...(reach !== stage ? { reach } : {}), islands, structures, walls, gate, cells, bays, sockets, open };
 }

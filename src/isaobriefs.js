@@ -154,6 +154,39 @@ export const BRIEFS = {
     id: 'vibration_study', face: 'neutral', faces: ['neutral', 'skeptical', 'determined'], title: 'COMMS · ISAO', once: true,
     lines: ['They talk in vibration.', 'I started reverse-engineering it.', 'Need more compute.'],
   },
+  // ISAO KEEPS BUILDING (V1, 2026-09-16): one line as each piece of the base starts printing (src/content/base-programme.js)
+  build_gate: {
+    id: 'build_gate', face: 'determined', title: 'COMMS · ISAO', once: true,
+    lines: ['A Rotor on its own is a lookout.', 'Printing the gate, then the walls.'],
+  },
+  build_landing: {
+    id: 'build_landing', face: 'focused', title: 'COMMS · ISAO', once: true,
+    lines: ['The foundry is standing in the dirt.', 'Printing a pad under it.'],
+  },
+  build_stalheart: {
+    id: 'build_stalheart', face: 'determined', title: 'COMMS · ISAO', once: true,
+    lines: ['The pole has waited long enough.', 'Printing the Stålheart.'],
+  },
+  build_solar: {
+    id: 'build_solar', face: 'focused', title: 'COMMS · ISAO', once: true,
+    lines: ['The hull can drink from the sun.', 'Printing the array. Park on its pad for shield.'],
+  },
+  build_bays: {
+    id: 'build_bays', face: 'focused', title: 'COMMS · ISAO', once: true,
+    lines: ['Three hulls need a roof.', 'Printing the bays behind the Stålheart.'],
+  },
+  build_hugin: {
+    id: 'build_hugin', face: 'curious', title: 'COMMS · ISAO', once: true,
+    lines: ['The gunship could use a catcher on the ground.', 'Printing the HUGIN arm. Calls come sooner.'],
+  },
+  build_radar: {
+    id: 'build_radar', face: 'focused', title: 'COMMS · ISAO', once: true,
+    lines: ['SOL-82 needs someone to talk to.', 'Printing the radar.'],
+  },
+  build_assembly: {
+    id: 'build_assembly', face: 'determined', title: 'COMMS · ISAO', once: true,
+    lines: ['A lost hull is only parts.', 'Printing the assembly line to put them back.'],
+  },
   // after the analysis screen: the next objective, with the planet pulled back and the landing sites on the radar
   rocket_sites: {
     id: 'rocket_sites', face: 'focused', title: 'COMMS · ISAO', once: true,

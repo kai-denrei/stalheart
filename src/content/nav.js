@@ -8,7 +8,7 @@ export const NAV_MODES = Object.freeze(['playtest', 'dev']);
 
 // the story's jump points: a wired jump is a game URL whose skip=<id> the shell finishes once the game is ready
 export const STORY_JUMPS = Object.freeze([
-  { id: 'rotor', label: 'ROTOR', title: 'the opening: the foundry cuts the rocket into feedstock, Isao prints the Rotor and hands it over', url: 'index.html?world=story&stage=1#td', wired: true },
+  { id: 'rotor', label: 'ROTOR', title: 'the opening: the foundry cuts the rocket into feedstock, Isao prints the Rotor and hands it over', url: 'index.html?world=story&stage=1&grow=1#td', wired: true },
   { id: 'quiver', label: 'QUIVER', title: 'not wired yet: the hard cores and the Quiver hand-over', url: null, wired: false },
   { id: 'study', label: 'STUDY', title: 'not wired yet: Isao\'s vibration-language analysis', url: null, wired: false },
   { id: 'gunship', label: 'GUNSHIP', title: 'the gunship on station with the seat taken, enemies up and waves continuing', url: 'index.html?world=story&stage=6&cine=0&acceptance=1&gunship=station&skip=gunship#td', wired: true },
@@ -36,7 +36,7 @@ export const NAV_GROUPS = Object.freeze([
 const LABS = [['units', 'units'], ['swarm', 'swarm'], ['beam', 'beam'], ['audio', 'audio'], ['metal', 'metal'], ['story', 'story'], ['sentry', 'sentry / impact'], ['portal', 'breach'], ['laser', 'orbital laser'], ['gunship', 'gunship'], ['debrief', 'debrief'], ['sim', 'sim']];
 
 export const NAV_ENTRIES = Object.freeze([
-  { id: 'story', label: 'Story', title: 'the story opening: land, print the Rotor, hold the gate', mode: 'playtest', group: 'story', target: { page: 'index.html', hash: 'td', params: { story: '1' } } },
+  { id: 'story', label: 'Story', title: 'the story opening: land, print the Rotor, hold the gate', mode: 'playtest', group: 'story', target: { page: 'index.html', hash: 'td', params: { story: '1', grow: '1' } } },
   ...STAGES.map((s, n) => ({ id: `stage-${n}`, label: String(n), title: s.name, mode: 'playtest', group: 'story', row: 'stages', target: { page: 'index.html', hash: 'td', params: { story: String(n) } } })),
   ...STORY_JUMPS.map((j) => ({ id: `jump-${j.id}`, label: j.label, title: j.title, mode: 'playtest', group: 'story', row: 'jumps', disabled: !j.wired, target: { url: j.url } })),
   { id: 'defend', label: 'Defend', title: 'the finished base, the first hull rolls out of its bay', mode: 'playtest', group: 'defend', target: { page: 'index.html', hash: 'td', params: { story: '8' } } },

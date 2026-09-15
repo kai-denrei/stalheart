@@ -24,12 +24,13 @@ export function makeStoryBeats({
   fodderType = 'amoeba', fodderEvery = 2.5, fodderAlive = 8, fodderTotal = 20, fodderEmerge = null,
   controlDelay = 1.5, tremorDelay = 1.5, breachDelay = 4, overrideDelay = 2.5,
   faceDelays = [0.6, 4], commsKills = 5, harvestKills = 10, quiverSocket = -1, quiver = null, startPhase = 'landed',
+  gateReady = () => true,   // a growing base: the tremor waits for Isao to print the gate (src/content/base-programme.js)
 }) {
   const gated = gate >= 0 && fodder >= 0;
   // THE FOUNDRY PAYS (owner, 2026-09-14): with a foundry tune the grants are barrels of feedstock cut from the rocket, not conjured
   const fd = foundry ? makeFoundry(foundry) : null;
   let quiverOrdered = false;
-  let phase = startPhase, clock = 0, orderedAt = null, readyAt = null, spawned = 0, nextSpawn = 0, at = 0, faces = 0, said = new Set(), hardcores = 0;
+  let phase = startPhase, clock = 0, orderedAt = null, readyAt = null, spawned = 0, nextSpawn = 0, at = 0, faces = 0, said = new Set(), hardcores = 0, gateAt = null;
   // A LATE START (a jump past the handover): the landing faces are already said, and the views strip is offered on the first tick
   const late = startPhase !== 'landed';
   let offered = false;
@@ -54,7 +55,8 @@ export function makeStoryBeats({
         api.grant(api.cost(key));
         if (api.order(key, socket)) { enter('printing'); orderedAt = clock; }
       } else if (phase === 'printing' && api.built(socket)) { enter('rotor-ready'); readyAt = clock; }
-      else if (phase === 'rotor-ready' && clock - at >= (gated ? tremorDelay : controlDelay)) {
+      else if (phase === 'rotor-ready' && gated && gateAt === null) { if (gateReady()) gateAt = clock; }   // THE TREMOR WAITS FOR THE GATE: no fodder before it stands
+      else if (phase === 'rotor-ready' && clock - Math.max(at, gateAt ?? at) >= (gated ? tremorDelay : controlDelay)) {
         if (gated) { api.tremor?.(fodder); api.brief?.('tremor'); enter('tremor'); }
         else { api.pilot?.(socket, lane); enter('piloting'); nextSpawn = clock + fodderEvery; }
       } else if (phase === 'tremor' && clock - at >= breachDelay) { api.breach?.(fodder); api.tremor?.(-1); enter('breach'); nextSpawn = clock + 1; }
@@ -82,6 +84,6 @@ export function makeStoryBeats({
       else if (phase === 'study' && !api.screenOpen?.()) { api.brief?.('rocket_sites'); api.sites?.(); api.expeditionsBegin?.(); api.planetView?.(); said.add('rocket_sites'); enter('expedition'); }
     },
     phase: () => phase,
-    state: () => ({ phase, clock: +clock.toFixed(2), socket, orderedAt, readyAt, spawned, gated, said: [...said], hardcores, foundry: fd ? foundryState(fd) : null }),
+    state: () => ({ phase, clock: +clock.toFixed(2), socket, orderedAt, readyAt, gateAt, spawned, gated, said: [...said], hardcores, foundry: fd ? foundryState(fd) : null }),
   };
 }

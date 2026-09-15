@@ -453,6 +453,57 @@ try{
    assert(c.crates.some(p=>p==='tumble'||p==='fade'),`the crate tumbles (${c.crates})`);
    assert.equal(c.flags.find(f=>f.id==='rocket-b')?.state,'lowering','the site flag comes down');}}
  current='defense-part-dropped';await finish();
+ } else if(args.includes('--grow')) {
+ // ISAO GROWS THE BASE (V1, 2026-09-16): a story page that names no stage grows; stage=1&grow=1 runs the whole opening to the handover
+ // while Isao prints the gate (the tremor waits for it), the landing pad and the Stålheart, then the rest as the phases and sectors come.
+ const hiddenNear='(window.__stalheartTest.state().storyLod||[]).filter(l=>!l.visible&&l.nearLoaded).map(l=>l.id)';
+ const shotBase=async(name)=>{await evaluate('window.__stalheartTest.focusHeart()');await delay(1500);assert.deepEqual(await evaluate(hiddenNear),[],`${name}: no hidden landmark fetched its near tier`);current=name;await finish();};
+ await go('grow-bare','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none#td');await until('!!window.__stalheartTest&&!!window.__stalheartTest.state().programme',90000);
+ {const b=await evaluate('window.__stalheartTest.state()');assert.equal(b.programme.grow,true,'a story page with no stage grows its base');assert.equal(b.programme.next,'gate');assert.equal(b.programme.gate.built,false);}
+ await finish();
+ await go('grow-landing','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=1&grow=1#td');await until('!!window.__stalheartTest',90000);await delay(2500);
+ const g0=await evaluate('window.__stalheartTest.state()');assert.equal(g0.programme.grow,true);assert.equal(g0.programme.gate.built,false,'no gate at the landing');assert.deepEqual(g0.programme.printed,[]);assert.deepEqual(g0.bays,[],'the bays are not printed yet');
+ assert.deepEqual(await evaluate(hiddenNear),[]);await finish();
+ const t0=Date.now(),mark=async(what)=>console.log(`GROW ${what} at ${((Date.now()-t0)/1000).toFixed(1)} s`);
+ await until('window.__stalheartTest.state().towers===1',120000);await mark('Rotor printed');
+ await until('window.__stalheartTest.state().programme.active==="gate"',60000);const walls0=(await evaluate('window.__stalheartTest.state()')).wallCount;await mark('gate print begins');await delay(5000);
+ {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.story.phase,'rotor-ready','the tremor waits while the gate prints');assert.equal(s.programme.gate.built,false);assert.equal(s.wallCount,walls0,'the walls block only once they stand');assert(s.programme.print.step==='gate'&&s.programme.print.k>0,'the print is under way');}
+ current='grow-gate-printing';await finish();
+ await until('window.__stalheartTest.state().programme.printed.includes("gate")',90000);await mark('gate stands');
+ {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.programme.gate.built,true);assert(s.wallCount>walls0&&s.wallCount<=walls0+12,`the walls are rock once printed (${walls0} -> ${s.wallCount})`);assert.notEqual(s.story.gateAt,null);}
+ await until('window.__stalheartTest.state().story.phase==="tremor"',20000);await mark('tremor');current='grow-tremor';await finish();
+ await until('window.__stalheartTest.state().programme.printed.includes("landing")',90000);await mark('landing pad stands');
+ await until('window.__stalheartTest.state().programme.active==="stalheart"',90000);await mark('Stalheart print begins');await delay(8000);assert.deepEqual(await evaluate(hiddenNear),[]);current='grow-stalheart-rising';await finish();
+ await until('window.__stalheartTest.state().story.phase==="override"',150000);await mark('override');
+ await until('!!window.__stalheartPilotTest',30000);await until('window.__stalheartTest.state().performance.enemies>0',60000);await delay(2000);current='grow-fodder';await finish();
+ await evaluate('window.__stalheartPilotTest.hold(true)');
+ await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("wave_cleared"))return true;const t=window.__stalheartPilotTest;if(!t||t.state().overheated)return false;t.aimEnemy();return false;})()',600000);
+ await evaluate('window.__stalheartPilotTest?.hold(false)');await mark('first wave cleared');
+ assert((await evaluate('window.__stalheartTest.state().programme.printed')).includes('stalheart'),'the Stålheart stood before the first wave was down');
+ await until('window.__stalheartTest.state().story.phase==="quiver-piloting"',150000);await delay(600);await mark('Quiver optic');
+ await evaluate('window.__stalheartPilotTest.hold(true)');
+ await until('(()=>{const s=window.__stalheartTest.state();if(["settled","study-talk","study","expedition"].includes(s.story.phase))return true;if(!window.__aimAt||Date.now()-window.__aimAt>500){window.__aimAt=Date.now();window.__stalheartPilotTest?.aimEnemy();}return false;})()',200000);
+ await evaluate('window.__stalheartPilotTest?.hold(false)');await mark('settled (the handover)');current='grow-settled';await finish();
+ await until('window.__stalheartTest.state().screenOpen',60000);await mark('study screen');current='grow-study';await finish();
+ await click('#synthetic-modal [data-continue]');await until('window.__stalheartTest.state().story.phase==="expedition"',8000);await mark('expedition');
+ assert.equal(await evaluate('window.__stalheartTest.state().automated'),true,'the handover reached from a bare opening');
+ await until('window.__stalheartTest.state().programme.active==="solar"',90000);await delay(7000);await shotBase('grow-solar-rising');
+ await until('window.__stalheartTest.state().programme.printed.includes("solar")',90000);await mark('solar stands');
+ {const s=await evaluate('window.__stalheartTest.state()');assert(s.programme.perks.includes('station'),'the array station is on');assert.equal(s.programme.next,'bays');}
+ await delay(8000);assert.equal(await evaluate('window.__stalheartTest.state().programme.active'),null,'the bays wait for sector 1');
+ await evaluate('window.__stalheartTest.setSector(1)');   // the sectors own story.sectorN; the test stands in for them
+ await until('window.__stalheartTest.state().programme.printed.includes("bays")',240000);await mark('bays stand');
+ await until('window.__stalheartTest.state().bays.length===3',20000);{const s=await evaluate('window.__stalheartTest.state()');assert.deepEqual(s.bays.map(b=>b.ci),s.berthCells,'the printed bays are the berths');}
+ await shotBase('grow-bays');
+ await until('window.__stalheartTest.state().programme.printed.includes("hugin")',240000);await mark('HUGIN stands');assert((await evaluate('window.__stalheartTest.state().programme.perks')).includes('gunship'));
+ await shotBase('grow-hugin');
+ await evaluate('window.__stalheartTest.hitTank()');await delay(800);const hullsLost=(await evaluate('window.__stalheartTest.state()')).hulls;
+ await evaluate('window.__stalheartTest.setSector(2)');
+ await until('window.__stalheartTest.state().programme.printed.includes("assembly")',300000);await mark('radar and assembly line stand');
+ {const s=await evaluate('window.__stalheartTest.state()');assert.deepEqual(s.programme.printed,['gate','landing','stalheart','solar','bays','hugin','radar','assembly'],'every step, in order');assert.equal(s.programme.next,null);assert.deepEqual(s.programme.perks.slice().sort(),['gate','gunship','hulls','rebuild','stalheart','station','uplink']);assert.equal(s.hulls,hullsLost,'no rebuild inside the sector the line was printed in');}
+ await evaluate('window.__stalheartTest.setSector(3)');await delay(800);
+ assert.equal((await evaluate('window.__stalheartTest.state()')).hulls,Math.min(3,hullsLost+1),'the assembly line rebuilds a lost hull at the next sector start');
+ await shotBase('grow-finished');
  } else if(args.includes('--shield-story')) {
  // THE TANK'S SHIELD IN THE STORY (V1 session design, section 3): T and the pad deploy a rack of two, the solar array's pad
  // recharges it from a finite reserve that only refillArrays restores, a shielded hull shoves hard cores, and rams pay a premium

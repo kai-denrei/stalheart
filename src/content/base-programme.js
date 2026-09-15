@@ -1,0 +1,24 @@
+// THE BASE ISAO PRINTS IN PLAY (V1 "Isao keeps building", 2026-09-16). A bare story page starts at stage 1 with the rest of the base
+// planned but pending (src/domain/base-plan.js reach); these steps print it, in order, one at a time, and never ahead of an order the
+// player or a beat has placed. Each step prints its islands first, then its structures; the gate step prints the gate, then its walls
+// one after another. `when` is the earliest a step may start: `phase` a story beat reached (STORY_PHASES in src/domain/automation.js),
+// `sector` a sector number reached (story.sectorN), `idle` only between waves. `seconds` is the print once Isao is over the plot,
+// `metres` how high the print beam climbs, `brief` his line when he starts, `perk` what switches on when it stands.
+export const BASE_PROGRAMME = Object.freeze([
+  // the gate first, and the tremor waits for it: without a gate no fodder comes, and without fodder the tutorial never reaches the
+  // handover. Printed straight after the Rotor, which stands beside it, so the wait before the tremor is one print and no trip
+  { id: 'gate', label: 'gate and walls', gate: true, walls: true, when: { phase: 'rotor-ready' }, seconds: 12, metres: 6, brief: 'build_gate', perk: 'gate' },
+  { id: 'landing', label: 'landing pad', islands: ['landing'], when: { phase: 'rotor-ready' }, seconds: 6, metres: 2, brief: 'build_landing', perk: null },
+  // while the swarm rises and walks up to the gate (Isao is idle there for about 25 s, QA 2026-09-16), so it stands before the Quiver
+  // goes on the book and long before the towers turn automatic at `settled` (about 23 s after `cleared` at stage 4)
+  { id: 'stalheart', label: 'Stålheart', islands: ['stalheart'], structures: ['stalheart'], when: { phase: 'breach' }, seconds: 18, metres: 24, brief: 'build_stalheart', perk: 'stalheart' },
+  { id: 'solar', label: 'solar array', islands: ['solar'], structures: ['solar'], when: { phase: 'expedition' }, seconds: 14, metres: 8, brief: 'build_solar', perk: 'station' },
+  { id: 'bays', label: 'tank bays', islands: ['bay'], structures: ['bays'], when: { sector: 1, idle: true }, seconds: 16, metres: 8, brief: 'build_bays', perk: 'hulls' },
+  { id: 'hugin', label: 'HUGIN arm', islands: ['hugin'], structures: ['hugin'], when: { sector: 1, idle: true }, seconds: 16, metres: 16, brief: 'build_hugin', perk: 'gunship' },
+  { id: 'radar', label: 'radar', islands: ['radar'], structures: ['radar'], when: { sector: 2 }, seconds: 12, metres: 18, brief: 'build_radar', perk: 'uplink' },
+  { id: 'assembly', label: 'assembly line', islands: ['assembly'], structures: ['assembly'], when: { sector: 2, idle: true }, seconds: 16, metres: 8, brief: 'build_assembly', perk: 'rebuild' },
+].map((s) => Object.freeze({ islands: [], structures: [], ...s })));
+
+// what the perks are worth where the game reads a number: the HUGIN arm fills the gunship call-in meter faster; the assembly line
+// rebuilds this many lost hulls at each sector start
+export const BASE_PERKS = Object.freeze({ gunshipMeter: 1.5, rebuildHulls: 1 });
