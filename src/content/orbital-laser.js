@@ -17,7 +17,9 @@ export const LASER_BURN = Object.freeze({ soft: 0, hard: 1.0, wall: 0.5, tower: 
 
 // altitude is in planet radii above the surface; fov in degrees; inset as a share of the viewport width;
 // groundBack / groundUp are metres behind and above the contact for the ground camera
-export const LASER_VIEW = Object.freeze({ altitude: 1.2, fov: 18, inset: 0.34, groundBack: 28, groundUp: 9 });
+// The owner's view (2026-09-15): the satellite four radii up so the inset reads as orbit, a wider inset, and the ground
+// camera 120 m back and 60 m up so the column, the smoke and the path it burns are all in one frame.
+export const LASER_VIEW = Object.freeze({ altitude: 4, fov: 20, inset: 0.44, groundBack: 120, groundUp: 60 });
 
 // The beam preset, in the keys src/beamfx.js DEFAULTS uses. Widths are METRES: the lab multiplies them by its own
 // scene-units-per-metre before handing them to createBeam. burstRate 0 keeps the envelope continuous (beamfx
@@ -53,8 +55,15 @@ export const LASER_PRESET = Object.freeze({
   burstAttack: 0,
 });
 
-// the scorch trail: a quad every `every` metres of contact travel, `quads` of them at most, each fading over `seconds`
-export const LASER_TRAIL = Object.freeze({ every: 2, quads: 400, seconds: 60 });
+// The scorch trail: a stamp every `every` metres of contact travel and every `restamp` seconds while the contact holds
+// still, `quads` of them at most, each glowing as embers for about `hot` seconds and fading to nothing over `seconds`.
+// 0.8 m, not 2: at 2 m the flat black quads read as a jagged chain (owner, 2026-09-15: "it should feel like burning
+// embers"); the stamps are soft-edged and overlap into one continuous burn.
+export const LASER_TRAIL = Object.freeze({ every: 0.8, quads: 1000, seconds: 60, hot: 4, restamp: 0.4 });
+
+// Smoke over the path (owner, 2026-09-15: "more continuous smoke along the path"): a puff every `every` metres of travel
+// and `rate` per second while the contact holds still, each rising for about `life` seconds, `capacity` alive at most.
+export const LASER_TRAIL_SMOKE = Object.freeze({ every: 1.5, rate: 4, life: 7, capacity: 256, opacity: 0.85 });
 
 // how many contact bursts ride the contact point per second while it burns
 export const LASER_CONTACT_RATE = 8;
