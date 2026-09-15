@@ -87,5 +87,12 @@ export const LASER_SMOKE_RATE = 2;
 // these by name and plays nothing until it does.
 export const LASER_SOUNDS = Object.freeze({ arrive: 'laser_arrive', burn: 'laser_burn', contact: 'laser_contact', out: 'laser_out' });
 
+// The sounds the laser has so far, in makeAudio's definition shape. laser_burn is the owner's burning-ground recording
+// (2026-09-15), its steady middle cut into a 2.5 s equal-power loop (docs/laser-audio.lock.json); it loops while the
+// ground burns and fades out when the beam lifts.
+export const LASER_AUDIO = Object.freeze({
+  laser_burn: Object.freeze({ file: 'assets/audio/laser_burn_ground.wav', bus: 'towers', gain: 0.8, maxVoices: 1, minInterval: 0, rateJitter: 0 }),
+});
+
 // the sky anchor above the contact, in metres: high enough that the column reads as vertical from the ground camera
 export const LASER_SKY_METRES = 400;

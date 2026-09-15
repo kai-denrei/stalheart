@@ -26,6 +26,7 @@ import { buildStoryPlanet } from '../domain/story-planet.js';
 import { planetBake } from '../platform/planet-bake.js';
 import { createStoryPlanetSurface } from './story-planet-mesh.js';
 import { createInsetHud } from './laser-inset-hud.js';
+import { makeAudio } from '../audio.js';
 import { planBase } from '../domain/base-plan.js';
 import { ISLANDS, STRUCTURES, KIT, STAGES } from '../content/base-layout.js';
 import { createStoryBase } from '../fx/story-base.js';
@@ -38,7 +39,7 @@ import { createThermalHeat } from '../fx/thermal-heat.js';
 import { createOrbitalLaser } from '../fx/orbital-laser.js';
 import { makeDotEnemy, makeDotBurst } from '../units.js';
 import { loadGlbWithClips } from '../glbmodels.js';
-import { LASER_ORBIT, LASER_BEAM, LASER_BURN, LASER_VIEW, LASER_PRESET, LASER_CONTACT_RATE, LASER_SMOKE_RATE, LASER_TELEMETRY } from '../content/orbital-laser.js';
+import { LASER_ORBIT, LASER_BEAM, LASER_BURN, LASER_VIEW, LASER_PRESET, LASER_CONTACT_RATE, LASER_SMOKE_RATE, LASER_TELEMETRY, LASER_SOUNDS, LASER_AUDIO } from '../content/orbital-laser.js';
 import { makeLaser, stepLaser, aimLaser, burnLaser, burnContacts, laserProgress, clampToRange } from '../domain/orbital-laser.js';
 import { deepLink, wireDeepLink } from '../deeplink.js';
 import { norm3 } from '../vec3.js';
@@ -68,6 +69,11 @@ export function initLaserTab(root) {
   container.appendChild(renderer.domElement);
   /* the satellite inset's sight and telemetry, a 2D canvas over the 3D one */
   const insetHud = createInsetHud(container);
+  /* THE SOUND: only the laser's own definitions, not persisted. The context unlocks on the first pointer press (a
+     gesture); the burn loop is a handle held while the ground burns, retried each frame until its buffer has decoded */
+  const sfx = makeAudio({ seed: 5, persist: false, sounds: LASER_AUDIO });
+  let burnVoice = null;
+  const stopBurnVoice = (fade = 0.35) => { burnVoice?.stop(fade); burnVoice = null; };
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(look.bg);
   scene.add(new THREE.HemisphereLight(look.hemi[0], look.hemi[1], look.hemi[2]));
@@ -91,6 +97,8 @@ export function initLaserTab(root) {
     infinite: false,
     /* which rock tops carry their cell lines: all, rim (only where rock meets floor, one uniform mass) or none */
     rockLines: 'rim',
+    /* the burning-ground loop; ?sound=0 turns it off */
+    sound: true,
   };
   const P0 = { ...P };
   for (const key of Object.keys(P)) {
@@ -98,6 +106,7 @@ export function initLaserTab(root) {
     if (v !== null && Number.isFinite(Number(v))) P[key] = Number(v);
   }
   P.infinite = !!P.infinite;
+  P.sound = !!P.sound;
   if (['all', 'rim', 'none'].includes(q.get('rockLines'))) P.rockLines = q.get('rockLines');
   /* what tune() takes: the column's live uniforms and the footprint ring */
   const lookOf = () => ({
@@ -542,7 +551,7 @@ export function initLaserTab(root) {
     steering = inside;
     if (!inside) return;
     steerTo((x - r.x) / r.w, (y - r.y) / r.h);
-    if (e.type === 'pointerdown') held = true;
+    if (e.type === 'pointerdown') { held = true; sfx.arm?.(); sfx.resume?.(); }
     e.preventDefault();
   }
   /* letting go also stops steering: the contact and both cameras hold on the last contact until the pointer moves again */
@@ -788,6 +797,7 @@ void main(){
     if (!burning || !point) {
       /* the burn does not survive the lift: a re-laid beam starts every contact from zero seconds */
       if (burningWas) { laser.lift(); thermal.set(false); st.contacts.clear(); }
+      stopBurnVoice();
       burningWas = false;
       contactTimer = 0;
       smokeTimer = 0;
@@ -805,6 +815,12 @@ void main(){
       laser.aim(ground, n);
     }
     burningWas = true;
+    /* the ground burns audibly: louder with more energy left, a touch higher as the contact drags faster */
+    if (P.sound) {
+      burnVoice ??= sfx.loop(LASER_SOUNDS.burn);
+      const drag = P.slew > 0 ? Math.min(1, (st.speed || 0) / P.slew) : 0;
+      burnVoice?.set(0.55 + 0.45 * laserProgress(st, orbit(), beamCfg()).energy, 0.97 + 0.08 * drag);
+    }
     /* the contact sheds pops at LASER_CONTACT_RATE per second while it burns */
     contactTimer += dt;
     const every = 1 / LASER_CONTACT_RATE;
@@ -901,6 +917,8 @@ void main(){
       for (const b of bursts) { scene.remove(b); b.geometry.dispose(); b.material.dispose(); }
       gui?.destroy();
       if (window.__stalheartLaserTest === hooks) delete window.__stalheartLaserTest;
+      stopBurnVoice(0);
+      sfx.dispose?.();
       insetHud.dispose();
       satTarget.dispose();
       lensGeo.dispose();
@@ -918,6 +936,7 @@ void main(){
   gp.add(P, 'overhead', 4, 90, 1).name('overhead (s)');
   gp.add(P, 'energy', 1, 40, 0.5).name('energy (s of burn)');
   gp.add(P, 'infinite').name('infinite laser (debug)').onChange(keepInfinite);
+  gp.add(P, 'sound').name('sound').onChange((on) => { if (!on) stopBurnVoice(0.2); });
   gp.open();
   const gb = gui.addFolder('the beam');
   const retune = () => laser?.tune(lookOf());

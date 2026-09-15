@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "sourcePath": "assets/audio/src/Flamethrower_OrbitalLaserBurningGround.mp3",
+  "sourceSha256": "073744a9212b4c6cfe1beee3acf00f0553c007e3be162d02a63b2692e9a74859",
+  "derivation": "Owner-provided (2026-09-15). Decoded mono 44.1 kHz; 1.40–3.90 s, the steady burn between the ignition burst (~1.0 s) and the crackle (~4.1 s); 150 ms equal-power overlap loop (the first 150 ms blended with the 150 ms after the cut); PCM16",
+  "files": [
+    {
+      "path": "assets/audio/laser_burn_ground.wav",
+      "sha256": "0a008037f4c48aa86e1cf80f3426e919c4cad8cef58d12eb6c2ccd74d0f999b2",
+      "bytes": 220544
+    }
+  ]
+}
