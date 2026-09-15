@@ -395,7 +395,8 @@ try{
  current='sectors-brief';await finish();
  await until(`(()=>{const b=${T}.state().sector.breaches;return b.length===2&&b.every(x=>x.live);})()`,40000);
  {const s=await sec();assert.deepEqual(s.breaches.map(b=>b.side),['gate','gate'],'sector 1: two breaches on the gate side');assert.notEqual(s.breaches[0].cell,s.breaches[1].cell);
-  assert(/BREACHES 2/.test(await evaluate('document.querySelector("#td-stats").textContent')),'the HUD counts both breaches');}
+  assert(/BREACHES 2/.test(await evaluate('document.querySelector("#td-stats").textContent')),'the HUD counts both breaches');
+  assert.equal(s.strays,0,'every live breach is the sector\'s: the opening\'s sinkhole caved in');assert(!/SECTOR \d+ SECTOR/.test(await evaluate('document.querySelector("#td-stats").textContent')),'the HUD names the sector once');}
  current='sectors-two-breaches';await finish();
  // breach A: one wave out, then the 105 seals it; its remaining waves are left in the field
  await evaluate(`${T}.sectorRelease("A")`);
@@ -420,6 +421,18 @@ try{
  current='sectors-sector-2-brief';await finish();
  await until(`(()=>{const b=${T}.state().sector.breaches;return b.length===2&&b.every(x=>x.live);})()`,60000);
  current='sectors-sector-2';await finish();
+ // SECTOR 2 COMPLETES (QA 2026-09-16): the back door's breach fights too, both are held to their last wave, SECURE, and a fresh report
+ {const s=await sec();assert.deepEqual(s.breaches.map(b=>b.side).sort(),['back','gate'],'sector 2: one gate breach, one behind the bays');assert.equal(s.strays,0,'no stray breach in sector 2');
+  assert.equal(await evaluate(`${T}.sectorReport()`),null,'the new sector cleared the last report');}
+ await until(`(()=>{document.querySelector('#gunship-briefing:not([hidden]) [data-skip]')?.click();const S=${T}.state().sector;for(const b of S.breaches)if(b.live&&b.wavesReleased<b.wavesPlanned)${T}.sectorRelease(b.id);if(S.breaches.every(b=>!b.live||b.wavesReleased>=b.wavesPlanned))${T}.sectorClearField();return S.breaches.every(b=>b.closedBy);})()`,120000).catch(async()=>assert.fail(`sector 2's breaches never closed (${JSON.stringify(await sec())})`));
+ await evaluate(`${T}.sectorClearField()`);
+ await until(`${T}.state().sector.secure`,30000).catch(async()=>assert.fail(`sector 2 not secure (${JSON.stringify(await sec())})`));
+ current='sectors-sector-2-secure';await finish();
+ await until(`${T}.state().sector.debriefOpen`,15000);
+ {const r=await evaluate(`${T}.sectorReport()`);assert.deepEqual(checkReport(r),[],'sector 2\'s report keeps the contract');assert.equal(r.sector,2);assert.equal(r.outcome,'secure');
+  assert.deepEqual(r.breaches.map(b=>b.side).sort(),['back','gate'],'the back breach is in the books');assert(r.breaches.every(b=>b.closedBy),`every breach closed or held (${JSON.stringify(r.breaches)})`);
+  console.log(`PASS sector 2 secure: ${r.seconds}s, kills ${r.kills.total}, breaches ${r.breaches.map(b=>`${b.id}/${b.side}/${b.closedBy}/${b.wavesFought}of${b.wavesPlanned}`).join(' ')}, prints [${r.colony.prints}]`);}
+ await delay(1500);current='sectors-sector-2-debrief';await finish();
  } else if(args.includes('--defense')) {
  // THE HANDOVER (docs/superpowers/specs/2026-09-14-handover-gunship-call-expeditions-design.md): past the Quiver the towers fire
  // on their own and the wave clock runs; the gunship waits for an earned call; the tank clears a nest and brings a part home
