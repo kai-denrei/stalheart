@@ -286,6 +286,22 @@ Evidence:
 - NOT browser-verified: the memory guardrail stayed at WARN (3.07 GB swap), so the gunship lab has not booted in any browser. The owner can open it on the running dev server at gunship.html?sw=0.
 - Sharing with friends needs a publish: GitHub Pages builds main only (.github/workflows/pages.yml), and heavy-gunship is not on main.
 
+## 2026-09-16 — Merging the V1 branches: three regressions each branch's own suites missed, found by the full default suite and fixed
+
+issue · resolved · 2026-09-16-v1-merge-regressions-caught
+
+Eleven feature branches built in parallel worktrees overnight were merged into one tree. Each branch had passed its own browser steps; the merged tree was then run through the full default suite and the targeted steps (--sectors, --defense, --grow, --backdoor, --laser-game, --debrief).
+
+Three regressions, all fixed. (1) The wave simulator never reported: after the sectors branch moved the campaign debrief into src/fx/campaign-debrief.js, simEmit still read the td-tab variable `campaign`, which now lived in the module, so every sim tick threw `ReferenceError: campaign is not defined` (found with a console probe of `index.html?sim=style1...`); the module now returns its log and td-tab destructures it (81c3b158). (2) The Units lab's `#units-next` click left a missile alive: the debrief lab's `#tab-debrief{display:flex}` id rule outranked `.tab-hidden{display:none}`, so the hidden debrief tab stayed a full-page fixed layer over every other Workshop lab and swallowed real clicks (document.elementFromPoint at the button returned DIV#tab-debrief.tab.tab-hidden; a DOM click still worked); the display rule is now scoped to `:not(.tab-hidden)` (260cbac5). (3) --grow and --backdoor assumed no sector loop: the loop now owns story.sectorN, and its two breaches clear rock during the back-door measurement window; the steps follow the loop (0ed33356). Also resolved during the merge: conflicts inside td-tab's multi-thousand-character lines were merged at token level (diff3 plus git merge-file on statement and property tokens), with every resolution asserted and syntax-checked.
+
+Alternatives: Trust each branch's own green suites and skip the full default suite on the merged tree; rejected: two of the three regressions only appear when branches meet.; Resolve the long td-tab one-liner conflicts by hand; rejected as error-prone for 6-7k character lines.
+
+Evidence:
+
+- node scripts/browser-test.mjs (default) on 260cbac5: exit 0, 48 PASS including sim-roster-2, units-dart-quiver, units-dart-heptapod, units-tier-mork.
+- --debrief on 260cbac5: exit 0, 35 PASS. --grow on 0ed33356: 12/12 PASS. --sectors 8/8 and --defense 10/10 on the merged tree.
+- Before the fixes: the default suite timed out at sim-roster-2 (!!window.__stalheartSimResult) on the sectors merge, and failed `1 !== 0` after units-dart-quiver on every tree carrying the debrief lab.
+
 ## 2026-09-16 — Sectors are the story's loop past the handover, and the gate takes the pile's pressure
 
 decision · accepted · 2026-09-16-sectors-are-the-story-loop
