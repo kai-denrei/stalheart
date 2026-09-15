@@ -397,7 +397,7 @@ try{
   await until('window.__stalheartTest.state().expeditions.sites.find(s=>s.id==="rocket-a").state==="cleared"',10000);
   // SEEN AND HEARD (docs/superpowers/specs/2026-09-15-v1-session-design.md section 3): our flag goes up over the cleared site
   await until('(window.__stalheartTest.state().cargo?.flags||[]).some(f=>f.id==="rocket-a"&&f.state==="up"&&f.ready)',30000).catch(async()=>assert.fail(`the flag is raised (${JSON.stringify(await evaluate('window.__stalheartTest.state().cargo'))})`));
-  assert(await evaluate('window.__stalheartTest.cargoView("flag","rocket-a")'),'a close look at the site flag');await delay(500);
+  {const v=await evaluate('window.__stalheartTest.cargoView("flag","rocket-a")');assert(v,'a close look at the site flag');writeFileSync(join(output,'defense-flag-raised-view.json'),JSON.stringify(v,null,1));}await delay(500);
   current='defense-flag-raised';await finish();
   await evaluate('window.__stalheartTest.cargoView(null)');
   // the site's own cell is the lander: stand beside it, within reach, so the tank camera sees the crate come aboard
@@ -409,7 +409,7 @@ try{
    assert(/PART SECURED · FIELD COIL/.test(await evaluate('document.querySelector("#td-callouts")?.textContent||""')),'the pickup callout');}
   await evaluate('window.__stalheartTest.cargoView(null)');await delay(700);   // the teleport left the chase camera behind: snap it to the tank
   current='defense-part-carried';await finish();
-  assert(await evaluate('window.__stalheartTest.cargoView("crate")'),'a close look at the crate on the hull');await delay(500);
+  {const v=await evaluate('window.__stalheartTest.cargoView("crate")');assert(v,'a close look at the crate on the hull');writeFileSync(join(output,'defense-crate-on-hull-view.json'),JSON.stringify(v,null,1));}await delay(500);
   current='defense-crate-on-hull';await finish();
   await evaluate('window.__stalheartTest.cargoView(null)');
   // home is the foundry's own cell: deliver from open floor on the landing island, within the delivery radius
@@ -420,7 +420,7 @@ try{
   // home: off the back deck, a landing, RELAY UNLOCKED, a trophy flag on the landing island
   await until('(s=>s.carrying===null&&s.crates.some(p=>p==="rest"))(window.__stalheartTest.state().cargo)',10000).catch(async()=>assert.fail(`the crate drops and sits (${JSON.stringify(await evaluate('window.__stalheartTest.state().cargo'))})`));
   assert(/RELAY UNLOCKED/.test(await evaluate('document.querySelector("#td-callouts")?.textContent||""')),'the unlock callout');
-  assert(await evaluate('window.__stalheartTest.cargoView("drop")'),'a close look at the dropped crate');await delay(500);
+  {const v=await evaluate('window.__stalheartTest.cargoView("drop")');assert(v,'a close look at the dropped crate');writeFileSync(join(output,'defense-crate-dropped-view.json'),JSON.stringify(v,null,1));}await delay(500);
   current='defense-crate-dropped';await finish();
   await evaluate('window.__stalheartTest.cargoView(null)');
   await until('window.__stalheartTest.state().cargo.trophies===1',10000);await delay(2600);

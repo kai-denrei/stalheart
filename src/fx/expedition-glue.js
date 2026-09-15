@@ -106,7 +106,7 @@ export function createExpeditionGlue(h) {
       const centers = h.centers(), site = kind === 'site' ? cellOf(id) : null;
       if (kind === 'site' && !site) return -1;
       const p = site ? sitePose(id) : trophyPose((STORY_EXPEDITIONS.sites.length - 1) / 2);
-      const target = along(p.point, p.facing, (site ? 3 : 6) * metres), avoid = site ? site.cell : h.story.home;
+      const target = along(p.point, p.facing, (site ? 8 : 6) * metres), avoid = site ? site.cell : h.story.home;
       const reachAt = site ? centers[site.cell] : homeAt(), reachR = h.cellSide * (site ? site.clear / 10 + 1 : STORY_EXPEDITIONS.deliverCells);
       let best = -1, bestD = Infinity;
       for (let i = 0; i < centers.length; i++) {

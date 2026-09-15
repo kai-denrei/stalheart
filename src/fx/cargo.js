@@ -30,7 +30,9 @@ export function deckOf(hull, inset = CARGO_LOOK.deckInset) {
   const inv = hull.matrixWorld.clone().invert(), m = new THREE.Matrix4(), p = new THREE.Vector3();
   const box = new THREE.Box3(), meshes = [];
   const skip = (o) => { for (let a = o; a && a !== hull; a = a.parent) if (/^TURRET_YAW/.test(a.name)) return true; return false; };
-  hull.traverse((o) => {
+  // the body only: HULL_SUSPENSION carries the MÖRK's hull, lamps and towing eye; anything else hung on the unit (a beam, a
+  // muzzle helper, a lift field) stretches the bounds and walks the deck off the back
+  (hull.getObjectByName('HULL_SUSPENSION') ?? hull).traverse((o) => {
     if (!o.isMesh || !o.geometry?.attributes.position || skip(o)) return;
     if ([o.material].flat().some((mt) => mt?.transparent || /Lift field/.test(mt?.name ?? ''))) return;
     meshes.push(o); m.multiplyMatrices(inv, o.matrixWorld);
@@ -288,8 +290,19 @@ export function createCargo(scene, { loader = null, sfx = null, hasCue = null, m
       };
       if (kind === 'flag') { const f = flags.get(id) ?? [...flags.values()].pop(); if (!f) return null; const q = f.holder.quaternion; return pick(f.holder, Y.clone().applyQuaternion(q), new THREE.Vector3(0, 0, 1).applyQuaternion(q), 26, 10, 4, 3.5); }
       if (kind === 'trophy') { const f = trophies.filter(Boolean).pop(); if (!f) return null; const q = f.holder.quaternion; return pick(f.holder, Y.clone().applyQuaternion(q), new THREE.Vector3(0, 0, 1).applyQuaternion(q), 13, 5, 3, 1.8); }
-      if (kind === 'crate') { const c = riding(); if (!c) return null; const q = c.obj.getWorldQuaternion(new THREE.Quaternion()); return pick(c.obj, Y.clone().applyQuaternion(q), new THREE.Vector3(0, 0, -1).applyQuaternion(q), 13, 9, 6, 1); }
-      if (kind === 'drop') { const c = crates.filter((k) => ['slide', 'fall', 'settle', 'rest', 'sink'].includes(k.phase)).sort((a, b) => b.seq - a.seq)[0]; if (!c) return null; const q = c.obj.quaternion; return pick(c.obj, c.up.clone(), new THREE.Vector3(0, 0, 1).applyQuaternion(q), 14, 8, 6, 1); }
+      if (kind === 'crate') {
+        const c = riding(); if (!c) return null;
+        const q = c.obj.getWorldQuaternion(new THREE.Quaternion()), hull = hullOf(c), d = hull ? deck(hull) : null;
+        return { ...pick(c.obj, Y.clone().applyQuaternion(q), new THREE.Vector3(0, 0, -1).applyQuaternion(q), 13, 9, 6, 1),
+          crate: c.obj.position.toArray(), crateScale: c.obj.scale.x, model: !!c.model, hull: hull ? new THREE.Vector3().setFromMatrixPosition(hull.matrixWorld).toArray() : null,
+          hullScale: hull?.scale.x ?? null, deck: d ? [d.point.toArray(), d.bottom, d.length] : null, metres };
+      }
+      if (kind === 'drop') {
+        const c = crates.filter((k) => ['slide', 'fall', 'settle', 'rest', 'sink'].includes(k.phase)).sort((a, b) => b.seq - a.seq)[0]; if (!c) return null;
+        const q = c.obj.quaternion;
+        return { ...pick(c.obj, c.up.clone(), new THREE.Vector3(0, 0, 1).applyQuaternion(q), 14, 8, 6, 1),
+          crate: c.obj.position.toArray(), crateUp: c.up.toArray(), plane: c.plane?.toArray() ?? null, phase: c.phase, radius: c.obj.position.length(), metres };
+      }
       return null;
     },
     state: () => ({
