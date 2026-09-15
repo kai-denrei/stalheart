@@ -17,6 +17,9 @@ import { STORY_PHASES } from '../domain/automation.js';
 import { makeExpeditions } from '../domain/expeditions.js';
 import { createStoryHud } from '../fx/story-hud.js';
 import { planetBake } from './planet-bake.js';
+import { BASE_PROGRAMME } from '../content/base-programme.js';
+import { makeBuildProgramme } from '../domain/build-programme.js';
+import { createBasePrint } from '../fx/base-print.js';
 import { BLOCKED, PATH } from '../dungeon.js';
 
 export const STORY_LAYOUT = { islands: ISLANDS, structures: STRUCTURES, kit: KIT, stages: STAGES };
@@ -34,6 +37,8 @@ export function readStoryQuery(search) {
     stage: Math.min(STAGES.length - 1, Math.max(0, parseInt(q.get('stage') ?? q.get('story') ?? '', 10) || (story ? 1 : 0))),
     landmarks: landmarkTierMode(search),   // ?landmarks=candidate: review the pinned runtime LOD candidates in the game camera
     phase: STORY_PHASES.includes(q.get('phase')) ? q.get('phase') : null,   // ?phase=expedition: a jump past the handover starts the beats there
+    // ISAO GROWS THE BASE IN PLAY: ?grow=1, and a bare story page that names no stage; an explicit stage=N stays the static base
+    grow: story && (q.get('grow') === '1' || (q.get('grow') !== '0' && !q.has('stage') && !q.has('story'))),
   };
 }
 
@@ -55,32 +60,37 @@ function holdRing(built, planet, from, [lo, hi], perch = null) {
   return ring;
 }
 
-export function buildGameWorld({ world, params, stage, scene, sfx = null, landmarks = 'shipped', phase = null }) {
+export function buildGameWorld({ world, params, stage, scene, sfx = null, landmarks = 'shipped', phase = null, grow = false }) {
   const built = buildWorld({ world, params, story: { recipe: STORY_RECIPE, clearing: STORY_CLEARING, bake: planetBake() } });
   if (!built.planet) return { ...built, base: null };
   const { planet } = built;
   // the game draws the unit sphere at the origin with the pole at +Y
   const placer = { toWorld: ([x, y, z]) => { const p = planet.frameToWorld([x, y, z]); return new THREE.Vector3(p[0] / planet.radius, p[1] / planet.radius + 1, p[2] / planet.radius); } };
-  // the shipped layout untouched unless a review asks for the candidates; the swap happens before planBase, which spreads it through
-  const plan = planBase(planet, landmarks === 'shipped' ? STORY_LAYOUT : { ...STORY_LAYOUT, structures: withLandmarkTiers(STORY_LAYOUT.structures, landmarks) }, stage);
+  // the shipped layout untouched unless a review asks for the candidates; the swap happens before planBase, which spreads it through.
+  // A growing base plans every stage now and marks what is above the starting stage pending: Isao prints it in play
+  const plan = planBase(planet, landmarks === 'shipped' ? STORY_LAYOUT : { ...STORY_LAYOUT, structures: withLandmarkTiers(STORY_LAYOUT.structures, landmarks) }, stage, { reach: grow ? STAGES.length - 1 : stage });
   // walls are rock to the pathfinder and the tank alike; the gate's cell stays open and the gate opens for the tank
   for (const ci of plan.open) built.dungeon.tags[ci] = PATH;   // the ground under a landed rocket first, then the gate's walls on top
-  for (const w of plan.walls) if (w.cell >= 0) built.dungeon.tags[w.cell] = BLOCKED;
+  for (const w of plan.walls) if (w.cell >= 0 && !w.pending) built.dungeon.tags[w.cell] = BLOCKED;   // a pending wall blocks once it is printed (the controller's storyApi.printed)
   // the game prints the real Rotor; the static model stays a lab thing
   const base = createStoryBase(scene, { plan, placer, metres: 1 / planet.radius, kit: KIT, skip: ['rotor'], sfx });
   // story state for the controller: floor sockets towers may mount on, Isao's home cell, and the scripted beats
   // the lane end is the story's spawn: the optic faces it, and the fodder comes from it once a gate stands
   if (plan.cells.fodder >= 0) built.dungeon.spawn = plan.cells.fodder;
+  // the build programme's steps that this plan holds, and which of them already stand (their perks come with them)
+  const pieces = (s) => [...s.islands.map((id) => plan.islands.find((i) => i.id === id)), ...s.structures.map((id) => plan.structures.find((x) => x.id === id)), ...(s.gate ? [plan.gate] : []), ...(s.walls ? plan.walls : [])];
+  const steps = BASE_PROGRAMME.filter((s) => pieces(s).length > 0 && pieces(s).every(Boolean));
+  const bayBerths = plan.bays.length ? plan.bays.map((b) => ({ ci: b.cell, exit: b.exit, pos: b.pos, out: b.out })) : null;
   const story = stage >= 1 ? {
     sockets: new Set(), home: plan.cells.landing, socketLift: 0,
-    beats: makeStoryBeats({ fodderEvery: STORY_FODDER.every, fodderAlive: STORY_FODDER.alive, fodderTotal: STORY_FODDER.total, fodderEmerge: STORY_FODDER, socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, rotorDelay: 2.5, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER, foundry: FOUNDRY_TUNE, startPhase: phase ?? 'landed' }),
+    beats: makeStoryBeats({ fodderEvery: STORY_FODDER.every, fodderAlive: STORY_FODDER.alive, fodderTotal: STORY_FODDER.total, fodderEmerge: STORY_FODDER, socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, rotorDelay: 2.5, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER, foundry: FOUNDRY_TUNE, startPhase: phase ?? 'landed', gateReady: () => base.gate().built }),
     // the story's Quiver fires the TALON: the game's quiver config with the lab's heavy round on top
     missiles: { quiver: { ...CONTENT.missiles.quiver, ...STORY_QUIVER.missile } },
     // the hard cores' holding ring: lane cells hold[0]..hold[1] hops outside the forward cell; a held one only wanders within it
     ring: holdRing(built, planet, plan.cells.forward, STORY_QUIVER.hold, plan.sockets[1]?.pos ?? null), hardcore: STORY_QUIVER.hardcore, quiverZoom: STORY_QUIVER.zoom, quiverCone: Math.tan(STORY_QUIVER.coneDeg * Math.PI / 180),
     hud: createStoryHud(), source: null,   // the radar overlay, and the breach the fodder comes from once it opens
     // the closed gate's cell is impassable to enemies; the tank opens it
-    sealed: (ci) => plan.gate !== null && ci === plan.gate.cell && !base.gate().open,
+    sealed: (ci) => plan.gate !== null && ci === plan.gate.cell && base.gate().built && !base.gate().open,
     inside: (ci) => planet.clearing.cells.has(ci),
     pilot: STORY_PILOT, breachShot: STORY_BREACH, day: STORY_DAY,
     handover: { ...STORY_HANDOVER, stage },   // the phase and stage the towers turn automatic (src/domain/automation.js)
@@ -91,7 +101,10 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     tankUnit: STORY_SCALE.tankUnit,
     sites: (() => { const first = new Set(STORY_EXPEDITIONS.sites.filter((s) => !s.reveal).map((s) => s.id)); return plan.structures.filter((s) => s.anchor === 'open' && s.cell >= 0 && first.has(s.id)).map((s) => s.cell); })(),   // only the first-wave landing sites: the reveal beat's radar marks and framing leave the concealed ones out
     socketToward: Object.fromEntries(plan.sockets.map((s) => [s.cell, s.toward])),   // the lane a story socket covers: the mount perches on that edge of its wall cell
-    berths: plan.bays.length ? plan.bays.map((b) => ({ ci: b.cell, exit: b.exit, pos: b.pos, out: b.out })) : null,
+    berths: bayBerths && !plan.bays[0].pending ? bayBerths : null, bayBerths,   // pending bays: the invisible camp is the berths until Isao prints them
+    // ISAO KEEPS BUILDING: the programme, its print on the planet, and the wall cells that turn to rock when the gate step stands
+    grow, programme: makeBuildProgramme(steps, { standing: (s) => !pieces(s).some((p) => p.pending) }), print: createBasePrint({ base, plan, placer }),
+    wallCells: plan.walls.filter((w) => w.pending && w.cell >= 0).map((w) => w.cell),
   } : null;
   return { ...built, base, plan, story };
 }

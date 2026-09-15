@@ -8,7 +8,7 @@ export const NAV_MODES = Object.freeze(['playtest', 'dev']);
 
 // the story's jump points: a wired jump is a game URL whose skip=<id> the shell finishes once the game is ready
 export const STORY_JUMPS = Object.freeze([
-  { id: 'rotor', label: 'ROTOR', title: 'the opening: the foundry cuts the rocket into feedstock, Isao prints the Rotor and hands it over', url: 'index.html?world=story&stage=1#td', wired: true },
+  { id: 'rotor', label: 'ROTOR', title: 'the opening: the foundry cuts the rocket into feedstock, Isao prints the Rotor and hands it over', url: 'index.html?world=story&stage=1&grow=1#td', wired: true },
   { id: 'quiver', label: 'QUIVER', title: 'not wired yet: the hard cores and the Quiver hand-over', url: null, wired: false },
   { id: 'study', label: 'STUDY', title: 'not wired yet: Isao\'s vibration-language analysis', url: null, wired: false },
   { id: 'gunship', label: 'GUNSHIP', title: 'the gunship on station with the seat taken, enemies up and waves continuing', url: 'index.html?world=story&stage=6&cine=0&acceptance=1&gunship=station&skip=gunship#td', wired: true },
