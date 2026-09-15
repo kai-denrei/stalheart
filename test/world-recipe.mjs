@@ -29,6 +29,8 @@ import { buildGameWorld } from '../src/platform/story-world.js';
   assert.ok(rock(g4) > rock(g1), 'walls add rock');
   assert.ok(rock(g4) - rock(g1) <= g4.plan.walls.length, 'at most one cell per wall');
   assert.notEqual(g4.dungeon.tags[g4.plan.gate.cell], BLOCKED, 'gate cell stays open');
+  assert.deepEqual(g4.story.backMouth?.cells, [1086, 34817], 'the story carries the back mouth to the controller');
+  assert.ok(g4.story.backPlanet.clearing.cells.size > 0 && g4.story.backDoor.flank >= 0, 'with the clearing and the tunables the back-breach rules need');
   // on the real planet: a landed rocket or the wreck opens a real patch of ground, and none of it is rock in the game's board
   for (const g of [g1, g4]) { assert.ok(g.plan.open.length > 3, `rocket ground opens more than the three anchor cells (${g.plan.open.length})`); assert.ok(g.plan.open.every((ci) => g.dungeon.tags[ci] !== BLOCKED), 'no rock under a landed rocket'); }
   g4.base?.dispose(); g1.base?.dispose();
