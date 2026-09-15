@@ -452,7 +452,7 @@ try{
  await evaluate(`${T}.placeTank(${s.storyHome})`);await delay(300);assert.equal(await evaluate(`${T}.deployShield()`),'ok','a banked charge deploys');
  {const hulls=(await st()).hulls;for(let i=0;i<20;i++){const f=(await st()).foes.find(f=>!f[1]);if(!f)break;await evaluate(`${T}.placeTank(${f[0]})`);await delay(120);}
   s=await st();assert.equal(s.hulls,hulls,'the shield takes the hard core');assert(s.enemyTypes.includes('barbed'),'and the core is shoved, not killed');}   /* the combo is not asserted here: the wave's own fodder is rammed on the way */
- await evaluate(`${T}.placeTank(${pad.cell})`);await until(`!${S}.shield.active`,15000);await evaluate(`${T}.shieldAdvance(2.2)`);
+ await evaluate(`${T}.placeTank(${s.storyHome})`);await until(`!${S}.shield.active`,15000);await evaluate(`${T}.shieldAdvance(2.2)`);   /* off the pad: parked on it, the array keeps a live bubble topped up */
  // rams: the premium floats over the hull as +N kg ×M, the combo climbs, the tier callouts land
  await evaluate(`window.__calls=[];new MutationObserver(m=>m.forEach(r=>r.addedNodes.forEach(n=>__calls.push(n.textContent)))).observe(document.querySelector('#td-callouts'),{childList:true})`);
  {const r0=(await st()).ram;await evaluate(`${T}.spawnFodder(30)`);let shot=false;
