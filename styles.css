@@ -3840,6 +3840,11 @@ body.mobile-shell #td-toast .wave-role, body.mobile-shell #td-wave .wave-name, b
 #build-tag { font: 600 10px ui-monospace, Menlo, monospace; letter-spacing: 0.06em; color: #6fa8c8; background: rgba(8, 14, 20, 0.7); border: 1px solid #234c68; border-radius: 6px; padding: 2px 6px; pointer-events: none; }
 /* the story's spotting monitor: a second small render riding behind a guided round */
 #story-monitor { position: fixed; right: 12px; bottom: 64px; width: 224px; height: 140px; border: 1px solid #2b6b96; border-radius: 8px; background: rgba(8, 14, 20, 0.5); z-index: 40; pointer-events: none; }
+/* GROUND TRUTH · IMPACT, bigger in the gunship seat (owner, 2026-09-15): the impact is the payoff, so the monitor grows to
+   about 640 x 400 on a wide screen, 16:10, bottom right; its height stops short of the readout above it on shorter screens.
+   The Talon and missile feeds keep the small box. The monitor renders at the box's own aspect, so nothing stretches. */
+#tab-td.gunship-seat #story-monitor { width: min(44vw, 640px); height: auto; aspect-ratio: 16 / 10; max-height: max(160px, calc(100vh - 540px)); border-color: #3a8fbf; }
+#tab-td.gunship-seat #story-monitor .head { font-size: 11px; }
 #story-monitor .head { position: absolute; left: 6px; top: 4px; font: 600 10px ui-monospace, Menlo, monospace; letter-spacing: 0.08em; color: #9fdcff; text-shadow: 0 0 4px #000; }
 /* the story's fire-control scope for a guided mount: the Sniper workshop's idiom, one panel and a reticle */
 #gunship-hud { position: fixed; inset: 0; z-index: 38; pointer-events: none; --phosphor: #cfeee9; --cyan: #5fe6d6; }
