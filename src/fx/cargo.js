@@ -244,7 +244,8 @@ export function createCargo(scene, { loader = null, sfx = null, hasCue = null, m
       if (jumped) { tmpP.copy(vec(point)).addScaledVector(n0, 2 * metres); c.back.addScaledVector(n0, -c.back.dot(n0)); if (c.back.lengthSq() < 1e-8) c.back.crossVectors(n0, Math.abs(n0.y) < 0.9 ? Y : X); c.back.normalize(); basis(n0, c.back.clone().negate(), tmpQ); }
       c.obj.position.copy(tmpP); c.obj.quaternion.copy(tmpQ);
       c.from = tmpP.clone(); c.fromQ = tmpQ.clone();
-      c.slideDist = hull ? Math.max(0.5, (deck(hull).point.z - (deck(hull).point.z - deck(hull).length * look.deckInset)) * hull.getWorldScale(tmpA).x + look.crateSpan * 0.55 * metres) : look.crateSpan * metres;
+      // to the rear edge and half a crate past it; metres, never raw scene units (a bare 0.5 once threw a crate a whole planet radius)
+      c.slideDist = hull ? Math.max(0.5 * metres, deck(hull).length * look.deckInset * hull.getWorldScale(tmpA).x + look.crateSpan * 0.55 * metres) : look.crateSpan * metres;
       c.up = vec(normal).normalize(); c.plane = vec(point); c.bounces = 0; c.onLanded = onLanded; c.hull = null;
       c.phase = 'slide'; c.t = 0;
       const old = crates.filter((k) => k !== c && (k.phase === 'rest' || k.phase === 'settle' || k.phase === 'fall' || k.phase === 'slide')).sort((a, b) => a.seq - b.seq);
@@ -293,7 +294,7 @@ export function createCargo(scene, { loader = null, sfx = null, hasCue = null, m
       if (kind === 'crate') {
         const c = riding(); if (!c) return null;
         const q = c.obj.getWorldQuaternion(new THREE.Quaternion()), hull = hullOf(c), d = hull ? deck(hull) : null;
-        return { ...pick(c.obj, Y.clone().applyQuaternion(q), new THREE.Vector3(0, 0, -1).applyQuaternion(q), 13, 9, 6, 1),
+        return { ...pick(c.obj, Y.clone().applyQuaternion(q), new THREE.Vector3(0, 0, -1).applyQuaternion(q), 8, 4, 11, 1),
           crate: c.obj.position.toArray(), crateScale: c.obj.scale.x, model: !!c.model, hull: hull ? new THREE.Vector3().setFromMatrixPosition(hull.matrixWorld).toArray() : null,
           hullScale: hull?.scale.x ?? null, deck: d ? [d.point.toArray(), d.bottom, d.length] : null, metres };
       }

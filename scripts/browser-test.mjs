@@ -408,6 +408,7 @@ try{
   {const c=await evaluate('window.__stalheartTest.state().cargo');assert.equal(c.carrying,'rocket-a','the crate on the deck is the site\'s part');assert.deepEqual(c.errors,[],'the cargo assets load');
    assert(/PART SECURED · FIELD COIL/.test(await evaluate('document.querySelector("#td-callouts")?.textContent||""')),'the pickup callout');}
   await evaluate('window.__stalheartTest.cargoView(null)');await delay(700);   // the teleport left the chase camera behind: snap it to the tank
+  writeFileSync(join(output,'defense-part-carried-view.json'),JSON.stringify(await evaluate('window.__stalheartTest.cargoView("tank")'),null,1));await delay(300);
   current='defense-part-carried';await finish();
   {const v=await evaluate('window.__stalheartTest.cargoView("crate")');assert(v,'a close look at the crate on the hull');writeFileSync(join(output,'defense-crate-on-hull-view.json'),JSON.stringify(v,null,1));}await delay(500);
   current='defense-crate-on-hull';await finish();

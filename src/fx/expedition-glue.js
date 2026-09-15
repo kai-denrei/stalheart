@@ -116,6 +116,15 @@ export function createExpeditionGlue(h) {
       }
       return best;
     },
+    // what stands between two world points, nearest first, for the acceptance stills: [name, metres from `from`, visible]
+    sight(scene, from, to) {
+      const a = v3(from), dir = v3(to).sub(a), len = dir.length(), ray = new THREE.Raycaster(a, dir.normalize(), 0, len * 1.2);
+      ray.params.Points.threshold = metres * 0.05; ray.params.Line.threshold = metres * 0.05;
+      const shown = (o) => { for (let p = o; p; p = p.parent) if (!p.visible) return false; return true; };
+      let hits = [];
+      try { hits = ray.intersectObjects(scene.children, true); } catch (e) { return [[`raycast failed: ${e}`, 0, false]]; }
+      return hits.slice(0, 6).map((x) => [`${x.object.parent?.name || '-'}/${x.object.name || x.object.type}/${[x.object.material].flat()[0]?.name || '-'}`, +(x.distance / metres).toFixed(1), shown(x.object)]).concat([['target', +(len / metres).toFixed(1), true]]);
+    },
     tick(dt) { cargo?.tick(dt); },
     view: (kind, id) => cargo?.view(kind, id) ?? null,
     state: () => (cargo ? cargo.state() : { carrying: null, attached: false, flags: [], trophies: 0, crates: [], errors: [] }),

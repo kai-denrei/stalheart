@@ -62,6 +62,8 @@ function makeHull() {
   assert.equal(landed, 1, 'landed once, however many bounces');
   assert.ok(cues.filter((c) => c === 'gate_slam').length >= 1 + CARGO_LOOK.bounces, 'a thud for the landing and each bounce');
   assert.ok(cargo.state().crates.includes('rest'), 'it sits');
+  { const v = cargo.view('drop'), at = new THREE.Vector3(...v.crate), from = new THREE.Vector3(hull.position.x, 1, 0.5);
+    assert.ok(at.distanceTo(from) < 12 * 0.1, `it lands a few metres behind the hull, not over the horizon (${(at.distanceTo(from) / 0.1).toFixed(1)} m)`); }
   run(cargo, CARGO_LOOK.linger + CARGO_LOOK.sink + 0.5);
   assert.deepEqual(cargo.state().crates, [], 'then sinks away');
 
