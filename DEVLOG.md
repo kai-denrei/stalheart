@@ -338,6 +338,24 @@ Evidence:
 - npm run check
 - computeWavePlan totals at threat 1.7: wave 8 = 32, wave 9 = 106, wave 12 = 227
 
+## 2026-09-16 — The back-door cost step waits out the sector breach shot; rock breaks do not scale with open breaches
+
+change · resolved · 2026-09-16-rock-break-with-live-breaches
+
+--backdoor failed at 'no long task over 100 ms from the collapse (107)' once the sector loop kept two breaches open. Hypothesis: every rock break recomputes per-portal route fields over the 71k-cell story planet, so cost scales with live breaches.
+
+Hypothesis rejected by a CDP CPU profile of the collapse window with both sector breaches live. The route work is two single multi-source BFS passes (rebuildAfterBreach 2.6 ms incl. the surface patch, recomputePortalDist 1.5 ms, bfsDist self ~3-4 ms), independent of the number of portals; openBackDoor totalled 6.9 ms. The 65 ms busy frame was 36 ms of a synchronous shader link (WebGLProgram.getUniforms -> getProgramInfoLog in onFirstUse) and state().shot read 'breach': the step measured while the sector breach's establishing shot was still running, so openBackDoor refused the dive (a shot was live) and the window caught the breach cut's first-use programs. Fix, test only: after the breaches stand, wait for shot===null (+500 ms) before the baseline and collapse windows. With it the collapse window showed no long task, max frame 25.6 ms (baseline 19.2), call 9.9 ms, no new programs compiled, and the dive framed the collapse. No game code changed; src/td-tab.js delta 0. SOL-82 rock burns (breakCells) and tank shells breaking rock run rebuildAfterBreach only: one BFS plus the patch, ~2.6 ms from the same profile, not separately measured in a browser run.
+
+Alternatives: Defer recomputePortalDist/distToHeart to a coalesced next-frame job: not needed, the BFS is ~4 ms and does not scale with breaches.; Pre-warm shader programs at load: the first-use link belonged to the breach establishing shot, not the collapse; left as a possible follow-up if a real-play hitch is reported.
+
+Evidence:
+
+- scripts/browser-lock.sh node scripts/browser-test.mjs --backdoor: PASS backdoor-stage6, backdoor-dive, backdoor-mouth, backdoor-swarm-inside
+- scripts/browser-lock.sh node scripts/browser-test.mjs --sectors: PASS all 8 steps
+- scripts/browser-lock.sh node scripts/browser-test.mjs --defense: PASS all 11 steps
+- npm test: 116 test programs passed; npm run check: exit 0
+- temporary Profiler.start/stop around the collapse window (removed before commit)
+
 ## 2026-09-16 — The laser lab's browser step no longer cuts a wall, and it failed before SOL-82 moved the scope
 
 issue · observed · 2026-09-16-laser-lab-step-fails-before-sol82
