@@ -69,6 +69,12 @@ export const LASER_TRAIL = Object.freeze({ every: 0.8, quads: 1000, seconds: 60,
 // and `rate` per second while the contact holds still, each rising for about `life` seconds, `capacity` alive at most.
 export const LASER_TRAIL_SMOKE = Object.freeze({ every: 1.5, rate: 4, life: 7, capacity: 256, opacity: 0.85 });
 
+// The inset HUD's telemetry fiction (owner, 2026-09-15: believable numbers). A continuous Nd:YAG line at 1.064 µm and
+// its power while lasing. The contact's temperature rise ΔT heads for kelvinPerMWm2 × irradiance, divided by
+// (1 + speed / speedHalving) so a dragged beam runs cooler. It gets there over heatSeconds while lasing and falls back
+// over coolSeconds after.
+export const LASER_TELEMETRY = Object.freeze({ wavelengthUm: 1.064, powerMW: 120, kelvinPerMWm2: 1800, speedHalving: 2, heatSeconds: 0.9, coolSeconds: 2.5 });
+
 // how many contact bursts ride the contact point per second while it burns
 export const LASER_CONTACT_RATE = 8;
 

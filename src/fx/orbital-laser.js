@@ -34,6 +34,15 @@ export function createOrbitalLaser(scene, { cellSide = 10, metresPerCell = 10 } 
     glowWidth: LASER_PRESET.glowWidth * unit,
     jitterAmount: LASER_PRESET.jitterAmount * unit,
   });
+  /* THE COLUMN'S SIDES FADE OUT. beamfx's glow is pow(1 - across, falloff), which at the owner's glow intensity (12) is
+     still bright at the ribbon's edge and cut the column with a straight line down each side (owner, 2026-09-15). This
+     laser's material alone gets a window that takes the glow to zero from 55 % of the half-width to the edge; the
+     shared beamfx and every other beam are untouched, and the changed source is its own program. */
+  const GLOW_LINE = 'float glow = pow(max(0.0, 1.0 - avT), uGlowFalloff);';
+  if (beam.mesh.material.fragmentShader.includes(GLOW_LINE)) {
+    beam.mesh.material.fragmentShader = beam.mesh.material.fragmentShader.replace(GLOW_LINE,
+      'float glow = pow(max(0.0, 1.0 - avT), uGlowFalloff) * (1.0 - smoothstep(0.55, 1.0, avT));');
+  }
   beam.mesh.visible = false;
   group.add(beam.mesh);
 

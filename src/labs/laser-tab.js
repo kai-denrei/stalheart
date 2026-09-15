@@ -25,6 +25,7 @@ import { STORY_RECIPE, STORY_CLEARING } from '../content/story-defaults.js';
 import { buildStoryPlanet } from '../domain/story-planet.js';
 import { planetBake } from '../platform/planet-bake.js';
 import { createStoryPlanetSurface } from './story-planet-mesh.js';
+import { createInsetHud } from './laser-inset-hud.js';
 import { planBase } from '../domain/base-plan.js';
 import { ISLANDS, STRUCTURES, KIT, STAGES } from '../content/base-layout.js';
 import { createStoryBase } from '../fx/story-base.js';
@@ -37,7 +38,7 @@ import { createThermalHeat } from '../fx/thermal-heat.js';
 import { createOrbitalLaser } from '../fx/orbital-laser.js';
 import { makeDotEnemy, makeDotBurst } from '../units.js';
 import { loadGlbWithClips } from '../glbmodels.js';
-import { LASER_ORBIT, LASER_BEAM, LASER_BURN, LASER_VIEW, LASER_PRESET, LASER_CONTACT_RATE, LASER_SMOKE_RATE } from '../content/orbital-laser.js';
+import { LASER_ORBIT, LASER_BEAM, LASER_BURN, LASER_VIEW, LASER_PRESET, LASER_CONTACT_RATE, LASER_SMOKE_RATE, LASER_TELEMETRY } from '../content/orbital-laser.js';
 import { makeLaser, stepLaser, aimLaser, burnLaser, burnContacts, laserProgress } from '../domain/orbital-laser.js';
 import { deepLink, wireDeepLink } from '../deeplink.js';
 import { norm3 } from '../vec3.js';
@@ -63,6 +64,8 @@ export function initLaserTab(root) {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   container.appendChild(renderer.domElement);
+  /* the satellite inset's sight and telemetry, a 2D canvas over the 3D one */
+  const insetHud = createInsetHud(container);
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(look.bg);
   scene.add(new THREE.HemisphereLight(look.hemi[0], look.hemi[1], look.hemi[2]));
@@ -130,19 +133,7 @@ export function initLaserTab(root) {
   const ground = new THREE.PerspectiveCamera(52, 1, 0.5, 8000);
   const sat = new THREE.PerspectiveCamera(P.fov, 1, 1, 40000);
   const ray = new THREE.Raycaster();
-  /* THE AIM RETICLE (spec §3): where the pointer is, which the contact chases at the slew rate. It lives on its own layer
-     that only the satellite camera renders, so the ground view never shows it. */
-  const RETICLE_LAYER = 1;
-  const reticle = new THREE.Mesh(
-    new THREE.RingGeometry(9, 13, 48).rotateX(-Math.PI / 2),
-    new THREE.MeshBasicMaterial({ color: 0xdfe8ee, transparent: true, opacity: 0.9, depthTest: false, depthWrite: false, side: THREE.DoubleSide }),
-  );
-  reticle.name = 'Laser aim reticle';
-  reticle.layers.set(RETICLE_LAYER);
-  reticle.renderOrder = 20;
-  reticle.visible = false;
-  scene.add(reticle);
-  sat.layers.enable(RETICLE_LAYER);
+
   const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3(), tmpN = new THREE.Vector3();
   let R = 753, cellSide = 10, sphere = null, north = new THREE.Vector3(0, 0, -1);
 
@@ -483,7 +474,7 @@ export function initLaserTab(root) {
 
   function insetRect() {
     const w = container.clientWidth || innerWidth, h = container.clientHeight || innerHeight;
-    if (h > w) return { x: 0, y: 0, w, h: Math.round(h * 0.4) };      /* portrait: a band across the top */
+    if (h > w) { const s = Math.min(w, Math.round(h * 0.4)); return { x: Math.round((w - s) / 2), y: 0, w: s, h: s }; }   /* portrait: a lens centred across the top */
     const s = Math.min(Math.round(w * P.inset), h - 24);
     return { x: INSET_LEFT, y: h - s - 12, w: s, h: s };
   }
@@ -505,7 +496,8 @@ export function initLaserTab(root) {
   function onPointer(e) {
     const r = insetRect(), box = renderer.domElement.getBoundingClientRect();
     const x = e.clientX - box.left, y = e.clientY - box.top;
-    const inside = x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+    /* the lens is round: only a pointer inside the circle steers */
+    const inside = Math.hypot(x - (r.x + r.w / 2), y - (r.y + r.h / 2)) <= r.w / 2;
     steering = inside;
     if (!inside) return;
     steerTo((x - r.x) / r.w, (y - r.y) / r.h);
@@ -527,26 +519,55 @@ export function initLaserTab(root) {
   }
   addEventListener('resize', resize);
 
+  // THE ROUND SCOPE (owner, 2026-09-15: "make it round, like the radar"). The satellite view renders into its own
+  // target at the lens's pixel size, then a lens quad composites it through a circle with a darkened rim, scissored to
+  // the inset square, so the ground view shows around the lens instead of a black square cutting the beam. Viewport and
+  // scissor are CSS pixels: WebGLRenderer multiplies them by the pixel ratio itself (the square inset passed them
+  // pre-multiplied, which over-scaled on a 2x display).
+  const satTarget = new THREE.WebGLRenderTarget(2, 2, { samples: 4 });
+  const lensScene = new THREE.Scene(), lensCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  const lensMat = new THREE.ShaderMaterial({
+    uniforms: { tView: { value: satTarget.texture } },
+    vertexShader: 'varying vec2 vUv;\nvoid main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    fragmentShader: `#include <common>
+uniform sampler2D tView;
+varying vec2 vUv;
+void main(){
+  float r = length(vUv - 0.5) * 2.0;
+  if (r > 1.0) discard;
+  vec4 c = texture2D(tView, vUv);
+  float rim = 1.0 - 0.5 * smoothstep(0.62, 1.0, r);
+  gl_FragColor = vec4(c.rgb * rim, 1.0);
+  #include <colorspace_fragment>
+}`,
+    depthTest: false, depthWrite: false,
+  });
+  const lensGeo = new THREE.PlaneGeometry(2, 2);
+  lensScene.add(new THREE.Mesh(lensGeo, lensMat));
+
   function render() {
-    const dpr = renderer.getPixelRatio();
     const cr = renderer.domElement.getBoundingClientRect();
     renderer.setRenderTarget(null);
     renderer.autoClear = true;
     renderer.setScissorTest(false);
-    renderer.setViewport(0, 0, cr.width * dpr, cr.height * dpr);
+    renderer.setViewport(0, 0, cr.width, cr.height);
     renderer.render(scene, ground);
     const r = insetRect();
-    const x = r.x * dpr, y = (cr.height - r.y - r.h) * dpr, w = r.w * dpr, h = r.h * dpr;   /* GL y runs from the bottom */
-    sat.aspect = r.w / r.h;
+    const px = Math.max(2, Math.round(r.w * renderer.getPixelRatio()));
+    if (satTarget.width !== px) satTarget.setSize(px, px);
+    sat.aspect = 1;
     sat.updateProjectionMatrix();
+    renderer.setRenderTarget(satTarget);
+    renderer.render(scene, sat);
+    renderer.setRenderTarget(null);
+    const y = cr.height - r.y - r.h;                                   /* GL y runs from the bottom */
     renderer.autoClear = false;
     renderer.setScissorTest(true);
-    renderer.setViewport(x, y, w, h);
-    renderer.setScissor(x, y, w, h);
-    renderer.clear(true, true, false);
-    renderer.render(scene, sat);
+    renderer.setViewport(r.x, y, r.w, r.h);
+    renderer.setScissor(r.x, y, r.w, r.h);
+    renderer.render(lensScene, lensCam);
     renderer.setScissorTest(false);
-    renderer.setViewport(0, 0, cr.width * dpr, cr.height * dpr);
+    renderer.setViewport(0, 0, cr.width, cr.height);
     renderer.autoClear = true;
   }
 
@@ -559,6 +580,41 @@ export function initLaserTab(root) {
     if (!ready) { renderer.render(scene, ground); return; }
     step(dt);
     render();
+    insetHud.draw(hudFrame(), dt);
+  }
+
+  // ONE FRAME FOR THE INSET HUD, in canvas pixels: the aim (where the pointer is, or the contact when nothing steers),
+  // the contact and its footprint projected through the satellite camera, and the numbers around the edge.
+  function hudFrame() {
+    const r = insetRect();
+    const px = (v) => { const p = v.clone().project(sat); return { x: r.x + (p.x + 1) / 2 * r.w, y: r.y + (1 - p.y) / 2 * r.h }; };
+    const contactW = st.contact ? fromCentre(st.contact) : null;
+    const anchor = contactW ?? trenchPoint(queueTail());
+    const aiming = steering || held;
+    const aim = aiming ? { x: r.x + steerN[0] * r.w, y: r.y + steerN[1] * r.h } : px(anchor);
+    let contact = null, footprintPx = 0, lagM = 0;
+    if (contactW) {
+      contact = px(contactW);
+      const across = new THREE.Vector3().crossVectors(normalOf(contactW), north).normalize();
+      const edge = px(contactW.clone().addScaledVector(across, P.radius));
+      footprintPx = Math.hypot(edge.x - contact.x, edge.y - contact.y);
+      const hit = aiming ? targetFromInset(steerN[0], steerN[1]) : null;
+      if (hit) lagM = hit.distanceTo(contactW);
+    }
+    const dir = normalOf(anchor);
+    const rangeM = sat.position.distanceTo(anchor);
+    const p = laserProgress(st, orbit(), beamCfg());
+    return {
+      rect: r, aim, contact, footprintPx, lagM,
+      phase: st.phase, infinite: P.infinite, left: st.left, pass01: p.pass,
+      energy: st.energy, energy01: p.energy, burning: st.burning,
+      speed: P.accel > 0 ? (st.speed || 0) : (st.burning || aiming ? P.slew : 0), slew: P.slew, radiusM: P.radius,
+      altitudeM: P.altitude * R, rangeM, fovDeg: P.fov, gsd: (2 * Math.tan((P.fov * Math.PI) / 360) * rangeM) / Math.max(1, r.h),
+      lat: (Math.asin(Math.max(-1, Math.min(1, dir.y))) * 180) / Math.PI, lon: (Math.atan2(dir.x, dir.z) * 180) / Math.PI,
+      deliveredMJ: (P.energy - st.energy) * LASER_TELEMETRY.powerMW, capMJ: P.energy * LASER_TELEMETRY.powerMW,
+      counts: { bodies: run.bodies, walls: run.walls, rocks: run.rocks, towers: run.towers, alive: bodies.filter((b) => b.alive).length },
+      sealed, heart: run.heart, under,
+    };
   }
 
   /* --- what is under the beam ---------------------------------------------- */
@@ -675,12 +731,7 @@ export function initLaserTab(root) {
   /* --- the beam, per frame -------------------------------------------------- */
   function applyBurn(dt) {
     const hit = steering || held ? targetFromInset(steerN[0], steerN[1]) : null;
-    reticle.visible = !!hit;
-    if (hit) {
-      reticle.position.copy(hit);
-      reticle.quaternion.setFromUnitVectors(Y, normalOf(hit));
-      aimLaser(st, toCentre(hit), dt, beamCfg());
-    }
+    if (hit) aimLaser(st, toCentre(hit), dt, beamCfg());
     const burning = burnLaser(st, held, dt);
     const point = st.contact ? fromCentre(st.contact) : null;
     if (!burning || !point) {
@@ -799,8 +850,10 @@ export function initLaserTab(root) {
       for (const b of bursts) { scene.remove(b); b.geometry.dispose(); b.material.dispose(); }
       gui?.destroy();
       if (window.__stalheartLaserTest === hooks) delete window.__stalheartLaserTest;
-      reticle.geometry.dispose();
-      reticle.material.dispose();
+      insetHud.dispose();
+      satTarget.dispose();
+      lensGeo.dispose();
+      lensMat.dispose();
       style.remove();
       renderer.dispose();
       renderer.domElement.remove();

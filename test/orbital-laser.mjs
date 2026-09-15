@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { LASER_ORBIT, LASER_BEAM, LASER_BURN, LASER_VIEW, LASER_PRESET, LASER_TRAIL, LASER_TRAIL_SMOKE, LASER_CONTACT_RATE, LASER_SMOKE_RATE } from '../src/content/orbital-laser.js';
+import { LASER_ORBIT, LASER_BEAM, LASER_BURN, LASER_VIEW, LASER_PRESET, LASER_TRAIL, LASER_TRAIL_SMOKE, LASER_CONTACT_RATE, LASER_SMOKE_RATE, LASER_TELEMETRY } from '../src/content/orbital-laser.js';
 import { makeLaser, stepLaser, aimLaser, burnLaser, burnContacts, laserProgress } from '../src/domain/orbital-laser.js';
 import { len3, dot3, norm3 } from '../src/vec3.js';
 
@@ -12,6 +12,7 @@ assert.deepEqual({ ...LASER_TRAIL }, { every: 0.8, quads: 1000, seconds: 60, hot
 assert.deepEqual({ ...LASER_TRAIL_SMOKE }, { every: 1.5, rate: 4, life: 7, capacity: 256, opacity: 0.85 });
 assert.equal(LASER_CONTACT_RATE, 8);
 assert.equal(LASER_SMOKE_RATE, 2);
+assert.deepEqual({ ...LASER_TELEMETRY }, { wavelengthUm: 1.064, powerMW: 120, kelvinPerMWm2: 1800, speedHalving: 2, heatSeconds: 0.9, coolSeconds: 2.5 });
 assert.equal(LASER_PRESET.burstRate, 0, 'a continuous beam, not a pulse train');
 assert.equal(LASER_PRESET.coreWidth, 2);
 assert.equal(LASER_PRESET.glowWidth, 10);
