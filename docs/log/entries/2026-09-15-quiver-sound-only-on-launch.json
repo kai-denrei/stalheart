@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "2026-09-15-quiver-sound-only-on-launch",
+  "date": "2026-09-16T05:00:00+00:00",
+  "type": "decision",
+  "status": "accepted",
+  "title": "The Quiver's launch report plays only when a rocket leaves, and quieter",
+  "context": "Owner bug note, 2026-09-15: the Quiver sound pops non-stop, even when not firing a rocket, and it is too loud compared to the rest.",
+  "outcome": "Both Quiver fire paths played sentry_quiver whether or not launchTowerSeeker actually launched. The board walker's emit played it on every refused launch (the story's one round in flight, the pool not ready, the mount loading), and the piloted path played it on every cooldown through the generic per-shot line. Now the sound follows a launch that returned true: the walker checks the result, the generic per-shot report skips missile towers, and the seeker branch plays the report on a real launch. The shipped sentry_quiver gain drops from 0.5 to 0.28, closer to the Rotor's 0.22.",
+  "alternatives": [
+    "Keep the gain and only fix the trigger: rejected, the owner found the level itself too loud."
+  ],
+  "evidence": [
+    "src/td-tab.js stepWalker emit and the seeker branch; src/content/shipped.js sentry_quiver.",
+    "npm test (107 programs) and npm run check pass. No browser listen test: the memory guardrail was at WARN."
+  ],
+  "supersedes": []
+}

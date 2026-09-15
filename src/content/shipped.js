@@ -135,7 +135,7 @@ export default {
       "rateJitter": 0.03
     },
     "sentry_quiver": {
-      "gain": 0.5,
+      "gain": 0.28,
       "maxVoices": 3,
       "minInterval": 0.09,
       "rateJitter": 0.05

@@ -7902,9 +7902,9 @@ export function initTdTab(root) {
         const muzzle = towerMuzzle(tw, add3(scale3(p, 1 + params.wallHeight), scale3(n, cellSide * 0.5)));
         // The shared DART flight leaves the actual vertical cassette socket.
         // The board owns its target; the lock drops when the cell fires.
-        launchTowerSeeker(tw, muzzle, target, tNow);
+        const flew = launchTowerSeeker(tw, muzzle, target, tNow);
         tw.lock = makeLock();
-        sfx.play(towerSound(tw.def), { dist: camDist(p) });
+        if (flew) sfx.play(towerSound(tw.def), { dist: camDist(p) });   // the launch report only when a rocket left: a refused launch (one round in flight, pool loading) is silent (owner, 2026-09-15: "pops non-stop")
       },
     });
     if (!lockStepped) tw.lock = makeLock();
@@ -8056,7 +8056,7 @@ export function initTdTab(root) {
       // one line, every tower: the key IS the def key, unless the def says
       // otherwise — which the second roster's do, since there is no
       // `tower_rotor` and a missing sample is silence nobody notices
-      if (tw.key !== 'rotor' || tNow - (tw.soundAt ?? -9) >= shotInterval(tw.def.rate) * 0.98) { tw.soundAt = tNow; sfx.play(towerSound(tw.def), { dist: camDist(tp) }); }   // THE ROTOR'S REPORT AT ITS OWN CADENCE (owner, 2026-09-13: spherical-stalberg sounded better): six rounds a shot and sentry control's rate made the one sample a buzz, so it plays once per shot of the gun's own rate
+      if (!missileOf(tw.key) && (tw.key !== 'rotor' || tNow - (tw.soundAt ?? -9) >= shotInterval(tw.def.rate) * 0.98)) { tw.soundAt = tNow; sfx.play(towerSound(tw.def), { dist: camDist(tp) }); }   // THE ROTOR'S REPORT AT ITS OWN CADENCE (owner, 2026-09-13: spherical-stalberg sounded better): six rounds a shot and sentry control's rate made the one sample a buzz, so it plays once per shot of the gun's own rate
       const n = graph.normals[tw.ci];
       const muzzle = towerMuzzle(tw, add3(tp, scale3(n, cellSide * 0.55)));
       // the gun rides back on every round, and the flash leaves the barrel; a Rotor also spits its case sideways when the camera is close enough to see it (docs/AMMUNITION.md)
@@ -8089,7 +8089,7 @@ export function initTdTab(root) {
         // every reason not to, which is the lesson the sentry range taught:
         // a Quiver that holds its lock empties itself into one walker while
         // the rest of the wave goes past.
-        launchTowerSeeker(tw, muzzle, target, tNow);
+        if (launchTowerSeeker(tw, muzzle, target, tNow)) sfx.play(towerSound(tw.def), { dist: camDist(tp) });   // a launcher reports its rocket, not its cooldown
         if (tw.lock) tw.lock = makeLock();
       } else if (atk === 'lance') {
         // THE LANCE LEAVES THE MUZZLE TIP, ALONG THE BARREL, and stops at
