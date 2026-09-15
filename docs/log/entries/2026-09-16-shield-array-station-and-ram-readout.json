@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "2026-09-16-shield-array-station-and-ram-readout",
+  "date": "2026-09-16T06:00:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "The solar array recharges the tank's shield from a finite reserve, and every ram floats its premium over the hull",
+  "context": "Owner, V1 brief: make sure the tank's shield works and unlock the fun ramming bonuses; the shield should be rechargeable at the array station but not infinite (docs/superpowers/specs/2026-09-15-v1-session-design.md, section 3). A browser probe on the story route (stage 6, phase expedition) found T and the pad button deploy, the dome shows and drains in 10 s, the seam and rack pips read on the panel, and 34 rams in a row built RAM xN with biomass rising. What was missing: the rack refilled only on the retired campaign debrief, so in the story two charges were gone for good and an empty rack said 'buy a case on the debrief'; the ram premium had no readout of its own.",
+  "outcome": "arrayDraw in src/domain/shield.js: parked within radiusMetres of the solar island and slower than maxSpeed, the hull takes shield at `rate` s/s, first into a bubble that is up (to the cap), then into the rack a charge at a time (rackFill, never past rackCap), out of a finite station reserve that only refillArray restores; one event per step (start, charge, dry, stop) cues sound and Isao. SHIELD_ARRAY in src/content/shield-array.js: reserve 30 s, rate 2 s/s, radius 12 m, maxSpeed 3 m/s. SHIELD_TUNE unchanged. The story world exposes story.arrayPad {cell, pos, standing} (standing from stage 3; a build programme can stand it later). td-tab: refillArrays() (called at the handover for now; the sector start should call it), a two-ring dotted pad on the island that breathes idle, pulses while feeding and dims when dry (src/fx/shield-array.js, which also now builds the campaign's heart ring and the panel's shield line), ARRAY 30s / ARRAY ▲ 24s · NEXT 40% / ARRAY DRY beside the rack, tank_spool_up / tank_pickup / tank_spool_down cues, Isao's array_charging (once) and array_dry lines, and the empty-rack refusal points at the array. Rams: a bounded pool of six '+N kg ×M' labels rises over the hull (src/fx/ram-readout.js); the x10 tier callouts were already wired and are now asserted. td-tab shrank by 39 lines.",
+  "alternatives": [
+    "Refill only the rack and never the active bubble; not chosen because the brief asked for the active meter first, and a bubble topped up on the pad costs reserve like anything else.",
+    "Refill the reserve per wave like the old heart pad's stationBudget; rejected because the brief makes the sector the unit, so the pad is a resource to plan across two breaches.",
+    "Float the ram premium as a 3D sprite; rejected for a DOM pool in the shout type, which matches the combo counter and costs no draw calls."
+  ],
+  "evidence": [
+    "node test/shield.mjs: finite reserve runs to zero once and says dry once, refill only through refillArray, nothing while moving fast or off the pad, active bubble first, rack cap stops the draw, the seam still refuses a banked charge.",
+    "npm test (107 programs) and npm run check green.",
+    "Commits 0024896 (rule, content, tests), f343da8 (wiring, readouts, browser step), 0d2d3a3 (step fix) and a legibility commit placing the ram readout beside the hull.",
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --shield-story passes end to end on the story route (stage 6, phase expedition): T raises the dome from a rack of two, it drains in 10 s, the seam refuses, the pad button spends the second charge, an empty rack refuses and points at the array; parked on the pad it charges with the ring glowing, the reserve runs 30 -> 0 for exactly three charges and stops, stays dry, the ring dims; refillArrays restores 30 and the pad tops the rack to 4 and stops at the cap; a shielded hull shoves a barbed core without losing a hull; rams reach a combo of ten, the RAM ×10 callout lands, biomass rises and every ram floats '+N kg ×M'. Screenshots artifacts/browser/shield-array-{dome,empty,charging,dry,ram,end}.png.",
+    "Observed and not fixed: with the hull parked on the pad, a live bubble never drops while the reserve lasts (the active meter is fed first, as the brief asked); the reserve is the limit. The combo is not asserted across a shove because the wave's own fodder is rammed on the way.",
+    "Legibility iteration: the first ram capture showed '+N kg ×M' rising through the centred RAM ×N counter and the streak callouts; the labels now float to the hull's right, step out along a chain and are clamped on screen. The re-run of --shield-story passed with the new placement (artifacts/browser/shield-array-ram.png); the final on-screen clamp was checked by npm test and npm run check only."
+  ],
+  "supersedes": []
+}

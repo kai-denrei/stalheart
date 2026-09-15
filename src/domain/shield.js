@@ -67,6 +67,7 @@ export function makeShield(tune = SHIELD_TUNE) {
   return {
     t: 0,                            // seconds of bubble left
     rack: Math.max(0, Math.round(tune.rackStart)),
+    rackFill: 0,                     // seconds banked toward the next rack charge (the array fills it)
     coolUntil: -Infinity,            // no drop yet, so nothing to wait for
     taps: new Map(),                 // towerId -> the time it comes back online
     stationLeft: tune.stationBudget,
@@ -106,10 +107,11 @@ export function tickShield(st, dt, now, tune = SHIELD_TUNE, wasUp = st.t > 0) {
 
 // Sources and drain are one frame transaction. A continuous field is not a
 // tower attack, and a tiny input that cannot cover drain must not emit drops.
-export function stepShieldFrame(st, dt, now, { relays = [], station = false } = {}, tune = SHIELD_TUNE) {
+export function stepShieldFrame(st, dt, now, { relays = [], station = false, array = null } = {}, tune = SHIELD_TUNE) {
   const wasUp=st.t>0;
   for(const id of relays)tapTower(st,id,now,dt,tune);
   if(station)stationDraw(st,dt,tune);
+  if(array)arrayDraw(st,array.station,dt,array,array.tune,tune);
   const dropped=tickShield(st,dt,now,tune,wasUp);
   for(const [id,until] of st.taps)if(until<=now)st.taps.delete(id);
   return dropped;
@@ -145,6 +147,57 @@ export function stationDraw(st, dt, tune = SHIELD_TUNE) {
 
 export function waveReset(st, tune = SHIELD_TUNE) {
   st.stationLeft = tune.stationBudget;
+}
+
+// --- the array station ----------------------------------------------------
+// THE SOLAR ARRAY IS A CHARGING PAD WITH A TANK OF ITS OWN (V1 session design,
+// section 3). Parked within `radiusMetres` of it and slower than `maxSpeed`,
+// the hull takes shield at `rate` s per s: first into a bubble that is up (to
+// the cap), then into the rack a charge at a time, never past rackCap. Every
+// second paid comes out of a finite `reserve`, and only refillArray puts it
+// back (the sector start). So the pad is a place to come home to between
+// runs, never a hold-to-win button: the seam and the rack rules still hold,
+// and a charge banked here still waits out the cooldown like any other.
+// `tune` is the station's content (src/content/shield-array.js).
+
+export function makeArrayStation(tune) {
+  return { reserve: tune.reserve, drawn: 0, charging: false, event: null };
+}
+
+export function refillArray(station, tune) {
+  station.reserve = tune.reserve;
+}
+
+// Returns the seconds it paid. `event` is set for this step only, so the
+// caller can cue a sound or a line once: 'start' when charging begins,
+// 'charge' when a rack charge completes, 'dry' when the reserve runs out,
+// 'stop' when the hull leaves or the rack is full.
+export function arrayDraw(st, station, dt, { metres = Infinity, speed = 0 } = {}, tune, shieldTune = SHIELD_TUNE) {
+  const was = station.charging;
+  station.event = null;
+  station.charging = false;
+  let budget = 0, got = 0, charged = false;
+  if (dt > 0 && station.reserve > 0 && metres <= tune.radiusMetres && speed <= tune.maxSpeed) {
+    budget = Math.min(tune.rate * dt, station.reserve);
+  }
+  if (budget > 0 && st.t > 0) {
+    const took = charge(st, budget, shieldTune);
+    got += took; budget -= took;
+  }
+  while (budget > 1e-12 && st.rack < shieldTune.rackCap) {
+    const took = Math.min(budget, shieldTune.deploySecs - st.rackFill);
+    st.rackFill += took; got += took; budget -= took;
+    if (st.rackFill >= shieldTune.deploySecs - 1e-9) { st.rack++; st.rackFill = 0; charged = true; }
+  }
+  station.reserve -= got;
+  if (station.reserve < 1e-9) station.reserve = 0;   // float dust must not leave a pad that never reads dry
+  station.drawn += got;
+  station.charging = got > 0;
+  if (got > 0 && station.reserve <= 0) station.event = 'dry';
+  else if (charged) station.event = 'charge';
+  else if (station.charging && !was) station.event = 'start';
+  else if (!station.charging && was) station.event = 'stop';
+  return got;
 }
 
 // --- the shove ------------------------------------------------------------

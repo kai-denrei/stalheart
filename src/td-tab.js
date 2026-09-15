@@ -73,7 +73,7 @@ import { makeTracerMesh, makeLightningMesh, makeSeekerMesh, aimSeeker,
   LANCE_LOOK as SHOT_LANCE_LOOK, THROW_LOOK as SHOT_THROW_LOOK } from './shotfx.js';
 import { SHIELD_TUNE, SHIELD_KNOBS, makeShield, charge as chargeShield,
   deploy as deployShield, tickShield, stepShieldFrame, restockShield, tapTower, towerOffline,
-  stationDraw, waveReset as shieldWaveReset, shoveVec, shoveMag } from './shield.js';
+  stationDraw, waveReset as shieldWaveReset, shoveVec, shoveMag, makeArrayStation, refillArray } from './shield.js'; import { SHIELD_ARRAY } from './content/shield-array.js'; import { makePadRing, glowPadRing, shieldPanel } from './fx/shield-array.js'; import { createRamReadout } from './fx/ram-readout.js';
 import { deepLink, wireDeepLink } from './deeplink.js';
 import { labLine, parseLabQuery } from './lab.js';
 import { bakeGalaxyCube } from './galaxybake.js';
@@ -89,7 +89,7 @@ import { TANK_FEEL, TANK_FEEL_KNOBS, makeTankFeel, stepTankFeel, landTankFeel, f
 import { FEEL, loadFeel, saveFeel } from './feelstore.js';
 import { STRIKE_KNOBS, makeStrike, makeStrikeParams, grantStrikes, stepStrike,
   toggleArm, paintTarget, launchStrike, stepFall, skipFall, fallProgress,
-  strikeDamage, retargetStrike, orbitProgress } from './strike.js'; import { makeGunship, stepGunship, onStation, phaseLeft, passProgress, mountGunship, dismountGunship, selectGun, stepGun, aimOnSphere, splashDamage, dangerReport, fireRound, stepRounds, paintHeavy, launchHeavy, nudgeHeavy, stepHeavy, heavyState, startStation } from './domain/gunship.js'; import { GUNSHIP_GUNS, GUNSHIP_GUN_ORDER, GUNSHIP_PLATFORM, GUNSHIP_ORBIT } from './content/gunship.js'; import { createGunshipOptic } from './fx/gunship-optic.js'; import { createGunshipBriefing } from './fx/gunship-briefing.js'; import { createFoundryFx } from './fx/foundry-fx.js'; import { createExplosions } from './fx/explosions.js';
+  strikeDamage, retargetStrike, orbitProgress } from './strike.js'; import { makeGunship, stepGunship, onStation, phaseLeft, passProgress, mountGunship, dismountGunship, selectGun, stepGun, aimOnSphere, splashDamage, dangerReport, fireRound, stepRounds, paintHeavy, launchHeavy, nudgeHeavy, stepHeavy, heavyState, startStation } from './domain/gunship.js'; import { GUNSHIP_GUNS, GUNSHIP_GUN_ORDER, GUNSHIP_PLATFORM, GUNSHIP_ORBIT, GUNSHIP_TRACK } from './content/gunship.js'; import { makeTrack, steerTrack, parkTrack, breachLoads } from './domain/gunship-track.js'; import { createGunshipOptic } from './fx/gunship-optic.js'; import { createGunshipBriefing } from './fx/gunship-briefing.js'; import { createFoundryFx } from './fx/foundry-fx.js'; import { createExplosions } from './fx/explosions.js';
 import { radarBasis, radarProject, radarBearing, sweepAngle, radarPhosphor,
   proximitySectors, SENSOR_LEVELS, sensorColor } from './radar.js';
 import { BLOOM_GROUPS } from './bloomweights.js';
@@ -436,7 +436,7 @@ export function initTdTab(root) {
   // --- orbital strike -------------------------------------------------------
   // All logic lives in strike.js (pure, tested); this file owns only what it
   // looks and sounds like. strikeTune is the live knob object the GUI writes.
-  const sealedBreachCells = new Set(); const strike = makeStrike(), gunship = makeGunship(GUNSHIP_ORBIT, { station: new URLSearchParams(location.search).get('gunship') === 'station' }); let gunshipOptic = null, gunshipWalls = null, gunshipBriefing = null, foundryFx = null; const gunshipFar = () => { const d = bfsDist(graph.adj, [dungeon.heart], (ci) => dungeon.tags[ci] !== BLOCKED), want = Math.min(Math.round(60 * 1.15), d.reduce((m, v) => Math.max(m, v), 0)); let best = -1, bd = Infinity; for (let i = 0; i < d.length; i++) if (d[i] >= want - 3 && d[i] <= want + 3 && ![...sealedBreachCells].some((s) => chord(graph.centers[i], graph.centers[s]) < cellSide * 6)) { const c = chord(graph.centers[i], graph.centers[dungeon.spawn]); if (c < bd) { bd = c; best = i; } } return best >= 0 ? best : dungeon.spawn; }; /* a breach a minute's walk out (owner: leave time to enjoy the action): the open cell about 69 hops from the heart nearest the lane end, the other side of the map if the planet is smaller */ const gunshipLane = () => story?.source?.alive ? story.source.ci : story?.ring?.size ? [...story.ring][0] : dungeon.spawn;   // where they come from: the live breach, else the lane outside the gate, else the lane end. The platform's schedule runs on the game clock beside the strike's ration; ?gunship=station opens its first pass at once, for acceptance
+  const sealedBreachCells = new Set(); const strike = makeStrike(), gunship = makeGunship(GUNSHIP_ORBIT, { station: new URLSearchParams(location.search).get('gunship') === 'station' }); let gunshipOptic = null, gunshipTrack = null, gunshipWalls = null, gunshipBriefing = null, foundryFx = null; const gunshipFar = () => { const d = bfsDist(graph.adj, [dungeon.heart], (ci) => dungeon.tags[ci] !== BLOCKED), want = Math.min(Math.round(60 * 1.15), d.reduce((m, v) => Math.max(m, v), 0)); let best = -1, bd = Infinity; for (let i = 0; i < d.length; i++) if (d[i] >= want - 3 && d[i] <= want + 3 && ![...sealedBreachCells].some((s) => chord(graph.centers[i], graph.centers[s]) < cellSide * 6)) { const c = chord(graph.centers[i], graph.centers[dungeon.spawn]); if (c < bd) { bd = c; best = i; } } return best >= 0 ? best : dungeon.spawn; }; /* a breach a minute's walk out (owner: leave time to enjoy the action): the open cell about 69 hops from the heart nearest the lane end, the other side of the map if the planet is smaller */ const gunshipLane = () => story?.source?.alive ? story.source.ci : story?.ring?.size ? [...story.ring][0] : dungeon.spawn;   // where they come from: the live breach, else the lane outside the gate, else the lane end. The platform's schedule runs on the game clock beside the strike's ration; ?gunship=station opens its first pass at once, for acceptance
   const strikeTune = makeStrikeParams();
   let strikeGrace = 0;   // s after launch during which a tap cannot skip
   let shopMute = 0;      // s after impact during which the shop stays shut
@@ -913,7 +913,7 @@ export function initTdTab(root) {
   // the same job. The knobs are reachable BY NAME from the URL, which is how
   // SENTRY_TUNE and BALLISTICS_TUNE are already moved.
   const shieldTune = { ...SHIELD_TUNE };
-  const shield = makeShield(shieldTune);
+  const shield = makeShield(shieldTune), arrayStation = makeArrayStation(SHIELD_ARRAY), refillArrays = () => { refillArray(arrayStation, SHIELD_ARRAY); updateHud(); };   /* the solar array's reserve: each sector start calls refillArrays (src/content/shield-array.js) */
   const shieldUp = () => shield.t > 0;
   let shieldObj = null;
   // The tank's field promotion. Only hands-on kills climb it — towers and
@@ -4076,7 +4076,7 @@ export function initTdTab(root) {
   }
   // callout pop-ups + the ram combo counter (both pointer-transparent)
   const calloutsEl = root.querySelector('#td-callouts');
-  const comboEl = root.querySelector('#td-combo');
+  const comboEl = root.querySelector('#td-combo'), ramFloat = createRamReadout(root, { project: (p) => new THREE.Vector3(p[0], p[1], p[2]).project(camera) });
   // WHAT SURVIVES THE ENCOURAGEMENT BEING SWITCHED OFF. The praise is the
   // part the operator wants gone — RECKLESS!, すげ〜!, the heart's lines. The
   // SCORING is not praise: a streak multiplier and a ram count are facts you
@@ -4232,23 +4232,8 @@ export function initTdTab(root) {
     if (eco && eco.biomass > run.peakBiomass) { run.peakBiomass = eco.biomass; checkAchievements(); }
     if (lifeContainers.length) syncLifeContainers();
     const spAlive = spawnPoints.filter((s) => s.alive).length;
-    // THE SHIELD IS ALWAYS ON THE PANEL NOW, in one of three states — up and
-    // draining, cooling through the seam, or idle with a rack. The seam is the
-    // feature and it is two seconds long; a player who cannot see it counted
-    // down cannot plan the chain that the whole rack exists for.
-    const shieldPips = `<i class="sh-pip">${'▮'.repeat(shield.rack)}`
-      + `${'▯'.repeat(Math.max(0, shieldTune.rackCap - shield.rack))}</i>`;
-    // IT HAS TO SAY WHAT IT IS. The first cut was a bare ◈ and four pips at
-    // the end of the alerts line — the operator played a full board and asked
-    // whether the shield had been implemented at all. A readout nobody can
-    // identify is a readout that is not there, however correct the state
-    // behind it. So: the word, then the number, then what you can spend.
-    const shieldBar = shieldUp()
-      ? `<b class="sh-bar" style="--sh:${Math.max(0, Math.min(1, shield.t / shieldTune.cap))}">`
-        + `◈ SHIELD ${Math.ceil(shield.t)}s</b> ${shieldPips}`
-      : (t < shield.coolUntil
-        ? `<span class="sh-cool">◈ SHIELD COOLING ${(shield.coolUntil - t).toFixed(1)}s</span> ${shieldPips}`
-        : `<span class="sh-idle">◈ SHIELD</span> <b class="sh-ready">T</b> ${shieldPips}`);
+    // THE SHIELD IS ALWAYS ON THE PANEL, and says what it is: up, cooling through the seam, or idle with a rack, then the array's reserve (src/fx/shield-array.js)
+    const shieldBar = shieldPanel(shield, shieldTune, t, story?.arrayPad?.standing ? arrayStation : null);
     const alerts = [shieldBar,
       carryingRegen ? '⬤ REGEN CARRIED' : '', story?.expeditions?.carrying ? '⬤ PART CARRIED' : '',
       cannonHeat > 0 ? 'CANNON HOT' : '',
@@ -4648,7 +4633,7 @@ export function initTdTab(root) {
     playerHP = PLAYER_MAX;
     playerDown = false;
     shield.t = 0; shield.coolUntil = -Infinity; shield.taps.clear();
-    shield.rack=Math.min(shieldTune.rackCap,shieldTune.rackStart);shield.stationLeft=shieldTune.stationBudget;shieldDrops=0;
+    shield.rack=Math.min(shieldTune.rackCap,shieldTune.rackStart);shield.stationLeft=shieldTune.stationBudget;shieldDrops=0;shield.rackFill=0;refillArray(arrayStation,SHIELD_ARRAY);arrayStation.drawn=0;
     resetTankRank();
     carryingRegen = false;
     speedBonus = 1;
@@ -5174,10 +5159,10 @@ export function initTdTab(root) {
           scene.add(burst);
           debris.push(burst);
           bumpLeft = BUMP_LEN;
-          feedCall(eco.award(spec.bounty, { ram: true })); // the ram premium
+          const kg = feedCall(eco.award(spec.bounty, { ram: true })); // the ram premium
           scoreKill(spec.bounty, { src: 'tank', ram: true,
             alive: enemies.filter((x) => x.alive).length });
-          ramCombo++; ramComboT = RAM_COMBO_GAP;
+          ramCombo++; ramComboT = RAM_COMBO_GAP; ramFloat.show(player.pos, kg, ramCombo);   // +N kg ×M over the hull (src/fx/ram-readout.js)
           noteWaveKill(e.type, 'tank');
           if (ws) ws.rams++;
           if (rs) { rs.rams++; rs.maxCombo = Math.max(rs.maxCombo, ramCombo); }
@@ -5818,9 +5803,10 @@ export function initTdTab(root) {
         spawnLightning(from,player.pos,tw.def.color,now);
       }
     }
-    const station=!playerDown && player.pos && graph && dungeon.heart!=null
-      && a6Arc(player.pos,graph.centers[dungeon.heart])<cellSide*.55;
-    if(stepShieldFrame(shield,dt,now,{relays,station},shieldTune)){
+    const station=!playerDown && player.pos && graph && dungeon.heart!=null && a6Arc(player.pos,graph.centers[dungeon.heart])<cellSide*.55, pad=story?.arrayPad, auto=automated();
+    const array=pad?.standing?{station:arrayStation,tune:SHIELD_ARRAY,metres:!playerDown&&player.pos?arcToMetres(a6Arc(player.pos,pad.pos),cellSide):Infinity,speed:player.pos&&arrayStation.prev&&dt>0?arcToMetres(a6Arc(player.pos,arrayStation.prev),cellSide)/dt:0}:null; if(auto&&!arrayStation.auto)refillArrays(); arrayStation.auto=auto; arrayStation.prev=player.pos?.slice();   /* the solar array's pad; the handover opens the first sector with it full */
+    const dropped=stepShieldFrame(shield,dt,now,{relays,station,array},shieldTune), ev=array?arrayStation.event:null; if(ev){if(SHIELD_ARRAY.cues[ev])sfx.play(SHIELD_ARRAY.cues[ev]);if(ev==='start')showBrief('array_charging');if(ev==='dry'){showBrief('array_dry');record('shield.array.dry',{wave,drawn:arrayStation.drawn});}}
+    if(dropped){
       shieldDrops++;
       showToast(`<div class="wave-num">SHIELD DOWN</div>`
         + `<div class="wave-role">${shieldTune.coolSecs}s before another charge will take</div>`,1400);
@@ -5841,7 +5827,7 @@ export function initTdTab(root) {
     } else if (r === 'cooling') {
       showToast(`<div class="wave-role">emitter cooling &middot; ${(shield.coolUntil - t).toFixed(1)}s</div>`, 1200);
     } else {
-      showToast(`<div class="wave-role">no shield charges &mdash; buy a case on the debrief</div>`, 1400);
+      showToast(`<div class="wave-role">no shield charges &mdash; ${story?.arrayPad?.standing ? (arrayStation.reserve > 0 ? 'park on the solar array to recharge' : 'the solar array is dry until the next sector') : 'buy a case on the debrief'}</div>`, 1400);
     }
     if (shieldProbeOn) console.log(`SHIELDPROBE deploy=${r} t=${shield.t.toFixed(2)} rack=${shield.rack}`);
     updateHud();
@@ -7283,37 +7269,16 @@ export function initTdTab(root) {
   // dotted range ring on the surface — one reusable mesh, house style
   let rangeRing = null;
   let rangeRingTtl = 0;
-  // THE CHARGING PAD. A ring on the heart's own cell, lit while the wave's
-  // budget is unspent and dark once it is gone — a trip home that will not pay
-  // is a trip the player has to be able to decline from across the board.
-  // Built from showRangeRing's basis so it sits on the ground the way every
-  // other ring here does.
-  let stationRing = null;
+  // THE CHARGING PADS: the heart's own cell in the campaign, the solar array's
+  // island in the story. Lit while there is something to draw and dark once it
+  // is gone, so a trip home that will not pay can be declined from across the board.
+  let stationRing = null, arrayRing = null;
   function buildStationRing() {
-    if (stationRing) { scene.remove(stationRing); disposeObj(stationRing); stationRing = null; }
-    if (!graph || dungeon.heart == null || storyMode) return;
-    const c = graph.centers[dungeon.heart];
-    const n = graph.normals[dungeon.heart];
-    const theta = cellSide * 0.55;
-    const ref = Math.abs(n[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
-    const t1 = norm3(cross3(n, ref));
-    const t2 = cross3(n, t1);
-    const pos = [];
-    const SEG = 64;
-    for (let i = 0; i < SEG; i++) {
-      const a = (i / SEG) * 2 * Math.PI;
-      const dir = add3(scale3(t1, Math.cos(a)), scale3(t2, Math.sin(a)));
-      const p = scale3(norm3(add3(scale3(norm3(c), Math.cos(theta)), scale3(dir, Math.sin(theta)))),
-        1 + params.wallHeight * 0.7);
-      pos.push(p[0], p[1], p[2]);
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    stationRing = new THREE.Points(geo, new THREE.PointsMaterial({
-      size: 3.0, sizeAttenuation: false, color: 0x59c8ff,
-      transparent: true, opacity: 0.8, depthWrite: false,
-    }));
-    scene.add(stationRing);
+    for (const r of [stationRing, arrayRing]) if (r) { scene.remove(r); disposeObj(r); }
+    stationRing = arrayRing = null;
+    if (!graph) return;
+    if (story?.arrayPad) scene.add(arrayRing = makePadRing(story.arrayPad.pos, metresToArc(SHIELD_ARRAY.radiusMetres, cellSide), 1 + metresToArc(SHIELD_ARRAY.lift, cellSide), SHIELD_ARRAY.ring));
+    else if (dungeon.heart != null && !storyMode) scene.add(stationRing = makePadRing(graph.centers[dungeon.heart], cellSide * 0.55, 1 + params.wallHeight * 0.7));
   }
 
   function showRangeRing(ci, radiusCells, color, ttl = 0) {
@@ -9840,7 +9805,7 @@ export function initTdTab(root) {
       // more and more often as waves take longer to clear, which is exactly
       // what "the cues drift in later rounds" looks like from the outside.
       // the orbital window fills in game time, like everything else here
-      { const held = automated() && !onStation(gunship), ev = held ? null : stepGunship(gunship, dt, GUNSHIP_ORBIT); if (automated() && ev === 'depart') passEnded(gunshipCall, GUNSHIP_CALL); if (held) storyViews?.meter(callProgress(gunshipCall), callFull(gunshipCall)); else storyViews?.station(onStation(gunship), phaseLeft(gunship)); if (story) (gunshipOptic ??= createGunshipOptic(scene, { cellSide, metresPerCell: GUNSHIP_PLATFORM.metresPerCell })).ride(graph.centers[dungeon.heart], graph.normals[dungeon.heart], passProgress(gunship, GUNSHIP_ORBIT), onStation(gunship), graph.centers[gunshipLane()]); if (ev === 'depart') gunshipWalls = null; pilot?.gunshipTick?.(dt); } if (stepStrike(strike, dt, strikeTune) === 'armed') {   // the gunship's pass, then the strike's ration
+      { const held = automated() && !onStation(gunship), ev = held ? null : stepGunship(gunship, dt, GUNSHIP_ORBIT); if (automated() && ev === 'depart') passEnded(gunshipCall, GUNSHIP_CALL); if (held) storyViews?.meter(callProgress(gunshipCall), callFull(gunshipCall)); else storyViews?.station(onStation(gunship), phaseLeft(gunship)); if (story) { const hc = graph.centers[dungeon.heart]; gunshipTrack ??= makeTrack(hc, sub3(graph.centers[gunshipLane()], hc)); if (onStation(gunship)) steerTrack(gunshipTrack, breachLoads(spawnPoints.filter((sp) => sp.alive).map((sp) => graph.centers[sp.ci]), enemies, GUNSHIP_TRACK.nearCells * cellSide), hc, dt, GUNSHIP_TRACK, cellSide); else parkTrack(gunshipTrack); (gunshipOptic ??= createGunshipOptic(scene, { cellSide, metresPerCell: GUNSHIP_PLATFORM.metresPerCell })).ride(gunshipTrack.pos, gunshipTrack.heading, onStation(gunship), len3(hc)); }   /* THE SHIP CREEPS TOWARD THE BREACHES (src/domain/gunship-track.js): the live spawn points, each with the enemies near it; none, over the base */ if (ev === 'depart') gunshipWalls = null; pilot?.gunshipTick?.(dt); } if (stepStrike(strike, dt, strikeTune) === 'armed') {   // the gunship's pass, then the strike's ration
         sfx.play('tower_upgrade');
         showToast('<div class="wave-num">ORBITAL ASSET ARMED</div>'
           + '<div class="wave-role">☄ ready — arm, paint, launch</div>', 2200);
@@ -9947,11 +9912,7 @@ export function initTdTab(root) {
     if (strikeGrace > 0) strikeGrace -= dt;
     if (shopMute > 0) shopMute -= dt;
     if (heartCalloutCd > 0) heartCalloutCd -= dt;
-    if (stationRing) {
-      stationRing.material.opacity = shield.stationLeft > 0
-        ? 0.5 + 0.3 * Math.sin(runContext.time * 3)
-        : 0.12;
-    }
+    glowPadRing(stationRing, shield.stationLeft > 0 ? 'idle' : 'dry', runContext.time); glowPadRing(arrayRing, story?.arrayPad?.standing ? (arrayStation.charging ? 'charging' : arrayStation.reserve > 0 ? 'idle' : 'dry') : null, runContext.time);
     if (rs) {
       rs.binClock += dt;
       if (rs.binClock >= 5) { rs.binClock = 0; rs.scoreBins.push(score.points); }
@@ -10213,7 +10174,7 @@ export function initTdTab(root) {
   const seedOverride = parseInt(urlParams.get('seed') || '', 10);
   if (Number.isFinite(seedOverride)) params.seed = seedOverride >>> 0; const storyQuery = readStoryQuery(location.search), threatMult = storyQuery.threat, storyMode = storyQuery.world === 'story';   // tabula rasa past the landing: no old heart, waves, portals, camp or yard
   const storyApi = { foundry: (ev, d) => { (foundryFx ??= createFoundryFx(scene, () => storyBase, { cellSide, metresPerCell: 10 })).event(ev, d); if (ev === 'deploy') { showBrief('foundry_deploy'); const fh = storyBase?.structure('foundry')?.holder; if (fh) { const at = norm3(fh.getWorldPosition(new THREE.Vector3()).toArray()); if (isao) isao.assistAt = at; else if (story) story.assistAt = at; } } }   /* ISAO GOES TO WORK AT ONCE (owner, 2026-09-14): he tends the foundry from its deploy until the first print order */, /* the arrival recycled: the beat's events become the swap, the clip, the arc, the cut and the barrels */ order: (key, ci) => orderTower(key, ci, { quiet: true }), grant: (n) => { if (n > 0) eco.addBiomass(n, { category: 'grant' }); }, built: (ci) => towerByCell.has(ci), cost: (key) => TOWER_BY_KEY[key]?.cost ?? 0, isao: () => !!isao, enemies: () => enemies.filter((e) => e.alive).length + spawnQueue.length, /* a queued spawn is already an enemy to the beats: the second hard core sat in the queue the tick the first died, and the Quiver beat settled with it still to come */ spawn: (type, ci, o = null) => { spawnQueue.push({ type, sp: o?.guard ? { ci, alive: true, obj: new THREE.Group() } : story?.source ?? { ci, alive: true, obj: new THREE.Group() }, at: spawnClock, ...o }); }, /* THE EXPEDITIONS (owner, 2026-09-14): a site's nest rises where the site stands and holds there; the part comes home to the foundry and Isao can print that tower */ openSite: (id) => { if (!story?.expeditions) return; const cfg = STORY_EXPEDITIONS.sites.find((s) => s.id === id), c = story.siteCells[id]; if (!cfg || !c) return; if (!reveal(story.expeditions, id)) return; storyBase?.reveal(id); for (const g of cfg.guards) for (let k = 0; k < g.count; k++) storyApi.spawn(g.type, c.cell, { spread: 1.2, delay: k * 0.3, guard: { site: id, c: graph.centers[c.cell], r: cellSide * (c.clear / 10 + 2) } }); }, expeditionsBegin: () => { for (const s of STORY_EXPEDITIONS.sites) if (!s.reveal) storyApi.openSite(s.id); }, expeditionStep: () => { const ex = story?.expeditions; if (!ex) return; for (const s of ex.sites) { const c = story.siteCells[s.id]; if (!c) continue; if (s.state === 'guarded' && !enemies.some((e) => e.alive && e.guard?.site === s.id) && !spawnQueue.some((q) => q.guard?.site === s.id)) { guardsCleared(ex, s.id); showBrief('site_cleared'); } if (s.state === 'cleared' && !ex.carrying && dist3(player.pos, graph.centers[c.cell]) < cellSide * (c.clear / 10 + 1)) reachSite(ex, s.id); } if (ex.carrying && dist3(player.pos, graph.centers[story.home]) < cellSide * STORY_EXPEDITIONS.deliverCells && deliver(ex)) { showBrief('part_home'); const more = nextReveals(ex); for (const id of more) storyApi.openSite(id); if (more.length) showBrief('sites_revealed'); } story.hud.sites(ex.sites.filter((s) => (s.state === 'guarded' || s.state === 'cleared' || s.state === 'carried') && (s.state === 'carried' || !!story.siteCells[s.id])).map((s) => ({ dir: norm3(graph.centers[s.state === 'carried' ? story.home : story.siteCells[s.id].cell]), state: s.state }))); }, brief: (id) => showBrief(id), tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null), breach: (ci) => { const obj = buildPortalObj(ci, 0); scene.add(obj); story.source = { ci, alive: true, obj, hp: 3, found: true }; spawnPoints.push(story.source); }, sourceAlive: () => !!story.source?.alive, briefing: () => !!briefQ, screenOpen: () => !!syntheticModal?.isOpen(), closeup: () => { if (!isao) return; leavePilot(); storyViews?.active('tank'); clearBriefs(); startShot({ id: 'isaoTalk', dur: 9, poseAt: (u, out) => { const bp = isao.obj.position.toArray(), n = norm3(isao.dir), fw = isao.obj.getWorldDirection(new THREE.Vector3()).toArray(), f = norm3(sub3(fw, scale3(n, dot3(fw, n)))), size = isao.obj.scale.x, face = add3(bp, scale3(n, size * 0.35)), eye = add3(add3(face, scale3(f, size * (1.9 - 0.5 * u))), scale3(n, size * 0.12)); out.pos.set(eye[0], eye[1], eye[2]); tmpCam.position.copy(out.pos); tmpCam.up.set(n[0], n[1], n[2]); tmpCam.lookAt(face[0], face[1], face[2]); out.quat.copy(tmpCam.quaternion); } }); }, /* FACE ON (the first framing sat between his legs and the rocket): in front of the LED panel along his own forward, a drone-size or two out, the queued line cleared so his first line is the first thing on the panel */ sites: () => story.hud.sites(story.sites.map((ci) => norm3(graph.centers[ci]))), planetView: () => { if (!story.sites.length) return; const d = norm3(story.sites.map((ci) => graph.centers[ci]).reduce((a, c) => add3(a, c), [0, 0, 0])), ref = Math.abs(d[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0], up = norm3(cross3(d, ref)); startShot({ id: 'sites', dur: 5, poseAt: (u, out) => { const eye = scale3(d, 1.6 + 1.7 * Math.min(1, u * 1.6)); out.pos.set(eye[0], eye[1], eye[2]); tmpCam.position.copy(out.pos); tmpCam.up.set(up[0], up[1], up[2]); tmpCam.lookAt(0, 0, 0); out.quat.copy(tmpCam.quaternion); }, onEnd: () => setView('orbit') }); }, /* the sinkhole is a spawn point: an orbital strike on it fills it like any other (operator, 2026-09-13) */ near: (ci, r = 2.2) => enemies.some((e) => e.alive && chord(e.pos, graph.centers[ci]) < cellSide * r), kills: () => rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike, screen: (id) => { if (id !== 'synthetic') return; syntheticModal ??= createSyntheticModal(root); const was = paused; paused = true; syntheticModal.open(BRIEFS.vibration_study.lines, () => { paused = was; }); }, unlock: (what) => { if (what === 'views') { storyViews ??= createStoryViews(root, { tank: () => leavePilot(), mount: (key) => { if (key === 'gunship') { if (!onStation(gunship) && !(automated() && callGunship(gunshipCall) && startStation(gunship, GUNSHIP_ORBIT))) return; const seat = () => { if (!pilotMode) enterPilot(towers.map((t) => t.ci)); if (pilot.mountGunship() !== 'mounted') storyViews.active('tank'); else showBrief('gunship_pass'); }; /* Isao's line comes with the seat, not the pass. The first seat is preceded by the briefing, the game paused under it */ if ((gunshipBriefing ??= createGunshipBriefing(root)).seen()) seat(); else { const was = paused; paused = true; gunshipBriefing.open(() => { paused = was; if (onStation(gunship)) seat(); else storyViews.active('tank'); }); } return; } if (pilotMode) pilotHost?.pick(key); else { const tw = towers.find((t) => t.key === key); if (tw) enterPilot([tw.ci, ...towers.map((t) => t.ci).filter((c) => c !== tw.ci)]); } }, map: () => (pilotMode ? pilot.setView('map') : setView('orbit')) }); storyViews.mounts(automated() ? [] : towers.map((t) => ({ key: t.key, label: t.def.label.replace(/^\d+\.\s*/, '') }))); storyViews.station(onStation(gunship), phaseLeft(gunship)); storyViews.active(pilot?.state.tower?.key ?? 'tank'); } }, pilot: (ci, laneCi) => { enterPilot([ci, ...towers.map((t) => t.ci).filter((c) => c !== ci)]); startShot({ id: 'takeControl', dur: 3.2, poseAt: takeControlPose(perchOf(towerByCell.get(ci) ?? { ci }), graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight), onEnd: () => { setView('bastion'); snapCamera(); } }); } };
-  Object.assign(storyApi, { /* ISAO KEEPS BUILDING (src/content/base-programme.js, src/domain/build-programme.js): perks() and hasPerk(name) are what the orbital laser, the shield station and the gunship meter consult */ perks: () => (story?.programme ? programmePerks(story.programme) : new Set()), hasPerk: (name) => !!story?.programme && programmeHas(story.programme, name), build: () => { const pg = story.programme, sector = story.sectorN ?? 0; if (rebuildDue(pg, sector) && playerHP < PLAYER_MAX) { playerHP = Math.min(PLAYER_MAX, playerHP + BASE_PERKS.rebuildHulls); syncLifeContainers(); updateHud(); } /* the assembly line rebuilds a lost hull at a sector's start */ if (!story.grow || orders.some((o) => !o.worker)) return; /* the player's orders and the beats' come first */ const step = programmeDue(pg, { phase: story.beats.phase(), sector, waveActive }), ci = step ? story.print.cellOf(step) : -1; if (ci < 0) return; programmeBegin(pg, step); orders.push({ kind: 'structure', ci, cost: 0, seconds: step.seconds, step, bed: story.print.bed(step) }); spawnIsao(); if (!pilotMode && !briefQ) showBrief(step.brief); updateHud(); }, /* his line as he starts, never over a manned seat or another line */ printed: (step) => { story.print.finish(step); programmeFinish(story.programme, step); if (step.walls) { for (const ci of story.wallCells) { dungeon.tags[ci] = BLOCKED; if (tdFullTags) tdFullTags[ci] = BLOCKED; breachQueue.push(ci); } gunshipWalls = null; rebuildAfterBreach(); recomputePortalDist(); } /* the walls are rock to the swarm and the tank once they stand, in the full world too: applySector rewrites the tags from it */ if (step.perk === 'hulls' && story.bayBerths) { berths = story.berths = story.bayBerths; adoptBays(storyBase); } /* the bays become the berths */ } });
+  Object.assign(storyApi, { /* ISAO KEEPS BUILDING (src/content/base-programme.js, src/domain/build-programme.js): perks() and hasPerk(name) are what the orbital laser, the shield station and the gunship meter consult */ perks: () => (story?.programme ? programmePerks(story.programme) : new Set()), hasPerk: (name) => !!story?.programme && programmeHas(story.programme, name), build: () => { const pg = story.programme, sector = story.sectorN ?? 0; if (rebuildDue(pg, sector) && playerHP < PLAYER_MAX) { playerHP = Math.min(PLAYER_MAX, playerHP + BASE_PERKS.rebuildHulls); syncLifeContainers(); updateHud(); } /* the assembly line rebuilds a lost hull at a sector's start */ if (!story.grow || orders.some((o) => !o.worker)) return; /* the player's orders and the beats' come first */ const step = programmeDue(pg, { phase: story.beats.phase(), sector, waveActive }), ci = step ? story.print.cellOf(step) : -1; if (ci < 0) return; programmeBegin(pg, step); orders.push({ kind: 'structure', ci, cost: 0, seconds: step.seconds, step, bed: story.print.bed(step) }); spawnIsao(); if (!pilotMode && !briefQ) showBrief(step.brief); updateHud(); }, /* his line as he starts, never over a manned seat or another line */ printed: (step) => { story.print.finish(step); programmeFinish(story.programme, step); if (step.walls) { for (const ci of story.wallCells) { dungeon.tags[ci] = BLOCKED; if (tdFullTags) tdFullTags[ci] = BLOCKED; breachQueue.push(ci); } gunshipWalls = null; rebuildAfterBreach(); recomputePortalDist(); } /* the walls are rock to the swarm and the tank once they stand, in the full world too: applySector rewrites the tags from it */ if (step.perk === 'station' && story.arrayPad) story.arrayPad.standing = true; /* the solar array's pad charges once the complex stands */ if (step.perk === 'hulls' && story.bayBerths) { berths = story.berths = story.bayBerths; adoptBays(storyBase); } /* the bays become the berths */ } });
   const simParam = urlParams.get('sim');
   if (simParam) {
     simStyle = simParam;
@@ -13673,7 +13634,7 @@ export function initTdTab(root) {
   // Tests use the real commands/transitions, and inspect serializable state.
   if (urlParams.get('acceptance') === '1') {
     window.__stalheartTest = {
-      state: () => ({ enemyTypes: [...new Set(enemies.filter((e) => e.alive).map((e) => e.type))].sort(), explosions: explosions.state(), pilotRounds: rs?.pilotRounds ?? 0, pilotHits: rs?.pilotHits ?? 0, gunship: { phase: gunship.phase, left: +gunship.left.toFixed(2), mounted: gunship.mounted, gun: gunship.gun, passes: gunship.passes, optic: !!gunshipOptic?.active(), station: onStation(gunship), seat: !!pilot?.gunship, heavy: heavyState(gunship, GUNSHIP_GUNS), heat: +gunship.heat.toFixed(2), overheated: gunship.overheated, mag: gunship.mag, briefing: !!gunshipBriefing?.isOpen(), lane: pilotHost?.gunship?.lane() ?? -1, aim: pilot?.gunshipOptic?.()?.pos ?? null, aimCell: pilot?.gunshipOptic?.()?.pos ? cellIndex(norm3(pilot.gunshipOptic().pos)) : -1 }, shot:shotId(),breachRubble:gameBreaches.rubbleState(),breaches:gameBreaches.state(),queued:spawnQueue.length,wallCount:dungeon.tags.filter(tag=>tag===BLOCKED).length,emerging:enemies.filter(e=>e.alive&&e.emergeAge<1.2).length,round, wave, runGen: runContext.generation, heart: heartHP, hulls: playerHP,
+      state: () => ({ enemyTypes: [...new Set(enemies.filter((e) => e.alive).map((e) => e.type))].sort(), explosions: explosions.state(), pilotRounds: rs?.pilotRounds ?? 0, pilotHits: rs?.pilotHits ?? 0, gunship: { phase: gunship.phase, left: +gunship.left.toFixed(2), mounted: gunship.mounted, gun: gunship.gun, passes: gunship.passes, optic: !!gunshipOptic?.active(), station: onStation(gunship), seat: !!pilot?.gunship, heavy: heavyState(gunship, GUNSHIP_GUNS), heat: +gunship.heat.toFixed(2), overheated: gunship.overheated, mag: gunship.mag, briefing: !!gunshipBriefing?.isOpen(), lane: pilotHost?.gunship?.lane() ?? -1, aim: pilot?.gunshipOptic?.()?.pos ?? null, aimCell: pilot?.gunshipOptic?.()?.pos ? cellIndex(norm3(pilot.gunshipOptic().pos)) : -1, track: gunshipTrack && { pos: gunshipTrack.pos, heading: gunshipTrack.heading, speed: gunshipTrack.speed, target: gunshipTrack.pick?.pos ?? null, home: !!gunshipTrack.pick?.home, enemies: gunshipTrack.pick?.enemies ?? 0, cellSide } }, shot:shotId(),breachRubble:gameBreaches.rubbleState(),breaches:gameBreaches.state(),queued:spawnQueue.length,wallCount:dungeon.tags.filter(tag=>tag===BLOCKED).length,emerging:enemies.filter(e=>e.alive&&e.emergeAge<1.2).length,round, wave, runGen: runContext.generation, heart: heartHP, hulls: playerHP,
         biomass: eco.biomass, towers: towers.length, won: player.won, paused,
         roster: ROSTER.id, buildMode, expeditions: story?.expeditions ?? null, unlocked: automated() ? unlockedTowers(story.expeditions, STORY_EXPEDITIONS.base) : null, storyHome: story?.home ?? -1, story: story?.beats.state() ?? null, automated: automated(), gunshipCall: { ...gunshipCall }, storyHud: story?.hud.state() ?? null, killsBySrc: { ...rs.bySrc }, storyLod: storyBase?.lod() ?? null, storyBaseErrors: storyBase?.errors.slice() ?? null, programme: story?.programme ? { ...programmeSnapshot(story.programme), grow: !!story.grow, print: story.print.state(), gate: storyBase?.gate() ?? null, perks: [...storyApi.perks()] } : null, towerCells: towers.map((t) => [t.key, t.ci]), insideEnemies: story ? enemies.filter((e) => e.alive && story.inside(e.cur)).length : 0,
         playerAsset: playerMesh?.userData.asset || params.creature, playerSpan: (() => { if (!playerMesh) return null; const b = new THREE.Box3().setFromObject(playerMesh); return Number.isFinite(b.max.x) ? +(b.getSize(new THREE.Vector3()).length() / (unitScale || 1)).toFixed(2) : null; })(),   // the hull's true size over its scale: exploded geometry reads absurd here
@@ -13682,7 +13643,7 @@ export function initTdTab(root) {
         berthAssets:lifeContainers.flatMap(c=>c.tanks.map(t=>t.userData.asset)), bays: lifeContainers.map((c) => ({ ci: c.ci, hasTank: c.tanks.length > 0, racked: !!c.tanks[0]?.visible })), berthCells: berths.map((b) => b.ci), kills: rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike, monitorShown: storyMonitor?.shown() ?? 0, screenOpen: !!syntheticModal?.isOpen(), screensOpened: syntheticModal?.opened() ?? 0, brassLive: brass?.live() ?? 0, daylight: daylight?.state() ?? null,
         heartAsset: heartSprite?.userData.asset || params.heartLook,
         heartAssetState: heartSprite?.userData.assetState,
-        performance:perfSample,shieldClock:t,motionClock:runContext.time,shield:{seconds:shield.t,rack:shield.rack,cooldown:Math.max(0,shield.coolUntil-t),drops:shieldDrops,visible:shieldObj?.visible},
+        performance:perfSample,shieldClock:t,motionClock:runContext.time,shield:{seconds:shield.t,rack:shield.rack,cooldown:Math.max(0,shield.coolUntil-t),drops:shieldDrops,visible:shieldObj?.visible,active:shieldUp(),cooling:t<shield.coolUntil,rackFill:shield.rackFill,arrayReserve:arrayStation.reserve,charging:arrayStation.charging,arrayDrawn:arrayStation.drawn,arrayPad:story?.arrayPad??null,ring:arrayRing?{visible:arrayRing.visible,opacity:arrayRing.material.opacity}:null},ram:{combo:ramCombo,rams:rs.rams,best:rs.maxCombo,biomass:eco.biomass,points:score.points,float:ramFloat.state()},foes:enemies.filter(e=>e.alive&&!(e.emergeAge<1.2)).map(e=>[e.cur,e.spec.rammable?1:0]),
         cannonHeat,ammo,cannonColor:playerMesh?.userData.heatSleeve?.material.color.getHex(),
         engagement:towers.filter(tw=>missileOf(tw.key)).map(tw=>({key:tw.key,config:engagementConfig(tw),
           target:tw.missileTarget?.id??null,lock:tw.lock,aim:tw.aimErr,cooldown:tw.cooldown,
@@ -13712,7 +13673,7 @@ export function initTdTab(root) {
       },
       shieldAdvance: seconds => {for(let left=seconds;left>1e-9;){const dt=Math.min(1/60,left);left-=dt;t+=dt;stepShieldDynamics(dt,t);stepTowers(dt,t);updateBeams(dt);}updateHud();placeActors();},
       leaveRelay: () => {player.pos=player.pos.map(v=>-v);},
-      relayOffline: id => towerOffline(shield,id,t),
+      relayOffline: id => towerOffline(shield,id,t), refillArrays: () => refillArrays(),
       deployShield: () => {const was=paused;paused=false;const result=deployShieldNow();paused=was;return result;},
       fireShell: () => fire(),
       showRecordTest: () => {
@@ -13756,7 +13717,7 @@ export function initTdTab(root) {
         if (ci < 0) return false;
         openShop(ci, innerWidth / 2, innerHeight / 2); return true;
       },
-      begin: () => { endShot(); paused = false; }, setSector: (n) => { if (story) story.sectorN = n; }, mountGunship: () => { if (!storyViews) storyApi.unlock('views'); if (automated() && !onStation(gunship)) storyViews.meter(callProgress(gunshipCall), callFull(gunshipCall)); else storyViews.station(onStation(gunship), phaseLeft(gunship)); document.querySelector('#story-views [data-mount="gunship"]')?.click(); return !!pilot?.gunship; }, gunshipHold: (on) => { if (pilot) pilot.state.held = !!on; }, gunshipGun: (k) => selectGun(gunship, k, GUNSHIP_GUNS), fillGunshipCall: (n) => fillFromKill(gunshipCall, n, GUNSHIP_CALL), spawnFodder: (n, type = 'amoeba') => { if (!story) return 0; if (!story.source?.alive) storyApi.breach(gunshipFar()); for (let i = 0; i < n; i++) storyApi.spawn(type, story.source.ci, { spread: 0.8, delay: i * 0.12 }); return n; },   /* the skip panel's enemies: a breach opens on the lane outside the gate if none is live, and they rise out of it staggered (emergence only runs from a real breach) */
+      begin: () => { endShot(); paused = false; }, setSector: (n) => { if (story) story.sectorN = n; }, mountGunship: () => { if (!storyViews) storyApi.unlock('views'); if (automated() && !onStation(gunship)) storyViews.meter(callProgress(gunshipCall), callFull(gunshipCall)); else storyViews.station(onStation(gunship), phaseLeft(gunship)); document.querySelector('#story-views [data-mount="gunship"]')?.click(); return !!pilot?.gunship; }, gunshipHold: (on) => { if (pilot) pilot.state.held = !!on; }, gunshipCam: () => camera.quaternion.toArray(), gunshipGun: (k) => selectGun(gunship, k, GUNSHIP_GUNS), fillGunshipCall: (n) => fillFromKill(gunshipCall, n, GUNSHIP_CALL), spawnFodder: (n, type = 'amoeba') => { if (!story) return 0; if (!story.source?.alive) storyApi.breach(gunshipFar()); for (let i = 0; i < n; i++) storyApi.spawn(type, story.source.ci, { spread: 0.8, delay: i * 0.12 }); return n; },   /* the skip panel's enemies: a breach opens on the lane outside the gate if none is live, and they rise out of it staggered (emergence only runs from a real breach) */
       clearSector: () => {
         endShot(); 
         
@@ -13818,7 +13779,7 @@ export function initTdTab(root) {
   animate();
 
   return {
-    dispose() { pilot?.dispose(); active = false; storyBase?.dispose(); gameBreaches.dispose();runTimers.dispose(); runContext.dispose(); missilesDisposed=true; missilePool?.dispose(); setPerfOverlay(false,false); },
+    dispose() { ramFloat.dispose(); pilot?.dispose(); active = false; storyBase?.dispose(); gameBreaches.dispose();runTimers.dispose(); runContext.dispose(); missilesDisposed=true; missilePool?.dispose(); setPerfOverlay(false,false); },
     setActive(on) {
       active = on;
       if (!on) stopEngine(0.1, true); // quiet: leaving the tab is not a landing

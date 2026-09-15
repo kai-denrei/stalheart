@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "2026-09-16-sector-debrief-module-and-lab",
+  "date": "2026-09-16T03:00:00+09:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "The end-of-sector debrief is a reusable presentation module with its own Workshop lab",
+  "context": "The V1 session design (docs/superpowers/specs/2026-09-15-v1-session-design.md, section 4) brings back the old campaign debriefs, more exciting: five pages per sector, a LAST TRANSMISSION variant on loss, THE COLONY HOLDS campaign card, dismissed by hand only. src/td-tab.js is at its line budget, so the card had to live outside the controller and be judged before any hookup.",
+  "outcome": "src/fx/sector-debrief.js: createSectorDebrief(host, { play, beep, onContinue, onNewRun, onKeepHolding, reducedMotion }) returns { show(report, { page, isao }), showCampaign(campaign, { isao }), hide, isOpen, page, next, back, dispose } plus pages/skip/animating/element for labs and tests. Pages: SECURE (or LAST TRANSMISSION) with stamps, THE BREACHES (a column per breach with a CLOSED BY stamp), THE KILLS (attribution bars, belt ladder histogram, tempo sparkline in inline SVG), THE TANK (accuracy gauge, shield used and drawn at the array, hull and crate glyphs), THE COLONY (prints, biomass in/out, arsenal, records with rainbow over 1000, Isao's two lines, CONTINUE). A requestAnimationFrame timeline rolls numbers with a rate-limited tick, grows bars, draws the tempo line and thumps stamps in after the numbers land (tower_upgrade plus a small frame jolt). Click, Space or Enter completes a page then advances; arrows, NEXT and BACK move; Esc only completes; held keys never skip; Space on the last page only points at CONTINUE. Seen pages return complete; reduced motion shows everything complete. The card covers its host and stacks by the host's width through a CSS container query (styles.css, the sector debrief section, prefix sdb-). Pure formatting in src/core/debrief-format.js; samples following the report contract in src/content/debrief-samples.js (DEBRIEF_SAMPLES secure, flawless, lost, campaign; DEBRIEF_SAMPLE_ISAO). The lab is labs.html#debrief (src/labs/debrief-tab.js): sample switch, replay, full/1280/400 px host width, sound and motion toggles, deep links ?sample= ?width= ?sound=0 ?still=1.",
+  "alternatives": [
+    "Extend the old .dbf-* after-action board inside td-tab.js: rejected, the controller is at its line budget and the board is not reusable.",
+    "Viewport media queries for the phone layout: rejected for a container query, so a 400 px host stacks on a wide screen and the lab's width toggle is honest.",
+    "Auto-advance or a timer to CONTINUE: rejected by the design; the card is dismissed by hand only."
+  ],
+  "evidence": [
+    "node test/sector-debrief-samples.mjs: every sample keeps the contract's keys at every level and adds up (sources, tower kinds, belts, tempo bins, forfeits); formatting helpers, page labels and the tempo path.",
+    "npm test and npm run check green.",
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --debrief: each sample at 1280x800 and 400x860, every page skipped and advanced with real key presses, labels and page counts checked, no sideways overflow, no console errors or warnings, Esc and last-page Space do not dismiss, the buttons do; screenshots artifacts/browser/debrief-*.png."
+  ],
+  "supersedes": []
+}

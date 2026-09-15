@@ -10,6 +10,7 @@ import { CONTENT } from '../content/runtime.js';
 import { FOUNDRY_TUNE } from '../content/foundry.js';
 export { STORY_SOUNDS };
 import { ISLANDS, STRUCTURES, KIT, STAGES, withLandmarkTiers, landmarkTierMode } from '../content/base-layout.js';
+import { SHIELD_ARRAY } from '../content/shield-array.js';
 import { createStoryBase } from '../fx/story-base.js';
 import { isStoryRoute } from '../core/story-route.js';
 import { makeStoryBeats } from '../domain/story-beats.js';
@@ -83,6 +84,8 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   const bayBerths = plan.bays.length ? plan.bays.map((b) => ({ ci: b.cell, exit: b.exit, pos: b.pos, out: b.out })) : null;
   const story = stage >= 1 ? {
     sockets: new Set(), home: plan.cells.landing, socketLift: 0,
+    // the solar array's shield pad (src/content/shield-array.js): its island's centre on the unit sphere, standing once the island is; a build programme stands it later by setting `standing`
+    arrayPad: (() => { const i = ISLANDS.find((x) => x.id === SHIELD_ARRAY.island); return i ? { cell: plan.cells[i.id], pos: placer.toWorld([i.x, 0, i.z]).normalize().toArray(), standing: stage >= i.stage } : null; })(),
     beats: makeStoryBeats({ fodderEvery: STORY_FODDER.every, fodderAlive: STORY_FODDER.alive, fodderTotal: STORY_FODDER.total, fodderEmerge: STORY_FODDER, socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, rotorDelay: 2.5, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER, foundry: FOUNDRY_TUNE, startPhase: phase ?? 'landed', gateReady: () => base.gate().built }),
     // the story's Quiver fires the TALON: the game's quiver config with the lab's heavy round on top
     missiles: { quiver: { ...CONTENT.missiles.quiver, ...STORY_QUIVER.missile } },
