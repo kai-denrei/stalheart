@@ -305,7 +305,13 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 24 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 25 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### Idea: the Mortar can lay suppressing fire on a chosen area to scare and herd the swarm
+
+`2026-09-15-mortar-suppressing-fire-idea` · decision · **proposed**
+
+Owner, 2026-09-15, while brainstorming the orbital laser: the impact scare (src/domain/impact-scare.js, confirmed in play: small rounds herd the swarm) suggests a deliberate use. The Mortar today picks its own targets on the normal wave ladder.
 
 ### The lab's explosions land at the gunship, strike, tank shell and TALON impacts; FLIR thermal; the white amoeba leads the first wave
 

@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-09-15-mortar-suppressing-fire-idea",
+  "date": "2026-09-15T00:30:00+00:00",
+  "type": "decision",
+  "status": "proposed",
+  "title": "Idea: the Mortar can lay suppressing fire on a chosen area to scare and herd the swarm",
+  "context": "Owner, 2026-09-15, while brainstorming the orbital laser: the impact scare (src/domain/impact-scare.js, confirmed in play: small rounds herd the swarm) suggests a deliberate use. The Mortar today picks its own targets on the normal wave ladder.",
+  "outcome": "Proposed, logic to do: the player selects an area or bottleneck for the Mortar to aim at; the Mortar walks rounds onto it as suppressing fire, and the impact scare of each round (EXPLOSION_SCARE) does the herding, turning bodies away from the barrage and toward the exits the player wants them on. Open: how the area is chosen (a ring on the map, a marked cell, a lane), whether suppression costs the Mortar its kill fire, how long a barrage lasts, and how it reads on the HUD.",
+  "alternatives": [
+    "Leave the Mortar automatic and rely on incidental scare from its splash.",
+    "Give the suppressing role to the gunship's Bofors instead, which already herds in the seat."
+  ],
+  "evidence": [
+    "Owner, 2026-09-15: for the mortar, add a possibility to create suppressing fire, selecting an area or bottleneck to aim at, to scare and herd the enemies; the logic is to do.",
+    "2026-09-14-gunship-seat-tuning-scare-thermal-sealed-sinkholes: impacts scare nearby bodies and the owner confirmed small rounds herd the swarm."
+  ],
+  "supersedes": []
+}
