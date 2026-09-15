@@ -82,6 +82,16 @@ const kinds = (g, k) => g.log.filter((l) => l[0] === k);
   const g = fakeGame();
   run(beats, g, 8); assert.equal(beats.state().phase, 'piloting'); assert.equal(kinds(g, 'spawn').length, 0); assert.equal(kinds(g, 'tremor').length, 0);
 }
+// a growing base: the Rotor stands before the gate does, and the tremor waits for the gate, then its own delay
+{
+  let gateUp = false;
+  const beats = makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, rotorDelay: 0, tremorDelay: 1.5, faceDelays: [0, 0], gateReady: () => gateUp });
+  const g = fakeGame({ printSeconds: 1 });
+  run(beats, g, 2.5); assert.equal(beats.state().phase, 'rotor-ready');
+  run(beats, g, 12); assert.equal(beats.state().phase, 'rotor-ready', 'no tremor while the gate is unprinted'); assert.equal(kinds(g, 'tremor').length, 0); assert.equal(beats.state().gateAt, null);
+  gateUp = true; run(beats, g, 1.2); assert.equal(beats.state().phase, 'rotor-ready', 'the tremor keeps its delay after the gate stands'); assert.ok(beats.state().gateAt > 14);
+  run(beats, g, 0.6); assert.equal(beats.state().phase, 'tremor'); assert.deepEqual(kinds(g, 'tremor'), [['tremor', 4300]]);
+}
 // an order that fails is retried next tick, not forgotten
 {
   const beats2 = makeStoryBeats({ socket: 7, rotorDelay: 0, key: 'rotor' });
