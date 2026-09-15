@@ -56,6 +56,24 @@ Evidence:
 - Observed and not fixed: with the hull parked on the pad, a live bubble never drops while the reserve lasts (the active meter is fed first, as the brief asked); the reserve is the limit. The combo is not asserted across a shove because the wave's own fodder is rammed on the way.
 - Legibility iteration: the first ram capture showed '+N kg ×M' rising through the centred RAM ×N counter and the streak callouts; the labels now float to the hull's right, step out along a chain and are clamped on screen. The re-run of --shield-story passed with the new placement (artifacts/browser/shield-array-ram.png); the final on-screen clamp was checked by npm test and npm run check only.
 
+## 2026-09-16 — The laser lab's browser step aims through the heading-up lens and stands on a wall cell until it burns
+
+change · resolved · 2026-09-16-laser-lab-step-retimed
+
+node scripts/browser-test.mjs --laser failed after laser-lab-burn with 'the beam cut the wall (0)', also on a tree without the 2026-09-16 work. The suspected cause was the 2026-09-15 beam inertia (slew 10, accel 5) outpacing the step's timing.
+
+b7677c2f. The inertia was not the cause: the step pins slew=40&accel=0. The aim loop was. It mapped inset up to +z and left to +x, which only holds for a north-up lens, but frameSat has set sat.up = viewForward (heading-up) since the 2026-09-15 view change, so each aim drove the contact away from its target. With the old mapping the contact ended 'at the gate' 217 m from the nearest wall cell, and walking toward that cell took it to 413 m and spent the pass's energy. The lab hook gains inset(point), which projects a pole-origin point through the satellite camera, and state().wallPoints, the standing wall cells. The step aims with the projection, walks onto the nearest wall cell and polls state() until the cut is counted, within LASER_BURN.wall + 2.5 s. The sinkhole walk uses the same aim. No gameplay numbers changed.
+
+Alternatives: Re-time the sideways nudges for the new view; rejected because the nudges were open-loop in axes that no longer match the world.; Flip the fixed axis mapping; rejected because a heading-up lens rotates with the view, so no fixed mapping holds.
+
+Evidence:
+
+- Run 1 (closed-loop wall step, old aim mapping): nearest wall 217.2 m from the contact at the gate, 413.4 m after the walk, 0 s energy, 0 walls.
+- Run 2 (projected aim): at the gate with 20 burned and 8.09 s of energy; wall cell 9.5 m off, reached to 2.4 m, 1 cut after 0.4 s held; PASS laser-lab-load, laser-lab-overhead, laser-lab-burn, laser-lab-sealed.
+- npm test: 107 test programs passed; npm run check passed.
+
+Supersedes: 2026-09-16-laser-lab-step-fails-before-sol82
+
 ## 2026-09-16 — The gunship creeps toward the busiest breach and circles it; the seat holds its world aim while the hull turns
 
 decision · accepted · 2026-09-16-gunship-creeps-toward-the-breaches
