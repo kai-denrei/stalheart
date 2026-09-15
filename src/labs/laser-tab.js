@@ -95,6 +95,8 @@ export function initLaserTab(root) {
   let wallMeshes = [], wallCells = [], structs = [], sentries = [];
   let bodies = [], bursts = [], trench = null, trenchMesh = null;
   let ready = false, held = false, burningWas = false, contactTimer = 0, sealed = false, sinkOpened = false;
+  /* declared with the rest of the state, not with the panel below, because paintHud reads them */
+  let flashT = 0, flashMsg = '';
   const errors = [];
   const run = { bodies: 0, walls: 0, towers: 0, heart: 'INTACT' };
   const st = makeLaser(orbit(), beamCfg());
@@ -125,6 +127,7 @@ export function initLaserTab(root) {
     + '<span class="laser-bar"><i id="laser-energy"></i></span>'
     + '<span id="laser-read">—</span>'
     + '<span id="laser-lost" hidden>COLONY LOST</span>'
+    + '<span id="laser-flash"></span>'
     + '</div>'
     + '<div class="laser-keys"><button id="laser-pass" type="button">PASS NOW</button>'
     + '<button id="laser-reset" type="button">RESET</button>'
@@ -132,6 +135,7 @@ export function initLaserTab(root) {
   const elState = hud.querySelector('#laser-state'), elWindow = hud.querySelector('#laser-window');
   const elEnergy = hud.querySelector('#laser-energy'), elRead = hud.querySelector('#laser-read');
   const elLost = hud.querySelector('#laser-lost'), elEnergyLabel = hud.querySelector('#laser-energy-label');
+  const elFlash = hud.querySelector('#laser-flash');
   const style = document.createElement('style');
   /* the canvas fills the tab the way every other lab's does (styles.css #story-app), injected so the lab owns it */
   style.textContent = '#laser-app{position:absolute;inset:0}'
@@ -144,7 +148,14 @@ export function initLaserTab(root) {
     + '#laser-hud .laser-bar i.hot{background:#8e8983}'
     + '#laser-hud #laser-lost{color:#fff;border:1px solid #fff;padding:1px 6px}'
     + '#laser-hud .laser-keys{margin-top:8px;display:flex;gap:10px;align-items:center;pointer-events:auto}'
-    + '#laser-hud button{font:inherit;color:inherit;background:#0b0f12;border:1px solid #6d7b85;padding:3px 10px;cursor:pointer}';
+    + '#laser-hud button{font:inherit;color:inherit;background:#0b0f12;border:1px solid #6d7b85;padding:3px 10px;cursor:pointer}'
+    + '#laser-hud #laser-flash{color:#fff}'
+    /* the copy button lives on the LEFT, under the deep link: the lil-gui panel owns the right edge (styles.css
+       .tab .lil-gui.root) and a button under it is a button that cannot be clicked */
+    + '#laser-copy{position:absolute;left:12px;bottom:40px;z-index:7;width:40px;height:40px;padding:0;'
+    + 'font:600 18px ui-monospace,Menlo,monospace;line-height:1;color:#dfe8ee;background:#0b0f12;'
+    + 'border:1px solid #6d7b85;border-radius:8px;cursor:pointer}'
+    + '#laser-copy:active{transform:translateY(1px)}';
   root.appendChild(style);
 
   function paintHud() {
@@ -161,6 +172,8 @@ export function initLaserTab(root) {
       + ` · stalheart ${run.heart} · ${st.energy.toFixed(1)} s left`;
     if (elRead.textContent !== read) elRead.textContent = read;
     elLost.hidden = run.heart !== 'LOST';
+    const note = flashT > 0 ? flashMsg : '';
+    if (elFlash.textContent !== note) elFlash.textContent = note;
   }
 
   /* --- the trench --------------------------------------------------------- */
@@ -414,12 +427,20 @@ export function initLaserTab(root) {
     return hit;
   }
 
+  // the ONE way the aim is set, in inset-normalised 0..1: the pointer goes through it and so does the test hook's
+  // steer(), so the harness picks with the same far camera on the same inset rect a hand does
+  function steerTo(nx, ny) {
+    steerN = [Math.max(0, Math.min(1, nx)), Math.max(0, Math.min(1, ny))];
+    steering = true;
+  }
+
   function onPointer(e) {
     const r = insetRect(), box = renderer.domElement.getBoundingClientRect();
     const x = e.clientX - box.left, y = e.clientY - box.top;
-    steering = x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
-    if (!steering) return;
-    steerN = [(x - r.x) / r.w, (y - r.y) / r.h];
+    const inside = x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+    steering = inside;
+    if (!inside) return;
+    steerTo((x - r.x) / r.w, (y - r.y) / r.h);
     if (e.type === 'pointerdown') held = true;
     e.preventDefault();
   }
@@ -591,6 +612,7 @@ export function initLaserTab(root) {
     frameSat(anchor);
     frameGround(anchor);
     paintHud();
+    if (flashT > 0) flashT = Math.max(0, flashT - dt);
   }
 
   function passNow() {
@@ -620,11 +642,133 @@ export function initLaserTab(root) {
       if (trenchMesh) { scene.remove(trenchMesh); trenchMesh.geometry.dispose(); trenchMesh.material.dispose(); }
       for (const b of bodies) if (b.obj) { scene.remove(b.obj); b.obj.geometry.dispose(); b.obj.material.dispose(); }
       for (const b of bursts) { scene.remove(b); b.geometry.dispose(); b.material.dispose(); }
+      gui?.destroy();
+      if (window.__stalheartLaserTest === hooks) delete window.__stalheartLaserTest;
       style.remove();
       renderer.dispose();
       renderer.domElement.remove();
     },
   };
+
+  /* --- the panel ------------------------------------------------------------ */
+  const gui = new GUI({ title: 'ORBITAL LASER', container: root });
+  const gp = gui.addFolder('the pass');
+  gp.add(P, 'period', 20, 400, 1).name('period (s)');
+  gp.add(P, 'overhead', 4, 90, 1).name('overhead (s)');
+  gp.add(P, 'energy', 1, 40, 0.5).name('energy (s of burn)');
+  gp.open();
+  const gb = gui.addFolder('the beam');
+  gb.add(P, 'radius', 1, 30, 0.5).name('footprint (m)');
+  gb.add(P, 'slew', 4, 200, 1).name('slew (m/s)');
+  gb.open();
+  /* createOrbitalLaser bakes the preset into its beam material once, at build, and exposes no setter: these four
+     steer COPY PRESET and the deep link, and the column reads them back on the next load of the link */
+  const gw = gui.addFolder('the beam look (preset export)');
+  gw.add(P, 'coreWidth', 0.05, 3, 0.05).name('core width (m)');
+  gw.add(P, 'glowWidth', 0.5, 20, 0.5).name('glow width (m)');
+  gw.add(P, 'glowIntensity', 0, 12, 0.1).name('glow intensity');
+  gw.add(P, 'noiseAmount', 0, 1, 0.01).name('interference');
+  gw.open();
+  const gv = gui.addFolder('the view');
+  gv.add(P, 'altitude', 0.2, 4, 0.05).name('altitude (radii)');
+  gv.add(P, 'fov', 4, 60, 0.5).name('satellite fov');
+  gv.add(P, 'inset', 0.15, 0.6, 0.01).name('inset (share of width)');
+  gv.add(P, 'groundBack', 6, 120, 1).name('ground camera back (m)');
+  gv.add(P, 'groundUp', 1, 60, 1).name('ground camera up (m)');
+  gv.open();
+  const gk = gui.addFolder('seconds to destroy');
+  gk.add(P, 'burnSoft', 0, 4, 0.05).name('soft body');
+  gk.add(P, 'burnHard', 0, 6, 0.05).name('hard body');
+  gk.add(P, 'burnWall', 0, 6, 0.05).name('wall cell');
+  gk.add(P, 'burnTower', 0, 8, 0.05).name('tower');
+  gk.add(P, 'burnSeal', 0, 8, 0.05).name('sinkhole');
+  gk.add(P, 'burnHeart', 0, 20, 0.1).name('stalheart');
+  gk.open();
+  /* RESET reloads rather than rebuilding: the base, the sinkhole, the rubble, the bodies and the trail all hang off
+     one build() and a second one would have to unpick every handle and could double the frame loop. A reload cannot. */
+  const actions = {
+    passNow,
+    reset() { location.reload(); },
+    copyPreset() { copyPreset(); },
+  };
+  const ga = gui.addFolder('actions');
+  ga.add(actions, 'passNow').name('PASS NOW');
+  ga.add(actions, 'reset').name('RESET');
+  ga.add(actions, 'copyPreset').name('COPY PRESET');
+  ga.open();
+
+  function flash(msg) { flashMsg = msg; flashT = 2; console.log(`LASERLAB ${msg}`); }
+
+  function presetJson() {
+    return JSON.stringify({
+      LASER_ORBIT: { period: P.period, overhead: P.overhead },
+      LASER_BEAM: { energy: P.energy, radius: P.radius, slew: P.slew },
+      LASER_BURN: burnCfg(),
+      LASER_VIEW: { altitude: P.altitude, fov: P.fov, inset: P.inset, groundBack: P.groundBack, groundUp: P.groundUp },
+      LASER_PRESET: { ...LASER_PRESET, coreWidth: P.coreWidth, glowWidth: P.glowWidth, glowIntensity: P.glowIntensity, noiseAmount: P.noiseAmount },
+    }, null, 2);
+  }
+
+  function copyPreset() {
+    const json = presetJson();
+    const ok = () => { flash('preset copied to clipboard'); console.log('LASERLAB preset:\n' + json); };
+    const fail = (why) => {
+      /* the clipboard refuses on an unfocused document; the textarea route still works, and the console always has it */
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = json; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        const done = document.execCommand('copy');
+        ta.remove();
+        flash(done ? 'preset copied (fallback)' : 'copy refused — see console');
+      } catch { flash('copy refused — see console'); }
+      console.log(`LASERLAB preset (clipboard ${why}):\n` + json);
+    };
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(json).then(ok, () => fail('refused'));
+    else fail('unavailable');
+  }
+
+  const copyBtn = root.querySelector('#laser-copy');
+  if (copyBtn) copyBtn.onclick = copyPreset;
+  wireDeepLink(root.querySelector('#laser-link'), () => deepLink({
+    base: location.origin + location.pathname, hash: 'laser', params: P, defaults: P0, carry: location.search,
+  }), { label: 'LASER', flash });
+
+  /* --- the harness's hands --------------------------------------------------- */
+  // state() is the whole lab in one object: the pass, the beam, the readout counters, what is still standing and the
+  // load errors, so a browser step that fails can say WHICH thing never arrived instead of only "no burn".
+  const hooks = {
+    state: () => ({
+      ready,
+      phase: st.phase,
+      left: +st.left.toFixed(2),
+      energy: +st.energy.toFixed(2),
+      burning: st.burning,
+      /* pole-origin metres, the frame the base and the trench are drawn in — not the planet-centred one the domain holds */
+      contact: st.contact ? fromCentre(st.contact).toArray().map((v) => +v.toFixed(2)) : null,
+      bodies: run.bodies,
+      walls: run.walls,
+      towers: run.towers,
+      heart: run.heart,
+      sealed,
+      lost: run.heart === 'LOST',
+      alive: bodies.filter((b) => b.alive).length,
+      wallsStanding: wallCells.filter((w) => !w.gone).length,
+      structsStanding: structs.filter((s) => !s.gone).length,
+      sentries: sentries.length,
+      trail: laser ? laser.trail.count : 0,
+      heated: thermal ? thermal.heated() : 0,
+      explosions: explosions ? explosions.state() : null,
+      flash: flashT > 0 ? flashMsg : null,
+      errors: errors.slice(),
+    }),
+    passNow,
+    steer: (nx, ny) => steerTo(nx, ny),
+    hold: (on) => { held = !!on; },
+    reset: () => { location.reload(); },
+    dispose: () => api.dispose(),
+  };
+  window.__stalheartLaserTest = hooks;
 
   hud.querySelector('#laser-pass').onclick = passNow;
   hud.querySelector('#laser-reset').onclick = () => { location.reload(); };
