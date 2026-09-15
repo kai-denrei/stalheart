@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "2026-09-16-gunship-creeps-toward-the-breaches",
+  "date": "2026-09-16T06:00:00+00:00",
+  "type": "decision",
+  "status": "accepted",
+  "title": "The gunship creeps toward the busiest breach and circles it; the seat holds its world aim while the hull turns",
+  "context": "Owner note, 2026-09-15: the gunship feels too static, it should move slowly towards the breaches. V1 session design section 3 (docs/superpowers/specs/2026-09-15-v1-session-design.md). Before this the platform drifted along a straight track latched once per pass toward gunshipLane(), from passProgress (2026-09-15-gunship-track-latched-and-seat-lens-reset).",
+  "outcome": "src/domain/gunship-track.js (pure) keeps a ground point on the unit sphere and a heading. Each frame on station td-tab builds the target list from the live spawn points with the enemies within GUNSHIP_TRACK.nearCells (6) of each; pickTarget takes the most enemies (ties: nearest to the ship; none: over the base) and keeps its pick until another breach leads by switchMargin (3). stepTrack moves the point with inertia: velocity changes at most accelCells 0.2 cells/s² toward the velocity it wants, top speed speedCells 1.2 cells/s (12 m/s), braking on the stepped curve a*dt*(sqrt(1/4 + 2e/(a*dt^2)) - 1/2) onto a loiter circle of loiterCells 8 round the target, never through it, then circling it anticlockwise from above at loiterSpeedCells 0.6 (the left pylon turn). The heading follows the travel at yawRateDeg 8. Off station the track parks at rest where it is and the next pass eases out from there. ride() in src/fx/gunship-optic.js places the platform altitudeCells above the track's point with +Z along its heading; passProgress remains only for the host's progress/HUD. GUNSHIP_PLATFORM.trackShare and driftCells are retired. The seat (src/sentry-pilot.js holdAim) subtracts the platform's heading turn about its up (headingTurn) from its relative yaw every frame, so the view stays where the gunner left it. Crossing time from over the base to a breach 45 cells out: about 35 s (test/gunship-track.mjs asserts 30..60 s).",
+  "alternatives": [
+    "Ground-stabilised optic (keep the reticle on the same ground point as the ship moves, like a real sensor ball): not chosen; the seat opens looking almost straight down (pitch -1.45) and a stabilised aim that passes under the eye flips yaw by 180 degrees, rolling the image, which is the cut this work removes. With world-referenced yaw the ground slides slowly under a still reticle instead.",
+    "Point-mass aircraft that only flies along its heading: rejected because a capped yaw rate lets it overshoot the loiter circle; the velocity-with-inertia model guarantees no overshoot and lets the hull heading lag the travel.",
+    "Keep the latched straight track and only lengthen the drift: does not go to the breaches, and does not follow a second breach."
+  ],
+  "evidence": [
+    "test/gunship-track.mjs: toward the target, never through the loiter circle at dt 1/120..0.1, speed and acceleration caps, braking onto the circle, holds the radius and circles anticlockwise at the loiter speed, yaw rate cap, a mid-flight target switch with velocity change within accel*dt and no position or heading jump, home with no breach, pick ties and margin, loads, headingTurn.",
+    "npm test (108 programs) and npm run check green; src/td-tab.js stays at 13858 lines (net 0).",
+    "node scripts/browser-test.mjs --gunship (through scripts/browser-lock.sh) passes with a new step after gunship-skip-enemies: over a 9 s window with the gunner holding still the ground point closed from 41.99 to 30.07 cells from the live breach at 1.20 cells/s while the hull turned 9.07 degrees; the seat camera's largest frame-to-frame rotation was 0.017 degrees (limit 0.25) over 541 frames, 8.2 degrees in all, which is the planet's curvature under 11.9 cells of travel. Screenshots artifacts/browser/gunship-track-before.png and gunship-track-after.png: the ground slides under a still reticle, the impact readout moves from N 79.26 to N 70.20, no cut.",
+    "node scripts/browser-test.mjs --defense (through the lock) passes: the called gunship pass, towers firing under the seat, the expedition part carried and dropped."
+  ],
+  "supersedes": []
+}
