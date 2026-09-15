@@ -365,7 +365,7 @@ export function initTdTab(root) {
     breakCells: (cells) => { if (cells.filter((ci) => breachWallCell(ci)).length) rebuildAfterBreach(); }, burnHeart: () => heartHit(heartHP), burnTank: (p) => playerHit('laser', p),
     explode: (use, p) => explode(use, p), brief: (id) => showBrief(id), loop: (key) => sfx.loop(key), views: () => storyViews, canvas: () => renderer.domElement, fov: () => camera.fov,
     paused: (v) => { const was = paused; if (v !== undefined) paused = v; return was; },
-    enter: () => { keys.left = keys.right = keys.fast = keys.slow = keys.laser = false; cruise = false; throttle = 0; endShot(); camera.fov = 52; camera.updateProjectionMatrix(); snapCamera(); },
+    enter: (fov) => { keys.left = keys.right = keys.fast = keys.slow = keys.laser = false; cruise = false; throttle = 0; endShot(); camera.fov = fov; camera.updateProjectionMatrix(); snapCamera(); },
     leave: () => { camera.fov = 68; camera.updateProjectionMatrix(); setView('third'); snapCamera(); },   /* the tank's own lens back (2026-09-15-gunship-track-latched-and-seat-lens-reset) */
   });
   sfx.arm();

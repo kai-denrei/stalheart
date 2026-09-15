@@ -22,6 +22,7 @@ export function createLaserSeat(root, host) {
   const hud = createInsetHud(container);
   const sphere = new THREE.Sphere(new THREE.Vector3(), 1), origin = new THREE.Vector3();
   const v = new THREE.Vector3(), p = new THREE.Vector3(), fw = new THREE.Vector3(), up = new THREE.Vector3(), eye = new THREE.Vector3(), m = new THREE.Matrix4();
+  const look = new THREE.Vector3(), right = new THREE.Vector3(), camUp = new THREE.Vector3(), aimAt = new THREE.Vector3();
   root.classList.add('laser-seat');
 
   const panel = document.createElement('section');
@@ -112,14 +113,24 @@ export function createLaserSeat(root, host) {
     return { dir, pad: { x: padVel.x, z: padVel.z } };
   }
 
+  // THE GROUND VIEW (the lab's frameGround): groundBack metres back along the player's forward and groundUp metres up
+  // from the contact. The lens covers the left of a landscape view (the top of a portrait one), so the camera looks a
+  // little off the contact and the contact lands in the middle of what the lens leaves open instead of against its rim.
   function pose(goal) {
     const a = arsenal.anchor(), k = 1 / arsenal.metres();
     p.fromArray(a);
     up.copy(p).normalize();
     arsenal.forwardAt(a, fw);
     eye.copy(p).addScaledVector(fw, -LASER_VIEW.groundBack * k).addScaledVector(up, LASER_VIEW.groundUp * k);
+    const W = canvas.clientWidth || innerWidth, H = canvas.clientHeight || innerHeight, r = rect(), portrait = H > W;
+    const ndcX = portrait ? 0 : (r.x + r.w + W) / W - 1, ndcY = portrait ? 1 - (r.y + r.h + H) / H : 0;
+    const tanV = Math.tan((LASER_GAME.groundFov * Math.PI) / 360), tanH = tanV * (W / H), D = eye.distanceTo(p);
+    look.subVectors(p, eye).normalize();
+    right.crossVectors(look, up).normalize();
+    camUp.crossVectors(right, look);
+    aimAt.copy(p).addScaledVector(right, -ndcX * tanH * D).addScaledVector(camUp, -ndcY * tanV * D);
     goal.pos.copy(eye);
-    goal.quat.setFromRotationMatrix(m.lookAt(eye, p, up));
+    goal.quat.setFromRotationMatrix(m.lookAt(eye, aimAt, up));
     return true;
   }
 

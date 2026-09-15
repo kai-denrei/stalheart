@@ -8,6 +8,7 @@
 import { createLaserArsenal } from './laser-arsenal.js';
 import { createLaserSeat } from './laser-seat.js';
 import { createSol82Briefing } from './sol82-briefing.js';
+import { LASER_GAME } from '../content/orbital-laser.js';
 
 // host: everything createLaserArsenal takes, plus views() (the story strip or null), canvas() (the game canvas),
 // mobile, paused(value?) (sets the game's pause when given, returns what it was), enter() and leave() (the game's
@@ -22,7 +23,7 @@ export function createLaserStation(root, scene, host) {
     const canvas = host.canvas();
     seat = createLaserSeat(root, { arsenal, canvas, container: canvas.parentElement ?? root, mobile: host.mobile, leave: () => leave(), pause: () => host.paused(!host.paused()) });
     arsenal.seat(true);
-    host.enter?.();
+    host.enter?.(LASER_GAME.groundFov);
     host.views()?.active('laser');
     return true;
   }
@@ -50,7 +51,7 @@ export function createLaserStation(root, scene, host) {
   root.addEventListener('click', (e) => {
     const b = e.target.closest?.('#story-views button');
     if (!b) return;
-    if (b.dataset.mount === 'laser') { e.preventDefault(); e.stopImmediatePropagation(); enter(); return; }
+    if (b.dataset.view === 'laser') { e.preventDefault(); e.stopImmediatePropagation(); enter(); return; }
     leave();
   }, { capture: true, signal: abort.signal });
 
@@ -67,6 +68,10 @@ export function createLaserStation(root, scene, host) {
       return [e.pos[0] + d[0] * k, e.pos[1] + d[1] * k, e.pos[2] + d[2] * k];
     }
     if (p === 'rock') { const ci = arsenal.nearestRock(); return ci >= 0 ? host.centers()[ci] : null; }
+    if (p === 'wall') {
+      const a = arsenal.anchor(), d2 = (w) => (w.pos[0] - a[0]) ** 2 + (w.pos[1] - a[1]) ** 2 + (w.pos[2] - a[2]) ** 2;
+      return host.walls().sort((x, y) => d2(x) - d2(y))[0]?.pos ?? null;
+    }
     if (Number.isInteger(p)) return host.centers()[p] ?? null;
     return Array.isArray(p) ? p : null;
   };

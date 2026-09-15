@@ -7,9 +7,9 @@ export function createStoryViews(root, on) {
   let current = 'tank', ship = null;
   const active = (name) => { current = name; for (const b of nav.querySelectorAll('button')) b.classList.toggle('active', (b.dataset.mount ?? b.dataset.view) === name); };
   function mounts(list) {
-    nav.innerHTML = [`<button type="button" data-view="tank">TANK</button>`, ...list.map((m) => `<button type="button" data-mount="${m.key}">${m.label.toUpperCase()}</button>`), `<button type="button" data-mount="gunship" class="gunship" disabled>GUNSHIP</button>`, `<button type="button" data-mount="laser" class="laser" hidden disabled>SOL-82</button>`, `<button type="button" data-view="map">MAP</button>`].join('');
+    nav.innerHTML = [`<button type="button" data-view="tank">TANK</button>`, ...list.map((m) => `<button type="button" data-mount="${m.key}">${m.label.toUpperCase()}</button>`), `<button type="button" data-mount="gunship" class="gunship" disabled>GUNSHIP</button>`, `<button type="button" data-view="laser" class="laser" hidden disabled>SOL-82</button>`, `<button type="button" data-view="map">MAP</button>`].join('');
     for (const b of nav.querySelectorAll('button')) b.addEventListener('click', () => { if (b.dataset.mount) on.mount?.(b.dataset.mount); else on[b.dataset.view]?.(); active(b.dataset.mount ?? b.dataset.view); });
-    ship = nav.querySelector('[data-mount="gunship"]'); laser = nav.querySelector('[data-mount="laser"]'); active(current); if (laserLast) sol82(laserLast);
+    ship = nav.querySelector('[data-mount="gunship"]'); laser = nav.querySelector('[data-view="laser"]'); active(current); if (laserLast) sol82(laserLast);
   }
   // SOL-82 (src/domain/orbital-laser.js laserStrip): hidden offline, counting down to the pass, lit while it is overhead, amber when its energy runs low
   let laser = null, laserLast = null;

@@ -181,7 +181,7 @@ assert.equal(LASER_PRESET.glowWidth, 10);
 /* --- SOL-82 in the game: the footprint test and the strip's words ------------ */
 {
   assert.deepEqual({ ...LASER_GAME, reach: { ...LASER_GAME.reach } }, {
-    online: false, range: 640, lowEnergy: 0.25, keyLead: 30, glide: 120, glideEase: 0.22,
+    online: false, range: 640, lowEnergy: 0.25, keyLead: 30, glide: 120, glideEase: 0.22, groundFov: 52,
     reach: { soft: 0.5, hard: 1, wall: 2, rock: 5, tower: 4, seal: 5, tank: 2, heart: 8 },
   });
   for (const kind of Object.keys(LASER_BURN)) assert.ok(Number.isFinite(LASER_GAME.reach[kind]), `every burnable kind has a reach (${kind})`);

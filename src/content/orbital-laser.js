@@ -38,6 +38,8 @@ export const LASER_GAME = Object.freeze({
   keyLead: 30,
   glide: 120,
   glideEase: 0.22,
+  /* the seat's ground camera lens in degrees, the lab's ground camera */
+  groundFov: 52,
   reach: Object.freeze({ soft: 0.5, hard: 1, wall: 2, rock: 5, tower: 4, seal: 5, tank: 2, heart: 8 }),
 });
 

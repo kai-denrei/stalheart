@@ -601,7 +601,7 @@ try{
  // seat (the scope over the ground view), the beam held on a breach seals it and burns what rises out of it, and leaving
  // gives the tank its own lens back
  const laser=()=>evaluate('window.__stalheartTest.state().laser');
- const strip=()=>evaluate('(b=>b?{text:b.textContent,hidden:b.hidden,disabled:b.disabled,live:b.classList.contains("live")}:null)(document.querySelector("#story-views [data-mount=laser]"))');
+ const strip=()=>evaluate('(b=>b?{text:b.textContent,hidden:b.hidden,disabled:b.disabled,live:b.classList.contains("live")}:null)(document.querySelector("#story-views [data-view=laser]"))');
  await go('laser-game-load','index.html?sw=0&acceptance=1&cine=0&world=story&stage=6&phase=expedition&laser=online#td');
  await until('!!window.__stalheartTest && (window.__stalheartTest.state().storyLod||[]).some(l=>l.id==="stalheart")',90000);await delay(2500);
  {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.automated,true,'past the handover');
@@ -612,9 +612,9 @@ try{
  // the pass, and the seat from the strip (the first seat plays SOL-82's briefing: skipped)
  await evaluate('window.__stalheartTest.laserPassNow()');
  await until('window.__stalheartTest.state().laser.overhead',5000);
- await until('document.querySelector("#story-views [data-mount=laser]")?.textContent==="SOL-82 OVERHEAD"',5000).catch(async()=>assert.fail(`the strip lights through the pass (${JSON.stringify(await strip())})`));
+ await until('document.querySelector("#story-views [data-view=laser]")?.textContent==="SOL-82 OVERHEAD"',5000).catch(async()=>assert.fail(`the strip lights through the pass (${JSON.stringify(await strip())})`));
  {const b=await strip();assert(b.live&&!b.disabled,'the button opens');}
- await evaluate('document.querySelector("#story-views [data-mount=laser]").click()');
+ await evaluate('document.querySelector("#story-views [data-view=laser]").click()');
  await until('!!document.querySelector("#sol82-briefing [data-skip]") || window.__stalheartTest.state().laser.seated',5000);
  await evaluate('document.querySelector("#sol82-briefing [data-skip]")?.click()');
  await until('window.__stalheartTest.state().laser.seated',15000);
@@ -652,6 +652,23 @@ try{
  {const s=await laser();assert.equal(s.seated,false,'TANK leaves the seat');assert.equal(s.fov,68,'the tank camera gets its own lens back');
   assert(!await evaluate('!!document.querySelector("#laser-seat")'),'the seat panel is gone');}
  current='laser-game-tank';await finish();
+ // FRIENDLY FIRE: the next pass laid straight on one of our own kit walls burns it, and the seat says so while it burns;
+ // Esc leaves this time
+ await until('window.__stalheartTest.state().laser.phase==="away"',30000);
+ await evaluate('window.__stalheartTest.laserPassNow()');
+ await until('document.querySelector("#story-views [data-view=laser]")?.textContent==="SOL-82 OVERHEAD"',5000);
+ await evaluate('document.querySelector("#story-views [data-view=laser]").click()');
+ await until('window.__stalheartTest.state().laser.seated',5000);
+ await evaluate('window.__stalheartTest.laserSteer("wall")');await delay(400);   // a fresh pass: the first aim snaps
+ await evaluate('window.__stalheartTest.laserHold(true)');
+ {const seen=await evaluate(`new Promise(done=>{const t0=performance.now();(function look(){const s=window.__stalheartTest.state().laser,w=document.querySelector('#laser-seat [data-warn]');if(s.under.wall>0&&w&&!w.hidden)return done({under:s.under,warn:w.textContent});if(performance.now()-t0>6000)return done({under:s.under,warn:w?.hidden?null:w?.textContent});requestAnimationFrame(look);})();})`);
+  assert(/OURS UNDER THE BEAM/.test(seen.warn||''),`the seat warns while our wall is under the beam (${JSON.stringify(seen)})`);}
+ current='laser-game-friendly';await finish();
+ await until('window.__stalheartTest.state().laser.burned.walls>0',8000).catch(async()=>assert.fail(`the beam did not burn our wall (${JSON.stringify(await laser())})`));
+ await evaluate('window.__stalheartTest.laserHold(false)');await evaluate('window.__stalheartTest.laserSteer(null)');
+ {const s=await laser();console.log(`  laser-game: friendly fire ${s.burned.walls} wall segments, ${s.burned.towers} towers, heart ${s.burned.heart}, tank ${s.burned.tank}`);}
+ await evaluate('window.dispatchEvent(new KeyboardEvent("keydown",{code:"Escape",key:"Escape",bubbles:true}))');await delay(600);
+ {const s=await laser();assert.equal(s.seated,false,'Esc leaves the seat');assert.equal(s.fov,68,'and the tank has its lens back');}
  } else if(args.includes('--laser')) {
  // THE ORBITAL LASER LAB. Open it, wait for the real base and for the sinkhole's crater to actually open, jump the
  // clock to a pass, then hold the beam and drag it up the trench through the test hook — the pointer only steers
