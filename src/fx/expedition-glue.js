@@ -102,7 +102,8 @@ export function createExpeditionGlue(h) {
       return true;
     },
     // an open cell to stand the tank on for a close look: within reach of the site (or of home), never the structure's own cell
-    standCell(kind, id = null) {
+    // `open(ci)` is the controller's word for floor the tank may stand on: a rock or wall cell renders raised, and a camera on it is inside the rock
+    standCell(kind, id = null, open = () => true) {
       const centers = h.centers(), site = kind === 'site' ? cellOf(id) : null;
       if (kind === 'site' && !site) return -1;
       const p = site ? sitePose(id) : trophyPose((STORY_EXPEDITIONS.sites.length - 1) / 2);
@@ -110,7 +111,7 @@ export function createExpeditionGlue(h) {
       const reachAt = site ? centers[site.cell] : homeAt(), reachR = h.cellSide * (site ? site.clear / 10 + 1 : STORY_EXPEDITIONS.deliverCells);
       let best = -1, bestD = Infinity;
       for (let i = 0; i < centers.length; i++) {
-        if (i === avoid) continue;
+        if (i === avoid || !open(i)) continue;
         const d = chord(centers[i], [target.x, target.y, target.z]);
         if (d < bestD && chord(centers[i], reachAt) < reachR * 0.9) { best = i; bestD = d; }
       }

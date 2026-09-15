@@ -106,6 +106,7 @@ function makeHull() {
   const stand = glue.standCell('site', 'rocket-a');
   assert.ok(stand >= 0 && stand !== 1, `a stand cell beside the site, not the lander's own (${stand})`);
   assert.equal(glue.standCell('site', 'nowhere'), -1, 'no stand for an unknown site');
+  assert.equal(glue.standCell('site', 'rocket-a', (ci) => ci !== stand), -1, 'a blocked cell is never a stand (rock renders raised: the camera would be inside it)');
   assert.ok(glue.standCell('home') >= 0 && glue.standCell('home') !== 0, 'a stand cell at home, not the foundry\'s own');
   glue.begin();
   assert.ok(spawned.includes('rocket-a') && spawned.includes('rocket-b'), 'the first sites open with their nests');
