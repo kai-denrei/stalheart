@@ -35,6 +35,7 @@ const routes = {
   sentry: () => import('./sentry-tab.js').then(m => m.initSentryTab),
   portal: () => import('./portal-tab.js').then(m => m.initPortalTab),
   sim: () => import('./sim-tab.js').then(m => m.initSimTab),
+  laser: () => import('./labs/laser-tab.js').then(m => m.initLaserTab),
 };
 const name = location.hash.slice(1) || (workshop ? 'units' : 'td');
 // the retired roadmap tab: the workshop opens with the docs overlay on the roadmap
