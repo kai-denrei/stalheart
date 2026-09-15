@@ -812,15 +812,17 @@ void main(){
   addEventListener('keyup', onKeyUp);
   addEventListener('blur', onBlur);
 
-  function padContact(east, north, seconds) {
-    if (held || st.burning || (!east && !north)) return;
-    const len = Math.hypot(east, north) || 1;
+  /* dx east, dz north. NOT named `north`: that is the lab's north direction vector, and shadowing it made
+     north.clone() throw on the first key frame, which aborted step() before render() and froze the scope */
+  function padContact(dx, dz, seconds) {
+    if (held || st.burning || (!dx && !dz)) return;
+    const len = Math.hypot(dx, dz) || 1;
     const from = st.contact ? fromCentre(st.contact) : trenchPoint(queueTail());
     const n = normalOf(from);
     const northT = north.clone().addScaledVector(n, -north.dot(n)).normalize();
     const eastT = new THREE.Vector3().crossVectors(northT, n);
     const step = P.padSpeed * seconds / len;
-    const moved = toCentre(from.clone().addScaledVector(eastT, east * step).addScaledVector(northT, north * step));
+    const moved = toCentre(from.clone().addScaledVector(eastT, dx * step).addScaledVector(northT, dz * step));
     let target = norm3(moved).map((c) => c * R);
     if (P.holdRange) target = clampToRange(target, P.range).target;
     st.contact = target;
@@ -830,9 +832,9 @@ void main(){
   }
 
   function padFromKeys(dt) {
-    let east = 0, north = 0;
-    for (const code of keys) { const d = PAD_KEYS[code]; east += d[0]; north += d[1]; }
-    padContact(east, north, dt);
+    let dx = 0, dz = 0;
+    for (const code of keys) { const d = PAD_KEYS[code]; dx += d[0]; dz += d[1]; }
+    padContact(dx, dz, dt);
   }
 
   /* --- the beam, per frame -------------------------------------------------- */
