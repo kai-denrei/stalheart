@@ -718,7 +718,7 @@ try{
     assert.equal(s.label,LABELS[name][i],`${name}: page ${i+1} is ${LABELS[name][i]}`);
     assert.equal(s.stamps,s.stampsTotal,`${name} page ${i+1}: every stamp is down after the skip`);
     assert(s.overflowX<=1&&!s.poking.length,`${name} page ${i+1} at ${w} px: nothing pokes out sideways (${s.overflowX} ${JSON.stringify(s.poking)})`);
-    current=`debrief-${w}-${name}-p${i+1}`;await finish();
+    current=`debrief-${w}-${name}-p${i+1}`;await delay(150);await finish();
     if(i<LABELS[name].length-1){await press(' ');assert.equal((await dbf()).page,i+1,`${name}: the next press advances`);}
    }
    await press(' ');s=await dbf();

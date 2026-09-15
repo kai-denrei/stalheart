@@ -240,3 +240,8 @@
   border:1px solid #1f3a44;cursor:pointer}
 #tab-debrief .dbl-btn:hover{color:#dff;border-color:#35ffd0}
 #tab-debrief .dbl-btn.on{color:#04120f;background:#35ffd0;border-color:#35ffd0}
+@media (max-width:700px){
+  #tab-debrief .dbl-bar{gap:4px 8px;padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px))}
+  #tab-debrief .dbl-group b{display:none}
+  #tab-debrief .dbl-btn{min-height:30px;padding:0 6px;font-size:14px;letter-spacing:.06em}
+}

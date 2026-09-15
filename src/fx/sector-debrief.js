@@ -41,7 +41,7 @@ const stamp = (key, i) => {
   return `<div class="sdb-stamp" data-stamp style="--rot:${STAMP_TILT[i % STAMP_TILT.length]}deg"><span>${esc(stampLabel(key))}</span>${note ? `<small>${esc(note)}</small>` : ''}</div>`;
 };
 const crate = (at) => `<svg class="sdb-glyph sdb-crate" data-drop data-at="${at}" viewBox="0 0 40 40" aria-hidden="true"><rect x="12" y="3" width="16" height="5"/><rect x="3" y="8" width="34" height="28"/><path d="M3 8 L37 36 M37 8 L3 36 M3 22 H37"/></svg>`;
-const hull = (at) => `<svg class="sdb-glyph sdb-hull" data-drop data-at="${at}" viewBox="0 0 48 32" aria-hidden="true"><path d="M3 24 L8 14 H40 L45 24 Z M14 14 V9 H28 V14 M28 11 H44"/><path class="sdb-x" d="M6 4 L42 30 M42 4 L6 30"/></svg>`;
+const hull = (at) => `<svg class="sdb-glyph sdb-hull" data-drop data-at="${at}" viewBox="0 0 56 36" aria-hidden="true"><path d="M5 26 H47 L43 33 H9 Z M9 26 L13 18 H39 L43 26 M19 18 V12 H31 V18 M31 14 H51"/><path class="sdb-x" d="M10 6 L46 34 M46 6 L10 34"/></svg>`;
 
 function pageHero(r) {
   const lost = r.outcome === 'lost', s = r.score || {}, b = r.biomass || {}, list = r.breaches || [];
@@ -122,12 +122,12 @@ function pageKills(r) {
       <div class="sdb-col">
         <div class="sdb-h" data-reveal data-at="480"><span>THE BELT LADDER</span><span>WHITE → RED</span></div>
         <div class="sdb-hist">${hist || '<div class="sdb-none">NO BODIES</div>'}</div>
-      </div>
-      <div class="sdb-tempo">
-        <div class="sdb-h" data-reveal data-at="820"><span>TEMPO · KILLS PER 5 S</span><span>${formatClock(tempo.length * 5)}</span></div>
-        <div class="sdb-spark-wrap">
-          <svg class="sdb-spark" data-grow="1" data-at="${drawAt}" data-dur="${drawDur}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${grid}<path class="sdb-spark-area" d="${tp.area}"/><path class="sdb-spark-line" d="${tp.line}"/></svg>
-          ${peak}
+        <div class="sdb-tempo">
+          <div class="sdb-h" data-reveal data-at="820"><span>TEMPO · KILLS PER 5 S</span><span>${formatClock(tempo.length * 5)}</span></div>
+          <div class="sdb-spark-wrap">
+            <svg class="sdb-spark" data-grow="1" data-at="${drawAt}" data-dur="${drawDur}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${grid}<path class="sdb-spark-area" d="${tp.area}"/><path class="sdb-spark-line" d="${tp.line}"/></svg>
+            ${peak}
+          </div>
         </div>
       </div>
     </div>
@@ -153,7 +153,7 @@ function pageTank(r) {
       <div class="sdb-tiles">
         <div class="sdb-tile" data-reveal data-at="300"><span>RAMS</span>${roll(t.rams, { at: 340, dur: 900 })}</div>
         <div class="sdb-tile" data-reveal data-at="380"><span>BEST COMBO</span>${roll(t.bestCombo, { fmt: 'combo', at: 420, dur: 900 })}</div>
-        <div class="sdb-tile${num(t.damageTaken) ? ' is-warn' : ''}" data-reveal data-at="460"><span>DAMAGE TAKEN</span>${roll(t.damageTaken, { at: 500, dur: 1000 })}</div>
+        <div class="sdb-tile sdb-tile--dmg${num(t.damageTaken) ? ' is-warn' : ''}" data-reveal data-at="460"><span>DAMAGE TAKEN</span>${roll(t.damageTaken, { at: 500, dur: 1000 })}</div>
         <div class="sdb-tile sdb-tile--wide" data-reveal data-at="560"><span>SHIELD</span>
           <div class="sdb-row sdb-row--shield"><span class="sdb-label">USED</span><span class="sdb-track">${bar(num(t.shieldSeconds) / shieldTop, { at: 620, dur: 900 })}</span>${roll(t.shieldSeconds, { fmt: 'sec', at: 620, dur: 900, cls: 'sdb-num--s' })}</div>
           <div class="sdb-row sdb-row--shield is-lead"><span class="sdb-label">AT THE ARRAY</span><span class="sdb-track">${bar(num(t.stationSeconds) / shieldTop, { at: 720, dur: 900 })}</span>${roll(t.stationSeconds, { fmt: 'sec', at: 720, dur: 900, cls: 'sdb-num--s' })}</div>
@@ -204,8 +204,8 @@ function pageColony(r, isao) {
       <div class="sdb-col">
         <div class="sdb-h" data-reveal data-at="460"><span>RECORDS</span><span>${recs.filter((x) => x.isNew).length} NEW</span></div>
         <div class="sdb-records">${records || '<span class="sdb-none">NO RECORDS</span>'}</div>
+        ${isaoBox(lines, 1000)}
       </div>
-      ${isaoBox(lines, 1000)}
     </div>
   </section>`;
 }
@@ -340,9 +340,16 @@ export function createSectorDebrief(host, options = {}) {
     root.dataset.anim = 'done';
     seen.add(index);
   }
+  // a skip lands everything at once: the CSS reveals, the page flicker and the power-on stop where they would end
+  function snap() {
+    root.classList.add('sdb-snap');
+    root.classList.remove('sdb-power');
+    body.classList.remove('sdb-enter');
+  }
   function complete() {
     if (done) return false;
     view.cancelAnimationFrame(raf);
+    snap();
     render(total + 1, false);
     finish();
     return true;
@@ -377,7 +384,8 @@ export function createSectorDebrief(host, options = {}) {
     collect();
     const quiet = still();
     root.classList.toggle('sdb-still', quiet);
-    if (quiet || seen.has(index)) { done = false; render(total + 1, false); finish(); return; }
+    if (quiet || seen.has(index)) { snap(); render(total + 1, false); finish(); return; }
+    root.classList.remove('sdb-snap');
     body.classList.remove('sdb-enter'); void body.offsetWidth; body.classList.add('sdb-enter');
     done = false;
     root.dataset.anim = 'running';
