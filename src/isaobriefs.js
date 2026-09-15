@@ -245,6 +245,13 @@ export const BRIEFS = {
     title: 'MORE LANDING SITES',
     lines: ['New signals on the radar. More landers came down out there.', 'Same drill: clear the nest, bring the part home.'],
   },
+  // THE SECOND FRONT: the swarm cracks the sealed mouth behind the bays. A fact, then the plan.
+  back_door: {
+    id: 'back_door',
+    face: 'surprised',
+    title: 'THE BACK WALL',
+    lines: ['They cracked the back wall!', 'Build towers behind the bays.'],
+  },
 };
 
 // HOW LONG A LINE HOLDS. Isao's running commentary used to wait for a tap —

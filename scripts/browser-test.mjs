@@ -409,6 +409,12 @@ try{
   await evaluate('window.__stalheartTest.hitTank()');await delay(600);
   assert.equal(await evaluate('window.__stalheartTest.state().expeditions.sites.find(s=>s.id==="rocket-b").state'),'cleared','the part is back at its site');}
  current='defense-part-dropped';await finish();
+ } else if(args.includes('--backdoor')) {
+ // THE SECOND FRONT: sector gating must not seal the outer world in the story (the back lanes and the far sites live out there)
+ await go('backdoor-stage6','index.html?sw=0&acceptance=1&cine=0&world=story&stage=6#td');
+ await until('!!window.__stalheartTest',90000);await delay(1500);
+ {const s=await evaluate('window.__stalheartTest.state()');console.log(`BACKDOOR stage6 wallCount=${s.wallCount} sector=${consoleLines.filter(l=>l.startsWith('sector ')).join('|')}`);}
+ await finish();
  } else if(args.includes('--story-world')) {
  // THE STÅLHEART CANDIDATES IN THE GAME CAMERA — the review surface the asset owner asked for. lod() reports the FILE
  // behind each tier, and a far tier only reports once its GLB has loaded, so a switch that quietly loaded the shipped tiers,
