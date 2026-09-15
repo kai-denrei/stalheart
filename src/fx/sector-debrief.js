@@ -59,7 +59,7 @@ function pageHero(r) {
       <div class="sdb-stat" data-reveal data-at="540"><span>BIOMASS EARNED</span>${roll(b.earned, { at: 580, dur: 1100 })}${unit('KG')}<small>${roll(b.bank, { at: 900, dur: 800, cls: 'sdb-num--s' })} KG IN THE BANK</small></div>
       <div class="sdb-stat${num(b.leftInField) ? ' sdb-stat--warn' : ''}" data-reveal data-at="660"><span>LEFT IN THE FIELD</span>${roll(b.leftInField, { at: 700, dur: 1000 })}${unit('KG')}<small>${roll(points, { at: 980, dur: 800, cls: 'sdb-num--s' })} POINTS NEVER CAME</small></div>
     </div>
-    <div class="sdb-stamps">${stamps.length ? stamps.map(stamp).join('') : '<div class="sdb-none" data-reveal data-at="1800">NO CITATIONS THIS SECTOR</div>'}</div>
+    <div class="sdb-stamps" data-count="${stamps.length}">${stamps.length ? stamps.map(stamp).join('') : '<div class="sdb-none" data-reveal data-at="1800">NO CITATIONS THIS SECTOR</div>'}</div>
   </section>`;
 }
 
@@ -230,6 +230,7 @@ function pageCampaign(camp, isao) {
       <div class="sdb-stat" data-reveal data-at="460"><span>BIOMASS</span>${roll(tot.biomassEarned, { at: 500, dur: 1200 })}${unit('KG')}</div>
       <div class="sdb-stat" data-reveal data-at="560"><span>PARTS HOME</span>${roll(tot.partsHome, { at: 600, dur: 700 })}<small>${roll(tot.hullsLost, { at: 700, dur: 600, cls: 'sdb-num--s' })} HULLS LOST</small></div>
     </div>
+    <div class="sdb-camp-row">
     <div class="sdb-table-wrap" data-reveal data-at="900">
       <table class="sdb-table">
         <thead><tr><th>#</th><th class="sdb-l">SECTOR</th><th class="sdb-opt">TIME</th><th>KILLS</th><th>SCORE</th><th class="sdb-opt">LEFT KG</th><th class="sdb-opt">STAMPS</th></tr></thead>
@@ -238,6 +239,7 @@ function pageCampaign(camp, isao) {
       </table>
     </div>
     ${isaoBox(lines, footAt + 200)}
+    </div>
   </section>`;
 }
 

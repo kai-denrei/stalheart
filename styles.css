@@ -4025,6 +4025,7 @@ body.playing:not(.shell-open) #shell-bar { opacity: 0.32; }
   position: relative;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);   /* a long header line must not widen the whole card past its frame */
   width: min(1120px, 100%);
   height: min(780px, 100%);
   overflow: hidden;
@@ -4090,7 +4091,7 @@ body.playing:not(.shell-open) #shell-bar { opacity: 0.32; }
   display: flex; align-items: center; gap: 10px; min-width: 0;
   font-size: 19px; letter-spacing: 0.2em; color: var(--sdb-dim); white-space: nowrap;
 }
-.sdb-tx span { overflow: hidden; text-overflow: ellipsis; }
+.sdb-tx span { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .sdb-dot {
   flex: none; width: 9px; height: 9px; border-radius: 50%;
   background: var(--sdb-accent); box-shadow: 0 0 10px var(--sdb-accent);
@@ -4171,7 +4172,8 @@ body.playing:not(.shell-open) #shell-bar { opacity: 0.32; }
   animation: sdb-glitch 3.4s steps(1) infinite;
 }
 @keyframes sdb-glitch { 0%, 92%, 100% { translate: 0; } 93% { translate: -6px 0; } 95% { translate: 5px 0; } 97% { translate: 0; } }
-.sdb-camp .sdb-word { font-size: clamp(24px, 5.6cqi, 72px); }
+.sdb-camp .sdb-word { font-size: clamp(24px, 4.6cqi, 58px); }
+.sdb-camp .sdb-stat > .sdb-num { font-size: clamp(36px, 4.6cqi, 62px); }
 .sdb-hero { display: flex; flex-direction: column; }
 .sdb-sub { margin-top: 8px; font-size: clamp(17px, 2cqi, 24px); letter-spacing: 0.24em; color: var(--sdb-glow); }
 .sdb-title {
@@ -4221,6 +4223,11 @@ body.playing:not(.shell-open) #shell-bar { opacity: 0.32; }
 .sdb-stat > small { display: block; margin-top: 6px; font-size: 16px; letter-spacing: 0.1em; color: var(--sdb-dim); }
 .sdb-stat--warn > .sdb-num { color: var(--sdb-accent); text-shadow: 0 0 14px var(--sdb-accent-soft); }
 .sdb-stamps { display: flex; flex-wrap: wrap; align-items: center; gap: 18px 30px; margin-top: clamp(14px, 2.4cqi, 28px); padding: 6px 4px; }
+/* a big haul of stamps shrinks to stay on one row under the numbers */
+.sdb-stamps[data-count="3"] .sdb-stamp { font-size: clamp(12px, 1.5cqi, 18px); }
+.sdb-stamps:not([data-count="1"]):not([data-count="2"]):not([data-count="3"]) { gap: 14px 18px; }
+.sdb-stamps:not([data-count="1"]):not([data-count="2"]):not([data-count="3"]) .sdb-stamp { padding: 10px 12px 9px; font-size: clamp(11px, 1.2cqi, 14px); }
+.sdb-stamps:not([data-count="1"]):not([data-count="2"]):not([data-count="3"]) .sdb-stamp small { font-size: 14px; letter-spacing: 0.1em; }
 
 /* stamps: rubber on paper, thumped in rotated with an overshoot */
 .sdb-stamp {
@@ -4287,7 +4294,7 @@ body.playing:not(.shell-open) #shell-bar { opacity: 0.32; }
 .sdb-kills { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 4px clamp(18px, 3.4cqi, 44px); }
 .sdb-total { display: flex; align-items: baseline; gap: 14px; margin-bottom: 10px; }
 .sdb-total > .sdb-num { font-size: clamp(60px, 7.6cqi, 100px); line-height: 0.8; }
-.sdb-row { display: grid; grid-template-columns: minmax(6.5em, 9em) minmax(0, 1fr) 3.2em; align-items: center; gap: 12px; min-height: 27px; font-size: 18px; letter-spacing: 0.14em; }
+.sdb-row { display: grid; grid-template-columns: minmax(6.5em, 9em) minmax(0, 1fr) minmax(3.2em, auto); align-items: center; gap: 12px; min-height: 27px; font-size: 18px; letter-spacing: 0.14em; }
 .sdb-row > .sdb-num { justify-self: end; font-size: 24px; text-shadow: none; }
 .sdb-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sdb-row.is-sub { min-height: 22px; font-size: 16px; color: var(--sdb-dim); }
@@ -4336,7 +4343,7 @@ body.playing:not(.shell-open) #shell-bar { opacity: 0.32; }
 .sdb-tile > .sdb-num { font-size: clamp(36px, 4.6cqi, 60px); line-height: 0.9; }
 .sdb-tile.is-warn > .sdb-num { color: var(--sdb-accent); text-shadow: 0 0 12px var(--sdb-accent-soft); }
 .sdb-tile--wide { grid-column: 1 / -1; }
-.sdb-tile--wide .sdb-row { grid-template-columns: 8em minmax(0, 1fr) 4em; }
+.sdb-tile--wide .sdb-row { grid-template-columns: 8em minmax(0, 1fr) minmax(4em, auto); }
 .sdb-tile--parts { grid-column: span 2; }
 .sdb-glyphs { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; min-height: 46px; }
 .sdb-glyph { width: 44px; height: 44px; overflow: visible; opacity: 0; }
@@ -4380,10 +4387,15 @@ body.playing:not(.shell-open) #shell-bar { opacity: 0.32; }
 .sdb-isao > p.is-typing::after { content: '\2588'; margin-left: 2px; color: var(--sdb-accent); animation: sdb-blink 0.5s steps(2, jump-none) infinite; }
 
 /* the campaign card */
-.sdb-table-wrap { margin-top: clamp(14px, 2.6cqi, 30px); overflow-x: auto; }
+/* the sector table and Isao's send-off share a row on a wide card, and stack on a narrow one */
+.sdb-camp-row { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(220px, 1fr); align-items: start; gap: clamp(14px, 2.6cqi, 32px); margin-top: clamp(14px, 2.4cqi, 26px); }
+.sdb-camp-row > .sdb-isao { grid-template-columns: minmax(0, 1fr); margin-top: 0; }
+.sdb-camp-row > .sdb-isao > b { grid-row: auto; }
+.sdb-camp-row > .sdb-isao > p { font-size: clamp(18px, 1.9cqi, 23px); }
+.sdb-table-wrap { overflow-x: auto; }
 .sdb-table { width: 100%; border-collapse: collapse; }
-.sdb-table th { padding: 6px 12px; border-bottom: 1px solid var(--sdb-line); font-weight: normal; font-size: 16px; letter-spacing: 0.22em; text-align: right; color: var(--sdb-dim); white-space: nowrap; }
-.sdb-table td { padding: 7px 12px; border-bottom: 1px solid var(--sdb-faint); font-family: var(--font-banner); font-size: 26px; text-align: right; color: var(--sdb-ink); white-space: nowrap; }
+.sdb-table th { padding: 6px 8px; border-bottom: 1px solid var(--sdb-line); font-weight: normal; font-size: 14px; letter-spacing: 0.16em; text-align: right; color: var(--sdb-dim); white-space: nowrap; }
+.sdb-table td { padding: 6px 8px; border-bottom: 1px solid var(--sdb-faint); font-family: var(--font-banner); font-size: 23px; text-align: right; color: var(--sdb-ink); white-space: nowrap; }
 .sdb-table td .sdb-num { font-size: 1em; color: inherit; text-shadow: none; }
 .sdb-table .sdb-l { text-align: left; letter-spacing: 0.1em; }
 .sdb-table th:first-child, .sdb-table td:first-child { padding-left: 0; text-align: left; color: var(--sdb-dim); }
@@ -4418,12 +4430,13 @@ body.playing:not(.shell-open) #shell-bar { opacity: 0.32; }
   .sdb-breach { padding: 14px 14px 12px; }
   .sdb-breach > header { padding-right: 112px; }
   .sdb-kills, .sdb-tank, .sdb-colony { grid-template-columns: minmax(0, 1fr); }
-  .sdb-row { grid-template-columns: 7em minmax(0, 1fr) 2.8em; gap: 8px; font-size: 16px; }
+  .sdb-row { grid-template-columns: 6.5em minmax(0, 1fr) minmax(2.8em, auto); gap: 8px; font-size: 16px; }
   .sdb-gauge-wrap { width: min(56%, 200px); }
   .sdb-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .sdb-tile { padding: 10px 12px 12px; }
   .sdb-tile > span { font-size: 14px; letter-spacing: 0.14em; }
-  .sdb-tile--wide .sdb-row { grid-template-columns: 6.5em minmax(0, 1fr) 3.4em; }
+  .sdb-tile--wide .sdb-row { grid-template-columns: 6.5em minmax(0, 1fr) minmax(3.4em, auto); }
+  .sdb-camp-row { grid-template-columns: minmax(0, 1fr); }
   .sdb-tile--parts { grid-column: span 1; }
   .sdb-table .sdb-opt { display: none; }
   .sdb-table th { padding: 6px 8px; font-size: 14px; }
