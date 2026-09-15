@@ -115,7 +115,8 @@ export function createExpeditionGlue(h) {
         const d = chord(centers[i], [target.x, target.y, target.z]);
         if (d < bestD && chord(centers[i], reachAt) < reachR * 0.9) { best = i; bestD = d; }
       }
-      return best;
+      // a lander stands in a pocket of rock: when no open floor is in reach, the nearest cell still serves the acceptance route
+      return best < 0 && open.length ? glue.standCell(kind, id) : best;
     },
     // what stands between two world points, nearest first, for the acceptance stills: [name, metres from `from`, visible]
     sight(scene, from, to) {
