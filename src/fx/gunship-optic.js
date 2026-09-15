@@ -73,18 +73,15 @@ export function createGunshipOptic(scene, { cellSide, metresPerCell = 10 }) {
       t.geometry.attributes.position.setXYZ(0, from[0], from[1], from[2]); t.geometry.attributes.position.setXYZ(1, to[0], to[1], to[2]); t.geometry.attributes.position.needsUpdate = true; t.geometry.computeBoundingSphere();
       t.material.color.set(hex); t.material.opacity = 1; t.userData.life = t.userData.total = life; t.visible = true;
     },
-    // the platform rides over the approach: its track runs from the base heart toward the lane end (`toward`), and it
-    // drifts along that track with the pass's progress, +Z along the track and +Y up. Visible while on station, from
-    // the ground as from the seat.
-    ride(center, normal, progress, on, toward = null) {
-      platform.visible = on; if (!on) { platform.userData.toward = undefined; return; }
-      // THE TRACK IS TAKEN ONCE PER PASS. The lane end follows the live breach, so a 105 that killed it swung the whole
-      // platform, and the seat riding it, onto a new heading in one frame (owner, 2026-09-15: the camera jumps on weapon 3)
-      if (platform.userData.toward === undefined) platform.userData.toward = toward ? Array.from(toward) : null;
-      toward = platform.userData.toward;
-      n3.fromArray(normal).normalize();
-      let span = 0; if (toward) { t1.fromArray(toward).sub(up.fromArray(center)); t1.addScaledVector(n3, -t1.dot(n3)); span = t1.length(); } if (!toward || span < 1e-6) t1.set(Math.abs(n3.y) < 0.9 ? 0 : 1, Math.abs(n3.y) < 0.9 ? 1 : 0, 0).cross(n3); t1.normalize(); t2.copy(n3).cross(t1);
-      platform.position.fromArray(center).addScaledVector(n3, GUNSHIP_PLATFORM.altitudeCells * cellSide).addScaledVector(t1, span * GUNSHIP_PLATFORM.trackShare + (progress * 2 - 1) * GUNSHIP_PLATFORM.driftCells * cellSide);
+    // the platform rides over its ground track (src/domain/gunship-track.js): `ground` is the track's ground point (a
+    // direction from the planet's centre; the planet is `radius` in scene units), `heading` its unit tangent. The
+    // platform stands altitudeCells above the ground point, +Z along the heading and +Y up. The track moves and turns
+    // at capped rates, so the platform never cuts. Visible while on station, from the ground as from the seat.
+    ride(ground, heading, on, radius = 1) {
+      platform.visible = on; if (!on) return;
+      n3.fromArray(ground).normalize();
+      t1.fromArray(heading); t1.addScaledVector(n3, -n3.dot(t1)); if (t1.lengthSq() < 1e-12) t1.set(Math.abs(n3.y) < 0.9 ? 0 : 1, Math.abs(n3.y) < 0.9 ? 1 : 0, 0).cross(n3); t1.normalize(); t2.copy(n3).cross(t1);
+      platform.position.copy(n3).multiplyScalar(radius + GUNSHIP_PLATFORM.altitudeCells * cellSide);
       basis.makeBasis(t2, n3, t1); platform.quaternion.setFromRotationMatrix(basis);
     },
     platformObject: () => platform,
