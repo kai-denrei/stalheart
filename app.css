@@ -219,7 +219,8 @@
 #swarm .sw-build b{color:#ff6b5e;display:block;margin-top:2px}
 
 /* the debrief lab (src/labs/debrief-tab.js): the sector debrief on a stand-in for the game, with a width toggle */
-#tab-debrief{display:flex;flex-direction:column;background:#020607}
+#tab-debrief{flex-direction:column;background:#020607}
+#tab-debrief:not(.tab-hidden){display:flex}   /* an id rule outranks .tab-hidden: a hidden lab must not stay a full-page layer over the others */
 #tab-debrief .dbl-stage{position:relative;flex:1;min-height:0;display:flex;justify-content:center}
 #tab-debrief .dbl-host{position:relative;width:100%;height:100%;overflow:hidden}
 #tab-debrief .dbl-stage[data-width="1280"] .dbl-host{width:min(1280px,100%)}
