@@ -314,5 +314,5 @@ export function createCampaignDebrief({ msgEl, sitrepEl, ctx, spriteShot, makeDo
     msgEl.classList.remove('hidden');
   }
 
-  return { showSitrep, renderAnalysis, renderVerdict, logSector, campaignReset, startReplay };
+  return { showSitrep, renderAnalysis, renderVerdict, logSector, campaignReset, startReplay, campaign };   // campaign: the sector log the simulator reports
 }

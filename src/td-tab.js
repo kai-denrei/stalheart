@@ -8936,7 +8936,7 @@ export function initTdTab(root) {
 
   // --- THE DEBRIEF, THE CAMPAIGN LOG AND THE VERDICT (operator, 2026-09-02) live in src/fx/campaign-debrief.js: the analyst's six
   // windows with the strike replay, a snapshot per cleared sector, and the verdict with its orders. The campaign board only.
-  const { renderAnalysis, renderVerdict, logSector, campaignReset, showSitrep } = createCampaignDebrief({ msgEl, sitrepEl, spriteShot, makeDotEnemy, coins: () => coins(), runAchvBlock: () => runAchvBlock(), ctx: () => ({ rs, ws, run, score, biomass: eco.biomass, earned: eco.earned, spent: eco.spent, heartHP, HEART_MAX, playerHP, PLAYER_MAX, towers: towers.length, tankRank, tankKills, round, wave, sectorsTotal: SECTORS_TOTAL, wavesPerSector: params.wavesPerSector, sectorWave: sectorWave(), programmeDone: programmeDone(), time: runContext.time, toll: sectorToll(), shield, shieldTune, assistant: !!assistant }) });
+  const { renderAnalysis, renderVerdict, logSector, campaignReset, showSitrep, campaign } = createCampaignDebrief({ msgEl, sitrepEl, spriteShot, makeDotEnemy, coins: () => coins(), runAchvBlock: () => runAchvBlock(), ctx: () => ({ rs, ws, run, score, biomass: eco.biomass, earned: eco.earned, spent: eco.spent, heartHP, HEART_MAX, playerHP, PLAYER_MAX, towers: towers.length, tankRank, tankKills, round, wave, sectorsTotal: SECTORS_TOTAL, wavesPerSector: params.wavesPerSector, sectorWave: sectorWave(), programmeDone: programmeDone(), time: runContext.time, toll: sectorToll(), shield, shieldTune, assistant: !!assistant }) });
   // THE COIN. Retro, by request: winning a planet mints one; CONTINUE? spends
   // it. Persists, so a player who walks away with a coin still has it.
   const COIN_KEY = 'td.coins';
