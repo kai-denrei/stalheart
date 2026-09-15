@@ -99,6 +99,8 @@ export function initLaserTab(root) {
     holdRange: false,
     /* WASD / arrows pre-position the beam this fast (m/s) while it is not firing */
     padSpeed: 120,
+    /* how poised WASD feels: the time constant of its ease-in, ease-out glide (s) */
+    padEase: 0.22,
     altitude: LASER_VIEW.altitude, fov: LASER_VIEW.fov, inset: LASER_VIEW.inset,
     groundBack: LASER_VIEW.groundBack, groundUp: LASER_VIEW.groundUp,
     burnSoft: LASER_BURN.soft, burnHard: LASER_BURN.hard, burnWall: LASER_BURN.wall,
@@ -894,7 +896,7 @@ void main(){
 
   /* dx right, dz forward. NOT named `north`: that is the lab's north direction vector, and shadowing it made
      north.clone() throw on the first key frame, which aborted step() before render() and froze the scope */
-  function padContact(dx, dz, seconds) {
+  function padContact(dx, dz, seconds, velocity = false) {
     if (held || st.burning || (!dx && !dz)) return;
     const len = Math.hypot(dx, dz) || 1;
     const from = st.contact ? fromCentre(st.contact) : trenchPoint(queueTail());
@@ -902,7 +904,8 @@ void main(){
     /* screen-relative: forward is up on the ground view and on the heading-up scope, right is forward x up */
     const forward = viewForward(from);
     const right = new THREE.Vector3().crossVectors(forward, n);
-    const step = P.padSpeed * seconds / len;
+    /* a direction at the pre-position speed, or (velocity) dx/dz already in metres per second */
+    const step = velocity ? seconds : P.padSpeed * seconds / len;
     const moved = toCentre(from.clone().addScaledVector(right, dx * step).addScaledVector(forward, dz * step));
     let target = norm3(moved).map((c) => c * R);
     if (P.holdRange) target = clampToRange(target, P.range).target;
@@ -912,10 +915,25 @@ void main(){
     st.axis = null;
   }
 
+  // THE KEYS GLIDE (owner, 2026-09-15: ease-in, ease-out and momentum, natural and poised). The held direction at the
+  // pre-position speed is a target that is smoothed twice, once into an intent and once into the velocity that moves the
+  // contact, so it eases in when a key goes down, eases out and drifts to rest when it comes up, and curves through a
+  // change of direction. The velocity is screen-relative (right, forward). Firing or the pointer taking the aim stops it.
+  const padIntent = { x: 0, z: 0 }, padVel = { x: 0, z: 0 };
   function padFromKeys(dt) {
     let dx = 0, dz = 0;
     for (const code of keys) { const d = PAD_KEYS[code]; dx += d[0]; dz += d[1]; }
-    padContact(dx, dz, dt);
+    if (held || st.burning || (steering && !keys.size)) { padIntent.x = padIntent.z = padVel.x = padVel.z = 0; return; }
+    const len = Math.hypot(dx, dz);
+    const tx = len ? (dx / len) * P.padSpeed : 0, tz = len ? (dz / len) * P.padSpeed : 0;
+    const tau = Math.max(0.02, P.padEase) * (len ? 1 : 1.4);   /* coming to rest takes a touch longer than getting going */
+    const k = 1 - Math.exp(-dt / tau);
+    padIntent.x += (tx - padIntent.x) * k;
+    padIntent.z += (tz - padIntent.z) * k;
+    padVel.x += (padIntent.x - padVel.x) * k;
+    padVel.z += (padIntent.z - padVel.z) * k;
+    if (!len && Math.hypot(padVel.x, padVel.z) < 0.05) { padIntent.x = padIntent.z = padVel.x = padVel.z = 0; return; }
+    padContact(padVel.x, padVel.z, dt, true);
   }
 
   /* --- the beam, per frame -------------------------------------------------- */
@@ -1114,6 +1132,7 @@ void main(){
   gb.add(P, 'range', 50, 800, 10).name('range from the base (m)');
   gb.add(P, 'holdRange').name('hold at range');
   gb.add(P, 'padSpeed', 10, 400, 5).name('WASD pre-position (m/s)');
+  gb.add(P, 'padEase', 0.02, 1, 0.01).name('WASD glide (s)');
   const gs = gui.addFolder('the swarm');
   gs.add(P, 'enemies', 10, 1000, 10).name('enemies').onFinishChange(() => { if (ready) buildBodies(); });
   gs.add(P, 'walkSpeed', 0, 15, 0.5).name('walk speed (m/s)');
