@@ -232,6 +232,21 @@ Evidence:
 - npm run check
 - computeWavePlan totals at threat 1.7: wave 8 = 32, wave 9 = 106, wave 12 = 227
 
+## 2026-09-16 — The laser lab's browser step no longer cuts a wall, and it failed before SOL-82 moved the scope
+
+issue · observed · 2026-09-16-laser-lab-step-fails-before-sol82
+
+While bringing SOL-82 into the game, `node scripts/browser-test.mjs --laser` stopped at "the beam cut the wall (0)" after the burn step. The move of the lab's scope and inset HUD into src/fx was a suspect.
+
+Not caused by the SOL-82 work: the same step fails identically on a tree without it (worktree at 0001882, which carries the lab exactly as on main plus pure sector files): PASS laser-lab-load, laser-lab-overhead, laser-lab-burn, then AssertionError the beam cut the wall (0). The likely cause is the lab feel commits of 2026-09-15 (beam inertia with LASER_BEAM slew 10 m/s and accel 5, the fleeing swarm), which were never browser-checked: the step's drag and dwell across the gate mouth were timed for the old constant 40 m/s chase. To do: re-time the step's nudge-and-hold for the inertial beam (or steer with the lab's pad until the contact settles on a wall cell) and confirm a wall cell still needs LASER_BURN.wall seconds.
+
+Alternatives: Blame the scope move and revert it; rejected because the failure reproduces without it.
+
+Evidence:
+
+- scripts/browser-test.mjs --laser run in .claude/worktrees/agent-a18f0d804159bc367 (0001882): exit 1 at the wall-cut assertion.
+- The SOL-82 branch reported the same failure; its own --laser-game step passes (19 bodies, a breach sealed, a rock cell broken in 0.7 ms, two wall segments burned).
+
 ## 2026-09-15 — Tank-shell breaches patch the board surface in place; SOL-82 is the orbital laser's name and asset brief
 
 decision · accepted · 2026-09-15-board-surface-patch-and-sol-82-brief
