@@ -73,7 +73,7 @@ import { makeTracerMesh, makeLightningMesh, makeSeekerMesh, aimSeeker,
   LANCE_LOOK as SHOT_LANCE_LOOK, THROW_LOOK as SHOT_THROW_LOOK } from './shotfx.js';
 import { SHIELD_TUNE, SHIELD_KNOBS, makeShield, charge as chargeShield,
   deploy as deployShield, tickShield, stepShieldFrame, restockShield, tapTower, towerOffline,
-  stationDraw, waveReset as shieldWaveReset, shoveVec, shoveMag } from './shield.js';
+  stationDraw, waveReset as shieldWaveReset, shoveVec, shoveMag, makeArrayStation, refillArray } from './shield.js'; import { SHIELD_ARRAY } from './content/shield-array.js'; import { makePadRing, glowPadRing, shieldPanel } from './fx/shield-array.js'; import { createRamReadout } from './fx/ram-readout.js';
 import { deepLink, wireDeepLink } from './deeplink.js';
 import { labLine, parseLabQuery } from './lab.js';
 import { bakeGalaxyCube } from './galaxybake.js';
@@ -913,7 +913,7 @@ export function initTdTab(root) {
   // the same job. The knobs are reachable BY NAME from the URL, which is how
   // SENTRY_TUNE and BALLISTICS_TUNE are already moved.
   const shieldTune = { ...SHIELD_TUNE };
-  const shield = makeShield(shieldTune);
+  const shield = makeShield(shieldTune), arrayStation = makeArrayStation(SHIELD_ARRAY), refillArrays = () => { refillArray(arrayStation, SHIELD_ARRAY); updateHud(); };   /* the solar array's reserve: each sector start calls refillArrays (src/content/shield-array.js) */
   const shieldUp = () => shield.t > 0;
   let shieldObj = null;
   // The tank's field promotion. Only hands-on kills climb it — towers and
@@ -4076,7 +4076,7 @@ export function initTdTab(root) {
   }
   // callout pop-ups + the ram combo counter (both pointer-transparent)
   const calloutsEl = root.querySelector('#td-callouts');
-  const comboEl = root.querySelector('#td-combo');
+  const comboEl = root.querySelector('#td-combo'), ramFloat = createRamReadout(root, { project: (p) => new THREE.Vector3(p[0], p[1], p[2]).project(camera) });
   // WHAT SURVIVES THE ENCOURAGEMENT BEING SWITCHED OFF. The praise is the
   // part the operator wants gone — RECKLESS!, すげ〜!, the heart's lines. The
   // SCORING is not praise: a streak multiplier and a ram count are facts you
@@ -4232,23 +4232,8 @@ export function initTdTab(root) {
     if (eco && eco.biomass > run.peakBiomass) { run.peakBiomass = eco.biomass; checkAchievements(); }
     if (lifeContainers.length) syncLifeContainers();
     const spAlive = spawnPoints.filter((s) => s.alive).length;
-    // THE SHIELD IS ALWAYS ON THE PANEL NOW, in one of three states — up and
-    // draining, cooling through the seam, or idle with a rack. The seam is the
-    // feature and it is two seconds long; a player who cannot see it counted
-    // down cannot plan the chain that the whole rack exists for.
-    const shieldPips = `<i class="sh-pip">${'▮'.repeat(shield.rack)}`
-      + `${'▯'.repeat(Math.max(0, shieldTune.rackCap - shield.rack))}</i>`;
-    // IT HAS TO SAY WHAT IT IS. The first cut was a bare ◈ and four pips at
-    // the end of the alerts line — the operator played a full board and asked
-    // whether the shield had been implemented at all. A readout nobody can
-    // identify is a readout that is not there, however correct the state
-    // behind it. So: the word, then the number, then what you can spend.
-    const shieldBar = shieldUp()
-      ? `<b class="sh-bar" style="--sh:${Math.max(0, Math.min(1, shield.t / shieldTune.cap))}">`
-        + `◈ SHIELD ${Math.ceil(shield.t)}s</b> ${shieldPips}`
-      : (t < shield.coolUntil
-        ? `<span class="sh-cool">◈ SHIELD COOLING ${(shield.coolUntil - t).toFixed(1)}s</span> ${shieldPips}`
-        : `<span class="sh-idle">◈ SHIELD</span> <b class="sh-ready">T</b> ${shieldPips}`);
+    // THE SHIELD IS ALWAYS ON THE PANEL, and says what it is: up, cooling through the seam, or idle with a rack, then the array's reserve (src/fx/shield-array.js)
+    const shieldBar = shieldPanel(shield, shieldTune, t, story?.arrayPad?.standing ? arrayStation : null);
     const alerts = [shieldBar,
       carryingRegen ? '⬤ REGEN CARRIED' : '', story?.expeditions?.carrying ? '⬤ PART CARRIED' : '',
       cannonHeat > 0 ? 'CANNON HOT' : '',
@@ -4648,7 +4633,7 @@ export function initTdTab(root) {
     playerHP = PLAYER_MAX;
     playerDown = false;
     shield.t = 0; shield.coolUntil = -Infinity; shield.taps.clear();
-    shield.rack=Math.min(shieldTune.rackCap,shieldTune.rackStart);shield.stationLeft=shieldTune.stationBudget;shieldDrops=0;
+    shield.rack=Math.min(shieldTune.rackCap,shieldTune.rackStart);shield.stationLeft=shieldTune.stationBudget;shieldDrops=0;shield.rackFill=0;refillArray(arrayStation,SHIELD_ARRAY);arrayStation.drawn=0;
     resetTankRank();
     carryingRegen = false;
     speedBonus = 1;
@@ -5174,10 +5159,10 @@ export function initTdTab(root) {
           scene.add(burst);
           debris.push(burst);
           bumpLeft = BUMP_LEN;
-          feedCall(eco.award(spec.bounty, { ram: true })); // the ram premium
+          const kg = feedCall(eco.award(spec.bounty, { ram: true })); // the ram premium
           scoreKill(spec.bounty, { src: 'tank', ram: true,
             alive: enemies.filter((x) => x.alive).length });
-          ramCombo++; ramComboT = RAM_COMBO_GAP;
+          ramCombo++; ramComboT = RAM_COMBO_GAP; ramFloat.show(player.pos, kg, ramCombo);   // +N kg ×M over the hull (src/fx/ram-readout.js)
           noteWaveKill(e.type, 'tank');
           if (ws) ws.rams++;
           if (rs) { rs.rams++; rs.maxCombo = Math.max(rs.maxCombo, ramCombo); }
@@ -5817,9 +5802,10 @@ export function initTdTab(root) {
         spawnLightning(from,player.pos,tw.def.color,now);
       }
     }
-    const station=!playerDown && player.pos && graph && dungeon.heart!=null
-      && a6Arc(player.pos,graph.centers[dungeon.heart])<cellSide*.55;
-    if(stepShieldFrame(shield,dt,now,{relays,station},shieldTune)){
+    const station=!playerDown && player.pos && graph && dungeon.heart!=null && a6Arc(player.pos,graph.centers[dungeon.heart])<cellSide*.55, pad=story?.arrayPad, auto=automated();
+    const array=pad?.standing?{station:arrayStation,tune:SHIELD_ARRAY,metres:!playerDown&&player.pos?arcToMetres(a6Arc(player.pos,pad.pos),cellSide):Infinity,speed:player.pos&&arrayStation.prev&&dt>0?arcToMetres(a6Arc(player.pos,arrayStation.prev),cellSide)/dt:0}:null; if(auto&&!arrayStation.auto)refillArrays(); arrayStation.auto=auto; arrayStation.prev=player.pos?.slice();   /* the solar array's pad; the handover opens the first sector with it full */
+    const dropped=stepShieldFrame(shield,dt,now,{relays,station,array},shieldTune), ev=array?arrayStation.event:null; if(ev){if(SHIELD_ARRAY.cues[ev])sfx.play(SHIELD_ARRAY.cues[ev]);if(ev==='start')showBrief('array_charging');if(ev==='dry'){showBrief('array_dry');record('shield.array.dry',{wave,drawn:arrayStation.drawn});}}
+    if(dropped){
       shieldDrops++;
       showToast(`<div class="wave-num">SHIELD DOWN</div>`
         + `<div class="wave-role">${shieldTune.coolSecs}s before another charge will take</div>`,1400);
@@ -5840,7 +5826,7 @@ export function initTdTab(root) {
     } else if (r === 'cooling') {
       showToast(`<div class="wave-role">emitter cooling &middot; ${(shield.coolUntil - t).toFixed(1)}s</div>`, 1200);
     } else {
-      showToast(`<div class="wave-role">no shield charges &mdash; buy a case on the debrief</div>`, 1400);
+      showToast(`<div class="wave-role">no shield charges &mdash; ${story?.arrayPad?.standing ? (arrayStation.reserve > 0 ? 'park on the solar array to recharge' : 'the solar array is dry until the next sector') : 'buy a case on the debrief'}</div>`, 1400);
     }
     if (shieldProbeOn) console.log(`SHIELDPROBE deploy=${r} t=${shield.t.toFixed(2)} rack=${shield.rack}`);
     updateHud();
@@ -7310,37 +7296,16 @@ export function initTdTab(root) {
   // dotted range ring on the surface — one reusable mesh, house style
   let rangeRing = null;
   let rangeRingTtl = 0;
-  // THE CHARGING PAD. A ring on the heart's own cell, lit while the wave's
-  // budget is unspent and dark once it is gone — a trip home that will not pay
-  // is a trip the player has to be able to decline from across the board.
-  // Built from showRangeRing's basis so it sits on the ground the way every
-  // other ring here does.
-  let stationRing = null;
+  // THE CHARGING PADS: the heart's own cell in the campaign, the solar array's
+  // island in the story. Lit while there is something to draw and dark once it
+  // is gone, so a trip home that will not pay can be declined from across the board.
+  let stationRing = null, arrayRing = null;
   function buildStationRing() {
-    if (stationRing) { scene.remove(stationRing); disposeObj(stationRing); stationRing = null; }
-    if (!graph || dungeon.heart == null || storyMode) return;
-    const c = graph.centers[dungeon.heart];
-    const n = graph.normals[dungeon.heart];
-    const theta = cellSide * 0.55;
-    const ref = Math.abs(n[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
-    const t1 = norm3(cross3(n, ref));
-    const t2 = cross3(n, t1);
-    const pos = [];
-    const SEG = 64;
-    for (let i = 0; i < SEG; i++) {
-      const a = (i / SEG) * 2 * Math.PI;
-      const dir = add3(scale3(t1, Math.cos(a)), scale3(t2, Math.sin(a)));
-      const p = scale3(norm3(add3(scale3(norm3(c), Math.cos(theta)), scale3(dir, Math.sin(theta)))),
-        1 + params.wallHeight * 0.7);
-      pos.push(p[0], p[1], p[2]);
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    stationRing = new THREE.Points(geo, new THREE.PointsMaterial({
-      size: 3.0, sizeAttenuation: false, color: 0x59c8ff,
-      transparent: true, opacity: 0.8, depthWrite: false,
-    }));
-    scene.add(stationRing);
+    for (const r of [stationRing, arrayRing]) if (r) { scene.remove(r); disposeObj(r); }
+    stationRing = arrayRing = null;
+    if (!graph) return;
+    if (story?.arrayPad) scene.add(arrayRing = makePadRing(story.arrayPad.pos, metresToArc(SHIELD_ARRAY.radiusMetres, cellSide), 1 + metresToArc(SHIELD_ARRAY.lift, cellSide), SHIELD_ARRAY.ring));
+    else if (dungeon.heart != null && !storyMode) scene.add(stationRing = makePadRing(graph.centers[dungeon.heart], cellSide * 0.55, 1 + params.wallHeight * 0.7));
   }
 
   function showRangeRing(ci, radiusCells, color, ttl = 0) {
@@ -9974,11 +9939,7 @@ export function initTdTab(root) {
     if (strikeGrace > 0) strikeGrace -= dt;
     if (shopMute > 0) shopMute -= dt;
     if (heartCalloutCd > 0) heartCalloutCd -= dt;
-    if (stationRing) {
-      stationRing.material.opacity = shield.stationLeft > 0
-        ? 0.5 + 0.3 * Math.sin(runContext.time * 3)
-        : 0.12;
-    }
+    glowPadRing(stationRing, shield.stationLeft > 0 ? 'idle' : 'dry', runContext.time); glowPadRing(arrayRing, story?.arrayPad?.standing ? (arrayStation.charging ? 'charging' : arrayStation.reserve > 0 ? 'idle' : 'dry') : null, runContext.time);
     if (rs) {
       rs.binClock += dt;
       if (rs.binClock >= 5) { rs.binClock = 0; rs.scoreBins.push(score.points); }
@@ -13708,7 +13669,7 @@ export function initTdTab(root) {
         berthAssets:lifeContainers.flatMap(c=>c.tanks.map(t=>t.userData.asset)), bays: lifeContainers.map((c) => ({ ci: c.ci, hasTank: c.tanks.length > 0, racked: !!c.tanks[0]?.visible })), berthCells: berths.map((b) => b.ci), kills: rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike, monitorShown: storyMonitor?.shown() ?? 0, screenOpen: !!syntheticModal?.isOpen(), screensOpened: syntheticModal?.opened() ?? 0, brassLive: brass?.live() ?? 0, daylight: daylight?.state() ?? null,
         heartAsset: heartSprite?.userData.asset || params.heartLook,
         heartAssetState: heartSprite?.userData.assetState,
-        performance:perfSample,shieldClock:t,motionClock:runContext.time,shield:{seconds:shield.t,rack:shield.rack,cooldown:Math.max(0,shield.coolUntil-t),drops:shieldDrops,visible:shieldObj?.visible},
+        performance:perfSample,shieldClock:t,motionClock:runContext.time,shield:{seconds:shield.t,rack:shield.rack,cooldown:Math.max(0,shield.coolUntil-t),drops:shieldDrops,visible:shieldObj?.visible,active:shieldUp(),cooling:t<shield.coolUntil,rackFill:shield.rackFill,arrayReserve:arrayStation.reserve,charging:arrayStation.charging,arrayDrawn:arrayStation.drawn,arrayPad:story?.arrayPad??null,ring:arrayRing?{visible:arrayRing.visible,opacity:arrayRing.material.opacity}:null},ram:{combo:ramCombo,rams:rs.rams,best:rs.maxCombo,biomass:eco.biomass,points:score.points,float:ramFloat.state()},foes:enemies.filter(e=>e.alive&&!(e.emergeAge<1.2)).map(e=>[e.cur,e.spec.rammable?1:0]),
         cannonHeat,ammo,cannonColor:playerMesh?.userData.heatSleeve?.material.color.getHex(),
         engagement:towers.filter(tw=>missileOf(tw.key)).map(tw=>({key:tw.key,config:engagementConfig(tw),
           target:tw.missileTarget?.id??null,lock:tw.lock,aim:tw.aimErr,cooldown:tw.cooldown,
@@ -13738,7 +13699,7 @@ export function initTdTab(root) {
       },
       shieldAdvance: seconds => {for(let left=seconds;left>1e-9;){const dt=Math.min(1/60,left);left-=dt;t+=dt;stepShieldDynamics(dt,t);stepTowers(dt,t);updateBeams(dt);}updateHud();placeActors();},
       leaveRelay: () => {player.pos=player.pos.map(v=>-v);},
-      relayOffline: id => towerOffline(shield,id,t),
+      relayOffline: id => towerOffline(shield,id,t), refillArrays: () => refillArrays(),
       deployShield: () => {const was=paused;paused=false;const result=deployShieldNow();paused=was;return result;},
       fireShell: () => fire(),
       showRecordTest: () => {
@@ -13844,7 +13805,7 @@ export function initTdTab(root) {
   animate();
 
   return {
-    dispose() { pilot?.dispose(); active = false; storyBase?.dispose(); gameBreaches.dispose();runTimers.dispose(); runContext.dispose(); missilesDisposed=true; missilePool?.dispose(); setPerfOverlay(false,false); },
+    dispose() { ramFloat.dispose(); pilot?.dispose(); active = false; storyBase?.dispose(); gameBreaches.dispose();runTimers.dispose(); runContext.dispose(); missilesDisposed=true; missilePool?.dispose(); setPerfOverlay(false,false); },
     setActive(on) {
       active = on;
       if (!on) stopEngine(0.1, true); // quiet: leaving the tab is not a landing

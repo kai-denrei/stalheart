@@ -2890,6 +2890,29 @@ body.td-victory #td-tut {
    something would change it. */
 .sh-ready { color: #0b1a24; background: #59c8ff; border-radius: 3px;
   padding: 0 4px; font-weight: 700; }
+/* the solar array's reserve beside the rack (src/fx/shield-array.js): grey
+   while it waits, cyan while it feeds, dim and struck once it is dry */
+.sh-array { color: #6d7f8c; margin-left: .2em; }
+.sh-array.on { color: #59c8ff; text-shadow: 0 0 6px rgba(89, 200, 255, .55); }
+.sh-array.dry { color: #8a98a3; border: 1px solid #4a5660; border-radius: 3px; padding: 0 3px; }
+/* the ram premium over the hull (src/fx/ram-readout.js): +N kg ×M rises and
+   fades; the shout type, heating with the combo tier like #td-combo */
+.ram-float-layer { position: absolute; inset: 0; pointer-events: none; z-index: 12; overflow: hidden; }
+.ram-float { position: absolute; transform: translate(-50%, -100%); white-space: nowrap;
+  font-family: var(--font-shout); font-weight: bold; letter-spacing: var(--shout-track);
+  font-size: calc(var(--shout-unit) * 0.6); color: var(--p-green); text-shadow: var(--shout-halo); }
+.ram-float.hidden { display: none; }
+.ram-float.go { animation: ram-rise 1.1s ease-out forwards; }
+.ram-float[data-tier="1"], .ram-float[data-tier="2"] { color: var(--p-green-hot); font-size: calc(var(--shout-unit) * 0.72); }
+.ram-float[data-tier="3"], .ram-float[data-tier="4"], .ram-float[data-tier="5"] { color: var(--p-white); font-size: calc(var(--shout-unit) * 0.84); }
+@keyframes ram-rise {
+  0% { opacity: 0; transform: translate(-50%, -60%) scale(1.35); }
+  12% { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -320%); }
+}
+@media (prefers-reduced-motion: reduce) { .ram-float.go { animation: none; } }
+.sentry-pilot-mode .ram-float-layer { display: none; }
 .hp-dim { color: rgba(255, 106, 136, 0.22); }
 .hp-you { color: #9fdcff; margin-left: 8px; text-shadow: 0 0 7px rgba(159, 220, 255, 0.4); }
 .hp-ammo { color: #eef4ff; margin-left: 8px; }

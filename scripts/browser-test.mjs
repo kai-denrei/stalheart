@@ -11,7 +11,7 @@ import { changeSummary } from '../src/content/authoring.js';
 import { clone, serializePreset } from '../src/content/preset.js';
 import { LASER_VIEW } from '../src/content/orbital-laser.js';
 const args=process.argv.slice(2),production=args.includes('--dist');
-const port=18155,base=production?'/stalheart/':'/';
+const port=+process.env.STALHEART_BROWSER_PORT||18155,base=production?'/stalheart/':'/';
 const origin=`http://127.0.0.1:${port}`,urlRoot=origin+base;
 const output=resolve('artifacts/browser'+(production?'-dist':''));mkdirSync(output,{recursive:true});
 const profile=mkdtempSync(join(tmpdir(),'stalheart-chrome-'));
@@ -409,6 +409,61 @@ try{
   await evaluate('window.__stalheartTest.hitTank()');await delay(600);
   assert.equal(await evaluate('window.__stalheartTest.state().expeditions.sites.find(s=>s.id==="rocket-b").state'),'cleared','the part is back at its site');}
  current='defense-part-dropped';await finish();
+ } else if(args.includes('--shield-story')) {
+ // THE TANK'S SHIELD IN THE STORY (V1 session design, section 3): T and the pad deploy a rack of two, the solar array's pad
+ // recharges it from a finite reserve that only refillArrays restores, a shielded hull shoves hard cores, and rams pay a premium
+ // the player can read over the hull, with the combo tier callouts
+ const T='window.__stalheartTest',S=`${T}.state()`,st=()=>evaluate(S),hud=()=>evaluate('document.querySelector("#td-stats").textContent');
+ const key=async k=>{await send('Input.dispatchKeyEvent',{type:'keyDown',key:k,code:'Key'+k.toUpperCase(),text:k});await send('Input.dispatchKeyEvent',{type:'keyUp',key:k,code:'Key'+k.toUpperCase()});};
+ await go('shield-array-hud','index.html?sw=0&acceptance=1&cine=0&world=story&stage=6&phase=expedition#td');
+ await until(`!!${T} && (${S}.storyLod||[]).some(l=>l.id==="stalheart")`,90000);await delay(2500);
+ let s=await st();const pad=s.shield.arrayPad;
+ assert(pad&&pad.standing&&pad.cell>=0,`the solar array's pad stands at stage 6 (${JSON.stringify(pad)})`);
+ assert.equal(s.shield.arrayReserve,30,'the array starts the sector full');assert.equal(s.shield.rack,2,'a rack of two');
+ assert.equal(s.shield.ring?.visible,true,'the pad ring is drawn');assert(/SHIELD\s*T/.test(await hud())&&/ARRAY 30s/.test(await hud()),`the panel reads the shield and the array (${await hud()})`);
+ await evaluate(`${T}.placeTank(${s.storyHome})`);await delay(600);
+ await key('t');await delay(300);s=await st();
+ assert(s.shield.active&&s.shield.visible&&s.shield.rack===1,`T raises the dome from the rack (${JSON.stringify(s.shield)})`);
+ current='shield-array-dome';await finish();
+ await evaluate(`${T}.shieldAdvance(10.2)`);s=await st();
+ assert(!s.shield.active&&s.shield.cooling&&s.shield.drops>=1,'the charge drains and the seam opens');assert(/COOLING/.test(await hud()),'the seam is counted down on the panel');
+ assert.equal(await evaluate(`${T}.deployShield()`),'cooling','the seam refuses');
+ await evaluate(`${T}.shieldAdvance(2.1)`);await click('#td-pad-shield');s=await st();assert.equal(s.shield.rack,0,'the pad button spends the second charge');
+ await evaluate(`${T}.shieldAdvance(12.3)`);assert.equal(await evaluate(`${T}.deployShield()`),'empty','an empty rack refuses');
+ assert(/solar array/.test(await evaluate('document.querySelector("#td-toast").textContent')),'the refusal points at the array');
+ s=await st();assert.equal(s.shield.arrayReserve,30,'off the pad the reserve is untouched');
+ current='shield-array-empty';await finish();
+ // park on the pad: the charge comes back, the ring glows, the reserve drains to zero and stops
+ await evaluate(`${T}.placeTank(${pad.cell})`);await delay(1800);s=await st();
+ assert(s.shield.charging&&s.shield.arrayReserve<30&&(s.shield.rackFill>0||s.shield.rack>0),`parked on the pad it charges (${JSON.stringify(s.shield)})`);
+ assert(s.shield.ring.opacity>0.55,`the ring glows while it feeds (${s.shield.ring.opacity})`);assert(/ARRAY ▲/.test(await hud()),`the panel shows the feed (${await hud()})`);
+ current='shield-array-charging';await finish();
+ await evaluate(`${T}.shieldAdvance(16)`);s=await st();
+ assert.equal(s.shield.arrayReserve,0,'the reserve runs dry');assert.equal(s.shield.rack,3,'thirty seconds of reserve are three charges');assert.equal(s.shield.charging,false,'a dry pad stops');
+ assert(Math.abs(s.shield.arrayDrawn-30)<1e-6,`it gave exactly its reserve (${s.shield.arrayDrawn})`);assert(/ARRAY DRY/.test(await hud()),'the panel says dry');
+ await evaluate(`${T}.shieldAdvance(5)`);s=await st();assert(s.shield.rack===3&&s.shield.arrayReserve===0,'and never refills itself');
+ await delay(900);assert(s.shield.ring.opacity<0.2||(await st()).shield.ring.opacity<0.2,'the ring dims');
+ current='shield-array-dry';await finish();
+ assert.equal(await evaluate(`(${T}.refillArrays(),${T}.state().shield.arrayReserve)`),30,'refillArrays restores the reserve');
+ await evaluate(`${T}.shieldAdvance(6)`);s=await st();assert.equal(s.shield.rack,4,'and the pad tops the rack to its cap');
+ await evaluate(`${T}.shieldAdvance(6)`);s=await st();assert(s.shield.rack===4&&Math.abs(s.shield.arrayReserve-20)<0.1,`the cap stops the draw (${JSON.stringify(s.shield)})`);
+ // a shielded hull shoves a hard core aside: no hull lost, the core lives, the combo untouched
+ await evaluate(`${T}.spawnFodder(2,'barbed')`);await until(`${S}.foes.some(f=>!f[1])`,20000);
+ await evaluate(`${T}.placeTank(${s.storyHome})`);await delay(300);assert.equal(await evaluate(`${T}.deployShield()`),'ok','a banked charge deploys');
+ {const hulls=(await st()).hulls;for(let i=0;i<20;i++){const f=(await st()).foes.find(f=>!f[1]);if(!f)break;await evaluate(`${T}.placeTank(${f[0]})`);await delay(120);}
+  s=await st();assert.equal(s.hulls,hulls,'the shield takes the hard core');assert(s.enemyTypes.includes('barbed'),'and the core is shoved, not killed');}   /* the combo is not asserted here: the wave's own fodder is rammed on the way */
+ await evaluate(`${T}.placeTank(${pad.cell})`);await until(`!${S}.shield.active`,15000);await evaluate(`${T}.shieldAdvance(2.2)`);
+ // rams: the premium floats over the hull as +N kg ×M, the combo climbs, the tier callouts land
+ await evaluate(`window.__calls=[];new MutationObserver(m=>m.forEach(r=>r.addedNodes.forEach(n=>__calls.push(n.textContent)))).observe(document.querySelector('#td-callouts'),{childList:true})`);
+ {const r0=(await st()).ram;await evaluate(`${T}.spawnFodder(30)`);let shot=false;
+  for(let i=0;i<220;i++){s=await st();const f=s.foes.find(f=>f[1]);if(f)await evaluate(`${T}.placeTank(${f[0]})`);else if(s.ram.rams>r0.rams+12&&!s.foes.some(f=>f[1]))break;
+   if(!shot&&s.ram.combo>=6&&s.ram.float.live>0){shot=true;current='shield-array-ram';await finish();}await delay(100);}
+  s=await st();const calls=await evaluate('window.__calls');
+  assert(s.ram.rams-r0.rams>=10,`the tank rams the fodder (${s.ram.rams-r0.rams})`);assert(s.ram.best>=10,`the combo reaches ten (${s.ram.best})`);
+  assert(s.ram.biomass>r0.biomass,'rams pay biomass');assert(s.ram.float.shown>=s.ram.rams-r0.rams,'every ram floats its premium');
+  assert(/^\+\d+ kg ×\d+$/.test(s.ram.float.last),`the readout says +N kg ×M (${s.ram.float.last})`);assert(s.ram.float.live<=s.ram.float.max,'the pool is bounded');
+  assert(calls.includes('RAM ×10'),`the x10 tier callout lands (${calls.join(' | ')})`);assert(shot,'a ram readout was on screen');}
+ await evaluate(`${T}.placeTank(${pad.cell})`);await delay(400);current='shield-array-end';await finish();
  } else if(args.includes('--story-world')) {
  // THE STÅLHEART CANDIDATES IN THE GAME CAMERA — the review surface the asset owner asked for. lod() reports the FILE
  // behind each tier, and a far tier only reports once its GLB has loaded, so a switch that quietly loaded the shipped tiers,
