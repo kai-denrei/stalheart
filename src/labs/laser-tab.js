@@ -96,7 +96,7 @@ export function initLaserTab(root) {
   });
   const orbit = () => ({ period: P.period, overhead: P.overhead });
   const beamCfg = () => ({ energy: P.energy, radius: P.radius, slew: P.slew, accel: P.accel });
-  const burnCfg = () => ({ soft: P.burnSoft, hard: P.burnHard, wall: P.burnWall, tower: P.burnTower, seal: P.burnSeal, tank: 1.0, heart: P.burnHeart });
+  const burnCfg = () => ({ soft: P.burnSoft, hard: P.burnHard, wall: P.burnWall, tower: P.burnTower, seal: P.burnSeal, tank: LASER_BURN.tank, heart: P.burnHeart });
 
   let active = false, disposed = false, frameId = 0, last = performance.now(), clock = 0;
   let planet = null, planetMesh = null, plan = null, base = null, sphereRoot = null;
@@ -122,6 +122,19 @@ export function initLaserTab(root) {
   const ground = new THREE.PerspectiveCamera(52, 1, 0.5, 8000);
   const sat = new THREE.PerspectiveCamera(P.fov, 1, 1, 40000);
   const ray = new THREE.Raycaster();
+  /* THE AIM RETICLE (spec §3): where the pointer is, which the contact chases at the slew rate. It lives on its own layer
+     that only the satellite camera renders, so the ground view never shows it. */
+  const RETICLE_LAYER = 1;
+  const reticle = new THREE.Mesh(
+    new THREE.RingGeometry(9, 13, 48).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color: 0xdfe8ee, transparent: true, opacity: 0.9, depthTest: false, depthWrite: false, side: THREE.DoubleSide }),
+  );
+  reticle.name = 'Laser aim reticle';
+  reticle.layers.set(RETICLE_LAYER);
+  reticle.renderOrder = 20;
+  reticle.visible = false;
+  scene.add(reticle);
+  sat.layers.enable(RETICLE_LAYER);
   const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3(), tmpN = new THREE.Vector3();
   let R = 753, cellSide = 10, sphere = null, north = new THREE.Vector3(0, 0, -1);
 
@@ -488,7 +501,8 @@ export function initLaserTab(root) {
     if (e.type === 'pointerdown') held = true;
     e.preventDefault();
   }
-  const onPointerUp = () => { held = false; };
+  /* letting go also stops steering: the contact and both cameras hold on the last contact until the pointer moves again */
+  const onPointerUp = () => { held = false; steering = false; };
   renderer.domElement.addEventListener('pointermove', onPointer, { passive: false });
   renderer.domElement.addEventListener('pointerdown', onPointer, { passive: false });
   addEventListener('pointerup', onPointerUp);
@@ -555,7 +569,8 @@ export function initLaserTab(root) {
       out.push({ id: w.id, kind: 'wall', pos: [w.p.x, w.p.y, w.p.z], wall: w });
     }
     for (const s of structs) {
-      if (s.gone || !near(s.p)) continue;
+      /* a holder the base built hidden (plan.stage < shown) is not on screen, so it cannot be under the beam either */
+      if (s.gone || !s.holder.visible || !near(s.p)) continue;
       out.push({ id: s.id, kind: s.heart ? 'heart' : 'tower', pos: [s.p.x, s.p.y, s.p.z], struct: s });
     }
     if (!sealed && near(sinkPoint)) {
@@ -612,7 +627,12 @@ export function initLaserTab(root) {
   /* --- the beam, per frame -------------------------------------------------- */
   function applyBurn(dt) {
     const hit = steering || held ? targetFromInset(steerN[0], steerN[1]) : null;
-    if (hit) aimLaser(st, toCentre(hit), dt, beamCfg());
+    reticle.visible = !!hit;
+    if (hit) {
+      reticle.position.copy(hit);
+      reticle.quaternion.setFromUnitVectors(Y, normalOf(hit));
+      aimLaser(st, toCentre(hit), dt, beamCfg());
+    }
     const burning = burnLaser(st, held, dt);
     const point = st.contact ? fromCentre(st.contact) : null;
     if (!burning || !point) {
@@ -725,6 +745,8 @@ export function initLaserTab(root) {
       for (const b of bursts) { scene.remove(b); b.geometry.dispose(); b.material.dispose(); }
       gui?.destroy();
       if (window.__stalheartLaserTest === hooks) delete window.__stalheartLaserTest;
+      reticle.geometry.dispose();
+      reticle.material.dispose();
       style.remove();
       renderer.dispose();
       renderer.domElement.remove();
@@ -852,7 +874,8 @@ export function initLaserTab(root) {
       under: { ...under },
       /* the column's live uniforms, in scene units, so a check can see that a slider actually reached the shader */
       look: laser ? laser.look() : null,
-      sentries: sentries.length,
+      /* standing sentries: a burned one is `gone` in structs */
+      sentries: structs.filter((s) => s.id.startsWith('sentry-') && !s.gone).length,
       trail: laser ? laser.trail.count : 0,
       heated: thermal ? thermal.heated() : 0,
       explosions: explosions ? explosions.state() : null,
@@ -864,7 +887,7 @@ export function initLaserTab(root) {
     tune: (look) => { Object.assign(P, look); laser?.tune(lookOf()); },
     infinite: (on) => { P.infinite = !!on; keepInfinite(); },
     steer: (nx, ny) => steerTo(nx, ny),
-    hold: (on) => { held = !!on; },
+    hold: (on) => { held = !!on; if (!on) steering = false; },
     reset: () => { location.reload(); },
     dispose: () => api.dispose(),
   };

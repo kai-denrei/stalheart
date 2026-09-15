@@ -96,6 +96,7 @@ void main(){
   quadGeo.rotateX(-Math.PI / 2);
   const ages = new Float32Array(CAP).fill(LASER_TRAIL.seconds);
   const ageAttr = new THREE.InstancedBufferAttribute(ages, 1);
+  ageAttr.setUsage(THREE.DynamicDrawUsage);   /* every stamp ages every frame */
   quadGeo.setAttribute('aAge', ageAttr);
   const seeds = new Float32Array(CAP);
   const seedAttr = new THREE.InstancedBufferAttribute(seeds, 1);
