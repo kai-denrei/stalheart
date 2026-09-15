@@ -478,6 +478,28 @@ try{
   assert(/^\+\d+ kg ×\d+$/.test(s.ram.float.last),`the readout says +N kg ×M (${s.ram.float.last})`);assert(s.ram.float.live<=s.ram.float.max,'the pool is bounded');
   assert(calls.includes('RAM ×10'),`the x10 tier callout lands (${calls.join(' | ')})`);assert(shot,'a ram readout was on screen');}
  await evaluate(`${T}.placeTank(${pad.cell})`);await delay(400);current='shield-array-end';await finish();
+ } else if(args.includes('--quiver-frame')) {
+ // THE QUIVER'S ROCKET STAYS IN FRAME (owner, 2026-09-16; src/core/round-framing.js): from the Quiver's hand-over one TALON leaves from the
+ // PoV seat and one from third person. Every frame of each flight the round is projected through the real camera; from launch through
+ // ignite (the fraction the framing holds) it is inside the frame in at least 95% of samples. A frame strip is saved per view.
+ await go('quiver-frame','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=4&phase=cleared#td');
+ await until('!!window.__stalheartTest',90000);
+ try{await until('window.__stalheartTest.state().story.phase==="quiver-piloting" && !!window.__stalheartPilotTest',180000);}catch(e){console.log('QUIVER FRAME BEATS',JSON.stringify(await evaluate('window.__stalheartTest.state().story')));throw e;}
+ await delay(1500);
+ for(const view of ['pov','third']){
+  await evaluate(`window.__stalheartPilotTest.view(${JSON.stringify(view)})`);await delay(400);
+  await evaluate(`(()=>{const q=window.__qf={samples:[],done:false},T=window.__stalheartPilotTest;const f=()=>{const r=T.round();if(r)q.samples.push(r);else if(q.samples.length){q.done=true;return;}requestAnimationFrame(f);};requestAnimationFrame(f);})()`);
+  await evaluate('window.__stalheartPilotTest.hold(true)');
+  await until('(()=>{if(window.__qf.samples.length)return true;if(!window.__aimAt||Date.now()-window.__aimAt>500){window.__aimAt=Date.now();window.__stalheartPilotTest.aimEnemy();}return false;})()',120000);
+  await evaluate('window.__stalheartPilotTest.hold(false)');
+  for(let i=0;i<6;i++){await delay(450);const s=await evaluate('window.__qf.samples.at(-1)');current=`quiver-frame-${view}-${i}-${(s?.phase??'landed').toLowerCase()}`;await finish();}
+  await until('window.__qf.done',15000);
+  const samples=await evaluate('window.__qf.samples'),inside=s=>Math.abs(s.x)<=1&&Math.abs(s.y)<=1&&s.z<1;
+  const open=samples.filter(s=>s.u<=.42),back=samples.filter(s=>s.u>.42&&s.u<=.62),n=a=>a.filter(inside).length;
+  console.log(`quiver frame ${view}: launch to ignite ${n(open)} of ${open.length} in frame (${(100*n(open)/Math.max(1,open.length)).toFixed(1)}%), max |y| ${Math.max(...open.map(s=>Math.abs(s.y))).toFixed(2)}, fov ${open[0]?.fov}->${open.at(-1)?.fov}; climb hand-back ${n(back)} of ${back.length}; whole flight ${n(samples)} of ${samples.length}`);
+  assert(open.length>=60,`${view}: the probe saw the opening (${open.length} samples)`);
+  assert(n(open)>=.95*open.length,`${view}: the round stays in frame from launch to ignite (${n(open)} of ${open.length})`);
+ }
  } else if(args.includes('--story-world')) {
  // THE STÅLHEART CANDIDATES IN THE GAME CAMERA — the review surface the asset owner asked for. lod() reports the FILE
  // behind each tier, and a far tier only reports once its GLB has loaded, so a switch that quietly loaded the shipped tiers,
