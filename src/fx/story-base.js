@@ -65,9 +65,18 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
   };
   const counts = { islands: plan.islands.length, walls: plan.walls.length, structures: 0, gate: !!plan.gate };
   // the gate opens when something friendly is inside its radius and closes again behind it
-  const gate = { mixer: null, action: null, duration: 0, position: null, radius: 0, open: false, want: false, t: 0 };
+  const gate = { mixer: null, action: null, duration: 0, position: null, radius: 0, open: false, want: false, t: 0, obj: null, built: !plan.gate?.pending };
+  // A GROWN BASE (src/domain/base-plan.js reach): pending pieces stand at zero scale, hidden, until Isao prints them. `k` is the print's
+  // progress, rising along the piece's local up, and it is remembered per piece, so a model still loading mounts at the height it reached
+  const grown = { islands: new Map(), walls: new Map(), structures: new Map(), gate: plan.gate?.pending ? 0 : 1 }, slabs = [], wallMeshes = [];
+  const kOf = (map, key, piece) => map.get(key) ?? (piece?.pending ? 0 : 1);
+  const rise = (k) => (k > 0 ? new THREE.Matrix4().makeScale(1, Math.max(0.02, Math.min(1, k)), 1) : new THREE.Matrix4().makeScale(0, 0, 0));
+  const islandMatrix = (i, src, k) => basisAt(placer, i.x, i.z, i.heading).multiply(new THREE.Matrix4().makeTranslation(0, i.top * metres, 0)).multiply(rise(k))
+    .multiply(new THREE.Matrix4().makeScale(i.w / kit.slabReference * metres, metres, i.d / kit.slabReference * metres)).multiply(src);
+  const wallMatrix = (w, src, k) => basisAt(placer, w.x, w.z, w.heading).multiply(new THREE.Matrix4().makeTranslation(0, w.y * metres, 0)).multiply(rise(k)).multiply(new THREE.Matrix4().makeScale(metres, metres, metres)).multiply(src);
+  const lift = (holder, k) => { holder.visible = k > 0; holder.matrix.copy(holder.userData.placed).multiply(rise(k)); holder.matrixWorldNeedsUpdate = true; };
   function driveGate(dt) {
-    if (!gate.action) return;
+    if (!gate.action || !gate.built) return;   // an unprinted gate plays no hydraulics
     const before = gate.t;
     gate.t = Math.max(0, Math.min(gate.duration, gate.t + (gate.want ? dt : -dt)));
     if (gate.want && before === 0 && gate.t > 0) sfx?.play('gate_hydraulics');
@@ -86,11 +95,8 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
         const geo = o.geometry.clone(); geo.setAttribute('aIsland', new THREE.InstancedBufferAttribute(sizes, 2));
         const mat = o.material.clone(); mat.polygonOffset = true; mat.polygonOffsetFactor = 1; mat.polygonOffsetUnits = 2; if (o.name === 'SLAB') gridShader(mat);
         const inst = new THREE.InstancedMesh(geo, mat, plan.islands.length); inst.name = `island ${o.name}`;
-        plan.islands.forEach((i, k) => {
-          const m = basisAt(placer, i.x, i.z, i.heading).multiply(new THREE.Matrix4().makeTranslation(0, i.top * metres, 0))
-            .multiply(new THREE.Matrix4().makeScale(i.w / kit.slabReference * metres, metres, i.d / kit.slabReference * metres)).multiply(o.matrixWorld);
-          inst.setMatrixAt(k, m);
-        });
+        const slab = { inst, src: o.matrixWorld.clone() }; slabs.push(slab);
+        plan.islands.forEach((i, k) => inst.setMatrixAt(k, islandMatrix(i, slab.src, kOf(grown.islands, k, i))));
         inst.instanceMatrix.needsUpdate = true; inst.computeBoundingSphere(); inst.receiveShadow = true; owned.add(geo); owned.add(mat); group.add(inst);
       });
     }) : null,
@@ -100,13 +106,15 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       src.traverse((o) => {
         if (!o.isMesh) return;
         const inst = new THREE.InstancedMesh(o.geometry, o.material, plan.walls.length); inst.name = 'walls';
-        plan.walls.forEach((w, k) => inst.setMatrixAt(k, basisAt(placer, w.x, w.z, w.heading).multiply(new THREE.Matrix4().makeTranslation(0, w.y * metres, 0)).multiply(new THREE.Matrix4().makeScale(metres, metres, metres)).multiply(o.matrixWorld)));
+        const wall = { inst, src: o.matrixWorld.clone() }; wallMeshes.push(wall);
+        plan.walls.forEach((w, k) => inst.setMatrixAt(k, wallMatrix(w, wall.src, kOf(grown.walls, k, w))));
         inst.instanceMatrix.needsUpdate = true; inst.computeBoundingSphere(); inst.castShadow = true; group.add(inst);
       });
     }) : null,
     plan.gate ? load(kit.gate).then((gltf) => {
       if (!gltf) return;
       const g = gltf.scene.clone(true); own(g); place(g, plan.gate.x, plan.gate.z, plan.gate.y, plan.gate.heading); g.name = 'gate'; group.add(g);
+      gate.obj = g; g.userData.placed = g.matrix.clone(); if (plan.gate.pending) lift(g, grown.gate);
       const clip = gltf.animations.find((c) => c.name === 'Gate_Open');
       if (clip) { gate.mixer = new THREE.AnimationMixer(g); gate.action = gate.mixer.clipAction(clip); gate.action.setLoop(THREE.LoopOnce, 1); gate.action.clampWhenFinished = true; gate.duration = clip.duration; }
       gate.position = placer.toWorld([plan.gate.x, 0, plan.gate.z]); gate.radius = plan.gate.openRadius * metres;
@@ -117,6 +125,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       if (!gltf) return;
       const holder = new THREE.Group(); place(holder, s.x, s.z, s.y, s.heading, s.scale, s.tilt ?? 0, s.lift ?? 0); group.add(holder);
       if (s.shown != null && plan.stage < s.shown) holder.visible = false;   // a structure a beat reveals before the stage that shows it outright
+      holder.userData.placed = holder.matrix.clone(); if (s.pending) lift(holder, kOf(grown.structures, s.id, s));   // a grown base's landmark waits for its print
       const root = mount(s, gltf, holder); records.set(s.id, s.far ? null : { holder, far: null, near: root });
       // the files each tier came from ride on the record: a review switch that quietly loaded the shipped tiers should
       // fail an assertion, and without them lod() could only say which tier is SHOWN, never which file it is
@@ -160,6 +169,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     if (!eye) return;
     for (const l of lod) {
       const d = l.at.distanceTo(eye); l.d = d;
+      if (!l.holder.visible) continue;   // a hidden landmark (not yet printed, not yet revealed) never fetches its near tier
       if (!l.near && !l.loading && d < lodSwitch * lodHyst) { l.loading = true; const s = plan.structures.find((x) => x.id === l.id); load(s.asset).then((gltf) => { if (!gltf) return; l.near = mount(s, gltf, l.holder); l.near.visible = false; }).catch((e) => errors.push(`${l.id} near: ${e}`)); }
       if (!l.near) continue;
       const near = l.shown === 'near' ? d < lodSwitch * lodHyst : d < lodSwitch;
@@ -174,13 +184,19 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       if (gate.position) gate.want = force ?? (Array.isArray(near) && Math.hypot(near[0] - gate.position.x, near[1] - gate.position.y, near[2] - gate.position.z) < gate.radius);
       driveGate(dt);
     },
-    gate: () => ({ present: !!gate.action, open: gate.open, want: gate.want, t: +gate.t.toFixed(2) }),
+    gate: () => ({ present: !!gate.action, built: gate.built, open: gate.open, want: gate.want, t: +gate.t.toFixed(2) }),
+    // Isao's print, piece by piece (k 0..1): a slab or a wall rises along its local up, a landmark scales up from its plot, and the gate
+    // counts as built (it opens for the tank, it holds the swarm) once it reaches the top
+    growIsland: (id, k) => { const n = plan.islands.findIndex((i) => i.id === id); if (n < 0) return; grown.islands.set(n, k); for (const s of slabs) { s.inst.setMatrixAt(n, islandMatrix(plan.islands[n], s.src, k)); s.inst.instanceMatrix.needsUpdate = true; s.inst.computeBoundingSphere(); } },
+    growWall: (n, k) => { if (!plan.walls[n]) return; grown.walls.set(n, k); for (const s of wallMeshes) { s.inst.setMatrixAt(n, wallMatrix(plan.walls[n], s.src, k)); s.inst.instanceMatrix.needsUpdate = true; s.inst.computeBoundingSphere(); } },
+    grow: (id, k) => { grown.structures.set(id, k); const r = records.get(id); if (r) lift(r.holder, k); },
+    growGate: (k) => { if (!plan.gate) return; grown.gate = k; if (gate.obj) lift(gate.obj, k); if (k >= 1) gate.built = true; },
     // a beat's hand on a landmark: show or hide it, or take its shown tier and clip actions
     reveal: (id) => { const r = records.get(id); if (r) r.holder.visible = true; },
     conceal: (id) => { const r = records.get(id); if (r) r.holder.visible = false; },
     structure: (id) => { const r = records.get(id); return r ? { holder: r.holder, root: r.near ?? r.far, near: r.near, far: r.far } : null; },
     bays: () => bays,
-    lod: () => lod.map((l) => ({ id: l.id, shown: l.shown, nearLoaded: !!l.near, files: l.files, metres: l.d === undefined ? null : +(l.d / metres).toFixed(0) })),
+    lod: () => lod.map((l) => ({ id: l.id, shown: l.shown, nearLoaded: !!l.near, visible: l.holder.visible, files: l.files, metres: l.d === undefined ? null : +(l.d / metres).toFixed(0) })),
     dispose() { for (const m of mixers) m.stopAllAction(); gate.mixer?.stopAllAction(); for (const r of owned) r.dispose(); scene.remove(group); },
   };
 }
