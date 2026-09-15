@@ -423,6 +423,7 @@ try{
  const mouth=await evaluate('window.__stalheartTest.backMouth()');assert.deepEqual(mouth.cells,[1086,34817],'the back mouth rides along with the story');
  assert.equal(await evaluate('window.__stalheartTest.backDoorOpen()'),false,'sealed before the call');
  const shut=await evaluate('window.__stalheartTest.backCandidates()');assert(shut.length>0&&shut.every(c=>c.side==='back'&&c.route>c.hops+15),`before the collapse the back lanes route through the gate (${JSON.stringify(shut[0])})`);
+ await until('!window.__stalheartTest.state().deploying',30000);await delay(500);   // a hull rolling out of its bay owns the camera over any shot
  const walls0=await evaluate('window.__stalheartTest.state().wallCount');
  // the frame cost: rAF deltas and long tasks for 2.5 s before the call (baseline) and 2.5 s from the call
  const watch=call=>evaluate(`new Promise(resolve=>{const long=[];const po=new PerformanceObserver(l=>{for(const e of l.getEntries())long.push(+e.duration.toFixed(1));});po.observe({type:'longtask'});let callMs=0,cells=0,last=0,max=0,frames=0,t0=0;const tick=()=>{const now=performance.now();max=Math.max(max,now-last);last=now;frames++;if(now-t0<2500)requestAnimationFrame(tick);else setTimeout(()=>{po.disconnect();resolve({long,maxFrame:+max.toFixed(1),frames,callMs,cells});},50);};requestAnimationFrame(()=>{t0=last=performance.now();${call?'const a=performance.now();cells=window.__stalheartTest.openBackDoor();callMs=+(performance.now()-a).toFixed(1);':''}requestAnimationFrame(tick);});})`);
