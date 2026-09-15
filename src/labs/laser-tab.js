@@ -25,7 +25,8 @@ import { STORY_RECIPE, STORY_CLEARING } from '../content/story-defaults.js';
 import { buildStoryPlanet } from '../domain/story-planet.js';
 import { planetBake } from '../platform/planet-bake.js';
 import { createStoryPlanetSurface } from './story-planet-mesh.js';
-import { createInsetHud } from './laser-inset-hud.js';
+import { createInsetHud } from '../fx/laser-inset-hud.js';
+import { createLaserScope, scopeRect } from '../fx/laser-scope.js';
 import { makeAudio } from '../audio.js';
 import { createSol82Briefing } from '../fx/sol82-briefing.js';
 import { planBase } from '../domain/base-plan.js';
@@ -170,8 +171,8 @@ export function initLaserTab(root) {
   let steerN = [0.5, 0.5], steering = false;
 
   const ground = new THREE.PerspectiveCamera(52, 1, 0.5, 8000);
-  const sat = new THREE.PerspectiveCamera(P.fov, 1, 1, 40000);
-  const ray = new THREE.Raycaster();
+  /* the satellite's scope, shared with the game's seat (src/fx/laser-scope.js) */
+  const scope = createLaserScope({ near: 1, far: 40000, fov: P.fov }), sat = scope.camera;
 
   const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3(), tmpN = new THREE.Vector3();
   let R = 753, cellSide = 10, sphere = null, north = new THREE.Vector3(0, 0, -1);
@@ -638,12 +639,7 @@ export function initLaserTab(root) {
   }
 
   function frameSat(point) {
-    const n = normalOf(point);
-    sat.fov = P.fov;
-    sat.position.copy(n).multiplyScalar(R * (1 + P.altitude)).add(tmpB.set(0, -R, 0));
-    sat.up.copy(viewForward(point));
-    sat.lookAt(point);
-    sat.updateProjectionMatrix();
+    scope.frame(point, tmpB.set(0, -R, 0), R, P.altitude, viewForward(point), P.fov);
   }
 
   /* BOTTOM LEFT, and both edges are taken for a reason. The lil-gui panel owns the right edge (styles.css
@@ -654,17 +650,12 @@ export function initLaserTab(root) {
   const INSET_LEFT = 64;
 
   function insetRect() {
-    const w = container.clientWidth || innerWidth, h = container.clientHeight || innerHeight;
-    if (h > w) { const s = Math.min(w, Math.round(h * 0.4)); return { x: Math.round((w - s) / 2), y: 0, w: s, h: s }; }   /* portrait: a lens centred across the top */
-    const s = Math.min(Math.round(w * P.inset), h - 24);
-    return { x: INSET_LEFT, y: h - s - 12, w: s, h: s };
+    return scopeRect(container.clientWidth || innerWidth, container.clientHeight || innerHeight, { share: P.inset, left: INSET_LEFT });
   }
 
   // screen-to-sphere on the FAR camera: the inset is the only surface that steers
   function targetFromInset(nx, ny) {
-    ray.setFromCamera(new THREE.Vector2(nx * 2 - 1, 1 - ny * 2), sat);
-    const hit = ray.ray.intersectSphere(sphere, new THREE.Vector3());
-    return hit;
+    return scope.pick(nx, ny, sphere);
   }
 
   // the ONE way the aim is set, in inset-normalised 0..1: the pointer goes through it and so does the test hook's
@@ -704,32 +695,8 @@ export function initLaserTab(root) {
   }
   addEventListener('resize', resize);
 
-  // THE ROUND SCOPE (owner, 2026-09-15: "make it round, like the radar"). The satellite view renders into its own
-  // target at the lens's pixel size, then a lens quad composites it through a circle with a darkened rim, scissored to
-  // the inset square, so the ground view shows around the lens instead of a black square cutting the beam. Viewport and
-  // scissor are CSS pixels: WebGLRenderer multiplies them by the pixel ratio itself (the square inset passed them
-  // pre-multiplied, which over-scaled on a 2x display).
-  const satTarget = new THREE.WebGLRenderTarget(2, 2, { samples: 4 });
-  const lensScene = new THREE.Scene(), lensCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-  const lensMat = new THREE.ShaderMaterial({
-    uniforms: { tView: { value: satTarget.texture } },
-    vertexShader: 'varying vec2 vUv;\nvoid main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
-    fragmentShader: `#include <common>
-uniform sampler2D tView;
-varying vec2 vUv;
-void main(){
-  float r = length(vUv - 0.5) * 2.0;
-  if (r > 1.0) discard;
-  vec4 c = texture2D(tView, vUv);
-  float rim = 1.0 - 0.5 * smoothstep(0.62, 1.0, r);
-  gl_FragColor = vec4(c.rgb * rim, 1.0);
-  #include <colorspace_fragment>
-}`,
-    depthTest: false, depthWrite: false,
-  });
-  const lensGeo = new THREE.PlaneGeometry(2, 2);
-  lensScene.add(new THREE.Mesh(lensGeo, lensMat));
-
+  // THE ROUND SCOPE (owner, 2026-09-15: "make it round, like the radar"): the ground view full screen, then the
+  // satellite's lens over it (src/fx/laser-scope.js draws the lens and puts the renderer back)
   function render() {
     const cr = renderer.domElement.getBoundingClientRect();
     renderer.setRenderTarget(null);
@@ -737,23 +704,7 @@ void main(){
     renderer.setScissorTest(false);
     renderer.setViewport(0, 0, cr.width, cr.height);
     renderer.render(scene, ground);
-    const r = insetRect();
-    const px = Math.max(2, Math.round(r.w * renderer.getPixelRatio()));
-    if (satTarget.width !== px) satTarget.setSize(px, px);
-    sat.aspect = 1;
-    sat.updateProjectionMatrix();
-    renderer.setRenderTarget(satTarget);
-    renderer.render(scene, sat);
-    renderer.setRenderTarget(null);
-    const y = cr.height - r.y - r.h;                                   /* GL y runs from the bottom */
-    renderer.autoClear = false;
-    renderer.setScissorTest(true);
-    renderer.setViewport(r.x, y, r.w, r.h);
-    renderer.setScissor(r.x, y, r.w, r.h);
-    renderer.render(lensScene, lensCam);
-    renderer.setScissorTest(false);
-    renderer.setViewport(0, 0, cr.width, cr.height);
-    renderer.autoClear = true;
+    scope.render(renderer, scene, insetRect());
   }
 
   function loop() {
@@ -1163,9 +1114,7 @@ void main(){
       sfx.dispose?.();
       briefing.dispose();
       insetHud.dispose();
-      satTarget.dispose();
-      lensGeo.dispose();
-      lensMat.dispose();
+      scope.dispose();
       style.remove();
       renderer.dispose();
       renderer.domElement.remove();
