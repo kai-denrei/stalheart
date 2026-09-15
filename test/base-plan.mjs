@@ -91,4 +91,24 @@ assert.deepEqual(full.bays.map((b) => b.n), [1, 2, 3]);
 { const plan = planBase(planet, layout, 4), f = plan.cells.forward, k = plan.cells.fodder, arc = (a, b) => { const p = planet.graph.centers[a], q = planet.graph.centers[b]; return Math.acos(Math.max(-1, Math.min(1, (p[0] * q[0] + p[1] * q[1] + p[2] * q[2]) / (Math.hypot(...p) * Math.hypot(...q))))) * planet.radius; };
   assert.ok(f >= 0 && k >= 0 && plan.open.includes(k), 'the sinkhole stands on the opened line');
   assert.ok(arc(f, k) > KIT.sightline.metres * 0.8, `the sinkhole is far down the line (${arc(f, k).toFixed(0)} m)`); }
+// ISAO GROWS THE BASE: the default reach is the stage itself and marks nothing; a wider reach places the later stages as pending
+for (let n = 0; n < STAGES.length; n++) {
+  const plain = planBase(planet, layout, n), same = planBase(planet, layout, n, { reach: n });
+  assert.equal(JSON.stringify(same), JSON.stringify(plain), `stage ${n}: reach = stage is the plain plan, byte for byte`);
+  assert.ok(!JSON.stringify(plain).includes('"pending"') && !('reach' in plain), `stage ${n}: the plain plan marks nothing pending`);
+  const grown = planBase(planet, layout, n, { reach: STAGES.length - 1 }), keep = (a) => a.filter((x) => !x.pending);
+  // what stands now is the plain plan (structures on a pending island already ride at their final height, a hair over the slab to come)
+  assert.deepEqual(keep(grown.islands), plain.islands, `stage ${n}: standing islands`);
+  assert.deepEqual(keep(grown.structures).map(({ y, ...s }) => s), plain.structures.map(({ y, ...s }) => s), `stage ${n}: standing structures`);
+  assert.deepEqual(keep(grown.walls), plain.walls, `stage ${n}: standing walls`); assert.deepEqual(grown.gate?.pending ? null : grown.gate, plain.gate, `stage ${n}: the gate`);
+  assert.deepEqual(grown.cells, plain.cells, 'the sockets and the sinkhole do not move'); assert.deepEqual(grown.open, plain.open);
+}
+{ const g = planBase(planet, layout, 1, { reach: STAGES.length - 1 }), ids = (a) => a.filter((x) => x.pending).map((x) => x.id);
+  assert.equal(g.stage, 1); assert.equal(g.reach, STAGES.length - 1);
+  assert.deepEqual(ids(g.islands), ISLANDS.map((i) => i.id), 'every island is still to print at stage 1');
+  assert.deepEqual(ids(g.structures), ['solar', 'rotor', 'hugin', 'stalheart', 'bays', 'assembly', 'radar'], 'every later structure is pending');
+  assert.ok(g.structures.some((s) => s.id === 'sh02' && !s.pending), 'the intact SH02 still stands at stage 1');
+  assert.ok(g.gate.pending && g.walls.length === KIT.wallsPerSide * 2 && g.walls.every((w) => w.pending), 'the gate and its walls wait');
+  assert.deepEqual(g.bays.map((b) => [b.n, !!b.pending]), [[1, true], [2, true], [3, true]], 'the bays are pending berths');
+  const done = planBase(planet, layout, STAGES.length - 1, { reach: STAGES.length - 1 }); assert.ok(!JSON.stringify(done).includes('"pending"'), 'nothing pending at the last stage'); }
 console.log(`Base plan: ${full.islands.length} islands, ${full.structures.length} structures, ${full.walls.length} walls, gate at ${full.gate.x.toFixed(0)},${full.gate.z.toFixed(0)}.`);
