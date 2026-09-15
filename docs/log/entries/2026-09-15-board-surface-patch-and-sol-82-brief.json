@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "2026-09-15-board-surface-patch-and-sol-82-brief",
+  "date": "2026-09-15T23:00:00+00:00",
+  "type": "decision",
+  "status": "accepted",
+  "title": "Tank-shell breaches patch the board surface in place; SOL-82 is the orbital laser's name and asset brief",
+  "context": "Owner, 2026-09-15: breaking rock with a tank shell hitches for about half a second, and it gets far worse when the orbital laser takes several rocks in a row; the laser lab's patchable planet surface (357d98b) should be ported to the game's tank shells. The owner also named the orbital laser SOL-82, a homage to SOLD 740 and 1982, and asked for a short brief for the 3D asset designer.",
+  "outcome": "8911781: src/fx/board-surface.js holds td-tab's four board buffers in fixed per-cell, per-edge and per-corner slots. buildGeometry builds through it, breachWallCell queues breached cells, and rebuildAfterBreach re-lays the route field and patches only those cells. Per-cell colour jitter is a hash of (seed, cell), so a patched board equals a fresh build; the jitter pattern shifts once relative to the old running sequence. td-tab.js drops 99 lines and its architecture budget follows. d31a739: docs/SOL-82-BRIEF.md is the asset brief for the SOL-82 platform (capabilities from src/content/orbital-laser.js, the export contract, nodes, materials, clips, what the game draws itself).",
+  "alternatives": [
+    "Keep the sequential jitter and accept that a patched cell's colour differs slightly from a rebuild; rejected because byte-for-byte equality with a fresh build is the test that proves the patch.",
+    "A per-cell height texture sampled in the vertex shader; not chosen because the fixed slots keep td-tab's Lambert materials, gameBreaches' material patch, raycasts and paintCell unchanged.",
+    "Make the route field incremental too; unnecessary: the BFS measured about 2 ms on the 71k-cell story planet, and the hitch was the geometry."
+  ],
+  "evidence": [
+    "test/board-surface.mjs on the baked story planet: three breached cells (a rim rock, an interior rock and its neighbour) patched in place equal a fresh build in every attribute of all four buffers, in black and bright modes; build 136 ms / 78 ms, patch 0.199 ms / 0.147 ms.",
+    "bfsDist over the story planet's 71,314 cells: 2.07 ms mean over 10 runs.",
+    "npm test (107 test programs) and npm run check (architecture budgets hold; td-tab.js 13,858 lines) green on 8911781.",
+    "NOT browser-verified: the memory guardrail stayed at WARN (3.07 GB swap), so no --story-world or --defense run covered td-tab's live breach path after the change."
+  ],
+  "supersedes": []
+}
