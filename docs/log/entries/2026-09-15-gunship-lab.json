@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "2026-09-15-gunship-lab",
+  "date": "2026-09-16T00:00:00+00:00",
+  "type": "experiment",
+  "status": "proposed",
+  "title": "Gunship lab: the orbital laser's screen for the gunship, through its FLIR optic, with short share links",
+  "context": "Owner, 2026-09-15: the gunship's ground truth of its impacts reads too small. Of two options, (a) make the gunship's impact read larger in its current seat, or (b) give the gunship the orbital laser's layout (full-screen real-world view, a round scope at 0.44 of the width with reticles and telemetry) while keeping its thermal FLIR look, the owner chose (b), built as a lab. Both the gunship and orbital laser labs must be easy to deep link, to share with friends for feedback.",
+  "outcome": "1ace86d adds labs.html#gunship (src/labs/gunship-tab.js). The lab uses the game's gunship rules and content, a scope camera 340 m straight down at 60/zoom degrees, and a lens shader that applies the game's #flir ironbow table to the scope alone. Rotary and Bofors fire while held, the 105 launches on one click, and rounds land after their flight time on the seat's golden-angle spread as the game's explosions and scares with splash damage; the 105 also breaks rock and walls in its blast. The scope HUD takes per-lab overrides, and the laser's output is unchanged. laser.html and gunship.html are short share pages. The DEV Workshop lists the lab.",
+  "alternatives": [
+    "(a) Enlarge the gunship's impacts in its existing seat; set aside by the owner in favour of trying (b) first, and still available to compare.",
+    "Reuse src/sentry-pilot.js's seat inside the lab; rejected because it needs about 40 host callbacks from td-tab, pointer lock and the game's executeStrike, and the architecture guard forbids labs from reaching td-tab.",
+    "Apply FLIR as the game does, a CSS url(#flir) filter on the whole canvas; rejected because it would also filter the ground view, which the owner wants as the ground truth. The lens shader filters the scope only.",
+    "Share one world module between the laser and gunship labs now; deferred: the gunship lab writes the same planet, base, trench and swarm again, and extracting a shared module is the follow-up once both labs have had a browser round."
+  ],
+  "evidence": [
+    "npm test (107 test programs), npm run check (architecture budgets and lab boundaries hold) and npm run build (416 files; dist/laser.html and dist/gunship.html present) green on 1ace86d.",
+    "NOT browser-verified: the memory guardrail stayed at WARN (3.07 GB swap), so the gunship lab has not booted in any browser. The owner can open it on the running dev server at gunship.html?sw=0.",
+    "Sharing with friends needs a publish: GitHub Pages builds main only (.github/workflows/pages.yml), and heavy-gunship is not on main."
+  ],
+  "supersedes": []
+}
