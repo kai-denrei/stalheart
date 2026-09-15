@@ -295,6 +295,13 @@ export const BRIEFS = {
     id: 'array_dry', face: 'determined', title: 'COMMS · ISAO',
     lines: ['The array is dry. That was all the sun it had stored.', 'I will have it charged for the next sector.'],
   },
+  // THE SECOND FRONT: the swarm cracks the sealed mouth behind the bays. A fact, then the plan.
+  back_door: {
+    id: 'back_door',
+    face: 'surprised',
+    title: 'THE BACK WALL',
+    lines: ['They cracked the back wall!', 'Build towers behind the bays.'],
+  },
 };
 
 // HOW LONG A LINE HOLDS. Isao's running commentary used to wait for a tap —

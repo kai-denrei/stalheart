@@ -5,7 +5,8 @@
 import * as THREE from '../../vendor/three.module.js';
 import { buildWorld } from '../domain/world-recipe.js';
 import { planBase } from '../domain/base-plan.js';
-import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT, STORY_SCALE, STORY_BREACH, STORY_QUIVER, STORY_DAY, STORY_FODDER, STORY_HANDOVER, STORY_EXPEDITIONS } from '../content/story-defaults.js';
+import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT, STORY_SCALE, STORY_BREACH, STORY_QUIVER, STORY_DAY, STORY_FODDER, STORY_HANDOVER, STORY_EXPEDITIONS, STORY_BACK_DOOR } from '../content/story-defaults.js';
+import { findBackMouth } from '../domain/back-door.js';
 import { CONTENT } from '../content/runtime.js';
 import { FOUNDRY_TUNE } from '../content/foundry.js';
 import { LASER_AUDIO } from '../content/orbital-laser.js';
@@ -111,6 +112,9 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     // ISAO KEEPS BUILDING: the programme, its print on the planet, and the wall cells that turn to rock when the gate step stands
     grow, programme: makeBuildProgramme(steps, { standing: (s) => !pieces(s).some((p) => p.pending) }), print: createBasePrint({ base, plan, placer }),
     wallCells: plan.walls.filter((w) => w.pending && w.cell >= 0).map((w) => w.cell),
+    // THE SECOND FRONT: the sealed mouth behind the bays, recomputed per load like the rest of the clearing (the controller keeps
+    // only the mesh and the dungeon of the planet), with the clearing cells the back-breach rules need and the tunables
+    backMouth: findBackMouth(planet, STORY_BACK_DOOR), backDoor: STORY_BACK_DOOR, backPlanet: { graph: planet.graph, clearing: planet.clearing },
   } : null;
   return { ...built, base, plan, story };
 }
