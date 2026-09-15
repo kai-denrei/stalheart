@@ -85,7 +85,7 @@ import { makeLaser, stepLaser, aimLaser, burnLaser, burnContacts, laserProgress 
 import { len3, dot3, norm3 } from '../src/vec3.js';
 
 /* the owner's first values, pinned so a tuning session has to come through a decision entry */
-assert.deepEqual({ ...LASER_ORBIT }, { period: 180, window: 20 });
+assert.deepEqual({ ...LASER_ORBIT }, { period: 180, overhead: 20 });
 assert.deepEqual({ ...LASER_BEAM }, { energy: 10, radius: 6, slew: 40 });
 assert.deepEqual({ ...LASER_BURN }, { soft: 0, hard: 1, wall: 0.5, tower: 1.5, seal: 1, tank: 1, heart: 3 });
 assert.deepEqual({ ...LASER_VIEW }, { altitude: 1.2, fov: 18, inset: 0.34, groundBack: 28, groundUp: 9 });
@@ -182,23 +182,23 @@ assert.equal(LASER_PRESET.glowWidth, 5);
   assert.equal(st.energy, 4);
   assert.equal(burnLaser(st, true, 9), true);
   assert.equal(st.energy, 0, 'the drain floors at zero');
-  assert.equal(burnLaser(st, true, 1), false, 'out of energy inside the window');
+  assert.equal(burnLaser(st, true, 1), false, 'out of energy while overhead');
   assert.equal(st.burning, false);
 }
 
 /* --- the HUD progress ---------------------------------------------------- */
 {
   const st = makeLaser(LASER_ORBIT, LASER_BEAM);
-  assert.deepEqual(laserProgress(st, LASER_ORBIT, LASER_BEAM), { window: 1, energy: 1 });
+  assert.deepEqual(laserProgress(st, LASER_ORBIT, LASER_BEAM), { pass: 1, energy: 1 });
   stepLaser(st, 80, LASER_ORBIT, LASER_BEAM);
-  assert.deepEqual(laserProgress(st, LASER_ORBIT, LASER_BEAM), { window: 0.5, energy: 1 });
+  assert.deepEqual(laserProgress(st, LASER_ORBIT, LASER_BEAM), { pass: 0.5, energy: 1 });
   stepLaser(st, 80, LASER_ORBIT, LASER_BEAM);
   burnLaser(st, true, 5);
   const p = laserProgress(st, LASER_ORBIT, LASER_BEAM);
-  assert.equal(p.window, 1);
+  assert.equal(p.pass, 1);
   assert.equal(p.energy, 0.5);
   stepLaser(st, 15, LASER_ORBIT, LASER_BEAM);
-  assert.equal(laserProgress(st, LASER_ORBIT, LASER_BEAM).window, 0.25);
+  assert.equal(laserProgress(st, LASER_ORBIT, LASER_BEAM).pass, 0.25);
 }
 
 console.log('Orbital laser: the clock arrives and closes, the contact slews at its metres per second, burns accumulate per kind and are reported once, energy drains only while burning.');
@@ -214,7 +214,7 @@ console.log('Orbital laser: the clock arrives and closes, the contact slews at i
 // Pure data. No Three.js, no browser: the lab reads these and the panel edits a working copy of them.
 
 // seconds between passes, and seconds overhead once it arrives
-export const LASER_ORBIT = Object.freeze({ period: 180, window: 20 });
+export const LASER_ORBIT = Object.freeze({ period: 180, overhead: 20 });
 
 // energy: seconds of burn per pass; radius: footprint radius in metres; slew: how fast the contact point chases the pointer, m/s
 export const LASER_BEAM = Object.freeze({ energy: 10, radius: 6, slew: 40 });
@@ -282,7 +282,7 @@ import { norm3, len3, dot3, cross3, scale3 } from '../vec3.js';
 export function makeLaser(orbit, beam) {
   return {
     phase: 'away',
-    left: Math.max(0, orbit.period - orbit.window),
+    left: Math.max(0, orbit.period - orbit.overhead),
     energy: beam.energy,
     burning: false,
     contact: null,
@@ -293,19 +293,19 @@ export function makeLaser(orbit, beam) {
   };
 }
 
-// The clock. Returns 'arrive' the frame the satellite comes overhead, 'close' the frame the window shuts, else null.
+// The clock. Returns 'arrive' the frame the satellite comes overhead, 'close' the frame the pass shuts, else null.
 // At most one transition per call; the overshoot is carried into the next phase so a long step does not drift.
 export function stepLaser(st, dt, orbit, beam) {
   st.left -= dt;
   if (st.left > 0) return null;
   if (st.phase === 'away') {
     st.phase = 'overhead';
-    st.left = Math.max(0, orbit.window + st.left);
+    st.left = Math.max(0, orbit.overhead + st.left);
     st.fresh = true;
     return 'arrive';
   }
   st.phase = 'away';
-  st.left = Math.max(0, (orbit.period - orbit.window) + st.left);
+  st.left = Math.max(0, (orbit.period - orbit.overhead) + st.left);
   st.energy = beam.energy;
   st.burning = false;
   st.contact = null;
@@ -378,9 +378,9 @@ export function burnContacts(st, things, dt, burn) {
 
 // For the HUD: how much of the CURRENT phase is left, and how much of the pass's budget is left.
 export function laserProgress(st, orbit, beam) {
-  const span = st.phase === 'overhead' ? orbit.window : Math.max(1e-6, orbit.period - orbit.window);
+  const span = st.phase === 'overhead' ? orbit.overhead : Math.max(1e-6, orbit.period - orbit.overhead);
   const clamp = (v) => Math.max(0, Math.min(1, v));
-  return { window: clamp(st.left / span), energy: clamp(st.energy / beam.energy) };
+  return { pass: clamp(st.left / span), energy: clamp(st.energy / beam.energy) };
 }
 ```
 
@@ -777,7 +777,7 @@ export function initLaserTab(root) {
 
   /* the panel's working copy of the content; the panel edits this, never the frozen tables */
   const P = {
-    period: LASER_ORBIT.period, window: LASER_ORBIT.window,
+    period: LASER_ORBIT.period, overhead: LASER_ORBIT.overhead,
     energy: LASER_BEAM.energy, radius: LASER_BEAM.radius, slew: LASER_BEAM.slew,
     altitude: LASER_VIEW.altitude, fov: LASER_VIEW.fov, inset: LASER_VIEW.inset,
     groundBack: LASER_VIEW.groundBack, groundUp: LASER_VIEW.groundUp,
@@ -791,7 +791,7 @@ export function initLaserTab(root) {
     const v = q.get(key);
     if (v !== null && Number.isFinite(Number(v))) P[key] = Number(v);
   }
-  const orbit = () => ({ period: P.period, window: P.window });
+  const orbit = () => ({ period: P.period, overhead: P.overhead });
   const beamCfg = () => ({ energy: P.energy, radius: P.radius, slew: P.slew });
   const burnCfg = () => ({ soft: P.burnSoft, hard: P.burnHard, wall: P.burnWall, tower: P.burnTower, seal: P.burnSeal, tank: 1.0, heart: P.burnHeart });
 
@@ -855,7 +855,7 @@ export function initLaserTab(root) {
     const word = st.phase === 'overhead' ? (st.energy > 0 ? 'OVERHEAD' : 'OUT') : 'AWAY';
     const line = `${word} · ${Math.ceil(st.left).toString().padStart(2, '0')}`;
     if (elState.textContent !== line) elState.textContent = line;
-    elWindow.style.width = `${Math.round(p.window * 100)}%`;
+    elWindow.style.width = `${Math.round(p.pass * 100)}%`;
     elEnergy.style.width = `${Math.round(p.energy * 100)}%`;
     elEnergy.classList.toggle('hot', st.energy <= 0);
     const label = st.energy <= 0 ? 'OUT' : 'ENERGY';
@@ -1415,7 +1415,7 @@ EOF
   const gui = new GUI({ title: 'ORBITAL LASER', container: root });
   const gp = gui.addFolder('the pass');
   gp.add(P, 'period', 20, 400, 1).name('period (s)');
-  gp.add(P, 'window', 4, 90, 1).name('window (s)');
+  gp.add(P, 'overhead', 4, 90, 1).name('overhead (s)');
   gp.add(P, 'energy', 1, 40, 0.5).name('energy (s of burn)');
   gp.open();
   const gb = gui.addFolder('the beam');
@@ -1457,7 +1457,7 @@ EOF
 
   function presetJson() {
     return JSON.stringify({
-      LASER_ORBIT: { period: P.period, window: P.window },
+      LASER_ORBIT: { period: P.period, overhead: P.overhead },
       LASER_BEAM: { energy: P.energy, radius: P.radius, slew: P.slew },
       LASER_BURN: burnCfg(),
       LASER_VIEW: { altitude: P.altitude, fov: P.fov, inset: P.inset, groundBack: P.groundBack, groundUp: P.groundUp },
