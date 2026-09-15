@@ -73,6 +73,7 @@
 .pilot-cross{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font-size:30px;font-weight:200}.pilot-map .pilot-cross{display:none}
 .sentry-pilot-mode #td-pad,.sentry-pilot-mode #td-throttle,.sentry-pilot-mode #td-coach,.sentry-pilot-mode #td-tut-banner{display:none!important}
 .sentry-pilot-mode #td-stats,.sentry-pilot-mode #td-tower,.sentry-pilot-mode #td-wave,.sentry-pilot-mode #td-launch,.sentry-pilot-mode .tc-util,.sentry-pilot-mode #td-brief,.sentry-pilot-mode #td-tut,.sentry-pilot-mode #td-hint,.sentry-pilot-mode #td-stick,.sentry-pilot-mode .tzone,.sentry-pilot-mode .tfire{display:none!important}
+#tab-td.pilot-framing .pilot-cross,#tab-td.pilot-framing #story-scope .reticle{opacity:0}   /* the view follows a round in flight, away from the aim (src/core/round-framing.js) */
 .sentry-pilot-mode #td-perf{top:215px;left:14px}.sentry-pilot-mode #td-next{right:20px;left:auto;transform:none}
 /* --- the enemy study (#swarm): a crowd on the left of a readout that does
    not flatter it. Two panels because two questions are asked at once. --- */

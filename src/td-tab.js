@@ -7619,7 +7619,7 @@ export function initTdTab(root) {
     if(!config || !pool?.available || tw.obj.userData.loading || (storyMode && towerSeekers.some(m=>m.by===tw)))return false;   // the story's guided round: one lock, one round in flight, then the next
     const direction=towerBarrel(tw,norm3(from));
     const scale=tw.lastMuzzle?.getWorldScale(new THREE.Vector3()).x ?? tw.obj.scale.x;
-    const m=launchDart(pool,{config,from,target:target.pos,direction,scale,sphere:true}); if(!m)return false;
+    const m=launchDart(pool,{config,from,target:target.pos,direction,scale,sphere:true,metre:cellSide/10}); if(!m)return false;   // ten metres a cell: the pop-out's cap reads in metres
     Object.assign(m,{pool,tid:target.id,by:tw,p:from.slice()});
     scene.add(m.mesh);towerSeekers.push(m);
     return true;
@@ -13786,7 +13786,7 @@ export function initTdTab(root) {
       post:delta=>{pilotPost=(pilotPost+delta+pilotPosts.length)%pilotPosts.length;pilot.select(pilotMounts[pilotPost]?.key || pilot.state.tower.key);}, pick:key=>{const i=pilotMounts.findIndex(m=>m?.key===key);if(i>=0){pilotPost=i;pilot.select(key);}},   // the story's strip names a mount
       map:on=>setView(on?'orbit':'bastion'),pause:()=>{paused=!paused;pilot.state.held=false;},
       wake:()=>holdWake(),cellSide:()=>cellSide, cone:()=>(pilot?.state.tower&&missileOf(pilot.state.tower.key)?story?.quiverCone??0:0),   // a guided mount acquires inside a cone; a gun needs the reticle on the body
-      zoom:z=>{camera.fov=60/z;camera.updateProjectionMatrix();},
+      zoom:z=>{camera.fov=60/z;camera.updateProjectionMatrix();}, lens:()=>[camera.fov,camera.aspect], round:()=>{const tw=pilot?.state.tower,m=tw&&towerSeekers.find(m=>m.by===tw);return m?{pos:m.p,u:m.t/m.config.duration,phase:m.pose?.phase}:null;},   /* the piloted mount's guided round in flight, for the framing (src/core/round-framing.js) */
       visible:e=>pilot.state.tower && losClear(pilot.state.tower.ci,e.pos,perchOf(pilot.state.tower)),
       aimPoint:(eye,dir,range)=>{const hit=rayToTerrain(eye.toArray(),dir.toArray(),range,pilot.state.tower.ci);return eye.clone().addScaledVector(dir,hit.len).toArray();},
       cameraPose:(eye,dir,up,goal)=>{tmpCam.position.copy(eye);tmpCam.up.copy(up);tmpCam.lookAt(eye.clone().add(dir));goal.quat.copy(tmpCam.quaternion);}
@@ -13797,7 +13797,7 @@ export function initTdTab(root) {
     clearBriefs();params.callouts=false;setView('bastion');if(pilotPosts.length)pilot.select(pilotMounts[0]?.key||'rotor');hideRangeRing();snapCamera();   // no posts yet (the gunship's seat before any sentry stands): nothing to install
     if(urlParams.get('acceptance')==='1')window.__stalheartPilotTest={state:()=>({paused,seed:params.seed,points:params.points,sector:round,posts:pilotPosts.slice(),view:pilot.state.view,ci:pilot.state.tower.ci,key:pilot.state.tower.key,shots:pilot.state.shots,held:pilot.state.held,heat:pilot.state.tower.heat??0,overheated:!!pilot.state.tower.overheated,roundDmg:+(effectiveStats(pilot.state.tower.def,pilot.state.tower.tier).dmg*(story?.pilot.dmgMul??1)).toFixed(3),enemyHp:enemies.find(e=>e.alive&&e.id>0)?.spec.hp??null,wave,enemies:enemies.filter(e=>e.alive).length,tank:player.pos.slice(),camera:camera.position.toArray(),target:pilot.state.target?.id??null,ready:!pilot.state.tower.obj.userData.loading,aimError:pilot.state.tower.aimErr,lock:pilot.state.tower.lock,heart:heartHP}),select:key=>pilot.select(key),
       aimEnemy:()=>{const tw=pilot.state.tower;const e=enemies.find(e=>e.alive&&missileDistance(graph.centers[tw.ci],e.pos)<(missileOf(tw.key)?.maxRange??effectiveStats(tw.def,tw.tier).range*10)&&losClear(tw.ci,e.pos,perchOf(tw)));if(!e)return null;pilot.aimAt(add3(e.pos,scale3(norm3(e.pos),cellSide*.3)));return {id:e.id,hp:e.hp};},
-      enemy:id=>{const e=enemies.find(e=>e.id===id);return e?{hp:e.hp,alive:e.alive}:null;},hold:on=>{pilot.state.held=!!on;},view:v=>pilot.setView(v), reach:()=>{const tw=pilot.state.tower;return enemies.filter(e=>e.alive).map(e=>({id:e.id,type:e.type,m:+missileDistance(graph.centers[tw.ci],e.pos).toFixed(1),los:losClear(tw.ci,e.pos,perchOf(tw)),cell:e.cur,pos:e.pos.map(v=>+v.toFixed(5))}));}
+      enemy:id=>{const e=enemies.find(e=>e.id===id);return e?{hp:e.hp,alive:e.alive}:null;},hold:on=>{pilot.state.held=!!on;},view:v=>pilot.setView(v), reach:()=>{const tw=pilot.state.tower;return enemies.filter(e=>e.alive).map(e=>({id:e.id,type:e.type,m:+missileDistance(graph.centers[tw.ci],e.pos).toFixed(1),los:losClear(tw.ci,e.pos,perchOf(tw)),cell:e.cur,pos:e.pos.map(v=>+v.toFixed(5))}));}, round:()=>{const r=pilotHost?.round();if(!r)return null;camera.updateMatrixWorld();const v=new THREE.Vector3().fromArray(r.pos).project(camera);return {x:+v.x.toFixed(4),y:+v.y.toFixed(4),z:+v.z.toFixed(5),u:+r.u.toFixed(4),phase:r.phase,view:pilot.state.view,fov:+camera.fov.toFixed(2)};}   /* the round through the real camera, for the frame probe */
     };
   }
 

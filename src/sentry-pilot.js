@@ -2,6 +2,7 @@
 import * as THREE from '../vendor/three.module.js';
 import { createGunshipHud, planetCoords } from './fx/gunship-hud.js';
 import { headingTurn } from './domain/gunship-track.js';
+import { framingWeight, frameRound, ROUND_FRAME } from './core/round-framing.js';
 export function createSentryPilot(root, host) {
   const state = { tower:null, held:false, yaw:0, pitch:-.2, zoom:1, target:null, shots:0, view:'pov' };   // view: pov (over the barrels) | third (behind the turret)
   const panel=document.createElement('section'); panel.id='sentry-pilot';
@@ -62,8 +63,21 @@ export function createSentryPilot(root, host) {
     // so the barrels are in frame: a little in PoV, the whole turret in third.
     const c=host.cellSide(),back=state.view==='third'?(gunship?6*c:2.4*c):(gunship?0:.34*c),lift=state.view==='third'?(gunship?2.2*c:1.35*c):(gunship?(GUNSHIP_EYE-.65)*c:.12*c);   // the gunner's eye is under the belly, with the guns, not inside the hull
     if(gunship&&state.view==='third')camEye.copy(eye).addScaledVector(direction,-6*c).addScaledVector(up,.8*c);else camEye.copy(eye).addScaledVector(forward,-back).addScaledVector(up,lift);   // the gunship's third view backs off along the aim so the KORP sits in frame over its target
-    goal.pos.copy(camEye);host.cameraPose(camEye,direction,up,goal);
+    goal.pos.copy(camEye);host.cameraPose(camEye,frameView(dt),up,goal);
     return !map;
+  }
+  // THE ROUND STAYS IN FRAME (owner, 2026-09-16; src/core/round-framing.js): while this mount's guided round is in its opening
+  // (host.round: its position and flight fraction) the lens eases toward 1x and the view follows the round in a dead zone, then hands
+  // back to the aim through the climb. The aim itself never moves, so the lock and the next shot are where the pilot left them.
+  const look=new THREE.Vector3();let lens=null;   // lens: the zoom while a round is framed; null when the lens is the pilot's own
+  function frameView(dt){
+    const r=gunship||map?null:host.round?.(),w=r?framingWeight(r.u):0;
+    if(gunship||map){lens=null;}
+    else if(w>0||lens!==null){const want=state.zoom+(ROUND_FRAME.lens-state.zoom)*w;lens??=state.zoom;lens+=(want-lens)*(1-Math.exp(-dt/.12));if(w===0&&Math.abs(lens-want)<.01){lens=null;host.zoom(state.zoom);}else host.zoom(lens);}
+    root.classList.toggle('pilot-framing',w>0);   // the reticle marks the aim, and the view is elsewhere for a moment
+    if(!(w>0))return direction;
+    const [fovDeg,aspect]=host.lens?.()??[60/(lens??state.zoom),innerWidth/innerHeight];
+    return look.fromArray(frameRound({eye:camEye.toArray(),aim:direction.toArray(),up:up.toArray(),round:r.pos,fovDeg,aspect,weight:w}));
   }
   function setView(v){if(v==='map'){if(!map)toggleMap();return;}state.view=v==='third'?'third':'pov';if(map)toggleMap();}
   // A GUIDED MOUNT USES THE LOCK BOX (host.cone, the tangent of its half-angle): whatever is inside it is the target, and it STAYS the
@@ -202,6 +216,6 @@ export function createSentryPilot(root, host) {
   return {state,pose,target,attach,select,setView,isMap:()=>map,hit(){cross.classList.add('hit');clearTimeout(hitT);hitT=setTimeout(()=>cross.classList.remove('hit'),120);},mountGunship,dismountGunship,gunshipTick,gunshipOptic,get gunship(){return gunship;},
     aimAt:pos=>{const {held,target}=state;attach(state.tower,pos);state.held=held;state.target=target;},
     update(text){panel.querySelector('output').textContent=text;},
-    dispose(){dismountGunship();hud?.dispose();abort.abort();if(locked())document.exitPointerLock?.();panel.remove();root.classList.remove('sentry-pilot-mode');}
+    dispose(){dismountGunship();hud?.dispose();abort.abort();if(locked())document.exitPointerLock?.();panel.remove();root.classList.remove('sentry-pilot-mode','pilot-framing');}
   };
 }

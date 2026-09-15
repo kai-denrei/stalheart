@@ -4,11 +4,11 @@ export { createMissilePool } from './missile-presentation.js';
 
 // All viewers share the asset, timing, profile, ignition and launch snapshot.
 // Consumers own targeting/damage and release on arrival or scene reset.
-export function launchDart(pool,{config,from,target,direction,scale=1,sphere=false}) {
+export function launchDart(pool,{config,from,target,direction,scale=1,sphere=false,metre=undefined}) {
   const mesh=pool?.acquire(config.length*scale);
   if(!mesh)return null;
   const m={mesh,config:{...config},target:target.slice(),t:0,sphere,
-    frame:(sphere?sphereMissileFrame:missileFrame)(from,target,direction)};
+    frame:(sphere?sphereMissileFrame:missileFrame)(from,target,direction,metre===undefined?{}:{metre})};   // metre: one metre in the scene's units, so the pop-out's cap reads in metres
   advanceDart(pool,m,0);
   return m;
 }

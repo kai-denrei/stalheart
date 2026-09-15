@@ -15,11 +15,11 @@ function world(frame,p) {
   const angle=Math.hypot(p[0],p[2]),s=angle>1e-10?Math.sin(angle)/angle:1;
   return frame.up.map((v,i)=>(v*Math.cos(angle)+(frame.right[i]*p[0]+frame.forward[i]*p[2])*s)*(frame.radius+p[1]));
 }
-export function sphereMissileFrame(from,target,direction) {
+export function sphereMissileFrame(from,target,direction,options={}) {
   const up=unit(from),ref=Math.abs(up[1])<.9?[0,1,0]:[1,0,0];
   const right=unit(cross(up,ref)),forward=cross(right,up);
   const frame={up,right,forward,radius:Math.hypot(...from)};
-  frame.flight=missileFrame([0,0,0],local(frame,target),[dot(direction,right),dot(direction,up),dot(direction,forward)]);
+  frame.flight=missileFrame([0,0,0],local(frame,target),[dot(direction,right),dot(direction,up),dot(direction,forward)],options);   // options.metre: one metre in world units, for the pop-out's cap
   return frame;
 }
 export function sampleSphereMissile(frame,u,profile,target) {
