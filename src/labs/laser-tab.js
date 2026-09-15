@@ -70,8 +70,11 @@ export function initLaserTab(root) {
   /* the satellite inset's sight and telemetry, a 2D canvas over the 3D one */
   const insetHud = createInsetHud(container);
   /* THE SOUND: only the laser's own definitions, not persisted. The context unlocks on the first pointer press (a
-     gesture); the burn loop is a handle held while the ground burns, retried each frame until its buffer has decoded */
+     gesture) after arm(); the burn loop is a handle held while the ground burns, retried each frame until its buffer has decoded */
   const sfx = makeAudio({ seed: 5, persist: false, sounds: LASER_AUDIO });
+  /* armed now, as src/sinkhole.js does: arm() only listens, and the context is born on the NEXT gesture, so arming
+     inside the first press would leave the first burn silent */
+  sfx.arm();
   let burnVoice = null;
   const stopBurnVoice = (fade = 0.35) => { burnVoice?.stop(fade); burnVoice = null; };
   const scene = new THREE.Scene();
@@ -551,7 +554,7 @@ export function initLaserTab(root) {
     steering = inside;
     if (!inside) return;
     steerTo((x - r.x) / r.w, (y - r.y) / r.h);
-    if (e.type === 'pointerdown') { held = true; sfx.arm?.(); sfx.resume?.(); }
+    if (e.type === 'pointerdown') held = true;
     e.preventDefault();
   }
   /* letting go also stops steering: the contact and both cameras hold on the last contact until the pointer moves again */
