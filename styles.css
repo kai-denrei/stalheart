@@ -4483,3 +4483,7 @@ body.playing:not(.shell-open) #shell-bar { opacity: 0.32; }
   .sdb-root *, .sdb-root *::before, .sdb-root *::after { animation: none !important; transition: none !important; }
 }
 /* end sector debrief */
+
+/* THE STORY WORLD WEARS NO CAMPAIGN FURNITURE (2026-09-16): the centre/auto/orbit/map/tank chips and the old key hint do nothing a player
+   needs there; the strip names the views. The sound chip stays, alone. */
+#tab-td.story-world .tc-util button:not(#td-pad-sound), #tab-td.story-world #td-hint { display: none !important; }
