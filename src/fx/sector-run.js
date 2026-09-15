@@ -39,7 +39,7 @@ export function killSource(src, via = null) {
 // hooks: see the controller's createSectorRun call (src/td-tab.js). Every one is required unless marked optional there.
 export function createSectorRun(h) {
   const story = h.story, api = h.api ?? {};
-  let phase = 'idle', def = null, sector = null, stats = null, left = 0, at = 0, pending = [], nextOpenAt = 0, backOpenedAt = null, campaignShown = false, lastPoll = null, lastReport = null;
+  let phase = 'idle', def = null, sector = null, stats = null, left = 0, at = 0, pending = [], nextOpenAt = 0, backOpenedAt = null, campaignShown = false, lastPoll = null, lastReport = null, quiet = false;
   const sps = new Map(), reports = [];
   const now = () => h.now();
 
@@ -131,7 +131,7 @@ export function createSectorRun(h) {
       if (d < SECTOR_GATE.quietCells) near = true;
       if (d < SECTOR_GATE.pressCells && !story.inside?.(e.cur)) { if (e.spec?.rammable) soft++; else cores++; }
     }
-    if (pressGate(gate, { soft, cores }, dt, SECTOR_GATE) === 'broke') { h.callout('THE GATE IS DOWN', 'co-victory'); h.sfx?.('gate_slam'); h.brief('gate_broken'); note({ type: 'leak' }); h.hud(); }
+    if (!quiet && pressGate(gate, { soft, cores }, dt, SECTOR_GATE) === 'broke') { h.callout('THE GATE IS DOWN', 'co-victory'); h.sfx?.('gate_slam'); h.brief('gate_broken'); note({ type: 'leak' }); h.hud(); }
     if (mendGate(gate, dt, !near, SECTOR_GATE) === 'closed') { h.brief('gate_mended'); h.hud(); }
   }
 
@@ -208,7 +208,7 @@ export function createSectorRun(h) {
   return {
     tick, hudLine,
     // the wave clock may arm only while every breach of the sector stands open and ready and one of them still has waves
-    canRelease: () => phase === 'fighting' && !pending.length && sector.breaches.every((b) => b.state !== 'open' || (sps.get(b.id)?.alive && (h.spReady?.(sps.get(b.id)) ?? true))) && sector.breaches.some((b) => b.state === 'open' && b.wavesReleased < b.wavesPlanned),
+    canRelease: () => !quiet && phase === 'fighting' && !pending.length && sector.breaches.every((b) => b.state !== 'open' || (sps.get(b.id)?.alive && (h.spReady?.(sps.get(b.id)) ?? true))) && sector.breaches.some((b) => b.state === 'open' && b.wavesReleased < b.wavesPlanned),
     // one programme wave from every live breach: queue entries with `at` offsets from now
     release: (t) => { if (phase !== 'fighting' || !sector) return []; const out = []; for (const b of sector.breaches) { const sp = sps.get(b.id); if (b.state !== 'open' || !sp?.alive) continue; const r = releaseWave(sector, b.id, t); if (r) out.push(...entriesOf(r.wave, sp)); } h.hud(); return out; },
     active: () => phase !== 'idle',
@@ -244,6 +244,8 @@ export function createSectorRun(h) {
       clearField: () => h.clearField(),
       cont: () => cont(),
       keepHolding: () => next(),
+      // an acceptance run about something else (towers, the gunship, expeditions): no programme waves and no gate wear
+      quiet: (on) => { quiet = !!on; },
       report: () => lastReport,
       reports: () => reports.slice(),
     },

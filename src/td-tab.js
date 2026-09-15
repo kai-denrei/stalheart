@@ -13412,7 +13412,7 @@ export function initTdTab(root) {
       breachStrike:()=>{const sp=spawnPoints.find(s=>s.alive&&s.obj.userData.breach);if(sp)executeStrike(sp.ci,t);},
       breachShell:()=>{const sp=spawnPoints.find(s=>s.alive&&s.obj.userData.breach);if(sp)gateTakesShell(sp);},
       breachSpent:programmeSpent,
-      sectorRelease: (id) => sectorRun?.test.release(id) ?? null, sectorClose: (id, by) => sectorRun?.test.close(id, by) ?? null, sectorClearField: () => sectorRun?.test.clearField(), sectorContinue: () => sectorRun?.test.cont(), sectorKeepHolding: () => sectorRun?.test.keepHolding(), sectorReport: () => sectorRun?.test.report() ?? null,
+      sectorRelease: (id) => sectorRun?.test.release(id) ?? null, sectorClose: (id, by) => sectorRun?.test.close(id, by) ?? null, sectorClearField: () => sectorRun?.test.clearField(), sectorContinue: () => sectorRun?.test.cont(), sectorKeepHolding: () => sectorRun?.test.keepHolding(), sectorQuiet: (on) => sectorRun?.test.quiet(on), sectorReport: () => sectorRun?.test.report() ?? null,
       breachScenario:()=>{endShot();paused=false;setView('orbit');followSuspend=true;const sp=spawnPoints.find(s=>s.alive);if(sp){buildQ.setFromUnitVectors(BQ_Z,new THREE.Vector3(...graph.centers[sp.ci]).normalize());buildDist=1.65;}waveIn=-1;armWave();},
       shieldScenario: () => {
         endShot();paused=true;

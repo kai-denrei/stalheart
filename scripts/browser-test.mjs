@@ -424,7 +424,9 @@ try{
  // THE HANDOVER (docs/superpowers/specs/2026-09-14-handover-gunship-call-expeditions-design.md): past the Quiver the towers fire
  // on their own and the wave clock runs; the gunship waits for an earned call; the tank clears a nest and brings a part home
  await go('defense-handover','index.html?sw=0&acceptance=1&cine=0&world=story&stage=6&phase=expedition#td');
- await until('!!window.__stalheartTest && (window.__stalheartTest.state().storyLod||[]).some(l=>l.id==="stalheart")',90000);await delay(2500);
+ await until('!!window.__stalheartTest && (window.__stalheartTest.state().storyLod||[]).some(l=>l.id==="stalheart")',90000);
+ // the sector loop's waves and gate wear would take a one-Rotor base down mid-run (--sectors covers the loop); this step is about the handover's systems
+ await evaluate('window.__stalheartTest.sectorQuiet(true)');await delay(2500);
  {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.story.phase,'expedition','the jump lands past the handover');assert.equal(s.automated,true,'automated');
   assert.equal(await evaluate('document.querySelectorAll("#story-views [data-mount]:not([data-mount=gunship])").length'),0,'no tower mounts after the handover');
   assert(await evaluate('!!document.querySelector("#story-views [data-view=tank]")'),'the tank is offered');
