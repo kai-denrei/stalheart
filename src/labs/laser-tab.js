@@ -35,7 +35,7 @@ import { createSinkhole } from '../sinkhole.js';
 import { createBreachRubble } from '../breach-rubble.js';
 import { createExplosions } from '../fx/explosions.js';
 import { EXPLOSION_SCARE, SCARE_FREEZE_S } from '../content/explosions.js';
-import { applyScare, stampScare, isScared, scarePace } from '../domain/impact-scare.js';
+import { stampScare, isScared, scarePace } from '../domain/impact-scare.js';
 import { createThermalHeat } from '../fx/thermal-heat.js';
 import { createOrbitalLaser } from '../fx/orbital-laser.js';
 import { makeDotEnemy, makeDotBurst } from '../units.js';
@@ -48,7 +48,9 @@ import { BLOCKED, PATH } from '../dungeon.js';
 
 const STAGE = 6;                                   /* the Stalheart's stage: the whole base stands */
 const BODIES = 20;                                 /* the single-file queue in the trench (the --laser browser step burns these) */
-const WALK_RING = [380, 600];                      /* arc metres from the base where the walking swarm spawns, beyond the range */
+const CLUSTER_ARC = 450;                           /* arc metres from the base where the two swarm clusters gather, beyond the range */
+const CLUSTER_CELLS = 45;                          /* each cluster packs onto this many open cells round its centre */
+const CLUSTER_SPREAD = 3.5;                        /* metres a body stands off its cell's centre, so a packed cluster does not stack */
 const ARRIVE_HOPS = 3;                             /* a walker this few cells from the heart has arrived, and respawns far out */
 const BODY_SPEED = 2.2;                            /* metres per second up the trench */
 const BODY_GAP = 3.4;                              /* single file: metres between one body and the next */
@@ -95,6 +97,11 @@ export function initLaserTab(root) {
     /* the swarm: the trench queue, then walkers that come in from far away along the route field */
     enemies: 500,
     walkSpeed: 4,
+    /* how afraid the swarm is: explosions scare this many times as far, the burning beam scares everything within
+       beamFear metres, and a scared body flees at panic times its pace */
+    fear: 2,
+    beamFear: 40,
+    panic: 1.8,
     /* the range is feedback unless this holds the beam at it */
     holdRange: false,
     /* WASD / arrows pre-position the beam this fast (m/s) while it is not firing */
@@ -143,7 +150,7 @@ export function initLaserTab(root) {
   /* the world direction that walks back down the trench, measured at its mouth; frameGround tips it onto the tangent
      plane wherever it is framing */
   let trenchBack = new THREE.Vector3(0, 0, 1);
-  let ready = false, held = false, burningWas = false, contactTimer = 0, smokeTimer = 0, sealed = false, sinkOpened = false;
+  let ready = false, held = false, burningWas = false, contactTimer = 0, smokeTimer = 0, beamScareT = 0, sealed = false, sinkOpened = false;
   /* what stood in the footprint on the last burning frame, by kind: the HUD shows it so a burn that takes nothing says so */
   const NOTHING_UNDER = Object.freeze({ soft: 0, wall: 0, rock: 0, tower: 0, heart: 0, seal: 0 });
   let under = { ...NOTHING_UNDER };
@@ -156,7 +163,7 @@ export function initLaserTab(root) {
      createStoryPlanetSurface, so a breach patches its cell in place instead of rebuilding the planet. */
   let rockTags0 = null, rockAnchors = new Set();
   /* the aim's distance from the base before the range clamp, for the scope's colour; the frame timing for the perf line */
-  let aimArc = 0, frameMs = 16.7, walkCells = null;
+  let aimArc = 0, frameMs = 16.7, clusterSets = null;
   const cellSpots = new Map();
   const perf = { fps: 0, ms: 0, draws: 0, triangles: 0 };
   const st = makeLaser(orbit(), beamCfg());
@@ -307,19 +314,31 @@ export function initLaserTab(root) {
     b.obj.quaternion.setFromUnitVectors(Y, normalOf(w));
   }
 
-  // THE SWARM (owner, 2026-09-15: 500 by default, active, moving the way they do, spawning far from the base). The first
-  // BODIES walk single file up the trench as before. The rest are walkers: they spawn on open floor WALK_RING metres out
-  // and step cell to cell down the planet's own route field (dungeon.distToHeart, the field the game routes the swarm
-  // by), turning away while scared; one that reaches the heart respawns far out, so the swarm keeps coming.
-  function spawnCells() {
-    if (walkCells) return walkCells;
-    const centers = planet.graph.centers, tags = planet.dungeon.tags, dist = planet.dungeon.distToHeart, out = [];
-    for (let ci = 0; ci < centers.length; ci++) {
-      if (tags[ci] === BLOCKED || !(dist[ci] > ARRIVE_HOPS)) continue;
-      const arc = Math.acos(Math.max(-1, Math.min(1, centers[ci][1]))) * R;
-      if (arc >= WALK_RING[0] && arc <= WALK_RING[1]) out.push(ci);
-    }
-    return (walkCells = out);
+  // THE SWARM (owner, 2026-09-15: 500 by default, active, moving the way they do, spawning far from the base; then two
+  // tighter clusters, more reactive to the laser, scattering and afraid). The first BODIES walk single file up the trench
+  // as before. The rest are walkers in two tight clusters CLUSTER_ARC metres out, one on the trench's bearing and one a
+  // third of the way round, each packed onto CLUSTER_CELLS open cells with a small stand-off per body. They step cell to
+  // cell down the planet's own route field (dungeon.distToHeart). A scared walker scatters: it turns off a leg that
+  // closes on the burn at once, then takes whichever neighbour puts it farthest from it. A walker that reaches the heart
+  // respawns in its cluster, so the swarm keeps coming.
+  function clusters() {
+    if (clusterSets) return clusterSets;
+    const centers = planet.graph.centers, tags = planet.dungeon.tags, dist = planet.dungeon.distToHeart;
+    const usable = (ci) => tags[ci] !== BLOCKED && dist[ci] > ARRIVE_HOPS;
+    const mouth = normalOf(toWorld([trench.from[0], 0, trench.from[1]]));
+    const bearing0 = Math.atan2(mouth.z, mouth.x), polar = CLUSTER_ARC / R;
+    clusterSets = [0, (2 * Math.PI) / 3].map((turn) => {
+      const want = [Math.sin(polar) * Math.cos(bearing0 + turn), Math.cos(polar), Math.sin(polar) * Math.sin(bearing0 + turn)];
+      const near = [];
+      for (let ci = 0; ci < centers.length; ci++) {
+        if (!usable(ci)) continue;
+        const c = centers[ci], d = c[0] * want[0] + c[1] * want[1] + c[2] * want[2];
+        if (d > Math.cos(120 / R)) near.push([d, ci]);
+      }
+      near.sort((x, y) => y[0] - x[0]);
+      return near.slice(0, CLUSTER_CELLS).map(([, ci]) => ci);
+    }).filter((set) => set.length);
+    return clusterSets;
   }
 
   // a walker's footing on a cell: its centre on the ground, a hair above the floor
@@ -334,47 +353,74 @@ export function initLaserTab(root) {
     return spot;
   }
 
-  // the next cell: down the route field toward the heart (a random one of the best, so the swarm spreads), or up it while scared
-  function nextCell(ci, away) {
+  // the next cell: down the route field toward the heart (a random one of the best, so the swarm spreads); while scared,
+  // the neighbour that puts the most ground between the walker and what scared it
+  function nextCell(ci, from = null) {
     const tags = planet.dungeon.tags, dist = planet.dungeon.distToHeart;
-    let best = [], bestD = away ? -Infinity : Infinity;
+    let best = [], score = -Infinity;
     for (const nb of planet.graph.adj[ci]) {
       if (tags[nb] === BLOCKED || dist[nb] < 0) continue;
-      const d = dist[nb];
-      if (away ? d > bestD : d < bestD) { bestD = d; best = [nb]; } else if (d === bestD) best.push(nb);
+      const spot = cellSpot(nb);
+      const value = from ? (spot.x - from[0]) ** 2 + (spot.y - from[1]) ** 2 + (spot.z - from[2]) ** 2 : -dist[nb];
+      if (value > score + 1e-6) { score = value; best = [nb]; } else if (Math.abs(value - score) <= 1e-6) best.push(nb);
     }
     return best.length ? best[Math.floor(Math.random() * best.length)] : ci;
   }
 
   function spawnWalker(b) {
-    const cells = spawnCells();
-    b.ci = cells.length ? cells[Math.floor(Math.random() * cells.length)] : 0;
-    b.next = nextCell(b.ci, false);
-    b.t = Math.random();
+    const sets = clusters(), set = sets.length ? sets[b.cluster % sets.length] : [];
+    b.ci = set.length ? set[Math.floor(Math.random() * set.length)] : 0;
+    b.next = nextCell(b.ci);
+    b.t = Math.random() * 0.5;
+    b.off = [(Math.random() - 0.5) * 2 * CLUSTER_SPREAD, (Math.random() - 0.5) * 2 * CLUSTER_SPREAD];
+    b.scareFrom = null;
     placeWalker(b);
   }
 
   function placeWalker(b) {
     const w = tmpA.copy(cellSpot(b.ci)).lerp(cellSpot(b.next), b.t);
+    const n = normalOf(w), across = tmpB.crossVectors(n, north).normalize();
+    w.addScaledVector(across, b.off[0]).addScaledVector(across.clone().cross(n), b.off[1]);
     b.pos = [w.x, w.y, w.z];
     if (!b.obj) return;
     b.obj.position.copy(w);
-    b.obj.quaternion.setFromUnitVectors(Y, normalOf(w));
+    b.obj.quaternion.setFromUnitVectors(Y, n);
   }
 
   function stepWalker(b, dt, now) {
     stampScare(b, now);
-    const pace = scarePace(b, now, SCARE_FREEZE_S), away = isScared(b, now);
+    let pace = scarePace(b, now, SCARE_FREEZE_S);
+    const scared = isScared(b, now), from = scared ? b.scareFrom : null;
+    if (pace > 1) pace *= P.panic;
+    /* scattering: a leg that closes on the burn is abandoned where the walker stands */
+    if (from && pace > 0) {
+      const d2 = (v) => (v.x - from[0]) ** 2 + (v.y - from[1]) ** 2 + (v.z - from[2]) ** 2;
+      if (d2(cellSpot(b.next)) < d2(cellSpot(b.ci))) { const back = b.ci; b.ci = b.next; b.next = back; b.t = 1 - b.t; }
+    }
     const leg = cellSpot(b.ci).distanceTo(cellSpot(b.next)) || 1;
     b.t += (P.walkSpeed * pace * dt) / leg;
     while (b.t >= 1) {
       b.t -= 1;
       b.ci = b.next;
       if (planet.dungeon.distToHeart[b.ci] <= ARRIVE_HOPS) { spawnWalker(b); return; }
-      b.next = nextCell(b.ci, away);
+      b.next = nextCell(b.ci, from);
       if (b.next === b.ci) { b.t = 0; break; }
     }
     placeWalker(b);
+  }
+
+  // SCARES THAT BUILD RATHER THAN FREEZE. applyScare restarts a body's scare (a fresh freeze) every time it is called; a
+  // beam that scares its surroundings several times a second would pin the swarm in place. Here a body already fleeing
+  // keeps fleeing, from the newest source and for longer; only a calm body starts a new scare.
+  function scareAround(point, radius, seconds) {
+    const r2 = radius * radius, from = [point.x, point.y, point.z];
+    for (const b of bodies) {
+      if (!b.alive || !b.pos) continue;
+      const dx = b.pos[0] - from[0], dy = b.pos[1] - from[1], dz = b.pos[2] - from[2];
+      if (dx * dx + dy * dy + dz * dz > r2) continue;
+      if (isScared(b, clock)) { b.scareFrom = from; b.scareUntil = Math.max(b.scareUntil, clock + seconds); }
+      else { b.scareFrom = from; b.scareSeconds = seconds; b.scareAt = null; }
+    }
   }
 
   function buildBodies() {
@@ -393,7 +439,7 @@ export function initLaserTab(root) {
         bodies.push(b);
         continue;
       }
-      const b = { id: `body-${i}`, type, obj, alive: true, walker: true, ci: 0, next: 0, t: 0, pos: [0, 0, 0] };
+      const b = { id: `body-${i}`, type, obj, alive: true, walker: true, cluster: i % 2, ci: 0, next: 0, t: 0, off: [0, 0], pos: [0, 0, 0] };
       spawnWalker(b);
       bodies.push(b);
     }
@@ -437,7 +483,7 @@ export function initLaserTab(root) {
   function fire(use, point) {
     const centred = toCentre(point);
     const sc = EXPLOSION_SCARE[use];
-    if (sc) applyScare(bodies, [point.x, point.y, point.z], { radius: sc.cells * cellSide, seconds: sc.seconds });
+    if (sc) scareAround(point, sc.cells * cellSide * P.fear, sc.seconds * Math.sqrt(Math.max(1, P.fear)));
     return explosions ? explosions.spawn(use, centred, norm3(centred), cellSide) : false;
   }
 
@@ -972,6 +1018,9 @@ void main(){
       const drag = P.slew > 0 ? Math.min(1, (st.speed || 0) / P.slew) : 0;
       burnVoice?.set(0.55 + 0.45 * laserProgress(st, orbit(), beamCfg()).energy, 0.97 + 0.08 * drag);
     }
+    /* the burning beam frightens everything near it, five times a second, before its footprint arrives */
+    beamScareT += dt;
+    if (P.beamFear > 0 && beamScareT >= 0.2) { beamScareT = 0; scareAround(ground, P.beamFear, 2.5); }
     /* the contact sheds pops at LASER_CONTACT_RATE per second while it burns */
     contactTimer += dt;
     const every = 1 / LASER_CONTACT_RATE;
@@ -1136,6 +1185,9 @@ void main(){
   const gs = gui.addFolder('the swarm');
   gs.add(P, 'enemies', 10, 1000, 10).name('enemies').onFinishChange(() => { if (ready) buildBodies(); });
   gs.add(P, 'walkSpeed', 0, 15, 0.5).name('walk speed (m/s)');
+  gs.add(P, 'fear', 0.5, 5, 0.1).name('fear (scare reach)');
+  gs.add(P, 'beamFear', 0, 120, 5).name('beam fear radius (m)');
+  gs.add(P, 'panic', 1, 4, 0.1).name('panic (flee pace)');
   gs.open();
   gb.open();
   /* live: each change goes straight to the column's uniforms through tune(), and COPY PRESET and the deep link carry it */
