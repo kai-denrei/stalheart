@@ -1,6 +1,7 @@
 import { createSentryPilot } from './sentry-pilot.js';
 import { DEFAULT_TANK, SHELL_SPEED, SHELL_REACH, TANK_DRIVE } from './content/tank.js'; import { makeDriveRamp, stepDriveRamp, scrubDriveRamp } from './domain/drive-ramp.js'; import { hullDepth, deepensContact } from './domain/hull-contact.js';
 import { createGameBreaches } from './game-breaches.js';
+import { createBoardSurface } from './fx/board-surface.js';
 import { BREACH_SOUNDS } from './content/breach-defaults.js';
 import { SOUNDS } from './content/runtime.js';
 import { emergence } from './domain/breach-waves.js'; import { applyScare, stampScare, scarePace, isScared, towardScare, awayExits } from './domain/impact-scare.js'; import { EXPLOSION_SCARE, SCARE_FREEZE_S } from './content/explosions.js'; import { createThermalHeat } from './fx/thermal-heat.js'; import { isAutomated, pilotMultipliers } from './domain/automation.js'; import { makeGunshipCall, fillFromKill, fillFromWaveClear, isFull as callFull, callGunship, passEnded, callProgress } from './domain/gunship-call.js'; import { GUNSHIP_CALL } from './content/gunship.js'; import { reveal, guardsCleared, reach as reachSite, deliver, hullLost, unlockedTowers, nextReveals } from './domain/expeditions.js'; import { STORY_EXPEDITIONS } from './content/story-defaults.js';
@@ -599,7 +600,7 @@ export function initTdTab(root) {
   let floorGeo = null, wallGeo = null, floorMesh = null, wallMesh = null;
   let edgeGeo = null, edgeMesh = null;
   let topGeo = null, topMesh = null; // interior wall-top wires, dimmable
-  let floorOffsets = null, edgeOwner = null; // cell -> [start,count] into floor color attr (verts); directed edge -> owning cell, built once per board
+  let floorOffsets = null, boardSurface = null; const breachQueue = []; // open cell -> its first floor vertex; the surface a breach patches (src/fx/board-surface.js); cells breached since the last patch
   let heartSprite = null, playerMesh = null, markerMesh = null, storyBase = null, story = null;
   // WHAT STANDS AT THE POLE. Both entries satisfy one contract — sizeScale,
   // tick(t), hit() — so swapping them changes how the Stalheart LOOKS and
@@ -1776,7 +1777,6 @@ export function initTdTab(root) {
   function buildGeometry() {
     const { vertices, quads } = mesh;
     const H = 1 + params.wallHeight;
-    const jr = mulberry32(params.seed ^ 0xc0ffee);
 
     const mode = wallTopMode();
     const E = look().edges;
@@ -1812,133 +1812,31 @@ export function initTdTab(root) {
       }
     }
     const constEdge = rgbOf(E.color);
-    const edgeTint = (ci) => (zoneColors
-      ? [zoneColors[ci * 3], zoneColors[ci * 3 + 1], zoneColors[ci * 3 + 2]]
-      : constEdge);
-    const baseTop = look().walls.top;
-    const topFill = mode === 'black' ? [0, 0, 0]
-      : mode === 'dim' ? [baseTop[0] * 0.45, baseTop[1] * 0.45, baseTop[2] * 0.45]
-      : baseTop;
-    // TD's buildable-frontier read: in black mode, wall tops that BORDER a
-    // hallway glow dim — exactly the cells towers may mount — while the
-    // interior wall mass stays void. The map itself teaches where to build.
-    const frontierTop = [baseTop[0] * 0.5, baseTop[1] * 0.5, baseTop[2] * 0.5];
-    const topJitter = mode === 'black' ? 0 : 1;
-    // floors: open cells at the surface
-    const fPos = [], fCol = [], ePos = [], eColA = [], tPos = [], tColA = [];
-    // Every interior edge belongs to TWO cells, and each cell emits its own
-    // four boundary edges — so without this, half the segments are drawn
-    // twice. The edge material is ADDITIVE, so duplicates SUM: a shared
-    // edge renders at 2x, and at a vertex, where several already-doubled
-    // edges converge on one pixel, brightness stacked up to 14x. That blew
-    // past the bloom threshold the edge midspans stayed under, which is
-    // what put a bloomed square on every vertex of the floor.
-    // One Set for both meshes: a rim segment must not be re-drawn as a
-    // wall-top wire either.
-    const seenSeg = new Set(), NV = vertices.length, NK = 2 * NV;   // numeric segment keys and the once-per-board edge map: see the walls pass
-    if (edgeOwner?.quads !== quads) { edgeOwner = new Map(); edgeOwner.quads = quads; vertices.forEach((v, vi) => { v.k = 2 * vi; }); for (let ci = 0; ci < quads.length; ci++) for (let i = 0; i < 4; i++) edgeOwner.set(quads[ci][i] * NV + quads[ci][(i + 1) % 4], ci); }
-    const firstTime = (p, q2) => {
-      const k = p.k < q2.k ? p.k * NK + q2.k : q2.k * NK + p.k;   // vertex index x level, not a string of rounded floats (see edgeOwner)
-      if (seenSeg.has(k)) return false;
-      seenSeg.add(k);
-      return true;
-    };
-    const pushEdge = (p, q2, ci) => {
-      if (!firstTime(p, q2)) return;
-      ePos.push(p[0], p[1], p[2], q2[0], q2[1], q2[2]);
-      const c = edgeTint(ci);
-      eColA.push(c[0], c[1], c[2], c[0], c[1], c[2]);
-    };
-    const pushTopEdge = (p, q2, ci) => {
-      if (!firstTime(p, q2)) return;
-      tPos.push(p[0], p[1], p[2], q2[0], q2[1], q2[2]);
-      const c = edgeTint(ci);
-      tColA.push(c[0], c[1], c[2], c[0], c[1], c[2]);
-    };
-    floorOffsets = new Map();
-    for (let ci = 0; ci < quads.length; ci++) {
-      if (dungeon.tags[ci] === BLOCKED) continue;
-      const q = quads[ci];
-      floorOffsets.set(ci, fPos.length / 3);
-      const [r, g, b] = floorColorOf(ci);
-      const j = (jr() - 0.5) * 0.05 * look().jitter;
-      for (const vi of [q[0], q[1], q[2], q[0], q[2], q[3]]) {
-        const p = vertices[vi];
-        fPos.push(p[0], p[1], p[2]);
-        fCol.push(r + j, g + j, b + j);
-      }
-      for (let i = 0; i < 4; i++) pushEdge(vertices[q[i]], vertices[q[(i + 1) % 4]], ci);
-    }
-
-    // walls: blocked cells extruded; top face + skirts on edges facing open cells
-    const wPos = [], wCol = [];
-    // A WALL BREACH FROZE THE GAME FOR HALF A SECOND on the story planet (71k cells, operator 2026-09-13: "lag before the impact"). Profiled,
-    // the rebuild's own work was string keys: a `${a}-${b}` map of every directed edge rebuilt each time though the topology never changes,
-    // and a rounded-float string per segment for the dedupe. The edge map is now built once per board, and every point carries a numeric
-    // key (k: vertex index x2, +1 on the wall top) that the dedupe combines instead; both are set up before the floor pass, which dedupes first
-    const edgeToCell = edgeOwner;
-    const pushQuad = (p0, p1, p2, p3, col, j) => {
-      for (const p of [p0, p1, p2, p0, p2, p3]) wPos.push(p[0], p[1], p[2]);
-      for (let i = 0; i < 6; i++) wCol.push(col[0] + j, col[1] + j, col[2] + j);
-    };
-    for (let ci = 0; ci < quads.length; ci++) {
-      if (dungeon.tags[ci] !== BLOCKED) continue;
-      const q = quads[ci];
-      const top = q.map((vi) => Object.assign(scale3(vertices[vi], H), { k: 2 * vi + 1 }));
-      const j = (jr() - 0.5) * 0.08 * look().jitter;
-      const nearHall = mode === 'black'
-        && graph.adj[ci].some((nb) => dungeon.tags[nb] !== BLOCKED);
-      pushQuad(top[0], top[1], top[2], top[3], nearHall ? frontierTop : topFill, j * topJitter);
-      // wall-top wires split by audience: rim segments over open cells are
-      // part of the wall's silhouette (always drawn, main edge set);
-      // interior top wires go to their own dimmable mesh — bright/dim/black
-      // is what makes walls read as wire, faint slab, or void on the minimap
-      for (let i = 0; i < 4; i++) {
-        const a = q[i], b = q[(i + 1) % 4];
-        const nb = edgeToCell.get(b * NV + a); // twin edge's owner
-        const facesOpen = nb !== undefined && dungeon.tags[nb] !== BLOCKED;
-        if (facesOpen) {
-          // skirt facing the open neighbour, wound outward + its outline
-          const sideCol = zoneColors
-            ? [zoneColors[ci * 3] * look().zones.wallSideLevel * 10,
-               zoneColors[ci * 3 + 1] * look().zones.wallSideLevel * 10,
-               zoneColors[ci * 3 + 2] * look().zones.wallSideLevel * 10]
-            : look().walls.side;
-          pushQuad(top[(i + 1) % 4], top[i], vertices[a], vertices[b], sideCol, j);
-          pushEdge(top[i], vertices[a], ci);
-          pushEdge(top[(i + 1) % 4], vertices[b], ci);
-          pushEdge(top[i], top[(i + 1) % 4], ci);
-        } else {
-          pushTopEdge(top[i], top[(i + 1) % 4], ci);
-        }
-      }
-    }
-
+    // THE SURFACE IS PATCHABLE (owner, 2026-09-15): every cell, lattice edge and corner owns fixed slots in the four
+    // buffers (src/fx/board-surface.js), so a breach rewrites what it touched (rebuildAfterBreach) instead of this build
     for (const [geo, obj] of [[floorGeo, floorMesh], [wallGeo, wallMesh], [edgeGeo, edgeMesh], [topGeo, topMesh]]) {
       if (obj) {scene.remove(obj);obj.material.dispose();}
       if (geo) geo.dispose();
     }
+    breachQueue.length = 0;
+    boardSurface = createBoardSurface({
+      vertices, quads, graph, dungeon, H, mode, seed: params.seed, jitter: look().jitter,
+      wallTop: look().walls.top, wallSide: look().walls.side, zones: look().zones, zoneColors, edgeColor: constEdge, floorColorOf,
+    });
+    floorOffsets = boardSurface.floorOffsets;
     const faceMat = () => new THREE.MeshLambertMaterial({
       vertexColors: true,
       polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1,
     });
-    floorGeo = new THREE.BufferGeometry();
-    floorGeo.setAttribute('position', new THREE.Float32BufferAttribute(fPos, 3));
-    floorGeo.setAttribute('color', new THREE.Float32BufferAttribute(fCol, 3));
-    floorGeo.computeVertexNormals();
+    floorGeo = boardSurface.floor;
     floorMesh = new THREE.Mesh(floorGeo, faceMat());
     gameBreaches.patch(floorMesh.material);scene.add(floorMesh);
 
-    wallGeo = new THREE.BufferGeometry();
-    wallGeo.setAttribute('position', new THREE.Float32BufferAttribute(wPos, 3));
-    wallGeo.setAttribute('color', new THREE.Float32BufferAttribute(wCol, 3));
-    wallGeo.computeVertexNormals();
+    wallGeo = boardSurface.wall;
     wallMesh = new THREE.Mesh(wallGeo, faceMat());
     scene.add(wallMesh);
 
-    edgeGeo = new THREE.BufferGeometry();
-    edgeGeo.setAttribute('position', new THREE.Float32BufferAttribute(ePos, 3));
-    edgeGeo.setAttribute('color', new THREE.Float32BufferAttribute(eColA, 3));
+    edgeGeo = boardSurface.edge;
     edgeMesh = new THREE.LineSegments(edgeGeo,
       new THREE.LineBasicMaterial({
         vertexColors: true, transparent: true, opacity: E.opacity,
@@ -1948,9 +1846,7 @@ export function initTdTab(root) {
     edgeMesh.visible = E.show;
     gameBreaches.patch(edgeMesh.material);scene.add(edgeMesh);
 
-    topGeo = new THREE.BufferGeometry();
-    topGeo.setAttribute('position', new THREE.Float32BufferAttribute(tPos, 3));
-    topGeo.setAttribute('color', new THREE.Float32BufferAttribute(tColA, 3));
+    topGeo = boardSurface.top;
     topMesh = new THREE.LineSegments(topGeo,
       new THREE.LineBasicMaterial({
         vertexColors: true, transparent: true,
@@ -1969,6 +1865,7 @@ export function initTdTab(root) {
     for (let v = 0; v < 6; v++) {
       attr.setXYZ(start + v, rgb[0], rgb[1], rgb[2]);
     }
+    attr.clearUpdateRanges();   // a breach patch may have queued ranges this frame: upload the whole attribute, this paint included
     attr.needsUpdate = true;
   }
 
@@ -5978,6 +5875,7 @@ export function initTdTab(root) {
     if (orderByCell.has(ci)) cancelOrder(ci, 'the wall under your order was blown out');
     breachedCells.add(ci); // demolition is permanent across rounds
     dungeon.tags[ci] = PATH;
+    breachQueue.push(ci);
     const c = graph.centers[ci];
     const n = graph.normals[ci];
     // wall hue, brightened: several looks keep sides near-black and the
@@ -5999,9 +5897,12 @@ export function initTdTab(root) {
     return true;
   }
 
+  // the route field is re-laid (one BFS, ~2 ms on the 71k-cell story planet) and the surface PATCHES the breached cells
+  // in place; only a board with no surface yet builds one
   function rebuildAfterBreach() {
     dungeon.distToHeart = bfsDist(graph.adj, [dungeon.heart], (i) => dungeon.tags[i] !== BLOCKED);
-    buildGeometry();
+    if (boardSurface && breachQueue.length) boardSurface.refreshCells(breachQueue.splice(0));
+    else buildGeometry();
   }
 
   function updateProjectiles(dt, tNow) {
