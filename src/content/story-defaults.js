@@ -63,8 +63,10 @@ export const STORY_FODDER = Object.freeze({ total: 50, alive: 50, every: 0, harm
 export const STORY_BREACH = Object.freeze({ emergeHold: 6, tail: 1.8, diveSeconds: 1.4, height: 5, back: 4 });
 // THE SECOND FRONT (owner, 2026-09-16: "protect the other side of the base"): the sealed clearing mouth nearest +Z, at most
 // `maxCells` wide, collapses with up to `flank` rock cells beside it; back breaches open `hops` steps out from it on lanes at
-// least `margin` hops shorter through the back than through the gate. The collapse shot dives after `preRoll` and holds `hold` seconds.
-export const STORY_BACK_DOOR = Object.freeze({ maxCells: 2, reachShare: 0.5, flank: 4, hops: Object.freeze([25, 35]), margin: 20, preRoll: 0.3, hold: 3.5 });
+// least `margin` hops shorter through the back than through the gate. The collapse shot dives after `preRoll` and holds `hold` seconds at
+// `dive`: `height` cells up and `back` cells from the mouth toward the pole, negative = out over the rock, so the mouth sits in the
+// middle of the frame with the bays and the Stalheart beyond it (the swarm's way in)
+export const STORY_BACK_DOOR = Object.freeze({ maxCells: 2, reachShare: 0.5, flank: 4, hops: Object.freeze([25, 35]), margin: 20, preRoll: 0.3, hold: 3.5, dive: Object.freeze({ height: 3, back: -6, diveSeconds: 1.4 }) });
 
 // A day on the story planet: five minutes, three of them daylight at the pole, the sun's orbit leaning 60 degrees off the pole so
 // noon stands 60 degrees up. The night rig is the look's own; the day set is the lab's warm sun and pale fill. No shadows.

@@ -427,6 +427,7 @@ try{
  // the frame cost: rAF deltas and long tasks for 2.5 s before the call (baseline) and 2.5 s from the call
  const watch=call=>evaluate(`new Promise(resolve=>{const long=[];const po=new PerformanceObserver(l=>{for(const e of l.getEntries())long.push(+e.duration.toFixed(1));});po.observe({type:'longtask'});let callMs=0,cells=0,last=0,max=0,frames=0,t0=0;const tick=()=>{const now=performance.now();max=Math.max(max,now-last);last=now;frames++;if(now-t0<2500)requestAnimationFrame(tick);else setTimeout(()=>{po.disconnect();resolve({long,maxFrame:+max.toFixed(1),frames,callMs,cells});},50);};requestAnimationFrame(()=>{t0=last=performance.now();${call?'const a=performance.now();cells=window.__stalheartTest.openBackDoor();callMs=+(performance.now()-a).toFixed(1);':''}requestAnimationFrame(tick);});})`);
  const base=await watch(false),hit=await watch(true);
+ current='backdoor-dive';await finish();   // at once: the dive reaches the mouth at 1.7 s and blends home from 3.8 s
  console.log(`BACKDOOR baseline ${JSON.stringify(base)} collapse ${JSON.stringify(hit)}`);
  assert(hit.cells>=2,`the mouth came down (${hit.cells} cells)`);
  assert.equal(await evaluate('window.__stalheartTest.state().wallCount'),walls0-hit.cells,'the wall count drops by the collapsed cells');
@@ -434,20 +435,21 @@ try{
  assert(hit.callMs<100,`the collapse call costs ${hit.callMs} ms`);
  const worst=Math.max(0,...hit.long);assert(worst<=100||worst<=Math.max(0,...base.long)+25,`no long task over 100 ms from the collapse (${hit.long}; baseline ${base.long})`);
  assert.equal(await evaluate('window.__stalheartTest.state().shot'),'backdoor','the dive frames the collapse');
- current='backdoor-dive';await finish();
  assert.equal(await evaluate('window.__stalheartTest.openBackDoor()'),0,'a second call does nothing');
  assert.equal(await evaluate('window.__stalheartTest.state().wallCount'),walls0-hit.cells,'and takes no more rock');
  assert.equal(await evaluate('window.__stalheartTest.state().storyHud.back'),true,'the radar marks the back door');
  const open=await evaluate('window.__stalheartTest.backCandidates()');
  assert(open.length>0&&open[0].side==='back'&&open[0].hops<60&&open[0].route===open[0].hops&&open[0].pos.length===3,`a back lane routes in under 60 hops (${JSON.stringify(open[0])})`);
  await until('window.__stalheartTest.state().shot===null',15000);
- await evaluate(`window.__stalheartTest.frameCell(${mouth.cells[0]},1.12)`);await delay(1500);current='backdoor-mouth';await finish();
+ await evaluate('window.__stalheartTest.viewBack()');await delay(1500);current='backdoor-mouth';await finish();
+ await evaluate('window.__stalheartTest.begin()');   // the still freezes the board; the swarm needs it running
  // a real breach on the nearest back lane: its fodder walks in through the back
  const cell=await evaluate('window.__stalheartTest.backBreach(16)');assert(cell>=0,'a back breach opened');
  await until('window.__stalheartTest.state().breaches.length>0',10000);
  await until('window.__stalheartTest.backInside()>0',180000).catch(async()=>assert.fail(`no fodder reached the clearing from the back (${JSON.stringify(await evaluate('({alive:window.__stalheartTest.state().performance?.enemies,inside:window.__stalheartTest.state().insideEnemies,queued:window.__stalheartTest.state().queued})'))})`));
- await evaluate(`window.__stalheartTest.frameCell(${mouth.cells[0]},1.12)`);await delay(800);
+ await evaluate('window.__stalheartTest.viewBack()');await delay(800);
  current='backdoor-swarm-inside';await finish();
+ await evaluate('window.__stalheartTest.begin()');
  } else if(args.includes('--story-world')) {
  // THE STÅLHEART CANDIDATES IN THE GAME CAMERA — the review surface the asset owner asked for. lod() reports the FILE
  // behind each tier, and a far tier only reports once its GLB has loaded, so a switch that quietly loaded the shipped tiers,
