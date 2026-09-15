@@ -9,7 +9,7 @@ import { SENTRIES } from '../src/content/sentries.js';
 import { CONTENT } from '../src/content/runtime.js';
 import { changeSummary } from '../src/content/authoring.js';
 import { clone, serializePreset } from '../src/content/preset.js';
-import { LASER_VIEW } from '../src/content/orbital-laser.js';
+import { LASER_VIEW, LASER_BURN } from '../src/content/orbital-laser.js';
 import { GUNSHIP_TRACK } from '../src/content/gunship.js';
 const args=process.argv.slice(2),production=args.includes('--dist');
 const port=+process.env.STALHEART_BROWSER_PORT||18155,base=production?'/stalheart/':'/';
@@ -951,12 +951,10 @@ try{
  const laserSteer=(nx,ny)=>evaluate(`window.__stalheartLaserTest.steer(${nx.toFixed(4)},${ny.toFixed(4)})`);
  const laserHold=on=>evaluate(`window.__stalheartLaserTest.hold(${on})`);
  const clamp01=v=>Math.min(1,Math.max(0,v));
- // how much ground the square inset covers: 2 tan(fov/2) * altitude * radius, in LASER_VIEW's own numbers against the
- // story planet's 753 m radius. This is only the GAIN of the aim loop below, which re-reads the contact every step:
- // being out by a third changes how fast it converges and nothing else, so it never needs measuring in the browser.
- const laserSpan=2*Math.tan(LASER_VIEW.fov*Math.PI/360)*LASER_VIEW.altitude*753;
- // screen up is +z and screen left is +x (the satellite's up is the frame's north and it looks straight down)
- const laserAim=(state,to)=>laserSteer(clamp01(.5-(to[0]-state.contact[0])/laserSpan),clamp01(.5-(to[2]-state.contact[2])/laserSpan));
+ // the lens is HEADING-UP (frameSat's up is viewForward, 2026-09-15), so screen axes are not world axes: the old fixed
+ // mapping (screen up +z, left +x) drove the contact AWAY from its target. The hook projects the target through the
+ // satellite camera itself; the inset is centred on the contact, so that point is the drag direction.
+ const laserAim=async(state,to)=>{const [nx,ny]=await evaluate(`window.__stalheartLaserTest.inset(${JSON.stringify(to)})`);return laserSteer(clamp01(nx),clamp01(ny));};
  const laserNear=(state,to)=>Math.hypot(to[0]-state.contact[0],to[1]-state.contact[1],to[2]-state.contact[2]);
  const laserWalk=async(to,steps,burn)=>{   // drag the contact onto a world point; unheld it costs no energy
   if(burn)await laserHold(true);
@@ -991,15 +989,20 @@ try{
  await laserSteer(.5,.5);await delay(200);                // aim at the contact itself: the beam stands still to be photographed
  {const s=await laserState();console.log(`  laser: at the gate with ${s.bodies} burned, ${s.alive} alive, ${s.energy} s of energy`);}
  current='laser-lab-burn';await finish();                 // mid-burn: the column in the trench, the reticle in the inset
- // THEN ACROSS THE GATE MOUTH, IN STEPS. The twelve wall cells stand either side of the trench's own line, so no drag
- // along the trench reaches one — and a cell needs half a second of contact, which a 40 m/s drag through a 6 m
- // footprint never gives it (0.24 s at best). The beam nudges sideways and then stands still, the way a hand would.
- for(let i=0;i<8;i++){
-  await laserSteer(.44,.5);await delay(140);
-  await laserSteer(.5,.5);await delay(560);
-  const s=await laserState();
-  if(s.walls>0&&i>=3)break;
- }
+ // THEN ONTO A WALL CELL, AND STAND THERE. The twelve wall cells stand either side of the trench's own line, so no drag
+ // along the trench reaches one, and a cell needs LASER_BURN.wall seconds of unbroken contact. Blind sideways nudges
+ // stopped landing on one once the 2026-09-15 view change reframed the inset, so the step aims at the nearest standing
+ // cell from state() and then holds dead centre, polling, until the cut is counted (burn time plus a generous margin).
+ {const s=await laserState();
+  const wall=s.wallPoints.reduce((a,b)=>laserNear(s,b)<laserNear(s,a)?b:a);
+  console.log(`  laser: nearest wall cell ${wall.join()} is ${laserNear(s,wall).toFixed(1)} m from the contact`);
+  await laserWalk(()=>wall,40,true);
+  await laserSteer(.5,.5);
+  const settle=Date.now();
+  let t=await laserState();
+  while(t.walls===0&&t.energy>0&&Date.now()-settle<(LASER_BURN.wall+2.5)*1000){await delay(100);t=await laserState();}
+  console.log(`  laser: ${laserNear(t,wall).toFixed(1)} m off the cell, ${t.under.wall} wall under the beam,`
+   +` ${t.walls} cut after ${((Date.now()-settle)/1000).toFixed(1)} s held, ${t.energy} s of energy`);}
  await laserHold(false);
  {const s=await laserState();
   assert(s.bodies>0,`the beam burned bodies (${s.bodies})`);

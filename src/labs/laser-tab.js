@@ -1252,6 +1252,8 @@ export function initLaserTab(root) {
       lost: run.heart === 'LOST',
       alive: bodies.filter((b) => b.alive).length,
       wallsStanding: wallCells.filter((w) => !w.gone).length,
+      /* the standing wall cells, in the same pole-origin metres as `contact`, so a check can aim at one instead of guessing */
+      wallPoints: wallCells.filter((w) => !w.gone).map((w) => w.p.toArray().map((v) => +v.toFixed(2))),
       structsStanding: structs.filter((s) => !s.gone).length,
       infinite: P.infinite,
       under: { ...under },
@@ -1273,6 +1275,9 @@ export function initLaserTab(root) {
     tune: (look) => { Object.assign(P, look); laser?.tune(lookOf()); },
     infinite: (on) => { P.infinite = !!on; keepInfinite(); },
     steer: (nx, ny) => steerTo(nx, ny),
+    /* a pole-origin world point in the inset's normalised 0..1, through the satellite camera itself: the lens is
+       heading-up, so no fixed screen-to-world axis mapping holds for a check that wants to aim at a place */
+    inset: (p) => { const v = new THREE.Vector3(p[0], p[1], p[2]).project(sat); return [(v.x + 1) / 2, (1 - v.y) / 2]; },
     /* the keys' path without a keyboard: slide the contact east/north (unit-free direction) for `seconds` */
     pad: (east, north, seconds) => padContact(east, north, seconds),
     hold: (on) => { held = !!on; if (!on) steering = false; },
