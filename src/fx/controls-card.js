@@ -8,11 +8,11 @@ const SEEN = 'td.controls-card-seen', RACK = 'td.shield-empty-hint';
 const KEYS = [
   ['W / ↑', 'faster · tap twice to cruise'], ['S / ↓', 'brake, then reverse'], ['A D / ← →', 'steer'], ['Q / E', 'throttle up / down'],
   ['Space', 'fire a shell'], ['Shift', 'hold: lasers'], ['T', 'shield'], ['V', 'change view · 1 map · 2 first person · 3 third'],
-  ['Esc', 'pause'], ['H / ?', 'this card'],
+  ['G', 'gunship briefing'], ['Esc', 'pause'], ['H / ?', 'this card'],
 ];
 const PADS = [['#td-pad-fire', 'FIRE'], ['#td-pad-laser', 'LASER'], ['#td-pad-shield', 'SHIELD'], ['#td-pad-left', 'TURN'], ['#td-pad-right', 'TURN']];
 
-export function createControlsCard(root, { mobile = false, store = storage } = {}) {
+export function createControlsCard(root, { mobile = false, store = storage, briefing = null } = {}) {
   const card = document.createElement('section'); card.id = 'controls-card'; card.hidden = true;
   card.setAttribute('role', 'dialog'); card.setAttribute('aria-label', 'tank controls');
   card.innerHTML = `<header>MÖRK · CONTROLS <button type="button" data-close aria-label="close">×</button></header><dl>${KEYS.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
@@ -30,6 +30,7 @@ export function createControlsCard(root, { mobile = false, store = storage } = {
   const onKey = (e) => {
     if (!onTank || e.repeat || /INPUT|SELECT|TEXTAREA/.test(e.target?.tagName ?? '')) return;
     if (e.key === '?' || e.key === 'h' || e.key === 'H') { if (card.hidden) show(); else hide(); }
+    else if (e.key === 'g' || e.key === 'G') { hide(); briefing?.(); }
     else if (e.key === 'Escape') hide();
   };
   addEventListener('keydown', onKey);

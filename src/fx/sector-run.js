@@ -91,7 +91,7 @@ export function createSectorRun(h) {
     if (def.backDoor && backOpenedAt === null) { api.openBackDoor?.(); backOpenedAt = now(); }
     const sides = Object.entries(def.breaches).map(([side, k]) => `${k} ${side === 'back' ? 'BEHIND THE BAYS' : 'ON THE GATE SIDE'}`).join(' · ');
     card([`SECTOR ${n} · ${def.name}`, `BREACHES ${Object.values(def.breaches).reduce((a, b) => a + b, 0)} · ${sides}`, 'CLOSE ONE EARLY AND ITS REMAINING WAVES PAY NOTHING']);
-    h.brief(n <= SECTORS.length ? `sector_${n}` : 'sector_next');
+    h.brief(n <= SECTORS.length ? `sector_${n}` : 'sector_next'); h.calm?.();   // a calm moment: a briefing put off mid-fight shows now
     h.sfx?.('boss_tension');
     left = Math.max(SECTOR_TIMING.briefSeconds, backOpenedAt !== null ? backOpenedAt + SECTOR_TIMING.backDoorLead - now() : 0);
     phase = 'brief'; h.hud();

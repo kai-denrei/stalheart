@@ -22,12 +22,12 @@ const PAGES = [
 
 export function createGunshipBriefing(root) {
   const el = document.createElement('div'); el.id = 'gunship-briefing'; el.hidden = true;
-  el.innerHTML = `<div class="sheet"><header><h1>&gt; ORBITAL ASSET BRIEFING_</h1><p class="sub">KORP / GS01 // wireframe survey // ground station uplink</p></header>
+  el.innerHTML = `<div class="sheet"><header><h1>&gt; GUNSHIP BRIEFING_</h1><p class="sub">KORP / GS01 // wireframe survey // ground station uplink</p></header>
     <div class="body"><canvas></canvas><div class="text"><h2></h2><ul></ul><div class="dots">${PAGES.map(() => '<i></i>').join('')}</div></div></div>
     <footer><span>SPACE OR CLICK · NEXT</span><span><button type="button" data-skip>SKIP</button> <button type="button" data-next>NEXT</button></span></footer></div>`;
   root.append(el);
   const canvas = el.querySelector('canvas'), h2 = el.querySelector('h2'), ul = el.querySelector('ul'), dots = [...el.querySelectorAll('.dots i')], next = el.querySelector('[data-next]');
-  let renderer = null, scene = null, cam = null, model = null, raf = 0, page = 0, onClose = null, t0 = 0, opened = 0;
+  let renderer = null, scene = null, cam = null, model = null, raf = 0, page = 0, onClose = null, t0 = 0, opened = 0, due = false;
   const seen = () => { try { return localStorage.getItem(SEEN_KEY) === '1'; } catch { return false; } };
   const remember = () => { try { localStorage.setItem(SEEN_KEY, '1'); } catch { /* no store: the brief simply shows again */ } };
   function setup() {
@@ -65,6 +65,11 @@ export function createGunshipBriefing(root) {
   return {
     seen,
     isOpen: () => !el.hidden,
+    // a first call mid-fight goes straight to the guns: the brief waits for a calm moment (the next sector's brief)
+    later: () => { due = true; },
+    due: () => due && !seen(),
+    // open with the host's pause held under it ({ get, set }); G on the controls card opens it again any time
+    openPaused(pause, cb) { if (!el.hidden) return; due = false; const was = pause.get(); pause.set(true); this.open(() => { pause.set(was); cb?.(); }); },
     opened: () => opened,
     open(cb) { setup(); onClose = cb; el.hidden = false; opened++; t0 = performance.now(); show(0); raf = requestAnimationFrame(tick); },
     dispose() { cancelAnimationFrame(raf); renderer?.dispose(); el.remove(); },
