@@ -375,6 +375,51 @@ try{
   await go('nav-dist-remembered','index.html?sw=0&acceptance=1&story=1#td');await delay(1000);
   assert(await evaluate('!!document.querySelector("#shell-bar [data-mode=dev]")'),'and remembers it');await finish();
  }
+ } else if(args.includes('--sectors')) {
+ // THE SECTOR LOOP (src/fx/sector-run.js, docs/superpowers/specs/2026-09-15-v1-session-design.md): past the handover sector 1
+ // briefs and opens two breaches; each sends its own programme; one closed early through a real seal path (the gunship's 105)
+ // books what it would have paid, the other held to its last wave collapses on its own and pays HELD; with the field clear the
+ // sector is SECURE and the debrief card opens on a report that keeps the contract; CONTINUE starts sector 2
+ const { checkReport } = await import('../src/domain/sector-stats.js');
+ const T='window.__stalheartTest', sec=()=>evaluate(`${T}.state().sector`);
+ await go('sectors-handover','index.html?sw=0&acceptance=1&cine=0&world=story&stage=6&phase=expedition#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ // a playable base (QA 2026-09-16: the jump starts with no towers): the story's Rotor and Quiver on their sockets
+ {const socks=(await sec()).sockets;assert(socks.length>=2,`the story sockets (${socks})`);
+  assert(await evaluate(`${T}.commitTower('rotor',${socks[0]})`),'a Rotor on its socket');assert(await evaluate(`${T}.commitTower('quiver',${socks[1]})`),'a Quiver on its socket');}
+ await until(`["brief","fighting"].includes(${T}.state().sector.phase)`,30000);
+ {const s=await sec();assert.equal(s.n,1);assert.equal(s.name,'THE LANE');
+  if(s.phase==='brief')assert(await evaluate('/SECTOR 1 · THE LANE/.test(document.querySelector("#sector-card")?.textContent||"")'),'the brief card names the sector');
+  const hud=await evaluate('document.querySelector("#td-stats")?.textContent||""');
+  assert(/SECTOR 1 · THE LANE/.test(hud),`the HUD carries the sector line (${hud})`);assert(!/of sector \d|TERRAFORMER/.test(hud),`no campaign lines in the story HUD (${hud})`);}
+ current='sectors-brief';await finish();
+ await until(`(()=>{const b=${T}.state().sector.breaches;return b.length===2&&b.every(x=>x.live);})()`,40000);
+ {const s=await sec();assert.deepEqual(s.breaches.map(b=>b.side),['gate','gate'],'sector 1: two breaches on the gate side');assert.notEqual(s.breaches[0].cell,s.breaches[1].cell);
+  assert(/BREACHES 2/.test(await evaluate('document.querySelector("#td-stats").textContent')),'the HUD counts both breaches');}
+ current='sectors-two-breaches';await finish();
+ // breach A: one wave out, then the 105 seals it; its remaining waves are left in the field
+ await evaluate(`${T}.sectorRelease("A")`);
+ {assert.equal(await evaluate(`${T}.sectorClose("A","gunship")`),'gunship','the 105 sealed breach A');
+  const a=(await sec()).breaches[0];assert(!a.live,'A is sealed');assert(a.leftInField.kg>0&&a.leftInField.points>0,`the forfeit is booked (${JSON.stringify(a)})`);}
+ current='sectors-closed-early';await finish();
+ // breach B: every wave out; once the last has emerged it collapses on its own and pays HELD
+ await until(`(()=>{const b=${T}.state().sector.breaches[1];if(b.wavesReleased<b.wavesPlanned)${T}.sectorRelease("B");return ${T}.state().sector.breaches[1].wavesReleased>=b.wavesPlanned;})()`,30000);
+ await until(`${T}.state().sector.breaches[1].closedBy==="held"`,90000).catch(async()=>assert.fail(`B never collapsed (${JSON.stringify(await sec())} queued ${await evaluate(`${T}.state().queued`)})`));
+ assert((await sec()).breaches[1].bonus.kg>0,'HELD pays');
+ current='sectors-held';await finish();
+ await evaluate(`${T}.sectorClearField()`);
+ await until(`${T}.state().sector.secure`,20000).catch(async()=>assert.fail(`not secure (${JSON.stringify(await sec())} enemies ${await evaluate(`${T}.state().performance?.enemies`)})`));
+ current='sectors-secure';await finish();
+ await until(`${T}.state().sector.debriefOpen`,15000);
+ {const r=await evaluate(`${T}.sectorReport()`);assert.deepEqual(checkReport(r),[],'the report keeps the contract');assert.equal(r.outcome,'secure');
+  assert.deepEqual(r.breaches.map(b=>b.closedBy),['gunship','held'],'who closed each breach');assert(r.biomass.leftInField>0,'left in the field');assert(r.score.bonuses>0,'the held bonus scored');
+  assert(await evaluate('!!document.querySelector(".sdb-root:not([hidden])")'),'the debrief card is on screen');}
+ await delay(1500);current='sectors-debrief';await finish();
+ await evaluate(`${T}.sectorContinue()`);
+ await until(`${T}.state().sector.n===2 && !${T}.state().sector.debriefOpen && !${T}.state().paused`,15000);
+ current='sectors-sector-2-brief';await finish();
+ await until(`(()=>{const b=${T}.state().sector.breaches;return b.length===2&&b.every(x=>x.live);})()`,60000);
+ current='sectors-sector-2';await finish();
  } else if(args.includes('--defense')) {
  // THE HANDOVER (docs/superpowers/specs/2026-09-14-handover-gunship-call-expeditions-design.md): past the Quiver the towers fire
  // on their own and the wave clock runs; the gunship waits for an earned call; the tank clears a nest and brings a part home
