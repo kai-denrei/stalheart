@@ -305,7 +305,13 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 25 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 26 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### Gunship lab: the orbital laser's screen for the gunship, through its FLIR optic, with short share links
+
+`2026-09-15-gunship-lab` · experiment · **proposed**
+
+Owner, 2026-09-15: the gunship's ground truth of its impacts reads too small. Of two options, (a) make the gunship's impact read larger in its current seat, or (b) give the gunship the orbital laser's layout (full-screen real-world view, a round scope at 0.44 of the width with reticles and telemetry) while keeping its thermal FLIR look, the owner chose (b), built as a lab. Both the gunship and orbital laser labs must be easy to deep link, to share with friends for feedback.
 
 ### Idea: the Mortar can lay suppressing fire on a chosen area to scare and herd the swarm
 
