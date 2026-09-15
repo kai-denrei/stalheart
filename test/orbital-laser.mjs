@@ -1,15 +1,16 @@
 import assert from 'node:assert/strict';
-import { LASER_ORBIT, LASER_BEAM, LASER_BURN, LASER_VIEW, LASER_PRESET, LASER_TRAIL, LASER_CONTACT_RATE } from '../src/content/orbital-laser.js';
+import { LASER_ORBIT, LASER_BEAM, LASER_BURN, LASER_VIEW, LASER_PRESET, LASER_TRAIL, LASER_CONTACT_RATE, LASER_SMOKE_RATE } from '../src/content/orbital-laser.js';
 import { makeLaser, stepLaser, aimLaser, burnLaser, burnContacts, laserProgress } from '../src/domain/orbital-laser.js';
 import { len3, dot3, norm3 } from '../src/vec3.js';
 
 /* the owner's first values, pinned so a tuning session has to come through a decision entry */
 assert.deepEqual({ ...LASER_ORBIT }, { period: 180, overhead: 20 });
-assert.deepEqual({ ...LASER_BEAM }, { energy: 10, radius: 6, slew: 40 });
+assert.deepEqual({ ...LASER_BEAM }, { energy: 10, radius: 6, slew: 10, accel: 5 });
 assert.deepEqual({ ...LASER_BURN }, { soft: 0, hard: 1, wall: 0.5, tower: 1.5, seal: 1, tank: 1, heart: 3 });
 assert.deepEqual({ ...LASER_VIEW }, { altitude: 1.2, fov: 18, inset: 0.34, groundBack: 28, groundUp: 9 });
 assert.deepEqual({ ...LASER_TRAIL }, { every: 2, quads: 400, seconds: 60 });
 assert.equal(LASER_CONTACT_RATE, 8);
+assert.equal(LASER_SMOKE_RATE, 2);
 assert.equal(LASER_PRESET.burstRate, 0, 'a continuous beam, not a pulse train');
 assert.equal(LASER_PRESET.coreWidth, 0.6);
 assert.equal(LASER_PRESET.glowWidth, 5);
@@ -44,23 +45,58 @@ assert.equal(LASER_PRESET.glowWidth, 5);
 /* --- the slew ----------------------------------------------------------- */
 {
   const R = 753;
-  const st = makeLaser(LASER_ORBIT, LASER_BEAM);
+  /* the constant-rate chase: accel 0 */
+  const FLAT = { ...LASER_BEAM, accel: 0 };
+  const st = makeLaser(LASER_ORBIT, FLAT);
   stepLaser(st, 160, LASER_ORBIT, LASER_BEAM);
   const a = [0, R, 0];
-  aimLaser(st, a, 1 / 60, LASER_BEAM);
+  aimLaser(st, a, 1 / 60, FLAT);
   assert.deepEqual(st.contact, [0, R, 0], 'the first aim after arrival snaps');
   /* a far target: the contact moves exactly slew * dt metres of arc along the sphere */
   const far = [R * Math.sin(0.4), R * Math.cos(0.4), 0];
   const before = st.contact.slice();
-  aimLaser(st, far, 0.1, LASER_BEAM);
+  aimLaser(st, far, 0.1, FLAT);
   assert.ok(Math.abs(len3(st.contact) - R) < 1e-6, 'the contact stays on the sphere');
   const arc = R * Math.acos(Math.max(-1, Math.min(1, dot3(norm3(before), norm3(st.contact)))));
-  assert.ok(Math.abs(arc - LASER_BEAM.slew * 0.1) < 1e-6, `moved ${arc} m, wanted ${LASER_BEAM.slew * 0.1}`);
+  assert.ok(Math.abs(arc - FLAT.slew * 0.1) < 1e-6, `moved ${arc} m, wanted ${FLAT.slew * 0.1}`);
   /* a near target is reached outright */
   const near = [st.contact[0] + 0.05, st.contact[1], st.contact[2]];
   const scaled = norm3(near).map((c) => c * R);
-  aimLaser(st, scaled, 0.5, LASER_BEAM);
+  aimLaser(st, scaled, 0.5, FLAT);
   assert.ok(Math.abs(st.contact[0] - scaled[0]) < 1e-9 && Math.abs(st.contact[2] - scaled[2]) < 1e-9, 'a near target snaps');
+}
+
+/* --- the inertia --------------------------------------------------------- */
+{
+  const R = 753, beam = { ...LASER_BEAM, slew: 10, accel: 5 };
+  const far = [R * Math.sin(0.2), R * Math.cos(0.2), 0];   /* 150 m of arc away */
+  const arcTo = (p, q = far) => R * Math.acos(Math.max(-1, Math.min(1, dot3(norm3(p), norm3(q)))));
+  const st = makeLaser(LASER_ORBIT, beam);
+  stepLaser(st, 160, LASER_ORBIT, beam);
+  aimLaser(st, [0, R, 0], 1 / 60, beam);
+  const left = arcTo(st.contact);
+  aimLaser(st, far, 0.1, beam);
+  assert.ok(Math.abs(left - arcTo(st.contact) - 0.05) < 1e-6, 'from rest it moves accel * dt * dt: 0.05 m in the first 0.1 s');
+  let top = 0;
+  for (let i = 0; i < 400; i++) {
+    const before = arcTo(st.contact);
+    aimLaser(st, far, 0.1, beam);
+    top = Math.max(top, st.speed);
+    assert.ok(arcTo(st.contact) <= before + 1e-9, 'it never moves away from the target');
+  }
+  assert.ok(top <= beam.slew + 1e-9 && top > beam.slew - 1e-6, `it reaches and holds its top speed (${top} m/s)`);
+  assert.ok(arcTo(st.contact) < 1e-6, 'it brakes onto the target and arrives');
+  /* a reversal bleeds the speed off: dragging back the other way starts again from rest */
+  const st2 = makeLaser(LASER_ORBIT, beam);
+  stepLaser(st2, 160, LASER_ORBIT, beam);
+  aimLaser(st2, [0, R, 0], 1 / 60, beam);
+  for (let i = 0; i < 30; i++) aimLaser(st2, far, 0.1, beam);
+  const fast = st2.speed;
+  aimLaser(st2, [-far[0], far[1], far[2]], 0.1, beam);
+  assert.ok(fast > 5 && st2.speed <= beam.accel * 0.1 + 1e-9, `a reversal drops ${fast} m/s to ${st2.speed} m/s`);
+  /* the close forgets the speed with the contact */
+  stepLaser(st2, 20, LASER_ORBIT, beam);
+  assert.equal(st2.speed, 0);
 }
 
 /* --- the burn accumulator ------------------------------------------------ */

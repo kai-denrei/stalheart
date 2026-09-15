@@ -18,6 +18,9 @@ export function makeLaser(orbit, beam) {
     contacts: new Map(),
     /* the next aim snaps instead of slewing: a fresh pass has no contact to drag from */
     fresh: true,
+    /* the contact's speed along the ground (m/s) and the axis it last moved about: the inertia beam.accel gives it */
+    speed: 0,
+    axis: null,
   };
 }
 
@@ -39,34 +42,52 @@ export function stepLaser(st, dt, orbit, beam) {
   st.contact = null;
   st.contacts.clear();
   st.fresh = true;
+  st.speed = 0;
+  st.axis = null;
   return 'close';
 }
 
-// Moves the contact toward `target` ALONG THE SPHERE by at most beam.slew * dt metres. The sphere's radius is the
-// target's own length, so the contact is rescaled onto the same surface the caller picked on. The first aim after an
-// arrival snaps: there is nothing to drag from yet, and a lay that crawled in from the last pass would be a lie.
+// Moves the contact toward `target` ALONG THE SPHERE. The sphere's radius is the target's own length, so the contact is
+// rescaled onto the same surface the caller picked on. The first aim after an arrival snaps: there is nothing to drag
+// from yet, and a lay that crawled in from the last pass would be a lie.
+//
+// Without beam.accel the contact moves at most beam.slew * dt metres a step. With it the contact has INERTIA: its speed
+// climbs toward slew at accel m/s², brakes on the curve sqrt(2 * accel * distance) so it arrives without overshooting,
+// and a turn bleeds speed off in proportion to how sharp it is (a reversal starts again from rest). That is the slow,
+// inexorable drag the owner asked for (2026-09-15).
 export function aimLaser(st, target, dt, beam) {
   const R = len3(target) || 1;
-  if (!st.contact || st.fresh) {
+  const snap = () => {
     st.contact = [target[0], target[1], target[2]];
-    st.fresh = false;
+    st.speed = 0;
+    st.axis = null;
     return st.contact;
+  };
+  if (!st.contact || st.fresh) {
+    st.fresh = false;
+    return snap();
   }
   const a = norm3(st.contact), b = norm3(target);
   const cos = Math.max(-1, Math.min(1, dot3(a, b)));
   const full = Math.acos(cos);
   const axis = cross3(a, b);
   /* co-linear (already there, or exactly antipodal): there is no rotation plane to step through */
-  if (full < 1e-9 || len3(axis) < 1e-12) {
-    st.contact = [target[0], target[1], target[2]];
-    return st.contact;
+  if (full < 1e-9 || len3(axis) < 1e-12) return snap();
+  const k = norm3(axis);
+  let travel = beam.slew * dt;
+  if (beam.accel > 0) {
+    const brake = Math.sqrt(2 * beam.accel * full * R);
+    const turn = st.axis ? Math.max(0, dot3(st.axis, k)) : 1;
+    st.speed = Math.min(beam.slew, brake, (st.speed || 0) * turn + beam.accel * dt);
+    st.axis = k;
+    travel = st.speed * dt;
   }
-  const step = Math.min(full, (beam.slew * dt) / R);
+  const step = Math.min(full, travel / R);
   if (step >= full) {
     st.contact = [target[0], target[1], target[2]];
     return st.contact;
   }
-  const k = norm3(axis), c = Math.cos(step), s = Math.sin(step);
+  const c = Math.cos(step), s = Math.sin(step);
   /* Rodrigues about k. k is perpendicular to a, so the (k . a) term is zero and drops out. */
   const kxa = cross3(k, a);
   const rotated = [a[0] * c + kxa[0] * s, a[1] * c + kxa[1] * s, a[2] * c + kxa[2] * s];

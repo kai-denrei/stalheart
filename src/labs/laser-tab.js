@@ -37,7 +37,7 @@ import { createThermalHeat } from '../fx/thermal-heat.js';
 import { createOrbitalLaser } from '../fx/orbital-laser.js';
 import { makeDotEnemy, makeDotBurst } from '../units.js';
 import { loadGlbWithClips } from '../glbmodels.js';
-import { LASER_ORBIT, LASER_BEAM, LASER_BURN, LASER_VIEW, LASER_PRESET, LASER_CONTACT_RATE } from '../content/orbital-laser.js';
+import { LASER_ORBIT, LASER_BEAM, LASER_BURN, LASER_VIEW, LASER_PRESET, LASER_CONTACT_RATE, LASER_SMOKE_RATE } from '../content/orbital-laser.js';
 import { makeLaser, stepLaser, aimLaser, burnLaser, burnContacts, laserProgress } from '../domain/orbital-laser.js';
 import { deepLink, wireDeepLink } from '../deeplink.js';
 import { norm3 } from '../vec3.js';
@@ -72,7 +72,7 @@ export function initLaserTab(root) {
   /* the panel's working copy of the content; the panel edits this, never the frozen tables */
   const P = {
     period: LASER_ORBIT.period, overhead: LASER_ORBIT.overhead,
-    energy: LASER_BEAM.energy, radius: LASER_BEAM.radius, slew: LASER_BEAM.slew,
+    energy: LASER_BEAM.energy, radius: LASER_BEAM.radius, slew: LASER_BEAM.slew, accel: LASER_BEAM.accel,
     altitude: LASER_VIEW.altitude, fov: LASER_VIEW.fov, inset: LASER_VIEW.inset,
     groundBack: LASER_VIEW.groundBack, groundUp: LASER_VIEW.groundUp,
     burnSoft: LASER_BURN.soft, burnHard: LASER_BURN.hard, burnWall: LASER_BURN.wall,
@@ -95,7 +95,7 @@ export function initLaserTab(root) {
     glowIntensity: P.glowIntensity, noiseAmount: P.noiseAmount, radius: P.radius,
   });
   const orbit = () => ({ period: P.period, overhead: P.overhead });
-  const beamCfg = () => ({ energy: P.energy, radius: P.radius, slew: P.slew });
+  const beamCfg = () => ({ energy: P.energy, radius: P.radius, slew: P.slew, accel: P.accel });
   const burnCfg = () => ({ soft: P.burnSoft, hard: P.burnHard, wall: P.burnWall, tower: P.burnTower, seal: P.burnSeal, tank: 1.0, heart: P.burnHeart });
 
   let active = false, disposed = false, frameId = 0, last = performance.now(), clock = 0;
@@ -108,7 +108,10 @@ export function initLaserTab(root) {
   /* the world direction that walks back down the trench, measured at its mouth; frameGround tips it onto the tangent
      plane wherever it is framing */
   let trenchBack = new THREE.Vector3(0, 0, 1);
-  let ready = false, held = false, burningWas = false, contactTimer = 0, sealed = false, sinkOpened = false;
+  let ready = false, held = false, burningWas = false, contactTimer = 0, smokeTimer = 0, sealed = false, sinkOpened = false;
+  /* what stood in the footprint on the last burning frame, by kind: the HUD shows it so a burn that takes nothing says so */
+  const NOTHING_UNDER = Object.freeze({ soft: 0, wall: 0, tower: 0, heart: 0, seal: 0 });
+  let under = { ...NOTHING_UNDER };
   /* declared with the rest of the state, not with the panel below, because paintHud reads them */
   let flashT = 0, flashMsg = '';
   const errors = [];
@@ -186,7 +189,8 @@ export function initLaserTab(root) {
     const label = st.energy <= 0 ? 'OUT' : 'ENERGY';
     if (elEnergyLabel.textContent !== label) elEnergyLabel.textContent = label;
     const read = `bodies ${run.bodies} · walls ${run.walls} · towers ${run.towers} · sinkhole ${sealed ? 'SEALED' : 'OPEN'}`
-      + ` · stalheart ${run.heart} · ${st.energy.toFixed(1)} s left`;
+      + ` · stalheart ${run.heart} · ${st.energy.toFixed(1)} s left`
+      + (st.burning ? ` · under the beam: ${under.wall} wall · ${under.tower + under.heart} tower · ${under.soft} body${under.seal ? ' · the sinkhole' : ''}` : '');
     if (elRead.textContent !== read) elRead.textContent = read;
     elLost.hidden = run.heart !== 'LOST';
     const note = flashT > 0 ? flashMsg : '';
@@ -616,6 +620,8 @@ export function initLaserTab(root) {
       if (burningWas) { laser.lift(); thermal.set(false); st.contacts.clear(); }
       burningWas = false;
       contactTimer = 0;
+      smokeTimer = 0;
+      under = { ...NOTHING_UNDER };
       return;
     }
     const n = normalOf(point);
@@ -624,6 +630,7 @@ export function initLaserTab(root) {
       fire('laser.ignite', point);
       thermal.set(true);
       contactTimer = 0;
+      smokeTimer = 0;
     } else {
       laser.aim(point, n);
     }
@@ -632,7 +639,14 @@ export function initLaserTab(root) {
     contactTimer += dt;
     const every = 1 / LASER_CONTACT_RATE;
     while (contactTimer >= every) { contactTimer -= every; fire('laser.contact', point); }
-    for (const entry of burnContacts(st, collect(point), dt, burnCfg())) destroy(entry);
+    /* and the burning ground smokes: a fire-and-smoke burst LASER_SMOKE_RATE per second */
+    smokeTimer += dt;
+    const smokeEvery = 1 / LASER_SMOKE_RATE;
+    while (smokeTimer >= smokeEvery) { smokeTimer -= smokeEvery; fire('laser.smoke', point); }
+    const things = collect(point);
+    under = { ...NOTHING_UNDER };
+    for (const thing of things) under[thing.kind]++;
+    for (const entry of burnContacts(st, things, dt, burnCfg())) destroy(entry);
   }
 
   function step(dt) {
@@ -728,7 +742,8 @@ export function initLaserTab(root) {
   const gb = gui.addFolder('the beam');
   const retune = () => laser?.tune(lookOf());
   gb.add(P, 'radius', 1, 30, 0.5).name('footprint (m)').onChange(retune);
-  gb.add(P, 'slew', 4, 200, 1).name('slew (m/s)');
+  gb.add(P, 'slew', 1, 200, 0.5).name('top speed (m/s)');
+  gb.add(P, 'accel', 0, 60, 0.5).name('acceleration (m/s², 0 = instant)');
   gb.open();
   /* live: each change goes straight to the column's uniforms through tune(), and COPY PRESET and the deep link carry it */
   const gw = gui.addFolder('the beam look');
@@ -773,7 +788,7 @@ export function initLaserTab(root) {
   function presetJson() {
     return JSON.stringify({
       LASER_ORBIT: { period: P.period, overhead: P.overhead },
-      LASER_BEAM: { energy: P.energy, radius: P.radius, slew: P.slew },
+      LASER_BEAM: { energy: P.energy, radius: P.radius, slew: P.slew, accel: P.accel },
       LASER_BURN: burnCfg(),
       LASER_VIEW: { altitude: P.altitude, fov: P.fov, inset: P.inset, groundBack: P.groundBack, groundUp: P.groundUp },
       LASER_PRESET: { ...LASER_PRESET, coreWidth: P.coreWidth, glowWidth: P.glowWidth, coreIntensity: P.coreIntensity, glowIntensity: P.glowIntensity, noiseAmount: P.noiseAmount },
@@ -834,6 +849,7 @@ export function initLaserTab(root) {
       wallsStanding: wallCells.filter((w) => !w.gone).length,
       structsStanding: structs.filter((s) => !s.gone).length,
       infinite: P.infinite,
+      under: { ...under },
       /* the column's live uniforms, in scene units, so a check can see that a slider actually reached the shader */
       look: laser ? laser.look() : null,
       sentries: sentries.length,

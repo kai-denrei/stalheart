@@ -12,6 +12,11 @@ import { LASER_PRESET, LASER_BEAM, LASER_TRAIL, LASER_SKY_METRES } from '../cont
 const Y = new THREE.Vector3(0, 1, 0);
 /* the preset keys measured in metres: scaled by scene units per metre at build and in tune() */
 const WIDTH_KEYS = new Set(['coreWidth', 'glowWidth', 'jitterAmount']);
+/* the column ends this far UNDER the contact, so its last sliver of taper is inside the ground and it meets the surface
+   at full width */
+const BURY_METRES = 2;
+/* the contact glow's radius as a multiple of the column's glow width: it spreads a little where it lands */
+const DISC_SPREAD = 1.3;
 
 export function createOrbitalLaser(scene, { cellSide = 10, metresPerCell = 10 } = {}) {
   const unit = cellSide / metresPerCell;          /* scene units per metre */
@@ -20,7 +25,7 @@ export function createOrbitalLaser(scene, { cellSide = 10, metresPerCell = 10 } 
   scene.add(group);
 
   /* --- the column ------------------------------------------------------- */
-  const sky = new THREE.Vector3(), at = new THREE.Vector3(), up = new THREE.Vector3();
+  const sky = new THREE.Vector3(), at = new THREE.Vector3(), up = new THREE.Vector3(), end = new THREE.Vector3();
   const beam = createBeam(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), {
     ...LASER_PRESET,
     coreWidth: LASER_PRESET.coreWidth * unit,
@@ -40,6 +45,43 @@ export function createOrbitalLaser(scene, { cellSide = 10, metresPerCell = 10 } 
   ring.renderOrder = 9;
   ring.visible = false;
   group.add(ring);
+
+  /* --- the contact glow ------------------------------------------------ */
+  // Where the column meets the ground it spreads into a disc of its own width: a white core the core's share of it and
+  // a glow falling off to the edge. Seen from the side the column alone ends in a line on the ground; this is the
+  // width the owner expects to see land (2026-09-15).
+  const look = { coreWidth: LASER_PRESET.coreWidth, glowWidth: LASER_PRESET.glowWidth };
+  const discGeo = new THREE.CircleGeometry(1, 48);
+  discGeo.rotateX(-Math.PI / 2);
+  const discMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uCoreColor: { value: new THREE.Color(LASER_PRESET.coreColor) },
+      uGlowColor: { value: new THREE.Color(LASER_PRESET.glowColor) },
+      uCore: { value: Math.min(1, LASER_PRESET.coreWidth / LASER_PRESET.glowWidth) },
+      uCoreIntensity: { value: LASER_PRESET.coreIntensity },
+      uGlowIntensity: { value: LASER_PRESET.glowIntensity },
+      uAlpha: { value: 0 },
+    },
+    vertexShader: 'varying vec2 vP;\nvoid main(){ vP = position.xz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `#include <common>
+uniform vec3 uCoreColor, uGlowColor;
+uniform float uCore, uCoreIntensity, uGlowIntensity, uAlpha;
+varying vec2 vP;
+void main(){
+  float r = length(vP);
+  float core = 1.0 - smoothstep(uCore * 0.5, uCore, r);
+  float glow = pow(max(0.0, 1.0 - r), 2.2);
+  gl_FragColor = vec4((uCoreColor * core * uCoreIntensity + uGlowColor * glow * uGlowIntensity * 0.6) * uAlpha, 1.0);
+  #include <tonemapping_fragment>
+}`,
+    transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+  });
+  const disc = new THREE.Mesh(discGeo, discMat);
+  disc.name = 'Laser contact glow';
+  disc.renderOrder = 9;
+  disc.visible = false;
+  disc.scale.setScalar(LASER_PRESET.glowWidth * DISC_SPREAD * unit);
+  group.add(disc);
 
   /* --- the scorch trail -------------------------------------------------- */
   // A capped instanced quad ribbon. Per-instance age lives in an instanced attribute and fades the alpha in the
@@ -98,9 +140,11 @@ export function createOrbitalLaser(scene, { cellSide = 10, metresPerCell = 10 } 
     at.copy(contact);
     up.copy(normal).normalize();
     sky.copy(at).addScaledVector(up, LASER_SKY_METRES * unit);
-    beam.setEndpoints(sky, at);
+    beam.setEndpoints(sky, end.copy(at).addScaledVector(up, -BURY_METRES * unit));
     ring.position.copy(at).addScaledVector(up, 0.08 * unit);
     ring.quaternion.setFromUnitVectors(Y, up);
+    disc.position.copy(at).addScaledVector(up, 0.12 * unit);
+    disc.quaternion.setFromUnitVectors(Y, up);
   }
 
   return {
@@ -111,6 +155,7 @@ export function createOrbitalLaser(scene, { cellSide = 10, metresPerCell = 10 } 
       place(contact, normal);
       beam.mesh.visible = true;
       ring.visible = true;
+      disc.visible = true;
       laid = true;
       stamp(at, up);
     },
@@ -139,6 +184,7 @@ export function createOrbitalLaser(scene, { cellSide = 10, metresPerCell = 10 } 
     lift() {
       beam.mesh.visible = false;
       ring.visible = false;
+      disc.visible = false;
       laid = false;
     },
 
@@ -152,7 +198,12 @@ export function createOrbitalLaser(scene, { cellSide = 10, metresPerCell = 10 } 
         if (key === 'radius') { ring.scale.setScalar(value / LASER_BEAM.radius); continue; }
         const u = uniforms[`u${key[0].toUpperCase()}${key.slice(1)}`];
         if (u) u.value = WIDTH_KEYS.has(key) ? value * unit : value;
+        if (key in look) look[key] = value;
+        if (key === 'coreIntensity') discMat.uniforms.uCoreIntensity.value = value;
+        if (key === 'glowIntensity') discMat.uniforms.uGlowIntensity.value = value;
       }
+      disc.scale.setScalar(look.glowWidth * DISC_SPREAD * unit);
+      discMat.uniforms.uCore.value = Math.min(1, look.coreWidth / Math.max(look.glowWidth, 1e-4));
     },
 
     // what the column is drawing with right now, in scene units: a check reads this to see a slider reached the shader
@@ -161,6 +212,7 @@ export function createOrbitalLaser(scene, { cellSide = 10, metresPerCell = 10 } 
       return {
         coreWidth: u.uCoreWidth.value, glowWidth: u.uGlowWidth.value, coreIntensity: u.uCoreIntensity.value,
         glowIntensity: u.uGlowIntensity.value, noiseAmount: u.uNoiseAmount.value, ringScale: ring.scale.x,
+        discRadius: disc.scale.x,
       };
     },
 
@@ -169,6 +221,7 @@ export function createOrbitalLaser(scene, { cellSide = 10, metresPerCell = 10 } 
       beam.update(clock);
       /* update() writes the burst envelope into uAlpha, so the energy fade has to come after it */
       beam.setAlpha(laid ? 0.35 + 0.65 * Math.max(0, Math.min(1, energy01)) : 0);
+      discMat.uniforms.uAlpha.value = laid ? (0.35 + 0.65 * Math.max(0, Math.min(1, energy01))) * (0.85 + 0.15 * Math.sin(clock * 23)) : 0;
       ringMat.opacity = laid ? 0.45 + 0.45 * (0.5 + 0.5 * Math.sin(clock * 9)) : 0;
       if (!written) return;
       for (let i = 0; i < written; i++) ages[i] += dt;
@@ -180,6 +233,8 @@ export function createOrbitalLaser(scene, { cellSide = 10, metresPerCell = 10 } 
       beam.mesh.material.dispose();
       ringGeo.dispose();
       ringMat.dispose();
+      discGeo.dispose();
+      discMat.dispose();
       quadGeo.dispose();
       quadMat.dispose();
       trail.dispose();

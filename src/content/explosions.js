@@ -18,7 +18,11 @@ export const EXPLOSION_USES = Object.freeze({
   // 6 m footprint — wide enough to swallow the lab's ground camera, which stands 28 m back (browser round, Task 7).
   // 0.18 is ~16 m: still twice the footprint, and the column and the burning ground stay visible through it.
   'laser.ignite': Object.freeze({ module: 'orbital-strike', scale: 0.18 }),
-  'laser.contact': Object.freeze({ module: 'rotary-pop', scale: 0.6 }),
+  // 1.3, not 0.6 (owner, 2026-09-15: "more explosion or smoke where it hits"): ~6 m, the footprint's own radius
+  'laser.contact': Object.freeze({ module: 'rotary-pop', scale: 1.3 }),
+  // the burning ground's fire and smoke, LASER_SMOKE_RATE per second: a Bofors burst at ~6 m and 1.2 s, so the line the
+  // beam draws smokes behind it
+  'laser.smoke': Object.freeze({ module: 'bofors-burst', scale: 0.55 }),
 });
 
 // THE IMPACT SCARES (owner, 2026-09-14): bodies within `cells` of a landing freeze for SCARE_FREEZE_S, then turn from it
@@ -33,6 +37,7 @@ export const EXPLOSION_SCARE = Object.freeze({
   'strike.orbital': Object.freeze({ cells: 12, seconds: 3 }),
   'laser.ignite': Object.freeze({ cells: 8, seconds: 2 }),
   'laser.contact': Object.freeze({ cells: 3, seconds: 0.6 }),
+  'laser.smoke': Object.freeze({ cells: 2, seconds: 0.8 }),
 });
 export const SCARE_FREEZE_S = 0.35;
 

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { EXPLOSION_MODULES, EXPLOSION_USES, EXPLOSION_PALETTE, EXPLOSION_CAPS } from '../src/content/explosions.js';
 
 assert.deepEqual(Object.keys(EXPLOSION_USES).sort(),
-  ['gunship.bofors', 'gunship.heavy', 'gunship.rotary', 'laser.contact', 'laser.ignite', 'quiver.talon', 'strike.orbital', 'tank.shell']);
+  ['gunship.bofors', 'gunship.heavy', 'gunship.rotary', 'laser.contact', 'laser.ignite', 'laser.smoke', 'quiver.talon', 'strike.orbital', 'tank.shell']);
 for (const [use, spec] of Object.entries(EXPLOSION_USES)) {
   assert.ok(EXPLOSION_MODULES.includes(spec.module), `${use}: unknown module ${spec.module}`);
   assert.ok(spec.scale > 0 && spec.scale <= 2, `${use}: scale ${spec.scale}`);
