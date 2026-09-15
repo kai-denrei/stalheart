@@ -11,7 +11,7 @@ import { changeSummary } from '../src/content/authoring.js';
 import { clone, serializePreset } from '../src/content/preset.js';
 import { LASER_VIEW } from '../src/content/orbital-laser.js';
 const args=process.argv.slice(2),production=args.includes('--dist');
-const port=18155,base=production?'/stalheart/':'/';
+const port=+process.env.STALHEART_BROWSER_PORT||18155,base=production?'/stalheart/':'/';
 const origin=`http://127.0.0.1:${port}`,urlRoot=origin+base;
 const output=resolve('artifacts/browser'+(production?'-dist':''));mkdirSync(output,{recursive:true});
 const profile=mkdtempSync(join(tmpdir(),'stalheart-chrome-'));
@@ -688,6 +688,65 @@ try{
   assert.equal(s.lost,false,'the colony stands');
   assert.deepEqual(s.errors,[],'the seal raises no errors');}
  await evaluate('window.__stalheartLaserTest.dispose()');
+ } else if(args.includes('--debrief')) {
+ // THE SECTOR DEBRIEF (src/fx/sector-debrief.js) in its lab, labs.html#debrief. Every sample report is shown, each page
+ // is completed with a real Space press and advanced with the next one, and the pages and labels are checked against
+ // the report contract's page list. Screenshots at a 1280x800 desktop and a 400x860 phone, where nothing may poke out
+ // of the frame sideways. Dismissed by hand only: Space on the last page points at CONTINUE, Esc changes nothing, and
+ // only the buttons close the card.
+ const PAGES=['THE BREACHES','THE KILLS','THE TANK','THE COLONY'];
+ const LABELS={secure:['SECURE',...PAGES],flawless:['SECURE',...PAGES],lost:['LAST TRANSMISSION',...PAGES],campaign:['THE COLONY HOLDS']};
+ const dbf=()=>evaluate('window.__stalheartDebriefTest.state()');
+ const press=async key=>{const code=key===' '?'Space':key;
+  await send('Input.dispatchKeyEvent',{type:'keyDown',key,code,...(key===' '?{text:' '}:{})});await send('Input.dispatchKeyEvent',{type:'keyUp',key,code});await delay(120);};
+ const watchConsole=()=>evaluate('window.__dbfConsole=[];{const error=console.error.bind(console),warn=console.warn.bind(console);console.error=(...a)=>{window.__dbfConsole.push(a.map(String).join(" "));error(...a);};console.warn=(...a)=>{window.__dbfConsole.push(a.map(String).join(" "));warn(...a);};}');
+ for(const [w,h] of [[1280,800],[400,860]]){
+  await go(`debrief-${w}-load`,'labs.html?sw=0&acceptance=1&sound=0#debrief',w,h);
+  await until('!!window.__stalheartDebriefTest');await watchConsole();
+  for(const name of Object.keys(LABELS)){
+   assert.deepEqual(await evaluate(`window.__stalheartDebriefTest.show(${JSON.stringify(name)})`),LABELS[name],`${name}: the page labels`);
+   let s=await dbf();
+   assert(s.open&&s.page===0&&s.animating,`${name}: opens on its first page and animates (${JSON.stringify(s)})`);
+   assert.equal(s.outcome,name==='lost'?'lost':'secure',`${name}: the outcome variant`);
+   if(name==='secure'){await delay(1100);current=`debrief-${w}-secure-rolling`;await finish();
+    await press('Escape');s=await dbf();assert(s.open&&s.page===0&&!s.animating,'Esc completes the page and does nothing else');}
+   for(let i=0;i<LABELS[name].length;i++){
+    s=await dbf();
+    if(s.animating){await press(' ');s=await dbf();}
+    assert.equal(s.page,i,`${name}: the press completed page ${i+1} without leaving it`);
+    assert(!s.animating,`${name}: page ${i+1} is complete`);
+    assert.equal(s.label,LABELS[name][i],`${name}: page ${i+1} is ${LABELS[name][i]}`);
+    assert.equal(s.stamps,s.stampsTotal,`${name} page ${i+1}: every stamp is down after the skip`);
+    assert(s.overflowX<=1&&!s.poking.length,`${name} page ${i+1} at ${w} px: nothing pokes out sideways (${s.overflowX} ${JSON.stringify(s.poking)})`);
+    current=`debrief-${w}-${name}-p${i+1}`;await finish();
+    if(i<LABELS[name].length-1){await press(' ');assert.equal((await dbf()).page,i+1,`${name}: the next press advances`);}
+   }
+   await press(' ');s=await dbf();
+   assert(s.open,`${name}: Space on the last page never dismisses`);
+   assert(await evaluate('document.activeElement?.classList.contains("sdb-btn--go")'),`${name}: it points at the way out`);
+   if(name==='secure'){
+    await press('ArrowLeft');s=await dbf();assert.equal(s.page,3,'ArrowLeft goes back');assert(!s.animating,'a page already seen comes back complete');
+    await press('ArrowRight');assert.equal((await dbf()).page,4,'ArrowRight goes forward');
+   }
+   if(name==='flawless')assert((await dbf()).rainbow>=1,'a record over 1000 turns rainbow');
+   await press('Escape');assert((await dbf()).open,`${name}: Esc does not dismiss`);
+   await click(name==='campaign'?'.sdb-root [data-act=keep]':'.sdb-root [data-act=continue]');await delay(150);
+   s=await dbf();assert(!s.open,`${name}: the button dismisses`);
+   assert.equal(s.events.at(-1).what,name==='campaign'?'KEEP HOLDING':'CONTINUE',`${name}: its callback ran`);
+  }
+  assert.deepEqual(await evaluate('window.__dbfConsole'),[],`debrief at ${w} px: no console errors or warnings`);
+ }
+ // the width toggle holds a phone column on a desktop screen, and the card stacks by its host, not by the screen
+ await go('debrief-width-toggle','labs.html?sw=0&acceptance=1&sound=0&still=1#debrief',1280,800);
+ await until('!!window.__stalheartDebriefTest');
+ {assert.equal(await evaluate('window.__stalheartDebriefTest.width("400")'),400,'the host is 400 px wide');
+  await evaluate('window.__stalheartDebriefTest.show("flawless")');const s=await dbf();
+  assert(!s.animating&&s.stamps===s.stampsTotal,'?still=1 shows the page complete, stamps down');
+  assert.equal(await evaluate('getComputedStyle(document.querySelector(".sdb-stats")).gridTemplateColumns.split(" ").length'),2,'a 400 px host stacks the hero stats in two columns');
+  assert(s.overflowX<=1&&!s.poking.length,`nothing pokes out of a 400 px host (${JSON.stringify(s.poking)})`);
+  current='debrief-width-400-on-1280';await finish();
+  await evaluate('window.__stalheartDebriefTest.show("campaign")');await click('.sdb-root [data-act=newrun]');await delay(150);
+  assert.equal((await dbf()).events.at(-1).what,'NEW RUN','NEW RUN dismisses with its own callback');}
  } else if(authoringWorkspace) {
  await go('local-authoring','labs.html?sw=0&acceptance=1&mode=armour&family=quiver#sentry');
  await until('document.querySelector("[data-authoring-review]")?.hidden === false && document.querySelector("#tab-sentry").dataset.modelReady === "true"');

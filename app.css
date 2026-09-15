@@ -215,3 +215,28 @@
 #swarm .sw-sweep:hover{background:#141d25;color:#cfe2ec}
 #swarm .sw-build{margin:-4px 0 8px;color:#5d7382;font-size:9.5px;letter-spacing:1px}
 #swarm .sw-build b{color:#ff6b5e;display:block;margin-top:2px}
+
+/* the debrief lab (src/labs/debrief-tab.js): the sector debrief on a stand-in for the game, with a width toggle */
+#tab-debrief{display:flex;flex-direction:column;background:#020607}
+#tab-debrief .dbl-stage{position:relative;flex:1;min-height:0;display:flex;justify-content:center}
+#tab-debrief .dbl-host{position:relative;width:100%;height:100%;overflow:hidden}
+#tab-debrief .dbl-stage[data-width="1280"] .dbl-host{width:min(1280px,100%)}
+#tab-debrief .dbl-stage[data-width="400"] .dbl-host{width:min(400px,100%)}
+#tab-debrief .dbl-stage:not([data-width="full"]) .dbl-host{box-shadow:0 0 0 1px #1f3a44}
+#tab-debrief .dbl-world{position:absolute;inset:0;overflow:hidden;background:radial-gradient(circle at 50% 120%,#0d2a2a 0,#061314 40%,#020607 70%)}
+#tab-debrief .dbl-planet{position:absolute;left:50%;top:58%;width:130vmin;height:130vmin;translate:-50% 0;border-radius:50%;
+  background:radial-gradient(circle at 40% 30%,#1b3a36,#08201e 55%,#020a0a 70%);box-shadow:0 0 80px rgba(53,255,208,.12)}
+#tab-debrief .dbl-grid{position:absolute;inset:0;background:linear-gradient(rgba(53,255,208,.05) 1px,transparent 1px) 0 0/40px 40px,
+  linear-gradient(90deg,rgba(53,255,208,.05) 1px,transparent 1px) 0 0/40px 40px}
+#tab-debrief .dbl-idle{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:14px;text-align:center;
+  font:20px/1.2 var(--font-ui);letter-spacing:.2em;color:#62978d}
+#tab-debrief .dbl-idle[hidden]{display:none}
+#tab-debrief .dbl-idle b{color:#ffb020;font-weight:normal}
+#tab-debrief .dbl-bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));
+  border-top:1px solid #1f3a44;background:#050c0e}
+#tab-debrief .dbl-group{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+#tab-debrief .dbl-group b{margin-right:4px;font:15px/1 var(--font-ui);letter-spacing:.2em;color:#62978d}
+#tab-debrief .dbl-btn{min-height:32px;padding:0 10px;font:16px/1 var(--font-ui);letter-spacing:.14em;color:#9fc9c0;background:#08171a;
+  border:1px solid #1f3a44;cursor:pointer}
+#tab-debrief .dbl-btn:hover{color:#dff;border-color:#35ffd0}
+#tab-debrief .dbl-btn.on{color:#04120f;background:#35ffd0;border-color:#35ffd0}
