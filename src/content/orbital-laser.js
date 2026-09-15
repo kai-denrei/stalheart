@@ -21,6 +21,28 @@ export const LASER_BEAM = Object.freeze({ energy: 10, radius: 6, slew: 10, accel
 // shell does.
 export const LASER_BURN = Object.freeze({ soft: 0, hard: 1.0, wall: 0.5, rock: 0.5, tower: 1.5, seal: 1.0, tank: 1.0, heart: 3.0 });
 
+// SOL-82 IN THE GAME (docs/superpowers/specs/2026-09-15-v1-session-design.md, section 3). online: whether the pass clock
+// runs from the handover on its own; off, the sectors switch it on (sector 2) through setLaserOnline, and ?laser=online
+// opens it for a playtest. lowEnergy: the share of a pass's budget under which the strip and the scope warn in amber.
+// keyLead: metres ahead of the contact a held movement key aims while the beam burns, so the keys drag it with the
+// beam's own inertia. reach: metres each kind spans beyond the footprint (a breach's rim, a tower's footing, the
+// Stalheart's bulk), so touching the thing is enough.
+// glide / glideEase: the lab's WASD pre-position, metres per second and the time constant of its ease (s).
+// range: the scope's in-range call in the game, arc metres from the base. The lab's 320 m covers its trench; the game's
+// breaches open about a minute's walk out (the far breach measured 519 m), and a scope calling every breach out of range
+// would contradict a beam that seals it. Still feedback only: the beam goes wherever it is aimed.
+export const LASER_GAME = Object.freeze({
+  online: false,
+  range: 640,
+  lowEnergy: 0.25,
+  keyLead: 30,
+  glide: 120,
+  glideEase: 0.22,
+  /* the seat's ground camera lens in degrees, the lab's ground camera */
+  groundFov: 52,
+  reach: Object.freeze({ soft: 0.5, hard: 1, wall: 2, rock: 5, tower: 4, seal: 5, tank: 2, heart: 8 }),
+});
+
 // altitude is in planet radii above the surface; fov in degrees; inset as a share of the viewport width;
 // groundBack / groundUp are metres behind and above the contact for the ground camera
 // The owner's view (2026-09-15): the satellite four radii up so the inset reads as orbit, a wider inset, and the ground

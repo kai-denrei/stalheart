@@ -3868,6 +3868,27 @@ body.mobile-shell #td-toast .wave-role, body.mobile-shell #td-wave .wave-name, b
 #story-views button.gunship:disabled { opacity: 0.45; cursor: default; }
 #story-views button.gunship.live { border-color: #ffb43d; color: #ffd48a; }
 #story-views button.gunship.ready { border-color: #6fe6ff; color: #dff4ff; }
+/* SOL-82 (src/fx/laser-station.js): monochrome, counting down; lit white through a pass; amber only when its energy runs low */
+#story-views button.laser { color: #c9d3da; border-color: #56646c; }
+#story-views button.laser:disabled { opacity: 0.6; cursor: default; }
+#story-views button.laser.live { color: #ffffff; border-color: #dfe8ee; background: rgba(44, 54, 62, 0.95); }
+#story-views button.laser.warn { color: #ffd48a; border-color: #ffb020; }
+/* the seat: the tank's HUD, the radar and the feed make way for the scope (bottom left) and its panel */
+#tab-td.laser-seat .minimap, #tab-td.laser-seat #story-monitor, #tab-td.laser-seat #td-strikecam { display: none !important; }
+#tab-td.laser-seat #td-perf { top: auto !important; bottom: 12px; left: auto !important; right: 14px; }
+#laser-seat { position: absolute; left: 16px; top: 58px; z-index: 80; max-width: min(92vw, 560px); pointer-events: none; color: #dfe8ee; font: 12px ui-monospace, Menlo, monospace; letter-spacing: 0.06em; text-shadow: 0 1px 3px #000; }
+#laser-seat header { font-size: 17px; letter-spacing: 2px; }
+#laser-seat header small { font-size: 10px; margin-left: 12px; color: #9aa8b0; }
+#laser-seat .laser-seat-line { display: flex; gap: 12px; align-items: center; margin-top: 6px; }
+#laser-seat .laser-seat-bar { display: inline-block; width: 140px; height: 6px; border: 1px solid #6d7b85; background: #0b0f12; }
+#laser-seat .laser-seat-bar i { display: block; height: 100%; width: 0; background: #dfe8ee; }
+#laser-seat .laser-seat-bar i.low { background: #ffb020; }
+#laser-seat .laser-seat-warn { margin-top: 6px; color: #ffb020; font-weight: 700; }
+#laser-seat footer { margin-top: 6px; color: #9aa8b0; font-size: 11px; }
+#laser-seat-keys { position: absolute; right: 18px; bottom: 124px; z-index: 80; display: flex; gap: 10px; align-items: center; }
+#laser-seat-keys button { font: 700 12px ui-monospace, Menlo, monospace; letter-spacing: 0.08em; color: #dfe8ee; background: rgba(8, 12, 16, 0.85); border: 1px solid #6d7b85; border-radius: 8px; padding: 8px 12px; cursor: pointer; touch-action: none; user-select: none; }
+#laser-seat-keys [data-hold] { width: 84px; height: 84px; border-radius: 50%; }
+#laser-seat-keys [data-hold].on { color: #ffffff; border-color: #ff3b1f; background: rgba(60, 16, 10, 0.9); }
 /* the build tag, joined to the navigation shell top right, for debugging which release is in front of you */
 #build-tag { font: 600 10px ui-monospace, Menlo, monospace; letter-spacing: 0.06em; color: #6fa8c8; background: rgba(8, 14, 20, 0.7); border: 1px solid #234c68; border-radius: 6px; padding: 2px 6px; pointer-events: none; }
 /* the story's spotting monitor: a second small render riding behind a guided round */

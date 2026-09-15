@@ -44,6 +44,7 @@ import GUI from '../vendor/lil-gui.esm.js';
 import { bfsDist, BLOCKED, PATH, ROOM } from './dungeon.js';
 import { buildGameWorld, readStoryQuery, STORY_SOUNDS, takeControlPose } from './platform/story-world.js'; import { SENTRY_HEAT } from './content/sentry-heat.js'; import { coolHeat } from './core/heat.js'; import { paintBarrelHeat } from './fx/barrel-heat.js'; import { createStoryViews } from './fx/story-views.js'; import { createStoryMonitor } from './fx/story-monitor.js'; import { createDaylight } from './fx/daylight.js'; import { createStoryScope } from './fx/story-scope.js'; import { createSyntheticModal } from './fx/synthetic-modal.js'; import { createBrass } from './fx/brass.js';
 import { mulberry32, randomSeed } from './rng.js';
+import { createLaserStation } from './fx/laser-station.js'; import { LASER_GAME } from './content/orbital-laser.js'; import { makeTriadIcon, glossCard, GAMEPLAY_TIPS } from './fx/briefing-cards.js';
 import { computeBerths, berthIndexFor } from './berths.js';
 import { wantsSecondary, shellsForAll } from './autofire.js';
 import { printPhase, printOffset, printOn, patternSecsFor } from './printpath.js';
@@ -354,6 +355,19 @@ export function initTdTab(root) {
   // every play() is a silent no-op -- the game never waits on audio.
   const sfx = makeAudio({ seed: 1, sounds:{...SOUNDS,...BREACH_SOUNDS,...(location.search.includes('world=story')?STORY_SOUNDS:{})} });   // story cues only in the story world
   const gameBreaches=createGameBreaches(scene,camera,sfx,{look:()=>params.look});
+  // SOL-82 IN THE ARSENAL (src/fx/laser-station.js): the pass clock once online after the handover, the seat on the views strip, the beam through the game's own kill, seal, breach and damage paths
+  const laserStation = createLaserStation(root, scene, {
+    online: LASER_GAME.online || new URLSearchParams(location.search).get('laser') === 'online', get mobile() { return mobileShell; },
+    cellSide: () => cellSide, wallHeight: () => params.wallHeight, centers: () => graph.centers, adj: () => graph.adj, tags: () => dungeon.tags, cellAt: (p) => cellIndex(norm3(p)),
+    heart: () => graph.centers[dungeon.heart], heartCell: () => dungeon.heart, lane: () => graph.centers[gunshipLane()], tank: () => player.pos,
+    enemies: () => enemies, breaches: () => spawnPoints.filter((sp) => sp.alive && sp.obj?.userData.breach), towers: () => towers, walls: () => storyBase?.walls?.() ?? [], anchors: () => storyBase?.anchors?.() ?? new Set(),
+    burnBody: (e) => damageEnemy(e, t, e.hp + 1, true, 'laser'), seal: (sp) => killPortal(sp, 'laser'), burnTower: (tw) => destroyTower(tw), burnWall: (w) => storyBase?.dropWall(w.index),
+    breakCells: (cells) => { if (cells.filter((ci) => breachWallCell(ci)).length) rebuildAfterBreach(); }, burnHeart: () => heartHit(heartHP), burnTank: (p) => playerHit('laser', p),
+    explode: (use, p) => explode(use, p), brief: (id) => showBrief(id), loop: (key) => sfx.loop(key), views: () => storyViews, canvas: () => renderer.domElement, fov: () => camera.fov,
+    paused: (v) => { const was = paused; if (v !== undefined) paused = v; return was; },
+    enter: (fov) => { keys.left = keys.right = keys.fast = keys.slow = keys.laser = false; cruise = false; throttle = 0; endShot(); camera.fov = fov; camera.updateProjectionMatrix(); snapCamera(); },
+    leave: () => { camera.fov = 68; camera.updateProjectionMatrix(); setView('third'); snapCamera(); },   /* the tank's own lens back (2026-09-15-gunship-track-latched-and-seat-lens-reset) */
+  });
   sfx.arm();
   // THE ALARM IS THE PROOF OF LIFE. Operator, 2026-09-01: waiting out the
   // cold open to find out whether sound works makes every test cycle cost
@@ -2425,6 +2439,7 @@ export function initTdTab(root) {
 
   function updateCameraGoal() {
     if (pilot?.state.tower && pilot.pose(pilot.state.tower, camGoal)) return;
+    if (laserStation.pose(camGoal)) return;   // SOL-82's seat: the ground view behind the beam's contact
     // DEPLOY eases the doorway framing into the gameplay framing over its own
     // progress, so at u=1 the two ARE the same pose and handing the controls
     // over changes nothing on screen.
@@ -3941,19 +3956,6 @@ export function initTdTab(root) {
     return url;
   }
 
-  // mini bullet triad, briefing-icon edition
-  function makeTriadIcon() {
-    const g = new THREE.Group();
-    for (let k = -1; k <= 1; k++) {
-      const b = makeShellSolid({ body: 0xffb000, hi: 0xffffff });
-      b.scale.setScalar(0.19);
-      b.position.set(k * 0.52, 0, 0);
-      g.add(b);
-    }
-    g.userData.kind = 'triad';
-    return g;
-  }
-
   // the briefing card draws whatever is ACTUALLY at the pole, so the picture
   // can never disagree with the board — the same rule the hostiles glossary
   // follows by generating itself from ENEMY_SPEC
@@ -3964,24 +3966,7 @@ export function initTdTab(root) {
     if (h.userData.tick) h.userData.tick(1.2);
     return h;
   };
-  const unitIcon = (type, tint) => () => buildCreature(type, { walker: tint, walkerHi: 0xffffff });
-
-  // one element = one little card: real sprite · name · what it does
-  const glossCard = (color, iconUrl, name, desc) =>
-    `<div class="gcard"><img class="gicon" src="${iconUrl}" alt="">` +
-    `<div class="gname" style="color:${color}">${name}</div>` +
-    `<div class="gdesc">${desc}</div></div>`;
-
-  // the how-to, in ONE place: shown at the beginning and while paused —
-  // never on the live HUD
-  const GAMEPLAY_TIPS =
-    `<div class="tips-head">gameplay</div>` +
-    `<div class="tips">` +
-    `drive: drag the throttle · flick up for full · below zero reverses<br>` +
-    `steer: the side zones · fire: &#9673; shell · &#8767; laser (overheats)<br>` +
-    `B = build/tank · M = map view · in BUILD tap HIGH GROUND to place towers<br>` +
-    `ESC pause · RAM the small ones · shells breach walls</div>`;
-
+  const unitIcon = (type, tint) => () => buildCreature(type, { walker: tint, walkerHi: 0xffffff });   /* the cards, the triad icon and the tips: src/fx/briefing-cards.js */
 
   // opening briefing: the pieces as cards, the ONE win condition, and two
   // clickable glossaries. The sim stays frozen until the player begins.
@@ -4835,7 +4820,7 @@ export function initTdTab(root) {
 
   function killPortal(sp,reason='impact') {
     if(!sp.alive)return;
-    if(sp.obj.userData.breach&&reason!=='strike'&&reason!=='exhausted')return;
+    if(sp.obj.userData.breach&&reason!=='strike'&&reason!=='exhausted'&&reason!=='laser')return;
     sp.alive = false;
     // THE GATE GOES LIKE THE TANK GOES (operator): its own wreckage, a big
     // burst in its own colour, and the heavy sound — the same three parts as
@@ -9770,7 +9755,7 @@ export function initTdTab(root) {
         playerMesh.visible = params.view !== 'pov' && !deploy?.clip;   // an authored roll-out owns the hull on screen: ours would stand in it, turret sweeping
         postfx.render(); storyMonitor?.render(renderer, scene, towerSeekers.find((m) => m.pool === talonPool)?.mesh ?? null, cellSide, 0);
         playerMesh.visible = !deploy?.clip;
-        drawRadar(t);   // the sweep keeps turning; a dead scope reads as a crash
+        drawRadar(t); laserStation.render(renderer, scene);   // the sweep keeps turning; a dead scope reads as a crash
       }
       return;
     }
@@ -9895,7 +9880,7 @@ export function initTdTab(root) {
     },opened=>{
       sfx.play('sinkhole_quake',{dist:Math.min(...opened.map(obj=>camDist(obj.position.toArray())))});
       // One skippable establishing shot per new group, never per wave.
-      if((wave>0||storyMode)&&!paused&&!shotActive()&&!pilotMode&&!pilot?.gunship){   // never while a seat is manned: the cut took the gunner's camera mid-aim (owner, 2026-09-15); the quake still sounds
+      if((wave>0||storyMode)&&!paused&&!shotActive()&&!pilotMode&&!pilot?.gunship&&!laserStation.seated()){   // never while a seat is manned: the cut took the gunner's camera mid-aim (owner, 2026-09-15); the quake still sounds
         const direction=opened[0].position.clone().normalize(),returnPos=camera.position.clone(),returnQuat=camera.quaternion.clone(),far=direction.clone().multiplyScalar(3.3),up=camera.up.clone();
         // IN THE STORY: the whole planet through the pre-roll, then as the ground opens a FAST DIVE to a close view over the sinkhole, held while the fodder emerge, then a short blend back
         const sb=storyMode?story?.breachShot:null,hold=sb?CONTENT.breach.duration+(sb.emergeHold??0):0,tail=sb?sb.tail??1.8:1.8,dur=CONTENT.breach.preRoll+tail+hold,ease=(x)=>{const v=Math.max(0,Math.min(1,x));return v*v*(3-2*v);};
@@ -10000,6 +9985,7 @@ export function initTdTab(root) {
       playerMesh.userData.tick(t);
     }
     buildFollowTank(dt);
+    if (story && automated() && !frozen && !player.won) laserStation.tick(dt);   // SOL-82: the pass clock once online, the seat's hands, the beam
     updateCameraGoal();
 
     if (pilotMode && pilot && !pilot.isMap()) {
@@ -10031,6 +10017,7 @@ export function initTdTab(root) {
     playerMesh.visible = params.view !== 'pov' && !deploy?.clip;   // the bay's authored hull rolls out alone (operator, 2026-09-13: two turrets, one static, one sweeping)
     postfx.render(); storyMonitor?.render(renderer, scene, towerSeekers.find((m) => m.pool === talonPool && talonPool)?.mesh ?? null, cellSide, dt, pilot?.gunship ? pilot.gunshipOptic() : (pilotMode && pilot?.state.tower && missileOf(pilot.state.tower.key) && pilot.state.tower.pilotTarget && !pilot.state.tower.pilotTarget.pilotAim ? { from: perchOf(pilot.state.tower), pos: pilot.state.tower.pilotTarget.pos } : null));   // the seeker feed rides behind a TALON in flight; the gunship's monitor is the ground truth at the impact point; otherwise the optic inset on the tracked target
     drawRadar(t); story?.hud.paint(radarCtx, { m: radarCss, cpos: pilot?.state.tower ? graph.centers[pilot.state.tower.ci] : player.pos, up: pilot?.state.tower ? new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray() : player.smoothDir, range: mapMode === 'heart' ? 2.02 : pilotMode ? cellSide * 12 : 1.15, t, mapMode });
+    laserStation.render(renderer, scene);   // SOL-82's scope over the ground view while its seat is manned
   }
 
   // The scope. Player mode is heading-up around the tank; heart mode (M) is
@@ -10202,6 +10189,7 @@ export function initTdTab(root) {
   if (Number.isFinite(seedOverride)) params.seed = seedOverride >>> 0; const storyQuery = readStoryQuery(location.search), threatMult = storyQuery.threat, storyMode = storyQuery.world === 'story';   // tabula rasa past the landing: no old heart, waves, portals, camp or yard
   const storyApi = { foundry: (ev, d) => { (foundryFx ??= createFoundryFx(scene, () => storyBase, { cellSide, metresPerCell: 10 })).event(ev, d); if (ev === 'deploy') { showBrief('foundry_deploy'); const fh = storyBase?.structure('foundry')?.holder; if (fh) { const at = norm3(fh.getWorldPosition(new THREE.Vector3()).toArray()); if (isao) isao.assistAt = at; else if (story) story.assistAt = at; } } }   /* ISAO GOES TO WORK AT ONCE (owner, 2026-09-14): he tends the foundry from its deploy until the first print order */, /* the arrival recycled: the beat's events become the swap, the clip, the arc, the cut and the barrels */ order: (key, ci) => orderTower(key, ci, { quiet: true }), grant: (n) => { if (n > 0) eco.addBiomass(n, { category: 'grant' }); }, built: (ci) => towerByCell.has(ci), cost: (key) => TOWER_BY_KEY[key]?.cost ?? 0, isao: () => !!isao, enemies: () => enemies.filter((e) => e.alive).length + spawnQueue.length, /* a queued spawn is already an enemy to the beats: the second hard core sat in the queue the tick the first died, and the Quiver beat settled with it still to come */ spawn: (type, ci, o = null) => { spawnQueue.push({ type, sp: o?.guard ? { ci, alive: true, obj: new THREE.Group() } : story?.source ?? { ci, alive: true, obj: new THREE.Group() }, at: spawnClock, ...o }); }, /* THE EXPEDITIONS (owner, 2026-09-14), seen and heard: the nests, our flags, the crate on the back deck and the trophies live in src/fx/expedition-glue.js; the controller hands it what it owns */ expeditions: () => (story.glue ??= createExpeditionGlue({ story, scene, sfx, hasCue: (k) => !!(SOUNDS[k] || BREACH_SOUNDS[k] || STORY_SOUNDS[k]), cellSide, centers: () => graph.centers, tankPos: () => player.pos, hull: () => playerMesh, guardsLeft: (id) => enemies.some((e) => e.alive && e.guard?.site === id) || spawnQueue.some((q) => q.guard?.site === id), spawn: (...a) => storyApi.spawn(...a), revealSite: (id) => storyBase?.reveal(id), landing: () => storyBase?.structure('foundry')?.holder ?? null, brief: showBrief, callout: (text) => showCallout(text, 'co-cargo'), toast: showTowerToast })), openSite: (id) => { if (story?.expeditions) storyApi.expeditions().openSite(id); }, expeditionsBegin: () => { if (story?.expeditions) storyApi.expeditions().begin(); }, expeditionStep: () => { if (story?.expeditions) storyApi.expeditions().step(); }, brief: (id) => showBrief(id), tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null), breach: (ci) => { const obj = buildPortalObj(ci, 0); scene.add(obj); story.source = { ci, alive: true, obj, hp: 3, found: true }; spawnPoints.push(story.source); }, sourceAlive: () => !!story.source?.alive, briefing: () => !!briefQ, screenOpen: () => !!syntheticModal?.isOpen(), closeup: () => { if (!isao) return; leavePilot(); storyViews?.active('tank'); clearBriefs(); startShot({ id: 'isaoTalk', dur: 9, poseAt: (u, out) => { const bp = isao.obj.position.toArray(), n = norm3(isao.dir), fw = isao.obj.getWorldDirection(new THREE.Vector3()).toArray(), f = norm3(sub3(fw, scale3(n, dot3(fw, n)))), size = isao.obj.scale.x, face = add3(bp, scale3(n, size * 0.35)), eye = add3(add3(face, scale3(f, size * (1.9 - 0.5 * u))), scale3(n, size * 0.12)); out.pos.set(eye[0], eye[1], eye[2]); tmpCam.position.copy(out.pos); tmpCam.up.set(n[0], n[1], n[2]); tmpCam.lookAt(face[0], face[1], face[2]); out.quat.copy(tmpCam.quaternion); } }); }, /* FACE ON (the first framing sat between his legs and the rocket): in front of the LED panel along his own forward, a drone-size or two out, the queued line cleared so his first line is the first thing on the panel */ sites: () => story.hud.sites(story.sites.map((ci) => norm3(graph.centers[ci]))), planetView: () => { if (!story.sites.length) return; const d = norm3(story.sites.map((ci) => graph.centers[ci]).reduce((a, c) => add3(a, c), [0, 0, 0])), ref = Math.abs(d[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0], up = norm3(cross3(d, ref)); startShot({ id: 'sites', dur: 5, poseAt: (u, out) => { const eye = scale3(d, 1.6 + 1.7 * Math.min(1, u * 1.6)); out.pos.set(eye[0], eye[1], eye[2]); tmpCam.position.copy(out.pos); tmpCam.up.set(up[0], up[1], up[2]); tmpCam.lookAt(0, 0, 0); out.quat.copy(tmpCam.quaternion); }, onEnd: () => setView('orbit') }); }, /* the sinkhole is a spawn point: an orbital strike on it fills it like any other (operator, 2026-09-13) */ near: (ci, r = 2.2) => enemies.some((e) => e.alive && chord(e.pos, graph.centers[ci]) < cellSide * r), kills: () => rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike, screen: (id) => { if (id !== 'synthetic') return; syntheticModal ??= createSyntheticModal(root); const was = paused; paused = true; syntheticModal.open(BRIEFS.vibration_study.lines, () => { paused = was; }); }, unlock: (what) => { if (what === 'views') { storyViews ??= createStoryViews(root, { tank: () => leavePilot(), mount: (key) => { if (key === 'gunship') { if (!onStation(gunship) && !(automated() && callGunship(gunshipCall) && startStation(gunship, GUNSHIP_ORBIT))) return; const seat = () => { if (!pilotMode) enterPilot(towers.map((t) => t.ci)); if (pilot.mountGunship() !== 'mounted') storyViews.active('tank'); else showBrief('gunship_pass'); }; /* Isao's line comes with the seat, not the pass. The first seat is preceded by the briefing, the game paused under it */ if ((gunshipBriefing ??= createGunshipBriefing(root)).seen()) seat(); else { const was = paused; paused = true; gunshipBriefing.open(() => { paused = was; if (onStation(gunship)) seat(); else storyViews.active('tank'); }); } return; } if (pilotMode) pilotHost?.pick(key); else { const tw = towers.find((t) => t.key === key); if (tw) enterPilot([tw.ci, ...towers.map((t) => t.ci).filter((c) => c !== tw.ci)]); } }, map: () => (pilotMode ? pilot.setView('map') : setView('orbit')) }); storyViews.mounts(automated() ? [] : towers.map((t) => ({ key: t.key, label: t.def.label.replace(/^\d+\.\s*/, '') }))); storyViews.station(onStation(gunship), phaseLeft(gunship)); storyViews.active(pilot?.state.tower?.key ?? 'tank'); } }, pilot: (ci, laneCi) => { enterPilot([ci, ...towers.map((t) => t.ci).filter((c) => c !== ci)]); startShot({ id: 'takeControl', dur: 3.2, poseAt: takeControlPose(perchOf(towerByCell.get(ci) ?? { ci }), graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight), onEnd: () => { setView('bastion'); snapCamera(); } }); } };
   const simParam = urlParams.get('sim');
+  storyApi.setLaserOnline = (on) => laserStation.setOnline(on);   // the sectors switch SOL-82 on (V1 design: sector 2)
   if (simParam) {
     simStyle = simParam;
     simFast = Math.max(1, Math.min(120, parseInt(urlParams.get('simfast') || '50', 10)));
@@ -13668,6 +13656,7 @@ export function initTdTab(root) {
         playerModelStats: playerMesh?.userData.modelStats,
         berthAssets:lifeContainers.flatMap(c=>c.tanks.map(t=>t.userData.asset)), bays: lifeContainers.map((c) => ({ ci: c.ci, hasTank: c.tanks.length > 0, racked: !!c.tanks[0]?.visible })), berthCells: berths.map((b) => b.ci), kills: rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike, monitorShown: storyMonitor?.shown() ?? 0, screenOpen: !!syntheticModal?.isOpen(), screensOpened: syntheticModal?.opened() ?? 0, brassLive: brass?.live() ?? 0, daylight: daylight?.state() ?? null,
         heartAsset: heartSprite?.userData.asset || params.heartLook,
+        laser: laserStation.state(),
         heartAssetState: heartSprite?.userData.assetState,
         performance:perfSample,shieldClock:t,motionClock:runContext.time,shield:{seconds:shield.t,rack:shield.rack,cooldown:Math.max(0,shield.coolUntil-t),drops:shieldDrops,visible:shieldObj?.visible,active:shieldUp(),cooling:t<shield.coolUntil,rackFill:shield.rackFill,arrayReserve:arrayStation.reserve,charging:arrayStation.charging,arrayDrawn:arrayStation.drawn,arrayPad:story?.arrayPad??null,ring:arrayRing?{visible:arrayRing.visible,opacity:arrayRing.material.opacity}:null},ram:{combo:ramCombo,rams:rs.rams,best:rs.maxCombo,biomass:eco.biomass,points:score.points,float:ramFloat.state()},foes:enemies.filter(e=>e.alive&&!(e.emergeAge<1.2)).map(e=>[e.cur,e.spec.rammable?1:0]),
         cannonHeat,ammo,cannonColor:playerMesh?.userData.heatSleeve?.material.color.getHex(),
@@ -13702,6 +13691,7 @@ export function initTdTab(root) {
       relayOffline: id => towerOffline(shield,id,t), refillArrays: () => refillArrays(),
       deployShield: () => {const was=paused;paused=false;const result=deployShieldNow();paused=was;return result;},
       fireShell: () => fire(),
+      ...laserStation.hooks,   // laserOnline, laserPassNow, laserSeat, laserSteer, laserHold
       showRecordTest: () => {
         rs.bestShell={kills:1000};rs.bestStrike={kills:1001};run.bestStreak=999;rs.maxCombo=1200;
         renderAnalysis(false);

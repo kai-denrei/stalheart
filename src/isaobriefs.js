@@ -135,6 +135,11 @@ export const BRIEFS = {
     id: 'gunship_pass', face: 'focused', title: 'COMMS · ISAO', once: true,
     lines: ['The gunship is overhead. Fuel for a pass, not a landing.', 'I mark what it must not hit.'],
   },
+  // SOL-82's first pass over the base, once it is online (src/fx/laser-station.js)
+  laser_pass: {
+    id: 'laser_pass', face: 'focused', title: 'COMMS · ISAO', once: true,
+    lines: ['SOL-82 is overhead. Twenty seconds of sky, ten of beam.', 'It burns whatever it touches, ours too. I keep clear of the ring.'],
+  },
   quiver_override: {
     id: 'quiver_override', face: 'focused', title: 'MANUAL OVERRIDE', once: true,
     lines: ['Its targeting chips are not ready either.', 'Manual override. Hold the reticle on it until the lock takes, then fire.'],

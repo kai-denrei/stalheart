@@ -16,7 +16,7 @@ import { STORY_RECIPE, STORY_CLEARING } from '../content/story-defaults.js';
 import { buildStoryPlanet } from '../domain/story-planet.js';
 import { planetBake } from '../platform/planet-bake.js';
 import { createStoryPlanetSurface } from './story-planet-mesh.js';
-import { createInsetHud } from './laser-inset-hud.js';
+import { createInsetHud } from '../fx/laser-inset-hud.js';
 import { planBase } from '../domain/base-plan.js';
 import { ISLANDS, STRUCTURES, KIT, STAGES } from '../content/base-layout.js';
 import { createStoryBase } from '../fx/story-base.js';

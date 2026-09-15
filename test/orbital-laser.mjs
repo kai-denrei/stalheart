@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { LASER_ORBIT, LASER_BEAM, LASER_BURN, LASER_VIEW, LASER_PRESET, LASER_TRAIL, LASER_TRAIL_SMOKE, LASER_CONTACT_RATE, LASER_SMOKE_RATE, LASER_TELEMETRY, LASER_SOUNDS, LASER_AUDIO } from '../src/content/orbital-laser.js';
-import { makeLaser, stepLaser, aimLaser, burnLaser, burnContacts, laserProgress, clampToRange } from '../src/domain/orbital-laser.js';
+import { LASER_ORBIT, LASER_BEAM, LASER_BURN, LASER_VIEW, LASER_PRESET, LASER_TRAIL, LASER_TRAIL_SMOKE, LASER_CONTACT_RATE, LASER_SMOKE_RATE, LASER_TELEMETRY, LASER_SOUNDS, LASER_AUDIO, LASER_GAME } from '../src/content/orbital-laser.js';
+import { makeLaser, stepLaser, aimLaser, burnLaser, burnContacts, laserProgress, clampToRange, inFootprint, laserStrip } from '../src/domain/orbital-laser.js';
 import { len3, dot3, norm3 } from '../src/vec3.js';
 
 /* the owner's first values, pinned so a tuning session has to come through a decision entry */
@@ -176,6 +176,34 @@ assert.equal(LASER_PRESET.glowWidth, 10);
   assert.equal(p.energy, 0.5);
   stepLaser(st, 15, LASER_ORBIT, LASER_BEAM);
   assert.equal(laserProgress(st, LASER_ORBIT, LASER_BEAM).pass, 0.25);
+}
+
+/* --- SOL-82 in the game: the footprint test and the strip's words ------------ */
+{
+  assert.deepEqual({ ...LASER_GAME, reach: { ...LASER_GAME.reach } }, {
+    online: false, range: 640, lowEnergy: 0.25, keyLead: 30, glide: 120, glideEase: 0.22, groundFov: 52,
+    reach: { soft: 0.5, hard: 1, wall: 2, rock: 5, tower: 4, seal: 5, tank: 2, heart: 8 },
+  });
+  for (const kind of Object.keys(LASER_BURN)) assert.ok(Number.isFinite(LASER_GAME.reach[kind]), `every burnable kind has a reach (${kind})`);
+  const contact = [0, 100, 0];
+  const things = [
+    { id: 'on', pos: [0, 100, 5.9] },
+    { id: 'edge', pos: [0, 100, 6.1] },
+    { id: 'reach', pos: [0, 100, 10.5], reach: 5 },
+    { id: 'far', pos: [0, 100, 11.5], reach: 5 },
+  ];
+  assert.deepEqual(inFootprint(contact, 6, things).map((t) => t.id), ['on', 'reach'], 'in by radius, or by radius plus the thing\'s own reach');
+  assert.deepEqual(inFootprint(null, 6, things), [], 'no contact, nothing under it');
+
+  const st = makeLaser(LASER_ORBIT, LASER_BEAM);
+  assert.deepEqual(laserStrip(st, false, LASER_BEAM, 0.25), { shown: false, live: false, warn: false, text: 'SOL-82' }, 'offline: hidden');
+  assert.equal(laserStrip(st, true, LASER_BEAM, 0.25).text, 'SOL-82 02:40', 'online: the next pass counts down in minutes and seconds');
+  stepLaser(st, 100.2, LASER_ORBIT, LASER_BEAM);
+  assert.equal(laserStrip(st, true, LASER_BEAM, 0.25).text, 'SOL-82 01:00', 'the countdown rounds up');
+  stepLaser(st, 60, LASER_ORBIT, LASER_BEAM);
+  assert.deepEqual(laserStrip(st, true, LASER_BEAM, 0.25), { shown: true, live: true, warn: false, text: 'SOL-82 OVERHEAD' }, 'lit through the pass');
+  burnLaser(st, true, 7.6);
+  assert.equal(laserStrip(st, true, LASER_BEAM, 0.25).warn, true, 'amber once the energy is under a quarter');
 }
 
 console.log('Orbital laser: the clock arrives and closes, the contact slews at its metres per second, burns accumulate per kind and are reported once, energy drains only while burning.');
