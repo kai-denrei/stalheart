@@ -10,6 +10,8 @@ import { createBeam } from '../beamfx.js';
 import { LASER_PRESET, LASER_BEAM, LASER_TRAIL, LASER_SKY_METRES } from '../content/orbital-laser.js';
 
 const Y = new THREE.Vector3(0, 1, 0);
+/* the preset keys measured in metres: scaled by scene units per metre at build and in tune() */
+const WIDTH_KEYS = new Set(['coreWidth', 'glowWidth', 'jitterAmount']);
 
 export function createOrbitalLaser(scene, { cellSide = 10, metresPerCell = 10 } = {}) {
   const unit = cellSide / metresPerCell;          /* scene units per metre */
@@ -138,6 +140,28 @@ export function createOrbitalLaser(scene, { cellSide = 10, metresPerCell = 10 } 
       beam.mesh.visible = false;
       ring.visible = false;
       laid = false;
+    },
+
+    // THE LIVE LOOK. The column's preset keys are shader uniforms (src/beamfx.js turns every key into u<Key>), so a
+    // slider can write them while the beam burns. Widths are METRES and take the same scene-units-per-metre as the
+    // build; `radius` resizes the footprint ring against the radius it was built at. Unknown keys are ignored.
+    tune(look = {}) {
+      const uniforms = beam.mesh.material.uniforms;
+      for (const [key, value] of Object.entries(look)) {
+        if (!Number.isFinite(value)) continue;
+        if (key === 'radius') { ring.scale.setScalar(value / LASER_BEAM.radius); continue; }
+        const u = uniforms[`u${key[0].toUpperCase()}${key.slice(1)}`];
+        if (u) u.value = WIDTH_KEYS.has(key) ? value * unit : value;
+      }
+    },
+
+    // what the column is drawing with right now, in scene units: a check reads this to see a slider reached the shader
+    look() {
+      const u = beam.mesh.material.uniforms;
+      return {
+        coreWidth: u.uCoreWidth.value, glowWidth: u.uGlowWidth.value, coreIntensity: u.uCoreIntensity.value,
+        glowIntensity: u.uGlowIntensity.value, noiseAmount: u.uNoiseAmount.value, ringScale: ring.scale.x,
+      };
     },
 
     tick(dt, energy01 = 1) {

@@ -92,7 +92,8 @@ if (leaving) {
   try {
     const content = bootstrapContent();
     // the story planet's bake rides in with the module: seconds of relaxing and carving skipped when it is there
-    if ((target === 'td' && isStoryRoute(location.search)) || target === 'story') await loadPlanetBake();
+    // the laser lab builds the same story planet: without the bake it relaxed and carved it live, ~6 s of a 9 s load
+    if ((target === 'td' && isStoryRoute(location.search)) || target === 'story' || target === 'laser') await loadPlanetBake();
     const init = await routes[target]();
     const api = init(root);
     const choices = workshop

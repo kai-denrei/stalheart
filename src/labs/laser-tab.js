@@ -78,13 +78,22 @@ export function initLaserTab(root) {
     burnSoft: LASER_BURN.soft, burnHard: LASER_BURN.hard, burnWall: LASER_BURN.wall,
     burnTower: LASER_BURN.tower, burnSeal: LASER_BURN.seal, burnHeart: LASER_BURN.heart,
     coreWidth: LASER_PRESET.coreWidth, glowWidth: LASER_PRESET.glowWidth,
-    glowIntensity: LASER_PRESET.glowIntensity, noiseAmount: LASER_PRESET.noiseAmount,
+    coreIntensity: LASER_PRESET.coreIntensity, glowIntensity: LASER_PRESET.glowIntensity,
+    noiseAmount: LASER_PRESET.noiseAmount,
+    /* debug: the satellite never leaves and the energy never drains, so a look can be judged without waiting or RESET */
+    infinite: false,
   };
   const P0 = { ...P };
   for (const key of Object.keys(P)) {
     const v = q.get(key);
     if (v !== null && Number.isFinite(Number(v))) P[key] = Number(v);
   }
+  P.infinite = !!P.infinite;
+  /* what tune() takes: the column's live uniforms and the footprint ring */
+  const lookOf = () => ({
+    coreWidth: P.coreWidth, glowWidth: P.glowWidth, coreIntensity: P.coreIntensity,
+    glowIntensity: P.glowIntensity, noiseAmount: P.noiseAmount, radius: P.radius,
+  });
   const orbit = () => ({ period: P.period, overhead: P.overhead });
   const beamCfg = () => ({ energy: P.energy, radius: P.radius, slew: P.slew });
   const burnCfg = () => ({ soft: P.burnSoft, hard: P.burnHard, wall: P.burnWall, tower: P.burnTower, seal: P.burnSeal, tank: 1.0, heart: P.burnHeart });
@@ -93,6 +102,8 @@ export function initLaserTab(root) {
   let planet = null, planetMesh = null, plan = null, base = null, sphereRoot = null;
   let explosions = null, rubble = null, sink = null, laser = null, thermal = null;
   let wallMeshes = [], wallCells = [], structs = [], sentries = [];
+  /* each wall mesh's instance matrices as built, so REVIVE can put burned cells back without a reload */
+  let wallRest = [];
   let bodies = [], bursts = [], trench = null, trenchMesh = null;
   /* the world direction that walks back down the trench, measured at its mouth; frameGround tips it onto the tangent
      plane wherever it is framing */
@@ -133,6 +144,7 @@ export function initLaserTab(root) {
     + '<span id="laser-flash"></span>'
     + '</div>'
     + '<div class="laser-keys"><button id="laser-pass" type="button">PASS NOW</button>'
+    + '<button id="laser-revive" type="button">REVIVE</button>'
     + '<button id="laser-reset" type="button">RESET</button>'
     + '<span>hold the pointer in the inset to burn</span></div>';
   const elState = hud.querySelector('#laser-state'), elWindow = hud.querySelector('#laser-window');
@@ -165,7 +177,7 @@ export function initLaserTab(root) {
 
   function paintHud() {
     const p = laserProgress(st, orbit(), beamCfg());
-    const word = st.phase === 'overhead' ? (st.energy > 0 ? 'OVERHEAD' : 'OUT') : 'AWAY';
+    const word = P.infinite ? 'INFINITE' : st.phase === 'overhead' ? (st.energy > 0 ? 'OVERHEAD' : 'OUT') : 'AWAY';
     const line = `${word} · ${Math.ceil(st.left).toString().padStart(2, '0')}`;
     if (elState.textContent !== line) elState.textContent = line;
     elWindow.style.width = `${Math.round(p.pass * 100)}%`;
@@ -331,6 +343,7 @@ export function initLaserTab(root) {
 
     /* the wall instances, by name off the base's group: createStoryBase does not return them */
     wallMeshes = base.group.children.filter((o) => o.isInstancedMesh && o.name === 'walls');
+    wallRest = wallMeshes.map((m) => m.instanceMatrix.array.slice());
     wallCells = plan.walls.map((w, k) => ({
       id: `wall-${k}`, index: k, gone: false, p: toWorld([w.x, KIT.wallMetres / 2, w.z]),
     }));
@@ -341,7 +354,7 @@ export function initLaserTab(root) {
       const rec = base.structure(s.id);
       if (!rec || !rec.holder) continue;
       structs.push({
-        id: s.id, holder: rec.holder, root: rec.root, gone: false,
+        id: s.id, holder: rec.holder, root: rec.root, gone: false, shown: rec.holder.visible,
         heart: s.id === 'stalheart', p: toWorld([s.x, 4, s.z]),
       });
     }
@@ -361,7 +374,7 @@ export function initLaserTab(root) {
       obj.quaternion.setFromUnitVectors(Y, n);
       scene.add(obj);
       sentries.push({ id: `sentry-${name}`, obj });
-      structs.push({ id: `sentry-${name}`, holder: obj, root: obj, gone: false, heart: false, p: obj.position.clone() });
+      structs.push({ id: `sentry-${name}`, holder: obj, root: obj, gone: false, shown: true, heart: false, p: obj.position.clone() });
     }
 
     /* the trench: from the sinkhole's cell up the sightline to the gate */
@@ -389,6 +402,7 @@ export function initLaserTab(root) {
     sinkPoint = holeW.clone();
 
     laser = createOrbitalLaser(scene, { cellSide, metresPerCell: 10 });
+    laser.tune(lookOf());
     thermal = createThermalHeat(() => ({ warm: [], hot: hotRoots() }), { every: 250 });
 
     frameGround(trenchPoint(queueTail()));
@@ -622,6 +636,12 @@ export function initLaserTab(root) {
   }
 
   function step(dt) {
+    /* infinite: hold the pass open and the budget full before the clock runs, so it never closes or runs out */
+    if (P.infinite) {
+      if (st.phase !== 'overhead') { st.phase = 'overhead'; st.fresh = true; }
+      st.left = P.overhead;
+      st.energy = P.energy;
+    }
     const edge = stepLaser(st, dt, orbit(), beamCfg());
     if (edge === 'close') laser.lift();
     /* the sinkhole opens itself once its stone textures are in: nothing else polls it here */
@@ -639,6 +659,27 @@ export function initLaserTab(root) {
     frameGround(anchor);
     paintHud();
     if (flashT > 0) flashT = Math.max(0, flashT - dt);
+  }
+
+  // Put every target back without the reload RESET does: wall cells from the matrices saved at build, structures to the
+  // visibility they were built with, a fresh queue of bodies, the counters and the heart. A sealed sinkhole stays
+  // sealed: its crater and rubble cap have no undo, so that one still needs RESET.
+  function revive() {
+    if (!ready) return;
+    wallMeshes.forEach((m, i) => { m.instanceMatrix.array.set(wallRest[i]); m.instanceMatrix.needsUpdate = true; });
+    for (const w of wallCells) w.gone = false;
+    for (const s of structs) { s.gone = false; s.holder.visible = s.shown; }
+    buildBodies();
+    st.contacts.clear();
+    Object.assign(run, { bodies: 0, walls: 0, towers: 0, heart: 'INTACT' });
+    flash(sealed ? 'targets revived; the sealed sinkhole needs RESET' : 'targets revived');
+  }
+
+  // the infinite toggle rides in the address, so RESET (a reload) comes back with it still on
+  function keepInfinite() {
+    const url = new URL(location.href);
+    if (P.infinite) url.searchParams.set('infinite', '1'); else url.searchParams.delete('infinite');
+    history.replaceState(history.state, '', url);
   }
 
   function passNow() {
@@ -682,18 +723,20 @@ export function initLaserTab(root) {
   gp.add(P, 'period', 20, 400, 1).name('period (s)');
   gp.add(P, 'overhead', 4, 90, 1).name('overhead (s)');
   gp.add(P, 'energy', 1, 40, 0.5).name('energy (s of burn)');
+  gp.add(P, 'infinite').name('infinite laser (debug)').onChange(keepInfinite);
   gp.open();
   const gb = gui.addFolder('the beam');
-  gb.add(P, 'radius', 1, 30, 0.5).name('footprint (m)');
+  const retune = () => laser?.tune(lookOf());
+  gb.add(P, 'radius', 1, 30, 0.5).name('footprint (m)').onChange(retune);
   gb.add(P, 'slew', 4, 200, 1).name('slew (m/s)');
   gb.open();
-  /* createOrbitalLaser bakes the preset into its beam material once, at build, and exposes no setter: these four
-     steer COPY PRESET and the deep link, and the column reads them back on the next load of the link */
-  const gw = gui.addFolder('the beam look (preset export)');
-  gw.add(P, 'coreWidth', 0.05, 3, 0.05).name('core width (m)');
-  gw.add(P, 'glowWidth', 0.5, 20, 0.5).name('glow width (m)');
-  gw.add(P, 'glowIntensity', 0, 12, 0.1).name('glow intensity');
-  gw.add(P, 'noiseAmount', 0, 1, 0.01).name('interference');
+  /* live: each change goes straight to the column's uniforms through tune(), and COPY PRESET and the deep link carry it */
+  const gw = gui.addFolder('the beam look');
+  gw.add(P, 'coreWidth', 0.05, 3, 0.05).name('core width (m)').onChange(retune);
+  gw.add(P, 'glowWidth', 0.5, 20, 0.5).name('glow width (m)').onChange(retune);
+  gw.add(P, 'coreIntensity', 0, 12, 0.1).name('core intensity').onChange(retune);
+  gw.add(P, 'glowIntensity', 0, 12, 0.1).name('glow intensity').onChange(retune);
+  gw.add(P, 'noiseAmount', 0, 1, 0.01).name('interference').onChange(retune);
   gw.open();
   const gv = gui.addFolder('the view');
   gv.add(P, 'altitude', 0.2, 4, 0.05).name('altitude (radii)');
@@ -714,11 +757,13 @@ export function initLaserTab(root) {
      one build() and a second one would have to unpick every handle and could double the frame loop. A reload cannot. */
   const actions = {
     passNow,
+    revive,
     reset() { location.reload(); },
     copyPreset() { copyPreset(); },
   };
   const ga = gui.addFolder('actions');
   ga.add(actions, 'passNow').name('PASS NOW');
+  ga.add(actions, 'revive').name('REVIVE TARGETS');
   ga.add(actions, 'reset').name('RESET');
   ga.add(actions, 'copyPreset').name('COPY PRESET');
   ga.open();
@@ -731,7 +776,7 @@ export function initLaserTab(root) {
       LASER_BEAM: { energy: P.energy, radius: P.radius, slew: P.slew },
       LASER_BURN: burnCfg(),
       LASER_VIEW: { altitude: P.altitude, fov: P.fov, inset: P.inset, groundBack: P.groundBack, groundUp: P.groundUp },
-      LASER_PRESET: { ...LASER_PRESET, coreWidth: P.coreWidth, glowWidth: P.glowWidth, glowIntensity: P.glowIntensity, noiseAmount: P.noiseAmount },
+      LASER_PRESET: { ...LASER_PRESET, coreWidth: P.coreWidth, glowWidth: P.glowWidth, coreIntensity: P.coreIntensity, glowIntensity: P.glowIntensity, noiseAmount: P.noiseAmount },
     }, null, 2);
   }
 
@@ -788,6 +833,9 @@ export function initLaserTab(root) {
       alive: bodies.filter((b) => b.alive).length,
       wallsStanding: wallCells.filter((w) => !w.gone).length,
       structsStanding: structs.filter((s) => !s.gone).length,
+      infinite: P.infinite,
+      /* the column's live uniforms, in scene units, so a check can see that a slider actually reached the shader */
+      look: laser ? laser.look() : null,
       sentries: sentries.length,
       trail: laser ? laser.trail.count : 0,
       heated: thermal ? thermal.heated() : 0,
@@ -796,6 +844,9 @@ export function initLaserTab(root) {
       errors: errors.slice(),
     }),
     passNow,
+    revive,
+    tune: (look) => { Object.assign(P, look); laser?.tune(lookOf()); },
+    infinite: (on) => { P.infinite = !!on; keepInfinite(); },
     steer: (nx, ny) => steerTo(nx, ny),
     hold: (on) => { held = !!on; },
     reset: () => { location.reload(); },
@@ -804,6 +855,7 @@ export function initLaserTab(root) {
   window.__stalheartLaserTest = hooks;
 
   hud.querySelector('#laser-pass').onclick = passNow;
+  hud.querySelector('#laser-revive').onclick = revive;
   hud.querySelector('#laser-reset').onclick = () => { location.reload(); };
   resize();
   build().catch((e) => { errors.push(`build: ${e.message}`); });
