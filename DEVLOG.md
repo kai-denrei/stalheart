@@ -286,6 +286,23 @@ Evidence:
 - NOT browser-verified: the memory guardrail stayed at WARN (3.07 GB swap), so the gunship lab has not booted in any browser. The owner can open it on the running dev server at gunship.html?sw=0.
 - Sharing with friends needs a publish: GitHub Pages builds main only (.github/workflows/pages.yml), and heavy-gunship is not on main.
 
+## 2026-09-16 — V1 playthrough fixes: Isao's base prints booked, the opening's breach caves in at sector 1, the gunship briefing never freezes a live sector, HUD and controls-card tidy, sector 2 proven to complete
+
+change · resolved · 2026-09-16-v1-playthrough-fixes
+
+An end-to-end QA playthrough of the V1 session (v1-loop at b17583b7) found: debrief page 5 read ISAO PRINTED 0 although the bays and HUGIN printed during sector 1; a third live breach during sector 2 (SOL-82's 'breach' aim sealed it while both sector breaches stayed live); the first gunship call paused a running sector behind a six-page briefing headed ORBITAL ASSET BRIEFING; the controls card lingered ~170 s and covered SOL-82's seat; the HUD read SECTOR 1 SECTOR 1 · THE LANE and showed SECTOR 0, the ammo counter and x1.00 before sector 1; sectorReport() still held the previous sector's report after CONTINUE. The --sectors step stopped at sector 2's breaches opening.
+
+(1) Only tower orders recorded { type: 'print' }; storyApi.printed (the build-programme finish) now records { type: 'print', id: step.id } (accumulator already covered by test/sector-stats.mjs). (2) Cause by reading: storyApi.breach keeps the opening's sinkhole as story.source and nothing sealed it when sectors took over; sector-run only retargeted story.source. Rule: when a sector begins, every live breach not owned by it collapses (killPortal 'exhausted') with a callout and a two-line Isao brief old_breach; state().sector.strays counts unowned live breaches; SOL-82's host breaches() lists sector-owned breaches first. (3) A first gunship mount while a sector is fighting takes the seat directly and marks the briefing due; the sector's next brief (a calm moment) opens it paused; outside a fight the first mount still opens it paused as before; G (listed on the controls card) opens it again any time; heading is GUNSHIP BRIEFING. (4) The controls card auto-hides 25 s after its one automatic showing and hides while SOL-82's seat is taken; the story HUD's hud-wave span is empty (the sector line names the sector once); ammo and multiplier are hidden before sector 1; begin() clears lastReport. (5) --sectors continues through sector 2 to SECURE and its debrief. td-tab line delta 0 (13,506).
+
+Alternatives: Adopt the opening's breach as one of sector 1's two breaches; rejected: its cell ignores the sector's placement band and separation rules, and a pre-existing sinkhole would skew the programme's timing.; Keep the gunship briefing mid-fight but unpaused; rejected: it swallows every key while open, so the tank would be undriveable during a live wave.
+
+Evidence:
+
+- npm test: 116 test programs passed; npm run check: architecture and line budgets hold (td-tab 13,506).
+- scripts/browser-lock.sh node scripts/browser-test.mjs --sectors: exit 0, 11 PASS incl. sectors-sector-2-secure and sectors-sector-2-debrief; 'PASS sector 2 secure: 13s, kills 2, breaches A/gate/held/4of4 B/back/held/4of4, prints []'; strays 0 asserted in sector 1 and sector 2; sectorReport() null after CONTINUE.
+- --defense exit 0 (11 PASS), --grow exit 0 (12 PASS), default suite exit 0 (48 PASS).
+- Not observed in a browser: the stray breach before the fix (cause reasoned from storyApi.breach and sector-run retarget), the deferred briefing opening at a sector brief, and a non-empty prints list in a sector report (the --sectors jump prints nothing during its short sectors).
+
 ## 2026-09-16 — Merging the V1 branches: three regressions each branch's own suites missed, found by the full default suite and fixed
 
 issue · resolved · 2026-09-16-v1-merge-regressions-caught
