@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/jelaludo/SentryTowers_A6",
+  "revision": "4a75269d325c8ec12b87e38667d81bae124adeb4",
+  "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/4a75269d325c8ec12b87e38667d81bae124adeb4/",
+  "credit": "Models and animations by jelaludo (https://jelaludo.github.io/SentryTowers_A6/), the Void capture-the-flag banner and the intact stackable cargo crate, reused with attribution under the upstream ASSET-LICENSE.md",
+  "files": [
+    {
+      "path": "assets/models/cargo/flag_void.glb",
+      "sourcePath": "assets/ctf-flags/flag_void.glb",
+      "sha256": "d73aabf63653af1f09bf7f34aab5d59e00e559259584399c12bb274e144be204",
+      "bytes": 194164,
+      "clips": [
+        "Flutter",
+        "Gust",
+        "Raise",
+        "Lower"
+      ]
+    },
+    {
+      "path": "assets/models/cargo/cargo_crate_d0.glb",
+      "sourcePath": "assets/warehouse-props/cargo_crate_d0.glb",
+      "sha256": "20cd4e05874f6efd4b5a202772f9e41e4274685ae3b1fcc4cab0a76da76df4b4",
+      "bytes": 215272,
+      "clips": []
+    }
+  ]
+}
