@@ -4,7 +4,7 @@
 // their names for a while instead. The shield hint is said once per browser, the first time the rack runs dry.
 import { storage } from '../storage.js';
 
-const SEEN = 'td.controls-card-seen', RACK = 'td.shield-empty-hint';
+const SEEN = 'td.controls-card-seen', RACK = 'td.shield-empty-hint', AUTO_HIDE_MS = 25000;
 const KEYS = [
   ['W / ↑', 'faster · tap twice to cruise'], ['S / ↓', 'brake, then reverse'], ['A D / ← →', 'steer'], ['Q / E', 'throttle up / down'],
   ['Space', 'fire a shell'], ['Shift', 'hold: lasers'], ['T', 'shield'], ['V', 'change view · 1 map · 2 first person · 3 third'],
@@ -17,8 +17,8 @@ export function createControlsCard(root, { mobile = false, store = storage, brie
   card.setAttribute('role', 'dialog'); card.setAttribute('aria-label', 'tank controls');
   card.innerHTML = `<header>MÖRK · CONTROLS <button type="button" data-close aria-label="close">×</button></header><dl>${KEYS.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
   root.append(card);
-  let onTank = false, labelTimer = 0, hinted = false;
-  const hide = () => { card.hidden = true; };
+  let onTank = false, labelTimer = 0, hinted = false, autoTimer = 0;
+  const hide = () => { card.hidden = true; clearTimeout(autoTimer); };
   function show() {
     store.setItem(SEEN, '1');
     if (!mobile) { card.hidden = false; return; }
@@ -36,10 +36,10 @@ export function createControlsCard(root, { mobile = false, store = storage, brie
   addEventListener('keydown', onKey);
   return {
     // tank: the story is past its handover and the player drives (no seat taken)
-    tick(tank) { onTank = !!tank; if (!onTank) { if (!card.hidden) hide(); return; } if (store.getItem(SEEN) !== '1') show(); },
+    tick(tank) { onTank = !!tank; if (!onTank) { if (!card.hidden) hide(); return; } if (store.getItem(SEEN) !== '1') { show(); autoTimer = setTimeout(hide, AUTO_HIDE_MS); } },   // taught once, then out of the way: H brings it back
     // say: the host's one-line toast, called once per browser
     rackEmpty(say) { if (hinted || store.getItem(RACK) === '1') return; hinted = true; store.setItem(RACK, '1'); say?.(); },
     state: () => ({ shown: !card.hidden, labelled: root.classList.contains('pad-labelled') }),
-    dispose() { removeEventListener('keydown', onKey); clearTimeout(labelTimer); card.remove(); root.classList.remove('pad-labelled'); },
+    dispose() { removeEventListener('keydown', onKey); clearTimeout(labelTimer); clearTimeout(autoTimer); card.remove(); root.classList.remove('pad-labelled'); },
   };
 }

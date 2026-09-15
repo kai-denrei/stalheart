@@ -4193,10 +4193,10 @@ export function initTdTab(root) {
       + `${rankBadgeHud ? ' ' + rankBadgeHud : ''}</div>`
       + `<div class="hud-vitals">${hearts} <span class="hud-lbl">HEART</span>`
       + ` <span class="hp-you">♥${playerHP}</span>`
-      + ` <span class="hp-ammo${ammo === 0 ? ' out' : ''}">✦${ammo}</span></div>`
+      + (storyMode && !story?.sectorN ? '</div>' : ` <span class="hp-ammo${ammo === 0 ? ' out' : ''}">✦${ammo}</span></div>`)
       + `<div class="hud-res"><span class="hud-biomass">${eco.biomass}kg`
-      + ` ×${eco.multiplier().toFixed(2)}</span>`
-      + `<span class="hud-wave">${storyMode ? `SECTOR <b>${story?.sectorN ?? 0}</b>` : `WAVE <b>${wave}</b> · R${round}`}</span></div>`
+      + `${storyMode && !story?.sectorN ? '' : ` ×${eco.multiplier().toFixed(2)}`}</span>`   /* the story shows no campaign readouts before sector 1 */
+      + `<span class="hud-wave">${storyMode ? '' : `WAVE <b>${wave}</b> · R${round}`}</span></div>`
       + (storyMode ? (sectorRun?.hudLine() ?? '') : `<div class="hud-obj">breaches ${spAlive}/${spawnPoints.length}`
       + ` · ${programmeDone() ? 'WAVES SPENT — CLOSE THE GATES'
         : `wave ${sectorWave() + 1}/${params.wavesPerSector} of sector ${round}`}`
@@ -9659,7 +9659,7 @@ export function initTdTab(root) {
     } else if (playerMesh.userData.tick) {
       playerMesh.userData.tick(t);
     }
-    buildFollowTank(dt); if (story) (controlsCard ??= createControlsCard(root, { mobile: mobileShell, briefing: () => (gunshipBriefing ??= createGunshipBriefing(root)).openPaused({ get: () => paused, set: (v) => { paused = v; } }) })).tick(automated() && !pilotMode);   /* the tank's keys, taught once past the handover (src/fx/controls-card.js) */
+    buildFollowTank(dt); if (story) (controlsCard ??= createControlsCard(root, { mobile: mobileShell, briefing: () => (gunshipBriefing ??= createGunshipBriefing(root)).openPaused({ get: () => paused, set: (v) => { paused = v; } }) })).tick(automated() && !pilotMode && !laserStation.seated());   /* the tank's keys, taught once past the handover (src/fx/controls-card.js) */
     if (story && automated() && !frozen && !player.won) laserStation.tick(dt);   // SOL-82: the pass clock once online, the seat's hands, the beam
     updateCameraGoal();
 
