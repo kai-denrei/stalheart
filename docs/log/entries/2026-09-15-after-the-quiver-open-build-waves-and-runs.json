@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "id": "2026-09-15-after-the-quiver-open-build-waves-and-runs",
+  "date": "2026-09-16T04:01:00+00:00",
+  "type": "decision",
+  "status": "proposed",
+  "title": "After the Quiver: normal waves, free tower building, and the occasional gunship and orbital laser run",
+  "context": "Owner, 2026-09-15: after the Quiver, unlock normal waves and total liberty for the player (still beta) to build towers, with normal waves popping like a proper tower defence, and the occasional Gunship and Orbital Laser runs.",
+  "outcome": "Proposed direction for the next story phase, not yet designed. Past the Quiver beat the scripted story hands over to open play: the wave clock runs normal waves, the player places towers freely (beta), and the gunship and the orbital laser arrive as occasional runs. To reconcile with 2026-09-14-handover-gunship-call-expeditions-landed (automatic towers, the wave clock, the earned gunship call-in, guarded expeditions): does free building replace or sit beside printing through Isao, and do the runs come on a timer, on a meter, or both. The orbital laser exists only as labs.html#laser today; bringing it into the game is part of this.",
+  "alternatives": [],
+  "evidence": [
+    "Owner note, 2026-09-15."
+  ],
+  "supersedes": []
+}

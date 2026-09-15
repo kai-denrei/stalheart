@@ -305,7 +305,19 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 26 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 28 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### After the Quiver: normal waves, free tower building, and the occasional gunship and orbital laser run
+
+`2026-09-15-after-the-quiver-open-build-waves-and-runs` · decision · **proposed**
+
+Owner, 2026-09-15: after the Quiver, unlock normal waves and total liberty for the player (still beta) to build towers, with normal waves popping like a proper tower defence, and the occasional Gunship and Orbital Laser runs.
+
+### The Quiver's rocket leaves the frame during its pop-out, hover, drop and ignite
+
+`2026-09-15-quiver-rocket-leaves-frame` · issue · **observed**
+
+Owner playtest note, 2026-09-15: when the Quiver shoots its rocket, the rocket should never get out of frame during the initial pop-out, hover, drop and ignite motion.
 
 ### Gunship lab: the orbital laser's screen for the gunship, through its FLIR optic, with short share links
 

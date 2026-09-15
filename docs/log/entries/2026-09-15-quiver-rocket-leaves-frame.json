@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "id": "2026-09-15-quiver-rocket-leaves-frame",
+  "date": "2026-09-16T04:00:00+00:00",
+  "type": "issue",
+  "status": "observed",
+  "title": "The Quiver's rocket leaves the frame during its pop-out, hover, drop and ignite",
+  "context": "Owner playtest note, 2026-09-15: when the Quiver shoots its rocket, the rocket should never get out of frame during the initial pop-out, hover, drop and ignite motion.",
+  "outcome": "Observed, not investigated. The camera that follows the launch (the piloted Quiver's view and the TALON seeker feed) must keep the round in frame through the whole launch sequence before cruise. To do: find which view loses it and in which phase, then frame or lead the launch so the round stays visible.",
+  "alternatives": [],
+  "evidence": [
+    "Owner playtest, 2026-09-15."
+  ],
+  "supersedes": []
+}
