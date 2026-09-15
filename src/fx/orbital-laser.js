@@ -70,6 +70,28 @@ export function createOrbitalLaser(scene, { cellSide = 10, metresPerCell = 10 } 
   ring.visible = false;
   group.add(ring);
 
+  /* --- the aiming pointer ---------------------------------------------- */
+  // A thin red line from the sky to where the column WILL land and a small red ring there: a silent, harmless pointer
+  // before the destructive beam begins (owner, 2026-09-15). It shows only while the column does not.
+  const POINTER_RED = 0xff2a1a;
+  const guideGeo = new THREE.BufferGeometry();
+  guideGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3).setUsage(THREE.DynamicDrawUsage));
+  const guideMat = new THREE.LineBasicMaterial({ color: POINTER_RED, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false });
+  const guide = new THREE.Line(guideGeo, guideMat);
+  guide.name = 'Laser pointer';
+  guide.frustumCulled = false;
+  guide.visible = false;
+  guide.renderOrder = 12;
+  const dotGeo = new THREE.RingGeometry(0.25, 0.7, 24);
+  dotGeo.rotateX(-Math.PI / 2);
+  const dotMat = new THREE.MeshBasicMaterial({ color: POINTER_RED, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+  const dot = new THREE.Mesh(dotGeo, dotMat);
+  dot.name = 'Laser pointer dot';
+  dot.visible = false;
+  dot.renderOrder = 12;
+  dot.scale.setScalar(unit);
+  group.add(guide, dot);
+
   /* --- the contact glow ------------------------------------------------ */
   // Where the column meets the ground it spreads into a disc of its own width: a white core the core's share of it and
   // a glow falling off to the edge. Seen from the side the column alone ends in a line on the ground; this is the
@@ -290,6 +312,21 @@ void main(){
       }
     },
 
+    // the silent pointer: where the column will land, drawn only while the column is not; strength dims it (away)
+    guideAt(point, normal, strength = 1) {
+      const top = point.clone().addScaledVector(normal, LASER_SKY_METRES * unit);
+      guideGeo.attributes.position.array.set([top.x, top.y, top.z, point.x, point.y, point.z]);
+      guideGeo.attributes.position.needsUpdate = true;
+      dot.position.copy(point).addScaledVector(normal, 0.1 * unit);
+      dot.quaternion.setFromUnitVectors(Y, normal);
+      const s = Math.max(0, Math.min(1, strength));
+      guideMat.opacity = 0.7 * s;
+      dotMat.opacity = 0.9 * s * (0.8 + 0.2 * Math.sin(clock * 6));
+      guide.visible = dot.visible = !laid;
+    },
+
+    hideGuide() { guide.visible = dot.visible = false; },
+
     // the player let go, or the energy ran out: the column goes, the scorch stays
     lift() {
       beam.mesh.visible = false;
@@ -353,6 +390,10 @@ void main(){
       ringMat.dispose();
       discGeo.dispose();
       discMat.dispose();
+      guideGeo.dispose();
+      guideMat.dispose();
+      dotGeo.dispose();
+      dotMat.dispose();
       quadGeo.dispose();
       quadMat.dispose();
       smokeGeo.dispose();

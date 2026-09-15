@@ -898,6 +898,13 @@ void main(){
     if (!sinkOpened && !sealed && sink.ready()) { sink.trigger(); sinkOpened = true; }
     padFromKeys(dt);
     applyBurn(dt);
+    /* the silent red pointer, while the column is not firing: where it will land, on the real ground height */
+    if (!st.burning) {
+      const at = st.contact ? fromCentre(st.contact) : trenchPoint(queueTail());
+      laser.guideAt(surfaceAt(at), normalOf(at), st.phase === 'overhead' || P.infinite ? 1 : 0.35);
+    } else {
+      laser.hideGuide();
+    }
     stepBodies(dt, clock);
     stepBursts(dt);
     explosions?.tick(dt);
