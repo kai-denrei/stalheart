@@ -11,7 +11,7 @@ import { changeSummary } from '../src/content/authoring.js';
 import { clone, serializePreset } from '../src/content/preset.js';
 import { LASER_VIEW } from '../src/content/orbital-laser.js';
 const args=process.argv.slice(2),production=args.includes('--dist');
-const port=18155,base=production?'/stalheart/':'/';
+const port=+process.env.STALHEART_BROWSER_PORT||18155,base=production?'/stalheart/':'/';
 const origin=`http://127.0.0.1:${port}`,urlRoot=origin+base;
 const output=resolve('artifacts/browser'+(production?'-dist':''));mkdirSync(output,{recursive:true});
 const profile=mkdtempSync(join(tmpdir(),'stalheart-chrome-'));
