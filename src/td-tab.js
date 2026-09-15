@@ -6,7 +6,7 @@ import { startDiveShot } from './fx/dive-shot.js'; import { backBreachCells } fr
 import { BREACH_SOUNDS } from './content/breach-defaults.js';
 import { SOUNDS } from './content/runtime.js';
 import { emergence } from './domain/breach-waves.js'; import { applyScare, stampScare, scarePace, isScared, towardScare, awayExits } from './domain/impact-scare.js'; import { EXPLOSION_SCARE, SCARE_FREEZE_S } from './content/explosions.js'; import { createThermalHeat } from './fx/thermal-heat.js'; import { isAutomated, pilotMultipliers } from './domain/automation.js'; import { makeGunshipCall, fillFromKill, fillFromWaveClear, isFull as callFull, callGunship, passEnded, callProgress } from './domain/gunship-call.js'; import { GUNSHIP_CALL } from './content/gunship.js'; import { unlockedTowers } from './domain/expeditions.js'; import { createExpeditionGlue } from './fx/expedition-glue.js'; import { STORY_EXPEDITIONS } from './content/story-defaults.js'; import { makeSiteRing as siteRing, disposeSiteRing } from './fx/site-ring.js'; import { due as programmeDue, begin as programmeBegin, finish as programmeFinish, hasPerk as programmeHas, perks as programmePerks, rebuildDue, snapshot as programmeSnapshot } from './domain/build-programme.js'; import { BASE_PERKS } from './content/base-programme.js';
-import { sinkholeGroundHeight } from './core/sinkhole-shape.js';
+import { sinkholeGroundHeight } from './core/sinkhole-shape.js'; import { devModeOn } from './core/dev-mode.js'; import { createControlsCard } from './fx/controls-card.js';
 import { makeOrdnanceShell } from './shell.js';
 import { firingFor } from './content/firing-defaults.js';
 import { METRES_PER_CELL, arcToMetres, metresToArc } from './core/stage-units.js';
@@ -103,7 +103,7 @@ import { makeAudio } from './audio.js';
 import { DEATH_KEYS } from './audiomanifest.js';
 
 export function initTdTab(root) {
-  let pilotMode = false, storyViews = null, pilotHost = null, storyMonitor = null, daylight = null, storyScope = null, syntheticModal = null, brass = null;   // the story enters it at runtime; the view strip unlocks after the first wave
+  let controlsCard = null, pilotMode = false, storyViews = null, pilotHost = null, storyMonitor = null, daylight = null, storyScope = null, syntheticModal = null, brass = null;   // the story enters it at runtime; the view strip unlocks after the first wave
   let pilot = null;
   let pilotPosts = [], pilotPost = 0;
   const pilotMounts = [];
@@ -3106,10 +3106,10 @@ export function initTdTab(root) {
     // no key at all that did not already mean something else.
     if (down && k === '3') setView('third');
     // C for Cheat (moved off M, which is a VIEW now)
-    if (down && k === 'c') {
+    if (down && k === 'c' && (urlParams.get('acceptance') === '1' || devModeOn({ buildToken: document.querySelector('meta[name="cb"]')?.content, search: location.search, stored: localStorage.getItem('ssg.dev-face') }).on)) {   /* a cheat for DEV and the acceptance runs, not for players */
       strike.ready = Math.min(9, strike.ready + 1);
       showToast('<div class="wave-num">CHEAT · MISSILE LOADED</div>'
-        + `<div class="wave-role">☄ ready ${strike.ready}</div>`, 1200);
+        + `<div class="wave-role">ready ${strike.ready}</div>`, 1200);
     }
     // Q/E nudge the throttle lever from the keyboard — up for speed, down
     // through zero into reverse. Key auto-repeat does the holding.
@@ -5770,7 +5770,7 @@ export function initTdTab(root) {
       sfx.play('tank_pickup');
       pulseButton('#td-pad-shield');
       showToast(`<div class="wave-num">SHIELD UP</div>`
-        + `<div class="wave-role">${shieldTune.deploySecs}s &middot; ${shield.rack} charge${shield.rack === 1 ? '' : 's'} left</div>`, 1800);
+        + `<div class="wave-role">${shieldTune.deploySecs}s &middot; ${shield.rack} charge${shield.rack === 1 ? '' : 's'} left</div>`, 1800); if (!shield.rack) controlsCard?.rackEmpty(() => showToast(`<div class="wave-num">SHIELD UP · RACK EMPTY</div><div class="wave-role">${story?.arrayPad?.standing ? 'park on the solar array to recharge' : 'the next charge comes with the debrief'}</div>`, 3200));   /* said once, the first time the rack runs dry */
     } else if (r === 'up') {
       showToast(`<div class="wave-role">the shield is already up &mdash; a charge cannot top it up</div>`, 1400);
     } else if (r === 'cooling') {
@@ -7541,7 +7541,7 @@ export function initTdTab(root) {
     if(!config || !pool?.available || tw.obj.userData.loading || (storyMode && towerSeekers.some(m=>m.by===tw)))return false;   // the story's guided round: one lock, one round in flight, then the next
     const direction=towerBarrel(tw,norm3(from));
     const scale=tw.lastMuzzle?.getWorldScale(new THREE.Vector3()).x ?? tw.obj.scale.x;
-    const m=launchDart(pool,{config,from,target:target.pos,direction,scale,sphere:true}); if(!m)return false;
+    const m=launchDart(pool,{config,from,target:target.pos,direction,scale,sphere:true,metre:cellSide/10}); if(!m)return false;   // ten metres a cell: the pop-out's cap reads in metres
     Object.assign(m,{pool,tid:target.id,by:tw,p:from.slice()});
     scene.add(m.mesh);towerSeekers.push(m);
     return true;
@@ -9436,7 +9436,7 @@ export function initTdTab(root) {
     if (paused) {
       if (!simSkip) {
         playerMesh.visible = params.view !== 'pov' && !deploy?.clip;   // an authored roll-out owns the hull on screen: ours would stand in it, turret sweeping
-        postfx.render(); storyMonitor?.render(renderer, scene, towerSeekers.find((m) => m.pool === talonPool)?.mesh ?? null, cellSide, 0);
+        postfx.render(); storyMonitor?.render(renderer, scene, towerSeekers.find((m) => m.pool === talonPool && m.by === pilot?.state.tower)?.mesh ?? null, cellSide, 0);
         playerMesh.visible = !deploy?.clip;
         drawRadar(t); laserStation.render(renderer, scene);   // the sweep keeps turning; a dead scope reads as a crash
       }
@@ -9501,9 +9501,8 @@ export function initTdTab(root) {
       // what "the cues drift in later rounds" looks like from the outside.
       // the orbital window fills in game time, like everything else here
       { const held = automated() && !onStation(gunship), ev = held ? null : stepGunship(gunship, dt, GUNSHIP_ORBIT); if (automated() && ev === 'depart') passEnded(gunshipCall, GUNSHIP_CALL); if (held) storyViews?.meter(callProgress(gunshipCall), callFull(gunshipCall)); else storyViews?.station(onStation(gunship), phaseLeft(gunship)); if (story) { const hc = graph.centers[dungeon.heart]; gunshipTrack ??= makeTrack(hc, sub3(graph.centers[gunshipLane()], hc)); if (onStation(gunship)) steerTrack(gunshipTrack, breachLoads(spawnPoints.filter((sp) => sp.alive).map((sp) => graph.centers[sp.ci]), enemies, GUNSHIP_TRACK.nearCells * cellSide), hc, dt, GUNSHIP_TRACK, cellSide); else parkTrack(gunshipTrack); (gunshipOptic ??= createGunshipOptic(scene, { cellSide, metresPerCell: GUNSHIP_PLATFORM.metresPerCell })).ride(gunshipTrack.pos, gunshipTrack.heading, onStation(gunship), len3(hc)); }   /* THE SHIP CREEPS TOWARD THE BREACHES (src/domain/gunship-track.js): the live spawn points, each with the enemies near it; none, over the base */ if (ev === 'depart') gunshipWalls = null; pilot?.gunshipTick?.(dt); } if (stepStrike(strike, dt, strikeTune) === 'armed') {   // the gunship's pass, then the strike's ration
-        sfx.play('tower_upgrade');
-        showToast('<div class="wave-num">ORBITAL ASSET ARMED</div>'
-          + '<div class="wave-role">☄ ready — arm, paint, launch</div>', 2200);
+        if (!story) { sfx.play('tower_upgrade'); showToast('<div class="wave-num">ORBITAL ASSET ARMED</div>'   /* the story has no strike controls to arm */
+          + '<div class="wave-role">ready — arm, paint, launch</div>', 2200); }
       }
       if (waveIn >= 0) {
         waveIn -= dt;
@@ -9660,7 +9659,7 @@ export function initTdTab(root) {
     } else if (playerMesh.userData.tick) {
       playerMesh.userData.tick(t);
     }
-    buildFollowTank(dt);
+    buildFollowTank(dt); if (story) (controlsCard ??= createControlsCard(root, { mobile: mobileShell })).tick(automated() && !pilotMode);   /* the tank's keys, taught once past the handover (src/fx/controls-card.js) */
     if (story && automated() && !frozen && !player.won) laserStation.tick(dt);   // SOL-82: the pass clock once online, the seat's hands, the beam
     updateCameraGoal();
 
@@ -9691,7 +9690,7 @@ export function initTdTab(root) {
     if (simSkip) return; // sim pass: state advanced, nothing painted
     // in PoV the camera sits inside the creature — hide it there
     playerMesh.visible = params.view !== 'pov' && !deploy?.clip;   // the bay's authored hull rolls out alone (operator, 2026-09-13: two turrets, one static, one sweeping)
-    postfx.render(); storyMonitor?.render(renderer, scene, towerSeekers.find((m) => m.pool === talonPool && talonPool)?.mesh ?? null, cellSide, dt, pilot?.gunship ? pilot.gunshipOptic() : (pilotMode && pilot?.state.tower && missileOf(pilot.state.tower.key) && pilot.state.tower.pilotTarget && !pilot.state.tower.pilotTarget.pilotAim ? { from: perchOf(pilot.state.tower), pos: pilot.state.tower.pilotTarget.pos } : null));   // the seeker feed rides behind a TALON in flight; the gunship's monitor is the ground truth at the impact point; otherwise the optic inset on the tracked target
+    postfx.render(); storyMonitor?.render(renderer, scene, towerSeekers.find((m) => m.pool === talonPool && talonPool && m.by === pilot?.state.tower)?.mesh ?? null, cellSide, dt, pilot?.gunship ? pilot.gunshipOptic() : (pilotMode && pilot?.state.tower && missileOf(pilot.state.tower.key) && pilot.state.tower.pilotTarget && !pilot.state.tower.pilotTarget.pilotAim ? { from: perchOf(pilot.state.tower), pos: pilot.state.tower.pilotTarget.pos } : null));   // the seeker feed rides behind a TALON in flight; the gunship's monitor is the ground truth at the impact point; otherwise the optic inset on the tracked target
     drawRadar(t); story?.hud.paint(radarCtx, { m: radarCss, cpos: pilot?.state.tower ? graph.centers[pilot.state.tower.ci] : player.pos, up: pilot?.state.tower ? new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray() : player.smoothDir, range: mapMode === 'heart' ? 2.02 : pilotMode ? cellSide * 12 : 1.15, t, mapMode });
     laserStation.render(renderer, scene);   // SOL-82's scope over the ground view while its seat is manned
   }
@@ -9862,7 +9861,7 @@ export function initTdTab(root) {
   const pointsOverride = parseInt(urlParams.get('points') || '', 10);
   if (Number.isFinite(pointsOverride)) params.points = Math.min(16000, Math.max(150, pointsOverride));
   const seedOverride = parseInt(urlParams.get('seed') || '', 10);
-  if (Number.isFinite(seedOverride)) params.seed = seedOverride >>> 0; const storyQuery = readStoryQuery(location.search), threatMult = storyQuery.threat, storyMode = storyQuery.world === 'story';   // tabula rasa past the landing: no old heart, waves, portals, camp or yard
+  if (Number.isFinite(seedOverride)) params.seed = seedOverride >>> 0; const storyQuery = readStoryQuery(location.search), threatMult = storyQuery.threat, storyMode = storyQuery.world === 'story'; root.classList.toggle('story-world', storyMode);   /* the campaign's buttons and key hint stay off in the story (styles.css) */   // tabula rasa past the landing: no old heart, waves, portals, camp or yard
   // THE SECTORS (src/fx/sector-run.js): the story's loop past the handover, fed from the board's real sites
   function makeSectorRun() {
     return createSectorRun({ story, host: root, api: storyApi, waveSize: params.waveSize, threatMult, hardcore: story.hardcore, spawnGap: { spread: SPAWN_SPREAD, max: SPAWN_GAP_MAX }, store: localStorage, rng: () => whim(), now: () => t,
@@ -11293,7 +11292,7 @@ export function initTdTab(root) {
   {
     let saved = null;
     try { saved = localStorage.getItem(PERF_KEY); } catch { /* fine */ }
-    if (urlParams.get('fps') === '1' || (urlParams.get('fps') !== '0' && saved !== '0')) setPerfOverlay(true,false);
+    if (urlParams.get('fps') === '1' || (urlParams.get('fps') !== '0' && (saved === '1' || (saved === null && urlParams.get('acceptance') === '1')))) setPerfOverlay(true,false);   /* off for players; on when turned on (backtick, DEV · Frame readout) and for the acceptance runs that read it */
     if (urlParams.get('fps') === '1') {
       console.log(`PERFOVERLAY on=${perfOn} el=${!!perfEl}`
         + ` hidden=${perfEl ? perfEl.classList.contains('hidden') : '?'}`
@@ -13474,7 +13473,7 @@ export function initTdTab(root) {
       post:delta=>{pilotPost=(pilotPost+delta+pilotPosts.length)%pilotPosts.length;pilot.select(pilotMounts[pilotPost]?.key || pilot.state.tower.key);}, pick:key=>{const i=pilotMounts.findIndex(m=>m?.key===key);if(i>=0){pilotPost=i;pilot.select(key);}},   // the story's strip names a mount
       map:on=>setView(on?'orbit':'bastion'),pause:()=>{paused=!paused;pilot.state.held=false;},
       wake:()=>holdWake(),cellSide:()=>cellSide, cone:()=>(pilot?.state.tower&&missileOf(pilot.state.tower.key)?story?.quiverCone??0:0),   // a guided mount acquires inside a cone; a gun needs the reticle on the body
-      zoom:z=>{camera.fov=60/z;camera.updateProjectionMatrix();},
+      zoom:z=>{camera.fov=60/z;camera.updateProjectionMatrix();}, lens:()=>[camera.fov,camera.aspect], round:()=>{const tw=pilot?.state.tower,m=tw&&towerSeekers.find(m=>m.by===tw);return m?{pos:m.p,u:m.t/m.config.duration,phase:m.pose?.phase}:null;},   /* the piloted mount's guided round in flight, for the framing (src/core/round-framing.js) */
       visible:e=>pilot.state.tower && losClear(pilot.state.tower.ci,e.pos,perchOf(pilot.state.tower)),
       aimPoint:(eye,dir,range)=>{const hit=rayToTerrain(eye.toArray(),dir.toArray(),range,pilot.state.tower.ci);return eye.clone().addScaledVector(dir,hit.len).toArray();},
       cameraPose:(eye,dir,up,goal)=>{tmpCam.position.copy(eye);tmpCam.up.copy(up);tmpCam.lookAt(eye.clone().add(dir));goal.quat.copy(tmpCam.quaternion);}
@@ -13485,7 +13484,7 @@ export function initTdTab(root) {
     clearBriefs();params.callouts=false;setView('bastion');if(pilotPosts.length)pilot.select(pilotMounts[0]?.key||'rotor');hideRangeRing();snapCamera();   // no posts yet (the gunship's seat before any sentry stands): nothing to install
     if(urlParams.get('acceptance')==='1')window.__stalheartPilotTest={state:()=>({paused,seed:params.seed,points:params.points,sector:round,posts:pilotPosts.slice(),view:pilot.state.view,ci:pilot.state.tower.ci,key:pilot.state.tower.key,shots:pilot.state.shots,held:pilot.state.held,heat:pilot.state.tower.heat??0,overheated:!!pilot.state.tower.overheated,roundDmg:+(effectiveStats(pilot.state.tower.def,pilot.state.tower.tier).dmg*(story?.pilot.dmgMul??1)).toFixed(3),enemyHp:enemies.find(e=>e.alive&&e.id>0)?.spec.hp??null,wave,enemies:enemies.filter(e=>e.alive).length,tank:player.pos.slice(),camera:camera.position.toArray(),target:pilot.state.target?.id??null,ready:!pilot.state.tower.obj.userData.loading,aimError:pilot.state.tower.aimErr,lock:pilot.state.tower.lock,heart:heartHP}),select:key=>pilot.select(key),
       aimEnemy:()=>{const tw=pilot.state.tower;const e=enemies.find(e=>e.alive&&missileDistance(graph.centers[tw.ci],e.pos)<(missileOf(tw.key)?.maxRange??effectiveStats(tw.def,tw.tier).range*10)&&losClear(tw.ci,e.pos,perchOf(tw)));if(!e)return null;pilot.aimAt(add3(e.pos,scale3(norm3(e.pos),cellSide*.3)));return {id:e.id,hp:e.hp};},
-      enemy:id=>{const e=enemies.find(e=>e.id===id);return e?{hp:e.hp,alive:e.alive}:null;},hold:on=>{pilot.state.held=!!on;},view:v=>pilot.setView(v), reach:()=>{const tw=pilot.state.tower;return enemies.filter(e=>e.alive).map(e=>({id:e.id,type:e.type,m:+missileDistance(graph.centers[tw.ci],e.pos).toFixed(1),los:losClear(tw.ci,e.pos,perchOf(tw)),cell:e.cur,pos:e.pos.map(v=>+v.toFixed(5))}));}
+      enemy:id=>{const e=enemies.find(e=>e.id===id);return e?{hp:e.hp,alive:e.alive}:null;},hold:on=>{pilot.state.held=!!on;},view:v=>pilot.setView(v), reach:()=>{const tw=pilot.state.tower;return enemies.filter(e=>e.alive).map(e=>({id:e.id,type:e.type,m:+missileDistance(graph.centers[tw.ci],e.pos).toFixed(1),los:losClear(tw.ci,e.pos,perchOf(tw)),cell:e.cur,pos:e.pos.map(v=>+v.toFixed(5))}));}, round:()=>{const r=pilotHost?.round();if(!r)return null;camera.updateMatrixWorld();const v=new THREE.Vector3().fromArray(r.pos).project(camera);return {x:+v.x.toFixed(4),y:+v.y.toFixed(4),z:+v.z.toFixed(5),u:+r.u.toFixed(4),phase:r.phase,view:pilot.state.view,fov:+camera.fov.toFixed(2)};}   /* the round through the real camera, for the frame probe */
     };
   }
 

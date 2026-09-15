@@ -74,6 +74,7 @@
 .sentry-pilot-mode #td-pad,.sentry-pilot-mode #td-throttle,.sentry-pilot-mode #td-coach,.sentry-pilot-mode #td-tut-banner{display:none!important}
 .sentry-pilot-mode #td-stats,.sentry-pilot-mode #td-tower,.sentry-pilot-mode #td-wave,.sentry-pilot-mode #td-launch,.sentry-pilot-mode .tc-util,.sentry-pilot-mode #td-brief,.sentry-pilot-mode #td-tut,.sentry-pilot-mode #td-hint,.sentry-pilot-mode #td-stick,.sentry-pilot-mode .tzone,.sentry-pilot-mode .tfire{display:none!important}
 .laser-seat #td-pad,.laser-seat #td-throttle,.laser-seat #td-coach,.laser-seat #td-tut-banner,.laser-seat #td-stats,.laser-seat #td-tower,.laser-seat #td-wave,.laser-seat #td-launch,.laser-seat .tc-util,.laser-seat #td-brief,.laser-seat #td-tut,.laser-seat #td-hint,.laser-seat #td-stick,.laser-seat .tzone,.laser-seat .tfire,.laser-seat #td-next,.laser-seat #td-sitrep{display:none!important}
+#tab-td.pilot-framing .pilot-cross,#tab-td.pilot-framing #story-scope .reticle{opacity:0}   /* the view follows a round in flight, away from the aim (src/core/round-framing.js) */
 .sentry-pilot-mode #td-perf{top:215px;left:14px}.sentry-pilot-mode #td-next{right:20px;left:auto;transform:none}
 /* --- the enemy study (#swarm): a crowd on the left of a readout that does
    not flatter it. Two panels because two questions are asked at once. --- */
