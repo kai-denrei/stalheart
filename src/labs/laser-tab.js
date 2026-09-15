@@ -88,7 +88,7 @@ export function initLaserTab(root) {
   let explosions = null, rubble = null, sink = null, laser = null, thermal = null;
   let wallMeshes = [], wallCells = [], structs = [], sentries = [];
   let bodies = [], bursts = [], trench = null, trenchMesh = null;
-  let ready = false, held = false, burningWas = false, contactTimer = 0, sealed = false;
+  let ready = false, held = false, burningWas = false, contactTimer = 0, sealed = false, sinkOpened = false;
   const errors = [];
   const run = { bodies: 0, walls: 0, towers: 0, sealed: 0, heart: 'INTACT' };
   const st = makeLaser(orbit(), beamCfg());
@@ -457,9 +457,112 @@ export function initLaserTab(root) {
     render();
   }
 
+  /* --- what is under the beam ---------------------------------------------- */
+  // Everything inside the footprint, tagged with the kind whose burn seconds apply. The domain module does the
+  // accounting; this only answers "what is standing here right now".
+  function collect(point) {
+    const out = [], r = P.radius, r2 = r * r;
+    const near = (p) => {
+      const dx = p.x - point.x, dy = p.y - point.y, dz = p.z - point.z;
+      return dx * dx + dy * dy + dz * dz <= r2;
+    };
+    for (const b of bodies) {
+      if (!b.alive) continue;
+      tmpA.set(b.pos[0], b.pos[1], b.pos[2]);
+      if (near(tmpA)) out.push({ id: b.id, kind: 'soft', pos: b.pos, body: b });
+    }
+    for (const w of wallCells) {
+      if (w.gone || !near(w.p)) continue;
+      out.push({ id: w.id, kind: 'wall', pos: [w.p.x, w.p.y, w.p.z], wall: w });
+    }
+    for (const s of structs) {
+      if (s.gone || !near(s.p)) continue;
+      out.push({ id: s.id, kind: s.heart ? 'heart' : 'tower', pos: [s.p.x, s.p.y, s.p.z], struct: s });
+    }
+    if (!sealed && near(sinkPoint)) {
+      out.push({ id: 'sinkhole', kind: 'seal', pos: [sinkPoint.x, sinkPoint.y, sinkPoint.z], sink: true });
+    }
+    return out;
+  }
+
+  /* --- the destruction reads ------------------------------------------------ */
+  // A wall cell burns out: its instance drops out of every wall InstancedMesh (a zero matrix), a dot burst marks it,
+  // and the gap is permanent. A structure hides its holder. The Stalheart does that and ends the colony. The
+  // sinkhole takes the rubble cap. None of this touches the game's own breach or tower paths.
+  const ZERO = new THREE.Matrix4().set(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+  function destroy(entry) {
+    const thing = entry.thing;
+    if (thing.body) {
+      thing.body.alive = false;
+      if (thing.body.obj) thing.body.obj.visible = false;
+      burstAt(tmpA.set(thing.pos[0], thing.pos[1], thing.pos[2]).clone(), 0xdfe8ee);
+      run.bodies++;
+      return;
+    }
+    if (thing.wall) {
+      thing.wall.gone = true;
+      for (const mesh of wallMeshes) {
+        mesh.setMatrixAt(thing.wall.index, ZERO);
+        mesh.instanceMatrix.needsUpdate = true;
+      }
+      burstAt(thing.wall.p.clone(), 0x8e8983);
+      fire('laser.ignite', thing.wall.p);
+      run.walls++;
+      return;
+    }
+    if (thing.struct) {
+      thing.struct.gone = true;
+      thing.struct.holder.visible = false;
+      burstAt(thing.struct.p.clone(), 0xdfe8ee);
+      fire('laser.ignite', thing.struct.p);
+      if (thing.struct.heart) { run.heart = 'LOST'; } else { run.towers++; }
+      return;
+    }
+    if (thing.sink) {
+      sealed = true;
+      try { rubble.add(sink.group, sink.tune.craterRadius ?? 6); } catch (e) { errors.push(`rubble: ${e.message}`); }
+      sink.group.visible = false;
+      fire('laser.ignite', sinkPoint);
+      run.sealed++;
+    }
+  }
+
+  /* --- the beam, per frame -------------------------------------------------- */
+  function applyBurn(dt) {
+    const hit = steering || held ? targetFromInset(steerN[0], steerN[1]) : null;
+    if (hit) aimLaser(st, toCentre(hit), dt, beamCfg());
+    const burning = burnLaser(st, held, dt);
+    const point = st.contact ? fromCentre(st.contact) : null;
+    if (!burning || !point) {
+      if (burningWas) { laser.lift(); thermal.set(false); }
+      burningWas = false;
+      contactTimer = 0;
+      return;
+    }
+    const n = normalOf(point);
+    if (!burningWas) {
+      laser.lay(point, n);
+      fire('laser.ignite', point);
+      thermal.set(true);
+      contactTimer = 0;
+    } else {
+      laser.aim(point, n);
+    }
+    burningWas = true;
+    /* the contact sheds pops at LASER_CONTACT_RATE per second while it burns */
+    contactTimer += dt;
+    const every = 1 / LASER_CONTACT_RATE;
+    while (contactTimer >= every) { contactTimer -= every; fire('laser.contact', point); }
+    for (const entry of burnContacts(st, collect(point), dt, burnCfg())) destroy(entry);
+  }
+
   function step(dt) {
     const edge = stepLaser(st, dt, orbit(), beamCfg());
     if (edge === 'close') laser.lift();
+    /* the sinkhole opens itself once its stone textures are in: nothing else polls it here */
+    if (!sinkOpened && !sealed && sink.ready()) { sink.trigger(); sinkOpened = true; }
+    applyBurn(dt);
     stepBodies(dt, clock);
     stepBursts(dt);
     explosions?.tick(dt);
@@ -492,6 +595,7 @@ export function initLaserTab(root) {
       thermal?.dispose();
       laser?.dispose();
       sink?.dispose();
+      rubble?.dispose();
       explosions?.dispose();
       base?.dispose();
       planetMesh?.userData.dispose?.();
