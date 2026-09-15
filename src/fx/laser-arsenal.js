@@ -232,6 +232,8 @@ export function createLaserArsenal(scene, host) {
       online, phase: st.phase, overhead: st.phase === 'overhead', left: +st.left.toFixed(2), energy: +st.energy.toFixed(2),
       burning: st.burning, contact: contactU()?.map((v) => +v.toFixed(5)) ?? null, seated, passes,
       under: { ...under }, burned: { ...burned }, trail: laser ? laser.trail.count : 0, breakMs: +breakMs.toFixed(1),
+      /* metres from the contact to the nearest live body: a burn that takes nothing can say how far it missed */
+      nearestBodyM: st.contact ? +Math.min(Infinity, ...host.enemies().filter((e) => e.alive).map((e) => { const R = metres(); return Math.hypot(e.pos[0] * R - st.contact[0], e.pos[1] * R - st.contact[1], e.pos[2] * R - st.contact[2]); })).toFixed(1) : null,
     }),
 
     dispose() { lift(); laser?.dispose(); laser = null; },

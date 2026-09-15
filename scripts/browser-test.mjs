@@ -609,19 +609,24 @@ try{
   const b=await strip();assert(b&&!b.hidden&&b.disabled,`the strip shows SOL-82, dark between passes (${JSON.stringify(b)})`);
   assert(/^SOL-82 \d\d:\d\d$/.test(b.text),`the strip counts the next pass down (${b.text})`);}
  await finish();
- // enemies out of a real breach, then the pass at once: the beam meets them while they are still rising
- await evaluate('window.__stalheartTest.spawnFodder(16)');await delay(300);
+ // the pass, and the seat from the strip (the first seat plays SOL-82's briefing: skipped)
  await evaluate('window.__stalheartTest.laserPassNow()');
  await until('window.__stalheartTest.state().laser.overhead',5000);
- {const b=await strip();assert.equal(b.text,'SOL-82 OVERHEAD','the strip lights through the pass');assert(b.live&&!b.disabled,'the button opens');}
- await evaluate('document.querySelector("#story-views [data-mount=laser]").click()');await delay(1200);
+ await until('document.querySelector("#story-views [data-mount=laser]")?.textContent==="SOL-82 OVERHEAD"',5000).catch(async()=>assert.fail(`the strip lights through the pass (${JSON.stringify(await strip())})`));
+ {const b=await strip();assert(b.live&&!b.disabled,'the button opens');}
+ await evaluate('document.querySelector("#story-views [data-mount=laser]").click()');
+ await until('!!document.querySelector("#sol82-briefing [data-skip]") || window.__stalheartTest.state().laser.seated',5000);
  await evaluate('document.querySelector("#sol82-briefing [data-skip]")?.click()');
  await until('window.__stalheartTest.state().laser.seated',15000);
- await evaluate('window.__stalheartTest.laserSteer("breach")');await delay(500);   // the first aim of a pass snaps onto it
+ // enemies out of a real breach (spawnFodder opens one), with the beam already laid on it: they rise only once the
+ // sinkhole has opened, and a swarm on the move walks as fast as the beam drags, so the beam waits where they come out
+ await evaluate('window.__stalheartTest.spawnFodder(16)');
+ await evaluate('window.__stalheartTest.laserSteer("breach")');await delay(400);   // the first aim of a pass snaps onto it
  {const s=await laser();assert(s.contact,'the seat lays a contact on the breach');assert.equal(s.fov,52,'the seat takes its ground lens');
   assert(await evaluate('!!document.querySelector("#laser-seat") && document.querySelector("#tab-td").classList.contains("laser-seat")'),'the seat panel is up');}
+ await until('(s=>s.nearestBodyM!==null&&s.nearestBodyM<8)(window.__stalheartTest.state().laser)',17000).catch(async()=>assert.fail(`no bodies rose under the beam while the pass was overhead (${JSON.stringify(await laser())})`));
  current='laser-game-seat';await finish();
- // HOLD ON THE BREACH: one second of beam seals it; what rises out of it burns on contact
+ // HOLD ON THE BREACH: what rises out of it burns on contact, and one second of beam seals it
  const before=await evaluate('window.__stalheartTest.state().killsBySrc.laser||0');
  await evaluate('window.__stalheartTest.laserHold(true)');
  await until('window.__stalheartTest.state().laser.burned.breaches>0',15000).catch(async()=>assert.fail(`the beam did not seal the breach (${JSON.stringify(await laser())})`));
