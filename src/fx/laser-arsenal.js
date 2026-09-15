@@ -27,7 +27,7 @@ export const FRIENDLY_KINDS = Object.freeze(['wall', 'tower', 'tank', 'heart']);
 export function createLaserArsenal(scene, host) {
   const st = makeLaser(LASER_ORBIT, LASER_BEAM);
   let online = !!host.online, seated = false, laser = null, burningWas = false, contactT = 0, smokeT = 0, voice = null;
-  let aimArc = 0, passes = 0, testTarget = null, testHeld = false, anchors = null, breakMs = 0;
+  let aimArc = 0, passes = 0, burnSeconds = 0, testTarget = null, testHeld = false, anchors = null, breakMs = 0;
   const burned = { bodies: 0, breaches: 0, walls: 0, rocks: 0, towers: 0, heart: 0, tank: 0 };
   let under = { ...NOTHING };
   const n = new THREE.Vector3(), fw = new THREE.Vector3(), rt = new THREE.Vector3(), ground = new THREE.Vector3(), normal = new THREE.Vector3();
@@ -151,6 +151,7 @@ export function createLaserArsenal(scene, host) {
       aimLaser(st, m, dt, LASER_BEAM);
     }
     const burning = burnLaser(st, held, dt);
+    if (burning) burnSeconds += dt;   // the sector books count the beam's seconds on the ground
     const cU = contactU();
     if (!burning || !cU) { lift(); return; }
     const g = groundAt(cU);
@@ -228,9 +229,10 @@ export function createLaserArsenal(scene, host) {
       };
     },
 
+    stats: () => ({ passes, seconds: burnSeconds }),   // cheap: the sector loop polls it every frame
     state: () => ({
       online, phase: st.phase, overhead: st.phase === 'overhead', left: +st.left.toFixed(2), energy: +st.energy.toFixed(2),
-      burning: st.burning, contact: contactU()?.map((v) => +v.toFixed(5)) ?? null, seated, passes,
+      burning: st.burning, contact: contactU()?.map((v) => +v.toFixed(5)) ?? null, seated, passes, seconds: +burnSeconds.toFixed(2),
       under: { ...under }, burned: { ...burned }, trail: laser ? laser.trail.count : 0, breakMs: +breakMs.toFixed(1),
       /* metres from the contact to the nearest live body: a burn that takes nothing can say how far it missed */
       nearestBodyM: st.contact ? +Math.min(Infinity, ...host.enemies().filter((e) => e.alive).map((e) => { const R = metres(); return Math.hypot(e.pos[0] * R - st.contact[0], e.pos[1] * R - st.contact[1], e.pos[2] * R - st.contact[2]); })).toFixed(1) : null,
