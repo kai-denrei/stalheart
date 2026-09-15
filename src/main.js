@@ -36,6 +36,7 @@ const routes = {
   portal: () => import('./portal-tab.js').then(m => m.initPortalTab),
   sim: () => import('./sim-tab.js').then(m => m.initSimTab),
   laser: () => import('./labs/laser-tab.js').then(m => m.initLaserTab),
+  gunship: () => import('./labs/gunship-tab.js').then(m => m.initGunshipTab),
 };
 const name = location.hash.slice(1) || (workshop ? 'units' : 'td');
 // the retired roadmap tab: the workshop opens with the docs overlay on the roadmap
@@ -93,7 +94,7 @@ if (leaving) {
     const content = bootstrapContent();
     // the story planet's bake rides in with the module: seconds of relaxing and carving skipped when it is there
     // the laser lab builds the same story planet: without the bake it relaxed and carved it live, ~6 s of a 9 s load
-    if ((target === 'td' && isStoryRoute(location.search)) || target === 'story' || target === 'laser') await loadPlanetBake();
+    if ((target === 'td' && isStoryRoute(location.search)) || target === 'story' || target === 'laser' || target === 'gunship') await loadPlanetBake();
     const init = await routes[target]();
     const api = init(root);
     const choices = workshop

@@ -78,8 +78,41 @@ export function createInsetHud(container) {
     ctx.fillRect(x + 1.5, y + 1.5, clamp01(frac) * (w - 2), 3);
   }
 
+  // A block with optional bars under its lines (at most two, drawn in a reserved last row)
+  function drawBlock(b, x, y) {
+    const lines = b.bars?.length ? [...b.lines, ' '] : b.lines;
+    const out = block(x, y, lines, b.title);
+    (b.bars || []).slice(0, 2).forEach((one, i) => bar(out.x + 8, out.y + out.h - 20 + i * 9, out.w - 16, one.frac, one.colour));
+  }
+
+  // TUCKED AGAINST THE SCOPE: `row` blocks sit along the scope's top edge (beside it when the scope reaches the top of
+  // the view, under it in portrait); `column` blocks stack against its right edge, bottom-aligned
+  function layoutBlocks({ row = [], column = [] }, r, w) {
+    const gap = 8, room = w - (r.x + r.w);
+    const sized = (b) => measure(b.bars?.length ? [...b.lines, ' '] : b.lines, b.title);
+    const rowSizes = row.map(sized), colSizes = column.map(sized);
+    const rowW = rowSizes.reduce((sum, m) => sum + m.w + gap, 0);
+    const rowH = Math.max(0, ...rowSizes.map((m) => m.h));
+    let rowX = r.x, rowY = r.y - rowH - gap;
+    if (rowY < 64) {
+      if (room > rowW + 30) { rowX = r.x + r.w + 12; rowY = r.y; }
+      else rowY = r.y + r.h + gap;
+    }
+    let x = rowX;
+    row.forEach((b, i) => { drawBlock(b, x, rowY); x += rowSizes[i].w + gap; });
+    const colW = Math.max(0, ...colSizes.map((m) => m.w));
+    const colH = colSizes.reduce((sum, m) => sum + m.h + gap, -gap);
+    let colX = r.x + r.w + 12, y = r.y + r.h - colH;
+    if (room < colW + 24) { colX = rowX; y = rowY + rowH + gap; }
+    else if (rowX > r.x && y < rowY + rowH + gap) y = rowY + rowH + gap;
+    column.forEach((b, i) => { drawBlock(b, colX, y); y += colSizes[i].h + gap; });
+  }
+
+  // f.hud (optional, for a lab other than the laser): { tone, status, statusColour, blocks: { row, column }, pending:
+  // [{ x, y, label, colour }] }. Without it the scope draws the orbital laser's own readings.
   function draw(f, dt) {
     const { w, h } = fit();
+    const hud = f.hud || null;
     ctx.clearRect(0, 0, w, h);
     const T = LASER_TELEMETRY, r = f.rect;
     const cx = r.x + r.w / 2, cy = r.y + r.h / 2, lens = Math.min(r.w, r.h) / 2;
@@ -99,10 +132,10 @@ export function createInsetHud(container) {
     const lagFrac = f.lensGroundM > 0 ? f.lagM / f.lensGroundM : 0;
     const over = f.limitM > 0 ? f.contactArcM / f.limitM : 0;
     const beyond = over > 1;
-    const tone = f.burning ? HOT
+    const tone = hud?.tone ?? (f.burning ? HOT
       : beyond ? mix(AMBER, ORANGE_RED, (over - 1) / 0.4)
       : live ? mix(CYAN, BLUE, lagFrac / 0.6)
-      : DIM;
+      : DIM);
 
     ctx.font = '11px ui-monospace, Menlo, monospace';
     ctx.textBaseline = 'top';
@@ -172,6 +205,17 @@ export function createInsetHud(container) {
       }
     }
 
+    /* rounds in the air (a caller's pending impacts): a diamond where each will land, with its label */
+    for (const p of hud?.pending || []) {
+      const s = 5;
+      ctx.strokeStyle = p.colour || WARN;
+      ctx.fillStyle = p.colour || WARN;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y - s); ctx.lineTo(p.x + s, p.y); ctx.lineTo(p.x, p.y + s); ctx.lineTo(p.x - s, p.y); ctx.closePath();
+      ctx.stroke();
+      if (p.label) { ctx.textAlign = 'left'; ctx.fillText(p.label, p.x + 8, p.y - 6); }
+    }
+
     /* the aim: X brackets from a gap, corner brackets, a spinning tick arc, a centre cross */
     ctx.strokeStyle = tone;
     ctx.lineWidth = 1.5;
@@ -213,12 +257,12 @@ export function createInsetHud(container) {
     }
 
     /* the status under the reticle */
-    const status = f.burning ? ((clock % 0.6) < 0.4 ? 'LASING' : '')
+    const status = hud?.status ?? (f.burning ? ((clock % 0.6) < 0.4 ? 'LASING' : '')
       : beyond ? `OUT OF RANGE · ${Math.round(f.contactArcM)} / ${Math.round(f.limitM)} M`
       : live ? 'ARMED · HOLD TO FIRE'
-      : f.phase !== 'overhead' ? 'NO LINE OF SIGHT' : 'CAPACITOR DRAINED';
+      : f.phase !== 'overhead' ? 'NO LINE OF SIGHT' : 'CAPACITOR DRAINED');
     ctx.textAlign = 'center';
-    ctx.fillStyle = f.burning ? HOT : beyond ? tone : !live && f.phase === 'overhead' ? WARN : live ? FG : DIM;
+    ctx.fillStyle = hud?.statusColour ?? (f.burning ? HOT : beyond ? tone : !live && f.phase === 'overhead' ? WARN : live ? FG : DIM);
     ctx.fillText(status, cx, cy + lens * 0.72);
     ctx.restore();
 
@@ -243,59 +287,43 @@ export function createInsetHud(container) {
     }
 
     /* ======================= TUCKED AGAINST THE SCOPE ======================= */
-    const optics = [
-      `ALT ${fix(f.altitudeM / 1000, 3)} KM`,
-      `RNG ${fix(f.rangeM / 1000, 3)} KM`,
-      `FOV ${fix(f.fovDeg, 1)}°  GSD ${fix(f.gsd, 2)} M/PX`,
-      `LAT ${fix(f.lat, 3)}°  LON ${fix(f.lon, 3)}°`,
-    ];
-    const laser = [
-      `λ ${T.wavelengthUm.toFixed(3)} µm  ND:YAG CW`,
-      f.burning ? { s: `P ${fix(T.powerMW, 1)} MW`, c: HOT } : { s: 'P STBY', c: DIM },
-      `I ${fix(irradiance, 2)} MW/m²  Ø ${fix(f.radiusM * 2, 1)} M`,
-      `Q ${fix(f.deliveredMJ, 0)} / ${fix(f.capMJ, 0)} MJ`,
-      { s: `RANGE ${Math.round(f.contactArcM)} / ${Math.round(f.limitM)} M`, c: beyond ? tone : FG },
-    ];
     const passLine = f.infinite ? 'PASS  ∞  DEBUG'
       : f.phase === 'overhead' ? `OVERHEAD ${String(Math.ceil(f.left)).padStart(2, '0')} S`
       : `AWAY  T-${Math.ceil(f.left)} S`;
-    const pass = [
-      passLine,
-      { s: `ENERGY ${fix(f.energy, 1)} S`, c: low ? WARN : FG },
-      `SLEW ${fix(f.speed, 1)} / ${fix(f.slew, 0)} M/S`,
-      ' ',
-    ];
-    const u = f.under;
-    const target = [
-      { s: `ΔT +${Math.round(temp)} K`, c: temp > 1500 ? HOT : FG },
-      `KILLS ${f.counts.bodies}  ALIVE ${f.counts.alive}`,
-      `WALL ${f.counts.walls}  ROCK ${f.counts.rocks}  TWR ${f.counts.towers}`,
-      `SINKHOLE ${f.sealed ? 'SEALED' : 'OPEN'}`,
-      { s: `STALHEART ${f.heart}`, c: f.heart === 'LOST' ? WARN : FG },
-      f.burning ? `UNDER ${u.wall}W ${u.rock}R ${u.tower + u.heart}T ${u.soft}B` : { s: 'UNDER --', c: DIM },
-    ];
-    const mo = measure(optics, 'OPTICS · NADIR'), ml = measure(laser, 'LASER');
-    const mp = measure(pass, 'PASS'), mt = measure(target, 'TARGET');
-    const gapPx = 8, room = w - (r.x + r.w);
-
-    /* OPTICS and LASER: a row along the scope's top edge; when the scope reaches the top of the view, beside it */
-    const rowH = Math.max(mo.h, ml.h);
-    let rowX = r.x, rowY = r.y - rowH - gapPx;
-    if (rowY < 64) {
-      if (room > mo.w + ml.w + 30) { rowX = r.x + r.w + 12; rowY = r.y; }
-      else { rowY = r.y + r.h + gapPx; }                                   /* portrait: under the lens */
-    }
-    block(rowX, rowY, optics, 'OPTICS · NADIR');
-    block(rowX + mo.w + gapPx, rowY, laser, 'LASER');
-
-    /* PASS and TARGET: stacked against the scope's right edge, bottom-aligned; in portrait, under the row */
-    let colX = r.x + r.w + 12, passY = r.y + r.h - mp.h - mt.h - gapPx;
-    if (room < Math.max(mp.w, mt.w) + 24) { colX = rowX; passY = rowY + rowH + gapPx; }
-    else if (rowX > r.x && passY < rowY + rowH + gapPx) passY = rowY + rowH + gapPx;
-    const pb = block(colX, passY, pass, 'PASS');
-    bar(pb.x + 8, pb.y + pb.h - 20, pb.w - 16, f.infinite ? 1 : f.pass01, DIM);
-    bar(pb.x + 8, pb.y + pb.h - 11, pb.w - 16, f.energy01, low ? WARN : FG);
-    block(colX, passY + mp.h + gapPx, target, 'TARGET');
+    const u = f.under || {};
+    const laserBlocks = () => ({
+      row: [
+        { title: 'OPTICS · NADIR', lines: [
+          `ALT ${fix(f.altitudeM / 1000, 3)} KM`,
+          `RNG ${fix(f.rangeM / 1000, 3)} KM`,
+          `FOV ${fix(f.fovDeg, 1)}°  GSD ${fix(f.gsd, 2)} M/PX`,
+          `LAT ${fix(f.lat, 3)}°  LON ${fix(f.lon, 3)}°`,
+        ] },
+        { title: 'LASER', lines: [
+          `λ ${T.wavelengthUm.toFixed(3)} µm  ND:YAG CW`,
+          f.burning ? { s: `P ${fix(T.powerMW, 1)} MW`, c: HOT } : { s: 'P STBY', c: DIM },
+          `I ${fix(irradiance, 2)} MW/m²  Ø ${fix(f.radiusM * 2, 1)} M`,
+          `Q ${fix(f.deliveredMJ, 0)} / ${fix(f.capMJ, 0)} MJ`,
+          { s: `RANGE ${Math.round(f.contactArcM)} / ${Math.round(f.limitM)} M`, c: beyond ? tone : FG },
+        ] },
+      ],
+      column: [
+        { title: 'PASS', lines: [
+          passLine,
+          { s: `ENERGY ${fix(f.energy, 1)} S`, c: low ? WARN : FG },
+          `SLEW ${fix(f.speed, 1)} / ${fix(f.slew, 0)} M/S`,
+        ], bars: [{ frac: f.infinite ? 1 : f.pass01, colour: DIM }, { frac: f.energy01, colour: low ? WARN : FG }] },
+        { title: 'TARGET', lines: [
+          { s: `ΔT +${Math.round(temp)} K`, c: temp > 1500 ? HOT : FG },
+          `KILLS ${f.counts?.bodies}  ALIVE ${f.counts?.alive}`,
+          `WALL ${f.counts?.walls}  ROCK ${f.counts?.rocks}  TWR ${f.counts?.towers}`,
+          `SINKHOLE ${f.sealed ? 'SEALED' : 'OPEN'}`,
+          { s: `STALHEART ${f.heart}`, c: f.heart === 'LOST' ? WARN : FG },
+          f.burning ? `UNDER ${u.wall}W ${u.rock}R ${(u.tower || 0) + (u.heart || 0)}T ${u.soft}B` : { s: 'UNDER --', c: DIM },
+        ] },
+      ],
+    });
+    layoutBlocks(hud?.blocks ?? laserBlocks(), r, w);
   }
 
   return {

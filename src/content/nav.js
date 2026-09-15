@@ -33,7 +33,7 @@ export const NAV_GROUPS = Object.freeze([
   { mode: 'dev', group: 'tools', label: 'Tools' },
 ].map(Object.freeze));
 
-const LABS = [['units', 'units'], ['swarm', 'swarm'], ['beam', 'beam'], ['audio', 'audio'], ['metal', 'metal'], ['story', 'story'], ['sentry', 'sentry / impact'], ['portal', 'breach'], ['laser', 'orbital laser'], ['sim', 'sim']];
+const LABS = [['units', 'units'], ['swarm', 'swarm'], ['beam', 'beam'], ['audio', 'audio'], ['metal', 'metal'], ['story', 'story'], ['sentry', 'sentry / impact'], ['portal', 'breach'], ['laser', 'orbital laser'], ['gunship', 'gunship'], ['sim', 'sim']];
 
 export const NAV_ENTRIES = Object.freeze([
   { id: 'story', label: 'Story', title: 'the story opening: land, print the Rotor, hold the gate', mode: 'playtest', group: 'story', target: { page: 'index.html', hash: 'td', params: { story: '1' } } },
