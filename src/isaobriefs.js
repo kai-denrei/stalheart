@@ -17,6 +17,8 @@
 // is a fact and then a plan: "Oh no! They destroyed my RADAR!" (angry)...
 // "Oh well. Rebuild." Two short lines at most; the second line is always what
 // he does next. Curiosity over dread, resources over blame.
+import { SECTORS, SECTOR_GENERATOR } from './content/sectors.js';
+
 export const BRIEFS = {
   // --- THE STORY -----------------------------------------------------------
   // Four beats the game had no way of saying. All of this was already written
@@ -244,6 +246,20 @@ export const BRIEFS = {
     face: 'surprised',
     title: 'MORE LANDING SITES',
     lines: ['New signals on the radar. More landers came down out there.', 'Same drill: clear the nest, bring the part home.'],
+  },
+
+  // THE SECTORS (docs/superpowers/specs/2026-09-15-v1-session-design.md): Isao's two lines on each sector's brief. The lines
+  // are the content table's (src/content/sectors.js), so the brief and the debrief's "next sector" lines cannot drift.
+  ...Object.fromEntries(SECTORS.map((s) => [`sector_${s.n}`, { id: `sector_${s.n}`, face: s.n === 1 ? 'determined' : 'focused', title: `SECTOR ${s.n} · ${s.name}`, lines: [...s.brief] }])),
+  sector_next: { id: 'sector_next', face: 'determined', title: 'THE NEXT SECTOR', lines: [...SECTOR_GENERATOR.brief] },
+  // the gate gives under the pile, and comes back
+  gate_broken: {
+    id: 'gate_broken', face: 'surprised', title: 'THE GATE IS DOWN',
+    lines: ['They pushed the gate in. They are inside the walls.', 'Hold them off it and I will mend it.'],
+  },
+  gate_mended: {
+    id: 'gate_mended', face: 'glee', title: 'GATE MENDED',
+    lines: ['Gate is back on its hinges.', 'I keep a patch kit on it from now on.'],
   },
 };
 
