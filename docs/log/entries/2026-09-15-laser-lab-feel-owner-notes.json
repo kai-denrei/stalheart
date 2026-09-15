@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "2026-09-15-laser-lab-feel-owner-notes",
+  "date": "2026-09-15T20:00:00+00:00",
+  "type": "change",
+  "status": "accepted",
+  "title": "Laser lab feel from the owner's notes: live look, full-width landing, embers and smoke, a slow inexorable drag, the owner's view",
+  "context": "Owner notes on labs.html#laser, 2026-09-15: the lab loads slowly; an infinite laser is needed to judge the look without resetting; the look sliders (core/glow width, intensity) change nothing and the beam looks tiny; walls do not break even at 0 s; the beam meets the ground as a point instead of at its own width; more explosion and smoke where it hits; the movement should feel slow and inexorable, not hectic; the black burn is too jagged and should feel like burning embers with continuous smoke along the path; the view defaults should be altitude 4, satellite fov 20, inset 0.44, ground camera back 120 and up 60.",
+  "outcome": "064d911: src/main.js awaits the planet bake for #laser as the story routes do, so the lab stops relaxing and carving the planet live (buildStoryPlanet was 6.2 s of a 9.3 s load in a CPU profile). createOrbitalLaser gains tune(look) and look(): the look sliders and the footprint radius write the column's uniforms and the ring scale live, where before createOrbitalLaser read the frozen LASER_PRESET and the sliders only fed COPY PRESET; a core intensity slider joins them. The panel gains an infinite-laser toggle (the pass held open with a full budget, carried as ?infinite=1 so RESET keeps it) and REVIVE TARGETS (burned walls from the matrices saved at build, structures, bodies and counters, without a reload; a sealed sinkhole still needs RESET). 8503f3c: LASER_PRESET.capEnd 0.02 -> 0.001, the column ends 2 m under the contact and a contact glow disc of the column's own width marks the landing; laser.contact 0.6 -> 1.3 and a new laser.smoke use (bofors-burst 0.55, with a scare) at LASER_SMOKE_RATE 2 per second; aimLaser gains inertia under beam.accel (speed ramps toward slew, brakes on sqrt(2 a d), a turn bleeds speed, a reversal starts from rest; accel 0 is the old constant-rate chase) with LASER_BEAM slew 40 -> 10 and accel 5 and panel sliders for both; the HUD names what stands under the beam while it burns. d279faa: the scorch becomes soft ember stamps every 0.8 m (char, a glow cooling over LASER_TRAIL.hot 4 s, smouldering coals, restamped every 0.4 s while still); LASER_TRAIL_SMOKE lays smoke along the path on the pinned explosion kit's puff layer as a 256-instance ring buffer; LASER_VIEW becomes altitude 4, fov 20, inset 0.44, groundBack 120, groundUp 60.",
+  "alternatives": [
+    "Fix the pinpoint landing in src/beamfx.js's cap shader; rejected because the board and shot beams share it, and the laser only needs its own capEnd and a buried end.",
+    "More ground smoke by raising EXPLOSION_CAPS.medium so laser.smoke bursts could fire faster; rejected because the gunship's Bofors shares that cap. The continuous smoke is the laser's own ring buffer instead.",
+    "Slow the drag by lowering slew alone; rejected because a constant-rate chase still starts and stops instantly. Inertia with braking is what reads as inexorable.",
+    "Make the planet's lattice rock walls burnable; not done: the lab's destruction covers the kit wall cells, the structures, the bodies and the sinkhole, and whether the owner meant the rock walls is an open question."
+  ],
+  "evidence": [
+    "CPU profile of labs.html?acceptance=1#laser before the fix: 9.3 s to ready, buildStoryPlanet 6.2 s (grid relax 3.5 s, generateDungeon 2.0 s).",
+    "test/orbital-laser.mjs: the constant-rate chase still moves exactly slew * dt with accel 0; with slew 10 and accel 5 the contact moves 0.05 m in its first 0.1 s from rest, never moves away from its target, reaches and holds 10 m/s, brakes onto the target and arrives, and a reversal drops it to accel * dt; the close resets the speed. Pins follow LASER_BEAM, LASER_VIEW, LASER_TRAIL, LASER_TRAIL_SMOKE and LASER_SMOKE_RATE; test/explosions-content.mjs pins the nine uses.",
+    "npm test green (106 test programs passed) and npm run check green after each commit.",
+    "NOT browser-verified: the memory guardrail stayed at WARN (3.3 GB swap) through these commits, so no headless run was made. The owner is judging them on the running 8155 server.",
+    "Walls at 0 s: the domain reports a 0 s wall on its first frame and the lab zeroes the instance in every walls InstancedMesh; the Task 7 browser round cut five wall cells at 0.5 s. The HUD readout 'under the beam' now shows whether a wall cell is in the footprint at all."
+  ],
+  "supersedes": []
+}
