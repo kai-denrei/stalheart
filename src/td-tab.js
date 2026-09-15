@@ -13800,7 +13800,7 @@ export function initTdTab(root) {
     };
   }
 
-  function leavePilot() { if (!pilotMode) return; pilot?.dispose(); for (const tw of towers) { tw.povFire?.stop(0.1); tw.povFire = null; } pilot = null; pilotHost = null; pilotMode = false; storyScope?.update({ on: false }); /* the scope leaves with the optic */ params.callouts = true; delete window.__stalheartPilotTest; setView('third'); snapCamera(); }   // back to the hull
+  function leavePilot() { if (!pilotMode) return; pilot?.dispose(); for (const tw of towers) { tw.povFire?.stop(0.1); tw.povFire = null; } pilot = null; pilotHost = null; pilotMode = false; storyScope?.update({ on: false }); /* the scope leaves with the optic */ params.callouts = true; delete window.__stalheartPilotTest; camera.fov = 68; camera.updateProjectionMatrix(); setView('third'); snapCamera(); }   // back to the hull, at the hull's own lens: the seat's zoom narrowed it (owner, 2026-09-15: the tank after the gunship at the wrong angle)
   function enterPilot(posts) { pilot?.dispose(); pilotMode = true;   // one optic at a time: a hand-over while already piloting replaces the panel. the story hands over its mounts
     function installPilot(key) {
       const old=pilotMounts[pilotPost];
