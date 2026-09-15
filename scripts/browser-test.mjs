@@ -294,7 +294,7 @@ try{
   assert.equal(await evaluate('location.href'),href,'switching modes never navigates');
   current='nav-switch';await finish();
   await click('#shell-bar [data-mode=dev]');await delay(300);await until('!!document.querySelector("#shell-nav [data-tuning=bloom]")');
-  await click('#shell-nav [data-tuning=bloom]');await delay(300);
+  await tap('#shell-nav [data-tuning=bloom]');await delay(300);
   assert(await evaluate('document.body.classList.contains("vars-open")'),'DEV · Tuning · bloom opens the variables');
   assert.equal(await evaluate('document.querySelector("#td-vars .vars-nav button.active").textContent'),'bloom','on its bloom page');
   await evaluate('document.querySelector("#td-vars .vars-page.active input").focus()');await key('\\','Backslash');
