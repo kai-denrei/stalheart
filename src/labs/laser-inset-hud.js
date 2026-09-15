@@ -3,8 +3,9 @@
 // a range ladder in metres, the beam's real contact boxed and ringed at its footprint, and at the aim point X brackets
 // with a spinning tick arc and a tether back to the lagging contact.
 //
-// COLOUR IS THE FEEDBACK. Armed inside the range the sight is cyan, deepening to blue as the aim nears the limit;
-// beyond the limit it goes amber to orange-red and says so (the beam is held at the limit); lasing it is ember red.
+// COLOUR IS THE FEEDBACK, AND THE PLAYER IS IN CHARGE. While the aim stays near the beam the sight is cyan, deepening
+// to blue as the aim runs ahead of the lagging contact; it goes amber to orange-red only when the BEAM itself is past
+// the range from the base, never because the pointer sits out there for a moment; lasing it is ember red.
 //
 // Telemetry is tucked against the scope, not across the view: OPTICS and LASER in a row along its top edge, PASS and
 // TARGET stacked against its right edge. The diegetic numbers the game needs (energy, seconds, kills, the sinkhole,
@@ -94,12 +95,13 @@ export function createInsetHud(container) {
     const live = f.phase === 'overhead' && f.energy > 0;
     const low = f.energy01 < 0.25;
 
-    /* the range: how far out the aim is against the limit */
-    const reach = f.aiming && f.limitM > 0 ? f.aimArcM / f.limitM : 0;
-    const beyond = reach > 1;
+    /* blue by how far the aim runs ahead of the beam (against what the lens shows); amber only for the beam past range */
+    const lagFrac = f.lensGroundM > 0 ? f.lagM / f.lensGroundM : 0;
+    const over = f.limitM > 0 ? f.contactArcM / f.limitM : 0;
+    const beyond = over > 1;
     const tone = f.burning ? HOT
-      : beyond ? mix(AMBER, ORANGE_RED, (reach - 1) / 0.4)
-      : live ? mix(CYAN, BLUE, (reach - 0.5) / 0.5)
+      : beyond ? mix(AMBER, ORANGE_RED, (over - 1) / 0.4)
+      : live ? mix(CYAN, BLUE, lagFrac / 0.6)
       : DIM;
 
     ctx.font = '11px ui-monospace, Menlo, monospace';
@@ -212,7 +214,7 @@ export function createInsetHud(container) {
 
     /* the status under the reticle */
     const status = f.burning ? ((clock % 0.6) < 0.4 ? 'LASING' : '')
-      : beyond ? `OUT OF RANGE · ${Math.round(f.aimArcM)} / ${Math.round(f.limitM)} M`
+      : beyond ? `OUT OF RANGE · ${Math.round(f.contactArcM)} / ${Math.round(f.limitM)} M`
       : live ? 'ARMED · HOLD TO FIRE'
       : f.phase !== 'overhead' ? 'NO LINE OF SIGHT' : 'CAPACITOR DRAINED';
     ctx.textAlign = 'center';
@@ -252,7 +254,7 @@ export function createInsetHud(container) {
       f.burning ? { s: `P ${fix(T.powerMW, 1)} MW`, c: HOT } : { s: 'P STBY', c: DIM },
       `I ${fix(irradiance, 2)} MW/m²  Ø ${fix(f.radiusM * 2, 1)} M`,
       `Q ${fix(f.deliveredMJ, 0)} / ${fix(f.capMJ, 0)} MJ`,
-      { s: `RANGE ${f.aiming ? Math.round(f.aimArcM) : '--'} / ${Math.round(f.limitM)} M`, c: beyond ? tone : FG },
+      { s: `RANGE ${Math.round(f.contactArcM)} / ${Math.round(f.limitM)} M`, c: beyond ? tone : FG },
     ];
     const passLine = f.infinite ? 'PASS  ∞  DEBUG'
       : f.phase === 'overhead' ? `OVERHEAD ${String(Math.ceil(f.left)).padStart(2, '0')} S`

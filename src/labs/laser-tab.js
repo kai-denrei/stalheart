@@ -686,6 +686,10 @@ void main(){
     const p = laserProgress(st, orbit(), beamCfg());
     return {
       rect: r, aim, contact, footprintPx, lagM, aiming, limitM: P.range, aimArcM: aimArc,
+      /* the beam's own distance from the base (what the range judges) and the ground radius the lens shows (what the
+         aim's lead is judged against) */
+      contactArcM: st.contact ? clampToRange(st.contact, 0).arc : 0,
+      lensGroundM: Math.tan((P.fov * Math.PI) / 360) * rangeM,
       phase: st.phase, infinite: P.infinite, left: st.left, pass01: p.pass,
       energy: st.energy, energy01: p.energy, burning: st.burning,
       speed: P.accel > 0 ? (st.speed || 0) : (st.burning || aiming ? P.slew : 0), slew: P.slew, radiusM: P.radius,
