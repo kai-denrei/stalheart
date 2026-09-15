@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "id": "2026-09-16-sectors-are-the-story-loop",
+  "date": "2026-09-16",
+  "type": "decision",
+  "status": "accepted",
+  "title": "Sectors are the story's loop past the handover, and the gate takes the pile's pressure",
+  "context": "After the handover the story still ran the campaign board's single-breach wave clock: storyApi.breach overwrote one story.source, programmeSpent sealed every breach when a sector's last wave was held, checkVictory played the campaign pull-out, loseGame showed the campaign verdict, and the campaign HUD lines, tower-unlock toasts, WHY THEY COME brief, NEW THREAT cards and SitRep leaked into the story. QA (2026-09-16) also found no pressure: waves piled outside the closed gate forever, so a wave never cleared and the colony could not be lost. src/td-tab.js was at its line budget.",
+  "outcome": "src/fx/sector-run.js composes src/domain/sectors.js, sector-stats.js and the new src/domain/gate-integrity.js through controller hooks. Once the story reaches the expedition phase (or a defend stage) with no brief, shot or screen in the way, sector 1 starts with a brief card and Isao's two lines, then opens its breaches as a list (pickBreachCells over the gunshipFar ring; back-side candidates from storyApi.backBreachCandidates when present, else all on the gate side), staggered 1.5 s. The wave clock arms only while every breach stands ready and releases one programme wave per live breach (computeWavePlan at the sector's threat, a hard core per content flag). killPortal is the single seal hook: the gunship's 105 (executeStrike use gunship.heavy), the strike, three tank shells on a sector breach, and a 'laser' reason book closeBreach with forfeitOf's estimate; a breach whose last wave has emerged is spent, pays HELD as biomass and score (score.addBonus) and collapses. SECTOR SECURE, a 3 s pause, then the real src/fx/sector-debrief.js card; CONTINUE starts the next sector (refillArrays, setLaserOnline, openBackDoor with an 8 s lead), THE COLONY HOLDS after sector 3, KEEP HOLDING continues, NEW RUN and a loss (LAST TRANSMISSION) reload. Stats are recorded at the real sites (damageEnemy with a via argument for tower key and gunship gun, the ram, shell resolution, playerHit, heartHit, finishOrder, scoreKill and the wave bonus) or polled (gunship passes, shield seconds, arrayStation.drawn, delivered parts, biomass ledger, storyApi.laserStats). Bests persist under td.story.sector-bests. THE GATE: enemies within 2.5 cells wear it (0.5 hp/s fodder, 3 hp/s solid core, 60 hp); at zero it breaks, story.sealed lets the swarm through and the gate clip is forced open; Isao mends it at 3 hp/s while no enemy is within 8 cells and it closes again at 60%. The campaign debrief builders and the SitRep moved to src/fx/campaign-debrief.js unchanged, freeing 292 td-tab lines.",
+  "alternatives": [
+    "Walls take damage too: rejected for tonight; the gate is the one opening the swarm paths toward, and wall damage would need a pathfinder rebuild per break.",
+    "Open the gate under pressure and close it when the lane clears, without hit points: rejected because it gives no readable integrity and no Isao repair beat.",
+    "Keep the global wave counter and split one plan across both breaches (the campaign spawner): rejected; each breach owns its programme so closing one forfeits only its waves."
+  ],
+  "evidence": [
+    "npm test (112 programs) and npm run check green after merging v1-loop",
+    "test/gate-integrity.mjs",
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --sectors: 8 steps pass (artifacts/browser/sectors-*.png); the first sector's report: 18 s, 119 kills, 181 kg left in the field, breaches closed by gunship and held",
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --defense: 6 steps pass once the step calls sectorQuiet(true); before that the loop's pressure broke the gate and a leak at the story's Stalheart threw every frame (heartSprite.userData.hit missing, fixed with optional chaining), then the one-Rotor base lost the colony mid-step",
+    "Not run tonight: --story-world and the default suite (budget)"
+  ],
+  "supersedes": []
+}
