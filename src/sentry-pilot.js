@@ -47,7 +47,7 @@ export function createSentryPilot(root, host) {
   }
   listen(root,'contextmenu',e=>{if(!map)e.preventDefault();});
   listen(window,'blur',()=>{dragging=false;state.held=false;});
-  listen(root,'wheel',e=>{if(map||e.target.closest('#sentry-pilot'))return;e.preventDefault();e.stopImmediatePropagation();state.zoom=Math.max(1,Math.min(5,state.zoom+(e.deltaY<0?.25:-.25)));host.zoom(state.zoom);},{capture:true,passive:false});
+  listen(root,'wheel',e=>{if(map||e.target.closest('#sentry-pilot'))return;e.preventDefault();e.stopImmediatePropagation();const z=Math.max(1,Math.min(5,(gunship?state.zoomGoal??state.zoom:state.zoom)+(e.deltaY<0?.25:-.25)));if(gunship)state.zoomGoal=z;else{state.zoom=z;host.zoom(state.zoom);};},{capture:true,passive:false});
   function pose(tw,goal){
     if(!tw)return false;
     const now=performance.now(),dt=Math.min(.05,(now-lastT)/1000);lastT=now;
@@ -102,13 +102,13 @@ export function createSentryPilot(root, host) {
   const hud=G?createGunshipHud(root):null;
   const guns=document.createElement('div');guns.className='pilot-guns';guns.style.display='none';
   guns.innerHTML=G?G.order.map((k,i)=>`<button data-gun="${k}">${i+1} · ${G.guns[k].label}</button>`).join(''):'';panel.querySelector('header').after(guns);
-  function selectGun(key){if(!G||!G.select(key))return;state.held=false;guns.querySelectorAll('[data-gun]').forEach(b=>b.classList.toggle('on',b.dataset.gun===key));if(!G.guns[key].strike)G.laser(-1);if(gunship&&!map){state.zoom=G.guns[key].zoom??state.zoom;host.zoom(state.zoom);}}   // each gun its own magnification
+  function selectGun(key){if(!G||!G.select(key))return;state.held=false;guns.querySelectorAll('[data-gun]').forEach(b=>b.classList.toggle('on',b.dataset.gun===key));if(!G.guns[key].strike)G.laser(-1);if(gunship&&!map){state.zoomGoal=G.guns[key].zoom??state.zoom;}}   // each gun its own magnification
   guns.querySelectorAll('[data-gun]').forEach(b=>listen(b,'click',()=>selectGun(b.dataset.gun)));
   // the platform's place is the optic's (host.gunship.optic.ride, driven by the game each tick); the seat only reads it
   const trackAxes=()=>{t1.set(0,0,1).applyQuaternion(ship.obj.quaternion);t2.set(1,0,0).applyQuaternion(ship.obj.quaternion);};
   function mountGunship(){
     if(!G||G.mount()!=='mounted')return 'refused';
-    gunship=true;ship.ci=G.heart();state.tower=ship;state.held=false;state.target=null;state.hidden=null;state.view='pov';state.zoom=G.platform.zoom??1;host.zoom(state.zoom);px=innerWidth/2;py=innerHeight/2;
+    gunship=true;ship.ci=G.heart();state.tower=ship;state.held=false;state.target=null;state.hidden=null;state.view='pov';state.zoom=G.platform.zoom??1;state.zoomGoal=state.zoom;host.zoom(state.zoom);px=innerWidth/2;py=innerHeight/2;
     pendingAim=G.centers[G.lane()];aimShip();state.pitch=-1.45;   // the seat opens looking straight down, the lane's way   // the seat opens on where they come from; settled again on the first tick, once the platform has taken its track (its frame can swing when a breach opens)
     guns.style.display='';panel.querySelector('header').innerHTML='KORP / GS01 <small>HEAVY GUNSHIP · ON STATION</small>';panel.querySelector('footer').textContent='Click to lock the mouse, move it to aim · Space or the button fires · rounds take seconds to land: lead them · 1 rotary · 2 bofors · 3 heavy · M view: normal / night / thermal · V the ship · T top view · P pause';
     G.optic.mount();host.views?.('gunship');selectGun(G.state.gun);if(map)toggleMap();root.classList.add('gunship-seat');panel.querySelector('.pilot-cross').style.display='none';setMode(2);   // the seat opens in thermal, the FLIR ironbow (owner, 2026-09-14)
@@ -141,6 +141,8 @@ export function createSentryPilot(root, host) {
   function gunshipTick(dt){
     if(!G)return;
     if(!gunship)return;
+    // THE ZOOM EASES (owner, 2026-09-15: camera jumps when changing weapons): a gun's magnification or a wheel step is a goal, reached over ~0.15 s, not a cut
+    if(!map&&state.zoomGoal!=null&&Math.abs(state.zoom-state.zoomGoal)>1e-3){state.zoom+=(state.zoomGoal-state.zoom)*(1-Math.exp(-dt/0.14));if(Math.abs(state.zoom-state.zoomGoal)<0.005)state.zoom=state.zoomGoal;host.zoom(state.zoom);}
     if(pendingAim){aimShip();pendingAim=null;}
     if(!G.onStation()){dismountGunship();host.views?.('tank');host.leave?.();return;}
     trackAxes();up.copy(ship.obj.position).normalize();

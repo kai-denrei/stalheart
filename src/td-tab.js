@@ -9930,7 +9930,7 @@ export function initTdTab(root) {
     },opened=>{
       sfx.play('sinkhole_quake',{dist:Math.min(...opened.map(obj=>camDist(obj.position.toArray())))});
       // One skippable establishing shot per new group, never per wave.
-      if((wave>0||storyMode)&&!paused&&!shotActive()){
+      if((wave>0||storyMode)&&!paused&&!shotActive()&&!pilotMode&&!pilot?.gunship){   // never while a seat is manned: the cut took the gunner's camera mid-aim (owner, 2026-09-15); the quake still sounds
         const direction=opened[0].position.clone().normalize(),returnPos=camera.position.clone(),returnQuat=camera.quaternion.clone(),far=direction.clone().multiplyScalar(3.3),up=camera.up.clone();
         // IN THE STORY: the whole planet through the pre-roll, then as the ground opens a FAST DIVE to a close view over the sinkhole, held while the fodder emerge, then a short blend back
         const sb=storyMode?story?.breachShot:null,hold=sb?CONTENT.breach.duration+(sb.emergeHold??0):0,tail=sb?sb.tail??1.8:1.8,dur=CONTENT.breach.preRoll+tail+hold,ease=(x)=>{const v=Math.max(0,Math.min(1,x));return v*v*(3-2*v);};
