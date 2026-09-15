@@ -7989,7 +7989,7 @@ export function initTdTab(root) {
         const spin=manual ? !!pilot?.state.held : !!pickTarget(graph.centers[tw.ci],effectiveStats(tw.def,tw.tier).range*cellSide,enemies,chord);
         tw.spinning=spin; tw.spinRate=(tw.spinRate??0)+((spin?34:0)-(tw.spinRate??0))*Math.min(1,dt*2.5); if(tw.spinRate>0.05)(tw.rotorNode??=tw.obj.getObjectByName('ROTOR'))?.rotateZ(tw.spinRate*dt);   // the barrel cluster winds up and down
         // THE SPOOL FOLLOWS THE BARRELS (operator, 2026-09-12): a looped spool voice whose gain and pitch ride the spin rate, so it rolls while they turn and dies as they stop; one-shot cues could not
-        const s01=(tw.spinRate??0)/34, att=1/(1+(camDist(graph.centers[tw.ci])/(cellSide*6))**2); if(s01>0.03){tw.spool??=sfx.loop('minigun_ready',{gain:0.001,rate:0.5}); tw.spool?.set(s01*att,0.5+0.5*s01);} else if(tw.spool){tw.spool.stop(0.2);tw.spool=null;} const povFiring=pilotMode&&pilot?.state.tower===tw&&tNow-(tw.soundAt??-9)<0.6; if(povFiring){tw.povFire??=sfx.loop('rotor_pov_fire',{gain:0.9,lowpass:1400});} else if(tw.povFire){tw.povFire.stop(0.15);tw.povFire=null;}   /* THE BARRELS, NOT THE ROTORS (owner, 2026-09-14): from the optic the firing is its own muffled sound over the spin */
+        const s01=(tw.spinRate??0)/34, att=1/(1+(camDist(graph.centers[tw.ci])/(cellSide*6))**2); if(s01>0.03){tw.spool??=sfx.loop('minigun_ready',{gain:0.001,rate:0.5}); tw.spool?.set(s01*att,0.5+0.5*s01);} else if(tw.spool){tw.spool.stop(0.2);tw.spool=null;} const povFiring=pilotMode&&pilot?.state.tower===tw&&tNow-(tw.firedAt??-9)<Math.max(0.2,(tw.fireGap??0.1)*1.8); if(povFiring){tw.povFire??=sfx.loop('rotor_pov_fire',{gain:0.9,lowpass:1400});} else if(tw.povFire){tw.povFire.stop(0.15);tw.povFire=null;}   /* THE BARRELS, NOT THE ROTORS (owner, 2026-09-14): from the optic the firing is its own muffled sound over the spin; it runs while rounds leave the gun (tw.firedAt), not on the report's base cadence, which starved it while the piloted Rotor kept firing (owner, 2026-09-15) */
       }
       tw.cooldown -= dt;
       if (manual) {
@@ -8052,7 +8052,7 @@ export function initTdTab(root) {
       }
       if (tw.def.hitscan && (tw.aimErr ?? 99) > SENTRY_TUNE.tolerance) continue;
       tw.cooldown = shotInterval(eff.rate * (manual ? pilotMultipliers(automated(), story?.pilot).rateMul : 1)); if (tw.key === 'rotor') { tw.heat = (tw.heat ?? 0) + SENTRY_HEAT.rotor.perShot; if (tw.heat >= 1) tw.overheated = true; }   // the story's piloted sentry streams rounds; every round heats the barrels
-      if (manual) pilot.state.shots++;
+      if (manual) pilot.state.shots++; tw.firedAt = tNow; tw.fireGap = tw.cooldown;   // the first-person bullet track follows the rounds actually fired (owner, 2026-09-15)
       // one line, every tower: the key IS the def key, unless the def says
       // otherwise — which the second roster's do, since there is no
       // `tower_rotor` and a missing sample is silence nobody notices
