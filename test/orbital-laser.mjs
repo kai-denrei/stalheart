@@ -1,0 +1,123 @@
+import assert from 'node:assert/strict';
+import { LASER_ORBIT, LASER_BEAM, LASER_BURN, LASER_VIEW, LASER_PRESET, LASER_TRAIL, LASER_CONTACT_RATE } from '../src/content/orbital-laser.js';
+import { makeLaser, stepLaser, aimLaser, burnLaser, burnContacts, laserProgress } from '../src/domain/orbital-laser.js';
+import { len3, dot3, norm3 } from '../src/vec3.js';
+
+/* the owner's first values, pinned so a tuning session has to come through a decision entry */
+assert.deepEqual({ ...LASER_ORBIT }, { period: 180, overhead: 20 });
+assert.deepEqual({ ...LASER_BEAM }, { energy: 10, radius: 6, slew: 40 });
+assert.deepEqual({ ...LASER_BURN }, { soft: 0, hard: 1, wall: 0.5, tower: 1.5, seal: 1, tank: 1, heart: 3 });
+assert.deepEqual({ ...LASER_VIEW }, { altitude: 1.2, fov: 18, inset: 0.34, groundBack: 28, groundUp: 9 });
+assert.deepEqual({ ...LASER_TRAIL }, { every: 2, quads: 400, seconds: 60 });
+assert.equal(LASER_CONTACT_RATE, 8);
+assert.equal(LASER_PRESET.burstRate, 0, 'a continuous beam, not a pulse train');
+assert.equal(LASER_PRESET.coreWidth, 0.6);
+assert.equal(LASER_PRESET.glowWidth, 5);
+
+/* --- the clock ---------------------------------------------------------- */
+{
+  const st = makeLaser(LASER_ORBIT, LASER_BEAM);
+  assert.equal(st.phase, 'away');
+  assert.equal(st.left, 160);
+  assert.equal(st.energy, 10);
+  assert.equal(st.burning, false);
+  assert.equal(st.contact, null);
+  assert.equal(st.contacts.size, 0);
+  assert.equal(stepLaser(st, 100, LASER_ORBIT, LASER_BEAM), null);
+  assert.equal(st.phase, 'away');
+  assert.equal(stepLaser(st, 60, LASER_ORBIT, LASER_BEAM), 'arrive');
+  assert.equal(st.phase, 'overhead');
+  assert.equal(st.left, 20);
+  /* burn it half down, then let the pass close */
+  assert.equal(burnLaser(st, true, 4), true);
+  assert.equal(st.energy, 6);
+  st.contacts.set('x', { seconds: 1, reported: false });
+  assert.equal(stepLaser(st, 20, LASER_ORBIT, LASER_BEAM), 'close');
+  assert.equal(st.phase, 'away');
+  assert.equal(st.left, 160);
+  assert.equal(st.energy, 10, 'unused energy is lost and the budget is restored for the next pass');
+  assert.equal(st.burning, false);
+  assert.equal(st.contact, null);
+  assert.equal(st.contacts.size, 0);
+}
+
+/* --- the slew ----------------------------------------------------------- */
+{
+  const R = 753;
+  const st = makeLaser(LASER_ORBIT, LASER_BEAM);
+  stepLaser(st, 160, LASER_ORBIT, LASER_BEAM);
+  const a = [0, R, 0];
+  aimLaser(st, a, 1 / 60, LASER_BEAM);
+  assert.deepEqual(st.contact, [0, R, 0], 'the first aim after arrival snaps');
+  /* a far target: the contact moves exactly slew * dt metres of arc along the sphere */
+  const far = [R * Math.sin(0.4), R * Math.cos(0.4), 0];
+  const before = st.contact.slice();
+  aimLaser(st, far, 0.1, LASER_BEAM);
+  assert.ok(Math.abs(len3(st.contact) - R) < 1e-6, 'the contact stays on the sphere');
+  const arc = R * Math.acos(Math.max(-1, Math.min(1, dot3(norm3(before), norm3(st.contact)))));
+  assert.ok(Math.abs(arc - LASER_BEAM.slew * 0.1) < 1e-6, `moved ${arc} m, wanted ${LASER_BEAM.slew * 0.1}`);
+  /* a near target is reached outright */
+  const near = [st.contact[0] + 0.05, st.contact[1], st.contact[2]];
+  const scaled = norm3(near).map((c) => c * R);
+  aimLaser(st, scaled, 0.5, LASER_BEAM);
+  assert.ok(Math.abs(st.contact[0] - scaled[0]) < 1e-9 && Math.abs(st.contact[2] - scaled[2]) < 1e-9, 'a near target snaps');
+}
+
+/* --- the burn accumulator ------------------------------------------------ */
+{
+  const st = makeLaser(LASER_ORBIT, LASER_BEAM);
+  stepLaser(st, 160, LASER_ORBIT, LASER_BEAM);
+  const body = { id: 'b1', kind: 'soft', pos: [0, 753, 0] };
+  const wall = { id: 'w1', kind: 'wall', pos: [1, 753, 0] };
+  let done = burnContacts(st, [body, wall], 0.1, LASER_BURN);
+  assert.deepEqual(done.map((d) => d.thing.id), ['b1'], 'soft dies on contact');
+  assert.equal(done[0].kind, 'soft');
+  assert.equal(done[0].done, true);
+  done = burnContacts(st, [body, wall], 0.1, LASER_BURN);
+  assert.deepEqual(done, [], 'a finished id is reported once');
+  for (let i = 0; i < 2; i++) burnContacts(st, [wall], 0.1, LASER_BURN);
+  assert.deepEqual(burnContacts(st, [wall], 0.2, LASER_BURN).map((d) => d.thing.id), ['w1'], 'a wall cuts through after 0.5 s');
+  assert.equal(st.contacts.has('b1'), false, 'an id that left the footprint is forgotten');
+  /* leaving and returning restarts the accumulation */
+  const tower = { id: 't1', kind: 'tower', pos: [2, 753, 0] };
+  burnContacts(st, [tower], 1.0, LASER_BURN);
+  assert.equal(st.contacts.get('t1').seconds, 1);
+  burnContacts(st, [], 0.1, LASER_BURN);
+  assert.equal(st.contacts.has('t1'), false);
+  burnContacts(st, [tower], 1.0, LASER_BURN);
+  assert.equal(st.contacts.get('t1').seconds, 1, 'the accumulator restarts, it does not resume');
+  /* an unknown kind never finishes */
+  assert.deepEqual(burnContacts(st, [{ id: 'z', kind: 'rock', pos: [0, 753, 0] }], 99, LASER_BURN), []);
+}
+
+/* --- the energy drain ---------------------------------------------------- */
+{
+  const st = makeLaser(LASER_ORBIT, LASER_BEAM);
+  assert.equal(burnLaser(st, true, 1), false, 'no burning while the satellite is away');
+  stepLaser(st, 160, LASER_ORBIT, LASER_BEAM);
+  assert.equal(burnLaser(st, false, 1), false);
+  assert.equal(st.energy, 10, 'energy drains only while it burns');
+  assert.equal(burnLaser(st, true, 6), true);
+  assert.equal(st.energy, 4);
+  assert.equal(burnLaser(st, true, 9), true);
+  assert.equal(st.energy, 0, 'the drain floors at zero');
+  assert.equal(burnLaser(st, true, 1), false, 'out of energy while overhead');
+  assert.equal(st.burning, false);
+}
+
+/* --- the HUD progress ---------------------------------------------------- */
+{
+  const st = makeLaser(LASER_ORBIT, LASER_BEAM);
+  assert.deepEqual(laserProgress(st, LASER_ORBIT, LASER_BEAM), { pass: 1, energy: 1 });
+  stepLaser(st, 80, LASER_ORBIT, LASER_BEAM);
+  assert.deepEqual(laserProgress(st, LASER_ORBIT, LASER_BEAM), { pass: 0.5, energy: 1 });
+  stepLaser(st, 80, LASER_ORBIT, LASER_BEAM);
+  burnLaser(st, true, 5);
+  const p = laserProgress(st, LASER_ORBIT, LASER_BEAM);
+  assert.equal(p.pass, 1);
+  assert.equal(p.energy, 0.5);
+  stepLaser(st, 15, LASER_ORBIT, LASER_BEAM);
+  assert.equal(laserProgress(st, LASER_ORBIT, LASER_BEAM).pass, 0.25);
+}
+
+console.log('Orbital laser: the clock arrives and closes, the contact slews at its metres per second, burns accumulate per kind and are reported once, energy drains only while burning.');
