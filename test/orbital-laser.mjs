@@ -6,15 +6,15 @@ import { len3, dot3, norm3 } from '../src/vec3.js';
 /* the owner's first values, pinned so a tuning session has to come through a decision entry */
 assert.deepEqual({ ...LASER_ORBIT }, { period: 180, overhead: 20 });
 assert.deepEqual({ ...LASER_BEAM }, { energy: 10, radius: 6, slew: 10, accel: 5 });
-assert.deepEqual({ ...LASER_BURN }, { soft: 0, hard: 1, wall: 0.5, tower: 1.5, seal: 1, tank: 1, heart: 3 });
+assert.deepEqual({ ...LASER_BURN }, { soft: 0, hard: 1, wall: 0.5, rock: 0.5, tower: 1.5, seal: 1, tank: 1, heart: 3 });
 assert.deepEqual({ ...LASER_VIEW }, { altitude: 4, fov: 20, inset: 0.44, groundBack: 120, groundUp: 60 });
 assert.deepEqual({ ...LASER_TRAIL }, { every: 0.8, quads: 1000, seconds: 60, hot: 4, restamp: 0.4 });
 assert.deepEqual({ ...LASER_TRAIL_SMOKE }, { every: 1.5, rate: 4, life: 7, capacity: 256, opacity: 0.85 });
 assert.equal(LASER_CONTACT_RATE, 8);
 assert.equal(LASER_SMOKE_RATE, 2);
 assert.equal(LASER_PRESET.burstRate, 0, 'a continuous beam, not a pulse train');
-assert.equal(LASER_PRESET.coreWidth, 0.6);
-assert.equal(LASER_PRESET.glowWidth, 5);
+assert.equal(LASER_PRESET.coreWidth, 2);
+assert.equal(LASER_PRESET.glowWidth, 10);
 
 /* --- the clock ---------------------------------------------------------- */
 {
@@ -123,8 +123,12 @@ assert.equal(LASER_PRESET.glowWidth, 5);
   assert.equal(st.contacts.has('t1'), false);
   burnContacts(st, [tower], 1.0, LASER_BURN);
   assert.equal(st.contacts.get('t1').seconds, 1, 'the accumulator restarts, it does not resume');
-  /* an unknown kind never finishes */
-  assert.deepEqual(burnContacts(st, [{ id: 'z', kind: 'rock', pos: [0, 753, 0] }], 99, LASER_BURN), []);
+  /* an unknown kind never finishes ('cloud': rock became a real kind, a planet lattice cell) */
+  assert.deepEqual(burnContacts(st, [{ id: 'z', kind: 'cloud', pos: [0, 753, 0] }], 99, LASER_BURN), []);
+  /* a rock cell cuts through after LASER_BURN.rock seconds, like a base wall */
+  const rock = { id: 'r1', kind: 'rock', pos: [0, 753, 0] };
+  assert.deepEqual(burnContacts(st, [rock], LASER_BURN.rock - 0.01, LASER_BURN), []);
+  assert.deepEqual(burnContacts(st, [rock], 0.01, LASER_BURN).map((d) => d.kind), ['rock']);
 }
 
 /* --- the energy drain ---------------------------------------------------- */

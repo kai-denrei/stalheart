@@ -41,6 +41,7 @@ import { LASER_ORBIT, LASER_BEAM, LASER_BURN, LASER_VIEW, LASER_PRESET, LASER_CO
 import { makeLaser, stepLaser, aimLaser, burnLaser, burnContacts, laserProgress } from '../domain/orbital-laser.js';
 import { deepLink, wireDeepLink } from '../deeplink.js';
 import { norm3 } from '../vec3.js';
+import { BLOCKED, PATH } from '../dungeon.js';
 
 const STAGE = 6;                                   /* the Stalheart's stage: the whole base stands */
 const BODIES = 20;
@@ -76,7 +77,7 @@ export function initLaserTab(root) {
     altitude: LASER_VIEW.altitude, fov: LASER_VIEW.fov, inset: LASER_VIEW.inset,
     groundBack: LASER_VIEW.groundBack, groundUp: LASER_VIEW.groundUp,
     burnSoft: LASER_BURN.soft, burnHard: LASER_BURN.hard, burnWall: LASER_BURN.wall,
-    burnTower: LASER_BURN.tower, burnSeal: LASER_BURN.seal, burnHeart: LASER_BURN.heart,
+    burnTower: LASER_BURN.tower, burnSeal: LASER_BURN.seal, burnHeart: LASER_BURN.heart, burnRock: LASER_BURN.rock,
     coreWidth: LASER_PRESET.coreWidth, glowWidth: LASER_PRESET.glowWidth,
     coreIntensity: LASER_PRESET.coreIntensity, glowIntensity: LASER_PRESET.glowIntensity,
     noiseAmount: LASER_PRESET.noiseAmount,
@@ -96,7 +97,7 @@ export function initLaserTab(root) {
   });
   const orbit = () => ({ period: P.period, overhead: P.overhead });
   const beamCfg = () => ({ energy: P.energy, radius: P.radius, slew: P.slew, accel: P.accel });
-  const burnCfg = () => ({ soft: P.burnSoft, hard: P.burnHard, wall: P.burnWall, tower: P.burnTower, seal: P.burnSeal, tank: LASER_BURN.tank, heart: P.burnHeart });
+  const burnCfg = () => ({ soft: P.burnSoft, hard: P.burnHard, wall: P.burnWall, rock: P.burnRock, tower: P.burnTower, seal: P.burnSeal, tank: LASER_BURN.tank, heart: P.burnHeart });
 
   let active = false, disposed = false, frameId = 0, last = performance.now(), clock = 0;
   let planet = null, planetMesh = null, plan = null, base = null, sphereRoot = null;
@@ -110,12 +111,16 @@ export function initLaserTab(root) {
   let trenchBack = new THREE.Vector3(0, 0, 1);
   let ready = false, held = false, burningWas = false, contactTimer = 0, smokeTimer = 0, sealed = false, sinkOpened = false;
   /* what stood in the footprint on the last burning frame, by kind: the HUD shows it so a burn that takes nothing says so */
-  const NOTHING_UNDER = Object.freeze({ soft: 0, wall: 0, tower: 0, heart: 0, seal: 0 });
+  const NOTHING_UNDER = Object.freeze({ soft: 0, wall: 0, rock: 0, tower: 0, heart: 0, seal: 0 });
   let under = { ...NOTHING_UNDER };
   /* declared with the rest of the state, not with the panel below, because paintHud reads them */
   let flashT = 0, flashMsg = '';
   const errors = [];
-  const run = { bodies: 0, walls: 0, towers: 0, heart: 'INTACT' };
+  const run = { bodies: 0, walls: 0, rocks: 0, towers: 0, heart: 'INTACT' };
+  /* ROCK: the planet's BLOCKED lattice cells, breakable as a tank shell breaks them. The tags as built (for REVIVE), the
+     cells a structure or socket stands on (never breached, the way a mounted tower anchors its wall), and a throttle
+     on the planet mesh rebuild a breach needs (buildStoryPlanetMesh has no per-cell patch and takes ~150 ms). */
+  let rockTags0 = null, rockAnchors = new Set(), rockDirty = false, rockRebuildIn = 0;
   const st = makeLaser(orbit(), beamCfg());
   let steerN = [0.5, 0.5], steering = false;
 
@@ -201,9 +206,9 @@ export function initLaserTab(root) {
     elEnergy.classList.toggle('hot', st.energy <= 0);
     const label = st.energy <= 0 ? 'OUT' : 'ENERGY';
     if (elEnergyLabel.textContent !== label) elEnergyLabel.textContent = label;
-    const read = `bodies ${run.bodies} · walls ${run.walls} · towers ${run.towers} · sinkhole ${sealed ? 'SEALED' : 'OPEN'}`
+    const read = `bodies ${run.bodies} · base walls ${run.walls} · rock ${run.rocks} · towers ${run.towers} · sinkhole ${sealed ? 'SEALED' : 'OPEN'}`
       + ` · stalheart ${run.heart} · ${st.energy.toFixed(1)} s left`
-      + (st.burning ? ` · under the beam: ${under.wall} wall · ${under.tower + under.heart} tower · ${under.soft} body${under.seal ? ' · the sinkhole' : ''}` : '');
+      + (st.burning ? ` · under the beam: ${under.wall} base wall · ${under.rock} rock · ${under.tower + under.heart} tower · ${under.soft} body${under.seal ? ' · the sinkhole' : ''}` : '');
     if (elRead.textContent !== read) elRead.textContent = read;
     elLost.hidden = run.heart !== 'LOST';
     const note = flashT > 0 ? flashMsg : '';
@@ -394,6 +399,9 @@ export function initLaserTab(root) {
       structs.push({ id: `sentry-${name}`, holder: obj, root: obj, gone: false, shown: true, heart: false, p: obj.position.clone() });
     }
 
+    rockTags0 = Uint8Array.from(planet.dungeon.tags);
+    rockAnchors = new Set([...plan.structures, ...(plan.sockets || [])].map((s) => s.cell).filter((c) => Number.isInteger(c) && c >= 0));
+
     /* the trench: from the sinkhole's cell up the sightline to the gate */
     const holeF = plan.cells.fodder >= 0 ? frameOfCell(plan.cells.fodder) : [0, -240];
     const gateF = plan.gate ? [plan.gate.x, plan.gate.z] : [0, -120];
@@ -573,6 +581,16 @@ export function initLaserTab(root) {
       if (s.gone || !s.holder.visible || !near(s.p)) continue;
       out.push({ id: s.id, kind: s.heart ? 'heart' : 'tower', pos: [s.p.x, s.p.y, s.p.z], struct: s });
     }
+    /* rock: a BLOCKED cell whose centre lies within the footprint plus half a cell, measured along the sphere, so the
+       footprint touching a cell is enough; the anchors under structures and sockets stay */
+    const dir = normalOf(point), cosReach = Math.cos((r + cellSide * 0.5) / R);
+    const centers = planet.graph.centers, tags = planet.dungeon.tags;
+    for (let ci = 0; ci < centers.length; ci++) {
+      if (tags[ci] !== BLOCKED || rockAnchors.has(ci)) continue;
+      const c = centers[ci];
+      if (c[0] * dir.x + c[1] * dir.y + c[2] * dir.z < cosReach) continue;
+      out.push({ id: `rock-${ci}`, kind: 'rock', pos: [c[0] * R, c[1] * R - R, c[2] * R], rock: ci });
+    }
     if (!sealed && near(sinkPoint)) {
       out.push({ id: 'sinkhole', kind: 'seal', pos: [sinkPoint.x, sinkPoint.y, sinkPoint.z], sink: true });
     }
@@ -611,6 +629,17 @@ export function initLaserTab(root) {
       burstAt(thing.struct.p.clone(), 0xdfe8ee);
       fire('laser.ignite', thing.struct.p);
       if (thing.struct.heart) { run.heart = 'LOST'; } else { run.towers++; }
+      return;
+    }
+    if (thing.rock !== undefined) {
+      /* the cell opens to floor as a tank shell opens it; the mesh catches up on the next throttled rebuild */
+      planet.dungeon.tags[thing.rock] = PATH;
+      const at = tmpA.set(thing.pos[0], thing.pos[1], thing.pos[2]);
+      const top = at.clone().addScaledVector(normalOf(at), STORY_RECIPE.wallMetres / 2);
+      burstAt(top, 0x8e8983);
+      fire('laser.ignite', top);
+      run.rocks++;
+      rockDirty = true;
       return;
     }
     if (thing.sink) {
@@ -681,6 +710,9 @@ export function initLaserTab(root) {
     /* the sinkhole opens itself once its stone textures are in: nothing else polls it here */
     if (!sinkOpened && !sealed && sink.ready()) { sink.trigger(); sinkOpened = true; }
     applyBurn(dt);
+    /* breached rock: at most one planet mesh rebuild every 0.3 s, however many cells a sweep opens */
+    rockRebuildIn = Math.max(0, rockRebuildIn - dt);
+    if (rockDirty && rockRebuildIn === 0) rebuildPlanetMesh();
     stepBodies(dt, clock);
     stepBursts(dt);
     explosions?.tick(dt);
@@ -705,7 +737,8 @@ export function initLaserTab(root) {
     for (const s of structs) { s.gone = false; s.holder.visible = s.shown; }
     buildBodies();
     st.contacts.clear();
-    Object.assign(run, { bodies: 0, walls: 0, towers: 0, heart: 'INTACT' });
+    if (rockTags0 && planet.dungeon.tags.some((t, i) => t !== rockTags0[i])) { planet.dungeon.tags.set(rockTags0); rebuildPlanetMesh(); }
+    Object.assign(run, { bodies: 0, walls: 0, rocks: 0, towers: 0, heart: 'INTACT' });
     flash(sealed ? 'targets revived; the sealed sinkhole needs RESET' : 'targets revived');
   }
 
@@ -714,6 +747,15 @@ export function initLaserTab(root) {
     const url = new URL(location.href);
     if (P.infinite) url.searchParams.set('infinite', '1'); else url.searchParams.delete('infinite');
     history.replaceState(history.state, '', url);
+  }
+
+  function rebuildPlanetMesh() {
+    rockDirty = false;
+    rockRebuildIn = 0.3;
+    scene.remove(planetMesh);
+    planetMesh.userData.dispose?.();
+    planetMesh = buildStoryPlanetMesh(planet, look, { wallMetres: STORY_RECIPE.wallMetres });
+    scene.add(planetMesh);
   }
 
   function passNow() {
@@ -785,7 +827,8 @@ export function initLaserTab(root) {
   const gk = gui.addFolder('seconds to destroy');
   gk.add(P, 'burnSoft', 0, 4, 0.05).name('soft body');
   gk.add(P, 'burnHard', 0, 6, 0.05).name('hard body');
-  gk.add(P, 'burnWall', 0, 6, 0.05).name('wall cell');
+  gk.add(P, 'burnWall', 0, 6, 0.05).name('base wall');
+  gk.add(P, 'burnRock', 0, 6, 0.05).name('rock cell');
   gk.add(P, 'burnTower', 0, 8, 0.05).name('tower');
   gk.add(P, 'burnSeal', 0, 8, 0.05).name('sinkhole');
   gk.add(P, 'burnHeart', 0, 20, 0.1).name('stalheart');
@@ -856,6 +899,7 @@ export function initLaserTab(root) {
       contact: st.contact ? fromCentre(st.contact).toArray().map((v) => +v.toFixed(2)) : null,
       bodies: run.bodies,
       walls: run.walls,
+      rocks: run.rocks,
       towers: run.towers,
       heart: run.heart,
       sealed,

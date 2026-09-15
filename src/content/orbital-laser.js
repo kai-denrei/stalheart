@@ -13,7 +13,9 @@ export const LASER_BEAM = Object.freeze({ energy: 10, radius: 6, slew: 10, accel
 
 // seconds of contact needed to destroy each kind. A body dies the instant the footprint touches it; the Stalheart
 // takes three seconds of deliberate dragging, which is long enough that nobody loses the colony by accident.
-export const LASER_BURN = Object.freeze({ soft: 0, hard: 1.0, wall: 0.5, tower: 1.5, seal: 1.0, tank: 1.0, heart: 3.0 });
+// wall is a BASE WALL cell (the kit wall segments either side of the gate); rock is a ROCK cell, the planet's own raised
+// lattice (a BLOCKED cell), which the laser breaks as a tank shell does (owner, 2026-09-15).
+export const LASER_BURN = Object.freeze({ soft: 0, hard: 1.0, wall: 0.5, rock: 0.5, tower: 1.5, seal: 1.0, tank: 1.0, heart: 3.0 });
 
 // altitude is in planet radii above the surface; fov in degrees; inset as a share of the viewport width;
 // groundBack / groundUp are metres behind and above the contact for the ground camera
@@ -26,11 +28,12 @@ export const LASER_VIEW = Object.freeze({ altitude: 4, fov: 20, inset: 0.44, gro
 // returns 1 from burstEnvelope when the rate is zero), because this weapon is a held beam and not a pulse train.
 export const LASER_PRESET = Object.freeze({
   coreColor: '#ffffff',
-  coreWidth: 0.6,
-  coreIntensity: 2.4,
+  // the owner's look (2026-09-15): a 2 m white core in a 10 m glow, both driven hard, interference full
+  coreWidth: 2,
+  coreIntensity: 5.1,
   glowColor: '#6f7cff',
-  glowWidth: 5,
-  glowIntensity: 4.6,
+  glowWidth: 10,
+  glowIntensity: 12,
   glowFalloff: 2.6,
   capStart: 0.02,
   // BOTH CAPS ARE FRACTIONS OF THE BEAM'S OWN LENGTH, and the shader tapers the WIDTH across them
@@ -45,7 +48,7 @@ export const LASER_PRESET = Object.freeze({
   blast: 0.4,
   scrollSpeed: -9,
   noiseScale: 21,
-  noiseAmount: 0.45,
+  noiseAmount: 1,
   flicker: 0.28,
   jitterAmount: 0.22,
   jitterFreq: 44,
