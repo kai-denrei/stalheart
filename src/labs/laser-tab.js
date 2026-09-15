@@ -514,11 +514,22 @@ export function initLaserTab(root) {
     ground.lookAt(point);
   }
 
+  // WHERE "UP" IS FOR THE PLAYER: the ground camera's forward (it stands back along the trench and looks down it),
+  // laid onto the ground at `point`. The scope is heading-up along it and WASD moves along it, so W is up on both views
+  // and D is right (owner, 2026-09-15: north-up keys read inverted, because the trench, and so the camera, faces south).
+  function viewForward(point) {
+    const n = normalOf(point);
+    const f = trenchBack.clone().multiplyScalar(-1);
+    f.addScaledVector(n, -f.dot(n));
+    if (f.lengthSq() < 1e-8) f.copy(north).addScaledVector(n, -north.dot(n));
+    return f.normalize();
+  }
+
   function frameSat(point) {
     const n = normalOf(point);
     sat.fov = P.fov;
     sat.position.copy(n).multiplyScalar(R * (1 + P.altitude)).add(tmpB.set(0, -R, 0));
-    sat.up.copy(north);
+    sat.up.copy(viewForward(point));
     sat.lookAt(point);
     sat.updateProjectionMatrix();
   }
@@ -642,10 +653,10 @@ void main(){
     perf.triangles = renderer.info.render.triangles;
     renderer.info.reset();
     clock += dt;
-    if (!ready) { renderer.render(scene, ground); return; }
-    step(dt);
-    render();
-    insetHud.draw(hudFrame(), dt);
+    if (!ready) { guard('loading', () => renderer.render(scene, ground)); return; }
+    guard('step', () => step(dt));
+    guard('render', render);
+    guard('scope', () => insetHud.draw(hudFrame(), dt));
   }
 
   // ONE FRAME FOR THE INSET HUD, in canvas pixels: the aim (where the pointer is, or the contact when nothing steers),
@@ -668,6 +679,10 @@ void main(){
     }
     const dir = normalOf(anchor);
     const rangeM = sat.position.distanceTo(anchor);
+    /* where north points on the heading-up lens, clockwise from up, so the bezel's letters stay true */
+    const northT = north.clone().addScaledVector(dir, -north.dot(dir)).normalize();
+    const pc = px(anchor), pn = px(anchor.clone().addScaledVector(northT, 50));
+    const northAngle = Math.atan2(pn.x - pc.x, -(pn.y - pc.y));
     const p = laserProgress(st, orbit(), beamCfg());
     return {
       rect: r, aim, contact, footprintPx, lagM, aiming, limitM: P.range, aimArcM: aimArc,
@@ -678,7 +693,7 @@ void main(){
       lat: (Math.asin(Math.max(-1, Math.min(1, dir.y))) * 180) / Math.PI, lon: (Math.atan2(dir.x, dir.z) * 180) / Math.PI,
       deliveredMJ: (P.energy - st.energy) * LASER_TELEMETRY.powerMW, capMJ: P.energy * LASER_TELEMETRY.powerMW,
       counts: { bodies: run.bodies, walls: run.walls, rocks: run.rocks, towers: run.towers, alive: bodies.filter((b) => b.alive).length },
-      sealed, heart: run.heart, under,
+      sealed, heart: run.heart, under, northAngle,
     };
   }
 
@@ -795,7 +810,8 @@ void main(){
 
   // THE KEYS PRE-POSITION (owner, 2026-09-15: "WASD could be an additional fast way to pre-position the laser, and the
   // current method the firing method"). While the beam is not firing, W/A/S/D or the arrows slide the contact straight
-  // across the ground at P.padSpeed, north up as the scope shows it, ignoring the slew and its inertia; a key takes the
+  // across the ground at P.padSpeed, screen-relative (W away from the ground camera, up on the heading-up scope),
+  // ignoring the slew and its inertia; a key takes the
   // aim from the pointer until the pointer moves again. While it fires, the keys do nothing: the hold is the weapon.
   const keys = new Set();
   const PAD_KEYS = { KeyW: [0, 1], ArrowUp: [0, 1], KeyS: [0, -1], ArrowDown: [0, -1], KeyA: [-1, 0], ArrowLeft: [-1, 0], KeyD: [1, 0], ArrowRight: [1, 0] };
@@ -812,17 +828,18 @@ void main(){
   addEventListener('keyup', onKeyUp);
   addEventListener('blur', onBlur);
 
-  /* dx east, dz north. NOT named `north`: that is the lab's north direction vector, and shadowing it made
+  /* dx right, dz forward. NOT named `north`: that is the lab's north direction vector, and shadowing it made
      north.clone() throw on the first key frame, which aborted step() before render() and froze the scope */
   function padContact(dx, dz, seconds) {
     if (held || st.burning || (!dx && !dz)) return;
     const len = Math.hypot(dx, dz) || 1;
     const from = st.contact ? fromCentre(st.contact) : trenchPoint(queueTail());
     const n = normalOf(from);
-    const northT = north.clone().addScaledVector(n, -north.dot(n)).normalize();
-    const eastT = new THREE.Vector3().crossVectors(northT, n);
+    /* screen-relative: forward is up on the ground view and on the heading-up scope, right is forward x up */
+    const forward = viewForward(from);
+    const right = new THREE.Vector3().crossVectors(forward, n);
     const step = P.padSpeed * seconds / len;
-    const moved = toCentre(from.clone().addScaledVector(eastT, dx * step).addScaledVector(northT, dz * step));
+    const moved = toCentre(from.clone().addScaledVector(right, dx * step).addScaledVector(forward, dz * step));
     let target = norm3(moved).map((c) => c * R);
     if (P.holdRange) target = clampToRange(target, P.range).target;
     st.contact = target;
@@ -887,37 +904,60 @@ void main(){
     for (const entry of burnContacts(st, things, dt, burnCfg())) destroy(entry);
   }
 
+  // A FRAME THAT FAILS IN ONE PLACE KEEPS DRAWING (owner, 2026-09-15). Each stage of the frame runs guarded: an error
+  // is recorded in state().errors, flashed on the HUD and logged once per distinct message, and the other stages go
+  // on. One throw used to abort step() before render() and freeze the whole lab on its last frame.
+  const frameErrors = new Set();
+  function guard(stage, fn) {
+    try {
+      fn();
+    } catch (e) {
+      const message = `${stage}: ${e?.message || e}`;
+      if (frameErrors.has(message)) return;
+      frameErrors.add(message);
+      if (errors.length < 50) errors.push(message);
+      console.error(`LASERLAB frame error in ${message}`, e);
+      flash(`error in ${message}`);
+    }
+  }
+
   function step(dt) {
-    /* infinite: hold the pass open and the budget full before the clock runs, so it never closes or runs out */
-    if (P.infinite) {
-      if (st.phase !== 'overhead') { st.phase = 'overhead'; st.fresh = true; }
-      st.left = P.overhead;
-      st.energy = P.energy;
-    }
-    const edge = stepLaser(st, dt, orbit(), beamCfg());
-    if (edge === 'close') laser.lift();
+    guard('pass', () => {
+      /* infinite: hold the pass open and the budget full before the clock runs, so it never closes or runs out */
+      if (P.infinite) {
+        if (st.phase !== 'overhead') { st.phase = 'overhead'; st.fresh = true; }
+        st.left = P.overhead;
+        st.energy = P.energy;
+      }
+      const edge = stepLaser(st, dt, orbit(), beamCfg());
+      if (edge === 'close') laser.lift();
+    });
     /* the sinkhole opens itself once its stone textures are in: nothing else polls it here */
-    if (!sinkOpened && !sealed && sink.ready()) { sink.trigger(); sinkOpened = true; }
-    padFromKeys(dt);
-    applyBurn(dt);
+    guard('sinkhole open', () => { if (!sinkOpened && !sealed && sink.ready()) { sink.trigger(); sinkOpened = true; } });
+    guard('keys', () => padFromKeys(dt));
+    guard('burn', () => applyBurn(dt));
     /* the silent red pointer, while the column is not firing: where it will land, on the real ground height */
-    if (!st.burning) {
-      const at = st.contact ? fromCentre(st.contact) : trenchPoint(queueTail());
-      laser.guideAt(surfaceAt(at), normalOf(at), st.phase === 'overhead' || P.infinite ? 1 : 0.35);
-    } else {
-      laser.hideGuide();
-    }
-    stepBodies(dt, clock);
-    stepBursts(dt);
-    explosions?.tick(dt);
-    rubble?.update(dt);
-    sink?.update(dt, clock);
-    base?.tick(dt, null, false, ground.position);
-    laser.tick(dt, laserProgress(st, orbit(), beamCfg()).energy);
-    const anchor = st.contact ? fromCentre(st.contact) : trenchPoint(queueTail());
-    frameSat(anchor);
-    frameGround(anchor);
-    paintHud();
+    guard('pointer', () => {
+      if (!st.burning) {
+        const at = st.contact ? fromCentre(st.contact) : trenchPoint(queueTail());
+        laser.guideAt(surfaceAt(at), normalOf(at), st.phase === 'overhead' || P.infinite ? 1 : 0.35);
+      } else {
+        laser.hideGuide();
+      }
+    });
+    guard('bodies', () => stepBodies(dt, clock));
+    guard('bursts', () => stepBursts(dt));
+    guard('explosions', () => explosions?.tick(dt));
+    guard('rubble', () => rubble?.update(dt));
+    guard('sinkhole', () => sink?.update(dt, clock));
+    guard('base', () => base?.tick(dt, null, false, ground.position));
+    guard('laser', () => laser.tick(dt, laserProgress(st, orbit(), beamCfg()).energy));
+    guard('cameras', () => {
+      const anchor = st.contact ? fromCentre(st.contact) : trenchPoint(queueTail());
+      frameGround(anchor);
+      frameSat(anchor);
+    });
+    guard('hud', paintHud);
     if (flashT > 0) flashT = Math.max(0, flashT - dt);
   }
 

@@ -225,8 +225,10 @@ export function createInsetHud(container) {
     ctx.lineWidth = 2;
     circle(cx, cy, lens - 1);
     ctx.lineWidth = 1;
+    /* the lens is heading-up (the player's forward), so the bezel turns to keep N on north */
+    const turn = f.northAngle || 0;
     for (let deg = 0; deg < 360; deg += 10) {
-      const ang = (deg * Math.PI) / 180 - Math.PI / 2, long = deg % 30 === 0;
+      const ang = (deg * Math.PI) / 180 - Math.PI / 2 + turn, long = deg % 30 === 0;
       const r1 = lens - 2, r2 = lens - (long ? 12 : 6);
       ctx.strokeStyle = long ? FG : DIM;
       line(cx + Math.cos(ang) * r1, cy + Math.sin(ang) * r1, cx + Math.cos(ang) * r2, cy + Math.sin(ang) * r2);
@@ -234,7 +236,7 @@ export function createInsetHud(container) {
     ctx.fillStyle = FG;
     ctx.textAlign = 'center';
     for (const [label, deg] of [['N', 0], ['E', 90], ['S', 180], ['W', 270]]) {
-      const ang = (deg * Math.PI) / 180 - Math.PI / 2;
+      const ang = (deg * Math.PI) / 180 - Math.PI / 2 + turn;
       ctx.fillText(label, cx + Math.cos(ang) * (lens - 22), cy + Math.sin(ang) * (lens - 22) - 6);
     }
 
