@@ -56,6 +56,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
   const group = new THREE.Group(); group.name = 'Story base'; scene.add(group);
   const mixers = [], owned = new Set(), errors = [], bays = [], lod = [];
   const records = new Map();   // every landmark by id, for the beats' hands (reveal, conceal, structure)
+  const dropped = new Set(), ZERO = new THREE.Matrix4().set(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);   // kit wall segments burned away (walls(), dropWall())
   const own = (root) => root.traverse((o) => { if (o.geometry) owned.add(o.geometry); for (const m of [o.material].flat().filter(Boolean)) owned.add(m); });
   // tilt (degrees about the local X, a wreck on its side) and lift (metres up, after the tilt) are for props that do not stand on their base
   const place = (obj, x, z, y, heading, scale = 1, tilt = 0, lift = 0) => {
@@ -180,6 +181,12 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     conceal: (id) => { const r = records.get(id); if (r) r.holder.visible = false; },
     structure: (id) => { const r = records.get(id); return r ? { holder: r.holder, root: r.near ?? r.far, near: r.near, far: r.far } : null; },
     bays: () => bays,
+    // THE KIT WALLS for a weapon that can burn them (SOL-82): each standing segment's index, its lattice cell (-1 on the
+    // gate's own cell) and where it stands on the host's sphere, halfway up; drop(k) takes segment k out of every walls
+    // mesh for good. anchors(): the cells under structures and sockets, which nothing breaks.
+    walls: () => plan.walls.map((w, k) => ({ index: k, cell: w.cell, pos: placer.toWorld([w.x, (w.y + kit.wallMetres / 2), w.z]).toArray() })).filter((w) => !dropped.has(w.index)),
+    dropWall: (k) => { if (dropped.has(k)) return; dropped.add(k); for (const o of group.children) if (o.isInstancedMesh && o.name === 'walls') { o.setMatrixAt(k, ZERO); o.instanceMatrix.needsUpdate = true; } },
+    anchors: () => new Set([...plan.structures, ...(plan.sockets || [])].map((s) => s.cell).filter((c) => Number.isInteger(c) && c >= 0)),
     lod: () => lod.map((l) => ({ id: l.id, shown: l.shown, nearLoaded: !!l.near, files: l.files, metres: l.d === undefined ? null : +(l.d / metres).toFixed(0) })),
     dispose() { for (const m of mixers) m.stopAllAction(); gate.mixer?.stopAllAction(); for (const r of owned) r.dispose(); scene.remove(group); },
   };

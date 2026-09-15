@@ -136,6 +136,27 @@ export function burnContacts(st, things, dt, burn) {
   return finished;
 }
 
+// What stands in the footprint. `things` are { pos, reach? } in the contact's own frame; a thing is in when its position
+// lies within radius + its reach (metres the thing itself spans: a breach's rim, a tower's footing) of the contact,
+// measured as a straight chord, which at a few metres is the arc.
+export function inFootprint(contact, radius, things) {
+  if (!contact) return [];
+  return things.filter((t) => {
+    const r = radius + (t.reach || 0);
+    const dx = t.pos[0] - contact[0], dy = t.pos[1] - contact[1], dz = t.pos[2] - contact[2];
+    return dx * dx + dy * dy + dz * dz <= r * r;
+  });
+}
+
+// The views strip's words for SOL-82: hidden while it is offline, `SOL-82 mm:ss` counting down to the next pass, lit
+// OVERHEAD through the pass, and a warning once the pass's energy is under `lowShare` of the budget.
+export function laserStrip(st, online, beam, lowShare) {
+  if (!online) return { shown: false, live: false, warn: false, text: 'SOL-82' };
+  if (st.phase === 'overhead') return { shown: true, live: true, warn: st.energy < beam.energy * lowShare, text: 'SOL-82 OVERHEAD' };
+  const s = Math.max(0, Math.ceil(st.left));
+  return { shown: true, live: false, warn: false, text: `SOL-82 ${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}` };
+}
+
 // For the HUD: how much of the CURRENT phase is left, and how much of the pass's budget is left.
 export function laserProgress(st, orbit, beam) {
   const span = st.phase === 'overhead' ? orbit.overhead : Math.max(1e-6, orbit.period - orbit.overhead);
