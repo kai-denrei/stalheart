@@ -10,19 +10,26 @@ const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 
 // the flags switch systems on and stay on once a sector has turned them on: gunshipCall (the call-in meter), backDoor (the
 // sealed clearing mouth nearest +Z reopens), laser (SOL-82 passes), hardcoresEveryWave (a hard core joins every wave)
 // held: what a breach held to its last wave pays when it collapses on its own. brief: Isao's two lines on the brief card
-// ladderStart: the computeWavePlan ladder wave before a breach's first wave. The ladder does NOT add up across sectors:
-// summed, sector 3 would fight ladder waves 8 to 12, about 670 bodies a breach once the invasion surge starts at wave 9.
-// The sector's threat does the growing instead, and SECTOR_GENERATOR.ladderCap keeps every programme below the surge.
+// ladderStart: the computeWavePlan ladder wave before a breach's first wave. The ladder does NOT add up across sectors; the
+// sector's threat and its ladder window do the growing.
+//
+// THE CLIMB (owner, 2026-09-16: "slow start, then it should start getting hectic... hundreds of low levels, a few more hardcores").
+// The old table capped every programme at ladder 8, BELOW computeWavePlan's invasion surge — and the surge is the only thing in the
+// ladder that puts low-belt bodies on the ground in the hundreds (it re-floods amoeba and ghost on top of the wave). Capping under
+// it meant the late waves SHRANK: a sector-3 wave went 90 bodies, then 66, because the headline turned non-rammable and its density
+// rule halves instead of multiplying. So the windows now climb THROUGH the surge, and the hard cores are a small explicit count
+// (`hardcores`) rather than the twenty-odd solid bodies the surge throws in on its own.
+// hardcores: how many solid cores ride every wave once hardcoresEveryWave is on.
 export const SECTORS = freeze([
-  { n: 1, name: 'THE LANE', breaches: { gate: 2 }, waves: 3, ladderStart: 0, threat: 1.0, held: { kg: 40, points: 400 },
+  { n: 1, name: 'THE LANE', breaches: { gate: 2 }, waves: 4, ladderStart: 0, threat: 1.0, held: { kg: 40, points: 400 },
     gunshipCall: true, backDoor: false, laser: false, hardcoresEveryWave: false, new: 'the gunship call-in',
-    brief: ['Two mouths out on the lane. They come three times each.', 'Close one early and you give up what it would have paid.'] },
-  { n: 2, name: 'THE BACK DOOR', breaches: { gate: 1, back: 1 }, waves: 4, ladderStart: 1, threat: 1.3, held: { kg: 50, points: 500 },
+    brief: ['Two mouths out on the lane. They come four times each.', 'Close one early and you give up what it would have paid.'] },
+  { n: 2, name: 'THE BACK DOOR', breaches: { gate: 1, back: 1 }, waves: 4, ladderStart: 2, threat: 1.4, held: { kg: 50, points: 500 },
     gunshipCall: true, backDoor: true, laser: true, hardcoresEveryWave: false, new: 'the back mouth opens; SOL-82 online',
     brief: ['The rock behind the bays gave way. Something is walking in there.', 'SOL-82 is ours now. Mind where you point it.'] },
-  { n: 3, name: 'BOTH WALLS', breaches: { gate: 1, back: 1 }, waves: 5, ladderStart: 3, threat: 1.7, held: { kg: 60, points: 600 },
-    gunshipCall: true, backDoor: true, laser: true, hardcoresEveryWave: true, new: 'hard cores in every wave',
-    brief: ['Every wave brings a hard core now. Do not ram them.', 'One front each side. Split the tank and the sky between them.'] },
+  { n: 3, name: 'BOTH WALLS', breaches: { gate: 1, back: 1 }, waves: 6, ladderStart: 6, threat: 1.9, held: { kg: 60, points: 600 },
+    gunshipCall: true, backDoor: true, laser: true, hardcoresEveryWave: true, hardcores: 2, new: 'hard cores in every wave',
+    brief: ['Every wave brings hard cores now. Do not ram them.', 'One front each side. Split the tank and the sky between them.'] },
 ]);
 
 // SECTOR 4 ONWARD is generated from the last authored sector: its flags carry over, `new` is null.
@@ -31,9 +38,10 @@ export const SECTORS = freeze([
 // last authored one. sides cycles by sector, (n - SECTORS.length - 1) % sides.length: 4 both on the gate, 5 both at the
 // back, 6 the gate again. held grows heldStep a sector. Generated breaches start the ladder at ladderStart; ladderCap is
 // the highest ladder wave any sector's wave is sized at (8: the last of the unlock ladder, before the invasion surge), so a
-// long generated programme repeats its top wave at a climbing threat.
+// long generated programme repeats its top wave at a climbing threat. The cap sits inside the invasion surge now (see SECTORS): 12
+// is where a generated sector's last waves land in the mid-hundreds alive, which is the frame budget this machine holds, not past it.
 export const SECTOR_GENERATOR = freeze({
-  name: 'SECTOR', wavesBase: 5, threatStep: 0.35, ladderStart: 3, ladderCap: 8, held: { kg: 60, points: 600 }, heldStep: { kg: 10, points: 100 },
+  name: 'SECTOR', wavesBase: 6, threatStep: 0.2, ladderStart: 6, ladderCap: 11, held: { kg: 60, points: 600 }, heldStep: { kg: 10, points: 100 },
   sides: [{ gate: 2 }, { back: 2 }],
   brief: ['They are still coming, and there are more of them each time.', 'Hold both mouths. The colony is watching.'],
 });

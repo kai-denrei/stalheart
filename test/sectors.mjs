@@ -9,7 +9,7 @@ import { SENTRY_ORDER } from '../src/content/sentries.js';
 
 // the authored table is the spec's
 assert.deepEqual(SECTORS.map((s) => [s.n, s.name, s.breaches, s.waves, s.threat]), [
-  [1, 'THE LANE', { gate: 2 }, 3, 1.0], [2, 'THE BACK DOOR', { gate: 1, back: 1 }, 4, 1.3], [3, 'BOTH WALLS', { gate: 1, back: 1 }, 5, 1.7]]);
+  [1, 'THE LANE', { gate: 2 }, 4, 1.0], [2, 'THE BACK DOOR', { gate: 1, back: 1 }, 4, 1.4], [3, 'BOTH WALLS', { gate: 1, back: 1 }, 6, 1.9]]);
 assert.deepEqual(SECTORS.map((s) => [s.backDoor, s.laser, s.hardcoresEveryWave]), [[false, false, false], [true, true, false], [true, true, true]]);
 assert.ok(Object.isFrozen(SECTORS[0].breaches) && Object.isFrozen(SECTOR_GENERATOR.sides[0]), 'content is frozen through');
 for (const s of SECTORS) assert.ok(s.held.kg > 0 && s.held.points > 0 && s.brief.length === 2, `${s.name}: a held bonus and two lines`);
@@ -27,7 +27,7 @@ for (const type of Object.keys(ENEMY_SPEC)) {
 
 // sectorDef: authored rows continue the wave ladder, generated rows grow
 const def = (n) => sectorDef(n, SECTORS, SECTOR_GENERATOR);
-assert.deepEqual([1, 2, 3].map((n) => def(n).waveBase), [0, 1, 3], 'each sector starts the ladder where content says');
+assert.deepEqual([1, 2, 3].map((n) => def(n).waveBase), [0, 2, 6], 'each sector starts the ladder where content says');
 assert.ok([1, 2, 3, 4, 9].every((n) => def(n).ladderCap === SECTOR_GENERATOR.ladderCap), 'one ladder cap for every sector');
 for (const n of [1, 2, 3, 4, 5, 6]) assert.ok(def(n).waveBase + 1 <= def(n).ladderCap, `sector ${n}: the first wave sits under the cap`);
 assert.equal(def(0).n, 1, 'n below one is sector one');
@@ -35,27 +35,42 @@ assert.equal(def(2).name, 'THE BACK DOOR');
 const gen = [4, 5, 6].map(def);
 assert.deepEqual(gen.map((d) => d.n), [4, 5, 6]);
 assert.deepEqual(gen.map((d) => d.name), ['SECTOR 4', 'SECTOR 5', 'SECTOR 6']);
-assert.deepEqual(gen.map((d) => d.waves), [6, 7, 8], 'waves 5 + n past the table');
-assert.deepEqual(gen.map((d) => d.threat), [2.05, 2.4, 2.75], 'threat +0.35 a sector');
+assert.deepEqual(gen.map((d) => d.waves), [7, 8, 9], 'waves wavesBase + n past the table');
+assert.deepEqual(gen.map((d) => d.threat), [2.1, 2.3, 2.5], 'threat +0.2 a sector');
 assert.deepEqual(gen.map((d) => d.breaches), [{ gate: 2 }, { back: 2 }, { gate: 2 }], 'the pair alternates sides');
-assert.deepEqual(gen.map((d) => d.waveBase), [3, 3, 3], 'generated sectors start the ladder where sector 3 did');
+assert.deepEqual(gen.map((d) => d.waveBase), [6, 6, 6], 'generated sectors start the ladder where sector 3 did');
 assert.ok(gen.every((d) => d.laser && d.backDoor && d.hardcoresEveryWave && d.new === null), 'flags carry over, nothing new');
 assert.ok(gen.every((d) => Object.values(d.breaches).reduce((a, b) => a + b, 0) === 2), 'two breaches each');
 assert.ok(gen[1].held.kg > gen[0].held.kg && gen[2].held.points > gen[1].held.points, 'the held bonus grows');
+
+// THE CLIMB (owner, 2026-09-16: "slow start, then it should start getting hectic... hundreds of low levels, a few more hardcores").
+// Sector 1 opens gently and every sector's biggest wave beats the last one's, through the invasion surge the old ladder cap held
+// every programme below — which is what made the late waves SHRINK instead of swell.
+{
+  const bodies = (d, i) => computeWavePlan(Math.min(d.ladderCap, d.waveBase + i), 1, 4, d.threat).entries.reduce((n, e) => n + e.count, 0)
+    + (d.hardcoresEveryWave ? d.hardcores ?? 1 : 0);
+  const alive = (d, i) => bodies(d, i) * Object.values(d.breaches).reduce((a, b) => a + b, 0);
+  const peaks = [1, 2, 3, 4, 5, 6].map((n) => { const d = def(n); return Math.max(...Array.from({ length: d.waves }, (_, k) => alive(d, k + 1))); });
+  assert.ok(alive(def(1), 1) <= 12, `sector 1 opens gently (${alive(def(1), 1)} alive)`);
+  for (let i = 1; i < peaks.length; i++) assert.ok(peaks[i] > peaks[i - 1], `sector ${i + 1} peaks harder than the one before (${peaks})`);
+  assert.ok(peaks[2] >= 300, `sector 3 fights in the hundreds (${peaks[2]})`);
+  assert.ok(Math.max(...peaks) <= 520, `...and never past the frame budget this machine holds (${peaks})`);
+  assert.equal(SECTORS[2].hardcores, 2, 'a few hard cores a wave, not the twenty the surge throws in on its own');
+}
 
 // the programme: release, close, spend
 const d2 = def(2);
 const st = makeSector(d2, [{ id: 'g', side: 'gate', cell: 10 }, { id: 'b', side: 'back', cell: 20 }], 100);
 assert.equal(st.breaches.length, 2);
 assert.ok(breachLive(st, 'g') && breachLive(st, 'b') && !breachLive(st, 'x'));
-assert.equal(nextWaveIndex(st, 'g'), 2, 'sector 2 starts at ladder wave 2');
+assert.equal(nextWaveIndex(st, 'g'), 3, 'sector 2 starts at ladder wave 3');
 assert.equal(spendBreach(st, 'g', 101), null, 'a breach with waves to send cannot be spent');
 const waves = [];
 for (let i = 0; i < 6; i++) waves.push(releaseWave(st, 'g', 100 + i));
-assert.deepEqual(waves, [{ wave: 2, last: false }, { wave: 3, last: false }, { wave: 4, last: false }, { wave: 5, last: true }, null, null]);
+assert.deepEqual(waves, [{ wave: 3, last: false }, { wave: 4, last: false }, { wave: 5, last: false }, { wave: 6, last: true }, null, null]);
 {
   const s4 = makeSector(def(4), [{ id: 'a', side: 'gate', cell: 1 }], 0);
-  assert.deepEqual(Array.from({ length: 6 }, (_, i) => releaseWave(s4, 'a', i).wave), [4, 5, 6, 7, 8, 8], 'a long programme repeats its top wave at the cap');
+  assert.deepEqual(Array.from({ length: 6 }, (_, i) => releaseWave(s4, 'a', i).wave), [7, 8, 9, 10, 11, 11], 'a long programme repeats its top wave at the cap');
 }
 assert.equal(nextWaveIndex(st, 'g'), null);
 assert.equal(isSecure(st, 0), false, 'open breaches keep the sector unsecure');
@@ -76,7 +91,7 @@ assert.equal(isSecure(st, 0), true);
 assert.deepEqual(summary(st), { sector: 2, name: 'THE BACK DOOR', breaches: 2, open: 0, closed: 1, spent: 1, wavesPlanned: 8, wavesReleased: 5, leftInField: { kg: 88, points: 913 }, bonus: d2.held });
 // a breach whose whole programme is out forfeits nothing when it is closed
 const st2 = makeSector(def(1), [{ id: 'a', side: 'gate', cell: 1 }], 0);
-for (let i = 0; i < 3; i++) releaseWave(st2, 'a', i);
+for (let i = 0; i < def(1).waves; i++) releaseWave(st2, 'a', i);
 assert.deepEqual(closeBreach(st2, 'a', 'shells', 5, { kg: 50, points: 50 }).leftInField, { kg: 0, points: 0 });
 
 // forfeit: an estimator built the way the integrator will, and more owed waves forfeit more
@@ -86,9 +101,9 @@ const plan1 = computeWavePlan(1, 1, 4);
 assert.equal(estimate(1, 1).kg, plan1.entries.reduce((s, e) => s + e.count * bounty[e.type], 0) + waveClearBonus(1));
 assert.deepEqual(waveYield({ counts: Object.fromEntries(plan1.entries.map((e) => [e.type, e.count])) }, { bounty }), waveYield(plan1, { bounty }), 'counts and entries agree');
 const d3 = def(3);
-const owed = [0, 1, 2, 3, 4, 5].map((released) => forfeitOf({ wavesPlanned: d3.waves, wavesReleased: released, waveIndexBase: d3.waveBase, ladderCap: d3.ladderCap, threat: d3.threat }, estimate));
+const owed = Array.from({ length: d3.waves + 1 }, (_, released) => forfeitOf({ wavesPlanned: d3.waves, wavesReleased: released, waveIndexBase: d3.waveBase, ladderCap: d3.ladderCap, threat: d3.threat }, estimate));
 for (let i = 1; i < owed.length; i++) assert.ok(owed[i].kg < owed[i - 1].kg && owed[i].points < owed[i - 1].points, `forfeit falls as waves are fought (${i})`);
-assert.deepEqual(owed[5], { kg: 0, points: 0 }, 'nothing owed after the last wave');
+assert.deepEqual(owed[d3.waves], { kg: 0, points: 0 }, 'nothing owed after the last wave');
 assert.ok(owed[0].kg > 100 && owed[0].points > 1000, 'a whole sector-3 programme is worth real income');
 const seen = [];
 forfeitOf({ wavesPlanned: 4, wavesReleased: 1, waveIndexBase: 3, threat: 1.3 }, (i, th) => { seen.push([i, th]); return { kg: 1, points: 1 }; });

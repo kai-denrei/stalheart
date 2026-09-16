@@ -65,7 +65,7 @@ export function createSectorRun(h) {
   function entriesOf(wave, sp) {
     const plan = computeWavePlan(wave, 1, h.waveSize, def.threat * (h.threatMult ?? 1));
     const entries = plan.entries.map((e) => ({ ...e }));
-    if (def.hardcoresEveryWave && h.hardcore) entries.push({ type: h.hardcore, count: 1 });
+    if (def.hardcoresEveryWave && h.hardcore) entries.push({ type: h.hardcore, count: def.hardcores ?? 1 });   // a few solid cores, the sector's own count (src/content/sectors.js)
     const total = entries.reduce((n, e) => n + e.count, 0), gap = Math.min(h.spawnGap?.max ?? 0.45, (h.spawnGap?.spread ?? 3.2) / Math.max(1, total));
     const out = []; let n = 0;
     for (const { type, count } of entries) for (let k = 0; k < count; k++) out.push({ type, sp, at: n++ * gap, spread: 0.8 });
@@ -217,6 +217,10 @@ export function createSectorRun(h) {
     active: () => phase !== 'idle',
     owns: (sp) => idOf(sp) !== null,
     gateForce: () => (gate?.broken ? true : null),
+    // ISAO MENDS WHAT THE SWARM BROKE (src/domain/repair-orders.js): what the repair rule reads, and the mend his print finishes.
+    // The passive trickle in tickGate still runs; this is the trip that puts a chewed or broken door back in one go.
+    gate: () => (gate ? { hp: gate.hp, max: gate.max, broken: gate.broken } : null),
+    repairGate: () => { if (!gate) return false; const wasDown = gate.broken; gate.hp = gate.max; gate.broken = false; if (wasDown) h.brief('gate_mended'); h.hud(); return true; },
     // a seal path killed a portal: close the sector's breach with who did it and book the forfeit
     closed(sp, reason) {
       const id = idOf(sp), by = CLOSER_OF[reason], b = breachOf(id);
