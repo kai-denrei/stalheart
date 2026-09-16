@@ -189,6 +189,11 @@ export const BRIEFS = {
     id: 'build_assembly', face: 'determined', title: 'COMMS · ISAO', once: true,
     lines: ['A lost hull is only parts.', 'Printing the assembly line to put them back.'],
   },
+  // ISAO MENDS WHAT THE SWARM BROKE (V1, 2026-09-16): the first time he flies out to a broken gate or a blown-out wall between waves
+  isao_repair: {
+    id: 'isao_repair', face: 'determined', title: 'COMMS · ISAO', once: true,
+    lines: ['They took a piece out of the wall.', 'Printing it shut while the lane is quiet.'],
+  },
   // after the analysis screen: the next objective, with the planet pulled back and the landing sites on the radar
   rocket_sites: {
     id: 'rocket_sites', face: 'focused', title: 'COMMS · ISAO', once: true,

@@ -202,6 +202,9 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     // mesh for good. anchors(): the cells under structures and sockets, which nothing breaks.
     walls: () => plan.walls.map((w, k) => ({ index: k, cell: w.cell, pos: placer.toWorld([w.x, (w.y + kit.wallMetres / 2), w.z]).toArray() })).filter((w) => !dropped.has(w.index)),
     dropWall: (k) => { if (dropped.has(k)) return; dropped.add(k); for (const o of group.children) if (o.isInstancedMesh && o.name === 'walls') { o.setMatrixAt(k, ZERO); o.instanceMatrix.needsUpdate = true; } },
+    // ...and the segment Isao prints back (src/domain/repair-orders.js), by its LATTICE CELL, which is what the repair rule and the
+    // dungeon tags speak in. Undoes a drop as well as a plain hole: a burned segment is standing again once he has stood over it.
+    restoreWall: (cell) => { const k = plan.walls.findIndex((w) => w.cell === cell); if (k < 0) return false; dropped.delete(k); grown.walls.set(k, 1); for (const s of wallMeshes) { s.inst.setMatrixAt(k, wallMatrix(plan.walls[k], s.src, 1)); s.inst.instanceMatrix.needsUpdate = true; s.inst.computeBoundingSphere(); } return true; },
     anchors: () => new Set([...plan.structures, ...(plan.sockets || [])].map((s) => s.cell).filter((c) => Number.isInteger(c) && c >= 0)),
     lod: () => lod.map((l) => ({ id: l.id, shown: l.shown, nearLoaded: !!l.near, visible: l.holder.visible, files: l.files, metres: l.d === undefined ? null : +(l.d / metres).toFixed(0) })),
     dispose() { for (const m of mixers) m.stopAllAction(); gate.mixer?.stopAllAction(); for (const r of owned) r.dispose(); scene.remove(group); },
