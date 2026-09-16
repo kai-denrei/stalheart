@@ -373,6 +373,24 @@ Evidence:
 - npm test: 116 test programs passed; npm run check: exit 0
 - temporary Profiler.start/stop around the collapse window (removed before commit)
 
+## 2026-09-16 — The grey sheet over the landing was the foundry's skinned mesh cloned off a cached glTF
+
+change · resolved · 2026-09-16-playtest-grey-sheet
+
+Playtesting the bare index.html the owner reported 'a strange very large grey sheet in the background of the base' at the landing; a QA run had independently called the same thing 'a large pale structure blocking the Rotor optic at stage 1'. A raycast through the offending screen points could not hit anything there, so the object was found instead by rendering the story scene to a render target, sampling the wedge pixels, and hiding each drawn object in turn until those pixels changed.
+
+The sheet is ARRIVAL_FOUNDRY_ROOT, the SkinnedMesh root of assets/models/story/afr_01_seed_foundry_d0_lod1.glb (160 triangles, one skin of 5 joints, the only skinned GLB in the project). src/fx/story-base.js mount() cloned every landmark with gltf.scene.clone(true), which copies a SkinnedMesh's skeleton BY REFERENCE: the clone stayed bound to the cached glTF's own bones, which are never added to a rendered scene and so never get a world-matrix update, and the bind pose resolved into a sheet spanning 2.13 x 2.23 x 1.24 world units on a radius-1 planet (three's skinned boundingSphere read 627). The geometry bounding sphere stayed 0.0042, which is exactly why Mesh.raycast early-outs and no ray could find the thing that was plainly on screen. cloneSkinned - the rebinding clone that already existed, uncalled, in src/units.js - moved to src/fx/skinned-clone.js, and mount() now uses it; it is a plain deep clone for unskinned graphs, so nothing else changes. The wedge pixels go from [38,42,43] to [0,0,0] and the foundry renders as the model it is.
+
+Alternatives: Vendoring SkeletonUtils: rejected, the sibling repos all ship three r180 against this project's r160, already a recorded dead end from the Line2 trio.; A second rebinding clone written inside src/fx: rejected, the helper existed in src/units.js; it moved to src/fx/skinned-clone.js and units.js re-exports it rather than growing a duplicate.; Hiding the foundry until stage 2, or a pending piece drawn at zero scale: ruled out, the foundry is meant to stand at the landing and the sweep showed the pose, not the reveal, was wrong.; A mis-scaled far tier: ruled out, the derived LOD2 carries no skin at all and renders correctly.
+
+Evidence:
+
+- Before and after from the same camera: artifacts/qa/sheet-owner/owner-view2.jpg and artifacts/qa/sheet-after/after-view2.jpg.
+- scripts/browser-lock.sh node artifacts/qa/sheet-owner.mjs <label> sweeps every drawn object: Scene/Story base/Group/foundry/ARRIVAL_FOUNDRY_ROOT owns 12 of 12 wedge pixels before the fix and no object owns them after, the pixels reading pure black sky.
+- npm test: 116 test programs passed. npm run check: passed, architecture and the src/td-tab.js line budget unchanged (td-tab untouched, 0 lines).
+- scripts/browser-lock.sh node scripts/browser-test.mjs --grow: PASS through grow-finished.
+- REGRESSION LEFT OPEN FOR THE OWNER: --story-world fails on this branch at the Rotor heat peak assertion (scripts/browser-test.mjs:774) with 0.0367 and 0.0402 against its >0.05 threshold, on two runs, while the same suite passes end to end on 38d1a313. That step banks a sampled peak only while state().key is 'rotor', and removing the sheet's overdraw (gpu 11.5 ms to 9.6 ms at the landing) shortens the Rotor's share of the fight before the hand-over. The assertion was NOT weakened to make the change pass.
+
 ## 2026-09-16 — The laser lab's browser step no longer cuts a wall, and it failed before SOL-82 moved the scope
 
 issue · observed · 2026-09-16-laser-lab-step-fails-before-sol82
