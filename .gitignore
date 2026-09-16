@@ -1,7 +1,8 @@
 .deban/
-node_modules/
 .DS_Store
-renders/
-dist/
-artifacts/
 *.tmp
+artifacts/
+dist/
+node_modules
+node_modules/
+renders/
