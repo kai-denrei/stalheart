@@ -468,6 +468,21 @@ Evidence:
 - scripts/browser-test.mjs --laser run in .claude/worktrees/agent-a18f0d804159bc367 (0001882): exit 1 at the wall-cut assertion.
 - The SOL-82 branch reported the same failure; its own --laser-game step passes (19 bodies, a breach sealed, a rock cell broken in 0.7 ms, two wall segments burned).
 
+## 2026-09-16 — Isao works the recycling foundry with his beam before he prints the gate
+
+decision · proposed · 2026-09-16-isao-tends-the-foundry
+
+Owner, playtesting the live V1 on 2026-09-16: 'before building the gates (nice, works), Isao should use his beam to work on the recycle factory we first see.' Today the AFR-01 seed foundry cuts the SH02 into feedstock on its own clock (src/content/foundry.js, src/domain/foundry.js, src/fx/foundry-fx.js) and Isao never touches it; his print beam only appears over a tower socket or a base-programme step (src/printpath.js, src/fx/base-print.js, the build programme in src/content/base-programme.js).
+
+Proposed, not yet designed: a build-programme step before the gate that sends Isao to the foundry and holds him there working it with the print beam, so the first thing the player watches him do is tend the machine that is eating their rocket. Open questions: whether the beat is purely presentational or actually drives a barrel (tying his work to the foundry's 24 s cut would make the economy legible), how long he stays before the gate step takes over (the gate step now starts at 39.2 s and the tremor waits for the gate, so the beat must not push the first wave late), whether he returns between barrels, and which of his emotion faces plays. The step needs no structure reveal: the foundry already stands from the arrival beat.
+
+Alternatives: Leave the foundry autonomous and spend the beat elsewhere; rejected by the owner's note, which wants his first visible work to be on the recycler.; Animate the foundry harder instead of sending Isao; keeps the beat but loses the character the owner asked for.
+
+Evidence:
+
+- Owner note, 2026-09-16 playtest of build 5e204f48.
+- Build programme order today: gate + 12 walls at rotor-ready, then the landing pad (src/content/base-programme.js); the gate step begins at 39.2 s on a bare page (--grow run, 2026-09-16).
+
 ## 2026-09-15 — Tank-shell breaches patch the board surface in place; SOL-82 is the orbital laser's name and asset brief
 
 decision · accepted · 2026-09-15-board-surface-patch-and-sol-82-brief

@@ -315,7 +315,7 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 29 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 30 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
 
 ### After the Quiver: normal waves, free tower building, and the occasional gunship and orbital laser run
 
@@ -340,6 +340,12 @@ Owner, 2026-09-15: the gunship's ground truth of its impacts reads too small. Of
 `2026-09-16-laser-lab-step-fails-before-sol82` · issue · **observed**
 
 While bringing SOL-82 into the game, `node scripts/browser-test.mjs --laser` stopped at "the beam cut the wall (0)" after the burn step. The move of the lab's scope and inset HUD into src/fx was a suspect.
+
+### Isao works the recycling foundry with his beam before he prints the gate
+
+`2026-09-16-isao-tends-the-foundry` · decision · **proposed**
+
+Owner, playtesting the live V1 on 2026-09-16: 'before building the gates (nice, works), Isao should use his beam to work on the recycle factory we first see.' Today the AFR-01 seed foundry cuts the SH02 into feedstock on its own clock (src/content/foundry.js, src/domain/foundry.js, src/fx/foundry-fx.js) and Isao never touches it; his print beam only appears over a tower socket or a base-programme step (src/printpath.js, src/fx/base-print.js, the build programme in src/content/base-programme.js).
 
 ### Idea: the Mortar can lay suppressing fire on a chosen area to scare and herd the swarm
 
