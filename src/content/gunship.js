@@ -43,6 +43,7 @@ export const GUNSHIP_TRACK = Object.freeze({
 export const GUNSHIP_NUKE = Object.freeze({
   mesh: 'talon', profile: 'heavy', length: 4, exhaust: true,   // four metres nose to tail: a body you can read falling away from the belly, not a dart
   freeFall: 2, drive: 1.8,   // two seconds of nothing but the fall, then the burn: the owner's own number
+  ejectSpeed: 6,   // m/s straight down as the shackles let go: it is thrown clear of the belly, so from the seat it DROPS away down the sight instead of trailing off behind the hull
   gravity: 9.81,             // the fall is real metres in real seconds, not an authored curve
   arrivalLead: 1.5,          // the powered dive's arrival tangent, as a multiple of the distance left: speed climbs into impact
   // the two moments worth hearing: the shackles letting go at the belly, and the motor catching two seconds later. Both are keys

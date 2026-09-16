@@ -256,11 +256,37 @@ try{
   await delay(3000);{const x=await evaluate('window.__stalheartTest.state().explosions');assert(x.spawned['gunship.bofors']>0,`the Bofors shell bursts on landing (${JSON.stringify(x)})`);}
   current='gunship-bofors-burst';await finish();
   await until('window.__stalheartTest.state().explosions.live===0',5000).catch(async()=>assert.fail(`the bursts are reaped once they burn out (${JSON.stringify(await evaluate('window.__stalheartTest.state().explosions'))})`));
-  // THE GUNSHIP'S OWN 105: paint, launch, the shell falls from the seat, the blast lands, then the reload is read
-  await evaluate('window.__stalheartTest.gunshipGun("heavy")');await delay(300);await evaluate('window.__stalheartTest.gunshipHold(true)');await delay(200);
+  // THE MK-9 MINI NUKE (owner, 2026-09-16, replacing the 105's instant strike): paint, RELEASE, and then a body in the world — it
+  // drops from the belly, falls free for two seconds, its motor lights, and it dives onto the painted cell. The five frames below
+  // are the owner's own sequence: release, free fall, ignition, dive, blast. The 105's howitzer-blast assertion is gone with the gun.
+  await evaluate('window.__stalheartTest.gunshipGun("heavy")');await delay(300);
+  await until('window.__stalheartTest.state().gunship.nuke?.ready',40000);   // the TALON body's own pool, made on the first station tick
+  assert(/DANGER CLOSE|MK-9/.test(await evaluate('document.querySelector("#gunship-hud .reticle text")?.textContent ?? document.querySelector("#gunship-hud .reticle").textContent')),'the third reticle names the MK-9 or the danger it is standing over');
+  await evaluate('window.__stalheartTest.gunshipHold(true)');await delay(200);
   assert.equal((await evaluate('window.__stalheartTest.state().gunship.heavy')).phase,'painted','the first press paints');
-  await evaluate('window.__stalheartTest.gunshipHold(true)');await delay(300);const fl=await evaluate('window.__stalheartTest.state().gunship');assert.equal(fl.heavy.phase,'falling','the second press launches');assert(fl.seat,'the camera never left the seat');
-  current='gunship-heavy-falling';await finish();await delay(3800);assert.equal((await evaluate('window.__stalheartTest.state().explosions')).spawned['gunship.heavy'],1,'the 105 lands as the howitzer blast');const rl=await evaluate('window.__stalheartTest.state().gunship');assert.equal(rl.heavy.phase,'reloading',`after the fall the gun reloads (${JSON.stringify(rl.heavy)})`);current='gunship-heavy-reloading';await finish();}
+  await evaluate('window.__stalheartTest.gunshipHold(true)');await delay(250);
+  {const fl=await evaluate('window.__stalheartTest.state().gunship');
+   assert.equal(fl.heavy.phase,'released','the second press RELEASES the round, motor still cold');
+   assert(fl.nuke.flying&&!fl.nuke.ignited,`the MK-9 is a modelled body in the air and has not lit (${JSON.stringify(fl.nuke)})`);
+   assert(fl.seat,'the camera never left the seat');
+   assert.match(await evaluate('document.querySelector("#gunship-hud [data-f=state]").textContent'),/^RELEASED/,'the HUD says RELEASED');
+   assert.equal(await evaluate('document.querySelector("#story-monitor .head").textContent'),'MK-9 · ROUND IN FLIGHT','and the GROUND TRUTH feed rides the round, not the impact point');}
+  current='gunship-nuke-release';await finish();
+  await delay(700);assert.equal((await evaluate('window.__stalheartTest.state().gunship.heavy')).phase,'released','a second in, it is still falling free');current='gunship-nuke-freefall';await finish();
+  await until('window.__stalheartTest.state().gunship.heavy.phase==="ignited"',8000);
+  {const ig=await evaluate('window.__stalheartTest.state().gunship');assert(ig.nuke.ignited&&ig.nuke.flying,`the motor lit with the round still in the air (${JSON.stringify(ig.nuke)})`);
+   assert.match(await evaluate('document.querySelector("#gunship-hud [data-f=state]").textContent'),/^IGNITED/,'the HUD says IGNITED');}
+  current='gunship-nuke-ignite';await finish();
+  await delay(500);current='gunship-nuke-dive';await finish();
+  await until('window.__stalheartTest.state().gunship.heavy.phase==="reloading"',8000);await delay(700);
+  {const x=await evaluate('window.__stalheartTest.state().explosions');
+   assert.equal(x.spawned['gunship.nuke'],1,`the MK-9 lands as the mini nuke (${JSON.stringify(x.spawned)})`);
+   assert(!x.spawned['gunship.heavy'],'and the 105\'s howitzer blast is never spawned: that gun is gone');
+   const rl=await evaluate('window.__stalheartTest.state().gunship');assert.equal(rl.heavy.phase,'reloading',`then the tube safes (${JSON.stringify(rl.heavy)})`);
+   assert.equal(rl.nuke.flying,false,'and the body is back in its pool');
+   assert.match(await evaluate('document.querySelector("#gunship-hud [data-f=state]").textContent'),/^IMPACT/,'the HUD says IMPACT');
+   assert.equal(await evaluate('document.querySelector("#gunship-hud [data-f=barLabel]").textContent'),'SAFING','one release a pass: the meter reads the safing, not a reload for another');}
+  current='gunship-nuke-blast';await finish();}
  // THE SKIP MARKER: the panel beside the build tag opens the seat by itself and raises enemies, which then read hot in the thermal optic
  await go('gunship-skip','index.html?sw=0&cine=0&world=story&stage=6&acceptance=1&gunship=station&skip=gunship&enemies=24&brief=0#td');
  await until('!!window.__stalheartTest && window.__stalheartTest.state().gunship.seat',120000);await delay(9000);

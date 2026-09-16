@@ -25,9 +25,10 @@ export function createGunshipDrop(scene, { cellSide, metresPerCell = 10, onIgnit
     release(from, target, up, velocity = [0, 0, 0]) {
       if (!pool) return false;
       drop();
-      round = launchDrop(pool, { config: { ...GUNSHIP_NUKE, length: GUNSHIP_NUKE.length * metre }, from, target, velocity, up, metre });
+      const un = Math.hypot(...up) || 1, thrown = velocity.map((v, i) => v - (up[i] / un) * GUNSHIP_NUKE.ejectSpeed * metre);   // the aircraft's own velocity plus the eject: it leaves the belly, it is not let go of
+      round = launchDrop(pool, { config: { ...GUNSHIP_NUKE, length: GUNSHIP_NUKE.length * metre }, from, target, velocity: thrown, up, metre });
       if (!round) return false;
-      round.mesh.userData.feedLabel = 'MK-9 · ROUND IN FLIGHT';
+      Object.assign(round.mesh.userData, { feedLabel: 'MK-9 · ROUND IN FLIGHT', feedBack: 0.5, feedLift: 1.3 });   // the GROUND TRUTH feed stands thirteen metres over the round, looking down past it at what it is about to hit
       scene.add(round.mesh);
       onRelease?.(round.pose.position);
       return true;
