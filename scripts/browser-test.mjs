@@ -685,12 +685,15 @@ try{
   assert.equal(s.skip.offer.shown,true,'the offer stands');
   assert.equal(await evaluate('document.querySelector("#skip-tutorial b").textContent'),'SKIP TUTORIAL','the button says what it does');
   assert.equal(await evaluate('(()=>{const r=document.querySelector("#skip-tutorial").getBoundingClientRect();return r.width>80&&r.height>30&&r.bottom<innerHeight&&r.right<=innerWidth;})()'),true,'it is on screen and thumb-sized');
-  assert.equal(s.skip.offer.href,'index.html?sw=0&acceptance=1&cine=0&skip=defence#td','the button carries this page\'s harness keys into the skipped run');}
+  assert.equal(s.skip.offer.href,'index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence#td','the button carries this page\'s keys into the skipped run and drops the opening\'s');}
  current='skip-tutorial-offer';await finish();
  // 2. A CLICK IS THE ENTRY: a real pointer on the button, and the page it lands on is the skipped run
  await click('#skip-tutorial');
  await until('location.search.includes("skip=defence")',20000);
- await until(`window.__stalheartReady===true && !!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ await until('window.__stalheartReady===true',90000);
+ // ISAO SAYS WHERE THEY ARE, on arrival — the panel runs on its own clock, so it is read as it plays, not after
+ await until('/Relay and Mortar are ours/.test(document.querySelector("#td-brief:not(.hidden)")?.textContent||"")',30000).catch(async()=>assert.fail(`Isao's arrival lines (${await evaluate('document.querySelector("#td-brief")?.textContent')})`));
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
  await delay(3000);
  {const s=await st();
   assert.equal(s.skip.on,true,'the click landed in the skipped run');
@@ -709,20 +712,13 @@ try{
   assert.equal(s.hulls,3,'three hulls');assert.equal(s.bays.length,3,'three bays');
   assert(s.biomass>=300,`biomass enough to place a few towers (${s.biomass})`);
   assert(s.shield.rack>=2,`the shield rack is full (${s.shield.rack})`);
-  assert(s.shield.arrayReserve>0,`the array reserve is charged (${s.shield.arrayReserve})`);
-  // ISAO SAYS WHERE THEY ARE
-  assert.match(await evaluate('document.querySelector("#td-brief")?.textContent||""'),/Relay and Mortar are ours/,'Isao\'s arrival lines are on the panel');}
+  assert(s.shield.arrayReserve>0,`the array reserve is charged (${s.shield.arrayReserve})`);}
+ // the first hull rolls out of its bay: the first frames a player sees have the MÖRK in them, not an empty yard
+ await until(`${T}.state().deploying`,30000).catch(()=>{});
+ await until(`!${T}.state().deploying`,60000).catch(()=>{});
+ await delay(1500);
  current='skip-tutorial-arrival';await finish();
- // 3. THE TOWERS ARE REALLY BUILDABLE: the player's own build menu offers the Relay and the Mortar at their price, and still
- // shows PART OUT on a part nobody fetched — the unlock is the expedition rule, not a label
- assert.equal(await evaluate(`${T}.openBuildMenu()`),true,'the build menu opens on an open cell');
- await delay(300);
- {const shop=await evaluate(`(()=>{const out={};for(const b of document.querySelectorAll('#td-shop .shop-buy'))out[b.dataset.key]={locked:b.classList.contains('locked'),disabled:b.disabled,txt:b.textContent};return out;})()`);
-  for(const key of ['rotor','quiver','relay','mortar'])assert(shop[key]&&!shop[key].locked&&!shop[key].disabled,`${key} is offered and affordable (${JSON.stringify(shop[key])})`);
-  for(const key of ['lancer','plasma'])assert(shop[key]?.locked&&/PART OUT/.test(shop[key].txt),`${key}'s part is still out at its site (${JSON.stringify(shop[key])})`);}
- await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape'});await delay(200);
- assert.equal(await evaluate('document.querySelector("#td-shop").classList.contains("hidden")'),true,'Escape closes the build menu');
- // and a Relay really stands when it is bought
+ // 3. TWO TOWERS REALLY STAND: the Relay and the Mortar go up on the story's own sockets
  {const socks=(await st()).sector.sockets;assert(socks.length>=2,`the story sockets (${socks})`);
   assert(await evaluate(`${T}.commitTower('relay',${socks[0]})`),'the Relay can be placed');
   assert(await evaluate(`${T}.commitTower('mortar',${socks[1]})`),'the Mortar can be placed');
@@ -740,6 +736,15 @@ try{
  await until(`${T}.state().performance.enemies>0`,60000);
  {const s=await st();console.log(`PASS skip-tutorial waves: enemies ${s.performance.enemies}, ${s.sector.breaches.map(b=>`${b.id}/${b.side} ${b.wavesReleased}/${b.wavesPlanned}`).join(' ')}, gate ${JSON.stringify(s.sector.gate)}`);}
  current='skip-tutorial-back-door-fight';await finish();
+ // THE BUILD MENU IS THE PROOF OF THE UNLOCK: the player's own radial offers the Relay and the Mortar at their price and
+ // still reads PART OUT on a part nobody fetched. It moves the build camera, so it runs after the fight is photographed.
+ assert.equal(await evaluate(`${T}.openBuildMenu()`),true,'the build menu opens on an open cell');
+ await delay(300);
+ {const shop=await evaluate(`(()=>{const out={};for(const b of document.querySelectorAll('#td-shop .shop-buy'))out[b.dataset.key]={locked:b.classList.contains('locked'),disabled:b.disabled,txt:b.textContent};return out;})()`);
+  for(const key of ['rotor','quiver','relay','mortar'])assert(shop[key]&&!shop[key].locked,`${key} is offered (${JSON.stringify(shop[key])})`);
+  for(const key of ['lancer','plasma'])assert(shop[key]?.locked&&/PART OUT/.test(shop[key].txt),`${key}'s part is still out at its site (${JSON.stringify(shop[key])})`);}
+ await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape'});await delay(200);
+ assert.equal(await evaluate('document.querySelector("#td-shop").classList.contains("hidden")'),true,'Escape closes the build menu');
  // 6. IT IS A RUN, NOT A DIORAMA: the sector is fought to its end, SECURE and the debrief follow, CONTINUE moves on
  await until(`(()=>{const S=${T}.state().sector;for(const b of S.breaches)if(b.live&&b.wavesReleased<b.wavesPlanned)${T}.sectorRelease(b.id);if(S.breaches.every(b=>!b.live||b.wavesReleased>=b.wavesPlanned))${T}.sectorClearField();return S.breaches.every(b=>b.closedBy);})()`,180000).catch(async()=>assert.fail(`the breaches close (${JSON.stringify((await st()).sector)})`));
  await evaluate(`${T}.sectorClearField()`);
