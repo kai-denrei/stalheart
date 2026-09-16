@@ -25,16 +25,15 @@ clean exports → UX → playability**. `docs/STATE.md` holds the detail.
 
 | area | state |
 | --- | --- |
-| `src/td-tab.js` extraction | active. 17,608 lines against a 17,609 budget — it can only go down |
+| `src/td-tab.js` extraction | active. 13,505 lines against a 13,505 budget — it can only go down (13,858 on 2026-09-15; the V1 rounds moved the debrief, expeditions, site ring, dive shot and briefing cards out) |
 | FX package workflow | active. Weapons and audio done; beams, materials, portals and cinematics pending |
 | Enemy representation | **unblocked** — see below. Rendering and simulation both measured, neither is the constraint |
-| Heavy Gunship | designed, not built (`docs/superpowers/specs/2026-09-13-heavy-gunship-design.md`) |
+| Heavy Gunship | built and in play: called from its meter, thermal always, creeping toward the busiest breach, rotary, Bofors and the MK-9 mini nuke that drops and ignites (`2026-09-16-gunship-mini-nuke-built`) |
 | Asset tiers | MÖRK LOW and the distance proxy pinned at `771e166` for review — `labs.html?unit=mork-low#units`. Shipped hull unchanged |
 | Isao-Birudorōn | production alpha upstream; review before integration |
 | Landmark LODs | Stålheart's LOD1/LOD2 pinned for game-camera review at `index.html?world=story&stage=6&landmarks=candidate#td`. HUGIN held back: its booster can no longer be hidden |
-| Sniper range / first-map Sentry Control | open playtest failure, unreproduced |
-| HUD, tutorial, off-screen threats | queued behind the architecture work |
-| Difficulty, economy, progression | explicitly last. Not a balance pass yet |
+| HUD, tutorial, off-screen threats | the V1 session teaches the tank once (controls card), sheds the campaign chrome in the story, and offers SKIP TUTORIAL into the back-door fight; off-screen threats still only on the radar |
+| Difficulty, economy, progression | first ramp shipped 2026-09-16 (a bare page had been given the sparse deep-link threat); every sector number is a first cut, and the 400-enemy waves are being profiled to hold 60 fps |
 
 ## Committed
 
