@@ -5,7 +5,7 @@
 // down and goes up again over the part. The rules are src/domain/expeditions.js; the look is src/fx/cargo.js. The controller
 // hands in what it owns as hooks and never sees the cargo.
 import * as THREE from '../../vendor/three.module.js';
-import { reveal, guardsCleared, reach, deliver, hullLost, nextReveals } from '../domain/expeditions.js';
+import { reveal, guardsCleared, reach, deliver, deliverAtOnce, hullLost, nextReveals } from '../domain/expeditions.js';
 import { STORY_EXPEDITIONS } from '../content/story-defaults.js';
 import { CARGO_LOOK } from '../content/cargo.js';
 import { TOWER_BY_KEY } from '../towers.js';
@@ -63,6 +63,22 @@ export function createExpeditionGlue(h) {
       for (const g of cfg.guards) for (let k = 0; k < g.count; k++) h.spawn(g.type, c.cell, { spread: 1.2, delay: k * 0.3, guard: { site: id, c: h.centers()[c.cell], r: h.cellSide * (c.clear / 10 + 2) } });
     },
     begin() { for (const s of STORY_EXPEDITIONS.sites) if (!s.reveal) glue.openSite(s.id); },
+    // THE SKIP TUTORIAL ENTRY (owner, 2026-09-16): these parts came home before the player arrived. The rule says
+    // delivered, the lander stands revealed, our flag is up over the emptied site with no crate waiting beside it, and a
+    // trophy stands in the row at home — so the world reads as a run that has already been somewhere. Returns the towers.
+    preDeliver(ids) {
+      const e = ex(), towers = [];
+      for (const id of ids) {
+        const tower = deliverAtOnce(e, id);
+        if (!tower) continue;
+        towers.push(tower);
+        h.revealSite(id);
+        if (cellOf(id)) { const p = sitePose(id); fx().raiseFlag(id, p.point, p.normal, p.facing, { crate: false, standing: true }); }
+        const index = e.sites.filter((s) => s.state === 'delivered').length - 1, t = trophyPose(index);
+        fx().trophy(index, t.point, t.normal, t.facing);
+      }
+      return towers;
+    },
     step() {
       const e = ex(), centers = h.centers(), pos = h.tankPos();
       for (const s of e.sites) {

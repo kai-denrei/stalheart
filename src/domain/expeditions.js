@@ -42,6 +42,15 @@ export function hullLost(st) {
   return true;
 }
 
+// A RUN THAT STARTS PAST THE TUTORIAL (the SKIP TUTORIAL entry, 2026-09-16): a site whose part is already home, without
+// walking the states. Nothing else may reach 'delivered' this way — the tank still has to drive for every other part.
+export function deliverAtOnce(st, id) {
+  const s = siteOf(st, id);
+  if (!s || s.state === 'delivered' || st.carrying === id) return null;
+  s.state = 'delivered';
+  return s.tower;
+}
+
 export const siteState = (st, id) => siteOf(st, id)?.state ?? null;
 
 export function unlockedTowers(st, base) {

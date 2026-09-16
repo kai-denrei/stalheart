@@ -204,12 +204,17 @@ export function createCargo(scene, { loader = null, sfx = null, hasCue = null, m
   const api = {
     ready, errors,
     // our flag over a cleared site, hoisted with the gate hydraulics, and the part's crate waiting beside it
-    raiseFlag(id, point, normal, facing = null) {
+    // `crate: false` is a site whose part is already home — our flag stands, nothing waits beside it; `standing` skips the
+    // hoist and its cue, for a world that is dressed before the player's first frame (the SKIP TUTORIAL entry)
+    raiseFlag(id, point, normal, facing = null, { crate = true, standing = false } = {}) {
       if (flags.has(id)) return false;
       const f = makeFlag(point, normal, facing, look.flagScale); f.id = id; flags.set(id, f);
-      const side = new THREE.Vector3(1, 0, 0).applyQuaternion(f.holder.quaternion);
-      f.crate = makeCrate(vec(point).addScaledVector(side, -look.crateBeside * metres), normal, facing); f.crate.id = id;
-      cue('hoist');
+      if (standing) { f.state = 'up'; f.t = 0; }
+      if (crate) {
+        const side = new THREE.Vector3(1, 0, 0).applyQuaternion(f.holder.quaternion);
+        f.crate = makeCrate(vec(point).addScaledVector(side, -look.crateBeside * metres), normal, facing); f.crate.id = id;
+      }
+      if (!standing) cue('hoist');
       return true;
     },
     lowerFlag(id, onDown = null) {

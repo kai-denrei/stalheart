@@ -88,6 +88,14 @@ export const STORY_PILOT = Object.freeze({ rateMul: 2.5, dmgMul: 60 });   // a p
 // the handover (docs/superpowers/specs/2026-09-14-handover-gunship-call-expeditions-design.md): the first automated phase and the Defend stage
 export const STORY_HANDOVER = Object.freeze({ from: 'settled', defendStage: 8 });
 
+// SKIP TUTORIAL (owner, 2026-09-16; 2026-09-16-skip-tutorial-into-the-back-door): where ?skip=defence drops a player who
+// wants the fight and not the opening. The finished base at `stage` (through the bays, so the three hulls read as lives),
+// the beats already at `phase` so the towers are automatic, `sector` the back-door sector so the collapse behind the bays
+// and its breach are the first thing seen (the sector's own flags bring SOL-82 online and refill the array), `parts` the
+// two expeditions taken as though they came home — the Relay and the Mortar — and `biomass` enough for a few towers
+// before the first wave lands. `brief` is Isao's two lines on arrival (src/isaobriefs.js).
+export const STORY_SKIP = Object.freeze({ stage: 8, phase: 'expedition', sector: 2, biomass: 450, brief: 'skip_defence', parts: Object.freeze(['rocket-a', 'rocket-b']) });
+
 // EXPEDITIONS (docs/superpowers/specs/2026-09-14-handover-gunship-call-expeditions-design.md): the landing sites, the tower each
 // part unlocks, the guard nest, and when a later site reveals (after N parts are home). The Rotor and Quiver are the base.
 export const STORY_EXPEDITIONS = Object.freeze({

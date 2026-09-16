@@ -18,7 +18,12 @@ for (const e of NAV_ENTRIES.filter((x) => x.group === 'workshop')) {
   assert.match(main, new RegExp(`\\n\\s+${e.target.hash}: \\(\\) => import`), `${e.id}: #${e.target.hash} is a route in main.js`);
 }
 assert.deepEqual(NAV_ENTRIES.filter((e) => e.row === 'stages').map((e) => e.label), STAGES.map((_, n) => String(n)), 'one stage button per stage');
-assert.deepEqual(STORY_JUMPS.map((j) => j.id), ['rotor', 'quiver', 'study', 'gunship', 'defense']);
+assert.deepEqual(STORY_JUMPS.map((j) => j.id), ['rotor', 'quiver', 'study', 'gunship', 'defense', 'skip']);
+// the SKIP TUTORIAL jump is the player's own entry, not a developer one: no acceptance switch, no stage, no phase
+{
+  const skip = STORY_JUMPS.find((j) => j.id === 'skip');
+  assert.ok(skip.wired && skip.url === 'index.html?skip=defence#td', `the drawer's SKIP TUTORIAL is the player URL (${skip.url})`);
+}
 for (const d of NAV_DOCS) assert.ok(readFileSync(new URL(`../${d.file}`, import.meta.url), 'utf8').length > 100, `${d.file} exists`);
 assert.deepEqual(NAV_ENTRIES.filter((e) => e.mode === 'playtest' && !e.row).map((e) => e.id), ['story', 'defend', 'arrival', 'record', 'settings']);
 assert.deepEqual(NAV_GROUPS.filter((g) => g.mode === 'dev').map((g) => g.group), ['workshop', 'tuning', 'docs', 'tools']);
