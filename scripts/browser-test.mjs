@@ -716,12 +716,20 @@ try{
  await until('!!window.__stalheartTest',90000);
  try{await until('window.__stalheartTest.state().story.phase==="quiver-piloting" && !!window.__stalheartPilotTest',180000);}catch(e){console.log('QUIVER FRAME BEATS',JSON.stringify(await evaluate('window.__stalheartTest.state().story')));throw e;}
  await delay(1500);
+ // THE OPTIC'S FOUR PHASES, for the eye (owner, 2026-09-16: the Quiver's sight in the Orbital Laser's register). Nothing held,
+ // then a body inside the square with the timer running, then the lock taken; the round away is caught below, once the framing
+ // has handed the camera back and the sight is on screen again.
+ await evaluate('window.__stalheartPilotTest.view("pov")');await delay(500);
+ await evaluate('window.__stalheartPilotTest.aimSky()');await until('window.__stalheartPilotTest.lock().tgt===null',10000);await delay(400);current='quiver-scope-searching';await finish();
+ await until('(()=>{const l=window.__stalheartPilotTest.lock();if(l.tgt!==null&&l.meter>0.04&&!l.locked)return true;if(!window.__aimAt||Date.now()-window.__aimAt>900){window.__aimAt=Date.now();window.__stalheartPilotTest.aimEnemy();}return false;})()',90000);current='quiver-scope-tracking';await finish();
+ await until('(()=>{const l=window.__stalheartPilotTest.lock();if(l.locked)return true;if(!window.__aimAt||Date.now()-window.__aimAt>900){window.__aimAt=Date.now();window.__stalheartPilotTest.aimEnemy();}return false;})()',90000);current='quiver-scope-locked';await finish();
  for(const view of ['pov','third']){
   await evaluate(`window.__stalheartPilotTest.view(${JSON.stringify(view)})`);await delay(400);
   await evaluate(`(()=>{const q=window.__qf={samples:[],done:false},T=window.__stalheartPilotTest;const f=()=>{const r=T.round();if(r)q.samples.push(r);else if(q.samples.length){q.done=true;return;}requestAnimationFrame(f);};requestAnimationFrame(f);})()`);
   await evaluate('window.__stalheartPilotTest.hold(true)');
   await until('(()=>{if(window.__qf.samples.length)return true;if(!window.__aimAt||Date.now()-window.__aimAt>500){window.__aimAt=Date.now();window.__stalheartPilotTest.aimEnemy();}return false;})()',120000);
   await evaluate('window.__stalheartPilotTest.hold(false)');
+  if(view==='pov'){await until('(()=>{const s=window.__qf.samples.at(-1);return !!s&&s.u>0.72;})()',20000).catch(()=>{});current='quiver-scope-away';await finish();}   /* the sight with a round in flight, after the framing hands the camera back */
   for(let i=0;i<6;i++){await delay(450);const s=await evaluate('window.__qf.samples.at(-1)');current=`quiver-frame-${view}-${i}-${(s?.phase??'landed').toLowerCase()}`;await finish();}
   await until('window.__qf.done',15000);
   const samples=await evaluate('window.__qf.samples'),inside=s=>Math.abs(s.x)<=1&&Math.abs(s.y)<=1&&s.z<1;
