@@ -173,7 +173,7 @@ export function createSectorRun(h) {
     if (phase !== 'idle' && phase !== 'lost-shown') tickGate(dt);
     if (phase === 'brief' || phase === 'fighting' || phase === 'secure') poll(dt);
     const t = now();
-    if (phase === 'idle') { if (h.ready()) begin(1); return; }
+    if (phase === 'idle') { if (h.ready()) begin(Math.max(1, h.firstSector ?? 1)); return; }   // the SKIP TUTORIAL entry opens the run at the back-door sector instead of the lane
     if (phase === 'brief') { left -= dt; if (left <= 0) place(); return; }
     if (phase === 'lost') { left -= dt; if (left <= 0) finish('lost'); return; }
     if (phase === 'secure') { left -= dt; if (left <= 0) finish('secure'); return; }

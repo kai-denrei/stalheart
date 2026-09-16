@@ -6,7 +6,7 @@ import { startDiveShot } from './fx/dive-shot.js'; import { backBreachCells } fr
 import { BREACH_SOUNDS } from './content/breach-defaults.js';
 import { SOUNDS } from './content/runtime.js';
 import { emergence } from './domain/breach-waves.js'; import { applyScare, stampScare, scarePace, isScared, towardScare, awayExits } from './domain/impact-scare.js'; import { EXPLOSION_SCARE, SCARE_FREEZE_S } from './content/explosions.js'; import { createThermalHeat } from './fx/thermal-heat.js'; import { isAutomated, pilotMultipliers } from './domain/automation.js'; import { makeGunshipCall, fillFromKill, fillFromWaveClear, isFull as callFull, callGunship, passEnded, callProgress } from './domain/gunship-call.js'; import { GUNSHIP_CALL } from './content/gunship.js'; import { unlockedTowers } from './domain/expeditions.js'; import { createExpeditionGlue } from './fx/expedition-glue.js'; import { STORY_EXPEDITIONS } from './content/story-defaults.js'; import { makeSiteRing as siteRing, disposeSiteRing } from './fx/site-ring.js'; import { due as programmeDue, begin as programmeBegin, finish as programmeFinish, hasPerk as programmeHas, perks as programmePerks, rebuildDue, snapshot as programmeSnapshot } from './domain/build-programme.js'; import { BASE_PERKS } from './content/base-programme.js';
-import { sinkholeGroundHeight } from './core/sinkhole-shape.js'; import { devModeOn } from './core/dev-mode.js'; import { createControlsCard } from './fx/controls-card.js';
+import { sinkholeGroundHeight } from './core/sinkhole-shape.js'; import { devModeOn } from './core/dev-mode.js'; import { createControlsCard } from './fx/controls-card.js'; import { createSkipTutorial } from './fx/skip-tutorial.js'; import { skipTutorialUrl } from './core/story-route.js'; import { STORY_SKIP } from './content/story-defaults.js';   /* SKIP TUTORIAL (owner, 2026-09-16): the player's own way past the opening, and the state ?skip=defence starts in */
 import { makeOrdnanceShell } from './shell.js';
 import { firingFor } from './content/firing-defaults.js'; import { RELEASE_EVENTS, releasesHeld, releaseHeld } from './core/held-input.js';
 import { METRES_PER_CELL, arcToMetres, metresToArc } from './core/stage-units.js';
@@ -616,7 +616,7 @@ export function initTdTab(root) {
   let edgeGeo = null, edgeMesh = null;
   let topGeo = null, topMesh = null; // interior wall-top wires, dimmable
   let floorOffsets = null, boardSurface = null; const breachQueue = []; // open cell -> its first floor vertex; the surface a breach patches (src/fx/board-surface.js); cells breached since the last patch
-  let heartSprite = null, playerMesh = null, markerMesh = null, storyBase = null, story = null, sectorRun = null;
+  let heartSprite = null, playerMesh = null, markerMesh = null, storyBase = null, story = null, sectorRun = null, skipCard = null;   /* skipCard: the SKIP TUTORIAL offer (src/fx/skip-tutorial.js) */
   // WHAT STANDS AT THE POLE. Both entries satisfy one contract — sizeScale,
   // tick(t), hit() — so swapping them changes how the Stalheart LOOKS and
   // never what it DOES. Same registry seam as looks / towerlooks /
@@ -9659,7 +9659,7 @@ export function initTdTab(root) {
     } else if (playerMesh.userData.tick) {
       playerMesh.userData.tick(t);
     }
-    buildFollowTank(dt); if (story) (controlsCard ??= createControlsCard(root, { mobile: mobileShell, briefing: () => (gunshipBriefing ??= createGunshipBriefing(root)).openPaused({ get: () => paused, set: (v) => { paused = v; } }) })).tick(automated() && !pilotMode && !laserStation.seated());   /* the tank's keys, taught once past the handover (src/fx/controls-card.js) */
+    buildFollowTank(dt); if (story) (controlsCard ??= createControlsCard(root, { mobile: mobileShell, briefing: () => (gunshipBriefing ??= createGunshipBriefing(root)).openPaused({ get: () => paused, set: (v) => { paused = v; } }) })).tick(automated() && !pilotMode && !laserStation.seated());   /* the tank's keys, taught once past the handover (src/fx/controls-card.js) */ if (story && !storyQuery.skip) (skipCard ??= createSkipTutorial(root, { href: skipTutorialUrl(location.search) })).tick(automated());   /* SKIP TUTORIAL: offered through the opening beats, gone at the handover (src/fx/skip-tutorial.js) */
     if (story && automated() && !frozen && !player.won) laserStation.tick(dt);   // SOL-82: the pass clock once online, the seat's hands, the beam
     updateCameraGoal();
 
@@ -9865,7 +9865,7 @@ export function initTdTab(root) {
   // THE SECTORS (src/fx/sector-run.js): the story's loop past the handover, fed from the board's real sites
   function makeSectorRun() {
     return createSectorRun({ story, host: root, api: storyApi, waveSize: params.waveSize, threatMult, hardcore: story.hardcore, spawnGap: { spread: SPAWN_SPREAD, max: SPAWN_GAP_MAX }, store: localStorage, rng: () => whim(), now: () => t,
-      ready: () => automated() && (story.beats.phase() === 'expedition' || story.handover.stage >= (story.handover.defendStage ?? 8)) && !briefQ && !shotActive() && !syntheticModal?.isOpen() && !paused,
+      ready: () => automated() && (story.beats.phase() === 'expedition' || story.handover.stage >= (story.handover.defendStage ?? 8)) && !briefQ && !shotActive() && !syntheticModal?.isOpen() && !paused, firstSector: storyQuery.skip ? STORY_SKIP.sector : 1,   /* SKIP TUTORIAL opens the run at the back-door sector: its collapse and breach are the first thing the player sees */
       centers: () => graph.centers, cellSide: () => cellSide, enemies: () => enemies, queue: () => spawnQueue, bank: () => eco.biomass, reload: () => location.reload(),
       field: () => ({ cellSide, centers: graph.centers, dist: bfsDist(graph.adj, [dungeon.heart], (ci) => dungeon.tags[ci] !== BLOCKED), inside: (ci) => story.inside(ci), excluded: [...sealedBreachCells, ...spawnPoints.filter((s) => s.alive).map((s) => s.ci)], farHops: Math.round(60 * 1.15), fallback: () => gunshipFar() }),   /* the ring gunshipFar walks: a minute out */
       open: (ci) => storyApi.breach(ci), collapse: (sp) => killPortal(sp, 'exhausted'), queued: (sp) => spawnQueue.some((q) => q.sp === sp), spReady: (sp) => gameBreaches.ready(sp.obj),
@@ -10004,11 +10004,11 @@ export function initTdTab(root) {
   // ?mode=build / ?map=heart jump straight into the TD viewpoints
   if (urlParams.get('mode') === 'build') { setView('orbit'); snapCamera(); } // legacy alias for view=orbit
   if (urlParams.get('map') === 'heart') mapMode = 'heart';
+  if (storyQuery.skip && story) { storyApi.expeditions().preDeliver(STORY_SKIP.parts); eco.addBiomass(STORY_SKIP.biomass, { category: 'grant' }); shield.rack = shieldTune.rackCap; refillArrays(); showBrief(STORY_SKIP.brief); }   /* SKIP TUTORIAL (?skip=defence): the world is already the finished base past the handover (readStoryQuery); what is left is the history that base implies — two expeditions taken (the Relay and the Mortar, flags up, trophies home), a full rack, a charged array and biomass for a few towers. The back door, SOL-82 and the array's refill arrive with the sector itself (src/content/sectors.js sector 2), and Isao says where they are */
 
   // ?biomass=N pads the purse (?credit=N still works — the old name is an
   // alias so saved debug URLs keep working); ?tower=key@ci,key@ci force-places
-  // towers
-  // (both headless-verification hooks)
+  // towers (both headless-verification hooks)
   const biomassN = parseInt(urlParams.get('biomass') || urlParams.get('credit') || '0', 10);
   if (biomassN > 0) eco.addBiomass(biomassN);
   const towerSpec = urlParams.get('tower');
@@ -13346,7 +13346,7 @@ export function initTdTab(root) {
         biomass: eco.biomass, towers: towers.length, won: player.won, paused,
         roster: ROSTER.id, buildMode, expeditions: story?.expeditions ?? null, cargo: story?.glue?.state() ?? null, unlocked: automated() ? unlockedTowers(story.expeditions, STORY_EXPEDITIONS.base) : null, storyHome: story?.home ?? -1, story: story?.beats.state() ?? null, automated: automated(), gunshipCall: { ...gunshipCall }, storyHud: story?.hud.state() ?? null, killsBySrc: { ...rs.bySrc }, storyLod: storyBase?.lod() ?? null, storyBaseErrors: storyBase?.errors.slice() ?? null, programme: story?.programme ? { ...programmeSnapshot(story.programme), grow: !!story.grow, print: story.print.state(), gate: storyBase?.gate() ?? null, broke: programmeHas(story.programme, 'gate') ? (story.wallCells ?? []).filter((wc) => dungeon.tags[wc] !== BLOCKED).length : 0, repairing: orders.find((o) => o.kind === 'repair')?.repair ?? null, perks: [...storyApi.perks()] } : null, towerCells: towers.map((t) => [t.key, t.ci]), insideEnemies: story ? enemies.filter((e) => e.alive && story.inside(e.cur)).length : 0,
         playerAsset: playerMesh?.userData.asset || params.creature, playerSpan: (() => { if (!playerMesh) return null; const b = new THREE.Box3().setFromObject(playerMesh); return Number.isFinite(b.max.x) ? +(b.getSize(new THREE.Vector3()).length() / (unitScale || 1)).toFixed(2) : null; })(),   // the hull's true size over its scale: exploded geometry reads absurd here
-        sector: sectorRun ? { ...sectorRun.state(), sockets: Object.keys(story?.socketToward ?? {}).map(Number) } : null, playerAssetReady: !playerMesh?.userData.loading,
+        sector: sectorRun ? { ...sectorRun.state(), sockets: Object.keys(story?.socketToward ?? {}).map(Number) } : null, playerAssetReady: !playerMesh?.userData.loading, skip: { on: !!storyQuery.skip, offer: skipCard?.state() ?? null },   /* SKIP TUTORIAL: whether this run is the skipped entry, and whether the offer still stands */
         playerModelStats: playerMesh?.userData.modelStats,
         berthAssets:lifeContainers.flatMap(c=>c.tanks.map(t=>t.userData.asset)), bays: lifeContainers.map((c) => ({ ci: c.ci, hasTank: c.tanks.length > 0, racked: !!c.tanks[0]?.visible })), berthCells: berths.map((b) => b.ci), kills: rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike, monitorShown: storyMonitor?.shown() ?? 0, screenOpen: !!syntheticModal?.isOpen(), screensOpened: syntheticModal?.opened() ?? 0, brassLive: brass?.live() ?? 0, daylight: daylight?.state() ?? null,
         heartAsset: heartSprite?.userData.asset || params.heartLook,
@@ -13491,7 +13491,7 @@ export function initTdTab(root) {
   animate();
 
   return {
-    dispose() { ramFloat.dispose(); pilot?.dispose(); active = false; storyBase?.dispose(); gameBreaches.dispose();runTimers.dispose(); runContext.dispose(); missilesDisposed=true; missilePool?.dispose(); setPerfOverlay(false,false); },
+    dispose() { ramFloat.dispose(); pilot?.dispose(); skipCard?.dispose(); active = false; storyBase?.dispose(); gameBreaches.dispose();runTimers.dispose(); runContext.dispose(); missilesDisposed=true; missilePool?.dispose(); setPerfOverlay(false,false); },
     setActive(on) {
       active = on;
       if (!on) stopEngine(0.1, true); // quiet: leaving the tab is not a landing

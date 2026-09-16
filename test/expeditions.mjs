@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { makeExpeditions, reveal, guardsCleared, reach, deliver, hullLost, unlockedTowers, nextReveals, siteState } from '../src/domain/expeditions.js';
-import { STORY_EXPEDITIONS } from '../src/content/story-defaults.js';
+import { makeExpeditions, reveal, guardsCleared, reach, deliver, deliverAtOnce, hullLost, unlockedTowers, nextReveals, siteState } from '../src/domain/expeditions.js';
+import { STORY_EXPEDITIONS, STORY_SKIP } from '../src/content/story-defaults.js';
 import { TOWER_BY_KEY } from '../src/towers.js';
 import { STORY_LAYOUT } from '../src/platform/story-world.js';
 
@@ -41,4 +41,16 @@ const after5 = STORY_EXPEDITIONS.sites.filter((s) => s.reveal?.after === 5).map(
 assert.deepEqual(nextReveals(ex), after5, 'five parts home reveal the last site');
 assert.equal(after5.length, 1);
 assert.ok(STORY_EXPEDITIONS.deliverCells > 0);
-console.log('Expeditions: hidden, guarded, cleared, carried, delivered; one part at a time; the drop on hull loss; unlocks; later reveals.');
+
+// THE SKIP TUTORIAL ENTRY: two parts home before the first frame, and nothing else changed
+{
+  const st = makeExpeditions(STORY_EXPEDITIONS.sites);
+  assert.deepEqual(STORY_SKIP.parts.map((id) => deliverAtOnce(st, id)), ['relay', 'mortar'], 'the Relay and the Mortar are the two skipped expeditions');
+  assert.deepEqual(unlockedTowers(st, STORY_EXPEDITIONS.base), ['rotor', 'quiver', 'relay', 'mortar']);
+  assert.equal(deliverAtOnce(st, 'rocket-a'), null, 'a delivered site is not delivered twice');
+  assert.equal(deliverAtOnce(st, 'nowhere'), null);
+  assert.equal(st.carrying, null, 'nothing is on the back deck');
+  assert.deepEqual(st.sites.filter((s) => s.state !== 'delivered').map((s) => s.state), ['hidden', 'hidden', 'hidden', 'hidden'], 'every other site still waits');
+  assert.deepEqual(nextReveals(st), [], 'two parts home do not reveal the later sites');
+}
+console.log('Expeditions: hidden, guarded, cleared, carried, delivered; one part at a time; the drop on hull loss; unlocks; later reveals; the skipped tutorial\'s two parts.');

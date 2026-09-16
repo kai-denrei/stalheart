@@ -295,6 +295,14 @@ export const BRIEFS = {
     lines: ['New signals on the radar. More landers came down out there.', 'Same drill: clear the nest, bring the part home.'],
   },
 
+  // SKIP TUTORIAL (owner, 2026-09-16): the first thing a friend who skipped the opening hears. Two lines: where they are,
+  // and what happens next. Everything he names is standing on the ground in front of them — the base, the two trophies at
+  // the landing, the rock behind the bays about to go.
+  skip_defence: {
+    id: 'skip_defence', face: 'determined', title: 'YOU ARE UP',
+    lines: ['Base is printed, Relay and Mortar are ours, SOL-82 answers when we call.', 'The rock behind the bays is about to give. Build, and hold the back door.'],
+  },
+
   // THE SECTORS (docs/superpowers/specs/2026-09-15-v1-session-design.md): Isao's two lines on each sector's brief. The lines
   // are the content table's (src/content/sectors.js), so the brief and the debrief's "next sector" lines cannot drift.
   ...Object.fromEntries(SECTORS.map((s) => [`sector_${s.n}`, { id: `sector_${s.n}`, face: s.n === 1 ? 'determined' : 'focused', title: `SECTOR ${s.n} · ${s.name}`, lines: [...s.brief] }])),

@@ -4507,6 +4507,16 @@ body.playing:not(.shell-open) #shell-bar { opacity: 0.32; }
    needs there; the strip names the views. The sound chip stays, alone. */
 #tab-td.story-world .tc-util button:not(#td-pad-sound), #tab-td.story-world #td-hint { display: none !important; }
 
+/* ==== SKIP TUTORIAL (src/fx/skip-tutorial.js): the player's way past the opening, offered from the landing until the
+   handover. Bottom right, above the pad, in the story's monochrome: a pale outline that cannot be read as damage or as a
+   campaign chip, and big enough on a phone to be a thumb target. It removes itself; there is no hidden state. ==== */
+#skip-tutorial { position: absolute; right: 16px; bottom: 132px; z-index: 45; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; padding: 9px 14px; background: rgba(8, 12, 16, 0.86); border: 1px solid rgba(223, 232, 238, 0.55); color: #dfe8ee; font: 12px/1.2 ui-monospace, Menlo, monospace; letter-spacing: 0.14em; cursor: pointer; pointer-events: auto; text-align: right; }
+#skip-tutorial b { font-size: 14px; font-weight: 700; letter-spacing: 0.18em; }
+#skip-tutorial small { font-size: 10px; letter-spacing: 0.08em; color: #9aa8b0; text-transform: none; }
+#skip-tutorial:hover, #skip-tutorial:focus-visible { border-color: #ffffff; color: #ffffff; background: rgba(28, 36, 42, 0.92); }
+#skip-tutorial:disabled { opacity: 0.4; cursor: default; }
+@media (max-width: 720px) { #skip-tutorial { right: 12px; bottom: 168px; padding: 11px 14px; } }
+
 /* ==== CONTROLS CARD (src/fx/controls-card.js): the tank's keys, once past the handover; H or ? again ==== */
 #controls-card { position: absolute; right: 16px; top: 60px; z-index: 40; width: min(300px, calc(100vw - 32px)); padding: 10px 12px 12px; background: rgba(8, 12, 16, 0.86); border: 1px solid rgba(220, 235, 240, 0.28); color: #dfe8ec; font: 12px/1.45 ui-monospace, Menlo, monospace; pointer-events: auto; }
 #controls-card[hidden] { display: none; }

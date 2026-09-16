@@ -5,7 +5,7 @@
 import * as THREE from '../../vendor/three.module.js';
 import { buildWorld } from '../domain/world-recipe.js';
 import { planBase } from '../domain/base-plan.js';
-import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT, STORY_SCALE, STORY_BREACH, STORY_QUIVER, STORY_DAY, STORY_FODDER, STORY_HANDOVER, STORY_EXPEDITIONS, STORY_BACK_DOOR } from '../content/story-defaults.js';
+import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT, STORY_SCALE, STORY_BREACH, STORY_QUIVER, STORY_DAY, STORY_FODDER, STORY_HANDOVER, STORY_EXPEDITIONS, STORY_BACK_DOOR, STORY_SKIP } from '../content/story-defaults.js';
 import { findBackMouth } from '../domain/back-door.js';
 import { CONTENT } from '../content/runtime.js';
 import { FOUNDRY_TUNE } from '../content/foundry.js';
@@ -16,7 +16,7 @@ export { STORY_WORLD_SOUNDS as STORY_SOUNDS };
 import { ISLANDS, STRUCTURES, KIT, STAGES, withLandmarkTiers, landmarkTierMode } from '../content/base-layout.js';
 import { SHIELD_ARRAY } from '../content/shield-array.js';
 import { createStoryBase } from '../fx/story-base.js';
-import { isStoryRoute } from '../core/story-route.js';
+import { isStoryRoute, skipsTutorial } from '../core/story-route.js';
 import { makeStoryBeats } from '../domain/story-beats.js';
 import { STORY_PHASES } from '../domain/automation.js';
 import { makeExpeditions } from '../domain/expeditions.js';
@@ -39,15 +39,18 @@ export function readStoryQuery(search) {
   // stage is quick to inspect, but a BARE page — no ?stage=, no ?story= — is the V1 session itself and was fighting a third of the
   // waves its sector table asks for: sector 1 opened with two bodies. Only an explicit deep link keeps the sparse waves now.
   const deepLink = q.has('stage') || q.has('story');
+  // SKIP TUTORIAL (?skip=defence): not a deep link and not a diorama — the finished base, the beats past the handover and
+  // the full threat of a real run. It is the whole opening replaced at once, so it overrides stage, phase and grow.
+  const skip = story && skipsTutorial(search);
   return {
-    short,
+    short, skip,
     world: story ? 'story' : 'default',
     threat: Math.min(4, Math.max(0.1, parseFloat(q.get('threat') || '') || (short && deepLink ? 0.35 : 1))),
-    stage: Math.min(STAGES.length - 1, Math.max(0, parseInt(q.get('stage') ?? q.get('story') ?? '', 10) || (story ? 1 : 0))),
+    stage: skip ? STORY_SKIP.stage : Math.min(STAGES.length - 1, Math.max(0, parseInt(q.get('stage') ?? q.get('story') ?? '', 10) || (story ? 1 : 0))),
     landmarks: landmarkTierMode(search),   // ?landmarks=candidate: review the pinned runtime LOD candidates in the game camera
-    phase: STORY_PHASES.includes(q.get('phase')) ? q.get('phase') : null,   // ?phase=expedition: a jump past the handover starts the beats there
+    phase: skip ? STORY_SKIP.phase : (STORY_PHASES.includes(q.get('phase')) ? q.get('phase') : null),   // ?phase=expedition: a jump past the handover starts the beats there
     // ISAO GROWS THE BASE IN PLAY: ?grow=1, and a bare story page that names no stage; an explicit stage=N stays the static base
-    grow: story && (q.get('grow') === '1' || (q.get('grow') !== '0' && !q.has('stage') && !q.has('story'))),
+    grow: !skip && story && (q.get('grow') === '1' || (q.get('grow') !== '0' && !q.has('stage') && !q.has('story'))),
   };
 }
 
