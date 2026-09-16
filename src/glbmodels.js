@@ -351,7 +351,7 @@ export function tintModel(root, color, opts = {}) {
   });
 }
 
-// A 3x3 shell rack, matching the procedural tank's: row-major, index < ammo
+// A 3x3 shell rack: row-major, index < ammo
 // lit. Returned so the caller can hand it to td-tab as userData.ammoDots.
 export function makeShellRack(parent, { x = 0, y = 0, z = 0, dot = 0.05, gapX = 0.24, gapZ = 0.28,
   plate = null } = {}) {
@@ -416,7 +416,7 @@ export function addEdgeOutlines(root, { angle = 28, opacity = 0.85, color = 0xff
   return root;
 }
 
-// A heat sleeve around a gun: the diegetic gauge our tank already uses,
+// A heat sleeve around a gun: the diegetic gauge the tank already uses,
 // cool cyan to red as the cannon heats. Returned so the caller can hand it
 // over as userData.heatSleeve — td-tab lerps its material colour directly.
 export function makeHeatSleeve(parent, { radius = 0.32, len = 0.5, z = 1.4, color = 0x7df9ff } = {}) {
@@ -430,8 +430,7 @@ export function makeHeatSleeve(parent, { radius = 0.32, len = 0.5, z = 1.4, colo
   return sleeve;
 }
 
-// Glowing tubes for a pair of guns, matching the procedural tank's
-// mini-guns. Inserted at child index 0 because td-tab reads the heat gauge
+// Glowing tubes for a pair of guns. Inserted at child index 0 because td-tab reads the heat gauge
 // off guns[0].children[0] — appending would leave it recolouring a chunk of
 // the model instead. One shared material, so both tubes heat together.
 export function addGunTubes(guns, { radius = 0.12, len = 1.0, z = 0.5, color = 0x7df9ff } = {}) {

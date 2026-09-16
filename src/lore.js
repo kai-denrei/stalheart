@@ -91,23 +91,6 @@ export const LORE_WORLD = [
 
 export const LORE = {
   // --- friendly ----------------------------------------------------------
-  tank: {
-    name: 'SURVEY TANK, PATTERN A',
-    tag: 'the procedural hull',
-    body: 'The expedition’s baseline machine: a squat gravsled hull on '
-      + 'six lift emitters, one deliberate main gun fed from a nine-shell '
-      + 'rack bolted where a crew would sit, twin toed-in mini-lasers at '
-      + 'the bow. It is not brave and not fast; it is REPAIRABLE, which on '
-      + 'S-9 is the entire virtue. Doctrine paints its running lights by '
-      + 'hull integrity, so a dying tank glows like an ember and everyone '
-      + 'on the net knows it.',
-    visual: 'compact futuristic hover tank on an asteroid surface, boxy '
-      + 'utilitarian hull, six glowing lift emitters underneath, single '
-      + 'heavy cannon, two small laser barrels at the front, visible '
-      + 'nine-shell ammunition rack, neon edge lighting, worn metal, '
-      + 'grounded military sci-fi realism, dust kicked by thrusters, '
-      + 'golden hour rim light, 8k',
-  },
   mork: {
     name: 'MÖRK', tag: 'the fielded heavy hover tank',
     body: 'A long, low hull suspended over paired lift fields. The forward turret carries a recoiling cannon; two plasma projectors cover the front. Nine rear-deck lenses show the shells available to the pilot.',

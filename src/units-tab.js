@@ -249,7 +249,7 @@ export function initUnitsTab(root) {
     // axis against the screen's height with a 1.9x margin, so a tank 10.8
     // long and 2.9 tall filled a fifth of the frame (operator: "so I can
     // see it in big"); a bounding-sphere fit then over-filled for compact
-    // units and ran the procedural tank into the toolbar. So: project the
+    // units and ran the hull into the toolbar. So: project the
     // box's eight corners along the view direction below and solve the
     // distance at which the widest one sits at the horizontal limit and
     // the tallest at the vertical one. The vertical limit is 0.5 of the

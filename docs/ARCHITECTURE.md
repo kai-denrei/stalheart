@@ -125,6 +125,6 @@ The story's piloted mounts and the gunship seat share `src/sentry-pilot.js`, the
 
 Ground breaches have a one-way runtime lifecycle: pending opening, open, sealed/disposed. Only an actual opening batch cues quake audio/camera. `src/breach-rubble.js` retains sealed caps separately from active FX, sharing a single growing instance buffer across the run; reset clears it and teardown releases GPU resources. Camera shots do not freeze breach simulation or swallow the input used to skip them.
 
-`src/content/tank.js` selects the default tank presentation for gameplay, spare hulls and Workshop/cinematic tank scenes. It is MÖRK; legacy castings remain explicit unit choices. Consumers preload the selected authored asset and use its muzzle/pivot contract rather than assuming MK-CX node names.
+`src/content/tank.js` selects the default tank presentation for gameplay, spare hulls and Workshop/cinematic tank scenes. It is MÖRK, and MÖRK is the only hull: the procedural survey-tank casting that used to stand in while the GLB loaded was removed on 2026-09-16, along with its catalogue entry and codex page. A hull that is not ready is an empty placeholder carrying MÖRK's unit contract, never another tank. Consumers preload the selected authored asset and use its muzzle/pivot contract rather than assuming MK-CX node names.
 
 `domain/yard-drive.js` isolates flat-yard acceleration/braking/collision from main-game movement; the swarm lab drives the real tank through it. The Astro diorama and its yard lab retired on 2026-09-14.

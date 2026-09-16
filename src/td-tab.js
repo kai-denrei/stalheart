@@ -143,9 +143,9 @@ export function initTdTab(root) {
     // are knobs rather than constants. Units: `hoverRise` is in MODEL units
     // (the tank is ~3.24 tall there), because it moves the body group inside
     // the model, not the unit on the sphere.
-    // MÖRK by default: the authored hover tank. Async — buildUnit falls
-    // back to the procedural tank until the bytes land, then
-    // applyCreature swaps it in when ready.
+    // MÖRK by default: the authored hover tank, and the ONLY hull. Async —
+    // buildUnit stands an empty placeholder until the bytes land and
+    // applyCreature swaps the real one in; no other tank is ever drawn.
     creature: DEFAULT_TANK,
     // balance (operator pass): heavier early waves, but a richer field —
     // more triads on the ground and a longer breath between waves
@@ -3979,7 +3979,7 @@ export function initTdTab(root) {
       `<div class="msg-scroll">` +
       `<div class="gcards">` +
       glossCard('#ff6a88', spriteShot('heart', heartIcon), 'the stalheart', 'the terraformer at the pole — without it the colony dies') +
-      glossCard('#9fdcff', spriteShot('tank', unitIcon('tank', look().walker)), 'your tank', mobileShell
+      glossCard('#9fdcff', spriteShot('tank', unitIcon(DEFAULT_TANK, look().walker)), 'your tank', mobileShell
         ? 'TAP the ground to send it · DRAG on the left to drive · ◉ shell · ∿ plasma · BUILD switch top-right · hold a tower to upgrade'
         : 'W/Q-E drive · A/D steer · SPACE shell · SHIFT lasers · 1/2/3 views · U upgrade · ESC pause') +
       glossCard('#9fdcff', spriteShot('tower-' + params.towerLook, () => buildTowerLook(params.towerLook, starterTower())), 'towers', 'your army — build them on the HIGH GROUND (walls) in BUILD mode') +
@@ -6550,9 +6550,9 @@ export function initTdTab(root) {
   // Swap every tower's VISUAL in place. Game state — key, def, tier, cell,
   // cooldown, spend — is untouched; only `obj` is rebuilt. That is the
   // whole point of the registry.
-  // Choosing a player unit. Units whose model loads asynchronously build
-  // their procedural fallback right now and swap in when the bytes land, so
-  // the choice is instant and the tank is never missing.
+  // Choosing a player unit. A unit whose model loads asynchronously stands an
+  // EMPTY placeholder right now and swaps the real hull in when the bytes
+  // land, so the choice is instant and no other hull is ever seen.
   function applyCreature() {
     const chosen = params.creature;
     if (chosen === 'mork') {
@@ -9919,7 +9919,7 @@ export function initTdTab(root) {
   regenerate();
   applyLook();
   // a unit whose model loads asynchronously needs its bytes kicked off; it
-  // renders the procedural fallback until they arrive
+  // draws nothing until they arrive
   if (params.creature === 'mork') applyCreature();
 
   // ?walk=N teleports the wanderer N hops along the shortest route (demo)
@@ -10410,12 +10410,11 @@ export function initTdTab(root) {
       // preserved pivots, and if it did, the two are no longer related and
       // the toe is decoration.
       {
-        // WHICH TANK IS THIS? headless often never finishes the mkcx load and
-        // measures the PROCEDURAL fallback instead — so a reading here can be
-        // about a different tank from the one the operator is playing. Say so
-        // rather than let the number pass for the model's.
+        // IS THE HULL HERE? headless often never finishes the MÖRK load, and a
+        // reading taken off the empty placeholder is about no tank at all. Say
+        // so rather than let the number pass for the model's.
         const gp = playerMesh.getObjectByName('Secondary_L_Gun_Pivot');
-        console.log(`BEAMFIRE tank=${gp ? 'mkcx (model pivots)' : 'procedural fallback'}`
+        console.log(`BEAMFIRE tank=${gp ? 'MÖRK (model pivots)' : 'no hull yet'}`
           + ` guns=${(playerMesh.userData.laserGuns || []).length}`
           + ` SECONDARY_TOE=${SECONDARY_TOE}`);
       }
@@ -13111,8 +13110,8 @@ export function initTdTab(root) {
       + ` ${PEN_HARD() * 3 >= LASER_REACH ? 'STOPS it' : 'does NOT stop it'})`);
     // ...and the toe the reach solved for, with where it actually crosses.
     // Reported rather than asserted: the muzzle gap is measured off whatever
-    // model loaded, and a probe that assumed it would be lying on the
-    // procedural fallback.
+    // model loaded, and a probe that assumed it would be lying before MÖRK
+    // lands.
     if (lastToe) {
       console.log(`TOE gap=${lastToe.gap.toFixed(3)} cells`
         + ` toe=${lastToe.toe.toFixed(4)} rad`
