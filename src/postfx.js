@@ -107,11 +107,28 @@ export function makeBloom(renderer, scene, camera, opts = {}) {
   const saved = [];          // { mat, r, g, b } and { obj, visible }
   const savedVis = [];
   const black = new THREE.Color(0, 0, 0);
-  let sceneBgSaved;
+  let sceneBgSaved, conflictClock = 0;
+
+  // one object's weight, applied: hidden at 0, its materials scaled at anything but 1
+  function weigh(obj, w, weightedMaterials) {
+    const mat = obj.material;
+    if (!mat) return;
+    if (w === 0) { savedVis.push({obj,visible:obj.visible}); obj.visible = false; return; }
+    if (w === 1) return; // nothing to do — the common case, kept cheap
+    const mats = Array.isArray(mat) ? mat : [mat];
+    for (const m of mats) {
+      if (!m.color || weightedMaterials.has(m)) continue;
+      weightedMaterials.add(m);
+      saved.push({ mat: m, r: m.color.r, g: m.color.g, b: m.color.b });
+      m.color.setRGB(m.color.r * w, m.color.g * w, m.color.b * w);
+    }
+  }
+  const inScene = (obj) => { let r = obj; while (r.parent) r = r.parent; return r === scene; };
 
   function applyWeights() {
     const map = buildWeightMap(groupsFn(), weights);
-    if (!warnedConflict) {
+    // the tripwire once a second, not once a frame: it walks every grouped node, and a conflict is a code change, not a frame event
+    if (!warnedConflict && conflictClock++ % 60 === 0) {
       const bad = materialConflicts(map);
       if (bad.length) {
         warnedConflict = true;
@@ -121,20 +138,11 @@ export function makeBloom(renderer, scene, camera, opts = {}) {
     }
     const dflt = clampWeight(weights.effects);
     const weightedMaterials=new Set();
-    scene.traverse((obj) => {
-      const mat = obj.material;
-      if (!mat) return;
-      const w = map.has(obj) ? map.get(obj) : dflt;
-      if (w === 0) { savedVis.push({obj,visible:obj.visible}); obj.visible = false; return; }
-      if (w === 1) return; // nothing to do — the common case, kept cheap
-      const mats = Array.isArray(mat) ? mat : [mat];
-      for (const m of mats) {
-        if (!m.color || weightedMaterials.has(m)) continue;
-        weightedMaterials.add(m);
-        saved.push({ mat: m, r: m.color.r, g: m.color.g, b: m.color.b });
-        m.color.setRGB(m.color.r * w, m.color.g * w, m.color.b * w);
-      }
-    });
+    // With the default weight at 1 an ungrouped object needs nothing, so only the grouped ones are visited — the
+    // whole-scene walk cost 0.4 ms a frame with 400 enemies on the board (2026-09-16 horde profile). A default that
+    // is not 1 (the lab's effects slider) still has to see everything.
+    if (dflt === 1) { for (const [obj, w] of map) if (inScene(obj)) weigh(obj, w, weightedMaterials); }
+    else scene.traverse((obj) => weigh(obj, map.has(obj) ? map.get(obj) : dflt, weightedMaterials));
     sceneBgSaved = scene.background;
     scene.background = black; // the sky must not bloom
   }
@@ -155,12 +163,20 @@ export function makeBloom(renderer, scene, camera, opts = {}) {
     },
     render() {
       if (!enabled) { renderer.render(scene, camera); return; }
-      if (groupsFn) applyWeights();
-      bloomComposer.render();
-      if (groupsFn) restoreWeights();
-      // the PURE bloom, taken before UnrealBloomPass's additive blend
-      addPass.uniforms.tBloom.value = bloom.renderTargetsHorizontal[0].texture;
-      finalComposer.render();
+      // THE MATRICES ONCE, FOR BOTH PASSES. Each RenderPass would otherwise walk the whole scene again through
+      // renderer.render, recomposing every object's matrix, and nothing moves between the two passes (the weights only
+      // touch colours and visibility). Measured at 0.3 ms a frame with 400 enemies on the board. The flag is held off
+      // only across the passes, so the rest of the frame keeps three's ordinary behaviour.
+      const autoUpdate = scene.matrixWorldAutoUpdate;
+      if (autoUpdate) { scene.updateMatrixWorld(); scene.matrixWorldAutoUpdate = false; }
+      try {
+        if (groupsFn) applyWeights();
+        bloomComposer.render();
+        if (groupsFn) restoreWeights();
+        // the PURE bloom, taken before UnrealBloomPass's additive blend
+        addPass.uniforms.tBloom.value = bloom.renderTargetsHorizontal[0].texture;
+        finalComposer.render();
+      } finally { scene.matrixWorldAutoUpdate = autoUpdate; }
     },
     setSize(w, h) {
       // ORDER MATTERS: composer.setSize() re-sizes EVERY pass (at device
