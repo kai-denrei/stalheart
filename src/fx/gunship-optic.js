@@ -21,9 +21,10 @@ export function createGunshipOptic(scene, { cellSide, metresPerCell = 10 }) {
     m.renderOrder = 5; rings.add(m); ringOf[key] = m;
   }
   const platform = new THREE.Group(); platform.visible = false; scene.add(platform);
-  // contacts: one bright screen-sized point per living enemy, over everything, so the swarm reads on the seat's map at any zoom
-  const contactsGeo = new THREE.BufferGeometry(); contactsGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3 * 600), 3)); contactsGeo.setDrawRange(0, 0);
-  const contacts = new THREE.Points(contactsGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 7, sizeAttenuation: false, depthTest: false, depthWrite: false, transparent: true, opacity: 0.95 })); contacts.visible = false; contacts.renderOrder = 7; contacts.frustumCulled = false; scene.add(contacts);
+  // NO CONTACT MARKERS (owner, 2026-09-16: "the squares above enemies must go"). This used to be one screen-sized white point per
+  // living enemy, drawn over everything with depth testing off — which reads as a small square stuck on every body in the frame.
+  // The box the owner keeps is the sentry optic's lock reticle (src/fx/story-scope.js): one box at the centre of the HUD, drawn in
+  // SVG over the seat's own view, never in the world and never one per enemy.
   let model = null, mixer = null, clips = {}, mounted = false, spin = 0, disposed = false, side = 0;
   // tracers: a small pool of lines, each with a life; the oldest is reused
   const tracers = []; for (let i = 0; i < 24; i++) { const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]); const m = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })); m.visible = false; m.renderOrder = 6; m.userData.life = 0; m.userData.total = 1; scene.add(m); tracers.push(m); }
@@ -45,16 +46,9 @@ export function createGunshipOptic(scene, { cellSide, metresPerCell = 10 }) {
   const node = (n) => model?.getObjectByName(n);
   return {
     active: () => mounted,
-    mount() { mounted = true; rings.visible = true; contacts.visible = true; },
+    mount() { mounted = true; rings.visible = true; },
     // leaving the seat takes the painted targets and the rounds in the air with it: they only fade in pose(), which stops with the seat
-    dismount() { mounted = false; rings.visible = false; contacts.visible = false; if (model) model.visible = true; for (const pt of paints) { pt.m.removeFromParent(); pt.m.material.dispose(); } paints.length = 0; for (const f of flights) { f.line.visible = false; f.line.userData.life = 0; } flights.length = 0; },
-    // the seat's view modes: night vision keeps the contacts white; thermal makes them larger and hot
-    contactsStyle(mode) { contacts.material.size = mode === 'thermal' ? 10 : 7; contacts.material.color.set(mode === 'thermal' ? 0xffe27a : 0xffffff); contacts.visible = mounted && mode !== 'normal'; },
-    contacts(enemies) {
-      const p = contactsGeo.attributes.position; let n = 0;
-      for (const e of enemies) { if (n >= 600) break; const l = Math.hypot(e.pos[0], e.pos[1], e.pos[2]) || 1, k = 1 + cellSide * 0.6; p.setXYZ(n++, e.pos[0] / l * k, e.pos[1] / l * k, e.pos[2] / l * k); }   // lifted a little off the ground so the floor never hides them
-      p.needsUpdate = true; contactsGeo.setDrawRange(0, n); contactsGeo.computeBoundingSphere();
-    },
+    dismount() { mounted = false; rings.visible = false; if (model) model.visible = true; for (const pt of paints) { pt.m.removeFromParent(); pt.m.material.dispose(); } paints.length = 0; for (const f of flights) { f.line.visible = false; f.line.userData.life = 0; } flights.length = 0; },
     hull(on) { if (model) model.visible = on; },
     // the world position of a muzzle socket: the rotary pair alternates, the heavy has one
     muzzle(gun) { const n = gun === 'heavy' ? node('SOCKET_MUZZLE_HEAVY') : node(`SOCKET_MUZZLE_${(side++ & 1) ? 'R' : 'L'}`); (n ?? platform).getWorldPosition(wp); return wp.toArray(); },
@@ -118,6 +112,6 @@ export function createGunshipOptic(scene, { cellSide, metresPerCell = 10 }) {
         m.material.opacity = key === gun ? (bad ? 0.95 : 0.7) : 0.2;
       }
     },
-    dispose() { disposed = true; rings.removeFromParent(); platform.removeFromParent(); contacts.removeFromParent(); contactsGeo.dispose(); contacts.material.dispose(); for (const pt of paints) { pt.m.removeFromParent(); pt.m.material.dispose(); } paintGeo.dispose(); for (const m of [...Object.values(ringOf), ...tracers]) { m.removeFromParent(); m.geometry.dispose(); m.material.dispose(); } },
+    dispose() { disposed = true; rings.removeFromParent(); platform.removeFromParent(); for (const pt of paints) { pt.m.removeFromParent(); pt.m.material.dispose(); } paintGeo.dispose(); for (const m of [...Object.values(ringOf), ...tracers]) { m.removeFromParent(); m.geometry.dispose(); m.material.dispose(); } },
   };
 }

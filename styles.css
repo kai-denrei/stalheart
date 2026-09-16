@@ -2431,8 +2431,7 @@ html, body {
 #tab-td.striking #td-app canvas {
   filter: grayscale(1) contrast(1.3) brightness(1.12);
 }
-/* the gunship seat's views (owner, 2026-09-14): normal, night vision (dark, the contacts white), thermal (hot, the contacts yellow) */
-#tab-td.gunship-night #td-app canvas:not(.minimap) { filter: grayscale(1) brightness(0.62) contrast(1.7); }   /* the radar keeps its own green (owner, 2026-09-14) */
+/* the gunship seat's view (owner, 2026-09-16): thermal, always — its visual identity, with no normal or night to switch to. The radar keeps its own green */
 #tab-td.gunship-thermal #td-app canvas:not(.minimap) { filter: url(#flir); }   /* FLIR ironbow (index.html #flir, from the explosion lab) */
 #tab-td.gunship-seat #td-strikecam { display: none !important; }   /* the 105 is watched from the seat, not the munition feed */
 /* !important because three.js setSize writes `display: block` INLINE on its
