@@ -672,6 +672,86 @@ try{
   assert(/^\+\d+ kg ×\d+$/.test(s.ram.float.last),`the readout says +N kg ×M (${s.ram.float.last})`);assert(s.ram.float.live<=s.ram.float.max,'the pool is bounded');
   assert(calls.includes('RAM ×10'),`the x10 tier callout lands (${calls.join(' | ')})`);assert(shot,'a ram readout was on screen');}
  await evaluate(`${T}.placeTank(${pad.cell})`);await delay(400);current='shield-array-end';await finish();
+ } else if(args.includes('--skip-tutorial')) {
+ // SKIP TUTORIAL (owner, 2026-09-16; docs/log/entries/2026-09-16-skip-tutorial-built.json). The opening still plays from the landing
+ // and offers a button; the button is a LINK to ?skip=defence, and what it opens is a real run already at the back door: the Relay
+ // and the Mortar earned and buildable, an undelivered part still refused, SOL-82 online, three hulls, and waves that come.
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`);
+ // 1. THE OPENING IS UNTOUCHED, and it carries the offer
+ await go('skip-tutorial-offer','index.html?sw=0&acceptance=1&cine=0&world=story&grow=1#td');
+ await until(`!!${T}`,90000);await delay(2500);
+ {const s=await st();assert.equal(s.skip.on,false,'a page that does not ask to skip does not skip');assert.equal(s.automated,false,'the opening still plays the tutorial');
+  assert(['landed','foundry','printing','rotor-ready'].includes(s.story.phase),`the run is in the opening beats (${s.story.phase})`);
+  assert.equal(s.skip.offer.shown,true,'the offer stands');
+  assert.equal(await evaluate('document.querySelector("#skip-tutorial b").textContent'),'SKIP TUTORIAL','the button says what it does');
+  assert.equal(await evaluate('(()=>{const r=document.querySelector("#skip-tutorial").getBoundingClientRect();return r.width>80&&r.height>30&&r.bottom<innerHeight&&r.right<=innerWidth;})()'),true,'it is on screen and thumb-sized');
+  assert.equal(s.skip.offer.href,'index.html?sw=0&acceptance=1&cine=0&skip=defence#td','the button carries this page\'s harness keys into the skipped run');}
+ current='skip-tutorial-offer';await finish();
+ // 2. A CLICK IS THE ENTRY: a real pointer on the button, and the page it lands on is the skipped run
+ await click('#skip-tutorial');
+ await until('location.search.includes("skip=defence")',20000);
+ await until(`window.__stalheartReady===true && !!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ await delay(3000);
+ {const s=await st();
+  assert.equal(s.skip.on,true,'the click landed in the skipped run');
+  assert.equal(s.skip.offer,null,'the offer is not repeated inside the run it opens');
+  assert.equal(await evaluate('!!document.querySelector("#skip-tutorial")'),false,'no SKIP TUTORIAL button past the tutorial');
+  assert.equal(s.automated,true,'past the handover: the towers are automatic');
+  assert.equal(s.story.phase,'expedition');
+  // TWO TOWERS EARNED: the Relay and the Mortar, their flags up at the sites and their trophies home
+  assert.deepEqual(s.unlocked,['rotor','quiver','relay','mortar'],`the two expedition towers are unlocked (${JSON.stringify(s.unlocked)})`);
+  assert.deepEqual(s.expeditions.sites.filter(x=>x.state==='delivered').map(x=>x.id),['rocket-a','rocket-b'],'as though rocket-a and rocket-b came home');
+  assert.equal(s.cargo.trophies,2,`two trophies stand at the landing (${JSON.stringify(s.cargo)})`);
+  assert.deepEqual(s.cargo.flags.map(f=>f.id).sort(),['rocket-a','rocket-b'],'our flags stand over both sites');
+  assert(s.cargo.flags.every(f=>f.state==='up'),`the flags are up, not raising (${JSON.stringify(s.cargo.flags)})`);
+  assert.equal(s.cargo.carrying,null,'nothing is on the back deck');
+  // THE BASE IS STANDING THROUGH THE BAYS, so the three hulls read as lives
+  assert.equal(s.hulls,3,'three hulls');assert.equal(s.bays.length,3,'three bays');
+  assert(s.biomass>=300,`biomass enough to place a few towers (${s.biomass})`);
+  assert(s.shield.rack>=2,`the shield rack is full (${s.shield.rack})`);
+  assert(s.shield.arrayReserve>0,`the array reserve is charged (${s.shield.arrayReserve})`);
+  // ISAO SAYS WHERE THEY ARE
+  assert.match(await evaluate('document.querySelector("#td-brief")?.textContent||""'),/Relay and Mortar are ours/,'Isao\'s arrival lines are on the panel');}
+ current='skip-tutorial-arrival';await finish();
+ // 3. THE TOWERS ARE REALLY BUILDABLE: the player's own build menu offers the Relay and the Mortar at their price, and still
+ // shows PART OUT on a part nobody fetched — the unlock is the expedition rule, not a label
+ assert.equal(await evaluate(`${T}.openBuildMenu()`),true,'the build menu opens on an open cell');
+ await delay(300);
+ {const shop=await evaluate(`(()=>{const out={};for(const b of document.querySelectorAll('#td-shop .shop-buy'))out[b.dataset.key]={locked:b.classList.contains('locked'),disabled:b.disabled,txt:b.textContent};return out;})()`);
+  for(const key of ['rotor','quiver','relay','mortar'])assert(shop[key]&&!shop[key].locked&&!shop[key].disabled,`${key} is offered and affordable (${JSON.stringify(shop[key])})`);
+  for(const key of ['lancer','plasma'])assert(shop[key]?.locked&&/PART OUT/.test(shop[key].txt),`${key}'s part is still out at its site (${JSON.stringify(shop[key])})`);}
+ await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape'});await delay(200);
+ assert.equal(await evaluate('document.querySelector("#td-shop").classList.contains("hidden")'),true,'Escape closes the build menu');
+ // and a Relay really stands when it is bought
+ {const socks=(await st()).sector.sockets;assert(socks.length>=2,`the story sockets (${socks})`);
+  assert(await evaluate(`${T}.commitTower('relay',${socks[0]})`),'the Relay can be placed');
+  assert(await evaluate(`${T}.commitTower('mortar',${socks[1]})`),'the Mortar can be placed');
+  assert.equal(await evaluate(`${T}.state().towers>=2`),true,'both stand');}
+ // 4. THE BACK DOOR IS THE FIRST FIGHT: sector 2, the mouth behind the bays open, a live breach there, SOL-82 online
+ await until(`${T}.state().sector.n===2`,60000).catch(async()=>assert.fail(`the run opens at the back-door sector (${JSON.stringify((await st()).sector)})`));
+ assert.equal((await st()).sector.name,'THE BACK DOOR');
+ await until(`${T}.backDoorOpen()`,60000).catch(()=>assert.fail('the rock behind the bays gives way'));
+ await until(`(()=>{const b=${T}.state().sector.breaches;return b.length===2&&b.every(x=>x.live);})()`,90000).catch(async()=>assert.fail(`both breaches open (${JSON.stringify((await st()).sector)})`));
+ {const s=await st();assert.deepEqual(s.sector.breaches.map(b=>b.side).sort(),['back','gate'],'one breach behind the bays, one on the gate side');
+  assert.equal(s.laser.online,true,'SOL-82 is online');
+  assert.equal(s.sector.strays,0,'no stray breach from an opening this run never played');}
+ // 5. A WAVE ACTUALLY ARRIVES, on the run's own clock
+ await until(`${T}.state().sector.breaches.some(b=>b.wavesReleased>0)`,120000).catch(async()=>assert.fail(`a wave comes without being asked (${JSON.stringify((await st()).sector)})`));
+ await until(`${T}.state().performance.enemies>0`,60000);
+ {const s=await st();console.log(`PASS skip-tutorial waves: enemies ${s.performance.enemies}, ${s.sector.breaches.map(b=>`${b.id}/${b.side} ${b.wavesReleased}/${b.wavesPlanned}`).join(' ')}, gate ${JSON.stringify(s.sector.gate)}`);}
+ current='skip-tutorial-back-door-fight';await finish();
+ // 6. IT IS A RUN, NOT A DIORAMA: the sector is fought to its end, SECURE and the debrief follow, CONTINUE moves on
+ await until(`(()=>{const S=${T}.state().sector;for(const b of S.breaches)if(b.live&&b.wavesReleased<b.wavesPlanned)${T}.sectorRelease(b.id);if(S.breaches.every(b=>!b.live||b.wavesReleased>=b.wavesPlanned))${T}.sectorClearField();return S.breaches.every(b=>b.closedBy);})()`,180000).catch(async()=>assert.fail(`the breaches close (${JSON.stringify((await st()).sector)})`));
+ await evaluate(`${T}.sectorClearField()`);
+ await until(`${T}.state().sector.secure`,30000).catch(async()=>assert.fail(`SECTOR SECURE (${JSON.stringify((await st()).sector)})`));
+ await until(`${T}.state().sector.debriefOpen`,20000);
+ {const r=await evaluate(`${T}.sectorReport()`);assert.equal(r.sector,2);assert.equal(r.outcome,'secure');
+  assert.deepEqual(r.breaches.map(b=>b.side).sort(),['back','gate'],'the back breach is in the books');
+  console.log(`PASS skip-tutorial secure: ${r.seconds}s, kills ${r.kills.total}, breaches ${r.breaches.map(b=>`${b.id}/${b.side}/${b.closedBy}`).join(' ')}`);}
+ await delay(1200);current='skip-tutorial-debrief';await finish();
+ await evaluate(`${T}.sectorContinue()`);
+ await until(`${T}.state().sector.n===3 && !${T}.state().sector.debriefOpen && !${T}.state().paused`,20000).catch(async()=>assert.fail(`CONTINUE moves to the next sector (${JSON.stringify((await st()).sector)})`));
+ current='skip-tutorial-next-sector';await finish();
  } else if(args.includes('--backdoor')) {
  // THE SECOND FRONT: sector gating must not seal the outer world in the story (the back lanes and the far sites live out there)
  await go('backdoor-stage6','index.html?sw=0&acceptance=1&cine=0&world=story&stage=6#td');
