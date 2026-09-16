@@ -6,6 +6,7 @@ import * as THREE from '../../vendor/three.module.js';
 import { GLTFLoader } from '../../vendor/GLTFLoader.js';
 import { MeshoptDecoder } from '../../vendor/meshopt_decoder.module.js';
 import { batchStaticAsset } from './asset-batching.js';
+import { cloneSkinned } from './skinned-clone.js';
 
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 const cache = new Map();
@@ -136,7 +137,9 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
   ]);
   // one tier of a landmark: batched or cloned, offset, hidden nodes, its clips, and for the bays their hooks
   function mount(s, gltf, holder) {
-      const root = s.batch ? batchStaticAsset(gltf.scene, gltf.animations) : gltf.scene.clone(true);
+      // cloneSkinned, not clone(true): a rigged landmark (the foundry) keeps the CACHED glTF's bones otherwise, and
+      // nothing updates those, so its skin resolves into a huge sheet over the base instead of the model
+      const root = s.batch ? batchStaticAsset(gltf.scene, gltf.animations) : cloneSkinned(gltf.scene);
       own(root); root.name = s.id;
       for (const name of s.hide ?? []) { const n = root.getObjectByName(name); if (n) n.visible = false; }
       holder.add(root); root.position.set(...s.offset);
