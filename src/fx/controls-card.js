@@ -8,6 +8,7 @@ const SEEN = 'td.controls-card-seen', RACK = 'td.shield-empty-hint', AUTO_HIDE_M
 const KEYS = [
   ['W / ↑', 'faster · tap twice to cruise'], ['S / ↓', 'brake, then reverse'], ['A D / ← →', 'steer'], ['Q / E', 'throttle up / down'],
   ['Space', 'fire a shell'], ['Shift', 'hold: lasers'], ['T', 'shield'], ['V', 'change view · 1 map · 2 first person · 3 third'],
+  ['7 8 9 0', 'seats: tank · gunship · SOL-82 · map'],   // the views strip's four buttons, on the keys (owner, 2026-09-16)
   ['G', 'gunship briefing'], ['Esc', 'pause'], ['H / ?', 'this card'],
 ];
 const PADS = [['#td-pad-fire', 'FIRE'], ['#td-pad-laser', 'LASER'], ['#td-pad-shield', 'SHIELD'], ['#td-pad-left', 'TURN'], ['#td-pad-right', 'TURN']];
