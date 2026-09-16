@@ -5222,7 +5222,7 @@ export function initTdTab(root) {
     // a status nobody can read
     if (isao && isao.state === 'build') {
       const pct = Math.round(Math.min(1, isao.t / Math.max(0.001, isao.dur)) * 100);
-      return `<div class="hud-obj hud-isao">ISAO &#9656; printing ${what} ${pct}%${rest}</div>`;
+      return `<div class="hud-obj hud-isao">ISAO &#9656; ${o.step?.over ? 'working' : 'printing'} ${what} ${pct}%${rest}</div>`;   /* an `over` beat works a machine that already stands; it prints nothing */
     }
     return `<div class="hud-obj hud-isao">ISAO &#9656; inbound ${what}${rest}</div>`;
   }
