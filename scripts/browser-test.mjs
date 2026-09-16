@@ -923,21 +923,28 @@ try{
  assert.equal(await evaluate('document.querySelector("#td-brief").classList.contains("hidden")'),false,'Isao speaks the override line');
  const held=await evaluate('window.__stalheartTest.state()');assert.equal(held.kills,0,'the sentry did not fire on its own');assert(held.performance.enemies>=held.story.spawned-1&&held.performance.enemies>0,`every spawned enemy is still alive (${held.performance.enemies} of ${held.story.spawned}, the last may still be emerging)`);current='story-world-override';await finish();
  assert.equal(await evaluate('typeof window.__stalheartPilotTest'),'undefined','no control before the override');
- await until('!!window.__stalheartPilotTest',30000);await until('window.__stalheartTest.state().performance.enemies>0',60000);await delay(14000);
+ await until('!!window.__stalheartPilotTest',30000);
+ // THE ROTOR'S HEAT PEAK IS MEASURED IN THE PAGE, EVERY FRAME. The harness polls at 150 ms plus a CDP round trip, so banking the peak
+ // from its poll bodies sampled the barrels' cooling curve by luck: a run where the piloted Rotor cleared the wave quickly read 0.037,
+ // 0.040 and 0.041 on three branches while passing on main both times (2026-09-16). This hook rides requestAnimationFrame from the
+ // moment the seat is taken, records the max of state().heat while the seat is still the Rotor, and removes itself the moment the key
+ // changes (the Quiver hand-over), the seat is left (the hook is deleted) or state() throws. The assertion below reads its peak.
+ await evaluate('(()=>{window.__rotorHeatMax=0;window.__rotorHeatFrames=0;const tick=()=>{const t=window.__stalheartPilotTest;if(!t)return;let p;try{p=t.state();}catch(e){return;}if(p.key!=="rotor")return;window.__rotorHeatMax=Math.max(window.__rotorHeatMax,p.heat||0);window.__rotorHeatFrames++;requestAnimationFrame(tick);};requestAnimationFrame(tick);})()');
+ await until('window.__stalheartTest.state().performance.enemies>0',60000);await delay(14000);
  const fodder=await evaluate('window.__stalheartTest.state()');assert(fodder.performance.enemies>=2&&fodder.performance.enemies<=50,`fodder alive ${fodder.performance.enemies}`);   // the first wave is one fifty-strong swarmassert.equal(fodder.performance.wave,0,'no wave arms');
  assert.deepEqual(fodder.enemyTypes,['amoeba'],'the first wave is the white amoeba');assert.equal(fodder.insideEnemies,0,'the closed gate holds the fodder outside');assert.equal(fodder.queued,0);
  current='story-world-fodder';await finish();
  await until('window.__stalheartPilotTest.aimEnemy()!==null',15000);const victim=await evaluate('window.__stalheartPilotTest.aimEnemy()');assert(victim!==null,'an amoeba is in reach and sight of the Rotor');   // the pile at the gate shuffles; give it a moment
  await evaluate('window.__stalheartPilotTest.hold(true)');
- // the fodder keeps walking, so re-aim each poll until this one drops; every poll also banks the Rotor's own heat peak (see below)
- await until(`(()=>{const t=window.__stalheartPilotTest;const p=t.state();if(p.key==='rotor')window.__rotorHeatMax=Math.max(window.__rotorHeatMax||0,p.heat);const e=t.enemy(${victim.id});if(!e||!e.alive)return true;t.aimEnemy();return false;})()`,8000);await evaluate('window.__stalheartPilotTest.hold(false)');
+ // the fodder keeps walking, so re-aim each poll until this one drops (the heat peak is banked per frame by the hook above)
+ await until(`(()=>{const t=window.__stalheartPilotTest;const e=t.enemy(${victim.id});if(!e||!e.alive)return true;t.aimEnemy();return false;})()`,8000);await evaluate('window.__stalheartPilotTest.hold(false)');
  const shots=await evaluate('window.__stalheartPilotTest.state().shots');assert(shots>=2,'the Rotor streamed rounds');assert((await evaluate('window.__stalheartTest.state().brassLive'))>0,'spent cases fell from the Rotor in sentry control (docs/AMMUNITION.md)');current='story-world-rotor-kill';await finish();
  // keep shooting: the fifth kill brings the comms study, the tenth the biomass line
  await evaluate('window.__stalheartPilotTest.hold(true)');
- await until('(()=>{const s=window.__stalheartTest.state();const p=window.__stalheartPilotTest.state();if(p.key==="rotor")window.__rotorHeatMax=Math.max(window.__rotorHeatMax||0,p.heat);if(s.story.said.includes("harvest_biomass"))return true;window.__stalheartPilotTest.aimEnemy();return false;})()',120000);
+ await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("harvest_biomass"))return true;window.__stalheartPilotTest.aimEnemy();return false;})()',120000);
  await evaluate('window.__stalheartPilotTest.hold(false)');const said=await evaluate('window.__stalheartTest.state().story.said');assert(said.includes('alien_comms')&&said.includes('harvest_biomass'),'both lines said');
- // THE HEAT CHECK READS THE ROTOR'S OWN PEAK, NOT A FRESH BURST (owner, 2026-09-14): confirmed live that a piloted Rotor can clear the whole wave during the waits above and the game hands control to the Quiver 0.6s later (STORY_QUIVER.delay) — read here, `state().key` is already 'quiver', heat 0, held reset by the hand-over's own attach(). A burst fired at THIS point fires the wrong mount, so every poll above banked the Rotor's own heat while it was still the Rotor, and the peak it reached is what is asserted on
- const heatPeak=await evaluate('window.__rotorHeatMax||0');assert(heatPeak>0.05,`the barrels carry heat after a burst (${heatPeak})`);
+ // THE HEAT CHECK READS THE ROTOR'S OWN PEAK, NOT A FRESH BURST (owner, 2026-09-14): confirmed live that a piloted Rotor can clear the whole wave during the waits above and the game hands control to the Quiver 0.6s later (STORY_QUIVER.delay) — read here, `state().key` may already be 'quiver', heat 0, held reset by the hand-over's own attach(). A burst fired at THIS point fires the wrong mount, so the per-frame hook installed at the seat banked the Rotor's own heat while it was still the Rotor, and the peak it reached is what is asserted on
+ const heatPeak=await evaluate('window.__rotorHeatMax||0'),heatFrames=await evaluate('window.__rotorHeatFrames||0');console.log(`rotor heat peak ${heatPeak.toFixed(4)} over ${heatFrames} frames in the seat`);assert(heatFrames>0,'the heat hook sampled the Rotor seat');assert(heatPeak>0.05,`the barrels carry heat after a burst (${heatPeak})`);
  await delay(400);current='story-world-harvest';await finish();
  // THE FIRST WAVE DOWN IS THE NEXT UNLOCK: keep firing until the twenty are spent and none stand, then Isao's line and the view strip
  if(!(await evaluate('window.__stalheartTest.state().story.said')).includes('wave_cleared'))assert.equal(await evaluate('document.querySelector("#story-views")'),null,'no view strip before the wave is cleared');   // a piloted Rotor can clear the whole wave during the kills above (2026-09-14), and phase can move past 'cleared' to 'quiver-piloting' the same tick it is set, so said is checked instead of the exact phase
