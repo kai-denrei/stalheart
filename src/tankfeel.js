@@ -62,7 +62,7 @@ export const formatFeelCode = (p) => formatKnobs('TANK_FEEL', TANK_FEEL_KNOBS, p
 export const tankKnobProblems = () => knobProblems(TANK_FEEL_KNOBS, TANK_FEEL);
 
 export function makeTankFeel() {
-  return { hoverT: 0, settleT: 99, t: 0, recoil: 0 };
+  return { hoverT: 0, settleT: 99, t: 0, recoil: 0, bank: 0 };
 }
 
 // Advance the state. `running` is the engine's own notion of running, so the
@@ -153,6 +153,10 @@ export function applyTankFeel(unit, st, p = TANK_FEEL) {
     rz += Math.cos(st.settleT * 11) * p.rock * 0.62 * d;
   }
   if (rf > 0) rx += -p.recoilPitch * rk;   // noses up under the kick
+  // THE HULL LEANS INTO ITS TURN (owner, 2026-09-16: the steering felt unnatural). The roll comes from the caller's steering state
+  // (src/domain/steer-ease.js steerBank), SUMMED with the touchdown rock for the reason the rock and the recoil are summed above:
+  // two writes to rotation.z would silently keep only the last. A caller that never sets it leaves the hull exactly as it was.
+  rz += st.bank ?? 0;
   body.rotation.x = rx;
   body.rotation.z = rz;
 }

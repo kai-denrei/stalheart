@@ -35,10 +35,14 @@ export function readStoryQuery(search) {
   // A bare page is the story too; the legacy game names itself (classic, mission, ...).
   const story = isStoryRoute(search);
   const short = story && q.get('world') !== 'story';
+  // THE SESSION IS NOT A DEEP LINK (owner, 2026-09-16: "the waves are much too easy"). The sparse 0.35 threat exists so a jumped-to
+  // stage is quick to inspect, but a BARE page — no ?stage=, no ?story= — is the V1 session itself and was fighting a third of the
+  // waves its sector table asks for: sector 1 opened with two bodies. Only an explicit deep link keeps the sparse waves now.
+  const deepLink = q.has('stage') || q.has('story');
   return {
     short,
     world: story ? 'story' : 'default',
-    threat: Math.min(4, Math.max(0.1, parseFloat(q.get('threat') || '') || (short ? 0.35 : 1))),
+    threat: Math.min(4, Math.max(0.1, parseFloat(q.get('threat') || '') || (short && deepLink ? 0.35 : 1))),
     stage: Math.min(STAGES.length - 1, Math.max(0, parseInt(q.get('stage') ?? q.get('story') ?? '', 10) || (story ? 1 : 0))),
     landmarks: landmarkTierMode(search),   // ?landmarks=candidate: review the pinned runtime LOD candidates in the game camera
     phase: STORY_PHASES.includes(q.get('phase')) ? q.get('phase') : null,   // ?phase=expedition: a jump past the handover starts the beats there

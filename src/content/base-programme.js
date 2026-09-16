@@ -22,3 +22,13 @@ export const BASE_PROGRAMME = Object.freeze([
 // what the perks are worth where the game reads a number: the HUGIN arm fills the gunship call-in meter faster; the assembly line
 // rebuilds this many lost hulls at each sector start
 export const BASE_PERKS = Object.freeze({ gunshipMeter: 1.5, rebuildHulls: 1 });
+
+// ISAO MENDS WHAT THE SWARM BROKE (owner, 2026-09-16: "Isao should go and build walls/a gate in between waves when a breach of the
+// base happened"). The rule is src/domain/repair-orders.js; these are the numbers. `gateAt` is the share of the gate's hp below
+// which the door is worth a trip (a broken gate always is), and each kind carries the print Isao stands over: the gate is the
+// bigger job. `brief` is his line the first time he flies out to a repair.
+export const BASE_REPAIR = Object.freeze({
+  gateAt: 0.75, brief: 'isao_repair',
+  gate: Object.freeze({ seconds: 8, metres: 6 }),
+  wall: Object.freeze({ seconds: 5, metres: 4 }),
+});
