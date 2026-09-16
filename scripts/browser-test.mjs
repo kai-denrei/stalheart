@@ -831,6 +831,7 @@ try{
  // the Rotor's behind it), two TALON shots with the seeker feed riding along, then settled and the strip is back
  await until('window.__stalheartTest.state().story.phase==="quiver-piloting"',120000);await delay(600);
  const qp=await evaluate('window.__stalheartPilotTest.state()');assert.equal(qp.key,'quiver','the Quiver optic first');assert.equal(qp.posts.length,2,'both mounts are posts');
+ await until('window.__stalheartPilotTest.lock().locked',8000).catch(()=>{});current='story-world-quiver-optic';await finish();   /* the sight in the game's own run: whatever phase the seat is in when the hand-over lands */
  const killsBefore=(await evaluate('window.__stalheartTest.state()')).kills;await evaluate('window.__stalheartPilotTest.hold(true)');
  // re-aim every half second, not every poll: each re-aim re-slews the launcher, and a lock needs the reticle held still on the target
  try{await until('(()=>{const s=window.__stalheartTest.state();if(s.story.phase==="settled")return true;if(!window.__aimAt||Date.now()-window.__aimAt>500){window.__aimAt=Date.now();window.__stalheartPilotTest.aimEnemy();}return false;})()',150000);}
