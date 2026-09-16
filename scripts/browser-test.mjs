@@ -433,6 +433,45 @@ try{
   assert.deepEqual(r.breaches.map(b=>b.side).sort(),['back','gate'],'the back breach is in the books');assert(r.breaches.every(b=>b.closedBy),`every breach closed or held (${JSON.stringify(r.breaches)})`);
   console.log(`PASS sector 2 secure: ${r.seconds}s, kills ${r.kills.total}, breaches ${r.breaches.map(b=>`${b.id}/${b.side}/${b.closedBy}/${b.wavesFought}of${b.wavesPlanned}`).join(' ')}, prints [${r.colony.prints}]`);}
  await delay(1500);current='sectors-sector-2-debrief';await finish();
+ } else if(args.includes('--waves')) {
+ // THE RESHAPED PROGRAMMES UNDER LOAD (owner, 2026-09-16: "hundreds of low levels ... testing the fps of the browser"). Drive the
+ // sector loop forward, then release a whole programme from every live breach WITHOUT clearing the field and sample frame times
+ // while the bodies pile up. Reports rather than asserts a frame budget: the numbers are the point, and the machine is the machine.
+ const T='window.__stalheartTest', sec=()=>evaluate(`${T}.state().sector`);
+ await go('waves-load','index.html?sw=0&acceptance=1&cine=0&world=story&stage=6&phase=expedition#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ {const s=await sec();if(s.sockets&&s.sockets.length>=2){await evaluate(`${T}.commitTower('rotor',${s.sockets[0]})`);await evaluate(`${T}.commitTower('quiver',${s.sockets[1]})`);}}
+ const reach=parseInt(args.find(a=>a.startsWith('--sector='))?.split('=')[1]??'3',10);
+ // sectors before the one under test, the quick way: every wave out, the field cleared by hand, CONTINUE
+ for(let n=1;n<reach;n++){
+  try{
+   await until(`${T}.state().sector.phase==="fighting"&&${T}.state().sector.breaches.every(b=>b.opened)`,120000);
+   await until(`(()=>{const S=${T}.state().sector;for(const b of S.breaches)if(b.live&&b.wavesReleased<b.wavesPlanned)${T}.sectorRelease(b.id);return S.breaches.every(b=>!b.live||b.wavesReleased>=b.wavesPlanned);})()`,120000);
+   await evaluate(`${T}.sectorClearField()`);
+   await until(`${T}.state().sector.secure`,90000);
+   await until(`${T}.state().sector.debriefOpen`,30000);
+   await evaluate(`${T}.sectorContinue()`);
+   await until(`${T}.state().sector.n===${n+1}`,30000);
+   console.log(`WAVES sector ${n} cleared`);
+  }catch(e){console.log(`WAVES stopped short at sector ${n}: ${e.message}`);break;}
+ }
+ const at=await sec();
+ await until(`${T}.state().sector.phase==="fighting"&&${T}.state().sector.breaches.every(b=>b.opened)`,120000).catch(()=>{});
+ if(args.includes('--last')){
+  // ONE wave from every breach, which is what the game actually puts on the ground at once (the next wave waits for a cleared
+  // field): walk the programme to its last wave, clearing between each, then release that biggest wave and measure it alone.
+  await until(`(()=>{const S=${T}.state().sector;if(!S.breaches.some(b=>b.live&&b.wavesReleased<b.wavesPlanned-1))return true;for(const b of S.breaches)if(b.live&&b.wavesReleased<b.wavesPlanned-1)${T}.sectorRelease(b.id);${T}.sectorClearField();return false;})()`,180000).catch(()=>{});
+  await evaluate(`${T}.sectorClearField()`);await delay(1200);
+  await evaluate(`(()=>{const S=${T}.state().sector;for(const b of S.breaches)if(b.live)${T}.sectorRelease(b.id);})()`);
+ } else {
+  // the whole programme out of every live breach at once: a deliberate overload, several times the real peak
+  await evaluate(`(()=>{const S=${T}.state().sector;for(let k=0;k<20;k++)for(const b of S.breaches)if(b.live)${T}.sectorRelease(b.id);})()`);
+ }
+ const probe=await evaluate(`new Promise(res=>{const T=window.__stalheartTest,f=[],t0=performance.now();let prev=t0,peak=0;const tick=()=>{const now=performance.now();f.push(now-prev);prev=now;peak=Math.max(peak,T.state().performance?.enemies||0);if(now-t0<12000)requestAnimationFrame(tick);else{const s=f.slice(1).sort((a,b)=>a-b);res({frames:s.length,p50:+s[Math.floor(s.length*0.5)].toFixed(2),p95:+s[Math.floor(s.length*0.95)].toFixed(2),max:+s[s.length-1].toFixed(2),peak});}};requestAnimationFrame(tick);})`);
+ const after=await sec();
+ console.log(`WAVES sector ${after.n} (${after.name}): peak concurrent ${probe.peak}, frame ms p50 ${probe.p50} p95 ${probe.p95} max ${probe.max} over ${probe.frames} frames`);
+ console.log(`WAVES breaches ${after.breaches.map(b=>`${b.id}/${b.side} ${b.wavesReleased}of${b.wavesPlanned}`).join(' ')} (entered sector ${at.n})`);
+ current='waves-pile';await finish();
  } else if(args.includes('--defense')) {
  // THE HANDOVER (docs/superpowers/specs/2026-09-14-handover-gunship-call-expeditions-design.md): past the Quiver the towers fire
  // on their own and the wave clock runs; the gunship waits for an earned call; the tank clears a nest and brings a part home
