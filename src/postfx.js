@@ -85,6 +85,10 @@ export function makeBloom(renderer, scene, camera, opts = {}) {
   const bloom = new UnrealBloomPass(
     new THREE.Vector2(b0.w, b0.h), o.strength, o.radius, o.threshold);
   bloomComposer.addPass(bloom);
+  // The pass ends by blending its bloom additively back over the composer's buffer at full device resolution. Nothing
+  // reads that buffer — the pure bloom is taken from renderTargetsHorizontal[0] below — so the blend's material is
+  // simply not drawn. Measured at dpr 2: one 2880x1974 half-float read+write a frame for a picture nobody sees.
+  bloom.blendMaterial.visible = false;
 
   // --- pass B: the real scene + that bloom
   const finalComposer = new EffectComposer(renderer);
@@ -92,7 +96,15 @@ export function makeBloom(renderer, scene, camera, opts = {}) {
   // silently discards the renderer's antialias:true. On a wireframe board
   // that is the most visible side effect of adding a chain at all — ask
   // for MSAA back (samples survives setSize, so this is set once).
-  finalComposer.renderTarget1.samples = 4;
+  // ON THE SCENE'S BUFFER ONLY. RenderPass draws into the composer's readBuffer (renderTarget2) and does not swap;
+  // renderTarget1 only ever receives full-screen shader passes (the add, and the OutputPass when a film pass follows),
+  // and a full-screen triangle has no edge to antialias — every sample of a pixel is the same fragment, so the resolve
+  // returns that fragment and the picture is identical. What a multisampled, depth-carrying renderTarget1 cost was a
+  // second 4x clear and resolve of the whole frame. Measured with every draw call skipped (the fixed floor): 23.7 ms
+  // of GPU a frame at dpr 2 before this and the blend cut above, 13.3 ms after; the 404-enemy frame went from 21.6 ms
+  // to 16.7 ms there, and the floor at dpr 1 from 5.2 ms to 3.8 ms (2026-09-16 horde profile, artifacts/qa).
+  finalComposer.renderTarget1.samples = 0;
+  finalComposer.renderTarget1.depthBuffer = false;
   finalComposer.renderTarget2.samples = 4;
   finalComposer.addPass(new RenderPass(scene, camera));
   const addPass = new ShaderPass(AddBloomShader);
