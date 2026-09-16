@@ -38,13 +38,13 @@ clean exports → UX → playability**. `docs/STATE.md` holds the detail.
 
 ## Committed
 
-### The V1 session (built overnight 2026-09-16, awaiting the owner's playtest)
+### The V1 session (built overnight 2026-09-16, playtested the same day)
 
-A bare `index.html` now plays start to finish: the opening grows the base as Isao prints it, sectors of two breaches follow the handover (close early and forfeit, hold and collect), the swarm wears the gate down, sector 2 cracks the back door and brings SOL-82 online, and every sector ends on the animated debrief. Design: `docs/superpowers/specs/2026-09-15-v1-session-design.md`; the 2026-09-16 log entries record each piece and its evidence.
+Two ways in. A bare `index.html` plays start to finish: Isao works the foundry and prints the base, the Rotor and the Quiver are piloted once, sectors of two breaches follow the handover (close early and forfeit, hold and collect), the swarm wears the gate down and Isao mends it between waves, sector 2 cracks the back door and brings SOL-82 online, and every sector ends on the animated debrief. `index.html?skip=defence#td` (SKIP TUTORIAL) is the same run opened at the finished base with the Relay and the Mortar earned and the back door as the first fight. Design: `docs/superpowers/specs/2026-09-15-v1-session-design.md`; the 2026-09-16 entries record each piece, the playtest rounds that followed (input, difficulty, the grey sheet, the walls, the legacy hull, the Quiver's scope, the foundry beat, the MK-9, the skip) and their evidence.
 
-**Committed next:** the owner's playtest with friends decides the numbers. Every sector, gate, forfeit and HELD value is a first cut; nothing was balance-tuned.
+**Committed next:** two calls the owner has to make. Whether to trim the foundry beat's +14.5 s on the opening; and what to do about ~48 fps at 400+ concurrent enemies (406 alive at p50 20.9 ms in sector 3's biggest wave), which is being profiled before anything is optimised. The sector numbers are still a first cut, now climbing into the hundreds; more playtest decides the rest.
 
-**Candidate:** a second gate for the back door; Isao animating the gate repair; SOL-82 burning every building rather than only the Stålheart; the gunship seat's first-use hitch; a clipping-plane print.
+**Candidate:** a second gate for the back door; Isao animating the gate repair and flying to the dropped crate; SOL-82 burning every building rather than only the Stålheart, and its scorch cleared on NEW RUN; the gunship seat's first-use hitch; the MK-9's ignition fireball at close range, and its one-release-per-pass seen end to end; touch labels on the pad; a clipping-plane print.
 
 **Question:** does closing a breach early read as a choice in play, or do players always hold (or always close)? One playtest can answer it.
 
