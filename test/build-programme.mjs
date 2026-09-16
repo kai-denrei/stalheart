@@ -7,6 +7,11 @@ import { STORY_RECIPE, STORY_CLEARING } from '../src/content/story-defaults.js';
 import { ISLANDS, STRUCTURES, KIT, STAGES } from '../src/content/base-layout.js';
 import { buildStoryPlanet } from '../src/domain/story-planet.js';
 import { planBase } from '../src/domain/base-plan.js';
+import { createBasePrint } from '../src/fx/base-print.js';
+
+// what a step grew, so a beat that only works a standing machine can be shown to grow nothing
+const grown = [];
+const growStub = () => ({ growIsland: (id, k) => grown.push(['island', id, k]), grow: (id, k) => grown.push(['structure', id, k]), growGate: (k) => grown.push(['gate', k]), growWall: (i, k) => grown.push(['wall', i, k]) });
 
 // the content: unique ids, real phases and briefs, and every piece a grown stage-1 base leaves pending is printed by exactly one step
 {
@@ -24,7 +29,25 @@ import { planBase } from '../src/domain/base-plan.js';
   for (const i of plan.islands.filter((x) => x.pending)) assert.equal(count(i.id, 'islands'), 1, `island ${i.id} is printed once`);
   for (const s of plan.structures.filter((x) => x.pending && x.id !== 'rotor')) assert.equal(count(s.id, 'structures'), 1, `structure ${s.id} is printed once`);   // the Rotor is the beats' own print
   assert.equal(BASE_PROGRAMME.filter((s) => s.gate).length, 1, 'one gate step'); assert.ok(BASE_PROGRAMME.find((s) => s.gate).walls, 'the walls come with the gate');
-  assert.equal(BASE_PROGRAMME[0].id, 'gate', 'the gate prints first: the tremor waits for it');
+  assert.equal(BASE_PROGRAMME[0].id, 'foundry', 'Isao works the recycler before he prints anything');
+  assert.equal(BASE_PROGRAMME[1].id, 'gate', 'the gate prints first of the base: the tremor waits for it');
+  // the foundry beat is work on a machine that already stands: it prints nothing, carries no perk, and holds the beam over the AFR-01
+  {
+    const f = BASE_PROGRAMME[0];
+    assert.deepEqual([f.islands, f.structures, f.perk, f.gate ?? false, f.walls ?? false], [[], [], null, false, false], 'the foundry beat builds nothing');
+    assert.equal(f.over, 'foundry'); assert.equal(f.plot.length, 2); assert.ok(f.plot.every((v) => v > 0), 'the plot is the machine footprint');
+    assert.ok(f.seconds <= 10, `the beat must not push the first wave late: the tremor waits for the gate behind it (${f.seconds} s)`);
+    const print = createBasePrint({ base: growStub(), plan, placer: { toWorld: (p) => ({ toArray: () => p.slice() }) } });
+    assert.ok(print.cellOf(f) >= 0, 'the beat has a cell to fly to: a -1 would stall the whole programme');
+    const bed = print.bed(f), mid = bed(0, 0, 0), late = bed(0, 0, 1), corner = bed(1, 1, 0.5);
+    const machine = plan.structures.find((s) => s.id === f.over);
+    assert.ok(machine && !machine.pending, `${f.over} stands in the plan: src/platform/story-world.js keeps an \`over\` beat only while its machine is planned`);
+    assert.deepEqual([mid[0], mid[2]], [machine.x, machine.z], 'the beam rasters over the machine, not the island around it');
+    assert.equal(mid[1], f.metres); assert.equal(late[1], f.metres, 'no climb: he works at the machine height from the first frame');
+    assert.ok(Math.abs(corner[0] - machine.x) <= f.plot[0] && Math.abs(corner[2] - machine.z) <= f.plot[1], 'the raster stays on the deck');
+    print.progress(f, 0.5); print.finish(f);
+    assert.deepEqual(grown, [], 'working the foundry grows nothing');
+  }
   const at = (id) => BASE_PROGRAMME.findIndex((s) => s.id === id), handover = STORY_PHASES.indexOf('settled');
   assert.ok(STORY_PHASES.indexOf(BASE_PROGRAMME[at('stalheart')].when.phase) < handover, 'the Stålheart is due before the handover');
 }
@@ -59,7 +82,7 @@ import { planBase } from '../src/domain/base-plan.js';
 
 // standing steps count as printed from the start, perks included, and are never printed again
 {
-  const st = makeBuildProgramme(BASE_PROGRAMME, { standing: (s) => ['gate', 'landing', 'stalheart', 'solar', 'hugin'].includes(s.id) });
+  const st = makeBuildProgramme(BASE_PROGRAMME, { standing: (s) => ['foundry', 'gate', 'landing', 'stalheart', 'solar', 'hugin'].includes(s.id) });   // a static stage is past the foundry beat too (src/platform/story-world.js)
   assert.deepEqual([...perks(st)].sort(), ['gate', 'gunship', 'stalheart', 'station']);
   assert.equal(due(st, { phase: 'expedition', sector: 0 }), null); assert.equal(due(st, { phase: 'expedition', sector: 1 }).id, 'bays', 'a stage-6 jump prints the bays next');
   assert.deepEqual(snapshot(st).printed, [], 'nothing printed yet');

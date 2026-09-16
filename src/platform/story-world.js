@@ -88,7 +88,10 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   if (plan.cells.fodder >= 0) built.dungeon.spawn = plan.cells.fodder;
   // the build programme's steps that this plan holds, and which of them already stand (their perks come with them)
   const pieces = (s) => [...s.islands.map((id) => plan.islands.find((i) => i.id === id)), ...s.structures.map((id) => plan.structures.find((x) => x.id === id)), ...(s.gate ? [plan.gate] : []), ...(s.walls ? plan.walls : [])];
-  const steps = BASE_PROGRAMME.filter((s) => pieces(s).length > 0 && pieces(s).every(Boolean));
+  // what this plan must hold for a step to be in the programme at all: the pieces it prints, plus the standing machine an `over` beat
+  // works (Isao on the AFR-01 prints nothing, so a pieces-only filter dropped the beat out of the programme entirely)
+  const needs = (s) => [...pieces(s), ...(s.over ? [plan.structures.find((x) => x.id === s.over)] : [])];
+  const steps = BASE_PROGRAMME.filter((s) => needs(s).length > 0 && needs(s).every(Boolean));
   const bayBerths = plan.bays.length ? plan.bays.map((b) => ({ ci: b.cell, exit: b.exit, pos: b.pos, out: b.out })) : null;
   const story = stage >= 1 ? {
     sockets: new Set(), home: plan.cells.landing, socketLift: 0,
@@ -114,7 +117,9 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     socketToward: Object.fromEntries(plan.sockets.map((s) => [s.cell, s.toward])),   // the lane a story socket covers: the mount perches on that edge of its wall cell
     berths: bayBerths && !plan.bays[0].pending ? bayBerths : null, bayBerths,   // pending bays: the invisible camp is the berths until Isao prints them
     // ISAO KEEPS BUILDING: the programme, its print on the planet, and the wall cells that turn to rock when the gate step stands
-    grow, programme: makeBuildProgramme(steps, { standing: (s) => !pieces(s).some((p) => p.pending) }), print: createBasePrint({ base, plan, placer }),
+    // a beat that prints nothing (Isao working the standing foundry) has no piece to be standing: it is owed on a base that grows and
+    // already past on a static stage, which is exactly where the rest of the opening it belongs to is
+    grow, programme: makeBuildProgramme(steps, { standing: (s) => (pieces(s).length ? !pieces(s).some((p) => p.pending) : !grow) }), print: createBasePrint({ base, plan, placer }),
     wallCells: plan.walls.filter((w) => w.pending && w.cell >= 0).map((w) => w.cell),
     // THE SECOND FRONT: the sealed mouth behind the bays, recomputed per load like the rest of the clearing (the controller keeps
     // only the mesh and the dungeon of the planet), with the clearing cells the back-breach rules need and the tunables
