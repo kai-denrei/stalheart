@@ -7,6 +7,13 @@ export function createBasePrint({ base, plan, placer }) {
   // the plot a step prints, in frame metres: centre, half extents across and along its heading, and the lattice cell at its centre.
   // The gate step's plot runs along the rim over the gate and both runs of walls.
   function plotOf(step) {
+    // A STEP THAT WORKS A MACHINE THAT ALREADY STANDS (`over`, the AFR-01 seed foundry): the plot is the machine's own footprint on
+    // the island it shares, not the island, so the beam rasters over the thing rather than the field around it. It prints nothing.
+    if (step.over) {
+      const s = plan.structures.find((x) => x.id === step.over); if (!s) return null;
+      const [pw, pd] = step.plot ?? [4, 4];
+      return { x: s.x, z: s.z, hw: pw, hd: pd, heading: s.heading ?? [0, 1], cell: islandOf(s.island)?.cell ?? plan.cells?.[s.island] ?? -1 };
+    }
     if (step.gate && plan.gate) {
       const g = plan.gate, [hx, hz] = g.heading;
       const across = Math.max(6, ...plan.walls.map((w) => Math.abs((w.x - g.x) * hz - (w.z - g.z) * hx) + 2));
@@ -24,7 +31,9 @@ export function createBasePrint({ base, plan, placer }) {
     bed(step) {
       const p = plotOf(step), h = step.metres ?? 4; if (!p) return null;
       const [hx, hz] = p.heading;   // right of the heading is [hz, -hx]
-      return (ox, oy, k) => { const a = ox * p.hw, b = oy * p.hd; return placer.toWorld([p.x + hz * a + hx * b, h * clamp(k), p.z - hx * a + hz * b]).toArray(); };
+      // a print climbs as it lays; work on a machine that already stands holds at that machine's working height from the first frame
+      const rise = step.over ? () => 1 : clamp;
+      return (ox, oy, k) => { const a = ox * p.hw, b = oy * p.hd; return placer.toWorld([p.x + hz * a + hx * b, h * rise(k), p.z - hx * a + hz * b]).toArray(); };
     },
     progress(step, k) {
       at.step = step.id; at.k = k;

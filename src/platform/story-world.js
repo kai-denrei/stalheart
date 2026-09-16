@@ -114,7 +114,9 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     socketToward: Object.fromEntries(plan.sockets.map((s) => [s.cell, s.toward])),   // the lane a story socket covers: the mount perches on that edge of its wall cell
     berths: bayBerths && !plan.bays[0].pending ? bayBerths : null, bayBerths,   // pending bays: the invisible camp is the berths until Isao prints them
     // ISAO KEEPS BUILDING: the programme, its print on the planet, and the wall cells that turn to rock when the gate step stands
-    grow, programme: makeBuildProgramme(steps, { standing: (s) => !pieces(s).some((p) => p.pending) }), print: createBasePrint({ base, plan, placer }),
+    // a beat that prints nothing (Isao working the standing foundry) has no piece to be standing: it is owed on a base that grows and
+    // already past on a static stage, which is exactly where the rest of the opening it belongs to is
+    grow, programme: makeBuildProgramme(steps, { standing: (s) => (pieces(s).length ? !pieces(s).some((p) => p.pending) : !grow) }), print: createBasePrint({ base, plan, placer }),
     wallCells: plan.walls.filter((w) => w.pending && w.cell >= 0).map((w) => w.cell),
     // THE SECOND FRONT: the sealed mouth behind the bays, recomputed per load like the rest of the clearing (the controller keeps
     // only the mesh and the dungeon of the planet), with the clearing cells the back-breach rules need and the tunables

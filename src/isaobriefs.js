@@ -157,6 +157,10 @@ export const BRIEFS = {
     lines: ['They talk in vibration.', 'I started reverse-engineering it.', 'Need more compute.'],
   },
   // ISAO KEEPS BUILDING (V1, 2026-09-16): one line as each piece of the base starts printing (src/content/base-programme.js)
+  build_foundry: {
+    id: 'build_foundry', face: 'determined', title: 'COMMS · ISAO', once: true,
+    lines: ['AFR-01 is eating our rocket on its own.', 'Working the cut with the beam. Barrels first, then your gate.'],
+  },
   build_gate: {
     id: 'build_gate', face: 'determined', title: 'COMMS · ISAO', once: true,
     lines: ['A Rotor on its own is a lookout.', 'Printing the gate, then the walls.'],
