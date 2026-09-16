@@ -101,16 +101,15 @@ export function createStoryScope(root) {
       const far = target && max > 0 && target.range > max;
       const phase = flight > 0 ? 'away' : locked ? 'lock' : target ? 'track' : 'search';
       const fill = locked ? 1 : clamp01(meter);
-      const beat = still ? 1 : (clock % 0.62) < 0.38 ? 1 : 0.18;      /* the LOCKED blink, and only that */
+      const beat = still ? 1 : (clock % 0.62) < 0.38 ? 1 : 0.34;      /* the LOCKED blink, and only that: it never dims past reading */
       const tone = phase === 'lock' ? WHITE : phase === 'track' ? CYAN : phase === 'away' ? FG : SOFT;
 
       /* ---------------- the ring: the phase you can read without looking at a word ---------------- */
       if (!still) { spin += dt * (phase === 'search' ? 0.55 : phase === 'track' ? 0.8 + fill * 3.4 : 0); counter -= dt * (phase === 'away' ? 0.5 : 0); }
       const ringR = phase === 'search' ? b * 0.62 : phase === 'away' ? b * 0.46 : b * (0.62 - 0.3 * fill);
+      /* the ring itself stays solid on LOCKED — a still frame must read as locked; the tag and the inner box carry the blink */
       ctx.strokeStyle = tone;
-      ctx.globalAlpha = phase === 'lock' ? beat : 1;
-      segments(cx, cy, ringR, phase === 'search' ? 8 : phase === 'away' ? 6 : 8 + Math.round(fill * 8), phase === 'search' ? 0.42 : 0.3 + fill * 0.4, phase === 'away' ? counter : spin, phase === 'lock' ? 2.4 : 1.4);
-      ctx.globalAlpha = 1;
+      segments(cx, cy, ringR, phase === 'search' ? 8 : phase === 'away' ? 6 : 8 + Math.round(fill * 6), phase === 'search' ? 0.42 : 0.3 + fill * 0.28, phase === 'away' ? counter : spin, phase === 'lock' ? 2.6 : 1.4);
 
       /* ---------------- the lock square, at the seeker's true size, and the timer on its top edge ---------------- */
       ctx.strokeStyle = tone;
@@ -134,7 +133,7 @@ export function createStoryScope(root) {
         const half = b + (Math.max(11, b * 0.15) - b) * ease;
         const ix = cx + (bx - cx) * ease, iy = cy + (by - cy) * ease;
         ctx.strokeStyle = phase === 'lock' ? WHITE : CYAN;
-        ctx.globalAlpha = phase === 'lock' ? beat : 0.55 + 0.45 * fill;
+        ctx.globalAlpha = phase === 'lock' ? 0.45 + 0.55 * beat : 0.55 + 0.45 * fill;
         brackets(ix, iy, half, Math.max(5, half * 0.3), phase === 'lock' ? 2 : 1.4);
         ctx.globalAlpha = 0.5;
         ctx.lineWidth = 1;
@@ -156,16 +155,17 @@ export function createStoryScope(root) {
       line(cx, cy - R * 0.5, cx, cy - R * 0.24); line(cx, cy + R * 0.24, cx, cy + R * 0.5);
 
       /* ---------------- the word for the phase, under the square ---------------- */
-      const tagY = Math.min(h - 26, cy + b + 8);
+      /* clear of the seat's own strip and hint bar along the bottom, which the square's edge runs behind */
+      const tagY = cy + Math.min(b + 8, h * 0.29);
       ctx.textAlign = 'center';
       if (phase === 'lock') {
-        ctx.globalAlpha = beat;
-        ctx.fillStyle = WHITE; ctx.fillRect(cx - 78, tagY, 156, 16);
-        ctx.fillStyle = '#0b1418'; ctx.fillText('TARGET LOCKED', cx, tagY + 3);
+        ctx.globalAlpha = 0.4 + 0.6 * beat;
+        ctx.fillStyle = WHITE; ctx.fillRect(cx - 82, tagY, 164, 17);
+        ctx.fillStyle = '#0b1418'; ctx.fillText('TARGET LOCKED', cx, tagY + 4);
         ctx.globalAlpha = 1;
       } else {
-        ctx.fillStyle = far ? WARN : phase === 'track' ? CYAN : DIM;
-        ctx.fillText(phase === 'away' ? `ROUND AWAY · ${flight} IN FLIGHT` : far ? 'OUT OF RANGE' : phase === 'track' ? `LOCKING ${Math.round(fill * 100)}%` : 'SEARCHING', cx, tagY + 3);
+        ctx.fillStyle = far ? WARN : phase === 'track' ? CYAN : phase === 'away' ? FG : 'rgba(95, 230, 214, 0.78)';
+        ctx.fillText(phase === 'away' ? `ROUND AWAY · ${flight} IN FLIGHT` : far ? 'OUT OF RANGE' : phase === 'track' ? `LOCKING ${Math.round(fill * 100)}%` : 'SEARCHING · NOTHING IN THE BOX', cx, tagY + 4);
       }
 
       /* ---------------- telemetry, tucked into the margins beside the sight ---------------- */
