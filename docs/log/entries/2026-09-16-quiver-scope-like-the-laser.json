@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-09-16-quiver-scope-like-the-laser",
+  "date": "2026-09-16",
+  "type": "decision",
+  "status": "accepted",
+  "title": "The Quiver's reticle becomes a live targeting instrument in SOL-82's language",
+  "context": "Owner, playtesting the live build on 2026-09-16: 'we make the reticle/targeting system of the Quiver closer to that of the Orbital Laser, more exciting, moving elements, colors change, more tracking within the tracking, blinking confirmation that lock was acquired, more telemetry.' The Quiver's optic today is the sniper scope with one lock square and a timer along its top edge (src/fx/story-scope.js); SOL-82's scope and inset HUD (src/fx/laser-scope.js, src/fx/laser-inset-hud.js) carry the moving rings, phase colours and telemetry the owner wants.",
+  "outcome": "Accepted as presentation work within the authorised playtest round: the lock RULES do not change (whatever sits inside the square is the target, the timer runs while it stays, 0.9 s to lock; agency is legibility, 2026-09-13), only what the player sees. The scope gains phase-coloured elements that move, an inner tracking box that converges on the held target, a blinking TARGET LOCKED confirmation and telemetry (range, bearing, time to lock, what is held). Monochrome vocabulary with amber for warnings only.",
+  "alternatives": [
+    "Change the lock timing or cone to feel better; rejected, the owner asked for the instrument, not the rule, and the current lock was tuned into fairness on 2026-09-13.",
+    "Share one scope module between the Quiver and SOL-82; rejected for now because the laser aims a continuous beam from orbit and the Quiver holds a seeker cone, so their readouts differ."
+  ],
+  "evidence": [
+    "Owner note, 2026-09-16, on build 5e204f48.",
+    "Quiver lock rules and the box: docs/STORY.md 'The lock is the box'; src/fx/story-scope.js; STORY_QUIVER in src/content/story-defaults.js.",
+    "The look to borrow: src/fx/laser-scope.js and src/fx/laser-inset-hud.js."
+  ],
+  "supersedes": []
+}

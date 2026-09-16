@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-09-16-gunship-mini-nuke-drops-then-ignites",
+  "date": "2026-09-16",
+  "type": "decision",
+  "status": "proposed",
+  "title": "The gunship's third weapon fires a real missile that drops, ignites after two seconds and rides down",
+  "context": "Owner, playtesting the live build on 2026-09-16: 'the Gunship should fire an actual missile, one of our large ones, we see it drop, then it ignites after 2 seconds and heads down (for Weapon #3 mini nuke)'. Today the gunship's third gun is the 105 (src/domain/gunship.js, src/content/gunship.js), which lands as a strike without a modelled round in flight; the game already owns a drop-then-ignite flight profile for the Quiver's TALON (src/domain/missile-flight.js: eject, coast, fall, ignite, climb) and modelled missiles in src/missiles.js / src/missile-presentation.js.",
+  "outcome": "Proposed, not yet designed: weapon 3 becomes a modelled mini-nuke released from the gunship, falling free for about two seconds before its motor lights and drives it down onto the aim point, with the seat watching it go. Open: which of the pinned large missiles is the body; whether the existing missile-flight phases can be reused inverted (a drop from altitude rather than a pop-up) or need their own profile; what the 2 s free-fall does to the 105's current timing, damage and danger-close warning; whether the seeker/impact view follows the round down; and whether the yield deserves its own blast and scare numbers rather than the 105's.",
+  "alternatives": [
+    "Keep the 105 as an instant strike and only add a falling shell effect; cheaper but the owner asked to see a real missile leave the aircraft.",
+    "Reuse the orbital strike's falling camera wholesale; it frames a warhead from above rather than from the gunship's belly."
+  ],
+  "evidence": [
+    "Owner note, 2026-09-16, on build 5e204f48.",
+    "Existing drop-then-ignite phases: src/domain/missile-flight.js (the Quiver's TALON pop-out was capped at 8 m on 2026-09-16 for framing).",
+    "Gunship guns and their cadence: src/content/gunship.js, src/domain/gunship.js."
+  ],
+  "supersedes": []
+}

@@ -394,6 +394,22 @@ Evidence:
 - npm test: 116 test programs passed; npm run check: exit 0
 - temporary Profiler.start/stop around the collapse window (removed before commit)
 
+## 2026-09-16 — The Quiver's reticle becomes a live targeting instrument in SOL-82's language
+
+decision · accepted · 2026-09-16-quiver-scope-like-the-laser
+
+Owner, playtesting the live build on 2026-09-16: 'we make the reticle/targeting system of the Quiver closer to that of the Orbital Laser, more exciting, moving elements, colors change, more tracking within the tracking, blinking confirmation that lock was acquired, more telemetry.' The Quiver's optic today is the sniper scope with one lock square and a timer along its top edge (src/fx/story-scope.js); SOL-82's scope and inset HUD (src/fx/laser-scope.js, src/fx/laser-inset-hud.js) carry the moving rings, phase colours and telemetry the owner wants.
+
+Accepted as presentation work within the authorised playtest round: the lock RULES do not change (whatever sits inside the square is the target, the timer runs while it stays, 0.9 s to lock; agency is legibility, 2026-09-13), only what the player sees. The scope gains phase-coloured elements that move, an inner tracking box that converges on the held target, a blinking TARGET LOCKED confirmation and telemetry (range, bearing, time to lock, what is held). Monochrome vocabulary with amber for warnings only.
+
+Alternatives: Change the lock timing or cone to feel better; rejected, the owner asked for the instrument, not the rule, and the current lock was tuned into fairness on 2026-09-13.; Share one scope module between the Quiver and SOL-82; rejected for now because the laser aims a continuous beam from orbit and the Quiver holds a seeker cone, so their readouts differ.
+
+Evidence:
+
+- Owner note, 2026-09-16, on build 5e204f48.
+- Quiver lock rules and the box: docs/STORY.md 'The lock is the box'; src/fx/story-scope.js; STORY_QUIVER in src/content/story-defaults.js.
+- The look to borrow: src/fx/laser-scope.js and src/fx/laser-inset-hud.js.
+
 ## 2026-09-16 — Held inputs are released when the page stops listening; the gunship is thermal only, its contact squares are gone, and 7 8 9 0 take the seats
 
 change · resolved · 2026-09-16-playtest-input-and-views
@@ -500,6 +516,22 @@ Evidence:
 
 - Owner note, 2026-09-16 playtest of build 5e204f48.
 - Build programme order today: gate + 12 walls at rotor-ready, then the landing pad (src/content/base-programme.js); the gate step begins at 39.2 s on a bare page (--grow run, 2026-09-16).
+
+## 2026-09-16 — The gunship's third weapon fires a real missile that drops, ignites after two seconds and rides down
+
+decision · proposed · 2026-09-16-gunship-mini-nuke-drops-then-ignites
+
+Owner, playtesting the live build on 2026-09-16: 'the Gunship should fire an actual missile, one of our large ones, we see it drop, then it ignites after 2 seconds and heads down (for Weapon #3 mini nuke)'. Today the gunship's third gun is the 105 (src/domain/gunship.js, src/content/gunship.js), which lands as a strike without a modelled round in flight; the game already owns a drop-then-ignite flight profile for the Quiver's TALON (src/domain/missile-flight.js: eject, coast, fall, ignite, climb) and modelled missiles in src/missiles.js / src/missile-presentation.js.
+
+Proposed, not yet designed: weapon 3 becomes a modelled mini-nuke released from the gunship, falling free for about two seconds before its motor lights and drives it down onto the aim point, with the seat watching it go. Open: which of the pinned large missiles is the body; whether the existing missile-flight phases can be reused inverted (a drop from altitude rather than a pop-up) or need their own profile; what the 2 s free-fall does to the 105's current timing, damage and danger-close warning; whether the seeker/impact view follows the round down; and whether the yield deserves its own blast and scare numbers rather than the 105's.
+
+Alternatives: Keep the 105 as an instant strike and only add a falling shell effect; cheaper but the owner asked to see a real missile leave the aircraft.; Reuse the orbital strike's falling camera wholesale; it frames a warhead from above rather than from the gunship's belly.
+
+Evidence:
+
+- Owner note, 2026-09-16, on build 5e204f48.
+- Existing drop-then-ignite phases: src/domain/missile-flight.js (the Quiver's TALON pop-out was capped at 8 m on 2026-09-16 for framing).
+- Gunship guns and their cadence: src/content/gunship.js, src/domain/gunship.js.
 
 ## 2026-09-15 — Tank-shell breaches patch the board surface in place; SOL-82 is the orbital laser's name and asset brief
 

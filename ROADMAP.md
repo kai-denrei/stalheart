@@ -315,7 +315,7 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 30 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 31 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
 
 ### After the Quiver: normal waves, free tower building, and the occasional gunship and orbital laser run
 
@@ -346,6 +346,12 @@ While bringing SOL-82 into the game, `node scripts/browser-test.mjs --laser` sto
 `2026-09-16-isao-tends-the-foundry` · decision · **proposed**
 
 Owner, playtesting the live V1 on 2026-09-16: 'before building the gates (nice, works), Isao should use his beam to work on the recycle factory we first see.' Today the AFR-01 seed foundry cuts the SH02 into feedstock on its own clock (src/content/foundry.js, src/domain/foundry.js, src/fx/foundry-fx.js) and Isao never touches it; his print beam only appears over a tower socket or a base-programme step (src/printpath.js, src/fx/base-print.js, the build programme in src/content/base-programme.js).
+
+### The gunship's third weapon fires a real missile that drops, ignites after two seconds and rides down
+
+`2026-09-16-gunship-mini-nuke-drops-then-ignites` · decision · **proposed**
+
+Owner, playtesting the live build on 2026-09-16: 'the Gunship should fire an actual missile, one of our large ones, we see it drop, then it ignites after 2 seconds and heads down (for Weapon #3 mini nuke)'. Today the gunship's third gun is the 105 (src/domain/gunship.js, src/content/gunship.js), which lands as a strike without a modelled round in flight; the game already owns a drop-then-ignite flight profile for the Quiver's TALON (src/domain/missile-flight.js: eject, coast, fall, ignite, climb) and modelled missiles in src/missiles.js / src/missile-presentation.js.
 
 ### Idea: the Mortar can lay suppressing fire on a chosen area to scare and herd the swarm
 
