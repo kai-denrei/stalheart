@@ -19,7 +19,7 @@ export function makeGunship(orbit, { station = false } = {}) {
     rounds: [],        // rounds in the air: { gun, point, at } arriving at `at` on the clock
     heat: 0, overheated: false,   // the rotary
     mag: -1, reloadUntil: 0,      // the Bofors: rounds left in the magazine (-1: full, not yet counted), reloading until
-    heavyPaint: null, heavyReadyAt: 0, heavyFalling: null,   // the 105: the painted cell, when the next shell is ready, the shell in the air
+    heavyPaint: null, heavyReadyAt: 0, heavyFalling: null, heavyPass: -1,   // the MK-9: the painted cell, when the tube is clear again, the round in the air, and the pass that has already spent its one release
   };
 }
 
@@ -96,21 +96,27 @@ export function stepGun(st, dt, held, guns) {
   return n;
 }
 
-// THE GUNSHIP'S OWN 105 (owner, 2026-09-14): a one-two. Paint a cell, then launch: the shell falls `travel` seconds and
-// lands on the painted cell (the host applies the blast); the gun reloads for `reload` seconds. Ammo is unlimited.
-export function paintHeavy(st, ci, guns) { if (!st.mounted || st.phase !== 'station' || ci < 0 || st.heavyFalling || st.clock < st.heavyReadyAt) return false; st.heavyPaint = ci; return true; }
+// THE MK-9 MINI NUKE (owner, 2026-09-16; it replaced the 105's instant strike): a one-two. Paint a cell, then release: the round
+// falls unpowered for `freeFall` seconds, its motor lights, and it drives down onto the painted cell at `travel` (the host applies
+// the blast and owns the modelled body). Then the tube locks out for `reload` seconds, and that is the pass's ONE release: `perPass`
+// releases per station pass, so the heaviest tool the seat owns cannot be spammed down a lane.
+const heavySpent = (st, guns) => (guns.heavy.perPass ?? 0) > 0 && st.heavyPass === st.passes;
+export function paintHeavy(st, ci, guns) { if (!st.mounted || st.phase !== 'station' || ci < 0 || st.heavyFalling || st.clock < st.heavyReadyAt || heavySpent(st, guns)) return false; st.heavyPaint = ci; return true; }
 export function launchHeavy(st, guns) {
-  const gun = guns.heavy; if (!st.mounted || st.phase !== 'station' || st.heavyPaint == null || st.heavyFalling || st.clock < st.heavyReadyAt) return -1;
-  const ci = st.heavyPaint; st.heavyPaint = null; st.heavyFalling = { ci, at: st.clock + gun.travel, from: st.clock }; st.heavyReadyAt = st.clock + gun.travel + gun.reload;
+  const gun = guns.heavy; if (!st.mounted || st.phase !== 'station' || st.heavyPaint == null || st.heavyFalling || st.clock < st.heavyReadyAt || heavySpent(st, guns)) return -1;
+  const ci = st.heavyPaint; st.heavyPaint = null; st.heavyFalling = { ci, at: st.clock + gun.travel, from: st.clock, lit: st.clock + (gun.freeFall ?? 0) }; st.heavyReadyAt = st.clock + gun.travel + gun.reload; st.heavyPass = st.passes;
   return ci;
 }
-// one nudge while it falls: the shell is steered onto another cell, once
+// one nudge while it falls: the round is steered onto another cell, once
 export function nudgeHeavy(st, ci) { if (!st.heavyFalling || st.heavyFalling.nudged || ci < 0 || ci === st.heavyFalling.ci) return false; st.heavyFalling.ci = ci; st.heavyFalling.nudged = true; return true; }
-// returns the cell the shell lands on this tick, or -1
+// returns the cell the round lands on this tick, or -1
 export function stepHeavy(st) { if (st.heavyFalling && st.clock >= st.heavyFalling.at) { const ci = st.heavyFalling.ci; st.heavyFalling = null; return ci; } return -1; }
+// The seat's readout, and the one place the round's own state is named: RELEASED while the motor is cold, IGNITED once it lights.
 export function heavyState(st, guns) {
-  if (st.heavyFalling) return { phase: 'falling', left: st.heavyFalling.at - st.clock, ci: st.heavyFalling.ci, nudged: !!st.heavyFalling.nudged };
+  const f = st.heavyFalling;
+  if (f) return { phase: st.clock < f.lit ? 'released' : 'ignited', left: f.at - st.clock, burn: Math.max(0, f.lit - st.clock), ci: f.ci, nudged: !!f.nudged, total: guns.heavy.travel };
   if (st.clock < st.heavyReadyAt) return { phase: 'reloading', left: st.heavyReadyAt - st.clock, total: guns.heavy.reload };
+  if (heavySpent(st, guns)) return { phase: 'spent' };
   return st.heavyPaint != null ? { phase: 'painted', ci: st.heavyPaint } : { phase: 'ready' };
 }
 

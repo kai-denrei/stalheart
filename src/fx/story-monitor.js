@@ -20,8 +20,10 @@ export function createStoryMonitor(root) {
       const on = !!mesh || linger > 0 || !!optic; box.style.display = on ? '' : 'none';
       if (!mesh && !optic) return; shown++;
       const r = box.getBoundingClientRect(), cr = renderer.domElement.getBoundingClientRect(), dpr = renderer.getPixelRatio();
-      const label = mesh ? 'TALON · seeker feed' : (optic.label ?? 'OPTIC · TARGET'); if (head.textContent !== label) head.textContent = label;
-      if (mesh) { fwd.set(0, 0, 1).applyQuaternion(mesh.quaternion); up.copy(mesh.position).normalize(); eye.copy(mesh.position).addScaledVector(fwd, -cellSide * 0.9).addScaledVector(up, cellSide * 0.35); cam.fov = 42; tgt.copy(mesh.position); }
+      const label = mesh ? (mesh.userData?.feedLabel ?? 'TALON · seeker feed') : (optic.label ?? 'OPTIC · TARGET'); if (head.textContent !== label) head.textContent = label;   // a round can name its own feed: the gunship's MK-9 is not the Quiver's seeker
+      // a round can ask to be watched from further up its own vertical: a seeker climbing away is framed from behind (the default), but
+      // a round FALLING from 340 m has the sky behind it that way — the gunship's MK-9 asks for a camera above it, so the ground is the backdrop
+      if (mesh) { fwd.set(0, 0, 1).applyQuaternion(mesh.quaternion); up.copy(mesh.position).normalize(); eye.copy(mesh.position).addScaledVector(fwd, -cellSide * (mesh.userData?.feedBack ?? 0.9)).addScaledVector(up, cellSide * (mesh.userData?.feedLift ?? 0.35)); cam.fov = 42; tgt.copy(mesh.position); }
       else { from.fromArray(optic.from); up.copy(from).normalize(); eye.copy(from).addScaledVector(up, optic.lift ?? cellSide * 0.6); tgt.fromArray(optic.pos); cam.fov = Math.max(3, Math.min(30, (2 * Math.atan((optic.span ?? cellSide * 1.2) / (2 * eye.distanceTo(tgt))) * 180) / Math.PI)); }
       cam.position.copy(eye); cam.up.copy(up); cam.lookAt(tgt); cam.aspect = r.width / r.height; cam.updateProjectionMatrix();
       const x = (r.left - cr.left) * dpr, y = (cr.bottom - r.bottom) * dpr, w = r.width * dpr, h = r.height * dpr;   // viewport y runs from the bottom of the buffer

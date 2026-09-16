@@ -15,7 +15,7 @@ const soak = (st, secs, orbit = GUNSHIP_ORBIT) => { const ev = []; for (let i = 
 console.log('the profiles:');
 {
   check('three guns', Object.keys(GUNSHIP_GUNS).length === 3);
-  check('the heavy is the strike', GUNSHIP_GUNS.heavy.strike === true && GUNSHIP_GUNS.heavy.rate === 0);
+  check('the heavy has its own ritual, not a cadence', GUNSHIP_GUNS.heavy.strike === true && GUNSHIP_GUNS.heavy.rate === 0);
   check('danger widens with the gun', GUNSHIP_GUNS.rotary.dangerCells < GUNSHIP_GUNS.bofors.dangerCells && GUNSHIP_GUNS.bofors.dangerCells < GUNSHIP_GUNS.heavy.dangerCells);
   check('the platform is overhead at least 45 s (owner, 2026-09-14)', GUNSHIP_ORBIT.station >= 45 && GUNSHIP_ORBIT.pass > 0);
   check('the platform looks down', GUNSHIP_PLATFORM.pitchMax < 0 && GUNSHIP_PLATFORM.pitchMin < GUNSHIP_PLATFORM.pitchMax);
@@ -132,17 +132,26 @@ console.log('downtime:');
   for (let i = 0; i < Math.round(GUNSHIP_GUNS.bofors.reload * 60) + 2; i++) { stepGun(st, 1 / 60, false, GUNSHIP_GUNS); stepGunship(st, 1 / 60, O); }
   check('reloaded: a full magazine', stepGun(st, 1 / 60, true, GUNSHIP_GUNS) === 1 && st.mag === GUNSHIP_GUNS.bofors.magazine - 1);
 }
-console.log('the gunship\'s own 105:');
+// THE MK-9 MINI NUKE (owner, 2026-09-16), which replaced the 105's instant strike. Same paint-then-fire ritual, but the round is
+// modelled: RELEASED while the motor is cold, IGNITED once it lights at `freeFall`, impact at `travel`. One release a pass.
+console.log('the gunship\'s MK-9:');
 {
+  check('the third gun is the nuke, and it is the widest', GUNSHIP_GUNS.heavy.blastCells > GUNSHIP_GUNS.bofors.blastCells * 3 && GUNSHIP_GUNS.heavy.perPass === 1);
+  check('it falls before it burns', GUNSHIP_GUNS.heavy.freeFall > 0 && GUNSHIP_GUNS.heavy.travel > GUNSHIP_GUNS.heavy.freeFall);
   const O = { pass: 10, station: 400 }, st = makeGunship(O, { station: true }); mountGunship(st);
   check('ready, nothing painted', heavyState(st, GUNSHIP_GUNS).phase === 'ready' && launchHeavy(st, GUNSHIP_GUNS) === -1);
   check('paint, then the state says so', paintHeavy(st, 42, GUNSHIP_GUNS) && heavyState(st, GUNSHIP_GUNS).phase === 'painted');
-  check('launch lands on the painted cell after its fall', launchHeavy(st, GUNSHIP_GUNS) === 42 && heavyState(st, GUNSHIP_GUNS).phase === 'falling' && stepHeavy(st) === -1);
+  check('release: the round is out and the motor is cold', launchHeavy(st, GUNSHIP_GUNS) === 42 && heavyState(st, GUNSHIP_GUNS).phase === 'released' && stepHeavy(st) === -1);
+  check('the burn is counted down, not guessed', Math.abs(heavyState(st, GUNSHIP_GUNS).burn - GUNSHIP_GUNS.heavy.freeFall) < 1e-9);
   check('one nudge, no more', nudgeHeavy(st, 43) && !nudgeHeavy(st, 44) && st.heavyFalling.ci === 43);
+  for (let i = 0; i < Math.round(GUNSHIP_GUNS.heavy.freeFall * 60) + 2; i++) stepGunship(st, 1 / 60, O);
+  check('after the free fall it is ignited, still in the air', heavyState(st, GUNSHIP_GUNS).phase === 'ignited' && stepHeavy(st) === -1);
   let landed = -1; for (let i = 0; i < Math.round(GUNSHIP_GUNS.heavy.travel * 60) + 2 && landed < 0; i++) { stepGunship(st, 1 / 60, O); landed = stepHeavy(st); }
-  check('it lands where it was nudged, then reloads', landed === 43 && heavyState(st, GUNSHIP_GUNS).phase === 'reloading' && !paintHeavy(st, 1, GUNSHIP_GUNS));
+  check('it lands where it was nudged, then safes', landed === 43 && heavyState(st, GUNSHIP_GUNS).phase === 'reloading' && !paintHeavy(st, 1, GUNSHIP_GUNS));
   for (let i = 0; i < Math.round(GUNSHIP_GUNS.heavy.reload * 60) + 2; i++) stepGunship(st, 1 / 60, O);
-  check('reloaded: it paints again', heavyState(st, GUNSHIP_GUNS).phase === 'ready' && paintHeavy(st, 1, GUNSHIP_GUNS));
+  check('ONE A PASS: the tube clears but the pass is spent', heavyState(st, GUNSHIP_GUNS).phase === 'spent' && !paintHeavy(st, 1, GUNSHIP_GUNS) && launchHeavy(st, GUNSHIP_GUNS) === -1);
+  soak(st, 400, O); soak(st, 10, O); mountGunship(st);
+  check('the next pass carries a fresh round', heavyState(st, GUNSHIP_GUNS).phase === 'ready' && paintHeavy(st, 7, GUNSHIP_GUNS) && launchHeavy(st, GUNSHIP_GUNS) === 7);
 }
 if (failures) { console.log(`${failures} failure(s)`); process.exit(1); }
 console.log('gunship ok');
