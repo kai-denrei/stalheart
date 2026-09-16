@@ -9,9 +9,10 @@ export const BASE_PROGRAMME = Object.freeze([
   // factory we first see"). `over` is a structure that already stands: nothing is printed, he flies to the AFR-01's own cell and holds
   // the beam on it at the machine's working height while its cutter cycle runs under him (src/content/foundry.js: arc at 2 s, scrap at
   // 10 s, a barrel at 15 s of every 24 s cycle). `plot` is the module's footprint in metres, half extents across and along its heading
-  // — the 16 x 12 m deck of the authored model, so the raster lies on the machine and not on the dirt beside it. Ten seconds is what
-  // this beat costs the gate behind it: the tremor waits for the gate, so the first wave pays for every second spent here
-  { id: 'foundry', label: 'seed foundry', over: 'foundry', plot: [8, 6], when: { phase: 'rotor-ready' }, seconds: 10, metres: 6, brief: 'build_foundry', perk: null },
+  // — the 16 x 12 m deck of the authored model, so the raster lies on the machine and not on the dirt beside it. Eight seconds plus the
+  // flight out and back is what this beat costs the gate behind it, and the tremor waits for the gate: the first wave pays for every
+  // second spent here, which is why it is eight and not the twelve the job would like
+  { id: 'foundry', label: 'seed foundry', over: 'foundry', plot: [8, 6], when: { phase: 'rotor-ready' }, seconds: 8, metres: 6, brief: 'build_foundry', perk: null },
   // the gate next, and the tremor waits for it: without a gate no fodder comes, and without fodder the tutorial never reaches the
   // handover. Printed straight after the Rotor, which stands beside it, so the wait before the tremor is one print and no trip
   { id: 'gate', label: 'gate and walls', gate: true, walls: true, when: { phase: 'rotor-ready' }, seconds: 12, metres: 6, brief: 'build_gate', perk: 'gate' },

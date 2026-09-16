@@ -36,11 +36,12 @@ const growStub = () => ({ growIsland: (id, k) => grown.push(['island', id, k]), 
     const f = BASE_PROGRAMME[0];
     assert.deepEqual([f.islands, f.structures, f.perk, f.gate ?? false, f.walls ?? false], [[], [], null, false, false], 'the foundry beat builds nothing');
     assert.equal(f.over, 'foundry'); assert.equal(f.plot.length, 2); assert.ok(f.plot.every((v) => v > 0), 'the plot is the machine footprint');
-    assert.ok(f.seconds <= 12, `the beat must not push the first wave late (${f.seconds} s)`);
+    assert.ok(f.seconds <= 10, `the beat must not push the first wave late: the tremor waits for the gate behind it (${f.seconds} s)`);
     const print = createBasePrint({ base: growStub(), plan, placer: { toWorld: (p) => ({ toArray: () => p.slice() }) } });
     assert.ok(print.cellOf(f) >= 0, 'the beat has a cell to fly to: a -1 would stall the whole programme');
     const bed = print.bed(f), mid = bed(0, 0, 0), late = bed(0, 0, 1), corner = bed(1, 1, 0.5);
-    const machine = plan.structures.find((s) => s.id === 'foundry');
+    const machine = plan.structures.find((s) => s.id === f.over);
+    assert.ok(machine && !machine.pending, `${f.over} stands in the plan: src/platform/story-world.js keeps an \`over\` beat only while its machine is planned`);
     assert.deepEqual([mid[0], mid[2]], [machine.x, machine.z], 'the beam rasters over the machine, not the island around it');
     assert.equal(mid[1], f.metres); assert.equal(late[1], f.metres, 'no climb: he works at the machine height from the first frame');
     assert.ok(Math.abs(corner[0] - machine.x) <= f.plot[0] && Math.abs(corner[2] - machine.z) <= f.plot[1], 'the raster stays on the deck');

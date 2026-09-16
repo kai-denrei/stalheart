@@ -88,7 +88,10 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   if (plan.cells.fodder >= 0) built.dungeon.spawn = plan.cells.fodder;
   // the build programme's steps that this plan holds, and which of them already stand (their perks come with them)
   const pieces = (s) => [...s.islands.map((id) => plan.islands.find((i) => i.id === id)), ...s.structures.map((id) => plan.structures.find((x) => x.id === id)), ...(s.gate ? [plan.gate] : []), ...(s.walls ? plan.walls : [])];
-  const steps = BASE_PROGRAMME.filter((s) => pieces(s).length > 0 && pieces(s).every(Boolean));
+  // what this plan must hold for a step to be in the programme at all: the pieces it prints, plus the standing machine an `over` beat
+  // works (Isao on the AFR-01 prints nothing, so a pieces-only filter dropped the beat out of the programme entirely)
+  const needs = (s) => [...pieces(s), ...(s.over ? [plan.structures.find((x) => x.id === s.over)] : [])];
+  const steps = BASE_PROGRAMME.filter((s) => needs(s).length > 0 && needs(s).every(Boolean));
   const bayBerths = plan.bays.length ? plan.bays.map((b) => ({ ci: b.cell, exit: b.exit, pos: b.pos, out: b.out })) : null;
   const story = stage >= 1 ? {
     sockets: new Set(), home: plan.cells.landing, socketLift: 0,

@@ -564,13 +564,21 @@ try{
  const hiddenNear='(window.__stalheartTest.state().storyLod||[]).filter(l=>!l.visible&&l.nearLoaded).map(l=>l.id)';
  const shotBase=async(name)=>{await evaluate('window.__stalheartTest.focusHeart()');await delay(1500);assert.deepEqual(await evaluate(hiddenNear),[],`${name}: no hidden landmark fetched its near tier`);current=name;await finish();};
  await go('grow-bare','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none#td');await until('!!window.__stalheartTest&&!!window.__stalheartTest.state().programme',90000);
- {const b=await evaluate('window.__stalheartTest.state()');assert.equal(b.programme.grow,true,'a story page with no stage grows its base');assert.equal(b.programme.next,'gate');assert.equal(b.programme.gate.built,false);}
+ {const b=await evaluate('window.__stalheartTest.state()');assert.equal(b.programme.grow,true,'a story page with no stage grows its base');assert.equal(b.programme.next,'foundry','he works the recycler before he prints the gate');assert.equal(b.programme.gate.built,false);}
  await finish();
  await go('grow-landing','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=1&grow=1#td');await until('!!window.__stalheartTest',90000);await delay(2500);
  const g0=await evaluate('window.__stalheartTest.state()');assert.equal(g0.programme.grow,true);assert.equal(g0.programme.gate.built,false,'no gate at the landing');assert.deepEqual(g0.programme.printed,[]);assert.deepEqual(g0.bays,[],'the bays are not printed yet');
  assert.deepEqual(await evaluate(hiddenNear),[]);await finish();
  const t0=Date.now(),mark=async(what)=>console.log(`GROW ${what} at ${((Date.now()-t0)/1000).toFixed(1)} s`);
  await until('window.__stalheartTest.state().towers===1',120000);await mark('Rotor printed');
+ // ISAO WORKS THE RECYCLER FIRST (owner, 2026-09-16): before the gate he flies to the AFR-01 and holds the beam on it. The beat prints
+ // nothing, so nothing may stand at the end of it, and the gate must not be pushed materially later than the baseline 26.0 s
+ await until('window.__stalheartTest.state().programme.active==="foundry"',60000);await mark('foundry beat begins');await delay(5000);
+ {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.programme.print.step,'foundry','his beam is on the AFR-01');
+  assert(s.programme.print.k>0&&s.programme.print.k<1,`the beat is under way (k ${s.programme.print.k})`);
+  assert.deepEqual(s.programme.printed,[],'working the recycler prints nothing');assert.equal(s.programme.gate.built,false);}
+ current='grow-foundry-beam';await finish();
+ await until('window.__stalheartTest.state().programme.printed.includes("foundry")',60000);await mark('foundry beat ends');
  await until('window.__stalheartTest.state().programme.active==="gate"',60000);const walls0=(await evaluate('window.__stalheartTest.state()')).wallCount;await mark('gate print begins');await delay(5000);
  {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.story.phase,'rotor-ready','the tremor waits while the gate prints');assert.equal(s.programme.gate.built,false);assert.equal(s.wallCount,walls0,'the walls block only once they stand');assert(s.programme.print.step==='gate'&&s.programme.print.k>0,'the print is under way');}
  current='grow-gate-printing';await finish();
@@ -605,7 +613,7 @@ try{
  await evaluate('window.__stalheartTest.hitTank()');await delay(800);const hullsLost=(await evaluate('window.__stalheartTest.state()')).hulls;
  await evaluate('window.__stalheartTest.setSector(2)');
  await until('window.__stalheartTest.state().programme.printed.includes("assembly")',300000);await mark('radar and assembly line stand');
- {const s=await evaluate('window.__stalheartTest.state()');assert.deepEqual(s.programme.printed,['gate','landing','stalheart','solar','bays','hugin','radar','assembly'],'every step, in order');assert.equal(s.programme.next,null);assert.deepEqual(s.programme.perks.slice().sort(),['gate','gunship','hulls','rebuild','stalheart','station','uplink']);assert.equal(s.hulls,hullsLost,'no rebuild inside the sector the line was printed in');}
+ {const s=await evaluate('window.__stalheartTest.state()');assert.deepEqual(s.programme.printed,['foundry','gate','landing','stalheart','solar','bays','hugin','radar','assembly'],'every step, in order');assert.equal(s.programme.next,null);assert.deepEqual(s.programme.perks.slice().sort(),['gate','gunship','hulls','rebuild','stalheart','station','uplink']);assert.equal(s.hulls,hullsLost,'no rebuild inside the sector the line was printed in');}
  await evaluate('window.__stalheartTest.setSector(3)');await delay(800);
  assert.equal((await evaluate('window.__stalheartTest.state()')).hulls,Math.min(3,hullsLost+1),'the assembly line rebuilds a lost hull at the next sector start');
  await shotBase('grow-finished');
