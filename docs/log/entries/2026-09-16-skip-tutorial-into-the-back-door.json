@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "2026-09-16-skip-tutorial-into-the-back-door",
+  "date": "2026-09-16",
+  "type": "decision",
+  "status": "accepted",
+  "title": "A Skip Tutorial button starts the session in the back-door fight with two towers already earned",
+  "context": "Owner, 2026-09-16, playtesting the live build with friends in mind: 'we should have a Skip Tutorial button, which skips to a point where already 2 extra towers are unlocked, and the breach of the backdoor starts. Skip Tutorial = start right into the action of protecting the backdoor.' Today the opening always plays from the landing (about 105 s to the handover on a bare page) and the only ways past it are developer jumps in the PLAYTEST drawer (STORY_JUMPS in src/content/nav.js; the DEFENSE jump is index.html?world=story&stage=6&cine=0&acceptance=1&phase=expedition#td). A friend who wants the fight has no player-facing way in.",
+  "outcome": "Accepted as the session's second entry point, to be built: a SKIP TUTORIAL button offered during the opening beats (and mirrored in the PLAYTEST drawer) that starts a run already past the handover, at the finished base, with the sector loop opening the back door. The state it starts in: towers automatic (beats settled/expedition), the base standing through the bays so the hulls read as lives, two expedition towers already unlocked (the Relay and the Mortar, as though rocket-a and rocket-b came home, with their flags and trophies already up), SOL-82 online, the shield rack full and the array reserve charged, and the sector run beginning at the back-door sector so the collapse behind the bays and its breach are the first thing the player sees. Biomass enough to place a few towers before the first wave lands. Open: whether it is a URL a friend can bookmark (a query the route parses) or only a button; whether the campaign's own sector 1 is skipped outright or replayed later; and how the first Isao line explains the situation in two lines.",
+  "alternatives": [
+    "Point friends at the existing DEFENSE developer jump; rejected: it carries acceptance hooks, starts with no towers and no threat, and is not a player-facing entry.",
+    "Shorten the tutorial for everyone; rejected, the owner wants the opening kept and a way past it."
+  ],
+  "evidence": [
+    "Owner note, 2026-09-16, on build 5b254b9e.",
+    "Opening timings on a bare page: Rotor 26 s, gate stands 38.5 s, handover 100 s, expedition 112.7 s (--grow run, 2026-09-16).",
+    "The back door and its sector: src/domain/back-door.js, the backDoor flag in src/content/sectors.js, src/fx/sector-run.js.",
+    "Expedition unlocks: src/domain/expeditions.js, STORY_EXPEDITIONS in src/content/story-defaults.js (rocket-a Relay, rocket-b Mortar)."
+  ],
+  "supersedes": []
+}
