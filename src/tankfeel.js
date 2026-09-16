@@ -86,7 +86,8 @@ export function landTankFeel(st) { st.settleT = 0; }
 export function fireTankFeel(st, p = TANK_FEEL) { st.recoil = p.recoilLen; }
 
 // Write the state onto a unit. Units with no hover split (a dot cloud, the
-// procedural tank) are left alone — they have no suspension to compress.
+// empty placeholder that stands in while MÖRK loads) are left alone — they
+// have no suspension to compress.
 export function applyTankFeel(unit, st, p = TANK_FEEL) {
   if (!unit || !unit.userData) return;
   if (unit.userData.applyFeel) { unit.userData.applyFeel(st, p); return; }

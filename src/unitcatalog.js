@@ -65,9 +65,6 @@ const PLAYER_UNITS = [
   { id: 'mork-proxy', kind: 'unit', variantOf: 'mork', label: 'MÖRK · distance proxy',
     note: 'REVIEW · static D0 stand-in for bays and orbital views · one draw, 1,706 triangles, no clips, no barrel · never driven: swap to an articulated tier before combat or damage',
     sounds: TANK_SOUNDS },
-  { id: 'tank', kind: 'unit', label: 'tank',
-    note: 'the procedural tank — turret sweeps, 9-shell rack, twin mini-guns',
-    sounds: TANK_SOUNDS },
   // BOBBY builds everything the player owns, so he belongs on the friendly
   // side with the machines he prints. kind:'fixture' because he is cast the
   // same way the server and the containers are — an authored .glb loaded

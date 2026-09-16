@@ -695,7 +695,7 @@ export function initBeamTab(root) {
         d0[1] - from[1] * dot3(d0, from), d0[2] - from[2] * dot3(d0, from)]) };
     }
     if (!tank) return null;
-    // procedural fallback has no gun pivots: two emitters at the hull front
+    // no hull yet: no gun pivots, so two emitters at the hull front
     tmpP.set((g === 0 ? -0.18 : 0.18) * P.spread, 0.22, 0.35);
     tank.localToWorld(tmpP);
     const from = vunit(tmpP);
@@ -948,10 +948,10 @@ export function initBeamTab(root) {
       if (!A || !B) { console.log('BEAMPROBE INCONCLUSIVE (no guns yet)'); return; }
       const fmt = (v) => v.map((x) => x.toFixed(3)).join(',');
       // NAME THE ARTIFACT. This said "mkcx pivots" whenever laserGuns
-      // existed — which both tanks have — so every headless measurement was
-      // labelled as the authored model while running on the procedural one.
+      // existed, so a headless measurement taken before the GLB landed was
+      // labelled as the authored model while running on no hull at all.
       const named = tank.userData.asset === DEFAULT_TANK;
-      const guns = named ? 'MÖRK (authored pivots)' : 'PROCEDURAL fallback tank';
+      const guns = named ? 'MÖRK (authored pivots)' : 'NO HULL YET (placeholder)';
       console.log(`BEAMPROBE source=${guns} reach=${P.reachCells} cells`
         + ` stage=sphere r=${LAB_R} cells`
         + (toeInfo ? ` | toe=${toeInfo.toe.toFixed(4)} solved for a crossing at`

@@ -132,18 +132,20 @@ export function initSwarmTab(root) {
   const TANK_R = 3.4;
   const hullCols = { walker: 0x9fdcff, walkerHi: 0xffffff };
   // MÖRK is the game's hull and the whole point is that this feels like the
-  // game, but it is a GLB: build the procedural one now so the lane runs on
-  // the first frame, and swap when the real model lands. A lab that waits on
-  // a download to show anything is a lab nobody opens twice.
-  let tank = buildUnit('tank', hullCols);
+  // game, but it is a GLB: stand the empty placeholder in the lane now so the
+  // run has something to size and place against, and swap the real hull in
+  // when the bytes land. NOTHING ELSE IS EVER DRAWN HERE — the lane showed a
+  // procedural casting for a frame and then replaced it, which is the relic
+  // the owner had removed (2026-09-16).
+  let tank = buildUnit('mork', hullCols);
   tank.scale.setScalar(TANK_R); scene.add(tank);
   preloadMork?.().then(() => {
     if (disposed) return;
     const m = buildUnit('mork', hullCols);
-    if (!m) return;
+    if (!m || m.userData.loading) return;
     scene.remove(tank); disposeObj(tank);
     m.scale.setScalar(TANK_R); tank = m; scene.add(tank);
-  }).catch(() => { /* the procedural hull is a fine fallback */ });
+  }).catch(() => { /* the placeholder holds the lane; no other hull stands in */ });
 
   // THE SHOUT LAYER IS THE GAME'S. .callout and .co-milestone are global
   // classes and the ladder has an existing second consumer in .combobox

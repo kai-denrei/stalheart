@@ -21,7 +21,8 @@ import { makeOrdnanceShell } from './shell.js';
 
 import * as THREE from '../vendor/three.module.js';
 import { makeDotMaterial } from './fx/dot-material.js';
-import { makeMork, makeMorkTier, makeMorkProxy } from './mork.js';
+import { makeMork, makeMorkTier, makeMorkProxy, MORK_UNIT } from './mork.js';
+import { DEFAULT_TANK } from './content/tank.js';
 export { preloadMork, preloadMorkTier, preloadMorkProxy } from './mork.js';
 import { makeJelly } from './jelly.js';
 import { EMOTION_IDS, emotion, phosphorFor } from './emotions.js';
@@ -49,84 +50,18 @@ function normalizeToUnit(group) {
   return group;
 }
 
-// tank — the mesh-unit proof of concept: hull, treads, turret that sweeps,
-// barrel. ~350 triangles, one Lambert material per tint. Tron dressing:
-// thin neon white/blue edge lines on the slabs (EdgesGeometry children,
-// so they ride each part's transform), a 3×3 diegetic shell rack on the
-// turret roof (userData.ammoDots — the game tints them full/empty), and
-// two toed-in laser mini-guns at the hull front (userData.laserGuns —
-// aim derives from THEIR world transforms, same-source principle).
-function makeTank(cols) {
-  const main = new THREE.MeshLambertMaterial({ color: cols.walker });
-  const accent = new THREE.MeshLambertMaterial({ color: cols.walkerHi });
-  const edgeWhite = new THREE.LineBasicMaterial({ color: 0xeaf6ff, transparent: true, opacity: 0.9 });
-  const edgeBlue = new THREE.LineBasicMaterial({ color: 0x5fc9ff, transparent: true, opacity: 0.85 });
+/* THE HULL IS MÖRK OR IT IS NOTHING. Every tier of the tank is a GLB, so a
+   board built before the bytes land needs SOMETHING under the unit contract —
+   and that something used to be a procedural survey-tank casting, drawn for a
+   frame and then replaced (owner, 2026-09-16: "there is still a frame where
+   the old tank loads and is then replaced"). This is the same placeholder with
+   no body: it carries MÖRK's own baseScale, lift and asset, so every consumer
+   sizes and places it exactly as the hull it stands in for, and it draws
+   nothing at all. `loading` is the flag the game, the labs and the acceptance
+   probes already read, so nobody has to learn a new tell. */
+function makePendingHull() {
   const g = new THREE.Group();
-  const add = (geo, mat, x, y, z, parent = g) => {
-    const m = new THREE.Mesh(geo, mat);
-    m.position.set(x, y, z);
-    parent.add(m);
-    return m;
-  };
-  const outline = (mesh, mat) => {
-    mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry), mat));
-  };
-  const hull = add(new THREE.BoxGeometry(1.3, 0.4, 2.0), main, 0, 0.48, 0);
-  outline(hull, edgeWhite);
-  const treadL = add(new THREE.BoxGeometry(0.42, 0.46, 2.35), main, -0.82, 0.26, 0);
-  const treadR = add(new THREE.BoxGeometry(0.42, 0.46, 2.35), main, 0.82, 0.26, 0);
-  outline(treadL, edgeBlue);
-  outline(treadR, edgeBlue);
-  const turret = new THREE.Group();
-  turret.position.set(0, 0.84, -0.12);
-  turret.userData.baseZ = -0.12; // recoil slides the turret back from here
-  g.add(turret);
-  const turretBox = add(new THREE.BoxGeometry(0.8, 0.34, 1.0), main, 0, 0, 0, turret);
-  outline(turretBox, edgeWhite);
-  const barrel = add(new THREE.CylinderGeometry(0.06, 0.085, 1.5, 8), accent, 0, 0.04, 1.15, turret);
-  barrel.rotation.x = Math.PI / 2;
-  // cannon heat sleeve: a collar around the barrel's middle that the game
-  // glows red-hot after a shot and cools back to gunmetal (userData ref)
-  const sleeve = add(new THREE.CylinderGeometry(0.105, 0.105, 0.45, 8),
-    new THREE.MeshBasicMaterial({ color: 0x232833 }), 0, 0.04, 0.95, turret);
-  sleeve.rotation.x = Math.PI / 2;
-  // shell rack: 3×3 dots on the turret roof, row-major — index < ammo lit
-  const dotGeo = new THREE.SphereGeometry(0.05, 6, 6);
-  const ammoDots = [];
-  for (let r = 0; r < 3; r++) {
-    for (let c2 = 0; c2 < 3; c2++) {
-      const dot = new THREE.Mesh(dotGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }));
-      dot.position.set((c2 - 1) * 0.24, 0.2, (r - 1) * 0.28);
-      turret.add(dot);
-      ammoDots.push(dot);
-    }
-  }
-  // mini-guns: hull front corners, ~5° toe-in so the bursts converge ahead
-  const gunGeo = new THREE.CylinderGeometry(0.045, 0.06, 0.55, 6).rotateX(Math.PI / 2);
-  const gunMat = new THREE.MeshBasicMaterial({ color: 0x7df9ff });
-  const laserGuns = [];
-  for (const side of [-1, 1]) {
-    const gun = new THREE.Group();
-    gun.position.set(side * 0.42, 0.42, 1.02);
-    // ONE CONSTANT FOR BOTH TANKS. The procedural fallback used to carry its
-    // own hardcoded 0.09, so narrowing the mkcx's toe changed nothing on the
-    // fallback — and the fallback is what a headless run measures, which made
-    // the tuning invisible to every probe.
-    gun.rotation.y = -side * SECONDARY_TOE; // +Z toed toward the centerline
-    const tube = new THREE.Mesh(gunGeo, gunMat);
-    tube.position.z = 0.12;
-    gun.add(tube);
-    g.add(gun);
-    laserGuns.push(gun);
-  }
-  g.userData.turret = turret; // battle aims along this group's world +Z
-  g.userData.ammoDots = ammoDots;
-  g.userData.laserGuns = laserGuns;
-  g.userData.heatSleeve = sleeve;
-  g.userData.tick = (t) => { turret.rotation.y = Math.sin(t * 0.6) * 0.7; };
-  g.userData.lift = 0.02;
-  normalizeToUnit(g);
-  g.userData.kind = 'mesh';
+  Object.assign(g.userData, MORK_UNIT, { loading: true, tick: () => {}, dispose: () => {} });
   return g;
 }
 
@@ -1062,14 +997,15 @@ export function applySecondaryToe(g, angle) {
 }
 
 // The two things a toe can be applied to, in preference order: the authored
-// model's named pivots, else the procedural tank's own gun objects.
+// model's own `secondaryPivots`, else any gun objects it hangs on
+// `userData.laserGuns`.
 //
-// The fallback is not cosmetic. Headless rarely finishes the GLB load, so
-// every probe in this project runs on the PROCEDURAL tank — which has no
-// `Secondary_*_Pivot` nodes, so a name-only lookup found nothing, silently
-// did nothing, and left a reach-solved toe reading as the old fixed one in
-// every measurement. Both tanks expose `userData.laserGuns`; that is the
-// handle the beams themselves are found by, so it is the right one here too.
+// The second lookup is not cosmetic. A name-only lookup for
+// `Secondary_*_Pivot` found nothing on MÖRK, silently did nothing, and left a
+// reach-solved toe reading as the old fixed one in every measurement.
+// `userData.laserGuns` is the handle the beams themselves are found by, so it
+// is the right one here too. A hull that has not loaded has neither, and the
+// empty list is the honest answer: there is nothing to toe yet.
 export function secondaryPivots(g) {
   if (g.userData?.secondaryPivots) return g.userData.secondaryPivots;
   const named = ['Secondary_L_Pivot', 'Secondary_R_Pivot']
@@ -1623,26 +1559,25 @@ export const UNITS = {
   amoeba: { kind: 'cloud' },
   phage: { kind: 'cloud' },
   jellyfish: { kind: 'cloud' },
-  tank: { kind: 'mesh', make: makeTank },
-  mork: { kind: 'mesh', make: cols => {
+  mork: { kind: 'mesh', make: () => {
     const model = makeMork();
     if (model) return model;
-    const fallback = makeTank(cols); fallback.userData.loading = true; return fallback;
+    return makePendingHull();
   } },
   // REVIEW TIERS, pinned at 771e166 (docs/hover-tank-tiers-assets.lock.json).
   // mork-low is the articulated game tier that would replace the shipped hull;
   // mork-proxy is the static distance stand-in for bays and orbital views. Both
   // come out of mork.js's one prepare and one make, so reviewing them here is
   // reviewing exactly what the game would field — not a lookalike.
-  'mork-low': { kind: 'mesh', make: cols => {
+  'mork-low': { kind: 'mesh', make: () => {
     const model = makeMorkTier('low');
     if (model) return model;
-    const fallback = makeTank(cols); fallback.userData.loading = true; return fallback;
+    return makePendingHull();
   } },
-  'mork-proxy': { kind: 'mesh', make: cols => {
+  'mork-proxy': { kind: 'mesh', make: () => {
     const model = makeMorkProxy();
     if (model) return model;
-    const fallback = makeTank(cols); fallback.userData.loading = true; return fallback;
+    return makePendingHull();
   } },
   drone: { kind: 'mesh', make: makeDrone },
   ghost: { kind: 'mesh', make: makeGhost },
@@ -1688,6 +1623,6 @@ export function buildCreature(name, cols) {
 }
 
 export function buildUnit(name, cols) {
-  const u = UNITS[name] || UNITS.tank;
+  const u = UNITS[name] || UNITS[DEFAULT_TANK];
   return u.kind === 'cloud' ? makeCloud(name, cols) : u.make(cols);
 }
