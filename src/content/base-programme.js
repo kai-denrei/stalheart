@@ -29,6 +29,6 @@ export const BASE_PERKS = Object.freeze({ gunshipMeter: 1.5, rebuildHulls: 1 });
 // bigger job. `brief` is his line the first time he flies out to a repair.
 export const BASE_REPAIR = Object.freeze({
   gateAt: 0.75, brief: 'isao_repair',
-  gate: Object.freeze({ seconds: 8, metres: 6 }),
-  wall: Object.freeze({ seconds: 5, metres: 4 }),
+  gate: Object.freeze({ seconds: 8, metres: 6, label: 'GATE' }),
+  wall: Object.freeze({ seconds: 5, metres: 4, label: 'WALL' }),
 });

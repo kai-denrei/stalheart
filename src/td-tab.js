@@ -5215,7 +5215,7 @@ export function initTdTab(root) {
   function isaoLine() {
     if (!orders.length) return '';
     const o = orders[0];
-    const what = o.kind === 'upgrade' ? `${o.tower.def.label}+1` : o.kind === 'structure' ? o.step.label : TOWER_BY_KEY[o.key].label;
+    const what = o.kind === 'upgrade' ? `${o.tower.def.label}+1` : o.kind === 'structure' ? o.step.label : o.kind === 'repair' ? (BASE_REPAIR[o.repair?.kind]?.label ?? 'REPAIRS') : (TOWER_BY_KEY[o.key]?.label ?? '');   /* every order kind names itself here: an unnamed one threw every frame and left the story blank */
     const rest = orders.length > 1 ? ` +${orders.length - 1}` : '';
     // its OWN row, not an appendix to the objectives line: that line already
     // runs to the edge of the box on a phone, and an overflowing status is
@@ -5230,7 +5230,7 @@ export function initTdTab(root) {
     if (!assistant) return '';
     const o = assistant.order;
     if (!o) return `<div class="hud-obj hud-isao">DRONE 2 &#9656; on shift</div>`;
-    const what = o.kind === 'upgrade' ? `${o.tower.def.label}+1` : o.kind === 'structure' ? o.step.label : TOWER_BY_KEY[o.key].label;
+    const what = o.kind === 'upgrade' ? `${o.tower.def.label}+1` : o.kind === 'structure' ? o.step.label : o.kind === 'repair' ? (BASE_REPAIR[o.repair?.kind]?.label ?? 'REPAIRS') : (TOWER_BY_KEY[o.key]?.label ?? '');   /* every order kind names itself here: an unnamed one threw every frame and left the story blank */
     if (assistant.state === 'build') {
       const pct = Math.round(Math.min(1, assistant.t / Math.max(0.001, assistant.dur)) * 100);
       return `<div class="hud-obj hud-isao">DRONE 2 &#9656; printing ${what} ${pct}%</div>`;
