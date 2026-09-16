@@ -3,7 +3,7 @@
 // and SVG; the seat feeds it once a frame.
 //   rotary  a ring of eight ticks with a spinner that turns while the barrels do
 //   bofors  four brackets and a centre dot; a red marker while a shell is painted in the air
-//   heavy   the strike's diamond over a long cross; PAINT then LAUNCH
+//   heavy   the strike's diamond over a long cross; PAINT then RELEASE, and a red banner naming what of ours stands in the blast
 export function createGunshipHud(root) {
   const layer = document.createElement('div'); layer.id = 'gunship-hud'; layer.style.display = 'none';
   layer.innerHTML = `<svg class="reticle" aria-hidden="true"></svg><div class="ro"><div class="r-head split"><span>KORP / GS01</span><b data-f="gun">—</b></div>
@@ -17,7 +17,7 @@ export function createGunshipHud(root) {
   let last = '', spin = 0;
   const put = (k, v, hot = false) => { if (f[k].textContent !== v) f[k].textContent = v; f[k].classList.toggle('hot', hot); };
   const COL = { rotary: '#dfe8ee', bofors: '#ffb43d', heavy: '#ff6a4d' };
-  function reticle(w, h, gun, hot, painted, spinDeg, state) {
+  function reticle(w, h, gun, hot, painted, spinDeg, state, warn) {
     const cx = w / 2, cy = h / 2, R = Math.min(w, h) * 0.09, col = COL[gun] ?? '#5fe6d6', P = [];
     const mono = `font-family="ui-monospace,Menlo,monospace" font-size="11" letter-spacing="2" text-anchor="middle"`;
     if (gun === 'rotary') {
@@ -36,19 +36,22 @@ export function createGunshipHud(root) {
       const d = R * 1.2, L = R * 3;
       P.push(`<path d="M ${cx} ${cy - d} L ${cx + d} ${cy} L ${cx} ${cy + d} L ${cx - d} ${cy} Z" fill="none" stroke="${col}" stroke-width="${hot ? 2.6 : 1.6}" opacity="0.95"/>`);
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) P.push(`<line x1="${cx + dx * d * 1.15}" y1="${cy + dy * d * 1.15}" x2="${cx + dx * L}" y2="${cy + dy * L}" stroke="${col}" stroke-width="1.2" opacity="0.6"/>`);
-      if (painted) P.push(`<rect x="${cx - 90}" y="${cy + L + 6}" width="180" height="15" fill="#ff2a1a" opacity="0.92"/><text x="${cx}" y="${cy + L + 17}" fill="#12202a" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="700" letter-spacing="3" text-anchor="middle">TARGET PAINTED · FIRE TO LAUNCH</text>`);
-      else P.push(`<text x="${cx}" y="${cy + L + 17}" fill="${col}" ${mono} opacity="0.85">105MM · M102 · ${state}</text>`);
+      // DANGER CLOSE IS SAID BEFORE THE RELEASE, NOT AFTER (owner, 2026-09-16): the MK-9's 55 m takes our own walls and sentries
+      // exactly as the strike does, so while a cell is painted the banner names what stands in it; only a clear ring says RELEASE.
+      if (painted || warn) { const text = warn ? `DANGER CLOSE · ${warn}` : 'TARGET PAINTED · FIRE TO RELEASE', wide = Math.max(180, text.length * 7);
+        P.push(`<rect x="${cx - wide / 2}" y="${cy + L + 6}" width="${wide}" height="15" fill="#ff2a1a" opacity="0.92"/><text x="${cx}" y="${cy + L + 17}" fill="#12202a" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="700" letter-spacing="3" text-anchor="middle">${text}</text>`); }
+      else P.push(`<text x="${cx}" y="${cy + L + 17}" fill="${col}" ${mono} opacity="0.85">MK-9 · MINI NUKE · ${state}</text>`);
     }
     return P.join('');
   }
   return {
     // one call a frame; hot: the trigger is down; painted: a shell or the strike's target is out; spinning: the rotary's barrels turn
-    update({ on, w, h, gun = 'rotary', hot = false, painted = false, spinning = 0, dt = 0, range = 0, coords = '—', contacts = 0, nearest = null, blast = '—', left = 0, state = '—', zoom = 1, bar = 0, barHot = false, barLabel = 'HEAT' }) {
+    update({ on, w, h, gun = 'rotary', hot = false, painted = false, spinning = 0, dt = 0, range = 0, coords = '—', contacts = 0, nearest = null, blast = '—', left = 0, state = '—', zoom = 1, bar = 0, barHot = false, barLabel = 'HEAT', warn = '' }) {
       layer.style.display = on ? '' : 'none'; if (!on) return;
       spin = (spin + spinning * dt * 540) % 360;
-      const key = `${w}x${h}:${gun}:${hot ? 'H' : ''}:${painted ? 'P' : ''}:${spinning ? Math.round(spin / 6) : 'x'}:${state}`;
-      if (key !== last) { last = key; svg.setAttribute('viewBox', `0 0 ${w} ${h}`); svg.innerHTML = reticle(w, h, gun, hot, painted, spin, state); }
-      put('gun', { rotary: '25MM ROTARY', bofors: '40MM BOFORS', heavy: '105MM M102' }[gun] ?? gun.toUpperCase(), true);
+      const key = `${w}x${h}:${gun}:${hot ? 'H' : ''}:${painted ? 'P' : ''}:${spinning ? Math.round(spin / 6) : 'x'}:${state}:${warn}`;
+      if (key !== last) { last = key; svg.setAttribute('viewBox', `0 0 ${w} ${h}`); svg.innerHTML = reticle(w, h, gun, hot, painted, spin, state, warn); }
+      put('gun', { rotary: '25MM ROTARY', bofors: '40MM BOFORS', heavy: 'MK-9 MINI NUKE' }[gun] ?? gun.toUpperCase(), true);
       put('range', range > 0 ? `${Math.round(range)} m` : '—'); put('coords', coords); put('contacts', String(contacts), contacts > 0);
       put('nearest', nearest != null ? `${Math.round(nearest)} m from base` : '—'); put('blast', blast, blast !== 'clear'); put('left', `${Math.ceil(left)} s`); put('state', state, hot || painted); put('mag', `${zoom.toFixed(1)}x`); put('barLabel', barLabel); fill.style.width = `${Math.round(Math.max(0, Math.min(1, bar)) * 100)}%`; meter.classList.toggle('hot', barHot);
     },

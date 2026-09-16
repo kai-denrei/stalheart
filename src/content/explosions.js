@@ -7,7 +7,11 @@ export const EXPLOSION_USES = Object.freeze({
   // radii from the owner's brief (a cell is 10 m), doubled in the seat, then half again for effect (owner, 2026-09-14)
   'gunship.rotary': Object.freeze({ module: 'rotary-pop', scale: 1.65 }),    // 25 mm: 4.5 m module, ~7.5 m, 0.4 s
   'gunship.bofors': Object.freeze({ module: 'bofors-burst', scale: 1.35 }),  // 40 mm: 11 m module, ~15 m, 1.2 s
-  'gunship.heavy': Object.freeze({ module: 'howitzer-blast', scale: 1.41 }), // 105 mm: 32 m module, ~45 m, 3 s
+  'gunship.heavy': Object.freeze({ module: 'howitzer-blast', scale: 1.41 }), // 105 mm: 32 m module, ~45 m, 3 s — kept for the retired shell's record and the tank-tier blast
+  // THE MK-9 MINI NUKE (owner, 2026-09-16): the gunship's third weapon is a missile now, and it yields like one. The orbital
+  // strike's own module at 0.8 is ~72 m and 10 s: half again the 105's 45 m fireball and its column, and clearly short of the
+  // strike's 135 m, so the set piece from orbit still outranks anything the seat can drop.
+  'gunship.nuke': Object.freeze({ module: 'orbital-strike', scale: 0.8 }),
   'tank.shell': Object.freeze({ module: 'bofors-burst', scale: 0.405 }),     // ~4.5 m, the Bofors' ratio kept
   'quiver.talon': Object.freeze({ module: 'bofors-burst', scale: 0.54 }),    // ~6 m, the Bofors' ratio kept
   'strike.orbital': Object.freeze({ module: 'orbital-strike', scale: 1.5 }), // 135 m, 10 s
@@ -32,6 +36,7 @@ export const EXPLOSION_SCARE = Object.freeze({
   'gunship.rotary': Object.freeze({ cells: 2, seconds: 1.2 }),
   'gunship.bofors': Object.freeze({ cells: 3, seconds: 1.8 }),
   'gunship.heavy': Object.freeze({ cells: 6, seconds: 2.5 }),
+  'gunship.nuke': Object.freeze({ cells: 10, seconds: 4 }),   // the swarm scatters from a mini nuke: 100 m of bodies turned and running, four seconds of it
   'tank.shell': Object.freeze({ cells: 2, seconds: 1.2 }),
   'quiver.talon': Object.freeze({ cells: 2.5, seconds: 1.5 }),
   'strike.orbital': Object.freeze({ cells: 12, seconds: 3 }),

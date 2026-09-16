@@ -115,7 +115,7 @@ export function createSentryPilot(root, host) {
   // THE GUNSHIP (docs/superpowers/specs/2026-09-13-heavy-gunship-design.md). A virtual mount riding the pass over the base:
   // the player takes the optic and the guns, never the aircraft. Position is the schedule's, not an input. Every gun fires
   // wherever it is pointed; the danger report is a readout. The heavy IS the orbital strike: choosing it arms the safety,
-  // aiming paints the cell, the trigger launches through strike.js's own ritual.
+  // aiming paints the cell, the trigger RELEASES the MK-9: a modelled round that drops, ignites and dives (src/fx/gunship-drop.js).
   const G=host.gunship,ship={key:'gunship',obj:G?G.optic.platformObject():null,ci:-1},aim=new THREE.Vector3(),t1=new THREE.Vector3(),t2=new THREE.Vector3();
   let gunship=false,impact=null,report=null,rounds=0,landedRounds=0,pendingAim=null,px=innerWidth/2,py=innerHeight/2,fireLoop=null;
   // THE GUNSHIP'S VIEW IS THERMAL, ALWAYS (owner, 2026-09-16): FLIR is the seat's visual identity, not a mode it happens to open in,
@@ -137,7 +137,7 @@ export function createSentryPilot(root, host) {
     if(!G||G.mount()!=='mounted')return 'refused';
     gunship=true;ship.ci=G.heart();state.tower=ship;state.held=false;state.target=null;state.hidden=null;state.view='pov';state.zoom=G.platform.zoom??1;state.zoomGoal=state.zoom;host.zoom(state.zoom);px=innerWidth/2;py=innerHeight/2;
     pendingAim=G.centers[G.lane()];aimShip();state.pitch=-1.45;   // the seat opens looking straight down, the lane's way   // the seat opens on where they come from; settled again on the first tick, once the platform has taken its track (its frame can swing when a breach opens)
-    guns.style.display='';panel.querySelector('header').innerHTML='KORP / GS01 <small>HEAVY GUNSHIP · ON STATION</small>';panel.querySelector('footer').textContent='Click to lock the mouse, move it to aim · Space or the button fires · rounds take seconds to land: lead them · 1 rotary · 2 bofors · 3 heavy · V the ship · T top view · P pause';
+    guns.style.display='';panel.querySelector('header').innerHTML='KORP / GS01 <small>HEAVY GUNSHIP · ON STATION</small>';panel.querySelector('footer').textContent='Click to lock the mouse, move it to aim · Space or the button fires · rounds take seconds to land: lead them · 1 rotary · 2 bofors · 3 MK-9 mini nuke (paint, then release: it drops two seconds before it burns) · V the ship · T top view · P pause';
     G.optic.mount();host.views?.('gunship');selectGun(G.state.gun);if(map)toggleMap();root.classList.add('gunship-seat');panel.querySelector('.pilot-cross').style.display='none';setMode();   // the seat is thermal, the FLIR ironbow (owner, 2026-09-14; its only view, 2026-09-16)
     return 'mounted';
   }
@@ -180,16 +180,19 @@ export function createSentryPilot(root, host) {
     let ci=-1;if(map){ci=G.cellAt(px,py);impact=ci>=0?G.centers[ci].slice():null;}else{impact=G.aim(eye.toArray(),direction.toArray());ci=impact?G.cell(impact):-1;}   // on the map the pointer is the aim; looking at the ship, the optic's ray is
     const gun=G.guns[G.state.gun],c=host.cellSide();
     report=impact?Object.fromEntries(G.order.map(k=>[k,G.danger(impact,G.guns[k].dangerCells*c)])):null;
-    G.optic.rings(impact,ci>=0?G.normals[ci]:[0,1,0],G.state.gun,report);
+    // THE RING SITS WHERE THE ROUND WILL LAND (owner, 2026-09-16): from the moment a cell is painted and all the way down while the
+    // MK-9 falls, the readout rings stand on THAT cell — the gunner can look away and the danger-close warning stays with the round.
+    {const hp=G.heavyState(),hci=hp.ci??-1,onRound=gun.strike&&hci>=0,rp=onRound?G.centers[hci]:impact;
+     G.optic.rings(rp,onRound?G.normals[hci]:(ci>=0?G.normals[ci]:[0,1,0]),G.state.gun,!rp?null:onRound?Object.fromEntries(G.order.map(k=>[k,G.danger(rp,G.guns[k].dangerCells*c)])):report);}
     let fired=null;
-    if(gun.strike){   // THE GUNSHIP'S OWN 105: paint, then launch; the camera stays in the seat, the shell is seen falling; one nudge; then the reload
-      const hs=G.heavyState();
-      if(hs.phase==='falling'){if(ci>=0&&!hs.nudged&&G.nudgeHeavy(ci))G.laser(ci);}
+    if(gun.strike){   // THE MK-9 (owner, 2026-09-16): paint, then RELEASE. The camera stays in the seat and the round is a body in the world — it
+      const hs=G.heavyState();   // drops free for two seconds, lights its motor, then dives onto the cell. One nudge steers it; the pass has one release.
+      if(hs.phase==='released'||hs.phase==='ignited'){if(ci>=0&&!hs.nudged&&G.nudgeHeavy(ci)){G.laser(ci);G.drop?.steer(G.centers[ci]);}}
       else if(state.held){state.held=false;
-        if(hs.phase==='painted'){const tgt=G.centers[hs.ci];const lc=G.launchHeavy();if(lc>=0){fired='round';G.sfx(gun.sound,ship.obj.position.toArray());G.optic.flight(muzzleFor('heavy'),tgt,gun.ringHex,gun.travel,1.2);G.optic.paint(tgt,G.normals[lc],gun.blastCells*c,gun.travel);}}
+        if(hs.phase==='painted'){const tgt=G.centers[hs.ci];const lc=G.launchHeavy();if(lc>=0){fired='round';G.sfx(gun.sound,ship.obj.position.toArray());if(!G.drop?.release(muzzleFor('heavy'),tgt,up.toArray(),G.vel?.()??[0,0,0]))G.optic.flight(muzzleFor('heavy'),tgt,gun.ringHex,gun.travel,1.2);G.optic.paint(tgt,G.normals[lc],gun.blastCells*c,gun.travel);}}   /* the modelled round, or the old tracer line if its pool has not loaded yet: the blast never waits on the mesh */
         else if(hs.phase==='ready'&&ci>=0&&G.paintHeavy(ci)){G.laser(ci);G.sfx('tank_shells',impact);}
       }
-      if(hs.phase!=='falling'&&hs.phase!=='painted')G.laser(-1);
+      if(hs.phase==='reloading'||hs.phase==='ready'||hs.phase==='spent')G.laser(-1);
     }else{
       const n=G.step(dt,state.held);
       if(n>0&&impact){
@@ -213,7 +216,11 @@ export function createSentryPilot(root, host) {
     const r=report?.[G.state.gun],left=Math.ceil(G.left());
     const hsNow=G.heavyState(),range=impact?Math.round(v.fromArray(impact).distanceTo(ship.obj.position)/c*G.platform.metresPerCell/10)*10:0,es=G.enemies(),hc=G.centers[G.heart()],near=es.reduce((m,e)=>Math.min(m,Math.hypot(e.pos[0]-hc[0],e.pos[1]-hc[1],e.pos[2]-hc[2])),Infinity);
     panel.querySelector('output').textContent=`${gun.label} · ${gun.cue}`;
-    hud?.update({on:!map,w:innerWidth,h:innerHeight,gun:G.state.gun,hot:state.held||fired==='round',spinning:G.state.gun==='rotary'&&(state.held||fired==='round')?1:0,dt,range,coords:impact?planetCoords(v.fromArray(impact).normalize().toArray()):'—',contacts:es.length,nearest:es.length?near/c*G.platform.metresPerCell:null,blast:r&&(r.walls||r.towers||r.tank||r.isao)?`${r.walls} wall${r.walls===1?'':'s'} · ${r.towers} sentr${r.towers===1?'y':'ies'}${r.tank?' · TANK':''}${r.isao?' · ISAO':''}`:'clear',left:G.left(),state:gun.strike?({falling:`SHELL FALLING · ${hsNow.nudged?'NUDGED':'NUDGE ONCE'}`,reloading:`RELOADING ${Math.ceil(hsNow.left??0)} S`,painted:'PAINTED · FIRE TO LAUNCH',ready:'FIRE TO PAINT'})[hsNow.phase]:gun.magazine?(G.state.mag===0||G.state.clock<G.state.reloadUntil?`RELOADING ${Math.ceil(G.state.reloadUntil-G.state.clock)} S`:state.held?`FIRING · ${G.state.mag<0?gun.magazine:G.state.mag} LEFT`:`READY · ${G.state.mag<0?gun.magazine:G.state.mag} / ${gun.magazine}`):(G.state.overheated?'OVERHEATED · COOLING':state.held?`FIRING · HEAT ${Math.round(G.state.heat*100)}%`:'READY'),bar:gun.strike?(hsNow.phase==='reloading'?1-hsNow.left/gun.reload:hsNow.phase==='falling'?1-hsNow.left/gun.travel:1):gun.magazine?(G.state.mag===0||G.state.clock<G.state.reloadUntil?1-Math.max(0,G.state.reloadUntil-G.state.clock)/gun.reload:(G.state.mag<0?gun.magazine:G.state.mag)/gun.magazine):G.state.heat,barHot:gun.strike?hsNow.phase!=='ready':gun.magazine?(G.state.mag===0||G.state.clock<G.state.reloadUntil):G.state.overheated,barLabel:gun.strike?(hsNow.phase==='reloading'?'RELOAD':hsNow.phase==='falling'?'FALL':'SHELL'):gun.magazine?'MAG':'HEAT',painted:gun.strike?hsNow.phase==='painted'||hsNow.phase==='falling':G.state.rounds.some(x=>x.gun==='bofors'),zoom:state.zoom});
+    // THE MK-9's OWN READOUT. `out` is the report at the round's cell while one is painted or falling, the live aim otherwise, so
+    // "In blast" and the DANGER CLOSE banner both describe what the NUKE will flatten — ours included. Nothing here makes it safe.
+    const inAir=gun.strike&&(hsNow.phase==='released'||hsNow.phase==='ignited'),out=gun.strike&&(hsNow.ci??-1)>=0?G.danger(G.centers[hsNow.ci],gun.dangerCells*c):r;
+    const ours=out&&(out.walls||out.towers||out.tank||out.isao)?`${out.walls} wall${out.walls===1?'':'s'} · ${out.towers} sentr${out.towers===1?'y':'ies'}${out.tank?' · TANK':''}${out.isao?' · ISAO':''}`:'clear';
+    hud?.update({on:!map,w:innerWidth,h:innerHeight,gun:G.state.gun,hot:state.held||fired==='round',spinning:G.state.gun==='rotary'&&(state.held||fired==='round')?1:0,dt,range,coords:impact?planetCoords(v.fromArray(impact).normalize().toArray()):'—',contacts:es.length,nearest:es.length?near/c*G.platform.metresPerCell:null,blast:ours,left:G.left(),state:gun.strike?({released:`RELEASED · IGNITION IN ${Math.max(0,hsNow.burn??0).toFixed(1)} S`,ignited:`IGNITED · DIVING${hsNow.nudged?' · NUDGED':' · NUDGE ONCE'}`,reloading:`IMPACT · SAFING ${Math.ceil(hsNow.left??0)} S`,spent:'SPENT · ONE RELEASE A PASS',painted:'PAINTED · FIRE TO RELEASE',ready:'ARMED · FIRE TO PAINT'})[hsNow.phase]:gun.magazine?(G.state.mag===0||G.state.clock<G.state.reloadUntil?`RELOADING ${Math.ceil(G.state.reloadUntil-G.state.clock)} S`:state.held?`FIRING · ${G.state.mag<0?gun.magazine:G.state.mag} LEFT`:`READY · ${G.state.mag<0?gun.magazine:G.state.mag} / ${gun.magazine}`):(G.state.overheated?'OVERHEATED · COOLING':state.held?`FIRING · HEAT ${Math.round(G.state.heat*100)}%`:'READY'),bar:gun.strike?(hsNow.phase==='reloading'?1-hsNow.left/gun.reload:inAir?1-hsNow.left/gun.travel:hsNow.phase==='spent'?0:1):gun.magazine?(G.state.mag===0||G.state.clock<G.state.reloadUntil?1-Math.max(0,G.state.reloadUntil-G.state.clock)/gun.reload:(G.state.mag<0?gun.magazine:G.state.mag)/gun.magazine):G.state.heat,barHot:gun.strike?hsNow.phase!=='ready':gun.magazine?(G.state.mag===0||G.state.clock<G.state.reloadUntil):G.state.overheated,barLabel:gun.strike?(hsNow.phase==='reloading'?'SAFING':hsNow.phase==='released'?'FALL':hsNow.phase==='ignited'?'BURN':'MK-9'):gun.magazine?'MAG':'HEAT',painted:gun.strike?(hsNow.phase==='painted'||inAir):G.state.rounds.some(x=>x.gun==='bofors'),warn:gun.strike&&(hsNow.phase==='painted'||inAir)&&ours!=='clear'?ours.toUpperCase():'',zoom:state.zoom});
   }
   // GROUND TRUTH · IMPACT, one constant framing (owner, 2026-09-15: keep it at the 105's view for every gun, not zoomed in too far): the long lens fits
   // three of the 105's blast radii and stands back far enough to stay inside the monitor's 30° clamp, whichever gun is firing

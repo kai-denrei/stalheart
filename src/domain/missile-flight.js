@@ -40,3 +40,43 @@ export function sampleMissile(frame, u, profile, target = frame.target) {
   const norm=Math.hypot(...nose)||1;
   return { ...s, position, direction:nose.map(v=>v/norm) };
 }
+
+// THE DROP PROFILE (owner, 2026-09-16: the gunship's weapon 3 "drops, then it ignites after 2 seconds and heads down"). This is the
+// eject/coast/fall/ignite shape above, inverted: a release from altitude instead of a pop-up. It reuses this module's frame
+// (missileFrame's forward/right/metre, so `metre` still means one metre in the scene's units) and the sampler's contract —
+// { position, direction, ignition, phase }, which is what src/missile-presentation.js poses a pooled round from and what drives
+// the exhaust — and replaces only the curve. The authored parabola is a stylised local-unit arc; a round let go 340 m up has to
+// fall REAL metres for a real two seconds, so the unpowered leg is ballistics and the powered leg a Hermite that enters at the
+// fall's own velocity (no kink at ignition) and arrives faster than it started. Every number is a parameter: src/content/gunship.js
+// owns freeFall, drive, gravity and arrivalLead; the domain layer never reads content.
+export const DROP_PHASES = Object.freeze(['Release', 'Fall', 'Ignite', 'Dive']);
+export function dropFrame(from, target, velocity, { freeFall = 2, drive = 1.8, gravity = 9.81, arrivalLead = 1.5, metre = 1, up = [0, 1, 0] } = {}) {
+  const un = Math.hypot(...up) || 1, u = up.map((v) => v / un);
+  const vel = velocity && velocity.length === 3 ? velocity.slice() : [0, 0, 0];
+  const lead = Math.hypot(...vel) > 1e-9 ? vel : u.map((v) => -v);   // the nose at release: the aircraft's own velocity, else straight down
+  const fall = Math.max(0, freeFall), burn = Math.max(1e-3, drive);
+  return { ...missileFrame(from, target, lead, { metre }), up: u, velocity: vel, freeFall: fall, drive: burn, gravity, arrivalLead,
+    duration: fall + burn, ignitionAt: fall / (fall + burn) };
+}
+// `t` is SECONDS since release, not a normalised u: the two seconds of fall are the owner's number and must not stretch with range.
+export function sampleDrop(frame, t, target = frame.target) {
+  const g = frame.gravity * (frame.metre ?? 1), clamped = Math.max(0, Math.min(frame.duration, t));
+  const at = (s) => frame.from.map((v, i) => v + frame.velocity[i] * s - frame.up[i] * .5 * g * s * s);
+  const speed = (s) => frame.velocity.map((v, i) => v - frame.up[i] * g * s);
+  if (clamped <= frame.freeFall) {
+    const d = speed(clamped), n = Math.hypot(...d) || 1;
+    return { position: at(clamped), direction: d.map((v) => v / n), ignition: false, u: clamped / frame.duration,
+      phase: clamped < frame.freeFall * .2 ? 'Release' : 'Fall' };
+  }
+  const p0 = at(frame.freeFall), v0 = speed(frame.freeFall).map((v) => v * frame.drive);   // tangents are per unit of s, so the entry one carries the drive
+  const left = Math.hypot(...target.map((v, i) => v - p0[i]));
+  const v1 = frame.up.map((v) => -v * left * frame.arrivalLead);   // straight down and faster than it came in: the motor drives it onto the point
+  const s = Math.min(1, (clamped - frame.freeFall) / frame.drive), s2 = s * s, s3 = s2 * s;
+  const h00 = 2 * s3 - 3 * s2 + 1, h10 = s3 - 2 * s2 + s, h01 = -2 * s3 + 3 * s2, h11 = s3 - s2;
+  const position = p0.map((v, i) => h00 * v + h10 * v0[i] + h01 * target[i] + h11 * v1[i]);
+  const d00 = 6 * s2 - 6 * s, d10 = 3 * s2 - 4 * s + 1, d01 = -6 * s2 + 6 * s, d11 = 3 * s2 - 2 * s;
+  const tangent = p0.map((v, i) => d00 * v + d10 * v0[i] + d01 * target[i] + d11 * v1[i]);
+  const n = Math.hypot(...tangent) || 1;
+  return { position, direction: tangent.map((v) => v / n), ignition: clamped < frame.duration, u: clamped / frame.duration,
+    phase: s < .25 ? 'Ignite' : 'Dive' };
+}
