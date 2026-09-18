@@ -57,4 +57,18 @@ assert.deepEqual(repairCost({ kind: 'gate' }, T), { seconds: T.gate.seconds, met
 assert.deepEqual(repairCost({ kind: 'wall', ci: 3 }, T), { seconds: T.wall.seconds, metres: T.wall.metres });
 assert.ok(repairCost({ kind: 'gate' }, T).seconds > repairCost({ kind: 'wall', ci: 1 }, T).seconds, 'the gate is the bigger print');
 assert.deepEqual(repairCost({ kind: 'wall', ci: 1 }, {}), { seconds: 6, metres: 4 }, 'a missing tunable still prints something');
+// TWO DOORS: he goes to the worse one first, broken before chewed, and a whole door is never a trip
+{ const G = (id, hp, broken = false) => ({ id, hp, max: 100, broken });
+  const q = { quiet: true };
+  assert.deepEqual(nextRepair({ ...q, gates: [G('gate', 100), G('back', 100)] }, T), null, 'two whole doors, no trip');
+  assert.deepEqual(nextRepair({ ...q, gates: [G('gate', 100), G('back', 50)] }, T), { kind: 'gate', id: 'back' }, 'the chewed back door');
+  assert.deepEqual(nextRepair({ ...q, gates: [G('gate', 50), G('back', 60)] }, T), { kind: 'gate' }, 'the worse of the two, and the front door carries no id');
+  assert.deepEqual(nextRepair({ ...q, gates: [G('gate', 10), G('back', 100, true)] }, T), { kind: 'gate', id: 'back' }, 'a broken door outranks a chewed one');
+  assert.deepEqual(nextRepair({ ...q, gates: [G('gate', 100), G('back', 60)], walls: [4] }, T), { kind: 'gate', id: 'back' }, 'doors before walls');
+  assert.deepEqual(nextRepair({ ...q, gates: [G('gate', 100), G('back', 100)], walls: [4] }, T), { kind: 'wall', ci: 4 }, 'then the walls');
+  assert.deepEqual(nextRepair({ ...q, gates: [G('gate', 50), G('back', 50)] }, T), { kind: 'gate' }, 'a tie keeps the front door first');
+  assert.deepEqual(repairsPending({ gates: [G('gate', 50), G('back', 20)], walls: [7] }, T), [{ kind: 'gate', id: 'back' }, { kind: 'gate' }, { kind: 'wall', ci: 7 }], 'everything wanting a trip, worst door first');
+  // one gate still reads exactly as it did
+  assert.deepEqual(nextRepair({ ...q, gate: G('gate', 50) }, T), { kind: 'gate' });
+  assert.deepEqual(repairsPending({ gate: G('gate', 50) }, T), [{ kind: 'gate' }]); }
 console.log(`Repair orders: the gate first below ${T.gateAt} of its hp, then the walls in rim order, only between waves and never ahead of the player.`);

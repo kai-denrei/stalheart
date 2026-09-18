@@ -21,14 +21,14 @@ const growStub = () => ({ growIsland: (id, k) => grown.push(['island', id, k]), 
     if (s.when.phase) assert.ok(STORY_PHASES.includes(s.when.phase), `${s.id}: ${s.when.phase} is a story phase`);
     assert.ok(BRIEFS[s.brief] && BRIEFS[s.brief].lines.length <= 2, `${s.id}: Isao's brief ${s.brief} exists, two lines at most`);
   }
-  assert.deepEqual(BASE_PROGRAMME.map((s) => s.perk).filter(Boolean).sort(), ['gate', 'gunship', 'hulls', 'rebuild', 'stalheart', 'station', 'uplink'], 'the perks the other systems consult');
+  assert.deepEqual(BASE_PROGRAMME.map((s) => s.perk).filter(Boolean).sort(), ['backgate', 'gate', 'gunship', 'hulls', 'rebuild', 'stalheart', 'station', 'uplink'], 'the perks the other systems consult');
   assert.ok(BASE_PERKS.gunshipMeter > 1 && BASE_PERKS.rebuildHulls >= 1);
   const planet = buildStoryPlanet({ ...STORY_RECIPE, points: 800, rooms: 24, extraCorridors: 12 }, STORY_CLEARING);
   const plan = planBase(planet, { islands: ISLANDS, structures: STRUCTURES, kit: KIT, stages: STAGES }, 1, { reach: STAGES.length - 1 });
   const count = (id, key) => BASE_PROGRAMME.filter((s) => s[key].includes(id)).length;
   for (const i of plan.islands.filter((x) => x.pending)) assert.equal(count(i.id, 'islands'), 1, `island ${i.id} is printed once`);
   for (const s of plan.structures.filter((x) => x.pending && x.id !== 'rotor')) assert.equal(count(s.id, 'structures'), 1, `structure ${s.id} is printed once`);   // the Rotor is the beats' own print
-  assert.equal(BASE_PROGRAMME.filter((s) => s.gate).length, 1, 'one gate step'); assert.ok(BASE_PROGRAMME.find((s) => s.gate).walls, 'the walls come with the gate');
+  assert.equal(BASE_PROGRAMME.filter((s) => s.gate).length, 2, 'two gate steps: the front door and the back one'); assert.ok(BASE_PROGRAMME.find((s) => s.gate === true).walls, 'the walls come with the front gate'); { const b = BASE_PROGRAMME.find((s) => s.gate === 'back'); assert.ok(b && !b.walls && b.plot && b.when.back === 'held' && b.perk === 'backgate', 'the back gate is a wall-less door that waits for the surprise to be held'); assert.equal(BASE_PROGRAMME.at(-1).id, 'backgate', 'last on the programme'); }
   assert.equal(BASE_PROGRAMME[0].id, 'foundry', 'Isao works the recycler before he prints anything');
   assert.equal(BASE_PROGRAMME[1].id, 'gate', 'the gate prints first of the base: the tremor waits for it');
   // the foundry beat is work on a machine that already stands: it prints nothing, carries no perk, and holds the beam over the AFR-01
@@ -100,6 +100,13 @@ const growStub = () => ({ growIsland: (id, k) => grown.push(['island', id, k]), 
   assert.equal(rebuildDue(st, 3), true, 'sector 3 starts with a rebuild'); assert.equal(rebuildDue(st, 3), false, 'once per sector');
   assert.equal(rebuildDue(st, undefined), false, 'no sector yet');
 }
+// `when.back`: a step waits for the second front to have reached a named state
+{ const steps = [{ id: 'a', islands: [], structures: [] }, { id: 'b', islands: [], structures: [], when: { back: 'held' } }];
+  const st = makeBuildProgramme(steps);
+  finish(st, due(st, {}));
+  assert.equal(due(st, {}), null, 'the back step waits while the back is untouched');
+  assert.equal(due(st, { back: 'open' })?.id, undefined, 'and while it is merely open');
+  assert.equal(due(st, { back: 'held' })?.id, 'b', 'it comes once the breach behind it is held'); }
 console.log(`Build programme: ${BASE_PROGRAMME.length} steps in order, one at a time, gated by phase, sector and idle; standing steps carry their perks; one rebuild per sector.`);
 
 // A BUILDING SOL-82 BURNED (src/content/orbital-laser.js LASER_STRUCTURES): the step stays done — Isao does not print it back — but

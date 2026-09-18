@@ -25,6 +25,14 @@ export const BASE_PROGRAMME = Object.freeze([
   { id: 'hugin', label: 'HUGIN arm', islands: ['hugin'], structures: ['hugin'], when: { sector: 1, idle: true }, seconds: 16, metres: 16, brief: 'build_hugin', perk: 'gunship' },
   { id: 'radar', label: 'radar', islands: ['radar'], structures: ['radar'], when: { sector: 2 }, seconds: 12, metres: 18, brief: 'build_radar', perk: 'uplink' },
   { id: 'assembly', label: 'assembly line', islands: ['assembly'], structures: ['assembly'], when: { sector: 2, idle: true }, seconds: 16, metres: 8, brief: 'build_assembly', perk: 'rebuild' },
+  // THE BACK GATE (owner, 2026-09-18: "back gate is a reminder that focusing on defense on one side leaves one open; surprise it
+  // opens! ... Then Isao installs a gate and we can put sentries"). It is NOT pre-built: sector 2 cracks the mouth behind the bays
+  // open as the surprise, the player holds it with the tank, SOL-82 and the gunship, and only once that back breach is closed or
+  // spent does this step queue. `gate: 'back'` names the door on src/domain/base-plan.js plan.gates; there are no walls flanking it,
+  // so the print is the door's own footprint (`plot`, half extents across and along its heading) from the first frame to the last.
+  // `when.back: 'held'` is that condition, read off the sector loop through the host's hooks. Its perk opens the back sockets:
+  // plan.backSockets become mountable, so sentries can be ordered behind the bays from then on.
+  { id: 'backgate', label: 'back gate', gate: 'back', plot: [7, 4], when: { sector: 2, idle: true, back: 'held' }, seconds: 14, metres: 6, brief: 'build_back_gate', perk: 'backgate' },
 ].map((s) => Object.freeze({ islands: [], structures: [], ...s })));
 
 // what the perks are worth where the game reads a number: the HUGIN arm fills the gunship call-in meter faster; the assembly line

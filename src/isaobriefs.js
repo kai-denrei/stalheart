@@ -193,6 +193,11 @@ export const BRIEFS = {
     id: 'build_assembly', face: 'determined', title: 'COMMS · ISAO', once: true,
     lines: ['A lost hull is only parts.', 'Printing the assembly line to put them back.'],
   },
+  // THE BACK GATE (owner, 2026-09-18): the surprise is held, and only then does he put a door on the mouth they came through.
+  build_back_gate: {
+    id: 'build_back_gate', face: 'determined', title: 'COMMS · ISAO', once: true,
+    lines: ['We held it. Now it gets a door.', 'Printing the back gate — mounts beside it.'],
+  },
   // ISAO MENDS WHAT THE SWARM BROKE (V1, 2026-09-16): the first time he flies out to a broken gate or a blown-out wall between waves
   isao_repair: {
     id: 'isao_repair', face: 'determined', title: 'COMMS · ISAO', once: true,
