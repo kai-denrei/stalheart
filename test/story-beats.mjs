@@ -206,4 +206,29 @@ console.log('Story beats: faces, Rotor print, tremor, breach, approach, override
   assert.equal(calls.filter((c) => c === 'begin').length, 1, `expeditionsBegin must run exactly once on the expedition beat, got ${JSON.stringify(calls)}`);
   assert.deepEqual(calls, ['sites', 'begin'], `the sites are marked before the expeditions begin, got ${JSON.stringify(calls)}`);
 }
+
+// THE OPENING'S BEAT CLOCK (2026-09-18): the override asks how close the swarm is, the breach's first body comes after
+// `spawnDelay`, and the swarm carries its own march pace out to the host.
+{
+  const beats = makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, rotorDelay: 0, faceDelays: [0, 0], tremorDelay: 0.5, breachDelay: 0.5, overrideDelay: 0.5, spawnDelay: 0.4, overrideCells: 10, fodderEvery: 1, fodderAlive: 4, fodderTotal: 6, fodderEmerge: { harmless: true, spread: 0.8, stagger: 1.2, pace: 1.7 } });
+  const asked = [];
+  const g = fakeGame({ printSeconds: 1, walk: 1e9 });
+  g.api.near = (ci, cells) => { asked.push([ci, cells]); return asked.length > 3; };
+  run(beats, g, 1.2); assert.equal(beats.state().phase, 'rotor-ready');
+  run(beats, g, 0.6); assert.equal(beats.state().phase, 'tremor', 'the tremor comes after tremorDelay');
+  run(beats, g, 0.6); assert.equal(beats.state().phase, 'breach', 'and the ground opens after breachDelay');
+  assert.equal(kinds(g, 'spawn').length, 0, 'nothing has risen yet: the first body waits out spawnDelay');
+  run(beats, g, 0.5); assert.equal(kinds(g, 'spawn').length, 1, 'the first body rises after spawnDelay, not a full second');
+  assert.deepEqual(kinds(g, 'spawn')[0][3], { harmless: true, spread: 0.8, pace: 1.7, delay: 0 }, 'the swarm carries its own march pace');
+  run(beats, g, 0.5); assert.equal(beats.state().phase, 'override');
+  assert.deepEqual(asked[0], [4250, 10], 'the override asks for the swarm within overrideCells of the gate, not the default 2.2');
+}
+// the default is the old reach, so a caller that names no distance is unchanged
+{
+  const beats = makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, rotorDelay: 0, faceDelays: [0, 0], tremorDelay: 0.5, breachDelay: 0.5, fodderTotal: 3 });
+  const seen = []; const g = fakeGame({ printSeconds: 1 });
+  g.api.near = (ci, cells) => { seen.push(cells); return false; };
+  run(beats, g, 5); assert.equal(seen[0], 2.2, 'the unnamed default reach is unchanged');
+}
+
 console.log('story-beats: the foundry pays');

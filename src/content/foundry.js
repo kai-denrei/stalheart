@@ -2,7 +2,7 @@
 // opening prints from. Pure data; src/domain/foundry.js takes it as
 // configuration. Design: docs/superpowers/specs/2026-09-14-arrival-foundry-design.md.
 export const FOUNDRY_TUNE = Object.freeze({
-  deployDelay: 1.5,          // s from the deploy to the first cutter cycle
+  deployDelay: 0.7,          // s from the deploy to the first cutter cycle (the clip's own 15 s to the first barrel is the opening's floor)
   firstCycle: 16,            // s, the authored Recycle_Panel_To_Barrel clip, played once as authored
   cycleSeconds: 24,          // s between the starts of later cycles (owner, 2026-09-14)
   feedstockPerBarrel: 60,    // biomass a barrel is worth: the Rotor's cost and change

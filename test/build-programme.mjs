@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { BASE_PROGRAMME, BASE_PERKS } from '../src/content/base-programme.js';
+import { BASE_PROGRAMME, BASE_PERKS, BASE_BUILDER } from '../src/content/base-programme.js';
 import { makeBuildProgramme, due, begin, finish, perks, hasPerk, rebuildDue, snapshot, lose, lost } from '../src/domain/build-programme.js';
 import { STORY_PHASES } from '../src/domain/automation.js';
 import { BRIEFS } from '../src/isaobriefs.js';
@@ -18,6 +18,7 @@ const growStub = () => ({ growIsland: (id, k) => grown.push(['island', id, k]), 
   assert.equal(new Set(BASE_PROGRAMME.map((s) => s.id)).size, BASE_PROGRAMME.length, 'unique step ids');
   for (const s of BASE_PROGRAMME) {
     assert.ok(s.seconds > 0 && s.metres > 0 && s.label, `${s.id}: seconds, metres and a label`);
+    assert.ok(s.seconds >= 4, `${s.id}: a print must still be SEEN to happen (${s.seconds} s); the opening is trimmed by cutting waits, not prints`);
     if (s.when.phase) assert.ok(STORY_PHASES.includes(s.when.phase), `${s.id}: ${s.when.phase} is a story phase`);
     assert.ok(BRIEFS[s.brief] && BRIEFS[s.brief].lines.length <= 2, `${s.id}: Isao's brief ${s.brief} exists, two lines at most`);
   }
@@ -31,6 +32,10 @@ const growStub = () => ({ growIsland: (id, k) => grown.push(['island', id, k]), 
   assert.equal(BASE_PROGRAMME.filter((s) => s.gate).length, 2, 'two gate steps: the front door and the back one'); assert.ok(BASE_PROGRAMME.find((s) => s.gate === true).walls, 'the walls come with the front gate'); { const b = BASE_PROGRAMME.find((s) => s.gate === 'back'); assert.ok(b && !b.walls && b.plot && b.when.back === 'held' && b.perk === 'backgate', 'the back gate is a wall-less door that waits for the surprise to be held'); assert.equal(BASE_PROGRAMME.at(-1).id, 'backgate', 'last on the programme'); }
   assert.equal(BASE_PROGRAMME[0].id, 'foundry', 'Isao works the recycler before he prints anything');
   assert.equal(BASE_PROGRAMME[1].id, 'gate', 'the gate prints first of the base: the tremor waits for it');
+  // THE OPENING'S PACE (owner, 2026-09-18): everything before the first wave is on the tremor's critical path, so the two steps
+  // ahead of it are capped — and Isao's cruise is a content number, not a controller constant
+  assert.ok(BASE_PROGRAMME[1].seconds <= 9, `the gate print is on the critical path to the first wave (${BASE_PROGRAMME[1].seconds} s)`);
+  assert.ok(BASE_BUILDER.cellsPerSecond >= 3.5, `Isao's flights between plots are dead time (${BASE_BUILDER.cellsPerSecond} cells/s)`);
   // the foundry beat is work on a machine that already stands: it prints nothing, carries no perk, and holds the beam over the AFR-01
   {
     const f = BASE_PROGRAMME[0];
