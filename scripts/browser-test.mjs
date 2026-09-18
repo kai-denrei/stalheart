@@ -346,7 +346,7 @@ try{
   assert.deepEqual(bad,[],`${what}: nothing sits on anything else and nothing is off the screen`);return R;};
  let W=PW,H=PH;const innerW=()=>W,innerH=()=>H;
  const PAD=['#td-pad-fire','#td-pad-laser','#td-pad-shield'];
- const CHROME=[...PAD,'#story-views','#td-brief','#td-stats','#mob-mode','#tab-td .minimap','#sector-card','#td-sitrep','#td-toast','#td-wave','#td-tower','#skip-tutorial','#td-launch','#shell-bar'];
+ const CHROME=[...PAD,'#story-views','#td-brief','#td-stats','#mob-mode','#tab-td .minimap','#sector-card','#td-sitrep','#td-toast','#td-wave','#td-tower','#skip-tutorial','#td-tut','#td-launch','#shell-bar'];   /* #td-tut is here because the SKIP offer was sitting on the coach's second line and nothing measured it */
  // 1. THE BARE OPENING, the page the live link opens: the phone shell, no rotate wall, SKIP TUTORIAL a thumb can reach
  await phone('phone-opening','index.html?sw=0&acceptance=1&cine=0&world=story&grow=1&fps=0#td');
  await until(`!!${T}`,90000);await delay(2500);
@@ -416,7 +416,7 @@ try{
  for(const k of ['rotary','bofors','heavy']){await thumb(`#sentry-pilot [data-gun=${k}]`,`the ${k} button`);await reachable(`#sentry-pilot [data-gun=${k}]`,`the ${k} button`);}
  await thumb('#td-pad-fire','the trigger');await reachable('#td-pad-fire','the trigger');
  await reachable('#story-views [data-view=tank]','TANK on the strip');
- await layout(['#td-pad-fire','#story-views','#sentry-pilot .pilot-guns','#sentry-pilot footer','#gunship-hud .ro','#story-monitor','#mob-mode','#shell-bar'],'the gunship seat');
+ await layout(['#td-pad-fire','#story-views','#sentry-pilot header','#sentry-pilot .pilot-guns','#sentry-pilot [data-map]','#sentry-pilot footer','#gunship-hud .ro','#story-monitor','#mob-mode','#shell-bar','#tab-td .minimap'],'the gunship seat');
  {const q0=await evaluate(`${T}.gunshipCam()`);await drag(200,430,120,400);await delay(400);const q1=await evaluate(`${T}.gunshipCam()`);
   const a=2*Math.acos(Math.min(1,Math.abs(q0[0]*q1[0]+q0[1]*q1[1]+q0[2]*q1[2]+q0[3]*q1[3])));assert(a>0.01,`a drag turns the optic (${(a*180/Math.PI).toFixed(2)} deg)`);}
  current='phone-gunship-seat';await finish();
