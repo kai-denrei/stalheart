@@ -175,7 +175,7 @@ export function createCargo(scene, { loader = null, sfx = null, hasCue = null, m
       if (h <= 0 && vUp < 0) {
         c.obj.position.addScaledVector(c.up, -h);
         const n = ++c.bounces;
-        if (n === 1) c.onLanded?.();
+        if (n === 1) c.onLanded?.(c.obj.position.toArray(), c.up.toArray());
         cue('thud', { gain: Math.max(0.25, 1 - 0.35 * (n - 1)), rate: 0.9 + 0.08 * n });
         if (n > look.bounces) { c.vel.set(0, 0, 0); c.spin.multiplyScalar(0); c.phase = c.phase === 'tumble' ? 'fade' : 'settle'; c.t = 0; c.restQ = basis(c.up, new THREE.Vector3(0, 0, 1).applyQuaternion(c.obj.quaternion)); return; }
         c.vel.addScaledVector(c.up, -vUp * (1 + look.bounce)).multiplyScalar(0.6);
@@ -185,7 +185,8 @@ export function createCargo(scene, { loader = null, sfx = null, hasCue = null, m
       return;
     }
     if (c.phase === 'settle') { c.obj.quaternion.slerp(c.restQ, Math.min(1, dt * 10)); if (c.t > 0.3) { c.obj.quaternion.copy(c.restQ); c.phase = 'rest'; c.t = 0; } return; }
-    if (c.phase === 'rest') { if (c.t > look.linger) { c.phase = 'sink'; c.t = 0; } return; }
+    /* a crate someone is coming for waits past its linger, but never past holdMax: the ground is not a warehouse */
+    if (c.phase === 'rest') { if (c.t > look.linger && !(c.hold?.() && c.t < (look.receive?.holdMax ?? 0))) { c.phase = 'sink'; c.t = 0; } return; }
     if (c.phase === 'sink' || c.phase === 'fade') {
       if (!c.fading) { c.fading = true; ownMaterials(c); c.sinkFrom = c.obj.position.clone(); }
       const dur = c.phase === 'sink' ? look.sink : 0.6, u = Math.min(1, c.t / dur);
@@ -237,8 +238,9 @@ export function createCargo(scene, { loader = null, sfx = null, hasCue = null, m
       cue('pickup');
       return true;
     },
-    // home: off the back, gravity along the ground normal at `point`, two bounces, a thud; onLanded at the first contact
-    drop(point, normal, onLanded = null) {
+    // home: off the back, gravity along the ground normal at `point`, two bounces, a thud; onLanded(at, up) at the first contact;
+    // hold() true keeps the landed crate on the ground (up to look.receive.holdMax) for whoever is coming to receive it
+    drop(point, normal, onLanded = null, hold = null) {
       const c = riding(); if (!c) return false;
       const hull = hullOf(c);
       if (hull) deckPose(hull, tmpP, tmpQ); else { tmpP.copy(c.obj.position); tmpQ.copy(c.obj.quaternion); }
@@ -251,7 +253,7 @@ export function createCargo(scene, { loader = null, sfx = null, hasCue = null, m
       c.from = tmpP.clone(); c.fromQ = tmpQ.clone();
       // to the rear edge and half a crate past it; metres, never raw scene units (a bare 0.5 once threw a crate a whole planet radius)
       c.slideDist = hull ? Math.max(0.5 * metres, deck(hull).length * look.deckInset * hull.getWorldScale(tmpA).x + look.crateSpan * 0.55 * metres) : look.crateSpan * metres;
-      c.up = vec(normal).normalize(); c.plane = vec(point); c.bounces = 0; c.onLanded = onLanded; c.hull = null;
+      c.up = vec(normal).normalize(); c.plane = vec(point); c.bounces = 0; c.onLanded = onLanded; c.hold = hold; c.hull = null;
       c.phase = 'slide'; c.t = 0;
       const old = crates.filter((k) => k !== c && (k.phase === 'rest' || k.phase === 'settle' || k.phase === 'fall' || k.phase === 'slide')).sort((a, b) => a.seq - b.seq);
       for (const k of old.slice(0, Math.max(0, old.length - (look.maxDropped - 1)))) { k.phase = 'sink'; k.t = 0; }
@@ -267,7 +269,7 @@ export function createCargo(scene, { loader = null, sfx = null, hasCue = null, m
       const k = (c.seq % 2 ? 1 : -1);
       c.vel.copy(up).multiplyScalar(9).addScaledVector(side, 5 * k).addScaledVector(back, 3).multiplyScalar(metres);
       c.spin.set(4.5 * k, 2.5, 6).applyQuaternion(c.obj.quaternion);
-      c.up = up; c.plane = plane; c.bounces = look.bounces - 1; c.onGone = onGone; c.hull = null; c.onLanded = null;
+      c.up = up; c.plane = plane; c.bounces = look.bounces - 1; c.onGone = onGone; c.hull = null; c.onLanded = null; c.hold = null;
       c.phase = 'tumble'; c.t = 0;
       cue('clunk', { rate: 0.8, gain: 0.8 });
       return true;

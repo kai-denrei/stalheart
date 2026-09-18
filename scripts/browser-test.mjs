@@ -565,10 +565,17 @@ try{
   const unlocked=await evaluate('window.__stalheartTest.state().unlocked');assert(unlocked.includes('relay'),`the Relay unlocks (${unlocked})`);
   // home: off the back deck, a landing, RELAY UNLOCKED, a trophy flag on the landing island
   await until('(s=>s.carrying===null&&s.crates.some(p=>p==="rest"))(window.__stalheartTest.state().cargo)',10000).catch(async()=>assert.fail(`the crate drops and sits (${JSON.stringify(await evaluate('window.__stalheartTest.state().cargo'))})`));
-  assert(/RELAY UNLOCKED/.test(await evaluate('document.querySelector("#td-callouts")?.textContent||""')),'the unlock callout');
+  // ISAO RECEIVES THE PART: the crate waits for him, he flies over and beams it, and only then the unlock is called
+  {const c=await evaluate('window.__stalheartTest.state().cargo');assert.equal(c.receiving,true,`the crate is held for Isao (${JSON.stringify(c)})`);
+   assert(!/RELAY UNLOCKED/.test(await evaluate('document.querySelector("#td-callouts")?.textContent||""')),'no unlock before he has the part');}
   {const v=await evaluate('window.__stalheartTest.cargoView("drop")');assert(v,'a close look at the dropped crate');writeFileSync(join(output,'defense-crate-dropped-view.json'),JSON.stringify(v,null,1));}await delay(500);
   current='defense-crate-dropped';await finish();
+  await evaluate('window.__stalheartTest.cargoView(null)');   // a still is a shot, and a shot freezes Isao: let him fly
+  await until('(p=>p&&p.isao&&p.isao.order==="receive"&&p.isao.state==="build")(window.__stalheartTest.state().programme)',30000).catch(async()=>assert.fail(`Isao flies to the crate and beams it (${JSON.stringify((await evaluate('window.__stalheartTest.state().programme'))?.isao)})`));
+  await evaluate('window.__stalheartTest.cargoView("drop")');await delay(700);current='defense-part-received';await finish();
   await evaluate('window.__stalheartTest.cargoView(null)');
+  await until('/RELAY UNLOCKED/.test(document.querySelector("#td-callouts")?.textContent||"")',10000).catch(()=>assert.fail('the unlock callout once he has beamed the crate'));
+  {const c=await evaluate('window.__stalheartTest.state().cargo');assert.equal(c.receiving,false,'the receipt is done');}
   await until('window.__stalheartTest.state().cargo.trophies===1',10000);await delay(2600);
   assert(await evaluate('window.__stalheartTest.cargoView("trophy")'),'a close look at the trophy flag');await delay(500);
   current='defense-trophy';await finish();
