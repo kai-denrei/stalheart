@@ -95,7 +95,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   // the lane end is the story's spawn: the optic faces it, and the fodder comes from it once a gate stands
   if (plan.cells.fodder >= 0) built.dungeon.spawn = plan.cells.fodder;
   // the build programme's steps that this plan holds, and which of them already stand (their perks come with them)
-  const pieces = (s) => [...s.islands.map((id) => plan.islands.find((i) => i.id === id)), ...s.structures.map((id) => plan.structures.find((x) => x.id === id)), ...(s.gate ? [plan.gate] : []), ...(s.walls ? plan.walls : [])];
+  const pieces = (s) => [...s.islands.map((id) => plan.islands.find((i) => i.id === id)), ...s.structures.map((id) => plan.structures.find((x) => x.id === id)), ...(s.gate ? [(plan.gates ?? []).find((g) => (g.id ?? 'gate') === (s.gate === true ? 'gate' : s.gate)) ?? plan.gate].filter(Boolean) : []), ...(s.walls ? plan.walls : [])];
   // what this plan must hold for a step to be in the programme at all: the pieces it prints, plus the standing machine an `over` beat
   // works (Isao on the AFR-01 prints nothing, so a pieces-only filter dropped the beat out of the programme entirely)
   const needs = (s) => [...pieces(s), ...(s.over ? [plan.structures.find((x) => x.id === s.over)] : [])];
