@@ -69,27 +69,30 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     obj.matrix.copy(basisAt(placer, x, z, heading)).multiply(new THREE.Matrix4().makeTranslation(0, (y + lift) * metres, 0)).multiply(new THREE.Matrix4().makeRotationX(tilt * Math.PI / 180)).multiply(new THREE.Matrix4().makeScale(scale * metres, scale * metres, scale * metres));
     obj.matrixWorldNeedsUpdate = true;
   };
-  const counts = { islands: plan.islands.length, walls: plan.walls.length, structures: 0, gate: !!plan.gate };
-  // the gate opens when something friendly is inside its radius and closes again behind it
-  const gate = { mixer: null, action: null, duration: 0, position: null, radius: 0, open: false, want: false, t: 0, obj: null, built: !plan.gate?.pending };
+  const counts = { islands: plan.islands.length, walls: plan.walls.length, structures: 0, gate: !!plan.gate, gates: (plan.gates ?? (plan.gate ? [plan.gate] : [])).length };
+  // EVERY GATE ON THE BASE (2026-09-18), the front door first. Each opens when something friendly is inside its own radius and
+  // closes again behind it; each is built only once its print has reached the top. A plan with one gate behaves exactly as before.
+  const planGates = plan.gates ?? (plan.gate ? [plan.gate] : []);
+  const gates = planGates.map((g) => ({ id: g.id ?? 'gate', plan: g, mixer: null, action: null, duration: 0, position: null, radius: 0, open: false, want: false, t: 0, obj: null, built: !g.pending }));
+  const gate = gates[0] ?? { id: 'gate', plan: null, mixer: null, action: null, duration: 0, position: null, radius: 0, open: false, want: false, t: 0, obj: null, built: false };
   // A GROWN BASE (src/domain/base-plan.js reach): pending pieces stand at zero scale, hidden, until Isao prints them. `k` is the print's
   // progress, rising along the piece's local up, and it is remembered per piece, so a model still loading mounts at the height it reached
-  const grown = { islands: new Map(), walls: new Map(), structures: new Map(), gate: plan.gate?.pending ? 0 : 1 }, slabs = [], wallMeshes = [];
+  const grown = { islands: new Map(), walls: new Map(), structures: new Map(), gate: plan.gate?.pending ? 0 : 1, gates: gates.map((g) => (g.plan?.pending ? 0 : 1)) }, slabs = [], wallMeshes = [];
   const kOf = (map, key, piece) => map.get(key) ?? (piece?.pending ? 0 : 1);
   const rise = (k) => (k > 0 ? new THREE.Matrix4().makeScale(1, Math.max(0.02, Math.min(1, k)), 1) : new THREE.Matrix4().makeScale(0, 0, 0));
   const islandMatrix = (i, src, k) => basisAt(placer, i.x, i.z, i.heading).multiply(new THREE.Matrix4().makeTranslation(0, i.top * metres, 0)).multiply(rise(k))
     .multiply(new THREE.Matrix4().makeScale(i.w / kit.slabReference * metres, metres, i.d / kit.slabReference * metres)).multiply(src);
   const wallMatrix = (w, src, k) => basisAt(placer, w.x, w.z, w.heading).multiply(new THREE.Matrix4().makeTranslation(0, w.y * metres, 0)).multiply(rise(k)).multiply(new THREE.Matrix4().makeScale(metres, metres, metres)).multiply(src);
   const lift = (holder, k) => { holder.visible = k > 0; holder.matrix.copy(holder.userData.placed).multiply(rise(k)); holder.matrixWorldNeedsUpdate = true; };
-  function driveGate(dt) {
-    if (!gate.action || !gate.built) return;   // an unprinted gate plays no hydraulics
-    const before = gate.t;
-    gate.t = Math.max(0, Math.min(gate.duration, gate.t + (gate.want ? dt : -dt)));
-    if (gate.want && before === 0 && gate.t > 0) sfx?.play('gate_hydraulics');
-    if (!gate.want && before > 0 && gate.t === 0) sfx?.play('gate_slam');
-    if (!gate.action.isRunning() && gate.t > 0) { gate.action.play(); }
-    gate.action.paused = true; gate.action.time = gate.t; gate.mixer.update(0);
-    gate.open = gate.t >= gate.duration - 1e-6;
+  function driveGate(g, dt) {
+    if (!g.action || !g.built) return;   // an unprinted gate plays no hydraulics
+    const before = g.t;
+    g.t = Math.max(0, Math.min(g.duration, g.t + (g.want ? dt : -dt)));
+    if (g.want && before === 0 && g.t > 0) sfx?.play('gate_hydraulics');
+    if (!g.want && before > 0 && g.t === 0) sfx?.play('gate_slam');
+    if (!g.action.isRunning() && g.t > 0) { g.action.play(); }
+    g.action.paused = true; g.action.time = g.t; g.mixer.update(0);
+    g.open = g.t >= g.duration - 1e-6;
   }
   const ready = Promise.all([
     plan.islands.length ? load(kit.slab).then((gltf) => {
@@ -117,14 +120,14 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
         inst.instanceMatrix.needsUpdate = true; inst.computeBoundingSphere(); inst.castShadow = true; group.add(inst);
       });
     }) : null,
-    plan.gate ? load(kit.gate).then((gltf) => {
+    ...gates.map((rec, n) => load(kit.gate).then((gltf) => {
       if (!gltf) return;
-      const g = gltf.scene.clone(true); own(g); place(g, plan.gate.x, plan.gate.z, plan.gate.y, plan.gate.heading); g.name = 'gate'; group.add(g);
-      gate.obj = g; g.userData.placed = g.matrix.clone(); if (plan.gate.pending) lift(g, grown.gate);
+      const p = rec.plan, g = gltf.scene.clone(true); own(g); place(g, p.x, p.z, p.y, p.heading); g.name = n === 0 ? 'gate' : `gate ${rec.id}`; group.add(g);
+      rec.obj = g; g.userData.placed = g.matrix.clone(); if (p.pending) lift(g, grown.gates[n]);
       const clip = gltf.animations.find((c) => c.name === 'Gate_Open');
-      if (clip) { gate.mixer = new THREE.AnimationMixer(g); gate.action = gate.mixer.clipAction(clip); gate.action.setLoop(THREE.LoopOnce, 1); gate.action.clampWhenFinished = true; gate.duration = clip.duration; }
-      gate.position = placer.toWorld([plan.gate.x, 0, plan.gate.z]); gate.radius = plan.gate.openRadius * metres;
-    }) : null,
+      if (clip) { rec.mixer = new THREE.AnimationMixer(g); rec.action = rec.mixer.clipAction(clip); rec.action.setLoop(THREE.LoopOnce, 1); rec.action.clampWhenFinished = true; rec.duration = clip.duration; }
+      rec.position = placer.toWorld([p.x, 0, p.z]); rec.radius = p.openRadius * metres;
+    })),
     // A LANDMARK WITH A FAR TIER LOADS THAT FIRST and stands on it; the near tier is fetched only once the camera comes within
     // kit.lod.metres, then the two swap by camera distance with hysteresis. Far away (the map, the orbit) the whole base is cheap.
     ...plan.structures.filter((s) => !skip.includes(s.id)).map((s) => load(s.far ?? s.asset).then((gltf) => {
@@ -189,16 +192,23 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     tick(dt, near = null, force = null, eye = null) {
       for (const m of mixers) m.update(dt);
       driveLod(eye);
-      if (gate.position) gate.want = force ?? (Array.isArray(near) && Math.hypot(near[0] - gate.position.x, near[1] - gate.position.y, near[2] - gate.position.z) < gate.radius);
-      driveGate(dt);
+      for (const g of gates) {
+        const f = force && typeof force === 'object' ? force[g.id] : force;   // `force` may be one flag for every door or a flag per gate id
+        if (g.position) g.want = f ?? (Array.isArray(near) && Math.hypot(near[0] - g.position.x, near[1] - g.position.y, near[2] - g.position.z) < g.radius);
+        driveGate(g, dt);
+      }
     },
-    gate: () => ({ present: !!gate.action, built: gate.built, open: gate.open, want: gate.want, t: +gate.t.toFixed(2) }),
+    gate: (id = null) => { const g = id ? gates.find((x) => x.id === id) : gate; return g ? { present: !!g.action, built: g.built, open: g.open, want: g.want, t: +g.t.toFixed(2) } : null; },
+    // a closed, standing door, by id: the pathfinder asks this once per enemy per step, so it allocates nothing
+    gateSealed: (id) => { const g = gates.find((x) => x.id === id); return !!g && g.built && !g.open; },
+    // every door, front first: the sector loop wears each one down and the HUD prints them side by side
+    gateList: () => gates.map((g) => ({ id: g.id, cells: g.plan?.cells ?? [], present: !!g.action, built: g.built, open: g.open, want: g.want, t: +g.t.toFixed(2) })),
     // Isao's print, piece by piece (k 0..1): a slab or a wall rises along its local up, a landmark scales up from its plot, and the gate
     // counts as built (it opens for the tank, it holds the swarm) once it reaches the top
     growIsland: (id, k) => { const n = plan.islands.findIndex((i) => i.id === id); if (n < 0) return; grown.islands.set(n, k); for (const s of slabs) { s.inst.setMatrixAt(n, islandMatrix(plan.islands[n], s.src, k)); s.inst.instanceMatrix.needsUpdate = true; s.inst.computeBoundingSphere(); } },
     growWall: (n, k) => { if (!plan.walls[n]) return; grown.walls.set(n, k); for (const s of wallMeshes) { s.inst.setMatrixAt(n, wallMatrix(plan.walls[n], s.src, k)); s.inst.instanceMatrix.needsUpdate = true; s.inst.computeBoundingSphere(); } },
     grow: (id, k) => { grown.structures.set(id, k); const r = records.get(id); if (r) lift(r.holder, k); },
-    growGate: (k) => { if (!plan.gate) return; grown.gate = k; if (gate.obj) lift(gate.obj, k); if (k >= 1) gate.built = true; },
+    growGate: (k, id = null) => { const n = id ? gates.findIndex((x) => x.id === id) : 0, g = gates[n]; if (!g) return; grown.gates[n] = k; if (n === 0) grown.gate = k; if (g.obj) lift(g.obj, k); if (k >= 1) g.built = true; },
     // a beat's hand on a landmark: show or hide it, or take its shown tier and clip actions
     reveal: (id) => { const r = records.get(id); if (r) r.holder.visible = true; },
     conceal: (id) => { const r = records.get(id); if (r) r.holder.visible = false; },

@@ -10,9 +10,13 @@ import { drop } from '../core/terrace-profile.js';
 // ISAO GROWS THE BASE IN PLAY (V1, 2026-09-16): `reach` places everything up to a later stage, and whatever lies above the current
 // stage is marked `pending: true` for the build programme to print. `until` still reads the current stage, so a grown base keeps the
 // intact SH02. With the default reach (the stage itself) the plan is exactly what it was.
-export function planBase(planet, layout, stage, { reach = stage } = {}) {
+// THE GATES ARE A LIST (2026-09-18): `plan.gates` is every door on the base, entry 0 the front gate on the open mouth. `plan.gate`
+// stays as entry 0 so every single-gate consumer reads exactly what it read before. `backMouth` (from src/domain/back-door.js) adds
+// the back door, always pending — the swarm cracks that mouth open in play and Isao prints a gate there afterwards.
+export function planBase(planet, layout, stage, { reach = stage, backMouth = null } = {}) {
   const pending = (n) => (n > stage ? { pending: true } : {});
   const { radius } = planet;
+  const centroidOf = (cells) => { const c = cells.map((ci) => planet.graph.centers[ci]).reduce((a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]]); const l = Math.hypot(...c) || 1; return [c[0] / l, c[1] / l, c[2] / l]; };
   const nearestCell = (x, z) => { const w = planet.frameToWorld([x, 0, z]); let best = -1, bd = Infinity; for (const ci of planet.clearing.cells) { const c = planet.graph.centers[ci]; const d = (c[0] * radius - w[0]) ** 2 + (c[1] * radius - radius - w[1]) ** 2 + (c[2] * radius - w[2]) ** 2; if (d < bd) { bd = d; best = ci; } } return best; };
   // a forward socket: the lane cell one step past the open mouth, outward; islands anchored there follow it
   const forwardCell = (() => {
@@ -156,8 +160,44 @@ export function planBase(planet, layout, stage, { reach = stage } = {}) {
     }
     // a wall whose nearest cell is the gate's cell is dressing on the gate cell, not a block
     for (const w of walls) if (w.cell === gate.cell) w.cell = -1;
+    gate.id = 'gate'; gate.cells = [gate.cell];   // THE GATE IS A LIST NOW (2026-09-18): every gate carries the lattice cells its closed door blocks
+  }
+  // THE BACK GATE (owner, 2026-09-18: "then Isao installs a gate and we can put sentries"). The back mouth is NOT pre-built at any
+  // stage: sector 2 cracks it open as a surprise, the player holds it, and only then does Isao's programme print a door there. So it
+  // is always `pending` — a static stage-8 base has the front gate standing and the back mouth still sealed rock. `backMouth` comes
+  // in from the caller (src/domain/back-door.js findBackMouth), keeping this module free of the planet's second-front search.
+  const gates = gate ? [gate] : [];
+  let backSockets = [];
+  if (backMouth && backMouth.cells?.length) {
+    const c = centroidOf(backMouth.cells), f = planet.worldToFrame([c[0] * radius, c[1] * radius - radius, c[2] * radius]);
+    const r = Math.hypot(f[0], f[2]) || 1;
+    // the front gate's heading points inward (toward the pole); the back door faces the same way, so its own outward side is the rock
+    const heading = [-f[0] / r, -f[2] / r];
+    // its cells are the WHOLE collapse, the mouth and the flank rock that came down with it: a door across two cells with four open
+    // shoulders beside it is not a door. Isao's print lays the gate on the mouth and closes the shoulders behind it in one go.
+    const back = { id: 'back', back: true, x: f[0], z: f[2], y: 0, heading, cell: backMouth.cells[0], cells: [...backMouth.cells, ...(backMouth.flank ?? [])], openRadius: layout.kit.backGate?.openRadius ?? 22, pending: true };
+    gates.push(back);
+    // SENTRIES BEHIND THE BAYS: the same socket rule the front mounts use — a rock cell beside the lane, aimed at the lane cell it
+    // overlooks — applied to the rock flanking the back mouth's open ground
+    const want = layout.kit.backGate?.sockets ?? 2, taken = new Set(sockets.map((s) => s.cell)), off = new Set([...backMouth.cells, ...(backMouth.flank ?? [])]);
+    // walk the back lane outward over open ground and take a rock neighbour of each cell in turn, nearest the mouth first. The
+    // mouth's own flank is skipped: that rock comes down with the collapse, so a mount there would be standing on nothing.
+    const seen = new Set(backMouth.cells); let ring = (backMouth.beyond ?? []).slice();
+    for (const ci of ring) seen.add(ci);
+    for (let hop = 0; hop < (layout.kit.backGate?.laneHops ?? 4) && ring.length && backSockets.length < want; hop++) {
+      for (const lane of ring) {
+        if (backSockets.length >= want) break;
+        const rock = planet.graph.adj[lane].find((nb) => planet.dungeon.tags[nb] === 0 && !taken.has(nb) && !off.has(nb) && !planet.clearing.cells.has(nb));
+        if (rock === undefined) continue;
+        taken.add(rock); backSockets.push({ cell: rock, toward: lane, pos: socketPos(rock, lane), back: true });
+      }
+      const next = [];
+      for (const lane of ring) for (const nb of planet.graph.adj[lane]) if (!seen.has(nb) && planet.dungeon.tags[nb] !== 0 && !planet.clearing.cells.has(nb)) { seen.add(nb); next.push(nb); }
+      ring = next;
+    }
+    // they are NOT in `sockets`: nothing can be mounted behind the bays until Isao has printed the door (the build step adds them)
   }
   // WHEREVER A ROCKET COMES DOWN, standing or broken, the ground under it is open: no rock through a hull (operator, 2026-09-13)
   const open = [...new Set([...sight, ...structures.filter((s) => s.anchor === 'open' && s.cell >= 0 && !s.pending).flatMap((s) => { const c = planet.graph.centers[s.cell], reach = (s.clear ?? 0) / radius; return planet.graph.centers.flatMap((p, ci) => ci === s.cell || Math.acos(Math.max(-1, Math.min(1, (p[0] * c[0] + p[1] * c[1] + p[2] * c[2]) / (Math.hypot(...p) * Math.hypot(...c))))) < reach ? [ci] : []); })])];
-  return { stage, ...(reach !== stage ? { reach } : {}), islands, structures, walls, gate, cells, bays, sockets, open };
+  return { stage, ...(reach !== stage ? { reach } : {}), islands, structures, walls, gate, gates, backSockets, cells, bays, sockets, open };
 }

@@ -11,7 +11,7 @@ export function makeBuildProgramme(steps, { standing = () => false } = {}) {
 }
 
 // the next step, or null: strictly in order (a step waits for the one before it), one at a time, and only once its `when` holds
-export function due(st, { phase = null, sector = 0, waveActive = false } = {}) {
+export function due(st, { phase = null, sector = 0, waveActive = false, back = null } = {}) {
   if (st.active) return null;
   const next = st.steps.find((s) => !st.done.has(s.id));
   if (!next) return null;
@@ -19,6 +19,9 @@ export function due(st, { phase = null, sector = 0, waveActive = false } = {}) {
   if (w.phase != null && !(at >= 0 && at >= STORY_PHASES.indexOf(w.phase))) return null;
   if (w.sector != null && !((sector ?? 0) >= w.sector)) return null;
   if (w.idle && waveActive) return null;
+  // THE BACK GATE WAITS FOR THE SURPRISE TO BE OVER (2026-09-18): `when.back` is the state the second front must have reached —
+  // 'held' means the mouth is open and its breach is closed or spent. The host reads it off the sector loop and passes it in.
+  if (w.back != null && w.back !== back) return null;
   return next;
 }
 

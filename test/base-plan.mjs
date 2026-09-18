@@ -4,6 +4,8 @@ import { ISLANDS, STRUCTURES, KIT, STAGES } from '../src/content/base-layout.js'
 import { buildStoryPlanet, frameToWorld } from '../src/domain/story-planet.js';
 import { planBase } from '../src/domain/base-plan.js';
 import { BLOCKED } from '../src/dungeon.js';
+import { findBackMouth } from '../src/domain/back-door.js';
+import { STORY_BACK_DOOR } from '../src/content/story-defaults.js';
 const planet = buildStoryPlanet({ ...STORY_RECIPE, points: 800, rooms: 24, extraCorridors: 12 }, STORY_CLEARING);
 const layout = { islands: ISLANDS, structures: STRUCTURES, kit: KIT, stages: STAGES };
 // islands never overlap and stay inside the clearing
@@ -111,4 +113,36 @@ for (let n = 0; n < STAGES.length; n++) {
   assert.ok(g.gate.pending && g.walls.length === KIT.wallsPerSide * 2 && g.walls.every((w) => w.pending), 'the gate and its walls wait');
   assert.deepEqual(g.bays.map((b) => [b.n, !!b.pending]), [[1, true], [2, true], [3, true]], 'the bays are pending berths');
   const done = planBase(planet, layout, STAGES.length - 1, { reach: STAGES.length - 1 }); assert.ok(!JSON.stringify(done).includes('"pending"'), 'nothing pending at the last stage'); }
+// TWO GATES (2026-09-18). Without a back mouth the plan is byte-identical to what it always was and `gates` is just the front door.
+{ const withOut = planBase(planet, layout, STAGES.length - 1);
+  assert.equal(withOut.gates.length, 1, 'no back mouth, one gate');
+  assert.equal(withOut.gates[0], withOut.gate, 'plan.gate is gates[0]');
+  assert.deepEqual(withOut.gate.cells, [withOut.gate.cell], 'a gate carries the cells it blocks');
+  assert.deepEqual(withOut.backSockets, [], 'no back mouth, no back sockets');
+  assert.equal(planBase(planet, layout, 0, { backMouth: null }).gates.length, 0, 'before the kit stage there is no gate at all');
+  // and with one, the back door is a second gate on that mouth's cells, always pending, with its own sockets on rock beside the lane
+  // the coarse test planet may have no mouth that fits findBackMouth's rules (the shipped recipe does; test/back-door.mjs pins it),
+  // so the plan's side of the contract is exercised with a mouth taken straight off this planet's own sealed list
+  const backMouth = findBackMouth(planet, STORY_BACK_DOOR) ?? (() => {
+    const m = planet.clearing.mouths.filter((x) => !x.open && x.touches && x.cells.some((ci) => planet.graph.adj[ci].some((nb) => !planet.clearing.cells.has(nb) && planet.dungeon.tags[nb] !== BLOCKED && planet.graph.adj[nb].some((r) => planet.dungeon.tags[r] === BLOCKED && !planet.clearing.cells.has(r) && !x.cells.includes(r))))).find((x) => !x.open && x.touches && x.cells.length <= 13 && planet.worldToFrame([planet.graph.centers[x.cells[0]][0] * planet.radius, planet.graph.centers[x.cells[0]][1] * planet.radius - planet.radius, planet.graph.centers[x.cells[0]][2] * planet.radius])[2] > 0);
+    if (!m) return null;
+    const inM = new Set(m.cells), beyond = [...new Set(m.cells.flatMap((ci) => planet.graph.adj[ci].filter((nb) => !inM.has(nb) && !planet.clearing.cells.has(nb) && planet.dungeon.tags[nb] !== BLOCKED)))].sort((a, b) => a - b);
+    return { cells: m.cells.slice(), beyond };
+  })();
+  assert.ok(backMouth && backMouth.cells.length && backMouth.beyond.length, 'a back mouth to put a second gate on');
+  const two = planBase(planet, layout, STAGES.length - 1, { backMouth });
+  assert.deepEqual({ ...two, gates: null, backSockets: null, gate: null }, { ...withOut, gates: null, backSockets: null, gate: null }, 'the back gate changes nothing else in the plan');
+  assert.deepEqual(two.gate, withOut.gate, 'the front gate is untouched');
+  assert.equal(two.gates.length, 2); assert.equal(two.gates[0], two.gate);
+  const back = two.gates[1];
+  assert.equal(back.id, 'back'); assert.equal(back.back, true);
+  assert.ok(back.pending, 'the back gate is never standing: Isao prints it after the surprise');
+  assert.deepEqual(back.cells, [...backMouth.cells, ...(backMouth.flank ?? [])], 'it closes the whole collapse: the mouth and the flank that came down with it');
+  for (const s of two.backSockets) assert.ok(!back.cells.includes(s.cell), 'a mount is never on ground the door closes');
+  assert.ok(Math.hypot(back.heading[0], back.heading[1]) > 0.99, 'unit heading');
+  assert.ok(back.z > 0 && Math.hypot(back.x, back.z) > 0, 'behind the bays (+Z), the other side from the front gate');
+  assert.ok(two.gate.z < 0, 'the front gate is on -Z');
+  assert.ok(two.backSockets.length >= 1 && two.backSockets.length <= KIT.backGate.sockets, `back sockets ${two.backSockets.length}`);
+  for (const s of two.backSockets) { assert.equal(planet.dungeon.tags[s.cell], BLOCKED, 'a socket stands on rock'); assert.ok(backMouth.beyond.includes(s.toward), 'aimed at the back lane'); assert.ok(!two.sockets.some((f) => f.cell === s.cell), 'not mountable until the back gate is printed'); }
+  assert.equal(new Set(two.backSockets.map((s) => s.cell)).size, two.backSockets.length, 'distinct sockets'); }
 console.log(`Base plan: ${full.islands.length} islands, ${full.structures.length} structures, ${full.walls.length} walls, gate at ${full.gate.x.toFixed(0)},${full.gate.z.toFixed(0)}.`);

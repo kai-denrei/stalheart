@@ -15,16 +15,31 @@ const SHARE = (gate) => (gate && gate.max > 0 ? gate.hp / gate.max : 1);
 // gate: { hp, max, broken } (null where the world has no gate). walls: cells that should be rock and are not, in the caller's order.
 // quiet: no wave is running and the lane is clear. busy: a worker already has an order (the player's, a build step, an earlier repair).
 // Returns { kind: 'gate' } | { kind: 'wall', ci } | null.
-export function nextRepair({ gate = null, walls = [], quiet = false, busy = false } = {}, tune = {}) {
+export function nextRepair(state = {}, tune = {}) {
+  const { walls = [], quiet = false, busy = false } = state;
   if (!quiet || busy) return null;
-  if (gate && (gate.broken || SHARE(gate) < (tune.gateAt ?? 1))) return { kind: 'gate' };
+  const g = worstGate(state, tune);
+  if (g) return g;
   const ci = walls.find((c) => Number.isInteger(c) && c >= 0);
   return ci === undefined ? null : { kind: 'wall', ci };
 }
 
+// TWO DOORS NOW (2026-09-18). `gates` is every gate that stands, each { id, hp, max, broken }; `gate` alone is still the front door
+// and still means the same thing. Isao goes to the WORST one first — a broken door before a chewed one, and the lower share before
+// the higher — so neither side is left open while he tops the other one up. Ties keep the caller's order, the front door first.
+const wanting = (g, tune) => g && (g.broken || SHARE(g) < (tune.gateAt ?? 1));
+const rank = (g) => (g.broken ? -1 : SHARE(g));
+function gateList({ gate = null, gates = null }) { return (gates ?? (gate ? [gate] : [])).filter(Boolean); }
+function worstGate(state, tune) {
+  let best = null;
+  for (const g of gateList(state)) if (wanting(g, tune) && (!best || rank(g) < rank(best))) best = g;
+  return best ? { kind: 'gate', ...(best.id && best.id !== 'gate' ? { id: best.id } : {}) } : null;
+}
+
 // everything that wants mending right now, gate first — the HUD's count and the test's ordering check
-export function repairsPending({ gate = null, walls = [] } = {}, tune = {}) {
-  const out = gate && (gate.broken || SHARE(gate) < (tune.gateAt ?? 1)) ? [{ kind: 'gate' }] : [];
+export function repairsPending(state = {}, tune = {}) {
+  const { walls = [] } = state;
+  const out = gateList(state).filter((g) => wanting(g, tune)).sort((a, b) => rank(a) - rank(b)).map((g) => ({ kind: 'gate', ...(g.id && g.id !== 'gate' ? { id: g.id } : {}) }));
   for (const ci of walls) if (Number.isInteger(ci) && ci >= 0) out.push({ kind: 'wall', ci });
   return out;
 }

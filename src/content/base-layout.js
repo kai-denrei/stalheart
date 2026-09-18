@@ -66,6 +66,10 @@ export const KIT = Object.freeze({
   wall: 'assets/models/kit/wall_standard_d0.glb', wallLength: 4,
   gate: 'assets/models/kit/gate_vehicle_d0.glb', gatePlot: [12, 8],
   stage: 4, wallsPerSide: 6, wallInset: 3,   // walls flank the gate along the rim, inset from the rock
+  // THE BACK GATE (owner, 2026-09-18). The same kit door on the mouth behind the bays, printed only after the swarm has cracked that
+  // mouth and the breach behind it is closed. `sockets` is how many rock mounts beside the back lane come with it, so sentries can be
+  // ordered on that side from then on; `openRadius` is how close a friendly hull has to be for the door to open for it.
+  backGate: { openRadius: 22, sockets: 2 },
   wallMetres: 4,                              // the lattice rock's roof height, where sentries mount
   sightline: { metres: 240, halfWidth: 7 },   // a straight lane cut from the forward cell out to the sinkhole, so the Quiver has a long clear shot (owner, 2026-09-13); replaces the fodderSteps walk
   fodderSteps: 28,                            // lane cells outward from the mouth where the ground opens: a tank trip to investigate

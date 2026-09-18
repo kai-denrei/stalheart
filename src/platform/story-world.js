@@ -80,17 +80,22 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   const placer = { toWorld: ([x, y, z]) => { const p = planet.frameToWorld([x, y, z]); return new THREE.Vector3(p[0] / planet.radius, p[1] / planet.radius + 1, p[2] / planet.radius); } };
   // the shipped layout untouched unless a review asks for the candidates; the swap happens before planBase, which spreads it through.
   // A growing base plans every stage now and marks what is above the starting stage pending: Isao prints it in play
-  const plan = planBase(planet, landmarks === 'shipped' ? STORY_LAYOUT : { ...STORY_LAYOUT, structures: withLandmarkTiers(STORY_LAYOUT.structures, landmarks) }, stage, { reach: grow ? STAGES.length - 1 : stage });
+  const backMouth = findBackMouth(planet, STORY_BACK_DOOR);
+  const plan = planBase(planet, landmarks === 'shipped' ? STORY_LAYOUT : { ...STORY_LAYOUT, structures: withLandmarkTiers(STORY_LAYOUT.structures, landmarks) }, stage, { reach: grow ? STAGES.length - 1 : stage, backMouth });
   // walls are rock to the pathfinder and the tank alike; the gate's cell stays open and the gate opens for the tank
   for (const ci of plan.open) built.dungeon.tags[ci] = PATH;   // the ground under a landed rocket first, then the gate's walls on top
   for (const w of plan.walls) if (w.cell >= 0 && !w.pending) built.dungeon.tags[w.cell] = BLOCKED;   // a pending wall blocks once it is printed (the controller's storyApi.printed)
   // the game prints the real Rotor; the static model stays a lab thing
   const base = createStoryBase(scene, { plan, placer, metres: 1 / planet.radius, kit: KIT, skip: ['rotor'], sfx, warm });
+  // which gate (if any) owns a lattice cell: built from the plan once, so the pathfinder's per-step lookup is a map hit
+  const gateCellMap = new Map();
+  for (const g of plan.gates ?? []) for (const ci of g.cells ?? []) if (ci >= 0) gateCellMap.set(ci, g.id ?? 'gate');
+
   // story state for the controller: floor sockets towers may mount on, Isao's home cell, and the scripted beats
   // the lane end is the story's spawn: the optic faces it, and the fodder comes from it once a gate stands
   if (plan.cells.fodder >= 0) built.dungeon.spawn = plan.cells.fodder;
   // the build programme's steps that this plan holds, and which of them already stand (their perks come with them)
-  const pieces = (s) => [...s.islands.map((id) => plan.islands.find((i) => i.id === id)), ...s.structures.map((id) => plan.structures.find((x) => x.id === id)), ...(s.gate ? [plan.gate] : []), ...(s.walls ? plan.walls : [])];
+  const pieces = (s) => [...s.islands.map((id) => plan.islands.find((i) => i.id === id)), ...s.structures.map((id) => plan.structures.find((x) => x.id === id)), ...(s.gate ? [(plan.gates ?? []).find((g) => (g.id ?? 'gate') === (s.gate === true ? 'gate' : s.gate)) ?? plan.gate].filter(Boolean) : []), ...(s.walls ? plan.walls : [])];
   // what this plan must hold for a step to be in the programme at all: the pieces it prints, plus the standing machine an `over` beat
   // works (Isao on the AFR-01 prints nothing, so a pieces-only filter dropped the beat out of the programme entirely)
   const needs = (s) => [...pieces(s), ...(s.over ? [plan.structures.find((x) => x.id === s.over)] : [])];
@@ -106,9 +111,14 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     // the hard cores' holding ring: lane cells hold[0]..hold[1] hops outside the forward cell; a held one only wanders within it
     ring: holdRing(built, planet, plan.cells.forward, STORY_QUIVER.hold, plan.sockets[1]?.pos ?? null), hardcore: STORY_QUIVER.hardcore, quiverZoom: STORY_QUIVER.zoom, quiverCone: Math.tan(STORY_QUIVER.coneDeg * Math.PI / 180),
     hud: createStoryHud(), source: null,   // the radar overlay, and the breach the fodder comes from once it opens
-    // the closed gate's cell is impassable to enemies; the tank opens it
-    sealed: (ci) => plan.gate !== null && ci === plan.gate.cell && base.gate().built && !base.gate().open,
+    // A CLOSED DOOR IS A WALL TO THE SWARM, and the tank opens it. Every gate on the plan answers for its own cells, so the back
+    // door blocks the back mouth exactly as the front gate blocks the lane; an unprinted gate seals nothing (2026-09-18).
+    sealed: (ci) => { const id = gateCellMap.get(ci); return id !== undefined && base.gateSealed(id); },
     inside: (ci) => planet.clearing.cells.has(ci), gateCell: plan.gate ? plan.gate.cell : -1,   // the gate's cell: the sector loop wears it down under pressure (src/fx/sector-run.js)
+    // the doors the sector loop wears down, front first: each with the cells it blocks and whether it stands yet
+    gateAt: (ci) => gateCellMap.get(ci) ?? null, gateList: () => base.gateList(),
+    gateCellOf: (id) => (plan.gates ?? []).find((g) => (g.id ?? 'gate') === id)?.cell ?? -1,   // where Isao stands to mend a named door
+    backSockets: plan.backSockets ?? [],   // the mounts beside the back lane: they join socketToward when the back gate is printed
     pilot: STORY_PILOT, breachShot: STORY_BREACH, day: STORY_DAY,
     handover: { ...STORY_HANDOVER, stage },   // the phase and stage the towers turn automatic (src/domain/automation.js)
     expeditions: makeExpeditions(STORY_EXPEDITIONS.sites),
@@ -127,7 +137,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     wallCells: plan.walls.filter((w) => w.pending && w.cell >= 0).map((w) => w.cell),
     // THE SECOND FRONT: the sealed mouth behind the bays, recomputed per load like the rest of the clearing (the controller keeps
     // only the mesh and the dungeon of the planet), with the clearing cells the back-breach rules need and the tunables
-    backMouth: findBackMouth(planet, STORY_BACK_DOOR), backDoor: STORY_BACK_DOOR, backPlanet: { graph: planet.graph, clearing: planet.clearing },
+    backMouth, backDoor: STORY_BACK_DOOR, backPlanet: { graph: planet.graph, clearing: planet.clearing },
   } : null;
   return { ...built, base, plan, story };
 }

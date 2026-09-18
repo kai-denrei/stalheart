@@ -43,9 +43,19 @@ export function createSectorRun(h) {
   const sps = new Map(), reports = [];
   const now = () => h.now();
 
-  // THE GATE: its pathfinder rule gives way while it is broken
-  const gateCell = story.gateCell ?? -1, gate = gateCell >= 0 ? makeGateIntegrity(SECTOR_GATE) : null;
-  if (gate) { const sealed = story.sealed; story.sealed = (ci) => !gate.broken && sealed(ci); }
+  // THE GATES: each door has its own hit points and its own pathfinder rule, which gives way while that door is broken. The front
+  // gate exists from the first frame of a sector; the BACK GATE (2026-09-18) only once Isao has printed it, so the map fills in as
+  // doors stand. A world with one gate keeps exactly the behaviour it had.
+  const gateCell = story.gateCell ?? -1;
+  const doors = new Map();
+  const doorOf = (id) => { if (!doors.has(id)) doors.set(id, { id, integrity: makeGateIntegrity(SECTOR_GATE), name: id === 'gate' ? 'GATE' : id.toUpperCase() }); return doors.get(id); };
+  if (gateCell >= 0) doorOf('gate');
+  const gate = doors.get('gate')?.integrity ?? null;
+  // a door that stands and is not broken blocks its cells; one the swarm has beaten down does not
+  { const sealed = story.sealed, at = story.gateAt ?? (() => 'gate'); story.sealed = (ci) => { if (!sealed(ci)) return false; const id = at(ci); return !id || !doors.get(id)?.integrity.broken; }; }
+  // every door standing right now, front first, each with the lattice cells it blocks
+  const standing = () => (story.gateList ? story.gateList() : gateCell >= 0 ? [{ id: 'gate', cells: [gateCell], built: true }] : []).filter((g) => g.built);
+  const integrities = () => standing().map((g) => ({ id: g.id, ...doorOf(g.id).integrity }));
 
   const breachOf = (id) => sector?.breaches.find((b) => b.id === id) ?? null;
   const idOf = (sp) => { for (const [id, s] of sps) if (s === sp) return id; return null; };
@@ -125,17 +135,22 @@ export function createSectorRun(h) {
   }
 
   function tickGate(dt) {
-    if (!gate) return;
-    const at3 = h.centers()[gateCell], side = h.cellSide();
-    let soft = 0, cores = 0, near = false;
-    for (const e of h.enemies()) {
-      if (!e.alive || e.guard) continue;
-      const d = chord(e.pos, at3) / side;
-      if (d < SECTOR_GATE.quietCells) near = true;
-      if (d < SECTOR_GATE.pressCells && !story.inside?.(e.cur)) { if (e.spec?.rammable) soft++; else cores++; }
+    const live = standing();
+    if (!live.length) return;
+    const centers = h.centers(), side = h.cellSide(), bodies = h.enemies();
+    for (const door of live) {
+      const rec = doorOf(door.id), g = rec.integrity, cells = door.cells?.length ? door.cells : [gateCell];
+      let soft = 0, cores = 0, near = false;
+      for (const e of bodies) {
+        if (!e.alive || e.guard) continue;
+        let d = Infinity;
+        for (const ci of cells) { if (ci < 0) continue; const q = chord(e.pos, centers[ci]) / side; if (q < d) d = q; }
+        if (d < SECTOR_GATE.quietCells) near = true;
+        if (d < SECTOR_GATE.pressCells && !story.inside?.(e.cur)) { if (e.spec?.rammable) soft++; else cores++; }
+      }
+      if (!quiet && pressGate(g, { soft, cores }, dt, SECTOR_GATE) === 'broke') { h.callout(`THE ${rec.name} IS DOWN`, 'co-victory'); h.sfx?.('gate_slam'); h.brief('gate_broken'); note({ type: 'leak' }); h.hud(); }
+      if (mendGate(g, dt, !near, SECTOR_GATE) === 'closed') { h.brief('gate_mended'); h.hud(); }
     }
-    if (!quiet && pressGate(gate, { soft, cores }, dt, SECTOR_GATE) === 'broke') { h.callout('THE GATE IS DOWN', 'co-victory'); h.sfx?.('gate_slam'); h.brief('gate_broken'); note({ type: 'leak' }); h.hud(); }
-    if (mendGate(gate, dt, !near, SECTOR_GATE) === 'closed') { h.brief('gate_mended'); h.hud(); }
   }
 
   function poll(dt) {
@@ -200,7 +215,8 @@ export function createSectorRun(h) {
 
   function hudLine() {
     if (phase === 'idle' || !def) return '';
-    const g = gate ? ` · GATE ${gate.broken ? 'DOWN ' : ''}${Math.round(gateShare(gate) * 100)}%` : '';
+    /* GATE 100% · BACK 62%: every door that stands, front first */
+    const g = standing().map((d) => { const rec = doorOf(d.id); return ` · ${rec.name} ${rec.integrity.broken ? 'DOWN ' : ''}${Math.round(gateShare(rec.integrity) * 100)}%`; }).join('');
     if (!sector) return `<div class="hud-obj hud-sector">SECTOR ${def.n} · ${def.name} · BRIEF${g}</div>`;
     const top = sector.breaches.reduce((m, b) => Math.max(m, b.wavesReleased), 0);
     const head = `SECTOR ${def.n} · ${def.name} · BREACHES ${sector.breaches.length} · ${phase === 'fighting' ? `WAVE ${top}/${def.waves}` : 'SECURE'}${g}`;
@@ -216,17 +232,21 @@ export function createSectorRun(h) {
     release: (t) => { if (phase !== 'fighting' || !sector) return []; const out = []; for (const b of sector.breaches) { const sp = sps.get(b.id); if (b.state !== 'open' || !sp?.alive) continue; const r = releaseWave(sector, b.id, t); if (r) out.push(...entriesOf(r.wave, sp)); } h.hud(); return out; },
     active: () => phase !== 'idle',
     owns: (sp) => idOf(sp) !== null,
-    gateForce: () => (gate?.broken ? true : null),
+    /* a broken door is held open for everyone: one flag per gate id, which the story base reads per door */
+    gateForce: () => { let any = null; for (const d of standing()) if (doorOf(d.id).integrity.broken) { any ??= {}; any[d.id] = true; } return any; },
     // ISAO MENDS WHAT THE SWARM BROKE (src/domain/repair-orders.js): what the repair rule reads, and the mend his print finishes.
     // The passive trickle in tickGate still runs; this is the trip that puts a chewed or broken door back in one go.
-    gate: () => (gate ? { hp: gate.hp, max: gate.max, broken: gate.broken } : null),
+    gate: (id = 'gate') => { const g = doors.get(id)?.integrity; return g ? { id, hp: g.hp, max: g.max, broken: g.broken } : null; },
+    /* how many back-side breaches are still open: the back gate step waits for the surprise to be closed or spent */
+    backOpenBreaches: () => (sector?.breaches ?? []).filter((b) => b.side === 'back' && b.state === 'open').length,
+    gates: () => integrities().map((g) => ({ id: g.id, hp: g.hp, max: g.max, broken: g.broken })),
     // ISAO'S PRINT SHOWS ON THE DOOR (2026-09-18): GATE % climbs with the print's progress while he stands over it and beams it,
     // instead of jumping the moment he leaves. It only ever goes up here, so the swarm still owns the other direction, and the
     // door closes again the moment it is mended past closeAt — the same threshold the ambient mend uses.
     /* the harness takes the door down now: Isao's repair needs a broken door, and wearing one down under a real pile takes minutes */
-    breakGate: () => { if (!gate || gate.broken) return false; gate.hp = 0; gate.broken = true; gate.breaks++; h.hud(); return true; },
-    repairGateTo: (k) => { if (!gate) return false; const want = gate.max * Math.min(1, Math.max(0, k)); if (want <= gate.hp) return false; gate.hp = want; if (gate.broken && gate.hp >= gate.max * SECTOR_GATE.closeAt) { gate.broken = false; h.brief('gate_mended'); } h.hud(); return true; },
-    repairGate: () => { if (!gate) return false; const wasDown = gate.broken; gate.hp = gate.max; gate.broken = false; if (wasDown) h.brief('gate_mended'); h.hud(); return true; },
+    breakGate: (id = 'gate') => { const gate = doors.get(id)?.integrity; if (!gate || gate.broken) return false; gate.hp = 0; gate.broken = true; gate.breaks++; h.hud(); return true; },
+    repairGateTo: (k, id = 'gate') => { const gate = doors.get(id)?.integrity; if (!gate) return false; const want = gate.max * Math.min(1, Math.max(0, k)); if (want <= gate.hp) return false; gate.hp = want; if (gate.broken && gate.hp >= gate.max * SECTOR_GATE.closeAt) { gate.broken = false; h.brief('gate_mended'); } h.hud(); return true; },
+    repairGate: (id = 'gate') => { const gate = doors.get(id)?.integrity; if (!gate) return false; const wasDown = gate.broken; gate.hp = gate.max; gate.broken = false; if (wasDown) h.brief('gate_mended'); h.hud(); return true; },
     // a seal path killed a portal: close the sector's breach with who did it and book the forfeit
     closed(sp, reason) {
       const id = idOf(sp), by = CLOSER_OF[reason], b = breachOf(id);
@@ -249,6 +269,7 @@ export function createSectorRun(h) {
     state: () => ({
       phase, n: def?.n ?? 0, name: def?.name ?? null, strays: phase === 'idle' ? 0 : (h.breaches?.() ?? []).filter((sp) => sp.alive && idOf(sp) === null).length, secure: ['secure', 'debrief', 'campaign'].includes(phase), debriefOpen: !!story.debrief?.isOpen(), reports: reports.length,
       gate: gate ? { hp: +gate.hp.toFixed(1), broken: gate.broken, breaks: gate.breaks } : null,
+      gates: integrities().map((g) => ({ id: g.id, hp: +g.hp.toFixed(1), max: g.max, broken: g.broken, breaks: g.breaks })),
       breaches: (sector?.breaches ?? []).map((b) => ({ id: b.id, side: b.side, cell: b.cell, opened: sps.has(b.id), live: b.state === 'open' && !!sps.get(b.id)?.alive, wavesReleased: b.wavesReleased, wavesPlanned: b.wavesPlanned, closedBy: b.closedBy, leftInField: { ...b.leftInField }, bonus: { ...b.bonus } })),
     }),
     test: {
