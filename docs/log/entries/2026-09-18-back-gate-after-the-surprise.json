@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "2026-09-18-back-gate-after-the-surprise",
+  "date": "2026-09-18",
+  "type": "decision",
+  "status": "accepted",
+  "title": "The back door is a surprise you answer with the tank, SOL-82 and the gunship; then Isao installs a gate and sentries can stand there",
+  "context": "The robustness pass (2026-09-18-robustness-pass) left the second gate undone because six systems assume one gate. Owner, 2026-09-18: 'Back gate is a reminder that focusing on defense on one side leaves one open; surprise it opens! Tank to the rescue + orbital + gunship. Then Isao installs a gate and we can put sentries.' Also: the foundry beat is trimmed from 8 s to 4 s because everything must feel faster.",
+  "outcome": "Accepted: the back gate is NOT pre-built. Sector 2 opens the back door as today (the surprise), the player holds it with the tank, SOL-82 and the gunship, and once the back breach is closed or spent Isao's build programme queues a back gate on the back mouth's cells plus sockets on the rock beside the back lane, so sentries can be ordered there from then on. The second gate behaves like the first: closed = wall to the swarm, opens for the tank, wears down under pressure, repaired by Isao. plan.gate becomes a list; story-base, base-print, the pathfinder, gate integrity, repair orders and the HUD all take the list.",
+  "alternatives": [
+    "Print the back gate before the surprise; rejected: it removes the lesson the owner wants ('one side open')."
+  ],
+  "evidence": [
+    "Owner note 2026-09-18.",
+    "Single-gate assumptions listed in docs/log/entries/2026-09-18-robustness-pass.json."
+  ],
+  "supersedes": []
+}

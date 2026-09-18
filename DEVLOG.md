@@ -63,6 +63,21 @@ Evidence:
 - npm test: 120 test programs passed (test/game-breaches.mjs extended: the template warms once, uploads its maps one per update once loaded, is freed on dispose). npm run check: architecture, line budgets, pinned sinkhole imports hold; src/td-tab.js at 13,505.
 - Browser suites after 7ede3ae2 through the lock: --sinkhole exit 0 (10 PASS); --breach-game exit 0 (8 PASS); --backdoor exit 0 (4 PASS; collapse window: no long task, max frame 24 ms, call 7.7 ms, 6 cells; baseline max frame 22.8); --story-world exit 0 (31 PASS).
 
+## 2026-09-18 — The back door is a surprise you answer with the tank, SOL-82 and the gunship; then Isao installs a gate and sentries can stand there
+
+decision · accepted · 2026-09-18-back-gate-after-the-surprise
+
+The robustness pass (2026-09-18-robustness-pass) left the second gate undone because six systems assume one gate. Owner, 2026-09-18: 'Back gate is a reminder that focusing on defense on one side leaves one open; surprise it opens! Tank to the rescue + orbital + gunship. Then Isao installs a gate and we can put sentries.' Also: the foundry beat is trimmed from 8 s to 4 s because everything must feel faster.
+
+Accepted: the back gate is NOT pre-built. Sector 2 opens the back door as today (the surprise), the player holds it with the tank, SOL-82 and the gunship, and once the back breach is closed or spent Isao's build programme queues a back gate on the back mouth's cells plus sockets on the rock beside the back lane, so sentries can be ordered there from then on. The second gate behaves like the first: closed = wall to the swarm, opens for the tank, wears down under pressure, repaired by Isao. plan.gate becomes a list; story-base, base-print, the pathfinder, gate integrity, repair orders and the HUD all take the list.
+
+Alternatives: Print the back gate before the surprise; rejected: it removes the lesson the owner wants ('one side open').
+
+Evidence:
+
+- Owner note 2026-09-18.
+- Single-gate assumptions listed in docs/log/entries/2026-09-18-robustness-pass.json.
+
 ## 2026-09-16 — The Quiver's rocket stays in frame from launch to ignite, the story sheds campaign furniture, and the tank's keys are taught
 
 change · accepted · 2026-09-16-quiver-round-in-frame-and-a-readable-first-run
