@@ -1194,7 +1194,15 @@ try{
  await evaluate('window.__stalheartPilotTest.hold(true)');
  // the fodder keeps walking, so re-aim each poll until this one drops (the heat peak is banked per frame by the hook above)
  await until(`(()=>{const t=window.__stalheartPilotTest;const e=t.enemy(${victim.id});if(!e||!e.alive)return true;t.aimEnemy();return false;})()`,8000);await evaluate('window.__stalheartPilotTest.hold(false)');
+ // A DELIBERATE BURST, WHILE THE SEAT IS CERTAINLY THE ROTOR (2026-09-18). The heat assertion below used to read whatever the
+ // ten kills above happened to cost in rounds, which is not a burst: once the opening put the seat in the player's hands with the
+ // swarm still bunched mid-lane, ten kills took half the rounds and the peak halved with them (0.073 -> 0.037) without a single
+ // barrel behaving differently. Two seconds of held fire is the burst the assertion names, and the per-frame hook banks its peak.
  const shots=await evaluate('window.__stalheartPilotTest.state().shots');assert(shots>=2,'the Rotor streamed rounds');assert((await evaluate('window.__stalheartTest.state().brassLive'))>0,'spent cases fell from the Rotor in sentry control (docs/AMMUNITION.md)');current='story-world-rotor-kill';await finish();
+ await evaluate('window.__stalheartPilotTest.hold(true)');
+ for(let i=0;i<10;i++){await evaluate('window.__stalheartPilotTest&&window.__stalheartPilotTest.state().key==="rotor"&&window.__stalheartPilotTest.aimEnemy()');await delay(200);}
+ await evaluate('window.__stalheartPilotTest&&window.__stalheartPilotTest.hold(false)');
+
  // keep shooting: the fifth kill brings the comms study, the tenth the biomass line
  await evaluate('window.__stalheartPilotTest.hold(true)');
  await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("harvest_biomass"))return true;window.__stalheartPilotTest.aimEnemy();return false;})()',120000);
@@ -1206,7 +1214,7 @@ try{
  if(!(await evaluate('window.__stalheartTest.state().story.said')).includes('wave_cleared'))assert.equal(await evaluate('document.querySelector("#story-views")'),null,'no view strip before the wave is cleared');   // a piloted Rotor can clear the whole wave during the kills above (2026-09-14), and phase can move past 'cleared' to 'quiver-piloting' the same tick it is set, so said is checked instead of the exact phase
  await evaluate('window.__stalheartPilotTest.hold(true)');
  await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("wave_cleared"))return true;const t=window.__stalheartPilotTest;if(t.state().overheated)return false;t.aimEnemy();return false;})()',480000);
- await evaluate('window.__stalheartPilotTest.hold(false)');const cleared=await evaluate('window.__stalheartTest.state()');assert(cleared.story.said.includes('wave_cleared'));await until('window.__stalheartTest.state().performance.enemies===0',5000);   // the performance block is a periodic sample
+ await evaluate('window.__stalheartPilotTest.hold(false)');const cleared=await evaluate('window.__stalheartTest.state()');assert(cleared.story.said.includes('wave_cleared'));await until('!(window.__stalheartTest.state().enemyTypes||[]).includes("amoeba")',5000);   // the performance block is a periodic sample. NOT a count of zero any more: the Quiver now stands before the wave is down and its first hard core rises within a third of a second of `cleared` (STORY_QUIVER.delay 0.3, 2026-09-18), so the field is never empty here. The fifty white amoeba being gone is the same claim, made of the wave this step is about
  await until('!!document.querySelector("#story-views")',5000);await delay(600);current='story-world-cleared';await finish();
  // the view strip is exercised after the Quiver: the hand-over now follows the cleared wave almost at once (owner, 2026-09-13)
  // THE QUIVER: printed across the lane while the wave was fought, handed over the moment the wave is down (its post first,
