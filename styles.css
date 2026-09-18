@@ -3763,7 +3763,9 @@ body.mobile-shell #gunship-briefing button, body.mobile-shell #sol82-briefing bu
   body.mobile-shell #tab-td.gunship-seat #story-monitor { width: min(40vw, 640px); bottom: 160px; right: 12px; }
   body.mobile-shell #gunship-hud .ro { top: auto; bottom: 160px; left: 12px; right: auto; width: 40vw; min-width: 0; max-width: none; padding: 8px 9px; font-size: 10px; }   /* bottom-left beside the monitor: the reticle keeps the centre */
   /* SOL-82: the lens is the top of the frame, the panel sits under it, HOLD and TANK above the strip */
-  body.mobile-shell #laser-seat { top: auto; bottom: 262px; left: 12px; max-width: 52vw; }
+  /* portrait puts the lens across the top (src/fx/laser-scope.js scopeRect), so the inset HUD's OPTICS, LASER and PASS
+     blocks (src/fx/laser-inset-hud.js) hang under it to about y 515: the panel goes below them, left of the keys */
+  body.mobile-shell #laser-seat { top: auto; bottom: 206px; left: 12px; max-width: 52vw; }   /* above a strip that runs two rows while a pass is overhead */
   body.mobile-shell #laser-seat-keys { bottom: 220px; right: 12px; }   /* beside the panel, above a strip that runs two rows while a pass is overhead */
 }
 @media (orientation: landscape) {
