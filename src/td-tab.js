@@ -581,7 +581,7 @@ export function initTdTab(root) {
   scene.add(sun);
   const fill = new THREE.DirectionalLight(0x8a96c8, 0.8);
   fill.position.set(-2.5, -1.5, -3);
-  scene.add(fill); explosions.prewarm(renderer, camera); gameBreaches.warm(warmShaders);   /* the sinkhole's programs and stone maps too, off the first breach's opening frame (src/fx/shader-warm.js) */
+  scene.add(fill); explosions.prewarm(renderer, camera); gameBreaches.warm(warmShaders); warmShaders.compile(makeDebris(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial()), [0, 1, 0]));   /* the sinkhole's programs and stone maps, and the wall debris's two-sided material, off the first breach's opening frame (src/fx/shader-warm.js) */
 
   function resize() {
     const w = container.clientWidth || 1;
@@ -9556,8 +9556,8 @@ export function initTdTab(root) {
       }
     }
     storyBase?.tick(frozen ? 0 : dt, player.pos, sectorRun?.gateForce() ?? null, camera.position); story?.beats.tick(frozen ? 0 : dt, storyApi); if (!frozen && story?.programme) storyApi.build(); foundryFx?.tick(frozen ? 0 : dt); gameBreaches.update(frozen?0:dt,obj=>{
-      let changed=false;const centre=norm3(obj.position.toArray()),reach=CONTENT.breach.clearRadius*cellSide;
-      for(let ci=0;ci<graph.centers.length;ci++)if(dungeon.tags[ci]===BLOCKED&&!orderByCell.has(ci)&&Math.acos(Math.max(-1,Math.min(1,dot3(centre,norm3(graph.centers[ci])))))<=reach)changed=breachWallCell(ci)||changed;
+      let changed=false;const centre=norm3(obj.position.toArray()),within=Math.cos(CONTENT.breach.clearRadius*cellSide);   /* the arc test as a dot against the unit normals: the acos and a fresh norm3 per cell cost 11 ms of the opening frame on the 71k-cell story planet */
+      for(let ci=0;ci<graph.centers.length;ci++)if(dungeon.tags[ci]===BLOCKED&&dot3(centre,graph.normals[ci])>=within&&!orderByCell.has(ci))changed=breachWallCell(ci)||changed;
       if(changed){rebuildAfterBreach();recomputePortalDist();}
     },opened=>{
       sfx.play('sinkhole_quake',{dist:Math.min(...opened.map(obj=>camDist(obj.position.toArray())))});

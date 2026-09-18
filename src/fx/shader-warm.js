@@ -1,8 +1,12 @@
-// Programs linked before their first frame. three links a program the first time a material is drawn, and the link
-// blocks the frame that draws it: the breach dive's opening frame paid five links (100 ms at dpr 1, 148 ms at dpr 2)
-// and the dive's pass over the base paid two more for the landmarks' near tiers (2026-09-18 dive profile). With
-// KHR_parallel_shader_compile the driver links off the main thread, and compileAsync only asks for the program once
-// COMPLETION_STATUS says it is done, so a root handed here early costs its first frame nothing.
+// Programs linked, and first-used, before their first frame. three links a program the first time a material is drawn,
+// and the frame that draws it waits for the link: the breach dive's opening frame paid five links (100 ms at dpr 1,
+// 148 ms at dpr 2) and the dive's pass over the base two more for the landmarks' near tiers (2026-09-18 dive profile).
+//
+// Two things have to happen off the frame. The link itself: with KHR_parallel_shader_compile the driver links on its
+// own threads and COMPLETION_STATUS says when it is done, so the programs are polled here the way compileAsync does.
+// And the first use: three's WebGLProgram reads the link log and the shader logs the first time a program is bound,
+// four synchronous round trips to the GPU process per program, and the opening frame still stalled 49 ms on those
+// with every link long finished. So once a root's programs are ready their uniforms and attributes are pulled here.
 //
 // r160 keys a program on the render target's colour space as well as the scene's lights, so every root is compiled
 // twice: once for the screen and once with a linear offscreen target bound, which is what the bloom chain's scene
@@ -11,17 +15,25 @@ import * as THREE from '../../vendor/three.module.js';
 
 export function makeShaderWarmer(renderer, scene, camera) {
   const linear = new THREE.WebGLRenderTarget(1, 1);
+  const programsOf = (material) => renderer.properties.get(material).programs?.values() ?? [];
   return {
-    // every material under root, for the screen and for the chain; resolves once the links are done, never rejects
+    // every material under root, for the screen and for the chain; resolves once the programs are linked and first-used
     compile(root) {
-      const previous = renderer.getRenderTarget(), jobs = [];
+      const materials = new Set(), previous = renderer.getRenderTarget();
       try {
-        jobs.push(renderer.compileAsync(root, camera, scene));
+        for (const m of renderer.compile(root, camera, scene)) materials.add(m);
         renderer.setRenderTarget(linear);
-        jobs.push(renderer.compileAsync(root, camera, scene));
-      } catch (error) { jobs.push(Promise.reject(error)); }
+        for (const m of renderer.compile(root, camera, scene)) materials.add(m);
+      } catch { /* a material that cannot compile fails the same way on its first frame; nothing to warm */ }
       finally { renderer.setRenderTarget(previous); }
-      return Promise.allSettled(jobs).then(() => undefined);
+      return new Promise((resolve) => {
+        const poll = () => {
+          for (const m of materials) for (const p of programsOf(m)) if (!p.isReady()) { setTimeout(poll, 10); return; }
+          for (const m of materials) for (const p of programsOf(m)) { p.getUniforms(); p.getAttributes(); }
+          resolve();
+        };
+        poll();
+      });
     },
     // a texture's upload, off the frame that would first sample it (the sinkhole's stone maps: ~40 ms of texSubImage2D)
     upload(texture) { if (texture?.image) renderer.initTexture(texture); },
