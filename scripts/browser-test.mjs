@@ -1125,6 +1125,15 @@ try{
  {const s=await laser();console.log(`  laser-game: friendly fire ${s.burned.walls} wall segments, ${s.burned.towers} towers, heart ${s.burned.heart}, tank ${s.burned.tank}`);}
  await evaluate('window.dispatchEvent(new KeyboardEvent("keydown",{code:"Escape",key:"Escape",bubbles:true}))');await delay(600);
  {const s=await laser();assert.equal(s.seated,false,'Esc leaves the seat');assert.equal(s.fov,68,'and the tank has its lens back');}
+ // NEW RUN: the scorch, the smoke, the books and the pass clock go with the old world (the gap the V1 session shipped with)
+ {const s=await laser();assert(s.trail>0&&s.smoke>0,`the old run left a scorch to clear (trail ${s.trail}, smoke ${s.smoke})`);}
+ {const generation=await evaluate('window.__stalheartTest.state().runGen');
+  await evaluate('window.__stalheartTest.restart()');await until(`window.__stalheartTest.state().runGen > ${generation}`,30000);await delay(800);
+  const s=await laser();console.log(`  laser-game: after NEW RUN trail ${s.trail}, smoke ${s.smoke}, passes ${s.passes}, phase ${s.phase}, burned ${JSON.stringify(s.burned)}`);
+  assert.equal(s.trail,0,'the scorch trail is cleared by NEW RUN');assert.equal(s.smoke,0,'the smoke ring is cleared by NEW RUN');
+  assert.equal(s.passes,0,'the pass count starts over');assert.equal(s.burned.walls+s.burned.bodies+s.burned.breaches,0,'the books start over');
+  assert.equal(s.seated,false);assert.equal(s.online,true,'?laser=online still holds on the new run');}
+ current='laser-game-new-run';await finish();
  } else if(args.includes('--laser')) {
  // THE ORBITAL LASER LAB. Open it, wait for the real base and for the sinkhole's crater to actually open, jump the
  // clock to a pass, then hold the beam and drag it up the trench through the test hook — the pointer only steers

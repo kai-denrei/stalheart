@@ -85,6 +85,8 @@ export function createLaserStation(root, scene, host) {
     render: (renderer, scene) => seat?.render(renderer, scene),
     seated: () => !!seat,
     setOnline: (on) => arsenal.setOnline(on),
+    reset() { leave(); arsenal.reset(); },   // a new run: the seat goes, the scorch and the books with it
+
     stats: () => arsenal.stats(),
     state: () => ({ ...arsenal.state(), seated: !!seat, briefing: !!briefing?.isOpen(), fov: host.fov?.() ?? null }),
     // folded into window.__stalheartTest: laserSteer takes a scene point, a cell index or 'breach'

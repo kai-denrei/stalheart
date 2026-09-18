@@ -206,9 +206,22 @@ export function createLaserArsenal(scene, host) {
       laser.tick(dt, laserProgress(st, LASER_ORBIT, LASER_BEAM).energy);
     },
 
+    // the sectors switch SOL-82 on and off; a page that asked for it (?laser=online, LASER_GAME.online) keeps it on
+    // through sector 1, or the sector loop's first begin() would undo the request before the harness saw it
     setOnline(on) {
-      online = !!on;
+      online = !!on || !!host.online;
       if (!online) { lift(); laser?.hideGuide(); host.passEnded?.(); }
+    },
+    // A NEW RUN: the pass clock, the books and the ground's scorch start over; online goes back to what the page asked
+    // for (the sectors switch it on again at sector 2). The board is new too, so the cached anchors are dropped.
+    reset() {
+      lift();
+      laser?.clear();
+      Object.assign(st, makeLaser(LASER_ORBIT, LASER_BEAM));
+      passes = burnSeconds = aimArc = breakMs = 0;
+      for (const k of Object.keys(burned)) burned[k] = 0;
+      testTarget = null; testHeld = false; anchors = null;
+      online = !!host.online;
     },
     passNow() { if (online && st.phase !== 'overhead') edge(stepLaser(st, st.left, LASER_ORBIT, LASER_BEAM)); },
     strip: () => laserStrip(st, online, LASER_BEAM, LASER_GAME.lowEnergy),
@@ -233,7 +246,7 @@ export function createLaserArsenal(scene, host) {
     state: () => ({
       online, phase: st.phase, overhead: st.phase === 'overhead', left: +st.left.toFixed(2), energy: +st.energy.toFixed(2),
       burning: st.burning, contact: contactU()?.map((v) => +v.toFixed(5)) ?? null, seated, passes, seconds: +burnSeconds.toFixed(2),
-      under: { ...under }, burned: { ...burned }, trail: laser ? laser.trail.count : 0, breakMs: +breakMs.toFixed(1),
+      under: { ...under }, burned: { ...burned }, trail: laser ? laser.trail.count : 0, smoke: laser ? laser.state().puffs : 0, breakMs: +breakMs.toFixed(1),
       /* metres from the contact to the nearest live body: a burn that takes nothing can say how far it missed */
       nearestBodyM: st.contact ? +Math.min(Infinity, ...host.enemies().filter((e) => e.alive).map((e) => { const R = metres(); return Math.hypot(e.pos[0] * R - st.contact[0], e.pos[1] * R - st.contact[1], e.pos[2] * R - st.contact[2]); })).toFixed(1) : null,
     }),
