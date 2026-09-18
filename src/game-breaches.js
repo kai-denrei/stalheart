@@ -12,6 +12,13 @@ export function createGameBreaches(scene,camera,sounds,{look=null,makeSinkhole=c
  const entries=new Set(),limit=32,matrices={value:Array.from({length:limit},()=>new THREE.Matrix4())},holes={value:Array(limit).fill(0)},count={value:0},radius={value:1};
  const rubble=createBreachRubble(scene);
  let clock=0;const patched=new WeakSet();
+ // THE SHADERS BEFORE THE FIRST BREACH. The frame the ground first opened linked every sinkhole program the game had
+ // not drawn yet (the crater's stone, the fissures, the particle systems, the decals) and uploaded the four stone
+ // maps: 100 ms at dpr 1, 148 ms at dpr 2, on the shot's own cut (2026-09-18 dive profile). One hidden template
+ // sinkhole, built at boot and never triggered, links them all through the warmer (src/fx/shader-warm.js) and, once
+ // the maps have arrived, uploads one per frame from update(). It is kept for the run: three frees a program with its
+ // last material, so the template's materials are what hold the cache.
+ let template=null,warmer=null;const uploads=[];
  function sync(){let i=0;for(const e of entries){if(i===limit)break;matrices.value[i].copy(e.fx.inverseFrame.value);holes.value[i]=e.fx.hole.value;i++;}count.value=i;}
  return {
   create(normal,forward,scale){
@@ -30,7 +37,10 @@ export function createGameBreaches(scene,camera,sounds,{look=null,makeSinkhole=c
   seal(obj){const e=obj.userData.breach;if(!e||!entries.has(e))return false;rubble.add(obj,e.fx.tune.craterRadius);obj.userData.dispose();return true;},
   rubbleState:()=>rubble.state(),
   craters:()=>[...entries].map(e=>({p:e.obj.position.toArray(),r:e.fx.tune.craterRadius})),   // where the ground is open, and how wide: the hull may not drive onto it
+  warm(w){if(template)return;warmer=w;template=makeSinkhole(scene,camera,{game:true,sounds});Object.assign(template.tune,CONTENT.breach,{spawnWaves:false,sound:false});if(look)template.tune.look=look();
+   template.group.visible=true;template.update(0,0);template.group.visible=false;uploads.push(...template.textures());return template.warm(warmer);},   // one update dresses the template as create()+update() would (look, wraps) before its materials compile
   update(dt,onClear,onOpen=()=>{}){clock+=dt;const opened=[];rubble.update(dt);   // sealed caps pile up over breach-rubble's SETTLE_S
+   if(uploads.length&&template.ready())warmer.upload(uploads.shift());
    for(const e of entries){
     if(dt>0&&e.pending&&e.fx.ready()){e.pending=false;e.started=true;e.fx.trigger();opened.push(e.obj);}
     if(e.started)e.age+=dt;
@@ -50,6 +60,6 @@ export function createGameBreaches(scene,camera,sounds,{look=null,makeSinkhole=c
   },
   state:()=>[...entries].map(e=>{let materialPeak=0;e.obj.traverse(o=>{if(o.material?.color)materialPeak=Math.max(materialPeak,o.material.color.r,o.material.color.g,o.material.color.b);});return {...e.fx.state(),materialPeak,age:e.age,cleared:e.cleared,ready:e.started&&e.age>=e.fx.tune.duration};}),
   reset(){for(const e of [...entries])e.obj.userData.dispose();rubble.reset();sync();},
-  dispose(){for(const e of [...entries])e.obj.userData.dispose();rubble.dispose();sync();},
+  dispose(){for(const e of [...entries])e.obj.userData.dispose();rubble.dispose();sync();template?.dispose();template=null;uploads.length=0;},
  };
 }

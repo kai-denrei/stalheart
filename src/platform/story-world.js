@@ -72,7 +72,7 @@ function holdRing(built, planet, from, [lo, hi], perch = null) {
   return ring;
 }
 
-export function buildGameWorld({ world, params, stage, scene, sfx = null, landmarks = 'shipped', phase = null, grow = false }) {
+export function buildGameWorld({ world, params, stage, scene, sfx = null, landmarks = 'shipped', phase = null, grow = false, warm = null }) {
   const built = buildWorld({ world, params, story: { recipe: STORY_RECIPE, clearing: STORY_CLEARING, bake: planetBake() } });
   if (!built.planet) return { ...built, base: null };
   const { planet } = built;
@@ -85,7 +85,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   for (const ci of plan.open) built.dungeon.tags[ci] = PATH;   // the ground under a landed rocket first, then the gate's walls on top
   for (const w of plan.walls) if (w.cell >= 0 && !w.pending) built.dungeon.tags[w.cell] = BLOCKED;   // a pending wall blocks once it is printed (the controller's storyApi.printed)
   // the game prints the real Rotor; the static model stays a lab thing
-  const base = createStoryBase(scene, { plan, placer, metres: 1 / planet.radius, kit: KIT, skip: ['rotor'], sfx });
+  const base = createStoryBase(scene, { plan, placer, metres: 1 / planet.radius, kit: KIT, skip: ['rotor'], sfx, warm });
   // story state for the controller: floor sockets towers may mount on, Isao's home cell, and the scripted beats
   // the lane end is the story's spawn: the optic faces it, and the fodder comes from it once a gate stands
   if (plan.cells.fodder >= 0) built.dungeon.spawn = plan.cells.fodder;

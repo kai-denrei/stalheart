@@ -71,6 +71,12 @@ export function createSinkhole(scene,camera,{game=false,sounds=null}={}){
       if(lead>=0&&!opened){lead+=dt;ctx.shake.rumble(.02+.10*Math.min(1,lead/Math.max(.01,tune.preRoll)),dt);
         if(lead>=tune.preRoll){ability.spawn(new THREE.Vector3(0,0,-.1),new THREE.Vector3(0,0,1),.1);opened=true;}}
       ability.update(dt*animationRate);ctx.particles.flush();ctx.decals.update(dt);ctx.lights.update(dt);ctx.shake.update(dt);
+      // The particle systems are drawn only while a scene depth is bound for their soft fade. Without one three binds its
+      // all-zero empty texture, which unpacks to depth 0 (the near plane), so softFade is 0 for every fragment and the shader
+      // discards it after paying the smoke's fbm at full resolution: the settling dust cost 45 ms a frame at dpr 2 for a
+      // picture a full-size diff could not tell from the one without it (2026-09-18). Nothing here binds a prepass yet; a
+      // host that does gets the particles back untouched.
+      for(const s of ctx.particles.systems.values())s.mesh.visible=frame.uSceneDepth.value!==null;
       collapse.value=opened?4*Math.min(1,Math.max(0,ability.impactTime-.25)/1.25):0;
       if(opened)hole.value=Math.min(tune.craterRadius,Math.max(0,ability.impactTime)*tune.plateGrowth);
       terrain.update();walls.update(tune,opened?ability.impactTime:-1);
@@ -80,6 +86,11 @@ export function createSinkhole(scene,camera,{game=false,sounds=null}={}){
       surface.wrap(group);
       if(opened&&ability.impactTime>=1.5)ability.crater.mesh.visible=false;
     },
+    // THE PROGRAMS BEFORE THE FIRST OPENING (src/fx/shader-warm.js): everything this sinkhole will draw, with one decal
+    // of each type acquired for the pass and its materials wrapped onto the sphere first, handed to the warmer. The
+    // decals go back to their pools; the programs stay cached for every sinkhole that follows.
+    warm(warmer){const release=ctx.decals.prewarm();surface.wrap(group);const job=warmer.compile(group);release();return job;},
+    textures(){const t=getStoneTextures();return [t.map,t.normalMap,t.roughnessMap,t.aoMap];},
     state:()=>({duration:tune.duration,crackRenderOrder:ability.fissures.mesh.renderOrder,look:tune.look,walls:walls.state(),crackWidth:tune.fissureWidth,crackLength:tune.crackLength,environment:tune.environment,planetRadius:radius.value,enemies:enemies.state(),ready:getStoneTextures().state.loaded===4,phase:opened?'open':lead>=0?'rumbling':'idle',holeRadius:hole.value,
       openingAge:ability.impactTime,collapse:collapse.value,slopeVisible:hole.value>0,audioVoices:sound.voices,audioState:sound.contextState,stones:ability._activeCount,particles:ctx.particles.systems.size,craterVisible:ability.crater.mesh.visible,time,disposed}),
     dispose(){if(disposed)return;reset();disposed=true;ability.dispose();ctx.particles.dispose();ctx.decals.dispose();ctx.lights.dispose();

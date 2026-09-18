@@ -53,7 +53,11 @@ export function swingClip(root, from, like, seconds) {
 // loader names lose their dots (VEHICLE_02.001 becomes VEHICLE_02001): match the authored name as a prefix
 export const nodeNamed = (root, name) => { let hit = null; root.traverse((o) => { if (!hit && o.name.startsWith(name)) hit = o; }); return hit; };
 
-export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [], sfx = null }) {
+// `warm` (optional, src/fx/shader-warm.js): a landmark's near tier is handed to it as soon as it mounts, hidden, and
+// only becomes the tier to swap to once its programs are linked and first-used: the dive's pass over the base paid
+// 55 ms + 32 ms of links otherwise, and a tier shown on the frame it linked still paid 53-72 ms. The far tier stands a
+// few frames longer; the swap itself is unchanged.
+export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [], sfx = null, warm = null }) {
   const group = new THREE.Group(); group.name = 'Story base'; scene.add(group);
   const mixers = [], owned = new Set(), errors = [], bays = [], lod = [];
   const records = new Map();   // every landmark by id, for the beats' hands (reveal, conceal, structure)
@@ -174,7 +178,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     for (const l of lod) {
       const d = l.at.distanceTo(eye); l.d = d;
       if (!l.holder.visible) continue;   // a hidden landmark (not yet printed, not yet revealed) never fetches its near tier
-      if (!l.near && !l.loading && d < lodSwitch * lodHyst) { l.loading = true; const s = plan.structures.find((x) => x.id === l.id); load(s.asset).then((gltf) => { if (!gltf) return; l.near = mount(s, gltf, l.holder); l.near.visible = false; }).catch((e) => errors.push(`${l.id} near: ${e}`)); }
+      if (!l.near && !l.loading && d < lodSwitch * lodHyst) { l.loading = true; const s = plan.structures.find((x) => x.id === l.id); load(s.asset).then((gltf) => { if (!gltf) return; const near = mount(s, gltf, l.holder); near.visible = false; return Promise.resolve(warm?.compile(near)).then(() => { l.near = near; }); }).catch((e) => errors.push(`${l.id} near: ${e}`)); }
       if (!l.near) continue;
       const near = l.shown === 'near' ? d < lodSwitch * lodHyst : d < lodSwitch;
       l.shown = near ? 'near' : 'far'; l.near.visible = near; l.far.visible = !near;
