@@ -37,6 +37,8 @@ export const BASE_PERKS = Object.freeze({ gunshipMeter: 1.5, rebuildHulls: 1 });
 // bigger job. `brief` is his line the first time he flies out to a repair.
 export const BASE_REPAIR = Object.freeze({
   gateAt: 0.75, brief: 'isao_repair',
-  gate: Object.freeze({ seconds: 8, metres: 6, label: 'GATE' }),
-  wall: Object.freeze({ seconds: 5, metres: 4, label: 'WALL' }),
+// `plot` is the half extents in metres, across and along the piece's heading, that his print beam rasters over while he mends it
+// (src/fx/base-print.js repairBed): the door's own footprint and one wall segment's, so the beam works the thing and not the dirt.
+  gate: Object.freeze({ seconds: 8, metres: 6, label: 'GATE', plot: [7, 3] }),
+  wall: Object.freeze({ seconds: 5, metres: 4, label: 'WALL', plot: [4, 3] }),
 });

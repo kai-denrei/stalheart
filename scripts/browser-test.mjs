@@ -699,7 +699,25 @@ try{
  await evaluate('window.__stalheartTest.setSector(3)');await delay(800);
  assert.equal((await evaluate('window.__stalheartTest.state()')).hulls,Math.min(3,hullsLost+1),'the assembly line rebuilds a lost hull at the next sector start');
  await shotBase('grow-finished');
- } else if(args.includes('--shield-story')) {
+ // ISAO'S GATE REPAIR IS ANIMATED (a V1 known gap). Take the door down while the lane is still quiet: he flies out and BEAMS it,
+ // his print bed laid over the door's own footprint the way the foundry beat's `over:` bed is, and GATE % climbs under the beam
+ // instead of jumping the moment he leaves.
+ {await evaluate('window.__stalheartTest.sectorClearField()');await delay(3000);   /* a repair is only taken between waves: the lane has to be quiet. NOT clearSector() — that ends the sector and puts the debrief card over the very thing this step is here to look at */
+  assert(await evaluate(`window.__stalheartTest.breakGate()`),'the harness takes the door down');
+  {const g=await evaluate(`window.__stalheartTest.state().sector.gate`);assert(g.broken&&g.hp<2,`the gate is down (${JSON.stringify(g)})`);   /* the ambient mend may have ticked a frame's worth back already */}
+  await until(`window.__stalheartTest.state().programme.repairing?.kind==='gate'`,40000).catch(async()=>assert.fail(`Isao never took the gate repair (${JSON.stringify(await evaluate(`window.__stalheartTest.state().story`))})`));
+  assert(await evaluate(`window.__stalheartTest.state().programme.repairBed`),'the repair order carries a print bed: he beams the door, not a square of dirt beside it');
+  await until(`window.__stalheartTest.state().programme.isao?.state==='build' && window.__stalheartTest.state().programme.isao.printK>0.15`,40000).catch(async()=>assert.fail(`he never started printing (${JSON.stringify(await evaluate(`window.__stalheartTest.state().programme.isao`))})`));
+  current='grow-gate-repair';await finish();
+  /* sampled on the wall clock across the whole print, not until the order clears: the point is the climb IN BETWEEN, not its ends */
+  const climb=await evaluate(`new Promise(done=>{const seen=[];const t0=performance.now();(function look(){const s=window.__stalheartTest.state();seen.push([s.programme.isao?.printK??1,+s.sector.gate.hp.toFixed(1)]);if(performance.now()-t0>9000)return done(seen);setTimeout(look,120);})();})`);
+  const hp=climb.map(x=>x[1]);
+  assert(hp[hp.length-1]>hp[0],`GATE % climbs under the beam (${JSON.stringify(climb.slice(0,2))} ... ${JSON.stringify(climb.slice(-2))})`);
+  assert(new Set(hp).size>=4,`GATE % climbs in steps under the beam rather than jumping once at the end (${JSON.stringify(hp)})`);
+  assert(hp.every((v,i)=>i===0||v>=hp[i-1]),`and never goes backwards while he works (${JSON.stringify(hp)})`);
+  await until(`window.__stalheartTest.state().sector.gate.broken===false && window.__stalheartTest.state().sector.gate.hp>=window.__stalheartTest.state().sector.gate.hp`,20000);
+  {const g=await evaluate(`window.__stalheartTest.state().sector.gate`);assert(!g.broken,`the door is closed again when he is done (${JSON.stringify(g)})`);
+   console.log(`  grow: Isao's gate repair ${hp[0]} -> ${hp[hp.length-1]} hp over print k ${climb[0][0]} -> ${climb[climb.length-1][0]}, ${g.breaks} break(s) booked`);}} } else if(args.includes('--shield-story')) {
  // THE TANK'S SHIELD IN THE STORY (V1 session design, section 3): T and the pad deploy a rack of two, the solar array's pad
  // recharges it from a finite reserve that only refillArrays restores, a shielded hull shoves hard cores, and rams pay a premium
  // the player can read over the hull, with the combo tier callouts

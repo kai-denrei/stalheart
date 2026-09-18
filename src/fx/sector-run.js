@@ -220,6 +220,12 @@ export function createSectorRun(h) {
     // ISAO MENDS WHAT THE SWARM BROKE (src/domain/repair-orders.js): what the repair rule reads, and the mend his print finishes.
     // The passive trickle in tickGate still runs; this is the trip that puts a chewed or broken door back in one go.
     gate: () => (gate ? { hp: gate.hp, max: gate.max, broken: gate.broken } : null),
+    // ISAO'S PRINT SHOWS ON THE DOOR (2026-09-18): GATE % climbs with the print's progress while he stands over it and beams it,
+    // instead of jumping the moment he leaves. It only ever goes up here, so the swarm still owns the other direction, and the
+    // door closes again the moment it is mended past closeAt — the same threshold the ambient mend uses.
+    /* the harness takes the door down now: Isao's repair needs a broken door, and wearing one down under a real pile takes minutes */
+    breakGate: () => { if (!gate || gate.broken) return false; gate.hp = 0; gate.broken = true; gate.breaks++; h.hud(); return true; },
+    repairGateTo: (k) => { if (!gate) return false; const want = gate.max * Math.min(1, Math.max(0, k)); if (want <= gate.hp) return false; gate.hp = want; if (gate.broken && gate.hp >= gate.max * SECTOR_GATE.closeAt) { gate.broken = false; h.brief('gate_mended'); } h.hud(); return true; },
     repairGate: () => { if (!gate) return false; const wasDown = gate.broken; gate.hp = gate.max; gate.broken = false; if (wasDown) h.brief('gate_mended'); h.hud(); return true; },
     // a seal path killed a portal: close the sector's breach with who did it and book the forfeit
     closed(sp, reason) {
