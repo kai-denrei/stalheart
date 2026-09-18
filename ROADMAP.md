@@ -314,7 +314,13 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 31 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 32 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### A short punchy intro: the core loop as a scripted in-engine montage ending on Isao asking 'Are you ready?'
+
+`2026-09-18-intro-montage-spec` · decision · **proposed**
+
+Owner, 2026-09-18, for a later session: 'short core loop' — a punchy intro montage. Shot list in order, with the owner's durations: tank wireframe (2 s) >> tank ramming hordes (2 s); tremor and the swarm emerging (3 s); the gunship firing all three weapons, finishing with the MK-9 mini nuke, its explosion seen from the ground view; the Quiver PoV rocket launch; the Rotor PoV; 'TOO MANY ENEMIES!'; the orbital laser in wireframe (2 s); SOL-82 obliterating enemies from orbit; cut to the same obliteration from the ground view; cut to Isao asking 'Are you ready?'.
 
 ### After the Quiver: normal waves, free tower building, and the occasional gunship and orbital laser run
 

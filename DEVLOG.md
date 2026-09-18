@@ -42,6 +42,21 @@ Evidence:
 - --laser-game fails at 'laser=online brings SOL-82 online' (state().laser.online is false). Reproduced with src/ and styles.css checked out from main in the same worktree, so it is not from this work; artifacts/browser/laser-game-load-failure.json.
 - Open, not fixed: in the gunship seat on a phone the ground-truth monitor's scissored render lands outside its framed box, so the frame reads empty and the render sits up and right of it (artifacts/browser/phone-gunship-seat.png). src/fx/story-monitor.js computes its viewport from the renderer canvas's client rect; the phone's canvas geometry is the suspect.
 
+## 2026-09-18 — A short punchy intro: the core loop as a scripted in-engine montage ending on Isao asking 'Are you ready?'
+
+decision · proposed · 2026-09-18-intro-montage-spec
+
+Owner, 2026-09-18, for a later session: 'short core loop' — a punchy intro montage. Shot list in order, with the owner's durations: tank wireframe (2 s) >> tank ramming hordes (2 s); tremor and the swarm emerging (3 s); the gunship firing all three weapons, finishing with the MK-9 mini nuke, its explosion seen from the ground view; the Quiver PoV rocket launch; the Rotor PoV; 'TOO MANY ENEMIES!'; the orbital laser in wireframe (2 s); SOL-82 obliterating enemies from orbit; cut to the same obliteration from the ground view; cut to Isao asking 'Are you ready?'.
+
+Proposed, to build in another session: an in-engine montage (the game's own scenes, seats and FX — no video), scripted as a rail of cuts over the existing pieces: the wireframe reveals reuse the SOL-82 briefing's wireframe treatment (src/fx/sol82-briefing.js) for the tank and the laser; the ram, tremor, gunship, Quiver, Rotor and laser shots each run the real system with a fixed seed and a hidden HUD except for the text cards ('TOO MANY ENEMIES!' as a callout); the mini nuke and the laser each get a satellite/seat shot and a ground-view shot; the last cut is Isao's face card with 'Are you ready?' and a PLAY / SKIP TUTORIAL choice. Each shot 2–3 s; the whole under ~30 s; skippable at any moment; playable from the bare page before the landing or from a ?intro=1 link. Open: music/sound bed, whether the montage doubles as the loading screen while the planet bake and models arrive, and whether it plays once (remembered via src/storage.js) or every time.
+
+Alternatives: A pre-rendered video; rejected: the engine already has every shot, a video would drift from the game and cost download size.
+
+Evidence:
+
+- Owner shot list, 2026-09-18.
+- Existing pieces: src/fx/sol82-briefing.js (wireframe + labels), src/fx/gunship-drop.js (MK-9), src/fx/laser-arsenal.js, src/fx/story-scope.js (Quiver PoV), src/fx/dive-shot.js (tremor/breach shot), src/fx/synthetic-modal.js and isao-faces (Isao card).
+
 ## 2026-09-18 — The breach dive tamed: the hold was paying 45 ms a frame for dust the fade discarded, and the opening frame was paying for shader links, first-use log reads and stone map uploads that now happen at boot
 
 change · accepted · 2026-09-18-dive-shot-tamed
