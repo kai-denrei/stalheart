@@ -233,7 +233,17 @@ try{
  await go('gunship-on-station','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=6&gunship=station#td');
  await until('!!window.__stalheartTest && (window.__stalheartTest.state().storyLod||[]).some(l=>l.id==="stalheart")',90000);await delay(1500);
  {assert.equal(await evaluate('window.__stalheartTest.mountGunship()'),false,'the first seat opens the briefing, not the guns');assert(await evaluate('window.__stalheartTest.state().gunship.briefing'),'the briefing is open');assert(await evaluate('window.__stalheartTest.state().paused'),'the game waits under it');
-  await delay(1500);current='gunship-briefing';await finish();await evaluate('document.querySelector("#gunship-briefing [data-next]").click()');await delay(300);await evaluate('document.querySelector("#gunship-briefing [data-skip]").click()');await delay(1200);
+  await delay(1500);current='gunship-briefing';await finish();await evaluate('document.querySelector("#gunship-briefing [data-next]").click()');await delay(300);
+  // THE SEAT'S FIRST-USE HITCH (a V1 known gap, ~83-117 ms the first time the seat is taken): long tasks and the longest rAF gap over
+  // the 2.5 s from the call, against 2.5 s of baseline just before; the same watch runs again on a second seat later in the pass
+  const seatWatch=call=>evaluate(`new Promise(resolve=>{const long=[];const po=new PerformanceObserver(l=>{for(const e of l.getEntries())long.push([+e.duration.toFixed(1),Math.round(e.startTime-t0)]);});po.observe({type:'longtask'});let callMs=0,last=0,max=0,maxAt=0,frames=0,t0=0;const gaps=[];const tick=()=>{const now=performance.now();gaps.push(+(now-last).toFixed(1));if(now-last>max){max=now-last;maxAt=Math.round(now-t0);}last=now;frames++;if(now-t0<2500)requestAnimationFrame(tick);else setTimeout(()=>{po.disconnect();resolve({long,maxFrame:+max.toFixed(1),maxAt,frames,callMs,over50:gaps.filter(g=>g>50).length});},50);};requestAnimationFrame(()=>{t0=last=performance.now();${call?`const a=performance.now();${call};callMs=+(performance.now()-a).toFixed(1);`:''}requestAnimationFrame(tick);});})`);
+  const programsBefore=await evaluate('window.__stalheartTest.state().programs'),listBefore=await evaluate('window.__stalheartTest.programs()');
+  const seatBase=await seatWatch(null),seatFirst=await seatWatch('document.querySelector("#gunship-briefing [data-skip]").click()');
+  const programsAfter=await evaluate('window.__stalheartTest.state().programs'),listAfter=await evaluate('window.__stalheartTest.programs()');
+  console.log(`GUNSHIP seat new programs: ${listAfter.filter(k=>!listBefore.includes(k)).join(' ')}`);
+  console.log(`GUNSHIP seat baseline ${JSON.stringify(seatBase)} first seat ${JSON.stringify(seatFirst)} programs ${programsBefore} -> ${programsAfter}`);
+  assert(programsAfter-programsBefore<=2,`the first seat links no shader programs: they were warmed at load (${programsBefore} -> ${programsAfter}; it used to link 18 in a 62 ms task)`);
+  assert(seatFirst.maxFrame<60,`the first seat has no hitch (longest frame ${seatFirst.maxFrame} ms at +${seatFirst.maxAt} ms; it used to be 76-80 ms)`);
   assert(await evaluate('window.__stalheartTest.state().gunship.seat'),'skipping the briefing takes the seat');
   const s=await evaluate('window.__stalheartTest.state().gunship');assert(s.mounted&&s.seat&&s.optic,`thermal optic live ${JSON.stringify(s)}`);
   assert.equal(await evaluate('document.querySelector("#story-monitor .head").textContent'),'GROUND TRUTH · IMPACT','the monitor shows the impact point');
@@ -246,6 +256,10 @@ try{
   await send('Input.dispatchKeyEvent',{type:'keyDown',key:'m',code:'KeyM'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'m',code:'KeyM'});await delay(400);assert(await evaluate('document.querySelector("#tab-td").classList.contains("gunship-thermal")'),'M leaves the seat in thermal');assert(!await evaluate('document.querySelector("#tab-td").classList.contains("gunship-normal")||document.querySelector("#tab-td").classList.contains("gunship-night")'),'no normal or night view to switch to');current='gunship-thermal-held';await finish();
   await send('Input.dispatchKeyEvent',{type:'keyDown',key:'t',code:'KeyT'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'t',code:'KeyT'});await delay(800);current='gunship-top-view';await finish();await send('Input.dispatchKeyEvent',{type:'keyDown',key:'t',code:'KeyT'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'t',code:'KeyT'});await delay(400);
   await send('Input.dispatchKeyEvent',{type:'keyDown',key:'v',code:'KeyV'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'v',code:'KeyV'});await delay(600);current='gunship-third';await finish();
+  // the second seat of the pass, measured the same way: leave for the tank, come back
+  await evaluate('document.querySelector("#story-views [data-view=tank]").click()');await delay(900);assert(!await evaluate('window.__stalheartTest.state().gunship.seat'),'TANK leaves the seat');
+  {const again=await seatWatch('window.__stalheartTest.mountGunship()');await delay(300);assert(await evaluate('window.__stalheartTest.state().gunship.seat'),'the seat is taken again');
+   console.log(`GUNSHIP second seat ${JSON.stringify(again)} programs ${await evaluate('window.__stalheartTest.state().programs')}`);}
   // no input reaches the clock: the pass keeps counting out while the gunner sits
   const a=await evaluate('window.__stalheartTest.state().gunship.left');await delay(1200);const b=await evaluate('window.__stalheartTest.state().gunship.left');assert(b<a,'the pass counts out under the gunner');
   // the trigger on the rotary: rounds are owed and nothing throws with no enemy under the reticle
