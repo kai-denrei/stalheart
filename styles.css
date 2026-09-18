@@ -801,16 +801,16 @@ html, body {
     border-color: rgba(53, 255, 208, 0.34);
   }
   .tfire-secondary {
-    width: 42px; height: 42px; font-size: 16px;
+    width: 44px; height: 44px; font-size: 16px;   /* 42 was under the 44 px thumb rule (--phone, landscape) */
     right: calc(max(14px, env(safe-area-inset-right)) + 68px);
     bottom: calc(max(12px, env(safe-area-inset-bottom)) + min(19vh, 168px) + 20px);
     background: rgba(22, 46, 58, 0.28);
     border-color: rgba(125, 249, 255, 0.3);
   }
   .tfire-tertiary {
-    width: 42px; height: 42px; font-size: 16px;
+    width: 44px; height: 44px; font-size: 16px;   /* 42 was under the 44 px thumb rule (--phone, landscape) */
     right: calc(max(14px, env(safe-area-inset-right)) + 68px);
-    bottom: calc(max(12px, env(safe-area-inset-bottom)) + min(19vh, 168px) + 72px);
+    bottom: calc(max(12px, env(safe-area-inset-bottom)) + min(19vh, 168px) + 76px);
     background: rgba(46, 30, 26, 0.28);
     border-color: rgba(255, 138, 92, 0.34);
   }

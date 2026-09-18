@@ -454,8 +454,10 @@ try{
   assert.equal((await evaluate(`${T}.state().laser`)).burning,false,'and stops when it lifts');}
  await tap('#laser-seat-keys [data-tank]','the seat\'s TANK');await delay(800);assert.equal((await st()).laser.seated,false,'TANK leaves SOL-82');
  // 8. THE DEBRIEF AT 390 PX: both breaches closed, the field cleared, the card up; pages advance by tap, CONTINUE reachable
- await until(`(()=>{const b=${T}.state().sector.breaches;return b.length===2&&b.every(x=>x.live);})()`,90000).catch(async()=>assert.fail(`both breaches open (${JSON.stringify((await st()).sector)})`));
- for(const id of ['A','B'])assert.equal(await evaluate(`${T}.sectorClose(${JSON.stringify(id)},"gunship")`),'gunship',`breach ${id} sealed`);
+ await until(`${T}.state().sector.breaches.length===2`,90000).catch(async()=>assert.fail(`the sector has both its breaches (${JSON.stringify((await st()).sector)})`));
+ // SOL-82's HOLD above may already have sealed the gate-side one: seal whatever is still live rather than assuming both are
+ for(const b of (await st()).sector.breaches){if(!b.live)continue;assert.equal(await evaluate(`${T}.sectorClose(${JSON.stringify(b.id)},"gunship")`),'gunship',`breach ${b.id} sealed`);}
+ assert((await st()).sector.breaches.every((b)=>!b.live),'both breaches are closed');
  await evaluate(`${T}.sectorClearField()`);await until(`${T}.state().sector.secure`,30000);await until(`${T}.state().sector.debriefOpen`,20000);await delay(1500);
  assert(await evaluate('!!document.querySelector(".sdb-root:not([hidden])")'),'the debrief card is up');
  {const pages=+(await evaluate('document.querySelector(".sdb-root").dataset.pages'));assert(pages>=2,`a multi-page report (${pages})`);
