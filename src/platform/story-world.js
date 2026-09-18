@@ -80,7 +80,8 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   const placer = { toWorld: ([x, y, z]) => { const p = planet.frameToWorld([x, y, z]); return new THREE.Vector3(p[0] / planet.radius, p[1] / planet.radius + 1, p[2] / planet.radius); } };
   // the shipped layout untouched unless a review asks for the candidates; the swap happens before planBase, which spreads it through.
   // A growing base plans every stage now and marks what is above the starting stage pending: Isao prints it in play
-  const plan = planBase(planet, landmarks === 'shipped' ? STORY_LAYOUT : { ...STORY_LAYOUT, structures: withLandmarkTiers(STORY_LAYOUT.structures, landmarks) }, stage, { reach: grow ? STAGES.length - 1 : stage });
+  const backMouth = findBackMouth(planet, STORY_BACK_DOOR);
+  const plan = planBase(planet, landmarks === 'shipped' ? STORY_LAYOUT : { ...STORY_LAYOUT, structures: withLandmarkTiers(STORY_LAYOUT.structures, landmarks) }, stage, { reach: grow ? STAGES.length - 1 : stage, backMouth });
   // walls are rock to the pathfinder and the tank alike; the gate's cell stays open and the gate opens for the tank
   for (const ci of plan.open) built.dungeon.tags[ci] = PATH;   // the ground under a landed rocket first, then the gate's walls on top
   for (const w of plan.walls) if (w.cell >= 0 && !w.pending) built.dungeon.tags[w.cell] = BLOCKED;   // a pending wall blocks once it is printed (the controller's storyApi.printed)
@@ -127,7 +128,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     wallCells: plan.walls.filter((w) => w.pending && w.cell >= 0).map((w) => w.cell),
     // THE SECOND FRONT: the sealed mouth behind the bays, recomputed per load like the rest of the clearing (the controller keeps
     // only the mesh and the dungeon of the planet), with the clearing cells the back-breach rules need and the tunables
-    backMouth: findBackMouth(planet, STORY_BACK_DOOR), backDoor: STORY_BACK_DOOR, backPlanet: { graph: planet.graph, clearing: planet.clearing },
+    backMouth, backDoor: STORY_BACK_DOOR, backPlanet: { graph: planet.graph, clearing: planet.clearing },
   } : null;
   return { ...built, base, plan, story };
 }
