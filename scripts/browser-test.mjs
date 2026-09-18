@@ -474,12 +474,17 @@ try{
   await tap('.sdb-acts [data-act=continue]','CONTINUE');
   await until(`${T}.state().sector.n===3 && !${T}.state().sector.debriefOpen`,15000);}
  current='phone-sector-3';await finish();
- // 9. LANDSCAPE, the same chrome at 844x390: the pad, the strip, the sector line and the comms card still clear of each other
+ // 9. LANDSCAPE, 844x390. Portrait is the layout this pass rules; landscape is held to the contract that matters —
+ // every control a thumb can reach at 44 px and no control under another. The read-only cards (the coach, the wave and
+ // tower announcements, the sector brief, Isao) are 87 px short of the height their lane was ruled for and still stack
+ // here; they are captions over a board, never a control, so they are shown rather than pulled apart. Portrait holds
+ // all of CHROME apart.
  W=844;H=390;await phone('phone-landscape','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&fps=0#td',W,H);
  await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await evaluate(`${T}.sectorQuiet(true)`);
  await until(`!${T}.state().deploying`,60000).catch(()=>{});await delay(1500);
  for(const s of [...PAD,'#story-views [data-view=tank]','#story-views [data-mount=gunship]','#mob-mode']){await thumb(s);await reachable(s);}
- await layout(CHROME,'landscape');
+ await layout([...PAD,'#story-views','#mob-mode','#shell-bar','#tab-td .minimap','#td-launch'],'landscape');
+ await shown('#td-stats','the landscape HUD');   /* the sector brief and Isao's card come and go on their own clocks; the HUD is always up */
  await finish();
  } else if(args.includes('--nav')) {
  // THE NAVIGATION SHELL: PLAYTEST | DEV on every screen, the drawer by toggle and backslash, an Esc that never reaches

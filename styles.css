@@ -3634,7 +3634,7 @@ body.mobile-shell #td-stick .stick-ring { position: absolute; left: -72px; top: 
   border-radius: 50%; border: 2px solid rgba(159, 220, 255, 0.55); background: rgba(20, 32, 44, 0.25); }
 body.mobile-shell #td-stick .stick-knob { position: absolute; left: -26px; top: -26px; width: 52px; height: 52px;
   border-radius: 50%; background: rgba(159, 220, 255, 0.8); box-shadow: 0 0 14px rgba(0, 208, 255, 0.6); }
-body.mobile-shell #tab-td #td-stats.hud-panel { top: 46px; left: 14px; right: auto; max-width: none; font-size: 11px; line-height: 1.38; }
+body.mobile-shell #tab-td #td-stats.hud-panel { top: 58px; left: 14px; right: auto; max-width: none; font-size: 11px; line-height: 1.38; }   /* 46 predates the navigation shell's bar, whose row ends at 54 */
 body.mobile-shell #tab-td #td-next {
   top: 8px; left: 50%; right: auto; transform: translateX(-50%);
   max-width: 96vw; text-align: center; font-size: 11px; padding: 5px 10px 6px;
@@ -3765,6 +3765,12 @@ body.mobile-shell #gunship-briefing button, body.mobile-shell #sol82-briefing bu
   /* SOL-82: the lens is the top of the frame, the panel sits under it, HOLD and TANK above the strip */
   body.mobile-shell #laser-seat { top: auto; bottom: 262px; left: 12px; max-width: 52vw; }
   body.mobile-shell #laser-seat-keys { bottom: 220px; right: 12px; }   /* beside the panel, above a strip that runs two rows while a pass is overhead */
+}
+@media (orientation: landscape) {
+  /* 844x390 is 87 px shorter than the landscape this chrome was ruled for, and the bottom lane no longer holds both Isao
+     and the strip: the strip takes the free middle of the top row, between the shell's bar and the mode switch. */
+  body.mobile-shell #story-views { top: max(8px, env(safe-area-inset-top)); bottom: auto; left: 50%; right: auto; transform: translateX(-50%); max-width: calc(100vw - 460px); }
+  body.mobile-shell #tab-td #td-tut { top: 76px; }   /* out from under the strip's new row */
 }
 
 /* THE METAL LAB (metal-tab.js): the beam lab's chrome, same rules */
