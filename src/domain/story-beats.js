@@ -22,7 +22,7 @@ import { makeFoundry, deployFoundry, stepFoundry, foundryState } from './foundry
 export function makeStoryBeats({
   socket, foundry = null, lane = -1, fodder = -1, gate = -1, rotorDelay = 2, key = 'rotor',
   fodderType = 'amoeba', fodderEvery = 2.5, fodderAlive = 8, fodderTotal = 20, fodderEmerge = null,
-  controlDelay = 1.5, tremorDelay = 1.5, breachDelay = 4, overrideDelay = 2.5,
+  controlDelay = 1.5, tremorDelay = 1.5, breachDelay = 4, overrideDelay = 2.5, spawnDelay = 1, overrideCells = 2.2,
   faceDelays = [0.6, 4], commsKills = 5, harvestKills = 10, quiverSocket = -1, quiver = null, startPhase = 'landed',
   gateReady = () => true,   // a growing base: the tremor waits for Isao to print the gate (src/content/base-programme.js)
 }) {
@@ -38,7 +38,7 @@ export function makeStoryBeats({
   const enter = (p) => { phase = p; at = clock; };
   const spawnTick = (api) => {
     if (spawned >= fodderTotal || clock < nextSpawn) return;
-    if (api.enemies() < fodderAlive) { api.spawn(fodderType, fodder, fodderEmerge && { harmless: fodderEmerge.harmless, spread: fodderEmerge.spread, delay: ((spawned * 0.618034) % 1) * fodderEmerge.stagger }); spawned++; }   // a swarm rises over a spread of moments, golden-ratio spaced
+    if (api.enemies() < fodderAlive) { api.spawn(fodderType, fodder, fodderEmerge && { harmless: fodderEmerge.harmless, spread: fodderEmerge.spread, pace: fodderEmerge.pace, delay: ((spawned * 0.618034) % 1) * fodderEmerge.stagger }); spawned++; }   // a swarm rises over a spread of moments, golden-ratio spaced
     nextSpawn = clock + fodderEvery;
   };
   return {
@@ -59,9 +59,9 @@ export function makeStoryBeats({
       else if (phase === 'rotor-ready' && clock - Math.max(at, gateAt ?? at) >= (gated ? tremorDelay : controlDelay)) {
         if (gated) { api.tremor?.(fodder); api.brief?.('tremor'); enter('tremor'); }
         else { api.pilot?.(socket, lane); enter('piloting'); nextSpawn = clock + fodderEvery; }
-      } else if (phase === 'tremor' && clock - at >= breachDelay) { api.breach?.(fodder); api.tremor?.(-1); enter('breach'); nextSpawn = clock + 1; }
+      } else if (phase === 'tremor' && clock - at >= breachDelay) { api.breach?.(fodder); api.tremor?.(-1); enter('breach'); nextSpawn = clock + spawnDelay; }
       else if (phase === 'breach') { spawnTick(api); if (spawned > 0) enter('approach'); }
-      else if (phase === 'approach') { spawnTick(api); if (api.near?.(gate)) { api.brief?.('manual_override'); enter('override'); } }
+      else if (phase === 'approach') { spawnTick(api); if (api.near?.(gate, overrideCells)) { api.brief?.('manual_override'); enter('override'); } }
       else if (phase === 'override') { spawnTick(api); if (clock - at >= overrideDelay) { api.pilot?.(socket, lane); enter('piloting'); if (quiver && quiverSocket >= 0) { api.grant(api.cost(quiver.key)); quiverOrdered = !!api.order(quiver.key, quiverSocket); } } }   // Isao prints the Quiver while the wave is fought
       else if (phase === 'piloting' && fodder >= 0) {
         spawnTick(api);

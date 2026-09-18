@@ -1,5 +1,5 @@
 import { createSentryPilot } from './sentry-pilot.js';
-import { DEFAULT_TANK, SHELL_SPEED, SHELL_REACH, TANK_DRIVE, TANK_STEER } from './content/tank.js'; import { makeDriveRamp, stepDriveRamp, scrubDriveRamp } from './domain/drive-ramp.js'; import { hullDepth, deepensContact } from './domain/hull-contact.js'; import { makeSteerEase, stepSteerEase, steerBank } from './domain/steer-ease.js'; import { nextRepair } from './domain/repair-orders.js'; import { BASE_REPAIR } from './content/base-programme.js';
+import { DEFAULT_TANK, SHELL_SPEED, SHELL_REACH, TANK_DRIVE, TANK_STEER } from './content/tank.js'; import { makeDriveRamp, stepDriveRamp, scrubDriveRamp } from './domain/drive-ramp.js'; import { hullDepth, deepensContact } from './domain/hull-contact.js'; import { makeSteerEase, stepSteerEase, steerBank } from './domain/steer-ease.js'; import { nextRepair } from './domain/repair-orders.js'; import { BASE_REPAIR, BASE_BUILDER } from './content/base-programme.js';
 import { createGameBreaches } from './game-breaches.js';
 import { createBoardSurface } from './fx/board-surface.js'; import { createCampaignDebrief, sparkline } from './fx/campaign-debrief.js'; import { createSectorRun } from './fx/sector-run.js';
 import { startDiveShot } from './fx/dive-shot.js'; import { backBreachCells } from './domain/back-door.js'; import { makeShaderWarmer } from './fx/shader-warm.js';
@@ -4905,7 +4905,7 @@ export function initTdTab(root) {
         obj, alive: true, phase: whim() * 6.283,
         // a deterministic pace of its own: identical speeds are what let a
         // clump that chose the same exit stay one silhouette all the way in
-        paceJitter: 0.9 + whim() * 0.22,
+        paceJitter: (0.9 + whim() * 0.22) * (entry.pace ?? 1),   /* a spawn may set its own march: the story swarm surges up the lane */
         hp: spec.hp, behMult: 1, behUntil: -1, touchCd: -1,
         slowFactor: 1, slowUntil: -1, guard: entry.guard ?? null,
       });
@@ -6688,7 +6688,7 @@ export function initTdTab(root) {
   const ISAO_TINT = 0xbfe6ff;      // pale works blue — the CRT is the warm thing on him now
   const ISAO_ALT = 3.4;            // in wall-heights above the wall tops
   let isaoAlt = ISAO_ALT;          // ...and where the pilot has put him
-  const ISAO_CELLS_SEC = 2.6;      // cruise, in cells per second
+  const ISAO_CELLS_SEC = BASE_BUILDER.cellsPerSecond;   // cruise, in cells per second (content)
   const ISAO_BUILD_BASE = 2.0;     // seconds before cost is considered
   const ISAO_BUILD_PER_KG = 1 / 55; // ...and per kg of biomass printed
   const buildSeconds = (cost) => ISAO_BUILD_BASE + cost * ISAO_BUILD_PER_KG;
@@ -9564,7 +9564,7 @@ export function initTdTab(root) {
       // One skippable establishing shot per new group, never per wave.
       if((wave>0||storyMode)&&!paused&&!shotActive()&&!pilotMode&&!pilot?.gunship&&!laserStation.seated()){   // never while a seat is manned: the cut took the gunner's camera mid-aim (owner, 2026-09-15); the quake still sounds
         const sb=storyMode?story?.breachShot:null;   // IN THE STORY: the whole planet through the pre-roll, then as the ground opens a FAST DIVE to a close view over the sinkhole, held while the fodder emerge, then a short blend back
-        startDiveShot({camera,startShot,cellSide},opened[0].position.clone().normalize(),{preRoll:CONTENT.breach.preRoll,hold:sb?CONTENT.breach.duration+(sb.emergeHold??0):0,tail:sb?sb.tail??1.8:1.8,dive:sb});
+        startDiveShot({camera,startShot,cellSide},opened[0].position.clone().normalize(),{preRoll:sb?.preRoll??CONTENT.breach.preRoll,hold:sb?CONTENT.breach.duration+(sb.emergeHold??0):0,tail:sb?sb.tail??1.8:1.8,dive:sb});
       }
     });
     if (!frozen) { tfTick(dt); sectorRun?.tick(dt); }

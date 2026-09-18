@@ -15,8 +15,8 @@ export const BASE_PROGRAMME = Object.freeze([
   { id: 'foundry', label: 'seed foundry', over: 'foundry', plot: [8, 6], when: { phase: 'rotor-ready' }, seconds: 4, metres: 6, brief: 'build_foundry', perk: null },
   // the gate next, and the tremor waits for it: without a gate no fodder comes, and without fodder the tutorial never reaches the
   // handover. Printed straight after the Rotor, which stands beside it, so the wait before the tremor is one print and no trip
-  { id: 'gate', label: 'gate and walls', gate: true, walls: true, when: { phase: 'rotor-ready' }, seconds: 12, metres: 6, brief: 'build_gate', perk: 'gate' },
-  { id: 'landing', label: 'landing pad', islands: ['landing'], when: { phase: 'rotor-ready' }, seconds: 6, metres: 2, brief: 'build_landing', perk: null },
+  { id: 'gate', label: 'gate and walls', gate: true, walls: true, when: { phase: 'rotor-ready' }, seconds: 8, metres: 6, brief: 'build_gate', perk: 'gate' },
+  { id: 'landing', label: 'landing pad', islands: ['landing'], when: { phase: 'rotor-ready' }, seconds: 4, metres: 2, brief: 'build_landing', perk: null },
   // while the swarm rises and walks up to the gate (Isao is idle there for about 25 s, QA 2026-09-16), so it stands before the Quiver
   // goes on the book and long before the towers turn automatic at `settled` (about 23 s after `cleared` at stage 4)
   { id: 'stalheart', label: 'Stålheart', islands: ['stalheart'], structures: ['stalheart'], when: { phase: 'breach' }, seconds: 18, metres: 24, brief: 'build_stalheart', perk: 'stalheart' },
@@ -26,6 +26,10 @@ export const BASE_PROGRAMME = Object.freeze([
   { id: 'radar', label: 'radar', islands: ['radar'], structures: ['radar'], when: { sector: 2 }, seconds: 12, metres: 18, brief: 'build_radar', perk: 'uplink' },
   { id: 'assembly', label: 'assembly line', islands: ['assembly'], structures: ['assembly'], when: { sector: 2, idle: true }, seconds: 16, metres: 8, brief: 'build_assembly', perk: 'rebuild' },
 ].map((s) => Object.freeze({ islands: [], structures: [], ...s })));
+
+// ISAO'S CRUISE, in lattice cells per second. His flights between plots are the opening's other wait: at 2.6 the trip out to the
+// AFR-01 and back to the gate plot cost more than the prints themselves. Nothing is skipped at 4.2 — he is simply not dawdling.
+export const BASE_BUILDER = Object.freeze({ cellsPerSecond: 4.2 });
 
 // what the perks are worth where the game reads a number: the HUGIN arm fills the gunship call-in meter faster; the assembly line
 // rebuilds this many lost hulls at each sector start

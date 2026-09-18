@@ -831,6 +831,7 @@ try{
  const g0=await evaluate('window.__stalheartTest.state()');assert.equal(g0.programme.grow,true);assert.equal(g0.programme.gate.built,false,'no gate at the landing');assert.deepEqual(g0.programme.printed,[]);assert.deepEqual(g0.bays,[],'the bays are not printed yet');
  assert.deepEqual(await evaluate(hiddenNear),[]);await finish();
  const t0=Date.now(),mark=async(what)=>console.log(`GROW ${what} at ${((Date.now()-t0)/1000).toFixed(1)} s`);
+ await mark('landed');
  await until('window.__stalheartTest.state().towers===1',120000);await mark('Rotor printed');
  // ISAO WORKS THE RECYCLER FIRST (owner, 2026-09-16): before the gate he flies to the AFR-01 and holds the beam on it. The beat prints
  // nothing, so nothing may stand at the end of it, and the gate must not be pushed materially later than the baseline 26.0 s
@@ -846,10 +847,12 @@ try{
  await until('window.__stalheartTest.state().programme.printed.includes("gate")',90000);await mark('gate stands');
  {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.programme.gate.built,true);assert(s.wallCount>walls0&&s.wallCount<=walls0+12,`the walls are rock once printed (${walls0} -> ${s.wallCount})`);assert.notEqual(s.story.gateAt,null);}
  await until('window.__stalheartTest.state().story.phase==="tremor"',20000);await mark('tremor');current='grow-tremor';await finish();
+ await until('window.__stalheartTest.state().story.phase==="breach"||window.__stalheartTest.state().story.spawned>0',40000);await mark('breach');
+ await until('window.__stalheartTest.state().story.spawned>0',40000);await mark('first fodder');
  await until('window.__stalheartTest.state().programme.printed.includes("landing")',90000);await mark('landing pad stands');
  await until('window.__stalheartTest.state().programme.active==="stalheart"',90000);await mark('Stalheart print begins');await delay(8000);assert.deepEqual(await evaluate(hiddenNear),[]);current='grow-stalheart-rising';await finish();
  await until('window.__stalheartTest.state().story.phase==="override"',150000);await mark('override');
- await until('!!window.__stalheartPilotTest',30000);await until('window.__stalheartTest.state().performance.enemies>0',60000);await delay(2000);current='grow-fodder';await finish();
+ await until('!!window.__stalheartPilotTest',30000);await mark('first kill possible (the Rotor is the players)');await until('window.__stalheartTest.state().performance.enemies>0',60000);await delay(2000);current='grow-fodder';await finish();
  await evaluate('window.__stalheartPilotTest.hold(true)');
  await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("wave_cleared"))return true;const t=window.__stalheartPilotTest;if(!t||t.state().overheated)return false;t.aimEnemy();return false;})()',600000);
  await evaluate('window.__stalheartPilotTest?.hold(false)');await mark('first wave cleared');

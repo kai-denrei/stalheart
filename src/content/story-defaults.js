@@ -59,8 +59,15 @@ export const STORY_SCALE = Object.freeze({ rocket: 1.5, isaoMetres: 1.8, tankMet
 // in `diveSeconds`, and holds there while the fodder emerge
 // THE FIRST WAVE (owner, 2026-09-13): fifty weak ones in a single wave, all out of the sinkhole almost at once so it reads as a swarm, and
 // none of them can hurt the tank or the gate. every 0 spawns one a frame; each rises within `stagger` seconds, scattered `spread` cells across the crater
-export const STORY_FODDER = Object.freeze({ total: 50, alive: 50, every: 0, harmless: true, spread: 0.8, stagger: 1.2 });
-export const STORY_BREACH = Object.freeze({ emergeHold: 6, tail: 1.8, diveSeconds: 1.4, height: 5, back: 4 });
+// `pace` multiplies the swarm's march (src/enemyspec.js amoeba speed): the tutorial's fifty rise in a moment and then WALK, and the
+// player watched that walk for 28 s before the override (QA 2026-09-16). They surge instead; the pile is the beat, not the stroll.
+export const STORY_FODDER = Object.freeze({ total: 50, alive: 50, every: 0, harmless: true, spread: 0.8, stagger: 1.2, pace: 1.7 });
+// emergeHold: the orbit camera holds over the crater after the breach FX. The fifty are all up within `stagger` (1.2 s), so holding
+// six more seconds over a finished pile was watching, not reading: three is the pile seen and the camera released.
+// preRoll: the story's own orbit beat before the dive, overriding the shared breach preset's 1.6 (immutable, and the breach lab
+// shares it). The whole planet has already been in frame since the tremor: a second and a half more of it before the camera moves
+// is the purest dead time in the opening. The 1.4 s dive itself is untouched.
+export const STORY_BREACH = Object.freeze({ preRoll: 0.7, emergeHold: 3, tail: 1.8, diveSeconds: 1.4, height: 5, back: 4 });
 // THE SECOND FRONT (owner, 2026-09-16: "protect the other side of the base"): the sealed clearing mouth nearest +Z, at most
 // `maxCells` wide, collapses with up to `flank` rock cells beside it; back breaches open `hops` steps out from it on lanes at
 // least `margin` hops shorter through the back than through the gate. The collapse shot dives after `preRoll` and holds `hold` seconds at
@@ -79,7 +86,18 @@ export const STORY_DAY = Object.freeze({ seconds: 300, dayShare: 0.6, tilt: 60, 
 // coneDeg: the half-angle of the LOCK BOX drawn on the optic. Anything inside it is the target, it stays the target while it stays
 // inside (no flicker between bodies), a timer runs, and at full it is locked. No minimum or maximum range: on a 753 m planet the
 // horizon from a 4 m mount is about 80 m, so a 400 m reach is no limit at all, and the range test can never reset the timer.
-export const STORY_QUIVER = Object.freeze({ key: 'quiver', delay: 0.6, hardcore: 'barbed', secondDelay: 9, hold: [5, 9], nearCells: 12, zoom: 3, studyDelay: 3, coneDeg: 14, missile: Object.freeze({ mesh: 'talon', profile: 'heavy', duration: 6, length: 1.0, dmgMul: 25, minRange: 0, maxRange: 400, lockTime: 0.6, lockGate: 1e4, lockBreak: 1e4, aimTolerance: 180 }) });   // the box is the gate; the code's mrad gates are opened out of the way   // a heavy payload (one round, one solid core), a long reach (the hard cores hold 50 to 90 m out), and a quick first-encounter lock: 0.4 s inside a 5 degree cone
+export const STORY_QUIVER = Object.freeze({ key: 'quiver', delay: 0.6, hardcore: 'barbed', secondDelay: 5, hold: [5, 9], nearCells: 12, zoom: 3, studyDelay: 1.5, coneDeg: 14, missile: Object.freeze({ mesh: 'talon', profile: 'heavy', duration: 6, length: 1.0, dmgMul: 25, minRange: 0, maxRange: 400, lockTime: 0.6, lockGate: 1e4, lockBreak: 1e4, aimTolerance: 180 }) });   // the box is the gate; the code's mrad gates are opened out of the way   // a heavy payload (one round, one solid core), a long reach (the hard cores hold 50 to 90 m out), and a quick first-encounter lock: 0.4 s inside a 5 degree cone
+
+// THE BEAT CLOCK (owner, 2026-09-18: "everything must feel faster"). Every wait in src/domain/story-beats.js that the player only
+// watches, gathered here as content. `faceDelays` are Isao's two landing lines; `rotorDelay` the pause before he deploys the AFR-01;
+// `tremorDelay` the beat between the gate standing and the contact on the radar; `breachDelay` the beat between the contact and the
+// ground opening; `spawnDelay` the pause after the breach before the first body rises; `overrideDelay` the beat between Isao's line
+// and the seat; `overrideCells` how close to the gate the swarm must come for that line. The override used to wait for a body within
+// 2.2 cells of the door — the whole march up the lane. It fires when the pile is visibly ON the lane instead.
+export const STORY_BEATS = Object.freeze({
+  rotorDelay: 2.5, faceDelays: Object.freeze([0.6, 2.8]), controlDelay: 1.5,
+  tremorDelay: 0.8, breachDelay: 2, spawnDelay: 0.4, overrideDelay: 1.5, overrideCells: 10,
+});
 
 // The piloted sentry in the story: a denser stream of rounds, each one
 // heavy enough that cannon fodder drops in two hits.
