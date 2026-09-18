@@ -11,6 +11,7 @@ import { changeSummary } from '../src/content/authoring.js';
 import { clone, serializePreset } from '../src/content/preset.js';
 import { LASER_VIEW, LASER_BURN } from '../src/content/orbital-laser.js';
 import { GUNSHIP_TRACK } from '../src/content/gunship.js';
+import { scopeRect } from '../src/fx/laser-scope.js';
 const args=process.argv.slice(2),production=args.includes('--dist');
 const port=+process.env.STALHEART_BROWSER_PORT||18155,base=production?'/stalheart/':'/';
 const origin=`http://127.0.0.1:${port}`,urlRoot=origin+base;
@@ -307,6 +308,184 @@ try{
   assert(probe.n>=90,`the probe saw the frames (${probe.n})`);assert(probe.max<0.25*Math.PI/180,`the seat's camera never jumps while the gunner holds still (max ${deg(probe.max)} deg in a frame)`);
   assert(await evaluate('window.__stalheartTest.state().gunship.seat'),'still seated');
   current='gunship-track-after';await finish();}
+ } else if(args.includes('--phone')) {
+ // A TOUCH PHONE (owner, 2026-09-18: the friends open the live link on phones, and nothing built in the last two days was tested
+ // under touch). A 390x844 portrait phone at dpr 3 with a coarse pointer and touch events, no mouse at all: the harness plays the
+ // V1 session the way a thumb does, and at every station proves the controls a player needs are on screen, 44 px, and not under
+ // anything (document.elementFromPoint at each control's centre must find the control itself). Screenshots at each station.
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`);
+ const PW=390,PH=844;
+ // the phone: the metrics, the touch screen and the media features are set BEFORE the page boots, since the shell decides on
+ // (pointer: coarse) at module load. Chrome's mobile emulation is what makes that query true (the ?coarse=1 rewrite is not needed).
+ async function phone(name,path,w=PW,h=PH){
+  current=name;consoleLines.length=0;errors.length=0;requests.length=0;
+  await send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});
+  await send('Emulation.setEmulatedMedia',{features:[{name:'pointer',value:'coarse'},{name:'hover',value:'none'},{name:'any-pointer',value:'coarse'},{name:'any-hover',value:'none'}]}).catch(()=>{});
+  await send('Emulation.setDeviceMetricsOverride',{width:w,height:h,deviceScaleFactor:3,mobile:true,screenWidth:w,screenHeight:h,screenOrientation:w>h?{type:'landscapePrimary',angle:90}:{type:'portraitPrimary',angle:0}});
+  if(await evaluate('location.href')===urlRoot+path){await send('Page.navigate',{url:'about:blank'});await until('location.href === "about:blank"');}
+  await evaluate('window.__stalheartReady = false');
+  await send('Page.navigate',{url:urlRoot+path});
+  await until(`location.href === ${JSON.stringify(urlRoot+path)} && window.__stalheartReady === true`);
+ }
+ const touch=(type,points)=>send('Input.dispatchTouchEvent',{type,touchPoints:points});
+ const centre=sel=>evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(sel)});if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2,w:r.width,h:r.height};})()`);
+ const tapAt=async(x,y,ms=70)=>{await touch('touchStart',[{x,y}]);await delay(ms);await touch('touchEnd',[]);await delay(150);};
+ // what a thumb finds at the control's centre: 'ok' is the control itself or a child of it; anything else is why a player cannot press it
+ const over=sel=>evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(sel)});if(!e)return 'missing';const r=e.getBoundingClientRect();if(!(r.width>0&&r.height>0))return 'no size';const s=getComputedStyle(e);if(s.display==='none'||s.visibility==='hidden'||+s.opacity===0)return 'hidden';if(r.left<0||r.top<0||r.right>innerWidth||r.bottom>innerHeight)return 'off screen '+JSON.stringify([r.left,r.top,r.right,r.bottom].map(Math.round));const h=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);if(!h)return 'nothing at its centre';if(e===h||e.contains(h))return 'ok';return 'covered by '+(h.id?'#'+h.id:h.tagName.toLowerCase()+(h.className&&typeof h.className==='string'?'.'+h.className.split(' ')[0]:''));})()`);
+ const reachable=async(sel,what=sel)=>{const o=await over(sel);assert.equal(o,'ok',`${what} is under the thumb (${o})`);};
+ // a readout, not a control: on screen and under nothing but the board's canvas (a pointer-events: none panel lets the probe through to it)
+ const shown=async(sel,what=sel)=>{const o=await over(sel);assert.match(o,/^(ok|covered by canvas)$/,`${what} is on the screen (${o})`);};
+ const thumb=async(sel,what=sel)=>{const c=await centre(sel);assert(c&&c.w>=44&&c.h>=44,`${what} is a 44 px thumb target (${c?`${Math.round(c.w)}x${Math.round(c.h)}`:'missing'})`);};
+ const tap=async(sel,what=sel)=>{await reachable(sel,what);const c=await centre(sel);await tapAt(c.x,c.y);};
+ const press=async(sel,ms)=>{await reachable(sel);const c=await centre(sel);await touch('touchStart',[{x:c.x,y:c.y}]);await delay(ms);await touch('touchEnd',[]);};
+ const drag=async(x0,y0,x1,y1,{steps=12,ms=360,lift=true}={})=>{await touch('touchStart',[{x:x0,y:y0}]);await delay(40);for(let i=1;i<=steps;i++){await touch('touchMove',[{x:x0+(x1-x0)*i/steps,y:y0+(y1-y0)*i/steps}]);await delay(ms/steps);}if(lift){await touch('touchEnd',[]);await delay(100);}};
+ const rects=sels=>evaluate(`((sels)=>{const out={};for(const s of sels){const e=document.querySelector(s);if(!e)continue;const r=e.getBoundingClientRect();const st=getComputedStyle(e);if(st.display==='none'||st.visibility==='hidden'||+st.opacity===0||!(r.width>0&&r.height>0))continue;out[s]=[r.left,r.top,r.right,r.bottom].map(v=>Math.round(v));}return out;})(${JSON.stringify(sels)})`);
+ // no two of these may share more than a 2 px sliver, and every one of them is on the screen
+ const layout=async(sels,what)=>{const R=await rects(sels);const keys=Object.keys(R),bad=[];for(let i=0;i<keys.length;i++)for(let j=i+1;j<keys.length;j++){const a=R[keys[i]],b=R[keys[j]];const w=Math.min(a[2],b[2])-Math.max(a[0],b[0]),h=Math.min(a[3],b[3])-Math.max(a[1],b[1]);if(w>2&&h>2)bad.push(`${keys[i]} ${JSON.stringify(a)} over ${keys[j]} ${JSON.stringify(b)}`);}
+  for(const [k,r] of Object.entries(R))if(!(r[0]>=-1&&r[1]>=-1&&r[2]<=innerW()+1&&r[3]<=innerH()+1))bad.push(`${k} off the screen ${JSON.stringify(r)}`);
+  assert.deepEqual(bad,[],`${what}: nothing sits on anything else and nothing is off the screen`);return R;};
+ let W=PW,H=PH;const innerW=()=>W,innerH=()=>H;
+ const PAD=['#td-pad-fire','#td-pad-laser','#td-pad-shield'];
+ const CHROME=[...PAD,'#story-views','#td-brief','#td-stats','#mob-mode','#tab-td .minimap','#sector-card','#td-sitrep','#td-toast','#td-wave','#td-tower','#skip-tutorial','#td-tut','#td-launch','#shell-bar'];   /* #td-tut is here because the SKIP offer was sitting on the coach's second line and nothing measured it */
+ // 1. THE BARE OPENING, the page the live link opens: the phone shell, no rotate wall, SKIP TUTORIAL a thumb can reach
+ await phone('phone-opening','index.html?sw=0&acceptance=1&cine=0&world=story&grow=1&fps=0#td');
+ await until(`!!${T}`,90000);await delay(2500);
+ assert.equal(await evaluate('matchMedia("(pointer: coarse)").matches'),true,'the emulated phone is a coarse pointer');
+ assert.equal(await evaluate('navigator.maxTouchPoints>0'),true,'and a touch screen');
+ assert.equal(await evaluate('document.body.classList.contains("mobile-shell")'),true,'the game takes its phone shell');
+ {const rot=await evaluate('(()=>{const e=document.querySelector("#td-rotate");if(!e)return "none";const s=getComputedStyle(e);return s.display==="none"?"none":s.pointerEvents==="none"?"passive":"blocking";})()');assert.notEqual(rot,'blocking','portrait is not walled off by the rotate prompt');}
+ await until(`${T}.state().skip?.offer?.shown`,20000);
+ await thumb('#skip-tutorial','SKIP TUTORIAL');await reachable('#skip-tutorial','SKIP TUTORIAL');
+ await layout(CHROME,'the opening');
+ await finish();
+ // the tap is the entry: a touch on the button lands in the skipped run
+ await tap('#skip-tutorial','SKIP TUTORIAL');
+ current='phone-skip-run';consoleLines.length=0;errors.length=0;requests.length=0;
+ await until('location.search.includes("skip=defence")',20000);await until('window.__stalheartReady===true',90000);
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ assert.equal(await evaluate('document.body.classList.contains("mobile-shell")'),true,'the skipped run is on the phone shell too');
+ assert.equal((await st()).skip.on,true,'the tap landed in the skipped run');
+ await evaluate(`${T}.sectorQuiet(true)`);   // the seats are the subject here; the sector's waves and the gate wear wait for the debrief station
+ // 2. THE SKIPPED RUN'S CHROME: the pad, the strip, the sector line, the comms card and the touch labels, all reachable, none on another
+ await until(`!${T}.state().deploying`,60000).catch(()=>{});
+ await until('document.querySelector("#tab-td").classList.contains("pad-labelled")',30000).catch(async()=>assert.fail(`the pad wears its touch labels once the tank is ours (card ${JSON.stringify(await evaluate('document.querySelector("#controls-card")?.hidden'))})`));
+ assert.equal(await evaluate('document.querySelector("#controls-card")?.hidden ?? true'),true,'no key list on a phone');
+ assert.deepEqual(await evaluate('[...document.querySelectorAll("#tab-td [data-label]")].filter(e=>getComputedStyle(e).display!=="none").map(e=>e.dataset.label)'),['FIRE','LASER','SHIELD'],'FIRE, LASER and SHIELD are named on the pad');
+ for(const s of PAD){await thumb(s);await reachable(s);}
+ for(const s of ['#story-views [data-view=tank]','#story-views [data-mount=gunship]','#mob-mode']){await thumb(s);await reachable(s);}
+ assert.match(await over('#story-views [data-view=map]'),/^(hidden|no size)$/,'no MAP on the phone: BUILD is the orbit view');
+ await until('/SECTOR 2/.test(document.querySelector("#td-stats").textContent)',60000).catch(async()=>assert.fail(`the sector line is on the HUD (${await evaluate('document.querySelector("#td-stats").textContent')})`));
+ await shown('#td-stats .hud-sector','the sector line');   /* the shell hides the other .hud-obj lines while driving; this one stays */
+ assert(await evaluate('!document.querySelector("#td-brief").classList.contains("hidden")'),'Isao is speaking on arrival');
+ await reachable('#td-brief-next','the comms card NEXT');await thumb('#td-brief-next','the comms card NEXT');
+ await layout(CHROME,'the skipped run');
+ await finish();
+ // 3. DRIVING BY TOUCH: a finger down on the left half puts the stick there, up is forward; a tap on the ground is a destination
+ // a tap during a camera shot skips the shot (td-tab shotSkipTap), which is right for a player and wrong for this probe: the sector's
+ // back-door crack runs one on its own clock, so the finger waits for the rock to give and for the camera to be the tank's again
+ await until(`${T}.backDoorOpen()`,90000).catch(()=>{});await until(`${T}.state().shot===null`,30000);await delay(600);
+ {const p0=(await st()).playerPosition;
+  // bare ground on the left half: the first point down the left column where a thumb finds the board's canvas and no chrome
+  const g=await evaluate('(()=>{for(let y=300;y<760;y+=20){const h=document.elementFromPoint(90,y);if(h&&h.tagName==="CANVAS"&&!h.classList.contains("minimap"))return {x:90,y};}return null;})()');assert(g,'bare ground on the left half');
+  const x=g.x,y=g.y,stickUp=()=>evaluate('!document.querySelector("#td-stick").classList.contains("hidden")');
+  await touch('touchStart',[{x,y}]);await delay(120);
+  if(!(await stickUp())){await touch('touchEnd',[]);await until(`${T}.state().shot===null`,30000);await delay(800);await touch('touchStart',[{x,y}]);await delay(120);}   /* a shot began under the finger: once more */
+  assert(await stickUp(),`the stick appears under the finger at ${x},${y} (shot ${await evaluate(`${T}.state().shot`)}, hit ${await evaluate(`(h=>h?h.id||h.tagName+"."+h.className:null)(document.elementFromPoint(${x},${y}))`)}, build ${await evaluate('document.body.classList.contains("mob-build")')})`);
+  for(let i=1;i<=6;i++){await touch('touchMove',[{x,y:y-i*12}]);await delay(30);}await delay(1500);
+  const p1=(await st()).playerPosition;current='phone-drive';await finish();await touch('touchEnd',[]);await delay(200);
+  const moved=Math.hypot(...p1.map((v,i)=>v-p0[i]));assert(moved>.005,`the tank drives on the stick (${moved})`);
+  assert(await evaluate('document.querySelector("#td-stick").classList.contains("hidden")'),'the stick goes with the finger');}
+ // 4. A TOWER ORDER BY TAP: BUILD, the radial on a buildable cell, a tap on a tower puts the order on Isao's list
+ await tap('#mob-mode','BUILD');await delay(800);
+ assert(await evaluate('document.body.classList.contains("mob-build")'),'BUILD mode');
+ assert(await evaluate(`${T}.openBuildMenu()`),'the radial opens on a buildable cell');await delay(400);
+ {const bio=(await st()).biomass;const key=await evaluate('(()=>{const b=[...document.querySelectorAll("#td-shop .shop-buy")].find(b=>!b.disabled&&!b.classList.contains("locked"));return b?b.dataset.key:null;})()');assert(key,'an affordable tower on the radial');
+  await thumb(`#td-shop .shop-buy[data-key=${key}]`,`the radial's ${key}`);await tap(`#td-shop .shop-buy[data-key=${key}]`,`the radial's ${key}`);await delay(500);
+  assert(await evaluate('document.querySelector("#td-shop").classList.contains("hidden")'),'the radial closes on the order');
+  assert((await st()).biomass<bio,`the order is paid for (${bio} -> ${(await st()).biomass})`);}
+ current='phone-build';await finish();
+ await tap('#mob-mode','DRIVE');await delay(800);assert(!(await evaluate('document.body.classList.contains("mob-build")')),'back to DRIVE');
+ // 5. THE GUNSHIP FROM THE STRIP: the briefing's SKIP by touch, the seat's own gun buttons, aim by drag, the pad's fire button as the trigger
+ await evaluate(`${T}.fillGunshipCall(100000)`);await until('document.querySelector("#story-views [data-mount=gunship]").textContent==="GUNSHIP · CALL"',5000);
+ await tap('#story-views [data-mount=gunship]','the strip\'s GUNSHIP');
+ await until('!!document.querySelector("#gunship-briefing:not([hidden])")',5000);await delay(600);
+ await thumb('#gunship-briefing [data-skip]','the briefing\'s SKIP');await reachable('#gunship-briefing [data-skip]','the briefing\'s SKIP');
+ current='phone-gunship-briefing';await finish();
+ await tap('#gunship-briefing [data-skip]','the briefing\'s SKIP');
+ await until(`${T}.state().gunship.seat`,15000);await delay(1500);
+ for(const k of ['rotary','bofors','heavy']){await thumb(`#sentry-pilot [data-gun=${k}]`,`the ${k} button`);await reachable(`#sentry-pilot [data-gun=${k}]`,`the ${k} button`);}
+ await thumb('#td-pad-fire','the trigger');await reachable('#td-pad-fire','the trigger');
+ await reachable('#story-views [data-view=tank]','TANK on the strip');
+ await layout(['#td-pad-fire','#story-views','#sentry-pilot header','#sentry-pilot .pilot-guns','#sentry-pilot [data-map]','#sentry-pilot footer','#gunship-hud .ro','#story-monitor','#mob-mode','#shell-bar','#tab-td .minimap'],'the gunship seat');
+ {const q0=await evaluate(`${T}.gunshipCam()`);await drag(200,430,120,400);await delay(400);const q1=await evaluate(`${T}.gunshipCam()`);
+  const a=2*Math.acos(Math.min(1,Math.abs(q0[0]*q1[0]+q0[1]*q1[1]+q0[2]*q1[2]+q0[3]*q1[3])));assert(a>0.01,`a drag turns the optic (${(a*180/Math.PI).toFixed(2)} deg)`);}
+ current='phone-gunship-seat';await finish();
+ {const rotary=async()=>(await evaluate(`${T}.state().explosions`)).spawned?.['gunship.rotary']??0;const before=await rotary();
+  await press('#td-pad-fire',700);await delay(2600);assert(await rotary()>before,`the rotary fires from the pad's button (${before} -> ${await rotary()})`);}
+ await tap('#sentry-pilot [data-gun=bofors]','the Bofors button');await delay(300);assert.equal((await st()).gunship.gun,'bofors','the Bofors by touch');
+ await tap('#sentry-pilot [data-gun=heavy]','the MK-9 button');await delay(300);assert.equal((await st()).gunship.gun,'heavy','the MK-9 by touch');
+ // 6. THE MK-9 RELEASE BY TOUCH: one tap paints, the next releases
+ await until(`${T}.state().gunship.nuke?.ready`,40000);
+ await tap('#td-pad-fire','the trigger');await delay(300);assert.equal((await st()).gunship.heavy.phase,'painted','the first tap paints');
+ await tap('#td-pad-fire','the trigger');await delay(400);
+ {const g=(await st()).gunship;assert.equal(g.heavy.phase,'released',`the second tap releases the MK-9 (${JSON.stringify(g.heavy)})`);assert(g.nuke.flying,'the round is in the air');}
+ current='phone-nuke-release';await finish();
+ await until(`${T}.state().gunship.heavy.phase==="reloading"`,15000);
+ await tap('#story-views [data-view=tank]','TANK on the strip');await delay(1000);assert(!(await st()).gunship.seat,'TANK leaves the seat');
+ // 7. SOL-82'S SEAT: the strip's button, the briefing's SKIP, the scope steered by a drag, HOLD burns, TANK leaves
+ assert.equal((await st()).laser.online,true,'SOL-82 is online at the back door');
+ await evaluate(`${T}.laserPassNow()`);await until('document.querySelector("#story-views [data-view=laser]")?.textContent==="SOL-82 OVERHEAD"',8000);
+ await thumb('#story-views [data-view=laser]','SOL-82 on the strip');await tap('#story-views [data-view=laser]','SOL-82 on the strip');
+ await until('!!document.querySelector("#sol82-briefing:not([hidden]) [data-skip]")',5000);await delay(600);
+ await thumb('#sol82-briefing [data-skip]','SOL-82\'s SKIP');await tap('#sol82-briefing [data-skip]','SOL-82\'s SKIP');
+ await until(`${T}.state().laser.seated`,15000);await delay(1000);
+ await thumb('#laser-seat-keys [data-hold]','HOLD');await reachable('#laser-seat-keys [data-hold]','HOLD');
+ await thumb('#laser-seat-keys [data-tank]','the seat\'s TANK');await reachable('#laser-seat-keys [data-tank]','the seat\'s TANK');
+ await layout(['#laser-seat','#laser-seat-keys','#story-views','#mob-mode','#shell-bar'],'SOL-82\'s seat');
+ {const r=scopeRect(W,H,{left:16,bottom:116,top:150}),cx=r.x+r.w/2,cy=r.y+r.h/2;   // the seat's own lens geometry (src/fx/laser-seat.js rect)
+  assert(cy>0&&r.h>60,`the scope has room in portrait (${JSON.stringify(r)})`);
+  await evaluate(`${T}.laserSteer("breach")`);await delay(500);const c0=(await st()).laser.contact;assert(c0,'the beam is laid on the breach');
+  await drag(cx,cy,cx+r.w*0.22,cy+r.h*0.18,{lift:false});await delay(600);
+  const c1=(await st()).laser.contact;assert(c1&&Math.hypot(...c1.map((v,i)=>v-c0[i]))>1e-4,`a drag in the scope steers the beam (${JSON.stringify(c0)} -> ${JSON.stringify(c1)})`);
+  await touch('touchEnd',[]);await delay(200);}
+ {const c=await centre('#laser-seat-keys [data-hold]');await touch('touchStart',[{x:c.x,y:c.y}]);await delay(900);
+  const s=await evaluate(`${T}.state().laser`);assert.equal(s.burning,true,`HOLD burns while the thumb is down (${JSON.stringify(s)})`);
+  current='phone-sol82';await finish();await touch('touchEnd',[]);await delay(400);
+  assert.equal((await evaluate(`${T}.state().laser`)).burning,false,'and stops when it lifts');}
+ await tap('#laser-seat-keys [data-tank]','the seat\'s TANK');await delay(800);assert.equal((await st()).laser.seated,false,'TANK leaves SOL-82');
+ // 8. THE DEBRIEF AT 390 PX: both breaches closed, the field cleared, the card up; pages advance by tap, CONTINUE reachable
+ await until(`${T}.state().sector.breaches.length===2`,90000).catch(async()=>assert.fail(`the sector has both its breaches (${JSON.stringify((await st()).sector)})`));
+ // SOL-82's HOLD above may already have sealed the gate-side one: seal whatever is still live rather than assuming both are
+ for(const b of (await st()).sector.breaches){if(!b.live)continue;assert.equal(await evaluate(`${T}.sectorClose(${JSON.stringify(b.id)},"gunship")`),'gunship',`breach ${b.id} sealed`);}
+ assert((await st()).sector.breaches.every((b)=>!b.live),'both breaches are closed');
+ await evaluate(`${T}.sectorClearField()`);await until(`${T}.state().sector.secure`,30000);await until(`${T}.state().sector.debriefOpen`,20000);await delay(1500);
+ assert(await evaluate('!!document.querySelector(".sdb-root:not([hidden])")'),'the debrief card is up');
+ {const pages=+(await evaluate('document.querySelector(".sdb-root").dataset.pages'));assert(pages>=2,`a multi-page report (${pages})`);
+  await thumb('.sdb-acts .sdb-btn','NEXT');await reachable('.sdb-acts .sdb-btn','NEXT');await layout(['.sdb-frame'],'the debrief');
+  // a tap on the page completes it, the next tap advances: page 0 to page 1 by two thumbs on the body
+  const body=await centre('.sdb-body');await tapAt(body.x,body.y);await delay(200);await tapAt(body.x,body.y);await delay(300);
+  assert.equal(await evaluate('document.querySelector(".sdb-root").dataset.page'),'1','two taps on the page turn it');
+  current='phone-debrief';await finish();
+  // NEXT to the last page, where CONTINUE stands
+  for(let i=1;i<pages-1;i++){await tap('.sdb-acts [data-act=next]','NEXT');await delay(250);}
+  assert.equal(await evaluate('document.querySelector(".sdb-root").dataset.page'),String(pages-1),'on the last page');
+  await thumb('.sdb-acts [data-act=continue]','CONTINUE');await reachable('.sdb-acts [data-act=continue]','CONTINUE');
+  current='phone-debrief-last';await finish();
+  await tap('.sdb-acts [data-act=continue]','CONTINUE');
+  await until(`${T}.state().sector.n===3 && !${T}.state().sector.debriefOpen`,15000);}
+ current='phone-sector-3';await finish();
+ // 9. LANDSCAPE, 844x390. Portrait is the layout this pass rules; landscape is held to the contract that matters —
+ // every control a thumb can reach at 44 px and no control under another. The read-only cards (the coach, the wave and
+ // tower announcements, the sector brief, Isao) are 87 px short of the height their lane was ruled for and still stack
+ // here; they are captions over a board, never a control, so they are shown rather than pulled apart. Portrait holds
+ // all of CHROME apart.
+ W=844;H=390;await phone('phone-landscape','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&fps=0#td',W,H);
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await evaluate(`${T}.sectorQuiet(true)`);
+ await until(`!${T}.state().deploying`,60000).catch(()=>{});await delay(1500);
+ for(const s of [...PAD,'#story-views [data-view=tank]','#story-views [data-mount=gunship]','#mob-mode']){await thumb(s);await reachable(s);}
+ await layout([...PAD,'#story-views','#mob-mode','#shell-bar','#tab-td .minimap','#td-launch'],'landscape');
+ await shown('#td-stats','the landscape HUD');   /* the sector brief and Isao's card come and go on their own clocks; the HUD is always up */
+ await finish();
  } else if(args.includes('--nav')) {
  // THE NAVIGATION SHELL: PLAYTEST | DEV on every screen, the drawer by toggle and backslash, an Esc that never reaches
  // the game, tuning and docs over a running game without navigating, a felt-it note that survives a reload
@@ -1898,5 +2077,7 @@ await go('shell-explosion','index.html?sw=0&cine=0&acceptance=1&blast=1#td');
  }
  }
  console.log(`Browser acceptance passed (${production?'release /stalheart/':'source'}). Artifacts: ${output}`);
-}catch(err){writeFileSync(join(output,current+'-failure.json'),JSON.stringify({error:String(err),state:await evaluate('window.__stalheartTest?.state()').catch(()=>null),errors,consoleLines,requests},null,2));console.error(err);process.exitCode=1;}
+}catch(err){writeFileSync(join(output,current+'-failure.json'),JSON.stringify({error:String(err),state:await evaluate('window.__stalheartTest?.state()').catch(()=>null),errors,consoleLines,requests},null,2));
+ try{const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(output,current+'-failure.png'),Buffer.from(shot.data,'base64'));}catch{}   /* the screen as it failed, next to the record */
+ console.error(err);process.exitCode=1;}
 finally{cleanup();}
