@@ -86,7 +86,7 @@ export const STORY_DAY = Object.freeze({ seconds: 300, dayShare: 0.6, tilt: 60, 
 // coneDeg: the half-angle of the LOCK BOX drawn on the optic. Anything inside it is the target, it stays the target while it stays
 // inside (no flicker between bodies), a timer runs, and at full it is locked. No minimum or maximum range: on a 753 m planet the
 // horizon from a 4 m mount is about 80 m, so a 400 m reach is no limit at all, and the range test can never reset the timer.
-export const STORY_QUIVER = Object.freeze({ key: 'quiver', delay: 0.6, hardcore: 'barbed', secondDelay: 5, hold: [5, 9], nearCells: 12, zoom: 3, studyDelay: 1.5, coneDeg: 14, missile: Object.freeze({ mesh: 'talon', profile: 'heavy', duration: 6, length: 1.0, dmgMul: 25, minRange: 0, maxRange: 400, lockTime: 0.6, lockGate: 1e4, lockBreak: 1e4, aimTolerance: 180 }) });   // the box is the gate; the code's mrad gates are opened out of the way   // a heavy payload (one round, one solid core), a long reach (the hard cores hold 50 to 90 m out), and a quick first-encounter lock: 0.4 s inside a 5 degree cone
+export const STORY_QUIVER = Object.freeze({ key: 'quiver', delay: 0.3, hardcore: 'barbed', secondDelay: 3, hold: [5, 9], nearCells: 12, zoom: 3, studyDelay: 1.5, coneDeg: 14, missile: Object.freeze({ mesh: 'talon', profile: 'heavy', duration: 6, length: 1.0, dmgMul: 25, minRange: 0, maxRange: 400, lockTime: 0.6, lockGate: 1e4, lockBreak: 1e4, aimTolerance: 180 }) });   // the box is the gate; the code's mrad gates are opened out of the way   // a heavy payload (one round, one solid core), a long reach (the hard cores hold 50 to 90 m out), and a quick first-encounter lock: 0.4 s inside a 5 degree cone
 
 // THE BEAT CLOCK (owner, 2026-09-18: "everything must feel faster"). Every wait in src/domain/story-beats.js that the player only
 // watches, gathered here as content. `faceDelays` are Isao's two landing lines; `rotorDelay` the pause before he deploys the AFR-01;
@@ -95,8 +95,8 @@ export const STORY_QUIVER = Object.freeze({ key: 'quiver', delay: 0.6, hardcore:
 // and the seat; `overrideCells` how close to the gate the swarm must come for that line. The override used to wait for a body within
 // 2.2 cells of the door — the whole march up the lane. It fires when the pile is visibly ON the lane instead.
 export const STORY_BEATS = Object.freeze({
-  rotorDelay: 2.5, faceDelays: Object.freeze([0.6, 2.8]), controlDelay: 1.5,
-  tremorDelay: 0.8, breachDelay: 2, spawnDelay: 0.4, overrideDelay: 1.5, overrideCells: 10,
+  rotorDelay: 2.5, faceDelays: Object.freeze([0.6, 2.0]), controlDelay: 1.5,
+  tremorDelay: 0.8, breachDelay: 2, spawnDelay: 0.4, overrideDelay: 1.5, overrideCells: 13,
 });
 
 // The piloted sentry in the story: a denser stream of rounds, each one

@@ -15,11 +15,11 @@ export const BASE_PROGRAMME = Object.freeze([
   { id: 'foundry', label: 'seed foundry', over: 'foundry', plot: [8, 6], when: { phase: 'rotor-ready' }, seconds: 4, metres: 6, brief: 'build_foundry', perk: null },
   // the gate next, and the tremor waits for it: without a gate no fodder comes, and without fodder the tutorial never reaches the
   // handover. Printed straight after the Rotor, which stands beside it, so the wait before the tremor is one print and no trip
-  { id: 'gate', label: 'gate and walls', gate: true, walls: true, when: { phase: 'rotor-ready' }, seconds: 8, metres: 6, brief: 'build_gate', perk: 'gate' },
+  { id: 'gate', label: 'gate and walls', gate: true, walls: true, when: { phase: 'rotor-ready' }, seconds: 6, metres: 6, brief: 'build_gate', perk: 'gate' },
   { id: 'landing', label: 'landing pad', islands: ['landing'], when: { phase: 'rotor-ready' }, seconds: 4, metres: 2, brief: 'build_landing', perk: null },
   // while the swarm rises and walks up to the gate (Isao is idle there for about 25 s, QA 2026-09-16), so it stands before the Quiver
   // goes on the book and long before the towers turn automatic at `settled` (about 23 s after `cleared` at stage 4)
-  { id: 'stalheart', label: 'Stålheart', islands: ['stalheart'], structures: ['stalheart'], when: { phase: 'breach' }, seconds: 18, metres: 24, brief: 'build_stalheart', perk: 'stalheart' },
+  { id: 'stalheart', label: 'Stålheart', islands: ['stalheart'], structures: ['stalheart'], when: { phase: 'breach' }, seconds: 12, metres: 24, brief: 'build_stalheart', perk: 'stalheart' },
   { id: 'solar', label: 'solar array', islands: ['solar'], structures: ['solar'], when: { phase: 'expedition' }, seconds: 14, metres: 8, brief: 'build_solar', perk: 'station' },
   { id: 'bays', label: 'tank bays', islands: ['bay'], structures: ['bays'], when: { sector: 1, idle: true }, seconds: 16, metres: 8, brief: 'build_bays', perk: 'hulls' },
   { id: 'hugin', label: 'HUGIN arm', islands: ['hugin'], structures: ['hugin'], when: { sector: 1, idle: true }, seconds: 16, metres: 16, brief: 'build_hugin', perk: 'gunship' },
