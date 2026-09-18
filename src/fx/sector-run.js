@@ -237,6 +237,8 @@ export function createSectorRun(h) {
     // ISAO MENDS WHAT THE SWARM BROKE (src/domain/repair-orders.js): what the repair rule reads, and the mend his print finishes.
     // The passive trickle in tickGate still runs; this is the trip that puts a chewed or broken door back in one go.
     gate: (id = 'gate') => { const g = doors.get(id)?.integrity; return g ? { id, hp: g.hp, max: g.max, broken: g.broken } : null; },
+    /* how many back-side breaches are still open: the back gate step waits for the surprise to be closed or spent */
+    backOpenBreaches: () => (sector?.breaches ?? []).filter((b) => b.side === 'back' && b.state === 'open').length,
     gates: () => integrities().map((g) => ({ id: g.id, hp: g.hp, max: g.max, broken: g.broken })),
     // ISAO'S PRINT SHOWS ON THE DOOR (2026-09-18): GATE % climbs with the print's progress while he stands over it and beams it,
     // instead of jumping the moment he leaves. It only ever goes up here, so the swarm still owns the other direction, and the

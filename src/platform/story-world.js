@@ -117,6 +117,8 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     inside: (ci) => planet.clearing.cells.has(ci), gateCell: plan.gate ? plan.gate.cell : -1,   // the gate's cell: the sector loop wears it down under pressure (src/fx/sector-run.js)
     // the doors the sector loop wears down, front first: each with the cells it blocks and whether it stands yet
     gateAt: (ci) => gateCellMap.get(ci) ?? null, gateList: () => base.gateList(),
+    gateCellOf: (id) => (plan.gates ?? []).find((g) => (g.id ?? 'gate') === id)?.cell ?? -1,   // where Isao stands to mend a named door
+    backSockets: plan.backSockets ?? [],   // the mounts beside the back lane: they join socketToward when the back gate is printed
     pilot: STORY_PILOT, breachShot: STORY_BREACH, day: STORY_DAY,
     handover: { ...STORY_HANDOVER, stage },   // the phase and stage the towers turn automatic (src/domain/automation.js)
     expeditions: makeExpeditions(STORY_EXPEDITIONS.sites),
