@@ -137,7 +137,8 @@ for (let n = 0; n < STAGES.length; n++) {
   const back = two.gates[1];
   assert.equal(back.id, 'back'); assert.equal(back.back, true);
   assert.ok(back.pending, 'the back gate is never standing: Isao prints it after the surprise');
-  assert.deepEqual(back.cells, backMouth.cells, 'it sits on the back mouth, every cell of it');
+  assert.deepEqual(back.cells, [...backMouth.cells, ...(backMouth.flank ?? [])], 'it closes the whole collapse: the mouth and the flank that came down with it');
+  for (const s of two.backSockets) assert.ok(!back.cells.includes(s.cell), 'a mount is never on ground the door closes');
   assert.ok(Math.hypot(back.heading[0], back.heading[1]) > 0.99, 'unit heading');
   assert.ok(back.z > 0 && Math.hypot(back.x, back.z) > 0, 'behind the bays (+Z), the other side from the front gate');
   assert.ok(two.gate.z < 0, 'the front gate is on -Z');

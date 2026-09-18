@@ -32,7 +32,7 @@ export const BASE_PROGRAMME = Object.freeze([
   // so the print is the door's own footprint (`plot`, half extents across and along its heading) from the first frame to the last.
   // `when.back: 'held'` is that condition, read off the sector loop through the host's hooks. Its perk opens the back sockets:
   // plan.backSockets become mountable, so sentries can be ordered behind the bays from then on.
-  { id: 'backgate', label: 'back gate', gate: 'back', plot: [7, 4], when: { sector: 2, idle: true, back: 'held' }, seconds: 14, metres: 6, brief: 'build_back_gate', perk: 'backgate' },
+  { id: 'backgate', label: 'back gate', gate: 'back', plot: [11, 4], when: { sector: 2, idle: true, back: 'held' }, seconds: 14, metres: 6, brief: 'build_back_gate', perk: 'backgate' },
 ].map((s) => Object.freeze({ islands: [], structures: [], ...s })));
 
 // what the perks are worth where the game reads a number: the HUGIN arm fills the gunship call-in meter faster; the assembly line

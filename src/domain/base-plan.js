@@ -173,16 +173,27 @@ export function planBase(planet, layout, stage, { reach = stage, backMouth = nul
     const r = Math.hypot(f[0], f[2]) || 1;
     // the front gate's heading points inward (toward the pole); the back door faces the same way, so its own outward side is the rock
     const heading = [-f[0] / r, -f[2] / r];
-    const back = { id: 'back', back: true, x: f[0], z: f[2], y: 0, heading, cell: backMouth.cells[0], cells: backMouth.cells.slice(), openRadius: layout.kit.backGate?.openRadius ?? 22, pending: true };
+    // its cells are the WHOLE collapse, the mouth and the flank rock that came down with it: a door across two cells with four open
+    // shoulders beside it is not a door. Isao's print lays the gate on the mouth and closes the shoulders behind it in one go.
+    const back = { id: 'back', back: true, x: f[0], z: f[2], y: 0, heading, cell: backMouth.cells[0], cells: [...backMouth.cells, ...(backMouth.flank ?? [])], openRadius: layout.kit.backGate?.openRadius ?? 22, pending: true };
     gates.push(back);
     // SENTRIES BEHIND THE BAYS: the same socket rule the front mounts use — a rock cell beside the lane, aimed at the lane cell it
     // overlooks — applied to the rock flanking the back mouth's open ground
-    const want = layout.kit.backGate?.sockets ?? 2, taken = new Set(sockets.map((s) => s.cell));
-    for (const lane of backMouth.beyond ?? []) {
-      if (backSockets.length >= want) break;
-      const rock = planet.graph.adj[lane].find((nb) => planet.dungeon.tags[nb] === 0 && !taken.has(nb) && !planet.clearing.cells.has(nb) && !backMouth.cells.includes(nb));
-      if (rock === undefined) continue;
-      taken.add(rock); backSockets.push({ cell: rock, toward: lane, pos: socketPos(rock, lane), back: true });
+    const want = layout.kit.backGate?.sockets ?? 2, taken = new Set(sockets.map((s) => s.cell)), off = new Set([...backMouth.cells, ...(backMouth.flank ?? [])]);
+    // walk the back lane outward over open ground and take a rock neighbour of each cell in turn, nearest the mouth first. The
+    // mouth's own flank is skipped: that rock comes down with the collapse, so a mount there would be standing on nothing.
+    const seen = new Set(backMouth.cells); let ring = (backMouth.beyond ?? []).slice();
+    for (const ci of ring) seen.add(ci);
+    for (let hop = 0; hop < (layout.kit.backGate?.laneHops ?? 4) && ring.length && backSockets.length < want; hop++) {
+      for (const lane of ring) {
+        if (backSockets.length >= want) break;
+        const rock = planet.graph.adj[lane].find((nb) => planet.dungeon.tags[nb] === 0 && !taken.has(nb) && !off.has(nb) && !planet.clearing.cells.has(nb));
+        if (rock === undefined) continue;
+        taken.add(rock); backSockets.push({ cell: rock, toward: lane, pos: socketPos(rock, lane), back: true });
+      }
+      const next = [];
+      for (const lane of ring) for (const nb of planet.graph.adj[lane]) if (!seen.has(nb) && planet.dungeon.tags[nb] !== 0 && !planet.clearing.cells.has(nb)) { seen.add(nb); next.push(nb); }
+      ring = next;
     }
     // they are NOT in `sockets`: nothing can be mounted behind the bays until Isao has printed the door (the build step adds them)
   }
