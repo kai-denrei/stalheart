@@ -3569,7 +3569,7 @@ body.mobile-shell:not(.mob-build) #td-stats.hud-panel .hud-obj { display: none; 
 body.mobile-shell #td-launch { top: 52px; width: auto; min-height: 0; padding: 4px 8px; gap: 8px; }
 body.mobile-shell #td-launch-readout .target { display: none; }
 body.mobile-shell #td-launch-readout .status { font-size: 9px; }
-body.mobile-shell.mob-build #td-pad-fire, body.mobile-shell.mob-build #td-pad-laser, body.mobile-shell.mob-build #td-launch, body.mobile-shell.mob-build #tab-td .minimap { display: none !important; }
+body.mobile-shell.mob-build #td-pad-fire, body.mobile-shell.mob-build #td-pad-laser, body.mobile-shell.mob-build #td-pad-shield, body.mobile-shell.mob-build #td-launch, body.mobile-shell.mob-build #tab-td .minimap { display: none !important; }
 /* captions: Isao beside the radar on the bottom edge, the lane just above him */
 body.mobile-shell #td-brief {
   left: 124px; bottom: max(8px, env(safe-area-inset-bottom));
@@ -3698,17 +3698,72 @@ body.mobile-shell #td-sitrep, body.mobile-shell #td-wave, body.mobile-shell #td-
 }
 body.mobile-shell #td-toast .wave-num, body.mobile-shell #td-wave .wave-num, body.mobile-shell #td-tower .wave-num { font-size: 12px; line-height: 1.25; }
 body.mobile-shell #td-toast .wave-role, body.mobile-shell #td-wave .wave-name, body.mobile-shell #td-tower .wave-name { font-size: 10px; }
+/* PORTRAIT PLAYS (2026-09-18: the friends open the live link holding the phone upright, and a wall saying "rotate" is a
+   closed door). The rotate prompt is a passive hint for a few seconds, never over the controls, never in the way of a thumb;
+   the layout below gives the upright phone its own bands instead of the landscape geometry squeezed into 390 px. */
 @media (orientation: portrait) {
   body.mobile-shell #td-rotate {
-    display: flex; position: fixed; inset: 0; z-index: 70;
-    flex-direction: column; align-items: center; justify-content: center; gap: 12px;
-    background: rgba(4, 8, 14, 0.94); color: #9fdcff; text-align: center;
-    font: 600 15px ui-monospace, Menlo, monospace; letter-spacing: 0.08em;
+    display: flex; position: fixed; left: 50%; top: 48%; transform: translate(-50%, -50%); z-index: 44; pointer-events: none;
+    flex-direction: row; align-items: center; gap: 10px; padding: 8px 14px;
+    background: rgba(8, 12, 16, 0.78); border: 1px solid rgba(223, 232, 238, 0.35); border-radius: 10px;
+    color: #dfe8ee; text-align: left; font: 600 11px ui-monospace, Menlo, monospace; letter-spacing: 0.08em;
+    animation: td-rotate-fade 6s ease-in forwards;
   }
-  body.mobile-shell #td-rotate div { font-size: 64px; color: #00d0ff; animation: td-rotate-hint 2.4s ease-in-out infinite; }
-  body.mobile-shell #td-rotate p { margin: 0; line-height: 1.6; max-width: 82vw; }   /* clipped at 390px without this */
+  body.mobile-shell #td-rotate div { font-size: 26px; line-height: 1; color: #ffffff; animation: td-rotate-hint 2.4s ease-in-out 3; }
+  body.mobile-shell #td-rotate p { margin: 0; line-height: 1.5; max-width: 60vw; }
 }
 @keyframes td-rotate-hint { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-90deg); } }
+@keyframes td-rotate-fade { 0%, 75% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+
+/* --- THE PHONE'S CHROME, BOTH WAYS UP (2026-09-18, scripts/browser-test.mjs --phone) --------------------------------
+   Measured on an emulated 390x844 touch phone. The navigation shell's bar and the mode switch both claimed the top-right
+   corner; the views strip at 64 px sat on the pad's laser button; the seat's CSS hid the pad's fire button, which is the
+   seat's trigger on touch; the gun buttons were 30 px; the sentry footer ran off both edges; the monitor and SOL-82's HOLD
+   sat on the strip. One band plan, every control at least 44 px. */
+#sector-card { top: 18%; left: 50%; transform: translateX(-50%); }   /* the sector brief's card (src/fx/sector-run.js); the phone moves it under its top band below */
+body.mobile-shell #shell-bar { right: auto; left: max(8px, env(safe-area-inset-left)); max-width: calc(100vw - 134px); }   /* the mode switch keeps the right corner */
+body.mobile-shell #shell-bar .shell-toggle { flex: 0 0 auto; }
+body.mobile-shell #shell-bar .shell-place { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.mobile-shell #shell-bar #build-tag { display: none; }   /* the build tag is a developer's line; a phone has no room for it */
+body.mobile-shell #tab-td #td-next { max-width: 40vw; }
+body.mobile-shell #story-views { flex-wrap: wrap; justify-content: center; max-width: calc(100vw - 24px); box-sizing: border-box; }
+body.mobile-shell #story-views button { min-height: 44px; min-width: 44px; padding: 7px 10px; touch-action: manipulation; }
+body.mobile-shell #story-views [data-view="map"] { display: none; }   /* BUILD is the orbit view on the phone; MAP would be the same button twice */
+/* the sector line (src/fx/sector-run.js hudLine) is the one .hud-obj a phone must keep while driving: the sector, its breaches, the gate */
+body.mobile-shell #td-stats.hud-panel .hud-obj.hud-sector { display: block; }
+body.mobile-shell #sentry-pilot .pilot-guns { flex-wrap: wrap; }
+body.mobile-shell #sentry-pilot button { min-height: 44px; min-width: 44px; touch-action: manipulation; }
+body.mobile-shell #sentry-pilot footer { position: static; transform: none; display: block; white-space: normal; font-size: 11px; line-height: 1.4; padding: 6px 9px; max-width: 60vw; }   /* in the panel's own column, not a bar over the pad */
+/* the seat's trigger on touch is the pad's fire button (src/sentry-pilot.js): app.css hides every .tfire under the seat, this shows the one it needs */
+body.mobile-shell #tab-td.sentry-pilot-mode #td-pad-fire { display: block !important; }
+body.mobile-shell #tab-td.sentry-pilot-mode #mob-mode, body.mobile-shell #tab-td.laser-seat #mob-mode { display: none; }   /* no BUILD from a seat */
+body.mobile-shell #laser-seat-keys button { min-height: 44px; min-width: 44px; touch-action: manipulation; }
+body.mobile-shell #td-brief-next { min-width: 44px; min-height: 44px; touch-action: manipulation; }   /* the comms card's NEXT was 34x20 */
+body.mobile-shell #gunship-briefing button, body.mobile-shell #sol82-briefing button { min-height: 44px; min-width: 44px; padding: 8px 14px; touch-action: manipulation; }   /* the briefings' NEXT and SKIP were 65x30 */
+@media (orientation: portrait) {
+  /* the bottom band, up from the edge: the pad row (fire, laser, shield in one row at the right), the strip, Isao */
+  body.mobile-shell #tab-td #td-pad-shield { right: 170px; bottom: 22px; left: auto; top: auto; width: 56px; height: 56px; min-width: 56px; min-height: 56px; font-size: 20px; }
+  /* a centred fixed strip shrink-wraps to the half-screen right of its anchor and wraps one button a row: span the width instead */
+  body.mobile-shell #story-views { bottom: 100px; left: 12px; right: 12px; transform: none; width: auto; max-width: none; gap: 5px; padding: 5px 6px; }
+  body.mobile-shell #story-views button { font-size: 11px; padding: 7px 8px; }   /* TANK · GUNSHIP · 12 S LEFT · SOL-82 OVERHEAD in one row at 390 px */
+  body.mobile-shell #sector-card { left: 16px; right: 16px; transform: none; max-width: none; }
+  body.mobile-shell #tab-td #td-brief { left: 12px; right: 12px; width: auto; bottom: 156px; }   /* above the strip, under the tank (third person puts it near y 530) */
+  body.mobile-shell #tab-td #td-sitrep, body.mobile-shell #tab-td #td-toast { left: 12px; right: auto; bottom: 256px; width: min(300px, calc(100vw - 24px)); max-width: none; }
+  /* the offer under the radar and the coach under the HUD, out of every band */
+  body.mobile-shell #skip-tutorial { right: 12px; bottom: auto; top: 206px; }
+  body.mobile-shell #tab-td #td-tut { top: 206px; left: 12px; right: auto; max-width: 46vw; }
+  /* the top band: HUD under the shell's toggle on the left, the radar under the mode switch on the right */
+  body.mobile-shell #tab-td #td-stats.hud-panel { top: 68px; max-width: calc(100vw - min(240px, 32vmin) - 40px); }
+  body.mobile-shell #tab-td #td-wave, body.mobile-shell #tab-td #td-tower { top: 160px; max-width: 58vw; }   /* under a HUD that now carries the sector's two lines */
+  body.mobile-shell #tab-td #td-wave:not(.hidden) ~ #td-tower { top: 206px; }
+  body.mobile-shell #sector-card { top: 35%; }   /* under the wave and tower cards and the coach (the desktop card sits at 18%) */
+  /* the gunship seat: the ground-truth monitor above the strip, the readout under the guns */
+  body.mobile-shell #tab-td.gunship-seat #story-monitor { width: min(46vw, 640px); bottom: 160px; right: 12px; }
+  body.mobile-shell #gunship-hud .ro { top: auto; bottom: 160px; left: 12px; right: auto; width: 44vw; min-width: 150px; }   /* bottom-left beside the monitor: the reticle keeps the centre */
+  /* SOL-82: the lens is the top of the frame, the panel sits under it, HOLD and TANK above the strip */
+  body.mobile-shell #laser-seat { top: auto; bottom: 262px; left: 12px; max-width: 52vw; }
+  body.mobile-shell #laser-seat-keys { bottom: 220px; right: 12px; }   /* beside the panel, above a strip that runs two rows while a pass is overhead */
+}
 
 /* THE METAL LAB (metal-tab.js): the beam lab's chrome, same rules */
 #metal-app { position: absolute; inset: 0; }

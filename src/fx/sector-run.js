@@ -75,7 +75,7 @@ export function createSectorRun(h) {
   function card(lines) {
     if (!h.host || typeof document === 'undefined') return;
     let el = h.host.querySelector?.('#sector-card');
-    if (!el) { el = document.createElement('div'); el.id = 'sector-card'; el.style.cssText = 'position:fixed;left:50%;top:18%;transform:translateX(-50%);z-index:40;pointer-events:none;text-align:center;font:12px/1.6 ui-monospace,Menlo,monospace;color:#e8f2f4;background:rgba(4,12,16,.78);border:1px solid #5d7a84;padding:10px 18px;letter-spacing:.14em;max-width:calc(100vw - 32px)'; h.host.append(el); }
+    if (!el) { el = document.createElement('div'); el.id = 'sector-card'; el.style.cssText = 'position:fixed;z-index:40;pointer-events:none;text-align:center;font:12px/1.6 ui-monospace,Menlo,monospace;color:#e8f2f4;background:rgba(4,12,16,.78);border:1px solid #5d7a84;padding:10px 18px;letter-spacing:.14em;max-width:calc(100vw - 32px)'; h.host.append(el); }
     el.innerHTML = lines.map((l, i) => `<div style="${i === 0 ? 'font-size:20px;font-weight:700' : 'opacity:.8'}">${l}</div>`).join('');
     el.hidden = !lines.length;
   }
@@ -201,11 +201,11 @@ export function createSectorRun(h) {
   function hudLine() {
     if (phase === 'idle' || !def) return '';
     const g = gate ? ` · GATE ${gate.broken ? 'DOWN ' : ''}${Math.round(gateShare(gate) * 100)}%` : '';
-    if (!sector) return `<div class="hud-obj">SECTOR ${def.n} · ${def.name} · BRIEF${g}</div>`;
+    if (!sector) return `<div class="hud-obj hud-sector">SECTOR ${def.n} · ${def.name} · BRIEF${g}</div>`;
     const top = sector.breaches.reduce((m, b) => Math.max(m, b.wavesReleased), 0);
     const head = `SECTOR ${def.n} · ${def.name} · BREACHES ${sector.breaches.length} · ${phase === 'fighting' ? `WAVE ${top}/${def.waves}` : 'SECURE'}${g}`;
     const each = sector.breaches.map((b) => `${b.id} ${b.state === 'open' ? (sps.has(b.id) ? '▮'.repeat(b.wavesReleased) + '▯'.repeat(Math.max(0, b.wavesPlanned - b.wavesReleased)) : 'OPENING') : b.state === 'spent' ? 'HELD' : `SEALED ${BREACH_CLOSERS[b.closedBy] ?? ''}`}`).join(' · ');
-    return `<div class="hud-obj">${head}</div><div class="hud-obj">${each}</div>`;
+    return `<div class="hud-obj hud-sector">${head}</div><div class="hud-obj hud-sector">${each}</div>`;
   }
 
   return {
