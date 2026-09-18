@@ -12,6 +12,12 @@ export const EXPLOSION_USES = Object.freeze({
   // strike's own module at 0.8 is ~72 m and 10 s: half again the 105's 45 m fireball and its column, and clearly short of the
   // strike's 135 m, so the set piece from orbit still outranks anything the seat can drop.
   'gunship.nuke': Object.freeze({ module: 'orbital-strike', scale: 0.8 }),
+  // THE MK-9's MOTOR CATCHING, two seconds under the belly. It borrowed the 25 mm impact pop (1.65, ~7.5 m) and that is a shell
+  // burst, not an ignition: the round is only ~30 m below the seat when it lights, so the pop stood 180 px wide beside the
+  // reticle, and the GROUND TRUTH feed, 13 m over the round, was nothing but fireball (V1 known gap). 0.7 is ~3 m, under the
+  // 4 m body's own length: a flash round the tail in the seat, a burst that leaves the feed's ground visible, and from the
+  // tank 340 m below still a white-hot spark on the thermal and bloom, with the exhaust plume carrying the read from there.
+  'gunship.ignite': Object.freeze({ module: 'rotary-pop', scale: 0.7 }),
   'tank.shell': Object.freeze({ module: 'bofors-burst', scale: 0.405 }),     // ~4.5 m, the Bofors' ratio kept
   'quiver.talon': Object.freeze({ module: 'bofors-burst', scale: 0.54 }),    // ~6 m, the Bofors' ratio kept
   'strike.orbital': Object.freeze({ module: 'orbital-strike', scale: 1.5 }), // 135 m, 10 s

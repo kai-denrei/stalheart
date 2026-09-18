@@ -2,7 +2,11 @@ import assert from 'node:assert/strict';
 import { EXPLOSION_MODULES, EXPLOSION_USES, EXPLOSION_SCARE, EXPLOSION_PALETTE, EXPLOSION_CAPS } from '../src/content/explosions.js';
 
 assert.deepEqual(Object.keys(EXPLOSION_USES).sort(),
-  ['gunship.bofors', 'gunship.heavy', 'gunship.nuke', 'gunship.rotary', 'laser.contact', 'laser.ignite', 'laser.smoke', 'quiver.talon', 'strike.orbital', 'tank.shell']);
+  ['gunship.bofors', 'gunship.heavy', 'gunship.ignite', 'gunship.nuke', 'gunship.rotary', 'laser.contact', 'laser.ignite', 'laser.smoke', 'quiver.talon', 'strike.orbital', 'tank.shell']);
+// THE MK-9's IGNITION is a flash round a 4 m body, not the 25 mm impact pop: smaller than the round is long, and no scare (it is in the air)
+assert.ok(EXPLOSION_USES['gunship.ignite'].scale * 4.5 < 4, `the ignition burst is under the body's length (${EXPLOSION_USES['gunship.ignite'].scale * 4.5} m)`);
+assert.ok(EXPLOSION_USES['gunship.ignite'].scale < EXPLOSION_USES['gunship.rotary'].scale * 0.5, 'and well under the rotary impact it used to borrow');
+assert.equal(EXPLOSION_SCARE['gunship.ignite'], undefined, 'a motor lighting in the air scares nobody on the ground');
 // THE MK-9's YIELD (2026-09-16): a mini nuke, not a shell. Bigger than the 105 it replaced, short of the strike from orbit, and the
 // swarm scatters wider and longer from it than from anything else the seat can fire.
 {

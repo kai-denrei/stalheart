@@ -275,7 +275,8 @@ try{
   await delay(700);assert.equal((await evaluate('window.__stalheartTest.state().gunship.heavy')).phase,'released','a second in, it is still falling free');current='gunship-nuke-freefall';await finish();
   await until('window.__stalheartTest.state().gunship.heavy.phase==="ignited"',8000);
   {const ig=await evaluate('window.__stalheartTest.state().gunship');assert(ig.nuke.ignited&&ig.nuke.flying,`the motor lit with the round still in the air (${JSON.stringify(ig.nuke)})`);
-   assert.match(await evaluate('document.querySelector("#gunship-hud [data-f=state]").textContent'),/^IGNITED/,'the HUD says IGNITED');}
+   assert.match(await evaluate('document.querySelector("#gunship-hud [data-f=state]").textContent'),/^IGNITED/,'the HUD says IGNITED');
+   const x=await evaluate('window.__stalheartTest.state().explosions');assert.equal(x.spawned['gunship.ignite'],1,`the motor lights with its own burst, not the 25 mm impact pop (${JSON.stringify(x.spawned)})`);}
   current='gunship-nuke-ignite';await finish();
   await delay(500);current='gunship-nuke-dive';await finish();
   await until('window.__stalheartTest.state().gunship.heavy.phase==="reloading"',8000);await delay(700);
