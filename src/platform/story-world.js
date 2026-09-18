@@ -87,6 +87,10 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   for (const w of plan.walls) if (w.cell >= 0 && !w.pending) built.dungeon.tags[w.cell] = BLOCKED;   // a pending wall blocks once it is printed (the controller's storyApi.printed)
   // the game prints the real Rotor; the static model stays a lab thing
   const base = createStoryBase(scene, { plan, placer, metres: 1 / planet.radius, kit: KIT, skip: ['rotor'], sfx, warm });
+  // which gate (if any) owns a lattice cell: built from the plan once, so the pathfinder's per-step lookup is a map hit
+  const gateCellMap = new Map();
+  for (const g of plan.gates ?? []) for (const ci of g.cells ?? []) if (ci >= 0) gateCellMap.set(ci, g.id ?? 'gate');
+
   // story state for the controller: floor sockets towers may mount on, Isao's home cell, and the scripted beats
   // the lane end is the story's spawn: the optic faces it, and the fodder comes from it once a gate stands
   if (plan.cells.fodder >= 0) built.dungeon.spawn = plan.cells.fodder;
@@ -107,9 +111,12 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     // the hard cores' holding ring: lane cells hold[0]..hold[1] hops outside the forward cell; a held one only wanders within it
     ring: holdRing(built, planet, plan.cells.forward, STORY_QUIVER.hold, plan.sockets[1]?.pos ?? null), hardcore: STORY_QUIVER.hardcore, quiverZoom: STORY_QUIVER.zoom, quiverCone: Math.tan(STORY_QUIVER.coneDeg * Math.PI / 180),
     hud: createStoryHud(), source: null,   // the radar overlay, and the breach the fodder comes from once it opens
-    // the closed gate's cell is impassable to enemies; the tank opens it
-    sealed: (ci) => plan.gate !== null && ci === plan.gate.cell && base.gate().built && !base.gate().open,
+    // A CLOSED DOOR IS A WALL TO THE SWARM, and the tank opens it. Every gate on the plan answers for its own cells, so the back
+    // door blocks the back mouth exactly as the front gate blocks the lane; an unprinted gate seals nothing (2026-09-18).
+    sealed: (ci) => { const id = gateCellMap.get(ci); return id !== undefined && base.gateSealed(id); },
     inside: (ci) => planet.clearing.cells.has(ci), gateCell: plan.gate ? plan.gate.cell : -1,   // the gate's cell: the sector loop wears it down under pressure (src/fx/sector-run.js)
+    // the doors the sector loop wears down, front first: each with the cells it blocks and whether it stands yet
+    gateAt: (ci) => gateCellMap.get(ci) ?? null, gateList: () => base.gateList(),
     pilot: STORY_PILOT, breachShot: STORY_BREACH, day: STORY_DAY,
     handover: { ...STORY_HANDOVER, stage },   // the phase and stage the towers turn automatic (src/domain/automation.js)
     expeditions: makeExpeditions(STORY_EXPEDITIONS.sites),
