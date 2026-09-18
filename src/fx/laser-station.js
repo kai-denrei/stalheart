@@ -72,6 +72,8 @@ export function createLaserStation(root, scene, host) {
       const a = arsenal.anchor(), d2 = (w) => (w.pos[0] - a[0]) ** 2 + (w.pos[1] - a[1]) ** 2 + (w.pos[2] - a[2]) ** 2;
       return host.walls().sort((x, y) => d2(x) - d2(y))[0]?.pos ?? null;
     }
+    /* 'structure:<id>': a building of ours, for the harness that proves the beam can burn one and that it costs us its perk */
+    if (typeof p === 'string' && p.startsWith('structure:')) return host.structures().find((b) => b.id === p.slice(10))?.pos ?? null;
     if (Number.isInteger(p)) return host.centers()[p] ?? null;
     return Array.isArray(p) ? p : null;
   };

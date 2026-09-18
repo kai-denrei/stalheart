@@ -19,7 +19,25 @@ export const LASER_BEAM = Object.freeze({ energy: 10, radius: 6, slew: 10, accel
 // The owner's names (2026-09-15): FLOOR is open ground, ROCK the planet's own raised lattice (a BLOCKED cell), WALL the
 // man-made segments either side of the GATE. wall is a wall cell; rock is a rock cell, which the laser breaks as a tank
 // shell does.
-export const LASER_BURN = Object.freeze({ soft: 0, hard: 1.0, wall: 0.5, rock: 0.5, tower: 1.5, seal: 1.0, tank: 1.0, heart: 3.0 });
+export const LASER_BURN = Object.freeze({ soft: 0, hard: 1.0, wall: 0.5, rock: 0.5, tower: 1.5, seal: 1.0, tank: 1.0, heart: 3.0, structure: 2.0 });
+
+// IT BURNS EVERY BUILDING, NOT ONLY THE STÅLHEART (a V1 known gap, closed 2026-09-18). The Stålheart keeps its own `heart` kind at
+// three seconds because it is the colony and losing it ends the run; the rest of the base is the `structure` kind, and each entry
+// here says how long the beam must hold it, how far it spans beyond the footprint (the solar complex is a field, the radar a mast),
+// and the name the scope calls out under OURS UNDER THE BEAM.
+//
+// A BUILDING IS NOT FREE TO LOSE. Each carries the perk its build step switched on (src/content/base-programme.js), and burning it
+// takes that perk back for the rest of the run: the solar complex dries the shield array's reserve, the radar takes SOL-82 itself
+// offline, HUGIN drops the gunship call-in bonus, the bays lose the spare hulls, the assembly line stops rebuilding them. Two
+// seconds of deliberate dragging is long enough that nobody does this by accident and short enough that a careless pass can.
+export const LASER_STRUCTURES = Object.freeze({
+  foundry: Object.freeze({ label: 'FOUNDRY', seconds: 2.5, reach: 6 }),
+  solar: Object.freeze({ label: 'SOLAR', seconds: 2.0, reach: 10 }),
+  hugin: Object.freeze({ label: 'HUGIN', seconds: 2.0, reach: 12 }),
+  bays: Object.freeze({ label: 'BAYS', seconds: 2.0, reach: 8 }),
+  radar: Object.freeze({ label: 'RADAR', seconds: 1.5, reach: 6 }),
+  assembly: Object.freeze({ label: 'ASSEMBLY', seconds: 2.0, reach: 8 }),
+});
 
 // SOL-82 IN THE GAME (docs/superpowers/specs/2026-09-15-v1-session-design.md, section 3). online: whether the pass clock
 // runs from the handover on its own; off, the sectors switch it on (sector 2) through setLaserOnline, and ?laser=online
@@ -40,7 +58,8 @@ export const LASER_GAME = Object.freeze({
   glideEase: 0.22,
   /* the seat's ground camera lens in degrees, the lab's ground camera */
   groundFov: 52,
-  reach: Object.freeze({ soft: 0.5, hard: 1, wall: 2, rock: 5, tower: 4, seal: 5, tank: 2, heart: 8 }),
+  /* structure is the fallback span for a building with no entry of its own in LASER_STRUCTURES */
+  reach: Object.freeze({ soft: 0.5, hard: 1, wall: 2, rock: 5, tower: 4, seal: 5, tank: 2, heart: 8, structure: 8 }),
 });
 
 // altitude is in planet radii above the surface; fov in degrees; inset as a share of the viewport width;

@@ -10,25 +10,27 @@
 // FRAMES. The game draws a unit sphere at the origin, cellSide scene units to a 10 m cell; the domain works in metres on
 // a sphere of radius R about the origin. R = 10 / cellSide, so a scene point times R is the same point in metres.
 import * as THREE from '../../vendor/three.module.js';
-import { LASER_ORBIT, LASER_BEAM, LASER_BURN, LASER_GAME, LASER_CONTACT_RATE, LASER_SMOKE_RATE, LASER_SOUNDS } from '../content/orbital-laser.js';
+import { LASER_ORBIT, LASER_BEAM, LASER_BURN, LASER_GAME, LASER_CONTACT_RATE, LASER_SMOKE_RATE, LASER_SOUNDS, LASER_STRUCTURES } from '../content/orbital-laser.js';
 import { makeLaser, stepLaser, aimLaser, burnLaser, burnContacts, laserProgress, clampToRange, inFootprint, laserStrip } from '../domain/orbital-laser.js';
 import { createOrbitalLaser } from './orbital-laser.js';
 import { BLOCKED } from '../dungeon.js';
 
 const METRES_PER_CELL = 10;
-const NOTHING = Object.freeze({ soft: 0, hard: 0, wall: 0, rock: 0, tower: 0, seal: 0, tank: 0, heart: 0 });
+const NOTHING = Object.freeze({ soft: 0, hard: 0, wall: 0, rock: 0, tower: 0, seal: 0, tank: 0, heart: 0, structure: 0 });
 /* the kinds that are ours: a footprint over any of them is a warning on the scope */
-export const FRIENDLY_KINDS = Object.freeze(['wall', 'tower', 'tank', 'heart']);
+export const FRIENDLY_KINDS = Object.freeze(['wall', 'tower', 'tank', 'heart', 'structure']);
 
 // host: cellSide(), wallHeight() (a rock top in scene units), centers(), adj(), tags(), cellAt(p), heart(), heartCell(),
 // lane() (where they come from), tank(), enemies(), breaches() (live ones), towers(), walls() (standing kit segments
 // { index, cell, pos }), anchors() (cells nothing breaks), burnBody(e) -> killed?, seal(sp), burnTower(tw), burnWall(w),
-// breakCells(cells), burnHeart(), burnTank(p), explode(use, p), brief(id), loop(key), passEnded(), online (boolean).
+// breakCells(cells), burnHeart(), burnTank(p), structures() (standing buildings { id, cell, pos }), burnStructure(id),
+// explode(use, p), brief(id), loop(key), passEnded(), online (boolean).
 export function createLaserArsenal(scene, host) {
   const st = makeLaser(LASER_ORBIT, LASER_BEAM);
   let online = !!host.online, seated = false, laser = null, burningWas = false, contactT = 0, smokeT = 0, voice = null;
   let aimArc = 0, passes = 0, burnSeconds = 0, testTarget = null, testHeld = false, anchors = null, breakMs = 0;
-  const burned = { bodies: 0, breaches: 0, walls: 0, rocks: 0, towers: 0, heart: 0, tank: 0 };
+  const burned = { bodies: 0, breaches: 0, walls: 0, rocks: 0, towers: 0, heart: 0, tank: 0, structures: 0 };
+  let underNames = [];   /* the buildings under the beam right now, by the name the scope calls out */
   let under = { ...NOTHING };
   const n = new THREE.Vector3(), fw = new THREE.Vector3(), rt = new THREE.Vector3(), ground = new THREE.Vector3(), normal = new THREE.Vector3();
 
@@ -93,6 +95,14 @@ export function createLaserArsenal(scene, host) {
     for (const tw of host.towers()) { keep.add(tw.ci); out.push({ id: `tower-${tw.ci}`, kind: 'tower', pos: at(centers[tw.ci]), reach: reach.tower, tower: tw }); }
     for (const w of host.walls()) { if (w.cell >= 0) keep.add(w.cell); out.push({ id: `wall-${w.index}`, kind: 'wall', pos: at(w.pos), reach: reach.wall, wall: w }); }
     out.push({ id: 'heart', kind: 'heart', pos: at(host.heart()), reach: reach.heart });
+    /* EVERY BUILDING, NOT ONLY THE STALHEART: each standing landmark with its own seconds and its own span (LASER_STRUCTURES).
+       The Stalheart is the 'heart' above and is not listed again; a building's cell is kept, so the rock walk never eats it */
+    for (const b of host.structures()) {
+      const spec = LASER_STRUCTURES[b.id];
+      if (!spec || b.id === 'stalheart') { if (b.cell >= 0) keep.add(b.cell); continue; }
+      if (b.cell >= 0) keep.add(b.cell);
+      out.push({ id: `struct-${b.id}`, kind: 'structure', pos: at(b.pos), reach: spec.reach, need: spec.seconds, structure: b.id, label: spec.label });
+    }
     const tank = host.tank();
     if (tank) out.push({ id: 'tank', kind: 'tank', pos: at(tank), reach: reach.tank });
     /* rock: the lattice cells round the contact, walked out through the adjacency; never a cell a wall, a tower, the
@@ -119,6 +129,7 @@ export function createLaserArsenal(scene, host) {
     if (thing.tower) { host.burnTower(thing.tower); burned.towers++; host.explode('laser.ignite', p); return; }
     if (thing.wall) { host.burnWall(thing.wall); if (thing.wall.cell >= 0) cells.push(thing.wall.cell); burned.walls++; host.explode('laser.ignite', p); return; }
     if (thing.rock !== undefined) { cells.push(thing.rock); burned.rocks++; host.explode('laser.ignite', groundAt(p)); return; }
+    if (thing.structure) { host.burnStructure(thing.structure); burned.structures++; host.explode('laser.ignite', p); return; }
     if (thing.kind === 'heart') { burned.heart++; host.explode('laser.ignite', p); host.burnHeart(); return; }
     if (thing.kind === 'tank') { burned.tank++; host.burnTank(p); }
   }
@@ -130,6 +141,7 @@ export function createLaserArsenal(scene, host) {
     burningWas = false;
     contactT = smokeT = 0;
     under = { ...NOTHING };
+    underNames = [];
   }
 
   function edge(e) {
@@ -168,7 +180,8 @@ export function createLaserArsenal(scene, host) {
     while (smokeT >= 1 / LASER_SMOKE_RATE) { smokeT -= 1 / LASER_SMOKE_RATE; host.explode('laser.smoke', g); }
     const things = inFootprint(st.contact, LASER_BEAM.radius, candidates(cU));
     under = { ...NOTHING };
-    for (const t of things) under[t.kind]++;
+    underNames = [];
+    for (const t of things) { under[t.kind]++; if (t.label) underNames.push(t.label); }
     const cells = [];
     for (const entry of burnContacts(st, things, dt, LASER_BURN)) destroy(entry, cells);
     if (cells.length) { const t0 = performance.now(); host.breakCells(cells); breakMs = Math.max(breakMs, performance.now() - t0); }
@@ -237,7 +250,7 @@ export function createLaserArsenal(scene, host) {
       return {
         phase: st.phase, left: st.left, pass01: p.pass, energy: st.energy, energy01: p.energy, burning: st.burning,
         speed: st.speed || 0, contact: contactU(), anchor: anchor(), aimArc, contactArc: st.contact ? clampToRange(st.contact, 0).arc : 0,
-        under: { ...under }, burned: { ...burned }, friendly: FRIENDLY_KINDS.filter((k) => under[k] > 0),
+        under: { ...under }, burned: { ...burned }, friendly: FRIENDLY_KINDS.filter((k) => under[k] > 0), underNames: [...underNames],
         alive: host.enemies().filter((e) => e.alive).length, breaches: host.breaches().length,
       };
     },
@@ -246,7 +259,7 @@ export function createLaserArsenal(scene, host) {
     state: () => ({
       online, phase: st.phase, overhead: st.phase === 'overhead', left: +st.left.toFixed(2), energy: +st.energy.toFixed(2),
       burning: st.burning, contact: contactU()?.map((v) => +v.toFixed(5)) ?? null, seated, passes, seconds: +burnSeconds.toFixed(2),
-      under: { ...under }, burned: { ...burned }, trail: laser ? laser.trail.count : 0, smoke: laser ? laser.state().puffs : 0, breakMs: +breakMs.toFixed(1),
+      under: { ...under }, underNames: [...underNames], burned: { ...burned }, trail: laser ? laser.trail.count : 0, smoke: laser ? laser.state().puffs : 0, breakMs: +breakMs.toFixed(1),
       /* metres from the contact to the nearest live body: a burn that takes nothing can say how far it missed */
       nearestBodyM: st.contact ? +Math.min(Infinity, ...host.enemies().filter((e) => e.alive).map((e) => { const R = metres(); return Math.hypot(e.pos[0] * R - st.contact[0], e.pos[1] * R - st.contact[1], e.pos[2] * R - st.contact[2]); })).toFixed(1) : null,
     }),

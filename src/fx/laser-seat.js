@@ -142,7 +142,10 @@ export function createLaserSeat(root, host) {
     elEnergy.classList.toggle('low', low);
     const label = f.energy <= 0 ? 'DRAINED' : `ENERGY ${f.energy.toFixed(1)} S`;
     if (elLabel.textContent !== label) elLabel.textContent = label;
-    const warn = f.friendly.length ? `OURS UNDER THE BEAM · ${f.friendly.map((kind) => `${f.under[kind]} ${kind.toUpperCase()}`).join(' · ')}` : '';
+    /* OURS UNDER THE BEAM names the buildings (SOL-82 burns every one of them now): a count is right for walls and towers,
+       which are interchangeable, but a building is not — the player has to know it is the RADAR about to go, not "1 STRUCTURE" */
+    const ours = (counted) => f.friendly.flatMap((kind) => (kind === 'structure' ? f.underNames : [counted ? `${f.under[kind]} ${kind.toUpperCase()}` : kind.toUpperCase()]));
+    const warn = f.friendly.length ? `OURS UNDER THE BEAM · ${ours(true).join(' · ')}` : '';
     elWarn.hidden = !warn;
     if (elWarn.textContent !== warn) elWarn.textContent = warn;
   }
@@ -166,7 +169,7 @@ export function createLaserSeat(root, host) {
     const dir = anchorV.clone().normalize(), rangeM = LASER_VIEW.altitude * R, half = Math.tan((LASER_VIEW.fov * Math.PI) / 360);
     const north = new THREE.Vector3(0, 0, -1).addScaledVector(dir, dir.z).normalize();
     const pc = px(anchorV), pn = px(anchorV.clone().addScaledVector(north, 50 * k));
-    const hud = f.friendly.length ? { status: `OURS UNDER THE BEAM · ${f.friendly.map((kind) => kind.toUpperCase()).join(' · ')}`, statusColour: AMBER } : null;
+    const hud = f.friendly.length ? { status: `OURS UNDER THE BEAM · ${f.friendly.flatMap((kind) => (kind === 'structure' ? f.underNames : [kind.toUpperCase()])).join(' · ')}`, statusColour: AMBER } : null;
     return {
       rect: { x: r.x + ox, y: r.y + oy, w: r.w, h: r.h }, aim, contact, footprintPx, lagM, aiming, limitM: LASER_GAME.range, aimArcM: f.aimArc,
       contactArcM: f.contactArc, lensGroundM: half * rangeM, phase: f.phase, infinite: false, left: f.left, pass01: f.pass01,

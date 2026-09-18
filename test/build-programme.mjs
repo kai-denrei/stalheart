@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { BASE_PROGRAMME, BASE_PERKS } from '../src/content/base-programme.js';
-import { makeBuildProgramme, due, begin, finish, perks, hasPerk, rebuildDue, snapshot } from '../src/domain/build-programme.js';
+import { makeBuildProgramme, due, begin, finish, perks, hasPerk, rebuildDue, snapshot, lose, lost } from '../src/domain/build-programme.js';
 import { STORY_PHASES } from '../src/domain/automation.js';
 import { BRIEFS } from '../src/isaobriefs.js';
 import { STORY_RECIPE, STORY_CLEARING } from '../src/content/story-defaults.js';
@@ -77,7 +77,7 @@ const growStub = () => ({ growIsland: (id, k) => grown.push(['island', id, k]), 
   begin(st, steps[3]); finish(st, steps[3]);
   assert.equal(due(st, { phase: 'expedition', sector: 9 }), null, 'the programme runs out');
   assert.deepEqual([...perks(st)].sort(), ['gate', 'hulls', 'rebuild']); perks(st).clear(); assert.ok(hasPerk(st, 'gate'), 'perks() hands out a copy');
-  assert.deepEqual(snapshot(st), { active: null, done: ['a', 'b', 'c', 'd'], printed: ['a', 'b', 'c', 'd'], next: null, perks: ['gate', 'hulls', 'rebuild'] });
+  assert.deepEqual(snapshot(st), { active: null, done: ['a', 'b', 'c', 'd'], printed: ['a', 'b', 'c', 'd'], next: null, perks: ['gate', 'hulls', 'rebuild'], lost: [] });
 }
 
 // standing steps count as printed from the start, perks included, and are never printed again
@@ -101,3 +101,25 @@ const growStub = () => ({ growIsland: (id, k) => grown.push(['island', id, k]), 
   assert.equal(rebuildDue(st, undefined), false, 'no sector yet');
 }
 console.log(`Build programme: ${BASE_PROGRAMME.length} steps in order, one at a time, gated by phase, sector and idle; standing steps carry their perks; one rebuild per sector.`);
+
+// A BUILDING SOL-82 BURNED (src/content/orbital-laser.js LASER_STRUCTURES): the step stays done — Isao does not print it back — but
+// its perk goes out, and everything that consults the programme goes without what that building was paying for
+{
+  const st = makeBuildProgramme(BASE_PROGRAMME, { standing: () => true });
+  assert.ok(hasPerk(st, 'uplink') && hasPerk(st, 'gunship') && hasPerk(st, 'rebuild') && hasPerk(st, 'hulls'), 'a finished base has every perk');
+  assert.equal(lose(st, 'radar'), 'uplink', 'the radar takes the uplink with it');
+  assert.equal(hasPerk(st, 'uplink'), false, '...and SOL-82 goes offline with it');
+  assert.equal(lose(st, 'radar'), null, 'a building is only lost once');
+  assert.equal(lose(st, 'hugin'), 'gunship', 'HUGIN takes the gunship bonus');
+  assert.equal(lose(st, 'bays'), 'hulls');
+  assert.equal(lose(st, 'assembly'), 'rebuild');
+  assert.equal(rebuildDue(st, 1), false, 'no assembly line, no rebuilt hull');
+  assert.equal(lose(st, 'foundry'), null, 'the foundry beat carries no perk to lose');
+  assert.deepEqual([...lost(st)].sort(), ['assembly', 'bays', 'foundry', 'hugin', 'radar']);
+  assert.deepEqual(snapshot(st).done.includes('radar'), true, 'the step stays done: a burned building is not reprinted');
+  assert.equal(due(st, { phase: 'expedition', sector: 9 }), null, '...and the programme does not restart for it');
+  assert.equal(lose(st, 'nothing-here'), null, 'an id no step prints');
+  const fresh = makeBuildProgramme(BASE_PROGRAMME);
+  assert.equal(lose(fresh, 'radar'), null, 'a building that never stood cannot be burned');
+  assert.deepEqual([...lost(fresh)], [], '...and is not booked as lost');
+}

@@ -1179,6 +1179,29 @@ try{
  await until('window.__stalheartTest.state().laser.burned.walls>0',8000).catch(async()=>assert.fail(`the beam did not burn our wall (${JSON.stringify(await laser())})`));
  await evaluate('window.__stalheartTest.laserHold(false)');await evaluate('window.__stalheartTest.laserSteer(null)');
  {const s=await laser();console.log(`  laser-game: friendly fire ${s.burned.walls} wall segments, ${s.burned.towers} towers, heart ${s.burned.heart}, tank ${s.burned.tank}`);}
+ // IT BURNS EVERY BUILDING, NOT ONLY THE STALHEART (a V1 known gap). The solar complex stands at stage 6; hold the beam on it,
+ // watch the scope name it by name rather than count "1 STRUCTURE", and check the colony pays: the array's perk goes out with it.
+ {const before=await evaluate('window.__stalheartTest.state().programme');
+  assert(before.perks.includes('station'),`the solar array's perk is on before the burn (${JSON.stringify(before.perks)})`);
+  /* a fresh pass: the wall and the rock above spent this one's ten seconds, and a building wants two of them */
+  await until('window.__stalheartTest.state().laser.phase==="away"',40000);
+  await evaluate('window.__stalheartTest.laserPassNow()');
+  await until('window.__stalheartTest.state().laser.overhead && window.__stalheartTest.state().laser.energy>4',10000);
+  if(!await evaluate('window.__stalheartTest.state().laser.seated')){await evaluate('window.__stalheartTest.laserSeat(true)');await until('window.__stalheartTest.state().laser.seated',5000);}   /* the pass that closed took the seat with it */
+  await evaluate('window.__stalheartTest.laserSteer("structure:solar")');await delay(900);
+  await evaluate('window.__stalheartTest.laserHold(true)');
+  const seen=await evaluate(`new Promise(done=>{const t0=performance.now();(function look(){const s=window.__stalheartTest.state().laser,w=document.querySelector('#laser-seat [data-warn]');if(s.under.structure>0&&w&&!w.hidden)return done({under:s.under,names:s.underNames,warn:w.textContent});if(performance.now()-t0>8000)return done({under:s.under,names:s.underNames,warn:w?.hidden?null:w?.textContent});requestAnimationFrame(look);})();})`);
+  assert(/OURS UNDER THE BEAM/.test(seen.warn||'')&&/SOLAR/.test(seen.warn||''),`the scope names the building, not a count (${JSON.stringify(seen)})`);
+  current='laser-game-building-warned';await finish();
+  await until('window.__stalheartTest.state().laser.burned.structures>0',10000).catch(async()=>assert.fail(`the beam did not burn the solar complex (${JSON.stringify(await laser())})`));
+  await evaluate('window.__stalheartTest.laserHold(false)');await evaluate('window.__stalheartTest.laserSteer(null)');await delay(600);
+  const after=await evaluate('window.__stalheartTest.state().programme');
+  console.log(`  laser-game: buildings burned ${(await laser()).burned.structures}, perks ${JSON.stringify(before.perks)} -> ${JSON.stringify(after.perks)}, lost ${JSON.stringify(after.lost)}`);
+  assert(after.lost.includes('solar'),`the solar complex is booked lost (${JSON.stringify(after)})`);
+  assert(!after.perks.includes('station'),`...and its perk went out with it (${JSON.stringify(after.perks)})`);
+  assert(after.done.includes('solar'),'the step stays done: Isao does not print a burned building back');
+  assert.equal(await evaluate('window.__stalheartTest.state().storyLod.find(l=>l.id==="solar")?.visible'),false,'the burned complex is concealed');
+  current='laser-game-building-lost';await finish();}
  await evaluate('window.dispatchEvent(new KeyboardEvent("keydown",{code:"Escape",key:"Escape",bubbles:true}))');await delay(600);
  {const s=await laser();assert.equal(s.seated,false,'Esc leaves the seat');assert.equal(s.fov,68,'and the tank has its lens back');}
  // NEW RUN: the scorch, the smoke, the books and the pass clock go with the old world (the gap the V1 session shipped with)

@@ -1,12 +1,20 @@
 import assert from 'node:assert/strict';
-import { LASER_ORBIT, LASER_BEAM, LASER_BURN, LASER_VIEW, LASER_PRESET, LASER_TRAIL, LASER_TRAIL_SMOKE, LASER_CONTACT_RATE, LASER_SMOKE_RATE, LASER_TELEMETRY, LASER_SOUNDS, LASER_AUDIO, LASER_GAME } from '../src/content/orbital-laser.js';
+import { LASER_ORBIT, LASER_BEAM, LASER_BURN, LASER_STRUCTURES, LASER_VIEW, LASER_PRESET, LASER_TRAIL, LASER_TRAIL_SMOKE, LASER_CONTACT_RATE, LASER_SMOKE_RATE, LASER_TELEMETRY, LASER_SOUNDS, LASER_AUDIO, LASER_GAME } from '../src/content/orbital-laser.js';
 import { makeLaser, stepLaser, aimLaser, burnLaser, burnContacts, laserProgress, clampToRange, inFootprint, laserStrip } from '../src/domain/orbital-laser.js';
 import { len3, dot3, norm3 } from '../src/vec3.js';
 
 /* the owner's first values, pinned so a tuning session has to come through a decision entry */
 assert.deepEqual({ ...LASER_ORBIT }, { period: 180, overhead: 20 });
 assert.deepEqual({ ...LASER_BEAM }, { energy: 10, radius: 6, slew: 10, accel: 5, range: 320 });
-assert.deepEqual({ ...LASER_BURN }, { soft: 0, hard: 1, wall: 0.5, rock: 0.5, tower: 1.5, seal: 1, tank: 1, heart: 3 });
+assert.deepEqual({ ...LASER_BURN }, { soft: 0, hard: 1, wall: 0.5, rock: 0.5, tower: 1.5, seal: 1, tank: 1, heart: 3, structure: 2 });
+/* EVERY BUILDING BURNS, not only the Stalheart: each one's own seconds and span, and a name for the scope to call out. The
+   Stalheart is the `heart` kind above and is deliberately NOT here — it is the colony, and it costs three seconds, not two */
+assert.deepEqual(Object.keys(LASER_STRUCTURES), ['foundry', 'solar', 'hugin', 'bays', 'radar', 'assembly']);
+for (const [id, s] of Object.entries(LASER_STRUCTURES)) {
+  assert.ok(s.seconds > 0 && s.seconds <= LASER_BURN.heart, `${id}: deliberate, and never dearer than the colony itself`);
+  assert.ok(s.reach > LASER_BEAM.radius / 2 && s.label === s.label.toUpperCase(), `${id}: a span and a name in the scope's register`);
+}
+assert.ok(!('stalheart' in LASER_STRUCTURES), 'the Stalheart keeps its own kind');
 assert.deepEqual({ ...LASER_VIEW }, { altitude: 4, fov: 20, inset: 0.44, groundBack: 120, groundUp: 60 });
 assert.deepEqual({ ...LASER_TRAIL }, { every: 0.8, quads: 1000, seconds: 60, hot: 4, restamp: 0.4 });
 assert.deepEqual({ ...LASER_TRAIL_SMOKE }, { every: 1.5, rate: 4, life: 7, capacity: 256, opacity: 0.85 });
@@ -182,7 +190,7 @@ assert.equal(LASER_PRESET.glowWidth, 10);
 {
   assert.deepEqual({ ...LASER_GAME, reach: { ...LASER_GAME.reach } }, {
     online: false, range: 640, lowEnergy: 0.25, keyLead: 30, glide: 120, glideEase: 0.22, groundFov: 52,
-    reach: { soft: 0.5, hard: 1, wall: 2, rock: 5, tower: 4, seal: 5, tank: 2, heart: 8 },
+    reach: { soft: 0.5, hard: 1, wall: 2, rock: 5, tower: 4, seal: 5, tank: 2, heart: 8, structure: 8 },
   });
   for (const kind of Object.keys(LASER_BURN)) assert.ok(Number.isFinite(LASER_GAME.reach[kind]), `every burnable kind has a reach (${kind})`);
   const contact = [0, 100, 0];

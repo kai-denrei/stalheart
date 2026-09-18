@@ -208,6 +208,10 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     // ...and the segment Isao prints back (src/domain/repair-orders.js), by its LATTICE CELL, which is what the repair rule and the
     // dungeon tags speak in. Undoes a drop as well as a plain hole: a burned segment is standing again once he has stood over it.
     restoreWall: (cell) => { const k = plan.walls.findIndex((w) => w.cell === cell); if (k < 0) return false; dropped.delete(k); grown.walls.set(k, 1); for (const s of wallMeshes) { s.inst.setMatrixAt(k, wallMatrix(plan.walls[k], s.src, 1)); s.inst.instanceMatrix.needsUpdate = true; s.inst.computeBoundingSphere(); } return true; },
+    // THE BUILDINGS A WEAPON CAN BURN (SOL-82): every landmark that is standing, printed and shown, with where it stands on the
+    // host's sphere. A structure still pending its print, or already concealed by a burn, is not there to be hit.
+    standing: () => plan.structures.filter((s) => (kOf(grown.structures, s.id, s)) >= 1 && records.get(s.id)?.holder?.visible !== false)
+      .map((s) => ({ id: s.id, cell: s.cell, pos: placer.toWorld([s.x, s.y ?? 0, s.z]).toArray() })),
     anchors: () => new Set([...plan.structures, ...(plan.sockets || [])].map((s) => s.cell).filter((c) => Number.isInteger(c) && c >= 0)),
     lod: () => lod.map((l) => ({ id: l.id, shown: l.shown, nearLoaded: !!l.near, visible: l.holder.visible, files: l.files, metres: l.d === undefined ? null : +(l.d / metres).toFixed(0) })),
     dispose() { for (const m of mixers) m.stopAllAction(); gate.mixer?.stopAllAction(); for (const r of owned) r.dispose(); scene.remove(group); },

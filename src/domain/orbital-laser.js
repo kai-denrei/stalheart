@@ -125,7 +125,7 @@ export function burnContacts(st, things, dt, burn) {
     let rec = st.contacts.get(thing.id);
     if (!rec) { rec = { seconds: 0, reported: false }; st.contacts.set(thing.id, rec); }
     rec.seconds += dt;
-    const need = burn[thing.kind];
+    const need = thing.need ?? burn[thing.kind];   // a thing may carry its own seconds (each building has its own; LASER_STRUCTURES)
     if (need === undefined || rec.reported) continue;
     if (rec.seconds >= need) {
       rec.reported = true;
