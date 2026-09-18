@@ -2,7 +2,7 @@ import { createSentryPilot } from './sentry-pilot.js';
 import { DEFAULT_TANK, SHELL_SPEED, SHELL_REACH, TANK_DRIVE, TANK_STEER } from './content/tank.js'; import { makeDriveRamp, stepDriveRamp, scrubDriveRamp } from './domain/drive-ramp.js'; import { hullDepth, deepensContact } from './domain/hull-contact.js'; import { makeSteerEase, stepSteerEase, steerBank } from './domain/steer-ease.js'; import { nextRepair } from './domain/repair-orders.js'; import { BASE_REPAIR } from './content/base-programme.js';
 import { createGameBreaches } from './game-breaches.js';
 import { createBoardSurface } from './fx/board-surface.js'; import { createCampaignDebrief, sparkline } from './fx/campaign-debrief.js'; import { createSectorRun } from './fx/sector-run.js';
-import { startDiveShot } from './fx/dive-shot.js'; import { backBreachCells } from './domain/back-door.js';
+import { startDiveShot } from './fx/dive-shot.js'; import { backBreachCells } from './domain/back-door.js'; import { makeShaderWarmer } from './fx/shader-warm.js';
 import { BREACH_SOUNDS } from './content/breach-defaults.js';
 import { SOUNDS } from './content/runtime.js';
 import { emergence } from './domain/breach-waves.js'; import { applyScare, stampScare, scarePace, isScared, towardScare, awayExits } from './domain/impact-scare.js'; import { EXPLOSION_SCARE, SCARE_FREEZE_S } from './content/explosions.js'; import { createThermalHeat } from './fx/thermal-heat.js'; import { isAutomated, pilotMultipliers } from './domain/automation.js'; import { makeGunshipCall, fillFromKill, fillFromWaveClear, isFull as callFull, callGunship, passEnded, callProgress } from './domain/gunship-call.js'; import { GUNSHIP_CALL } from './content/gunship.js'; import { unlockedTowers } from './domain/expeditions.js'; import { createExpeditionGlue } from './fx/expedition-glue.js'; import { STORY_EXPEDITIONS } from './content/story-defaults.js'; import { makeSiteRing as siteRing, disposeSiteRing } from './fx/site-ring.js'; import { due as programmeDue, begin as programmeBegin, finish as programmeFinish, hasPerk as programmeHas, perks as programmePerks, rebuildDue, snapshot as programmeSnapshot } from './domain/build-programme.js'; import { BASE_PERKS } from './content/base-programme.js';
@@ -350,7 +350,7 @@ export function initTdTab(root) {
   scene.background = mainBg;
 
   const camera = new THREE.PerspectiveCamera(68, 1, 0.004, 50);
-  const postfx = makeBloom(renderer, scene, camera, { scale: tier.bloomScale }); const explosions = createExplosions(scene, { onError: (error) => record('explosions.unavailable', { message: error.message }) }); const thermalHeat = createThermalHeat(() => ({ warm: [storyBase?.group, playerMesh, ...towers.map((tw) => tw.obj)], hot: [...['stalheart', 'foundry', 'assembly'].map((id) => storyBase?.structure(id)?.holder), isao?.obj] })); const automated = () => !!story && isAutomated(story.beats.phase(), story.handover); const gunshipCall = makeGunshipCall(GUNSHIP_CALL); const feedCall = (n) => { if (automated()) fillFromKill(gunshipCall, n * (story?.programme && programmeHas(story.programme, 'gunship') ? BASE_PERKS.gunshipMeter : 1), GUNSHIP_CALL); return n; }; const explode = (use, p) => { const sc = EXPLOSION_SCARE[use]; if (sc) applyScare(enemies, p, { radius: sc.cells * cellSide, seconds: sc.seconds }); return explosions.spawn(use, p, norm3(p), cellSide); };   // the lab's explosions (src/fx/explosions.js); callers keep their dot bursts when this returns false
+  const postfx = makeBloom(renderer, scene, camera, { scale: tier.bloomScale }); const warmShaders = makeShaderWarmer(renderer, scene, camera); const explosions = createExplosions(scene, { onError: (error) => record('explosions.unavailable', { message: error.message }) }); const thermalHeat = createThermalHeat(() => ({ warm: [storyBase?.group, playerMesh, ...towers.map((tw) => tw.obj)], hot: [...['stalheart', 'foundry', 'assembly'].map((id) => storyBase?.structure(id)?.holder), isao?.obj] })); const automated = () => !!story && isAutomated(story.beats.phase(), story.handover); const gunshipCall = makeGunshipCall(GUNSHIP_CALL); const feedCall = (n) => { if (automated()) fillFromKill(gunshipCall, n * (story?.programme && programmeHas(story.programme, 'gunship') ? BASE_PERKS.gunshipMeter : 1), GUNSHIP_CALL); return n; }; const explode = (use, p) => { const sc = EXPLOSION_SCARE[use]; if (sc) applyScare(enemies, p, { radius: sc.cells * cellSide, seconds: sc.seconds }); return explosions.spawn(use, p, norm3(p), cellSide); };   // the lab's explosions (src/fx/explosions.js); callers keep their dot bursts when this returns false
   // sound. The context can only be born on a user gesture, so arm() wires
   // one-shot listeners and the first tap/keypress creates it. Until then
   // every play() is a silent no-op -- the game never waits on audio.
@@ -581,7 +581,7 @@ export function initTdTab(root) {
   scene.add(sun);
   const fill = new THREE.DirectionalLight(0x8a96c8, 0.8);
   fill.position.set(-2.5, -1.5, -3);
-  scene.add(fill); explosions.prewarm(renderer, camera);
+  scene.add(fill); explosions.prewarm(renderer, camera); gameBreaches.warm(warmShaders);   /* the sinkhole's programs and stone maps too, off the first breach's opening frame (src/fx/shader-warm.js) */
 
   function resize() {
     const w = container.clientWidth || 1;
@@ -4457,7 +4457,7 @@ export function initTdTab(root) {
     heartCalloutCd = 0; streakMark = 0;
     ramCombo = 0; ramComboT = 0; syncCombo();
     breachedCells.clear(); explosions.clear(); sealedBreachCells.clear(); // a NEW world owes nothing to the old one's holes, its fire or its sealed sinkholes
-    const built = buildGameWorld({ world: storyQuery.world, params, stage: storyQuery.stage, landmarks: storyQuery.landmarks, phase: storyQuery.phase, grow: storyQuery.grow, scene, sfx });
+    const built = buildGameWorld({ world: storyQuery.world, params, stage: storyQuery.stage, landmarks: storyQuery.landmarks, phase: storyQuery.phase, grow: storyQuery.grow, scene, sfx, warm: warmShaders });
     mesh = built.mesh; dungeon = built.dungeon; if (built.wallHeight) params.wallHeight = built.wallHeight; storyBase?.dispose(); storyBase = built.base; foundryFx?.dispose(); foundryFx = null; story?.glue?.dispose(); story = built.story ?? null; sectorRun = story ? makeSectorRun() : null; storyMonitor?.dispose(); storyMonitor = story ? createStoryMonitor(root) : null; storyScope?.dispose(); storyScope = story ? createStoryScope(root) : null; daylight = story ? createDaylight({ hemi, sun, bg: mainBg, day: story.day.day, tune: story.day }) : null;   // the story planet has a day   // 4 m walls on the story sphere; the story's islands, structures, sockets and beats at the requested stage
     graph = dungeon.graph; cellSide = mesh.defaultSide;
     // THE CAMP, BEFORE ANY ACTOR IS PLACED. Berth cells are graph maths,
