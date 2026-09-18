@@ -123,6 +123,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     // a beat that prints nothing (Isao working the standing foundry) has no piece to be standing: it is owed on a base that grows and
     // already past on a static stage, which is exactly where the rest of the opening it belongs to is
     grow, programme: makeBuildProgramme(steps, { standing: (s) => (pieces(s).length ? !pieces(s).some((p) => p.pending) : !grow) }), print: createBasePrint({ base, plan, placer }),
+    lost: new Set(),   // buildings SOL-82 burned away (src/content/orbital-laser.js LASER_STRUCTURES): they do not come back this run
     wallCells: plan.walls.filter((w) => w.pending && w.cell >= 0).map((w) => w.cell),
     // THE SECOND FRONT: the sealed mouth behind the bays, recomputed per load like the rest of the clearing (the controller keeps
     // only the mesh and the dungeon of the planet), with the clearing cells the back-breach rules need and the tunables

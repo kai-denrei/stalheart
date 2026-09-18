@@ -248,11 +248,12 @@ void main(){
   const puffAttr = (name) => smokeGeo.getAttribute(name);
   const [sOrigin, sVel, sMotion, sSize, sTime] = ['aOrigin', 'aVel', 'aMotion', 'aSize', 'aTime'].map(puffAttr);
   const smokeLast = new THREE.Vector3();
-  let smokeNext = 0, sinceSmoke = 0;
+  let smokeNext = 0, sinceSmoke = 0, puffed = 0;
 
   function puff(point, normal) {
     const i = smokeNext;
     smokeNext = (smokeNext + 1) % SMOKE.capacity;
+    puffed = Math.min(SMOKE.capacity, puffed + 1);
     const j = (m) => (Math.random() - 0.5) * m;
     /* metres: the puff shader multiplies by uScale; it rises along the ground's normal and drifts a little */
     sOrigin.setXYZ(i, point.x / unit + j(3), point.y / unit + 0.5, point.z / unit + j(3));
@@ -334,6 +335,26 @@ void main(){
       disc.visible = false;
       laid = false;
     },
+
+    // A NEW RUN OWES NOTHING TO THE OLD ONE'S BURN: the column lifts, every stamp in the ribbon is retired and every
+    // puff in the ring buffer is pushed back before the clock, so the ground under the next run is clean. The buffers
+    // and the compiled programs stay; only their contents go.
+    clear() {
+      this.lift();
+      this.hideGuide();
+      ages.fill(LASER_TRAIL.seconds);
+      ageAttr.needsUpdate = true;
+      trail.count = written = next = 0;
+      sinceStamp = 0;
+      for (let i = 0; i < SMOKE.capacity; i++) sTime.setX(i, 1e9);
+      sTime.needsUpdate = true;
+      smokeNext = puffed = 0;
+      sinceSmoke = 0;
+      smokeLast.set(0, 0, 0);
+    },
+
+    // what is on the ground right now: stamps in the ribbon and puffs written into the smoke ring
+    state: () => ({ stamps: written, puffs: puffed }),
 
     // THE LIVE LOOK. The column's preset keys are shader uniforms (src/beamfx.js turns every key into u<Key>), so a
     // slider can write them while the beam burns. Widths are METRES and take the same scene-units-per-metre as the

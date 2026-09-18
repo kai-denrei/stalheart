@@ -35,6 +35,16 @@ export function createBasePrint({ base, plan, placer }) {
       const rise = step.over ? () => 1 : clamp;
       return (ox, oy, k) => { const a = ox * p.hw, b = oy * p.hd; return placer.toWorld([p.x + hz * a + hx * b, h * rise(k), p.z - hx * a + hz * b]).toArray(); };
     },
+    // ISAO'S REPAIR IS A PRINT LIKE ANY OTHER (src/domain/repair-orders.js). Until now a repair order carried no bed, so he flew out
+    // and rastered a generic cell-sized square on the dirt while the gate mended itself somewhere behind him. This is the `over:`
+    // bed the AFR-01 beat uses, pointed at the piece being mended: the door's own footprint, or the segment's, at the rising print
+    // height, so the beam is visibly working the thing. `tune` is BASE_REPAIR[kind] — its metres and its plot half extents.
+    repairBed(repair, tune = {}) {
+      const piece = repair?.kind === 'gate' ? plan.gate : plan.walls.find((w) => w.cell === repair?.ci);
+      if (!piece) return null;
+      const h = tune.metres ?? 4, [pw, pd] = tune.plot ?? [4, 4], [hx, hz] = piece.heading ?? plan.gate?.heading ?? [0, 1];
+      return (ox, oy, k) => { const a = ox * pw, b = oy * pd; return placer.toWorld([piece.x + hz * a + hx * b, h * clamp(k), piece.z - hx * a + hz * b]).toArray(); };
+    },
     progress(step, k) {
       at.step = step.id; at.k = k;
       const s = split(step), first = clamp(k / s), second = s < 1 ? clamp((k - s) / (1 - s)) : 1;

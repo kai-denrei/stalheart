@@ -72,6 +72,8 @@ export function createLaserStation(root, scene, host) {
       const a = arsenal.anchor(), d2 = (w) => (w.pos[0] - a[0]) ** 2 + (w.pos[1] - a[1]) ** 2 + (w.pos[2] - a[2]) ** 2;
       return host.walls().sort((x, y) => d2(x) - d2(y))[0]?.pos ?? null;
     }
+    /* 'structure:<id>': a building of ours, for the harness that proves the beam can burn one and that it costs us its perk */
+    if (typeof p === 'string' && p.startsWith('structure:')) return host.structures().find((b) => b.id === p.slice(10))?.pos ?? null;
     if (Number.isInteger(p)) return host.centers()[p] ?? null;
     return Array.isArray(p) ? p : null;
   };
@@ -85,6 +87,8 @@ export function createLaserStation(root, scene, host) {
     render: (renderer, scene) => seat?.render(renderer, scene),
     seated: () => !!seat,
     setOnline: (on) => arsenal.setOnline(on),
+    reset() { leave(); arsenal.reset(); },   // a new run: the seat goes, the scorch and the books with it
+
     stats: () => arsenal.stats(),
     state: () => ({ ...arsenal.state(), seated: !!seat, briefing: !!briefing?.isOpen(), fov: host.fov?.() ?? null }),
     // folded into window.__stalheartTest: laserSteer takes a scene point, a cell index or 'breach'

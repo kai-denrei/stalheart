@@ -10,7 +10,7 @@ import { CONTENT } from '../src/content/runtime.js';
 import { changeSummary } from '../src/content/authoring.js';
 import { clone, serializePreset } from '../src/content/preset.js';
 import { LASER_VIEW, LASER_BURN } from '../src/content/orbital-laser.js';
-import { GUNSHIP_TRACK } from '../src/content/gunship.js';
+import { GUNSHIP_TRACK, GUNSHIP_GUNS } from '../src/content/gunship.js';
 import { scopeRect } from '../src/fx/laser-scope.js';
 const args=process.argv.slice(2),production=args.includes('--dist');
 const port=+process.env.STALHEART_BROWSER_PORT||18155,base=production?'/stalheart/':'/';
@@ -234,7 +234,18 @@ try{
  await go('gunship-on-station','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=6&gunship=station#td');
  await until('!!window.__stalheartTest && (window.__stalheartTest.state().storyLod||[]).some(l=>l.id==="stalheart")',90000);await delay(1500);
  {assert.equal(await evaluate('window.__stalheartTest.mountGunship()'),false,'the first seat opens the briefing, not the guns');assert(await evaluate('window.__stalheartTest.state().gunship.briefing'),'the briefing is open');assert(await evaluate('window.__stalheartTest.state().paused'),'the game waits under it');
-  await delay(1500);current='gunship-briefing';await finish();await evaluate('document.querySelector("#gunship-briefing [data-next]").click()');await delay(300);await evaluate('document.querySelector("#gunship-briefing [data-skip]").click()');await delay(1200);
+  await delay(1500);current='gunship-briefing';await finish();await evaluate('document.querySelector("#gunship-briefing [data-next]").click()');await delay(300);
+  // THE SEAT'S FIRST-USE HITCH (a V1 known gap, ~83-117 ms the first time the seat is taken): long tasks and the longest rAF gap over
+  // the 2.5 s from the call, against 2.5 s of baseline just before; the same watch runs again on a second seat later in the pass
+  const seatWatch=call=>evaluate(`new Promise(resolve=>{const long=[];const po=new PerformanceObserver(l=>{for(const e of l.getEntries())long.push([+e.duration.toFixed(1),Math.round(e.startTime-t0)]);});po.observe({type:'longtask'});let callMs=0,last=0,max=0,maxAt=0,frames=0,t0=0;const gaps=[];const tick=()=>{const now=performance.now();gaps.push(+(now-last).toFixed(1));if(now-last>max){max=now-last;maxAt=Math.round(now-t0);}last=now;frames++;if(now-t0<2500)requestAnimationFrame(tick);else setTimeout(()=>{po.disconnect();resolve({long,maxFrame:+max.toFixed(1),maxAt,frames,callMs,over50:gaps.filter(g=>g>50).length});},50);};requestAnimationFrame(()=>{t0=last=performance.now();${call?`const a=performance.now();${call};callMs=+(performance.now()-a).toFixed(1);`:''}requestAnimationFrame(tick);});})`);
+  const programsBefore=await evaluate('window.__stalheartTest.state().programs'),listBefore=await evaluate('window.__stalheartTest.programs()');
+  const seatBase=await seatWatch(null),seatFirst=await seatWatch('document.querySelector("#gunship-briefing [data-skip]").click()');
+  const programsAfter=await evaluate('window.__stalheartTest.state().programs'),listAfter=await evaluate('window.__stalheartTest.programs()');
+  console.log(`GUNSHIP seat new programs: ${listAfter.filter(k=>!listBefore.includes(k)).join(' ')}`);
+  console.log(`GUNSHIP warm ${JSON.stringify(await evaluate('window.__stalheartTest.state().warm'))}`);
+  console.log(`GUNSHIP seat baseline ${JSON.stringify(seatBase)} first seat ${JSON.stringify(seatFirst)} programs ${programsBefore} -> ${programsAfter}`);
+  assert(programsAfter-programsBefore<=12,`the seat links few shader programs: most were warmed while the game ran (${programsBefore} -> ${programsAfter}; it linked 18 before src/fx/program-warm.js)`);   // deterministic, unlike the timings below on a shared machine
+  assert(seatFirst.maxFrame<130,`the first seat's hitch stays bounded (longest frame ${seatFirst.maxFrame} ms at +${seatFirst.maxAt} ms against a ${seatBase.maxFrame} ms baseline; it was 78.6 ms before the warm, 60-64 ms after, and this only catches a collapse)`);
   assert(await evaluate('window.__stalheartTest.state().gunship.seat'),'skipping the briefing takes the seat');
   const s=await evaluate('window.__stalheartTest.state().gunship');assert(s.mounted&&s.seat&&s.optic,`thermal optic live ${JSON.stringify(s)}`);
   assert.equal(await evaluate('document.querySelector("#story-monitor .head").textContent'),'GROUND TRUTH · IMPACT','the monitor shows the impact point');
@@ -247,6 +258,10 @@ try{
   await send('Input.dispatchKeyEvent',{type:'keyDown',key:'m',code:'KeyM'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'m',code:'KeyM'});await delay(400);assert(await evaluate('document.querySelector("#tab-td").classList.contains("gunship-thermal")'),'M leaves the seat in thermal');assert(!await evaluate('document.querySelector("#tab-td").classList.contains("gunship-normal")||document.querySelector("#tab-td").classList.contains("gunship-night")'),'no normal or night view to switch to');current='gunship-thermal-held';await finish();
   await send('Input.dispatchKeyEvent',{type:'keyDown',key:'t',code:'KeyT'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'t',code:'KeyT'});await delay(800);current='gunship-top-view';await finish();await send('Input.dispatchKeyEvent',{type:'keyDown',key:'t',code:'KeyT'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'t',code:'KeyT'});await delay(400);
   await send('Input.dispatchKeyEvent',{type:'keyDown',key:'v',code:'KeyV'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'v',code:'KeyV'});await delay(600);current='gunship-third';await finish();
+  // the second seat of the pass, measured the same way: leave for the tank, come back
+  await evaluate('document.querySelector("#story-views [data-view=tank]").click()');await delay(900);assert(!await evaluate('window.__stalheartTest.state().gunship.seat'),'TANK leaves the seat');
+  {const again=await seatWatch('window.__stalheartTest.mountGunship()');await delay(300);assert(await evaluate('window.__stalheartTest.state().gunship.seat'),'the seat is taken again');
+   console.log(`GUNSHIP second seat ${JSON.stringify(again)} programs ${await evaluate('window.__stalheartTest.state().programs')}`);}
   // no input reaches the clock: the pass keeps counting out while the gunner sits
   const a=await evaluate('window.__stalheartTest.state().gunship.left');await delay(1200);const b=await evaluate('window.__stalheartTest.state().gunship.left');assert(b<a,'the pass counts out under the gunner');
   // the trigger on the rotary: rounds are owed and nothing throws with no enemy under the reticle
@@ -276,7 +291,8 @@ try{
   await delay(700);assert.equal((await evaluate('window.__stalheartTest.state().gunship.heavy')).phase,'released','a second in, it is still falling free');current='gunship-nuke-freefall';await finish();
   await until('window.__stalheartTest.state().gunship.heavy.phase==="ignited"',8000);
   {const ig=await evaluate('window.__stalheartTest.state().gunship');assert(ig.nuke.ignited&&ig.nuke.flying,`the motor lit with the round still in the air (${JSON.stringify(ig.nuke)})`);
-   assert.match(await evaluate('document.querySelector("#gunship-hud [data-f=state]").textContent'),/^IGNITED/,'the HUD says IGNITED');}
+   assert.match(await evaluate('document.querySelector("#gunship-hud [data-f=state]").textContent'),/^IGNITED/,'the HUD says IGNITED');
+   const x=await evaluate('window.__stalheartTest.state().explosions');assert.equal(x.spawned['gunship.ignite'],1,`the motor lights with its own burst, not the 25 mm impact pop (${JSON.stringify(x.spawned)})`);}
   current='gunship-nuke-ignite';await finish();
   await delay(500);current='gunship-nuke-dive';await finish();
   await until('window.__stalheartTest.state().gunship.heavy.phase==="reloading"',8000);await delay(700);
@@ -287,7 +303,40 @@ try{
    assert.equal(rl.nuke.flying,false,'and the body is back in its pool');
    assert.match(await evaluate('document.querySelector("#gunship-hud [data-f=state]").textContent'),/^IMPACT/,'the HUD says IMPACT');
    assert.equal(await evaluate('document.querySelector("#gunship-hud [data-f=barLabel]").textContent'),'SAFING','one release a pass: the meter reads the safing, not a reload for another');}
-  current='gunship-nuke-blast';await finish();}
+  current='gunship-nuke-blast';await finish();
+  // ONE RELEASE A PASS, END TO END (Node-tested in test/gunship.mjs, never before seen in a browser): once the tube has safed the pass
+  // is SPENT, the HUD says so in its own words, and a press neither paints nor releases; the pass ends, the next call brings the
+  // platform back on station with a fresh round, and the same press paints and releases again
+  await until('window.__stalheartTest.state().gunship.heavy.phase==="spent"',GUNSHIP_GUNS.heavy.reload*1000+8000).catch(async()=>assert.fail(`the tube safes into SPENT (${JSON.stringify(await evaluate('window.__stalheartTest.state().gunship.heavy'))})`));
+  {const before=await evaluate('window.__stalheartTest.state()');
+   assert.equal(await evaluate('document.querySelector("#gunship-hud [data-f=state]").textContent'),'SPENT · ONE RELEASE A PASS','the HUD refuses in its own words');
+   await evaluate('window.__stalheartTest.gunshipHold(true)');await delay(250);await evaluate('window.__stalheartTest.gunshipHold(false)');await delay(150);await evaluate('window.__stalheartTest.gunshipHold(true)');await delay(250);await evaluate('window.__stalheartTest.gunshipHold(false)');await delay(400);
+   const after=await evaluate('window.__stalheartTest.state()');
+   assert.equal(after.gunship.heavy.phase,'spent',`a second press in the same pass neither paints nor releases (${JSON.stringify(after.gunship.heavy)})`);
+   assert.equal(after.gunship.nuke.flying,false,'no second body in the air');assert.equal(after.explosions.spawned['gunship.nuke'],1,'and no second blast');
+   assert.equal(after.gunship.passes,before.gunship.passes,'still the same pass');assert.equal(after.gunship.seat,true,'the gunner is still seated');
+   assert.equal(await evaluate('document.querySelector("#gunship-hud [data-f=state]").textContent'),'SPENT · ONE RELEASE A PASS','and the HUD still refuses');
+   console.log(`  gunship: pass ${after.gunship.passes} spent, second press refused (${after.gunship.heavy.phase})`);}
+  current='gunship-nuke-spent';await finish();
+  // the pass ends; the call-in brings the next one, and the MK-9 is armed again
+  {const passes=await evaluate('window.__stalheartTest.state().gunship.passes');
+   await evaluate('window.__stalheartTest.gunshipPassEnd()');await until('!window.__stalheartTest.state().gunship.station',5000);await delay(800);
+   if(await evaluate('window.__stalheartTest.state().gunship.seat'))await evaluate('document.querySelector("#story-views [data-view=tank]").click()');await delay(600);
+   assert.equal(await evaluate('window.__stalheartTest.mountGunship()'),false,'between passes the seat is refused');
+   await evaluate('window.__stalheartTest.gunshipPassEnd()');await until('window.__stalheartTest.state().gunship.station',5000);await delay(600);   // this page is not past the call-in: the orbit brings the next pass on its own, ended early here
+   await evaluate('window.__stalheartTest.mountGunship()');await delay(1200);await evaluate('document.querySelector("#gunship-briefing [data-skip]")?.click()');
+   await until('window.__stalheartTest.state().gunship.station && window.__stalheartTest.state().gunship.seat',15000);
+   await evaluate('window.__stalheartTest.gunshipGun("heavy")');await delay(400);
+   const s=await evaluate('window.__stalheartTest.state().gunship');assert.equal(s.passes,passes+1,`a new pass (${s.passes})`);
+   assert.equal(s.heavy.phase,'ready',`the new pass re-arms the MK-9 (${JSON.stringify(s.heavy)})`);
+   assert.equal(await evaluate('document.querySelector("#gunship-hud [data-f=state]").textContent'),'ARMED · FIRE TO PAINT','the HUD says ARMED again');
+   await evaluate('window.__stalheartTest.gunshipHold(true)');await delay(200);assert.equal((await evaluate('window.__stalheartTest.state().gunship.heavy')).phase,'painted','the press paints again');
+   await evaluate('window.__stalheartTest.gunshipHold(true)');await delay(250);
+   const r=await evaluate('window.__stalheartTest.state().gunship');assert.equal(r.heavy.phase,'released',`and releases the pass's one round (${JSON.stringify(r.heavy)})`);assert(r.nuke.flying,'a fresh body in the air');
+   console.log(`  gunship: pass ${r.passes} re-armed, released again`);}
+  current='gunship-nuke-rearmed';await finish();
+  await until('window.__stalheartTest.state().gunship.heavy.phase==="reloading"',10000);await delay(500);
+  assert.equal((await evaluate('window.__stalheartTest.state().explosions')).spawned['gunship.nuke'],2,'the second pass\'s round lands as the second mini nuke');}
  // THE SKIP MARKER: the panel beside the build tag opens the seat by itself and raises enemies, which then read hot in the thermal optic
  await go('gunship-skip','index.html?sw=0&cine=0&world=story&stage=6&acceptance=1&gunship=station&skip=gunship&enemies=24&brief=0#td');
  await until('!!window.__stalheartTest && window.__stalheartTest.state().gunship.seat',120000);await delay(9000);
@@ -744,10 +793,17 @@ try{
   const unlocked=await evaluate('window.__stalheartTest.state().unlocked');assert(unlocked.includes('relay'),`the Relay unlocks (${unlocked})`);
   // home: off the back deck, a landing, RELAY UNLOCKED, a trophy flag on the landing island
   await until('(s=>s.carrying===null&&s.crates.some(p=>p==="rest"))(window.__stalheartTest.state().cargo)',10000).catch(async()=>assert.fail(`the crate drops and sits (${JSON.stringify(await evaluate('window.__stalheartTest.state().cargo'))})`));
-  assert(/RELAY UNLOCKED/.test(await evaluate('document.querySelector("#td-callouts")?.textContent||""')),'the unlock callout');
+  // ISAO RECEIVES THE PART: the crate waits for him, he flies over and beams it, and only then the unlock is called
+  {const c=await evaluate('window.__stalheartTest.state().cargo');assert.equal(c.receiving,true,`the crate is held for Isao (${JSON.stringify(c)})`);
+   assert(!/RELAY UNLOCKED/.test(await evaluate('document.querySelector("#td-callouts")?.textContent||""')),'no unlock before he has the part');}
   {const v=await evaluate('window.__stalheartTest.cargoView("drop")');assert(v,'a close look at the dropped crate');writeFileSync(join(output,'defense-crate-dropped-view.json'),JSON.stringify(v,null,1));}await delay(500);
   current='defense-crate-dropped';await finish();
+  await evaluate('window.__stalheartTest.cargoView(null)');   // a still is a shot, and a shot freezes Isao: let him fly
+  await until('(p=>p&&p.isao&&p.isao.order==="receive"&&p.isao.state==="build")(window.__stalheartTest.state().programme)',30000).catch(async()=>assert.fail(`Isao flies to the crate and beams it (${JSON.stringify((await evaluate('window.__stalheartTest.state().programme'))?.isao)})`));
+  await evaluate('window.__stalheartTest.cargoView("drop")');await delay(700);current='defense-part-received';await finish();
   await evaluate('window.__stalheartTest.cargoView(null)');
+  await until('/RELAY UNLOCKED/.test(document.querySelector("#td-callouts")?.textContent||"")',10000).catch(()=>assert.fail('the unlock callout once he has beamed the crate'));
+  {const c=await evaluate('window.__stalheartTest.state().cargo');assert.equal(c.receiving,false,'the receipt is done');}
   await until('window.__stalheartTest.state().cargo.trophies===1',10000);await delay(2600);
   assert(await evaluate('window.__stalheartTest.cargoView("trophy")'),'a close look at the trophy flag');await delay(500);
   current='defense-trophy';await finish();
@@ -822,7 +878,25 @@ try{
  await evaluate('window.__stalheartTest.setSector(3)');await delay(800);
  assert.equal((await evaluate('window.__stalheartTest.state()')).hulls,Math.min(3,hullsLost+1),'the assembly line rebuilds a lost hull at the next sector start');
  await shotBase('grow-finished');
- } else if(args.includes('--shield-story')) {
+ // ISAO'S GATE REPAIR IS ANIMATED (a V1 known gap). Take the door down while the lane is still quiet: he flies out and BEAMS it,
+ // his print bed laid over the door's own footprint the way the foundry beat's `over:` bed is, and GATE % climbs under the beam
+ // instead of jumping the moment he leaves.
+ {await evaluate('window.__stalheartTest.sectorClearField()');await delay(3000);   /* a repair is only taken between waves: the lane has to be quiet. NOT clearSector() — that ends the sector and puts the debrief card over the very thing this step is here to look at */
+  assert(await evaluate(`window.__stalheartTest.breakGate()`),'the harness takes the door down');
+  {const g=await evaluate(`window.__stalheartTest.state().sector.gate`);assert(g.broken&&g.hp<2,`the gate is down (${JSON.stringify(g)})`);   /* the ambient mend may have ticked a frame's worth back already */}
+  await until(`window.__stalheartTest.state().programme.repairing?.kind==='gate'`,40000).catch(async()=>assert.fail(`Isao never took the gate repair (${JSON.stringify(await evaluate(`window.__stalheartTest.state().story`))})`));
+  assert(await evaluate(`window.__stalheartTest.state().programme.repairBed`),'the repair order carries a print bed: he beams the door, not a square of dirt beside it');
+  await until(`window.__stalheartTest.state().programme.isao?.state==='build' && window.__stalheartTest.state().programme.isao.printK>0.15`,40000).catch(async()=>assert.fail(`he never started printing (${JSON.stringify(await evaluate(`window.__stalheartTest.state().programme.isao`))})`));
+  current='grow-gate-repair';await finish();
+  /* sampled on the wall clock across the whole print, not until the order clears: the point is the climb IN BETWEEN, not its ends */
+  const climb=await evaluate(`new Promise(done=>{const seen=[];const t0=performance.now();(function look(){const s=window.__stalheartTest.state();seen.push([s.programme.isao?.printK??1,+s.sector.gate.hp.toFixed(1)]);if(performance.now()-t0>9000)return done(seen);setTimeout(look,120);})();})`);
+  const hp=climb.map(x=>x[1]);
+  assert(hp[hp.length-1]>hp[0],`GATE % climbs under the beam (${JSON.stringify(climb.slice(0,2))} ... ${JSON.stringify(climb.slice(-2))})`);
+  assert(new Set(hp).size>=4,`GATE % climbs in steps under the beam rather than jumping once at the end (${JSON.stringify(hp)})`);
+  assert(hp.every((v,i)=>i===0||v>=hp[i-1]),`and never goes backwards while he works (${JSON.stringify(hp)})`);
+  await until(`window.__stalheartTest.state().sector.gate.broken===false && window.__stalheartTest.state().sector.gate.hp>=window.__stalheartTest.state().sector.gate.hp`,20000);
+  {const g=await evaluate(`window.__stalheartTest.state().sector.gate`);assert(!g.broken,`the door is closed again when he is done (${JSON.stringify(g)})`);
+   console.log(`  grow: Isao's gate repair ${hp[0]} -> ${hp[hp.length-1]} hp over print k ${climb[0][0]} -> ${climb[climb.length-1][0]}, ${g.breaks} break(s) booked`);}} } else if(args.includes('--shield-story')) {
  // THE TANK'S SHIELD IN THE STORY (V1 session design, section 3): T and the pad deploy a rack of two, the solar array's pad
  // recharges it from a finite reserve that only refillArrays restores, a shielded hull shoves hard cores, and rams pay a premium
  // the player can read over the hull, with the combo tier callouts
@@ -1302,8 +1376,40 @@ try{
  await until('window.__stalheartTest.state().laser.burned.walls>0',8000).catch(async()=>assert.fail(`the beam did not burn our wall (${JSON.stringify(await laser())})`));
  await evaluate('window.__stalheartTest.laserHold(false)');await evaluate('window.__stalheartTest.laserSteer(null)');
  {const s=await laser();console.log(`  laser-game: friendly fire ${s.burned.walls} wall segments, ${s.burned.towers} towers, heart ${s.burned.heart}, tank ${s.burned.tank}`);}
+ // IT BURNS EVERY BUILDING, NOT ONLY THE STALHEART (a V1 known gap). The solar complex stands at stage 6; hold the beam on it,
+ // watch the scope name it by name rather than count "1 STRUCTURE", and check the colony pays: the array's perk goes out with it.
+ {const before=await evaluate('window.__stalheartTest.state().programme');
+  assert(before.perks.includes('station'),`the solar array's perk is on before the burn (${JSON.stringify(before.perks)})`);
+  /* a fresh pass: the wall and the rock above spent this one's ten seconds, and a building wants two of them */
+  await until('window.__stalheartTest.state().laser.phase==="away"',40000);
+  await evaluate('window.__stalheartTest.laserPassNow()');
+  await until('window.__stalheartTest.state().laser.overhead && window.__stalheartTest.state().laser.energy>4',10000);
+  if(!await evaluate('window.__stalheartTest.state().laser.seated')){await evaluate('window.__stalheartTest.laserSeat(true)');await until('window.__stalheartTest.state().laser.seated',5000);}   /* the pass that closed took the seat with it */
+  await evaluate('window.__stalheartTest.laserSteer("structure:solar")');await delay(900);
+  await evaluate('window.__stalheartTest.laserHold(true)');
+  const seen=await evaluate(`new Promise(done=>{const t0=performance.now();(function look(){const s=window.__stalheartTest.state().laser,w=document.querySelector('#laser-seat [data-warn]');if(s.under.structure>0&&w&&!w.hidden)return done({under:s.under,names:s.underNames,warn:w.textContent});if(performance.now()-t0>8000)return done({under:s.under,names:s.underNames,warn:w?.hidden?null:w?.textContent});requestAnimationFrame(look);})();})`);
+  assert(/OURS UNDER THE BEAM/.test(seen.warn||'')&&/SOLAR/.test(seen.warn||''),`the scope names the building, not a count (${JSON.stringify(seen)})`);
+  current='laser-game-building-warned';await finish();
+  await until('window.__stalheartTest.state().laser.burned.structures>0',10000).catch(async()=>assert.fail(`the beam did not burn the solar complex (${JSON.stringify(await laser())})`));
+  await evaluate('window.__stalheartTest.laserHold(false)');await evaluate('window.__stalheartTest.laserSteer(null)');await delay(600);
+  const after=await evaluate('window.__stalheartTest.state().programme');
+  console.log(`  laser-game: buildings burned ${(await laser()).burned.structures}, perks ${JSON.stringify(before.perks)} -> ${JSON.stringify(after.perks)}, lost ${JSON.stringify(after.lost)}`);
+  assert(after.lost.includes('solar'),`the solar complex is booked lost (${JSON.stringify(after)})`);
+  assert(!after.perks.includes('station'),`...and its perk went out with it (${JSON.stringify(after.perks)})`);
+  assert(after.done.includes('solar'),'the step stays done: Isao does not print a burned building back');
+  assert.equal(await evaluate('window.__stalheartTest.state().storyLod.find(l=>l.id==="solar")?.visible'),false,'the burned complex is concealed');
+  current='laser-game-building-lost';await finish();}
  await evaluate('window.dispatchEvent(new KeyboardEvent("keydown",{code:"Escape",key:"Escape",bubbles:true}))');await delay(600);
  {const s=await laser();assert.equal(s.seated,false,'Esc leaves the seat');assert.equal(s.fov,68,'and the tank has its lens back');}
+ // NEW RUN: the scorch, the smoke, the books and the pass clock go with the old world (the gap the V1 session shipped with)
+ {const s=await laser();assert(s.trail>0&&s.smoke>0,`the old run left a scorch to clear (trail ${s.trail}, smoke ${s.smoke})`);}
+ {const generation=await evaluate('window.__stalheartTest.state().runGen');
+  await evaluate('window.__stalheartTest.restart()');await until(`window.__stalheartTest.state().runGen > ${generation}`,30000);await delay(800);
+  const s=await laser();console.log(`  laser-game: after NEW RUN trail ${s.trail}, smoke ${s.smoke}, passes ${s.passes}, phase ${s.phase}, burned ${JSON.stringify(s.burned)}`);
+  assert.equal(s.trail,0,'the scorch trail is cleared by NEW RUN');assert.equal(s.smoke,0,'the smoke ring is cleared by NEW RUN');
+  assert.equal(s.passes,0,'the pass count starts over');assert.equal(s.burned.walls+s.burned.bodies+s.burned.breaches,0,'the books start over');
+  assert.equal(s.seated,false);assert.equal(s.online,true,'?laser=online still holds on the new run');}
+ current='laser-game-new-run';await finish();
  } else if(args.includes('--laser')) {
  // THE ORBITAL LASER LAB. Open it, wait for the real base and for the sinkhole's crater to actually open, jump the
  // clock to a pass, then hold the beam and drag it up the trench through the test hook — the pointer only steers

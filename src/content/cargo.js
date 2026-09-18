@@ -40,6 +40,10 @@ export const CARGO_LOOK = Object.freeze({
   tumble: 1.2,             // seconds a thrown crate spins before it fades
   maxDropped: 3,           // the landing never holds more than this many old crates
   raise: 2, lower: 2,      // the asset's Raise and Lower clips are two seconds
+  // ISAO RECEIVES THE PART: a dropped crate waits on the ground for him (up to holdMax seconds, then it sinks on its own) while
+  // he flies over and holds his beam on it for `seconds` at `metres` above it, the beam wandering `spread` metres across the
+  // crate; the unlock is called when he is done. His order yields to any tower order, so it never delays a print
+  receive: Object.freeze({ seconds: 3, metres: 2.5, spread: 1.4, holdMax: 25, label: 'PART' }),
 });
 
 // the cues: each falls back to a cue every world has when the story's own is missing

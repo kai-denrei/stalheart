@@ -26,11 +26,12 @@ function toward(from, to) {
 const along = (origin, dir, dist) => { const o = v3(origin), r = o.length(); return o.addScaledVector(dir, dist).setLength(r); };
 
 // hooks: { story, scene, sfx, hasCue(key), cellSide, centers(), tankPos(), hull(), guardsLeft(id), spawn(type, cell, o), revealSite(id),
-//          landing() -> Object3D | null (the landing island's frame), brief(id), callout(text), toast(towerKey), look? }
+//          landing() -> Object3D | null (the landing island's frame), brief(id), callout(text), toast(towerKey), look?,
+//          receive?({ point, normal, seconds, bed, done }) -> boolean (an order for Isao to fly to the crate and beam it; done() when he has) }
 export function createExpeditionGlue(h) {
   const look = h.look ?? CARGO_LOOK, metres = h.cellSide / 10;
   const ex = () => h.story.expeditions, cellOf = (id) => h.story.siteCells[id];
-  let cargo = null;
+  let cargo = null, receipt = null;
   const fx = () => (cargo ??= createCargo(h.scene, { sfx: h.sfx, hasCue: h.hasCue, metres, look }));
   const homeAt = () => h.centers()[h.story.home];
 
@@ -53,6 +54,25 @@ export function createExpeditionGlue(h) {
     const slot = (i - (STORY_EXPEDITIONS.sites.length - 1) / 2) * look.trophyGap;
     const p = origin.clone().addScaledVector(fwd, look.trophyEdge * metres).addScaledVector(right, slot * metres).setLength(origin.length());
     return { point: p, normal: p.clone().normalize(), facing: fwd };
+  }
+
+  // ISAO RECEIVES THE PART (a V1 known gap: the crate landed and the unlock was called with nobody there). The crate waits on the
+  // ground while the host sends him over; his print beam wanders over it (the bed is the crate's top, base-print's `over:` shape)
+  // for look.receive.seconds, and only then the unlock is called, the cue plays and the trophy goes up. No host receive hook, or
+  // a crate that sank before he came (holdMax, or pushed out by newer crates): the unlock is called at once, as before.
+  function beginReceipt(r, at, up) {
+    const p = v3(at), n = v3(up).normalize(), rc = look.receive ?? { seconds: 0, metres: 2, spread: 1 };
+    const t1 = new THREE.Vector3().crossVectors(n, Math.abs(n.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0)).normalize(), t2 = new THREE.Vector3().crossVectors(n, t1);
+    const bed = (ox, oy) => p.clone().addScaledVector(n, rc.metres * metres).addScaledVector(t1, ox * rc.spread * metres).addScaledVector(t2, oy * rc.spread * metres).toArray();
+    r.held = true;
+    const sent = h.receive?.({ point: at, normal: up, seconds: rc.seconds, bed, done: () => endReceipt(r) });
+    if (!sent) endReceipt(r);
+  }
+  function endReceipt(r) {
+    if (r.done) return;
+    r.done = true; r.held = false;
+    h.callout(`${towerName(r.tower)} UNLOCKED`); h.toast?.(r.tower); h.sfx?.play('tower_upgrade');
+    const t = trophyPose(r.index); fx().trophy(r.index, t.point, t.normal, t.facing);
   }
 
   const glue = {
@@ -97,10 +117,8 @@ export function createExpeditionGlue(h) {
           h.brief('part_home');
           const index = e.sites.filter((s) => s.state === 'delivered').length - 1, ground = v3(pos);
           fx().lowerFlag(carried);
-          fx().drop(ground, ground.clone().normalize(), () => {
-            h.callout(`${towerName(tower)} UNLOCKED`); h.toast?.(tower); h.sfx?.play('tower_upgrade');
-            const t = trophyPose(index); fx().trophy(index, t.point, t.normal, t.facing);
-          });
+          const r = receipt = { tower, index, held: false, done: false };
+          fx().drop(ground, ground.clone().normalize(), (at, up) => beginReceipt(r, at, up), () => r.held);
           const more = nextReveals(e);
           for (const id of more) glue.openSite(id);
           if (more.length) h.brief('sites_revealed');
@@ -143,9 +161,13 @@ export function createExpeditionGlue(h) {
       try { hits = ray.intersectObjects(scene.children, true); } catch (e) { return [[`raycast failed: ${e}`, 0, false]]; }
       return hits.slice(0, 6).map((x) => [`${x.object.parent?.name || '-'}/${x.object.name || x.object.type}/${[x.object.material].flat()[0]?.name || '-'}`, +(x.distance / metres).toFixed(1), shown(x.object)]).concat([['target', +(len / metres).toFixed(1), true]]);
     },
-    tick(dt) { cargo?.tick(dt); },
+    tick(dt) {
+      cargo?.tick(dt);
+      /* the crate he was coming for is gone (holdMax, or pushed off the landing by newer crates): the part is in all the same */
+      if (receipt?.held && !cargo?.state().crates.some((p) => p === 'fall' || p === 'settle' || p === 'rest')) endReceipt(receipt);
+    },
     view: (kind, id) => cargo?.view(kind, id) ?? null,
-    state: () => (cargo ? cargo.state() : { carrying: null, attached: false, flags: [], trophies: 0, crates: [], errors: [] }),
+    state: () => ({ ...(cargo ? cargo.state() : { carrying: null, attached: false, flags: [], trophies: 0, crates: [], errors: [] }), receiving: !!receipt?.held }),
     dispose() { cargo?.dispose(); cargo = null; },
   };
   return glue;

@@ -33,6 +33,25 @@ export function finish(st, step) {
   return step.perk ?? null;
 }
 
+// A BUILDING IS LOST (SOL-82 can burn one; src/content/orbital-laser.js LASER_STRUCTURES). The step that printed it keeps counting
+// as done — Isao does not print a burned building back, the colony simply goes without — but its perk goes out, so everything that
+// consults the programme drops the thing that building was paying for. Returns the perk that went, or null.
+export function lose(st, structureId) {
+  st.lost ??= new Set();
+  if (st.lost.has(structureId)) return null;
+  const step = st.steps.find((s) => s.structures.includes(structureId));
+  // a building nothing on the programme printed is still lost — the AFR-01 foundry stands from the start and Isao only works it —
+  // it just has no perk to take with it. One that has not been printed yet is not there to burn.
+  if (step && !st.done.has(step.id)) return null;
+  st.lost.add(structureId);
+  if (!step) return null;
+  // a perk only goes out if no OTHER standing step still pays for it
+  if (step.perk && !st.steps.some((s) => s !== step && s.perk === step.perk && st.done.has(s.id) && !s.structures.some((id) => st.lost.has(id)))) { st.perks.delete(step.perk); return step.perk; }
+  return null;
+}
+
+export const lost = (st) => new Set(st.lost ?? []);
+
 export const perks = (st) => new Set(st.perks);
 export const hasPerk = (st, name) => st.perks.has(name);
 
@@ -43,4 +62,4 @@ export function rebuildDue(st, sector) {
   return st.perks.has('rebuild');
 }
 
-export const snapshot = (st) => ({ active: st.active, done: st.steps.filter((s) => st.done.has(s.id)).map((s) => s.id), printed: st.printed.slice(), next: st.steps.find((s) => !st.done.has(s.id))?.id ?? null, perks: [...st.perks].sort() });
+export const snapshot = (st) => ({ active: st.active, done: st.steps.filter((s) => st.done.has(s.id)).map((s) => s.id), printed: st.printed.slice(), next: st.steps.find((s) => !st.done.has(s.id))?.id ?? null, perks: [...st.perks].sort(), lost: [...(st.lost ?? [])].sort() });

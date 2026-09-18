@@ -138,5 +138,51 @@ function makeHull() {
   glue.dispose();
 }
 
+{
+  // ISAO RECEIVES THE PART: with a receive hook the crate waits on the ground and the unlock is called only when he is done;
+  // without him the crate sinks at holdMax and the unlock is called then; a print outranks the receipt (the host's rule)
+  const scene = new THREE.Scene(), hull = makeHull(); scene.add(hull);
+  const centers = [[0, 1, 0], [0.6, 0.8, 0]];
+  const story = { expeditions: makeExpeditions(STORY_EXPEDITIONS.sites), siteCells: { 'rocket-a': { cell: 1, clear: 16 } }, home: 0, hud: { sites: () => {} } };
+  let tank = centers[0]; const said = [], sent = [];
+  const glue = createExpeditionGlue({ story, scene, sfx, cellSide: 0.05, centers: () => centers, tankPos: () => tank, hull: () => hull, guardsLeft: () => false, spawn: () => {}, revealSite: () => {}, landing: () => null, brief: () => {}, callout: (t) => said.push(t), toast: () => {}, receive: (r) => { sent.push(r); return true; } });
+  glue.begin(); glue.step(); tank = centers[1]; glue.step(); glue.tick(0.6); tank = centers[0]; glue.step();
+  for (let i = 0; i < 120; i++) glue.tick(1 / 60);
+  assert.equal(sent.length, 1, 'one receive order for the landed crate');
+  const r = sent[0];
+  assert.equal(r.seconds, CARGO_LOOK.receive.seconds);
+  const over = r.bed(0, 0), edge = r.bed(1, 0), up = r.normal;
+  assert.ok(Math.abs(Math.hypot(...over.map((v, i) => v - r.point[i])) - CARGO_LOOK.receive.metres * 0.005) < 1e-6, 'the bed sits receive.metres over the crate');
+  assert.ok(Math.abs(edge.map((v, i) => v - over[i]).reduce((a, v, i) => a + v * up[i], 0)) < 1e-9, 'the bed wanders across the crate, not up it');
+  assert.equal(glue.state().receiving, true, 'the crate is held for him');
+  assert.ok(!said.some((t) => /UNLOCKED/.test(t)), 'no unlock before he has the part');
+  for (let i = 0; i < 60 * (CARGO_LOOK.linger + 2); i++) glue.tick(1 / 60);
+  assert.ok(glue.state().crates.includes('rest'), 'the crate waits past its linger while held');
+  r.done();
+  assert.ok(said.some((t) => /RELAY UNLOCKED/.test(t)), `the unlock is called when he is done (${said})`);
+  assert.equal(glue.state().receiving, false); assert.equal(glue.state().trophies, 1, 'the trophy goes up with the receipt');
+  for (let i = 0; i < 60 * (CARGO_LOOK.sink + 0.5); i++) glue.tick(1 / 60);
+  assert.ok(!glue.state().crates.includes('rest'), 'released, the crate sinks');
+  r.done();
+  assert.equal(said.filter((t) => /RELAY UNLOCKED/.test(t)).length, 1, 'a second done() is nothing');
+  glue.dispose();
+}
+
+{
+  // nobody comes: holdMax passes, the crate sinks on its own, and the unlock is called then
+  const scene = new THREE.Scene(), hull = makeHull(); scene.add(hull);
+  const centers = [[0, 1, 0], [0.6, 0.8, 0]];
+  const story = { expeditions: makeExpeditions(STORY_EXPEDITIONS.sites), siteCells: { 'rocket-a': { cell: 1, clear: 16 } }, home: 0, hud: { sites: () => {} } };
+  let tank = centers[0]; const said = [];
+  const glue = createExpeditionGlue({ story, scene, sfx, cellSide: 0.05, centers: () => centers, tankPos: () => tank, hull: () => hull, guardsLeft: () => false, spawn: () => {}, revealSite: () => {}, landing: () => null, brief: () => {}, callout: (t) => said.push(t), toast: () => {}, receive: () => true });
+  glue.begin(); glue.step(); tank = centers[1]; glue.step(); glue.tick(0.6); tank = centers[0]; glue.step();
+  for (let i = 0; i < 60 * (CARGO_LOOK.receive.holdMax - 1); i++) glue.tick(1 / 60);
+  assert.equal(glue.state().receiving, true, 'still held short of holdMax');
+  for (let i = 0; i < 60 * 3; i++) glue.tick(1 / 60);
+  assert.equal(glue.state().receiving, false, 'holdMax releases the crate');
+  assert.ok(said.some((t) => /RELAY UNLOCKED/.test(t)), 'the unlock is called when the crate goes');
+  glue.dispose();
+}
+
 assert.ok(Object.keys(CARGO_TINTS).length && CARGO_ASSETS.flag.endsWith('.glb') && CARGO_ASSETS.crate.endsWith('.glb'));
 console.log('Cargo: the flag raised and lowered, the crate swung onto the deck and riding, the drop landing and sinking, the throw-off, bounded crates and trophies, the glue on the expedition rules.');
