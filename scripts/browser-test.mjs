@@ -10,7 +10,7 @@ import { CONTENT } from '../src/content/runtime.js';
 import { changeSummary } from '../src/content/authoring.js';
 import { clone, serializePreset } from '../src/content/preset.js';
 import { LASER_VIEW, LASER_BURN } from '../src/content/orbital-laser.js';
-import { GUNSHIP_TRACK } from '../src/content/gunship.js';
+import { GUNSHIP_TRACK, GUNSHIP_GUNS } from '../src/content/gunship.js';
 const args=process.argv.slice(2),production=args.includes('--dist');
 const port=+process.env.STALHEART_BROWSER_PORT||18155,base=production?'/stalheart/':'/';
 const origin=`http://127.0.0.1:${port}`,urlRoot=origin+base;
@@ -287,7 +287,40 @@ try{
    assert.equal(rl.nuke.flying,false,'and the body is back in its pool');
    assert.match(await evaluate('document.querySelector("#gunship-hud [data-f=state]").textContent'),/^IMPACT/,'the HUD says IMPACT');
    assert.equal(await evaluate('document.querySelector("#gunship-hud [data-f=barLabel]").textContent'),'SAFING','one release a pass: the meter reads the safing, not a reload for another');}
-  current='gunship-nuke-blast';await finish();}
+  current='gunship-nuke-blast';await finish();
+  // ONE RELEASE A PASS, END TO END (Node-tested in test/gunship.mjs, never before seen in a browser): once the tube has safed the pass
+  // is SPENT, the HUD says so in its own words, and a press neither paints nor releases; the pass ends, the next call brings the
+  // platform back on station with a fresh round, and the same press paints and releases again
+  await until('window.__stalheartTest.state().gunship.heavy.phase==="spent"',GUNSHIP_GUNS.heavy.reload*1000+8000).catch(async()=>assert.fail(`the tube safes into SPENT (${JSON.stringify(await evaluate('window.__stalheartTest.state().gunship.heavy'))})`));
+  {const before=await evaluate('window.__stalheartTest.state()');
+   assert.equal(await evaluate('document.querySelector("#gunship-hud [data-f=state]").textContent'),'SPENT · ONE RELEASE A PASS','the HUD refuses in its own words');
+   await evaluate('window.__stalheartTest.gunshipHold(true)');await delay(250);await evaluate('window.__stalheartTest.gunshipHold(false)');await delay(150);await evaluate('window.__stalheartTest.gunshipHold(true)');await delay(250);await evaluate('window.__stalheartTest.gunshipHold(false)');await delay(400);
+   const after=await evaluate('window.__stalheartTest.state()');
+   assert.equal(after.gunship.heavy.phase,'spent',`a second press in the same pass neither paints nor releases (${JSON.stringify(after.gunship.heavy)})`);
+   assert.equal(after.gunship.nuke.flying,false,'no second body in the air');assert.equal(after.explosions.spawned['gunship.nuke'],1,'and no second blast');
+   assert.equal(after.gunship.passes,before.gunship.passes,'still the same pass');assert.equal(after.gunship.seat,true,'the gunner is still seated');
+   assert.equal(await evaluate('document.querySelector("#gunship-hud [data-f=state]").textContent'),'SPENT · ONE RELEASE A PASS','and the HUD still refuses');
+   console.log(`  gunship: pass ${after.gunship.passes} spent, second press refused (${after.gunship.heavy.phase})`);}
+  current='gunship-nuke-spent';await finish();
+  // the pass ends; the call-in brings the next one, and the MK-9 is armed again
+  {const passes=await evaluate('window.__stalheartTest.state().gunship.passes');
+   await evaluate('window.__stalheartTest.gunshipPassEnd()');await until('!window.__stalheartTest.state().gunship.station',5000);await delay(800);
+   if(await evaluate('window.__stalheartTest.state().gunship.seat'))await evaluate('document.querySelector("#story-views [data-view=tank]").click()');await delay(600);
+   assert.equal(await evaluate('window.__stalheartTest.mountGunship()'),false,'between passes the seat is refused');
+   await evaluate('window.__stalheartTest.gunshipPassEnd()');await until('window.__stalheartTest.state().gunship.station',5000);await delay(600);   // this page is not past the call-in: the orbit brings the next pass on its own, ended early here
+   await evaluate('window.__stalheartTest.mountGunship()');await delay(1200);await evaluate('document.querySelector("#gunship-briefing [data-skip]")?.click()');
+   await until('window.__stalheartTest.state().gunship.station && window.__stalheartTest.state().gunship.seat',15000);
+   await evaluate('window.__stalheartTest.gunshipGun("heavy")');await delay(400);
+   const s=await evaluate('window.__stalheartTest.state().gunship');assert.equal(s.passes,passes+1,`a new pass (${s.passes})`);
+   assert.equal(s.heavy.phase,'ready',`the new pass re-arms the MK-9 (${JSON.stringify(s.heavy)})`);
+   assert.equal(await evaluate('document.querySelector("#gunship-hud [data-f=state]").textContent'),'ARMED · FIRE TO PAINT','the HUD says ARMED again');
+   await evaluate('window.__stalheartTest.gunshipHold(true)');await delay(200);assert.equal((await evaluate('window.__stalheartTest.state().gunship.heavy')).phase,'painted','the press paints again');
+   await evaluate('window.__stalheartTest.gunshipHold(true)');await delay(250);
+   const r=await evaluate('window.__stalheartTest.state().gunship');assert.equal(r.heavy.phase,'released',`and releases the pass's one round (${JSON.stringify(r.heavy)})`);assert(r.nuke.flying,'a fresh body in the air');
+   console.log(`  gunship: pass ${r.passes} re-armed, released again`);}
+  current='gunship-nuke-rearmed';await finish();
+  await until('window.__stalheartTest.state().gunship.heavy.phase==="reloading"',10000);await delay(500);
+  assert.equal((await evaluate('window.__stalheartTest.state().explosions')).spawned['gunship.nuke'],2,'the second pass\'s round lands as the second mini nuke');}
  // THE SKIP MARKER: the panel beside the build tag opens the seat by itself and raises enemies, which then read hot in the thermal optic
  await go('gunship-skip','index.html?sw=0&cine=0&world=story&stage=6&acceptance=1&gunship=station&skip=gunship&enemies=24&brief=0#td');
  await until('!!window.__stalheartTest && window.__stalheartTest.state().gunship.seat',120000);await delay(9000);
