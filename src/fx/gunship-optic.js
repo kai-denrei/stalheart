@@ -12,10 +12,7 @@ import { GUNSHIP_GUNS, GUNSHIP_GUN_ORDER, GUNSHIP_PLATFORM } from '../content/gu
 const KORP_URL = 'assets/models/korp/korp_d0_lod1.glb';
 const deg = (d) => d * Math.PI / 180;
 
-// warm(object): the host's renderer.compile against the game scene. THE SEAT'S FIRST-USE HITCH (a V1 known gap): the first seat
-// linked 18 shader programs in one 62 ms task (measured in --gunship: the KORP's materials seen from the belly, the danger rings,
-// the tracer lines), so everything the seat draws is compiled here, out of sight, as soon as it exists.
-export function createGunshipOptic(scene, { cellSide, metresPerCell = 10, warm = null }) {
+export function createGunshipOptic(scene, { cellSide, metresPerCell = 10 }) {
   const rings = new THREE.Group(); rings.visible = false; scene.add(rings);
   const ringOf = {};
   for (const key of GUNSHIP_GUN_ORDER) {
@@ -45,10 +42,8 @@ export function createGunshipOptic(scene, { cellSide, metresPerCell = 10, warm =
     for (const c of g.animations) clips[c.name] = mixer.clipAction(c);
     for (const n of ['Rotary_Fire', 'Heavy_Fire']) if (clips[n]) { clips[n].setLoop(THREE.LoopOnce, 1); clips[n].clampWhenFinished = false; }
     platform.add(model);
-    warm?.(platform);   // the hull's programs link now, not on the first frame from the belly
   });
   const node = (n) => model?.getObjectByName(n);
-  warm?.(rings); warm?.(tracers[0]);   // the rings' and the tracers' programs (one line stands for the pool: same material)
   return {
     active: () => mounted,
     mount() { mounted = true; rings.visible = true; },
