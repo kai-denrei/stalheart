@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "2026-09-19-phone-seats-say-less",
+  "date": "2026-09-19",
+  "type": "decision",
+  "status": "proposed",
+  "title": "On a phone the seats say less: one readout, no hint box, the shell out of the way",
+  "context": "Owner, 2026-09-19, from a phone screenshot of the gunship seat (build 992874ee): 'phone only needs some attention besides optimization; too much info on screen.' The frame shows the hint box (four lines), the full MK-9 telemetry plate, a status ribbon (MK-9 · MINI NUKE · IMPACT · SAFING) overprinting that plate, the PLAYTEST shell over ON STATION, the gun buttons, the radar, and a ground-truth monitor clipped at the right edge — all on 390 px. The 2026-09-18 phone pass proved no control is covered; it did not reduce what is shown.",
+  "outcome": "Proposed: a phone register for every seat (gunship, SOL-82, Quiver, Rotor) that keeps only what a thumb needs — the gun buttons, the aim, the fire button, one line of state (weapon · phase · seconds) and the strip; the telemetry plate collapses to that line and opens on tap; the hint box becomes a one-line footer shown once; the status ribbon and the plate never both draw; the shell's build tag hides in seats; the ground-truth monitor fits its frame (the 2026-09-18 phone pass logged it drawing outside on phones). Desktop unchanged: the owner is reviewing it separately.",
+  "alternatives": [
+    "Keep the desktop layout and scale it down; rejected: the screenshot shows it is the amount of text, not its size."
+  ],
+  "evidence": [
+    "Owner screenshot 2026-09-19 22:39, gunship seat on a phone at 390x844.",
+    "docs/log/entries/2026-09-18-phone-and-touch-pass.json (no control covered; monitor outside its frame noted)."
+  ],
+  "supersedes": []
+}

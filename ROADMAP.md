@@ -314,7 +314,13 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 32 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 33 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### On a phone the seats say less: one readout, no hint box, the shell out of the way
+
+`2026-09-19-phone-seats-say-less` · decision · **proposed**
+
+Owner, 2026-09-19, from a phone screenshot of the gunship seat (build 992874ee): 'phone only needs some attention besides optimization; too much info on screen.' The frame shows the hint box (four lines), the full MK-9 telemetry plate, a status ribbon (MK-9 · MINI NUKE · IMPACT · SAFING) overprinting that plate, the PLAYTEST shell over ON STATION, the gun buttons, the radar, and a ground-truth monitor clipped at the right edge — all on 390 px. The 2026-09-18 phone pass proved no control is covered; it did not reduce what is shown.
 
 ### A short punchy intro: the core loop as a scripted in-engine montage ending on Isao asking 'Are you ready?'
 
