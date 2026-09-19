@@ -15,7 +15,7 @@
 // only thing over the world. Sound is whatever the systems make (SHOWCASE_BED is null; see the content file).
 //
 // Skippable at any moment: tap, Space or Esc goes straight to the last card.
-import { SHOWCASE_SHOTS, SHOWCASE_FINALE, SHOWCASE_CLASS } from '../content/showcase.js';
+import { SHOWCASE_SHOTS, SHOWCASE_FINALE, SHOWCASE_CLASS, SHOWCASE_SECONDS } from '../content/showcase.js';
 import { createWireframeStage } from './wireframe-stage.js';
 import { showcaseExitUrls, rememberShowcase } from '../platform/showcase-entry.js';
 import { MORK_PROXY } from '../mork.js';
@@ -30,19 +30,27 @@ const STAGES = {
 // Everything here goes through the hooks — that is the whole point of the rail.
 const BOOK = {
   'tank-wireframe': { wire: 'mork', enter: (h) => { h.orbit(h.source(), 1.9); } },
-  'tank-ram': { enter: (h) => { h.swarm(26, 'amoeba'); h.orbit(h.source(), 1.35); }, frame: (h) => h.ramNext() },
-  'tremor-swarm': { enter: (h) => { h.swarm(40, 'amoeba'); h.tremor(); h.ground(h.source(), 4, 4); } },
-  'gunship-guns': { enter: (h) => { h.swarm(40, 'amoeba'); h.gunship(); h.gun('rotary'); h.hold(true); },
+  // the tank rams what is already up: the seed swarm went in during the pre-roll, so bodies are on the ground by now.
+  // One ram a beat, not one a frame — a ram is a hull moving INTO a body, and re-placing it every frame registers none.
+  // The batches through the montage are deliberately small: the world holds about seventy bodies at once and drops the
+  // rest, so a fat seed here would starve the tremor shot of the emergence that IS the tremor shot.
+  'tank-ram': { enter: (h) => { h.swarm(8); h.follow(); }, frame: (h, u, beat) => { if (beat) h.ramNext(); } },
+  // the emergence is fed on the beat, not in one burst: a single batch lands whenever the spawn clock next turns over,
+  // which is not reliably inside a three-second shot, and this shot IS the emergence.
+  'tremor-swarm': { enter: (h) => { h.swarm(14); h.tremor(); h.ground(h.source(), 10, 9); }, frame: (h, u, beat) => { if (beat) { h.swarm(7); h.tremor(); } } },
+  'gunship-guns': { enter: (h) => { h.swarm(30); h.gunship(); h.gun('rotary'); h.hold(true); },
     frame: (h, u) => { if (u > 0.55) h.gun('bofors'); h.aim(); } },
   'gunship-nuke': { enter: (h) => { h.hold(false); h.gun('heavy'); h.nuke(); } },
-  'nuke-ground': { enter: (h) => { h.leave(); h.ground(h.source(), 3, 5); } },
-  'quiver-pov': { enter: (h) => { h.swarm(24, 'amoeba'); h.seat('quiver'); }, frame: (h) => { h.aim(); h.hold(true); } },
-  'rotor-pov': { enter: (h) => { h.seat('rotor'); }, frame: (h) => { h.aim(); h.hold(true); } },
-  'too-many': { enter: (h) => { h.hold(false); h.leave(); h.swarm(120, 'amoeba'); h.orbit(h.source(), 1.25); } },
+  'nuke-ground': { enter: (h) => { h.leave(); h.ground(h.source(), 7, 8); } },
+  // the Quiver's mount was built at the first frame (hooks.prep) so its model is loaded and the seat opens on a
+  // standing launcher; the round goes out on the beat because a guided mount's own lock is longer than this shot.
+  'quiver-pov': { enter: (h) => { h.seat('quiver'); h.aim(); }, frame: (h, u, beat) => { h.aim(); h.hold(true); if (beat) h.launch(); } },
+  'rotor-pov': { enter: (h) => { h.seat('rotor'); h.aim(); }, frame: (h) => { h.aim(); h.hold(true); } },
+  'too-many': { enter: (h) => { h.hold(false); h.leave(); h.swarm(60); h.ground(h.source(), 9, 6); }, frame: (h, u, beat) => { if (beat) h.swarm(14); } },
   'laser-wireframe': { wire: 'sol82', enter: (h) => { h.laser(true); } },
   // SOL-82 FROM ORBIT: the beam only burns from its seat (src/fx/laser-arsenal.js: `held = seated && ...`), so the
   // seat stays taken and the camera is taken off it instead (hooks.laserCam), which frees a real high placement.
-  'laser-orbit': { enter: (h) => { h.laserCam(false); h.orbit(h.source(), 2.6); h.laserHold(true); }, frame: (h) => h.laserHold(true) },
+  'laser-orbit': { enter: (h) => { h.laserCam(false); h.orbit(h.source(), 2.7); h.laserHold(true); }, frame: (h) => h.laserHold(true) },
   // ...and the same burn from the ground is the seat's own frame, 120 m back and 60 m up from the contact.
   'laser-ground': { enter: (h) => { h.laserCam(true); h.laserHold(true); }, frame: (h) => h.laserHold(true) },
 };
@@ -69,7 +77,7 @@ export function createShowcase(root, hooks, { search = location.search, go = (ur
     choiceEl.append(btn);
   }
 
-  let index = -1, left = 0, started = false, over = false, wire = null, played = [], gone = false;
+  let index = -1, left = 0, beat = 0, wait = 0, peak = {}, started = false, over = false, wire = null, played = [], gone = false;
   document.body.classList.add(SHOWCASE_CLASS);
 
   function showCard(card) {
@@ -87,7 +95,9 @@ export function createShowcase(root, hooks, { search = location.search, go = (ur
     showCard(shot.card);
     if (entry.wire) { const s = STAGES[entry.wire]; wire = createWireframeStage(wireEl, s.url, s); wireEl.hidden = false; }
     try { entry.enter?.(hooks); } catch { /* a shot whose system will not run is still cut on its clock */ }
-    played.push({ id: shot.id, at: +(SHOWCASE_SHOTS.slice(0, i).reduce((n, s) => n + s.seconds, 0)).toFixed(2), counters: hooks.counters() });
+    if (played.length) played[played.length - 1].peak = peak;   // what the shot just cut away from reached while it was up
+    peak = {};
+    played.push({ id: shot.id, at: +(SHOWCASE_SHOTS.slice(0, i).reduce((n, s) => n + s.seconds, 0)).toFixed(2), counters: hooks.counters(), peak: {} });
   }
 
   // THE LAST CARD: Isao's own face in the engine, the question over it, and the two ways in.
@@ -96,7 +106,8 @@ export function createShowcase(root, hooks, { search = location.search, go = (ur
     over = true;
     wire?.dispose(); wire = null; wireEl.hidden = true;
     cardEl.hidden = true; skipBtn.hidden = true;
-    try { hooks.hold(false); hooks.laserHold(false); hooks.laserCam(true); hooks.isao(); } catch { /* the card stands without him */ }
+    if (played.length) played[played.length - 1].peak = peak;
+    try { hooks.hold(false); hooks.laserHold(false); hooks.laserCam(true); hooks.laserLeave(); hooks.leave(); hooks.isao(); } catch { /* the card stands without him */ }   /* the seats go FIRST: a seat's pose outranks a shot, so SOL-82's scope would have kept the camera and its own telemetry would have been the last thing under the question */
     finaleEl.hidden = false;
     rememberShowcase();   // the montage has been seen, however it ended: a second bare visit goes to the landing
   }
@@ -111,16 +122,21 @@ export function createShowcase(root, hooks, { search = location.search, go = (ur
   const api = {
     tick(dt) {
       if (gone || over) return;
-      if (!started) { if (!hooks.ready()) return; started = true; hooks.begin(); cut(0); return; }
+      if (!started) { wait += dt; if (!hooks.ready() && wait < 25) return; started = true; hooks.begin(); cut(0); return; }   /* THE PRE-ROLL DOUBLES AS THE LOADING SCREEN: hooks.ready() holds the first frame while the planet bake, the models and the base arrive, opens the breach and seeds the swarm, and only lets go once bodies are actually standing on the ground. Twenty-five seconds is the ceiling: a world that will not come up still gets its montage, thin rather than absent. */
       const entry = BOOK[SHOWCASE_SHOTS[index].id] ?? {};
       if (wire) wire.render(dt);
       const u = 1 - Math.max(0, left) / SHOWCASE_SHOTS[index].seconds;
-      try { entry.frame?.(hooks, u); } catch { /* the clock rules */ }
+      // A COUNTER AT A CUT SAYS TOO LITTLE: a swarm that comes up and is mown down inside one shot leaves the net count
+      // where it was, and a round that is launched and lands is gone by the next cut. So each shot also keeps the HIGH
+      // WATER MARK of every counter while it was on screen, and that is what the --showcase step reads as proof.
+      { const c = hooks.counters(); for (const k in c) if (typeof c[k] === 'number' && (!(k in peak) || c[k] > peak[k])) peak[k] = c[k]; }
+      beat -= dt; const onBeat = beat <= 0; if (onBeat) beat = 0.22;   // the rail's own metronome: what must not run every frame runs on this
+      try { entry.frame?.(hooks, u, onBeat); } catch { /* the clock rules */ }
       left -= dt;
       if (left <= 0) cut(index + 1);
     },
     // what the --showcase browser step reads: which shot is up, how far in, and the counters at every cut
-    state: () => ({ started, over, index, shot: index >= 0 && index < SHOWCASE_SHOTS.length ? SHOWCASE_SHOTS[index].id : (over ? SHOWCASE_FINALE.id : null),
+    state: () => ({ started, over, index, shots: SHOWCASE_SHOTS.map((s) => ({ id: s.id, seconds: s.seconds, seat: s.seat, proof: s.proof, card: s.card?.head ?? null })), total: SHOWCASE_SECONDS, shot: index >= 0 && index < SHOWCASE_SHOTS.length ? SHOWCASE_SHOTS[index].id : (over ? SHOWCASE_FINALE.id : null),
       left: +Math.max(0, left).toFixed(2), card: cardEl.hidden ? null : cardH.textContent, played,
       buttons: [...choiceEl.querySelectorAll('button')].map((b) => ({ id: b.dataset.choice, label: b.querySelector('b').textContent })),
       urls, counters: hooks.counters() }),

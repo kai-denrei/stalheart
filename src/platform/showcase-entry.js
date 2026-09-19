@@ -7,16 +7,19 @@
 //   a bare page (no query at all, or only the shell's own font keys) plays it ONCE, then remembers
 //   anything else — a deep link, ?skip=, ?stage=, the harness's ?sw=0&acceptance=1 — never plays it
 //
-// The "bare page only" rule is deliberate and narrow. Every existing browser suite names at least one key
-// (`sw=0`, `cine=0`, `acceptance=1`, `world=story`), so none of them start playing a montage because of this,
-// and none of them had to learn about `intro=0` or clear the store. A real player's first visit carries no query.
+// The "bare page only" rule is deliberate and narrow: a real player's first visit carries no query, and almost every
+// browser suite names a key that says something about the run (`cine=0`, `acceptance=1`, `world=story`, `stage=`), so
+// nothing else in the harness starts meeting a montage. The one suite that did — the `index.html?sw=0#td` default-route
+// check — says `intro=0` now rather than clearing the store, because what it wants is the landing, not a fresh browser.
 import { storage } from '../storage.js';
 
 // src/storage.js only keeps keys matching /^(td[.-]|ssg[.-])/
 export const SHOWCASE_SEEN_KEY = 'td-showcase-seen';
 
-// keys a bare page may still carry: the shell's own font choices, which say nothing about the run
-const BARE_OK = Object.freeze(['font', 'fontshout']);
+// keys a bare page may still carry: the shell's own font choices and the harness's service-worker switch, none of
+// which say anything about the run. `sw` is here so the browser suite can exercise the bare page without registering
+// a worker; the one existing suite that opened `index.html?sw=0#td` and must NOT meet the montage now says intro=0.
+const BARE_OK = Object.freeze(['font', 'fontshout', 'sw']);
 
 export function bareEntry(search) {
   for (const [k] of new URLSearchParams(search)) if (!BARE_OK.includes(k)) return false;

@@ -96,6 +96,7 @@ export function createLaserStation(root, scene, host) {
       laserOnline: (on = true) => arsenal.setOnline(on),
       laserPassNow: () => arsenal.passNow(),
       laserSeat: (on = true) => (on ? enter() : (leave(), false)),
+      laserSit: () => sit(),   /* the seat WITHOUT the briefing and the pause it holds under itself: the showcase is not the moment to brief, and a paused game stops the montage's own clock */
       laserSteer: (p) => arsenal.steer(target(p)),
       laserHold: (on = true) => arsenal.hold(on),
       laserCam: (on = true) => { camOn = !!on; },   /* release the game camera without leaving the seat: the beam burns only while seated */
