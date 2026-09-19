@@ -4592,3 +4592,85 @@ body.playing:not(.shell-open) #shell-bar { opacity: 0.32; }
 #controls-card dd { margin: 0; color: #aab6bb; }
 #tab-td.pad-labelled [data-label]::after { content: attr(data-label); position: absolute; left: 50%; bottom: calc(100% + 4px); transform: translateX(-50%); font: 700 10px/1 ui-monospace, Menlo, monospace; letter-spacing: 0.12em; color: #fff; background: rgba(8, 12, 16, 0.8); padding: 3px 5px; white-space: nowrap; pointer-events: none; }
 /* ==== end CONTROLS CARD ==== */
+
+/* THE SHOWCASE (src/fx/showcase.js): the montage over a real run of the skipped world. While it plays the HUD is
+   gone — every piece of chrome inside the game tab and the navigation shell — and the cards are the only thing over
+   the world. The game's own canvas stays; the minimap canvas is hidden by name because it is a canvas like the
+   renderer's. Monochrome, as the rest of the game's UI. */
+body.showcase-on #shell-bar,
+body.showcase-on #tab-td > *:not(#td-app):not(#showcase),
+body.showcase-on #td-app > *:not(canvas),
+body.showcase-on #td-app > canvas.minimap,
+body.showcase-on #td-app > canvas.laser-inset-hud { display: none !important; }   /* SOL-82's telemetry panels are canvases inside the game element, so they need naming; its round scope is drawn in the 3D pass and stays — it is the satellite's own optics, and the shot is the satellite */
+
+#showcase {
+  position: absolute; inset: 0; z-index: 90;
+  display: grid; grid-template-areas: 'stage'; align-items: end; justify-items: center;
+  font-family: var(--font-ui, system-ui, sans-serif); color: #eef2f5;
+  background: radial-gradient(120% 85% at 50% 50%, transparent 55%, rgba(4, 6, 8, 0.72) 100%);
+}
+/* [hidden] must win over every display here: the wireframe stage is a canvas the rail hides between its two reveals,
+   and a bare `display: block` left it standing over the world shots that follow (caught in the --showcase stills). */
+#showcase [hidden] { display: none !important; }
+#showcase .sc-wire {
+  grid-area: stage; align-self: stretch; justify-self: stretch; width: 100%; height: 100%;
+  background: #05080a; display: block;
+}
+#showcase .sc-card {
+  grid-area: stage; align-self: end; margin: 0 0 min(14vh, 120px); padding: 10px 22px 12px;
+  text-align: center; max-width: min(88vw, 780px);
+  background: linear-gradient(180deg, rgba(6, 9, 11, 0) 0%, rgba(6, 9, 11, 0.78) 45%);
+  border-bottom: 1px solid rgba(238, 242, 245, 0.35);
+}
+#showcase .sc-card h1 {
+  margin: 0; font-size: clamp(18px, 4.4vw, 40px); font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase; line-height: 1.1;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.85);
+}
+#showcase .sc-card p {
+  margin: 6px 0 0; font-size: clamp(10px, 1.6vw, 14px); letter-spacing: 0.22em;
+  text-transform: uppercase; color: #a9b3bb;
+}
+/* TOO MANY ENEMIES! is a shout, not a caption: the shout face, centred, and bigger than any other card */
+#showcase .sc-card.shout { align-self: start; margin: min(9vh, 70px) 0 0; border: 0; background: none; }
+#showcase .sc-card.shout h1 {
+  font-family: var(--font-shout, var(--font-ui, system-ui, sans-serif));
+  font-size: clamp(26px, 6.4vw, 68px); letter-spacing: 0.04em;   /* big enough to shout, small enough to leave the swarm it is shouting about in frame */
+  text-shadow: 0 0 40px rgba(0, 0, 0, 0.95), 0 3px 0 rgba(0, 0, 0, 0.8);
+}
+/* the card sits LOW: the frame under it is Isao's own closeup, and his face belongs in the clear upper two thirds */
+#showcase .sc-finale {
+  grid-area: stage; align-self: end; margin-bottom: min(8vh, 70px); text-align: center; padding: 22px 30px 26px;
+  background: rgba(6, 9, 11, 0.62); border: 1px solid rgba(238, 242, 245, 0.22);
+  max-width: min(92vw, 640px);
+}
+#showcase .sc-finale h1 {
+  margin: 0; font-size: clamp(24px, 6.5vw, 58px); letter-spacing: 0.08em; text-transform: uppercase;
+  font-family: var(--font-shout, var(--font-ui, system-ui, sans-serif));
+  text-shadow: 0 2px 22px rgba(0, 0, 0, 0.9);
+}
+#showcase .sc-finale > p {
+  margin: 6px 0 20px; font-size: 11px; letter-spacing: 0.3em; color: #a9b3bb; text-transform: uppercase;
+}
+#showcase .sc-choice { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+#showcase .sc-choice button {
+  appearance: none; cursor: pointer; min-width: 190px; padding: 12px 20px;
+  display: grid; gap: 3px; text-align: left;
+  background: rgba(238, 242, 245, 0.06); color: #eef2f5;
+  border: 1px solid rgba(238, 242, 245, 0.42); font: inherit;
+}
+#showcase .sc-choice button:hover, #showcase .sc-choice button:focus-visible {
+  background: rgba(238, 242, 245, 0.16); border-color: #eef2f5; outline: none;
+}
+#showcase .sc-choice b { font-size: 15px; letter-spacing: 0.14em; }
+#showcase .sc-choice small { font-size: 10px; letter-spacing: 0.1em; color: #a9b3bb; text-transform: uppercase; }
+#showcase .sc-skip {
+  grid-area: stage; align-self: start; justify-self: end; margin: 14px 16px;
+  appearance: none; cursor: pointer; padding: 7px 14px; font: inherit;
+  font-size: 10px; letter-spacing: 0.24em;
+  background: rgba(6, 9, 11, 0.55); color: #a9b3bb; border: 1px solid rgba(238, 242, 245, 0.3);
+}
+#showcase .sc-skip:hover { color: #eef2f5; border-color: #eef2f5; }
+@media (max-width: 560px) {
+  #showcase .sc-choice button { min-width: 0; width: 100%; }
+}

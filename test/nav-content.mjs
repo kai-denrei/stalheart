@@ -18,7 +18,12 @@ for (const e of NAV_ENTRIES.filter((x) => x.group === 'workshop')) {
   assert.match(main, new RegExp(`\\n\\s+${e.target.hash}: \\(\\) => import`), `${e.id}: #${e.target.hash} is a route in main.js`);
 }
 assert.deepEqual(NAV_ENTRIES.filter((e) => e.row === 'stages').map((e) => e.label), STAGES.map((_, n) => String(n)), 'one stage button per stage');
-assert.deepEqual(STORY_JUMPS.map((j) => j.id), ['rotor', 'quiver', 'study', 'gunship', 'defense', 'skip']);
+assert.deepEqual(STORY_JUMPS.map((j) => j.id), ['rotor', 'quiver', 'study', 'gunship', 'defense', 'showcase', 'skip']);
+// the SHOWCASE jump plays the intro montage on demand, however often the browser has already seen it
+{
+  const sc = STORY_JUMPS.find((j) => j.id === 'showcase');
+  assert.ok(sc.wired && sc.url === 'index.html?intro=1#td', `the drawer's SHOWCASE forces the montage (${sc.url})`);
+}
 // the SKIP TUTORIAL jump is the player's own entry, not a developer one: no acceptance switch, no stage, no phase
 {
   const skip = STORY_JUMPS.find((j) => j.id === 'skip');

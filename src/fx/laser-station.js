@@ -14,7 +14,7 @@ import { LASER_GAME } from '../content/orbital-laser.js';
 // mobile, paused(value?) (sets the game's pause when given, returns what it was), enter() and leave() (the game's
 // camera and tank on the way in and out), fov() (the game camera's lens, for the harness)
 export function createLaserStation(root, scene, host) {
-  let seat = null, briefing = null;
+  let seat = null, briefing = null, camOn = true;
   const arsenal = createLaserArsenal(scene, { ...host, passEnded: () => leave() });
   const overhead = () => arsenal.online() && arsenal.state().overhead;
 
@@ -83,7 +83,7 @@ export function createLaserStation(root, scene, host) {
       arsenal.tick(dt, seat?.input(dt) ?? null);
       host.views()?.sol82?.(arsenal.strip());
     },
-    pose: (goal) => !!seat && seat.pose(goal),
+    pose: (goal) => !!seat && camOn && seat.pose(goal),   /* camOn: the showcase (src/fx/showcase.js) borrows the camera back for its orbital frame while the seat keeps burning */
     render: (renderer, scene) => seat?.render(renderer, scene),
     seated: () => !!seat,
     setOnline: (on) => arsenal.setOnline(on),
@@ -96,8 +96,10 @@ export function createLaserStation(root, scene, host) {
       laserOnline: (on = true) => arsenal.setOnline(on),
       laserPassNow: () => arsenal.passNow(),
       laserSeat: (on = true) => (on ? enter() : (leave(), false)),
+      laserSit: () => sit(),   /* the seat WITHOUT the briefing and the pause it holds under itself: the showcase is not the moment to brief, and a paused game stops the montage's own clock */
       laserSteer: (p) => arsenal.steer(target(p)),
       laserHold: (on = true) => arsenal.hold(on),
+      laserCam: (on = true) => { camOn = !!on; },   /* release the game camera without leaving the seat: the beam burns only while seated */
     },
     dispose() { leave(); abort.abort(); briefing?.dispose(); arsenal.dispose(); },
   };
