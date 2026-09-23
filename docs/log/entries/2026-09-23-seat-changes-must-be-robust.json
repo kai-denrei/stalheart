@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "2026-09-23-seat-changes-must-be-robust",
+  "date": "2026-09-23",
+  "type": "issue",
+  "status": "observed",
+  "title": "Cycling tank > gunship > SOL-82 > tank leaves the tank off to the right and the gunship aiming right of centre",
+  "context": "Owner, 2026-09-23, playing build 91ba6850 in Safari on macOS: 'Something wrong with camera changes from tank to gunship to orbital. When it cycles back to Tank, the view is changed and the tank is off to the right side. Shooting with the Gunship is not centered, it appears everything is aiming more to the right, not the center. Explore the view changes, let's fix it and make it more robust, since changing views to control the game is a large part of it.' Seat switching is the game's core verb (docs/FUNMAP.md).",
+  "outcome": "Observed, to diagnose: every seat (tank third person, tank PoV, Rotor, Quiver, gunship, SOL-82, map) must leave the camera exactly as it found it — fov, yaw/pitch offsets, the pilot's aim compensation (src/sentry-pilot.js holdAim, added 2026-09-16 when the gunship began creeping), pointer-lock state, the seat's zoom — and the gunship's reticle must be the true aim of the gun it draws for. Suspects: a yaw compensation or fov write that survives leavePilot; a seat entered from another seat rather than from the tank; Safari's pointer lock and devicePixelRatio (the harness only runs headless Chrome).",
+  "alternatives": [],
+  "evidence": [
+    "Owner note 2026-09-23 (Safari, macOS, build 91ba6850).",
+    "2026-09-15-gunship-track-latched-and-seat-lens-reset (an earlier lens bug of the same family).",
+    "2026-09-16-gunship-creeps-toward-the-breaches (holdAim)."
+  ],
+  "supersedes": []
+}

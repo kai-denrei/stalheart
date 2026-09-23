@@ -314,7 +314,13 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 33 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 34 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### Cycling tank > gunship > SOL-82 > tank leaves the tank off to the right and the gunship aiming right of centre
+
+`2026-09-23-seat-changes-must-be-robust` · issue · **observed**
+
+Owner, 2026-09-23, playing build 91ba6850 in Safari on macOS: 'Something wrong with camera changes from tank to gunship to orbital. When it cycles back to Tank, the view is changed and the tank is off to the right side. Shooting with the Gunship is not centered, it appears everything is aiming more to the right, not the center. Explore the view changes, let's fix it and make it more robust, since changing views to control the game is a large part of it.' Seat switching is the game's core verb (docs/FUNMAP.md).
 
 ### On a phone the seats say less: one readout, no hint box, the shell out of the way
 
