@@ -10,7 +10,7 @@ import { CONTENT } from '../src/content/runtime.js';
 import { changeSummary } from '../src/content/authoring.js';
 import { clone, serializePreset } from '../src/content/preset.js';
 import { LASER_VIEW, LASER_BURN } from '../src/content/orbital-laser.js';
-import { GUNSHIP_TRACK, GUNSHIP_GUNS } from '../src/content/gunship.js';
+import { GUNSHIP_TRACK, GUNSHIP_GUNS, GUNSHIP_ORBIT } from '../src/content/gunship.js';
 import { scopeRect } from '../src/fx/laser-scope.js';
 const args=process.argv.slice(2),production=args.includes('--dist');
 const port=+process.env.STALHEART_BROWSER_PORT||18155,base=production?'/stalheart/':'/';
@@ -307,8 +307,11 @@ try{
   // ONE RELEASE A PASS, END TO END (Node-tested in test/gunship.mjs, never before seen in a browser): once the tube has safed the pass
   // is SPENT, the HUD says so in its own words, and a press neither paints nor releases; the pass ends, the next call brings the
   // platform back on station with a fresh round, and the same press paints and releases again
-  await until('window.__stalheartTest.state().gunship.heavy.phase==="spent"',GUNSHIP_GUNS.heavy.reload*1000+8000).catch(async()=>assert.fail(`the tube safes into SPENT (${JSON.stringify(await evaluate('window.__stalheartTest.state().gunship.heavy'))})`));
+  // the tube safes over its reload; this must happen while the pass is still overhead, or the seat is torn down and the HUD reads nothing
+  await until('(()=>{const g=window.__stalheartTest.state().gunship;return g.heavy.phase==="spent"||!g.station})()',GUNSHIP_GUNS.heavy.reload*1000+8000).catch(async()=>assert.fail(`the tube safes into SPENT (${JSON.stringify(await evaluate('window.__stalheartTest.state().gunship.heavy'))})`));
   {const before=await evaluate('window.__stalheartTest.state()');
+   assert(before.gunship.station&&before.gunship.seat,`the pass must still be on station with the gunner seated when the tube safes (station ${before.gunship.station}, seat ${before.gunship.seat}, left ${before.gunship.left} s): the step ran long against the ${GUNSHIP_ORBIT.station} s station`);
+   assert.equal(before.gunship.heavy.phase,'spent',`the tube safed into SPENT (${JSON.stringify(before.gunship.heavy)})`);
    assert.equal(await evaluate('document.querySelector("#gunship-hud [data-f=state]").textContent'),'SPENT · ONE RELEASE A PASS','the HUD refuses in its own words');
    await evaluate('window.__stalheartTest.gunshipHold(true)');await delay(250);await evaluate('window.__stalheartTest.gunshipHold(false)');await delay(150);await evaluate('window.__stalheartTest.gunshipHold(true)');await delay(250);await evaluate('window.__stalheartTest.gunshipHold(false)');await delay(400);
    const after=await evaluate('window.__stalheartTest.state()');

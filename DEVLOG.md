@@ -38,6 +38,22 @@ Evidence:
 - 2026-09-15-gunship-track-latched-and-seat-lens-reset (an earlier lens bug of the same family).
 - 2026-09-16-gunship-creeps-toward-the-breaches (holdAim).
 
+## 2026-09-23 — The tutorial's Rotor hand-over beat evicted a seated gunner mid-pass; the --gunship SPENT failure was that, not the HUD or the clock
+
+issue · resolved · 2026-09-23-a-beat-evicted-the-gunner
+
+While merging the seat contract (2026-09-23-seat-changes-robust) the --gunship step failed at 'the HUD refuses in its own words' with the HUD reading '—'. The agent reported it as pre-existing on main 04e61da9; a bisect run on that commit confirmed the identical failure.
+
+Found by a page-console stack trace at the failing check (the harness collects Runtime.consoleAPICalled but never prints it; two earlier trace runs were blind): enterPilot(pilotMode=true, hadGunship=true) <- storyApi.pilot <- src/domain/story-beats.js:65 <- frame. The story beats' 'override' phase calls api.pilot(socket) on its own clock; on the --gunship route (stage 6, beats live) it fires during the MK-9's 20 s safing, re-enters the pilot on the Rotor, and enterPilot disposes the live gunship seat underneath the gunner — the optic dismounts, the HUD's state field reverts to its placeholder, and the pass is still on station with ~75 s left. Two wrong readings preceded this and are recorded: 'the step overran the 120 s station' (75 s remained) and 'the step's own TANK click' (that click was L262's, and the seat was re-taken and asserted after it). Fix: storyApi.pilot refuses while pilot.gunship or SOL-82 is seated — a scripted hand-over never evicts the player from a seat they chose; the beat still advances (the Rotor hand-over is skipped for a gunner). td-tab net 0. The harness change stands: the SPENT wait ends on SPENT or on the station closing and asserts the gunner is still seated with a message naming the state. In real play the override beat runs long before a gunship exists, so this could only bite through the test route or a jump.
+
+Alternatives: Make the beat wait until the seat is free (defer, then hand over); rejected for now: the override is a tutorial beat and a gunner past the handover no longer needs it.; Have enterPilot refuse to replace a gunship seat globally; rejected: the strip legitimately swaps seats, and the seat contract (2026-09-23-seat-changes-robust) already owns that path.
+
+Evidence:
+
+- Trace at the guard: 'enterPilot (pilotMode=true, hadGunship=true) | Object.pilot (td-tab.js:9881) <- Object.tick (story-beats.js:65) <- frame'; then 'dismountGunship gunship=true | dispose <- enterPilot'.
+- state().gunship at the check on both 04e61da9 and the seat-contract tree: {phase:'station', left:~75, seat:false, mounted:false, heavy:{phase:'spent'}}.
+- src/domain/story-beats.js:65: the override phase calls api.pilot(socket, lane) then enter('piloting').
+
 ## 2026-09-19 — The showcase is built: twelve shots, 28 s, played over a live run of the skipped world and ending on Isao asking 'Are you ready?'
 
 change · accepted · 2026-09-19-showcase-built
