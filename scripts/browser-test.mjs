@@ -1668,6 +1668,78 @@ try{
   assert.equal(s.lost,false,'the colony stands');
   assert.deepEqual(s.errors,[],'the seal raises no errors');}
  await evaluate('window.__stalheartLaserTest.dispose()');
+ } else if(args.includes('--seats')) {
+ // THE SEAT-TRANSITION CONTRACT (src/domain/seat-view.js; owner, 2026-09-23: "changing views to control the game is a large
+ // part of it"). The whole cycle matrix on one board: TANK to a seat and back, seat to seat, seat to MAP and back. After every
+ // transition back to the hull the tank must sit exactly where it sat, at exactly the lens it had, with no seat left occupied
+ // and no pointer lock hanging on; and a seat entered FROM another seat must be that seat and nothing else -- the failure the
+ // owner saw was SOL-82 opening on top of the gunship, which kept the camera while SOL-82's 52 degree lens went in behind a
+ // reticle that still said 2.6x. The gunship's three guns are checked against the reticle itself: the aim the rounds fly at,
+ // projected through the very camera that draws the frame, is the centre of the screen the reticle is drawn on.
+ const SEAT_PX=2;   // the reticle's own stroke is 1.4 px wide: a gun off by more than a couple of pixels is off
+ const seat=()=>evaluate('window.__stalheartTest.seatState()');
+ const stripClick=async(sel,wait=1600)=>{await evaluate(`document.querySelector("#story-views ${sel}").click()`);await delay(wait);return seat();};
+ /* a LEAVE is read one frame later, not two seconds later: leavePilot snaps the camera onto the hull's goal, and after that the
+    chase camera eases (0.14 a frame) behind a tank that drives itself, so a late reading measures the follow's lag, not the restore */
+ const toTank=()=>stripClick('[data-view=tank]',300);
+ const armPass=async()=>{await evaluate('window.__stalheartTest.laserOnline(true)');if(!await evaluate('window.__stalheartTest.state().laser.overhead'))await evaluate('window.__stalheartTest.laserPassNow()');
+  await until('window.__stalheartTest.state().laser.overhead',10000);await until('!document.querySelector("#story-views [data-view=laser]").disabled',10000);};
+ await go('seats-load','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=6&phase=expedition&laser=online&gunship=station#td');
+ await until('!!window.__stalheartTest && (window.__stalheartTest.state().storyLod||[]).some(l=>l.id==="stalheart")',90000);await delay(2500);
+ // both briefings out of the way: they are each a first-seat beat, not part of the matrix
+ await evaluate('window.__stalheartTest.mountGunship()');await delay(600);
+ await until('!!document.querySelector("#gunship-briefing [data-skip]") || window.__stalheartTest.state().gunship.seat',12000);
+ await evaluate('document.querySelector("#gunship-briefing [data-skip]")?.click()');await until('window.__stalheartTest.state().gunship.seat',12000);await delay(800);
+ await stripClick('[data-view=tank]');
+ await armPass();await evaluate('document.querySelector("#story-views [data-view=laser]").click()');await delay(600);
+ await until('!!document.querySelector("#sol82-briefing [data-skip]") || window.__stalheartTest.state().laser.seated',12000);
+ await evaluate('document.querySelector("#sol82-briefing [data-skip]")?.click()');await until('window.__stalheartTest.state().laser.seated',12000);await delay(800);
+ await stripClick('[data-view=tank]');await delay(1200);
+ /* the reference pose: one warm-up in and out of the guns, so `home` is the snapped hull camera every later leave is compared against */
+ await stripClick('[data-mount=gunship]');const home=await toTank();
+ assert(!home.pilot&&!home.laserSeat,'the matrix starts in the hull');
+ assert.equal(home.fov,68,'the hull owns its own lens');
+ assert.equal(home.view,'third','and its own chase camera');
+ assert(Math.abs(home.tank[0])<0.02,`the hull's chase camera is centred on the tank (x ${home.tank[0]})`);
+ const back=(name,s)=>{assert(!s.pilot&&!s.gunshipSeat,`${name}: no pilot seat is left occupied`);assert(!s.laserSeat,`${name}: SOL-82's seat is left with it`);
+  assert(!s.locked,`${name}: the pointer lock does not survive the seat`);
+  assert.equal(s.view,home.view,`${name}: the hull's own view comes back (${s.view})`);
+  assert.equal(s.fov,home.fov,`${name}: the hull's own lens comes back (${s.fov})`);
+  assert(Math.abs(s.tank[0])<0.02&&Math.abs(s.tank[1]-home.tank[1])<0.02,
+   `${name}: the tank is where it was on the glass (${s.tank} vs ${home.tank})`);};
+ // TANK -> GUNSHIP -> TANK
+ {const g=await stripClick('[data-mount=gunship]');assert(g.gunshipSeat&&!g.laserSeat,'GUNSHIP takes the guns alone');
+  back('tank>gunship>tank',await toTank());}
+ // TANK -> SOL-82 -> TANK, and the pose SOL-82's own seat holds
+ await armPass();const solo=await stripClick('[data-view=laser]');
+ assert(solo.laserSeat&&!solo.pilot,'SOL-82 takes the beam alone');assert.equal(solo.fov,52,'the seat takes its ground lens');
+ back('tank>sol82>tank',await toTank());
+ // TANK -> GUNSHIP -> SOL-82 -> TANK: the middle step is the one that used to open two seats at once
+ {const g=await stripClick('[data-mount=gunship]');assert(g.gunshipSeat,'the guns first');
+  await armPass();const l=await stripClick('[data-view=laser]');
+  assert(l.laserSeat,'SOL-82 opens from the gunship');
+  assert(!l.pilot&&!l.gunshipSeat,'and the gunship seat is LEFT, not kept underneath it');
+  assert.equal(l.fov,solo.fov,'the same lens whichever seat it is entered from');
+  assert.equal(l.view,solo.view,'the same view whichever seat it is entered from');
+  assert(Math.abs(l.pos[0]-solo.pos[0])<1e-3&&Math.abs(l.pos[1]-solo.pos[1])<1e-3&&Math.abs(l.pos[2]-solo.pos[2])<1e-3,
+   `SOL-82's own ground view, not the gunship's (${l.pos} vs ${solo.pos})`);
+  back('tank>gunship>sol82>tank',await toTank());}
+ // a seat, MAP, and back to the hull
+ {await stripClick('[data-mount=gunship]');const m=await stripClick('[data-view=map]');assert.equal(m.view,'orbit','MAP is the global view');
+  back('gunship>map>tank',await toTank());}
+ current='seats-tank';await finish();
+ // THE GUNS AIM AT THE RETICLE. state().gunship.aim is the point the rounds are fired at (src/sentry-pilot.js gunshipTick);
+ // seatState projects it through the live camera, so this is the reticle the player is looking through, not a second sum.
+ await stripClick('[data-mount=gunship]');await delay(1200);
+ for(const gun of ['rotary','bofors','heavy']){
+  await evaluate(`window.__stalheartTest.gunshipGun(${JSON.stringify(gun)})`);await delay(900);
+  const s=await seat(),w=await evaluate('innerWidth'),h=await evaluate('innerHeight');
+  assert(s.aim,`${gun}: the seat has an aim point`);
+  const dx=s.aim[0]/2*w,dy=-s.aim[1]/2*h;
+  console.log(`  seats: ${gun} lands ${dx.toFixed(2)} px across, ${dy.toFixed(2)} px down from the reticle at fov ${s.fov}`);
+  assert(Math.abs(dx)<=SEAT_PX&&Math.abs(dy)<=SEAT_PX,`${gun}: the round goes where the reticle is (${dx.toFixed(2)},${dy.toFixed(2)} px)`);}
+ current='seats-gunship';await finish();
+ back('gunship>tank (guns)',await toTank());
  } else if(args.includes('--debrief')) {
  // THE SECTOR DEBRIEF (src/fx/sector-debrief.js) in its lab, labs.html#debrief. Every sample report is shown, each page
  // is completed with a real Space press and advanced with the next one, and the pages and labels are checked against

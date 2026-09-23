@@ -20,6 +20,7 @@ export function createLaserStation(root, scene, host) {
 
   function sit() {
     if (seat || !overhead()) { if (!seat) host.views()?.active('tank'); return !!seat; }
+    host.vacate?.();   /* ONE SEAT AT A TIME (src/domain/seat-view.js): the strip button is caught here and its own handler never runs, so nothing else leaves the seat the player is in — SOL-82 opened ON TOP of the gunship, which kept the camera while this seat's lens went in (owner, 2026-09-23) */
     const canvas = host.canvas();
     seat = createLaserSeat(root, { arsenal, canvas, container: canvas.parentElement ?? root, mobile: host.mobile, leave: () => leave(), pause: () => host.paused(!host.paused()) });
     arsenal.seat(true);
