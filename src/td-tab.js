@@ -11,14 +11,14 @@ import { makeOrdnanceShell } from './shell.js';
 import { firingFor } from './content/firing-defaults.js'; import { RELEASE_EVENTS, releasesHeld, releaseHeld } from './core/held-input.js';
 import { METRES_PER_CELL, arcToMetres, metresToArc } from './core/stage-units.js';
 import { pickMissileTarget, missileLimits, stepMissileLock, missileCanFire } from './domain/missile-targeting.js';
-import { createRunContext } from './domain/run-context.js';
-import { createRunTimers } from './platform/run-timers.js';
+import { createRunContext } from './domain/run-context.js'; import { trunkCells, simDirective, simPick } from './domain/sim-policy.js';
+import { createRunTimers } from './platform/run-timers.js'; import { createSimRun } from './platform/sim-run.js';
 import { createMissilePool, launchDart, advanceDart } from './missiles.js';
 import { MISSILE_LAUNCH_ELEVATION } from './content/missile-defaults.js';
 import { renderWorkload, performanceSummary } from './render-workload.js';
 import { CONTENT } from './content/runtime.js';
 import { preloadSentryTerraformer, makeSentryTerraformer } from './terraformer.js';
-import { GAME_START_BIOMASS, SINK, tollFor, breachGrant, debriefAffordable, simOutcome } from './campaign.js';
+import { GAME_START_BIOMASS, SINK, tollFor, breachGrant, debriefAffordable } from './campaign.js';
 import { record } from './diagnostics.js';
 import { storage as localStorage } from './storage.js';
 // td-tab.js — the game controller: one closure (initTdTab) that owns the world, the frame loop and the wiring between them. The
@@ -949,164 +949,25 @@ export function initTdTab(root) {
   // 3s buckets of kill tempo — the sparkline is drawn from them.
   // --- SIM autoplay (tier-1 gameplay simulation) --------------------------
   // ?sim=style1|style0 plays the game by policy at ?simfast=K (default 50
-  // fixed steps per frame). style1 is the operator's stated modus operandi:
-  // ram rammable / avoid solids (the ram directive already avoids nothing —
-  // solids shrug rams off, so the flee vector is deliberately NOT applied
-  // to it; the tank trades hull for kills exactly like the operator does),
-  // SLOW and AOE at bottlenecks, SNIPER everywhere, upgrades with spare
-  // biomass. style0 is the deliberate floor: wander, build nothing.
+  // fixed steps per frame). The policy's choice rules are src/domain/sim-policy.js, the run's end and its schema-2 result
+  // src/platform/sim-run.js (its host sits by the ?sim= boot); the state the frame loop reads stays here.
   let simFast = 0, simStyle = null, simPolClock = 0, simDone = false;
-  // ECONOMY MEASURE (operator, 2026-09-02: "biomass is much too easy to
-  // acquire, but rather than going by feel, let's be systematic"). Two
-  // numbers the feeling turns on: how much of the run the purse could
-  // afford the cheapest tower without waiting (a purse that is never short
-  // is not an economy), and how much of what was earned was ever spent.
-  let ecoAffordT = 0, ecoClockT = 0;
+  let ecoAffordT = 0, ecoClockT = 0;   // the ECONOMY MEASURE's two clocks (src/platform/sim-run.js reports them)
   const CHEAPEST_TOWER = Math.min(...TOWERS.map(d => d.cost));
   const simCurve = []; // one point per wave CLEAR: the tuning signal
   let simCap = 600; // sim-seconds before a run reports 'timeout'
-  function simTrunk() {
-    // traffic: greedy descent from each live portal toward the heart; a
-    // cell on 2+ routes is trunk — the lanes the policy fortifies
-    const count = new Map();
-    const live = spawnPoints.filter((sp) => sp.alive);
-    for (const sp of live) {
-      let cur = sp.ci, guard = 0;
-      while (dungeon.distToHeart[cur] > 0 && guard++ < 500) {
-        count.set(cur, (count.get(cur) || 0) + 1);
-        let best = cur;
-        for (const nb of graph.adj[cur]) {
-          if (dungeon.tags[nb] !== BLOCKED && dungeon.distToHeart[nb] >= 0
-            && dungeon.distToHeart[nb] < dungeon.distToHeart[best]) best = nb;
-        }
-        if (best === cur) break;
-        cur = best;
-      }
-    }
-    const need = Math.min(2, Math.max(1, live.length));
-    return [...count.entries()].filter(([, c]) => c >= need).map(([ci]) => ci);
-  }
-  function simBuild() {
-    const trunk = simTrunk();
-    if (!trunk.length) return;
-    const unlockedSet = new Set(unlockedTowerKeys(wave));
-    const have = (k) => towers.reduce((a, tw) => a + (tw.def.key === k ? 1 : 0), 0);
-    // ISAO'S POLICY IS A SHAPE, NOT A SHOPPING LIST. It was three literal
-    // keys, which is a policy that silently builds nothing on any board
-    // where those keys do not exist. What the sim batch actually learned
-    // was "two slow fields, two lobbers, and reach everywhere" — so it asks
-    // the roster for the towers with those ATTACKS and takes the first of
-    // each, which is the same policy on either board.
-    const byAttack = (atk) => (TOWERS.find((d) => d.attack === atk) || {}).key;
-    const longest = TOWERS.reduce((a, d) => (!a || d.range > a.range ? d : a), null);
-    const wants = [];
-    for (const atk of ['slowfield', 'mortar']) {
-      const k = byAttack(atk);
-      if (k && have(k) < 2) wants.push(k);
-    }
-    if (longest) wants.push(longest.key);  // '...with sniper everywhere'
-    // the opening: the preferred kit unlocks at waves 4-7, and the very
-    // first batch run proved a policy with no early fallback builds
-    // NOTHING and loses the heart by wave 2 — so until the kit arrives,
-    // keep pace with the waves using the newest thing unlocked
-    if (towers.length < Math.min(4, wave)) {
-      wants.unshift(unlockedTowerKeys(wave).pop());
-    }
-    for (const k of wants) {
-      if (!unlockedSet.has(k)) continue;
-      const def = TOWER_BY_KEY[k];
-      if (!eco.canAfford(def.cost)) return; // save up for the priority buy
-      for (const tci of trunk) {
-        for (const nb of graph.adj[tci]) {
-          if (!placeError(nb)) { orderTower(k, nb); return; }
-        }
-      }
-      break; // unlocked and affordable but nowhere to put it — fall through
-    }
-    // nothing to place: spend spare biomass on the cheapest upgrade
-    let bestT = null, bestC = Infinity;
-    for (const tw of towers) {
-      const c = upgradeCost(tw.def, tw.tier);
-      if (c !== null && c < bestC && eco.canAfford(c)) { bestC = c; bestT = tw; }
-    }
-    if (bestT) orderUpgrade(bestT);
-  }
-  // style2 'builder': stay out of trouble, spend EVERYTHING on towers —
-  // newest unlocked first, upgrades with the change. This style survives
-  // into the mid-game, which is where the biomass-flood question lives.
-  function simBuildAll() {
-    const trunk = simTrunk();
-    if (!trunk.length) return;
-    const keys2 = unlockedTowerKeys(wave).slice().reverse();
-    for (const k of keys2) {
-      const def = TOWER_BY_KEY[k];
-      if (!eco.canAfford(def.cost)) continue;
-      for (const tci of trunk) {
-        for (const nb of graph.adj[tci]) {
-          if (!placeError(nb)) { orderTower(k, nb); return; }
-        }
-      }
-    }
-    let bestT = null, bestC = Infinity;
-    for (const tw of towers) {
-      const c = upgradeCost(tw.def, tw.tier);
-      if (c !== null && c < bestC && eco.canAfford(c)) { bestC = c; bestT = tw; }
-    }
-    if (bestT) orderUpgrade(bestT);
-  }
+  function simTrunk() { return trunkCells(spawnPoints, dungeon, graph); }   // the lanes the policy fortifies (the story HUD's route too)
   function simPolicy(dt) {
     simPolClock += dt;
     if (simPolClock < 2) return; // decide every 2 SIM-seconds
     simPolClock = 0;
-    const wantDir = simStyle === 'style1' ? 'ram'
-      : simStyle === 'style2' ? 'avoid' : 'wander';
+    const wantDir = simDirective(simStyle);
     if (params.directive !== wantDir || !autoMode) {
       params.directive = wantDir;
       autoMode = true;
     }
-    if (simStyle === 'style1') simBuild();
-    else if (simStyle === 'style2') simBuildAll();
-  }
-  function simWatch() {
-    if (simDone) return;
-    if (player.won) {
-      const outcome = simOutcome({ heart: heartHP, lives: playerHP, round, total: SECTORS_TOTAL });
-      if (outcome === 'sector-clear' && new URLSearchParams(location.search).get('simscope') !== 'sector') {
-        endShot();
-        if (!breachNextSector()) { simEmit('stalled'); return; }
-        endShot(); setView('third');
-        return;
-      }
-      simEmit(outcome);
-    }
-    else if (t > simCap) simEmit('timeout');
-  }
-  function simEmit(outcome) {
-    simDone = true;
-    const payload = { schema: 2, application: 'stalheart',
-      build: document.querySelector('meta[name="cb"]')?.content || 'source',
-      scope: new URLSearchParams(location.search).get('simscope') === 'sector' ? 'sector' : 'campaign',
-      balance: 'migration-1', content: CONTENT.id, generator: 'research-1900c9d', roster: ROSTER.id,
-      mission: new URLSearchParams(location.search).get('mission') || 'defense',
-      runId: new URLSearchParams(location.search).get('runid') || 'standalone',
-      config: { ...params }, simulationStep: 1 / 30,
-      style: simStyle, seed: params.seed >>> 0, outcome, wave, round,
-      score: score.points, heart: heartHP, lives: playerHP,
-      towers: towers.length, biomass: eco.biomass, simT: Math.round(t),
-      curve: simCurve, sectors: campaign,
-      economy: {
-        earned: eco.earned, spent: eco.spent, peak: eco.peak, held: eco.biomass,
-        starting: eco.starting, ledger: eco.ledger, netSpent: eco.spent - eco.ledger.refunds,
-        spendRatio: eco.starting + eco.earned ? +((eco.spent - eco.ledger.refunds) / (eco.starting + eco.earned)).toFixed(2) : 0,
-        affordable: ecoClockT ? +(ecoAffordT / ecoClockT).toFixed(2) : 0,
-        perWave: wave ? Math.round(eco.earned / wave) : 0,
-      } };
-    record('sim.result', payload);
-    window.__stalheartSimResult = payload;
-    console.log('SIMRESULT ' + JSON.stringify(payload));
-    try {
-      if (window.parent !== window) window.parent.postMessage({ simresult: payload }, location.origin);
-    } catch { /* sandboxed parent */ }
+    const pick = simPick(simStyle, { trunk: simTrunk, towers, wave, eco, graph, placeError, roster: TOWERS, byKey: TOWER_BY_KEY, unlocked: unlockedTowerKeys(wave), upgradeCost });
+    if (pick?.tower) orderUpgrade(pick.tower); else if (pick) orderTower(pick.key, pick.ci);
   }
 
   // RUN-level bookkeeping: everything the final send-off reports. Wave
@@ -9210,6 +9071,12 @@ export function initTdTab(root) {
     setStoryViews: (v) => (storyViews = v), setGunshipBriefing: (v) => (gunshipBriefing = v), setPaused: (v) => { paused = v; },
   }));
   Object.assign(storyApi, createBackDoor({ storyApi, sfx, explode, showBrief, camDist, showCallout, warnRing, breachWallCell, rebuildAfterBreach, recomputePortalDist, shotActive, camera, startShot, story: () => story, graph: () => graph, dungeon: () => dungeon, cellSide: () => cellSide, paused: () => paused, deploy: () => deploy, pilotMode: () => pilotMode, pilot: () => pilot }));   /* THE SECOND FRONT (src/fx/back-door.js) */
+  // THE SIM RUN'S END (src/platform/sim-run.js): simWatch, which the fast-forward calls after each batch, and the result it publishes
+  const { simWatch } = createSimRun({
+    player, params, towers, simCurve, campaign, endShot, breachNextSector, setView, SECTORS_TOTAL,
+    simDone: () => simDone, heartHP: () => heartHP, playerHP: () => playerHP, round: () => round, wave: () => wave, t: () => t, simCap: () => simCap, simStyle: () => simStyle, score: () => score, eco: () => eco, ecoClockT: () => ecoClockT, ecoAffordT: () => ecoAffordT,
+    setSimDone: (v) => { simDone = v; },
+  });
   const simParam = urlParams.get('sim');
   storyApi.setLaserOnline = (on) => laserStation.setOnline(on);   // the sectors switch SOL-82 on (V1 design: sector 2)
   if (simParam) {
@@ -12575,35 +12442,117 @@ export function initTdTab(root) {
   // Browser acceptance adapter, available only when explicitly requested.
   // Tests use the real commands/transitions, and inspect serializable state.
   const gameHooks = {
-      state: () => ({ enemyTypes: [...new Set(enemies.filter((e) => e.alive).map((e) => e.type))].sort(), explosions: explosions.state(), pilotRounds: rs?.pilotRounds ?? 0, pilotHits: rs?.pilotHits ?? 0, gunship: gunshipRig.probe(), shot:shotId(),breachRubble:gameBreaches.rubbleState(),breaches:gameBreaches.state(),queued:spawnQueue.length,wallCount:dungeon.tags.filter(tag=>tag===BLOCKED).length,emerging:enemies.filter(e=>e.alive&&!e.guard&&e.emergeAge<1.2).length,round, wave, runGen: runContext.generation, heart: heartHP, hulls: playerHP,
-        biomass: eco.biomass, towers: towers.length, won: player.won, paused,
-        roster: ROSTER.id, buildMode, expeditions: story?.expeditions ?? null, cargo: story?.glue?.state() ?? null, unlocked: automated() ? unlockedTowers(story.expeditions, STORY_EXPEDITIONS.base) : null, storyHome: story?.home ?? -1, story: story?.beats.state() ?? null, hull: story?.hull ? { ...story.hull.state(), visible: !!playerMesh?.visible, tankButton: (() => { const b = document.querySelector('#story-views [data-view="tank"]'); return b ? !b.hidden : null; })() } : null, automated: automated(), gunshipCall: { ...gunshipRig.call }, storyHud: story?.hud.state() ?? null, enemyRecords: enemies.length, enemiesAlive: enemies.reduce((n, e) => n + (e.alive ? 1 : 0), 0), killsBySrc: { ...rs.bySrc }, storyLod: storyBase?.lod() ?? null, storyBaseErrors: storyBase?.errors.slice() ?? null, programme: story?.programme ? { ...programmeSnapshot(story.programme), grow: !!story.grow, print: story.print.state(), gate: storyBase?.gate() ?? null, gates: storyBase?.gateList() ?? null, backSockets: (story.backSockets ?? []).map((sk) => sk.cell), broke: programmeHas(story.programme, 'gate') ? (story.wallCells ?? []).filter((wc) => dungeon.tags[wc] !== BLOCKED).length : 0, repairing: orders.find((o) => o.kind === 'repair')?.repair ?? null, repairBed: !!orders.find((o) => o.kind === 'repair')?.bed, isao: isao ? { state: isao.state, order: isao.order?.kind ?? null, printK: isao.dur ? +Math.min(1, isao.t / isao.dur).toFixed(3) : 0 } : null, perks: [...storyApi.perks()] } : null, towerCells: towers.map((t) => [t.key, t.ci]), insideEnemies: story ? enemies.filter((e) => e.alive && story.inside(e.cur)).length : 0,
-        playerAsset: playerMesh?.userData.asset || params.creature, playerSpan: (() => { if (!playerMesh) return null; const b = new THREE.Box3().setFromObject(playerMesh); return Number.isFinite(b.max.x) ? +(b.getSize(new THREE.Vector3()).length() / (unitScale || 1)).toFixed(2) : null; })(),   // the hull's true size over its scale: exploded geometry reads absurd here
-        sector: sectorRun ? { ...sectorRun.state(), sockets: Object.keys(story?.socketToward ?? {}).map(Number) } : null, playerAssetReady: !playerMesh?.userData.loading, skip: { on: !!storyQuery.skip, offer: skipCard?.state() ?? null },   /* SKIP TUTORIAL: whether this run is the skipped entry, and whether the offer still stands */
+      state: () => ({
+        enemyTypes: [...new Set(enemies.filter((e) => e.alive).map((e) => e.type))].sort(),
+        explosions: explosions.state(),
+        pilotRounds: rs?.pilotRounds ?? 0,
+        pilotHits: rs?.pilotHits ?? 0,
+        gunship: gunshipRig.probe(),
+        shot:shotId(),
+        breachRubble:gameBreaches.rubbleState(),
+        breaches:gameBreaches.state(),
+        queued:spawnQueue.length,
+        wallCount:dungeon.tags.filter(tag=>tag===BLOCKED).length,
+        emerging:enemies.filter(e=>e.alive&&!e.guard&&e.emergeAge<1.2).length,
+        round,
+        wave,
+        runGen: runContext.generation,
+        heart: heartHP,
+        hulls: playerHP,
+        biomass: eco.biomass,
+        towers: towers.length,
+        won: player.won,
+        paused,
+        roster: ROSTER.id,
+        buildMode,
+        expeditions: story?.expeditions ?? null,
+        cargo: story?.glue?.state() ?? null,
+        unlocked: automated() ? unlockedTowers(story.expeditions, STORY_EXPEDITIONS.base) : null,
+        storyHome: story?.home ?? -1,
+        story: story?.beats.state() ?? null,
+        hull: story?.hull ? { ...story.hull.state(), visible: !!playerMesh?.visible, tankButton: (() => { const b = document.querySelector('#story-views [data-view="tank"]'); return b ? !b.hidden : null; })() } : null,
+        automated: automated(),
+        gunshipCall: { ...gunshipRig.call },
+        storyHud: story?.hud.state() ?? null,
+        enemyRecords: enemies.length,
+        enemiesAlive: enemies.reduce((n, e) => n + (e.alive ? 1 : 0), 0),
+        killsBySrc: { ...rs.bySrc },
+        storyLod: storyBase?.lod() ?? null,
+        storyBaseErrors: storyBase?.errors.slice() ?? null,
+        programme: story?.programme ? {
+          ...programmeSnapshot(story.programme), grow: !!story.grow, print: story.print.state(), gate: storyBase?.gate() ?? null,
+          gates: storyBase?.gateList() ?? null, backSockets: (story.backSockets ?? []).map((sk) => sk.cell),
+          broke: programmeHas(story.programme, 'gate') ? (story.wallCells ?? []).filter((wc) => dungeon.tags[wc] !== BLOCKED).length : 0,
+          repairing: orders.find((o) => o.kind === 'repair')?.repair ?? null, repairBed: !!orders.find((o) => o.kind === 'repair')?.bed,
+          isao: isao ? { state: isao.state, order: isao.order?.kind ?? null, printK: isao.dur ? +Math.min(1, isao.t / isao.dur).toFixed(3) : 0 } : null,
+          perks: [...storyApi.perks()],
+        } : null,
+        towerCells: towers.map((t) => [t.key, t.ci]),
+        insideEnemies: story ? enemies.filter((e) => e.alive && story.inside(e.cur)).length : 0,
+        playerAsset: playerMesh?.userData.asset || params.creature,
+        // the hull's true size over its scale: exploded geometry reads absurd here
+        playerSpan: (() => { if (!playerMesh) return null; const b = new THREE.Box3().setFromObject(playerMesh); return Number.isFinite(b.max.x) ? +(b.getSize(new THREE.Vector3()).length() / (unitScale || 1)).toFixed(2) : null; })(),
+        sector: sectorRun ? { ...sectorRun.state(), sockets: Object.keys(story?.socketToward ?? {}).map(Number) } : null,
+        playerAssetReady: !playerMesh?.userData.loading,
+        skip: { on: !!storyQuery.skip, offer: skipCard?.state() ?? null },   // SKIP TUTORIAL: whether this run is the skipped entry, and whether the offer still stands
         playerModelStats: playerMesh?.userData.modelStats,
-        berthAssets:lifeContainers.flatMap(c=>c.tanks.map(t=>t.userData.asset)), bays: lifeContainers.map((c) => ({ ci: c.ci, hasTank: c.tanks.length > 0, racked: !!c.tanks[0]?.visible })), berthCells: berths.map((b) => b.ci), kills: rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike, monitorShown: storyMonitor?.shown() ?? 0, screenOpen: !!syntheticModal?.isOpen(), screensOpened: syntheticModal?.opened() ?? 0, brassLive: brass?.live() ?? 0, daylight: daylight?.state() ?? null,
+        berthAssets:lifeContainers.flatMap(c=>c.tanks.map(t=>t.userData.asset)),
+        bays: lifeContainers.map((c) => ({ ci: c.ci, hasTank: c.tanks.length > 0, racked: !!c.tanks[0]?.visible })),
+        berthCells: berths.map((b) => b.ci),
+        kills: rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike,
+        monitorShown: storyMonitor?.shown() ?? 0,
+        screenOpen: !!syntheticModal?.isOpen(),
+        screensOpened: syntheticModal?.opened() ?? 0,
+        brassLive: brass?.live() ?? 0,
+        daylight: daylight?.state() ?? null,
         heartAsset: heartSprite?.userData.asset || params.heartLook,
         laser: laserStation.state(),
         heartAssetState: heartSprite?.userData.assetState,
-        performance:perfSample,programs:renderer.info.programs?.length??-1,warm:programWarm.state(),shieldClock:t,motionClock:runContext.time,shield:{seconds:shield.t,rack:shield.rack,cooldown:Math.max(0,shield.coolUntil-t),drops:shieldDrops,visible:shieldObj?.visible,active:shieldUp(),cooling:t<shield.coolUntil,rackFill:shield.rackFill,arrayReserve:arrayStation.reserve,charging:arrayStation.charging,arrayDrawn:arrayStation.drawn,arrayPad:story?.arrayPad??null,ring:arrayRing?{visible:arrayRing.visible,opacity:arrayRing.material.opacity}:null},ram:{combo:ramCombo,rams:rs.rams,best:rs.maxCombo,biomass:eco.biomass,points:score.points,float:ramFloat.state()},foes:enemies.filter(e=>e.alive&&!(e.emergeAge<1.2)).map(e=>[e.cur,e.spec.rammable?1:0]),
-        cannonHeat,ammo,cannonColor:playerMesh?.userData.heatSleeve?.material.color.getHex(),
+        performance:perfSample,
+        programs:renderer.info.programs?.length??-1,
+        warm:programWarm.state(),
+        shieldClock:t,
+        motionClock:runContext.time,
+        shield:{seconds:shield.t,rack:shield.rack,cooldown:Math.max(0,shield.coolUntil-t),drops:shieldDrops,visible:shieldObj?.visible,active:shieldUp(),cooling:t<shield.coolUntil,rackFill:shield.rackFill,arrayReserve:arrayStation.reserve,charging:arrayStation.charging,arrayDrawn:arrayStation.drawn,arrayPad:story?.arrayPad??null,ring:arrayRing?{visible:arrayRing.visible,opacity:arrayRing.material.opacity}:null},
+        ram:{combo:ramCombo,rams:rs.rams,best:rs.maxCombo,biomass:eco.biomass,points:score.points,float:ramFloat.state()},
+        foes:enemies.filter(e=>e.alive&&!(e.emergeAge<1.2)).map(e=>[e.cur,e.spec.rammable?1:0]),
+        cannonHeat,
+        ammo,
+        cannonColor:playerMesh?.userData.heatSleeve?.material.color.getHex(),
         engagement:towers.filter(tw=>missileOf(tw.key)).map(tw=>({key:tw.key,config:engagementConfig(tw),
           target:tw.missileTarget?.id??null,lock:tw.lock,aim:tw.aimErr,cooldown:tw.cooldown,
           ammo:tw.a6?.ammo,fired:tw.a6?.fired,trips:tw.a6?.trips,walkerState:tw.a6?.state})),
-        missileReady:!!missilePool,missilePool:missilePool?.stats(),seekerHits,seekerLost,
+        missileReady:!!missilePool,
+        missilePool:missilePool?.stats(),
+        seekerHits,
+        seekerLost,
         missiles:towerSeekers.map(m=>({key:m.by.key,config:m.config,t:m.t,name:m.mesh.name,
           position:m.mesh.position.toArray(),ignition:m.mesh.getObjectByName('EXHAUST_FX').visible})),
         drawCalls: renderer.info.render.calls,
-        playerPosition: player.pos.slice(), playerCell: player.cur, deploying: !!deploy, deployBerth: deploy ? deploy.n : -1, rollingOut: !!deploy?.clip,
+        playerPosition: player.pos.slice(),
+        playerCell: player.cur,
+        deploying: !!deploy,
+        deployBerth: deploy ? deploy.n : -1,
+        rollingOut: !!deploy?.clip,
         playerBlocked: freeBlocked(player.pos),
         camp: berths.map(b => ({ ...b, open: dungeon.tags[b.ci] !== BLOCKED && dungeon.tags[b.exit] !== BLOCKED,
-          clearance: dist3(graph.centers[b.exit], graph.centers[dungeon.heart]) - pedestalRadius() })) }),
+          clearance: dist3(graph.centers[b.exit], graph.centers[dungeon.heart]) - pedestalRadius() })),
+      }),
       siteCells: () => story?.siteCells ?? {}, placeTank: (ci) => { player.freeMode = false; player.virtualStart = null; player.cur = ci; player.prev = ci; player.next = ci; player.prog = 0; player.segLen = cellSide; player.pos = graph.centers[ci].slice(); },   /* the same fields deployStart resets, so the step rebuilds pos ON ci instead of gliding off it; segLen is the cell scale because cur === next is a zero-length chord */ killGuards: (id) => { for (const e of enemies) if (e.alive && e.guard?.site === id) killCreature(e, false); }, hitTank: () => { if (playerHP > 1) playerHit(); }, cargoView: (k, id) => { endShot(); if (!k || k === 'tank') snapCamera(); const f = k && k !== 'tank' ? story?.glue?.view(k, id) : null; if (f) startShot({ id: 'cargoView', dur: 600, poseAt: (u, out) => { out.pos.set(f.eye[0], f.eye[1], f.eye[2]); tmpCam.position.copy(out.pos); tmpCam.up.set(f.up[0], f.up[1], f.up[2]); tmpCam.lookAt(f.at[0], f.at[1], f.at[2]); out.quat.copy(tmpCam.quaternion); } }); return k && (f || k === 'tank') ? { ...(f ?? {}), camera: camera.position.toArray(), tank: player.pos.slice(), tankShown: !!playerMesh?.visible && playerMesh.parent === scene, near: camera.near, far: camera.far, sight: story?.glue?.sight(scene, f ? f.eye : camera.position.toArray(), f ? f.at : player.pos) ?? null } : false; },   /* a close still of the cargo (flag, crate, drop, trophy) for the screenshots; no kind ends it and snaps the tank camera */ cargoStand: (kind, id) => story?.glue?.standCell(kind, id, (ci) => dungeon.tags[ci] !== BLOCKED) ?? -1, commitTower: (key, ci) => !!commitTower(key, ci, 0), breachNew:()=>seedPortals(1), seatState:()=>{camera.updateMatrixWorld();const pv=new THREE.Vector3(player.pos[0],player.pos[1],player.pos[2]).project(camera),ap=pilot?.gunshipOptic?.()?.pos,av=ap?new THREE.Vector3(ap[0],ap[1],ap[2]).project(camera):null;return {view:params.view,fov:+camera.fov.toFixed(4),aspect:+camera.aspect.toFixed(4),quat:camera.quaternion.toArray().map(x=>+x.toFixed(6)),pos:camera.position.toArray().map(x=>+x.toFixed(6)),tank:[+pv.x.toFixed(5),+pv.y.toFixed(5),+pv.z.toFixed(5)],aim:av?[+av.x.toFixed(5),+av.y.toFixed(5),+av.z.toFixed(5)]:null,pilot:!!pilot,gunshipSeat:!!pilot?.gunship,seatKey:pilot?.state?.tower?.key??null,pilotView:pilot?.state?.view??null,zoom:pilot?.state?.zoom!=null?+pilot.state.zoom.toFixed(4):null,yaw:pilot?.state?.yaw!=null?+pilot.state.yaw.toFixed(5):null,pitch:pilot?.state?.pitch!=null?+pilot.state.pitch.toFixed(5):null,map:!!pilot?.isMap?.(),laserSeat:laserStation.seated(),locked:!!document.pointerLockElement,shot:shotId(),tankPos:player.pos.slice()};},
       breachNextWave:()=>{waveIn=-1;armWave();},
       breachStrike:()=>{const sp=spawnPoints.find(s=>s.alive&&s.obj.userData.breach);if(sp)executeStrike(sp.ci,t);},
       breachShell:()=>{const sp=spawnPoints.find(s=>s.alive&&s.obj.userData.breach);if(sp)gateTakesShell(sp);},
       breachSpent:programmeSpent,
-      sectorRelease: (id) => sectorRun?.test.release(id) ?? null, sectorClose: (id, by) => sectorRun?.test.close(id, by) ?? null, sectorClearField: () => sectorRun?.test.clearField(), sectorCull: (r = 8) => { if (!story) return 0; const doors = [story.gateCell, ...(story.backOpen ? story.backMouth?.cells ?? [] : [])].filter((c) => c >= 0).map((c) => graph.centers[c]); let n = 0; for (const e of enemies) if (e.alive && !e.guard && e.emergeAge >= 1.2 && doors.some((c) => chord(e.pos, c) < cellSide * r)) { killCreature(e, false); if (!e.harmless) n++; } return n; },   /* THE PACING PROBE'S DEFENDER (--pacing): a body within r cells of a door dies there; it counts arrivals (not harmless leftovers), not a player's kills */ sectorContinue: () => sectorRun?.test.cont(), sectorKeepHolding: () => sectorRun?.test.keepHolding(), sectorQuiet: (on) => sectorRun?.test.quiet(on), sectorReport: () => sectorRun?.test.report() ?? null,
+      sectorRelease: (id) => sectorRun?.test.release(id) ?? null,
+      sectorClose: (id, by) => sectorRun?.test.close(id, by) ?? null,
+      sectorClearField: () => sectorRun?.test.clearField(),
+      // THE PACING PROBE'S DEFENDER (--pacing): a body within r cells of a door dies there; it counts arrivals (not harmless
+      // leftovers), not a player's kills
+      sectorCull: (r = 8) => { if (!story) return 0; const doors = [story.gateCell, ...(story.backOpen ? story.backMouth?.cells ?? [] : [])].filter((c) => c >= 0).map((c) => graph.centers[c]); let n = 0; for (const e of enemies) if (e.alive && !e.guard && e.emergeAge >= 1.2 && doors.some((c) => chord(e.pos, c) < cellSide * r)) { killCreature(e, false); if (!e.harmless) n++; } return n; },
+      sectorContinue: () => sectorRun?.test.cont(),
+      sectorKeepHolding: () => sectorRun?.test.keepHolding(),
+      sectorQuiet: (on) => sectorRun?.test.quiet(on),
+      sectorReport: () => sectorRun?.test.report() ?? null,
       breachScenario:()=>{endShot();paused=false;setView('orbit');followSuspend=true;const sp=spawnPoints.find(s=>s.alive);if(sp){buildQ.setFromUnitVectors(BQ_Z,new THREE.Vector3(...graph.centers[sp.ci]).normalize());buildDist=1.65;}waveIn=-1;armWave();},
       shieldScenario: () => {
         endShot();paused=true;
@@ -12616,7 +12565,8 @@ export function initTdTab(root) {
       },
       shieldAdvance: seconds => {for(let left=seconds;left>1e-9;){const dt=Math.min(1/60,left);left-=dt;t+=dt;stepShieldDynamics(dt,t);stepTowers(dt,t);updateBeams(dt);}updateHud();placeActors();},
       leaveRelay: () => {player.pos=player.pos.map(v=>-v);},
-      relayOffline: id => towerOffline(shield,id,t), refillArrays: () => refillArrays(),
+      relayOffline: id => towerOffline(shield,id,t),
+      refillArrays: () => refillArrays(),
       deployShield: () => {const was=paused;paused=false;const result=deployShieldNow();paused=was;return result;},
       fireShell: () => fire(),
       ...laserStation.hooks,   // laserOnline, laserPassNow, laserSeat, laserSteer, laserHold
@@ -12675,7 +12625,18 @@ export function initTdTab(root) {
       focusHeart: () => { endShot(); setView('orbit'); centerBuildOnHeart(); followSuspend = true; buildDist = 1.65; },
       deployHull: n => { endShot(); paused = false; deployStart(n); },
       restart: () => regenerate(),
-      openBackDoor: () => storyApi.openBackDoor(), backDoorOpen: () => storyApi.backDoorOpen(), /* THE BACK GATE (2026-09-18): what the mouth's cells are to the pathfinder, and an order for a sentry on one of its mounts */ sealedAt: (ci) => !!story?.sealed(ci), gateAt: (ci) => story?.gateAt?.(ci) ?? null, backSocketCells: () => (story?.backSockets ?? []).map((sk) => sk.cell), orderAt: (ci, key = starterTower().key) => { eco.addBiomass((TOWER_BY_KEY[key]?.cost ?? 0) * 2); return placeError(ci) || (orderTower(key, ci, { quiet: true }) ? null : 'refused'); }, backCandidates: () => storyApi.backBreachCandidates(), backMouth: () => story?.backMouth ?? null, backBreach: (n = 16, k = 0) => { const c = storyApi.backBreachCandidates()[k]; if (!c) return -1; const obj = buildPortalObj(c.cell, 0); scene.add(obj); const sp = { ci: c.cell, alive: true, obj, hp: 3, found: true }; spawnPoints.push(sp); recomputePortalDist(); for (let i = 0; i < n; i++) spawnQueue.push({ type: 'amoeba', sp, at: spawnClock, spread: 0.8, delay: i * 0.12 }); return c.cell; }, backInside: () => { const m = story?.backMouth, h = graph.centers[dungeon.heart]; if (!m) return 0; const b = sub3(m.dir, scale3(h, dot3(m.dir, h))); return enemies.filter((e) => e.alive && story.inside(e.cur) && dot3(sub3(e.pos, h), b) > 0).length; }, viewBack: (height, back) => { const m = story?.backMouth; if (!m) return; endShot(); paused = false; startDiveShot({ camera, startShot, cellSide }, new THREE.Vector3(...m.dir), { id: 'backview', hold: 600, dive: { ...story.backDoor.dive, height: height ?? story.backDoor.dive.height, back: back ?? story.backDoor.dive.back, diveSeconds: 1e-3 } }); },
+      openBackDoor: () => storyApi.openBackDoor(),
+      backDoorOpen: () => storyApi.backDoorOpen(),
+      // THE BACK GATE (2026-09-18): what the mouth's cells are to the pathfinder, and an order for a sentry on one of its mounts
+      sealedAt: (ci) => !!story?.sealed(ci),
+      gateAt: (ci) => story?.gateAt?.(ci) ?? null,
+      backSocketCells: () => (story?.backSockets ?? []).map((sk) => sk.cell),
+      orderAt: (ci, key = starterTower().key) => { eco.addBiomass((TOWER_BY_KEY[key]?.cost ?? 0) * 2); return placeError(ci) || (orderTower(key, ci, { quiet: true }) ? null : 'refused'); },
+      backCandidates: () => storyApi.backBreachCandidates(),
+      backMouth: () => story?.backMouth ?? null,
+      backBreach: (n = 16, k = 0) => { const c = storyApi.backBreachCandidates()[k]; if (!c) return -1; const obj = buildPortalObj(c.cell, 0); scene.add(obj); const sp = { ci: c.cell, alive: true, obj, hp: 3, found: true }; spawnPoints.push(sp); recomputePortalDist(); for (let i = 0; i < n; i++) spawnQueue.push({ type: 'amoeba', sp, at: spawnClock, spread: 0.8, delay: i * 0.12 }); return c.cell; },
+      backInside: () => { const m = story?.backMouth, h = graph.centers[dungeon.heart]; if (!m) return 0; const b = sub3(m.dir, scale3(h, dot3(m.dir, h))); return enemies.filter((e) => e.alive && story.inside(e.cur) && dot3(sub3(e.pos, h), b) > 0).length; },
+      viewBack: (height, back) => { const m = story?.backMouth; if (!m) return; endShot(); paused = false; startDiveShot({ camera, startShot, cellSide }, new THREE.Vector3(...m.dir), { id: 'backview', hold: 600, dive: { ...story.backDoor.dive, height: height ?? story.backDoor.dive.height, back: back ?? story.backDoor.dive.back, diveSeconds: 1e-3 } }); },
       heartHealth: fraction => { heartHP = Math.max(0, Math.min(HEART_MAX, fraction * HEART_MAX)); heartSprite.userData.setHealth?.(fraction); },
       /* THE SHOWCASE'S HOOKS (src/fx/showcase-hooks.js; the rail is src/fx/showcase.js): the montage drives the real systems through these and nothing else, so it needs no ?acceptance=1 */ showcase: createShowcaseHooks({ camera, enemies, spawnPoints, spawnQueue, towers, player, params, gunship, gunshipCall: gunshipRig.call, explosions, gameBreaches, storyApi, gunshipFar: gunshipRig.far, automated, shotId, endShot, startShot, snapCamera, setView, releaseSpawns, enterPilot, leavePilot, spawnIsao, placeTank: (ci) => gameHooks.placeTank(ci), story: () => story, storyBase: () => storyBase, deploy: () => deploy, playerMesh: () => playerMesh, graph: () => graph, dungeon: () => dungeon, cellSide: () => cellSide, pilot: () => pilot, pilotMode: () => pilotMode, isao: () => isao, rs: () => rs, ramCombo: () => ramCombo, playerHP: () => playerHP, setPaused: (v) => { paused = v; }, setFollowSuspend: (v) => { followSuspend = v; }, setRamCam: (v) => { showcaseRamCam = v; }, setGunshipTrack: (v) => { gunshipRig.setTrack(v); } }) };
     if (urlParams.get('acceptance') === '1') window.__stalheartTest = gameHooks;   // Browser acceptance adapter, published only when explicitly requested; the showcase holds the same object directly
@@ -12710,9 +12671,42 @@ export function initTdTab(root) {
     deploy=null;endShot();paused=false;
     for(let i=0;i<pilotPosts.length;i++)pilotMounts[i]=towerByCell.get(pilotPosts[i]);
     clearBriefs();params.callouts=false;setView('bastion');if(pilotPosts.length)pilot.select(pilotMounts[0]?.key||'rotor');hideRangeRing();snapCamera();   // no posts yet (the gunship's seat before any sentry stands): nothing to install
-    if(urlParams.get('acceptance')==='1')window.__stalheartPilotTest={state:()=>({paused,seed:params.seed,points:params.points,sector:round,posts:pilotPosts.slice(),view:pilot.state.view,ci:pilot.state.tower.ci,key:pilot.state.tower.key,shots:pilot.state.shots,held:pilot.state.held,heat:pilot.state.tower.heat??0,overheated:!!pilot.state.tower.overheated,roundDmg:+(effectiveStats(pilot.state.tower.def,pilot.state.tower.tier).dmg*(story?.pilot.dmgMul??1)).toFixed(3),enemyHp:enemies.find(e=>e.alive&&e.id>0)?.spec.hp??null,wave,enemies:enemies.filter(e=>e.alive).length,tank:player.pos.slice(),camera:camera.position.toArray(),target:pilot.state.target?.id??null,ready:!pilot.state.tower.obj.userData.loading,aimError:pilot.state.tower.aimErr,lock:pilot.state.tower.lock,heart:heartHP}),select:key=>pilot.select(key),
+    if(urlParams.get('acceptance')==='1')window.__stalheartPilotTest={
+      state:()=>({
+        paused,
+        seed:params.seed,
+        points:params.points,
+        sector:round,
+        posts:pilotPosts.slice(),
+        view:pilot.state.view,
+        ci:pilot.state.tower.ci,
+        key:pilot.state.tower.key,
+        shots:pilot.state.shots,
+        held:pilot.state.held,
+        heat:pilot.state.tower.heat??0,
+        overheated:!!pilot.state.tower.overheated,
+        roundDmg:+(effectiveStats(pilot.state.tower.def,pilot.state.tower.tier).dmg*(story?.pilot.dmgMul??1)).toFixed(3),
+        enemyHp:enemies.find(e=>e.alive&&e.id>0)?.spec.hp??null,
+        wave,
+        enemies:enemies.filter(e=>e.alive).length,
+        tank:player.pos.slice(),
+        camera:camera.position.toArray(),
+        target:pilot.state.target?.id??null,
+        ready:!pilot.state.tower.obj.userData.loading,
+        aimError:pilot.state.tower.aimErr,
+        lock:pilot.state.tower.lock,
+        heart:heartHP,
+      }),
+      select:key=>pilot.select(key),
       aimEnemy:()=>{const tw=pilot.state.tower;const e=enemies.find(e=>e.alive&&missileDistance(graph.centers[tw.ci],e.pos)<(missileOf(tw.key)?.maxRange??effectiveStats(tw.def,tw.tier).range*10)&&losClear(tw.ci,e.pos,perchOf(tw)));if(!e)return null;pilot.aimAt(add3(e.pos,scale3(norm3(e.pos),cellSide*.3)));return {id:e.id,hp:e.hp};},
-      enemy:id=>{const e=enemies.find(e=>e.id===id);return e?{hp:e.hp,alive:e.alive}:null;},hold:on=>{pilot.state.held=!!on;},view:v=>pilot.setView(v), lock:()=>{const tw=pilot.state.tower;return {meter:tw.lock?.meter??0,locked:!!tw.lock?.locked,tgt:tw.pilotTarget&&!tw.pilotTarget.pilotAim?tw.pilotTarget.id:null,flight:towerSeekers.reduce((n,m)=>n+(m.by===tw?1:0),0)};}, aimSky:()=>{const c=graph.centers[pilot.state.tower.ci];pilot.aimAt(add3(c,scale3(norm3(c),cellSide*40)));}, reach:()=>{const tw=pilot.state.tower;return enemies.filter(e=>e.alive).map(e=>({id:e.id,type:e.type,m:+missileDistance(graph.centers[tw.ci],e.pos).toFixed(1),los:losClear(tw.ci,e.pos,perchOf(tw)),cell:e.cur,pos:e.pos.map(v=>+v.toFixed(5))}));}, round:()=>{const r=pilotHost?.round();if(!r)return null;camera.updateMatrixWorld();const v=new THREE.Vector3().fromArray(r.pos).project(camera);return {x:+v.x.toFixed(4),y:+v.y.toFixed(4),z:+v.z.toFixed(5),u:+r.u.toFixed(4),phase:r.phase,view:pilot.state.view,fov:+camera.fov.toFixed(2)};}   /* the round through the real camera, for the frame probe */
+      enemy:id=>{const e=enemies.find(e=>e.id===id);return e?{hp:e.hp,alive:e.alive}:null;},
+      hold:on=>{pilot.state.held=!!on;},
+      view:v=>pilot.setView(v),
+      lock:()=>{const tw=pilot.state.tower;return {meter:tw.lock?.meter??0,locked:!!tw.lock?.locked,tgt:tw.pilotTarget&&!tw.pilotTarget.pilotAim?tw.pilotTarget.id:null,flight:towerSeekers.reduce((n,m)=>n+(m.by===tw?1:0),0)};},
+      aimSky:()=>{const c=graph.centers[pilot.state.tower.ci];pilot.aimAt(add3(c,scale3(norm3(c),cellSide*40)));},
+      reach:()=>{const tw=pilot.state.tower;return enemies.filter(e=>e.alive).map(e=>({id:e.id,type:e.type,m:+missileDistance(graph.centers[tw.ci],e.pos).toFixed(1),los:losClear(tw.ci,e.pos,perchOf(tw)),cell:e.cur,pos:e.pos.map(v=>+v.toFixed(5))}));},
+      // the round through the real camera, for the frame probe
+      round:()=>{const r=pilotHost?.round();if(!r)return null;camera.updateMatrixWorld();const v=new THREE.Vector3().fromArray(r.pos).project(camera);return {x:+v.x.toFixed(4),y:+v.y.toFixed(4),z:+v.z.toFixed(5),u:+r.u.toFixed(4),phase:r.phase,view:pilot.state.view,fov:+camera.fov.toFixed(2)};},
     };
   }
 
