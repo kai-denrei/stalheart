@@ -10,7 +10,7 @@
 import { SECTORS, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, SECTOR_STATS, SECTOR_STAMPS, SECTOR_RECORDS, SECTOR_TIMING, SECTOR_GATE, BELT_OF, BREACH_CLOSERS, BACK_OMENS, BACK_SCRAMBLE } from '../content/sectors.js';
 import { omenDue } from '../domain/back-omens.js';
 import { GUNSHIP_GUN_ORDER } from '../content/gunship.js';
-import { firstSectorDue, pulseFits, sectorDef, makeSector, releaseWave, closeBreach, spendBreach, isSecure, forfeitOf, waveYield, pickBreachCells } from '../domain/sectors.js';
+import { firstSectorDue, pulseFits, sectorDef, makeSector, releaseWave, nextWaveIndex, closeBreach, spendBreach, isSecure, forfeitOf, waveYield, pickBreachCells } from '../domain/sectors.js';
 import { makeSectorStats, record, report as sectorReport, mergeBests, campaignTotals } from '../domain/sector-stats.js';
 import { makeGateIntegrity, pressGate, mendGate, gateShare } from '../domain/gate-integrity.js';
 import { computeWavePlan, ENEMY_SPEC } from '../enemyspec.js';
@@ -73,36 +73,40 @@ export function createSectorRun(h) {
   }));
   const loadBests = () => { try { const v = JSON.parse(h.store?.getItem(SECTOR_BESTS_KEY) || '{}'); return v && typeof v === 'object' ? v : {}; } catch { return {}; } };
 
-  // the queue entries for one programme wave from one breach: the ladder wave's plan at the sector's threat, a hard core on
-  // top when the sector says so, spread over the wave the way the board's own spawner spreads a wave
-  function entriesOf(wave, sp) {
-    const plan = computeWavePlan(wave, 1, h.waveSize, def.threat * (h.threatMult ?? 1));
-    const entries = plan.entries.map((e) => ({ ...e }));
-    if (def.hardcoresEveryWave && h.hardcore) entries.push({ type: h.hardcore, count: def.hardcores ?? 1 });   // a few solid cores, the sector's own count (src/content/sectors.js)
-    const total = entries.reduce((n, e) => n + e.count, 0), gap = Math.min(h.spawnGap?.max ?? 0.45, (h.spawnGap?.spread ?? 3.2) / Math.max(1, total));
+  // ONE BREACH'S NEXT WAVE, at ladder wave `wave`: THE FEAST (sector 2's back breach, first wave: the content's soft flood at its own
+  // pace), or the ladder wave's plan at the sector's threat with the sector's own few hard cores on top, at the sector pace
+  const feastFor = (b) => !!def?.feast && b.side === 'back' && b.wavesReleased === 0;
+  function waveOf(b, wave) {
+    if (feastFor(b)) return { entries: def.feast.entries, pace: def.feast.pace ?? SECTOR_TIMING.pace };
+    const entries = computeWavePlan(wave, 1, h.waveSize, def.threat * (h.threatMult ?? 1)).entries.map((e) => ({ ...e }));
+    if (def.hardcoresEveryWave && h.hardcore) entries.push({ type: h.hardcore, count: def.hardcores ?? 1 });
+    return { entries, pace: SECTOR_TIMING.pace };
+  }
+  const countOf = (entries) => entries.reduce((n, e) => n + e.count, 0);
+  // the queue entries for a wave, spread over it the way the board's own spawner spreads a wave
+  function queueOf({ entries, pace }, sp) {
+    const gap = Math.min(h.spawnGap?.max ?? 0.45, (h.spawnGap?.spread ?? 3.2) / Math.max(1, countOf(entries)));
     const out = []; let n = 0;
-    for (const { type, count } of entries) for (let k = 0; k < count; k++) out.push({ type, sp, at: n++ * gap, spread: 0.8, pace: SECTOR_TIMING.pace });
+    for (const { type, count } of entries) for (let k = 0; k < count; k++) out.push({ type, sp, at: n++ * gap, spread: 0.8, pace });
     return out;
   }
-  // THE FEAST (sector 2's back breach, first wave): the content's soft flood instead of the ladder, spread the same way, at its own pace
-  function feastEntries(f, sp) {
-    const total = f.entries.reduce((n, e) => n + e.count, 0), gap = Math.min(h.spawnGap?.max ?? 0.45, (h.spawnGap?.spread ?? 3.2) / Math.max(1, total));
-    const out = []; let n = 0;
-    for (const { type, count } of f.entries) for (let k = 0; k < count; k++) out.push({ type, sp, at: n++ * gap, spread: 0.8, pace: f.pace ?? SECTOR_TIMING.pace });
-    return out;
+  // one breach sends its next wave: the books count it, a feast is noted, and its queue entries come back (null: nothing to send)
+  function sendWave(b, sp, t) {
+    const next = nextWaveIndex(sector, b.id);
+    if (next === null) return null;
+    const wave = waveOf(b, next), feasting = feastFor(b), r = releaseWave(sector, b.id, t);
+    if (feasting) feast = { id: b.id, at: t, scrambled: 0 };
+    return { r, entries: queueOf(wave, sp) };
   }
   // how many of the sector's bodies the next pulse would send from the breaches that are open now
   function nextPulseSize() {
     let n = 0;
     for (const b of sector?.breaches ?? []) {
-      if (b.state !== 'open' || !sps.get(b.id)?.alive || b.wavesReleased >= b.wavesPlanned) continue;
-      if (feastFor(b)) { n += def.feast.entries.reduce((a, e) => a + e.count, 0); continue; }
-      const plan = computeWavePlan(Math.min(b.ladderCap, b.waveIndexBase + b.wavesReleased + 1), 1, h.waveSize, def.threat * (h.threatMult ?? 1));
-      n += plan.entries.reduce((a, e) => a + e.count, 0) + (def.hardcoresEveryWave && h.hardcore ? def.hardcores ?? 1 : 0);
+      const next = b.state === 'open' && sps.get(b.id)?.alive ? nextWaveIndex(sector, b.id) : null;
+      if (next !== null) n += countOf(waveOf(b, next).entries);
     }
     return n;
   }
-  const feastFor = (b) => !!def?.feast && b.side === 'back' && b.wavesReleased === 0;
 
   function card(lines) {
     if (!h.host || typeof document === 'undefined') return;
@@ -306,7 +310,7 @@ export function createSectorRun(h) {
     // a pulse is over once its bodies have left the queue; guards waiting at expedition sites are not the sector's
     pulseOver: (queue) => !queue.some((q) => !q.guard),
     // one programme wave from every live breach: queue entries with `at` offsets from now
-    release: (t) => { if (phase !== 'fighting' || !sector) return []; const out = []; for (const b of sector.breaches) { const sp = sps.get(b.id); if (b.state !== 'open' || !sp?.alive) continue; const isFeast = feastFor(b), r = releaseWave(sector, b.id, t); if (!r) continue; if (isFeast) { feast = { id: b.id, at: t, scrambled: 0 }; out.push(...feastEntries(def.feast, sp)); } else out.push(...entriesOf(r.wave, sp)); } omen(); h.hud(); return out; },
+    release: (t) => { if (phase !== 'fighting' || !sector) return []; const out = []; for (const b of sector.breaches) { const sp = sps.get(b.id); if (b.state !== 'open' || !sp?.alive) continue; const sent = sendWave(b, sp, t); if (sent) out.push(...sent.entries); } omen(); h.hud(); return out; },
     active: () => phase !== 'idle',
     owns: (sp) => idOf(sp) !== null,
     /* a broken door is held open for everyone: one flag per gate id, which the story base reads per door */
@@ -353,7 +357,7 @@ export function createSectorRun(h) {
       breaches: (sector?.breaches ?? []).map((b) => ({ id: b.id, side: b.side, cell: b.cell, opened: sps.has(b.id), live: b.state === 'open' && !!sps.get(b.id)?.alive, wavesReleased: b.wavesReleased, wavesPlanned: b.wavesPlanned, closedBy: b.closedBy, leftInField: { ...b.leftInField }, bonus: { ...b.bonus } })),
     }),
     test: {
-      release: (id) => { const b = breachOf(id), sp = sps.get(id); if (!b || !sp?.alive) return null; const isFeast = feastFor(b), r = releaseWave(sector, id, now()); if (r && isFeast) { feast = { id, at: now(), scrambled: 0 }; h.push(feastEntries(def.feast, sp)); } else if (r) h.push(entriesOf(r.wave, sp)); omen(); h.hud(); return r; },
+      release: (id) => { const b = breachOf(id), sp = sps.get(id); if (!b || !sp?.alive) return null; const sent = sendWave(b, sp, now()); if (sent) h.push(sent.entries); omen(); h.hud(); return sent?.r ?? null; },
       close: (id, by) => { const sp = sps.get(id); if (!sp?.alive) return null; h.seal(sp, by); return breachOf(id)?.closedBy ?? null; },
       clearField: () => h.clearField(),
       cont: () => cont(),

@@ -61,8 +61,9 @@ export const BACK_OMENS = freeze([
   { id: 'rumble', sector: 1, pulse: 2, brief: 'back_rumble', dust: 4 },
   { id: 'crack', sector: 1, pulse: 'last', brief: 'back_crack', dust: 10 },
 ]);
-// THE SCRAMBLE'S MARKERS: the back sockets ring every `every` seconds for `seconds` once Isao asks for turrets there
-export const BACK_SCRAMBLE = freeze({ seconds: 8, every: 1 });
+// THE SCRAMBLE: Isao's `brief` and the `callout` when he asks for turrets behind the bays; the back sockets ring every `every`
+// seconds for `seconds` after that (src/fx/back-omen.js, src/fx/sector-run.js)
+export const BACK_SCRAMBLE = freeze({ seconds: 8, every: 1, brief: 'back_scramble', callout: 'BUILD BEHIND THE BAYS' });
 
 // PLACEMENT, in cells (the caller converts to its own units): two breaches of a sector stand at least minSeparationCells
 // apart, never within exclusionCells of a sealed breach (td-tab's gunshipFar uses 6), and are picked from the farthest
