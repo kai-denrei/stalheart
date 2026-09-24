@@ -88,9 +88,11 @@ export const SECTOR_FORFEIT = freeze({ killShare: 1, streak: 1 });
 // behind, which is the pressure. The brief card no longer holds the breaches: they open under it. pace: every sector body's
 // march (the tutorial fifty carry 1.7); aliveBudget: a pulse arms only while the sector's live bodies plus the pulse it would
 // send fit under it (the frame budget this machine holds, test/sectors.mjs); an empty field always takes the next pulse
+// backDoorLead 8 -> 5 (2026-09-25): the lead is sector time now, and the collapse's own frozen shot (5.6 s) no longer counts in it,
+// so 8 put sector 2's first arrival past the spec's 40 s (--pacing: 40.3 s)
 // firstGrace: the first sector's wait after the story is ready for it, unless a part comes home first (src/domain/sectors.js
 // firstSectorDue): the expedition Isao has just sent the tank on
-export const SECTOR_TIMING = freeze({ briefSeconds: 6, staggerSeconds: 1.5, backDoorLead: 8, securePause: 3, lostHold: 2.5, pace: 1.5, aliveBudget: 520, firstGrace: 90 });
+export const SECTOR_TIMING = freeze({ briefSeconds: 6, staggerSeconds: 1.5, backDoorLead: 5, securePause: 3, lostHold: 2.5, pace: 1.5, aliveBudget: 520, firstGrace: 90 });
 
 // THE GATE TAKES THE PRESSURE (QA 2026-09-16: a closed gate held a pile of 116 forever and a sector could not be lost).
 // Enemies within pressCells of the gate cell wear it down: dps per soft body, per solid core. At zero it breaks and stands
