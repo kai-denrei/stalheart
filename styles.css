@@ -4598,10 +4598,10 @@ body.playing:not(.shell-open) #shell-bar { opacity: 0.32; }
    the world. The game's own canvas stays; the minimap canvas is hidden by name because it is a canvas like the
    renderer's. Monochrome, as the rest of the game's UI. */
 body.showcase-on #shell-bar,
-body.showcase-on #tab-td > *:not(#td-app):not(#showcase),
-body.showcase-on #td-app > *:not(canvas),
+body.showcase-on #tab-td > *:not(#td-app):not(#showcase):not(.ram-float-layer),
+body.showcase-on #td-app > *:not(canvas):not(.ram-float-layer),
 body.showcase-on #td-app > canvas.minimap,
-body.showcase-on #td-app > canvas.laser-inset-hud { display: none !important; }   /* SOL-82's telemetry panels are canvases inside the game element, so they need naming; its round scope is drawn in the 3D pass and stays — it is the satellite's own optics, and the shot is the satellite */
+body.showcase-on #td-app > canvas.laser-inset-hud { display: none !important; }   /* the ram readout is the exception: the combo over the hull IS beat C (owner, 2026-09-24). SOL-82's telemetry panels are canvases inside the game element, so they need naming; its round scope is drawn in the 3D pass and cannot be reached from here, and does not have to be — SOL-82 never comes online in the four beats */
 
 #showcase {
   position: absolute; inset: 0; z-index: 90;
@@ -4631,12 +4631,15 @@ body.showcase-on #td-app > canvas.laser-inset-hud { display: none !important; } 
   margin: 6px 0 0; font-size: clamp(10px, 1.6vw, 14px); letter-spacing: 0.22em;
   text-transform: uppercase; color: #a9b3bb;
 }
-/* TOO MANY ENEMIES! is a shout, not a caption: the shout face, centred, and bigger than any other card */
-#showcase .sc-card.shout { align-self: start; margin: min(9vh, 70px) 0 0; border: 0; background: none; }
-#showcase .sc-card.shout h1 {
-  font-family: var(--font-shout, var(--font-ui, system-ui, sans-serif));
-  font-size: clamp(26px, 6.4vw, 68px); letter-spacing: 0.04em;   /* big enough to shout, small enough to leave the swarm it is shouting about in frame */
-  text-shadow: 0 0 40px rgba(0, 0, 0, 0.95), 0 3px 0 rgba(0, 0, 0, 0.8);
+/* BEAT A's LABELS: the briefing's own treatment — a pale box standing off the model with a leader line back to the
+   structure it names (src/fx/wireframe-stage.js measures the anchor, src/fx/showcase.js places the box). */
+#showcase .sc-labels { grid-area: stage; align-self: stretch; justify-self: stretch; position: relative; width: 100%; height: 100%; pointer-events: none; }
+#showcase .sc-labels svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+#showcase .sc-labels svg line { stroke: rgba(191, 230, 234, 0.55); stroke-width: 1; }
+#showcase .sc-label {
+  position: absolute; transform: translate(-50%, -50%); white-space: nowrap;
+  padding: 2px 7px; font-size: clamp(8px, 1.2vw, 12px); letter-spacing: 0.16em; text-transform: uppercase;
+  color: #d8f0f3; background: rgba(5, 12, 14, 0.72); border: 1px solid rgba(191, 230, 234, 0.4);
 }
 /* the card sits LOW: the frame under it is Isao's own closeup, and his face belongs in the clear upper two thirds */
 #showcase .sc-finale {

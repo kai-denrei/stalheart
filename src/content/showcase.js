@@ -1,44 +1,54 @@
-// THE SHOWCASE: the core loop as a scripted in-engine montage, the owner's shot list of 2026-09-18
-// (docs/log/entries/2026-09-18-intro-montage-spec.json) as data, so the timing is retuned here and nowhere else.
+// THE SHOWCASE: the core loop as a scripted in-engine montage. FOUR BEATS, the owner's decision of 2026-09-24
+// (docs/log/entries/2026-09-24-intro-simplified.json) as data, so the timing is retuned here and nowhere else. The
+// twelve-shot list of 2026-09-18 was not compelling; this is A the key elements as labelled wireframes, B one breach
+// with the swarm pouring out, C the tank ramming a horde, D the gunship firing down on what is left.
 //
-// Every shot names four things and nothing more:
-//   id       what src/fx/showcase.js runs for it (one case in the rail's shot book)
-//   seconds  how long it is on screen. The rail CUTS on this clock: a shot that has not finished is cut anyway.
-//   seat     where the camera is — 'orbit' (the build camera), 'ground' (a real dive placement over a point),
-//            'gunship' / 'quiver' / 'rotor' / 'sol82' (a real seat, taken through the game's own mount) or
-//            'wireframe' (the briefing's wireframe stage over the paused world, src/fx/wireframe-stage.js)
+// Every beat names four things and nothing more:
+//   id       what src/fx/showcase.js runs for it (one case in the rail's beat book)
+//   seconds  how long it is on screen. The rail CUTS on this clock: a beat that has not finished is cut anyway
+//   seat     where the camera is — 'wireframe' (the briefing's labelled-wireframe stage, src/fx/wireframe-stage.js),
+//            'ground' (a real dive placement over a point), 'chase' (the hull's own third-person camera) or
+//            'gunship' (the real seat, taken through the game's own mount)
 //   fires    which system must actually run, and which counter in the hooks' state proves it did (src/fx/showcase.js
 //            asserts nothing itself; the --showcase browser step reads `proof` and checks the number moved)
-//   card     the text over the shot, or null. Cards are the only chrome: the HUD is hidden for the whole montage.
+//   card     the text over the beat, or null. Cards are the only chrome: the HUD is hidden for the whole montage,
+//            except the ram readout, which is the point of beat C
 //
-// The total must stay under 30 s (SHOWCASE_SECONDS asserts it at import). The final card has no clock: it waits
-// for the player.
+// The whole is 25.5 s, clearly under the 28 s of the twelve-shot cut. The final card has no clock: it waits for the
+// player.
+
+// BEAT A's SUBJECTS, one after another inside the one beat: the tank, the gunship, SOL-82 and a sentry, each named and
+// labelled as cyan wireframe over a grid. `labels` anchor in the model's own bounding box, -1..1 on each axis from its
+// centre (+Z forward, +Y up), so a label lands on the structure it names without depending on node names that differ
+// from model to model. The stage fits the camera to the box, so a 5 m sentry and a 52 m satellite both fill the frame.
+export const SHOWCASE_ELEMENTS = Object.freeze([
+  Object.freeze({ id: 'mork', url: 'assets/models/hover-tank/mork_hover_tank_d0_lod2.glb',
+    head: 'MÖRK · HOVER TANK', sub: 'yours. ram · shell · shield',
+    labels: Object.freeze([{ at: [0, 0, 1], text: 'RAM PROW' }, { at: [0, 1, -0.2], text: 'SHELL TURRET' }, { at: [-1, -0.4, 0], text: 'HOVER SKIRT' }]) }),
+  Object.freeze({ id: 'korp', url: 'assets/models/korp/korp_d0_lod1.glb',
+    head: 'KORP / GS01 · HEAVY GUNSHIP', sub: 'no crew. the guns are yours on the pass',
+    labels: Object.freeze([{ at: [0, 0, 1], text: 'FORWARD ATTACK' }, { at: [-1, -0.3, 0], text: 'ROTARY × 2' }, { at: [0, -1, 0.2], text: 'BOFORS · MK-9' }, { at: [1, 0.7, -0.6], text: 'TILT ENGINE' }]) }),
+  Object.freeze({ id: 'sol82', url: 'assets/models/sol82/sol82_platform_detailed.glb',
+    head: 'SOL-82 · ORBITAL LASER', sub: '1.2 GJ a pass, from orbit',
+    labels: Object.freeze([{ at: [-1, 0, 0], text: 'TRACKING WING' }, { at: [0, -1, 0], text: 'APERTURE' }, { at: [0, 1, -0.5], text: 'RADIATOR VANE' }]) }),
+  Object.freeze({ id: 'rotor', url: 'assets/models/sentries/rotor_t3.glb',
+    head: 'ROTOR · SENTRY', sub: 'eight of them. you can sit in any',
+    labels: Object.freeze([{ at: [0, 1, 0], text: 'ROTARY HEAD' }, { at: [0, -0.8, 0.8], text: 'ARMOURED BASE' }]) }),
+]);
 
 export const SHOWCASE_SHOTS = Object.freeze([
-  { id: 'tank-wireframe', seconds: 2.0, seat: 'wireframe', model: 'mork', fires: null, proof: null,
-    card: { head: 'MÖRK · HOVER TANK', sub: 'ram · shell · shield' } },
-  { id: 'tank-ram', seconds: 2.0, seat: 'orbit', fires: 'tank.ram', proof: 'rams',
+  // A. the elements, one subject at a time inside the one beat (SHOWCASE_ELEMENTS; the card is each subject's name)
+  { id: 'elements-wireframe', seconds: 7.0, seat: 'wireframe', fires: 'wireframe.labels', proof: 'labels',
     card: null },
-  { id: 'tremor-swarm', seconds: 3.0, seat: 'ground', fires: 'breach.emerge', proof: 'emerging',
+  // B. one breach, and the swarm coming up out of it. Held long enough to read as a threat.
+  { id: 'breach-swarm', seconds: 5.5, seat: 'ground', fires: 'breach.emerge', proof: 'emerging',
     card: { head: 'THEY COME UP THROUGH THE ROCK', sub: null } },
-  { id: 'gunship-guns', seconds: 3.0, seat: 'gunship', fires: 'gunship.guns', proof: 'rounds',
-    card: { head: 'KORP / GS01', sub: 'rotary · bofors · MK-9' } },
-  { id: 'gunship-nuke', seconds: 2.5, seat: 'gunship', fires: 'gunship.nuke', proof: 'nukes',
-    card: null },
-  { id: 'nuke-ground', seconds: 2.5, seat: 'ground', fires: 'gunship.blast', proof: 'blasts',
-    card: { head: 'MK-9', sub: 'danger close' } },
-  { id: 'quiver-pov', seconds: 2.5, seat: 'quiver', fires: 'quiver.launch', proof: 'pilotRounds',
-    card: null },
-  { id: 'rotor-pov', seconds: 2.0, seat: 'rotor', fires: 'rotor.fire', proof: 'pilotRounds',
-    card: null },
-  { id: 'too-many', seconds: 1.5, seat: 'orbit', fires: 'swarm.flood', proof: 'enemies',
-    card: { head: 'TOO MANY ENEMIES!', sub: null, shout: true } },
-  { id: 'laser-wireframe', seconds: 2.0, seat: 'wireframe', model: 'sol82', fires: null, proof: null,
-    card: { head: 'SOL-82 · ORBITAL LASER', sub: '1.2 GJ a pass' } },
-  { id: 'laser-orbit', seconds: 2.5, seat: 'sol82', fires: 'laser.burn', proof: 'beamSeconds',
-    card: null },
-  { id: 'laser-ground', seconds: 2.5, seat: 'ground', fires: 'laser.burn', proof: 'beamSeconds',
-    card: { head: 'FROM ORBIT', sub: 'nothing stops you burning your own base' } },
+  // C. the hull driving through the horde, from its own chase camera, with the splats and the combo readout
+  { id: 'tank-ram', seconds: 7.0, seat: 'chase', fires: 'tank.ram', proof: 'rams',
+    card: { head: 'DRIVE THROUGH THEM', sub: 'every body is biomass' } },
+  // D. the gunship on the horde below: the track is snapped over the breach first, so the guns open on bodies in frame
+  { id: 'gunship-guns', seconds: 6.0, seat: 'gunship', fires: 'gunship.guns', proof: 'explosions',
+    card: { head: 'KORP / GS01', sub: 'rotary · bofors' } },
 ]);
 
 // the last card: Isao's face, the question, and the two ways in. No clock — it stands until the player chooses.
@@ -53,11 +63,11 @@ export const SHOWCASE_FINALE = Object.freeze({
 
 export const SHOWCASE_SECONDS = SHOWCASE_SHOTS.reduce((n, s) => n + s.seconds, 0);
 
-// SOUND: no new pinned cue, and no bed. Every shot runs a real system, so the guns, the drop, the blast and the
-// beam make their own noise through the same sfx bus the game uses. src/content/audio-defaults.js holds no ambient
-// loop to lay under them (the closest are weapon sustains), and pinning one would be new audio — so the bed is null
-// and this constant exists to say so rather than to be quietly absent.
+// SOUND: no new pinned cue, and no bed. Every world beat runs a real system, so the drop, the guns and the rams make
+// their own noise through the same sfx bus the game uses. src/content/audio-defaults.js holds no ambient loop to lay
+// under them, and pinning one would be new audio — so the bed is null and this constant exists to say so rather than
+// to be quietly absent.
 export const SHOWCASE_BED = null;
 
-// the rail hides everything but the cards: one class on <body>, the rule in styles.css
+// the rail hides everything but the cards and the ram readout: one class on <body>, the rules in styles.css
 export const SHOWCASE_CLASS = 'showcase-on';
