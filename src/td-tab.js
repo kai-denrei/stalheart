@@ -5066,7 +5066,7 @@ export function initTdTab(root) {
       // the Heart: contact costs heartDmg and consumes the creature
       if (dist3(e.pos, graph.centers[dungeon.heart]) < cellSide * 0.75) {
         killCreature(e);
-        heartHit(spec.heartDmg);
+        if (!e.harmless) heartHit(spec.heartDmg);   /* the story's harmless fodder (the first wave, sector 0's leftovers) cannot hurt the heart either */
         continue;
       }
       // the player's tank is strong: fodder dies under the treads for

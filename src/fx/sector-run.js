@@ -159,8 +159,8 @@ export function createSectorRun(h) {
 
   function aliveSectorEnemies() {
     let n = 0;
-    for (const e of h.enemies()) if (e.alive && !e.guard) n++;
-    for (const q of h.queue()) if (!q.guard && q.sp?.alive) n++;
+    for (const e of h.enemies()) if (e.alive && !e.guard && !e.harmless) n++;   // sector 0's harmless leftovers are not the sector's
+    for (const q of h.queue()) if (!q.guard && !q.harmless && q.sp?.alive) n++;
     return n;
   }
 
@@ -173,7 +173,7 @@ export function createSectorRun(h) {
       const rec = doorOf(door.id), g = rec.integrity, cells = door.cells?.length ? door.cells : [gateCell];
       let soft = 0, cores = 0, near = false;
       for (const e of bodies) {
-        if (!e.alive || e.guard) continue;
+        if (!e.alive || e.guard || e.harmless) continue;   // harmless fodder cannot wear a gate (STORY_FODDER, STORY_CONSTRUCTION) nor hold Isao off it
         let d = Infinity;
         for (const ci of cells) { if (ci < 0) continue; const q = chord(e.pos, centers[ci]) / side; if (q < d) d = q; }
         if (d < SECTOR_GATE.quietCells) near = true;

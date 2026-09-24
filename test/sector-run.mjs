@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createSectorRun } from '../src/fx/sector-run.js';
-import { SECTORS, SECTOR_TIMING } from '../src/content/sectors.js';
+import { SECTORS, SECTOR_TIMING, SECTOR_GATE } from '../src/content/sectors.js';
 
 // THE SECTOR CLOCK (docs/superpowers/specs/2026-09-24-session-pacing-design.md A and B), driven through fake hooks: no page, no
 // planet. A ring of 120 cells; walking hops from the heart climb 30..59 round it; cells 200.. are the back candidates.
@@ -123,5 +123,9 @@ function world({ firstSector = 1, gate = false } = {}) {
   assert.equal(w.run.doorsQuiet(), false, 'a body at the gate is not');
   w.enemies[0].alive = false; w.step(0.25);
   assert.equal(w.run.doorsQuiet(), true, 'and quiet again once it is gone');
+  w.enemies.push({ alive: true, guard: null, harmless: true, pos: w.enemies[0].pos, cur: 5, spec: { rammable: true } });
+  w.step(0.25);
+  assert.equal(w.run.doorsQuiet(), true, 'harmless fodder at the gate neither wears it nor keeps Isao off it');
+  w.step(3); assert.equal(w.run.state().gate.hp, SECTOR_GATE.hp, 'the gate is untouched');
 }
 console.log('Sector run: the back door\'s omens, breaches open under the card, pulses on the clock and under the budget, the feast, the scramble and the gate side after it.');
