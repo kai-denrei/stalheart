@@ -42,6 +42,7 @@ export function createSectorRun(h) {
   const story = h.story, api = h.api ?? {};
   let phase = 'idle', def = null, sector = null, stats = null, left = 0, at = 0, pending = [], cardLeft = 0, feast = null, backOpenedAt = null, campaignShown = false, lastPoll = null, lastReport = null, quiet = false;
   const sps = new Map(), reports = [], omens = new Set();
+  let doorsQuiet = true;   // no sector body within quietCells of any standing door, as of the last tick
   const now = () => h.now();
 
   // THE GATES: each door has its own hit points and its own pathfinder rule, which gives way while that door is broken. The front
@@ -164,7 +165,8 @@ export function createSectorRun(h) {
 
   function tickGate(dt) {
     const live = standing();
-    if (!live.length) return;
+    if (!live.length) { doorsQuiet = true; return; }
+    let anyNear = false;
     const centers = h.centers(), side = h.cellSide(), bodies = h.enemies();
     for (const door of live) {
       const rec = doorOf(door.id), g = rec.integrity, cells = door.cells?.length ? door.cells : [gateCell];
@@ -176,9 +178,11 @@ export function createSectorRun(h) {
         if (d < SECTOR_GATE.quietCells) near = true;
         if (d < SECTOR_GATE.pressCells && !story.inside?.(e.cur)) { if (e.spec?.rammable) soft++; else cores++; }
       }
+      anyNear ||= near;
       if (!quiet && pressGate(g, { soft, cores }, dt, SECTOR_GATE) === 'broke') { h.callout(`THE ${rec.name} IS DOWN`, 'co-victory'); h.sfx?.('gate_slam'); h.brief('gate_broken'); note({ type: 'leak' }); h.hud(); }
       if (mendGate(g, dt, !near, SECTOR_GATE) === 'closed') { h.brief('gate_mended'); h.hud(); }
     }
+    doorsQuiet = !anyNear;
   }
 
   function poll(dt) {
@@ -302,6 +306,9 @@ export function createSectorRun(h) {
     // The passive trickle in tickGate still runs; this is the trip that puts a chewed or broken door back in one go.
     gate: (id = 'gate') => { const g = doors.get(id)?.integrity; return g ? { id, hp: g.hp, max: g.max, broken: g.broken } : null; },
     /* how many back-side breaches are still open: the back gate step waits for the surprise to be closed or spent */
+    // THE LANE IS CLEAR (2026-09-24): with waves on the clock there is hardly a moment between them, so Isao's repair trips wait for
+    // the pile to lift off the doors instead (src/domain/repair-orders.js: "no wave is running and the lane is clear")
+    doorsQuiet: () => doorsQuiet,
     backOpenBreaches: () => (sector?.breaches ?? []).filter((b) => b.side === 'back' && b.state === 'open').length,
     gates: () => integrities().map((g) => ({ id: g.id, hp: g.hp, max: g.max, broken: g.broken })),
     // ISAO'S PRINT SHOWS ON THE DOOR (2026-09-18): GATE % climbs with the print's progress while he stands over it and beams it,

@@ -21,7 +21,7 @@ const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 
 // (`hardcores`) rather than the twenty-odd solid bodies the surge throws in on its own.
 // hardcores: how many solid cores ride every wave once hardcoresEveryWave is on.
 export const SECTORS = freeze([
-  { n: 1, name: 'THE LANE', breaches: { gate: 2 }, waves: 6, ladderStart: 0, threat: 2.5, pulse: 16, held: { kg: 40, points: 400 },
+  { n: 1, name: 'THE LANE', breaches: { gate: 2 }, waves: 6, ladderStart: 0, threat: 1.8, pulse: 16, held: { kg: 40, points: 400 },
     gunshipCall: true, backDoor: false, laser: false, hardcoresEveryWave: false, new: 'the gunship call-in',
     brief: ['Two mouths out on the lane. They come six times each.', 'Close one early and you give up what it would have paid.'] },
   // THE BACK DOOR: THE FEAST, THEN THE SCRAMBLE (owner, 2026-09-24: "really a chance for the tank to kill tons of rammable soft
@@ -89,9 +89,10 @@ export const SECTOR_TIMING = freeze({ briefSeconds: 6, staggerSeconds: 1.5, back
 // THE GATE TAKES THE PRESSURE (QA 2026-09-16: a closed gate held a pile of 116 forever and a sector could not be lost).
 // Enemies within pressCells of the gate cell wear it down: dps per soft body, per solid core. At zero it breaks and stands
 // open (the pathfinder lets them through). Isao mends it at repairPerSecond while no enemy is within quietCells; a broken
-// gate closes again once it is back to closeAt of its hp. Numbers are a first cut: a dozen bodies break it in about ten
-// seconds, a hard core alone in about twenty.
-export const SECTOR_GATE = freeze({ hp: 60, pressCells: 2.5, softDps: 0.5, coreDps: 3, repairPerSecond: 3, quietCells: 8, closeAt: 0.6 });
+// gate closes again once it is back to closeAt of its hp. A dozen bodies break it in about eighteen seconds, a hard core
+// alone in about forty: hp 110, not the first cut's 60, since the waves stack on the clock (2026-09-24). At 60 the towers
+// alone lost the gate 38 s into sector 1 and the colony 15 s after that, under a player who had only driven off to a site.
+export const SECTOR_GATE = freeze({ hp: 110, pressCells: 2.5, softDps: 0.5, coreDps: 3, repairPerSecond: 3, quietCells: 8, closeAt: 0.6 });
 
 // who closes a breach, and how the debrief names it
 export const BREACH_CLOSERS = freeze({ gunship: '105', laser: 'SOL-82', shells: 'SHELLS', strike: 'STRIKE', held: 'HELD' });

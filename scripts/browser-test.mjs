@@ -851,6 +851,61 @@ try{
    assert(c.crates.some(p=>p==='tumble'||p==='fade'),`the crate tumbles (${c.crates})`);
    assert.equal(c.flags.find(f=>f.id==='rocket-b')?.state,'lowering','the site flag comes down');}}
  current='defense-part-dropped';await finish();
+ } else if(args.includes('--pacing')) {
+ // THE SESSION'S PACING, MEASURED (docs/superpowers/specs/2026-09-24-session-pacing-design.md E). A bare page at the full threat
+ // plays from the landing into sector 2 in real time. The harness is an IDEAL DEFENDER: it aims the manned seat through the opening,
+ // and in a sector every body that reaches a door dies there (sectorCull), so what it counts is the design's rhythm: when bodies
+ // ARRIVE, not how well anyone kills them. Every beat, pulse and omen is a PACE line; ARRIVE lines are arrivals per 5 s; the summary
+ // gives, per sector, the seconds from its card to the first arrival and the arrival gaps (seconds with nothing reaching a door).
+ const T='window.__stalheartTest';
+ await go('pacing-bare','index.html?sw=0&acceptance=1&cine=0&world=story&intro=0#td');
+ await until(`!!${T}&&!!${T}.state().programme`,90000);
+ await evaluate(`(()=>{const T=${T},P=window.__pace={t0:performance.now(),ev:[],arr:[],rows:[],last:{},aimAt:0,contAt:0,done:false,passive:${args.includes('--passive')}};
+  const now=()=>+((performance.now()-P.t0)/1000).toFixed(1),ev=(what)=>P.ev.push([now(),what]);
+  const seen=(k,v,what)=>{if(P.last[k]!==v){P.last[k]=v;if(v!==undefined&&v!==null&&v!==false)ev(what(v));}};
+  P.iv=setInterval(()=>{try{
+   const s=T.state(),S=s.sector||{},pg=s.programme||{},st=s.story||{};
+   seen('phase',st.phase,v=>'story '+v);seen('active',pg.active,v=>'print begins '+v);seen('printed',(pg.printed||[]).join(),v=>'printed '+(pg.printed||[]).slice(-1)[0]);
+   seen('towers',s.towers,v=>'towers '+v);seen('hulls',s.hulls,v=>'hulls '+v);seen('deploying',s.deploying,v=>'hull deploying');seen('automated',s.automated,v=>'automated');
+   seen('sector',S.n||null,v=>'sector '+v+' card');seen('sphase',S.phase,v=>'sector phase '+v);seen('debrief',S.debriefOpen,v=>'debrief');
+   for(const b of S.breaches||[]){seen('open'+S.n+b.id,b.opened,v=>'breach '+b.id+' '+b.side+' opens');seen('rel'+S.n+b.id,b.wavesReleased||null,v=>'pulse '+b.id+' '+b.side+' wave '+v);}
+   for(const g of S.gates||[])seen('broken'+g.id,g.broken,v=>g.id+' is down');
+   seen('feast'+S.n,!!S.feast,v=>'feast released');seen('scr'+S.n,!!S.feast?.scrambled,v=>'scramble');seen('omens',(S.omens||[]).join(),v=>'omen '+(S.omens||[]).slice(-1)[0]);
+   const fighting=S.phase==='fighting'||S.phase==='secure';
+   if(fighting&&!P.passive){const n=T.sectorCull(8);if(n)P.arr.push([now(),n,S.n]);}
+   if(fighting&&Math.floor(now())!==P.lastRow){P.lastRow=Math.floor(now());P.rows.push([P.lastRow,s.performance?.enemies??0,Math.round((S.gates||[]).reduce((m,g)=>Math.min(m,g.hp/g.max),1)*100),S.n]);}
+   if(S.phase==='lost'||S.phase==='lost-shown'){ev('LOST');P.done=true;}
+   const pt=window.__stalheartPilotTest;
+   if(!s.automated&&pt){pt.hold(true);if(performance.now()-P.aimAt>500){P.aimAt=performance.now();try{pt.aimEnemy();}catch{}}}
+   document.querySelector('#gunship-briefing:not([hidden]) [data-skip]')?.click();document.querySelector('#sol82-briefing:not([hidden]) [data-skip]')?.click();
+   if(s.screenOpen)document.querySelector('#synthetic-modal [data-continue]')?.click();
+   if(S.debriefOpen){if(!P.contAt)P.contAt=performance.now()+2500;else if(performance.now()>P.contAt){P.contAt=0;T.sectorContinue();}}
+   if(S.n===2&&(S.breaches||[]).some(b=>b.side==='back'&&b.wavesReleased>=3))P.done=true;
+  }catch(e){P.err=String(e);}},250);})()`);
+ const t0=Date.now();
+ while(Date.now()-t0<15*60000){await delay(5000);const p=await evaluate('({done:window.__pace.done,err:window.__pace.err,n:window.__pace.ev.length,last:window.__pace.ev.slice(-1)[0]})');if(p.err)console.log('PACE harness error '+p.err);if(p.done)break;}
+ const P=await evaluate('(()=>{clearInterval(window.__pace.iv);return {ev:window.__pace.ev,arr:window.__pace.arr,rows:window.__pace.rows};})()');
+ for(const [t,w] of P.ev)console.log(`PACE ${String(t).padStart(6)} ${w}`);
+ const bins={};for(const [t,n] of P.arr){const b=Math.floor(t/5)*5;bins[b]=(bins[b]||0)+n;}
+ console.log('ARRIVE '+Object.entries(bins).map(([b,n])=>`${b}:${n}`).join(' '));
+ // ALIVE / GATE every 10 s while a sector fights: how big the pile is and how much of the weakest door is left
+ console.log('FIELD '+P.rows.filter(r=>r[0]%10===0).map(r=>`${r[0]}:${r[1]}/${r[2]}%`).join(' '));
+ const at=(re)=>P.ev.find(([,w])=>re.test(w))?.[0]??null;
+ const summary={bareSeconds:+((Date.now()-t0)/1000).toFixed(0),hullOut:at(/^hull deploying/),automated:at(/^automated/),sectors:{}};
+ for(const n of [1,2]){
+  const card=at(new RegExp(`^sector ${n} card`)),arr=P.arr.filter(a=>a[2]===n);
+  if(card===null||!arr.length){summary.sectors[n]={card,arrivals:0};continue;}
+  const secs=new Set(arr.map(a=>Math.floor(a[0])));const first=arr[0][0],last=arr[arr.length-1][0];
+  let gap=0,longest=0,quiet=0;for(let t=Math.floor(first);t<=Math.floor(last);t++){if(secs.has(t)){gap=0;}else{gap++;quiet++;longest=Math.max(longest,gap);}}
+  const minutes=Math.max(1/60,(last-first)/60);
+  summary.sectors[n]={card,firstContact:+(first-card).toFixed(1),arrivals:arr.reduce((a,b)=>a+b[1],0),span:+(last-first).toFixed(0),longestGap:longest,quietPerMin:+(quiet/minutes).toFixed(1)};
+ }
+ console.log('PACE SUMMARY '+JSON.stringify(summary));
+ writeFileSync(join(output,args.includes('--passive')?'pacing-passive.json':'pacing.json'),JSON.stringify({summary,events:P.ev,arrivals:P.arr,field:P.rows},null,1));
+ current=args.includes('--passive')?'pacing-passive-end':'pacing-end';await finish();
+ if(args.includes('--passive'))console.log('PACE PASSIVE: no defender at the doors; the towers alone '+(P.ev.some(([,w])=>w==='LOST')?'LOST the colony at '+P.ev.find(([,w])=>w==='LOST')[0]+' s':'held'));
+ else{assert(summary.sectors[1]?.arrivals>0,'sector 1 is reached and fought');
+ assert(summary.sectors[1].firstContact<=40,`sector 1's first body reaches a door within 40 s of its card (${summary.sectors[1].firstContact})`);}
  } else if(args.includes('--grow')) {
  // ISAO GROWS THE BASE (V1, 2026-09-16): a story page that names no stage grows; stage=1&grow=1 runs the whole opening to the handover
  // while Isao prints the gate (the tremor waits for it), the landing pad and the Stålheart, then the rest as the phases and sectors come.

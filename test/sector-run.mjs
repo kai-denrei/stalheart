@@ -4,11 +4,11 @@ import { SECTORS, SECTOR_TIMING } from '../src/content/sectors.js';
 
 // THE SECTOR CLOCK (docs/superpowers/specs/2026-09-24-session-pacing-design.md A and B), driven through fake hooks: no page, no
 // planet. A ring of 120 cells; walking hops from the heart climb 30..59 round it; cells 200.. are the back candidates.
-function world({ firstSector = 1 } = {}) {
+function world({ firstSector = 1, gate = false } = {}) {
   const w = { t: 0, enemies: [], queue: [], opened: [], briefs: [], scrambles: 0, backDoors: 0 };
   const centers = [], dist = [];
   for (let i = 0; i < 260; i++) { const a = (i / 120) * Math.PI * 2; centers.push([Math.cos(a), Math.sin(a), i >= 200 ? 1 : 0]); dist.push(i >= 200 ? 30 : 30 + (i % 30)); }
-  const story = { sealed: () => false, gateCell: -1 };
+  const story = { sealed: () => false, gateCell: gate ? 5 : -1 };
   const api = { openBackDoor: () => { w.backDoors++; }, backBreachCandidates: () => [{ cell: 210, hops: 30 }, { cell: 220, hops: 31 }], backScramble: (k) => { if (k === 0) w.scrambles++; w.rings = (w.rings ?? 0) + 1; }, backOmen: (o) => { (w.omens ??= []).push(o.id); } };
   w.run = createSectorRun({
     story, api, waveSize: 4, threatMult: 1, hardcore: 'knot', spawnGap: { spread: 3.2, max: 0.45 }, store: null, rng: () => 0,
@@ -111,5 +111,16 @@ function world({ firstSector = 1 } = {}) {
   assert.equal(w.scrambles, 1);
   assert.ok(w.rings >= 6 && w.rings <= 10, `the sockets ring for BACK_SCRAMBLE.seconds (${w.rings})`);
   assert.equal(w.omens, undefined, 'no omens once the door has fallen');
+}
+// ISAO WAITS FOR THE LANE TO CLEAR before a repair trip: a body within quietCells of a standing door makes the doors loud
+{
+  const w = world({ gate: true });
+  w.step(0.5);
+  assert.equal(w.run.doorsQuiet(), true, 'an empty lane is quiet');
+  w.enemies.push({ alive: true, guard: null, pos: [Math.cos(5 / 120 * Math.PI * 2), Math.sin(5 / 120 * Math.PI * 2), 0], cur: 5, spec: { rammable: true } });
+  w.step(0.25);
+  assert.equal(w.run.doorsQuiet(), false, 'a body at the gate is not');
+  w.enemies[0].alive = false; w.step(0.25);
+  assert.equal(w.run.doorsQuiet(), true, 'and quiet again once it is gone');
 }
 console.log('Sector run: the back door\'s omens, breaches open under the card, pulses on the clock and under the budget, the feast, the scramble and the gate side after it.');
