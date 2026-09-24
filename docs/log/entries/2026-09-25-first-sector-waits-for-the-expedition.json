@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-09-25-first-sector-waits-for-the-expedition",
+  "date": "2026-09-25",
+  "type": "change",
+  "status": "accepted",
+  "title": "The first sector waits for the expedition: it opens once a part is home or 90 s after the story is ready, not the moment Isao sends the tank out",
+  "context": "After the clock landed (2026-09-24-sector-waves-on-a-clock), sector 1 opened about 24 s after the expedition phase began, while Isao's rocket_sites line was sending the new hull out to the landing sites. The towers alone lose sector 1 in about a minute (2026-09-24-pacing-probe), so a player who did as told came back to LAST TRANSMISSION. --story-world found it: sector 1 was lost under the step that reads the views strip, and the LAST TRANSMISSION card paused the game the step was waiting on.",
+  "outcome": "src/domain/sectors.js firstSectorDue: the first sector opens once a part is home or `grace` seconds after the story first said it was ready, whichever is first. src/fx/sector-run.js applies SECTOR_TIMING.firstGrace 90 to a run that played into the expedition; a run that starts at or past it (story.lateStart, set by src/platform/story-world.js from the start phase) and SKIP TUTORIAL (first sector 2) pass grace 0 and open at once, as before. The keyprobe in the default suite moved to a page with a hull from the first frame (a bare page has none until the Stålheart rolls one out: its S/T check answered 'frozen'), and --story-world holds the sector quiet while it reads the views strip, as --defense already did.",
+  "alternatives": [
+    "Keep sector 1 at the expedition's start and make it survivable by towers for the length of a round trip: rejected, it would undo the clock's pressure for everyone.",
+    "No timer, sector 1 only after a part is home: rejected, a player who dawdles would never meet the pressure.",
+    "Quieting the sector in the failing browser step alone: not enough, the failure was a real player's experience."
+  ],
+  "evidence": [
+    "node test/sectors.mjs (firstSectorDue), node test/sector-run.mjs (idle through the expedition, a part home opens it, the grace opens it, SKIP TUTORIAL at once)",
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --story-world and the default suite on branch pacing"
+  ],
+  "supersedes": []
+}

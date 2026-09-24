@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "2026-09-25-pacing-architecture-review",
+  "date": "2026-09-25",
+  "type": "issue",
+  "status": "observed",
+  "title": "Architecture review of the pacing branch: td-tab held its line budget by packing 5.1 KB into existing long lines; two duplications repaired, the rest queued for the refactoring round",
+  "context": "Project skill architecture-review over git diff main...pacing before building on it, and before the refactoring round the owner asked for on 2026-09-25 (\"launch a round of refactoring; simplifying and making the code base more robust\").",
+  "outcome": "npm run architecture: 91 pure-layer modules checked, boundaries, budgets and placement hold. src/td-tab.js: +22/-22 lines, 775,245 -> 780,345 bytes: the line budget was met by packing logic into existing one-liners rather than moving it out, which is the finding. Repaired now: sector-run's feast and ladder waves shared no code (two copies of the spread, the ladder index recomputed beside the domain's nextWaveIndex): waveOf, queueOf and sendWave replace them; the scramble's presentation sat in the controller beside src/fx/back-omen.js: moved there, its words are BACK_SCRAMBLE content. Queued for the refactoring round, not repaired: the first hull's roll-out host inline in td-tab (berths, a synchronous loop of up to 600 deployStep calls on the gunner-seated path, the camera run); src/fx/hull-issue.js nearestCell is a linear scan beside src/cellindex.js's voxel index (a parallel implementation, run once a page); src/fx/back-omen.js staggers its dust with wall-clock setTimeout, which ignores pause and outlives a restart; the placement field's rim BFS over ~71k cells runs at every sector start although the clearing never changes; sectorCull (the probe's defender) lives in the controller's harness adapter.",
+  "alternatives": [
+    "Repairing everything now: rejected; the roll-out host and the lookups are behaviour-bearing and belong in the refactoring round with their own browser runs."
+  ],
+  "evidence": [
+    "git diff --stat main...pacing; npm run architecture",
+    "node test/sector-run.mjs, node test/back-omens.mjs after the repairs"
+  ],
+  "supersedes": []
+}

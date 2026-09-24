@@ -314,7 +314,13 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 35 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 36 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### Architecture review of the pacing branch: td-tab held its line budget by packing 5.1 KB into existing long lines; two duplications repaired, the rest queued for the refactoring round
+
+`2026-09-25-pacing-architecture-review` · issue · **observed**
+
+Project skill architecture-review over git diff main...pacing before building on it, and before the refactoring round the owner asked for on 2026-09-25 ("launch a round of refactoring; simplifying and making the code base more robust").
 
 ### In Safari everything renders off to the right: the gunship HUD is miscalibrated against where it shoots and the tank sits right of centre
 
