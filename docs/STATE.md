@@ -1,6 +1,6 @@
 # Stalheart current state
 
-Updated 2026-09-17 (after the V1 playtest rounds of 2026-09-16). Owner: the Stalheart development project; this repo is authoritative for the game.
+Updated 2026-09-24 (after the Safari and intro rounds). Owner: the Stalheart development project; this repo is authoritative for the game.
 
 **Identity: resourceful joy under pressure** (`2026-09-14-identity-resourceful-joy-under-pressure`). The pressure is the swarm, the clock and the hardware; the joy is Isao, the builder who rebuilds, and a colony grown out of the wreck it arrived in. See [FUNMAP.md](FUNMAP.md).
 
@@ -38,13 +38,11 @@ Unchanged from the foundation: pure core/domain/content layers with dependency g
 
 ## Next priorities
 
-1. **The owner's open call.** The opening's pace is answered (`2026-09-18-opening-pacing`): on a bare page the override is at 54 s and the handover at 78, down from 83 and 111, with every beat kept and every number in content. The foundry beat is 6.5 s of the opening, not 14.5. What remains is the frame rate at 400+ concurrent enemies: sector 3's biggest wave measured 406 alive at p50 20.9 ms (about 48 fps), 1496 alive at p50 24.4 ms under deliberate overload; it is being profiled before anything is optimised.
-2. **Known gaps.** Most of the 2026-09-16 list was closed on 2026-09-18 (`2026-09-18-robustness-pass`): the laser scorch clears on NEW RUN, Isao flies to the dropped crate, the MK-9's ignition is its own burst and its one release a pass is proven in a browser, SOL-82 burns every building and a burned one costs the colony that building's perk, and Isao's gate repair is an animated print with GATE % climbing under his beam. Still open:
-   - **The back gate is in** (`2026-09-18-back-gate-built`): once the back breach is held, Isao prints a door across the collapse and sockets along the back lane; `GATE · BACK` on the HUD, repairs take the worst door first. Not yet seen: a hull driving up to the back door, and back-door wear under a real pile.
-   - **The gunship seat's first-use hitch is halved, not gone**: 78.6 ms and 18 shader programs became 65.9 ms and 9 (`src/fx/program-warm.js`). The nine that survive were not explained.
-   - Touch labels on the pad are untested; a print is a Y-scale rise without a clipping plane.
-3. The puzzle tower defence (`2026-09-14-puzzle-tower-defence-and-the-handover`): tower geometry, authored challenges and generated waves scored on margin now sit on top of the sector loop.
-4. Still open from before: the phage's movement, MÖRK LOW re-pin, Isao-Birudorōn review, landmark LOD review, the sphere-helper refactor (`docs/SPHERE-TO-FLAT-COST-MAP.md`).
+1. **Phone HUD says less** (`2026-09-19-phone-seats-say-less`, confirmed again by the owner on 2026-09-24: "mobile still displays an overwhelmingly cluttered HUD"). The phone pass proved nothing covers a control; it did not reduce what is shown. Next fix: one state line per seat instead of the plate and the ribbon, the hint box once, the shell hidden in seats, the ground-truth monitor inside its frame. Desktop unchanged. Retina cuts (bloom half-res, MSAA 2x) phones-only can ride along.
+2. **Landed 2026-09-23/24.** The seat contract (`2026-09-23-seat-changes-robust`: one occupant at a time; a chain of seats returns to the first seat's camera) and a scripted hand-over that never evicts a gunner (`2026-09-23-a-beat-evicted-the-gunner`) — real bugs, but not the owner's. The owner's "everything off to the right" was `2026-09-24-safari-right-shift-fixed`: the spotting monitor restored the main viewport in device pixels where three takes CSS pixels, so on any 2x screen the world drew dpr× too large from the bottom-left while the HUD stayed put; the owner confirms the reticles centred on a 2x phone. The intro is four beats (`2026-09-24-intro-four-beats-built`, `2026-09-24-ram-beat-shows-the-tank`): labelled wireframes, one breach and its swarm, the MÖRK through a horde with its own low camera, the gunship on the horde; 25.5 s, once on the landing screen, `?intro=1` replays.
+3. **Known gaps.** The gunship seat's first-use hitch is halved, not gone (nine shader programs survive, unexplained). The back gate has not been seen with a hull driving up to it, nor its wear under a real pile. The sinkhole's dust is hidden (it was invisible; a real dust pass costs ~45 ms/frame). Touch labels on the pad are untested; a print is a Y-scale rise without a clipping plane. Retina-only faults never show on kainode's dpr-1 display: test at dpr 2 through the harness (`gunship-retina`).
+4. The puzzle tower defence (`2026-09-14-puzzle-tower-defence-and-the-handover`): tower geometry, authored challenges and generated waves scored on margin now sit on top of the sector loop.
+5. Still open from before: the phage's movement, MÖRK LOW re-pin, Isao-Birudorōn review, landmark LOD review, the sphere-helper refactor (`docs/SPHERE-TO-FLAT-COST-MAP.md`).
 
 Owner-directed sequence remains **architecture → visual/sound labs and clean exports → UX → playability**. [Architecture and implementation boundaries](ARCHITECTURE.md) are the technical plan.
 
