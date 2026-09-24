@@ -2,7 +2,7 @@ import { createSentryPilot } from './sentry-pilot.js';
 import { DEFAULT_TANK, SHELL_SPEED, SHELL_REACH, TANK_DRIVE, TANK_STEER } from './content/tank.js'; import { makeDriveRamp, stepDriveRamp, scrubDriveRamp } from './domain/drive-ramp.js'; import { hullDepth, deepensContact } from './domain/hull-contact.js'; import { makeSteerEase, stepSteerEase, steerBank } from './domain/steer-ease.js'; import { nextRepair } from './domain/repair-orders.js'; import { baseFor, restoreSeatView } from './domain/seat-view.js'; import { BASE_REPAIR, BASE_BUILDER } from './content/base-programme.js';
 import { createGameBreaches } from './game-breaches.js'; import { ramShotPose } from './domain/showcase-shot.js';   /* THE RAM BEAT'S OWN FRAMING: low behind the hull (src/domain/showcase-shot.js; the band of cells it drives into is the showcase hooks') */
 import { createBoardSurface } from './fx/board-surface.js'; import { createCampaignDebrief, sparkline } from './fx/campaign-debrief.js'; import { createSectorRun } from './fx/sector-run.js'; import { createBackDoor } from './fx/back-door.js'; import { isaoFace, orbitFrame, sitesDir, sitesRadius } from './domain/story-shots.js';
-import { startDiveShot } from './fx/dive-shot.js'; import { makeShaderWarmer } from './fx/shader-warm.js';
+import { startDiveShot } from './fx/dive-shot.js'; import { makeShaderWarmer } from './fx/shader-warm.js'; import { waveGap } from './domain/wave-spread.js';
 import { BREACH_SOUNDS } from './content/breach-defaults.js';
 import { SOUNDS } from './content/runtime.js';
 import { emergence } from './domain/breach-waves.js'; import { applyScare, stampScare, scarePace, isScared, towardScare, awayExits } from './domain/impact-scare.js'; import { EXPLOSION_SCARE, SCARE_FREEZE_S } from './content/explosions.js'; import { createThermalHeat } from './fx/thermal-heat.js'; import { isAutomated, pilotMultipliers } from './domain/automation.js'; import { fillFromKill, fillFromWaveClear, isFull as callFull, callGunship, callProgress } from './domain/gunship-call.js'; import { GUNSHIP_CALL, GUNSHIP_FAR } from './content/gunship.js'; import { unlockedTowers } from './domain/expeditions.js'; import { createExpeditionGlue } from './fx/expedition-glue.js'; import { CARGO_LOOK } from './content/cargo.js'; import { STORY_EXPEDITIONS } from './content/story-defaults.js'; import { makeSiteRing as siteRing, disposeSiteRing } from './fx/site-ring.js'; import { due as programmeDue, begin as programmeBegin, finish as programmeFinish, hasPerk as programmeHas, perks as programmePerks, rebuildDue, snapshot as programmeSnapshot, lose as programmeLose } from './domain/build-programme.js'; import { BASE_PERKS } from './content/base-programme.js'; import { createProgramWarm } from './fx/program-warm.js';
@@ -4821,8 +4821,7 @@ export function initTdTab(root) {
     const live = spawnPoints.filter((s) => s.alive);
     if (sectorRun) { for (const q of sectorRun.release()) spawnQueue.push({ ...q, at: spawnClock + q.at }); spawnQueue.sort((a, b) => a.at - b.at); releaseSpawns(0); }   // the story's sectors: every live breach sends its own programme wave, and queued guards stay queued
     else if (live.length) {
-      const total = plan.entries.reduce((n, e) => n + e.count, 0);
-      const gap = Math.min(SPAWN_GAP_MAX, SPAWN_SPREAD / Math.max(1, total));
+      const gap = waveGap(plan.entries, SPAWN_SPREAD, SPAWN_GAP_MAX);
       spawnQueue.length = 0;
       spawnClock = 0;
       let pi = 0, n = 0;
