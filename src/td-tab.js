@@ -31,7 +31,7 @@ import { bfsDist, BLOCKED, PATH, ROOM } from './dungeon.js';
 import { buildGameWorld, readStoryQuery, STORY_SOUNDS, takeControlPose } from './platform/story-world.js'; import { SENTRY_HEAT } from './content/sentry-heat.js'; import { coolHeat } from './core/heat.js'; import { paintBarrelHeat } from './fx/barrel-heat.js'; import { createUnlockHost } from './fx/story-views.js'; import { buildReadout } from './fx/build-readout.js'; import { createStoryMonitor } from './fx/story-monitor.js'; import { createDaylight } from './fx/daylight.js'; import { createStoryScope, createScopeFeed } from './fx/story-scope.js'; import { createSyntheticModal } from './fx/synthetic-modal.js'; import { createBrass } from './fx/brass.js';
 import { mulberry32, randomSeed } from './rng.js';
 import { createLaserStation } from './fx/laser-station.js'; import { LASER_GAME, LASER_STRUCTURES } from './content/orbital-laser.js'; import { makeTriadIcon, glossCard, GAMEPLAY_TIPS } from './fx/briefing-cards.js';
-import { computeBerths, berthIndexFor } from './berths.js'; import { createProgrammeHost } from './fx/programme-host.js'; import { strikeFallPose, droneRidePose, bastionPose, tankViewPose } from './domain/camera-goal.js'; import { berthRun, berthHeading, deployU, easeDeploy, deployFraming } from './domain/deploy-path.js';
+import { computeBerths, berthIndexFor } from './berths.js'; import { createProgrammeHost } from './fx/programme-host.js'; import { strikeFallPose, droneRidePose, bastionPose, tankViewPose } from './domain/camera-goal.js'; import { createShopRadial } from './fx/shop-radial.js'; import { berthRun, berthHeading, deployU, easeDeploy, deployFraming } from './domain/deploy-path.js';
 import { wantsSecondary, shellsForAll } from './autofire.js';
 import { printPhase, printOffset, printOn, patternSecsFor } from './printpath.js';
 import { createBeam } from './beamfx.js';
@@ -66,7 +66,7 @@ import { labLine, parseLabQuery } from './lab.js';
 import { bakeGalaxyCube } from './galaxybake.js';
 import { SKY_PRESET } from './galaxyseed.js';
 import { makeScore } from './score.js';
-import { TOWERS, TOWER_BY_KEY, MAX_TIER, upgradeCost, effectiveStats as baseEffectiveStats, pickTarget, shotInterval, unlockedTowerKeys, towerUnlockWave, TOWER_ORDER, starterTower, towerSound, ROSTER } from './towers.js';
+import { TOWERS, TOWER_BY_KEY, MAX_TIER, upgradeCost, effectiveStats as baseEffectiveStats, pickTarget, shotInterval, unlockedTowerKeys, TOWER_ORDER, starterTower, towerSound, ROSTER } from './towers.js';
 import { makeEconomy, sellRefund } from './economy.js';
 import { pickTier } from './perftier.js';
 import { applyWeatheredMaterial } from './fx/weathered-material.js';
@@ -8220,104 +8220,8 @@ export function initTdTab(root) {
     const note = shopEl.querySelector('.shop-note');
     if (note) note.textContent = text;
   }
-  // RADIAL menu, HokorobiTawaa-style: options ring the tapped cell.
-  // R follows HK's sizing (max(66, min(104, 0.3·viewport-min))); the
-  // anchor clamps so the ring never leaves the screen.
-  function openShop(ci, sx, sy) {
-    root.classList.add('shopping');
-    // The strike owns the board while it is armed, flying, or just landed.
-    // The tap DISPATCH already tries to route around the shop, but a modal
-    // that must never appear mid-ritual is guarded at its own door — every
-    // future tap path inherits the rule instead of re-implementing it.
-    if (strike.armed || strike.falling > 0 || shopMute > 0) return;
-    // An unbuildable cell gets NOTHING, not a radial of greyed-out towers
-    // with "blocked" in the middle. A modal whose every option is disabled
-    // is a wall of no; silence reads as "not here" faster than any label.
-    // (An existing tower still opens — that is upgrade/sell, not placement.)
-    if (!towerByCell.get(ci) && placeError(ci)) { closeShop(); return; }
-    shopCi = ci;
-    if (sx == null && shopPos) [sx, sy] = shopPos;
-    // measure the CONTAINER, not the canvas: hooks can open the shop
-    // before the first resize(), when the canvas still has default size
-    const rect = container.getBoundingClientRect();
-    const R = Math.max(66, Math.min(104, Math.min(rect.width, rect.height) * 0.3));
-    const cx = Math.min(Math.max(sx ?? rect.width / 2, R + 44), rect.width - R - 44);
-    const cy = Math.min(Math.max(sy ?? rect.height / 2, R + 44), rect.height - R - 44);
-    shopPos = [cx, cy];
-    shopEl.style.left = cx + 'px';
-    shopEl.style.top = cy + 'px';
-    const existing = towerByCell.get(ci);
-    const pending = orderByCell.get(ci);
-    let center, items;
-    if (pending) {
-      // an ORDERED cell offers one thing: call it off. Nothing is printed
-      // yet, so the biomass comes back whole — unless Isao is already
-      // standing over it, and then half of it is in the nozzle.
-      const live = orders[0] === pending && isao && isao.state === 'build';
-      const back = live ? Math.round(pending.cost * 0.5) : pending.cost;
-      const what = pending.kind === 'upgrade' ? `${pending.tower.def.label} +1` : TOWER_BY_KEY[pending.key].label;
-      center = `<div class="radial-center">${what}<br>${live ? 'printing' : 'ordered'}</div>`;
-      items = [
-        { cls: 'shop-sell', txt: `cancel<br>+${back}kg`, cancel: true },
-        { cls: 'shop-close', txt: '×' },
-      ];
-    } else if (existing) {
-      const cost = upgradeCost(existing.def, existing.tier);
-      center = `<div class="radial-center">${existing.def.label}<br>tier ${existing.tier}</div>`;
-      items = [
-        cost !== null
-          ? { cls: 'shop-up', txt: `upgrade<br>${cost}kg`, dis: !eco.canAfford(cost) }
-          : { cls: 'shop-up', txt: 'MAX', dis: true },
-        { cls: 'shop-sell', txt: `sell<br>+${sellRefund(existing.spent)}kg` },
-        { cls: 'shop-close', txt: '×' },
-      ];
-      showRangeRing(ci, effectiveStats(existing.def, existing.tier).range, existing.def.color, 0);
-    } else {
-      const err = placeError(ci);
-      center = `<div class="radial-center">${err ? 'blocked' : eco.biomass + 'kg'}</div>`;
-      const unlocked = new Set(automated() ? unlockedTowers(story.expeditions, STORY_EXPEDITIONS.base) : unlockedTowerKeys(wave));
-      items = TOWERS.map((def) => {
-        const locked = !unlocked.has(def.key);
-        return {
-          cls: locked ? 'shop-buy locked' : 'shop-buy',
-          key: def.key,
-          txt: locked
-            ? `${def.label}<br>${automated() ? 'PART OUT' : towerUnlockWave(def.key) === null ? '&#8961; RELAY' : 'W' + towerUnlockWave(def.key)}`   /* after the handover a lock is an undelivered part, not a wave */
-            : `${def.label}<br>${def.cost}kg`,
-          dis: locked || !!err || !eco.canAfford(def.cost),
-          bc: '#' + def.color.toString(16).padStart(6, '0'),
-        };
-      });
-      // POST THE A6 FORWARD (operator: "the player Orders placement of the
-      // Heptapod... player says once: you move there, and it allows a
-      // forward position to be built"). Its berth is where it patrols and
-      // where it walks home to reload, and until the player says otherwise
-      // that is the cell it was printed on — so it wanders near the wall it
-      // came from. This is the one order it takes: a cell to hold instead.
-      //
-      // It costs nothing and it is not a build: nothing is printed, nothing
-      // is queued, the machine simply walks. That is why it sits on an
-      // EMPTY cell's menu rather than in the tower list, and why it appears
-      // only when there is an A6 to send.
-      const walker = towers.find((tw) => tw.a6);
-      if (walker && !err) {
-        items.unshift({ cls: 'shop-move', txt: `${TOWER_BY_KEY.heptapod.label}<br>post here` });
-      }
-      items.push({ cls: 'shop-close', txt: '×' });
-    }
-    const n = items.length;
-    shopEl.innerHTML = center + items.map((it, i) => {
-      const a = -Math.PI / 2 + (i * 2 * Math.PI) / n;
-      const x = (R * Math.cos(a)).toFixed(0);
-      const y = (R * Math.sin(a)).toFixed(0);
-      return `<button class="radial-item ${it.cls}"` +
-        `${it.key ? ` data-key="${it.key}"` : ''}${it.cancel ? ' data-cancel="1"' : ''}` +
-        `${it.dis ? ' disabled' : ''} ` +
-        `style="left:${x}px;top:${y}px;${it.bc ? `border-color:${it.bc}aa;` : ''}">` +
-        `${it.txt}</button>`;
-    }).join('') + `<div class="shop-note" style="top:${R + 44}px">one new tower each wave</div>`;
-    shopEl.classList.remove('hidden');
-  }
+  // THE RADIAL (src/fx/shop-radial.js): the options ring the tapped cell
+  const openShop = createShopRadial({ root, container, shopEl, strike, towerByCell, orderByCell, orders, towers, automated, closeShop, placeError, effectiveStats, showRangeRing, eco: () => eco, isao: () => isao, shopMute: () => shopMute, story: () => story, wave: () => wave, shopPos: () => shopPos, setShopCi: (v) => { shopCi = v; }, setShopPos: (v) => { shopPos = v; } });
   shopEl.addEventListener('click', (ev) => {
     const el = ev.target;
     if (!el.classList) return;
