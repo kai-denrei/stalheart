@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "sourcePath": "assets/audio/gunship_rotary_fire.mp3",
+  "sourceSha256": "f350a3641952c72c27433023244cb7c36d329ac3372f1d6ea61721536a876963",
+  "derivation": "Owner-provided (2026-09-14, GunShip_Weapon01_Test2.mp3). The recording is 1.75 s of fire then a 1.3 s fade, and looped whole it dipped every 3.1 s. Decoded mono 44.1 kHz; 0.100-1.684 s, nine of its 0.176 s periods from the steady fire; 60 ms equal-power seam; PCM16. Regenerate: node scripts/derive-audio-loop.mjs assets/audio/gunship_rotary_fire.mp3 0.10 1.684 0.06 assets/audio/gunship_rotary_fire_loop.wav",
+  "files": [
+    {
+      "path": "assets/audio/gunship_rotary_fire_loop.wav",
+      "sha256": "483e7a8567de2050fc4a843a8f3f3b29a49d521cdfe3a5b8b5ef209ad3387909",
+      "bytes": 139752
+    }
+  ]
+}

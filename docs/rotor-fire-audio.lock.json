@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "sourcePath": "assets/audio/rotor_pov_fire.mp3",
+  "sourceSha256": "9dea437a980b72dbfc607045279088c5aa585d8353bef7f2d06274a5a282d558",
+  "derivation": "Owner-provided (2026-09-14, HeavyMachineGun_RotorGunPOVSound.mp3). The recording is 1.85 s of fire then 3.7 s of fade and silence, and looped whole it went quiet two seconds into a held trigger (2026-09-25 playtest). Decoded mono 44.1 kHz; 0.100-1.608 s, thirteen of its 0.116 s shot periods from the steady fire; 60 ms equal-power seam (the first 60 ms blended with the 60 ms after the cut); PCM16. Regenerate: node scripts/derive-audio-loop.mjs assets/audio/rotor_pov_fire.mp3 0.10 1.608 0.06 assets/audio/rotor_pov_fire_loop.wav",
+  "files": [
+    {
+      "path": "assets/audio/rotor_pov_fire_loop.wav",
+      "sha256": "7a910db398628a313daf6514b54c1bd2c4441434dffccd3f6376d8ad224a53a7",
+      "bytes": 133050
+    }
+  ]
+}

@@ -44,9 +44,12 @@ export const SOUNDS = {
   minigun_fire:  { file: `${A}/minigun_fire.mp3`,  bus: 'towers', gain: 0.22, maxVoices: 5, minInterval: 0.04, rateJitter: 0.07 },
   // THE BARRELS, NOT THE ROTORS (owner, 2026-09-14): from the Rotor's own optic the firing is its own sound, looped only while
   // rounds leave and muffled through a low-pass, over the spin bed and the spool cues, which stay the rotors turning.
-  rotor_pov_fire: { file: `${A}/rotor_pov_fire.mp3`, bus: 'towers', gain: 0.55, maxVoices: 2, minInterval: 0.05, rateJitter: 0 },
+  // the POV fire and the gunship's rotary are LOOPED while the trigger is down: a one-shot recording looped whole plays its fade and
+  // its silence too (2026-09-25 playtest: the Rotor fired on with only its spin to be heard), so each loops a seamless cut of its
+  // steady fire (scripts/derive-audio-loop.mjs, docs/rotor-fire-audio.lock.json, docs/gunship-rotary-audio.lock.json)
+  rotor_pov_fire: { file: `${A}/rotor_pov_fire.mp3`, loopFile: `${A}/rotor_pov_fire_loop.wav`, bus: 'towers', gain: 0.55, maxVoices: 2, minInterval: 0.05, rateJitter: 0 },
   // the gunship's 25 mm rotary, the owner's sample looped while the trigger is down, heard from the seat
-  gunship_rotary_fire: { file: `${A}/gunship_rotary_fire.mp3`, bus: 'towers', gain: 0.7, maxVoices: 1, minInterval: 0.1, rateJitter: 0 },
+  gunship_rotary_fire: { file: `${A}/gunship_rotary_fire.mp3`, loopFile: `${A}/gunship_rotary_fire_loop.wav`, bus: 'towers', gain: 0.7, maxVoices: 1, minInterval: 0.1, rateJitter: 0 },
   // the gunship's 40 mm report, heard from the seat; its impact lands seconds later, down on the planet
   gunship_bofors_fire: { file: `${A}/gunship_bofors_fire.mp3`, bus: 'towers', gain: 0.6, maxVoices: 2, minInterval: 0.12, rateJitter: 0.04 },
 
