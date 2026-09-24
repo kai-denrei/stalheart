@@ -739,7 +739,8 @@ try{
  // sectors before the one under test, the quick way: every wave out, the field cleared by hand, CONTINUE
  for(let n=1;n<reach;n++){
   try{
-   await until(`${T}.state().sector.phase==="fighting"&&${T}.state().sector.breaches.every(b=>b.opened)`,120000);
+   /* the back door's sector opens its gate side only after the feast is down (2026-09-24): release the feast and clear it */
+   await until(`(()=>{const S=${T}.state().sector;if(S.phase==="fighting"&&S.breaches.some(b=>b.side==="back"&&b.opened&&b.wavesReleased===0))${T}.sectorRelease(S.breaches.find(b=>b.side==="back").id);if(S.feast&&!S.feast.scrambled)${T}.sectorClearField();return S.phase==="fighting"&&S.breaches.every(b=>b.opened);})()`,120000);
    await until(`(()=>{const S=${T}.state().sector;for(const b of S.breaches)if(b.live&&b.wavesReleased<b.wavesPlanned)${T}.sectorRelease(b.id);return S.breaches.every(b=>!b.live||b.wavesReleased>=b.wavesPlanned);})()`,120000);
    await evaluate(`${T}.sectorClearField()`);
    await until(`${T}.state().sector.secure`,90000);
@@ -750,7 +751,7 @@ try{
   }catch(e){console.log(`WAVES stopped short at sector ${n}: ${e.message}`);break;}
  }
  const at=await sec();
- await until(`${T}.state().sector.phase==="fighting"&&${T}.state().sector.breaches.every(b=>b.opened)`,120000).catch(()=>{});
+ await until(`(()=>{const S=${T}.state().sector;if(S.phase==="fighting"&&S.breaches.some(b=>b.side==="back"&&b.opened&&b.wavesReleased===0))${T}.sectorRelease(S.breaches.find(b=>b.side==="back").id);if(S.feast&&!S.feast.scrambled)${T}.sectorClearField();return S.phase==="fighting"&&S.breaches.every(b=>b.opened);})()`,120000).catch(()=>{});
  if(args.includes('--last')){
   // ONE wave from every breach, which is what the game actually puts on the ground at once (the next wave waits for a cleared
   // field): walk the programme to its last wave, clearing between each, then release that biggest wave and measure it alone.
