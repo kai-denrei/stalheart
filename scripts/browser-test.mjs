@@ -1004,7 +1004,7 @@ try{
  await evaluate('window.__stalheartTest.setSector(2)');
  await until('window.__stalheartTest.state().programme.printed.includes("assembly")',300000);await mark('radar and assembly line stand');
  {const s=await evaluate('window.__stalheartTest.state()');assert.deepEqual(s.programme.printed,['foundry','gate','stalheart','landing','solar','bays','hugin','radar','assembly'],'every step, in order');assert.equal(s.programme.next,'backgate','the back gate is all that is left, and it waits for the surprise');assert(!s.programme.perks.includes('backgate'));assert.deepEqual(s.programme.perks.slice().sort(),['gate','gunship','hulls','rebuild','stalheart','station','uplink']);assert.equal(s.hulls,hullsLost,'no rebuild inside the sector the line was printed in');}
- await evaluate('window.__stalheartTest.setSector(3)');await delay(800);
+ await evaluate('window.__stalheartTest.setSector(3)');await until(`window.__stalheartTest.state().hulls===${Math.min(3,hullsLost+1)}`,10000).catch(()=>{});   /* a condition, not 800 ms: the rebuild lands on the programme's next build tick */
  assert.equal((await evaluate('window.__stalheartTest.state()')).hulls,Math.min(3,hullsLost+1),'the assembly line rebuilds a lost hull at the next sector start');
  await shotBase('grow-finished');
  // ISAO'S GATE REPAIR IS ANIMATED (a V1 known gap). Take the door down while the lane is still quiet: he flies out and BEAMS it,
