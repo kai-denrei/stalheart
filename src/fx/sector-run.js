@@ -44,7 +44,11 @@ export function createSectorRun(h) {
   const sps = new Map(), reports = [], omens = new Set();
   let doorsQuiet = true;   // no sector body within quietCells of any standing door, as of the last tick
   let readySince = null;   // when the story first said it was ready for the first sector
-  const now = () => h.now();
+  // THE SECTOR'S OWN CLOCK (2026-09-25): it runs only while the sector ticks, and the controller skips the tick while the world is
+  // paused or frozen under a shot; the game's global t kept running under a dive shot and the openings, the feast's timeout and the
+  // first sector's grace ran out behind it. Every time the sector keeps (its books included) is on this clock.
+  let clock = 0;
+  const now = () => clock;
 
   // THE GATES: each door has its own hit points and its own pathfinder rule, which gives way while that door is broken. The front
   // gate exists from the first frame of a sector; the BACK GATE (2026-09-18) only once Isao has printed it, so the map fills in as
@@ -248,6 +252,7 @@ export function createSectorRun(h) {
   }
 
   function tick(dt) {
+    clock += dt;
     api.backTick?.(dt);   // the back mouth's dust rides the world's clock (src/fx/back-omen.js)
     if (phase !== 'idle' && phase !== 'lost-shown') tickGate(dt);
     if (phase === 'brief' || phase === 'fighting' || phase === 'secure') poll(dt);
@@ -311,7 +316,7 @@ export function createSectorRun(h) {
     // a pulse is over once its bodies have left the queue; guards waiting at expedition sites are not the sector's
     pulseOver: (queue) => !queue.some((q) => !q.guard),
     // one programme wave from every live breach: queue entries with `at` offsets from now
-    release: (t) => { if (phase !== 'fighting' || !sector) return []; const out = []; for (const b of sector.breaches) { const sp = sps.get(b.id); if (b.state !== 'open' || !sp?.alive) continue; const sent = sendWave(b, sp, t); if (sent) out.push(...sent.entries); } omen(); h.hud(); return out; },
+    release: () => { if (phase !== 'fighting' || !sector) return []; const out = []; for (const b of sector.breaches) { const sp = sps.get(b.id); if (b.state !== 'open' || !sp?.alive) continue; const sent = sendWave(b, sp, now()); if (sent) out.push(...sent.entries); } omen(); h.hud(); return out; },
     active: () => phase !== 'idle',
     owns: (sp) => idOf(sp) !== null,
     /* a broken door is held open for everyone: one flag per gate id, which the story base reads per door */

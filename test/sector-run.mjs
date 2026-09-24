@@ -12,7 +12,7 @@ function world({ firstSector = 1, gate = false, lateStart = true, delivered = []
   const api = { openBackDoor: () => { w.backDoors++; }, backBreachCandidates: () => [{ cell: 210, hops: 30 }, { cell: 220, hops: 31 }], backScramble: (k) => { if (k === 0) w.scrambles++; w.rings = (w.rings ?? 0) + 1; }, backOmen: (o) => { (w.omens ??= []).push(o.id); } };
   w.run = createSectorRun({
     story, api, waveSize: 4, threatMult: 1, hardcore: 'knot', spawnGap: { spread: 3.2, max: 0.45 }, store: null, rng: () => 0,
-    now: () => w.t, ready: () => true, firstSector,
+    ready: () => true, firstSector,
     field: () => ({ cellSide: 0.001, centers, dist, rim: centers.map((_, i) => (i % 2 ? 4 : 20)), inside: () => false, excluded: [], farHops: 69, fallback: () => 0 }),   // odd cells lie within a breach's blast of the base's rim
     open: (cell, o) => { const sp = { ci: cell, alive: true, obj: { cell }, quiet: !!o?.quiet }; w.opened.push(sp); return sp; },
     collapse: (sp) => { sp.alive = false; }, breaches: () => w.opened, enemies: () => w.enemies, queue: () => w.queue,
@@ -113,6 +113,19 @@ function world({ firstSector = 1, gate = false, lateStart = true, delivered = []
   assert.ok(w.rings >= 6 && w.rings <= 10, `the sockets ring for BACK_SCRAMBLE.seconds (${w.rings})`);
   assert.equal(w.omens, undefined, 'no omens once the door has fallen');
 }
+// THE SECTOR'S OWN CLOCK: time the world spends frozen or paused (no tick) does not count, so nothing the sector waits for runs
+// out behind a dive shot
+{
+  const w = world({ firstSector: 2 });
+  w.step(0.5);
+  assert.equal(w.opened.length, 0, 'behind the fallen mouth the breach waits the lead');
+  w.t += 60;   // a minute of frozen world: the controller does not tick the sector
+  w.run.tick(0.25);
+  assert.equal(w.opened.length, 0, 'the lead is sector time, not the page\'s');
+  w.step(SECTOR_TIMING.backDoorLead);
+  assert.equal(w.opened.length, 1, 'and runs out once the world does');
+}
+
 // THE FIRST SECTOR WAITS FOR THE EXPEDITION on a run that played into it: a part home, or the grace
 {
   const delivered = [];
