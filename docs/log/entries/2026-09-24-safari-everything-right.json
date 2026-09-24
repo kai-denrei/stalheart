@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "2026-09-24-safari-everything-right",
+  "date": "2026-09-24",
+  "type": "issue",
+  "status": "observed",
+  "title": "In Safari everything renders off to the right: the gunship HUD is miscalibrated against where it shoots and the tank sits right of centre",
+  "context": "Owner, 2026-09-24, Safari on macOS, build f1fd12b1 (after the seat contract and the eviction fix shipped): 'Gunship still has miscalibrated hud vs where it shoots. Tank still appears on the right of the screen instead of center. Everything off to the right.' The seat-contract work (2026-09-23-seat-changes-robust) measured zero offset in headless Chrome at dpr 1 and 2 and could not drive Safari; it fixed a real but different bug.",
+  "outcome": "Observed; reframed: 'everything' in every seat, with Chrome at zero, is the signature of a rendering-surface mismatch, not seat logic — the WebGL canvas's pixel size, its CSS size, devicePixelRatio handling (renderer.setPixelRatio/setSize, the postfx targets, the scissored second views in story-monitor/laser-scope) or a layout offset of the canvas inside the shell that Safari applies and Chrome does not. Must be reproduced in Safari itself (safaridriver ships with macOS) before any fix.",
+  "alternatives": [],
+  "evidence": [
+    "Owner note 2026-09-24.",
+    "2026-09-23-seat-changes-robust: Chrome tank NDC x=0.000, guns 0.00 px, dpr 1 and 2."
+  ],
+  "supersedes": [
+    "2026-09-23-seat-changes-must-be-robust"
+  ]
+}

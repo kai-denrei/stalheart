@@ -314,7 +314,13 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 34 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 35 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### In Safari everything renders off to the right: the gunship HUD is miscalibrated against where it shoots and the tank sits right of centre
+
+`2026-09-24-safari-everything-right` · issue · **observed**
+
+Owner, 2026-09-24, Safari on macOS, build f1fd12b1 (after the seat contract and the eviction fix shipped): 'Gunship still has miscalibrated hud vs where it shoots. Tank still appears on the right of the screen instead of center. Everything off to the right.' The seat-contract work (2026-09-23-seat-changes-robust) measured zero offset in headless Chrome at dpr 1 and 2 and could not drive Safari; it fixed a real but different bug.
 
 ### Cycling tank > gunship > SOL-82 > tank leaves the tank off to the right and the gunship aiming right of centre
 

@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-09-24-intro-simplified",
+  "date": "2026-09-24",
+  "type": "decision",
+  "status": "accepted",
+  "title": "The intro is four beats: the key elements as wireframes, one breach, one ram, the gunship firing",
+  "context": "Owner, 2026-09-24, after watching the twelve-shot showcase (2026-09-19-showcase-built): 'the intro is not compelling. Let's simplify: A) we introduce the key elements as wireframes; B) we show one breach and the enemies coming out; C) we show one scene of a tank ramming 50 enemies; D) we show a gunship firing on enemies below.'",
+  "outcome": "Accepted: the showcase's shot table shrinks to four beats in that order — A the key elements revealed as labelled wireframes (the SOL-82 briefing treatment: tank, gunship, SOL-82, a sentry); B one breach opening with the swarm pouring out; C the tank ramming a horde of fifty; D the gunship firing down on the swarm. Then Isao: ARE YOU READY? with PLAY / SKIP TUTORIAL, as now. Each beat long enough to read; the whole shorter than before. The once-only, ?intro=, PLAYTEST-drawer and loading-screen behaviour stay.",
+  "alternatives": [
+    "Keep twelve shots and fix the three that did not land; rejected by the owner: fewer, clearer beats."
+  ],
+  "evidence": [
+    "Owner note 2026-09-24.",
+    "src/content/showcase.js, src/fx/showcase.js, the --showcase step."
+  ],
+  "supersedes": [
+    "2026-09-19-showcase-built"
+  ]
+}
