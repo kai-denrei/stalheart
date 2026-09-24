@@ -662,7 +662,7 @@ try{
   assert(await evaluate(`${T}.commitTower('rotor',${socks[0]})`),'a Rotor on its socket');assert(await evaluate(`${T}.commitTower('quiver',${socks[1]})`),'a Quiver on its socket');}
  await until(`["brief","fighting"].includes(${T}.state().sector.phase)`,30000);
  {const s=await sec();assert.equal(s.n,1);assert.equal(s.name,'THE LANE');
-  if(s.phase==='brief')assert(await evaluate('/SECTOR 1 · THE LANE/.test(document.querySelector("#sector-card")?.textContent||"")'),'the brief card names the sector');
+  assert(await evaluate('/SECTOR 1 · THE LANE/.test(document.querySelector("#sector-card")?.textContent||"")'),'the brief card names the sector (the breaches open under it)');
   const hud=await evaluate('document.querySelector("#td-stats")?.textContent||""');
   assert(/SECTOR 1 · THE LANE/.test(hud),`the HUD carries the sector line (${hud})`);assert(!/of sector \d|TERRAFORMER/.test(hud),`no campaign lines in the story HUD (${hud})`);}
  current='sectors-brief';await finish();
@@ -692,7 +692,16 @@ try{
  await evaluate(`${T}.sectorContinue()`);
  await until(`${T}.state().sector.n===2 && !${T}.state().sector.debriefOpen && !${T}.state().paused`,15000);
  current='sectors-sector-2-brief';await finish();
- await until(`(()=>{const b=${T}.state().sector.breaches;return b.length===2&&b.every(x=>x.live);})()`,60000);
+ // THE FEAST, THEN THE SCRAMBLE (2026-09-24): the back breach opens first and the clock sends its soft flood; the gate side waits
+ // until the flood is mostly down, then Isao asks for turrets and the gate side opens
+ await until(`(()=>{const b=${T}.state().sector.breaches;return b.length===2&&b[0].live;})()`,60000);
+ {const s=await sec();assert.equal(s.breaches[0].side,'back','the back breach opens first');assert(!s.breaches[1].opened,'the gate side waits for the feast');}
+ await until(`!!${T}.state().sector.feast`,60000).catch(async()=>assert.fail(`the clock sends the feast (${JSON.stringify(await sec())})`));
+ await until(`${T}.state().performance.enemies>=30`,30000);
+ current='sectors-feast';await finish();
+ await evaluate(`${T}.sectorClearField()`);
+ await until(`${T}.state().sector.feast.scrambled`,10000).catch(async()=>assert.fail(`the scramble once the feast is down (${JSON.stringify(await sec())})`));
+ await until(`(()=>{const b=${T}.state().sector.breaches;return b.length===2&&b.every(x=>x.live);})()`,40000);
  current='sectors-sector-2';await finish();
  // SECTOR 2 COMPLETES (QA 2026-09-16): the back door's breach fights too, both are held to their last wave, SECURE, and a fresh report
  {const s=await sec();assert.deepEqual(s.breaches.map(b=>b.side).sort(),['back','gate'],'sector 2: one gate breach, one behind the bays');assert.equal(s.strays,0,'no stray breach in sector 2');
@@ -1028,7 +1037,10 @@ try{
  await until(`${T}.state().sector.n===2`,60000).catch(async()=>assert.fail(`the run opens at the back-door sector (${JSON.stringify((await st()).sector)})`));
  assert.equal((await st()).sector.name,'THE BACK DOOR');
  await until(`${T}.backDoorOpen()`,60000).catch(()=>assert.fail('the rock behind the bays gives way'));
- await until(`(()=>{const b=${T}.state().sector.breaches;return b.length===2&&b.every(x=>x.live);})()`,90000).catch(async()=>assert.fail(`both breaches open (${JSON.stringify((await st()).sector)})`));
+ // the back breach first, its feast on the clock, then the gate side once the feast is down (2026-09-24)
+ await until(`!!${T}.state().sector.feast`,90000).catch(async()=>assert.fail(`the feast comes through the back (${JSON.stringify((await st()).sector)})`));
+ await evaluate(`${T}.sectorClearField()`);
+ await until(`(()=>{const b=${T}.state().sector.breaches;return b.length===2&&b.every(x=>x.live);})()`,60000).catch(async()=>assert.fail(`both breaches open (${JSON.stringify((await st()).sector)})`));
  {const s=await st();assert.deepEqual(s.sector.breaches.map(b=>b.side).sort(),['back','gate'],'one breach behind the bays, one on the gate side');
   assert.equal(s.laser.online,true,'SOL-82 is online');
   assert.equal(s.sector.strays,0,'no stray breach from an opening this run never played');}
