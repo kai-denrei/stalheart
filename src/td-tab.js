@@ -31,7 +31,7 @@ import { bfsDist, BLOCKED, PATH, ROOM } from './dungeon.js';
 import { buildGameWorld, readStoryQuery, STORY_SOUNDS, takeControlPose } from './platform/story-world.js'; import { SENTRY_HEAT } from './content/sentry-heat.js'; import { coolHeat } from './core/heat.js'; import { paintBarrelHeat } from './fx/barrel-heat.js'; import { createUnlockHost } from './fx/story-views.js'; import { buildReadout } from './fx/build-readout.js'; import { createStoryMonitor } from './fx/story-monitor.js'; import { createDaylight } from './fx/daylight.js'; import { createStoryScope, createScopeFeed } from './fx/story-scope.js'; import { createSyntheticModal } from './fx/synthetic-modal.js'; import { createBrass } from './fx/brass.js';
 import { mulberry32, randomSeed } from './rng.js';
 import { createLaserStation } from './fx/laser-station.js'; import { LASER_GAME, LASER_STRUCTURES } from './content/orbital-laser.js'; import { makeTriadIcon, glossCard, GAMEPLAY_TIPS } from './fx/briefing-cards.js';
-import { computeBerths, berthIndexFor } from './berths.js'; import { createProgrammeHost } from './fx/programme-host.js'; import { berthRun, berthHeading, deployU, easeDeploy, deployFraming } from './domain/deploy-path.js';
+import { computeBerths, berthIndexFor } from './berths.js'; import { createProgrammeHost } from './fx/programme-host.js'; import { strikeFallPose, droneRidePose, bastionPose, tankViewPose } from './domain/camera-goal.js'; import { berthRun, berthHeading, deployU, easeDeploy, deployFraming } from './domain/deploy-path.js';
 import { wantsSecondary, shellsForAll } from './autofire.js';
 import { printPhase, printOffset, printOn, patternSecsFor } from './printpath.js';
 import { createBeam } from './beamfx.js';
@@ -1743,7 +1743,7 @@ export function initTdTab(root) {
   // camera renders down -Z (three.js special-cases isCamera in lookAt).
   // The camera goal quaternion MUST come from a camera instance, or the view
   // ends up rotated 180° — staring backward along the heading.
-  const tmpCam = new THREE.PerspectiveCamera(); const poseCamera = ({ eye, look, up }, out) => { out.pos.set(eye[0], eye[1], eye[2]); tmpCam.position.copy(out.pos); tmpCam.up.set(up[0], up[1], up[2]); tmpCam.lookAt(look[0], look[1], look[2]); out.quat.copy(tmpCam.quaternion); };   /* a shot's pose (eye, look, up) as a camera goal */
+  const tmpCam = new THREE.PerspectiveCamera(); const poseCamera = ({ eye, look, up }, out, bias = false) => { out.pos.set(eye[0], eye[1], eye[2]); tmpCam.position.copy(out.pos); tmpCam.up.set(up[0], up[1], up[2]); tmpCam.lookAt(look[0], look[1], look[2]); if (bias) applyViewportBias(tmpCam); out.quat.copy(tmpCam.quaternion); };   /* a shot's pose (eye, look, up) as a camera goal; bias: the phone's visible band (applyViewportBias) */
 
   // --- colors: everything visual comes from the active look ----------------
   const look = () => LOOKS[params.look] || LOOKS.solid;
@@ -2436,143 +2436,14 @@ export function initTdTab(root) {
       shot.poseAt(Math.min(1, Math.max(0, 1 - shot.left / shot.dur)), camGoal);
       return;
     }
-    if (showcaseRamCam && player.pos) { const p = ramShotPose({ pos: player.pos, dir: player.smoothDir, cellSide, wallHeight: params.wallHeight, unitScale }); camGoal.pos.set(p.eye[0], p.eye[1], p.eye[2]); tmpCam.position.copy(camGoal.pos); tmpCam.up.set(p.up[0], p.up[1], p.up[2]); tmpCam.lookAt(p.look[0], p.look[1], p.look[2]); applyViewportBias(tmpCam); camGoal.quat.copy(tmpCam.quaternion); return; }   /* THE RAM BEAT'S CAMERA, and only while the montage's third beat is up (gameHooks.showcase.ram): it sits BELOW the seats and the shots above it — a seat's pose and a cinematic still outrank it — and above the gameplay views, whose third-person offset looks a cell and a half ahead from high behind and frames the hull off the bottom edge */ if (strike.falling > 0) {
-      // riding the munition down: straight along the target cell's normal,
-      // altitude easing on a smoothstep — slow at first, fast near impact,
-      // which is what falling feels like. Shake is two incommensurate sines
-      // (deterministic; render-only) escalating hard past 85%.
-      const ci = strike.fallCi;
-      const c = graph.centers[ci];
-      const nrm = graph.normals[ci];
-      const pr = fallProgress(strike);
-      const ez = pr * pr * (3 - 2 * pr);
-      const alt = 2.6 - (2.6 - params.wallHeight * 3 - cellSide * 0.8) * ez;
-      const shakeAmt = (0.004 + 0.012 * pr + (pr > 0.85 ? (pr - 0.85) * 0.25 : 0)) * cellSide * 8;
-      const st = performance.now() * 0.001;
-      const ref = Math.abs(nrm[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
-      const t1 = norm3(cross3(nrm, ref));
-      const t2 = cross3(nrm, t1);
-      const sx = Math.sin(st * 47.0) * shakeAmt;
-      const sy = Math.sin(st * 31.7) * shakeAmt;
-      const eye = add3(scale3(nrm, 1 + alt), add3(scale3(t1, sx), scale3(t2, sy)));
-      camGoal.pos.set(eye[0], eye[1], eye[2]);
-      tmpCam.position.copy(camGoal.pos);
-      tmpCam.up.set(t1[0], t1[1], t1[2]);
-      tmpCam.lookAt(c[0], c[1], c[2]);
-      camGoal.quat.copy(tmpCam.quaternion);
-      return;
-    }
-    if (params.view === 'drone' && isao) {
-      // RIDING ISAO. Purely a camera for now — he still flies his own
-      // orders, you are just on board. The point is diegetic: a free look
-      // over the whole shell is a strange power for a tank commander to
-      // have, and an obvious one for the survey drone that is already up
-      // there. The board answers "how are you seeing this" without a menu.
-      //
-      // Framed from behind and slightly above his rotor plane, looking
-      // where HE is looking: the site on the way out, the print while he
-      // works, his drift while he waits. That means the shot is composed by
-      // the job rather than by the camera, which is the whole reason to
-      // hang a view on a working machine instead of on a free gimbal.
-      const bp = isao.obj.position;
-      const up = isao.dir;
-      // FORWARD IS WHERE THE PILOT IS POINTING — one notion of forward,
-      // shared by the stick and the lens.
-      //
-      // This used to be derived from the JOB (the order's cell, or
-      // isao.loiter), which was right when the comment above was written and
-      // this view really was only a camera riding along. Piloting arrived
-      // later and the camera was never told. Two consequences, both reported
-      // by the operator and both measured by ?droneprobe=1: steering swung
-      // his heading and the view never followed (camera-swing 0.0deg, so
-      // sideways felt dead), and after a turn W flew him off the BACK of the
-      // screen (W-after-turn -0.92, so forward was back). With no order,
-      // isao.loiter is his own position, so `sub3(aimC, up)` was literally
-      // the zero vector and the frame fell through to an arbitrary tangent.
-      //
-      // The frame still comes from the SPHERE, not from the mesh's facing:
-      // hanging it off his quaternion put the lens inside him whenever he
-      // was hovering nose-down over a print, and the tangent is stable
-      // through every state he has.
-      let fwd;
-      if (isaoHeading) fwd = isaoHeading.slice();
-      else {
-        const aimC = isao.order ? norm3(graph.centers[isao.order.ci]) : isao.loiter;
-        fwd = sub3(aimC, up);
-      }
-      fwd = sub3(fwd, scale3(up, dot3(fwd, up)));   // onto the tangent plane
-      const fl = len3(fwd);
-      fwd = fl > 1e-6 ? scale3(fwd, 1 / fl) : norm3(cross3(up, [0, 1, 0]));
-      const back = cellSide * 4.2, lift = cellSide * 1.6;
-      camGoal.pos.set(
-        bp.x - fwd[0] * back + up[0] * lift,
-        bp.y - fwd[1] * back + up[1] * lift,
-        bp.z - fwd[2] * back + up[2] * lift,
-      );
-      tmpCam.position.copy(camGoal.pos);
-      tmpCam.up.set(up[0], up[1], up[2]);
-      // Aim BETWEEN him and the job, not at either. Aimed at the machine
-      // you get a machine and no context; aimed at the site he drops out of
-      // frame entirely, which is what the first cut did while he was
-      // hovering directly over it. Just past him keeps both.
-      const aimCi = isao.order ? isao.order.ci : -1;
-      if (aimCi >= 0) {
-        const c = graph.centers[aimCi];
-        const top = 1 + params.wallHeight;
-        const k = 0.45;
-        tmpCam.lookAt(
-          bp.x + (c[0] * top - bp.x) * k,
-          bp.y + (c[1] * top - bp.y) * k,
-          bp.z + (c[2] * top - bp.z) * k,
-        );
-      } else {
-        // waiting: past him along the drift, tipped down at the shell —
-        // the loiter shot
-        tmpCam.lookAt(
-          bp.x + fwd[0] * cellSide * 2.2 - up[0] * cellSide * 1.3,
-          bp.y + fwd[1] * cellSide * 2.2 - up[1] * cellSide * 1.3,
-          bp.z + fwd[2] * cellSide * 2.2 - up[2] * cellSide * 1.3,
-        );
-      }
-      camGoal.quat.copy(tmpCam.quaternion);
-      return;
-    }
-    if (params.view === 'bastion' && !buildMode) {
-      // behind the anchor, facing the incoming lane (outward from the
-      // Heart through a watched tower; toward the nearest live portal
-      // when watching the Heart itself)
-      const anchorCi = (watchTower && towers.includes(watchTower)) ? watchTower.ci : dungeon.heart;
-      const ac = graph.centers[anchorCi];
-      const an = graph.normals[anchorCi];
-      const tangentAt = (pnt, toward) => {
-        const nn = norm3(pnt);
-        const raw = sub3(toward, pnt);
-        const flat = sub3(raw, scale3(nn, dot3(raw, nn)));
-        const l = len3(flat);
-        return l > 1e-9 ? scale3(flat, 1 / l) : [1, 0, 0];
-      };
-      let lookDir;
-      if (anchorCi === dungeon.heart) {
-        let bp = null, bd = Infinity;
-        for (const sp of spawnPoints) {
-          if (!sp.alive) continue;
-          const dd = dist3(ac, graph.centers[sp.ci]);
-          if (dd < bd) { bd = dd; bp = graph.centers[sp.ci]; }
-        }
-        lookDir = bp ? tangentAt(ac, bp) : tangentAt(ac, graph.centers[dungeon.spawn]);
-      } else {
-        lookDir = scale3(tangentAt(ac, graph.centers[dungeon.heart]), -1); // outward
-      }
-      const eye = add3(add3(ac, scale3(an, params.wallHeight * 4 + cellSide * 2.0)),
-        scale3(lookDir, -cellSide * 2.8));
-      const look = add3(add3(ac, scale3(an, params.wallHeight)), scale3(lookDir, cellSide * 3));
-      camGoal.pos.set(eye[0], eye[1], eye[2]);
-      tmpCam.position.copy(camGoal.pos);
-      tmpCam.up.set(an[0], an[1], an[2]);
-      tmpCam.lookAt(look[0], look[1], look[2]);
-      camGoal.quat.copy(tmpCam.quaternion);
-      return;
-    }
+    // THE RAM BEAT'S CAMERA, and only while the montage's third beat is up (gameHooks.showcase.ram): it sits BELOW the seats and
+    // the shots above it — a seat's pose and a cinematic still outrank it — and above the gameplay views, whose third-person offset
+    // looks a cell and a half ahead from high behind and frames the hull off the bottom edge
+    if (showcaseRamCam && player.pos) { poseCamera(ramShotPose({ pos: player.pos, dir: player.smoothDir, cellSide, wallHeight: params.wallHeight, unitScale }), camGoal, true); return; }
+    // THE VIEWS' POSES (src/domain/camera-goal.js): the strike's fall, riding Isao, the bastion, the tank's third person and POV
+    if (strike.falling > 0) { poseCamera(strikeFallPose(graph.centers[strike.fallCi], graph.normals[strike.fallCi], fallProgress(strike), params.wallHeight, cellSide, performance.now() * 0.001), camGoal); return; }
+    if (params.view === 'drone' && isao) { poseCamera(droneRidePose({ bp: isao.obj.position.toArray(), up: isao.dir, heading: isaoHeading, order: isao.order, centers: graph.centers, loiter: isao.loiter, cellSide, wallHeight: params.wallHeight }), camGoal); return; }
+    if (params.view === 'bastion' && !buildMode) { poseCamera(bastionPose({ centers: graph.centers, normals: graph.normals, anchorCi: (watchTower && towers.includes(watchTower)) ? watchTower.ci : dungeon.heart, heart: dungeon.heart, spawnCi: dungeon.spawn, portals: spawnPoints, wallHeight: params.wallHeight, cellSide }), camGoal); return; }
     if (buildMode) {
       // free: no elastic return, no angular ceiling. The carried frame is
       // what makes that safe anywhere on the sphere, antipode included.
@@ -2589,45 +2460,10 @@ export function initTdTab(root) {
       camGoal.quat.copy(tmpCam.quaternion);
       return;
     }
-    const c = player.pos;
-    const n = norm3(c);
-    const h = player.smoothDir;
-    // suspension dip while a ram bump is live: sink the eye, ease out.
-    // Recoil pulls the eye straight back along the heading instead.
     const dip = cellSide * 0.95 * bumpFactor() * bumpFactor();
     const kick = cellSide * 0.08 * params.recoil * recoilFactor() * recoilFactor();
-    let eye, look;
     if (mobileShell && params.view === 'pov') params.view = 'third';   // the shell has no first person, whoever wrote it
-    if (params.view === 'third') {
-      // behind and above; pulls back as the creature grows so it stays framed
-      // the shell rides a little LOWER behind (operator: "3rd person,
-      // somewhat low behind"); the desktop pose is untouched
-      const lift = mobileShell ? 0.78 : 1;
-      eye = add3(add3(c, scale3(n, (params.wallHeight * 2.6 + cellSide * 1.1 + unitScale * 1.8) * lift)),
-        scale3(h, -(cellSide * 1.8 + unitScale * 1.6)));
-      // THE LOOK POINT decides where the tank sits in the frame, not the
-      // eye's height. Looking 1.4 cells AHEAD from a low eye put the tank
-      // at screen-y -0.43 — the bottom fifth of a phone's short viewport,
-      // under the stick and the fire pad (operator, builds 1974eb11 and
-      // 2d6b2444: "I still do not see the tank — too high or too forward").
-      // The shell looks nearer the tank so it rides a third up the frame;
-      // the desktop keeps its look-ahead.
-      const ahead = mobileShell ? cellSide * 0.45 : cellSide * 1.4;
-      look = add3(add3(c, scale3(n, params.wallHeight * 0.4 + unitScale * 0.5)),
-        scale3(h, ahead));
-    } else {
-      // pov: down IN the corridor slot, below the wall tops, along its throat
-      eye = add3(add3(c, scale3(n, params.wallHeight * 0.62)), scale3(h, -cellSide * 0.5));
-      look = add3(add3(c, scale3(n, params.wallHeight * 0.28)), scale3(h, cellSide * 2.4));
-    }
-    if (dip > 0) eye = add3(eye, scale3(n, -dip));
-    if (kick > 0) eye = add3(eye, scale3(h, -kick));
-    camGoal.pos.set(eye[0], eye[1], eye[2]);
-    tmpCam.position.copy(camGoal.pos);
-    tmpCam.up.set(n[0], n[1], n[2]);
-    tmpCam.lookAt(look[0], look[1], look[2]);
-    applyViewportBias(tmpCam);
-    camGoal.quat.copy(tmpCam.quaternion);
+    poseCamera(tankViewPose({ c: player.pos, h: player.smoothDir, third: params.view === 'third', mobile: mobileShell, dip, kick, wallHeight: params.wallHeight, cellSide, unitScale }), camGoal, true);
   }
 
   // THE CANVAS IS NOT WHAT THE PLAYER SEES. On a phone `innerHeight` — and
@@ -9412,8 +9248,63 @@ export function initTdTab(root) {
       poll: () => ({ passes: gunship.passes, shieldUp: shieldUp(), drawn: arrayStation.drawn ?? 0, earned: eco.earned, spent: eco.spent, delivered: (story.expeditions?.sites ?? []).filter((s) => s.state === 'delivered').map((s) => s.id), laser: laserStation.stats?.() ?? null }),   /* SOL-82's books: { passes, seconds } */
     });
   }
-  const storyApi = { foundry: (ev, d) => { (foundryFx ??= createFoundryFx(scene, () => storyBase, { cellSide, metresPerCell: 10 })).event(ev, d); if (ev === 'deploy') { showBrief('foundry_deploy'); const fh = storyBase?.structure('foundry')?.holder; if (fh) { const at = norm3(fh.getWorldPosition(new THREE.Vector3()).toArray()); if (isao) isao.assistAt = at; else if (story) story.assistAt = at; } } }   /* ISAO GOES TO WORK AT ONCE (owner, 2026-09-14): he tends the foundry from its deploy until the first print order */, /* the arrival recycled: the beat's events become the swap, the clip, the arc, the cut and the barrels */ order: (key, ci) => orderTower(key, ci, { quiet: true }), grant: (n) => { if (n > 0) eco.addBiomass(n, { category: 'grant' }); }, built: (ci) => towerByCell.has(ci), cost: (key) => TOWER_BY_KEY[key]?.cost ?? 0, isao: () => !!isao, enemies: () => enemies.filter((e) => e.alive).length + spawnQueue.length, /* a queued spawn is already an enemy to the beats: the second hard core sat in the queue the tick the first died, and the Quiver beat settled with it still to come */ spawn: (type, ci, o = null) => { spawnQueue.push({ type, sp: o?.guard ? { ci, alive: true, obj: new THREE.Group() } : story?.source ?? { ci, alive: true, obj: new THREE.Group() }, at: spawnClock, ...o }); }, brief: (id) => showBrief(id), tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null), breach: (ci, o) => { const obj = buildPortalObj(ci, 0); obj.userData.quiet = !!o?.quiet; scene.add(obj); const sp = { ci, alive: true, obj, hp: 3, found: true }; if (!story.source?.alive) story.source = sp; spawnPoints.push(sp); return sp; }, sourceAlive: () => !!story.source?.alive, briefing: () => !!briefQ, screenOpen: () => !!syntheticModal?.isOpen(), closeup: () => { if (!isao) return; leavePilot(); storyViews?.active('tank'); clearBriefs(); startShot({ id: 'isaoTalk', dur: 9, poseAt: (u, out) => poseCamera(isaoFace(isao.obj.position.toArray(), isao.dir, isao.obj.getWorldDirection(new THREE.Vector3()).toArray(), isao.obj.scale.x, u), out) }); }, /* FACE ON (the first framing sat between his legs and the rocket): in front of the LED panel along his own forward, a drone-size or two out, the queued line cleared so his first line is the first thing on the panel */ sites: () => story.hud.sites(story.sites.map((ci) => norm3(graph.centers[ci]))), planetView: () => { if (!story.sites.length) return; const d = sitesDir(story.sites.map((ci) => graph.centers[ci])); startShot({ id: 'sites', dur: 5, poseAt: (u, out) => poseCamera(orbitFrame(d, sitesRadius(u)), out), onEnd: () => setView('orbit') }); }, /* the sinkhole is a spawn point: an orbital strike on it fills it like any other (operator, 2026-09-13) */ near: (ci, r = 2.2) => enemies.some((e) => e.alive && chord(e.pos, graph.centers[ci]) < cellSide * r), kills: () => rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike, screen: (id) => { if (id !== 'synthetic') return; syntheticModal ??= createSyntheticModal(root); const was = paused; paused = true; syntheticModal.open(BRIEFS.vibration_study.lines, () => { paused = was; }); }, pilot: (ci, laneCi) => { if (pilot?.gunship || laserStation.seated()) return; /* a scripted hand-over never evicts a gunner or SOL-82: the beat is deferred, not the player (2026-09-23) */ enterPilot([ci, ...towers.map((t) => t.ci).filter((c) => c !== ci)]); startShot({ id: 'takeControl', dur: 3.2, poseAt: takeControlPose(perchOf(towerByCell.get(ci) ?? { ci }), graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight), onEnd: () => { setView('bastion'); snapCamera(); } }); } };
-  Object.assign(storyApi, { /* SECTOR 0 (src/domain/story-beats.js construction): the Stålheart stands once its first hull is out; the gunship comes on station from orbit for a free pass */ stalheartStands: () => !!story?.hull?.out(), gunshipArrive: () => { if (!story) return; story.gunshipIn = true; startStation(gunship, GUNSHIP_ORBIT); showBrief('gunship_overhead'); } }, createProgrammeHost({ laserStation, shotId, showBrief, deployStart, deployStep, leavePilot, camera, startShot, deployFramePoseFor, camA, setView, PLAYER_MAX, orders, breachQueue, breachedCells, gunshipRig, spawnIsao, updateHud, syncLifeContainers, rebuildAfterBreach, recomputePortalDist, adoptBays, story: () => story, pilot: () => pilot, deploy: () => deploy, t: () => t, playerHP: () => playerHP, storyViews: () => storyViews, sectorRun: () => sectorRun, waveActive: () => waveActive, dungeon: () => dungeon, tdFullTags: () => tdFullTags, storyBase: () => storyBase, pilotMode: () => pilotMode, briefQ: () => briefQ, setBerths: (v) => { berths = v; }, setPlayerDown: (v) => { playerDown = v; }, setDeploy: (v) => { deploy = v; }, setPlayerHP: (v) => { playerHP = v; } }), createExpeditionsHost({ storyApi, scene, sfx, SOUNDS, BREACH_SOUNDS, STORY_SOUNDS, player, enemies, spawnQueue, orders, showBrief, showCallout, showTowerToast, spawnIsao, updateHud, story: () => story, graph: () => graph, cellSide: () => cellSide, playerMesh: () => playerMesh, storyBase: () => storyBase, cellIndex: () => cellIndex }), createUnlockHost({ root, towers, gunship, gunshipRig, automated, enterPilot, leavePilot, setView, showBrief, story: () => story, storyViews: () => storyViews, pilot: () => pilot, pilotMode: () => pilotMode, pilotHost: () => pilotHost, sectorRun: () => sectorRun, gunshipBriefing: () => gunshipBriefing, paused: () => paused, setStoryViews: (v) => (storyViews = v), setGunshipBriefing: (v) => (gunshipBriefing = v), setPaused: (v) => { paused = v; } }));   /* ISAO KEEPS BUILDING (src/fx/programme-host.js); THE EXPEDITIONS (src/fx/expedition-glue.js); THE VIEW STRIP (src/fx/story-views.js) */
+  const storyApi = {
+    // ISAO GOES TO WORK AT ONCE (owner, 2026-09-14): he tends the foundry from its deploy until the first print order
+    // the arrival recycled: the beat's events become the swap, the clip, the arc, the cut and the barrels
+    foundry: (ev, d) => { (foundryFx ??= createFoundryFx(scene, () => storyBase, { cellSide, metresPerCell: 10 })).event(ev, d); if (ev === 'deploy') { showBrief('foundry_deploy'); const fh = storyBase?.structure('foundry')?.holder; if (fh) { const at = norm3(fh.getWorldPosition(new THREE.Vector3()).toArray()); if (isao) isao.assistAt = at; else if (story) story.assistAt = at; } } },
+    order: (key, ci) => orderTower(key, ci, { quiet: true }),
+    grant: (n) => { if (n > 0) eco.addBiomass(n, { category: 'grant' }); },
+    built: (ci) => towerByCell.has(ci),
+    cost: (key) => TOWER_BY_KEY[key]?.cost ?? 0,
+    isao: () => !!isao,
+    // a queued spawn is already an enemy to the beats: the second hard core sat in the queue the tick the first died, and the
+    // Quiver beat settled with it still to come
+    enemies: () => enemies.filter((e) => e.alive).length + spawnQueue.length,
+    spawn: (type, ci, o = null) => { spawnQueue.push({ type, sp: o?.guard ? { ci, alive: true, obj: new THREE.Group() } : story?.source ?? { ci, alive: true, obj: new THREE.Group() }, at: spawnClock, ...o }); },
+    brief: (id) => showBrief(id),
+    tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null),
+    // the sinkhole is a spawn point: an orbital strike on it fills it like any other (operator, 2026-09-13)
+    breach: (ci, o) => { const obj = buildPortalObj(ci, 0); obj.userData.quiet = !!o?.quiet; scene.add(obj); const sp = { ci, alive: true, obj, hp: 3, found: true }; if (!story.source?.alive) story.source = sp; spawnPoints.push(sp); return sp; },
+    sourceAlive: () => !!story.source?.alive,
+    briefing: () => !!briefQ,
+    screenOpen: () => !!syntheticModal?.isOpen(),
+    // FACE ON (the first framing sat between his legs and the rocket): in front of the LED panel along his own forward, a
+    // drone-size or two out, the queued line cleared so his first line is the first thing on the panel
+    closeup: () => { if (!isao) return; leavePilot(); storyViews?.active('tank'); clearBriefs(); startShot({ id: 'isaoTalk', dur: 9, poseAt: (u, out) => poseCamera(isaoFace(isao.obj.position.toArray(), isao.dir, isao.obj.getWorldDirection(new THREE.Vector3()).toArray(), isao.obj.scale.x, u), out) }); },
+    sites: () => story.hud.sites(story.sites.map((ci) => norm3(graph.centers[ci]))),
+    planetView: () => { if (!story.sites.length) return; const d = sitesDir(story.sites.map((ci) => graph.centers[ci])); startShot({ id: 'sites', dur: 5, poseAt: (u, out) => poseCamera(orbitFrame(d, sitesRadius(u)), out), onEnd: () => setView('orbit') }); },
+    near: (ci, r = 2.2) => enemies.some((e) => e.alive && chord(e.pos, graph.centers[ci]) < cellSide * r),
+    kills: () => rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike,
+    screen: (id) => { if (id !== 'synthetic') return; syntheticModal ??= createSyntheticModal(root); const was = paused; paused = true; syntheticModal.open(BRIEFS.vibration_study.lines, () => { paused = was; }); },
+    pilot: (ci, laneCi) => {
+      if (pilot?.gunship || laserStation.seated()) return;   // a scripted hand-over never evicts a gunner or SOL-82: the beat is deferred, not the player (2026-09-23)
+      enterPilot([ci, ...towers.map((t) => t.ci).filter((c) => c !== ci)]);
+      startShot({ id: 'takeControl', dur: 3.2, poseAt: takeControlPose(perchOf(towerByCell.get(ci) ?? { ci }), graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight), onEnd: () => { setView('bastion'); snapCamera(); } });
+    },
+  };
+  Object.assign(storyApi, {
+    // SECTOR 0 (src/domain/story-beats.js construction): the Stålheart stands once its first hull is out; the gunship comes on
+    // station from orbit for a free pass
+    stalheartStands: () => !!story?.hull?.out(),
+    gunshipArrive: () => { if (!story) return; story.gunshipIn = true; startStation(gunship, GUNSHIP_ORBIT); showBrief('gunship_overhead'); },
+  },
+  // ISAO KEEPS BUILDING (src/fx/programme-host.js): perks, hasPerk, build, repaired, printed
+  createProgrammeHost({
+    laserStation, shotId, showBrief, deployStart, deployStep, leavePilot, camera, startShot, deployFramePoseFor, camA, setView, PLAYER_MAX, orders, breachQueue, breachedCells, gunshipRig, spawnIsao, updateHud, syncLifeContainers, rebuildAfterBreach, recomputePortalDist, adoptBays,
+    story: () => story, pilot: () => pilot, deploy: () => deploy, t: () => t, playerHP: () => playerHP, storyViews: () => storyViews, sectorRun: () => sectorRun, waveActive: () => waveActive, dungeon: () => dungeon, tdFullTags: () => tdFullTags, storyBase: () => storyBase, pilotMode: () => pilotMode, briefQ: () => briefQ,
+    setBerths: (v) => { berths = v; }, setPlayerDown: (v) => { playerDown = v; }, setDeploy: (v) => { deploy = v; }, setPlayerHP: (v) => { playerHP = v; },
+  }),
+  // THE EXPEDITIONS (src/fx/expedition-glue.js): expeditions, expeditionsBegin, expeditionStep
+  createExpeditionsHost({
+    storyApi, scene, sfx, SOUNDS, BREACH_SOUNDS, STORY_SOUNDS, player, enemies, spawnQueue, orders, showBrief, showCallout, showTowerToast, spawnIsao, updateHud,
+    story: () => story, graph: () => graph, cellSide: () => cellSide, playerMesh: () => playerMesh, storyBase: () => storyBase, cellIndex: () => cellIndex,
+  }),
+  // THE VIEW STRIP (src/fx/story-views.js): unlock
+  createUnlockHost({
+    root, towers, gunship, gunshipRig, automated, enterPilot, leavePilot, setView, showBrief,
+    story: () => story, storyViews: () => storyViews, pilot: () => pilot, pilotMode: () => pilotMode, pilotHost: () => pilotHost, sectorRun: () => sectorRun, gunshipBriefing: () => gunshipBriefing, paused: () => paused,
+    setStoryViews: (v) => (storyViews = v), setGunshipBriefing: (v) => (gunshipBriefing = v), setPaused: (v) => { paused = v; },
+  }));
   Object.assign(storyApi, createBackDoor({ storyApi, sfx, explode, showBrief, camDist, showCallout, warnRing, breachWallCell, rebuildAfterBreach, recomputePortalDist, shotActive, camera, startShot, story: () => story, graph: () => graph, dungeon: () => dungeon, cellSide: () => cellSide, paused: () => paused, deploy: () => deploy, pilotMode: () => pilotMode, pilot: () => pilot }));   /* THE SECOND FRONT (src/fx/back-door.js) */
   const simParam = urlParams.get('sim');
   storyApi.setLaserOnline = (on) => laserStation.setOnline(on);   // the sectors switch SOL-82 on (V1 design: sector 2)
