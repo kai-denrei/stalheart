@@ -23,6 +23,8 @@ export function createDaylight({ hemi, sun, bg, day, tune, phase = 0 }) {
     tick(dt) { p = (p + dt / tune.seconds) % 1; return apply(); },
     set(phase) { p = ((phase % 1) + 1) % 1; return apply(); },
     rebase() { rebase(); apply(); },
+    // the rig's night back on the lights, before another rig is built over them (2026-09-25: a NEW RUN at noon took noon for night)
+    restore() { hemi.color.copy(night.hemi[0]); hemi.groundColor.copy(night.hemi[1]); hemi.intensity = night.hemi[2]; sun.color.copy(night.sun[0]); sun.intensity = night.sun[1]; bg.copy(night.bg); },
     state: () => ({ phase: +p.toFixed(4), daylight: +d.toFixed(3), elevation: +elevation.toFixed(3) }),
   };
 }

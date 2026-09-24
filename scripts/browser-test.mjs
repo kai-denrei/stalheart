@@ -1723,7 +1723,9 @@ try{
   const s=await laser();console.log(`  laser-game: after NEW RUN trail ${s.trail}, smoke ${s.smoke}, passes ${s.passes}, phase ${s.phase}, burned ${JSON.stringify(s.burned)}`);
   assert.equal(s.trail,0,'the scorch trail is cleared by NEW RUN');assert.equal(s.smoke,0,'the smoke ring is cleared by NEW RUN');
   assert.equal(s.passes,0,'the pass count starts over');assert.equal(s.burned.walls+s.burned.bodies+s.burned.breaches,0,'the books start over');
-  assert.equal(s.seated,false);assert.equal(s.online,true,'?laser=online still holds on the new run');}
+  assert.equal(s.seated,false);assert.equal(s.online,true,'?laser=online still holds on the new run');
+  // THE REST OF THE OLD WORLD GOES TOO (2026-09-25): the gunship's pass count and any MK-9 in flight
+  const g=await evaluate('window.__stalheartTest.state().gunship');assert.equal(g.passes,0,`the gunship's passes start over (${JSON.stringify(g)})`);assert(!g.nuke?.flying,`no MK-9 falls into the new run (the rig itself comes back empty, on demand) (${JSON.stringify(g.nuke)})`);}
  current='laser-game-new-run';await finish();
  } else if(args.includes('--laser')) {
  // THE ORBITAL LASER LAB. Open it, wait for the real base and for the sinkhole's crater to actually open, jump the

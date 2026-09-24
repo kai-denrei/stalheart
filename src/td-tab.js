@@ -3897,7 +3897,7 @@ export function initTdTab(root) {
   msgEl.addEventListener('click', (ev) => {
     const cl = ev.target.classList;
     if (!cl) return;
-    if (cl.contains('msg-regen')) regenerate(); // retry the CURRENT round
+    if (cl.contains('msg-regen')) { if (storyMode) location.reload(); else regenerate(); } // retry the CURRENT round; the story's is a fresh page, as its sector debrief's NEW RUN is
     else if (cl.contains('msg-planet')) {
       if (coins() <= 0) return;             // the button is disabled, but be sure
       setCoins(coins() - 1);                // the coin goes in the slot
@@ -4458,7 +4458,7 @@ export function initTdTab(root) {
     ramCombo = 0; ramComboT = 0; syncCombo();
     breachedCells.clear(); explosions.clear(); sealedBreachCells.clear(); laserStation.reset(); // a NEW world owes nothing to the old one's holes, its fire, its sealed sinkholes or SOL-82's scorch
     const built = buildGameWorld({ world: storyQuery.world, params, stage: storyQuery.stage, landmarks: storyQuery.landmarks, phase: storyQuery.phase, grow: storyQuery.grow, scene, sfx, warm: warmShaders });
-    mesh = built.mesh; dungeon = built.dungeon; if (built.wallHeight) params.wallHeight = built.wallHeight; storyBase?.dispose(); storyBase = built.base; foundryFx?.dispose(); foundryFx = null; story?.glue?.dispose(); story = built.story ?? null; sectorRun = story ? makeSectorRun() : null; storyMonitor?.dispose(); storyMonitor = story ? createStoryMonitor(root) : null; storyScope?.dispose(); storyScope = story ? createStoryScope(root) : null; daylight = story ? createDaylight({ hemi, sun, bg: mainBg, day: story.day.day, tune: story.day }) : null;   // the story planet has a day   // 4 m walls on the story sphere; the story's islands, structures, sockets and beats at the requested stage
+    mesh = built.mesh; dungeon = built.dungeon; if (built.wallHeight) params.wallHeight = built.wallHeight; storyBase?.dispose(); storyBase = built.base; foundryFx?.dispose(); foundryFx = null; story?.glue?.dispose(); story = built.story ?? null; sectorRun = story ? makeSectorRun() : null; storyMonitor?.dispose(); storyMonitor = story ? createStoryMonitor(root) : null; storyScope?.dispose(); storyScope = story ? createStoryScope(root) : null; daylight?.restore(); daylight = story ? createDaylight({ hemi, sun, bg: mainBg, day: story.day.day, tune: story.day }) : null; Object.assign(gunship, makeGunship(GUNSHIP_ORBIT, { station: new URLSearchParams(location.search).get('gunship') === 'station' })); Object.assign(gunshipCall, makeGunshipCall(GUNSHIP_CALL)); gunshipDrop?.dispose(); gunshipDrop = null; gunshipTrack = null; gunshipWalls = null;   /* A NEW RUN LEAVES NOTHING BEHIND (2026-09-25): the old rig's night goes back on the lights before the new rig reads them, and the gunship, its meter, its track and an MK-9 still falling go with the old world */   // the story planet has a day   // 4 m walls on the story sphere; the story's islands, structures, sockets and beats at the requested stage
     graph = dungeon.graph; cellSide = mesh.defaultSide;
     // THE CAMP, BEFORE ANY ACTOR IS PLACED. Berth cells are graph maths,
     // so they are known now rather than whenever the container model
@@ -6177,7 +6177,7 @@ export function initTdTab(root) {
       + rows + spark + killers
       + `<button class="msg-regen">⟲ new sector</button>`;
     // let the wreck play before the modal covers it
-    setTimeout(() => msgEl.classList.remove('hidden'), DEATH_HOLD * 1000);
+    runTimers.after(DEATH_HOLD * 1000, () => msgEl.classList.remove('hidden'));   // on the run's own timers: a NEW RUN inside the hold used to get the old run's card back
   }
 
   function playerHit(killerType = null, fromPos = null) {
