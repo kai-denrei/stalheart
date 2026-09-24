@@ -34,19 +34,23 @@ const BOOK = {
   // B. the ground opens: the tremor, then the bodies climbing out, from a real dive placement over the hole.
   'breach-swarm': { enter: (h) => { h.tremor(); h.ground(h.source(), 4, 5); h.swarm(30); },
     frame: (h, u, beat) => { if (beat && u < 0.35) { h.swarm(4); h.tremor(); } } },
-  // C. the hull through the horde, from its own chase camera. A ram is a hull moving INTO a body, so the placement
-  //    happens once a beat and not once a frame; dropped into a packed cluster it takes everything within reach.
-  //    The placement is on the SLOW metronome, not the fast one: the hull has to be left alone long enough to DRIVE,
-  //    and a placement every fifth of a second resets its lane every frame and registers no ram at all (measured: 5.5 s
-  //    of placements, no ram; 6 s of driving after them, 84).
-  'tank-ram': { enter: (h) => { h.lane(); h.drop(40); h.ramNext(); h.drop(20, 'tank'); h.follow(); }, frame: (h, u, beat, slow) => { if (slow) { h.drop(14, 'tank'); h.ramNext(); h.follow(); } } },   /* the horde is TOPPED UP UNDER THE HULL as it goes: a tank dropped into fifty bodies has eaten them inside three seconds (measured: 84 rams by the beat's midpoint, twelve bodies left), and the rest of the beat is then a shot of an empty field */
-  //    THE CAMERA IS SNAPPED AFTER THE HULL IS MOVED, never before: the chase camera snaps onto where the tank IS, and
-  //    a placement after the snap leaves it photographing the empty base while the hull rams a horde off screen.
+  // C. the hull through the horde, from THE BEAT'S OWN CAMERA — low and 2.6 cells behind the hull, looking at a point
+  //    two cells ahead just off the ground, so the MÖRK rides the lower third with its nose into the frame and the
+  //    bodies fill the middle (src/domain/showcase-shot.js). The game's chase view frames the hull at ndc y -0.43 from
+  //    high behind and looks a cell and a half past it, and the first cut of this beat photographed the splats and the
+  //    combo readout with no tank in them at all. The bodies go AHEAD of the hull for the same reason.
+  //    A ram is a hull moving INTO a body, so the placement happens once a beat and not once a frame; dropped into a
+  //    packed cluster it takes everything within reach. The placement is on the SLOW metronome, not the fast one: the
+  //    hull has to be left alone long enough to DRIVE, and a placement every fifth of a second resets its lane every
+  //    frame and registers no ram at all (measured: 5.5 s of placements, no ram; 6 s of driving after them, 84).
+  //    THE CAMERA IS RE-AIMED AFTER THE HULL IS MOVED, never before: it is snapped onto where the tank IS, and a
+  //    placement after the snap leaves it photographing the empty base while the hull rams a horde off screen.
+  'tank-ram': { enter: (h) => { h.lane(); h.ram(); h.drop(40); h.ramNext(); h.drop(26, 'ahead'); h.ram(); }, frame: (h, u, beat, slow) => { if (slow) { h.ramNext(); h.drop(16, 'ahead'); h.ram(); } } },   /* the horde is TOPPED UP AHEAD OF THE HULL as it goes: a tank dropped into fifty bodies has eaten them inside three seconds (measured: 84 rams by the beat's midpoint, twelve bodies left), and the rest of the beat is then a shot of an empty field */
   // D. FRAME THE HORDE, NOT THE BASE (the miss of 2026-09-19): the ground track creeps toward a loaded breach over a
   //    whole pass, which a six-second beat does not have, so the track is SNAPPED over the breach the swarm is using
   //    and the bodies are under the belly from the first frame. Rotary, then Bofors. No MK-9: it does not read in six
   //    seconds and a strike on a breach cell seals the hole.
-  'gunship-guns': { enter: (h) => { h.drop(40); h.track(h.source()); h.gunship(); h.gun('rotary'); h.aim(-1.5); h.hold(true); },
+  'gunship-guns': { enter: (h) => { h.ram(false); h.drop(40); h.track(h.source()); h.gunship(); h.gun('rotary'); h.aim(-1.5); h.hold(true); },
     frame: (h, u, beat, slow) => { if (u > 0.55) h.gun('bofors'); h.aim(-1.5); h.hold(true); if (slow) h.drop(8); } },
 };
 
@@ -161,7 +165,7 @@ export function createShowcase(root, hooks, { search = location.search, go = (ur
     labels = [];
     cardEl.hidden = true; skipBtn.hidden = true;
     if (played.length) played[played.length - 1].peak = peak;
-    try { hooks.hold(false); hooks.leave(); hooks.isao(); } catch { /* the card stands without him */ }   /* the seat goes FIRST: a seat's pose outranks a shot, so the gunship's optic would have kept the camera and its own telemetry would have been the last thing under the question */
+    try { hooks.ram(false); hooks.hold(false); hooks.leave(); hooks.isao(); } catch { /* the card stands without him */ }   /* the seat goes FIRST: a seat's pose outranks a shot, so the gunship's optic would have kept the camera and its own telemetry would have been the last thing under the question */
     finaleEl.hidden = false;
     rememberShowcase();   // the montage has been seen, however it ended: a second bare visit goes to the landing
   }

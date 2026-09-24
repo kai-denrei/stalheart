@@ -1096,9 +1096,25 @@ try{
     assert(m.element!==null,`elements-wireframe: a subject is on the stage (${m.element})`);
     assert.equal(await evaluate('[...document.querySelectorAll("#showcase .sc-label")].filter(b=>!b.hidden&&b.getBoundingClientRect().width>10).length>=2'),true,'the labels are drawn on the stage, not only in the rail\'s state');
     console.log(`SHOWCASE beat A midpoint: ${m.element} — ${m.labels.join(' / ')} under "${m.card}"`);}
-   console.log(`SHOWCASE ${sh.id} midpoint: view=${m.counters.view} shot=${m.counters.shot} seat=${m.counters.seat} alive=${m.counters.alive}`);
+   console.log(`SHOWCASE ${sh.id} midpoint: view=${m.counters.view} shot=${m.counters.shot} seat=${m.counters.seat} alive=${m.counters.alive} hull=${m.counters.hullX},${m.counters.hullY},${m.counters.hullZ}`);
    if(sh.id==='gunship-guns')assert.equal(m.counters.seat,'gunship','gunship-guns is shot from the gunship seat');}
   current=`showcase-${sh.id}`;await finish();
+  // THE HERO OF THE RAM BEAT IS THE HULL, and the counters say where it is on screen in ndc. Asserted at the midpoint
+  // AND again near the cut, because the beat re-places the hull every 0.6 s: a framing that only holds for the frame
+  // after a snap is not a framing. The game's own chase view puts it at y -0.43 and off the bottom edge once the hull
+  // has grown, which is the miss this step now catches (docs/log/entries/2026-09-24-intro-four-beats-built.json).
+  if(sh.id==='tank-ram'){
+   const inFrame=(c,where)=>{
+    assert(typeof c.hullY==='number',`tank-ram ${where}: the hull's screen position is measured (${JSON.stringify(c.hullY)})`);
+    assert(c.hullZ<1,`tank-ram ${where}: the hull is in front of the camera (z ${c.hullZ})`);
+    assert(Math.abs(c.hullX)<0.8,`tank-ram ${where}: the hull is not off the side (x ${c.hullX})`);
+    assert(c.hullY>-0.72&&c.hullY<0.25,`tank-ram ${where}: the hull is IN FRAME, low but drawn (y ${c.hullY})`);
+    console.log(`SHOWCASE tank-ram ${where}: hull at ndc ${c.hullX},${c.hullY} (z ${c.hullZ}) alive=${c.alive} rams=${c.rams} combo=${c.combo}`);};
+   inFrame((await SH()).counters,'midpoint');
+   await until(`${W}.state().shot!==${id}||${W}.state().left<=0.8`,20000);
+   {const late=await SH();
+    if(late.shot===sh.id){inFrame(late.counters,'near the cut');current='showcase-tank-ram-late';await finish();}
+    else assert.fail('tank-ram is still up 0.8 s before its cut');}}
  }
  // 3. THE LAST CARD: Isao, the question and the two ways in
  await until(`${W}.state().over`,30000).catch(async()=>assert.fail(`the montage reaches its last card (${JSON.stringify(await SH())})`));
