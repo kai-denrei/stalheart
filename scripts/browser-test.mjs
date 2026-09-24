@@ -1083,7 +1083,10 @@ try{
  // rams: the premium floats over the hull as +N kg ×M, the combo climbs, the tier callouts land
  await evaluate(`window.__calls=[];new MutationObserver(m=>m.forEach(r=>r.addedNodes.forEach(n=>__calls.push(n.textContent)))).observe(document.querySelector('#td-callouts'),{childList:true})`);
  {const r0=(await st()).ram;await evaluate(`${T}.spawnFodder(30)`);let shot=false;
-  for(let i=0;i<220;i++){s=await st();const f=s.foes.find(f=>f[1]);if(f)await evaluate(`${T}.placeTank(${f[0]})`);else if(s.ram.rams>r0.rams+12&&!s.foes.some(f=>f[1]))break;
+  /* the hull is TELEPORTED onto each body, and a float is only drawn for a hull in front of the camera: the chase camera is
+     snapped after each teleport (a drive never teleports), or rams landed while it lagged behind and floated nothing (red on
+     main too, 2026-09-25: 13 rams, 8 floats) */
+  for(let i=0;i<220;i++){s=await st();const f=s.foes.find(f=>f[1]);if(f)await evaluate(`${T}.placeTank(${f[0]});${T}.showcase.follow()`);else if(s.ram.rams>r0.rams+12&&!s.foes.some(f=>f[1]))break;
    if(!shot&&s.ram.combo>=6&&s.ram.float.live>0){shot=true;current='shield-array-ram';await finish();}await delay(100);}
   s=await st();const calls=await evaluate('window.__calls');
   assert(s.ram.rams-r0.rams>=10,`the tank rams the fodder (${s.ram.rams-r0.rams})`);assert(s.ram.best>=10,`the combo reaches ten (${s.ram.best})`);

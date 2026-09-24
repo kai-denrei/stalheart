@@ -2373,7 +2373,7 @@ export function initTdTab(root) {
   function snapCamera() {
     updateCameraGoal();
     camera.position.copy(camGoal.pos);
-    camera.quaternion.copy(camGoal.quat);
+    camera.quaternion.copy(camGoal.quat); camera.updateMatrixWorld();   // a snap holds at once
   }
 
   // --- movement over the cell graph ---------------------------------------
@@ -8634,7 +8634,7 @@ export function initTdTab(root) {
     }
     gpuBegin();
     const cpuStart=perfOn?performance.now():0;
-    inFrame = true; try { frame(dt, false); } catch (err) { const k = String(err?.stack ?? err); if (!frameFaults.has(k)) { frameFaults.add(k); setTimeout(() => { throw err; }); } try { postfx.render(); } catch { /* the renderer is what failed: nothing more to draw this frame */ } } inFrame = false;   /* A FAULT IN THE FRAME (2026-09-25) used to throw every frame and freeze the picture: the world still draws, and each distinct fault is rethrown ONCE on its own turn, so the page's error handlers, the diagnostics ring and the browser suites still see it */
+    inFrame = true; try { frame(dt, false); } catch (err) { const k = String(err?.stack ?? err); if (!frameFaults.has(k)) { frameFaults.add(k); setTimeout(() => { throw err; }); } try { postfx.render(); } catch { /* the renderer is what failed: nothing more to draw this frame */ } } inFrame = false;   /* A FAULT IN THE FRAME (2026-09-25) froze the picture: the world still draws, and each distinct fault is rethrown ONCE on its own turn for the error handlers, the diagnostics ring and the suites */
     if(perfOn)perfCpu.frame+=performance.now()-cpuStart;
     gpuEnd(); if (hudDirty) { hudDirty = false; hudFrame = frameNo; paintHud(); }   /* the HUD's catch-up paint (updateHud) */
   }
