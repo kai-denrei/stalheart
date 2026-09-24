@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { createHullIssue, doorBerth, nearestCell } from '../src/fx/hull-issue.js';
+import * as THREE from '../vendor/three.module.js';
+import { createHullIssue, createHullHost, doorBerth, nearestCell } from '../src/fx/hull-issue.js';
 import { buildReadout } from '../src/fx/build-readout.js';
 import { STORY_ROLLOUT } from '../src/content/story-defaults.js';
 import { BASE_PROGRAMME } from '../src/content/base-programme.js';
@@ -57,4 +58,34 @@ const issues = (h) => h.log.filter((l) => l[0] === 'issue');
   assert.equal(buildReadout({ kind: 'structure', step: BASE_PROGRAMME.find((s) => s.id === 'gate') }, 0.5), '', 'a step without a readout reads nothing');
   assert.equal(buildReadout({ kind: 'tower', key: 'quiver' }, 0.5), ''); assert.equal(buildReadout(null, 0), '');
 }
-console.log('Hull issue: held until the Stålheart stands, rolled out once (quietly under a gunner), out after; the door berth; the HUD readout.');
+// THE CONTROLLER'S HOST (createHullHost): what the tick asks, and the issue against a recording controller
+{
+  const log = [], rec = (k) => (...a) => log.push([k, ...a]), s = { deploy: null, steps: 0, stepsToOut: 40, shot: 'none', laser: false };
+  const door = { ci: 7, exit: 9, pos: [0, 1, 0], out: [0, 1, 0.1] };
+  const c = {
+    story: () => s.story, pilot: () => s.pilot, deploy: () => s.deploy, t: () => 118.5, playerHP: () => s.hp, storyViews: () => ({ tank: rec('tank'), active: rec('active') }),
+    setBerths: (v) => { s.berths = v; }, setPlayerDown: (v) => { s.playerDown = v; }, setDeploy: (v) => { s.deploy = v; },
+    laserStation: { seated: () => s.laser }, shotId: () => s.shot, showBrief: rec('brief'), leavePilot: rec('leavePilot'), setView: rec('view'),
+    deployStart: (n) => { log.push(['deployStart', n]); s.deploy = { n }; }, deployStep: () => { if (++s.steps >= s.stepsToOut) s.deploy = null; },
+    camera: new THREE.PerspectiveCamera(), camA: { pos: new THREE.Vector3(), quat: new THREE.Quaternion() }, startShot: (shot) => { s.shotRun = shot; },
+    deployFramePoseFor: (n, o) => { o.pos.set(0, 2, 0); o.quat.set(0, 1, 0, 0); },
+  };
+  Object.assign(s, { story: { programme: { perks: new Set(['stalheart']) }, hull: { door: () => door, lead: 1.6 } }, pilot: { gunship: true }, hp: 3, playerDown: true });
+  const h = createHullHost(c);
+  assert.deepEqual([h.stands('stalheart'), h.stands('gate'), h.seated(), h.busy(), h.now()], [true, false, true, false, 118.5]);
+  s.pilot = null; s.laser = true; assert.equal(h.seated(), true, 'SOL-82\'s seat counts'); s.shot = 'rollout'; assert.equal(h.busy(), true, 'the roll-out shot is on screen'); s.shot = 'none';
+  // QUIET: the door is every berth, the hull drives out off screen, the seat is kept
+  h.issue(true);
+  assert.deepEqual(s.berths, [door, door, door]); assert.equal(s.playerDown, false); assert.equal(s.deploy, null); assert.equal(s.steps, 40);
+  assert.deepEqual(log, [['tank', true], ['brief', 'stalheart_stands'], ['deployStart', 2]], 'three hulls left: berth #3');
+  s.steps = 0; s.stepsToOut = 1e9; h.issue(true); assert.equal(s.steps, 600, 'at most 30 s of it'); s.deploy = null;
+  // ON CAMERA: the seat is left, the camera runs to the door's framing, the deploy starts when the shot ends
+  log.length = 0; s.hp = 1; c.camera.position.set(1, 1, 1); h.issue(false);
+  assert.deepEqual(log, [['tank', true], ['brief', 'stalheart_stands'], ['leavePilot'], ['active', 'tank'], ['deployStart', 0]]); assert.equal(s.deploy, null, 'held until the shot ends');
+  assert.deepEqual([s.shotRun.id, s.shotRun.dur], ['rollout', 1.6]);
+  const o = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
+  s.shotRun.poseAt(0, o); assert.deepEqual(o.pos.toArray(), [1, 1, 1], 'from where the camera was');
+  s.shotRun.poseAt(1, o); assert.deepEqual(o.pos.toArray(), [0, 2, 0], 'to the framing');
+  s.shotRun.onEnd(); assert.deepEqual(log.slice(-2), [['view', 'third'], ['deployStart', 0]]);
+}
+console.log('Hull issue: held until the Stålheart stands, rolled out once (quietly under a gunner), out after; the door berth; the HUD readout; the controller\'s host.');
