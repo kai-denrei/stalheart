@@ -5,7 +5,7 @@
 import * as THREE from '../../vendor/three.module.js';
 import { buildWorld } from '../domain/world-recipe.js';
 import { planBase } from '../domain/base-plan.js';
-import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT, STORY_SCALE, STORY_BREACH, STORY_QUIVER, STORY_DAY, STORY_FODDER, STORY_HANDOVER, STORY_EXPEDITIONS, STORY_BACK_DOOR, STORY_SKIP, STORY_BEATS } from '../content/story-defaults.js';
+import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT, STORY_SCALE, STORY_BREACH, STORY_QUIVER, STORY_DAY, STORY_FODDER, STORY_HANDOVER, STORY_EXPEDITIONS, STORY_BACK_DOOR, STORY_SKIP, STORY_BEATS, STORY_CONSTRUCTION, STORY_ROLLOUT } from '../content/story-defaults.js';
 import { findBackMouth } from '../domain/back-door.js';
 import { CONTENT } from '../content/runtime.js';
 import { FOUNDRY_TUNE } from '../content/foundry.js';
@@ -25,6 +25,7 @@ import { planetBake } from './planet-bake.js';
 import { BASE_PROGRAMME } from '../content/base-programme.js';
 import { makeBuildProgramme } from '../domain/build-programme.js';
 import { createBasePrint } from '../fx/base-print.js';
+import { createHullIssue, doorBerth, nearestCell } from '../fx/hull-issue.js';
 import { BLOCKED, PATH } from '../dungeon.js';
 
 export const STORY_LAYOUT = { islands: ISLANDS, structures: STRUCTURES, kit: KIT, stages: STAGES };
@@ -100,12 +101,20 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   // works (Isao on the AFR-01 prints nothing, so a pieces-only filter dropped the beat out of the programme entirely)
   const needs = (s) => [...pieces(s), ...(s.over ? [plan.structures.find((x) => x.id === s.over)] : [])];
   const steps = BASE_PROGRAMME.filter((s) => needs(s).length > 0 && needs(s).every(Boolean));
+  // SECTOR 0 (owner, 2026-09-24: "The Tank is built by the Stalheart"): a growing page that starts in the opening has no hull until
+  // the step carrying `hull` stands, and then the first MÖRK rolls out of that building's door (src/fx/hull-issue.js); the beats
+  // defend its construction meanwhile. A static stage, SKIP TUTORIAL and a start past the handover have the hull from the first frame.
+  const hullStep = grow ? steps.find((s) => s.hull && pieces(s).some((p) => p.pending)) : null;
+  const hullHeld = !!hullStep && (phase == null || STORY_PHASES.indexOf(phase) < STORY_PHASES.indexOf('settled'));
+  const hullPlot = hullHeld ? plan.islands.find((i) => hullStep.islands.includes(i.id)) : null;
+  const door = hullPlot ? doorBerth({ at: [hullPlot.x, hullPlot.z], heading: STORY_ROLLOUT.heading, start: STORY_ROLLOUT.start, end: STORY_ROLLOUT.end, unit: (f) => placer.toWorld(f).normalize().toArray(), cellOf: (p) => nearestCell(planet.graph.centers, p), open: (ci) => built.dungeon.tags[ci] !== BLOCKED }) : null;
   const bayBerths = plan.bays.length ? plan.bays.map((b) => ({ ci: b.cell, exit: b.exit, pos: b.pos, out: b.out })) : null;
   const story = stage >= 1 ? {
     sockets: new Set(), home: plan.cells.landing, socketLift: 0,
     // the solar array's shield pad (src/content/shield-array.js): its island's centre on the unit sphere, standing once the island is; a build programme stands it later by setting `standing`
     arrayPad: (() => { const i = ISLANDS.find((x) => x.id === SHIELD_ARRAY.island); return i ? { cell: plan.cells[i.id], pos: placer.toWorld([i.x, 0, i.z]).normalize().toArray(), standing: stage >= i.stage } : null; })(),
-    beats: makeStoryBeats({ fodderEvery: STORY_FODDER.every, fodderAlive: STORY_FODDER.alive, fodderTotal: STORY_FODDER.total, fodderEmerge: STORY_FODDER, socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, ...STORY_BEATS, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER, foundry: FOUNDRY_TUNE, startPhase: phase ?? 'landed', gateReady: () => base.gate().built }),
+    beats: makeStoryBeats({ fodderEvery: STORY_FODDER.every, fodderAlive: STORY_FODDER.alive, fodderTotal: STORY_FODDER.total, fodderEmerge: STORY_FODDER, socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, ...STORY_BEATS, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER, foundry: FOUNDRY_TUNE, startPhase: phase ?? 'landed', gateReady: () => base.gate().built, construction: hullHeld ? STORY_CONSTRUCTION : null }),
+    hull: createHullIssue({ held: hullHeld, perk: hullStep?.perk, door, lead: STORY_ROLLOUT.lead }),   // the first hull, held until the Stålheart stands
     // the story's Quiver fires the TALON: the game's quiver config with the lab's heavy round on top
     missiles: { quiver: { ...CONTENT.missiles.quiver, ...STORY_QUIVER.missile } },
     // the hard cores' holding ring: lane cells hold[0]..hold[1] hops outside the forward cell; a held one only wanders within it
