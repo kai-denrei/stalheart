@@ -9,7 +9,7 @@ function world({ firstSector = 1, gate = false, lateStart = true, delivered = []
   const centers = [], dist = [];
   for (let i = 0; i < 260; i++) { const a = (i / 120) * Math.PI * 2; centers.push([Math.cos(a), Math.sin(a), i >= 200 ? 1 : 0]); dist.push(i >= 200 ? 30 : 30 + (i % 30)); }
   const story = { sealed: () => false, gateCell: gate ? 5 : -1, lateStart };
-  const api = { openBackDoor: () => { w.backDoors++; }, backBreachCandidates: () => [{ cell: 210, hops: 30 }, { cell: 220, hops: 31 }], backScramble: (k) => { if (k === 0) w.scrambles++; w.rings = (w.rings ?? 0) + 1; }, backOmen: (o) => { (w.omens ??= []).push(o.id); } };
+  const api = { openBackDoor: () => { w.backDoors++; }, backBreachCandidates: () => [{ cell: 210, hops: 30 }, { cell: 221, hops: 40 }, { cell: 220, hops: 31 }], /* 221 is the farthest, and within a blast of the rim */ backScramble: (k) => { if (k === 0) w.scrambles++; w.rings = (w.rings ?? 0) + 1; }, backOmen: (o) => { (w.omens ??= []).push(o.id); } };
   w.run = createSectorRun({
     story, api, waveSize: 4, threatMult: 1, hardcore: 'knot', spawnGap: { spread: 3.2, max: 0.45 }, store: null, rng: () => 0,
     ready: () => true, firstSector,
@@ -64,6 +64,7 @@ function world({ firstSector = 1, gate = false, lateStart = true, delivered = []
   w.step(SECTOR_TIMING.backDoorLead + 0.5);
   assert.equal(w.opened.length, 1);
   assert.equal(w.opened[0].ci >= 200, true, 'the back breach opens first');
+  assert.notEqual(w.opened[0].ci, 221, 'never where its blast reaches the base\'s rim, however far out it stands');
   const feast = w.run.release(w.t);
   const want = SECTORS[1].feast.entries.reduce((n, e) => n + e.count, 0);
   assert.equal(feast.length, want, 'the first back wave is the feast');

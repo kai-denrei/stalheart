@@ -148,7 +148,7 @@ export function createSectorRun(h) {
     let back = [];
     if (want.back) {
       const raw = api.backBreachCandidates?.() ?? [];
-      back = raw.map((x) => { const cell = typeof x === 'number' ? x : x?.cell; return cell >= 0 ? { cell, side: 'back', hops: (typeof x === 'object' && Number.isFinite(x.hops)) ? x.hops : (f.dist[cell] ?? 0), pos: f.centers[cell] } : null; }).filter(Boolean);
+      back = raw.map((x) => { const cell = typeof x === 'number' ? x : x?.cell; return cell >= 0 ? { cell, side: 'back', hops: (typeof x === 'object' && Number.isFinite(x.hops)) ? x.hops : (f.dist[cell] ?? 0), pos: f.centers[cell] } : null; }).filter(Boolean).filter((c) => !((f.rim?.[c.cell] ?? Infinity) < (SECTOR_PLACEMENT.rimCells ?? 0)));   // the back lanes curl round the base: a quarter of the farthest ones stood within a blast of its rim (2026-09-25, --pacing: the feast walked in beside the mouth)
       if (!back.length) { want.gate = (want.gate ?? 0) + want.back; delete want.back; }
     }
     let far = 0; for (let i = 0; i < f.dist.length; i++) if (Number.isFinite(f.dist[i]) && f.dist[i] > far && !f.inside(i)) far = f.dist[i];

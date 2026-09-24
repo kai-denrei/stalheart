@@ -915,7 +915,8 @@ try{
  current=args.includes('--passive')?'pacing-passive-end':'pacing-end';await finish();
  if(args.includes('--passive'))console.log('PACE PASSIVE: no defender at the doors; the towers alone '+(P.ev.some(([,w])=>w==='LOST')?'LOST the colony at '+P.ev.find(([,w])=>w==='LOST')[0]+' s':'held'));
  else{assert(summary.sectors[1]?.arrivals>0,'sector 1 is reached and fought');
- assert(summary.sectors[1].firstContact<=40,`sector 1's first body reaches a door within 40 s of its card (${summary.sectors[1].firstContact})`);}
+ assert(summary.sectors[1].firstContact<=40,`sector 1's first body reaches a door within 40 s of its card (${summary.sectors[1].firstContact})`);
+  if(summary.sectors[2]?.arrivals)assert(summary.sectors[2].firstContact<=40,`sector 2's feast reaches the back mouth within 40 s of its card (${summary.sectors[2].firstContact})`);}
  } else if(args.includes('--grow')) {
  // ISAO GROWS THE BASE (V1, 2026-09-16): a story page that names no stage grows; stage=1&grow=1 runs the whole opening to the handover
  // while Isao prints the gate (the tremor waits for it), the landing pad and the Stålheart, then the rest as the phases and sectors come.
