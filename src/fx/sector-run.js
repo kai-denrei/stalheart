@@ -248,6 +248,7 @@ export function createSectorRun(h) {
   }
 
   function tick(dt) {
+    api.backTick?.(dt);   // the back mouth's dust rides the world's clock (src/fx/back-omen.js)
     if (phase !== 'idle' && phase !== 'lost-shown') tickGate(dt);
     if (phase === 'brief' || phase === 'fighting' || phase === 'secure') poll(dt);
     const t = now();

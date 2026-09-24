@@ -22,14 +22,21 @@ assert.ok(BACK_OMENS.every((o) => o.pulse === 'last' || o.pulse <= SECTORS[o.sec
   const log = [];
   const fx = createBackOmen({ mouth: { cells: [1, 2], flank: [3], dir: [0, 0, 1] }, hud: { tremor: (d) => log.push(['tremor', d]) }, sfx: { play: (k) => log.push(['sfx', k]) },
     explode: (k) => log.push(['explode', k]), brief: (id) => log.push(['brief', id]), camDist: () => 1, centers: [[0, 0, 1], [0, 0, 1], [0, 0, 1], [0, 0, 1]],
-    callout: (t) => log.push(['callout', t]), ring: (ci) => log.push(['ring', ci]), sockets: () => [{ cell: 7 }, { cell: 8 }], gapMs: 0 });
+    callout: (t) => log.push(['callout', t]), ring: (ci) => log.push(['ring', ci]), sockets: () => [{ cell: 7 }, { cell: 8 }], gap: 0.25 });
   assert.equal(fx.play(BACK_OMENS[0]), true);
   assert.deepEqual(log.slice(0, 3), [['tremor', [0, 0, 1]], ['sfx', 'sinkhole_quake'], ['brief', BACK_OMENS[0].brief]], 'the radar, the quake, Isao');
+  // THE DUST RIDES THE GAME CLOCK: nothing before a tick, one puff per `gap` seconds of world time, nothing while the world holds
+  const puffs = () => log.filter((l) => l[0] === 'explode').length;
+  assert.equal(puffs(), 0, 'no dust before the world ticks');
+  fx.tick(0.01); assert.equal(puffs(), 1, 'the first puff with the next tick');
+  fx.tick(0.25); assert.equal(puffs(), 2, 'the next a gap later');
+  fx.tick(0); fx.tick(0); assert.equal(puffs(), 2, 'a held world holds its dust');
+  fx.tick(10); assert.equal(puffs(), BACK_OMENS[0].dust, 'and every puff comes, once');
+  assert.ok(log.filter((l) => l[0] === 'explode').every((l) => l[1] === 'rock.dust'));
   log.length = 0; fx.scramble(0);
   assert.deepEqual(log, [['brief', BACK_SCRAMBLE.brief], ['callout', BACK_SCRAMBLE.callout], ['ring', 7], ['ring', 8]], 'the ask, the callout, every back socket rung');
   log.length = 0; fx.scramble(1);
   assert.deepEqual(log, [['ring', 7], ['ring', 8]], 'later rings carry no words');
   assert.equal(createBackOmen({ mouth: null }).play(BACK_OMENS[0]), false, 'no mouth, no omen');
-  await new Promise((r) => setTimeout(r, 5));
 }
 console.log('Back omens: the rumble and the crack come once each, in the sector before the door, with their lines.');

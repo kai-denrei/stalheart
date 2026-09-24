@@ -13,7 +13,7 @@
 // passes render into. Lights come from the game scene: call this only once they are in.
 import * as THREE from '../../vendor/three.module.js';
 
-export function makeShaderWarmer(renderer, scene, camera) {
+export function makeShaderWarmer(renderer, scene, camera, { maxPolls = 500 } = {}) {
   const linear = new THREE.WebGLRenderTarget(1, 1);
   const programsOf = (material) => renderer.properties.get(material).programs?.values() ?? [];
   return {
@@ -26,10 +26,14 @@ export function makeShaderWarmer(renderer, scene, camera) {
         for (const m of renderer.compile(root, camera, scene)) materials.add(m);
       } catch { /* a material that cannot compile fails the same way on its first frame; nothing to warm */ }
       finally { renderer.setRenderTarget(previous); }
+      // BEST EFFORT, AND BOUNDED (2026-09-25): a lost context never reports a program ready, and this polled every 10 ms for the
+      // rest of the page; it now resolves when the context is lost or after `maxPolls` (5 s), and only first-uses what linked
       return new Promise((resolve) => {
+        let polls = 0;
         const poll = () => {
-          for (const m of materials) for (const p of programsOf(m)) if (!p.isReady()) { setTimeout(poll, 10); return; }
-          for (const m of materials) for (const p of programsOf(m)) { p.getUniforms(); p.getAttributes(); }
+          const lost = !!renderer.getContext?.()?.isContextLost?.(), waiting = !lost && [...materials].some((m) => [...programsOf(m)].some((p) => !p.isReady()));
+          if (waiting && ++polls < maxPolls) { setTimeout(poll, 10); return; }
+          if (!lost) for (const m of materials) for (const p of programsOf(m)) if (p.isReady()) { p.getUniforms(); p.getAttributes(); }
           resolve();
         };
         poll();
