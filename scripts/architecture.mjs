@@ -4,13 +4,27 @@ import { posix, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const controlled=p=>/^src\/(core|domain|content)\//.test(p);
-export function analyzeArchitecture(sources,kernel=[],{lineBudgets={},topLevelModules=null}={}) {
+export function analyzeArchitecture(sources,kernel=[],{lineBudgets={},byteBudgets={},longLines=null,topLevelModules=null}={}) {
   const graph={},problems=[],hints=[];
   for(const [file,budget] of Object.entries(lineBudgets)) {
     if(!Object.hasOwn(sources,file))continue;
     const lines=(sources[file].match(/\n/g)||[]).length;
     if(lines>budget)problems.push(`${file}: ${lines} lines exceeds line budget ${budget}; extract instead of growing`);
     else if(lines<budget)hints.push(`${file}: ${lines} lines; lower its line budget to ${lines}`);
+  }
+  // A LINE BUDGET CAN BE MET BY PACKING (2026-09-25): appending to an existing one-liner costs no line, and the controller grew 5 KB
+  // that way under a line budget it never broke. The bytes and the count of very long lines ratchet down beside it.
+  for(const [file,budget] of Object.entries(byteBudgets)) {
+    if(!Object.hasOwn(sources,file))continue;
+    const bytes=Buffer.byteLength(sources[file]);
+    if(bytes>budget)problems.push(`${file}: ${bytes} bytes exceeds byte budget ${budget}; extract instead of packing code into existing lines`);
+    else if(bytes<budget)hints.push(`${file}: ${bytes} bytes; lower its byte budget to ${bytes}`);
+  }
+  if(longLines)for(const [file,budget] of Object.entries(longLines.budgets??{})) {
+    if(!Object.hasOwn(sources,file))continue;
+    const n=sources[file].split('\n').filter(l=>l.length>longLines.over).length;
+    if(n>budget)problems.push(`${file}: ${n} lines over ${longLines.over} characters exceeds its long-line budget ${budget}; break them up instead of appending to them`);
+    else if(n<budget)hints.push(`${file}: ${n} lines over ${longLines.over} characters; lower its long-line budget to ${n}`);
   }
   if(topLevelModules)for(const file of Object.keys(sources))
     if(/^src\/[^/]+\.js$/.test(file)&&!topLevelModules.includes(file))problems.push(`${file}: new top-level module; place it in a named layer directory`);
@@ -52,5 +66,5 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
   for(const hint of result.hints)console.log(`Ratchet: ${hint} in docs/architecture-budget.json`);
   if(process.argv.includes('--report')){mkdirSync(resolve(root,'artifacts'),{recursive:true});writeFileSync(resolve(root,'artifacts/architecture.json'),JSON.stringify(result,null,2)+'\n');}
   if(result.problems.length){console.error(result.problems.join('\n'));process.exitCode=1;}
-  else console.log(`Architecture: ${result.controlled.length} pure-layer modules checked; game/lab controller boundaries, line budgets and top-level placement hold.`);
+  else console.log(`Architecture: ${result.controlled.length} pure-layer modules checked; game/lab controller boundaries, line, byte and long-line budgets and top-level placement hold.`);
 }
