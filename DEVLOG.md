@@ -50,6 +50,23 @@ Evidence:
 - node test/sectors.mjs (firstSectorDue), node test/sector-run.mjs (idle through the expedition, a part home opens it, the grace opens it, SKIP TUTORIAL at once)
 - scripts/browser-lock.sh node scripts/browser-test.mjs --story-world and the default suite on branch pacing
 
+## 2026-09-25 — Second extraction round out of td-tab: the gunship rig, the first hull's host and the deploy path, the story API's back door, shots and scope feed, and one wave spread; the controller 12,971 -> 12,939 lines, 749,300 -> 737,886 bytes, 42 -> 35 lines over 500 characters
+
+change · accepted · 2026-09-25-controller-extractions-round-two
+
+Refactor round task 12 (docs/superpowers/plans/2026-09-25-refactor-round.md), second round, on branch refactor-extract-2 from refactor (round one merged). Same method as round one: each block moves verbatim behind a host object (values for what exists where the host is built, getters for rebound lets and for consts declared further down, setters for the lets it writes), the frame order is kept, and the line, byte and long-line budgets ratchet down at every commit.
+
+src/fx/gunship-rig.js holds the optic, ground track, wall cache, MK-9 and call meter that were loose lets beside the strike, steps them where the frame did (inside !player.won && !frozen, before the wave clock and stepStrike), resets them with a new run, and builds the seat's gunship bag and state().gunship; its lane queries are src/domain/gunship-lanes.js with the far ring's numbers in content (GUNSHIP_FAR; the sector field's farHops reads it). The first hull's roll-out host (the stands/seated/busy/now/issue contract) is createHullHost in src/fx/hull-issue.js, beside createHullIssue; the deploy path's pose maths is src/domain/deploy-path.js (eye/look/up; the camera quaternion step stays in the controller, now one poseCamera shared by every shot of that kind). storyApi's back door is createBackDoor in src/fx/back-door.js, merged back into storyApi under the same member names; Isao's closeup and the sites view are src/domain/story-shots.js; the Quiver scope's per-frame feed is createScopeFeed in src/fx/story-scope.js. The board spawner and the sectors share src/domain/wave-spread.js for a wave's gap. The storyApi reflow (one member per line) was NOT done: five members are over 500 characters (expeditions, unlock, pilot, build, printed), so the reflow would raise the long-line count 35 -> 38 and cost ~30 lines against the 17 the extractions saved; the guard refuses both.
+
+Alternatives: Keeping gunshipFar's 60 * 1.15 inside the domain rule: rejected, tuning numbers belong in content (GUNSHIP_FAR), and the sector field had its own copy.; Moving takeControl's pose into src/domain/story-shots.js: rejected, takeControlPose already lives outside the controller (src/platform/story-world.js) and is three.js arithmetic; a vec3 rewrite would not be bit-identical.; Reflowing storyApi one member per line now: rejected by the numbers above; extract Isao's programme (build/printed/repaired, ~4.7 KB) and the unlock/expeditions hosts first, then reflow.
+
+Evidence:
+
+- npm test (138 programs at the last commit; new: test/gunship-rig.mjs, test/gunship-lanes.mjs, test/deploy-path.mjs, test/story-shots.mjs, test/story-scope.mjs, test/wave-spread.mjs; test/hull-issue.mjs and test/back-door.mjs gained the controller's side), npm run check and the eslint no-undef/no-unused diff of td-tab clean at every commit; npm run build on the final tree
+- AST identity of each moved block to a scope-analysed mechanical rewrite of the original text: the rig (50 checks), the hull host, the back door (7 members), the scope feed; a sentinel check of every host literal written into td-tab
+- Scratch harnesses running the ORIGINAL td-tab text beside the new code: the rig over 76 scripted steps with td-tab's actual host (log, returns and state), 852 far/lane cases, 1,728 deploy framings and 810 shot poses bit-identical, 40 hull-host calls, 3,212 wave gaps; each harness fails on a mutated copy
+- Browser suites from frozen snapshots through scripts/browser-lock.sh: --gunship 21, --seats 3, --showcase 8, --defense 12, --nav 10, --grow 16, --skip-tutorial 7, --story-world 31, --backdoor 4, --sectors 12, --quiver-frame 16, --waves 1 (stops short of sector 2's gate breach exactly as the pre-round baseline does), default 48 at each target
+
 ## 2026-09-25 — Five behaviour-neutral extractions out of td-tab: the radar scope, a tower's aim, the VARS modal, the victory pull-out and the showcase hooks; the controller 13,426 -> 12,971 lines, 779,969 -> 749,300 bytes
 
 change · accepted · 2026-09-25-controller-extractions-round-one
@@ -81,6 +98,22 @@ Evidence:
 
 - grep across src, test, scripts and *.html for every deleted symbol: no reference but one history comment
 - node test/architecture.mjs (byte and long-line budgets); npm run architecture
+
+## 2026-09-25 — Back breaches keep off the base's rim as gate-side ones do, and the back door's lead is 5 s on the sector's own clock
+
+change · accepted · 2026-09-25-back-breaches-off-the-rim
+
+--pacing on the refactor branch saw sector 2's feast take the heart's ten lives 10 s after it rose, with the back mouth untouched by a single arrival. Offline on the baked planet (the back-door test's stage-8 board): of 272 back-breach candidates, 31 stand within ten cells of the clearing and 19 within a breach's own blast radius (clearRadius 6), and about a quarter of the farthest band the placement draws from is among them, so roughly one sector 2 in four could open a breach that carves a way in beside the mouth. The same run measured sector 2's first arrival at 40.3 s against the spec's 40: on the sector's own clock (2026-09-25-refactor-robustness) the collapse's frozen shot no longer counts in the 8 s lead.
+
+src/fx/sector-run.js applies the rim rule (SECTOR_PLACEMENT.rimCells 10, 2026-09-24-pacing-probe) to the back candidates too; 68 of the farthest band remain, so the back door never goes short. SECTOR_TIMING.backDoorLead 8 -> 5. --pacing now asserts sector 2's first arrival within 40 s as well as sector 1's. Measured after, twice: 38.7 s and 37.5 s, the feast met at the back mouth both times (93 and 102 arrivals). --waves drives the back door's sector through its feast (its loop waited forever for a gate side that opens only after the scramble).
+
+Alternatives: Stopping a breach's blast from carving rock near the base in the controller's clear rule: a second place for the same rule; the placement is where the candidates are chosen.
+
+Evidence:
+
+- node test/sector-run.mjs: the farthest back candidate, within a blast of the rim, is never picked
+- scratchpad backrim.mjs over the baked planet: 272 candidates, 31 within ten cells of the clearing
+- scripts/browser-lock.sh node scripts/browser-test.mjs --pacing, twice
 
 ## 2026-09-24 — Sector 0 built: the Stålheart prints for 75 s straight after the gate, its construction is defended from the seats and the gunship, and the first MÖRK rolls out of it at 124 s
 

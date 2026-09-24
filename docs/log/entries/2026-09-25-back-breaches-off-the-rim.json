@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-09-25-back-breaches-off-the-rim",
+  "date": "2026-09-25",
+  "type": "change",
+  "status": "accepted",
+  "title": "Back breaches keep off the base's rim as gate-side ones do, and the back door's lead is 5 s on the sector's own clock",
+  "context": "--pacing on the refactor branch saw sector 2's feast take the heart's ten lives 10 s after it rose, with the back mouth untouched by a single arrival. Offline on the baked planet (the back-door test's stage-8 board): of 272 back-breach candidates, 31 stand within ten cells of the clearing and 19 within a breach's own blast radius (clearRadius 6), and about a quarter of the farthest band the placement draws from is among them, so roughly one sector 2 in four could open a breach that carves a way in beside the mouth. The same run measured sector 2's first arrival at 40.3 s against the spec's 40: on the sector's own clock (2026-09-25-refactor-robustness) the collapse's frozen shot no longer counts in the 8 s lead.",
+  "outcome": "src/fx/sector-run.js applies the rim rule (SECTOR_PLACEMENT.rimCells 10, 2026-09-24-pacing-probe) to the back candidates too; 68 of the farthest band remain, so the back door never goes short. SECTOR_TIMING.backDoorLead 8 -> 5. --pacing now asserts sector 2's first arrival within 40 s as well as sector 1's. Measured after, twice: 38.7 s and 37.5 s, the feast met at the back mouth both times (93 and 102 arrivals). --waves drives the back door's sector through its feast (its loop waited forever for a gate side that opens only after the scramble).",
+  "alternatives": [
+    "Stopping a breach's blast from carving rock near the base in the controller's clear rule: a second place for the same rule; the placement is where the candidates are chosen."
+  ],
+  "evidence": [
+    "node test/sector-run.mjs: the farthest back candidate, within a blast of the rim, is never picked",
+    "scratchpad backrim.mjs over the baked planet: 272 candidates, 31 within ten cells of the clearing",
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --pacing, twice"
+  ],
+  "supersedes": []
+}
