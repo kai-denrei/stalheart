@@ -9,7 +9,7 @@ function world({ firstSector = 1 } = {}) {
   const centers = [], dist = [];
   for (let i = 0; i < 260; i++) { const a = (i / 120) * Math.PI * 2; centers.push([Math.cos(a), Math.sin(a), i >= 200 ? 1 : 0]); dist.push(i >= 200 ? 30 : 30 + (i % 30)); }
   const story = { sealed: () => false, gateCell: -1 };
-  const api = { openBackDoor: () => { w.backDoors++; }, backBreachCandidates: () => [{ cell: 210, hops: 30 }, { cell: 220, hops: 31 }], backScramble: () => { w.scrambles++; } };
+  const api = { openBackDoor: () => { w.backDoors++; }, backBreachCandidates: () => [{ cell: 210, hops: 30 }, { cell: 220, hops: 31 }], backScramble: (k) => { if (k === 0) w.scrambles++; w.rings = (w.rings ?? 0) + 1; }, backOmen: (o) => { (w.omens ??= []).push(o.id); } };
   w.run = createSectorRun({
     story, api, waveSize: 4, threatMult: 1, hardcore: 'knot', spawnGap: { spread: 3.2, max: 0.45 }, store: null, rng: () => 0,
     now: () => w.t, ready: () => true, firstSector,
@@ -92,4 +92,24 @@ function world({ firstSector = 1 } = {}) {
   w.step(SECTORS[1].feast.timeout + 1);
   assert.equal(w.scrambles, 1, 'the scramble comes on its timeout');
 }
-console.log('Sector run: breaches open under the card, pulses on the clock and under the budget, the feast, the scramble and the gate side after it.');
+// THE BACK DOOR RUMBLES in sector 1: the rumble with the second pulse, the crack with the last, nothing in the pulses between
+{
+  const w = world();
+  w.step(3);
+  const pulses = [];
+  for (let k = 1; k <= SECTORS[0].waves; k++) { w.run.release(w.t); pulses.push([k, [...(w.omens ?? [])]]); w.step(0.5); }
+  assert.deepEqual(pulses.map(([k, o]) => o.length), [0, 1, 1, 1, 1, 2], `the rumble at pulse 2, the crack at the last (${JSON.stringify(pulses)})`);
+  assert.deepEqual(w.omens, ['rumble', 'crack']);
+}
+{
+  // the scramble's markers ring for their seconds and then stop
+  const w = world({ firstSector: 2 });
+  w.step(SECTOR_TIMING.backDoorLead + 1);
+  w.spawn(w.run.release(w.t));
+  for (const e of w.enemies) e.alive = false;
+  w.step(20);
+  assert.equal(w.scrambles, 1);
+  assert.ok(w.rings >= 6 && w.rings <= 10, `the sockets ring for BACK_SCRAMBLE.seconds (${w.rings})`);
+  assert.equal(w.omens, undefined, 'no omens once the door has fallen');
+}
+console.log('Sector run: the back door\'s omens, breaches open under the card, pulses on the clock and under the budget, the feast, the scramble and the gate side after it.');

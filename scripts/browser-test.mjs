@@ -680,6 +680,10 @@ try{
  await until(`(()=>{const b=${T}.state().sector.breaches[1];if(b.wavesReleased<b.wavesPlanned)${T}.sectorRelease("B");return ${T}.state().sector.breaches[1].wavesReleased>=b.wavesPlanned;})()`,30000);
  await until(`${T}.state().sector.breaches[1].closedBy==="held"`,90000).catch(async()=>assert.fail(`B never collapsed (${JSON.stringify(await sec())} queued ${await evaluate(`${T}.state().queued`)})`));
  assert((await sec()).breaches[1].bonus.kg>0,'HELD pays');
+ // THE BACK DOOR RUMBLED (2026-09-24): with B's whole programme out, the rumble and the crack have both come, and the radar holds
+ // a tremor contact on the mouth's bearing until it falls
+ {const s=await sec();assert.deepEqual(s.omens,['rumble','crack'],`sector 1 foreshadows the back door (${JSON.stringify(s.omens)})`);
+  assert.equal(await evaluate(`${T}.state().storyHud?.tremor`),true,'the tremor contact is on the radar');}
  current='sectors-held';await finish();
  await evaluate(`${T}.sectorClearField()`);
  await until(`${T}.state().sector.secure`,20000).catch(async()=>assert.fail(`not secure (${JSON.stringify(await sec())} enemies ${await evaluate(`${T}.state().performance?.enemies`)})`));

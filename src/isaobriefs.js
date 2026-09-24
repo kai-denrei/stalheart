@@ -337,12 +337,26 @@ export const BRIEFS = {
     id: 'old_breach', face: 'focused', title: 'COMMS · ISAO',
     lines: ['The first sinkhole caved in.', 'Two new ones are opening.'],
   },
-  // THE SECOND FRONT: the swarm cracks the sealed mouth behind the bays. A fact, then the plan.
+  // THE BACK DOOR, FORESHADOWED (2026-09-24): the rock behind the bays rumbles a sector before it falls
+  back_rumble: {
+    id: 'back_rumble', face: 'scan', title: 'COMMS · ISAO', once: true,
+    lines: ['Did you feel that? Behind the bays.', 'That rock is not as solid as I thought.'],
+  },
+  back_crack: {
+    id: 'back_crack', face: 'surprised', title: 'COMMS · ISAO', once: true,
+    lines: ['It is cracking back there.', 'Whatever is out there wants in.'],
+  },
+  // THE SECOND FRONT: the mouth behind the bays falls, and the first wave through it is soft: a feast for the tank
   back_door: {
     id: 'back_door',
     face: 'surprised',
     title: 'THE BACK WALL',
-    lines: ['They cracked the back wall!', 'Build towers behind the bays.'],
+    lines: ['The back wall is down and they are pouring in.', 'Soft ones. Go through them!'],
+  },
+  // THE SCRAMBLE: the feast is down, the rest will not be soft, and the tank cannot be on both sides
+  back_scramble: {
+    id: 'back_scramble', face: 'determined', title: 'COMMS · ISAO',
+    lines: ['More are coming through the back and I cannot hold both sides.', 'Put turrets behind the bays. Now.'],
   },
 };
 

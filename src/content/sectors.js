@@ -53,6 +53,17 @@ export const SECTOR_GENERATOR = freeze({
   brief: ['They are still coming, and there are more of them each time.', 'Hold both mouths. The colony is watching.'],
 });
 
+// THE BACK DOOR IS FORESHADOWED (owner, 2026-09-24: "slightly foreshadowed"). At these pulses of the sector before the door
+// falls, the mouth behind the bays rumbles: a tremor contact on the radar at its bearing, a low quake, `dust` puffs of grit off
+// the rock, and Isao's `brief`. pulse: the pulse it comes with, or 'last' for the sector's final one. The rule is
+// src/domain/back-omens.js.
+export const BACK_OMENS = freeze([
+  { id: 'rumble', sector: 1, pulse: 2, brief: 'back_rumble', dust: 4 },
+  { id: 'crack', sector: 1, pulse: 'last', brief: 'back_crack', dust: 10 },
+]);
+// THE SCRAMBLE'S MARKERS: the back sockets ring every `every` seconds for `seconds` once Isao asks for turrets there
+export const BACK_SCRAMBLE = freeze({ seconds: 8, every: 1 });
+
 // PLACEMENT, in cells (the caller converts to its own units): two breaches of a sector stand at least minSeparationCells
 // apart, never within exclusionCells of a sealed breach (td-tab's gunshipFar uses 6), and are picked from the farthest
 // open cells on their side, at random among those within bandHops of the farthest still valid

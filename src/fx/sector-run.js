@@ -7,7 +7,8 @@
 // Composition only: the rules are src/domain/sectors.js, sector-stats.js and gate-integrity.js with the numbers in
 // src/content/sectors.js. The controller hands in hooks (spawning, sealing, paying, briefing, pausing, polling) and calls
 // the returned object at its real sites; nothing here imports the controller.
-import { SECTORS, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, SECTOR_STATS, SECTOR_STAMPS, SECTOR_RECORDS, SECTOR_TIMING, SECTOR_GATE, BELT_OF, BREACH_CLOSERS } from '../content/sectors.js';
+import { SECTORS, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, SECTOR_STATS, SECTOR_STAMPS, SECTOR_RECORDS, SECTOR_TIMING, SECTOR_GATE, BELT_OF, BREACH_CLOSERS, BACK_OMENS, BACK_SCRAMBLE } from '../content/sectors.js';
+import { omenDue } from '../domain/back-omens.js';
 import { GUNSHIP_GUN_ORDER } from '../content/gunship.js';
 import { pulseFits, sectorDef, makeSector, releaseWave, closeBreach, spendBreach, isSecure, forfeitOf, waveYield, pickBreachCells } from '../domain/sectors.js';
 import { makeSectorStats, record, report as sectorReport, mergeBests, campaignTotals } from '../domain/sector-stats.js';
@@ -40,7 +41,7 @@ export function killSource(src, via = null) {
 export function createSectorRun(h) {
   const story = h.story, api = h.api ?? {};
   let phase = 'idle', def = null, sector = null, stats = null, left = 0, at = 0, pending = [], cardLeft = 0, feast = null, backOpenedAt = null, campaignShown = false, lastPoll = null, lastReport = null, quiet = false;
-  const sps = new Map(), reports = [];
+  const sps = new Map(), reports = [], omens = new Set();
   const now = () => h.now();
 
   // THE GATES: each door has its own hit points and its own pathfinder rule, which gives way while that door is broken. The front
@@ -211,18 +212,29 @@ export function createSectorRun(h) {
     next();
   }
 
+  // THE BACK DOOR RUMBLES in the sector before it falls (src/content/sectors.js BACK_OMENS): after a pulse, the omen that pulse
+  // brings, if any. The pulse is the furthest any breach has got; the last is the one that empties the programme.
+  function omen() {
+    if (backOpenedAt !== null || !sector) return;
+    const pulse = sector.breaches.reduce((m, b) => Math.max(m, b.wavesReleased), 0);
+    const o = omenDue(BACK_OMENS, { sector: def.n, pulse, last: pulse >= def.waves }, omens);
+    if (!o) return;
+    omens.add(o.id); api.backOmen?.(o); h.hud();
+  }
+
   // THE SCRAMBLE: once the feast is mostly down (or has had its time), Isao asks for turrets behind the bays, the clock resumes
   // and the gate side opens a little later
   function tickFeast(t) {
+    if (feast?.scrambled && t - feast.scrambled < BACK_SCRAMBLE.seconds && t >= feast.ringAt) { feast.ringAt = t + BACK_SCRAMBLE.every; api.backScramble?.(feast.rings++); }   // the back sockets ring while Isao's ask stands
     if (!def.feast || !feast || feast.scrambled) return;
     const sp = sps.get(feast.id), total = def.feast.entries.reduce((n, e) => n + e.count, 0);
     let left = 0;
     for (const e of h.enemies()) if (e.alive && !e.guard && e.breachSource && e.breachSource === sp?.obj) left++;
     for (const q of h.queue()) if (q.sp === sp) left++;
     if (left > total * (def.feast.scrambleShare ?? 0.35) && t - feast.at < (def.feast.timeout ?? 50)) return;
-    feast.scrambled = t;
+    feast.scrambled = t; feast.ringAt = t; feast.rings = 0;
     for (const b of sector.breaches) if (b.openAt === Infinity) b.openAt = t + (def.feast.gateAfter ?? 0);
-    api.backScramble?.(); h.hud();
+    h.hud();
   }
 
   function tick(dt) {
@@ -281,7 +293,7 @@ export function createSectorRun(h) {
     // a pulse is over once its bodies have left the queue; guards waiting at expedition sites are not the sector's
     pulseOver: (queue) => !queue.some((q) => !q.guard),
     // one programme wave from every live breach: queue entries with `at` offsets from now
-    release: (t) => { if (phase !== 'fighting' || !sector) return []; const out = []; for (const b of sector.breaches) { const sp = sps.get(b.id); if (b.state !== 'open' || !sp?.alive) continue; const isFeast = feastFor(b), r = releaseWave(sector, b.id, t); if (!r) continue; if (isFeast) { feast = { id: b.id, at: t, scrambled: 0 }; out.push(...feastEntries(def.feast, sp)); } else out.push(...entriesOf(r.wave, sp)); } h.hud(); return out; },
+    release: (t) => { if (phase !== 'fighting' || !sector) return []; const out = []; for (const b of sector.breaches) { const sp = sps.get(b.id); if (b.state !== 'open' || !sp?.alive) continue; const isFeast = feastFor(b), r = releaseWave(sector, b.id, t); if (!r) continue; if (isFeast) { feast = { id: b.id, at: t, scrambled: 0 }; out.push(...feastEntries(def.feast, sp)); } else out.push(...entriesOf(r.wave, sp)); } omen(); h.hud(); return out; },
     active: () => phase !== 'idle',
     owns: (sp) => idOf(sp) !== null,
     /* a broken door is held open for everyone: one flag per gate id, which the story base reads per door */
@@ -319,13 +331,13 @@ export function createSectorRun(h) {
     // the colony is lost: LAST TRANSMISSION after the wreck has played. False when no sector is running (the caller shows its own)
     lose() { if (!['brief', 'fighting', 'secure'].includes(phase)) return false; phase = 'lost'; left = SECTOR_TIMING.lostHold; h.hud(); return true; },
     state: () => ({
-      phase, n: def?.n ?? 0, name: def?.name ?? null, feast: feast ? { at: +feast.at.toFixed(1), scrambled: !!feast.scrambled } : null, strays: phase === 'idle' ? 0 : (h.breaches?.() ?? []).filter((sp) => sp.alive && idOf(sp) === null).length, secure: ['secure', 'debrief', 'campaign'].includes(phase), debriefOpen: !!story.debrief?.isOpen(), reports: reports.length,
+      phase, n: def?.n ?? 0, name: def?.name ?? null, feast: feast ? { at: +feast.at.toFixed(1), scrambled: !!feast.scrambled } : null, omens: [...omens], strays: phase === 'idle' ? 0 : (h.breaches?.() ?? []).filter((sp) => sp.alive && idOf(sp) === null).length, secure: ['secure', 'debrief', 'campaign'].includes(phase), debriefOpen: !!story.debrief?.isOpen(), reports: reports.length,
       gate: gate ? { hp: +gate.hp.toFixed(1), broken: gate.broken, breaks: gate.breaks } : null,
       gates: integrities().map((g) => ({ id: g.id, hp: +g.hp.toFixed(1), max: g.max, broken: g.broken, breaks: g.breaks })),
       breaches: (sector?.breaches ?? []).map((b) => ({ id: b.id, side: b.side, cell: b.cell, opened: sps.has(b.id), live: b.state === 'open' && !!sps.get(b.id)?.alive, wavesReleased: b.wavesReleased, wavesPlanned: b.wavesPlanned, closedBy: b.closedBy, leftInField: { ...b.leftInField }, bonus: { ...b.bonus } })),
     }),
     test: {
-      release: (id) => { const b = breachOf(id), sp = sps.get(id); if (!b || !sp?.alive) return null; const isFeast = feastFor(b), r = releaseWave(sector, id, now()); if (r && isFeast) { feast = { id, at: now(), scrambled: 0 }; h.push(feastEntries(def.feast, sp)); } else if (r) h.push(entriesOf(r.wave, sp)); h.hud(); return r; },
+      release: (id) => { const b = breachOf(id), sp = sps.get(id); if (!b || !sp?.alive) return null; const isFeast = feastFor(b), r = releaseWave(sector, id, now()); if (r && isFeast) { feast = { id, at: now(), scrambled: 0 }; h.push(feastEntries(def.feast, sp)); } else if (r) h.push(entriesOf(r.wave, sp)); omen(); h.hud(); return r; },
       close: (id, by) => { const sp = sps.get(id); if (!sp?.alive) return null; h.seal(sp, by); return breachOf(id)?.closedBy ?? null; },
       clearField: () => h.clearField(),
       cont: () => cont(),

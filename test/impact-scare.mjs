@@ -35,7 +35,7 @@ assert.deepEqual(awayExits([1, 2, 3], centers, 0, blast), [2, 3], 'only exits le
 assert.deepEqual(awayExits([1], centers, 0, blast), [], 'none, and the caller keeps its own exits');
 
 // every use that lands scares; the MK-9's ignition is the one burst in the air (300 m up), and it has no ground to scare
-const AIRBORNE = new Set(['gunship.ignite']);
+const AIRBORNE = new Set(['gunship.ignite', 'rock.dust']);   // in the air, or not an impact at all (the back mouth's dust)
 assert.deepEqual(Object.keys(EXPLOSION_SCARE).sort(), Object.keys(EXPLOSION_USES).filter((u) => !AIRBORNE.has(u)).sort(), 'every explosion use that lands scares');
 for (const [use, s] of Object.entries(EXPLOSION_SCARE)) assert.ok(s.cells > 0 && s.seconds > SCARE_FREEZE_S, `${use}: a radius and a scare longer than the freeze`);
 console.log('Impact scare: radius, stamped on the step clock, freeze then flight, turn from the blast, exits away, every use scares.');

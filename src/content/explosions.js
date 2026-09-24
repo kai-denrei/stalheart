@@ -33,6 +33,9 @@ export const EXPLOSION_USES = Object.freeze({
   // the burning ground's fire and smoke, LASER_SMOKE_RATE per second: a Bofors burst at ~6 m and 1.2 s, so the line the
   // beam draws smokes behind it
   'laser.smoke': Object.freeze({ module: 'bofors-burst', scale: 0.55 }),
+  // THE BACK MOUTH RUMBLES (2026-09-24): grit and dust shaken off the rock behind the bays, a sector before it falls. The Bofors'
+  // burst is the one with smoke in it; ~5 m and no scare (nothing stands there yet)
+  'rock.dust': Object.freeze({ module: 'bofors-burst', scale: 0.45 }),
 });
 
 // THE IMPACT SCARES (owner, 2026-09-14): bodies within `cells` of a landing freeze for SCARE_FREEZE_S, then turn from it
