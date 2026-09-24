@@ -35,6 +35,20 @@ Evidence:
 - git diff --stat main...pacing; npm run architecture
 - node test/sector-run.mjs, node test/back-omens.mjs after the repairs
 
+## 2026-09-25 — The HUD's once-a-frame cap holds only inside a frame, a camera snap updates the camera's matrices at once, and --shield-story is green again (it was red on main)
+
+change · accepted · 2026-09-25-hud-cap-in-frame-and-shield-story
+
+The fourth extraction round's agent ran --shield-story (not in the refactor battery) and found it failing at "the seam is counted down on the panel" on the unchanged base. Bisected in temporary worktrees: main and pacing pass the panel steps and fail later, at "every ram floats its premium" (main: 13 rams, 8 floats).
+
+The panel steps were this round's regression: the HUD cap (2026-09-25-refactor-robustness) deferred a second paint within the same frame counter, and a test hook called between frames found the counter unchanged, so the panel stayed one frame stale when read. The cap now applies only while a frame runs (inFrame); a hook or a handler repaints at once, as before. The ram-float step was red on main: the ram readout projects the hull through the camera, and snapCamera moved the camera without updating its view matrix, so a ram in the frame after a harness teleport projected behind the old camera and floated nothing; snapCamera now updates the matrices at once, and the step snaps the chase camera after each teleport (a drive never teleports). --shield-story green end to end.
+
+Alternatives: Snapping the camera inside the placeTank hook: rejected, the intro montage moves the hull the same way during its ram beat and would jolt.; Loosening the float assertion: rejected, the rams it missed were a real lag in the snap.
+
+Evidence:
+
+- scripts/browser-lock.sh node scripts/browser-test.mjs --shield-story on main, pacing and refactor (temporary worktrees)
+
 ## 2026-09-25 — The first sector waits for the expedition: it opens once a part is home or 90 s after the story is ready, not the moment Isao sends the tank out
 
 change · accepted · 2026-09-25-first-sector-waits-for-the-expedition
@@ -100,6 +114,24 @@ Evidence:
 - node scripts/browser-test.mjs (default, 48 PASS after each extraction), --missile-parity, --quiver-frame, --nav, --showcase, --gunship, all through scripts/browser-lock.sh
 - Scratch equivalence harnesses against the original td-tab text: 400 random boards painted identically (radar), 115,200 tower-frames identical (aim), 64 DOM/gui configurations identical (VARS), 300 x 41 bit-identical poses (victory); the showcase object AST-identical to a scope-analysed mechanical rewrite
 - Headless probes of ?winprobe=1, ?sensorprobe=1 and ?lab=1: all report OK with no page errors
+
+## 2026-09-25 — Fourth extraction round out of td-tab: the wave simulator's policy and run end, a lost hull, a sentry's perch and the life containers leave the controller, and both test adapters read one member per line; the controller 12,734 -> 12,696 lines, 719,078 -> 710,235 bytes, 31 -> 19 lines over 500 characters
+
+change · accepted · 2026-09-25-controller-extractions-round-four
+
+Refactor round task 12 (docs/superpowers/plans/2026-09-25-refactor-round.md), fourth round, on branch refactor-extract-4 from refactor (rounds one to three merged). The owner asked to simplify the code base and make it more robust. Same method: each block moves behind a host object or as a pure function, is proven against the original text, and the line, byte and long-line budgets ratchet down at every commit. The test adapters (window.__stalheartTest and __stalheartPilotTest) were the controller's longest lines (1.5-2.6 KB each); their reflow costs lines, so it had to be paid for inside the commits whose extractions saved them.
+
+The ?sim= autoplay's choice rules are src/domain/sim-policy.js (trunkCells, simDirective, and simPick, which now RETURNS the pick instead of ordering it: the controller keeps the two-second clock, the directive and autoMode, and carries the pick out; simBuild and simBuildAll shared their trunk scan and upgrade tail, now one helper each). Its run end is src/platform/sim-run.js (simWatch and simEmit moved unchanged behind a host placed by the ?sim= boot; the schema-2 result keeps its keys and order; the state the frame loop reads stays in the controller). loseTank is createHullLoss in src/fx/hull-loss.js with DOWN_DASH and its comments; tankLostDeploys++ became a getter/setter pair. perchOf's body is towerPerch in src/domain/tower-perch.js; bayContainers and syncBays in src/fx/life-bays.js are what adoptBays built and what syncLifeContainers painted, while those two stay hoisted one-line declarations in the controller (seven callers) so no temporal-dead-zone question arises. gameHooks.state() and __stalheartPilotTest's state() read one field per line, every hook one per line (cargoView's and seatState's statements a line each, nested objects packed under 160 characters, the showcase host a line per kind); no line of either adapter passes 500 characters. The reflow was split across the first two commits (127 and 48 lines) to spend each one's own savings.
+
+Alternatives: Moving simBuild/simBuildAll verbatim with orderTower/orderUpgrade injected: rejected for a pick the controller carries out, which keeps the domain rule free of effects and testable on its own; the harness records the queries (canAfford, placeError) in order to show the split changes nothing observable.; Byte-identical sim results before and after as the browser proof, as asked: impossible as stated, because the seeded sim is not byte-deterministic run to run on the base itself (two distinct result JSONs over 23 base runs); the comparison became the set of distinct results, which matched byte for byte (20 runs after the move gave the same two JSONs).; Reflowing the adapters as their own commit: impossible under a per-commit ratchet; splitting it by region across the two extraction commits used their savings instead of packing unrelated lines.; createLifeBays(host) returning const adoptBays/syncLifeContainers: rejected, the functions have seven callers (the programme host among them) and a const would put their first use behind a temporal-dead-zone argument; the hoisted one-line declarations cost one line more and remove the question.
+
+Evidence:
+
+- npm test (147 programs at the last commit; new: test/sim-policy.mjs, test/sim-run.mjs, test/hull-loss.mjs, test/tower-perch.mjs, test/life-bays.mjs), npm run check and the eslint no-undef/no-unused diff of td-tab clean at every commit (target 1 moved only browser globals into the platform module); npm run build on the final tree
+- AST identity of every mechanical move (simWatch/simEmit, 36 rewrites; loseTank, 16 rewrites incl. the x++ statement; towerPerch with its one substitution; syncBays with two renames and bayContainers' map), every comment kept; each reflowed td-tab parses to the same AST as the file before it; a sentinel check of each host literal written into td-tab, and every member each module reads is in it
+- Scratch harnesses running the ORIGINAL td-tab text beside the new code, each in a closure shaped like initTdTab's: the sim block over 20,000 random worlds (2,857 orders, 949 upgrades, 17,297 results; every call, let, trunk and result identical), loseTank over 20,000 (real three.js cameras; 16,146 dashes), perchOf over 50,000 boards (bit-identical perches), adoptBays/syncLifeContainers over 20,000; they fail on 21, 11, 6 and 9 mutants of the modules and of td-tab's host lines, and pass an equivalent mutant
+- Direct sim runs (?sim=style1&seed=1000&simfast=50&simcap=180&roster=2, 844x390): 23 base runs gave two distinct result JSONs (19 and 4), 20 runs after the move gave exactly those two, byte for byte (18 and 2); the default suite's sim-2.json is the majority one
+- Browser suites from frozen snapshots through scripts/browser-lock.sh (two chains, both slots): commit 1 default 48; commit 2 default 48, --grow 16, --defense 12, --sectors 12, --backdoor 4, --skip-tutorial 7, --gunship 21, --seats 3, --showcase 8, --story-world 31; commit 3 default 48, --story-world 31, --grow 16, --defense 12, --gunship 21, --seats 3, --skip-tutorial 7, --showcase 8, --quiver-frame 16, --missile-parity 2, --sectors 12, --backdoor 4, and ten more direct sim runs on the base's majority JSON; --shield-story stops at its second step ('the seam is counted down on the panel') on a snapshot of the base ccc92153 exactly as on this branch
 
 ## 2026-09-25 — The controller's dead code is deleted and its bytes and very long lines are ratcheted beside its lines
 

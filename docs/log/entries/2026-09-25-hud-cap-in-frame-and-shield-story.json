@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "2026-09-25-hud-cap-in-frame-and-shield-story",
+  "date": "2026-09-25",
+  "type": "change",
+  "status": "accepted",
+  "title": "The HUD's once-a-frame cap holds only inside a frame, a camera snap updates the camera's matrices at once, and --shield-story is green again (it was red on main)",
+  "context": "The fourth extraction round's agent ran --shield-story (not in the refactor battery) and found it failing at \"the seam is counted down on the panel\" on the unchanged base. Bisected in temporary worktrees: main and pacing pass the panel steps and fail later, at \"every ram floats its premium\" (main: 13 rams, 8 floats).",
+  "outcome": "The panel steps were this round's regression: the HUD cap (2026-09-25-refactor-robustness) deferred a second paint within the same frame counter, and a test hook called between frames found the counter unchanged, so the panel stayed one frame stale when read. The cap now applies only while a frame runs (inFrame); a hook or a handler repaints at once, as before. The ram-float step was red on main: the ram readout projects the hull through the camera, and snapCamera moved the camera without updating its view matrix, so a ram in the frame after a harness teleport projected behind the old camera and floated nothing; snapCamera now updates the matrices at once, and the step snaps the chase camera after each teleport (a drive never teleports). --shield-story green end to end.",
+  "alternatives": [
+    "Snapping the camera inside the placeTank hook: rejected, the intro montage moves the hull the same way during its ram beat and would jolt.",
+    "Loosening the float assertion: rejected, the rams it missed were a real lag in the snap."
+  ],
+  "evidence": [
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --shield-story on main, pacing and refactor (temporary worktrees)"
+  ],
+  "supersedes": []
+}
