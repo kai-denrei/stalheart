@@ -64,17 +64,13 @@ const animated = (def) => def.attack === 'walker';
 // visibly carries more hardware than one you have just printed. It is the
 // cheapest possible answer to "make them feel more detailed", because the
 // detail already exists and was being thrown away.
-//
-// A pin (?towertier=) overrides it, for looking at one tier everywhere.
-let sentryPin = null;
-export const setSentryTier = (n) => { sentryPin = (n >= 1 && n <= 3) ? n : null; };
 
 // The tier we WANT, and the best one we actually have bytes for. A tower
 // that upgrades starts the next tier's load and keeps wearing the tier it
 // has until that lands — the same never-blank rule the whole registry runs
 // on, one level down.
 function sentryTierFor(def, tier) {
-  const want = sentryPin ?? Math.max(1, Math.min(3, Math.floor(tier) + 1));
+  const want = Math.max(1, Math.min(3, Math.floor(tier) + 1));
   for (let t = want; t >= 1; t--) {
     if (sentryProtos.has(sentryUrlFor(def, t))) return { have: t, want };
   }
@@ -143,7 +139,7 @@ const sentryLook = {
     // twenty-four models and about four megabytes; a board that downloads
     // the Maximum variant of a tower nobody has upgraded is paying for
     // hardware that is not on the table.
-    const first = sentryPin ?? 1;
+    const first = 1;
     sentryLook._p = Promise.all(TOWERS.filter((d) => d.model).map((d) => loadSentryModel(d, first)))
       .then((all) => { sentryLook.loaded = all.length > 0 && all.every(Boolean); return sentryLook.loaded; });
     return sentryLook._p;

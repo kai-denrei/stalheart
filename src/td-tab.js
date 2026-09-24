@@ -51,16 +51,16 @@ import { LOOKS, LOOK_NAMES } from './looks.js';
 import { makeCellIndex } from './cellindex.js';
 import { CREATURE_TINTS, ENEMY_SPEC, INTROS, computeWavePlan, accentFor } from './enemyspec.js';
 import { PICKUPS } from './pickups.js';
-import { rankFor, rankLabel, badgeSVG, killReq, eliteReq } from './ranks.js';
-import { beamStep, isBeamStep, PEN_SOFT_FRAC, PEN_HARD_FRAC } from './beamranks.js';
+import { rankFor, rankLabel, badgeSVG } from './ranks.js';
+import { beamStep, isBeamStep } from './beamranks.js';
 import { burn, sweepAdvance, wallBite as wallBiteFor } from './beamburn.js';
-import { arcPoint, projectToArc, toeForCrossing, crossingForToe } from './arc.js';
+import { arcPoint, projectToArc, toeForCrossing } from './arc.js';
 import { shotOf, muzzleOf, impactOf, tuneFor, resolveImpactColors } from './sentryfx.js'; import { makeImpactBurst, orientImpact } from './impactfx.js';   // the package's muzzle recipe is the one master setting
 import { makeTracerMesh, makeLightningMesh, makeSeekerMesh, aimSeeker,
   LANCE_LOOK as SHOT_LANCE_LOOK, THROW_LOOK as SHOT_THROW_LOOK } from './shotfx.js';
 import { SHIELD_TUNE, SHIELD_KNOBS, makeShield, charge as chargeShield,
-  deploy as deployShield, tickShield, stepShieldFrame, restockShield, tapTower, towerOffline,
-  stationDraw, waveReset as shieldWaveReset, shoveVec, shoveMag, makeArrayStation, refillArray } from './shield.js'; import { SHIELD_ARRAY } from './content/shield-array.js'; import { makePadRing, glowPadRing, shieldPanel } from './fx/shield-array.js'; import { createRamReadout } from './fx/ram-readout.js';
+  deploy as deployShield, tickShield, stepShieldFrame, restockShield, towerOffline,
+  waveReset as shieldWaveReset, shoveVec, shoveMag, makeArrayStation, refillArray } from './shield.js'; import { SHIELD_ARRAY } from './content/shield-array.js'; import { makePadRing, glowPadRing, shieldPanel } from './fx/shield-array.js'; import { createRamReadout } from './fx/ram-readout.js';
 import { deepLink, wireDeepLink } from './deeplink.js';
 import { labLine, parseLabQuery } from './lab.js';
 import { bakeGalaxyCube } from './galaxybake.js';
@@ -77,12 +77,12 @@ import { FEEL, loadFeel, saveFeel } from './feelstore.js';
 import { STRIKE_KNOBS, makeStrike, makeStrikeParams, grantStrikes, stepStrike,
   toggleArm, paintTarget, launchStrike, stepFall, skipFall, fallProgress,
   strikeDamage, retargetStrike, orbitProgress } from './strike.js'; import { makeGunship, onStation, phaseLeft, selectGun, startStation } from './domain/gunship.js'; import { GUNSHIP_GUNS, GUNSHIP_ORBIT } from './content/gunship.js'; import { createGunshipBriefing } from './fx/gunship-briefing.js'; import { createFoundryFx } from './fx/foundry-fx.js'; import { createExplosions } from './fx/explosions.js';
-import { radarBasis, proximitySectors, sensorColor } from './radar.js'; import { createRadarScope } from './fx/radar-scope.js'; import { createTowerAim } from './fx/tower-aim.js'; import { buildVarsModal } from './fx/vars-modal.js'; import { startVictoryPull } from './fx/victory-pull.js'; import { VICTORY_PULL } from './content/victory-pull.js'; import { createShowcaseHooks } from './fx/showcase-hooks.js'; import { createGunshipRig } from './fx/gunship-rig.js';
+import { createRadarScope } from './fx/radar-scope.js'; import { createTowerAim } from './fx/tower-aim.js'; import { buildVarsModal } from './fx/vars-modal.js'; import { startVictoryPull } from './fx/victory-pull.js'; import { createShowcaseHooks } from './fx/showcase-hooks.js'; import { createGunshipRig } from './fx/gunship-rig.js';
 import { BLOOM_GROUPS } from './bloomweights.js';
-import { A6_TUNE, magFor, makeA6, stepA6, arc as a6Arc, a6Line } from './heptapod.js';
+import { A6_TUNE, magFor, makeA6, stepA6, arc as a6Arc } from './heptapod.js';
 import { SENTRY_TUNE } from './sentry.js';
 import { makeLock } from './lockon.js';
-import { TOWER_LOOK_NAMES, DEFAULT_TOWER_LOOK, buildTowerLook, preloadLook, lookReady, setSentryTier } from './towerlooks.js';
+import { TOWER_LOOK_NAMES, DEFAULT_TOWER_LOOK, buildTowerLook, preloadLook, lookReady } from './towerlooks.js';
 import { makeAudio } from './audio.js';
 import { DEATH_KEYS } from './audiomanifest.js';
 
@@ -3695,7 +3695,7 @@ export function initTdTab(root) {
     return m ? m[0].replace(/\s+/g, '') : t;
   };
 
-  function showCallout(text, cls, pin = false) {
+  function showCallout(text, cls) {
     if (!calloutsEl) return;
     if (!params.callouts) {
       if (!CALLOUT_NUMERIC[cls]) return;   // the praise goes quiet
@@ -3706,10 +3706,7 @@ export function initTdTab(root) {
     d.className = `callout ${cls}`;
     d.textContent = text;
     calloutsEl.appendChild(d);
-    // pin: the forced ?callout=1 path — under a virtual-time budget both
-    // the removal timer AND the 1.2s animation outrun the first paint
-    if (pin) d.style.animation = 'none';
-    else setTimeout(() => d.remove(), cls === 'co-cargo' ? 2600 : 1200);
+    setTimeout(() => d.remove(), cls === 'co-cargo' ? 2600 : 1200);
   }
   // one class on the tab root moves both number slots off the middle of the
   // screen; the CSS owns where, so this never has to know
@@ -4922,26 +4919,13 @@ export function initTdTab(root) {
   // rule moved out whole so the beam lab can show the drop-off without
   // restating it — two copies of this would drift the first time either is
   // tuned, and the lab exists precisely to tune it.
-  // ...and the same idea along the OTHER axis: every body burned eats into
-  // the reach that is left, so the beam shortens as it struggles through.
-  // In cells, against a 2.6-cell reach: fodder is nearly free, three solid
-  // cores stop it dead.
-  // ...and they are FRACTIONS of the reach now, because the reach is no
-  // longer a constant: it climbs with the pilot's rank (beamranks.js). Held
-  // as absolute cells, "three solid cores stop it dead" would quietly stop
-  // being true the moment a rank-15 beam ran to 10 cells.
-  const PEN_SOFT = () => LASER_REACH * PEN_SOFT_FRAC;
-  const PEN_HARD = () => LASER_REACH * PEN_HARD_FRAC;
   // A BOGGED BEAM FALLS BEHIND AND STAYS BEHIND. It does not catch up at the
   // end of the burst — that would hide the cost, which is the point of it.
   const beamPhase = [0, 0];
-  let beamHitWall = false;   // did either beam clip on rock this frame?
   const CELL_WIDTH_KEYS = ['coreWidth', 'glowWidth', 'jitterAmount'];
-  // `beams` is taken by the tower/slow-tether fx pool — these are the tank's
-  // Both are views ONTO the rig (beamdraw.js), kept as names because the
-  // probes walk them: ?beamfire=1 reads the live glow colour off tankBeams[0]
-  // and ?arcprobe walks every plume dot for altitude.
-  let tankBeams = null, plasma = null;
+  // `plasma` is a view ONTO the rig's plumes (beamdraw.js), kept as a name because
+  // the plasma folder's dot size walks it
+  let plasma = null;
   let beamOn = false, beamVoice = null;
 
   // --- THE PLASMA (operator, 2026-09-02) ----------------------------------
@@ -4967,9 +4951,6 @@ export function initTdTab(root) {
       seed: (params.seed ^ 0x91a5be) >>> 0,
       widthKeys: CELL_WIDTH_KEYS,
     });
-    // tankBeams is what ?beamfire=1 reads the live colour off, and index 0 is
-    // still gun 0's first link; plasma is what ?arcprobe walks for altitude
-    tankBeams = beamRig.beams;
     plasma = beamRig.plumes;
     applyBeamRank();   // a fresh rig must not be born the base colour
     return beamRig;
@@ -5014,9 +4995,7 @@ export function initTdTab(root) {
     const toe = toeForCrossing(gap, TOE_CROSS_FRAC * LASER_REACH);
     applySecondaryToe(playerMesh, toe || SECONDARY_TOE);
     playerMesh.updateMatrixWorld(true);
-    lastToe = { gap, toe: toe || SECONDARY_TOE, at: crossingForToe(gap, toe || SECONDARY_TOE) };
   }
-  let lastToe = null;
 
   function drawBeam(i, from, dir, len, heatFrac, lift) {
     ensureBeams().draw(i, {
@@ -5248,7 +5227,6 @@ export function initTdTab(root) {
         // and firing across a corner drags exactly as it should. It is the
         // harsher of the two, in fact: a wall also ends the beam outright,
         // where a body only takes a bite out of the reach.
-        if (bite > 0.05) beamHitWall = true;
         // ONE COPY OF THE RULE (beamburn.js). It sorts nearest-first itself,
         // so no caller here or in the lab can get the order wrong — and the
         // order is the whole mechanic.
@@ -6075,10 +6053,6 @@ export function initTdTab(root) {
     }
   }
 
-  // placeTower is now the INSTANT path, and it has exactly two legitimate
-  // users left: the opening garrison (pre-built before the run, not ordered)
-  // and the ?tower= verification hook. Everything the player asks for goes
-  // through Isao.
   // WHERE THE OPENING GARRISON GOES.
   //
   // Forward of the heart, not on top of it. Towers mount on WALL cells, so a
@@ -6129,15 +6103,6 @@ export function initTdTab(root) {
     return out;
   }
 
-  function placeTower(key, ci) {
-    const def = TOWER_BY_KEY[key];
-    if (!def) return false;
-    const err = placeError(ci);
-    if (err) { flashShopNote(err); return false; }
-    if (!eco.spend(def.cost)) { flashShopNote('not enough biomass'); return false; }
-    commitTower(key, ci, def.cost);
-    return true;
-  }
   function commitTower(key, ci, spent) {
     const def = TOWER_BY_KEY[key];
     const obj = buildTowerLook(params.towerLook, def);
@@ -6688,20 +6653,6 @@ export function initTdTab(root) {
     towerCells.delete(tower.ci);
     if (watchTower === tower) watchTower = null;
     updateHud();
-  }
-
-  function upgradeTower(tower) {
-    const cost = upgradeCost(tower.def, tower.tier);
-    if (cost === null || !eco.spend(cost)) return false;
-    tower.tier++;
-    tower.spent += cost;
-    // the pedestal IS the tier read: square -> hexagon -> circle
-    if (tower.obj.userData.setTier) tower.obj.userData.setTier(tower.tier);
-    placeTowerObj(tower); // a tier reads as bulk — derived from tier, not accumulated
-    showRangeRing(tower.ci, effectiveStats(tower.def, tower.tier).range, tower.def.color, 1.4);
-    updateHud();
-    sfx.play('tower_upgrade');
-    return true;
   }
 
   // dotted range ring on the surface — one reusable mesh, house style
@@ -7721,7 +7672,7 @@ export function initTdTab(root) {
   const tfYard = [];        // { obj, ci }
   const tfQueue = [];       // kinds waiting for the bed
   let tfJob = null;         // { kind, obj, ci, t, dur, pulseT }
-  let tfContainers = 0, tfHulls = 0;
+  let tfContainers = 0;
 
   // A yard cell: open, two or three hops from the heart, not a berth, not
   // already used. Deterministic order (cell index), so the yard grows the
@@ -7860,7 +7811,6 @@ export function initTdTab(root) {
         + `<div class="wave-role">a container printed into the yard · wave ${wave}</div>`, 2400);
     } else {
       playerHP = Math.min(PLAYER_MAX, playerHP + 1);
-      tfHulls++;
       syncLifeContainers();
       sfx.play('tank_spool_up');
       showToast(`<div class="wave-num">TERRAFORMER &#9656; NEW HULL</div>`
@@ -7873,7 +7823,7 @@ export function initTdTab(root) {
     for (const y of tfYard) { scene.remove(y.obj); disposeObj(y.obj); }
     tfYard.length = 0; tfQueue.length = 0;
     if (tfJob && tfJob.obj) { scene.remove(tfJob.obj); disposeObj(tfJob.obj); }
-    tfJob = null; tfContainers = 0; tfHulls = 0;
+    tfJob = null; tfContainers = 0;
     if (heartSprite) heartSprite.userData.working = 0;
   }
   // the HUD line, beside ISAO's: what is on the bed, or what the clock says
@@ -8225,7 +8175,7 @@ export function initTdTab(root) {
   gui.add(params, 'regenerate').name('↻ regenerate');
   gui.add(params, 'previewDestruction').name('✳ destroy tank (preview)');
 
-  const towerLookCtrl = gui.add(params, 'towerLook', TOWER_LOOK_NAMES)
+  gui.add(params, 'towerLook', TOWER_LOOK_NAMES)
     .name('tower look').onChange(applyTowerLook);
   gui.add(params, 'font', FONT_NAMES).name('message font').onChange((n) => {
     applyFontPack(n, document.documentElement, TYPE);
