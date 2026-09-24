@@ -9,7 +9,7 @@ import { SENTRY_ORDER } from '../src/content/sentries.js';
 
 // the authored table is the spec's
 assert.deepEqual(SECTORS.map((s) => [s.n, s.name, s.breaches, s.waves, s.threat]), [
-  [1, 'THE LANE', { gate: 2 }, 6, 1.8], [2, 'THE BACK DOOR', { back: 1, gate: 1 }, 6, 2.8], [3, 'BOTH WALLS', { gate: 1, back: 1 }, 8, 2.2]]);
+  [1, 'THE LANE', { gate: 2 }, 6, 1.5], [2, 'THE BACK DOOR', { back: 1, gate: 1 }, 6, 2.8], [3, 'BOTH WALLS', { gate: 1, back: 1 }, 8, 2.2]]);
 assert.deepEqual(Object.keys(SECTORS[1].breaches), ['back', 'gate'], 'the back door sector picks and opens its back breach first');
 assert.ok(SECTORS.every((s) => s.pulse > 0), 'every sector keeps its own clock');
 assert.ok(SECTORS[1].feast.entries.every((e) => ENEMY_SPEC[e.type].rammable), 'the feast is all soft bodies');

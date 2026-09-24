@@ -144,7 +144,8 @@ export function createSectorRun(h) {
     }
     let far = 0; for (let i = 0; i < f.dist.length; i++) if (Number.isFinite(f.dist[i]) && f.dist[i] > far && !f.inside(i)) far = f.dist[i];
     const ring = Math.min(SECTOR_PLACEMENT.ringHops ?? f.farHops, f.farHops, far), gateSide = [];
-    for (let i = 0; i < f.dist.length; i++) if (f.dist[i] >= ring - 6 && f.dist[i] <= ring + 3 && !f.inside(i)) gateSide.push({ cell: i, side: 'gate', hops: f.dist[i], pos: f.centers[i] });
+    const clear = (i) => !f.inside(i) && !((f.rim?.[i] ?? Infinity) < (SECTOR_PLACEMENT.rimCells ?? 0));   // never where its blast reaches the base's rim
+    for (let i = 0; i < f.dist.length; i++) if (f.dist[i] >= ring - 6 && f.dist[i] <= ring + 3 && clear(i)) gateSide.push({ cell: i, side: 'gate', hops: f.dist[i], pos: f.centers[i] });
     const picks = pickBreachCells({ candidates: [...gateSide, ...back], want, minSeparation: SECTOR_PLACEMENT.minSeparationCells * f.cellSide, exclusion: SECTOR_PLACEMENT.exclusionCells * f.cellSide, excluded: f.excluded.map((ci) => f.centers[ci]), bandHops: SECTOR_PLACEMENT.bandHops, rng: h.rng });
     if (!picks.length) picks.push({ cell: f.fallback(), side: 'gate' });
     sector = makeSector(def, picks.map((p, i) => ({ id: LETTERS[i], side: p.side, cell: p.cell })), now());
@@ -280,7 +281,7 @@ export function createSectorRun(h) {
     const g = standing().map((d) => { const rec = doorOf(d.id); return ` · ${rec.name} ${rec.integrity.broken ? 'DOWN ' : ''}${Math.round(gateShare(rec.integrity) * 100)}%`; }).join('');
     if (!sector) return `<div class="hud-obj hud-sector">SECTOR ${def.n} · ${def.name} · BRIEF${g}</div>`;
     const top = sector.breaches.reduce((m, b) => Math.max(m, b.wavesReleased), 0);
-    const head = `SECTOR ${def.n} · ${def.name} · BREACHES ${sector.breaches.length} · ${phase === 'fighting' ? `WAVE ${top}/${def.waves}` : 'SECURE'}${g}`;
+    const head = `SECTOR ${def.n} · ${def.name} · BREACHES ${sector.breaches.length} · ${phase === 'fighting' ? `WAVE ${top}/${def.waves}` : phase.startsWith('lost') ? 'LOST' : 'SECURE'}${g}`;
     const each = sector.breaches.map((b) => `${b.id} ${b.state === 'open' ? (sps.has(b.id) ? '▮'.repeat(b.wavesReleased) + '▯'.repeat(Math.max(0, b.wavesPlanned - b.wavesReleased)) : b.openAt === Infinity ? '···' : 'OPENING') : b.state === 'spent' ? 'HELD' : `SEALED ${BREACH_CLOSERS[b.closedBy] ?? ''}`}`).join(' · ');
     return `<div class="hud-obj hud-sector">${head}</div><div class="hud-obj hud-sector">${each}</div>`;
   }

@@ -21,7 +21,7 @@ const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 
 // (`hardcores`) rather than the twenty-odd solid bodies the surge throws in on its own.
 // hardcores: how many solid cores ride every wave once hardcoresEveryWave is on.
 export const SECTORS = freeze([
-  { n: 1, name: 'THE LANE', breaches: { gate: 2 }, waves: 6, ladderStart: 0, threat: 1.8, pulse: 16, held: { kg: 40, points: 400 },
+  { n: 1, name: 'THE LANE', breaches: { gate: 2 }, waves: 6, ladderStart: 0, threat: 1.5, pulse: 16, held: { kg: 40, points: 400 },
     gunshipCall: true, backDoor: false, laser: false, hardcoresEveryWave: false, new: 'the gunship call-in',
     brief: ['Two mouths out on the lane. They come six times each.', 'Close one early and you give up what it would have paid.'] },
   // THE BACK DOOR: THE FEAST, THEN THE SCRAMBLE (owner, 2026-09-24: "really a chance for the tank to kill tons of rammable soft
@@ -68,8 +68,11 @@ export const BACK_SCRAMBLE = freeze({ seconds: 8, every: 1 });
 // apart, never within exclusionCells of a sealed breach (td-tab's gunshipFar uses 6), and are picked from the farthest
 // open cells on their side, at random among those within bandHops of the farthest still valid
 // ringHops: gate-side breaches stand on this ring of walking hops from the heart, not the field's far ring (about 69): at the
-// sector pace a wave walks in about thirty seconds instead of a minute (owner, 2026-09-24: "too slow between enemies")
-export const SECTOR_PLACEMENT = freeze({ minSeparationCells: 12, exclusionCells: 6, bandHops: 3, ringHops: 45 });
+// sector pace a wave walks in about thirty seconds instead of a minute (owner, 2026-09-24: "too slow between enemies").
+// rimCells: and never within this many cells of the clearing. A breach blows out every rock cell within its clearRadius (6), so
+// one opened near the base's rim carved a way in beside a gate that still stood at 100% (measured with --pacing --passive: the
+// heart lost its first life 20 s into sector 1). The far ring never came that close; the near one can
+export const SECTOR_PLACEMENT = freeze({ minSeparationCells: 12, exclusionCells: 6, bandHops: 3, ringHops: 45, rimCells: 10 });
 
 // LEFT IN THE FIELD: the estimate of what a closed breach's remaining waves would have paid. killShare is the share of a
 // wave assumed killed (1: all of it), streak the multiplier assumed on the bounty (1: no streak credit, the economy's floor)

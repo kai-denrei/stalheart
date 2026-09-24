@@ -866,7 +866,7 @@ try{
   P.iv=setInterval(()=>{try{
    const s=T.state(),S=s.sector||{},pg=s.programme||{},st=s.story||{};
    seen('phase',st.phase,v=>'story '+v);seen('active',pg.active,v=>'print begins '+v);seen('printed',(pg.printed||[]).join(),v=>'printed '+(pg.printed||[]).slice(-1)[0]);
-   seen('towers',s.towers,v=>'towers '+v);seen('hulls',s.hulls,v=>'hulls '+v);seen('deploying',s.deploying,v=>'hull deploying');seen('automated',s.automated,v=>'automated');
+   seen('heart',s.heart,v=>'heart '+v);seen('towers',s.towers,v=>'towers '+v);seen('hulls',s.hulls,v=>'hulls '+v);seen('deploying',s.deploying,v=>'hull deploying');seen('automated',s.automated,v=>'automated');
    seen('sector',S.n||null,v=>'sector '+v+' card');seen('sphase',S.phase,v=>'sector phase '+v);seen('debrief',S.debriefOpen,v=>'debrief');
    for(const b of S.breaches||[]){seen('open'+S.n+b.id,b.opened,v=>'breach '+b.id+' '+b.side+' opens');seen('rel'+S.n+b.id,b.wavesReleased||null,v=>'pulse '+b.id+' '+b.side+' wave '+v);}
    for(const g of S.gates||[])seen('broken'+g.id,g.broken,v=>g.id+' is down');

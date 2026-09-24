@@ -13,7 +13,7 @@ function world({ firstSector = 1, gate = false } = {}) {
   w.run = createSectorRun({
     story, api, waveSize: 4, threatMult: 1, hardcore: 'knot', spawnGap: { spread: 3.2, max: 0.45 }, store: null, rng: () => 0,
     now: () => w.t, ready: () => true, firstSector,
-    field: () => ({ cellSide: 0.001, centers, dist, inside: () => false, excluded: [], farHops: 69, fallback: () => 0 }),
+    field: () => ({ cellSide: 0.001, centers, dist, rim: centers.map((_, i) => (i % 2 ? 4 : 20)), inside: () => false, excluded: [], farHops: 69, fallback: () => 0 }),   // odd cells lie within a breach's blast of the base's rim
     open: (cell, o) => { const sp = { ci: cell, alive: true, obj: { cell }, quiet: !!o?.quiet }; w.opened.push(sp); return sp; },
     collapse: (sp) => { sp.alive = false; }, breaches: () => w.opened, enemies: () => w.enemies, queue: () => w.queue,
     queued: (sp) => w.queue.some((q) => q.sp === sp), push: (qs) => w.queue.push(...qs), seal: () => {}, clearField: () => {},
@@ -35,6 +35,7 @@ function world({ firstSector = 1, gate = false } = {}) {
   assert.equal(s.phase, 'fighting', 'the breaches are placed at once, under the brief card');
   assert.equal(s.breaches.length, 2);
   assert.ok(s.breaches.every((b) => b.cell >= 0), 'gate breaches stand on the near ring');
+  assert.ok(s.breaches.every((b) => b.cell % 2 === 0), 'never within a breach\'s blast of the base\'s rim');
   assert.equal(w.run.pulseGap(), SECTORS[0].pulse, 'the sector keeps its own clock');
   assert.equal(w.opened.length, 1, 'the first breach opens at once');
   assert.equal(w.run.canRelease(), true, 'a pulse may arm while the first breach is still opening and the second is still due');
