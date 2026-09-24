@@ -11,6 +11,11 @@ export const GUNSHIP_ORBIT = Object.freeze({ pass: 60, station: 120 });   // own
 // first call comes within a few waves, later ones cost more (owner, 2026-09-14: an earned call-in)
 export const GUNSHIP_CALL = Object.freeze({ perBiomass: 1, perWaveClear: 40, firstThreshold: 150, threshold: 300 });
 
+// A breach a minute's walk out (owner: leave time to enjoy the action; src/domain/gunship-lanes.js farCell): the ring `hops`
+// from the heart, give or take `slack`, and never within `clearCells` of a sealed breach. A sector's breach ring reaches no
+// further than the same `hops` (src/fx/sector-run.js, the field's farHops).
+export const GUNSHIP_FAR = Object.freeze({ hops: Math.round(60 * 1.15), slack: 3, clearCells: 6 });
+
 // Where the platform rides while on station, in cells; the optic's pitch
 // limits (radians, negative is down); the model's metre.
 export const GUNSHIP_PLATFORM = Object.freeze({
