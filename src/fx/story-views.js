@@ -4,6 +4,11 @@
 // host owns what each means; the strip only names them. On a growing page there
 // is no TANK until the first hull rolls out of the Stålheart (src/fx/hull-issue.js):
 // tank(false) hides the button and disables it, so its hotkey (7) refuses too.
+import { onStation, phaseLeft, startStation } from '../domain/gunship.js';
+import { callGunship } from '../domain/gunship-call.js';
+import { GUNSHIP_ORBIT } from '../content/gunship.js';
+import { createGunshipBriefing } from './gunship-briefing.js';
+
 export function createStoryViews(root, on) {
   const nav = document.createElement('nav'); nav.id = 'story-views'; root.append(nav);
   let current = 'tank', ship = null, tankShown = true;
@@ -23,4 +28,45 @@ export function createStoryViews(root, on) {
   function meter(progress, full) { if (!ship) return; ship.disabled = !full; ship.classList.toggle('ready', full); ship.classList.remove('live'); const t = full ? 'GUNSHIP · CALL' : `GUNSHIP · ${Math.round(progress * 100)}%`; if (ship.textContent !== t) ship.textContent = t; }
   mounts([]);
   return { active, mounts, station, meter, sol82, tank, dispose() { nav.remove(); } };
+}
+
+// THE CONTROLLER'S SIDE of the strip, moved out of the controller's storyApi unchanged; the controller merges it back into
+// storyApi. unlock('views') builds the strip once (the controller keeps it as its storyViews) and wires what each button means:
+// TANK leaves the seat; a mount takes that sentry's optic, or switches to it from a seat; GUNSHIP takes the gunship's guns while
+// it is overhead or can be called in, the briefing first (once per browser, the game paused under it) unless a sector is being
+// fought; MAP is the global view, or the seat's own map. Every unlock then names the mounts (none on an automated page), shows
+// or hides TANK, and sets the pass and the lit button.
+// `host` hands in the controller: its fixed objects and functions as values (root, towers, gunship, gunshipRig, automated,
+// enterPilot, leavePilot, setView, showBrief), what it rebinds as getters (story, storyViews, pilot, pilotMode, pilotHost,
+// sectorRun, gunshipBriefing, paused) and the lets it writes as setters (setStoryViews and setGunshipBriefing, each returning
+// what it wrote as the `??=` they stand in for did, and setPaused).
+export function createUnlockHost(host) {
+  const { root, towers, gunship, gunshipRig, automated, enterPilot, leavePilot, setView, showBrief } = host;
+  return {
+    unlock: (what) => {
+      if (what === 'views') {
+        host.storyViews() ?? host.setStoryViews(createStoryViews(root, {
+          tank: () => leavePilot(),
+          mount: (key) => {
+            if (key === 'gunship') {
+              if (!onStation(gunship) && !(gunshipRig.onCall() && callGunship(gunshipRig.call) && startStation(gunship, GUNSHIP_ORBIT))) return;
+              const seat = () => { if (!host.pilotMode()) enterPilot(towers.map((t) => t.ci)); if (host.pilot().mountGunship() !== 'mounted') host.storyViews().active('tank'); else showBrief('gunship_pass'); };
+              // Isao's line comes with the seat, not the pass. The first seat is preceded by the briefing, the game paused under it
+              if ((host.gunshipBriefing() ?? host.setGunshipBriefing(createGunshipBriefing(root))).seen()) seat();
+              else if (host.sectorRun()?.state().phase === 'fighting') { host.gunshipBriefing().later(); seat(); }   // a live sector is never frozen under it: it waits for the next sector's brief
+              else host.gunshipBriefing().openPaused({ get: () => host.paused(), set: (v) => { host.setPaused(v); } }, () => { if (onStation(gunship)) seat(); else host.storyViews().active('tank'); });
+              return;
+            }
+            if (host.pilotMode()) host.pilotHost()?.pick(key);
+            else { const tw = towers.find((t) => t.key === key); if (tw) enterPilot([tw.ci, ...towers.map((t) => t.ci).filter((c) => c !== tw.ci)]); }
+          },
+          map: () => (host.pilotMode() ? host.pilot().setView('map') : setView('orbit')),
+        }));
+        host.storyViews().mounts(automated() ? [] : towers.map((t) => ({ key: t.key, label: t.def.label.replace(/^\d+\.\s*/, '') })));
+        host.storyViews().tank(!host.story()?.hull?.held());
+        host.storyViews().station(onStation(gunship), phaseLeft(gunship));
+        host.storyViews().active(host.pilot()?.state.tower?.key ?? 'tank');
+      }
+    },
+  };
 }

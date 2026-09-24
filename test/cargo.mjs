@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three.module.js';
 import { createCargo, deckOf } from '../src/fx/cargo.js';
-import { createExpeditionGlue, towerName } from '../src/fx/expedition-glue.js';
+import { createExpeditionGlue, createExpeditionsHost, towerName } from '../src/fx/expedition-glue.js';
 import { CARGO_LOOK, CARGO_TINTS, CARGO_ASSETS } from '../src/content/cargo.js';
 import { makeExpeditions, siteState } from '../src/domain/expeditions.js';
 import { STORY_EXPEDITIONS } from '../src/content/story-defaults.js';
@@ -184,5 +184,34 @@ function makeHull() {
   glue.dispose();
 }
 
+{
+  // THE CONTROLLER'S HOST (createExpeditionsHost): one glue per story, built from the controller's own state and driven through
+  // storyApi only when the story has expeditions; the nests are spawned through storyApi, the guards left are the live guard bodies
+  // and the queued ones, and the part landed at home is an order for Isao
+  const scene = new THREE.Scene(), hull = makeHull(); scene.add(hull);
+  const centers = [[0, 1, 0], [0.6, 0.8, 0]];
+  const story = { expeditions: makeExpeditions(STORY_EXPEDITIONS.sites), siteCells: { 'rocket-a': { cell: 1, clear: 16 } }, home: 0, hud: { sites: () => {} } };
+  const log = [], orders = [], enemies = [], spawnQueue = [], player = { pos: centers[0] };
+  const storyApi = { spawn: (type, ci, o) => { log.push(['spawn', ci, o.guard.site]); spawnQueue.push({ guard: o.guard }); } };
+  let current = story;
+  Object.assign(storyApi, createExpeditionsHost({ storyApi, scene, sfx, SOUNDS: {}, BREACH_SOUNDS: {}, STORY_SOUNDS: {}, player, enemies, spawnQueue, orders,
+    showBrief: (id) => log.push(['brief', id]), showCallout: (text, cls) => log.push(['callout', text, cls]), showTowerToast: (key) => log.push(['toast', key]), spawnIsao: () => log.push(['isao']), updateHud: () => log.push(['hud']),
+    story: () => current, graph: () => ({ centers }), cellSide: () => 0.05, playerMesh: () => hull, storyBase: () => null, cellIndex: () => (p) => (p[0] > 0.3 ? 1 : 0) }));
+  const glue = storyApi.expeditions();
+  assert.equal(storyApi.expeditions(), glue, 'one glue per story'); assert.equal(story.glue, glue);
+  storyApi.expeditionsBegin(); assert.ok(log.length && log.every((l) => l.join() === 'spawn,1,rocket-a'), 'the first site opens with its nest, through storyApi.spawn');
+  storyApi.expeditionStep(); assert.equal(siteState(story.expeditions, 'rocket-a'), 'guarded', 'a queued guard still guards');
+  spawnQueue.length = 0; enemies.push({ alive: false, guard: { site: 'rocket-a' } }); storyApi.expeditionStep();
+  assert.equal(siteState(story.expeditions, 'rocket-a'), 'cleared', 'a dead guard does not');
+  player.pos = centers[1]; storyApi.expeditionStep(); glue.tick(0.6);
+  assert.equal(story.expeditions.carrying, 'rocket-a'); assert.ok(log.some((l) => l[0] === 'callout' && /PART SECURED/.test(l[1]) && l[2] === 'co-cargo'));
+  player.pos = centers[0]; storyApi.expeditionStep();
+  for (let i = 0; i < 120; i++) glue.tick(1 / 60);
+  assert.deepEqual(orders.map((o) => [o.kind, o.ci, o.cost, o.seconds, typeof o.bed, typeof o.done]), [['receive', 0, 0, CARGO_LOOK.receive.seconds, 'function', 'function']], 'the landed part is an order for Isao');
+  assert.deepEqual(log.slice(-2), [['isao'], ['hud']]);
+  const n = log.length; current = { ...story, expeditions: null, glue: null }; storyApi.expeditionsBegin(); storyApi.expeditionStep(); current = null; storyApi.expeditionStep();
+  assert.equal(log.length, n, 'no expeditions: nothing'); glue.dispose();
+}
+
 assert.ok(Object.keys(CARGO_TINTS).length && CARGO_ASSETS.flag.endsWith('.glb') && CARGO_ASSETS.crate.endsWith('.glb'));
-console.log('Cargo: the flag raised and lowered, the crate swung onto the deck and riding, the drop landing and sinking, the throw-off, bounded crates and trophies, the glue on the expedition rules.');
+console.log('Cargo: the flag raised and lowered, the crate swung onto the deck and riding, the drop landing and sinking, the throw-off, bounded crates and trophies, the glue on the expedition rules, and the controller\'s host.');

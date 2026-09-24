@@ -1,11 +1,11 @@
 import { createSentryPilot } from './sentry-pilot.js';
-import { DEFAULT_TANK, SHELL_SPEED, SHELL_REACH, TANK_DRIVE, TANK_STEER } from './content/tank.js'; import { makeDriveRamp, stepDriveRamp, scrubDriveRamp } from './domain/drive-ramp.js'; import { hullDepth, deepensContact } from './domain/hull-contact.js'; import { makeSteerEase, stepSteerEase, steerBank } from './domain/steer-ease.js'; import { nextRepair } from './domain/repair-orders.js'; import { baseFor, restoreSeatView } from './domain/seat-view.js'; import { BASE_REPAIR, BASE_BUILDER } from './content/base-programme.js';
+import { DEFAULT_TANK, SHELL_SPEED, SHELL_REACH, TANK_DRIVE, TANK_STEER } from './content/tank.js'; import { makeDriveRamp, stepDriveRamp, scrubDriveRamp } from './domain/drive-ramp.js'; import { hullDepth, deepensContact } from './domain/hull-contact.js'; import { makeSteerEase, stepSteerEase, steerBank } from './domain/steer-ease.js'; import { baseFor, restoreSeatView } from './domain/seat-view.js'; import { BASE_REPAIR, BASE_BUILDER } from './content/base-programme.js';
 import { createGameBreaches } from './game-breaches.js'; import { ramShotPose } from './domain/showcase-shot.js';   /* THE RAM BEAT'S OWN FRAMING: low behind the hull (src/domain/showcase-shot.js; the band of cells it drives into is the showcase hooks') */
 import { createBoardSurface } from './fx/board-surface.js'; import { createCampaignDebrief, sparkline } from './fx/campaign-debrief.js'; import { createSectorRun } from './fx/sector-run.js'; import { createBackDoor } from './fx/back-door.js'; import { isaoFace, orbitFrame, sitesDir, sitesRadius } from './domain/story-shots.js';
 import { startDiveShot } from './fx/dive-shot.js'; import { makeShaderWarmer } from './fx/shader-warm.js'; import { waveGap } from './domain/wave-spread.js';
 import { BREACH_SOUNDS } from './content/breach-defaults.js';
 import { SOUNDS } from './content/runtime.js';
-import { emergence } from './domain/breach-waves.js'; import { applyScare, stampScare, scarePace, isScared, towardScare, awayExits } from './domain/impact-scare.js'; import { EXPLOSION_SCARE, SCARE_FREEZE_S } from './content/explosions.js'; import { createThermalHeat } from './fx/thermal-heat.js'; import { isAutomated, pilotMultipliers } from './domain/automation.js'; import { fillFromKill, fillFromWaveClear, isFull as callFull, callGunship, callProgress } from './domain/gunship-call.js'; import { GUNSHIP_CALL, GUNSHIP_FAR } from './content/gunship.js'; import { unlockedTowers } from './domain/expeditions.js'; import { createExpeditionGlue } from './fx/expedition-glue.js'; import { CARGO_LOOK } from './content/cargo.js'; import { STORY_EXPEDITIONS } from './content/story-defaults.js'; import { makeSiteRing as siteRing, disposeSiteRing } from './fx/site-ring.js'; import { due as programmeDue, begin as programmeBegin, finish as programmeFinish, hasPerk as programmeHas, perks as programmePerks, rebuildDue, snapshot as programmeSnapshot, lose as programmeLose } from './domain/build-programme.js'; import { BASE_PERKS } from './content/base-programme.js'; import { createProgramWarm } from './fx/program-warm.js';
+import { emergence } from './domain/breach-waves.js'; import { applyScare, stampScare, scarePace, isScared, towardScare, awayExits } from './domain/impact-scare.js'; import { EXPLOSION_SCARE, SCARE_FREEZE_S } from './content/explosions.js'; import { createThermalHeat } from './fx/thermal-heat.js'; import { isAutomated, pilotMultipliers } from './domain/automation.js'; import { fillFromKill, fillFromWaveClear, isFull as callFull, callProgress } from './domain/gunship-call.js'; import { GUNSHIP_CALL, GUNSHIP_FAR } from './content/gunship.js'; import { unlockedTowers } from './domain/expeditions.js'; import { createExpeditionsHost } from './fx/expedition-glue.js'; import { CARGO_LOOK } from './content/cargo.js'; import { STORY_EXPEDITIONS } from './content/story-defaults.js'; import { makeSiteRing as siteRing, disposeSiteRing } from './fx/site-ring.js'; import { hasPerk as programmeHas, snapshot as programmeSnapshot, lose as programmeLose } from './domain/build-programme.js'; import { createProgramWarm } from './fx/program-warm.js';
 import { sinkholeGroundHeight } from './core/sinkhole-shape.js'; import { devModeOn } from './core/dev-mode.js'; import { createControlsCard } from './fx/controls-card.js'; import { createSkipTutorial } from './fx/skip-tutorial.js'; import { skipTutorialUrl } from './core/story-route.js'; import { STORY_SKIP } from './content/story-defaults.js'; import { createShowcase } from './fx/showcase.js'; import { showcaseOn } from './platform/showcase-entry.js';   /* THE SHOWCASE (owner, 2026-09-18): the core loop as a montage over this very world, before the landing */   /* SKIP TUTORIAL (owner, 2026-09-16): the player's own way past the opening, and the state ?skip=defence starts in */
 import { makeOrdnanceShell } from './shell.js';
 import { firingFor } from './content/firing-defaults.js'; import { RELEASE_EVENTS, releasesHeld, releaseHeld } from './core/held-input.js';
@@ -28,10 +28,10 @@ import { storage as localStorage } from './storage.js';
 import * as THREE from '../vendor/three.module.js';
 import GUI from '../vendor/lil-gui.esm.js';
 import { bfsDist, BLOCKED, PATH, ROOM } from './dungeon.js';
-import { buildGameWorld, readStoryQuery, STORY_SOUNDS, takeControlPose } from './platform/story-world.js'; import { SENTRY_HEAT } from './content/sentry-heat.js'; import { coolHeat } from './core/heat.js'; import { paintBarrelHeat } from './fx/barrel-heat.js'; import { createStoryViews } from './fx/story-views.js'; import { buildReadout } from './fx/build-readout.js'; import { createStoryMonitor } from './fx/story-monitor.js'; import { createDaylight } from './fx/daylight.js'; import { createStoryScope, createScopeFeed } from './fx/story-scope.js'; import { createSyntheticModal } from './fx/synthetic-modal.js'; import { createBrass } from './fx/brass.js';
+import { buildGameWorld, readStoryQuery, STORY_SOUNDS, takeControlPose } from './platform/story-world.js'; import { SENTRY_HEAT } from './content/sentry-heat.js'; import { coolHeat } from './core/heat.js'; import { paintBarrelHeat } from './fx/barrel-heat.js'; import { createUnlockHost } from './fx/story-views.js'; import { buildReadout } from './fx/build-readout.js'; import { createStoryMonitor } from './fx/story-monitor.js'; import { createDaylight } from './fx/daylight.js'; import { createStoryScope, createScopeFeed } from './fx/story-scope.js'; import { createSyntheticModal } from './fx/synthetic-modal.js'; import { createBrass } from './fx/brass.js';
 import { mulberry32, randomSeed } from './rng.js';
 import { createLaserStation } from './fx/laser-station.js'; import { LASER_GAME, LASER_STRUCTURES } from './content/orbital-laser.js'; import { makeTriadIcon, glossCard, GAMEPLAY_TIPS } from './fx/briefing-cards.js';
-import { computeBerths, berthIndexFor } from './berths.js'; import { createHullHost } from './fx/hull-issue.js'; import { berthRun, berthHeading, deployU, easeDeploy, deployFraming } from './domain/deploy-path.js';
+import { computeBerths, berthIndexFor } from './berths.js'; import { createProgrammeHost } from './fx/programme-host.js'; import { strikeFallPose, droneRidePose, bastionPose, tankViewPose } from './domain/camera-goal.js'; import { createShopRadial } from './fx/shop-radial.js'; import { berthRun, berthHeading, deployU, easeDeploy, deployFraming } from './domain/deploy-path.js';
 import { wantsSecondary, shellsForAll } from './autofire.js';
 import { printPhase, printOffset, printOn, patternSecsFor } from './printpath.js';
 import { createBeam } from './beamfx.js';
@@ -66,7 +66,7 @@ import { labLine, parseLabQuery } from './lab.js';
 import { bakeGalaxyCube } from './galaxybake.js';
 import { SKY_PRESET } from './galaxyseed.js';
 import { makeScore } from './score.js';
-import { TOWERS, TOWER_BY_KEY, MAX_TIER, upgradeCost, effectiveStats as baseEffectiveStats, pickTarget, shotInterval, unlockedTowerKeys, towerUnlockWave, TOWER_ORDER, starterTower, towerSound, ROSTER } from './towers.js';
+import { TOWERS, TOWER_BY_KEY, MAX_TIER, upgradeCost, effectiveStats as baseEffectiveStats, pickTarget, shotInterval, unlockedTowerKeys, TOWER_ORDER, starterTower, towerSound, ROSTER } from './towers.js';
 import { makeEconomy, sellRefund } from './economy.js';
 import { pickTier } from './perftier.js';
 import { applyWeatheredMaterial } from './fx/weathered-material.js';
@@ -1743,7 +1743,7 @@ export function initTdTab(root) {
   // camera renders down -Z (three.js special-cases isCamera in lookAt).
   // The camera goal quaternion MUST come from a camera instance, or the view
   // ends up rotated 180° — staring backward along the heading.
-  const tmpCam = new THREE.PerspectiveCamera(); const poseCamera = ({ eye, look, up }, out) => { out.pos.set(eye[0], eye[1], eye[2]); tmpCam.position.copy(out.pos); tmpCam.up.set(up[0], up[1], up[2]); tmpCam.lookAt(look[0], look[1], look[2]); out.quat.copy(tmpCam.quaternion); };   /* a shot's pose (eye, look, up) as a camera goal */
+  const tmpCam = new THREE.PerspectiveCamera(); const poseCamera = ({ eye, look, up }, out, bias = false) => { out.pos.set(eye[0], eye[1], eye[2]); tmpCam.position.copy(out.pos); tmpCam.up.set(up[0], up[1], up[2]); tmpCam.lookAt(look[0], look[1], look[2]); if (bias) applyViewportBias(tmpCam); out.quat.copy(tmpCam.quaternion); };   /* a shot's pose (eye, look, up) as a camera goal; bias: the phone's visible band (applyViewportBias) */
 
   // --- colors: everything visual comes from the active look ----------------
   const look = () => LOOKS[params.look] || LOOKS.solid;
@@ -2436,143 +2436,14 @@ export function initTdTab(root) {
       shot.poseAt(Math.min(1, Math.max(0, 1 - shot.left / shot.dur)), camGoal);
       return;
     }
-    if (showcaseRamCam && player.pos) { const p = ramShotPose({ pos: player.pos, dir: player.smoothDir, cellSide, wallHeight: params.wallHeight, unitScale }); camGoal.pos.set(p.eye[0], p.eye[1], p.eye[2]); tmpCam.position.copy(camGoal.pos); tmpCam.up.set(p.up[0], p.up[1], p.up[2]); tmpCam.lookAt(p.look[0], p.look[1], p.look[2]); applyViewportBias(tmpCam); camGoal.quat.copy(tmpCam.quaternion); return; }   /* THE RAM BEAT'S CAMERA, and only while the montage's third beat is up (gameHooks.showcase.ram): it sits BELOW the seats and the shots above it — a seat's pose and a cinematic still outrank it — and above the gameplay views, whose third-person offset looks a cell and a half ahead from high behind and frames the hull off the bottom edge */ if (strike.falling > 0) {
-      // riding the munition down: straight along the target cell's normal,
-      // altitude easing on a smoothstep — slow at first, fast near impact,
-      // which is what falling feels like. Shake is two incommensurate sines
-      // (deterministic; render-only) escalating hard past 85%.
-      const ci = strike.fallCi;
-      const c = graph.centers[ci];
-      const nrm = graph.normals[ci];
-      const pr = fallProgress(strike);
-      const ez = pr * pr * (3 - 2 * pr);
-      const alt = 2.6 - (2.6 - params.wallHeight * 3 - cellSide * 0.8) * ez;
-      const shakeAmt = (0.004 + 0.012 * pr + (pr > 0.85 ? (pr - 0.85) * 0.25 : 0)) * cellSide * 8;
-      const st = performance.now() * 0.001;
-      const ref = Math.abs(nrm[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
-      const t1 = norm3(cross3(nrm, ref));
-      const t2 = cross3(nrm, t1);
-      const sx = Math.sin(st * 47.0) * shakeAmt;
-      const sy = Math.sin(st * 31.7) * shakeAmt;
-      const eye = add3(scale3(nrm, 1 + alt), add3(scale3(t1, sx), scale3(t2, sy)));
-      camGoal.pos.set(eye[0], eye[1], eye[2]);
-      tmpCam.position.copy(camGoal.pos);
-      tmpCam.up.set(t1[0], t1[1], t1[2]);
-      tmpCam.lookAt(c[0], c[1], c[2]);
-      camGoal.quat.copy(tmpCam.quaternion);
-      return;
-    }
-    if (params.view === 'drone' && isao) {
-      // RIDING ISAO. Purely a camera for now — he still flies his own
-      // orders, you are just on board. The point is diegetic: a free look
-      // over the whole shell is a strange power for a tank commander to
-      // have, and an obvious one for the survey drone that is already up
-      // there. The board answers "how are you seeing this" without a menu.
-      //
-      // Framed from behind and slightly above his rotor plane, looking
-      // where HE is looking: the site on the way out, the print while he
-      // works, his drift while he waits. That means the shot is composed by
-      // the job rather than by the camera, which is the whole reason to
-      // hang a view on a working machine instead of on a free gimbal.
-      const bp = isao.obj.position;
-      const up = isao.dir;
-      // FORWARD IS WHERE THE PILOT IS POINTING — one notion of forward,
-      // shared by the stick and the lens.
-      //
-      // This used to be derived from the JOB (the order's cell, or
-      // isao.loiter), which was right when the comment above was written and
-      // this view really was only a camera riding along. Piloting arrived
-      // later and the camera was never told. Two consequences, both reported
-      // by the operator and both measured by ?droneprobe=1: steering swung
-      // his heading and the view never followed (camera-swing 0.0deg, so
-      // sideways felt dead), and after a turn W flew him off the BACK of the
-      // screen (W-after-turn -0.92, so forward was back). With no order,
-      // isao.loiter is his own position, so `sub3(aimC, up)` was literally
-      // the zero vector and the frame fell through to an arbitrary tangent.
-      //
-      // The frame still comes from the SPHERE, not from the mesh's facing:
-      // hanging it off his quaternion put the lens inside him whenever he
-      // was hovering nose-down over a print, and the tangent is stable
-      // through every state he has.
-      let fwd;
-      if (isaoHeading) fwd = isaoHeading.slice();
-      else {
-        const aimC = isao.order ? norm3(graph.centers[isao.order.ci]) : isao.loiter;
-        fwd = sub3(aimC, up);
-      }
-      fwd = sub3(fwd, scale3(up, dot3(fwd, up)));   // onto the tangent plane
-      const fl = len3(fwd);
-      fwd = fl > 1e-6 ? scale3(fwd, 1 / fl) : norm3(cross3(up, [0, 1, 0]));
-      const back = cellSide * 4.2, lift = cellSide * 1.6;
-      camGoal.pos.set(
-        bp.x - fwd[0] * back + up[0] * lift,
-        bp.y - fwd[1] * back + up[1] * lift,
-        bp.z - fwd[2] * back + up[2] * lift,
-      );
-      tmpCam.position.copy(camGoal.pos);
-      tmpCam.up.set(up[0], up[1], up[2]);
-      // Aim BETWEEN him and the job, not at either. Aimed at the machine
-      // you get a machine and no context; aimed at the site he drops out of
-      // frame entirely, which is what the first cut did while he was
-      // hovering directly over it. Just past him keeps both.
-      const aimCi = isao.order ? isao.order.ci : -1;
-      if (aimCi >= 0) {
-        const c = graph.centers[aimCi];
-        const top = 1 + params.wallHeight;
-        const k = 0.45;
-        tmpCam.lookAt(
-          bp.x + (c[0] * top - bp.x) * k,
-          bp.y + (c[1] * top - bp.y) * k,
-          bp.z + (c[2] * top - bp.z) * k,
-        );
-      } else {
-        // waiting: past him along the drift, tipped down at the shell —
-        // the loiter shot
-        tmpCam.lookAt(
-          bp.x + fwd[0] * cellSide * 2.2 - up[0] * cellSide * 1.3,
-          bp.y + fwd[1] * cellSide * 2.2 - up[1] * cellSide * 1.3,
-          bp.z + fwd[2] * cellSide * 2.2 - up[2] * cellSide * 1.3,
-        );
-      }
-      camGoal.quat.copy(tmpCam.quaternion);
-      return;
-    }
-    if (params.view === 'bastion' && !buildMode) {
-      // behind the anchor, facing the incoming lane (outward from the
-      // Heart through a watched tower; toward the nearest live portal
-      // when watching the Heart itself)
-      const anchorCi = (watchTower && towers.includes(watchTower)) ? watchTower.ci : dungeon.heart;
-      const ac = graph.centers[anchorCi];
-      const an = graph.normals[anchorCi];
-      const tangentAt = (pnt, toward) => {
-        const nn = norm3(pnt);
-        const raw = sub3(toward, pnt);
-        const flat = sub3(raw, scale3(nn, dot3(raw, nn)));
-        const l = len3(flat);
-        return l > 1e-9 ? scale3(flat, 1 / l) : [1, 0, 0];
-      };
-      let lookDir;
-      if (anchorCi === dungeon.heart) {
-        let bp = null, bd = Infinity;
-        for (const sp of spawnPoints) {
-          if (!sp.alive) continue;
-          const dd = dist3(ac, graph.centers[sp.ci]);
-          if (dd < bd) { bd = dd; bp = graph.centers[sp.ci]; }
-        }
-        lookDir = bp ? tangentAt(ac, bp) : tangentAt(ac, graph.centers[dungeon.spawn]);
-      } else {
-        lookDir = scale3(tangentAt(ac, graph.centers[dungeon.heart]), -1); // outward
-      }
-      const eye = add3(add3(ac, scale3(an, params.wallHeight * 4 + cellSide * 2.0)),
-        scale3(lookDir, -cellSide * 2.8));
-      const look = add3(add3(ac, scale3(an, params.wallHeight)), scale3(lookDir, cellSide * 3));
-      camGoal.pos.set(eye[0], eye[1], eye[2]);
-      tmpCam.position.copy(camGoal.pos);
-      tmpCam.up.set(an[0], an[1], an[2]);
-      tmpCam.lookAt(look[0], look[1], look[2]);
-      camGoal.quat.copy(tmpCam.quaternion);
-      return;
-    }
+    // THE RAM BEAT'S CAMERA, and only while the montage's third beat is up (gameHooks.showcase.ram): it sits BELOW the seats and
+    // the shots above it — a seat's pose and a cinematic still outrank it — and above the gameplay views, whose third-person offset
+    // looks a cell and a half ahead from high behind and frames the hull off the bottom edge
+    if (showcaseRamCam && player.pos) { poseCamera(ramShotPose({ pos: player.pos, dir: player.smoothDir, cellSide, wallHeight: params.wallHeight, unitScale }), camGoal, true); return; }
+    // THE VIEWS' POSES (src/domain/camera-goal.js): the strike's fall, riding Isao, the bastion, the tank's third person and POV
+    if (strike.falling > 0) { poseCamera(strikeFallPose(graph.centers[strike.fallCi], graph.normals[strike.fallCi], fallProgress(strike), params.wallHeight, cellSide, performance.now() * 0.001), camGoal); return; }
+    if (params.view === 'drone' && isao) { poseCamera(droneRidePose({ bp: isao.obj.position.toArray(), up: isao.dir, heading: isaoHeading, order: isao.order, centers: graph.centers, loiter: isao.loiter, cellSide, wallHeight: params.wallHeight }), camGoal); return; }
+    if (params.view === 'bastion' && !buildMode) { poseCamera(bastionPose({ centers: graph.centers, normals: graph.normals, anchorCi: (watchTower && towers.includes(watchTower)) ? watchTower.ci : dungeon.heart, heart: dungeon.heart, spawnCi: dungeon.spawn, portals: spawnPoints, wallHeight: params.wallHeight, cellSide }), camGoal); return; }
     if (buildMode) {
       // free: no elastic return, no angular ceiling. The carried frame is
       // what makes that safe anywhere on the sphere, antipode included.
@@ -2589,45 +2460,10 @@ export function initTdTab(root) {
       camGoal.quat.copy(tmpCam.quaternion);
       return;
     }
-    const c = player.pos;
-    const n = norm3(c);
-    const h = player.smoothDir;
-    // suspension dip while a ram bump is live: sink the eye, ease out.
-    // Recoil pulls the eye straight back along the heading instead.
     const dip = cellSide * 0.95 * bumpFactor() * bumpFactor();
     const kick = cellSide * 0.08 * params.recoil * recoilFactor() * recoilFactor();
-    let eye, look;
     if (mobileShell && params.view === 'pov') params.view = 'third';   // the shell has no first person, whoever wrote it
-    if (params.view === 'third') {
-      // behind and above; pulls back as the creature grows so it stays framed
-      // the shell rides a little LOWER behind (operator: "3rd person,
-      // somewhat low behind"); the desktop pose is untouched
-      const lift = mobileShell ? 0.78 : 1;
-      eye = add3(add3(c, scale3(n, (params.wallHeight * 2.6 + cellSide * 1.1 + unitScale * 1.8) * lift)),
-        scale3(h, -(cellSide * 1.8 + unitScale * 1.6)));
-      // THE LOOK POINT decides where the tank sits in the frame, not the
-      // eye's height. Looking 1.4 cells AHEAD from a low eye put the tank
-      // at screen-y -0.43 — the bottom fifth of a phone's short viewport,
-      // under the stick and the fire pad (operator, builds 1974eb11 and
-      // 2d6b2444: "I still do not see the tank — too high or too forward").
-      // The shell looks nearer the tank so it rides a third up the frame;
-      // the desktop keeps its look-ahead.
-      const ahead = mobileShell ? cellSide * 0.45 : cellSide * 1.4;
-      look = add3(add3(c, scale3(n, params.wallHeight * 0.4 + unitScale * 0.5)),
-        scale3(h, ahead));
-    } else {
-      // pov: down IN the corridor slot, below the wall tops, along its throat
-      eye = add3(add3(c, scale3(n, params.wallHeight * 0.62)), scale3(h, -cellSide * 0.5));
-      look = add3(add3(c, scale3(n, params.wallHeight * 0.28)), scale3(h, cellSide * 2.4));
-    }
-    if (dip > 0) eye = add3(eye, scale3(n, -dip));
-    if (kick > 0) eye = add3(eye, scale3(h, -kick));
-    camGoal.pos.set(eye[0], eye[1], eye[2]);
-    tmpCam.position.copy(camGoal.pos);
-    tmpCam.up.set(n[0], n[1], n[2]);
-    tmpCam.lookAt(look[0], look[1], look[2]);
-    applyViewportBias(tmpCam);
-    camGoal.quat.copy(tmpCam.quaternion);
+    poseCamera(tankViewPose({ c: player.pos, h: player.smoothDir, third: params.view === 'third', mobile: mobileShell, dip, kick, wallHeight: params.wallHeight, cellSide, unitScale }), camGoal, true);
   }
 
   // THE CANVAS IS NOT WHAT THE PLAYER SEES. On a phone `innerHeight` — and
@@ -8384,104 +8220,8 @@ export function initTdTab(root) {
     const note = shopEl.querySelector('.shop-note');
     if (note) note.textContent = text;
   }
-  // RADIAL menu, HokorobiTawaa-style: options ring the tapped cell.
-  // R follows HK's sizing (max(66, min(104, 0.3·viewport-min))); the
-  // anchor clamps so the ring never leaves the screen.
-  function openShop(ci, sx, sy) {
-    root.classList.add('shopping');
-    // The strike owns the board while it is armed, flying, or just landed.
-    // The tap DISPATCH already tries to route around the shop, but a modal
-    // that must never appear mid-ritual is guarded at its own door — every
-    // future tap path inherits the rule instead of re-implementing it.
-    if (strike.armed || strike.falling > 0 || shopMute > 0) return;
-    // An unbuildable cell gets NOTHING, not a radial of greyed-out towers
-    // with "blocked" in the middle. A modal whose every option is disabled
-    // is a wall of no; silence reads as "not here" faster than any label.
-    // (An existing tower still opens — that is upgrade/sell, not placement.)
-    if (!towerByCell.get(ci) && placeError(ci)) { closeShop(); return; }
-    shopCi = ci;
-    if (sx == null && shopPos) [sx, sy] = shopPos;
-    // measure the CONTAINER, not the canvas: hooks can open the shop
-    // before the first resize(), when the canvas still has default size
-    const rect = container.getBoundingClientRect();
-    const R = Math.max(66, Math.min(104, Math.min(rect.width, rect.height) * 0.3));
-    const cx = Math.min(Math.max(sx ?? rect.width / 2, R + 44), rect.width - R - 44);
-    const cy = Math.min(Math.max(sy ?? rect.height / 2, R + 44), rect.height - R - 44);
-    shopPos = [cx, cy];
-    shopEl.style.left = cx + 'px';
-    shopEl.style.top = cy + 'px';
-    const existing = towerByCell.get(ci);
-    const pending = orderByCell.get(ci);
-    let center, items;
-    if (pending) {
-      // an ORDERED cell offers one thing: call it off. Nothing is printed
-      // yet, so the biomass comes back whole — unless Isao is already
-      // standing over it, and then half of it is in the nozzle.
-      const live = orders[0] === pending && isao && isao.state === 'build';
-      const back = live ? Math.round(pending.cost * 0.5) : pending.cost;
-      const what = pending.kind === 'upgrade' ? `${pending.tower.def.label} +1` : TOWER_BY_KEY[pending.key].label;
-      center = `<div class="radial-center">${what}<br>${live ? 'printing' : 'ordered'}</div>`;
-      items = [
-        { cls: 'shop-sell', txt: `cancel<br>+${back}kg`, cancel: true },
-        { cls: 'shop-close', txt: '×' },
-      ];
-    } else if (existing) {
-      const cost = upgradeCost(existing.def, existing.tier);
-      center = `<div class="radial-center">${existing.def.label}<br>tier ${existing.tier}</div>`;
-      items = [
-        cost !== null
-          ? { cls: 'shop-up', txt: `upgrade<br>${cost}kg`, dis: !eco.canAfford(cost) }
-          : { cls: 'shop-up', txt: 'MAX', dis: true },
-        { cls: 'shop-sell', txt: `sell<br>+${sellRefund(existing.spent)}kg` },
-        { cls: 'shop-close', txt: '×' },
-      ];
-      showRangeRing(ci, effectiveStats(existing.def, existing.tier).range, existing.def.color, 0);
-    } else {
-      const err = placeError(ci);
-      center = `<div class="radial-center">${err ? 'blocked' : eco.biomass + 'kg'}</div>`;
-      const unlocked = new Set(automated() ? unlockedTowers(story.expeditions, STORY_EXPEDITIONS.base) : unlockedTowerKeys(wave));
-      items = TOWERS.map((def) => {
-        const locked = !unlocked.has(def.key);
-        return {
-          cls: locked ? 'shop-buy locked' : 'shop-buy',
-          key: def.key,
-          txt: locked
-            ? `${def.label}<br>${automated() ? 'PART OUT' : towerUnlockWave(def.key) === null ? '&#8961; RELAY' : 'W' + towerUnlockWave(def.key)}`   /* after the handover a lock is an undelivered part, not a wave */
-            : `${def.label}<br>${def.cost}kg`,
-          dis: locked || !!err || !eco.canAfford(def.cost),
-          bc: '#' + def.color.toString(16).padStart(6, '0'),
-        };
-      });
-      // POST THE A6 FORWARD (operator: "the player Orders placement of the
-      // Heptapod... player says once: you move there, and it allows a
-      // forward position to be built"). Its berth is where it patrols and
-      // where it walks home to reload, and until the player says otherwise
-      // that is the cell it was printed on — so it wanders near the wall it
-      // came from. This is the one order it takes: a cell to hold instead.
-      //
-      // It costs nothing and it is not a build: nothing is printed, nothing
-      // is queued, the machine simply walks. That is why it sits on an
-      // EMPTY cell's menu rather than in the tower list, and why it appears
-      // only when there is an A6 to send.
-      const walker = towers.find((tw) => tw.a6);
-      if (walker && !err) {
-        items.unshift({ cls: 'shop-move', txt: `${TOWER_BY_KEY.heptapod.label}<br>post here` });
-      }
-      items.push({ cls: 'shop-close', txt: '×' });
-    }
-    const n = items.length;
-    shopEl.innerHTML = center + items.map((it, i) => {
-      const a = -Math.PI / 2 + (i * 2 * Math.PI) / n;
-      const x = (R * Math.cos(a)).toFixed(0);
-      const y = (R * Math.sin(a)).toFixed(0);
-      return `<button class="radial-item ${it.cls}"` +
-        `${it.key ? ` data-key="${it.key}"` : ''}${it.cancel ? ' data-cancel="1"' : ''}` +
-        `${it.dis ? ' disabled' : ''} ` +
-        `style="left:${x}px;top:${y}px;${it.bc ? `border-color:${it.bc}aa;` : ''}">` +
-        `${it.txt}</button>`;
-    }).join('') + `<div class="shop-note" style="top:${R + 44}px">one new tower each wave</div>`;
-    shopEl.classList.remove('hidden');
-  }
+  // THE RADIAL (src/fx/shop-radial.js): the options ring the tapped cell
+  const openShop = createShopRadial({ root, container, shopEl, strike, towerByCell, orderByCell, orders, towers, automated, closeShop, placeError, effectiveStats, showRangeRing, eco: () => eco, isao: () => isao, shopMute: () => shopMute, story: () => story, wave: () => wave, shopPos: () => shopPos, setShopCi: (v) => { shopCi = v; }, setShopPos: (v) => { shopPos = v; } });
   shopEl.addEventListener('click', (ev) => {
     const el = ev.target;
     if (!el.classList) return;
@@ -9412,8 +9152,63 @@ export function initTdTab(root) {
       poll: () => ({ passes: gunship.passes, shieldUp: shieldUp(), drawn: arrayStation.drawn ?? 0, earned: eco.earned, spent: eco.spent, delivered: (story.expeditions?.sites ?? []).filter((s) => s.state === 'delivered').map((s) => s.id), laser: laserStation.stats?.() ?? null }),   /* SOL-82's books: { passes, seconds } */
     });
   }
-  const storyApi = { foundry: (ev, d) => { (foundryFx ??= createFoundryFx(scene, () => storyBase, { cellSide, metresPerCell: 10 })).event(ev, d); if (ev === 'deploy') { showBrief('foundry_deploy'); const fh = storyBase?.structure('foundry')?.holder; if (fh) { const at = norm3(fh.getWorldPosition(new THREE.Vector3()).toArray()); if (isao) isao.assistAt = at; else if (story) story.assistAt = at; } } }   /* ISAO GOES TO WORK AT ONCE (owner, 2026-09-14): he tends the foundry from its deploy until the first print order */, /* the arrival recycled: the beat's events become the swap, the clip, the arc, the cut and the barrels */ order: (key, ci) => orderTower(key, ci, { quiet: true }), grant: (n) => { if (n > 0) eco.addBiomass(n, { category: 'grant' }); }, built: (ci) => towerByCell.has(ci), cost: (key) => TOWER_BY_KEY[key]?.cost ?? 0, isao: () => !!isao, enemies: () => enemies.filter((e) => e.alive).length + spawnQueue.length, /* a queued spawn is already an enemy to the beats: the second hard core sat in the queue the tick the first died, and the Quiver beat settled with it still to come */ spawn: (type, ci, o = null) => { spawnQueue.push({ type, sp: o?.guard ? { ci, alive: true, obj: new THREE.Group() } : story?.source ?? { ci, alive: true, obj: new THREE.Group() }, at: spawnClock, ...o }); }, /* THE EXPEDITIONS (owner, 2026-09-14), seen and heard: the nests, our flags, the crate on the back deck and the trophies live in src/fx/expedition-glue.js; the controller hands it what it owns */ expeditions: () => (story.glue ??= createExpeditionGlue({ story, scene, sfx, hasCue: (k) => !!(SOUNDS[k] || BREACH_SOUNDS[k] || STORY_SOUNDS[k]), cellSide, centers: () => graph.centers, tankPos: () => player.pos, hull: () => playerMesh, guardsLeft: (id) => enemies.some((e) => e.alive && e.guard?.site === id) || spawnQueue.some((q) => q.guard?.site === id), spawn: (...a) => storyApi.spawn(...a), revealSite: (id) => storyBase?.reveal(id), landing: () => storyBase?.structure('foundry')?.holder ?? null, brief: showBrief, callout: (text) => showCallout(text, 'co-cargo'), toast: showTowerToast, receive: (r) => { orders.push({ kind: 'receive', ci: cellIndex(norm3(r.point)), cost: 0, seconds: r.seconds, bed: r.bed, done: r.done }); spawnIsao(); updateHud(); return true; } /* ISAO RECEIVES THE PART: an order that yields to every other (stepWorker) */ })), expeditionsBegin: () => { if (story?.expeditions) storyApi.expeditions().begin(); }, expeditionStep: () => { if (story?.expeditions) storyApi.expeditions().step(); }, brief: (id) => showBrief(id), tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null), breach: (ci, o) => { const obj = buildPortalObj(ci, 0); obj.userData.quiet = !!o?.quiet; scene.add(obj); const sp = { ci, alive: true, obj, hp: 3, found: true }; if (!story.source?.alive) story.source = sp; spawnPoints.push(sp); return sp; }, sourceAlive: () => !!story.source?.alive, briefing: () => !!briefQ, screenOpen: () => !!syntheticModal?.isOpen(), closeup: () => { if (!isao) return; leavePilot(); storyViews?.active('tank'); clearBriefs(); startShot({ id: 'isaoTalk', dur: 9, poseAt: (u, out) => poseCamera(isaoFace(isao.obj.position.toArray(), isao.dir, isao.obj.getWorldDirection(new THREE.Vector3()).toArray(), isao.obj.scale.x, u), out) }); }, /* FACE ON (the first framing sat between his legs and the rocket): in front of the LED panel along his own forward, a drone-size or two out, the queued line cleared so his first line is the first thing on the panel */ sites: () => story.hud.sites(story.sites.map((ci) => norm3(graph.centers[ci]))), planetView: () => { if (!story.sites.length) return; const d = sitesDir(story.sites.map((ci) => graph.centers[ci])); startShot({ id: 'sites', dur: 5, poseAt: (u, out) => poseCamera(orbitFrame(d, sitesRadius(u)), out), onEnd: () => setView('orbit') }); }, /* the sinkhole is a spawn point: an orbital strike on it fills it like any other (operator, 2026-09-13) */ near: (ci, r = 2.2) => enemies.some((e) => e.alive && chord(e.pos, graph.centers[ci]) < cellSide * r), kills: () => rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike, screen: (id) => { if (id !== 'synthetic') return; syntheticModal ??= createSyntheticModal(root); const was = paused; paused = true; syntheticModal.open(BRIEFS.vibration_study.lines, () => { paused = was; }); }, unlock: (what) => { if (what === 'views') { storyViews ??= createStoryViews(root, { tank: () => leavePilot(), mount: (key) => { if (key === 'gunship') { if (!onStation(gunship) && !(gunshipRig.onCall() && callGunship(gunshipRig.call) && startStation(gunship, GUNSHIP_ORBIT))) return; const seat = () => { if (!pilotMode) enterPilot(towers.map((t) => t.ci)); if (pilot.mountGunship() !== 'mounted') storyViews.active('tank'); else showBrief('gunship_pass'); }; /* Isao's line comes with the seat, not the pass. The first seat is preceded by the briefing, the game paused under it */ if ((gunshipBriefing ??= createGunshipBriefing(root)).seen()) seat(); else if (sectorRun?.state().phase === 'fighting') { gunshipBriefing.later(); seat(); } /* a live sector is never frozen under it: it waits for the next sector's brief */ else gunshipBriefing.openPaused({ get: () => paused, set: (v) => { paused = v; } }, () => { if (onStation(gunship)) seat(); else storyViews.active('tank'); }); return; } if (pilotMode) pilotHost?.pick(key); else { const tw = towers.find((t) => t.key === key); if (tw) enterPilot([tw.ci, ...towers.map((t) => t.ci).filter((c) => c !== tw.ci)]); } }, map: () => (pilotMode ? pilot.setView('map') : setView('orbit')) }); storyViews.mounts(automated() ? [] : towers.map((t) => ({ key: t.key, label: t.def.label.replace(/^\d+\.\s*/, '') }))); storyViews.tank(!story?.hull?.held()); storyViews.station(onStation(gunship), phaseLeft(gunship)); storyViews.active(pilot?.state.tower?.key ?? 'tank'); } }, pilot: (ci, laneCi) => { if (pilot?.gunship || laserStation.seated()) return; /* a scripted hand-over never evicts a gunner or SOL-82: the beat is deferred, not the player (2026-09-23) */ enterPilot([ci, ...towers.map((t) => t.ci).filter((c) => c !== ci)]); startShot({ id: 'takeControl', dur: 3.2, poseAt: takeControlPose(perchOf(towerByCell.get(ci) ?? { ci }), graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight), onEnd: () => { setView('bastion'); snapCamera(); } }); } };
-  Object.assign(storyApi, { /* SECTOR 0 (src/domain/story-beats.js construction): the Stålheart stands once its first hull is out; the gunship comes on station from orbit for a free pass */ stalheartStands: () => !!story?.hull?.out(), gunshipArrive: () => { if (!story) return; story.gunshipIn = true; startStation(gunship, GUNSHIP_ORBIT); showBrief('gunship_overhead'); }, /* ISAO KEEPS BUILDING (src/content/base-programme.js, src/domain/build-programme.js): perks() and hasPerk(name) are what the orbital laser, the shield station and the gunship meter consult */ perks: () => (story?.programme ? programmePerks(story.programme) : new Set()), hasPerk: (name) => !!story?.programme && programmeHas(story.programme, name), build: () => { const pg = story.programme, sector = story.sectorN ?? 0; story.hull?.tick(story.hullHost ??= createHullHost({ laserStation, shotId, showBrief, deployStart, deployStep, leavePilot, camera, startShot, deployFramePoseFor, camA, setView, story: () => story, pilot: () => pilot, deploy: () => deploy, t: () => t, playerHP: () => playerHP, storyViews: () => storyViews, setBerths: (v) => { berths = v; }, setPlayerDown: (v) => { playerDown = v; }, setDeploy: (v) => { deploy = v; } }));   /* THE FIRST MÖRK ROLLS OUT OF THE STÅLHEART (src/fx/hull-issue.js): the camera runs to the door's framing with the hull standing under the gantry, then it drives out as any deploy does; under a gunner it is set down outside the door */ if (rebuildDue(pg, sector) && playerHP < PLAYER_MAX) { playerHP = Math.min(PLAYER_MAX, playerHP + BASE_PERKS.rebuildHulls); syncLifeContainers(); updateHud(); } /* the assembly line rebuilds a lost hull at a sector's start */ if (orders.some((o) => !o.worker)) return; /* THE BACK GATE IS NEVER PRE-BUILT (owner, 2026-09-18): a static base prints nothing, except this one door, which only exists once the player has held the surprise */ const backAt = story.backOpen ? (sectorRun?.backOpenBreaches() ? 'open' : 'held') : null, ctx = { phase: story.beats.phase(), sector, waveActive, back: backAt }; if (!story.grow && programmeDue(pg, ctx)?.gate !== 'back') return; /* the player's orders and the beats' come first */ /* A WALL THAT WAS NEVER PRINTED IS NOT A HOLE (owner, 2026-09-16: "he builds ROCKS instead of WALLS ... before building the gate"): story.wallCells are the PENDING wall cells, open floor until the gate step stands, so a grown base read all of them as breaches at the landing and sent Isao out to "repair" them one by one — each trip tagged its cell BLOCKED and the lattice drew ROCK there, before the gate. The rim is only repairable once it stands, exactly as a static stage-4 base has it from the first frame */ const stood = programmeHas(pg, 'gate'), broke = stood ? (story.wallCells ?? []).filter((wc) => dungeon.tags[wc] !== BLOCKED) : [], repair = stood ? nextRepair({ gates: sectorRun?.gates() ?? [], walls: broke, quiet: !waveActive && (sectorRun?.doorsQuiet?.() ?? true) }, BASE_REPAIR) : null; if (repair) { const rci = repair.kind === 'gate' ? (repair.id ? (story.gateCellOf?.(repair.id) ?? -1) : story.gateCell ?? -1) : repair.ci; if (rci >= 0) { orders.push({ kind: 'repair', repair, ci: rci, cost: 0, seconds: BASE_REPAIR[repair.kind].seconds, bed: story.print.repairBed(repair, BASE_REPAIR[repair.kind]) });   /* HIS REPAIR IS ANIMATED: the print beam rasters the door's own footprint, and the gate climbs under it */ spawnIsao(); if (!pilotMode && !briefQ) showBrief(BASE_REPAIR.brief); updateHud(); return; } } /* ISAO MENDS WHAT THE SWARM BROKE (owner, 2026-09-16): between waves the door and the holes come before the next new building */ const step = programmeDue(pg, ctx), ci = step ? story.print.cellOf(step) : -1; if (ci < 0) return; programmeBegin(pg, step); orders.push({ kind: 'structure', ci, cost: 0, seconds: step.seconds, step, bed: story.print.bed(step) }); spawnIsao(); if (!pilotMode && !briefQ) showBrief(step.brief); updateHud(); }, /* his line as he starts, never over a manned seat or another line */ repaired: (repair) => { if (repair.kind === 'gate') sectorRun?.repairGate(repair.id ?? 'gate'); else { const rci = repair.ci; dungeon.tags[rci] = BLOCKED; if (tdFullTags) tdFullTags[rci] = BLOCKED; breachedCells.delete(rci); breachQueue.push(rci); storyBase?.restoreWall(rci); rebuildAfterBreach(); recomputePortalDist(); } updateHud(); }, /* the gate back to full, or the wall cell back to rock for the swarm, the tank and the full world alike */ printed: (step) => { story.print.finish(step); programmeFinish(story.programme, step); if (step.gate === 'back') { for (const sk of story.backSockets ?? []) story.socketToward[sk.cell] = sk.toward; recomputePortalDist(); } /* THE BACK GATE STANDS: it seals its mouth through story.sealed, and its mounts beside the back lane become sockets a sentry can be ordered on */ sectorRun?.note({ type: 'print', id: step.id }); /* the sector books Isao's base prints too, not only tower orders */ if (step.walls) { for (const ci of story.wallCells) { dungeon.tags[ci] = BLOCKED; if (tdFullTags) tdFullTags[ci] = BLOCKED; breachQueue.push(ci); } gunshipRig.forgetWalls(); rebuildAfterBreach(); recomputePortalDist(); } /* the walls are rock to the swarm and the tank once they stand, in the full world too: applySector rewrites the tags from it */ if (step.perk === 'station' && story.arrayPad) story.arrayPad.standing = true; /* the solar array's pad charges once the complex stands */ if (step.perk === 'hulls' && story.bayBerths) { berths = story.berths = story.bayBerths; adoptBays(storyBase); } /* the bays become the berths */ } });
+  const storyApi = {
+    // ISAO GOES TO WORK AT ONCE (owner, 2026-09-14): he tends the foundry from its deploy until the first print order
+    // the arrival recycled: the beat's events become the swap, the clip, the arc, the cut and the barrels
+    foundry: (ev, d) => { (foundryFx ??= createFoundryFx(scene, () => storyBase, { cellSide, metresPerCell: 10 })).event(ev, d); if (ev === 'deploy') { showBrief('foundry_deploy'); const fh = storyBase?.structure('foundry')?.holder; if (fh) { const at = norm3(fh.getWorldPosition(new THREE.Vector3()).toArray()); if (isao) isao.assistAt = at; else if (story) story.assistAt = at; } } },
+    order: (key, ci) => orderTower(key, ci, { quiet: true }),
+    grant: (n) => { if (n > 0) eco.addBiomass(n, { category: 'grant' }); },
+    built: (ci) => towerByCell.has(ci),
+    cost: (key) => TOWER_BY_KEY[key]?.cost ?? 0,
+    isao: () => !!isao,
+    // a queued spawn is already an enemy to the beats: the second hard core sat in the queue the tick the first died, and the
+    // Quiver beat settled with it still to come
+    enemies: () => enemies.filter((e) => e.alive).length + spawnQueue.length,
+    spawn: (type, ci, o = null) => { spawnQueue.push({ type, sp: o?.guard ? { ci, alive: true, obj: new THREE.Group() } : story?.source ?? { ci, alive: true, obj: new THREE.Group() }, at: spawnClock, ...o }); },
+    brief: (id) => showBrief(id),
+    tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null),
+    // the sinkhole is a spawn point: an orbital strike on it fills it like any other (operator, 2026-09-13)
+    breach: (ci, o) => { const obj = buildPortalObj(ci, 0); obj.userData.quiet = !!o?.quiet; scene.add(obj); const sp = { ci, alive: true, obj, hp: 3, found: true }; if (!story.source?.alive) story.source = sp; spawnPoints.push(sp); return sp; },
+    sourceAlive: () => !!story.source?.alive,
+    briefing: () => !!briefQ,
+    screenOpen: () => !!syntheticModal?.isOpen(),
+    // FACE ON (the first framing sat between his legs and the rocket): in front of the LED panel along his own forward, a
+    // drone-size or two out, the queued line cleared so his first line is the first thing on the panel
+    closeup: () => { if (!isao) return; leavePilot(); storyViews?.active('tank'); clearBriefs(); startShot({ id: 'isaoTalk', dur: 9, poseAt: (u, out) => poseCamera(isaoFace(isao.obj.position.toArray(), isao.dir, isao.obj.getWorldDirection(new THREE.Vector3()).toArray(), isao.obj.scale.x, u), out) }); },
+    sites: () => story.hud.sites(story.sites.map((ci) => norm3(graph.centers[ci]))),
+    planetView: () => { if (!story.sites.length) return; const d = sitesDir(story.sites.map((ci) => graph.centers[ci])); startShot({ id: 'sites', dur: 5, poseAt: (u, out) => poseCamera(orbitFrame(d, sitesRadius(u)), out), onEnd: () => setView('orbit') }); },
+    near: (ci, r = 2.2) => enemies.some((e) => e.alive && chord(e.pos, graph.centers[ci]) < cellSide * r),
+    kills: () => rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike,
+    screen: (id) => { if (id !== 'synthetic') return; syntheticModal ??= createSyntheticModal(root); const was = paused; paused = true; syntheticModal.open(BRIEFS.vibration_study.lines, () => { paused = was; }); },
+    pilot: (ci, laneCi) => {
+      if (pilot?.gunship || laserStation.seated()) return;   // a scripted hand-over never evicts a gunner or SOL-82: the beat is deferred, not the player (2026-09-23)
+      enterPilot([ci, ...towers.map((t) => t.ci).filter((c) => c !== ci)]);
+      startShot({ id: 'takeControl', dur: 3.2, poseAt: takeControlPose(perchOf(towerByCell.get(ci) ?? { ci }), graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight), onEnd: () => { setView('bastion'); snapCamera(); } });
+    },
+  };
+  Object.assign(storyApi, {
+    // SECTOR 0 (src/domain/story-beats.js construction): the Stålheart stands once its first hull is out; the gunship comes on
+    // station from orbit for a free pass
+    stalheartStands: () => !!story?.hull?.out(),
+    gunshipArrive: () => { if (!story) return; story.gunshipIn = true; startStation(gunship, GUNSHIP_ORBIT); showBrief('gunship_overhead'); },
+  },
+  // ISAO KEEPS BUILDING (src/fx/programme-host.js): perks, hasPerk, build, repaired, printed
+  createProgrammeHost({
+    laserStation, shotId, showBrief, deployStart, deployStep, leavePilot, camera, startShot, deployFramePoseFor, camA, setView, PLAYER_MAX, orders, breachQueue, breachedCells, gunshipRig, spawnIsao, updateHud, syncLifeContainers, rebuildAfterBreach, recomputePortalDist, adoptBays,
+    story: () => story, pilot: () => pilot, deploy: () => deploy, t: () => t, playerHP: () => playerHP, storyViews: () => storyViews, sectorRun: () => sectorRun, waveActive: () => waveActive, dungeon: () => dungeon, tdFullTags: () => tdFullTags, storyBase: () => storyBase, pilotMode: () => pilotMode, briefQ: () => briefQ,
+    setBerths: (v) => { berths = v; }, setPlayerDown: (v) => { playerDown = v; }, setDeploy: (v) => { deploy = v; }, setPlayerHP: (v) => { playerHP = v; },
+  }),
+  // THE EXPEDITIONS (src/fx/expedition-glue.js): expeditions, expeditionsBegin, expeditionStep
+  createExpeditionsHost({
+    storyApi, scene, sfx, SOUNDS, BREACH_SOUNDS, STORY_SOUNDS, player, enemies, spawnQueue, orders, showBrief, showCallout, showTowerToast, spawnIsao, updateHud,
+    story: () => story, graph: () => graph, cellSide: () => cellSide, playerMesh: () => playerMesh, storyBase: () => storyBase, cellIndex: () => cellIndex,
+  }),
+  // THE VIEW STRIP (src/fx/story-views.js): unlock
+  createUnlockHost({
+    root, towers, gunship, gunshipRig, automated, enterPilot, leavePilot, setView, showBrief,
+    story: () => story, storyViews: () => storyViews, pilot: () => pilot, pilotMode: () => pilotMode, pilotHost: () => pilotHost, sectorRun: () => sectorRun, gunshipBriefing: () => gunshipBriefing, paused: () => paused,
+    setStoryViews: (v) => (storyViews = v), setGunshipBriefing: (v) => (gunshipBriefing = v), setPaused: (v) => { paused = v; },
+  }));
   Object.assign(storyApi, createBackDoor({ storyApi, sfx, explode, showBrief, camDist, showCallout, warnRing, breachWallCell, rebuildAfterBreach, recomputePortalDist, shotActive, camera, startShot, story: () => story, graph: () => graph, dungeon: () => dungeon, cellSide: () => cellSide, paused: () => paused, deploy: () => deploy, pilotMode: () => pilotMode, pilot: () => pilot }));   /* THE SECOND FRONT (src/fx/back-door.js) */
   const simParam = urlParams.get('sim');
   storyApi.setLaserOnline = (on) => laserStation.setOnline(on);   // the sectors switch SOL-82 on (V1 design: sector 2)

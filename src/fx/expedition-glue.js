@@ -9,6 +9,7 @@ import { reveal, guardsCleared, reach, deliver, deliverAtOnce, hullLost, nextRev
 import { STORY_EXPEDITIONS } from '../content/story-defaults.js';
 import { CARGO_LOOK } from '../content/cargo.js';
 import { TOWER_BY_KEY } from '../towers.js';
+import { norm3 } from '../vec3.js';
 import { createCargo } from './cargo.js';
 
 const v3 = (a) => new THREE.Vector3(a[0], a[1], a[2]);
@@ -171,4 +172,29 @@ export function createExpeditionGlue(h) {
     dispose() { cargo?.dispose(); cargo = null; },
   };
   return glue;
+}
+
+// THE CONTROLLER'S SIDE, moved out of the controller's storyApi unchanged; the controller merges it back into storyApi.
+// expeditions() builds the glue once per story (story.glue) with the controller's hooks above; expeditionsBegin and
+// expeditionStep drive it, through storyApi.expeditions as before, when the story has expeditions.
+// `c` hands in the controller: its fixed objects and functions as values (storyApi, scene, sfx, the three sound tables SOUNDS,
+// BREACH_SOUNDS and STORY_SOUNDS, player, enemies, spawnQueue, orders, showBrief, showCallout, showTowerToast, spawnIsao,
+// updateHud) and what it rebinds as getters (story, graph, cellSide, playerMesh, storyBase, cellIndex).
+export function createExpeditionsHost(c) {
+  const { storyApi, scene, sfx, SOUNDS, BREACH_SOUNDS, STORY_SOUNDS, player, enemies, spawnQueue, orders, showBrief, showCallout, showTowerToast, spawnIsao, updateHud } = c;
+  return {
+    // THE EXPEDITIONS (owner, 2026-09-14), seen and heard: the nests, our flags, the crate on the back deck and the trophies live in
+    // src/fx/expedition-glue.js; the controller hands it what it owns
+    expeditions: () => (c.story().glue ??= createExpeditionGlue({
+      story: c.story(), scene, sfx, hasCue: (k) => !!(SOUNDS[k] || BREACH_SOUNDS[k] || STORY_SOUNDS[k]), cellSide: c.cellSide(),
+      centers: () => c.graph().centers, tankPos: () => player.pos, hull: () => c.playerMesh(),
+      guardsLeft: (id) => enemies.some((e) => e.alive && e.guard?.site === id) || spawnQueue.some((q) => q.guard?.site === id),
+      spawn: (...a) => storyApi.spawn(...a), revealSite: (id) => c.storyBase()?.reveal(id), landing: () => c.storyBase()?.structure('foundry')?.holder ?? null,
+      brief: showBrief, callout: (text) => showCallout(text, 'co-cargo'), toast: showTowerToast,
+      // ISAO RECEIVES THE PART: an order that yields to every other (stepWorker)
+      receive: (r) => { orders.push({ kind: 'receive', ci: c.cellIndex()(norm3(r.point)), cost: 0, seconds: r.seconds, bed: r.bed, done: r.done }); spawnIsao(); updateHud(); return true; },
+    })),
+    expeditionsBegin: () => { if (c.story()?.expeditions) storyApi.expeditions().begin(); },
+    expeditionStep: () => { if (c.story()?.expeditions) storyApi.expeditions().step(); },
+  };
 }
