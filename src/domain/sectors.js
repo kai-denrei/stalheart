@@ -54,6 +54,10 @@ export function releaseWave(st, id, t) {
   return { wave, last: b.wavesReleased === b.wavesPlanned };
 }
 
+// THE CLOCK'S ONE GUARD (2026-09-24): the next pulse arms only while the live bodies plus the bodies it would send fit the
+// budget. An empty field always takes the next pulse, so a pulse bigger than the budget can never stall a sector.
+export const pulseFits = (alive, next, budget) => alive <= 0 || alive + next <= budget;
+
 export const CLOSERS = Object.freeze(['gunship', 'laser', 'shells', 'strike']);
 
 // closed early by `by` (one of CLOSERS); forfeit is forfeitOf's estimate for the waves it will not send. A breach whose

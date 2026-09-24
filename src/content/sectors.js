@@ -21,27 +21,34 @@ const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 
 // (`hardcores`) rather than the twenty-odd solid bodies the surge throws in on its own.
 // hardcores: how many solid cores ride every wave once hardcoresEveryWave is on.
 export const SECTORS = freeze([
-  { n: 1, name: 'THE LANE', breaches: { gate: 2 }, waves: 4, ladderStart: 0, threat: 1.0, held: { kg: 40, points: 400 },
+  { n: 1, name: 'THE LANE', breaches: { gate: 2 }, waves: 6, ladderStart: 0, threat: 2.5, pulse: 16, held: { kg: 40, points: 400 },
     gunshipCall: true, backDoor: false, laser: false, hardcoresEveryWave: false, new: 'the gunship call-in',
-    brief: ['Two mouths out on the lane. They come four times each.', 'Close one early and you give up what it would have paid.'] },
-  { n: 2, name: 'THE BACK DOOR', breaches: { gate: 1, back: 1 }, waves: 4, ladderStart: 2, threat: 1.4, held: { kg: 50, points: 500 },
+    brief: ['Two mouths out on the lane. They come six times each.', 'Close one early and you give up what it would have paid.'] },
+  // THE BACK DOOR: THE FEAST, THEN THE SCRAMBLE (owner, 2026-09-24: "really a chance for the tank to kill tons of rammable soft
+  // enemies for the first wave, and then the necessity to spend resources to quickly re-inforce that area with turrets"). `back`
+  // is the first key, so the back breach is picked and opened first and the gate side waits. `feast` replaces the back breach's
+  // first ladder wave with a flood of soft bodies at the tutorial's surge pace (the books still count it as its first wave), and
+  // the clock holds while it is fought. The SCRAMBLE comes when no more than `scrambleShare` of it is left, or `timeout` seconds
+  // after it rose: Isao asks for turrets behind the bays, the clock resumes, and the gate side opens `gateAfter` seconds later.
+  { n: 2, name: 'THE BACK DOOR', breaches: { back: 1, gate: 1 }, waves: 6, ladderStart: 1, threat: 2.8, pulse: 14,
+    feast: { entries: [{ type: 'amoeba', count: 40 }, { type: 'phage', count: 20 }], pace: 1.7, scrambleShare: 0.35, timeout: 50, gateAfter: 10 }, held: { kg: 50, points: 500 },
     gunshipCall: true, backDoor: true, laser: true, hardcoresEveryWave: false, new: 'the back mouth opens; SOL-82 online',
     brief: ['The rock behind the bays gave way. Something is walking in there.', 'SOL-82 is ours now. Mind where you point it.'] },
-  { n: 3, name: 'BOTH WALLS', breaches: { gate: 1, back: 1 }, waves: 6, ladderStart: 6, threat: 1.9, held: { kg: 60, points: 600 },
+  { n: 3, name: 'BOTH WALLS', breaches: { gate: 1, back: 1 }, waves: 8, ladderStart: 6, threat: 2.2, pulse: 12, held: { kg: 60, points: 600 },
     gunshipCall: true, backDoor: true, laser: true, hardcoresEveryWave: true, hardcores: 2, new: 'hard cores in every wave',
     brief: ['Every wave brings hard cores now. Do not ram them.', 'One front each side. Split the tank and the sky between them.'] },
 ]);
 
 // SECTOR 4 ONWARD is generated from the last authored sector: its flags carry over, `new` is null.
-// waves = wavesBase + (n - SECTORS.length): 6, 7, 8 ... (the spec's "5 + n" read with n counted past the authored table,
-// so the programme grows by one wave a sector instead of jumping from 5 to 9). threat climbs threatStep a sector from the
+// waves = wavesBase + (n - SECTORS.length): 9, 10, 11 ... (one more than sector 3's eight, then one a sector; on the clock a
+// wave is a pulse, so the programme is also the sector's length). threat climbs threatStep a sector from the
 // last authored one. sides cycles by sector, (n - SECTORS.length - 1) % sides.length: 4 both on the gate, 5 both at the
 // back, 6 the gate again. held grows heldStep a sector. Generated breaches start the ladder at ladderStart; ladderCap is
 // the highest ladder wave any sector's wave is sized at (8: the last of the unlock ladder, before the invasion surge), so a
 // long generated programme repeats its top wave at a climbing threat. The cap sits inside the invasion surge now (see SECTORS): 12
 // is where a generated sector's last waves land in the mid-hundreds alive, which is the frame budget this machine holds, not past it.
 export const SECTOR_GENERATOR = freeze({
-  name: 'SECTOR', wavesBase: 6, threatStep: 0.2, ladderStart: 6, ladderCap: 11, held: { kg: 60, points: 600 }, heldStep: { kg: 10, points: 100 },
+  name: 'SECTOR', wavesBase: 8, threatStep: 0.15, ladderStart: 6, ladderCap: 11, held: { kg: 60, points: 600 }, heldStep: { kg: 10, points: 100 },
   sides: [{ gate: 2 }, { back: 2 }],
   brief: ['They are still coming, and there are more of them each time.', 'Hold both mouths. The colony is watching.'],
 });
@@ -49,7 +56,9 @@ export const SECTOR_GENERATOR = freeze({
 // PLACEMENT, in cells (the caller converts to its own units): two breaches of a sector stand at least minSeparationCells
 // apart, never within exclusionCells of a sealed breach (td-tab's gunshipFar uses 6), and are picked from the farthest
 // open cells on their side, at random among those within bandHops of the farthest still valid
-export const SECTOR_PLACEMENT = freeze({ minSeparationCells: 12, exclusionCells: 6, bandHops: 3 });
+// ringHops: gate-side breaches stand on this ring of walking hops from the heart, not the field's far ring (about 69): at the
+// sector pace a wave walks in about thirty seconds instead of a minute (owner, 2026-09-24: "too slow between enemies")
+export const SECTOR_PLACEMENT = freeze({ minSeparationCells: 12, exclusionCells: 6, bandHops: 3, ringHops: 45 });
 
 // LEFT IN THE FIELD: the estimate of what a closed breach's remaining waves would have paid. killShare is the share of a
 // wave assumed killed (1: all of it), streak the multiplier assumed on the bounty (1: no streak credit, the economy's floor)
@@ -59,7 +68,12 @@ export const SECTOR_FORFEIT = freeze({ killShare: 1, streak: 1 });
 // staggerSeconds between two openings (one breach-opening spike at a time, QA 2026-09-16); backDoorLead the least time
 // between the back mouth collapsing and a breach opening behind it; securePause the SECTOR SECURE callout before the debrief;
 // lostHold the wreck on screen before LAST TRANSMISSION
-export const SECTOR_TIMING = freeze({ briefSeconds: 6, staggerSeconds: 1.5, backDoorLead: 8, securePause: 3, lostHold: 2.5 });
+// THE CLOCK (2026-09-24, docs/superpowers/specs/2026-09-24-session-pacing-design.md A): a sector's waves come on its `pulse`,
+// the seconds from one release leaving the breaches to the next, whatever is still alive; waves stack when the player falls
+// behind, which is the pressure. The brief card no longer holds the breaches: they open under it. pace: every sector body's
+// march (the tutorial fifty carry 1.7); aliveBudget: a pulse arms only while the sector's live bodies plus the pulse it would
+// send fit under it (the frame budget this machine holds, test/sectors.mjs); an empty field always takes the next pulse
+export const SECTOR_TIMING = freeze({ briefSeconds: 6, staggerSeconds: 1.5, backDoorLead: 8, securePause: 3, lostHold: 2.5, pace: 1.5, aliveBudget: 520 });
 
 // THE GATE TAKES THE PRESSURE (QA 2026-09-16: a closed gate held a pile of 116 forever and a sector could not be lost).
 // Enemies within pressCells of the gate cell wear it down: dps per soft body, per solid core. At zero it breaks and stands

@@ -75,8 +75,8 @@ assert.ok(checkReport({ sector: 1 }).length > 5, 'a malformed report is refused'
   assert.deepEqual(r.score, { total: 950, kills: 300, rams: 150, bonuses: 500 });
   assert.deepEqual(r.biomass, { earned: 135, spent: 80, bank: 222, leftInField: 60 });
   assert.deepEqual(r.breaches, [
-    { id: 'g1', side: 'gate', wavesPlanned: 4, wavesFought: 2, kills: 2, closedBy: 'laser', openSeconds: 10, leftInField: { kg: 60, points: 700 } },
-    { id: 'g2', side: 'back', wavesPlanned: 4, wavesFought: 0, kills: 2, closedBy: null, openSeconds: 31, leftInField: { kg: 0, points: 0 } },
+    { id: 'g1', side: 'gate', wavesPlanned: 6, wavesFought: 2, kills: 2, closedBy: 'laser', openSeconds: 10, leftInField: { kg: 60, points: 700 } },
+    { id: 'g2', side: 'back', wavesPlanned: 6, wavesFought: 0, kills: 2, closedBy: null, openSeconds: 31, leftInField: { kg: 0, points: 0 } },
   ]);
   assert.deepEqual(r.stamps, ['special-delivery'], 'the part home is the only stamp');
   // the report is a copy: more events do not rewrite it
@@ -103,8 +103,9 @@ assert.ok(!has(secureRun((s) => record(s, { type: 'heartDamage', amount: 1 })), 
 { const { sector, stats } = setup(); holdAll(sector, 5); assert.ok(!has(report(stats, sector, { t: 9, outcome: 'lost', ...rules }), 'flawless'), 'a lost sector is never flawless'); }
 assert.ok(has(secureRun(none), 'held-the-line'));
 assert.ok(!has(secureRun(none, { closeWith: 'gunship', fought: 3 }), 'held-the-line'), 'closed breaches did not hold');
-assert.ok(has(secureRun(none, { closeWith: 'shells', fought: 1 }), 'quick-hands'), 'one of three waves is before half');
-assert.ok(!has(secureRun(none, { closeWith: 'shells', fought: 2 }), 'quick-hands'), 'two of three is not');
+{ const half = Math.ceil(SECTORS[0].waves / 2);   // the programme's length is content: quick is strictly before half of it
+  assert.ok(has(secureRun(none, { closeWith: 'shells', fought: half - 1 }), 'quick-hands'), 'closed before half its waves');
+  assert.ok(!has(secureRun(none, { closeWith: 'shells', fought: half }), 'quick-hands'), 'half is not quick'); }
 assert.ok(!has(secureRun(none), 'quick-hands'), 'held breaches are not quick');
 assert.ok(has(secureRun((s) => record(s, { type: 'ram', combo: 20 })), 'ram-king'));
 assert.ok(!has(secureRun((s) => record(s, { type: 'ram', combo: 19 })), 'ram-king'));

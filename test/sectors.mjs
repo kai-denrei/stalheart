@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { sectorDef, makeSector, releaseWave, nextWaveIndex, breachLive, closeBreach, spendBreach, isSecure, summary, forfeitOf, waveYield, pickBreachCells, CLOSERS } from '../src/domain/sectors.js';
-import { SECTORS, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, BELT_OF, BELTS, BREACH_CLOSERS, SECTOR_STATS } from '../src/content/sectors.js';
+import { pulseFits, sectorDef, makeSector, releaseWave, nextWaveIndex, breachLive, closeBreach, spendBreach, isSecure, summary, forfeitOf, waveYield, pickBreachCells, CLOSERS } from '../src/domain/sectors.js';
+import { SECTORS, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, BELT_OF, BELTS, BREACH_CLOSERS, SECTOR_STATS, SECTOR_TIMING } from '../src/content/sectors.js';
 import { ENEMY_SPEC, CREATURE_TINTS, SAFE_HUES, ALARM_HUES, computeWavePlan } from '../src/enemyspec.js';
 import { waveClearBonus } from '../src/domain/economy.js';
 import { POINT_SCALE, waveScore } from '../src/score.js';
@@ -9,7 +9,10 @@ import { SENTRY_ORDER } from '../src/content/sentries.js';
 
 // the authored table is the spec's
 assert.deepEqual(SECTORS.map((s) => [s.n, s.name, s.breaches, s.waves, s.threat]), [
-  [1, 'THE LANE', { gate: 2 }, 4, 1.0], [2, 'THE BACK DOOR', { gate: 1, back: 1 }, 4, 1.4], [3, 'BOTH WALLS', { gate: 1, back: 1 }, 6, 1.9]]);
+  [1, 'THE LANE', { gate: 2 }, 6, 2.5], [2, 'THE BACK DOOR', { back: 1, gate: 1 }, 6, 2.8], [3, 'BOTH WALLS', { gate: 1, back: 1 }, 8, 2.2]]);
+assert.deepEqual(Object.keys(SECTORS[1].breaches), ['back', 'gate'], 'the back door sector picks and opens its back breach first');
+assert.ok(SECTORS.every((s) => s.pulse > 0), 'every sector keeps its own clock');
+assert.ok(SECTORS[1].feast.entries.every((e) => ENEMY_SPEC[e.type].rammable), 'the feast is all soft bodies');
 assert.deepEqual(SECTORS.map((s) => [s.backDoor, s.laser, s.hardcoresEveryWave]), [[false, false, false], [true, true, false], [true, true, true]]);
 assert.ok(Object.isFrozen(SECTORS[0].breaches) && Object.isFrozen(SECTOR_GENERATOR.sides[0]), 'content is frozen through');
 for (const s of SECTORS) assert.ok(s.held.kg > 0 && s.held.points > 0 && s.brief.length === 2, `${s.name}: a held bonus and two lines`);
@@ -27,7 +30,7 @@ for (const type of Object.keys(ENEMY_SPEC)) {
 
 // sectorDef: authored rows continue the wave ladder, generated rows grow
 const def = (n) => sectorDef(n, SECTORS, SECTOR_GENERATOR);
-assert.deepEqual([1, 2, 3].map((n) => def(n).waveBase), [0, 2, 6], 'each sector starts the ladder where content says');
+assert.deepEqual([1, 2, 3].map((n) => def(n).waveBase), [0, 1, 6], 'each sector starts the ladder where content says');
 assert.ok([1, 2, 3, 4, 9].every((n) => def(n).ladderCap === SECTOR_GENERATOR.ladderCap), 'one ladder cap for every sector');
 for (const n of [1, 2, 3, 4, 5, 6]) assert.ok(def(n).waveBase + 1 <= def(n).ladderCap, `sector ${n}: the first wave sits under the cap`);
 assert.equal(def(0).n, 1, 'n below one is sector one');
@@ -35,8 +38,9 @@ assert.equal(def(2).name, 'THE BACK DOOR');
 const gen = [4, 5, 6].map(def);
 assert.deepEqual(gen.map((d) => d.n), [4, 5, 6]);
 assert.deepEqual(gen.map((d) => d.name), ['SECTOR 4', 'SECTOR 5', 'SECTOR 6']);
-assert.deepEqual(gen.map((d) => d.waves), [7, 8, 9], 'waves wavesBase + n past the table');
-assert.deepEqual(gen.map((d) => d.threat), [2.1, 2.3, 2.5], 'threat +0.2 a sector');
+assert.deepEqual(gen.map((d) => d.waves), [9, 10, 11], 'waves wavesBase + n past the table');
+assert.ok(gen.every((d) => d.pulse === SECTORS[2].pulse), 'the clock carries over');
+assert.deepEqual(gen.map((d) => d.threat), [2.35, 2.5, 2.65], 'threat +0.15 a sector');
 assert.deepEqual(gen.map((d) => d.breaches), [{ gate: 2 }, { back: 2 }, { gate: 2 }], 'the pair alternates sides');
 assert.deepEqual(gen.map((d) => d.waveBase), [6, 6, 6], 'generated sectors start the ladder where sector 3 did');
 assert.ok(gen.every((d) => d.laser && d.backDoor && d.hardcoresEveryWave && d.new === null), 'flags carry over, nothing new');
@@ -51,11 +55,22 @@ assert.ok(gen[1].held.kg > gen[0].held.kg && gen[2].held.points > gen[1].held.po
     + (d.hardcoresEveryWave ? d.hardcores ?? 1 : 0);
   const alive = (d, i) => bodies(d, i) * Object.values(d.breaches).reduce((a, b) => a + b, 0);
   const peaks = [1, 2, 3, 4, 5, 6].map((n) => { const d = def(n); return Math.max(...Array.from({ length: d.waves }, (_, k) => alive(d, k + 1))); });
-  assert.ok(alive(def(1), 1) <= 12, `sector 1 opens gently (${alive(def(1), 1)} alive)`);
+  // sector 0 (the Stålheart's construction) is the gentle start now; sector 1 is the tank's first real fight (owner, 2026-09-24:
+  // "too slow between enemies, not hectic enough"), so it opens with a crowd but still well under what the lane will bring
+  assert.ok(alive(def(1), 1) <= 30, `sector 1 opens with a crowd, not a flood (${alive(def(1), 1)} alive)`);
   for (let i = 1; i < peaks.length; i++) assert.ok(peaks[i] > peaks[i - 1], `sector ${i + 1} peaks harder than the one before (${peaks})`);
   assert.ok(peaks[2] >= 300, `sector 3 fights in the hundreds (${peaks[2]})`);
   assert.ok(Math.max(...peaks) <= 520, `...and never past the frame budget this machine holds (${peaks})`);
   assert.equal(SECTORS[2].hardcores, 2, 'a few hard cores a wave, not the twenty the surge throws in on its own');
+}
+
+// the clock's guard: a pulse arms while it fits, and an empty field always takes the next one
+assert.equal(pulseFits(100, 120, 520), true);
+assert.equal(pulseFits(400, 121, 520), false, 'a pulse that would crowd past the budget waits');
+assert.equal(pulseFits(0, 900, 520), true, 'an empty field never stalls on a big pulse');
+{
+  const pulse = (d, i) => (computeWavePlan(Math.min(d.ladderCap, d.waveBase + i), 1, 4, d.threat).entries.reduce((n, e) => n + e.count, 0) + (d.hardcoresEveryWave ? d.hardcores ?? 1 : 0)) * Object.values(d.breaches).reduce((a, b) => a + b, 0);
+  for (const n of [1, 2, 3, 4, 5, 6]) { const d = def(n); for (let i = 1; i <= d.waves; i++) assert.ok(pulse(d, i) <= SECTOR_TIMING.aliveBudget, `sector ${n} pulse ${i} fits the budget on an empty field`); }
 }
 
 // the programme: release, close, spend
@@ -63,11 +78,11 @@ const d2 = def(2);
 const st = makeSector(d2, [{ id: 'g', side: 'gate', cell: 10 }, { id: 'b', side: 'back', cell: 20 }], 100);
 assert.equal(st.breaches.length, 2);
 assert.ok(breachLive(st, 'g') && breachLive(st, 'b') && !breachLive(st, 'x'));
-assert.equal(nextWaveIndex(st, 'g'), 3, 'sector 2 starts at ladder wave 3');
+assert.equal(nextWaveIndex(st, 'g'), 2, 'sector 2 starts at ladder wave 2');
 assert.equal(spendBreach(st, 'g', 101), null, 'a breach with waves to send cannot be spent');
 const waves = [];
-for (let i = 0; i < 6; i++) waves.push(releaseWave(st, 'g', 100 + i));
-assert.deepEqual(waves, [{ wave: 3, last: false }, { wave: 4, last: false }, { wave: 5, last: false }, { wave: 6, last: true }, null, null]);
+for (let i = 0; i < 8; i++) waves.push(releaseWave(st, 'g', 100 + i));
+assert.deepEqual(waves, [{ wave: 2, last: false }, { wave: 3, last: false }, { wave: 4, last: false }, { wave: 5, last: false }, { wave: 6, last: false }, { wave: 7, last: true }, null, null]);
 {
   const s4 = makeSector(def(4), [{ id: 'a', side: 'gate', cell: 1 }], 0);
   assert.deepEqual(Array.from({ length: 6 }, (_, i) => releaseWave(s4, 'a', i).wave), [7, 8, 9, 10, 11, 11], 'a long programme repeats its top wave at the cap');
@@ -88,7 +103,7 @@ assert.equal(releaseWave(st, 'b', 121), null, 'a closed breach sends nothing');
 assert.equal(nextWaveIndex(st, 'b'), null);
 assert.equal(isSecure(st, 3), false, 'the sector is alive while its enemies are');
 assert.equal(isSecure(st, 0), true);
-assert.deepEqual(summary(st), { sector: 2, name: 'THE BACK DOOR', breaches: 2, open: 0, closed: 1, spent: 1, wavesPlanned: 8, wavesReleased: 5, leftInField: { kg: 88, points: 913 }, bonus: d2.held });
+assert.deepEqual(summary(st), { sector: 2, name: 'THE BACK DOOR', breaches: 2, open: 0, closed: 1, spent: 1, wavesPlanned: 12, wavesReleased: 7, leftInField: { kg: 88, points: 913 }, bonus: d2.held });
 // a breach whose whole programme is out forfeits nothing when it is closed
 const st2 = makeSector(def(1), [{ id: 'a', side: 'gate', cell: 1 }], 0);
 for (let i = 0; i < def(1).waves; i++) releaseWave(st2, 'a', i);

@@ -9,7 +9,7 @@
 // the returned object at its real sites; nothing here imports the controller.
 import { SECTORS, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, SECTOR_STATS, SECTOR_STAMPS, SECTOR_RECORDS, SECTOR_TIMING, SECTOR_GATE, BELT_OF, BREACH_CLOSERS } from '../content/sectors.js';
 import { GUNSHIP_GUN_ORDER } from '../content/gunship.js';
-import { sectorDef, makeSector, releaseWave, closeBreach, spendBreach, isSecure, forfeitOf, waveYield, pickBreachCells } from '../domain/sectors.js';
+import { pulseFits, sectorDef, makeSector, releaseWave, closeBreach, spendBreach, isSecure, forfeitOf, waveYield, pickBreachCells } from '../domain/sectors.js';
 import { makeSectorStats, record, report as sectorReport, mergeBests, campaignTotals } from '../domain/sector-stats.js';
 import { makeGateIntegrity, pressGate, mendGate, gateShare } from '../domain/gate-integrity.js';
 import { computeWavePlan, ENEMY_SPEC } from '../enemyspec.js';
@@ -39,7 +39,7 @@ export function killSource(src, via = null) {
 // hooks: see the controller's createSectorRun call (src/td-tab.js). Every one is required unless marked optional there.
 export function createSectorRun(h) {
   const story = h.story, api = h.api ?? {};
-  let phase = 'idle', def = null, sector = null, stats = null, left = 0, at = 0, pending = [], nextOpenAt = 0, backOpenedAt = null, campaignShown = false, lastPoll = null, lastReport = null, quiet = false;
+  let phase = 'idle', def = null, sector = null, stats = null, left = 0, at = 0, pending = [], cardLeft = 0, feast = null, backOpenedAt = null, campaignShown = false, lastPoll = null, lastReport = null, quiet = false;
   const sps = new Map(), reports = [];
   const now = () => h.now();
 
@@ -78,9 +78,28 @@ export function createSectorRun(h) {
     if (def.hardcoresEveryWave && h.hardcore) entries.push({ type: h.hardcore, count: def.hardcores ?? 1 });   // a few solid cores, the sector's own count (src/content/sectors.js)
     const total = entries.reduce((n, e) => n + e.count, 0), gap = Math.min(h.spawnGap?.max ?? 0.45, (h.spawnGap?.spread ?? 3.2) / Math.max(1, total));
     const out = []; let n = 0;
-    for (const { type, count } of entries) for (let k = 0; k < count; k++) out.push({ type, sp, at: n++ * gap, spread: 0.8 });
+    for (const { type, count } of entries) for (let k = 0; k < count; k++) out.push({ type, sp, at: n++ * gap, spread: 0.8, pace: SECTOR_TIMING.pace });
     return out;
   }
+  // THE FEAST (sector 2's back breach, first wave): the content's soft flood instead of the ladder, spread the same way, at its own pace
+  function feastEntries(f, sp) {
+    const total = f.entries.reduce((n, e) => n + e.count, 0), gap = Math.min(h.spawnGap?.max ?? 0.45, (h.spawnGap?.spread ?? 3.2) / Math.max(1, total));
+    const out = []; let n = 0;
+    for (const { type, count } of f.entries) for (let k = 0; k < count; k++) out.push({ type, sp, at: n++ * gap, spread: 0.8, pace: f.pace ?? SECTOR_TIMING.pace });
+    return out;
+  }
+  // how many of the sector's bodies the next pulse would send from the breaches that are open now
+  function nextPulseSize() {
+    let n = 0;
+    for (const b of sector?.breaches ?? []) {
+      if (b.state !== 'open' || !sps.get(b.id)?.alive || b.wavesReleased >= b.wavesPlanned) continue;
+      if (feastFor(b)) { n += def.feast.entries.reduce((a, e) => a + e.count, 0); continue; }
+      const plan = computeWavePlan(Math.min(b.ladderCap, b.waveIndexBase + b.wavesReleased + 1), 1, h.waveSize, def.threat * (h.threatMult ?? 1));
+      n += plan.entries.reduce((a, e) => a + e.count, 0) + (def.hardcoresEveryWave && h.hardcore ? def.hardcores ?? 1 : 0);
+    }
+    return n;
+  }
+  const feastFor = (b) => !!def?.feast && b.side === 'back' && b.wavesReleased === 0;
 
   function card(lines) {
     if (!h.host || typeof document === 'undefined') return;
@@ -99,15 +118,20 @@ export function createSectorRun(h) {
     stats = makeSectorStats(def, now(), SECTOR_STATS);
     (h.refill ?? api.refillArrays)?.(); api.setLaserOnline?.(!!def.laser);   // the solar array's reserve refills at every sector start
     if (def.backDoor && backOpenedAt === null) { api.openBackDoor?.(); backOpenedAt = now(); }
+    const doorNow = backOpenedAt !== null && now() - backOpenedAt < 1;   // the mouth fell this very sector start
     const sides = Object.entries(def.breaches).map(([side, k]) => `${k} ${side === 'back' ? 'BEHIND THE BAYS' : 'ON THE GATE SIDE'}`).join(' · ');
     card([`SECTOR ${n} · ${def.name}`, `BREACHES ${Object.values(def.breaches).reduce((a, b) => a + b, 0)} · ${sides}`, 'CLOSE ONE EARLY AND ITS REMAINING WAVES PAY NOTHING']);
-    h.brief(n <= SECTORS.length ? `sector_${n}` : 'sector_next'); h.calm?.();   // a calm moment: a briefing put off mid-fight shows now
+    // the collapse carries its own line (the feast); Isao's queue is one deep, so the sector's line would only push it out
+    if (!doorNow) h.brief(n <= SECTORS.length ? `sector_${n}` : 'sector_next');
+    h.calm?.();   // a calm moment: a briefing put off mid-fight shows now
     h.sfx?.('boss_tension');
-    left = Math.max(SECTOR_TIMING.briefSeconds, backOpenedAt !== null ? backOpenedAt + SECTOR_TIMING.backDoorLead - now() : 0);
-    phase = 'brief'; h.hud();
+    // NO DEAD TIME AT THE START (2026-09-24): the breaches are placed and open under the card instead of after it
+    cardLeft = SECTOR_TIMING.briefSeconds; feast = null;
+    place(doorNow);
+    h.hud();
   }
 
-  function place() {
+  function place(doorNow = false) {
     const f = h.field();   // { cellSide, centers, dist, inside(ci), excluded: [ci], farHops, fallback() }
     const want = { ...def.breaches };
     let back = [];
@@ -117,13 +141,16 @@ export function createSectorRun(h) {
       if (!back.length) { want.gate = (want.gate ?? 0) + want.back; delete want.back; }
     }
     let far = 0; for (let i = 0; i < f.dist.length; i++) if (Number.isFinite(f.dist[i]) && f.dist[i] > far && !f.inside(i)) far = f.dist[i];
-    const ring = Math.min(f.farHops, far), gateSide = [];
+    const ring = Math.min(SECTOR_PLACEMENT.ringHops ?? f.farHops, f.farHops, far), gateSide = [];
     for (let i = 0; i < f.dist.length; i++) if (f.dist[i] >= ring - 6 && f.dist[i] <= ring + 3 && !f.inside(i)) gateSide.push({ cell: i, side: 'gate', hops: f.dist[i], pos: f.centers[i] });
     const picks = pickBreachCells({ candidates: [...gateSide, ...back], want, minSeparation: SECTOR_PLACEMENT.minSeparationCells * f.cellSide, exclusion: SECTOR_PLACEMENT.exclusionCells * f.cellSide, excluded: f.excluded.map((ci) => f.centers[ci]), bandHops: SECTOR_PLACEMENT.bandHops, rng: h.rng });
     if (!picks.length) picks.push({ cell: f.fallback(), side: 'gate' });
     sector = makeSector(def, picks.map((p, i) => ({ id: LETTERS[i], side: p.side, cell: p.cell })), now());
-    pending = sector.breaches.map((b) => b.id); nextOpenAt = now();
-    card([]);
+    // WHEN EACH OPENS: one after another, `staggerSeconds` apart (one breach-opening spike at a time); behind a mouth that fell this
+    // very sector start, not before `backDoorLead`; and in a feast sector the gate side waits for the scramble (tick sets it)
+    const t0 = now();
+    sector.breaches.forEach((b, i) => { b.openAt = def.feast && b.side !== 'back' ? Infinity : t0 + i * SECTOR_TIMING.staggerSeconds + (doorNow && b.side === 'back' ? SECTOR_TIMING.backDoorLead : 0); });
+    pending = sector.breaches.map((b) => b.id);
     phase = 'fighting';
   }
 
@@ -184,20 +211,38 @@ export function createSectorRun(h) {
     next();
   }
 
+  // THE SCRAMBLE: once the feast is mostly down (or has had its time), Isao asks for turrets behind the bays, the clock resumes
+  // and the gate side opens a little later
+  function tickFeast(t) {
+    if (!def.feast || !feast || feast.scrambled) return;
+    const sp = sps.get(feast.id), total = def.feast.entries.reduce((n, e) => n + e.count, 0);
+    let left = 0;
+    for (const e of h.enemies()) if (e.alive && !e.guard && e.breachSource && e.breachSource === sp?.obj) left++;
+    for (const q of h.queue()) if (q.sp === sp) left++;
+    if (left > total * (def.feast.scrambleShare ?? 0.35) && t - feast.at < (def.feast.timeout ?? 50)) return;
+    feast.scrambled = t;
+    for (const b of sector.breaches) if (b.openAt === Infinity) b.openAt = t + (def.feast.gateAfter ?? 0);
+    api.backScramble?.(); h.hud();
+  }
+
   function tick(dt) {
     if (phase !== 'idle' && phase !== 'lost-shown') tickGate(dt);
     if (phase === 'brief' || phase === 'fighting' || phase === 'secure') poll(dt);
     const t = now();
     if (phase === 'idle') { if (h.ready()) begin(Math.max(1, h.firstSector ?? 1)); return; }   // the SKIP TUTORIAL entry opens the run at the back-door sector instead of the lane
-    if (phase === 'brief') { left -= dt; if (left <= 0) place(); return; }
+    if (cardLeft > 0) { cardLeft -= dt; if (cardLeft <= 0) card([]); }
     if (phase === 'lost') { left -= dt; if (left <= 0) finish('lost'); return; }
     if (phase === 'secure') { left -= dt; if (left <= 0) finish('secure'); return; }
     if (phase !== 'fighting') return;
-    if (pending.length && t >= nextOpenAt) {
-      const b = breachOf(pending.shift());
-      sps.set(b.id, h.open(b.cell)); b.openedAt = t; nextOpenAt = t + SECTOR_TIMING.staggerSeconds;
+    for (const id of pending.slice()) {
+      const b = breachOf(id);
+      if (!(t >= b.openAt)) continue;
+      // a breach that opens once the fight is on opens quietly: no establishing dive under a player who is driving or aiming
+      pending.splice(pending.indexOf(id), 1);
+      sps.set(b.id, h.open(b.cell, { quiet: sector.breaches.some((x) => x !== b && sps.has(x.id)) })); b.openedAt = t;
       retarget(); h.hud();
     }
+    tickFeast(t);
     for (const b of sector.breaches) {
       const sp = sps.get(b.id);
       if (b.state !== 'open' || !sp || b.wavesReleased < b.wavesPlanned || h.queued(sp)) continue;
@@ -220,16 +265,23 @@ export function createSectorRun(h) {
     if (!sector) return `<div class="hud-obj hud-sector">SECTOR ${def.n} · ${def.name} · BRIEF${g}</div>`;
     const top = sector.breaches.reduce((m, b) => Math.max(m, b.wavesReleased), 0);
     const head = `SECTOR ${def.n} · ${def.name} · BREACHES ${sector.breaches.length} · ${phase === 'fighting' ? `WAVE ${top}/${def.waves}` : 'SECURE'}${g}`;
-    const each = sector.breaches.map((b) => `${b.id} ${b.state === 'open' ? (sps.has(b.id) ? '▮'.repeat(b.wavesReleased) + '▯'.repeat(Math.max(0, b.wavesPlanned - b.wavesReleased)) : 'OPENING') : b.state === 'spent' ? 'HELD' : `SEALED ${BREACH_CLOSERS[b.closedBy] ?? ''}`}`).join(' · ');
+    const each = sector.breaches.map((b) => `${b.id} ${b.state === 'open' ? (sps.has(b.id) ? '▮'.repeat(b.wavesReleased) + '▯'.repeat(Math.max(0, b.wavesPlanned - b.wavesReleased)) : b.openAt === Infinity ? '···' : 'OPENING') : b.state === 'spent' ? 'HELD' : `SEALED ${BREACH_CLOSERS[b.closedBy] ?? ''}`}`).join(' · ');
     return `<div class="hud-obj hud-sector">${head}</div><div class="hud-obj hud-sector">${each}</div>`;
   }
 
   return {
     tick, hudLine,
     // the wave clock may arm only while every breach of the sector stands open and ready and one of them still has waves
-    canRelease: () => !quiet && phase === 'fighting' && !pending.length && sector.breaches.every((b) => b.state !== 'open' || (sps.get(b.id)?.alive && (h.spReady?.(sps.get(b.id)) ?? true))) && sector.breaches.some((b) => b.state === 'open' && b.wavesReleased < b.wavesPlanned),
+    // THE CLOCK (2026-09-24): a pulse may arm whenever a breach that has opened still has waves to send, whatever is alive, as long
+    // as the field plus the pulse fit the budget and no feast is being fought. A breach still opening is fine: the release path
+    // holds its bodies until the hole is open. Breaches not yet due simply join a later pulse.
+    canRelease: () => !quiet && phase === 'fighting' && !(feast && !feast.scrambled) && sector.breaches.some((b) => b.state === 'open' && sps.get(b.id)?.alive && b.wavesReleased < b.wavesPlanned) && pulseFits(aliveSectorEnemies(), nextPulseSize(), SECTOR_TIMING.aliveBudget),
+    // the seconds from one pulse leaving the breaches to the next (null: no sector is fighting, the board keeps its own gap)
+    pulseGap: () => (phase === 'fighting' && def ? def.pulse ?? null : null),
+    // a pulse is over once its bodies have left the queue; guards waiting at expedition sites are not the sector's
+    pulseOver: (queue) => !queue.some((q) => !q.guard),
     // one programme wave from every live breach: queue entries with `at` offsets from now
-    release: (t) => { if (phase !== 'fighting' || !sector) return []; const out = []; for (const b of sector.breaches) { const sp = sps.get(b.id); if (b.state !== 'open' || !sp?.alive) continue; const r = releaseWave(sector, b.id, t); if (r) out.push(...entriesOf(r.wave, sp)); } h.hud(); return out; },
+    release: (t) => { if (phase !== 'fighting' || !sector) return []; const out = []; for (const b of sector.breaches) { const sp = sps.get(b.id); if (b.state !== 'open' || !sp?.alive) continue; const isFeast = feastFor(b), r = releaseWave(sector, b.id, t); if (!r) continue; if (isFeast) { feast = { id: b.id, at: t, scrambled: 0 }; out.push(...feastEntries(def.feast, sp)); } else out.push(...entriesOf(r.wave, sp)); } h.hud(); return out; },
     active: () => phase !== 'idle',
     owns: (sp) => idOf(sp) !== null,
     /* a broken door is held open for everyone: one flag per gate id, which the story base reads per door */
@@ -273,7 +325,7 @@ export function createSectorRun(h) {
       breaches: (sector?.breaches ?? []).map((b) => ({ id: b.id, side: b.side, cell: b.cell, opened: sps.has(b.id), live: b.state === 'open' && !!sps.get(b.id)?.alive, wavesReleased: b.wavesReleased, wavesPlanned: b.wavesPlanned, closedBy: b.closedBy, leftInField: { ...b.leftInField }, bonus: { ...b.bonus } })),
     }),
     test: {
-      release: (id) => { const b = breachOf(id), sp = sps.get(id); if (!b || !sp?.alive) return null; const r = releaseWave(sector, id, now()); if (r) h.push(entriesOf(r.wave, sp)); h.hud(); return r; },
+      release: (id) => { const b = breachOf(id), sp = sps.get(id); if (!b || !sp?.alive) return null; const isFeast = feastFor(b), r = releaseWave(sector, id, now()); if (r && isFeast) { feast = { id, at: now(), scrambled: 0 }; h.push(feastEntries(def.feast, sp)); } else if (r) h.push(entriesOf(r.wave, sp)); h.hud(); return r; },
       close: (id, by) => { const sp = sps.get(id); if (!sp?.alive) return null; h.seal(sp, by); return breachOf(id)?.closedBy ?? null; },
       clearField: () => h.clearField(),
       cont: () => cont(),
