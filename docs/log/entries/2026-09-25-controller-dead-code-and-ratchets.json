@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "2026-09-25-controller-dead-code-and-ratchets",
+  "date": "2026-09-25",
+  "type": "change",
+  "status": "accepted",
+  "title": "The controller's dead code is deleted and its bytes and very long lines are ratcheted beside its lines",
+  "context": "The architecture review of the pacing branch (2026-09-25-pacing-architecture-review) found the line budget met by packing logic into existing one-liners (+5.1 KB, +0 lines); a survey of src/td-tab.js listed code with no caller.",
+  "outcome": "Deleted with no caller anywhere (src, test, scripts, pages): showOverrideModal, bfsDistFromSpawn, distToSeg, the controller's own roundDot/roundDotTex, anyHostiles, VIEW_TAG, TRACK_RATE, the unused speedCtrl/pointsCtrl bindings, the write-only playerSize, absorbed, deploysDone, laserClock and laserSide, storyApi.openSite, and a header describing a heart-tab sibling that no longer exists: 13,505 -> 13,426 lines, budget lowered to match. scripts/architecture.mjs now also ratchets byteBudgets (td-tab 779,969 bytes) and longLines (lines over 500 characters: 42), both only down. The ~84 untested URL-flag probe blocks (3,064 lines, 162 KB) are the flagged-experiment class of the remove-dead-code skill and wait for the owner's answer (asked on Telegram 2026-09-25).",
+  "alternatives": [
+    "A maximum line length: rejected for now, 42 lines already exceed any sensible one; a count that only goes down stops new ones and rewards breaking the old ones up."
+  ],
+  "evidence": [
+    "grep across src, test, scripts and *.html for every deleted symbol: no reference but one history comment",
+    "node test/architecture.mjs (byte and long-line budgets); npm run architecture"
+  ],
+  "supersedes": []
+}

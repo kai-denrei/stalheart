@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "id": "2026-09-25-refactor-robustness",
+  "date": "2026-09-25",
+  "type": "change",
+  "status": "accepted",
+  "title": "Refactor round, robustness: dead enemies freed, frame faults survived and reported once, P in a seat shows the pause card, NEW RUN leaves nothing behind, timers on the game clock, the sector on its own clock",
+  "context": "Owner, 2026-09-25: \"launch a round of refactoring; simplifying and making the code base more robust.\" A read-only survey of src/ ranked the robustness hazards by likelihood and impact (plan: docs/superpowers/plans/2026-09-25-refactor-round.md).",
+  "outcome": "(1) killCreature only marked a record dead and nothing but a regenerate emptied the enemy array, so every per-frame walk paid for every body ever spawned and each record kept ~28 KB (~100 MB by sector 3): the array is compacted in place once a frame after updateEnemies' walk. (2) A throw in frame() froze the picture and, repeating every frame, pushed the boot record out of the 300-entry diagnostics ring within seconds: animate() catches it, still draws, and rethrows each distinct fault once on its own turn (the page's handlers, the ring and the browser suites still see it); the ring folds an identical event into its first entry's count. (3) The Rotor/Quiver/gunship seats and SOL-82's seat flipped the raw paused flag with no card, and leaving the seat left the game frozen with every key but ESC ignored: they call togglePause, which also refuses while an end-of-game, debrief, briefing or study modal owns the pause. (4) The back mouth's dust used wall-clock timeouts (ran under the pause, outlived a restart): a queue on the omen's own clock; the controls card re-armed a 25 s timer every frame when storage was blocked: it reads once; the shader warmer polled forever after a lost context: bounded. (5) The sector read the global t, which runs through frozen dive shots while its tick is skipped: it keeps its own clock, so openings, the feast's timeout and the first sector's grace no longer run out behind a shot, and a sector's seconds no longer count pauses. (6) The placement field's rim BFS over ~71k cells runs once per world; openBackDoor rebuilds the surface only when rock fell. (7) The pacing probe stamps game time. (8) updateHud rebuilt the panel's HTML on each of its 47 call sites, dozens of times in a strike's frame: once a frame plus one catch-up. (9) A NEW RUN restores the lights' night before the new daylight rig reads them (a NEW RUN at noon kept its nights lit), resets the gunship, its meter, track and walls and disposes an MK-9 in flight; loseGame's card waits on the run's own timers; the story's loss card reloads the page.",
+  "alternatives": [
+    "Named pause holds as a pure module replacing the boolean's twelve writers: deferred; routing the seats through togglePause with a modal guard closed the reported freeze with far less surface.",
+    "Painting the HUD only once a frame (fully deferred): rejected, a read right after an action would see a stale panel; the first call in a frame still paints.",
+    "Caching the back-breach candidates: rejected, a breach's blast can change the tiles they depend on."
+  ],
+  "evidence": [
+    "test/diagnostics.mjs, test/daylight-rig.mjs, test/back-omens.mjs (dust on tick), test/sector-run.mjs (a frozen minute does not run out the back door's lead)",
+    "--sectors: a cleared field keeps no dead records; an injected frame fault (faultOnce) leaves the clock running and is reported exactly once",
+    "--seats: P pauses with the card and resumes in the gunship and SOL-82 seats; leaving a paused seat leaves no silent freeze",
+    "--laser-game: after NEW RUN the gunship's passes start over and no MK-9 is in flight",
+    "the default suite, --gunship, --backdoor, --skip-tutorial, --defense green at each commit on branch refactor"
+  ],
+  "supersedes": []
+}
