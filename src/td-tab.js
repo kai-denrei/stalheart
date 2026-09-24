@@ -77,8 +77,7 @@ import { FEEL, loadFeel, saveFeel } from './feelstore.js';
 import { STRIKE_KNOBS, makeStrike, makeStrikeParams, grantStrikes, stepStrike,
   toggleArm, paintTarget, launchStrike, stepFall, skipFall, fallProgress,
   strikeDamage, retargetStrike, orbitProgress } from './strike.js'; import { makeGunship, stepGunship, onStation, phaseLeft, passProgress, mountGunship, dismountGunship, selectGun, stepGun, aimOnSphere, splashDamage, dangerReport, fireRound, stepRounds, paintHeavy, launchHeavy, nudgeHeavy, stepHeavy, heavyState, startStation } from './domain/gunship.js'; import { GUNSHIP_GUNS, GUNSHIP_GUN_ORDER, GUNSHIP_PLATFORM, GUNSHIP_ORBIT, GUNSHIP_TRACK, GUNSHIP_NUKE } from './content/gunship.js'; import { makeTrack, steerTrack, parkTrack, breachLoads } from './domain/gunship-track.js'; import { createGunshipOptic } from './fx/gunship-optic.js'; import { createGunshipDrop } from './fx/gunship-drop.js'; import { createGunshipBriefing } from './fx/gunship-briefing.js'; import { createFoundryFx } from './fx/foundry-fx.js'; import { createExplosions } from './fx/explosions.js';
-import { radarBasis, radarProject, radarBearing, sweepAngle, radarPhosphor,
-  proximitySectors, SENSOR_LEVELS, sensorColor } from './radar.js';
+import { radarBasis, proximitySectors, sensorColor } from './radar.js'; import { createRadarScope } from './fx/radar-scope.js';
 import { BLOOM_GROUPS } from './bloomweights.js';
 import { A6_TUNE, magFor, makeA6, stepA6, arc as a6Arc, a6Line } from './heptapod.js';
 import { SENTRY_TUNE } from './sentry.js';
@@ -9359,7 +9358,7 @@ export function initTdTab(root) {
         playerMesh.visible = params.view !== 'pov' && !deploy?.clip && !story?.hull?.held();   // an authored roll-out owns the hull on screen: ours would stand in it, turret sweeping; an unissued hull is not drawn
         postfx.render(); storyMonitor?.render(renderer, scene, towerSeekers.find((m) => m.pool === talonPool && m.by === pilot?.state.tower)?.mesh ?? null, cellSide, 0);
         playerMesh.visible = !deploy?.clip && !story?.hull?.held();
-        drawRadar(t); laserStation.render(renderer, scene);   // the sweep keeps turning; a dead scope reads as a crash
+        radarScope.draw(t); laserStation.render(renderer, scene);   // the sweep keeps turning; a dead scope reads as a crash
       }
       return;
     }
@@ -9612,167 +9611,11 @@ export function initTdTab(root) {
     // in PoV the camera sits inside the creature — hide it there
     playerMesh.visible = params.view !== 'pov' && !deploy?.clip && !story?.hull?.held();   // the bay's authored hull rolls out alone (operator, 2026-09-13: two turrets, one static, one sweeping); no hull before the Stålheart issues it
     postfx.render(); storyMonitor?.render(renderer, scene, (pilot?.gunship ? gunshipDrop?.mesh() : null) ?? towerSeekers.find((m) => m.pool === talonPool && talonPool && m.by === pilot?.state.tower)?.mesh ?? null, cellSide, dt, pilot?.gunship ? pilot.gunshipOptic() : (pilotMode && pilot?.state.tower && missileOf(pilot.state.tower.key) && pilot.state.tower.pilotTarget && !pilot.state.tower.pilotTarget.pilotAim ? { from: perchOf(pilot.state.tower), pos: pilot.state.tower.pilotTarget.pos } : null));   // the seeker feed rides behind a TALON in flight; the gunship's monitor is the ground truth at the impact point; otherwise the optic inset on the tracked target
-    drawRadar(t); story?.hud.paint(radarCtx, { m: radarCss, cpos: pilot?.state.tower ? graph.centers[pilot.state.tower.ci] : player.pos, up: pilot?.state.tower ? new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray() : player.smoothDir, range: mapMode === 'heart' ? 2.02 : pilotMode ? cellSide * 12 : 1.15, t, mapMode });
+    radarScope.draw(t); story?.hud.paint(radarCtx, { m: radarCss, cpos: pilot?.state.tower ? graph.centers[pilot.state.tower.ci] : player.pos, up: pilot?.state.tower ? new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray() : player.smoothDir, range: mapMode === 'heart' ? 2.02 : pilotMode ? cellSide * 12 : 1.15, t, mapMode });
     laserStation.render(renderer, scene); programWarm.tick(dt);   /* THE SEAT'S FIRST-USE HITCH (src/fx/program-warm.js): the canvas's own programs are linked two objects a frame, here where nothing is bound, instead of 18 at once under the gunner */
   }
 
-  // The scope. Player mode is heading-up around the tank; heart mode (M) is
-  // pole-down over the whole planet. Contacts carry the phosphor: full the
-  // instant the beam passes, decaying behind it, never dark.
-  const sensorDemo = [];
-  function drawRadar(t) {
-    if (!graph || !player.pos) return;
-    const m = radarCss;
-    const dpr = Math.min(devicePixelRatio || 1, 2);
-    const ctx = radarCtx;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const cx = m / 2, cy = m / 2, R = m / 2 - 3;
-    // basis + range: heart mode must hold the whole planet (max chord 2.0)
-    let cpos, up;
-    if (mapMode === 'heart') {
-      const { hn, t1 } = poleFrame();
-      cpos = graph.centers[dungeon.heart]; up = t1;
-      // eslint-disable-next-line no-unused-vars
-      void hn;
-    } else if(pilot?.state.tower) {
-      cpos=graph.centers[pilot.state.tower.ci];
-      up=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion).toArray();
-    } else {
-      cpos = player.pos;
-      up = player.smoothDir;
-    }
-    const basis = radarBasis(cpos, up);
-    const range = mapMode === 'heart' ? 2.02 : pilotMode ? cellSide*12 : 1.15;
-    const sweep = sweepAngle(t);
-
-    // ground: near-black green, three range rings, crosshair, rim
-    ctx.fillStyle = '#031007';
-    ctx.beginPath(); ctx.arc(cx, cy, R + 3, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = 'rgba(90, 255, 140, 0.18)';
-    ctx.lineWidth = 1;
-    for (const f of [1 / 3, 2 / 3, 1]) {
-      ctx.beginPath(); ctx.arc(cx, cy, R * f, 0, Math.PI * 2); ctx.stroke();
-    }
-    ctx.beginPath();
-    ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy);
-    ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R);
-    ctx.stroke();
-
-    // the beam: a conic trail BUILDING toward the beam line, so the glow
-    // sits behind the rotation, then the hot edge itself
-    const phi = sweep - Math.PI / 2;   // canvas angles: 0 = +x, clockwise
-    const grad = ctx.createConicGradient(phi, cx, cy);
-    grad.addColorStop(0, 'rgba(90, 255, 140, 0)');
-    grad.addColorStop(0.72, 'rgba(90, 255, 140, 0)');
-    grad.addColorStop(1, 'rgba(90, 255, 140, 0.30)');
-    ctx.fillStyle = grad;
-    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = 'rgba(140, 255, 180, 0.85)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.lineTo(cx + R * Math.sin(sweep), cy - R * Math.cos(sweep));
-    ctx.stroke();
-
-    const blip = (pos, style, size, always = false) => {
-      const q = radarProject(pos, cpos, basis, range);
-      const bri = always ? 1 : radarPhosphor(radarBearing(q.x, q.y), sweep);
-      const bx = cx + q.x * R, by = cy + q.y * R;
-      ctx.globalAlpha = q.clamped ? bri * 0.5 : bri;
-      ctx.fillStyle = style;
-      ctx.fillRect(bx - size / 2, by - size / 2, size, size);
-      ctx.globalAlpha = 1;
-    };
-
-    // towers: dim cyan fixtures — infrastructure, not contacts
-    for (const tw of towers) blip(graph.centers[tw.ci], '#4bd7e0', 2.5);
-    // enemies: THE contacts, phosphor green, heavies fatter
-    for (const e of enemies) {
-      if (!e.alive) continue;
-      // optical camo: a phantom is a contact only in its decloak window
-      if (e.spec.cloaked && !e.decloaked) continue;
-      blip(e.pos, '#5aff8c', e.spec.rammable ? 2.5 : 4);
-    }
-    // gates: amber, pulsing harder as a wave charges. Known ones only —
-    // discovery still matters.
-    // THE PROXIMITY SENSOR (operator): car-style arcs inside the rim, one
-    // sector each for ahead / starboard / astern / port, one to three arcs by
-    // how close the nearest SOLID contact in that sector is. Visual only —
-    // no sound by request. Only in the heading frame: from the heart's frame
-    // "ahead" means nothing.
-    if (mapMode !== 'heart') {
-      // sensorDemo: positions a probe injects so the arcs can be LOOKED AT
-      // without a live solid contact on the board; empty in play
-      // demo contacts are RELATIVE (fwd/right in cells): world-fixed ones
-      // drifted in bearing and distance as the tank drove, and the
-      // screenshot showed the wrong colours in the wrong sectors
-      const hard = sensorDemo.map((d) => norm3([cpos[0] + basis.fwd[0] * d.fwd * cellSide + basis.right[0] * d.right * cellSide,
-        cpos[1] + basis.fwd[1] * d.fwd * cellSide + basis.right[1] * d.right * cellSide,
-        cpos[2] + basis.fwd[2] * d.fwd * cellSide + basis.right[2] * d.right * cellSide]));
-      for (const e of enemies) {
-        if (!e.alive || e.spec.rammable) continue;
-        if (e.spec.cloaked && !e.decloaked) continue;
-        hard.push(e.pos);
-      }
-      // the CELL rule: blue at 4, orange at 3, red at 2 (radar.js SENSOR_RINGS)
-      const secs = proximitySectors(hard, cpos, basis, range, cellSide);
-      const pulse = 0.72 + 0.28 * Math.sin(t * 9);
-      for (let i = 0; i < secs.length; i++) {
-        const lv = secs[i].level;
-        if (!lv) continue;
-        // sector i is centred at bearing i*90°; canvas angles run from +x
-        // clockwise and bearing 0 is screen-up, so subtract a quarter turn
-        const mid = i * Math.PI / 2 - Math.PI / 2;
-        const half = Math.PI / 4 - 0.14;   // a gap between sectors
-        for (let k = 0; k < lv; k++) {
-          const rr = R - 3 - k * 4.5;
-          ctx.strokeStyle = sensorColor(lv) || '#3fa9ff';
-          ctx.globalAlpha = (lv >= 3 ? pulse : 0.85) * (k === SENSOR_LEVELS - 1 ? 1 : 0.8);
-          ctx.lineWidth = 2.5;
-          ctx.beginPath(); ctx.arc(cx, cy, rr, mid - half, mid + half); ctx.stroke();
-        }
-      }
-      ctx.globalAlpha = 1;
-    }
-
-
-    for (const sp of spawnPoints) {
-      if (!sp.alive || !sp.found) continue;
-      const q = radarProject(graph.centers[sp.ci], cpos, basis, range);
-      const r2 = 3 + 1.4 * Math.sin(t * 4 + sp.ci) + waveCharge * 3.5;
-      ctx.globalAlpha = 0.55 + 0.45 * radarPhosphor(radarBearing(q.x, q.y), sweep);
-      ctx.strokeStyle = '#ffb347';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(cx + q.x * R, cy + q.y * R, Math.max(1.5, r2), 0, Math.PI * 2); ctx.stroke();
-      ctx.globalAlpha = 1;
-    }
-    // the heart: what all of this is FOR — red, steady
-    blip(graph.centers[dungeon.heart], '#ff4d6a', 5, true);
-    // the strike's painted cell, while one is armed
-    if (strike.armed && strike.target >= 0) {
-      const q = radarProject(graph.centers[strike.target], cpos, basis, range);
-      ctx.strokeStyle = '#ffb347';
-      ctx.lineWidth = 1.5;
-      const bx = cx + q.x * R, by = cy + q.y * R;
-      ctx.beginPath();
-      ctx.moveTo(bx - 6, by); ctx.lineTo(bx + 6, by);
-      ctx.moveTo(bx, by - 6); ctx.lineTo(bx, by + 6);
-      ctx.stroke();
-    }
-    // YOU: a heading wedge at centre (player mode) or a white dot out on the
-    // board (heart mode)
-    ctx.fillStyle = '#f2f8ff';
-    if (mapMode === 'player') {
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - 6);
-      ctx.lineTo(cx - 4, cy + 5);
-      ctx.lineTo(cx + 4, cy + 5);
-      ctx.closePath();
-      ctx.fill();
-    } else {
-      blip(player.pos, '#f2f8ff', 4, true);
-    }
-  }
+  const radarScope = createRadarScope({ ctx: radarCtx, player, camera, towers, enemies, spawnPoints, strike, poleFrame, graph: () => graph, dungeon: () => dungeon, size: () => radarCss, mapMode: () => mapMode, pilot: () => pilot, pilotMode: () => pilotMode, cellSide: () => cellSide, waveCharge: () => waveCharge });   /* THE SCOPE (src/fx/radar-scope.js), painted before story.hud paints over it */
 
   // debug/demo overrides: ?wall=0.03 forces a wall height,
   // ?walk=N auto-walks N hops along the shortest route to the heart
@@ -12507,7 +12350,7 @@ export function initTdTab(root) {
       // starboard 4 (blue), astern 3 (orange), port 2 (red)
       const c = cellSide;
       const secs = proximitySectors([put(5 * c, 0), put(0, 4 * c), put(-3 * c, 0), put(0, -2 * c)], player.pos, basis, reach, cellSide);
-      sensorDemo.push({ fwd: 0, right: 4 }, { fwd: -3, right: 0 }, { fwd: 0, right: -2 });
+      radarScope.sensorDemo.push({ fwd: 0, right: 4 }, { fwd: -3, right: 0 }, { fwd: 0, right: -2 });
       const levels = secs.map((x) => x.level).join('/');
       const colors = secs.map((x) => sensorColor(x.level) || 'none').join('/');
       console.log(`SENSORPROBE cells ahead/stbd/astern/port = 5/4/3/2 -> levels ${levels} colours ${colors}`
