@@ -103,7 +103,7 @@ import { makeAudio } from './audio.js';
 import { DEATH_KEYS } from './audiomanifest.js';
 
 export function initTdTab(root) {
-  let controlsCard = null, pilotMode = false, storyViews = null, pilotHost = null, storyMonitor = null, daylight = null, storyScope = null, syntheticModal = null, brass = null; const scopeV = new THREE.Vector3();   // the story enters it at runtime; the view strip unlocks after the first wave; scopeV puts the held body on the glass for the scope's inner box
+  let controlsCard = null, pilotMode = false, storyViews = null, pilotHost = null, storyMonitor = null, daylight = null, storyScope = null, syntheticModal = null, brass = null, hudFrame = -1, hudDirty = false, frameNo = 0; const scopeV = new THREE.Vector3();   // the story enters it at runtime; the view strip unlocks after the first wave; scopeV puts the held body on the glass for the scope's inner box
   let pilot = null;
   let pilotPosts = [], pilotPost = 0;
   const pilotMounts = [];
@@ -4176,7 +4176,7 @@ export function initTdTab(root) {
   // orange as ever, the wave numeral the largest thing on the panel), meta
   // and objectives dim. The who-is-driving line is GONE from the panel —
   // control state lives ON the AUTO button now, where the control is.
-  function updateHud() {
+  function updateHud() { if (hudFrame === frameNo) { hudDirty = true; return; } hudFrame = frameNo; hudDirty = false; paintHud(); }   /* ONCE A FRAME, PLUS ONE CATCH-UP (2026-09-25): 47 sites call this, one per kill, and every call rebuilt the panel's HTML, so a strike on a pile rebuilt it dozens of times in one frame. The first call in a frame still paints at once; the rest mark it dirty and animate() paints once at the frame's end */ function paintHud() {
     if (eco && eco.biomass > run.peakBiomass) { run.peakBiomass = eco.biomass; checkAchievements(); }
     if (lifeContainers.length) syncLifeContainers();
     const spAlive = spawnPoints.filter((s) => s.alive).length;
@@ -9395,7 +9395,7 @@ export function initTdTab(root) {
     // and in a real browser setTimeout(0) still outruns vsync ~4x.
     if (simFast > 1 && !simDone) setTimeout(animate, 0);
     else requestAnimationFrame(animate);
-    if (!active || !mesh) return;
+    frameNo++; if (!active || !mesh) return;
     // active play = no modal up: briefing, pause, and win/lose all count
     // as idle, which is when the mobile chrome (menu button) may return
     const playing = !paused && !player.won;
@@ -9425,7 +9425,7 @@ export function initTdTab(root) {
     const cpuStart=perfOn?performance.now():0;
     try { frame(dt, false); } catch (err) { const k = String(err?.stack ?? err); if (!frameFaults.has(k)) { frameFaults.add(k); setTimeout(() => { throw err; }); } try { postfx.render(); } catch { /* the renderer is what failed: nothing more to draw this frame */ } }   /* A FAULT IN THE FRAME (2026-09-25) used to throw every frame and freeze the picture: the world still draws, and each distinct fault is rethrown ONCE on its own turn, so the page's error handlers, the diagnostics ring and the browser suites still see it */
     if(perfOn)perfCpu.frame+=performance.now()-cpuStart;
-    gpuEnd();
+    gpuEnd(); if (hudDirty) { hudDirty = false; hudFrame = frameNo; paintHud(); }   /* the HUD's catch-up paint (updateHud) */
   }
 
   let simFrameNo = 0, frameFaults = new Set();   /* the distinct frame faults already rethrown (animate) */
