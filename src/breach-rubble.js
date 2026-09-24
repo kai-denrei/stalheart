@@ -24,7 +24,7 @@ export function createBreachRubble(scene){
  }
  return {
   add(source,radius){
-   if(mesh.count+rocksPerCap>capacity){capacity*=2;const next=new THREE.InstancedMesh(geometry,material,capacity);next.name=mesh.name;next.count=mesh.count;for(let i=0;i<mesh.count;i++){mesh.getMatrixAt(i,matrix);next.setMatrixAt(i,matrix);}scene.remove(mesh);mesh.dispose();mesh=next;scene.add(mesh);}
+   if(mesh.count+rocksPerCap>capacity){capacity*=2;const next=new THREE.InstancedMesh(geometry,material,capacity);next.name=mesh.name;next.count=mesh.count;next.visible=mesh.visible;   /* a hidden cap store stays hidden through a growth */ for(let i=0;i<mesh.count;i++){mesh.getMatrixAt(i,matrix);next.setMatrixAt(i,matrix);}scene.remove(mesh);mesh.dispose();mesh=next;scene.add(mesh);}
    source.updateWorldMatrix(true,false);frame.copy(source.matrixWorld);
    for(let i=0;i<rocksPerCap;i++){
     const a=i*2.399963229728653,r=i===0?0:Math.sqrt(i/(rocksPerCap-1))*radius*.98;
@@ -50,6 +50,10 @@ export function createBreachRubble(scene){
    mesh.instanceMatrix.needsUpdate=true;
    if(!settling.length)mesh.computeBoundingSphere();
   },
+  // THE CAP IS DRESSING, and one shot does not want it: the montage's ram beat (src/fx/showcase.js) opens on the lane at
+  // a breach the sector then seals, so the cap piles up exactly where the hull is driving and the beat's own low camera
+  // photographs a grey boulder with the MORK inside it. Hidden for the beat, back for everything else.
+  show(on){mesh.visible=!!on;},
   state:()=>({caps,rocks:mesh.count,settling:settling.length,drawCalls:mesh.count?1:0,triangles:mesh.count*geometry.attributes.position.count/3}),
   reset(){caps=0;mesh.count=0;settling.length=0;},
   dispose(){scene.remove(mesh);mesh.dispose();geometry.dispose();material.dispose();},

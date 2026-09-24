@@ -35,7 +35,7 @@ export function createGameBreaches(scene,camera,sounds,{look=null,makeSinkhole=c
    return obj;
   },
   seal(obj){const e=obj.userData.breach;if(!e||!entries.has(e))return false;rubble.add(obj,e.fx.tune.craterRadius);obj.userData.dispose();return true;},
-  rubbleState:()=>rubble.state(),
+  rubbleState:()=>rubble.state(), rubbleShow:(on)=>rubble.show(on),   /* the montage's ram beat hides the sealed caps while its camera is low over the lane (src/fx/showcase.js) */
   craters:()=>[...entries].map(e=>({p:e.obj.position.toArray(),r:e.fx.tune.craterRadius})),   // where the ground is open, and how wide: the hull may not drive onto it
   warm(w){if(template)return;warmer=w;template=makeSinkhole(scene,camera,{game:true,sounds});Object.assign(template.tune,CONTENT.breach,{spawnWaves:false,sound:false});if(look)template.tune.look=look();
    template.group.visible=true;template.update(0,0);template.group.visible=false;uploads.push(...template.textures());return template.warm(warmer);},   // one update dresses the template as create()+update() would (look, wraps) before its materials compile
