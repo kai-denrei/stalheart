@@ -5,13 +5,15 @@
 // the gunship's or SOL-82's seat, is set down outside the door without one: a scripted beat never evicts a gunner (2026-09-23).
 // SKIP TUTORIAL, stage=N and story=N links and a late start past the handover issue the hull at once, exactly as before.
 //
-// The controller owns the camera, the deploy and the seats; it passes them in as a host on every tick:
+// The controller owns the camera, the deploy and the seats; it passes them in as a host on every tick (createHullHost below):
 //   host.stands(perk)  the step's perk is on the programme (its building stands)
 //   host.seated()      the gunship or SOL-82 seat is taken
 //   host.busy()        the roll-out is still on screen (its framing run or the deploy)
 //   host.now()         the game clock
 //   host.issue(quiet)  put the hull in the world: quiet sets it down outside the door, otherwise it rolls out on camera
 // States: held (no hull) -> rolling (issued, still on screen) -> out.
+import { hasPerk as programmeHas } from '../domain/build-programme.js';
+import { berthIndexFor } from '../domain/berths.js';
 
 export function createHullIssue({ held = false, perk = 'stalheart', door = null, lead = 1.6 } = {}) {
   let state = held ? 'held' : 'out', issuedAt = null, quiet = null;
@@ -29,6 +31,53 @@ export function createHullIssue({ held = false, perk = 'stalheart', door = null,
       } else if (state === 'rolling' && !host.busy()) state = 'out';
     },
     state: () => ({ state, issuedAt, quiet, door: door ? door.ci : -1 }),
+  };
+}
+
+// THE CONTROLLER'S HOST for the tick above, moved out of the controller's storyApi.build. `c` hands in the controller: its fixed
+// objects and functions as values (laserStation, shotId, showBrief, deployStart, deployStep, leavePilot, camera, startShot,
+// deployFramePoseFor, camA, setView), what it rebinds as getters (story, pilot, deploy, t, playerHP, storyViews), and the three
+// lets the issue writes as setters (setBerths, setPlayerDown, setDeploy).
+//   issue: the door becomes every berth, the hull count picks the berth (berthIndexFor), and TANK joins the views strip. Under a
+//   gunner it drives out off screen (a quiet loop of the deploy's own step, at most 30 s of it); otherwise the seat is left, the
+//   camera runs `lead` seconds from where it was to the door's framing with the hull standing under the gantry (the 'rollout'
+//   shot), and the deploy starts when the shot ends.
+export function createHullHost(c) {
+  const { laserStation, shotId, showBrief, deployStart, deployStep, leavePilot, camera, startShot, deployFramePoseFor, camA, setView } = c;
+  return {
+    stands: (perk) => programmeHas(c.story().programme, perk),
+    seated: () => !!(c.pilot()?.gunship || laserStation.seated()),
+    busy: () => !!c.deploy() || shotId() === 'rollout',
+    now: () => c.t(),
+    issue: (quiet) => {
+      const d = c.story().hull.door();
+      if (d) c.setBerths([d, d, d]);
+      const n = berthIndexFor(c.playerHP());
+      c.setPlayerDown(false);
+      c.storyViews()?.tank(true);
+      showBrief('stalheart_stands');
+      if (quiet) {
+        deployStart(n);
+        for (let i = 0; i < 600 && c.deploy(); i++) deployStep(0.05);
+        return;
+      }
+      leavePilot();
+      c.storyViews()?.active('tank');
+      deployStart(n);
+      c.setDeploy(null);
+      const from = { pos: camera.position.clone(), quat: camera.quaternion.clone() };
+      startShot({
+        id: 'rollout',
+        dur: c.story().hull.lead,
+        poseAt: (u, out) => {
+          const w = u * u * (3 - 2 * u);
+          deployFramePoseFor(n, camA);
+          out.pos.lerpVectors(from.pos, camA.pos, w);
+          out.quat.copy(from.quat).slerp(camA.quat, w);
+        },
+        onEnd: () => { setView('third'); deployStart(n); },
+      });
+    },
   };
 }
 

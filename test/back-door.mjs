@@ -8,6 +8,8 @@ import { ISLANDS, STRUCTURES, KIT, STAGES } from '../src/content/base-layout.js'
 import { buildWorld } from '../src/domain/world-recipe.js';
 import { planBase } from '../src/domain/base-plan.js';
 import { findBackMouth, backBreachCells, mouthFlank } from '../src/domain/back-door.js';
+import { createBackDoor } from '../src/fx/back-door.js';
+import * as THREE from '../vendor/three.module.js';
 import { bfsDist, BLOCKED, PATH } from '../src/dungeon.js';
 
 const bake = decodePlanetBake(new Uint8Array(readFileSync(new URL('../assets/story/planet.bin', import.meta.url))), STORY_RECIPE);
@@ -61,4 +63,36 @@ for (const c of cands) {
   assert.ok(at === heart && through, `candidate ${c.cell} walks in through the back`);
 }
 assert.ok(!cands.some((c) => c.cell === dungeon.spawn), 'the lane end outside the gate is not a back cell');
+
+// 4. the controller's side (src/fx/back-door.js) on this mouth, against a recording controller: the door opens once, its rock
+// comes down with one rebuild, the back sockets face their lane, the dive shot waits for a free camera; the candidates carry
+// their side, the live route and their position
+{
+  const log = [], rec = (k, ret) => (...a) => { log.push([k, ...a]); return ret; }, live = Uint8Array.from(tags);
+  const s = { paused: false, deploy: null, pilotMode: false, pilot: null, shot: false };
+  const story = { backMouth: mouth, backOpen: false, backSockets: [{ cell: 11, toward: [0, 0, 1] }], socketToward: {}, hud: { tremor: rec('tremor'), back: rec('back') }, backPlanet: planet, backDoor: STORY_BACK_DOOR, breachShot: { tail: 1.8 } };
+  const storyApi = {};
+  Object.assign(storyApi, createBackDoor({
+    storyApi, sfx: { play: rec('sfx') }, explode: rec('explode', true), showBrief: rec('brief'), camDist: () => 1, showCallout: rec('callout'), warnRing: rec('ring'),
+    breachWallCell: (ci) => { if (live[ci] !== BLOCKED) return false; live[ci] = PATH; return true; }, rebuildAfterBreach: rec('rebuild'), recomputePortalDist: rec('portals'),
+    shotActive: () => s.shot, camera: new THREE.PerspectiveCamera(), startShot: (shot) => log.push(['shot', shot.id]),
+    story: () => story, graph: () => graph, dungeon: () => ({ tags: live, heart, distToHeart: withBack }), cellSide: () => 0.01,
+    paused: () => s.paused, deploy: () => s.deploy, pilotMode: () => s.pilotMode, pilot: () => s.pilot,
+  }));
+  assert.equal(storyApi.backDoorOpen(), false); assert.equal(storyApi.backTick(0.1), undefined, 'no omen yet, nothing to tick');
+  assert.equal(storyApi.openBackDoor(), mouth.cells.length + flank.length, 'the mouth and its flank fall');
+  assert.equal(storyApi.backDoorOpen(), true); assert.deepEqual(story.socketToward, { 11: [0, 0, 1] });
+  const kinds = log.map((l) => l[0]);
+  assert.deepEqual(kinds.filter((k) => k === 'rebuild' || k === 'portals'), ['rebuild', 'portals'], 'one rebuild');
+  assert.equal(kinds.filter((k) => k === 'explode').length, mouth.cells.length + flank.length);
+  assert.deepEqual(log.filter((l) => ['brief', 'shot'].includes(l[0])), [['brief', 'back_door'], ['shot', 'backdoor']]);
+  assert.equal(storyApi.openBackDoor(), 0, 'idempotent'); assert.equal(log.filter((l) => l[0] === 'shot').length, 1);
+  const got = storyApi.backBreachCandidates();
+  assert.deepEqual(got.map((c) => c.cell), cands.map((c) => c.cell), 'the domain\'s cells');
+  assert.ok(got.every((c) => c.side === 'back' && c.route === withBack[c.cell] && c.pos.join() === graph.centers[c.cell].join() && c.pos !== graph.centers[c.cell]));
+  // a camera already taken: the door still opens, without the dive
+  story.backOpen = false; s.pilotMode = true; log.length = 0; storyApi.openBackDoor();
+  assert.ok(!log.some((l) => l[0] === 'shot'), 'no dive under a seat');
+  story.backMouth = null; assert.equal(storyApi.backFx(), null); assert.deepEqual(storyApi.backBreachCandidates(), []); assert.equal(storyApi.backOmen({ id: 'x' }), false);
+}
 console.log(`Back door: mouth ${mouth.cells} at ${(mouth.azimuth * 180 / Math.PI).toFixed(1)} deg, flank ${flank}, ${cands.length} breach cells ${cands[0].hops}-${cands.at(-1).hops} hops (gate ${Math.min(...cands.map((c) => c.gateHops))}+), ${shortened} routes shortened.`);

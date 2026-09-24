@@ -14,6 +14,8 @@
 //
 // Cyan and white are ours; amber is only ever a warning (out of range, the launcher holding its round).
 // prefers-reduced-motion drops every spin and blink and says the phase in words instead.
+import * as THREE from '../../vendor/three.module.js';
+import { add3, sub3, scale3, dot3, norm3 } from '../vec3.js';
 import { BELT_OF } from '../content/sectors.js';
 
 const WHITE = '#f2fbff';
@@ -198,5 +200,39 @@ export function createStoryScope(root) {
       block(rx, ry, track[0], track[1], { frac: fill, colour: locked ? WHITE : CYAN });
     },
     dispose() { canvas.remove(); layer.remove(); },
+  };
+}
+
+// THE SCOPE'S FEED (a guided mount in the story), moved out of the controller's stepTowers: once a frame for the piloted mount,
+// the workshop's reticle and TRACK panel fed from the same lock the launcher fires on. The box is the seeker's cone at the
+// camera's own field of view; the inner box closes on the held body's own point on the glass, and TARGET LOCKED ticks with the
+// build cursor's cue. `host` hands in the controller's camera, sfx, towerBarrel, towerSeekers and missileOf as values and its
+// storyScope, graph, cellSide, pilot and story as getters; the feed takes the mount, its target distance and its max range.
+export function createScopeFeed(host) {
+  const { camera, sfx, towerBarrel, towerSeekers, missileOf } = host;
+  const scopeV = new THREE.Vector3();   // puts the held body on the glass for the scope's inner box
+  return (tw, distance, maxRange) => {
+    if (host.storyScope()) {
+      const cfg = missileOf(tw.key), t = tw.pilotTarget && !tw.pilotTarget.pilotAim ? tw.pilotTarget : null, bearing = t ? Math.acos(Math.max(-1, Math.min(1, dot3(towerBarrel(tw, norm3(host.graph().centers[tw.ci])), norm3(sub3(t.pos, host.graph().centers[tw.ci])))))) * 180 / Math.PI : 0, sp = t ? scopeV.fromArray(add3(t.pos, scale3(norm3(t.pos), host.cellSide() * 0.3))).project(camera) : null, onGlass = !!sp && sp.z < 1, lockedNow = !!tw.lock?.locked;
+      if (lockedNow !== !!tw.lockTick) { tw.lockTick = lockedNow; if (lockedNow) sfx.play('laser_click'); }
+      host.storyScope().update({
+        on: !!cfg && !host.pilot().isMap(),
+        w: innerWidth,
+        h: innerHeight,
+        meter: tw.lock?.meter ?? 0,
+        locked: lockedNow,
+        target: t ? { id: t.id, range: distance ?? 0, bearing, type: t.type } : null,
+        max: cfg?.maxRange ?? maxRange,
+        zoom: host.pilot().state.zoom,
+        box: innerHeight / 2 * (host.story()?.quiverCone ?? 0) / Math.tan(camera.fov * Math.PI / 360),
+        cone: Math.atan(host.story()?.quiverCone ?? 0) * 180 / Math.PI,
+        lockTime: cfg?.lockTime ?? 0,
+        flight: towerSeekers.reduce((n, m) => n + (m.by === tw ? 1 : 0), 0),
+        ready: !tw.obj.userData.loading && !tw.overheated,
+        cooldown: Math.max(0, tw.cooldown),
+        sx: onGlass ? (sp.x + 1) / 2 * innerWidth : null,
+        sy: onGlass ? (1 - sp.y) / 2 * innerHeight : null,
+      });
+    }
   };
 }

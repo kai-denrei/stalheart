@@ -66,7 +66,7 @@ export const BACK_OMENS = freeze([
 export const BACK_SCRAMBLE = freeze({ seconds: 8, every: 1, brief: 'back_scramble', callout: 'BUILD BEHIND THE BAYS' });
 
 // PLACEMENT, in cells (the caller converts to its own units): two breaches of a sector stand at least minSeparationCells
-// apart, never within exclusionCells of a sealed breach (td-tab's gunshipFar uses 6), and are picked from the farthest
+// apart, never within exclusionCells of a sealed breach (the gunship's far breach uses 6, GUNSHIP_FAR), and are picked from the farthest
 // open cells on their side, at random among those within bandHops of the farthest still valid
 // ringHops: gate-side breaches stand on this ring of walking hops from the heart, not the field's far ring (about 69): at the
 // sector pace a wave walks in about thirty seconds instead of a minute (owner, 2026-09-24: "too slow between enemies").

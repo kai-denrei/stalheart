@@ -14,6 +14,7 @@ import { firstSectorDue, pulseFits, sectorDef, makeSector, releaseWave, nextWave
 import { makeSectorStats, record, report as sectorReport, mergeBests, campaignTotals } from '../domain/sector-stats.js';
 import { makeGateIntegrity, pressGate, mendGate, gateShare } from '../domain/gate-integrity.js';
 import { computeWavePlan, ENEMY_SPEC } from '../enemyspec.js';
+import { waveCount, waveGap } from '../domain/wave-spread.js';
 import { POINT_SCALE, waveScore } from '../score.js';
 import { waveClearBonus } from '../domain/economy.js';
 import { createSectorDebrief } from './sector-debrief.js';
@@ -86,10 +87,9 @@ export function createSectorRun(h) {
     if (def.hardcoresEveryWave && h.hardcore) entries.push({ type: h.hardcore, count: def.hardcores ?? 1 });
     return { entries, pace: SECTOR_TIMING.pace };
   }
-  const countOf = (entries) => entries.reduce((n, e) => n + e.count, 0);
-  // the queue entries for a wave, spread over it the way the board's own spawner spreads a wave
+  // the queue entries for a wave, spread over it the way the board's own spawner spreads a wave (src/domain/wave-spread.js)
   function queueOf({ entries, pace }, sp) {
-    const gap = Math.min(h.spawnGap?.max ?? 0.45, (h.spawnGap?.spread ?? 3.2) / Math.max(1, countOf(entries)));
+    const gap = waveGap(entries, h.spawnGap?.spread ?? 3.2, h.spawnGap?.max ?? 0.45);
     const out = []; let n = 0;
     for (const { type, count } of entries) for (let k = 0; k < count; k++) out.push({ type, sp, at: n++ * gap, spread: 0.8, pace });
     return out;
@@ -107,7 +107,7 @@ export function createSectorRun(h) {
     let n = 0;
     for (const b of sector?.breaches ?? []) {
       const next = b.state === 'open' && sps.get(b.id)?.alive ? nextWaveIndex(sector, b.id) : null;
-      if (next !== null) n += countOf(waveOf(b, next).entries);
+      if (next !== null) n += waveCount(waveOf(b, next).entries);
     }
     return n;
   }
