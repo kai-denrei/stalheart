@@ -22,6 +22,7 @@ Design: `docs/superpowers/specs/2026-09-15-v1-session-design.md`. Two entry poin
 Owner: "launch a round of refactoring; simplifying and making the code base more robust"; plan `docs/superpowers/plans/2026-09-25-refactor-round.md`.
 - Robustness (`2026-09-25-refactor-robustness`): dead enemies are freed each frame; a frame fault no longer freezes the picture and is reported once; P in a seat shows the pause card; NEW RUN leaves no gunship, MK-9, lit nights or old loss card behind; timers ride the game clock; the sector keeps its own clock; per-sector searches run once.
 - The controller's dead code is gone and its bytes and very long lines are ratcheted beside its lines (`2026-09-25-controller-dead-code-and-ratchets`). The ~84 untested URL-flag probes (3,064 lines) wait for the owner's yes.
+- Five blocks left the controller for modules, each proven by running the old and new code side by side (`2026-09-25-controller-extractions-round-one`): the radar scope, a tower's aim, the VARS modal, the victory pull-out, the showcase's hooks. td-tab 13,505 -> 12,971 lines, 780 KB -> 749 KB over the round so far.
 
 ## What landed on 2026-09-24/25 (the pacing round)
 

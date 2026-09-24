@@ -50,6 +50,23 @@ Evidence:
 - node test/sectors.mjs (firstSectorDue), node test/sector-run.mjs (idle through the expedition, a part home opens it, the grace opens it, SKIP TUTORIAL at once)
 - scripts/browser-lock.sh node scripts/browser-test.mjs --story-world and the default suite on branch pacing
 
+## 2026-09-25 — Five behaviour-neutral extractions out of td-tab: the radar scope, a tower's aim, the VARS modal, the victory pull-out and the showcase hooks; the controller 13,426 -> 12,971 lines, 779,969 -> 749,300 bytes
+
+change · accepted · 2026-09-25-controller-extractions-round-one
+
+Refactor round task 12 (docs/superpowers/plans/2026-09-25-refactor-round.md), on branch refactor-extract from refactor. Each extraction moves a block verbatim behind a host object of the closure names it used (values for fixed objects and functions, getters for rebound lets, setters for the lets it writes), keeps the call order in the frame loop, and ratchets the line and byte budgets down.
+
+src/fx/radar-scope.js (drawRadar; the ?sensorprobe=1 demo contacts are its sensorDemo array), src/fx/tower-aim.js (aimTower), src/fx/vars-modal.js (the VARS pages and the ?lab=1 folder; the fps readout's root control stays one line above the call so perfCtl is set before the lab's setPerfOverlay reads it), src/domain/victory-pull.js + src/content/victory-pull.js + src/fx/victory-pull.js (the pull-out's path, numbers and shot), src/fx/showcase-hooks.js (gameHooks.showcase, one 9.7 KB line). The aim maths stays in the fx module rather than a new src/domain file because src/sentry.js already owns the range's turret rules (aimAt, lobAngle, slew, aimError) in degrees and the board's radian twin is not bit-identical to them: unifying the two is a behaviour-reviewed change for later. The long-line count holds at 42: the showcase host is itself a 992-character line on the line that closes gameHooks.
+
+Alternatives: A src/domain/turret-aim.js for the aim maths: rejected, a second owner of the rules src/sentry.js has.; The showcase host on its own lines: rejected, it would add lines against a budget that only goes down.
+
+Evidence:
+
+- npm test (132 programs), npm run check, npm run build
+- node scripts/browser-test.mjs (default, 48 PASS after each extraction), --missile-parity, --quiver-frame, --nav, --showcase, --gunship, all through scripts/browser-lock.sh
+- Scratch equivalence harnesses against the original td-tab text: 400 random boards painted identically (radar), 115,200 tower-frames identical (aim), 64 DOM/gui configurations identical (VARS), 300 x 41 bit-identical poses (victory); the showcase object AST-identical to a scope-analysed mechanical rewrite
+- Headless probes of ?winprobe=1, ?sensorprobe=1 and ?lab=1: all report OK with no page errors
+
 ## 2026-09-25 — The controller's dead code is deleted and its bytes and very long lines are ratcheted beside its lines
 
 change · accepted · 2026-09-25-controller-dead-code-and-ratchets
