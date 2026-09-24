@@ -1,6 +1,6 @@
 import { createSentryPilot } from './sentry-pilot.js';
 import { DEFAULT_TANK, SHELL_SPEED, SHELL_REACH, TANK_DRIVE, TANK_STEER } from './content/tank.js'; import { makeDriveRamp, stepDriveRamp, scrubDriveRamp } from './domain/drive-ramp.js'; import { hullDepth, deepensContact } from './domain/hull-contact.js'; import { makeSteerEase, stepSteerEase, steerBank } from './domain/steer-ease.js'; import { nextRepair } from './domain/repair-orders.js'; import { baseFor, restoreSeatView } from './domain/seat-view.js'; import { BASE_REPAIR, BASE_BUILDER } from './content/base-programme.js';
-import { createGameBreaches } from './game-breaches.js'; import { ramShotPose, cellsAhead } from './domain/showcase-shot.js';   /* THE RAM BEAT'S OWN FRAMING: low behind the hull, and the band of cells it is about to drive into (src/domain/showcase-shot.js) */
+import { createGameBreaches } from './game-breaches.js'; import { ramShotPose } from './domain/showcase-shot.js';   /* THE RAM BEAT'S OWN FRAMING: low behind the hull (src/domain/showcase-shot.js; the band of cells it drives into is the showcase hooks') */
 import { createBoardSurface } from './fx/board-surface.js'; import { createCampaignDebrief, sparkline } from './fx/campaign-debrief.js'; import { createSectorRun } from './fx/sector-run.js'; import { createBackOmen } from './fx/back-omen.js';
 import { startDiveShot } from './fx/dive-shot.js'; import { backBreachCells } from './domain/back-door.js'; import { makeShaderWarmer } from './fx/shader-warm.js';
 import { BREACH_SOUNDS } from './content/breach-defaults.js';
@@ -77,8 +77,7 @@ import { FEEL, loadFeel, saveFeel } from './feelstore.js';
 import { STRIKE_KNOBS, makeStrike, makeStrikeParams, grantStrikes, stepStrike,
   toggleArm, paintTarget, launchStrike, stepFall, skipFall, fallProgress,
   strikeDamage, retargetStrike, orbitProgress } from './strike.js'; import { makeGunship, stepGunship, onStation, phaseLeft, passProgress, mountGunship, dismountGunship, selectGun, stepGun, aimOnSphere, splashDamage, dangerReport, fireRound, stepRounds, paintHeavy, launchHeavy, nudgeHeavy, stepHeavy, heavyState, startStation } from './domain/gunship.js'; import { GUNSHIP_GUNS, GUNSHIP_GUN_ORDER, GUNSHIP_PLATFORM, GUNSHIP_ORBIT, GUNSHIP_TRACK, GUNSHIP_NUKE } from './content/gunship.js'; import { makeTrack, steerTrack, parkTrack, breachLoads } from './domain/gunship-track.js'; import { createGunshipOptic } from './fx/gunship-optic.js'; import { createGunshipDrop } from './fx/gunship-drop.js'; import { createGunshipBriefing } from './fx/gunship-briefing.js'; import { createFoundryFx } from './fx/foundry-fx.js'; import { createExplosions } from './fx/explosions.js';
-import { radarBasis, radarProject, radarBearing, sweepAngle, radarPhosphor,
-  proximitySectors, SENSOR_LEVELS, sensorColor } from './radar.js';
+import { radarBasis, proximitySectors, sensorColor } from './radar.js'; import { createRadarScope } from './fx/radar-scope.js'; import { createTowerAim } from './fx/tower-aim.js'; import { buildVarsModal } from './fx/vars-modal.js'; import { startVictoryPull } from './fx/victory-pull.js'; import { VICTORY_PULL } from './content/victory-pull.js'; import { createShowcaseHooks } from './fx/showcase-hooks.js';
 import { BLOOM_GROUPS } from './bloomweights.js';
 import { A6_TUNE, magFor, makeA6, stepA6, arc as a6Arc, a6Line } from './heptapod.js';
 import { SENTRY_TUNE } from './sentry.js';
@@ -7230,34 +7229,15 @@ export function initTdTab(root) {
     return Math.hypot(camDistV.x - p[0], camDistV.y - p[1], camDistV.z - p[2]);
   }
 
-  const TRACK_EVERY = 0.15;   // seconds between retargets; the ease covers it
   // How many tethers a slow tower DRAWS per shot, however many it slows.
   // The field is universal; the picture is bounded (see the slowfield
   // branch in stepTowers).
   const SLOW_BOLTS = 3;
   const aimV = new THREE.Vector3();
 
-  // Point a directional head at what it is shooting. Only heads that HAVE a
-  // direction get this, and whether one does is read off the geometry
-  // (userData.headFacing) rather than a list someone has to remember to
-  // update — an arm reaches along +X, an obelisk points nowhere.
-  //
-  // The bearing is derived FROM the render transform: put the target into the
-  // tower group's own local space and take the yaw that aims +Z at it. No
-  // sphere trigonometry, and therefore no sign convention to get wrong.
-  // THE SENTRY LAB'S ANSWER, ON THE BOARD. The range spent a whole session
-  // learning how one of these aims: yaw and elevation are separate drives
-  // with separate rates, the PITCH node lifts its nose on a NEGATIVE
-  // rotation about +X (the one negation, written once), the elevation stops
-  // are a real envelope rather than decoration, and a gun aims from its
-  // TRUNNION rather than from the model's origin. All of that is here now,
-  // and the numbers come from SENTRY_TUNE so the lab and the board cannot
-  // drift apart.
-  //
   // The board adapts world positions and actual articulation to shared
   // missile engagement rules. Other weapons retain their existing target
   // policy; damage, upgrades and cadence remain game-owned.
-  const RAD = Math.PI / 180;
   const gunV = new THREE.Vector3();
   function effectiveStats(def, tier) {
     const stats = baseEffectiveStats(def, tier);
@@ -7275,124 +7255,7 @@ export function initTdTab(root) {
       e => e.alive && (!tw.a6 || !e.spec.rammable));
     return tw.missileTarget = i < 0 ? null : enemies[i];
   }
-  function aimTower(tw, dt) {
-    const ud = tw.obj.userData;
-    const head = ud.head;
-    const facing = ud.headFacing;
-    const config = missileOf(tw.key) ? engagementConfig(tw) : null;
-    const manual = pilotMode && pilot?.state.tower === tw;
-    const manualTarget = manual ? pilot.target(enemies, effectiveStats(tw.def,tw.tier).range*cellSide, cellSide) : null;
-    tw.pilotTarget = manualTarget;
-    const acquired = config ? (manual ? (manualTarget.pilotAim ? null : manualTarget) : acquireMissileTarget(tw, graph.centers[tw.ci], config)) : null;
-    if (manual) tw.missileTarget = acquired;
-    if (config && (!acquired || (!manual && (!head || facing === undefined)))) {
-      tw.lock = makeLock(); tw.aimErr = Infinity;
-      if (!acquired) tw.aim = undefined;
-    }
-    if (!head || facing === undefined) {
-      if (manual) {
-        tw.aimErr=0;
-        if(config){if(!tw.lock)tw.lock=makeLock();stepMissileLock(tw.lock,dt,acquired,acquired?missileDistance(graph.centers[tw.ci],acquired.pos):Infinity,0,config);}
-      }
-      return;
-    }
-    tw.aimT = (tw.aimT ?? 0) - dt;
-    if (manual || config || tw.aimT <= 0) {
-      tw.aimT = TRACK_EVERY;
-      const eff = effectiveStats(tw.def, tw.tier);
-      const target = manual ? manualTarget : config ? acquired : pickTarget(graph.centers[tw.ci], eff.range * cellSide, enemies, chord);
-      if (target) {
-        aimV.set(target.pos[0], target.pos[1], target.pos[2]);
-        tw.obj.worldToLocal(aimV);
-        tw.aim = Math.atan2(aimV.x, aimV.z) - facing;
-        // ELEVATION, from the trunnion. The pivot on these families sits
-        // well above the feet, and measuring the angle from the base put a
-        // dead-level gun nose-down at every target — the same fault the
-        // range found the hard way.
-        if (ud.pitchNode) {
-          // THE TRUNNION'S HEIGHT IN THE SAME SPACE AS THE TARGET. Summing
-          // the node positions read them in the INNER model's units, while
-          // aimV is in the wrapper's — fitModel puts its scale on the child,
-          // so the two are off by that factor and the barrel aimed far below
-          // everything it was shooting at. Taken from the render instead,
-          // and converted through the same worldToLocal the target used.
-          ud.pitchNode.getWorldPosition(gunV);
-          tw.obj.worldToLocal(gunV);
-          const gunY = gunV.y;
-          const flat = Math.hypot(aimV.x, aimV.z);
-          // A MORTAR POINTS UP (operator). A lobbed weapon's barrel is not
-          // aimed at the target — it is aimed along the LAUNCH of the arc
-          // that ends there, and the two are nothing like each other: the
-          // line of sight to a ground target is a few degrees BELOW the
-          // horizontal and the launch is sixty-odd above it. The turrets
-          // were aiming down at things they were lobbing over.
-          //
-          // Derived from the shell's own parabola rather than from a table:
-          // a parabola of height h over a range d leaves at atan(4h/d), and
-          // h is arcH — the same constant spawnTowerShot flies. So the tube
-          // and the shell cannot disagree, and retuning the lob moves both.
-          // (The Sentry Workshop's own viewer agrees: it opens a Mortar at
-          // 68 degrees and will not let it below 45.)
-          let want;
-          if (tw.def.attack === 'seeker') {
-            want = MISSILE_LAUNCH_ELEVATION * RAD;
-          } else if (tw.def.arc) {
-            const d = Math.max(cellSide * 0.5, chord(graph.centers[tw.ci], target.pos));
-            want = Math.atan(4 * (cellSide * 2.3) / d);
-          } else {
-            want = Math.atan2(aimV.y - gunY, Math.max(1e-6, flat));
-          }
-          // the envelope's ceiling is 65 degrees, and a short-range lob wants
-          // more than that — a lobbing mount is a different mount, and the
-          // Workshop draws it with the elevation to prove it
-          const hi = (tw.def.arc ? 85 : SENTRY_TUNE.elevMax) * RAD;
-          const lo = (tw.def.arc ? 20 : SENTRY_TUNE.elevMin) * RAD;
-          tw.elev = Math.max(lo, Math.min(hi, want));
-          // ...AND WHETHER THE STOP ATE IT. A mount has a depression limit,
-          // and a target close enough and low enough needs more than it: the
-          // gun ends at its stop, "on target" by its own reckoning, pointing
-          // thirty degrees above where the thing actually is. That is the
-          // blind radius the sentry range spent a session on, and it is the
-          // reason a Lancer was firing into its own feet with an aim error of
-          // zero degrees.
-          tw.clamped = Math.abs(want - tw.elev) > 0.5 * RAD;
-        }
-      }
-    }
-    if (tw.aim === undefined) return;
-    // shortest way round, so a target crossing behind does not spin it 350deg
-    let d = tw.aim - head.rotation.y;
-    d = Math.atan2(Math.sin(d), Math.cos(d));
-    // the DRIVE's own rate, in degrees per second, not a lerp factor — a
-    // turret that eases proportionally is fastest when it is most wrong,
-    // which is the opposite of how a motor behaves
-    const my = SENTRY_TUNE.yawRate * RAD * dt;
-    head.rotation.y += Math.max(-my, Math.min(my, d));
-    if (ud.pitchNode && tw.elev !== undefined) {
-      const de = -tw.elev - ud.pitchNode.rotation.x;   // THE ONE NEGATION
-      const me = SENTRY_TUNE.pitchRate * RAD * dt;
-      ud.pitchNode.rotation.x += Math.max(-me, Math.min(me, de));
-    }
-    if (ud.recoilNode) {
-      tw.recoil = Math.max(0, (tw.recoil ?? 0) - dt / SENTRY_TUNE.recoilBack);
-      ud.recoilNode.position.z = -tw.recoil * SENTRY_TUNE.recoilKick;
-    }
-    // A LAUNCHER MUST LOCK FIRST, and it locks with its DRIVE — the gate is
-    // how far the barrel still is from where it wants to be, in degrees,
-    // which is the same quantity the sentry range's tolerance is written in.
-    // Stepped here rather than in the firing path because a lock fills
-    // whether or not the weapon is off cooldown; that IS the mechanic.
-    // HOW FAR THE BARREL STILL IS from where it wants to be, in degrees —
-    // the sentry range's own quantity, and the thing a weapon that fires
-    // ALONG ITS BARREL has to consult before pulling the trigger.
-    tw.aimErr = Math.hypot(Math.atan2(Math.sin(tw.aim-head.rotation.y), Math.cos(tw.aim-head.rotation.y)), (tw.elev ?? 0) + (ud.pitchNode ? ud.pitchNode.rotation.x : 0))
-      * 180 / Math.PI;
-    if (config) {
-      if (!tw.lock) tw.lock = makeLock();
-      stepMissileLock(tw.lock, dt, acquired,
-        acquired ? missileDistance(graph.centers[tw.ci], acquired.pos) : Infinity, tw.aimErr, config);
-    }
-  }
+  const aimTower = createTowerAim({ enemies, chord, effectiveStats, engagementConfig, acquireMissileTarget, missileDistance, missileOf: (key) => missileOf(key), graph: () => graph, cellSide: () => cellSide, pilot: () => pilot, pilotMode: () => pilotMode });   /* THE AIM (src/fx/tower-aim.js): target, yaw, elevation, the drives and a launcher's lock; missileOf is declared below */
 
   // WHERE THE SHOT LEAVES FROM. A muzzle empty if the model has one — so
   // the flash sits in the barrel that is pointing at the thing, and moves
@@ -8785,75 +8648,7 @@ export function initTdTab(root) {
     }
   }
 
-  // --- THE PULL-OUT ---------------------------------------------------------
-  //
-  // The camera leaves. It starts wherever the player was watching from —
-  // third person, orbit, whatever — and climbs away from the hull until the
-  // planet is a marble against the galaxy the sky is already made of, holds
-  // there a beat, and hands over to the debrief.
-  //
-  // It rides camShot rather than owning a clock, for the reason written on
-  // that function: every timed camera takeover that owned its own teardown
-  // eventually got one wrong, and one of them ate every key in the game
-  // permanently. One shot at a time, one teardown, and the latch is the shot
-  // itself.
-  //
-  // SKIPPABLE, like every other shot here. A player who has seen it four
-  // times should not be held, and the skip path already exists and is tested.
-  const VICTORY_PULL = 4.2;        // seconds of camera
-  const VICTORY_HOLD = 0.9;        // ...of which the last of it is a held wide
-  function victoryPullOut(final) {
-    // where the camera IS, so the move starts from the player's own view
-    // rather than snapping to a canonical one first — a cut before a pull-out
-    // throws away the only thing that makes it read as leaving
-    const from = camera.position.clone();
-    const fromR = Math.max(1.05, from.length());
-    const dir0 = from.clone().normalize();
-    // ...and where it goes: further out than the reveal shot's 3.3, because
-    // this is the whole planet with room around it and not a band being shown
-    const OUT_R = 5.2;
-    const ref = Math.abs(dir0.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
-    const up = new THREE.Vector3().crossVectors(dir0, ref).normalize();
-    // THE INSTRUMENTS GO. A wide shot of a planet with a score, a throttle and
-    // a radar over it is a level with the camera pulled back; the same shot
-    // with the glass cleared is an ending. This is most of what "markedly
-    // different" costs.
-    document.body.classList.add('td-victory');
-    startShot({
-      id: 'victory',
-      dur: VICTORY_PULL,
-      poseAt: (u, out) => {
-        // FAST THEN SETTLING. A linear pull reads as a lift being operated;
-        // the ease-out is what makes it read as being pulled away from
-        // something. The last stretch is a hold, so the wide shot is a beat
-        // the eye can rest on rather than the instant before a modal.
-        const t = Math.min(1, u / (1 - VICTORY_HOLD / VICTORY_PULL));
-        const e = 1 - Math.pow(1 - t, 3);
-        const r = fromR + (OUT_R - fromR) * e;
-        // a slow drift around the pole as it goes, so the planet turns under
-        // the camera and reads as a body rather than a texture
-        const spin = e * 0.42;
-        const axis = new THREE.Vector3(0, 1, 0);
-        const d = dir0.clone().applyAxisAngle(axis, spin).multiplyScalar(r);
-        out.pos.copy(d);
-        tmpCam.position.copy(out.pos);
-        tmpCam.up.copy(up);
-        tmpCam.lookAt(0, 0, 0);
-        out.quat.copy(tmpCam.quaternion);
-      },
-      onEnd: () => {
-        // STAY WIDE. When the shot released the camera it snapped straight
-        // back to the hull — measured, 5.20 to 1.23 in one frame — and the
-        // debrief then opened over a close-up of a tank standing in an empty
-        // sector, which is the opposite of what the pull-out just said. Orbit
-        // is the view that keeps the planet in shot, and it is what the
-        // reveal shot hands back to for the same reason.
-        setView('orbit');
-        document.body.classList.remove('td-victory');
-        renderAnalysis(final);
-      },
-    });
-  }
+  function victoryPullOut(final) { startVictoryPull({ camera, tmpCam, startShot, setView, debrief: () => renderAnalysis(final) }); }   /* THE PULL-OUT, then the debrief (src/fx/victory-pull.js; its path and numbers in src/domain and src/content) */
 
   // --- THE DEBRIEF, THE CAMPAIGN LOG AND THE VERDICT (operator, 2026-09-02) live in src/fx/campaign-debrief.js: the analyst's six
   // windows with the strike replay, a snapshot per cleared sector, and the verdict with its orders. The campaign board only.
@@ -9359,7 +9154,7 @@ export function initTdTab(root) {
         playerMesh.visible = params.view !== 'pov' && !deploy?.clip && !story?.hull?.held();   // an authored roll-out owns the hull on screen: ours would stand in it, turret sweeping; an unissued hull is not drawn
         postfx.render(); storyMonitor?.render(renderer, scene, towerSeekers.find((m) => m.pool === talonPool && m.by === pilot?.state.tower)?.mesh ?? null, cellSide, 0);
         playerMesh.visible = !deploy?.clip && !story?.hull?.held();
-        drawRadar(t); laserStation.render(renderer, scene);   // the sweep keeps turning; a dead scope reads as a crash
+        radarScope.draw(t); laserStation.render(renderer, scene);   // the sweep keeps turning; a dead scope reads as a crash
       }
       return;
     }
@@ -9612,167 +9407,11 @@ export function initTdTab(root) {
     // in PoV the camera sits inside the creature — hide it there
     playerMesh.visible = params.view !== 'pov' && !deploy?.clip && !story?.hull?.held();   // the bay's authored hull rolls out alone (operator, 2026-09-13: two turrets, one static, one sweeping); no hull before the Stålheart issues it
     postfx.render(); storyMonitor?.render(renderer, scene, (pilot?.gunship ? gunshipDrop?.mesh() : null) ?? towerSeekers.find((m) => m.pool === talonPool && talonPool && m.by === pilot?.state.tower)?.mesh ?? null, cellSide, dt, pilot?.gunship ? pilot.gunshipOptic() : (pilotMode && pilot?.state.tower && missileOf(pilot.state.tower.key) && pilot.state.tower.pilotTarget && !pilot.state.tower.pilotTarget.pilotAim ? { from: perchOf(pilot.state.tower), pos: pilot.state.tower.pilotTarget.pos } : null));   // the seeker feed rides behind a TALON in flight; the gunship's monitor is the ground truth at the impact point; otherwise the optic inset on the tracked target
-    drawRadar(t); story?.hud.paint(radarCtx, { m: radarCss, cpos: pilot?.state.tower ? graph.centers[pilot.state.tower.ci] : player.pos, up: pilot?.state.tower ? new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray() : player.smoothDir, range: mapMode === 'heart' ? 2.02 : pilotMode ? cellSide * 12 : 1.15, t, mapMode });
+    radarScope.draw(t); story?.hud.paint(radarCtx, { m: radarCss, cpos: pilot?.state.tower ? graph.centers[pilot.state.tower.ci] : player.pos, up: pilot?.state.tower ? new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray() : player.smoothDir, range: mapMode === 'heart' ? 2.02 : pilotMode ? cellSide * 12 : 1.15, t, mapMode });
     laserStation.render(renderer, scene); programWarm.tick(dt);   /* THE SEAT'S FIRST-USE HITCH (src/fx/program-warm.js): the canvas's own programs are linked two objects a frame, here where nothing is bound, instead of 18 at once under the gunner */
   }
 
-  // The scope. Player mode is heading-up around the tank; heart mode (M) is
-  // pole-down over the whole planet. Contacts carry the phosphor: full the
-  // instant the beam passes, decaying behind it, never dark.
-  const sensorDemo = [];
-  function drawRadar(t) {
-    if (!graph || !player.pos) return;
-    const m = radarCss;
-    const dpr = Math.min(devicePixelRatio || 1, 2);
-    const ctx = radarCtx;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const cx = m / 2, cy = m / 2, R = m / 2 - 3;
-    // basis + range: heart mode must hold the whole planet (max chord 2.0)
-    let cpos, up;
-    if (mapMode === 'heart') {
-      const { hn, t1 } = poleFrame();
-      cpos = graph.centers[dungeon.heart]; up = t1;
-      // eslint-disable-next-line no-unused-vars
-      void hn;
-    } else if(pilot?.state.tower) {
-      cpos=graph.centers[pilot.state.tower.ci];
-      up=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion).toArray();
-    } else {
-      cpos = player.pos;
-      up = player.smoothDir;
-    }
-    const basis = radarBasis(cpos, up);
-    const range = mapMode === 'heart' ? 2.02 : pilotMode ? cellSide*12 : 1.15;
-    const sweep = sweepAngle(t);
-
-    // ground: near-black green, three range rings, crosshair, rim
-    ctx.fillStyle = '#031007';
-    ctx.beginPath(); ctx.arc(cx, cy, R + 3, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = 'rgba(90, 255, 140, 0.18)';
-    ctx.lineWidth = 1;
-    for (const f of [1 / 3, 2 / 3, 1]) {
-      ctx.beginPath(); ctx.arc(cx, cy, R * f, 0, Math.PI * 2); ctx.stroke();
-    }
-    ctx.beginPath();
-    ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy);
-    ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R);
-    ctx.stroke();
-
-    // the beam: a conic trail BUILDING toward the beam line, so the glow
-    // sits behind the rotation, then the hot edge itself
-    const phi = sweep - Math.PI / 2;   // canvas angles: 0 = +x, clockwise
-    const grad = ctx.createConicGradient(phi, cx, cy);
-    grad.addColorStop(0, 'rgba(90, 255, 140, 0)');
-    grad.addColorStop(0.72, 'rgba(90, 255, 140, 0)');
-    grad.addColorStop(1, 'rgba(90, 255, 140, 0.30)');
-    ctx.fillStyle = grad;
-    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = 'rgba(140, 255, 180, 0.85)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.lineTo(cx + R * Math.sin(sweep), cy - R * Math.cos(sweep));
-    ctx.stroke();
-
-    const blip = (pos, style, size, always = false) => {
-      const q = radarProject(pos, cpos, basis, range);
-      const bri = always ? 1 : radarPhosphor(radarBearing(q.x, q.y), sweep);
-      const bx = cx + q.x * R, by = cy + q.y * R;
-      ctx.globalAlpha = q.clamped ? bri * 0.5 : bri;
-      ctx.fillStyle = style;
-      ctx.fillRect(bx - size / 2, by - size / 2, size, size);
-      ctx.globalAlpha = 1;
-    };
-
-    // towers: dim cyan fixtures — infrastructure, not contacts
-    for (const tw of towers) blip(graph.centers[tw.ci], '#4bd7e0', 2.5);
-    // enemies: THE contacts, phosphor green, heavies fatter
-    for (const e of enemies) {
-      if (!e.alive) continue;
-      // optical camo: a phantom is a contact only in its decloak window
-      if (e.spec.cloaked && !e.decloaked) continue;
-      blip(e.pos, '#5aff8c', e.spec.rammable ? 2.5 : 4);
-    }
-    // gates: amber, pulsing harder as a wave charges. Known ones only —
-    // discovery still matters.
-    // THE PROXIMITY SENSOR (operator): car-style arcs inside the rim, one
-    // sector each for ahead / starboard / astern / port, one to three arcs by
-    // how close the nearest SOLID contact in that sector is. Visual only —
-    // no sound by request. Only in the heading frame: from the heart's frame
-    // "ahead" means nothing.
-    if (mapMode !== 'heart') {
-      // sensorDemo: positions a probe injects so the arcs can be LOOKED AT
-      // without a live solid contact on the board; empty in play
-      // demo contacts are RELATIVE (fwd/right in cells): world-fixed ones
-      // drifted in bearing and distance as the tank drove, and the
-      // screenshot showed the wrong colours in the wrong sectors
-      const hard = sensorDemo.map((d) => norm3([cpos[0] + basis.fwd[0] * d.fwd * cellSide + basis.right[0] * d.right * cellSide,
-        cpos[1] + basis.fwd[1] * d.fwd * cellSide + basis.right[1] * d.right * cellSide,
-        cpos[2] + basis.fwd[2] * d.fwd * cellSide + basis.right[2] * d.right * cellSide]));
-      for (const e of enemies) {
-        if (!e.alive || e.spec.rammable) continue;
-        if (e.spec.cloaked && !e.decloaked) continue;
-        hard.push(e.pos);
-      }
-      // the CELL rule: blue at 4, orange at 3, red at 2 (radar.js SENSOR_RINGS)
-      const secs = proximitySectors(hard, cpos, basis, range, cellSide);
-      const pulse = 0.72 + 0.28 * Math.sin(t * 9);
-      for (let i = 0; i < secs.length; i++) {
-        const lv = secs[i].level;
-        if (!lv) continue;
-        // sector i is centred at bearing i*90°; canvas angles run from +x
-        // clockwise and bearing 0 is screen-up, so subtract a quarter turn
-        const mid = i * Math.PI / 2 - Math.PI / 2;
-        const half = Math.PI / 4 - 0.14;   // a gap between sectors
-        for (let k = 0; k < lv; k++) {
-          const rr = R - 3 - k * 4.5;
-          ctx.strokeStyle = sensorColor(lv) || '#3fa9ff';
-          ctx.globalAlpha = (lv >= 3 ? pulse : 0.85) * (k === SENSOR_LEVELS - 1 ? 1 : 0.8);
-          ctx.lineWidth = 2.5;
-          ctx.beginPath(); ctx.arc(cx, cy, rr, mid - half, mid + half); ctx.stroke();
-        }
-      }
-      ctx.globalAlpha = 1;
-    }
-
-
-    for (const sp of spawnPoints) {
-      if (!sp.alive || !sp.found) continue;
-      const q = radarProject(graph.centers[sp.ci], cpos, basis, range);
-      const r2 = 3 + 1.4 * Math.sin(t * 4 + sp.ci) + waveCharge * 3.5;
-      ctx.globalAlpha = 0.55 + 0.45 * radarPhosphor(radarBearing(q.x, q.y), sweep);
-      ctx.strokeStyle = '#ffb347';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(cx + q.x * R, cy + q.y * R, Math.max(1.5, r2), 0, Math.PI * 2); ctx.stroke();
-      ctx.globalAlpha = 1;
-    }
-    // the heart: what all of this is FOR — red, steady
-    blip(graph.centers[dungeon.heart], '#ff4d6a', 5, true);
-    // the strike's painted cell, while one is armed
-    if (strike.armed && strike.target >= 0) {
-      const q = radarProject(graph.centers[strike.target], cpos, basis, range);
-      ctx.strokeStyle = '#ffb347';
-      ctx.lineWidth = 1.5;
-      const bx = cx + q.x * R, by = cy + q.y * R;
-      ctx.beginPath();
-      ctx.moveTo(bx - 6, by); ctx.lineTo(bx + 6, by);
-      ctx.moveTo(bx, by - 6); ctx.lineTo(bx, by + 6);
-      ctx.stroke();
-    }
-    // YOU: a heading wedge at centre (player mode) or a white dot out on the
-    // board (heart mode)
-    ctx.fillStyle = '#f2f8ff';
-    if (mapMode === 'player') {
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - 6);
-      ctx.lineTo(cx - 4, cy + 5);
-      ctx.lineTo(cx + 4, cy + 5);
-      ctx.closePath();
-      ctx.fill();
-    } else {
-      blip(player.pos, '#f2f8ff', 4, true);
-    }
-  }
+  const radarScope = createRadarScope({ ctx: radarCtx, player, camera, towers, enemies, spawnPoints, strike, poleFrame, graph: () => graph, dungeon: () => dungeon, size: () => radarCss, mapMode: () => mapMode, pilot: () => pilot, pilotMode: () => pilotMode, cellSide: () => cellSide, waveCharge: () => waveCharge });   /* THE SCOPE (src/fx/radar-scope.js), painted before story.hud paints over it */
 
   // debug/demo overrides: ?wall=0.03 forces a wall height,
   // ?walk=N auto-walks N hops along the shortest route to the heart
@@ -11114,101 +10753,8 @@ export function initTdTab(root) {
   // ?perf=N — after N seconds, report what the frame actually costs. Written
   // because "is the dot count a performance limit?" is a question that should
   // be answered with the renderer's own numbers, not with an instinct.
-  // --- THE VARIABLES MODAL (operator, 2026-09-02) --------------------------
-  // "too messy and too vertical": thirty root controls and four folders in one
-  // right-edge column. The lil-gui DOM is MOVED into #td-vars as pages — root
-  // controls become the GAME page, each folder its own page — so nothing
-  // about any control changes, only where it lives and how it is reached.
-  perfCtl = gui.add({ get on() { return perfOn; }, set on(v) { setPerfOverlay(v); } }, 'on')
-    .name('fps readout (`)');
-  // THE LAB PAGE. A folder here becomes a page in VARS below, for free.
-  const applyLabSky = applySky;   // the lab's knobs feed the same bake
-  if (lab.on) {
-    // the lab opens on the run's own sky unless the URL named a seed
-    if (!urlParams.has('labseed') && !urlParams.has('labGalaxySeed')) lab.galaxySeed = skySeed;
-    const f = gui.addFolder('lab');
-    f.add(lab, 'waveMult', 1, 20, 1).name('wave ×');
-    f.add({ spawn: () => spawnWave() }, 'spawn').name('⚡ spawn a wave now');
-    f.add(lab, 'holdWaves').name('hold waves');
-    f.add(lab, 'freezeEnemies').name('freeze enemies');
-    f.add(lab, 'immortalHeart').name('immortal heart');
-    f.add(lab, 'immortalTank').name('immortal tank');
-    f.add(lab, 'bg', ['none', 'galaxy']).name('background').onChange(applyLabSky);
-    f.add(lab, 'galaxySeed', 0, 99999, 1).name('galaxy seed').onFinishChange(applyLabSky);
-    f.add({ roll: () => { lab.galaxySeed = Math.floor(Math.random() * 100000); applyLabSky(); f.controllersRecursive().forEach((c) => c.updateDisplay()); } }, 'roll').name('↻ new galaxy');
-    f.add(lab, 'galaxyScale', 0.25, 4, 0.05).name('galaxy size').onFinishChange(applyLabSky);
-    f.add(lab, 'galaxies', 1, 8, 1).name('galaxies').onFinishChange(applyLabSky);
-    f.add(lab, 'galaxyCore', 0.25, 3, 0.05).name('core size ×').onFinishChange(applyLabSky);
-    f.add(lab, 'bgIntensity', 0, 1.5, 0.05).name('sky intensity');
-    f.add(lab, 'bloom').name('bloom').onChange((v) => postfx.setEnabled(v));
-    // what the URL asked for, applied once the board exists
-    applyLabSky();
-    postfx.setEnabled(lab.bloom);
-  }
-  (function buildVarsModal() {
-    const modal = root.querySelector('#td-vars');
-    if (!modal) return;
-    const nav = modal.querySelector('.vars-nav');
-    const body = modal.querySelector('.vars-body');
-    const pages = [];
-    // page 1: everything that was loose at the root
-    // a page WRAPPING a lil-gui block, not a page that IS one: the modal's
-    // stylesheet forces every `.lil-gui` inside it visible (!important), so a
-    // page carrying that class could never be hidden — every other page was
-    // drawn underneath the game page, scrolled out of sight (found 2026-09-03
-    // when the lab page came up as the game page)
-    const gamePage = document.createElement('div');
-    gamePage.className = 'vars-page';
-    const gameBlock = document.createElement('div');
-    gameBlock.className = 'lil-gui';
-    const gameKids = document.createElement('div');
-    gameKids.className = 'children';
-    for (const c of gui.controllers) gameKids.appendChild(c.domElement);
-    gameBlock.appendChild(gameKids);
-    gamePage.appendChild(gameBlock);
-    pages.push({ title: 'game', el: gamePage });
-    // one page per folder, the folder's own element moved whole
-    for (const f of gui.folders) {
-      const page = document.createElement('div');
-      page.className = 'vars-page';
-      page.appendChild(f.domElement);
-      f.open();
-      pages.push({ title: f._title, el: page });
-    }
-    let activeI = 0;
-    const show = (i) => {
-      activeI = i;
-      pages.forEach((pg, j) => pg.el.classList.toggle('active', j === i));
-      nav.querySelectorAll('button').forEach((b, j) => b.classList.toggle('active', j === i));
-    };
-    pages.forEach((pg, i) => {
-      const b = document.createElement('button');
-      b.type = 'button'; b.textContent = pg.title;
-      b.addEventListener('click', () => show(i));
-      nav.appendChild(b);
-      body.appendChild(pg.el);
-    });
-    // the root gui shell is now empty; park it out of the way but keep it
-    // alive, since lil-gui's controllers still reference their parent
-    gui.domElement.style.display = 'none';
-    modal.querySelector('.vars-close').addEventListener('click',
-      () => document.body.classList.remove('vars-open'));
-    const tg = root.querySelector('#vars-toggle');
-    if (tg) tg.addEventListener('click', () => document.body.classList.toggle('vars-open'));
-    modal.classList.remove('hidden');
-    show(0);
-    // ?vars=1 opens it; ?fps=1 turns the readout on — for screenshots and
-    // for linking a state rather than describing it
-    if (urlParams.get('vars') === '1') document.body.classList.add('vars-open');
-    if (lab.on) {
-      const i = pages.findIndex((pg) => pg.title === 'lab');
-      if (i >= 0) show(i);
-      document.body.classList.add('vars-open');
-      setPerfOverlay(true, false);   // the lab reads the readout; it does not set your preference
-      console.log(`LAB on mult=${lab.waveMult} bg=${lab.bg}`
-        + ` immortal=${lab.immortalHeart ? 'heart' : ''}${lab.immortalTank ? '+tank' : ''} gpuQuery=${!!gpuExt}`);
-    }
-  })();
+  perfCtl = gui.add({ get on() { return perfOn; }, set on(v) { setPerfOverlay(v); } }, 'on').name('fps readout (`)');   /* a root control, so the VARS modal puts it on the game page */
+  buildVarsModal({ root, gui, lab, urlParams, skySeed, applySky, spawnWave, postfx, setPerfOverlay, gpuExt });   /* THE VARIABLES MODAL and its lab page (src/fx/vars-modal.js) */
   {
     let saved = null;
     try { saved = localStorage.getItem(PERF_KEY); } catch { /* fine */ }
@@ -12507,7 +12053,7 @@ export function initTdTab(root) {
       // starboard 4 (blue), astern 3 (orange), port 2 (red)
       const c = cellSide;
       const secs = proximitySectors([put(5 * c, 0), put(0, 4 * c), put(-3 * c, 0), put(0, -2 * c)], player.pos, basis, reach, cellSide);
-      sensorDemo.push({ fwd: 0, right: 4 }, { fwd: -3, right: 0 }, { fwd: 0, right: -2 });
+      radarScope.sensorDemo.push({ fwd: 0, right: 4 }, { fwd: -3, right: 0 }, { fwd: 0, right: -2 });
       const levels = secs.map((x) => x.level).join('/');
       const colors = secs.map((x) => sensorColor(x.level) || 'none').join('/');
       console.log(`SENSORPROBE cells ahead/stbd/astern/port = 5/4/3/2 -> levels ${levels} colours ${colors}`
@@ -12615,7 +12161,7 @@ export function initTdTab(root) {
         console.log(`WINPROBE after the debrief r=${camera.position.length().toFixed(2)}`
           + ` ${camera.position.length() > 2.5 ? 'OK — still wide'
             : 'WRONG — it snapped back to the hull behind the modal'}`);
-      }, VICTORY_PULL * 1000);
+      }, VICTORY_PULL.seconds * 1000);
       // the debrief is checked LATER than the camera on purpose: onEnd fires
       // on the frame the shot expires, so a check at exactly VICTORY_PULL
       // races the modal it is asking about and reports a failure that is
@@ -12625,7 +12171,7 @@ export function initTdTab(root) {
         console.log(`WINPROBE debrief up=${modal} r=${camera.position.length().toFixed(2)}`
           + ` ${modal ? 'OK — after the move, not instead of it'
             : 'WRONG — the debrief never arrived'}`);
-      }, (VICTORY_PULL + 1.6) * 1000);
+      }, (VICTORY_PULL.seconds + 1.6) * 1000);
     }, 2500);
   }
 
@@ -13364,8 +12910,7 @@ export function initTdTab(root) {
       restart: () => regenerate(),
       openBackDoor: () => storyApi.openBackDoor(), backDoorOpen: () => storyApi.backDoorOpen(), /* THE BACK GATE (2026-09-18): what the mouth's cells are to the pathfinder, and an order for a sentry on one of its mounts */ sealedAt: (ci) => !!story?.sealed(ci), gateAt: (ci) => story?.gateAt?.(ci) ?? null, backSocketCells: () => (story?.backSockets ?? []).map((sk) => sk.cell), orderAt: (ci, key = starterTower().key) => { eco.addBiomass((TOWER_BY_KEY[key]?.cost ?? 0) * 2); return placeError(ci) || (orderTower(key, ci, { quiet: true }) ? null : 'refused'); }, backCandidates: () => storyApi.backBreachCandidates(), backMouth: () => story?.backMouth ?? null, backBreach: (n = 16, k = 0) => { const c = storyApi.backBreachCandidates()[k]; if (!c) return -1; const obj = buildPortalObj(c.cell, 0); scene.add(obj); const sp = { ci: c.cell, alive: true, obj, hp: 3, found: true }; spawnPoints.push(sp); recomputePortalDist(); for (let i = 0; i < n; i++) spawnQueue.push({ type: 'amoeba', sp, at: spawnClock, spread: 0.8, delay: i * 0.12 }); return c.cell; }, backInside: () => { const m = story?.backMouth, h = graph.centers[dungeon.heart]; if (!m) return 0; const b = sub3(m.dir, scale3(h, dot3(m.dir, h))); return enemies.filter((e) => e.alive && story.inside(e.cur) && dot3(sub3(e.pos, h), b) > 0).length; }, viewBack: (height, back) => { const m = story?.backMouth; if (!m) return; endShot(); paused = false; startDiveShot({ camera, startShot, cellSide }, new THREE.Vector3(...m.dir), { id: 'backview', hold: 600, dive: { ...story.backDoor.dive, height: height ?? story.backDoor.dive.height, back: back ?? story.backDoor.dive.back, diveSeconds: 1e-3 } }); },
       heartHealth: fraction => { heartHP = Math.max(0, Math.min(HEART_MAX, fraction * HEART_MAX)); heartSprite.userData.setHealth?.(fraction); },
-      /* THE SHOWCASE (src/fx/showcase.js, src/content/showcase.js): the montage's rail drives the real systems through these and nothing else, so it needs no ?acceptance=1. `counters` is the cheap proof the --showcase step reads at every cut. */ showcase: { ready: () => { if (!story || !storyBase || !automated() || playerMesh?.userData.loading || deploy) return false; if (!story.source?.alive) { storyApi.breach(gunshipFar()); return false; }   /* THE PRE-ROLL IS THE LOAD: the montage's first frame waits here while the planet, the models and the base arrive, the breach opens and the first bodies climb out of it, so the rail never opens on an empty yard */ if (gameHooks.showcase.source() < 0 || !spawnPoints.some((x) => x.alive && gameBreaches.ready(x.obj))) return false;   /* AND THE HOLE MUST BE OPEN: releaseSpawns holds every queued body until a breach has finished opening, so a montage that starts before then spends its first beats with a full queue and floods when it finally lets go (measured: 294 queued bodies arriving in one frame at 19.5 s) */ if (!story.showcaseSeeded) { story.showcaseSeeded = true; gameHooks.showcase.swarm(10); } return enemies.filter((e) => e.alive && e.id > 0 && e.spec.rammable && e.emergeAge >= 1.2).length >= 6; }   /* six is enough to ram: the world holds about seventy bodies at once and queues the rest, so a fat pre-roll starves the emergence shot */, begin: () => { endShot(); paused = false; params.callouts = false; }, counters: () => ({ ...(() => { const v = player.pos ? new THREE.Vector3(player.pos[0], player.pos[1], player.pos[2]).project(camera) : null; return v ? { hullX: +v.x.toFixed(3), hullY: +v.y.toFixed(3), hullZ: +v.z.toFixed(3) } : {}; })(), /* WHERE THE HULL IS ON SCREEN, in ndc: the ram beat's whole point is that the MÖRK is IN FRAME, and a rams counter cannot tell a drive-through from a hull photographed off the bottom edge (docs/log/entries/2026-09-24-intro-four-beats-built.json) */ rams: rs.rams, combo: ramCombo, hp: playerHP, view: params.view, shot: shotId(), tankKills: rs.bySrc.tank, mag: gunship.mag, enemies: enemies.filter((e) => e.alive).length, emerging: enemies.filter((e) => e.alive && !e.guard && e.emergeAge < 1.2).length, explosions: Object.values(explosions.state().spawned).reduce((a, b) => a + b, 0), queued: spawnQueue.length, breaches: spawnPoints.filter((x) => x.alive && gameBreaches.ready(x.obj)).length, alive: enemies.filter((e) => e.alive && e.id > 0 && e.spec.rammable).length, seat: pilot?.gunship ? 'gunship' : pilot?.state?.tower?.key ?? null }), source: () => { if (!story) return -1; const sp = spawnPoints.find((x) => x.alive && gameBreaches.ready(x.obj)); if (sp) { story.source = sp; return sp.ci; }   /* A BREACH THE SWARM CAN USE: releaseSpawns holds the queue until the hole has finished opening, so the montage takes a breach that is already open (the sector's own) over a fresh one it would have to wait out */ if (!story.source?.alive) storyApi.breach(gunshipFar()); return story.source?.ci ?? -1; }, swarm: (n = 30, type = 'amoeba', gap = 0) =>   /* no stagger by default: a queued spawn waits on the spawn clock, which does not always run between waves, and a montage cannot wait for it */ { const ci = gameHooks.showcase.source(); if (ci < 0) return 0; for (let i = 0; i < n; i++) storyApi.spawn(type, ci, { spread: 0.9, delay: i * gap }); releaseSpawns(0); return n; }   /* THE MONTAGE RELEASES ITS OWN: the spawn clock only turns over inside the wave loop, so a queued swarm can sit there for a shot or two — this drains what is due now, through the same release path and the same breach-is-open gate */, tremor: () => storyApi.tremor(gameHooks.showcase.source()), ground: (ci, height = 4, back = 4) => { if (ci < 0) return; endShot(); paused = false; startDiveShot({ camera, startShot, cellSide }, new THREE.Vector3(...norm3(graph.centers[ci])), { id: 'showcaseGround', hold: 600, fromCamera: true, dive: { height, back, diveSeconds: 0.35 } }); }, ram: (on = true) => { showcaseRamCam = !!on; gameBreaches.rubbleShow(!on);   /* AND THE SEALED CAPS GO: the beat opens on the lane at a breach the sector seals under it, and the cap piles up on that very lane — a grey boulder mid-frame with the hull inside it (the still of 2026-09-24) */ if (!on) return false; endShot(); paused = false; followSuspend = false; setView('third'); snapCamera(); return true; }   /* THE RAM BEAT'S CAMERA, on: low behind the hull, nose into the frame (src/domain/showcase-shot.js). The view still has to be 'third' — the DRIVE is gated on it (`driving` in the step loop), and a hull that is not driving rams nothing — but the pose is the beat's, not the game's. Off at the cut out of the beat: the gunship's seat outranks it anyway, but the last card's closeup is a shot and shots are checked ABOVE this. */, follow: () => { endShot(); paused = false; followSuspend = false; setView('third'); snapCamera(); },   /* the hull's own chase camera: a cinematic shot latches the camera AND holds the drive, and the ram is the hull moving */ drop: (n = 30, at = 'breach') => { if (at === 'ahead') { const cs = player.pos ? cellsAhead({ pos: player.pos, dir: player.smoothDir, centers: graph.centers, cellSide, open: (c) => dungeon.tags[c] !== BLOCKED }) : []; if (!cs.length) return 0; for (let i = 0; i < n; i++) { const c = cs[i % cs.length]; storyApi.spawn('amoeba', c, { spread: 0.7, guard: { site: 'showcase', c: graph.centers[c], r: cellSide * 3 } }); } releaseSpawns(0); return n; }   /* AHEAD ('ahead'): a wall of bodies across the lane 2-5 cells in FRONT of the hull, which is the only placement a drive-through can read — dropped round the hull it is already among them on the first frame (src/domain/showcase-shot.js cellsAhead) */ const ci = at === 'tank' ? player.cur : gameHooks.showcase.source(); if (ci < 0) return 0; for (let i = 0; i < n; i++) storyApi.spawn('amoeba', ci, { spread: 1.2, guard: { site: 'showcase', c: graph.centers[ci], r: cellSide * 5 } }); releaseSpawns(0); return n; }   /* A HORDE UNDER THE BELLY, NOW: releaseSpawns holds a breach's queue until the hole is open, and a breach the sector has closed never opens again — so the gunship beat drops its own bodies at the same cell through the guard path, which carries its own spawn point and is released the moment it is asked for. The same bodies, the same spec: only the gate is different. Dropped at the breach, or ROUND THE HULL ('tank'): a tank thrown into a horde is through it in half a second, and the beat is a beat of driving through bodies, not of chasing them. */, lane: () => { const ci = gameHooks.showcase.source(); if (ci < 0) return false; gameHooks.placeTank(graph.adj[ci].find((c) => dungeon.tags[c] !== BLOCKED) ?? ci); return true; }   /* THE HULL AT THE HOLE: the tank starts the run parked at the base, a long drive from the breach, and a five-second beat cannot cover that drive — so the ram beat opens with the hull already standing on the lane the swarm is walking up */, ramNext: () => { const e = enemies.findLast((x) => x.alive && x.id > 0 && x.spec.rammable && x.emergeAge >= 1.2 && dungeon.tags[x.cur] !== BLOCKED); if (!e) return false; gameHooks.placeTank(e.cur); return true; }   /* A BODY THAT IS STANDING, not one still climbing: a creature mid-emergence is inside the rock with no contact to make, and the hull dropped onto the hole rams nothing — measured as a ram beat that placed the tank thirty times for no ram at all while seventy bodies sat in the shaft. The LAST such body, not the first: the newest is the one that just came up out of the breach this beat is about, while the oldest is a guard standing over a site on the far side of the map. On ground the hull can stand on, too: dropped onto rock it sits inside the rubble and the chase camera photographs a boulder */, gunship: () => { fillFromKill(gunshipCall, 99, GUNSHIP_CALL); if (!onStation(gunship)) startStation(gunship, GUNSHIP_ORBIT); if (!pilotMode) enterPilot(towers.map((tw) => tw.ci)); endShot(); return pilot?.mountGunship?.() === 'mounted'; }, gun: (k) => selectGun(gunship, k, GUNSHIP_GUNS), track: (ci) => { if (ci < 0 || !story) return false; const hc = graph.centers[dungeon.heart]; gunshipTrack = makeTrack(graph.centers[ci], sub3(graph.centers[ci], hc)); return true; }   /* FRAME THE HORDE, NOT THE BASE: the ground track creeps toward a loaded breach over a whole pass (src/domain/gunship-track.js), which the montage's six-second beat does not have — so it is placed over the breach outright and steerTrack loiters it there */, hold: (on = true) => { if (pilot) pilot.state.held = !!on; }, aim: (pitch = -1.2) => { if (!pilot?.gunship) return null; pilot.state.yaw = 0; pilot.state.pitch = Math.max(GUNSHIP_PLATFORM.pitchMin, Math.min(GUNSHIP_PLATFORM.pitchMax, pitch)); return pilot.state.pitch; }   /* THE SEAT AIMS ITSELF, not a tower: the gunner's aim is a yaw and a pitch relative to the PLATFORM, and the platform's heading is laid from the base toward the breach by `track`, so yaw 0 looks along its own nose at the hole it is flying to. The pitch must be a real look DOWN or the optic's ray never strikes the ground, and a gun with no impact cell fires nothing however hard the trigger is held (src/sentry-pilot.js gunshipTick: `impact = G.aim(...)`) — the seat opens on whatever pitch it was left with, which on a page that has taken no seat is the horizon. */, leave: () => { if (pilotMode) leavePilot(); }, isao: () => { if (!isao) spawnIsao();   /* he is only in the world while he has an order: the last card prints him first, then takes the story's own face-on closeup (storyApi.closeup) */ storyApi.closeup(); return !!isao; } },
-    };
+      /* THE SHOWCASE'S HOOKS (src/fx/showcase-hooks.js; the rail is src/fx/showcase.js): the montage drives the real systems through these and nothing else, so it needs no ?acceptance=1 */ showcase: createShowcaseHooks({ camera, enemies, spawnPoints, spawnQueue, towers, player, params, gunship, gunshipCall, explosions, gameBreaches, storyApi, gunshipFar, automated, shotId, endShot, startShot, snapCamera, setView, releaseSpawns, enterPilot, leavePilot, spawnIsao, placeTank: (ci) => gameHooks.placeTank(ci), story: () => story, storyBase: () => storyBase, deploy: () => deploy, playerMesh: () => playerMesh, graph: () => graph, dungeon: () => dungeon, cellSide: () => cellSide, pilot: () => pilot, pilotMode: () => pilotMode, isao: () => isao, rs: () => rs, ramCombo: () => ramCombo, playerHP: () => playerHP, setPaused: (v) => { paused = v; }, setFollowSuspend: (v) => { followSuspend = v; }, setRamCam: (v) => { showcaseRamCam = v; }, setGunshipTrack: (v) => { gunshipTrack = v; } }) };
     if (urlParams.get('acceptance') === '1') window.__stalheartTest = gameHooks;   // Browser acceptance adapter, published only when explicitly requested; the showcase holds the same object directly
 
   function leavePilot() { if (!pilotMode) return; pilot?.dispose(); for (const tw of towers) { tw.povFire?.stop(0.1); tw.povFire = null; } pilot = null; pilotHost = null; pilotMode = false; storyScope?.update({ on: false }); /* the scope leaves with the optic */ params.callouts = true; delete window.__stalheartPilotTest; restoreSeat(); }   /* back to the hull, at the lens and the view the seat was taken from: the seat's zoom narrowed it (owner, 2026-09-15: the tank after the gunship at the wrong angle; 2026-09-23: and after SOL-82 too) */ let seatBase = null; function restoreSeat() { const b = restoreSeatView(seatBase); seatBase = null; camera.fov = b.fov; camera.updateProjectionMatrix(); if (!b.lock && document.pointerLockElement) document.exitPointerLock?.(); setView(b.view); snapCamera(); }   /* THE ONE RESTORE (src/domain/seat-view.js): every leave puts back the camera the FIRST seat of the chain recorded, whichever seat comes next, and drops a pointer lock the hull never asked for */

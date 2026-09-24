@@ -1,5 +1,5 @@
 // radar.js — the old-school PPI sweep behind the minimap. Pure math only:
-// the canvas painting lives with the tab, but WHERE a contact sits on the
+// the canvas painting is src/fx/radar-scope.js, but WHERE a contact sits on the
 // scope and HOW bright the phosphor holds it are testable facts, and the
 // orientation conventions here are exactly the kind of thing that silently
 // flips without a test.
