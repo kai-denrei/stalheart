@@ -685,6 +685,12 @@ try{
  {const s=await sec();assert.deepEqual(s.omens,['rumble','crack'],`sector 1 foreshadows the back door (${JSON.stringify(s.omens)})`);
   assert.equal(await evaluate(`${T}.state().storyHud?.tremor`),true,'the tremor contact is on the radar');}
  current='sectors-held';await finish();
+ // A FAULT IN THE FRAME (2026-09-25): the world keeps running and drawing, and the fault is reported once, not once a frame
+ {const c0=await evaluate(`${T}.state().shieldClock`);assert(await evaluate(`${T}.faultOnce()`),'a fault is injected');await delay(1500);
+  const c1=await evaluate(`${T}.state().shieldClock`);assert(c1>c0+0.5,`the game clock runs on through the fault (${c0} -> ${c1})`);
+  assert.equal(errors.filter(x=>/injected frame fault/.test(x)).length,1,`the fault reaches the page's error handlers once (${JSON.stringify(errors)})`);
+  const ring=await evaluate(`window.__stalheart.diagnostics().events.filter(e=>e.type==='error'&&/injected frame fault/.test(e.data.message)).length`);assert.equal(ring,1,'and the diagnostics ring once');
+  errors.length=0;}
  await evaluate(`${T}.sectorClearField()`);
  // THE DEAD ARE LET GO (2026-09-25): a cleared field holds no dead records, only the living (the expedition sites' guards)
  await until(`${T}.state().enemyRecords===${T}.state().enemiesAlive`,5000).catch(async()=>assert.fail(`dead records kept (${await evaluate(`JSON.stringify([${T}.state().enemyRecords,${T}.state().enemiesAlive])`)})`));
