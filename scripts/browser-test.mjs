@@ -1527,6 +1527,8 @@ try{
  await click('#synthetic-modal [data-continue]');await delay(400);const afterScreen=await evaluate('window.__stalheartTest.state()');assert(!afterScreen.screenOpen&&!afterScreen.paused,'CONTINUE closes it and the game resumes');assert.equal(afterScreen.screensOpened,1);
  await until('window.__stalheartTest.state().story.phase==="expedition"',5000);const exp=await evaluate('window.__stalheartTest.state()');assert(exp.story.said.includes('rocket_sites'),'Isao sends the tank to the landing sites');assert(exp.storyHud.sites>=3,'the landing sites are on the radar');assert.equal(exp.shot,'sites','the planet pulled back');await delay(2500);current='story-world-expedition';await finish();
  assert.equal(await evaluate('getComputedStyle(document.querySelector("#synthetic-modal")).display'),'none','the closed screen is really gone, not a transparent sheet over the strip');
+ // the sector loop's waves would take a one-Rotor base down while this step reads the views strip (--sectors and --pacing cover the loop), as in --defense
+ await evaluate('window.__stalheartTest.sectorQuiet(true)');
  // past the handover the towers fire themselves, so the strip drops their mounts and the gunship button becomes the call-in meter
  assert.equal(await evaluate('document.querySelectorAll("#story-views [data-mount]:not([data-mount=gunship])").length'),0,'no tower mounts after the handover');
  await until('window.__stalheartTest.state().gunship.station===false',150000);await delay(500);   // the pass that was already overhead at the handover has to finish before the button is the meter rather than the countdown; the meter is written on the frame after it leaves
@@ -2018,7 +2020,8 @@ try{
  assert(await evaluate('window.__stalheartTest.openBuildMenu()'));
  assert.deepEqual(await evaluate('Array.from(document.querySelectorAll("#td-shop .shop-buy"),b=>b.innerText.split("\\n")[0])'),SENTRIES.map(s=>s.label));
  await finish();
- await go('mobile-input','index.html?sw=0&cine=0&mobile=1&coarse=1&keyprobe=1&layout=1#td',844,390);
+ // a page with a tank from the first frame: since sector 0 (2026-09-24) a bare page has no hull until the Stålheart rolls one out
+ await go('mobile-input','index.html?sw=0&cine=0&mobile=1&coarse=1&keyprobe=1&layout=1&world=story&stage=6&phase=expedition#td',844,390);
  const start=Date.now();while(!consoleLines.some(x=>x.includes('S drives, T shields'))&&Date.now()-start<12000)await delay(200);
  assert(consoleLines.some(x=>x.includes('S drives, T shields')));await finish();
 await go('shell-explosion','index.html?sw=0&cine=0&acceptance=1&blast=1#td');

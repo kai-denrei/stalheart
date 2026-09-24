@@ -54,6 +54,12 @@ export function releaseWave(st, id, t) {
   return { wave, last: b.wavesReleased === b.wavesPlanned };
 }
 
+// THE FIRST SECTOR WAITS FOR THE EXPEDITION (2026-09-25). Isao sends the new hull out to the landing sites the moment the
+// expedition phase begins; a sector opening behind it on the clock took the colony while the player did as told (the towers alone
+// hold sector 1 for about a minute, 2026-09-24-pacing-probe). So the first sector opens once a part is home or `grace` seconds after
+// the story was ready for it, whichever is first; a run that starts past the expedition (a jump, SKIP TUTORIAL) passes grace 0.
+export const firstSectorDue = ({ sinceReady, grace = 0, partsHome = 0 }) => partsHome > 0 || sinceReady >= grace;
+
 // THE CLOCK'S ONE GUARD (2026-09-24): the next pulse arms only while the live bodies plus the bodies it would send fit the
 // budget. An empty field always takes the next pulse, so a pulse bigger than the budget can never stall a sector.
 export const pulseFits = (alive, next, budget) => alive <= 0 || alive + next <= budget;

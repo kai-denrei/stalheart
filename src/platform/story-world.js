@@ -113,6 +113,8 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     sockets: new Set(), home: plan.cells.landing, socketLift: 0,
     // the solar array's shield pad (src/content/shield-array.js): its island's centre on the unit sphere, standing once the island is; a build programme stands it later by setting `standing`
     arrayPad: (() => { const i = ISLANDS.find((x) => x.id === SHIELD_ARRAY.island); return i ? { cell: plan.cells[i.id], pos: placer.toWorld([i.x, 0, i.z]).normalize().toArray(), standing: stage >= i.stage } : null; })(),
+    // a run that starts at or past the expedition (a jump link) has no expedition of its own to wait for (src/fx/sector-run.js)
+    lateStart: phase != null && STORY_PHASES.indexOf(phase) >= STORY_PHASES.indexOf('expedition'),
     beats: makeStoryBeats({ fodderEvery: STORY_FODDER.every, fodderAlive: STORY_FODDER.alive, fodderTotal: STORY_FODDER.total, fodderEmerge: STORY_FODDER, socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, ...STORY_BEATS, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER, foundry: FOUNDRY_TUNE, startPhase: phase ?? 'landed', gateReady: () => base.gate().built, construction: hullHeld ? STORY_CONSTRUCTION : null }),
     hull: createHullIssue({ held: hullHeld, perk: hullStep?.perk, door, lead: STORY_ROLLOUT.lead }),   // the first hull, held until the Stålheart stands
     // the story's Quiver fires the TALON: the game's quiver config with the lab's heavy round on top

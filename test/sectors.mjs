@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { pulseFits, sectorDef, makeSector, releaseWave, nextWaveIndex, breachLive, closeBreach, spendBreach, isSecure, summary, forfeitOf, waveYield, pickBreachCells, CLOSERS } from '../src/domain/sectors.js';
+import { firstSectorDue, pulseFits, sectorDef, makeSector, releaseWave, nextWaveIndex, breachLive, closeBreach, spendBreach, isSecure, summary, forfeitOf, waveYield, pickBreachCells, CLOSERS } from '../src/domain/sectors.js';
 import { SECTORS, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, BELT_OF, BELTS, BREACH_CLOSERS, SECTOR_STATS, SECTOR_TIMING } from '../src/content/sectors.js';
 import { ENEMY_SPEC, CREATURE_TINTS, SAFE_HUES, ALARM_HUES, computeWavePlan } from '../src/enemyspec.js';
 import { waveClearBonus } from '../src/domain/economy.js';
@@ -63,6 +63,12 @@ assert.ok(gen[1].held.kg > gen[0].held.kg && gen[2].held.points > gen[1].held.po
   assert.ok(Math.max(...peaks) <= 520, `...and never past the frame budget this machine holds (${peaks})`);
   assert.equal(SECTORS[2].hardcores, 2, 'a few hard cores a wave, not the twenty the surge throws in on its own');
 }
+
+// the first sector waits for the expedition: a part home, or the grace
+assert.equal(firstSectorDue({ sinceReady: 10, grace: SECTOR_TIMING.firstGrace, partsHome: 0 }), false, 'the tank is out on its first expedition');
+assert.equal(firstSectorDue({ sinceReady: 10, grace: SECTOR_TIMING.firstGrace, partsHome: 1 }), true, 'a part home opens it');
+assert.equal(firstSectorDue({ sinceReady: SECTOR_TIMING.firstGrace, grace: SECTOR_TIMING.firstGrace }), true, 'and so does the grace running out');
+assert.equal(firstSectorDue({ sinceReady: 0, grace: 0 }), true, 'a run that starts past the expedition opens at once');
 
 // the clock's guard: a pulse arms while it fits, and an empty field always takes the next one
 assert.equal(pulseFits(100, 120, 520), true);

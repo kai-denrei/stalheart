@@ -10,7 +10,7 @@
 import { SECTORS, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, SECTOR_STATS, SECTOR_STAMPS, SECTOR_RECORDS, SECTOR_TIMING, SECTOR_GATE, BELT_OF, BREACH_CLOSERS, BACK_OMENS, BACK_SCRAMBLE } from '../content/sectors.js';
 import { omenDue } from '../domain/back-omens.js';
 import { GUNSHIP_GUN_ORDER } from '../content/gunship.js';
-import { pulseFits, sectorDef, makeSector, releaseWave, closeBreach, spendBreach, isSecure, forfeitOf, waveYield, pickBreachCells } from '../domain/sectors.js';
+import { firstSectorDue, pulseFits, sectorDef, makeSector, releaseWave, closeBreach, spendBreach, isSecure, forfeitOf, waveYield, pickBreachCells } from '../domain/sectors.js';
 import { makeSectorStats, record, report as sectorReport, mergeBests, campaignTotals } from '../domain/sector-stats.js';
 import { makeGateIntegrity, pressGate, mendGate, gateShare } from '../domain/gate-integrity.js';
 import { computeWavePlan, ENEMY_SPEC } from '../enemyspec.js';
@@ -43,6 +43,7 @@ export function createSectorRun(h) {
   let phase = 'idle', def = null, sector = null, stats = null, left = 0, at = 0, pending = [], cardLeft = 0, feast = null, backOpenedAt = null, campaignShown = false, lastPoll = null, lastReport = null, quiet = false;
   const sps = new Map(), reports = [], omens = new Set();
   let doorsQuiet = true;   // no sector body within quietCells of any standing door, as of the last tick
+  let readySince = null;   // when the story first said it was ready for the first sector
   const now = () => h.now();
 
   // THE GATES: each door has its own hit points and its own pathfinder rule, which gives way while that door is broken. The front
@@ -246,7 +247,14 @@ export function createSectorRun(h) {
     if (phase !== 'idle' && phase !== 'lost-shown') tickGate(dt);
     if (phase === 'brief' || phase === 'fighting' || phase === 'secure') poll(dt);
     const t = now();
-    if (phase === 'idle') { if (h.ready()) begin(Math.max(1, h.firstSector ?? 1)); return; }   // the SKIP TUTORIAL entry opens the run at the back-door sector instead of the lane
+    if (phase === 'idle') {
+      if (!h.ready()) return;
+      readySince ??= t;
+      const first = Math.max(1, h.firstSector ?? 1);   // the SKIP TUTORIAL entry opens the run at the back-door sector instead of the lane
+      // the expedition the tank has just been sent on comes first: a part home, or the grace, opens the first sector
+      if (!firstSectorDue({ sinceReady: t - readySince, grace: first > 1 || story.lateStart ? 0 : SECTOR_TIMING.firstGrace ?? 0, partsHome: h.poll().delivered?.length ?? 0 })) return;
+      begin(first); return;
+    }
     if (cardLeft > 0) { cardLeft -= dt; if (cardLeft <= 0) card([]); }
     if (phase === 'lost') { left -= dt; if (left <= 0) finish('lost'); return; }
     if (phase === 'secure') { left -= dt; if (left <= 0) finish('secure'); return; }
