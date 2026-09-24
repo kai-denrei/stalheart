@@ -99,6 +99,33 @@ export const STORY_BEATS = Object.freeze({
   tremorDelay: 0.8, breachDelay: 2, spawnDelay: 0.4, overrideDelay: 1.5, overrideCells: 13,
 });
 
+// SECTOR 0: THE FOUNDATION (owner, 2026-09-24: "the first few waves before the stalheart is ready could be more intense POV sentries
+// and Gunship shooting from above to protect the construction of the stalheart"). On a growing page, once the Quiver's two hard cores
+// are down and the Stålheart is still printing, a wave rises from the sinkhole `first` seconds in and then every `every` seconds,
+// cycling through `waves` until the Stålheart stands (src/domain/story-beats.js `construction`). Each body marches at `pace` (the
+// sector loop's pace, not the tutorial surge), rising over `stagger` seconds scattered `spread` cells across the crater. Soft bodies
+// with a hard core every other wave: the Rotor, the Quiver and the gunship each have work. `harmless`: sector 0 cannot be lost — the
+// bodies pile at the gate, the gate does not wear outside a sector, and the MÖRK that rolls out into the leftovers is not hurt.
+// A wave waits while `alive` bodies stand (the frame budget, and a ceiling on what the new hull rolls out into). The handover comes
+// when the Stålheart stands and the field is down to `mopUp`: the automatic towers fire without the seats' multipliers and would
+// take minutes over what the seats and the MÖRK's rams clear in seconds, and a live body holds every wave clock after it.
+// `studyDelay`: once sector 0 is over, the player drives the new hull this long before Isao's study takes the camera.
+export const STORY_CONSTRUCTION = Object.freeze({
+  first: 3, every: 11, alive: 60, mopUp: 0, studyDelay: 8, pace: 1.5, spread: 0.9, stagger: 2.5, harmless: true,
+  waves: Object.freeze([
+    Object.freeze([Object.freeze({ type: 'amoeba', count: 22 })]),
+    Object.freeze([Object.freeze({ type: 'amoeba', count: 16 }), Object.freeze({ type: 'phage', count: 8 }), Object.freeze({ type: 'barbed', count: 1 })]),
+    Object.freeze([Object.freeze({ type: 'amoeba', count: 26 })]),
+    Object.freeze([Object.freeze({ type: 'amoeba', count: 18 }), Object.freeze({ type: 'phage', count: 10 }), Object.freeze({ type: 'barbed', count: 1 })]),
+  ]),
+});
+
+// THE FIRST MÖRK ROLLS OUT OF THE STÅLHEART (owner, 2026-09-24: "Then with the Stalheart we get the first tank"). The Stålheart is a
+// gantry over a slab with its rails along the plot's Z; the hull starts `start` metres from the plot centre along `heading` (the side
+// the bays' doors face, toward the gate), under the gantry, and drives out to `end` metres, clear of the slab and short of the landing
+// pad. `lead` is the camera's run from wherever the player was to the roll-out's framing before the hull moves (src/fx/hull-issue.js).
+export const STORY_ROLLOUT = Object.freeze({ heading: Object.freeze([0, -1]), start: 4, end: 40, lead: 1.6 });
+
 // The piloted sentry in the story: a denser stream of rounds, each one
 // heavy enough that cannon fodder drops in two hits.
 export const STORY_PILOT = Object.freeze({ rateMul: 2.5, dmgMul: 60 });   // a piloted round is worth one first-wave body before the kill combo (owner, 2026-09-14: fish in a barrel must be annihilated): the base is 0.0167 a round, measured on the story swarm, see 2026-09-14-piloted-rotor-annihilates

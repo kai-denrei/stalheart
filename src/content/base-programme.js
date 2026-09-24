@@ -16,10 +16,15 @@ export const BASE_PROGRAMME = Object.freeze([
   // the gate next, and the tremor waits for it: without a gate no fodder comes, and without fodder the tutorial never reaches the
   // handover. Printed straight after the Rotor, which stands beside it, so the wait before the tremor is one print and no trip
   { id: 'gate', label: 'gate and walls', gate: true, walls: true, when: { phase: 'rotor-ready' }, seconds: 6, metres: 6, brief: 'build_gate', perk: 'gate' },
+  // SECTOR 0: THE STÅLHEART'S CONSTRUCTION IS DEFENDED (owner, 2026-09-24: "The Tank is built by the Stalheart ... the first few waves
+  // before the stalheart is ready could be more intense POV sentries and Gunship shooting from above to protect the construction").
+  // Straight after the gate, and one long print: while it runs the first wave, the Quiver's cores and the construction waves are
+  // fought from the seats (src/domain/story-beats.js `construction`). The story beats put the Quiver on Isao's book the moment the
+  // gate stands, so it is ahead of this step in his queue and stands before the long print takes him. `hull`: the first MÖRK rolls
+  // out of it when it stands (src/fx/hull-issue.js), and until then a growing page has no hull. `readout` is the HUD's objective
+  // while it prints (src/fx/build-readout.js)
+  { id: 'stalheart', label: 'Stålheart', islands: ['stalheart'], structures: ['stalheart'], when: { phase: 'rotor-ready' }, seconds: 75, metres: 24, brief: 'stalheart_begins', perk: 'stalheart', hull: true, readout: 'STÅLHEART' },
   { id: 'landing', label: 'landing pad', islands: ['landing'], when: { phase: 'rotor-ready' }, seconds: 4, metres: 2, brief: 'build_landing', perk: null },
-  // while the swarm rises and walks up to the gate (Isao is idle there for about 25 s, QA 2026-09-16), so it stands before the Quiver
-  // goes on the book and long before the towers turn automatic at `settled` (about 23 s after `cleared` at stage 4)
-  { id: 'stalheart', label: 'Stålheart', islands: ['stalheart'], structures: ['stalheart'], when: { phase: 'breach' }, seconds: 12, metres: 24, brief: 'build_stalheart', perk: 'stalheart' },
   { id: 'solar', label: 'solar array', islands: ['solar'], structures: ['solar'], when: { phase: 'expedition' }, seconds: 14, metres: 8, brief: 'build_solar', perk: 'station' },
   { id: 'bays', label: 'tank bays', islands: ['bay'], structures: ['bays'], when: { sector: 1, idle: true }, seconds: 16, metres: 8, brief: 'build_bays', perk: 'hulls' },
   { id: 'hugin', label: 'HUGIN arm', islands: ['hugin'], structures: ['hugin'], when: { sector: 1, idle: true }, seconds: 16, metres: 16, brief: 'build_hugin', perk: 'gunship' },

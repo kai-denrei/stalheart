@@ -58,9 +58,9 @@ const kinds = (g, k) => g.log.filter((l) => l[0] === k);
   for (let k = 0; k < 10; k++) { g.kill(1); run(beats, g, 1); }
   assert.equal(kinds(g, 'brief').filter((l) => l[1] === 'harvest_biomass').length, 1, 'the tenth kill, once'); assert.equal(beats.state().phase, 'piloting', 'two of twelve still to come');
   g.kill(2); run(beats, g, 0.5); assert.equal(beats.state().phase, 'cleared'); assert.equal(kinds(g, 'brief').at(-1)[1], 'wave_cleared');
-  // THE QUIVER: printed across the lane while the wave was fought (ordered the moment the Rotor was handed over), so the moment the wave
+  // THE QUIVER: printed across the lane while the wave was fought (ordered the moment the gate stood, 2026-09-24), so the moment the wave
   // is down a hard core rises and the optic is handed over at once; a second hard core later; settled once both are down
-  assert.deepEqual(kinds(g, 'order').at(-1), ['order', 'quiver', 4244], 'the Quiver went on the book when the Rotor was handed over');
+  assert.deepEqual(kinds(g, 'order').at(-1), ['order', 'quiver', 4244], 'the Quiver went on the book with the gate, before the wave');
   const spawns = kinds(g, 'spawn').length, breaches = kinds(g, 'breach').length, pilots = kinds(g, 'pilot').length;
   g.seal();   // the player filled the sinkhole with an orbital strike after the wave
   run(beats, g, 1); assert.equal(beats.state().phase, 'quiver-piloting', 'almost immediate: no printing wait, no walk to the gate');
@@ -232,3 +232,82 @@ console.log('Story beats: faces, Rotor print, tremor, breach, approach, override
 }
 
 console.log('story-beats: the foundry pays');
+
+// SECTOR 0: THE FOUNDATION (owner, 2026-09-24: "the first few waves before the stalheart is ready could be more intense POV
+// sentries and Gunship shooting from above to protect the construction of the stalheart. Then with the Stalheart we get the
+// first tank"). The Quiver goes on Isao's book the moment the gate stands, ahead of the Stålheart's long print; after its two
+// hard cores the beats enter `construction`: the gunship arrives once, a wave rises from the sinkhole every `every` seconds
+// (cycling through the table, each body carrying the construction's pace), and `settled` comes only once the host says the
+// Stålheart stands (its first hull is out). A Stålheart already standing never stalls the story.
+const CONSTRUCTION = { first: 2, every: 5, studyDelay: 5, alive: 7, mopUp: 0, pace: 1.5, spread: 0.9, stagger: 2, harmless: true, waves: [[{ type: 'amoeba', count: 3 }], [{ type: 'amoeba', count: 2 }, { type: 'barbed', count: 1 }]] };
+const QUIVER = { key: 'quiver', delay: 0.6, hardcore: 'barbed', secondDelay: 9, studyDelay: 2, missile: {} };
+const toQuiverClear = (beats, g) => {
+  run(beats, g, 17);   // piloting
+  for (let k = 0; k < 10; k++) { g.kill(1); run(beats, g, 1); }
+  g.kill(2); run(beats, g, 0.5);   // cleared
+  run(beats, g, 1); run(beats, g, 7); run(beats, g, 2.5);   // quiver-piloting, both hard cores up
+  g.kill(1); run(beats, g, 1); g.kill(1);   // the second is down: the next tick decides
+};
+{
+  // the Quiver is ordered when the gate stands, before the tremor, and only once
+  let gateUp = false;
+  const beats = makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, rotorDelay: 0, faceDelays: [0, 0], tremorDelay: 1.5, breachDelay: 0.5, spawnDelay: 0.2, overrideDelay: 0.5, fodderEvery: 1, fodderAlive: 4, fodderTotal: 4, gateReady: () => gateUp, quiverSocket: 4244, quiver: QUIVER });
+  const g = fakeGame({ printSeconds: 1, walk: 1 });
+  run(beats, g, 2.5); assert.equal(beats.state().phase, 'rotor-ready');
+  assert.equal(kinds(g, 'order').filter((l) => l[1] === 'quiver').length, 0, 'no Quiver while the gate is unprinted');
+  gateUp = true; run(beats, g, 0.2);
+  assert.equal(beats.state().phase, 'rotor-ready', 'still before the tremor');
+  assert.deepEqual(kinds(g, 'order').at(-1), ['order', 'quiver', 4244], 'the Quiver goes on the book the moment the gate stands');
+  assert.deepEqual(g.log.at(-2), ['grant', 45], '...paid for by the beats, as at the override before');
+  run(beats, g, 8); assert.equal(beats.state().phase, 'piloting');
+  assert.equal(kinds(g, 'order').filter((l) => l[1] === 'quiver').length, 1, 'ordered once: the override does not order it again');
+}
+{
+  // construction: the gunship arrives once, waves on a clock from the sinkhole, settled only when the Stålheart stands
+  const beats = makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, rotorDelay: 2, fodderEvery: 1, fodderAlive: 4, fodderTotal: 12, tremorDelay: 1, breachDelay: 2, overrideDelay: 1, quiverSocket: 4244, quiver: QUIVER, construction: CONSTRUCTION });
+  const g = fakeGame({ walk: 3, printSeconds: 3 });
+  let stands = false; g.api.stalheartStands = () => stands; g.api.gunshipArrive = () => { g.log.push(['gunshipArrive']); };
+  toQuiverClear(beats, g); run(beats, g, 1);
+  assert.equal(beats.state().phase, 'construction', 'the Quiver\'s cores down and the Stålheart still printing: sector 0');
+  assert.equal(kinds(g, 'brief').at(-1)[1], 'quiver_cleared'); assert.equal(kinds(g, 'gunshipArrive').length, 1, 'the gunship arrives from orbit');
+  const s0 = kinds(g, 'spawn').length, b0 = kinds(g, 'breach').length;
+  run(beats, g, 1.2); const w1 = kinds(g, 'spawn').slice(s0);
+  assert.deepEqual(w1.map((l) => [l[1], l[2]]), [['amoeba', 4300], ['amoeba', 4300], ['amoeba', 4300]], 'the first construction wave rises from the sinkhole');
+  for (const l of w1) { assert.equal(l[3].pace, 1.5); assert.equal(l[3].harmless, true); assert.equal(l[3].spread, 0.9); assert.ok(l[3].delay >= 0 && l[3].delay < 2, 'risen over the stagger'); }
+  g.seal();   // a strike filled the sinkhole between waves
+  run(beats, g, 5); const w2 = kinds(g, 'spawn').slice(s0 + 3);
+  assert.deepEqual(w2.map((l) => l[1]), ['amoeba', 'amoeba', 'barbed'], 'the second wave carries a hard core');
+  assert.equal(kinds(g, 'breach').length, b0 + 1, 'the sinkhole is opened again for the wave');
+  run(beats, g, 5); assert.deepEqual(kinds(g, 'spawn').slice(s0 + 6).map((l) => l[1]), ['amoeba', 'amoeba', 'amoeba'], 'the table cycles');
+  assert.deepEqual(beats.state().construction, { waves: 3, sent: 9 });
+  run(beats, g, 6); assert.equal(beats.state().construction.waves, 3, 'nine standing against a cap of seven: the next wave waits');
+  g.kill(3); run(beats, g, 0.2); assert.equal(beats.state().construction.waves, 4, '...and rises the moment the field thins');
+  assert.equal(beats.state().phase, 'construction', 'the field is not what ends it: the Stålheart is');
+  stands = true; run(beats, g, 6);
+  assert.equal(beats.state().phase, 'construction', 'the Stålheart stands with sector 0 still on the field: the hull\'s first work'); assert.equal(beats.state().construction.waves, 4, 'no wave after it stands');
+  g.kill(8); run(beats, g, 0.2); assert.equal(beats.state().phase, 'construction', 'one still standing');
+  g.kill(1); run(beats, g, 0.2);
+  assert.equal(beats.state().phase, 'settled', 'the Stålheart stands and the field is clear: the handover'); assert.equal(kinds(g, 'unlock').at(-1)[1], 'views');
+  const s1 = kinds(g, 'spawn').length;
+  run(beats, g, 3); assert.equal(kinds(g, 'closeup').length, 0, 'the new hull is the player\'s for a few seconds: the study waits the construction\'s own delay, not the Quiver\'s');
+  run(beats, g, 2.5); assert.equal(beats.state().phase, 'study-talk');
+  run(beats, g, 7); assert.equal(kinds(g, 'spawn').length, s1, 'no construction wave after it');
+  assert.equal(kinds(g, 'gunshipArrive').length, 1, 'the gunship arrived once');
+}
+{
+  // a Stålheart already standing at the Quiver's clear: straight to settled, no construction, no free pass
+  const beats = makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, rotorDelay: 2, fodderEvery: 1, fodderAlive: 4, fodderTotal: 12, tremorDelay: 1, breachDelay: 2, overrideDelay: 1, quiverSocket: 4244, quiver: QUIVER, construction: CONSTRUCTION });
+  const g = fakeGame({ walk: 3, printSeconds: 3 });
+  g.api.stalheartStands = () => true; g.api.gunshipArrive = () => { g.log.push(['gunshipArrive']); };
+  toQuiverClear(beats, g); run(beats, g, 0.2);
+  assert.equal(beats.state().phase, 'settled'); assert.equal(kinds(g, 'gunshipArrive').length, 0); assert.deepEqual(beats.state().construction, { waves: 0, sent: 0 });
+}
+{
+  // a static page (no construction table) settles as before whatever the Stålheart does, and a late start at construction leaves it
+  const beats = makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, rotorDelay: 2, fodderEvery: 1, fodderAlive: 4, fodderTotal: 12, tremorDelay: 1, breachDelay: 2, overrideDelay: 1, quiverSocket: 4244, quiver: QUIVER });
+  const g = fakeGame({ walk: 3, printSeconds: 3 }); g.api.stalheartStands = () => false;
+  toQuiverClear(beats, g); run(beats, g, 0.2); assert.equal(beats.state().phase, 'settled');
+  const late = makeStoryBeats({ socket: 1, startPhase: 'construction', construction: CONSTRUCTION }), g2 = fakeGame(); g2.api.stalheartStands = () => true;
+  late.tick(0.1, g2.api); assert.equal(late.phase(), 'settled', 'a jump into construction with the Stålheart up hands over at once');
+}
+console.log('story-beats: sector 0, the construction defended');

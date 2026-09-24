@@ -122,7 +122,7 @@ export const BRIEFS = {
   // the first wave down: the views unlock
   wave_cleared: {
     id: 'wave_cleared', face: 'glee', title: 'COMMS · ISAO', once: true,
-    lines: ['Clear. Not one of them through the gate.', 'Take the tank whenever you like: TANK, SENTRY and MAP switch the view.'],
+    lines: ['Clear. Not one of them through the gate.', 'The strip below switches the view: the sentries, the MAP.'],   // no TANK promised: on a growing page the hull comes out of the Stålheart later
   },
   // the Quiver: introduced, handed over, and two for two
   quiver_intro: {
@@ -132,6 +132,12 @@ export const BRIEFS = {
   foundry_deploy: {
     id: 'foundry_deploy', face: 'focused', title: 'COMMS · ISAO', once: true,
     lines: ['The rocket got us here.', 'Now it builds the base.'],
+  },
+  // SECTOR 0 (owner, 2026-09-24: "its already in orbit, not equipped to develop a colony but its purpose is to defend new colonies"):
+  // the KORP / GS01 comes on station over the Stålheart's construction, a free first pass (src/domain/story-beats.js construction)
+  gunship_overhead: {
+    id: 'gunship_overhead', face: 'focused', title: 'COMMS · ISAO', once: true,
+    lines: ['GS01 is overhead. It guards colonies; it does not build them.', 'It holds the sky while I print. GUNSHIP takes its guns.'],
   },
   gunship_pass: {
     id: 'gunship_pass', face: 'focused', title: 'COMMS · ISAO', once: true,
@@ -148,7 +154,7 @@ export const BRIEFS = {
   },
   quiver_cleared: {
     id: 'quiver_cleared', face: 'glee', title: 'COMMS · ISAO', once: true,
-    lines: ['Two for two.', 'The wall is yours: TANK, SENTRY cycles the mounts, MAP for the whole planet.'],
+    lines: ['Two for two.', 'The wall is yours: the strip cycles the mounts, MAP for the whole planet.'],
   },
   // after the Quiver: the study screen
   // spoken in a close-up before the screen opens (owner, 2026-09-13): the face goes neutral, skeptical, then to work, one per line
@@ -169,9 +175,14 @@ export const BRIEFS = {
     id: 'build_landing', face: 'focused', title: 'COMMS · ISAO', once: true,
     lines: ['The foundry is standing in the dirt.', 'Printing a pad under it.'],
   },
-  build_stalheart: {
-    id: 'build_stalheart', face: 'determined', title: 'COMMS · ISAO', once: true,
-    lines: ['The pole has waited long enough.', 'Printing the Stålheart.'],
+  // THE STÅLHEART BUILDS THE TANKS (owner, 2026-09-24): the goal of sector 0 said as the long print starts, and said again when it stands
+  stalheart_begins: {
+    id: 'stalheart_begins', face: 'determined', title: 'COMMS · ISAO', once: true,
+    lines: ['The pole has waited long enough. Printing the Stålheart.', 'It builds the tanks: when it stands, your MÖRK rolls out of it.'],
+  },
+  stalheart_stands: {
+    id: 'stalheart_stands', face: 'glee', title: 'COMMS · ISAO', once: true,
+    lines: ['The Stålheart stands. Here comes your MÖRK.', 'The ground is yours now. What we need is out there.'],
   },
   build_solar: {
     id: 'build_solar', face: 'focused', title: 'COMMS · ISAO', once: true,

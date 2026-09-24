@@ -844,10 +844,13 @@ try{
  const hiddenNear='(window.__stalheartTest.state().storyLod||[]).filter(l=>!l.visible&&l.nearLoaded).map(l=>l.id)';
  const shotBase=async(name)=>{await evaluate('window.__stalheartTest.focusHeart()');await delay(1500);assert.deepEqual(await evaluate(hiddenNear),[],`${name}: no hidden landmark fetched its near tier`);current=name;await finish();};
  await go('grow-bare','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none#td');await until('!!window.__stalheartTest&&!!window.__stalheartTest.state().programme',90000);
- {const b=await evaluate('window.__stalheartTest.state()');assert.equal(b.programme.grow,true,'a story page with no stage grows its base');assert.equal(b.programme.next,'foundry','he works the recycler before he prints the gate');assert.equal(b.programme.gate.built,false);}
+ {const b=await evaluate('window.__stalheartTest.state()');assert.equal(b.programme.grow,true,'a story page with no stage grows its base');assert.equal(b.programme.next,'foundry','he works the recycler before he prints the gate');assert.equal(b.programme.gate.built,false);
+  assert.equal(b.hull?.state,'held','SECTOR 0: a bare page has no hull until the Stålheart stands');}
  await finish();
  await go('grow-landing','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=1&grow=1#td');await until('!!window.__stalheartTest',90000);await delay(2500);
  const g0=await evaluate('window.__stalheartTest.state()');assert.equal(g0.programme.grow,true);assert.equal(g0.programme.gate.built,false,'no gate at the landing');assert.deepEqual(g0.programme.printed,[]);assert.deepEqual(g0.bays,[],'the bays are not printed yet');
+ // SECTOR 0 (owner, 2026-09-24: "The Tank is built by the Stalheart"): the opening is Isao coming out and building; no MÖRK is drawn or driven
+ assert.equal(g0.hull.state,'held','no hull at the landing');assert.equal(g0.hull.visible,false,'the hull is not drawn');assert(g0.hull.door>=0,`the Stålheart has a door to roll the hull out of (${JSON.stringify(g0.hull)})`);
  assert.deepEqual(await evaluate(hiddenNear),[]);await finish();
  const t0=Date.now(),mark=async(what)=>console.log(`GROW ${what} at ${((Date.now()-t0)/1000).toFixed(1)} s`);
  await mark('landed');
@@ -868,21 +871,47 @@ try{
  await until('window.__stalheartTest.state().story.phase==="tremor"',20000);await mark('tremor');current='grow-tremor';await finish();
  await until('window.__stalheartTest.state().story.phase==="breach"||window.__stalheartTest.state().story.spawned>0',40000);await mark('breach');
  await until('window.__stalheartTest.state().story.spawned>0',40000);await mark('first fodder');
- await until('window.__stalheartTest.state().programme.printed.includes("landing")',90000);await mark('landing pad stands');
- await until('window.__stalheartTest.state().programme.active==="stalheart"',90000);await mark('Stalheart print begins');await delay(8000);assert.deepEqual(await evaluate(hiddenNear),[]);current='grow-stalheart-rising';await finish();
+ await until('window.__stalheartTest.state().towerCells.some(([k])=>k==="quiver")',60000);await mark('Quiver stands');   // ordered by the beats the moment the gate stood, ahead of the Stålheart in Isao's queue
+ await until('(()=>{const p=window.__stalheartTest.state().programme;return p.isao?.state==="build"&&p.isao.order==="structure"&&p.print.step==="stalheart";})()',90000);await mark('Stålheart print begins');
+ {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.programme.active,'stalheart');assert(!s.programme.printed.includes('landing'),'the Stålheart prints straight after the gate: the pad waits behind it');assert.equal(s.hull.state,'held');}
+ await delay(8000);assert.deepEqual(await evaluate(hiddenNear),[]);
+ assert(/STÅLHEART \d+%/.test(await evaluate('document.querySelector("#td-stats").textContent')),`the HUD reads the Stålheart's progress (${await evaluate('document.querySelector("#td-stats").textContent')})`);
+ current='grow-stalheart-rising';await finish();
  await until('window.__stalheartTest.state().story.phase==="override"',150000);await mark('override');
  await until('!!window.__stalheartPilotTest',30000);await mark('first kill possible (the Rotor is the players)');await until('window.__stalheartTest.state().performance.enemies>0',60000);await delay(2000);current='grow-fodder';await finish();
  await evaluate('window.__stalheartPilotTest.hold(true)');
  await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("wave_cleared"))return true;const t=window.__stalheartPilotTest;if(!t||t.state().overheated)return false;t.aimEnemy();return false;})()',600000);
  await evaluate('window.__stalheartPilotTest?.hold(false)');await mark('first wave cleared');
- assert((await evaluate('window.__stalheartTest.state().programme.printed')).includes('stalheart'),'the Stålheart stood before the first wave was down');
+ {const s=await evaluate('window.__stalheartTest.state()');const up=s.programme.printed.includes('stalheart');   // the hull is the Stålheart's: none while it prints, and no TANK on the strip
+  assert.equal(s.hull.state==='held',!up,`no hull while the Stålheart prints, a hull once it stands (${JSON.stringify(s.hull)}, printed ${s.programme.printed})`);
+  if(!up){assert.equal(s.hull.tankButton,false,'the strip offers no TANK before the hull is out');assert.equal(s.hull.visible,false);}}
  await until('window.__stalheartTest.state().story.phase==="quiver-piloting"',150000);await delay(600);await mark('Quiver optic');
  await evaluate('window.__stalheartPilotTest.hold(true)');
- await until('(()=>{const s=window.__stalheartTest.state();if(["settled","study-talk","study","expedition"].includes(s.story.phase))return true;if(!window.__aimAt||Date.now()-window.__aimAt>500){window.__aimAt=Date.now();window.__stalheartPilotTest?.aimEnemy();}return false;})()',200000);
+ // the player's hands in sector 0: re-aim every half second, and hop to the other mount when this one has had nothing in reach for 3 s
+ const aimOn=(stop)=>`(()=>{const s=window.__stalheartTest.state();if(${stop})return true;const t=window.__stalheartPilotTest;if(!t)return false;if(!window.__aimAt||Date.now()-window.__aimAt>500){window.__aimAt=Date.now();if(t.aimEnemy())window.__seen=Date.now();else if(Date.now()-(window.__seen||0)>3000){window.__seen=Date.now();const k=t.state().key==='rotor'?'quiver':'rotor';document.querySelector('#story-views [data-mount="'+k+'"]')?.click();setTimeout(()=>window.__stalheartPilotTest?.hold(true),300);}}return false;})()`;
+ const seat=async(key)=>{await evaluate(`document.querySelector('#story-views [data-mount="${key}"]')?.click()`);await delay(400);await evaluate('window.__stalheartPilotTest?.hold(true)');};
+ await until(aimOn('["construction","settled","study-talk","study","expedition"].includes(s.story.phase)'),200000);
+ if((await evaluate('window.__stalheartTest.state().story.phase'))==='construction'){await mark('construction (sector 0)');
+  // SECTOR 0: the gunship arrives from orbit for a free pass, and waves rise from the sinkhole on a clock while the Stålheart prints
+  {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.gunship.station,true,`the gunship is on station over the construction (${JSON.stringify(s.gunship)})`);assert.equal(s.automated,false,'the towers are still the player\'s: the seats are the fight');assert.equal(s.hull.state,'held');}
+  await until(aimOn('s.story.construction.waves>=1'),30000);await mark('first construction wave');current='grow-construction';await finish();
+  await seat('rotor');   // soft bodies: the Rotor's seat, as a player hops to it
+  await until(aimOn('s.hull.state!=="held"'),150000);await mark('Stålheart stands, the hull rolls out');
+  {const s=await evaluate('window.__stalheartTest.state()');assert(s.programme.printed.includes('stalheart'),'the hull comes out of the Stålheart once it stands');assert.equal(s.hull.tankButton,true,'TANK is offered with the hull');console.log(`  grow: ${s.story.construction.waves} construction wave(s), ${s.story.construction.sent} bodies sent, the hull ${s.hull.quiet?'set down under a gunner':'rolled out on camera'}`);}
+  await delay(1200);current='grow-rollout';await finish();
+  await until('window.__stalheartTest.state().hull.state==="out"',30000);await mark('hull out');
+  {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.hull.visible,true,'the MÖRK is drawn');console.log(`  grow: ${s.performance.enemies} of sector 0 still on the field as the hull comes out (phase ${s.story.phase})`);}
+  // SECTOR 0 ENDS WHEN ITS FIELD IS DOWN: the handover waits for the last of it (the automatic towers are too weak to mop it up),
+  // cleared here from the seats; a player also has the new hull's rams and the gunship
+  if((await evaluate('window.__stalheartTest.state().story.phase'))==='construction'){await seat('rotor');await until(aimOn('s.story.phase!=="construction"'),180000);await mark('sector 0 down');}}
+ else{const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.hull.state,'out',`no construction only when the Stålheart already stood at the Quiver's clear (${JSON.stringify(s.hull)})`);}
+ await until('["settled","study-talk","study","expedition"].includes(window.__stalheartTest.state().story.phase)',30000);
  await evaluate('window.__stalheartPilotTest?.hold(false)');await mark('settled (the handover)');current='grow-settled';await finish();
+ {const seen=await evaluate('JSON.parse(localStorage.getItem("stalheart:v1:td.briefs")||"[]")');for(const id of ['stalheart_begins','gunship_overhead','stalheart_stands'])assert(seen.includes(id),`Isao said ${id} (${seen})`);}
  await until('window.__stalheartTest.state().screenOpen',60000);await mark('study screen');current='grow-study';await finish();
  await click('#synthetic-modal [data-continue]');await until('window.__stalheartTest.state().story.phase==="expedition"',8000);await mark('expedition');
  assert.equal(await evaluate('window.__stalheartTest.state().automated'),true,'the handover reached from a bare opening');
+ await until('window.__stalheartTest.state().programme.printed.includes("landing")',90000);await mark('landing pad stands');
  await until('window.__stalheartTest.state().programme.active==="solar"',90000);await delay(7000);await shotBase('grow-solar-rising');
  await until('window.__stalheartTest.state().programme.printed.includes("solar")',90000);await mark('solar stands');
  {const s=await evaluate('window.__stalheartTest.state()');assert(s.programme.perks.includes('station'),'the array station is on');assert.equal(s.programme.next,'bays');}
@@ -896,7 +925,7 @@ try{
  await evaluate('window.__stalheartTest.hitTank()');await delay(800);const hullsLost=(await evaluate('window.__stalheartTest.state()')).hulls;
  await evaluate('window.__stalheartTest.setSector(2)');
  await until('window.__stalheartTest.state().programme.printed.includes("assembly")',300000);await mark('radar and assembly line stand');
- {const s=await evaluate('window.__stalheartTest.state()');assert.deepEqual(s.programme.printed,['foundry','gate','landing','stalheart','solar','bays','hugin','radar','assembly'],'every step, in order');assert.equal(s.programme.next,'backgate','the back gate is all that is left, and it waits for the surprise');assert(!s.programme.perks.includes('backgate'));assert.deepEqual(s.programme.perks.slice().sort(),['gate','gunship','hulls','rebuild','stalheart','station','uplink']);assert.equal(s.hulls,hullsLost,'no rebuild inside the sector the line was printed in');}
+ {const s=await evaluate('window.__stalheartTest.state()');assert.deepEqual(s.programme.printed,['foundry','gate','stalheart','landing','solar','bays','hugin','radar','assembly'],'every step, in order');assert.equal(s.programme.next,'backgate','the back gate is all that is left, and it waits for the surprise');assert(!s.programme.perks.includes('backgate'));assert.deepEqual(s.programme.perks.slice().sort(),['gate','gunship','hulls','rebuild','stalheart','station','uplink']);assert.equal(s.hulls,hullsLost,'no rebuild inside the sector the line was printed in');}
  await evaluate('window.__stalheartTest.setSector(3)');await delay(800);
  assert.equal((await evaluate('window.__stalheartTest.state()')).hulls,Math.min(3,hullsLost+1),'the assembly line rebuilds a lost hull at the next sector start');
  await shotBase('grow-finished');

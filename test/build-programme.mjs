@@ -32,6 +32,13 @@ const growStub = () => ({ growIsland: (id, k) => grown.push(['island', id, k]), 
   assert.equal(BASE_PROGRAMME.filter((s) => s.gate).length, 2, 'two gate steps: the front door and the back one'); assert.ok(BASE_PROGRAMME.find((s) => s.gate === true).walls, 'the walls come with the front gate'); { const b = BASE_PROGRAMME.find((s) => s.gate === 'back'); assert.ok(b && !b.walls && b.plot && b.when.back === 'held' && b.perk === 'backgate', 'the back gate is a wall-less door that waits for the surprise to be held'); assert.equal(BASE_PROGRAMME.at(-1).id, 'backgate', 'last on the programme'); }
   assert.equal(BASE_PROGRAMME[0].id, 'foundry', 'Isao works the recycler before he prints anything');
   assert.equal(BASE_PROGRAMME[1].id, 'gate', 'the gate prints first of the base: the tremor waits for it');
+  // SECTOR 0 (owner, 2026-09-24: "The Tank is built by the Stalheart"): the Stålheart is the next print, due with the Rotor, and its
+  // long print IS the construction the first waves attack; the first hull rolls out of it and the HUD reads its progress
+  { const sh = BASE_PROGRAMME[2];
+    assert.equal(sh.id, 'stalheart', 'the Stålheart prints straight after the gate'); assert.equal(sh.when.phase, 'rotor-ready', 'due as soon as the Rotor stands: it waits only for the gate and the Quiver ahead of it');
+    assert.ok(sh.seconds >= 45, `its print is the sector-0 clock, not a four-second rise (${sh.seconds} s)`);
+    assert.equal(sh.hull, true, 'the first hull rolls out of it'); assert.equal(sh.readout, 'STÅLHEART', 'its progress is the objective on the HUD');
+    assert.equal(BASE_PROGRAMME.filter((s) => s.hull).length, 1, 'one step issues the hull'); }
   // THE OPENING'S PACE (owner, 2026-09-18): everything before the first wave is on the tremor's critical path, so the two steps
   // ahead of it are capped — and Isao's cruise is a content number, not a controller constant
   assert.ok(BASE_PROGRAMME[1].seconds <= 9, `the gate print is on the critical path to the first wave (${BASE_PROGRAMME[1].seconds} s)`);
