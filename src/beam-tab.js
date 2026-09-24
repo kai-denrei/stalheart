@@ -853,9 +853,7 @@ export function initBeamTab(root) {
   // ?labprobe=1 — THE DROP-OFF, as numbers. Reports the burn for each of the
   // four rank steps against the current line-up: where the beam ends, what it
   // burned, and what it never reached. This is the check that the lab and the
-  // board agree, because both call beamburn.burn() — if these ever disagree
-  // with the game's own ?beamfire probe, one of them has grown a second copy
-  // of the rule.
+  // board agree, because both call beamburn.burn().
   // ?labside=N&labstagger=N — set the lateral offset from the URL so the
   // decoupling can be measured headless. Without these the bench can only be
   // driven by hand, and "the beams fall out of step" stays an assertion.

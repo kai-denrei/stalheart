@@ -7,8 +7,8 @@
 // without reading three files. This is the one place.
 //
 // Two tiers, not a slider: a tier is a set of decisions that were made
-// together and are measured together (?perf=N prints the tier it ran under
-// next to the draw stats). Picked once at boot, never mid-frame — a render
+// together and are measured together.
+// Picked once at boot, never mid-frame — a render
 // target that changes size under a live game is a hitch nobody asked for.
 //
 // Pure module: no DOM. The browser-facing pick takes the facts as arguments.

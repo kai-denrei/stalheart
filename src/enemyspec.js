@@ -141,8 +141,8 @@ export const ENEMY_SPEC = {
   // `shelved` is the flag, not the missing INTROS line: a spec with no intro
   // is otherwise indistinguishable from one somebody FORGOT to introduce,
   // which is the bug the tdcore invariant exists to catch. Shelved means
-  // deliberately not in the wave programme — reachable from the viewer, the
-  // lore and `?enemy=`, absent from play.
+  // deliberately not in the wave programme — reachable from the viewer and the
+  // lore, absent from play.
   jelly:     { hp: 9, speed: 0.42, size: 1.15, rammable: false, heartDmg: 4, boss: true, bounty: 52, mesh: 'jelly', shelved: true },
   // --- the invasion roster (waves 13+): three styles the ladder never had.
   // jink stacks a second, faster weave on top of erratic; tactician holds
@@ -176,7 +176,7 @@ export const INTROS = [
   { wave: 15, type: 'phantom',   label: 'PHANTOM',       role: 'optical camo · a ghost on the radar' },
   // THE MASS IS SHELVED (2026-09-06, operator). Its wave-16 line is commented
   // out, NOT deleted, and `ENEMY_SPEC.jelly` stays: the unit is finished, it
-  // is in the viewer, the lore and `?enemy=jelly:1`, and it is the board's
+  // is in the viewer and the lore, and it is the board's
   // only mesh-bodied hostile — which is the thing worth keeping alive, since
   // deleting it would take the one exercise of that path with it. Restoring
   // the boss is this line plus `wavesPerSector` 15 -> 16 in td-tab.

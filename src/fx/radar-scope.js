@@ -11,8 +11,8 @@ import { radarBasis, radarProject, radarBearing, sweepAngle, radarPhosphor, prox
 
 export function createRadarScope(host) {
   const { ctx, player, camera, towers, enemies, spawnPoints, strike, poleFrame } = host;
-  // sensorDemo: positions a probe (?sensorprobe=1) injects so the proximity arcs can be LOOKED AT without a live solid contact
-  // on the board; empty in play
+  // sensorDemo: relative positions a test injects (test/radar-scope.mjs) so the proximity arcs can be checked without a live
+  // solid contact on the board; empty in play
   const sensorDemo = [];
   function draw(t) {
     const graph = host.graph();

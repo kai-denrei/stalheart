@@ -11,8 +11,7 @@
 // `host` hands in the controller: its fixed objects and functions as values (runTimers, player, camera, camA, feel, DEATH_HOLD,
 // PLAYER_MAX, destroyPlayer, syncCombo, showToast, setView, startShot, deployFramePoseFor, deployStart), what it rebinds as
 // getters (tankRank, playerHP, playerMesh, buildMode, tankLostDeploys) and setters for the lets a loss writes (setRamCombo,
-// setRamComboT, setTankLostDeploys, setPlayerDown). The controller calls loseTank from playerHit while a hull is left, and from
-// its ?downprobe, ?ctlprobe and ?rankprobe checks.
+// setRamComboT, setTankLostDeploys, setPlayerDown). The controller calls loseTank from playerHit while a hull is left.
 import { rankLabel } from '../ranks.js';
 import { berthIndexFor } from '../domain/berths.js';
 import { landTankFeel, applyTankHealth } from '../tankfeel.js';
@@ -47,7 +46,7 @@ export function createHullLoss(host) {
     // 1.15s long and RETRY sits on a modal the player can hit inside it —
     // and it used to fire regardless, repositioning a brand-new tank,
     // snapping the camera to orbit and toasting on a run that had lost
-    // nothing. Measured, not supposed: ?ctlprobe=1.
+    // nothing.
     runTimers.after(DEATH_HOLD * 1000, () => {
       if (player.won || !host.playerMesh()) return;   // a real death happened meanwhile
       const n = berthIndexFor(host.playerHP());

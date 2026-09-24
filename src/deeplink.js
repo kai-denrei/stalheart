@@ -28,9 +28,7 @@
 export const DROP_KEYS = new Set([
   'capture', 'export', 'dump', 'bench', 'gl',
   'mineprobe', 'minelay', 'rescueprobe', 'rescue2probe', 'campgo',
-  'layout', 'tapprobe', 'pressprobe', 'modalprobe', 'stickprobe', 'stateprobe',
-  'govprobe', 'labprobe', 'breachprobe', 'hitprobe', 'pedprobe', 'sitrep',
-  'newplanet', 'driveout', 'whatsat', 'tick', 'walk', 'points', 'look',
+  'layout', 'stateprobe', 'govprobe', 'labprobe', 'hitprobe', 'look',
   'devlog', 'log', 'dlprobe', 'sentryprobe', 'tabprobe', 'fxprobe', 'matprobe',
 ]);
 

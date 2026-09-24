@@ -45,7 +45,7 @@ export function droneRidePose({ bp, up, heading, order, centers, loiter, cellSid
   // isao.loiter), which was right when the comment above was written and
   // this view really was only a camera riding along. Piloting arrived
   // later and the camera was never told. Two consequences, both reported
-  // by the operator and both measured by ?droneprobe=1: steering swung
+  // by the operator and both measured: steering swung
   // his heading and the view never followed (camera-swing 0.0deg, so
   // sideways felt dead), and after a turn W flew him off the BACK of the
   // screen (W-after-turn -0.92, so forward was back). With no order,

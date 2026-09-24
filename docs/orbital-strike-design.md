@@ -1,8 +1,7 @@
 # Orbital strike — design
 
 Status: **v1 built 2026-08-30.** Logic in `src/strike.js` (pure, tested in
-`test/strike.mjs`); presentation in `td-tab.js`. Hooks: `?strike=N` readies
-N, `?strikefall=1` runs the whole loop headlessly. Numbers live in the
+`test/strike.mjs`); presentation in `td-tab.js`. Numbers live in the
 `orbital strike` GUI folder, generated from `STRIKE_KNOBS`.
 
 One deliberate translation: DeepWatch grants its budget per *wave*, but its
