@@ -686,6 +686,8 @@ try{
   assert.equal(await evaluate(`${T}.state().storyHud?.tremor`),true,'the tremor contact is on the radar');}
  current='sectors-held';await finish();
  await evaluate(`${T}.sectorClearField()`);
+ // THE DEAD ARE LET GO (2026-09-25): a cleared field holds no dead records, only the living (the expedition sites' guards)
+ await until(`${T}.state().enemyRecords===${T}.state().enemiesAlive`,5000).catch(async()=>assert.fail(`dead records kept (${await evaluate(`JSON.stringify([${T}.state().enemyRecords,${T}.state().enemiesAlive])`)})`));
  await until(`${T}.state().sector.secure`,20000).catch(async()=>assert.fail(`not secure (${JSON.stringify(await sec())} enemies ${await evaluate(`${T}.state().performance?.enemies`)})`));
  current='sectors-secure';await finish();
  await until(`${T}.state().sector.debriefOpen`,15000);
