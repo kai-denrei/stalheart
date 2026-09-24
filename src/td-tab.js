@@ -7,7 +7,7 @@ import { BREACH_SOUNDS } from './content/breach-defaults.js';
 import { SOUNDS } from './content/runtime.js';
 import { emergence } from './domain/breach-waves.js'; import { applyScare, stampScare, scarePace, isScared, towardScare, awayExits } from './domain/impact-scare.js'; import { EXPLOSION_SCARE, SCARE_FREEZE_S } from './content/explosions.js'; import { createThermalHeat } from './fx/thermal-heat.js'; import { isAutomated, pilotMultipliers } from './domain/automation.js'; import { fillFromKill, fillFromWaveClear, isFull as callFull, callProgress } from './domain/gunship-call.js'; import { GUNSHIP_CALL, GUNSHIP_FAR } from './content/gunship.js'; import { unlockedTowers } from './domain/expeditions.js'; import { createExpeditionsHost } from './fx/expedition-glue.js'; import { CARGO_LOOK } from './content/cargo.js'; import { STORY_EXPEDITIONS } from './content/story-defaults.js'; import { makeSiteRing as siteRing, disposeSiteRing } from './fx/site-ring.js'; import { hasPerk as programmeHas, snapshot as programmeSnapshot, lose as programmeLose } from './domain/build-programme.js'; import { createProgramWarm } from './fx/program-warm.js';
 import { sinkholeGroundHeight } from './core/sinkhole-shape.js'; import { devModeOn } from './core/dev-mode.js'; import { createControlsCard } from './fx/controls-card.js'; import { createSkipTutorial } from './fx/skip-tutorial.js'; import { skipTutorialUrl } from './core/story-route.js'; import { STORY_SKIP } from './content/story-defaults.js'; import { createShowcase } from './fx/showcase.js'; import { showcaseOn } from './platform/showcase-entry.js';   /* THE SHOWCASE (owner, 2026-09-18): the core loop as a montage over this very world, before the landing */   /* SKIP TUTORIAL (owner, 2026-09-16): the player's own way past the opening, and the state ?skip=defence starts in */
-import { makeOrdnanceShell } from './shell.js';
+import { makeOrdnanceShell } from './shell.js'; import { createHullLoss } from './fx/hull-loss.js';
 import { firingFor } from './content/firing-defaults.js'; import { RELEASE_EVENTS, releasesHeld, releaseHeld } from './core/held-input.js';
 import { METRES_PER_CELL, arcToMetres, metresToArc } from './core/stage-units.js';
 import { pickMissileTarget, missileLimits, stepMissileLock, missileCanFire } from './domain/missile-targeting.js';
@@ -5860,76 +5860,12 @@ export function initTdTab(root) {
     loseGame('your last tank is gone');
   }
 
-  // Losing a tank is an EVENT, not a subtraction. It used to be neither: the
-  // hull counter ticked down and the machine carried on driving, so the most
-  // consequential thing that can happen to you was invisible.
-  //
-  // Now it explodes, and you come back in BUILD — pulled up and out, looking
-  // at the whole board, with the wall you did not have time to buy still
-  // unbought. That is the decision the loss should hand you, and it is the
-  // one place the game can make you take it.
-  const DOWN_DASH = 1.0;   // seconds of camera, wreck -> camp
-
-  function loseTank() {
-    // THE RANK SURVIVES THE HULL (operator, 2026-09-02). It used to be
-    // stripped here — "the insignia belonged to that hull" — and that was a
-    // read of who the tank IS. The tank is not the pilot. The pilot is the
-    // player: a disembodied thing that occupies one machine at a time, which
-    // is the only reason it cannot drive them all at once. Burning a hull
-    // costs you the hull.
-    //
-    // What still dies with the wreck is the RAM COMBO, because that one is
-    // genuinely the machine's momentum and nothing carries it out.
-    const carried = tankRank > 0 ? rankLabel(tankRank) : '';
-    destroyPlayer();
-    ramCombo = 0; ramComboT = 0; syncCombo(); // the combo died with it
-
-    // BEAT 1 — the wreck, and the word for it. Losing a hull is the most
-    // consequential thing that happens to you and it used to be a toast the
-    // size of a wave announcement.
-    showToast(`<div class="td-down">MÖRK DOWN!</div>`
-      + `<div class="td-down-sub">${playerHP} left`
-      + `${carried ? ` · ${carried} carries over` : ''}</div>`,
-      (DEATH_HOLD + DOWN_DASH) * 1000);
-
-    // THE DEAD RUN'S TIMER MUST NOT LAND ON THE LIVE ONE. This hold is
-    // 1.15s long and RETRY sits on a modal the player can hit inside it —
-    // and it used to fire regardless, repositioning a brand-new tank,
-    // snapping the camera to orbit and toasting on a run that had lost
-    // nothing. Measured, not supposed: ?ctlprobe=1.
-    runTimers.after(DEATH_HOLD * 1000, () => {
-      if (player.won || !playerMesh) return;   // a real death happened meanwhile
-      const n = berthIndexFor(playerHP);
-      // the view the next hull will be driven in — chosen BEFORE the dash, so
-      // the pose the dash flies to is the pose the game is about to use
-      if (!buildMode) setView('orbit');
-      const from = { pos: camera.position.clone(), quat: camera.quaternion.clone() };
-      // BEAT 2 — THE DOWN DASH. The camera runs home from the wreck and
-      // lands on DEPLOY's opening pose. It used to cut: setView + snapCamera,
-      // and you were suddenly somewhere else. Same join the cinematic uses,
-      // so a death and a fresh load arrive at an identical frame.
-      startShot({
-        id: 'downdash',
-        dur: DOWN_DASH,
-        poseAt: (u, out) => {
-          const w = u * u * (3 - 2 * u);
-          deployFramePoseFor(n, camA);
-          out.pos.lerpVectors(from.pos, camA.pos, w);
-          out.quat.copy(from.quat).slerp(camA.quat, w);
-        },
-        // BEAT 3 — the next hull rolls out of its berth, live.
-        onEnd: () => {
-          tankLostDeploys++;
-          playerMesh.visible = true;
-          playerDown = false;
-          feel.hoverT = 0;
-          landTankFeel(feel);
-          applyTankHealth(playerMesh, playerHP / PLAYER_MAX);
-          deployStart(n);   // no snapCamera: DEPLOY blends on from here
-        },
-      });
-    });
-  }
+  // A HULL LOST (src/fx/hull-loss.js): the wreck and MÖRK DOWN!, then on the run's timers the dash home and the next hull out
+  const loseTank = createHullLoss({
+    runTimers, player, camera, camA, feel, DEATH_HOLD, PLAYER_MAX, destroyPlayer, syncCombo, showToast, setView, startShot, deployFramePoseFor, deployStart,
+    tankRank: () => tankRank, playerHP: () => playerHP, playerMesh: () => playerMesh, buildMode: () => buildMode, tankLostDeploys: () => tankLostDeploys,
+    setRamCombo: (v) => { ramCombo = v; }, setRamComboT: (v) => { ramComboT = v; }, setTankLostDeploys: (v) => { tankLostDeploys = v; }, setPlayerDown: (v) => { playerDown = v; },
+  });
 
   // Respawn beside the HEART, not at the spawn gate. The gate is enemy
   // ground by the time you die — a wave is usually pouring out of it — so
@@ -12538,7 +12474,34 @@ export function initTdTab(root) {
         camp: berths.map(b => ({ ...b, open: dungeon.tags[b.ci] !== BLOCKED && dungeon.tags[b.exit] !== BLOCKED,
           clearance: dist3(graph.centers[b.exit], graph.centers[dungeon.heart]) - pedestalRadius() })),
       }),
-      siteCells: () => story?.siteCells ?? {}, placeTank: (ci) => { player.freeMode = false; player.virtualStart = null; player.cur = ci; player.prev = ci; player.next = ci; player.prog = 0; player.segLen = cellSide; player.pos = graph.centers[ci].slice(); },   /* the same fields deployStart resets, so the step rebuilds pos ON ci instead of gliding off it; segLen is the cell scale because cur === next is a zero-length chord */ killGuards: (id) => { for (const e of enemies) if (e.alive && e.guard?.site === id) killCreature(e, false); }, hitTank: () => { if (playerHP > 1) playerHit(); }, cargoView: (k, id) => { endShot(); if (!k || k === 'tank') snapCamera(); const f = k && k !== 'tank' ? story?.glue?.view(k, id) : null; if (f) startShot({ id: 'cargoView', dur: 600, poseAt: (u, out) => { out.pos.set(f.eye[0], f.eye[1], f.eye[2]); tmpCam.position.copy(out.pos); tmpCam.up.set(f.up[0], f.up[1], f.up[2]); tmpCam.lookAt(f.at[0], f.at[1], f.at[2]); out.quat.copy(tmpCam.quaternion); } }); return k && (f || k === 'tank') ? { ...(f ?? {}), camera: camera.position.toArray(), tank: player.pos.slice(), tankShown: !!playerMesh?.visible && playerMesh.parent === scene, near: camera.near, far: camera.far, sight: story?.glue?.sight(scene, f ? f.eye : camera.position.toArray(), f ? f.at : player.pos) ?? null } : false; },   /* a close still of the cargo (flag, crate, drop, trophy) for the screenshots; no kind ends it and snaps the tank camera */ cargoStand: (kind, id) => story?.glue?.standCell(kind, id, (ci) => dungeon.tags[ci] !== BLOCKED) ?? -1, commitTower: (key, ci) => !!commitTower(key, ci, 0), breachNew:()=>seedPortals(1), seatState:()=>{camera.updateMatrixWorld();const pv=new THREE.Vector3(player.pos[0],player.pos[1],player.pos[2]).project(camera),ap=pilot?.gunshipOptic?.()?.pos,av=ap?new THREE.Vector3(ap[0],ap[1],ap[2]).project(camera):null;return {view:params.view,fov:+camera.fov.toFixed(4),aspect:+camera.aspect.toFixed(4),quat:camera.quaternion.toArray().map(x=>+x.toFixed(6)),pos:camera.position.toArray().map(x=>+x.toFixed(6)),tank:[+pv.x.toFixed(5),+pv.y.toFixed(5),+pv.z.toFixed(5)],aim:av?[+av.x.toFixed(5),+av.y.toFixed(5),+av.z.toFixed(5)]:null,pilot:!!pilot,gunshipSeat:!!pilot?.gunship,seatKey:pilot?.state?.tower?.key??null,pilotView:pilot?.state?.view??null,zoom:pilot?.state?.zoom!=null?+pilot.state.zoom.toFixed(4):null,yaw:pilot?.state?.yaw!=null?+pilot.state.yaw.toFixed(5):null,pitch:pilot?.state?.pitch!=null?+pilot.state.pitch.toFixed(5):null,map:!!pilot?.isMap?.(),laserSeat:laserStation.seated(),locked:!!document.pointerLockElement,shot:shotId(),tankPos:player.pos.slice()};},
+      siteCells: () => story?.siteCells ?? {},
+      // the same fields deployStart resets, so the step rebuilds pos ON ci instead of gliding off it; segLen is the cell scale
+      // because cur === next is a zero-length chord
+      placeTank: (ci) => { player.freeMode = false; player.virtualStart = null; player.cur = ci; player.prev = ci; player.next = ci; player.prog = 0; player.segLen = cellSide; player.pos = graph.centers[ci].slice(); },
+      killGuards: (id) => { for (const e of enemies) if (e.alive && e.guard?.site === id) killCreature(e, false); },
+      hitTank: () => { if (playerHP > 1) playerHit(); },
+      cargoView: (k, id) => {
+        endShot();
+        if (!k || k === 'tank') snapCamera();
+        const f = k && k !== 'tank' ? story?.glue?.view(k, id) : null;
+        if (f) startShot({ id: 'cargoView', dur: 600, poseAt: (u, out) => { out.pos.set(f.eye[0], f.eye[1], f.eye[2]); tmpCam.position.copy(out.pos); tmpCam.up.set(f.up[0], f.up[1], f.up[2]); tmpCam.lookAt(f.at[0], f.at[1], f.at[2]); out.quat.copy(tmpCam.quaternion); } });
+        return k && (f || k === 'tank') ? { ...(f ?? {}), camera: camera.position.toArray(), tank: player.pos.slice(), tankShown: !!playerMesh?.visible && playerMesh.parent === scene, near: camera.near, far: camera.far, sight: story?.glue?.sight(scene, f ? f.eye : camera.position.toArray(), f ? f.at : player.pos) ?? null } : false;
+      },   // a close still of the cargo (flag, crate, drop, trophy) for the screenshots; no kind ends it and snaps the tank camera
+      cargoStand: (kind, id) => story?.glue?.standCell(kind, id, (ci) => dungeon.tags[ci] !== BLOCKED) ?? -1,
+      commitTower: (key, ci) => !!commitTower(key, ci, 0),
+      breachNew:()=>seedPortals(1),
+      seatState:()=>{
+        camera.updateMatrixWorld();
+        const pv=new THREE.Vector3(player.pos[0],player.pos[1],player.pos[2]).project(camera),ap=pilot?.gunshipOptic?.()?.pos,av=ap?new THREE.Vector3(ap[0],ap[1],ap[2]).project(camera):null;
+        return {
+          view:params.view, fov:+camera.fov.toFixed(4), aspect:+camera.aspect.toFixed(4), quat:camera.quaternion.toArray().map(x=>+x.toFixed(6)),
+          pos:camera.position.toArray().map(x=>+x.toFixed(6)), tank:[+pv.x.toFixed(5),+pv.y.toFixed(5),+pv.z.toFixed(5)],
+          aim:av?[+av.x.toFixed(5),+av.y.toFixed(5),+av.z.toFixed(5)]:null, pilot:!!pilot, gunshipSeat:!!pilot?.gunship, seatKey:pilot?.state?.tower?.key??null,
+          pilotView:pilot?.state?.view??null, zoom:pilot?.state?.zoom!=null?+pilot.state.zoom.toFixed(4):null,
+          yaw:pilot?.state?.yaw!=null?+pilot.state.yaw.toFixed(5):null, pitch:pilot?.state?.pitch!=null?+pilot.state.pitch.toFixed(5):null,
+          map:!!pilot?.isMap?.(), laserSeat:laserStation.seated(), locked:!!document.pointerLockElement, shot:shotId(), tankPos:player.pos.slice(),
+        };
+      },
       breachNextWave:()=>{waveIn=-1;armWave();},
       breachStrike:()=>{const sp=spawnPoints.find(s=>s.alive&&s.obj.userData.breach);if(sp)executeStrike(sp.ci,t);},
       breachShell:()=>{const sp=spawnPoints.find(s=>s.alive&&s.obj.userData.breach);if(sp)gateTakesShell(sp);},
@@ -12611,7 +12574,21 @@ export function initTdTab(root) {
         if (ci < 0) return false;
         openShop(ci, innerWidth / 2, innerHeight / 2); return true;
       },
-      begin: () => { endShot(); paused = false; }, setSector: (n) => { if (story) story.sectorN = n; }, breakGate: (id = 'gate') => !!sectorRun?.breakGate(id) /* the harness takes the door down: Isao's animated repair needs a broken door */, mendGate: (id = 'gate') => !!sectorRun?.repairGate(id) /* ...from a whole one: on the clock the swarm may have had it down already */, faultOnce: () => { const b = story?.beats; if (!b) return false; const tick = b.tick; b.tick = () => { b.tick = tick; throw new Error('injected frame fault'); }; return true; } /* the next story tick throws once: the frame guard's proof (--sectors) */, mountGunship: () => { if (!storyViews) storyApi.unlock('views'); if (gunshipRig.onCall() && !onStation(gunship)) storyViews.meter(callProgress(gunshipRig.call), callFull(gunshipRig.call)); else storyViews.station(onStation(gunship), phaseLeft(gunship)); document.querySelector('#story-views [data-mount="gunship"]')?.click(); return !!pilot?.gunship; }, gunshipHold: (on) => { if (pilot) pilot.state.held = !!on; }, gunshipCam: () => camera.quaternion.toArray(), programs: () => renderer.info.programs.map((p) => `${p.name}#${String(p.cacheKey).length}`) /* which shader programs are linked: the seat hitch probe */, gunshipGun: (k) => selectGun(gunship, k, GUNSHIP_GUNS), gunshipPassEnd: () => { gunship.left = 0; } /* the harness ends the station pass now: the next tick departs */, fillGunshipCall: (n) => fillFromKill(gunshipRig.call, n, GUNSHIP_CALL), spawnFodder: (n, type = 'amoeba') => { if (!story) return 0; if (!story.source?.alive) storyApi.breach(gunshipRig.far()); for (let i = 0; i < n; i++) storyApi.spawn(type, story.source.ci, { spread: 0.8, delay: i * 0.12 }); return n; },   /* the skip panel's enemies: a breach opens on the lane outside the gate if none is live, and they rise out of it staggered (emergence only runs from a real breach) */
+      begin: () => { endShot(); paused = false; },
+      setSector: (n) => { if (story) story.sectorN = n; },
+      breakGate: (id = 'gate') => !!sectorRun?.breakGate(id),   // the harness takes the door down: Isao's animated repair needs a broken door
+      mendGate: (id = 'gate') => !!sectorRun?.repairGate(id),   // ...from a whole one: on the clock the swarm may have had it down already
+      faultOnce: () => { const b = story?.beats; if (!b) return false; const tick = b.tick; b.tick = () => { b.tick = tick; throw new Error('injected frame fault'); }; return true; },   // the next story tick throws once: the frame guard's proof (--sectors)
+      mountGunship: () => { if (!storyViews) storyApi.unlock('views'); if (gunshipRig.onCall() && !onStation(gunship)) storyViews.meter(callProgress(gunshipRig.call), callFull(gunshipRig.call)); else storyViews.station(onStation(gunship), phaseLeft(gunship)); document.querySelector('#story-views [data-mount="gunship"]')?.click(); return !!pilot?.gunship; },
+      gunshipHold: (on) => { if (pilot) pilot.state.held = !!on; },
+      gunshipCam: () => camera.quaternion.toArray(),
+      programs: () => renderer.info.programs.map((p) => `${p.name}#${String(p.cacheKey).length}`),   // which shader programs are linked: the seat hitch probe
+      gunshipGun: (k) => selectGun(gunship, k, GUNSHIP_GUNS),
+      gunshipPassEnd: () => { gunship.left = 0; },   // the harness ends the station pass now: the next tick departs
+      fillGunshipCall: (n) => fillFromKill(gunshipRig.call, n, GUNSHIP_CALL),
+      // the skip panel's enemies: a breach opens on the lane outside the gate if none is live, and they rise out of it staggered
+      // (emergence only runs from a real breach)
+      spawnFodder: (n, type = 'amoeba') => { if (!story) return 0; if (!story.source?.alive) storyApi.breach(gunshipRig.far()); for (let i = 0; i < n; i++) storyApi.spawn(type, story.source.ci, { spread: 0.8, delay: i * 0.12 }); return n; },
       clearSector: () => {
         endShot(); 
         
@@ -12638,7 +12615,14 @@ export function initTdTab(root) {
       backInside: () => { const m = story?.backMouth, h = graph.centers[dungeon.heart]; if (!m) return 0; const b = sub3(m.dir, scale3(h, dot3(m.dir, h))); return enemies.filter((e) => e.alive && story.inside(e.cur) && dot3(sub3(e.pos, h), b) > 0).length; },
       viewBack: (height, back) => { const m = story?.backMouth; if (!m) return; endShot(); paused = false; startDiveShot({ camera, startShot, cellSide }, new THREE.Vector3(...m.dir), { id: 'backview', hold: 600, dive: { ...story.backDoor.dive, height: height ?? story.backDoor.dive.height, back: back ?? story.backDoor.dive.back, diveSeconds: 1e-3 } }); },
       heartHealth: fraction => { heartHP = Math.max(0, Math.min(HEART_MAX, fraction * HEART_MAX)); heartSprite.userData.setHealth?.(fraction); },
-      /* THE SHOWCASE'S HOOKS (src/fx/showcase-hooks.js; the rail is src/fx/showcase.js): the montage drives the real systems through these and nothing else, so it needs no ?acceptance=1 */ showcase: createShowcaseHooks({ camera, enemies, spawnPoints, spawnQueue, towers, player, params, gunship, gunshipCall: gunshipRig.call, explosions, gameBreaches, storyApi, gunshipFar: gunshipRig.far, automated, shotId, endShot, startShot, snapCamera, setView, releaseSpawns, enterPilot, leavePilot, spawnIsao, placeTank: (ci) => gameHooks.placeTank(ci), story: () => story, storyBase: () => storyBase, deploy: () => deploy, playerMesh: () => playerMesh, graph: () => graph, dungeon: () => dungeon, cellSide: () => cellSide, pilot: () => pilot, pilotMode: () => pilotMode, isao: () => isao, rs: () => rs, ramCombo: () => ramCombo, playerHP: () => playerHP, setPaused: (v) => { paused = v; }, setFollowSuspend: (v) => { followSuspend = v; }, setRamCam: (v) => { showcaseRamCam = v; }, setGunshipTrack: (v) => { gunshipRig.setTrack(v); } }) };
+      // THE SHOWCASE'S HOOKS (src/fx/showcase-hooks.js; the rail is src/fx/showcase.js): the montage drives the real systems
+      // through these and nothing else, so it needs no ?acceptance=1
+      showcase: createShowcaseHooks({
+        camera, enemies, spawnPoints, spawnQueue, towers, player, params, gunship, gunshipCall: gunshipRig.call, explosions, gameBreaches, storyApi, gunshipFar: gunshipRig.far, automated, shotId, endShot, startShot, snapCamera, setView, releaseSpawns, enterPilot, leavePilot, spawnIsao, placeTank: (ci) => gameHooks.placeTank(ci),
+        story: () => story, storyBase: () => storyBase, deploy: () => deploy, playerMesh: () => playerMesh, graph: () => graph, dungeon: () => dungeon, cellSide: () => cellSide, pilot: () => pilot, pilotMode: () => pilotMode, isao: () => isao, rs: () => rs, ramCombo: () => ramCombo, playerHP: () => playerHP,
+        setPaused: (v) => { paused = v; }, setFollowSuspend: (v) => { followSuspend = v; }, setRamCam: (v) => { showcaseRamCam = v; }, setGunshipTrack: (v) => { gunshipRig.setTrack(v); },
+      }),
+  };
     if (urlParams.get('acceptance') === '1') window.__stalheartTest = gameHooks;   // Browser acceptance adapter, published only when explicitly requested; the showcase holds the same object directly
 
   function leavePilot() { if (!pilotMode) return; pilot?.dispose(); for (const tw of towers) { tw.povFire?.stop(0.1); tw.povFire = null; } pilot = null; pilotHost = null; pilotMode = false; storyScope?.update({ on: false }); /* the scope leaves with the optic */ params.callouts = true; delete window.__stalheartPilotTest; restoreSeat(); }   /* back to the hull, at the lens and the view the seat was taken from: the seat's zoom narrowed it (owner, 2026-09-15: the tank after the gunship at the wrong angle; 2026-09-23: and after SOL-82 too) */ let seatBase = null; function restoreSeat() { const b = restoreSeatView(seatBase); seatBase = null; camera.fov = b.fov; camera.updateProjectionMatrix(); if (!b.lock && document.pointerLockElement) document.exitPointerLock?.(); setView(b.view); snapCamera(); }   /* THE ONE RESTORE (src/domain/seat-view.js): every leave puts back the camera the FIRST seat of the chain recorded, whichever seat comes next, and drops a pointer lock the hull never asked for */
