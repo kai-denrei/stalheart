@@ -295,6 +295,18 @@ const toQuiverClear = (beats, g) => {
   assert.equal(kinds(g, 'gunshipArrive').length, 1, 'the gunship arrived once');
 }
 {
+  // a player who drives off instead of mopping up: the handover comes `mopUpSeconds` after the Stålheart stands, whatever is left
+  const beats = makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, rotorDelay: 2, fodderEvery: 1, fodderAlive: 4, fodderTotal: 12, tremorDelay: 1, breachDelay: 2, overrideDelay: 1, quiverSocket: 4244, quiver: QUIVER, construction: { ...CONSTRUCTION, mopUpSeconds: 10 } });
+  const g = fakeGame({ walk: 3, printSeconds: 3 });
+  let stands = false; g.api.stalheartStands = () => stands; g.api.gunshipArrive = () => {};
+  toQuiverClear(beats, g); run(beats, g, 4);
+  assert.equal(beats.state().phase, 'construction');
+  stands = true; run(beats, g, 9);
+  assert.equal(beats.state().phase, 'construction', 'the hull has its moment at the leftovers');
+  run(beats, g, 1.5);
+  assert.equal(beats.state().phase, 'settled', 'and then the handover comes without them');
+}
+{
   // a Stålheart already standing at the Quiver's clear: straight to settled, no construction, no free pass
   const beats = makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, rotorDelay: 2, fodderEvery: 1, fodderAlive: 4, fodderTotal: 12, tremorDelay: 1, breachDelay: 2, overrideDelay: 1, quiverSocket: 4244, quiver: QUIVER, construction: CONSTRUCTION });
   const g = fakeGame({ walk: 3, printSeconds: 3 });

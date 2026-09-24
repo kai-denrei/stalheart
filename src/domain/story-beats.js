@@ -35,7 +35,7 @@ export function makeStoryBeats({
   const gated = gate >= 0 && fodder >= 0;
   // THE FOUNDRY PAYS (owner, 2026-09-14): with a foundry tune the grants are barrels of feedstock cut from the rocket, not conjured
   const fd = foundry ? makeFoundry(foundry) : null;
-  let quiverOrdered = false, cWaves = 0, cSent = 0, studyDelay = quiver?.studyDelay ?? 3;
+  let quiverOrdered = false, cWaves = 0, cSent = 0, studyDelay = quiver?.studyDelay ?? 3, upAt = null;
   // the beats pay for the Quiver and put it on Isao's book, once; a refused order is tried again at the override and at the clear
   const orderQuiver = (api) => { if (quiverOrdered || !quiver || quiverSocket < 0) return; api.grant(api.cost(quiver.key)); quiverOrdered = !!api.order(quiver.key, quiverSocket); };
   // a construction wave: the next row of the table, from the sinkhole (reopened if a strike filled it), risen over `stagger` seconds
@@ -104,7 +104,10 @@ export function makeStoryBeats({
         // work (and the seats'): the automatic towers fire without the seat's multipliers and would take minutes over what a
         // player clears in seconds, and a live body holds every wave clock and idle print after it. No new wave once it stands.
         const up = !api.stalheartStands || api.stalheartStands();
-        if (up && api.enemies() <= (construction?.mopUp ?? 0)) { studyDelay = construction?.studyDelay ?? studyDelay; enter('settled'); api.unlock?.('views'); }   // and the hull is the player's for a moment before the study
+        if (up && upAt === null) upAt = clock;
+        // ...or once the hull has had `mopUpSeconds` at them: a player who drives off instead never stalls the story (unmanned towers
+        // do not fire before the handover), and the harmless leftovers roll on into sector 1 as bodies to ram
+        if (up && (api.enemies() <= (construction?.mopUp ?? 0) || clock - upAt >= (construction?.mopUpSeconds ?? Infinity))) { studyDelay = construction?.studyDelay ?? studyDelay; enter('settled'); api.unlock?.('views'); }   // and the hull is the player's for a moment before the study
         else if (!up && construction && clock >= nextSpawn && api.enemies() < (construction.alive ?? Infinity)) { constructionWave(api); nextSpawn = clock + construction.every; }   // a wave waits while the field is full
       } else if (phase === 'settled' && quiver && clock - at >= studyDelay) { api.closeup?.('isao'); api.brief?.('vibration_study'); said.add('vibration_study'); enter('study-talk'); }
       else if (phase === 'study-talk' && clock - at >= 0.5 && !api.briefing?.()) { api.screen?.('synthetic'); enter('study'); }   // the lines run out (or were seen before), then the screen
