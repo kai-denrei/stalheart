@@ -1043,10 +1043,11 @@ try{
  await until(`${T}.state().sector.n===3 && !${T}.state().sector.debriefOpen && !${T}.state().paused`,20000).catch(async()=>assert.fail(`CONTINUE moves to the next sector (${JSON.stringify((await st()).sector)})`));
  current='skip-tutorial-next-sector';await finish();
  } else if(args.includes('--showcase')) {
- // THE SHOWCASE (owner, 2026-09-18; the shot list in docs/log/entries/2026-09-18-intro-montage-spec.json). The montage is
- // not a video and not a diorama: every shot drives a real system in a real run of the skipped world. So this step does not
- // look at the rail's intentions — it photographs each shot at its midpoint and then reads the counters the rail recorded at
- // every cut, and asserts the system named by that shot's `proof` actually moved while it was on screen.
+ // THE SHOWCASE (owner, 2026-09-24; docs/log/entries/2026-09-24-intro-simplified.json). FOUR BEATS, and each one drives a
+ // real system in a real run of the skipped world. So this step does not look at the rail's intentions — it photographs
+ // each beat at its midpoint and then reads the counters the rail recorded at every cut, and asserts the system named by
+ // that beat's `proof` actually moved while it was on screen: labels on the wireframes, a breach pouring, rams landing,
+ // gunship rounds landing on bodies in frame.
  const W='window.__stalheartShowcase', SH=()=>evaluate(`${W}.state()`);
  // 1. A BARE PAGE PLAYS IT ONCE. Fresh store, no query but the harness's own sw=0: the montage comes up before the landing.
  await go('showcase-load','index.html?sw=0&intro=0#td');
@@ -1057,21 +1058,30 @@ try{
  assert.equal(await evaluate('!!document.querySelector("#td-stats")&&getComputedStyle(document.querySelector("#td-stats")).display'),'none','the HUD panel is not drawn under the montage');
  await until(`${W}.state().started`,180000).catch(async()=>assert.fail(`the montage starts over the built world (${JSON.stringify(await SH())})`));
  const first=await SH();
- assert(first.total<30,`the whole montage is under 30 s (${first.total})`);
- assert.equal(first.shots.length,12,'twelve shots');
+ assert(first.total<28,`the whole montage is clearly under the twelve-shot cut's 28 s (${first.total})`);
+ assert.equal(first.shots.length,4,'four beats');
+ assert.deepEqual(first.shots.map(s=>s.id),['elements-wireframe','breach-swarm','tank-ram','gunship-guns'],'the beats are the owner\'s order: the elements, the breach, the ram, the gunship');
  console.log(`SHOWCASE table: ${first.shots.map(s=>`${s.id} ${s.seconds}s/${s.seat}`).join(' | ')} = ${first.total}s`);
- // 2. ONE SCREENSHOT PER SHOT, AT ITS MIDPOINT. The clock is the rail's own, so the wait is on its state, never a sleep.
+ // 2. ONE SCREENSHOT PER BEAT, AT ITS MIDPOINT. The clock is the rail's own, so the wait is on its state, never a sleep.
  for(const sh of first.shots){
   const id=JSON.stringify(sh.id);
-  await until(`${W}.state().shot===${id}||${W}.state().over||${W}.state().index>${first.shots.indexOf(sh)}`,60000)
+  await until(`${W}.state().shot===${id}||${W}.state().over||${W}.state().index>${first.shots.indexOf(sh)}`,120000)
    .catch(async()=>assert.fail(`${sh.id} comes up (${JSON.stringify((await SH()).shot)})`));
   const s=await SH();
   assert.equal(s.shot,sh.id,`${sh.id} is on screen in its turn`);
   if(sh.card)assert.equal(s.card,sh.card,`${sh.id} carries its card`);
-  else assert.equal(s.card,null,`${sh.id} carries no card`);
-  // the wireframe stage is opaque: if it is standing over a shot that is not a reveal, that shot is not the game
-  assert.equal(await evaluate('getComputedStyle(document.querySelector("#showcase .sc-wire")).display!=="none"'),sh.seat==='wireframe',`${sh.id}: the wireframe stage stands only for a reveal`);
+  else assert(typeof s.card==='string'&&s.card.length>0,`${sh.id}: the element reel names whatever subject is up (${s.card})`);
+  // the wireframe stage is opaque: if it is standing over a beat that is not the reveal, that beat is not the game
+  assert.equal(await evaluate('getComputedStyle(document.querySelector("#showcase .sc-wire")).display!=="none"'),sh.seat==='wireframe',`${sh.id}: the wireframe stage stands only for the reveal`);
   await until(`${W}.state().shot!==${id}||${W}.state().left<=${(sh.seconds*0.45).toFixed(2)}`,20000);
+  {const m=await SH();
+   if(sh.seat==='wireframe'){
+    assert(m.labels.length>=2,`elements-wireframe: the subject is labelled at its midpoint (${JSON.stringify(m.labels)})`);
+    assert(m.element!==null,`elements-wireframe: a subject is on the stage (${m.element})`);
+    assert.equal(await evaluate('[...document.querySelectorAll("#showcase .sc-label")].filter(b=>!b.hidden&&b.getBoundingClientRect().width>10).length>=2'),true,'the labels are drawn on the stage, not only in the rail\'s state');
+    console.log(`SHOWCASE beat A midpoint: ${m.element} — ${m.labels.join(' / ')} under "${m.card}"`);}
+   console.log(`SHOWCASE ${sh.id} midpoint: view=${m.counters.view} shot=${m.counters.shot} seat=${m.counters.seat} alive=${m.counters.alive}`);
+   if(sh.id==='gunship-guns')assert.equal(m.counters.seat,'gunship','gunship-guns is shot from the gunship seat');}
   current=`showcase-${sh.id}`;await finish();
  }
  // 3. THE LAST CARD: Isao, the question and the two ways in
@@ -1084,26 +1094,19 @@ try{
   assert.equal(s.urls.play,'index.html?sw=0&intro=0#td','PLAY goes to the landing with the montage off');
   assert.equal(s.urls.skip,'index.html?sw=0&intro=0&skip=defence#td','SKIP TUTORIAL goes to the back door with the montage off');
   assert.equal(await evaluate('(()=>{const b=[...document.querySelectorAll("#showcase .sc-choice button")];return b.every(x=>{const r=x.getBoundingClientRect();return r.width>120&&r.height>36&&r.bottom<innerHeight;});})()'),true,'both are on screen and thumb-sized');
-  // 4. EVERY SHOT'S SYSTEM REALLY FIRED. `played` holds the counters at each cut, so shot i is proved by the move from
-  //    cut i to cut i+1 (the last shot by the counters at the finale, which the rail records as the state's own).
+  // 4. EVERY BEAT'S SYSTEM REALLY FIRED. `played` holds the counters at each cut, so beat i is proved by the move from
+  //    cut i to cut i+1 (the last beat by the counters at the finale, which the rail records as the state's own), and by
+  //    the HIGH WATER MARK each beat kept while it was up (a swarm mown down inside a beat leaves the net count alone).
   const cuts=[...s.played.map(p=>p.counters),s.counters],by=Object.fromEntries(s.played.map((p,i)=>[p.id,[cuts[i],cuts[i+1]]])),peak=Object.fromEntries(s.played.map(p=>[p.id,p.peak]));
-  const grew=(id,key)=>{const [a,b]=by[id];assert(b[key]>a[key],`${id}: ${key} moved (${a[key]} -> ${b[key]})`);return b[key]-a[key];};
-  console.log(`SHOWCASE peaks: ${s.played.map(p=>`${p.id}@${p.at}s ${JSON.stringify(p.peak)}`).join('\n  ')}`);
-  console.log(`SHOWCASE proof: rams+${grew('tank-ram','rams')} emerging=${peak['tremor-swarm'].emerging} gunRounds=${peak['gunship-guns'].explosions} nuke=${by['nuke-ground'][1].nuke} quiverFlight=${peak['quiver-pov'].flight} swarm=${peak['too-many'].enemies} beam=${peak['laser-orbit'].beamSeconds}/${peak['laser-ground'].beamSeconds}s`);
-  assert(peak['tremor-swarm'].emerging>3,`tremor-swarm: the swarm climbs out of the rock while the shot is up (${peak['tremor-swarm'].emerging} emerging)`);
-  assert.equal(by['gunship-guns'][0].seat,'gunship','gunship-guns is shot from the gunship seat');
-  assert(['released','ignited','reloading'].includes(by['gunship-nuke'][1].nuke),`gunship-nuke: the MK-9 leaves the belly (${by['gunship-nuke'][1].nuke})`);
-  // the blast lands on the gun's own travel clock, which outlives the 2.5 s shot it is photographed in: what the
-  // ground view must show is the round down and the launcher reloading, not a kill count
-  assert(['ignited','reloading','ready'].includes(by['nuke-ground'][1].nuke),`nuke-ground: the MK-9 is down by the end of the ground view (${by['nuke-ground'][1].nuke})`);
-  assert(peak['quiver-pov'].flight>0,`quiver-pov: a rocket is on the rail while the shot is up (${JSON.stringify(peak['quiver-pov'])})`);
-  assert.equal(by['quiver-pov'][0].seat,'quiver','quiver-pov is shot from the Quiver');
-  assert.equal(by['rotor-pov'][0].seat,'rotor','rotor-pov is shot from the Rotor');
-  assert(peak['too-many'].enemies>40,`too-many: the swarm is a swarm (${peak['too-many'].enemies} alive)`);
-  assert.equal(by['laser-wireframe'][0].laserOnline,true,'SOL-82 comes online for its reveal');
-  assert(peak['laser-orbit'].beamSeconds>0.5,`laser-orbit: SOL-82 burns while the orbital frame is up (${peak['laser-orbit'].beamSeconds} s)`);
-  assert(peak['laser-ground'].beamSeconds>peak['laser-orbit'].beamSeconds,`laser-ground: the same burn continues into the ground view (${peak['laser-ground'].beamSeconds} s)`);
-  assert(peak['gunship-guns'].explosions>peak['tremor-swarm'].explosions,`gunship-guns: the guns land rounds (${peak['gunship-guns'].explosions})`);}
+  console.log(`SHOWCASE peaks:\n  ${s.played.map(p=>`${p.id}@${p.at}s ${JSON.stringify(p.peak)}`).join('\n  ')}`);
+  const [ra,rb]=by['tank-ram'],rams=Math.max(rb.rams-ra.rams,rb.tankKills-ra.tankKills);   /* a ram IS a tank kill: the larger of the two, never their sum */
+  console.log(`SHOWCASE proof: labels=${peak['elements-wireframe'].labels} emerging=${peak['breach-swarm'].emerging} rams+${rb.rams-ra.rams} tankKills+${rb.tankKills-ra.tankKills} combo=${peak['tank-ram'].combo} gunRounds+${by['gunship-guns'][1].explosions-by['gunship-guns'][0].explosions} horde=${peak['gunship-guns'].alive}`);
+  assert(peak['elements-wireframe'].labels>=2,`elements-wireframe: the wireframes are labelled (${peak['elements-wireframe'].labels})`);
+  assert(peak['breach-swarm'].emerging>=30,`breach-swarm: a real horde climbs out of the rock while the beat is up (${peak['breach-swarm'].emerging} emerging)`);
+  assert(rams>=20,`tank-ram: the hull drives through the horde (${rb.rams-ra.rams} rams, ${rb.tankKills-ra.tankKills} bodies)`);
+  assert(peak['tank-ram'].alive>=20,`tank-ram: there is a horde to drive through (${peak['tank-ram'].alive} rammable bodies)`);
+  assert(by['gunship-guns'][1].explosions-by['gunship-guns'][0].explosions>=8,`gunship-guns: the guns land rounds on the horde (${by['gunship-guns'][1].explosions-by['gunship-guns'][0].explosions})`);
+  assert(peak['gunship-guns'].alive>=20,`gunship-guns: there is a horde under the belly (${peak['gunship-guns'].alive} rammable bodies)`);}
  current='showcase-isao-ready';await finish();
  // 5. THE ONCE RULE: PLAY lands on the landing with the montage off, and a second bare visit goes straight there too
  await click('#showcase .sc-choice button[data-choice=play]');
@@ -1118,7 +1121,7 @@ try{
  // 6. ?intro=1 ALWAYS PLAYS IT, remembered or not — the PLAYTEST drawer's SHOWCASE entry and the shareable link
  await go('showcase-forced','index.html?sw=0&intro=1#td');
  await until(`!!${W}`,90000);
- assert.equal(await evaluate(`${W}.state().shots.length`),12,'?intro=1 plays it again on a browser that has seen it');
+ assert.equal(await evaluate(`${W}.state().shots.length`),4,'?intro=1 plays it again on a browser that has seen it');
  // and it is skippable at any moment: Space goes straight to the last card
  await until(`${W}.state().started`,180000);
  await send('Input.dispatchKeyEvent',{type:'keyDown',key:' ',code:'Space'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:' ',code:'Space'});
