@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-09-24-back-door-feast-and-scramble",
+  "date": "2026-09-24",
+  "type": "change",
+  "status": "accepted",
+  "title": "The back door is foreshadowed in sector 1, opens on a feast of soft bodies for the tank that holds the clock, then Isao asks for turrets behind the bays while their sockets ring",
+  "context": "Owner, 2026-09-24: the back door is \"too sudden\"; it \"should feel slightly foreshadowed, but really a chance for the tank to kill tons of rammable soft enemies for the first wave, and then the necessity to spend resources to quickly re-inforce that area with turrets.\" Before: the mouth collapsed the instant sector 2 began, with nothing in sector 1 hinting at it, and Isao's sector_2 line could be dropped behind old_breach and back_door in the one-deep brief queue.",
+  "outcome": "Foreshadowing: BACK_OMENS in src/content/sectors.js, the rule src/domain/back-omens.js, played by src/fx/back-omen.js. With sector 1's second pulse the mouth rumbles (a tremor contact left on the radar at its bearing, a quake, four puffs of the new 'rock.dust' burst, Isao's back_rumble lines); with its last pulse it cracks (ten puffs, back_crack). The tremor contact gives way to the red BACK DOOR diamond when the mouth falls. The feast: sector 2 lists `back` first, so its back breach is picked and opened first, and `feast` replaces that breach's first ladder wave with 40 amoeba and 20 phage at pace 1.7 (the books still count it as the first wave); Isao's back_door lines are now the feast ('Soft ones. Go through them!'). The clock holds while the feast is fought and the gate side waits. The scramble: once no more than 35% of the feast is left (or 50 s after it rose), Isao's back_scramble lines, a BUILD BEHIND THE BAYS callout, the back sockets ringing for 8 s, the clock resuming and the gate side opening 10 s later. The back mounts face their lane from the collapse (they used to wait for the back gate's print), so turrets can go up behind the bays during the fight. Measured (--pacing): feast released 22 s after sector 2's card, scramble 20 s later under an ideal defender, gate side 10 s after that.",
+  "alternatives": [
+    "An explicit countdown when sector 2 begins, or foreshadowing plus countdown plus trickle: the owner chose foreshadowing.",
+    "Opening the gate side on a fixed 25 s timer: rejected, it opened before the tank had eaten the feast, which is the beat.",
+    "Reusing laser.smoke for the dust: a separate rock.dust use without a scare says what it is."
+  ],
+  "evidence": [
+    "node test/back-omens.mjs, node test/sector-run.mjs",
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --sectors: asserts the omens [rumble, crack], the radar tremor, the back breach opening first with the gate side waiting, the feast, the scramble, then both breaches live; --skip-tutorial drives the same sector from the skipped run"
+  ],
+  "supersedes": []
+}

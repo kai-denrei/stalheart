@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-09-24-pacing-probe",
+  "date": "2026-09-24",
+  "type": "experiment",
+  "status": "resolved",
+  "title": "The pacing probe plays the whole session as an ideal defender or leaves it to the towers, and found two ways the new pacing leaked into the base",
+  "context": "The spec's evidence section (docs/superpowers/specs/2026-09-24-session-pacing-design.md E) asked for a timeline of the whole session, since the 2026-09-18 opening pass (2026-09-18-opening-pacing) measured only up to the handover and nothing measured the sector loop.",
+  "outcome": "scripts/browser-test.mjs --pacing plays a bare page at full threat into sector 2 in real time. It aims the manned seat through the opening and, in a sector, kills every body that reaches a door (window.__stalheartTest.sectorCull), so its ARRIVE lines are the design's rhythm rather than a player's skill. It prints PACE lines for every beat, pulse, omen, the feast and the scramble, FIELD lines (alive and the weakest door), and a summary, and writes artifacts/browser/pacing.json. --passive leaves the doors to the towers. Final bare-page timeline (ideal defender): Stålheart print 39.5 s, construction 85.5 s, hull out 124 s, handover 146 s, expedition 163.8 s, sector 1 card 187.5 s, first pulse 194.5 s, sector 1 secure 322 s, sector 2 card 328 s, feast 350 s, scramble 370 s, gate side 380 s. Passive, the towers alone lose sector 1's gate 47 s in and the colony 61 s in: automatic towers do a sixtieth of a seat's damage, so the tank is the defence, which is the intended pressure (a real player's kill rate is the owner's playtest, not the probe's). Two leaks it found and that were fixed: a breach on the near ring could open within its blast radius (clearRadius 6) of the base's rim and carve a way in beside a gate still at 100% (the heart lost its first life 20 s into sector 1), hence SECTOR_PLACEMENT.rimCells 10; and sector 0's harmless leftovers pressed on the gate and hit the heart (harmless only spared the tank), breaking the gate 4 s into sector 1.",
+  "alternatives": [
+    "Measuring dead time as seconds with no body near a door under a passive player: meaningless once the pile never clears; arrivals under an ideal defender are player-independent.",
+    "Simulating the tank's rams: not attempted; the probe reports the rhythm and the passive floor and leaves difficulty to a playtest."
+  ],
+  "evidence": [
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --pacing (artifacts/browser/pacing.json)",
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --pacing --passive (artifacts/browser/pacing-passive.json)"
+  ],
+  "supersedes": []
+}

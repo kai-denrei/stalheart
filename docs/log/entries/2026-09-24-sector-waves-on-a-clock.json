@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "2026-09-24-sector-waves-on-a-clock",
+  "date": "2026-09-24",
+  "type": "change",
+  "status": "accepted",
+  "title": "Sector waves come on a clock, overlapping: a pulse every 14-16 s whatever is alive, breaches opening under the card on a nearer ring, bodies at pace 1.5, heavier programmes",
+  "context": "Owner, 2026-09-24, on the sector loop: \"too slow between enemies, not hectic enough.\" Measured before (code reading, confirmed by the new --pacing probe): a sector wave was released only once every non-guard body on the field was dead, then 7 s more (11.2 s for the first two), with no stall timer in the story; gate-side breaches stood about 69 hops out and sector bodies marched at pace 1.0, so a wave spawned in 3.2 s walked 50-70 s; sector 1 sent 4/8/14/19 bodies per breach; a sector opened with a 6 s card, then placement, a 1.5 s stagger, 7 s of breach opening and a 7 s warning. The owner chose clock-driven overlapping waves over clear-gated-but-faster waves and a continuous stream (docs/superpowers/specs/2026-09-24-session-pacing-design.md, A).",
+  "outcome": "src/fx/sector-run.js owns the clock and the board's wave clock reads it through two in-place edits in src/td-tab.js: while a sector fights, a pulse ends when its bodies have left the queue (pulseOver) and the next arms `pulse` seconds later (pulseGap), whatever is alive. The one guard is pulseFits (src/domain/sectors.js): the live sector bodies plus the pulse must fit SECTOR_TIMING.aliveBudget 520, the frame budget the old test already held, and an empty field always takes the next pulse. Breaches are placed and open under the brief card; a breach may take a pulse while still opening (the release path already holds bodies until the hole is ready); a breach that opens mid-fight opens quietly, without the establishing dive. Gate-side breaches stand on SECTOR_PLACEMENT.ringHops 45 and at least rimCells 10 off the clearing (see 2026-09-24-pacing-probe). Sector bodies march at SECTOR_TIMING.pace 1.5. The table: sector 1 six waves, ladder 1-6, threat 1.5, pulse 16 (7 11 23 31 36 37 per breach, all soft); sector 2 six, ladder 2-7, threat 2.8, pulse 14; sector 3 eight, ladder 7-11, threat 2.2, pulse 12, two hard cores a wave; generated sectors 9, 10, 11 ... waves, threat +0.15. SECTOR_GATE.hp 60 -> 110 because waves now stack. Isao's repair trips wait for the doors to be clear (sectorRun.doorsQuiet) as well as for no release to be running: with the clock, 'no wave running' was true nearly always and he mended the door under a pile of 350 forever. Measured after (--pacing, ideal defender, bare page): sector 1's first pulse lands 7 s after its card and its bodies reach the gate about 22 s after it; pulses every 19 s; 354 arrivals over 135 s; sector 1 secure 135 s after its card.",
+  "alternatives": [
+    "Clear-gated per breach with a 3 s gap and faster marching: rejected by the owner in favour of the clock; it keeps a lull after every clear.",
+    "A continuous stream with surges: rejected by the owner; waves, HELD, LEFT IN THE FIELD and the debrief's books would all need redefining.",
+    "A live-body cap (alive >= 260 holds the pulse): replaced by the budget rule, because a sector 3 pulse alone is 420 bodies and the cap would have let alive + pulse reach 680.",
+    "Sector 1 at threat 2.5, then 1.8, with the gate at 60 hp: --pacing --passive lost the colony 51 s into sector 1 (towers alone); at 1.8 and 110 hp, 59 s. Threat 1.5 was kept as the tank's first fight; see the probe entry for why passive loss is the expected floor."
+  ],
+  "evidence": [
+    "node test/sector-run.mjs (new: placement under the card, pulses under the budget, the pace, quiet late openings, the rim rule, doorsQuiet, harmless bodies), node test/sectors.mjs (the table, pulseFits, every pulse fits the budget on an empty field)",
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --sectors, --backdoor, --skip-tutorial: green on branch pacing",
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --pacing: artifacts/browser/pacing.json"
+  ],
+  "supersedes": []
+}
