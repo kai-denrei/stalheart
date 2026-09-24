@@ -7,11 +7,11 @@ import { BREACH_SOUNDS } from './content/breach-defaults.js';
 import { SOUNDS } from './content/runtime.js';
 import { emergence } from './domain/breach-waves.js'; import { applyScare, stampScare, scarePace, isScared, towardScare, awayExits } from './domain/impact-scare.js'; import { EXPLOSION_SCARE, SCARE_FREEZE_S } from './content/explosions.js'; import { createThermalHeat } from './fx/thermal-heat.js'; import { isAutomated, pilotMultipliers } from './domain/automation.js'; import { fillFromKill, fillFromWaveClear, isFull as callFull, callProgress } from './domain/gunship-call.js'; import { GUNSHIP_CALL, GUNSHIP_FAR } from './content/gunship.js'; import { unlockedTowers } from './domain/expeditions.js'; import { createExpeditionsHost } from './fx/expedition-glue.js'; import { CARGO_LOOK } from './content/cargo.js'; import { STORY_EXPEDITIONS } from './content/story-defaults.js'; import { makeSiteRing as siteRing, disposeSiteRing } from './fx/site-ring.js'; import { hasPerk as programmeHas, snapshot as programmeSnapshot, lose as programmeLose } from './domain/build-programme.js'; import { createProgramWarm } from './fx/program-warm.js';
 import { sinkholeGroundHeight } from './core/sinkhole-shape.js'; import { devModeOn } from './core/dev-mode.js'; import { createControlsCard } from './fx/controls-card.js'; import { createSkipTutorial } from './fx/skip-tutorial.js'; import { skipTutorialUrl } from './core/story-route.js'; import { STORY_SKIP } from './content/story-defaults.js'; import { createShowcase } from './fx/showcase.js'; import { showcaseOn } from './platform/showcase-entry.js';   /* THE SHOWCASE (owner, 2026-09-18): the core loop as a montage over this very world, before the landing */   /* SKIP TUTORIAL (owner, 2026-09-16): the player's own way past the opening, and the state ?skip=defence starts in */
-import { makeOrdnanceShell } from './shell.js'; import { createHullLoss } from './fx/hull-loss.js';
+import { makeOrdnanceShell } from './shell.js'; import { createHullLoss } from './fx/hull-loss.js'; import { bayContainers, syncBays } from './fx/life-bays.js';
 import { firingFor } from './content/firing-defaults.js'; import { RELEASE_EVENTS, releasesHeld, releaseHeld } from './core/held-input.js';
 import { METRES_PER_CELL, arcToMetres, metresToArc } from './core/stage-units.js';
 import { pickMissileTarget, missileLimits, stepMissileLock, missileCanFire } from './domain/missile-targeting.js';
-import { createRunContext } from './domain/run-context.js'; import { trunkCells, simDirective, simPick } from './domain/sim-policy.js';
+import { createRunContext } from './domain/run-context.js'; import { trunkCells, simDirective, simPick } from './domain/sim-policy.js'; import { towerPerch } from './domain/tower-perch.js';
 import { createRunTimers } from './platform/run-timers.js'; import { createSimRun } from './platform/sim-run.js';
 import { createMissilePool, launchDart, advanceDart } from './missiles.js';
 import { MISSILE_LAUNCH_ELEVATION } from './content/missile-defaults.js';
@@ -4842,24 +4842,9 @@ export function initTdTab(root) {
   // directly in front of the camera in third person, blocking exactly the
   // thing the player steers toward. Operator ruling: same-size badge, up
   // top, next to the score it rides with.
-  // v3: one hull per shallow container, three in a row. Container i holds
-  // a spare while i < HP-1; the spawn commandeers container min(2, HP-1)
-  // — the one whose hull just left.
-  function adoptBays(sb) { sb?.ready.then(() => { if (sb !== storyBase || !story?.berths) return; lifeContainers = sb.bays().map((b, i) => ({ obj: Object.assign(new THREE.Object3D(), { userData: { asset: 'bay', setStocked: (racked) => { if (!racked) b.open(); } } }), tanks: b.vehicle ? [Object.assign(b.vehicle, { userData: { asset: 'mork' } })] : [], ci: berths[i].ci, exit: berths[i].exit, rollout: b.rollout, roll: b.roll })); syncLifeContainers(); if (player.moves <= 3 && throttle === 0 && !cruise) deployStart(berthIndexFor(playerHP)); }); }   /* the story's bays as the life containers, at load or once Isao has printed them */
-  function syncLifeContainers() {
-    if (lifeContainers.length < 3) return;
-    const spares = Math.max(0, playerHP - 1);
-    lifeContainers.forEach((cc, i) => {
-      // a RACKED hull is a spare you have not used; a LIT NUMBER is a life
-      // you still have, the one you are driving included. So berth 3 stands
-      // empty from the first second and still reads 3 — which is what the
-      // painted numerals are for (operator, 2026-08-31).
-      const racked = i < spares;
-      if (cc.tanks[0]) cc.tanks[0].visible = racked || !!cc.rolling;   // a hull mid roll-out is the authored one, still on show
-      cc.obj.userData.setStocked(racked, null);
-      if (cc.obj.userData.setAlive) cc.obj.userData.setAlive(i < playerHP);
-    });
-  }
+  // the life containers (src/fx/life-bays.js: one hull per container, three in a row): the story's bays adopted, and their repaint
+  function adoptBays(sb) { sb?.ready.then(() => { if (sb !== storyBase || !story?.berths) return; lifeContainers = bayContainers(sb.bays(), berths); syncLifeContainers(); if (player.moves <= 3 && throttle === 0 && !cruise) deployStart(berthIndexFor(playerHP)); }); }   /* the story's bays as the life containers, at load or once Isao has printed them */
+  function syncLifeContainers() { syncBays(lifeContainers, playerHP); }
 
   // ISAO's line on the objectives row: what he is doing and how deep the
   // queue is. Silent when there is nothing on the book — a status line that
@@ -6062,8 +6047,7 @@ export function initTdTab(root) {
     const v = parseFloat(new URLSearchParams(location.search).get('towerscale'));
     return Number.isFinite(v) && v > 0.1 && v < 4 ? v : 0.72;
   })();
-  // EVERY TOWER STANDS AT ITS WALL'S EDGE, NEVER OVER IT (operator, 2026-09-12): the mount slides from the cell centre toward the open cell it covers (the story names it; otherwise the upstream lane) until the far edge of its pedestal meets the rock's edge
-  const perchOf = (tower) => { const ci = tower.ci, c = graph.centers[ci]; let nb = story?.socketToward?.[ci] ?? -1; if (nb < 0) for (const k of graph.adj[ci]) if (dungeon.tags[k] !== BLOCKED && (nb < 0 || dungeon.distToHeart[k] > dungeon.distToHeart[nb])) nb = k; if (nb < 0) return c; const t = graph.centers[nb], d = dist3(c, t), qa = mesh?.quads?.[ci], qb = mesh?.quads?.[nb], shared = qa && qb ? qa.filter((v) => qb.includes(v)) : [], face = shared.length === 2 ? dot3(sub3(scale3(add3(mesh.vertices[shared[0]], mesh.vertices[shared[1]]), 0.5), c), sub3(t, c)) / d : d * 0.5, slide = Math.max(0, face - (tower.obj?.userData.footprintR ?? 0)) / d; return norm3(c.map((v, i) => v + (t[i] - v) * slide)); };   // TO THE ROCK'S REAL EDGE (owner, 2026-09-13: touching it, not cantilevered): the shared quad edge, not half the centre distance
+  const perchOf = (tower) => towerPerch(tower, graph, dungeon, mesh, story?.socketToward);   // EVERY TOWER STANDS AT ITS WALL'S EDGE, NEVER OVER IT (src/domain/tower-perch.js)
   function placeTowerObj(tower) {
     const obj = tower.obj;
     const s = (obj.userData.baseScale ?? 1) * cellSide * 0.62 * TOWER_SCALE * Math.pow(TIER_BULK, tower.tier); obj.scale.setScalar(s);
