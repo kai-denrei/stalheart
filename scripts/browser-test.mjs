@@ -869,10 +869,12 @@ try{
  await go('pacing-bare','index.html?sw=0&acceptance=1&cine=0&world=story&intro=0#td');
  await until(`!!${T}&&!!${T}.state().programme`,90000);
  await evaluate(`(()=>{const T=${T},P=window.__pace={t0:performance.now(),ev:[],arr:[],rows:[],last:{},aimAt:0,contAt:0,done:false,passive:${args.includes('--passive')}};
-  const now=()=>+((performance.now()-P.t0)/1000).toFixed(1),ev=(what)=>P.ev.push([now(),what]);
-  const seen=(k,v,what)=>{if(P.last[k]!==v){P.last[k]=v;if(v!==undefined&&v!==null&&v!==false)ev(what(v));}};
+  /* GAME TIME, not the wall clock (2026-09-25): the game's clock advances at most 0.1 s a frame, so on a slow machine or beside a
+     second suite the wall ran ahead of the game and every number here inflated. Stamps are the game's own t (state().shieldClock). */
+  const now=()=>+(P.clock-P.clock0).toFixed(1),ev=(what)=>P.ev.push([now(),what]);
+  const seen=(k,v,what)=>{if(P.last[k]!==v){P.last[k]=v;if(v!==undefined&&v!==null&&v!==false&&v!=='')ev(what(v));}};
   P.iv=setInterval(()=>{try{
-   const s=T.state(),S=s.sector||{},pg=s.programme||{},st=s.story||{};
+   const s=T.state(),S=s.sector||{},pg=s.programme||{},st=s.story||{};P.clock=s.shieldClock;P.clock0??=P.clock;
    seen('phase',st.phase,v=>'story '+v);seen('active',pg.active,v=>'print begins '+v);seen('printed',(pg.printed||[]).join(),v=>'printed '+(pg.printed||[]).slice(-1)[0]);
    seen('heart',s.heart,v=>'heart '+v);seen('towers',s.towers,v=>'towers '+v);seen('hulls',s.hulls,v=>'hulls '+v);seen('deploying',s.deploying,v=>'hull deploying');seen('automated',s.automated,v=>'automated');
    seen('sector',S.n||null,v=>'sector '+v+' card');seen('sphase',S.phase,v=>'sector phase '+v);seen('debrief',S.debriefOpen,v=>'debrief');
@@ -899,7 +901,7 @@ try{
  // ALIVE / GATE every 10 s while a sector fights: how big the pile is and how much of the weakest door is left
  console.log('FIELD '+P.rows.filter(r=>r[0]%10===0).map(r=>`${r[0]}:${r[1]}/${r[2]}%`).join(' '));
  const at=(re)=>P.ev.find(([,w])=>re.test(w))?.[0]??null;
- const summary={bareSeconds:+((Date.now()-t0)/1000).toFixed(0),hullOut:at(/^hull deploying/),automated:at(/^automated/),sectors:{}};
+ const summary={wallSeconds:+((Date.now()-t0)/1000).toFixed(0),gameSeconds:P.ev.length?P.ev[P.ev.length-1][0]:0,hullOut:at(/^hull deploying/),automated:at(/^automated/),sectors:{}};
  for(const n of [1,2]){
   const card=at(new RegExp(`^sector ${n} card`)),arr=P.arr.filter(a=>a[2]===n);
   if(card===null||!arr.length){summary.sectors[n]={card,arrivals:0};continue;}
