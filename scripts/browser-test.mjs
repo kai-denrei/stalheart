@@ -473,13 +473,18 @@ try{
   assert((await st()).biomass<bio,`the order is paid for (${bio} -> ${(await st()).biomass})`);}
  current='phone-build';await finish();
  await tap('#mob-mode','DRIVE');await delay(800);assert(!(await evaluate('document.body.classList.contains("mob-build")')),'back to DRIVE');
- // 5. THE GUNSHIP FROM THE STRIP: the briefing's SKIP by touch, the seat's own gun buttons, aim by drag, the pad's fire button as the trigger
+ // 5. THE GUNSHIP FROM THE STRIP: the briefing's SKIP by touch, the seat's own gun buttons, aim by drag, the pad's fire button as the trigger.
+ // Since the sectors run on a clock (2026-09-24) the skip run is always mid-fight here, and a live sector is never frozen under the
+ // briefing (it waits for a calm moment, 2026-09-16): the briefing is opened as the G key opens it, its SKIP tapped by touch, and
+ // then the strip's GUNSHIP takes the seat.
  await evaluate(`${T}.fillGunshipCall(100000)`);await until('document.querySelector("#story-views [data-mount=gunship]").textContent==="GUNSHIP · CALL"',5000);
- await tap('#story-views [data-mount=gunship]','the strip\'s GUNSHIP');
+ await evaluate('window.dispatchEvent(new KeyboardEvent("keydown",{key:"g",bubbles:true}))');
  await until('!!document.querySelector("#gunship-briefing:not([hidden])")',5000);await delay(600);
  await thumb('#gunship-briefing [data-skip]','the briefing\'s SKIP');await reachable('#gunship-briefing [data-skip]','the briefing\'s SKIP');
  current='phone-gunship-briefing';await finish();
  await tap('#gunship-briefing [data-skip]','the briefing\'s SKIP');
+ await until('!!document.querySelector("#gunship-briefing")?.hidden',5000);
+ await tap('#story-views [data-mount=gunship]','the strip\'s GUNSHIP');
  await until(`${T}.state().gunship.seat`,15000);await delay(1500);
  for(const k of ['rotary','bofors','heavy']){await thumb(`#sentry-pilot [data-gun=${k}]`,`the ${k} button`);await reachable(`#sentry-pilot [data-gun=${k}]`,`the ${k} button`);}
  await thumb('#td-pad-fire','the trigger');await reachable('#td-pad-fire','the trigger');
@@ -522,7 +527,8 @@ try{
   assert.equal((await evaluate(`${T}.state().laser`)).burning,false,'and stops when it lifts');}
  await tap('#laser-seat-keys [data-tank]','the seat\'s TANK');await delay(800);assert.equal((await st()).laser.seated,false,'TANK leaves SOL-82');
  // 8. THE DEBRIEF AT 390 PX: both breaches closed, the field cleared, the card up; pages advance by tap, CONTINUE reachable
- await until(`${T}.state().sector.breaches.length===2`,90000).catch(async()=>assert.fail(`the sector has both its breaches (${JSON.stringify((await st()).sector)})`));
+ /* the back door's sector opens its gate side after the feast (2026-09-24): clear the feast so the gate side opens, then seal */
+ await until(`(()=>{const S=${T}.state().sector;if(S.feast&&!S.feast.scrambled)${T}.sectorClearField();return S.breaches.length===2&&S.breaches.every(b=>b.opened);})()`,90000).catch(async()=>assert.fail(`the sector has both its breaches open (${JSON.stringify((await st()).sector)})`));
  // SOL-82's HOLD above may already have sealed the gate-side one: seal whatever is still live rather than assuming both are
  for(const b of (await st()).sector.breaches){if(!b.live)continue;assert.equal(await evaluate(`${T}.sectorClose(${JSON.stringify(b.id)},"gunship")`),'gunship',`breach ${b.id} sealed`);}
  assert((await st()).sector.breaches.every((b)=>!b.live),'both breaches are closed');

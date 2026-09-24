@@ -161,7 +161,8 @@ export function createSectorRun(h) {
     // WHEN EACH OPENS: one after another, `staggerSeconds` apart (one breach-opening spike at a time); behind a mouth that fell this
     // very sector start, not before `backDoorLead`; and in a feast sector the gate side waits for the scramble (tick sets it)
     const t0 = now();
-    sector.breaches.forEach((b, i) => { b.openAt = def.feast && b.side !== 'back' ? Infinity : t0 + i * SECTOR_TIMING.staggerSeconds + (doorNow && b.side === 'back' ? SECTOR_TIMING.backDoorLead : 0); });
+    const feastHolds = !!def.feast && sector.breaches.some((b) => b.side === 'back');   // no back breach placed, no feast to wait for
+    sector.breaches.forEach((b, i) => { b.openAt = feastHolds && b.side !== 'back' ? Infinity : t0 + i * SECTOR_TIMING.staggerSeconds + (doorNow && b.side === 'back' ? SECTOR_TIMING.backDoorLead : 0); });
     pending = sector.breaches.map((b) => b.id);
     phase = 'fighting';
   }
@@ -240,7 +241,10 @@ export function createSectorRun(h) {
   // and the gate side opens a little later
   function tickFeast(t) {
     if (feast?.scrambled && t - feast.scrambled < BACK_SCRAMBLE.seconds && t >= feast.ringAt) { feast.ringAt = t + BACK_SCRAMBLE.every; api.backScramble?.(feast.rings++); }   // the back sockets ring while Isao's ask stands
-    if (!def.feast || !feast || feast.scrambled) return;
+    if (!def.feast || feast?.scrambled || !sector.breaches.some((b) => b.openAt === Infinity)) return;
+    // THE BACK BREACH SEALED BEFORE ITS FEAST ROSE (a laser, a strike): there is nothing to scramble for, and the gate side must
+    // not wait for a feast that will never come, or the sector can never be secure (2026-09-25)
+    if (!feast) { if (sector.breaches.some((b) => b.side === 'back' && b.state !== 'open')) for (const b of sector.breaches) if (b.openAt === Infinity) b.openAt = t; return; }
     const sp = sps.get(feast.id), total = def.feast.entries.reduce((n, e) => n + e.count, 0);
     let left = 0;
     for (const e of h.enemies()) if (e.alive && !e.guard && e.breachSource && e.breachSource === sp?.obj) left++;

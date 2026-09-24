@@ -4,12 +4,12 @@ import { SECTORS, SECTOR_TIMING, SECTOR_GATE } from '../src/content/sectors.js';
 
 // THE SECTOR CLOCK (docs/superpowers/specs/2026-09-24-session-pacing-design.md A and B), driven through fake hooks: no page, no
 // planet. A ring of 120 cells; walking hops from the heart climb 30..59 round it; cells 200.. are the back candidates.
-function world({ firstSector = 1, gate = false, lateStart = true, delivered = [] } = {}) {
+function world({ firstSector = 1, gate = false, lateStart = true, delivered = [], backCandidates = [{ cell: 210, hops: 30 }, { cell: 221, hops: 40 }, { cell: 220, hops: 31 }] } = {}) {
   const w = { t: 0, enemies: [], queue: [], opened: [], briefs: [], scrambles: 0, backDoors: 0 };
   const centers = [], dist = [];
   for (let i = 0; i < 260; i++) { const a = (i / 120) * Math.PI * 2; centers.push([Math.cos(a), Math.sin(a), i >= 200 ? 1 : 0]); dist.push(i >= 200 ? 30 : 30 + (i % 30)); }
   const story = { sealed: () => false, gateCell: gate ? 5 : -1, lateStart };
-  const api = { openBackDoor: () => { w.backDoors++; }, backBreachCandidates: () => [{ cell: 210, hops: 30 }, { cell: 221, hops: 40 }, { cell: 220, hops: 31 }], /* 221 is the farthest, and within a blast of the rim */ backScramble: (k) => { if (k === 0) w.scrambles++; w.rings = (w.rings ?? 0) + 1; }, backOmen: (o) => { (w.omens ??= []).push(o.id); } };
+  const api = { openBackDoor: () => { w.backDoors++; }, backBreachCandidates: () => backCandidates, /* by default 221 is the farthest, and within a blast of the rim */ backScramble: (k) => { if (k === 0) w.scrambles++; w.rings = (w.rings ?? 0) + 1; }, backOmen: (o) => { (w.omens ??= []).push(o.id); } };
   w.run = createSectorRun({
     story, api, waveSize: 4, threatMult: 1, hardcore: 'knot', spawnGap: { spread: 3.2, max: 0.45 }, store: null, rng: () => 0,
     ready: () => true, firstSector,
@@ -85,6 +85,23 @@ function world({ firstSector = 1, gate = false, lateStart = true, delivered = []
   assert.ok(second.some((q) => q.sp === w.opened[0]) && second.some((q) => q.sp === w.opened[1]), 'then both sides on the clock');
   w.step(1);
   assert.equal(w.scrambles, 1, 'once');
+}
+{
+  // the back breach sealed before its feast rose: the gate side opens anyway, and the sector can be secured
+  const w = world({ firstSector: 2 });
+  w.step(SECTOR_TIMING.backDoorLead + 0.5);
+  assert.equal(w.opened.length, 1);
+  w.run.closed(w.opened[0], 'laser');
+  w.step(2);
+  assert.equal(w.opened.length, 2, 'the gate side opens without a feast to wait for');
+  assert.equal(w.scrambles, 0, 'and Isao asks for no turrets against a breach that is shut');
+}
+{
+  // a feast sector that found no back ground: its breaches all stand on the gate side and none of them waits for a feast
+  const w = world({ firstSector: 2, backCandidates: [] });
+  w.step(SECTOR_TIMING.backDoorLead + 3);
+  assert.deepEqual(w.run.state().breaches.map((b) => b.side), ['gate', 'gate']);
+  assert.equal(w.opened.length, 2, 'both open, one after the other');
 }
 {
   // a player who never goes to the back still gets the rest of the sector
