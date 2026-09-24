@@ -1001,6 +1001,9 @@ try{
  // his print bed laid over the door's own footprint the way the foundry beat's `over:` bed is, and GATE % climbs under the beam
  // instead of jumping the moment he leaves.
  {await evaluate('window.__stalheartTest.sectorClearField()');await delay(3000);   /* a repair is only taken between waves: the lane has to be quiet. NOT clearSector() — that ends the sector and puts the debrief card over the very thing this step is here to look at */
+  /* ON THE CLOCK (2026-09-24) the sector keeps sending pulses and its hard cores may have the door down already: hold the sector
+     quiet (no pulses, no wear) and start from a whole door, so what follows is Isao's repair and nothing else */
+  await evaluate('window.__stalheartTest.sectorQuiet(true)');await evaluate('window.__stalheartTest.sectorClearField()');await evaluate('window.__stalheartTest.mendGate()');await delay(500);
   assert(await evaluate(`window.__stalheartTest.breakGate()`),'the harness takes the door down');
   {const g=await evaluate(`window.__stalheartTest.state().sector.gate`);assert(g.broken&&g.hp<2,`the gate is down (${JSON.stringify(g)})`);   /* the ambient mend may have ticked a frame's worth back already */}
   await until(`window.__stalheartTest.state().programme.repairing?.kind==='gate'`,40000).catch(async()=>assert.fail(`Isao never took the gate repair (${JSON.stringify(await evaluate(`window.__stalheartTest.state().story`))})`));
