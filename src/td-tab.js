@@ -77,7 +77,7 @@ import { FEEL, loadFeel, saveFeel } from './feelstore.js';
 import { STRIKE_KNOBS, makeStrike, makeStrikeParams, grantStrikes, stepStrike,
   toggleArm, paintTarget, launchStrike, stepFall, skipFall, fallProgress,
   strikeDamage, retargetStrike, orbitProgress } from './strike.js'; import { makeGunship, stepGunship, onStation, phaseLeft, passProgress, mountGunship, dismountGunship, selectGun, stepGun, aimOnSphere, splashDamage, dangerReport, fireRound, stepRounds, paintHeavy, launchHeavy, nudgeHeavy, stepHeavy, heavyState, startStation } from './domain/gunship.js'; import { GUNSHIP_GUNS, GUNSHIP_GUN_ORDER, GUNSHIP_PLATFORM, GUNSHIP_ORBIT, GUNSHIP_TRACK, GUNSHIP_NUKE } from './content/gunship.js'; import { makeTrack, steerTrack, parkTrack, breachLoads } from './domain/gunship-track.js'; import { createGunshipOptic } from './fx/gunship-optic.js'; import { createGunshipDrop } from './fx/gunship-drop.js'; import { createGunshipBriefing } from './fx/gunship-briefing.js'; import { createFoundryFx } from './fx/foundry-fx.js'; import { createExplosions } from './fx/explosions.js';
-import { radarBasis, proximitySectors, sensorColor } from './radar.js'; import { createRadarScope } from './fx/radar-scope.js'; import { createTowerAim } from './fx/tower-aim.js'; import { buildVarsModal } from './fx/vars-modal.js';
+import { radarBasis, proximitySectors, sensorColor } from './radar.js'; import { createRadarScope } from './fx/radar-scope.js'; import { createTowerAim } from './fx/tower-aim.js'; import { buildVarsModal } from './fx/vars-modal.js'; import { startVictoryPull } from './fx/victory-pull.js'; import { VICTORY_PULL } from './content/victory-pull.js';
 import { BLOOM_GROUPS } from './bloomweights.js';
 import { A6_TUNE, magFor, makeA6, stepA6, arc as a6Arc, a6Line } from './heptapod.js';
 import { SENTRY_TUNE } from './sentry.js';
@@ -8648,75 +8648,7 @@ export function initTdTab(root) {
     }
   }
 
-  // --- THE PULL-OUT ---------------------------------------------------------
-  //
-  // The camera leaves. It starts wherever the player was watching from —
-  // third person, orbit, whatever — and climbs away from the hull until the
-  // planet is a marble against the galaxy the sky is already made of, holds
-  // there a beat, and hands over to the debrief.
-  //
-  // It rides camShot rather than owning a clock, for the reason written on
-  // that function: every timed camera takeover that owned its own teardown
-  // eventually got one wrong, and one of them ate every key in the game
-  // permanently. One shot at a time, one teardown, and the latch is the shot
-  // itself.
-  //
-  // SKIPPABLE, like every other shot here. A player who has seen it four
-  // times should not be held, and the skip path already exists and is tested.
-  const VICTORY_PULL = 4.2;        // seconds of camera
-  const VICTORY_HOLD = 0.9;        // ...of which the last of it is a held wide
-  function victoryPullOut(final) {
-    // where the camera IS, so the move starts from the player's own view
-    // rather than snapping to a canonical one first — a cut before a pull-out
-    // throws away the only thing that makes it read as leaving
-    const from = camera.position.clone();
-    const fromR = Math.max(1.05, from.length());
-    const dir0 = from.clone().normalize();
-    // ...and where it goes: further out than the reveal shot's 3.3, because
-    // this is the whole planet with room around it and not a band being shown
-    const OUT_R = 5.2;
-    const ref = Math.abs(dir0.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
-    const up = new THREE.Vector3().crossVectors(dir0, ref).normalize();
-    // THE INSTRUMENTS GO. A wide shot of a planet with a score, a throttle and
-    // a radar over it is a level with the camera pulled back; the same shot
-    // with the glass cleared is an ending. This is most of what "markedly
-    // different" costs.
-    document.body.classList.add('td-victory');
-    startShot({
-      id: 'victory',
-      dur: VICTORY_PULL,
-      poseAt: (u, out) => {
-        // FAST THEN SETTLING. A linear pull reads as a lift being operated;
-        // the ease-out is what makes it read as being pulled away from
-        // something. The last stretch is a hold, so the wide shot is a beat
-        // the eye can rest on rather than the instant before a modal.
-        const t = Math.min(1, u / (1 - VICTORY_HOLD / VICTORY_PULL));
-        const e = 1 - Math.pow(1 - t, 3);
-        const r = fromR + (OUT_R - fromR) * e;
-        // a slow drift around the pole as it goes, so the planet turns under
-        // the camera and reads as a body rather than a texture
-        const spin = e * 0.42;
-        const axis = new THREE.Vector3(0, 1, 0);
-        const d = dir0.clone().applyAxisAngle(axis, spin).multiplyScalar(r);
-        out.pos.copy(d);
-        tmpCam.position.copy(out.pos);
-        tmpCam.up.copy(up);
-        tmpCam.lookAt(0, 0, 0);
-        out.quat.copy(tmpCam.quaternion);
-      },
-      onEnd: () => {
-        // STAY WIDE. When the shot released the camera it snapped straight
-        // back to the hull — measured, 5.20 to 1.23 in one frame — and the
-        // debrief then opened over a close-up of a tank standing in an empty
-        // sector, which is the opposite of what the pull-out just said. Orbit
-        // is the view that keeps the planet in shot, and it is what the
-        // reveal shot hands back to for the same reason.
-        setView('orbit');
-        document.body.classList.remove('td-victory');
-        renderAnalysis(final);
-      },
-    });
-  }
+  function victoryPullOut(final) { startVictoryPull({ camera, tmpCam, startShot, setView, debrief: () => renderAnalysis(final) }); }   /* THE PULL-OUT, then the debrief (src/fx/victory-pull.js; its path and numbers in src/domain and src/content) */
 
   // --- THE DEBRIEF, THE CAMPAIGN LOG AND THE VERDICT (operator, 2026-09-02) live in src/fx/campaign-debrief.js: the analyst's six
   // windows with the strike replay, a snapshot per cleared sector, and the verdict with its orders. The campaign board only.
@@ -12229,7 +12161,7 @@ export function initTdTab(root) {
         console.log(`WINPROBE after the debrief r=${camera.position.length().toFixed(2)}`
           + ` ${camera.position.length() > 2.5 ? 'OK — still wide'
             : 'WRONG — it snapped back to the hull behind the modal'}`);
-      }, VICTORY_PULL * 1000);
+      }, VICTORY_PULL.seconds * 1000);
       // the debrief is checked LATER than the camera on purpose: onEnd fires
       // on the frame the shot expires, so a check at exactly VICTORY_PULL
       // races the modal it is asking about and reports a failure that is
@@ -12239,7 +12171,7 @@ export function initTdTab(root) {
         console.log(`WINPROBE debrief up=${modal} r=${camera.position.length().toFixed(2)}`
           + ` ${modal ? 'OK — after the move, not instead of it'
             : 'WRONG — the debrief never arrived'}`);
-      }, (VICTORY_PULL + 1.6) * 1000);
+      }, (VICTORY_PULL.seconds + 1.6) * 1000);
     }, 2500);
   }
 
