@@ -115,13 +115,14 @@ export function initStoryTab(root) {
   function overview() { playing = false; onRail = false; seek(sequence.duration); frameCamera({ pos: [120, 210, 300], look: [0, 0, -40], fov: 40 }, { x: 0, z: 0 }); controls.update(); }
 
   function build() {
+    if (disposed) return;   // the lab closed inside the 30 ms before its deferred build (2026-09-25): build nothing into a disposed scene
     const t0 = performance.now();
     planet = buildStoryPlanet(STORY_RECIPE, STORY_CLEARING, planetBake());
     const built = performance.now() - t0;
     planetMesh = buildStoryPlanetMesh(planet, look, { wallMetres: STORY_RECIPE.wallMetres }); scene.add(planetMesh);
     const site = ISLANDS.find((i) => i.id === 'landing');
     landing = createStoryLanding(scene, { placer: { toWorld: (p) => new THREE.Vector3(...planet.frameToWorld(p)) }, site: [site.x, site.z], onFace: comms });
-    landing.ready.then(() => { seek(t); if (q.get('land') === '1') land(); });   // ?land=1 opens on the cinematic
+    landing.ready.then(() => { if (disposed) return; seek(t); if (q.get('land') === '1') land(); });   // ?land=1 opens on the cinematic
     marker = buildMouthMarker(planet, look); if (marker) scene.add(marker);
     setStage(stage);
     const c = planetMesh.userData.counts;
