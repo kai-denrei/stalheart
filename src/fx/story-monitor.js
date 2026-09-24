@@ -26,12 +26,19 @@ export function createStoryMonitor(root) {
       if (mesh) { fwd.set(0, 0, 1).applyQuaternion(mesh.quaternion); up.copy(mesh.position).normalize(); eye.copy(mesh.position).addScaledVector(fwd, -cellSide * (mesh.userData?.feedBack ?? 0.9)).addScaledVector(up, cellSide * (mesh.userData?.feedLift ?? 0.35)); cam.fov = 42; tgt.copy(mesh.position); }
       else { from.fromArray(optic.from); up.copy(from).normalize(); eye.copy(from).addScaledVector(up, optic.lift ?? cellSide * 0.6); tgt.fromArray(optic.pos); cam.fov = Math.max(3, Math.min(30, (2 * Math.atan((optic.span ?? cellSide * 1.2) / (2 * eye.distanceTo(tgt))) * 180) / Math.PI)); }
       cam.position.copy(eye); cam.up.copy(up); cam.lookAt(tgt); cam.aspect = r.width / r.height; cam.updateProjectionMatrix();
-      const x = (r.left - cr.left) * dpr, y = (cr.bottom - r.bottom) * dpr, w = r.width * dpr, h = r.height * dpr;   // viewport y runs from the bottom of the buffer
+      // TWO UNITS, AND THEY ARE NOT THE SAME. three's setViewport/setScissor take CSS pixels — the renderer multiplies them
+      // by its own pixel ratio on the way to gl.viewport (WebGLRenderer.setSize does exactly setViewport(0,0,cssW,cssH)).
+      // drawImage, on the other hand, reads the canvas BACKING STORE, which is in device pixels. This used to pass device
+      // pixels to all four, so every monitor frame left the MAIN viewport dpr times too big, anchored at the buffer's
+      // bottom-left corner: at dpr 2 the visible canvas then showed the bottom-left quarter of the frame blown up, so the
+      // whole world slid right and up while the DOM overlays stayed where they were — the tank off-centre and the gunship's
+      // reticle pointing somewhere the rounds never go. Invisible at dpr 1, which is why every headless run was clean.
+      const x = r.left - cr.left, y = cr.bottom - r.bottom, w = r.width, h = r.height;   // CSS px; viewport y runs from the bottom of the buffer
       renderer.setRenderTarget(null); renderer.autoClear = false; renderer.setScissorTest(true); renderer.setViewport(x, y, w, h); renderer.setScissor(x, y, w, h);
       renderer.clear(true, true, false); renderer.render(scene, cam);
-      const fw = Math.max(1, Math.round(w)), fh = Math.max(1, Math.round(h)); if (feed.width !== fw || feed.height !== fh) { feed.width = fw; feed.height = fh; }
-      feedCtx.drawImage(renderer.domElement, x, (r.top - cr.top) * dpr, w, h, 0, 0, fw, fh);   // same frame: the drawing buffer is still this frame's
-      renderer.setScissorTest(false); renderer.setViewport(0, 0, cr.width * dpr, cr.height * dpr); renderer.autoClear = true;
+      const fw = Math.max(1, Math.round(w * dpr)), fh = Math.max(1, Math.round(h * dpr)); if (feed.width !== fw || feed.height !== fh) { feed.width = fw; feed.height = fh; }
+      feedCtx.drawImage(renderer.domElement, x * dpr, (r.top - cr.top) * dpr, w * dpr, h * dpr, 0, 0, fw, fh);   // device px: same frame, the drawing buffer is still this frame's
+      renderer.setScissorTest(false); renderer.setViewport(0, 0, cr.width, cr.height); renderer.autoClear = true;
     },
     dispose() { box.remove(); },
   };

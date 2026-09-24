@@ -36,9 +36,11 @@ const evaluate=async expression=>{
  return r.result?.value;
 };
 async function until(expression,timeout=25000){const start=Date.now();while(Date.now()-start<timeout){if(await evaluate(expression))return;await delay(150);}throw Error(`Timed out: ${expression}`);}
-async function go(name,path,width=1440,height=900,expectedPath=path){
+/* dpr: the page LOADS at this device pixel ratio. The renderer reads devicePixelRatio once, when it is built, so a ratio
+   applied after the load never reaches it — a step that needs a Retina surface has to ask for one here, not afterwards. */
+async function go(name,path,width=1440,height=900,expectedPath=path,dpr=1){
  current=name;consoleLines.length=0;errors.length=0;requests.length=0;
- await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});
+ await send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:dpr,mobile:false});
  if(await evaluate('location.href')===urlRoot+path){await send('Page.navigate',{url:'about:blank'});await until('location.href === "about:blank"');}
  await evaluate('window.__stalheartReady = false');
  await send('Page.navigate',{url:urlRoot+path});
@@ -360,6 +362,20 @@ try{
   assert(probe.n>=90,`the probe saw the frames (${probe.n})`);assert(probe.max<0.25*Math.PI/180,`the seat's camera never jumps while the gunner holds still (max ${deg(probe.max)} deg in a frame)`);
   assert(await evaluate('window.__stalheartTest.state().gunship.seat'),'still seated');
   current='gunship-track-after';await finish();}
+ /* THE SECOND VIEW'S UNITS, ON A RETINA SURFACE (owner, 2026-09-24: in Safari "everything off to the right", the tank off centre
+    and the HUD miscalibrated against where the guns shoot). The monitor is scissored into a corner and then puts the MAIN viewport
+    back, and three's setViewport/setScissor take CSS pixels — the renderer multiplies by its own pixel ratio on the way to
+    gl.viewport. Device pixels there left the world drawn into a viewport dpr times too large, anchored at the buffer's bottom-left
+    corner, so at dpr 2 the glass showed the bottom-left quarter of the frame blown up: the whole world slid right and up while the
+    DOM overlays stayed where they were. It is exactly a no-op at dpr 1, which is why every earlier headless run was clean, so this
+    step loads at 2 — the renderer takes its ratio when it is built and never revisits it. */
+ await go('gunship-retina','index.html?sw=0&cine=0&world=story&stage=6&acceptance=1&gunship=station&skip=gunship&enemies=24&brief=0#td',1440,900,undefined,2);
+ await until('!!window.__stalheartTest && window.__stalheartTest.state().gunship.seat',120000);await delay(6000);
+ {const g=await evaluate('(()=>{const cv=document.querySelector("#td-app canvas:not(.minimap)"),x=cv.getContext("webgl2")||cv.getContext("webgl");return {dpr:devicePixelRatio,vp:Array.from(x.getParameter(x.VIEWPORT)),buf:[x.drawingBufferWidth,x.drawingBufferHeight],shown:window.__stalheartTest.state().monitorShown};})()');
+  assert.equal(g.dpr,2,`the seat loaded on a Retina surface (${JSON.stringify(g)})`);
+  assert(g.shown>0,`the seeker feed drew at dpr 2 (${JSON.stringify(g)})`);
+  assert.deepEqual(g.vp,[0,0,g.buf[0],g.buf[1]],`and left the main viewport over the whole drawing buffer (${JSON.stringify(g)})`);}
+ current='gunship-retina';await finish();
  } else if(args.includes('--phone')) {
  // A TOUCH PHONE (owner, 2026-09-18: the friends open the live link on phones, and nothing built in the last two days was tested
  // under touch). A 390x844 portrait phone at dpr 3 with a coarse pointer and touch events, no mouse at all: the harness plays the
