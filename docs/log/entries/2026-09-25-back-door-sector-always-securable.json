@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "2026-09-25-back-door-sector-always-securable",
+  "date": "2026-09-25",
+  "type": "change",
+  "status": "accepted",
+  "title": "The back door's sector can always be secured: a back breach sealed before its feast rose opens the gate side, and a feast sector with no back ground holds nothing",
+  "context": "The feast (2026-09-24-back-door-feast-and-scramble) holds sector 2's gate side until the scramble, and the scramble waits for the feast. The third extraction round's agent found --phone failing at its gunship step on the unchanged branch; chasing it, its debrief step showed the sector never becoming SECURE after both breaches were sealed.",
+  "outcome": "src/fx/sector-run.js: when the back breach is closed before its feast was released (SOL-82 or a strike on it early), the gate side opens at once instead of waiting for a feast that will never come; a feast sector whose placement found no back ground (both breaches on the gate side) holds neither. test/sector-run.mjs covers both; the first fails on the old code. --phone predates the clock: its gunship step tapped GUNSHIP mid-fight, where a first briefing rightly waits for a calm moment (2026-09-16); it now opens the briefing as the G key does, taps SKIP by touch, then takes the seat from the strip; its debrief step lets the gate side open (the feast cleared) before it seals what is live.",
+  "alternatives": [
+    "Letting a sector secure with a breach still unopened: rejected, the unopened breach's waves would simply vanish from the books."
+  ],
+  "evidence": [
+    "node test/sector-run.mjs",
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --phone: 13 steps green, phone-opening through phone-landscape"
+  ],
+  "supersedes": []
+}

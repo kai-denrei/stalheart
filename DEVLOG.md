@@ -67,6 +67,23 @@ Evidence:
 - Scratch harnesses running the ORIGINAL td-tab text beside the new code: the rig over 76 scripted steps with td-tab's actual host (log, returns and state), 852 far/lane cases, 1,728 deploy framings and 810 shot poses bit-identical, 40 hull-host calls, 3,212 wave gaps; each harness fails on a mutated copy
 - Browser suites from frozen snapshots through scripts/browser-lock.sh: --gunship 21, --seats 3, --showcase 8, --defense 12, --nav 10, --grow 16, --skip-tutorial 7, --story-world 31, --backdoor 4, --sectors 12, --quiver-frame 16, --waves 1 (stops short of sector 2's gate breach exactly as the pre-round baseline does), default 48 at each target
 
+## 2026-09-25 — Third extraction round out of td-tab: Isao's programme host, the story API's unlock and expeditions hosts, the gameplay camera's per-view poses and the build menu's radial leave the controller, and storyApi reads one member per line; the controller 12,939 -> 12,734 lines, 737,886 -> 719,082 bytes, 35 -> 31 lines over 500 characters
+
+change · accepted · 2026-09-25-controller-extractions-round-three
+
+Refactor round task 12 (docs/superpowers/plans/2026-09-25-refactor-round.md), third round, on branch refactor-extract-3 from refactor (rounds one and two merged). Same method: each block moves verbatim behind a host object (values for what exists where the host is built, getters for rebound lets, setters for the lets it writes), is proven against the original text, and the line, byte and long-line budgets ratchet down at every commit. Round two had left the storyApi reflow for after the programme, unlock and expeditions members were out.
+
+storyApi's perks, hasPerk, build, repaired and printed are createProgrammeHost in src/fx/programme-host.js (the rules stay in src/domain/build-programme.js and src/domain/repair-orders.js); its host is also the first hull's host (createHullHost(c) replaces the literal build carried). storyApi.unlock is createUnlockHost in src/fx/story-views.js beside the strip, and expeditions/expeditionsBegin/expeditionStep are createExpeditionsHost in src/fx/expedition-glue.js beside the glue; both merge into storyApi on the Object.assign after the literal (the literal cannot hand itself to a host), every member name unchanged; the lets unlock writes through `??=` get setters that return what they wrote. updateCameraGoal keeps its order and early returns but its per-view pose arithmetic is src/domain/camera-goal.js (the strike's fall, riding Isao, the bastion, the tank's third person and POV), each an eye/look/up that poseCamera turns into the goal, now with the phone's visible-band bias as an option. openShop is createShopRadial in src/fx/shop-radial.js. The storyApi reflow (one member per line, host literals a line per kind) landed in the camera commit: the first two extractions saved no line (their members were one line) and the budgets ratchet per commit, so the reflow spent 55 of the 164 lines the poses saved there.
+
+Alternatives: Keeping perks/hasPerk in the controller and moving only build/printed/repaired: rejected, they are the programme's own reads and their comment named them together.; A lazy getter owning `gunshipBriefing ??= createGunshipBriefing(root)` in the controller: rejected for a setter that returns its value, which keeps the moved text a mechanical rewrite of the original.; Reflowing storyApi as its own commit: impossible under a per-commit ratchet without another commit's savings; packing other short lines to pay for it was rejected as moving line breaks rather than simplifying.; One union host object for the programme, expeditions and unlock hosts (~400 bytes smaller): rejected, one literal per module keeps each module's contract visible at the call site and checkable on its own.
+
+Evidence:
+
+- npm test (142 programs at the last commit; new: test/programme-host.mjs, test/story-views.mjs, test/camera-goal.mjs, test/shop-radial.mjs; test/cargo.mjs gained the expeditions host), npm run check and the eslint no-undef/no-unused diff of td-tab clean at every commit; npm run build on the final tree
+- AST identity of every moved block to a scope-analysed mechanical rewrite of the original text (the programme's 5 members, unlock with `??=` rewritten to getter ?? setter, the 3 expedition members, openShop), every comment kept; the reflowed td-tab parses to the same AST as before it; a sentinel check of each host literal written into td-tab, and every member each module reads off its host is in it
+- Scratch harnesses running the ORIGINAL td-tab text beside the new code, each in a closure shaped like initTdTab's: the programme over 3,000 random worlds on the real build programme, repair rule and hull issue; unlock and the expeditions over 20,000 worlds on the real strip (a recording DOM, clicked); updateCameraGoal over 20,000 worlds on real three.js cameras, every path, bit-identical; openShop over 20,000 worlds on the real roster; each fails on mutated copies of the module and of td-tab's host literal
+- Browser suites from frozen snapshots through scripts/browser-lock.sh: --grow 16 (the whole printed base and Isao's gate repair), --backdoor 4, --sectors 12, --skip-tutorial 7, --story-world 31, --back-gate 6, --defense 12, --seats 3, --gunship 21, --showcase 8, default 48; --phone passes its opening, skip, drive and build steps and stops at the gunship briefing on the pre-round baseline too (the sector is fighting when GUNSHIP is tapped, so the briefing waits by design); the --phone baseline was measured on a snapshot of refactor f88ecd9b itself
+
 ## 2026-09-25 — Five behaviour-neutral extractions out of td-tab: the radar scope, a tower's aim, the VARS modal, the victory pull-out and the showcase hooks; the controller 13,426 -> 12,971 lines, 779,969 -> 749,300 bytes
 
 change · accepted · 2026-09-25-controller-extractions-round-one
@@ -98,6 +115,21 @@ Evidence:
 
 - grep across src, test, scripts and *.html for every deleted symbol: no reference but one history comment
 - node test/architecture.mjs (byte and long-line budgets); npm run architecture
+
+## 2026-09-25 — The back door's sector can always be secured: a back breach sealed before its feast rose opens the gate side, and a feast sector with no back ground holds nothing
+
+change · accepted · 2026-09-25-back-door-sector-always-securable
+
+The feast (2026-09-24-back-door-feast-and-scramble) holds sector 2's gate side until the scramble, and the scramble waits for the feast. The third extraction round's agent found --phone failing at its gunship step on the unchanged branch; chasing it, its debrief step showed the sector never becoming SECURE after both breaches were sealed.
+
+src/fx/sector-run.js: when the back breach is closed before its feast was released (SOL-82 or a strike on it early), the gate side opens at once instead of waiting for a feast that will never come; a feast sector whose placement found no back ground (both breaches on the gate side) holds neither. test/sector-run.mjs covers both; the first fails on the old code. --phone predates the clock: its gunship step tapped GUNSHIP mid-fight, where a first briefing rightly waits for a calm moment (2026-09-16); it now opens the briefing as the G key does, taps SKIP by touch, then takes the seat from the strip; its debrief step lets the gate side open (the feast cleared) before it seals what is live.
+
+Alternatives: Letting a sector secure with a breach still unopened: rejected, the unopened breach's waves would simply vanish from the books.
+
+Evidence:
+
+- node test/sector-run.mjs
+- scripts/browser-lock.sh node scripts/browser-test.mjs --phone: 13 steps green, phone-opening through phone-landscape
 
 ## 2026-09-25 — Back breaches keep off the base's rim as gate-side ones do, and the back door's lead is 5 s on the sector's own clock
 
