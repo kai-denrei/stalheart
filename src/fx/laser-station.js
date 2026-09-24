@@ -22,7 +22,7 @@ export function createLaserStation(root, scene, host) {
     if (seat || !overhead()) { if (!seat) host.views()?.active('tank'); return !!seat; }
     host.vacate?.();   /* ONE SEAT AT A TIME (src/domain/seat-view.js): the strip button is caught here and its own handler never runs, so nothing else leaves the seat the player is in — SOL-82 opened ON TOP of the gunship, which kept the camera while this seat's lens went in (owner, 2026-09-23) */
     const canvas = host.canvas();
-    seat = createLaserSeat(root, { arsenal, canvas, container: canvas.parentElement ?? root, mobile: host.mobile, leave: () => leave(), pause: () => host.paused(!host.paused()) });
+    seat = createLaserSeat(root, { arsenal, canvas, container: canvas.parentElement ?? root, mobile: host.mobile, leave: () => leave(), pause: () => (host.togglePause ? host.togglePause() : host.paused(!host.paused())) });   /* P IN THE SEAT IS THE GAME'S PAUSE (2026-09-25): its card and its resume, never a silent freeze the seat's ESC would leave behind */
     arsenal.seat(true);
     host.enter?.(LASER_GAME.groundFov);
     host.views()?.active('laser');
@@ -87,6 +87,7 @@ export function createLaserStation(root, scene, host) {
     pose: (goal) => !!seat && camOn && seat.pose(goal),   /* camOn: the showcase (src/fx/showcase.js) borrows the camera back for its orbital frame while the seat keeps burning */
     render: (renderer, scene) => seat?.render(renderer, scene),
     seated: () => !!seat,
+    briefingOpen: () => !!briefing?.isOpen(),
     setOnline: (on) => arsenal.setOnline(on),
     reset() { leave(); arsenal.reset(); },   // a new run: the seat goes, the scorch and the books with it
 

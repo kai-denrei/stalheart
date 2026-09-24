@@ -365,7 +365,7 @@ export function initTdTab(root) {
     burnBody: (e) => damageEnemy(e, t, e.hp + 1, true, 'laser'), seal: (sp) => killPortal(sp, 'laser'), burnTower: (tw) => destroyTower(tw), burnWall: (w) => storyBase?.dropWall(w.index),
     breakCells: (cells) => { if (cells.filter((ci) => breachWallCell(ci)).length) rebuildAfterBreach(); }, burnHeart: () => heartHit(heartHP), burnTank: (p) => playerHit('laser', p),
     structures: () => storyBase?.standing?.() ?? [], burnStructure: (id) => { if (!story || story.lost.has(id)) return; story.lost.add(id); storyBase?.conceal(id); const gone = programmeLose(story.programme, id); if (id === 'radar') laserStation.setOnline(false);   /* A BURNED RADAR TAKES SOL-82 OFFLINE: no uplink, no pass */ if (id === 'bays' && playerHP > 1) { playerHP = 1; syncLifeContainers(); }   /* burned bays lose the spare hulls racked under them */ updateHud(); showToast(`<div class="wave-num">${(LASER_STRUCTURES[id]?.label ?? id.toUpperCase())} LOST</div><div class="wave-role">burned by SOL-82${gone ? ` \u00b7 ${gone} offline` : ''}</div>`, 3200); },   /* OURS UNDER THE BEAM was the warning; this is the bill */ explode: (use, p) => explode(use, p), brief: (id) => showBrief(id), loop: (key) => sfx.loop(key), views: () => storyViews, canvas: () => renderer.domElement, fov: () => camera.fov,
-    paused: (v) => { const was = paused; if (v !== undefined) paused = v; return was; },
+    paused: (v) => { const was = paused; if (v !== undefined) paused = v; return was; }, togglePause: () => togglePause(),   /* the seat's P shows the pause card, as ESC does (2026-09-25) */
     vacate: () => leavePilot(), enter: (fov) => { seatBase = baseFor(seatBase, pilotMode, { view: params.view, fov: camera.fov }); keys.left = keys.right = keys.fast = keys.slow = keys.laser = false; cruise = false; throttle = 0; endShot(); camera.fov = fov; camera.updateProjectionMatrix(); snapCamera(); },   /* OCCUPANCY IS EXCLUSIVE (src/domain/seat-view.js): SOL-82's strip button stops the strip's own handler, so the seat the player was in was never left — the gunship kept the camera while SOL-82 owned the lens (owner, 2026-09-23); `vacate` closes it first */
     leave: () => restoreSeat(),   /* the lens and the view this chain of seats was entered from (2026-09-15-gunship-track-latched-and-seat-lens-reset, 2026-09-23-seat-changes-robust) */
   });
@@ -4286,7 +4286,7 @@ export function initTdTab(root) {
   // --- pause (ESC): freeze the simulation, keep presenting the frame ------
   let paused = false;
   function togglePause() {
-    if (player.won) return; // the end-of-game modal owns the screen
+    if (player.won || story?.debrief?.isOpen() || gunshipBriefing?.isOpen() || syntheticModal?.isOpen() || laserStation.briefingOpen()) return; // the end-of-game, debrief, briefing or study modal owns the screen and its pause (2026-09-25: P in a seat unpaused the debrief underneath)
     paused = !paused;
     if (paused) {
       msgEl.innerHTML = `<div class="msg-head">transmission · paused</div>` +
@@ -13470,7 +13470,7 @@ export function initTdTab(root) {
         blast:ci=>{if(ci>=0)executeStrike(ci,t,'gunship.nuke',GUNSHIP_GUNS.heavy.blastCells);},drop:{release:(from,to,up,vel)=>!!gunshipDrop?.release(from,to,up,vel),steer:to=>gunshipDrop?.steer(to)},vel:()=>gunshipTrack?scale3(gunshipTrack.heading,gunshipTrack.speed*cellSide):[0,0,0],explode:(use,p)=>explode(use,p),puff:(ci,hex,life,r)=>{if(ci>=0)warnRing(ci,hex,life,r);},sfx:(name,pos,o)=>{if(name)sfx.play(name,{dist:camDist(pos),...o});},burst:(p,hex,n,scale)=>{const b=makeDotBurst(hex,norm3(p),n);b.scale.setScalar(cellSide*scale);b.position.set(p[0],p[1],p[2]);scene.add(b);debris.push(b);},laser:ci=>{if(ci>=0)showRangeRing(ci,strikeTune.blastCells,0xff2a1a);else hideRangeRing();},loop:(name,o)=>sfx.loop(name,o),paintHeavy:ci=>paintHeavy(gunship,ci,GUNSHIP_GUNS),launchHeavy:()=>launchHeavy(gunship,GUNSHIP_GUNS),nudgeHeavy:ci=>nudgeHeavy(gunship,ci),stepHeavy:()=>stepHeavy(gunship),heavyState:()=>heavyState(gunship,GUNSHIP_GUNS),
         get optic(){return gunshipOptic??=createGunshipOptic(scene,{cellSide,metresPerCell:GUNSHIP_PLATFORM.metresPerCell});}},
       post:delta=>{pilotPost=(pilotPost+delta+pilotPosts.length)%pilotPosts.length;pilot.select(pilotMounts[pilotPost]?.key || pilot.state.tower.key);}, pick:key=>{const i=pilotMounts.findIndex(m=>m?.key===key);if(i>=0){pilotPost=i;pilot.select(key);}},   // the story's strip names a mount
-      map:on=>setView(on?'orbit':'bastion'),pause:()=>{paused=!paused;pilot.state.held=false;},
+      map:on=>setView(on?'orbit':'bastion'),pause:()=>{togglePause();pilot.state.held=false;},
       wake:()=>holdWake(),cellSide:()=>cellSide, cone:()=>(pilot?.state.tower&&missileOf(pilot.state.tower.key)?story?.quiverCone??0:0),   // a guided mount acquires inside a cone; a gun needs the reticle on the body
       zoom:z=>{camera.fov=60/z;camera.updateProjectionMatrix();}, lens:()=>[camera.fov,camera.aspect], round:()=>{const tw=pilot?.state.tower,m=tw&&towerSeekers.find(m=>m.by===tw);return m?{pos:m.p,u:m.t/m.config.duration,phase:m.pose?.phase}:null;},   /* the piloted mount's guided round in flight, for the framing (src/core/round-framing.js) */
       visible:e=>pilot.state.tower && losClear(pilot.state.tower.ci,e.pos,perchOf(pilot.state.tower)),

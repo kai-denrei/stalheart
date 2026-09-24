@@ -1891,6 +1891,21 @@ try{
   assert(Math.abs(dx)<=SEAT_PX&&Math.abs(dy)<=SEAT_PX,`${gun}: the round goes where the reticle is (${dx.toFixed(2)},${dy.toFixed(2)} px)`);}
  current='seats-gunship';await finish();
  back('gunship>tank (guns)',await toTank());
+ // P IN A SEAT IS THE GAME'S PAUSE (2026-09-25): its card shows, P again resumes, and leaving a paused seat never leaves a silent
+ // freeze behind (the world is running, or paused under the card that says how to resume). It used to flip the flag with no card,
+ // and leaving the seat left the whole game frozen with every key but ESC ignored.
+ {const keyP=async()=>{await send('Input.dispatchKeyEvent',{type:'keyDown',key:'p',code:'KeyP',text:'p'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'p',code:'KeyP'});await delay(350);};
+  const esc=async()=>{await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape'});await delay(350);};
+  const held=()=>evaluate('({paused:window.__stalheartTest.state().paused,card:!document.querySelector("#td-msg").classList.contains("hidden")})');
+  for(const [name,sel] of [['gunship','[data-mount=gunship]'],['SOL-82','[data-view=laser]']]){
+   if(name==='SOL-82')await armPass();
+   await stripClick(sel);
+   await keyP();{const p=await held();assert(p.paused&&p.card,`${name}: P pauses the game with its card (${JSON.stringify(p)})`);}
+   await keyP();{const p=await held();assert(!p.paused&&!p.card,`${name}: P again resumes it (${JSON.stringify(p)})`);}
+   await keyP();await toTank();{const p=await held();assert(!p.paused||p.card,`${name}: leaving a paused seat leaves no silent freeze (${JSON.stringify(p)})`);}
+   if((await held()).paused)await esc();
+   assert(!(await held()).paused,`${name}: ESC resumes after it`);}
+  current='seats-pause';await finish();}
  } else if(args.includes('--debrief')) {
  // THE SECTOR DEBRIEF (src/fx/sector-debrief.js) in its lab, labs.html#debrief. Every sample report is shown, each page
  // is completed with a real Space press and advanced with the next one, and the pages and labels are checked against
