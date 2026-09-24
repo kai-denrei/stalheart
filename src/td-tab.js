@@ -87,7 +87,7 @@ import { makeAudio } from './audio.js';
 import { DEATH_KEYS } from './audiomanifest.js';
 
 export function initTdTab(root) {
-  let controlsCard = null, pilotMode = false, storyViews = null, pilotHost = null, storyMonitor = null, daylight = null, storyScope = null, syntheticModal = null, brass = null, hudFrame = -1, hudDirty = false, frameNo = 0;   // the story enters it at runtime; the view strip unlocks after the first wave
+  let controlsCard = null, pilotMode = false, storyViews = null, pilotHost = null, storyMonitor = null, daylight = null, storyScope = null, syntheticModal = null, brass = null, hudFrame = -1, hudDirty = false, frameNo = 0, inFrame = false;   // the story enters it at runtime; the view strip unlocks after the first wave
   let pilot = null;
   let pilotPosts = [], pilotPost = 0;
   const pilotMounts = [];
@@ -3847,7 +3847,7 @@ export function initTdTab(root) {
   // orange as ever, the wave numeral the largest thing on the panel), meta
   // and objectives dim. The who-is-driving line is GONE from the panel —
   // control state lives ON the AUTO button now, where the control is.
-  function updateHud() { if (hudFrame === frameNo) { hudDirty = true; return; } hudFrame = frameNo; hudDirty = false; paintHud(); }   /* ONCE A FRAME, PLUS ONE CATCH-UP (2026-09-25): 47 sites call this, one per kill, and every call rebuilt the panel's HTML, so a strike on a pile rebuilt it dozens of times in one frame. The first call in a frame still paints at once; the rest mark it dirty and animate() paints once at the frame's end */ function paintHud() {
+  function updateHud() { if (inFrame && hudFrame === frameNo) { hudDirty = true; return; } hudFrame = frameNo; hudDirty = false; paintHud(); }   /* INSIDE A FRAME, ONCE PLUS ONE CATCH-UP (2026-09-25): a strike on a pile rebuilt the panel's HTML once per kill. Outside a frame (a hook, a handler) it paints at once */ function paintHud() {
     if (eco && eco.biomass > run.peakBiomass) { run.peakBiomass = eco.biomass; checkAchievements(); }
     if (lifeContainers.length) syncLifeContainers();
     const spAlive = spawnPoints.filter((s) => s.alive).length;
@@ -8634,7 +8634,7 @@ export function initTdTab(root) {
     }
     gpuBegin();
     const cpuStart=perfOn?performance.now():0;
-    try { frame(dt, false); } catch (err) { const k = String(err?.stack ?? err); if (!frameFaults.has(k)) { frameFaults.add(k); setTimeout(() => { throw err; }); } try { postfx.render(); } catch { /* the renderer is what failed: nothing more to draw this frame */ } }   /* A FAULT IN THE FRAME (2026-09-25) used to throw every frame and freeze the picture: the world still draws, and each distinct fault is rethrown ONCE on its own turn, so the page's error handlers, the diagnostics ring and the browser suites still see it */
+    inFrame = true; try { frame(dt, false); } catch (err) { const k = String(err?.stack ?? err); if (!frameFaults.has(k)) { frameFaults.add(k); setTimeout(() => { throw err; }); } try { postfx.render(); } catch { /* the renderer is what failed: nothing more to draw this frame */ } } inFrame = false;   /* A FAULT IN THE FRAME (2026-09-25) used to throw every frame and freeze the picture: the world still draws, and each distinct fault is rethrown ONCE on its own turn, so the page's error handlers, the diagnostics ring and the browser suites still see it */
     if(perfOn)perfCpu.frame+=performance.now()-cpuStart;
     gpuEnd(); if (hudDirty) { hudDirty = false; hudFrame = frameNo; paintHud(); }   /* the HUD's catch-up paint (updateHud) */
   }
