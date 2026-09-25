@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-09-25-story-zero-and-the-cannibalize-line",
+  "date": "2026-09-25",
+  "type": "change",
+  "status": "accepted",
+  "title": "?story=0 opens the story from its start (the landing, Isao's close-up, a growing base, fodder at the gate), and the close-up holds all three of his lines, the last about cannibalizing the rocket for the terraforming",
+  "context": "Owner's second playtest of the live build (b8e560d, 2026-09-25): \"1) ?story=0#td. I expect a quick rocket landing like we had before. Then a close-up of Isao saying he'll cannibalize the rocket to get started with terraforming. The dismantling of the rocket should happen without the user seeing it\" and \"3) the wave of enemies does not seem to appear anymore in tutorial mode. Nothing to shoot at.\" He opened ?story=0#td. readStoryQuery read it as a static deep link at stage 1: `story=0` parsed to 0, fell back to 1, and naming ?story switched growth off and set the sparse 0.35 threat. That gave a stage-1 diorama with no gate, and without a gate the scripted opening has no breach cell for its fodder. So there was no landing (the arrival needs a growing base), nothing came, and there was nothing to shoot at. The bare page itself was unaffected: its fodder comes (--grow, --story-world). The close-up held the first two lines and 0.6 s of the third, which ended over the chase view.",
+  "outcome": "src/platform/story-world.js readStoryQuery: ?story=0 is now the bare page. It is a growing base at stage 1 with no phase, so the arrival plays, the threat is full, and there is no deep link. ?story=N for N >= 1 is unchanged (a static stage N with the sparse threat). ?skip=defence still overrides everything. Isao's arrival_talk (src/isaobriefs.js) is 'Rough landing!', 'So much to build!', 'I'll cannibalize the rocket to get the terraforming started.' with dwells of 1.0, 1.1 and 2.6 s. src/fx/arrival.js holds the close-up for the sum of the dwells, so all three lines are said over his face. The arrival is 10.0 s: 5.3 s of landing and 4.7 s of close-up. The rocket is still swapped for its salvage and the foundry on the cut into the close-up, behind the camera. STORY_ARRIVAL.talk loses its `into` (the share of the third line the shot used to hold).",
+  "alternatives": [
+    "Keep ?story=0 as a static stage and add a gate to stage 1: that changes every stage-1 deep link and still plays no landing, when the owner wants the start of the game from that URL.",
+    "Keep the third line finishing over the chase view: the owner asked for the close-up of Isao saying it, so the shot now holds it. The arrival grows from 8.5 s to 10 s, still near his 'about eight seconds, short and sweet'."
+  ],
+  "evidence": [
+    "test/story-query.mjs (new): the bare page and ?story=0 read {stage 1, grow, threat 1, no skip, no phase}; ?story=1 is a static 0.35 threat; skip=defence overrides. test/arrival.mjs and test/arrival-shot.mjs: the close-up is the sum of the three dwells and under 6 s, and the third line is the cannibalize line.",
+    "Browser, through scripts/browser-lock.sh on a05cb3dc: --grow green. Its new grow-story-zero step opens index.html?...&story=0#td and finds a growing base with the arrival on. The arrival step finds all three lines, including the cannibalize line, on the panel during the close-up frames. Also green: --story-world, --showcase, --skip-tutorial, the default suite and --phone."
+  ],
+  "supersedes": []
+}
