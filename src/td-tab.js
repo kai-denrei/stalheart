@@ -54,7 +54,7 @@ import { PICKUPS } from './pickups.js'; import { rotorVoice, hushRotor } from '.
 import { rankFor, rankLabel, badgeSVG } from './ranks.js';
 import { beamStep, isBeamStep } from './beamranks.js';
 import { burn, sweepAdvance, wallBite as wallBiteFor } from './beamburn.js';
-import { arcPoint, projectToArc, toeForCrossing } from './arc.js';
+import { arcPoint, projectToArc, toeForCrossing } from './arc.js'; import { marchToTerrain, roundEnd, flyStraight } from './domain/round-path.js';
 import { shotOf, muzzleOf, impactOf, tuneFor, resolveImpactColors } from './sentryfx.js'; import { makeImpactBurst, orientImpact } from './impactfx.js';   // the package's muzzle recipe is the one master setting
 import { makeTracerMesh, makeLightningMesh, makeSeekerMesh, aimSeeker,
   LANCE_LOOK as SHOT_LANCE_LOOK, THROW_LOOK as SHOT_THROW_LOOK } from './shotfx.js';
@@ -497,13 +497,13 @@ export function initTdTab(root) {
   // A ring lying ON the surface, so it reads as a shock across the floor
   // rather than a sphere hanging in the air. The basis comes from the cell's
   // own normal; a fixed up-vector degenerates wherever the sphere faces it.
-  function warnRing(ci, hex, life, r1) {
-    const nrm = graph.normals[ci];
+  function warnRing(ci, hex, life, r1, at = null) {   // `at`: ring this point (a round's exact impact), not the cell's centre
+    const nrm = at ? norm3(at) : graph.normals[ci];
     let t1 = cross3(nrm, [0, 1, 0]);
     if (len3(t1) < 1e-3) t1 = cross3(nrm, [1, 0, 0]);
     t1 = norm3(t1);
     const t2 = norm3(cross3(nrm, t1));
-    const c = add3(graph.centers[ci], scale3(nrm, cellSide * 0.12));
+    const c = add3(at ?? graph.centers[ci], scale3(nrm, cellSide * 0.12));
     // dense enough to read as a RING and not as scattered dots: the radius
     // grows to several cells, and 34 points across that is just confetti
     const N = 72;
@@ -6758,42 +6758,9 @@ export function initTdTab(root) {
     return [muzzleFwd.x, muzzleFwd.y, muzzleFwd.z];
   }
 
-  // HOW FAR A STRAIGHT RAY GETS BEFORE THE GROUND OR A WALL EATS IT.
-  // Marched in 3D rather than along the surface: a lance leaves a muzzle at
-  // a height, on a slope, and what stops it is whether the ray has dropped
-  // below the thing underneath it. A wall top is a cell tagged BLOCKED and
-  // stands `wallHeight` above the ground; open ground is the sphere itself.
-  // So a level shot from a wall clears its neighbours and a depressed one
-  // digs in — which is the whole reason to care where a Lancer stands.
-  const rayPt = [0, 0, 0];
-  function rayToTerrain(from, dir, maxLen, ownCi = -1) {
-    const step = cellSide * 0.2;
-    for (let m = step; m <= maxLen; m += step) {
-      rayPt[0] = from[0] + dir[0] * m;
-      rayPt[1] = from[1] + dir[1] * m;
-      rayPt[2] = from[2] + dir[2] * m;
-      const ci = cellIndex(norm3(rayPt));
-      // A GUN DOES NOT SHOOT ITS OWN PARAPET. The muzzle sits a few
-      // thousandths above the wall top it is bolted to, so the very first
-      // sample of a depressed barrel is already under its own cell's surface
-      // and the lance died a fifth of a cell out, every time. Its own cell
-      // cannot stop it; everything past it can.
-      if (ci === ownCi) continue;
-      const r = Math.hypot(rayPt[0], rayPt[1], rayPt[2]);
-      const blocked = ci !== -1 && dungeon.tags[ci] === BLOCKED;
-      const surface = 1 + (blocked ? params.wallHeight : 0);
-      // A QUARTER OF A CELL OF CLEARANCE. Enemies stand ON the ground, so a
-      // beam aimed at one is at ground level by the time it arrives — and
-      // stopping the instant the ray touches r = 1 killed it a step SHORT of
-      // every target it was aimed at, which is why a correctly aimed lance
-      // was striking nothing. What stops a lance is terrain it has actually
-      // gone into, not terrain it is skimming.
-      if (r < surface - cellSide * 0.25) {
-        return { len: Math.max(step, m - step), hit: blocked ? 'wall' : 'ground' };
-      }
-    }
-    return { len: maxLen, hit: null };
-  }
+  // WHERE A STRAIGHT LINE MEETS THE GROUND OR A WALL, on this board: the lance's march and a round's exact end (src/domain/round-path.js)
+  function terrainOf(ownCi = -1) { return { cellAt: cellIndex, tags: dungeon.tags, wallHeight: params.wallHeight, step: cellSide * 0.2, clearance: cellSide * 0.25, ownCi }; }
+  function rayToTerrain(from, dir, maxLen, ownCi = -1) { return marchToTerrain(from, dir, maxLen, terrainOf(ownCi)); }
 
   // ITS OWN STREAM, off the board's seed — the A6's patrol must be
   // reproducible with the rest of the run (no Math.random anywhere in game
@@ -7355,7 +7322,7 @@ export function initTdTab(root) {
         }
       } else {
         spawnTowerShot(muzzle, flat, tw, eff, atk === 'homing' ? target : null,
-          atk === 'mortar' ? chord(tp, target.pos) : 0, pilotMode && pilot?.state.tower === tw ? add3(target.pos, scale3(norm3(target.pos), cellSide * 0.3)) : null);   // FROM THE BARREL TO THE RETICLE (owner, 2026-09-14): a piloted round flies a straight line in space from the muzzle to the body under the reticle, not along the surface at wall height
+          atk === 'mortar' ? chord(tp, target.pos) : 0, pilotMode && pilot?.state.tower === tw ? (target.pilotAim ? target.pos : add3(target.pos, scale3(norm3(target.pos), cellSide * 0.3))) : null);   // FROM THE BARREL TO THE RETICLE (owner, 2026-09-14): a piloted round flies a straight line in space from the muzzle to the body under the reticle, not along the surface at wall height; with no body, to the reticle's point on the ground
       }
     }
   }
@@ -7405,10 +7372,11 @@ export function initTdTab(root) {
     // read, and step out of
     const landCi = arcTotal > 0
       ? cellIndex(norm3(add3(p0, scale3(dir, arcTotal)))) : -1;
+    const sd = straightTo && norm3(sub3(straightTo, pos)), reach = eff.range * cellSide * 1.35, end = sd && arcTotal <= 0 ? roundEnd(pos, sd, reach, terrainOf(tw.ci)) : null;   // where a straight round's line meets the terrain: its tracer ends there and it lands there
     towerShots.push({
       pos: p0, dir, dist: 0, mesh, shell,
       dmg: eff.dmg * (manual ? pilotMultipliers(automated(), story?.pilot).dmgMul : 1), splash: (eff.splash || 0) * cellSide, homing,   // ...and each round hits harder
-      range: straightTo ? rayToTerrain(pos, norm3(sub3(straightTo, pos)), eff.range * cellSide * 1.35, tw.ci).len : Math.min(eff.range * cellSide * 1.35, rayToTerrain(scale3(p0, lift0), dir, eff.range * cellSide * 1.35, tw.ci).len), terrain: true, straight: straightTo ? { p: pos.slice(), d: norm3(sub3(straightTo, pos)) } : null,   // a round stops at the first rock it flies into; a straight round carries its own point and direction in space
+      range: end ? end.len : sd ? rayToTerrain(pos, sd, reach, tw.ci).len : Math.min(reach, rayToTerrain(scale3(p0, lift0), dir, reach, tw.ci).len), terrain: true, straight: sd ? { p: pos.slice(), d: sd, end } : null,   // a round stops at the first rock it flies into; a straight round carries its own point and direction in space, and its end
       speed: (sfx2.projSpeed ?? 16) * cellSide, // per-tower tempo
       arcTotal, arcH: cellSide * 2.3, color: tw.def.color, // a lob, not a moonshot
       landCi, markT: 0, px: (sfx2.projPx ?? 5) * (manual ? 1.9 : 1), manual, key: tw.key,
@@ -7420,6 +7388,19 @@ export function initTdTab(root) {
     towerShots[i].mesh.geometry.dispose(); // per-shot tracer geometry
     towerShots[i].mesh.material.dispose();
     towerShots.splice(i, 1);
+  }
+  // A ROUND'S END: counted for the seat, its impact where it meets the terrain. A straight round lands on the exact point its line
+  // meets the ground or a wall, its tracer's last drawn head, the frame after that head was drawn (owner, 2026-09-25: "the trace
+  // should land on the same path as the impact"); one still in the air goes out. rs.pilotGap: drawn head to burst, metres, widest.
+  function endTowerShot(i, hit) {
+    const p = towerShots[i], end = p.straight?.end, at = end ? end.point : p.pos;
+    if (!hit && p.terrain && p.arcTotal <= 0 && (!end || end.hit)) {
+      warnRing(cellIndex(norm3(at)), p.color, 0.3, cellSide * 0.6, end && at);
+      const fl = makeDotBurst(p.color, norm3(at), 8); fl.scale.setScalar(cellSide * 1.6); fl.position.fromArray(at); scene.add(fl); debris.push(fl);
+      if (p.manual && end && !p.shell) rs.pilotGap = Math.max(rs.pilotGap ?? 0, fl.position.distanceTo(tmpV.fromBufferAttribute(p.mesh.geometry.getAttribute('position'), 0)) / cellSide * METRES_PER_CELL);
+    }
+    if (p.manual) { rs.pilotRounds = (rs.pilotRounds ?? 0) + 1; if (hit || p.through) rs.pilotHits = (rs.pilotHits ?? 0) + 1; }   // a hit, even one that flew on
+    killTowerShot(i);
   }
 
   // splash detonation: tinted burst + damage to everything in the radius.
@@ -7460,10 +7441,9 @@ export function initTdTab(root) {
         const k = Math.min(1, 6 * dt);
         p.dir = norm3(add3(scale3(p.dir, 1 - k), scale3(want, k)));
       }
-      if (p.straight) { p.straight.p = add3(p.straight.p, scale3(p.straight.d, v * dt)); p.pos = norm3(p.straight.p); } else p.pos = norm3(add3(p.pos, scale3(p.dir, v * dt)));
+      if (p.straight) { if (flyStraight(p, v * dt)) { endTowerShot(i, false); continue; } p.pos = norm3(p.straight.p); } else { p.pos = norm3(add3(p.pos, scale3(p.dir, v * dt))); p.dist += v * dt; }   // its head was drawn on its end: it lands
       const n = p.pos;
       p.dir = norm3(sub3(p.dir, scale3(n, dot3(p.dir, n))));
-      p.dist += v * dt;
       // mortar lofts: a sine arc over its measured throw
       // BALLISTIC, not a sine hump. Warping the flight fraction (u^1.35)
       // pushes the apex past 60% of the flight and compresses the whole
@@ -7521,7 +7501,7 @@ export function initTdTab(root) {
           if (!p.manual || (p.through = (p.through ?? 0) + 1) >= 3) break;   // a piloted round goes on through the pile: up to three bodies (owner, 2026-09-14: fish in a barrel)
         }
       }
-      if (hit && p.manual && (p.through ?? 0) < 3 && p.dist <= p.range) hit = false; /* still flying */ if (hit || p.dist > p.range) { if (p.manual) { rs.pilotRounds = (rs.pilotRounds ?? 0) + 1; if (hit) rs.pilotHits = (rs.pilotHits ?? 0) + 1; } if (!hit && p.terrain && p.arcTotal <= 0) { const ci = cellIndex(p.pos); warnRing(ci, p.color, 0.3, cellSide * 0.6); const fl = makeDotBurst(p.color, norm3(p.pos), 8); fl.scale.setScalar(cellSide * 1.6); fl.position.set(p.pos[0], p.pos[1], p.pos[2]); scene.add(fl); debris.push(fl); } killTowerShot(i); }
+      if (hit && p.manual && (p.through ?? 0) < 3 && p.dist <= p.range) hit = false; /* still flying */ if (hit || p.dist > p.range) endTowerShot(i, hit);
     }
   }
 
@@ -9107,6 +9087,7 @@ export function initTdTab(root) {
         explosions: explosions.state(),
         pilotRounds: rs?.pilotRounds ?? 0,
         pilotHits: rs?.pilotHits ?? 0,
+        pilotTracerGap: rs?.pilotGap ?? null,   // metres, tracer head to impact, widest; null until one lands
         gunship: gunshipRig.probe(),
         shot:shotId(),
         breachRubble:gameBreaches.rubbleState(),
@@ -9372,7 +9353,7 @@ export function initTdTab(root) {
       wake:()=>holdWake(),cellSide:()=>cellSide, cone:()=>(pilot?.state.tower&&missileOf(pilot.state.tower.key)?story?.quiverCone??0:0),   // a guided mount acquires inside a cone; a gun needs the reticle on the body
       zoom:z=>{camera.fov=60/z;camera.updateProjectionMatrix();}, lens:()=>[camera.fov,camera.aspect], round:()=>{const tw=pilot?.state.tower,m=tw&&towerSeekers.find(m=>m.by===tw);return m?{pos:m.p,u:m.t/m.config.duration,phase:m.pose?.phase}:null;},   /* the piloted mount's guided round in flight, for the framing (src/core/round-framing.js) */
       visible:e=>pilot.state.tower && losClear(pilot.state.tower.ci,e.pos,perchOf(pilot.state.tower)),
-      aimPoint:(eye,dir,range)=>{const hit=rayToTerrain(eye.toArray(),dir.toArray(),range,pilot.state.tower.ci);return eye.clone().addScaledVector(dir,hit.len).toArray();},
+      aimPoint:(eye,dir,range)=>roundEnd(eye.toArray(),dir.toArray(),range,terrainOf(pilot.state.tower.ci)).point,   // exactly where the reticle's line meets the terrain
       cameraPose:(eye,dir,up,goal)=>{tmpCam.position.copy(eye);tmpCam.up.copy(up);tmpCam.lookAt(eye.clone().add(dir));goal.quat.copy(tmpCam.quaternion);}
     });
     pilotPosts=(posts??[]).slice();   // the story hands over its printed mounts

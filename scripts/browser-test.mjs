@@ -1636,6 +1636,11 @@ try{
  await evaluate('window.__stalheartPilotTest.hold(true)');
  for(let i=0;i<10;i++){await evaluate('window.__stalheartPilotTest&&window.__stalheartPilotTest.state().key==="rotor"&&window.__stalheartPilotTest.aimEnemy()');await delay(200);}
  await evaluate('window.__stalheartPilotTest&&window.__stalheartPilotTest.hold(false)');
+ // THE TRACE LANDS WHERE THE ROUND LANDS (owner, 2026-09-25: "it goes straight whereas the planet is curved, so the trace does not
+ // impact at the same point"). A piloted round's line is solved against the ground and the walls before it leaves; its tracer's
+ // last drawn head is that point and its burst is put there the frame after. The page banks the widest distance between the two,
+ // in metres, over every round that met the terrain (4-18 m before: the burst sat on the round's last point dropped onto r = 1).
+ {const g=await evaluate('window.__stalheartTest.state()');console.log(`rotor rounds ${g.pilotRounds} (${g.pilotHits} hit), widest tracer-head-to-impact ${g.pilotTracerGap} m`);assert(g.pilotTracerGap!==null,'a piloted round met the terrain');assert(g.pilotTracerGap<0.5,`the impact sits on the tracer's last head (${g.pilotTracerGap} m, under 0.05 cell)`);}
 
  // keep shooting: the fifth kill brings the comms study, the tenth the biomass line
  await evaluate('window.__stalheartPilotTest.hold(true)');
