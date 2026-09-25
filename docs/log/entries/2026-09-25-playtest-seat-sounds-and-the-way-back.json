@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-09-25-playtest-seat-sounds-and-the-way-back",
+  "date": "2026-09-25",
+  "type": "change",
+  "status": "accepted",
+  "title": "Owner's playtest of the pacing build: a seat's sounds stay with its seat, the Rotor's fire keeps sounding, and the way back to the tank is Esc, 7 or TANK, taught by a one-page controls reminder",
+  "context": "Owner, 2026-09-25, playtesting d53a6c2 on Safari: \"Good; it runs, pacing is better, feels challenging in a good way.\" To improve: \"1) Sound from one unit carries to the next. e.g. finishing using the rotor and moving to the quiver, but the sound of rotor remains in POV. Same with gunship and tank. 2) the rotor sentry sound ... starts perfect, but then it continues firing bullets without bullet sounds, only rotation sounds ... whenever a bullet is fired, there should be a bullet sound. 3) bring back the landing ... 4) the switch from gunship back to tank was not obvious, hitting esc to regain mouse control and clicking the tank icon bottom left did not bring me to tank position. Perhaps we need a quick one-page reminder of the controls at the beginning.\" He chose: Esc leaves a seat; the controls page once at the start, H any time. (3) is its own entry.",
+  "outcome": "(1) The frame skipped a mount that is not the seat, and the story's sentries before their override, BEFORE the one line that levels or stops the Rotor's loops, and no seat transition stopped them: the Rotor's spin (minigun_ready on rotor_spin.wav) and sight fire (rotor_pov_fire) played on at the gain they had in its optic. They move to src/fx/rotor-voice.js with hushRotor, called on both skips, on leaving a seat and when a post's mount is replaced. The parked hull's auto-laser was only re-decided with no seat taken and latched on under one; it is cleared while seated, and entering a seat releases the held drive and laser keys. (2) rotor_pov_fire.mp3 is 1.85 s of fire then 3.7 s of fade and silence, looped whole: from ~1.9 s into a held burst only the spin was heard, and the barrels overheat at ~5.6 s before the loop came round. scripts/derive-audio-loop.mjs cuts a seamless loop of whole shot periods from the steady fire (rotor_pov_fire_loop.wav; the gunship's rotary, which dipped every 3.1 s, the same), pinned in docs/*-audio.lock.json. (4) The sentry and gunship seats swallowed every key: Esc now leaves the seat once the browser has freed the mouse, as 7 and TANK do; a click on the radar (the 'tank icon bottom left') or the strip's padding no longer re-locks the mouse; TANK always ends on the hull's own chase view (it restored the first seat's return view, which could be the map, and did nothing outside a seat); the seat footers say how to leave and wrap; src/fx/controls-card.js becomes a one-page reminder (the tank, the seats and the way out of them, the mouse, pause), once per browser as the landing hands over, closed by any key or click, H or ? from anywhere.",
+  "alternatives": [
+    "Esc pausing in a seat as on the tank: the owner chose Esc leaves.",
+    "A literal report per round for the Rotor: the report is throttled on purpose (2026-09-13, a buzz); the sight's own fire loop is the per-round sound and now holds."
+  ],
+  "evidence": [
+    "test/rotor-voice.mjs, test/audio-loops.mjs (fails without the loop files), test/story-views.mjs",
+    "--story-world banks the Rotor's loops while it is the seat and asserts neither is left in the Quiver's seat; with hushRotor disabled it fails with exactly the reported bug (both loops still playing)",
+    "--seats: Esc leaves the gunship seat for the hull's view without pausing; TANK from the map lands on the hull"
+  ],
+  "supersedes": []
+}
