@@ -57,6 +57,16 @@ const talk = BRIEFS[STORY_ARRIVAL.talk.brief].lines.reduce((sum, _, i) => sum + 
   const w = world(), a = make(w, false); w.isao = true; for (const id of ['sh02', 'sh02-salvage', 'foundry']) w.base.load(id);
   run(w, a, 2); assert.equal(a.state().phase, 'off'); assert.deepEqual(w.log, []); assert.equal(vis(w, 'sh02'), true, 'the rocket stands as it loaded');
 }
+// PAST THE LANDING (a tutorial chapter's page, 2026-09-25): no shot, no line, no deploy, and the rocket is its salvage and the foundry
+// from the frame each landmark loads, whenever that is
+{
+  const w = world(), a = createArrival({ on: false, past: true, base: w.base, beats: w.beats, site, metres: METRES }); w.isao = true;
+  w.base.load('sh02-salvage'); run(w, a, 0.5); assert.equal(vis(w, 'sh02-salvage'), true, 'the salvage shows the frame it loads');
+  w.base.load('sh02'); run(w, a, 1 / 60); assert.equal(vis(w, 'sh02'), false, 'the intact rocket is hidden the frame it loads');
+  run(w, a, 3); w.base.load('foundry'); run(w, a, 1 / 60); assert.equal(vis(w, 'foundry'), true, 'and the foundry, however late');
+  assert.deepEqual(w.log, [], 'no shot, no line, no foundry deploy'); assert.equal(w.beats.deploys(), 0, 'the beats are not released: they started past it');
+  assert.equal(a.state().phase, 'done'); assert.equal(a.state().on, false);
+}
 // THE WHOLE ARRIVAL: it waits for all four, keeps the rocket and Isao out of sight meanwhile, lands, cuts, talks, and hands back
 {
   const w = world(), a = make(w);

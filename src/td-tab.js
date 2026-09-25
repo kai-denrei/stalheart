@@ -6,7 +6,7 @@ import { startDiveShot } from './fx/dive-shot.js'; import { makeShaderWarmer } f
 import { BREACH_SOUNDS } from './content/breach-defaults.js';
 import { SOUNDS } from './content/runtime.js';
 import { emergence } from './domain/breach-waves.js'; import { applyScare, stampScare, scarePace, isScared, towardScare, awayExits } from './domain/impact-scare.js'; import { EXPLOSION_SCARE, SCARE_FREEZE_S } from './content/explosions.js'; import { createThermalHeat } from './fx/thermal-heat.js'; import { isAutomated, pilotMultipliers } from './domain/automation.js'; import { fillFromKill, fillFromWaveClear, isFull as callFull, callProgress } from './domain/gunship-call.js'; import { GUNSHIP_CALL, GUNSHIP_FAR } from './content/gunship.js'; import { unlockedTowers } from './domain/expeditions.js'; import { createExpeditionsHost } from './fx/expedition-glue.js'; import { CARGO_LOOK } from './content/cargo.js'; import { STORY_EXPEDITIONS } from './content/story-defaults.js'; import { makeSiteRing as siteRing, disposeSiteRing } from './fx/site-ring.js'; import { hasPerk as programmeHas, snapshot as programmeSnapshot, lose as programmeLose } from './domain/build-programme.js'; import { createProgramWarm } from './fx/program-warm.js';
-import { sinkholeGroundHeight } from './core/sinkhole-shape.js'; import { devModeOn } from './core/dev-mode.js'; import { createControlsCard } from './fx/controls-card.js'; import { createSkipTutorial } from './fx/skip-tutorial.js'; import { skipTutorialUrl, isStoryRoute } from './core/story-route.js'; import { STORY_SKIP } from './content/story-defaults.js'; import { createShowcase } from './fx/showcase.js'; import { showcaseOn } from './platform/showcase-entry.js';   /* THE SHOWCASE (owner, 2026-09-18): the core loop as a montage over this very world, before the landing */   /* SKIP TUTORIAL (owner, 2026-09-16): the player's own way past the opening, and the state ?skip=defence starts in */
+import { sinkholeGroundHeight } from './core/sinkhole-shape.js'; import { devModeOn } from './core/dev-mode.js'; import { createControlsCard } from './fx/controls-card.js'; import { createTutorialCard } from './fx/tutorial-card.js'; import { openStoryAt } from './fx/story-entry.js'; import { isStoryRoute } from './core/story-route.js'; import { STORY_SKIP } from './content/story-defaults.js'; import { createShowcase } from './fx/showcase.js'; import { showcaseOn } from './platform/showcase-entry.js';   /* THE SHOWCASE (owner, 2026-09-18): the core loop as a montage over this very world, before the landing */   /* SKIP TUTORIAL (owner, 2026-09-16): the player's own way past the opening, and the state ?skip=defence starts in */
 import { makeOrdnanceShell } from './shell.js'; import { createHullLoss } from './fx/hull-loss.js'; import { bayContainers, syncBays } from './fx/life-bays.js';
 import { firingFor } from './content/firing-defaults.js'; import { RELEASE_EVENTS, releasesHeld, releaseHeld } from './core/held-input.js';
 import { METRES_PER_CELL, arcToMetres, metresToArc } from './core/stage-units.js';
@@ -2013,7 +2013,7 @@ export function initTdTab(root) {
   };
   const shotSkipTap = (ev) => {
     if (!shot || !shot.skippable) return;
-    if(shot.id==='breach'){endShot();return;}
+    if(shot.id==='breach'){endShot();return;} if(ev.target.closest?.('#skip-tutorial'))return;   /* the card's own */
     ev.stopImmediatePropagation(); endShot();
   };
 
@@ -4068,7 +4068,7 @@ export function initTdTab(root) {
     heartCalloutCd = 0; streakMark = 0;
     ramCombo = 0; ramComboT = 0; syncCombo();
     breachedCells.clear(); explosions.clear(); sealedBreachCells.clear(); laserStation.reset(); // a NEW world owes nothing to the old one's holes, its fire, its sealed sinkholes or SOL-82's scorch
-    const built = buildGameWorld({ world: storyQuery.world, params, stage: storyQuery.stage, landmarks: storyQuery.landmarks, phase: storyQuery.phase, grow: storyQuery.grow, scene, sfx, warm: warmShaders });
+    const built = buildGameWorld({ world: storyQuery.world, params, stage: storyQuery.stage, landmarks: storyQuery.landmarks, phase: storyQuery.phase, grow: storyQuery.grow, chapter: storyQuery.chapter, scene, sfx, warm: warmShaders });
     mesh = built.mesh; dungeon = built.dungeon; if (built.wallHeight) params.wallHeight = built.wallHeight; storyBase?.dispose(); storyBase = built.base; foundryFx?.dispose(); foundryFx = null; story?.glue?.dispose(); story = built.story ?? null; sectorRun = story ? makeSectorRun() : null; storyMonitor?.dispose(); storyMonitor = story ? createStoryMonitor(root) : null; storyScope?.dispose(); storyScope = story ? createStoryScope(root) : null; daylight?.restore(); daylight = story ? createDaylight({ hemi, sun, bg: mainBg, day: story.day.day, tune: story.day }) : null; gunshipRig.reset();   /* A NEW RUN LEAVES NOTHING BEHIND (2026-09-25): the lights' night, the gunship and a falling MK-9 go with the old world */   // the story planet has a day   // 4 m walls on the story sphere; the story's islands, structures, sockets and beats at the requested stage
     graph = dungeon.graph; cellSide = mesh.defaultSide;
     // THE CAMP, BEFORE ANY ACTOR IS PLACED. Berth cells are graph maths,
@@ -6463,8 +6463,8 @@ export function initTdTab(root) {
       w.dir = stepDir(w.dir, target, speed * dt);
       if (dot3(w.dir, target) > 0.99995) {
         w.state = 'build';
-        w.t = 0;
         w.dur = w.order.seconds ?? buildSeconds(w.order.cost);
+        w.t = (w.order.head ?? 0) * w.dur;
         w.shown = -1;
         if (w.order.kind === 'tower') {
           // the print: the tower itself grows out of the wall top. Built
@@ -8735,7 +8735,7 @@ export function initTdTab(root) {
     } else if (playerMesh.userData.tick) {
       playerMesh.userData.tick(t);
     }
-    buildFollowTank(dt); if (story) (controlsCard ??= createControlsCard(root, { mobile: mobileShell, briefing: () => (gunshipBriefing ??= createGunshipBriefing(root)).openPaused({ get: () => paused, set: (v) => { paused = v; } }) })).tick(automated() && !pilotMode && !laserStation.seated(), !shotActive() && story.beats.phase() !== 'landed');   /* the controls page, once, as the landing hands over (src/fx/controls-card.js) */ if (story && !storyQuery.skip && !showcaseMode) (skipCard ??= createSkipTutorial(root, { href: skipTutorialUrl(location.search) })).tick(automated());   /* SKIP TUTORIAL: offered through the opening beats, gone at the handover (src/fx/skip-tutorial.js) */ if (showcaseMode) (showcase ??= createShowcase(root, gameHooks.showcase)).tick(dt);   /* THE SHOWCASE: the montage cuts its own shots over this run (src/fx/showcase.js) */
+    buildFollowTank(dt); if (story) (controlsCard ??= createControlsCard(root, { mobile: mobileShell, briefing: () => (gunshipBriefing ??= createGunshipBriefing(root)).openPaused({ get: () => paused, set: (v) => { paused = v; } }) })).tick(automated() && !pilotMode && !laserStation.seated(), !shotActive() && story.beats.phase() !== 'landed');   /* the controls page, once, as the landing hands over (src/fx/controls-card.js) */ if (story && !storyQuery.skip && !showcaseMode) (skipCard ??= createTutorialCard(root, { search: location.search, from: story.chapter?.n ?? 0, skipLanding: () => /^arrival/.test(shotId() ?? '') && (endShot(), true) })).tick(story.beats.phase(), automated() && (!story.grow || !!sectorRun?.active()));   /* the chapter, NEXT, SKIP ALL (src/fx/tutorial-card.js) */ if (showcaseMode) (showcase ??= createShowcase(root, gameHooks.showcase)).tick(dt);   /* THE SHOWCASE: the montage cuts its own shots over this run (src/fx/showcase.js) */
     if (story && automated() && !frozen && !player.won) laserStation.tick(dt);   // SOL-82: the pass clock once online, the seat's hands, the beam
     updateCameraGoal();
 
@@ -8885,7 +8885,7 @@ export function initTdTab(root) {
   // draws nothing until they arrive
   if (params.creature === 'mork') applyCreature();
 
-  if (storyQuery.skip && story) { storyApi.expeditions().preDeliver(STORY_SKIP.parts); eco.addBiomass(STORY_SKIP.biomass, { category: 'grant' }); shield.rack = shieldTune.rackCap; refillArrays(); showBrief(STORY_SKIP.brief); }   /* SKIP TUTORIAL (?skip=defence): the world is already the finished base past the handover (readStoryQuery); what is left is the history that base implies — two expeditions taken (the Relay and the Mortar, flags up, trophies home), a full rack, a charged array and biomass for a few towers. The back door, SOL-82 and the array's refill arrive with the sector itself (src/content/sectors.js sector 2), and Isao says where they are */
+  openStoryAt(storyQuery, story, { printed: storyApi.printed, commitTower, setBerths: (v) => { berths = v; }, expeditions: storyApi.expeditions, grant: (n) => eco.addBiomass(n, { category: 'grant' }), fillRack: () => { shield.rack = shieldTune.rackCap; }, refillArrays, showBrief });   /* src/fx/story-entry.js */
 
   // PRELOAD THE LOOK AT BOOT. applyTowerLook() was reachable only from the
   // panel, so a board whose DEFAULT look has async
@@ -9154,7 +9154,7 @@ export function initTdTab(root) {
         playerSpan: (() => { if (!playerMesh) return null; const b = new THREE.Box3().setFromObject(playerMesh); return Number.isFinite(b.max.x) ? +(b.getSize(new THREE.Vector3()).length() / (unitScale || 1)).toFixed(2) : null; })(),
         sector: sectorRun ? { ...sectorRun.state(), sockets: Object.keys(story?.socketToward ?? {}).map(Number) } : null,
         playerAssetReady: !playerMesh?.userData.loading,
-        skip: { on: !!storyQuery.skip, offer: skipCard?.state() ?? null },   // SKIP TUTORIAL: whether this run is the skipped entry, and whether the offer still stands
+        skip: { on: !!storyQuery.skip, chapter: story?.chapter?.id ?? null, offer: skipCard?.state() ?? null },   // SKIP TUTORIAL: whether this run is the skipped entry, and whether the offer still stands
         playerModelStats: playerMesh?.userData.modelStats,
         berthAssets:lifeContainers.flatMap(c=>c.tanks.map(t=>t.userData.asset)),
         bays: lifeContainers.map((c) => ({ ci: c.ci, hasTank: c.tanks.length > 0, racked: !!c.tanks[0]?.visible })),

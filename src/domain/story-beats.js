@@ -24,7 +24,8 @@
 //   study         Isao's screen, retitled: Preliminary Alien Vibration Language Analysis
 //   expedition    the screen closed: Isao sends the tank for material at the other rocket landing sites, the planet pulled back
 //                 and the sites marked on the radar
-import { makeFoundry, deployFoundry, stepFoundry, foundryState } from './foundry.js';
+import { makeFoundry, deployFoundry, stepFoundry, foundryState, skipFoundry } from './foundry.js';
+import { STORY_PHASES } from './automation.js';
 export function makeStoryBeats({
   socket, foundry = null, lane = -1, fodder = -1, gate = -1, rotorDelay = 2, key = 'rotor',
   fodderType = 'amoeba', fodderEvery = 2.5, fodderAlive = 8, fodderTotal = 20, fodderEmerge = null,
@@ -33,6 +34,7 @@ export function makeStoryBeats({
   gateReady = () => true,   // a growing base: the tremor waits for Isao to print the gate (src/content/base-programme.js)
   construction = null,      // a growing base: the waves that come while the Stålheart prints (src/content/story-defaults.js STORY_CONSTRUCTION)
   arrival = false,          // the landing plays in the game (src/fx/arrival.js): `landed` waits for its deploy(api)
+  foundryCut = null,        // a tutorial chapter's start: the rocket sections the AFR-01 has already cut (src/content/story-defaults.js STORY_CHAPTERS)
 }) {
   const gated = gate >= 0 && fodder >= 0;
   // THE FOUNDRY PAYS (owner, 2026-09-14): with a foundry tune the grants are barrels of feedstock cut from the rocket, not conjured
@@ -62,7 +64,18 @@ export function makeStoryBeats({
   return {
     tick(dt, api) {
       clock += dt;
-      if (late && !offered) { api.unlock?.('views'); if (phase === 'expedition') api.expeditionsBegin?.(); offered = true; }   // a jump straight into the expedition phase never crossed the study beat, so its sites open here
+      // A LATE START (a tutorial chapter, a jump past the handover) does once what the beats did on the way in: the AFR-01 deployed
+      // off camera with `foundryCut` sections cut; the views strip, which comes with the first wave's clear; sector 0's gunship, the
+      // Quiver's seat and the delay its first wave has after the Quiver; the new hull's moment before the study; and the expedition's
+      // sites, since a jump straight into it never crossed the study beat
+      if (late && !offered) {
+        if (fd && foundryCut != null) skipFoundry(fd, foundryCut);
+        if (STORY_PHASES.indexOf(phase) >= STORY_PHASES.indexOf('cleared')) api.unlock?.('views');
+        if (phase === 'construction' && construction) { api.gunshipArrive?.(); if (quiverSocket >= 0) api.pilot?.(quiverSocket, lane); nextSpawn = clock + (construction.first ?? construction.every); }   // the player is still in the Quiver's optic there
+        if (phase === 'settled') studyDelay = construction?.studyDelay ?? studyDelay;
+        if (phase === 'expedition') api.expeditionsBegin?.();
+        offered = true;
+      }
       // Isao's two faces play over the landing, whatever else is happening: the angry one the moment he is out of the hatch
       if (faces === 0 && clock >= faceDelays[0] && api.isao()) { api.brief?.('rough_landing'); faces = 1; }
       else if (faces === 1 && clock >= faceDelays[1]) { api.brief?.('so_much_to_build'); faces = 2; }
@@ -88,7 +101,7 @@ export function makeStoryBeats({
         if (kills >= harvestKills && !said.has('harvest_biomass')) { api.brief?.('harvest_biomass'); said.add('harvest_biomass'); }
         if (spawned >= fodderTotal && api.enemies() === 0) { api.brief?.('wave_cleared'); api.unlock?.('views'); said.add('wave_cleared'); enter('cleared'); }
       } else if (phase === 'cleared' && quiver && quiverSocket >= 0 && gated && clock - at >= quiver.delay) {
-        if (!quiverOrdered) { api.brief?.('quiver_intro'); if (!fd) api.grant(api.cost(quiver.key)); quiverOrdered = !!api.order(quiver.key, quiverSocket); }
+        if (!quiverOrdered && !api.built(quiverSocket)) { api.brief?.('quiver_intro'); if (!fd) api.grant(api.cost(quiver.key)); quiverOrdered = !!api.order(quiver.key, quiverSocket); }
         if (api.built(quiverSocket)) {   // straight off the Rotor into the Quiver, the optic on the lane as the hard core rises
           if (api.sourceAlive && !api.sourceAlive()) api.breach?.(fodder);   // a strike may have filled the sinkhole: the hard cores need it open
           api.spawn(quiver.hardcore, fodder); hardcores = 1; api.brief?.('quiver_override'); api.pilot?.(quiverSocket, lane); enter('quiver-piloting'); nextSpawn = clock + quiver.secondDelay;

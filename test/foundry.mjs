@@ -1,7 +1,7 @@
 // foundry.mjs — the foundry's clock as invariants: the cues at their authored
 // times, one barrel per cycle, the sections in order, spent once, never more.
 import { FOUNDRY_TUNE } from '../src/content/foundry.js';
-import { makeFoundry, deployFoundry, stepFoundry, foundryState } from '../src/domain/foundry.js';
+import { makeFoundry, deployFoundry, stepFoundry, foundryState, skipFoundry } from '../src/domain/foundry.js';
 let failures = 0;
 const check = (what, ok) => { if (!ok) failures++; console.log(`  ${ok ? 'ok  ' : 'FAIL'} ${what}`); };
 const name = (e) => (typeof e === 'string' ? e : e.ev);
@@ -29,6 +29,18 @@ const run = (st, secs, cfg = FOUNDRY_TUNE) => { const log = []; for (let i = 0; 
   const gap = more.find((l) => name(l.e) === 'cycle').t - cycleT;
   check('the second cycle starts cycleSeconds after the first', Math.abs(gap - cfg.cycleSeconds) < 0.05);
   check('state is readable', foundryState(st).barrels === 3 && foundryState(st).sections === 0);
+}
+{
+  // A CHAPTER'S START (skipFoundry): deployed off camera with some sections already cut, silently
+  const cfg = FOUNDRY_TUNE, none = makeFoundry(cfg); skipFoundry(none, 0);
+  check('none cut: it deploys as usual and the first barrel comes', none.phase === 'deploying' && run(none, cfg.deployDelay + cfg.firstCycle + 0.1).some((l) => name(l.e) === 'barrel'));
+  const two = makeFoundry(cfg); skipFoundry(two, 2);
+  check('two cut: one section left, two barrels on the books, waiting', two.phase === 'waiting' && two.barrels === 2 && two.sections.join() === cfg.sections.slice(2).join());
+  check('no event on the skip itself, the next cycle a cycleSeconds later', run(two, cfg.cycleSeconds - 0.2).length === 0 && run(two, 0.4).some((l) => name(l.e) === 'cycle'));
+  check('the last section is the one cut next', run(two, cfg.firstCycle).find((l) => name(l.e) === 'scrap')?.e.section === cfg.sections[2]);
+  const all = makeFoundry(cfg); skipFoundry(all, 9);
+  check('all cut: spent and silent', all.phase === 'spent' && all.barrels === cfg.sections.length && run(all, 90).length === 0);
+  check('only from stowed: a deployed foundry is not rewound', (() => { const st = makeFoundry(cfg); deployFoundry(st); skipFoundry(st, 2); return st.phase === 'deploying' && st.barrels === 0; })());
 }
 if (failures) { console.log(`${failures} failure(s)`); process.exit(1); }
 console.log('foundry ok');

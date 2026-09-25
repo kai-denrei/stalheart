@@ -5,7 +5,7 @@
 import * as THREE from '../../vendor/three.module.js';
 import { buildWorld } from '../domain/world-recipe.js';
 import { planBase } from '../domain/base-plan.js';
-import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT, STORY_SCALE, STORY_BREACH, STORY_QUIVER, STORY_DAY, STORY_FODDER, STORY_HANDOVER, STORY_EXPEDITIONS, STORY_BACK_DOOR, STORY_SKIP, STORY_BEATS, STORY_CONSTRUCTION, STORY_ROLLOUT } from '../content/story-defaults.js';
+import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT, STORY_SCALE, STORY_BREACH, STORY_QUIVER, STORY_DAY, STORY_FODDER, STORY_HANDOVER, STORY_EXPEDITIONS, STORY_BACK_DOOR, STORY_SKIP, STORY_BEATS, STORY_CONSTRUCTION, STORY_ROLLOUT, STORY_CHAPTERS, STORY_CHAPTER_END } from '../content/story-defaults.js';
 import { findBackMouth } from '../domain/back-door.js';
 import { CONTENT } from '../content/runtime.js';
 import { FOUNDRY_TUNE } from '../content/foundry.js';
@@ -48,15 +48,18 @@ export function readStoryQuery(search) {
   // SKIP TUTORIAL (?skip=defence): not a deep link and not a diorama — the finished base, the beats past the handover and
   // the full threat of a real run. It is the whole opening replaced at once, so it overrides stage, phase and grow.
   const skip = story && skipsTutorial(search);
+  // A TUTORIAL CHAPTER (?skip=<chapter>, src/content/story-defaults.js STORY_CHAPTERS): the opening from that chapter's start, a
+  // growing base at stage 1 with the beats at its first phase and the full threat. The world a run has there is built at boot.
+  const chapter = story && !skip ? [...STORY_CHAPTERS, STORY_CHAPTER_END].find((c) => c.id === q.get('skip')) ?? null : null;
   return {
-    short, skip,
+    short, skip, chapter,
     world: story ? 'story' : 'default',
-    threat: Math.min(4, Math.max(0.1, parseFloat(q.get('threat') || '') || (short && deepLink ? 0.35 : 1))),
-    stage: skip ? STORY_SKIP.stage : Math.min(STAGES.length - 1, Math.max(0, parseInt(q.get('stage') ?? q.get('story') ?? '', 10) || (story ? 1 : 0))),
+    threat: Math.min(4, Math.max(0.1, parseFloat(q.get('threat') || '') || (short && deepLink && !chapter ? 0.35 : 1))),
+    stage: skip ? STORY_SKIP.stage : chapter ? 1 : Math.min(STAGES.length - 1, Math.max(0, parseInt(q.get('stage') ?? q.get('story') ?? '', 10) || (story ? 1 : 0))),
     landmarks: landmarkTierMode(search),   // ?landmarks=candidate: review the pinned runtime LOD candidates in the game camera
-    phase: skip ? STORY_SKIP.phase : (STORY_PHASES.includes(q.get('phase')) ? q.get('phase') : null),   // ?phase=expedition: a jump past the handover starts the beats there
+    phase: skip ? STORY_SKIP.phase : chapter ? chapter.from : (STORY_PHASES.includes(q.get('phase')) ? q.get('phase') : null),   // ?phase=expedition: a jump past the handover starts the beats there
     // ISAO GROWS THE BASE IN PLAY: ?grow=1, and a bare story page that names no stage; an explicit stage=N stays the static base
-    grow: !skip && story && (q.get('grow') === '1' || (q.get('grow') !== '0' && !q.has('stage') && (!q.has('story') || fromStart))),
+    grow: !!chapter || (!skip && story && (q.get('grow') === '1' || (q.get('grow') !== '0' && !q.has('stage') && (!q.has('story') || fromStart)))),
   };
 }
 
@@ -78,7 +81,7 @@ function holdRing(built, planet, from, [lo, hi], perch = null) {
   return ring;
 }
 
-export function buildGameWorld({ world, params, stage, scene, sfx = null, landmarks = 'shipped', phase = null, grow = false, warm = null }) {
+export function buildGameWorld({ world, params, stage, scene, sfx = null, landmarks = 'shipped', phase = null, grow = false, warm = null, chapter = null }) {
   const built = buildWorld({ world, params, story: { recipe: STORY_RECIPE, clearing: STORY_CLEARING, bake: planetBake() } });
   if (!built.planet) return { ...built, base: null };
   const { planet } = built;
@@ -111,21 +114,27 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   // defend its construction meanwhile. A static stage, SKIP TUTORIAL and a start past the handover have the hull from the first frame.
   const hullStep = grow ? steps.find((s) => s.hull && pieces(s).some((p) => p.pending)) : null;
   const hullHeld = !!hullStep && (phase == null || STORY_PHASES.indexOf(phase) < STORY_PHASES.indexOf('settled'));
-  const hullPlot = hullHeld ? plan.islands.find((i) => hullStep.islands.includes(i.id)) : null;
+  // a tutorial chapter past the handover (EXPEDITION, the end) has the Stålheart printed at boot: its door is the hull's berth
+  const hullDoor = hullHeld || !!(hullStep && chapter?.printed.includes(hullStep.id));
+  const hullPlot = hullDoor ? plan.islands.find((i) => hullStep.islands.includes(i.id)) : null;
   const door = hullPlot ? doorBerth({ at: [hullPlot.x, hullPlot.z], heading: STORY_ROLLOUT.heading, start: STORY_ROLLOUT.start, end: STORY_ROLLOUT.end, unit: (f) => placer.toWorld(f).normalize().toArray(), cellOf: (p) => nearestCell(planet.graph.centers, p), open: (ci) => built.dungeon.tags[ci] !== BLOCKED }) : null;
   const bayBerths = plan.bays.length ? plan.bays.map((b) => ({ ci: b.cell, exit: b.exit, pos: b.pos, out: b.out })) : null;
   // THE ARRIVAL (src/fx/arrival.js): every story START lands the SH02 first, which is a growing base at stage 1 with no phase to jump
   // to: a bare page, the burger's Story, ?grow=1. SKIP TUTORIAL, stage=N and story=N links (static) and phase jumps do not
   const sh02 = plan.structures.find((s) => s.id === 'sh02');
   const arrives = grow && stage === 1 && phase == null && !!sh02 && ['sh02-salvage', 'foundry'].every((id) => plan.structures.some((s) => s.id === id));
-  const beats = stage >= 1 ? makeStoryBeats({ fodderEvery: STORY_FODDER.every, fodderAlive: STORY_FODDER.alive, fodderTotal: STORY_FODDER.total, fodderEmerge: STORY_FODDER, socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, ...STORY_BEATS, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER, foundry: FOUNDRY_TUNE, startPhase: phase ?? 'landed', gateReady: () => base.gate().built, construction: hullHeld ? STORY_CONSTRUCTION : null, arrival: arrives }) : null;
+  const pastLanding = stage === 1 && phase != null && phase !== 'landed';   // a chapter or a jump past it: the rocket is already salvage
+  const beats = stage >= 1 ? makeStoryBeats({ fodderEvery: STORY_FODDER.every, fodderAlive: STORY_FODDER.alive, fodderTotal: STORY_FODDER.total, fodderEmerge: STORY_FODDER, socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, ...STORY_BEATS, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER, foundry: FOUNDRY_TUNE, startPhase: phase ?? 'landed', gateReady: () => base.gate().built, construction: hullStep ? STORY_CONSTRUCTION : null, arrival: arrives, foundryCut: chapter?.foundry ?? null }) : null;
   const story = stage >= 1 ? {
     sockets: new Set(), home: plan.cells.landing, socketLift: 0,
     // the solar array's shield pad (src/content/shield-array.js): its island's centre on the unit sphere, standing once the island is; a build programme stands it later by setting `standing`
     arrayPad: (() => { const i = ISLANDS.find((x) => x.id === SHIELD_ARRAY.island); return i ? { cell: plan.cells[i.id], pos: placer.toWorld([i.x, 0, i.z]).normalize().toArray(), standing: stage >= i.stage } : null; })(),
     // a run that starts at or past the expedition (a jump link) has no expedition of its own to wait for (src/fx/sector-run.js)
     lateStart: phase != null && STORY_PHASES.indexOf(phase) >= STORY_PHASES.indexOf('expedition'),
-    beats, arrival: createArrival({ on: arrives, base, beats, site: sh02 ? basisAt(placer, sh02.x, sh02.z, sh02.heading) : null, metres: 1 / planet.radius }),
+    beats, arrival: createArrival({ on: arrives, past: pastLanding, base, beats, site: sh02 ? basisAt(placer, sh02.x, sh02.z, sh02.heading) : null, metres: 1 / planet.radius }),
+    // A TUTORIAL CHAPTER'S START (src/fx/story-entry.js builds it at boot): its number, the steps it prints and the sentries it stands
+    // (`berths`: past the hull's issue the Stålheart's door is every berth, as the issue leaves it, src/fx/hull-issue.js)
+    chapter: chapter ? { id: chapter.id, n: STORY_CHAPTERS.includes(chapter) ? STORY_CHAPTERS.indexOf(chapter) : STORY_CHAPTERS.length, printed: chapter.printed, head: chapter.head, towers: chapter.towers.map((key) => ({ key, ci: plan.cells[key] ?? -1 })), berths: door && !hullHeld ? [door, door, door] : null } : null,
     hull: createHullIssue({ held: hullHeld, perk: hullStep?.perk, door, lead: STORY_ROLLOUT.lead }),   // the first hull, held until the Stålheart stands
     // the story's Quiver fires the TALON: the game's quiver config with the lab's heavy round on top
     missiles: { quiver: { ...CONTENT.missiles.quiver, ...STORY_QUIVER.missile } },

@@ -174,6 +174,27 @@ export const STORY_HANDOVER = Object.freeze({ from: 'settled', defendStage: 8 })
 // before the first wave lands. `brief` is Isao's two lines on arrival (src/isaobriefs.js).
 export const STORY_SKIP = Object.freeze({ stage: 8, phase: 'expedition', sector: 2, biomass: 450, brief: 'skip_defence', parts: Object.freeze(['rocket-a', 'rocket-b']) });
 
+// THE TUTORIAL IN CHAPTERS (owner, 2026-09-25: "Skip tutorial should have 2 options. 1) Showing 1/x in tutorial, where we are, skip
+// to next phase. 2) skip entire tutorial. it will make it easier to troubleshoot the tutorial and more user-friendly"). The opening
+// is cut where its beats change hands, and the card over it says which chapter is playing and goes to the next (src/fx/tutorial-card.js).
+// `phases` are the story beats a chapter covers (src/domain/automation.js STORY_PHASES). ?skip=<id> opens a page at the chapter's
+// start (src/platform/story-world.js readStoryQuery): a growing base at stage 1 with the beats at `from`, and the world a run has
+// there, built at boot (src/fx/story-entry.js). `printed` are the steps of Isao's programme that stand (src/content/base-programme.js),
+// `towers` the sentries on their story sockets, `head` a print already under way (the share done), `foundry` the rocket sections the
+// AFR-01 has already cut (absent: all of them). The numbers are the opening's own timeline (--pacing, 2026-09-25: the Rotor stands at
+// 30 s, the gate at 44.7, the Stålheart's 75 s print starts at 52.8, so it is a third done at the first wave's clear, 77.7, and half
+// done when sector 0 starts, 91.8; the landing pad follows it). LANDING is the page itself, whose NEXT is the landing's own skip.
+// STORY_CHAPTER_END is where NEXT goes from the last chapter: sector 1, on the base the tutorial grew. SKIP ALL is STORY_SKIP.
+export const STORY_CHAPTERS = Object.freeze([
+  { id: 'landing', label: 'LANDING', phases: ['landed'], from: null },
+  { id: 'rotor', label: 'ROTOR', phases: ['foundry', 'printing', 'rotor-ready'], from: 'foundry', foundry: 0 },
+  { id: 'wave', label: 'FIRST WAVE', phases: ['tremor', 'breach', 'approach', 'override', 'piloting'], from: 'rotor-ready', printed: ['foundry', 'gate'], towers: ['rotor'], foundry: 2 },
+  { id: 'quiver', label: 'QUIVER', phases: ['cleared', 'quiver-piloting'], from: 'cleared', printed: ['foundry', 'gate'], towers: ['rotor', 'quiver'], head: { stalheart: 0.33 } },
+  { id: 'stalheart', label: 'STÅLHEART', phases: ['construction'], from: 'construction', printed: ['foundry', 'gate'], towers: ['rotor', 'quiver'], head: { stalheart: 0.5 } },
+  { id: 'expedition', label: 'EXPEDITION', phases: ['settled', 'study-talk', 'study', 'expedition'], from: 'settled', printed: ['foundry', 'gate', 'stalheart', 'landing'], towers: ['rotor', 'quiver'] },
+].map((c) => Object.freeze({ printed: [], towers: [], head: {}, ...c })));
+export const STORY_CHAPTER_END = Object.freeze({ id: 'sector-1', label: 'SECTOR 1', phases: [], from: 'expedition', printed: ['foundry', 'gate', 'stalheart', 'landing', 'solar'], towers: ['rotor', 'quiver'], head: {} });
+
 // EXPEDITIONS (docs/superpowers/specs/2026-09-14-handover-gunship-call-expeditions-design.md): the landing sites, the tower each
 // part unlocks, the guard nest, and when a later site reveals (after N parts are home). The Rotor and Quiver are the base.
 export const STORY_EXPEDITIONS = Object.freeze({

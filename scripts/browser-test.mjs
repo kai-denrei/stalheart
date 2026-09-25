@@ -423,11 +423,11 @@ try{
  assert.equal(await evaluate('document.body.classList.contains("mobile-shell")'),true,'the game takes its phone shell');
  {const rot=await evaluate('(()=>{const e=document.querySelector("#td-rotate");if(!e)return "none";const s=getComputedStyle(e);return s.display==="none"?"none":s.pointerEvents==="none"?"passive":"blocking";})()');assert.notEqual(rot,'blocking','portrait is not walled off by the rotate prompt');}
  await until(`${T}.state().skip?.offer?.shown`,20000);
- await thumb('#skip-tutorial','SKIP TUTORIAL');await reachable('#skip-tutorial','SKIP TUTORIAL');
+ await thumb('#skip-tutorial [data-skip]','SKIP ALL');await reachable('#skip-tutorial [data-skip]','SKIP ALL');await thumb('#skip-tutorial [data-next]','NEXT');await reachable('#skip-tutorial [data-next]','NEXT');
  await layout(CHROME,'the opening');
  await finish();
  // the tap is the entry: a touch on the button lands in the skipped run
- await tap('#skip-tutorial','SKIP TUTORIAL');
+ await tap('#skip-tutorial [data-skip]','SKIP ALL');
  current='phone-skip-run';consoleLines.length=0;errors.length=0;requests.length=0;
  await until('location.search.includes("skip=defence")',20000);await until('window.__stalheartReady===true',90000);
  await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
@@ -1134,6 +1134,75 @@ try{
   assert(/^\+\d+ kg ×\d+$/.test(s.ram.float.last),`the readout says +N kg ×M (${s.ram.float.last})`);assert(s.ram.float.live<=s.ram.float.max,'the pool is bounded');
   assert(calls.includes('RAM ×10'),`the x10 tier callout lands (${calls.join(' | ')})`);assert(shot,'a ram readout was on screen');}
  await evaluate(`${T}.placeTank(${pad.cell})`);await delay(400);current='shield-array-end';await finish();
+ } else if(args.includes('--chapters')) {
+ // THE TUTORIAL IN CHAPTERS (owner, 2026-09-25: "Skip tutorial should have 2 options. 1) Showing 1/x in tutorial, where we are, skip to
+ // next phase. 2) skip entire tutorial. it will make it easier to troubleshoot the tutorial and more user-friendly"). The card over the
+ // opening says where the run is; NEXT over the landing ends the landing in the page; every other NEXT is a link to the next chapter's
+ // start, and each chapter's page is the world a run has there (src/content/story-defaults.js STORY_CHAPTERS, src/fx/story-entry.js).
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), H='sw=0&acceptance=1&cine=0';
+ const card=()=>evaluate('(()=>{const e=document.querySelector("#skip-tutorial");return e?{where:e.querySelector(".tut-where").textContent,next:e.querySelector("[data-next]").textContent,skip:e.querySelector("[data-skip]").textContent}:null;})()');
+ const loaded=async(name)=>{await until('window.__stalheartReady===true',90000);current=name;consoleLines.length=0;errors.length=0;requests.length=0;await until(`!!${T} && ["sh02-salvage","foundry"].every(id=>(${T}.state().storyLod||[]).some(l=>l.id===id))`,90000);await delay(1500);};
+ // the rocket is its salvage on every chapter past the landing, and the base stands as far as a run has printed it by then
+ const world=async(id,printed,towers)=>{const s=await st();assert.equal(s.skip.chapter,id,`the page is the ${id} chapter`);
+  assert.deepEqual([s.arrival.rocket,s.arrival.salvage,s.arrival.foundry],[false,true,true],`${id}: the rocket is already salvage and the AFR-01 stands (${JSON.stringify(s.arrival)})`);
+  for(const step of printed)assert(s.programme.done.includes(step),`${id}: ${step} stands (${s.programme.done})`);
+  assert.deepEqual(s.towerCells.map(t=>t[0]).filter(k=>['rotor','quiver'].includes(k)).sort(),[...towers].sort(),`${id}: the sentries on their sockets (${JSON.stringify(s.towerCells)})`);return s;};
+ // 1. THE LANDING: 1/6, and NEXT ends the landing in this page, exactly where ROTOR starts
+ await go('chapters-landing',`index.html?${H}&world=story&grow=1#td`);
+ await until(`!!${T} && ${T}.state().shot==="arrival"`,90000);
+ {const c=await card();assert.match(c.where,/^TUTORIAL 1\/6\s*LANDING/,`the card says where the run is (${c.where})`);assert.match(c.next,/^NEXT ›\s*ROTOR$/);assert.equal(c.skip,'SKIP ALL');}
+ await finish();
+ const landingHref=await evaluate('location.href');
+ await click('#skip-tutorial [data-next]');
+ await until(`${T}.state().arrival.phase==="done"`,5000);await delay(600);
+ {const s=await st();assert.equal(await evaluate('location.href'),landingHref,'the landing\'s NEXT is in the page: no reload');
+  assert.equal(s.arrival.skipped,true,'NEXT skipped the landing');assert.deepEqual([s.arrival.rocket,s.arrival.salvage,s.arrival.foundry],[false,true,true],'the swap came with it');
+  assert.equal(s.story.phase,'foundry','the beats are at ROTOR\'s start, not past it: the press ended the landing once');
+  assert.equal(await evaluate('!!document.activeElement?.matches?.("#skip-tutorial [data-next]")'),false,'NEXT lets go of the focus: a Space later must not press it again');
+  const c=await card();assert.match(c.where,/^TUTORIAL 2\/6\s*ROTOR/,`2/6 (${c.where})`);assert.match(c.next,/^NEXT ›\s*FIRST WAVE$/);}
+ current='chapters-rotor';await finish();
+ // 2. NEXT IS A LINK: ROTOR to the FIRST WAVE's start, where a run is when the gate stands. The wave comes: fodder rises and walks
+ await click('#skip-tutorial [data-next]');
+ await until('location.search.includes("skip=wave")',20000);await loaded('chapters-wave');
+ assert.equal(await evaluate('location.search'),`?${H}&world=story&skip=wave`,'the page\'s own keys kept, the opening\'s (grow) dropped');
+ {const s=await world('wave',['foundry','gate'],['rotor']);assert.equal(s.programme.gate.built,true,'the gate is built');
+  assert.equal(s.story.foundry.barrels,2,`the AFR-01 has cut two sections (${JSON.stringify(s.story.foundry)})`);
+  assert(s.story.gateAt!==null,'the beats saw the gate stand');const c=await card();assert.match(c.where,/^TUTORIAL 3\/6\s*FIRST WAVE/,`3/6 (${c.where})`);assert.match(c.next,/^NEXT ›\s*QUIVER$/);}
+ await until(`["breach","approach","override","piloting"].includes(${T}.state().story.phase)`,20000);
+ await until(`${T}.state().enemiesAlive>0`,20000).catch(async()=>assert.fail(`the first wave rises: nothing to shoot at (${JSON.stringify((await st()).story)})`));
+ {const s=await st();assert(s.programme.isao?.order==='tower'||s.towerCells.some(t=>t[0]==='quiver'),`the Quiver is on Isao's book first (${JSON.stringify(s.programme.isao)})`);}
+ await finish();
+ // 3. QUIVER: both sentries stand; the hard core rises and the Quiver's optic is handed over; the Stålheart is a third printed
+ await go('chapters-quiver',`index.html?${H}&skip=quiver#td`);await loaded('chapters-quiver');
+ {await world('quiver',['foundry','gate'],['rotor','quiver']);const c=await card();assert.match(c.where,/^TUTORIAL 4\/6\s*QUIVER/,`4/6 (${c.where})`);}
+ await until(`${T}.state().story.phase==="quiver-piloting"`,20000);
+ {const s=await st();assert.equal(s.story.hardcores,1,'the first hard core');assert.equal(s.programme.active,'stalheart','Isao prints the Stålheart');}
+ await until(`${T}.state().programme.isao?.state==="build"`,30000);
+ {const k=(await st()).programme.isao.printK;assert(k>=0.33,`the Stålheart print is a third done (${k})`);}
+ await finish();
+ // 4. STÅLHEART: sector 0: the gunship comes from orbit, the first wave after its delay, no hull until the Stålheart stands
+ await go('chapters-stalheart',`index.html?${H}&skip=stalheart#td`);await loaded('chapters-stalheart');
+ {const s=await world('stalheart',['foundry','gate'],['rotor','quiver']);assert.equal(s.hull.state,'held','no hull yet');const c=await card();assert.match(c.where,/^TUTORIAL 5\/6\s*STÅLHEART/,`5/6 (${c.where})`);}
+ await until(`${T}.state().gunship.station===true`,15000).catch(async()=>assert.fail(`the gunship on station (${JSON.stringify((await st()).gunship)})`));
+ await until(`${T}.seatState().seatKey==='quiver'`,15000).catch(async()=>assert.fail(`in the Quiver's optic, as a run is when sector 0 starts (${JSON.stringify(await evaluate(`${T}.seatState()`))})`));
+ await until(`${T}.state().story.construction.waves>=1`,20000);
+ await until(`${T}.state().programme.isao?.state==="build"`,30000);
+ {const k=(await st()).programme.isao.printK;assert(k>=0.5,`the Stålheart print is half done (${k})`);}
+ await finish();
+ // 5. EXPEDITION: the Stålheart and the pad stand, the hull is out at its door, the study comes after the hull's moment
+ await go('chapters-expedition',`index.html?${H}&skip=expedition#td`);await loaded('chapters-expedition');
+ {const s=await world('expedition',['foundry','gate','stalheart','landing'],['rotor','quiver']);assert.equal(s.hull.state,'out','the hull is ours');
+  assert(s.hull.door>=0&&s.berthCells.every(ci=>ci===s.hull.door),`the Stålheart's door is its berth (${s.hull.door}, ${s.berthCells})`);
+  const c=await card();assert.match(c.where,/^TUTORIAL 6\/6\s*EXPEDITION/,`6/6 (${c.where})`);assert.match(c.next,/^NEXT ›\s*SECTOR 1$/);}
+ await until(`${T}.state().story.phase==="study-talk"`,20000);
+ await finish();
+ // 6. NEXT FROM THE LAST CHAPTER: sector 1 on the grown base, and the card is gone with the tutorial
+ await click('#skip-tutorial [data-next]');
+ await until('location.search.includes("skip=sector-1")',20000);await loaded('chapters-sector-1');
+ {await world('sector-1',['foundry','gate','stalheart','landing','solar'],['rotor','quiver']);}
+ await until(`${T}.state().sector?.n===1`,30000).catch(async()=>assert.fail(`sector 1 opens (${JSON.stringify((await st()).sector)})`));
+ assert.equal(await evaluate('!!document.querySelector("#skip-tutorial")'),false,'no tutorial card past the tutorial');
+ await finish();
  } else if(args.includes('--skip-tutorial')) {
  // SKIP TUTORIAL (owner, 2026-09-16; docs/log/entries/2026-09-16-skip-tutorial-built.json). The opening still plays from the landing
  // and offers a button; the button is a LINK to ?skip=defence, and what it opens is a real run already at the back door: the Relay
@@ -1146,12 +1215,13 @@ try{
   assert.equal(s.arrival.on,true,'the opening lands the SH02 first (src/fx/arrival.js); the offer stands over the landing too');
   assert(['landed','foundry','printing','rotor-ready'].includes(s.story.phase),`the run is in the opening beats (${s.story.phase})`);
   assert.equal(s.skip.offer.shown,true,'the offer stands');
-  assert.equal(await evaluate('document.querySelector("#skip-tutorial b").textContent'),'SKIP TUTORIAL','the button says what it does');
+  assert.equal(await evaluate('document.querySelector("#skip-tutorial [data-skip]").textContent'),'SKIP ALL','the button says what it does');
+  assert.match(await evaluate('document.querySelector("#skip-tutorial .tut-where").textContent'),/^TUTORIAL [12]\/6/,'and the card says where the run is');
   assert.equal(await evaluate('(()=>{const r=document.querySelector("#skip-tutorial").getBoundingClientRect();return r.width>80&&r.height>30&&r.bottom<innerHeight&&r.right<=innerWidth;})()'),true,'it is on screen and thumb-sized');
   assert.equal(s.skip.offer.href,'index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence#td','the button carries this page\'s keys into the skipped run and drops the opening\'s');}
  current='skip-tutorial-offer';await finish();
  // 2. A CLICK IS THE ENTRY: a real pointer on the button, and the page it lands on is the skipped run
- await click('#skip-tutorial');
+ await click('#skip-tutorial [data-skip]');
  await until('location.search.includes("skip=defence")',20000);
  await until('window.__stalheartReady===true',90000);
  // ISAO SAYS WHERE THEY ARE, on arrival — the panel runs on its own clock, so it is read as it plays, not after

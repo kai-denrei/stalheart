@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { isStoryRoute, LEGACY_SWITCHES, SKIP_DEFENCE, SKIP_TUTORIAL_URL, skipsTutorial, skipTutorialUrl } from '../src/core/story-route.js';
+import { chapterUrl, isStoryRoute, LEGACY_SWITCHES, SKIP_DEFENCE, SKIP_TUTORIAL_URL, skipsTutorial, skipTutorialUrl } from '../src/core/story-route.js';
 assert.equal(isStoryRoute(''), true, 'a bare index.html is the story');
 assert.equal(isStoryRoute('?sw=0'), true);
 assert.equal(isStoryRoute('?story=4'), true);
@@ -21,4 +21,12 @@ assert.equal(skipTutorialUrl(''), 'index.html?skip=defence#td');
 assert.equal(skipTutorialUrl('?skip=defence'), 'index.html?skip=defence#td', 'clicking twice is the same URL');
 assert.equal(SKIP_TUTORIAL_URL, 'index.html?skip=defence#td');
 
-console.log('Story route: the story is the default; only acceptance and the simulator open the campaign board; ?skip=defence is the player\'s entry past the tutorial.');
+// THE TUTORIAL'S CHAPTERS (owner, 2026-09-25): NEXT is a link to the next chapter's start, built the same way, and a chapter link from
+// a harness page is still the story (the acceptance switch would otherwise open the campaign board)
+assert.equal(chapterUrl('?sw=0&acceptance=1&cine=0&story=0', 'wave'), 'index.html?sw=0&acceptance=1&cine=0&skip=wave#td', 'the opening keys go, the harness keys stay');
+assert.equal(chapterUrl('?skip=wave&dev=1', 'quiver'), 'index.html?dev=1&skip=quiver#td', 'one chapter link replaces another');
+assert.equal(isStoryRoute('?sw=0&acceptance=1&skip=wave'), true, 'a chapter from a harness page stays the story');
+assert.equal(isStoryRoute('?acceptance=1&skip='), false, 'an empty skip names nothing');
+assert.equal(skipsTutorial('?skip=wave'), false, 'a chapter is not the whole tutorial skipped');
+
+console.log('Story route: the story is the default; only acceptance and the simulator open the campaign board; ?skip=defence is the player\'s entry past the tutorial; ?skip=<chapter> opens a tutorial chapter.');

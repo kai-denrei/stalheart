@@ -10,8 +10,8 @@ export const NAV_MODES = Object.freeze(['playtest', 'dev']);
 // the story's jump points: a wired jump is a game URL whose skip=<id> the shell finishes once the game is ready
 export const STORY_JUMPS = Object.freeze([
   { id: 'rotor', label: 'ROTOR', title: 'the opening: the foundry cuts the rocket into feedstock, Isao prints the Rotor and hands it over', url: 'index.html?world=story&stage=1&grow=1#td', wired: true },
-  { id: 'quiver', label: 'QUIVER', title: 'not wired yet: the hard cores and the Quiver hand-over', url: null, wired: false },
-  { id: 'study', label: 'STUDY', title: 'not wired yet: Isao\'s vibration-language analysis', url: null, wired: false },
+  { id: 'quiver', label: 'QUIVER', title: 'the tutorial\'s QUIVER chapter: the first wave down, the hard cores and the Quiver hand-over (STORY_CHAPTERS)', url: 'index.html?skip=quiver#td', wired: true },
+  { id: 'study', label: 'STUDY', title: 'the tutorial\'s EXPEDITION chapter: the new hull, Isao\'s vibration-language analysis, the landing sites (STORY_CHAPTERS)', url: 'index.html?skip=expedition#td', wired: true },
   { id: 'gunship', label: 'GUNSHIP', title: 'the gunship on station with the seat taken, enemies up and waves continuing', url: 'index.html?world=story&stage=6&cine=0&acceptance=1&gunship=station&skip=gunship#td', wired: true },
   { id: 'defense', label: 'DEFENSE', title: 'after the handover: automatic towers, the tank, the gunship call-in, the expeditions', url: 'index.html?world=story&stage=6&cine=0&acceptance=1&phase=expedition#td', wired: true },
   { id: 'showcase', label: 'SHOWCASE', title: 'the intro montage: the core loop in twelve shots over a real run, ending on Isao asking "Are you ready?" (src/fx/showcase.js)', url: 'index.html?intro=1#td', wired: true },

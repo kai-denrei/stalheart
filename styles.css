@@ -3752,7 +3752,9 @@ body.mobile-shell #gunship-briefing button, body.mobile-shell #sol82-briefing bu
   body.mobile-shell #tab-td #td-sitrep, body.mobile-shell #tab-td #td-toast { left: 12px; right: auto; bottom: 256px; width: min(300px, calc(100vw - 24px)); max-width: none; }
   /* the offer keeps the right of the announcement row; the coach gets its own full-width row under it (at 46vw the
      offer's card sat on the coach's second line and ate the word "or" — artifacts/browser/phone-opening.png) */
-  body.mobile-shell #skip-tutorial { right: 12px; bottom: auto; top: 200px; white-space: nowrap; }   /* its two lines are fixed text: wrapped, the card grew into the coach's row */
+  body.mobile-shell #skip-tutorial { right: 12px; bottom: auto; top: 188px; gap: 4px; padding: 5px 6px; font-size: 10px; }   /* fixed text on one status line and one row of 44 px buttons, ending above the coach's row at 268 px: the phone drops the pips and the next chapter's name */
+  body.mobile-shell #skip-tutorial .tut-pips, body.mobile-shell #skip-tutorial [data-next] span { display: none; }
+  body.mobile-shell #skip-tutorial button { min-height: 44px; min-width: 64px; }
   body.mobile-shell #tab-td #td-tut { top: 268px; left: 12px; right: 12px; max-width: none; text-align: center; }
   /* the top band: HUD under the shell's toggle on the left, the radar under the mode switch on the right */
   body.mobile-shell #tab-td #td-stats.hud-panel { top: 68px; max-width: calc(100vw - min(240px, 32vmin) - 40px); }
@@ -4572,15 +4574,20 @@ body.playing:not(.shell-open) #shell-bar { opacity: 0.32; }
    needs there; the strip names the views. The sound chip stays, alone. */
 #tab-td.story-world .tc-util button:not(#td-pad-sound), #tab-td.story-world #td-hint { display: none !important; }
 
-/* ==== SKIP TUTORIAL (src/fx/skip-tutorial.js): the player's way past the opening, offered from the landing until the
-   handover. Bottom right, above the pad, in the story's monochrome: a pale outline that cannot be read as damage or as a
-   campaign chip, and big enough on a phone to be a thumb target. It removes itself; there is no hidden state. ==== */
-#skip-tutorial { position: absolute; right: 16px; bottom: 132px; z-index: 45; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; padding: 9px 14px; background: rgba(8, 12, 16, 0.86); border: 1px solid rgba(223, 232, 238, 0.55); color: #dfe8ee; font: 12px/1.2 ui-monospace, Menlo, monospace; letter-spacing: 0.14em; cursor: pointer; pointer-events: auto; text-align: right; }
-#skip-tutorial b { font-size: 14px; font-weight: 700; letter-spacing: 0.18em; }
-#skip-tutorial small { font-size: 10px; letter-spacing: 0.08em; color: #9aa8b0; text-transform: none; }
-#skip-tutorial:hover, #skip-tutorial:focus-visible { border-color: #ffffff; color: #ffffff; background: rgba(28, 36, 42, 0.92); }
-#skip-tutorial:disabled { opacity: 0.4; cursor: default; }
-@media (max-width: 720px) { #skip-tutorial { right: 12px; bottom: 168px; padding: 11px 14px; } }
+/* ==== THE TUTORIAL CARD (src/fx/tutorial-card.js): where the opening is (TUTORIAL 3/6 · FIRST WAVE and a pip a chapter), NEXT
+   to the next chapter and SKIP ALL to the back door, from the landing until the first sector. Bottom right, above the pad, in the
+   story's monochrome: a pale outline that cannot be read as damage or as a campaign chip, and thumb-sized buttons on a phone. It
+   removes itself; there is no hidden state. ==== */
+#skip-tutorial { position: absolute; right: 16px; bottom: 132px; z-index: 45; display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; background: rgba(8, 12, 16, 0.86); border: 1px solid rgba(223, 232, 238, 0.55); color: #dfe8ee; font: 12px/1.2 ui-monospace, Menlo, monospace; letter-spacing: 0.14em; pointer-events: auto; }
+#skip-tutorial .tut-where { display: flex; align-items: baseline; gap: 10px; white-space: nowrap; }
+#skip-tutorial .tut-where b { font-weight: 700; letter-spacing: 0.18em; }
+#skip-tutorial .tut-name { flex: 1; }
+#skip-tutorial .tut-pips { letter-spacing: 0.04em; color: #9aa8b0; }
+#skip-tutorial .tut-go { display: flex; gap: 6px; }
+#skip-tutorial button { flex: 1 1 auto; padding: 7px 12px; background: transparent; border: 1px solid rgba(223, 232, 238, 0.45); color: inherit; font: 700 12px/1.2 ui-monospace, Menlo, monospace; letter-spacing: 0.14em; white-space: nowrap; cursor: pointer; }
+#skip-tutorial button:hover, #skip-tutorial button:focus-visible { border-color: #ffffff; color: #ffffff; background: rgba(28, 36, 42, 0.92); }
+#skip-tutorial button:disabled { opacity: 0.4; cursor: default; }
+@media (max-width: 720px) { #skip-tutorial { right: 12px; bottom: 168px; } #skip-tutorial button { min-height: 44px; } }
 
 /* ==== CONTROLS CARD (src/fx/controls-card.js): the tank's keys, once past the handover; H or ? again ==== */
 #controls-card { position: absolute; right: 16px; top: 60px; z-index: 40; width: min(300px, calc(100vw - 32px)); padding: 10px 12px 12px; background: rgba(8, 12, 16, 0.86); border: 1px solid rgba(220, 235, 240, 0.28); color: #dfe8ec; font: 12px/1.45 ui-monospace, Menlo, monospace; pointer-events: auto; }

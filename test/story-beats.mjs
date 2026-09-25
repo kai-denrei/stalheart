@@ -356,3 +356,39 @@ const toQuiverClear = (beats, g) => {
   late.tick(0.1, g2.api); assert.equal(late.phase(), 'settled', 'a jump into construction with the Stålheart up hands over at once');
 }
 console.log('story-beats: sector 0, the construction defended');
+// A TUTORIAL CHAPTER'S START (owner, 2026-09-25: "Skip tutorial should have 2 options ... skip to next phase"; src/content/story-defaults.js
+// STORY_CHAPTERS). A page opened at a chapter starts the beats there; what the beats did on the way in is done once, on the first
+// tick, and nothing the chapter's own beats do comes early or twice.
+{
+  const tune = { deployDelay: 1, firstCycle: 4, cycleSeconds: 6, feedstockPerBarrel: 60, sections: ['A', 'B', 'C'], targets: ['tA', 'tB', 'tC'], events: { arcOn: 0.5, arcOff: 1, scrap: 2, barrel: 3 } };
+  const unlocks = (g) => g.log.filter((l) => l[0] === 'unlock');
+  // ROTOR: the AFR-01 deployed off camera with nothing cut; its first barrel pays for the Rotor as in the opening; no views yet
+  const g = fakeGame({ printSeconds: 2 }); g.api.foundry = (ev) => { g.log.push(['foundry', ev]); };
+  const rotor = makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, foundry: tune, startPhase: 'foundry', foundryCut: 0, gateReady: () => false });
+  run(rotor, g, 1.5); assert.deepEqual(g.log.filter((l) => l[0] !== 'foundry'), [], 'nothing said, granted, ordered or unlocked on the way in');
+  run(rotor, g, 4); assert.deepEqual(kinds(g, 'grant'), [['grant', 60]]); assert.deepEqual(kinds(g, 'order'), [['order', 'rotor', 4242]], 'the first barrel orders the Rotor at the end of its cycle');
+  assert.equal(rotor.state().foundry.barrels, 1); assert.equal(unlocks(g).length, 0, 'the views strip waits for the first wave\'s clear');
+  // FIRST WAVE: the gate stands at the start, so the Quiver goes on the book at once and the tremor follows; two sections already cut
+  const g2 = fakeGame({ printSeconds: 99 }); g2.api.foundry = (ev) => { g2.log.push(['foundry', ev]); };
+  const wave = makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, tremorDelay: 1.5, quiverSocket: 4244, quiver: QUIVER, foundry: tune, startPhase: 'rotor-ready', foundryCut: 2 });
+  run(wave, g2, 0.2); assert.deepEqual(kinds(g2, 'order'), [['order', 'quiver', 4244]], 'the Quiver first on Isao\'s book'); assert.equal(unlocks(g2).length, 0, 'no views before the clear');
+  assert.deepEqual(wave.state().foundry, { phase: 'waiting', barrels: 2, sections: 1, cycle: 2 }, 'the AFR-01 on its last section');
+  run(wave, g2, 1.5); assert.equal(wave.phase(), 'tremor'); assert.deepEqual(kinds(g2, 'tremor'), [['tremor', 4300]]); assert.equal(kinds(g2, 'brief').at(-1)[1], 'tremor');
+  // QUIVER: the Quiver already stands, so it is neither introduced nor ordered; its hard core rises after the delay; the views unlock once
+  const g3 = fakeGame(); g3.api.built = (ci) => ci === 4244;
+  const quiver = makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, quiverSocket: 4244, quiver: QUIVER, startPhase: 'cleared' });
+  run(quiver, g3, 1); assert.equal(quiver.phase(), 'quiver-piloting'); assert.equal(kinds(g3, 'order').length, 0, 'nothing ordered onto the standing Quiver');
+  assert.ok(!kinds(g3, 'brief').some((l) => l[1] === 'quiver_intro'), 'no introduction for a Quiver that stands'); assert.deepEqual(kinds(g3, 'spawn'), [['spawn', 'barbed', 4300]]); assert.deepEqual(kinds(g3, 'pilot'), [['pilot', 4244, 4243]]);
+  assert.equal(unlocks(g3).length, 1, 'the views strip, once');
+  // STÅLHEART: sector 0 calls the gunship once and its first wave comes after `first`, not on the first frame
+  const g4 = fakeGame(); g4.api.stalheartStands = () => false; g4.api.gunshipArrive = () => { g4.log.push(['gunshipArrive']); };
+  const sector0 = makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, quiverSocket: 4244, quiver: QUIVER, construction: CONSTRUCTION, startPhase: 'construction' });
+  run(sector0, g4, 0.2); assert.equal(kinds(g4, 'gunshipArrive').length, 1, 'the gunship comes from orbit'); assert.equal(kinds(g4, 'spawn').length, 0, 'no wave on the first frame');
+  assert.deepEqual(kinds(g4, 'pilot'), [['pilot', 4244, 4243]], 'the player is in the Quiver\'s optic, as the hard cores left them');
+  run(sector0, g4, CONSTRUCTION.first); assert.equal(sector0.state().construction.waves, 1, 'the first wave after its delay'); run(sector0, g4, 10); assert.equal(kinds(g4, 'gunshipArrive').length, 1, 'once');
+  // EXPEDITION: the new hull has the construction's moment before the study, not the Quiver's
+  const g5 = fakeGame();
+  const settled = makeStoryBeats({ socket: 4242, quiverSocket: 4244, quiver: QUIVER, construction: CONSTRUCTION, startPhase: 'settled' });
+  run(settled, g5, QUIVER.studyDelay + 0.5); assert.equal(settled.phase(), 'settled', 'not the Quiver\'s delay'); run(settled, g5, CONSTRUCTION.studyDelay - QUIVER.studyDelay); assert.equal(settled.phase(), 'study-talk');
+}
+console.log('story-beats: a tutorial chapter starts where its beats do');

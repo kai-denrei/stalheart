@@ -14,6 +14,16 @@ export function deployFoundry(st) {
   return 'deploy';
 }
 
+// A START PAST THE LANDING (a tutorial chapter, src/content/story-defaults.js STORY_CHAPTERS): the foundry was deployed off
+// camera and `cycles` sections are already cut, their barrels paid out long ago. Nothing is said as events. With none cut it
+// deploys as usual; with some left, the next cycle comes a full cycleSeconds later; with all cut it is spent.
+export function skipFoundry(st, cycles = 0) {
+  if (st.phase !== 'stowed') return;
+  const n = Math.max(0, Math.min(cycles, st.sections.length));
+  st.sections.splice(0, n); st.barrels = n; st.cycle = n; st.t = 0; st.cycleAt = 0;
+  st.phase = n === 0 ? 'deploying' : st.sections.length ? 'waiting' : 'spent';
+}
+
 // Advance; returns the events of this tick in order. A cycle's cues fire
 // once each; a cycle ends at its authored length; the next starts
 // cycleSeconds after the previous began while sections remain.

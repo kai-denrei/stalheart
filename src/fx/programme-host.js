@@ -60,7 +60,7 @@ export function createProgrammeHost(c) {
       const step = programmeDue(pg, ctx), ci = step ? c.story().print.cellOf(step) : -1;
       if (ci < 0) return;
       programmeBegin(pg, step);
-      orders.push({ kind: 'structure', ci, cost: 0, seconds: step.seconds, step, bed: c.story().print.bed(step) });
+      orders.push({ kind: 'structure', ci, cost: 0, seconds: step.seconds, head: c.story().chapter?.head[step.id] ?? 0, step, bed: c.story().print.bed(step) });   // head: a tutorial chapter's start finds this print under way
       spawnIsao();
       if (!c.pilotMode() && !c.briefQ()) showBrief(step.brief);   // his line as he starts, never over a manned seat or another line
       updateHud();

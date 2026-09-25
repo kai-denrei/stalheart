@@ -16,17 +16,23 @@ export function skipsTutorial(search) {
   return SKIP_DEFENCE.includes(new URLSearchParams(search).get('skip'));
 }
 
-// the URL the SKIP TUTORIAL button goes to, keeping whatever the current page carries that is not about the opening
-// (?sw=0 and ?acceptance=1 in a harness, ?dev=1 for the drawer), so a click in a test run stays a test run
-export function skipTutorialUrl(search, page = 'index.html', hash = 'td') {
+// the URL of a point in the story, ?skip=<point>: SKIP TUTORIAL's back door or a tutorial chapter's start (src/content/story-defaults.js
+// STORY_CHAPTERS). It keeps whatever the current page carries that is not about the opening (?sw=0 and ?acceptance=1 in a harness,
+// ?dev=1 for the drawer), so a click in a test run stays a test run
+export function chapterUrl(search, point, page = 'index.html', hash = 'td') {
   const q = new URLSearchParams(search);
   for (const key of OPENING_KEYS) q.delete(key);
-  q.set('skip', SKIP_DEFENCE[0]);
+  q.set('skip', point);
   return `${page}?${q.toString()}${hash ? `#${hash}` : ''}`;
 }
 
+// the URL the SKIP ALL button goes to
+export const skipTutorialUrl = (search, page, hash) => chapterUrl(search, SKIP_DEFENCE[0], page, hash);
+
+// ?skip=<point> is story vocabulary only (the back door, a chapter, the drawer's gunship jump), so it names the story the way
+// ?story= does: a chapter link from a harness page (?acceptance=1) stays the story
 export function isStoryRoute(search) {
   const q = new URLSearchParams(search);
-  if (q.get('story') !== null || q.get('world') === 'story' || skipsTutorial(search)) return true;
+  if (q.get('story') !== null || q.get('world') === 'story' || q.get('skip')) return true;
   return !LEGACY_SWITCHES.some((key) => q.has(key));
 }

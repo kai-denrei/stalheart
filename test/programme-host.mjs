@@ -37,7 +37,7 @@ function controller(o = {}) {
 {
   const { s, api, log, orders } = controller();
   api.build();
-  assert.deepEqual(orders, [{ kind: 'structure', ci: 3, cost: 0, seconds: step('gate').seconds, step: step('gate'), bed: 'bed:gate' }]);
+  assert.deepEqual(orders, [{ kind: 'structure', ci: 3, cost: 0, seconds: step('gate').seconds, head: 0, step: step('gate'), bed: 'bed:gate' }]);
   assert.deepEqual(log, [['spawnIsao'], ['brief', 'build_gate'], ['hud']]);
   assert.equal(snapshot(s.story.programme).active, 'gate');
   api.build(); assert.equal(orders.length, 1, 'an order nobody works yet comes first');
@@ -46,6 +46,14 @@ function controller(o = {}) {
   assert.equal(api.hasPerk('gate'), true); assert.deepEqual([...api.perks()], ['gate']);
   assert.deepEqual([s.dungeon.tags[4], s.dungeon.tags[5], s.tdFullTags[4], s.tdFullTags[5]], [BLOCKED, BLOCKED, BLOCKED, BLOCKED]);
   assert.deepEqual(log, [['finish', step('gate')], ['note', { type: 'print', id: 'gate' }], ['forgetWalls'], ['rebuild'], ['portalDist']]);
+}
+// A TUTORIAL CHAPTER'S START (src/content/story-defaults.js STORY_CHAPTERS) finds the Stålheart's print under way: its order carries
+// the share already done, and only that step's does
+{
+  const { s, api, orders } = controller({ at: 'stalheart' });
+  s.story.chapter = { head: { stalheart: 0.5 } }; s.dungeon.tags[4] = s.dungeon.tags[5] = BLOCKED;   // the walls stand: no repair first
+  api.build(); assert.equal(orders[0].step.id, 'stalheart'); assert.equal(orders[0].head, 0.5, 'the print starts half done');
+  orders.length = 0; api.printed(step('stalheart')); api.build(); assert.equal(orders[0].step.id, 'landing'); assert.equal(orders[0].head, 0, 'the next one from nothing');
 }
 // ISAO MENDS WHAT THE SWARM BROKE: between waves a blown wall comes before the next building, and his line waits for a free seat
 {

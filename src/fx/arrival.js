@@ -32,9 +32,11 @@ import { BRIEFS, lineDwell } from '../isaobriefs.js';
 const IDS = ['sh02', 'sh02-salvage', 'foundry'];
 const CLIPS = ['Legs_Deploy', 'Landing_Shock', 'Top_Door_Open'];
 
-// `site`: the landing island's world basis (src/fx/story-base.js basisAt: +y its up, +z toward the pole), `metres`: world units a metre
-export function createArrival({ on = false, base = null, beats = null, site = null, metres = 1, tune = STORY_ARRIVAL } = {}) {
-  let phase = on && base && beats && site ? 'waiting' : 'off';
+// `site`: the landing island's world basis (src/fx/story-base.js basisAt: +y its up, +z toward the pole), `metres`: world units a metre.
+// `past`: the page starts past the landing (a tutorial chapter, a phase jump at stage 1): no shot, and the rocket is its salvage and
+// the foundry from the first frame, each landmark put in that end state as it loads
+export function createArrival({ on = false, past = false, base = null, beats = null, site = null, metres = 1, tune = STORY_ARRIVAL } = {}) {
+  let phase = on && base && beats && site ? 'waiting' : past && base ? 'done' : 'off';
   const shot = makeArrivalShot(tune), lines = BRIEFS[tune.talk.brief];
   const talkSeconds = lines.lines.reduce((sum, _, i) => sum + lineDwell(lines, i), 0);   // the close-up holds every line (the owner's second playtest)
   const m4 = new THREE.Matrix4(), up = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), eye = new THREE.Vector3();
@@ -43,7 +45,7 @@ export function createArrival({ on = false, base = null, beats = null, site = nu
   const toWorld = (p, out = new THREE.Vector3()) => out.set(p[0] * metres, p[1] * metres, p[2] * metres).applyMatrix4(site);
   const pose = (out, eye, look, n) => { m4.lookAt(eye, look, n); out.quat.setFromRotationMatrix(m4); out.pos.copy(eye); };
   let api = null, camera = null, fov = null, rocket = null, drone = null, size = 0, to = null, fxRoot = null, scorch = null, dust = null;
-  let t = 0, talkT = 0, waited = 0, cutting = false, deployed = false, skipped = false, late = null, plumes = [];
+  let t = 0, talkT = 0, waited = 0, cutting = false, deployed = false, skipped = false, late = phase === 'done' ? new Set(IDS) : null, plumes = [];
 
   const drop = (o) => { o.removeFromParent(); o.geometry?.dispose(); o.material?.dispose(); };
   const hud = (on) => globalThis.document?.body.classList.toggle('arrival-on', on);   // styles.css hides the chrome while it plays
