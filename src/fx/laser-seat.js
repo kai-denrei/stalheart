@@ -55,7 +55,7 @@ export function createLaserSeat(root, host) {
 
   const editable = (e) => /^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName || '') || e.target?.isContentEditable;
   listen(window, 'keydown', (e) => {
-    if (editable(e) || e.metaKey || e.ctrlKey) return;
+    if (editable(e) || e.metaKey || e.ctrlKey || /^[hH?]$/.test(e.key)) return;   // H / ? reach the controls page from the seat
     e.stopImmediatePropagation();
     if (e.code === 'Space') { e.preventDefault(); spaceHeld = true; return; }
     if (e.repeat) return;

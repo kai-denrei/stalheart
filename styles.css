@@ -4590,6 +4590,10 @@ body.playing:not(.shell-open) #shell-bar { opacity: 0.32; }
 #controls-card dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin: 0; }
 #controls-card dt { color: #fff; font-weight: 700; white-space: nowrap; }
 #controls-card dd { margin: 0; color: #aab6bb; }
+/* THE PAGE (2026-09-25): three short sections, centred over the world at the start and on H */
+#controls-card { left: 50%; right: auto; top: 50%; transform: translate(-50%, -50%); width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; }
+#controls-card h4 { margin: 10px 0 4px; font-size: 11px; letter-spacing: 0.16em; color: #7fa0aa; font-weight: 700; }
+#controls-card footer { margin-top: 10px; font-size: 11px; color: #7fa0aa; letter-spacing: 0.08em; text-align: right; }
 #tab-td.pad-labelled [data-label]::after { content: attr(data-label); position: absolute; left: 50%; bottom: calc(100% + 4px); transform: translateX(-50%); font: 700 10px/1 ui-monospace, Menlo, monospace; letter-spacing: 0.12em; color: #fff; background: rgba(8, 12, 16, 0.8); padding: 3px 5px; white-space: nowrap; pointer-events: none; }
 /* ==== end CONTROLS CARD ==== */
 

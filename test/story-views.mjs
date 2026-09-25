@@ -19,13 +19,13 @@ globalThis.document = { createElement: (tag) => new El(tag) };
 
 function controller(o = {}) {
   const log = [], rec = (k, ret) => (...a) => { log.push([k, ...a]); return ret; };
-  const s = { story: { hull: { held: () => !!o.held } }, storyViews: null, pilot: null, pilotMode: false, pilotHost: null, sectorRun: null, gunshipBriefing: o.briefing ?? null, paused: false, built: 0 };
+  const s = { view: o.view ?? 'third', story: { hull: { held: () => !!o.held } }, storyViews: null, pilot: null, pilotMode: false, pilotHost: null, sectorRun: null, gunshipBriefing: o.briefing ?? null, paused: false, built: 0 };
   const towers = [{ ci: 11, key: 'rotor', def: { label: '2. Rotor' } }, { ci: 12, key: 'quiver', def: { label: '5. Quiver' } }];
   const gunship = { phase: o.station ? 'station' : 'away', left: 42.4, passes: 0 };
   const pilot = { mountGunship: rec('mountGunship', o.mounted ?? 'mounted'), setView: rec('pilotView'), state: { tower: { key: 'quiver' } } };
   const host = {
     root: new El('main'), towers, gunship, gunshipRig: { onCall: () => !!o.onCall, call: { fill: 1, threshold: 1, calls: 0, overhead: false } }, automated: () => !!o.automated,
-    enterPilot: (posts) => { log.push(['enterPilot', posts]); s.pilotMode = true; s.pilot = pilot; }, leavePilot: rec('leavePilot'), setView: rec('view'), showBrief: rec('brief'),
+    enterPilot: (posts) => { log.push(['enterPilot', posts]); s.pilotMode = true; s.pilot = pilot; }, leavePilot: rec('leavePilot'), setView: (v) => { log.push(['view', v]); s.view = v; }, showBrief: rec('brief'), snapCamera: rec('snap'), view: () => s.view,
     setStoryViews: (v) => { s.built++; return (s.storyViews = v); }, setGunshipBriefing: (v) => (s.gunshipBriefing = v), setPaused: (v) => { s.paused = v; },
   };
   for (const k of ['story', 'storyViews', 'pilot', 'pilotMode', 'pilotHost', 'sectorRun', 'gunshipBriefing', 'paused']) host[k] = () => s[k];
@@ -56,6 +56,11 @@ const lit = (k) => k.nav().kids.filter((b) => b.cls.has('active')).map((b) => b.
   k.click('map'); assert.deepEqual(k.log.at(-1), ['pilotView', 'map']);
   k.click('tank'); assert.deepEqual(k.log.at(-1), ['leavePilot']);
   k.s.pilotMode = false; k.click('map'); assert.deepEqual(k.log.at(-1), ['view', 'orbit']);
+  // TANK IS THE TANK (2026-09-25 playtest): from the map (a seat's return view, or no seat at all) it ends on the hull's own view
+  const n = k.log.length; k.click('tank');
+  assert.deepEqual(k.log.slice(n), [['leavePilot'], ['view', 'third'], ['snap']], 'from the map, TANK lands on the chase view');
+  const m = k.log.length; k.click('tank');
+  assert.deepEqual(k.log.slice(m), [['leavePilot']], 'already on the hull: nothing moves');
 }
 // GUNSHIP: nothing off station unless it can be called in; the briefing first, once; a fought sector is never frozen under it
 {

@@ -7,7 +7,7 @@ import { RELEASE_EVENTS, releasesHeld, releaseHeld } from './core/held-input.js'
 export function createSentryPilot(root, host) {
   const state = { tower:null, held:false, yaw:0, pitch:-.2, zoom:1, target:null, shots:0, view:'pov' };   // view: pov (over the barrels) | third (behind the turret)
   const panel=document.createElement('section'); panel.id='sentry-pilot';
-  panel.innerHTML=`<header>SENTRY CONTROL <small>THE MOUNTS ON THE WALL</small></header><p><button data-map>Map / optic · M</button></p><output></output><footer>${host.mobile?'Drag to aim · ‹ › turn · ◉ fire · MAP':'Click to lock the mouse, move it to aim · Space fires · wheel zoom · 1 map · 2 PoV · 3 third · P pause'}</footer><div class="pilot-cross">＋</div>`;
+  panel.innerHTML=`<header>SENTRY CONTROL <small>THE MOUNTS ON THE WALL</small></header><p><button data-map>Map / optic · M</button></p><output></output><footer>${host.mobile?'Drag to aim · ‹ › turn · ◉ fire · MAP':'Click to lock the mouse, move it to aim · Space fires · wheel zoom · 1 map · 2 PoV · 3 third · P pause · Esc frees the mouse, Esc again or 7: the tank · H controls'}</footer><div class="pilot-cross">＋</div>`;
   root.append(panel);root.classList.add('sentry-pilot-mode');
   const up=new THREE.Vector3(),forward=new THREE.Vector3(),direction=new THREE.Vector3(),eye=new THREE.Vector3(),camEye=new THREE.Vector3(),v=new THREE.Vector3();
   let dragging=false,map=false,lastX=0,lastY=0,lastT=performance.now();
@@ -19,8 +19,9 @@ export function createSentryPilot(root, host) {
   listen(panel.querySelector('[data-map]'),'click',toggleMap);
   const editable=e=>/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)||e.target.isContentEditable;
   listen(window,'keydown',e=>{
-    if(editable(e))return;
+    if(editable(e)||/^[hH?]$/.test(e.key))return;   // H / ? reach the controls page from a seat (src/fx/controls-card.js)
     e.stopImmediatePropagation();
+    if(e.key==='Escape'){host.leave?.();return;}   // ESC IS THE TANK (owner, 2026-09-25): the first Esc frees the mouse (the browser's), the next leaves, as 7 and TANK do
     if(e.code==='Space'){e.preventDefault();state.held=gunship||!map;}
     if(e.repeat)return;
     if(gunship){if(/^[123]$/.test(e.key))selectGun(G.order[Number(e.key)-1]);if(e.code==='KeyV')setView(map?'pov':state.view==='third'?'pov':'third');if(e.code==='KeyT'){if(map)setView('pov');else{setView('map');frameApproach(true);}}if(e.code==='KeyP')host.pause();return;}   // the gunner's views: the map (the orbital strike's own), or a look at the ship
@@ -30,7 +31,7 @@ export function createSentryPilot(root, host) {
   },{capture:true});
   listen(window,'keyup',e=>{if(editable(e))return;e.stopImmediatePropagation();if(e.code==='Space'){e.preventDefault();state.held=false;}},{capture:true});
   listen(root,'pointerdown',e=>{
-    if(e.target.closest('button,a,input,select,.lil-gui,.tzone,.tfire,#shell-bar,#shell-nav,#gunship-briefing'))return;
+    if(e.target.closest('button,a,input,select,.lil-gui,.tzone,.tfire,#shell-bar,#shell-nav,#gunship-briefing,#story-views,.minimap,#controls-card'))return;   // the strip, the radar and the controls page do not take the mouse back (2026-09-25 playtest)
     if(gunship&&map){e.stopImmediatePropagation();e.preventDefault();px=e.clientX;py=e.clientY;state.held=true;host.wake();return;}   // the shelved top view: the pointer is the aim, the button the trigger, no lock
     if(gunship&&locked()&&e.pointerType==='mouse'&&e.button===0){e.stopImmediatePropagation();e.preventDefault();state.held=true;host.wake();return;}   // locked in the seat: the button is the trigger
     if(map)return;
@@ -137,7 +138,7 @@ export function createSentryPilot(root, host) {
     if(!G||G.mount()!=='mounted')return 'refused';
     gunship=true;ship.ci=G.heart();state.tower=ship;state.held=false;state.target=null;state.hidden=null;state.view='pov';state.zoom=G.platform.zoom??1;state.zoomGoal=state.zoom;host.zoom(state.zoom);px=innerWidth/2;py=innerHeight/2;
     pendingAim=G.centers[G.lane()];aimShip();state.pitch=-1.45;   // the seat opens looking straight down, the lane's way   // the seat opens on where they come from; settled again on the first tick, once the platform has taken its track (its frame can swing when a breach opens)
-    guns.style.display='';panel.querySelector('header').innerHTML='KORP / GS01 <small>HEAVY GUNSHIP · ON STATION</small>';panel.querySelector('footer').textContent=host.mobile?'Drag to aim · ◉ fires · the gun buttons above · rounds take seconds to land: lead them · MK-9: paint, then release · TANK leaves':'Click to lock the mouse, move it to aim · Space or the button fires · rounds take seconds to land: lead them · 1 rotary · 2 bofors · 3 MK-9 mini nuke (paint, then release: it drops two seconds before it burns) · V the ship · T top view · P pause';   /* on touch the pad's fire button is the trigger and the seat's own buttons pick the gun: 1 2 3 have no key there */
+    guns.style.display='';panel.querySelector('header').innerHTML='KORP / GS01 <small>HEAVY GUNSHIP · ON STATION</small>';panel.querySelector('footer').textContent=host.mobile?'Drag to aim · ◉ fires · the gun buttons above · rounds take seconds to land: lead them · MK-9: paint, then release · TANK leaves':'Esc frees the mouse, Esc again or 7: back to the tank · Click to lock the mouse, move it to aim · Space or the button fires · rounds take seconds to land: lead them · 1 rotary · 2 bofors · 3 MK-9 mini nuke (paint, then release: it drops two seconds before it burns) · V the ship · T top view · P pause';   /* on touch the pad's fire button is the trigger and the seat's own buttons pick the gun: 1 2 3 have no key there */
     G.optic.mount();host.views?.('gunship');selectGun(G.state.gun);if(map)toggleMap();root.classList.add('gunship-seat');panel.querySelector('.pilot-cross').style.display='none';setMode();   // the seat is thermal, the FLIR ironbow (owner, 2026-09-14; its only view, 2026-09-16)
     return 'mounted';
   }

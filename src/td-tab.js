@@ -3902,7 +3902,7 @@ export function initTdTab(root) {
     paused = !paused;
     if (paused) {
       msgEl.innerHTML = `<div class="msg-head">transmission · paused</div>` +
-        `sector frozen<br>ESC resumes` + GAMEPLAY_TIPS;
+        `sector frozen<br>ESC or P resumes` + GAMEPLAY_TIPS;
       msgEl.classList.remove('hidden');
     } else {
       msgEl.classList.add('hidden');
@@ -4069,7 +4069,7 @@ export function initTdTab(root) {
     ramCombo = 0; ramComboT = 0; syncCombo();
     breachedCells.clear(); explosions.clear(); sealedBreachCells.clear(); laserStation.reset(); // a NEW world owes nothing to the old one's holes, its fire, its sealed sinkholes or SOL-82's scorch
     const built = buildGameWorld({ world: storyQuery.world, params, stage: storyQuery.stage, landmarks: storyQuery.landmarks, phase: storyQuery.phase, grow: storyQuery.grow, scene, sfx, warm: warmShaders });
-    mesh = built.mesh; dungeon = built.dungeon; if (built.wallHeight) params.wallHeight = built.wallHeight; storyBase?.dispose(); storyBase = built.base; foundryFx?.dispose(); foundryFx = null; story?.glue?.dispose(); story = built.story ?? null; sectorRun = story ? makeSectorRun() : null; storyMonitor?.dispose(); storyMonitor = story ? createStoryMonitor(root) : null; storyScope?.dispose(); storyScope = story ? createStoryScope(root) : null; daylight?.restore(); daylight = story ? createDaylight({ hemi, sun, bg: mainBg, day: story.day.day, tune: story.day }) : null; gunshipRig.reset();   /* A NEW RUN LEAVES NOTHING BEHIND (2026-09-25): the old rig's night goes back on the lights before the new rig reads them, and the gunship, its meter, its track and an MK-9 still falling go with the old world */   // the story planet has a day   // 4 m walls on the story sphere; the story's islands, structures, sockets and beats at the requested stage
+    mesh = built.mesh; dungeon = built.dungeon; if (built.wallHeight) params.wallHeight = built.wallHeight; storyBase?.dispose(); storyBase = built.base; foundryFx?.dispose(); foundryFx = null; story?.glue?.dispose(); story = built.story ?? null; sectorRun = story ? makeSectorRun() : null; storyMonitor?.dispose(); storyMonitor = story ? createStoryMonitor(root) : null; storyScope?.dispose(); storyScope = story ? createStoryScope(root) : null; daylight?.restore(); daylight = story ? createDaylight({ hemi, sun, bg: mainBg, day: story.day.day, tune: story.day }) : null; gunshipRig.reset();   /* A NEW RUN LEAVES NOTHING BEHIND (2026-09-25): the lights' night, the gunship and a falling MK-9 go with the old world */   // the story planet has a day   // 4 m walls on the story sphere; the story's islands, structures, sockets and beats at the requested stage
     graph = dungeon.graph; cellSide = mesh.defaultSide;
     // THE CAMP, BEFORE ANY ACTOR IS PLACED. Berth cells are graph maths,
     // so they are known now rather than whenever the container model
@@ -4657,7 +4657,7 @@ export function initTdTab(root) {
       // the Heart: contact costs heartDmg and consumes the creature
       if (dist3(e.pos, graph.centers[dungeon.heart]) < cellSide * 0.75) {
         killCreature(e);
-        if (!e.harmless) heartHit(spec.heartDmg);   /* the story's harmless fodder (the first wave, sector 0's leftovers) cannot hurt the heart either */
+        if (!e.harmless) heartHit(spec.heartDmg);   /* harmless fodder cannot hurt the heart */
         continue;
       }
       // the player's tank is strong: fodder dies under the treads for
@@ -8614,7 +8614,7 @@ export function initTdTab(root) {
       }
       if (waveActive) {
         waveAge += dt;
-        if (sectorRun?.pulseGap?.() != null ? sectorRun.pulseOver(spawnQueue) : (!spawnQueue.length && enemies.every((e) => !(e.alive && !e.guard)))) {   /* a story sector runs on its clock: the pulse ends when its bodies have left the queue (src/fx/sector-run.js) */
+        if (sectorRun?.pulseGap?.() != null ? sectorRun.pulseOver(spawnQueue) : (!spawnQueue.length && enemies.every((e) => !(e.alive && !e.guard)))) {   /* a sector's pulse ends when its bodies leave the queue */
           waveActive = false; interClock = 0; waveCharge = 0; if (automated()) fillFromWaveClear(gunshipRig.call, GUNSHIP_CALL);
           { const p0 = score.points; score.addWave(wave); persistBest(); sectorRun?.note({ type: 'score', points: score.points - p0, kind: 'bonus' }); }
           if (simStyle) {
@@ -8635,7 +8635,7 @@ export function initTdTab(root) {
         interClock += dt;
         // arm early enough that the countdown consumes the last WAVE_WARN of
         // the gap — the total wait from cleared to spawned is unchanged
-        const gap = sectorRun?.pulseGap?.() ?? params.waveGap * (wave < 2 ? 1.6 : 1); // breathe early (a story sector keeps its own pulse)
+        const gap = sectorRun?.pulseGap?.() ?? params.waveGap * (wave < 2 ? 1.6 : 1); // breathe early
         if (interClock >= gap - WAVE_WARN && !(lab.on && lab.holdWaves) && (!storyMode || automated())) armWave();
       } else if (waveIn < 0) {
         waveCharge = 0;
@@ -8752,7 +8752,7 @@ export function initTdTab(root) {
     } else if (playerMesh.userData.tick) {
       playerMesh.userData.tick(t);
     }
-    buildFollowTank(dt); if (story) (controlsCard ??= createControlsCard(root, { mobile: mobileShell, briefing: () => (gunshipBriefing ??= createGunshipBriefing(root)).openPaused({ get: () => paused, set: (v) => { paused = v; } }) })).tick(automated() && !pilotMode && !laserStation.seated());   /* the tank's keys, taught once past the handover (src/fx/controls-card.js) */ if (story && !storyQuery.skip && !showcaseMode) (skipCard ??= createSkipTutorial(root, { href: skipTutorialUrl(location.search) })).tick(automated());   /* SKIP TUTORIAL: offered through the opening beats, gone at the handover (src/fx/skip-tutorial.js) */ if (showcaseMode) (showcase ??= createShowcase(root, gameHooks.showcase)).tick(dt);   /* THE SHOWCASE: the montage cuts its own shots over this run (src/fx/showcase.js) */
+    buildFollowTank(dt); if (story) (controlsCard ??= createControlsCard(root, { mobile: mobileShell, briefing: () => (gunshipBriefing ??= createGunshipBriefing(root)).openPaused({ get: () => paused, set: (v) => { paused = v; } }) })).tick(automated() && !pilotMode && !laserStation.seated(), !shotActive() && story.beats.phase() !== 'landed');   /* the controls page, once, as the landing hands over (src/fx/controls-card.js) */ if (story && !storyQuery.skip && !showcaseMode) (skipCard ??= createSkipTutorial(root, { href: skipTutorialUrl(location.search) })).tick(automated());   /* SKIP TUTORIAL: offered through the opening beats, gone at the handover (src/fx/skip-tutorial.js) */ if (showcaseMode) (showcase ??= createShowcase(root, gameHooks.showcase)).tick(dt);   /* THE SHOWCASE: the montage cuts its own shots over this run (src/fx/showcase.js) */
     if (story && automated() && !frozen && !player.won) laserStation.tick(dt);   // SOL-82: the pass clock once online, the seat's hands, the beam
     updateCameraGoal();
 
@@ -8862,8 +8862,8 @@ export function initTdTab(root) {
   }),
   // THE VIEW STRIP (src/fx/story-views.js): unlock
   createUnlockHost({
-    root, towers, gunship, gunshipRig, automated, enterPilot, leavePilot, setView, showBrief,
-    story: () => story, storyViews: () => storyViews, pilot: () => pilot, pilotMode: () => pilotMode, pilotHost: () => pilotHost, sectorRun: () => sectorRun, gunshipBriefing: () => gunshipBriefing, paused: () => paused,
+    root, towers, gunship, gunshipRig, automated, enterPilot, leavePilot, setView, showBrief, snapCamera,
+    view: () => params.view, story: () => story, storyViews: () => storyViews, pilot: () => pilot, pilotMode: () => pilotMode, pilotHost: () => pilotHost, sectorRun: () => sectorRun, gunshipBriefing: () => gunshipBriefing, paused: () => paused,
     setStoryViews: (v) => (storyViews = v), setGunshipBriefing: (v) => (gunshipBriefing = v), setPaused: (v) => { paused = v; },
   }));
   Object.assign(storyApi, createBackDoor({ storyApi, sfx, explode, showBrief, camDist, showCallout, warnRing, breachWallCell, rebuildAfterBreach, recomputePortalDist, shotActive, camera, startShot, story: () => story, graph: () => graph, dungeon: () => dungeon, cellSide: () => cellSide, paused: () => paused, deploy: () => deploy, pilotMode: () => pilotMode, pilot: () => pilot }));   /* THE SECOND FRONT (src/fx/back-door.js) */
@@ -9385,7 +9385,7 @@ export function initTdTab(root) {
     pilot=createSentryPilot(root,pilotHost={
       story:!!posts,mobile:mobileShell,select:installPilot,views:name=>storyViews?.active(name),thermal:on=>thermalHeat.set(on),leave:()=>leavePilot(),gunship:gunshipRig.pilotBag(),
       post:delta=>{pilotPost=(pilotPost+delta+pilotPosts.length)%pilotPosts.length;pilot.select(pilotMounts[pilotPost]?.key || pilot.state.tower.key);}, pick:key=>{const i=pilotMounts.findIndex(m=>m?.key===key);if(i>=0){pilotPost=i;pilot.select(key);}},   // the story's strip names a mount
-      map:on=>setView(on?'orbit':'bastion'),pause:()=>{togglePause();pilot.state.held=false;},
+      map:on=>setView(on?'orbit':'bastion'),leave:()=>root.querySelector('#story-views [data-view="tank"]:not([disabled])')?.click(),pause:()=>{togglePause();pilot.state.held=false;},
       wake:()=>holdWake(),cellSide:()=>cellSide, cone:()=>(pilot?.state.tower&&missileOf(pilot.state.tower.key)?story?.quiverCone??0:0),   // a guided mount acquires inside a cone; a gun needs the reticle on the body
       zoom:z=>{camera.fov=60/z;camera.updateProjectionMatrix();}, lens:()=>[camera.fov,camera.aspect], round:()=>{const tw=pilot?.state.tower,m=tw&&towerSeekers.find(m=>m.by===tw);return m?{pos:m.p,u:m.t/m.config.duration,phase:m.pose?.phase}:null;},   /* the piloted mount's guided round in flight, for the framing (src/core/round-framing.js) */
       visible:e=>pilot.state.tower && losClear(pilot.state.tower.ci,e.pos,perchOf(pilot.state.tower)),

@@ -1929,6 +1929,15 @@ try{
    if((await held()).paused)await esc();
    assert(!(await held()).paused,`${name}: ESC resumes after it`);}
   current='seats-pause';await finish();}
+ // THE WAY BACK TO THE TANK (2026-09-25 playtest: "the switch from gunship back to tank was not obvious ... clicking the tank icon
+ // bottom left did not bring me to tank position"): Esc in the gunship's seat (the mouse already free) leaves it for the hull's own
+ // view; from the MAP with no seat taken, TANK lands on the hull's own view too
+ {const esc=async()=>{await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape'});await delay(400);};
+  await stripClick('[data-mount=gunship]');assert((await seat()).gunshipSeat,'in the gunship seat');
+  await esc();{const s=await seat();assert(!s.gunshipSeat&&!s.pilot,`Esc leaves the gunship seat (${JSON.stringify(s)})`);assert.equal(s.view,'third','for the hull\'s own view');assert.equal(await evaluate('window.__stalheartTest.state().paused'),false,'and does not pause');}
+  await stripClick('[data-view=map]',800);assert.notEqual((await seat()).view,'third','the map is up');
+  {const s=await toTank();assert.equal(s.view,'third',`TANK from the map lands on the hull (${s.view})`);}
+  current='seats-way-back';await finish();}
  } else if(args.includes('--debrief')) {
  // THE SECTOR DEBRIEF (src/fx/sector-debrief.js) in its lab, labs.html#debrief. Every sample report is shown, each page
  // is completed with a real Space press and advanced with the next one, and the pages and labels are checked against

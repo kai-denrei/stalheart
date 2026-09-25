@@ -46,7 +46,9 @@ export function createUnlockHost(host) {
     unlock: (what) => {
       if (what === 'views') {
         host.storyViews() ?? host.setStoryViews(createStoryViews(root, {
-          tank: () => leavePilot(),
+          // TANK IS THE TANK (2026-09-25 playtest): leaving a seat restores the view that seat was entered from, which can be the map;
+          // the TANK button (and 7, and Esc in a seat) always ends on the hull's own view, and works from the map without a seat too
+          tank: () => { leavePilot(); if (!/^(third|pov)$/.test(host.view())) { setView('third'); host.snapCamera(); } },
           mount: (key) => {
             if (key === 'gunship') {
               if (!onStation(gunship) && !(gunshipRig.onCall() && callGunship(gunshipRig.call) && startStation(gunship, GUNSHIP_ORBIT))) return;

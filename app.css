@@ -69,7 +69,7 @@
 #sentry-pilot .pilot-cross.hit{color:#ff3b2f;transform:translate(-50%,-50%) scale(1.5)}
 #sentry-pilot .pilot-guns{display:flex;gap:6px;margin:6px 0}#sentry-pilot .pilot-guns button.on{background:#2a2416;border-color:#ffb43d;color:#ffd48a}
 #sentry-pilot button.on{background:#d7e3e5;color:#111}
-#sentry-pilot output{display:block;white-space:pre-line;padding:10px 0}#sentry-pilot footer{position:fixed;bottom:25px;left:50%;transform:translateX(-50%);white-space:nowrap;background:#10191de8;padding:9px}
+#sentry-pilot output{display:block;white-space:pre-line;padding:10px 0}#sentry-pilot footer{position:fixed;bottom:25px;left:50%;transform:translateX(-50%);white-space:normal;width:max-content;max-width:min(92vw,1100px);text-align:center;background:#10191de8;padding:9px}
 .pilot-cross{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font-size:30px;font-weight:200}.pilot-map .pilot-cross{display:none}
 .sentry-pilot-mode #td-pad,.sentry-pilot-mode #td-throttle,.sentry-pilot-mode #td-coach,.sentry-pilot-mode #td-tut-banner{display:none!important}
 .sentry-pilot-mode #td-stats,.sentry-pilot-mode #td-tower,.sentry-pilot-mode #td-wave,.sentry-pilot-mode #td-launch,.sentry-pilot-mode .tc-util,.sentry-pilot-mode #td-brief,.sentry-pilot-mode #td-tut,.sentry-pilot-mode #td-hint,.sentry-pilot-mode #td-stick,.sentry-pilot-mode .tzone,.sentry-pilot-mode .tfire{display:none!important}
