@@ -6,13 +6,12 @@ import { MeshoptDecoder } from '../../vendor/meshopt_decoder.module.js';
 import { createLaunchPlume } from '../fx/launch-plume.js';
 import { makeScorch, makeEmbers, IMPACT_TUNE } from '../impactfx.js';
 import { makeIsaoDrone, preloadFabricator } from '../units.js';
-import { PLUME_CLUSTER, STORY_SCALE } from '../content/story-defaults.js';
+import { PLUME_CLUSTER, STORY_SCALE, SH02_WELL } from '../content/story-defaults.js';
 import { basisAt } from '../fx/story-base.js';
 
 const ROCKET_URL = 'assets/models/story/sh_rocket.glb';
-const BELL_HEIGHT = 2.0;          // engine bells above the touchdown plane, authored metres
-const WELL_FLOOR = 19.0;          // cargo well floor above the touchdown plane, authored metres
-const WELL_RIM = 23.5;            // door rim, authored metres
+// engine bells, cargo well floor and door rim above the touchdown plane, authored metres (shared with the game's arrival)
+const { bell: BELL_HEIGHT, floor: WELL_FLOOR, rim: WELL_RIM } = SH02_WELL;
 
 export function createStoryLanding(scene, { placer, site = [0, 0], dustTint = 0x9a8f7a, onFace = null }) {
   let isaoFace = 'neutral';

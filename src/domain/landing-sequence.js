@@ -3,8 +3,11 @@
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 const smooth = (v) => { const t = clamp01(v); return t * t * (3 - 2 * t); };
 
+// `shockClip` and `doorClip` are the authored lengths of the shock and door clips when the next beat does not wait them out: the
+// game's short arrival (src/domain/arrival-shot.js) opens the door `shock` seconds after touchdown while the shock clip plays on,
+// and starts Isao `door` seconds into the door while it is still opening. Unset, each beat waits out its own clip, as the lab does.
 export function makeLandingSequence(tune) {
-  const { orbit, descent, startAltitude, deployAltitude, legsDeploy, shock, settle, door, isao, isaoHold = 0, dustSeconds } = tune;
+  const { orbit, descent, startAltitude, deployAltitude, legsDeploy, shock, settle, door, isao, isaoHold = 0, dustSeconds, shockClip = shock, doorClip = door } = tune;
   const touchdown = orbit + descent;
   const doorAt = touchdown + shock + settle;
   const isaoAt = doorAt + door;
@@ -27,8 +30,8 @@ export function makeLandingSequence(tune) {
     plume: t < 0 || t >= touchdown ? 0 : smooth((t + 0.3) / 0.6),
     clips: {
       Legs_Deploy: clipTime(t, legsStart, legsDeploy),
-      Landing_Shock: clipTime(t, touchdown, shock),
-      Top_Door_Open: clipTime(t, doorAt, door),
+      Landing_Shock: clipTime(t, touchdown, shockClip),
+      Top_Door_Open: clipTime(t, doorAt, doorClip),
     },
     isaoRise: t < isaoAt ? 0 : smooth((t - isaoAt) / isao),
     dust: t >= touchdown && t < touchdown + dustSeconds,

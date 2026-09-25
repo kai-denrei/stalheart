@@ -1,7 +1,8 @@
 // The opening's scripted beats in the story world. Pure: the host supplies
 // a small API and calls tick with the sim delta; the beats decide what
 // happens next.
-//   landed        Isao out: "rough landing", then "so much to build"
+//   landed        Isao out: "rough landing", then "so much to build". With `arrival` (src/fx/arrival.js plays the landing in the game,
+//                 and the lines are its own) nothing is said or deployed here: the arrival calls deploy(api) on its cut to his face
 //   foundry       (with a foundry tune) Isao deploys the AFR-01; the arm cuts the SH02; the first barrel is the Rotor's feedstock
 //   printing      Isao prints the Rotor on the wall beside the tunnel mouth
 //   rotor-ready   the sentry stands
@@ -31,6 +32,7 @@ export function makeStoryBeats({
   faceDelays = [0.6, 4], commsKills = 5, harvestKills = 10, quiverSocket = -1, quiver = null, startPhase = 'landed',
   gateReady = () => true,   // a growing base: the tremor waits for Isao to print the gate (src/content/base-programme.js)
   construction = null,      // a growing base: the waves that come while the Stålheart prints (src/content/story-defaults.js STORY_CONSTRUCTION)
+  arrival = false,          // the landing plays in the game (src/fx/arrival.js): `landed` waits for its deploy(api)
 }) {
   const gated = gate >= 0 && fodder >= 0;
   // THE FOUNDRY PAYS (owner, 2026-09-14): with a foundry tune the grants are barrels of feedstock cut from the rocket, not conjured
@@ -49,8 +51,8 @@ export function makeStoryBeats({
   let phase = startPhase, clock = 0, orderedAt = null, readyAt = null, spawned = 0, nextSpawn = 0, at = 0, faces = 0, said = new Set(), hardcores = 0, gateAt = null;
   // A LATE START (a jump past the handover): the landing faces are already said, and the views strip is offered on the first tick
   const late = startPhase !== 'landed';
-  let offered = false;
-  if (late) faces = 2;
+  let offered = false, released = !arrival;   // an arrival holds `landed` until its cut
+  if (late || arrival) faces = 2;
   const enter = (p) => { phase = p; at = clock; };
   const spawnTick = (api) => {
     if (spawned >= fodderTotal || clock < nextSpawn) return;
@@ -65,9 +67,9 @@ export function makeStoryBeats({
       if (faces === 0 && clock >= faceDelays[0] && api.isao()) { api.brief?.('rough_landing'); faces = 1; }
       else if (faces === 1 && clock >= faceDelays[1]) { api.brief?.('so_much_to_build'); faces = 2; }
       if (fd) for (const e of stepFoundry(fd, dt, foundry)) { api.foundry?.(typeof e === 'string' ? e : e.ev, typeof e === 'string' ? null : e); if (e === 'barrel') api.grant(foundry.feedstockPerBarrel); }
-      if (phase === 'landed' && fd && faces === 2 && clock >= rotorDelay) { api.foundry?.(deployFoundry(fd), null); enter('foundry'); }
+      if (phase === 'landed' && fd && released && faces === 2 && clock >= rotorDelay) { api.foundry?.(deployFoundry(fd), null); api.brief?.('foundry_deploy'); enter('foundry'); }
       else if (phase === 'foundry' && fd.barrels >= 1) { if (api.order(key, socket)) { enter('printing'); orderedAt = clock; } }
-      else if (phase === 'landed' && !fd && clock >= rotorDelay) {
+      else if (phase === 'landed' && !fd && released && clock >= rotorDelay) {
         api.grant(api.cost(key));
         if (api.order(key, socket)) { enter('printing'); orderedAt = clock; }
       } else if (phase === 'printing' && api.built(socket)) { enter('rotor-ready'); readyAt = clock; }
@@ -112,6 +114,14 @@ export function makeStoryBeats({
       } else if (phase === 'settled' && quiver && clock - at >= studyDelay) { api.closeup?.('isao'); api.brief?.('vibration_study'); said.add('vibration_study'); enter('study-talk'); }
       else if (phase === 'study-talk' && clock - at >= 0.5 && !api.briefing?.()) { api.screen?.('synthetic'); enter('study'); }   // the lines run out (or were seen before), then the screen
       else if (phase === 'study' && !api.screenOpen?.()) { api.brief?.('rocket_sites'); api.sites?.(); api.expeditionsBegin?.(); api.planetView?.(); said.add('rocket_sites'); enter('expedition'); }
+    },
+    // THE ARRIVAL'S CUE (src/fx/arrival.js): the landing has played and Isao has said its lines, so the AFR-01 deploys now, in this
+    // call, on the cut to his face, and says nothing of its own. Once, from `landed` only; true when it released the beats
+    deploy(api) {
+      if (released || phase !== 'landed') return false;
+      released = true;
+      if (fd) { api.foundry?.(deployFoundry(fd), null); enter('foundry'); }
+      return true;
     },
     phase: () => phase,
     state: () => ({ phase, clock: +clock.toFixed(2), socket, orderedAt, readyAt, gateAt, spawned, gated, said: [...said], hardcores, foundry: fd ? foundryState(fd) : null, construction: { waves: cWaves, sent: cSent } }),

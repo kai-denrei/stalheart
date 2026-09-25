@@ -29,7 +29,7 @@ export const ISLANDS = Object.freeze([
 // structures: asset, island they stand on, stage, model offset to centre the
 // authored origin on the plot, uniform scale, nodes to hide
 export const STRUCTURES = Object.freeze([
-  { id: 'sh02', asset: 'assets/models/story/sh_rocket.glb', island: 'landing', stage: 1, until: 2, scale: 1.5, offset: [0, 0, 0], clips: ['Legs_Deploy', 'Top_Door_Open'], hold: true },   // the intact rocket: from stage 2 it is the salvage layout below
+  { id: 'sh02', asset: 'assets/models/story/sh_rocket.glb', island: 'landing', stage: 1, until: 2, scale: 1.5, offset: [0, 0, 0], clips: ['Legs_Deploy', 'Top_Door_Open', 'Landing_Shock'], hold: true },   // the intact rocket: from stage 2 it is the salvage layout below. Held at their ends (the shock ends where it began, at the rest pose the deploy ends on); the game's arrival scrubs all three (src/fx/arrival.js)
   // THE ARRIVAL RECYCLED (docs/superpowers/specs/2026-09-14-arrival-foundry-design.md): the AFR-01 seed foundry and the SH02 cut into
   // four sections share the landing island's origin. Loaded at stage 1 but hidden until the foundry beat reveals them; shown outright from stage 2.
   { id: 'foundry', asset: 'assets/models/story/afr_01_seed_foundry_d0_lod1.glb', far: 'assets/models/story/afr_01_seed_foundry_d0_lod2.glb', island: 'landing', stage: 1, shown: 2, scale: 1.5, offset: [0, 0, 0], pose: { Recycle_Panel_To_Barrel: 0, Foundry_Process_Cycle: 0 } },   // both clips held at 0 until the beat drives them

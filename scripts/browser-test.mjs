@@ -882,7 +882,7 @@ try{
   const seen=(k,v,what)=>{if(P.last[k]!==v){P.last[k]=v;if(v!==undefined&&v!==null&&v!==false&&v!=='')ev(what(v));}};
   P.iv=setInterval(()=>{try{
    const s=T.state(),S=s.sector||{},pg=s.programme||{},st=s.story||{};P.clock=s.shieldClock;P.clock0??=P.clock;
-   seen('phase',st.phase,v=>'story '+v);seen('active',pg.active,v=>'print begins '+v);seen('printed',(pg.printed||[]).join(),v=>'printed '+(pg.printed||[]).slice(-1)[0]);
+   seen('phase',st.phase,v=>'story '+v);seen('shot',s.shot,v=>'shot '+v);seen('active',pg.active,v=>'print begins '+v);seen('printed',(pg.printed||[]).join(),v=>'printed '+(pg.printed||[]).slice(-1)[0]);
    seen('heart',s.heart,v=>'heart '+v);seen('towers',s.towers,v=>'towers '+v);seen('hulls',s.hulls,v=>'hulls '+v);seen('deploying',s.deploying,v=>'hull deploying');seen('automated',s.automated,v=>'automated');
    seen('sector',S.n||null,v=>'sector '+v+' card');seen('sphase',S.phase,v=>'sector phase '+v);seen('debrief',S.debriefOpen,v=>'debrief');
    for(const b of S.breaches||[]){seen('open'+S.n+b.id,b.opened,v=>'breach '+b.id+' '+b.side+' opens');seen('rel'+S.n+b.id,b.wavesReleased||null,v=>'pulse '+b.id+' '+b.side+' wave '+v);}
@@ -933,13 +933,46 @@ try{
  {const b=await evaluate('window.__stalheartTest.state()');assert.equal(b.programme.grow,true,'a story page with no stage grows its base');assert.equal(b.programme.next,'foundry','he works the recycler before he prints the gate');assert.equal(b.programme.gate.built,false);
   assert.equal(b.hull?.state,'held','SECTOR 0: a bare page has no hull until the Stålheart stands');}
  await finish();
- await go('grow-landing','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=1&grow=1#td');await until('!!window.__stalheartTest',90000);await delay(2500);
+ await go('grow-landing','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=1&grow=1#td');await until('!!window.__stalheartTest',90000);
+ const t0=Date.now(),mark=async(what)=>console.log(`GROW ${what} at ${((Date.now()-t0)/1000).toFixed(1)} s`);   /* every mark from the page being ready (before the arrival, from after its first checks) */
+ // THE ARRIVAL (owner, 2026-09-25: "bring back the landing, short and sweet but showing the landing. Isao comes out, close up on his
+ // face; he's the narrator ... The state change from rocket intact to dismantled should happen off camera"). Every frame is logged in the
+ // page from here: the shot, the arrival's phase, whether the intact rocket, its salvage and the foundry are shown, Isao, the panel's line
+ await evaluate(`(()=>{const T=window.__stalheartTest,L=window.__arrival=[];(function tick(){let a;try{const s=T.state();a=s.arrival;L.push([s.shot,a.phase,a.rocket,a.salvage,a.foundry,!!a.isao?.visible,document.querySelector('#td-brief:not(.hidden) #td-brief-line')?.textContent||null,a.t,a.talkT,s.story.phase]);}catch(e){L.push(['error',String(e)]);return;}if(a.phase!=='done')requestAnimationFrame(tick);else window.__arrivalDone=true;})();})()`);
+ await until('window.__stalheartTest.state().arrival.phase!=="waiting"',60000);await mark('the arrival begins: the SH02 comes down');
+ {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.arrival.on,true,'a story start lands the SH02');assert.equal(s.story.phase,'landed','the beats wait for it');}
+ await until('(a=>a.phase!=="landing"||a.t>=3.95)(window.__stalheartTest.state().arrival)',20000);
+ {const s=await evaluate('window.__stalheartTest.state()'),a=s.arrival;assert.equal(s.shot,'arrival');assert.equal(a.phase,'landing','still landing');
+  assert.equal(a.rocket,true,'the intact rocket is on screen');assert(a.salvage===false&&a.foundry===false,'no salvage and no foundry yet');assert.equal(a.altitude,0,'down');assert(a.isao.visible&&a.isao.face==='angry',`Isao comes out of the hatch, angry (${JSON.stringify(a.isao)})`);
+  assert.equal(await evaluate('getComputedStyle(document.querySelector("#td-stats")).display'),'none','the landing plays without the HUD');}
+ current='grow-arrival';await finish();
+ await until('window.__stalheartTest.state().arrival.phase!=="landing"',20000);await mark('the cut to his face');
+ await until('(a=>a.phase!=="talk"||a.talkT>=1.6)(window.__stalheartTest.state().arrival)',20000);
+ {const s=await evaluate('window.__stalheartTest.state()'),a=s.arrival;assert.equal(s.shot,'arrivalTalk');assert.equal(a.phase,'talk');
+  assert(a.eye[2]>0&&a.eye[2]<a.to[2],`the camera stands between Isao and the rocket, the rocket behind it (camera ${a.eye}, Isao ${a.to}, the rocket at 0)`);
+  assert(a.rocket===false&&a.salvage===true&&a.foundry===true,`the rocket is the salvage and the foundry now (${JSON.stringify(a)})`);assert(a.fov<30,`a long lens on his face (${a.fov})`);
+  assert.equal(s.story.phase,'foundry','the AFR-01 deployed on the cut');}
+ current='grow-arrival-talk';await finish();
+ await until('window.__arrivalDone===true',20000);await mark('the arrival ends: back on the base');
+ {const L=await evaluate('window.__arrival'),s=await evaluate('window.__stalheartTest.state()'),a=s.arrival;
+  const land=L.filter(r=>r[0]==='arrival'),talk=L.filter(r=>r[0]==='arrivalTalk'),cut=L.findIndex(r=>r[0]==='arrivalTalk'),end=L.findIndex(r=>r[1]==='done');
+  assert(!L.some(r=>r[0]==='error'),`the log ran (${JSON.stringify(L.find(r=>r[0]==='error'))})`);assert(land.length>20&&talk.length>20,`both shots were on screen (${land.length} and ${talk.length} frames)`);
+  // THE SWAP IS NEVER ON SCREEN: every frame of the landing has the intact rocket and nothing of the recycling, every frame of the
+  // close-up has the salvage and the foundry and no rocket (behind its camera), and the change is on the cut itself
+  assert(land.every(r=>r[2]===true&&r[3]===false&&r[4]===false),`every frame of the landing shows the intact rocket and no salvage (${JSON.stringify(land.find(r=>!(r[2]===true&&r[3]===false&&r[4]===false)))})`);
+  assert(talk.every(r=>r[2]===false&&r[3]===true&&r[4]===true),'every frame of the close-up has the rocket recycled');
+  assert.equal(L[cut-1][0],'arrival','the swap is on the cut: the frame before the close-up is the landing');
+  assert(L.slice(L.findIndex(r=>r[0]==='arrival'),end).every(r=>r[0]==='arrival'||r[0]==='arrivalTalk'),'nothing between the two shots');
+  const lines=[...new Set(L.map(r=>r[6]).filter(Boolean))];
+  assert.deepEqual(lines.slice(0,2),['Rough landing!','So much to build!'],`his lines over his face (${lines})`);assert(talk.some(r=>r[6]==="I'll get started on recycling the rocket."),'and the third begins on it');
+  assert.equal(a.fov,a.lens,'the lens is the game\'s again');assert.equal(s.shot,null);assert.equal(await evaluate('getComputedStyle(document.querySelector("#td-stats")).display'),'block','and the HUD is back');
+  const seen=await evaluate('JSON.parse(localStorage.getItem("stalheart:v1:td.briefs")||"[]")');for(const id of ['rough_landing','so_much_to_build','foundry_deploy'])assert(!seen.includes(id),`the old landing line ${id} is not said over the arrival`);
+  console.log(`  grow: the arrival ${a.cut} s of landing (${land.length} frames) + ${a.talk} s on his face (${talk.length} frames); lines ${lines.join(' / ')}`);}
  const g0=await evaluate('window.__stalheartTest.state()');assert.equal(g0.programme.grow,true);assert.equal(g0.programme.gate.built,false,'no gate at the landing');assert.deepEqual(g0.programme.printed,[]);assert.deepEqual(g0.bays,[],'the bays are not printed yet');
  // SECTOR 0 (owner, 2026-09-24: "The Tank is built by the Stalheart"): the opening is Isao coming out and building; no MÖRK is drawn or driven
  assert.equal(g0.hull.state,'held','no hull at the landing');assert.equal(g0.hull.visible,false,'the hull is not drawn');assert(g0.hull.door>=0,`the Stålheart has a door to roll the hull out of (${JSON.stringify(g0.hull)})`);
- assert.deepEqual(await evaluate(hiddenNear),[]);await finish();
- const t0=Date.now(),mark=async(what)=>console.log(`GROW ${what} at ${((Date.now()-t0)/1000).toFixed(1)} s`);
- await mark('landed');
+ assert.deepEqual(await evaluate(hiddenNear),[]);current='grow-landing';await finish();
+ await mark('landed (the base, the rocket recycling)');
  await until('window.__stalheartTest.state().towers===1',120000);await mark('Rotor printed');
  // ISAO WORKS THE RECYCLER FIRST (owner, 2026-09-16): before the gate he flies to the AFR-01 and holds the beam on it. The beat prints
  // nothing, so nothing may stand at the end of it, and the gate must not be pushed materially later than the baseline 26.0 s
@@ -1103,6 +1136,7 @@ try{
  await go('skip-tutorial-offer','index.html?sw=0&acceptance=1&cine=0&world=story&grow=1#td');
  await until(`!!${T}`,90000);await delay(2500);
  {const s=await st();assert.equal(s.skip.on,false,'a page that does not ask to skip does not skip');assert.equal(s.automated,false,'the opening still plays the tutorial');
+  assert.equal(s.arrival.on,true,'the opening lands the SH02 first (src/fx/arrival.js); the offer stands over the landing too');
   assert(['landed','foundry','printing','rotor-ready'].includes(s.story.phase),`the run is in the opening beats (${s.story.phase})`);
   assert.equal(s.skip.offer.shown,true,'the offer stands');
   assert.equal(await evaluate('document.querySelector("#skip-tutorial b").textContent'),'SKIP TUTORIAL','the button says what it does');
@@ -1119,6 +1153,7 @@ try{
  await delay(3000);
  {const s=await st();
   assert.equal(s.skip.on,true,'the click landed in the skipped run');
+  assert.deepEqual([s.arrival.on,s.arrival.phase],[false,'off'],'SKIP TUTORIAL plays no landing');assert.notEqual(s.shot,'arrival');
   assert.equal(s.skip.offer,null,'the offer is not repeated inside the run it opens');
   assert.equal(await evaluate('!!document.querySelector("#skip-tutorial")'),false,'no SKIP TUTORIAL button past the tutorial');
   assert.equal(s.automated,true,'past the handover: the towers are automatic');
@@ -1269,6 +1304,10 @@ try{
  await until('location.search.includes("intro=0")',20000);
  await until('window.__stalheartReady===true',90000);
  assert.equal(await evaluate('!!window.__stalheartShowcase'),false,'PLAY opens the game, not the montage again');
+ // ...and the story starts as every story start does: the SH02 lands and Isao says his three lines (src/fx/arrival.js)
+ await until('document.body.classList.contains("arrival-on")',60000).catch(()=>assert.fail('PLAY lands the SH02'));
+ await until('/Rough landing!/.test(document.querySelector("#td-brief:not(.hidden) #td-brief-line")?.textContent||"")',30000).catch(()=>assert.fail('Isao says his landing lines after PLAY'));
+ current='showcase-play-arrival';await finish();
  await go('showcase-second-visit','index.html?sw=0#td');
  await delay(2500);
  assert.equal(await evaluate('!!window.__stalheartShowcase'),false,'a second bare visit goes straight to the landing');
