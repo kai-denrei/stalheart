@@ -1493,6 +1493,11 @@ try{
  const held=await evaluate('window.__stalheartTest.state()');assert.equal(held.kills,0,'the sentry did not fire on its own');assert(held.performance.enemies>=held.story.spawned-1&&held.performance.enemies>0,`every spawned enemy is still alive (${held.performance.enemies} of ${held.story.spawned}, the last may still be emerging)`);current='story-world-override';await finish();
  assert.equal(await evaluate('typeof window.__stalheartPilotTest'),'undefined','no control before the override');
  await until('!!window.__stalheartPilotTest',30000);
+ // THE ROTOR'S VOICES STAY WITH THE ROTOR (2026-09-25 playtest: its spin and fire carried into the next seat). A real key arms the
+ // page's audio (the context waits for a gesture); every looping voice heard while the Rotor is the seat is banked, so the check
+ // after the Quiver hand-over below is not made against a silent page
+ await send('Input.dispatchKeyEvent',{type:'keyDown',key:'F2',code:'F2'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'F2',code:'F2'});
+ await evaluate(`(()=>{window.__rotorVoices=new Set();const f=()=>{try{const T=window.__stalheartTest,p=window.__stalheartPilotTest?.state?.();if(p&&p.key==='rotor')for(const k of T.state().loopVoices)window.__rotorVoices.add(k);}catch{}if(!window.__rotorVoicesDone)requestAnimationFrame(f);};f();})()`);
  // THE ROTOR'S HEAT PEAK IS MEASURED IN THE PAGE, EVERY FRAME. The harness polls at 150 ms plus a CDP round trip, so banking the peak
  // from its poll bodies sampled the barrels' cooling curve by luck: a run where the piloted Rotor cleared the wave quickly read 0.037,
  // 0.040 and 0.041 on three branches while passing on main both times (2026-09-16). This hook rides requestAnimationFrame from the
@@ -1533,6 +1538,9 @@ try{
  // THE QUIVER: printed across the lane while the wave was fought, handed over the moment the wave is down (its post first,
  // the Rotor's behind it), two TALON shots with the seeker feed riding along, then settled and the strip is back
  await until('window.__stalheartTest.state().story.phase==="quiver-piloting"',120000);await delay(600);
+ {await delay(1200);const heard=await evaluate('(window.__rotorVoicesDone=true,[...window.__rotorVoices])'),now=await evaluate('window.__stalheartTest.state().loopVoices');
+  assert(heard.includes('rotor_pov_fire')&&heard.includes('minigun_ready'),`the Rotor's spin and fire were heard while it was the seat (${JSON.stringify(heard)})`);
+  assert(!now.includes('rotor_pov_fire')&&!now.includes('minigun_ready'),`and neither carries into the Quiver's seat (${JSON.stringify(now)})`);}
  const qp=await evaluate('window.__stalheartPilotTest.state()');assert.equal(qp.key,'quiver','the Quiver optic first');assert.equal(qp.posts.length,2,'both mounts are posts');
  await until('window.__stalheartPilotTest.lock().locked',8000).catch(()=>{});current='story-world-quiver-optic';await finish();   /* the sight in the game's own run: whatever phase the seat is in when the hand-over lands */
  const killsBefore=(await evaluate('window.__stalheartTest.state()')).kills;await evaluate('window.__stalheartPilotTest.hold(true)');

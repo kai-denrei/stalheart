@@ -50,7 +50,7 @@ import { UNITS, UNIT_NAMES, buildUnit, buildCreature, preloadMork, makeShieldShe
 import { LOOKS, LOOK_NAMES } from './looks.js';
 import { makeCellIndex } from './cellindex.js';
 import { CREATURE_TINTS, ENEMY_SPEC, INTROS, computeWavePlan, accentFor } from './enemyspec.js';
-import { PICKUPS } from './pickups.js';
+import { PICKUPS } from './pickups.js'; import { rotorVoice, hushRotor } from './fx/rotor-voice.js';
 import { rankFor, rankLabel, badgeSVG } from './ranks.js';
 import { beamStep, isBeamStep } from './beamranks.js';
 import { burn, sweepAdvance, wallBite as wallBiteFor } from './beamburn.js';
@@ -7150,7 +7150,7 @@ export function initTdTab(root) {
     stepPlasmaBeams(tNow);
     stepTowerSeekers(dt, tNow);
     for (const tw of towers) {
-      const manual = pilotMode && !automated(); if (manual && tw !== pilot?.state.tower) {tw.cooldown=Math.max(0,tw.cooldown-dt);continue;}   // only a HAND on a mount parks the others: past the handover every tower keeps working while the gunship is ridden
+      const manual = pilotMode && !automated(); if (manual && tw !== pilot?.state.tower) {tw.cooldown=Math.max(0,tw.cooldown-dt);hushRotor(tw);continue;}   // only a HAND on a mount parks the others: past the handover every tower keeps working while the gunship is ridden
       // idle first, aim second: the idle sets rotation.y unconditionally, and
       // a tracking head must have the last word on where it looks
       if (tw.obj.userData.tick) tw.obj.userData.tick(tNow + tw.ci);
@@ -7160,13 +7160,12 @@ export function initTdTab(root) {
       // DOES — the rocket, the sound, the model — is the board's.
       if (tw.a6 && !manual) { stepWalker(tw, dt, tNow); continue; }
       if (tw.key === 'rotor') { const h = SENTRY_HEAT.rotor; tw.heat = coolHeat(tw.heat ?? 0, dt, h); if (tw.overheated && tw.heat < h.resume) tw.overheated = false; paintBarrelHeat(tw.obj, tw.heat); }   // RED TO WHITE HOT: the barrels carry their heat, and a mount that ran too hot waits
-      if((tw.def.attack==='slowfield' && towerOffline(shield,tw.id,tNow)) || (storyMode && !pilotMode && !automated()))continue;   // story sentries: no auto-targeting until the manual override
+      if((tw.def.attack==='slowfield' && towerOffline(shield,tw.id,tNow)) || (storyMode && !pilotMode && !automated())){hushRotor(tw);continue;}   // story sentries: no auto-targeting until the manual override
       aimTower(tw, dt);
       if(tw.key==='rotor'){
         const spin=manual ? !!pilot?.state.held : !!pickTarget(graph.centers[tw.ci],effectiveStats(tw.def,tw.tier).range*cellSide,enemies,chord);
         tw.spinning=spin; tw.spinRate=(tw.spinRate??0)+((spin?34:0)-(tw.spinRate??0))*Math.min(1,dt*2.5); if(tw.spinRate>0.05)(tw.rotorNode??=tw.obj.getObjectByName('ROTOR'))?.rotateZ(tw.spinRate*dt);   // the barrel cluster winds up and down
-        // THE SPOOL FOLLOWS THE BARRELS (operator, 2026-09-12): a looped spool voice whose gain and pitch ride the spin rate, so it rolls while they turn and dies as they stop; one-shot cues could not
-        const s01=(tw.spinRate??0)/34, att=1/(1+(camDist(graph.centers[tw.ci])/(cellSide*6))**2); if(s01>0.03){tw.spool??=sfx.loop('minigun_ready',{gain:0.001,rate:0.5}); tw.spool?.set(s01*att,0.5+0.5*s01);} else if(tw.spool){tw.spool.stop(0.2);tw.spool=null;} const povFiring=pilotMode&&pilot?.state.tower===tw&&tNow-(tw.firedAt??-9)<Math.max(0.2,(tw.fireGap??0.1)*1.8); if(povFiring){tw.povFire??=sfx.loop('rotor_pov_fire',{gain:0.9,lowpass:1400});} else if(tw.povFire){tw.povFire.stop(0.15);tw.povFire=null;}   /* THE BARRELS, NOT THE ROTORS (owner, 2026-09-14): from the optic the firing is its own muffled sound over the spin; it runs while rounds leave the gun (tw.firedAt), not on the report's base cadence, which starved it while the piloted Rotor kept firing (owner, 2026-09-15) */
+        rotorVoice(sfx, tw, { s01: (tw.spinRate??0)/34, att: 1/(1+(camDist(graph.centers[tw.ci])/(cellSide*6))**2), povFiring: pilotMode&&pilot?.state.tower===tw&&tNow-(tw.firedAt??-9)<Math.max(0.2,(tw.fireGap??0.1)*1.8) });   // the spool and the sight's fire (src/fx/rotor-voice.js)
       }
       tw.cooldown -= dt;
       if (manual) {
@@ -8719,7 +8718,7 @@ export function initTdTab(root) {
       if (!sp.alive) continue;
     }
     if (simStyle && !simDone) simPolicy(dt);
-    if (!pilotMode) { autoSecondary(); autoGunner(t); }
+    if (!pilotMode) { autoSecondary(); autoGunner(t); } else autoLaserWant = false;   // the parked hull's laser does not fire on under a seat
     checkVictory(); // ram kills and heart-contact deaths can end it too
     // DOM is the sim's tax collector: an innerHTML rebuild per SIM STEP
     // (120 per painted frame) throttled the fast-forward to ~2s per batch.
@@ -9152,7 +9151,7 @@ export function initTdTab(root) {
         automated: automated(),
         gunshipCall: { ...gunshipRig.call },
         storyHud: story?.hud.state() ?? null,
-        enemyRecords: enemies.length,
+        enemyRecords: enemies.length, loopVoices: sfx.activeVoices.filter((v) => v.loop).map((v) => v.key),
         enemiesAlive: enemies.reduce((n, e) => n + (e.alive ? 1 : 0), 0),
         killsBySrc: { ...rs.bySrc },
         storyLod: storyBase?.lod() ?? null,
@@ -9367,13 +9366,13 @@ export function initTdTab(root) {
   };
     if (urlParams.get('acceptance') === '1') window.__stalheartTest = gameHooks;   // Browser acceptance adapter, published only when explicitly requested; the showcase holds the same object directly
 
-  function leavePilot() { if (!pilotMode) return; pilot?.dispose(); for (const tw of towers) { tw.povFire?.stop(0.1); tw.povFire = null; } pilot = null; pilotHost = null; pilotMode = false; storyScope?.update({ on: false }); /* the scope leaves with the optic */ params.callouts = true; delete window.__stalheartPilotTest; restoreSeat(); }   /* back to the hull, at the lens and the view the seat was taken from: the seat's zoom narrowed it (owner, 2026-09-15: the tank after the gunship at the wrong angle; 2026-09-23: and after SOL-82 too) */ let seatBase = null; function restoreSeat() { const b = restoreSeatView(seatBase); seatBase = null; camera.fov = b.fov; camera.updateProjectionMatrix(); if (!b.lock && document.pointerLockElement) document.exitPointerLock?.(); setView(b.view); snapCamera(); }   /* THE ONE RESTORE (src/domain/seat-view.js): every leave puts back the camera the FIRST seat of the chain recorded, whichever seat comes next, and drops a pointer lock the hull never asked for */
-  function enterPilot(posts) { pilot?.dispose(); seatBase = baseFor(seatBase, pilotMode || laserStation.seated(), { view: params.view, fov: camera.fov }); pilotMode = true;   // one optic at a time: a hand-over while already piloting replaces the panel. the story hands over its mounts
+  function leavePilot() { if (!pilotMode) return; pilot?.dispose(); for (const tw of towers) hushRotor(tw); pilot = null; pilotHost = null; pilotMode = false; storyScope?.update({ on: false }); /* the scope leaves with the optic */ params.callouts = true; delete window.__stalheartPilotTest; restoreSeat(); }   /* back to the hull, at the lens and the view the seat was taken from: the seat's zoom narrowed it (owner, 2026-09-15: the tank after the gunship at the wrong angle; 2026-09-23: and after SOL-82 too) */ let seatBase = null; function restoreSeat() { const b = restoreSeatView(seatBase); seatBase = null; camera.fov = b.fov; camera.updateProjectionMatrix(); if (!b.lock && document.pointerLockElement) document.exitPointerLock?.(); setView(b.view); snapCamera(); }   /* THE ONE RESTORE (src/domain/seat-view.js): every leave puts back the camera the FIRST seat of the chain recorded, whichever seat comes next, and drops a pointer lock the hull never asked for */
+  function enterPilot(posts) { keys.left = keys.right = keys.fast = keys.slow = keys.laser = false; pilot?.dispose(); seatBase = baseFor(seatBase, pilotMode || laserStation.seated(), { view: params.view, fov: camera.fov }); pilotMode = true;   // one optic at a time: a hand-over while already piloting replaces the panel. the story hands over its mounts
     function installPilot(key) {
       const old=pilotMounts[pilotPost];
       if(old?.key===key){const sp=spawnPoints.filter(sp=>sp.alive).sort((a,b)=>chord(graph.centers[old.ci],graph.centers[a.ci])-chord(graph.centers[old.ci],graph.centers[b.ci]))[0];pilot.attach(old,graph.centers[sp?.ci??dungeon.spawn]);if(story?.missiles?.[key]){pilot.state.zoom=story.quiverZoom??2;pilotHost.zoom(pilot.state.zoom);}return;}   // picked: a guided mount opens through its long lens here too
       if(old){
-        if(old.spinning)sfx.play('minigun_ready',{dist:camDist(graph.centers[old.ci])});
+        hushRotor(old); if(old.spinning)sfx.play('minigun_ready',{dist:camDist(graph.centers[old.ci])});
         scene.remove(old.obj);disposeObj(old.obj);
         const index=towers.indexOf(old);if(index>=0)towers.splice(index,1);
         towerByCell.delete(old.ci);towerCells.delete(old.ci);
