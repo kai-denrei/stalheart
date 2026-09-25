@@ -6,7 +6,7 @@ import { startDiveShot } from './fx/dive-shot.js'; import { makeShaderWarmer } f
 import { BREACH_SOUNDS } from './content/breach-defaults.js';
 import { SOUNDS } from './content/runtime.js';
 import { emergence } from './domain/breach-waves.js'; import { applyScare, stampScare, scarePace, isScared, towardScare, awayExits } from './domain/impact-scare.js'; import { EXPLOSION_SCARE, SCARE_FREEZE_S } from './content/explosions.js'; import { createThermalHeat } from './fx/thermal-heat.js'; import { isAutomated, pilotMultipliers } from './domain/automation.js'; import { fillFromKill, fillFromWaveClear, isFull as callFull, callProgress } from './domain/gunship-call.js'; import { GUNSHIP_CALL, GUNSHIP_FAR } from './content/gunship.js'; import { unlockedTowers } from './domain/expeditions.js'; import { createExpeditionsHost } from './fx/expedition-glue.js'; import { CARGO_LOOK } from './content/cargo.js'; import { STORY_EXPEDITIONS } from './content/story-defaults.js'; import { makeSiteRing as siteRing, disposeSiteRing } from './fx/site-ring.js'; import { hasPerk as programmeHas, snapshot as programmeSnapshot, lose as programmeLose } from './domain/build-programme.js'; import { createProgramWarm } from './fx/program-warm.js';
-import { sinkholeGroundHeight } from './core/sinkhole-shape.js'; import { devModeOn } from './core/dev-mode.js'; import { createControlsCard } from './fx/controls-card.js'; import { createSkipTutorial } from './fx/skip-tutorial.js'; import { skipTutorialUrl } from './core/story-route.js'; import { STORY_SKIP } from './content/story-defaults.js'; import { createShowcase } from './fx/showcase.js'; import { showcaseOn } from './platform/showcase-entry.js';   /* THE SHOWCASE (owner, 2026-09-18): the core loop as a montage over this very world, before the landing */   /* SKIP TUTORIAL (owner, 2026-09-16): the player's own way past the opening, and the state ?skip=defence starts in */
+import { sinkholeGroundHeight } from './core/sinkhole-shape.js'; import { devModeOn } from './core/dev-mode.js'; import { createControlsCard } from './fx/controls-card.js'; import { createSkipTutorial } from './fx/skip-tutorial.js'; import { skipTutorialUrl, isStoryRoute } from './core/story-route.js'; import { STORY_SKIP } from './content/story-defaults.js'; import { createShowcase } from './fx/showcase.js'; import { showcaseOn } from './platform/showcase-entry.js';   /* THE SHOWCASE (owner, 2026-09-18): the core loop as a montage over this very world, before the landing */   /* SKIP TUTORIAL (owner, 2026-09-16): the player's own way past the opening, and the state ?skip=defence starts in */
 import { makeOrdnanceShell } from './shell.js'; import { createHullLoss } from './fx/hull-loss.js'; import { bayContainers, syncBays } from './fx/life-bays.js';
 import { firingFor } from './content/firing-defaults.js'; import { RELEASE_EVENTS, releasesHeld, releaseHeld } from './core/held-input.js';
 import { METRES_PER_CELL, arcToMetres, metresToArc } from './core/stage-units.js';
@@ -337,7 +337,7 @@ export function initTdTab(root) {
   // sound. The context can only be born on a user gesture, so arm() wires
   // one-shot listeners and the first tap/keypress creates it. Until then
   // every play() is a silent no-op -- the game never waits on audio.
-  const sfx = makeAudio({ seed: 1, sounds:{...SOUNDS,...BREACH_SOUNDS,...(location.search.includes('world=story')?STORY_SOUNDS:{})} });   // story cues only in the story world
+  const sfx = makeAudio({ seed: 1, sounds:{...SOUNDS,...BREACH_SOUNDS,...(isStoryRoute(location.search)?STORY_SOUNDS:{})} });   // every story page (a bare one has no world=story)
   const gameBreaches=createGameBreaches(scene,camera,sfx,{look:()=>params.look});
   // SOL-82 IN THE ARSENAL (src/fx/laser-station.js): the pass clock once online after the handover, the seat on the views strip, the beam through the game's own kill, seal, breach and damage paths
   const laserStation = createLaserStation(root, scene, {
@@ -8597,7 +8597,7 @@ export function initTdTab(root) {
       }
       if (waveActive) {
         waveAge += dt;
-        if (sectorRun?.pulseGap?.() != null ? sectorRun.pulseOver(spawnQueue) : (!spawnQueue.length && enemies.every((e) => !(e.alive && !e.guard)))) {   /* a sector's pulse ends when its bodies leave the queue */
+        if (sectorRun?.pulseGap?.() != null ? sectorRun.pulseOver(spawnQueue) : (!spawnQueue.length && enemies.every((e) => !(e.alive && !e.guard)))) {   /* a sector's pulse ends as its bodies leave the queue */
           waveActive = false; interClock = 0; waveCharge = 0; if (automated()) fillFromWaveClear(gunshipRig.call, GUNSHIP_CALL);
           { const p0 = score.points; score.addWave(wave); persistBest(); sectorRun?.note({ type: 'score', points: score.points - p0, kind: 'bonus' }); }
           if (simStyle) {
@@ -8701,7 +8701,7 @@ export function initTdTab(root) {
       if (!sp.alive) continue;
     }
     if (simStyle && !simDone) simPolicy(dt);
-    if (!pilotMode) { autoSecondary(); autoGunner(t); } else autoLaserWant = false;   // the parked hull's laser does not fire on under a seat
+    if (!pilotMode) { autoSecondary(); autoGunner(t); } else autoLaserWant = false;   // no parked laser under a seat
     checkVictory(); // ram kills and heart-contact deaths can end it too
     // DOM is the sim's tax collector: an innerHTML rebuild per SIM STEP
     // (120 per painted frame) throttled the fast-forward to ~2s per batch.
