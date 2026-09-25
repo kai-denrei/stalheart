@@ -929,6 +929,11 @@ try{
  // while Isao prints the gate (the tremor waits for it), the landing pad and the Stålheart, then the rest as the phases and sectors come.
  const hiddenNear='(window.__stalheartTest.state().storyLod||[]).filter(l=>!l.visible&&l.nearLoaded).map(l=>l.id)';
  const shotBase=async(name)=>{await evaluate('window.__stalheartTest.focusHeart()');await delay(1500);assert.deepEqual(await evaluate(hiddenNear),[],`${name}: no hidden landmark fetched its near tier`);current=name;await finish();};
+ // ?story=0 IS THE STORY FROM ITS START (owner, 2026-09-25): the growing base, the landing, the full threat, as a bare page
+ await go('grow-story-zero','index.html?sw=0&acceptance=1&cine=0&story=0#td');await until('!!window.__stalheartTest&&!!window.__stalheartTest.state().programme',90000);
+ {const z=await evaluate('window.__stalheartTest.state()');assert.equal(z.programme.grow,true,'?story=0 grows its base');
+  await until('!!window.__stalheartTest.state().arrival?.on',30000).catch(async()=>assert.fail(`?story=0 lands the rocket (${JSON.stringify(await evaluate('window.__stalheartTest.state().arrival'))})`));}
+ await finish();
  await go('grow-bare','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none#td');await until('!!window.__stalheartTest&&!!window.__stalheartTest.state().programme',90000);
  {const b=await evaluate('window.__stalheartTest.state()');assert.equal(b.programme.grow,true,'a story page with no stage grows its base');assert.equal(b.programme.next,'foundry','he works the recycler before he prints the gate');assert.equal(b.programme.gate.built,false);
   assert.equal(b.hull?.state,'held','SECTOR 0: a bare page has no hull until the Stålheart stands');}
@@ -964,7 +969,9 @@ try{
   assert.equal(L[cut-1][0],'arrival','the swap is on the cut: the frame before the close-up is the landing');
   assert(L.slice(L.findIndex(r=>r[0]==='arrival'),end).every(r=>r[0]==='arrival'||r[0]==='arrivalTalk'),'nothing between the two shots');
   const lines=[...new Set(L.map(r=>r[6]).filter(Boolean))];
-  assert.deepEqual(lines.slice(0,2),['Rough landing!','So much to build!'],`his lines over his face (${lines})`);assert(talk.some(r=>r[6]==="I'll get started on recycling the rocket."),'and the third begins on it');
+  /* all three over his face (the owner's second playtest: "a close-up of Isao saying he'll cannibalize the rocket to get started with terraforming") */
+  const onFace=[...new Set(talk.map(r=>r[6]).filter(Boolean))];
+  assert.deepEqual(onFace,['Rough landing!','So much to build!',"I'll cannibalize the rocket to get the terraforming started."],`his three lines over his face (${onFace})`);
   assert.equal(a.fov,a.lens,'the lens is the game\'s again');assert.equal(s.shot,null);assert.equal(await evaluate('getComputedStyle(document.querySelector("#td-stats")).display'),'block','and the HUD is back');
   const seen=await evaluate('JSON.parse(localStorage.getItem("stalheart:v1:td.briefs")||"[]")');for(const id of ['rough_landing','so_much_to_build','foundry_deploy'])assert(!seen.includes(id),`the old landing line ${id} is not said over the arrival`);
   console.log(`  grow: the arrival ${a.cut} s of landing (${land.length} frames) + ${a.talk} s on his face (${talk.length} frames); lines ${lines.join(' / ')}`);}

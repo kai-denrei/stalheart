@@ -1,6 +1,7 @@
 // THE ARRIVAL, IN THE GAME (owner, 2026-09-25, from a playtest of the live build: "bring back the landing, short and sweet but
 // showing the landing. Isao comes out, close up on his face; he's the narrator. 'Rough landing!' 'So much to build!' 'I'll get
-// started on recycling the rocket.' The state change from rocket intact to dismantled should happen off camera to hide the fact we
+// started on recycling the rocket.' (2026-09-25, second playtest: '... saying he'll cannibalize the rocket to get started with
+// terraforming'.) The state change from rocket intact to dismantled should happen off camera to hide the fact we
 // do not have an animation for it"). About eight seconds at every story start; src/platform/story-world.js decides which (a bare
 // page, the burger's Story, ?grow=1 at stage 1; never SKIP TUTORIAL, stage=N and story=N links or phase jumps).
 //
@@ -35,7 +36,7 @@ const CLIPS = ['Legs_Deploy', 'Landing_Shock', 'Top_Door_Open'];
 export function createArrival({ on = false, base = null, beats = null, site = null, metres = 1, tune = STORY_ARRIVAL } = {}) {
   let phase = on && base && beats && site ? 'waiting' : 'off';
   const shot = makeArrivalShot(tune), lines = BRIEFS[tune.talk.brief];
-  const talkSeconds = lineDwell(lines, 0) + lineDwell(lines, 1) + tune.talk.into;
+  const talkSeconds = lines.lines.reduce((sum, _, i) => sum + lineDwell(lines, i), 0);   // the close-up holds every line (the owner's second playtest)
   const m4 = new THREE.Matrix4(), up = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), eye = new THREE.Vector3();
   const inv = site ? site.clone().invert() : null;
   if (site) up.setFromMatrixColumn(site, 1).normalize();

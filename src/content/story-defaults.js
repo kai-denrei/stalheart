@@ -40,8 +40,8 @@ export const SH02_WELL = Object.freeze({ bell: 2.0, floor: 19.0, rim: 23.5 });
 // around the landing island (x and z along the ground, y up, +z toward the pole; src/core/rail.js). `isao`: his way out in the same
 // metres, from `from` up the well to `rim` (over the door rim), then an arc `arc` metres higher on the way to his hover height
 // `clear` metres toward the pole; `scale` of his game size while he climbs out (the game's Isao is a six metre drone, the SH02's
-// well is not). `talk`: the cut to his face through a `fov` lens, held over his first two lines and `into` seconds of the third
-// (the lines are src/isaobriefs.js `brief`); the camera is back on the base while he finishes it. `wait`: seconds the arrival waits
+// well is not). `talk`: the cut to his face through a `fov` lens, held over all three of his lines
+// (the lines are src/isaobriefs.js `brief`). `wait`: seconds the arrival waits
 // for the rocket, its salvage, the foundry and Isao to load before it gives up and lets the opening run without it.
 export const STORY_ARRIVAL = Object.freeze({
   landing: Object.freeze({ orbit: 0, descent: 2.6, startAltitude: 150, deployAltitude: 134, legsDeploy: 2.4, shock: 0.4, shockClip: 2, settle: 0, door: 0.3, doorClip: 1.8, isao: 1.1, isaoHold: 0.9, dustSeconds: 1.2 }),
@@ -54,7 +54,7 @@ export const STORY_ARRIVAL = Object.freeze({
     Object.freeze({ t: 5.3, pos: [17, 36, 24], look: [0, 20, 35], fov: 30 }),
   ]),
   isao: Object.freeze({ scale: 0.4, from: 15, rim: 39, arc: 4, clear: 35 }),
-  talk: Object.freeze({ fov: 20, into: 0.6, brief: 'arrival_talk' }),
+  talk: Object.freeze({ fov: 20, brief: 'arrival_talk' }),
   wait: 30,
 });
 

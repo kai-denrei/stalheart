@@ -107,11 +107,11 @@ export const BRIEFS = {
   },
   // THE ARRIVAL IN THE GAME (owner, 2026-09-25: "Isao comes out, close up on his face; he's the narrator"): the three lines of the
   // landing's close-up (src/fx/arrival.js), one beat so the one-deep queue cannot drop any, and said at every story start, not once
-  // per browser. `faces` is the drone's own face per line; `dwell` times the first two to the cut (lineDwell below): the close-up
-  // holds them and the start of the third, which he finishes over the base he is talking about
+  // per browser. `faces` is the drone's own face per line; `dwell` times each line (lineDwell below), and the close-up holds all three
+  // (owner, 2026-09-25, second playtest: "a close-up of Isao saying he'll cannibalize the rocket to get started with terraforming")
   arrival_talk: {
-    id: 'arrival_talk', face: 'angry', faces: ['angry', 'glee', 'determined'], dwell: [1.2, 1.4], title: 'COMMS · ISAO',
-    lines: ['Rough landing!', 'So much to build!', 'I\'ll get started on recycling the rocket.'],
+    id: 'arrival_talk', face: 'angry', faces: ['angry', 'glee', 'determined'], dwell: [1.0, 1.1, 2.6], title: 'COMMS · ISAO',
+    lines: ['Rough landing!', 'So much to build!', 'I\'ll cannibalize the rocket to get the terraforming started.'],
   },
   tremor: {
     id: 'tremor', face: 'scan', title: 'TREMOR DETECTED', once: true,

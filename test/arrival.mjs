@@ -50,7 +50,7 @@ function world() {
 const make = (w, on = true) => createArrival({ on, base: w.base, beats: w.beats, site, metres: METRES });
 const run = (w, a, seconds, dt = 1 / 60) => { for (let t = 0; t < seconds - 1e-9; t += dt) w.frame(dt, a); };
 const vis = (w, id) => w.base.structure(id)?.holder.visible ?? null;
-const talk = lineDwell(BRIEFS[STORY_ARRIVAL.talk.brief], 0) + lineDwell(BRIEFS[STORY_ARRIVAL.talk.brief], 1) + STORY_ARRIVAL.talk.into;
+const talk = BRIEFS[STORY_ARRIVAL.talk.brief].lines.reduce((sum, _, i) => sum + lineDwell(BRIEFS[STORY_ARRIVAL.talk.brief], i), 0);   // the close-up holds every line
 
 // OFF: a page that does not start the story plays nothing, whatever loads
 {

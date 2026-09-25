@@ -42,8 +42,8 @@ assert.equal(A.isaoAt(A.cut, to).out, 1);
 // the camera moves until the cut
 assert.ok(Math.abs(STORY_ARRIVAL.rail[STORY_ARRIVAL.rail.length - 1].t - A.cut) < 1e-6, 'the rail ends on the cut');
 assert.deepEqual(A.camera(0).pos, STORY_ARRIVAL.rail[0].pos);
-// ABOUT EIGHT SECONDS (owner): the landing, then the close-up over his first two lines and the start of the third
-const b = BRIEFS[STORY_ARRIVAL.talk.brief], talk = lineDwell(b, 0) + lineDwell(b, 1) + STORY_ARRIVAL.talk.into;
-assert.ok(A.cut + talk > 7 && A.cut + talk < 9.5, `about eight seconds (${(A.cut + talk).toFixed(1)})`);
-assert.ok(STORY_ARRIVAL.talk.into < lineDwell(b, 2), 'the camera goes back to the base before the third line ends');
+// QUICK (owner): the landing, then the close-up over all three of his lines, about ten seconds in all
+const b = BRIEFS[STORY_ARRIVAL.talk.brief], talk = b.lines.reduce((sum, _, i) => sum + lineDwell(b, i), 0);
+assert.ok(b.lines.length === 3 && /cannibalize the rocket/.test(b.lines[2]), 'the close-up ends on the rocket cannibalized for the terraforming (owner, second playtest)');
+assert.ok(talk < 6, `the close-up is quick: ${talk.toFixed(1)} s for all three lines`);
 console.log(`Arrival shot: ${A.cut.toFixed(1)} s landing (touchdown ${seq.touchdown}, door ${seq.doorAt.toFixed(1)}, Isao ${seq.isaoAt.toFixed(1)}-${A.riseEnd.toFixed(1)}), then ${talk.toFixed(1)} s on his face: ${(A.cut + talk).toFixed(1)} s.`);

@@ -40,7 +40,11 @@ export function readStoryQuery(search) {
   // THE SESSION IS NOT A DEEP LINK (owner, 2026-09-16: "the waves are much too easy"). The sparse 0.35 threat exists so a jumped-to
   // stage is quick to inspect, but a BARE page — no ?stage=, no ?story= — is the V1 session itself and was fighting a third of the
   // waves its sector table asks for: sector 1 opened with two bodies. Only an explicit deep link keeps the sparse waves now.
-  const deepLink = q.has('stage') || q.has('story');
+  // ?story=0 IS THE STORY FROM ITS START (owner, 2026-09-25: "?story=0#td. I expect a quick rocket landing ... Then a close-up of
+  // Isao"): the bare page's opening, growing base, landing and full threat. It used to read as a static stage-1 deep link (0 fell
+  // through to 1), a base with no gate, so the tutorial's fodder had no breach to rise from and there was nothing to shoot at.
+  const fromStart = q.get('story') === '0';
+  const deepLink = (q.has('stage') || q.has('story')) && !fromStart;
   // SKIP TUTORIAL (?skip=defence): not a deep link and not a diorama — the finished base, the beats past the handover and
   // the full threat of a real run. It is the whole opening replaced at once, so it overrides stage, phase and grow.
   const skip = story && skipsTutorial(search);
@@ -52,7 +56,7 @@ export function readStoryQuery(search) {
     landmarks: landmarkTierMode(search),   // ?landmarks=candidate: review the pinned runtime LOD candidates in the game camera
     phase: skip ? STORY_SKIP.phase : (STORY_PHASES.includes(q.get('phase')) ? q.get('phase') : null),   // ?phase=expedition: a jump past the handover starts the beats there
     // ISAO GROWS THE BASE IN PLAY: ?grow=1, and a bare story page that names no stage; an explicit stage=N stays the static base
-    grow: !skip && story && (q.get('grow') === '1' || (q.get('grow') !== '0' && !q.has('stage') && !q.has('story'))),
+    grow: !skip && story && (q.get('grow') === '1' || (q.get('grow') !== '0' && !q.has('stage') && (!q.has('story') || fromStart))),
   };
 }
 
