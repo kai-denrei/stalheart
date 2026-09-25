@@ -4,12 +4,12 @@
     "src/td-tab.js": 9417
   },
   "byteBudgets": {
-    "src/td-tab.js": 536327
+    "src/td-tab.js": 536282
   },
   "longLines": {
     "over": 500,
     "budgets": {
-      "src/td-tab.js": 17
+      "src/td-tab.js": 16
     }
   },
   "topLevelModules": [
