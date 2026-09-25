@@ -45,6 +45,7 @@ export function createArrival({ on = false, base = null, beats = null, site = nu
   let t = 0, talkT = 0, waited = 0, cutting = false, deployed = false, skipped = false, late = null, plumes = [];
 
   const drop = (o) => { o.removeFromParent(); o.geometry?.dispose(); o.material?.dispose(); };
+  const hud = (on) => globalThis.document?.body.classList.toggle('arrival-on', on);   // styles.css hides the chrome while it plays
   function clip(name, time) {   // held actions (story-base): a scrub sets the time; null takes the clip off the pose
     const act = rocket.root?.userData.actions?.[name]; if (!act) return;
     act.enabled = time !== null; if (time !== null) { act.paused = true; act.time = time; }
@@ -106,7 +107,7 @@ export function createArrival({ on = false, base = null, beats = null, site = nu
       p.position.set(Math.cos(ang) * e.radius, SH02_WELL.bell - e.height / 2 + 1, Math.sin(ang) * e.radius); p.userData.engine = e; rocket.holder.add(p); return p;
     });
     phase = 'landing'; t = 0;
-    document.body.classList.add('arrival-on');
+    hud(true);
     camera.fov = shot.camera(0).fov; camera.updateProjectionMatrix(); apply(0, 0);
     api.startShot({ id: 'arrival', dur: shot.cut + 2, poseAt: railPose, onEnd: () => { if (!cutting) finish(true); } });   // its end is the cut (tick), not its clock
   }
@@ -132,7 +133,7 @@ export function createArrival({ on = false, base = null, beats = null, site = nu
     settle(); deploy();   // a skip before the cut: the swap happens with it, on the cut to the base
     camera.fov = fov; camera.updateProjectionMatrix();
     if (drone) { drone.loiter = toWorld([0, 0, 0], a).normalize().toArray(); drone.obj.visible = true; }   // he drifts back to the foundry he is about to work
-    document.body.classList.remove('arrival-on');
+    hud(false);
     phase = 'done';
     api.snapCamera();
   }
