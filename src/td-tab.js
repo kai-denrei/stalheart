@@ -38,7 +38,7 @@ import { createBeam } from './beamfx.js';
 import { createBeamRig, PLASMA_DEFAULTS, BOARD_PRESET, BEAM_PEAK } from './beamdraw.js';
 import { sub3, add3, scale3, dot3, cross3, norm3, len3, dist3, segKey, tangentDir, tangentBasis } from './vec3.js';
 import { CREATURES, waveJelly } from './creatures.js';
-import { brief, dwellFor, BRIEFS } from './isaobriefs.js';
+import { brief, lineDwell, BRIEFS } from './isaobriefs.js'; import { lookIsao } from './fx/isao-look.js';
 import { drawEmotion } from './emotions.js';
 import { ACHIEVEMENTS, ACHV_GROUPS, achievement, blankRun, earned, freshlyEarned,
   sanitiseRecord }
@@ -738,7 +738,7 @@ export function initTdTab(root) {
     // who has learned to tap keeps tapping, and the auto-advance buys nothing.
     if (briefBar) briefBar.style.width = `${Math.max(0, Math.min(1, briefLeft / briefDwell)) * 100}%`;
     const ctx = briefFace.getContext('2d');
-    const bf = briefQ.faces?.[briefAt] ?? briefQ.face; drawEmotion(ctx, bf, { w: briefFace.width, h: briefFace.height, t: (bf === 'scan' || bf === 'skeptical') && briefFaceT < 1.5 ? briefFaceT : 0 });   // held faces; only scan and skeptical move, briefly if (isao && briefQ.faces) isao.faceLock = briefQ.faces[briefAt];   // the drone wears the line's face too
+    const bf = briefQ.faces?.[briefAt] ?? briefQ.face; drawEmotion(ctx, bf, { w: briefFace.width, h: briefFace.height, t: (bf === 'scan' || bf === 'skeptical') && briefFaceT < 1.5 ? briefFaceT : 0 }); if (isao && briefQ.faces) isao.faceLock = briefQ.faces[briefAt];   // held faces; only scan and skeptical move, briefly. The drone wears the line's face too (src/fx/isao-look.js)
   }
   function showBrief(id) {
     const b = brief(id);
@@ -758,7 +758,7 @@ export function initTdTab(root) {
       try { localStorage.setItem(BRIEF_SEEN, JSON.stringify(briefSeen)); } catch { /* private mode */ }
     }
     briefQ = b; briefAt = 0; briefFaceT = 0;
-    briefDwell = briefLeft = dwellFor(b.lines[0]);
+    briefDwell = briefLeft = lineDwell(b, 0);
     briefEl.classList.remove('hidden');
     sfx.play('laser_click');
     paintBrief();
@@ -772,7 +772,7 @@ export function initTdTab(root) {
     briefAt++;
     if (briefAt >= briefQ.lines.length) { endBrief(); return; }
     if (!auto) sfx.play('laser_click');
-    briefDwell = briefLeft = dwellFor(briefQ.lines[briefAt]);
+    briefDwell = briefLeft = lineDwell(briefQ, briefAt);
     paintBrief();
   }
   // The line clock, as a named function rather than four lines inside animate:
@@ -6507,22 +6507,7 @@ export function initTdTab(root) {
     if (assistant) placeWorker(assistant);
     if (!isao) return;
     const working = isao.state === 'build';
-    // HIS FACE IS A STATUS LIGHT. Not a performance: four presets from the
-    // lab, picked by what he is actually doing, plus a brief GLEE when a
-    // print lands because that is the one moment worth a reaction. Nothing
-    // here is on a timer of its own — the face follows the state machine,
-    // which is what keeps it readable rather than busy.
-    if (isao.obj.userData.setFace) {
-      const enemiesNear = enemies.filter((e) => e.alive).length;
-      isao.obj.userData.setFace(
-        isao.faceLock ?? (isao.gleeT > 0 ? 'glee'   // ONE HELD FACE PER STATE (owner, 2026-09-13: minimalism): glee when a print lands,
-          : working || isao.assistAt ? 'determined' // determined while he builds or tends the foundry, neutral otherwise. The crowd count and the
-            : enemiesNear < 0 ? 'scared'            // travel and idle faces (never true now: kept for the lab's face list)
-              // made a new face every few seconds, which read as constant chatter
-                : 'neutral'));
-      isao.obj.userData.tickFace(dt);
-      if (isao.gleeT > 0) isao.gleeT -= dt;
-    }
+    lookIsao(isao, dt);   // his face, rotors and work light (src/fx/isao-look.js; a shot runs it too, frozen)
     // the print beam: ONE line object, rewritten in place. The effects rule
     // on this board is that activity must not add objects, and a beam that
     // exists for the whole build is exactly the thing that would.
@@ -6573,8 +6558,6 @@ export function initTdTab(root) {
       // a printer's flow is not steady; the flicker is deterministic
       printBeam.material.opacity = 0.55 + 0.35 * Math.abs(Math.sin(isao.t * 21));
     } else if (printBeam) printBeam.visible = false;
-    isao.obj.userData.spinRotors(dt, working || isao.assistAt ? 1 : (isao.state === 'travel' ? 0.5 : 0));
-    isao.obj.userData.setWork(working ? Math.min(1, isao.t * 3) : isao.assistAt ? 1 : 0);
     placeIsao();
   }
 
@@ -8576,7 +8559,7 @@ export function initTdTab(root) {
     // frozen there, but construction is the thing you came to do. A
     // reveal or the cold open still stops him: those are the game
     // speaking, and nothing should be printing over the top of it.
-    if (!frozen) updateIsao(dt);
+    if (!frozen) updateIsao(dt); else if (isao) lookIsao(isao, dt, true);   // a close-up still shows his face and turning rotors
     for (const orb of orbMeshes.values()) orb.userData.tick(t); brass?.tick(frozen ? 0 : dt); explosions.tick(frozen ? 0 : dt);   // spent cases and explosions run on the world's clock
     for (let i = debris.length - 1; i >= 0; i--) {
       if (!debris[i].userData.tick(dt)) {
@@ -8648,7 +8631,7 @@ export function initTdTab(root) {
         if (secsToWave() <= 10) { bossCued = true; sfx.play('boss_tension'); }
       }
     }
-    storyBase?.tick(frozen ? 0 : dt, player.pos, sectorRun?.gateForce() ?? null, camera.position); story?.beats.tick(frozen ? 0 : dt, storyApi); if (!frozen && story?.programme) storyApi.build(); foundryFx?.tick(frozen ? 0 : dt); gameBreaches.update(frozen?0:dt,obj=>{
+    story?.arrival.tick(dt, storyApi); storyBase?.tick(frozen ? 0 : dt, player.pos, sectorRun?.gateForce() ?? null, camera.position); story?.beats.tick(frozen ? 0 : dt, storyApi); if (!frozen && story?.programme) storyApi.build(); foundryFx?.tick(frozen ? 0 : dt); gameBreaches.update(frozen?0:dt,obj=>{
       let changed=false;const centre=norm3(obj.position.toArray()),within=Math.cos(CONTENT.breach.clearRadius*cellSide);   /* the arc test as a dot against the unit normals: the acos and a fresh norm3 per cell cost 11 ms of the opening frame on the 71k-cell story planet */
       for(let ci=0;ci<graph.centers.length;ci++)if(dungeon.tags[ci]===BLOCKED&&dot3(centre,graph.normals[ci])>=within&&!orderByCell.has(ci))changed=breachWallCell(ci)||changed;
       if(changed){rebuildAfterBreach();recomputePortalDist();}
@@ -8812,7 +8795,7 @@ export function initTdTab(root) {
   const storyApi = {
     // ISAO GOES TO WORK AT ONCE (owner, 2026-09-14): he tends the foundry from its deploy until the first print order
     // the arrival recycled: the beat's events become the swap, the clip, the arc, the cut and the barrels
-    foundry: (ev, d) => { (foundryFx ??= createFoundryFx(scene, () => storyBase, { cellSide, metresPerCell: 10 })).event(ev, d); if (ev === 'deploy') { showBrief('foundry_deploy'); const fh = storyBase?.structure('foundry')?.holder; if (fh) { const at = norm3(fh.getWorldPosition(new THREE.Vector3()).toArray()); if (isao) isao.assistAt = at; else if (story) story.assistAt = at; } } },
+    foundry: (ev, d) => { (foundryFx ??= createFoundryFx(scene, () => storyBase, { cellSide, metresPerCell: 10 })).event(ev, d); if (ev === 'deploy') { const fh = storyBase?.structure('foundry')?.holder; if (fh) { const at = norm3(fh.getWorldPosition(new THREE.Vector3()).toArray()); if (isao) isao.assistAt = at; else if (story) story.assistAt = at; } } },
     order: (key, ci) => orderTower(key, ci, { quiet: true }),
     grant: (n) => { if (n > 0) eco.addBiomass(n, { category: 'grant' }); },
     built: (ci) => towerByCell.has(ci),
@@ -8847,7 +8830,7 @@ export function initTdTab(root) {
     // SECTOR 0 (src/domain/story-beats.js construction): the Stålheart stands once its first hull is out; the gunship comes on
     // station from orbit for a free pass
     stalheartStands: () => !!story?.hull?.out(),
-    gunshipArrive: () => { if (!story) return; story.gunshipIn = true; startStation(gunship, GUNSHIP_ORBIT); showBrief('gunship_overhead'); },
+    gunshipArrive: () => { if (!story) return; story.gunshipIn = true; startStation(gunship, GUNSHIP_ORBIT); showBrief('gunship_overhead'); }, camera, startShot, snapCamera, drone: () => isao,   /* THE ARRIVAL's hands (src/fx/arrival.js) */
   },
   // ISAO KEEPS BUILDING (src/fx/programme-host.js): perks, hasPerk, build, repaired, printed
   createProgrammeHost({
@@ -9146,7 +9129,7 @@ export function initTdTab(root) {
         cargo: story?.glue?.state() ?? null,
         unlocked: automated() ? unlockedTowers(story.expeditions, STORY_EXPEDITIONS.base) : null,
         storyHome: story?.home ?? -1,
-        story: story?.beats.state() ?? null,
+        story: story?.beats.state() ?? null, arrival: story?.arrival.state() ?? null,
         hull: story?.hull ? { ...story.hull.state(), visible: !!playerMesh?.visible, tankButton: (() => { const b = document.querySelector('#story-views [data-view="tank"]'); return b ? !b.hidden : null; })() } : null,
         automated: automated(),
         gunshipCall: { ...gunshipRig.call },

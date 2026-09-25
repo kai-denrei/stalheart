@@ -27,6 +27,37 @@ export const LANDING_DEFAULTS = Object.freeze({
   legsDeploy: 2.4, shock: 2, settle: 2, door: 1.8, isao: 9, isaoHold: 3.5, dustSeconds: 1.2,
 });
 
+// The SH02 as authored (assets/models/story/sh_rocket.glb, metres before STORY_SCALE.rocket): the engine bells over the touchdown
+// plane, the cargo well's floor and its door rim. The lab's landing and the game's arrival hang plumes and lift Isao from these.
+export const SH02_WELL = Object.freeze({ bell: 2.0, floor: 19.0, rim: 23.5 });
+
+// THE ARRIVAL IN THE GAME (owner, 2026-09-25, from a playtest of the live build: "bring back the landing, short and sweet but
+// showing the landing. Isao comes out, close up on his face; he's the narrator"; about eight seconds, at every story start, any key
+// or click skips it). src/domain/arrival-shot.js is its clock, src/fx/arrival.js its picture. `landing` is the lab's timeline
+// (src/domain/landing-sequence.js) cut short: no orbit, a `descent` from `startAltitude` metres with the legs out before touchdown,
+// the door opening `shock` seconds after it while the authored shock and door clips play on (`shockClip`, `doorClip`), Isao
+// climbing `door` seconds into the door for `isao` seconds, then `isaoHold` seconds flying clear. `rail`: the camera, in metres
+// around the landing island (x and z along the ground, y up, +z toward the pole; src/core/rail.js). `isao`: his way out in the same
+// metres, from `from` up the well to `rim` (over the door rim), then an arc `arc` metres higher on the way to his hover height
+// `clear` metres toward the pole; `scale` of his game size while he climbs out (the game's Isao is a six metre drone, the SH02's
+// well is not). `talk`: the cut to his face through a `fov` lens, held over his first two lines and `into` seconds of the third
+// (the lines are src/isaobriefs.js `brief`); the camera is back on the base while he finishes it. `wait`: seconds the arrival waits
+// for the rocket, its salvage, the foundry and Isao to load before it gives up and lets the opening run without it.
+export const STORY_ARRIVAL = Object.freeze({
+  landing: Object.freeze({ orbit: 0, descent: 2.6, startAltitude: 150, deployAltitude: 134, legsDeploy: 2.4, shock: 0.4, shockClip: 2, settle: 0, door: 0.3, doorClip: 1.8, isao: 1.1, isaoHold: 0.9, dustSeconds: 1.2 }),
+  rail: Object.freeze([
+    Object.freeze({ t: 0, pos: [70, 12, 70], look: [0, 105, 0], fov: 42 }),
+    Object.freeze({ t: 2.6, pos: [48, 10, 48], look: [0, 15, 0] }),
+    Object.freeze({ t: 3.4, pos: [30, 26, 26], look: [0, 28, 0] }),
+    Object.freeze({ t: 4.4, pos: [24, 44, 18], look: [0, 37, 3] }),   // over the nose, looking down: the ground behind him as he comes out
+    Object.freeze({ t: 4.85, pos: [23, 44, 22], look: [0, 33, 18], fov: 36 }),   // the lens closes on him as he flies clear and the rocket leaves the frame before the cut
+    Object.freeze({ t: 5.3, pos: [17, 36, 24], look: [0, 20, 35], fov: 30 }),
+  ]),
+  isao: Object.freeze({ scale: 0.4, from: 15, rim: 39, arc: 4, clear: 35 }),
+  talk: Object.freeze({ fov: 20, into: 0.6, brief: 'arrival_talk' }),
+  wait: 30,
+});
+
 // Story-only cues; the lab merges these with the tank pneumatics from the
 // shared manifest. Same budget fields as audiomanifest.js.
 export const STORY_SOUNDS = Object.freeze({

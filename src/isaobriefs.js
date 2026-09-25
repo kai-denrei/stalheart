@@ -105,6 +105,14 @@ export const BRIEFS = {
     id: 'so_much_to_build', face: 'glee', title: 'COMMS · ISAO', once: true,
     lines: ['So much to build!'],
   },
+  // THE ARRIVAL IN THE GAME (owner, 2026-09-25: "Isao comes out, close up on his face; he's the narrator"): the three lines of the
+  // landing's close-up (src/fx/arrival.js), one beat so the one-deep queue cannot drop any, and said at every story start, not once
+  // per browser. `faces` is the drone's own face per line; `dwell` times the first two to the cut (lineDwell below): the close-up
+  // holds them and the start of the third, which he finishes over the base he is talking about
+  arrival_talk: {
+    id: 'arrival_talk', face: 'angry', faces: ['angry', 'glee', 'determined'], dwell: [1.2, 1.4], title: 'COMMS · ISAO',
+    lines: ['Rough landing!', 'So much to build!', 'I\'ll get started on recycling the rocket.'],
+  },
   tremor: {
     id: 'tremor', face: 'scan', title: 'TREMOR DETECTED', once: true,
     lines: ['Tremor on the radar. Far out, past the tunnel.', 'Something is coming up through the ground.'],
@@ -392,6 +400,10 @@ export function dwellFor(line) {
   const secs = BRIEF_LEAD + words / BRIEF_WPS;
   return Math.max(BRIEF_MIN, Math.min(BRIEF_MAX, secs));
 }
+
+// A LINE OF A BEAT: its own authored seconds where the beat is timed to a shot (`dwell`, per line; the arrival's close-up), and
+// the reading curve above for every other line
+export const lineDwell = (b, i) => b?.dwell?.[i] ?? dwellFor(b?.lines?.[i]);
 
 export const BRIEF_IDS = Object.keys(BRIEFS);
 export const brief = (id) => BRIEFS[id] || null;

@@ -15,7 +15,8 @@ const STORY_WORLD_SOUNDS = Object.freeze({ ...STORY_SOUNDS, ...LASER_AUDIO });
 export { STORY_WORLD_SOUNDS as STORY_SOUNDS };
 import { ISLANDS, STRUCTURES, KIT, STAGES, withLandmarkTiers, landmarkTierMode } from '../content/base-layout.js';
 import { SHIELD_ARRAY } from '../content/shield-array.js';
-import { createStoryBase } from '../fx/story-base.js';
+import { createStoryBase, basisAt } from '../fx/story-base.js';
+import { createArrival } from '../fx/arrival.js';
 import { isStoryRoute, skipsTutorial } from '../core/story-route.js';
 import { makeStoryBeats } from '../domain/story-beats.js';
 import { STORY_PHASES } from '../domain/automation.js';
@@ -109,13 +110,18 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   const hullPlot = hullHeld ? plan.islands.find((i) => hullStep.islands.includes(i.id)) : null;
   const door = hullPlot ? doorBerth({ at: [hullPlot.x, hullPlot.z], heading: STORY_ROLLOUT.heading, start: STORY_ROLLOUT.start, end: STORY_ROLLOUT.end, unit: (f) => placer.toWorld(f).normalize().toArray(), cellOf: (p) => nearestCell(planet.graph.centers, p), open: (ci) => built.dungeon.tags[ci] !== BLOCKED }) : null;
   const bayBerths = plan.bays.length ? plan.bays.map((b) => ({ ci: b.cell, exit: b.exit, pos: b.pos, out: b.out })) : null;
+  // THE ARRIVAL (src/fx/arrival.js): every story START lands the SH02 first, which is a growing base at stage 1 with no phase to jump
+  // to: a bare page, the burger's Story, ?grow=1. SKIP TUTORIAL, stage=N and story=N links (static) and phase jumps do not
+  const sh02 = plan.structures.find((s) => s.id === 'sh02');
+  const arrives = grow && stage === 1 && phase == null && !!sh02 && ['sh02-salvage', 'foundry'].every((id) => plan.structures.some((s) => s.id === id));
+  const beats = stage >= 1 ? makeStoryBeats({ fodderEvery: STORY_FODDER.every, fodderAlive: STORY_FODDER.alive, fodderTotal: STORY_FODDER.total, fodderEmerge: STORY_FODDER, socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, ...STORY_BEATS, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER, foundry: FOUNDRY_TUNE, startPhase: phase ?? 'landed', gateReady: () => base.gate().built, construction: hullHeld ? STORY_CONSTRUCTION : null, arrival: arrives }) : null;
   const story = stage >= 1 ? {
     sockets: new Set(), home: plan.cells.landing, socketLift: 0,
     // the solar array's shield pad (src/content/shield-array.js): its island's centre on the unit sphere, standing once the island is; a build programme stands it later by setting `standing`
     arrayPad: (() => { const i = ISLANDS.find((x) => x.id === SHIELD_ARRAY.island); return i ? { cell: plan.cells[i.id], pos: placer.toWorld([i.x, 0, i.z]).normalize().toArray(), standing: stage >= i.stage } : null; })(),
     // a run that starts at or past the expedition (a jump link) has no expedition of its own to wait for (src/fx/sector-run.js)
     lateStart: phase != null && STORY_PHASES.indexOf(phase) >= STORY_PHASES.indexOf('expedition'),
-    beats: makeStoryBeats({ fodderEvery: STORY_FODDER.every, fodderAlive: STORY_FODDER.alive, fodderTotal: STORY_FODDER.total, fodderEmerge: STORY_FODDER, socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, ...STORY_BEATS, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER, foundry: FOUNDRY_TUNE, startPhase: phase ?? 'landed', gateReady: () => base.gate().built, construction: hullHeld ? STORY_CONSTRUCTION : null }),
+    beats, arrival: createArrival({ on: arrives, base, beats, site: sh02 ? basisAt(placer, sh02.x, sh02.z, sh02.heading) : null, metres: 1 / planet.radius }),
     hull: createHullIssue({ held: hullHeld, perk: hullStep?.perk, door, lead: STORY_ROLLOUT.lead }),   // the first hull, held until the Stålheart stands
     // the story's Quiver fires the TALON: the game's quiver config with the lab's heavy round on top
     missiles: { quiver: { ...CONTENT.missiles.quiver, ...STORY_QUIVER.missile } },

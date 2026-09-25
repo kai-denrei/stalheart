@@ -121,6 +121,39 @@ console.log('Story beats: faces, Rotor print, tremor, breach, approach, override
   assert.equal(beats.state().foundry.phase, 'spent', 'three barrels and the rocket is spent');
   assert.equal(kinds(g, 'grant').length, 3, 'three grants in all, one per barrel');
 }
+// THE ARRIVAL (owner, 2026-09-25: "bring back the landing ... Isao comes out, close up on his face; he's the narrator"). With
+// `arrival` the game plays the landing itself (src/fx/arrival.js) and its three lines are its own: `landed` says nothing and deploys
+// nothing however long the landing takes, and deploy(api) deploys the AFR-01 in that very call (the swap happens on the cut to his
+// face), says no foundry line, works once and only from `landed`; the opening then runs as before. Without the option nothing
+// changes: the two faces, then the timed deploy, which is the one that says 'foundry_deploy'.
+{
+  const tune = { deployDelay: 1, firstCycle: 4, cycleSeconds: 6, feedstockPerBarrel: 60, sections: ['A', 'B', 'C'], targets: ['tA', 'tB', 'tC'], events: { arcOn: 0.5, arcOff: 1, scrap: 2, barrel: 3 } };
+  const g = fakeGame({ printSeconds: 2 }); g.api.foundry = (ev, d) => { g.log.push(['foundry', ev, d?.section ?? null]); };
+  const beats = makeStoryBeats({ socket: 4242, lane: 4243, fodder: -1, gate: -1, rotorDelay: 2, faceDelays: [0.5, 1], foundry: tune, arrival: true });
+  run(beats, g, 30);
+  assert.equal(beats.phase(), 'landed', 'the landing holds the beats however long it plays');
+  assert.deepEqual(g.log, [], 'no landing line, no deploy, no grant and no order of their own');
+  assert.equal(beats.deploy(g.api), true, 'the cut releases them');
+  assert.equal(beats.phase(), 'foundry', 'the AFR-01 deploys in that very call');
+  assert.deepEqual(g.log, [['foundry', 'deploy', null]], 'the deploy went to the host, and nothing was said');
+  assert.equal(beats.deploy(g.api), false, 'once');
+  run(beats, g, 5.5);
+  assert.deepEqual(kinds(g, 'grant'), [['grant', 60]]); assert.equal(kinds(g, 'order').length, 1, 'then the opening runs as before: the first barrel pays for the Rotor');
+  assert.deepEqual(kinds(g, 'brief'), [], 'the old landing lines and the foundry line never come');
+  const g2 = fakeGame({ printSeconds: 2 }); g2.api.foundry = (ev) => { g2.log.push(['foundry', ev]); };
+  const old = makeStoryBeats({ socket: 4242, lane: 4243, fodder: -1, gate: -1, rotorDelay: 2, faceDelays: [0.5, 1], foundry: tune });
+  run(old, g2, 2.5);
+  assert.deepEqual(g2.log, [['brief', 'rough_landing'], ['brief', 'so_much_to_build'], ['foundry', 'deploy'], ['brief', 'foundry_deploy']], 'without an arrival: the two faces, then the deploy and its line');
+  assert.equal(old.deploy(g2.api), false, 'deploy() is the arrival\'s alone: beats that were never held do not deploy again');
+  run(old, g2, 5); assert.equal(kinds(g2, 'foundry').filter((l) => l[1] === 'deploy').length, 1, 'one deploy');
+  const late = makeStoryBeats({ socket: 1, startPhase: 'expedition', arrival: true });
+  assert.equal(late.deploy(fakeGame().api), false, 'past the landing there is nothing to release'); assert.equal(late.phase(), 'expedition');
+  // no foundry tune: the Rotor's grant and order wait for the cut too
+  const g3 = fakeGame({ printSeconds: 2 }), bare = makeStoryBeats({ socket: 4242, lane: 4243, fodder: -1, gate: -1, rotorDelay: 2, arrival: true });
+  run(bare, g3, 10); assert.deepEqual(g3.log, [], 'held without a foundry as well');
+  bare.deploy(g3.api); run(bare, g3, 2.1); assert.deepEqual(g3.log, [['grant', 45], ['order', 'rotor', 4242]], 'released: the Rotor is paid for and ordered');
+}
+console.log('story-beats: the arrival holds the landing and deploys on its cut');
 {
   // A JUMP PAST THE HANDOVER: the beats start at a later phase, offer the views once, replay no landing faces,
   // and — because a late start never crossed the study beat — open the first-wave sites here, exactly once

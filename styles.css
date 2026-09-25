@@ -4606,6 +4606,12 @@ body.showcase-on #tab-td > *:not(#td-app):not(#showcase):not(.ram-float-layer),
 body.showcase-on #td-app > *:not(canvas):not(.ram-float-layer),
 body.showcase-on #td-app > canvas.minimap,
 body.showcase-on #td-app > canvas.laser-inset-hud { display: none !important; }   /* the ram readout is the exception: the combo over the hull IS beat C (owner, 2026-09-24). SOL-82's telemetry panels are canvases inside the game element, so they need naming; its round scope is drawn in the 3D pass and cannot be reached from here, and does not have to be — SOL-82 never comes online in the four beats */
+/* THE ARRIVAL (src/fx/arrival.js): the landing and the close-up play clean, like the showcase. The chrome is gone while they run
+   except Isao's panel (the close-up's lines are his) and the SKIP TUTORIAL offer (a way past the whole opening, the landing too). */
+body.arrival-on #shell-bar,
+body.arrival-on #tab-td > *:not(#td-app):not(#td-brief):not(#skip-tutorial),
+body.arrival-on #td-app > *:not(canvas),
+body.arrival-on #td-app > canvas.minimap { display: none !important; }
 
 #showcase {
   position: absolute; inset: 0; z-index: 90;
