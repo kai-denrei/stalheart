@@ -50,7 +50,8 @@ export function createControlsCard(root, { mobile = false, store = storage, brie
   return {
     // tank: the story is past its handover and the player drives (no seat taken). ready: the story's first quiet moment (the landing
     // has handed over): the page comes up once per browser, then gets out of the way; H brings it back
-    tick(tank, ready = tank) { onTank = !!tank; if (ready && !seen) { show(); autoTimer = setTimeout(hide, AUTO_HIDE_MS); } },
+    // (on a phone the pad is the tank's: its labels still come when the tank is first the player's)
+    tick(tank, ready = tank) { onTank = !!tank; if (!seen && (mobile ? tank : ready)) { show(); autoTimer = setTimeout(hide, AUTO_HIDE_MS); } },
     // say: the host's one-line toast, called once per browser
     rackEmpty(say) { if (hinted || store.getItem(RACK) === '1') return; hinted = true; store.setItem(RACK, '1'); say?.(); },
     state: () => ({ shown: !card.hidden, labelled: root.classList.contains('pad-labelled') }),
