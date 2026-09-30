@@ -1147,6 +1147,16 @@ try{
   assert.deepEqual([s.arrival.rocket,s.arrival.salvage,s.arrival.foundry],[false,true,true],`${id}: the rocket is already salvage and the AFR-01 stands (${JSON.stringify(s.arrival)})`);
   for(const step of printed)assert(s.programme.done.includes(step),`${id}: ${step} stands (${s.programme.done})`);
   assert.deepEqual(s.towerCells.map(t=>t[0]).filter(k=>['rotor','quiver'].includes(k)).sort(),[...towers].sort(),`${id}: the sentries on their sockets (${JSON.stringify(s.towerCells)})`);return s;};
+ // 0. SOUND BEFORE SKIP (owner, 2026-09-30: "the landing needs a sound of rocket thrusters landing and gears moving"): audio starts
+ // on the page's first gesture, so the first key over the landing starts the sound and leaves the landing playing; the next one skips
+ await go('chapters-landing-sound',`index.html?${H}&world=story&grow=1#td`);
+ await until(`!!${T} && ${T}.state().shot==="arrival"`,90000);
+ {const press=async()=>{await send('Input.dispatchKeyEvent',{type:'keyDown',key:'x',code:'KeyX'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'x',code:'KeyX'});await delay(400);};
+  await press();let s=await st();assert.equal(s.shot,'arrival',`the first key starts the sound and the landing plays on (${JSON.stringify(s.arrival)})`);
+  assert.equal((await st()).arrival.sound,true,'the first key started the sound');
+  await until(`${T}.state().arrival.cues.includes("tank_spool_up")`,15000).catch(async()=>assert.fail(`the legs deploy with their pneumatics (${JSON.stringify((await st()).arrival)})`));
+  await press();await until(`${T}.state().arrival.phase==="done"`,5000);s=await st();assert.equal(s.arrival.skipped,true,'the second key skips the landing');}
+ await finish();
  // 1. THE LANDING: 1/6, and NEXT ends the landing in this page, exactly where ROTOR starts
  await go('chapters-landing',`index.html?${H}&world=story&grow=1#td`);
  await until(`!!${T} && ${T}.state().shot==="arrival"`,90000);

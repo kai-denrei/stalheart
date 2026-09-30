@@ -19,8 +19,13 @@
 // rocket, its salvage, the foundry or Isao never come (`wait` seconds, or a load error) the beats are released and the lines said
 // without a shot.
 //
+// THE SOUND (owner, 2026-09-30: "the landing needs a sound of rocket thrusters landing and gears moving"): the story lab's score
+// (src/labs/story-tab.js audioSync) — the thrust bed loops under the burn, riding the plume, and cuts at touchdown; the tank's
+// pneumatics stand in for the legs deploying, the shock and the door. Audio starts on the page's first gesture, so the shot spends
+// that gesture on the sound and the next one skips (src/fx/camera-shot.js `unlock`).
+//
 // The host is td-tab's storyApi, handed to tick every frame, frozen or not: brief(id), camera, startShot, snapCamera, drone() (Isao's
-// record: obj, dir, loiter, faceLock); the beats' deploy runs the foundry through it.
+// record: obj, dir, loiter, faceLock), sfx (src/audio.js); the beats' deploy runs the foundry through it.
 import * as THREE from '../../vendor/three.module.js';
 import { createLaunchPlume } from './launch-plume.js';
 import { makeScorch, makeEmbers, IMPACT_TUNE } from '../impactfx.js';
@@ -45,7 +50,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   const toWorld = (p, out = new THREE.Vector3()) => out.set(p[0] * metres, p[1] * metres, p[2] * metres).applyMatrix4(site);
   const pose = (out, eye, look, n) => { m4.lookAt(eye, look, n); out.quat.setFromRotationMatrix(m4); out.pos.copy(eye); };
   let api = null, camera = null, fov = null, rocket = null, drone = null, size = 0, to = null, fxRoot = null, scorch = null, dust = null;
-  let t = 0, talkT = 0, waited = 0, cutting = false, deployed = false, skipped = false, late = phase === 'done' ? new Set(IDS) : null, plumes = [];
+  let t = 0, talkT = 0, waited = 0, cutting = false, deployed = false, skipped = false, thrust = null, heard = null, cues = [], late = phase === 'done' ? new Set(IDS) : null, plumes = [];
 
   const drop = (o) => { o.removeFromParent(); o.geometry?.dispose(); o.material?.dispose(); };
   const hud = (on) => globalThis.document?.body.classList.toggle('arrival-on', on);   // styles.css hides the chrome while it plays
@@ -53,9 +58,21 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     const act = rocket.root?.userData.actions?.[name]; if (!act) return;
     act.enabled = time !== null; if (time !== null) { act.paused = true; act.time = time; }
   }
+  const cue = (key, o) => { cues.push(key); api.sfx?.play(key, { dist: 0, ...o }); };
+  function sound(s) {   // `s`: the landing's state this frame; null: the landing is over
+    if (s?.plume > 0) { thrust ??= api.sfx?.loop('rocket_thrust', { dist: 0, gain: 0 }); thrust?.set(0.4 + 0.6 * s.plume, 0.96 + 0.06 * s.plume); }   // null until the sound has started: asked again next frame
+    else if (thrust) { thrust.stop(s ? 0.08 : 0.4); thrust = null; }
+    if (!s) { heard = null; return; }
+    const was = heard; heard = { legs: s.clips.Legs_Deploy !== null, down: s.clips.Landing_Shock !== null, door: s.clips.Top_Door_Open !== null };
+    if (!was) return;
+    if (heard.legs && !was.legs) cue('tank_spool_up');
+    if (heard.down && !was.down) cue('tank_spool_down');
+    if (heard.door && !was.door) cue('tank_spool_up', { rate: 0.85 });
+  }
   // the rocket at time `time` of the landing: along its own up, its clips, plumes, scorch and dust; Isao climbing out and clear
   function apply(time, dt) {
     const s = shot.stateAt(time), h = rocket.holder;
+    sound(s);
     h.matrix.copy(h.userData.placed).premultiply(m4.makeTranslation(up.x * s.altitude * metres, up.y * s.altitude * metres, up.z * s.altitude * metres)); h.matrixWorldNeedsUpdate = true;
     clip('Legs_Deploy', s.clips.Landing_Shock === null ? (s.clips.Legs_Deploy ?? 0) : null);   // stowed until they deploy; the shock owns the legs after touchdown
     clip('Landing_Shock', s.clips.Landing_Shock); clip('Top_Door_Open', s.clips.Top_Door_Open ?? 0);
@@ -80,6 +97,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   // the rocket back on the ground in its end pose (the base's own: legs out, shock over, door open), the landing's effects gone
   function settle() {
     if (!rocket) return;
+    sound(null);
     rocket.holder.matrix.copy(rocket.holder.userData.placed); rocket.holder.matrixWorldNeedsUpdate = true;
     for (const name of CLIPS) { const act = rocket.root?.userData.actions?.[name]; if (act) clip(name, act.getClip().duration); }
     rocket.root?.userData.mixer?.update(0);
@@ -112,7 +130,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     phase = 'landing'; t = 0;
     hud(true);
     camera.fov = shot.camera(0).fov; camera.updateProjectionMatrix(); apply(0, 0);
-    api.startShot({ id: 'arrival', dur: shot.cut + 2, poseAt: railPose, onEnd: () => { if (!cutting) finish(true); } });   // its end is the cut (tick), not its clock
+    api.startShot({ id: 'arrival', dur: shot.cut + 2, poseAt: railPose, unlock: !!api.sfx && !api.sfx.ready, onEnd: () => { if (!cutting) finish(true); } });   // its end is the cut (tick), not its clock
   }
   function railPose(u, out) {
     const p = shot.camera(Math.min(t, shot.cut));
@@ -128,7 +146,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     settle(); deploy();
     phase = 'talk'; talkT = 0;
     camera.fov = tune.talk.fov; camera.updateProjectionMatrix();
-    cutting = true; api.startShot({ id: 'arrivalTalk', dur: talkSeconds, poseAt: talkPose, onEnd: () => finish(false) }); cutting = false;
+    cutting = true; api.startShot({ id: 'arrivalTalk', dur: talkSeconds, poseAt: talkPose, unlock: !!api.sfx && !api.sfx.ready, onEnd: () => finish(false) }); cutting = false;
   }
   function finish(skip) {
     if (phase !== 'landing' && phase !== 'talk') return;
@@ -168,7 +186,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     },
     state: () => {
       const vis = (id) => base?.structure(id)?.holder.visible ?? null, local = (v) => v.clone().applyMatrix4(inv).divideScalar(metres).toArray().map((x) => +x.toFixed(1));
-      return { on, phase, t: +t.toFixed(2), cut: +shot.cut.toFixed(2), talk: +talkSeconds.toFixed(2), talkT: +talkT.toFixed(2), waited: +waited.toFixed(1), deployed, skipped,
+      return { on, phase, cues: cues.slice(-12), sound: api?.sfx?.ready ?? null, t: +t.toFixed(2), cut: +shot.cut.toFixed(2), talk: +talkSeconds.toFixed(2), talkT: +talkT.toFixed(2), waited: +waited.toFixed(1), deployed, skipped,
         to: to?.map((x) => +x.toFixed(1)) ?? null, eye: camera ? local(camera.position) : null, at: drone ? local(drone.obj.position) : null,   // metres around the island: the camera and Isao
         altitude: rocket ? +shot.stateAt(phase === 'landing' ? t : shot.cut).altitude.toFixed(1) : null, rocket: vis('sh02'), salvage: vis('sh02-salvage'), foundry: vis('foundry'),
         isao: drone ? { visible: drone.obj.visible, scale: +(drone.obj.scale.x / size).toFixed(2), face: drone.obj.userData.getFace?.() ?? null } : null, fov: camera ? +camera.fov.toFixed(1) : null, lens: fov };   // lens: the game's own, put back at the end

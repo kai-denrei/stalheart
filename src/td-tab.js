@@ -2,7 +2,7 @@ import { createSentryPilot } from './sentry-pilot.js';
 import { DEFAULT_TANK, SHELL_SPEED, SHELL_REACH, TANK_DRIVE, TANK_STEER } from './content/tank.js'; import { makeDriveRamp, stepDriveRamp, scrubDriveRamp } from './domain/drive-ramp.js'; import { hullDepth, deepensContact } from './domain/hull-contact.js'; import { makeSteerEase, stepSteerEase, steerBank } from './domain/steer-ease.js'; import { baseFor, restoreSeatView } from './domain/seat-view.js'; import { BASE_REPAIR, BASE_BUILDER } from './content/base-programme.js';
 import { createGameBreaches } from './game-breaches.js'; import { ramShotPose } from './domain/showcase-shot.js';   /* THE RAM BEAT'S OWN FRAMING: low behind the hull (src/domain/showcase-shot.js; the band of cells it drives into is the showcase hooks') */
 import { createBoardSurface } from './fx/board-surface.js'; import { createCampaignDebrief, sparkline } from './fx/campaign-debrief.js'; import { createSectorRun } from './fx/sector-run.js'; import { createBackDoor } from './fx/back-door.js'; import { isaoFace, orbitFrame, sitesDir, sitesRadius } from './domain/story-shots.js';
-import { startDiveShot } from './fx/dive-shot.js'; import { makeShaderWarmer } from './fx/shader-warm.js'; import { waveGap } from './domain/wave-spread.js';
+import { startDiveShot } from './fx/dive-shot.js'; import { createCameraShots } from './fx/camera-shot.js'; import { makeShaderWarmer } from './fx/shader-warm.js'; import { waveGap } from './domain/wave-spread.js';
 import { BREACH_SOUNDS } from './content/breach-defaults.js';
 import { SOUNDS } from './content/runtime.js';
 import { emergence } from './domain/breach-waves.js'; import { applyScare, stampScare, scarePace, isScared, towardScare, awayExits } from './domain/impact-scare.js'; import { EXPLOSION_SCARE, SCARE_FREEZE_S } from './content/explosions.js'; import { createThermalHeat } from './fx/thermal-heat.js'; import { isAutomated, pilotMultipliers } from './domain/automation.js'; import { fillFromKill, fillFromWaveClear, isFull as callFull, callProgress } from './domain/gunship-call.js'; import { GUNSHIP_CALL, GUNSHIP_FAR } from './content/gunship.js'; import { unlockedTowers } from './domain/expeditions.js'; import { createExpeditionsHost } from './fx/expedition-glue.js'; import { CARGO_LOOK } from './content/cargo.js'; import { STORY_EXPEDITIONS } from './content/story-defaults.js'; import { makeSiteRing as siteRing, disposeSiteRing } from './fx/site-ring.js'; import { hasPerk as programmeHas, snapshot as programmeSnapshot, lose as programmeLose } from './domain/build-programme.js'; import { createProgramWarm } from './fx/program-warm.js';
@@ -1429,7 +1429,7 @@ export function initTdTab(root) {
   function viewWatch(dt) {
     if (!mobileShell || !playerMesh || playerDown || player.won) return;
     if (vwCool > 0) { vwCool -= dt; return; }
-    const driving = params.view === 'third' && !buildMode && !shot && !deploy && !paused;
+    const driving = params.view === 'third' && !buildMode && !shots.shot && !deploy && !paused;
     if (!driving) { vwOut = 0; return; }
     const sight = tankSight();
     if (sight.why === 'ok') { vwOut = 0; return; }
@@ -1438,7 +1438,7 @@ export function initTdTab(root) {
     vwOut = 0; vwCool = 5; vwFires++;
     const vv0 = window.visualViewport;
     const cv0 = renderer.domElement;
-    const before = `${sightLine(sight)} view=${params.view} build=${buildMode} shot=${shot ? shot.id : '-'} deploy=${!!deploy} camToTank=${(camera.position.distanceTo(vwPt) / cellSide).toFixed(1)}c cur=${player.cur} next=${player.next}`
+    const before = `${sightLine(sight)} view=${params.view} build=${buildMode} shot=${shotId() || '-'} deploy=${!!deploy} camToTank=${(camera.position.distanceTo(vwPt) / cellSide).toFixed(1)}c cur=${player.cur} next=${player.next}`
       // WHICH EDGE, AND BY HOW MUCH. "chrome 430,516" says the tank is
       // outside the visible band but not which side of it, and the two have
       // opposite fixes. The bias is printed too, so the next screenshot says
@@ -1499,11 +1499,11 @@ export function initTdTab(root) {
       // what. A screenshot that shows only the top of the panel still says
       // whether the tank is visible and, if not, which of the four reasons.
       `SEEN: ${sightLine(sight)}`,
-      `HUNG: ${shotWatchFires ? `${shotWatchFires}x ${shotWatchLast}` : 'none'}`
-        + ` shot=${shot ? `${shot.id} ${shot.age.toFixed(1)}/${shot.dur.toFixed(1)}s` : '-'}`
+      `HUNG: ${shots.watch()}`
+        + ` shot=${shots.shot ? `${shots.shot.id} ${shots.shot.age.toFixed(1)}/${shots.shot.dur.toFixed(1)}s` : '-'}`
         + ` deploy=${deploy ? `${(deploy.age || 0).toFixed(1)}s` : '-'}`,
       `t=${t.toFixed(1)} build=${(document.querySelector('script[src*="main.js"]')?.src.match(/v=([0-9a-f]{8})/) || [, '?'])[1]} shell=${mobileShell}`,
-      `view=${params.view} buildMode=${buildMode} shot=${shot ? shot.id + '@' + (1 - shot.left / shot.dur).toFixed(2) : '-'} deploy=${deploy ? `#${deploy.n}@${deployProgress().toFixed(2)}` : '-'}`,
+      `view=${params.view} buildMode=${buildMode} shot=${shots.shot ? shots.shot.id + '@' + (1 - shots.shot.left / shots.shot.dur).toFixed(2) : '-'} deploy=${deploy ? `#${deploy.n}@${deployProgress().toFixed(2)}` : '-'}`,
       `paused=${paused} down=${!!playerDown} won=${player.won} msg=${!!(msgEl && !msgEl.classList.contains('hidden'))}`,
       `tank cur=${player.cur} next=${player.next} free=${!!player.freeMode} thr=${throttle.toFixed(2)} cruise=${cruise} auto=${autoMode} goto=${gotoCi} keys=${['left', 'right', 'fast', 'slow', 'fire', 'laser'].filter((k) => keys[k]).join(',') || '-'} stick=${!!stick}`,
       `mesh vis=${!!(pm && pm.visible)} inScene=${!!(pm && pm.parent === scene)} scale=${pm ? pm.scale.x.toFixed(4) : '-'} unitScale=${unitScale.toFixed(4)} base=${pm ? (pm.userData.baseScale ?? 1) : '-'} pos=${pp.map((v) => v.toFixed(3)).join(',')}`,
@@ -1965,89 +1965,7 @@ export function initTdTab(root) {
   // SECTOR REVEAL: a short full-planet beat after each clear — the camera
   // pulls out to frame the whole world, aimed at the freshly-unsealed
   // band, whose floors burn hot until the beat ends (then build mode).
-  // --- camShot: ONE timed camera override, ONE teardown ------------------
-  // Every timed camera takeover in this tab used to own its own clock, its
-  // own skip listeners and its own teardown — and each teardown was a fresh
-  // chance to get it wrong. One did: endCinematic() guarded on
-  // `cineLeft <= 0` while the frame loop had already driven it there, so it
-  // returned BEFORE removing a capture-phase keydown handler that
-  // preventDefaults and stopImmediatePropagations. That handler then ate
-  // every key in the game, permanently, and the briefing it was fronting
-  // never opened (operator: "I still cannot move after the cinematic").
-  //
-  // So: one shot at a time, one teardown path, and the latch is the shot
-  // ITSELF — never a clock somebody else has already advanced past.
-  let shot = null;        // { id, dur, left, poseAt, onEnd, skippable }
-  const shotActive = () => shot !== null;
-  const shotId = () => (shot ? shot.id : null);
-
-  function startShot({ id, dur, poseAt, onEnd = null, skippable = true }) {
-    endShot();   // one at a time, and the outgoing one always tears down
-    shot = { id, dur: Math.max(1e-3, dur), left: Math.max(1e-3, dur),
-      poseAt, onEnd, skippable, age: 0 };
-    if (skippable) {
-      addEventListener('keydown', shotSkipKey, true);
-      root.addEventListener('pointerdown', shotSkipTap, true);
-    }
-    snapCamera();   // no glide in: the shot owns frame one
-  }
-
-  // Idempotent, and latched on `shot` — the RESOURCE — not on a countdown.
-  // `shot` is cleared before onEnd runs, so a shot whose ending starts
-  // another shot cannot recurse into its own teardown.
-  function endShot() {
-    if (!shot) return;
-    const s = shot;
-    shot = null;
-    removeEventListener('keydown', shotSkipKey, true);
-    root.removeEventListener('pointerdown', shotSkipTap, true);
-    if (s.onEnd) s.onEnd();
-  }
-
-  // skippable by anything: a shot you cannot cut is one you resent the
-  // second time you see it
-  const shotSkipKey = (ev) => {
-    if (!shot || !shot.skippable) return;
-    if(shot.id==='breach'){endShot();return;}
-    ev.preventDefault(); ev.stopImmediatePropagation(); endShot();
-  };
-  const shotSkipTap = (ev) => {
-    if (!shot || !shot.skippable) return;
-    if(shot.id==='breach'){endShot();return;} if(ev.target.closest?.('#skip-tutorial'))return;   /* the card's own */
-    ev.stopImmediatePropagation(); endShot();
-  };
-
-  // A SHOT AND A DEPLOY BOTH OWN THE CAMERA, and both have a KNOWN length —
-  // so either one hanging is detectable without knowing why it hung. That is
-  // the whole of the recurring "drive/build" report (operator, 2026-09-05):
-  // "the view is stuck not in 3rd person, nor in top view, something else
-  // unplayable". Neither of those two poses IS third or orbit; both are what
-  // the camera looks like when one of these machines never finishes.
-  //
-  // The existing view watchdog cannot see it, and could not have: it fires
-  // when the tank leaves the FRUSTUM, and a cinematic is a shot OF the tank —
-  // it keeps it beautifully in frame while the game refuses to start. Four
-  // camera-pose fixes went past this for the same reason.
-  //
-  // So: a liveness check on the clock, not on the pose. A shot that has been
-  // running for its own duration plus a wide margin is hung, whatever hung
-  // it, and is ended. The margin is generous because being wrong here costs
-  // a cut cinematic and being absent costs the whole session.
-  const SHOT_GRACE = 4.0;
-  function stepShot(dt) {
-    if (!shot) return;
-    shot.age += dt;
-    shot.left -= dt;
-    if (shot.left <= 0) { endShot(); return; }
-    if (shot.age > shot.dur + SHOT_GRACE) {
-      const id = shot.id, age = shot.age, dur = shot.dur;
-      console.warn(`SHOTWATCH "${id}" hung: ${age.toFixed(1)}s into a ${dur.toFixed(1)}s shot — ended`);
-      shotWatchFires++;
-      shotWatchLast = `shot "${id}" ${age.toFixed(1)}s/${dur.toFixed(1)}s`;
-      endShot();
-    }
-  }
-  let shotWatchFires = 0, shotWatchLast = '';
+  const shots = createCameraShots({ target: root, snap: () => snapCamera(), pass: (_, ev) => !!ev.target.closest?.('#skip-tutorial') }), { start: startShot, end: endShot, step: stepShot, active: shotActive, id: shotId } = shots;   /* src/fx/camera-shot.js */
 
   const REVEAL_LEN = 3.2;
   let revealDir = null;
@@ -2249,10 +2167,7 @@ export function initTdTab(root) {
       camGoal.quat.copy(camA.quat).slerp(camB.quat, w);
       return;
     }
-    if (shot && !camRaw) {
-      shot.poseAt(Math.min(1, Math.max(0, 1 - shot.left / shot.dur)), camGoal);
-      return;
-    }
+    if (!camRaw && shots.pose(camGoal)) return;
     // THE RAM BEAT'S CAMERA, and only while the montage's third beat is up (gameHooks.showcase.ram): it sits BELOW the seats and
     // the shots above it — a seat's pose and a cinematic still outrank it — and above the gameplay views, whose third-person offset
     // looks a cell and a half ahead from high behind and frames the hull off the bottom edge
@@ -5855,8 +5770,7 @@ export function initTdTab(root) {
     if (deploy.age > expect * 2 + DEPLOY_GRACE) {
       console.warn(`SHOTWATCH deploy hung: ${deploy.age.toFixed(1)}s for a ${Number.isFinite(expect) ? expect.toFixed(1) : '∞'}s`
         + ` run (speed=${params.speed} bonus=${speedBonus}) — handed over`);
-      shotWatchFires++;
-      shotWatchLast = `deploy ${deploy.age.toFixed(1)}s/${Number.isFinite(expect) ? expect.toFixed(1) : '∞'}s`;
+      shots.hung(`deploy ${deploy.age.toFixed(1)}s/${Number.isFinite(expect) ? expect.toFixed(1) : '∞'}s`);
       deploy.travelled = segLen;   // finish it where it was going, then hand over
     }
     deploy.travelled += v * dt; if (deploy.clip) { deploy.bay.roll(deploy.age); playerMesh.visible = false; }   // the clip's clock is the deploy's; a hull rebuilt meanwhile stays hidden
@@ -8505,7 +8419,7 @@ export function initTdTab(root) {
     // heart moods, debris) and the camera transition keep breathing.
     // Mid-assault the same toggle is camera-only.
     stepBriefClock(dt);
-    if (pilotMode && shot) endShot();
+    if (pilotMode) endShot();
     stepShot(dt);
     const frozen = buildFrozen() || (shotActive() && shotId() !== 'breach');
     // The BUILD pause holds the WORLD still, not the DRIVER. Planning with
@@ -8810,7 +8724,7 @@ export function initTdTab(root) {
     // SECTOR 0 (src/domain/story-beats.js construction): the Stålheart stands once its first hull is out; the gunship comes on
     // station from orbit for a free pass
     stalheartStands: () => !!story?.hull?.out(),
-    gunshipArrive: () => { if (!story) return; story.gunshipIn = true; startStation(gunship, GUNSHIP_ORBIT); showBrief('gunship_overhead'); }, camera, startShot, snapCamera, drone: () => isao,   /* THE ARRIVAL's hands (src/fx/arrival.js) */
+    gunshipArrive: () => { if (!story) return; story.gunshipIn = true; startStation(gunship, GUNSHIP_ORBIT); showBrief('gunship_overhead'); }, camera, startShot, snapCamera, sfx, drone: () => isao,   /* THE ARRIVAL's hands (src/fx/arrival.js) */
   },
   // ISAO KEEPS BUILDING (src/fx/programme-host.js): perks, hasPerk, build, repaired, printed
   createProgrammeHost({
@@ -9002,7 +8916,7 @@ export function initTdTab(root) {
         + ` dpr=${devicePixelRatio} view=${params.view} camToTank=${(cp.distanceTo(new THREE.Vector3(...player.pos)) / cellSide).toFixed(1)}c`
         + ` thr=${throttle.toFixed(2)} stick=${!!stick} laser=${keys.laser}`;
       onScreen(`t=${k * 2}s ${extra}`);
-      console.log(`STATE t=${(k * 2).toString().padStart(2)}s paused=${paused} shot=${shot ? shot.id : '-'} build=${buildMode}`
+      console.log(`STATE t=${(k * 2).toString().padStart(2)}s paused=${paused} shot=${shotId() || '-'} build=${buildMode}`
         + ` msg=${!!(msgEl && !msgEl.classList.contains('hidden'))} brief=${!!(briefEl && !briefEl.classList.contains('hidden'))} sitrep=${!!(sitrepEl && !sitrepEl.classList.contains('hidden'))}`
         + ` deploy=${deploy ? `#${deploy.n}@${deployProgress().toFixed(2)}` : '-'}`
         + ` hp=${playerHP} lostDeploys=${tankLostDeploys} down=${!!playerDown}`
@@ -9048,8 +8962,7 @@ export function initTdTab(root) {
         if (el) el.classList.add('hidden');
       }
       paused = false;
-      
-      shot = null;
+      shots.drop();
       const press = (key) => {
         dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
         dispatchEvent(new KeyboardEvent('keyup', { key, bubbles: true }));
