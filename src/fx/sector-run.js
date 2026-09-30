@@ -333,7 +333,7 @@ export function createSectorRun(h) {
     // the pile to lift off the doors instead (src/domain/repair-orders.js: "no wave is running and the lane is clear")
     doorsQuiet: () => doorsQuiet,
     backOpenBreaches: () => (sector?.breaches ?? []).filter((b) => b.side === 'back' && b.state === 'open').length,
-    gates: () => integrities().map((g) => ({ id: g.id, hp: g.hp, max: g.max, broken: g.broken })),
+    gates: () => integrities().map((g) => ({ id: g.id, name: doorOf(g.id).name, hp: g.hp, max: g.max, broken: g.broken })),
     // ISAO'S PRINT SHOWS ON THE DOOR (2026-09-18): GATE % climbs with the print's progress while he stands over it and beams it,
     // instead of jumping the moment he leaves. It only ever goes up here, so the swarm still owns the other direction, and the
     // door closes again the moment it is mended past closeAt — the same threshold the ambient mend uses.

@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-09-30-integrity-strip",
+  "date": "2026-09-30",
+  "type": "change",
+  "status": "accepted",
+  "title": "The Stålheart's and the gates' health on screen in every view and seat: a strip at the top centre, a hit flashes it, a Stålheart hit pulses the screen edge and sounds the klaxon, and Isao says the thresholds",
+  "context": "Owner's third playtest (a996e005, 2026-09-30): \"4) Health of the Gate should be more explicit\" and \"6) health/damaging of the Stalheart should be more explicit.\" The Stålheart showed as a row of hearts in the stats panel and the gate as GATE 87% at the end of the sector line; neither is on screen in a seat, where the fight is played. heartHit changed a number and nothing else (the Terraformer's hit() is empty). A gate being worn down showed nothing until THE GATE IS DOWN.",
+  "outcome": "src/fx/integrity-hud.js (new) reads the controller's numbers every frame on a story page: STÅLHEART as ten pips with n/10, and from sector 1 each standing gate (sector-run gates() now carries its name) as a bar with its percentage, DOWN when broken. A Stålheart hit flashes its row, pulses a red vignette over the screen's edge, plays danger_alert, and Isao says heart_hit, heart_half or heart_critical (the gravest that applies, once a run). A gate losing hit points says UNDER ATTACK and flashes; Isao warns at half (gate_half) and a quarter (gate_failing, with the klaxon), again after a full mend. On a phone the strip is not shown: no slot was free in either orientation and the owner's open complaint is phone clutter; the stats panel, which already carries the hearts and GATE %, flashes instead, and the edge, klaxon and lines are the same. NEW RUN resets it. The controller's share is paid by moving the view watchdog's edge report to src/domain/view-edge.js (td-tab 9,322 lines, 532,270 bytes; budgets lowered).",
+  "alternatives": [
+    "A bar floating over the gate and the Stålheart in the world: visible only when they are in view, and not from the Quiver or the gunship.",
+    "The strip on the phone above the views strip or under the brief panel: tried; it overlapped the views strip in portrait and Isao's panel in landscape (--phone screenshots).",
+    "Showing the gate in sector 0: it takes no damage before the handover, so a bar there would promise a threat that is not there."
+  ],
+  "evidence": [
+    "npm test (154 programs, test/view-edge.mjs new), npm run check, npm run architecture.",
+    "Browser --chapters chapters-sector-1 (new checks): the strip is up with 10/10 and GATE 100%, laid out on screen; heartHealth(0.8) shows 8/10, Isao says heart_hit, the row and the screen edge flash (artifacts/browser/chapters-sector-1.png). --sectors, --phone green; the phone screenshots show no strip."
+  ],
+  "supersedes": []
+}

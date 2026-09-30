@@ -2,7 +2,7 @@ import { createSentryPilot } from './sentry-pilot.js';
 import { DEFAULT_TANK, SHELL_SPEED, SHELL_REACH, TANK_DRIVE, TANK_STEER } from './content/tank.js'; import { makeDriveRamp, stepDriveRamp, scrubDriveRamp } from './domain/drive-ramp.js'; import { hullDepth, deepensContact } from './domain/hull-contact.js'; import { makeSteerEase, stepSteerEase, steerBank } from './domain/steer-ease.js'; import { baseFor, restoreSeatView } from './domain/seat-view.js'; import { BASE_REPAIR, BASE_BUILDER } from './content/base-programme.js';
 import { createGameBreaches } from './game-breaches.js'; import { ramShotPose } from './domain/showcase-shot.js';   /* THE RAM BEAT'S OWN FRAMING: low behind the hull (src/domain/showcase-shot.js; the band of cells it drives into is the showcase hooks') */
 import { createBoardSurface } from './fx/board-surface.js'; import { createCampaignDebrief, sparkline } from './fx/campaign-debrief.js'; import { createSectorRun } from './fx/sector-run.js'; import { createBackDoor } from './fx/back-door.js'; import { isaoFace, orbitFrame, sitesDir, sitesRadius } from './domain/story-shots.js';
-import { startDiveShot } from './fx/dive-shot.js'; import { createCameraShots } from './fx/camera-shot.js'; import { makeShaderWarmer } from './fx/shader-warm.js'; import { waveGap } from './domain/wave-spread.js';
+import { startDiveShot } from './fx/dive-shot.js'; import { createCameraShots } from './fx/camera-shot.js'; import { createIntegrityHud } from './fx/integrity-hud.js'; import { viewEdge, viewportLine } from './domain/view-edge.js'; import { makeShaderWarmer } from './fx/shader-warm.js'; import { waveGap } from './domain/wave-spread.js';
 import { BREACH_SOUNDS } from './content/breach-defaults.js';
 import { SOUNDS } from './content/runtime.js';
 import { emergence } from './domain/breach-waves.js'; import { applyScare, stampScare, scarePace, isScared, towardScare, awayExits } from './domain/impact-scare.js'; import { EXPLOSION_SCARE, SCARE_FREEZE_S } from './content/explosions.js'; import { createThermalHeat } from './fx/thermal-heat.js'; import { isAutomated, pilotMultipliers } from './domain/automation.js'; import { fillFromKill, fillFromWaveClear, isFull as callFull, callProgress } from './domain/gunship-call.js'; import { GUNSHIP_CALL, GUNSHIP_FAR } from './content/gunship.js'; import { unlockedTowers } from './domain/expeditions.js'; import { createExpeditionsHost } from './fx/expedition-glue.js'; import { CARGO_LOOK } from './content/cargo.js'; import { STORY_EXPEDITIONS } from './content/story-defaults.js'; import { makeSiteRing as siteRing, disposeSiteRing } from './fx/site-ring.js'; import { hasPerk as programmeHas, snapshot as programmeSnapshot, lose as programmeLose } from './domain/build-programme.js'; import { createProgramWarm } from './fx/program-warm.js';
@@ -598,7 +598,7 @@ export function initTdTab(root) {
   let edgeGeo = null, edgeMesh = null;
   let topGeo = null, topMesh = null; // interior wall-top wires, dimmable
   let floorOffsets = null, boardSurface = null; const breachQueue = []; // open cell -> its first floor vertex; the surface a breach patches (src/fx/board-surface.js); cells breached since the last patch
-  let heartSprite = null, playerMesh = null, markerMesh = null, storyBase = null, story = null, sectorRun = null, skipCard = null, showcase = null, showcaseRamCam = false;   /* skipCard: the SKIP TUTORIAL offer (src/fx/skip-tutorial.js) */   /* showcaseRamCam: the montage's ram beat owns its camera (src/domain/showcase-shot.js), the game's chase view frames the hull off the bottom edge */
+  let integrityHud = null, heartSprite = null, playerMesh = null, markerMesh = null, storyBase = null, story = null, sectorRun = null, skipCard = null, showcase = null, showcaseRamCam = false;   /* skipCard: the SKIP TUTORIAL offer (src/fx/skip-tutorial.js) */   /* showcaseRamCam: the montage's ram beat owns its camera (src/domain/showcase-shot.js), the game's chase view frames the hull off the bottom edge */
   // WHAT STANDS AT THE POLE. Both entries satisfy one contract — sizeScale,
   // tick(t), hit() — so swapping them changes how the Stalheart LOOKS and
   // never what it DOES. Same registry seam as looks / towerlooks /
@@ -1445,16 +1445,7 @@ export function initTdTab(root) {
       // whether the correction is being applied at all.
       + ` unit=${unitScale.toFixed(3)} bias=${camBiasNdc.toFixed(3)}`
       + ` canvas=${cv0.clientWidth}x${cv0.clientHeight}`
-      + ` visual=${vv0 ? `${Math.round(vv0.width)}x${Math.round(vv0.height)}@${Math.round(vv0.offsetLeft)},${Math.round(vv0.offsetTop)}` : '-'}`
-      + ` edge=${(() => {
-        if (!vv0) return '-';
-        const es = [];
-        if (sight.y < vv0.offsetTop) es.push(`above by ${Math.round(vv0.offsetTop - sight.y)}`);
-        if (sight.y > vv0.offsetTop + vv0.height) es.push(`below by ${Math.round(sight.y - vv0.offsetTop - vv0.height)}`);
-        if (sight.x < vv0.offsetLeft) es.push(`left by ${Math.round(vv0.offsetLeft - sight.x)}`);
-        if (sight.x > vv0.offsetLeft + vv0.width) es.push(`right by ${Math.round(sight.x - vv0.offsetLeft - vv0.width)}`);
-        return es.join('+') || 'inside';
-      })()}`;
+      + ` visual=${viewportLine(vv0)} edge=${viewEdge(sight, vv0)}`;   /* src/domain/view-edge.js */
     // ONLY A POSE FAULT IS WORTH RE-SEATING. Snapping the camera at a tank
     // that is covered by a caption, or under the URL bar, moves nothing and
     // hides the evidence — the report is the whole value in those cases.
@@ -4102,7 +4093,7 @@ export function initTdTab(root) {
     ammo = 3;
     sfx.reseed(params.seed); // pitch jitter is deterministic per seed
     deathPick = mulberry32((params.seed >>> 0) ^ 0x9e3779b9);
-    heartHP = HEART_MAX;
+    heartHP = HEART_MAX; integrityHud?.reset();
     playerHP = PLAYER_MAX;
     playerDown = false;
     shield.t = 0; shield.coolUntil = -Infinity; shield.taps.clear();
@@ -8525,6 +8516,7 @@ export function initTdTab(root) {
         if (secsToWave() <= 10) { bossCued = true; sfx.play('boss_tension'); }
       }
     }
+    if (story) (integrityHud ??= createIntegrityHud(root, { sfx, brief: showBrief })).tick({ heart: { hp: heartHP, max: HEART_MAX }, gates: story.sectorN ? sectorRun?.gates() ?? [] : [] }, dt);   /* src/fx/integrity-hud.js */
     story?.arrival.tick(dt, storyApi); storyBase?.tick(frozen ? 0 : dt, player.pos, sectorRun?.gateForce() ?? null, camera.position); story?.beats.tick(frozen ? 0 : dt, storyApi); if (!frozen && story?.programme) storyApi.build(); foundryFx?.tick(frozen ? 0 : dt); gameBreaches.update(frozen?0:dt,obj=>{
       let changed=false;const centre=norm3(obj.position.toArray()),within=Math.cos(CONTENT.breach.clearRadius*cellSide);   /* the arc test as a dot against the unit normals: the acos and a fresh norm3 per cell cost 11 ms of the opening frame on the 71k-cell story planet */
       for(let ci=0;ci<graph.centers.length;ci++)if(dungeon.tags[ci]===BLOCKED&&dot3(centre,graph.normals[ci])>=within&&!orderByCell.has(ci))changed=breachWallCell(ci)||changed;
@@ -9023,7 +9015,7 @@ export function initTdTab(root) {
         cargo: story?.glue?.state() ?? null,
         unlocked: automated() ? unlockedTowers(story.expeditions, STORY_EXPEDITIONS.base) : null,
         storyHome: story?.home ?? -1,
-        story: story?.beats.state() ?? null, arrival: story?.arrival.state() ?? null,
+        story: story?.beats.state() ?? null, arrival: story?.arrival.state() ?? null, integrity: integrityHud?.state() ?? null,
         hull: story?.hull ? { ...story.hull.state(), visible: !!playerMesh?.visible, tankButton: (() => { const b = document.querySelector('#story-views [data-view="tank"]'); return b ? !b.hidden : null; })() } : null,
         automated: automated(),
         gunshipCall: { ...gunshipRig.call },

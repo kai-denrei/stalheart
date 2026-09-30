@@ -1212,6 +1212,14 @@ try{
  {await world('sector-1',['foundry','gate','stalheart','landing','solar'],['rotor','quiver']);}
  await until(`${T}.state().sector?.n===1`,30000).catch(async()=>assert.fail(`sector 1 opens (${JSON.stringify((await st()).sector)})`));
  assert.equal(await evaluate('!!document.querySelector("#skip-tutorial")'),false,'no tutorial card past the tutorial');
+ // WHAT IS HOLDING (owner, 2026-09-30: the gate's and the Stålheart's health "more explicit"): the strip is on screen with the
+ // Stålheart's pips and the gate's bar, and a hit on the Stålheart flashes it, pulses the edge and has Isao say it
+ {let s=await st();assert.equal(s.integrity?.shown,true,`the integrity strip is up (${JSON.stringify(s.integrity)})`);assert.equal(s.integrity.heart,'10/10');
+  assert(s.integrity.gates.some(g=>g.id==='gate'&&g.text==='100%'),`the gate's bar (${JSON.stringify(s.integrity.gates)})`);
+  assert(await evaluate('(r=>r.width>0&&r.top>=0)(document.querySelector("#integrity-hud").getBoundingClientRect())'),'the strip is laid out on screen');
+  await evaluate(`${T}.heartHealth(0.8)`);await delay(300);s=await st();
+  assert.equal(s.integrity.heart,'8/10','the pips follow the Stålheart');assert(s.integrity.said.includes('heart_hit'),`Isao says the first hit (${s.integrity.said})`);
+  assert(await evaluate('document.querySelector("#integrity-edge").classList.contains("ie-hit")&&document.querySelector("#integrity-hud .ih-heart").classList.contains("ih-hit")'),'the hit flashes the row and the screen edge');}
  await finish();
  } else if(args.includes('--skip-tutorial')) {
  // SKIP TUTORIAL (owner, 2026-09-16; docs/log/entries/2026-09-16-skip-tutorial-built.json). The opening still plays from the landing

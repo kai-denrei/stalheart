@@ -336,6 +336,28 @@ export const BRIEFS = {
     id: 'gate_broken', face: 'surprised', title: 'THE GATE IS DOWN',
     lines: ['They pushed the gate in. They are inside the walls.', 'Hold them off it and I will mend it.'],
   },
+  // WHAT IS HOLDING (owner, 2026-09-30: the gate's and the Stålheart's health "more explicit"): src/fx/integrity-hud.js says these
+  // as the numbers cross, once a run each (a mended gate may warn again)
+  gate_half: {
+    id: 'gate_half', face: 'focused', title: 'THE GATE · HALF',
+    lines: ['The gate is at half. That pile is chewing through it.', 'Thin them out before they are inside.'],
+  },
+  gate_failing: {
+    id: 'gate_failing', face: 'surprised', title: 'THE GATE IS FAILING',
+    lines: ['The gate is about to give!', 'Clear the front of it, now.'],
+  },
+  heart_hit: {
+    id: 'heart_hit', face: 'surprised', title: 'THE STÅLHEART IS HIT',
+    lines: ['One of them reached the Stålheart!', 'Every one that gets through takes a piece of it. Keep them off.'],
+  },
+  heart_half: {
+    id: 'heart_half', face: 'frustrated', title: 'THE STÅLHEART · HALF',
+    lines: ['The Stålheart is half gone.', 'If it falls, there is no colony. Hold the line.'],
+  },
+  heart_critical: {
+    id: 'heart_critical', face: 'angry', title: 'THE STÅLHEART · CRITICAL',
+    lines: ['The Stålheart cannot take much more!', 'Nothing else gets through. Nothing.'],
+  },
   gate_mended: {
     id: 'gate_mended', face: 'glee', title: 'GATE MENDED',
     lines: ['Gate is back on its hinges.', 'I keep a patch kit on it from now on.'],

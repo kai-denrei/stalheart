@@ -17,6 +17,21 @@ Evidence:
 - npm test (153 programs), npm run check, npm run architecture.
 - Browser --chapters (new step chapters-landing-sound): on a bare story page the first key leaves the arrival shot playing and starts the audio context, the legs' pneumatics are cued, the second key skips the landing; chapters-landing's NEXT still skips in one press. --grow and --skip-tutorial green.
 
+## 2026-09-30 — The Stålheart's and the gates' health on screen in every view and seat: a strip at the top centre, a hit flashes it, a Stålheart hit pulses the screen edge and sounds the klaxon, and Isao says the thresholds
+
+change · accepted · 2026-09-30-integrity-strip
+
+Owner's third playtest (a996e005, 2026-09-30): "4) Health of the Gate should be more explicit" and "6) health/damaging of the Stalheart should be more explicit." The Stålheart showed as a row of hearts in the stats panel and the gate as GATE 87% at the end of the sector line; neither is on screen in a seat, where the fight is played. heartHit changed a number and nothing else (the Terraformer's hit() is empty). A gate being worn down showed nothing until THE GATE IS DOWN.
+
+src/fx/integrity-hud.js (new) reads the controller's numbers every frame on a story page: STÅLHEART as ten pips with n/10, and from sector 1 each standing gate (sector-run gates() now carries its name) as a bar with its percentage, DOWN when broken. A Stålheart hit flashes its row, pulses a red vignette over the screen's edge, plays danger_alert, and Isao says heart_hit, heart_half or heart_critical (the gravest that applies, once a run). A gate losing hit points says UNDER ATTACK and flashes; Isao warns at half (gate_half) and a quarter (gate_failing, with the klaxon), again after a full mend. On a phone the strip is not shown: no slot was free in either orientation and the owner's open complaint is phone clutter; the stats panel, which already carries the hearts and GATE %, flashes instead, and the edge, klaxon and lines are the same. NEW RUN resets it. The controller's share is paid by moving the view watchdog's edge report to src/domain/view-edge.js (td-tab 9,322 lines, 532,270 bytes; budgets lowered).
+
+Alternatives: A bar floating over the gate and the Stålheart in the world: visible only when they are in view, and not from the Quiver or the gunship.; The strip on the phone above the views strip or under the brief panel: tried; it overlapped the views strip in portrait and Isao's panel in landscape (--phone screenshots).; Showing the gate in sector 0: it takes no damage before the handover, so a bar there would promise a threat that is not there.
+
+Evidence:
+
+- npm test (154 programs, test/view-edge.mjs new), npm run check, npm run architecture.
+- Browser --chapters chapters-sector-1 (new checks): the strip is up with 10/10 and GATE 100%, laid out on screen; heartHealth(0.8) shows 8/10, Isao says heart_hit, the row and the screen edge flash (artifacts/browser/chapters-sector-1.png). --sectors, --phone green; the phone screenshots show no strip.
+
 ## 2026-09-25 — The tutorial in six chapters: the SKIP TUTORIAL button becomes a card that shows where the run is (TUTORIAL n/6) with NEXT to the next chapter's start and SKIP ALL, and every chapter is a URL built at boot as a run has it there
 
 change · accepted · 2026-09-25-tutorial-chapters

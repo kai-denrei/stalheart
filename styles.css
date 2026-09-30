@@ -4694,3 +4694,33 @@ body.arrival-on #td-app > canvas.minimap { display: none !important; }
 @media (max-width: 560px) {
   #showcase .sc-choice button { min-width: 0; width: 100%; }
 }
+
+/* WHAT IS HOLDING (src/fx/integrity-hud.js, owner 2026-09-30): the Stålheart's pips and each standing gate's bar at the top
+   centre over every view and seat; a hit flashes the row, a hit on the Stålheart pulses the screen's edge */
+#integrity-hud { position: fixed; top: 92px; left: 50%; transform: translateX(-50%); z-index: 40; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; gap: 3px; font: 600 11px ui-monospace, Menlo, monospace; letter-spacing: 0.08em; }
+#integrity-hud[hidden] { display: none; }
+#integrity-hud .ih-row { display: flex; align-items: center; gap: 8px; padding: 2px 8px; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.12); color: #b8ffca; }
+#integrity-hud .ih-row[hidden] { display: none; }
+#integrity-hud .ih-lbl { font-size: 10px; letter-spacing: 0.16em; color: #4fae63; min-width: 9ch; text-align: right; }
+#integrity-hud .ih-num { min-width: 5ch; }
+#integrity-hud .ih-pips { font-size: 13px; letter-spacing: 0.02em; color: rgba(255, 106, 136, 0.28); }
+#integrity-hud .ih-pips b { color: #ff6a88; font-weight: 400; text-shadow: 0 0 6px rgba(255, 106, 136, 0.45); }
+#integrity-hud .ih-bar { position: relative; width: 120px; height: 7px; border: 1px solid rgba(184, 255, 202, 0.45); }
+#integrity-hud .ih-bar i { position: absolute; inset: 0 auto 0 0; background: #b8ffca; transition: width 0.25s linear; }
+#integrity-hud .ih-low .ih-bar i { background: #ffb347; }
+#integrity-hud .ih-low .ih-num, #integrity-hud .ih-heart.ih-low .ih-lbl { color: #ff6a88; }
+#integrity-hud .ih-down { border-color: #ff6a88; }
+#integrity-hud .ih-down .ih-lbl, #integrity-hud .ih-down .ih-num { color: #ff6a88; }
+#integrity-hud .ih-worn { border-color: #ffb347; }
+#integrity-hud .ih-worn .ih-lbl::after { content: ' · UNDER ATTACK'; color: #ffb347; animation: ih-blink 0.6s steps(2) infinite; }
+#integrity-hud .ih-hit { animation: ih-hit 0.9s ease-out; }
+@keyframes ih-hit { 0%, 30% { background: rgba(255, 60, 90, 0.75); border-color: #ff6a88; transform: scale(1.12); } 100% { background: rgba(0, 0, 0, 0.5); transform: scale(1); } }
+@keyframes ih-blink { 50% { opacity: 0.25; } }
+#integrity-edge { position: fixed; inset: 0; z-index: 39; pointer-events: none; opacity: 0; box-shadow: inset 0 0 120px 30px rgba(255, 40, 70, 0.85); }
+#integrity-edge.ie-hit { animation: ie-hit 1.1s ease-out; }
+@keyframes ie-hit { 0% { opacity: 1; } 100% { opacity: 0; } }
+body.mobile-shell #integrity-hud { display: none; }
+body.mobile-shell #td-stats.ih-panel-hit { animation: ih-panel 0.9s ease-out; }
+@keyframes ih-panel { 0%, 30% { border-color: #ff6a88; box-shadow: 0 0 0 2px rgba(255, 60, 90, 0.8), inset 0 0 24px rgba(255, 60, 90, 0.45); } }
+@media (prefers-reduced-motion: reduce) { #integrity-hud .ih-hit, #integrity-edge.ie-hit, #td-stats.ih-panel-hit { animation-duration: 0.01s; } }
