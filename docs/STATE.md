@@ -1,6 +1,6 @@
 # Stalheart current state
 
-Updated 2026-09-30 (after the owner's second live playtest). Owner: the Stalheart development project; this repo is authoritative for the game.
+Updated 2026-09-30 (after the owner's third live playtest). Owner: the Stalheart development project; this repo is authoritative for the game.
 
 **Identity: resourceful joy under pressure** (`2026-09-14-identity-resourceful-joy-under-pressure`). The pressure is the swarm, the clock and the hardware; the joy is Isao, the builder who rebuilds, and a colony grown out of the wreck it arrived in. See [FUNMAP.md](FUNMAP.md).
 
@@ -17,6 +17,15 @@ Design: `docs/superpowers/specs/2026-09-15-v1-session-design.md`. Two entry poin
 - **The optics:** the Quiver's scope in SOL-82's register, four phases, an inner box closing on the held body and telemetry in the margins (`src/fx/story-scope.js`); the round stays in frame through launch (`src/core/round-framing.js`).
 - **Expeditions you can see:** our flag over a cleared site, the crate on the MÖRK's back, the drop at the foundry with the unlock callout, trophy flags at home (`src/fx/cargo.js`, `src/fx/expedition-glue.js`).
 - **The campaign board stays underneath** for the acceptance runs and the wave simulator (`?acceptance=1`, `?sim=`).
+
+## What landed on 2026-09-30 (the owner's third live playtest, on a996e005)
+
+Seven notes, each pushed to main as it passed its suites:
+- The landing is heard: the thrust bed on the plume, the pneumatics for the legs, the shock and the door; the first gesture over the landing starts the sound, the next skips (`2026-09-30-landing-sound`, `src/fx/camera-shot.js`). Our own sounds for now; the owner may send his.
+- The landing hands over to the orbit camera on the base until the first seat (`2026-09-30-free-camera-after-the-landing`); a scripted seat hand-over (the Rotor at the first wave, the Quiver at the hard cores) glides in over 1.4 s instead of cutting (`2026-09-30-seat-glide`, `src/fx/seat-glide.js`).
+- The gate is heard opening and closing, about 12 dB louder (`2026-09-30-gate-heard-both-ways`).
+- The Stålheart's and the gates' health are a strip at the top centre in every view and seat; a hit flashes it, a Stålheart hit pulses the screen edge and sounds the klaxon, Isao says the thresholds; on a phone the stats panel flashes instead (`2026-09-30-integrity-strip`, `src/fx/integrity-hud.js`).
+- Sector 0's sinkhole is closed with a strike (the owner's choice: "make it matter"): Isao reminds after each construction wave cleared, and once filled no construction wave comes after it (`2026-09-30-sinkhole-closed-with-a-strike`).
 
 ## What landed on 2026-09-25 (the owner's live playtests)
 
@@ -65,7 +74,7 @@ Unchanged from the foundation: pure core/domain/content layers with dependency g
 
 ## Next priorities
 
-1. **The owner's live playtests.** His first verdict on the pacing (2026-09-25): "it runs, pacing is better, feels challenging in a good way". Waiting on him: the tutorial card and its chapters, with three defaults to confirm or change (`2026-09-25-tutorial-chapter-defaults-for-the-owner`), and still whether sector 0 reads as defending the construction, sector 1 is hectic but holdable with the tank, and the back door lands as foreshadowed, feast, scramble. Every number is in `src/content/sectors.js` (SECTORS, SECTOR_TIMING, BACK_OMENS, SECTOR_GATE) and `src/content/story-defaults.js` (STORY_CONSTRUCTION); re-measure with `--pacing` and `--pacing --passive`.
+1. **The owner's live playtests.** Third round shipped 2026-09-30 (above); waiting on his verdict on it. His first verdict on the pacing (2026-09-25): "it runs, pacing is better, feels challenging in a good way". Waiting on him: the tutorial card and its chapters, with three defaults to confirm or change (`2026-09-25-tutorial-chapter-defaults-for-the-owner`), and still whether sector 0 reads as defending the construction, sector 1 is hectic but holdable with the tank, and the back door lands as foreshadowed, feast, scramble. Every number is in `src/content/sectors.js` (SECTORS, SECTOR_TIMING, BACK_OMENS, SECTOR_GATE) and `src/content/story-defaults.js` (STORY_CONSTRUCTION); re-measure with `--pacing` and `--pacing --passive`.
 2. **Merged to main 2026-09-25 on the owner's word** ("merge and push"; he playtests live on Pages). Branch `refactor` was the one taken (it contains `pacing` and fixes to it that `pacing` alone lacks: back breaches off the rim, the feast-seal hang, the back door's lead). Still open from the refactor round (the URL-flag probes are gone, `2026-09-25-flag-probes-removed`): the survey's remaining items are the controller's two clocks (runContext.time stops while seated, t does not), dispose paths for in-page restarts, a few fixed waits in the browser harness (--backdoor, --shield-story), the game's loop still rescheduling after dispose, and further extractions (updateCameraGoal's shell, the simulator policy, loseTank, gameHooks).
 3. **Phone HUD says less** (`2026-09-19-phone-seats-say-less`, confirmed again by the owner on 2026-09-24: "mobile still displays an overwhelmingly cluttered HUD"). The phone pass proved nothing covers a control; it did not reduce what is shown. Next fix: one state line per seat instead of the plate and the ribbon, the hint box once, the shell hidden in seats, the ground-truth monitor inside its frame. Desktop unchanged. Retina cuts (bloom half-res, MSAA 2x) phones-only can ride along.
 4. **Landed 2026-09-23/24.** The seat contract (`2026-09-23-seat-changes-robust`: one occupant at a time; a chain of seats returns to the first seat's camera) and a scripted hand-over that never evicts a gunner (`2026-09-23-a-beat-evicted-the-gunner`) — real bugs, but not the owner's. The owner's "everything off to the right" was `2026-09-24-safari-right-shift-fixed`: the spotting monitor restored the main viewport in device pixels where three takes CSS pixels, so on any 2x screen the world drew dpr× too large from the bottom-left while the HUD stayed put; the owner confirms the reticles centred on a 2x phone. The intro is four beats (`2026-09-24-intro-four-beats-built`, `2026-09-24-ram-beat-shows-the-tank`): labelled wireframes, one breach and its swarm, the MÖRK through a horde with its own low camera, the gunship on the horde; 25.5 s, once on the landing screen, `?intro=1` replays.
