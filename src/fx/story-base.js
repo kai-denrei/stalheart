@@ -88,7 +88,10 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     if (!g.action || !g.built) return;   // an unprinted gate plays no hydraulics
     const before = g.t;
     g.t = Math.max(0, Math.min(g.duration, g.t + (g.want ? dt : -dt)));
-    if (g.want && before === 0 && g.t > 0) sfx?.play('gate_hydraulics');
+    // HEARD BOTH WAYS (owner, 2026-09-30: "sound of the gate door opening and closing"): the hydraulics run on the opening and on the
+    // closing stroke, the slam lands at the bottom. The owner's hydraulics master is quiet (-31 dB mean), hence the lift
+    if (g.want && before === 0 && g.t > 0) sfx?.play('gate_hydraulics', { gain: 1.5 });
+    if (!g.want && before >= g.duration - 1e-6 && g.t < before) sfx?.play('gate_hydraulics', { gain: 1.5, rate: 0.92 });
     if (!g.want && before > 0 && g.t === 0) sfx?.play('gate_slam');
     if (!g.action.isRunning() && g.t > 0) { g.action.play(); }
     g.action.paused = true; g.action.time = g.t; g.mixer.update(0);

@@ -62,7 +62,7 @@ export const STORY_ARRIVAL = Object.freeze({
 // shared manifest. Same budget fields as audiomanifest.js.
 export const STORY_SOUNDS = Object.freeze({
   rocket_thrust: { file: 'assets/audio/rocket_thrust.mp3', bus: 'tank', gain: 0.9, maxVoices: 1, minInterval: 0, rateJitter: 0 },
-  gate_hydraulics: { file: 'assets/audio/gate_hydraulics.mp3', bus: 'ui', gain: 0.7, maxVoices: 1, minInterval: 0.5, rateJitter: 0.02 },
+  gate_hydraulics: { file: 'assets/audio/gate_hydraulics.mp3', bus: 'ui', gain: 2, maxVoices: 1, minInterval: 0.5, rateJitter: 0.02 },
   gate_slam: { file: 'assets/audio/gate_slam.mp3', bus: 'ui', gain: 0.8, maxVoices: 1, minInterval: 0.5, rateJitter: 0.03 },
 });
 

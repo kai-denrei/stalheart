@@ -32,6 +32,21 @@ Evidence:
 - npm test (154 programs, test/view-edge.mjs new), npm run check, npm run architecture.
 - Browser --chapters chapters-sector-1 (new checks): the strip is up with 10/10 and GATE 100%, laid out on screen; heartHealth(0.8) shows 8/10, Isao says heart_hit, the row and the screen edge flash (artifacts/browser/chapters-sector-1.png). --sectors, --phone green; the phone screenshots show no strip.
 
+## 2026-09-30 — The gate is heard opening and closing: the hydraulics run on both strokes, lifted about 12 dB, and the slam lands at the bottom
+
+change · accepted · 2026-09-30-gate-heard-both-ways
+
+Owner's third playtest (a996e005, 2026-09-30): "3) sound of the gate door opening and closing." src/fx/story-base.js driveGate already played gate_hydraulics as the door started to open and gate_slam as it shut, but the owner-provided hydraulics master measures -31.1 dB mean, -11.3 dB peak (ffmpeg volumedetect), played on the ui bus at 0.7: under the game it is not heard. The closing stroke had no sound until the slam.
+
+STORY_SOUNDS gate_hydraulics gain 0.7 -> 2 (the manifest's ceiling) and the gate's calls ask 1.5 on top: x4.3, about +12.6 dB, peaks near -2 dB. The hydraulics now also play at 0.92 rate when a fully open door starts to close; the slam is unchanged. The asset is untouched (docs/story-audio.lock.json still pins it). The expedition crate's hoist uses the same cue (src/content/cargo.js) and is louder by the manifest's share (+9 dB). A gate opens for something friendly inside its radius, so in sector 0, before any hull exists, it does not move and is not heard.
+
+Alternatives: Re-master the file louder: changes the owner's pinned clip; the gain does the same without a new asset.; Use the research hydraulic_up/down sources for the two strokes: shorter (1.1 s, 0.9 s) than the door's travel and unpinned for gameplay.
+
+Evidence:
+
+- ffmpeg volumedetect: gate_hydraulics.mp3 mean -31.1 dB, max -11.3 dB; gate_slam.mp3 mean -12.3 dB, max 0.0 dB.
+- npm test, npm run check; browser --back-gate green (the gate prints, stands, takes pressure and goes down). Not measured: the audible level on the owner's device.
+
 ## 2026-09-25 — The tutorial in six chapters: the SKIP TUTORIAL button becomes a card that shows where the run is (TUTORIAL n/6) with NEXT to the next chapter's start and SKIP ALL, and every chapter is a URL built at boot as a run has it there
 
 change · accepted · 2026-09-25-tutorial-chapters
