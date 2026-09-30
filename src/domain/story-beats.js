@@ -50,7 +50,7 @@ export function makeStoryBeats({
     for (const e of row) for (let i = 0; i < e.count; i++, k++) api.spawn(e.type, fodder, { harmless: construction.harmless, spread: construction.spread, pace: construction.pace, delay: ((k * 0.618034) % 1) * construction.stagger });
     cSent += k;
   };
-  let phase = startPhase, clock = 0, orderedAt = null, readyAt = null, spawned = 0, nextSpawn = 0, at = 0, faces = 0, said = new Set(), hardcores = 0, gateAt = null;
+  let phase = startPhase, clock = 0, orderedAt = null, readyAt = null, spawned = 0, nextSpawn = 0, at = 0, faces = 0, said = new Set(), hardcores = 0, gateAt = null, sealed = false, reminded = 0;
   // A LATE START (a jump past the handover): the landing faces are already said, and the views strip is offered on the first tick
   const late = startPhase !== 'landed';
   let offered = false, released = !arrival;   // an arrival holds `landed` until its cut
@@ -122,8 +122,14 @@ export function makeStoryBeats({
         if (up && upAt === null) upAt = clock;
         // ...or once the hull has had `mopUpSeconds` at them: a player who drives off instead never stalls the story (unmanned towers
         // do not fire before the handover), and the harmless leftovers roll on into sector 1 as bodies to ram
+        // THE SINKHOLE IS CLOSED WITH A STRIKE (owner, 2026-09-30: "if a wave is finished, we need a reminder that the tremor point needs
+        // to be closed with a gunship strike"; asked, he chose "make it matter"). Once a wave has come up, a sinkhole filled by anything
+        // (the gunship's guns, the MK-9, the strike) stays filled: no construction wave after it. Until then, each wave cleared off the
+        // field brings Isao's reminder, once per wave
+        if (!sealed && cWaves > 0 && api.sourceAlive && !api.sourceAlive()) { sealed = true; api.brief?.('sinkhole_sealed'); said.add('sinkhole_sealed'); }
+        if (!up && !sealed && cWaves > reminded && api.enemies() === 0) { api.brief?.(reminded === 0 ? 'sinkhole_strike' : 'sinkhole_strike_again'); reminded = cWaves; }
         if (up && (api.enemies() <= (construction?.mopUp ?? 0) || clock - upAt >= (construction?.mopUpSeconds ?? Infinity))) { studyDelay = construction?.studyDelay ?? studyDelay; enter('settled'); api.unlock?.('views'); }   // and the hull is the player's for a moment before the study
-        else if (!up && construction && clock >= nextSpawn && api.enemies() < (construction.alive ?? Infinity)) { constructionWave(api); nextSpawn = clock + construction.every; }   // a wave waits while the field is full
+        else if (!up && construction && !sealed && clock >= nextSpawn && api.enemies() < (construction.alive ?? Infinity)) { constructionWave(api); nextSpawn = clock + construction.every; }   // a wave waits while the field is full
       } else if (phase === 'settled' && quiver && clock - at >= studyDelay) { api.closeup?.('isao'); api.brief?.('vibration_study'); said.add('vibration_study'); enter('study-talk'); }
       else if (phase === 'study-talk' && clock - at >= 0.5 && !api.briefing?.()) { api.screen?.('synthetic'); enter('study'); }   // the lines run out (or were seen before), then the screen
       else if (phase === 'study' && !api.screenOpen?.()) { api.brief?.('rocket_sites'); api.sites?.(); api.expeditionsBegin?.(); api.planetView?.(); said.add('rocket_sites'); enter('expedition'); }
@@ -137,6 +143,6 @@ export function makeStoryBeats({
       return true;
     },
     phase: () => phase,
-    state: () => ({ phase, clock: +clock.toFixed(2), socket, orderedAt, readyAt, gateAt, spawned, gated, said: [...said], hardcores, foundry: fd ? foundryState(fd) : null, construction: { waves: cWaves, sent: cSent } }),
+    state: () => ({ phase, clock: +clock.toFixed(2), socket, orderedAt, readyAt, gateAt, spawned, gated, said: [...said], hardcores, foundry: fd ? foundryState(fd) : null, construction: { waves: cWaves, sent: cSent, sealed, reminded } }),
   };
 }

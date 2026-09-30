@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-09-30-sinkhole-closed-with-a-strike",
+  "date": "2026-09-30",
+  "type": "decision",
+  "status": "accepted",
+  "title": "Sector 0's sinkhole is closed with a strike: Isao reminds after each construction wave cleared off the field, and once anything fills it no construction wave comes after it",
+  "context": "Owner's third playtest (a996e005, 2026-09-30): \"5) if a wave is finished, we need a reminder that the tremor point needs to be closed with a gunship strike.\" Nothing said so, and nothing made it worth doing: in sector 0 a construction wave re-opened a sinkhole a strike had filled (story-beats constructionWave), and in the sectors a breach closed early books LEFT IN THE FIELD while one held pays HELD. Asked which he meant, the owner chose \"Sector 0 sinkhole, make it matter\".",
+  "outcome": "src/domain/story-beats.js construction: once the first construction wave has come up, a sinkhole found filled (the gunship's guns, the MK-9, the strike; anything that kills the source) is sealed for good: Isao says sinkhole_sealed and no construction wave comes after it; the Stålheart's print and the handover are unchanged. Until then, each time the field is cleared after a wave, Isao says sinkhole_strike (the first time: GUNSHIP on the strip, put a strike on it) or sinkhole_strike_again, once per wave. The hard cores still re-open a sinkhole filled before them (quiver phase), and the sectors' LEFT IN THE FIELD / HELD rule is untouched. state().story.construction carries sealed and reminded.",
+  "alternatives": [
+    "A reminder without the rule: the owner chose to make it matter; a reminder to do something that changes nothing would teach the player to ignore Isao.",
+    "The reminder in the sectors too: their breaches already have the held-versus-closed trade and the brief card says it."
+  ],
+  "evidence": [
+    "test/story-beats.mjs: no reminder while a wave is on the field; cleared -> sinkhole_strike once; the next wave cleared -> sinkhole_strike_again; sealed -> sinkhole_sealed once, no wave in 30 s after, not re-opened. The old assertion that a construction wave re-opens a filled sinkhole is replaced.",
+    "Browser --chapters chapters-stalheart: a real strike on the sinkhole (breachStrike) seals it, Isao says it, no construction wave in 13 s, the phase stays construction. --grow green; --pacing green with the same timeline (hull out 130.7 s, sector 1 card 284.1 s)."
+  ],
+  "supersedes": []
+}

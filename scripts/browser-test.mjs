@@ -1198,6 +1198,12 @@ try{
  await until(`${T}.state().story.construction.waves>=1`,20000);
  await until(`${T}.state().programme.isao?.state==="build"`,30000);
  {const k=(await st()).programme.isao.printK;assert(k>=0.5,`the Stålheart print is half done (${k})`);}
+ // THE SINKHOLE IS CLOSED WITH A STRIKE (owner, 2026-09-30): a real strike on it fills it for good: Isao says so and no
+ // construction wave comes after it (STORY_CONSTRUCTION.every is 11 s)
+ {await evaluate(`${T}.breachStrike()`);
+  await until(`${T}.state().story.construction.sealed===true`,8000).catch(async()=>assert.fail(`the strike fills the sinkhole (${JSON.stringify((await st()).story.construction)})`));
+  const w=(await st()).story.construction.waves;assert((await st()).story.said.includes('sinkhole_sealed'),'Isao says it is filled');
+  await delay(13000);const s=await st();assert.equal(s.story.construction.waves,w,`no construction wave after it (${JSON.stringify(s.story.construction)})`);assert.equal(s.story.phase,'construction','the Stålheart still prints');}
  await finish();
  // 5. EXPEDITION: the Stålheart and the pad stand, the hull is out at its door, the study comes after the hull's moment
  await go('chapters-expedition',`index.html?${H}&skip=expedition#td`);await loaded('chapters-expedition');

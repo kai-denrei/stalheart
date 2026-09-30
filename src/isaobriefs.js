@@ -147,6 +147,20 @@ export const BRIEFS = {
     id: 'gunship_overhead', face: 'focused', title: 'COMMS · ISAO', once: true,
     lines: ['GS01 is overhead. It guards colonies; it does not build them.', 'It holds the sky while I print. GUNSHIP takes its guns.'],
   },
+  // THE SINKHOLE IS CLOSED WITH A STRIKE (owner, 2026-09-30): src/domain/story-beats.js construction says these, the reminder once per
+  // wave cleared off the field, the last when anything has filled it
+  sinkhole_strike: {
+    id: 'sinkhole_strike', face: 'focused', title: 'THE SINKHOLE',
+    lines: ['That wave is down, but the sinkhole is still open.', 'GUNSHIP on the strip: put a strike on it. Fill it and nothing more comes up.'],
+  },
+  sinkhole_strike_again: {
+    id: 'sinkhole_strike_again', face: 'determined', title: 'THE SINKHOLE',
+    lines: ['Clear again, and the sinkhole is still breathing.', 'One strike from the gunship and the construction is safe.'],
+  },
+  sinkhole_sealed: {
+    id: 'sinkhole_sealed', face: 'glee', title: 'SINKHOLE FILLED',
+    lines: ['The sinkhole is filled. Nothing more is coming up through it.', 'Now I can print in peace.'],
+  },
   gunship_pass: {
     id: 'gunship_pass', face: 'focused', title: 'COMMS · ISAO', once: true,
     lines: ['The gunship is overhead. Fuel for a pass, not a landing.', 'I mark what it must not hit.'],

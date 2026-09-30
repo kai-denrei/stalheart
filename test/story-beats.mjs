@@ -307,12 +307,11 @@ const toQuiverClear = (beats, g) => {
   run(beats, g, 1.2); const w1 = kinds(g, 'spawn').slice(s0);
   assert.deepEqual(w1.map((l) => [l[1], l[2]]), [['amoeba', 4300], ['amoeba', 4300], ['amoeba', 4300]], 'the first construction wave rises from the sinkhole');
   for (const l of w1) { assert.equal(l[3].pace, 1.5); assert.equal(l[3].harmless, true); assert.equal(l[3].spread, 0.9); assert.ok(l[3].delay >= 0 && l[3].delay < 2, 'risen over the stagger'); }
-  g.seal();   // a strike filled the sinkhole between waves
   run(beats, g, 5); const w2 = kinds(g, 'spawn').slice(s0 + 3);
   assert.deepEqual(w2.map((l) => l[1]), ['amoeba', 'amoeba', 'barbed'], 'the second wave carries a hard core');
-  assert.equal(kinds(g, 'breach').length, b0 + 1, 'the sinkhole is opened again for the wave');
+  assert.equal(kinds(g, 'breach').length, b0, 'the sinkhole stays the one opened for the fifty');
   run(beats, g, 5); assert.deepEqual(kinds(g, 'spawn').slice(s0 + 6).map((l) => l[1]), ['amoeba', 'amoeba', 'amoeba'], 'the table cycles');
-  assert.deepEqual(beats.state().construction, { waves: 3, sent: 9 });
+  assert.deepEqual(beats.state().construction, { waves: 3, sent: 9, sealed: false, reminded: 0 });
   run(beats, g, 6); assert.equal(beats.state().construction.waves, 3, 'nine standing against a cap of seven: the next wave waits');
   g.kill(3); run(beats, g, 0.2); assert.equal(beats.state().construction.waves, 4, '...and rises the moment the field thins');
   assert.equal(beats.state().phase, 'construction', 'the field is not what ends it: the Stålheart is');
@@ -326,6 +325,26 @@ const toQuiverClear = (beats, g) => {
   run(beats, g, 2.5); assert.equal(beats.state().phase, 'study-talk');
   run(beats, g, 7); assert.equal(kinds(g, 'spawn').length, s1, 'no construction wave after it');
   assert.equal(kinds(g, 'gunshipArrive').length, 1, 'the gunship arrived once');
+}
+{
+  // THE SINKHOLE IS CLOSED WITH A STRIKE (owner, 2026-09-30): each wave cleared off the field brings Isao's reminder, once per wave;
+  // a sinkhole filled after the first wave stays filled and no construction wave comes after it
+  const beats = makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, rotorDelay: 2, fodderEvery: 1, fodderAlive: 4, fodderTotal: 12, tremorDelay: 1, breachDelay: 2, overrideDelay: 1, quiverSocket: 4244, quiver: QUIVER, construction: CONSTRUCTION });
+  const g = fakeGame({ walk: 3, printSeconds: 3 });
+  g.api.stalheartStands = () => false; g.api.gunshipArrive = () => {};
+  toQuiverClear(beats, g); run(beats, g, 1);
+  const strike = () => kinds(g, 'brief').map((l) => l[1]).filter((id) => id.startsWith('sinkhole'));
+  run(beats, g, 1.2); assert.equal(beats.state().construction.waves, 1);
+  assert.deepEqual(strike(), [], 'no reminder while the wave is on the field');
+  g.kill(3); run(beats, g, 0.3); assert.deepEqual(strike(), ['sinkhole_strike'], 'the wave cleared: strike the sinkhole');
+  run(beats, g, 1); assert.deepEqual(strike(), ['sinkhole_strike'], 'said once for that wave');
+  run(beats, g, 4); g.kill(3); run(beats, g, 0.3); assert.deepEqual(strike(), ['sinkhole_strike', 'sinkhole_strike_again'], 'the next wave cleared: said again');
+  const waves = beats.state().construction.waves, b0 = kinds(g, 'breach').length;
+  g.seal(); run(beats, g, 0.2);
+  assert.deepEqual(strike().at(-1), 'sinkhole_sealed', 'Isao says it is filled'); assert.equal(beats.state().construction.sealed, true);
+  run(beats, g, 30); assert.equal(beats.state().construction.waves, waves, 'no construction wave after it');
+  assert.equal(kinds(g, 'breach').length, b0, 'nor is it opened again');
+  assert.equal(strike().filter((id) => id === 'sinkhole_sealed').length, 1, 'said once');
 }
 {
   // a player who drives off instead of mopping up: the handover comes `mopUpSeconds` after the Stålheart stands, whatever is left
@@ -345,7 +364,7 @@ const toQuiverClear = (beats, g) => {
   const g = fakeGame({ walk: 3, printSeconds: 3 });
   g.api.stalheartStands = () => true; g.api.gunshipArrive = () => { g.log.push(['gunshipArrive']); };
   toQuiverClear(beats, g); run(beats, g, 0.2);
-  assert.equal(beats.state().phase, 'settled'); assert.equal(kinds(g, 'gunshipArrive').length, 0); assert.deepEqual(beats.state().construction, { waves: 0, sent: 0 });
+  assert.equal(beats.state().phase, 'settled'); assert.equal(kinds(g, 'gunshipArrive').length, 0); assert.deepEqual(beats.state().construction, { waves: 0, sent: 0, sealed: false, reminded: 0 });
 }
 {
   // a static page (no construction table) settles as before whatever the Stålheart does, and a late start at construction leaves it
