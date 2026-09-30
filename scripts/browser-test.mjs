@@ -975,6 +975,9 @@ try{
   assert.equal(a.fov,a.lens,'the lens is the game\'s again');assert.equal(s.shot,null);assert.equal(await evaluate('getComputedStyle(document.querySelector("#td-stats")).display'),'block','and the HUD is back');
   const seen=await evaluate('JSON.parse(localStorage.getItem("stalheart:v1:td.briefs")||"[]")');for(const id of ['rough_landing','so_much_to_build','foundry_deploy'])assert(!seen.includes(id),`the old landing line ${id} is not said over the arrival`);
   console.log(`  grow: the arrival ${a.cut} s of landing (${land.length} frames) + ${a.talk} s on his face (${talk.length} frames); lines ${lines.join(' / ')}`);}
+ // THE PLAYER LOOKS AROUND (owner, 2026-09-30: "first beat, player should be in charge of something, a free camera"): the landing
+ // hands over to the orbit camera, and no seat has glided in yet
+ {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.view,'orbit',`the landing ends on the free camera (${s.view})`);assert.equal(s.glide.n,0);}
  const g0=await evaluate('window.__stalheartTest.state()');assert.equal(g0.programme.grow,true);assert.equal(g0.programme.gate.built,false,'no gate at the landing');assert.deepEqual(g0.programme.printed,[]);assert.deepEqual(g0.bays,[],'the bays are not printed yet');
  // SECTOR 0 (owner, 2026-09-24: "The Tank is built by the Stalheart"): the opening is Isao coming out and building; no MÖRK is drawn or driven
  assert.equal(g0.hull.state,'held','no hull at the landing');assert.equal(g0.hull.visible,false,'the hull is not drawn');assert(g0.hull.door>=0,`the Stålheart has a door to roll the hull out of (${JSON.stringify(g0.hull)})`);
@@ -1004,7 +1007,10 @@ try{
  assert(/STÅLHEART \d+%/.test(await evaluate('document.querySelector("#td-stats").textContent')),`the HUD reads the Stålheart's progress (${await evaluate('document.querySelector("#td-stats").textContent')})`);
  current='grow-stalheart-rising';await finish();
  await until('window.__stalheartTest.state().story.phase==="override"',150000);await mark('override');
- await until('!!window.__stalheartPilotTest',30000);await mark('first kill possible (the Rotor is the players)');await until('window.__stalheartTest.state().performance.enemies>0',60000);await delay(2000);current='grow-fodder';await finish();
+ await until('!!window.__stalheartPilotTest',30000);await mark('first kill possible (the Rotor is the players)');
+ // THE SEAT GLIDE (owner, 2026-09-30: "switch between rotor and quiver is too abrupt"): each scripted hand-over eases the camera in
+ await until('window.__stalheartTest.state().story.phase==="piloting"',30000);
+ {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.glide.n,1,`the Rotor's seat is glided into (${JSON.stringify(s.glide)})`);}await until('window.__stalheartTest.state().performance.enemies>0',60000);await delay(2000);current='grow-fodder';await finish();
  await evaluate('window.__stalheartPilotTest.hold(true)');
  await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("wave_cleared"))return true;const t=window.__stalheartPilotTest;if(!t||t.state().overheated)return false;t.aimEnemy();return false;})()',600000);
  await evaluate('window.__stalheartPilotTest?.hold(false)');await mark('first wave cleared');
@@ -1186,7 +1192,7 @@ try{
  await go('chapters-quiver',`index.html?${H}&skip=quiver#td`);await loaded('chapters-quiver');
  {await world('quiver',['foundry','gate'],['rotor','quiver']);const c=await card();assert.match(c.where,/^TUTORIAL 4\/6\s*QUIVER/,`4/6 (${c.where})`);}
  await until(`${T}.state().story.phase==="quiver-piloting"`,20000);
- {const s=await st();assert.equal(s.story.hardcores,1,'the first hard core');assert.equal(s.programme.active,'stalheart','Isao prints the Stålheart');}
+ {const s=await st();assert.equal(s.story.hardcores,1,'the first hard core');assert(s.glide.n>=1,`the Quiver's optic is glided into, not cut to (${JSON.stringify(s.glide)})`);assert.equal(s.programme.active,'stalheart','Isao prints the Stålheart');}
  await until(`${T}.state().programme.isao?.state==="build"`,30000);
  {const k=(await st()).programme.isao.printK;assert(k>=0.33,`the Stålheart print is a third done (${k})`);}
  await finish();

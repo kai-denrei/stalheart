@@ -4724,3 +4724,8 @@ body.mobile-shell #integrity-hud { display: none; }
 body.mobile-shell #td-stats.ih-panel-hit { animation: ih-panel 0.9s ease-out; }
 @keyframes ih-panel { 0%, 30% { border-color: #ff6a88; box-shadow: 0 0 0 2px rgba(255, 60, 90, 0.8), inset 0 0 24px rgba(255, 60, 90, 0.45); } }
 @media (prefers-reduced-motion: reduce) { #integrity-hud .ih-hit, #integrity-edge.ie-hit, #td-stats.ih-panel-hit { animation-duration: 0.01s; } }
+
+/* THE SEAT GLIDE (src/fx/seat-glide.js, owner 2026-09-30): the optic's chrome is gone while the camera travels to the new post and
+   fades in as it lands */
+#sentry-pilot, #story-scope { transition: opacity 0.35s ease-out; }
+body.seat-gliding #sentry-pilot, body.seat-gliding #story-scope { opacity: 0; transition: none; }

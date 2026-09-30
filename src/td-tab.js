@@ -2,7 +2,7 @@ import { createSentryPilot } from './sentry-pilot.js';
 import { DEFAULT_TANK, SHELL_SPEED, SHELL_REACH, TANK_DRIVE, TANK_STEER } from './content/tank.js'; import { makeDriveRamp, stepDriveRamp, scrubDriveRamp } from './domain/drive-ramp.js'; import { hullDepth, deepensContact } from './domain/hull-contact.js'; import { makeSteerEase, stepSteerEase, steerBank } from './domain/steer-ease.js'; import { baseFor, restoreSeatView } from './domain/seat-view.js'; import { BASE_REPAIR, BASE_BUILDER } from './content/base-programme.js';
 import { createGameBreaches } from './game-breaches.js'; import { ramShotPose } from './domain/showcase-shot.js';   /* THE RAM BEAT'S OWN FRAMING: low behind the hull (src/domain/showcase-shot.js; the band of cells it drives into is the showcase hooks') */
 import { createBoardSurface } from './fx/board-surface.js'; import { createCampaignDebrief, sparkline } from './fx/campaign-debrief.js'; import { createSectorRun } from './fx/sector-run.js'; import { createBackDoor } from './fx/back-door.js'; import { isaoFace, orbitFrame, sitesDir, sitesRadius } from './domain/story-shots.js';
-import { startDiveShot } from './fx/dive-shot.js'; import { createCameraShots } from './fx/camera-shot.js'; import { createIntegrityHud } from './fx/integrity-hud.js'; import { viewEdge, viewportLine } from './domain/view-edge.js'; import { makeShaderWarmer } from './fx/shader-warm.js'; import { waveGap } from './domain/wave-spread.js';
+import { startDiveShot } from './fx/dive-shot.js'; import { createCameraShots } from './fx/camera-shot.js'; import { createIntegrityHud } from './fx/integrity-hud.js'; import { createSeatGlide } from './fx/seat-glide.js'; import { LOOK_TOAST } from './fx/arrival.js'; import { viewEdge, viewportLine } from './domain/view-edge.js'; import { boxOverlaps } from './domain/box-overlaps.js'; import { makeShaderWarmer } from './fx/shader-warm.js'; import { waveGap } from './domain/wave-spread.js';
 import { BREACH_SOUNDS } from './content/breach-defaults.js';
 import { SOUNDS } from './content/runtime.js';
 import { emergence } from './domain/breach-waves.js'; import { applyScare, stampScare, scarePace, isScared, towardScare, awayExits } from './domain/impact-scare.js'; import { EXPLOSION_SCARE, SCARE_FREEZE_S } from './content/explosions.js'; import { createThermalHeat } from './fx/thermal-heat.js'; import { isAutomated, pilotMultipliers } from './domain/automation.js'; import { fillFromKill, fillFromWaveClear, isFull as callFull, callProgress } from './domain/gunship-call.js'; import { GUNSHIP_CALL, GUNSHIP_FAR } from './content/gunship.js'; import { unlockedTowers } from './domain/expeditions.js'; import { createExpeditionsHost } from './fx/expedition-glue.js'; import { CARGO_LOOK } from './content/cargo.js'; import { STORY_EXPEDITIONS } from './content/story-defaults.js'; import { makeSiteRing as siteRing, disposeSiteRing } from './fx/site-ring.js'; import { hasPerk as programmeHas, snapshot as programmeSnapshot, lose as programmeLose } from './domain/build-programme.js'; import { createProgramWarm } from './fx/program-warm.js';
@@ -1500,7 +1500,7 @@ export function initTdTab(root) {
       `mesh vis=${!!(pm && pm.visible)} inScene=${!!(pm && pm.parent === scene)} scale=${pm ? pm.scale.x.toFixed(4) : '-'} unitScale=${unitScale.toFixed(4)} base=${pm ? (pm.userData.baseScale ?? 1) : '-'} pos=${pp.map((v) => v.toFixed(3)).join(',')}`,
       `cam pos=${cp.x.toFixed(3)},${cp.y.toFixed(3)},${cp.z.toFixed(3)} toTank=${(cp.distanceTo(diagNdc.set(pp[0], pp[1], pp[2])) / cellSide).toFixed(2)}c fov=${camera.fov} aspect=${camera.aspect.toFixed(3)} far=${camera.far}`,
       `tankScreen=${(() => { diagNdc.set(pp[0], pp[1], pp[2]).project(camera); return `${diagNdc.x.toFixed(2)},${diagNdc.y.toFixed(2)},${diagNdc.z.toFixed(3)}`; })()} inFrustum=${tankInFrustum()}`,
-      `canvas=${renderer.domElement.width}x${renderer.domElement.height} css=${renderer.domElement.clientWidth}x${renderer.domElement.clientHeight} inner=${innerWidth}x${innerHeight} visual=${vv ? `${Math.round(vv.width)}x${Math.round(vv.height)}@${Math.round(vv.offsetLeft)},${Math.round(vv.offsetTop)} s${vv.scale.toFixed(2)}` : '-'} dpr=${devicePixelRatio} cell=${cellSide.toFixed(4)} wall=${params.wallHeight}`,
+      `canvas=${renderer.domElement.width}x${renderer.domElement.height} css=${renderer.domElement.clientWidth}x${renderer.domElement.clientHeight} inner=${innerWidth}x${innerHeight} visual=${viewportLine(vv)}${vv ? ` s${vv.scale.toFixed(2)}` : ''} dpr=${devicePixelRatio} cell=${cellSide.toFixed(4)} wall=${params.wallHeight}`,
       `viewwatch fires=${vwFires} out=${vwOut.toFixed(1)}s bias=${camBiasNdc.toFixed(3)}`,
     ].join('\n');
   }
@@ -1575,7 +1575,7 @@ export function initTdTab(root) {
     }
   }
 
-  const camGoal = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
+  const camGoal = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() }, seatGlide = createSeatGlide();
   // two more of the same, for blending between two framings (the cold open)
   // two spare pose slots, for blending one framing into another
   const camA = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
@@ -8626,7 +8626,7 @@ export function initTdTab(root) {
     updateCameraGoal();
 
     if (pilotMode && pilot && !pilot.isMap()) {
-      camera.position.copy(camGoal.pos); camera.quaternion.copy(camGoal.quat);
+      seatGlide.place(camera, camGoal, dt);   /* src/fx/seat-glide.js: exactly on the optic, or easing into it after a hand-over */
     } else {
       camera.position.lerp(camGoal.pos, 0.14);
       camera.quaternion.slerp(camGoal.quat, 0.14);
@@ -8708,7 +8708,7 @@ export function initTdTab(root) {
     screen: (id) => { if (id !== 'synthetic') return; syntheticModal ??= createSyntheticModal(root); const was = paused; paused = true; syntheticModal.open(BRIEFS.vibration_study.lines, () => { paused = was; }); },
     pilot: (ci, laneCi) => {
       if (pilot?.gunship || laserStation.seated()) return;   // a scripted hand-over never evicts a gunner or SOL-82: the beat is deferred, not the player (2026-09-23)
-      enterPilot([ci, ...towers.map((t) => t.ci).filter((c) => c !== ci)]);
+      seatGlide.begin(camera); enterPilot([ci, ...towers.map((t) => t.ci).filter((c) => c !== ci)]);
       startShot({ id: 'takeControl', dur: 3.2, poseAt: takeControlPose(perchOf(towerByCell.get(ci) ?? { ci }), graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight), onEnd: () => { setView('bastion'); snapCamera(); } });
     },
   };
@@ -8716,7 +8716,8 @@ export function initTdTab(root) {
     // SECTOR 0 (src/domain/story-beats.js construction): the Stålheart stands once its first hull is out; the gunship comes on
     // station from orbit for a free pass
     stalheartStands: () => !!story?.hull?.out(),
-    gunshipArrive: () => { if (!story) return; story.gunshipIn = true; startStation(gunship, GUNSHIP_ORBIT); showBrief('gunship_overhead'); }, camera, startShot, snapCamera, sfx, drone: () => isao,   /* THE ARRIVAL's hands (src/fx/arrival.js) */
+    gunshipArrive: () => { if (!story) return; story.gunshipIn = true; startStation(gunship, GUNSHIP_ORBIT); showBrief('gunship_overhead'); }, camera, startShot, snapCamera, sfx, drone: () => isao,
+    freeLook: () => { setView('orbit'); centerBuildOnHeart(); followSuspend = true; buildDist = 1.65; snapCamera(); showToast(LOOK_TOAST, 5000); },   /* THE ARRIVAL's hands (src/fx/arrival.js); freeLook: the landing hands over to the free camera */
   },
   // ISAO KEEPS BUILDING (src/fx/programme-host.js): perks, hasPerk, build, repaired, printed
   createProgrammeHost({
@@ -8868,20 +8869,7 @@ export function initTdTab(root) {
         console.log(`LAYOUT ${k.padEnd(9)} x ${Math.round(r.left)}..${Math.round(r.right)}`
           + `  y ${Math.round(r.top)}..${Math.round(r.bottom)}`);
       }
-      const keys = Object.keys(box);
-      let clashes = 0;
-      for (let i = 0; i < keys.length; i++) {
-        for (let j = i + 1; j < keys.length; j++) {
-          const a = box[keys[i]], b = box[keys[j]];
-          const ox = Math.min(a.right, b.right) - Math.max(a.left, b.left);
-          const oy = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
-          if (ox > 2 && oy > 2) {
-            clashes++;
-            console.log(`LAYOUT OVERLAP ${keys[i]} x ${keys[j]}`
-              + ` — ${Math.round(ox)}x${Math.round(oy)}px`);
-          }
-        }
-      }
+      const clashes = boxOverlaps(box).map((c) => console.log(`LAYOUT OVERLAP ${c.a} x ${c.b} — ${Math.round(c.x)}x${Math.round(c.y)}px`)).length;   /* src/domain/box-overlaps.js */
       console.log(`LAYOUT viewport ${innerWidth}x${innerHeight}`
         + ` coarse=${matchMedia('(pointer: coarse)').matches}`
         + `${urlParams.get('coarse') === '1' ? ' (SIMULATED)' : ''}`
@@ -8904,7 +8892,7 @@ export function initTdTab(root) {
       const ndc = new THREE.Vector3(...player.pos).project(camera);
       const vv = window.visualViewport;
       const extra = `tankScreen=(${ndc.x.toFixed(2)},${ndc.y.toFixed(2)}) canvas=${renderer.domElement.width}x${renderer.domElement.height}`
-        + ` inner=${innerWidth}x${innerHeight} visual=${vv ? `${Math.round(vv.width)}x${Math.round(vv.height)}@${Math.round(vv.offsetTop)}` : '-'}`
+        + ` inner=${innerWidth}x${innerHeight} visual=${viewportLine(vv)}`
         + ` dpr=${devicePixelRatio} view=${params.view} camToTank=${(cp.distanceTo(new THREE.Vector3(...player.pos)) / cellSide).toFixed(1)}c`
         + ` thr=${throttle.toFixed(2)} stick=${!!stick} laser=${keys.laser}`;
       onScreen(`t=${k * 2}s ${extra}`);
@@ -8994,7 +8982,7 @@ export function initTdTab(root) {
         pilotHits: rs?.pilotHits ?? 0,
         pilotTracerGap: rs?.pilotGap ?? null,   // metres, tracer head to impact, widest; null until one lands
         gunship: gunshipRig.probe(),
-        shot:shotId(),
+        shot:shotId(), view:params.view,
         breachRubble:gameBreaches.rubbleState(),
         breaches:gameBreaches.state(),
         queued:spawnQueue.length,
@@ -9015,7 +9003,7 @@ export function initTdTab(root) {
         cargo: story?.glue?.state() ?? null,
         unlocked: automated() ? unlockedTowers(story.expeditions, STORY_EXPEDITIONS.base) : null,
         storyHome: story?.home ?? -1,
-        story: story?.beats.state() ?? null, arrival: story?.arrival.state() ?? null, integrity: integrityHud?.state() ?? null,
+        story: story?.beats.state() ?? null, arrival: story?.arrival.state() ?? null, integrity: integrityHud?.state() ?? null, glide: seatGlide.state(),
         hull: story?.hull ? { ...story.hull.state(), visible: !!playerMesh?.visible, tankButton: (() => { const b = document.querySelector('#story-views [data-view="tank"]'); return b ? !b.hidden : null; })() } : null,
         automated: automated(),
         gunshipCall: { ...gunshipRig.call },
@@ -9235,7 +9223,7 @@ export function initTdTab(root) {
   };
     if (urlParams.get('acceptance') === '1') window.__stalheartTest = gameHooks;   // Browser acceptance adapter, published only when explicitly requested; the showcase holds the same object directly
 
-  function leavePilot() { if (!pilotMode) return; pilot?.dispose(); for (const tw of towers) hushRotor(tw); pilot = null; pilotHost = null; pilotMode = false; storyScope?.update({ on: false }); /* the scope leaves with the optic */ params.callouts = true; delete window.__stalheartPilotTest; restoreSeat(); }   /* back to the hull, at the lens and the view the seat was taken from: the seat's zoom narrowed it (owner, 2026-09-15: the tank after the gunship at the wrong angle; 2026-09-23: and after SOL-82 too) */ let seatBase = null; function restoreSeat() { const b = restoreSeatView(seatBase); seatBase = null; camera.fov = b.fov; camera.updateProjectionMatrix(); if (!b.lock && document.pointerLockElement) document.exitPointerLock?.(); setView(b.view); snapCamera(); }   /* THE ONE RESTORE (src/domain/seat-view.js): every leave puts back the camera the FIRST seat of the chain recorded, whichever seat comes next, and drops a pointer lock the hull never asked for */
+  function leavePilot() { if (!pilotMode) return; seatGlide.cancel(); pilot?.dispose(); for (const tw of towers) hushRotor(tw); pilot = null; pilotHost = null; pilotMode = false; storyScope?.update({ on: false }); /* the scope leaves with the optic */ params.callouts = true; delete window.__stalheartPilotTest; restoreSeat(); }   /* back to the hull, at the lens and the view the seat was taken from: the seat's zoom narrowed it (owner, 2026-09-15: the tank after the gunship at the wrong angle; 2026-09-23: and after SOL-82 too) */ let seatBase = null; function restoreSeat() { const b = restoreSeatView(seatBase); seatBase = null; camera.fov = b.fov; camera.updateProjectionMatrix(); if (!b.lock && document.pointerLockElement) document.exitPointerLock?.(); setView(b.view); snapCamera(); }   /* THE ONE RESTORE (src/domain/seat-view.js): every leave puts back the camera the FIRST seat of the chain recorded, whichever seat comes next, and drops a pointer lock the hull never asked for */
   function enterPilot(posts) { keys.left = keys.right = keys.fast = keys.slow = keys.laser = false; pilot?.dispose(); seatBase = baseFor(seatBase, pilotMode || laserStation.seated(), { view: params.view, fov: camera.fov }); pilotMode = true;   // one optic at a time: a hand-over while already piloting replaces the panel. the story hands over its mounts
     function installPilot(key) {
       const old=pilotMounts[pilotPost];

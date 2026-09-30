@@ -17,6 +17,20 @@ Evidence:
 - test/story-beats.mjs: no reminder while a wave is on the field; cleared -> sinkhole_strike once; the next wave cleared -> sinkhole_strike_again; sealed -> sinkhole_sealed once, no wave in 30 s after, not re-opened. The old assertion that a construction wave re-opens a filled sinkhole is replaced.
 - Browser --chapters chapters-stalheart: a real strike on the sinkhole (breachStrike) seals it, Isao says it, no construction wave in 13 s, the phase stays construction. --grow green; --pacing green with the same timeline (hull out 130.7 s, sector 1 card 284.1 s).
 
+## 2026-09-30 — A scripted seat hand-over glides instead of cutting: the camera eases along a raised arc into the new optic over 1.4 s and the optic's chrome fades in as it lands
+
+change · accepted · 2026-09-30-seat-glide
+
+Owner's third playtest (a996e005, 2026-09-30): "2) swithc between rotor and quiver is too abrupt." storyApi.pilot entered the new seat and started a 3.2 s takeControl shot, but a seat's pose outranks any shot in updateCameraGoal and the frame loop puts the camera exactly on a seat's goal, so the shot never showed: the hand-over was a cut from the Rotor's optic to the Quiver's, and from the chase view into the Rotor's at the first wave.
+
+src/fx/seat-glide.js (new): storyApi.pilot captures the camera before entering the seat; the frame loop's seat branch places the camera through the glide, which blends from that capture to the seat's own goal with a smoothstep, lifted off the planet mid-way by 0.35 of the distance, then sits exactly on the goal again. The aim stays live throughout. body.seat-gliding hides #sentry-pilot and #story-scope, which fade in over 0.35 s when it lands (styles.css). Leaving a seat cancels a glide. The player's own seat changes (strip buttons, keys) are unchanged. The controller's share is paid by moving the layout ruler's clash count to src/domain/box-overlaps.js.
+
+Alternatives: Let the takeControl shot play before the optic: 3.2 s of orbit around the tower with the player's aim not yet live, in the middle of a wave.; A fade through black: hides the cut but still loses where the new post is; the arc shows the player where they have moved to.
+
+Evidence:
+
+- Browser --grow: the Rotor's seat is glided into at the override (glide n 1). --chapters chapters-quiver: the Quiver's optic is glided into (glide n >= 1). test/box-overlaps.mjs (new). npm test, npm run check, npm run architecture.
+
 ## 2026-09-30 — The landing is heard: the thrust bed rides the plume and the tank's pneumatics play the legs, the shock and the door; the first gesture over a page-opening shot starts the sound instead of skipping it
 
 change · accepted · 2026-09-30-landing-sound
@@ -61,6 +75,20 @@ Evidence:
 
 - ffmpeg volumedetect: gate_hydraulics.mp3 mean -31.1 dB, max -11.3 dB; gate_slam.mp3 mean -12.3 dB, max 0.0 dB.
 - npm test, npm run check; browser --back-gate green (the gate prints, stands, takes pressure and goes down). Not measured: the audible level on the owner's device.
+
+## 2026-09-30 — The landing hands the player the orbit camera on the base: drag to turn the planet, wheel or pinch to zoom, until the first seat glides in
+
+change · accepted · 2026-09-30-free-camera-after-the-landing
+
+Owner's third playtest (a996e005, 2026-09-30): "1) first beat, player should be in charge of something, a free camera. At least." From the landing to the Rotor's seat (the foundry, the Rotor's print, the gate, the tremor: about a minute) the camera sat in the chase view aimed at a hull that does not exist yet, and nothing the player did changed the picture.
+
+src/fx/arrival.js ends the landing (played, skipped or released) through storyApi.freeLook: the orbit view (the existing build camera: drag, wheel, pinch), framed on the Stålheart's plot at the build distance, with a toast, LOOK AROUND · drag to turn the planet · wheel or pinch to zoom. The first seat hand-over glides in from wherever the player left the camera (2026-09-30-seat-glide). Nothing freezes: the controller's build freeze is off. Leaving a seat before the hull exists returns to the orbit view the seat was entered from.
+
+Alternatives: A slow automatic orbit the player can interrupt: still not in the player's hands.; Hand over the tank earlier: the pacing round made the Stålheart print the first MÖRK; a hull at the landing undoes sector 0.
+
+Evidence:
+
+- Browser --grow: after the arrival the view is orbit and no seat has glided yet; the whole grown session is green. --chapters green (NEXT over the landing ends it in the page).
 
 ## 2026-09-25 — The tutorial in six chapters: the SKIP TUTORIAL button becomes a card that shows where the run is (TUTORIAL n/6) with NEXT to the next chapter's start and SKIP ALL, and every chapter is a URL built at boot as a run has it there
 

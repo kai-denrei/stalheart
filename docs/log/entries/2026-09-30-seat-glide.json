@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "2026-09-30-seat-glide",
+  "date": "2026-09-30",
+  "type": "change",
+  "status": "accepted",
+  "title": "A scripted seat hand-over glides instead of cutting: the camera eases along a raised arc into the new optic over 1.4 s and the optic's chrome fades in as it lands",
+  "context": "Owner's third playtest (a996e005, 2026-09-30): \"2) swithc between rotor and quiver is too abrupt.\" storyApi.pilot entered the new seat and started a 3.2 s takeControl shot, but a seat's pose outranks any shot in updateCameraGoal and the frame loop puts the camera exactly on a seat's goal, so the shot never showed: the hand-over was a cut from the Rotor's optic to the Quiver's, and from the chase view into the Rotor's at the first wave.",
+  "outcome": "src/fx/seat-glide.js (new): storyApi.pilot captures the camera before entering the seat; the frame loop's seat branch places the camera through the glide, which blends from that capture to the seat's own goal with a smoothstep, lifted off the planet mid-way by 0.35 of the distance, then sits exactly on the goal again. The aim stays live throughout. body.seat-gliding hides #sentry-pilot and #story-scope, which fade in over 0.35 s when it lands (styles.css). Leaving a seat cancels a glide. The player's own seat changes (strip buttons, keys) are unchanged. The controller's share is paid by moving the layout ruler's clash count to src/domain/box-overlaps.js.",
+  "alternatives": [
+    "Let the takeControl shot play before the optic: 3.2 s of orbit around the tower with the player's aim not yet live, in the middle of a wave.",
+    "A fade through black: hides the cut but still loses where the new post is; the arc shows the player where they have moved to."
+  ],
+  "evidence": [
+    "Browser --grow: the Rotor's seat is glided into at the override (glide n 1). --chapters chapters-quiver: the Quiver's optic is glided into (glide n >= 1). test/box-overlaps.mjs (new). npm test, npm run check, npm run architecture."
+  ],
+  "supersedes": []
+}

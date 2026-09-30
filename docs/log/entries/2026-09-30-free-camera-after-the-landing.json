@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "2026-09-30-free-camera-after-the-landing",
+  "date": "2026-09-30",
+  "type": "change",
+  "status": "accepted",
+  "title": "The landing hands the player the orbit camera on the base: drag to turn the planet, wheel or pinch to zoom, until the first seat glides in",
+  "context": "Owner's third playtest (a996e005, 2026-09-30): \"1) first beat, player should be in charge of something, a free camera. At least.\" From the landing to the Rotor's seat (the foundry, the Rotor's print, the gate, the tremor: about a minute) the camera sat in the chase view aimed at a hull that does not exist yet, and nothing the player did changed the picture.",
+  "outcome": "src/fx/arrival.js ends the landing (played, skipped or released) through storyApi.freeLook: the orbit view (the existing build camera: drag, wheel, pinch), framed on the Stålheart's plot at the build distance, with a toast, LOOK AROUND · drag to turn the planet · wheel or pinch to zoom. The first seat hand-over glides in from wherever the player left the camera (2026-09-30-seat-glide). Nothing freezes: the controller's build freeze is off. Leaving a seat before the hull exists returns to the orbit view the seat was entered from.",
+  "alternatives": [
+    "A slow automatic orbit the player can interrupt: still not in the player's hands.",
+    "Hand over the tank earlier: the pacing round made the Stålheart print the first MÖRK; a hull at the landing undoes sector 0."
+  ],
+  "evidence": [
+    "Browser --grow: after the arrival the view is orbit and no seat has glided yet; the whole grown session is green. --chapters green (NEXT over the landing ends it in the page)."
+  ],
+  "supersedes": []
+}
