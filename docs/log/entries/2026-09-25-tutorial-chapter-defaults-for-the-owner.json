@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-09-25-tutorial-chapter-defaults-for-the-owner",
+  "date": "2026-09-25",
+  "type": "decision",
+  "status": "proposed",
+  "title": "Three choices in the tutorial chapters were taken as defaults while the owner was away and wait for his word: six chapters (the first wave its own), SKIP ALL to the back door, and the STÅLHEART chapter half printed with the player in the Quiver's optic",
+  "context": "The owner asked the skip control for two options (2026-09-25: \"1) Showing 1/x in tutorial, where we are, skip to next phase. 2) skip entire tutorial\"). The investigation of the tutorial left three product choices open. He was away and the session was to continue, so the build took a default for each (2026-09-25-tutorial-chapters, live since ce0a8252). They are recorded as proposed because he has not confirmed them.",
+  "outcome": "Proposed, not confirmed. (1) Six chapters, LANDING, ROTOR, FIRST WAVE, QUIVER, STÅLHEART and EXPEDITION, rather than five with ROTOR running through the first wave: the first wave is where he saw nothing to shoot at, so it gets its own chapter and link. (2) SKIP ALL keeps SKIP TUTORIAL's target, sector 2 at the back door with the Relay and the Mortar earned; NEXT from the last chapter opens sector 1. (3) The STÅLHEART chapter starts with the print half done and the player in the Quiver's optic, as a run has it at that point. Each is a small content edit: STORY_CHAPTERS (its phases and head) in src/content/story-defaults.js, and STORY_SKIP.sector for SKIP ALL.",
+  "alternatives": [
+    "Five chapters: ROTOR would last about 70 s, 40 of them watching Isao build before the wave.",
+    "SKIP ALL to sector 1 on the grown base: the tutorial's natural end, but not the entry the owner chose on 2026-09-16 (straight into the back door).",
+    "STÅLHEART from 0%: sector 0 would last 75 s from the jump, against the ~37 s a run has."
+  ],
+  "evidence": [
+    "docs/log/entries/2026-09-25-tutorial-chapters.json; the browser suite --chapters walks the six chapters and sector 1 on main ce0a8252."
+  ],
+  "supersedes": []
+}

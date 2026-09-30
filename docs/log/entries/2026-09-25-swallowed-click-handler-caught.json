@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "2026-09-25-swallowed-click-handler-caught",
+  "date": "2026-09-25",
+  "type": "issue",
+  "status": "resolved",
+  "title": "A `//` comment inside a new one-line click handler swallowed the rest of it: no page parsed, and every browser suite timed out at its first load. Caught before the push",
+  "context": "While building the tutorial card (src/fx/tutorial-card.js), a follow-up edit added a `// comment` after an inner `}` in NEXT's one-line click handler. The rest of the line, `leave(chapterUrl(...), 'next'); });`, became part of the comment. That is a syntax error in a module td-tab imports, so no page booted, the campaign board included. npm test still passed because no unit test imports the DOM module, and npm run check was not rerun after that edit. All eight browser suites then failed the same way at their first go(): `Timed out: location.href === ... && window.__stalheartReady === true`. The project already knew this trap for td-tab's and sentry-pilot's one-liners (a `//` after an inner brace); this was a new module.",
+  "outcome": "The comment moved to its own line. Nothing reached main: the fixed tree passed the same eight suites, then fifteen on the merged tree before the push (ce0a8252). Practice: run node --check on each edited file, and npm run check, after every edit and before starting browser suites. When every suite times out at its first page load, suspect a parse or boot failure, not the machine.",
+  "alternatives": [
+    "Reading the timeouts as contention on the machine and rerunning: the default suite's campaign board, a page the change does not touch, timed out the same way. That rules contention out."
+  ],
+  "evidence": [
+    "All eight suites (--skip-tutorial, --grow, default, --chapters, --phone, --showcase, --story-world, --defense) timed out at their first go(); `node --check src/fx/tutorial-card.js` reported `SyntaxError: missing ) after argument list`.",
+    "After the fix: npm run check green, the same eight suites green on the chapters branch, and fifteen green on the merged tree."
+  ],
+  "supersedes": []
+}

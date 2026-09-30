@@ -17,6 +17,35 @@ Evidence:
 - Unit tests: test/story-beats.mjs (each chapter start: ROTOR's first barrel orders the Rotor with no views; FIRST WAVE orders the Quiver first and the tremor follows with two sections cut; QUIVER neither introduces nor orders a standing Quiver and hands its optic over; STÅLHEART calls the gunship once, seats the Quiver and holds its first wave; EXPEDITION waits the construction's study delay), test/foundry.mjs (skipFoundry: none, two, all cut; silent; never rewinds a deployed foundry), test/story-query.mjs (every chapter URL opens its start; the chapters cover every beat once, in order; chapterAt), test/story-route.mjs (chapterUrl keeps the harness keys; a chapter link from an acceptance page is the story), test/arrival.mjs (past: no shot, no line, the swap as each landmark loads), test/programme-host.mjs (the head start on the Stålheart's order only).
 - Browser --chapters (new): the bare page shows 1/6 LANDING over the landing, and NEXT ends it in the page (same URL, the swap, beats at foundry, 2/6 ROTOR, the focus let go). NEXT reloads to ?skip=wave with the harness keys: gate built, Rotor standing, two sections cut, 3/6, and the wave rises with fodder alive. ?skip=quiver: both sentries, the hard core and the optic, the Stålheart print a third done. ?skip=stalheart: the hull held, the gunship on station, the Quiver's optic, the first construction wave, the print half done. ?skip=expedition: the Stålheart and pad standing, the hull out with the door as every berth, the study close-up. NEXT › SECTOR 1: sector 1 opens and the card is gone. --skip-tutorial and --phone updated for the two buttons.
 
+## 2026-09-25 — Three choices in the tutorial chapters were taken as defaults while the owner was away and wait for his word: six chapters (the first wave its own), SKIP ALL to the back door, and the STÅLHEART chapter half printed with the player in the Quiver's optic
+
+decision · proposed · 2026-09-25-tutorial-chapter-defaults-for-the-owner
+
+The owner asked the skip control for two options (2026-09-25: "1) Showing 1/x in tutorial, where we are, skip to next phase. 2) skip entire tutorial"). The investigation of the tutorial left three product choices open. He was away and the session was to continue, so the build took a default for each (2026-09-25-tutorial-chapters, live since ce0a8252). They are recorded as proposed because he has not confirmed them.
+
+Proposed, not confirmed. (1) Six chapters, LANDING, ROTOR, FIRST WAVE, QUIVER, STÅLHEART and EXPEDITION, rather than five with ROTOR running through the first wave: the first wave is where he saw nothing to shoot at, so it gets its own chapter and link. (2) SKIP ALL keeps SKIP TUTORIAL's target, sector 2 at the back door with the Relay and the Mortar earned; NEXT from the last chapter opens sector 1. (3) The STÅLHEART chapter starts with the print half done and the player in the Quiver's optic, as a run has it at that point. Each is a small content edit: STORY_CHAPTERS (its phases and head) in src/content/story-defaults.js, and STORY_SKIP.sector for SKIP ALL.
+
+Alternatives: Five chapters: ROTOR would last about 70 s, 40 of them watching Isao build before the wave.; SKIP ALL to sector 1 on the grown base: the tutorial's natural end, but not the entry the owner chose on 2026-09-16 (straight into the back door).; STÅLHEART from 0%: sector 0 would last 75 s from the jump, against the ~37 s a run has.
+
+Evidence:
+
+- docs/log/entries/2026-09-25-tutorial-chapters.json; the browser suite --chapters walks the six chapters and sector 1 on main ce0a8252.
+
+## 2026-09-25 — A `//` comment inside a new one-line click handler swallowed the rest of it: no page parsed, and every browser suite timed out at its first load. Caught before the push
+
+issue · resolved · 2026-09-25-swallowed-click-handler-caught
+
+While building the tutorial card (src/fx/tutorial-card.js), a follow-up edit added a `// comment` after an inner `}` in NEXT's one-line click handler. The rest of the line, `leave(chapterUrl(...), 'next'); });`, became part of the comment. That is a syntax error in a module td-tab imports, so no page booted, the campaign board included. npm test still passed because no unit test imports the DOM module, and npm run check was not rerun after that edit. All eight browser suites then failed the same way at their first go(): `Timed out: location.href === ... && window.__stalheartReady === true`. The project already knew this trap for td-tab's and sentry-pilot's one-liners (a `//` after an inner brace); this was a new module.
+
+The comment moved to its own line. Nothing reached main: the fixed tree passed the same eight suites, then fifteen on the merged tree before the push (ce0a8252). Practice: run node --check on each edited file, and npm run check, after every edit and before starting browser suites. When every suite times out at its first page load, suspect a parse or boot failure, not the machine.
+
+Alternatives: Reading the timeouts as contention on the machine and rerunning: the default suite's campaign board, a page the change does not touch, timed out the same way. That rules contention out.
+
+Evidence:
+
+- All eight suites (--skip-tutorial, --grow, default, --chapters, --phone, --showcase, --story-world, --defense) timed out at their first go(); `node --check src/fx/tutorial-card.js` reported `SyntaxError: missing ) after argument list`.
+- After the fix: npm run check green, the same eight suites green on the chapters branch, and fifteen green on the merged tree.
+
 ## 2026-09-25 — ?story=0 opens the story from its start (the landing, Isao's close-up, a growing base, fodder at the gate), and the close-up holds all three of his lines, the last about cannibalizing the rocket for the terraforming
 
 change · accepted · 2026-09-25-story-zero-and-the-cannibalize-line

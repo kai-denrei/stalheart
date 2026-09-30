@@ -314,7 +314,13 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 36 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 37 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### Three choices in the tutorial chapters were taken as defaults while the owner was away and wait for his word: six chapters (the first wave its own), SKIP ALL to the back door, and the STÅLHEART chapter half printed with the player in the Quiver's optic
+
+`2026-09-25-tutorial-chapter-defaults-for-the-owner` · decision · **proposed**
+
+The owner asked the skip control for two options (2026-09-25: "1) Showing 1/x in tutorial, where we are, skip to next phase. 2) skip entire tutorial"). The investigation of the tutorial left three product choices open. He was away and the session was to continue, so the build took a default for each (2026-09-25-tutorial-chapters, live since ce0a8252). They are recorded as proposed because he has not confirmed them.
 
 ### Architecture review of the pacing branch: td-tab held its line budget by packing 5.1 KB into existing long lines; two duplications repaired, the rest queued for the refactoring round
 
