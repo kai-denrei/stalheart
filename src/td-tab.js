@@ -1391,10 +1391,7 @@ export function initTdTab(root) {
     const out = { px, frac: px / short, x, y, ndc: [tsV.x, tsV.y, tsV.z] };
     if (tsV.z > 1) return { ...out, why: 'behind' };
     if (x < r.left || x > r.right || y < r.top || y > r.bottom) return { ...out, why: 'off-canvas' };
-    const vv = window.visualViewport;
-    const top = vv ? vv.offsetTop : 0, left = vv ? vv.offsetLeft : 0;
-    const bottom = vv ? top + vv.height : innerHeight, right = vv ? left + vv.width : innerWidth;
-    if (y < top || y > bottom || x < left || x > right) return { ...out, why: 'chrome' };
+    if (viewEdge({ x, y }, window.visualViewport ?? { width: innerWidth, height: innerHeight, offsetLeft: 0, offsetTop: 0 }) !== 'inside') return { ...out, why: 'chrome' };
     if (typeof document.elementsFromPoint === 'function') {
       const stack = document.elementsFromPoint(Math.round(x), Math.round(y));
       // the diagnostics panel is not game chrome — reporting that the thing
@@ -8518,7 +8515,7 @@ export function initTdTab(root) {
     }
     if (story) (integrityHud ??= createIntegrityHud(root, { sfx, brief: showBrief })).tick({ heart: { hp: heartHP, max: HEART_MAX }, gates: story.sectorN ? sectorRun?.gates() ?? [] : [] }, dt);   /* src/fx/integrity-hud.js */
     story?.arrival.tick(dt, storyApi); storyBase?.tick(frozen ? 0 : dt, player.pos, sectorRun?.gateForce() ?? null, camera.position); story?.beats.tick(frozen ? 0 : dt, storyApi); if (!frozen && story?.programme) storyApi.build(); foundryFx?.tick(frozen ? 0 : dt); gameBreaches.update(frozen?0:dt,obj=>{
-      let changed=false;const centre=norm3(obj.position.toArray()),within=Math.cos(CONTENT.breach.clearRadius*cellSide);   /* the arc test as a dot against the unit normals: the acos and a fresh norm3 per cell cost 11 ms of the opening frame on the 71k-cell story planet */
+      let changed=false;const centre=norm3(obj.position.toArray()),within=Math.cos((obj.userData.clear??CONTENT.breach.clearRadius)*cellSide);   /* the arc test as a dot against the unit normals: the acos and a fresh norm3 per cell cost 11 ms of the opening frame on the 71k-cell story planet */
       for(let ci=0;ci<graph.centers.length;ci++)if(dungeon.tags[ci]===BLOCKED&&dot3(centre,graph.normals[ci])>=within&&!orderByCell.has(ci))changed=breachWallCell(ci)||changed;
       if(changed){rebuildAfterBreach();recomputePortalDist();}
     },opened=>{
@@ -8694,7 +8691,7 @@ export function initTdTab(root) {
     brief: (id) => showBrief(id),
     tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null),
     // the sinkhole is a spawn point: an orbital strike on it fills it like any other (operator, 2026-09-13)
-    breach: (ci, o) => { const obj = buildPortalObj(ci, 0); obj.userData.quiet = !!o?.quiet; scene.add(obj); const sp = { ci, alive: true, obj, hp: 3, found: true }; if (!story.source?.alive) story.source = sp; spawnPoints.push(sp); return sp; },
+    breach: (ci, o) => { const obj = buildPortalObj(ci, 0); obj.userData.quiet = !!o?.quiet; obj.userData.clear = o?.clear; scene.add(obj); const sp = { ci, alive: true, obj, hp: 3, found: true }; if (!story.source?.alive) story.source = sp; spawnPoints.push(sp); return sp; },
     sourceAlive: () => !!story.source?.alive,
     briefing: () => !!briefQ,
     screenOpen: () => !!syntheticModal?.isOpen(),
@@ -8721,7 +8718,7 @@ export function initTdTab(root) {
   },
   // ISAO KEEPS BUILDING (src/fx/programme-host.js): perks, hasPerk, build, repaired, printed
   createProgrammeHost({
-    laserStation, shotId, showBrief, deployStart, deployStep, leavePilot, camera, startShot, deployFramePoseFor, camA, setView, PLAYER_MAX, orders, breachQueue, breachedCells, gunshipRig, spawnIsao, updateHud, syncLifeContainers, rebuildAfterBreach, recomputePortalDist, adoptBays,
+    laserStation, shotId, showBrief, deployStart, deployStep, breachWallCell, graph: () => graph, cellSide: () => cellSide, leavePilot, camera, startShot, deployFramePoseFor, camA, setView, PLAYER_MAX, orders, breachQueue, breachedCells, gunshipRig, spawnIsao, updateHud, syncLifeContainers, rebuildAfterBreach, recomputePortalDist, adoptBays,
     story: () => story, pilot: () => pilot, deploy: () => deploy, t: () => t, playerHP: () => playerHP, storyViews: () => storyViews, sectorRun: () => sectorRun, waveActive: () => waveActive, dungeon: () => dungeon, tdFullTags: () => tdFullTags, storyBase: () => storyBase, pilotMode: () => pilotMode, briefQ: () => briefQ,
     setBerths: (v) => { berths = v; }, setPlayerDown: (v) => { playerDown = v; }, setDeploy: (v) => { deploy = v; }, setPlayerHP: (v) => { playerHP = v; },
   }),

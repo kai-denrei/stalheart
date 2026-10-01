@@ -39,10 +39,20 @@ export const SECTORS = freeze([
   { n: 4, name: 'THE PRESS', breaches: { gate: 2 }, waves: 4, ladderStart: 4, threat: 2.1, pulse: 13, held: { kg: 55, points: 550 },
     gunshipCall: true, backDoor: false, laser: true, hardcoresEveryWave: false, new: null,
     brief: ['They are pressing harder. The lane is never empty now.', 'Spend what you have. The colony can print more.'] },
-  { n: 5, name: 'THE NEAR RING', breaches: { gate: 2 }, waves: 4, ladderStart: 5, threat: 2.2, pulse: 13, held: { kg: 60, points: 600 },
-    gunshipCall: true, backDoor: false, laser: true, hardcoresEveryWave: false, new: null,
-    brief: ['They are coming in closer together now.', 'Hold the gate; the walls are rock.'] },
+  // THE SIDE WALL (owner, 2026-10-01: "after 4 waves there's a « side breach ». Problem, but still within range of some of the existing
+  // towers so easier to manage. This is a chekov's gun of sorts, it reveals that the walls can be breached"). `side` is the first key,
+  // so the side breach is picked and opened first: it comes up outside the gate's wall, inside the front sentries' reach, and cuts
+  // its way to the wall (SIDE_BREACH). Isao prints the wall shut again once the lane is quiet.
+  { n: 5, name: 'THE SIDE WALL', breaches: { side: 1, gate: 1 }, waves: 4, ladderStart: 5, threat: 2.2, pulse: 13, held: { kg: 60, points: 600 },
+    gunshipCall: true, backDoor: false, laser: true, hardcoresEveryWave: false, new: 'a breach through the wall',
+    brief: ['Something is digging beside the gate. Close to the sentries.', 'One mouth on the lane, and one where it comes up.'] },
 ]);
+
+// WHERE THE SIDE BREACH COMES UP (src/domain/side-breach.js), in cells: on open ground outside the clearing, between minWall and
+// maxWall from the nearest wall, within reach of a sentry socket (the Rotor and the Quiver reach 3.5 to 3.6, src/towers.js) and at least
+// gateClear from the gate, so it is beside the gate and not in its mouth. It opens with a blast of clearRadius (a breach's own is 6,
+// which would take the base's rim with it), cuts a lane one cell wide through the rock to the wall, and breaks `gap` wall cells there
+export const SIDE_BREACH = freeze({ minWall: 2.5, maxWall: 5, reach: 3.5, gateClear: 3.5, clearRadius: 0.6, gap: 2, brief: 'side_breach', callout: 'THE WALL IS BREACHED' });
 
 // BETWEEN THE RAMP AND THE BACK DOOR: while the door is not due, each sector past SECTORS is a held one on the gate side, its threat
 // climbing threatStep a sector from the last of SECTORS, its programme starting at ladderStart

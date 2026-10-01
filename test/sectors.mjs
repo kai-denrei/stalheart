@@ -9,7 +9,8 @@ import { SENTRY_ORDER } from '../src/content/sentries.js';
 
 // THE RAMP, THEN THE BACK DOOR (owner, 2026-10-01): four regular gate-side sectors of four pulses, climbing, SOL-82 from the third;
 // the door and BOTH WALLS are their own rows, placed by the schedule
-assert.deepEqual(SECTORS.map((s) => [s.n, s.breaches, s.waves]), [[1, { gate: 2 }, 4], [2, { gate: 2 }, 4], [3, { gate: 2 }, 4], [4, { gate: 2 }, 4], [5, { gate: 2 }, 4]]);
+assert.deepEqual(SECTORS.map((s) => [s.n, s.breaches, s.waves]), [[1, { gate: 2 }, 4], [2, { gate: 2 }, 4], [3, { gate: 2 }, 4], [4, { gate: 2 }, 4], [5, { side: 1, gate: 1 }, 4]]);
+assert.deepEqual(Object.keys(SECTORS[4].breaches), ['side', 'gate'], 'THE SIDE WALL picks and opens its side breach first');
 assert.ok(SECTORS.every((s, i) => i === 0 || (s.threat > SECTORS[i - 1].threat && s.ladderStart >= SECTORS[i - 1].ladderStart)), 'the ramp climbs');
 assert.deepEqual(SECTORS.map((s) => s.laser), [false, false, true, true, true], 'SOL-82 online from sector 3');
 assert.ok(SECTORS.every((s) => !s.backDoor && !s.feast), 'no back door in the ramp');

@@ -7,7 +7,7 @@
 // Composition only: the rules are src/domain/sectors.js, sector-stats.js and gate-integrity.js with the numbers in
 // src/content/sectors.js. The controller hands in hooks (spawning, sealing, paying, briefing, pausing, polling) and calls
 // the returned object at its real sites; nothing here imports the controller.
-import { SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, SECTOR_STATS, SECTOR_STAMPS, SECTOR_RECORDS, SECTOR_TIMING, SECTOR_GATE, BELT_OF, BREACH_CLOSERS, BACK_OMENS, BACK_SCRAMBLE } from '../content/sectors.js';
+import { SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, SECTOR_STATS, SECTOR_STAMPS, SECTOR_RECORDS, SECTOR_TIMING, SECTOR_GATE, BELT_OF, BREACH_CLOSERS, BACK_OMENS, BACK_SCRAMBLE, SIDE_BREACH } from '../content/sectors.js';
 import { omenDue } from '../domain/back-omens.js';
 import { GUNSHIP_GUN_ORDER } from '../content/gunship.js';
 import { snapshot as programmeSnapshot } from '../domain/build-programme.js';
@@ -138,7 +138,7 @@ export function createSectorRun(h) {
     (h.refill ?? api.refillArrays)?.(); api.setLaserOnline?.(!!def.laser);   // the solar array's reserve refills at every sector start
     if (def.backDoor && backOpenedAt === null) { api.openBackDoor?.(); backOpenedAt = now(); }
     const doorNow = backOpenedAt !== null && now() - backOpenedAt < 1;   // the mouth fell this very sector start
-    const sides = Object.entries(def.breaches).map(([side, k]) => `${k} ${side === 'back' ? 'BEHIND THE BAYS' : 'ON THE GATE SIDE'}`).join(' · ');
+    const sides = Object.entries(def.breaches).map(([side, k]) => `${k} ${side === 'back' ? 'BEHIND THE BAYS' : side === 'side' ? 'BY THE WALL' : 'ON THE GATE SIDE'}`).join(' · ');
     card([`SECTOR ${n} · ${def.name}`, `BREACHES ${Object.values(def.breaches).reduce((a, b) => a + b, 0)} · ${sides}`, 'CLOSE ONE EARLY AND ITS REMAINING WAVES PAY NOTHING']);
     // the collapse carries its own line (the feast); Isao's queue is one deep, so the sector's line would only push it out
     if (!doorNow) h.brief(briefOf(n));
@@ -159,13 +159,20 @@ export function createSectorRun(h) {
       back = raw.map((x) => { const cell = typeof x === 'number' ? x : x?.cell; return cell >= 0 ? { cell, side: 'back', hops: (typeof x === 'object' && Number.isFinite(x.hops)) ? x.hops : (f.dist[cell] ?? 0), pos: f.centers[cell] } : null; }).filter(Boolean).filter((c) => !((f.rim?.[c.cell] ?? Infinity) < (SECTOR_PLACEMENT.rimCells ?? 0)));   // the back lanes curl round the base: a quarter of the farthest ones stood within a blast of its rim (2026-09-25, --pacing: the feast walked in beside the mouth)
       if (!back.length) { want.gate = (want.gate ?? 0) + want.back; delete want.back; }
     }
+    // THE SIDE BREACH (sector 5, SIDE_BREACH): outside the gate's wall, inside the front sentries' reach; none to be had, it is a gate one
+    let side = [];
+    if (want.side) {
+      side = (api.sideBreachCandidates?.() ?? []).map((x) => ({ cell: x.cell, side: 'side', hops: f.dist[x.cell] ?? 0, pos: f.centers[x.cell], carve: x.carve }));
+      if (!side.length) { want.gate = (want.gate ?? 0) + want.side; delete want.side; }
+    }
     let far = 0; for (let i = 0; i < f.dist.length; i++) if (Number.isFinite(f.dist[i]) && f.dist[i] > far && !f.inside(i)) far = f.dist[i];
     const ring = Math.min(SECTOR_PLACEMENT.ringHops ?? f.farHops, f.farHops, far), gateSide = [];
     const clear = (i) => !f.inside(i) && !((f.rim?.[i] ?? Infinity) < (SECTOR_PLACEMENT.rimCells ?? 0));   // never where its blast reaches the base's rim
     for (let i = 0; i < f.dist.length; i++) if (f.dist[i] >= ring - 6 && f.dist[i] <= ring + 3 && clear(i)) gateSide.push({ cell: i, side: 'gate', hops: f.dist[i], pos: f.centers[i] });
-    const picks = pickBreachCells({ candidates: [...gateSide, ...back], want, minSeparation: SECTOR_PLACEMENT.minSeparationCells * f.cellSide, exclusion: SECTOR_PLACEMENT.exclusionCells * f.cellSide, excluded: f.excluded.map((ci) => f.centers[ci]), bandHops: SECTOR_PLACEMENT.bandHops, rng: h.rng });
+    const picks = pickBreachCells({ candidates: [...side, ...gateSide, ...back], want, minSeparation: SECTOR_PLACEMENT.minSeparationCells * f.cellSide, exclusion: SECTOR_PLACEMENT.exclusionCells * f.cellSide, excluded: f.excluded.map((ci) => f.centers[ci]), bandHops: SECTOR_PLACEMENT.bandHops, rng: h.rng });
     if (!picks.length) picks.push({ cell: f.fallback(), side: 'gate' });
     sector = makeSector(def, picks.map((p, i) => ({ id: LETTERS[i], side: p.side, cell: p.cell })), now());
+    picks.forEach((p, i) => { if (p.carve) sector.breaches[i].carve = p.carve; });
     // WHEN EACH OPENS: one after another, `staggerSeconds` apart (one breach-opening spike at a time); behind a mouth that fell this
     // very sector start, not before `backDoorLead`; and in a feast sector the gate side waits for the scramble (tick sets it)
     const t0 = now();
@@ -287,7 +294,9 @@ export function createSectorRun(h) {
       if (!(t >= b.openAt)) continue;
       // a breach that opens once the fight is on opens quietly: no establishing dive under a player who is driving or aiming
       pending.splice(pending.indexOf(id), 1);
-      sps.set(b.id, h.open(b.cell, { quiet: sector.breaches.some((x) => x !== b && sps.has(x.id)) })); b.openedAt = t;
+      sps.set(b.id, h.open(b.cell, { quiet: sector.breaches.some((x) => x !== b && sps.has(x.id)), clear: b.side === 'side' ? SIDE_BREACH.clearRadius : undefined })); b.openedAt = t;
+      // THE WALL CAN BE BREACHED (owner, 2026-10-01: "a chekov's gun of sorts"): the side breach cuts its lane and breaks the wall
+      if (b.side === 'side' && api.breakSide?.(b.carve ?? [])) { b.broke = true; h.callout(SIDE_BREACH.callout, 'co-victory'); h.brief(SIDE_BREACH.brief); }
       retarget(); h.hud();
     }
     tickFeast(t);
@@ -373,7 +382,7 @@ export function createSectorRun(h) {
       phase, n: def?.n ?? 0, name: def?.name ?? null, doorAt, feast: feast ? { at: +feast.at.toFixed(1), scrambled: !!feast.scrambled } : null, omens: [...omens], strays: phase === 'idle' ? 0 : (h.breaches?.() ?? []).filter((sp) => sp.alive && idOf(sp) === null).length, secure: ['secure', 'debrief', 'campaign'].includes(phase), debriefOpen: !!story.debrief?.isOpen(), reports: reports.length,
       gate: gate ? { hp: +gate.hp.toFixed(1), broken: gate.broken, breaks: gate.breaks } : null,
       gates: integrities().map((g) => ({ id: g.id, hp: +g.hp.toFixed(1), max: g.max, broken: g.broken, breaks: g.breaks })),
-      breaches: (sector?.breaches ?? []).map((b) => ({ id: b.id, side: b.side, cell: b.cell, opened: sps.has(b.id), live: b.state === 'open' && !!sps.get(b.id)?.alive, wavesReleased: b.wavesReleased, wavesPlanned: b.wavesPlanned, closedBy: b.closedBy, leftInField: { ...b.leftInField }, bonus: { ...b.bonus } })),
+      breaches: (sector?.breaches ?? []).map((b) => ({ id: b.id, side: b.side, cell: b.cell, broke: !!b.broke, opened: sps.has(b.id), live: b.state === 'open' && !!sps.get(b.id)?.alive, wavesReleased: b.wavesReleased, wavesPlanned: b.wavesPlanned, closedBy: b.closedBy, leftInField: { ...b.leftInField }, bonus: { ...b.bonus } })),
     }),
     test: {
       release: (id) => { const b = breachOf(id), sp = sps.get(id); if (!b || !sp?.alive) return null; const sent = sendWave(b, sp, now()); if (sent) h.push(sent.entries); omen(); h.hud(); return sent?.r ?? null; },

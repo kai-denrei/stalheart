@@ -18,6 +18,8 @@ import { BLOCKED } from '../dungeon.js';
 import { BASE_PERKS, BASE_REPAIR } from '../content/base-programme.js';
 import { due as programmeDue, begin as programmeBegin, finish as programmeFinish, hasPerk as programmeHas, perks as programmePerks, rebuildDue } from '../domain/build-programme.js';
 import { nextRepair } from '../domain/repair-orders.js';
+import { sideBreachCandidates } from '../domain/side-breach.js';
+import { SIDE_BREACH } from '../content/sectors.js';
 import { createHullHost } from './hull-issue.js';
 
 export function createProgrammeHost(c) {
@@ -38,9 +40,8 @@ export function createProgrammeHost(c) {
       // THE BACK GATE IS NEVER PRE-BUILT (owner, 2026-09-18): a static base prints nothing, except this one door, which only exists
       // once the player has held the surprise
       const backAt = c.story().backOpen ? (c.sectorRun()?.backOpenBreaches() ? 'open' : 'held') : null, ctx = { phase: c.story().beats.phase(), sector, waveActive: c.waveActive(), back: backAt };
-      if (!c.story().grow && programmeDue(pg, ctx)?.gate !== 'back') return;   // the player's orders and the beats' come first
       // A WALL THAT WAS NEVER PRINTED IS NOT A HOLE (owner, 2026-09-16: "he builds ROCKS instead of WALLS ... before building the
-      // gate"): story.wallCells are the PENDING wall cells, open floor until the gate step stands, so a grown base read all of them
+      // gate"): story.wallCells are every wall cell (open floor on a grown base until the gate step stands), so a grown base read all of them
       // as breaches at the landing and sent Isao out to "repair" them one by one — each trip tagged its cell BLOCKED and the lattice
       // drew ROCK there, before the gate. The rim is only repairable once it stands, exactly as a static stage-4 base has it from the
       // first frame
@@ -57,6 +58,8 @@ export function createProgrammeHost(c) {
           return;
         }
       }
+      // a static base prints no new step but this one door (its repairs above are every base's, 2026-10-01: the side breach's wall)
+      if (!c.story().grow && programmeDue(pg, ctx)?.gate !== 'back') return;   // the player's orders and the beats' come first
       const step = programmeDue(pg, ctx), ci = step ? c.story().print.cellOf(step) : -1;
       if (ci < 0) return;
       programmeBegin(pg, step);
@@ -64,6 +67,19 @@ export function createProgrammeHost(c) {
       spawnIsao();
       if (!c.pilotMode() && !c.briefQ()) showBrief(step.brief);   // his line as he starts, never over a manned seat or another line
       updateHud();
+    },
+    // THE SIDE BREACH (src/domain/side-breach.js, sector 5): where it can come up outside the gate's wall, and the wall it breaks
+    // when it does: the rock of its lane and the wall cells become ground, their kit segments drop, and Isao's repair puts them back
+    sideBreachCandidates: () => {
+      const s = c.story(), tags = c.dungeon().tags, g = c.graph();
+      if (!programmeHas(s.programme, 'gate')) return [];   // no wall stands yet
+      return sideBreachCandidates({ centers: g.centers, adj: g.adj, blocked: (ci) => tags[ci] === BLOCKED, inside: (ci) => s.inside(ci), walls: s.wallCells ?? [], sockets: Object.keys(s.socketToward ?? {}).map(Number), gate: s.gateCell ?? -1, cellArc: c.cellSide(), tune: SIDE_BREACH });
+    },
+    breakSide: (cells) => {
+      const tags = c.dungeon().tags, broke = cells.filter((ci) => tags[ci] === BLOCKED && c.breachWallCell(ci));
+      for (const ci of cells) c.storyBase()?.dropWallsAt(ci);
+      if (broke.length) { rebuildAfterBreach(); recomputePortalDist(); }
+      return broke.length;
     },
     // the gate back to full, or the wall cell back to rock for the swarm, the tank and the full world alike
     repaired: (repair) => {

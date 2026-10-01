@@ -348,6 +348,11 @@ export const BRIEFS = {
   sector_door: { id: 'sector_door', face: 'surprised', title: BACK_DOOR_SECTOR.name, lines: [...BACK_DOOR_SECTOR.brief] },
   sector_both: { id: 'sector_both', face: 'determined', title: BOTH_WALLS_SECTOR.name, lines: [...BOTH_WALLS_SECTOR.brief] },
   sector_next: { id: 'sector_next', face: 'determined', title: 'THE NEXT SECTOR', lines: [...SECTOR_GENERATOR.brief] },
+  // THE SIDE BREACH (sector 5, owner 2026-10-01: "it reveals that the walls can be breached"): the wall beside the gate is broken
+  side_breach: {
+    id: 'side_breach', face: 'surprised', title: 'THE WALL IS BREACHED',
+    lines: ['They came up beside the gate and through the wall!', 'The walls only stop what walks. Keep the sentries on that hole; I print it shut when it is quiet.'],
+  },
   // the gate gives under the pile, and comes back
   gate_broken: {
     id: 'gate_broken', face: 'surprised', title: 'THE GATE IS DOWN',

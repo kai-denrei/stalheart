@@ -1322,6 +1322,24 @@ try{
  await until(`(()=>{const b=${T}.state().sector.breaches;return b.length===2&&b.every(x=>x.live);})()`,60000).catch(async()=>assert.fail(`both breaches open (${JSON.stringify((await st()).sector)})`));
  {const s=await st();assert.deepEqual(s.sector.breaches.map(b=>b.side).sort(),['back','gate'],'one breach behind the bays, one on the gate side');assert.equal(s.laser.online,true,'SOL-82 is online');}
  current='skip-tutorial-back-door';await finish();
+ // 8. THE SIDE WALL (owner, 2026-10-01: "after 4 waves there's a « side breach ». Problem, but still within range of some of the existing
+ // towers ... it reveals that the walls can be breached"): sector 5 opens a breach beside the gate inside the sentries' reach, its lane
+ // breaks the wall, the bodies come through the hole, and once it is shut and the lane is quiet Isao prints the wall back
+ await go('skip-tutorial-side-wall','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=5#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ await until(`${T}.state().sector.name==="THE SIDE WALL"`,60000).catch(async()=>assert.fail(`sector 5 is the side wall (${JSON.stringify((await st()).sector)})`));
+ await until(`(()=>{const b=${T}.state().sector.breaches;return b.length===2&&b[0].live;})()`,60000).catch(async()=>assert.fail(`the side breach opens (${JSON.stringify((await st()).sector)})`));
+ {const s=await st(),b=s.sector.breaches[0];assert.equal(b.side,'side','the side breach first');assert.equal(b.broke,true,'its lane broke through');
+  assert(s.programme.broke>0,`wall cells are broken (${s.programme.broke})`);
+  const socks=s.sector.sockets;assert(socks.length>=2);}
+ await evaluate(`${T}.sectorRelease("A")`);
+ await until(`${T}.state().performance.enemies>0`,30000);
+ current='skip-tutorial-side-wall';await finish();
+ // shut it, quiet the lane, and Isao mends the wall
+ await evaluate(`${T}.sectorQuiet(true)`);assert.equal(await evaluate(`${T}.sectorClose("A","gunship")`),'gunship','the side breach sealed');
+ await evaluate(`${T}.sectorClearField()`);
+ await until(`${T}.state().programme.broke===0`,150000).catch(async()=>assert.fail(`Isao prints the wall shut (${JSON.stringify((await st()).programme)})`));
+ current='skip-tutorial-side-wall-mended';await finish();
  } else if(args.includes('--showcase')) {
  // THE SHOWCASE (owner, 2026-09-24; docs/log/entries/2026-09-24-intro-simplified.json). FOUR BEATS, and each one drives a
  // real system in a real run of the skipped world. So this step does not look at the rail's intentions — it photographs

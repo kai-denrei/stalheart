@@ -96,10 +96,19 @@ function controller(o = {}) {
   api.printed(step('bays')); assert.deepEqual([s.berths, s.story.berths], [['b1', 'b2', 'b3'], ['b1', 'b2', 'b3']]);
   assert.deepEqual(log.at(-1), ['adoptBays', s.storyBase]);
 }
+// A STATIC BASE MENDS TOO (2026-10-01: the side breach breaks a wall on any base): no new step, but a broken wall goes on the book
+{
+  const { s, api, orders } = controller({ at: 'backgate' });
+  Object.assign(s.story, { sectorN: 5, grow: false });
+  s.dungeon.tags[4] = BLOCKED;   // wall cell 5 is broken
+  api.build();
+  assert.deepEqual(orders.map((o) => [o.kind, o.ci]), [['repair', 5]], 'Isao goes to mend the broken wall');
+}
 // THE ASSEMBLY LINE rebuilds one lost hull at a sector's start, once per sector; THE FIRST MÖRK is issued through the same host
 {
   const { s, api, log } = controller({ at: 'backgate' });
   Object.assign(s.story, { sectorN: 3, grow: false }); s.playerHP = 1;
+  for (const wc of s.story.wallCells) s.dungeon.tags[wc] = BLOCKED;   // a static base's walls stand
   api.build(); assert.equal(s.playerHP, 2); assert.deepEqual(log, [['lives'], ['hud']]);
   api.build(); assert.equal(s.playerHP, 2, 'once per sector');
   const k = controller({ at: 'landing' }), door = { ci: 7, exit: 9 };

@@ -224,7 +224,9 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     dropWall: (k) => { if (dropped.has(k)) return; dropped.add(k); for (const o of group.children) if (o.isInstancedMesh && o.name === 'walls') { o.setMatrixAt(k, ZERO); o.instanceMatrix.needsUpdate = true; } },
     // ...and the segment Isao prints back (src/domain/repair-orders.js), by its LATTICE CELL, which is what the repair rule and the
     // dungeon tags speak in. Undoes a drop as well as a plain hole: a burned segment is standing again once he has stood over it.
-    restoreWall: (cell) => { const k = plan.walls.findIndex((w) => w.cell === cell); if (k < 0) return false; dropped.delete(k); grown.walls.set(k, 1); for (const s of wallMeshes) { s.inst.setMatrixAt(k, wallMatrix(plan.walls[k], s.src, 1)); s.inst.instanceMatrix.needsUpdate = true; s.inst.computeBoundingSphere(); } return true; },
+    // every kit segment standing on a lattice cell (several dress one cell): the side breach drops them, Isao's repair raises them all
+    dropWallsAt: (cell) => { let n = 0; plan.walls.forEach((w, k) => { if (w.cell === cell && !dropped.has(k)) { n++; for (const o of group.children) if (o.isInstancedMesh && o.name === 'walls') { o.setMatrixAt(k, ZERO); o.instanceMatrix.needsUpdate = true; } dropped.add(k); } }); return n; },
+    restoreWall: (cell) => { let n = 0; plan.walls.forEach((w, k) => { if (w.cell !== cell) return; n++; dropped.delete(k); grown.walls.set(k, 1); for (const s of wallMeshes) { s.inst.setMatrixAt(k, wallMatrix(plan.walls[k], s.src, 1)); s.inst.instanceMatrix.needsUpdate = true; s.inst.computeBoundingSphere(); } }); return n > 0; },
     // THE BUILDINGS A WEAPON CAN BURN (SOL-82): every landmark that is standing, printed and shown, with where it stands on the
     // host's sphere. A structure still pending its print, or already concealed by a burn, is not there to be hit.
     standing: () => plan.structures.filter((s) => (kOf(grown.structures, s.id, s)) >= 1 && records.get(s.id)?.holder?.visible !== false)
