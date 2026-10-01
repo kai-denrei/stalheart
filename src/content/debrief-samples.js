@@ -37,7 +37,7 @@ const secure = {
     tempo: tempo(312, 239, [[40, 22, 1], [130, 26, 1.4], [235, 30, 1.8]]),
   },
   tank: { shotsFired: 214, shotsHit: 131, rams: 38, bestCombo: 12, shieldSeconds: 46, stationSeconds: 18, damageTaken: 340, hullsLost: 1, partsHome: 1 },
-  colony: { prints: ['solar', 'walls'], leaks: 3, heartDamage: 6, gunshipPasses: 2, gunshipKills: 31, laserPasses: 0, laserSeconds: 0, laserKills: 0 },
+  colony: { prints: ['solar', 'walls'], leaks: 3, heartDamage: 6, gunshipPasses: 2, gunshipKills: 31, laserPasses: 0, laserSeconds: 0, laserKills: 0, launches: 0 },
   stamps: ['held-the-line', 'ram-king'],
   records: [
     { key: 'sector-kills', label: 'KILLS IN A SECTOR', value: 239, best: 239, isNew: true },
@@ -62,7 +62,7 @@ const flawless = {
     tempo: tempo(268, 332, [[35, 18, 1], [98, 14, 2.6], [150, 24, 1.3], [215, 22, 1.7]]),
   },
   tank: { shotsFired: 188, shotsHit: 149, rams: 52, bestCombo: 19, shieldSeconds: 21, stationSeconds: 30, damageTaken: 0, hullsLost: 0, partsHome: 2 },
-  colony: { prints: ['bays', 'hugin-arm', 'radar'], leaks: 0, heartDamage: 0, gunshipPasses: 2, gunshipKills: 22, laserPasses: 2, laserSeconds: 14, laserKills: 88 },
+  colony: { prints: ['bays', 'hugin-arm', 'radar'], leaks: 0, heartDamage: 0, gunshipPasses: 2, gunshipKills: 22, laserPasses: 2, laserSeconds: 14, laserKills: 88, launches: 0 },
   stamps: ['flawless', 'sharpshooter', 'quick-hands', 'scorched-earth'],
   records: [
     { key: 'sector-score', label: 'SECTOR SCORE', value: 31760, best: 31760, isNew: true },
@@ -88,7 +88,7 @@ const lost = {
     tempo: tempo(401, 259, [[50, 25, 1], [150, 30, 1.5], [260, 28, 2.2], [360, 26, 1.2]]),
   },
   tank: { shotsFired: 302, shotsHit: 139, rams: 29, bestCombo: 8, shieldSeconds: 88, stationSeconds: 40, damageTaken: 1260, hullsLost: 3, partsHome: 0 },
-  colony: { prints: ['assembly-line'], leaks: 41, heartDamage: 20, gunshipPasses: 3, gunshipKills: 27, laserPasses: 1, laserSeconds: 4, laserKills: 9 },
+  colony: { prints: ['assembly-line'], leaks: 41, heartDamage: 20, gunshipPasses: 3, gunshipKills: 27, laserPasses: 1, laserSeconds: 4, laserKills: 9, launches: 0 },
   stamps: ['ram-king'],
   records: [
     { key: 'sector-kills', label: 'KILLS IN A SECTOR', value: 259, best: 332, isNew: false },
@@ -112,7 +112,7 @@ const third = {
     tempo: tempo(356, 454, [[45, 20, 1], [120, 22, 1.6], [200, 26, 2], [290, 24, 2.4]]),
   },
   tank: { shotsFired: 266, shotsHit: 191, rams: 66, bestCombo: 24, shieldSeconds: 52, stationSeconds: 36, damageTaken: 480, hullsLost: 1, partsHome: 1 },
-  colony: { prints: ['assembly-line', 'antenna'], leaks: 2, heartDamage: 4, gunshipPasses: 3, gunshipKills: 41, laserPasses: 2, laserSeconds: 11, laserKills: 62 },
+  colony: { prints: ['assembly-line', 'antenna'], leaks: 2, heartDamage: 4, gunshipPasses: 3, gunshipKills: 41, laserPasses: 2, laserSeconds: 11, laserKills: 62, launches: 0 },
   stamps: ['held-the-line', 'ram-king', 'scorched-earth'],
   records: [
     { key: 'sector-score', label: 'SECTOR SCORE', value: 40210, best: 40210, isNew: true },

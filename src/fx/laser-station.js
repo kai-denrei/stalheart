@@ -96,7 +96,7 @@ export function createLaserStation(root, scene, host) {
     // briefing (Isao says it); the game glides the camera in (td-tab's enter)
     passOver(o) { arsenal.passOver(o); return sit(); },
     // SOL AUTOMATED (src/domain/laser-auto.js): the passes the player flew, the switch the ARC-01's launch throws, the chip plant's clock
-    manned: () => arsenal.manned(), setAuto: (on) => arsenal.setAuto(on), setPeriodScale: (k) => arsenal.setPeriodScale(k), platform: () => arsenal.platform(),
+    manned: () => arsenal.manned(), setAuto: (on) => { arsenal.setAuto(on); host.views()?.sol82?.(arsenal.strip()); },   /* the strip renames at once, even under a held clock */ setPeriodScale: (k) => arsenal.setPeriodScale(k), setEnergyBonus: (s) => arsenal.setEnergyBonus(s), platform: () => arsenal.platform(),
     reset() { leave(); arsenal.reset(); },   // a new run: the seat goes, the scorch and the books with it
 
     stats: () => arsenal.stats(),

@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import { makeWorks, launchDue, beginLaunch, collectorUp, energyBonus } from '../src/domain/orbital-works.js';
+import { ORBITAL_WORKS } from '../src/content/orbital-works.js';
+import { BRIEFS } from '../src/isaobriefs.js';
+
+const st = makeWorks();
+assert.equal(launchDue(st, { sector: 6, online: false, secured: true }), false, 'nothing before SOL-88 is up');
+assert.equal(launchDue(st, { sector: 6, online: true, secured: false }), false, 'a lost sector pays no launch');
+assert.equal(launchDue(st, { sector: 6, online: true, secured: true, standing: false }), false, 'a burned launcher launches nothing');
+assert.equal(launchDue(st, { sector: 6, online: true, secured: true }), true, 'the first secured sector past SOL-88: a collector goes up');
+beginLaunch(st, 6);
+assert.equal(launchDue(st, { sector: 6, online: true, secured: true }), false, 'one on the sled at a time');
+assert.equal(collectorUp(st), 1);
+assert.equal(launchDue(st, { sector: 6, online: true, secured: true }), false, 'one launch a sector');
+assert.equal(launchDue(st, { sector: 7, online: true, secured: true }), true, 'the next sector pays the next');
+assert.equal(energyBonus(0, ORBITAL_WORKS), 0);
+assert.equal(energyBonus(3, ORBITAL_WORKS), 3 * ORBITAL_WORKS.energyPerCollector);
+assert.equal(energyBonus(999, ORBITAL_WORKS), ORBITAL_WORKS.energyCap, 'capped');
+for (const id of [ORBITAL_WORKS.brief, ORBITAL_WORKS.orbit]) assert.ok(BRIEFS[id], `Isao has the line ${id}`);
+console.log('Orbital works: one collector per secured sector once SOL-88 is up, each worth seconds of beam, capped.');

@@ -71,7 +71,7 @@ assert.ok(checkReport({ sector: 1 }).length > 5, 'a malformed report is refused'
   assert.deepEqual(r.kills.tempo, [3, 1, 3, 0, 0, 0, 0], 'kills per 5 s bin, padded to the sector clock');
   assert.equal(r.kills.tempo.reduce((a, b) => a + b, 0), r.kills.total);
   assert.deepEqual(r.tank, { shotsFired: 3, shotsHit: 1, rams: 3, bestCombo: 9, shieldSeconds: 2.3, stationSeconds: 1.5, damageTaken: 0.8, hullsLost: 1, partsHome: ['breech'] });
-  assert.deepEqual(r.colony, { prints: ['solar', 'walls'], leaks: 1, heartDamage: 2, gunshipPasses: 1, gunshipKills: 1, laserPasses: 1, laserSeconds: 4.3, laserKills: 1 });
+  assert.deepEqual(r.colony, { prints: ['solar', 'walls'], leaks: 1, heartDamage: 2, gunshipPasses: 1, gunshipKills: 1, laserPasses: 1, laserSeconds: 4.3, laserKills: 1, launches: 0 });
   assert.deepEqual(r.score, { total: 950, kills: 300, rams: 150, bonuses: 500 });
   assert.deepEqual(r.biomass, { earned: 135, spent: 80, bank: 222, leftInField: 60 });
   assert.deepEqual(r.breaches, [

@@ -17,7 +17,7 @@ const secure = {
   ],
   kills: {"total":37,"bySource":{"tank":5,"ram":8,"towers":19,"gunship":5,"laser":0,"other":0},"byTower":{"rotor":5,"plasma":0,"quiver":5,"relay":7,"mortar":2,"lancer":0,"needle":0,"heptapod":0},"byBelt":{"white":15,"grey":0,"yellow":22,"blue":0,"orange":0,"green":0,"purple":0,"brown":0,"black":0,"red":0},"byGun":{"rotary":4,"bofors":1,"heavy":0},"tempo":[0,0,0,0,0,0,0,2,3,1,0,1,1,0,3,0,3,2,1,3,1,2,1,0,4,2,1,2,1,3,0,0,0]},
   tank: {"shotsFired":8,"shotsHit":5,"rams":8,"bestCombo":4,"shieldSeconds":14.5,"stationSeconds":0,"damageTaken":1.5,"hullsLost":0,"partsHome":["field coil"]},
-  colony: {"prints":["solar"],"leaks":1,"heartDamage":1,"gunshipPasses":1,"gunshipKills":5,"laserPasses":0,"laserSeconds":0,"laserKills":0},
+  colony: {"prints":["solar"],"leaks":1,"heartDamage":1,"gunshipPasses":1,"gunshipKills":5,"laserPasses":0,"laserSeconds":0,"laserKills":0,"launches":0},
   stamps: ["special-delivery"],
   records: [{"key":"sector.score","label":"SECTOR SCORE","value":6155,"best":null,"isNew":true},{"key":"sector.kills","label":"KILLS IN A SECTOR","value":37,"best":null,"isNew":true},{"key":"sector.bestCombo","label":"BEST RAM COMBO","value":4,"best":null,"isNew":true},{"key":"sector.gunshipKills","label":"GUNSHIP KILLS","value":5,"best":null,"isNew":true},{"key":"sector.laserKills","label":"SOL-82 KILLS","value":0,"best":null,"isNew":false},{"key":"sector.1.fastest","label":"FASTEST SECURE, S","value":163,"best":null,"isNew":true}],
 };
@@ -35,7 +35,7 @@ const flawless = {
   ],
   kills: {"total":96,"bySource":{"tank":10,"ram":26,"towers":39,"gunship":7,"laser":14,"other":0},"byTower":{"rotor":11,"plasma":0,"quiver":10,"relay":7,"mortar":11,"lancer":0,"needle":0,"heptapod":0},"byBelt":{"white":17,"grey":21,"yellow":41,"blue":17,"orange":0,"green":0,"purple":0,"brown":0,"black":0,"red":0},"byGun":{"rotary":5,"bofors":2,"heavy":0},"tempo":[0,0,0,0,3,2,1,2,2,2,5,0,2,1,6,3,2,2,3,1,2,0,0,2,2,2,4,6,4,5,1,0,0,2,6,3,10,1,4,5,0,0,0]},
   tank: {"shotsFired":15,"shotsHit":10,"rams":26,"bestCombo":7,"shieldSeconds":21,"stationSeconds":9.5,"damageTaken":0,"hullsLost":0,"partsHome":[]},
-  colony: {"prints":["walls","hugin"],"leaks":0,"heartDamage":0,"gunshipPasses":1,"gunshipKills":7,"laserPasses":1,"laserSeconds":8.2,"laserKills":14},
+  colony: {"prints":["walls","hugin"],"leaks":0,"heartDamage":0,"gunshipPasses":1,"gunshipKills":7,"laserPasses":1,"laserSeconds":8.2,"laserKills":14,"launches":0},
   stamps: ["flawless","not-a-scratch"],
   records: [{"key":"sector.score","label":"SECTOR SCORE","value":27148,"best":6155,"isNew":true},{"key":"sector.kills","label":"KILLS IN A SECTOR","value":96,"best":37,"isNew":true},{"key":"sector.bestCombo","label":"BEST RAM COMBO","value":7,"best":4,"isNew":true},{"key":"sector.gunshipKills","label":"GUNSHIP KILLS","value":7,"best":5,"isNew":true},{"key":"sector.laserKills","label":"SOL-82 KILLS","value":14,"best":null,"isNew":true},{"key":"sector.2.fastest","label":"FASTEST SECURE, S","value":211,"best":null,"isNew":true}],
 };
@@ -53,7 +53,7 @@ const lost = {
   ],
   kills: {"total":294,"bySource":{"tank":72,"ram":48,"towers":134,"gunship":24,"laser":16,"other":0},"byTower":{"rotor":26,"plasma":0,"quiver":26,"relay":45,"mortar":37,"lancer":0,"needle":0,"heptapod":0},"byBelt":{"white":62,"grey":50,"yellow":45,"blue":110,"orange":19,"green":8,"purple":0,"brown":0,"black":0,"red":0},"byGun":{"rotary":13,"bofors":9,"heavy":2},"tempo":[0,0,0,0,1,6,9,13,4,7,12,4,4,2,5,6,7,11,6,13,10,8,1,4,1,5,16,13,13,10,11,7,3,7,1,9,6,9,10,6,6,5,3,7,2,9,2]},
   tank: {"shotsFired":178,"shotsHit":72,"rams":48,"bestCombo":4,"shieldSeconds":30,"stationSeconds":12,"damageTaken":9,"hullsLost":3,"partsHome":[]},
-  colony: {"prints":["bays"],"leaks":28,"heartDamage":28,"gunshipPasses":1,"gunshipKills":24,"laserPasses":1,"laserSeconds":6,"laserKills":16},
+  colony: {"prints":["bays"],"leaks":28,"heartDamage":28,"gunshipPasses":1,"gunshipKills":24,"laserPasses":1,"laserSeconds":6,"laserKills":16,"launches":0},
   stamps: [],
   records: [{"key":"sector.score","label":"SECTOR SCORE","value":83030,"best":27148,"isNew":true},{"key":"sector.kills","label":"KILLS IN A SECTOR","value":294,"best":96,"isNew":true},{"key":"sector.bestCombo","label":"BEST RAM COMBO","value":4,"best":7,"isNew":false},{"key":"sector.gunshipKills","label":"GUNSHIP KILLS","value":24,"best":7,"isNew":true},{"key":"sector.laserKills","label":"SOL-82 KILLS","value":16,"best":14,"isNew":true},{"key":"sector.3.fastest","label":"FASTEST SECURE, S","value":231,"best":null,"isNew":false}],
 };
@@ -71,7 +71,7 @@ const holds = {
   ],
   kills: {"total":354,"bySource":{"tank":71,"ram":131,"towers":101,"gunship":35,"laser":16,"other":0},"byTower":{"rotor":24,"plasma":0,"quiver":25,"relay":28,"mortar":24,"lancer":0,"needle":0,"heptapod":0},"byBelt":{"white":78,"grey":56,"yellow":52,"blue":128,"orange":20,"green":20,"purple":0,"brown":0,"black":0,"red":0},"byGun":{"rotary":22,"bofors":9,"heavy":4},"tempo":[0,0,0,0,5,7,7,7,9,12,13,6,5,1,4,5,9,9,13,10,11,7,3,2,7,5,15,12,11,15,11,4,5,3,4,11,9,8,11,7,2,5,1,2,9,9,9,8,7,10,7,2,0,0]},
   tank: {"shotsFired":71,"shotsHit":71,"rams":131,"bestCombo":10,"shieldSeconds":26,"stationSeconds":15,"damageTaken":3.5,"hullsLost":0,"partsHome":["breech"]},
-  colony: {"prints":["bays","assembly"],"leaks":8,"heartDamage":8,"gunshipPasses":2,"gunshipKills":35,"laserPasses":1,"laserSeconds":7.5,"laserKills":16},
+  colony: {"prints":["bays","assembly"],"leaks":8,"heartDamage":8,"gunshipPasses":2,"gunshipKills":35,"laserPasses":1,"laserSeconds":7.5,"laserKills":16,"launches":0},
   stamps: ["held-the-line","sharpshooter","special-delivery","close-air-support"],
   records: [{"key":"sector.score","label":"SECTOR SCORE","value":135478,"best":27148,"isNew":true},{"key":"sector.kills","label":"KILLS IN A SECTOR","value":354,"best":96,"isNew":true},{"key":"sector.bestCombo","label":"BEST RAM COMBO","value":10,"best":7,"isNew":true},{"key":"sector.gunshipKills","label":"GUNSHIP KILLS","value":35,"best":7,"isNew":true},{"key":"sector.laserKills","label":"SOL-82 KILLS","value":16,"best":14,"isNew":true},{"key":"sector.3.fastest","label":"FASTEST SECURE, S","value":270,"best":null,"isNew":true}],
 };

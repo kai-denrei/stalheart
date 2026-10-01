@@ -184,6 +184,16 @@ export const BRIEFS = {
     id: 'sol88_online', face: 'surprised', title: 'SOL-88 · IN ORBIT', once: true,
     lines: ['Insertion stage lit. SOL-88 is in orbit and talking to the radar.', 'The first thing this colony has ever put up there. Not the last.'],
   },
+  // THE ORBITAL WORKS (docs/superpowers/specs/2026-10-02-orbital-works-design.md): a collector loaded after a secured sector, and the
+  // first one in orbit
+  works_launch: {
+    id: 'works_launch', face: 'focused', title: 'ARC-01 · THE WORKS',
+    lines: ['Sector held. Loading a collector on the sled.', 'Every one of these up there is more sky for SOL to spend.'],
+  },
+  works_orbit: {
+    id: 'works_orbit', face: 'surprised', title: 'THE WORKS · IN ORBIT', once: true,
+    lines: ['Look up. That light is ours.', 'A ring of them one day, and then a shell. The colony builds outward now.'],
+  },
   // THE COLONY GROWS (owner, 2026-10-01: "make the base more fully developed"): the armory, the farm, the chip plant, the launcher
   build_armory: {
     id: 'build_armory', face: 'determined', title: 'COMMS · ISAO', once: true,

@@ -17,7 +17,7 @@ const KEYS = {
   kills: ['total', 'bySource', 'byTower', 'byBelt', 'tempo'],
   bySource: ['tank', 'ram', 'towers', 'gunship', 'laser', 'other'],
   tank: ['shotsFired', 'shotsHit', 'rams', 'bestCombo', 'shieldSeconds', 'stationSeconds', 'damageTaken', 'hullsLost', 'partsHome'],
-  colony: ['prints', 'leaks', 'heartDamage', 'gunshipPasses', 'gunshipKills', 'laserPasses', 'laserSeconds', 'laserKills'],
+  colony: ['prints', 'leaks', 'heartDamage', 'gunshipPasses', 'gunshipKills', 'laserPasses', 'laserSeconds', 'laserKills', 'launches'],
   record: ['key', 'label', 'value', 'best', 'isNew'],
   totals: ['sectors', 'seconds', 'score', 'kills', 'biomassEarned', 'leftInField', 'hullsLost', 'partsHome', 'stamps'],
 };

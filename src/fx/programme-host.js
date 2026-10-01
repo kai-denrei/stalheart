@@ -20,6 +20,9 @@ import { LASER_AUTO } from '../content/orbital-laser.js';
 import { due as programmeDue, begin as programmeBegin, finish as programmeFinish, hasPerk as programmeHas, perks as programmePerks, sectorStarted } from '../domain/build-programme.js';
 import { createArcLaunch } from './arc-launch.js';
 import { createArmoryPad } from './armory-pad.js';
+import { ORBITAL_WORKS } from '../content/orbital-works.js';
+import { makeWorks, launchDue, beginLaunch, collectorUp, energyBonus } from '../domain/orbital-works.js';
+import { createOrbitalRing } from './orbital-ring.js';
 import { nextRepair } from '../domain/repair-orders.js';
 import { sideBreachCandidates } from '../domain/side-breach.js';
 import { planCanyon } from '../domain/canyon.js';
@@ -55,6 +58,17 @@ export function createProgrammeHost(c) {
         if (n > 0) { c.setAmmo?.(c.ammo() + n); c.sfx?.play?.('tank_shells'); updateHud(); }
       }
       s.launch?.tick();
+      // THE ORBITAL WORKS (src/domain/orbital-works.js): once SOL-88 is up, a collector goes up at the start of every sector after a
+      // secured one; each in orbit is a light on the ring and seconds of beam for SOL
+      s.works ??= makeWorks();
+      if (c.scene && !s.worksRing) { s.worksRing = createOrbitalRing(c.scene, ORBITAL_WORKS.ring); s.worksRing.set(s.works.collectors); }
+      s.worksRing?.tick(c.t());
+      if (s.sol88 && sector > 0 && launchDue(s.works, { sector, online: true, secured: (c.sectorRun()?.test?.reports?.() ?? []).some((r) => r.sector === sector - 1 && r.outcome === 'secure'), standing: programmeHas(pg, 'launcher') }) && !s.launch) {
+        const root = c.storyBase()?.structure?.('launcher')?.root ?? null;
+        beginLaunch(s.works, sector);
+        s.launch = createArcLaunch({ launcher: root, now: () => c.t(), sfx: c.sfx, onComplete: () => { const n = collectorUp(s.works); s.worksRing?.set(n); c.laserStation?.setEnergyBonus?.(energyBonus(n, ORBITAL_WORKS)); c.sectorRun()?.note({ type: 'launch', id: 'collector' }); if (!c.pilotMode() && !c.briefQ()) showBrief(ORBITAL_WORKS.orbit); s.launch = null; updateHud(); } });
+        if (!c.pilotMode() && !c.briefQ()) showBrief(ORBITAL_WORKS.brief);
+      }
       // SOL AUTOMATED: Isao's word the moment the player's second manned pass is in (the ARC-01 step waits on that count)
       const manned = c.laserStation?.manned?.() ?? 0;
       if (manned >= LASER_AUTO.afterManned && !s.calibrated) { s.calibrated = true; if (!c.pilotMode() && !c.briefQ()) showBrief(LASER_AUTO.calibrated); }
@@ -138,10 +152,10 @@ export function createProgrammeHost(c) {
       // THE ARC-01 STANDS: SOL-88 goes up on its sled (src/fx/arc-launch.js), and when the insertion stage is lit SOL fires on its own
       if (step.perk === 'launcher') {
         const root = c.storyBase()?.structure?.(step.structures[0])?.root ?? null;
-        c.story().launch = createArcLaunch({ launcher: root, now: () => c.t(), onComplete: () => { c.laserStation?.setAuto?.(true); c.sectorRun()?.note({ type: 'launch', id: 'sol88' }); if (!c.pilotMode() && !c.briefQ()) showBrief('sol88_online'); updateHud(); } });
+        c.story().launch = createArcLaunch({ launcher: root, now: () => c.t(), sfx: c.sfx, onComplete: () => { c.laserStation?.setAuto?.(true); c.story().sol88 = true; c.story().launch = null; c.sectorRun()?.note({ type: 'launch', id: 'sol88' }); if (!c.pilotMode() && !c.briefQ()) showBrief('sol88_online'); updateHud(); } });
       }
     },
     // what the harness reads: the launch beat, the pad, the calibration
-    colony: () => ({ launch: c.story()?.launch?.state() ?? null, pad: c.story()?.armoryPad?.ring?.state() ?? null, cell: c.story()?.armoryPad?.cell ?? -1, calibrated: !!c.story()?.calibrated, manned: c.laserStation?.manned?.() ?? 0 }),
+    colony: () => ({ launch: c.story()?.launch?.state() ?? null, works: c.story()?.works ? { ...c.story().works, ring: c.story().worksRing?.state() ?? null } : null, sol88: !!c.story()?.sol88, pad: c.story()?.armoryPad?.ring?.state() ?? null, cell: c.story()?.armoryPad?.cell ?? -1, calibrated: !!c.story()?.calibrated, manned: c.laserStation?.manned?.() ?? 0 }),
   };
 }

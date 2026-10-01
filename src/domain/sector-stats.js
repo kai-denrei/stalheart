@@ -16,7 +16,7 @@ export function makeSectorStats(sector, t, shape = {}) {
     kills: { total: 0, bySource: zeros(SOURCES), byTower: zeros(shape.towers), byBelt: zeros(shape.belts), byGun: zeros(shape.guns) },
     tempo: [], breachKills: {},
     shotsFired: 0, shotsHit: 0, rams: 0, bestCombo: 0, shieldSeconds: 0, stationSeconds: 0, damageTaken: 0, hullsLost: 0, partsHome: [],
-    prints: [], leaks: 0, heartDamage: 0, gunshipPasses: 0, laserPasses: 0, laserSeconds: 0,
+    prints: [], leaks: 0, heartDamage: 0, gunshipPasses: 0, laserPasses: 0, laserSeconds: 0, launches: 0,
     earned: 0, spent: 0, score: { total: 0, kills: 0, rams: 0, bonuses: 0 },
   };
 }
@@ -50,6 +50,7 @@ export function record(st, ev) {
     case 'hullLost': st.hullsLost++; return true;
     case 'partHome': st.partsHome.push(ev.part); return true;
     case 'print': st.prints.push(ev.id); return true;
+    case 'launch': st.launches++; return true;   // the ARC-01 put something up (SOL-88, then the works' collectors)
     case 'leak': st.leaks++; return true;
     case 'heartDamage': st.heartDamage += num(ev.amount); return true;
     case 'gunshipPass': st.gunshipPasses++; return true;
@@ -112,7 +113,7 @@ export function report(st, sector, { t, bank = 0, outcome = 'secure', bests = {}
     breaches,
     kills: { total: st.kills.total, bySource: { ...st.kills.bySource }, byTower: { ...st.kills.byTower }, byBelt: { ...st.kills.byBelt }, byGun: { ...st.kills.byGun }, tempo },
     tank: { shotsFired: st.shotsFired, shotsHit: st.shotsHit, rams: st.rams, bestCombo: st.bestCombo, shieldSeconds: tenths(st.shieldSeconds), stationSeconds: tenths(st.stationSeconds), damageTaken: tenths(st.damageTaken), hullsLost: st.hullsLost, partsHome: st.partsHome.slice() },
-    colony: { prints: st.prints.slice(), leaks: st.leaks, heartDamage: st.heartDamage, gunshipPasses: st.gunshipPasses, gunshipKills: st.kills.bySource.gunship, laserPasses: st.laserPasses, laserSeconds: tenths(st.laserSeconds), laserKills: st.kills.bySource.laser },
+    colony: { prints: st.prints.slice(), leaks: st.leaks, heartDamage: st.heartDamage, gunshipPasses: st.gunshipPasses, gunshipKills: st.kills.bySource.gunship, laserPasses: st.laserPasses, laserSeconds: tenths(st.laserSeconds), laserKills: st.kills.bySource.laser, launches: st.launches },
     stamps: [], records: [],
   };
   const m = reportMetrics(r);
@@ -130,7 +131,7 @@ const SHAPE = {
   breaches: A,
   kills: { total: N, bySource: Object.fromEntries(SOURCES.map((k) => [k, N])), byTower: O, byBelt: O, byGun: O, tempo: A },
   tank: { shotsFired: N, shotsHit: N, rams: N, bestCombo: N, shieldSeconds: N, stationSeconds: N, damageTaken: N, hullsLost: N, partsHome: A },
-  colony: { prints: A, leaks: N, heartDamage: N, gunshipPasses: N, gunshipKills: N, laserPasses: N, laserSeconds: N, laserKills: N },
+  colony: { prints: A, leaks: N, heartDamage: N, gunshipPasses: N, gunshipKills: N, laserPasses: N, laserSeconds: N, laserKills: N, launches: N },
   stamps: A, records: A,
 };
 const BREACH = { id: null, side: S, wavesPlanned: N, wavesFought: N, kills: N, closedBy: null, openSeconds: N, leftInField: { kg: N, points: N } };

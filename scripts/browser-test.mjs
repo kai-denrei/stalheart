@@ -1392,9 +1392,9 @@ try{
  await until(`${T}.state().programme.colony.launch && ${T}.state().programme.colony.launch.satellite`,15000).catch(async()=>assert.fail(`SOL-88 rides the sled (${JSON.stringify((await prog()).colony.launch)})`));
  await until(`${T}.state().programme.colony.launch.phase==="released" || ${T}.state().programme.colony.launch.phase==="unfolding"`,20000);
  current='colony-launch';await finish();
- await until(`${T}.state().programme.colony.launch.done`,LAUNCH.duration*1000+15000).catch(async()=>assert.fail(`the launch completes (${JSON.stringify((await prog()).colony.launch)})`));
+ await until(`${T}.state().programme.colony.sol88`,LAUNCH.duration*1000+15000).catch(async()=>assert.fail(`the launch completes and SOL-88 is up (${JSON.stringify((await prog()).colony)})`));
  {const s=await st();assert.equal(s.laser.auto,true,'SOL fires on its own now');assert.equal(s.laser.platform,'sol88','SOL-88 is the platform overhead');
-  assert.ok(/^SOL-88/.test(await evaluate('document.querySelector("#story-views [data-view=laser]").textContent')),'the strip names SOL-88');}
+  await until('/^SOL-88/.test(document.querySelector("#story-views [data-view=laser]").textContent)',5000).catch(async()=>assert.fail(`the strip names SOL-88 (${await evaluate('[...document.querySelectorAll("#story-views [data-view=laser]")].map(b=>b.textContent+"/"+b.hidden).join("|")')} nav=${await evaluate('document.querySelectorAll("#story-views").length')} laser=${JSON.stringify(((l)=>({auto:l.auto,platform:l.platform,strip:l.strip,phase:l.phase}))((await st()).laser))})`));}
  // 5. AN AUTOMATED PASS: bodies out of a breach, the pass overhead, nobody seated, and the beam burns them on its own
  await evaluate(`${T}.spawnFodder(60)`);await delay(2500);
  await evaluate(`${T}.laserPassNow()`);await until(`${T}.state().laser.overhead`,5000);
@@ -1403,6 +1403,31 @@ try{
  await until(`${T}.state().laser.burned.bodies>${b0}`,30000).catch(async()=>assert.fail(`the automated pass takes bodies (${JSON.stringify((await st()).laser.burned)})`));
  console.log(`  colony: automated pass burned ${(await st()).laser.burned.bodies-b0}`);
  current='colony-auto';await finish();
+ // 6. THE ORBITAL WORKS (docs/superpowers/specs/2026-10-02-orbital-works-design.md): the sector secured and the next begun, a collector
+ // goes up on the sled; in orbit it is a light on the ring and seconds of beam for SOL
+ await evaluate(`${T}.laserHold(false)`);
+ {const s=await st();for(const b of s.sector.breaches)if(b.live)await evaluate(`${T}.sectorClose(${JSON.stringify(b.id)},"strike")`);}
+ await evaluate(`${T}.sectorClearField()`);
+ await until(`${T}.state().sector.debriefOpen`,30000).catch(async()=>assert.fail(`the sector is secured and debriefed (${JSON.stringify((await st()).sector)})`));
+ {const r=await evaluate(`${T}.sectorReport()`);assert.ok(r.colony.launches>=1,`the books count SOL-88's launch (${JSON.stringify(r.colony)})`);}
+ await evaluate(`${T}.sectorContinue()`);
+ await until(`${T}.state().sector.n===5`,30000);
+ await until(`${T}.state().programme.colony.works && ${T}.state().programme.colony.works.launching`,15000).catch(async()=>assert.fail(`a collector goes up at the next sector's start (${JSON.stringify((await prog()).colony)})`));
+ await until(`${T}.state().programme.colony.launch && ${T}.state().programme.colony.launch.phase==="released"`,20000);
+ current='colony-works-launch';await finish();
+ await until(`${T}.state().programme.colony.works.collectors===1`,LAUNCH.duration*1000+15000).catch(async()=>assert.fail(`the collector reaches orbit (${JSON.stringify((await prog()).colony)})`));
+ {const p=await prog(),s=await st(),{ORBITAL_WORKS}=await import('../src/content/orbital-works.js');
+  assert.deepEqual(p.colony.works.ring,{count:1,visible:true},'one light on the ring');
+  assert.equal(s.laser.energyBonus,ORBITAL_WORKS.energyPerCollector,`SOL has more beam a pass (${s.laser.energyBonus})`);
+  assert.ok(!p.colony.works.launching,'the sled is home');console.log(`  colony: works ${JSON.stringify(p.colony.works)} pass energy ${s.laser.passEnergy}`);}
+ current='colony-works-orbit';await finish();
+ } else if(args.includes('--strip-probe')) {
+ const T='window.__stalheartTest';
+ await go('strip-probe','index.html?sw=0&acceptance=1&cine=0&world=story&stage=6&phase=expedition&laser=online#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await delay(1500);
+ await evaluate(`${T}.laserAuto(true)`);await delay(2500);
+ console.log('PROBE',await evaluate(`JSON.stringify({dom:[...document.querySelectorAll("#story-views [data-view=laser]")].map(b=>b.textContent),navs:document.querySelectorAll("#story-views").length,laser:(l=>({auto:l.auto,platform:l.platform,strip:l.strip}))(${T}.state().laser)})`));
+ await finish();
  } else if(args.includes('--units-sky')) {
  // THE SKY ON THE BENCH (owner, 2026-10-01: "UNITS are not showing all the units; we should see SOL, and the Gunship. also show
  // Wireframe for all units"): the KORP, SOL-82 and SOL-88 are catalogue entries built from their pinned GLBs, and the wireframe

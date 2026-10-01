@@ -196,6 +196,7 @@ function pageColony(r, isao) {
         <div class="sdb-row"><span class="sdb-label">IN</span><span class="sdb-track">${bar(num(b.earned) / flow, { at: 340, dur: 800 })}</span>${roll(b.earned, { at: 340, dur: 800, cls: 'sdb-num--s' })}</div>
         <div class="sdb-row is-lead"><span class="sdb-label">OUT</span><span class="sdb-track">${bar(num(b.spent) / flow, { at: 420, dur: 800 })}</span>${roll(b.spent, { at: 420, dur: 800, cls: 'sdb-num--s' })}</div>
         <div class="sdb-row is-sub"><span class="sdb-label">BANK</span><span class="sdb-track"></span>${roll(b.bank, { at: 500, dur: 800, cls: 'sdb-num--s' })}</div>
+        ${num(c.launches) > 0 ? `<div class="sdb-line" data-reveal data-at="540"><span>ARC-01 · LAUNCHED</span><em>${roll(c.launches, { at: 560, dur: 600, cls: 'sdb-num--s' })}</em></div>` : ''}
         <div class="sdb-h" data-reveal data-at="560"><span>ARSENAL</span><span>PASSES · KILLS</span></div>
         <div class="sdb-line" data-reveal data-at="600"><span>GUNSHIP</span><em>${roll(c.gunshipPasses, { at: 620, dur: 600, cls: 'sdb-num--s' })} · ${roll(c.gunshipKills, { at: 660, dur: 900, cls: 'sdb-num--s' })}</em></div>
         <div class="sdb-line${laserOn ? '' : ' is-zero'}" data-reveal data-at="680"><span>SOL-82</span><em>${laserOn ? `${roll(c.laserPasses, { at: 700, dur: 600, cls: 'sdb-num--s' })} · ${roll(c.laserSeconds, { fmt: 'sec', at: 740, dur: 700, cls: 'sdb-num--s' })} · ${roll(c.laserKills, { at: 780, dur: 900, cls: 'sdb-num--s' })}` : 'NOT ONLINE'}</em></div>
@@ -228,7 +229,7 @@ function pageCampaign(camp, isao) {
       <div class="sdb-stat" data-reveal data-at="260"><span>SCORE</span>${roll(tot.score, { at: 300, dur: 1500, rainbow: num(tot.score) > 1000 })}</div>
       <div class="sdb-stat" data-reveal data-at="360"><span>KILLS</span>${roll(tot.kills, { at: 400, dur: 1300 })}</div>
       <div class="sdb-stat" data-reveal data-at="460"><span>BIOMASS</span>${roll(tot.biomassEarned, { at: 500, dur: 1200 })}${unit('KG')}</div>
-      <div class="sdb-stat" data-reveal data-at="560"><span>PARTS HOME</span>${roll(tot.partsHome, { at: 600, dur: 700 })}<small>${roll(tot.hullsLost, { at: 700, dur: 600, cls: 'sdb-num--s' })} HULLS LOST</small></div>
+      <div class="sdb-stat" data-reveal data-at="560"><span>PARTS HOME</span>${roll(tot.partsHome, { at: 600, dur: 700 })}<small>${roll(tot.hullsLost, { at: 700, dur: 600, cls: 'sdb-num--s' })} HULLS LOST${num(tot.colony?.launches) > 0 ? ` · ${num(tot.colony.launches)} IN ORBIT` : ''}</small></div>
     </div>
     <div class="sdb-camp-row">
     <div class="sdb-table-wrap" data-reveal data-at="900">

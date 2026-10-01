@@ -33,7 +33,8 @@ export function createLaserArsenal(scene, host) {
   // A PASS OVER A PLACE (THE CANYON, src/fx/sector-run.js): its own numbers for one pass, the beam laid on the place, forward along
   // `axis`, no range call; the next close puts the game's pass back. null when no such pass is overhead
   let special = null;
-  const normalPass = () => { orbit.overhead = LASER_GAME.pass.overhead; Object.assign(beam, { energy: LASER_GAME.pass.energy, radius: LASER_GAME.pass.radius, slew: LASER_BEAM.slew }); laser?.tune({ radius: beam.radius }); };
+  let energyBonus = 0;   // THE ORBITAL WORKS: seconds of beam the collectors in orbit add to every ordinary pass
+  const normalPass = () => { orbit.overhead = LASER_GAME.pass.overhead; Object.assign(beam, { energy: LASER_GAME.pass.energy + energyBonus, radius: LASER_GAME.pass.radius, slew: LASER_BEAM.slew }); laser?.tune({ radius: beam.radius }); };
   let online = !!host.online, seated = false, laser = null, burningWas = false, contactT = 0, smokeT = 0, voice = null;
   let aimArc = 0, passes = 0, burnSeconds = 0, testTarget = null, testHeld = false, anchors = null, breakMs = 0;
   // SOL AUTOMATED (src/domain/laser-auto.js): `manned` counts the passes the player sat in and burned; once the ARC-01 has put SOL-88
@@ -264,7 +265,7 @@ export function createLaserArsenal(scene, host) {
       laser?.clear();
       special = null; normalPass();
       Object.assign(st, makeLaser(orbit, beam));
-      passes = burnSeconds = aimArc = breakMs = 0; manned = 0; mannedThisPass = false; auto = false; autoAim = null; platform = LASER_PLATFORMS.sol82; periodScale = 1;
+      passes = burnSeconds = aimArc = breakMs = 0; manned = 0; mannedThisPass = false; auto = false; autoAim = null; platform = LASER_PLATFORMS.sol82; periodScale = 1; energyBonus = 0; normalPass();
       for (const k of Object.keys(burned)) burned[k] = 0;
       testTarget = null; testHeld = false; anchors = null;
       online = !!host.online;
@@ -287,6 +288,7 @@ export function createLaserArsenal(scene, host) {
     auto: () => auto,
     manned: () => manned,   // passes the player flew and burned in: the calibration the ARC-01 step waits for
     setPeriodScale(k) { periodScale = Number.isFinite(k) && k > 0 ? k : 1; },
+    setEnergyBonus(s) { energyBonus = Math.max(0, +s || 0); if (!special) { normalPass(); if (st.phase !== 'overhead') st.energy = beam.energy; } },
     platform: () => platform,
 
     // the harness's hands: a world point to aim at (null lets the seat's own pointer and keys aim again) and the trigger
@@ -308,7 +310,7 @@ export function createLaserArsenal(scene, host) {
     stats: () => ({ passes, seconds: burnSeconds }),   // cheap: the sector loop polls it every frame
     state: () => ({
       online, phase: st.phase, overhead: st.phase === 'overhead', left: +st.left.toFixed(2), energy: +st.energy.toFixed(2), special: !!special, radius: beam.radius,
-      burning: st.burning, contact: contactU()?.map((v) => +v.toFixed(5)) ?? null, seated, passes, seconds: +burnSeconds.toFixed(2), auto, manned, platform: platform.id, period: +orbit.period.toFixed(1),
+      burning: st.burning, contact: contactU()?.map((v) => +v.toFixed(5)) ?? null, seated, passes, seconds: +burnSeconds.toFixed(2), auto, manned, platform: platform.id, strip: laserStrip(st, online, beam, LASER_GAME.lowEnergy, platform.name).text, period: +orbit.period.toFixed(1), energyBonus, passEnergy: beam.energy,
       under: { ...under }, underNames: [...underNames], burned: { ...burned }, trail: laser ? laser.trail.count : 0, smoke: laser ? laser.state().puffs : 0, breakMs: +breakMs.toFixed(1),
       /* metres from the contact to the nearest live body: a burn that takes nothing can say how far it missed */
       nearestBodyM: st.contact ? +Math.min(Infinity, ...host.enemies().filter((e) => e.alive).map((e) => { const R = metres(); return Math.hypot(e.pos[0] * R - st.contact[0], e.pos[1] * R - st.contact[1], e.pos[2] * R - st.contact[2]); })).toFixed(1) : null,

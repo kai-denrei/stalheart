@@ -4183,7 +4183,7 @@ export function initTdTab(root) {
   // fixed set; the wave plan decides what pours out of them
   function seedPortals(n) { if (storyMode) return; for (let i = 0; i < n; i++) addSpawnPoint(); }
 
-  // a ground breach closes only to an orbital strike or wave exhaustion; a shell on it marks it on the scope. A story sector's breach takes three
+  // a ground breach closes only to a strike or exhaustion; a shell on it marks it on the scope. A sector's breach takes three
   function gateTakesShell(sp) {
     sp.found = true; if (sectorRun?.owns(sp) && --sp.hp <= 0) killPortal(sp, 'shells');
     return false;
@@ -8985,7 +8985,7 @@ export function initTdTab(root) {
       siteCells: () => story?.siteCells ?? {},
       // the same fields deployStart resets, so the step rebuilds pos ON ci instead of gliding off it; segLen is the cell scale
       // because cur === next is a zero-length chord
-      setAmmo: (n) => { ammo = n; updateHud(); }, placeTank: (ci) => { player.freeMode = false; player.virtualStart = null; player.cur = ci; player.prev = ci; player.next = ci; player.prog = 0; player.segLen = cellSide; player.pos = graph.centers[ci].slice(); },
+      setAmmo: (n) => { ammo = n; updateHud(); }, laserAuto: (on) => laserStation.setAuto(on), placeTank: (ci) => { player.freeMode = false; player.virtualStart = null; player.cur = ci; player.prev = ci; player.next = ci; player.prog = 0; player.segLen = cellSide; player.pos = graph.centers[ci].slice(); },
       killGuards: (id) => { for (const e of enemies) if (e.alive && e.guard?.site === id) killCreature(e, false); },
       hitTank: () => { if (playerHP > 1) playerHit(); },
       cargoView: (k, id) => {
