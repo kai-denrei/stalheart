@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-10-01-phone-seats-say-less-built",
+  "date": "2026-10-01",
+  "type": "change",
+  "status": "accepted",
+  "title": "On a phone the seats say less: the telemetry plate and the panel's duplicate cue line are gone, the shell bar hides while a seat is up, and the seat hint is a footer shown once per browser; desktop unchanged",
+  "context": "2026-09-19-phone-seats-say-less (proposed) and the owner again on 2026-09-24: \"mobile still displays an overwhelmingly cluttered HUD\". STATE's sketch: one state line per seat instead of the plate and the ribbon, the hint box once, the shell hidden in seats, the ground-truth monitor inside its frame. The 2026-09-18 phone pass had proved no control is covered and reduced nothing. The owner is away (2026-10-01: \"do a pass on these\").",
+  "outcome": "styles.css, body.mobile-shell only: #gunship-hud .ro (the ten-row telemetry plate) and #sentry-pilot output (the gun's cue line, which the ribbon under the reticle repeats) are not displayed; #shell-bar is not displayed while #sentry-pilot or #laser-seat is in the page (:has); a seat footer marked hint-seen is not displayed. src/fx/seat-hint.js (new): on a phone the footer of controls shows the first time a seat is taken in this browser, for 8 s, then never again (storage key seat-hint-seen); src/sentry-pilot.js and src/fx/laser-seat.js call it. The ribbon under the reticle (weapon · phase · state) is the one state line; the gun buttons, the aim, the fire button, the radar, the monitor and the strip stay. The monitor already fit its frame (styles.css 3765). Desktop is untouched: every rule is under body.mobile-shell.",
+  "alternatives": [
+    "Collapsing the plate to a tap-to-open line: more chrome and a tap target on a 390 px screen for numbers a thumb never reads mid-fight; the ribbon already carries weapon, phase and state.",
+    "Hiding the radar too: it is the only picture of where the swarm is while the optic looks at one patch."
+  ],
+  "evidence": [
+    "Browser --phone (phone-gunship-seat): the plate, the cue line and the shell bar are not displayed in the seat, the hint footer shows the first time, the shell bar is back once TANK leaves; the layout ruler still finds no control under another. --seats (desktop) unchanged. npm test, npm run check, npm run architecture."
+  ],
+  "supersedes": [
+    "2026-09-19-phone-seats-say-less"
+  ]
+}

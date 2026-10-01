@@ -78,6 +78,22 @@ Evidence:
 - --gunship, same page, in order: before, first seat 59.5 ms against 18.9 baseline, 6 new programs (BackgroundCubeMaterial, Skirt / carbon, Slab / concrete, BASE_KIT_GAME / vertex palette, two unnamed); warm on its timer, 39.1 ms, 3 new; with the one-pixel canvas draw, 28.5 ms against 27.7 ms baseline, second seat 19.2 ms, 3 new programs (two of the seat's own, the background's, which the harness page's background path still links), programs 98 -> 101.
 - npm test, npm run check, npm run architecture; --gunship, --phone, --showcase, --seats, --story-world green.
 
+## 2026-10-01 — On a phone the seats say less: the telemetry plate and the panel's duplicate cue line are gone, the shell bar hides while a seat is up, and the seat hint is a footer shown once per browser; desktop unchanged
+
+change · accepted · 2026-10-01-phone-seats-say-less-built
+
+2026-09-19-phone-seats-say-less (proposed) and the owner again on 2026-09-24: "mobile still displays an overwhelmingly cluttered HUD". STATE's sketch: one state line per seat instead of the plate and the ribbon, the hint box once, the shell hidden in seats, the ground-truth monitor inside its frame. The 2026-09-18 phone pass had proved no control is covered and reduced nothing. The owner is away (2026-10-01: "do a pass on these").
+
+styles.css, body.mobile-shell only: #gunship-hud .ro (the ten-row telemetry plate) and #sentry-pilot output (the gun's cue line, which the ribbon under the reticle repeats) are not displayed; #shell-bar is not displayed while #sentry-pilot or #laser-seat is in the page (:has); a seat footer marked hint-seen is not displayed. src/fx/seat-hint.js (new): on a phone the footer of controls shows the first time a seat is taken in this browser, for 8 s, then never again (storage key seat-hint-seen); src/sentry-pilot.js and src/fx/laser-seat.js call it. The ribbon under the reticle (weapon · phase · state) is the one state line; the gun buttons, the aim, the fire button, the radar, the monitor and the strip stay. The monitor already fit its frame (styles.css 3765). Desktop is untouched: every rule is under body.mobile-shell.
+
+Alternatives: Collapsing the plate to a tap-to-open line: more chrome and a tap target on a 390 px screen for numbers a thumb never reads mid-fight; the ribbon already carries weapon, phase and state.; Hiding the radar too: it is the only picture of where the swarm is while the optic looks at one patch.
+
+Evidence:
+
+- Browser --phone (phone-gunship-seat): the plate, the cue line and the shell bar are not displayed in the seat, the hint footer shows the first time, the shell bar is back once TANK leaves; the layout ruler still finds no control under another. --seats (desktop) unchanged. npm test, npm run check, npm run architecture.
+
+Supersedes: 2026-09-19-phone-seats-say-less
+
 ## 2026-10-01 — Three V1 known gaps closed and two controller leftovers: every straight round flies from the barrel to the body, a round hits a body once, the lance's stop is solved on the curve it is drawn along and the beam descends at the barrel's pitch; the run's clock rides the world's, and a disposed tab stops its frame loop
 
 change · accepted · 2026-10-01-known-gaps-rounds-lance-clock

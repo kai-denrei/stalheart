@@ -4729,3 +4729,12 @@ body.mobile-shell #td-stats.ih-panel-hit { animation: ih-panel 0.9s ease-out; }
    fades in as it lands */
 #sentry-pilot, #story-scope { transition: opacity 0.35s ease-out; }
 body.seat-gliding #sentry-pilot, body.seat-gliding #story-scope { opacity: 0; transition: none; }
+
+/* THE SEATS SAY LESS ON A PHONE (2026-09-19-phone-seats-say-less, built 2026-10-01; owner: "too much info on screen"): in a seat
+   the thumb needs the gun buttons, the aim, the fire button, one line of state and the strip. The telemetry plate and the panel's
+   duplicate cue line go; the ribbon under the reticle is the one state line; the shell's build tag hides while any seat is up;
+   the seat hint is a footer shown once per browser (src/sentry-pilot.js, src/fx/laser-seat.js). Desktop unchanged. */
+body.mobile-shell #gunship-hud .ro { display: none; }
+body.mobile-shell #sentry-pilot output { display: none; }
+body.mobile-shell:has(#sentry-pilot) #shell-bar, body.mobile-shell:has(#laser-seat) #shell-bar { display: none; }
+body.mobile-shell #sentry-pilot footer.hint-seen, body.mobile-shell #laser-seat footer.hint-seen { display: none; }

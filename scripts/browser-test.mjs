@@ -494,6 +494,10 @@ try{
  await thumb('#td-pad-fire','the trigger');await reachable('#td-pad-fire','the trigger');
  await reachable('#story-views [data-view=tank]','TANK on the strip');
  await layout(['#td-pad-fire','#story-views','#sentry-pilot header','#sentry-pilot .pilot-guns','#sentry-pilot [data-map]','#sentry-pilot footer','#gunship-hud .ro','#story-monitor','#mob-mode','#shell-bar','#tab-td .minimap'],'the gunship seat');
+ // THE SEAT SAYS LESS (2026-10-01): no telemetry plate, no duplicate cue line, no shell bar while seated; the hint footer is up the first time
+ {const gone=async(sel)=>evaluate(`(e=>!e||getComputedStyle(e).display==="none")(document.querySelector(${JSON.stringify(sel)}))`);
+  assert(await gone('#gunship-hud .ro'),'the telemetry plate is not on a phone');assert(await gone('#sentry-pilot output'),'nor the panel\'s cue line');assert(await gone('#shell-bar'),'the shell bar hides in a seat');
+  assert(!(await gone('#sentry-pilot footer')),'the seat hint shows the first time');}
  {const q0=await evaluate(`${T}.gunshipCam()`);await drag(200,430,120,400);await delay(400);const q1=await evaluate(`${T}.gunshipCam()`);
   const a=2*Math.acos(Math.min(1,Math.abs(q0[0]*q1[0]+q0[1]*q1[1]+q0[2]*q1[2]+q0[3]*q1[3])));assert(a>0.01,`a drag turns the optic (${(a*180/Math.PI).toFixed(2)} deg)`);}
  current='phone-gunship-seat';await finish();
@@ -509,6 +513,7 @@ try{
  current='phone-nuke-release';await finish();
  await until(`${T}.state().gunship.heavy.phase==="reloading"`,15000);
  await tap('#story-views [data-view=tank]','TANK on the strip');await delay(1000);assert(!(await st()).gunship.seat,'TANK leaves the seat');
+ assert(await evaluate('getComputedStyle(document.querySelector("#shell-bar")).display!=="none"'),'the shell bar is back out of the seat');
  // 7. SOL-82'S SEAT: the strip's button, the briefing's SKIP, the scope steered by a drag, HOLD burns, TANK leaves
  // the skipped run is sector 1 and SOL-82 comes online at sector 3 (2026-10-01): the harness brings it online for its seat
  await evaluate(`${T}.laserOnline(true)`);assert.equal((await st()).laser.online,true,'SOL-82 is online');

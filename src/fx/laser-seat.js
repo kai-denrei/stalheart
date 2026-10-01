@@ -9,6 +9,7 @@
 // off and drag it with the beam's inertia while it burns; Esc or TANK leaves.
 import * as THREE from '../../vendor/three.module.js';
 import { LASER_GAME, LASER_TELEMETRY, LASER_VIEW } from '../content/orbital-laser.js';
+import { seatHint } from './seat-hint.js';
 import { createLaserScope, scopeRect } from './laser-scope.js';
 import { createInsetHud } from './laser-inset-hud.js';
 
@@ -35,6 +36,7 @@ export function createLaserSeat(root, host) {
   keysEl.id = 'laser-seat-keys';
   keysEl.innerHTML = '<button type="button" data-hold>HOLD</button><button type="button" data-tank>TANK</button>';
   root.append(panel, keysEl);
+  const hintOff = seatHint(panel.querySelector('footer'), { mobile: !!host.mobile });   // the phone's seat hint, once per browser
   const elPass = panel.querySelector('[data-pass]'), elEnergy = panel.querySelector('[data-energy]'), elLabel = panel.querySelector('[data-energy-label]'), elWarn = panel.querySelector('[data-warn]');
   const holdBtn = keysEl.querySelector('[data-hold]');
 
@@ -206,7 +208,7 @@ export function createLaserSeat(root, host) {
       holdBtn.classList.toggle('on', held());
     },
 
-    dispose() {
+    dispose() { hintOff();
       abort.abort();
       scope.dispose();
       hud.dispose();

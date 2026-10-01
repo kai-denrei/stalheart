@@ -4,11 +4,12 @@ import { createGunshipHud, planetCoords } from './fx/gunship-hud.js';
 import { headingTurn } from './domain/gunship-track.js';
 import { framingWeight, frameRound, ROUND_FRAME } from './core/round-framing.js';
 import { RELEASE_EVENTS, releasesHeld, releaseHeld } from './core/held-input.js';
+import { seatHint } from './fx/seat-hint.js';
 export function createSentryPilot(root, host) {
   const state = { tower:null, held:false, yaw:0, pitch:-.2, zoom:1, target:null, shots:0, view:'pov' };   // view: pov (over the barrels) | third (behind the turret)
   const panel=document.createElement('section'); panel.id='sentry-pilot';
   panel.innerHTML=`<header>SENTRY CONTROL <small>THE MOUNTS ON THE WALL</small></header><p><button data-map>Map / optic · M</button></p><output></output><footer>${host.mobile?'Drag to aim · ‹ › turn · ◉ fire · MAP':'Click to lock the mouse, move it to aim · Space fires · wheel zoom · 1 map · 2 PoV · 3 third · P pause · Esc frees the mouse, Esc again or 7: the tank · H controls'}</footer><div class="pilot-cross">＋</div>`;
-  root.append(panel);root.classList.add('sentry-pilot-mode');
+  root.append(panel);const hintOff=seatHint(panel.querySelector('footer'),{mobile:!!host.mobile});   /* the phone's seat hint, once per browser (src/fx/seat-hint.js) */root.classList.add('sentry-pilot-mode');
   const up=new THREE.Vector3(),forward=new THREE.Vector3(),direction=new THREE.Vector3(),eye=new THREE.Vector3(),camEye=new THREE.Vector3(),v=new THREE.Vector3();
   let dragging=false,map=false,lastX=0,lastY=0,lastT=performance.now();
   const locked=()=>document.pointerLockElement===root;
@@ -230,6 +231,6 @@ export function createSentryPilot(root, host) {
   return {state,pose,target,attach,select,setView,release,isMap:()=>map,hit(){cross.classList.add('hit');clearTimeout(hitT);hitT=setTimeout(()=>cross.classList.remove('hit'),120);},mountGunship,dismountGunship,gunshipTick,gunshipOptic,get gunship(){return gunship;},
     aimAt:pos=>{const {held,target}=state;attach(state.tower,pos);state.held=held;state.target=target;},
     update(text){panel.querySelector('output').textContent=text;},
-    dispose(){dismountGunship();hud?.dispose();abort.abort();if(locked())document.exitPointerLock?.();panel.remove();root.classList.remove('sentry-pilot-mode','pilot-framing');}
+    dispose(){hintOff();dismountGunship();hud?.dispose();abort.abort();if(locked())document.exitPointerLock?.();panel.remove();root.classList.remove('sentry-pilot-mode','pilot-framing');}
   };
 }
