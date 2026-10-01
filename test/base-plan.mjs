@@ -108,7 +108,7 @@ for (let n = 0; n < STAGES.length; n++) {
 { const g = planBase(planet, layout, 1, { reach: STAGES.length - 1 }), ids = (a) => a.filter((x) => x.pending).map((x) => x.id);
   assert.equal(g.stage, 1); assert.equal(g.reach, STAGES.length - 1);
   assert.deepEqual(ids(g.islands), ISLANDS.map((i) => i.id), 'every island is still to print at stage 1');
-  assert.deepEqual(ids(g.structures), ['solar', 'rotor', 'hugin', 'stalheart', 'bays', 'assembly', 'radar'], 'every later structure is pending');
+  assert.deepEqual(ids(g.structures), ['solar', 'rotor', 'hugin', 'stalheart', 'bays', 'assembly', 'radar', 'armory', 'greenhouse', 'bio-a', 'bio-b', 'bio-c', 'chips', 'launcher'], 'every later structure is pending');
   assert.ok(g.structures.some((s) => s.id === 'sh02' && !s.pending), 'the intact SH02 still stands at stage 1');
   assert.ok(g.gate.pending && g.walls.length === KIT.wallsPerSide * 2 && g.walls.every((w) => w.pending), 'the gate and its walls wait');
   assert.deepEqual(g.bays.map((b) => [b.n, !!b.pending]), [[1, true], [2, true], [3, true]], 'the bays are pending berths');

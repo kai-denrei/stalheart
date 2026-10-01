@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "date": "2026-10-01",
+  "id": "2026-10-01-the-canyon-again",
+  "type": "decision",
+  "status": "accepted",
+  "title": "The held sector just before the back door is the canyon a second time (the penultimate sector), and the door is never earlier than sector 7",
+  "context": "Owner, 2026-10-01: \"SOL first pass; very satisfying, let's add a second round of that as the penultimate wave.\" The schedule decides the door a sector ahead (2026-10-01-the-ramp-before-the-back-door), so the sector before it is known when it begins.",
+  "outcome": "sectorDef lays SECTOR_CANYON_AGAIN over the held sector n = doorAt - 1 (canyon: true, one gate mouth, its own name, lines and `new`), the door is decided before the def is read, and the canyon's breach says canyon_again on the second rise. SECTOR_DOOR.earliest 6 -> 7 so at least one held sector precedes the door. A late start one sector before the earliest (?skip=defence&sector=6) opens on the canyon again with the door next; the drawer's BACK DOOR jump follows SECTOR_DOOR.earliest. Measured on --canyon-again: 226 burned in 25 s of the pass, the colony holding.",
+  "alternatives": [
+    "A fresh canyon on another bearing: the same canyon re-cut is one rule and the owner asked for \"a second round of that\"",
+    "Leaving the door at 6: then no held sector exists when everything is unlocked early, and the second canyon would be skipped"
+  ],
+  "evidence": [
+    "node test/sectors.mjs",
+    "node test/sector-run.mjs",
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --canyon-again (artifacts/browser/skip-tutorial-canyon-again-*.png)"
+  ],
+  "supersedes": []
+}

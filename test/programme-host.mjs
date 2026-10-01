@@ -2,11 +2,12 @@ import assert from 'node:assert/strict';
 import { createProgrammeHost } from '../src/fx/programme-host.js';
 import { createHullIssue } from '../src/fx/hull-issue.js';
 import { makeBuildProgramme, snapshot } from '../src/domain/build-programme.js';
-import { BASE_PROGRAMME, BASE_REPAIR } from '../src/content/base-programme.js';
+import { BASE_PROGRAMME, BASE_REPAIR, BASE_PERKS } from '../src/content/base-programme.js';
 import { BLOCKED, PATH } from '../src/dungeon.js';
 
 const step = (id) => BASE_PROGRAMME.find((s) => s.id === id);
-const upTo = (id) => (s) => BASE_PROGRAMME.indexOf(s) < BASE_PROGRAMME.indexOf(step(id));
+// `at: 'backgate'` is the finished base: everything stands but the back gate (the colony's steps come after it on the list since 2026-10-01)
+const upTo = (id) => (s) => (id === 'backgate' ? s.id !== 'backgate' : BASE_PROGRAMME.indexOf(s) < BASE_PROGRAMME.indexOf(step(id)));
 // a recording controller: the host's values, getters and setters over one state object `s`
 function controller(o = {}) {
   const log = [], rec = (k) => (...a) => log.push([k, ...a]);
@@ -24,7 +25,7 @@ function controller(o = {}) {
   const orders = [], breachQueue = [], breachedCells = new Set([5]);
   const c = {
     PLAYER_MAX: 3, orders, breachQueue, breachedCells, gunshipRig: { forgetWalls: rec('forgetWalls') }, showBrief: rec('brief'), spawnIsao: rec('spawnIsao'), updateHud: rec('hud'),
-    syncLifeContainers: rec('lives'), rebuildAfterBreach: rec('rebuild'), recomputePortalDist: rec('portalDist'), adoptBays: rec('adoptBays'),
+    syncLifeContainers: rec('lives'), rebuildAfterBreach: rec('rebuild'), recomputePortalDist: rec('portalDist'), adoptBays: rec('adoptBays'), eco: () => ({ addBiomass: rec('biomass') }),
     laserStation: { seated: () => false }, shotId: () => null, deployStart: (n) => { log.push(['deployStart', n]); s.deploy = { n }; }, deployStep: () => { s.deploy = null; },
     leavePilot: rec('leavePilot'), camera: null, startShot: rec('shot'), deployFramePoseFor: rec('frame'), camA: {}, setView: rec('view'),
     setPlayerHP: (v) => { s.playerHP = v; }, setBerths: (v) => { s.berths = v; }, setPlayerDown: (v) => { s.playerDown = v; }, setDeploy: (v) => { s.deploy = v; },
@@ -109,7 +110,7 @@ function controller(o = {}) {
   const { s, api, log } = controller({ at: 'backgate' });
   Object.assign(s.story, { sectorN: 3, grow: false }); s.playerHP = 1;
   for (const wc of s.story.wallCells) s.dungeon.tags[wc] = BLOCKED;   // a static base's walls stand
-  api.build(); assert.equal(s.playerHP, 2); assert.deepEqual(log, [['lives'], ['hud']]);
+  api.build(); assert.equal(s.playerHP, 2); assert.deepEqual(log, [['lives'], ['hud'], ['biomass', BASE_PERKS.farmKg, { category: 'farm' }], ['hud']], 'the hull rebuilt and the farm paid at the sector start');
   api.build(); assert.equal(s.playerHP, 2, 'once per sector');
   const k = controller({ at: 'landing' }), door = { ci: 7, exit: 9 };
   k.s.story.hull = createHullIssue({ held: true, door }); k.s.pilot = { gunship: true };

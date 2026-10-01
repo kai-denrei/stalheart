@@ -1056,7 +1056,7 @@ try{
  await evaluate('window.__stalheartTest.hitTank()');await delay(800);const hullsLost=(await evaluate('window.__stalheartTest.state()')).hulls;
  await evaluate('window.__stalheartTest.setSector(2)');
  await until('window.__stalheartTest.state().programme.printed.includes("assembly")',300000);await mark('radar and assembly line stand');
- {const s=await evaluate('window.__stalheartTest.state()');assert.deepEqual(s.programme.printed,['foundry','gate','stalheart','landing','solar','bays','hugin','radar','assembly'],'every step, in order');assert.equal(s.programme.next,'backgate','the back gate is all that is left, and it waits for the surprise');assert(!s.programme.perks.includes('backgate'));assert.deepEqual(s.programme.perks.slice().sort(),['gate','gunship','hulls','rebuild','stalheart','station','uplink']);assert.equal(s.hulls,hullsLost,'no rebuild inside the sector the line was printed in');}
+ {const s=await evaluate('window.__stalheartTest.state()');assert.deepEqual(s.programme.printed,['foundry','gate','stalheart','landing','solar','bays','hugin','radar','assembly'],'every step, in order');assert.equal(s.programme.next,'backgate','the back gate is next in order and waits for the surprise (passable: the colony prints meanwhile)');assert.deepEqual(s.programme.owed,['armory','farm','chips'],`the colony is owed, the passable back gate and launcher are not (${s.programme.owed})`);assert(!s.programme.perks.includes('backgate'));assert.deepEqual(s.programme.perks.slice().sort(),['gate','gunship','hulls','rebuild','stalheart','station','uplink']);assert.equal(s.hulls,hullsLost,'no rebuild inside the sector the line was printed in');}
  await evaluate('window.__stalheartTest.setSector(3)');await until(`window.__stalheartTest.state().hulls===${Math.min(3,hullsLost+1)}`,10000).catch(()=>{});   /* a condition, not 800 ms: the rebuild lands on the programme's next build tick */
  assert.equal((await evaluate('window.__stalheartTest.state()')).hulls,Math.min(3,hullsLost+1),'the assembly line rebuilds a lost hull at the next sector start');
  await shotBase('grow-finished');
@@ -1349,6 +1349,60 @@ try{
  await evaluate(`${T}.sectorClearField()`);
  await until(`${T}.state().programme.broke===0`,150000).catch(async()=>assert.fail(`Isao prints the wall shut (${JSON.stringify((await st()).programme)})`));
  current='skip-tutorial-side-wall-mended';await finish();
+ } else if(args.includes('--colony')) {
+ // THE COLONY GROWS AND SOL IS AUTOMATED (owner, 2026-10-01): on the finished base Isao prints the armory, the farm and the chip plant
+ // in play; the armory's pad reloads the hull's rack; two manned SOL-82 passes give Isao his calibration, the ARC-01 prints and
+ // launches SOL-88 on its sled, and the next pass fires on its own at the densest pile with nobody in the seat
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), prog=async()=>(await st()).programme;
+ const {BASE_PERKS}=await import('../src/content/base-programme.js'),{LASER_AUTO}=await import('../src/content/orbital-laser.js'),{LAUNCH}=await import('../src/fx/arc-launch.js');
+ await go('colony-load','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4&laser=online#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ await until(`${T}.state().sector.n===4`,60000);
+ await evaluate(`${T}.sectorQuiet(true)`);   // no programme waves: this step is about the base, not the fight
+ {const p=await prog();assert.ok(p.owed.includes('armory')&&p.owed.includes('farm')&&p.owed.includes('chips'),`the colony is owed on the finished base (${JSON.stringify(p.owed)})`);
+  assert.ok(!p.owed.includes('launcher'),'the launcher is passable, not owed');assert.ok(!p.done.includes('armory'),'nothing of the colony stands yet');}
+ // 1. THE ARMORY, THE FARM, THE CHIP PLANT print in order between waves
+ for(const id of ['armory','farm','chips']){await until(`${T}.state().programme.printed.includes(${JSON.stringify(id)})`,120000).catch(async()=>assert.fail(`Isao prints the ${id} (${JSON.stringify(await prog())})`));console.log(`  colony: ${id} printed`);}
+ {const p=await prog();assert.ok(p.perks.includes('armory')&&p.perks.includes('farm')&&p.perks.includes('chips'),`the colony's perks are on (${p.perks})`);
+  assert.ok(p.colony.pad&&p.colony.pad.standing,`the armory's pad stands (${JSON.stringify(p.colony.pad)})`);
+  const s=await st();assert.ok(Math.abs(s.laser.period-180*BASE_PERKS.chipsPeriod)<0.6,`the chip plant brings the passes closer (${s.laser.period})`);}
+ current='colony-printed';await finish();
+ // 2. THE PAD RELOADS: the hull set down on the armory's island with an empty rack fills it, one shell at a time
+ {const cell=(await prog()).colony.cell;assert.ok(cell>=0,'the armory island has a cell');
+  await evaluate(`${T}.setAmmo(0)`);await evaluate(`${T}.placeTank(${cell})`);await delay(400);
+  const a0=(await st()).programme.ammo;await until(`${T}.state().programme.ammo>=3`,6000).catch(async()=>assert.fail(`the pad reloads the rack (${(await st()).programme.ammo} from ${a0}, pad ${JSON.stringify((await prog()).colony.pad)})`));
+  assert.ok((await prog()).colony.pad.near,'the hull is on the pad');console.log(`  colony: rack ${a0} -> ${(await st()).programme.ammo} on the pad`);}
+ current='colony-pad';await finish();
+ // 3. TWO MANNED PASSES: the player in the seat with the beam held is a manned pass; Isao's calibration comes with the second
+ for(let k=1;k<=2;k++){
+  await evaluate(`${T}.laserPassNow()`);await until(`${T}.state().laser.overhead`,5000);
+  await until('(b=>b&&!b.disabled&&/OVERHEAD$/.test(b.textContent))(document.querySelector("#story-views [data-view=laser]"))',8000).catch(async()=>assert.fail(`the strip lights for the pass (${await evaluate('document.querySelector("#story-views [data-view=laser]")?.outerHTML')})`));
+  await evaluate('document.querySelector("#story-views [data-view=laser]").click()');
+  await until(`!!document.querySelector("#sol82-briefing [data-skip]") || ${T}.state().laser.seated`,8000).catch(async()=>assert.fail(`the seat opens from the strip (${JSON.stringify((await st()).laser)})`));await evaluate('document.querySelector("#sol82-briefing [data-skip]")?.click()');
+  await until(`${T}.state().laser.seated`,15000);
+  await evaluate(`${T}.laserHold(true)`);await until(`${T}.state().laser.burning`,5000);await delay(1200);await evaluate(`${T}.laserHold(false)`);
+  await evaluate('document.querySelector("#story-views [data-view=tank]")?.click()');
+  await until(`${T}.state().laser.phase!=="overhead"`,60000);   // the pass closes on its own clock: the manned count lands on the close
+  await until(`${T}.state().laser.manned===${k}`,5000).catch(async()=>assert.fail(`manned pass ${k} counted (${JSON.stringify((await st()).laser)})`));
+  console.log(`  colony: manned pass ${k}`);
+ }
+ await until(`${T}.state().programme.colony.calibrated`,5000).catch(async()=>assert.fail('Isao has his calibration after two manned passes'));
+ // 4. THE ARC-01 prints once the calibration is in, then launches SOL-88 over 30 s; SOL is automated from the insertion stage
+ await until(`${T}.state().programme.printed.includes("launcher")`,120000).catch(async()=>assert.fail(`the ARC-01 prints (${JSON.stringify(await prog())})`));
+ await until(`${T}.state().programme.colony.launch && ${T}.state().programme.colony.launch.satellite`,15000).catch(async()=>assert.fail(`SOL-88 rides the sled (${JSON.stringify((await prog()).colony.launch)})`));
+ await until(`${T}.state().programme.colony.launch.phase==="released" || ${T}.state().programme.colony.launch.phase==="unfolding"`,20000);
+ current='colony-launch';await finish();
+ await until(`${T}.state().programme.colony.launch.done`,LAUNCH.duration*1000+15000).catch(async()=>assert.fail(`the launch completes (${JSON.stringify((await prog()).colony.launch)})`));
+ {const s=await st();assert.equal(s.laser.auto,true,'SOL fires on its own now');assert.equal(s.laser.platform,'sol88','SOL-88 is the platform overhead');
+  assert.ok(/^SOL-88/.test(await evaluate('document.querySelector("#story-views [data-view=laser]").textContent')),'the strip names SOL-88');}
+ // 5. AN AUTOMATED PASS: bodies out of a breach, the pass overhead, nobody seated, and the beam burns them on its own
+ await evaluate(`${T}.spawnFodder(60)`);await delay(2500);
+ await evaluate(`${T}.laserPassNow()`);await until(`${T}.state().laser.overhead`,5000);
+ const b0=(await st()).laser.burned.bodies;
+ await until(`${T}.state().laser.burning && !${T}.state().laser.seated`,12000).catch(async()=>assert.fail(`the automated beam burns with nobody seated (${JSON.stringify((await st()).laser)})`));
+ await until(`${T}.state().laser.burned.bodies>${b0}`,30000).catch(async()=>assert.fail(`the automated pass takes bodies (${JSON.stringify((await st()).laser.burned)})`));
+ console.log(`  colony: automated pass burned ${(await st()).laser.burned.bodies-b0}`);
+ current='colony-auto';await finish();
  } else if(args.includes('--units-sky')) {
  // THE SKY ON THE BENCH (owner, 2026-10-01: "UNITS are not showing all the units; we should see SOL, and the Gunship. also show
  // Wireframe for all units"): the KORP, SOL-82 and SOL-88 are catalogue entries built from their pinned GLBs, and the wireframe
@@ -1565,7 +1619,7 @@ try{
  await until('!window.__stalheartTest.state().deploying',30000);await delay(500);
  const mouth=await evaluate('window.__stalheartTest.backMouth()');
  {const s=await evaluate('window.__stalheartTest.state()');
-  assert.equal(s.programme.next,'backgate','the back gate is the one step a finished base has not printed');
+  assert.ok(s.programme.next==='backgate'&&!s.programme.done.includes('backgate'),`a finished base has not printed the back gate (${s.programme.next})`);
   assert.deepEqual((s.programme.gates||[]).map(g=>[g.id,g.built]),[['gate',true],['back',false]],'two doors planned, only the front one standing');
   assert(!s.programme.perks.includes('backgate'),'and its perk is off');
   for(const ci of mouth.cells) assert.equal(await evaluate(`window.__stalheartTest.sealedAt(${ci})`),false,'sealed rock is not a gate');}

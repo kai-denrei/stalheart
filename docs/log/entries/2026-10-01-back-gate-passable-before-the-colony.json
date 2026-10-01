@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-10-01-back-gate-passable-before-the-colony",
+  "date": "2026-10-01",
+  "type": "change",
+  "status": "accepted",
+  "title": "The back gate stands before the colony's steps on the programme and is passable: it prints the moment the mouth is held, the colony prints meanwhile",
+  "context": "The first cut of 2026-10-01-the-colony-grows put the colony's four steps before the back gate. --back-gate forces the door at sector 2 and found the gate waiting behind the farm (sector 3) and the chip plant (sector 4): a strictly ordered programme made the gate wait for buildings that were not due.",
+  "outcome": "The back gate moved ahead of the armory and carries `passable: true`: due() passes over it while the mouth is not held and returns it first the moment it is. unlocked() in the sector loop now reads an empty `owed` list (the back gate and the launcher are passable, never owed). --grow, --colony, --back-gate and --skip-tutorial green.",
+  "alternatives": [
+    "Marking the colony's steps passable instead: when their `when` holds they would still print ahead of a held gate",
+    "Keeping the colony after the gate: it would wait for the door at sector 7 or later, which is not a base that grows"
+  ],
+  "evidence": [
+    "node test/build-programme.mjs",
+    "node test/programme-host.mjs",
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --back-gate"
+  ],
+  "supersedes": []
+}

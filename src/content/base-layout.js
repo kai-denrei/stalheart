@@ -13,6 +13,7 @@ export const STAGES = Object.freeze([
   { n: 6, name: 'Stalheart' },
   { n: 7, name: 'Tank bay' },
   { n: 8, name: 'Assembly line and radar' },
+  { n: 9, name: 'The colony' },   // printed in play, never a static stage: the armory, the farm, the chip plant, the ARC-01 (2026-10-01)
 ]);
 
 // islands: id, plot in metres, centre, stage the slab appears
@@ -24,6 +25,13 @@ export const ISLANDS = Object.freeze([
   { id: 'bay', w: 36, d: 32, x: 0, z: 62, stage: 7 },          // behind the Stalheart, doors toward the gate
   { id: 'assembly', w: 20, d: 32, x: 56, z: 6, stage: 8 },
   { id: 'radar', w: 20, d: 20, x: -56, z: 34, stage: 8 },
+  // THE COLONY (owner, 2026-10-01): the armory behind the bays beside the back lane, the farm east of the Stålheart between the solar
+  // array and the assembly line, the chip plant past the assembly line, and the ARC-01's long island on the west rim between HUGIN and
+  // the radar, its rail pointed out over the rock
+  { id: 'armory', w: 24, d: 20, x: -34, z: 62, stage: 9 },
+  { id: 'farm', w: 20, d: 22, x: 48, z: -30, stage: 9 },
+  { id: 'chips', w: 14, d: 12, x: 60, z: 40, stage: 9 },
+  { id: 'launcher', w: 16, d: 30, x: -62, z: 2, stage: 9 },
 ]);
 
 // structures: asset, island they stand on, stage, model offset to centre the
@@ -50,6 +58,17 @@ export const STRUCTURES = Object.freeze([
     bays: [{ n: 1, x: -11, doors: '01', like: '02' }, { n: 2, x: 0, vehicle: 'VEHICLE_02' }, { n: 3, x: 11, vehicle: 'VEHICLE_03', rollout: 'Tank_Roll_Out' }] },   // bay centres along the model's X, doors at +Z
   { id: 'assembly', asset: 'assets/models/astro/robotic_assembly_line_d0.glb', far: 'assets/models/far/assembly.glb', island: 'assembly', stage: 8, scale: 1, offset: [0, 0, 0], batch: true, clips: ['Assembly_Cycle'] },
   { id: 'radar', asset: 'assets/models/kit/skyward_low_d0.glb', island: 'radar', stage: 8, scale: 1, offset: [0, 0, 0], clips: ['Array_Slew'] },
+  // THE COLONY (docs/colony-assets.lock.json): the research outpost's garage as the armory (its far tier derived), the VER-01
+  // greenhouse with three settlement cassettes as the bio containers along its island's edge, the LIT-01 chip writer, and the
+  // ARC-01 mass driver (+Z is its launch direction, turned to fire west over the rim; the SEED-01 satellite rides its sled only during
+  // the launch beat, src/fx/arc-launch.js, so it is not a structure)
+  { id: 'armory', asset: 'assets/models/astro/industry_garage_d0.glb', far: 'assets/models/far/armory.glb', island: 'armory', stage: 9, scale: 1, offset: [0, 0, 0], batch: true, heading: [0, -1] },
+  { id: 'greenhouse', asset: 'assets/models/astro/ver01_greenhouse_d0_lod1.glb', far: 'assets/models/astro/ver01_greenhouse_d0_lod2.glb', island: 'farm', stage: 9, scale: 1, offset: [-3, 0, 0], batch: true },
+  { id: 'bio-a', asset: 'assets/models/astro/bio_cassette_d0_lod1.glb', island: 'farm', stage: 9, scale: 1, offset: [6.5, 0, -6], batch: true },
+  { id: 'bio-b', asset: 'assets/models/astro/bio_cassette_d0_lod1.glb', island: 'farm', stage: 9, scale: 1, offset: [6.5, 0, -2.5], batch: true },
+  { id: 'bio-c', asset: 'assets/models/astro/bio_cassette_d0_lod1.glb', island: 'farm', stage: 9, scale: 1, offset: [6.5, 0, 1], batch: true },
+  { id: 'chips', asset: 'assets/models/astro/lit01_chip_writer_d0_lod1.glb', far: 'assets/models/astro/lit01_chip_writer_d0_lod2.glb', island: 'chips', stage: 9, scale: 1, offset: [0, 0, 0], batch: true },
+  { id: 'launcher', asset: 'assets/models/astro/arc01_launcher_d0_lod1.glb', far: 'assets/models/astro/arc01_launcher_d0_lod2.glb', island: 'launcher', stage: 9, scale: 1, offset: [0, 0, 0], heading: [-1, 0] },
   // EARLIER LANDINGS, out past the clearing on open ground (anchor 'open' snaps to the nearest open cell): two HUGIN boosters standing
   // on their tripods and one wreck on its side. The flight GLBs sit on their mass reference, feet at -6.3 m, hence the offset; the wreck
   // is tilted onto its side and lifted by its hull radius. Draft placement, to be moved once the tank trip beat is written.

@@ -339,7 +339,7 @@ export function initTdTab(root) {
   // every play() is a silent no-op -- the game never waits on audio.
   const sfx = makeAudio({ seed: 1, sounds:{...SOUNDS,...BREACH_SOUNDS,...(isStoryRoute(location.search)?STORY_SOUNDS:{})} });   // every story page (a bare one has no world=story)
   const gameBreaches=createGameBreaches(scene,camera,sfx,{look:()=>params.look});
-  // SOL-82 IN THE ARSENAL (src/fx/laser-station.js): the pass clock once online after the handover, the seat on the views strip, the beam through the game's own kill, seal, breach and damage paths
+  // SOL-82 IN THE ARSENAL (src/fx/laser-station.js): the pass clock, the seat, the beam through the game's own paths
   const laserStation = createLaserStation(root, scene, {
     online: LASER_GAME.online || new URLSearchParams(location.search).get('laser') === 'online', get mobile() { return mobileShell; },
     cellSide: () => cellSide, wallHeight: () => params.wallHeight, centers: () => graph.centers, adj: () => graph.adj, tags: () => dungeon.tags, cellAt: (p) => cellIndex(norm3(p)),
@@ -349,7 +349,7 @@ export function initTdTab(root) {
     breakCells: (cells) => { if (cells.filter((ci) => breachWallCell(ci)).length) rebuildAfterBreach(); }, burnHeart: () => heartHit(heartHP), burnTank: (p) => playerHit('laser', p),
     structures: () => storyBase?.standing?.() ?? [], burnStructure: (id) => { if (!story || story.lost.has(id)) return; story.lost.add(id); storyBase?.conceal(id); const gone = programmeLose(story.programme, id); if (id === 'radar') laserStation.setOnline(false);   /* A BURNED RADAR TAKES SOL-82 OFFLINE: no uplink, no pass */ if (id === 'bays' && playerHP > 1) { playerHP = 1; syncLifeContainers(); }   /* burned bays lose the spare hulls racked under them */ updateHud(); showToast(structureLostHtml(id, gone), 3200); },   /* OURS UNDER THE BEAM was the warning; this is the bill */ explode: (use, p) => explode(use, p), brief: (id) => showBrief(id), loop: (key) => sfx.loop(key), views: () => storyViews, canvas: () => renderer.domElement, fov: () => camera.fov,
     paused: (v) => { const was = paused; if (v !== undefined) paused = v; return was; }, togglePause: () => togglePause(),   /* the seat's P shows the pause card, as ESC does (2026-09-25) */
-    vacate: () => leavePilot(), enter: (fov) => { seatGlide.begin(camera); seatBase = baseFor(seatBase, pilotMode, { view: params.view, fov: camera.fov }); keys.left = keys.right = keys.fast = keys.slow = keys.laser = false; cruise = false; throttle = 0; endShot(); camera.fov = fov; camera.updateProjectionMatrix(); snapCamera(); },   /* OCCUPANCY IS EXCLUSIVE (src/domain/seat-view.js): SOL-82's strip button stops the strip's own handler, so the seat the player was in was never left — the gunship kept the camera while SOL-82 owned the lens (owner, 2026-09-23); `vacate` closes it first */
+    vacate: () => leavePilot(), enter: (fov) => { seatGlide.begin(camera); seatBase = baseFor(seatBase, pilotMode, { view: params.view, fov: camera.fov }); keys.left = keys.right = keys.fast = keys.slow = keys.laser = false; cruise = false; throttle = 0; endShot(); camera.fov = fov; camera.updateProjectionMatrix(); snapCamera(); },   /* OCCUPANCY IS EXCLUSIVE (src/domain/seat-view.js): the strip button is caught here, so `vacate` leaves the seat the player was in first; SOL-82 once opened on top of the gunship (owner, 2026-09-23) */
     leave: () => { seatGlide.begin(camera); restoreSeat(); },   /* the lens and the view this chain of seats was entered from (2026-09-15-gunship-track-latched-and-seat-lens-reset, 2026-09-23-seat-changes-robust) */
   });
   sfx.arm();
@@ -1216,7 +1216,7 @@ export function initTdTab(root) {
   function wallCushion(pos) {
     const ci = cellIndex(pos);
     if (ci === -1) return pos;
-    // the pedestal and every open crater first: a hard radial push out of the pad or off the sinkhole's rim, before the wall cushion adds its nudges
+    // the pedestal and every open crater first: a hard radial push off the pad or the sinkhole's rim, then the wall cushion
     for (const { c, rim } of [{ c: graph.centers[dungeon.heart], rim: pedestalRadius() + cellSide * 0.35 }, ...gameBreaches.craters().map((k) => ({ c: k.p, rim: (k.r + CRATER_PAD) * cellSide }))]) {
       const d = dist3(pos, c); if (d >= rim) continue;
       const away = sub3(pos, c), n = norm3(pos), tg = sub3(away, scale3(n, dot3(away, n))), l = len3(tg);
@@ -1236,7 +1236,7 @@ export function initTdTab(root) {
       if (!narrow) for (const nb2 of graph.adj[nb]) { if (seen.has(nb2)) continue; seen.add(nb2); if (dungeon.tags[nb2] === BLOCKED) consider(nb2); }
     }
     // THE HULL HAS A NOSE AND A TAIL (operator, 2026-09-12: the tank clips into walls). Each end is cushioned by the rock it is in or beside,
-    // with a band of the cell's edge plus the hull's half width, weighted to nudge rather than pin: a corner pushes the whole hull out, a straight lane leaves it be
+    // a band of the cell's edge plus the hull's half width, a nudge not a pin: a corner pushes the hull out, a straight lane leaves it
     const half = unitScale * 0.73, band = cellSide * 0.72;
     for (const end of [norm3(add3(pos, scale3(player.smoothDir, half))), norm3(sub3(pos, scale3(player.smoothDir, half)))]) {
       const ce = cellIndex(end); if (ce === -1) continue;
@@ -3608,7 +3608,7 @@ export function initTdTab(root) {
     if (eco && eco.biomass > run.peakBiomass) { run.peakBiomass = eco.biomass; checkAchievements(); }
     if (lifeContainers.length) syncLifeContainers();
     const spAlive = spawnPoints.filter((s) => s.alive).length;
-    // THE SHIELD IS ALWAYS ON THE PANEL, and says what it is: up, cooling through the seam, or idle with a rack, then the array's reserve (src/fx/shield-array.js)
+    // THE SHIELD IS ALWAYS ON THE PANEL and says what it is, then the array's reserve (src/fx/shield-array.js)
     const shieldBar = shieldPanel(shield, shieldTune, t, story?.arrayPad?.standing ? arrayStation : null);
     const alerts = [shieldBar,
       carryingRegen ? '⬤ REGEN CARRIED' : '', story?.expeditions?.carrying ? '⬤ PART CARRIED' : '',
@@ -8631,7 +8631,7 @@ export function initTdTab(root) {
   },
   // ISAO KEEPS BUILDING (src/fx/programme-host.js): perks, hasPerk, build, repaired, printed
   createProgrammeHost({
-    laserStation, shotId, showBrief, deployStart, deployStep, breachWallCell, graph: () => graph, cellSide: () => cellSide, leavePilot, camera, startShot, deployFramePoseFor, camA, setView, PLAYER_MAX, orders, breachQueue, breachedCells, gunshipRig, spawnIsao, updateHud, syncLifeContainers, rebuildAfterBreach, recomputePortalDist, adoptBays,
+    laserStation, shotId, showBrief, deployStart, deployStep, breachWallCell, graph: () => graph, cellSide: () => cellSide, leavePilot, camera, startShot, deployFramePoseFor, camA, setView, PLAYER_MAX, orders, breachQueue, breachedCells, gunshipRig, spawnIsao, updateHud, syncLifeContainers, rebuildAfterBreach, recomputePortalDist, adoptBays, scene, sfx, eco: () => eco, ammo: () => ammo, ammoMax: AMMO_MAX, setAmmo: (v) => { ammo = v; }, playerPos: () => player.pos,
     story: () => story, pilot: () => pilot, deploy: () => deploy, t: () => t, playerHP: () => playerHP, storyViews: () => storyViews, sectorRun: () => sectorRun, waveActive: () => waveActive, dungeon: () => dungeon, tdFullTags: () => tdFullTags, storyBase: () => storyBase, pilotMode: () => pilotMode, briefQ: () => briefQ,
     setBerths: (v) => { berths = v; }, setPlayerDown: (v) => { playerDown = v; }, setDeploy: (v) => { deploy = v; }, setPlayerHP: (v) => { playerHP = v; },
   }),
@@ -8924,7 +8924,7 @@ export function initTdTab(root) {
         storyLod: storyBase?.lod() ?? null,
         storyBaseErrors: storyBase?.errors.slice() ?? null,
         programme: story?.programme ? {
-          ...programmeSnapshot(story.programme), grow: !!story.grow, print: story.print.state(), gate: storyBase?.gate() ?? null,
+          ...programmeSnapshot(story.programme), grow: !!story.grow, print: story.print.state(), gate: storyBase?.gate() ?? null, colony: storyApi.colony?.() ?? null, ammo,
           gates: storyBase?.gateList() ?? null, backSockets: (story.backSockets ?? []).map((sk) => sk.cell),
           broke: programmeHas(story.programme, 'gate') ? (story.wallCells ?? []).filter((wc) => dungeon.tags[wc] !== BLOCKED).length : 0,
           repairing: orders.find((o) => o.kind === 'repair')?.repair ?? null, repairBed: !!orders.find((o) => o.kind === 'repair')?.bed,
@@ -8985,7 +8985,7 @@ export function initTdTab(root) {
       siteCells: () => story?.siteCells ?? {},
       // the same fields deployStart resets, so the step rebuilds pos ON ci instead of gliding off it; segLen is the cell scale
       // because cur === next is a zero-length chord
-      placeTank: (ci) => { player.freeMode = false; player.virtualStart = null; player.cur = ci; player.prev = ci; player.next = ci; player.prog = 0; player.segLen = cellSide; player.pos = graph.centers[ci].slice(); },
+      setAmmo: (n) => { ammo = n; updateHud(); }, placeTank: (ci) => { player.freeMode = false; player.virtualStart = null; player.cur = ci; player.prev = ci; player.next = ci; player.prog = 0; player.segLen = cellSide; player.pos = graph.centers[ci].slice(); },
       killGuards: (id) => { for (const e of enemies) if (e.alive && e.guard?.site === id) killCreature(e, false); },
       hitTank: () => { if (playerHP > 1) playerHit(); },
       cargoView: (k, id) => {

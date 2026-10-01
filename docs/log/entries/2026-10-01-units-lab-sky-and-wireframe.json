@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "date": "2026-10-01",
+  "id": "2026-10-01-units-lab-sky-and-wireframe",
+  "type": "change",
+  "status": "accepted",
+  "title": "The Units lab shows the sky (the KORP, SOL-82, SOL-88) from their pinned models and draws any entry as the briefings' wireframe",
+  "context": "Owner, 2026-10-01: \"UNITS are not showing all the units; we should see SOL, and the Gunship. also show Wireframe for all units.\" The lab cast machines only through the game's builders; the satellites and the gunship have none, only the GLBs the briefings and the showcase turn as wireframes.",
+  "outcome": "A catalogue kind `model` (src/unitcatalog.js SKY_UNITS: korp, sol82, sol88 with codex entries in src/lore.js) built from the pinned GLB through src/fx/model-fixture.js (one load per URL, a resolved cache readable synchronously: the first cut re-showed the placeholder forever because a promise is never readable synchronously). A WIREFRAME button (#units-wire) swaps every mesh's material for the briefings' cyan wire and back, keeping the solid material on the mesh; dot clouds hide. Colony assets pinned in docs/colony-assets.lock.json (sol88 lod1, ARC-01 lod1/lod2 and its satellite lod1, LIT-01 lod1/lod2, VER-01 lod1/lod2, the cassette lod1, the garage d0 with a derived far tier).",
+  "alternatives": [
+    "Turning the Units lab into a GLB browser of every pinned model: the lab is the codex of what the player meets, so only the platforms the player sits in were added"
+  ],
+  "evidence": [
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --units-sky (artifacts/browser/units-sky-*.png)",
+    "node test/lore.mjs",
+    "docs/colony-assets.lock.json"
+  ],
+  "supersedes": []
+}

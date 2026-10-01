@@ -93,7 +93,10 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   // the shipped layout untouched unless a review asks for the candidates; the swap happens before planBase, which spreads it through.
   // A growing base plans every stage now and marks what is above the starting stage pending: Isao prints it in play
   const backMouth = findBackMouth(planet, STORY_BACK_DOOR);
-  const plan = planBase(planet, landmarks === 'shipped' ? STORY_LAYOUT : { ...STORY_LAYOUT, structures: withLandmarkTiers(STORY_LAYOUT.structures, landmarks) }, stage, { reach: grow ? STAGES.length - 1 : stage, backMouth });
+  // THE COLONY GROWS PAST THE FINISHED BASE (2026-10-01): a growing page reaches every stage; the finished base (SKIP TUTORIAL and a
+  // stage-8 link) reaches the colony's stage too, pending, so Isao prints the armory, the farm, the chip plant and the ARC-01 in play
+  const reach = grow || stage >= STORY_SKIP.stage ? STAGES.length - 1 : stage;
+  const plan = planBase(planet, landmarks === 'shipped' ? STORY_LAYOUT : { ...STORY_LAYOUT, structures: withLandmarkTiers(STORY_LAYOUT.structures, landmarks) }, stage, { reach, backMouth });
   // walls are rock to the pathfinder and the tank alike; the gate's cell stays open and the gate opens for the tank
   for (const ci of plan.open) built.dungeon.tags[ci] = PATH;   // the ground under a landed rocket first, then the gate's walls on top
   for (const w of plan.walls) if (w.cell >= 0 && !w.pending) built.dungeon.tags[w.cell] = BLOCKED;   // a pending wall blocks once it is printed (the controller's storyApi.printed)
@@ -103,6 +106,8 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   const gateCellMap = new Map();
   for (const g of plan.gates ?? []) for (const ci of g.cells ?? []) if (ci >= 0) gateCellMap.set(ci, g.id ?? 'gate');
 
+  // a pad at an island's centre: the solar array's charging ring, the armory's reload ring
+  const padOf = (id) => { const i = ISLANDS.find((x) => x.id === id); return i ? { cell: plan.cells[i.id], pos: placer.toWorld([i.x, 0, i.z]).normalize().toArray(), standing: stage >= i.stage } : null; };
   // story state for the controller: floor sockets towers may mount on, Isao's home cell, and the scripted beats
   // the lane end is the story's spawn: the optic faces it, and the fodder comes from it once a gate stands
   if (plan.cells.fodder >= 0) built.dungeon.spawn = plan.cells.fodder;
@@ -131,7 +136,8 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   const story = stage >= 1 ? {
     sockets: new Set(), home: plan.cells.landing, socketLift: 0,
     // the solar array's shield pad (src/content/shield-array.js): its island's centre on the unit sphere, standing once the island is; a build programme stands it later by setting `standing`
-    arrayPad: (() => { const i = ISLANDS.find((x) => x.id === SHIELD_ARRAY.island); return i ? { cell: plan.cells[i.id], pos: placer.toWorld([i.x, 0, i.z]).normalize().toArray(), standing: stage >= i.stage } : null; })(),
+    arrayPad: padOf(SHIELD_ARRAY.island),
+    armoryPad: padOf('armory'),   // the armory's reload pad (src/fx/armory-pad.js), standing once its step is printed
     // a run that starts at or past the expedition (a jump link) has no expedition of its own to wait for (src/fx/sector-run.js)
     lateStart: phase != null && STORY_PHASES.indexOf(phase) >= STORY_PHASES.indexOf('expedition'),
     beats, arrival: createArrival({ on: arrives, past: pastLanding, base, beats, site: sh02 ? basisAt(placer, sh02.x, sh02.z, sh02.heading) : null, metres: 1 / planet.radius }),

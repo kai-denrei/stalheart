@@ -10,19 +10,32 @@ export function makeBuildProgramme(steps, { standing = () => false } = {}) {
   return st;
 }
 
-// the next step, or null: strictly in order (a step waits for the one before it), one at a time, and only once its `when` holds
-export function due(st, { phase = null, sector = 0, waveActive = false, back = null } = {}) {
-  if (st.active) return null;
-  const next = st.steps.find((s) => !st.done.has(s.id));
-  if (!next) return null;
-  const w = next.when ?? {}, at = STORY_PHASES.indexOf(phase);
-  if (w.phase != null && !(at >= 0 && at >= STORY_PHASES.indexOf(w.phase))) return null;
-  if (w.sector != null && !((sector ?? 0) >= w.sector)) return null;
-  if (w.idle && waveActive) return null;
+// does a step's `when` hold in this context?
+function holds(w, { phase, sector, waveActive, back, manned }) {
+  const at = STORY_PHASES.indexOf(phase);
+  if (w.phase != null && !(at >= 0 && at >= STORY_PHASES.indexOf(w.phase))) return false;
+  if (w.sector != null && !((sector ?? 0) >= w.sector)) return false;
+  if (w.idle && waveActive) return false;
   // THE BACK GATE WAITS FOR THE SURPRISE TO BE OVER (2026-09-18): `when.back` is the state the second front must have reached —
   // 'held' means the mouth is open and its breach is closed or spent. The host reads it off the sector loop and passes it in.
-  if (w.back != null && w.back !== back) return null;
-  return next;
+  if (w.back != null && w.back !== back) return false;
+  // SOL AUTOMATED (2026-10-01): `when.manned` is how many passes the player must have flown and burned in (the ARC-01 waits for it)
+  if (w.manned != null && !((manned ?? 0) >= w.manned)) return false;
+  return true;
+}
+
+// the next step, or null: strictly in order (a step waits for the one before it), one at a time, and only once its `when` holds.
+// A step marked `passable` whose `when` does not hold yet is passed over: the steps behind it go on without it and it prints when its
+// turn comes round again (the ARC-01 waits on the player's hands, and the back gate must not wait behind it).
+export function due(st, ctx = {}) {
+  if (st.active) return null;
+  const { phase = null, sector = 0, waveActive = false, back = null, manned = 0 } = ctx;
+  for (const s of st.steps) {
+    if (st.done.has(s.id)) continue;
+    if (holds(s.when ?? {}, { phase, sector, waveActive, back, manned })) return s;
+    if (!s.passable) return null;
+  }
+  return null;
 }
 
 export function begin(st, step) { st.active = step.id; }
@@ -58,11 +71,14 @@ export const lost = (st) => new Set(st.lost ?? []);
 export const perks = (st) => new Set(st.perks);
 export const hasPerk = (st, name) => st.perks.has(name);
 
-// once per new sector: true when the assembly line stands and a lost hull should be rebuilt at this sector's start
-export function rebuildDue(st, sector) {
+// once per new sector: true the first time `sector` is seen (the sector-start perks: the assembly line's rebuild, the farm's biomass)
+export function sectorStarted(st, sector) {
   if (!(sector > st.sector)) return false;
   st.sector = sector;
-  return st.perks.has('rebuild');
+  return true;
 }
+// once per new sector: true when the assembly line stands and a lost hull should be rebuilt at this sector's start
+export const rebuildDue = (st, sector) => sectorStarted(st, sector) && st.perks.has('rebuild');
 
-export const snapshot = (st) => ({ active: st.active, done: st.steps.filter((s) => st.done.has(s.id)).map((s) => s.id), printed: st.printed.slice(), next: st.steps.find((s) => !st.done.has(s.id))?.id ?? null, perks: [...st.perks].sort(), lost: [...(st.lost ?? [])].sort() });
+// `owed`: the steps not yet printed that the programme must still print in order (a passable step, waiting on the door or the player, is not owed)
+export const snapshot = (st) => ({ active: st.active, done: st.steps.filter((s) => st.done.has(s.id)).map((s) => s.id), printed: st.printed.slice(), next: st.steps.find((s) => !st.done.has(s.id))?.id ?? null, owed: st.steps.filter((s) => !st.done.has(s.id) && !s.passable).map((s) => s.id), perks: [...st.perks].sort(), lost: [...(st.lost ?? [])].sort() });

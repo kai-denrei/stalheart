@@ -95,6 +95,8 @@ export function createLaserStation(root, scene, host) {
     // THE CANYON'S PASS (src/fx/sector-run.js): the pass laid over a place with its own numbers, and the player in the seat at once, no
     // briefing (Isao says it); the game glides the camera in (td-tab's enter)
     passOver(o) { arsenal.passOver(o); return sit(); },
+    // SOL AUTOMATED (src/domain/laser-auto.js): the passes the player flew, the switch the ARC-01's launch throws, the chip plant's clock
+    manned: () => arsenal.manned(), setAuto: (on) => arsenal.setAuto(on), setPeriodScale: (k) => arsenal.setPeriodScale(k), platform: () => arsenal.platform(),
     reset() { leave(); arsenal.reset(); },   // a new run: the seat goes, the scorch and the books with it
 
     stats: () => arsenal.stats(),

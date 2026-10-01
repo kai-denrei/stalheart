@@ -170,6 +170,37 @@ export const BRIEFS = {
     id: 'laser_pass', face: 'focused', title: 'COMMS · ISAO', once: true,
     lines: ['SOL-82 is overhead. Twenty seconds of sky, ten of beam.', 'It burns whatever it touches, ours too. I keep clear of the ring.'],
   },
+  // SOL AUTOMATED (owner, 2026-10-01: "first 2 are manual, later ISAO calibrated it and it can do it auto"): his word when the
+  // calibration is in hand, and the line as an automated pass arrives
+  laser_calibrated: {
+    id: 'laser_calibrated', face: 'determined', title: 'COMMS · ISAO', once: true,
+    lines: ['Two passes on your hands. That is the calibration I needed.', 'I am printing the ARC-01. We put up a platform that fires on its own.'],
+  },
+  laser_auto_fire: {
+    id: 'laser_auto_fire', face: 'focused', title: 'SOL-88 · AUTOMATED', once: true,
+    lines: ['SOL-88 overhead. It picks the thickest pile and burns it on its own.', 'The seat is still yours if you want the beam.'],
+  },
+  sol88_online: {
+    id: 'sol88_online', face: 'surprised', title: 'SOL-88 · IN ORBIT', once: true,
+    lines: ['Insertion stage lit. SOL-88 is in orbit and talking to the radar.', 'The first thing this colony has ever put up there. Not the last.'],
+  },
+  // THE COLONY GROWS (owner, 2026-10-01: "make the base more fully developed"): the armory, the farm, the chip plant, the launcher
+  build_armory: {
+    id: 'build_armory', face: 'determined', title: 'COMMS · ISAO', once: true,
+    lines: ['You keep running dry out there.', 'Printing an armory behind the bays. Park on its pad and it reloads the rack.'],
+  },
+  build_farm: {
+    id: 'build_farm', face: 'focused', title: 'COMMS · ISAO', once: true,
+    lines: ['A colony that only eats what it kills is a hunting party.', 'Printing the greenhouse and the bio containers. They pay biomass every sector.'],
+  },
+  build_chips: {
+    id: 'build_chips', face: 'focused', title: 'COMMS · ISAO', once: true,
+    lines: ['Every guidance chip we own came down with us.', 'Printing the chip plant. Its first run goes to the uplink: SOL passes closer together.'],
+  },
+  build_launcher: {
+    id: 'build_launcher', face: 'determined', title: 'COMMS · ISAO', once: true,
+    lines: ['Printing the ARC-01 mass driver, pointed away from us.', 'When it stands I load SOL-88 on the sled and we put it up.'],
+  },
   quiver_override: {
     id: 'quiver_override', face: 'focused', title: 'MANUAL OVERRIDE', once: true,
     lines: ['Its targeting chips are not ready either.', 'Manual override. Hold the reticle on it until the lock takes, then fire.'],

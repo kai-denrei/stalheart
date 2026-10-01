@@ -76,7 +76,7 @@ export function createSectorRun(h) {
   const arc = () => ({ hold: SECTOR_HOLD, door: BACK_DOOR_SECTOR, both: BOTH_WALLS_SECTOR, doorAt, canyonAgain: SECTOR_CANYON_AGAIN });
   const defOf = (n) => sectorDef(n, SECTORS, SECTOR_GENERATOR, arc());
   // EVERYTHING UNLOCKED: every landing site's part is home and Isao's programme is printed but for the back gate (which needs the door)
-  const unlocked = () => { const sites = story.expeditions?.sites ?? [], next = story.programme ? programmeSnapshot(story.programme).next : null; return sites.length > 0 && sites.every((x) => x.state === 'delivered') && (next === null || next === 'backgate'); };
+  const unlocked = () => { const sites = story.expeditions?.sites ?? [], owed = story.programme ? programmeSnapshot(story.programme).owed : []; return sites.length > 0 && sites.every((x) => x.state === 'delivered') && owed.length === 0; };   // the back gate and the launcher are passable: never owed
   const briefOf = (n) => (n <= SECTORS.length ? `sector_${n}` : n === doorAt ? 'sector_door' : doorAt !== null && n === doorAt + 1 ? 'sector_both' : doorAt !== null && n === doorAt - 1 ? 'sector_canyon_again' : doorAt === null || n < doorAt ? 'sector_hold' : 'sector_next');
   const nextLines = () => [...defOf((def?.n ?? 0) + 1).brief];   // Isao's two lines about the next sector, for the card's last page
   const debrief = () => (story.debrief ??= (h.makeDebrief ?? createSectorDebrief)(h.host, {

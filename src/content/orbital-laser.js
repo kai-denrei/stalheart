@@ -37,6 +37,11 @@ export const LASER_STRUCTURES = Object.freeze({
   bays: Object.freeze({ label: 'BAYS', seconds: 2.0, reach: 8 }),
   radar: Object.freeze({ label: 'RADAR', seconds: 1.5, reach: 6 }),
   assembly: Object.freeze({ label: 'ASSEMBLY', seconds: 2.0, reach: 8 }),
+  // the colony (2026-10-01): the armory stops reloading, the farm stops paying, the chip plant's passes spread out again, the launcher is a ruin
+  armory: Object.freeze({ label: 'ARMORY', seconds: 2.0, reach: 10 }),
+  greenhouse: Object.freeze({ label: 'GREENHOUSE', seconds: 1.5, reach: 6 }),
+  chips: Object.freeze({ label: 'CHIP PLANT', seconds: 1.5, reach: 5 }),
+  launcher: Object.freeze({ label: 'ARC-01', seconds: 2.0, reach: 14 }),
 });
 
 // SOL-82 IN THE GAME (docs/superpowers/specs/2026-09-15-v1-session-design.md, section 3). online: whether the pass clock
@@ -151,3 +156,10 @@ export const LASER_PLATFORMS = Object.freeze({
   sol82: Object.freeze({ id: 'sol82', name: 'SOL-82', url: 'assets/models/sol82/sol82_platform_detailed.glb', head: 'SOL-82 · ORBITAL LASER' }),
   sol88: Object.freeze({ id: 'sol88', name: 'SOL-88', url: 'assets/models/sol88/sol88_platform_game.glb', head: 'SOL-88 · SYZYGY ORBITAL LASER' }),
 });
+
+// SOL AUTOMATED (owner, 2026-10-01: "first 2 are manual, later ISAO calibrated it and it can do it auto"; src/domain/laser-auto.js).
+// afterManned: passes the player must fly and burn in before Isao has his calibration (the ARC-01 step on the base programme waits
+// for it, src/content/base-programme.js); retarget: seconds between re-aims at the densest pile while an automated pass burns;
+// brief: Isao's line as an automated pass arrives (once); calibrated: his line when the calibration is in hand
+// strikeOver: a new pile this many footprint radii from the last aim is taken as a fresh strike (the aim snaps) rather than a drag
+export const LASER_AUTO = Object.freeze({ afterManned: 2, retarget: 0.6, strikeOver: 2, brief: 'laser_auto_fire', calibrated: 'laser_calibrated' });

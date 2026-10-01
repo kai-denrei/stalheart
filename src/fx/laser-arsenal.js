@@ -10,7 +10,8 @@
 // FRAMES. The game draws a unit sphere at the origin, cellSide scene units to a 10 m cell; the domain works in metres on
 // a sphere of radius R about the origin. R = 10 / cellSide, so a scene point times R is the same point in metres.
 import * as THREE from '../../vendor/three.module.js';
-import { LASER_ORBIT, LASER_BEAM, LASER_BURN, LASER_GAME, LASER_CONTACT_RATE, LASER_SMOKE_RATE, LASER_SOUNDS, LASER_STRUCTURES } from '../content/orbital-laser.js';
+import { LASER_ORBIT, LASER_BEAM, LASER_BURN, LASER_GAME, LASER_CONTACT_RATE, LASER_SMOKE_RATE, LASER_SOUNDS, LASER_STRUCTURES, LASER_AUTO, LASER_PLATFORMS } from '../content/orbital-laser.js';
+import { densestTarget } from '../domain/laser-auto.js';
 import { makeLaser, stepLaser, aimLaser, burnLaser, burnContacts, laserProgress, clampToRange, inFootprint, laserStrip } from '../domain/orbital-laser.js';
 import { createOrbitalLaser } from './orbital-laser.js';
 import { BLOCKED } from '../dungeon.js';
@@ -35,6 +36,9 @@ export function createLaserArsenal(scene, host) {
   const normalPass = () => { orbit.overhead = LASER_GAME.pass.overhead; Object.assign(beam, { energy: LASER_GAME.pass.energy, radius: LASER_GAME.pass.radius, slew: LASER_BEAM.slew }); laser?.tune({ radius: beam.radius }); };
   let online = !!host.online, seated = false, laser = null, burningWas = false, contactT = 0, smokeT = 0, voice = null;
   let aimArc = 0, passes = 0, burnSeconds = 0, testTarget = null, testHeld = false, anchors = null, breakMs = 0;
+  // SOL AUTOMATED (src/domain/laser-auto.js): `manned` counts the passes the player sat in and burned; once the ARC-01 has put SOL-88
+  // up (setAuto), a pass nobody is seated for aims itself at the densest pile every LASER_AUTO.retarget seconds and holds the beam
+  let auto = false, manned = 0, mannedThisPass = false, autoT = 0, autoAim = null, platform = LASER_PLATFORMS.sol82, periodScale = 1;
   const burned = { bodies: 0, breaches: 0, walls: 0, rocks: 0, towers: 0, heart: 0, tank: 0, structures: 0 };
   let underNames = [];   /* the buildings under the beam right now, by the name the scope calls out */
   let under = { ...NOTHING };
@@ -152,15 +156,34 @@ export function createLaserArsenal(scene, host) {
   }
 
   function edge(e) {
-    if (e === 'arrive') { passes++; host.brief?.('laser_pass'); }
-    if (e === 'close') { lift(); if (special) { special = null; normalPass(); st.energy = beam.energy; } host.passEnded?.(); }
+    if (e === 'arrive') { passes++; host.brief?.(auto ? LASER_AUTO.brief : 'laser_pass'); autoT = 0; autoAim = null; }
+    if (e === 'close') { lift(); if (mannedThisPass) manned++; mannedThisPass = false; autoAim = null; if (special) { special = null; normalPass(); st.energy = beam.energy; } host.passEnded?.(); }
     return e;
+  }
+
+  // the automated aim: the densest pile among the live bodies, re-chosen on its clock; null while the player is seated, on a pass
+  // laid over a place (the canyon is the player's), or with nothing alive. A body is weighed where it is WALKING TO (its next cell):
+  // the swarm marches at 15 m/s and the contact slews at 10, so a beam chasing where bodies were only burned the ground behind them.
+  // A new pile more than a footprint away is a TARGETED STRIKE (owner: "once in a while SOL does targeted strikes"): the aim snaps
+  // there instead of dragging the contact across the field
+  function automatedAim(dt) {
+    if (!auto || seated || special || st.phase !== 'overhead') return null;
+    autoT -= dt;
+    if (autoT <= 0 || !autoAim) {
+      autoT = LASER_AUTO.retarget;
+      const centers = host.centers(), bodies = host.enemies().filter((e) => e.alive).map((e) => ({ pos: centers[e.next] ?? e.pos }));
+      const next = densestTarget(bodies, { radius: beam.radius, metres: metres() });
+      if (next && autoAim) { const R = metres(), d = Math.hypot(next[0] - autoAim[0], next[1] - autoAim[1], next[2] - autoAim[2]) * R; if (d > beam.radius * LASER_AUTO.strikeOver) st.fresh = true; }
+      autoAim = next;
+    }
+    return autoAim;
   }
 
   // the beam, per frame (the lab's applyBurn)
   function burn(dt, input) {
-    const held = seated && (!!input?.held || testHeld);
-    let target = input?.target ?? testTarget;
+    const aim = automatedAim(dt);
+    const held = (seated && (!!input?.held || testHeld)) || !!aim;
+    let target = aim ?? input?.target ?? testTarget;
     const keys = input?.keys;
     if (!target && keys && (keys.x || keys.z) && st.contact && held) target = lead(keys);
     if (input?.pad && !held && !st.burning) glide(input.pad, dt);
@@ -170,7 +193,7 @@ export function createLaserArsenal(scene, host) {
       aimLaser(st, m, dt, beam);
     }
     const burning = burnLaser(st, held, dt);
-    if (burning) burnSeconds += dt;   // the sector books count the beam's seconds on the ground
+    if (burning) { burnSeconds += dt; if (seated) mannedThisPass = true; }   // the sector books count the beam's seconds on the ground; a seated burn is a manned pass
     const cU = contactU();
     if (!burning || !cU) { lift(); return; }
     const g = groundAt(cU);
@@ -219,6 +242,7 @@ export function createLaserArsenal(scene, host) {
     tick(dt, input = null) {
       if (!online) return;
       if (!laser) { laser = createOrbitalLaser(scene, { cellSide: host.cellSide(), metresPerCell: METRES_PER_CELL }); laser.tune({ radius: beam.radius }); }   // the ring at the game's footprint
+      orbit.period = LASER_ORBIT.period * periodScale;   // the chip plant's perk: passes closer together
       edge(stepLaser(st, dt, orbit, beam));
       burn(dt, input);
       /* the silent red pointer while the seat is manned and the column is not firing: where it will land */
@@ -240,7 +264,7 @@ export function createLaserArsenal(scene, host) {
       laser?.clear();
       special = null; normalPass();
       Object.assign(st, makeLaser(orbit, beam));
-      passes = burnSeconds = aimArc = breakMs = 0;
+      passes = burnSeconds = aimArc = breakMs = 0; manned = 0; mannedThisPass = false; auto = false; autoAim = null; platform = LASER_PLATFORMS.sol82; periodScale = 1;
       for (const k of Object.keys(burned)) burned[k] = 0;
       testTarget = null; testHeld = false; anchors = null;
       online = !!host.online;
@@ -257,7 +281,13 @@ export function createLaserArsenal(scene, host) {
     },
     range: () => (special ? Infinity : LASER_GAME.range),   // the scope's in-range call: everything is in range on a pass laid over a place
     special: () => !!special,
-    strip: () => laserStrip(st, online, beam, LASER_GAME.lowEnergy),
+    strip: () => laserStrip(st, online, beam, LASER_GAME.lowEnergy, platform.name),
+    // SOL AUTOMATED: SOL-88 is overhead from now on (the strip names it) and fires on its own when nobody is seated
+    setAuto(on) { auto = !!on; if (auto) platform = LASER_PLATFORMS.sol88; autoAim = null; },
+    auto: () => auto,
+    manned: () => manned,   // passes the player flew and burned in: the calibration the ARC-01 step waits for
+    setPeriodScale(k) { periodScale = Number.isFinite(k) && k > 0 ? k : 1; },
+    platform: () => platform,
 
     // the harness's hands: a world point to aim at (null lets the seat's own pointer and keys aim again) and the trigger
     steer(p) { testTarget = p ? [p[0], p[1], p[2]] : null; },
@@ -278,7 +308,7 @@ export function createLaserArsenal(scene, host) {
     stats: () => ({ passes, seconds: burnSeconds }),   // cheap: the sector loop polls it every frame
     state: () => ({
       online, phase: st.phase, overhead: st.phase === 'overhead', left: +st.left.toFixed(2), energy: +st.energy.toFixed(2), special: !!special, radius: beam.radius,
-      burning: st.burning, contact: contactU()?.map((v) => +v.toFixed(5)) ?? null, seated, passes, seconds: +burnSeconds.toFixed(2),
+      burning: st.burning, contact: contactU()?.map((v) => +v.toFixed(5)) ?? null, seated, passes, seconds: +burnSeconds.toFixed(2), auto, manned, platform: platform.id, period: +orbit.period.toFixed(1),
       under: { ...under }, underNames: [...underNames], burned: { ...burned }, trail: laser ? laser.trail.count : 0, smoke: laser ? laser.state().puffs : 0, breakMs: +breakMs.toFixed(1),
       /* metres from the contact to the nearest live body: a burn that takes nothing can say how far it missed */
       nearestBodyM: st.contact ? +Math.min(Infinity, ...host.enemies().filter((e) => e.alive).map((e) => { const R = metres(); return Math.hypot(e.pos[0] * R - st.contact[0], e.pos[1] * R - st.contact[1], e.pos[2] * R - st.contact[2]); })).toFixed(1) : null,

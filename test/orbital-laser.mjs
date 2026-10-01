@@ -9,7 +9,7 @@ assert.deepEqual({ ...LASER_BEAM }, { energy: 10, radius: 6, slew: 10, accel: 5,
 assert.deepEqual({ ...LASER_BURN }, { soft: 0, hard: 1, wall: 0.5, rock: 0.5, tower: 1.5, seal: 1, tank: 1, heart: 3, structure: 2 });
 /* EVERY BUILDING BURNS, not only the Stalheart: each one's own seconds and span, and a name for the scope to call out. The
    Stalheart is the `heart` kind above and is deliberately NOT here — it is the colony, and it costs three seconds, not two */
-assert.deepEqual(Object.keys(LASER_STRUCTURES), ['foundry', 'solar', 'hugin', 'bays', 'radar', 'assembly']);
+assert.deepEqual(Object.keys(LASER_STRUCTURES), ['foundry', 'solar', 'hugin', 'bays', 'radar', 'assembly', 'armory', 'greenhouse', 'chips', 'launcher']);
 for (const [id, s] of Object.entries(LASER_STRUCTURES)) {
   assert.ok(s.seconds > 0 && s.seconds <= LASER_BURN.heart, `${id}: deliberate, and never dearer than the colony itself`);
   assert.ok(s.reach > LASER_BEAM.radius / 2 && s.label === s.label.toUpperCase(), `${id}: a span and a name in the scope's register`);

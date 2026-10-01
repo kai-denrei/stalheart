@@ -37,7 +37,23 @@ export const BASE_PROGRAMME = Object.freeze([
   // so the print is the door's own footprint (`plot`, half extents across and along its heading) from the first frame to the last.
   // `when.back: 'held'` is that condition, read off the sector loop through the host's hooks. Its perk opens the back sockets:
   // plan.backSockets become mountable, so sentries can be ordered behind the bays from then on.
-  { id: 'backgate', label: 'back gate', gate: 'back', plot: [11, 4], when: { sector: 2, idle: true, back: 'held' }, seconds: 14, metres: 6, brief: 'build_back_gate', perk: 'backgate' },
+  // THE BACK GATE IS PASSABLE (2026-10-01): it stands before the colony's steps so it prints the moment the mouth is held, and is passed
+  // over until then so the colony is printed in the sectors before the door instead of waiting behind a door that has not fallen
+  // THE COLONY GROWS (owner, 2026-10-01: "a CHIP Manufacturing unit, a Greenhouse, and bio containers to make the base more fully
+  // developed. We also need an armory/missile factory of sorts, and a spot for the tank to replenish its shells"; direction of
+  // 2026-09-24: the self-sustaining colony). Four more steps between the assembly line and the back gate, each on its own island
+  // (src/content/base-layout.js) with a perk the game reads a number from (BASE_PERKS):
+  //   armory    the garage behind the bays; its pad refills the hull's shells while the tank stands on it (src/fx/armory-pad.js)
+  //   farm      the greenhouse and three bio containers: biomass paid at every sector start
+  //   chips     the chip plant: the uplink's passes come closer together
+  //   launcher  the ARC-01 mass driver, pointed out over the rim; it waits for the player's two manned SOL-82 passes (`when.manned`:
+  //             Isao's calibration, src/domain/laser-auto.js) and is PASSABLE, so nothing waits behind a player who stays out of
+  //             the seat. When it stands it launches SOL-88 (src/fx/arc-launch.js), and SOL fires on its own from then on
+  { id: 'backgate', label: 'back gate', gate: 'back', plot: [11, 4], when: { sector: 2, idle: true, back: 'held' }, passable: true, seconds: 14, metres: 6, brief: 'build_back_gate', perk: 'backgate' },
+  { id: 'armory', label: 'armory', islands: ['armory'], structures: ['armory'], when: { sector: 2, idle: true }, seconds: 16, metres: 8, brief: 'build_armory', perk: 'armory' },
+  { id: 'farm', label: 'greenhouse', islands: ['farm'], structures: ['greenhouse', 'bio-a', 'bio-b', 'bio-c'], when: { sector: 3, idle: true }, seconds: 16, metres: 6, brief: 'build_farm', perk: 'farm' },
+  { id: 'chips', label: 'chip plant', islands: ['chips'], structures: ['chips'], when: { sector: 4, idle: true }, seconds: 14, metres: 5, brief: 'build_chips', perk: 'chips' },
+  { id: 'launcher', label: 'ARC-01 launcher', islands: ['launcher'], structures: ['launcher'], when: { sector: 4, idle: true, manned: 2 }, passable: true, seconds: 20, metres: 12, brief: 'build_launcher', perk: 'launcher' },
 ].map((s) => Object.freeze({ islands: [], structures: [], ...s })));
 
 // ISAO'S CRUISE, in lattice cells per second. His flights between plots are the opening's other wait: at 2.6 the trip out to the
@@ -46,7 +62,10 @@ export const BASE_BUILDER = Object.freeze({ cellsPerSecond: 4.2 });
 
 // what the perks are worth where the game reads a number: the HUGIN arm fills the gunship call-in meter faster; the assembly line
 // rebuilds this many lost hulls at each sector start
-export const BASE_PERKS = Object.freeze({ gunshipMeter: 1.5, rebuildHulls: 1 });
+// the colony's perks (2026-10-01): farmKg biomass at each sector start while the farm stands; chipsPeriod scales the uplink's pass
+// period while the chip plant stands; the armory's pad refills `shellsPerSecond` while the hull's centre is within radiusMetres of
+// the island's centre (the solar array's pad is the model, src/content/shield-array.js)
+export const BASE_PERKS = Object.freeze({ gunshipMeter: 1.5, rebuildHulls: 1, farmKg: 40, chipsPeriod: 0.8, armory: Object.freeze({ radiusMetres: 12, shellsPerSecond: 2, lift: 0.6 }) });
 
 // ISAO MENDS WHAT THE SWARM BROKE (owner, 2026-09-16: "Isao should go and build walls/a gate in between waves when a breach of the
 // base happened"). The rule is src/domain/repair-orders.js; these are the numbers. `gateAt` is the share of the gate's hp below

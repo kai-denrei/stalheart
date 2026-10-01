@@ -41,6 +41,18 @@
       }
     },
     {
+      "id": "armory",
+      "sourcePath": "assets/models/astro/industry_garage_d0.glb",
+      "sourceSha256": "d9b06df9880d9f85a82ff498fc366cc5a56e885712502e1de3faf470fc194075",
+      "path": "assets/models/far/armory.glb",
+      "sha256": "59519f2d1e21a2cd6b6f8ef31f2f6dbaa8067491319a5af42eeef7341aec8b4a",
+      "bytes": 27832,
+      "triangles": {
+        "source": 11844,
+        "far": 630
+      }
+    },
+    {
       "id": "rocket-a",
       "sourcePath": "assets/models/story/hugin_deployed.glb",
       "sourceSha256": "35695f7c1aca75fe9901b70e13f9827d7c82e10c68b9a34a2eee40a10da54bf4",

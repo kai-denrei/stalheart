@@ -314,7 +314,13 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 37 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 38 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### The owner's fourth playtest notes and the A6 workshop survey: a second canyon pass as the penultimate wave, SOL-82 automated later (SOL-88 launched by the ARC-01), the Units lab to show SOL and the gunship with wireframes, and new base buildings (chip plant, greenhouse, bio containers, an armory where the tank refills shells)
+
+`2026-10-01-playtest-four-notes-and-a6-survey` · decision · **proposed**
+
+Owner, 2026-10-01 evening, from the live build 7a54aaaf: "1) SOL first pass; very satisfying, let's add a second round of that as the penultimate wave. 2) very satisfying to see the remaining nuclear explosion strikes from the ground after they happened from the gunship or the SOL smoke. 3) it could be a time-unlock that once in a while SOL does targeted strikes to help us, automated. first 2 are manual, later ISAO calibrated it and it can do it auto. 4) UNITS are not showing all the units; we should see SOL, and the Gunship. also show Wireframe for all units. 5) https://jelaludo.github.io/SentryTowers_A6/ has new units for us. a) a better SOL to replace the current one (sol88) OR perhaps the story is that this one is automated... and replaces the old one, we launch it with the orbital launcher. we also have a CHIP Manufacturing unit, a Greenhouse, and bio containers to make the base more fully developed. We also need an armory/missile factory of sorts, and a spot for the tank to replenish its shells. check all the resources, plan the next move." Then: "before the next round of changes, git commit and git push these, and perhaps a /deban sync and starting a fresh session."
 
 ### Three choices in the tutorial chapters were taken as defaults while the owner was away and wait for his word: six chapters (the first wave its own), SKIP ALL to the back door, and the STÅLHEART chapter half printed with the player in the Quiver's optic
 

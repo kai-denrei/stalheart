@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "date": "2026-10-01",
+  "id": "2026-10-01-sol-automated-after-two-manned-passes",
+  "type": "decision",
+  "status": "accepted",
+  "title": "SOL fires on its own once the ARC-01 has put SOL-88 up: the automation is earned by two passes the player flew and burned in, and an automated pass aims at the densest pile where it is walking to",
+  "context": "Owner, 2026-10-01: \"it could be a time-unlock that once in a while SOL does targeted strikes to help us, automated. first 2 are manual, later ISAO calibrated it and it can do it auto\"; and \"perhaps the story is that this one is automated... and replaces the old one, we launch it with the orbital launcher\".",
+  "outcome": "The arsenal counts manned passes (seated and burning in a pass, counted at its close). LASER_AUTO.afterManned = 2 is the ARC-01 step's `when.manned`; when the step stands src/fx/arc-launch.js runs the upstream 30 s choreography on the standing launcher's named nodes with the SEED-01 bus riding the sled, and at completion setAuto(true): the strip names SOL-88, and on a pass with nobody seated the beam aims itself every 0.6 s at the densest pile (src/domain/laser-auto.js densestTarget) weighed at each body's NEXT cell, snapping when the pile moved more than two footprints (a targeted strike). The first cut aimed at where bodies were and burned nine rock cells behind a swarm walking at 15 m/s against a 10 m/s slew; the lead fixed it (5 burned in the suite's short automated pass). The seat stays the player's; the canyon passes stay manual.",
+  "alternatives": [
+    "Replacing SOL-82's model outright: the launch is the reward and the story reason for the automation",
+    "Automating by time alone: the owner tied it to Isao calibrating from manual passes"
+  ],
+  "evidence": [
+    "node test/laser-auto.mjs",
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --colony (artifacts/browser/colony-launch.png, colony-auto.png)"
+  ],
+  "supersedes": []
+}

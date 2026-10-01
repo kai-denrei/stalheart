@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "date": "2026-10-01",
+  "id": "2026-10-01-the-colony-grows",
+  "type": "decision",
+  "status": "accepted",
+  "title": "The base grows into a colony in play: the armory whose pad reloads the hull, the farm that pays biomass each sector, the chip plant that brings the passes closer, and the ARC-01; the finished base keeps growing too",
+  "context": "Owner, 2026-10-01: \"a CHIP Manufacturing unit, a Greenhouse, and bio containers to make the base more fully developed. We also need an armory/missile factory of sorts, and a spot for the tank to replenish its shells\"; direction of 2026-09-24: the self-sustaining colony. This is the implementation of 2026-10-01-playtest-four-notes-and-a6-survey.",
+  "outcome": "Stage 9 THE COLONY in src/content/base-layout.js: islands armory (-34,62), farm (48,-30), chips (60,40), launcher (-62,2, rail west over the rim) with the garage, VER-01 + three cassettes, LIT-01 and the ARC-01. Programme steps between the assembly line and the back gate: armory (sector 2 idle, perk armory: src/fx/armory-pad.js, two shells a second within 12 m), farm (sector 3, perk farm: 40 kg at each sector start), chips (sector 4, perk chips: pass period x0.8), launcher (sector 4, manned 2, PASSABLE: the back gate never waits behind a player who stays out of the seat). The programme rule gained `passable` steps, `when.manned`, snapshot.owed (the sector loop's unlock reads it) and sectorStarted. The finished base (SKIP TUTORIAL, a stage-8 link) now reaches stage 9 pending, and the host's static-base guard is gone: what is due is what prints. SOL burns the new buildings and their perks go out (LASER_STRUCTURES). Perks are read every tick so a burned building takes its perk with it. Controller edits were paid for by trimmed comments (td-tab 527981 -> 527949 bytes).",
+  "alternatives": [
+    "A research-outpost logistics container as the armory: the garage is where a vehicle drives in, which is what the pad is",
+    "Dressing the armory with ammunition shells: bloat for no reader; the pad ring says it",
+    "Ordering the launcher after the back gate: SOL-88 would come after the door the arc builds toward"
+  ],
+  "evidence": [
+    "node test/build-programme.mjs",
+    "node test/base-plan.mjs",
+    "node test/programme-host.mjs",
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --colony (artifacts/browser/colony-printed.png, colony-pad.png)",
+    "npm run tiers (docs/far-tier-assets.lock.json: armory)"
+  ],
+  "supersedes": [
+    "2026-10-01-playtest-four-notes-and-a6-survey"
+  ]
+}

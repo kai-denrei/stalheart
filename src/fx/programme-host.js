@@ -16,7 +16,10 @@
 // leavePilot, camera, startShot, deployFramePoseFor, camA, setView; pilot, deploy, t, storyViews; setPlayerDown, setDeploy).
 import { BLOCKED, PATH } from '../dungeon.js';
 import { BASE_PERKS, BASE_REPAIR } from '../content/base-programme.js';
-import { due as programmeDue, begin as programmeBegin, finish as programmeFinish, hasPerk as programmeHas, perks as programmePerks, rebuildDue } from '../domain/build-programme.js';
+import { LASER_AUTO } from '../content/orbital-laser.js';
+import { due as programmeDue, begin as programmeBegin, finish as programmeFinish, hasPerk as programmeHas, perks as programmePerks, sectorStarted } from '../domain/build-programme.js';
+import { createArcLaunch } from './arc-launch.js';
+import { createArmoryPad } from './armory-pad.js';
 import { nextRepair } from '../domain/repair-orders.js';
 import { sideBreachCandidates } from '../domain/side-breach.js';
 import { planCanyon } from '../domain/canyon.js';
@@ -35,12 +38,30 @@ export function createProgrammeHost(c) {
       // THE FIRST MÖRK ROLLS OUT OF THE STÅLHEART (src/fx/hull-issue.js): the camera runs to the door's framing with the hull
       // standing under the gantry, then it drives out as any deploy does; under a gunner it is set down outside the door
       c.story().hull?.tick(c.story().hullHost ??= createHullHost(c));
-      // the assembly line rebuilds a lost hull at a sector's start
-      if (rebuildDue(pg, sector) && c.playerHP() < PLAYER_MAX) { c.setPlayerHP(Math.min(PLAYER_MAX, c.playerHP() + BASE_PERKS.rebuildHulls)); syncLifeContainers(); updateHud(); }
+      // the assembly line rebuilds a lost hull at a sector's start; the farm pays its biomass
+      if (sectorStarted(pg, sector)) {
+        if (programmeHas(pg, 'rebuild') && c.playerHP() < PLAYER_MAX) { c.setPlayerHP(Math.min(PLAYER_MAX, c.playerHP() + BASE_PERKS.rebuildHulls)); syncLifeContainers(); updateHud(); }
+        if (programmeHas(pg, 'farm') && sector > 0) { c.eco?.()?.addBiomass(BASE_PERKS.farmKg, { category: 'farm' }); updateHud(); }
+      }
+      // THE COLONY'S PERKS, read every tick so a burned building takes its perk with it (src/domain/build-programme.js lose): the chip
+      // plant's closer passes, the armory's pad (its shells into the rack), the ARC-01's launch beat on the game clock
+      c.laserStation?.setPeriodScale?.(programmeHas(pg, 'chips') ? BASE_PERKS.chipsPeriod : 1);
+      const s = c.story(), pad = s.armoryPad;
+      if (pad && c.scene && !pad.ring) pad.ring = createArmoryPad(c.scene, { pos: pad.pos, cellSide: c.cellSide(), tune: BASE_PERKS.armory });
+      if (pad?.ring) {
+        pad.ring.stand(programmeHas(pg, 'armory'));
+        const dt = Math.max(0, Math.min(0.1, c.t() - (pad.at ?? c.t()))); pad.at = c.t();
+        const n = pad.ring.tick(dt, c.playerHP() > 0 ? c.playerPos?.() : null, c.ammo?.() ?? 0, c.ammoMax ?? 9, c.t());
+        if (n > 0) { c.setAmmo?.(c.ammo() + n); c.sfx?.play?.('tank_shells'); updateHud(); }
+      }
+      s.launch?.tick();
+      // SOL AUTOMATED: Isao's word the moment the player's second manned pass is in (the ARC-01 step waits on that count)
+      const manned = c.laserStation?.manned?.() ?? 0;
+      if (manned >= LASER_AUTO.afterManned && !s.calibrated) { s.calibrated = true; if (!c.pilotMode() && !c.briefQ()) showBrief(LASER_AUTO.calibrated); }
       if (orders.some((o) => !o.worker)) return;
       // THE BACK GATE IS NEVER PRE-BUILT (owner, 2026-09-18): a static base prints nothing, except this one door, which only exists
       // once the player has held the surprise
-      const backAt = c.story().backOpen ? (c.sectorRun()?.backOpenBreaches() ? 'open' : 'held') : null, ctx = { phase: c.story().beats.phase(), sector, waveActive: c.waveActive(), back: backAt };
+      const backAt = c.story().backOpen ? (c.sectorRun()?.backOpenBreaches() ? 'open' : 'held') : null, ctx = { phase: c.story().beats.phase(), sector, waveActive: c.waveActive(), back: backAt, manned };
       // A WALL THAT WAS NEVER PRINTED IS NOT A HOLE (owner, 2026-09-16: "he builds ROCKS instead of WALLS ... before building the
       // gate"): story.wallCells are every wall cell (open floor on a grown base until the gate step stands), so a grown base read all of them
       // as breaches at the landing and sent Isao out to "repair" them one by one — each trip tagged its cell BLOCKED and the lattice
@@ -59,8 +80,7 @@ export function createProgrammeHost(c) {
           return;
         }
       }
-      // a static base prints no new step but this one door (its repairs above are every base's, 2026-10-01: the side breach's wall)
-      if (!c.story().grow && programmeDue(pg, ctx)?.gate !== 'back') return;   // the player's orders and the beats' come first
+      // a static base holds nothing pending but the back door and the colony's steps (2026-10-01), so what is due is what prints
       const step = programmeDue(pg, ctx), ci = step ? c.story().print.cellOf(step) : -1;
       if (ci < 0) return;
       programmeBegin(pg, step);
@@ -114,6 +134,14 @@ export function createProgrammeHost(c) {
       if (step.walls) { for (const ci of c.story().wallCells) { c.dungeon().tags[ci] = BLOCKED; if (c.tdFullTags()) c.tdFullTags()[ci] = BLOCKED; breachQueue.push(ci); } gunshipRig.forgetWalls(); rebuildAfterBreach(); recomputePortalDist(); }
       if (step.perk === 'station' && c.story().arrayPad) c.story().arrayPad.standing = true;   // the solar array's pad charges once the complex stands
       if (step.perk === 'hulls' && c.story().bayBerths) { c.setBerths(c.story().berths = c.story().bayBerths); adoptBays(c.storyBase()); }   // the bays become the berths
+      if (step.perk === 'armory' && c.story().armoryPad) c.story().armoryPad.standing = true;
+      // THE ARC-01 STANDS: SOL-88 goes up on its sled (src/fx/arc-launch.js), and when the insertion stage is lit SOL fires on its own
+      if (step.perk === 'launcher') {
+        const root = c.storyBase()?.structure?.(step.structures[0])?.root ?? null;
+        c.story().launch = createArcLaunch({ launcher: root, now: () => c.t(), onComplete: () => { c.laserStation?.setAuto?.(true); c.sectorRun()?.note({ type: 'launch', id: 'sol88' }); if (!c.pilotMode() && !c.briefQ()) showBrief('sol88_online'); updateHud(); } });
+      }
     },
+    // what the harness reads: the launch beat, the pad, the calibration
+    colony: () => ({ launch: c.story()?.launch?.state() ?? null, pad: c.story()?.armoryPad?.ring?.state() ?? null, cell: c.story()?.armoryPad?.cell ?? -1, calibrated: !!c.story()?.calibrated, manned: c.laserStation?.manned?.() ?? 0 }),
   };
 }
