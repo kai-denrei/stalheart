@@ -9091,7 +9091,7 @@ export function initTdTab(root) {
       gunshipHold: (on) => { if (pilot) pilot.state.held = !!on; },
       gunshipCam: () => camera.quaternion.toArray(),
       programs: () => renderer.info.programs.map((p) => `${p.name}#${String(p.cacheKey).length}`),
-      programKeys: () => renderer.info.programs.map((p) => [p.name, String(p.cacheKey)]),   // the whole keys, to diff a seat's new program against the warmed one of the same name   // which shader programs are linked: the seat hitch probe
+      programKeys: () => programWarm.keys(), warmProbe: (n) => programWarm.probe(n),   // the whole keys, to diff a seat's new program against the warmed one of the same name   // which shader programs are linked: the seat hitch probe
       gunshipGun: (k) => selectGun(gunship, k, GUNSHIP_GUNS),
       gunshipPassEnd: () => { gunship.left = 0; },   // the harness ends the station pass now: the next tick departs
       fillGunshipCall: (n) => fillFromKill(gunshipRig.call, n, GUNSHIP_CALL),

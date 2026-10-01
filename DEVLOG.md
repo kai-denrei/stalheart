@@ -63,6 +63,21 @@ Evidence:
 - test/orbital-laser.mjs: the game's pass is longer, deeper and wider than the lab's and its burn fits in it. npm test, npm run check, npm run architecture.
 - Browser --laser-game (the pass spends from the game's 15 s), --seats, --phone, --laser (the lab) green.
 
+## 2026-10-01 — The gunship seat's first-use hitch is gone: the program warm never rescanned the scene (its clock added a non-number), so the base's models, loaded after its one scan, were never warmed; it runs on its own timer now and draws the scene once at one pixel of the canvas
+
+change · accepted · 2026-10-01-seat-hitch-warm-rescans
+
+Owner, 2026-10-01, away: "do a pass on these" (STATE's known gaps: "the gunship seat's first-use hitch is halved, not gone (nine shader programs survive, unexplained)"). The 2026-09-18 warm (src/fx/program-warm.js) compiled every object kind under the canvas and under a 1x1 target, and its rescan every 2 s was meant to pick up Isao's prints. Measured through a new harness diff of each new program's cache key against the warmed program of the same name: the six surviving programs differed from their twins only by the output colour space (srgb-linear -> srgb), i.e. the canvas variants of three base materials and the sky's background, plus two of the seat's own. A trace of the warm showed one scan ever, 102 objects, none of the base's (whose models load seconds later): `since += dt` with the call site's dt not a finite number never reached 2 s; and driven from painted frames it ticked 98 times in a whole headless run.
+
+src/fx/program-warm.js steps on a setInterval (120 ms): a rescan by wall clock every 2 s, a batch of four compiles under the canvas and the 1x1 target, and, when the background changes or new objects have arrived and been compiled, one draw of the whole scene at one pixel of the canvas under a scissor (scene.background is drawn by the renderer, not an object, so compile() never links its program; the seat's spotting monitor did, on the spot). tick() stays as a no-op at the frame's call site. State carries ticks, scans, draws, added programs per bind and the last error; keys(), probe(name), names() and where(name) and the harness hooks programKeys/warmProbe stay for the next hitch. --gunship diffs each new program against its nearest warmed twin and asserts at most 4 new programs and a first-seat frame under 70 ms.
+
+Alternatives: Compile the background through a stub scene with the same background: linked a second linear program, not the canvas one (the background's path keys differently); drawing the real scene once is what the seat does.; Leave it at 'halved': the owner listed it.
+
+Evidence:
+
+- --gunship, same page, in order: before, first seat 59.5 ms against 18.9 baseline, 6 new programs (BackgroundCubeMaterial, Skirt / carbon, Slab / concrete, BASE_KIT_GAME / vertex palette, two unnamed); warm on its timer, 39.1 ms, 3 new; with the one-pixel canvas draw, 28.5 ms against 27.7 ms baseline, second seat 19.2 ms, 3 new programs (two of the seat's own, the background's, which the harness page's background path still links), programs 98 -> 101.
+- npm test, npm run check, npm run architecture; --gunship, --phone, --showcase, --seats, --story-world green.
+
 ## 2026-10-01 — Three V1 known gaps closed and two controller leftovers: every straight round flies from the barrel to the body, a round hits a body once, the lance's stop is solved on the curve it is drawn along and the beam descends at the barrel's pitch; the run's clock rides the world's, and a disposed tab stops its frame loop
 
 change · accepted · 2026-10-01-known-gaps-rounds-lance-clock

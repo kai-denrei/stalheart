@@ -245,12 +245,13 @@ try{
   const programsAfter=await evaluate('window.__stalheartTest.state().programs'),listAfter=await evaluate('window.__stalheartTest.programs()');
   console.log(`GUNSHIP seat new programs: ${listAfter.filter(k=>!listBefore.includes(k)).join(' ')}`);
   {const keys=await evaluate('window.__stalheartTest.programKeys()');const before=keys.slice(0,programsBefore),fresh=keys.slice(programsBefore);
-   for(const [name,key] of fresh){const twin=before.find(([n])=>n===name);if(!twin){console.log(`GUNSHIP new program ${name||'(unnamed)'}: no warmed twin`);continue;}
-    const a=twin[1].split(','),c=key.split(',');const diff=[];for(let i=0;i<Math.max(a.length,c.length);i++)if(a[i]!==c[i])diff.push(`[${i}] ${a[i]} -> ${c[i]}`);console.log(`GUNSHIP new program ${name||'(unnamed)'} differs from its warmed twin at ${diff.join('; ')||'(nothing: a second identical key?)'}`);}}
+   const diffOf=(x,y)=>{const a=x.split(','),c=y.split(',');const d=[];for(let i=0;i<Math.max(a.length,c.length);i++)if(a[i]!==c[i])d.push(`[${i}] ${a[i]} -> ${c[i]}`);return d;};
+   for(const [name,key] of fresh){const twins=before.filter(([n])=>n===name);if(!twins.length){console.log(`GUNSHIP new program ${name||'(unnamed)'}: no warmed twin`);continue;}
+    const diffs=twins.map(([,k])=>diffOf(k,key)).sort((x,y)=>x.length-y.length);console.log(`GUNSHIP new program ${name||'(unnamed)'} (${twins.length} warmed twins) nearest differs at ${diffs[0].join('; ')||'(nothing)'}`);}}
   console.log(`GUNSHIP warm ${JSON.stringify(await evaluate('window.__stalheartTest.state().warm'))}`);
   console.log(`GUNSHIP seat baseline ${JSON.stringify(seatBase)} first seat ${JSON.stringify(seatFirst)} programs ${programsBefore} -> ${programsAfter}`);
-  assert(programsAfter-programsBefore<=12,`the seat links few shader programs: most were warmed while the game ran (${programsBefore} -> ${programsAfter}; it linked 18 before src/fx/program-warm.js)`);   // deterministic, unlike the timings below on a shared machine
-  assert(seatFirst.maxFrame<130,`the first seat's hitch stays bounded (longest frame ${seatFirst.maxFrame} ms at +${seatFirst.maxAt} ms against a ${seatBase.maxFrame} ms baseline; it was 78.6 ms before the warm, 60-64 ms after, and this only catches a collapse)`);
+  assert(programsAfter-programsBefore<=4,`the seat links only its own few shader programs: the base's were warmed while the game ran (${programsBefore} -> ${programsAfter}; it linked 18 before src/fx/program-warm.js, 6 while the warm never rescanned, 2026-10-01)`);   // deterministic, unlike the timings below on a shared machine
+  assert(seatFirst.maxFrame<70,`the first seat's hitch stays bounded (longest frame ${seatFirst.maxFrame} ms at +${seatFirst.maxAt} ms against a ${seatBase.maxFrame} ms baseline; it was 78.6 ms before the warm, 60-64 ms after, and this only catches a collapse)`);
   assert(await evaluate('window.__stalheartTest.state().gunship.seat'),'skipping the briefing takes the seat');
   const s=await evaluate('window.__stalheartTest.state().gunship');assert(s.mounted&&s.seat&&s.optic,`thermal optic live ${JSON.stringify(s)}`);
   assert.equal(await evaluate('document.querySelector("#story-monitor .head").textContent'),'GROUND TRUTH · IMPACT','the monitor shows the impact point');
