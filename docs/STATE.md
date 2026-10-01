@@ -65,7 +65,7 @@ Owner: "fix the pacing of the game"; spec `docs/superpowers/specs/2026-09-24-ses
 - The back door: foreshadowed, a feast, a scramble for turrets (`2026-09-24-back-door-feast-and-scramble`).
 - The architecture review of the branch (`2026-09-25-pacing-architecture-review`) repaired two duplications and queued the rest for the refactoring round.
 - The first sector waits for the expedition Isao sends the new hull on: a part home or 90 s (`2026-09-25-first-sector-waits-for-the-expedition`).
-- `--pacing` measures the whole session as an ideal defender (`--passive`: towers only) and found two leaks, both fixed (`2026-09-24-pacing-probe`). Passive, the towers alone lose sector 1 at about 61 s: the tank is the defence. Difficulty is the owner's playtest to call; the numbers are all content.
+- `--pacing` measures the whole session as an ideal defender (`--passive`: towers only) and found two leaks, both fixed (`2026-09-24-pacing-probe`). Passive, the towers alone lose sector 1 at about 61 s (56 s on 2026-10-01 with every round straight from the barrel): the tank is the defence. Difficulty is the owner's playtest to call; the numbers are all content.
 
 ## What landed on 2026-09-16 (the playtest rounds, one line each)
 
