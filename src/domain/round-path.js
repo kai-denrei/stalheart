@@ -65,3 +65,29 @@ export function flyStraight(round, step) {
   else s.p = [s.p[0] + s.d[0] * step, s.p[1] + s.d[1] * step, s.p[2] + s.d[2] * step];
   return false;
 }
+
+// THE LANCE ALONG ITS CURVE (a V1 known gap, closed 2026-10-01: "the lance's stop point is solved on a straight line while its beam is
+// drawn along the curve"). The beam is drawn along the great circle from the muzzle (src/td-tab.js lanceBeam), descending at the
+// barrel's own pitch: at arc length m its altitude is r0 + slope * m, where slope is the radial share of the firing direction (down
+// at a body on the ground, level along a parapet). This marches that same curve against the terrain, so the beam stops where it is
+// drawn to meet the ground or a wall, with the march's clearance. `fromU`: the muzzle's unit direction, `dTan`: the unit tangent it
+// fires along, `r0`: the muzzle's radius. The point at arc length m is pointAlongArc. Returns { len, hit } as marchToTerrain does.
+export const pointAlongArc = (fromU, dTan, r0, slope, m) => { const c = Math.cos(m), n = Math.sin(m), r = r0 + slope * m; return [(fromU[0] * c + dTan[0] * n) * r, (fromU[1] * c + dTan[1] * n) * r, (fromU[2] * c + dTan[2] * n) * r]; };   // src/arc.js arcPoint, inlined: domain imports no top-level module
+
+export function marchAlongArc(fromU, dTan, r0, slope, maxLen, terrain) {
+  const step = terrain.step;
+  for (let m = step; m <= maxLen; m += step) {
+    const p = pointAlongArc(fromU, dTan, r0, slope, m), ci = terrain.cellAt(norm3(p));
+    if (ci === terrain.ownCi) continue;   // a gun does not shoot its own parapet
+    const blocked = ci !== -1 && terrain.tags[ci] === BLOCKED;
+    const surface = 1 + (blocked ? terrain.wallHeight : 0);
+    if (r0 + slope * m < surface - terrain.clearance) return { len: Math.max(step, m - step), hit: blocked ? 'wall' : 'ground' };
+  }
+  return { len: maxLen, hit: null };
+}
+
+// the firing line as the arc takes it: the unit tangent at the muzzle and the radial share (the descent per unit of arc)
+export function arcOf(from, dir) {
+  const fromU = norm3(from), slope = dot3(dir, fromU), t = [dir[0] - fromU[0] * slope, dir[1] - fromU[1] * slope, dir[2] - fromU[2] * slope], l = Math.hypot(t[0], t[1], t[2]);
+  return { fromU, dTan: l > 1e-12 ? [t[0] / l, t[1] / l, t[2] / l] : [0, 0, 0], r0: Math.hypot(from[0], from[1], from[2]), slope };
+}

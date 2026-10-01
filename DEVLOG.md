@@ -63,6 +63,21 @@ Evidence:
 - test/orbital-laser.mjs: the game's pass is longer, deeper and wider than the lab's and its burn fits in it. npm test, npm run check, npm run architecture.
 - Browser --laser-game (the pass spends from the game's 15 s), --seats, --phone, --laser (the lab) green.
 
+## 2026-10-01 — Three V1 known gaps closed and two controller leftovers: every straight round flies from the barrel to the body, a round hits a body once, the lance's stop is solved on the curve it is drawn along and the beam descends at the barrel's pitch; the run's clock rides the world's, and a disposed tab stops its frame loop
+
+change · accepted · 2026-10-01-known-gaps-rounds-lance-clock
+
+Owner, 2026-10-01, away: "do a pass on these" (STATE's known gaps and refactor leftovers). Known gaps: automatic Rotor rounds flew along the surface at 2 m with their tracer starting there and passed through the 4 m walls (only piloted rounds had the straight line of 2026-09-25-rotor-tracer-lands-on-its-impact); a piloted round through one body over several frames damaged it every frame; the lance's stop was marchToTerrain on the straight line while lanceBeam drew a great circle at the muzzle's altitude. Leftovers: runContext.advance ran only inside advanceMotion, so runContext.time (the heart's breathing, the regrow queue, the reward orbs, the pad rings, the beam clock) stopped in every seat and while the hull was down; animate() rescheduled itself before checking anything, so a disposed tab kept a frame loop for the life of the page.
+
+src/td-tab.js: the automatic kinetic branch passes the body's centre as a straight round's end (homing and mortar rounds keep their paths), so its tracer leaves the muzzle, its end is roundEnd's and a wall stops it; each round keeps the set of bodies it has hit and never damages one twice. src/domain/round-path.js: arcOf (the muzzle's unit direction, the firing tangent, the radius and the radial share of the direction), pointAlongArc (the great circle descending at that share) and marchAlongArc (the same curve marched against the terrain with the march's clearance; the gun's own cell never stops it). The lance's line-of-sight gate, its burst and its piloted steering use lanceReach (marchAlongArc), and lanceBeam draws pointAlongArc and splashes at its end: a level lance from a parapet clears walls of its own height, a depressed one digs into the ground or the wall it is aimed at. runContext.advance(dt) moved to the frame loop beside the enemies' update, under the same freeze. animate() returns once dispose() has run (a `disposed` flag; `active` still toggles with the tab). The briefing and its three glossaries moved out of the controller to src/fx/glossary-modals.js (unchanged; the host hands in the message element, the pause, the sprite shots and the icons): td-tab 9,307 -> 9,221 lines, 532,199 -> 527,986 bytes.
+
+Alternatives: Drawing the lance along the straight chord instead: the operator's 'lasers pierce through the curvature' (the reason it was bent) would return.; Keeping the lance at the muzzle's altitude and dropping the stop entirely: a full-range beam over every wall, a balance change on top of a fix.
+
+Evidence:
+
+- test/round-path.mjs: a level lance flies its whole reach and clears walls of its height; one aimed at a body on the ground stops at the ground about where the body stands, and digs into a wall ahead. npm test (158), npm run check, npm run architecture (budgets lowered).
+- Browser --story-world (28 piloted Rotor rounds, 17 hit, widest tracer-head-to-impact 0.00002 m), --gunship, --quiver-frame, --seats, --sectors, --skip-tutorial green.
+
 ## 2026-09-30 — Sector 0's sinkhole is closed with a strike: Isao reminds after each construction wave cleared off the field, and once anything fills it no construction wave comes after it
 
 decision · accepted · 2026-09-30-sinkhole-closed-with-a-strike

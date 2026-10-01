@@ -30,7 +30,7 @@ import GUI from '../vendor/lil-gui.esm.js';
 import { bfsDist, BLOCKED, PATH, ROOM } from './dungeon.js';
 import { buildGameWorld, readStoryQuery, STORY_SOUNDS, takeControlPose } from './platform/story-world.js'; import { SENTRY_HEAT } from './content/sentry-heat.js'; import { coolHeat } from './core/heat.js'; import { paintBarrelHeat } from './fx/barrel-heat.js'; import { createUnlockHost } from './fx/story-views.js'; import { buildReadout } from './fx/build-readout.js'; import { createStoryMonitor } from './fx/story-monitor.js'; import { createDaylight } from './fx/daylight.js'; import { createStoryScope, createScopeFeed } from './fx/story-scope.js'; import { createSyntheticModal } from './fx/synthetic-modal.js'; import { createBrass } from './fx/brass.js';
 import { mulberry32, randomSeed } from './rng.js';
-import { createLaserStation, structureLostHtml } from './fx/laser-station.js'; import { LASER_GAME } from './content/orbital-laser.js'; import { makeTriadIcon, glossCard, GAMEPLAY_TIPS } from './fx/briefing-cards.js';
+import { createLaserStation, structureLostHtml } from './fx/laser-station.js'; import { LASER_GAME } from './content/orbital-laser.js'; import { createGlossaryModals } from './fx/glossary-modals.js'; import { makeTriadIcon, glossCard, GAMEPLAY_TIPS } from './fx/briefing-cards.js';
 import { computeBerths, berthIndexFor } from './berths.js'; import { createProgrammeHost } from './fx/programme-host.js'; import { strikeFallPose, droneRidePose, bastionPose, tankViewPose } from './domain/camera-goal.js'; import { createShopRadial } from './fx/shop-radial.js'; import { berthRun, berthHeading, deployU, easeDeploy, deployFraming } from './domain/deploy-path.js';
 import { wantsSecondary, shellsForAll } from './autofire.js';
 import { printPhase, printOffset, printOn, patternSecsFor } from './printpath.js';
@@ -54,7 +54,7 @@ import { PICKUPS } from './pickups.js'; import { rotorVoice, hushRotor } from '.
 import { rankFor, rankLabel, badgeSVG } from './ranks.js';
 import { beamStep, isBeamStep } from './beamranks.js';
 import { burn, sweepAdvance, wallBite as wallBiteFor } from './beamburn.js';
-import { arcPoint, projectToArc, toeForCrossing } from './arc.js'; import { marchToTerrain, roundEnd, flyStraight } from './domain/round-path.js';
+import { arcPoint, projectToArc, toeForCrossing } from './arc.js'; import { marchToTerrain, roundEnd, flyStraight, marchAlongArc, arcOf, pointAlongArc } from './domain/round-path.js';
 import { shotOf, muzzleOf, impactOf, tuneFor, resolveImpactColors } from './sentryfx.js'; import { makeImpactBurst, orientImpact } from './impactfx.js';   // the package's muzzle recipe is the one master setting
 import { makeTracerMesh, makeLightningMesh, makeSeekerMesh, aimSeeker,
   LANCE_LOOK as SHOT_LANCE_LOOK, THROW_LOOK as SHOT_THROW_LOOK } from './shotfx.js';
@@ -91,7 +91,7 @@ export function initTdTab(root) {
   let pilot = null;
   let pilotPosts = [], pilotPost = 0;
   const pilotMounts = [];
-  let active = false;
+  let active = false, disposed = false;
   let wasPlaying = false; // drives body.playing (mobile hides ALL chrome)
 
   const params = {
@@ -2341,7 +2341,6 @@ export function initTdTab(root) {
   // called once per frame: steer, glide (creature-paced), respawn, absorb
   function advanceMotion(dt) {
     if (player.won || playerDown || player.next === -1) return;
-    runContext.advance(dt);
 
     // continuous steering while held; ANY key claims manual control —
     // and an engaged cruise keeps manual alive without touching a key
@@ -3494,95 +3493,9 @@ export function initTdTab(root) {
   };
   const unitIcon = (type, tint) => () => buildCreature(type, { walker: tint, walkerHi: 0xffffff });   /* the cards, the triad icon and the tips: src/fx/briefing-cards.js */
 
-  // opening briefing: the pieces as cards, the ONE win condition, and two
-  // clickable glossaries. The sim stays frozen until the player begins.
-  function showBriefing() {
-    paused = true;
-    msgEl.innerHTML = `<div class="msg-head">transmission · briefing</div>` +
-      `<div class="msg-scroll">` +
-      `<div class="gcards">` +
-      glossCard('#ff6a88', spriteShot('heart', heartIcon), 'the stalheart', 'the terraformer at the pole — without it the colony dies') +
-      glossCard('#9fdcff', spriteShot('tank', unitIcon(DEFAULT_TANK, look().walker)), 'your tank', mobileShell
-        ? 'TAP the ground to send it · DRAG on the left to drive · ◉ shell · ∿ plasma · BUILD switch top-right · hold a tower to upgrade'
-        : 'W/Q-E drive · A/D steer · SPACE shell · SHIFT lasers · 1/2/3 views · U upgrade · ESC pause') +
-      glossCard('#9fdcff', spriteShot('tower-' + params.towerLook, () => buildTowerLook(params.towerLook, starterTower())), 'towers', 'your army — build them on the HIGH GROUND (walls) in BUILD mode') +
-      glossCard('#ffb000', spriteShot('triad', makeTriadIcon), 'missile triads', 'drive over = +3 shells · shells also blast walls open') +
-      glossCard('#66ff88', spriteShot('amoeba', unitIcon('amoeba', CREATURE_TINTS.amoeba)), 'fodder', 'soft creatures — RAM them, it’s free') +
-      glossCard('#ff5340', spriteShot('barbed', unitIcon('barbed', CREATURE_TINTS.barbed)), 'spiked reds', 'armored — ramming hurts YOU · shells only') +
-      glossCard('#ffffff', spriteShot('breach', () => makeDotBurst(0xcfd8ff, [0, 1, 0], 90)), 'breaches', 'enemy sources · orbital strikes seal them · exhausted waves close them') +
-      `</div>` +
-      GAMEPLAY_TIPS +
-      `<b>WIN = CLOSE EVERY BREACH.</b> reaching the heart wins nothing — it's home.` +
-      `</div>` +
-      `<div class="msg-foot">` +
-      `<button class="msg-glenemy">enemy glossary</button> ` +
-      `<button class="msg-glachv">the record</button> ` +
-      `<button class="msg-glfriend">pickups</button><br>` +
-      `<button class="msg-begin">&rsaquo; begin round ${round}</button>` +
-      `</div>`;
-    msgEl.classList.remove('hidden');
-  }
-
-  // THE RECORD. Everything earned and everything not, in one list, grouped
-  // the way the table is. Unearned entries keep their NAME and lose their
-  // note — a list of question marks tells a player nothing about what to go
-  // and do, and a list that spells out every condition removes the reason to
-  // wonder. The name is the hint.
-  function showRecord() {
-    paused = true;
-    const held = new Set(heldAchv);
-    const rows = ACHV_GROUPS.map((grp) => {
-      const inGroup = ACHIEVEMENTS.filter((a) => a.group === grp);
-      const got = inGroup.filter((a) => held.has(a.id)).length;
-      return `<div class="rec-group">${grp} <i>${got}/${inGroup.length}</i></div>`
-        + inGroup.map((a) => {
-          const on = held.has(a.id);
-          return `<div class="rec-row${on ? ' got' : ''}">`
-            + `<span class="rec-mark">${on ? '&#10022;' : '&#9675;'}</span>`
-            + `<span class="rec-name">${a.name}</span>`
-            + `<span class="rec-note">${on ? a.note : '&mdash;'}</span></div>`;
-        }).join('');
-    }).join('');
-    msgEl.innerHTML = `<div class="msg-head">the record</div>`
-      + `<div class="msg-scroll"><div class="rec">${rows}</div></div>`
-      + `<div class="go-reason">${held.size}/${ACHIEVEMENTS.length} &middot; the record survives a run; the run does not</div>`
-      + `<button class="msg-back">&larr; back to briefing</button>`;
-    msgEl.classList.remove('hidden');
-  }
-
-  function showEnemyGlossary() {
-    paused = true;
-    const cards = INTROS.map((iv) => {
-      const spec = ENEMY_SPEC[iv.type];
-      const tint = '#' + CREATURE_TINTS[iv.type].toString(16).padStart(6, '0');
-      const ram = spec.rammable
-        ? '<span style="color:#66ff88">▼ rammable</span>'
-        : '<span style="color:#ff5340">× do not ram</span>';
-      return glossCard(tint, spriteShot(iv.type, unitIcon(iv.type, CREATURE_TINTS[iv.type])), iv.label.toLowerCase(),
-        `${iv.role} · ${spec.hp} hp · arrives wave ${iv.wave} · ${ram}`);
-    }).join('');
-    msgEl.innerHTML = `<div class="msg-head">glossary · hostiles</div>` +
-      `<div class="gcards">${cards}` +
-      glossCard('#ffffff', spriteShot('breach', () => makeDotBurst(0xcfd8ff, [0, 1, 0], 90)), 'breach', 'where they emerge · seal with an orbital strike · closes when waves are spent') +
-      `</div><button class="msg-back">← back to briefing</button>`;
-    msgEl.classList.remove('hidden');
-  }
-
-  function showFriendGlossary() {
-    paused = true;
-    const orbIcon = (shape, body) => () => makeRewardSolid(shape, { body, hi: 0xffffff }, 1.7);
-    msgEl.innerHTML = `<div class="msg-head">glossary · pickups</div>` +
-      `<div class="gcards">` +
-      glossCard('#ff6a88', spriteShot('heart', heartIcon), 'the stalheart', `${HEART_MAX} hp · enemy contact drains it · regen charges heal it`) +
-      glossCard('#9fdcff', spriteShot('tower-' + params.towerLook, () => buildTowerLook(params.towerLook, starterTower())), 'towers', 'mount on walls only · tap high ground in BUILD mode · upgrade twice · sell 75%') +
-      glossCard('#ffb000', spriteShot('triad', makeTriadIcon), 'missile triad', '+3 shells on touch (rack caps at 9) — the ONLY ammo pickup') +
-      glossCard('#9ff8ff', spriteShot('orb-power', orbIcon('star', 0x9ff8ff)), 'power sphere', 'far-field reward · +8% speed, permanent') +
-      glossCard('#3dff6e', spriteShot('orb-health', orbIcon('cell', 0x3dff6e)), 'health sphere', 'far-field reward · +1 your hp') +
-      glossCard('#ff2df0', spriteShot('orb-regen', orbIcon('ring', 0xff2df0)), 'regen charge', 'CARRY it back near the heart: +4 heart hp') +
-      glossCard('#59c8ff', spriteShot('orb-shield', orbIcon('dome', 0x59c8ff)), 'energy shield', '12s bubble over the hull — touch damage bounces off') +
-      `</div><button class="msg-back">← back to briefing</button>`;
-    msgEl.classList.remove('hidden');
-  }
+  // THE BRIEFING AND ITS GLOSSARIES (src/fx/glossary-modals.js): the cards, the record, the hostiles and the pickups
+  const glossary = createGlossaryModals({ msgEl, pause: () => { paused = true; }, spriteShot, heartIcon, unitIcon, mobile: () => mobileShell, round: () => round, heldAchv: () => heldAchv, towerLook: () => params.towerLook, buildTowerLook, starterTower, look, makeDotBurst, makeRewardSolid, HEART_MAX, DEFAULT_TANK });
+  const { showBriefing, showRecord, showEnemyGlossary, showFriendGlossary } = glossary;
   // callout pop-ups + the ram combo counter (both pointer-transparent)
   const calloutsEl = root.querySelector('#td-callouts');
   const comboEl = root.querySelector('#td-combo'), ramFloat = createRamReadout(root, { project: (p) => new THREE.Vector3(p[0], p[1], p[2]).project(camera) });
@@ -6663,6 +6576,7 @@ export function initTdTab(root) {
   // WHERE A STRAIGHT LINE MEETS THE GROUND OR A WALL, on this board: the lance's march and a round's exact end (src/domain/round-path.js)
   function terrainOf(ownCi = -1) { return { cellAt: cellIndex, tags: dungeon.tags, wallHeight: params.wallHeight, step: cellSide * 0.2, clearance: cellSide * 0.25, ownCi }; }
   function rayToTerrain(from, dir, maxLen, ownCi = -1) { return marchToTerrain(from, dir, maxLen, terrainOf(ownCi)); }
+  const lanceReach = (from, dir, maxLen, ownCi) => { const a = arcOf(from, dir); return marchAlongArc(a.fromU, a.dTan, a.r0, a.slope, maxLen, terrainOf(ownCi)); };   // the lance's stop, on the curve it is drawn along (src/domain/round-path.js)
 
   // ITS OWN STREAM, off the board's seed — the A6's patrol must be
   // reproducible with the rest of the run (no Math.random anywhere in game
@@ -6825,15 +6739,10 @@ export function initTdTab(root) {
     // muzzle's own altitude the whole way instead of cutting the corner. The
     // five links were always there for the shader's per-link cap and taper —
     // now they also carry the bend, which is what they are shaped for.
-    const fromU = norm3(from);
-    const r0 = len3(from);
-    // the firing direction as a UNIT TANGENT at the muzzle: arc.js's contract,
-    // and the same projection the tank's secondary already does
-    const dTan = norm3(sub3(dir, scale3(fromU, dot3(dir, fromU))));
-    const at = (m) => {
-      const q = arcPoint(fromU, dTan, m);
-      return [q[0] * r0, q[1] * r0, q[2] * r0];
-    };
+    // ...AND DESCENDS AT THE BARREL'S PITCH (2026-10-01): the beam used to keep the muzzle's altitude the whole way while its stop
+    // was solved on the straight line, so the two disagreed; now both are src/domain/round-path.js's curve (lanceReach, pointAlongArc)
+    const { fromU, dTan, r0, slope } = arcOf(from, dir);
+    const at = (m) => pointAlongArc(fromU, dTan, r0, slope, m);
     for (let k = 0; k < PLASMA_LINKS; k++) {
       const m0 = len * (k / PLASMA_LINKS), m1 = len * ((k + 1) / PLASMA_LINKS);
       const p0 = at(m0), p1 = at(m1);
@@ -6858,7 +6767,7 @@ export function initTdTab(root) {
     // needs to move the tower. Rate-limited to the burst, not the tick.
     if (stoppedBy && tNow - (tw.lastSpark ?? -9) > (tw.def.burst ?? 0.6) * 0.9) {
       tw.lastSpark = tNow;
-      const at = [from[0] + dir[0] * len, from[1] + dir[1] * len, from[2] + dir[2] * len];
+      const at = pointAlongArc(fromU, dTan, r0, slope, len);   // the splash where the curve ends
       const b = makeDotBurst(shotOf(tw.def).beamColor ?? tw.def.color, norm3(at),
         stoppedBy === 'wall' ? 18 : 12);
       b.scale.setScalar(cellSide * (stoppedBy === 'wall' ? 1.5 : 1.1));
@@ -6874,7 +6783,7 @@ export function initTdTab(root) {
         const until=ent.until,range=effectiveStats(tw.def,tw.tier).range*cellSide;
         const from=tw.lastMuzzle?.getWorldPosition(new THREE.Vector3()).toArray() || tw.obj.position.toArray();
         const aim=tw.pilotTarget?.pos || add3(from,camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(range).toArray());
-        const dir=norm3(sub3(aim,from)),stop=rayToTerrain(from,dir,range,tw.ci);
+        const dir=norm3(sub3(aim,from)),stop=lanceReach(from,dir,range,tw.ci);
         lanceBeam(tw,from,dir,stop.len,tNow,tw.lastStruck??0,null);
         ent.until=until; // steering does not extend the burst or apply extra damage
       }
@@ -7074,7 +6983,7 @@ export function initTdTab(root) {
           const f0 = [gunV.x, gunV.y, gunV.z];
           const d0 = norm3(sub3(target.pos, f0));
           const need = Math.hypot(target.pos[0] - f0[0], target.pos[1] - f0[1], target.pos[2] - f0[2]);
-          const los = rayToTerrain(f0, d0, need, tw.ci);
+          const los = lanceReach(f0, d0, need, tw.ci);
           if (los.len < need - cellSide * 0.3) continue;
         }
       }
@@ -7150,7 +7059,7 @@ export function initTdTab(root) {
         // slewing does not fire, so the tube and the beam agree to within
         // the drive's own tolerance whenever a burst leaves.
         const dir3 = norm3(sub3(target.pos, from3));
-        const stop = rayToTerrain(from3, dir3, range, tw.ci);
+        const stop = lanceReach(from3, dir3, range, tw.ci);
         let struck = 0;
         // MEASURED ON THE ARC THE BEAM IS DRAWN ALONG. This used distToSeg —
         // a straight chord — and the sag is not a rounding error: across the
@@ -7224,7 +7133,9 @@ export function initTdTab(root) {
         }
       } else {
         spawnTowerShot(muzzle, flat, tw, eff, atk === 'homing' ? target : null,
-          atk === 'mortar' ? chord(tp, target.pos) : 0, pilotMode && pilot?.state.tower === tw ? (target.pilotAim ? target.pos : add3(target.pos, scale3(norm3(target.pos), cellSide * 0.3))) : null);   // FROM THE BARREL TO THE RETICLE (owner, 2026-09-14): a piloted round flies a straight line in space from the muzzle to the body under the reticle, not along the surface at wall height; with no body, to the reticle's point on the ground
+          atk === 'mortar' ? chord(tp, target.pos) : 0,
+          // EVERY STRAIGHT ROUND FLIES FROM THE BARREL TO THE BODY, automatic ones too (2026-10-01; they flew along the surface at 2 m, their tracer from there, through the 4 m walls)
+          atk === 'homing' || atk === 'mortar' ? null : target.pilotAim && pilotMode && pilot?.state.tower === tw ? target.pos : add3(target.pos, scale3(norm3(target.pos), cellSide * 0.3)));   // FROM THE BARREL TO THE RETICLE (owner, 2026-09-14): a piloted round flies a straight line in space from the muzzle to the body under the reticle, not along the surface at wall height; with no body, to the reticle's point on the ground
       }
     }
   }
@@ -7388,7 +7299,7 @@ export function initTdTab(root) {
       }
       let hit = false;
       for (const e of enemies) {
-        if (!e.alive) continue;
+        if (!e.alive || p.hitBy?.has(e)) continue;   // ONCE PER BODY: a round through a body over several frames hit it every frame (a V1 known gap, closed 2026-10-01)
         if ((p.straight ? dist3(p.straight.p, add3(e.pos, scale3(norm3(e.pos), cellSide * 0.3))) : chord(p.pos, e.pos)) < cellSide * Math.max(p.manual ? 0.6 : 0.42, (e.size ?? e.spec.size) * (p.manual ? 1.1 : 0.8))) {   // a straight round is tested in space against the body's centre; a piloted round hits a little wider: the reticle on the body is the intent, the cloud's edge is the body
           if (p.splash > 0) detonate(p, tNow);
           else {
@@ -7399,7 +7310,7 @@ export function initTdTab(root) {
             warnRing(cellIndex(e.pos), p.color, 0.22, cellSide * 0.55);
             if (p.manual) { const b = makeDotBurst(0xffffff, norm3(e.pos), 10); b.scale.setScalar(cellSide * 0.25); b.position.set(e.pos[0], e.pos[1], e.pos[2]).addScaledVector(new THREE.Vector3(...norm3(e.pos)), cellSide * 0.3); scene.add(b); debris.push(b); sfx.play('kinetic_fire', { dist: camDist(e.pos), gain: 0.5, rate: 1.25 }); pilot?.hit?.(); }   /* THE HIT REGISTERED (owner, 2026-09-14): a white spark on the body, a click, and the reticle's flash */
           }
-          hit = true;
+          hit = true; (p.hitBy ??= new Set()).add(e);
           if (!p.manual || (p.through = (p.through ?? 0) + 1) >= 3) break;   // a piloted round goes on through the pile: up to three bodies (owner, 2026-09-14: fish in a barrel)
         }
       }
@@ -8351,6 +8262,7 @@ export function initTdTab(root) {
     // queue runs at full speed while BeginFrames are rationed (the same
     // trap every probe in this file documents — used on purpose for once),
     // and in a real browser setTimeout(0) still outruns vsync ~4x.
+    if (disposed) return;   // a disposed tab schedules no more frames (2026-10-01; it rescheduled itself for the life of the page)
     if (simFast > 1 && !simDone) setTimeout(animate, 0);
     else requestAnimationFrame(animate);
     frameNo++; if (!active || !mesh) return;
@@ -8536,6 +8448,7 @@ export function initTdTab(root) {
     if (!frozen && eco) { ecoClockT += dt; if (eco.biomass >= CHEAPEST_TOWER) ecoAffordT += dt; }
     stepShieldDynamics(dt,t);
     if (!frozen) {
+      runContext.advance(dt);   // THE RUN'S CLOCK RIDES THE WORLD'S (2026-10-01): it advanced only with the hull's motion, so the heart's breathing, the regrow queue, the orbs and the pad rings all stopped while the player sat in a seat or the hull was down
       let cpuStart=perfOn?performance.now():0;
       if (!(lab.on && lab.freezeEnemies)) updateEnemies(dt, t);
       if(perfOn)perfCpu.enemies+=performance.now()-cpuStart;
@@ -9177,7 +9090,8 @@ export function initTdTab(root) {
       mountGunship: () => { if (!storyViews) storyApi.unlock('views'); if (gunshipRig.onCall() && !onStation(gunship)) storyViews.meter(callProgress(gunshipRig.call), callFull(gunshipRig.call)); else storyViews.station(onStation(gunship), phaseLeft(gunship)); document.querySelector('#story-views [data-mount="gunship"]')?.click(); return !!pilot?.gunship; },
       gunshipHold: (on) => { if (pilot) pilot.state.held = !!on; },
       gunshipCam: () => camera.quaternion.toArray(),
-      programs: () => renderer.info.programs.map((p) => `${p.name}#${String(p.cacheKey).length}`),   // which shader programs are linked: the seat hitch probe
+      programs: () => renderer.info.programs.map((p) => `${p.name}#${String(p.cacheKey).length}`),
+      programKeys: () => renderer.info.programs.map((p) => [p.name, String(p.cacheKey)]),   // the whole keys, to diff a seat's new program against the warmed one of the same name   // which shader programs are linked: the seat hitch probe
       gunshipGun: (k) => selectGun(gunship, k, GUNSHIP_GUNS),
       gunshipPassEnd: () => { gunship.left = 0; },   // the harness ends the station pass now: the next tick departs
       fillGunshipCall: (n) => fillFromKill(gunshipRig.call, n, GUNSHIP_CALL),
@@ -9293,7 +9207,7 @@ export function initTdTab(root) {
   animate();
 
   return {
-    dispose() { ramFloat.dispose(); pilot?.dispose(); skipCard?.dispose(); showcase?.dispose(); active = false; storyBase?.dispose(); gameBreaches.dispose();runTimers.dispose(); runContext.dispose(); missilesDisposed=true; missilePool?.dispose(); setPerfOverlay(false,false); },
+    dispose() { disposed = true; ramFloat.dispose(); pilot?.dispose(); skipCard?.dispose(); showcase?.dispose(); active = false; storyBase?.dispose(); gameBreaches.dispose();runTimers.dispose(); runContext.dispose(); missilesDisposed=true; missilePool?.dispose(); setPerfOverlay(false,false); },
     setActive(on) {
       active = on;
       if (!on) stopEngine(0.1, true); // quiet: leaving the tab is not a landing

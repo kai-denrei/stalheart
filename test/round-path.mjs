@@ -109,3 +109,32 @@ for (const hz of [30, 60, 144]) {
   assert.equal(marchToTerrain(muzzle(0.69), norm3(sub3(ground(3), muzzle(0.69))), 4.86 * cs, board([2])).hit, 'wall');
 }
 console.log('round-path: exact ground, wall top, wall side and air ends; the head lands exactly on the end at 30/60/144 Hz');
+
+// THE LANCE ALONG ITS CURVE (2026-10-01): the beam descends at the barrel's pitch along the great circle; its stop is solved on that
+// same curve, so a level lance from a parapet skims every wall and a depressed one digs into the ground where it is drawn to
+import { marchAlongArc, arcOf, pointAlongArc } from '../src/domain/round-path.js';
+{
+  const wallHeight = 0.02, step = 0.002, open = { cellAt: () => 0, tags: [0], wallHeight, step, clearance: 0.001, ownCi: -1 };   // one open cell everywhere (tag 0 is BLOCKED... so use 1)
+  open.tags = [1];
+  const from = [0, 1 + wallHeight, 0];
+  // level: the arc keeps the muzzle's altitude and never meets the ground
+  let a = arcOf(from, [1, 0, 0]);
+  assert.ok(Math.abs(a.slope) < 1e-12 && Math.abs(a.r0 - (1 + wallHeight)) < 1e-12);
+  assert.deepEqual(marchAlongArc(a.fromU, a.dTan, a.r0, a.slope, 0.3, open), { len: 0.3, hit: null }, 'a level lance flies its whole reach');
+  // depressed at a body on the ground 3 cells out (a cell is 0.0133 here): the curve meets the ground about there
+  const body = [Math.sin(0.04), Math.cos(0.04), 0], dir = (() => { const d = [body[0] - from[0], body[1] - from[1], body[2] - from[2]], l = Math.hypot(...d); return d.map((v) => v / l); })();
+  a = arcOf(from, dir);
+  assert.ok(a.slope < 0, 'aimed down');
+  const stop = marchAlongArc(a.fromU, a.dTan, a.r0, a.slope, 0.3, open);
+  assert.equal(stop.hit, 'ground');
+  const p = pointAlongArc(a.fromU, a.dTan, a.r0, a.slope, stop.len);
+  assert.ok(Math.hypot(...p) >= 1 - 0.0015 && Math.hypot(...p) <= 1 + 0.004, `the stop is at the ground (${Math.hypot(...p)})`);
+  assert.ok(stop.len > 0.035 && stop.len < 0.06, `about where the body stands (${stop.len})`);
+  // a wall a cell ahead of a level lance is skimmed (same height); one the beam is aimed down into stops it
+  const walled = { ...open, cellAt: (u) => (u[0] > 0.01 ? 1 : 0), tags: [1, 0] };
+  const level = arcOf(from, [1, 0, 0]);
+  assert.equal(marchAlongArc(level.fromU, level.dTan, level.r0, level.slope, 0.3, walled).hit, null, 'a parapet-high lance clears walls of its own height');
+  const down = arcOf(from, dir);
+  assert.equal(marchAlongArc(down.fromU, down.dTan, down.r0, down.slope, 0.3, walled).hit, 'wall', 'a depressed one digs into the wall ahead');
+}
+console.log('round-path: the lance\'s curve descends at the barrel\'s pitch and stops where it is drawn to meet the ground or a wall.');

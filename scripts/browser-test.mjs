@@ -244,6 +244,9 @@ try{
   const seatBase=await seatWatch(null),seatFirst=await seatWatch('document.querySelector("#gunship-briefing [data-skip]").click()');
   const programsAfter=await evaluate('window.__stalheartTest.state().programs'),listAfter=await evaluate('window.__stalheartTest.programs()');
   console.log(`GUNSHIP seat new programs: ${listAfter.filter(k=>!listBefore.includes(k)).join(' ')}`);
+  {const keys=await evaluate('window.__stalheartTest.programKeys()');const before=keys.slice(0,programsBefore),fresh=keys.slice(programsBefore);
+   for(const [name,key] of fresh){const twin=before.find(([n])=>n===name);if(!twin){console.log(`GUNSHIP new program ${name||'(unnamed)'}: no warmed twin`);continue;}
+    const a=twin[1].split(','),c=key.split(',');const diff=[];for(let i=0;i<Math.max(a.length,c.length);i++)if(a[i]!==c[i])diff.push(`[${i}] ${a[i]} -> ${c[i]}`);console.log(`GUNSHIP new program ${name||'(unnamed)'} differs from its warmed twin at ${diff.join('; ')||'(nothing: a second identical key?)'}`);}}
   console.log(`GUNSHIP warm ${JSON.stringify(await evaluate('window.__stalheartTest.state().warm'))}`);
   console.log(`GUNSHIP seat baseline ${JSON.stringify(seatBase)} first seat ${JSON.stringify(seatFirst)} programs ${programsBefore} -> ${programsAfter}`);
   assert(programsAfter-programsBefore<=12,`the seat links few shader programs: most were warmed while the game ran (${programsBefore} -> ${programsAfter}; it linked 18 before src/fx/program-warm.js)`);   // deterministic, unlike the timings below on a shared machine
