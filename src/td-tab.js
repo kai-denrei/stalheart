@@ -30,7 +30,7 @@ import GUI from '../vendor/lil-gui.esm.js';
 import { bfsDist, BLOCKED, PATH, ROOM } from './dungeon.js';
 import { buildGameWorld, readStoryQuery, STORY_SOUNDS, takeControlPose } from './platform/story-world.js'; import { SENTRY_HEAT } from './content/sentry-heat.js'; import { coolHeat } from './core/heat.js'; import { paintBarrelHeat } from './fx/barrel-heat.js'; import { createUnlockHost } from './fx/story-views.js'; import { buildReadout } from './fx/build-readout.js'; import { createStoryMonitor } from './fx/story-monitor.js'; import { createDaylight } from './fx/daylight.js'; import { createStoryScope, createScopeFeed } from './fx/story-scope.js'; import { createSyntheticModal } from './fx/synthetic-modal.js'; import { createBrass } from './fx/brass.js';
 import { mulberry32, randomSeed } from './rng.js';
-import { createLaserStation } from './fx/laser-station.js'; import { LASER_GAME, LASER_STRUCTURES } from './content/orbital-laser.js'; import { makeTriadIcon, glossCard, GAMEPLAY_TIPS } from './fx/briefing-cards.js';
+import { createLaserStation, structureLostHtml } from './fx/laser-station.js'; import { LASER_GAME } from './content/orbital-laser.js'; import { makeTriadIcon, glossCard, GAMEPLAY_TIPS } from './fx/briefing-cards.js';
 import { computeBerths, berthIndexFor } from './berths.js'; import { createProgrammeHost } from './fx/programme-host.js'; import { strikeFallPose, droneRidePose, bastionPose, tankViewPose } from './domain/camera-goal.js'; import { createShopRadial } from './fx/shop-radial.js'; import { berthRun, berthHeading, deployU, easeDeploy, deployFraming } from './domain/deploy-path.js';
 import { wantsSecondary, shellsForAll } from './autofire.js';
 import { printPhase, printOffset, printOn, patternSecsFor } from './printpath.js';
@@ -344,13 +344,13 @@ export function initTdTab(root) {
     online: LASER_GAME.online || new URLSearchParams(location.search).get('laser') === 'online', get mobile() { return mobileShell; },
     cellSide: () => cellSide, wallHeight: () => params.wallHeight, centers: () => graph.centers, adj: () => graph.adj, tags: () => dungeon.tags, cellAt: (p) => cellIndex(norm3(p)),
     heart: () => graph.centers[dungeon.heart], heartCell: () => dungeon.heart, lane: () => graph.centers[gunshipRig.lane()], tank: () => player.pos,
-    enemies: () => enemies, breaches: () => spawnPoints.filter((sp) => sp.alive && sp.obj?.userData.breach).sort((a, b) => (sectorRun?.owns(b) ? 1 : 0) - (sectorRun?.owns(a) ? 1 : 0)), towers: () => towers, walls: () => storyBase?.walls?.() ?? [], anchors: () => storyBase?.anchors?.() ?? new Set(),
+    enemies: () => enemies, breaches: () => spawnPoints.filter((sp) => sp.alive && sp.obj?.userData.breach && !sp.obj.userData.keep).sort((a, b) => (sectorRun?.owns(b) ? 1 : 0) - (sectorRun?.owns(a) ? 1 : 0)), towers: () => towers, walls: () => storyBase?.walls?.() ?? [], anchors: () => storyBase?.anchors?.() ?? new Set(),
     burnBody: (e) => damageEnemy(e, t, e.hp + 1, true, 'laser'), seal: (sp) => killPortal(sp, 'laser'), burnTower: (tw) => destroyTower(tw), burnWall: (w) => storyBase?.dropWall(w.index),
     breakCells: (cells) => { if (cells.filter((ci) => breachWallCell(ci)).length) rebuildAfterBreach(); }, burnHeart: () => heartHit(heartHP), burnTank: (p) => playerHit('laser', p),
-    structures: () => storyBase?.standing?.() ?? [], burnStructure: (id) => { if (!story || story.lost.has(id)) return; story.lost.add(id); storyBase?.conceal(id); const gone = programmeLose(story.programme, id); if (id === 'radar') laserStation.setOnline(false);   /* A BURNED RADAR TAKES SOL-82 OFFLINE: no uplink, no pass */ if (id === 'bays' && playerHP > 1) { playerHP = 1; syncLifeContainers(); }   /* burned bays lose the spare hulls racked under them */ updateHud(); showToast(`<div class="wave-num">${(LASER_STRUCTURES[id]?.label ?? id.toUpperCase())} LOST</div><div class="wave-role">burned by SOL-82${gone ? ` \u00b7 ${gone} offline` : ''}</div>`, 3200); },   /* OURS UNDER THE BEAM was the warning; this is the bill */ explode: (use, p) => explode(use, p), brief: (id) => showBrief(id), loop: (key) => sfx.loop(key), views: () => storyViews, canvas: () => renderer.domElement, fov: () => camera.fov,
+    structures: () => storyBase?.standing?.() ?? [], burnStructure: (id) => { if (!story || story.lost.has(id)) return; story.lost.add(id); storyBase?.conceal(id); const gone = programmeLose(story.programme, id); if (id === 'radar') laserStation.setOnline(false);   /* A BURNED RADAR TAKES SOL-82 OFFLINE: no uplink, no pass */ if (id === 'bays' && playerHP > 1) { playerHP = 1; syncLifeContainers(); }   /* burned bays lose the spare hulls racked under them */ updateHud(); showToast(structureLostHtml(id, gone), 3200); },   /* OURS UNDER THE BEAM was the warning; this is the bill */ explode: (use, p) => explode(use, p), brief: (id) => showBrief(id), loop: (key) => sfx.loop(key), views: () => storyViews, canvas: () => renderer.domElement, fov: () => camera.fov,
     paused: (v) => { const was = paused; if (v !== undefined) paused = v; return was; }, togglePause: () => togglePause(),   /* the seat's P shows the pause card, as ESC does (2026-09-25) */
-    vacate: () => leavePilot(), enter: (fov) => { seatBase = baseFor(seatBase, pilotMode, { view: params.view, fov: camera.fov }); keys.left = keys.right = keys.fast = keys.slow = keys.laser = false; cruise = false; throttle = 0; endShot(); camera.fov = fov; camera.updateProjectionMatrix(); snapCamera(); },   /* OCCUPANCY IS EXCLUSIVE (src/domain/seat-view.js): SOL-82's strip button stops the strip's own handler, so the seat the player was in was never left — the gunship kept the camera while SOL-82 owned the lens (owner, 2026-09-23); `vacate` closes it first */
-    leave: () => restoreSeat(),   /* the lens and the view this chain of seats was entered from (2026-09-15-gunship-track-latched-and-seat-lens-reset, 2026-09-23-seat-changes-robust) */
+    vacate: () => leavePilot(), enter: (fov) => { seatGlide.begin(camera); seatBase = baseFor(seatBase, pilotMode, { view: params.view, fov: camera.fov }); keys.left = keys.right = keys.fast = keys.slow = keys.laser = false; cruise = false; throttle = 0; endShot(); camera.fov = fov; camera.updateProjectionMatrix(); snapCamera(); },   /* OCCUPANCY IS EXCLUSIVE (src/domain/seat-view.js): SOL-82's strip button stops the strip's own handler, so the seat the player was in was never left — the gunship kept the camera while SOL-82 owned the lens (owner, 2026-09-23); `vacate` closes it first */
+    leave: () => { seatGlide.begin(camera); restoreSeat(); },   /* the lens and the view this chain of seats was entered from (2026-09-15-gunship-track-latched-and-seat-lens-reset, 2026-09-23-seat-changes-robust) */
   });
   sfx.arm();
   // THE ALARM IS THE PROOF OF LIFE. Operator, 2026-09-01: waiting out the
@@ -1422,7 +1422,7 @@ export function initTdTab(root) {
   // stuck it. It re-seats — ends any shot, forces third, snaps the goal —
   // and paints what it found on the caption lane so a screenshot carries
   // it. Always on for the shell; ?viewwatch=0 turns it off.
-  let vwOut = 0, vwCool = 0, vwFires = 0;
+  let vwOut = 0, vwCool = 0, vwFires = 0; const diagHtml = (txt) => `<div class="wave-role" style="font-size:9px;text-align:left;white-space:pre-wrap">${txt}</div>`;
   function viewWatch(dt) {
     if (!mobileShell || !playerMesh || playerDown || player.won) return;
     if (vwCool > 0) { vwCool -= dt; return; }
@@ -1459,7 +1459,7 @@ export function initTdTab(root) {
     }
     console.warn(`VIEWWATCH #${vwFires} ${fixable ? 'recentred' : 'REPORTED (re-seating would not help)'}: ${before}`);
     if (toastEl) {
-      toastEl.innerHTML = `<div class="wave-role" style="font-size:9px;text-align:left;white-space:pre-wrap">VIEWWATCH #${vwFires} ${before}</div>`;
+      toastEl.innerHTML = diagHtml(`VIEWWATCH #${vwFires} ${before}`);
       toastEl.classList.remove('hidden');
       setTimeout(() => toastEl.classList.add('hidden'), 6000);
     }
@@ -1572,7 +1572,7 @@ export function initTdTab(root) {
     }
   }
 
-  const camGoal = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() }, seatGlide = createSeatGlide();
+  const camGoal = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() }, seatGlide = createSeatGlide({ hold: () => paused });
   // two more of the same, for blending between two framings (the cold open)
   // two spare pose slots, for blending one framing into another
   const camA = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
@@ -4384,7 +4384,7 @@ export function initTdTab(root) {
       if (!sp.alive) continue;   // its gate died while it was queued
       if(!gameBreaches.ready(sp.obj)){spawnQueue.unshift({...entry,at:spawnClock});break;}
       const spec = ENEMY_SPEC[type];
-      const obj = makeDotEnemy(type, { walker: CREATURE_TINTS[type], walkerHi: accentFor(type) });
+      const obj = makeDotEnemy(type, { walker: CREATURE_TINTS[type], walkerHi: accentFor(type) }, entry.dens);
       const size = spec.size * 0.7;
       const scale0 = cellSide * size;
       obj.scale.setScalar(scale0); obj.userData.s0 = scale0;
@@ -8622,7 +8622,7 @@ export function initTdTab(root) {
     if (story && automated() && !frozen && !player.won) laserStation.tick(dt);   // SOL-82: the pass clock once online, the seat's hands, the beam
     updateCameraGoal();
 
-    if (pilotMode && pilot && !pilot.isMap()) {
+    if ((pilotMode && pilot && !pilot.isMap()) || seatGlide.active()) {
       seatGlide.place(camera, camGoal, dt);   /* src/fx/seat-glide.js: exactly on the optic, or easing into it after a hand-over */
     } else {
       camera.position.lerp(camGoal.pos, 0.14);
@@ -8691,7 +8691,7 @@ export function initTdTab(root) {
     brief: (id) => showBrief(id),
     tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null),
     // the sinkhole is a spawn point: an orbital strike on it fills it like any other (operator, 2026-09-13)
-    breach: (ci, o) => { const obj = buildPortalObj(ci, 0); obj.userData.quiet = !!o?.quiet; obj.userData.clear = o?.clear; scene.add(obj); const sp = { ci, alive: true, obj, hp: 3, found: true }; if (!story.source?.alive) story.source = sp; spawnPoints.push(sp); return sp; },
+    breach: (ci, o) => { const obj = buildPortalObj(ci, 0); obj.userData.quiet = !!o?.quiet; obj.userData.clear = o?.clear; obj.userData.keep = !!o?.keep; scene.add(obj); const sp = { ci, alive: true, obj, hp: 3, found: true }; if (!story.source?.alive) story.source = sp; spawnPoints.push(sp); return sp; },
     sourceAlive: () => !!story.source?.alive,
     briefing: () => !!briefQ,
     screenOpen: () => !!syntheticModal?.isOpen(),
@@ -8883,7 +8883,7 @@ export function initTdTab(root) {
     // console, and the fact that decides a "the tank is not in view" report
     // (the tank's screen-y, the visual viewport vs the canvas) is only
     // measurable THERE
-    const onScreen = (txt) => { if (mobileShell && toastEl) { toastEl.innerHTML = `<div class="wave-role" style="font-size:9px;text-align:left;white-space:pre-wrap">${txt}</div>`; toastEl.classList.remove('hidden'); } };
+    const onScreen = (txt) => { if (mobileShell && toastEl) { toastEl.innerHTML = diagHtml(txt); toastEl.classList.remove('hidden'); } };
     const line = (k) => {
       const cp = camera.position;
       const ndc = new THREE.Vector3(...player.pos).project(camera);
@@ -9164,7 +9164,7 @@ export function initTdTab(root) {
         return launchTowerSeeker(tw,from,target,runContext.time);
       },
       openBuildMenu: () => {
-        endShot(); 
+        endShot();
         const ci = dungeon.tags.findIndex((tag, i) => !placeError(i) && !towerByCell.has(i));
         if (ci < 0) return false;
         openShop(ci, innerWidth / 2, innerHeight / 2); return true;
@@ -9185,9 +9185,9 @@ export function initTdTab(root) {
       // (emergence only runs from a real breach)
       spawnFodder: (n, type = 'amoeba') => { if (!story) return 0; if (!story.source?.alive) storyApi.breach(gunshipRig.far()); for (let i = 0; i < n; i++) storyApi.spawn(type, story.source.ci, { spread: 0.8, delay: i * 0.12 }); return n; },
       clearSector: () => {
-        endShot(); 
-        
-        paused = false; 
+        endShot();
+
+        paused = false;
         spawnQueue.length = 0;
         for (const e of enemies) { e.alive = false; scene.remove(e.obj); }
         for (const sp of spawnPoints) { sp.alive = false; scene.remove(sp.obj);disposeObj(sp.obj); }

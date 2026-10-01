@@ -1340,6 +1340,33 @@ try{
  await evaluate(`${T}.sectorClearField()`);
  await until(`${T}.state().programme.broke===0`,150000).catch(async()=>assert.fail(`Isao prints the wall shut (${JSON.stringify((await st()).programme)})`));
  current='skip-tutorial-side-wall-mended';await finish();
+ } else if(args.includes('--canyon')) {
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`);
+ // THE CANYON (owner, 2026-10-01: "let's have it used the first time at the antipode, far from all other sentries; a huge number
+ // of ennemies, 5x the usual, in a long canyon, easy target for the SOL. a satisfying use of its immense power"): sector 3 cuts a canyon
+ // at the antipode, hundreds rise at its deep end, and SOL-82's first pass comes over it with the player seated through a glide; the
+ // beam walked down the canyon takes them by the score
+ await go('skip-tutorial-canyon','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=3#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ await until(`${T}.state().sector.name==="THE CANYON"`,60000).catch(async()=>assert.fail(`sector 3 is the canyon (${JSON.stringify((await st()).sector)})`));
+ {const s=await st();assert(s.sector.canyon&&s.sector.canyon.floor>20,`the canyon is cut (${JSON.stringify(s.sector.canyon)})`);}
+ const glides0=(await st()).glide.n;
+ await until(`${T}.state().performance.enemies>=250`,60000).catch(async()=>assert.fail(`the swarm rises (${(await st()).performance.enemies} alive)`));
+ await until(`${T}.state().laser.seated && ${T}.state().laser.special`,60000).catch(async()=>assert.fail(`SOL-82's canyon pass and its seat (${JSON.stringify((await st()).laser)})`));
+ {const s=await st(),L=(await import('../src/content/sectors.js')).CANYON;assert.equal(s.laser.radius,L.pass.radius,'the canyon\'s wide beam');assert(s.laser.energy>=L.pass.energy-0.5,`the canyon's long burn (${s.laser.energy})`);
+  assert(s.glide.n>glides0,'the camera glided into the seat');}
+ await delay(3500);current='skip-tutorial-canyon-seat';await finish();
+ {const before=(await st()).laser.burned.bodies,t0=Date.now();let frames=null;
+  await evaluate(`window.__fr=[];(function f(t){window.__fr.push(t);if(window.__fr.length<600)requestAnimationFrame(f);})(performance.now())`);
+  /* as a player would: the trigger held and the beam walked down the canyon from the deep end toward its mouth */
+  const mouth=(await st()).sector.canyon.mouth;await evaluate(`${T}.laserSteer(${mouth})`);await evaluate(`${T}.laserHold(true)`);
+  for(let i=0;i<120;i++){const S=await st(),s=S.laser;if(i%4===0)console.log(`  canyon t+${i/4}s heart ${S.integrity?.heart} hulls ${S.hulls} phase ${S.sector.phase} alive ${S.performance.enemies} burned ${s.burned.bodies} tank ${s.burned.tank} heartBurn ${s.burned.heart}`);if(!s.overhead||s.energy<=0.5)break;await delay(250);}
+  await evaluate(`${T}.laserHold(false)`);
+  frames=await evaluate('(f=>{const d=[];for(let i=1;i<f.length;i++)d.push(f[i]-f[i-1]);d.sort((a,b)=>a-b);return {n:d.length,median:+d[d.length>>1].toFixed(1),p95:+d[Math.floor(d.length*0.95)].toFixed(1)};})(window.__fr)');
+  const s=await st();console.log(`  canyon: ${s.laser.burned.bodies-before} burned in ${((Date.now()-t0)/1000).toFixed(0)} s, ${s.performance.enemies} left, frames ${JSON.stringify(frames)}`);
+  assert(s.laser.burned.bodies-before>=100,`the beam takes them by the score (${s.laser.burned.bodies-before})`);
+  assert(!String(s.sector.phase).startsWith('lost'),`the colony holds while the player burns the far side (${s.sector.phase})`);}
+ current='skip-tutorial-canyon-burn';await finish();
  } else if(args.includes('--showcase')) {
  // THE SHOWCASE (owner, 2026-09-24; docs/log/entries/2026-09-24-intro-simplified.json). FOUR BEATS, and each one drives a
  // real system in a real run of the skipped world. So this step does not look at the rail's intentions — it photographs
@@ -2022,7 +2049,8 @@ try{
  const stripClick=async(sel,wait=1600)=>{await evaluate(`document.querySelector("#story-views ${sel}").click()`);await delay(wait);return seat();};
  /* a LEAVE is read one frame later, not two seconds later: leavePilot snaps the camera onto the hull's goal, and after that the
     chase camera eases (0.14 a frame) behind a tank that drives itself, so a late reading measures the follow's lag, not the restore */
- const toTank=()=>stripClick('[data-view=tank]',300);
+ /* leaving SOL-82's seat glides back (2026-10-01, src/fx/seat-glide.js) and lands exactly on the restored pose: read it the moment the glide ends */
+ const toTank=async()=>{await stripClick('[data-view=tank]',300);await until('!window.__stalheartTest.state().glide.active',6000).catch(async()=>assert.fail(`the glide back ends (${JSON.stringify(await evaluate('[window.__stalheartTest.state().glide,window.__stalheartTest.state().paused,window.__stalheartTest.seatState()]'))})`));return seat();};
  const armPass=async()=>{await evaluate('window.__stalheartTest.laserOnline(true)');if(!await evaluate('window.__stalheartTest.state().laser.overhead'))await evaluate('window.__stalheartTest.laserPassNow()');
   await until('window.__stalheartTest.state().laser.overhead',10000);await until('!document.querySelector("#story-views [data-view=laser]").disabled',10000);};
  await go('seats-load','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=6&phase=expedition&laser=online&gunship=station#td');

@@ -7,7 +7,7 @@
 // Composition only: the rules are src/domain/sectors.js, sector-stats.js and gate-integrity.js with the numbers in
 // src/content/sectors.js. The controller hands in hooks (spawning, sealing, paying, briefing, pausing, polling) and calls
 // the returned object at its real sites; nothing here imports the controller.
-import { SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, SECTOR_STATS, SECTOR_STAMPS, SECTOR_RECORDS, SECTOR_TIMING, SECTOR_GATE, BELT_OF, BREACH_CLOSERS, BACK_OMENS, BACK_SCRAMBLE, SIDE_BREACH } from '../content/sectors.js';
+import { SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, SECTOR_STATS, SECTOR_STAMPS, SECTOR_RECORDS, SECTOR_TIMING, SECTOR_GATE, BELT_OF, BREACH_CLOSERS, BACK_OMENS, BACK_SCRAMBLE, SIDE_BREACH, CANYON } from '../content/sectors.js';
 import { omenDue } from '../domain/back-omens.js';
 import { GUNSHIP_GUN_ORDER } from '../content/gunship.js';
 import { snapshot as programmeSnapshot } from '../domain/build-programme.js';
@@ -42,7 +42,7 @@ export function killSource(src, via = null) {
 // hooks: see the controller's createSectorRun call (src/td-tab.js). Every one is required unless marked optional there.
 export function createSectorRun(h) {
   const story = h.story, api = h.api ?? {};
-  let phase = 'idle', def = null, sector = null, stats = null, left = 0, at = 0, pending = [], cardLeft = 0, feast = null, backOpenedAt = null, campaignShown = false, lastPoll = null, lastReport = null, quiet = false, doorAt = null;
+  let phase = 'idle', def = null, sector = null, stats = null, left = 0, at = 0, pending = [], cardLeft = 0, feast = null, backOpenedAt = null, campaignShown = false, lastPoll = null, lastReport = null, quiet = false, doorAt = null, canyon = null;   // canyon: { plan, id, phase, upAt } in THE CANYON
   const sps = new Map(), reports = [], omens = new Set();
   let doorsQuiet = true;   // no sector body within quietCells of any standing door, as of the last tick
   let readySince = null;   // when the story first said it was ready for the first sector
@@ -90,15 +90,17 @@ export function createSectorRun(h) {
   const feastFor = (b) => !!def?.feast && b.side === 'back' && b.wavesReleased === 0;
   function waveOf(b, wave) {
     if (feastFor(b)) return { entries: def.feast.entries, pace: def.feast.pace ?? SECTOR_TIMING.pace };
+    // THE CANYON'S SWARM: `swarm` sector pulses (two breaches' worth each) of the ladder wave `ladder` past the sector's start, at once
+    if (b.side === 'canyon') return { entries: computeWavePlan(def.waveBase + CANYON.ladder, 1, h.waveSize, def.threat * (h.threatMult ?? 1)).entries.map((e) => ({ ...e, count: e.count * CANYON.swarm * 2 })), pace: SECTOR_TIMING.pace, spread: CANYON.spread, dens: CANYON.dens };
     const entries = computeWavePlan(wave, 1, h.waveSize, def.threat * (h.threatMult ?? 1)).entries.map((e) => ({ ...e }));
     if (def.hardcoresEveryWave && h.hardcore) entries.push({ type: h.hardcore, count: def.hardcores ?? 1 });
     return { entries, pace: SECTOR_TIMING.pace };
   }
   // the queue entries for a wave, spread over it the way the board's own spawner spreads a wave (src/domain/wave-spread.js)
-  function queueOf({ entries, pace }, sp) {
+  function queueOf({ entries, pace, spread = 0.8, dens }, sp) {
     const gap = waveGap(entries, h.spawnGap?.spread ?? 3.2, h.spawnGap?.max ?? 0.45);
     const out = []; let n = 0;
-    for (const { type, count } of entries) for (let k = 0; k < count; k++) out.push({ type, sp, at: n++ * gap, spread: 0.8, pace });
+    for (const { type, count } of entries) for (let k = 0; k < count; k++) out.push({ type, sp, at: n++ * gap, spread, pace, ...(dens ? { dens } : {}) });
     return out;
   }
   // one breach sends its next wave: the books count it, a feast is noted, and its queue entries come back (null: nothing to send)
@@ -113,7 +115,7 @@ export function createSectorRun(h) {
   function nextPulseSize() {
     let n = 0;
     for (const b of sector?.breaches ?? []) {
-      const next = b.state === 'open' && sps.get(b.id)?.alive ? nextWaveIndex(sector, b.id) : null;
+      const next = b.state === 'open' && b.side !== 'canyon' && sps.get(b.id)?.alive ? nextWaveIndex(sector, b.id) : null;   // the canyon's swarm is out of sight, outside the budget
       if (next !== null) n += waveCount(waveOf(b, next).entries);
     }
     return n;
@@ -138,7 +140,7 @@ export function createSectorRun(h) {
     (h.refill ?? api.refillArrays)?.(); api.setLaserOnline?.(!!def.laser);   // the solar array's reserve refills at every sector start
     if (def.backDoor && backOpenedAt === null) { api.openBackDoor?.(); backOpenedAt = now(); }
     const doorNow = backOpenedAt !== null && now() - backOpenedAt < 1;   // the mouth fell this very sector start
-    const sides = Object.entries(def.breaches).map(([side, k]) => `${k} ${side === 'back' ? 'BEHIND THE BAYS' : side === 'side' ? 'BY THE WALL' : 'ON THE GATE SIDE'}`).join(' · ');
+    const sides = Object.entries(def.breaches).map(([side, k]) => `${k} ${side === 'back' ? 'BEHIND THE BAYS' : side === 'side' ? 'BY THE WALL' : 'ON THE GATE SIDE'}`).join(' · ') + (def.canyon ? ' · A SWARM IN THE CANYON' : '');
     card([`SECTOR ${n} · ${def.name}`, `BREACHES ${Object.values(def.breaches).reduce((a, b) => a + b, 0)} · ${sides}`, 'CLOSE ONE EARLY AND ITS REMAINING WAVES PAY NOTHING']);
     // the collapse carries its own line (the feast); Isao's queue is one deep, so the sector's line would only push it out
     if (!doorNow) h.brief(briefOf(n));
@@ -171,21 +173,30 @@ export function createSectorRun(h) {
     for (let i = 0; i < f.dist.length; i++) if (f.dist[i] >= ring - 6 && f.dist[i] <= ring + 3 && clear(i)) gateSide.push({ cell: i, side: 'gate', hops: f.dist[i], pos: f.centers[i] });
     const picks = pickBreachCells({ candidates: [...side, ...gateSide, ...back], want, minSeparation: SECTOR_PLACEMENT.minSeparationCells * f.cellSide, exclusion: SECTOR_PLACEMENT.exclusionCells * f.cellSide, excluded: f.excluded.map((ci) => f.centers[ci]), bandHops: SECTOR_PLACEMENT.bandHops, rng: h.rng });
     if (!picks.length) picks.push({ cell: f.fallback(), side: 'gate' });
+    // THE CANYON (sector 3): cut at the antipode as the sector begins, its swarm's breach at the deep end after the sector's own
+    canyon = null;
+    if (def.canyon) { const plan = api.canyonPlan?.(); if (plan) { api.canyonCut(plan); picks.push({ cell: plan.spawn, side: 'canyon' }); canyon = { plan, id: LETTERS[picks.length - 1], phase: 'rising', upAt: null }; } }
     sector = makeSector(def, picks.map((p, i) => ({ id: LETTERS[i], side: p.side, cell: p.cell })), now());
-    picks.forEach((p, i) => { if (p.carve) sector.breaches[i].carve = p.carve; });
+    picks.forEach((p, i) => { if (p.carve) sector.breaches[i].carve = p.carve; if (p.side === 'canyon') sector.breaches[i].wavesPlanned = 1; });   // the canyon sends its swarm once
     // WHEN EACH OPENS: one after another, `staggerSeconds` apart (one breach-opening spike at a time); behind a mouth that fell this
     // very sector start, not before `backDoorLead`; and in a feast sector the gate side waits for the scramble (tick sets it)
     const t0 = now();
     const feastHolds = !!def.feast && sector.breaches.some((b) => b.side === 'back');   // no back breach placed, no feast to wait for
     sector.breaches.forEach((b, i) => { b.openAt = feastHolds && b.side !== 'back' ? Infinity : t0 + i * SECTOR_TIMING.staggerSeconds + (doorNow && b.side === 'back' ? SECTOR_TIMING.backDoorLead : 0); });
+    // THE CANYON FIRST: the base's own breaches wait for SOL-82's pass over it to end (the player is in its seat on the far side of the
+    // world, and the towers alone lose the base inside a minute, 2026-09-24-pacing-probe); the canyon opens at once
+    if (canyon) for (const b of sector.breaches) b.openAt = b.side === 'canyon' ? t0 : Infinity;
     pending = sector.breaches.map((b) => b.id);
     phase = 'fighting';
   }
 
-  function aliveSectorEnemies() {
+  // the sector's live bodies; `budget`: only those the frame budget weighs against the next pulse (the canyon's swarm is out of sight
+  // on the far side of the world and must not hold the base's own waves back)
+  function aliveSectorEnemies(budget = false) {
     let n = 0;
-    for (const e of h.enemies()) if (e.alive && !e.guard && !e.harmless) n++;   // sector 0's harmless leftovers are not the sector's
-    for (const q of h.queue()) if (!q.guard && !q.harmless && q.sp?.alive) n++;
+    const far = budget && canyon ? sps.get(canyon.id) : null;
+    for (const e of h.enemies()) if (e.alive && !e.guard && !e.harmless && !(far && e.breachSource === far.obj)) n++;   // sector 0's harmless leftovers are not the sector's
+    for (const q of h.queue()) if (!q.guard && !q.harmless && q.sp?.alive && !(far && q.sp === far)) n++;
     return n;
   }
 
@@ -270,6 +281,26 @@ export function createSectorRun(h) {
     h.hud();
   }
 
+  // THE CANYON'S PASS: once the whole swarm is up and has had `seatAfter` seconds to fill the canyon, SOL-82 comes over it with the
+  // canyon's own pass and the player is put in its seat (the game glides the camera there)
+  function tickCanyon(t) {
+    if (!canyon || canyon.phase === 'done') return;
+    if (canyon.phase === 'pass') {   // the pass is over (its overhead and the glide in): the gate side opens
+      if (t - canyon.passAt < CANYON.pass.overhead + CANYON.gateAfter) return;
+      canyon.phase = 'done';
+      for (const b of sector.breaches) if (b.openAt === Infinity) b.openAt = t;
+      h.hud(); return;
+    }
+    const sp = sps.get(canyon.id), b = breachOf(canyon.id);
+    if (!sp || !b || b.wavesReleased < 1 || h.queued(sp)) return;
+    canyon.upAt ??= t;
+    if (t - canyon.upAt < CANYON.seatAfter) return;
+    canyon.phase = 'pass'; canyon.passAt = t;
+    const plan = canyon.plan;
+    api.canyonPass?.({ point: h.centers()[plan.spawn], axis: plan.axis, ...CANYON.pass });
+    h.brief(CANYON.passBrief); h.hud();
+  }
+
   function tick(dt) {
     clock += dt;
     api.backTick?.(dt);   // the back mouth's dust rides the world's clock (src/fx/back-omen.js)
@@ -294,12 +325,15 @@ export function createSectorRun(h) {
       if (!(t >= b.openAt)) continue;
       // a breach that opens once the fight is on opens quietly: no establishing dive under a player who is driving or aiming
       pending.splice(pending.indexOf(id), 1);
-      sps.set(b.id, h.open(b.cell, { quiet: sector.breaches.some((x) => x !== b && sps.has(x.id)), clear: b.side === 'side' ? SIDE_BREACH.clearRadius : undefined })); b.openedAt = t;
+      const far = b.side === 'canyon';   // the canyon's breach opens without the establishing dive (the seat's glide is its reveal) and nothing seals it
+      sps.set(b.id, h.open(b.cell, { quiet: far || sector.breaches.some((x) => x !== b && sps.has(x.id)), clear: b.side === 'side' ? SIDE_BREACH.clearRadius : far ? 0.5 : undefined, keep: far })); b.openedAt = t;
+      if (far) h.brief(CANYON.brief);
       // THE WALL CAN BE BREACHED (owner, 2026-10-01: "a chekov's gun of sorts"): the side breach cuts its lane and breaks the wall
       if (b.side === 'side' && api.breakSide?.(b.carve ?? [])) { b.broke = true; h.callout(SIDE_BREACH.callout, 'co-victory'); h.brief(SIDE_BREACH.brief); }
       retarget(); h.hud();
     }
     tickFeast(t);
+    tickCanyon(t);
     for (const b of sector.breaches) {
       const sp = sps.get(b.id);
       if (b.state !== 'open' || !sp || b.wavesReleased < b.wavesPlanned || h.queued(sp)) continue;
@@ -332,7 +366,7 @@ export function createSectorRun(h) {
     // THE CLOCK (2026-09-24): a pulse may arm whenever a breach that has opened still has waves to send, whatever is alive, as long
     // as the field plus the pulse fit the budget and no feast is being fought. A breach still opening is fine: the release path
     // holds its bodies until the hole is open. Breaches not yet due simply join a later pulse.
-    canRelease: () => !quiet && phase === 'fighting' && !(feast && !feast.scrambled) && sector.breaches.some((b) => b.state === 'open' && sps.get(b.id)?.alive && b.wavesReleased < b.wavesPlanned) && pulseFits(aliveSectorEnemies(), nextPulseSize(), SECTOR_TIMING.aliveBudget),
+    canRelease: () => !quiet && phase === 'fighting' && !(feast && !feast.scrambled) && sector.breaches.some((b) => b.state === 'open' && sps.get(b.id)?.alive && b.wavesReleased < b.wavesPlanned) && pulseFits(aliveSectorEnemies(true), nextPulseSize(), SECTOR_TIMING.aliveBudget),
     // the seconds from one pulse leaving the breaches to the next (null: no sector is fighting, the board keeps its own gap)
     pulseGap: () => (phase === 'fighting' && def ? def.pulse ?? null : null),
     // a pulse is over once its bodies have left the queue; guards waiting at expedition sites are not the sector's
@@ -379,7 +413,7 @@ export function createSectorRun(h) {
     // the colony is lost: LAST TRANSMISSION after the wreck has played. False when no sector is running (the caller shows its own)
     lose() { if (!['brief', 'fighting', 'secure'].includes(phase)) return false; phase = 'lost'; left = SECTOR_TIMING.lostHold; h.hud(); return true; },
     state: () => ({
-      phase, n: def?.n ?? 0, name: def?.name ?? null, doorAt, feast: feast ? { at: +feast.at.toFixed(1), scrambled: !!feast.scrambled } : null, omens: [...omens], strays: phase === 'idle' ? 0 : (h.breaches?.() ?? []).filter((sp) => sp.alive && idOf(sp) === null).length, secure: ['secure', 'debrief', 'campaign'].includes(phase), debriefOpen: !!story.debrief?.isOpen(), reports: reports.length,
+      phase, n: def?.n ?? 0, name: def?.name ?? null, doorAt, canyon: canyon ? { phase: canyon.phase, id: canyon.id, spawn: canyon.plan.spawn, mouth: canyon.plan.mouth, floor: canyon.plan.floor.length, rock: canyon.plan.rock.length } : null, feast: feast ? { at: +feast.at.toFixed(1), scrambled: !!feast.scrambled } : null, omens: [...omens], strays: phase === 'idle' ? 0 : (h.breaches?.() ?? []).filter((sp) => sp.alive && idOf(sp) === null).length, secure: ['secure', 'debrief', 'campaign'].includes(phase), debriefOpen: !!story.debrief?.isOpen(), reports: reports.length,
       gate: gate ? { hp: +gate.hp.toFixed(1), broken: gate.broken, breaks: gate.breaks } : null,
       gates: integrities().map((g) => ({ id: g.id, hp: +g.hp.toFixed(1), max: g.max, broken: g.broken, breaks: g.breaks })),
       breaches: (sector?.breaches ?? []).map((b) => ({ id: b.id, side: b.side, cell: b.cell, broke: !!b.broke, opened: sps.has(b.id), live: b.state === 'open' && !!sps.get(b.id)?.alive, wavesReleased: b.wavesReleased, wavesPlanned: b.wavesPlanned, closedBy: b.closedBy, leftInField: { ...b.leftInField }, bonus: { ...b.bonus } })),

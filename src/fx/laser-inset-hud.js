@@ -304,7 +304,7 @@ export function createInsetHud(container) {
           f.burning ? { s: `P ${fix(T.powerMW, 1)} MW`, c: HOT } : { s: 'P STBY', c: DIM },
           `I ${fix(irradiance, 2)} MW/m²  Ø ${fix(f.radiusM * 2, 1)} M`,
           `Q ${fix(f.deliveredMJ, 0)} / ${fix(f.capMJ, 0)} MJ`,
-          { s: `RANGE ${Math.round(f.contactArcM)} / ${Math.round(f.limitM)} M`, c: beyond ? tone : FG },
+          { s: Number.isFinite(f.limitM) ? `RANGE ${Math.round(f.contactArcM)} / ${Math.round(f.limitM)} M` : `RANGE ${Math.round(f.contactArcM)} M`, c: beyond ? tone : FG },   /* a pass laid over a place has no limit */
         ] },
       ],
       column: [

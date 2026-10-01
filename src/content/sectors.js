@@ -33,9 +33,13 @@ export const SECTORS = freeze([
   { n: 2, name: 'THE LONG LANE', breaches: { gate: 2 }, waves: 4, ladderStart: 1, threat: 1.5, pulse: 15, held: { kg: 45, points: 450 },
     gunshipCall: true, backDoor: false, laser: false, hardcoresEveryWave: false, new: null,
     brief: ['More of them this time, and closer together.', 'Keep the lane clear and the gate whole.'] },
-  { n: 3, name: 'THE SKY ANSWERS', breaches: { gate: 2 }, waves: 4, ladderStart: 2, threat: 1.8, pulse: 14, held: { kg: 50, points: 500 },
+  // THE CANYON (owner, 2026-10-01: "let's have it used the first time at the antipode, far from all other sentries; a huge number of
+  // ennemies, 5x the usual, in a long canyon, easy target for the SOL. a satisfying use of its immense power"; asked, he chose this
+  // sector for it, survivors marching on the base, the player seated with a glide). One gate breach keeps the base busy; the swarm
+  // comes up at the far end of a canyon cut at the antipode (CANYON) and SOL-82's first pass is laid over it
+  { n: 3, name: 'THE CANYON', breaches: { gate: 1 }, waves: 4, ladderStart: 2, threat: 1.8, pulse: 14, held: { kg: 50, points: 500 }, canyon: true,
     gunshipCall: true, backDoor: false, laser: true, hardcoresEveryWave: false, new: 'SOL-82 online',
-    brief: ['SOL-82 is ours now. Twenty seconds of sky on every pass.', 'Mind where you point it: it burns ours too.'] },
+    brief: ['A tremor on the far side of the world. A swarm, massing in a canyon.', 'SOL-82 comes online over it. All of it, in one place.'] },
   { n: 4, name: 'THE PRESS', breaches: { gate: 2 }, waves: 4, ladderStart: 4, threat: 2.1, pulse: 13, held: { kg: 55, points: 550 },
     gunshipCall: true, backDoor: false, laser: true, hardcoresEveryWave: false, new: null,
     brief: ['They are pressing harder. The lane is never empty now.', 'Spend what you have. The colony can print more.'] },
@@ -47,6 +51,16 @@ export const SECTORS = freeze([
     gunshipCall: true, backDoor: false, laser: true, hardcoresEveryWave: false, new: 'a breach through the wall',
     brief: ['Something is digging beside the gate. Close to the sentries.', 'One mouth on the lane, and one where it comes up.'] },
 ]);
+
+// THE CANYON, in cells: `length` long and open `halfWidth` either side of its centre line, `wall` cells of rock beyond that and
+// across its deep end (src/domain/canyon.js). The swarm is `swarm` times a sector pulse of the ladder wave `ladder` past the sector's
+// start, every one up at the deep end at once (`spread` cells of scatter as they rise, each drawn with `dens` of a body's dots: hundreds
+// of full clouds packed under SOL-82's camera took the frame from 60 to 18 fps); `seatAfter` seconds after the last is up the
+// pass is laid over the canyon with `pass` (overhead and energy in seconds, radius in metres, slew m/s), the player in its seat.
+// The base's own breach opens `gateAfter` seconds after the pass's overhead ends (the player is in SOL-82's seat until then).
+// Isao: `brief` as the swarm rises, `passBrief` as SOL-82 comes over it
+export const CANYON = freeze({ length: 48, halfWidth: 1.2, wall: 3, swarm: 5, ladder: 2, spread: 1.2, dens: 0.35, seatAfter: 6,
+  pass: { overhead: 45, energy: 25, radius: 12, slew: 16 }, gateAfter: 4, brief: 'canyon_rises', passBrief: 'canyon_pass' });
 
 // WHERE THE SIDE BREACH COMES UP (src/domain/side-breach.js), in cells: on open ground outside the clearing, between minWall and
 // maxWall from the nearest wall, within reach of a sentry socket (the Rotor and the Quiver reach 3.5 to 3.6, src/towers.js) and at least

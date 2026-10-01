@@ -348,6 +348,16 @@ export const BRIEFS = {
   sector_door: { id: 'sector_door', face: 'surprised', title: BACK_DOOR_SECTOR.name, lines: [...BACK_DOOR_SECTOR.brief] },
   sector_both: { id: 'sector_both', face: 'determined', title: BOTH_WALLS_SECTOR.name, lines: [...BOTH_WALLS_SECTOR.brief] },
   sector_next: { id: 'sector_next', face: 'determined', title: 'THE NEXT SECTOR', lines: [...SECTOR_GENERATOR.brief] },
+  // THE CANYON (sector 3, owner 2026-10-01: SOL-82's first use, "a satisfying use of its immense power"): the swarm rises at the far
+  // end of the canyon on the far side of the world, and SOL-82's first pass comes over it with the player in its seat
+  canyon_rises: {
+    id: 'canyon_rises', face: 'scan', title: 'THE FAR SIDE',
+    lines: ['There they are: the far side of the world, a canyon full of them.', 'Hundreds. They will walk here if we let them.'],
+  },
+  canyon_pass: {
+    id: 'canyon_pass', face: 'determined', title: 'SOL-82 · THE CANYON',
+    lines: ['SOL-82 is over the canyon. The beam is yours.', 'Hold it and walk it down the canyon. Leave nothing to walk here.'],
+  },
   // THE SIDE BREACH (sector 5, owner 2026-10-01: "it reveals that the walls can be breached"): the wall beside the gate is broken
   side_breach: {
     id: 'side_breach', face: 'surprised', title: 'THE WALL IS BREACHED',

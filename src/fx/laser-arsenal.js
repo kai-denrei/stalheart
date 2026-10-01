@@ -29,6 +29,10 @@ export function createLaserArsenal(scene, host) {
   // THE GAME'S PASS (LASER_GAME.pass): live copies of the lab's orbit and beam, so a pass can carry its own numbers
   const orbit = { ...LASER_ORBIT, overhead: LASER_GAME.pass.overhead }, beam = { ...LASER_BEAM, energy: LASER_GAME.pass.energy, radius: LASER_GAME.pass.radius };
   const st = makeLaser(orbit, beam);
+  // A PASS OVER A PLACE (THE CANYON, src/fx/sector-run.js): its own numbers for one pass, the beam laid on the place, forward along
+  // `axis`, no range call; the next close puts the game's pass back. null when no such pass is overhead
+  let special = null;
+  const normalPass = () => { orbit.overhead = LASER_GAME.pass.overhead; Object.assign(beam, { energy: LASER_GAME.pass.energy, radius: LASER_GAME.pass.radius, slew: LASER_BEAM.slew }); laser?.tune({ radius: beam.radius }); };
   let online = !!host.online, seated = false, laser = null, burningWas = false, contactT = 0, smokeT = 0, voice = null;
   let aimArc = 0, passes = 0, burnSeconds = 0, testTarget = null, testHeld = false, anchors = null, breakMs = 0;
   const burned = { bodies: 0, breaches: 0, walls: 0, rocks: 0, towers: 0, heart: 0, tank: 0, structures: 0 };
@@ -47,6 +51,7 @@ export function createLaserArsenal(scene, host) {
   // lab's trench direction in the game's own terms.
   function forwardAt(p, out = new THREE.Vector3()) {
     n.fromArray(p).normalize();
+    if (special?.axis) { out.fromArray(special.axis).addScaledVector(n, -out.dot(n)); if (out.lengthSq() > 1e-12) return out.normalize(); }   // the canyon's own axis
     const h = host.heart(), l = host.lane();
     out.set(h[0] - l[0], h[1] - l[1], h[2] - l[2]);
     out.addScaledVector(n, -out.dot(n));
@@ -148,7 +153,7 @@ export function createLaserArsenal(scene, host) {
 
   function edge(e) {
     if (e === 'arrive') { passes++; host.brief?.('laser_pass'); }
-    if (e === 'close') { lift(); host.passEnded?.(); }
+    if (e === 'close') { lift(); if (special) { special = null; normalPass(); st.energy = beam.energy; } host.passEnded?.(); }
     return e;
   }
 
@@ -233,6 +238,7 @@ export function createLaserArsenal(scene, host) {
     reset() {
       lift();
       laser?.clear();
+      special = null; normalPass();
       Object.assign(st, makeLaser(orbit, beam));
       passes = burnSeconds = aimArc = breakMs = 0;
       for (const k of Object.keys(burned)) burned[k] = 0;
@@ -240,6 +246,17 @@ export function createLaserArsenal(scene, host) {
       online = !!host.online;
     },
     passNow() { if (online && st.phase !== 'overhead') edge(stepLaser(st, st.left, orbit, beam)); },
+    // a pass over `point` (a unit direction) now, with { overhead, energy, radius, slew } for this pass only and forward along `axis`
+    passOver({ point, axis = null, overhead, energy, radius, slew }) {
+      online = true;
+      special = { axis };
+      orbit.overhead = overhead ?? orbit.overhead; Object.assign(beam, { energy: energy ?? beam.energy, radius: radius ?? beam.radius, slew: slew ?? beam.slew });
+      laser?.tune({ radius: beam.radius });
+      if (st.phase !== 'overhead') edge(stepLaser(st, st.left, orbit, beam)); else st.left = orbit.overhead;
+      st.energy = beam.energy; st.contact = onSphere(point, metres()); st.fresh = false; st.speed = 0; testTarget = null;
+    },
+    range: () => (special ? Infinity : LASER_GAME.range),   // the scope's in-range call: everything is in range on a pass laid over a place
+    special: () => !!special,
     strip: () => laserStrip(st, online, beam, LASER_GAME.lowEnergy),
 
     // the harness's hands: a world point to aim at (null lets the seat's own pointer and keys aim again) and the trigger
@@ -260,7 +277,7 @@ export function createLaserArsenal(scene, host) {
 
     stats: () => ({ passes, seconds: burnSeconds }),   // cheap: the sector loop polls it every frame
     state: () => ({
-      online, phase: st.phase, overhead: st.phase === 'overhead', left: +st.left.toFixed(2), energy: +st.energy.toFixed(2),
+      online, phase: st.phase, overhead: st.phase === 'overhead', left: +st.left.toFixed(2), energy: +st.energy.toFixed(2), special: !!special, radius: beam.radius,
       burning: st.burning, contact: contactU()?.map((v) => +v.toFixed(5)) ?? null, seated, passes, seconds: +burnSeconds.toFixed(2),
       under: { ...under }, underNames: [...underNames], burned: { ...burned }, trail: laser ? laser.trail.count : 0, smoke: laser ? laser.state().puffs : 0, breakMs: +breakMs.toFixed(1),
       /* metres from the contact to the nearest live body: a burn that takes nothing can say how far it missed */

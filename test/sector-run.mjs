@@ -1,20 +1,20 @@
 import assert from 'node:assert/strict';
 import { createSectorRun } from '../src/fx/sector-run.js';
-import { SECTORS, SECTOR_TIMING, SECTOR_GATE, SECTOR_DOOR, BACK_DOOR_SECTOR, SIDE_BREACH } from '../src/content/sectors.js';
+import { SECTORS, SECTOR_TIMING, SECTOR_GATE, SECTOR_DOOR, BACK_DOOR_SECTOR, SIDE_BREACH, CANYON } from '../src/content/sectors.js';
 
 // THE SECTOR CLOCK (docs/superpowers/specs/2026-09-24-session-pacing-design.md A and B), driven through fake hooks: no page, no
 // planet. A ring of 120 cells; walking hops from the heart climb 30..59 round it; cells 200.. are the back candidates.
-function world({ firstSector = 1, gate = false, lateStart = true, delivered = [], unlocked = false, sideCandidates = [{ cell: 240, carve: [241, 242, 243] }], backCandidates = [{ cell: 210, hops: 30 }, { cell: 221, hops: 40 }, { cell: 220, hops: 31 }] } = {}) {
+function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 251, axis: [1, 0, 0] }, firstSector = 1, gate = false, lateStart = true, delivered = [], unlocked = false, sideCandidates = [{ cell: 240, carve: [241, 242, 243] }], backCandidates = [{ cell: 210, hops: 30 }, { cell: 221, hops: 40 }, { cell: 220, hops: 31 }] } = {}) {
   const w = { t: 0, enemies: [], queue: [], opened: [], briefs: [], scrambles: 0, backDoors: 0 };
   const centers = [], dist = [];
   for (let i = 0; i < 260; i++) { const a = (i / 120) * Math.PI * 2; centers.push([Math.cos(a), Math.sin(a), i >= 200 ? 1 : 0]); dist.push(i >= 200 ? 30 : 30 + (i % 30)); }
   const story = { sealed: () => false, gateCell: gate ? 5 : -1, lateStart, expeditions: unlocked ? { sites: [{ id: 'a', state: 'delivered' }] } : null };
-  const api = { openBackDoor: () => { w.backDoors++; }, backBreachCandidates: () => backCandidates, /* by default 221 is the farthest, and within a blast of the rim */ backScramble: (k) => { if (k === 0) w.scrambles++; w.rings = (w.rings ?? 0) + 1; }, backOmen: (o) => { (w.omens ??= []).push(o.id); }, sideBreachCandidates: () => sideCandidates, breakSide: (cells) => { (w.broken ??= []).push(...cells); return cells.length; } };
+  const api = { openBackDoor: () => { w.backDoors++; }, backBreachCandidates: () => backCandidates, /* by default 221 is the farthest, and within a blast of the rim */ backScramble: (k) => { if (k === 0) w.scrambles++; w.rings = (w.rings ?? 0) + 1; }, backOmen: (o) => { (w.omens ??= []).push(o.id); }, sideBreachCandidates: () => sideCandidates, canyonPlan: () => canyon, canyonCut: (plan) => { w.cut = plan; }, canyonPass: (o) => { w.pass = o; }, breakSide: (cells) => { (w.broken ??= []).push(...cells); return cells.length; } };
   w.run = createSectorRun({
     story, api, waveSize: 4, threatMult: 1, hardcore: 'knot', spawnGap: { spread: 3.2, max: 0.45 }, store: null, rng: () => 0,
     ready: () => true, firstSector,
     field: () => ({ cellSide: 0.001, centers, dist, rim: centers.map((_, i) => (i % 2 ? 4 : 20)), inside: () => false, excluded: [], farHops: 69, fallback: () => 0 }),   // odd cells lie within a breach's blast of the base's rim
-    open: (cell, o) => { const sp = { ci: cell, alive: true, obj: { cell }, quiet: !!o?.quiet, clear: o?.clear }; w.opened.push(sp); return sp; },
+    open: (cell, o) => { const sp = { ci: cell, alive: true, obj: { cell }, quiet: !!o?.quiet, clear: o?.clear, keep: !!o?.keep }; w.opened.push(sp); return sp; },
     collapse: (sp) => { sp.alive = false; }, breaches: () => w.opened, enemies: () => w.enemies, queue: () => w.queue,
     queued: (sp) => w.queue.some((q) => q.sp === sp), push: (qs) => w.queue.push(...qs), seal: () => {}, clearField: () => {},
     poll: () => ({ passes: 0, drawn: 0, delivered, earned: 0, spent: 0, shieldUp: false, laser: null }),
@@ -166,6 +166,46 @@ function world({ firstSector = 1, gate = false, lateStart = true, delivered = []
   w2.step(0.5);
   assert.deepEqual(w2.run.state().breaches.map((b) => b.side), ['gate', 'gate'], 'no place for it: both on the gate side');
   assert.equal(w2.broken, undefined);
+}
+// THE CANYON (sector 3, owner 2026-10-01: SOL-82's first use): the canyon is cut as the sector begins, its breach opens quietly and
+// unsealable after the gate's, sends one swarm of five two-breach pulses, which the frame budget does not weigh against the base's own
+// waves; once all of it is up and has had its seconds, the pass is laid over the canyon with its own numbers
+{
+  const w = world({ firstSector: 3 });
+  w.step(0.25);
+  let s = w.run.state();
+  assert.equal(s.name, 'THE CANYON');
+  assert.equal(w.cut?.spawn, 250, 'the canyon is cut as the sector begins');
+  assert.deepEqual(s.breaches.map((b) => b.side), ['gate', 'canyon']);
+  assert.equal(s.breaches[1].wavesPlanned, 1, 'the canyon sends its swarm once');
+  w.step(2);
+  const far = w.opened.find((sp) => sp.ci === 250);
+  assert.ok(far && far.quiet && far.keep, 'it opens quietly and nothing seals it');
+  assert.equal(w.opened.length, 1, 'the base\'s breach waits: the player will be in SOL-82\'s seat');
+  assert.ok(w.briefs.includes(CANYON.brief), 'Isao sees them rise');
+  const pulse = w.run.release(w.t), swarm = pulse.filter((q) => q.sp === far);
+  const one = (await import('../src/enemyspec.js')).computeWavePlan(SECTORS[2].ladderStart + CANYON.ladder, 1, 4, SECTORS[2].threat).entries.reduce((n, e) => n + e.count, 0);
+  assert.equal(swarm.length, one * CANYON.swarm * 2, `five two-breach pulses at once (${swarm.length})`);
+  assert.ok(swarm.every((q) => q.spread === CANYON.spread && q.dens === CANYON.dens), 'risen with the canyon\'s scatter, drawn light');
+  w.spawn(pulse);
+  w.step(CANYON.seatAfter - 1);
+  assert.equal(w.pass, undefined, 'the pass waits for the canyon to fill');
+  w.step(1.5);
+  assert.deepEqual([w.pass?.overhead, w.pass?.energy, w.pass?.radius], [CANYON.pass.overhead, CANYON.pass.energy, CANYON.pass.radius], 'the canyon\'s pass, with its own numbers');
+  assert.deepEqual(w.pass.axis, [1, 0, 0], 'forward along the canyon');
+  assert.ok(w.briefs.includes(CANYON.passBrief));
+  assert.equal(w.run.state().canyon.phase, 'pass');
+  assert.equal(w.run.state().secure, false, 'the swarm is still the sector\'s: it must be burned or fought');
+  w.step(CANYON.pass.overhead + CANYON.gateAfter - 1);
+  assert.equal(w.opened.length, 1, 'the gate side still waits while the pass is up');
+  w.step(2);
+  assert.equal(w.opened.length, 2, 'the pass over, the gate side opens');
+  assert.equal(w.run.canRelease(), true, 'the swarm on the far side does not hold the base\'s pulses');
+}
+{
+  const w = world({ firstSector: 3, canyon: null });
+  w.step(0.25);
+  assert.deepEqual(w.run.state().breaches.map((b) => b.side), ['gate'], 'no canyon to be cut: the gate alone');
 }
 // THE SECTOR'S OWN CLOCK: time the world spends frozen or paused (no tick) does not count, so nothing the sector waits for runs
 // out behind a dive shot

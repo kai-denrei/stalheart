@@ -8,11 +8,14 @@
 import { createLaserArsenal } from './laser-arsenal.js';
 import { createLaserSeat } from './laser-seat.js';
 import { createSol82Briefing } from './sol82-briefing.js';
-import { LASER_GAME } from '../content/orbital-laser.js';
+import { LASER_GAME, LASER_STRUCTURES } from '../content/orbital-laser.js';
 
 // host: everything createLaserArsenal takes, plus views() (the story strip or null), canvas() (the game canvas),
 // mobile, paused(value?) (sets the game's pause when given, returns what it was), enter() and leave() (the game's
 // camera and tank on the way in and out), fov() (the game camera's lens, for the harness)
+// THE BILL (td-tab's burnStructure): the toast when the beam takes one of our buildings, and what it switched off with it
+export const structureLostHtml = (id, gone) => `<div class="wave-num">${LASER_STRUCTURES[id]?.label ?? id.toUpperCase()} LOST</div><div class="wave-role">burned by SOL-82${gone ? ` \u00b7 ${gone} offline` : ''}</div>`;
+
 export function createLaserStation(root, scene, host) {
   let seat = null, briefing = null, camOn = true;
   const arsenal = createLaserArsenal(scene, { ...host, passEnded: () => leave() });
@@ -89,6 +92,9 @@ export function createLaserStation(root, scene, host) {
     seated: () => !!seat,
     briefingOpen: () => !!briefing?.isOpen(),
     setOnline: (on) => arsenal.setOnline(on),
+    // THE CANYON'S PASS (src/fx/sector-run.js): the pass laid over a place with its own numbers, and the player in the seat at once, no
+    // briefing (Isao says it); the game glides the camera in (td-tab's enter)
+    passOver(o) { arsenal.passOver(o); return sit(); },
     reset() { leave(); arsenal.reset(); },   // a new run: the seat goes, the scorch and the books with it
 
     stats: () => arsenal.stats(),

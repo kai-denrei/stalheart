@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { firstSectorDue, pulseFits, sectorDef, backDoorNext, makeSector, releaseWave, nextWaveIndex, breachLive, closeBreach, spendBreach, isSecure, summary, forfeitOf, waveYield, pickBreachCells, CLOSERS } from '../src/domain/sectors.js';
-import { SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, BELT_OF, BELTS, BREACH_CLOSERS, SECTOR_STATS, SECTOR_TIMING } from '../src/content/sectors.js';
+import { CANYON, SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, BELT_OF, BELTS, BREACH_CLOSERS, SECTOR_STATS, SECTOR_TIMING } from '../src/content/sectors.js';
 import { ENEMY_SPEC, CREATURE_TINTS, SAFE_HUES, ALARM_HUES, computeWavePlan } from '../src/enemyspec.js';
 import { waveClearBonus } from '../src/domain/economy.js';
 import { POINT_SCALE, waveScore } from '../src/score.js';
@@ -9,7 +9,8 @@ import { SENTRY_ORDER } from '../src/content/sentries.js';
 
 // THE RAMP, THEN THE BACK DOOR (owner, 2026-10-01): four regular gate-side sectors of four pulses, climbing, SOL-82 from the third;
 // the door and BOTH WALLS are their own rows, placed by the schedule
-assert.deepEqual(SECTORS.map((s) => [s.n, s.breaches, s.waves]), [[1, { gate: 2 }, 4], [2, { gate: 2 }, 4], [3, { gate: 2 }, 4], [4, { gate: 2 }, 4], [5, { side: 1, gate: 1 }, 4]]);
+assert.deepEqual(SECTORS.map((s) => [s.n, s.breaches, s.waves]), [[1, { gate: 2 }, 4], [2, { gate: 2 }, 4], [3, { gate: 1 }, 4], [4, { gate: 2 }, 4], [5, { side: 1, gate: 1 }, 4]]);
+assert.deepEqual(SECTORS.map((s) => !!s.canyon), [false, false, true, false, false], 'sector 3 is THE CANYON, SOL-82\'s first use');
 assert.deepEqual(Object.keys(SECTORS[4].breaches), ['side', 'gate'], 'THE SIDE WALL picks and opens its side breach first');
 assert.ok(SECTORS.every((s, i) => i === 0 || (s.threat > SECTORS[i - 1].threat && s.ladderStart >= SECTORS[i - 1].ladderStart)), 'the ramp climbs');
 assert.deepEqual(SECTORS.map((s) => s.laser), [false, false, true, true, true], 'SOL-82 online from sector 3');
@@ -72,14 +73,21 @@ assert.equal(def(0).n, 1, 'n below one is sector one');
 {
   const bodies = (d, i) => computeWavePlan(Math.min(d.ladderCap, d.waveBase + i), 1, 4, d.threat).entries.reduce((n, e) => n + e.count, 0)
     + (d.hardcoresEveryWave ? d.hardcores ?? 1 : 0);
-  const alive = (d, i) => bodies(d, i) * Object.values(d.breaches).reduce((a, b) => a + b, 0);
+  // the canyon's swarm counts in its sector (CANYON: `swarm` two-breach pulses of the ladder wave `ladder` past the start, once), though
+  // the frame budget does not weigh it: it is on the far side of the world
+  const swarm = (d) => (d.canyon ? computeWavePlan(d.waveBase + CANYON.ladder, 1, 4, d.threat).entries.reduce((n, e) => n + e.count, 0) * CANYON.swarm * 2 : 0);
+  const alive = (d, i) => bodies(d, i) * Object.values(d.breaches).reduce((a, b) => a + b, 0) + (i === 1 ? swarm(d) : 0);
   // both schedules: the door at its earliest, and at its latest with the held sectors before it, through the first generated sector
   for (const doorAt of [SECTOR_DOOR.earliest, SECTOR_DOOR.latest]) {
     const peaks = Array.from({ length: doorAt + 2 }, (_, k) => { const d = def(k + 1, doorAt); return Math.max(...Array.from({ length: d.waves }, (_, i) => alive(d, i + 1))); });
     assert.ok(alive(def(1), 1) <= 30, `sector 1 opens with a crowd, not a flood (${alive(def(1), 1)} alive)`);
-    for (let i = 1; i < doorAt; i++) assert.ok(peaks[i] > peaks[i - 1], `door at ${doorAt}: sector ${i + 1} peaks harder than the one before (${peaks})`);
+    // the canyon is SOL-82's spike, not a step of the climb: the climb holds across the sectors around it
+    const climb = peaks.slice(0, doorAt).filter((_, k) => !def(k + 1, doorAt).canyon);
+    for (let i = 1; i < climb.length; i++) assert.ok(climb[i] > climb[i - 1], `door at ${doorAt}: each sector of the climb peaks harder than the one before (${peaks})`);
     assert.ok(peaks[doorAt + 1] > peaks[doorAt - 1], `door at ${doorAt}: BOTH WALLS peaks past the door (${peaks})`);
-    assert.ok(Math.max(...peaks) <= 520, `door at ${doorAt}: never past the frame budget this machine holds (${peaks})`);
+    const base = Array.from({ length: doorAt + 2 }, (_, k) => { const d = def(k + 1, doorAt); return Math.max(...Array.from({ length: d.waves }, (_, i) => alive(d, i + 1) - (i === 0 ? swarm(d) : 0))); });
+    assert.ok(Math.max(...base) <= 520, `door at ${doorAt}: the base's own waves never past the frame budget this machine holds (${base})`);
+    assert.ok(swarm(def(3)) >= 300 && swarm(def(3)) <= 520, `the canyon's swarm is hundreds and still drawable (${swarm(def(3))})`);
   }
 }
 

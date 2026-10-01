@@ -171,7 +171,7 @@ export function createLaserSeat(root, host) {
     const pc = px(anchorV), pn = px(anchorV.clone().addScaledVector(north, 50 * k));
     const hud = f.friendly.length ? { status: `OURS UNDER THE BEAM · ${f.friendly.flatMap((kind) => (kind === 'structure' ? f.underNames : [kind.toUpperCase()])).join(' · ')}`, statusColour: AMBER } : null;
     return {
-      rect: { x: r.x + ox, y: r.y + oy, w: r.w, h: r.h }, aim, contact, footprintPx, lagM, aiming, limitM: LASER_GAME.range, aimArcM: f.aimArc,
+      rect: { x: r.x + ox, y: r.y + oy, w: r.w, h: r.h }, aim, contact, footprintPx, lagM, aiming, limitM: arsenal.range(), aimArcM: f.aimArc,
       contactArcM: f.contactArc, lensGroundM: half * rangeM, phase: f.phase, infinite: false, left: f.left, pass01: f.pass01,
       energy: f.energy, energy01: f.energy01, burning: f.burning, speed: f.speed, slew: arsenal.beam().slew, radiusM: arsenal.beam().radius,
       altitudeM: rangeM, rangeM, fovDeg: LASER_VIEW.fov, gsd: (2 * half * rangeM) / Math.max(1, r.h),

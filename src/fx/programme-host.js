@@ -14,12 +14,13 @@
 // the members write as setters (setPlayerHP, setBerths). `c` is also the first hull's host's host (src/fx/hull-issue.js
 // createHullHost): it carries that host's values, getters and setters too (laserStation, shotId, deployStart, deployStep,
 // leavePilot, camera, startShot, deployFramePoseFor, camA, setView; pilot, deploy, t, storyViews; setPlayerDown, setDeploy).
-import { BLOCKED } from '../dungeon.js';
+import { BLOCKED, PATH } from '../dungeon.js';
 import { BASE_PERKS, BASE_REPAIR } from '../content/base-programme.js';
 import { due as programmeDue, begin as programmeBegin, finish as programmeFinish, hasPerk as programmeHas, perks as programmePerks, rebuildDue } from '../domain/build-programme.js';
 import { nextRepair } from '../domain/repair-orders.js';
 import { sideBreachCandidates } from '../domain/side-breach.js';
-import { SIDE_BREACH } from '../content/sectors.js';
+import { planCanyon } from '../domain/canyon.js';
+import { SIDE_BREACH, CANYON } from '../content/sectors.js';
 import { createHullHost } from './hull-issue.js';
 
 export function createProgrammeHost(c) {
@@ -74,6 +75,21 @@ export function createProgrammeHost(c) {
       const s = c.story(), tags = c.dungeon().tags, g = c.graph();
       if (!programmeHas(s.programme, 'gate')) return [];   // no wall stands yet
       return sideBreachCandidates({ centers: g.centers, adj: g.adj, blocked: (ci) => tags[ci] === BLOCKED, inside: (ci) => s.inside(ci), walls: s.wallCells ?? [], sockets: Object.keys(s.socketToward ?? {}).map(Number), gate: s.gateCell ?? -1, cellArc: c.cellSide(), tune: SIDE_BREACH });
+    },
+    // THE CANYON (src/domain/canyon.js, sector 3): where it is cut at the antipode, and the cut: its floor becomes ground, its walls and
+    // its deep end rock, one rebuild for all of it
+    canyonPlan: () => {
+      const g = c.graph(), tags = c.dungeon().tags, heart = c.dungeon().heart, dist = new Float64Array(g.centers.length).fill(Infinity), q = [heart];
+      dist[heart] = 0;
+      for (let h = 0; h < q.length; h++) for (const nb of g.adj[q[h]]) if (tags[nb] !== BLOCKED && dist[nb] === Infinity) { dist[nb] = dist[q[h]] + 1; q.push(nb); }
+      return planCanyon({ centers: g.centers, heart, dist, cellArc: c.cellSide(), tune: CANYON });
+    },
+    canyonPass: (o) => c.laserStation.passOver(o),   // SOL-82's pass laid over the canyon, the player in its seat (src/fx/laser-station.js)
+    canyonCut: (plan) => {
+      const tags = c.dungeon().tags, full = c.tdFullTags();
+      for (const ci of plan.floor) { tags[ci] = PATH; if (full) full[ci] = PATH; breachedCells.add(ci); breachQueue.push(ci); }
+      for (const ci of plan.rock) { tags[ci] = BLOCKED; if (full) full[ci] = BLOCKED; breachedCells.delete(ci); breachQueue.push(ci); }
+      rebuildAfterBreach(); recomputePortalDist();
     },
     breakSide: (cells) => {
       const tags = c.dungeon().tags, broke = cells.filter((ci) => tags[ci] === BLOCKED && c.breachWallCell(ci));
