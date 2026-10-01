@@ -49,8 +49,12 @@ export const LASER_STRUCTURES = Object.freeze({
 // range: the scope's in-range call in the game, arc metres from the base. The lab's 320 m covers its trench; the game's
 // breaches open about a minute's walk out (the far breach measured 519 m), and a scope calling every breach out of range
 // would contradict a beam that seals it. Still feedback only: the beam goes wherever it is aimed.
+// pass: every pass in the game (owner, 2026-10-01: "The SOL usage is not fun; does not stay long enough, not accessible enough, not
+// meaningful enough"): overhead seconds, energy (seconds of burn) and the footprint radius in metres, over the lab's LASER_ORBIT and
+// LASER_BEAM (20 s, 10 s, 6 m), which stay the lab's own
 export const LASER_GAME = Object.freeze({
   online: false,
+  pass: Object.freeze({ overhead: 30, energy: 15, radius: 8 }),
   range: 640,
   lowEnergy: 0.25,
   keyLead: 30,

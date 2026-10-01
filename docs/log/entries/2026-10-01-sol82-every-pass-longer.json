@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "2026-10-01-sol82-every-pass-longer",
+  "date": "2026-10-01",
+  "type": "change",
+  "status": "accepted",
+  "title": "Every SOL-82 pass in the game stays 30 s overhead with 15 s of burn and an 8 m footprint (the lab keeps its 20 s, 10 s and 6 m), the first step toward the canyon",
+  "context": "Owner, 2026-10-01: \"The SOL usage is not fun; does not stay long enough, not accessible enough, not meaningful enough. let's have it used the first time at the antipode ... a huge number of ennemies, 5x the usual, in a long canyon\". Asked, he chose sector 3 as THE CANYON, survivors marching on the base, an auto-seat with a glide, and the canyon pass special with every later pass also longer and stronger. The game's arsenal read the lab's frozen LASER_ORBIT and LASER_BEAM everywhere, so no pass could differ from the lab's.",
+  "outcome": "src/content/orbital-laser.js LASER_GAME.pass { overhead 30, energy 15, radius 8 }. src/fx/laser-arsenal.js keeps live orbit and beam objects built from it (exposed as arsenal.beam() and arsenal.orbit(), and the hook a special pass will use) and sizes the footprint ring to it; the seat's panel (src/fx/laser-seat.js) and the briefing (src/fx/sol82-briefing.js) quote the live numbers, and the briefing's range line now quotes the game's 640 m instead of the lab's 320 m. The lab (src/labs/laser-tab.js) still reads LASER_ORBIT and LASER_BEAM. The period stays 180 s.",
+  "alternatives": [
+    "Change LASER_ORBIT and LASER_BEAM themselves: retunes the owner's lab, which he set on 2026-09-15."
+  ],
+  "evidence": [
+    "test/orbital-laser.mjs: the game's pass is longer, deeper and wider than the lab's and its burn fits in it. npm test, npm run check, npm run architecture.",
+    "Browser --laser-game (the pass spends from the game's 15 s), --seats, --phone, --laser (the lab) green."
+  ],
+  "supersedes": []
+}

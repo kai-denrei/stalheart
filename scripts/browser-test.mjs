@@ -1847,7 +1847,7 @@ try{
  {const s=await laser(),kills=await evaluate('window.__stalheartTest.state().killsBySrc.laser||0');
   console.log(`  laser-game: ${s.burned.bodies} bodies, ${s.burned.breaches} breaches, ${s.burned.walls} walls, ${s.burned.rocks} rocks, ${s.burned.towers} towers, ${s.energy} s left, trail ${s.trail}`);
   assert(s.burned.bodies>0,`the beam burned bodies (${JSON.stringify(s.burned)})`);assert(kills>before,`the kills are the laser's (${kills})`);
-  assert(s.trail>0,'the scorch trail was laid');assert(s.energy<10,'the pass spent energy');}
+  assert(s.trail>0,'the scorch trail was laid');assert(s.energy<(await import('../src/content/orbital-laser.js')).LASER_GAME.pass.energy,`the pass spent energy (${s.energy})`);}
  // a rock cell, to time the break at runtime (the game's board surface patches the cell in place): the beam lifts,
  // drags onto the nearest rock with its inertia, then burns there
  await evaluate('window.__stalheartTest.laserHold(false)');await evaluate('window.__stalheartTest.laserSteer("rock")');await delay(3000);

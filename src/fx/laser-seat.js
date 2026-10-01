@@ -8,7 +8,7 @@
 // mouse button held in the scope, Space or the HOLD button burns; W/A/S/D or the arrows glide the aim while the beam is
 // off and drag it with the beam's inertia while it burns; Esc or TANK leaves.
 import * as THREE from '../../vendor/three.module.js';
-import { LASER_BEAM, LASER_GAME, LASER_TELEMETRY, LASER_VIEW } from '../content/orbital-laser.js';
+import { LASER_GAME, LASER_TELEMETRY, LASER_VIEW } from '../content/orbital-laser.js';
 import { createLaserScope, scopeRect } from './laser-scope.js';
 import { createInsetHud } from './laser-inset-hud.js';
 
@@ -161,7 +161,7 @@ export function createLaserSeat(root, host) {
       const cV = new THREE.Vector3().fromArray(f.contact);
       contact = px(cV);
       const across = new THREE.Vector3().crossVectors(cV.clone().normalize(), arsenal.forwardAt(f.contact)).normalize();
-      const edge = px(cV.clone().addScaledVector(across, LASER_BEAM.radius * k));
+      const edge = px(cV.clone().addScaledVector(across, arsenal.beam().radius * k));
       footprintPx = Math.hypot(edge.x - contact.x, edge.y - contact.y);
       const hit = steering ? scope.pick(steerN[0], steerN[1], sphere) : null;
       if (hit) lagM = hit.distanceTo(cV) * R;
@@ -173,10 +173,10 @@ export function createLaserSeat(root, host) {
     return {
       rect: { x: r.x + ox, y: r.y + oy, w: r.w, h: r.h }, aim, contact, footprintPx, lagM, aiming, limitM: LASER_GAME.range, aimArcM: f.aimArc,
       contactArcM: f.contactArc, lensGroundM: half * rangeM, phase: f.phase, infinite: false, left: f.left, pass01: f.pass01,
-      energy: f.energy, energy01: f.energy01, burning: f.burning, speed: f.speed, slew: LASER_BEAM.slew, radiusM: LASER_BEAM.radius,
+      energy: f.energy, energy01: f.energy01, burning: f.burning, speed: f.speed, slew: arsenal.beam().slew, radiusM: arsenal.beam().radius,
       altitudeM: rangeM, rangeM, fovDeg: LASER_VIEW.fov, gsd: (2 * half * rangeM) / Math.max(1, r.h),
       lat: (Math.asin(Math.max(-1, Math.min(1, dir.y))) * 180) / Math.PI, lon: (Math.atan2(dir.x, dir.z) * 180) / Math.PI,
-      deliveredMJ: (LASER_BEAM.energy - f.energy) * LASER_TELEMETRY.powerMW, capMJ: LASER_BEAM.energy * LASER_TELEMETRY.powerMW,
+      deliveredMJ: (arsenal.beam().energy - f.energy) * LASER_TELEMETRY.powerMW, capMJ: arsenal.beam().energy * LASER_TELEMETRY.powerMW,
       counts: { bodies: f.burned.bodies, walls: f.burned.walls, rocks: f.burned.rocks, towers: f.burned.towers, alive: f.alive },
       sealed: f.breaches === 0, heart: f.burned.heart ? 'LOST' : 'INTACT', under: { ...f.under, tower: f.under.tower + f.under.tank }, northAngle: Math.atan2(pn.x - pc.x, -(pn.y - pc.y)),
       ...(hud ? { hud } : {}),

@@ -26,7 +26,9 @@ export const FRIENDLY_KINDS = Object.freeze(['wall', 'tower', 'tank', 'heart', '
 // breakCells(cells), burnHeart(), burnTank(p), structures() (standing buildings { id, cell, pos }), burnStructure(id),
 // explode(use, p), brief(id), loop(key), passEnded(), online (boolean).
 export function createLaserArsenal(scene, host) {
-  const st = makeLaser(LASER_ORBIT, LASER_BEAM);
+  // THE GAME'S PASS (LASER_GAME.pass): live copies of the lab's orbit and beam, so a pass can carry its own numbers
+  const orbit = { ...LASER_ORBIT, overhead: LASER_GAME.pass.overhead }, beam = { ...LASER_BEAM, energy: LASER_GAME.pass.energy, radius: LASER_GAME.pass.radius };
+  const st = makeLaser(orbit, beam);
   let online = !!host.online, seated = false, laser = null, burningWas = false, contactT = 0, smokeT = 0, voice = null;
   let aimArc = 0, passes = 0, burnSeconds = 0, testTarget = null, testHeld = false, anchors = null, breakMs = 0;
   const burned = { bodies: 0, breaches: 0, walls: 0, rocks: 0, towers: 0, heart: 0, tank: 0, structures: 0 };
@@ -108,7 +110,7 @@ export function createLaserArsenal(scene, host) {
     /* rock: the lattice cells round the contact, walked out through the adjacency; never a cell a wall, a tower, the
        heart or a structure stands on */
     anchors ??= host.anchors();
-    const tags = host.tags(), adj = host.adj(), start = host.cellAt(cU), c = at(cU), limit = LASER_BEAM.radius + reach.rock + METRES_PER_CELL;
+    const tags = host.tags(), adj = host.adj(), start = host.cellAt(cU), c = at(cU), limit = beam.radius + reach.rock + METRES_PER_CELL;
     if (start >= 0) {
       const seen = new Set([start]), queue = [start];
       while (queue.length) {
@@ -159,8 +161,8 @@ export function createLaserArsenal(scene, host) {
     if (input?.pad && !held && !st.burning) glide(input.pad, dt);
     if (target) {
       const m = onSphere(target, metres());
-      aimArc = clampToRange(m, LASER_BEAM.range).arc;
-      aimLaser(st, m, dt, LASER_BEAM);
+      aimArc = clampToRange(m, beam.range).arc;
+      aimLaser(st, m, dt, beam);
     }
     const burning = burnLaser(st, held, dt);
     if (burning) burnSeconds += dt;   // the sector books count the beam's seconds on the ground
@@ -173,12 +175,12 @@ export function createLaserArsenal(scene, host) {
     burningWas = true;
     /* the ground burns audibly: louder with more energy left, a touch higher as the contact drags faster */
     voice ??= host.loop?.(LASER_SOUNDS.burn) ?? null;
-    voice?.set(0.55 + 0.45 * laserProgress(st, LASER_ORBIT, LASER_BEAM).energy, 0.97 + 0.08 * Math.min(1, (st.speed || 0) / LASER_BEAM.slew));
+    voice?.set(0.55 + 0.45 * laserProgress(st, orbit, beam).energy, 0.97 + 0.08 * Math.min(1, (st.speed || 0) / beam.slew));
     contactT += dt;
     while (contactT >= 1 / LASER_CONTACT_RATE) { contactT -= 1 / LASER_CONTACT_RATE; host.explode('laser.contact', g); }
     smokeT += dt;
     while (smokeT >= 1 / LASER_SMOKE_RATE) { smokeT -= 1 / LASER_SMOKE_RATE; host.explode('laser.smoke', g); }
-    const things = inFootprint(st.contact, LASER_BEAM.radius, candidates(cU));
+    const things = inFootprint(st.contact, beam.radius, candidates(cU));
     under = { ...NOTHING };
     underNames = [];
     for (const t of things) { under[t.kind]++; if (t.label) underNames.push(t.label); }
@@ -204,19 +206,20 @@ export function createLaserArsenal(scene, host) {
   return {
     metres,
     anchor,
+    beam: () => beam, orbit: () => orbit,   // the live pass numbers the seat and the briefing read
     forwardAt,
     online: () => online,
     seat(on) { seated = !!on; if (!seated) { testHeld = false; lift(); laser?.hideGuide(); } },
 
     tick(dt, input = null) {
       if (!online) return;
-      laser ??= createOrbitalLaser(scene, { cellSide: host.cellSide(), metresPerCell: METRES_PER_CELL });
-      edge(stepLaser(st, dt, LASER_ORBIT, LASER_BEAM));
+      if (!laser) { laser = createOrbitalLaser(scene, { cellSide: host.cellSide(), metresPerCell: METRES_PER_CELL }); laser.tune({ radius: beam.radius }); }   // the ring at the game's footprint
+      edge(stepLaser(st, dt, orbit, beam));
       burn(dt, input);
       /* the silent red pointer while the seat is manned and the column is not firing: where it will land */
       if (seated && !st.burning) { const a = anchor(); laser.guideAt(ground.fromArray(groundAt(a)), normal.fromArray(a).normalize(), st.phase === 'overhead' ? 1 : 0.35); }
       else laser.hideGuide();
-      laser.tick(dt, laserProgress(st, LASER_ORBIT, LASER_BEAM).energy);
+      laser.tick(dt, laserProgress(st, orbit, beam).energy);
     },
 
     // the sectors switch SOL-82 on and off; a page that asked for it (?laser=online, LASER_GAME.online) keeps it on
@@ -230,14 +233,14 @@ export function createLaserArsenal(scene, host) {
     reset() {
       lift();
       laser?.clear();
-      Object.assign(st, makeLaser(LASER_ORBIT, LASER_BEAM));
+      Object.assign(st, makeLaser(orbit, beam));
       passes = burnSeconds = aimArc = breakMs = 0;
       for (const k of Object.keys(burned)) burned[k] = 0;
       testTarget = null; testHeld = false; anchors = null;
       online = !!host.online;
     },
-    passNow() { if (online && st.phase !== 'overhead') edge(stepLaser(st, st.left, LASER_ORBIT, LASER_BEAM)); },
-    strip: () => laserStrip(st, online, LASER_BEAM, LASER_GAME.lowEnergy),
+    passNow() { if (online && st.phase !== 'overhead') edge(stepLaser(st, st.left, orbit, beam)); },
+    strip: () => laserStrip(st, online, beam, LASER_GAME.lowEnergy),
 
     // the harness's hands: a world point to aim at (null lets the seat's own pointer and keys aim again) and the trigger
     steer(p) { testTarget = p ? [p[0], p[1], p[2]] : null; },
@@ -246,7 +249,7 @@ export function createLaserArsenal(scene, host) {
 
     // what the seat's scope and panel read
     view() {
-      const p = laserProgress(st, LASER_ORBIT, LASER_BEAM);
+      const p = laserProgress(st, orbit, beam);
       return {
         phase: st.phase, left: st.left, pass01: p.pass, energy: st.energy, energy01: p.energy, burning: st.burning,
         speed: st.speed || 0, contact: contactU(), anchor: anchor(), aimArc, contactArc: st.contact ? clampToRange(st.contact, 0).arc : 0,

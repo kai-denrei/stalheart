@@ -188,11 +188,14 @@ assert.equal(LASER_PRESET.glowWidth, 10);
 
 /* --- SOL-82 in the game: the footprint test and the strip's words ------------ */
 {
-  assert.deepEqual({ ...LASER_GAME, reach: { ...LASER_GAME.reach } }, {
-    online: false, range: 640, lowEnergy: 0.25, keyLead: 30, glide: 120, glideEase: 0.22, groundFov: 52,
+  assert.deepEqual({ ...LASER_GAME, reach: { ...LASER_GAME.reach }, pass: { ...LASER_GAME.pass } }, {
+    online: false, pass: { overhead: 30, energy: 15, radius: 8 }, range: 640, lowEnergy: 0.25, keyLead: 30, glide: 120, glideEase: 0.22, groundFov: 52,
     reach: { soft: 0.5, hard: 1, wall: 2, rock: 5, tower: 4, seal: 5, tank: 2, heart: 8, structure: 8 },
   });
   for (const kind of Object.keys(LASER_BURN)) assert.ok(Number.isFinite(LASER_GAME.reach[kind]), `every burnable kind has a reach (${kind})`);
+  // owner, 2026-10-01: the game's pass stays longer and burns longer and wider than the lab's
+  assert.ok(LASER_GAME.pass.overhead > LASER_ORBIT.overhead && LASER_GAME.pass.energy > LASER_BEAM.energy && LASER_GAME.pass.radius > LASER_BEAM.radius);
+  assert.ok(LASER_GAME.pass.energy <= LASER_GAME.pass.overhead, 'the burn fits in the pass');
   const contact = [0, 100, 0];
   const things = [
     { id: 'on', pos: [0, 100, 5.9] },

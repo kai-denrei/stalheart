@@ -33,6 +33,21 @@ Evidence:
 - Browser --sectors (sector 1 quiet, sector 2 THE LONG LANE on the gate side, secured), --skip-tutorial (SKIP ALL at sector 1 on the lane, SOL-82 offline, secured, CONTINUE to 2; the BACK DOOR jump opens the door, the feast, both breaches, SOL-82 online), --phone, --back-gate, --backdoor, --chapters, --grow and --pacing green.
 - --pacing (ideal defender): sector 1 card 269.1 s, first contact 22 s, 119 arrivals over 70 s (was 290 over 111 s at six pulses and threat 1.5); sector 2 card 364.1 s, first contact 26.8 s.
 
+## 2026-10-01 — Every SOL-82 pass in the game stays 30 s overhead with 15 s of burn and an 8 m footprint (the lab keeps its 20 s, 10 s and 6 m), the first step toward the canyon
+
+change · accepted · 2026-10-01-sol82-every-pass-longer
+
+Owner, 2026-10-01: "The SOL usage is not fun; does not stay long enough, not accessible enough, not meaningful enough. let's have it used the first time at the antipode ... a huge number of ennemies, 5x the usual, in a long canyon". Asked, he chose sector 3 as THE CANYON, survivors marching on the base, an auto-seat with a glide, and the canyon pass special with every later pass also longer and stronger. The game's arsenal read the lab's frozen LASER_ORBIT and LASER_BEAM everywhere, so no pass could differ from the lab's.
+
+src/content/orbital-laser.js LASER_GAME.pass { overhead 30, energy 15, radius 8 }. src/fx/laser-arsenal.js keeps live orbit and beam objects built from it (exposed as arsenal.beam() and arsenal.orbit(), and the hook a special pass will use) and sizes the footprint ring to it; the seat's panel (src/fx/laser-seat.js) and the briefing (src/fx/sol82-briefing.js) quote the live numbers, and the briefing's range line now quotes the game's 640 m instead of the lab's 320 m. The lab (src/labs/laser-tab.js) still reads LASER_ORBIT and LASER_BEAM. The period stays 180 s.
+
+Alternatives: Change LASER_ORBIT and LASER_BEAM themselves: retunes the owner's lab, which he set on 2026-09-15.
+
+Evidence:
+
+- test/orbital-laser.mjs: the game's pass is longer, deeper and wider than the lab's and its burn fits in it. npm test, npm run check, npm run architecture.
+- Browser --laser-game (the pass spends from the game's 15 s), --seats, --phone, --laser (the lab) green.
+
 ## 2026-09-30 — Sector 0's sinkhole is closed with a strike: Isao reminds after each construction wave cleared off the field, and once anything fills it no construction wave comes after it
 
 decision · accepted · 2026-09-30-sinkhole-closed-with-a-strike

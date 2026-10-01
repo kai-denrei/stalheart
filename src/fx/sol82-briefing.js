@@ -7,11 +7,11 @@
 import * as THREE from '../../vendor/three.module.js';
 import { GLTFLoader } from '../../vendor/GLTFLoader.js';
 import { MeshoptDecoder } from '../../vendor/meshopt_decoder.module.js';
-import { LASER_ORBIT, LASER_BEAM, LASER_BURN, LASER_TELEMETRY } from '../content/orbital-laser.js';
+import { LASER_ORBIT, LASER_BEAM, LASER_BURN, LASER_TELEMETRY, LASER_GAME } from '../content/orbital-laser.js';
 
 const SOL82_URL = 'assets/models/sol82/sol82_platform_detailed.glb';
 const SEEN_KEY = 'stalheart:v1:sol82-briefing';
-const GJ = (LASER_TELEMETRY.powerMW * LASER_BEAM.energy) / 1000;
+const GJ = (LASER_TELEMETRY.powerMW * LASER_GAME.pass.energy) / 1000;   // the game's pass (LASER_GAME.pass), not the lab's
 const CYAN = 0x62d7ff, AMBER = 0xffb020, WHITE_HOT = 0xeaf6ff;
 
 // Labels, anchored to a node's world position plus an offset in model metres (so a wing label follows the deployed
@@ -43,13 +43,13 @@ const PAGES = [
   { head: 'WINGS · CRYOCOOLERS', cam: { pos: [-48, 16, 20], look: [-12, 5, 0] }, labels: ['wingL', 'cryo', 'wingR'],
     body: ['The wings track the sun and run the bus, the cryocoolers and optical control.', `Cold optics hold a clean ${LASER_TELEMETRY.wavelengthUm.toFixed(3)} µm line.`] },
   { head: 'THERMAL · SINKS AND RADIATORS', cam: { pos: [24, 30, -30], look: [0, 7, 0] }, labels: ['sinks', 'radL', 'radR'], mood: 'heat',
-    body: [`Phase-change sinks swallow the heat of a ${LASER_BEAM.energy} s burn.`, 'Paired radiator vanes unfold and shed it before the next pass.', 'Unused charge is dumped when the pass ends: a hot store will not hold.'] },
+    body: [`Phase-change sinks swallow the heat of a ${LASER_GAME.pass.energy} s burn.`, 'Paired radiator vanes unfold and shed it before the next pass.', 'Unused charge is dumped when the pass ends: a hot store will not hold.'] },
   { head: 'OPTICS · THE APERTURE', cam: { pos: [18, -24, 30], look: [0, 0, 0] }, labels: ['aperture', 'gimbal'], mood: 'optics',
-    body: [`${LASER_TELEMETRY.wavelengthUm.toFixed(3)} µm Nd:YAG, continuous wave, ${LASER_TELEMETRY.powerMW} MW.`, `${GJ.toFixed(1)} GJ delivered in a ${LASER_BEAM.energy} s burn.`, `A two-axis ventral telescope lays a ${LASER_BEAM.radius * 2} m footprint on the ground.`] },
+    body: [`${LASER_TELEMETRY.wavelengthUm.toFixed(3)} µm Nd:YAG, continuous wave, ${LASER_TELEMETRY.powerMW} MW.`, `${GJ.toFixed(1)} GJ delivered in a ${LASER_GAME.pass.energy} s burn.`, `A two-axis ventral telescope lays a ${LASER_BEAM.radius * 2} m footprint on the ground.`] },
   { head: 'THE PASS', cam: { pos: [72, 34, -8], look: [0, -10, 0] }, labels: ['aperture'], mood: 'beam',
-    body: [`Overhead ${LASER_ORBIT.overhead} s, every ${LASER_ORBIT.period} s.`, `${LASER_BEAM.energy} s of burn per pass. Walls and rock go in ${LASER_BURN.wall} s, towers in ${LASER_BURN.tower} s.`, `The Stalheart goes in ${LASER_BURN.heart} s. Nothing stops you burning your own base.`] },
+    body: [`Overhead ${LASER_GAME.pass.overhead} s, every ${LASER_ORBIT.period} s.`, `${LASER_GAME.pass.energy} s of burn per pass. Walls and rock go in ${LASER_BURN.wall} s, towers in ${LASER_BURN.tower} s.`, `The Stalheart goes in ${LASER_BURN.heart} s. Nothing stops you burning your own base.`] },
   { head: 'OPERATOR', cam: { pos: [42, 12, -44], look: [0, 3, 0] }, labels: [], mood: 'beam',
-    body: ['You aim through its own optics: the round scope.', 'The beam is slow and heavy. Lead it, hold it, drag it.', `Range feedback past ${LASER_BEAM.range} m from the base. The rest is yours.`] },
+    body: ['You aim through its own optics: the round scope.', 'The beam is slow and heavy. Lead it, hold it, drag it.', `Range feedback past ${LASER_GAME.range} m from the base. The rest is yours.`] },
 ];
 
 export function createSol82Briefing(root) {
