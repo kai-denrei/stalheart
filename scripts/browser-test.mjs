@@ -442,16 +442,16 @@ try{
  for(const s of PAD){await thumb(s);await reachable(s);}
  for(const s of ['#story-views [data-view=tank]','#story-views [data-mount=gunship]','#mob-mode']){await thumb(s);await reachable(s);}
  assert.match(await over('#story-views [data-view=map]'),/^(hidden|no size)$/,'no MAP on the phone: BUILD is the orbit view');
- await until('/SECTOR 2/.test(document.querySelector("#td-stats").textContent)',60000).catch(async()=>assert.fail(`the sector line is on the HUD (${await evaluate('document.querySelector("#td-stats").textContent')})`));
+ await until('/SECTOR 1/.test(document.querySelector("#td-stats").textContent)',60000).catch(async()=>assert.fail(`the sector line is on the HUD (${await evaluate('document.querySelector("#td-stats").textContent')})`));
  await shown('#td-stats .hud-sector','the sector line');   /* the shell hides the other .hud-obj lines while driving; this one stays */
  assert(await evaluate('!document.querySelector("#td-brief").classList.contains("hidden")'),'Isao is speaking on arrival');
  await reachable('#td-brief-next','the comms card NEXT');await thumb('#td-brief-next','the comms card NEXT');
  await layout(CHROME,'the skipped run');
  await finish();
  // 3. DRIVING BY TOUCH: a finger down on the left half puts the stick there, up is forward; a tap on the ground is a destination
- // a tap during a camera shot skips the shot (td-tab shotSkipTap), which is right for a player and wrong for this probe: the sector's
- // back-door crack runs one on its own clock, so the finger waits for the rock to give and for the camera to be the tank's again
- await until(`${T}.backDoorOpen()`,90000).catch(()=>{});await until(`${T}.state().shot===null`,30000);await delay(600);
+ // a tap during a camera shot skips the shot (td-tab shotSkipTap), which is right for a player and wrong for this probe: the finger
+ // waits for the camera to be the tank's
+ await until(`${T}.state().shot===null`,30000);await delay(600);
  {const p0=(await st()).playerPosition;
   // bare ground on the left half: the first point down the left column where a thumb finds the board's canvas and no chrome
   const g=await evaluate('(()=>{for(let y=300;y<760;y+=20){const h=document.elementFromPoint(90,y);if(h&&h.tagName==="CANVAS"&&!h.classList.contains("minimap"))return {x:90,y};}return null;})()');assert(g,'bare ground on the left half');
@@ -506,7 +506,8 @@ try{
  await until(`${T}.state().gunship.heavy.phase==="reloading"`,15000);
  await tap('#story-views [data-view=tank]','TANK on the strip');await delay(1000);assert(!(await st()).gunship.seat,'TANK leaves the seat');
  // 7. SOL-82'S SEAT: the strip's button, the briefing's SKIP, the scope steered by a drag, HOLD burns, TANK leaves
- assert.equal((await st()).laser.online,true,'SOL-82 is online at the back door');
+ // the skipped run is sector 1 and SOL-82 comes online at sector 3 (2026-10-01): the harness brings it online for its seat
+ await evaluate(`${T}.laserOnline(true)`);assert.equal((await st()).laser.online,true,'SOL-82 is online');
  await evaluate(`${T}.laserPassNow()`);await until('document.querySelector("#story-views [data-view=laser]")?.textContent==="SOL-82 OVERHEAD"',8000);
  await thumb('#story-views [data-view=laser]','SOL-82 on the strip');await tap('#story-views [data-view=laser]','SOL-82 on the strip');
  await until('!!document.querySelector("#sol82-briefing:not([hidden]) [data-skip]")',5000);await delay(600);
@@ -527,8 +528,7 @@ try{
   assert.equal((await evaluate(`${T}.state().laser`)).burning,false,'and stops when it lifts');}
  await tap('#laser-seat-keys [data-tank]','the seat\'s TANK');await delay(800);assert.equal((await st()).laser.seated,false,'TANK leaves SOL-82');
  // 8. THE DEBRIEF AT 390 PX: both breaches closed, the field cleared, the card up; pages advance by tap, CONTINUE reachable
- /* the back door's sector opens its gate side after the feast (2026-09-24): clear the feast so the gate side opens, then seal */
- await until(`(()=>{const S=${T}.state().sector;if(S.feast&&!S.feast.scrambled)${T}.sectorClearField();return S.breaches.length===2&&S.breaches.every(b=>b.opened);})()`,90000).catch(async()=>assert.fail(`the sector has both its breaches open (${JSON.stringify((await st()).sector)})`));
+ await until(`(()=>{const S=${T}.state().sector;return S.breaches.length===2&&S.breaches.every(b=>b.opened);})()`,90000).catch(async()=>assert.fail(`the sector has both its breaches open (${JSON.stringify((await st()).sector)})`));
  // SOL-82's HOLD above may already have sealed the gate-side one: seal whatever is still live rather than assuming both are
  for(const b of (await st()).sector.breaches){if(!b.live)continue;assert.equal(await evaluate(`${T}.sectorClose(${JSON.stringify(b.id)},"gunship")`),'gunship',`breach ${b.id} sealed`);}
  assert((await st()).sector.breaches.every((b)=>!b.live),'both breaches are closed');
@@ -546,8 +546,8 @@ try{
   await thumb('.sdb-acts [data-act=continue]','CONTINUE');await reachable('.sdb-acts [data-act=continue]','CONTINUE');
   current='phone-debrief-last';await finish();
   await tap('.sdb-acts [data-act=continue]','CONTINUE');
-  await until(`${T}.state().sector.n===3 && !${T}.state().sector.debriefOpen`,15000);}
- current='phone-sector-3';await finish();
+  await until(`${T}.state().sector.n===2 && !${T}.state().sector.debriefOpen`,15000);}
+ current='phone-sector-2';await finish();
  // 9. LANDSCAPE, 844x390. Portrait is the layout this pass rules; landscape is held to the contract that matters —
  // every control a thumb can reach at 44 px and no control under another. The read-only cards (the coach, the wave and
  // tower announcements, the sector brief, Isao) are 87 px short of the height their lane was ruled for and still stack
@@ -658,7 +658,7 @@ try{
  // THE SECTOR LOOP (src/fx/sector-run.js, docs/superpowers/specs/2026-09-15-v1-session-design.md): past the handover sector 1
  // briefs and opens two breaches; each sends its own programme; one closed early through a real seal path (the gunship's 105)
  // books what it would have paid, the other held to its last wave collapses on its own and pays HELD; with the field clear the
- // sector is SECURE and the debrief card opens on a report that keeps the contract; CONTINUE starts sector 2
+ // sector is SECURE and the debrief card opens on a report that keeps the contract; CONTINUE starts sector 2, the ramp's second
  const { checkReport } = await import('../src/domain/sector-stats.js');
  const T='window.__stalheartTest', sec=()=>evaluate(`${T}.state().sector`);
  await go('sectors-handover','index.html?sw=0&acceptance=1&cine=0&world=story&stage=6&phase=expedition#td');
@@ -686,10 +686,9 @@ try{
  await until(`(()=>{const b=${T}.state().sector.breaches[1];if(b.wavesReleased<b.wavesPlanned)${T}.sectorRelease("B");return ${T}.state().sector.breaches[1].wavesReleased>=b.wavesPlanned;})()`,30000);
  await until(`${T}.state().sector.breaches[1].closedBy==="held"`,90000).catch(async()=>assert.fail(`B never collapsed (${JSON.stringify(await sec())} queued ${await evaluate(`${T}.state().queued`)})`));
  assert((await sec()).breaches[1].bonus.kg>0,'HELD pays');
- // THE BACK DOOR RUMBLED (2026-09-24): with B's whole programme out, the rumble and the crack have both come, and the radar holds
- // a tremor contact on the mouth's bearing until it falls
- {const s=await sec();assert.deepEqual(s.omens,['rumble','crack'],`sector 1 foreshadows the back door (${JSON.stringify(s.omens)})`);
-  assert.equal(await evaluate(`${T}.state().storyHud?.tremor`),true,'the tremor contact is on the radar');}
+ // THE BACK DOOR IS SECTORS AWAY (2026-10-01): sector 1 is the lane alone, no omen and no tremor contact (test/sector-run.mjs holds
+ // the omens to the sector the schedule puts before the door)
+ {const s=await sec();assert.deepEqual(s.omens,[],`sector 1 does not foreshadow the back door (${JSON.stringify(s.omens)})`);assert.equal(s.doorAt,null,'the door is not decided');}
  current='sectors-held';await finish();
  // A FAULT IN THE FRAME (2026-09-25): the world keeps running and drawing, and the fault is reported once, not once a frame
  {const c0=await evaluate(`${T}.state().shieldClock`);assert(await evaluate(`${T}.faultOnce()`),'a fault is injected');await delay(1500);
@@ -710,27 +709,18 @@ try{
  await evaluate(`${T}.sectorContinue()`);
  await until(`${T}.state().sector.n===2 && !${T}.state().sector.debriefOpen && !${T}.state().paused`,15000);
  current='sectors-sector-2-brief';await finish();
- // THE FEAST, THEN THE SCRAMBLE (2026-09-24): the back breach opens first and the clock sends its soft flood; the gate side waits
- // until the flood is mostly down, then Isao asks for turrets and the gate side opens
- await until(`(()=>{const b=${T}.state().sector.breaches;return b.length===2&&b[0].live;})()`,60000);
- {const s=await sec();assert.equal(s.breaches[0].side,'back','the back breach opens first');assert(!s.breaches[1].opened,'the gate side waits for the feast');}
- await until(`!!${T}.state().sector.feast`,60000).catch(async()=>assert.fail(`the clock sends the feast (${JSON.stringify(await sec())})`));
- await until(`${T}.state().performance.enemies>=30`,30000);
- current='sectors-feast';await finish();
- await evaluate(`${T}.sectorClearField()`);
- await until(`${T}.state().sector.feast.scrambled`,10000).catch(async()=>assert.fail(`the scramble once the feast is down (${JSON.stringify(await sec())})`));
+ // SECTOR 2 IS THE RAMP'S SECOND (2026-10-01): the lane again, two breaches on the gate side, a fresh report
  await until(`(()=>{const b=${T}.state().sector.breaches;return b.length===2&&b.every(x=>x.live);})()`,40000);
- current='sectors-sector-2';await finish();
- // SECTOR 2 COMPLETES (QA 2026-09-16): the back door's breach fights too, both are held to their last wave, SECURE, and a fresh report
- {const s=await sec();assert.deepEqual(s.breaches.map(b=>b.side).sort(),['back','gate'],'sector 2: one gate breach, one behind the bays');assert.equal(s.strays,0,'no stray breach in sector 2');
+ {const s=await sec();assert.equal(s.name,'THE LONG LANE');assert.deepEqual(s.breaches.map(b=>b.side),['gate','gate'],'sector 2: both on the gate side');assert.equal(s.strays,0,'no stray breach in sector 2');
   assert.equal(await evaluate(`${T}.sectorReport()`),null,'the new sector cleared the last report');}
+ current='sectors-sector-2';await finish();
  await until(`(()=>{document.querySelector('#gunship-briefing:not([hidden]) [data-skip]')?.click();const S=${T}.state().sector;for(const b of S.breaches)if(b.live&&b.wavesReleased<b.wavesPlanned)${T}.sectorRelease(b.id);if(S.breaches.every(b=>!b.live||b.wavesReleased>=b.wavesPlanned))${T}.sectorClearField();return S.breaches.every(b=>b.closedBy);})()`,120000).catch(async()=>assert.fail(`sector 2's breaches never closed (${JSON.stringify(await sec())})`));
  await evaluate(`${T}.sectorClearField()`);
  await until(`${T}.state().sector.secure`,30000).catch(async()=>assert.fail(`sector 2 not secure (${JSON.stringify(await sec())})`));
  current='sectors-sector-2-secure';await finish();
  await until(`${T}.state().sector.debriefOpen`,15000);
  {const r=await evaluate(`${T}.sectorReport()`);assert.deepEqual(checkReport(r),[],'sector 2\'s report keeps the contract');assert.equal(r.sector,2);assert.equal(r.outcome,'secure');
-  assert.deepEqual(r.breaches.map(b=>b.side).sort(),['back','gate'],'the back breach is in the books');assert(r.breaches.every(b=>b.closedBy),`every breach closed or held (${JSON.stringify(r.breaches)})`);
+  assert.deepEqual(r.breaches.map(b=>b.side),['gate','gate'],'both gate breaches are in the books');assert(r.breaches.every(b=>b.closedBy),`every breach closed or held (${JSON.stringify(r.breaches)})`);
   console.log(`PASS sector 2 secure: ${r.seconds}s, kills ${r.kills.total}, breaches ${r.breaches.map(b=>`${b.id}/${b.side}/${b.closedBy}/${b.wavesFought}of${b.wavesPlanned}`).join(' ')}, prints [${r.colony.prints}]`);}
  await delay(1500);current='sectors-sector-2-debrief';await finish();
  } else if(args.includes('--waves')) {
@@ -897,7 +887,7 @@ try{
    document.querySelector('#gunship-briefing:not([hidden]) [data-skip]')?.click();document.querySelector('#sol82-briefing:not([hidden]) [data-skip]')?.click();
    if(s.screenOpen)document.querySelector('#synthetic-modal [data-continue]')?.click();
    if(S.debriefOpen){if(!P.contAt)P.contAt=performance.now()+2500;else if(performance.now()>P.contAt){P.contAt=0;T.sectorContinue();}}
-   if(S.n===2&&(S.breaches||[]).some(b=>b.side==='back'&&b.wavesReleased>=3))P.done=true;
+   if(S.n===2&&(S.breaches||[]).some(b=>b.wavesReleased>=3))P.done=true;   /* sector 2's third pulse (the back door is late since 2026-10-01) */
   }catch(e){P.err=String(e);}},250);})()`);
  const t0=Date.now();
  while(Date.now()-t0<15*60000){await delay(5000);const p=await evaluate('({done:window.__pace.done,err:window.__pace.err,n:window.__pace.ev.length,last:window.__pace.ev.slice(-1)[0]})');if(p.err)console.log('PACE harness error '+p.err);if(p.done)break;}
@@ -923,7 +913,7 @@ try{
  if(args.includes('--passive'))console.log('PACE PASSIVE: no defender at the doors; the towers alone '+(P.ev.some(([,w])=>w==='LOST')?'LOST the colony at '+P.ev.find(([,w])=>w==='LOST')[0]+' s':'held'));
  else{assert(summary.sectors[1]?.arrivals>0,'sector 1 is reached and fought');
  assert(summary.sectors[1].firstContact<=40,`sector 1's first body reaches a door within 40 s of its card (${summary.sectors[1].firstContact})`);
-  if(summary.sectors[2]?.arrivals)assert(summary.sectors[2].firstContact<=40,`sector 2's feast reaches the back mouth within 40 s of its card (${summary.sectors[2].firstContact})`);}
+  if(summary.sectors[2]?.arrivals)assert(summary.sectors[2].firstContact<=40,`sector 2's first body reaches a door within 40 s of its card (${summary.sectors[2].firstContact})`);}
  } else if(args.includes('--grow')) {
  // ISAO GROWS THE BASE (V1, 2026-09-16): a story page that names no stage grows; stage=1&grow=1 runs the whole opening to the handover
  // while Isao prints the gate (the tremor waits for it), the landing pad and the Stålheart, then the rest as the phases and sectors come.
@@ -1235,8 +1225,8 @@ try{
  await finish();
  } else if(args.includes('--skip-tutorial')) {
  // SKIP TUTORIAL (owner, 2026-09-16; docs/log/entries/2026-09-16-skip-tutorial-built.json). The opening still plays from the landing
- // and offers a button; the button is a LINK to ?skip=defence, and what it opens is a real run already at the back door: the Relay
- // and the Mortar earned and buildable, an undelivered part still refused, SOL-82 online, three hulls, and waves that come.
+ // and offers a button; the button is a LINK to ?skip=defence, and what it opens is a real run on the finished base at sector 1 (since
+ // 2026-10-01): the Relay and the Mortar earned and buildable, an undelivered part still refused, three hulls, and waves that come.
  const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`);
  // 1. THE OPENING IS UNTOUCHED, and it carries the offer
  await go('skip-tutorial-offer','index.html?sw=0&acceptance=1&cine=0&world=story&grow=1#td');
@@ -1255,7 +1245,7 @@ try{
  await until('location.search.includes("skip=defence")',20000);
  await until('window.__stalheartReady===true',90000);
  // ISAO SAYS WHERE THEY ARE, on arrival — the panel runs on its own clock, so it is read as it plays, not after
- await until('/Relay and Mortar are ours/.test(document.querySelector("#td-brief:not(.hidden)")?.textContent||"")',30000).catch(async()=>assert.fail(`Isao's arrival lines (${await evaluate('document.querySelector("#td-brief")?.textContent')})`));
+ await until('/Relay and the Mortar are ours/.test(document.querySelector("#td-brief:not(.hidden)")?.textContent||"")',30000).catch(async()=>assert.fail(`Isao's arrival lines (${await evaluate('document.querySelector("#td-brief")?.textContent')})`));
  await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
  await delay(3000);
  {const s=await st();
@@ -1287,22 +1277,19 @@ try{
   assert(await evaluate(`${T}.commitTower('relay',${socks[0]})`),'the Relay can be placed');
   assert(await evaluate(`${T}.commitTower('mortar',${socks[1]})`),'the Mortar can be placed');
   assert.equal(await evaluate(`${T}.state().towers>=2`),true,'both stand');}
- // 4. THE BACK DOOR IS THE FIRST FIGHT: sector 2, the mouth behind the bays open, a live breach there, SOL-82 online
- await until(`${T}.state().sector.n===2`,60000).catch(async()=>assert.fail(`the run opens at the back-door sector (${JSON.stringify((await st()).sector)})`));
- assert.equal((await st()).sector.name,'THE BACK DOOR');
- await until(`${T}.backDoorOpen()`,60000).catch(()=>assert.fail('the rock behind the bays gives way'));
- // the back breach first, its feast on the clock, then the gate side once the feast is down (2026-09-24)
- await until(`!!${T}.state().sector.feast`,90000).catch(async()=>assert.fail(`the feast comes through the back (${JSON.stringify((await st()).sector)})`));
- await evaluate(`${T}.sectorClearField()`);
+ // 4. THE LANE IS THE FIRST FIGHT (owner, 2026-10-01: the back door comes late; SKIP ALL starts the ramp on the finished base):
+ // sector 1, two breaches on the gate side, the mouth behind the bays still rock, SOL-82 not yet ours (sector 3)
+ await until(`${T}.state().sector.n===1`,60000).catch(async()=>assert.fail(`the run opens at sector 1 (${JSON.stringify((await st()).sector)})`));
+ assert.equal((await st()).sector.name,'THE LANE');
  await until(`(()=>{const b=${T}.state().sector.breaches;return b.length===2&&b.every(x=>x.live);})()`,60000).catch(async()=>assert.fail(`both breaches open (${JSON.stringify((await st()).sector)})`));
- {const s=await st();assert.deepEqual(s.sector.breaches.map(b=>b.side).sort(),['back','gate'],'one breach behind the bays, one on the gate side');
-  assert.equal(s.laser.online,true,'SOL-82 is online');
+ {const s=await st();assert.deepEqual(s.sector.breaches.map(b=>b.side),['gate','gate'],'both on the gate side');
+  assert.equal(await evaluate(`${T}.backDoorOpen()`),false,'the back mouth is still rock');assert.equal(s.laser.online,false,'SOL-82 comes online at sector 3');
   assert.equal(s.sector.strays,0,'no stray breach from an opening this run never played');}
  // 5. A WAVE ACTUALLY ARRIVES, on the run's own clock
  await until(`${T}.state().sector.breaches.some(b=>b.wavesReleased>0)`,120000).catch(async()=>assert.fail(`a wave comes without being asked (${JSON.stringify((await st()).sector)})`));
  await until(`${T}.state().performance.enemies>0`,60000);
  {const s=await st();console.log(`PASS skip-tutorial waves: enemies ${s.performance.enemies}, ${s.sector.breaches.map(b=>`${b.id}/${b.side} ${b.wavesReleased}/${b.wavesPlanned}`).join(' ')}, gate ${JSON.stringify(s.sector.gate)}`);}
- current='skip-tutorial-back-door-fight';await finish();
+ current='skip-tutorial-first-fight';await finish();
  // THE BUILD MENU IS THE PROOF OF THE UNLOCK: the player's own radial offers the Relay and the Mortar at their price and
  // still reads PART OUT on a part nobody fetched. It moves the build camera, so it runs after the fight is photographed.
  assert.equal(await evaluate(`${T}.openBuildMenu()`),true,'the build menu opens on an open cell');
@@ -1317,13 +1304,24 @@ try{
  await evaluate(`${T}.sectorClearField()`);
  await until(`${T}.state().sector.secure`,30000).catch(async()=>assert.fail(`SECTOR SECURE (${JSON.stringify((await st()).sector)})`));
  await until(`${T}.state().sector.debriefOpen`,20000);
- {const r=await evaluate(`${T}.sectorReport()`);assert.equal(r.sector,2);assert.equal(r.outcome,'secure');
-  assert.deepEqual(r.breaches.map(b=>b.side).sort(),['back','gate'],'the back breach is in the books');
+ {const r=await evaluate(`${T}.sectorReport()`);assert.equal(r.sector,1);assert.equal(r.outcome,'secure');
+  assert.deepEqual(r.breaches.map(b=>b.side),['gate','gate'],'both gate breaches are in the books');
   console.log(`PASS skip-tutorial secure: ${r.seconds}s, kills ${r.kills.total}, breaches ${r.breaches.map(b=>`${b.id}/${b.side}/${b.closedBy}`).join(' ')}`);}
  await delay(1200);current='skip-tutorial-debrief';await finish();
  await evaluate(`${T}.sectorContinue()`);
- await until(`${T}.state().sector.n===3 && !${T}.state().sector.debriefOpen && !${T}.state().paused`,20000).catch(async()=>assert.fail(`CONTINUE moves to the next sector (${JSON.stringify((await st()).sector)})`));
+ await until(`${T}.state().sector.n===2 && !${T}.state().sector.debriefOpen && !${T}.state().paused`,20000).catch(async()=>assert.fail(`CONTINUE moves to the next sector (${JSON.stringify((await st()).sector)})`));
  current='skip-tutorial-next-sector';await finish();
+ // 7. THE BACK DOOR JUMP (the drawer's BACK DOOR, ?skip=defence&sector=N): the finished base opened at the door's earliest sector is
+ // the door: the mouth behind the bays falls, the feast comes through the back, then both breaches fight, SOL-82 online
+ await go('skip-tutorial-back-door',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${(await import('../src/content/sectors.js')).SECTOR_DOOR.earliest}#td`);
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ await until(`${T}.state().sector.name==="THE BACK DOOR"`,60000).catch(async()=>assert.fail(`the jump opens at the back door (${JSON.stringify((await st()).sector)})`));
+ await until(`${T}.backDoorOpen()`,60000).catch(()=>assert.fail('the rock behind the bays gives way'));
+ await until(`!!${T}.state().sector.feast`,90000).catch(async()=>assert.fail(`the feast comes through the back (${JSON.stringify((await st()).sector)})`));
+ await evaluate(`${T}.sectorClearField()`);
+ await until(`(()=>{const b=${T}.state().sector.breaches;return b.length===2&&b.every(x=>x.live);})()`,60000).catch(async()=>assert.fail(`both breaches open (${JSON.stringify((await st()).sector)})`));
+ {const s=await st();assert.deepEqual(s.sector.breaches.map(b=>b.side).sort(),['back','gate'],'one breach behind the bays, one on the gate side');assert.equal(s.laser.online,true,'SOL-82 is online');}
+ current='skip-tutorial-back-door';await finish();
  } else if(args.includes('--showcase')) {
  // THE SHOWCASE (owner, 2026-09-24; docs/log/entries/2026-09-24-intro-simplified.json). FOUR BEATS, and each one drives a
  // real system in a real run of the skipped world. So this step does not look at the rail's intentions — it photographs

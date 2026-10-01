@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict';
 import { createSectorRun } from '../src/fx/sector-run.js';
-import { SECTORS, SECTOR_TIMING, SECTOR_GATE } from '../src/content/sectors.js';
+import { SECTORS, SECTOR_TIMING, SECTOR_GATE, SECTOR_DOOR, BACK_DOOR_SECTOR } from '../src/content/sectors.js';
 
 // THE SECTOR CLOCK (docs/superpowers/specs/2026-09-24-session-pacing-design.md A and B), driven through fake hooks: no page, no
 // planet. A ring of 120 cells; walking hops from the heart climb 30..59 round it; cells 200.. are the back candidates.
-function world({ firstSector = 1, gate = false, lateStart = true, delivered = [], backCandidates = [{ cell: 210, hops: 30 }, { cell: 221, hops: 40 }, { cell: 220, hops: 31 }] } = {}) {
+function world({ firstSector = 1, gate = false, lateStart = true, delivered = [], unlocked = false, backCandidates = [{ cell: 210, hops: 30 }, { cell: 221, hops: 40 }, { cell: 220, hops: 31 }] } = {}) {
   const w = { t: 0, enemies: [], queue: [], opened: [], briefs: [], scrambles: 0, backDoors: 0 };
   const centers = [], dist = [];
   for (let i = 0; i < 260; i++) { const a = (i / 120) * Math.PI * 2; centers.push([Math.cos(a), Math.sin(a), i >= 200 ? 1 : 0]); dist.push(i >= 200 ? 30 : 30 + (i % 30)); }
-  const story = { sealed: () => false, gateCell: gate ? 5 : -1, lateStart };
+  const story = { sealed: () => false, gateCell: gate ? 5 : -1, lateStart, expeditions: unlocked ? { sites: [{ id: 'a', state: 'delivered' }] } : null };
   const api = { openBackDoor: () => { w.backDoors++; }, backBreachCandidates: () => backCandidates, /* by default 221 is the farthest, and within a blast of the rim */ backScramble: (k) => { if (k === 0) w.scrambles++; w.rings = (w.rings ?? 0) + 1; }, backOmen: (o) => { (w.omens ??= []).push(o.id); } };
   w.run = createSectorRun({
     story, api, waveSize: 4, threatMult: 1, hardcore: 'knot', spawnGap: { spread: 3.2, max: 0.45 }, store: null, rng: () => 0,
@@ -56,7 +56,7 @@ function world({ firstSector = 1, gate = false, lateStart = true, delivered = []
 
 // THE BACK DOOR: the feast first, the clock held while it is fought, then the scramble and the gate side
 {
-  const w = world({ firstSector: 2 });
+  const w = world({ firstSector: SECTOR_DOOR.earliest });
   w.step(0.25);
   let s = w.run.state();
   assert.equal(s.breaches[0].side, 'back', 'the back breach is picked first');
@@ -66,9 +66,9 @@ function world({ firstSector = 1, gate = false, lateStart = true, delivered = []
   assert.equal(w.opened[0].ci >= 200, true, 'the back breach opens first');
   assert.notEqual(w.opened[0].ci, 221, 'never where its blast reaches the base\'s rim, however far out it stands');
   const feast = w.run.release(w.t);
-  const want = SECTORS[1].feast.entries.reduce((n, e) => n + e.count, 0);
+  const want = BACK_DOOR_SECTOR.feast.entries.reduce((n, e) => n + e.count, 0);
   assert.equal(feast.length, want, 'the first back wave is the feast');
-  assert.ok(feast.every((q) => ['amoeba', 'phage'].includes(q.type) && q.pace === SECTORS[1].feast.pace), 'soft bodies at the surge pace');
+  assert.ok(feast.every((q) => ['amoeba', 'phage'].includes(q.type) && q.pace === BACK_DOOR_SECTOR.feast.pace), 'soft bodies at the surge pace');
   assert.equal(w.run.state().breaches[0].wavesReleased, 1, 'the books count it as the first wave');
   w.spawn(feast);
   assert.equal(w.run.canRelease(), false, 'the clock holds while the feast is fought');
@@ -79,7 +79,7 @@ function world({ firstSector = 1, gate = false, lateStart = true, delivered = []
   w.step(0.5);
   assert.equal(w.scrambles, 1, 'the scramble once the feast is mostly down');
   assert.equal(w.run.canRelease(), true, 'the clock resumes');
-  w.step(SECTORS[1].feast.gateAfter + 0.5);
+  w.step(BACK_DOOR_SECTOR.feast.gateAfter + 0.5);
   assert.equal(w.opened.length, 2, 'the gate side opens after the scramble');
   const second = w.run.release(w.t);
   assert.ok(second.some((q) => q.sp === w.opened[0]) && second.some((q) => q.sp === w.opened[1]), 'then both sides on the clock');
@@ -88,7 +88,7 @@ function world({ firstSector = 1, gate = false, lateStart = true, delivered = []
 }
 {
   // the back breach sealed before its feast rose: the gate side opens anyway, and the sector can be secured
-  const w = world({ firstSector: 2 });
+  const w = world({ firstSector: SECTOR_DOOR.earliest });
   w.step(SECTOR_TIMING.backDoorLead + 0.5);
   assert.equal(w.opened.length, 1);
   w.run.closed(w.opened[0], 'laser');
@@ -98,31 +98,49 @@ function world({ firstSector = 1, gate = false, lateStart = true, delivered = []
 }
 {
   // a feast sector that found no back ground: its breaches all stand on the gate side and none of them waits for a feast
-  const w = world({ firstSector: 2, backCandidates: [] });
+  const w = world({ firstSector: SECTOR_DOOR.earliest, backCandidates: [] });
   w.step(SECTOR_TIMING.backDoorLead + 3);
   assert.deepEqual(w.run.state().breaches.map((b) => b.side), ['gate', 'gate']);
   assert.equal(w.opened.length, 2, 'both open, one after the other');
 }
 {
   // a player who never goes to the back still gets the rest of the sector
-  const w = world({ firstSector: 2 });
+  const w = world({ firstSector: SECTOR_DOOR.earliest });
   w.step(SECTOR_TIMING.backDoorLead + 1);
   w.spawn(w.run.release(w.t));
-  w.step(SECTORS[1].feast.timeout + 1);
+  w.step(BACK_DOOR_SECTOR.feast.timeout + 1);
   assert.equal(w.scrambles, 1, 'the scramble comes on its timeout');
 }
-// THE BACK DOOR RUMBLES in sector 1: the rumble with the second pulse, the crack with the last, nothing in the pulses between
+// THE BACK DOOR RUMBLES in the sector before it (2026-10-01: the schedule decides the door a sector ahead): the rumble with the
+// second pulse, the crack with the last, nothing in the pulses between, and nothing in a sector the door does not follow
 {
-  const w = world();
+  const w = world({ firstSector: SECTOR_DOOR.earliest - 1, unlocked: true });   // everything unlocked: the door is next
   w.step(3);
-  const pulses = [];
-  for (let k = 1; k <= SECTORS[0].waves; k++) { w.run.release(w.t); pulses.push([k, [...(w.omens ?? [])]]); w.step(0.5); }
-  assert.deepEqual(pulses.map(([k, o]) => o.length), [0, 1, 1, 1, 1, 2], `the rumble at pulse 2, the crack at the last (${JSON.stringify(pulses)})`);
+  assert.equal(w.run.state().doorAt, SECTOR_DOOR.earliest, 'the door is decided at the start of the sector before it');
+  const pulses = [], waves = SECTORS[SECTOR_DOOR.earliest - 2].waves;
+  for (let k = 1; k <= waves; k++) { w.run.release(w.t); pulses.push([k, [...(w.omens ?? [])]]); w.step(0.5); }
+  assert.deepEqual(pulses.map(([k, o]) => o.length), [0, ...Array(waves - 2).fill(1), 2], `the rumble at pulse 2, the crack at the last (${JSON.stringify(pulses)})`);
   assert.deepEqual(w.omens, ['rumble', 'crack']);
 }
 {
+  const w = world();
+  w.step(3);
+  for (let k = 1; k <= SECTORS[0].waves; k++) { w.run.release(w.t); w.step(0.5); }
+  assert.equal(w.omens, undefined, 'sector 1 is quiet: the door is sectors away');
+  assert.equal(w.run.state().doorAt, null);
+}
+{
+  // EVERYTHING UNLOCKED: the door is next as soon as the schedule allows, a sector ahead of earliest
+  const w = world({ firstSector: SECTOR_DOOR.earliest - 1, unlocked: true });
+  w.step(0.5);
+  assert.equal(w.run.state().doorAt, SECTOR_DOOR.earliest);
+  const w2 = world({ firstSector: SECTOR_DOOR.earliest - 1 });
+  w2.step(0.5);
+  assert.equal(w2.run.state().doorAt, null, 'not unlocked and not at latest: held');
+}
+{
   // the scramble's markers ring for their seconds and then stop
-  const w = world({ firstSector: 2 });
+  const w = world({ firstSector: SECTOR_DOOR.earliest });
   w.step(SECTOR_TIMING.backDoorLead + 1);
   w.spawn(w.run.release(w.t));
   for (const e of w.enemies) e.alive = false;
@@ -134,7 +152,7 @@ function world({ firstSector = 1, gate = false, lateStart = true, delivered = []
 // THE SECTOR'S OWN CLOCK: time the world spends frozen or paused (no tick) does not count, so nothing the sector waits for runs
 // out behind a dive shot
 {
-  const w = world({ firstSector: 2 });
+  const w = world({ firstSector: SECTOR_DOOR.earliest });
   w.step(0.5);
   assert.equal(w.opened.length, 0, 'behind the fallen mouth the breach waits the lead');
   w.t += 60;   // a minute of frozen world: the controller does not tick the sector
@@ -161,9 +179,10 @@ function world({ firstSector = 1, gate = false, lateStart = true, delivered = []
   assert.equal(w.run.state().phase, 'fighting', 'the grace opens it whatever the tank is doing');
 }
 {
-  const w = world({ lateStart: false, firstSector: 2 });
+  const w = world({ lateStart: false, firstSector: SECTOR_DOOR.earliest });
   w.step(0.5);
-  assert.notEqual(w.run.state().phase, 'idle', 'SKIP TUTORIAL opens at the back door at once');
+  assert.notEqual(w.run.state().phase, 'idle', 'a run opened past the lane (the back door jump) opens at once');
+  assert.equal(w.run.state().name, BACK_DOOR_SECTOR.name, 'opened at the door\'s earliest: the door');
 }
 
 // ISAO WAITS FOR THE LANE TO CLEAR before a repair trip: a body within quietCells of a standing door makes the doors loud

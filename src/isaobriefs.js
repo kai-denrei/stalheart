@@ -17,7 +17,7 @@
 // is a fact and then a plan: "Oh no! They destroyed my RADAR!" (angry)...
 // "Oh well. Rebuild." Two short lines at most; the second line is always what
 // he does next. Curiosity over dread, resources over blame.
-import { SECTORS, SECTOR_GENERATOR } from './content/sectors.js';
+import { SECTORS, SECTOR_HOLD, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_GENERATOR } from './content/sectors.js';
 
 export const BRIEFS = {
   // --- THE STORY -----------------------------------------------------------
@@ -338,12 +338,15 @@ export const BRIEFS = {
   // the landing, the rock behind the bays about to go.
   skip_defence: {
     id: 'skip_defence', face: 'determined', title: 'YOU ARE UP',
-    lines: ['Base is printed, Relay and Mortar are ours, SOL-82 answers when we call.', 'The rock behind the bays is about to give. Build, and hold the back door.'],
+    lines: ['Base is printed, and the Relay and the Mortar are ours.', 'They are already out on the lane. Build, and hold the gate.'],
   },
 
   // THE SECTORS (docs/superpowers/specs/2026-09-15-v1-session-design.md): Isao's two lines on each sector's brief. The lines
   // are the content table's (src/content/sectors.js), so the brief and the debrief's "next sector" lines cannot drift.
   ...Object.fromEntries(SECTORS.map((s) => [`sector_${s.n}`, { id: `sector_${s.n}`, face: s.n === 1 ? 'determined' : 'focused', title: `SECTOR ${s.n} · ${s.name}`, lines: [...s.brief] }])),
+  sector_hold: { id: 'sector_hold', face: 'focused', title: 'THE NEXT SECTOR', lines: [...SECTOR_HOLD.brief] },
+  sector_door: { id: 'sector_door', face: 'surprised', title: BACK_DOOR_SECTOR.name, lines: [...BACK_DOOR_SECTOR.brief] },
+  sector_both: { id: 'sector_both', face: 'determined', title: BOTH_WALLS_SECTOR.name, lines: [...BOTH_WALLS_SECTOR.brief] },
   sector_next: { id: 'sector_next', face: 'determined', title: 'THE NEXT SECTOR', lines: [...SECTOR_GENERATOR.brief] },
   // the gate gives under the pile, and comes back
   gate_broken: {

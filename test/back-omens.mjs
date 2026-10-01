@@ -5,18 +5,18 @@ import { BRIEFS } from '../src/isaobriefs.js';
 import { createBackOmen } from '../src/fx/back-omen.js';
 import { BACK_SCRAMBLE } from '../src/content/sectors.js';
 
+// the omens belong to whichever sector the schedule put before the door ('before'), not to a number (2026-10-01)
 const fired = new Set();
-assert.equal(omenDue(BACK_OMENS, { sector: 1, pulse: 1, last: false }, fired), null, 'the first pulse is quiet');
-assert.equal(omenDue(BACK_OMENS, { sector: 1, pulse: 2, last: false }, fired).id, 'rumble');
+assert.equal(omenDue(BACK_OMENS, { sector: 'before', pulse: 1, last: false }, fired), null, 'the first pulse is quiet');
+assert.equal(omenDue(BACK_OMENS, { sector: 'before', pulse: 2, last: false }, fired).id, 'rumble');
 fired.add('rumble');
-assert.equal(omenDue(BACK_OMENS, { sector: 1, pulse: 2, last: false }, fired), null, 'once');
-assert.equal(omenDue(BACK_OMENS, { sector: 1, pulse: 3, last: false }, fired), null);
-assert.equal(omenDue(BACK_OMENS, { sector: 1, pulse: SECTORS[0].waves, last: true }, fired).id, 'crack', 'the crack comes with the last pulse');
-assert.equal(omenDue(BACK_OMENS, { sector: 2, pulse: 2, last: false }, new Set()), null, 'the omens belong to the sector before the door');
-const door = SECTORS.find((s) => s.backDoor);
-assert.ok(BACK_OMENS.every((o) => o.sector === door.n - 1), 'every omen comes the sector before the door falls');
+assert.equal(omenDue(BACK_OMENS, { sector: 'before', pulse: 2, last: false }, fired), null, 'once');
+assert.equal(omenDue(BACK_OMENS, { sector: 'before', pulse: 3, last: false }, fired), null);
+assert.equal(omenDue(BACK_OMENS, { sector: 'before', pulse: 4, last: true }, fired).id, 'crack', 'the crack comes with the last pulse');
+assert.equal(omenDue(BACK_OMENS, { sector: null, pulse: 2, last: false }, new Set()), null, 'a sector not before the door is quiet');
+assert.ok(BACK_OMENS.every((o) => o.sector === 'before'), 'every omen comes the sector before the door falls');
 assert.ok(BACK_OMENS.every((o) => BRIEFS[o.brief]?.lines.length === 2), 'each omen has Isao\'s two lines');
-assert.ok(BACK_OMENS.every((o) => o.pulse === 'last' || o.pulse <= SECTORS[o.sector - 1].waves), 'every omen falls inside its sector');
+assert.ok(BACK_OMENS.every((o) => o.pulse === 'last' || SECTORS.every((s) => o.pulse <= s.waves)), 'every omen falls inside any sector it can come in');
 // the fx plays an omen over the controller's instruments, and the scramble rings the back sockets
 {
   const log = [];

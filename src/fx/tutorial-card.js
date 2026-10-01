@@ -19,7 +19,7 @@ export function createTutorialCard(root, { search = '', from = 0, skipLanding = 
   const el = document.createElement('div');
   el.id = 'skip-tutorial'; el.className = 'skip-tutorial';
   el.innerHTML = '<div class="tut-where"><b></b><span class="tut-name"></span><span class="tut-pips"></span></div>'
-    + '<div class="tut-go"><button type="button" data-next></button><button type="button" data-skip title="skip the whole tutorial: the finished base, two towers earned, and the breach behind the bays">SKIP ALL</button></div>';
+    + '<div class="tut-go"><button type="button" data-next></button><button type="button" data-skip title="skip the whole tutorial: the finished base, two towers earned, sector 1 on the lane">SKIP ALL</button></div>';
   root.append(el);
   const $ = (sel) => el.querySelector(sel), next = $('[data-next]'), skip = $('[data-skip]'), skipHref = skipTutorialUrl(search);
   let gone = false, used = null, at = -1;

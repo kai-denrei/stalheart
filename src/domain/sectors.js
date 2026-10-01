@@ -6,13 +6,26 @@
 //
 // Pure. The clock, the spawner and the seal effects belong to the caller; the tunables come in from src/content/sectors.js.
 
-// The def for sector n >= 1: an authored row, or one generated past the table from the last authored row (its flags
-// carry over). The generator's arithmetic is documented beside SECTOR_GENERATOR.
-export function sectorDef(n, table, generator) {
+// The def for sector n >= 1 (2026-10-01, the ramp before the back door). `table`: the fixed opening (SECTORS); `arc`: { hold, door,
+// both, doorAt } with hold the gate-side sector run while the back door is not due, door and both its two sectors, and doorAt the
+// sector the schedule put the door in (null: not yet decided). Past both, sectors are generated from it (the generator's
+// arithmetic is documented beside SECTOR_GENERATOR). Without an arc the generator follows the last authored row.
+export function sectorDef(n, table, generator, arc = null) {
   n = Math.max(1, Math.floor(n) || 1);
   const ladderCap = generator.ladderCap ?? Infinity;
   if (n <= table.length) { const d = table[n - 1]; return { ...d, waveBase: d.ladderStart ?? 0, ladderCap }; }
-  const last = table[table.length - 1], past = n - table.length;
+  const doorAt = arc?.doorAt ?? null;
+  if (arc && doorAt !== null && n === doorAt) return { ...arc.door, n, waveBase: arc.door.ladderStart ?? 0, ladderCap };
+  if (arc && doorAt !== null && n === doorAt + 1) return { ...arc.both, n, waveBase: arc.both.ladderStart ?? 0, ladderCap };
+  if (arc && (doorAt === null || n < doorAt)) {
+    const last = table[table.length - 1], h = arc.hold, past = n - table.length;
+    return {
+      ...last, n, name: `${h.name} ${n}`, new: null, brief: h.brief, breaches: { ...h.breaches }, waves: h.waves, pulse: h.pulse ?? last.pulse,
+      threat: Math.round((last.threat + h.threatStep * past) * 100) / 100, held: { ...h.held }, feast: undefined, backDoor: false,
+      waveBase: h.ladderStart ?? 0, ladderCap,
+    };
+  }
+  const last = arc ? arc.both : table[table.length - 1], past = n - (arc ? doorAt + 1 : table.length);
   return {
     ...last, n, name: `${generator.name} ${n}`, new: null, brief: generator.brief,
     breaches: { ...generator.sides[(past - 1) % generator.sides.length] },
@@ -22,6 +35,10 @@ export function sectorDef(n, table, generator) {
     waveBase: generator.ladderStart ?? 0, ladderCap,
   };
 }
+
+// IS THE NEXT SECTOR THE BACK DOOR? Asked at the start of sector n: yes once n + 1 is at least `earliest` and everything is unlocked,
+// or n + 1 has reached `latest` (SECTOR_DOOR)
+export const backDoorNext = ({ n, earliest, latest, unlocked }) => n + 1 >= earliest && (!!unlocked || n + 1 >= latest);
 
 // breaches: [{ id, side, cell }], one per breach the caller placed. waveIndexBase is the ladder wave number before the
 // breach's first wave (def.waveBase) and ladderCap the highest ladder wave it is ever sized at.

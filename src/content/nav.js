@@ -4,6 +4,7 @@
 // runtime, so they are not listed.
 import { STAGES } from './base-layout.js';
 import { SKIP_TUTORIAL_URL } from '../core/story-route.js';
+import { SECTOR_DOOR } from './sectors.js';
 
 export const NAV_MODES = Object.freeze(['playtest', 'dev']);
 
@@ -15,7 +16,8 @@ export const STORY_JUMPS = Object.freeze([
   { id: 'gunship', label: 'GUNSHIP', title: 'the gunship on station with the seat taken, enemies up and waves continuing', url: 'index.html?world=story&stage=6&cine=0&acceptance=1&gunship=station&skip=gunship#td', wired: true },
   { id: 'defense', label: 'DEFENSE', title: 'after the handover: automatic towers, the tank, the gunship call-in, the expeditions', url: 'index.html?world=story&stage=6&cine=0&acceptance=1&phase=expedition#td', wired: true },
   { id: 'showcase', label: 'SHOWCASE', title: 'the intro montage: the core loop in twelve shots over a real run, ending on Isao asking "Are you ready?" (src/fx/showcase.js)', url: 'index.html?intro=1#td', wired: true },
-  { id: 'skip', label: 'SKIP TUTORIAL', title: 'the player\'s own way past the opening: the finished base, the Relay and the Mortar earned, SOL-82 online and the back door breaking open', url: SKIP_TUTORIAL_URL, wired: true },
+  { id: 'skip', label: 'SKIP TUTORIAL', title: 'the player\'s own way past the opening: the finished base, the Relay and the Mortar earned, sector 1 on the lane', url: SKIP_TUTORIAL_URL, wired: true },
+  { id: 'backdoor', label: 'BACK DOOR', title: 'the finished base straight into the back door: the mouth behind the bays falls, the feast, the scramble (SECTOR_DOOR)', url: `index.html?skip=defence&sector=${SECTOR_DOOR.earliest}#td`, wired: true },
 ].map(Object.freeze));
 
 export const NAV_DOCS = Object.freeze([

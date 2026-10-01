@@ -75,8 +75,8 @@ assert.ok(checkReport({ sector: 1 }).length > 5, 'a malformed report is refused'
   assert.deepEqual(r.score, { total: 950, kills: 300, rams: 150, bonuses: 500 });
   assert.deepEqual(r.biomass, { earned: 135, spent: 80, bank: 222, leftInField: 60 });
   assert.deepEqual(r.breaches, [
-    { id: 'g1', side: 'gate', wavesPlanned: 6, wavesFought: 2, kills: 2, closedBy: 'laser', openSeconds: 10, leftInField: { kg: 60, points: 700 } },
-    { id: 'g2', side: 'back', wavesPlanned: 6, wavesFought: 0, kills: 2, closedBy: null, openSeconds: 31, leftInField: { kg: 0, points: 0 } },
+    { id: 'g1', side: 'gate', wavesPlanned: 4, wavesFought: 2, kills: 2, closedBy: 'laser', openSeconds: 10, leftInField: { kg: 60, points: 700 } },
+    { id: 'g2', side: 'back', wavesPlanned: 4, wavesFought: 0, kills: 2, closedBy: null, openSeconds: 31, leftInField: { kg: 0, points: 0 } },
   ]);
   assert.deepEqual(r.stamps, ['special-delivery'], 'the part home is the only stamp');
   // the report is a copy: more events do not rewrite it

@@ -59,6 +59,9 @@ export function readStoryQuery(search) {
     landmarks: landmarkTierMode(search),   // ?landmarks=candidate: review the pinned runtime LOD candidates in the game camera
     phase: skip ? STORY_SKIP.phase : chapter ? chapter.from : (STORY_PHASES.includes(q.get('phase')) ? q.get('phase') : null),   // ?phase=expedition: a jump past the handover starts the beats there
     // ISAO GROWS THE BASE IN PLAY: ?grow=1, and a bare story page that names no stage; an explicit stage=N stays the static base
+    // the sector the run opens on: SKIP TUTORIAL's (sector 1), or ?sector=N beside it, which a harness or the drawer's BACK DOOR jump
+    // uses to open at the back door (src/fx/sector-run.js: a first sector at or past SECTOR_DOOR.earliest is the door)
+    firstSector: skip ? Math.max(1, parseInt(q.get('sector') ?? '', 10) || STORY_SKIP.sector) : 1,
     grow: !!chapter || (!skip && story && (q.get('grow') === '1' || (q.get('grow') !== '0' && !q.has('stage') && (!q.has('story') || fromStart)))),
   };
 }

@@ -7,10 +7,11 @@
 // Composition only: the rules are src/domain/sectors.js, sector-stats.js and gate-integrity.js with the numbers in
 // src/content/sectors.js. The controller hands in hooks (spawning, sealing, paying, briefing, pausing, polling) and calls
 // the returned object at its real sites; nothing here imports the controller.
-import { SECTORS, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, SECTOR_STATS, SECTOR_STAMPS, SECTOR_RECORDS, SECTOR_TIMING, SECTOR_GATE, BELT_OF, BREACH_CLOSERS, BACK_OMENS, BACK_SCRAMBLE } from '../content/sectors.js';
+import { SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, SECTOR_STATS, SECTOR_STAMPS, SECTOR_RECORDS, SECTOR_TIMING, SECTOR_GATE, BELT_OF, BREACH_CLOSERS, BACK_OMENS, BACK_SCRAMBLE } from '../content/sectors.js';
 import { omenDue } from '../domain/back-omens.js';
 import { GUNSHIP_GUN_ORDER } from '../content/gunship.js';
-import { firstSectorDue, pulseFits, sectorDef, makeSector, releaseWave, nextWaveIndex, closeBreach, spendBreach, isSecure, forfeitOf, waveYield, pickBreachCells } from '../domain/sectors.js';
+import { snapshot as programmeSnapshot } from '../domain/build-programme.js';
+import { firstSectorDue, pulseFits, sectorDef, backDoorNext, makeSector, releaseWave, nextWaveIndex, closeBreach, spendBreach, isSecure, forfeitOf, waveYield, pickBreachCells } from '../domain/sectors.js';
 import { makeSectorStats, record, report as sectorReport, mergeBests, campaignTotals } from '../domain/sector-stats.js';
 import { makeGateIntegrity, pressGate, mendGate, gateShare } from '../domain/gate-integrity.js';
 import { computeWavePlan, ENEMY_SPEC } from '../enemyspec.js';
@@ -41,7 +42,7 @@ export function killSource(src, via = null) {
 // hooks: see the controller's createSectorRun call (src/td-tab.js). Every one is required unless marked optional there.
 export function createSectorRun(h) {
   const story = h.story, api = h.api ?? {};
-  let phase = 'idle', def = null, sector = null, stats = null, left = 0, at = 0, pending = [], cardLeft = 0, feast = null, backOpenedAt = null, campaignShown = false, lastPoll = null, lastReport = null, quiet = false;
+  let phase = 'idle', def = null, sector = null, stats = null, left = 0, at = 0, pending = [], cardLeft = 0, feast = null, backOpenedAt = null, campaignShown = false, lastPoll = null, lastReport = null, quiet = false, doorAt = null;
   const sps = new Map(), reports = [], omens = new Set();
   let doorsQuiet = true;   // no sector body within quietCells of any standing door, as of the last tick
   let readySince = null;   // when the story first said it was ready for the first sector
@@ -71,7 +72,13 @@ export function createSectorRun(h) {
   const estimate = (i, threat) => waveYield(computeWavePlan(i, 1, h.waveSize, threat * (h.threatMult ?? 1)), { bounty: BOUNTY, pointScale: POINT_SCALE, ...SECTOR_FORFEIT, clearKg: waveClearBonus(i), clearPoints: waveScore(i) });
   const note = (ev) => (stats ? record(stats, ev) : false);
   const retarget = () => { if (sps.size && [...sps.values()].includes(story.source) && story.source.alive) return; const live = [...sps.values()].find((s) => s.alive); if (live) story.source = live; };
-  const nextLines = () => [...sectorDef((def?.n ?? 0) + 1, SECTORS, SECTOR_GENERATOR).brief];   // Isao's two lines about the next sector, for the card's last page
+  // THE ARC (2026-10-01): the fixed ramp, held sectors until the back door is due, the door, BOTH WALLS, then the generator
+  const arc = () => ({ hold: SECTOR_HOLD, door: BACK_DOOR_SECTOR, both: BOTH_WALLS_SECTOR, doorAt });
+  const defOf = (n) => sectorDef(n, SECTORS, SECTOR_GENERATOR, arc());
+  // EVERYTHING UNLOCKED: every landing site's part is home and Isao's programme is printed but for the back gate (which needs the door)
+  const unlocked = () => { const sites = story.expeditions?.sites ?? [], next = story.programme ? programmeSnapshot(story.programme).next : null; return sites.length > 0 && sites.every((x) => x.state === 'delivered') && (next === null || next === 'backgate'); };
+  const briefOf = (n) => (n <= SECTORS.length ? `sector_${n}` : n === doorAt ? 'sector_door' : doorAt !== null && n === doorAt + 1 ? 'sector_both' : doorAt === null || n < doorAt ? 'sector_hold' : 'sector_next');
+  const nextLines = () => [...defOf((def?.n ?? 0) + 1).brief];   // Isao's two lines about the next sector, for the card's last page
   const debrief = () => (story.debrief ??= (h.makeDebrief ?? createSectorDebrief)(h.host, {
     play: h.sfx, beep: h.beep, reducedMotion: !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
     onContinue: () => cont(), onNewRun: () => h.reload(), onKeepHolding: () => next(),
@@ -121,7 +128,8 @@ export function createSectorRun(h) {
   }
 
   function begin(n) {
-    def = sectorDef(n, SECTORS, SECTOR_GENERATOR); story.sectorN = n;
+    def = defOf(n); story.sectorN = n;
+    if (doorAt === null && backDoorNext({ n, ...SECTOR_DOOR, unlocked: unlocked() })) doorAt = n + 1;   // decided a sector ahead: the omens rumble in this one
     sector = null; sps.clear(); pending = []; lastPoll = null; lastReport = null;   // the last sector's report goes with it
     // every live breach in play belongs to the sector: the opening's sinkhole (or any other stray) caves in as the sector begins
     const strays = (h.breaches?.() ?? []).filter((sp) => sp.alive);
@@ -133,7 +141,7 @@ export function createSectorRun(h) {
     const sides = Object.entries(def.breaches).map(([side, k]) => `${k} ${side === 'back' ? 'BEHIND THE BAYS' : 'ON THE GATE SIDE'}`).join(' · ');
     card([`SECTOR ${n} · ${def.name}`, `BREACHES ${Object.values(def.breaches).reduce((a, b) => a + b, 0)} · ${sides}`, 'CLOSE ONE EARLY AND ITS REMAINING WAVES PAY NOTHING']);
     // the collapse carries its own line (the feast); Isao's queue is one deep, so the sector's line would only push it out
-    if (!doorNow) h.brief(n <= SECTORS.length ? `sector_${n}` : 'sector_next');
+    if (!doorNow) h.brief(briefOf(n));
     h.calm?.();   // a calm moment: a briefing put off mid-fight shows now
     h.sfx?.('boss_tension');
     // NO DEAD TIME AT THE START (2026-09-24): the breaches are placed and open under the card instead of after it
@@ -223,7 +231,7 @@ export function createSectorRun(h) {
   function next() { if (phase !== 'debrief' && phase !== 'campaign') return; debrief().hide(); h.pause(false); begin(def.n + 1); }
   function cont() {
     if (phase === 'lost-shown') { h.reload(); return; }
-    if (phase === 'debrief' && def.n === SECTORS.length && !campaignShown) { campaignShown = true; phase = 'campaign'; debrief().showCampaign({ reports: reports.slice(), totals: campaignTotals(reports) }, { isao: nextLines() }); return; }
+    if (phase === 'debrief' && doorAt !== null && def.n === doorAt + 1 && !campaignShown) { campaignShown = true; phase = 'campaign'; debrief().showCampaign({ reports: reports.slice(), totals: campaignTotals(reports) }, { isao: nextLines() }); return; }
     next();
   }
 
@@ -232,7 +240,7 @@ export function createSectorRun(h) {
   function omen() {
     if (backOpenedAt !== null || !sector) return;
     const pulse = sector.breaches.reduce((m, b) => Math.max(m, b.wavesReleased), 0);
-    const o = omenDue(BACK_OMENS, { sector: def.n, pulse, last: pulse >= def.waves }, omens);
+    const o = omenDue(BACK_OMENS, { sector: doorAt === def.n + 1 ? 'before' : null, pulse, last: pulse >= def.waves }, omens);
     if (!o) return;
     omens.add(o.id); api.backOmen?.(o); h.hud();
   }
@@ -264,7 +272,8 @@ export function createSectorRun(h) {
     if (phase === 'idle') {
       if (!h.ready()) return;
       readySince ??= t;
-      const first = Math.max(1, h.firstSector ?? 1);   // the SKIP TUTORIAL entry opens the run at the back-door sector instead of the lane
+      const first = Math.max(1, h.firstSector ?? 1);   // a harness or drawer entry may open the run past the lane (?skip=defence&sector=N)
+      if (first >= SECTOR_DOOR.earliest) doorAt ??= first;   // opened at or past the door's earliest: the door is that sector
       // the expedition the tank has just been sent on comes first: a part home, or the grace, opens the first sector
       if (!firstSectorDue({ sinceReady: t - readySince, grace: first > 1 || story.lateStart ? 0 : SECTOR_TIMING.firstGrace ?? 0, partsHome: h.poll().delivered?.length ?? 0 })) return;
       begin(first); return;
@@ -361,7 +370,7 @@ export function createSectorRun(h) {
     // the colony is lost: LAST TRANSMISSION after the wreck has played. False when no sector is running (the caller shows its own)
     lose() { if (!['brief', 'fighting', 'secure'].includes(phase)) return false; phase = 'lost'; left = SECTOR_TIMING.lostHold; h.hud(); return true; },
     state: () => ({
-      phase, n: def?.n ?? 0, name: def?.name ?? null, feast: feast ? { at: +feast.at.toFixed(1), scrambled: !!feast.scrambled } : null, omens: [...omens], strays: phase === 'idle' ? 0 : (h.breaches?.() ?? []).filter((sp) => sp.alive && idOf(sp) === null).length, secure: ['secure', 'debrief', 'campaign'].includes(phase), debriefOpen: !!story.debrief?.isOpen(), reports: reports.length,
+      phase, n: def?.n ?? 0, name: def?.name ?? null, doorAt, feast: feast ? { at: +feast.at.toFixed(1), scrambled: !!feast.scrambled } : null, omens: [...omens], strays: phase === 'idle' ? 0 : (h.breaches?.() ?? []).filter((sp) => sp.alive && idOf(sp) === null).length, secure: ['secure', 'debrief', 'campaign'].includes(phase), debriefOpen: !!story.debrief?.isOpen(), reports: reports.length,
       gate: gate ? { hp: +gate.hp.toFixed(1), broken: gate.broken, breaks: gate.breaks } : null,
       gates: integrities().map((g) => ({ id: g.id, hp: +g.hp.toFixed(1), max: g.max, broken: g.broken, breaks: g.breaks })),
       breaches: (sector?.breaches ?? []).map((b) => ({ id: b.id, side: b.side, cell: b.cell, opened: sps.has(b.id), live: b.state === 'open' && !!sps.get(b.id)?.alive, wavesReleased: b.wavesReleased, wavesPlanned: b.wavesPlanned, closedBy: b.closedBy, leftInField: { ...b.leftInField }, bonus: { ...b.bonus } })),
@@ -374,6 +383,7 @@ export function createSectorRun(h) {
       keepHolding: () => next(),
       // an acceptance run about something else (towers, the gunship, expeditions): no programme waves and no gate wear
       quiet: (on) => { quiet = !!on; },
+      doorNext: () => { if (doorAt === null && def) doorAt = def.n + 1; return doorAt; },   // the back door next, whatever is unlocked
       report: () => lastReport,
       reports: () => reports.slice(),
     },

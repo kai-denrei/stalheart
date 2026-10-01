@@ -20,46 +20,75 @@ const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 
 // rule halves instead of multiplying. So the windows now climb THROUGH the surge, and the hard cores are a small explicit count
 // (`hardcores`) rather than the twenty-odd solid bodies the surge throws in on its own.
 // hardcores: how many solid cores ride every wave once hardcoresEveryWave is on.
+// THE RAMP, THEN THE SIDE WALL, THEN THE BACK DOOR (owner, 2026-10-01: "Backdoor wave too aggressive. Let's delay it. First we run
+// more regular waves. Ramp up the difficulty. Then after 4 waves there's a « side breach » ... The backdoor breach comes towards the
+// end, once the player has unlocked all options"; asked, he chose four shorter sectors, SOL-82 at sector 3, the back door once
+// everything is unlocked with a latest sector, SKIP ALL at sector 1 on the finished base). SECTORS are the fixed opening of the
+// arc: four regular sectors on the gate side, four pulses each, climbing; then sector 5. Past them the run holds on SECTOR_HOLD
+// sectors until the back door is due (SECTOR_DOOR), then THE BACK DOOR, BOTH WALLS, and SECTOR_GENERATOR's sectors from there.
 export const SECTORS = freeze([
-  { n: 1, name: 'THE LANE', breaches: { gate: 2 }, waves: 6, ladderStart: 0, threat: 1.5, pulse: 16, held: { kg: 40, points: 400 },
+  { n: 1, name: 'THE LANE', breaches: { gate: 2 }, waves: 4, ladderStart: 0, threat: 1.2, pulse: 16, held: { kg: 40, points: 400 },
     gunshipCall: true, backDoor: false, laser: false, hardcoresEveryWave: false, new: 'the gunship call-in',
-    brief: ['Two mouths out on the lane. They come six times each.', 'Close one early and you give up what it would have paid.'] },
-  // THE BACK DOOR: THE FEAST, THEN THE SCRAMBLE (owner, 2026-09-24: "really a chance for the tank to kill tons of rammable soft
-  // enemies for the first wave, and then the necessity to spend resources to quickly re-inforce that area with turrets"). `back`
-  // is the first key, so the back breach is picked and opened first and the gate side waits. `feast` replaces the back breach's
-  // first ladder wave with a flood of soft bodies at the tutorial's surge pace (the books still count it as its first wave), and
-  // the clock holds while it is fought. The SCRAMBLE comes when no more than `scrambleShare` of it is left, or `timeout` seconds
-  // after it rose: Isao asks for turrets behind the bays, the clock resumes, and the gate side opens `gateAfter` seconds later.
-  { n: 2, name: 'THE BACK DOOR', breaches: { back: 1, gate: 1 }, waves: 6, ladderStart: 1, threat: 2.8, pulse: 14,
-    feast: { entries: [{ type: 'amoeba', count: 40 }, { type: 'phage', count: 20 }], pace: 1.7, scrambleShare: 0.35, timeout: 50, gateAfter: 10 }, held: { kg: 50, points: 500 },
-    gunshipCall: true, backDoor: true, laser: true, hardcoresEveryWave: false, new: 'the back mouth opens; SOL-82 online',
-    brief: ['The rock behind the bays gave way. Something is walking in there.', 'SOL-82 is ours now. Mind where you point it.'] },
-  { n: 3, name: 'BOTH WALLS', breaches: { gate: 1, back: 1 }, waves: 8, ladderStart: 6, threat: 2.2, pulse: 12, held: { kg: 60, points: 600 },
-    gunshipCall: true, backDoor: true, laser: true, hardcoresEveryWave: true, hardcores: 2, new: 'hard cores in every wave',
-    brief: ['Every wave brings hard cores now. Do not ram them.', 'One front each side. Split the tank and the sky between them.'] },
+    brief: ['Two mouths out on the lane. They come four times each.', 'Close one early and you give up what it would have paid.'] },
+  { n: 2, name: 'THE LONG LANE', breaches: { gate: 2 }, waves: 4, ladderStart: 1, threat: 1.5, pulse: 15, held: { kg: 45, points: 450 },
+    gunshipCall: true, backDoor: false, laser: false, hardcoresEveryWave: false, new: null,
+    brief: ['More of them this time, and closer together.', 'Keep the lane clear and the gate whole.'] },
+  { n: 3, name: 'THE SKY ANSWERS', breaches: { gate: 2 }, waves: 4, ladderStart: 2, threat: 1.8, pulse: 14, held: { kg: 50, points: 500 },
+    gunshipCall: true, backDoor: false, laser: true, hardcoresEveryWave: false, new: 'SOL-82 online',
+    brief: ['SOL-82 is ours now. Twenty seconds of sky on every pass.', 'Mind where you point it: it burns ours too.'] },
+  { n: 4, name: 'THE PRESS', breaches: { gate: 2 }, waves: 4, ladderStart: 4, threat: 2.1, pulse: 13, held: { kg: 55, points: 550 },
+    gunshipCall: true, backDoor: false, laser: true, hardcoresEveryWave: false, new: null,
+    brief: ['They are pressing harder. The lane is never empty now.', 'Spend what you have. The colony can print more.'] },
+  { n: 5, name: 'THE NEAR RING', breaches: { gate: 2 }, waves: 4, ladderStart: 5, threat: 2.2, pulse: 13, held: { kg: 60, points: 600 },
+    gunshipCall: true, backDoor: false, laser: true, hardcoresEveryWave: false, new: null,
+    brief: ['They are coming in closer together now.', 'Hold the gate; the walls are rock.'] },
 ]);
 
-// SECTOR 4 ONWARD is generated from the last authored sector: its flags carry over, `new` is null.
-// waves = wavesBase + (n - SECTORS.length): 9, 10, 11 ... (one more than sector 3's eight, then one a sector; on the clock a
-// wave is a pulse, so the programme is also the sector's length). threat climbs threatStep a sector from the
-// last authored one. sides cycles by sector, (n - SECTORS.length - 1) % sides.length: 4 both on the gate, 5 both at the
-// back, 6 the gate again. held grows heldStep a sector. Generated breaches start the ladder at ladderStart; ladderCap is
-// the highest ladder wave any sector's wave is sized at (8: the last of the unlock ladder, before the invasion surge), so a
-// long generated programme repeats its top wave at a climbing threat. The cap sits inside the invasion surge now (see SECTORS): 12
-// is where a generated sector's last waves land in the mid-hundreds alive, which is the frame budget this machine holds, not past it.
+// BETWEEN THE RAMP AND THE BACK DOOR: while the door is not due, each sector past SECTORS is a held one on the gate side, its threat
+// climbing threatStep a sector from the last of SECTORS, its programme starting at ladderStart
+export const SECTOR_HOLD = freeze({ name: 'SECTOR', breaches: { gate: 2 }, waves: 5, ladderStart: 5, threatStep: 0.15, pulse: 13, held: { kg: 60, points: 600 },
+  brief: ['They are still coming, and there are more of them each time.', 'Hold the gate. The colony is watching.'] });
+
+// THE BACK DOOR IS DUE once everything is unlocked (every landing site's part home, Isao's programme printed but for the back gate,
+// which needs the door) and never before `earliest`; it comes at `latest` whatever is unlocked. It is decided at the start of the
+// sector before it, so the omens (BACK_OMENS) can rumble in that sector.
+export const SECTOR_DOOR = freeze({ earliest: 6, latest: 8 });
+
+// THE BACK DOOR: THE FEAST, THEN THE SCRAMBLE (owner, 2026-09-24: "really a chance for the tank to kill tons of rammable soft
+// enemies for the first wave, and then the necessity to spend resources to quickly re-inforce that area with turrets"). `back`
+// is the first key, so the back breach is picked and opened first and the gate side waits. `feast` replaces the back breach's
+// first ladder wave with a flood of soft bodies at the tutorial's surge pace (the books still count it as its first wave), and
+// the clock holds while it is fought. The SCRAMBLE comes when no more than `scrambleShare` of it is left, or `timeout` seconds
+// after it rose: Isao asks for turrets behind the bays, the clock resumes, and the gate side opens `gateAfter` seconds later.
+// `n` is the sector it falls in, set by the schedule.
+export const BACK_DOOR_SECTOR = freeze({ name: 'THE BACK DOOR', breaches: { back: 1, gate: 1 }, waves: 6, ladderStart: 4, threat: 2.6, pulse: 14,
+  feast: { entries: [{ type: 'amoeba', count: 40 }, { type: 'phage', count: 20 }], pace: 1.7, scrambleShare: 0.35, timeout: 50, gateAfter: 10 }, held: { kg: 70, points: 700 },
+  gunshipCall: true, backDoor: true, laser: true, hardcoresEveryWave: false, new: 'the back mouth opens',
+  brief: ['The rock behind the bays gave way. Something is walking in there.', 'Soft ones first. Then build behind the bays.'] });
+// the sector after the door: both sides, hard cores in every wave. THE COLONY HOLDS after it
+export const BOTH_WALLS_SECTOR = freeze({ name: 'BOTH WALLS', breaches: { gate: 1, back: 1 }, waves: 8, ladderStart: 6, threat: 2.4, pulse: 12, held: { kg: 80, points: 800 },
+  gunshipCall: true, backDoor: true, laser: true, hardcoresEveryWave: true, hardcores: 2, new: 'hard cores in every wave',
+  brief: ['Every wave brings hard cores now. Do not ram them.', 'One front each side. Split the tank and the sky between them.'] });
+
+// PAST BOTH WALLS the sectors are generated from it: its flags carry over, `new` is null. With `past` the sectors after BOTH WALLS
+// (1, 2, ...): waves = wavesBase + past, threat climbs threatStep a sector from BOTH WALLS', sides cycle by sector
+// ((past - 1) % sides.length: both on the gate, then both at the back), held grows heldStep a sector. Generated breaches start the
+// ladder at ladderStart; ladderCap is the highest ladder wave any sector's wave is sized at: 11 is where a generated sector's last
+// waves land in the mid-hundreds alive, which is the frame budget this machine holds, not past it.
 export const SECTOR_GENERATOR = freeze({
-  name: 'SECTOR', wavesBase: 8, threatStep: 0.15, ladderStart: 6, ladderCap: 11, held: { kg: 60, points: 600 }, heldStep: { kg: 10, points: 100 },
+  name: 'SECTOR', wavesBase: 8, threatStep: 0.15, ladderStart: 6, ladderCap: 11, held: { kg: 80, points: 800 }, heldStep: { kg: 10, points: 100 },
   sides: [{ gate: 2 }, { back: 2 }],
   brief: ['They are still coming, and there are more of them each time.', 'Hold both mouths. The colony is watching.'],
 });
 
 // THE BACK DOOR IS FORESHADOWED (owner, 2026-09-24: "slightly foreshadowed"). At these pulses of the sector before the door
-// falls, the mouth behind the bays rumbles: a tremor contact on the radar at its bearing, a low quake, `dust` puffs of grit off
+// falls (whichever sector that is: the schedule decides it a sector ahead), the mouth behind the bays rumbles: a tremor contact on the radar at its bearing, a low quake, `dust` puffs of grit off
 // the rock, and Isao's `brief`. pulse: the pulse it comes with, or 'last' for the sector's final one. The rule is
 // src/domain/back-omens.js.
+// sector: 'before', the sector the door is scheduled after (SECTOR_DOOR)
 export const BACK_OMENS = freeze([
-  { id: 'rumble', sector: 1, pulse: 2, brief: 'back_rumble', dust: 4 },
-  { id: 'crack', sector: 1, pulse: 'last', brief: 'back_crack', dust: 10 },
+  { id: 'rumble', sector: 'before', pulse: 2, brief: 'back_rumble', dust: 4 },
+  { id: 'crack', sector: 'before', pulse: 'last', brief: 'back_crack', dust: 10 },
 ]);
 // THE SCRAMBLE: Isao's `brief` and the `callout` when he asks for turrets behind the bays; the back sockets ring every `every`
 // seconds for `seconds` after that (src/fx/back-omen.js, src/fx/sector-run.js)
