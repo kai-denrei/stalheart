@@ -1349,6 +1349,30 @@ try{
  await evaluate(`${T}.sectorClearField()`);
  await until(`${T}.state().programme.broke===0`,150000).catch(async()=>assert.fail(`Isao prints the wall shut (${JSON.stringify((await st()).programme)})`));
  current='skip-tutorial-side-wall-mended';await finish();
+ } else if(args.includes('--units-sky')) {
+ // THE SKY ON THE BENCH (owner, 2026-10-01: "UNITS are not showing all the units; we should see SOL, and the Gunship. also show
+ // Wireframe for all units"): the KORP, SOL-82 and SOL-88 are catalogue entries built from their pinned GLBs, and the wireframe
+ // button draws every mesh of whatever stands on the bench as the briefings' survey, and back
+ const U='window.__stalheartUnits',us=()=>evaluate(`${U}.state()`);
+ for(const id of ['korp','sol82','sol88']){
+  await go('units-sky-'+id,`labs.html?sw=0&unit=${id}&yaw=0&sweep=0&acceptance=1#units`);
+  await until(`${U} && ${U}.state().meshes.n>1`,30000).catch(async()=>assert.fail(`${id} lands on the bench (${JSON.stringify(await us())})`));
+  const a=await us();assert(a.size&&a.size[0]>0.5&&a.size[1]>0.5,`${id} has a real size (${JSON.stringify(a.size)})`);assert.equal(a.meshes.wire,0,`${id} starts solid`);
+  assert.equal(await evaluate('document.querySelector("#units-name").textContent.includes("SOL")||document.querySelector("#units-name").textContent.includes("KORP")'),true,'the entry is named');
+  await click('#units-wire');await delay(300);
+  const b=await us();assert.equal(b.meshes.wire,b.meshes.n,`${id} every mesh drawn as wire (${JSON.stringify(b.meshes)})`);
+  current='units-sky-'+id+'-wire';await finish();
+  await click('#units-wire');await delay(200);
+  const c=await us();assert.equal(c.meshes.wire,0,`${id} solid again`);
+ }
+ // the toggle holds across entries and over the game's own builders too: a tower is wireframed when paged to with it on
+ await go('units-sky-tower','labs.html?sw=0&unit=rotor&acceptance=1#units');
+ await until(`${U} && ${U}.state().meshes.n>0`,30000);
+ await click('#units-wire');await delay(300);
+ {const s=await us();assert(s.meshes.wire>0&&s.meshes.wire===s.meshes.n,`a tower goes to wire too (${JSON.stringify(s.meshes)})`);}
+ await click('#units-next');await delay(600);
+ {const s=await us();assert(s.meshes.n===0||s.meshes.wire===s.meshes.n,`the next entry arrives as wire (${JSON.stringify(s.meshes)})`);}
+ await finish();
  } else if(args.includes('--canyon')) {
  const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`);
  // THE CANYON (owner, 2026-10-01: "let's have it used the first time at the antipode, far from all other sentries; a huge number

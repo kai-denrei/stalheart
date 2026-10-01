@@ -1,0 +1,99 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/jelaludo/SentryTowers_A6",
+  "revision": "62015608574f66a7c2118ea4c77dbe0bbfe5db07",
+  "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/62015608574f66a7c2118ea4c77dbe0bbfe5db07/",
+  "credit": "Models by jelaludo (https://jelaludo.github.io/SentryTowers_A6/): SOL-88 Syzygy orbital laser, ARC-01 mass driver and SEED-01 collector satellite, LIT-01 chip writer, VER-01 greenhouse, the settlement cassette and the research outpost garage, reused with attribution under the upstream ASSET-LICENSE.md",
+  "note": "THE COLONY GROWS (owner, 2026-10-01: the A6 workshop survey). The lod1 game tiers and, for the landmarks the camera can stand far from, the authored lod2 as the far tier; plain GLB pinned, the build packs them. SOL-88 is the briefing, the wireframe reveal and the Units lab only, so lod1 alone. The ARC-01 and SEED-01 clips are engine-driven upstream (runtime.js), not baked: src/fx/arc-launch.js drives the named nodes. The garage has no authored tiers: its far tier is derived by npm run tiers.",
+  "files": [
+    {
+      "path": "assets/models/sol88/sol88_platform_game.glb",
+      "sourcePath": "assets/sol88/lod1/sol88_platform_game.glb",
+      "sha256": "c7fc3b73bdad389e3731d7976c2537fc8e664beb6b7b1fa61acb817bf544f752",
+      "bytes": 386400,
+      "triangles": 7928,
+      "clips": [
+        "Idle_Cycle",
+        "Convergence",
+        "Firing_Cycle",
+        "Recovery",
+        "Aperture_Open",
+        "Aperture_Close"
+      ]
+    },
+    {
+      "path": "assets/models/astro/arc01_launcher_d0_lod1.glb",
+      "sourcePath": "assets/orbital-launcher/lod1/launcher_d0_lod1.glb",
+      "sha256": "f5bc4413be82ab5fb6ab9dd028d5a03f4015be62636694877f7ed2f219f49f22",
+      "bytes": 342756,
+      "triangles": 5768,
+      "nodes": [
+        "LAUNCH_SLED",
+        "CLAMP_L",
+        "CLAMP_R",
+        "PASSAGE_GATES"
+      ]
+    },
+    {
+      "path": "assets/models/astro/arc01_launcher_d0_lod2.glb",
+      "sourcePath": "assets/orbital-launcher/lod2/launcher_d0_lod2.glb",
+      "sha256": "a6f12fb0abd3b8282c29c99a350cc89dad27e0c6b74aca14335edd4850bd29fc",
+      "bytes": 165440,
+      "triangles": 2952
+    },
+    {
+      "path": "assets/models/astro/arc01_satellite_d0_lod1.glb",
+      "sourcePath": "assets/orbital-launcher/lod1/satellite_d0_lod1.glb",
+      "sha256": "f77bb59f7e45a7f4e00813a264995c87d6fa660a40980f28f336ead217139898",
+      "bytes": 55676,
+      "triangles": 1128,
+      "nodes": [
+        "PETAL_1_HINGE",
+        "PETAL_6_HINGE",
+        "INSERTION_PLUME"
+      ]
+    },
+    {
+      "path": "assets/models/astro/lit01_chip_writer_d0_lod1.glb",
+      "sourcePath": "assets/chip-manufacturing/lod1/writer_d0_lod1.glb",
+      "sha256": "cf746048c52e6cf1dc6476959362c1a8a0f363b68d1f55bae5adc428542f70cd",
+      "bytes": 163124,
+      "triangles": 3712
+    },
+    {
+      "path": "assets/models/astro/lit01_chip_writer_d0_lod2.glb",
+      "sourcePath": "assets/chip-manufacturing/lod2/writer_d0_lod2.glb",
+      "sha256": "3c166d7bf200053220450cdd8c2da701de5082cba9949f0dade826e5ad71e523",
+      "bytes": 81776,
+      "triangles": 2152
+    },
+    {
+      "path": "assets/models/astro/ver01_greenhouse_d0_lod1.glb",
+      "sourcePath": "assets/greenhouse/lod1/greenhouse_d0_lod1.glb",
+      "sha256": "bde6772086a9e2cf4ec931ed07d84517614f2ae05dfbd5b4221422b58b2da142",
+      "bytes": 202000,
+      "triangles": 5014
+    },
+    {
+      "path": "assets/models/astro/ver01_greenhouse_d0_lod2.glb",
+      "sourcePath": "assets/greenhouse/lod2/greenhouse_d0_lod2.glb",
+      "sha256": "ecd8f97b9eb5f889d5e08277c68348ae26455ec84933616b35b6001e35120faf",
+      "bytes": 62968,
+      "triangles": 1250
+    },
+    {
+      "path": "assets/models/astro/bio_cassette_d0_lod1.glb",
+      "sourcePath": "assets/settlement-industry/lod1/cassette_d0_lod1.glb",
+      "sha256": "3c0243246f2aebdb44c67668e7dc74b7b82f7c53d265fa03c4fe20d352a077f5",
+      "bytes": 14756,
+      "triangles": 204
+    },
+    {
+      "path": "assets/models/astro/industry_garage_d0.glb",
+      "sourcePath": "assets/research-outpost/industry_garage_d0.glb",
+      "sha256": "d9b06df9880d9f85a82ff498fc366cc5a56e885712502e1de3faf470fc194075",
+      "bytes": 681016,
+      "triangles": 11844
+    }
+  ]
+}

@@ -124,6 +124,37 @@ export const LORE = {
       + 'with an extruder nozzle, hovering in a dark hangar, retro-futurist '
       + 'hard sci-fi, 8k',
   },
+  // --- THE SKY (owner, 2026-10-01: the Units lab shows SOL and the gunship) ---
+  korp: {
+    name: 'KORP / GS01', tag: 'the heavy gunship on its pass',
+    body: 'A tilt-engine airframe with no crew and a belly full of guns: two rotary cannon on the forward attack line, a Bofors '
+      + 'autocannon, and the MK-9 mini nuke released from the bay. It arrives from orbit when the colony calls it in, creeps toward '
+      + 'the busiest breach and holds its pass while the guns are yours. It feels only heat: its optic is thermal, and a cold '
+      + 'rock face is as black to it as the sky. The colony did not build it; it came down with the first landings and has flown '
+      + 'ever since on fuel nobody has had to account for.',
+    visual: 'heavy twin tilt-engine gunship, long armoured fuselage, two rotary cannon on the nose, a Bofors cannon under the '
+      + 'chin, open belly bay, dark grey panels with red warning stencils, banking low over a cratered base at dusk, hard sci-fi, 8k',
+  },
+  sol82: {
+    name: 'SOL-82', tag: 'the orbital laser combat satellite',
+    body: 'A pulse store the size of a house behind an aperture the size of a door, with cryocooled wings and radiator vanes to '
+      + 'throw the heat of a pass back at the stars. It carries 1.2 GJ to the ground in one burn and passes overhead on a clock '
+      + 'the colony does not set. While it is up the beam is yours from a seat on the ground: a slow, inexorable contact walked '
+      + 'across the field, through rock, walls and bodies alike. Nothing stops you burning your own base. It came online over '
+      + 'the canyon on the far side of the world, and the colony has counted its passes ever since.',
+    visual: 'orbital laser combat satellite, long central pulse store, wide cryocooler wings, black radiator vanes, a single '
+      + 'large downward aperture on a gimbal, lit from below by a white beam striking a planet, hard sci-fi, 8k',
+  },
+  sol88: {
+    name: 'SOL-88 SYZYGY', tag: 'the automated orbital laser the ARC-01 put up',
+    body: 'Three nested containment cages turning round a central power core, converging only when they fire so a clear polar '
+      + 'corridor opens for the lens train. It holds the same 1.2 GJ as the old satellite and spends it without a hand on the '
+      + 'trigger: Isao calibrated it against the passes the player flew, and from its first orbit it burns the densest pile it can '
+      + 'see on every pass. The seat is still there for anyone who wants it. The colony launched it from the ARC-01 mass driver, '
+      + 'the first thing it has ever put into orbit, and the first step toward building things up there to stay.',
+    visual: 'automated orbital laser platform of three nested rotating cage rings around a glowing core, radiator sectors between '
+      + 'the rings, a stabilised lens train on the polar axis, drawn as a cyan wireframe over a dark grid, hard sci-fi, 8k',
+  },
   // --- THE SENTRY BOARD (roster 2, the default) ----------------------------
   // Eight towers that arrived as Workshop models with no codex behind them.
   // The board became the default on 2026-09-06 and the gap became visible the

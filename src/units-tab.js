@@ -37,6 +37,7 @@ import { LOOKS } from './looks.js';
 import { makeBloom } from './postfx.js';
 import { makeAudio } from './audio.js';
 import { GROUPS, GROUP_LABELS, GROUP_EMPTY, entriesIn } from './unitcatalog.js';
+import { modelFixture, setWireframe } from './fx/model-fixture.js';
 import { FONT_NAMES, TYPE_KNOBS, TYPE_FEEL, makeTypeParams, loadTypeFeel, saveTypeFeel,
   formatTypeCode, applyFontPack, currentFontPack, currentShoutPack } from './fonts.js';
 import { LORE, LORE_WORLD, loreText, loreAll } from './lore.js';
@@ -337,6 +338,16 @@ export function initUnitsTab(root) {
       ph.userData.baseScale = 1;
       return ph;
     }
+    // A PINNED MODEL (the satellites, the gunship; src/fx/model-fixture.js): the GLB the briefings turn, cloned onto the bench, a
+    // placeholder until its bytes land and the entry re-shown once they do
+    if (e.kind === 'model') {
+      const m = modelFixture(e.url, () => { if (currentEntry === e) show(); });
+      if (m) { const g = m.clone(); g.userData.baseScale = 1; g.userData.kind = 'mesh'; return g; }
+      const ph = new THREE.Group();
+      ph.add(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), new THREE.MeshLambertMaterial({ color: 0x2a3442 })));
+      ph.userData.kind = 'mesh'; ph.userData.baseScale = 1;
+      return ph;
+    }
     if (e.kind === 'enemy') {
       const hex = CREATURE_TINTS[e.id];
       // A MESH-BODIED HOSTILE. Every enemy was a dot cloud when this was
@@ -530,6 +541,7 @@ export function initUnitsTab(root) {
       console.log(`UNITSIZE ${e.id} x=${sz.x.toFixed(2)} y=${sz.y.toFixed(2)} z=${sz.z.toFixed(2)}`);
     }
     scene.add(current);
+    setWireframe(current, wireOn);   // the bench's wireframe survey, if it is on (owner, 2026-10-01: "show Wireframe for all units")
     // a full ammo rack reads better than an empty one when you are judging shape
     (current.userData.ammoDots || []).forEach((d) => d.material.color.setHex(0xffffff));
     frame(current);
@@ -759,6 +771,10 @@ export function initUnitsTab(root) {
     lorePanel.classList.remove('hidden');
   }
 
+  // WIREFRAME FOR EVERY UNIT: the briefings' cyan survey over whatever stands on the bench, toggled without re-framing
+  let wireOn = false;
+  const wireBtn = root.querySelector('#units-wire');
+  wireBtn?.addEventListener('click', () => { wireOn = !wireOn; wireBtn.classList.toggle('on', wireOn); setWireframe(current, wireOn); });
   const spinBtn = root.querySelector('#units-spin');
   spinBtn.addEventListener('click', (ev) => {
     state.spin = !state.spin;
@@ -1400,6 +1416,7 @@ export function initUnitsTab(root) {
       guns: current?.userData.laserGuns?.length, running,
       heat,cannonColor:current?.userData.heatSleeve?.material.color.getHex(),
       missileReady:!!missilePool,modelReady:!current?.userData.loading,
+      meshes:(()=>{let n=0,w=0;current?.traverse((o)=>{if(o.isMesh){n++;if(o.material?.wireframe)w++;}});return {n,wire:w};})(),   // the wireframe survey: how many meshes, how many drawn as wire
       missiles:missiles.map(m=>({config:m.config,t:m.t,name:m.mesh.name,position:m.mesh.position.toArray(),ignition:m.mesh.getObjectByName('EXHAUST_FX').visible})) }),
     fire: () => currentEntry?.kind==='tower'?firePattern():fireShell(),
   };

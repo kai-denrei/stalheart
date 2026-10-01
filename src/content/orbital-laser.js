@@ -142,3 +142,12 @@ export const LASER_AUDIO = Object.freeze({
 
 // the sky anchor above the contact, in metres: high enough that the column reads as vertical from the ground camera
 export const LASER_SKY_METRES = 400;
+
+// THE TWO PLATFORMS (owner, 2026-10-01: "a better SOL to replace the current one (sol88) OR perhaps the story is that this one is
+// automated... and replaces the old one, we launch it with the orbital launcher"). SOL-82 is the satellite the colony arrives under;
+// SOL-88 is the automated Syzygy platform the ARC-01 puts up once Isao has the player's calibration (LASER_AUTO). Each names its pinned
+// model (the Units lab and the wireframe reveals) and the name the strip and Isao call it by once it is the one overhead.
+export const LASER_PLATFORMS = Object.freeze({
+  sol82: Object.freeze({ id: 'sol82', name: 'SOL-82', url: 'assets/models/sol82/sol82_platform_detailed.glb', head: 'SOL-82 · ORBITAL LASER' }),
+  sol88: Object.freeze({ id: 'sol88', name: 'SOL-88', url: 'assets/models/sol88/sol88_platform_game.glb', head: 'SOL-88 · SYZYGY ORBITAL LASER' }),
+});

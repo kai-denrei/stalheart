@@ -9,6 +9,8 @@
 //   tower   towerlooks.js buildTowerLook()
 //   enemy   units.js makeDotEnemy()     — the DOT-CLOUD form
 //   pickup  units.js makeRewardSolid() / makeShellSolid()
+//   model   a pinned GLB with no builder (the satellites, the gunship), loaded
+//           through src/fx/model-fixture.js from `url`
 //
 // `enemy` matters. UNITS has a mesh form for every creature (makeSaturn,
 // makeCorona, makeMine) that predates the dot clouds, and buildUnit returns
@@ -18,6 +20,8 @@
 import { ENEMY_SPEC } from './enemyspec.js';
 import { TOWERS, towerSound } from './towers.js';
 import { PICKUPS, SHELL_PICKUP } from './pickups.js';
+import { LASER_PLATFORMS } from './content/orbital-laser.js';
+import { SHOWCASE_ELEMENTS } from './content/showcase.js';
 
 export const GROUPS = ['friendly', 'neutral', 'hostile'];
 
@@ -76,6 +80,20 @@ const PLAYER_UNITS = [
     sounds: [{ key: 'tower_upgrade', label: 'print' }] },
 ];
 
+// THE SKY (owner, 2026-10-01: "we should see SOL, and the Gunship"). The platforms the player sits in from the ground: the KORP
+// gunship on its pass, SOL-82 overhead, and SOL-88 once the ARC-01 has put it up. Each is its pinned model, the one the briefings and
+// the showcase turn as a wireframe, so the bench shows exactly what the reveal shows.
+const KORP_URL = SHOWCASE_ELEMENTS.find((e) => e.id === 'korp').url;
+const SKY_UNITS = [
+  { id: 'korp', kind: 'model', url: KORP_URL, label: 'KORP / GS01 · HEAVY GUNSHIP',
+    note: 'no crew · rotary × 2, bofors, the MK-9 from the belly · creeps toward the busiest breach, the guns are yours on the pass',
+    sounds: [{ key: 'gunship_rotary_fire', label: 'rotary', loop: true }] },
+  { id: 'sol82', kind: 'model', url: LASER_PLATFORMS.sol82.url, label: LASER_PLATFORMS.sol82.head,
+    note: '1.2 GJ a pass, from orbit · online from sector 3 · the beam is yours while it is overhead', sounds: [] },
+  { id: 'sol88', kind: 'model', url: LASER_PLATFORMS.sol88.url, label: LASER_PLATFORMS.sol88.head,
+    note: 'three rotating containment cages · launched by the ARC-01 once Isao has your calibration · fires on its own at the densest pile, or yours in the seat', sounds: [] },
+];
+
 // Towers are the player's army too, so they belong on the friendly side.
 // Built through the look registry, which is why they carry kind:'tower'.
 const TOWER_UNITS = TOWERS.map((t) => ({
@@ -131,7 +149,7 @@ const STRUCTURE_UNITS = [
     note: 'three shallow berths in a row by the heart, one hull each — the racked spares are your lives' },
 ];
 export const UNIT_CATALOG = {
-  friendly: [...TOWER_UNITS, ...PLAYER_UNITS],
+  friendly: [...TOWER_UNITS, ...PLAYER_UNITS, ...SKY_UNITS],
   neutral: [...PICKUP_UNITS, ...STRUCTURE_UNITS],
   hostile: [...HOSTILE_UNITS],
 };
