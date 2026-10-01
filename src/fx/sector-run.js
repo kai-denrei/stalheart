@@ -7,7 +7,7 @@
 // Composition only: the rules are src/domain/sectors.js, sector-stats.js and gate-integrity.js with the numbers in
 // src/content/sectors.js. The controller hands in hooks (spawning, sealing, paying, briefing, pausing, polling) and calls
 // the returned object at its real sites; nothing here imports the controller.
-import { SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, SECTOR_STATS, SECTOR_STAMPS, SECTOR_RECORDS, SECTOR_TIMING, SECTOR_GATE, BELT_OF, BREACH_CLOSERS, BACK_OMENS, BACK_SCRAMBLE, SIDE_BREACH, CANYON } from '../content/sectors.js';
+import { SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, SECTOR_STATS, SECTOR_STAMPS, SECTOR_RECORDS, SECTOR_TIMING, SECTOR_GATE, BELT_OF, BREACH_CLOSERS, BACK_OMENS, BACK_SCRAMBLE, SIDE_BREACH, CANYON, SECTOR_CANYON_AGAIN } from '../content/sectors.js';
 import { omenDue } from '../domain/back-omens.js';
 import { GUNSHIP_GUN_ORDER } from '../content/gunship.js';
 import { snapshot as programmeSnapshot } from '../domain/build-programme.js';
@@ -73,11 +73,11 @@ export function createSectorRun(h) {
   const note = (ev) => (stats ? record(stats, ev) : false);
   const retarget = () => { if (sps.size && [...sps.values()].includes(story.source) && story.source.alive) return; const live = [...sps.values()].find((s) => s.alive); if (live) story.source = live; };
   // THE ARC (2026-10-01): the fixed ramp, held sectors until the back door is due, the door, BOTH WALLS, then the generator
-  const arc = () => ({ hold: SECTOR_HOLD, door: BACK_DOOR_SECTOR, both: BOTH_WALLS_SECTOR, doorAt });
+  const arc = () => ({ hold: SECTOR_HOLD, door: BACK_DOOR_SECTOR, both: BOTH_WALLS_SECTOR, doorAt, canyonAgain: SECTOR_CANYON_AGAIN });
   const defOf = (n) => sectorDef(n, SECTORS, SECTOR_GENERATOR, arc());
   // EVERYTHING UNLOCKED: every landing site's part is home and Isao's programme is printed but for the back gate (which needs the door)
   const unlocked = () => { const sites = story.expeditions?.sites ?? [], next = story.programme ? programmeSnapshot(story.programme).next : null; return sites.length > 0 && sites.every((x) => x.state === 'delivered') && (next === null || next === 'backgate'); };
-  const briefOf = (n) => (n <= SECTORS.length ? `sector_${n}` : n === doorAt ? 'sector_door' : doorAt !== null && n === doorAt + 1 ? 'sector_both' : doorAt === null || n < doorAt ? 'sector_hold' : 'sector_next');
+  const briefOf = (n) => (n <= SECTORS.length ? `sector_${n}` : n === doorAt ? 'sector_door' : doorAt !== null && n === doorAt + 1 ? 'sector_both' : doorAt !== null && n === doorAt - 1 ? 'sector_canyon_again' : doorAt === null || n < doorAt ? 'sector_hold' : 'sector_next');
   const nextLines = () => [...defOf((def?.n ?? 0) + 1).brief];   // Isao's two lines about the next sector, for the card's last page
   const debrief = () => (story.debrief ??= (h.makeDebrief ?? createSectorDebrief)(h.host, {
     play: h.sfx, beep: h.beep, reducedMotion: !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
@@ -130,8 +130,8 @@ export function createSectorRun(h) {
   }
 
   function begin(n) {
+    if (doorAt === null && backDoorNext({ n, ...SECTOR_DOOR, unlocked: unlocked() })) doorAt = n + 1;   // decided a sector ahead: the omens rumble in this one, and it is the canyon again
     def = defOf(n); story.sectorN = n;
-    if (doorAt === null && backDoorNext({ n, ...SECTOR_DOOR, unlocked: unlocked() })) doorAt = n + 1;   // decided a sector ahead: the omens rumble in this one
     sector = null; sps.clear(); pending = []; lastPoll = null; lastReport = null;   // the last sector's report goes with it
     // every live breach in play belongs to the sector: the opening's sinkhole (or any other stray) caves in as the sector begins
     const strays = (h.breaches?.() ?? []).filter((sp) => sp.alive);
@@ -311,7 +311,7 @@ export function createSectorRun(h) {
       if (!h.ready()) return;
       readySince ??= t;
       const first = Math.max(1, h.firstSector ?? 1);   // a harness or drawer entry may open the run past the lane (?skip=defence&sector=N)
-      if (first >= SECTOR_DOOR.earliest) doorAt ??= first;   // opened at or past the door's earliest: the door is that sector
+      if (first >= SECTOR_DOOR.earliest - 1) doorAt ??= Math.max(first, SECTOR_DOOR.earliest);   // opened at or past the door's earliest: the door is that sector; opened one before it: the canyon again, the door next
       // the expedition the tank has just been sent on comes first: a part home, or the grace, opens the first sector
       if (!firstSectorDue({ sinceReady: t - readySince, grace: first > 1 || story.lateStart ? 0 : SECTOR_TIMING.firstGrace ?? 0, partsHome: h.poll().delivered?.length ?? 0 })) return;
       begin(first); return;
@@ -327,7 +327,7 @@ export function createSectorRun(h) {
       pending.splice(pending.indexOf(id), 1);
       const far = b.side === 'canyon';   // the canyon's breach opens without the establishing dive (the seat's glide is its reveal) and nothing seals it
       sps.set(b.id, h.open(b.cell, { quiet: far || sector.breaches.some((x) => x !== b && sps.has(x.id)), clear: b.side === 'side' ? SIDE_BREACH.clearRadius : far ? 0.5 : undefined, keep: far })); b.openedAt = t;
-      if (far) h.brief(CANYON.brief);
+      if (far) h.brief(def.n <= SECTORS.length ? CANYON.brief : CANYON.briefAgain);   // the first time, or the canyon again
       // THE WALL CAN BE BREACHED (owner, 2026-10-01: "a chekov's gun of sorts"): the side breach cuts its lane and breaks the wall
       if (b.side === 'side' && api.breakSide?.(b.carve ?? [])) { b.broke = true; h.callout(SIDE_BREACH.callout, 'co-victory'); h.brief(SIDE_BREACH.brief); }
       retarget(); h.hud();

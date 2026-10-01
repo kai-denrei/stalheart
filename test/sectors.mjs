@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { firstSectorDue, pulseFits, sectorDef, backDoorNext, makeSector, releaseWave, nextWaveIndex, breachLive, closeBreach, spendBreach, isSecure, summary, forfeitOf, waveYield, pickBreachCells, CLOSERS } from '../src/domain/sectors.js';
-import { CANYON, SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, BELT_OF, BELTS, BREACH_CLOSERS, SECTOR_STATS, SECTOR_TIMING } from '../src/content/sectors.js';
+import { CANYON, SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, BELT_OF, BELTS, BREACH_CLOSERS, SECTOR_STATS, SECTOR_TIMING, SECTOR_CANYON_AGAIN } from '../src/content/sectors.js';
 import { ENEMY_SPEC, CREATURE_TINTS, SAFE_HUES, ALARM_HUES, computeWavePlan } from '../src/enemyspec.js';
 import { waveClearBonus } from '../src/domain/economy.js';
 import { POINT_SCALE, waveScore } from '../src/score.js';
@@ -35,7 +35,7 @@ for (const type of Object.keys(ENEMY_SPEC)) {
 }
 
 // sectorDef with the schedule: the fixed rows, held sectors until the door, the door, BOTH WALLS, then the generator
-const arcOf = (doorAt) => ({ hold: SECTOR_HOLD, door: BACK_DOOR_SECTOR, both: BOTH_WALLS_SECTOR, doorAt });
+const arcOf = (doorAt) => ({ hold: SECTOR_HOLD, door: BACK_DOOR_SECTOR, both: BOTH_WALLS_SECTOR, doorAt, canyonAgain: SECTOR_CANYON_AGAIN });
 const def = (n, doorAt = null) => sectorDef(n, SECTORS, SECTOR_GENERATOR, arcOf(doorAt));
 assert.deepEqual(SECTORS.map((s) => def(s.n).waveBase), SECTORS.map((s) => s.ladderStart), 'each sector starts the ladder where content says');
 assert.ok([1, 3, 6, 9, 12].every((n) => def(n, 8).ladderCap === SECTOR_GENERATOR.ladderCap), 'one ladder cap for every sector');
@@ -46,7 +46,7 @@ assert.equal(def(0).n, 1, 'n below one is sector one');
   assert.deepEqual(held.map((d) => d.name), ['SECTOR 6', 'SECTOR 7'], 'no door decided: held sectors');
   assert.ok(held.every((d) => !d.backDoor && !d.feast && d.laser && d.breaches.gate === 2 && !d.breaches.back), 'held on the gate side, SOL-82 still ours');
   assert.ok(held[1].threat > held[0].threat && held[0].threat > SECTORS.at(-1).threat, 'their threat keeps climbing');
-  assert.equal(def(7, 8).name, 'SECTOR 7', 'held until the door');
+  assert.equal(def(6, 8).name, 'SECTOR 6', 'held until the door'); assert.equal(def(7, 8).name, SECTOR_CANYON_AGAIN.name, 'the sector before the door is the canyon again');
   assert.equal(def(6, 6).name, 'THE BACK DOOR'); assert.equal(def(6, 6).n, 6); assert.ok(def(6, 6).feast);
   assert.equal(def(7, 6).name, 'BOTH WALLS'); assert.equal(def(9, 8).name, 'BOTH WALLS');
   const gen = [8, 9, 10].map((n) => def(n, 6));
@@ -183,3 +183,19 @@ const cramped = pickBreachCells({ candidates: cands.slice(0, 2), want: { gate: 2
 assert.deepEqual(cramped.map((p) => p.relaxed), [false, true], 'separation relaxes rather than leaving a side short');
 assert.deepEqual(pickBreachCells({ candidates: cands.slice(0, 2), want: { back: 1 }, minSeparation: 0 }), [], 'no candidate, no pick');
 console.log('Sectors: authored and generated defs, the programme released, closed and spent, the forfeit estimate, the secure test, placement.');
+
+// THE CANYON AGAIN (owner, 2026-10-01: "a second round of that as the penultimate wave"): the held sector just before the door is
+// the canyon a second time, whatever sector the door falls in; the one before it is a plain held sector; the door is never so early
+// that no held sector precedes it
+{
+  assert.ok(SECTOR_DOOR.earliest > SECTORS.length + 1, 'at least one held sector before the earliest door, for the canyon again');
+  for (const doorAt of [SECTOR_DOOR.earliest, SECTOR_DOOR.latest]) {
+    const again = def(doorAt - 1, doorAt), before = def(doorAt - 2, doorAt);
+    assert.equal(again.canyon, true, `door at ${doorAt}: sector ${doorAt - 1} is the canyon again`);
+    assert.equal(again.name, SECTOR_CANYON_AGAIN.name);
+    assert.deepEqual(again.breaches, SECTOR_CANYON_AGAIN.breaches, 'one mouth on the gate side while the pass is flown');
+    assert.ok(again.threat > SECTORS[SECTORS.length - 1].threat, 'harder than the ramp');
+    if (doorAt - 2 > SECTORS.length) assert.equal(before.canyon, false, `door at ${doorAt}: sector ${doorAt - 2} is a plain held sector`);
+    assert.equal(def(doorAt - 1, null).canyon, false, 'undecided door: no canyon');
+  }
+}

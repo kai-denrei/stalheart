@@ -17,7 +17,7 @@
 // is a fact and then a plan: "Oh no! They destroyed my RADAR!" (angry)...
 // "Oh well. Rebuild." Two short lines at most; the second line is always what
 // he does next. Curiosity over dread, resources over blame.
-import { SECTORS, SECTOR_HOLD, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_GENERATOR } from './content/sectors.js';
+import { SECTORS, SECTOR_HOLD, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_GENERATOR, SECTOR_CANYON_AGAIN } from './content/sectors.js';
 
 export const BRIEFS = {
   // --- THE STORY -----------------------------------------------------------
@@ -348,11 +348,16 @@ export const BRIEFS = {
   sector_door: { id: 'sector_door', face: 'surprised', title: BACK_DOOR_SECTOR.name, lines: [...BACK_DOOR_SECTOR.brief] },
   sector_both: { id: 'sector_both', face: 'determined', title: BOTH_WALLS_SECTOR.name, lines: [...BOTH_WALLS_SECTOR.brief] },
   sector_next: { id: 'sector_next', face: 'determined', title: 'THE NEXT SECTOR', lines: [...SECTOR_GENERATOR.brief] },
+  sector_canyon_again: { id: 'sector_canyon_again', face: 'focused', title: SECTOR_CANYON_AGAIN.name, lines: [...SECTOR_CANYON_AGAIN.brief] },
   // THE CANYON (sector 3, owner 2026-10-01: SOL-82's first use, "a satisfying use of its immense power"): the swarm rises at the far
   // end of the canyon on the far side of the world, and SOL-82's first pass comes over it with the player in its seat
   canyon_rises: {
     id: 'canyon_rises', face: 'scan', title: 'THE FAR SIDE',
     lines: ['There they are: the far side of the world, a canyon full of them.', 'Hundreds. They will walk here if we let them.'],
+  },
+  canyon_again: {
+    id: 'canyon_again', face: 'focused', title: 'THE FAR SIDE · AGAIN',
+    lines: ['The canyon is full again, deeper than before.', 'Same drill. Walk the beam down it and leave nothing to march here.'],
   },
   canyon_pass: {
     id: 'canyon_pass', face: 'determined', title: 'SOL-82 · THE CANYON',

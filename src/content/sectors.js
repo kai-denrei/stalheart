@@ -60,7 +60,7 @@ export const SECTORS = freeze([
 // The base's own breach opens `gateAfter` seconds after the pass's overhead ends (the player is in SOL-82's seat until then).
 // Isao: `brief` as the swarm rises, `passBrief` as SOL-82 comes over it
 export const CANYON = freeze({ length: 48, halfWidth: 1.2, wall: 3, swarm: 5, ladder: 2, spread: 1.2, dens: 0.35, seatAfter: 6,
-  pass: { overhead: 45, energy: 25, radius: 12, slew: 16 }, gateAfter: 4, brief: 'canyon_rises', passBrief: 'canyon_pass' });
+  pass: { overhead: 45, energy: 25, radius: 12, slew: 16 }, gateAfter: 4, brief: 'canyon_rises', passBrief: 'canyon_pass', briefAgain: 'canyon_again' });
 
 // WHERE THE SIDE BREACH COMES UP (src/domain/side-breach.js), in cells: on open ground outside the clearing, between minWall and
 // maxWall from the nearest wall, within reach of a sentry socket (the Rotor and the Quiver reach 3.5 to 3.6, src/towers.js) and at least
@@ -76,7 +76,14 @@ export const SECTOR_HOLD = freeze({ name: 'SECTOR', breaches: { gate: 2 }, waves
 // THE BACK DOOR IS DUE once everything is unlocked (every landing site's part home, Isao's programme printed but for the back gate,
 // which needs the door) and never before `earliest`; it comes at `latest` whatever is unlocked. It is decided at the start of the
 // sector before it, so the omens (BACK_OMENS) can rumble in that sector.
-export const SECTOR_DOOR = freeze({ earliest: 6, latest: 8 });
+export const SECTOR_DOOR = freeze({ earliest: 7, latest: 8 });
+
+// THE CANYON AGAIN (owner, 2026-10-01: "SOL first pass; very satisfying, let's add a second round of that as the penultimate wave").
+// The held sector just before THE BACK DOOR is the canyon a second time: the same canyon re-cut and re-filled at the antipode, the
+// pass laid over it with CANYON's numbers, and the player glided into the seat; the base's own mouth waits for the pass as before.
+// The door is never earlier than 7 so this sector always exists (sector 6 at the earliest). These fields lie over SECTOR_HOLD's.
+export const SECTOR_CANYON_AGAIN = freeze({ name: 'THE CANYON AGAIN', breaches: { gate: 1 }, canyon: true, new: 'SOL-82 over the canyon again',
+  brief: ['The canyon on the far side is filling again. More than last time.', 'SOL-82 is on its way over it. You know what to do.'] });
 
 // THE BACK DOOR: THE FEAST, THEN THE SCRAMBLE (owner, 2026-09-24: "really a chance for the tank to kill tons of rammable soft
 // enemies for the first wave, and then the necessity to spend resources to quickly re-inforce that area with turrets"). `back`

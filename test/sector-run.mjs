@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createSectorRun } from '../src/fx/sector-run.js';
-import { SECTORS, SECTOR_TIMING, SECTOR_GATE, SECTOR_DOOR, BACK_DOOR_SECTOR, SIDE_BREACH, CANYON } from '../src/content/sectors.js';
+import { SECTORS, SECTOR_TIMING, SECTOR_GATE, SECTOR_DOOR, BACK_DOOR_SECTOR, SIDE_BREACH, CANYON, SECTOR_HOLD, BOTH_WALLS_SECTOR, SECTOR_GENERATOR, SECTOR_CANYON_AGAIN } from '../src/content/sectors.js';
+import { sectorDef } from '../src/domain/sectors.js';
 
 // THE SECTOR CLOCK (docs/superpowers/specs/2026-09-24-session-pacing-design.md A and B), driven through fake hooks: no page, no
 // planet. A ring of 120 cells; walking hops from the heart climb 30..59 round it; cells 200.. are the back candidates.
@@ -114,10 +115,13 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
 // THE BACK DOOR RUMBLES in the sector before it (2026-10-01: the schedule decides the door a sector ahead): the rumble with the
 // second pulse, the crack with the last, nothing in the pulses between, and nothing in a sector the door does not follow
 {
-  const w = world({ firstSector: SECTOR_DOOR.earliest - 1, unlocked: true });   // everything unlocked: the door is next
+  // (the sector before the door is the canyon again; with no canyon to cut on this planet it runs as a held sector, and its pulses
+  // carry the omens exactly as a held one's would. The canyon's own run is tested below.)
+  const w = world({ firstSector: SECTOR_DOOR.earliest - 1, unlocked: true, canyon: null });   // everything unlocked: the door is next
   w.step(3);
   assert.equal(w.run.state().doorAt, SECTOR_DOOR.earliest, 'the door is decided at the start of the sector before it');
-  const pulses = [], waves = SECTORS[SECTOR_DOOR.earliest - 2].waves;
+  assert.equal(w.run.state().name, SECTOR_CANYON_AGAIN.name, 'the sector before the door is the canyon again');
+  const pulses = [], waves = sectorDef(SECTOR_DOOR.earliest - 1, SECTORS, SECTOR_GENERATOR, { hold: SECTOR_HOLD, door: BACK_DOOR_SECTOR, both: BOTH_WALLS_SECTOR, doorAt: SECTOR_DOOR.earliest, canyonAgain: SECTOR_CANYON_AGAIN }).waves;
   for (let k = 1; k <= waves; k++) { w.run.release(w.t); pulses.push([k, [...(w.omens ?? [])]]); w.step(0.5); }
   assert.deepEqual(pulses.map(([k, o]) => o.length), [0, ...Array(waves - 2).fill(1), 2], `the rumble at pulse 2, the crack at the last (${JSON.stringify(pulses)})`);
   assert.deepEqual(w.omens, ['rumble', 'crack']);
@@ -134,9 +138,14 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
   const w = world({ firstSector: SECTOR_DOOR.earliest - 1, unlocked: true });
   w.step(0.5);
   assert.equal(w.run.state().doorAt, SECTOR_DOOR.earliest);
+  // a late start (a drawer jump, the harness) one sector before the earliest door is the canyon again with the door next, whatever is
+  // unlocked; a run that walks there from sector 1 decides on backDoorNext alone
   const w2 = world({ firstSector: SECTOR_DOOR.earliest - 1 });
   w2.step(0.5);
-  assert.equal(w2.run.state().doorAt, null, 'not unlocked and not at latest: held');
+  assert.equal(w2.run.state().doorAt, SECTOR_DOOR.earliest, 'a late start one before the earliest: the door next');
+  const w3 = world({ firstSector: SECTOR_DOOR.earliest - 2 });
+  w3.step(0.5);
+  assert.equal(w3.run.state().doorAt, null, 'not unlocked and not at latest: held');
 }
 {
   // the scramble's markers ring for their seconds and then stop

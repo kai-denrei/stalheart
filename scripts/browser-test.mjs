@@ -1373,22 +1373,26 @@ try{
  await click('#units-next');await delay(600);
  {const s=await us();assert(s.meshes.n===0||s.meshes.wire===s.meshes.n,`the next entry arrives as wire (${JSON.stringify(s.meshes)})`);}
  await finish();
- } else if(args.includes('--canyon')) {
+ } else if(args.includes('--canyon')||args.includes('--canyon-again')) {
  const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`);
+ // --canyon-again (owner, 2026-10-01: "a second round of that as the penultimate wave"): the same run at the held sector before the
+ // back door (a late start one sector before the door's earliest puts the door next), which is THE CANYON AGAIN
+ const again=args.includes('--canyon-again'),{SECTOR_DOOR,SECTOR_CANYON_AGAIN}=await import('../src/content/sectors.js'),sectorN=again?SECTOR_DOOR.earliest-1:3,sectorName=again?SECTOR_CANYON_AGAIN.name:'THE CANYON',tag=again?'canyon-again':'canyon';
  // THE CANYON (owner, 2026-10-01: "let's have it used the first time at the antipode, far from all other sentries; a huge number
  // of ennemies, 5x the usual, in a long canyon, easy target for the SOL. a satisfying use of its immense power"): sector 3 cuts a canyon
  // at the antipode, hundreds rise at its deep end, and SOL-82's first pass comes over it with the player seated through a glide; the
  // beam walked down the canyon takes them by the score
- await go('skip-tutorial-canyon','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=3#td');
+ await go('skip-tutorial-'+tag,`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${sectorN}#td`);
  await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
- await until(`${T}.state().sector.name==="THE CANYON"`,60000).catch(async()=>assert.fail(`sector 3 is the canyon (${JSON.stringify((await st()).sector)})`));
+ await until(`${T}.state().sector.name===${JSON.stringify(sectorName)}`,60000).catch(async()=>assert.fail(`sector ${sectorN} is ${sectorName} (${JSON.stringify((await st()).sector)})`));
+ if(again){const s=await st();assert.equal(s.sector.doorAt,sectorN+1,`the door is decided for the sector after (${JSON.stringify(s.sector)})`);}
  {const s=await st();assert(s.sector.canyon&&s.sector.canyon.floor>20,`the canyon is cut (${JSON.stringify(s.sector.canyon)})`);}
  const glides0=(await st()).glide.n;
  await until(`${T}.state().performance.enemies>=250`,60000).catch(async()=>assert.fail(`the swarm rises (${(await st()).performance.enemies} alive)`));
  await until(`${T}.state().laser.seated && ${T}.state().laser.special`,60000).catch(async()=>assert.fail(`SOL-82's canyon pass and its seat (${JSON.stringify((await st()).laser)})`));
  {const s=await st(),L=(await import('../src/content/sectors.js')).CANYON;assert.equal(s.laser.radius,L.pass.radius,'the canyon\'s wide beam');assert(s.laser.energy>=L.pass.energy-0.5,`the canyon's long burn (${s.laser.energy})`);
   assert(s.glide.n>glides0,'the camera glided into the seat');}
- await delay(3500);current='skip-tutorial-canyon-seat';await finish();
+ await delay(3500);current='skip-tutorial-'+tag+'-seat';await finish();
  {const before=(await st()).laser.burned.bodies,t0=Date.now();let frames=null;
   await evaluate(`window.__fr=[];(function f(t){window.__fr.push(t);if(window.__fr.length<600)requestAnimationFrame(f);})(performance.now())`);
   /* as a player would: the trigger held and the beam walked down the canyon from the deep end toward its mouth */
@@ -1399,7 +1403,7 @@ try{
   const s=await st();console.log(`  canyon: ${s.laser.burned.bodies-before} burned in ${((Date.now()-t0)/1000).toFixed(0)} s, ${s.performance.enemies} left, frames ${JSON.stringify(frames)}`);
   assert(s.laser.burned.bodies-before>=100,`the beam takes them by the score (${s.laser.burned.bodies-before})`);
   assert(!String(s.sector.phase).startsWith('lost'),`the colony holds while the player burns the far side (${s.sector.phase})`);}
- current='skip-tutorial-canyon-burn';await finish();
+ current='skip-tutorial-'+tag+'-burn';await finish();
  } else if(args.includes('--showcase')) {
  // THE SHOWCASE (owner, 2026-09-24; docs/log/entries/2026-09-24-intro-simplified.json). FOUR BEATS, and each one drives a
  // real system in a real run of the skipped world. So this step does not look at the rail's intentions — it photographs

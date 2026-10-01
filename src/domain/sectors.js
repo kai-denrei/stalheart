@@ -7,8 +7,9 @@
 // Pure. The clock, the spawner and the seal effects belong to the caller; the tunables come in from src/content/sectors.js.
 
 // The def for sector n >= 1 (2026-10-01, the ramp before the back door). `table`: the fixed opening (SECTORS); `arc`: { hold, door,
-// both, doorAt } with hold the gate-side sector run while the back door is not due, door and both its two sectors, and doorAt the
-// sector the schedule put the door in (null: not yet decided). Past both, sectors are generated from it (the generator's
+// both, doorAt, canyonAgain } with hold the gate-side sector run while the back door is not due, door and both its two sectors, doorAt the
+// sector the schedule put the door in (null: not yet decided), and canyonAgain the fields laid over the held sector just before the
+// door (SECTOR_CANYON_AGAIN: the canyon a second time, the penultimate sector of the arc). Past both, sectors are generated from it (the generator's
 // arithmetic is documented beside SECTOR_GENERATOR). Without an arc the generator follows the last authored row.
 export function sectorDef(n, table, generator, arc = null) {
   n = Math.max(1, Math.floor(n) || 1);
@@ -19,10 +20,11 @@ export function sectorDef(n, table, generator, arc = null) {
   if (arc && doorAt !== null && n === doorAt + 1) return { ...arc.both, n, waveBase: arc.both.ladderStart ?? 0, ladderCap };
   if (arc && (doorAt === null || n < doorAt)) {
     const last = table[table.length - 1], h = arc.hold, past = n - table.length;
+    const again = arc.canyonAgain && doorAt !== null && n === doorAt - 1 ? arc.canyonAgain : null;   // the penultimate sector: the canyon again
     return {
       ...last, n, name: `${h.name} ${n}`, new: null, brief: h.brief, breaches: { ...h.breaches }, waves: h.waves, pulse: h.pulse ?? last.pulse,
-      threat: Math.round((last.threat + h.threatStep * past) * 100) / 100, held: { ...h.held }, feast: undefined, backDoor: false,
-      waveBase: h.ladderStart ?? 0, ladderCap,
+      threat: Math.round((last.threat + h.threatStep * past) * 100) / 100, held: { ...h.held }, feast: undefined, backDoor: false, canyon: false,
+      waveBase: h.ladderStart ?? 0, ladderCap, ...(again ? { ...again, breaches: { ...again.breaches } } : {}),
     };
   }
   const last = arc ? arc.both : table[table.length - 1], past = n - (arc ? doorAt + 1 : table.length);
