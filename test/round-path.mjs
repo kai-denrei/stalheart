@@ -113,6 +113,7 @@ console.log('round-path: exact ground, wall top, wall side and air ends; the hea
 // THE LANCE ALONG ITS CURVE (2026-10-01): the beam descends at the barrel's pitch along the great circle; its stop is solved on that
 // same curve, so a level lance from a parapet skims every wall and a depressed one digs into the ground where it is drawn to
 import { marchAlongArc, arcOf, pointAlongArc } from '../src/domain/round-path.js';
+const norm3s = (v) => { const l = Math.hypot(...v); return v.map((x) => x / l); };
 {
   const wallHeight = 0.02, step = 0.002, open = { cellAt: () => 0, tags: [0], wallHeight, step, clearance: 0.001, ownCi: -1 };   // one open cell everywhere (tag 0 is BLOCKED... so use 1)
   open.tags = [1];
@@ -136,5 +137,12 @@ import { marchAlongArc, arcOf, pointAlongArc } from '../src/domain/round-path.js
   assert.equal(marchAlongArc(level.fromU, level.dTan, level.r0, level.slope, 0.3, walled).hit, null, 'a parapet-high lance clears walls of its own height');
   const down = arcOf(from, dir);
   assert.equal(marchAlongArc(down.fromU, down.dTan, down.r0, down.slope, 0.3, walled).hit, 'wall', 'a depressed one digs into the wall ahead');
+  // ROCK IS NOT SKIMMED (2026-10-02): a beam dipping a little under a rock's top passes with the ground's clearance and stops on the rock's
+  // face with rockClearance, its end where it enters the rock (the first sample past x = 0.01 is inside)
+  const grazing = { ...walled, cellAt: (u) => (u[0] > 0.01 && u[0] < 0.02 ? 1 : 0), clearance: wallHeight * 0.6 }, slight = arcOf(from, norm3s([1, -0.3 * wallHeight / 0.012, 0]));
+  assert.equal(marchAlongArc(slight.fromU, slight.dTan, slight.r0, slight.slope, 0.3, grazing).hit, 'ground', 'with the ground\'s clearance it slipped through the rock top and only the ground beyond stopped it');
+  const rocky = marchAlongArc(slight.fromU, slight.dTan, slight.r0, slight.slope, 0.3, { ...grazing, rockClearance: 0.0001 });
+  assert.equal(rocky.hit, 'wall', 'with rockClearance the rock stops it');
+  assert.ok(Math.abs(rocky.len - 0.01) < 0.0005, `on the rock's face (${rocky.len})`);
 }
 console.log('round-path: the lance\'s curve descends at the barrel\'s pitch and stops where it is drawn to meet the ground or a wall.');

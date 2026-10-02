@@ -70,7 +70,7 @@ import { makeScore } from './score.js';
 import { TOWERS, TOWER_BY_KEY, MAX_TIER, upgradeCost, effectiveStats as baseEffectiveStats, pickTarget, shotInterval, unlockedTowerKeys, TOWER_ORDER, starterTower, towerSound, ROSTER } from './towers.js';
 import { makeEconomy, sellRefund } from './economy.js';
 import { pickTier } from './perftier.js';
-import { applyWeatheredMaterial } from './fx/weathered-material.js';
+import { applyWeatheredMaterial } from './fx/weathered-material.js'; import { createLanceBurn } from './fx/lance-burn.js'; import { showContact } from './fx/contact-card.js';
 import { STICK, stickVector, knobOffset } from './stick.js';
 import { makeBloom } from './postfx.js';
 import { TANK_FEEL, TANK_FEEL_KNOBS, makeTankFeel, stepTankFeel, landTankFeel, fireTankFeel, applyTankFeel, applyTankHealth } from './tankfeel.js';
@@ -3856,7 +3856,7 @@ export function initTdTab(root) {
     ramCombo = 0; ramComboT = 0; syncCombo();
     breachedCells.clear(); explosions.clear(); sealedBreachCells.clear(); laserStation.reset(); // a NEW world owes nothing to the old one's holes, its fire, its sealed sinkholes or SOL-82's scorch
     const built = buildGameWorld({ world: storyQuery.world, params, stage: storyQuery.stage, landmarks: storyQuery.landmarks, phase: storyQuery.phase, grow: storyQuery.grow, chapter: storyQuery.chapter, scene, sfx, warm: warmShaders });
-    mesh = built.mesh; dungeon = built.dungeon; if (built.wallHeight) params.wallHeight = built.wallHeight; storyBase?.dispose(); storyBase = built.base; foundryFx?.dispose(); foundryFx = null; story?.glue?.dispose(); story = built.story ?? null; sectorRun = story ? makeSectorRun() : null; storyMonitor?.dispose(); storyMonitor = story ? createStoryMonitor(root) : null; storyScope?.dispose(); storyScope = story ? createStoryScope(root) : null; daylight?.restore(); daylight = story ? createDaylight({ hemi, sun, bg: mainBg, day: story.day.day, tune: story.day }) : null; gunshipRig.reset();   /* A NEW RUN LEAVES NOTHING BEHIND (2026-09-25): the lights' night, the gunship and a falling MK-9 go with the old world */   // the story planet has a day   // 4 m walls on the story sphere; the story's islands, structures, sockets and beats at the requested stage
+    mesh = built.mesh; dungeon = built.dungeon; if (built.wallHeight) params.wallHeight = built.wallHeight; storyBase?.dispose(); storyBase = built.base; foundryFx?.dispose(); foundryFx = null; story?.glue?.dispose(); story = built.story ?? null; sectorRun = story ? makeSectorRun() : null; storyMonitor?.dispose(); storyMonitor = story ? createStoryMonitor(root) : null; storyScope?.dispose(); storyScope = story ? createStoryScope(root) : null; daylight?.restore(); daylight = story ? createDaylight({ hemi, sun, bg: mainBg, day: story.day.day, tune: story.day, phase: +new URLSearchParams(location.search).get('day') || 0 }) : null; gunshipRig.reset();   /* A NEW RUN LEAVES NOTHING BEHIND (2026-09-25): the lights' night, the gunship and a falling MK-9 go with the old world */   // the story planet has a day   // 4 m walls on the story sphere; the story's islands, structures, sockets and beats at the requested stage
     graph = dungeon.graph; cellSide = mesh.defaultSide;
     // THE CAMP, BEFORE ANY ACTOR IS PLACED. Berth cells are graph maths,
     // so they are known now rather than whenever the container model
@@ -4267,7 +4267,7 @@ export function initTdTab(root) {
       const entry = spawnQueue.shift(), { type, sp } = entry;   // a story swarm entry also carries delay, spread and harmless
       if (!sp.alive) continue;   // its gate died while it was queued
       if(!gameBreaches.ready(sp.obj)){spawnQueue.unshift({...entry,at:spawnClock});break;}
-      const spec = ENEMY_SPEC[type];
+      const spec = ENEMY_SPEC[type]; if (storyMode && !seenTypes.has(type)) { seenTypes.add(type); showContact(root, type); }   // first contact: src/fx/contact-card.js
       const obj = makeDotEnemy(type, { walker: CREATURE_TINTS[type], walkerHi: accentFor(type) }, entry.dens);
       const size = spec.size * 0.7;
       const scale0 = cellSide * size;
@@ -6520,7 +6520,7 @@ export function initTdTab(root) {
   }
 
   // WHERE A STRAIGHT LINE MEETS THE GROUND OR A WALL, on this board: the lance's march and a round's exact end (src/domain/round-path.js)
-  function terrainOf(ownCi = -1) { return { cellAt: cellIndex, tags: dungeon.tags, wallHeight: params.wallHeight, step: cellSide * 0.2, clearance: cellSide * 0.25, ownCi }; }
+  function terrainOf(ownCi = -1) { return { cellAt: cellIndex, tags: dungeon.tags, wallHeight: params.wallHeight, step: cellSide * 0.2, clearance: cellSide * 0.25, rockClearance: cellSide * 0.03, ownCi }; }
   function rayToTerrain(from, dir, maxLen, ownCi = -1) { return marchToTerrain(from, dir, maxLen, terrainOf(ownCi)); }
   const lanceReach = (from, dir, maxLen, ownCi) => { const a = arcOf(from, dir); return marchAlongArc(a.fromU, a.dTan, a.r0, a.slope, maxLen, terrainOf(ownCi)); };   // the lance's stop, on the curve it is drawn along (src/domain/round-path.js)
 
@@ -6665,19 +6665,8 @@ export function initTdTab(root) {
       plasmaBeams.set(tw, ent);
     }
     ent.until = tNow + firingFor('lancer').beamHold;
-    // IT HUGS THE PLANET (operator: lasers "too often pierce through the
-    // curvature and it looks uncanny"). It was drawn as a straight world
-    // CHORD, and a chord across seven cells dives 0.49 CELLS below the
-    // surface at its midpoint — it goes underground and comes back out,
-    // which is exactly what was being seen.
-    //
-    // A great circle is the straight line on a sphere, so this is still
-    // "straight" in the only sense the board has; it simply keeps the
-    // muzzle's own altitude the whole way instead of cutting the corner. The
-    // five links were always there for the shader's per-link cap and taper —
-    // now they also carry the bend, which is what they are shaped for.
-    // ...AND DESCENDS AT THE BARREL'S PITCH (2026-10-01): the beam used to keep the muzzle's altitude the whole way while its stop
-    // was solved on the straight line, so the two disagreed; now both are src/domain/round-path.js's curve (lanceReach, pointAlongArc)
+    // IT HUGS THE PLANET (operator: a straight chord dove 0.49 cells underground across seven cells): drawn along the great circle,
+    // descending at the barrel's pitch, the same curve its stop is solved on (src/domain/round-path.js lanceReach, pointAlongArc)
     const { fromU, dTan, r0, slope } = arcOf(from, dir);
     const at = (m) => pointAlongArc(fromU, dTan, r0, slope, m);
     for (let k = 0; k < PLASMA_LINKS; k++) {
@@ -6698,10 +6687,7 @@ export function initTdTab(root) {
       bm.update(tNow);
       bm.setAlpha(1);
     }
-    // WHERE IT IS STOPPED, SAID OUT LOUD. A beam that simply ends in mid-air
-    // reads as a beam that is too short; one that splashes on the rock reads
-    // as a beam that has hit something, which is the information the player
-    // needs to move the tower. Rate-limited to the burst, not the tick.
+    // WHERE IT IS STOPPED, SAID OUT LOUD: a splash on the rock reads as a hit, not a beam too short; rate-limited to the burst
     if (stoppedBy && tNow - (tw.lastSpark ?? -9) > (tw.def.burst ?? 0.6) * 0.9) {
       tw.lastSpark = tNow;
       const at = pointAlongArc(fromU, dTan, r0, slope, len);   // the splash where the curve ends
@@ -6709,7 +6695,7 @@ export function initTdTab(root) {
         stoppedBy === 'wall' ? 18 : 12);
       b.scale.setScalar(cellSide * (stoppedBy === 'wall' ? 1.5 : 1.1));
       b.position.set(at[0], at[1], at[2]);
-      scene.add(b); debris.push(b); explode('lancer.burn', at);   // and the ground burns a little under it (owner, 2026-10-02)
+      scene.add(b); debris.push(b); explode('lancer.burn', at); (lanceBeam.burn ??= createLanceBurn(scene, { cellSide })).hit(at, dir, stoppedBy === 'wall');   // and what stopped it burns: src/fx/lance-burn.js
     }
   }
 
@@ -8534,8 +8520,8 @@ export function initTdTab(root) {
     pilot: (ci, laneCi) => {
       if (pilot?.gunship || laserStation.seated()) return;   // a scripted hand-over never evicts a gunner or SOL-82: the beat is deferred, not the player (2026-09-23)
       const from = pilotMode ? { pos: camera.position.clone(), quat: camera.quaternion.clone() } : null, perch = perchOf(towerByCell.get(ci) ?? { ci }), lit = from && highlightSeat(scene, perch, graph.normals[ci], cellSide);   // from one seat to the next: back out, the next one lit (owner, 2026-10-02)
-      seatGlide.begin(camera); enterPilot([ci, ...towers.map((t) => t.ci).filter((c) => c !== ci)]);
-      startShot({ id: 'takeControl', dur: from ? 4.4 : 3.2, poseAt: takeControlPose(perch, graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight, from), onEnd: () => { lit?.(); setView('bastion'); snapCamera(); } });
+      seatGlide.begin(camera); enterPilot([ci, ...towers.map((t) => t.ci).filter((c) => c !== ci)]); if (from) showCallout(`TRANSFER TO THE ${(TOWER_BY_KEY[towerByCell.get(ci)?.key]?.label ?? 'next seat').replace(/^\d+\.\s*/, '').toUpperCase()}! LOCK IN!`, 'co-cargo');
+      startShot({ id: 'takeControl', dur: from ? 4.4 : 3.2, poseAt: takeControlPose(perch, graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight, from), onEnd: () => { lit?.(); seatGlide.begin(camera); setView('bastion'); } });   // eased onto the optic, no cut (owner, 2026-10-02)
     },
   };
   Object.assign(storyApi, {

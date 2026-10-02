@@ -36,7 +36,7 @@ export function stepFoundry(st, dt, cfg) {
     return out;
   }
   if (st.phase === 'cycling') {
-    const u = st.t - st.cycleAt, section = st.sections[0];
+    const u = (st.t - st.cycleAt) * (cfg.rate ?? 1), section = st.sections[0];   // `rate`: the clip's playback speed (its cues are in clip seconds)
     for (const [name, at, ev] of [['arcOn', cfg.events.arcOn, 'arc-on'], ['arcOff', cfg.events.arcOff, 'arc-off'], ['scrap', cfg.events.scrap, 'scrap'], ['barrel', cfg.events.barrel, 'barrel']]) {
       if (u >= at && !st.fired.has(name)) { st.fired.add(name); out.push(ev === 'scrap' ? { ev, section, index: st.cycle } : ev === 'arc-on' ? { ev, index: st.cycle } : ev); }
     }

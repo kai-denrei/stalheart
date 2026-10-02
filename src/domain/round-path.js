@@ -4,7 +4,8 @@
 // from a wall clears its neighbours and a depressed one digs in, which is the whole reason to care where a Lancer stands.
 //
 // Pure: the controller hands in its board as `terrain` = { cellAt(unit point) -> cell or -1, tags, wallHeight, step (the march's
-// sample spacing), clearance (how far into terrain the lance's march must go before it stops), ownCi (the gun's own cell) }.
+// sample spacing), clearance (how far into terrain the lance's march must go before it stops), rockClearance (the same into a
+// rock, for the lance's curve: marchAlongArc), ownCi (the gun's own cell) }.
 import { norm3, dot3, sub3 } from '../vec3.js';
 import { BLOCKED } from '../dungeon.js';
 import { aimOnSphere } from './gunship.js';
@@ -81,7 +82,15 @@ export function marchAlongArc(fromU, dTan, r0, slope, maxLen, terrain) {
     if (ci === terrain.ownCi) continue;   // a gun does not shoot its own parapet
     const blocked = ci !== -1 && terrain.tags[ci] === BLOCKED;
     const surface = 1 + (blocked ? terrain.wallHeight : 0);
-    if (r0 + slope * m < surface - terrain.clearance) return { len: Math.max(step, m - step), hit: blocked ? 'wall' : 'ground' };
+    // ROCK IS NOT SKIMMED (owner, 2026-10-02: "lasers of lancer shooting through rocks"). The ground's quarter cell of clearance is for
+    // bodies standing on it; a wall's top let the beam pass through its upper share. `rockClearance` (when given) is how far into a
+    // rock the lance may go, and a wall stop ends ON the rock: its face found between the last sample outside and the first inside
+    if (r0 + slope * m < surface - (blocked ? terrain.rockClearance ?? terrain.clearance : terrain.clearance)) {
+      if (!blocked || terrain.rockClearance == null) return { len: Math.max(step, m - step), hit: blocked ? 'wall' : 'ground' };
+      let lo = m - step, hi = m;
+      for (let k = 0; k < 8; k++) { const mid = (lo + hi) / 2, c2 = terrain.cellAt(norm3(pointAlongArc(fromU, dTan, r0, slope, mid))); if (c2 !== terrain.ownCi && c2 !== -1 && terrain.tags[c2] === BLOCKED && r0 + slope * mid < surface - terrain.rockClearance) hi = mid; else lo = mid; }
+      return { len: Math.max(step * 0.5, lo), hit: 'wall' };
+    }
   }
   return { len: maxLen, hit: null };
 }

@@ -9,6 +9,7 @@ import * as THREE from '../../vendor/three.module.js';
 import { createBeam } from '../beamfx.js';
 import { LASER_PRESET, LASER_BEAM, LASER_TRAIL, LASER_TRAIL_SMOKE, LASER_SKY_METRES } from '../content/orbital-laser.js';
 import { EXPLOSION_PALETTE } from '../content/explosions.js';
+import { createScorchTrail } from './scorch-trail.js';
 import { template as puffTemplate, buildPuffGeometry } from './explosions/common.js';
 
 const Y = new THREE.Vector3(0, 1, 0);
@@ -129,103 +130,14 @@ void main(){
   disc.scale.setScalar(LASER_PRESET.glowWidth * DISC_SPREAD * unit);
   group.add(disc);
 
-  /* --- the scorch trail -------------------------------------------------- */
-  // A capped instanced ribbon of soft stamps, oldest recycled first. Each stamp's age and seed live in instanced
-  // attributes and the shader does the rest: a noisy round edge so overlapping stamps read as one continuous burn, not a
-  // chain of squares; char that darkens the ground (premultiplied, so it occludes); and embers — a hot glow cooling from
-  // warm to ember red over LASER_TRAIL.hot seconds, with a speckle of coals that smoulders on long after (owner,
-  // 2026-09-15). uStack divides the glow by how many stamps overlap along the path, so dense stamping does not white out.
-  const CAP = LASER_TRAIL.quads;
-  const quadGeo = new THREE.PlaneGeometry(1, 1);
-  quadGeo.rotateX(-Math.PI / 2);
-  const ages = new Float32Array(CAP).fill(LASER_TRAIL.seconds);
-  const ageAttr = new THREE.InstancedBufferAttribute(ages, 1);
-  ageAttr.setUsage(THREE.DynamicDrawUsage);   /* every stamp ages every frame */
-  quadGeo.setAttribute('aAge', ageAttr);
-  const seeds = new Float32Array(CAP);
-  const seedAttr = new THREE.InstancedBufferAttribute(seeds, 1);
-  quadGeo.setAttribute('aSeed', seedAttr);
-  const quadSize = LASER_BEAM.radius * unit * 1.5;
-  const quadMat = new THREE.ShaderMaterial({
-    uniforms: {
-      uLife: { value: LASER_TRAIL.seconds },
-      uHot: { value: LASER_TRAIL.hot },
-      uStack: { value: Math.min(1, (LASER_TRAIL.every * 1.5) / (LASER_BEAM.radius * 1.5)) },
-      uChar: { value: new THREE.Color(0x14110f) },
-      uEmber: { value: new THREE.Color(EXPLOSION_PALETTE.ember) },
-      uWarm: { value: new THREE.Color(EXPLOSION_PALETTE.warm) },
-    },
-    vertexShader: `attribute float aAge;
-attribute float aSeed;
-varying float vAge, vSeed;
-varying vec2 vP;
-void main(){
-  vAge = aAge;
-  vSeed = aSeed;
-  vP = position.xz;
-  vec4 p = vec4(position, 1.0);
-  #ifdef USE_INSTANCING
-  p = instanceMatrix * p;
-  #endif
-  gl_Position = projectionMatrix * modelViewMatrix * p;
-}`,
-    fragmentShader: `#include <common>
-uniform float uLife, uHot, uStack;
-uniform vec3 uChar, uEmber, uWarm;
-varying float vAge, vSeed;
-varying vec2 vP;
-float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
-float vn(vec2 p){
-  vec2 i = floor(p), f = fract(p);
-  f = f * f * (3.0 - 2.0 * f);
-  return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), f.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), f.x), f.y);
-}
-void main(){
-  vec2 q = vP * 2.0;
-  vec2 o = vec2(vSeed * 37.0, vSeed * 91.0);
-  float n = vn(q * 2.2 + o) * 0.65 + vn(q * 5.1 + o) * 0.35;
-  float edge = 1.0 - smoothstep(0.3, 1.0, length(q) + (n - 0.5) * 0.6);
-  if (edge <= 0.0) discard;
-  float fade = clamp(1.0 - vAge / uLife, 0.0, 1.0);
-  float charA = edge * 0.5 * fade;
-  float heat = exp(-vAge / uHot);
-  float coals = smoothstep(0.62, 0.9, vn(q * 7.0 + o * 1.3 + vAge * 0.25));
-  float glow = edge * (heat * (0.45 + 0.55 * coals) + coals * 0.35 * exp(-vAge / (uHot * 5.0))) * uStack;
-  gl_FragColor = vec4(uChar * charA + mix(uEmber, uWarm, heat) * glow * 2.0, charA);
-  #include <tonemapping_fragment>
-}`,
-    transparent: true, depthWrite: false,
-    blending: THREE.CustomBlending, blendEquation: THREE.AddEquation,
-    blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor,
-    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4,
-  });
-  const trail = new THREE.InstancedMesh(quadGeo, quadMat, CAP);
-  trail.name = 'Laser scorch';
-  trail.count = 0;
-  trail.frustumCulled = false;
-  trail.renderOrder = 8;
-  group.add(trail);
+  /* --- the scorch trail (src/fx/scorch-trail.js) -------------------------- */
+  const scorch = createScorchTrail(group, { cap: LASER_TRAIL.quads, life: LASER_TRAIL.seconds, hot: LASER_TRAIL.hot, stack: Math.min(1, (LASER_TRAIL.every * 1.5) / (LASER_BEAM.radius * 1.5)), size: LASER_BEAM.radius * unit * 1.5, lift: 0.04 * unit, name: 'Laser scorch' }), trail = scorch.mesh;
 
-  const dummy = new THREE.Object3D();
   const last = new THREE.Vector3();
-  let next = 0, written = 0, laid = false, clock = 0, sinceStamp = 0;
+  let laid = false, clock = 0, sinceStamp = 0;
 
   function stamp(point, normal) {
-    dummy.position.copy(point).addScaledVector(normal, 0.04 * unit);
-    dummy.quaternion.setFromUnitVectors(Y, normal);
-    dummy.rotateY(Math.random() * Math.PI * 2);
-    const size = quadSize * (0.8 + Math.random() * 0.4);
-    dummy.scale.set(size, 1, size);
-    dummy.updateMatrix();
-    trail.setMatrixAt(next, dummy.matrix);
-    ages[next] = 0;
-    seeds[next] = Math.random();
-    next = (next + 1) % CAP;
-    written = Math.min(CAP, written + 1);
-    trail.count = written;
-    trail.instanceMatrix.needsUpdate = true;
-    ageAttr.needsUpdate = true;
-    seedAttr.needsUpdate = true;
+    scorch.stamp(point, normal);
     last.copy(point);
     sinceStamp = 0;
   }
@@ -342,9 +254,7 @@ void main(){
     clear() {
       this.lift();
       this.hideGuide();
-      ages.fill(LASER_TRAIL.seconds);
-      ageAttr.needsUpdate = true;
-      trail.count = written = next = 0;
+      scorch.clear();
       sinceStamp = 0;
       for (let i = 0; i < SMOKE.capacity; i++) sTime.setX(i, 1e9);
       sTime.needsUpdate = true;
@@ -354,7 +264,7 @@ void main(){
     },
 
     // what is on the ground right now: stamps in the ribbon and puffs written into the smoke ring
-    state: () => ({ stamps: written, puffs: puffed }),
+    state: () => ({ stamps: trail.count, puffs: puffed }),
 
     // THE LIVE LOOK. The column's preset keys are shader uniforms (src/beamfx.js turns every key into u<Key>), so a
     // slider can write them while the beam burns. Widths are METRES and take the same scene-units-per-metre as the
@@ -399,9 +309,7 @@ void main(){
         sinceSmoke += dt;
         if (sinceSmoke >= 1 / SMOKE.rate) puff(at, up);
       }
-      if (!written) return;
-      for (let i = 0; i < written; i++) ages[i] += dt;
-      ageAttr.needsUpdate = true;
+      scorch.tick(dt);
     },
 
     dispose() {
@@ -415,11 +323,9 @@ void main(){
       guideMat.dispose();
       dotGeo.dispose();
       dotMat.dispose();
-      quadGeo.dispose();
-      quadMat.dispose();
       smokeGeo.dispose();
       smokeMat.dispose();   /* a clone: the kit's puff template stays alive for the explosions */
-      trail.dispose();
+      scorch.dispose();
       scene.remove(group);
     },
   };

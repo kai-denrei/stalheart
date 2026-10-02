@@ -21,7 +21,7 @@ export function createFoundryFx(scene, base, { cellSide, metresPerCell = 10, tun
   const action = (name) => rec('foundry')?.root?.userData.actions?.[name] ?? null;
   function play(name, loop) {
     const act = action(name); if (!act) return null;
-    act.paused = false; act.enabled = true; act.reset(); act.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1); act.clampWhenFinished = !loop; act.play();
+    act.paused = false; act.enabled = true; act.reset(); act.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1); act.clampWhenFinished = !loop; act.timeScale = loop ? 1 : tune.rate ?? 1; act.play();
     return act;
   }
   return {

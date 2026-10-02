@@ -4775,5 +4775,21 @@ body.embedded .preset-panel { display: none; }
 /* THE SEAT'S VIGNETTE (src/sentry-pilot.js): a Rotor's or a Quiver's optic reads as a different view */
 #seat-vignette { position: fixed; inset: 0; pointer-events: none; z-index: 4; background: radial-gradient(ellipse 66% 62% at 50% 50%, transparent 40%, rgba(0, 0, 0, .7) 70%, rgba(0, 0, 0, .96) 92%); }
 #seat-vignette[hidden] { display: none; }
+/* only once the eye is ON the optic (owner, 2026-10-02: "only once we are entirely inside a sentry, not before"): never over the glide into a seat, and it closes in as the glide lands */
+#seat-vignette { animation: seat-vignette-in .6s ease-out; }
+body.seat-gliding #seat-vignette { display: none; }
+@keyframes seat-vignette-in { from { opacity: 0; } to { opacity: 1; } }
 #seat-vignette:not([hidden]) ~ #sentry-pilot { z-index: 5; }   /* the seat's own panel and hint stay over the vignette */
 .radial-center .radial-gain { display: block; margin-top: 4px; font-size: 9px; letter-spacing: .04em; color: #9fdcff; line-height: 1.3; max-width: 120px; }
+
+/* FIRST CONTACT (src/fx/contact-card.js): Isao's scanner logs a new kind of body at the left edge, never over the middle */
+.contact-card { position: absolute; left: 16px; top: 34%; z-index: 11; pointer-events: none; min-width: 190px; max-width: 250px; padding: 9px 12px 10px 14px;
+  background: rgba(6, 10, 14, .82); border-left: 3px solid var(--tint); color: #e6eff2; font: 13px/1.35 'Share Tech Mono', ui-monospace, monospace;
+  box-shadow: 0 0 18px rgba(0, 0, 0, .5); animation: contact-in .35s ease-out; transition: opacity .45s, transform .45s; }
+.contact-card.out { opacity: 0; transform: translateX(-24px); }
+.contact-head { font-size: 10px; letter-spacing: .2em; color: var(--tint); }
+.contact-name { font-size: 16px; font-weight: 700; letter-spacing: .08em; margin: 2px 0 3px; }
+.contact-role { opacity: .85; }
+.contact-facts { margin-top: 5px; font-size: 10px; letter-spacing: .12em; color: #9fb4bd; }
+@keyframes contact-in { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+@media (max-width: 600px) { .contact-card { top: 22%; min-width: 0; max-width: 60vw; } }

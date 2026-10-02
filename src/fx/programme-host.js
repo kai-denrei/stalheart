@@ -5,7 +5,7 @@
 //   perks() / hasPerk(name)  the programme's perks, for the orbital laser, the shield station and the gunship meter
 //   build()                  once per unfrozen frame: the first hull's issue, the rebuilt hull, then at most one order for Isao
 //                            (a repair, or the next step of the base)
-//   repaired(repair)         a repair order done: the gate back to full, or the wall cell back to rock
+//   repaired(repair)         a repair order done: the gate back to full, or the wall cell closed by a kit wall (not rock)
 //   printed(step)            a print order done: the step stands, and its perk switches on in the world
 //
 // `c` hands in the controller: its fixed objects and functions as values (PLAYER_MAX, orders, breachQueue, breachedCells,
@@ -95,7 +95,7 @@ export function createProgrammeHost(c) {
       // landing, each gone once its site is visited; Isao names them once
       if (!s.beacons && c.scene && s.sites?.length && !c.shotId?.()) {
         const ids = STORY_EXPEDITIONS.sites.filter((x) => !x.reveal).map((x) => x.id);   // story.sites holds the first-wave sites' cells, in this order
-        s.beacons = createSiteBeacons(c.scene, s.sites.map((ci, i) => ({ id: ids[i], point: c.graph().centers[ci] })).filter((x) => x.id), { metres: c.cellSide() / 10 });
+        s.beacons = createSiteBeacons(c.scene, s.sites.map((ci, i) => ({ id: ids[i], ci, point: c.graph().centers[ci], model: () => c.storyBase()?.structure(ids[i])?.holder })).filter((x) => x.id), { metres: c.cellSide() / 10 });
         if (!c.pilotMode() && !c.briefQ()) showBrief('sites_seen');
       }
       if (s.beacons) { s.beacons.tick(dt); for (const x of s.expeditions?.sites ?? []) if (x.state !== 'hidden' && x.state !== 'guarded') s.beacons.drop(x.id); }
@@ -113,7 +113,8 @@ export function createProgrammeHost(c) {
           if (s.gsAuto) {
             if (!onStation(gs) && c.gunshipRig.onCall() && callFull(c.gunshipRig.call) && callGunship(c.gunshipRig.call)) { startStation(gs, GUNSHIP_ORBIT); if (!c.pilotMode() && !c.briefQ()) showBrief(GUNSHIP_AUTO.autoBrief); }
             const view = (p, lim) => { const q = new THREE.Vector3(...p).project(c.camera); return q.z < 1 && Math.abs(q.x) < lim && Math.abs(q.y) < lim; };
-            s.gsFly ??= createGunshipAuto({ G: G0, tune: GUNSHIP_AUTO, onScreen: view, callout: (t) => c.callout?.(t, 'co-victory'), sfx: c.sfx, hasCue: (k) => !!SOUNDS[k] });
+            s.gsFly ??= createGunshipAuto({ G: G0, tune: GUNSHIP_AUTO, onScreen: view, callout: (t) => c.callout?.(t, 'co-victory'), sfx: c.sfx, hasCue: (k) => !!SOUNDS[k],
+              friends: () => { const g = c.graph(), b = c.storyBase(), cells = [c.dungeon().heart, ...(b?.anchors() ?? []), ...(c.story().wallCells ?? [])]; return [...cells.filter((ci) => ci >= 0).map((ci) => g.centers[ci]), ...(c.playerPos() ? [c.playerPos()] : [])]; } });
             s.gsFly.tick(dt, seated);
           }
         }
@@ -215,10 +216,11 @@ export function createProgrammeHost(c) {
       if (broke.length) { rebuildAfterBreach(); recomputePortalDist(); }
       return broke.length;
     },
-    // the gate back to full, or the wall cell back to rock for the swarm, the tank and the full world alike
+    // the gate back to full, or the wall cell closed for the swarm, the tank and the full world alike: drawn as floor with its kit
+    // segments standing again (dungeon.mended, src/fx/board-surface.js), so what he printed reads as a wall and not a rock
     repaired: (repair) => {
       if (repair.kind === 'gate') c.sectorRun()?.repairGate(repair.id ?? 'gate');
-      else { const rci = repair.ci; c.dungeon().tags[rci] = BLOCKED; if (c.tdFullTags()) c.tdFullTags()[rci] = BLOCKED; breachedCells.delete(rci); breachQueue.push(rci); c.storyBase()?.restoreWall(rci); rebuildAfterBreach(); recomputePortalDist(); }
+      else { const rci = repair.ci; c.dungeon().tags[rci] = BLOCKED; (c.dungeon().mended ??= new Set()).add(rci); if (c.tdFullTags()) c.tdFullTags()[rci] = BLOCKED; breachedCells.delete(rci); breachQueue.push(rci); c.storyBase()?.restoreWall(rci); rebuildAfterBreach(); recomputePortalDist(); }
       updateHud();
     },
     printed: (step) => {
@@ -270,6 +272,6 @@ export function createProgrammeHost(c) {
     swell: () => (c.story()?.gsAuto ? GUNSHIP_AUTO.swell : 1),
     // what the harness reads: the launch beat, the pad, the calibration
     gunshipAuto: () => ({ auto: !!c.story()?.gsAuto, manned: c.story()?.gsManned ?? 0, fly: c.story()?.gsFly?.state() ?? null }),
-    colony: () => ({ beacons: c.story()?.beacons?.ids() ?? null, gunship: { auto: !!c.story()?.gsAuto, manned: c.story()?.gsManned ?? 0, fly: c.story()?.gsFly?.state() ?? null, swell: c.story()?.gsAuto ? GUNSHIP_AUTO.swell : 1, budget: c.story()?.gsAuto ? GUNSHIP_AUTO.aliveBudget : null }, board: c.story()?.boards?.map((b) => b.state()) ?? null, isaoKills: c.story()?.isaoKills ?? 0, strike: c.story()?.strike?.state() ?? (c.story()?.strikeDone ? 'done' : null), dyes: c.story()?.dyes ?? null, shop: !!c.story()?.shop, painted: c.story()?.painted ?? 0, boardCell: (() => { const st = c.story()?.programme?.steps.find((x) => x.id === 'board'); return st ? c.story().print.cellOf(st) : -1; })(), launch: c.story()?.launch?.state() ?? null, works: c.story()?.works ? { ...c.story().works, ring: c.story().worksRing?.state() ?? null } : null, sol88: !!c.story()?.sol88, pad: c.story()?.armoryPad?.ring?.state() ?? null, cell: c.story()?.armoryPad?.cell ?? -1, calibrated: !!c.story()?.calibrated, manned: c.laserStation?.manned?.() ?? 0 }),
+    colony: () => ({ beacons: c.story()?.beacons?.ids() ?? null, beaconPulse: c.story()?.beacons?.state() ?? null, gunship: { auto: !!c.story()?.gsAuto, manned: c.story()?.gsManned ?? 0, fly: c.story()?.gsFly?.state() ?? null, swell: c.story()?.gsAuto ? GUNSHIP_AUTO.swell : 1, budget: c.story()?.gsAuto ? GUNSHIP_AUTO.aliveBudget : null }, board: c.story()?.boards?.map((b) => b.state()) ?? null, isaoKills: c.story()?.isaoKills ?? 0, strike: c.story()?.strike?.state() ?? (c.story()?.strikeDone ? 'done' : null), dyes: c.story()?.dyes ?? null, shop: !!c.story()?.shop, painted: c.story()?.painted ?? 0, boardCell: (() => { const st = c.story()?.programme?.steps.find((x) => x.id === 'board'); return st ? c.story().print.cellOf(st) : -1; })(), launch: c.story()?.launch?.state() ?? null, works: c.story()?.works ? { ...c.story().works, ring: c.story().worksRing?.state() ?? null } : null, sol88: !!c.story()?.sol88, pad: c.story()?.armoryPad?.ring?.state() ?? null, cell: c.story()?.armoryPad?.cell ?? -1, calibrated: !!c.story()?.calibrated, manned: c.laserStation?.manned?.() ?? 0 }),
   };
 }

@@ -4,6 +4,9 @@
 export const FOUNDRY_TUNE = Object.freeze({
   deployDelay: 0.7,          // s from the deploy to the first cutter cycle (the clip's own 15 s to the first barrel is the opening's floor)
   firstCycle: 16,            // s, the authored Recycle_Panel_To_Barrel clip, played once as authored
+  // the clip plays faster than authored (owner, 2026-10-02, seventh notes: "shorten the time from Beacons to 1st Rotor"): its cues and
+  // its length are read in clip seconds, so at 1.6 the first barrel lands 9.4 s into the cycle instead of 15
+  rate: 1.6,
   cycleSeconds: 24,          // s between the starts of later cycles (owner, 2026-09-14)
   feedstockPerBarrel: 60,    // biomass a barrel is worth: the Rotor's cost and change
   // the sections the arm consumes, in order; the landing unit stays as the pad

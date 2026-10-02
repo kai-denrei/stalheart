@@ -54,7 +54,9 @@ export function createBoardSurface({
 }) {
   const NV = vertices.length, NC = quads.length;
   const { NE, eA, eB, eC0, eC1, cellEdges, vertexEdges } = topologyOf(quads, NV);
-  const blocked = (ci) => ci >= 0 && dungeon.tags[ci] === BLOCKED;
+  // a wall cell Isao has mended (owner, 2026-10-02: "Isao should rebuild a gate or wall", not a rock) stays BLOCKED to the swarm and
+  // the tank but is drawn as floor, so the kit wall he printed back is what stands in the gap (src/fx/programme-host.js repaired)
+  const blocked = (ci) => ci >= 0 && dungeon.tags[ci] === BLOCKED && !dungeon.mended?.has(ci);
 
   const topFill = mode === 'black' ? [0, 0, 0] : mode === 'dim' ? wallTop.map((c) => c * 0.45) : wallTop;
   const frontierTop = wallTop.map((c) => c * 0.5);

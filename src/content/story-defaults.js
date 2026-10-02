@@ -108,7 +108,12 @@ export const STORY_BACK_DOOR = Object.freeze({ maxCells: 2, reachShare: 0.5, fla
 
 // A day on the story planet: five minutes, three of them daylight at the pole, the sun's orbit leaning 60 degrees off the pole so
 // noon stands 60 degrees up. The night rig is the look's own; the day set is the lab's warm sun and pale fill. No shadows.
-export const STORY_DAY = Object.freeze({ seconds: 300, dayShare: 0.6, tilt: 60, skyDim: 0.15, day: Object.freeze({ hemi: [0xc8cfe0, 0x555060, 1.5], sun: [0xfff0dc, 1.6], bg: 0x0b1524 }) });
+// `dusk` (seventh notes, 2026-10-02): the golden hour's sun, sky fill and background, at most `share` of the blend, within `band` of
+// elevation of the horizon. `discs`: the sun and the moon drawn in the sky, `distance` out from the planet's centre (the camera's far
+// plane is 50), `sunSize`/`moonSize` their sprites' width, the sun's colour at noon and `low` on the horizon (src/fx/daylight.js)
+export const STORY_DAY = Object.freeze({ seconds: 300, dayShare: 0.6, tilt: 60, skyDim: 0.15, day: Object.freeze({ hemi: [0xc8cfe0, 0x555060, 1.5], sun: [0xfff0dc, 1.6], bg: 0x0b1524 }),
+  dusk: Object.freeze({ sun: 0xff8a3c, sky: 0x8a6a9a, bg: 0x2a1a2e, share: 0.75, band: 0.32 }),
+  discs: Object.freeze({ distance: 40, sunSize: 3.2, moonSize: 1.6, sun: 0xfff4dc, low: 0xff7a30, moon: 0x9fb8d8 }) });
 
 // The Quiver's introduction after the first wave: Isao prints it on the wall across the lane, two hard-cored enemies come one
 // after the other, and the piloted Quiver fires the lab's TALON (a heavier, slower guided round) instead of the game's dart
@@ -124,10 +129,13 @@ export const STORY_QUIVER = Object.freeze({ key: 'quiver', delay: 0.3, hardcore:
 // `tremorDelay` the beat between the gate standing and the contact on the radar; `breachDelay` the beat between the contact and the
 // ground opening; `spawnDelay` the pause after the breach before the first body rises; `overrideDelay` the beat between Isao's line
 // and the seat; `overrideCells` how close to the gate the swarm must come for that line. The override used to wait for a body within
-// 2.2 cells of the door — the whole march up the lane. It fires when the pile is visibly ON the lane instead.
+// 2.2 cells of the door — the whole march up the lane. It fired when the pile was visibly ON the lane (13 cells); since the seventh notes
+// (owner, 2026-10-02: "Shorten the time from Beacons to 1st Rotor, and we enter the Rotor right away") it fires on the first body up:
+// the player is in the Rotor's optic watching the swarm come out of the ground, and the AFR-01's first cycle plays faster
+// (src/content/foundry.js rate)
 export const STORY_BEATS = Object.freeze({
-  rotorDelay: 2.5, faceDelays: Object.freeze([0.6, 2.0]), controlDelay: 1.5,
-  tremorDelay: 0.8, breachDelay: 2, spawnDelay: 0.4, overrideDelay: 1.5, overrideCells: 13,
+  rotorDelay: 1.5, faceDelays: Object.freeze([0.6, 1.6]), controlDelay: 1.5,
+  tremorDelay: 0.6, breachDelay: 1.5, spawnDelay: 0.3, overrideDelay: 0.8, overrideCells: 99,
 });
 
 // SECTOR 0: THE FOUNDATION (owner, 2026-09-24: "the first few waves before the stalheart is ready could be more intense POV sentries

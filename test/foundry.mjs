@@ -18,7 +18,8 @@ const run = (st, secs, cfg = FOUNDRY_TUNE) => { const log = []; for (let i = 0; 
   const names = log.map((l) => name(l.e));
   check('the first cycle: cycle, arc-on, arc-off, scrap, barrel', names.join(',') === 'cycle,arc-on,arc-off,scrap,barrel');
   const cycleT = log.find((l) => name(l.e) === 'cycle').t, at = (ev) => log.find((l) => name(l.e) === ev).t - cycleT;
-  check('the cues land at the authored times', Math.abs(at('arc-on') - cfg.events.arcOn) < 0.03 && Math.abs(at('arc-off') - cfg.events.arcOff) < 0.03 && Math.abs(at('scrap') - cfg.events.scrap) < 0.03 && Math.abs(at('barrel') - cfg.events.barrel) < 0.03);
+  const r = cfg.rate ?? 1;   // the cues are clip seconds: at `rate` they land that much sooner on the game clock
+  check('the cues land at the authored times', Math.abs(at('arc-on') - cfg.events.arcOn / r) < 0.03 && Math.abs(at('arc-off') - cfg.events.arcOff / r) < 0.03 && Math.abs(at('scrap') - cfg.events.scrap / r) < 0.03 && Math.abs(at('barrel') - cfg.events.barrel / r) < 0.03);
   check('scrap names the first section', log.find((l) => name(l.e) === 'scrap').e.section === cfg.sections[0]);
   check('one barrel, one section gone, waiting for the next', st.barrels === 1 && st.sections.length === cfg.sections.length - 1 && st.phase === 'waiting');
   const more = run(st, cfg.cycleSeconds * 3);

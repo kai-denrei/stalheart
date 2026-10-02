@@ -92,7 +92,7 @@ export function makeStoryBeats({
         else { api.pilot?.(socket, lane); enter('piloting'); nextSpawn = clock + fodderEvery; }
       } else if (phase === 'tremor' && clock - at >= breachDelay) { api.breach?.(fodder); api.tremor?.(-1); enter('breach'); nextSpawn = clock + spawnDelay; }
       else if (phase === 'breach') { spawnTick(api); if (spawned > 0) enter('approach'); }
-      else if (phase === 'approach') { spawnTick(api); if (api.near?.(gate, overrideCells)) { api.brief?.('manual_override'); enter('override'); } }
+      else if (phase === 'approach') { spawnTick(api); if (api.near?.(gate, overrideCells)) { api.brief?.('manual_override'); said.add('manual_override'); enter('override'); } }
       else if (phase === 'override') { spawnTick(api); if (clock - at >= overrideDelay) { api.pilot?.(socket, lane); enter('piloting'); orderQuiver(api); } }   // Isao prints the Quiver while the wave is fought (normally ordered with the gate already)
       else if (phase === 'piloting' && fodder >= 0) {
         spawnTick(api);

@@ -1005,11 +1005,11 @@ try{
  await delay(8000);assert.deepEqual(await evaluate(hiddenNear),[]);
  assert(/STÅLHEART \d+%/.test(await evaluate('document.querySelector("#td-stats").textContent')),`the HUD reads the Stålheart's progress (${await evaluate('document.querySelector("#td-stats").textContent')})`);
  current='grow-stalheart-rising';await finish();
- await until('window.__stalheartTest.state().story.phase==="override"',150000);await mark('override');
+ await until('/^(override|piloting)$/.test(window.__stalheartTest.state().story.phase)',150000);await mark('override');   // the override is 0.8 s since the seventh notes: the poll can miss it
  await until('!!window.__stalheartPilotTest',30000);await mark('first kill possible (the Rotor is the players)');
  // THE SEAT GLIDE (owner, 2026-09-30: "switch between rotor and quiver is too abrupt"): each scripted hand-over eases the camera in
  await until('window.__stalheartTest.state().story.phase==="piloting"',30000);
- {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.glide.n,1,`the Rotor's seat is glided into (${JSON.stringify(s.glide)})`);}await until('window.__stalheartTest.state().performance.enemies>0',60000);await delay(2000);current='grow-fodder';await finish();
+ {const s=await evaluate('window.__stalheartTest.state()');assert.ok(s.glide.n>=1,`the Rotor's seat is glided into (${JSON.stringify(s.glide)})`);}await until('window.__stalheartTest.state().performance.enemies>0',60000);await delay(2000);current='grow-fodder';await finish();
  await evaluate('window.__stalheartPilotTest.hold(true)');
  await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("wave_cleared"))return true;const t=window.__stalheartPilotTest;if(!t||t.state().overheated)return false;t.aimEnemy();return false;})()',600000);
  await evaluate('window.__stalheartPilotTest?.hold(false)');await mark('first wave cleared');
@@ -1056,7 +1056,7 @@ try{
  await evaluate('window.__stalheartTest.hitTank()');await delay(800);const hullsLost=(await evaluate('window.__stalheartTest.state()')).hulls;
  await evaluate('window.__stalheartTest.setSector(2)');
  await until('window.__stalheartTest.state().programme.printed.includes("assembly")',300000);await mark('radar and assembly line stand');
- {const s=await evaluate('window.__stalheartTest.state()');assert.deepEqual(s.programme.printed,['foundry','gate','stalheart','landing','solar','bays','hugin','radar','assembly'],'every step, in order');assert.equal(s.programme.next,'backgate','the back gate is next in order and waits for the surprise (passable: the colony prints meanwhile)');assert.deepEqual(s.programme.owed,['armory','farm','chips'],`the colony is owed, the passable back gate and launcher are not (${s.programme.owed})`);assert(!s.programme.perks.includes('backgate'));assert.deepEqual(s.programme.perks.slice().sort(),['gate','gunship','hulls','rebuild','stalheart','station','uplink']);assert.equal(s.hulls,hullsLost,'no rebuild inside the sector the line was printed in');}
+ {const s=await evaluate('window.__stalheartTest.state()');assert.deepEqual(s.programme.printed,['foundry','gate','stalheart','landing','solar','bays','hugin','radar','assembly'],'every step, in order');assert.equal(s.programme.next,'backgate','the back gate is next in order and waits for the surprise (passable: the colony prints meanwhile)');assert.deepEqual(s.programme.owed,['board','armory','farm','chips'],`the colony is owed, the passable back gate and launcher are not (${s.programme.owed})`);assert(!s.programme.perks.includes('backgate'));assert.deepEqual(s.programme.perks.slice().sort(),['gate','gunship','hulls','rebuild','stalheart','station','uplink']);assert.equal(s.hulls,hullsLost,'no rebuild inside the sector the line was printed in');}
  await evaluate('window.__stalheartTest.setSector(3)');await until(`window.__stalheartTest.state().hulls===${Math.min(3,hullsLost+1)}`,10000).catch(()=>{});   /* a condition, not 800 ms: the rebuild lands on the programme's next build tick */
  assert.equal((await evaluate('window.__stalheartTest.state()')).hulls,Math.min(3,hullsLost+1),'the assembly line rebuilds a lost hull at the next sector start');
  await shotBase('grow-finished');
@@ -1529,6 +1529,41 @@ try{
  const b1=(await st()).biomass;console.log(`  round6: plasma biomass ${b0} -> ${b1}`);
  assert.ok(b1<b0-3,`the plasma costs biomass (${b0} -> ${b1})`);
  await finish();
+ } else if(args.includes('--round7')) {
+ // THE OWNER'S SEVENTH NOTES (2026-10-02): the beacons pulse now and then from the landers' tops; a golden hour and a sun in the sky;
+ // from the beacons to the Rotor's optic quickly, the seat taken on the first body up; the vignette only once the glide has landed;
+ // a first-contact card per new kind; the Quiver's hand-over called out
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`);
+ await go('round7-rotor','index.html?sw=0&acceptance=1&cine=0&skip=rotor&day=0.585#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ await until(`(${T}.state().programme.colony.beacons||[]).length===3`,30000).catch(async()=>assert.fail(`three beacons (${JSON.stringify((await st()).programme.colony)})`));
+ const t0=Date.now();
+ await until(`(${T}.state().programme.colony.beaconPulse||[]).some(b=>b.placed)`,20000).catch(async()=>assert.fail(`a beacon on its lander's top (${JSON.stringify((await st()).programme.colony.beaconPulse)})`));
+ const pulse=(await st()).programme.colony.beaconPulse;console.log(`  round7: beacons ${JSON.stringify(pulse)}`);
+ assert.ok(pulse.filter(b=>b.placed).every(b=>b.height>0.002),'each pulse rises from the rocket, above the ground');
+ const day=(await st()).daylight;console.log(`  round7: day ${JSON.stringify(day)}`);
+ assert.ok(day.sunShown&&day.dusk>0.2,`the golden hour at phase 0.585 (${JSON.stringify(day)})`);
+ await until(`(${T}.state().programme.colony.beaconPulse||[]).some(b=>b.lit)`,8000).catch(()=>{});
+ current='round7-beacon-dusk';await finish();
+ if(args.includes('--look')){await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card{display:none!important}</style>")');await evaluate(`${T}.showcase.ground(${T}.state().programme.colony.beaconPulse[0].ci,30,45)`);await delay(2500);
+  for(let k=0;k<4;k++){await until(`(${T}.state().programme.colony.beaconPulse||[]).some(b=>b.lit)`,8000).catch(()=>{});await delay(250);current='round7-orbit-'+k;await finish();await delay(1800);}}
+ let glideSeen=false;
+ await until(`(()=>{const v=document.querySelector("#seat-vignette"),g=document.body.classList.contains("seat-gliding");if(g&&v&&getComputedStyle(v).display!=="none")window.__vigEarly=true;return ${T}.seatState().seatKey==="rotor"&&!g;})()`,240000).catch(async()=>assert.fail(`into the Rotor (${JSON.stringify(await evaluate(`${T}.seatState()`))}, phase ${(await st()).story?.phase})`));
+ const toRotor=((Date.now()-t0)/1000).toFixed(1);console.log(`  round7: beacons -> Rotor optic ${toRotor} s`);
+ assert.equal(await evaluate('!!window.__vigEarly'),false,'no vignette while the camera glides into the seat');
+ await delay(900);
+ assert.equal(await evaluate('getComputedStyle(document.querySelector("#seat-vignette")).display!=="none"'),true,'the vignette once in the optic');
+ await until('[...document.querySelectorAll("*")].some(e=>e.__contacts?.log?.length)',20000).catch(async()=>assert.fail('a first-contact card for the first kind up'));
+ console.log(`  round7: contacts ${await evaluate('JSON.stringify([...document.querySelectorAll("*")].find(e=>e.__contacts).__contacts.log)')}`);
+ current='round7-rotor-contact';await finish();
+ // the Rotor to the Quiver, called out
+ await evaluate('window.__stalheartPilotTest.hold(true)');
+ await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("wave_cleared"))return true;const t=window.__stalheartPilotTest;if(t.state().overheated)return false;t.aimEnemy();return false;})()',480000);
+ await evaluate('window.__stalheartPilotTest.hold(false)');
+ await until(`${T}.state().shot==='takeControl' && /TRANSFER TO THE QUIVER! LOCK IN!/.test(document.querySelector("#td-callouts")?.textContent??"")`,120000).catch(async()=>assert.fail(`the hand-over called out (${(await st()).shot}, ${await evaluate('document.querySelector("#td-callouts")?.textContent')})`));
+ await delay(1000);current='round7-quiver-transfer';await finish();
+ await until(`${T}.seatState().seatKey==="quiver" && !document.body.classList.contains("seat-gliding") && ${T}.state().shot!=='takeControl'`,20000).catch(async()=>assert.fail(`into the Quiver (${JSON.stringify(await evaluate(`${T}.seatState()`))})`));
+ await delay(900);current='round7-quiver-in';await finish();
  } else if(args.includes('--units-sky')) {
  // THE SKY ON THE BENCH (owner, 2026-10-01: "UNITS are not showing all the units; we should see SOL, and the Gunship. also show
  // Wireframe for all units"): the KORP, SOL-82 and SOL-88 are catalogue entries built from their pinned GLBs, and the wireframe
@@ -1914,10 +1949,10 @@ try{
  // THE PLANET STAYS IN FRAME: the orbit shot holds through the opening and the first fodder emerging, then hands back
  await until('window.__stalheartTest.state().story.spawned>=2',20000);assert.equal(await evaluate('window.__stalheartTest.state().shot'),'breach','still from orbit while the first fodder emerge');current='story-world-breach-emerge';await finish();
  await until('window.__stalheartTest.state().shot!=="breach"',20000);
- await until('window.__stalheartTest.state().story.phase==="override"',90000);await delay(800);
- assert.equal(await evaluate('document.querySelector("#td-brief").classList.contains("hidden")'),false,'Isao speaks the override line');
+ await until('/^(override|piloting)$/.test(window.__stalheartTest.state().story.phase)',90000);await delay(300);
+ await until('window.__stalheartTest.state().story.said.includes("manual_override")',8000).catch(()=>assert.fail('Isao speaks the override line'));   // spoken as the seat is taken (seventh notes): the panel may already be the optic's
  const held=await evaluate('window.__stalheartTest.state()');assert.equal(held.kills,0,'the sentry did not fire on its own');assert(held.performance.enemies>=held.story.spawned-1&&held.performance.enemies>0,`every spawned enemy is still alive (${held.performance.enemies} of ${held.story.spawned}, the last may still be emerging)`);current='story-world-override';await finish();
- assert.equal(await evaluate('typeof window.__stalheartPilotTest'),'undefined','no control before the override');
+ if(held.story.phase==='override')assert.equal(await evaluate('typeof window.__stalheartPilotTest'),'undefined','no control before the override');
  await until('!!window.__stalheartPilotTest',30000);
  // THE ROTOR'S VOICES STAY WITH THE ROTOR (2026-09-25 playtest: its spin and fire carried into the next seat). A real key arms the
  // page's audio (the context waits for a gesture); every looping voice heard while the Rotor is the seat is banked, so the check

@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "2026-10-02-seventh-notes-day-contacts-repair-lance-tempo-seats-beacons-nuke",
+  "date": "2026-10-02",
+  "type": "change",
+  "status": "accepted",
+  "title": "The owner's seventh notes: a golden hour and a sun and moon in the sky, a first-contact card per new kind, Isao's repair stands as a kit wall not rock, the Lancer stopped and scorched by rock, a quicker opening into the Rotor, the vignette only once in the optic, the Quiver transfer called out, beacons as occasional pulses from the landers' tops, the auto gunship's nuke kept clear of the base",
+  "context": "Owner, 2026-10-02: 1) improve the day night cycle; 2) expose the types of enemies once encountered (optional); 3) Isao fixes a breached rock as a rock, he should rebuild a gate or wall; 4) Lancer lasers shoot through rocks; rock or wall contact should give an orbital-laser-like burn, less strong; 5) shorten the time from the beacons to the first Rotor and enter the Rotor right away; 6) the vignette only once entirely inside a sentry; 7) the Rotor to Quiver transition is still odd: 'TRANSFER TO THE QUIVER! LOCK IN!'; 8) the beacons should be a light pulse once in a while from the rocket, not a constant column from the ground; 9) on auto, the gunship must not nuke near the player and friendly units: the MK-9 only at a safe distance from the base, the two guns as they are.",
+  "outcome": "1) src/fx/daylight.js: STORY_DAY.dusk tints the sun, the sky fill and the background within 0.32 of elevation of the horizon (up to 75%), and STORY_DAY.discs draws a sun sprite (orange and larger when low) and a pale moon opposite, 40 units out and depth-tested so the planet's horizon hides them; ?day=<phase> starts a run at that hour. 2) src/fx/contact-card.js: the first time a kind rises in a story run, a NEW CONTACT card at the left edge names it, its role (INTROS), RAMMABLE or SOLID CORE and its hp; queued, never modal. 3) A mended wall cell goes into dungeon.mended: BLOCKED to the swarm and the tank, drawn as floor by src/fx/board-surface.js, so the kit segments Isao raises are what fills the gap. 4) src/domain/round-path.js marchAlongArc takes rockClearance (0.03 cell; the ground keeps its quarter cell for bodies standing on it) and a wall stop is bisected onto the rock's face; the beam's end burns: SOL-82's scorch moved to src/fx/scorch-trail.js and src/fx/lance-burn.js lays a smaller, 20-second stamp on the rock's face or the ground. 5) The AFR-01 first cycle plays at rate 1.6 (barrel 9.4 s in, not 15); STORY_BEATS shortened (rotorDelay 1.5, tremor 0.6, breach 1.5, spawn 0.3, override 0.8) and overrideCells 99: the seat is taken on the first body up. Measured beacons -> Rotor optic 42.8 s in --round7. 6) The vignette is display:none while body.seat-gliding and fades in as the glide lands. 7) The hand-over calls 'TRANSFER TO THE QUIVER! LOCK IN!' (any seat's name) and the takeControl shot ends in a seat glide onto the optic instead of a cut. 8) src/fx/site-beacons.js: every 5.5 s per site (out of step) a flare at the lander's bounding-box top, a ring running out 70 m and a 60 m streak, 1.6 s long. 9) GUNSHIP_AUTO.nukeSafeCells 3: the auto MK-9 only takes piles whose bodies and centre are blast + 3 cells from the heart, the base's structures and sockets, the wall cells and the hull.",
+  "alternatives": [
+    "Locking hostile entries on the UNITS bench until met: the owner reviews the bench as a catalogue; the card does the exposing without taking it away",
+    "Repaired wall cells as open ground: the swarm would walk through a wall the player sees standing",
+    "Dropping the lance's clearance everywhere: bodies stand on the ground and a beam aimed at one would stop a step short (the reason for the quarter cell)",
+    "Copying the orbital scorch shader into the Lancer: one module now draws both",
+    "Gating the gunship's nuke on the camera instead of the base: the harm is to towers and walls wherever the camera is"
+  ],
+  "evidence": [
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --round7 (artifacts/browser/round7-beacon-dusk.png, round7-rotor-contact.png, round7-quiver-transfer.png, round7-quiver-in.png; --look adds round7-orbit-*.png, the pulses over a lander from orbit)",
+    "test/round-path.mjs (rock stops the lance on its face), test/gunship-auto-safe.mjs, test/foundry.mjs at rate 1.6",
+    "--round6, --gunship-auto, --chapters, --skip-tutorial, --colony, --grow, --laser, --laser-game, --story-world and the default suite green; --grow's colony list had gone stale with the scoreboard step and was brought up to date",
+    "Not seen in a browser: a wall cell after Isao's repair, and a Lancer burn on rock"
+  ],
+  "supersedes": []
+}

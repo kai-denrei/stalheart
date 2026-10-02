@@ -5,7 +5,10 @@
 // lets go at once. `G` is the rig's pilot bag (src/fx/gunship-rig.js pilotBag), the same hands the seat has.
 import { densestTarget } from '../domain/laser-auto.js';
 
-export function createGunshipAuto({ G, tune, onScreen, callout, sfx, hasCue }) {
+// `friends()`: the points the MK-9 must never land near (the heart, the hull, the base's walls, structures and sentry sockets). The
+// dummy nuke breaks towers and walls where it lands, so on auto it only goes down on a pile `nukeSafeCells` clear of its own blast
+// from every one of them (owner, 2026-10-02: "only shoot nukes at safe distance from the base"); the rotary and the Bofors fire as before
+export function createGunshipAuto({ G, tune, onScreen, callout, sfx, hasCue, friends = () => [] }) {
   let gun = 'rotary', phase = 'rest', t = 0, nukePass = -1, rounds = 0, target = null;
   function landRounds() {
     for (const r of G.landed()) {
@@ -26,9 +29,10 @@ export function createGunshipAuto({ G, tune, onScreen, callout, sfx, hasCue }) {
       const live = G.enemies();
       // the MK-9, once a pass, on a pile the player is looking at: the odd dummy nuke "that just happens to be in the line of sight"
       if (nukePass !== st.passes && st.heavyPass !== st.passes) {
-        const seen = live.filter((e) => onScreen(e.pos, tune.nukeView));
+        const keep = (G.guns.heavy.blastCells + (tune.nukeSafeCells ?? 3)) * G.cs, near = friends(), safe = (q) => near.every((f) => Math.hypot(q[0] - f[0], q[1] - f[1], q[2] - f[2]) > keep);
+        const seen = live.filter((e) => onScreen(e.pos, tune.nukeView) && safe(e.pos));
         if (seen.length >= tune.nukePile) {
-          const p = densestTarget(seen, { radius: G.guns.heavy.blastCells * G.cs * 10, metres: 10 }), ci = p ? G.cell(p) : -1;
+          const p0 = densestTarget(seen, { radius: G.guns.heavy.blastCells * G.cs * 10, metres: 10 }), p = p0 && safe(p0) ? p0 : null, ci = p ? G.cell(p) : -1;
           if (ci >= 0 && G.select('heavy') !== false && G.paintHeavy(ci)) {
             const lc = G.launchHeavy();
             if (lc >= 0) {
