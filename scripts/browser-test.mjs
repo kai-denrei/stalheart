@@ -1359,11 +1359,13 @@ try{
  await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
  await until(`${T}.state().sector.n===4`,60000);
  await evaluate(`${T}.sectorQuiet(true)`);   // no programme waves: this step is about the base, not the fight
- {const p=await prog();assert.ok(p.owed.includes('armory')&&p.owed.includes('farm')&&p.owed.includes('chips'),`the colony is owed on the finished base (${JSON.stringify(p.owed)})`);
+ {const p=await prog();assert.ok(p.owed.includes('board')&&p.owed.includes('armory')&&p.owed.includes('farm')&&p.owed.includes('chips'),`the colony is owed on the finished base (${JSON.stringify(p.owed)})`);
   assert.ok(!p.owed.includes('launcher'),'the launcher is passable, not owed');assert.ok(!p.done.includes('armory'),'nothing of the colony stands yet');}
  // 1. THE ARMORY, THE FARM, THE CHIP PLANT print in order between waves
- for(const id of ['armory','farm','chips']){await until(`${T}.state().programme.printed.includes(${JSON.stringify(id)})`,120000).catch(async()=>assert.fail(`Isao prints the ${id} (${JSON.stringify(await prog())})`));console.log(`  colony: ${id} printed`);}
+ for(const id of ['board','armory','farm','chips']){await until(`${T}.state().programme.printed.includes(${JSON.stringify(id)})`,120000).catch(async()=>assert.fail(`Isao prints the ${id} (${JSON.stringify(await prog())})`));console.log(`  colony: ${id} printed`);}
  {const p=await prog();assert.ok(p.perks.includes('armory')&&p.perks.includes('farm')&&p.perks.includes('chips'),`the colony's perks are on (${p.perks})`);
+  assert.ok(p.colony.board&&p.colony.board.you>=0&&p.colony.board.isao>=0,`the scoreboard stands and keeps count (${JSON.stringify(p.colony.board)})`);
+  await evaluate(`${T}.placeTank(${p.colony.boardCell})`);await delay(900);current='colony-board';await finish();
   assert.ok(p.colony.pad&&p.colony.pad.standing,`the armory's pad stands (${JSON.stringify(p.colony.pad)})`);
   const s=await st();assert.ok(Math.abs(s.laser.period-180*BASE_PERKS.chipsPeriod)<0.6,`the chip plant brings the passes closer (${s.laser.period})`);}
  current='colony-printed';await finish();

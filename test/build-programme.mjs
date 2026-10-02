@@ -22,7 +22,7 @@ const growStub = () => ({ growIsland: (id, k) => grown.push(['island', id, k]), 
     if (s.when.phase) assert.ok(STORY_PHASES.includes(s.when.phase), `${s.id}: ${s.when.phase} is a story phase`);
     assert.ok(BRIEFS[s.brief] && BRIEFS[s.brief].lines.length <= 2, `${s.id}: Isao's brief ${s.brief} exists, two lines at most`);
   }
-  assert.deepEqual(BASE_PROGRAMME.map((s) => s.perk).filter(Boolean).sort(), ['armory', 'backgate', 'chips', 'farm', 'gate', 'gunship', 'hulls', 'launcher', 'rebuild', 'stalheart', 'station', 'uplink'], 'the perks the other systems consult');
+  assert.deepEqual(BASE_PROGRAMME.map((s) => s.perk).filter(Boolean).sort(), ['armory', 'backgate', 'board', 'chips', 'farm', 'gate', 'gunship', 'hulls', 'launcher', 'rebuild', 'stalheart', 'station', 'uplink'], 'the perks the other systems consult');
   assert.ok(BASE_PERKS.gunshipMeter > 1 && BASE_PERKS.rebuildHulls >= 1);
   const planet = buildStoryPlanet({ ...STORY_RECIPE, points: 800, rooms: 24, extraCorridors: 12 }, STORY_CLEARING);
   const plan = planBase(planet, { islands: ISLANDS, structures: STRUCTURES, kit: KIT, stages: STAGES }, 1, { reach: STAGES.length - 1 });

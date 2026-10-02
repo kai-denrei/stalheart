@@ -195,6 +195,14 @@ export const BRIEFS = {
     lines: ['Look up. That light is ours.', 'A ring of them one day, and then a shell. The colony builds outward now.'],
   },
   // THE COLONY GROWS (owner, 2026-10-01: "make the base more fully developed"): the armory, the farm, the chip plant, the launcher
+  build_board: {
+    id: 'build_board', face: 'focused', title: 'COMMS · ISAO', once: true,
+    lines: ['Printing a board by the pad. Your kills, my sentries\', and the sky\'s.', 'I am keeping count. So far it is not close.'],
+  },
+  board_lead: {
+    id: 'board_lead', face: 'surprised', title: 'THE BOARD', once: true,
+    lines: ['You are ahead of my sentries on the board.', 'Enjoy it. They do not sleep.'],
+  },
   build_armory: {
     id: 'build_armory', face: 'determined', title: 'COMMS · ISAO', once: true,
     lines: ['You keep running dry out there.', 'Printing an armory behind the bays. Park on its pad and it reloads the rack.'],

@@ -23,6 +23,7 @@ import { createArmoryPad } from './armory-pad.js';
 import { ORBITAL_WORKS } from '../content/orbital-works.js';
 import { makeWorks, launchDue, beginLaunch, collectorUp, energyBonus } from '../domain/orbital-works.js';
 import { createOrbitalRing } from './orbital-ring.js';
+import { createScoreboard } from './scoreboard.js';
 import { nextRepair } from '../domain/repair-orders.js';
 import { sideBreachCandidates } from '../domain/side-breach.js';
 import { planCanyon } from '../domain/canyon.js';
@@ -58,6 +59,17 @@ export function createProgrammeHost(c) {
         if (n > 0) { c.setAmmo?.(c.ammo() + n); c.sfx?.play?.('tank_shells'); updateHud(); }
       }
       s.launch?.tick();
+      // THE SCOREBOARD (src/fx/scoreboard.js): raised on its slab once the step stands, fed the run's books every tick; Isao's quip the
+      // first time the player pulls ahead of his sentries
+      if (programmeHas(pg, 'board') && c.scene && c.kills) {
+        if (!s.board) { const step = pg.steps.find((x) => x.id === 'board'); const bed = step && s.print.bed(step); if (bed) { const at = bed(0, 0, 0), a = bed(0, 1, 0), b = bed(0, -1, 0); s.board = createScoreboard(c.scene, { at, up: at, facing: [b[0] - a[0], b[1] - a[1], b[2] - a[2]], metres: c.cellSide() / 10 }); } }
+        if (s.board) {
+          const k = c.kills() ?? {}, you = (k.tank ?? 0) + (k.ram ?? 0), isao = (k.tower ?? 0) + (k.towers ?? 0), sky = (k.gunship ?? 0) + (k.strike ?? 0) + (k.laser ?? 0);
+          s.board.update({ you, isao, sky, rank: c.rank?.() ?? 0, hands: c.hands?.() ?? you });
+          s.board.tick(Math.max(0, Math.min(0.1, c.t() - (s.boardAt ?? c.t())))); s.boardAt = c.t();
+          if (!s.boardLead && isao >= 10 && you > isao) { s.boardLead = true; if (!c.pilotMode() && !c.briefQ()) showBrief('board_lead'); }
+        }
+      }
       // THE ORBITAL WORKS (src/domain/orbital-works.js): once SOL-88 is up, a collector goes up at the start of every sector after a
       // secured one; each in orbit is a light on the ring and seconds of beam for SOL
       s.works ??= makeWorks();
@@ -155,6 +167,6 @@ export function createProgrammeHost(c) {
       }
     },
     // what the harness reads: the launch beat, the pad, the calibration
-    colony: () => ({ launch: c.story()?.launch?.state() ?? null, works: c.story()?.works ? { ...c.story().works, ring: c.story().worksRing?.state() ?? null } : null, sol88: !!c.story()?.sol88, pad: c.story()?.armoryPad?.ring?.state() ?? null, cell: c.story()?.armoryPad?.cell ?? -1, calibrated: !!c.story()?.calibrated, manned: c.laserStation?.manned?.() ?? 0 }),
+    colony: () => ({ board: c.story()?.board?.state() ?? null, boardCell: (() => { const st = c.story()?.programme?.steps.find((x) => x.id === 'board'); return st ? c.story().print.cellOf(st) : -1; })(), launch: c.story()?.launch?.state() ?? null, works: c.story()?.works ? { ...c.story().works, ring: c.story().worksRing?.state() ?? null } : null, sol88: !!c.story()?.sol88, pad: c.story()?.armoryPad?.ring?.state() ?? null, cell: c.story()?.armoryPad?.cell ?? -1, calibrated: !!c.story()?.calibrated, manned: c.laserStation?.manned?.() ?? 0 }),
   };
 }

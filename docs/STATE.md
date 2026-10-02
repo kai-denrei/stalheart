@@ -18,6 +18,10 @@ Design: `docs/superpowers/specs/2026-09-15-v1-session-design.md`. Two entry poin
 - **Expeditions you can see:** our flag over a cleared site, the crate on the MÖRK's back, the drop at the foundry with the unlock callout, trophy flags at home (`src/fx/cargo.js`, `src/fx/expedition-glue.js`).
 - **The campaign board stays underneath** for the acceptance runs and the wave simulator (`?acceptance=1`, `?sim=`).
 
+## What landed on 2026-10-02 (the scoreboard, the rank flag, the bench range)
+
+`2026-10-02-the-scoreboard-and-the-rank-flag-and-the-bench-range`: Isao's first colony step prints a scoreboard slab by the landing pad; the plaque counts YOU (hands-on) against ISAO (the sentries) and SKY, in numbers and quarter-circle base-16 glyphs (`src/domain/score-glyphs.js`, `src/fx/scoreboard.js`), with the pilot's rank badge on a flag in the tier's colour; Isao quips once when the player passes his sentries. The Units bench's ANIMATION puts every unit on the sentry lab's range (`src/labs/bench-range.js`): sentries aim and fire at walkers, the hull rams, the gunship rakes, SOL walks its column. Open: the A6 livery (owner's R9 answer) waits on the hull-asset decision shelved 2026-09-14.
+
 ## What landed on 2026-10-02 (the owner's fifth notes)
 
 `2026-10-02-fifth-notes-stuck-hull-ammo-dump-bursts-bench-lancer`: a wedged hull eases itself toward open ground after half a second of driving nowhere (`src/domain/hull-stuck.js`, `HULL_STUCK`); the armory's reload pad is west of the assembly line under three A6 missiles laid on the ground (`BASE_PERKS.armory.pad`); the Quiver's burst is bigger and the mortar's shell smokes (`mortar.shell`); the Units bench opens as a wireframe on a turntable, ANIMATION is the realistic view (tank drives and fires, a sentry fires its pattern, a platform plays its clips on a slow pass), the arrows are pinned; the Lancer scorches the ground where it stops (`lancer.burn`). Not playtested: the stuck ease's numbers against a real corridor.

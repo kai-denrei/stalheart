@@ -51,6 +51,10 @@ export const BASE_PROGRAMME = Object.freeze([
   //             Isao's calibration, src/domain/laser-auto.js) and is PASSABLE, so nothing waits behind a player who stays out of
   //             the seat. When it stands it launches SOL-88 (src/fx/arc-launch.js), and SOL fires on its own from then on
   { id: 'backgate', label: 'back gate', gate: 'back', plot: [11, 4], when: { sector: 2, idle: true, back: 'held' }, passable: true, seconds: 14, metres: 6, brief: 'build_back_gate', perk: 'backgate' },
+  // THE SCOREBOARD (owner, 2026-10-02: "Isao printing a literal scoreboard in the base, like Gimli and Legolas joking about who has the
+  // more kills"; and "A flag showing the Rank"): a slab Isao prints first thing after the handover; the host raises the plaque and the rank
+  // flag on it (src/fx/scoreboard.js) and feeds it the run's books. The first thing the player owns in the base: their count and their rank
+  { id: 'board', label: 'scoreboard', islands: ['board'], when: { sector: 1, idle: true }, seconds: 6, metres: 3, brief: 'build_board', perk: 'board' },
   { id: 'armory', label: 'armory', islands: ['armory'], structures: ['armory', 'ammo-a', 'ammo-b', 'ammo-c'], when: { sector: 2, idle: true }, seconds: 16, metres: 8, brief: 'build_armory', perk: 'armory' },
   { id: 'farm', label: 'greenhouse', islands: ['farm'], structures: ['greenhouse', 'bio-a', 'bio-b', 'bio-c'], when: { sector: 3, idle: true }, seconds: 16, metres: 6, brief: 'build_farm', perk: 'farm' },
   { id: 'chips', label: 'chip plant', islands: ['chips'], structures: ['chips'], when: { sector: 4, idle: true }, seconds: 14, metres: 5, brief: 'build_chips', perk: 'chips' },
