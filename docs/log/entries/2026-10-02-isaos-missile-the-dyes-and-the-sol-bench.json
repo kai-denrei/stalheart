@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "2026-10-02-isaos-missile-the-dyes-and-the-sol-bench",
+  "date": "2026-10-02",
+  "type": "change",
+  "status": "accepted",
+  "title": "Isao's one missile in a strong wave in front of the MÖRK, his board going 0 -> 1 with a celebration; the dyes extracted from the swarm's belts and a paint shop at the break between sectors; two boards (the player's, Isao's); the review tiers off the Units bench; SOL's bench view top-down with the satellite in an inset",
+  "context": "Owner, 2026-10-02, after 2026-10-02-two-boards-isaos-missile-and-the-dyes: \"Isao's missile, it can happen during a strong wave, let's just have Isao come to help Mork when it is clearly in view. Build the Dyes, and it will offer some respite from the action to cool down at some key moments. remove the low tier and distance proxy mork from the unit view. orbital laser animation is miscalibrated. view should be much more top-down than sentries. maybe bring in the double-view from in-game.\"",
+  "outcome": "ISAO'S MISSILE (src/domain/isao-strike.js, src/fx/isao-strike.js, ISAO_STRIKE in src/content/base-programme.js): once a run, with 120+ bodies up, the hull on screen, nobody seated and Isao idle, he is held off his queue (isao.held, honoured by the controller's updateIsao), lugs a pinned missile slowly and wobbling over the on-screen body nearest the hull (1.5-7 cells), comes down to 2.2 cells so the chase camera sees him, lets go, the round lands as a heavy blast and kills exactly one; his board goes 0 -> 1 and bursts, he bounces with glee for 5 s. TWO BOARDS: src/fx/scoreboard.js now titled with three rows; YOU = hands-on kills, biomass gathered, 0 used (with the rank flag); ISAO = his kills, 0 gathered, biomass used; the board island 8 -> 12 m. THE DYES (src/content/dyes.js, src/domain/dyes.js, src/fx/paint-shop.js): one dye per belt, extracted when that many kills of the belt (any source: it is all biomass) have been processed, cumulative and saved; at the break between sectors (src/fx/sector-run.js next() asks api.interlude) a paint shop beside the hull opens when a dye has not been offered; swatches paint the hull's two A6 armour materials (cloned per hull) at once; the livery is saved and re-applied to every new hull. UNITS: mork-low and mork-proxy off the catalogue and the bench's builder table (mork.js keeps the tiers for the metal lab and the bays). SOL BENCH: the bench's range camera nearly straight down for a laser, the column walking from the centre; the satellite is no longer on the range: it is skinned, and a moved and scaled skinned clone draws at the cache's place and size (Object3D.clone keeps the cached skeleton; the earlier 'miscalibrated' frame was a 40 m satellite drawn over the bench); it is drawn untouched in an inset of its own (its own small renderer and scene, with a beam under it), the in-game seat's double view. Pinned models are now cloned with cloneSkinned everywhere (src/fx/model-fixture.js cloneFixture). Controller paid in comments (td-tab 9206 -> 9197 lines).",
+  "alternatives": [
+    "Drawing the inset into the bench canvas after the bloom chain: it drew and nothing showed; the cause turned out to be the skinned clone, but a separate inset scene is simpler anyway",
+    "Dyes unlocked by biomass totals: belts tie the colour to the enemy it came from, which is the diegetic story",
+    "A paint shop in the debrief pages: the break after DONE is a moment of its own, the respite the owner asked for"
+  ],
+  "evidence": [
+    "node test/dyes.mjs",
+    "node test/isao-strike.mjs",
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --colony (artifacts/browser/colony-isao-carry.png, colony-isao-one.png, colony-paint-shop.png)",
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --units-sky (artifacts/browser/units-sky-sol82-animation.png, units-sky-sol88-animation.png: the inset probe reads lit pixels)"
+  ],
+  "supersedes": [
+    "2026-10-02-two-boards-isaos-missile-and-the-dies"
+  ]
+}
