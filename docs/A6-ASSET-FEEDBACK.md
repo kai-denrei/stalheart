@@ -242,3 +242,5 @@ Read from the README, `manifest.json` and `runtime.js`; not yet pinned or measur
 8. **Suggested casting** (owner's call): Isao on the **split-flap** (a builder's mechanical board; the clatter from 0 to 1 is the joke landing), the player on the **beacon** (seven-segment light, fast, a fighter's board). The flip-dot as the colony's shared board later (collectors in orbit, sectors held).
 
 The game will pin LOD1 and LOD2 plain GLBs and the runtime as usual once these land; until then the canvas plaque in `src/fx/scoreboard.js` stands in.
+
+**Landed (2026-10-02, `d3aa0b2`, `scoreboard-rivalry`).** Every point above is in the rivalry set, and it is in the game: the beacon and split-flap LOD1 boards, the manifest and the runtime are pinned (`docs/scoreboard-assets.lock.json`). Thank you. One game-side note for the next revision: the README's `+Z forward` held; the game's own placement had a mirrored basis, now fixed. No changes requested.

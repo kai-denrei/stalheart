@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/jelaludo/SentryTowers_A6",
+  "revision": "d3aa0b2b5b69143a9727245243c8126d525e3f0d",
+  "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/d3aa0b2b5b69143a9727245243c8126d525e3f0d/",
+  "credit": "Models and runtime by jelaludo (https://jelaludo.github.io/SentryTowers_A6/scoreboard-rivalry/): the A6 rivalry scoreboards, reused with attribution under the upstream ASSET-LICENSE.md",
+  "note": "The PLAYER vs ISAO rivalry boards built from docs/A6-ASSET-FEEDBACK.md Part 3: three rows (KILLS, GATHERED, USED), an owner label, blank leading zeros, animated transitions, celebrate() and runtime colour. The game pins the LOD1 beacon (the player) and split-flap (Isao), the manifest the runtime reads its entries from, and the runtime itself; LOD0 and LOD2 are not used.",
+  "files": [
+    {
+      "path": "assets/models/scoreboards/manifest.json",
+      "sourcePath": "assets/planet-scoreboards/manifest.json",
+      "sha256": "61961c93fdfb635c774b51b14da2b8c733c4acf15c63ab58345f155d80c083d0",
+      "bytes": 45049
+    },
+    {
+      "path": "assets/models/scoreboards/runtime.js",
+      "sourcePath": "assets/planet-scoreboards/runtime.js",
+      "sha256": "e02f48803041bb48b3d2fbcdab2ab1256f767723403b8bfbd3702f863ade1d40",
+      "bytes": 12681
+    },
+    {
+      "path": "assets/models/scoreboards/beacon_rivalry_d0_lod1.glb",
+      "sourcePath": "assets/planet-scoreboards/beacon_rivalry_d0_lod1.glb",
+      "sha256": "f08c915ce6bf03253dfc02b2cebb8ab542bfc125fcc4d3beaa3fb3888f24b8c0",
+      "bytes": 18712,
+      "triangles": 204
+    },
+    {
+      "path": "assets/models/scoreboards/splitflap_rivalry_d0_lod1.glb",
+      "sourcePath": "assets/planet-scoreboards/splitflap_rivalry_d0_lod1.glb",
+      "sha256": "aff829abe59aa3660a4d185aea4aa5d0e00c3cfdde0a4137ca1d953311ece0c8",
+      "bytes": 36500,
+      "triangles": 432
+    }
+  ]
+}

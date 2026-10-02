@@ -1,0 +1,1906 @@
+{
+  "schema": "jelaludo.asset-family/v2-candidate",
+  "version": 2,
+  "family": "planet_scoreboards",
+  "label": "A6 / Planet Scoreboards",
+  "status": "contract_candidate_pending_game_camera_reference_phone",
+  "plain_glb_source_of_truth": true,
+  "coordinate_system": {
+    "units": "meters",
+    "up": "+Y",
+    "forward": "+Z",
+    "origin": "ground at plot centre"
+  },
+  "reference": {
+    "url": "https://kai-denrei.github.io/dexipurei-galore/",
+    "note": "Display-technology inspiration only. Geometry and runtime code here are original."
+  },
+  "score": {
+    "integer": true,
+    "min": 0,
+    "max": 99999999,
+    "digits": 8,
+    "default": 12345678,
+    "overflow": "clamp",
+    "runtime_adapter": "runtime.js"
+  },
+  "budgets": {
+    "lod1": {
+      "triangles_max": 8000,
+      "draw_calls_max": 10,
+      "plain_bytes_max": 400000
+    },
+    "lod2": {
+      "triangles_max": 3000,
+      "draw_calls_max": 1,
+      "plain_bytes_max": 250000
+    }
+  },
+  "lod_selection": {
+    "initial": "lod2",
+    "approach_distance_m": 150,
+    "hysteresis_m": 20
+  },
+  "assets": [
+    {
+      "id": "beacon_scoreboard_d0_lod0",
+      "family": "planet_scoreboards",
+      "variant": "beacon",
+      "name": "A6 / Beacon Scoreboard",
+      "file": "beacon_scoreboard_d0_lod0.glb",
+      "meshopt_file": "beacon_scoreboard_d0_lod0.meshopt.glb",
+      "lod": 0,
+      "quality": "detailed_master",
+      "damage_level": 0,
+      "state": "intact",
+      "static": false,
+      "derived": false,
+      "derived_from": null,
+      "bytes": 141548,
+      "sha256": "c5ad275cfdecbfc2bc4902f78a2a6915cc42b3631f9b407992c9d8a80261150e",
+      "meshopt_bytes": 45608,
+      "meshopt_sha256": "2f518afe925274d7aee3db1c7b7f37c524b75d4d38c40e54c6fcbe53ddcaa8b2",
+      "triangles": 1796,
+      "draw_calls": 2,
+      "materials": 1,
+      "textures": 0,
+      "plot_m": [
+        8,
+        5
+      ],
+      "bounds": {
+        "min": [
+          -3.75,
+          0,
+          -1.9500000476837158
+        ],
+        "max": [
+          3.75,
+          3.9749999046325684,
+          1.9500000476837158
+        ]
+      },
+      "sockets": [
+        {
+          "id": "POWER",
+          "kind": "power",
+          "position_m": [
+            0,
+            0.35,
+            -1.65
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ]
+        },
+        {
+          "id": "SERVICE",
+          "kind": "human_access",
+          "position_m": [
+            0,
+            0,
+            1.9
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        }
+      ],
+      "clips": [],
+      "display": {
+        "technology": "seven_segment",
+        "digits": 8,
+        "default_score": 12345678,
+        "max_score": 99999999,
+        "pitch_m": 0.66,
+        "center_y_m": 2.96,
+        "face_z_m": 0.59,
+        "runtime_node": "SCORE_DISPLAY_ORIGIN",
+        "static_node": "SCORE_STATIC_DIGITS"
+      },
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "beacon_scoreboard_d0_lod1",
+      "family": "planet_scoreboards",
+      "variant": "beacon",
+      "name": "A6 / Beacon Scoreboard",
+      "file": "beacon_scoreboard_d0_lod1.glb",
+      "meshopt_file": "beacon_scoreboard_d0_lod1.meshopt.glb",
+      "lod": 1,
+      "quality": "game",
+      "damage_level": 0,
+      "state": "intact",
+      "static": false,
+      "derived": true,
+      "derived_from": "beacon_scoreboard_d0_lod0.glb",
+      "bytes": 125800,
+      "sha256": "617562361fc98b71987fe9442e8eb4ec85adc76420d1a6433e32ae9ed832e54a",
+      "meshopt_bytes": 40444,
+      "meshopt_sha256": "fb911bff0f5beac75fd68f15cf5c37258ee3d751ab53962f2e5d1872e0dbc7e0",
+      "triangles": 1572,
+      "draw_calls": 2,
+      "materials": 1,
+      "textures": 0,
+      "plot_m": [
+        8,
+        5
+      ],
+      "bounds": {
+        "min": [
+          -3.75,
+          0,
+          -1.9500000476837158
+        ],
+        "max": [
+          3.75,
+          3.9749999046325684,
+          1.9500000476837158
+        ]
+      },
+      "sockets": [
+        {
+          "id": "POWER",
+          "kind": "power",
+          "position_m": [
+            0,
+            0.35,
+            -1.65
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ]
+        },
+        {
+          "id": "SERVICE",
+          "kind": "human_access",
+          "position_m": [
+            0,
+            0,
+            1.9
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        }
+      ],
+      "clips": [],
+      "display": {
+        "technology": "seven_segment",
+        "digits": 8,
+        "default_score": 12345678,
+        "max_score": 99999999,
+        "pitch_m": 0.66,
+        "center_y_m": 2.96,
+        "face_z_m": 0.59,
+        "runtime_node": "SCORE_DISPLAY_ORIGIN",
+        "static_node": "SCORE_STATIC_DIGITS"
+      },
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "beacon_scoreboard_d0_lod2",
+      "family": "planet_scoreboards",
+      "variant": "beacon",
+      "name": "A6 / Beacon Scoreboard",
+      "file": "beacon_scoreboard_d0_lod2.glb",
+      "meshopt_file": "beacon_scoreboard_d0_lod2.meshopt.glb",
+      "lod": 2,
+      "quality": "distance",
+      "damage_level": 0,
+      "state": "intact",
+      "static": true,
+      "derived": true,
+      "derived_from": "beacon_scoreboard_d0_lod0.glb",
+      "bytes": 124696,
+      "sha256": "1e9bf0b76b91a3ff731c7117d7a4e63d6f9d5c7b987521d1d37e5f58748195aa",
+      "meshopt_bytes": 38696,
+      "meshopt_sha256": "5ad240ae75c0278da2b708b47e7139d391ff3486b9d8080db76ce65b0cc9e5f2",
+      "triangles": 1572,
+      "draw_calls": 1,
+      "materials": 1,
+      "textures": 0,
+      "plot_m": [
+        8,
+        5
+      ],
+      "bounds": {
+        "min": [
+          -3.75,
+          0,
+          -1.9500000476837158
+        ],
+        "max": [
+          3.75,
+          3.9749999046325684,
+          1.9500000476837158
+        ]
+      },
+      "sockets": [
+        {
+          "id": "POWER",
+          "kind": "power",
+          "position_m": [
+            0,
+            0.35,
+            -1.65
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ]
+        },
+        {
+          "id": "SERVICE",
+          "kind": "human_access",
+          "position_m": [
+            0,
+            0,
+            1.9
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        }
+      ],
+      "clips": [],
+      "display": {
+        "technology": "seven_segment",
+        "digits": 8,
+        "default_score": 12345678,
+        "max_score": 99999999,
+        "pitch_m": 0.66,
+        "center_y_m": 2.96,
+        "face_z_m": 0.59,
+        "runtime_node": "SCORE_DISPLAY_ORIGIN",
+        "static_node": "SCORE_STATIC_DIGITS"
+      },
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "flipdot_scoreboard_d0_lod0",
+      "family": "planet_scoreboards",
+      "variant": "flipdot",
+      "name": "A6 / Flip-Dot Scoreboard",
+      "file": "flipdot_scoreboard_d0_lod0.glb",
+      "meshopt_file": "flipdot_scoreboard_d0_lod0.meshopt.glb",
+      "lod": 0,
+      "quality": "detailed_master",
+      "damage_level": 0,
+      "state": "intact",
+      "static": false,
+      "derived": false,
+      "derived_from": null,
+      "bytes": 271564,
+      "sha256": "bd9b1186f0202ba7e56aa5b91febe222445085ab13790b6c63fc3ad824e62e76",
+      "meshopt_bytes": 89492,
+      "meshopt_sha256": "3f13550139905a205a69587e1f24af315ea781e60081432b39fccc5e125d2562",
+      "triangles": 4612,
+      "draw_calls": 2,
+      "materials": 1,
+      "textures": 0,
+      "plot_m": [
+        8,
+        5
+      ],
+      "bounds": {
+        "min": [
+          -3.75,
+          0,
+          -1.9500000476837158
+        ],
+        "max": [
+          3.75,
+          3.734999895095825,
+          1.9500000476837158
+        ]
+      },
+      "sockets": [
+        {
+          "id": "POWER",
+          "kind": "power",
+          "position_m": [
+            0,
+            0.35,
+            -1.65
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ]
+        },
+        {
+          "id": "SERVICE",
+          "kind": "human_access",
+          "position_m": [
+            0,
+            0,
+            1.9
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        }
+      ],
+      "clips": [],
+      "display": {
+        "technology": "flip_dot",
+        "digits": 8,
+        "default_score": 12345678,
+        "max_score": 99999999,
+        "pitch_m": 0.66,
+        "center_y_m": 2.7,
+        "face_z_m": 0.62,
+        "runtime_node": "SCORE_DISPLAY_ORIGIN",
+        "static_node": "SCORE_STATIC_DIGITS"
+      },
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "flipdot_scoreboard_d0_lod1",
+      "family": "planet_scoreboards",
+      "variant": "flipdot",
+      "name": "A6 / Flip-Dot Scoreboard",
+      "file": "flipdot_scoreboard_d0_lod1.glb",
+      "meshopt_file": "flipdot_scoreboard_d0_lod1.meshopt.glb",
+      "lod": 1,
+      "quality": "game",
+      "damage_level": 0,
+      "state": "intact",
+      "static": false,
+      "derived": true,
+      "derived_from": "flipdot_scoreboard_d0_lod0.glb",
+      "bytes": 220992,
+      "sha256": "688bce13c3f03c5817a4c0ac8b699f2958f16cfbd8038b49189cb9127359cac1",
+      "meshopt_bytes": 66776,
+      "meshopt_sha256": "fab3d12bbcf169eb7653e54e88c80c5ae5d17b08816e7ba5bc02a240e90207c9",
+      "triangles": 3558,
+      "draw_calls": 2,
+      "materials": 1,
+      "textures": 0,
+      "plot_m": [
+        8,
+        5
+      ],
+      "bounds": {
+        "min": [
+          -3.75,
+          0,
+          -1.9500000476837158
+        ],
+        "max": [
+          3.75,
+          3.734999895095825,
+          1.9500000476837158
+        ]
+      },
+      "sockets": [
+        {
+          "id": "POWER",
+          "kind": "power",
+          "position_m": [
+            0,
+            0.35,
+            -1.65
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ]
+        },
+        {
+          "id": "SERVICE",
+          "kind": "human_access",
+          "position_m": [
+            0,
+            0,
+            1.9
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        }
+      ],
+      "clips": [],
+      "display": {
+        "technology": "flip_dot",
+        "digits": 8,
+        "default_score": 12345678,
+        "max_score": 99999999,
+        "pitch_m": 0.66,
+        "center_y_m": 2.7,
+        "face_z_m": 0.62,
+        "runtime_node": "SCORE_DISPLAY_ORIGIN",
+        "static_node": "SCORE_STATIC_DIGITS"
+      },
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "flipdot_scoreboard_d0_lod2",
+      "family": "planet_scoreboards",
+      "variant": "flipdot",
+      "name": "A6 / Flip-Dot Scoreboard",
+      "file": "flipdot_scoreboard_d0_lod2.glb",
+      "meshopt_file": "flipdot_scoreboard_d0_lod2.meshopt.glb",
+      "lod": 2,
+      "quality": "distance",
+      "damage_level": 0,
+      "state": "intact",
+      "static": true,
+      "derived": true,
+      "derived_from": "flipdot_scoreboard_d0_lod0.glb",
+      "bytes": 120012,
+      "sha256": "61807582d53afe7c4370393be4a602865359f2d0bbe5e1da3b1e3e088b2767cc",
+      "meshopt_bytes": 37248,
+      "meshopt_sha256": "942e1116cbee7fb68a70b8d8fd1180299073d96c14a074f3d3580c3e24f046d6",
+      "triangles": 1512,
+      "draw_calls": 1,
+      "materials": 1,
+      "textures": 0,
+      "plot_m": [
+        8,
+        5
+      ],
+      "bounds": {
+        "min": [
+          -3.75,
+          0,
+          -1.9500000476837158
+        ],
+        "max": [
+          3.75,
+          3.734999895095825,
+          1.9500000476837158
+        ]
+      },
+      "sockets": [
+        {
+          "id": "POWER",
+          "kind": "power",
+          "position_m": [
+            0,
+            0.35,
+            -1.65
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ]
+        },
+        {
+          "id": "SERVICE",
+          "kind": "human_access",
+          "position_m": [
+            0,
+            0,
+            1.9
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        }
+      ],
+      "clips": [],
+      "display": {
+        "technology": "flip_dot",
+        "digits": 8,
+        "default_score": 12345678,
+        "max_score": 99999999,
+        "pitch_m": 0.66,
+        "center_y_m": 2.7,
+        "face_z_m": 0.62,
+        "runtime_node": "SCORE_DISPLAY_ORIGIN",
+        "static_node": "SCORE_STATIC_DIGITS"
+      },
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "splitflap_scoreboard_d0_lod0",
+      "family": "planet_scoreboards",
+      "variant": "splitflap",
+      "name": "A6 / Split-Flap Scoreboard",
+      "file": "splitflap_scoreboard_d0_lod0.glb",
+      "meshopt_file": "splitflap_scoreboard_d0_lod0.meshopt.glb",
+      "lod": 0,
+      "quality": "detailed_master",
+      "damage_level": 0,
+      "state": "intact",
+      "static": false,
+      "derived": false,
+      "derived_from": null,
+      "bytes": 267576,
+      "sha256": "bbcbb909a3b2787dceea47757475158ff616ca3cf896ed38cf5e0edb55ca734f",
+      "meshopt_bytes": 83844,
+      "meshopt_sha256": "c1c5ef6cb95f64f3334a4a6eeb32437089f5fbc6d34ce565ed3321f1e3a32055",
+      "triangles": 3456,
+      "draw_calls": 2,
+      "materials": 1,
+      "textures": 0,
+      "plot_m": [
+        8,
+        5
+      ],
+      "bounds": {
+        "min": [
+          -3.75,
+          0,
+          -1.9500000476837158
+        ],
+        "max": [
+          3.75,
+          3.9200000762939453,
+          1.9500000476837158
+        ]
+      },
+      "sockets": [
+        {
+          "id": "POWER",
+          "kind": "power",
+          "position_m": [
+            0,
+            0.35,
+            -1.65
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ]
+        },
+        {
+          "id": "SERVICE",
+          "kind": "human_access",
+          "position_m": [
+            0,
+            0,
+            1.9
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        }
+      ],
+      "clips": [],
+      "display": {
+        "technology": "split_flap",
+        "digits": 8,
+        "default_score": 12345678,
+        "max_score": 99999999,
+        "pitch_m": 0.66,
+        "center_y_m": 2.86,
+        "face_z_m": 0.66,
+        "runtime_node": "SCORE_DISPLAY_ORIGIN",
+        "static_node": "SCORE_STATIC_DIGITS"
+      },
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "splitflap_scoreboard_d0_lod1",
+      "family": "planet_scoreboards",
+      "variant": "splitflap",
+      "name": "A6 / Split-Flap Scoreboard",
+      "file": "splitflap_scoreboard_d0_lod1.glb",
+      "meshopt_file": "splitflap_scoreboard_d0_lod1.meshopt.glb",
+      "lod": 1,
+      "quality": "game",
+      "damage_level": 0,
+      "state": "intact",
+      "static": false,
+      "derived": true,
+      "derived_from": "splitflap_scoreboard_d0_lod0.glb",
+      "bytes": 227828,
+      "sha256": "77519e4949b4ca69c76a8c4405a32ef82e6f0254fadf3fc305549aabd14461f0",
+      "meshopt_bytes": 70520,
+      "meshopt_sha256": "c97b338e3d12d220d085293f2f459d3b451e6acc4487424c5ccf7a2948c6ec28",
+      "triangles": 2880,
+      "draw_calls": 2,
+      "materials": 1,
+      "textures": 0,
+      "plot_m": [
+        8,
+        5
+      ],
+      "bounds": {
+        "min": [
+          -3.75,
+          0,
+          -1.9500000476837158
+        ],
+        "max": [
+          3.75,
+          3.9200000762939453,
+          1.9500000476837158
+        ]
+      },
+      "sockets": [
+        {
+          "id": "POWER",
+          "kind": "power",
+          "position_m": [
+            0,
+            0.35,
+            -1.65
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ]
+        },
+        {
+          "id": "SERVICE",
+          "kind": "human_access",
+          "position_m": [
+            0,
+            0,
+            1.9
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        }
+      ],
+      "clips": [],
+      "display": {
+        "technology": "split_flap",
+        "digits": 8,
+        "default_score": 12345678,
+        "max_score": 99999999,
+        "pitch_m": 0.66,
+        "center_y_m": 2.86,
+        "face_z_m": 0.66,
+        "runtime_node": "SCORE_DISPLAY_ORIGIN",
+        "static_node": "SCORE_STATIC_DIGITS"
+      },
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "splitflap_scoreboard_d0_lod2",
+      "family": "planet_scoreboards",
+      "variant": "splitflap",
+      "name": "A6 / Split-Flap Scoreboard",
+      "file": "splitflap_scoreboard_d0_lod2.glb",
+      "meshopt_file": "splitflap_scoreboard_d0_lod2.meshopt.glb",
+      "lod": 2,
+      "quality": "distance",
+      "damage_level": 0,
+      "state": "intact",
+      "static": true,
+      "derived": true,
+      "derived_from": "splitflap_scoreboard_d0_lod0.glb",
+      "bytes": 226728,
+      "sha256": "9eea9cf10ad9e4c6d4a030323ab0ac283b7ff247af25de2bdf6e638cea7a213e",
+      "meshopt_bytes": 68636,
+      "meshopt_sha256": "a68694857eefb5da9a9eaa59d743e43465988f5160b1a1b0b86b6d2a46cfa496",
+      "triangles": 2880,
+      "draw_calls": 1,
+      "materials": 1,
+      "textures": 0,
+      "plot_m": [
+        8,
+        5
+      ],
+      "bounds": {
+        "min": [
+          -3.75,
+          0,
+          -1.9500000476837158
+        ],
+        "max": [
+          3.75,
+          3.9200000762939453,
+          1.9500000476837158
+        ]
+      },
+      "sockets": [
+        {
+          "id": "POWER",
+          "kind": "power",
+          "position_m": [
+            0,
+            0.35,
+            -1.65
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ]
+        },
+        {
+          "id": "SERVICE",
+          "kind": "human_access",
+          "position_m": [
+            0,
+            0,
+            1.9
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        }
+      ],
+      "clips": [],
+      "display": {
+        "technology": "split_flap",
+        "digits": 8,
+        "default_score": 12345678,
+        "max_score": 99999999,
+        "pitch_m": 0.66,
+        "center_y_m": 2.86,
+        "face_z_m": 0.66,
+        "runtime_node": "SCORE_DISPLAY_ORIGIN",
+        "static_node": "SCORE_STATIC_DIGITS"
+      },
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "beacon_rivalry_d0_lod0",
+      "family": "planet_scoreboards",
+      "variant": "beacon_rivalry",
+      "name": "Beacon / Rivalry",
+      "file": "beacon_rivalry_d0_lod0.glb",
+      "meshopt_file": "beacon_rivalry_d0_lod0.meshopt.glb",
+      "lod": 0,
+      "quality": "detailed_master",
+      "damage_level": 0,
+      "state": "intact",
+      "static": false,
+      "derived": false,
+      "derived_from": null,
+      "sha256": "52e6434ed557fe6c4ed29fc09eda9d77722a710b6cc4c2736dbf54080e050da5",
+      "bytes": 30712,
+      "meshopt_sha256": "567ece85fbb90e32ca922403d2fc53491efbac5c8c933b5c216731b49fd4e194",
+      "meshopt_bytes": 12940,
+      "triangles": 380,
+      "draw_calls": 1,
+      "materials": 1,
+      "textures": 0,
+      "measurement_basis": "rendered mesh uses; shared mesh used twice counts twice; draw calls are mesh uses × primitives",
+      "plot_m": [
+        8,
+        5
+      ],
+      "bounds": {
+        "min": [
+          -3.75,
+          0,
+          -1.9500000476837158
+        ],
+        "max": [
+          3.75,
+          4.144999980926514,
+          1.9500000476837158
+        ],
+        "dimensions_m": [
+          7.5,
+          4.144999980926514,
+          3.9000000953674316
+        ]
+      },
+      "sockets": [
+        {
+          "id": "POWER",
+          "kind": "power",
+          "position_m": [
+            0,
+            0.35,
+            -1.65
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ]
+        },
+        {
+          "id": "SERVICE",
+          "kind": "human_access",
+          "position_m": [
+            0,
+            0,
+            1.9
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "id": "FX",
+          "kind": "celebration_vfx",
+          "position_m": [
+            0,
+            4.25,
+            0
+          ],
+          "normal": [
+            0,
+            1,
+            0
+          ]
+        }
+      ],
+      "clips": [],
+      "hideable_parts": [],
+      "display": {
+        "technology": "seven_segment",
+        "rows": 3,
+        "digits_per_row": 6,
+        "max_score_per_row": 999999,
+        "blank_leading": true,
+        "default_values": [
+          0,
+          0,
+          0
+        ],
+        "distance_face": "blank",
+        "owner_label_max_characters": 18,
+        "label_node": "LABEL_ORIGIN",
+        "row_ids": [
+          "KILLS",
+          "GATHERED",
+          "USED"
+        ],
+        "row_y_m": [
+          3.12,
+          2.39,
+          1.66
+        ],
+        "digit_pitch_m": 0.5,
+        "digit_cell_m": 0.064,
+        "face_z_m": 0.635,
+        "runtime_adapter": "runtime.js"
+      },
+      "review_state": "contract_candidate_pending_game_camera_reference_phone",
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "beacon_rivalry_d0_lod1",
+      "family": "planet_scoreboards",
+      "variant": "beacon_rivalry",
+      "name": "Beacon / Rivalry",
+      "file": "beacon_rivalry_d0_lod1.glb",
+      "meshopt_file": "beacon_rivalry_d0_lod1.meshopt.glb",
+      "lod": 1,
+      "quality": "game",
+      "damage_level": 0,
+      "state": "intact",
+      "static": false,
+      "derived": true,
+      "derived_from": "beacon_rivalry_d0_lod0.glb",
+      "sha256": "f08c915ce6bf03253dfc02b2cebb8ab542bfc125fcc4d3beaa3fb3888f24b8c0",
+      "bytes": 18712,
+      "meshopt_sha256": "b1b6c578c39823fe37157d89e80228a62fbd6ae4c54d79dcb6cc02fc3feac42f",
+      "meshopt_bytes": 8952,
+      "triangles": 204,
+      "draw_calls": 1,
+      "materials": 1,
+      "textures": 0,
+      "measurement_basis": "rendered mesh uses; shared mesh used twice counts twice; draw calls are mesh uses × primitives",
+      "plot_m": [
+        8,
+        5
+      ],
+      "bounds": {
+        "min": [
+          -3.75,
+          0,
+          -1.9500000476837158
+        ],
+        "max": [
+          3.75,
+          4.144999980926514,
+          1.9500000476837158
+        ],
+        "dimensions_m": [
+          7.5,
+          4.144999980926514,
+          3.9000000953674316
+        ]
+      },
+      "sockets": [
+        {
+          "id": "POWER",
+          "kind": "power",
+          "position_m": [
+            0,
+            0.35,
+            -1.65
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ]
+        },
+        {
+          "id": "SERVICE",
+          "kind": "human_access",
+          "position_m": [
+            0,
+            0,
+            1.9
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "id": "FX",
+          "kind": "celebration_vfx",
+          "position_m": [
+            0,
+            4.25,
+            0
+          ],
+          "normal": [
+            0,
+            1,
+            0
+          ]
+        }
+      ],
+      "clips": [],
+      "hideable_parts": [],
+      "display": {
+        "technology": "seven_segment",
+        "rows": 3,
+        "digits_per_row": 6,
+        "max_score_per_row": 999999,
+        "blank_leading": true,
+        "default_values": [
+          0,
+          0,
+          0
+        ],
+        "distance_face": "blank",
+        "owner_label_max_characters": 18,
+        "label_node": "LABEL_ORIGIN",
+        "row_ids": [
+          "KILLS",
+          "GATHERED",
+          "USED"
+        ],
+        "row_y_m": [
+          3.12,
+          2.39,
+          1.66
+        ],
+        "digit_pitch_m": 0.5,
+        "digit_cell_m": 0.064,
+        "face_z_m": 0.635,
+        "runtime_adapter": "runtime.js"
+      },
+      "review_state": "contract_candidate_pending_game_camera_reference_phone",
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "beacon_rivalry_d0_lod2",
+      "family": "planet_scoreboards",
+      "variant": "beacon_rivalry",
+      "name": "Beacon / Rivalry",
+      "file": "beacon_rivalry_d0_lod2.glb",
+      "meshopt_file": "beacon_rivalry_d0_lod2.meshopt.glb",
+      "lod": 2,
+      "quality": "distance",
+      "damage_level": 0,
+      "state": "intact",
+      "static": true,
+      "derived": true,
+      "derived_from": "beacon_rivalry_d0_lod0.glb",
+      "sha256": "488a358517086749a9a2864f0c70a90e8e5815006e5f1e95d7f66cbecd1f866d",
+      "bytes": 18720,
+      "meshopt_sha256": "01f59a72fb4c1ffefed720ea5b90917e66fcca20a2e6cf67b93f5f1d97c0661b",
+      "meshopt_bytes": 8960,
+      "triangles": 204,
+      "draw_calls": 1,
+      "materials": 1,
+      "textures": 0,
+      "measurement_basis": "rendered mesh uses; shared mesh used twice counts twice; draw calls are mesh uses × primitives",
+      "plot_m": [
+        8,
+        5
+      ],
+      "bounds": {
+        "min": [
+          -3.75,
+          0,
+          -1.9500000476837158
+        ],
+        "max": [
+          3.75,
+          4.144999980926514,
+          1.9500000476837158
+        ],
+        "dimensions_m": [
+          7.5,
+          4.144999980926514,
+          3.9000000953674316
+        ]
+      },
+      "sockets": [
+        {
+          "id": "POWER",
+          "kind": "power",
+          "position_m": [
+            0,
+            0.35,
+            -1.65
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ]
+        },
+        {
+          "id": "SERVICE",
+          "kind": "human_access",
+          "position_m": [
+            0,
+            0,
+            1.9
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "id": "FX",
+          "kind": "celebration_vfx",
+          "position_m": [
+            0,
+            4.25,
+            0
+          ],
+          "normal": [
+            0,
+            1,
+            0
+          ]
+        }
+      ],
+      "clips": [],
+      "hideable_parts": [],
+      "display": {
+        "technology": "seven_segment",
+        "rows": 3,
+        "digits_per_row": 6,
+        "max_score_per_row": 999999,
+        "blank_leading": true,
+        "default_values": [
+          0,
+          0,
+          0
+        ],
+        "distance_face": "blank",
+        "owner_label_max_characters": 18,
+        "label_node": "LABEL_ORIGIN",
+        "row_ids": [
+          "KILLS",
+          "GATHERED",
+          "USED"
+        ],
+        "row_y_m": [
+          3.12,
+          2.39,
+          1.66
+        ],
+        "digit_pitch_m": 0.5,
+        "digit_cell_m": 0.064,
+        "face_z_m": 0.635,
+        "runtime_adapter": "runtime.js"
+      },
+      "review_state": "contract_candidate_pending_game_camera_reference_phone",
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "flipdot_rivalry_d0_lod0",
+      "family": "planet_scoreboards",
+      "variant": "flipdot_rivalry",
+      "name": "Flip-Dot / Rivalry",
+      "file": "flipdot_rivalry_d0_lod0.glb",
+      "meshopt_file": "flipdot_rivalry_d0_lod0.meshopt.glb",
+      "lod": 0,
+      "quality": "detailed_master",
+      "damage_level": 0,
+      "state": "intact",
+      "static": false,
+      "derived": false,
+      "derived_from": null,
+      "sha256": "5e75f6cc8a770021a96a6eff865729c7b53a0b9c9295513006fa6191a0fcddbf",
+      "bytes": 284960,
+      "meshopt_sha256": "ee029b62ce4dc63e3696af167d448d7e60494cab13b8212ad552e7c1e64dc4f3",
+      "meshopt_bytes": 95308,
+      "triangles": 5384,
+      "draw_calls": 1,
+      "materials": 1,
+      "textures": 0,
+      "measurement_basis": "rendered mesh uses; shared mesh used twice counts twice; draw calls are mesh uses × primitives",
+      "plot_m": [
+        8,
+        5
+      ],
+      "bounds": {
+        "min": [
+          -3.75,
+          0,
+          -1.9500000476837158
+        ],
+        "max": [
+          3.75,
+          4.170000076293945,
+          1.9500000476837158
+        ],
+        "dimensions_m": [
+          7.5,
+          4.170000076293945,
+          3.9000000953674316
+        ]
+      },
+      "sockets": [
+        {
+          "id": "POWER",
+          "kind": "power",
+          "position_m": [
+            0,
+            0.35,
+            -1.65
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ]
+        },
+        {
+          "id": "SERVICE",
+          "kind": "human_access",
+          "position_m": [
+            0,
+            0,
+            1.9
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "id": "FX",
+          "kind": "celebration_vfx",
+          "position_m": [
+            0,
+            4.25,
+            0
+          ],
+          "normal": [
+            0,
+            1,
+            0
+          ]
+        }
+      ],
+      "clips": [],
+      "hideable_parts": [],
+      "display": {
+        "technology": "flip_dot",
+        "rows": 3,
+        "digits_per_row": 6,
+        "max_score_per_row": 999999,
+        "blank_leading": true,
+        "default_values": [
+          0,
+          0,
+          0
+        ],
+        "distance_face": "blank",
+        "owner_label_max_characters": 18,
+        "label_node": "LABEL_ORIGIN",
+        "row_ids": [
+          "KILLS",
+          "GATHERED",
+          "USED"
+        ],
+        "row_y_m": [
+          3.12,
+          2.39,
+          1.66
+        ],
+        "digit_pitch_m": 0.5,
+        "digit_cell_m": 0.064,
+        "face_z_m": 0.665,
+        "runtime_adapter": "runtime.js"
+      },
+      "review_state": "contract_candidate_pending_game_camera_reference_phone",
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "flipdot_rivalry_d0_lod1",
+      "family": "planet_scoreboards",
+      "variant": "flipdot_rivalry",
+      "name": "Flip-Dot / Rivalry",
+      "file": "flipdot_rivalry_d0_lod1.glb",
+      "meshopt_file": "flipdot_rivalry_d0_lod1.meshopt.glb",
+      "lod": 1,
+      "quality": "game",
+      "damage_level": 0,
+      "state": "intact",
+      "static": false,
+      "derived": true,
+      "derived_from": "flipdot_rivalry_d0_lod0.glb",
+      "sha256": "8a4912dfc7c16b539195767eee2b09be5c7a32fc1a2169b707c49d7132bf7268",
+      "bytes": 220040,
+      "meshopt_sha256": "b525d064399161ab90fbc93f3affb784ad381027ef20cb718bc4aae1fdb0d99f",
+      "meshopt_bytes": 61572,
+      "triangles": 3948,
+      "draw_calls": 1,
+      "materials": 1,
+      "textures": 0,
+      "measurement_basis": "rendered mesh uses; shared mesh used twice counts twice; draw calls are mesh uses × primitives",
+      "plot_m": [
+        8,
+        5
+      ],
+      "bounds": {
+        "min": [
+          -3.75,
+          0,
+          -1.9500000476837158
+        ],
+        "max": [
+          3.75,
+          4.170000076293945,
+          1.9500000476837158
+        ],
+        "dimensions_m": [
+          7.5,
+          4.170000076293945,
+          3.9000000953674316
+        ]
+      },
+      "sockets": [
+        {
+          "id": "POWER",
+          "kind": "power",
+          "position_m": [
+            0,
+            0.35,
+            -1.65
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ]
+        },
+        {
+          "id": "SERVICE",
+          "kind": "human_access",
+          "position_m": [
+            0,
+            0,
+            1.9
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "id": "FX",
+          "kind": "celebration_vfx",
+          "position_m": [
+            0,
+            4.25,
+            0
+          ],
+          "normal": [
+            0,
+            1,
+            0
+          ]
+        }
+      ],
+      "clips": [],
+      "hideable_parts": [],
+      "display": {
+        "technology": "flip_dot",
+        "rows": 3,
+        "digits_per_row": 6,
+        "max_score_per_row": 999999,
+        "blank_leading": true,
+        "default_values": [
+          0,
+          0,
+          0
+        ],
+        "distance_face": "blank",
+        "owner_label_max_characters": 18,
+        "label_node": "LABEL_ORIGIN",
+        "row_ids": [
+          "KILLS",
+          "GATHERED",
+          "USED"
+        ],
+        "row_y_m": [
+          3.12,
+          2.39,
+          1.66
+        ],
+        "digit_pitch_m": 0.5,
+        "digit_cell_m": 0.064,
+        "face_z_m": 0.665,
+        "runtime_adapter": "runtime.js"
+      },
+      "review_state": "contract_candidate_pending_game_camera_reference_phone",
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "flipdot_rivalry_d0_lod2",
+      "family": "planet_scoreboards",
+      "variant": "flipdot_rivalry",
+      "name": "Flip-Dot / Rivalry",
+      "file": "flipdot_rivalry_d0_lod2.glb",
+      "meshopt_file": "flipdot_rivalry_d0_lod2.meshopt.glb",
+      "lod": 2,
+      "quality": "distance",
+      "damage_level": 0,
+      "state": "intact",
+      "static": true,
+      "derived": true,
+      "derived_from": "flipdot_rivalry_d0_lod0.glb",
+      "sha256": "15728f321e27fa4ec7c3ab601510578b396ba69b28c7dd0b8d354592bccc2ef4",
+      "bytes": 15912,
+      "meshopt_sha256": "4004ac8dda680025e93dc7f283095c120168e8a9bb64b53980df5245d7a02c45",
+      "meshopt_bytes": 8092,
+      "triangles": 168,
+      "draw_calls": 1,
+      "materials": 1,
+      "textures": 0,
+      "measurement_basis": "rendered mesh uses; shared mesh used twice counts twice; draw calls are mesh uses × primitives",
+      "plot_m": [
+        8,
+        5
+      ],
+      "bounds": {
+        "min": [
+          -3.75,
+          0,
+          -1.9500000476837158
+        ],
+        "max": [
+          3.75,
+          4.170000076293945,
+          1.9500000476837158
+        ],
+        "dimensions_m": [
+          7.5,
+          4.170000076293945,
+          3.9000000953674316
+        ]
+      },
+      "sockets": [
+        {
+          "id": "POWER",
+          "kind": "power",
+          "position_m": [
+            0,
+            0.35,
+            -1.65
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ]
+        },
+        {
+          "id": "SERVICE",
+          "kind": "human_access",
+          "position_m": [
+            0,
+            0,
+            1.9
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "id": "FX",
+          "kind": "celebration_vfx",
+          "position_m": [
+            0,
+            4.25,
+            0
+          ],
+          "normal": [
+            0,
+            1,
+            0
+          ]
+        }
+      ],
+      "clips": [],
+      "hideable_parts": [],
+      "display": {
+        "technology": "flip_dot",
+        "rows": 3,
+        "digits_per_row": 6,
+        "max_score_per_row": 999999,
+        "blank_leading": true,
+        "default_values": [
+          0,
+          0,
+          0
+        ],
+        "distance_face": "blank",
+        "owner_label_max_characters": 18,
+        "label_node": "LABEL_ORIGIN",
+        "row_ids": [
+          "KILLS",
+          "GATHERED",
+          "USED"
+        ],
+        "row_y_m": [
+          3.12,
+          2.39,
+          1.66
+        ],
+        "digit_pitch_m": 0.5,
+        "digit_cell_m": 0.064,
+        "face_z_m": 0.665,
+        "runtime_adapter": "runtime.js"
+      },
+      "review_state": "contract_candidate_pending_game_camera_reference_phone",
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "splitflap_rivalry_d0_lod0",
+      "family": "planet_scoreboards",
+      "variant": "splitflap_rivalry",
+      "name": "Split-Flap / Rivalry",
+      "file": "splitflap_rivalry_d0_lod0.glb",
+      "meshopt_file": "splitflap_rivalry_d0_lod0.meshopt.glb",
+      "lod": 0,
+      "quality": "detailed_master",
+      "damage_level": 0,
+      "state": "intact",
+      "static": false,
+      "derived": false,
+      "derived_from": null,
+      "sha256": "04656b20237b5ffb57c90f18c3ac4aac0e72bf0cce91417e52594a23deb84e01",
+      "bytes": 48508,
+      "meshopt_sha256": "587ec694e145d3bee019fd6b63980b5344eabe8b885c979a17cd9fa06cac571e",
+      "meshopt_bytes": 18508,
+      "triangles": 608,
+      "draw_calls": 1,
+      "materials": 1,
+      "textures": 0,
+      "measurement_basis": "rendered mesh uses; shared mesh used twice counts twice; draw calls are mesh uses × primitives",
+      "plot_m": [
+        8,
+        5
+      ],
+      "bounds": {
+        "min": [
+          -3.75,
+          0,
+          -1.9500000476837158
+        ],
+        "max": [
+          3.75,
+          4.215000152587891,
+          1.9500000476837158
+        ],
+        "dimensions_m": [
+          7.5,
+          4.215000152587891,
+          3.9000000953674316
+        ]
+      },
+      "sockets": [
+        {
+          "id": "POWER",
+          "kind": "power",
+          "position_m": [
+            0,
+            0.35,
+            -1.65
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ]
+        },
+        {
+          "id": "SERVICE",
+          "kind": "human_access",
+          "position_m": [
+            0,
+            0,
+            1.9
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "id": "FX",
+          "kind": "celebration_vfx",
+          "position_m": [
+            0,
+            4.25,
+            0
+          ],
+          "normal": [
+            0,
+            1,
+            0
+          ]
+        }
+      ],
+      "clips": [],
+      "hideable_parts": [],
+      "display": {
+        "technology": "split_flap",
+        "rows": 3,
+        "digits_per_row": 6,
+        "max_score_per_row": 999999,
+        "blank_leading": true,
+        "default_values": [
+          0,
+          0,
+          0
+        ],
+        "distance_face": "blank",
+        "owner_label_max_characters": 18,
+        "label_node": "LABEL_ORIGIN",
+        "row_ids": [
+          "KILLS",
+          "GATHERED",
+          "USED"
+        ],
+        "row_y_m": [
+          3.12,
+          2.39,
+          1.66
+        ],
+        "digit_pitch_m": 0.5,
+        "digit_cell_m": 0.064,
+        "face_z_m": 0.715,
+        "runtime_adapter": "runtime.js"
+      },
+      "review_state": "contract_candidate_pending_game_camera_reference_phone",
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "splitflap_rivalry_d0_lod1",
+      "family": "planet_scoreboards",
+      "variant": "splitflap_rivalry",
+      "name": "Split-Flap / Rivalry",
+      "file": "splitflap_rivalry_d0_lod1.glb",
+      "meshopt_file": "splitflap_rivalry_d0_lod1.meshopt.glb",
+      "lod": 1,
+      "quality": "game",
+      "damage_level": 0,
+      "state": "intact",
+      "static": false,
+      "derived": true,
+      "derived_from": "splitflap_rivalry_d0_lod0.glb",
+      "sha256": "aff829abe59aa3660a4d185aea4aa5d0e00c3cfdde0a4137ca1d953311ece0c8",
+      "bytes": 36500,
+      "meshopt_sha256": "fbdfb951c949d45eb03ba1042c94ed4dcecb5bfb4566c9c1b9092c7bf3c19611",
+      "meshopt_bytes": 14520,
+      "triangles": 432,
+      "draw_calls": 1,
+      "materials": 1,
+      "textures": 0,
+      "measurement_basis": "rendered mesh uses; shared mesh used twice counts twice; draw calls are mesh uses × primitives",
+      "plot_m": [
+        8,
+        5
+      ],
+      "bounds": {
+        "min": [
+          -3.75,
+          0,
+          -1.9500000476837158
+        ],
+        "max": [
+          3.75,
+          4.215000152587891,
+          1.9500000476837158
+        ],
+        "dimensions_m": [
+          7.5,
+          4.215000152587891,
+          3.9000000953674316
+        ]
+      },
+      "sockets": [
+        {
+          "id": "POWER",
+          "kind": "power",
+          "position_m": [
+            0,
+            0.35,
+            -1.65
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ]
+        },
+        {
+          "id": "SERVICE",
+          "kind": "human_access",
+          "position_m": [
+            0,
+            0,
+            1.9
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "id": "FX",
+          "kind": "celebration_vfx",
+          "position_m": [
+            0,
+            4.25,
+            0
+          ],
+          "normal": [
+            0,
+            1,
+            0
+          ]
+        }
+      ],
+      "clips": [],
+      "hideable_parts": [],
+      "display": {
+        "technology": "split_flap",
+        "rows": 3,
+        "digits_per_row": 6,
+        "max_score_per_row": 999999,
+        "blank_leading": true,
+        "default_values": [
+          0,
+          0,
+          0
+        ],
+        "distance_face": "blank",
+        "owner_label_max_characters": 18,
+        "label_node": "LABEL_ORIGIN",
+        "row_ids": [
+          "KILLS",
+          "GATHERED",
+          "USED"
+        ],
+        "row_y_m": [
+          3.12,
+          2.39,
+          1.66
+        ],
+        "digit_pitch_m": 0.5,
+        "digit_cell_m": 0.064,
+        "face_z_m": 0.715,
+        "runtime_adapter": "runtime.js"
+      },
+      "review_state": "contract_candidate_pending_game_camera_reference_phone",
+      "credit": "Models by jelaludo"
+    },
+    {
+      "id": "splitflap_rivalry_d0_lod2",
+      "family": "planet_scoreboards",
+      "variant": "splitflap_rivalry",
+      "name": "Split-Flap / Rivalry",
+      "file": "splitflap_rivalry_d0_lod2.glb",
+      "meshopt_file": "splitflap_rivalry_d0_lod2.meshopt.glb",
+      "lod": 2,
+      "quality": "distance",
+      "damage_level": 0,
+      "state": "intact",
+      "static": true,
+      "derived": true,
+      "derived_from": "splitflap_rivalry_d0_lod0.glb",
+      "sha256": "11473f5a19dd2939e343eee6e812efe49c4df993a765b85cffecdb5bee27b4ce",
+      "bytes": 36508,
+      "meshopt_sha256": "6b35370120969936022252f67b7988420b0682330db2ef95d1b1967c40e733a0",
+      "meshopt_bytes": 14528,
+      "triangles": 432,
+      "draw_calls": 1,
+      "materials": 1,
+      "textures": 0,
+      "measurement_basis": "rendered mesh uses; shared mesh used twice counts twice; draw calls are mesh uses × primitives",
+      "plot_m": [
+        8,
+        5
+      ],
+      "bounds": {
+        "min": [
+          -3.75,
+          0,
+          -1.9500000476837158
+        ],
+        "max": [
+          3.75,
+          4.215000152587891,
+          1.9500000476837158
+        ],
+        "dimensions_m": [
+          7.5,
+          4.215000152587891,
+          3.9000000953674316
+        ]
+      },
+      "sockets": [
+        {
+          "id": "POWER",
+          "kind": "power",
+          "position_m": [
+            0,
+            0.35,
+            -1.65
+          ],
+          "normal": [
+            0,
+            0,
+            -1
+          ]
+        },
+        {
+          "id": "SERVICE",
+          "kind": "human_access",
+          "position_m": [
+            0,
+            0,
+            1.9
+          ],
+          "normal": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "id": "FX",
+          "kind": "celebration_vfx",
+          "position_m": [
+            0,
+            4.25,
+            0
+          ],
+          "normal": [
+            0,
+            1,
+            0
+          ]
+        }
+      ],
+      "clips": [],
+      "hideable_parts": [],
+      "display": {
+        "technology": "split_flap",
+        "rows": 3,
+        "digits_per_row": 6,
+        "max_score_per_row": 999999,
+        "blank_leading": true,
+        "default_values": [
+          0,
+          0,
+          0
+        ],
+        "distance_face": "blank",
+        "owner_label_max_characters": 18,
+        "label_node": "LABEL_ORIGIN",
+        "row_ids": [
+          "KILLS",
+          "GATHERED",
+          "USED"
+        ],
+        "row_y_m": [
+          3.12,
+          2.39,
+          1.66
+        ],
+        "digit_pitch_m": 0.5,
+        "digit_cell_m": 0.064,
+        "face_z_m": 0.715,
+        "runtime_adapter": "runtime.js"
+      },
+      "review_state": "contract_candidate_pending_game_camera_reference_phone",
+      "credit": "Models by jelaludo"
+    }
+  ],
+  "feedback_extension": {
+    "source": "A6-ASSET-FEEDBACK_DigitalBoards.md, Part 3, 2026-10-02",
+    "original_single_score_exports_preserved": true,
+    "variants": [
+      "beacon_rivalry",
+      "flipdot_rivalry",
+      "splitflap_rivalry"
+    ],
+    "rows": [
+      "KILLS",
+      "GATHERED",
+      "USED"
+    ],
+    "label_max_characters": 18,
+    "per_row_max": 999999,
+    "static_distance_face": "blank",
+    "runtime": "runtime.js",
+    "transition_durations_s": {
+      "routine": 0.25,
+      "celebration": 2
+    },
+    "hysteresis_unit": "metres",
+    "measurement_basis": "rendered mesh uses; shared mesh used twice counts twice; draw calls are mesh uses × primitives"
+  }
+}

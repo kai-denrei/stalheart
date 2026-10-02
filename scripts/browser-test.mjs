@@ -1369,7 +1369,10 @@ try{
  {const p=await prog();assert.ok(p.perks.includes('armory')&&p.perks.includes('farm')&&p.perks.includes('chips'),`the colony's perks are on (${p.perks})`);
   assert.ok(Array.isArray(p.colony.board)&&p.colony.board.length===2,`two boards stand, the player's and Isao's (${JSON.stringify(p.colony.board)})`);
   assert.equal(p.colony.isaoKills,0,'Isao has killed nothing yet');
-  await evaluate(`${T}.placeTank(${p.colony.boardCell})`);await delay(900);current='colony-board';await finish();
+  await until(`(b=>b&&b.every(x=>x.ready))(${T}.state().programme.colony.board)`,20000).catch(async()=>assert.fail(`the A6 rivalry boards load (${JSON.stringify((await prog()).colony.board)})`));
+  assert.deepEqual((await prog()).colony.board.map(b=>b.label),['YOU','ISAO'],'one board each');
+  await evaluate(`${T}.showcase.ground(${p.colony.boardCell}, 1.6, 3)`);await delay(1500);current='colony-board';await finish();
+  await evaluate(`${T}.showcase.follow()`);
   assert.ok(p.colony.pad&&p.colony.pad.standing,`the armory's pad stands (${JSON.stringify(p.colony.pad)})`);
   const s=await st();assert.ok(Math.abs(s.laser.period-180*BASE_PERKS.chipsPeriod)<0.6,`the chip plant brings the passes closer (${s.laser.period})`);}
  current='colony-printed';await finish();
@@ -1388,7 +1391,9 @@ try{
   await until(`(c=>c.strike&&c.strike!=='done')(${T}.state().programme.colony)`,30000).catch(async()=>assert.fail(`Isao comes with his missile (${JSON.stringify((await prog()).colony)})`));
   await until(`(c=>c.strike&&c.strike.phase==='carry'&&c.strike.t>7)(${T}.state().programme.colony)`,20000).catch(()=>{});current='colony-isao-carry';await finish();
   await until(`${T}.state().programme.colony.isaoKills===1`,30000).catch(async()=>assert.fail(`his missile lands and kills one (${JSON.stringify((await prog()).colony)})`));
-  current='colony-isao-one';await finish();
+  await until(`(b=>b&&b[1]&&b[1].scores&&b[1].scores.kills===1)(${T}.state().programme.colony.board)`,8000).catch(async()=>assert.fail(`Isao's A6 board reads 1 (${JSON.stringify((await prog()).colony.board)})`));
+  await evaluate(`${T}.showcase.ground(${(await prog()).colony.boardCell}, 1.6, 3)`);await delay(1500);current='colony-isao-one';await finish();
+  await evaluate(`${T}.showcase.follow()`);
   await until(`${T}.state().programme.colony.strike==='done'`,20000);
   await evaluate(`${T}.sectorClearField()`);}
  // 3. TWO MANNED PASSES: the player in the seat with the beam held is a manned pass; Isao's calibration comes with the second

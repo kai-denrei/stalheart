@@ -105,6 +105,21 @@ Evidence:
 - scripts/browser-lock.sh node scripts/browser-test.mjs --colony (the pad by the assembly line reloads the rack)
 - --grow, --sectors green
 
+## 2026-10-02 — The A6 rivalry scoreboards replace the canvas stand-ins: the player on the seven-segment beacon, Isao on the split-flap, three rows each, driven by the asset's own runtime; the boards face the base
+
+change · accepted · 2026-10-02-a6-rivalry-boards-in-the-base
+
+Owner, 2026-10-02: "https://jelaludo.github.io/SentryTowers_A6/scoreboard-rivalry/ we have a new set". The asset team built the PLAYER vs ISAO boards from docs/A6-ASSET-FEEDBACK.md Part 3: an owner label, three rows (KILLS, GATHERED, USED), blank leading zeros, per-technology transitions, celebrate(), runtime colour, a blank LOD2 face, SOCKET_FX.
+
+Pinned at d3aa0b2 (docs/scoreboard-assets.lock.json): beacon_rivalry and splitflap_rivalry LOD1, manifest.json and runtime.js under assets/models/scoreboards/. src/fx/scoreboard.js now loads the GLB, attaches attachRivalryDisplay with the owner label (YOU / ISAO) and colour, feeds setScores each tick (Isao's 0 -> 1 with a two-second transition so the split-flap clatters), calls update(dt) and celebrate(), and throws dot bursts from SOCKET_FX; the rank flag stays beside the player's board. Two boards at 0.75 scale on a 14 m slab. Fixed on the way: the placement basis was a mirror (a negated x axis), which put the boards' faces on the wrong side; they now face the Stålheart. The quarter-circle glyphs (src/domain/score-glyphs.js) are deleted with their test: nothing draws them now. All feedback points landed; LOD2 is not used (the boards are small and near).
+
+Alternatives: Pinning LOD2 for distance: 18-36 KB boards with a few hundred triangles do not need a distance tier in a base the camera is always near; Keeping the quarter-circle glyphs beside the A6 digits: two number systems on one face is noise
+
+Evidence:
+
+- docs/scoreboard-assets.lock.json
+- scripts/browser-lock.sh node scripts/browser-test.mjs --colony (artifacts/browser/colony-board.png, colony-isao-one.png: Isao's board reads 1 and celebrates)
+
 ## 2026-10-01 — The Units lab shows the sky (the KORP, SOL-82, SOL-88) from their pinned models and draws any entry as the briefings' wireframe
 
 change · accepted · 2026-10-01-units-lab-sky-and-wireframe

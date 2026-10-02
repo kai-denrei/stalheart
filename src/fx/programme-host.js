@@ -72,14 +72,14 @@ export function createProgrammeHost(c) {
       }
       s.launch?.tick();
       // THE SCOREBOARDS (src/fx/scoreboard.js): two plaques on the slab once the step stands, the player's and Isao's, fed the run's books
-      // every tick: the player gathers and kills, Isao uses and (once) kills
+      // every tick: the player gathers and kills, Isao uses and (once) kills. They face the Stålheart, not the gate: the player reads them from the base
       const dt = Math.max(0, Math.min(0.1, c.t() - (s.hostAt ?? c.t()))); s.hostAt = c.t();
       if (programmeHas(pg, 'board') && c.scene && c.kills) {
-        if (!s.boards) { const step = pg.steps.find((x) => x.id === 'board'); const bed = step && s.print.bed(step); if (bed) { const face = (a, b) => [b[0] - a[0], b[1] - a[1], b[2] - a[2]], m = c.cellSide() / 10; s.boards = [[-0.5, 'YOU', '#ffd27a', true], [0.5, 'ISAO', '#7dffb0', false]].map(([x, title, accent, flag]) => { const at = bed(x, 0, 0); return createScoreboard(c.scene, { at, up: at, facing: face(bed(x, 1, 0), bed(x, -1, 0)), metres: m, title, accent, flag }); }); } }
+        if (!s.boards) { const step = pg.steps.find((x) => x.id === 'board'); const bed = step && s.print.bed(step); if (bed) { const face = (a, b) => [b[0] - a[0], b[1] - a[1], b[2] - a[2]], m = c.cellSide() / 10; s.boards = [[-0.5, 'YOU', '#ffd27a', true, 'beacon_rivalry'], [0.5, 'ISAO', '#b8f5c6', false, 'splitflap_rivalry']].map(([x, title, accent, flag, variant]) => { const at = bed(x, 0, 0); return createScoreboard(c.scene, { at, up: at, facing: face(bed(x, -1, 0), bed(x, 1, 0)), metres: m * 0.75, title, accent, flag, variant }); }); } }
         if (s.boards) {
           const e = c.eco?.(), you = c.hands?.() ?? 0;
           s.boards[0].update({ rows: [['KILLS', you], ['GATHERED', Math.round(e?.earned ?? 0)], ['USED', 0]], rank: c.rank?.() ?? 0 });
-          s.boards[1].update({ rows: [['KILLS', s.isaoKills ?? 0], ['GATHERED', 0], ['USED', Math.round(e?.spent ?? 0)]], note: (s.isaoKills ?? 0) ? 'FIRST BLOOD' : 'BUILDER' });
+          s.boards[1].update({ rows: [['KILLS', s.isaoKills ?? 0], ['GATHERED', 0], ['USED', Math.round(e?.spent ?? 0)]] }, { duration: s.isaoKills && !s.isaoShown ? 2 : 0.25 }); if (s.isaoKills) s.isaoShown = true;   // his 0 -> 1 clatters for two seconds
           for (const bd of s.boards) bd.tick(dt);
         }
       }
