@@ -4771,3 +4771,9 @@ body.embedded .preset-panel { display: none; }
 @media (max-width: 560px) { #paint-shop { align-items: flex-end; justify-content: center; } #paint-shop .ps-sw { min-width: 44px; } }
 
 #units-inset::after { content: attr(data-label); position: absolute; left: 6px; top: 5px; }
+
+/* THE SEAT'S VIGNETTE (src/sentry-pilot.js): a Rotor's or a Quiver's optic reads as a different view */
+#seat-vignette { position: fixed; inset: 0; pointer-events: none; z-index: 4; background: radial-gradient(ellipse 66% 62% at 50% 50%, transparent 40%, rgba(0, 0, 0, .7) 70%, rgba(0, 0, 0, .96) 92%); }
+#seat-vignette[hidden] { display: none; }
+#seat-vignette:not([hidden]) ~ #sentry-pilot { z-index: 5; }   /* the seat's own panel and hint stay over the vignette */
+.radial-center .radial-gain { display: block; margin-top: 4px; font-size: 9px; letter-spacing: .04em; color: #9fdcff; line-height: 1.3; max-width: 120px; }

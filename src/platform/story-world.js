@@ -185,16 +185,26 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
 // Take-control shot: three quarters of a turn around the sentry, settling
 // behind it and looking down the lane. Positions are host units on the
 // unit sphere; the pose is written into the host's camera goal.
-export function takeControlPose(centre, normal, lane, cellSide, wallHeight) {
+// from: { pos, quat } of the camera the hand-over starts in (another seat): the first `pull` of the shot backs out of it, up and away,
+// before the orbit round the new mount (owner, 2026-10-02: "switch from Rotor to Quiver should zoom out of the Rotor")
+export function takeControlPose(centre, normal, lane, cellSide, wallHeight, from = null, pull = 0.35) {
   const c = new THREE.Vector3(...centre).multiplyScalar(1 + wallHeight), n = new THREE.Vector3(...normal).normalize();
   const toLane = new THREE.Vector3(...lane).sub(new THREE.Vector3(...centre)); toLane.sub(n.clone().multiplyScalar(toLane.dot(n))).normalize();
   const side = new THREE.Vector3().crossVectors(n, toLane).normalize();
   const radius = cellSide * 2.1, height = cellSide * 0.9, tmp = new THREE.Matrix4();
-  return (u, goal) => {
+  const orbit = (u, goal) => {
     const e = u * u * (3 - 2 * u), theta = Math.PI * 0.25 + e * Math.PI * 0.75;   // from beside the lane round to behind
     const r = radius * (1.15 - 0.35 * e), h = height * (1.2 - 0.4 * e);
     goal.pos.copy(c).addScaledVector(n, h).addScaledVector(toLane, Math.cos(theta) * r).addScaledVector(side, Math.sin(theta) * r);
     const look = c.clone().addScaledVector(n, cellSide * 0.35).addScaledVector(toLane, e * cellSide * 1.5);
     tmp.lookAt(goal.pos, look, n); goal.quat.setFromRotationMatrix(tmp);
+  };
+  if (!from) return orbit;
+  const back = from.pos.clone().addScaledVector(n, cellSide * 2.4).addScaledVector(new THREE.Vector3(0, 0, 1).applyQuaternion(from.quat), cellSide * 2.2), start = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
+  orbit(0, start);
+  return (u, goal) => {
+    if (u < pull) { const k = u / pull, e = k * k * (3 - 2 * k); goal.pos.copy(from.pos).lerp(back, e); goal.quat.copy(from.quat).slerp(start.quat, e * 0.6); return; }
+    const k = (u - pull) / (1 - pull), e = k * k * (3 - 2 * k);
+    orbit(k, goal); goal.pos.lerp(back, 1 - e);
   };
 }

@@ -15,4 +15,8 @@ export const TANK_STEER = Object.freeze({ rate: 2.6, attack: 0.28, release: 0.16
 
 // THE HULL GETS UNSTUCK (owner, 2026-10-02; src/domain/hull-stuck.js): after `after` seconds of driving that moves the hull less than
 // `share` of the drive, it is eased toward its cell's centre, the ease rising over `ramp` seconds to `rate` cells a second
-export const HULL_STUCK = Object.freeze({ after: 0.45, ramp: 0.6, share: 0.15, rate: 1.4 });
+export const HULL_STUCK = Object.freeze({ after: 0.25, ramp: 0.35, share: 0.3, rate: 2.4 });   // sooner and firmer (owner, 2026-10-02: "still too easy to get stuck in small corridors"; was 0.45 / 0.6 / 0.15 / 1.4)
+
+// THE PLASMA COSTS BIOMASS (owner, 2026-10-02: "using the plasma throwers on the tank costs some biomass"): kilograms a second while
+// the twin plasma fires in the story; with nothing in the bank the trigger is dry and the panel says so (once every few seconds)
+export const TANK_PLASMA = Object.freeze({ kgPerSecond: 3, dry: '<div class="wave-num">PLASMA DRY</div><div class="wave-role">no biomass to burn</div>' });

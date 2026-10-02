@@ -25,7 +25,7 @@ import { storage as localStorage } from './storage.js';
 // rules live in src/core, src/domain and src/content and the composition in src/fx and src/platform (docs/ARCHITECTURE.md). The
 // story is the game (docs/STATE.md); the campaign board under it serves the acceptance runs and the wave simulator.
 
-import { makeStuck, stepStuck, unstick } from './domain/hull-stuck.js'; import { HULL_STUCK } from './content/tank.js';   // the hull gets unstuck (owner, 2026-10-02)
+import { makeStuck, stepStuck, unstick } from './domain/hull-stuck.js'; import { highlightSeat } from './fx/seat-highlight.js'; import { HULL_STUCK, TANK_PLASMA } from './content/tank.js'; import { QUIVER_SPLASH, STORY_SENTRIES } from './content/sentries.js';   // the hull gets unstuck (owner, 2026-10-02)
 import * as THREE from '../vendor/three.module.js';
 import GUI from '../vendor/lil-gui.esm.js';
 import { bfsDist, BLOCKED, PATH, ROOM } from './dungeon.js';
@@ -1275,16 +1275,8 @@ export function initTdTab(root) {
   }
   const manualActive = () => !autoMode;
 
-  // --- THE CONTROLS-DEAD PROBE --------------------------------------------
-  // Operator, recurring and never reproduced: after a game ends or a tank
-  // dies, WASD sometimes does nothing until they fiddle, and AUTO sometimes
-  // frees it. Every guess at a fix would be a guess at WHICH of eight gates
-  // is latched, so this reports the gate instead. The watchdog below fires on
-  // the symptom itself, so the report can come from a phone in real play
-  // rather than a repro here.
-  // RUN GENERATION. Deferred work started by one run must never land on the
-  // next: a timer that repositions the tank is a timer that can reposition
-  // somebody else's tank. Bumped by regenerate.
+  // THE CONTROLS-DEAD PROBE: WASD sometimes dead after a game ends (operator, never reproduced); the watchdog reports WHICH gate is
+  // latched, from real play. RUN GENERATION: deferred work from one run never lands on the next (bumped by regenerate).
   const runContext = createRunContext();
   const runTimers = createRunTimers(runContext);
   let deployCount = 0;
@@ -2121,11 +2113,9 @@ export function initTdTab(root) {
   }
 
   function updateCameraGoal() {
-    if (pilot?.state.tower && pilot.pose(pilot.state.tower, camGoal)) return;
+    if (pilot?.state.tower && shotId() !== 'takeControl' && pilot.pose(pilot.state.tower, camGoal)) return;
     if (laserStation.pose(camGoal)) return;   // SOL-82's seat: the ground view behind the beam's contact
-    // DEPLOY eases the doorway framing into the gameplay framing over its own
-    // progress, so at u=1 the two ARE the same pose and handing the controls
-    // over changes nothing on screen.
+    // DEPLOY eases the doorway framing into the gameplay framing, so at u=1 handing over the controls changes nothing on screen.
     if (deploy && !camRaw) {
       const w = deployEase();
       deployFramePoseFor(deploy.n, camA);
@@ -4649,6 +4639,7 @@ export function initTdTab(root) {
     refreshRankVisuals();
   }
   function damageEnemy(e, tNow, dmg = 1, react = true, src = 'tower', via = null) {   // via: the tower key, gunship gun or strike use, for the story's books
+    if (story && src === 'tower') dmg *= STORY_SENTRIES.dmgMul;
     const spec = e.spec;
     if (react && spec.slowOnHit) { e.behMult = spec.slowOnHit; e.behUntil = tNow + 1.2; }
     if (react && spec.accelOnHit) { e.behMult = spec.accelOnHit; e.behUntil = tNow + 1.2; }
@@ -4678,7 +4669,7 @@ export function initTdTab(root) {
   // rule, third use. No wall carving, no spawn-point damage, no on-hit
   // reactions: shells stay the answer to everything that matters.
   const laserShots = []; // { pos, dir, dist, mesh }
-  let laserHeat = 0, laserOverheat = false;
+  let laserHeat = 0, laserOverheat = false, plasmaToldAt = -9; const plasmaDry = () => { if (t - plasmaToldAt > 6) { plasmaToldAt = t; showToast(TANK_PLASMA.dry, 1600); } return false; };
 
   // --- the twin beams -----------------------------------------------------
   // ONE PLACE for the preset, so a tuning session in the beam tab drops in as
@@ -4707,17 +4698,8 @@ export function initTdTab(root) {
   // step and the tank visibly labours through a crowd. This is the inverse of
   // knock-back: nothing is pushed, something is HELD.
   //
-  // The drag is keyed to the tier the whole board already reads by colour:
-  // soft rammable things barely slow it, a solid core bogs it hard. So a beam
-  // lagging its twin is a DANGER READOUT — the weapon's own motion saying
-  // "there is something in here you should not ram", a third channel beside
-  // the belt colour and the DO-NOT-RAM badge.
-  // DRAG_SOFT / DRAG_HARD / DRAG_CAP are imported from beamburn.js now. The
-  // rule moved out whole so the beam lab can show the drop-off without
-  // restating it — two copies of this would drift the first time either is
-  // tuned, and the lab exists precisely to tune it.
-  // A BOGGED BEAM FALLS BEHIND AND STAYS BEHIND. It does not catch up at the
-  // end of the burst — that would hide the cost, which is the point of it.
+  // The drag is keyed to the belt colour: soft things barely slow the beam, a solid core bogs it, so a lagging beam is a DANGER
+  // READOUT. The rule (DRAG_SOFT/HARD/CAP) lives in beamburn.js for the lab too. A bogged beam stays behind: catching up would hide the cost.
   const beamPhase = [0, 0];
   const CELL_WIDTH_KEYS = ['coreWidth', 'glowWidth', 'jitterAmount'];
   // `plasma` is a view ONTO the rig's plumes (beamdraw.js), kept as a name because
@@ -4855,8 +4837,8 @@ export function initTdTab(root) {
     const guns = playerMesh && playerMesh.userData.laserGuns;
     // auto holds the SAME trigger the player does, so there is one firing
     // path, one heat model and one overheat lockout — not a parallel copy
-    const wantFire = (keys.laser || autoLaserWant) && guns
-      && !player.won && !playerDown;
+    const wantFire = (keys.laser || autoLaserWant) && guns && !player.won && !playerDown
+      && (!story || laserOverheat || eco.spend(TANK_PLASMA.kgPerSecond * dt) || plasmaDry());   // THE PLASMA COSTS BIOMASS (owner, 2026-10-02)
     // heat: build while firing, shed otherwise; overheat locks the trigger
     // until the tubes are fully cold (no feathering the cap)
     if (laserOverheat) {
@@ -5019,17 +5001,8 @@ export function initTdTab(root) {
           // read the board already carries in colour
           along.push({ e, t: pr.s, hard: !e.spec.rammable });
         }
-        // A WALL BOGS IT LIKE ARMOUR DOES (operator). Burning into rock is
-        // the same job as burning through a solid core — the sweep labours,
-        // and firing across a corner drags exactly as it should. It is the
-        // harsher of the two, in fact: a wall also ends the beam outright,
-        // where a body only takes a bite out of the reach.
-        // ONE COPY OF THE RULE (beamburn.js). It sorts nearest-first itself,
-        // so no caller here or in the lab can get the order wrong — and the
-        // order is the whole mechanic.
-        // `bite` is reported, not applied: WALL_STALLS makes rock a flat
-        // stall now. The explicit wall flag matters — rock exactly at the tip
-        // bites 0 and would otherwise read as no wall at all.
+        // A WALL BOGS IT LIKE ARMOUR DOES (operator), and ends the beam; ONE COPY OF THE RULE (beamburn.js, nearest-first). `bite` is
+        // reported, not applied (WALL_STALLS makes rock a flat stall); the explicit wall flag keeps rock at the tip from reading as none.
         const bu = burn(along, len, reach, bite, len < reach);
         for (const hit of bu.hits) damageEnemy(hit.e, tNow, LASER_DPS * dt, false, 'tank');
         const drag = bu.drag, reachLeft = bu.reachLeft;
@@ -5090,7 +5063,7 @@ export function initTdTab(root) {
   function stepShieldDynamics(dt,now) {
     const relays=[];
     if(!playerDown && player.pos)for(const tw of towers){
-      if(tw.def.attack!=='slowfield')continue;
+      if(tw.def.attack!=='slowfield'||story)continue;   // the story's shield charges only at the solar array (owner, 2026-10-02)
       const range=effectiveStats(tw.def,tw.tier).range*cellSide;
       if(a6Arc(graph.centers[tw.ci],player.pos)>range)continue;
       relays.push(tw.id);
@@ -5101,7 +5074,7 @@ export function initTdTab(root) {
         spawnLightning(from,player.pos,tw.def.color,now);
       }
     }
-    const station=!playerDown && player.pos && graph && dungeon.heart!=null && a6Arc(player.pos,graph.centers[dungeon.heart])<cellSide*.55, pad=story?.arrayPad, auto=automated();
+    const station=!story && !playerDown && player.pos && graph && dungeon.heart!=null && a6Arc(player.pos,graph.centers[dungeon.heart])<cellSide*.55, pad=story?.arrayPad, auto=automated();
     const array=pad?.standing?{station:arrayStation,tune:SHIELD_ARRAY,metres:!playerDown&&player.pos?arcToMetres(a6Arc(player.pos,pad.pos),cellSide):Infinity,speed:player.pos&&arrayStation.prev&&dt>0?arcToMetres(a6Arc(player.pos,arrayStation.prev),cellSide)/dt:0}:null; if(auto&&!arrayStation.auto)refillArrays(); arrayStation.auto=auto; arrayStation.prev=player.pos?.slice();   /* the solar array's pad; the handover opens the first sector with it full */
     const dropped=stepShieldFrame(shield,dt,now,{relays,station,array},shieldTune), ev=array?arrayStation.event:null; if(ev){if(SHIELD_ARRAY.cues[ev])sfx.play(SHIELD_ARRAY.cues[ev]);if(ev==='start')showBrief('array_charging');if(ev==='dry'){showBrief('array_dry');record('shield.array.dry',{wave,drawn:arrayStation.drawn});}}
     if(dropped){
@@ -5564,18 +5537,8 @@ export function initTdTab(root) {
     setRamCombo: (v) => { ramCombo = v; }, setRamComboT: (v) => { ramComboT = v; }, setTankLostDeploys: (v) => { tankLostDeploys = v; }, setPlayerDown: (v) => { playerDown = v; },
   });
 
-  // Respawn beside the HEART, not at the spawn gate. The gate is enemy
-  // ground by the time you die — a wave is usually pouring out of it — so
-  // the old respawn put the wreck straight back into the thing that made it
-  // a wreck, and sometimes BEHIND a portal with the wave between you and
-  // home. You come back at the thing you are defending, facing outward.
-  // --- DEPLOY: the one way a tank enters the world ------------------------
-  // Every reset lands here, whatever ran before it — a fresh page load, a
-  // retry after a loss, a forced reset, a hull lost mid-run. The hull starts
-  // at rest inside its berth, drives ENTIRELY OUT, and hands over in manual.
-  // Preludes (the CINEMATIC, the DOWN DASH) differ only in what the camera
-  // was doing beforehand; they all end on DEPLOY's first frame, which is what
-  // makes the opening state identical however you got to it.
+  // Respawn beside the HEART, facing outward: the gate is enemy ground by the time you die. DEPLOY is the one way a tank enters the
+  // world: every reset starts the hull at rest in its berth and drives it out in manual; preludes only differ in the camera before it.
   //
   // "Entirely out" is measured in CELLS, not in metres of model: the box
   // occupies its berth cell, so a hull whose centre has reached the exit
@@ -5732,6 +5695,8 @@ export function initTdTab(root) {
       return 'towers need HIGH GROUND';
     }
     if (towerByCell.has(ci)) return 'occupied';
+    if (story && towers.length + orders.filter((o) => o.kind === 'tower').length >= STORY_SENTRIES.cap) return STORY_SENTRIES.full;   // fewer, stronger sentries (owner, 2026-10-02)
+    if (story && STORY_SENTRIES.buildCells != null && chord(graph.centers[ci], graph.centers[dungeon.heart]) > STORY_SENTRIES.buildCells * cellSide) return STORY_SENTRIES.far;
     if (!graph.adj[ci].some((nb) => dungeon.tags[nb] !== BLOCKED)) {
       return 'beyond the frontier';
     }
@@ -6592,7 +6557,8 @@ export function initTdTab(root) {
       if(!arrived)continue;
       if(target){damageEnemy(target,tNow,effectiveStats(m.by.def,m.by.tier).dmg*(m.config.dmgMul??1),true,'tower',m.by.key);seekerHits++;}   // the story's TALON carries a heavy payload
       else seekerLost++;
-      if(!(target&&m.config.mesh==='talon'&&explode('quiver.talon',norm3(target.pos)))){const burst=makeDotBurst(target?0xffd27f:0x6f8ea0,norm3(m.p),target?22:10);burst.scale.setScalar(cellSide*(target?2.4:1.2));burst.position.fromArray(m.p);scene.add(burst);debris.push(burst);}   // a TALON hit bursts on its target; a miss keeps the small puff
+      const at=norm3(target?.pos??m.p);if(m.config.mesh==='talon'){for(const e of enemies)if(e.alive&&e!==target&&chord(e.pos,at)<QUIVER_SPLASH.cells*cellSide)damageEnemy(e,tNow,effectiveStats(m.by.def,m.by.tier).dmg*(m.config.dmgMul??1)*QUIVER_SPLASH.share,true,'tower',m.by.key);if(!target)explode('rock.dust',at);}   // a hit OR a miss: area damage round where it lands, dust on a miss (owner, 2026-10-02)
+      if(!(m.config.mesh==='talon'&&explode('quiver.talon',at))){const burst=makeDotBurst(target?0xffd27f:0x6f8ea0,norm3(m.p),target?22:10);burst.scale.setScalar(cellSide*(target?2.4:1.2));burst.position.fromArray(m.p);scene.add(burst);debris.push(burst);}   // a TALON hit bursts on its target; a miss keeps the small puff
       m.pool.release(m.mesh);towerSeekers.splice(i,1);
     }
   }
@@ -6821,18 +6787,8 @@ export function initTdTab(root) {
       tw.missileTarget = null; tw.lock = makeLock();
     }
     tw.a6.steps = (tw.a6.steps || 0) + 1;
-    // THE CASSETTE IS THE GAUGE (operator: "diegetic view of missiles
-    // remaining"). The Workshop drew six readiness rings and six silo caps
-    // on this hull; a spent cell loses its ring. No HUD number, no bar —
-    // you read the machine, which is the only ammo counter on the board that
-    // is part of the thing it counts.
-    // ONE PIP PER CELL, ON THE CELL. The Workshop draws readiness rings on
-    // this hull, but they do not survive mergeByMaterial — the model is
-    // merged for draw calls and the descriptive meshes weld into the body.
-    // The MUZZLE empties DO survive (they are the articulation contract), so
-    // the gauge is built on them: a lamp at each launch cell, extinguished
-    // as that cell is spent. It is on the machine, one per rocket, and it
-    // reads at board scale — which is what a diegetic counter has to do.
+    // THE CASSETTE IS THE GAUGE (operator: "diegetic view of missiles remaining"): one lamp at each launch cell's MUZZLE empty (the
+    // Workshop's readiness rings weld into the body in mergeByMaterial), put out as that cell is spent. No HUD number.
     if (tw.rings === undefined) {
       tw.rings = [];
       const mz = tw.obj.userData.muzzles || [];
@@ -7003,17 +6959,8 @@ export function initTdTab(root) {
         // THE LANCE LEAVES THE MUZZLE TIP, ALONG THE BARREL, and stops at
         // the first thing solid (operator). Three corrections in one:
         //
-        //  - it starts at the muzzle's REAL position and height, not at a
-        //    point normalised onto the sphere and lifted back to a nominal
-        //    wall height. That is what put the beam at the wrong altitude,
-        //    detached from the model.
-        //  - it runs along the BARREL, read off the muzzle's own world
-        //    quaternion, so it comes out of the tube rather than out of a
-        //    bearing computed at the cell centre.
-        //  - it is a straight line in the WORLD, marched against terrain:
-        //    the ground and the walls stop it, and it makes an impact where
-        //    they do. Enemies do not stop it — it goes through them and
-        //    damages every one it passes, which is the whole weapon.
+        //  - it starts at the muzzle's REAL position, runs along the barrel's own world quaternion, and is a straight line in the world
+        //    marched against terrain: ground and walls stop it with an impact; enemies do not, it damages every one it passes.
         const from3 = muzzle;
         // FROM THE MUZZLE TIP, TOWARD THE TARGET. The first cut took the
         // direction from the muzzle empty's own world +Z — the model's
@@ -7144,12 +7091,12 @@ export function initTdTab(root) {
   function spawnTowerShot(pos, dir, tw, eff, homing, arcTotal = 0, straightTo = null) {
     const sfx2 = shotOf(tw.def);
     const shell=tw.def.key==='mortar';
-    const manual = pilotMode && pilot?.state.tower === tw, mesh = manual && !shell ? new THREE.Line(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(3 * ((sfx2.trail ?? 0) + 9)), 3)), new THREE.LineBasicMaterial({ color: tw.def.color, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false })) : shell?   /* TRACERS FROM THE OPTIC (owner, 2026-09-14): a piloted round is a STREAK, a line through its trail points, not a round dot */makeOrdnanceShell(cellSide*.28):makeTracer(tw.def.color, (sfx2.projPx ?? 5) * (manual ? 1.9 : 1), (sfx2.trail ?? 0) + (manual ? 6 : 0));
+    const manual = pilotMode && pilot?.state.tower === tw, mesh = manual && !shell ? new THREE.Line(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(3 * ((sfx2.trail ?? 0) + 9)), 3)), new THREE.LineBasicMaterial({ color: tw.def.color, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false })) : shell?   /* TRACERS FROM THE OPTIC (owner, 2026-09-14): a piloted round is a STREAK, a line through its trail points, not a round dot */makeOrdnanceShell(cellSide*.45):makeTracer(tw.def.color, (sfx2.projPx ?? 5) * (manual ? 1.9 : 1), (sfx2.trail ?? 0) + (manual ? 6 : 0));
     const p0 = norm3(pos);
     const lift0 = 1 + params.wallHeight * 0.5;
     const attr = mesh.geometry.getAttribute('position');
     for (let i = 0; !shell && i < attr.count; i++) { const s0 = straightTo ? pos : [p0[0] * lift0, p0[1] * lift0, p0[2] * lift0]; attr.setXYZ(i, s0[0], s0[1], s0[2]); }
-    attr.needsUpdate = true;if(shell)mesh.position.set(p0[0]*lift0,p0[1]*lift0,p0[2]*lift0);
+    attr.needsUpdate = true;if(shell)mesh.position.set(pos[0],pos[1],pos[2]);   // the shell leaves the barrel, not the pedestal (owner, 2026-10-02)
     scene.add(mesh);
     // a lobbed shell knows where it will land before it leaves the tube —
     // the marker on that cell is most of the mortar's feel: threat you can
@@ -7163,7 +7110,7 @@ export function initTdTab(root) {
       range: end ? end.len : sd ? rayToTerrain(pos, sd, reach, tw.ci).len : Math.min(reach, rayToTerrain(scale3(p0, lift0), dir, reach, tw.ci).len), terrain: true, straight: sd ? { p: pos.slice(), d: sd, end } : null,   // a round stops at the first rock it flies into; a straight round carries its own point and direction in space, and its end
       speed: (sfx2.projSpeed ?? 16) * cellSide, // per-tower tempo
       arcTotal, arcH: cellSide * 2.3, color: tw.def.color, // a lob, not a moonshot
-      landCi, markT: 0, px: (sfx2.projPx ?? 5) * (manual ? 1.9 : 1), manual, key: tw.key,
+      landCi, markT: 0, px: (sfx2.projPx ?? 5) * (manual ? 1.9 : 1), manual, key: tw.key, h0: shell ? len3(pos) : 0,
     });
   }
 
@@ -7237,7 +7184,7 @@ export function initTdTab(root) {
       const u = p.arcTotal > 0 ? Math.min(1, p.dist / p.arcTotal) : 0;
       const uw = Math.pow(u, 1.35);   // (`v` is this scope's speed)
       const arc = p.arcTotal > 0 ? 4 * uw * (1 - uw) * p.arcH : 0;
-      const lift = 1 + params.wallHeight * 0.5 + arc;
+      const lift = 1 + params.wallHeight * 0.5 + arc + (p.h0 ? (p.h0 - 1 - params.wallHeight * 0.5) * (1 - u) : 0);   // a shell starts at its muzzle's height
       // the shell SWELLS toward apex — nearer the top-down camera, and it
       // sells the height even from the chase cam
       if (p.arcTotal > 0 && !p.shell) p.mesh.material.size = p.px * (1 + 1.1 * (arc / p.arcH));
@@ -8290,7 +8237,7 @@ export function initTdTab(root) {
     // heart moods, debris) and the camera transition keep breathing.
     // Mid-assault the same toggle is camera-only.
     stepBriefClock(dt);
-    if (pilotMode) endShot();
+    if (pilotMode && shotId() !== 'takeControl') endShot();
     stepShot(dt);
     const frozen = buildFrozen() || (shotActive() && !/^(breach|sol88Launch)$/.test(shotId()));   // live shots: the world runs under them
     // The BUILD pause holds the WORLD still, not the DRIVER (planning used to take three switches); a reveal or a tutorial hold
@@ -8586,8 +8533,9 @@ export function initTdTab(root) {
     screen: (id) => { if (id !== 'synthetic') return; syntheticModal ??= createSyntheticModal(root); const was = paused; paused = true; syntheticModal.open(BRIEFS.vibration_study.lines, () => { paused = was; }); },
     pilot: (ci, laneCi) => {
       if (pilot?.gunship || laserStation.seated()) return;   // a scripted hand-over never evicts a gunner or SOL-82: the beat is deferred, not the player (2026-09-23)
+      const from = pilotMode ? { pos: camera.position.clone(), quat: camera.quaternion.clone() } : null, perch = perchOf(towerByCell.get(ci) ?? { ci }), lit = from && highlightSeat(scene, perch, graph.normals[ci], cellSide);   // from one seat to the next: back out, the next one lit (owner, 2026-10-02)
       seatGlide.begin(camera); enterPilot([ci, ...towers.map((t) => t.ci).filter((c) => c !== ci)]);
-      startShot({ id: 'takeControl', dur: 3.2, poseAt: takeControlPose(perchOf(towerByCell.get(ci) ?? { ci }), graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight), onEnd: () => { setView('bastion'); snapCamera(); } });
+      startShot({ id: 'takeControl', dur: from ? 4.4 : 3.2, poseAt: takeControlPose(perch, graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight, from), onEnd: () => { lit?.(); setView('bastion'); snapCamera(); } });
     },
   };
   Object.assign(storyApi, {

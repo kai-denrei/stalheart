@@ -81,3 +81,14 @@ export const SENTRIES = Object.freeze([
 ].map(Object.freeze));
 export const SENTRY_BY_KEY = Object.freeze(Object.fromEntries(SENTRIES.map(s => [s.key,s])));
 export const SENTRY_ORDER = Object.freeze(SENTRIES.map(s => s.key));
+
+// THE QUIVER'S ROUND BURSTS WHERE IT LANDS (owner, 2026-10-02: "AOE effect even if they land on a missing target, AND explosion and dust
+// even if they miss"): every body within `cells` of the landing takes `share` of the round's damage, hit or miss
+export const QUIVER_SPLASH = Object.freeze({ cells: 1.2, share: 0.5 });
+
+// FEWER SENTRIES, STRONGER ONES (owner, 2026-10-02: "difficulty and fps tuning idea; make towers harder to build, maybe fewer spots to build
+// on, but more powerful. Reduce numbers, keeps the intensity. Or simply limited availability"; and "some sort of maximum range of where
+// we can build towers"). In the story Isao keeps at most `cap` sentries running (standing and ordered), every sentry hits `dmgMul` times
+// harder, and with `buildCells` set an order farther than that many cells from the Stålheart is refused (null: no limit, the owner is
+// still weighing it). `full` and `far` are the refusals the build menu shows.
+export const STORY_SENTRIES = Object.freeze({ cap: 10, dmgMul: 1.4, buildCells: null, full: 'Isao keeps 10 sentries running', far: 'too far from the Stålheart' });

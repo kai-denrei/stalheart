@@ -21,7 +21,7 @@ export const EXPLOSION_USES = Object.freeze({
   'tank.shell': Object.freeze({ module: 'bofors-burst', scale: 0.405 }),     // ~4.5 m, the Bofors' ratio kept
   'quiver.talon': Object.freeze({ module: 'bofors-burst', scale: 0.7 }),     // ~8 m (owner, 2026-10-02: "slightly bigger, more smoke fumes"; was 0.54)
   // THE MORTAR'S SHELL (owner, 2026-10-02): its dot burst keeps the splash's size; this is the smoke over it, the Bofors' burst at ~7 m
-  'mortar.shell': Object.freeze({ module: 'bofors-burst', scale: 0.62 }),
+  'mortar.shell': Object.freeze({ module: 'bofors-burst', scale: 0.95 }),   // ~10 m: slower and heavier since 2026-10-02 (was 0.62)
   // THE LANCER'S BEAM ON THE GROUND (owner, 2026-10-02: "a small burn effect like the Orbital laser does"): a burst a third of the laser's smoke
   'lancer.burn': Object.freeze({ module: 'bofors-burst', scale: 0.22 }),
   'strike.orbital': Object.freeze({ module: 'orbital-strike', scale: 1.5 }), // 135 m, 10 s
@@ -55,7 +55,7 @@ export const EXPLOSION_SCARE = Object.freeze({
   'gunship.nuke': Object.freeze({ cells: 10, seconds: 4 }),   // the swarm scatters from a mini nuke: 100 m of bodies turned and running, four seconds of it
   'tank.shell': Object.freeze({ cells: 2, seconds: 1.2 }),
   'quiver.talon': Object.freeze({ cells: 2.5, seconds: 1.5 }),
-  'mortar.shell': Object.freeze({ cells: 2, seconds: 1.2 }),
+  'mortar.shell': Object.freeze({ cells: 2.8, seconds: 1.4 }),
   'lancer.burn': Object.freeze({ cells: 0.6, seconds: 0.5 }),   // a scorch under the beam: a flinch, not a rout
   'strike.orbital': Object.freeze({ cells: 12, seconds: 3 }),
   'laser.ignite': Object.freeze({ cells: 8, seconds: 2 }),

@@ -215,6 +215,11 @@ export const BRIEFS = {
     id: 'sol88_away', face: 'glee', title: 'ARC-01 · AWAY', once: true,
     lines: ['Away! Look at it go.', 'Petals out once it clears the air. Then it climbs to its orbit.'],
   },
+  // THE OTHER ROCKETS (owner, 2026-10-02): the first thing he says once the camera is the player's
+  sites_seen: {
+    id: 'sites_seen', face: 'curious', title: 'COMMS · ISAO', once: true,
+    lines: ['We were not the only rocket. Three more came down off course.', 'See the beacons? Something worth fetching at each. Later, with a hull.'],
+  },
   dyes_found: {
     id: 'dyes_found', face: 'glee', title: 'PAINT SHOP · ISAO',
     lines: ['Their biomass has pigment in it. I can print it as paint.', 'Take a breath. Pick a colour. The hull has been grey long enough.'],

@@ -12,6 +12,8 @@ export function createSentryPilot(root, host) {
   root.append(panel);const hintOff=seatHint(panel.querySelector('footer'),{mobile:!!host.mobile});   /* the phone's seat hint, once per browser (src/fx/seat-hint.js) */root.classList.add('sentry-pilot-mode');
   const up=new THREE.Vector3(),forward=new THREE.Vector3(),direction=new THREE.Vector3(),eye=new THREE.Vector3(),camEye=new THREE.Vector3(),v=new THREE.Vector3();
   let dragging=false,map=false,lastX=0,lastY=0,lastT=performance.now();
+  // A SENTRY'S OPTIC IS A DIFFERENT VIEW, AND SAYS SO (owner, 2026-10-02): a soft black vignette round the frame in a Rotor's or a Quiver's seat; not on the map, not in the gunship
+  const vignette=document.createElement('div');vignette.id='seat-vignette';vignette.hidden=true;root.insertBefore(vignette,panel);   // under the seat's own panel and hint, over the world
   const locked=()=>document.pointerLockElement===root;
   state.turn=0;   // -1..1 from the tank pad's side zones on touch
   const abort=new AbortController(),listen=(el,key,fn,options={})=>el.addEventListener(key,fn,{...options,signal:abort.signal});
@@ -58,6 +60,7 @@ export function createSentryPilot(root, host) {
   for(const type of RELEASE_EVENTS)listen(type==='mouseleave'?root:type==='blur'?window:document,type,()=>{if(releasesHeld(type,{hidden:document.visibilityState==='hidden',locked:!!document.pointerLockElement,wasLocked:true}))release();});
   listen(root,'wheel',e=>{if(map||e.target.closest('#sentry-pilot'))return;e.preventDefault();e.stopImmediatePropagation();const z=Math.max(1,Math.min(5,(gunship?state.zoomGoal??state.zoom:state.zoom)+(e.deltaY<0?.25:-.25)));if(gunship)state.zoomGoal=z;else{state.zoom=z;host.zoom(state.zoom);};},{capture:true,passive:false});
   function pose(tw,goal){
+    vignette.hidden=!!gunship||map;
     if(!tw)return false;
     if(gunship&&tw===ship)holdAim();
     const now=performance.now(),dt=Math.min(.05,(now-lastT)/1000);lastT=now;
@@ -231,6 +234,6 @@ export function createSentryPilot(root, host) {
   return {state,pose,target,attach,select,setView,release,isMap:()=>map,hit(){cross.classList.add('hit');clearTimeout(hitT);hitT=setTimeout(()=>cross.classList.remove('hit'),120);},mountGunship,dismountGunship,gunshipTick,gunshipOptic,get gunship(){return gunship;},
     aimAt:pos=>{const {held,target}=state;attach(state.tower,pos);state.held=held;state.target=target;},
     update(text){panel.querySelector('output').textContent=text;},
-    dispose(){hintOff();dismountGunship();hud?.dispose();abort.abort();if(locked())document.exitPointerLock?.();panel.remove();root.classList.remove('sentry-pilot-mode','pilot-framing');}
+    dispose(){vignette.remove();hintOff();dismountGunship();hud?.dispose();abort.abort();if(locked())document.exitPointerLock?.();panel.remove();root.classList.remove('sentry-pilot-mode','pilot-framing');}
   };
 }

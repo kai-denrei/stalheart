@@ -27,7 +27,17 @@ export function createStoryViews(root, on) {
   // after the handover: the call-in meter fills; full, the button calls the pass (owner, 2026-09-14)
   function meter(progress, full) { if (!ship) return; ship.disabled = !full; ship.classList.toggle('ready', full); ship.classList.remove('live'); const t = full ? 'GUNSHIP · CALL' : `GUNSHIP · ${Math.round(progress * 100)}%`; if (ship.textContent !== t) ship.textContent = t; }
   mounts([]);
-  return { active, mounts, station, meter, sol82, tank, dispose() { nav.remove(); } };
+  // TAB CYCLES THE VIEWS (owner, 2026-10-02): the next button on the strip that is shown and enabled, after the one that is active
+  const onKey = (e) => {
+    if (e.key !== 'Tab' || e.altKey || e.ctrlKey || e.metaKey || e.target?.closest?.('input, textarea, select')) return;
+    const list = [...nav.querySelectorAll('button')].filter((b) => !b.hidden && !b.disabled);
+    if (!list.length) return;
+    e.preventDefault();
+    const at = list.findIndex((b) => b.classList.contains('active')), next = list[(at + (e.shiftKey ? list.length - 1 : 1)) % list.length];
+    next.click();
+  };
+  globalThis.addEventListener?.('keydown', onKey, true);
+  return { active, mounts, station, meter, sol82, tank, dispose() { globalThis.removeEventListener?.('keydown', onKey, true); nav.remove(); } };
 }
 
 // THE CONTROLLER'S SIDE of the strip, moved out of the controller's storyApi unchanged; the controller merges it back into

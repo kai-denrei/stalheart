@@ -1484,6 +1484,51 @@ try{
  current='gunship-auto-firing';await finish();
  await until(`(${T}.state().programme.colony.gunship.fly||{}).nukePass>=0`,40000).catch(async()=>assert.fail(`the MK-9 drops on a pile in view (${JSON.stringify(await ga())})`));
  await delay(4500);current='gunship-auto-nuke';await finish();
+ } else if(args.includes('--round6')) {
+ // THE OWNER'S SIXTH NOTES (2026-10-02): beacons over the rockets that came down off course once the camera is free; Tab cycles the
+ // views; a sentry's optic has a vignette; the tank's plasma costs biomass
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`);
+ await go('round6-rotor','index.html?sw=0&acceptance=1&cine=0&skip=rotor#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ await until(`(${T}.state().programme.colony.beacons||[]).length===3`,30000).catch(async()=>assert.fail(`three beacons over the landing sites (${JSON.stringify((await st()).programme.colony.beacons)})`));
+ await finish();
+ // the Rotor's optic in the first wave's chapter: the vignette
+ await go('round6-wave','index.html?sw=0&acceptance=1&cine=0&skip=wave#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ await until(`${T}.seatState().seatKey==="rotor"`,60000).catch(async()=>assert.fail(`the first wave puts the player in the Rotor (${JSON.stringify(await evaluate(`${T}.seatState().seatKey`))})`));
+ await until('!!document.querySelector("#seat-vignette") && !document.querySelector("#seat-vignette").hidden',8000).catch(async()=>assert.fail('the Rotor optic shows the vignette'));
+ await delay(1500);current='round6-rotor-vignette';await finish();
+ // the Rotor to the Quiver: back out of the Rotor, the Quiver lit, into its optic (the QUIVER chapter's hand-over)
+ await evaluate('window.__stalheartPilotTest.hold(true)');
+ await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("wave_cleared"))return true;const t=window.__stalheartPilotTest;if(t.state().overheated)return false;t.aimEnemy();return false;})()',480000);
+ await evaluate('window.__stalheartPilotTest.hold(false)');
+ await until(`${T}.state().shot==='takeControl'`,120000).catch(async()=>assert.fail(`the hand-over to the Quiver (${(await st()).shot})`));
+ await delay(1300);current='round6-quiver-handover-out';await finish();
+ await delay(1700);current='round6-quiver-handover-in';await finish();
+
+ await go('round6-skip','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await delay(2500);
+ await evaluate('document.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape"}))');
+ const active=()=>evaluate('[...document.querySelectorAll("#story-views button.active")].map(b=>b.dataset.mount??b.dataset.view).join()');
+ await until('document.querySelectorAll("#story-views button:not([hidden]):not([disabled])").length>=2',20000);
+ const a0=await active();
+ await evaluate('dispatchEvent(new KeyboardEvent("keydown",{key:"Tab",bubbles:true}))');await delay(1500);
+ const a1=await active();assert.notEqual(a1,a0,`Tab moves to the next view (${a0} -> ${a1})`);
+ // a sentry's optic: the vignette
+ await until(`${T}.state().pilotMode===true || document.querySelector("#seat-vignette")&&!document.querySelector("#seat-vignette").hidden`,8000).catch(()=>{});
+ const vig=await evaluate('!!document.querySelector("#seat-vignette") && !document.querySelector("#seat-vignette").hidden');
+ console.log(`  round6: Tab ${a0} -> ${a1}, vignette ${vig}`);
+ if(/rotor|quiver/.test(a1))assert.ok(vig,'a sentry seat shows the vignette');
+ current='round6-seat';await finish();
+ await evaluate('document.querySelector("#story-views [data-view=tank]")?.click()');await delay(1500);
+ assert.equal(await evaluate('!!document.querySelector("#seat-vignette") && !document.querySelector("#seat-vignette").hidden'),false,'no vignette in the tank');
+ // the plasma: biomass drains while the trigger is held
+ const b0=(await st()).biomass;
+ await evaluate('dispatchEvent(new KeyboardEvent("keydown",{key:"Shift",code:"ShiftLeft",bubbles:true}))');await delay(2500);
+ await evaluate('dispatchEvent(new KeyboardEvent("keyup",{key:"Shift",code:"ShiftLeft",bubbles:true}))');
+ const b1=(await st()).biomass;console.log(`  round6: plasma biomass ${b0} -> ${b1}`);
+ assert.ok(b1<b0-3,`the plasma costs biomass (${b0} -> ${b1})`);
+ await finish();
  } else if(args.includes('--units-sky')) {
  // THE SKY ON THE BENCH (owner, 2026-10-01: "UNITS are not showing all the units; we should see SOL, and the Gunship. also show
  // Wireframe for all units"): the KORP, SOL-82 and SOL-88 are catalogue entries built from their pinned GLBs, and the wireframe

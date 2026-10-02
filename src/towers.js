@@ -40,11 +40,11 @@ const COMBAT = {
   "mortar": {
     "color": 10470655,
     "cost": 110,
-    "dmg": 0.13333333333333333,
+    "dmg": 0.3,
     "range": 3.5,
-    "rate": 0.9,
+    "rate": 0.5,
     "attack": "mortar",
-    "splash": 1.5,
+    "splash": 2.2,
     "arc": true
   },
   "lancer": {

@@ -57,7 +57,11 @@ export function createShopRadial(host) {
       ];
     } else if (existing) {
       const cost = upgradeCost(existing.def, existing.tier);
-      center = `<div class="radial-center">${existing.def.label}<br>tier ${existing.tier}</div>`;
+      // WHAT THE UPGRADE BUYS (owner, 2026-10-02: "we should have a sense of what the upgrades for sentries mean"): the next tier's gains
+      const now = effectiveStats(existing.def, existing.tier), nx = cost !== null ? effectiveStats(existing.def, existing.tier + 1) : null;
+      const pct = (a, b) => `+${Math.round((b / a - 1) * 100)}%`;
+      const gains = nx ? `<small class="radial-gain">next: dmg ${pct(now.dmg, nx.dmg)} · range ${pct(now.range, nx.range)} · rate ${pct(now.rate, nx.rate)}${nx.splash > now.splash ? ` · blast ${pct(now.splash, nx.splash)}` : ''}</small>` : '<small class="radial-gain">fully upgraded</small>';
+      center = `<div class="radial-center">${existing.def.label}<br>tier ${existing.tier}${gains}</div>`;
       items = [
         cost !== null
           ? { cls: 'shop-up', txt: `upgrade<br>${cost}kg`, dis: !host.eco().canAfford(cost) }

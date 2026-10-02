@@ -25,6 +25,8 @@ import { ORBITAL_WORKS } from '../content/orbital-works.js';
 import { makeWorks, launchDue, beginLaunch, collectorUp, energyBonus } from '../domain/orbital-works.js';
 import { createOrbitalRing } from './orbital-ring.js';
 import { createScoreboard } from './scoreboard.js';
+import { createSiteBeacons } from './site-beacons.js';
+import { STORY_EXPEDITIONS } from '../content/story-defaults.js';
 import { createIsaoStrike } from './isao-strike.js';
 import { createGunshipAuto } from './gunship-auto.js';
 import { GUNSHIP_AUTO, GUNSHIP_ORBIT } from '../content/gunship.js';
@@ -89,6 +91,14 @@ export function createProgrammeHost(c) {
           for (const bd of s.boards) bd.tick(dt);
         }
       }
+      // THE ROCKETS THAT CAME DOWN OFF COURSE (src/fx/site-beacons.js): beacons over the landing sites from the first free camera after the
+      // landing, each gone once its site is visited; Isao names them once
+      if (!s.beacons && c.scene && s.sites?.length && !c.shotId?.()) {
+        const ids = STORY_EXPEDITIONS.sites.filter((x) => !x.reveal).map((x) => x.id);   // story.sites holds the first-wave sites' cells, in this order
+        s.beacons = createSiteBeacons(c.scene, s.sites.map((ci, i) => ({ id: ids[i], point: c.graph().centers[ci] })).filter((x) => x.id), { metres: c.cellSide() / 10 });
+        if (!c.pilotMode() && !c.briefQ()) showBrief('sites_seen');
+      }
+      if (s.beacons) { s.beacons.tick(dt); for (const x of s.expeditions?.sites ?? []) if (x.state !== 'hidden' && x.state !== 'guarded') s.beacons.drop(x.id); }
       // THE GUNSHIP ON AUTO (src/fx/gunship-auto.js, GUNSHIP_AUTO): the passes the player sits in and fires are Isao's calibration; once
       // he has two, a full meter calls the ship by itself and a pass nobody is seated for flies itself. The seat is always the player's
       if (c.gunshipRig && c.camera) {
@@ -260,6 +270,6 @@ export function createProgrammeHost(c) {
     swell: () => (c.story()?.gsAuto ? GUNSHIP_AUTO.swell : 1),
     // what the harness reads: the launch beat, the pad, the calibration
     gunshipAuto: () => ({ auto: !!c.story()?.gsAuto, manned: c.story()?.gsManned ?? 0, fly: c.story()?.gsFly?.state() ?? null }),
-    colony: () => ({ gunship: { auto: !!c.story()?.gsAuto, manned: c.story()?.gsManned ?? 0, fly: c.story()?.gsFly?.state() ?? null, swell: c.story()?.gsAuto ? GUNSHIP_AUTO.swell : 1, budget: c.story()?.gsAuto ? GUNSHIP_AUTO.aliveBudget : null }, board: c.story()?.boards?.map((b) => b.state()) ?? null, isaoKills: c.story()?.isaoKills ?? 0, strike: c.story()?.strike?.state() ?? (c.story()?.strikeDone ? 'done' : null), dyes: c.story()?.dyes ?? null, shop: !!c.story()?.shop, painted: c.story()?.painted ?? 0, boardCell: (() => { const st = c.story()?.programme?.steps.find((x) => x.id === 'board'); return st ? c.story().print.cellOf(st) : -1; })(), launch: c.story()?.launch?.state() ?? null, works: c.story()?.works ? { ...c.story().works, ring: c.story().worksRing?.state() ?? null } : null, sol88: !!c.story()?.sol88, pad: c.story()?.armoryPad?.ring?.state() ?? null, cell: c.story()?.armoryPad?.cell ?? -1, calibrated: !!c.story()?.calibrated, manned: c.laserStation?.manned?.() ?? 0 }),
+    colony: () => ({ beacons: c.story()?.beacons?.ids() ?? null, gunship: { auto: !!c.story()?.gsAuto, manned: c.story()?.gsManned ?? 0, fly: c.story()?.gsFly?.state() ?? null, swell: c.story()?.gsAuto ? GUNSHIP_AUTO.swell : 1, budget: c.story()?.gsAuto ? GUNSHIP_AUTO.aliveBudget : null }, board: c.story()?.boards?.map((b) => b.state()) ?? null, isaoKills: c.story()?.isaoKills ?? 0, strike: c.story()?.strike?.state() ?? (c.story()?.strikeDone ? 'done' : null), dyes: c.story()?.dyes ?? null, shop: !!c.story()?.shop, painted: c.story()?.painted ?? 0, boardCell: (() => { const st = c.story()?.programme?.steps.find((x) => x.id === 'board'); return st ? c.story().print.cellOf(st) : -1; })(), launch: c.story()?.launch?.state() ?? null, works: c.story()?.works ? { ...c.story().works, ring: c.story().worksRing?.state() ?? null } : null, sol88: !!c.story()?.sol88, pad: c.story()?.armoryPad?.ring?.state() ?? null, cell: c.story()?.armoryPad?.cell ?? -1, calibrated: !!c.story()?.calibrated, manned: c.laserStation?.manned?.() ?? 0 }),
   };
 }
