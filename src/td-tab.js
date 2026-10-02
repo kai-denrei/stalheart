@@ -6296,7 +6296,7 @@ export function initTdTab(root) {
   }
 
   function updateIsao(dt) {
-    if (!isao) return;
+    if (!isao) return; if (isao.held) { lookIsao(isao, dt); return; }   // a set piece has him (src/fx/isao-strike.js)
     // piloted: the queue waits, and so does everything else he does
     if (params.view === 'drone') { pilotIsao(dt); return; }
     isaoHeading = null;
@@ -6622,19 +6622,9 @@ export function initTdTab(root) {
   };
   const pa = new THREE.Vector3(), pb = new THREE.Vector3();
 
-  // ONE CONSTRUCTOR for both beams: a thrower is wide and jittery, a lance
-  // is thin and steady, and the difference is two numbers rather than two
-  // copies of the rig.
-  // A LANCE IS NOT A THROWER (operator: "much thinner and straighter, no
-  // jitter"). Same shader, opposite settings: a plasma thrower is wide, hot
-  // and unstable because it is a spray of matter; a laser is a thin steady
-  // line because it is light. The jitter goes to nothing, the noise and
-  // flicker come most of the way down, and the width is a fifth of the
-  // thrower's — which is what makes the two read as different weapons
-  // rather than as the same beam at two colours.
-  // THE LOOKS LIVE IN shotfx.js NOW, so the shooting lab draws the same lance
-  // and the same throw the board does. They were private constants here,
-  // which is precisely why the lab could only approximate them.
+  // ONE CONSTRUCTOR for both beams: a thrower is wide, hot and jittery (a spray of matter), a lance thin and steady (light; operator:
+  // "much thinner and straighter, no jitter"): jitter to nothing, noise and flicker most of the way down, a fifth of the width. The looks
+  // live in shotfx.js so the shooting lab draws the same lance and throw the board does.
   const LANCE_LOOK = SHOT_LANCE_LOOK;
   const THROW_LOOK = SHOT_THROW_LOOK;
 
@@ -8615,7 +8605,8 @@ export function initTdTab(root) {
   // ISAO KEEPS BUILDING (src/fx/programme-host.js): perks, hasPerk, build, repaired, printed
   createProgrammeHost({
     laserStation, shotId, showBrief, deployStart, deployStep, breachWallCell, graph: () => graph, cellSide: () => cellSide, leavePilot, camera, startShot, deployFramePoseFor, camA, setView, PLAYER_MAX, orders, breachQueue, breachedCells, gunshipRig, spawnIsao, updateHud, syncLifeContainers, rebuildAfterBreach, recomputePortalDist, adoptBays,
-    scene, sfx, eco: () => eco, ammo: () => ammo, ammoMax: AMMO_MAX, setAmmo: (v) => { ammo = v; }, playerPos: () => player.pos, kills: () => rs?.bySrc ?? {}, rank: () => tankRank, hands: () => tankKills,   // the colony's hands
+    scene, sfx, eco: () => eco, ammo: () => ammo, ammoMax: AMMO_MAX, setAmmo: (v) => { ammo = v; }, playerPos: () => player.pos, kills: () => rs?.bySrc ?? {}, rank: () => tankRank, hands: () => tankKills, killsByType: () => rs?.kills, hull: () => playerMesh,
+    isao: () => isao, enemies: () => enemies, explode: (u, p) => explode(u, p), kill: (e, src) => (e.alive ? (damageEnemy(e, t, e.hp + 1, true, src), true) : false),   // the colony's hands
     story: () => story, pilot: () => pilot, deploy: () => deploy, t: () => t, playerHP: () => playerHP, storyViews: () => storyViews, sectorRun: () => sectorRun, waveActive: () => waveActive, dungeon: () => dungeon, tdFullTags: () => tdFullTags, storyBase: () => storyBase, pilotMode: () => pilotMode, briefQ: () => briefQ,
     setBerths: (v) => { berths = v; }, setPlayerDown: (v) => { playerDown = v; }, setDeploy: (v) => { deploy = v; }, setPlayerHP: (v) => { playerHP = v; },
   }),

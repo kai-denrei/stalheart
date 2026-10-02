@@ -28,7 +28,7 @@ export const ISLANDS = Object.freeze([
   // THE COLONY (owner, 2026-10-01): the armory behind the bays beside the back lane, the farm east of the Stålheart between the solar
   // array and the assembly line, the chip plant past the assembly line, and the ARC-01's long island on the west rim between HUGIN and
   // the radar, its rail pointed out over the rock
-  { id: 'board', w: 8, d: 6, x: -22, z: -52, stage: 9 },   // the scoreboard's slab, between the landing pad and HUGIN, facing the gate (owner, 2026-10-02)
+  { id: 'board', w: 12, d: 6, x: -22, z: -52, stage: 9 },   // the scoreboard's slab, between the landing pad and HUGIN, facing the gate (owner, 2026-10-02)
   { id: 'armory', w: 24, d: 20, x: -34, z: 62, stage: 9 },
   { id: 'farm', w: 20, d: 22, x: 48, z: -30, stage: 9 },
   { id: 'chips', w: 14, d: 12, x: 60, z: 40, stage: 9 },

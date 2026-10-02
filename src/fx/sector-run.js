@@ -246,7 +246,8 @@ export function createSectorRun(h) {
     debrief().show(r, { isao: outcome === 'lost' ? undefined : nextLines() });
     h.hud();
   }
-  function next() { if (phase !== 'debrief' && phase !== 'campaign') return; debrief().hide(); h.pause(false); begin(def.n + 1); }
+  // the break between sectors: the host may take it (the paint shop, src/fx/programme-host.js interlude) and hand it back when done
+  function next() { if (phase !== 'debrief' && phase !== 'campaign') return; debrief().hide(); const go = () => { h.pause(false); begin(def.n + 1); }; phase = 'break'; if (!api.interlude?.(go)) go(); }
   function cont() {
     if (phase === 'lost-shown') { h.reload(); return; }
     if (phase === 'debrief' && doorAt !== null && def.n === doorAt + 1 && !campaignShown) { campaignShown = true; phase = 'campaign'; debrief().showCampaign({ reports: reports.slice(), totals: campaignTotals(reports) }, { isao: nextLines() }); return; }

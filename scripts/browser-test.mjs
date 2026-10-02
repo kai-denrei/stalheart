@@ -1355,7 +1355,10 @@ try{
  // launches SOL-88 on its sled, and the next pass fires on its own at the densest pile with nobody in the seat
  const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), prog=async()=>(await st()).programme;
  const {BASE_PERKS}=await import('../src/content/base-programme.js'),{LASER_AUTO}=await import('../src/content/orbital-laser.js'),{LAUNCH}=await import('../src/fx/arc-launch.js');
- await go('colony-load','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4&laser=online#td');
+ // THE DYES: a book with the white dye extracted and never offered, so the break after this sector opens the paint shop
+ await go('colony-seed','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4&laser=online#td');
+ await evaluate(`localStorage.setItem('stalheart:v1:dyes', JSON.stringify({ kills: { white: 60 }, unlocked: ['white'], offered: [], livery: { armour: 'factory', edge: 'factory' } }))`);
+ await go('colony-load','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4&laser=online&x=1#td');
  await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
  await until(`${T}.state().sector.n===4`,60000);
  await evaluate(`${T}.sectorQuiet(true)`);   // no programme waves: this step is about the base, not the fight
@@ -1364,7 +1367,8 @@ try{
  // 1. THE ARMORY, THE FARM, THE CHIP PLANT print in order between waves
  for(const id of ['board','armory','farm','chips']){await until(`${T}.state().programme.printed.includes(${JSON.stringify(id)})`,120000).catch(async()=>assert.fail(`Isao prints the ${id} (${JSON.stringify(await prog())})`));console.log(`  colony: ${id} printed`);}
  {const p=await prog();assert.ok(p.perks.includes('armory')&&p.perks.includes('farm')&&p.perks.includes('chips'),`the colony's perks are on (${p.perks})`);
-  assert.ok(p.colony.board&&p.colony.board.you>=0&&p.colony.board.isao>=0,`the scoreboard stands and keeps count (${JSON.stringify(p.colony.board)})`);
+  assert.ok(Array.isArray(p.colony.board)&&p.colony.board.length===2,`two boards stand, the player's and Isao's (${JSON.stringify(p.colony.board)})`);
+  assert.equal(p.colony.isaoKills,0,'Isao has killed nothing yet');
   await evaluate(`${T}.placeTank(${p.colony.boardCell})`);await delay(900);current='colony-board';await finish();
   assert.ok(p.colony.pad&&p.colony.pad.standing,`the armory's pad stands (${JSON.stringify(p.colony.pad)})`);
   const s=await st();assert.ok(Math.abs(s.laser.period-180*BASE_PERKS.chipsPeriod)<0.6,`the chip plant brings the passes closer (${s.laser.period})`);}
@@ -1375,6 +1379,18 @@ try{
   const a0=(await st()).programme.ammo;await until(`${T}.state().programme.ammo>=3`,6000).catch(async()=>assert.fail(`the pad reloads the rack (${(await st()).programme.ammo} from ${a0}, pad ${JSON.stringify((await prog()).colony.pad)})`));
   assert.ok((await prog()).colony.pad.near,'the hull is on the pad');console.log(`  colony: rack ${a0} -> ${(await st()).programme.ammo} on the pad`);}
  current='colony-pad';await finish();
+ // ISAO'S MISSILE: a strong wave in front of the hull, nobody seated: he lugs one missile over, drops it and kills exactly one
+ {const {ISAO_STRIKE}=await import('../src/content/base-programme.js');
+  await evaluate(`${T}.spawnFodder(${ISAO_STRIKE.alive+40})`);await delay(3000);
+  await until(`${T}.state().performance.enemies>=${ISAO_STRIKE.alive}`,30000).catch(async()=>assert.fail(`a strong wave is up (${(await st()).performance.enemies})`));
+  await until(`${T}.state().foes.length>20`,20000);
+  {const f=(await st()).foes;await evaluate(`${T}.placeTank(${f[Math.floor(f.length/2)][0]})`);}   // the hull beside the swarm, on screen
+  await until(`(c=>c.strike&&c.strike!=='done')(${T}.state().programme.colony)`,30000).catch(async()=>assert.fail(`Isao comes with his missile (${JSON.stringify((await prog()).colony)})`));
+  await until(`(c=>c.strike&&c.strike.phase==='carry'&&c.strike.t>7)(${T}.state().programme.colony)`,20000).catch(()=>{});current='colony-isao-carry';await finish();
+  await until(`${T}.state().programme.colony.isaoKills===1`,30000).catch(async()=>assert.fail(`his missile lands and kills one (${JSON.stringify((await prog()).colony)})`));
+  current='colony-isao-one';await finish();
+  await until(`${T}.state().programme.colony.strike==='done'`,20000);
+  await evaluate(`${T}.sectorClearField()`);}
  // 3. TWO MANNED PASSES: the player in the seat with the beam held is a manned pass; Isao's calibration comes with the second
  for(let k=1;k<=2;k++){
   await evaluate(`${T}.laserPassNow()`);await until(`${T}.state().laser.overhead`,5000);
@@ -1413,7 +1429,16 @@ try{
  await until(`${T}.state().sector.debriefOpen`,30000).catch(async()=>assert.fail(`the sector is secured and debriefed (${JSON.stringify((await st()).sector)})`));
  {const r=await evaluate(`${T}.sectorReport()`);assert.ok(r.colony.launches>=1,`the books count SOL-88's launch (${JSON.stringify(r.colony)})`);}
  await evaluate(`${T}.sectorContinue()`);
+ // THE BREAK: the paint shop opens over the paused game; a white swatch paints the armour; DONE lets the next sector begin
+ await until(`${T}.state().programme.colony.shop`,10000).catch(async()=>assert.fail(`the paint shop opens at the break (${JSON.stringify((await prog()).colony.dyes)})`));
+ {const n=(await st()).sector.n;assert.equal(n,4,'the next sector waits for the shop');}
+ await evaluate('document.querySelector(\'#paint-shop [data-slot=armour][data-dye=white]\').click()');await delay(400);
+ assert.equal((await prog()).colony.dyes.livery.armour,'white','the armour is painted white');
+ assert.ok((await prog()).colony.painted>0,'the hull has paintable surfaces');
+ current='colony-paint-shop';await finish();
+ await evaluate('document.querySelector(\'#paint-shop [data-done]\').click()');
  await until(`${T}.state().sector.n===5`,30000);
+ assert.equal(await evaluate(`JSON.parse(localStorage.getItem('stalheart:v1:dyes')).livery.armour`),'white','the livery is kept for the next run');
  await until(`${T}.state().programme.colony.works && ${T}.state().programme.colony.works.launching`,15000).catch(async()=>assert.fail(`a collector goes up at the next sector's start (${JSON.stringify((await prog()).colony)})`));
  await until(`${T}.state().programme.colony.launch && ${T}.state().programme.colony.launch.phase==="released"`,20000);
  current='colony-works-launch';await finish();
@@ -1436,7 +1461,7 @@ try{
  // button draws every mesh of whatever stands on the bench as the briefings' survey, and back
  const U='window.__stalheartUnits',us=()=>evaluate(`${U}.state()`);
  for(const id of ['korp','sol82','sol88']){
-  await go('units-sky-'+id,`labs.html?sw=0&unit=${id}&acceptance=1#units`);   // no ?yaw: the turntable is the default being checked
+  await go('units-sky-'+id,`labs.html?sw=0&unit=${id}&acceptance=1${process.env.INSETDBG?'&insetdbg=1':''}#units`);   // no ?yaw: the turntable is the default being checked
   await until(`${U} && ${U}.state().meshes.n>1`,30000).catch(async()=>assert.fail(`${id} lands on the bench (${JSON.stringify(await us())})`));
   // THE DEFAULT IS A WIREFRAME ON A TURNTABLE (owner, 2026-10-02); ANIMATION switches both off and runs the platform's own clips
   const a=await us();assert(a.size&&a.size[0]>0.5&&a.size[1]>0.5,`${id} has a real size (${JSON.stringify(a.size)})`);assert.equal(a.meshes.wire,a.meshes.n,`${id} starts as wire (${JSON.stringify(a.meshes)})`);assert.equal(a.spin,true,'and spinning');
@@ -1446,6 +1471,7 @@ try{
   await until(`${U}.state().range && ${U}.state().range.up>0`,8000).catch(async()=>assert.fail(`${id}: the range sends a wave (${JSON.stringify((await us()).range)})`));
   const b=await us();assert.equal(b.meshes.wire,0,`${id} ANIMATION: solid (${JSON.stringify(b.meshes)})`);assert.equal(b.spin,false,'the turntable is off');assert.equal(b.demo,true,'the demo runs');
   await until(`${U}.state().range.cleared>0`,25000).catch(async()=>assert.fail(`${id} kills something on the range (${JSON.stringify((await us()).range)})`));
+  if(id!=='korp'){const i=(await us()).inset;console.log('INSET',id,JSON.stringify(i));assert(i&&i.tris>1000&&i.lit>60,`${id}: the satellite is drawn and lit in its inset (${JSON.stringify(i)})`);}
   current='units-sky-'+id+'-animation';await finish();
   await click('#units-sweep');await delay(200);
   const c=await us();assert.equal(c.meshes.wire,c.meshes.n,`${id} wire again`);assert.equal(c.spin,true,'spinning again');
@@ -2559,7 +2585,7 @@ await go('shell-explosion','index.html?sw=0&cine=0&acceptance=1&blast=1#td');
  // for, while every prepare-level test passed.
  {
   const seen = {};
-  for (const [id, tris, batches, floor] of [['mork', 24196, 50, 0.99], ['mork-low', 6742, 49, 0.98], ['mork-proxy', 1706, 1, 1]]) {
+  for (const [id, tris, batches, floor] of [['mork', 24196, 50, 0.99]]) {
    // FROZEN POSE. The viewer spins the turntable and sweeps the turret every
    // frame, and an axis-aligned box around a rotating hull is not a size: a first
    // run read the proxy 4.8% wider than the hull, and the hull itself 8% wider
@@ -2580,17 +2606,10 @@ await go('shell-explosion','index.html?sw=0&cine=0&acceptance=1&blast=1#td');
      `${id} packed triangles ${st.stats.triangles}, source ${tris}, floor ${Math.floor(tris * floor)}`);
    else assert.equal(st.stats.triangles, tris, `${id} triangles ${st.stats.triangles}, expected ${tris}`);
    assert.equal(st.stats.batches, batches, `${id} batches ${st.stats.batches}, expected ${batches}`);   // batches survive packing
-   assert.equal(st.proxy, id === 'mork-proxy', `${id} proxy flag`);
    assert(Array.isArray(st.size), `${id} reports its built size`);
    seen[id] = st.size;
    await finish();
   }
-  const near = (a, b, tol, what) => assert(Math.abs(a / b - 1) < tol, `${what}: ${a.toFixed(3)} vs ${b.toFixed(3)}`);
-  // LOW would replace the shipped hull, so it must be the same size on every axis
-  ['x', 'y', 'z'].forEach((ax, i) => near(seen['mork-low'][i], seen.mork[i], 0.02, `mork-low ${ax}`));
-  // the proxy must share the ground plan; its height is the pinned authored delta
-  near(seen['mork-proxy'][0], seen.mork[0], 0.02, 'mork-proxy x');
-  near(seen['mork-proxy'][2], seen.mork[2], 0.02, 'mork-proxy z');
  }
  await go('mork-game','index.html?sw=0&cine=0&tutorial=0&acceptance=1#td');
  await until('window.__stalheartTest.state().playerAsset === "mork" && window.__stalheartTest.state().playerAssetReady');

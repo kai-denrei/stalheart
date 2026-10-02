@@ -83,3 +83,12 @@ export const BASE_REPAIR = Object.freeze({
   gate: Object.freeze({ seconds: 8, metres: 6, label: 'GATE', plot: [7, 3] }),
   wall: Object.freeze({ seconds: 5, metres: 4, label: 'WALL', plot: [4, 3] }),
 });
+
+// ISAO'S MISSILE (owner, 2026-10-02: "Isao drop ONE missile somewhere with high effort and his score triumphantly moving from zero to 1
+// to a huge celebration ... it can happen during a strong wave, let's just have Isao come to help MÖRK when it is clearly in view").
+// Once a run: when at least `alive` bodies are up, the hull is out and on screen (inside `view` of the frame's centre, NDC) with nobody
+// in a seat, and Isao is free, he takes one missile off the dump and flies it over the swarm `near` cells round the hull, slowly
+// (`travel` seconds, wobbling `wobble` cells, coming down to `carryCells` over the ground so the chase camera sees him), lets go, the round falls for `fall` seconds and lands as `blast`, and it kills exactly one
+// body: his first. The board celebrates for `celebrate` seconds. `missile` is the pinned round (docs/colony-assets.lock.json).
+export const ISAO_STRIKE = Object.freeze({ alive: 120, view: 0.6, near: [1.5, 7], travel: 9, wobble: 0.35, carryCells: 2.2, fall: 1.4, blast: 'gunship.heavy', celebrate: 5,
+  missile: 'assets/models/astro/ammo_missile_heavy_projectile_game.glb', missileMetres: 6.4, go: 'isao_strike_go', hit: 'isao_strike_hit' });

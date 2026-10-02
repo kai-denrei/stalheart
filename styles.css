@@ -4752,3 +4752,22 @@ body.mobile-shell #sentry-pilot footer.hint-seen, body.mobile-shell #laser-seat 
 body.embedded .preset-panel { display: none; }
 #units-lab { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: #05070c; }
 #units-lab[hidden] { display: none; }
+
+/* THE PAINT SHOP (src/fx/paint-shop.js): a calm card over the paused game, the hull behind it the preview */
+#paint-shop { position: fixed; inset: 0; z-index: 72; display: flex; align-items: center; justify-content: flex-end; padding: 16px; pointer-events: none; }   /* beside the hull, which is the preview */
+#paint-shop .ps-card { pointer-events: auto; width: min(460px, 100%); background: rgba(4, 12, 16, .9); border: 1px solid #5d7a84; padding: 14px 18px; font: 12px/1.5 ui-monospace, Menlo, monospace; color: #e8f2f4; letter-spacing: .06em; }
+#paint-shop header { font-size: 16px; font-weight: 700; letter-spacing: .14em; color: #9fdcff; }
+#paint-shop p { margin: 6px 0 10px; opacity: .85; } #paint-shop p span { display: block; }
+#paint-shop .ps-row { display: flex; gap: 10px; align-items: center; margin: 8px 0; }
+#paint-shop .ps-slot { width: 104px; flex: none; color: #9fdcff; font-size: 11px; }
+#paint-shop .ps-sws { display: flex; gap: 6px; flex-wrap: wrap; }
+#paint-shop .ps-sw { display: flex; flex-direction: column; align-items: center; gap: 3px; background: transparent; border: 1px solid rgba(159, 220, 255, .2); color: #c9d6dc; padding: 4px; min-width: 52px; font: 9px/1 ui-monospace, Menlo, monospace; cursor: pointer; }
+#paint-shop .ps-sw i { width: 30px; height: 18px; background: var(--c); border: 1px solid rgba(255, 255, 255, .25); }
+#paint-shop .ps-sw.on { border-color: #6fe6ff; color: #6fe6ff; }
+#paint-shop .ps-sw.locked { opacity: .35; cursor: default; }
+#paint-shop footer { display: flex; justify-content: flex-end; }
+#paint-shop footer button { font: 12px/1 ui-monospace, Menlo, monospace; letter-spacing: .12em; padding: 8px 20px; background: #6fe6ff; color: #061018; border: 0; cursor: pointer; }
+#paint-shop .ps-row { flex-direction: column; align-items: flex-start; }
+@media (max-width: 560px) { #paint-shop { align-items: flex-end; justify-content: center; } #paint-shop .ps-sw { min-width: 44px; } }
+
+#units-inset::after { content: attr(data-label); position: absolute; left: 6px; top: 5px; }

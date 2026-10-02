@@ -195,6 +195,20 @@ export const BRIEFS = {
     lines: ['Look up. That light is ours.', 'A ring of them one day, and then a shell. The colony builds outward now.'],
   },
   // THE COLONY GROWS (owner, 2026-10-01: "make the base more fully developed"): the armory, the farm, the chip plant, the launcher
+  // THE DYES (owner, 2026-10-02: "as Isao processes the biomass of the enemies ... he discovers that he can also extract extra dyes and
+  // offers the player to pimp his ride"): the paint shop's opening line
+  dyes_found: {
+    id: 'dyes_found', face: 'glee', title: 'PAINT SHOP · ISAO',
+    lines: ['Their biomass has pigment in it. I can print it as paint.', 'Take a breath. Pick a colour. The hull has been grey long enough.'],
+  },
+  isao_strike_go: {
+    id: 'isao_strike_go', face: 'determined', title: 'ISAO · INBOUND', once: true,
+    lines: ['Hold on, I am coming. I am bringing something heavy.', 'It is very heavy.'],
+  },
+  isao_strike_hit: {
+    id: 'isao_strike_hit', face: 'glee', title: 'ISAO · ONE!', once: true,
+    lines: ['ONE! I GOT ONE! Look at the board!', 'One. That is a number. That is not zero.'],
+  },
   build_board: {
     id: 'build_board', face: 'focused', title: 'COMMS · ISAO', once: true,
     lines: ['Printing a board by the pad. Your kills, my sentries\', and the sky\'s.', 'I am keeping count. So far it is not close.'],

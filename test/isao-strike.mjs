@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { strikeDue, pickStrikeTarget } from '../src/domain/isao-strike.js';
+import { ISAO_STRIKE } from '../src/content/base-programme.js';
+import { BRIEFS } from '../src/isaobriefs.js';
+const ok = { done: false, alive: 200, threshold: ISAO_STRIKE.alive, inView: true, seated: false, isaoFree: true, hullUp: true };
+assert.equal(strikeDue(ok), true);
+for (const [k, v] of [['done', true], ['alive', 10], ['inView', false], ['seated', true], ['isaoFree', false], ['hullUp', false]]) assert.equal(strikeDue({ ...ok, [k]: v }), false, `not when ${k} is ${v}`);
+const cell = 0.01, tank = [0, 0, 1], at = (c) => ({ pos: [Math.sin(c * cell), 0, Math.cos(c * cell)] });
+assert.equal(pickStrikeTarget([at(0.5), at(9)], tank, cell, ISAO_STRIKE.near), null, 'none too close, none too far');
+const b = [at(6), at(2.5), at(0.5)];
+assert.equal(pickStrikeTarget(b, tank, cell, ISAO_STRIKE.near), b[1], 'the nearest inside the band');
+for (const id of [ISAO_STRIKE.go, ISAO_STRIKE.hit]) assert.ok(BRIEFS[id], id);
+console.log('Isao strike: once, in a strong wave, the hull in view and nobody seated; the body nearest the hull inside the band.');

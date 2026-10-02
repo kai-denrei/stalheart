@@ -7,7 +7,7 @@
 // satellite parented under it, so the launcher's own heading and offset carry the launch. The host ticks it on the game clock and is
 // told once when it is complete (SOL-88 online: src/fx/laser-arsenal.js setAuto).
 import * as THREE from '../../vendor/three.module.js';
-import { loadModelFixture } from './model-fixture.js';
+import { loadModelFixture, cloneFixture } from './model-fixture.js';
 
 export const LAUNCH = Object.freeze({ duration: 30, radius: 40, sweep: 1.05, start: 8, seconds: 0.4, satellite: 'assets/models/astro/arc01_satellite_d0_lod1.glb' });
 const RELEASE = LAUNCH.start + LAUNCH.seconds;
@@ -39,7 +39,7 @@ export function createArcLaunch({ launcher, now, onComplete = null, satellite = 
   const sled = node('LAUNCH_SLED'), clamps = [[node('CLAMP_L'), -1], [node('CLAMP_R'), 1]], gates = node('PASSAGE_GATES'), lights = node('ACCELERATOR_LIGHTS');
   let t0 = null, sat = null, petals = [], plume = null, done = false, last = null, thrust = null;
   const up = new THREE.Vector3(0, 0.43, 0);
-  if (launcher) loadModelFixture(satellite).then((scene) => { if (done) return; sat = scene.clone(); sat.name = 'sol88-payload'; launcher.add(sat); petals = [1, 2, 3, 4, 5, 6].map((i) => sat.getObjectByName(`PETAL_${i}_HINGE`)).filter(Boolean); plume = sat.getObjectByName('INSERTION_PLUME'); apply(last ?? launchState(0)); }, () => {});
+  if (launcher) loadModelFixture(satellite).then((scene) => { if (done) return; sat = cloneFixture(scene); sat.name = 'sol88-payload'; launcher.add(sat); petals = [1, 2, 3, 4, 5, 6].map((i) => sat.getObjectByName(`PETAL_${i}_HINGE`)).filter(Boolean); plume = sat.getObjectByName('INSERTION_PLUME'); apply(last ?? launchState(0)); }, () => {});
   function apply(s) {
     last = s;
     if (sled) { sled.position.fromArray(s.sled.position); sled.rotation.x = s.sled.pitch; }

@@ -24,6 +24,18 @@ import { ORBITAL_WORKS } from '../content/orbital-works.js';
 import { makeWorks, launchDue, beginLaunch, collectorUp, energyBonus } from '../domain/orbital-works.js';
 import { createOrbitalRing } from './orbital-ring.js';
 import { createScoreboard } from './scoreboard.js';
+import { createIsaoStrike } from './isao-strike.js';
+import { strikeDue, pickStrikeTarget } from '../domain/isao-strike.js';
+import { ISAO_STRIKE } from '../content/base-programme.js';
+import { DYES, DYE_SHOP } from '../content/dyes.js';
+import { BELT_OF } from '../content/sectors.js';
+import { makeDyeBook, processKills, unoffered, markOffered } from '../domain/dyes.js';
+import { openPaintShop, applyLivery } from './paint-shop.js';
+import { BRIEFS } from '../isaobriefs.js';
+import { storage } from '../storage.js';
+import * as THREE from '../../vendor/three.module.js';
+const loadDyes = () => { try { return JSON.parse(storage.getItem(DYE_SHOP.store) ?? 'null'); } catch { return null; } };
+const saveDyes = (b) => { try { storage.setItem(DYE_SHOP.store, JSON.stringify(b)); } catch { /* a refused store: the dyes last this run */ } };
 import { nextRepair } from '../domain/repair-orders.js';
 import { sideBreachCandidates } from '../domain/side-breach.js';
 import { planCanyon } from '../domain/canyon.js';
@@ -59,16 +71,41 @@ export function createProgrammeHost(c) {
         if (n > 0) { c.setAmmo?.(c.ammo() + n); c.sfx?.play?.('tank_shells'); updateHud(); }
       }
       s.launch?.tick();
-      // THE SCOREBOARD (src/fx/scoreboard.js): raised on its slab once the step stands, fed the run's books every tick; Isao's quip the
-      // first time the player pulls ahead of his sentries
+      // THE SCOREBOARDS (src/fx/scoreboard.js): two plaques on the slab once the step stands, the player's and Isao's, fed the run's books
+      // every tick: the player gathers and kills, Isao uses and (once) kills
+      const dt = Math.max(0, Math.min(0.1, c.t() - (s.hostAt ?? c.t()))); s.hostAt = c.t();
       if (programmeHas(pg, 'board') && c.scene && c.kills) {
-        if (!s.board) { const step = pg.steps.find((x) => x.id === 'board'); const bed = step && s.print.bed(step); if (bed) { const at = bed(0, 0, 0), a = bed(0, 1, 0), b = bed(0, -1, 0); s.board = createScoreboard(c.scene, { at, up: at, facing: [b[0] - a[0], b[1] - a[1], b[2] - a[2]], metres: c.cellSide() / 10 }); } }
-        if (s.board) {
-          const k = c.kills() ?? {}, you = (k.tank ?? 0) + (k.ram ?? 0), isao = (k.tower ?? 0) + (k.towers ?? 0), sky = (k.gunship ?? 0) + (k.strike ?? 0) + (k.laser ?? 0);
-          s.board.update({ you, isao, sky, rank: c.rank?.() ?? 0, hands: c.hands?.() ?? you });
-          s.board.tick(Math.max(0, Math.min(0.1, c.t() - (s.boardAt ?? c.t())))); s.boardAt = c.t();
-          if (!s.boardLead && isao >= 10 && you > isao) { s.boardLead = true; if (!c.pilotMode() && !c.briefQ()) showBrief('board_lead'); }
+        if (!s.boards) { const step = pg.steps.find((x) => x.id === 'board'); const bed = step && s.print.bed(step); if (bed) { const face = (a, b) => [b[0] - a[0], b[1] - a[1], b[2] - a[2]], m = c.cellSide() / 10; s.boards = [[-0.5, 'YOU', '#ffd27a', true], [0.5, 'ISAO', '#7dffb0', false]].map(([x, title, accent, flag]) => { const at = bed(x, 0, 0); return createScoreboard(c.scene, { at, up: at, facing: face(bed(x, 1, 0), bed(x, -1, 0)), metres: m, title, accent, flag }); }); } }
+        if (s.boards) {
+          const e = c.eco?.(), you = c.hands?.() ?? 0;
+          s.boards[0].update({ rows: [['KILLS', you], ['GATHERED', Math.round(e?.earned ?? 0)], ['USED', 0]], rank: c.rank?.() ?? 0 });
+          s.boards[1].update({ rows: [['KILLS', s.isaoKills ?? 0], ['GATHERED', 0], ['USED', Math.round(e?.spent ?? 0)]], note: (s.isaoKills ?? 0) ? 'FIRST BLOOD' : 'BUILDER' });
+          for (const bd of s.boards) bd.tick(dt);
         }
+      }
+      // ISAO'S MISSILE (src/fx/isao-strike.js): once a run, in a strong wave, with the hull on screen and nobody seated
+      if (s.strike) { if (!s.strike.tick(dt)) s.strike = null; }
+      else if (!s.strikeDone && c.isao?.() && c.enemies) {
+        // the bodies on screen only: he must arrive where the player is looking ("when it is clearly in view")
+        const onScreen = () => c.enemies().filter((x) => { if (!x.alive) return false; const q = new THREE.Vector3(...x.pos).project(c.camera); return q.z < 1 && Math.abs(q.x) < 0.8 && Math.abs(q.y) < 0.8; });
+        const isao = c.isao(), live = onScreen(), tank = c.playerPos?.();
+        const ndc = tank ? new THREE.Vector3(...tank).project(c.camera) : null, inView = !!ndc && ndc.z < 1 && Math.abs(ndc.x) < ISAO_STRIKE.view && Math.abs(ndc.y) < ISAO_STRIKE.view;
+        if (strikeDue({ done: s.strikeDone, alive: c.enemies().filter((x) => x.alive).length, threshold: ISAO_STRIKE.alive, inView, seated: c.pilotMode() || !!c.laserStation?.seated?.(), isaoFree: !isao.order && !isao.held && isao.state === 'idle', hullUp: c.playerHP() > 0 })
+          && pickStrikeTarget(live, tank, c.cellSide(), ISAO_STRIKE.near)) {
+          s.strikeDone = true;
+          s.strike = createIsaoStrike({ isao: () => isao, enemies: onScreen, tank: () => c.playerPos(), cellSide: () => c.cellSide(), scene: c.scene, explode: c.explode, kill: (e) => c.kill(e, 'isao'), brief: (id) => showBrief(id), sfx: c.sfx,
+            onKill: () => { s.isaoKills = (s.isaoKills ?? 0) + 1; c.sectorRun()?.note({ type: 'isaoKill' }); s.boards?.[1].celebrate(ISAO_STRIKE.celebrate); updateHud(); } }, ISAO_STRIKE);
+        }
+      }
+      // THE DYES (src/domain/dyes.js): every kill is biomass Isao processes; a belt's dye is extracted at its count, the book is saved,
+      // and the hull wears the livery (re-applied whenever the hull is a new mesh: a deploy, a rebuilt hull)
+      if (c.killsByType) {
+        s.dyes ??= makeDyeBook(loadDyes(), DYES);
+        const kt = c.killsByType() ?? {}, seen = (s.dyeSeen ??= {});
+        let moved = false;
+        for (const [type, n] of Object.entries(kt)) { const d = n - (seen[type] ?? 0); if (d > 0) { seen[type] = n; const belt = BELT_OF[type]; if (belt) { processKills(s.dyes, belt, d, DYES); moved = true; } } }
+        if (moved && c.t() - (s.dyesSavedAt ?? -99) > 5) { saveDyes(s.dyes); s.dyesSavedAt = c.t(); }
+        const hull = c.hull?.(); if (hull && hull !== s.paintedHull) { s.paintedHull = hull; s.painted = applyLivery(hull, s.dyes.livery); }
       }
       // THE ORBITAL WORKS (src/domain/orbital-works.js): once SOL-88 is up, a collector goes up at the start of every sector after a
       // secured one; each in orbit is a light on the ring and seconds of beam for SOL
@@ -166,7 +203,17 @@ export function createProgrammeHost(c) {
         c.story().launch = createArcLaunch({ launcher: root, now: () => c.t(), sfx: c.sfx, onComplete: () => { c.laserStation?.setAuto?.(true); c.story().sol88 = true; c.story().launch = null; c.sectorRun()?.note({ type: 'launch', id: 'sol88' }); if (!c.pilotMode() && !c.briefQ()) showBrief('sol88_online'); updateHud(); } });
       }
     },
+    // THE PAINT SHOP AT THE BREAK (owner, 2026-10-02: "it will offer some respite from the action to cool down at some key moments"): the
+    // sector loop asks before the next sector begins; with a dye extracted and not yet offered, the shop opens over the paused game and the
+    // next sector waits for DONE. Returns whether it took the break
+    interlude: (go) => {
+      const s = c.story(); if (!s?.dyes || !unoffered(s.dyes).length || typeof document === 'undefined') return false;
+      markOffered(s.dyes); saveDyes(s.dyes);
+      c.storyViews?.()?.active?.('tank');
+      s.shop = openPaintShop({ root: c.root ?? document.body, book: s.dyes, save: saveDyes, hull: () => c.hull?.(), lines: BRIEFS[DYE_SHOP.brief].lines, onClose: () => { s.shop = null; go(); } });
+      return true;
+    },
     // what the harness reads: the launch beat, the pad, the calibration
-    colony: () => ({ board: c.story()?.board?.state() ?? null, boardCell: (() => { const st = c.story()?.programme?.steps.find((x) => x.id === 'board'); return st ? c.story().print.cellOf(st) : -1; })(), launch: c.story()?.launch?.state() ?? null, works: c.story()?.works ? { ...c.story().works, ring: c.story().worksRing?.state() ?? null } : null, sol88: !!c.story()?.sol88, pad: c.story()?.armoryPad?.ring?.state() ?? null, cell: c.story()?.armoryPad?.cell ?? -1, calibrated: !!c.story()?.calibrated, manned: c.laserStation?.manned?.() ?? 0 }),
+    colony: () => ({ board: c.story()?.boards?.map((b) => b.state()) ?? null, isaoKills: c.story()?.isaoKills ?? 0, strike: c.story()?.strike?.state() ?? (c.story()?.strikeDone ? 'done' : null), dyes: c.story()?.dyes ?? null, shop: !!c.story()?.shop, painted: c.story()?.painted ?? 0, boardCell: (() => { const st = c.story()?.programme?.steps.find((x) => x.id === 'board'); return st ? c.story().print.cellOf(st) : -1; })(), launch: c.story()?.launch?.state() ?? null, works: c.story()?.works ? { ...c.story().works, ring: c.story().worksRing?.state() ?? null } : null, sol88: !!c.story()?.sol88, pad: c.story()?.armoryPad?.ring?.state() ?? null, cell: c.story()?.armoryPad?.cell ?? -1, calibrated: !!c.story()?.calibrated, manned: c.laserStation?.manned?.() ?? 0 }),
   };
 }

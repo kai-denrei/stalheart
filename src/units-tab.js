@@ -23,7 +23,7 @@ import { shotOf } from './sentryfx.js';
 import { OrbitControls } from '../vendor/OrbitControls.js';
 import { GLTFExporter } from '../vendor/GLTFExporter.js';
 import { ENEMY_SPEC } from './enemyspec.js';
-import { buildUnit, preloadMork, preloadMorkTier, preloadMorkProxy, makeDebris, makeDotBurst, makeBulletCloud,
+import { buildUnit, preloadMork, makeDebris, makeDotBurst, makeBulletCloud,
   makeDotEnemy, makeRewardSolid, makeShellSolid,
   preloadContainer, makeContainerFixture,
   preloadFabricator, makeFabricatorDrone, makeIsaoDrone } from './units.js';
@@ -37,9 +37,10 @@ import { LOOKS } from './looks.js';
 import { makeBloom } from './postfx.js';
 import { makeAudio } from './audio.js';
 import { GROUPS, GROUP_LABELS, GROUP_EMPTY, entriesIn } from './unitcatalog.js';
-import { modelFixture, modelClips, setWireframe } from './fx/model-fixture.js';
+import { modelFixture, modelClips, setWireframe, cloneFixture } from './fx/model-fixture.js';
 import { createBenchRange } from './labs/bench-range.js';
 import { createOrbitalLaser } from './fx/orbital-laser.js';
+import { LASER_SKY_METRES } from './content/orbital-laser.js';
 import { SENTRY_TUNE } from './sentry.js';
 import { FONT_NAMES, TYPE_KNOBS, TYPE_FEEL, makeTypeParams, loadTypeFeel, saveTypeFeel,
   formatTypeCode, applyFontPack, currentFontPack, currentShoutPack } from './fonts.js';
@@ -367,7 +368,7 @@ export function initUnitsTab(root) {
     // placeholder until its bytes land and the entry re-shown once they do
     if (e.kind === 'model') {
       const m = modelFixture(e.url, () => { if (currentEntry === e) show(); });
-      if (m) { const g = m.clone(); g.userData.baseScale = 1; g.userData.kind = 'mesh'; return g; }
+      if (m) { const g = cloneFixture(m); g.userData.baseScale = 1; g.userData.kind = 'mesh'; return g; }
       const ph = new THREE.Group();
       ph.add(new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), new THREE.MeshLambertMaterial({ color: 0x2a3442 })));
       ph.userData.kind = 'mesh'; ph.userData.baseScale = 1;
@@ -509,16 +510,6 @@ export function initUnitsTab(root) {
     current = buildEntry(e);
     root.dataset.sentry = e.kind === 'tower' ? e.id : '';
     root.dataset.modelReady = String(!!current && !current.userData.loading);
-    // REVIEW TIERS LOAD WHEN CHOSEN, not when the tab opens: 680 KB nobody has
-    // asked to judge yet. The placeholder hull stands in until the tier lands,
-    // then the view refreshes — but only if it is still the one on screen, so a
-    // fast flick past it does not yank the viewer back. Declared here rather
-    // than beside the eager preloads at the bottom, because show() first runs
-    // before that block and a const down there would not exist yet.
-    const late = { 'mork-low': () => preloadMorkTier('low'), 'mork-proxy': () => preloadMorkProxy() }[e.id];
-    if (late && current.userData.loading) {
-      late().then((ok) => { if (ok && active && currentEntry?.id === e.id) show(); });
-    }
     if (Number.isFinite(yawQ) && current) {
       current.rotation.y = (yawQ * Math.PI) / 180;
     }
@@ -862,7 +853,7 @@ export function initUnitsTab(root) {
       if (wreckT <= 0 && current) { current.visible = true; feel.hoverT = 0; landTankFeel(feel); }
     }
     controls.update();
-    if (!labKey) postfx.render();   // the framed lab draws itself
+    if (!labKey) { postfx.render(); renderInset(); }   // the framed lab draws itself
     drawCallouts();   // after render, so it tracks the frame just drawn
   }
 
@@ -1036,10 +1027,42 @@ export function initUnitsTab(root) {
   let demo = null, demoT = 0, range = null;
   const RAD = Math.PI / 180, RANGE_R = 6;
   const slew = (from, to, rate) => { let d = to - from; d = Math.atan2(Math.sin(d), Math.cos(d)); return from + Math.sign(d) * Math.min(Math.abs(d), rate); };
-  function frameRange() { const d = RANGE_R * 2.4; camera.position.set(0, d * 0.62, d * 0.78); controls.target.set(0, 0, 0); camera.near = 0.02; camera.far = d * 30; camera.updateProjectionMatrix(); controls.update(); }
+  // the range's camera: the sentry lab's three-quarter for the hull and the gunship; for an orbital laser nearly straight down, the
+  // in-game seat's ground view (owner, 2026-10-02: "view should be much more top-down"), the satellite in its own inset (laserInset)
+  function frameRange(top = false) { const d = RANGE_R * 2.4; if (top) camera.position.set(0, d * 1.05, d * 0.22); else camera.position.set(0, d * 0.62, d * 0.78); controls.target.set(0, 0, 0); camera.near = 0.02; camera.far = d * 40; camera.updateProjectionMatrix(); controls.update(); }
+  const isLaser = (e) => e?.kind === 'model' && e.id !== 'korp';
+  // THE DOUBLE VIEW (the in-game SOL seat's inset, src/fx/laser-seat.js): a second camera on the satellite at the top of its column,
+  // drawn into a corner of the same canvas after the main frame, with a label over it
+  const insetCam = new THREE.PerspectiveCamera(30, 1, 0.5, 2000);
+  const insetScene = new THREE.Scene(); insetScene.background = new THREE.Color(0x05070c);
+  insetScene.add(new THREE.HemisphereLight(0xc8cfe0, 0x555060, 1.6)); { const sun2 = new THREE.DirectionalLight(0xffe8c8, 1.4); sun2.position.set(3, 5, 2); insetScene.add(sun2); }
+  // the beam under it: a thin bright column out of the aperture to the bottom of the frame
+  const insetBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 400, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 }));
+  insetBeam.position.y = -200; insetScene.add(insetBeam);
+  const insetLabel = document.createElement('div');
+  insetLabel.id = 'units-inset';
+  insetLabel.style.cssText = 'position:absolute;right:16px;top:64px;border:1px solid rgba(111,230,255,.5);pointer-events:none;font:10px/1 ui-monospace,Menlo,monospace;letter-spacing:.12em;color:#9fdcff;padding:4px 6px;box-sizing:border-box;display:none;background:#05070c';
+  container.appendChild(insetLabel);
+  // the inset is its own small canvas and renderer: drawing it into the bench's canvas after the bloom chain left nothing on screen
+  let insetRenderer = null, insetTris = 0;
+  function renderInset() {
+    if (!demo?.sat) { insetLabel.style.display = 'none'; return; }
+    const w = Math.round(Math.min((container.clientWidth || 1) * 0.3, 360)), h = Math.round(w * 0.7);
+    insetLabel.style.display = 'block'; insetLabel.dataset.label = `${currentEntry.label.split(' · ')[0]} · OVERHEAD`;
+    Object.assign(insetLabel.style, { width: `${w}px`, height: `${h}px` });
+    if (!insetRenderer) { insetRenderer = new THREE.WebGLRenderer({ antialias: true }); insetRenderer.setPixelRatio(Math.min(devicePixelRatio, 2)); insetRenderer.toneMapping = THREE.ACESFilmicToneMapping; insetRenderer.domElement.style.cssText = 'display:block;width:100%;height:100%'; insetLabel.prepend(insetRenderer.domElement); }
+    if (insetRenderer.domElement.width !== Math.round(w * insetRenderer.getPixelRatio())) insetRenderer.setSize(w, h, false);
+    insetCam.aspect = w / h; insetCam.updateProjectionMatrix();
+    const R = demo.satR, a = demoT * 0.12;   // a slow orbit round the platform, a little below it so the beam leaves the frame downward
+    insetCam.position.set(Math.sin(a) * R * 3.4, -R * 0.7, Math.cos(a) * R * 3.4); insetCam.lookAt(0, -R * 0.35, 0);
+    insetBeam.visible = (demoT % 9) < 6; insetBeam.scale.set(R / 20, 1, R / 20);
+    insetRenderer.render(insetScene, insetCam); insetTris = insetRenderer.info.render.triangles;
+  }
   function stopDemo() {
     if (demo?.laser) { demo.laser.lift(); demo.laser.hideGuide(); demo.laser.clear(); demo.laser.dispose?.(); }
-    if (demo && current) { current.position.copy(demo.base); current.rotation.y = demo.rotY; if (current.userData.head) current.userData.head.rotation.y = 0; if (current.userData.pitchNode) current.userData.pitchNode.rotation.x = 0; }
+    if (demo && current) { current.position.copy(demo.base); current.rotation.y = demo.rotY; current.scale.copy(demo.scale0); current.visible = true; }
+    if (demo?.sat) insetScene.remove(demo.sat);
+    insetLabel.style.display = 'none';
     demo = null; demoT = 0;
     if (range) { range.group.visible = false; range.reset(); }
   }
@@ -1047,9 +1070,23 @@ export function initUnitsTab(root) {
     if (!current || !currentEntry) return;
     range ??= createBenchRange(scene, { radius: RANGE_R });
     if (!demo) {
-      range.group.visible = true; range.reset(); frameRange();
+      range.group.visible = true; range.reset(); frameRange(isLaser(currentEntry));
       const clips = currentEntry.kind === 'model' ? modelClips(currentEntry.url) : [];
-      demo = { cool: 0, heading: 0, yaw: 0, elev: 0, base: current.position.clone(), rotY: current.rotation.y, laser: null, pending: [], phase: 0, mixer: clips.length ? new THREE.AnimationMixer(current) : null, clips, at: 0, action: null };
+      demo = { cool: 0, heading: 0, yaw: 0, elev: 0, base: current.position.clone(), rotY: current.rotation.y, scale0: current.scale.clone(), laser: null, pending: [], phase: 0, mixer: clips.length ? new THREE.AnimationMixer(current) : null, clips, at: 0, action: null };
+      // A PLATFORM AT THE RANGE'S SCALE: the pinned models are metres (the KORP ~30 m, SOL ~40 m) on a 6-unit range. The gunship spans
+      // a third of the range; a satellite a half, and it is drawn only in the inset, at the top of its column
+      if (currentEntry.kind === 'model') {
+        const span = new THREE.Box3().setFromObject(current).getSize(new THREE.Vector3()).length() || 1;
+        const want = isLaser(currentEntry) ? RANGE_R * 0.5 : RANGE_R * 0.35;
+        current.scale.multiplyScalar(want / span);
+        // A SATELLITE IS NOT ON THE RANGE: it is skinned, and a moved, scaled skinned copy would not draw where it was put. It stays out of
+        // the bench scene and is drawn untouched at its own size in the inset's own small scene, as the in-game seat's inset shows it
+        if (isLaser(currentEntry)) {
+          current.visible = false;
+          const m = modelFixture(currentEntry.url); demo.sat = m ? cloneFixture(m) : null;
+          if (demo.sat) { demo.sat.traverse((o) => { if (o.isMesh && o.material?.metalness > 0.4) { o.material = o.material.clone(); o.material.metalness = 0.35; o.material.roughness = Math.max(0.45, o.material.roughness); } }); insetScene.add(demo.sat); demo.satR = new THREE.Box3().setFromObject(demo.sat).getBoundingSphere(new THREE.Sphere()).radius || 20; }
+        }
+      }
     }
     range.tick(dt); demoT += dt;
     for (let i = demo.pending.length - 1; i >= 0; i--) { demo.pending[i].at -= dt; if (demo.pending[i].at <= 0) { range.kill(demo.pending[i].id); demo.pending.splice(i, 1); } }
@@ -1084,10 +1121,10 @@ export function initUnitsTab(root) {
   // AN ORBITAL LASER hangs over the platform and lays its column (src/fx/orbital-laser.js): six seconds of burn walked onto the
   // nearest walker, three of recovery, and a walker under the footprint dies
   function demoLaser(dt) {
-    current.position.set(0, RANGE_R * 0.95, 0); current.rotation.y = demoT * 0.15;
+    if (demo.sat) demo.sat.rotation.y = demoT * 0.15;   // the platform turns slowly in its inset
     demo.laser ??= createOrbitalLaser(scene, { cellSide: RANGE_R / 10, metresPerCell: 10 });
     const L = demo.laser, cycle = demoT % 9, burning = cycle < 6, up = new THREE.Vector3(0, 1, 0);
-    demo.contact ??= new THREE.Vector3(0, 0, RANGE_R * 0.5);
+    demo.contact ??= new THREE.Vector3(0, 0, 0);
     if (!burning) { if (demo.laid) { L.lift(); demo.laid = false; } L.tick(dt, 0); return; }
     const tgt = range.nearest(demo.contact);
     if (tgt) { const d = tgt.pos.clone().sub(demo.contact); d.y = 0; const step = Math.min(d.length(), RANGE_R * 0.28 * dt); if (d.length() > 1e-6) demo.contact.addScaledVector(d.normalize(), step); }
@@ -1536,7 +1573,7 @@ export function initUnitsTab(root) {
       heat,cannonColor:current?.userData.heatSleeve?.material.color.getHex(),
       missileReady:!!missilePool,modelReady:!current?.userData.loading,
       meshes:(()=>{let n=0,w=0;current?.traverse((o)=>{if(o.isMesh){n++;if(o.material?.wireframe)w++;}});return {n,wire:w};})(),   // the wireframe survey: how many meshes, how many drawn as wire
-      spin:state.spin,animation:state.sweep,demo:state.sweep&&!!demo,range:range?.state()??null,lab:labKey,
+      spin:state.spin,animation:state.sweep,demo:state.sweep&&!!demo,range:range?.state()??null,lab:labKey,inset:demo?.sat?{satR:demo.satR,lit:(()=>{if(!insetRenderer)return -1;const gl=insetRenderer.getContext();insetRenderer.render(insetScene,insetCam);let m=0;const px=new Uint8Array(4),c=insetRenderer.domElement;for(let i=0;i<9;i++)for(let j=0;j<9;j++){gl.readPixels(Math.round(c.width*(0.1+0.1*i)),Math.round(c.height*(0.1+0.1*j)),1,1,gl.RGBA,gl.UNSIGNED_BYTE,px);m=Math.max(m,px[0]+px[1]+px[2]);}return m;})(),tris:insetTris}:null,
       missiles:missiles.map(m=>({config:m.config,t:m.t,name:m.mesh.name,position:m.mesh.position.toArray(),ignition:m.mesh.getObjectByName('EXHAUST_FX').visible})) }),
     fire: () => currentEntry?.kind==='tower'?firePattern():fireShell(),
   };

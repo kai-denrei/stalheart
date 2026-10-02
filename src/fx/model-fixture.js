@@ -5,6 +5,7 @@
 import * as THREE from '../../vendor/three.module.js';
 import { GLTFLoader } from '../../vendor/GLTFLoader.js';
 import { MeshoptDecoder } from '../../vendor/meshopt_decoder.module.js';
+import { cloneSkinned } from './skinned-clone.js';
 
 const WIRE = 0xbfe6ea;
 const loaded = new Map();   // url -> Promise<THREE.Group>
@@ -23,6 +24,10 @@ export const loadModelFixture = (url) => {
 
 // the clips a loaded model carries (empty until it lands, or when it has none): the bench's ANIMATION plays them on a clone
 export const modelClips = (url) => clips.get(url) ?? [];
+
+// a copy of a loaded model that owns its own skeleton: Object3D.clone keeps a skinned mesh bound to the CACHED model's bones, so a moved,
+// scaled clone still drew where the cache sits and at its size (SOL-82's bench pass drew a 40 m satellite over the range, 2026-10-02)
+export const cloneFixture = (scene) => cloneSkinned(scene);
 
 // the loaded model, or null while its bytes are on the way (`then` runs once, when they land)
 export function modelFixture(url, then) {
