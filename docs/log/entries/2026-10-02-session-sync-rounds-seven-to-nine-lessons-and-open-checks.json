@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-10-02-session-sync-rounds-seven-to-nine-lessons-and-open-checks",
+  "date": "2026-10-02",
+  "type": "issue",
+  "status": "observed",
+  "title": "Session sync after the seventh to ninth notes: what broke along the way, why, and what is still unseen before tomorrow's playtests",
+  "context": "Three owner rounds shipped on 2026-10-02 (2026-10-02-seventh-notes-day-contacts-repair-lance-tempo-seats-beacons-nuke, 2026-10-02-eighth-notes-study-lull-sentry-rules-vanishing-towers, 2026-10-02-ninth-notes-friendly-fire-sol-countdown-tracers-stampede-walls-burns-needle-one-source; main 94876435, 9771edc5, 5f5e1a11). The owner starts new rounds of playtesting and fine-tuning tomorrow. This records the failures found on the way and the checks no suite has made.",
+  "outcome": "Lessons, each observed this session: (1) A rule added to placeError also runs when Isao finishes an order (finishOrder re-checks the site with the order still on the book), so the round-six sentry cap refused its own finishing order and sentries vanished at the cap; a placement rule must be checked on the order path and the commit path, and a count must leave out the order being committed (src/domain/sentry-cap.js). (2) An effect aged only in a seat's pose() freezes when the same machine runs unmanned: the auto gunship's tracers stood in the sky for good; anything a seat updates needs a driver when nobody sits (gunship-optic fade). (3) Camera shots freeze the story beats except those listed live (breach, sol88Launch, isaoTalk); a fixed-length close-up holds the next beat after its lines end, which is the lull the owner felt. (4) Suites that poll a short phase miss it once a beat is shortened (the override is 0.8 s): wait for the phase or a later one, or a flag the beat books (story.said manual_override). (5) A suite not run for a round goes stale silently: --grow still listed the colony without the scoreboard step. (6) The controller's byte budget is spent each round; it was paid by compressing comment blocks (lanceBeam, placeError, the audio alarm) and moving wording into content, not by packing code. Not yet seen by anyone in a browser or in play: a wall cell after Isao's repair (kit wall on floor), a Lancer scorch on a rock face, the dusk light and sun disc from the tank, the first-contact cards over a busy HUD, the vignette on a real glide, and the balance of the stampede (x3, two barbed, every second wave) against the alive budget. Hypotheses to watch, not facts: SOL's 25 m safety margin may leave the gate pile, which presses on the walls, to the guns and sentries alone; the 10-sentry cap may feel tight now that its reason is shown.",
+  "alternatives": [
+    "Folding these lessons into the three round entries: those are immutable; a separate observed entry keeps them findable"
+  ],
+  "evidence": [
+    "git log 94876435 9771edc5 5f5e1a11 on main",
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --round7, --round9, --study-probe (artifacts/browser/round7-*.png, round9-*.png)",
+    "test/sentry-cap.mjs, test/stampede.mjs, test/needle-prefers.mjs, test/gunship-auto-safe.mjs, test/round-path.mjs"
+  ],
+  "supersedes": []
+}

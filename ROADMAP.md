@@ -314,13 +314,19 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 39 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 40 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
 
 ### Proposed: two scoreboards (the player's and Isao's: kills, biomass gathered, biomass used), Isao's one missile that takes his kills from 0 to 1 with a celebration, and a livery Isao can print once he finds dyes in the biomass
 
 `2026-10-02-two-boards-isaos-missile-and-the-dies` · decision · **proposed**
 
 Owner, 2026-10-02: "Scoreboards, our asset team developed these (A6 planet-scoreboards). we can give them feedback for a better board. I am even thinking a friendly scoreboard of one for Isao and one for the player... perhaps kills/biomass accumulated and biomass used. Isao would be zero kills and high usage, player would be high kills and zero construction... then at some point we could have Isao drop ONE missile somewhere with high effort and his score triumphantly moving from zero to 1 to a huge celebration." And: "for customization options, we also played with a lab/metal, some elements could be re-used. Diegetic explanation; as Isao processes the biomass of the enemies for printing material, he discovers that he can also extract extra dyes and offers the player to pimp his ride."
+
+### Session sync after the seventh to ninth notes: what broke along the way, why, and what is still unseen before tomorrow's playtests
+
+`2026-10-02-session-sync-rounds-seven-to-nine-lessons-and-open-checks` · issue · **observed**
+
+Three owner rounds shipped on 2026-10-02 (2026-10-02-seventh-notes-day-contacts-repair-lance-tempo-seats-beacons-nuke, 2026-10-02-eighth-notes-study-lull-sentry-rules-vanishing-towers, 2026-10-02-ninth-notes-friendly-fire-sol-countdown-tracers-stampede-walls-burns-needle-one-source; main 94876435, 9771edc5, 5f5e1a11). The owner starts new rounds of playtesting and fine-tuning tomorrow. This records the failures found on the way and the checks no suite has made.
 
 ### The owner's fourth playtest notes and the A6 workshop survey: a second canyon pass as the penultimate wave, SOL-82 automated later (SOL-88 launched by the ARC-01), the Units lab to show SOL and the gunship with wireframes, and new base buildings (chip plant, greenhouse, bio containers, an armory where the tank refills shells)
 
