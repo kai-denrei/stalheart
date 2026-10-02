@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-10-02-gunship-auto-sol-plume-and-the-launch-cinematic",
+  "date": "2026-10-02",
+  "type": "decision",
+  "status": "accepted",
+  "title": "The gunship learns to fly itself after two manned passes (auto-call, bursts on the pile, the odd MK-9 in the player's view) and the sectors swell while it does; SOL's automated passes raise a tall plume; the first SOL-88 launch is a narrated cinematic",
+  "context": "Owner, 2026-10-02: \"when the SOL fires by itself in the distance, very satisfying, let's add more smoke effect. 2) in later rounds, lets have the Gunship also be on Auto mode, it learned what to do, does it by itself if the player wants, we use that to push the envelope on how many hundreds of enemies we can have. The nuclear strike cloud seen from a distance is very satisfying. Even the odd Gunship Dummy nuclear strike that just happens to be in the line of sight of the player could be satisfying. we will add sounds 'Tactical Nuke Launched' / 'Say Hello to my little bomb'. 3) launching the automated SOL is a key moment, let's have a small cinematic of the first satellite launch, with Isao explaining.\"",
+  "outcome": "SOL: an automated pass with nobody seated raises laser.plume (a Bofors burst at 1.3, ~14 m) 1.6 times a second, 4 m over the contact. GUNSHIP AUTO (src/fx/gunship-auto.js, GUNSHIP_AUTO in src/content/gunship.js): two passes the player flew and fired in are Isao's calibration (?gunship=auto starts with it); then a full meter calls the ship itself and a pass with the seat empty flies itself through the seat's own rules (stepGun, fireRound, stepRounds): 2.6 s bursts on the densest pile, rotary and Bofors in turn, and once a pass the MK-9 on a pile of 25+ bodies on the player's screen, with the TACTICAL NUKE LAUNCHED callout and a random one of gunship_nuke_call / gunship_nuke_hello (silent until the owner's sounds are pinned under those keys). While it is on, the sector loop's alive budget is 760 (was 520) and waves are 1.35x (api.aliveBudget/api.swell): the envelope, unmeasured yet. LAUNCH CINEMATIC: the first SOL-88 launch takes the camera for 22 s (skippable, never over a seat) from behind the breech, following the sled and the payload up while Isao narrates the charge and the release (sol88_charge, sol88_away), the world live under it (the shot is exempt from the shot freeze like the breach dive). Found on the way: the launcher's near/far LOD swap put the animation on the hidden tier (the launcher now has one tier; its lod2 unpinned); the shot's focus is computed from the choreography in the launcher's frame; and an Object3D used to pose the camera looked away (lookAt aims +Z on an Object3D, -Z on a camera).",
+  "alternatives": [
+    "A toggle for the gunship's auto mode: the owner's 'if the player wants' is the seat; taking it is the toggle",
+    "Pausing the world under the launch cinematic: the launch is on the game clock and froze under its own shot"
+  ],
+  "evidence": [
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --gunship-auto (artifacts/browser/gunship-auto-firing.png, gunship-auto-nuke.png)",
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --colony (artifacts/browser/colony-launch-shot.png, colony-launch-shot-away.png)"
+  ],
+  "supersedes": []
+}

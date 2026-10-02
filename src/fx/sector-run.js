@@ -69,7 +69,7 @@ export function createSectorRun(h) {
   const breachOf = (id) => sector?.breaches.find((b) => b.id === id) ?? null;
   const idOf = (sp) => { for (const [id, s] of sps) if (s === sp) return id; return null; };
   const idOfObj = (obj) => { if (!obj) return null; for (const [id, s] of sps) if (s.obj === obj) return id; return null; };
-  const estimate = (i, threat) => waveYield(computeWavePlan(i, 1, h.waveSize, threat * (h.threatMult ?? 1)), { bounty: BOUNTY, pointScale: POINT_SCALE, ...SECTOR_FORFEIT, clearKg: waveClearBonus(i), clearPoints: waveScore(i) });
+  const estimate = (i, threat) => waveYield(computeWavePlan(i, 1, h.waveSize, threat * (h.threatMult ?? 1) * (api.swell?.() ?? 1)), { bounty: BOUNTY, pointScale: POINT_SCALE, ...SECTOR_FORFEIT, clearKg: waveClearBonus(i), clearPoints: waveScore(i) });
   const note = (ev) => (stats ? record(stats, ev) : false);
   const retarget = () => { if (sps.size && [...sps.values()].includes(story.source) && story.source.alive) return; const live = [...sps.values()].find((s) => s.alive); if (live) story.source = live; };
   // THE ARC (2026-10-01): the fixed ramp, held sectors until the back door is due, the door, BOTH WALLS, then the generator
@@ -91,8 +91,8 @@ export function createSectorRun(h) {
   function waveOf(b, wave) {
     if (feastFor(b)) return { entries: def.feast.entries, pace: def.feast.pace ?? SECTOR_TIMING.pace };
     // THE CANYON'S SWARM: `swarm` sector pulses (two breaches' worth each) of the ladder wave `ladder` past the sector's start, at once
-    if (b.side === 'canyon') return { entries: computeWavePlan(def.waveBase + CANYON.ladder, 1, h.waveSize, def.threat * (h.threatMult ?? 1)).entries.map((e) => ({ ...e, count: e.count * CANYON.swarm * 2 })), pace: SECTOR_TIMING.pace, spread: CANYON.spread, dens: CANYON.dens };
-    const entries = computeWavePlan(wave, 1, h.waveSize, def.threat * (h.threatMult ?? 1)).entries.map((e) => ({ ...e }));
+    if (b.side === 'canyon') return { entries: computeWavePlan(def.waveBase + CANYON.ladder, 1, h.waveSize, def.threat * (h.threatMult ?? 1) * (api.swell?.() ?? 1)).entries.map((e) => ({ ...e, count: e.count * CANYON.swarm * 2 })), pace: SECTOR_TIMING.pace, spread: CANYON.spread, dens: CANYON.dens };
+    const entries = computeWavePlan(wave, 1, h.waveSize, def.threat * (h.threatMult ?? 1) * (api.swell?.() ?? 1)).entries.map((e) => ({ ...e }));
     if (def.hardcoresEveryWave && h.hardcore) entries.push({ type: h.hardcore, count: def.hardcores ?? 1 });
     return { entries, pace: SECTOR_TIMING.pace };
   }
@@ -367,7 +367,7 @@ export function createSectorRun(h) {
     // THE CLOCK (2026-09-24): a pulse may arm whenever a breach that has opened still has waves to send, whatever is alive, as long
     // as the field plus the pulse fit the budget and no feast is being fought. A breach still opening is fine: the release path
     // holds its bodies until the hole is open. Breaches not yet due simply join a later pulse.
-    canRelease: () => !quiet && phase === 'fighting' && !(feast && !feast.scrambled) && sector.breaches.some((b) => b.state === 'open' && sps.get(b.id)?.alive && b.wavesReleased < b.wavesPlanned) && pulseFits(aliveSectorEnemies(true), nextPulseSize(), SECTOR_TIMING.aliveBudget),
+    canRelease: () => !quiet && phase === 'fighting' && !(feast && !feast.scrambled) && sector.breaches.some((b) => b.state === 'open' && sps.get(b.id)?.alive && b.wavesReleased < b.wavesPlanned) && pulseFits(aliveSectorEnemies(true), nextPulseSize(), api.aliveBudget?.() ?? SECTOR_TIMING.aliveBudget),   // the gunship on auto raises it (GUNSHIP_AUTO)
     // the seconds from one pulse leaving the breaches to the next (null: no sector is fighting, the board keeps its own gap)
     pulseGap: () => (phase === 'fighting' && def ? def.pulse ?? null : null),
     // a pulse is over once its bodies have left the queue; guards waiting at expedition sites are not the sector's

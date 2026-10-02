@@ -197,6 +197,24 @@ export const BRIEFS = {
   // THE COLONY GROWS (owner, 2026-10-01: "make the base more fully developed"): the armory, the farm, the chip plant, the launcher
   // THE DYES (owner, 2026-10-02: "as Isao processes the biomass of the enemies ... he discovers that he can also extract extra dyes and
   // offers the player to pimp his ride"): the paint shop's opening line
+  // THE GUNSHIP ON AUTO (GUNSHIP_AUTO): his word when the calibration is in, and the line when it first flies itself
+  gunship_calibrated: {
+    id: 'gunship_calibrated', face: 'determined', title: 'COMMS · ISAO', once: true,
+    lines: ['I watched you fly the gunship twice. I know what you want from it now.', 'Call it, or do not: when the meter is full it comes, and flies itself unless you take the seat.'],
+  },
+  gunship_auto: {
+    id: 'gunship_auto', face: 'focused', title: 'KORP / GS01 · AUTO', once: true,
+    lines: ['The gunship is on station and on its own. More of them will come now; it can take them.', 'The seat is yours whenever you want it.'],
+  },
+  // THE FIRST SOL-88 LAUNCH, narrated over its cinematic (src/fx/arc-launch.js phases)
+  sol88_charge: {
+    id: 'sol88_charge', face: 'focused', title: 'ARC-01 · CHARGING', once: true,
+    lines: ['SOL-88 is on the sled. Rails charging.', 'Everything you taught SOL-82 is in its head. It will not need the seat.'],
+  },
+  sol88_away: {
+    id: 'sol88_away', face: 'glee', title: 'ARC-01 · AWAY', once: true,
+    lines: ['Away! Look at it go.', 'Petals out once it clears the air. Then it climbs to its orbit.'],
+  },
   dyes_found: {
     id: 'dyes_found', face: 'glee', title: 'PAINT SHOP · ISAO',
     lines: ['Their biomass has pigment in it. I can print it as paint.', 'Take a breath. Pick a colour. The hull has been grey long enough.'],

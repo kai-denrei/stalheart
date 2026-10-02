@@ -161,5 +161,6 @@ export const LASER_PLATFORMS = Object.freeze({
 // afterManned: passes the player must fly and burn in before Isao has his calibration (the ARC-01 step on the base programme waits
 // for it, src/content/base-programme.js); retarget: seconds between re-aims at the densest pile while an automated pass burns;
 // brief: Isao's line as an automated pass arrives (once); calibrated: his line when the calibration is in hand
-// strikeOver: a new pile this many footprint radii from the last aim is taken as a fresh strike (the aim snaps) rather than a drag
-export const LASER_AUTO = Object.freeze({ afterManned: 2, retarget: 0.6, strikeOver: 2, brief: 'laser_auto_fire', calibrated: 'laser_calibrated' });
+// strikeOver: a new pile this many footprint radii from the last aim is taken as a fresh strike (the aim snaps) rather than a drag;
+// plumeRate: the extra plumes a second an automated pass raises over its contact, `plumeLift` metres up (src/content/explosions.js laser.plume)
+export const LASER_AUTO = Object.freeze({ afterManned: 2, retarget: 0.6, strikeOver: 2, plumeRate: 1.6, plumeLift: 4, brief: 'laser_auto_fire', calibrated: 'laser_calibrated' });

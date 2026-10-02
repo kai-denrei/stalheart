@@ -19,12 +19,18 @@ import { BASE_PERKS, BASE_REPAIR } from '../content/base-programme.js';
 import { LASER_AUTO } from '../content/orbital-laser.js';
 import { due as programmeDue, begin as programmeBegin, finish as programmeFinish, hasPerk as programmeHas, perks as programmePerks, sectorStarted } from '../domain/build-programme.js';
 import { createArcLaunch } from './arc-launch.js';
+const LAUNCH_SHOT = 22;   // seconds of the first launch's cinematic: the charge, the release, the petals unfolding
 import { createArmoryPad } from './armory-pad.js';
 import { ORBITAL_WORKS } from '../content/orbital-works.js';
 import { makeWorks, launchDue, beginLaunch, collectorUp, energyBonus } from '../domain/orbital-works.js';
 import { createOrbitalRing } from './orbital-ring.js';
 import { createScoreboard } from './scoreboard.js';
 import { createIsaoStrike } from './isao-strike.js';
+import { createGunshipAuto } from './gunship-auto.js';
+import { GUNSHIP_AUTO, GUNSHIP_ORBIT } from '../content/gunship.js';
+import { callGunship, isFull as callFull } from '../domain/gunship-call.js';
+import { onStation, startStation } from '../domain/gunship.js';
+import { SOUNDS } from '../content/audio-defaults.js';
 import { strikeDue, pickStrikeTarget } from '../domain/isao-strike.js';
 import { ISAO_STRIKE } from '../content/base-programme.js';
 import { DYES, DYE_SHOP } from '../content/dyes.js';
@@ -81,6 +87,25 @@ export function createProgrammeHost(c) {
           s.boards[0].update({ rows: [['KILLS', you], ['GATHERED', Math.round(e?.earned ?? 0)], ['USED', 0]], rank: c.rank?.() ?? 0 });
           s.boards[1].update({ rows: [['KILLS', s.isaoKills ?? 0], ['GATHERED', 0], ['USED', Math.round(e?.spent ?? 0)]] }, { duration: s.isaoKills && !s.isaoShown ? 2 : 0.25 }); if (s.isaoKills) s.isaoShown = true;   // his 0 -> 1 clatters for two seconds
           for (const bd of s.boards) bd.tick(dt);
+        }
+      }
+      // THE GUNSHIP ON AUTO (src/fx/gunship-auto.js, GUNSHIP_AUTO): the passes the player sits in and fires are Isao's calibration; once
+      // he has two, a full meter calls the ship by itself and a pass nobody is seated for flies itself. The seat is always the player's
+      if (c.gunshipRig && c.camera) {
+        const G0 = c.gunshipRig.pilotBag ? (s.gsBag ??= { ...c.gunshipRig.pilotBag(), cs: c.cellSide() }) : null, gs = G0?.state, seated = !!c.pilot?.()?.gunship;
+        if (gs) {
+          if (s.gsManned == null && typeof location !== 'undefined' && new URLSearchParams(location.search).get('gunship') === 'auto') s.gsManned = GUNSHIP_AUTO.afterManned;   // ?gunship=auto: a playtest starts calibrated
+          const up = onStation(gs);
+          if (up && seated && (gs.rounds?.length || gs.heavyFalling)) s.gsFired = true;   // a pass the player flew and fired in
+          if (s.gsWas && !up) { if (s.gsFired) s.gsManned = (s.gsManned ?? 0) + 1; s.gsFired = false; }
+          s.gsWas = up;
+          if (!s.gsAuto && (s.gsManned ?? 0) >= GUNSHIP_AUTO.afterManned) { s.gsAuto = true; if (!c.pilotMode() && !c.briefQ()) showBrief(GUNSHIP_AUTO.brief); }
+          if (s.gsAuto) {
+            if (!onStation(gs) && c.gunshipRig.onCall() && callFull(c.gunshipRig.call) && callGunship(c.gunshipRig.call)) { startStation(gs, GUNSHIP_ORBIT); if (!c.pilotMode() && !c.briefQ()) showBrief(GUNSHIP_AUTO.autoBrief); }
+            const view = (p, lim) => { const q = new THREE.Vector3(...p).project(c.camera); return q.z < 1 && Math.abs(q.x) < lim && Math.abs(q.y) < lim; };
+            s.gsFly ??= createGunshipAuto({ G: G0, tune: GUNSHIP_AUTO, onScreen: view, callout: (t) => c.callout?.(t, 'co-victory'), sfx: c.sfx, hasCue: (k) => !!SOUNDS[k] });
+            s.gsFly.tick(dt, seated);
+          }
         }
       }
       // ISAO'S MISSILE (src/fx/isao-strike.js): once a run, in a strong wave, with the hull on screen and nobody seated
@@ -200,7 +225,24 @@ export function createProgrammeHost(c) {
       // THE ARC-01 STANDS: SOL-88 goes up on its sled (src/fx/arc-launch.js), and when the insertion stage is lit SOL fires on its own
       if (step.perk === 'launcher') {
         const root = c.storyBase()?.structure?.(step.structures[0])?.root ?? null;
-        c.story().launch = createArcLaunch({ launcher: root, now: () => c.t(), sfx: c.sfx, onComplete: () => { c.laserStation?.setAuto?.(true); c.story().sol88 = true; c.story().launch = null; c.sectorRun()?.note({ type: 'launch', id: 'sol88' }); if (!c.pilotMode() && !c.briefQ()) showBrief('sol88_online'); updateHud(); } });
+        // THE FIRST LAUNCH IS A CINEMATIC (owner, 2026-10-02: "launching the automated SOL is a key moment, let's have a small cinematic of
+        // the first satellite launch, with Isao explaining"): a camera beside the rail follows the sled and the payload up for LAUNCH_SHOT
+        // seconds while Isao narrates the phases; skippable, and never over a manned seat
+        const say = { charging: 'sol88_charge', released: 'sol88_away' };
+        c.story().launch = createArcLaunch({ launcher: root, now: () => c.t(), sfx: c.sfx, onPhase: (ph) => { if (say[ph]) showBrief(say[ph]); }, onComplete: () => { c.laserStation?.setAuto?.(true); c.story().sol88 = true; c.story().launch = null; c.sectorRun()?.note({ type: 'launch', id: 'sol88' }); if (!c.pilotMode() && !c.briefQ()) showBrief('sol88_online'); updateHud(); } });
+        if (root && c.startShot && !c.pilotMode() && !c.laserStation?.seated?.()) {
+          const L = root.getWorldPosition(new THREE.Vector3()), n = L.clone().normalize(), m = c.cellSide() / 10;
+          const side = new THREE.Vector3().setFromMatrixColumn(root.matrixWorld, 0).normalize(), fwd = new THREE.Vector3().setFromMatrixColumn(root.matrixWorld, 2).normalize();
+          // behind the breech on the base side, a little off the rail and above it, looking down the rail the way the payload flies
+          const eye = L.clone().addScaledVector(fwd, -34 * m).addScaledVector(side, 9 * m).addScaledVector(n, 8 * m), look = new THREE.Vector3(), cam = new THREE.PerspectiveCamera();   // a camera: Object3D.lookAt aims +Z, a camera aims -Z
+          c.storyViews?.()?.active?.('tank');
+          c.startShot({ id: 'sol88Launch', dur: LAUNCH_SHOT, poseAt: (u, out) => {
+            c.story().launch?.focus(look);
+            const lift = Math.min(1, Math.max(0, (u - 0.4) / 0.6));   // as the payload climbs the camera rises and pulls back with it
+            out.pos.copy(eye).addScaledVector(n, lift * 30 * m).addScaledVector(fwd, -lift * 24 * m).addScaledVector(side, lift * 16 * m);
+            cam.position.copy(out.pos); cam.up.copy(n); cam.lookAt(look); out.quat.copy(cam.quaternion);
+          } });
+        }
       }
     },
     // THE PAINT SHOP AT THE BREAK (owner, 2026-10-02: "it will offer some respite from the action to cool down at some key moments"): the
@@ -213,7 +255,11 @@ export function createProgrammeHost(c) {
       s.shop = openPaintShop({ root: c.root ?? document.body, book: s.dyes, save: saveDyes, hull: () => c.hull?.(), lines: BRIEFS[DYE_SHOP.brief].lines, onClose: () => { s.shop = null; go(); } });
       return true;
     },
+    // THE ENVELOPE (GUNSHIP_AUTO): while the gunship flies itself the sectors hold more bodies and size their waves larger
+    aliveBudget: () => (c.story()?.gsAuto ? GUNSHIP_AUTO.aliveBudget : undefined),
+    swell: () => (c.story()?.gsAuto ? GUNSHIP_AUTO.swell : 1),
     // what the harness reads: the launch beat, the pad, the calibration
-    colony: () => ({ board: c.story()?.boards?.map((b) => b.state()) ?? null, isaoKills: c.story()?.isaoKills ?? 0, strike: c.story()?.strike?.state() ?? (c.story()?.strikeDone ? 'done' : null), dyes: c.story()?.dyes ?? null, shop: !!c.story()?.shop, painted: c.story()?.painted ?? 0, boardCell: (() => { const st = c.story()?.programme?.steps.find((x) => x.id === 'board'); return st ? c.story().print.cellOf(st) : -1; })(), launch: c.story()?.launch?.state() ?? null, works: c.story()?.works ? { ...c.story().works, ring: c.story().worksRing?.state() ?? null } : null, sol88: !!c.story()?.sol88, pad: c.story()?.armoryPad?.ring?.state() ?? null, cell: c.story()?.armoryPad?.cell ?? -1, calibrated: !!c.story()?.calibrated, manned: c.laserStation?.manned?.() ?? 0 }),
+    gunshipAuto: () => ({ auto: !!c.story()?.gsAuto, manned: c.story()?.gsManned ?? 0, fly: c.story()?.gsFly?.state() ?? null }),
+    colony: () => ({ gunship: { auto: !!c.story()?.gsAuto, manned: c.story()?.gsManned ?? 0, fly: c.story()?.gsFly?.state() ?? null, swell: c.story()?.gsAuto ? GUNSHIP_AUTO.swell : 1, budget: c.story()?.gsAuto ? GUNSHIP_AUTO.aliveBudget : null }, board: c.story()?.boards?.map((b) => b.state()) ?? null, isaoKills: c.story()?.isaoKills ?? 0, strike: c.story()?.strike?.state() ?? (c.story()?.strikeDone ? 'done' : null), dyes: c.story()?.dyes ?? null, shop: !!c.story()?.shop, painted: c.story()?.painted ?? 0, boardCell: (() => { const st = c.story()?.programme?.steps.find((x) => x.id === 'board'); return st ? c.story().print.cellOf(st) : -1; })(), launch: c.story()?.launch?.state() ?? null, works: c.story()?.works ? { ...c.story().works, ring: c.story().worksRing?.state() ?? null } : null, sol88: !!c.story()?.sol88, pad: c.story()?.armoryPad?.ring?.state() ?? null, cell: c.story()?.armoryPad?.cell ?? -1, calibrated: !!c.story()?.calibrated, manned: c.laserStation?.manned?.() ?? 0 }),
   };
 }

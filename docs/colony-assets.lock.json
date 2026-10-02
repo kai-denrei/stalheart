@@ -35,13 +35,6 @@
       ]
     },
     {
-      "path": "assets/models/astro/arc01_launcher_d0_lod2.glb",
-      "sourcePath": "assets/orbital-launcher/lod2/launcher_d0_lod2.glb",
-      "sha256": "a6f12fb0abd3b8282c29c99a350cc89dad27e0c6b74aca14335edd4850bd29fc",
-      "bytes": 165440,
-      "triangles": 2952
-    },
-    {
       "path": "assets/models/astro/arc01_satellite_d0_lod1.glb",
       "sourcePath": "assets/orbital-launcher/lod1/satellite_d0_lod1.glb",
       "sha256": "f77bb59f7e45a7f4e00813a264995c87d6fa660a40980f28f336ead217139898",

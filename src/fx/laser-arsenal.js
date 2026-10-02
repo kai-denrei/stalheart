@@ -39,7 +39,7 @@ export function createLaserArsenal(scene, host) {
   let aimArc = 0, passes = 0, burnSeconds = 0, testTarget = null, testHeld = false, anchors = null, breakMs = 0;
   // SOL AUTOMATED (src/domain/laser-auto.js): `manned` counts the passes the player sat in and burned; once the ARC-01 has put SOL-88
   // up (setAuto), a pass nobody is seated for aims itself at the densest pile every LASER_AUTO.retarget seconds and holds the beam
-  let auto = false, manned = 0, mannedThisPass = false, autoT = 0, autoAim = null, platform = LASER_PLATFORMS.sol82, periodScale = 1;
+  let plumeT = 0, auto = false, manned = 0, mannedThisPass = false, autoT = 0, autoAim = null, platform = LASER_PLATFORMS.sol82, periodScale = 1;
   const burned = { bodies: 0, breaches: 0, walls: 0, rocks: 0, towers: 0, heart: 0, tank: 0, structures: 0 };
   let underNames = [];   /* the buildings under the beam right now, by the name the scope calls out */
   let under = { ...NOTHING };
@@ -209,6 +209,8 @@ export function createLaserArsenal(scene, host) {
     while (contactT >= 1 / LASER_CONTACT_RATE) { contactT -= 1 / LASER_CONTACT_RATE; host.explode('laser.contact', g); }
     smokeT += dt;
     while (smokeT >= 1 / LASER_SMOKE_RATE) { smokeT -= 1 / LASER_SMOKE_RATE; host.explode('laser.smoke', g); }
+    // an automated pass, nobody in the seat: the tall plume that reads from across the planet
+    if (auto && !seated) { plumeT += dt; while (plumeT >= 1 / LASER_AUTO.plumeRate) { plumeT -= 1 / LASER_AUTO.plumeRate; const k = 1 + LASER_AUTO.plumeLift / metres(); host.explode('laser.plume', [g[0] * k, g[1] * k, g[2] * k]); } }
     const things = inFootprint(st.contact, beam.radius, candidates(cU));
     under = { ...NOTHING };
     underNames = [];

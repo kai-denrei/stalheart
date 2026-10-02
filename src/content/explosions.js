@@ -37,6 +37,9 @@ export const EXPLOSION_USES = Object.freeze({
   // the burning ground's fire and smoke, LASER_SMOKE_RATE per second: a Bofors burst at ~6 m and 1.2 s, so the line the
   // beam draws smokes behind it
   'laser.smoke': Object.freeze({ module: 'bofors-burst', scale: 0.55 }),
+  // AN AUTOMATED PASS SEEN FROM AFAR (owner, 2026-10-02: "when the SOL fires by itself in the distance, very satisfying, let's add more smoke"):
+  // a tall plume over the contact, ~14 m, LASER_AUTO.plumeRate a second on top of the burn's own smoke
+  'laser.plume': Object.freeze({ module: 'bofors-burst', scale: 1.3 }),
   // THE BACK MOUTH RUMBLES (2026-09-24): grit and dust shaken off the rock behind the bays, a sector before it falls. The Bofors'
   // burst is the one with smoke in it; ~5 m and no scare (nothing stands there yet)
   'rock.dust': Object.freeze({ module: 'bofors-burst', scale: 0.45 }),
@@ -58,6 +61,7 @@ export const EXPLOSION_SCARE = Object.freeze({
   'laser.ignite': Object.freeze({ cells: 8, seconds: 2 }),
   'laser.contact': Object.freeze({ cells: 3, seconds: 0.6 }),
   'laser.smoke': Object.freeze({ cells: 2, seconds: 0.8 }),
+  'laser.plume': Object.freeze({ cells: 2.5, seconds: 0.8 }),
 });
 export const SCARE_FREEZE_S = 0.35;
 

@@ -72,3 +72,14 @@ export const GUNSHIP_GUNS = Object.freeze({
   heavy: Object.freeze({ key: 'heavy', label: 'MK-9', cue: 'clunk … ssshhhh-WHUMP', rate: 0, damage: 0, blastCells: 5.5, dangerCells: 5.5, zoom: 1.3, freeFall: GUNSHIP_NUKE.freeFall, travel: GUNSHIP_NUKE.freeFall + GUNSHIP_NUKE.drive, reload: 20, perPass: 1, sound: GUNSHIP_NUKE.releaseSound, ringHex: 0xff6a4d, clip: 'Heavy_Fire', strike: true }),
 });
 export const GUNSHIP_GUN_ORDER = Object.freeze(['rotary', 'bofors', 'heavy']);
+
+// THE GUNSHIP ON AUTO (owner, 2026-10-02: "in later rounds, lets have the Gunship also be on Auto mode, it learned what to do, does it by
+// itself if the player wants, we use that to push the envelope on how many hundreds of enemies we can have ... Even the odd Gunship Dummy
+// nuclear strike that just happens to be in the line of sight of the player could be satisfying. we will add sounds 'Tactical Nuke
+// Launched' / 'Say Hello to my little bomb'"). After `afterManned` passes the player flew and fired (Isao's calibration, as for SOL),
+// a full meter calls the ship by itself and a pass nobody is seated for flies itself: bursts of `burst` seconds on the densest pile
+// near its track, rotary and Bofors in turn, `rest` seconds apart; once a pass, when a pile of at least `nukePile` bodies is on the
+// player's screen, it drops the MK-9 there with the callout and one of `nukeCalls` (sounds the owner will add; silent until pinned).
+// While it is on, the sectors may hold `aliveBudget` bodies and size their waves `swell` times larger: the envelope being pushed.
+export const GUNSHIP_AUTO = Object.freeze({ afterManned: 2, burst: 2.6, rest: 1.4, nukePile: 25, nukeView: 0.75, callout: 'TACTICAL NUKE LAUNCHED',
+  nukeCalls: Object.freeze(['gunship_nuke_call', 'gunship_nuke_hello']), aliveBudget: 760, swell: 1.35, brief: 'gunship_calibrated', autoBrief: 'gunship_auto' });

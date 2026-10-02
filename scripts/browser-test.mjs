@@ -1412,6 +1412,9 @@ try{
  await until(`${T}.state().programme.colony.calibrated`,5000).catch(async()=>assert.fail('Isao has his calibration after two manned passes'));
  // 4. THE ARC-01 prints once the calibration is in, then launches SOL-88 over 30 s; SOL is automated from the insertion stage
  await until(`${T}.state().programme.printed.includes("launcher")`,120000).catch(async()=>assert.fail(`the ARC-01 prints (${JSON.stringify(await prog())})`));
+ await until(`${T}.state().shot==='sol88Launch'`,15000).catch(async()=>assert.fail(`the first launch is a cinematic (${(await st()).shot})`));
+ await delay(6500);current='colony-launch-shot';await finish();
+ await delay(4500);current='colony-launch-shot-away';await finish();
  await until(`${T}.state().programme.colony.launch && ${T}.state().programme.colony.launch.satellite`,15000).catch(async()=>assert.fail(`SOL-88 rides the sled (${JSON.stringify((await prog()).colony.launch)})`));
  await until(`${T}.state().programme.colony.launch.phase==="released" || ${T}.state().programme.colony.launch.phase==="unfolding"`,20000);
  current='colony-launch';await finish();
@@ -1460,6 +1463,27 @@ try{
  await evaluate(`${T}.laserAuto(true)`);await delay(2500);
  console.log('PROBE',await evaluate(`JSON.stringify({dom:[...document.querySelectorAll("#story-views [data-view=laser]")].map(b=>b.textContent),navs:document.querySelectorAll("#story-views").length,laser:(l=>({auto:l.auto,platform:l.platform,strip:l.strip}))(${T}.state().laser)})`));
  await finish();
+ } else if(args.includes('--gunship-auto')) {
+ // THE GUNSHIP ON AUTO (owner, 2026-10-02): with Isao's calibration in (?gunship=auto starts with it), a pass nobody is seated for flies
+ // itself: bursts on the pile, kills booked, the waves swell and the budget rises; and once a pass an MK-9 on a pile the player can see
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), ga=async()=>(await st()).programme.colony.gunship;
+ const {GUNSHIP_AUTO}=await import('../src/content/gunship.js');
+ await go('gunship-auto-load','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4&gunship=auto#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ await until(`${T}.state().sector.n===4`,60000);
+ await until(`${T}.state().programme.colony.gunship.auto`,15000).catch(async()=>assert.fail(`Isao calibrates the gunship (${JSON.stringify(await ga())})`));
+ {const g=await ga();assert.equal(g.swell,GUNSHIP_AUTO.swell,'the waves swell');assert.equal(g.budget,GUNSHIP_AUTO.aliveBudget,'the budget rises');}
+ await evaluate(`${T}.spawnFodder(90)`);await delay(2500);
+ {const f=(await st()).foes;if(f.length)await evaluate(`${T}.placeTank(${f[Math.floor(f.length/2)][0]})`);}
+ await evaluate(`${T}.showcase.gunship()`);await evaluate(`${T}.showcase.leave()`);await evaluate('document.querySelector("#story-views [data-view=tank]")?.click()');
+ await until(`${T}.state().gunship.station && !${T}.state().gunship.seat`,15000).catch(async()=>assert.fail(`the gunship on station, the seat empty (${JSON.stringify((await st()).gunship)})`));
+ const k0=(await st()).killsBySrc?.strike ?? 0;
+ await until(`(${T}.state().programme.colony.gunship.fly||{}).rounds>10`,20000).catch(async()=>assert.fail(`the gunship fires by itself (${JSON.stringify(await ga())})`));
+ await until(`(${T}.state().killsBySrc?.strike ?? 0) > ${k0}`,25000).catch(async()=>assert.fail(`its rounds kill (${JSON.stringify((await st()).killsBySrc)})`));
+ await evaluate('document.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape"}));document.querySelector("#controls-card [data-close], #controls-card button")?.click()');await delay(300);
+ current='gunship-auto-firing';await finish();
+ await until(`(${T}.state().programme.colony.gunship.fly||{}).nukePass>=0`,40000).catch(async()=>assert.fail(`the MK-9 drops on a pile in view (${JSON.stringify(await ga())})`));
+ await delay(4500);current='gunship-auto-nuke';await finish();
  } else if(args.includes('--units-sky')) {
  // THE SKY ON THE BENCH (owner, 2026-10-01: "UNITS are not showing all the units; we should see SOL, and the Gunship. also show
  // Wireframe for all units"): the KORP, SOL-82 and SOL-88 are catalogue entries built from their pinned GLBs, and the wireframe

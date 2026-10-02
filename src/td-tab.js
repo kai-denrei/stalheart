@@ -202,10 +202,8 @@ export function initTdTab(root) {
   const mobileShell = mobileParam === '1' ? true : mobileParam === '0' ? false
     : (matchMedia('(pointer: coarse)').matches && Math.min(innerWidth, innerHeight) < 900);
   document.body.classList.toggle('mobile-shell', mobileShell);
-  // ?coarse=1 — SIMULATE A COARSE POINTER for the ruler: no headless flag makes `(pointer: coarse)` true, so the phone's coarse
-  // blocks were invisible to ?layout (it reported 0 overlaps on a layout the phone never shows). Rewriting the media conditions in the
-  // loaded sheets makes them apply for real. A FUNCTION, called again at measure time: at init `cssRules` is not populated yet and
-  // it flipped ZERO blocks; it says how many it found so a zero is visible.
+  // ?coarse=1 — SIMULATE A COARSE POINTER for the ruler: no headless flag makes `(pointer: coarse)` true, so the media conditions
+  // in the loaded sheets are rewritten; called again at measure time (at init `cssRules` is empty) and it says how many it flipped.
   function simulateCoarse() {
     if (mobileParam !== '1' || new URLSearchParams(location.search).get('coarse') !== '1') return 0;
     let flipped = 0;
@@ -8294,12 +8292,9 @@ export function initTdTab(root) {
     stepBriefClock(dt);
     if (pilotMode) endShot();
     stepShot(dt);
-    const frozen = buildFrozen() || (shotActive() && shotId() !== 'breach');
-    // The BUILD pause holds the WORLD still, not the DRIVER. Planning with
-    // the tank parked where the last wave left it meant switching out of
-    // build, repositioning, and switching back — three actions for one
-    // intention. A reveal or a tutorial hold still stops everything, because
-    // those are the game speaking and it should not be driven over.
+    const frozen = buildFrozen() || (shotActive() && !/^(breach|sol88Launch)$/.test(shotId()));   // live shots: the world runs under them
+    // The BUILD pause holds the WORLD still, not the DRIVER (planning used to take three switches); a reveal or a tutorial hold
+    // stops everything, because those are the game speaking.
     // the cold open holds the hull for its first two beats and lets go for
     // the third — beat three IS the tank driving itself out of the berth
     // DEPLOY drives THROUGH a shot — that is how the cinematic's last frame
@@ -8606,7 +8601,7 @@ export function initTdTab(root) {
   createProgrammeHost({
     laserStation, shotId, showBrief, deployStart, deployStep, breachWallCell, graph: () => graph, cellSide: () => cellSide, leavePilot, camera, startShot, deployFramePoseFor, camA, setView, PLAYER_MAX, orders, breachQueue, breachedCells, gunshipRig, spawnIsao, updateHud, syncLifeContainers, rebuildAfterBreach, recomputePortalDist, adoptBays,
     scene, sfx, eco: () => eco, ammo: () => ammo, ammoMax: AMMO_MAX, setAmmo: (v) => { ammo = v; }, playerPos: () => player.pos, kills: () => rs?.bySrc ?? {}, rank: () => tankRank, hands: () => tankKills, killsByType: () => rs?.kills, hull: () => playerMesh,
-    isao: () => isao, enemies: () => enemies, explode: (u, p) => explode(u, p), kill: (e, src) => (e.alive ? (damageEnemy(e, t, e.hp + 1, true, src), true) : false),   // the colony's hands
+    isao: () => isao, enemies: () => enemies, explode: (u, p) => explode(u, p), callout: (x, k) => showCallout(x, k), kill: (e, src) => (e.alive ? (damageEnemy(e, t, e.hp + 1, true, src), true) : false),   // the colony's hands
     story: () => story, pilot: () => pilot, deploy: () => deploy, t: () => t, playerHP: () => playerHP, storyViews: () => storyViews, sectorRun: () => sectorRun, waveActive: () => waveActive, dungeon: () => dungeon, tdFullTags: () => tdFullTags, storyBase: () => storyBase, pilotMode: () => pilotMode, briefQ: () => briefQ,
     setBerths: (v) => { berths = v; }, setPlayerDown: (v) => { playerDown = v; }, setDeploy: (v) => { deploy = v; }, setPlayerHP: (v) => { playerHP = v; },
   }),

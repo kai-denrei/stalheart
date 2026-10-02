@@ -34,10 +34,11 @@ export function launchState(seconds) {
 // launcher: the standing structure's root (src/fx/story-base.js structure(id).root); now(): the game clock in seconds; onComplete: once
 // sfx: the game's sound (loop(key, opts) -> { set(gain, rate), stop(fade) }): the landing's rocket thrust bed rides the charge, the
 // acceleration and the climb, and cuts as the payload is away
-export function createArcLaunch({ launcher, now, onComplete = null, satellite = LAUNCH.satellite, sfx = null }) {
+// onPhase(phase): once per phase change (loading, charging, accelerating, released, unfolding, insertion, reset), for the narration
+export function createArcLaunch({ launcher, now, onComplete = null, satellite = LAUNCH.satellite, sfx = null, onPhase = null }) {
   const node = (n) => launcher?.getObjectByName(n) ?? null;
   const sled = node('LAUNCH_SLED'), clamps = [[node('CLAMP_L'), -1], [node('CLAMP_R'), 1]], gates = node('PASSAGE_GATES'), lights = node('ACCELERATOR_LIGHTS');
-  let t0 = null, sat = null, petals = [], plume = null, done = false, last = null, thrust = null;
+  let t0 = null, sat = null, petals = [], plume = null, done = false, last = null, thrust = null, lastPhase = null;
   const up = new THREE.Vector3(0, 0.43, 0);
   if (launcher) loadModelFixture(satellite).then((scene) => { if (done) return; sat = cloneFixture(scene); sat.name = 'sol88-payload'; launcher.add(sat); petals = [1, 2, 3, 4, 5, 6].map((i) => sat.getObjectByName(`PETAL_${i}_HINGE`)).filter(Boolean); plume = sat.getObjectByName('INSERTION_PLUME'); apply(last ?? launchState(0)); }, () => {});
   function apply(s) {
@@ -58,10 +59,14 @@ export function createArcLaunch({ launcher, now, onComplete = null, satellite = 
       t0 ??= now();
       const s = launchState(now() - t0);
       apply(s);
+      if (s.phase !== lastPhase) { lastPhase = s.phase; onPhase?.(s.phase); }
       const loud = s.t < RELEASE ? s.charge * 0.5 : s.t < 12 ? 1 - (s.t - RELEASE) / (12 - RELEASE) : 0;   // the charge hums, the release roars, the climb fades
       if (loud > 0) { thrust ??= sfx?.loop?.('rocket_thrust', { dist: 0, gain: 0 }) ?? null; thrust?.set?.(loud, 0.9 + 0.2 * loud); } else if (thrust) { thrust.stop?.(0.4); thrust = null; }
       if (s.done) { done = true; if (sat) { launcher.remove(sat); sat = null; } thrust?.stop?.(0.3); thrust = null; onComplete?.(); }
     },
+    // where a camera should look: the payload while it flies, else the sled (world space)
+    // computed from the choreography in the launcher's own frame, not read off a node whose world matrix may not be updated yet
+    focus: (out = new THREE.Vector3()) => { if (!launcher) return out; launcher.updateWorldMatrix(true, false); const s = last ?? launchState(0); return launcher.localToWorld(out.fromArray(s.t < RELEASE ? s.sled.position : s.payload.position)); },
     state: () => ({ t: last ? +last.t.toFixed(1) : 0, phase: last?.phase ?? 'loading', done, satellite: !!sat, sled: !!sled }),
     dispose() { done = true; if (sat) launcher?.remove(sat); sat = null; thrust?.stop?.(0.2); thrust = null; },
   };
