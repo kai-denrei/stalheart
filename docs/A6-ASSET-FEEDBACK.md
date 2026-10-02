@@ -223,3 +223,22 @@ See Part 1 §9: `focused`, `awe`, `frustrated`, `scan` missing; grid 8×6 agains
 
 Game-side status lives in `ROADMAP.md`; decisions and evidence in
 `docs/log/entries/2026-09-14-*`.
+
+---
+
+## Part 3 — Planet Scoreboards (`assets/planet-scoreboards/`, read 2026-10-02 at `main`)
+
+Read from the README, `manifest.json` and `runtime.js`; not yet pinned or measured in the game camera. The boards are good: grounded, literal, cheap (one instanced draw for the live score), and the split-flap and flip-dot faces are exactly the mechanical delight the game is after. What follows is what the game needs from them for the use it has in mind.
+
+**The use.** Two boards side by side in the base, a friendly rivalry (owner: "like Gimli and Legolas joking about who has the more kills"): one is the PLAYER's, one is ISAO's. Each shows three numbers: **kills**, **biomass gathered**, **biomass used**. The joke is built in: the player runs up kills and gathers biomass and has built nothing; Isao has zero kills and spends everything. Then one day Isao drops a single missile, with great effort, and his kills board turns from 0 to 1 and the whole board celebrates.
+
+1. **A name field, not a baked `SCORE` label.** Two boards need two identities. Please replace the baked `SCORE` with a runtime-set short label (6–8 characters, the same glyph set as the digits or a stencil font), or ship a named `LABEL_ORIGIN` node and blank plate so the game can mount its own. Wanted labels: `ISAO`, the player's hull name (up to 18 characters per the livery schema, truncated), and per-row `KILLS`, `GATHERED`, `USED`.
+2. **Rows.** One number per board means six boards for the use above. Please add a variant (or a `rows` option in `attachScoreDisplay`) with **three rows of six digits** on the same 8 × 5 m plot, each row with its own label slot. Six digits is enough (biomass totals stay under 999,999 in a run).
+3. **Leading zeros blank.** `setScore` pads to `00000000`. Isao's zero must read as a single `0`, and his `1` as a single `1`: the celebration depends on the board looking empty before it. An option `{ blankLeading: true }` on `setScore` would do it.
+4. **The change is the show: a transition in the runtime.** `setScore` replaces the face instantly. The split-flap should clatter through the intermediate cards per digit (fastest on the units, the carry rippling left), the flip-dots should flip in a sweep, the beacon segments should fade between states. Engine-driven, no baked clip, with a duration option, so the game can make a big change take two seconds and a routine one a quarter of a second.
+5. **A celebration state.** For the 0 → 1 moment: a named node or runtime call for "all lit / all flipped" that the game can pulse (`celebrate(seconds)`), plus a named `SOCKET_FX` on top of the board where the game can fire its own confetti or a flare.
+6. **Colour at runtime.** `COLORS` is fixed per variant. The player's board should wear the player's rank tier colour (bronze `#b08d57`, silver `#c9ccd1`, gold `#e8c04c`) and Isao's his phosphor (`#7dffb0`). A `color` option on `attachScoreDisplay` covers it.
+7. **LOD2's snapshot.** The distance tier shows `12,345,678` forever. Please ship LOD2 with a blank or zero face; a distant board showing a wrong number is worse than a blank one.
+8. **Suggested casting** (owner's call): Isao on the **split-flap** (a builder's mechanical board; the clatter from 0 to 1 is the joke landing), the player on the **beacon** (seven-segment light, fast, a fighter's board). The flip-dot as the colony's shared board later (collectors in orbit, sectors held).
+
+The game will pin LOD1 and LOD2 plain GLBs and the runtime as usual once these land; until then the canvas plaque in `src/fx/scoreboard.js` stands in.

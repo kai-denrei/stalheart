@@ -314,7 +314,13 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 38 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 39 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### Proposed: two scoreboards (the player's and Isao's: kills, biomass gathered, biomass used), Isao's one missile that takes his kills from 0 to 1 with a celebration, and a livery Isao can print once he finds dyes in the biomass
+
+`2026-10-02-two-boards-isaos-missile-and-the-dies` · decision · **proposed**
+
+Owner, 2026-10-02: "Scoreboards, our asset team developed these (A6 planet-scoreboards). we can give them feedback for a better board. I am even thinking a friendly scoreboard of one for Isao and one for the player... perhaps kills/biomass accumulated and biomass used. Isao would be zero kills and high usage, player would be high kills and zero construction... then at some point we could have Isao drop ONE missile somewhere with high effort and his score triumphantly moving from zero to 1 to a huge celebration." And: "for customization options, we also played with a lab/metal, some elements could be re-used. Diegetic explanation; as Isao processes the biomass of the enemies for printing material, he discovers that he can also extract extra dyes and offers the player to pimp his ride."
 
 ### The owner's fourth playtest notes and the A6 workshop survey: a second canyon pass as the penultimate wave, SOL-82 automated later (SOL-88 launched by the ARC-01), the Units lab to show SOL and the gunship with wireframes, and new base buildings (chip plant, greenhouse, bio containers, an armory where the tank refills shells)
 

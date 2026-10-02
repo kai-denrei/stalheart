@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-10-02-two-boards-isaos-missile-and-the-dies",
+  "date": "2026-10-02",
+  "type": "decision",
+  "status": "proposed",
+  "title": "Proposed: two scoreboards (the player's and Isao's: kills, biomass gathered, biomass used), Isao's one missile that takes his kills from 0 to 1 with a celebration, and a livery Isao can print once he finds dyes in the biomass",
+  "context": "Owner, 2026-10-02: \"Scoreboards, our asset team developed these (A6 planet-scoreboards). we can give them feedback for a better board. I am even thinking a friendly scoreboard of one for Isao and one for the player... perhaps kills/biomass accumulated and biomass used. Isao would be zero kills and high usage, player would be high kills and zero construction... then at some point we could have Isao drop ONE missile somewhere with high effort and his score triumphantly moving from zero to 1 to a huge celebration.\" And: \"for customization options, we also played with a lab/metal, some elements could be re-used. Diegetic explanation; as Isao processes the biomass of the enemies for printing material, he discovers that he can also extract extra dyes and offers the player to pimp his ride.\"",
+  "outcome": "Not built; recorded for the owner's call. Asset feedback written: docs/A6-ASSET-FEEDBACK.md Part 3 (a name field instead of the baked SCORE, three rows of six digits, leading zeros blank, a per-digit transition in the runtime, a celebration call and FX socket, runtime colour, a blank LOD2 face; casting Isao on the split-flap and the player on the beacon). Design sketch: (1) two boards side by side on the existing scoreboard slab, fed from numbers the game already keeps (hands-on kills; eco earned; Isao's spend = every order and print he pays for); (2) ISAO'S MISSILE: once, after the player passes some kills threshold, Isao asks for a quiet minute, flies to the armory dump, hauls one of the three missiles under him (slow, wobbling, a running commentary), drops it on a single soft body; his board clatters 0 -> 1, the board celebrates, Isao gets a face and two lines, the player's board does not move; it is a set piece, not a mechanic; (3) THE DYES: the farm or the foundry yields a dye unlock from biomass at a milestone (first cleared sector past the farm, or N kg processed), Isao offers to 'pimp your ride' in the bays; the first slice reuses the metal lab's per-material tint ladder (M_Armour, M_Turret, M_Detail on the shipped hull, src/fx/weathered-material.js) as paint on the current MÖRK with three dye swatches, no hull swap; the A6 livery package (patterns, name, number, message) is the second slice once the owner decides the hull swap.",
+  "alternatives": [
+    "Integrating the scoreboards as they are: one 8-digit number with a baked SCORE label each means six boards and padded zeros that kill the 0 -> 1 joke",
+    "Livery first through the A6 package: needs the shelved hull swap and two Three add-ons; the metal lab's tint ladder paints the shipped hull today"
+  ],
+  "evidence": [
+    "https://jelaludo.github.io/SentryTowers_A6/planet-scoreboards/ (README, manifest.json, runtime.js read 2026-10-02)",
+    "docs/A6-ASSET-FEEDBACK.md Part 3",
+    "src/metal-tab.js, src/fx/weathered-material.js (the per-material tint ladder)"
+  ],
+  "supersedes": []
+}
