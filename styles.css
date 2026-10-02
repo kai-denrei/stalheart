@@ -4746,3 +4746,9 @@ body.mobile-shell #gunship-hud .ro { display: none; }
 body.mobile-shell #sentry-pilot output { display: none; }
 body.mobile-shell:has(#sentry-pilot) #shell-bar, body.mobile-shell:has(#laser-seat) #shell-bar { display: none; }
 body.mobile-shell #sentry-pilot footer.hint-seen, body.mobile-shell #laser-seat footer.hint-seen { display: none; }
+
+/* A LAB EMBEDDED IN ANOTHER VIEW (?embed=1): the Units bench frames the sentry lab for every sentry (owner, 2026-10-02: "by default it
+   shows the EXACT view of the sentry/impact"). The lab is untouched; only its authoring transfer panel steps aside for the bench's chrome */
+body.embedded .preset-panel { display: none; }
+#units-lab { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: #05070c; }
+#units-lab[hidden] { display: none; }

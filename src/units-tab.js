@@ -81,6 +81,24 @@ export function initUnitsTab(root) {
   // white-tinted units blow out to a featureless blob at play strength
   const postfx = makeBloom(renderer, scene, camera, { strength: 0.5, threshold: 0.9 });
 
+  // THE SENTRY LAB, FRAMED (owner, 2026-10-02: "to display the Sentries in the UNITS view, I insist that I want to replicate the lab for
+  // sentries view ... let's not re-invent the wheel ... by default it shows the EXACT view of the sentry/impact, and then the player can
+  // inspect the wireframe manually"). A labs page owns one lab, so the bench does not copy the range: it frames the real one
+  // (labs.html?embed=1&family=<key>#sentry) while a sentry is shown in ANIMATION, and blanks the frame otherwise so only one renderer runs
+  const labFrame = document.createElement('iframe');
+  labFrame.id = 'units-lab'; labFrame.title = 'sentry lab'; labFrame.hidden = true;
+  container.appendChild(labFrame);
+  let labKey = null;
+  function showLab(key) {
+    labFrame.hidden = !key; renderer.domElement.style.visibility = key ? 'hidden' : '';
+    if (key === labKey) return;
+    labKey = key;
+    if (!key) { labFrame.src = 'about:blank'; return; }
+    const u = new URL('./labs.html', location.href);
+    for (const k of ['sw', 'acceptance']) { const v = new URLSearchParams(location.search).get(k); if (v) u.searchParams.set(k, v); }
+    u.searchParams.set('embed', '1'); u.searchParams.set('family', key); u.hash = 'sentry';
+    labFrame.src = u.href;
+  }
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
@@ -89,6 +107,8 @@ export function initUnitsTab(root) {
   // THE BENCH'S DEFAULT IS A WIREFRAME ON A TURNTABLE (owner, 2026-10-02); ANIMATION (state.sweep) switches both off and runs the unit as
   // the game does: the tank drives and fires, a sentry aims and fires, a platform runs its authored cycle (stepDemo)
   const state = { group: 'friendly', index: 0, towerLook: DEFAULT_TOWER_LOOK, spin: true, sweep: false };
+  const sweepDeep = new URLSearchParams(location.search).get('sweep') === '1';
+  let wireOn = true, wireBtn = null;   // the wireframe survey (declared up here: show() reads them before the buttons are wired)   // ?sweep=1: every entry opens in ANIMATION
   // the test bench: the SAME feel driver the game runs, so what you tune here
   // is what ships. `running` is the engine's own notion of running.
   const feel = makeTankFeel();
@@ -510,6 +530,9 @@ export function initUnitsTab(root) {
     // and switched it straight back on for every non-enemy unit — so the yaw deep
     // link never actually froze a tank. Found when a size read on a "frozen" hull
     // still drifted by two thirds of a metre in a second and a half.
+    // EVERY ENTRY OPENS ON ITS DEFAULT: a sentry on the sentry lab (ANIMATION), everything else as a wireframe on the turntable
+    if (state.sweep !== (e.kind === 'tower' || sweepDeep)) { state.sweep = e.kind === 'tower' || sweepDeep; sweepBtn?.classList.toggle('on', state.sweep); wireBtn?.classList.toggle('on', wireOn && !state.sweep); }
+    showLab(e.kind === 'tower' && state.sweep ? e.id : null);
     const wantSpin = e.kind !== 'enemy' && !Number.isFinite(yawQ) && !state.sweep;
     if (state.spin !== wantSpin) {
       state.spin = wantSpin;
@@ -778,9 +801,11 @@ export function initUnitsTab(root) {
   }
 
   // WIREFRAME FOR EVERY UNIT: the briefings' cyan survey over whatever stands on the bench, toggled without re-framing
-  let wireOn = true;
-  const wireBtn = root.querySelector('#units-wire');
-  wireBtn?.addEventListener('click', () => { wireOn = !wireOn; wireBtn.classList.toggle('on', wireOn); setWireframe(current, wireOn); });
+  wireBtn = root.querySelector('#units-wire');
+  wireBtn?.addEventListener('click', () => {
+    if (state.sweep) { wireOn = true; sweepBtn?.click(); return; }   // in ANIMATION (a sentry's lab): WIREFRAME is the way to inspect it
+    wireOn = !wireOn; wireBtn.classList.toggle('on', wireOn); setWireframe(current, wireOn);
+  });
   const spinBtn = root.querySelector('#units-spin');
   spinBtn.addEventListener('click', (ev) => {
     state.spin = !state.spin;
@@ -812,7 +837,7 @@ export function initUnitsTab(root) {
     // sweep rather than the model. Frozen, it returns to its rest pose.
     if (current && current.userData.tick && state.sweep) current.userData.tick(clock);
     if (current && state.spin) current.rotation.y += dt * 0.35;
-    if (state.sweep) stepDemo(dt);
+    if (state.sweep && !labKey) stepDemo(dt);
     stepFire(dt);
     // barrel heat: the same cool->hot lerp the game runs, on the same sleeve
     if (heat > 0) heat = Math.max(0, heat - dt);
@@ -837,7 +862,7 @@ export function initUnitsTab(root) {
       if (wreckT <= 0 && current) { current.visible = true; feel.hoverT = 0; landTankFeel(feel); }
     }
     controls.update();
-    postfx.render();
+    if (!labKey) postfx.render();   // the framed lab draws itself
     drawCallouts();   // after render, so it tracks the frame just drawn
   }
 
@@ -1030,43 +1055,8 @@ export function initUnitsTab(root) {
     for (let i = demo.pending.length - 1; i >= 0; i--) { demo.pending[i].at -= dt; if (demo.pending[i].at <= 0) { range.kill(demo.pending[i].id); demo.pending.splice(i, 1); } }
     demo.cool -= dt;
     const e = currentEntry;
-    if (e.kind === 'tower') demoTower(dt);
-    else if (e.kind === 'unit') demoTank(dt);
+    if (e.kind === 'unit') demoTank(dt);
     else if (e.kind === 'model') { demoClips(dt); if (e.id === 'korp') demoGunship(dt); else demoLaser(dt); }
-  }
-  // A SENTRY on its plinth: the head yaws and the barrel lifts onto the nearest walker at the lab's drive rates, and the family's shot
-  // leaves when the error is inside the tolerance; the round's kill lands after its flight, a beam's at once
-  function demoTower(dt) {
-    const def = TOWER_BY_KEY[currentEntry.id]; if (!def) return;
-    const head = current.userData.head, pitch = current.userData.pitchNode;
-    const muzzle = current.userData.muzzles?.[0] ?? head ?? current;
-    current.updateMatrixWorld(true);
-    const from = muzzle.getWorldPosition(new THREE.Vector3());
-    const tgt = range.nearest(from);
-    if (!tgt) { if (head) head.rotation.y = demo.yaw = slew(demo.yaw, 0, SENTRY_TUNE.yawRate * RAD * dt); return; }
-    let err = 0;
-    if (head) {
-      const local = current.worldToLocal(tgt.pos.clone());
-      const want = Math.atan2(local.x, local.z) - (current.userData.headFacing ?? 0);
-      demo.yaw = slew(demo.yaw, want, SENTRY_TUNE.yawRate * RAD * dt); head.rotation.y = demo.yaw;
-      err += Math.abs(Math.atan2(Math.sin(want - demo.yaw), Math.cos(want - demo.yaw)));
-    }
-    if (pitch) {
-      const pw = pitch.getWorldPosition(new THREE.Vector3()), dy = tgt.pos.y - pw.y, dh = Math.hypot(tgt.pos.x - pw.x, tgt.pos.z - pw.z);
-      const want = Math.max(SENTRY_TUNE.elevMin * RAD, Math.min(SENTRY_TUNE.elevMax * RAD, Math.atan2(dy, dh)));
-      demo.elev = slew(demo.elev, want, SENTRY_TUNE.pitchRate * RAD * dt); pitch.rotation.x = -demo.elev;
-      err += Math.abs(want - demo.elev);
-    }
-    if (err > SENTRY_TUNE.tolerance * RAD || demo.cool > 0) return;
-    const kind = shotOf(def).kind, reach = (def.range || 3) * CELL, speed = (shotOf(def).projSpeed || 12) * CELL;
-    demo.cool = def.key === 'lancer' ? firingFor(def.key).duration : Math.max(0.08, 1 / effectiveStats(def, 0).rate);
-    weaponVoice.shot(def.key);
-    current.updateMatrixWorld(true);
-    const origin = muzzle.getWorldPosition(new THREE.Vector3()), dir = tgt.pos.clone().sub(origin).normalize();
-    towerShot(def, origin, dir, tgt.pos);
-    const dist = origin.distanceTo(tgt.pos);
-    if (kind === 'lance' || kind === 'throw') range.kill(tgt.id);
-    else if (dist <= reach * 1.2) demo.pending.push({ id: tgt.id, at: kind === 'lob' ? Math.max(0.25, reach / speed) * 1.9 : dist / Math.max(0.001, speed) });
   }
   // THE HULL drives through the wave: it turns toward the nearest walker, keeps to the platform, rams what it touches and fires a shell
   function demoTank(dt) {
@@ -1241,11 +1231,11 @@ export function initUnitsTab(root) {
       sweepBtn.classList.toggle('on', state.sweep);
       // ANIMATION is the realistic view: the wireframe and the turntable go off with it and come back when it stops
       setWireframe(current, wireOn && !state.sweep); wireBtn?.classList.toggle('on', wireOn && !state.sweep);
+      showLab(currentEntry?.kind === 'tower' && state.sweep ? currentEntry.id : null);
       state.spin = !state.sweep && currentEntry?.kind !== 'enemy'; spinBtn.classList.toggle('on', state.spin);
       // freezing snaps the turret back to rest, which is the point of it
       if (!state.sweep) { if (current && current.userData.tick) current.userData.tick(0); if (currentEntry?.kind === 'unit') setEngine(false); stopDemo(); if (current) frame(current); }
     });
-    if (new URLSearchParams(location.search).get('sweep') === '1' && !state.sweep) sweepBtn.click();
   }
 
   const labelsBtn = root.querySelector('#units-labels');
@@ -1546,7 +1536,7 @@ export function initUnitsTab(root) {
       heat,cannonColor:current?.userData.heatSleeve?.material.color.getHex(),
       missileReady:!!missilePool,modelReady:!current?.userData.loading,
       meshes:(()=>{let n=0,w=0;current?.traverse((o)=>{if(o.isMesh){n++;if(o.material?.wireframe)w++;}});return {n,wire:w};})(),   // the wireframe survey: how many meshes, how many drawn as wire
-      spin:state.spin,animation:state.sweep,demo:state.sweep&&!!demo,range:range?.state()??null,
+      spin:state.spin,animation:state.sweep,demo:state.sweep&&!!demo,range:range?.state()??null,lab:labKey,
       missiles:missiles.map(m=>({config:m.config,t:m.t,name:m.mesh.name,position:m.mesh.position.toArray(),ignition:m.mesh.getObjectByName('EXHAUST_FX').visible})) }),
     fire: () => currentEntry?.kind==='tower'?firePattern():fireShell(),
   };

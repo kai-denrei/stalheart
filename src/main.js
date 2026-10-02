@@ -85,7 +85,9 @@ if (leaving) {
   }
   // THE NAVIGATION SHELL: PLAYTEST | DEV top right with the build tag, one drawer per mode (src/fx/shell-nav.js)
   const build = document.querySelector('meta[name="cb"]')?.content, rev = document.querySelector('meta[name="rev"]')?.content;
-  mountShellNav({ navigate, query: q, buildText: [build && build !== '00000000' ? `build ${build}` : 'dev', rev].filter(Boolean).join(' · ') });
+  // EMBEDDED (?embed=1): a lab shown inside another view (the Units bench frames the sentry lab, 2026-10-02) has no shell of its own
+  if (q.get('embed') === '1') document.body.classList.add('embedded');
+  else mountShellNav({ navigate, query: q, buildText: [build && build !== '00000000' ? `build ${build}` : 'dev', rev].filter(Boolean).join(' · ') });
   for (const evt of ['gesturestart', 'gesturechange', 'gestureend']) {
     root.addEventListener(evt, e => e.preventDefault(), { passive: false });
   }

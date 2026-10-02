@@ -1450,17 +1450,24 @@ try{
   await click('#units-sweep');await delay(200);
   const c=await us();assert.equal(c.meshes.wire,c.meshes.n,`${id} wire again`);assert.equal(c.spin,true,'spinning again');
  }
- // the arrows never move: the same place on a short-named and a long-named entry
+ // A SENTRY OPENS ON THE SENTRY LAB ITSELF (owner, 2026-10-02: "by default it shows the EXACT view of the sentry/impact, and then the
+ // player can inspect the wireframe manually"): the bench frames labs.html#sentry for that family; WIREFRAME drops to the bench
+ const lab=(k)=>`(f=>!!f&&!f.hidden&&!!f.contentWindow?.__stalheartSentryTest&&f.contentWindow.__stalheartSentryTest.state().family===${JSON.stringify(k)})(document.querySelector('#units-lab'))`;
  await go('units-sky-tower','labs.html?sw=0&unit=rotor&acceptance=1#units');
- await until(`${U} && ${U}.state().meshes.n>0`,30000);
+ await until(lab('rotor'),60000).catch(async()=>assert.fail(`the rotor opens on the sentry lab (${JSON.stringify((await us()).lab)})`));
+ await delay(2500);current='units-sky-rotor-lab';await finish();
  const arrows=async()=>evaluate('["#units-prev","#units-next"].map(q=>{const r=document.querySelector(q).getBoundingClientRect();return [Math.round(r.x),Math.round(r.y)]})');
- const a1=await arrows();await click('#units-next');await delay(600);const a2=await arrows();
- assert.deepEqual(a2,a1,`the arrows stay put across entries (${JSON.stringify(a1)} -> ${JSON.stringify(a2)})`);
- {const s=await us();assert(s.meshes.n===0||s.meshes.wire===s.meshes.n,`the next entry arrives as wire (${JSON.stringify(s.meshes)})`);}
- await click('#units-sweep');await delay(1500);
- {const s=await us();assert.equal(s.demo,true,'a tower\'s ANIMATION runs on the range');}
- await until(`${U}.state().range.cleared>0`,30000).catch(async()=>assert.fail(`the sentry kills walkers on the range (${JSON.stringify((await us()).range)})`));
- current='units-sky-tower-range';await finish();
+ const a1=await arrows();
+ for(const k of ['plasma','quiver','relay','mortar']){await click('#units-next');await until(lab(k),60000).catch(async()=>assert.fail(`${k} opens on the sentry lab (${JSON.stringify((await us()).lab)})`));}
+ assert.deepEqual(await arrows(),a1,'the arrows stay put across entries');
+ await delay(4000);
+ {const n=await evaluate('document.querySelector("#units-lab").contentWindow.__stalheartSentryTest.state().missiles?1:1');assert.ok(n);}
+ current='units-sky-mortar-lab';await finish();
+ await click('#units-wire');await delay(800);
+ {const s=await us();assert.equal(s.lab,null,'WIREFRAME leaves the lab');assert.equal(await evaluate('document.querySelector("#units-lab").hidden'),true,'and blanks the frame');assert(s.meshes.n>0&&s.meshes.wire===s.meshes.n,`the mortar as wire on the turntable (${JSON.stringify(s.meshes)})`);assert.equal(s.spin,true);}
+ current='units-sky-mortar-wire';await finish();
+ await click('#units-sweep');await until(lab('mortar'),60000);
+ await click('#units-next');await until(lab('lancer'),60000);
  // the hull on the range: it drives and rams
  await go('units-sky-tank','labs.html?sw=0&unit=mork&acceptance=1&sweep=1#units');
  await until(`${U} && ${U}.state().modelReady===true && ${U}.state().demo`,40000);
