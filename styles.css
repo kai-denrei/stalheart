@@ -1580,7 +1580,9 @@ html, body {
 }
 #units-sounds button:hover { border-color: rgba(159, 220, 255, .5); }
 #units-sounds button.on { color: #061018; background: #6fe6ff; border-color: #6fe6ff; }
-#units-sounds.hidden { display: none; }
+/* the row keeps its height when empty, so the arrows above it never move (owner, 2026-10-02) */
+#units-sounds { min-height: 30px; }
+#units-sounds.hidden { visibility: hidden; pointer-events: none; }
 
 /* ============================================================
    .mdview — the reading surface for DEVLOG.md, HOW-IT-WORKS.md

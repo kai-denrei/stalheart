@@ -38,6 +38,9 @@ import { makeBloom } from './postfx.js';
 import { makeAudio } from './audio.js';
 import { GROUPS, GROUP_LABELS, GROUP_EMPTY, entriesIn } from './unitcatalog.js';
 import { modelFixture, modelClips, setWireframe } from './fx/model-fixture.js';
+import { createBenchRange } from './labs/bench-range.js';
+import { createOrbitalLaser } from './fx/orbital-laser.js';
+import { SENTRY_TUNE } from './sentry.js';
 import { FONT_NAMES, TYPE_KNOBS, TYPE_FEEL, makeTypeParams, loadTypeFeel, saveTypeFeel,
   formatTypeCode, applyFontPack, currentFontPack, currentShoutPack } from './fonts.js';
 import { LORE, LORE_WORLD, loreText, loreAll } from './lore.js';
@@ -544,10 +547,10 @@ export function initUnitsTab(root) {
     }
     scene.add(current);
     setWireframe(current, wireOn && !state.sweep);   // the bench's wireframe survey, if it is on (owner, 2026-10-01: "show Wireframe for all units")
-    demo = null; demoT = 0;   // a new unit starts its demo from rest
+    stopDemo();   // a new unit starts its demo from rest
     // a full ammo rack reads better than an empty one when you are judging shape
     (current.userData.ammoDots || []).forEach((d) => d.material.color.setHex(0xffffff));
-    frame(current);
+    if (state.sweep) frameRange(); else frame(current);   // ANIMATION frames the platform, not the unit
     nameEl.textContent = e.label;
     noteEl.textContent = e.note || '';
     if (current.userData.modelStats) {
@@ -840,6 +843,13 @@ export function initUnitsTab(root) {
 
   // Where a tower's shots leave from: the head, read off the render transform
   // rather than recomputed from the mast constants.
+  // the first muzzle's world direction (+Z of its frame), or the head's, or world +Z
+  function muzzleDir(unit) {
+    const m = unit?.userData.muzzles?.[0] ?? unit?.userData.head;
+    if (!m) return new THREE.Vector3(0, 0, 1);
+    unit.updateMatrixWorld(true);
+    return new THREE.Vector3(0, 0, 1).applyQuaternion(m.getWorldQuaternion(new THREE.Quaternion())).normalize();
+  }
   function towerMuzzle(unit) {
     const head = unit && unit.userData.head;
     const v = new THREE.Vector3();
@@ -854,7 +864,10 @@ export function initUnitsTab(root) {
 
   // Missiles use the shared flight owner and actual sockets. Other weapon
   // kinds retain the catalogue schematic preview.
-  function towerShot(def, origin) {
+  // dir: the shot's direction (the first muzzle's own +Z when not given: the old pattern fired every family along world +Z, which is
+  // the "fires in one direction from the base" the owner saw, 2026-10-02); aimPt: where a missile is sent
+  function towerShot(def, origin, dir = null, aimPt = null) {
+    dir = dir ?? muzzleDir(current);
     const config=CONTENT.missiles[def.key];
     if(config){
       if(!missilePool?.available || current?.userData.loading)return;
@@ -865,21 +878,20 @@ export function initUnitsTab(root) {
       const from=muzzle.getWorldPosition(new THREE.Vector3());
       const direction=new THREE.Vector3(0,0,1).applyQuaternion(muzzle.getWorldQuaternion(new THREE.Quaternion()));
       const scale=muzzle.getWorldScale(new THREE.Vector3()).x;
-      const target=current.localToWorld(new THREE.Vector3(0,0,(def.range || 3)*CELL));
+      const target=aimPt ? aimPt.clone() : current.localToWorld(new THREE.Vector3(0,0,(def.range || 3)*CELL));
       const m=launchDart(missilePool,{config,from:from.toArray(),target:target.toArray(),direction:direction.toArray(),scale});
       scene.add(m.mesh);missiles.push(m);return;
     }
     const reach = (def.range || 3) * CELL;
     const speed = (shotOf(def).projSpeed || 12) * CELL;
     const col = new THREE.Color(def.color || 0xffffff);
-    const dir = new THREE.Vector3(0, 0, 1);
     const life = Math.max(0.25, reach / Math.max(0.001, speed));
     switch (shotOf(def).kind) {
       case 'lob': {
         // a lob: up and out, gravity brings it down, and it BURSTS
         const t = life * 1.9;
         const count=fx.length;
-        addFx(origin, new THREE.Vector3(0, reach * 0.9 / t, reach / t), t, col, -2 * (reach * 0.9) / (t * t));
+        addFx(origin, new THREE.Vector3(dir.x, 0, dir.z).normalize().multiplyScalar(reach / t).setY(reach * 0.9 / t), t, col, -2 * (reach * 0.9) / (t * t));
         if(fx.length===count)break;
         fx[fx.length - 1].burst = { n: 40, col, r: reach * 0.32 };
         const shell=makeOrdnanceShell(CELL*.28);scene.add(shell);fx[fx.length-1].shell=shell;
@@ -990,28 +1002,114 @@ export function initUnitsTab(root) {
   // along the barrel's own world +Z — derived from the render transform, per
   // the house rule, so it stays right when the turret has swept.
   // THE DEMO (owner, 2026-10-02: "an in-game realistic animation. If the tank, it moves and fires, if a sentry, it adjusts its targeting
-  // and fires, if the gunship or orbital lasers, they move and fire"). Driven by the bench's own hands: the tank's engine and shell, a
-  // tower's firing pattern on its cadence, and for a pinned platform its authored clips played in turn with a slow pass across the bench
-  let demo = null, demoT = 0;
+  // and fires, if the gunship or orbital lasers, they move and fire"; and later: "ALL units displayed with the same platform as in
+  // labs.html#sentry could be a good look. and the tank could be ramming enemies"). ANIMATION puts the unit on the bench range
+  // (src/labs/bench-range.js: the sentry lab's disc, grid, rings and waves of dot enemies) and drives it as the game would: a sentry
+  // turns its head and barrel onto the nearest walker and fires its family's shot at it; the hull drives through the wave, rams what
+  // it touches and fires a shell; the gunship circles overhead and rakes the lane; an orbital laser lays its column and walks it over
+  // the swarm. Kills are the range's: a round books one when it would arrive, a beam at once, a ram on contact.
+  let demo = null, demoT = 0, range = null;
+  const RAD = Math.PI / 180, RANGE_R = 6;
+  const slew = (from, to, rate) => { let d = to - from; d = Math.atan2(Math.sin(d), Math.cos(d)); return from + Math.sign(d) * Math.min(Math.abs(d), rate); };
+  function frameRange() { const d = RANGE_R * 2.4; camera.position.set(0, d * 0.62, d * 0.78); controls.target.set(0, 0, 0); camera.near = 0.02; camera.far = d * 30; camera.updateProjectionMatrix(); controls.update(); }
+  function stopDemo() {
+    if (demo?.laser) { demo.laser.lift(); demo.laser.hideGuide(); demo.laser.clear(); demo.laser.dispose?.(); }
+    if (demo && current) { current.position.copy(demo.base); current.rotation.y = demo.rotY; if (current.userData.head) current.userData.head.rotation.y = 0; if (current.userData.pitchNode) current.userData.pitchNode.rotation.x = 0; }
+    demo = null; demoT = 0;
+    if (range) { range.group.visible = false; range.reset(); }
+  }
   function stepDemo(dt) {
     if (!current || !currentEntry) return;
-    demoT += dt;
-    const e = currentEntry;
-    if (e.kind === 'unit') { if (!running) setEngine(true); if (demoT > 2.6) { demoT = 0; fireShell(); } return; }
-    if (e.kind === 'tower') { if (fireLeft <= 0 && demoT > 1.2) { demoT = 0; firePattern(); } return; }
-    if (e.kind === 'model') {
-      if (!demo) {
-        const clips = modelClips(e.url);
-        demo = { mixer: clips.length ? new THREE.AnimationMixer(current) : null, clips, at: 0, action: null, base: current.position.y, bob: e.id === 'korp' ? 0.18 : 0.06 };
-      }
-      if (demo.mixer) {
-        if (!demo.action || !demo.action.isRunning()) { const clip = demo.clips[demo.at++ % demo.clips.length]; demo.action = demo.mixer.clipAction(clip); demo.action.reset().setLoop(THREE.LoopOnce, 1); demo.action.clampWhenFinished = false; demo.action.play(); }
-        demo.mixer.update(dt);
-      }
-      // the pass: a slow drift across the bench and back, a bob for an airframe, the whole thing turning to face its way
-      const u = Math.sin(demoT * 0.35);
-      current.position.x = u * 0.9; current.position.y = demo.base + Math.sin(demoT * 1.7) * demo.bob; current.rotation.y = Math.PI / 2 - u * 0.4;
+    range ??= createBenchRange(scene, { radius: RANGE_R });
+    if (!demo) {
+      range.group.visible = true; range.reset(); frameRange();
+      const clips = currentEntry.kind === 'model' ? modelClips(currentEntry.url) : [];
+      demo = { cool: 0, heading: 0, yaw: 0, elev: 0, base: current.position.clone(), rotY: current.rotation.y, laser: null, pending: [], phase: 0, mixer: clips.length ? new THREE.AnimationMixer(current) : null, clips, at: 0, action: null };
     }
+    range.tick(dt); demoT += dt;
+    for (let i = demo.pending.length - 1; i >= 0; i--) { demo.pending[i].at -= dt; if (demo.pending[i].at <= 0) { range.kill(demo.pending[i].id); demo.pending.splice(i, 1); } }
+    demo.cool -= dt;
+    const e = currentEntry;
+    if (e.kind === 'tower') demoTower(dt);
+    else if (e.kind === 'unit') demoTank(dt);
+    else if (e.kind === 'model') { demoClips(dt); if (e.id === 'korp') demoGunship(dt); else demoLaser(dt); }
+  }
+  // A SENTRY on its plinth: the head yaws and the barrel lifts onto the nearest walker at the lab's drive rates, and the family's shot
+  // leaves when the error is inside the tolerance; the round's kill lands after its flight, a beam's at once
+  function demoTower(dt) {
+    const def = TOWER_BY_KEY[currentEntry.id]; if (!def) return;
+    const head = current.userData.head, pitch = current.userData.pitchNode;
+    const muzzle = current.userData.muzzles?.[0] ?? head ?? current;
+    current.updateMatrixWorld(true);
+    const from = muzzle.getWorldPosition(new THREE.Vector3());
+    const tgt = range.nearest(from);
+    if (!tgt) { if (head) head.rotation.y = demo.yaw = slew(demo.yaw, 0, SENTRY_TUNE.yawRate * RAD * dt); return; }
+    let err = 0;
+    if (head) {
+      const local = current.worldToLocal(tgt.pos.clone());
+      const want = Math.atan2(local.x, local.z) - (current.userData.headFacing ?? 0);
+      demo.yaw = slew(demo.yaw, want, SENTRY_TUNE.yawRate * RAD * dt); head.rotation.y = demo.yaw;
+      err += Math.abs(Math.atan2(Math.sin(want - demo.yaw), Math.cos(want - demo.yaw)));
+    }
+    if (pitch) {
+      const pw = pitch.getWorldPosition(new THREE.Vector3()), dy = tgt.pos.y - pw.y, dh = Math.hypot(tgt.pos.x - pw.x, tgt.pos.z - pw.z);
+      const want = Math.max(SENTRY_TUNE.elevMin * RAD, Math.min(SENTRY_TUNE.elevMax * RAD, Math.atan2(dy, dh)));
+      demo.elev = slew(demo.elev, want, SENTRY_TUNE.pitchRate * RAD * dt); pitch.rotation.x = -demo.elev;
+      err += Math.abs(want - demo.elev);
+    }
+    if (err > SENTRY_TUNE.tolerance * RAD || demo.cool > 0) return;
+    const kind = shotOf(def).kind, reach = (def.range || 3) * CELL, speed = (shotOf(def).projSpeed || 12) * CELL;
+    demo.cool = def.key === 'lancer' ? firingFor(def.key).duration : Math.max(0.08, 1 / effectiveStats(def, 0).rate);
+    weaponVoice.shot(def.key);
+    current.updateMatrixWorld(true);
+    const origin = muzzle.getWorldPosition(new THREE.Vector3()), dir = tgt.pos.clone().sub(origin).normalize();
+    towerShot(def, origin, dir, tgt.pos);
+    const dist = origin.distanceTo(tgt.pos);
+    if (kind === 'lance' || kind === 'throw') range.kill(tgt.id);
+    else if (dist <= reach * 1.2) demo.pending.push({ id: tgt.id, at: kind === 'lob' ? Math.max(0.25, reach / speed) * 1.9 : dist / Math.max(0.001, speed) });
+  }
+  // THE HULL drives through the wave: it turns toward the nearest walker, keeps to the platform, rams what it touches and fires a shell
+  function demoTank(dt) {
+    if (!running) setEngine(true);
+    const span = current.userData.span ??= new THREE.Box3().setFromObject(current).getSize(new THREE.Vector3()).length();
+    const pos = current.position, tgt = range.nearest(pos);
+    const home = pos.length() > RANGE_R * 0.7, aim = tgt && !home ? Math.atan2(tgt.pos.x - pos.x, tgt.pos.z - pos.z) : Math.atan2(-pos.x, -pos.z);
+    demo.heading = slew(demo.heading, aim, 1.6 * dt); current.rotation.y = demo.heading;
+    const v = RANGE_R * 0.22; pos.x += Math.sin(demo.heading) * v * dt; pos.z += Math.cos(demo.heading) * v * dt;
+    for (const x of range.targets()) if (x.pos.distanceTo(pos) < span * 0.42) { range.kill(x.id); sfx.play('enemy_die_a'); }
+    if (demo.cool <= 0 && tgt) { demo.cool = 2.4; fireShell(); demo.pending.push({ id: tgt.id, at: Math.min(1.0, tgt.pos.distanceTo(pos) / (span * 2.2)) }); }
+  }
+  // THE GUNSHIP circles the platform and rakes the lane in bursts: tracers from under the body to the walker, a kill as each lands
+  function demoGunship(dt) {
+    const a = demoT * 0.22, r = RANGE_R * 0.45;
+    current.position.set(Math.sin(a) * r, RANGE_R * 0.55, Math.cos(a) * r); current.rotation.y = a + Math.PI / 2;
+    const tgt = range.nearest(current.position), on = (demoT % 2.2) < 0.8;
+    if (!tgt || !on || demo.cool > 0) return;
+    demo.cool = 0.1;
+    const from = current.position.clone().add(new THREE.Vector3(0, -0.15, 0)), speed = RANGE_R * 4, to = tgt.pos.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.3, 0, (Math.random() - 0.5) * 0.3));
+    const dir = to.clone().sub(from), dist = dir.length(); dir.normalize();
+    addFx(from, dir.multiplyScalar(speed), dist / speed, new THREE.Color(0xffd27a));
+    if (Math.random() < 0.5) demo.pending.push({ id: tgt.id, at: dist / speed });
+  }
+  // AN ORBITAL LASER hangs over the platform and lays its column (src/fx/orbital-laser.js): six seconds of burn walked onto the
+  // nearest walker, three of recovery, and a walker under the footprint dies
+  function demoLaser(dt) {
+    current.position.set(0, RANGE_R * 0.95, 0); current.rotation.y = demoT * 0.15;
+    demo.laser ??= createOrbitalLaser(scene, { cellSide: RANGE_R / 10, metresPerCell: 10 });
+    const L = demo.laser, cycle = demoT % 9, burning = cycle < 6, up = new THREE.Vector3(0, 1, 0);
+    demo.contact ??= new THREE.Vector3(0, 0, RANGE_R * 0.5);
+    if (!burning) { if (demo.laid) { L.lift(); demo.laid = false; } L.tick(dt, 0); return; }
+    const tgt = range.nearest(demo.contact);
+    if (tgt) { const d = tgt.pos.clone().sub(demo.contact); d.y = 0; const step = Math.min(d.length(), RANGE_R * 0.28 * dt); if (d.length() > 1e-6) demo.contact.addScaledVector(d.normalize(), step); }
+    if (!demo.laid) { L.lay(demo.contact, up); demo.laid = true; } else L.aim(demo.contact, up);
+    for (const x of range.targets()) if (Math.hypot(x.pos.x - demo.contact.x, x.pos.z - demo.contact.z) < RANGE_R * 0.09) range.kill(x.id);
+    L.tick(dt, 1 - cycle / 6);
+  }
+  // a pinned platform's authored clips, played in turn
+  function demoClips(dt) {
+    if (!demo.mixer) return;
+    if (!demo.action || !demo.action.isRunning()) { const clip = demo.clips[demo.at++ % demo.clips.length]; demo.action = demo.mixer.clipAction(clip); demo.action.reset().setLoop(THREE.LoopOnce, 1); demo.action.clampWhenFinished = false; demo.action.play(); }
+    demo.mixer.update(dt);
   }
   function fireShell() {
     fireTankFeel(feel, FEEL);
@@ -1145,7 +1243,7 @@ export function initUnitsTab(root) {
       setWireframe(current, wireOn && !state.sweep); wireBtn?.classList.toggle('on', wireOn && !state.sweep);
       state.spin = !state.sweep && currentEntry?.kind !== 'enemy'; spinBtn.classList.toggle('on', state.spin);
       // freezing snaps the turret back to rest, which is the point of it
-      if (!state.sweep) { if (current && current.userData.tick) current.userData.tick(0); if (currentEntry?.kind === 'unit') setEngine(false); demo = null; }
+      if (!state.sweep) { if (current && current.userData.tick) current.userData.tick(0); if (currentEntry?.kind === 'unit') setEngine(false); stopDemo(); if (current) frame(current); }
     });
     if (new URLSearchParams(location.search).get('sweep') === '1' && !state.sweep) sweepBtn.click();
   }
@@ -1448,7 +1546,7 @@ export function initUnitsTab(root) {
       heat,cannonColor:current?.userData.heatSleeve?.material.color.getHex(),
       missileReady:!!missilePool,modelReady:!current?.userData.loading,
       meshes:(()=>{let n=0,w=0;current?.traverse((o)=>{if(o.isMesh){n++;if(o.material?.wireframe)w++;}});return {n,wire:w};})(),   // the wireframe survey: how many meshes, how many drawn as wire
-      spin:state.spin,animation:state.sweep,demo:state.sweep&&(!!demo||fireLeft>0||running),
+      spin:state.spin,animation:state.sweep,demo:state.sweep&&!!demo,range:range?.state()??null,
       missiles:missiles.map(m=>({config:m.config,t:m.t,name:m.mesh.name,position:m.mesh.position.toArray(),ignition:m.mesh.getObjectByName('EXHAUST_FX').visible})) }),
     fire: () => currentEntry?.kind==='tower'?firePattern():fireShell(),
   };

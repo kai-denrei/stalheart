@@ -1441,7 +1441,9 @@ try{
   assert.equal(await evaluate('document.querySelector("#units-name").textContent.includes("SOL")||document.querySelector("#units-name").textContent.includes("KORP")'),true,'the entry is named');
   current='units-sky-'+id+'-wire';await finish();
   await click('#units-sweep');await delay(600);
+  await until(`${U}.state().range && ${U}.state().range.up>0`,8000).catch(async()=>assert.fail(`${id}: the range sends a wave (${JSON.stringify((await us()).range)})`));
   const b=await us();assert.equal(b.meshes.wire,0,`${id} ANIMATION: solid (${JSON.stringify(b.meshes)})`);assert.equal(b.spin,false,'the turntable is off');assert.equal(b.demo,true,'the demo runs');
+  await until(`${U}.state().range.cleared>0`,25000).catch(async()=>assert.fail(`${id} kills something on the range (${JSON.stringify((await us()).range)})`));
   current='units-sky-'+id+'-animation';await finish();
   await click('#units-sweep');await delay(200);
   const c=await us();assert.equal(c.meshes.wire,c.meshes.n,`${id} wire again`);assert.equal(c.spin,true,'spinning again');
@@ -1454,7 +1456,13 @@ try{
  assert.deepEqual(a2,a1,`the arrows stay put across entries (${JSON.stringify(a1)} -> ${JSON.stringify(a2)})`);
  {const s=await us();assert(s.meshes.n===0||s.meshes.wire===s.meshes.n,`the next entry arrives as wire (${JSON.stringify(s.meshes)})`);}
  await click('#units-sweep');await delay(1500);
- {const s=await us();assert.equal(s.demo,true,'a tower\'s ANIMATION fires its pattern');}
+ {const s=await us();assert.equal(s.demo,true,'a tower\'s ANIMATION runs on the range');}
+ await until(`${U}.state().range.cleared>0`,30000).catch(async()=>assert.fail(`the sentry kills walkers on the range (${JSON.stringify((await us()).range)})`));
+ current='units-sky-tower-range';await finish();
+ // the hull on the range: it drives and rams
+ await go('units-sky-tank','labs.html?sw=0&unit=mork&acceptance=1&sweep=1#units');
+ await until(`${U} && ${U}.state().modelReady===true && ${U}.state().demo`,40000);
+ await until(`${U}.state().range && ${U}.state().range.cleared>0`,40000).catch(async()=>assert.fail(`the hull rams or shells walkers (${JSON.stringify((await us()).range)})`));
  await finish();
  } else if(args.includes('--canyon')||args.includes('--canyon-again')) {
  const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`);
