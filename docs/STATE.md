@@ -18,6 +18,10 @@ Design: `docs/superpowers/specs/2026-09-15-v1-session-design.md`. Two entry poin
 - **Expeditions you can see:** our flag over a cleared site, the crate on the MÖRK's back, the drop at the foundry with the unlock callout, trophy flags at home (`src/fx/cargo.js`, `src/fx/expedition-glue.js`).
 - **The campaign board stays underneath** for the acceptance runs and the wave simulator (`?acceptance=1`, `?sim=`).
 
+## What landed on 2026-10-02 (the eighth notes: the study lull, the sentry rules, vanishing sentries)
+
+`2026-10-02-eighth-notes-study-lull-sentry-rules-vanishing-towers`: a sentry finished at the 10-sentry cap no longer vanishes (`src/domain/sentry-cap.js`: the finishing order is not counted against itself); the build menu says why a cell is refused and counts `n/10 sentries`; Isao's close-up runs live and the study comes 4 s after the hull is out, his screen with his last line.
+
 ## What landed on 2026-10-02 (the seventh notes: day, contacts, repair, lance, opening, seats, beacons, nuke)
 
 `2026-10-02-seventh-notes-day-contacts-repair-lance-tempo-seats-beacons-nuke`: a golden hour and a sun and moon in the sky (`STORY_DAY.dusk`, `.discs`; `?day=<phase>`); a NEW CONTACT card the first time each kind rises (`src/fx/contact-card.js`); a wall cell Isao mends stays blocked but is drawn as floor under its kit wall (`dungeon.mended`); the Lancer stops on a rock's face and scorches it (`rockClearance`, `src/fx/scorch-trail.js` shared with SOL-82, `src/fx/lance-burn.js`); a quicker opening with the Rotor's seat taken on the first body up (beacons -> optic 42.8 s); the vignette only after the glide lands; 'TRANSFER TO THE QUIVER! LOCK IN!' and a glide onto the next optic; beacons pulse every 5.5 s from the landers' tops; the auto gunship's MK-9 stays blast + 3 cells clear of the base and the hull. Not yet seen in a browser: a repaired wall cell and a Lancer burn on rock.

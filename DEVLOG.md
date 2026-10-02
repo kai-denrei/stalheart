@@ -152,6 +152,22 @@ Evidence:
 - scripts/browser-lock.sh node scripts/browser-test.mjs --colony (the pad by the assembly line reloads the rack)
 - --grow, --sectors green
 
+## 2026-10-02 — The owner's eighth notes: the lull before Isao's vibration study, the sentry rules said out loud with a count in the build menu, and the sentries that vanished as Isao finished them
+
+change · accepted · 2026-10-02-eighth-notes-study-lull-sentry-rules-vanishing-towers
+
+Owner, 2026-10-02 (on 94876435): 1) a strange lull of about 5 seconds before Isao explains the vibration language; 2) there seems to be a new rule on where sentries can be placed and it is not obvious, which is frustrating; 3) bug: some towers are ordered, but when finished they disappear.
+
+3) The cause was the round-six cap (2026-10-02-sixth-notes-tempo-seats-weapons-economy): finishOrder re-checks placeError while the order is still on the book, so the cap counted the finishing order against itself and, at the cap, refused it: the sentry vanished and its biomass came back as 'site lost'. src/domain/sentry-cap.js sentryBookFull leaves out the order already at the cell (test/sentry-cap.mjs). 2) The cap of 10 was the invisible rule: a click on a cell the cap refused simply closed the menu (the radial is silent on unbuildable cells). The radial now captions the reason (NOT HERE ...) for every refusal except the terrain one on open ground, the cap's says 'sell one to build another', the story's terrain refusals say ROCK and 'open ground beside it' (STORY_SENTRIES.rock, .deep), and the radial's centre reads 'n/10 sentries' under the biomass. 1) A --study-probe timeline showed his close-up shot (9 s) froze the story beats, so his screen waited 2.3 s after his last line; isaoTalk now runs live like sol88Launch, and STORY_CONSTRUCTION.studyDelay 8 -> 4. On the chapter page the study starts at 3.7 s (was 7.8) and the screen opens with the last line (10.9 s, was 17.2).
+
+Alternatives: Dropping the cap: the owner asked for fewer, stronger sentries; the bug was in the count, not the rule; Shortening the close-up to fit three lines: any change to the lines would bring the lull back; ending on the lines does not; A caption on every refused cell: a click on open ground in the tank would toast NOT HERE constantly
+
+Evidence:
+
+- scripts/browser-lock.sh node scripts/browser-test.mjs --study-probe (timeline before and after)
+- test/sentry-cap.mjs; --skip-tutorial asserts the radial's 'n/10 sentries' (artifacts/browser/skip-tutorial-build-menu.png, the controls card over it)
+- --story-world, --chapters, --grow, --skip-tutorial and the default suite green; 165 node programs
+
 ## 2026-10-02 — The A6 rivalry scoreboards replace the canvas stand-ins: the player on the seven-segment beacon, Isao on the split-flap, three rows each, driven by the asset's own runtime; the boards face the base
 
 change · accepted · 2026-10-02-a6-rivalry-boards-in-the-base

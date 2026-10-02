@@ -150,9 +150,10 @@ export const STORY_BEATS = Object.freeze({
 // take minutes over what the seats and the MÖRK's rams clear in seconds, and a live body holds every wave clock after it.
 // `mopUpSeconds`: or once the hull has been out this long, whatever is left: unmanned towers do not fire before the handover, so a
 // player who drove off would otherwise stall the story for good (--pacing, 2026-09-24); the harmless leftovers roll into sector 1.
-// `studyDelay`: once sector 0 is over, the player drives the new hull this long before Isao's study takes the camera.
+// `studyDelay`: once sector 0 is over, the player drives the new hull this long before Isao's study takes the camera (8 -> 4, owner
+// 2026-10-02: "a strange lull of 5 seconds or so before Isao explains the vibration language"; his close-up no longer freezes the beats).
 export const STORY_CONSTRUCTION = Object.freeze({
-  first: 3, every: 11, alive: 60, mopUp: 0, mopUpSeconds: 20, studyDelay: 8, pace: 1.5, spread: 0.9, stagger: 2.5, harmless: true,
+  first: 3, every: 11, alive: 60, mopUp: 0, mopUpSeconds: 20, studyDelay: 4, pace: 1.5, spread: 0.9, stagger: 2.5, harmless: true,
   waves: Object.freeze([
     Object.freeze([Object.freeze({ type: 'amoeba', count: 22 })]),
     Object.freeze([Object.freeze({ type: 'amoeba', count: 16 }), Object.freeze({ type: 'phage', count: 8 }), Object.freeze({ type: 'barbed', count: 1 })]),

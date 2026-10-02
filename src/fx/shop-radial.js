@@ -11,6 +11,7 @@ import { TOWERS, TOWER_BY_KEY, upgradeCost, unlockedTowerKeys, towerUnlockWave }
 import { sellRefund } from '../domain/economy.js';
 import { unlockedTowers } from '../domain/expeditions.js';
 import { STORY_EXPEDITIONS } from '../content/story-defaults.js';
+import { STORY_SENTRIES } from '../content/sentries.js';
 
 // RADIAL menu, HokorobiTawaa-style: options ring the tapped cell.
 // R follows HK's sizing (max(66, min(104, 0.3·viewport-min))); the
@@ -24,11 +25,10 @@ export function createShopRadial(host) {
     // that must never appear mid-ritual is guarded at its own door — every
     // future tap path inherits the rule instead of re-implementing it.
     if (strike.armed || strike.falling > 0 || host.shopMute() > 0) return;
-    // An unbuildable cell gets NOTHING, not a radial of greyed-out towers
-    // with "blocked" in the middle. A modal whose every option is disabled
-    // is a wall of no; silence reads as "not here" faster than any label.
-    // (An existing tower still opens — that is upgrade/sell, not placement.)
-    if (!towerByCell.get(ci) && placeError(ci)) { closeShop(); return; }
+    // An unbuildable cell gets no radial of greyed-out towers (a wall of no), but it says WHY in one caption (owner, 2026-10-02:
+    // "a new rule on where sentries can be placed and it's not obvious": the sentry cap is a rule the eye cannot see on the board).
+    // An existing tower or an order still opens — that is upgrade/sell or call-off, not placement.
+    if (!towerByCell.get(ci) && !orderByCell.get(ci)) { const why = placeError(ci); if (why) { closeShop(); if (!/ROCK|HIGH GROUND|nothing there/.test(why)) host.refuse?.(why); return; } }   // a click on open ground stays silent
     host.setShopCi(ci);
     if (sx == null && host.shopPos()) [sx, sy] = host.shopPos();
     // measure the CONTAINER, not the canvas: hooks can open the shop
@@ -72,7 +72,7 @@ export function createShopRadial(host) {
       showRangeRing(ci, effectiveStats(existing.def, existing.tier).range, existing.def.color, 0);
     } else {
       const err = placeError(ci);
-      center = `<div class="radial-center">${err ? 'blocked' : host.eco().biomass + 'kg'}</div>`;
+      center = `<div class="radial-center">${err ? 'blocked' : host.eco().biomass + 'kg'}${host.story() ? `<small>${towers.length + orders.filter((o) => o.kind === 'tower').length}/${STORY_SENTRIES.cap} sentries</small>` : ''}</div>`;
       const unlocked = new Set(automated() ? unlockedTowers(host.story().expeditions, STORY_EXPEDITIONS.base) : unlockedTowerKeys(host.wave()));
       items = TOWERS.map((def) => {
         const locked = !unlocked.has(def.key);

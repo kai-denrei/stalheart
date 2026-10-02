@@ -1302,6 +1302,7 @@ try{
  // THE BUILD MENU IS THE PROOF OF THE UNLOCK: the player's own radial offers the Relay and the Mortar at their price and
  // still reads PART OUT on a part nobody fetched. It moves the build camera, so it runs after the fight is photographed.
  assert.equal(await evaluate(`${T}.openBuildMenu()`),true,'the build menu opens on an open cell');
+ assert.match(await evaluate('document.querySelector("#td-shop .radial-center")?.textContent??""'),/\d+\/10 sentries/,'the menu counts the sentries against the cap (eighth notes)');await delay(400);current='skip-tutorial-build-menu';await finish();
  await delay(300);
  {const shop=await evaluate(`(()=>{const out={};for(const b of document.querySelectorAll('#td-shop .shop-buy'))out[b.dataset.key]={locked:b.classList.contains('locked'),disabled:b.disabled,txt:b.textContent};return out;})()`);
   for(const key of ['rotor','quiver','relay','mortar'])assert(shop[key]&&!shop[key].locked,`${key} is offered (${JSON.stringify(shop[key])})`);
@@ -1564,6 +1565,15 @@ try{
  await delay(1000);current='round7-quiver-transfer';await finish();
  await until(`${T}.seatState().seatKey==="quiver" && !document.body.classList.contains("seat-gliding") && ${T}.state().shot!=='takeControl'`,20000).catch(async()=>assert.fail(`into the Quiver (${JSON.stringify(await evaluate(`${T}.seatState()`))})`));
  await delay(900);current='round7-quiver-in';await finish();
+ } else if(args.includes('--study-probe')) {
+ // THE STUDY BEAT'S TIMELINE (owner, 2026-10-02: "a strange lull of 5 seconds or so before Isao explains the vibration language")
+ const T='window.__stalheartTest';
+ await go('study-probe','index.html?sw=0&acceptance=1&cine=0&skip=expedition#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ const rows=[],t0=Date.now();let last='';
+ while(Date.now()-t0<40000){const r=await evaluate(`(()=>{const s=${T}.state(),b=document.querySelector("#td-brief"),m=document.querySelector(".synthetic-modal,#synthetic-modal");return [s.story?.phase,s.shot,b&&!b.classList.contains("hidden")?(b.textContent||"").replace(/\\s+/g," ").slice(0,70):"-",m&&!m.hidden&&getComputedStyle(m).display!=="none"?"SCREEN":""].join(" | ");})()`);
+  if(r!==last){rows.push(((Date.now()-t0)/1000).toFixed(1)+'s '+r);last=r;}await delay(200);}
+ console.log(rows.join('\n'));
  } else if(args.includes('--units-sky')) {
  // THE SKY ON THE BENCH (owner, 2026-10-01: "UNITS are not showing all the units; we should see SOL, and the Gunship. also show
  // Wireframe for all units"): the KORP, SOL-82 and SOL-88 are catalogue entries built from their pinned GLBs, and the wireframe

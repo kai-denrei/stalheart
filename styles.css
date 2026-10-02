@@ -4793,3 +4793,6 @@ body.seat-gliding #seat-vignette { display: none; }
 .contact-facts { margin-top: 5px; font-size: 10px; letter-spacing: .12em; color: #9fb4bd; }
 @keyframes contact-in { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
 @media (max-width: 600px) { .contact-card { top: 22%; min-width: 0; max-width: 60vw; } }
+/* the story's sentry count under the biomass in the radial's centre (src/fx/shop-radial.js) */
+#td-shop .radial-center small { display: block; font-size: 8px; letter-spacing: .04em; opacity: .8; line-height: 1.1; }
+#td-shop .radial-center:has(small) { flex-direction: column; }

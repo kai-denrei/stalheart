@@ -70,7 +70,7 @@ import { makeScore } from './score.js';
 import { TOWERS, TOWER_BY_KEY, MAX_TIER, upgradeCost, effectiveStats as baseEffectiveStats, pickTarget, shotInterval, unlockedTowerKeys, TOWER_ORDER, starterTower, towerSound, ROSTER } from './towers.js';
 import { makeEconomy, sellRefund } from './economy.js';
 import { pickTier } from './perftier.js';
-import { applyWeatheredMaterial } from './fx/weathered-material.js'; import { createLanceBurn } from './fx/lance-burn.js'; import { showContact } from './fx/contact-card.js';
+import { applyWeatheredMaterial } from './fx/weathered-material.js'; import { createLanceBurn } from './fx/lance-burn.js'; import { showContact } from './fx/contact-card.js'; import { sentryBookFull } from './domain/sentry-cap.js';
 import { STICK, stickVector, knobOffset } from './stick.js';
 import { makeBloom } from './postfx.js';
 import { TANK_FEEL, TANK_FEEL_KNOBS, makeTankFeel, stepTankFeel, landTankFeel, fireTankFeel, applyTankFeel, applyTankHealth } from './tankfeel.js';
@@ -5683,22 +5683,16 @@ export function initTdTab(root) {
   // carry enemy pathing, so a tower can never dam a lane.
   function placeError(ci) {
     if (ci === -1) return 'nothing there';
-    // HIGH GROUND MEANS THERE IS STILL A WALL THERE. This asked tdFullTags —
-    // the ORIGINAL map — because dungeon.tags is sector-gated and would call
-    // every unrevealed cell blocked. But tdFullTags never learns about a
-    // breach: blastWall sets dungeon.tags[ci] = PATH and leaves the full map
-    // saying BLOCKED forever, so a breached cell still reported as buildable
-    // and a tower went up at wall height over open floor. That is the
-    // hovering tower. `breachedCells` is the missing half, and it is already
-    // permanent across rounds because demolition is.
+    // HIGH GROUND MEANS THERE IS STILL A WALL THERE: tdFullTags (dungeon.tags is sector-gated) never learns of a breach, so
+    // breachedCells is the missing half; without it a tower went up at wall height over open floor (the hovering tower)
     if ((tdFullTags[ci] !== BLOCKED || breachedCells.has(ci)) && !story?.sockets.has(ci)) {
-      return 'towers need HIGH GROUND';
+      return story ? STORY_SENTRIES.rock : 'towers need HIGH GROUND';
     }
     if (towerByCell.has(ci)) return 'occupied';
-    if (story && towers.length + orders.filter((o) => o.kind === 'tower').length >= STORY_SENTRIES.cap) return STORY_SENTRIES.full;   // fewer, stronger sentries (owner, 2026-10-02)
+    if (story && sentryBookFull({ towers: towers.length, orders, ci, cap: STORY_SENTRIES.cap })) return STORY_SENTRIES.full;
     if (story && STORY_SENTRIES.buildCells != null && chord(graph.centers[ci], graph.centers[dungeon.heart]) > STORY_SENTRIES.buildCells * cellSide) return STORY_SENTRIES.far;
     if (!graph.adj[ci].some((nb) => dungeon.tags[nb] !== BLOCKED)) {
-      return 'beyond the frontier';
+      return story ? STORY_SENTRIES.deep : 'beyond the frontier';
     }
     return null;
   }
@@ -7564,7 +7558,7 @@ export function initTdTab(root) {
     if (note) note.textContent = text;
   }
   // THE RADIAL (src/fx/shop-radial.js): the options ring the tapped cell
-  const openShop = createShopRadial({ root, container, shopEl, strike, towerByCell, orderByCell, orders, towers, automated, closeShop, placeError, effectiveStats, showRangeRing, eco: () => eco, isao: () => isao, shopMute: () => shopMute, story: () => story, wave: () => wave, shopPos: () => shopPos, setShopCi: (v) => { shopCi = v; }, setShopPos: (v) => { shopPos = v; } });
+  const openShop = createShopRadial({ root, container, shopEl, strike, towerByCell, orderByCell, orders, towers, automated, closeShop, placeError, effectiveStats, showRangeRing, eco: () => eco, isao: () => isao, shopMute: () => shopMute, story: () => story, wave: () => wave, shopPos: () => shopPos, setShopCi: (v) => { shopCi = v; }, setShopPos: (v) => { shopPos = v; }, refuse: refuseCaption });
   shopEl.addEventListener('click', (ev) => {
     const el = ev.target;
     if (!el.classList) return;
@@ -8225,7 +8219,7 @@ export function initTdTab(root) {
     stepBriefClock(dt);
     if (pilotMode && shotId() !== 'takeControl') endShot();
     stepShot(dt);
-    const frozen = buildFrozen() || (shotActive() && !/^(breach|sol88Launch)$/.test(shotId()));   // live shots: the world runs under them
+    const frozen = buildFrozen() || (shotActive() && !/^(breach|sol88Launch|isaoTalk)$/.test(shotId()));   // live shots: the world runs under them
     // The BUILD pause holds the WORLD still, not the DRIVER (planning used to take three switches); a reveal or a tutorial hold
     // stops everything, because those are the game speaking.
     // the cold open holds the hull for its first two beats and lets go for
