@@ -4,7 +4,7 @@
   "revision": "62015608574f66a7c2118ea4c77dbe0bbfe5db07",
   "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/62015608574f66a7c2118ea4c77dbe0bbfe5db07/",
   "credit": "Models by jelaludo (https://jelaludo.github.io/SentryTowers_A6/): SOL-88 Syzygy orbital laser, ARC-01 mass driver and SEED-01 collector satellite, LIT-01 chip writer, VER-01 greenhouse, the settlement cassette and the research outpost garage, reused with attribution under the upstream ASSET-LICENSE.md",
-  "note": "THE COLONY GROWS (owner, 2026-10-01: the A6 workshop survey). The lod1 game tiers and, for the landmarks the camera can stand far from, the authored lod2 as the far tier; plain GLB pinned, the build packs them. SOL-88 is the briefing, the wireframe reveal and the Units lab only, so lod1 alone. The ARC-01 and SEED-01 clips are engine-driven upstream (runtime.js), not baked: src/fx/arc-launch.js drives the named nodes. The garage has no authored tiers: its far tier is derived by npm run tiers.",
+  "note": "THE COLONY GROWS (owner, 2026-10-01: the A6 workshop survey). The lod1 game tiers and, for the landmarks the camera can stand far from, the authored lod2 as the far tier; plain GLB pinned, the build packs them. SOL-88 is the briefing, the wireframe reveal and the Units lab only, so lod1 alone. The ARC-01 and SEED-01 clips are engine-driven upstream (runtime.js), not baked: src/fx/arc-launch.js drives the named nodes. The garage has no authored tiers: its far tier is derived by npm run tiers. The ammunition's three biggest game-tier projectiles (owner, 2026-10-02: \"add missiles of various sizes ... on the ground near the robotic assembly\") dress the armory's reload pad beside the assembly line.",
   "files": [
     {
       "path": "assets/models/sol88/sol88_platform_game.glb",
@@ -94,6 +94,24 @@
       "sha256": "d9b06df9880d9f85a82ff498fc366cc5a56e885712502e1de3faf470fc194075",
       "bytes": 681016,
       "triangles": 11844
+    },
+    {
+      "path": "assets/models/astro/ammo_missile_heavy_projectile_game.glb",
+      "sourcePath": "assets/ammunition/missile_heavy_projectile_game.glb",
+      "sha256": "6520da56536f6293f403cbe9b8e4162990ee4da950b0b07db51aa953fcfdea94",
+      "bytes": 5896
+    },
+    {
+      "path": "assets/models/astro/ammo_missile_cruise_projectile_game.glb",
+      "sourcePath": "assets/ammunition/missile_cruise_projectile_game.glb",
+      "sha256": "8047f3b274004c19292da2c3880beaacccec9238175c22f95c890960e1738fc8",
+      "bytes": 6432
+    },
+    {
+      "path": "assets/models/astro/ammo_heavy_240_projectile_game.glb",
+      "sourcePath": "assets/ammunition/heavy_240_projectile_game.glb",
+      "sha256": "9047f96ce717b21e93fef3dbf722b2f11238879ba28c913fc7933faf7ef9c556",
+      "bytes": 5092
     }
   ]
 }

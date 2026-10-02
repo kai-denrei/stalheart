@@ -37,7 +37,7 @@ import { LOOKS } from './looks.js';
 import { makeBloom } from './postfx.js';
 import { makeAudio } from './audio.js';
 import { GROUPS, GROUP_LABELS, GROUP_EMPTY, entriesIn } from './unitcatalog.js';
-import { modelFixture, setWireframe } from './fx/model-fixture.js';
+import { modelFixture, modelClips, setWireframe } from './fx/model-fixture.js';
 import { FONT_NAMES, TYPE_KNOBS, TYPE_FEEL, makeTypeParams, loadTypeFeel, saveTypeFeel,
   formatTypeCode, applyFontPack, currentFontPack, currentShoutPack } from './fonts.js';
 import { LORE, LORE_WORLD, loreText, loreAll } from './lore.js';
@@ -83,7 +83,9 @@ export function initUnitsTab(root) {
   controls.dampingFactor = 0.08;
   controls.enablePan = false; // the unit stays centred; orbit and zoom only
 
-  const state = { group: 'friendly', index: 0, towerLook: DEFAULT_TOWER_LOOK, spin: true, sweep: true };
+  // THE BENCH'S DEFAULT IS A WIREFRAME ON A TURNTABLE (owner, 2026-10-02); ANIMATION (state.sweep) switches both off and runs the unit as
+  // the game does: the tank drives and fires, a sentry aims and fires, a platform runs its authored cycle (stepDemo)
+  const state = { group: 'friendly', index: 0, towerLook: DEFAULT_TOWER_LOOK, spin: true, sweep: false };
   // the test bench: the SAME feel driver the game runs, so what you tune here
   // is what ships. `running` is the engine's own notion of running.
   const feel = makeTankFeel();
@@ -505,7 +507,7 @@ export function initUnitsTab(root) {
     // and switched it straight back on for every non-enemy unit — so the yaw deep
     // link never actually froze a tank. Found when a size read on a "frozen" hull
     // still drifted by two thirds of a metre in a second and a half.
-    const wantSpin = e.kind !== 'enemy' && !Number.isFinite(yawQ);
+    const wantSpin = e.kind !== 'enemy' && !Number.isFinite(yawQ) && !state.sweep;
     if (state.spin !== wantSpin) {
       state.spin = wantSpin;
       spinBtn.classList.toggle('on', wantSpin);
@@ -541,7 +543,8 @@ export function initUnitsTab(root) {
       console.log(`UNITSIZE ${e.id} x=${sz.x.toFixed(2)} y=${sz.y.toFixed(2)} z=${sz.z.toFixed(2)}`);
     }
     scene.add(current);
-    setWireframe(current, wireOn);   // the bench's wireframe survey, if it is on (owner, 2026-10-01: "show Wireframe for all units")
+    setWireframe(current, wireOn && !state.sweep);   // the bench's wireframe survey, if it is on (owner, 2026-10-01: "show Wireframe for all units")
+    demo = null; demoT = 0;   // a new unit starts its demo from rest
     // a full ammo rack reads better than an empty one when you are judging shape
     (current.userData.ammoDots || []).forEach((d) => d.material.color.setHex(0xffffff));
     frame(current);
@@ -772,7 +775,7 @@ export function initUnitsTab(root) {
   }
 
   // WIREFRAME FOR EVERY UNIT: the briefings' cyan survey over whatever stands on the bench, toggled without re-framing
-  let wireOn = false;
+  let wireOn = true;
   const wireBtn = root.querySelector('#units-wire');
   wireBtn?.addEventListener('click', () => { wireOn = !wireOn; wireBtn.classList.toggle('on', wireOn); setWireframe(current, wireOn); });
   const spinBtn = root.querySelector('#units-spin');
@@ -806,6 +809,7 @@ export function initUnitsTab(root) {
     // sweep rather than the model. Frozen, it returns to its rest pose.
     if (current && current.userData.tick && state.sweep) current.userData.tick(clock);
     if (current && state.spin) current.rotation.y += dt * 0.35;
+    if (state.sweep) stepDemo(dt);
     stepFire(dt);
     // barrel heat: the same cool->hot lerp the game runs, on the same sleeve
     if (heat > 0) heat = Math.max(0, heat - dt);
@@ -985,6 +989,30 @@ export function initUnitsTab(root) {
   // Fire everything a shot does. The shell leaves the muzzle ANCHOR and flies
   // along the barrel's own world +Z — derived from the render transform, per
   // the house rule, so it stays right when the turret has swept.
+  // THE DEMO (owner, 2026-10-02: "an in-game realistic animation. If the tank, it moves and fires, if a sentry, it adjusts its targeting
+  // and fires, if the gunship or orbital lasers, they move and fire"). Driven by the bench's own hands: the tank's engine and shell, a
+  // tower's firing pattern on its cadence, and for a pinned platform its authored clips played in turn with a slow pass across the bench
+  let demo = null, demoT = 0;
+  function stepDemo(dt) {
+    if (!current || !currentEntry) return;
+    demoT += dt;
+    const e = currentEntry;
+    if (e.kind === 'unit') { if (!running) setEngine(true); if (demoT > 2.6) { demoT = 0; fireShell(); } return; }
+    if (e.kind === 'tower') { if (fireLeft <= 0 && demoT > 1.2) { demoT = 0; firePattern(); } return; }
+    if (e.kind === 'model') {
+      if (!demo) {
+        const clips = modelClips(e.url);
+        demo = { mixer: clips.length ? new THREE.AnimationMixer(current) : null, clips, at: 0, action: null, base: current.position.y, bob: e.id === 'korp' ? 0.18 : 0.06 };
+      }
+      if (demo.mixer) {
+        if (!demo.action || !demo.action.isRunning()) { const clip = demo.clips[demo.at++ % demo.clips.length]; demo.action = demo.mixer.clipAction(clip); demo.action.reset().setLoop(THREE.LoopOnce, 1); demo.action.clampWhenFinished = false; demo.action.play(); }
+        demo.mixer.update(dt);
+      }
+      // the pass: a slow drift across the bench and back, a bob for an airframe, the whole thing turning to face its way
+      const u = Math.sin(demoT * 0.35);
+      current.position.x = u * 0.9; current.position.y = demo.base + Math.sin(demoT * 1.7) * demo.bob; current.rotation.y = Math.PI / 2 - u * 0.4;
+    }
+  }
   function fireShell() {
     fireTankFeel(feel, FEEL);
     if (!current) return;
@@ -1113,10 +1141,13 @@ export function initUnitsTab(root) {
     sweepBtn.addEventListener('click', () => {
       state.sweep = !state.sweep;
       sweepBtn.classList.toggle('on', state.sweep);
+      // ANIMATION is the realistic view: the wireframe and the turntable go off with it and come back when it stops
+      setWireframe(current, wireOn && !state.sweep); wireBtn?.classList.toggle('on', wireOn && !state.sweep);
+      state.spin = !state.sweep && currentEntry?.kind !== 'enemy'; spinBtn.classList.toggle('on', state.spin);
       // freezing snaps the turret back to rest, which is the point of it
-      if (!state.sweep && current && current.userData.tick) current.userData.tick(0);
+      if (!state.sweep) { if (current && current.userData.tick) current.userData.tick(0); if (currentEntry?.kind === 'unit') setEngine(false); demo = null; }
     });
-    if (new URLSearchParams(location.search).get('sweep') === '0') sweepBtn.click();
+    if (new URLSearchParams(location.search).get('sweep') === '1' && !state.sweep) sweepBtn.click();
   }
 
   const labelsBtn = root.querySelector('#units-labels');
@@ -1417,6 +1448,7 @@ export function initUnitsTab(root) {
       heat,cannonColor:current?.userData.heatSleeve?.material.color.getHex(),
       missileReady:!!missilePool,modelReady:!current?.userData.loading,
       meshes:(()=>{let n=0,w=0;current?.traverse((o)=>{if(o.isMesh){n++;if(o.material?.wireframe)w++;}});return {n,wire:w};})(),   // the wireframe survey: how many meshes, how many drawn as wire
+      spin:state.spin,animation:state.sweep,demo:state.sweep&&(!!demo||fireLeft>0||running),
       missiles:missiles.map(m=>({config:m.config,t:m.t,name:m.mesh.name,position:m.mesh.position.toArray(),ignition:m.mesh.getObjectByName('EXHAUST_FX').visible})) }),
     fire: () => currentEntry?.kind==='tower'?firePattern():fireShell(),
   };

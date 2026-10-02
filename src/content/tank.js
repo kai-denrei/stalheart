@@ -12,3 +12,7 @@ export const TANK_DRIVE = Object.freeze({ base: 1.35, top: 2.6, tau: 4, turn: 0.
 // the tank always turned at — now taken up over `attack` seconds and released over `release` instead of switching on and off with the
 // key, and `bank` is how far the hull rolls into the turn at that full rate, in radians. Not a slower tank: the same rate, eased.
 export const TANK_STEER = Object.freeze({ rate: 2.6, attack: 0.28, release: 0.16, bank: 0.1 });
+
+// THE HULL GETS UNSTUCK (owner, 2026-10-02; src/domain/hull-stuck.js): after `after` seconds of driving that moves the hull less than
+// `share` of the drive, it is eased toward its cell's centre, the ease rising over `ramp` seconds to `rate` cells a second
+export const HULL_STUCK = Object.freeze({ after: 0.45, ramp: 0.6, share: 0.15, rate: 1.4 });

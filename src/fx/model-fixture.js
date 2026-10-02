@@ -9,16 +9,20 @@ import { MeshoptDecoder } from '../../vendor/meshopt_decoder.module.js';
 const WIRE = 0xbfe6ea;
 const loaded = new Map();   // url -> Promise<THREE.Group>
 const ready = new Map();    // url -> the loaded scene, once its promise has settled (a promise is never readable synchronously)
+const clips = new Map();    // url -> its AnimationClips (kept here, not on userData: Object3D.clone JSON-copies userData and kills a clip)
 
 export const loadModelFixture = (url) => {
   let p = loaded.get(url);
   if (!p) {
-    p = new Promise((res, rej) => new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(url, (g) => res(g.scene), undefined, rej));
+    p = new Promise((res, rej) => new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(url, (g) => { clips.set(url, g.animations ?? []); res(g.scene); }, undefined, rej));
     p.then((scene) => ready.set(url, scene), () => {});
     loaded.set(url, p);
   }
   return p;
 };
+
+// the clips a loaded model carries (empty until it lands, or when it has none): the bench's ANIMATION plays them on a clone
+export const modelClips = (url) => clips.get(url) ?? [];
 
 // the loaded model, or null while its bytes are on the way (`then` runs once, when they land)
 export function modelFixture(url, then) {

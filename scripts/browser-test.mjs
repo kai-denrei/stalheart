@@ -1434,23 +1434,27 @@ try{
  // button draws every mesh of whatever stands on the bench as the briefings' survey, and back
  const U='window.__stalheartUnits',us=()=>evaluate(`${U}.state()`);
  for(const id of ['korp','sol82','sol88']){
-  await go('units-sky-'+id,`labs.html?sw=0&unit=${id}&yaw=0&sweep=0&acceptance=1#units`);
+  await go('units-sky-'+id,`labs.html?sw=0&unit=${id}&acceptance=1#units`);   // no ?yaw: the turntable is the default being checked
   await until(`${U} && ${U}.state().meshes.n>1`,30000).catch(async()=>assert.fail(`${id} lands on the bench (${JSON.stringify(await us())})`));
-  const a=await us();assert(a.size&&a.size[0]>0.5&&a.size[1]>0.5,`${id} has a real size (${JSON.stringify(a.size)})`);assert.equal(a.meshes.wire,0,`${id} starts solid`);
+  // THE DEFAULT IS A WIREFRAME ON A TURNTABLE (owner, 2026-10-02); ANIMATION switches both off and runs the platform's own clips
+  const a=await us();assert(a.size&&a.size[0]>0.5&&a.size[1]>0.5,`${id} has a real size (${JSON.stringify(a.size)})`);assert.equal(a.meshes.wire,a.meshes.n,`${id} starts as wire (${JSON.stringify(a.meshes)})`);assert.equal(a.spin,true,'and spinning');
   assert.equal(await evaluate('document.querySelector("#units-name").textContent.includes("SOL")||document.querySelector("#units-name").textContent.includes("KORP")'),true,'the entry is named');
-  await click('#units-wire');await delay(300);
-  const b=await us();assert.equal(b.meshes.wire,b.meshes.n,`${id} every mesh drawn as wire (${JSON.stringify(b.meshes)})`);
   current='units-sky-'+id+'-wire';await finish();
-  await click('#units-wire');await delay(200);
-  const c=await us();assert.equal(c.meshes.wire,0,`${id} solid again`);
+  await click('#units-sweep');await delay(600);
+  const b=await us();assert.equal(b.meshes.wire,0,`${id} ANIMATION: solid (${JSON.stringify(b.meshes)})`);assert.equal(b.spin,false,'the turntable is off');assert.equal(b.demo,true,'the demo runs');
+  current='units-sky-'+id+'-animation';await finish();
+  await click('#units-sweep');await delay(200);
+  const c=await us();assert.equal(c.meshes.wire,c.meshes.n,`${id} wire again`);assert.equal(c.spin,true,'spinning again');
  }
- // the toggle holds across entries and over the game's own builders too: a tower is wireframed when paged to with it on
+ // the arrows never move: the same place on a short-named and a long-named entry
  await go('units-sky-tower','labs.html?sw=0&unit=rotor&acceptance=1#units');
  await until(`${U} && ${U}.state().meshes.n>0`,30000);
- await click('#units-wire');await delay(300);
- {const s=await us();assert(s.meshes.wire>0&&s.meshes.wire===s.meshes.n,`a tower goes to wire too (${JSON.stringify(s.meshes)})`);}
- await click('#units-next');await delay(600);
+ const arrows=async()=>evaluate('["#units-prev","#units-next"].map(q=>{const r=document.querySelector(q).getBoundingClientRect();return [Math.round(r.x),Math.round(r.y)]})');
+ const a1=await arrows();await click('#units-next');await delay(600);const a2=await arrows();
+ assert.deepEqual(a2,a1,`the arrows stay put across entries (${JSON.stringify(a1)} -> ${JSON.stringify(a2)})`);
  {const s=await us();assert(s.meshes.n===0||s.meshes.wire===s.meshes.n,`the next entry arrives as wire (${JSON.stringify(s.meshes)})`);}
+ await click('#units-sweep');await delay(1500);
+ {const s=await us();assert.equal(s.demo,true,'a tower\'s ANIMATION fires its pattern');}
  await finish();
  } else if(args.includes('--canyon')||args.includes('--canyon-again')) {
  const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`);

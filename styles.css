@@ -1523,11 +1523,17 @@ html, body {
    them apart and every unit put them somewhere new — you had to re-aim
    between clicks. A fixed stage width pins both to its edges instead. */
 #units-stage {
-  display: flex; align-items: center; gap: 14px;
-  width: min(660px, 92vw); justify-content: space-between;
+  position: relative; display: flex; align-items: center; justify-content: center;
+  width: min(660px, 92vw); min-height: 112px;
 }
+/* THE ARROWS NEVER MOVE (owner, 2026-10-02): pinned to the stage's edges, independent of the name and the note between them */
 #units-stage button { font-size: 20px; padding: 2px 14px; line-height: 1.1; }
-#units-id { text-align: center; flex: 1; min-width: 0; }
+#units-prev, #units-next { position: absolute; top: 50%; transform: translateY(-50%); }
+#units-prev { left: 0; } #units-next { right: 0; }
+#units-id { text-align: center; flex: 1; min-width: 0; padding: 0 64px; }
+/* ANIMATION is the bench's main switch */
+#units-sweep { font-size: 14px; padding: 8px 20px; border-color: rgba(111, 230, 255, .6); color: #bfe6ff; }
+#units-sweep.on { color: #061018; background: #6fe6ff; border-color: #6fe6ff; }
 #units-link {
   font: 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
   letter-spacing: .1em; text-transform: uppercase;

@@ -25,6 +25,7 @@ import { storage as localStorage } from './storage.js';
 // rules live in src/core, src/domain and src/content and the composition in src/fx and src/platform (docs/ARCHITECTURE.md). The
 // story is the game (docs/STATE.md); the campaign board under it serves the acceptance runs and the wave simulator.
 
+import { makeStuck, stepStuck, unstick } from './domain/hull-stuck.js'; import { HULL_STUCK } from './content/tank.js';   // the hull gets unstuck (owner, 2026-10-02)
 import * as THREE from '../vendor/three.module.js';
 import GUI from '../vendor/lil-gui.esm.js';
 import { bfsDist, BLOCKED, PATH, ROOM } from './dungeon.js';
@@ -201,20 +202,10 @@ export function initTdTab(root) {
   const mobileShell = mobileParam === '1' ? true : mobileParam === '0' ? false
     : (matchMedia('(pointer: coarse)').matches && Math.min(innerWidth, innerHeight) < 900);
   document.body.classList.toggle('mobile-shell', mobileShell);
-  // ?coarse=1 — SIMULATE A COARSE POINTER for the ruler. No headless flag
-  // makes `(pointer: coarse)` true (primaryPointerType blink-settings were
-  // tried: still false), so every rule in the phone's coarse blocks was
-  // invisible to ?layout, which reported 0 overlaps on a layout the phone
-  // never shows — the operator's screenshot showed the radar swallowing the
-  // launch console. Rewriting the media conditions in the loaded sheets
-  // makes those blocks apply for real, at this width, in this run.
-  // TIMING. This used to run once, here, at init — and flipped ZERO blocks,
-  // because document.styleSheets has the <link> but `cssRules` is not
-  // populated until the sheet has actually loaded. So the tool built to stop
-  // ?layout lying reported "0 media blocks now apply" and ?layout went on
-  // measuring the desktop rules, which is the exact failure it exists to
-  // prevent, one level up. It is a FUNCTION now, called again at measure
-  // time, and it says how many blocks it found so a zero is visible.
+  // ?coarse=1 — SIMULATE A COARSE POINTER for the ruler: no headless flag makes `(pointer: coarse)` true, so the phone's coarse
+  // blocks were invisible to ?layout (it reported 0 overlaps on a layout the phone never shows). Rewriting the media conditions in the
+  // loaded sheets makes them apply for real. A FUNCTION, called again at measure time: at init `cssRules` is not populated yet and
+  // it flipped ZERO blocks; it says how many it found so a zero is visible.
   function simulateCoarse() {
     if (mobileParam !== '1' || new URLSearchParams(location.search).get('coarse') !== '1') return 0;
     let flipped = 0;
@@ -1199,18 +1190,9 @@ export function initTdTab(root) {
   // their damage — blocking them would neuter the threat)
   unitBlocker = (cand) => spawnPoints.some((s) => s.alive && dist3(cand, graph.centers[s.ci]) < cellSide * 0.6);
 
-  // WALL CUSHION, corridor-safe edition. The first version (0.95 margin,
-  // sequential pushes, two passes, diagonal walls) fixed clipping on the
-  // open heart battlefield but WEDGED the tank in width-1 corridors:
-  // opposing walls both push every frame, sequential application
-  // zigzags, and the push out-muscled the drive step — stuck, and with
-  // no shells, stuck for good. Three changes make it passage-safe:
-  //   1. margins ADAPT: narrow cells (≤3 open neighbours) use a smaller
-  //      band and skip diagonal wall collection (diagonals jam corners)
-  //   2. pushes are NET-SUMMED then applied once — opposing walls cancel
-  //      into centering instead of fighting
-  //   3. the applied push is CAPPED per frame well below drive speed —
-  //      the cushion corrects clipping over a few frames, never pins
+  // WALL CUSHION, corridor-safe edition: margins adapt (narrow cells use a smaller band and skip diagonals), pushes are net-summed
+  // and applied once (opposing walls centre instead of fighting), and the applied push is capped per frame well below drive speed,
+  // so the cushion corrects clipping over a few frames and never pins. The first version wedged the tank in width-1 corridors.
   const CRATER_PAD = 0.6;   // cells beyond a sinkhole's crater the hull keeps off: the ground there is open, not drivable
   const breachBlocked = (p, pad = CRATER_PAD) => gameBreaches.craters().some((k) => dist3(p, k.p) < (k.r + pad) * cellSide);
   function wallCushion(pos) {
@@ -1254,7 +1236,7 @@ export function initTdTab(root) {
     droneUp: false, droneDown: false };   // the last two only while flying Isao
   // CRUISE: player-triggered auto-forward. A quick double-tap of the
   // forward control (W / ▲) toggles it; S/▼ always kills it.
-  let cruise = false;
+  let cruise = false, stuck = makeStuck();   // stuck: driving that goes nowhere (src/domain/hull-stuck.js)
   // THROTTLE — one lever replacing the ▲/▼ pair. It HOLDS where you put it,
   // so setting it IS cruise; there is no separate mode to engage. Reverse is
   // the same lever continued below zero and capped: backing up cannot match
@@ -2368,7 +2350,7 @@ export function initTdTab(root) {
       if (drive !== 0) {
         const v = params.speed * speedBonus * cellSide * 1.6 * drive * rampMul
           * (1 - 0.65 * bumpFactor()); // the run-over drag
-        const step = scale3(player.heading, v * dt);
+        const step = scale3(player.heading, v * dt), before = player.pos;
         let cand = norm3(add3(player.pos, step));
         if (freeBlocked(cand)) {
           // slide: strip the into-wall component and try again
@@ -2404,7 +2386,9 @@ export function initTdTab(root) {
           const ci = cellIndex(cand);
           if (ci !== -1 && ci !== player.cur) arriveAt(ci);
         }
-      }
+        const k = stepStuck(stuck, { driving: true, moved: dist3(player.pos, before), expected: Math.abs(v) * dt, dt }, HULL_STUCK);   // wedged: eased to open ground (owner, 2026-10-02)
+        if (k > 0) player.pos = unstick(player.pos, graph.centers[player.cur], k * HULL_STUCK.rate * cellSide * dt);
+      } else stepStuck(stuck, { driving: false, moved: 0, expected: 0, dt }, HULL_STUCK);
       player.pos = wallCushion(player.pos);
       const nf = norm3(player.pos);
       player.heading = norm3(sub3(player.heading, scale3(nf, dot3(player.heading, nf))));
@@ -6772,7 +6756,7 @@ export function initTdTab(root) {
         stoppedBy === 'wall' ? 18 : 12);
       b.scale.setScalar(cellSide * (stoppedBy === 'wall' ? 1.5 : 1.1));
       b.position.set(at[0], at[1], at[2]);
-      scene.add(b); debris.push(b);
+      scene.add(b); debris.push(b); explode('lancer.burn', at);   // and the ground burns a little under it (owner, 2026-10-02)
     }
   }
 
@@ -7227,7 +7211,7 @@ export function initTdTab(root) {
     const splashCells = p.splash / cellSide;
     const impactCi = cellIndex(p.pos);
     if (impactCi !== -1 && splashCells > 0.5) {
-      warnRing(impactCi, p.color, 0.5, p.splash * 1.1);
+      warnRing(impactCi, p.color, 0.5, p.splash * 1.1); explode('mortar.shell', p.pos);   // the shell's smoke (owner, 2026-10-02: "more smoke fumes")
     }
     const boom = makeDotBurst(p.color, norm3(p.pos), Math.round(42 + splashCells * 40));
     boom.scale.setScalar(cellSide * (1.1 + splashCells * 0.6));
@@ -8985,7 +8969,8 @@ export function initTdTab(root) {
       siteCells: () => story?.siteCells ?? {},
       // the same fields deployStart resets, so the step rebuilds pos ON ci instead of gliding off it; segLen is the cell scale
       // because cur === next is a zero-length chord
-      setAmmo: (n) => { ammo = n; updateHud(); }, laserAuto: (on) => laserStation.setAuto(on), placeTank: (ci) => { player.freeMode = false; player.virtualStart = null; player.cur = ci; player.prev = ci; player.next = ci; player.prog = 0; player.segLen = cellSide; player.pos = graph.centers[ci].slice(); },
+      setAmmo: (n) => { ammo = n; updateHud(); }, laserAuto: (on) => laserStation.setAuto(on),   // the harness's rack and SOL's automation switch
+      placeTank: (ci) => { player.freeMode = false; player.virtualStart = null; player.cur = ci; player.prev = ci; player.next = ci; player.prog = 0; player.segLen = cellSide; player.pos = graph.centers[ci].slice(); },
       killGuards: (id) => { for (const e of enemies) if (e.alive && e.guard?.site === id) killCreature(e, false); },
       hitTank: () => { if (playerHP > 1) playerHit(); },
       cargoView: (k, id) => {

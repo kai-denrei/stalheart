@@ -18,6 +18,10 @@ Design: `docs/superpowers/specs/2026-09-15-v1-session-design.md`. Two entry poin
 - **Expeditions you can see:** our flag over a cleared site, the crate on the MÖRK's back, the drop at the foundry with the unlock callout, trophy flags at home (`src/fx/cargo.js`, `src/fx/expedition-glue.js`).
 - **The campaign board stays underneath** for the acceptance runs and the wave simulator (`?acceptance=1`, `?sim=`).
 
+## What landed on 2026-10-02 (the owner's fifth notes)
+
+`2026-10-02-fifth-notes-stuck-hull-ammo-dump-bursts-bench-lancer`: a wedged hull eases itself toward open ground after half a second of driving nowhere (`src/domain/hull-stuck.js`, `HULL_STUCK`); the armory's reload pad is west of the assembly line under three A6 missiles laid on the ground (`BASE_PERKS.armory.pad`); the Quiver's burst is bigger and the mortar's shell smokes (`mortar.shell`); the Units bench opens as a wireframe on a turntable, ANIMATION is the realistic view (tank drives and fires, a sentry fires its pattern, a platform plays its clips on a slow pass), the arrows are pinned; the Lancer scorches the ground where it stops (`lancer.burn`). Not playtested: the stuck ease's numbers against a real corridor.
+
 ## What landed on 2026-10-02 (the orbital works: "let's do something big")
 
 The first slice of the Dyson direction (`2026-10-02-the-orbital-works`, spec `docs/superpowers/specs/2026-10-02-orbital-works-design.md`): once SOL-88 is up, the ARC-01 launches a SEED-01 collector at the start of every sector after a secured one (the same 30 s beat, now under the landing's rocket thrust bed). Each collector in orbit is a light on a tilted ring round the planet (`src/fx/orbital-ring.js`, one draw) and two more seconds of beam on every ordinary SOL pass, capped at twenty (`src/content/orbital-works.js`, `src/domain/orbital-works.js`). The books count launches; the debrief's colony page shows ARC-01 LAUNCHED and THE COLONY HOLDS says IN ORBIT. `--colony` runs the chain through the first collector. Not in this slice: the ring does nothing to the swarm, no production chain, the collector is the SEED-01 bus.

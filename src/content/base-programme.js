@@ -43,14 +43,15 @@ export const BASE_PROGRAMME = Object.freeze([
   // developed. We also need an armory/missile factory of sorts, and a spot for the tank to replenish its shells"; direction of
   // 2026-09-24: the self-sustaining colony). Four more steps between the assembly line and the back gate, each on its own island
   // (src/content/base-layout.js) with a perk the game reads a number from (BASE_PERKS):
-  //   armory    the garage behind the bays; its pad refills the hull's shells while the tank stands on it (src/fx/armory-pad.js)
+  //   armory    the garage behind the bays, and the ammunition dump by the assembly line whose pad refills the hull's shells while the
+  //             tank stands on it (src/fx/armory-pad.js; owner, 2026-10-02: the reload spot is by the robotic assembly)
   //   farm      the greenhouse and three bio containers: biomass paid at every sector start
   //   chips     the chip plant: the uplink's passes come closer together
   //   launcher  the ARC-01 mass driver, pointed out over the rim; it waits for the player's two manned SOL-82 passes (`when.manned`:
   //             Isao's calibration, src/domain/laser-auto.js) and is PASSABLE, so nothing waits behind a player who stays out of
   //             the seat. When it stands it launches SOL-88 (src/fx/arc-launch.js), and SOL fires on its own from then on
   { id: 'backgate', label: 'back gate', gate: 'back', plot: [11, 4], when: { sector: 2, idle: true, back: 'held' }, passable: true, seconds: 14, metres: 6, brief: 'build_back_gate', perk: 'backgate' },
-  { id: 'armory', label: 'armory', islands: ['armory'], structures: ['armory'], when: { sector: 2, idle: true }, seconds: 16, metres: 8, brief: 'build_armory', perk: 'armory' },
+  { id: 'armory', label: 'armory', islands: ['armory'], structures: ['armory', 'ammo-a', 'ammo-b', 'ammo-c'], when: { sector: 2, idle: true }, seconds: 16, metres: 8, brief: 'build_armory', perk: 'armory' },
   { id: 'farm', label: 'greenhouse', islands: ['farm'], structures: ['greenhouse', 'bio-a', 'bio-b', 'bio-c'], when: { sector: 3, idle: true }, seconds: 16, metres: 6, brief: 'build_farm', perk: 'farm' },
   { id: 'chips', label: 'chip plant', islands: ['chips'], structures: ['chips'], when: { sector: 4, idle: true }, seconds: 14, metres: 5, brief: 'build_chips', perk: 'chips' },
   { id: 'launcher', label: 'ARC-01 launcher', islands: ['launcher'], structures: ['launcher'], when: { sector: 4, idle: true, manned: 2 }, passable: true, seconds: 20, metres: 12, brief: 'build_launcher', perk: 'launcher' },
@@ -65,7 +66,7 @@ export const BASE_BUILDER = Object.freeze({ cellsPerSecond: 4.2 });
 // the colony's perks (2026-10-01): farmKg biomass at each sector start while the farm stands; chipsPeriod scales the uplink's pass
 // period while the chip plant stands; the armory's pad refills `shellsPerSecond` while the hull's centre is within radiusMetres of
 // the island's centre (the solar array's pad is the model, src/content/shield-array.js)
-export const BASE_PERKS = Object.freeze({ gunshipMeter: 1.5, rebuildHulls: 1, farmKg: 40, chipsPeriod: 0.8, armory: Object.freeze({ radiusMetres: 12, shellsPerSecond: 2, lift: 0.6 }) });
+export const BASE_PERKS = Object.freeze({ gunshipMeter: 1.5, rebuildHulls: 1, farmKg: 40, chipsPeriod: 0.8, armory: Object.freeze({ radiusMetres: 12, shellsPerSecond: 2, lift: 0.6, island: 'assembly', pad: [-18, 1] }) });   // island/pad: the pad is `pad` metres off that island's centre (west of the assembly line)
 
 // ISAO MENDS WHAT THE SWARM BROKE (owner, 2026-09-16: "Isao should go and build walls/a gate in between waves when a breach of the
 // base happened"). The rule is src/domain/repair-orders.js; these are the numbers. `gateAt` is the share of the gate's hp below

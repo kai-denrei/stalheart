@@ -19,6 +19,25 @@ Evidence:
 - scripts/browser-lock.sh node scripts/browser-test.mjs --colony (artifacts/browser/colony-works-launch.png, colony-works-orbit.png)
 - scripts/browser-lock.sh node scripts/browser-test.mjs --strip-probe
 
+## 2026-10-02 — The owner's fifth notes: the wedged hull eases itself free, the reload pad moves beside the assembly line under a dump of missiles, the mortar and Quiver bursts smoke more, the Units bench is a wireframe on a turntable with ANIMATION as the realistic view and arrows that never move, and the Lancer scorches the ground
+
+change · accepted · 2026-10-02-fifth-notes-stuck-hull-ammo-dump-bursts-bench-lancer
+
+Owner, 2026-10-02: 1) the tank gets stuck too often between walls where it looks like it should fit, "a smooth correction if repeated wall hits are detected"; 2) missiles of various sizes from the A6 ammunition family on the ground near the robotic assembly as the spot where the tank replenishes shells; 3) mortar and Quiver explosions slightly bigger with more smoke; 4) Units display overhaul: default wireframe with a spin, arrows always in the same spot, a prominent ANIMATION button that switches wireframe and spin off and runs an in-game animation per kind; 5) a Lancer beam on the ground burns like the orbital laser does.
+
+1) src/domain/hull-stuck.js: driving that moves the hull less than 15% of the drive for 0.45 s eases it toward its cell centre, ramping over 0.6 s to 1.4 cells/s, and lets go the moment it moves (HULL_STUCK in src/content/tank.js); the controller runs it after each manual move. 2) Three game-tier projectiles pinned (missile_heavy, missile_cruise, heavy_240) laid on their sides west of the assembly line round the armory's pad, which moved there (BASE_PERKS.armory.island/pad; padOf takes an offset and finds the pad's own cell); the dump prints with the armory step. 3) quiver.talon 0.54 -> 0.7; a mortar shell now also spawns mortar.shell (Bofors burst 0.62) with its own scare. 4) Default wireOn and spin, ANIMATION (state.sweep) off by default and the main switch: on, wireframe and turntable go off and stepDemo runs the tank's engine and shell, a tower's firing pattern on its cadence, or a pinned platform's authored clips with a slow pass (clips cached per URL in model-fixture: Object3D.clone JSON-copies userData and killed them); arrows pinned to the stage's edges in CSS. 5) lancer.burn (Bofors burst 0.22, a small scare) at the splash where the beam stops. The controller paid in comments again (td-tab 9221 -> 9206 lines, 527981 -> 527866 bytes). ?sweep=0 no longer means anything; ?sweep=1 turns ANIMATION on.
+
+Alternatives: Keeping the pad behind the bays and only dressing the assembly line with missiles: two reload spots would be a lie; the owner named the spot; Scaling the mortar's dot burst instead of adding a smoke burst: the dot burst has no smoke, which is what was asked for
+
+Evidence:
+
+- node test/hull-stuck.mjs
+- node test/explosions-content.mjs
+- node test/impact-scare.mjs
+- scripts/browser-lock.sh node scripts/browser-test.mjs --units-sky (artifacts/browser/units-sky-korp-animation.png)
+- scripts/browser-lock.sh node scripts/browser-test.mjs --colony (the pad by the assembly line reloads the rack)
+- --grow, --sectors green
+
 ## 2026-10-01 — The Units lab shows the sky (the KORP, SOL-82, SOL-88) from their pinned models and draws any entry as the briefings' wireframe
 
 change · accepted · 2026-10-01-units-lab-sky-and-wireframe

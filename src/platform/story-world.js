@@ -25,6 +25,7 @@ import { createStoryHud } from '../fx/story-hud.js';
 import { planetBake } from './planet-bake.js';
 import { BASE_PROGRAMME } from '../content/base-programme.js';
 import { makeBuildProgramme } from '../domain/build-programme.js';
+import { BASE_PERKS } from '../content/base-programme.js';
 import { createBasePrint } from '../fx/base-print.js';
 import { createHullIssue, doorBerth, nearestCell } from '../fx/hull-issue.js';
 import { BLOCKED, PATH } from '../dungeon.js';
@@ -107,7 +108,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   for (const g of plan.gates ?? []) for (const ci of g.cells ?? []) if (ci >= 0) gateCellMap.set(ci, g.id ?? 'gate');
 
   // a pad at an island's centre: the solar array's charging ring, the armory's reload ring
-  const padOf = (id) => { const i = ISLANDS.find((x) => x.id === id); return i ? { cell: plan.cells[i.id], pos: placer.toWorld([i.x, 0, i.z]).normalize().toArray(), standing: stage >= i.stage } : null; };
+  const padOf = (id, [dx, dz] = [0, 0]) => { const i = ISLANDS.find((x) => x.id === id); if (!i) return null; const pos = placer.toWorld([i.x + dx, 0, i.z + dz]).normalize().toArray(); return { cell: dx || dz ? nearestCell(planet.graph.centers, pos) : plan.cells[i.id], pos, standing: stage >= i.stage }; };
   // story state for the controller: floor sockets towers may mount on, Isao's home cell, and the scripted beats
   // the lane end is the story's spawn: the optic faces it, and the fodder comes from it once a gate stands
   if (plan.cells.fodder >= 0) built.dungeon.spawn = plan.cells.fodder;
@@ -137,7 +138,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     sockets: new Set(), home: plan.cells.landing, socketLift: 0,
     // the solar array's shield pad (src/content/shield-array.js): its island's centre on the unit sphere, standing once the island is; a build programme stands it later by setting `standing`
     arrayPad: padOf(SHIELD_ARRAY.island),
-    armoryPad: padOf('armory'),   // the armory's reload pad (src/fx/armory-pad.js), standing once its step is printed
+    armoryPad: padOf(BASE_PERKS.armory.island, BASE_PERKS.armory.pad),   // the armory's reload pad by the assembly line (src/fx/armory-pad.js), live once the armory is printed
     // a run that starts at or past the expedition (a jump link) has no expedition of its own to wait for (src/fx/sector-run.js)
     lateStart: phase != null && STORY_PHASES.indexOf(phase) >= STORY_PHASES.indexOf('expedition'),
     beats, arrival: createArrival({ on: arrives, past: pastLanding, base, beats, site: sh02 ? basisAt(placer, sh02.x, sh02.z, sh02.heading) : null, metres: 1 / planet.radius }),
