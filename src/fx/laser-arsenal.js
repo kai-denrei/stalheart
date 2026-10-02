@@ -157,7 +157,7 @@ export function createLaserArsenal(scene, host) {
   }
 
   function edge(e) {
-    if (e === 'arrive') { passes++; host.brief?.(auto ? LASER_AUTO.brief : 'laser_pass'); autoT = 0; autoAim = null; }
+    if (e === 'arrive') { laser?.setSource(null); count = auto ? LASER_AUTO.countdown : 0; said = -1; passes++; host.brief?.(auto ? LASER_AUTO.brief : 'laser_pass'); autoT = 0; autoAim = null; }
     if (e === 'close') { lift(); if (mannedThisPass) manned++; mannedThisPass = false; autoAim = null; if (special) { special = null; normalPass(); st.energy = beam.energy; } host.passEnded?.(); }
     return e;
   }
@@ -167,12 +167,24 @@ export function createLaserArsenal(scene, host) {
   // the swarm marches at 15 m/s and the contact slews at 10, so a beam chasing where bodies were only burned the ground behind them.
   // A new pile more than a footprint away is a TARGETED STRIKE (owner: "once in a while SOL does targeted strikes"): the aim snaps
   // there instead of dragging the contact across the field
+  // NEVER NEAR OUR OWN (owner, 2026-10-02: "neither gunship nor orbital laser should fire too close to friendly units"): the heart,
+  // the sentries, the walls, the buildings and the hull, as unit points; an automated pass only takes bodies `LASER_AUTO.safeMetres`
+  // beyond its footprint from every one of them, and its beam lets go while the contact drags through that margin
+  let friends = [];
+  const friendsNow = () => { const centers = host.centers(), n = (p) => { const l = Math.hypot(p[0], p[1], p[2]) || 1; return [p[0] / l, p[1] / l, p[2] / l]; };
+    return [host.heart(), ...host.towers().map((t) => centers[t.ci]), ...host.walls().map((w) => w.pos), ...host.structures().map((b) => b.pos), host.tank()].filter(Boolean).map(n); };
+  const unsafe = (u) => { const r = (beam.radius + LASER_AUTO.safeMetres) / metres(), r2 = r * r; return friends.some((f) => (f[0] - u[0]) ** 2 + (f[1] - u[1]) ** 2 + (f[2] - u[2]) ** 2 < r2); };
+  // SOL FIRING IN 3… 2… (owner, 2026-10-02: "same as TACTICAL NUKE message"): an automated pass holds its fire `LASER_AUTO.countdown`
+  // seconds after it arrives and calls each second out, so the strike is announced before it lands
+  let count = 0, said = -1;
   function automatedAim(dt) {
     if (!auto || seated || special || st.phase !== 'overhead') return null;
+    if (count > 0) { const n = Math.ceil(count); if (n !== said) { said = n; host.callout?.(`SOL FIRING IN ${n}…`); } count -= dt; return null; }
     autoT -= dt;
     if (autoT <= 0 || !autoAim) {
       autoT = LASER_AUTO.retarget;
-      const centers = host.centers(), bodies = host.enemies().filter((e) => e.alive).map((e) => ({ pos: centers[e.next] ?? e.pos }));
+      friends = friendsNow();
+      const centers = host.centers(), bodies = host.enemies().filter((e) => e.alive).map((e) => ({ pos: centers[e.next] ?? e.pos })).filter((b) => !unsafe(b.pos));
       const next = densestTarget(bodies, { radius: beam.radius, metres: metres() });
       if (next && autoAim) { const R = metres(), d = Math.hypot(next[0] - autoAim[0], next[1] - autoAim[1], next[2] - autoAim[2]) * R; if (d > beam.radius * LASER_AUTO.strikeOver) st.fresh = true; }
       autoAim = next;
@@ -183,7 +195,7 @@ export function createLaserArsenal(scene, host) {
   // the beam, per frame (the lab's applyBurn)
   function burn(dt, input) {
     const aim = automatedAim(dt);
-    const held = (seated && (!!input?.held || testHeld)) || !!aim;
+    const cNow = contactU(), held = (seated && (!!input?.held || testHeld)) || (!!aim && !(cNow && unsafe(cNow)));
     let target = aim ?? input?.target ?? testTarget;
     const keys = input?.keys;
     if (!target && keys && (keys.x || keys.z) && st.contact && held) target = lead(keys);
@@ -200,6 +212,9 @@ export function createLaserArsenal(scene, host) {
     const g = groundAt(cU);
     ground.fromArray(g);
     normal.fromArray(cU).normalize();
+    // an automated pass fires from ONE point in the sky (src/fx/orbital-laser.js setSource): set over its first contact, moved only when
+    // a pile lies past that point's horizon; the seat keeps its vertical column
+    if (auto && !seated) { if (!laser.sourceSeen(g, cU)) { const k = 1 + laser.skyMetres / metres(); laser.setSource([cU[0] * k, cU[1] * k, cU[2] * k]); } } else laser.setSource(null);
     if (!burningWas) { laser.lay(ground, normal); host.explode('laser.ignite', g); contactT = smokeT = 0; } else laser.aim(ground, normal);
     burningWas = true;
     /* the ground burns audibly: louder with more energy left, a touch higher as the contact drags faster */
@@ -313,7 +328,7 @@ export function createLaserArsenal(scene, host) {
     state: () => ({
       online, phase: st.phase, overhead: st.phase === 'overhead', left: +st.left.toFixed(2), energy: +st.energy.toFixed(2), special: !!special, radius: beam.radius,
       burning: st.burning, contact: contactU()?.map((v) => +v.toFixed(5)) ?? null, seated, passes, seconds: +burnSeconds.toFixed(2), auto, manned, platform: platform.id, strip: laserStrip(st, online, beam, LASER_GAME.lowEnergy, platform.name).text, period: +orbit.period.toFixed(1), energyBonus, passEnergy: beam.energy,
-      under: { ...under }, underNames: [...underNames], burned: { ...burned }, trail: laser ? laser.trail.count : 0, smoke: laser ? laser.state().puffs : 0, breakMs: +breakMs.toFixed(1),
+      source: laser?.sourceAt?.() ?? null, under: { ...under }, underNames: [...underNames], burned: { ...burned }, trail: laser ? laser.trail.count : 0, smoke: laser ? laser.state().puffs : 0, breakMs: +breakMs.toFixed(1),
       /* metres from the contact to the nearest live body: a burn that takes nothing can say how far it missed */
       nearestBodyM: st.contact ? +Math.min(Infinity, ...host.enemies().filter((e) => e.alive).map((e) => { const R = metres(); return Math.hypot(e.pos[0] * R - st.contact[0], e.pos[1] * R - st.contact[1], e.pos[2] * R - st.contact[2]); })).toFixed(1) : null,
     }),

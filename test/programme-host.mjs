@@ -19,7 +19,7 @@ function controller(o = {}) {
     },
     playerHP: 3, waveActive: false, pilotMode: false, briefQ: null, pilot: null, deploy: null, t: 40, berths: [], playerDown: true,
     sectorRun: { gates: () => o.gates ?? [], doorsQuiet: () => true, backOpenBreaches: () => !!o.backOpen, repairGate: rec('repairGate'), note: rec('note') },
-    dungeon: { tags: Array(16).fill(PATH) }, tdFullTags: Array(16).fill(PATH), storyBase: { restoreWall: rec('restoreWall') },
+    dungeon: { tags: Array(16).fill(PATH) }, tdFullTags: Array(16).fill(PATH), storyBase: { restoreWall: rec('restoreWall'), droppedCells: () => o.dropped ?? [] },
     storyViews: { tank: rec('tank'), active: rec('active') },
   };
   const orders = [], breachQueue = [], breachedCells = new Set([5]);
@@ -77,7 +77,15 @@ function controller(o = {}) {
   assert.deepEqual(orders.map((x) => [x.kind, x.ci, x.repair]), [['repair', 11, { kind: 'gate', id: 'back' }]]);
   assert.deepEqual(log.slice(-2), [['brief', BASE_REPAIR.brief], ['hud']]);
   log.length = 0; api.repaired({ kind: 'gate' }); api.repaired({ kind: 'gate', id: 'back' });
-  assert.deepEqual(log, [['repairGate', 'gate'], ['hud'], ['repairGate', 'back'], ['hud']]);
+  assert.deepEqual(log, [['repairGate', 'gate'], ['restoreWall', -1], ['hud'], ['repairGate', 'back'], ['hud']], 'the front door brings back the segments on its own cell');
+}
+// A BURNED SEGMENT ON STANDING ROCK IS A HOLE (2026-10-02, the ninth notes: "after a breach, isao only builds a gate, he should also
+// build walls"): SOL drops a kit segment and leaves the cell BLOCKED; the repair book has it from story-base droppedCells
+{
+  const { s, api, orders } = controller({ at: 'stalheart', dropped: [5] });
+  s.dungeon.tags[4] = s.dungeon.tags[5] = BLOCKED;   // both wall cells' rock stands
+  api.build();
+  assert.deepEqual(orders.map((x) => [x.kind, x.ci]), [['repair', 5]], 'the burned segment is mended');
 }
 // THE BACK GATE IS NEVER PRE-BUILT: a static base prints only it, and only once the surprise is held
 {

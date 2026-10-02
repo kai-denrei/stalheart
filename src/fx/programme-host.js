@@ -114,7 +114,8 @@ export function createProgrammeHost(c) {
             if (!onStation(gs) && c.gunshipRig.onCall() && callFull(c.gunshipRig.call) && callGunship(c.gunshipRig.call)) { startStation(gs, GUNSHIP_ORBIT); if (!c.pilotMode() && !c.briefQ()) showBrief(GUNSHIP_AUTO.autoBrief); }
             const view = (p, lim) => { const q = new THREE.Vector3(...p).project(c.camera); return q.z < 1 && Math.abs(q.x) < lim && Math.abs(q.y) < lim; };
             s.gsFly ??= createGunshipAuto({ G: G0, tune: GUNSHIP_AUTO, onScreen: view, callout: (t) => c.callout?.(t, 'co-victory'), sfx: c.sfx, hasCue: (k) => !!SOUNDS[k],
-              friends: () => { const g = c.graph(), b = c.storyBase(), cells = [c.dungeon().heart, ...(b?.anchors() ?? []), ...(c.story().wallCells ?? [])]; return [...cells.filter((ci) => ci >= 0).map((ci) => g.centers[ci]), ...(c.playerPos() ? [c.playerPos()] : [])]; } });
+              friends: () => { const g = c.graph(), b = c.storyBase(), cells = [c.dungeon().heart, ...(b?.anchors() ?? []), ...(c.story().wallCells ?? [])]; return [...cells.filter((ci) => ci >= 0).map((ci) => g.centers[ci]), ...(c.playerPos() ? [c.playerPos()] : [])]; },
+              units: () => [c.playerPos(), c.isao()?.obj?.position.toArray()].filter(Boolean) });
             s.gsFly.tick(dt, seated);
           }
         }
@@ -166,7 +167,8 @@ export function createProgrammeHost(c) {
       // as breaches at the landing and sent Isao out to "repair" them one by one — each trip tagged its cell BLOCKED and the lattice
       // drew ROCK there, before the gate. The rim is only repairable once it stands, exactly as a static stage-4 base has it from the
       // first frame
-      const stood = programmeHas(pg, 'gate'), broke = stood ? (c.story().wallCells ?? []).filter((wc) => c.dungeon().tags[wc] !== BLOCKED) : [], repair = stood ? nextRepair({ gates: c.sectorRun()?.gates() ?? [], walls: broke, quiet: !c.waveActive() && (c.sectorRun()?.doorsQuiet?.() ?? true) }, BASE_REPAIR) : null;
+      const stood = programmeHas(pg, 'gate'), broke = stood ? [...new Set([...(c.story().wallCells ?? []).filter((wc) => c.dungeon().tags[wc] !== BLOCKED), ...(c.storyBase()?.droppedCells?.() ?? [])])] : [],   // a burned segment on standing rock is a hole too (owner, 2026-10-02: "after a breach, isao only builds a gate, he should also build walls")
+       repair = stood ? nextRepair({ gates: c.sectorRun()?.gates() ?? [], walls: broke, quiet: !c.waveActive() && (c.sectorRun()?.doorsQuiet?.() ?? true) }, BASE_REPAIR) : null;
       // ISAO MENDS WHAT THE SWARM BROKE (owner, 2026-09-16): between waves the door and the holes come before the next new building
       if (repair) {
         const rci = repair.kind === 'gate' ? (repair.id ? (c.story().gateCellOf?.(repair.id) ?? -1) : c.story().gateCell ?? -1) : repair.ci;
@@ -219,8 +221,8 @@ export function createProgrammeHost(c) {
     // the gate back to full, or the wall cell closed for the swarm, the tank and the full world alike: drawn as floor with its kit
     // segments standing again (dungeon.mended, src/fx/board-surface.js), so what he printed reads as a wall and not a rock
     repaired: (repair) => {
-      if (repair.kind === 'gate') c.sectorRun()?.repairGate(repair.id ?? 'gate');
-      else { const rci = repair.ci; c.dungeon().tags[rci] = BLOCKED; (c.dungeon().mended ??= new Set()).add(rci); if (c.tdFullTags()) c.tdFullTags()[rci] = BLOCKED; breachedCells.delete(rci); breachQueue.push(rci); c.storyBase()?.restoreWall(rci); rebuildAfterBreach(); recomputePortalDist(); }
+      if (repair.kind === 'gate') { c.sectorRun()?.repairGate(repair.id ?? 'gate'); if (!repair.id) c.storyBase()?.restoreWall(-1); }   // and the segments on the door's own cell
+      else { const rci = repair.ci; if (c.dungeon().tags[rci] !== BLOCKED) (c.dungeon().mended ??= new Set()).add(rci); c.dungeon().tags[rci] = BLOCKED; if (c.tdFullTags()) c.tdFullTags()[rci] = BLOCKED; breachedCells.delete(rci); breachQueue.push(rci); c.storyBase()?.restoreWall(rci); rebuildAfterBreach(); recomputePortalDist(); }
       updateHud();
     },
     printed: (step) => {

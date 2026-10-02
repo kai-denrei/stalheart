@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { isStampede, stampedeOf } from '../src/domain/stampede.js';
+import { SECTOR_STAMPEDE } from '../src/content/sectors.js';
+import { ENEMY_SPEC } from '../src/enemyspec.js';
+const tune = SECTOR_STAMPEDE;
+assert.deepEqual([0, 1, 2, 3].map((i) => isStampede(i, tune)), [false, true, false, true], 'every second wave a breach sends');
+const plan = [{ type: 'amoeba', count: 20 }, { type: 'phage', count: 6 }, { type: 'barbed', count: 3 }];
+const st = stampedeOf(plan, ENEMY_SPEC, tune);
+assert.deepEqual(st, [{ type: 'amoeba', count: 20 * tune.size }, { type: 'phage', count: 6 * tune.size }, { type: tune.core, count: tune.cores }], 'the soft ones multiplied, the solid ones out, a few cores in');
+assert.equal(stampedeOf([{ type: 'barbed', count: 10 }], ENEMY_SPEC, tune)[0].type, tune.fallback, 'an all-solid plan becomes the fallback flood');
+assert.ok(ENEMY_SPEC[tune.fallback].rammable && !ENEMY_SPEC[tune.core].rammable);
+console.log('stampede: every second wave is a flood of rammable bodies with a few hard cores.');

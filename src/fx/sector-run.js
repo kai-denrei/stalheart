@@ -7,7 +7,7 @@
 // Composition only: the rules are src/domain/sectors.js, sector-stats.js and gate-integrity.js with the numbers in
 // src/content/sectors.js. The controller hands in hooks (spawning, sealing, paying, briefing, pausing, polling) and calls
 // the returned object at its real sites; nothing here imports the controller.
-import { SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, SECTOR_STATS, SECTOR_STAMPS, SECTOR_RECORDS, SECTOR_TIMING, SECTOR_GATE, BELT_OF, BREACH_CLOSERS, BACK_OMENS, BACK_SCRAMBLE, SIDE_BREACH, CANYON, SECTOR_CANYON_AGAIN } from '../content/sectors.js';
+import { SECTOR_STAMPEDE, SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, SECTOR_STATS, SECTOR_STAMPS, SECTOR_RECORDS, SECTOR_TIMING, SECTOR_GATE, BELT_OF, BREACH_CLOSERS, BACK_OMENS, BACK_SCRAMBLE, SIDE_BREACH, CANYON, SECTOR_CANYON_AGAIN } from '../content/sectors.js';
 import { omenDue } from '../domain/back-omens.js';
 import { GUNSHIP_GUN_ORDER } from '../content/gunship.js';
 import { snapshot as programmeSnapshot } from '../domain/build-programme.js';
@@ -16,6 +16,7 @@ import { makeSectorStats, record, report as sectorReport, mergeBests, campaignTo
 import { makeGateIntegrity, pressGate, mendGate, gateShare } from '../domain/gate-integrity.js';
 import { computeWavePlan, ENEMY_SPEC } from '../enemyspec.js';
 import { waveCount, waveGap } from '../domain/wave-spread.js';
+import { isStampede, stampedeOf } from '../domain/stampede.js';
 import { POINT_SCALE, waveScore } from '../score.js';
 import { waveClearBonus } from '../domain/economy.js';
 import { createSectorDebrief } from './sector-debrief.js';
@@ -42,7 +43,7 @@ export function killSource(src, via = null) {
 // hooks: see the controller's createSectorRun call (src/td-tab.js). Every one is required unless marked optional there.
 export function createSectorRun(h) {
   const story = h.story, api = h.api ?? {};
-  let phase = 'idle', def = null, sector = null, stats = null, left = 0, at = 0, pending = [], cardLeft = 0, feast = null, backOpenedAt = null, campaignShown = false, lastPoll = null, lastReport = null, quiet = false, doorAt = null, canyon = null;   // canyon: { plan, id, phase, upAt } in THE CANYON
+  let phase = 'idle', def = null, sector = null, stats = null, left = 0, at = 0, pending = [], cardLeft = 0, feast = null, stampedes = 0, backOpenedAt = null, campaignShown = false, lastPoll = null, lastReport = null, quiet = false, doorAt = null, canyon = null;   // canyon: { plan, id, phase, upAt } in THE CANYON
   const sps = new Map(), reports = [], omens = new Set();
   let doorsQuiet = true;   // no sector body within quietCells of any standing door, as of the last tick
   let readySince = null;   // when the story first said it was ready for the first sector
@@ -93,6 +94,8 @@ export function createSectorRun(h) {
     // THE CANYON'S SWARM: `swarm` sector pulses (two breaches' worth each) of the ladder wave `ladder` past the sector's start, at once
     if (b.side === 'canyon') return { entries: computeWavePlan(def.waveBase + CANYON.ladder, 1, h.waveSize, def.threat * (h.threatMult ?? 1) * (api.swell?.() ?? 1)).entries.map((e) => ({ ...e, count: e.count * CANYON.swarm * 2 })), pace: SECTOR_TIMING.pace, spread: CANYON.spread, dens: CANYON.dens };
     const entries = computeWavePlan(wave, 1, h.waveSize, def.threat * (h.threatMult ?? 1) * (api.swell?.() ?? 1)).entries.map((e) => ({ ...e }));
+    // THE STAMPEDE (src/domain/stampede.js): every second wave a mouth sends is a flood of rammable bodies with a few hard cores in it
+    if ((b.side === 'gate' || b.side === 'back') && isStampede(b.wavesReleased ?? 0, SECTOR_STAMPEDE)) return { entries: stampedeOf(entries, ENEMY_SPEC, SECTOR_STAMPEDE), pace: SECTOR_TIMING.pace, stampede: true };
     if (def.hardcoresEveryWave && h.hardcore) entries.push({ type: h.hardcore, count: def.hardcores ?? 1 });
     return { entries, pace: SECTOR_TIMING.pace };
   }
@@ -109,6 +112,7 @@ export function createSectorRun(h) {
     if (next === null) return null;
     const wave = waveOf(b, next), feasting = feastFor(b), r = releaseWave(sector, b.id, t);
     if (feasting) feast = { id: b.id, at: t, scrambled: 0 };
+    if (wave.stampede) { h.callout(SECTOR_STAMPEDE.callout, 'co-victory'); stampedes++; }
     return { r, entries: queueOf(wave, sp) };
   }
   // how many of the sector's bodies the next pulse would send from the breaches that are open now
@@ -420,6 +424,7 @@ export function createSectorRun(h) {
       breaches: (sector?.breaches ?? []).map((b) => ({ id: b.id, side: b.side, cell: b.cell, broke: !!b.broke, opened: sps.has(b.id), live: b.state === 'open' && !!sps.get(b.id)?.alive, wavesReleased: b.wavesReleased, wavesPlanned: b.wavesPlanned, closedBy: b.closedBy, leftInField: { ...b.leftInField }, bonus: { ...b.bonus } })),
     }),
     test: {
+      stampedes: () => stampedes,
       release: (id) => { const b = breachOf(id), sp = sps.get(id); if (!b || !sp?.alive) return null; const sent = sendWave(b, sp, now()); if (sent) h.push(sent.entries); omen(); h.hud(); return sent?.r ?? null; },
       close: (id, by) => { const sp = sps.get(id); if (!sp?.alive) return null; h.seal(sp, by); return breachOf(id)?.closedBy ?? null; },
       clearField: () => h.clearField(),

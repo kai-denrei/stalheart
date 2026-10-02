@@ -8,7 +8,9 @@ import { densestTarget } from '../domain/laser-auto.js';
 // `friends()`: the points the MK-9 must never land near (the heart, the hull, the base's walls, structures and sentry sockets). The
 // dummy nuke breaks towers and walls where it lands, so on auto it only goes down on a pile `nukeSafeCells` clear of its own blast
 // from every one of them (owner, 2026-10-02: "only shoot nukes at safe distance from the base"); the rotary and the Bofors fire as before
-export function createGunshipAuto({ G, tune, onScreen, callout, sfx, hasCue, friends = () => [] }) {
+// `units()`: the friendly units the two guns keep `gunSafeCells` beyond their blast from (the hull and Isao; owner, 2026-10-02: "neither
+// gunship nor orbital laser should fire too close to friendly units"). The guns cannot hurt a wall or a sentry, so the gate's pile stays theirs
+export function createGunshipAuto({ G, tune, onScreen, callout, sfx, hasCue, friends = () => [], units = () => [] }) {
   let gun = 'rotary', phase = 'rest', t = 0, nukePass = -1, rounds = 0, target = null;
   function landRounds() {
     for (const r of G.landed()) {
@@ -23,6 +25,7 @@ export function createGunshipAuto({ G, tune, onScreen, callout, sfx, hasCue, fri
     // seated: the player is in the seat (the seat runs the guns); returns whether auto flew this tick
     tick(dt, seated) {
       const st = G.state;
+      if (!seated) G.optic.fade?.(dt);   // nobody's pose() is ageing the tracers
       if (seated || !G.onStation()) { phase = 'rest'; t = 0; return false; }
       if (!st.mounted) G.mount();
       t += dt;
@@ -50,7 +53,10 @@ export function createGunshipAuto({ G, tune, onScreen, callout, sfx, hasCue, fri
       }
       // the guns: a burst, a rest, the other gun
       if (phase === 'rest') { if (t >= tune.rest) { phase = 'burst'; t = 0; gun = gun === 'rotary' ? 'bofors' : 'rotary'; G.select(gun); target = null; } landRounds(); G.step(dt, false); return true; }
-      if (!target || t % 0.6 < dt) { const p = densestTarget(live, { radius: G.guns[gun].blastCells * G.cs * 10, metres: 10 }); target = p; }
+      if (!target || t % 0.6 < dt) {
+        const keep = (G.guns[gun].blastCells + (tune.gunSafeCells ?? 1.5)) * G.cs, near = units(), clear = (q) => near.every((f) => Math.hypot(q[0] - f[0], q[1] - f[1], q[2] - f[2]) > keep);
+        const p = densestTarget(live.filter((e) => clear(e.pos)), { radius: G.guns[gun].blastCells * G.cs * 10, metres: 10 }); target = p && clear(p) ? p : null;
+      }
       const n = target ? G.step(dt, true) : (G.step(dt, false), 0);
       const g = G.guns[gun];
       for (let i = 0; i < n; i++) {

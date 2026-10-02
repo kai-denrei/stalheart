@@ -163,4 +163,6 @@ export const LASER_PLATFORMS = Object.freeze({
 // brief: Isao's line as an automated pass arrives (once); calibrated: his line when the calibration is in hand
 // strikeOver: a new pile this many footprint radii from the last aim is taken as a fresh strike (the aim snaps) rather than a drag;
 // plumeRate: the extra plumes a second an automated pass raises over its contact, `plumeLift` metres up (src/content/explosions.js laser.plume)
-export const LASER_AUTO = Object.freeze({ afterManned: 2, retarget: 0.6, strikeOver: 2, plumeRate: 1.6, plumeLift: 4, brief: 'laser_auto_fire', calibrated: 'laser_calibrated' });
+// `safeMetres`: how far beyond its footprint an automated pass keeps from the base and the hull (src/fx/laser-arsenal.js unsafe);
+// `countdown`: the seconds it calls out (SOL FIRING IN 3…) before it fires
+export const LASER_AUTO = Object.freeze({ safeMetres: 25, countdown: 3, afterManned: 2, retarget: 0.6, strikeOver: 2, plumeRate: 1.6, plumeLift: 4, brief: 'laser_auto_fire', calibrated: 'laser_calibrated' });

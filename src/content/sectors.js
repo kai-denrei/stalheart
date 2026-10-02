@@ -52,6 +52,11 @@ export const SECTORS = freeze([
     brief: ['Something is digging beside the gate. Close to the sentries.', 'One mouth on the lane, and one where it comes up.'] },
 ]);
 
+// THE STAMPEDE (owner, 2026-10-02: the ramming is the fun, so more waves of weak bodies, bigger ones, a few hard cores to force the
+// shield): every `every`-th wave of a gate or back breach is its plan's rammable bodies `size` times over with `cores` x `core` in them
+// (src/domain/stampede.js); `callout` as it leaves the mouth
+export const SECTOR_STAMPEDE = freeze({ every: 2, size: 3, cores: 2, core: 'barbed', fallback: 'amoeba', callout: 'STAMPEDE — RAM THEM' });
+
 // THE CANYON, in cells: `length` long and open `halfWidth` either side of its centre line, `wall` cells of rock beyond that and
 // across its deep end (src/domain/canyon.js). The swarm is `swarm` times a sector pulse of the ladder wave `ladder` past the sector's
 // start, every one up at the deep end at once (`spread` cells of scatter as they rise, each drawn with `dens` of a body's dots: hundreds

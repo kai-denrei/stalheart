@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "2026-10-02-ninth-notes-friendly-fire-sol-countdown-tracers-stampede-walls-burns-needle-one-source",
+  "date": "2026-10-02",
+  "type": "change",
+  "status": "accepted",
+  "title": "The owner's ninth notes: the gunship and SOL keep off our own, SOL counts down, the auto gunship's tracers age out, a stampede every second wave for the ramming, Isao rebuilds burned wall segments, the mortar's burst on the ground, the Needle takes hard cores first, the automated SOL fires from one point in the sky",
+  "context": "Owner, 2026-10-02 (on 9771edc5): 1) neither gunship nor orbital laser should fire too close to friendly units; 2) like the TACTICAL NUKE message, a 'SOL FIRING IN 3… 2…'; 3) screenshot: the gunship's bullet tracers stay permanently from the tank view; 4) we lost a fun activity, insane ramming bonuses: more waves of rammable enemies, larger waves of weak enemies, sometimes a few hard cores in them forcing the shield; 5) after a breach Isao only builds a gate, he should also build walls; 6) the burn effect of the mortar, and maybe SOL, renders higher than the enemies, it should be on the ground; 7) the Needle shoots the hard cores in priority, not whichever is closest; 8) the automated SOL fires at various spots in quick succession all angled the same way, so it looks like several orbital lasers; it should look like one source firing at several angles.",
+  "outcome": "3) The optic's tracers, rounds in the air and painted targets only aged in pose(), which runs only for a seated gunner; an auto pass froze its rounds in the sky. They age in optic.fade(dt), called by pose() and by the auto gunship every unmanned tick. 1) SOL's automated aim leaves out bodies within its footprint plus LASER_AUTO.safeMetres (25 m) of the heart, sentries, walls, buildings and hull, and its beam lets go while the contact drags through that margin; the auto gunship's two guns leave out piles within blast + GUNSHIP_AUTO.gunSafeCells (1.5) of the hull and Isao (they cannot hurt walls or sentries, so the gate pile stays theirs); the MK-9 keeps its nukeSafeCells rule. 2) An automated pass holds its fire LASER_AUTO.countdown (3 s) after arriving and calls SOL FIRING IN 3… 2… 1…. 8) src/fx/orbital-laser.js setSource: an automated pass's beams all leave one sky point, set 400 m over its first contact and moved only when a pile is past that point's horizon; the seat keeps the vertical column. 4) src/domain/stampede.js: every second wave a gate or back mouth sends is its plan's rammable bodies x3 with 2 barbed cores, called STAMPEDE — RAM THEM (SECTOR_STAMPEDE). 5) The repair book had only wall cells whose rock was gone; a segment SOL burned leaves its rock standing and was never mended. story-base droppedCells feeds it, and a front-gate repair raises the segments on the door's own cell; a mended cell whose rock still stands keeps its rock. 6) The mortar's explosion (smoke, dust skirt, shock ring) was spawned at the shell's burst height; it is now on the ground or rock top under the burst. SOL's burns were already on the ground. 7) pickTarget takes prefers: 'hard'; the Needle's combat entry carries it.",
+  "alternatives": [
+    "Keeping the auto gunship's guns off the gate pile too: they cannot damage walls or sentries, and the pile at the gate is their main work",
+    "A rendered SOL platform in the sky as the source: a sky point gives the converging beams without another model in the frame",
+    "Making every wave softer instead of a stampede every second wave: the hard cores and the ladder's climb still matter between stampedes"
+  ],
+  "evidence": [
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --round9 (STAMPEDE called on a gate mouth's second wave; SOL FIRING IN; one source over four contacts; 154 bodies and a breach burned, no towers, walls, tank, structures or heart; artifacts/browser/round9-stampede.png, round9-sol-burn.png)",
+    "test/stampede.mjs, test/needle-prefers.mjs, test/programme-host.mjs (a burned segment on standing rock is mended; the gate repair raises its own cell's segments)",
+    "--gunship-auto, --laser-game, --laser, --colony green; the story suites below"
+  ],
+  "supersedes": []
+}

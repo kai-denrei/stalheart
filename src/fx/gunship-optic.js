@@ -89,6 +89,12 @@ export function createGunshipOptic(scene, { cellSide, metresPerCell = 10 }) {
       for (const n of ['L', 'R']) { const s = node(`GUN_${n}_SPIN`); if (s) s.rotation.z += spin * dt * 40; }
       if (firing === 'round' && clips[GUNSHIP_GUNS[gun]?.clip]) clips[GUNSHIP_GUNS[gun].clip].reset().play();
       mixer?.update(dt);
+      this.fade(dt);
+    },
+    // THE TRACERS, THE ROUNDS IN THE AIR AND THE PAINTED TARGETS AGE HERE: pose() calls it for the gunner, and the auto gunship
+    // (src/fx/gunship-auto.js) calls it every tick it flies unmanned — before that the auto pass's rounds froze mid-air and stood
+    // in the sky for good (owner, 2026-10-02: "the bullet tracers of the Gunship stay permanently from the tank view")
+    fade(dt) {
       for (const t of tracers) if (t.visible) { t.userData.life -= dt; if (t.userData.life <= 0) t.visible = false; else t.material.opacity = t.userData.life / t.userData.total; }
       for (let i = flights.length - 1; i >= 0; i--) {   // the segment's head at the flight's progress, its tail a little behind
         const f = flights[i]; f.t += dt; const u = Math.min(1, f.t / f.travel), u0 = Math.max(0, u - f.width / f.travel), p = f.line.geometry.attributes.position;

@@ -18,6 +18,10 @@ Design: `docs/superpowers/specs/2026-09-15-v1-session-design.md`. Two entry poin
 - **Expeditions you can see:** our flag over a cleared site, the crate on the MÖRK's back, the drop at the foundry with the unlock callout, trophy flags at home (`src/fx/cargo.js`, `src/fx/expedition-glue.js`).
 - **The campaign board stays underneath** for the acceptance runs and the wave simulator (`?acceptance=1`, `?sim=`).
 
+## What landed on 2026-10-02 (the ninth notes: friendly fire, SOL's countdown and one source, tracers, the stampede)
+
+`2026-10-02-ninth-notes-friendly-fire-sol-countdown-tracers-stampede-walls-burns-needle-one-source`: the automated SOL keeps 25 m beyond its footprint from the base and the hull, counts down SOL FIRING IN 3… and fires every beam of a pass from one sky point; the auto gunship's guns keep off the hull and Isao and its tracers age out; every second wave a mouth sends is a STAMPEDE of rammable bodies x3 with two barbed cores (`src/domain/stampede.js`); Isao mends wall segments SOL burned; the mortar's burst sits on the ground; the Needle takes hard cores first.
+
 ## What landed on 2026-10-02 (the eighth notes: the study lull, the sentry rules, vanishing sentries)
 
 `2026-10-02-eighth-notes-study-lull-sentry-rules-vanishing-towers`: a sentry finished at the 10-sentry cap no longer vanishes (`src/domain/sentry-cap.js`: the finishing order is not counted against itself); the build menu says why a cell is refused and counts `n/10 sentries`; Isao's close-up runs live and the study comes 4 s after the hull is out, his screen with his last line.

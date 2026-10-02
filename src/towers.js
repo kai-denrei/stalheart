@@ -64,7 +64,8 @@ const COMBAT = {
     "range": 8,
     "rate": 0.45,
     "attack": "sniper",
-    "hitscan": true
+    "hitscan": true,
+    "prefers": "hard"
   },
   "heptapod": {
     "color": 16757854,
@@ -128,15 +129,17 @@ export function effectiveStats(def, tier) {
 // targeting: nearest ALIVE enemy within range (HK stepCombat). The
 // distance function is injected so the sphere's chord metric plugs in
 // without this module knowing about geometry.
-export function pickTarget(towerPos, range, enemies, dist) {
-  let best = null;
-  let bestD = range;
+// `prefers: 'hard'` (the Needle; owner, 2026-10-02: "Needle now shoots the hardcores in priority, not whichever enemy is closest"): the
+// nearest solid-core body in range (one the tank cannot ram) before the nearest of the rest
+export function pickTarget(towerPos, range, enemies, dist, prefers = null) {
+  let best = null, bestD = range, hard = null, hardD = range;
   for (const e of enemies) {
     if (!e.alive) continue;
     const d = dist(towerPos, e.pos);
     if (d <= bestD) { bestD = d; best = e; }
+    if (prefers === 'hard' && e.spec && !e.spec.rammable && d <= hardD) { hardD = d; hard = e; }
   }
-  return best;
+  return hard ?? best;
 }
 
 // cooldown helper: seconds between shots at a rate

@@ -1574,6 +1574,31 @@ try{
  while(Date.now()-t0<40000){const r=await evaluate(`(()=>{const s=${T}.state(),b=document.querySelector("#td-brief"),m=document.querySelector(".synthetic-modal,#synthetic-modal");return [s.story?.phase,s.shot,b&&!b.classList.contains("hidden")?(b.textContent||"").replace(/\\s+/g," ").slice(0,70):"-",m&&!m.hidden&&getComputedStyle(m).display!=="none"?"SCREEN":""].join(" | ");})()`);
   if(r!==last){rows.push(((Date.now()-t0)/1000).toFixed(1)+'s '+r);last=r;}await delay(200);}
  console.log(rows.join('\n'));
+ } else if(args.includes('--round9')) {
+ // THE OWNER'S NINTH NOTES (2026-10-02): SOL's automated pass counts down, fires from one point in the sky and spares the base; the
+ // stampede (every second wave a mouth sends) floods the lane with rammable bodies; the auto gunship's tracers age out
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), callouts=()=>evaluate('document.querySelector("#td-callouts")?.textContent||""');
+ await go('round9-sol','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4&laser=online#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ await until(`${T}.state().sector.n===4`,60000);
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card{display:none!important}</style>")');
+ // the stampede: a gate mouth's second wave
+ const S=await evaluate(`${T}.state().sector`), gate=(S.breaches||[]).find(b=>b.side==='gate');
+ assert.ok(gate,`a gate breach (${JSON.stringify(S.breaches)})`);
+ await evaluate(`${T}.sectorRelease(${JSON.stringify(gate.id)})`);await delay(300);
+ const before=await evaluate(`${T}.state().sector.breaches.find(b=>b.id===${JSON.stringify(gate.id)}).wavesReleased`);
+ if(before%2===1){await evaluate(`${T}.sectorRelease(${JSON.stringify(gate.id)})`);}
+ await until('/STAMPEDE/.test(document.querySelector("#td-callouts")?.textContent||"")',4000).catch(async()=>assert.fail(`the stampede is called (${await callouts()}, released ${before})`));
+ await delay(6000);current='round9-stampede';await finish();
+ // SOL on auto: the countdown, one source, nothing of ours burned
+ await evaluate(`${T}.laserAuto(true)`);await evaluate(`${T}.laserPassNow()`);
+ await until('/SOL FIRING IN/.test(document.querySelector("#td-callouts")?.textContent||"")',5000).catch(async()=>assert.fail(`SOL counts down (${await callouts()}; ${JSON.stringify((await st()).laser)})`));
+ const l0=(await st()).laser;assert.equal(l0.burning,false,'no beam during the countdown');
+ await until(`${T}.state().laser.burning`,15000).catch(async()=>assert.fail(`the automated pass burns after the countdown (${JSON.stringify((await st()).laser)})`));
+ const seen=[];for(let k=0;k<8;k++){const l=(await st()).laser;seen.push({c:l.contact,s:l.source,b:l.burning});await delay(700);if(k===3){current='round9-sol-burn';await finish();}}
+ const l1=(await st()).laser;console.log(`  round9: SOL ${JSON.stringify(seen.filter(x=>x.b).slice(0,4))} burned ${JSON.stringify(l1.burned)}`);
+ assert.ok(seen.some(x=>x.b&&x.s),'an automated burn leaves from a source in the sky');
+ for(const k of ['towers','walls','tank','structures','heart'])assert.equal(l1.burned[k]??0,0,`the automated pass burned no ${k}`);
  } else if(args.includes('--units-sky')) {
  // THE SKY ON THE BENCH (owner, 2026-10-01: "UNITS are not showing all the units; we should see SOL, and the Gunship. also show
  // Wireframe for all units"): the KORP, SOL-82 and SOL-88 are catalogue entries built from their pinned GLBs, and the wireframe

@@ -336,17 +336,13 @@ export function initTdTab(root) {
     enemies: () => enemies, breaches: () => spawnPoints.filter((sp) => sp.alive && sp.obj?.userData.breach && !sp.obj.userData.keep).sort((a, b) => (sectorRun?.owns(b) ? 1 : 0) - (sectorRun?.owns(a) ? 1 : 0)), towers: () => towers, walls: () => storyBase?.walls?.() ?? [], anchors: () => storyBase?.anchors?.() ?? new Set(),
     burnBody: (e) => damageEnemy(e, t, e.hp + 1, true, 'laser'), seal: (sp) => killPortal(sp, 'laser'), burnTower: (tw) => destroyTower(tw), burnWall: (w) => storyBase?.dropWall(w.index),
     breakCells: (cells) => { if (cells.filter((ci) => breachWallCell(ci)).length) rebuildAfterBreach(); }, burnHeart: () => heartHit(heartHP), burnTank: (p) => playerHit('laser', p),
-    structures: () => storyBase?.standing?.() ?? [], burnStructure: (id) => { if (!story || story.lost.has(id)) return; story.lost.add(id); storyBase?.conceal(id); const gone = programmeLose(story.programme, id); if (id === 'radar') laserStation.setOnline(false);   /* A BURNED RADAR TAKES SOL-82 OFFLINE: no uplink, no pass */ if (id === 'bays' && playerHP > 1) { playerHP = 1; syncLifeContainers(); }   /* burned bays lose the spare hulls racked under them */ updateHud(); showToast(structureLostHtml(id, gone), 3200); },   /* OURS UNDER THE BEAM was the warning; this is the bill */ explode: (use, p) => explode(use, p), brief: (id) => showBrief(id), loop: (key) => sfx.loop(key), views: () => storyViews, canvas: () => renderer.domElement, fov: () => camera.fov,
+    structures: () => storyBase?.standing?.() ?? [], burnStructure: (id) => { if (!story || story.lost.has(id)) return; story.lost.add(id); storyBase?.conceal(id); const gone = programmeLose(story.programme, id); if (id === 'radar') laserStation.setOnline(false);   /* A BURNED RADAR TAKES SOL-82 OFFLINE: no uplink, no pass */ if (id === 'bays' && playerHP > 1) { playerHP = 1; syncLifeContainers(); }   /* burned bays lose the spare hulls racked under them */ updateHud(); showToast(structureLostHtml(id, gone), 3200); },   /* OURS UNDER THE BEAM was the warning; this is the bill */ explode: (use, p) => explode(use, p), brief: (id) => showBrief(id), callout: (x) => showCallout(x, 'co-victory'), loop: (key) => sfx.loop(key), views: () => storyViews, canvas: () => renderer.domElement, fov: () => camera.fov,
     paused: (v) => { const was = paused; if (v !== undefined) paused = v; return was; }, togglePause: () => togglePause(),   /* the seat's P shows the pause card, as ESC does (2026-09-25) */
     vacate: () => leavePilot(), enter: (fov) => { seatGlide.begin(camera); seatBase = baseFor(seatBase, pilotMode, { view: params.view, fov: camera.fov }); keys.left = keys.right = keys.fast = keys.slow = keys.laser = false; cruise = false; throttle = 0; endShot(); camera.fov = fov; camera.updateProjectionMatrix(); snapCamera(); },   /* OCCUPANCY IS EXCLUSIVE (src/domain/seat-view.js): the strip button is caught here, so `vacate` leaves the seat the player was in first; SOL-82 once opened on top of the gunship (owner, 2026-09-23) */
     leave: () => { seatGlide.begin(camera); restoreSeat(); },   /* the lens and the view this chain of seats was entered from (2026-09-15-gunship-track-latched-and-seat-lens-reset, 2026-09-23-seat-changes-robust) */
   });
   sfx.arm();
-  // THE ALARM IS THE PROOF OF LIFE. Operator, 2026-09-01: waiting out the
-  // cold open to find out whether sound works makes every test cycle cost
-  // ten seconds. This fires the moment the context is genuinely running —
-  // the same klaxon the first unrammable contact uses — so audio announces
-  // itself immediately, on the very first click, before anything else.
+  // THE ALARM IS THE PROOF OF LIFE (operator, 2026-09-01): the klaxon fires the moment the audio context runs, on the first click
   sfx.whenRunning(() => {
     // TWO sounds, deliberately, by two completely different routes. The
     // oscillator uses NONE of the sample path — no decoded buffer, no bus,
@@ -6848,7 +6844,7 @@ export function initTdTab(root) {
       const eff = effectiveStats(tw.def, tw.tier);
       const range = eff.range * cellSide;
       const tp = graph.centers[tw.ci];
-      let target = manual ? (missileOf(tw.key) ? tw.missileTarget : tw.pilotTarget) : missileOf(tw.key) ? tw.missileTarget : pickTarget(tp, range, enemies, chord);
+      let target = manual ? (missileOf(tw.key) ? tw.missileTarget : tw.pilotTarget) : missileOf(tw.key) ? tw.missileTarget : pickTarget(tp, range, enemies, chord, tw.def.prefers);
       if (manual && target && !target.pilotAim && missileDistance(tp,target.pos) > eff.range*METRES_PER_CELL) continue;
       // the railgun does not shoot THROUGH walls: if the nearest pick is
       // occluded by high ground, take the nearest VISIBLE enemy instead
@@ -7125,7 +7121,7 @@ export function initTdTab(root) {
     const splashCells = p.splash / cellSide;
     const impactCi = cellIndex(p.pos);
     if (impactCi !== -1 && splashCells > 0.5) {
-      warnRing(impactCi, p.color, 0.5, p.splash * 1.1); explode('mortar.shell', p.pos);   // the shell's smoke (owner, 2026-10-02: "more smoke fumes")
+      warnRing(impactCi, p.color, 0.5, p.splash * 1.1); explode('mortar.shell', scale3(norm3(p.pos), 1 + (dungeon.tags[impactCi] === BLOCKED ? params.wallHeight : 0)));   // its smoke and shock ring ON the ground under the burst, not at the burst's height (owner, 2026-10-02)
     }
     const boom = makeDotBurst(p.color, norm3(p.pos), Math.round(42 + splashCells * 40));
     boom.scale.setScalar(cellSide * (1.1 + splashCells * 0.6));

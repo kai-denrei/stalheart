@@ -178,10 +178,16 @@ void main(){
     sinceSmoke = 0;
   }
 
+  // ONE PLATFORM, MANY ANGLES (owner, 2026-10-02: "when the automated SOL fires ... at various spots, they are all angled the same
+  // way, so it looks like there are multiple orbital lasers"). With a `source` set (a world point in the sky, setSource) the column
+  // leaves from it and meets each contact at its own angle; without one it stands on the local vertical as the seat has it
+  let source = null;
+  const toSrc = new THREE.Vector3();
   function place(contact, normal) {
     at.copy(contact);
     up.copy(normal).normalize();
-    sky.copy(at).addScaledVector(up, LASER_SKY_METRES * unit);
+    if (source && toSrc.copy(source).sub(at).normalize().dot(up) > 0.2) sky.copy(source);
+    else sky.copy(at).addScaledVector(up, LASER_SKY_METRES * unit);
     beam.setEndpoints(sky, end.copy(at).addScaledVector(up, -BURY_METRES * unit));
     material.uniforms.uGroundFade.value = ((GROUND_FADE_METRES + BURY_METRES) * unit) / sky.distanceTo(end);
     ring.position.copy(at).addScaledVector(up, 0.08 * unit);
@@ -194,6 +200,11 @@ void main(){
     trail,
 
     // the beam comes down here: show it, and start the ribbon at this point
+    // the sky point every beam of this pass leaves from (null: straight up from each contact); `seen(contact, normal)` says whether a
+    // contact sees it above its horizon, so the caller can move the source over a pile the old one cannot reach
+    setSource(p) { source = p ? new THREE.Vector3(p[0], p[1], p[2]) : null; },
+    sourceSeen(contact, normal) { return !!source && toSrc.copy(source).sub(new THREE.Vector3(...contact)).normalize().dot(new THREE.Vector3(...normal).normalize()) > 0.2; },
+    skyMetres: LASER_SKY_METRES, sourceAt: () => source?.toArray() ?? null,
     lay(contact, normal) {
       place(contact, normal);
       beam.mesh.visible = true;
