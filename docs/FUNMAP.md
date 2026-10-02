@@ -4,7 +4,9 @@
 
 A companion to `ROADMAP.md`. The roadmap lists open items; this page is about how the game feels. Each line is a felt observation, dated, tagged with the lesson it touches. It is not a task list. Diagnoses come from the owner's playtests; the prescriptions stay with the design (Rosewater 19).
 
-Lenses: Mark Rosewater's twenty lessons (R1–R20, from `~/Dev/game-design-lessons`) and Sid Meier's test that a game is a series of interesting decisions (M). `docs/PLAYFEEL.md` still holds the owner's raw notes; this page reads them together with the log.
+Lenses: Mark Rosewater's twenty lessons (R1–R20) and Sid Meier's test that a game is a series of interesting decisions (M), both from `~/Dev/game-design-lessons`, which since 2026-10-02 also lends the ledger below its other four sources: Falstein & Barwood's 400 Project (F), Raph Koster (K), Soren Johnson (J) and Jesse Schell's lenses (S). `docs/PLAYFEEL.md` still holds the owner's raw notes; this page reads them together with the log.
+
+Two tabs. **The first pass** (below, 2026-09-14) is a reflection and a concept walk. **The ledger** (further down, 2026-10-02) is the trackable one: every lesson of the greats with a standing, the evidence, and what would move it, re-marked after each playtest.
 
 First pass 2026-09-14. It is subjective by design: an opinionated reading of eight days and 117 log entries, meant as food for thought, not a verdict.
 
@@ -106,10 +108,134 @@ For each: the emotion it is for (R6), whether it is fun or merely interesting (R
 
 ---
 
+## Tab 2: the ledger. Our game against the lessons of the greats
+
+Started 2026-10-02 after the fifth playtest round, 237 log entries in. The point is not a score. It is a place where a lesson that the game is exposed to stays visible until a playtest moves it, and where a lesson the game meets is written down with the evidence, so it is not quietly undone later.
+
+**How to keep it.** One row per lesson. `Standing` is one of: **met** (evidence in play), **partly**, **exposed** (the game is working against it), **untested** (only a playtest can say). `Since` is the date the standing was last confirmed or changed; the arrow in `Moved` says which way it went since the first pass (↑ better, ↓ worse, → same, new). `Evidence` names log entries or playtest dates, never opinions. `Would move it` is phrased so one playtest or one change could flip the row. Re-mark rows after each owner playtest; add a line to Felt observations at the same time. Do not add tasks here; the roadmap owns them.
+
+**Summary, 2026-10-02:** of 41 rows, 17 met, 15 partly, 5 exposed, 4 untested. The exposed rows are what the player owns (R7, R9), the generator's lesson curve (K2), the optimising player past SOL-88 (J1) and complexity discipline (J3); R13 is marked partly and is the one that moved down. The met rows cluster in what the owner's playtests drove: the Rotor and the ram (R17, R13), the canyon (R16, M), legibility (R2, R19). The untested rows all need a second player or one specific playtest.
+
+### Rosewater, twenty lessons
+
+| # | Lesson | Standing | Since | Moved | Evidence | Would move it |
+| --- | --- | --- | --- | --- | --- | --- |
+| R1 | Fit the game to people, not people to the game | partly | 10-01 | ↑ | The phone seats say less; Isao two lines at most; the controls card once; the way back to the tank on Esc/7/TANK after the owner could not find it (09-25). Still: the HUD was "way too busy" (09-01) and has only been trimmed on phones. | A desktop HUD pass judged by what a first-time player looks at, not by what the systems want to say. |
+| R2 | Aesthetics: balance, symmetry, pattern completion | met | 10-01 | ↑ | Rounds land where the tracer ends (09-25); the lance stops on its curve (10-01); the integrity strip in every view (09-30); the Safari right-shift found and fixed (09-24). Felt fairness is visual truth. | A playtest that finds a hit that did not kill or a beam that lies. |
+| R3 | Resonance: preloaded emotion | met | 10-01 | → | The AC-130 pass, the orbital laser, the mass driver launch, the mini nuke seen from the ground ("very satisfying", 10-01). Borrowed well. | Nothing; the risk is R11, not R3. |
+| R4 | Piggyback on what players know | met | 09-14 | → | WASD hull, mouse seats, 7 8 9 0, tower defence vocabulary. | Nothing. |
+| R5 | Interesting is not fun | partly | 10-01 | ↑ | SOL-82's first form was "not fun; does not stay long enough, not accessible, not meaningful" (10-01) and became THE CANYON, which was "very satisfying". The economy is still interesting on paper. | The farm's biomass and the armory's shells read as a pulse the player wants, or they do not. One playtest. |
+| R6 | Know the emotion, cut what does not serve it | partly | 10-02 | ↑ | The identity is named (09-14) and the PoC modes were cut (missions, mines, hacks, sniper, astro: 09-14). But the colony grew four buildings and an orbital ring in one night; each has a perk and a line, none has yet been asked "is this joy under pressure or decoration?" | The owner's verdict on the colony: keep, cut, or fold. |
+| R7 | Let players make it personal | exposed | 10-02 | → | Isao still places every socket in the story; the player chooses no layout, name or look. Tower orders through Isao are the only authorship. | One thing the player chooses that stays: where the first sentry stands, a hull's paint, a named collector. |
+| R8 | The details are where they fall in love | met | 10-02 | ↑ | The gate heard both ways, the landing heard, the brass, the paint-then-launch ritual, the feast, Isao's faces held one per state; the owner's own list of small loves (09-13, 09-30). | Nothing; keep adding one at a time. |
+| R9 | Ownership through customisation | exposed | 10-02 | → | None in the story. The labs are where the owner has ownership; the player has the owner's tuning and nothing of their own. | Same as R7. |
+| R10 | Leave room to explore | partly | 10-01 | ↑ | The expedition sites, the landing's orbit camera (09-30), SKIP ALL as a URL per chapter, the canyon on the far side of the world. Still no secret and no mystery the player pulls on; the vibration language is gone with the PoC. | One thing on the planet that is not announced and pays when found. |
+| R11 | Liked by all, loved by none, fails | untested | 10-02 | → | One player so far (the owner), and he reports love for specific moments (Rotor, SOL canyon, strikes seen from the ground). Nobody else has played. | A second player. Nothing in the code moves this row. |
+| R12 | Do not design to prove you can | met | 10-02 | ↑ | The first pass called this the most exposed lesson. Since then every round began with the owner's notes from a live build (09-25, 09-30, 10-01, 10-02) and shipped as fixes to felt problems. The budgets and extraction rounds are hygiene, not proof. | A week that ships systems no playtest asked for. |
+| R13 | The fun path is the winning path | partly | 10-02 | ↓ | Ram farming (fun = win) and the piloted Rotor (x60) still hold. But SOL-88 now fires on its own, the farm pays biomass for free, and the works add beam for free: the colony is earning automation. The first pass's Q3 asked what keeps the player in the seat; this week built more reasons to leave it. | A playtest past SOL-88: does the owner still take a seat, and why? If not, the automated pass should be weaker than a manned one. |
+| R14 | Sometimes force a behaviour so they learn it | met | 10-01 | ↑ | The canyon puts the player in SOL's seat with a glide; the Rotor and Quiver hand-overs; the first wave that cannot hurt. Taught by forcing, then released. | Nothing. |
+| R15 | Design each component for its audience | partly | 10-01 | → | Phone and desktop diverge on purpose (10-01). The tutorial chapters and SKIP ALL serve two audiences. The debrief's five pages are for a reader who stays. | Knowing who the second audience is. |
+| R16 | Fear boring more than challenging | met | 10-01 | ↑ | Waves on a clock (09-24), the opening cut 123 → 89 s by removing waits (09-18), the back door delayed so the ramp has teeth (10-01), the canyon as a set piece; the owner: "feels challenging in a good way" (09-25). | A sector the owner calls dull. The held sectors before the door are the candidates. |
+| R17 | Change little, change everything | met | 10-02 | → | 5 → 60 on the Rotor; the door's earliest 6 → 7 made the second canyon exist; 0.54 → 0.7 on the Quiver's burst. Numbers in content files, one each. | Nothing; keep the numbers in content. |
+| R18 | Restrictions breed creativity | met | 10-02 | → | The 16 GB machine, a controller at every budget, a 520-body frame budget, a 30 s launch choreography reused for two beats. Every constraint produced a design (passable steps, the ring as one draw). | Nothing. |
+| R19 | Players spot problems, not solutions | met | 10-02 | → | Every round took the owner's diagnosis and found its own form: "SOL is not fun" → the canyon, not a bigger beam; "stuck between walls" → an ease, not wider lanes; "a spot to replenish shells" → one pad, not two. | A round that ships the owner's literal fix without asking what it is for. |
+| R20 | All the lessons connect | partly | 10-02 | → | The identity sentence connects most rows; the colony and the works were built in a night and not yet read against it. | This ledger being re-read after the next playtest. |
+
+### Meier, interesting decisions
+
+| # | Lesson | Standing | Since | Moved | Evidence | Would move it |
+| --- | --- | --- | --- | --- | --- | --- |
+| M1 | A game is a series of interesting decisions | partly | 10-02 | ↑ | The tank has them (ram, shoot, shield, keep the fodder alive). Which seat to be in is the story's decision and it is alive while four threats compete. Isao's programme makes none for the player. | Counting the decisions a sector asks for, by hand, in one playtest. |
+| M2 | Not interesting if everyone picks the same option | untested | 10-02 | → | Close a breach early or hold it to the end: the roadmap's open Question since 09-16, still unanswered. | One playtest watching which the owner does, and whether he ever does the other. |
+| M3 | Visible consequences, real trade-offs | met | 10-01 | ↑ | LEFT IN THE FIELD and HELD on the books, the gate's hp strip, a burned building's perk going out, the debrief's five pages. | Nothing. |
+| M4 | Testers are right about what, wrong about how | met | 10-02 | → | Same evidence as R19. | Same as R19. |
+
+### Falstein & Barwood, the 400 Project (selection)
+
+| # | Lesson | Standing | Since | Moved | Evidence | Would move it |
+| --- | --- | --- | --- | --- | --- | --- |
+| F1 | Fight player fatigue | untested | 10-02 | new | A full run is 283 s to sector 1 and then open-ended; nobody has measured when the owner stops. The debrief is a rest; the clock between sectors is not. | The owner noting when he quit and why, once. |
+| F2 | Provide clear short-term goals | met | 10-01 | new | The sector card, the brief's two lines, the construction readout, the integrity strip, the tutorial card. | Nothing. |
+| F3 | Begin at the middle | met | 09-16 | new | SKIP TUTORIAL, the chapter URLs, `sector=N`. | Nothing. |
+| F4 | Make the AI's effects visible | met | 10-01 | new | The omens before the door, the radar tremor, the side breach's callout, the gate breaking out loud. | Nothing. |
+| F5 | Don't take hard-won possessions away | partly | 10-01 | new | SOL can burn the player's own buildings and their perks go out, deliberately, with a warning on the scope and a bill on screen. The hulls are three lives, rebuilt by the assembly line. A lost sector loses nothing but time. | Whether a player who burned his own radar laughs or quits. |
+| F6 | Maintain a consistent level of abstraction | partly | 10-02 | new | Metres everywhere, one grid, one belt ladder. But a 2 m collector bus stands in for a 40 m platform, and three missiles on the ground stand in for an armory's stock. | Real assets, or the fiction naming the stand-in. |
+
+### Koster, a theory of fun
+
+| # | Lesson | Standing | Since | Moved | Evidence | Would move it |
+| --- | --- | --- | --- | --- | --- | --- |
+| K1 | Fun is mastering a pattern | met | 10-01 | new | Leading a swarm through a 2 s round flight, the Rotor's heat, the Quiver's sightline, walking the beam down the canyon. Each seat has a pattern to learn and the owner reports the learning as the fun. | Nothing. |
+| K2 | A learned game becomes boring; the generator must keep teaching | exposed | 10-02 | new | Past BOTH WALLS the generator only scales counts and sides. The works ring and the collectors add nothing to learn. KEEP HOLDING is where Koster's destiny arrives first. | One new pattern per generated sector (a side, a timing, a body type), or an ending. |
+| K3 | Dressing is not the mechanic | partly | 10-02 | new | The colony's buildings are perks with dressing; the owner asked for the dressing (missiles on the ground) and it is honest about being dressing. The ring is dressing with one number attached. | Nothing yet; watch that dressing is not mistaken for progress. |
+
+### Johnson, water finds a crack
+
+| # | Lesson | Standing | Since | Moved | Evidence | Would move it |
+| --- | --- | --- | --- | --- | --- | --- |
+| J1 | Players optimise the fun out of a game | exposed | 10-02 | new | Towers alone hold sector 1 for 56 s; a player who parks on the armory's pad and lets SOL-88 and the farm work is the optimisation to watch for. Ram farming is the counter-example where optimising is the fun. | `--pacing --passive` past SOL-88: if the colony holds itself, the crack is found. |
+| J2 | Protect players from themselves | partly | 10-01 | new | SOL's three-second drag on the Stålheart, the breach rim exclusion, the gate that mends itself. | Same playtest as J1. |
+| J3 | Add something, take something out | exposed | 10-02 | new | 09-14 cut nine modes. Since then: four buildings, two sectors, a platform, a ring, a dump, with nothing removed. The controller's budgets enforce this for code and nothing enforces it for the game. | The next addition names its removal in the log entry. |
+
+### Schell, five lenses
+
+| # | Lens | Standing | Since | Moved | Evidence | Would move it |
+| --- | --- | --- | --- | --- | --- | --- |
+| S1 | Essential experience: is the game delivering it? | partly | 10-02 | new | "Resourceful joy under pressure": the pressure is well built (waves, clock, the door). The joy is Isao and the colony growing; the colony grew this week and has not been played. | The owner's verdict on the colony round. |
+| S2 | Surprise: what surprises the player? | met | 10-01 | new | The back door, the side wall ("a chekov's gun"), the canyon at the antipode, SOL-88 going up. Each was built as a surprise and then foreshadowed. | The second run, when none of them surprise. |
+| S3 | Fun: what should be more fun? | partly | 10-02 | new | The owner's lists name it each round; this week: the mortar and Quiver bursts, the stuck hull. The economy is the standing answer nobody has given. | A round that starts from "what should be more fun" instead of "what is wrong". |
+| S4 | The player: what do they want and not know they want? | untested | 10-02 | new | One player, who is also the designer. | A second player. |
+| S5 | Flow: is the challenge tracking the skill? | partly | 10-01 | new | The ramp climbs; the automation and the perks raise the player's power at the same time. Nobody has plotted the two curves against each other. | `--pacing` as an ideal defender past the door, with the perks on. |
+
+### Our own lessons, mapped onto theirs
+
+Drawn from the log's dead ends and the five playtest rounds. Each is written to be read cold, and each names the great it echoes.
+
+| Ours | Where it came from | Echoes |
+| --- | --- | --- |
+| Agency is legibility: a slow lock is accepted once the player sees why it is slow. | The Quiver, 09-13 → 09-14 | R1, R2 |
+| One number can be the whole fix; look for it before building a system. | Rotor 5 → 60; door 6 → 7; Quiver burst 0.54 → 0.7 | R17 |
+| A set piece beats a stat: SOL went from "not fun" to "very satisfying" by changing where and when, not how much. | THE CANYON, 10-01 | R5, R16 |
+| Foreshadow, then surprise, then make the surprise a place: the back door became a sector with omens, a feast and a gate. | 09-18 → 10-01 | S2, F4 |
+| The owner names the feeling; the build hunts the form. Eight briefs in a day for the gunship's view was not indecision. | 09-14 | R19, M4 |
+| Felt fairness is visual truth: the picture and the rule must agree or the player calls the game a liar. | Rounds that looked hit, 09-14; rounds from the barrel, 10-01 | R2 |
+| Pressure without a clock is a pile; waves on a clock are pressure. | 09-24 | R16 |
+| What the player earns by hand should not be given away by automation in the next round without asking what keeps them in the seat. | SOL-88, 10-01; the first pass's Q3 | R13, J1 |
+| Say less in the seat; a readout the player cannot act on is noise. | Phone seats, 10-01; the Isao card, 09-14 | R1 |
+| Subtraction works: removing allies fixed TD; cutting nine modes sharpened the identity; the HUD improves by removal. | 08-24, 09-14 | R6, J3 |
+| A stand-in asset is a promise; write the promise down or the fiction fills it wrongly. | SEED-01 for SOL-88; missiles for an armory | F6, K3 |
+| Measure the thing, do not photograph it; and a probe that stops early looks exactly like a probe with nothing to say. | Dead ends 09-06, 10-01 | (method, not design: the 400 Project's spirit) |
+
+### Movement since the first pass (2026-09-14 → 2026-10-02)
+
+- **R12 flipped.** The first pass named "designing to prove you can" as the exposed lesson. Four playtest rounds later every change traces to a felt note from the live build. The budgets kept the code honest while the owner kept the game honest.
+- **The sphere found its moment.** The canyon at the antipode is the sphere spent where it pays: the far side of the world, a glide round it into the seat, the pass laid over it. Elsewhere it is still a cost.
+- **The economy moved from hollow to half-built.** The farm pays, the armory reloads, the chip plant buys passes, the works buy beam. None of it is yet contested: nothing competes for the biomass, and nothing is lost by taking a perk. The first pass's Q4 (what could the player refuse?) is still open.
+- **The automation question got worse before it got asked.** Q3 of the first pass warned that autonomous sentries would design the best verb out of relevance. SOL-88 is that, built on purpose and with the seat kept open. It needs the playtest that R13 names.
+- **Ownership did not move.** R7 and R9 were the least-served lessons on 09-14 and still are. Everything that was added belongs to Isao or the colony, nothing to the player.
+
+### Questions the ledger adds
+
+11. After SOL-88 is up, what does the owner do during a pass: take the seat, or watch? The answer decides R13 and J1 at once.
+12. Which one of this week's six additions (armory, farm, chip plant, launcher, works, second canyon) would be cut first, and what does that say about the other five?
+13. What is the first thing a second player should own?
+14. What does a generated sector past BOTH WALLS teach that the one before it did not?
+
+---
+
 ## Felt observations
 
 Newest first. Each line: date, what was felt, the lesson it touches. Add a line and keep the date. Don't turn a line into a task here; the roadmap owns tasks.
 
+- 2026-10-02 · "The tank gets stuck too often between walls where it looks like it should fit": the rule was right and the feel was wrong; what looks like it should fit, should. · R1, R2
+- 2026-10-02 · "Add missiles of various sizes on the ground near the robotic assembly": the owner asked for dressing and named the place; a reload spot wants to look like one. · R8, K3
+- 2026-10-01 · "SOL first pass; very satisfying, let's add a second round of that": a set piece asked for again is the clearest love signal the log has. · R11, R16
+- 2026-10-01 · "Very satisfying to see the remaining nuclear explosion strikes from the ground after they happened from the gunship": the same event seen from two seats is two events. · R8, R3
+- 2026-10-01 · "The SOL usage is not fun; does not stay long enough, not accessible enough, not meaningful enough": three diagnoses, no prescription, and the canyon came out of them. · R5, R19
+- 2026-10-01 · "Backdoor wave too aggressive. Let's delay it": the surprise landed too early to be a reward; the ramp now earns it. · R16, S2
+- 2026-09-30 · The owner's third round was all sound and health: the landing heard, the gate heard, the heart's strip. Nothing was asked about rules; everything about whether the world answers back. · R2, R8
+- 2026-09-25 · "It runs, pacing is better, feels challenging in a good way": the first verdict on the whole session rather than a part of it. · R16, M
+- 2026-09-25 · The way back from the gunship to the tank was not findable: a seat you cannot leave is a trap, however good the seat. · R1
 - 2026-09-14 · The piloted Rotor clearing all fifty in a four-second burst: the first unambiguous power moment in the story. It came from one multiplier, not a new system. · R17, R13
 - 2026-09-14 · Rounds "that looked hit but didn't die": the picture and the rule disagreed (surface-flying rounds versus a reticle in space). Felt fairness is visual truth. · R2, R1
 - 2026-09-14 · The gunship took eight briefs in a day to find its view; thermal and the top view were rejected. The owner knew the feeling and not the form, which is exactly R19 working as intended. · R19

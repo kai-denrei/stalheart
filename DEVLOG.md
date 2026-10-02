@@ -19,6 +19,22 @@ Evidence:
 - scripts/browser-lock.sh node scripts/browser-test.mjs --colony (artifacts/browser/colony-works-launch.png, colony-works-orbit.png)
 - scripts/browser-lock.sh node scripts/browser-test.mjs --strip-probe
 
+## 2026-10-02 — The FunMap gains a second tab: a trackable ledger of the game against the lessons of Rosewater, Meier, the 400 Project, Koster, Johnson and Schell, with our own lessons mapped onto theirs
+
+decision · accepted · 2026-10-02-funmap-ledger-against-the-greats
+
+Owner, 2026-10-02: "use these lessons, the Funmap and roadmap and devlogs and our Deban learnings to assess where we are in the game against some of the major lessons of the great game makers. let's start another Tab in FUNMAP where we track some of our lessons against the lessons of the greats, trackable. to give us food for thought." Sources: ~/Dev/game-design-lessons (the brief's six lists, paraphrased). The first FunMap pass (2026-09-14) read the game through Rosewater and Meier only, as prose.
+
+docs/FUNMAP.md Tab 2: 41 rows (R1-R20, M1-M4, F1-F6, K1-K3, J1-J3, S1-S5), each with Standing (met/partly/exposed/untested), Since, Moved since the first pass, Evidence (log entries and playtest dates) and Would move it (one playtest or change). 2026-10-02 reading: 17 met, 15 partly, 5 exposed (R7, R9 ownership; K2 the generator teaches nothing new; J1 the optimising player past SOL-88; J3 add without removing), 4 untested (a second player). R12 flipped from the first pass's most exposed to met; R13 moved down: SOL-88's automation is exactly what Q3 of the first pass warned about, built on purpose with the seat kept open and owed its playtest. Twelve of our own lessons from the log are mapped onto the greats'. Four questions added (11-14) and nine felt observations from the 09-25, 09-30, 10-01 and 10-02 rounds. Rule: re-mark rows after each owner playtest; tasks stay on the roadmap.
+
+Alternatives: A separate document: the owner asked for a tab in the FunMap, and the first pass's felt observations are the same stream; Scoring: a score invites optimising the ledger; standings with evidence invite a playtest
+
+Evidence:
+
+- docs/FUNMAP.md (Tab 2)
+- ~/Dev/game-design-lessons/game-design-lessons-brief.md
+- docs/log/entries 2026-09-14 .. 2026-10-02
+
 ## 2026-10-02 — The owner's fifth notes: the wedged hull eases itself free, the reload pad moves beside the assembly line under a dump of missiles, the mortar and Quiver bursts smoke more, the Units bench is a wireframe on a turntable with ANIMATION as the realistic view and arrows that never move, and the Lancer scorches the ground
 
 change · accepted · 2026-10-02-fifth-notes-stuck-hull-ammo-dump-bursts-bench-lancer
