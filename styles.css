@@ -4754,21 +4754,6 @@ body.embedded .preset-panel { display: none; }
 #units-lab[hidden] { display: none; }
 
 /* THE PAINT SHOP (src/fx/paint-shop.js): a calm card over the paused game, the hull behind it the preview */
-#paint-shop { position: fixed; inset: 0; z-index: 72; display: flex; align-items: center; justify-content: flex-end; padding: 16px; pointer-events: none; }   /* beside the hull, which is the preview */
-#paint-shop .ps-card { pointer-events: auto; width: min(460px, 100%); background: rgba(4, 12, 16, .9); border: 1px solid #5d7a84; padding: 14px 18px; font: 12px/1.5 ui-monospace, Menlo, monospace; color: #e8f2f4; letter-spacing: .06em; }
-#paint-shop header { font-size: 16px; font-weight: 700; letter-spacing: .14em; color: #9fdcff; }
-#paint-shop p { margin: 6px 0 10px; opacity: .85; } #paint-shop p span { display: block; }
-#paint-shop .ps-row { display: flex; gap: 10px; align-items: center; margin: 8px 0; }
-#paint-shop .ps-slot { width: 104px; flex: none; color: #9fdcff; font-size: 11px; }
-#paint-shop .ps-sws { display: flex; gap: 6px; flex-wrap: wrap; }
-#paint-shop .ps-sw { display: flex; flex-direction: column; align-items: center; gap: 3px; background: transparent; border: 1px solid rgba(159, 220, 255, .2); color: #c9d6dc; padding: 4px; min-width: 52px; font: 9px/1 ui-monospace, Menlo, monospace; cursor: pointer; }
-#paint-shop .ps-sw i { width: 30px; height: 18px; background: var(--c); border: 1px solid rgba(255, 255, 255, .25); }
-#paint-shop .ps-sw.on { border-color: #6fe6ff; color: #6fe6ff; }
-#paint-shop .ps-sw.locked { opacity: .35; cursor: default; }
-#paint-shop footer { display: flex; justify-content: flex-end; }
-#paint-shop footer button { font: 12px/1 ui-monospace, Menlo, monospace; letter-spacing: .12em; padding: 8px 20px; background: #6fe6ff; color: #061018; border: 0; cursor: pointer; }
-#paint-shop .ps-row { flex-direction: column; align-items: flex-start; }
-@media (max-width: 560px) { #paint-shop { align-items: flex-end; justify-content: center; } #paint-shop .ps-sw { min-width: 44px; } }
 
 #units-inset::after { content: attr(data-label); position: absolute; left: 6px; top: 5px; }
 
@@ -4819,8 +4804,6 @@ body.seat-gliding #seat-vignette { display: none; }
 .sdb-sum-cite.is-none { border-color: var(--sdb-faint); color: var(--sdb-dim); transform: none; }
 @container (max-width: 560px) { .sdb-sum-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* a palette swatch is two-tone: the armour over the edge (src/content/dyes.js PALETTES) */
-#paint-shop .ps-pal i { width: 40px; height: 22px; background: linear-gradient(135deg, var(--c) 0 62%, var(--e) 62% 100%); }
-#paint-shop .ps-pal span { font-size: 10px; letter-spacing: .08em; white-space: nowrap; }
 
 /* THE CALL TO ACTION (owner, 2026-10-03: "larger quick CALL to Action in Red in the center ... ROTOR MANUAL OVERRIDE!"): the seat hand-over's
    order, bigger and redder than a callout, held 2.6 s; Isao's panel keeps the why */
@@ -4840,3 +4823,23 @@ body.seat-gliding #seat-vignette { display: none; }
 #mission-card .mc-beats span:last-child { color: #ffd27a; }
 #mission-card .mc-line { margin-top: 10px; font: 14px/1.4 'Share Tech Mono', ui-monospace, monospace; letter-spacing: .08em; color: #9fdcff; opacity: 0; animation: mc-in .5s ease-out forwards; }
 @keyframes mc-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+/* THE PAINT SHOP'S SCREEN (owner, 2026-10-03: "a larger screen, like the Unit View"): the hull on its turntable left, the looks and paints right */
+#paint-shop { position: fixed; inset: 0; z-index: 72; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, .78); }
+#paint-shop .ps-card { width: min(1100px, 100%); max-height: calc(100vh - 32px); overflow: auto; background: rgba(4, 12, 16, .96); border: 1px solid #5d7a84; padding: 16px 20px; font: 12px/1.5 ui-monospace, Menlo, monospace; color: #e8f2f4; letter-spacing: .06em; box-sizing: border-box; }
+#paint-shop header { font-size: 16px; font-weight: 700; letter-spacing: .14em; color: #9fdcff; }
+#paint-shop p { margin: 6px 0 12px; opacity: .85; } #paint-shop p span { display: block; }
+#paint-shop .ps-body { display: grid; grid-template-columns: minmax(0, 3fr) minmax(260px, 2fr); gap: 18px; align-items: start; }
+#paint-shop .ps-stand { position: relative; }
+#paint-shop .ps-stand canvas { width: 100%; aspect-ratio: 4 / 3; display: block; background: radial-gradient(ellipse at 50% 40%, #1d2c36 0%, #071016 70%); border: 1px solid rgba(159, 220, 255, .2); touch-action: none; cursor: grab; }
+#paint-shop .ps-name { position: absolute; left: 12px; bottom: 10px; font-size: 15px; font-weight: 700; letter-spacing: .16em; color: #9fdcff; pointer-events: none; }
+#paint-shop .ps-row { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin: 0 0 16px; }
+#paint-shop .ps-slot { color: #9fdcff; font-size: 11px; letter-spacing: .14em; }
+#paint-shop .ps-sws { display: flex; gap: 8px; flex-wrap: wrap; }
+#paint-shop .ps-sw { display: flex; flex-direction: column; align-items: center; gap: 5px; background: transparent; border: 1px solid rgba(159, 220, 255, .2); color: #c9d6dc; padding: 6px; min-width: 84px; font: 10px/1 ui-monospace, Menlo, monospace; letter-spacing: .08em; cursor: pointer; }
+#paint-shop .ps-pal i { width: 64px; height: 36px; background: linear-gradient(135deg, var(--c) 0 62%, var(--e) 62% 100%); border: 1px solid rgba(255, 255, 255, .25); }
+#paint-shop .ps-pal span { white-space: nowrap; }
+#paint-shop .ps-sw.on { border-color: #6fe6ff; color: #6fe6ff; box-shadow: 0 0 0 1px #6fe6ff inset; }
+#paint-shop .ps-sw.locked { opacity: .35; cursor: default; }
+#paint-shop footer { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; color: #5d7a84; font-size: 10px; letter-spacing: .14em; }
+#paint-shop footer button { font: 12px/1 ui-monospace, Menlo, monospace; letter-spacing: .12em; padding: 8px 20px; background: #6fe6ff; color: #061018; border: 0; cursor: pointer; }
+@media (max-width: 760px) { #paint-shop { padding: 10px; } #paint-shop .ps-card { padding: 12px 14px; } #paint-shop .ps-body { grid-template-columns: 1fr; } #paint-shop .ps-stand canvas { aspect-ratio: 16 / 10; } #paint-shop .ps-sw { min-width: 68px; } #paint-shop .ps-pal i { width: 52px; height: 28px; } }

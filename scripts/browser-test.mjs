@@ -1617,6 +1617,37 @@ try{
  // a sentry's level plate
  const tw=(await st()).towerCells?.[0];
  if(tw){await evaluate(`${T}.showcase.ground(${tw[1]},1.2,2.4)`);await delay(1800);current='round10-tier-plate';await finish();}
+ } else if(args.includes('--round16')) {
+ // THE OWNER'S SIXTEENTH NOTES (2026-10-03): the paint shop is a large screen with the hull on a turntable; the A6 looks' marks sit on
+ // the armour (shots of each look on the turntable); a held Lancer beam is re-aimed from the muzzle every frame while the head tracks
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), col=async()=>(await st()).programme.colony;
+ await go('round16-base','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await until(`${T}.state().sector.n===1`,60000);await evaluate(`${T}.sectorQuiet(true)`);
+ await until(`${T}.state().programme.perks.includes('garage')`,150000).catch(async()=>assert.fail(`Isao prints the garage (${JSON.stringify((await st()).programme)})`));await delay(2000);
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card{display:none!important}</style>")');
+ await until(`(${T}.state().programme.colony.paintPad||{}).standing`,30000).catch(async()=>assert.fail(`the paint pad stands (${JSON.stringify((await col()).paintPad)})`));
+ const pad=(await col()).paintPad;await until(`!${T}.state().shot`,30000).catch(()=>{});await delay(1000);
+ await evaluate(`${T}.deployHull(0)`);await until(`!${T}.state().deploying`,30000).catch(()=>{});await delay(500);
+ await evaluate(`${T}.placeTank(${pad.cell})`);await until(`${T}.state().programme.colony.shop`,10000).catch(async()=>assert.fail('parked on the pad, the paint shop opens'));
+ await until('(document.querySelector("#paint-shop .ps-stand canvas")||{}).width>200',10000).catch(()=>assert.fail('the turntable draws'));
+ const box=await evaluate('(()=>{const r=document.querySelector("#paint-shop .ps-card").getBoundingClientRect(),c=document.querySelector("#paint-shop .ps-stand canvas").getBoundingClientRect();return {card:r.width,stand:c.width,standH:c.height};})()');
+ console.log(`  round16: screen ${JSON.stringify(box)}`);assert.ok(box.card>=900,'a large screen at 1440 px');assert.ok(box.stand>=480,'the turntable takes most of it');
+ for(const id of ['bunny-overdrive','field-notes','night-circuit']){await evaluate(`document.querySelector("#paint-shop [data-dye=${id}]").click()`);await delay(2200);
+  assert.equal(await evaluate('document.querySelector("#paint-shop .ps-sw.on")?.dataset.dye'),id);current=`round16-${id}`;await finish();}
+ await evaluate('document.querySelector("#paint-shop [data-dye=factory]").click()');await delay(600);
+ await evaluate('document.querySelector("#paint-shop [data-done]").click()');await delay(400);
+ assert.equal(await evaluate('!!document.querySelector("#paint-shop")'),false,'DONE puts the screen away');assert.equal((await st()).paused,false,'and lets the game go');
+ // THE LANCER: an automated one on a socket, a crowd walking in; its beam is re-aimed while the hold lasts
+ const sock=(await st()).sector.sockets||[];assert.ok(sock.length,'a socket for the Lancer');
+ assert(await evaluate(`${T}.commitTower('lancer',${sock[0]})`),'a Lancer on its socket');
+ await evaluate(`${T}.spawnFodder(40)`);
+ const trace='(async()=>{const m=await import("./src/fx/lance-follow.js");return {calls:m.lanceTrace.calls,from:m.lanceTrace.from,aim:m.lanceTrace.aim};})()';
+ await until(`(async()=>(await import("./src/fx/lance-follow.js")).lanceTrace.calls>0)()`,120000).catch(async()=>assert.fail(`the Lancer fires and its beam follows (${JSON.stringify(await st())?.slice?.(0,200)})`));
+ const rows=[];for(let i=0;i<30;i++){rows.push(await evaluate(trace));await delay(100);}
+ const d=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]),calls=rows.at(-1).calls-rows[0].calls,moved=Math.max(...rows.map(r=>d(r.from,rows[0].from)));
+ console.log(`  round16: lance re-aims ${calls} in 3 s, its start travelled ${moved.toExponential(2)} with the muzzle`);
+ assert.ok(calls>=10,'an automated Lancer\'s held beam is re-aimed every frame');
+ await evaluate(`${T}.showcase.ground(${sock[0]},1.2,2.4)`);await delay(1200);current='round16-lancer';await finish();
  } else if(args.includes('--opening-probe')) {
  // THE OPENING'S TIMELINE from a bare page: phase, shot, view, Isao's panel, every change (no assertions)
  const T='window.__stalheartTest';

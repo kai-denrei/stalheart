@@ -60,6 +60,7 @@ export function createTowerAim(host) {
       tw.aimT = TRACK_EVERY;
       const eff = effectiveStats(tw.def, tw.tier);
       const target = manual ? manualTarget : config ? acquired : pickTarget(graph.centers[tw.ci], eff.range * cellSide, enemies, chord);
+      tw.trackTarget = target;   // what the head is turning to: a held lance follows it (src/fx/lance-follow.js)
       if (target) {
         aimV.set(target.pos[0], target.pos[1], target.pos[2]);
         tw.obj.worldToLocal(aimV);

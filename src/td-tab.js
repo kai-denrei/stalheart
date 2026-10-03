@@ -85,7 +85,7 @@ import { A6_TUNE, magFor, makeA6, stepA6, arc as a6Arc } from './heptapod.js';
 import { SENTRY_TUNE } from './sentry.js';
 import { makeLock } from './lockon.js';
 import { TOWER_LOOK_NAMES, DEFAULT_TOWER_LOOK, buildTowerLook, preloadLook, lookReady } from './towerlooks.js';
-import { makeAudio } from './audio.js'; import { isaoSay } from './fx/isao-voice.js';
+import { makeAudio } from './audio.js'; import { isaoSay } from './fx/isao-voice.js'; import { lanceFollow } from './fx/lance-follow.js';
 import { DEATH_KEYS } from './audiomanifest.js';
 
 export function initTdTab(root) {
@@ -6576,14 +6576,8 @@ export function initTdTab(root) {
   function stepPlasmaBeams(tNow) {
     for (const [tw, ent] of plasmaBeams) {
       const live = tNow < ent.until && towerByCell.get(tw.ci) === tw;
-      if(live && pilotMode && pilot?.state.tower===tw && tw.key==='lancer'){
-        const until=ent.until,range=effectiveStats(tw.def,tw.tier).range*cellSide;
-        const from=tw.lastMuzzle?.getWorldPosition(new THREE.Vector3()).toArray() || tw.obj.position.toArray();
-        const aim=tw.pilotTarget?.pos || add3(from,camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(range).toArray());
-        const dir=norm3(sub3(aim,from)),stop=lanceReach(from,dir,range,tw.ci);
-        lanceBeam(tw,from,dir,stop.len,tNow,tw.lastStruck??0,null);
-        ent.until=until; // steering does not extend the burst or apply extra damage
-      }
+      const range = effectiveStats(tw.def, tw.tier).range * cellSide, fl = live && tw.key === 'lancer' && lanceFollow(tw, { piloted: pilotMode && pilot?.state.tower === tw, camera, range });
+      if (fl) { const until = ent.until, dir = norm3(sub3(fl.aim, fl.from)); lanceBeam(tw, fl.from, dir, lanceReach(fl.from, dir, range, tw.ci).len, tNow, tw.lastStruck ?? 0, null); ent.until = until; }   // on the barrel every frame; no longer burst, no damage
       for (const bm of ent.links) {
         if (!live) { bm.mesh.visible = false; continue; }
         bm.update(tNow);

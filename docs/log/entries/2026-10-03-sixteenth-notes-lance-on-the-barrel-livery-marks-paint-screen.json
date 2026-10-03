@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-10-03-sixteenth-notes-lance-on-the-barrel-livery-marks-paint-screen",
+  "date": "2026-10-03",
+  "type": "change",
+  "status": "accepted",
+  "title": "The owner's sixteenth notes: the Lancer's held beam stays on the barrel, the A6 looks' marks sit on the armour, the paint shop is a large screen with the hull on a turntable",
+  "context": "Owner, 2026-10-03 (live, on 61467026): 1) the Lancer's laser displays improperly, it is not coming out of the muzzle and stays out of place while the muzzle moves to track enemies; 2) Bunny Overdrive and Field Notes display poorly, some parts hover too high, Night Circuit is fine; 3) the Pimp My Ride modal becomes a larger screen, like the Unit View, to display the skins and colours.",
+  "outcome": "1) A Lancer's burst is drawn at the shot and held beamHold (3 s) while its head keeps turning (rate 0.45/s, retarget every 0.15 s), so the beam hung where the barrel had been; only a piloted Lancer was re-aimed. src/fx/lance-follow.js now re-aims every live Lancer each frame from the current muzzle at what the head tracks (tower-aim's new trackTarget; the pilot's target or reticle in the seat); drawing only, damage stays with the shot. 2) The A6 livery runtime builds decals in world units with a 1.35 m projection box and a 4 mm lift written for a hull in metres; at the planet's 0.008 units a metre those were ~170 m and ~0.5 m, so every look's marks floated over the hull, plainest on the bright looks. src/fx/paint-shop.js hands the runtime MetreDecal (the box scaled by the decal parents' world scale) and settleDecals takes the extra lift back out; the pinned upstream runtime is untouched. 3) The paint shop is a centred 1100 px screen: the player's hull cloned in the factory paint on a turntable in its own small renderer (src/fx/livery-preview.js, drag to turn, rendered only while open, context released on close) beside larger LOOKS and PAINT swatches; a swatch paints the turntable and the live hull. td-tab pays for the hookup by folding the pilot-only lance block into the general one.",
+  "alternatives": [
+    "Shortening the Lancer's beamHold to its cooldown: hides the drift but changes the weapon's look and still leaves the start off the muzzle mid-burst",
+    "Editing the pinned livery runtime to scale its constants: the A6 file and its lock stay as delivered; the correction lives in our adapter",
+    "Keeping the side card and using the hull behind it as the preview: the owner asked for a larger screen, and the card's hull is far and small"
+  ],
+  "evidence": [
+    "test/livery-decals.mjs: Bunny Overdrive on a box hull at 0.008 units/m, marks 0.500 m off the armour with the runtime alone, 0.0040 m with the fix; the 1:1 hull unchanged",
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --round16: the screen 1100 px wide with a 626 px turntable at 1440 px; Bunny Overdrive, Field Notes and Night Circuit shot on the turntable; an automated Lancer's beam re-aimed 161-180 times in 3 s while its start moved with the muzzle; --round10 still green"
+  ],
+  "supersedes": []
+}
