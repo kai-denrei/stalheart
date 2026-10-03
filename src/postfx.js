@@ -213,6 +213,7 @@ export function makeBloom(renderer, scene, camera, opts = {}) {
     // fn() -> [[group, [roots]], ...], read fresh each frame so the caller
     // never has to tell us when its collections change.
     setGroups(fn) { groupsFn = typeof fn === 'function' ? fn : null; },
+    renderer,
     weights,
     params: o,
   };

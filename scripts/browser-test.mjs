@@ -259,7 +259,7 @@ try{
   assert(await evaluate('!!document.querySelector("#gunship-hud .reticle circle")'),'the rotary reticle is up');
   current='gunship-pov-rotary';await finish();
   await evaluate('window.__stalheartTest.gunshipGun("heavy")');await delay(400);assert(await evaluate('!!document.querySelector("#gunship-hud .reticle path")'),'the strike reticle is up');current='gunship-pov-heavy';await finish();
-  assert(await evaluate('document.querySelector("#tab-td").classList.contains("gunship-thermal")'),'the seat opens in thermal');assert.equal(await evaluate('getComputedStyle(document.querySelector("#td-app canvas")).filter'),'url("#flir")','thermal is the FLIR ironbow');assert.equal(await evaluate('getComputedStyle(document.querySelector("#td-app canvas.minimap")).filter'),'none','the radar keeps its own green');assert(await evaluate('window.__stalheartTest.state().gunship.seat'),'still seated');current='gunship-thermal';await finish();
+  assert(await evaluate('document.querySelector("#tab-td").classList.contains("gunship-thermal")'),'the seat opens in thermal');assert(await evaluate('import("./src/fx/flir-pass.js").then(m=>m.flirLive.on)'),'thermal is the FLIR ironbow, drawn in WebGL (Safari ignored the old CSS filter)');assert.equal(await evaluate('getComputedStyle(document.querySelector("#td-app canvas")).filter'),'none','no CSS filter over the canvas: thermal is not applied twice');assert(await evaluate('window.__stalheartTest.state().gunship.seat'),'still seated');current='gunship-thermal';await finish();
   // THERMAL IS THE SEAT, NOT A MODE (owner, 2026-09-16): M no longer cycles, there is no normal or night to land on, and nothing draws a square over an enemy
   await send('Input.dispatchKeyEvent',{type:'keyDown',key:'m',code:'KeyM'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'m',code:'KeyM'});await delay(400);assert(await evaluate('document.querySelector("#tab-td").classList.contains("gunship-thermal")'),'M leaves the seat in thermal');assert(!await evaluate('document.querySelector("#tab-td").classList.contains("gunship-normal")||document.querySelector("#tab-td").classList.contains("gunship-night")'),'no normal or night view to switch to');current='gunship-thermal-held';await finish();
   await send('Input.dispatchKeyEvent',{type:'keyDown',key:'t',code:'KeyT'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'t',code:'KeyT'});await delay(800);current='gunship-top-view';await finish();await send('Input.dispatchKeyEvent',{type:'keyDown',key:'t',code:'KeyT'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'t',code:'KeyT'});await delay(400);
@@ -1676,6 +1676,15 @@ try{
  const log=await evaluate(said);console.log(`  voice: said ${JSON.stringify(log)}`);
  assert.ok(log.some(e=>e.played&&/^[a-z0-9_]+_\d\d$/.test(e.id)),'a recorded line played in the story');
  current='voice-game';await finish();
+ } else if(args.includes('--audio-probe')) {
+ // THE AUDIO, AS A PLAYER LOADS IT (no harness switches): one click, then what the engine reports (no assertions)
+ const page=args[args.indexOf('--audio-probe')+1]?.startsWith('index')||args[args.indexOf('--audio-probe')+1]?.startsWith('labs')?args[args.indexOf('--audio-probe')+1]:'index.html#td';
+ await go('audio-probe',page);await delay(3000);
+ for(let i=0;i<2;i++){await send('Input.dispatchMouseEvent',{type:'mousePressed',x:720,y:450,button:'left',clickCount:1});await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:720,y:450,button:'left',clickCount:1});await delay(1500);}
+ await delay(8000);
+ console.log(consoleLines.filter(l=>/audio|AUDIO|voice|isao/i.test(l)).slice(0,40).join('\n'));
+ console.log('ERRORS',JSON.stringify(errors).slice(0,1500));
+ console.log('FAILED',JSON.stringify(requests.filter(r=>r.status>=400)).slice(0,800));
  } else if(args.includes('--opening-probe')) {
  // THE OPENING'S TIMELINE from a bare page: phase, shot, view, Isao's panel, every change (no assertions)
  const T='window.__stalheartTest';

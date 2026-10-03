@@ -16,7 +16,7 @@
 // upgraded tower is never gated -- it only bites when several towers of
 // the same kind fire together, which is exactly the pile-up worth culling.
 
-export const BUSES = ['towers', 'tank', 'enemies', 'ui'];
+export const BUSES = ['towers', 'tank', 'enemies', 'ui', 'voice'];   // voice: Isao's recorded lines (src/fx/isao-voice.js)
 
 const A = 'assets/audio';
 
@@ -116,7 +116,8 @@ export const GLOBAL_VOICE_CAP = 24;
 export const DISTANCE_K = 0.9;
 
 // bus defaults; overridden by whatever the player last left in the mixer
-export const DEFAULT_LEVELS = { master: 0.7, towers: 0.5, tank: 0.8, enemies: 0.6, ui: 0.4 };
+// voice at full (owner, 2026-10-04: "Isao voice is too low compared to ambient sound"): his lines sat on ui at 0.4
+export const DEFAULT_LEVELS = { master: 0.7, towers: 0.5, tank: 0.8, enemies: 0.6, ui: 0.4, voice: 1 };
 
 // Cue identities are per Sentry; shared sample files do not couple their tuning.
 SOUNDS.sentry_rotor = { ...SOUNDS.minigun_fire };

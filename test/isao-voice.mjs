@@ -13,12 +13,14 @@ const T = {
 };
 let clock = 0, picks = { muted: false, off: new Set(), quiet: new Set() }, r = 7;
 const played = [], primed = [];
-const sfx = { prime: (k) => { primed.push(k); return Promise.resolve(true); }, play: (k) => played.push(k) };
-const say = createIsaoVoice({ triggers: T, hooks: {}, tune: { gap: 0.5, repeat: 10, late: 1.5, gain: 1 }, picks: () => picks, now: () => clock, rand: () => (r = (r * 9301 + 49297) % 233280) / 233280 });
+const ducks = [];
+const sfx = { prime: (k) => { primed.push(k); return Promise.resolve(true); }, play: (k) => played.push(k), duck: (b, d, s) => ducks.push([b, d, s]) };
+const say = createIsaoVoice({ triggers: T, hooks: {}, tune: { gap: 0.5, repeat: 10, late: 1.5, gain: 1, duck: { buses: ['tank'], depth: 0.4 } }, picks: () => picks, now: () => clock, rand: () => (r = (r * 9301 + 49297) % 233280) / 233280 });
 
 ok('a moment with lines speaks', say(sfx, 'a')?.id.startsWith('a_'));
 await tick();
 ok('primed, then played', primed.length === 1 && played[0] === primed[0]);
+ok('the world ducks under the line, for its length', ducks.length === 1 && ducks[0][0][0] === 'tank' && ducks[0][1] === 0.4 && ducks[0][2] === 1);
 ok('one line at a time', say(sfx, 'b') === null);
 clock = 1.6;
 ok('free again after the line and its gap', say(sfx, 'b')?.id === 'b_01');

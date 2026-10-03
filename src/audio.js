@@ -768,6 +768,12 @@ export function makeAudio(opts = {}) {
       persist();
     },
 
+    // DUCKING (owner, 2026-10-04: Isao too low against the ambient): `buses` dip to `depth` of their level for `seconds`, then return
+    duck(buses, depth, seconds) {
+      if (!ctx) return;
+      const t = now();
+      for (const b of buses) { const g = busGain[b]; if (!g) continue; g.gain.cancelScheduledValues(t); g.gain.setTargetAtTime((levels[b] ?? 1) * depth, t, 0.06); g.gain.setTargetAtTime(levels[b] ?? 1, t + seconds, 0.3); }
+    },
     setBus(name, v) {
       if (!BUSES.includes(name)) return;
       levels[name] = Math.min(1, Math.max(0, v));

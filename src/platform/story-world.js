@@ -177,6 +177,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     grow, programme: makeBuildProgramme(steps, { standing: (s) => (pieces(s).length ? !pieces(s).some((p) => p.pending) : !grow) }), print: createBasePrint({ base, plan, placer }),
     lost: new Set(),   // buildings SOL-82 burned away (src/content/orbital-laser.js LASER_STRUCTURES): they do not come back this run
     wallCells: [...new Set(plan.walls.filter((w) => w.cell >= 0).map((w) => w.cell))],   // every wall cell, printed on a grown base or standing on a static one: Isao mends either, and the side breach (src/domain/side-breach.js) goes for one
+    shot: new Set(),   // every cell a tank shell opened: Isao mends the ones inside the base (src/domain/repair-orders.js shotHoles)
     // THE SECOND FRONT: the sealed mouth behind the bays, recomputed per load like the rest of the clearing (the controller keeps
     // only the mesh and the dungeon of the planet), with the clearing cells the back-breach rules need and the tunables
     backMouth, backDoor: STORY_BACK_DOOR, backPlanet: { graph: planet.graph, clearing: planet.clearing },

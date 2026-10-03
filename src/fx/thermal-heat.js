@@ -4,6 +4,7 @@
 // material's own colour and glow. Materials are shared between clones and LOD tiers, so the originals are kept per
 // material; parts that load while thermal is on are picked up by a slow re-apply.
 import * as THREE from '../../vendor/three.module.js';
+import { createFlir } from './flir-pass.js';
 
 export const HEAT = Object.freeze({ warm: 0.55, hot: 1 });
 const WHITE = new THREE.Color(1, 1, 1);
@@ -25,9 +26,10 @@ export function restoreMaterial(material, saved) {
   saved.delete(material);
 }
 
-// parts(): { warm: Object3D[], hot: Object3D[] }; hot wins where a part is in both
-export function createThermalHeat(parts, { every = 1000 } = {}) {
-  const saved = new Map();
+// parts(): { warm: Object3D[], hot: Object3D[] }; hot wins where a part is in both. `postfx` (src/postfx.js) draws the FLIR ironbow itself
+// while thermal is on (src/fx/flir-pass.js): the old CSS filter over the canvas is not drawn by Safari
+export function createThermalHeat(parts, { every = 1000, postfx = null } = {}) {
+  const saved = new Map(), flir = createFlir(postfx);
   let timer = 0;
   const each = (roots, fn) => { for (const r of roots) r?.traverse?.((o) => { for (const m of [].concat(o.material ?? [])) fn(m); }); };
   function apply() {
@@ -36,9 +38,9 @@ export function createThermalHeat(parts, { every = 1000 } = {}) {
     each(hot, (m) => heatMaterial(m, HEAT.hot, saved));
   }
   function set(on) {
-    clearInterval(timer); timer = 0;
+    clearInterval(timer); timer = 0; flir.set(on);
     if (on) { apply(); timer = setInterval(apply, every); return; }
     for (const m of [...saved.keys()]) restoreMaterial(m, saved);
   }
-  return { set, dispose: () => set(false), heated: () => saved.size };
+  return { set, dispose: () => set(false), heated: () => saved.size, get flir() { return flir.on; } };
 }

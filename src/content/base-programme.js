@@ -89,6 +89,8 @@ export const BASE_REPAIR = Object.freeze({
   // mid-wave a wall cell is mended when no body is within `clearCells` of it; after each wall he hovers `check` seconds and says whether
   // the breach is sealed (`sealed`) or which way he goes next (`open`) (owner, 2026-10-03: "a confirmation state")
   clearCells: 3, check: 1.6, sealed: 'BREACH SEALED', open: 'STILL OPEN · NEXT SEGMENT',
+  // a hole the tank shot through the base's rock is his to mend when it lies within `shotMargin` cells beyond the farthest rim cell (2026-10-04)
+  shotMargin: 2,
 // `plot` is the half extents in metres, across and along the piece's heading, that his print beam rasters over while he mends it
 // (src/fx/base-print.js repairBed): the door's own footprint and one wall segment's, so the beam works the thing and not the dirt.
   gate: Object.freeze({ seconds: 8, metres: 6, label: 'GATE', plot: [7, 3] }),

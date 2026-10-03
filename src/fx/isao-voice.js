@@ -25,7 +25,7 @@ export function createIsaoVoice({ triggers = ISAO_TRIGGERS, hooks = VOICE_HOOKS,
     last.set(key, line.id); lastAt.set(key, t); busyUntil = t + line.duration + tune.gap;
     const k = voiceKey(line.id), entry = { at: t, from: String(id), trigger: key, id: line.id, played: false };
     note(entry);
-    const go = () => { if (now() - t > tune.late) { entry.late = true; busyUntil = now(); return; } sfx?.play(k); entry.played = true; };
+    const go = () => { if (now() - t > tune.late) { entry.late = true; busyUntil = now(); return; } sfx?.play(k); if (tune.duck) sfx?.duck?.(tune.duck.buses, tune.duck.depth, line.duration); entry.played = true; };
     if (sfx?.prime) sfx.prime(k).then((ok) => (ok ? go() : (entry.failed = true))); else go();
     return line;
   }

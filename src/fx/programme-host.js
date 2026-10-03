@@ -46,7 +46,7 @@ import { storage } from '../storage.js';
 import * as THREE from '../../vendor/three.module.js';
 const loadDyes = () => { try { return JSON.parse(storage.getItem(DYE_SHOP.store) ?? 'null'); } catch { return null; } };
 const saveDyes = (b) => { try { storage.setItem(DYE_SHOP.store, JSON.stringify(b)); } catch { /* a refused store: the dyes last this run */ } };
-import { nextRepair } from '../domain/repair-orders.js';
+import { nextRepair, shotHoles } from '../domain/repair-orders.js';
 import { sideBreachCandidates } from '../domain/side-breach.js';
 import { planCanyon } from '../domain/canyon.js';
 import { SIDE_BREACH, CANYON } from '../content/sectors.js';
@@ -178,7 +178,9 @@ export function createProgrammeHost(c) {
       // as breaches at the landing and sent Isao out to "repair" them one by one — each trip tagged its cell BLOCKED and the lattice
       // drew ROCK there, before the gate. The rim is only repairable once it stands, exactly as a static stage-4 base has it from the
       // first frame
-      const stood = programmeHas(pg, 'gate'), broke = stood ? [...new Set([...(c.story().wallCells ?? []), ...(c.story().backHoles ?? [])].filter((wc) => c.dungeon().tags[wc] !== BLOCKED).concat(c.storyBase()?.droppedCells?.() ?? []))] : [],   // a burned segment on standing rock is a hole too (owner, 2026-10-02: "after a breach, isao only builds a gate, he should also build walls")
+      // and the holes a shell blew through the base's rock (src/domain/repair-orders.js shotHoles), the back door's mouth excepted
+      const holesShot = () => { const st = c.story(), m = st.backMouth; return st.shot?.size ? shotHoles({ shot: st.shot, keep: m ? new Set([...(m.cells ?? []), ...(m.flank ?? [])]) : null, open: (ci) => c.dungeon().tags[ci] !== BLOCKED, centers: c.graph().centers, heart: c.dungeon().heart, rim: st.wallCells ?? [], margin: BASE_REPAIR.shotMargin * c.cellSide() }) : []; };
+      const stood = programmeHas(pg, 'gate'), broke = stood ? [...new Set([...(c.story().wallCells ?? []), ...(c.story().backHoles ?? [])].filter((wc) => c.dungeon().tags[wc] !== BLOCKED).concat(c.storyBase()?.droppedCells?.() ?? [], holesShot()))] : [],   // a burned segment on standing rock is a hole too (owner, 2026-10-02: "after a breach, isao only builds a gate, he should also build walls")
        near = (ci) => { const p = c.graph().centers[ci], r = BASE_REPAIR.clearCells * c.cellSide(); return c.enemies().some((e) => e.alive && Math.hypot(e.pos[0] - p[0], e.pos[1] - p[1], e.pos[2] - p[2]) < r); };
       // HIS CHECK (BASE_REPAIR.check): after a wall he hovers over it, then says whether the breach is sealed; nothing new starts meanwhile
       if (s.checking) { if (c.t() < s.checking.until) return; s.checking = null; c.callout?.(broke.length ? BASE_REPAIR.open : BASE_REPAIR.sealed, broke.length ? 'co-victory-sub' : 'co-victory'); }
@@ -237,7 +239,7 @@ export function createProgrammeHost(c) {
     repaired: (repair) => {
       if (repair.kind === 'gate') { c.sectorRun()?.repairGate(repair.id ?? 'gate'); if (!repair.id) c.storyBase()?.restoreWall(-1); }   // and the segments on the door's own cell
       // a hole with kit walls of its own is drawn as floor under them; one without (the back mouth's flanks) is rock again
-      else { const rci = repair.ci, walled = (c.story().wallCells ?? []).includes(rci); if (walled && c.dungeon().tags[rci] !== BLOCKED) (c.dungeon().mended ??= new Set()).add(rci); c.dungeon().tags[rci] = BLOCKED; if (c.tdFullTags()) c.tdFullTags()[rci] = BLOCKED; breachedCells.delete(rci); breachQueue.push(rci); c.storyBase()?.restoreWall(rci); rebuildAfterBreach(); recomputePortalDist(); c.story().checking = { ci: rci, until: c.t() + BASE_REPAIR.check }; }
+      else { const rci = repair.ci, walled = (c.story().wallCells ?? []).includes(rci); if (walled && c.dungeon().tags[rci] !== BLOCKED) (c.dungeon().mended ??= new Set()).add(rci); c.dungeon().tags[rci] = BLOCKED; if (c.tdFullTags()) c.tdFullTags()[rci] = BLOCKED; breachedCells.delete(rci); c.story().shot?.delete(rci); breachQueue.push(rci); c.storyBase()?.restoreWall(rci); rebuildAfterBreach(); recomputePortalDist(); c.story().checking = { ci: rci, until: c.t() + BASE_REPAIR.check }; }
       updateHud();
     },
     printed: (step) => {

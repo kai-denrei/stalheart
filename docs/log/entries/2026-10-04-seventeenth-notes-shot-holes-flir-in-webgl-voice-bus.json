@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "2026-10-04-seventeenth-notes-shot-holes-flir-in-webgl-voice-bus",
+  "date": "2026-10-04",
+  "type": "change",
+  "status": "accepted",
+  "title": "The owner's seventeenth notes: Isao mends holes a tank shell blows in the base, the gunship's thermal drawn in WebGL so Safari shows it, Isao's voice on its own bus with the world ducked under him",
+  "context": "Owner, 2026-10-04 (on isao-voice-lines, after the voice wiring): 1) opening a breach with a tank shell does not trigger Isao to fix it, it should; 2) the gunship's main view should be thermal, it switched to normal with one of the updates; 3) Isao's voice is too low compared to ambient sound.",
+  "outcome": "1) A shell turns ROCK to floor (td-tab blastWall), but Isao's repair list held only the rim's wall cells, the back door's holes and burned segments, so a hole shot through the base's rock was nobody's job. The story now keeps story.shot (every cell a shell opened); src/domain/repair-orders.js shotHoles returns the ones still open within BASE_REPAIR.shotMargin (2) cells beyond the farthest rim cell, the back door's mouth excepted, nearest the heart first, and programme-host adds them to the walls he mends (as rock; a mended hole leaves the list). Holes shot out on expeditions stay open. Only once the gate stands, like the rest of the repairs. 2) The seat's thermal was CSS filter: url(#flir) over the WebGL canvas; reproduced on kainode's Safari, which draws the seat in its ordinary colours with the same code (Chrome draws the ironbow, so every Chrome-based suite stayed green). src/fx/flir-pass.js is the same SVG ironbow (Rec. 709 luminance, the 11-step tables, linear between) as a pass after postfx's OutputPass, switched by thermal-heat with the seat, the composer lent on a board without one, its program linked at startup by a one-pixel draw so the seat's first-use hitch guard holds (104 -> 108 programs); the CSS filter is gone. 3) A voice bus at level 1 (Isao's lines sat on ui at 0.4, about 8 dB lower), and while a line plays the towers, tank and enemy buses dip to 0.45 of their level for its length (audio.duck).",
+  "alternatives": [
+    "Isao refilling every breached cell near the base: the canyon cut and the breaches' own clearings are breached cells too; only a shell's hole is the player's",
+    "A Safari-only CSS fallback: WebKit has none for an SVG filter over a WebGL canvas; drawing it in the pipeline works in every browser",
+    "Raising the voice gain alone: the ui bus caps at 1 x 0.4, so the line could not get loud enough without a bus of its own"
+  ],
+  "evidence": [
+    "test/repair-orders.mjs shotHoles cases, test/flir-pass.mjs (the GLSL tables are index.html's #flir tables), test/isao-voice.mjs ducking; npm test, check, build green",
+    "Safari on kainode: the seat drew in ordinary colours on the CSS filter and draws the ironbow with the pass (window captures before and after); --gunship: the FLIR pass drawing, no CSS filter, the seat's programs 104 -> 108",
+    "--voice and the default suite (46 steps) green. --gunship still fails its later skip step (enemyTypes expects only amoeba; stage 6 now raises amoeba, barbed and phage, 247 bodies): stale since the denser waves of rounds 14-15, untouched here",
+    "Not covered by a browser run: a shell's hole being mended (no harness hook aims a shell at a chosen cell); the rule is unit-tested and wired"
+  ],
+  "supersedes": []
+}

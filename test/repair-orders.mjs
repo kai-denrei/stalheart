@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { nextRepair, repairsPending, repairCost } from '../src/domain/repair-orders.js';
+import { nextRepair, repairsPending, repairCost, shotHoles } from '../src/domain/repair-orders.js';
 import { BASE_REPAIR } from '../src/content/base-programme.js';
 import { BRIEFS } from '../src/isaobriefs.js';
 
@@ -71,4 +71,12 @@ assert.deepEqual(repairCost({ kind: 'wall', ci: 1 }, {}), { seconds: 6, metres: 
   // one gate still reads exactly as it did
   assert.deepEqual(nextRepair({ ...q, gate: G('gate', 50) }, T), { kind: 'gate' });
   assert.deepEqual(repairsPending({ gate: G('gate', 50) }, T), [{ kind: 'gate' }]); }
+// HOLES THE TANK BLEW IN THE BASE (2026-10-04): a line of cells at x = 0..9 from the heart at 0; the rim stands at 4
+{ const centers = Array.from({ length: 10 }, (_, i) => [i, 0, 0]), rim = [4], base = { centers, heart: 0, rim, margin: 2 };
+  assert.deepEqual(shotHoles({ ...base, shot: [5, 2, 9, 6, 7] }), [2, 5, 6], 'inside the rim plus the margin, nearest the heart first; far holes stay open');
+  assert.deepEqual(shotHoles({ ...base, shot: [2, 5], keep: new Set([5]) }), [2], 'the back door\'s mouth is never refilled');
+  assert.deepEqual(shotHoles({ ...base, shot: [2, 5], open: (ci) => ci !== 2 }), [5], 'a hole already mended is no longer one');
+  assert.deepEqual(shotHoles({ ...base, shot: [2], rim: [] }), [], 'no rim, no base to mend');
+  assert.deepEqual(shotHoles({ ...base, shot: new Set([3]) }), [3], 'the shot set itself is accepted');
+  assert.equal(typeof T.shotMargin, 'number'); }
 console.log(`Repair orders: the gate first below ${T.gateAt} of its hp, then the walls in rim order, only between waves and never ahead of the player.`);

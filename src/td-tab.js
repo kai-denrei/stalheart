@@ -323,7 +323,7 @@ export function initTdTab(root) {
   scene.background = mainBg;
 
   const camera = new THREE.PerspectiveCamera(68, 1, 0.004, 50);
-  const postfx = makeBloom(renderer, scene, camera, { scale: tier.bloomScale }); const warmShaders = makeShaderWarmer(renderer, scene, camera); const programWarm = createProgramWarm(renderer, scene, camera); const explosions = createExplosions(scene, { onError: (error) => record('explosions.unavailable', { message: error.message }) }); const thermalHeat = createThermalHeat(() => ({ warm: [storyBase?.group, playerMesh, ...towers.map((tw) => tw.obj)], hot: [...['stalheart', 'foundry', 'assembly'].map((id) => storyBase?.structure(id)?.holder), isao?.obj] })); const automated = () => !!story && isAutomated(story.beats.phase(), story.handover); const explode = (use, p) => { const sc = EXPLOSION_SCARE[use]; if (sc) applyScare(enemies, p, { radius: sc.cells * cellSide, seconds: sc.seconds }); return explosions.spawn(use, p, norm3(p), cellSide); };   // the lab's explosions (src/fx/explosions.js); callers keep their dot bursts when this returns false
+  const postfx = makeBloom(renderer, scene, camera, { scale: tier.bloomScale }); const warmShaders = makeShaderWarmer(renderer, scene, camera); const programWarm = createProgramWarm(renderer, scene, camera); const explosions = createExplosions(scene, { onError: (error) => record('explosions.unavailable', { message: error.message }) }); const thermalHeat = createThermalHeat(() => ({ warm: [storyBase?.group, playerMesh, ...towers.map((tw) => tw.obj)], hot: [...['stalheart', 'foundry', 'assembly'].map((id) => storyBase?.structure(id)?.holder), isao?.obj] }), { postfx }); const automated = () => !!story && isAutomated(story.beats.phase(), story.handover); const explode = (use, p) => { const sc = EXPLOSION_SCARE[use]; if (sc) applyScare(enemies, p, { radius: sc.cells * cellSide, seconds: sc.seconds }); return explosions.spawn(use, p, norm3(p), cellSide); };   // the lab's explosions (src/fx/explosions.js); callers keep their dot bursts when this returns false
   // sound. The context can only be born on a user gesture, so arm() wires
   // one-shot listeners and the first tap/keypress creates it. Until then
   // every play() is a silent no-op -- the game never waits on audio.
@@ -4625,19 +4625,12 @@ export function initTdTab(root) {
   let plasma = null;
   let beamOn = false, beamVoice = null;
 
-  // --- THE PLASMA (operator, 2026-09-02) ----------------------------------
-  // "the beam extends in the air, and for game play we should have hug the
-  // curvature of the planet, more like plasma flamethrower than pure laser."
-  //
-  // The anatomy, the meshes and the per-frame update all live in beamdraw.js
-  // now. That move is what lets the beam LAB draw this same weapon instead of
-  // two straight ribbons on a flat floor — a tuning surface showing a
-  // different weapon than the game is worse than none, and this project has
-  // already paid for that once with a preset tuned under tone mapping the
-  // game did not have.
-  //
-  // PLASMA is a LIVE object: the GUI mutates it and the rig reads it every
-  // frame, so the knobs stay knobs.
+  // --- THE PLASMA (operator, 2026-09-02) ---------------------------------- "the beam extends in the air, and for game play we
+  // should have hug the curvature of the planet, more like plasma flamethrower than pure laser."  The anatomy, the meshes and the
+  // per-frame update all live in beamdraw.js now. That move is what lets the beam LAB draw this same weapon instead of two
+  // straight ribbons on a flat floor — a tuning surface showing a different weapon than the game is worse than none, and this
+  // project has already paid for that once with a preset tuned under tone mapping the game did not have.  PLASMA is a LIVE
+  // object: the GUI mutates it and the rig reads it every frame, so the knobs stay knobs.
   const PLASMA = { ...PLASMA_DEFAULTS };
 
   let beamRig = null;
@@ -4653,10 +4646,9 @@ export function initTdTab(root) {
     return beamRig;
   }
 
-  // The colour is written to the LIVE uniform rather than baked into
-  // BEAM_PRESET at construction, so a promotion that lands mid-burst
-  // recolours the beam already in the air — which is the whole point of
-  // putting the readout on the weapon instead of in the corner.
+  // The colour is written to the LIVE uniform rather than baked into BEAM_PRESET at construction, so a promotion that lands
+  // mid-burst recolours the beam already in the air — which is the whole point of putting the readout on the weapon instead of in
+  // the corner.
   let beamStepNow = beamStep(0);
   function applyBeamRank() {
     beamStepNow = beamStep(tankRank);
@@ -4666,14 +4658,10 @@ export function initTdTab(root) {
     applyReachToe();
   }
 
-  // THE TOE SCALES WITH REACH (operator, 2026-09-02: "the toe-in should scale
-  // with reach so they always cross").
-  //
-  // A fixed angle cannot be right across a 2.5x reach ladder: the apex sits
-  // at gap/(2·tan(toe)), so the shipped 0.035 rad put it about 9.5 cells out
-  // — past a rank-1 beam's whole four cells, and well inside a rank-15 one.
-  // Solve for the angle instead, from the muzzle gap MEASURED off the model
-  // rather than assumed, so a new tank does not silently break it.
+  // THE TOE SCALES WITH REACH (operator, 2026-09-02: "the toe-in should scale with reach so they always cross").  A fixed angle
+  // cannot be right across a 2.5x reach ladder: the apex sits at gap/(2·tan(toe)), so the shipped 0.035 rad put it about 9.5
+  // cells out — past a rank-1 beam's whole four cells, and well inside a rank-15 one. Solve for the angle instead, from the
+  // muzzle gap MEASURED off the model rather than assumed, so a new tank does not silently break it.
   const TOE_CROSS_FRAC = 0.7;   // they meet at 70% of the reach: out in front,
                                 // but comfortably before the tip
   const toeA = new THREE.Vector3(), toeB = new THREE.Vector3();
@@ -5017,7 +5005,7 @@ export function initTdTab(root) {
   // heart-distance field is re-laid — everyone's nav sees the new gap,
   // enemies included. Clearing your path can shorten theirs.
   function blastWall(ci) {
-    if (!breachWallCell(ci)) return; explode('tank.shell', graph.centers[ci]); if (automated() && story?.hud.route) story.hud.route(simTrunk().map((c) => norm3(graph.centers[c])), 3, t);
+    if (!breachWallCell(ci)) return; story?.shot.add(ci); explode('tank.shell', graph.centers[ci]); if (automated() && story?.hud.route) story.hud.route(simTrunk().map((c) => norm3(graph.centers[c])), 3, t);
     rebuildAfterBreach();
   }
 

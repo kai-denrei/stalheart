@@ -49,3 +49,19 @@ export function repairsPending(state = {}, tune = {}) {
 
 // the seconds and metres the print takes, by kind
 export const repairCost = (repair, tune) => ({ seconds: tune?.[repair.kind]?.seconds ?? 6, metres: tune?.[repair.kind]?.metres ?? 4 });
+
+// HOLES THE TANK BLEW IN THE BASE (owner, 2026-10-04: "opening a breach with a tank shell does not trigger Isao to fix it, it should").
+// A shell turns ROCK to floor; the walls list above only ever held the rim's own wall cells, so a hole shot through the base's rock
+// was never anyone's job. `shot` is every cell a shell opened; the ones still open and inside the base, no farther from the heart
+// than the farthest rim cell plus `margin` (world units), are holes, nearest the heart first. A hole out on an expedition stays open,
+// and `keep` (the back door's mouth, which the story opens and its own gate seals) is never refilled.
+export function shotHoles({ shot = [], keep = null, open = () => true, centers, heart, rim = [], margin = 0 }) {
+  if (heart == null || heart < 0 || !centers?.[heart] || !rim.length) return [];
+  const h = centers[heart], d = (ci) => Math.hypot(centers[ci][0] - h[0], centers[ci][1] - h[1], centers[ci][2] - h[2]);
+  let reach = 0;
+  for (const ci of rim) if (centers[ci]) reach = Math.max(reach, d(ci));
+  reach += margin;
+  const out = [];
+  for (const ci of shot) if (centers[ci] && !keep?.has(ci) && open(ci) && d(ci) <= reach) out.push(ci);
+  return out.sort((a, b) => d(a) - d(b));
+}
