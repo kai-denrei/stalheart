@@ -21,3 +21,23 @@ export function orbitFrame(d, radius) {
 // the sites' mean direction, and the climb from 1.6 to 3.3 planet radii in the first 62.5% of the shot
 export const sitesDir = (points) => norm3(points.reduce((a, c) => add3(a, c), [0, 0, 0]));
 export const sitesRadius = (u) => 1.6 + 1.7 * Math.min(1, u * 1.6);
+
+// THE TOUR OF THE LANDERS (owner, 2026-10-03: "after Isao starts building, there's an awkward dead time ... a) it zooms out to a planetary
+// view b) the camera moves one by one quickly to each beacon (landing sites), giving a clear idea of a mission, and c) from there we jump
+// into the Rotor Manual Override"). Keyframes: over the base at `high` radii, then each site from `low` radii looking down at it, then the
+// base again; between two the eye climbs by `arc` so it sweeps over the planet instead of through it. u 0..1 over the whole tour.
+export function tourFrame(u, home, sites, { high = 1.75, low = 1.28, arc = 0.45 } = {}) {
+  const keys = [{ d: norm3(home), r: high }, ...sites.map((p) => ({ d: norm3(p), r: low })), { d: norm3(home), r: high }];
+  const span = keys.length - 1, x = Math.min(span - 1e-9, Math.max(0, u) * span), i = Math.floor(x), t0 = x - i, t = t0 * t0 * (3 - 2 * t0);
+  const a = keys[i], b = keys[i + 1], om = Math.acos(Math.max(-1, Math.min(1, dot3(a.d, b.d))));
+  let d;
+  if (om < 1e-4) d = a.d; else { const s0 = Math.sin((1 - t) * om) / Math.sin(om), s1 = Math.sin(t * om) / Math.sin(om); d = norm3(add3(scale3(a.d, s0), scale3(b.d, s1))); }
+  const r = a.r + (b.r - a.r) * t + Math.sin(Math.PI * t) * arc * Math.min(1, om), eye = scale3(d, r);
+  // the look slides from the planet's centre (high) to the ground under the eye (low)
+  const w = Math.max(0, Math.min(1, (high - r) / (high - low))), look = scale3(d, w);
+  // the frame's up is the way the tour is going, blended across each keyframe (the leg in, the leg out) so a turn swings and never snaps
+  const leg = (j) => { if (j < 0 || j >= span) return [0, 0, 0]; const g = sub3(keys[j + 1].d, keys[j].d), q = sub3(g, scale3(d, dot3(g, d))); return dot3(q, q) > 1e-12 ? norm3(q) : [0, 0, 0]; };
+  const ramp = (v) => Math.max(0, Math.min(1, 2 * v)), m = add3(leg(i), add3(scale3(leg(i + 1), ramp(t0 - 0.5)), scale3(leg(i - 1), ramp(0.5 - t0))));
+  const up = dot3(m, m) > 1e-10 ? norm3(m) : norm3(cross3(d, Math.abs(d[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0]));
+  return { eye, look, up };
+}

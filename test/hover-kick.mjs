@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { makeKick, startKick, stepKick, kicking, planKick } from '../src/domain/hover-kick.js';
+import { makeKick, startKick, stepKick, kicking, planKick, glideHeading } from '../src/domain/hover-kick.js';
 import { TANK_KICK } from '../src/content/tank.js';
 const n = (v) => { const l = Math.hypot(...v); return v.map((x) => x / l); };
 const k = makeKick(), a = n([0, 1, 0]), b = n([0.01, 1, 0]);
@@ -13,8 +13,13 @@ assert.ok(maxRoll > TANK_KICK.roll * 0.3, 'the hull rolls'); assert.equal(k.roll
 assert.equal(kicking(k), false); assert.equal(startKick(k, { from: a, to: b }, TANK_KICK), false, 'cooling down');
 stepKick(k, TANK_KICK.cool + 0.01, TANK_KICK); assert.ok(startKick(k, { from: a, to: b }, TANK_KICK), 'then again');
 // where a head-on hit kicks to: off the wall (away from it) and along it, checked free; nothing for a glancing hit
-{ const pos = [0, 1, 0], k0 = planKick({ pos, heading: [1, 0, 0], toWall: [1, 0, 0], slid: [0, 0, 0.01], share: 0.9, cellSide: 0.01, blocked: () => false }, TANK_KICK);
+{ const pos = [0, 1, 0], k0 = planKick({ pos, heading: [1, 0, 0], toWall: [1, 0, 0], slid: [0, 0, 0.01], share: 0.95, cellSide: 0.01, blocked: () => false }, TANK_KICK);
   assert.ok(k0 && k0.to[0] < 0 && k0.to[2] > 0, `off the wall and along it (${k0 && k0.to})`);
   assert.equal(planKick({ pos, heading: [1, 0, 0], toWall: [1, 0, 0], slid: [0, 0, 0.01], share: 0.2, cellSide: 0.01, blocked: () => false }, TANK_KICK), null, 'a glancing hit slides');
-  assert.equal(planKick({ pos, heading: [1, 0, 0], toWall: [1, 0, 0], slid: [0, 0, 0.01], share: 0.9, cellSide: 0.01, blocked: () => true }, TANK_KICK), null, 'nowhere free: no kick'); }
+  assert.equal(planKick({ pos, heading: [1, 0, 0], toWall: [1, 0, 0], slid: [0, 0, 0.01], share: 0.95, cellSide: 0.01, blocked: () => true }, TANK_KICK), null, 'nowhere free: no kick'); }
+// the glide: a shallow approach turns toward the wall's tangent; a square-on one is left to the kick
+{ const pos = [0, 1, 0], shallow = (() => { const a = 0.4; return [Math.sin(a), 0, Math.cos(a)]; })(), toWall = [1, 0, 0];
+  const h = glideHeading(pos, shallow, toWall, 0.1, TANK_KICK); assert.ok(h[0] < shallow[0], `it turns off the wall (${h[0]} < ${shallow[0]})`);
+  assert.deepEqual(glideHeading(pos, [1, 0, 0], toWall, 0.1, TANK_KICK), [1, 0, 0], 'square on: the kick takes it');
+  assert.deepEqual(glideHeading(pos, [-1, 0, 0], toWall, 0.1, TANK_KICK), [-1, 0, 0], 'driving away: nothing'); }
 console.log('hover-kick: one eased kick off the wall, a roll that settles, one at a time with a cool-down.');

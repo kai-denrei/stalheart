@@ -90,6 +90,6 @@ export const QUIVER_SPLASH = Object.freeze({ cells: 1.2, share: 0.5 });
 // on, but more powerful. Reduce numbers, keeps the intensity. Or simply limited availability"; and "some sort of maximum range of where
 // we can build towers"). In the story Isao keeps at most `cap` sentries running (standing and ordered), every sentry hits `dmgMul` times
 // harder, and with `buildCells` set an order farther than that many cells from the Stålheart is refused (null: no limit, the owner is
-// still weighing it). `full` and `far` are the refusals the build menu shows; `rock` and `deep` say the terrain rules in the story's words.
-export const STORY_SENTRIES = Object.freeze({ cap: 10, dmgMul: 1.4, buildCells: null, full: 'Isao keeps 10 sentries running: sell one to build another', far: 'too far from the Stålheart',
+// still weighing it); dmgMul 1.4 -> 1.15 (2026-10-03: "it feels a bit too easy"). `full` and `far` are the refusals the build menu shows; `rock` and `deep` say the terrain rules in the story's words.
+export const STORY_SENTRIES = Object.freeze({ cap: 10, dmgMul: 1.15, buildCells: null, full: 'Isao keeps 10 sentries running: sell one to build another', far: 'too far from the Stålheart',
   rock: 'sentries stand on ROCK: pick a rock cell beside the open ground', deep: 'too deep in the rock: a sentry needs open ground beside it' });

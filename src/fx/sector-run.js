@@ -93,7 +93,9 @@ export function createSectorRun(h) {
     if (feastFor(b)) return { entries: def.feast.entries, pace: def.feast.pace ?? SECTOR_TIMING.pace };
     // THE CANYON'S SWARM: `swarm` sector pulses (two breaches' worth each) of the ladder wave `ladder` past the sector's start, at once
     if (b.side === 'canyon') return { entries: computeWavePlan(def.waveBase + CANYON.ladder, 1, h.waveSize, def.threat * (h.threatMult ?? 1) * (api.swell?.() ?? 1)).entries.map((e) => ({ ...e, count: e.count * CANYON.swarm * 2 })), pace: SECTOR_TIMING.pace, spread: CANYON.spread, dens: CANYON.dens };
-    const entries = computeWavePlan(wave, 1, h.waveSize, def.threat * (h.threatMult ?? 1) * (api.swell?.() ?? 1)).entries.map((e) => ({ ...e }));
+    // MORE OF THE LOW ONES (owner, 2026-10-03: "increase the number of low-level enemies considerably. Testing the limits"; and "it feels
+    // a bit too easy"): every rammable entry of a sector's plan x SECTOR_TIMING.soft
+    const entries = computeWavePlan(wave, 1, h.waveSize, def.threat * (h.threatMult ?? 1) * (api.swell?.() ?? 1)).entries.map((e) => ({ ...e, count: ENEMY_SPEC[e.type]?.rammable ? Math.round(e.count * Math.min(SECTOR_TIMING.soft ?? 1, 1 + (SECTOR_TIMING.softStep ?? 0) * ((def.n ?? 1) - 1))) : e.count }));   // ramping by sector
     // THE STAMPEDE (src/domain/stampede.js): every second wave a mouth sends is a flood of rammable bodies with a few hard cores in it
     if ((b.side === 'gate' || b.side === 'back') && isStampede(b.wavesReleased ?? 0, SECTOR_STAMPEDE)) { const w = stampedeWave(entries, ENEMY_SPEC, SECTOR_STAMPEDE, { index: b.wavesReleased ?? 0, tier: api.tier?.() ?? 0 }); return { entries: w.entries, gap: w.gap, pace: SECTOR_TIMING.pace, stampede: w.kind }; }
     if (def.hardcoresEveryWave && h.hardcore) entries.push({ type: h.hardcore, count: def.hardcores ?? 1 });

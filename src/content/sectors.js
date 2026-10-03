@@ -161,7 +161,9 @@ export const SECTOR_FORFEIT = freeze({ killShare: 1, streak: 1 });
 // so 8 put sector 2's first arrival past the spec's 40 s (--pacing: 40.3 s)
 // firstGrace: the first sector's wait after the story is ready for it, unless a part comes home first (src/domain/sectors.js
 // firstSectorDue): the expedition Isao has just sent the tank on
-export const SECTOR_TIMING = freeze({ briefSeconds: 6, staggerSeconds: 1.5, backDoorLead: 5, securePause: 3, lostHold: 2.5, pace: 1.5, aliveBudget: 520, firstGrace: 90 });
+// `soft` (2026-10-03): every rammable entry of a sector's waves is multiplied by up to it, climbing `softStep` a sector from x1 at sector 1
+// (x2 from sector 5: the lane's first sectors held by sentries alone fell at x2); the alive budget rose with it (520 -> 900)
+export const SECTOR_TIMING = freeze({ briefSeconds: 6, staggerSeconds: 1.5, backDoorLead: 5, securePause: 3, lostHold: 2.5, pace: 1.5, aliveBudget: 900, firstGrace: 90, soft: 2, softStep: 0.25 });
 
 // THE GATE TAKES THE PRESSURE (QA 2026-09-16: a closed gate held a pile of 116 forever and a sector could not be lost).
 // Enemies within pressCells of the gate cell wear it down: dps per soft body, per solid core. At zero it breaks and stands

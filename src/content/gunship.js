@@ -47,8 +47,9 @@ export const GUNSHIP_TRACK = Object.freeze({
 // turns all of it into the planet's units. src/domain/missile-flight.js takes every one of these as a parameter.
 export const GUNSHIP_NUKE = Object.freeze({
   mesh: 'talon', profile: 'heavy', length: 4, exhaust: true,   // four metres nose to tail: a body you can read falling away from the belly, not a dart
-  freeFall: 2, drive: 1.8,   // two seconds of nothing but the fall, then the burn: the owner's own number
-  ejectSpeed: 6,   // m/s straight down as the shackles let go: it is thrown clear of the belly, so from the seat it DROPS away down the sight instead of trailing off behind the hull
+  freeFall: 2.4, drive: 1.8,   // the fall, then the burn: the owner's two seconds, stretched to 2.4 (2026-10-03: "drop and forward a bit more, then it ignites")
+  ejectSpeed: 6,
+  throwLeft: 9, throwAhead: 7,   // m/s the round is thrown to the eye's left and ahead (2026-10-03: in full view on the left, clear of the HUD; src/fx/gunship-drop.js)   // m/s straight down as the shackles let go: it is thrown clear of the belly, so from the seat it DROPS away down the sight instead of trailing off behind the hull
   gravity: 9.81,             // the fall is real metres in real seconds, not an authored curve
   arrivalLead: 1.5,          // the powered dive's arrival tangent, as a multiple of the distance left: speed climbs into impact
   // the two moments worth hearing: the shackles letting go at the belly, and the motor catching two seconds later. Both are keys
@@ -82,5 +83,5 @@ export const GUNSHIP_GUN_ORDER = Object.freeze(['rotary', 'bofors', 'heavy']);
 // player's screen and `nukeSafeCells` clear of its blast from the base and the hull (seventh notes), it drops the MK-9 there with the
 // callout and one of `nukeCalls`.
 // While it is on, the sectors may hold `aliveBudget` bodies and size their waves `swell` times larger: the envelope being pushed.
-export const GUNSHIP_AUTO = Object.freeze({ afterManned: 2, burst: 2.6, rest: 1.4, nukePile: 25, nukeView: 0.75, nukeSafeCells: 3, gunSafeCells: 1.5, callout: 'TACTICAL NUKE LAUNCHED',
-  nukeCalls: Object.freeze(['gunship_nuke_call', 'gunship_nuke_hello']), aliveBudget: 760, swell: 1.35, brief: 'gunship_calibrated', autoBrief: 'gunship_auto' });
+export const GUNSHIP_AUTO = Object.freeze({ afterManned: 2, burst: 2.6, rest: 1.4, nukePile: 25, nukeView: 0.75, nukeSafeCells: 3, gunSafeCells: 1.5, nukeFacing: 0.8, callout: 'TACTICAL NUKE LAUNCHED',
+  nukeCalls: Object.freeze(['gunship_nuke_call', 'gunship_nuke_hello']), aliveBudget: 1200, swell: 1.35, brief: 'gunship_calibrated', autoBrief: 'gunship_auto' });

@@ -10,7 +10,9 @@ import { densestTarget } from '../domain/laser-auto.js';
 // from every one of them (owner, 2026-10-02: "only shoot nukes at safe distance from the base"); the rotary and the Bofors fire as before
 // `units()`: the friendly units the two guns keep `gunSafeCells` beyond their blast from (the hull and Isao; owner, 2026-10-02: "neither
 // gunship nor orbital laser should fire too close to friendly units"). The guns cannot hurt a wall or a sentry, so the gate's pile stays theirs
-export function createGunshipAuto({ G, tune, onScreen, callout, sfx, hasCue, friends = () => [], units = () => [] }) {
+// `hull()`: the tank's unit position; the MK-9 only goes down on a pile within `nukeFacing` (a dot product) of it, so the player sees the
+// strike from the hull (owner, 2026-10-03: "a tactical nuke launched, and from the tank PoV it is nowhere to be seen")
+export function createGunshipAuto({ G, tune, onScreen, callout, sfx, hasCue, friends = () => [], units = () => [], hull = () => null }) {
   let gun = 'rotary', phase = 'rest', t = 0, nukePass = -1, rounds = 0, target = null;
   function landRounds() {
     for (const r of G.landed()) {
@@ -33,7 +35,8 @@ export function createGunshipAuto({ G, tune, onScreen, callout, sfx, hasCue, fri
       // the MK-9, once a pass, on a pile the player is looking at: the odd dummy nuke "that just happens to be in the line of sight"
       if (nukePass !== st.passes && st.heavyPass !== st.passes) {
         const keep = (G.guns.heavy.blastCells + (tune.nukeSafeCells ?? 3)) * G.cs, near = friends(), safe = (q) => near.every((f) => Math.hypot(q[0] - f[0], q[1] - f[1], q[2] - f[2]) > keep);
-        const seen = live.filter((e) => onScreen(e.pos, tune.nukeView) && safe(e.pos));
+        const h = hull(), hl = h ? Math.hypot(h[0], h[1], h[2]) || 1 : 1, near2 = (q) => !h || (q[0] * h[0] + q[1] * h[1] + q[2] * h[2]) / (hl * (Math.hypot(q[0], q[1], q[2]) || 1)) > (tune.nukeFacing ?? 0);
+        const seen = live.filter((e) => onScreen(e.pos, tune.nukeView) && safe(e.pos) && near2(e.pos));
         if (seen.length >= tune.nukePile) {
           const p0 = densestTarget(seen, { radius: G.guns.heavy.blastCells * G.cs * 10, metres: 10 }), p = p0 && safe(p0) ? p0 : null, ci = p ? G.cell(p) : -1;
           if (ci >= 0 && G.select('heavy') !== false && G.paintHeavy(ci)) {

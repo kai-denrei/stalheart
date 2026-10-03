@@ -34,4 +34,7 @@ export const TANK_WALL = Object.freeze({ scrub: 2.5, align: 3.5, glance: Object.
 // more than `headOn` of the step into the rock starts a kick of `seconds` to a free point `back` cells off the wall and `along` cells along
 // it (the target checked free, or just `back`, or no kick), rolling up to `roll` radians and settling; `cool` seconds before the next;
 // `keep` of the run-up survives it
-export const TANK_KICK = Object.freeze({ headOn: 0.45, seconds: 0.55, back: 0.32, along: 0.35, roll: 0.22, cool: 0.6, keep: 0.55 });
+// (2026-10-03, "a forward bias ... it almost glides on the walls") the kick goes mostly ALONG (back 0.32 -> 0.18, along 0.35 -> 0.8) and keeps
+// more of the run-up (0.55 -> 0.8); `ahead` cells in front the hover glide turns a hull meeting rock within `glideAngle` of parallel toward
+// it at `glide` rad/s; a hit is head-on past `headOn` (0.45 -> 0.7: the glide takes the shallow ones)
+export const TANK_KICK = Object.freeze({ headOn: 0.7, seconds: 0.55, back: 0.18, along: 0.8, roll: 0.22, cool: 0.6, keep: 0.8, ahead: 0.9, glide: 4, glideAngle: 1.2 });

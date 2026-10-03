@@ -51,6 +51,23 @@ Evidence:
 - test/programme-host.mjs (mid-wave mend when clear, wait when a body is near, BREACH SEALED after the check), test/base-plan.mjs (the board slab clears its neighbours)
 - Not yet seen: the tier plates in play, the wall friction and squeeze in a real corridor, the mortar's landing, buildings blocking the hull in play
 
+## 2026-10-03 — The owner's fourteenth notes: a tour of the landers fills the opening's dead time, the hover glide along walls, the fps readout on, many more soft bodies by sector, the MK-9 thrown left in full view and only on the hull's side, harder balance, and nests that hunt the hull
+
+change · accepted · 2026-10-03-fourteenth-notes-landers-tour-hover-glide-fps-swarm-nuke-view-hunting-nests
+
+Owner, 2026-10-03 (on 03d6e870): 1) after Isao starts building, about 5 s where nothing happens: zoom out to the planet, visit each beacon quickly (a clear mission), then into the Rotor's override; 2) wall bounces should feel natural: a forward bias, the hover tech helping it glide along walls; 3) bring back an fps counter and considerably more low-level enemies, testing the limits; 4) the gunship's nuke drop is satisfying: always drop in full view on the LEFT, clear of the mini-map and HUD, further down and forward, then ignite; 5) an auto nuke is sometimes launched nowhere in the tank's view: only in the tank's rough hemisphere; 6) it feels a bit too easy; and more soft bodies at the landing sites that attack the tank.
+
+1) The arrival hands over to a live 'sitesTour' shot (src/domain/story-shots.js tourFrame): over the base, then low over each of the first three landers (2.8 s each), back over the base, its frame's up blended across keyframes (worst roll step 1.5 deg at 400 samples); the beacons and Isao's 'We were not the only rocket' line now play over it. --opening-probe: the tour from 10.2 to 19.6 s, the breach at 23.2 s, the Rotor at about 24 s. 2) The hover glide (hover-kick glideHeading): with rock 0.9 cells ahead, a hull within 1.2 rad of parallel turns toward the wall's tangent at 4 rad/s before contact; a kick only past 0.7 head-on and mostly along (back 0.18, along 0.8 cells), keeping 80% of the run-up. 3) The fps readout is on by default (backtick hides it and is remembered). Every rammable entry of a sector's waves x(1 + 0.25 per sector past the first, up to x2); the alive budget 520 -> 900 (the gunship's auto 760 -> 1200). 6) Story sentries hit 1.15x (was 1.4). Tried and dropped: x2 from sector 1, which lost the lane's first sector with the sentries alone. 4) src/fx/gunship-drop.js: the round is thrown to the eye's left (9 m/s) and ahead (7 m/s) and falls 2.4 s (was 2) before it lights. 5) The auto MK-9 only takes a pile within a dot of 0.8 of the hull (GUNSHIP_AUTO.nukeFacing). The nests: amoeba 40/48/60 (later 64/80) with 12-20 phages, and src/domain/guard-aggro.js: within 3 nest radii of the hull a guard takes the exits that close on it.
+
+Alternatives: The tour as a frozen shot: the beats would wait behind it and the dead time would move, not go; A planet-scale fps budget instead of a fixed soft multiplier: the owner asked to test the limits with the readout on
+
+Evidence:
+
+- scripts/browser-lock.sh node scripts/browser-test.mjs --opening-probe (the tour and the timeline), --round13 (12 s into the rim, moving throughout)
+- test/sites-tour.mjs, test/guard-aggro.mjs, test/hover-kick.mjs
+- --story-world, --chapters, --round7, --round9, --sectors, --canyon, --gunship-auto, --skip-tutorial, --colony, --grow and the default suite green
+- Not yet seen in play: the glide's feel, the frame rate with the bigger swarms and nests, the thrown MK-9 from the seat
+
 ## 2026-10-03 — The owner's eleventh notes: SOL-88 climbs out of sight, blasts scatter the swarm, the opening reaches the Rotor in half the time, the hand-over at the open lens, the landers' nests from the start, the canyon twice as fast, the hull's flanks, a lighter camp, no snag on open ground, natural palettes
 
 change · accepted · 2026-10-03-eleventh-notes-launch-scatter-opening-lens-guards-canyon-hull-palettes

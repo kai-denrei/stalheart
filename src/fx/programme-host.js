@@ -106,7 +106,7 @@ export function createProgrammeHost(c) {
       }
       // THE ROCKETS THAT CAME DOWN OFF COURSE (src/fx/site-beacons.js): beacons over the landing sites from the first free camera after the
       // landing, each gone once its site is visited; Isao names them once
-      if (!s.beacons && c.scene && s.sites?.length && !c.shotId?.() && c.story().beats?.phase?.() !== 'landed') {   // not over the landing itself
+      if (!s.beacons && c.scene && s.sites?.length && (!c.shotId?.() || c.shotId() === 'sitesTour') && c.story().beats?.phase?.() !== 'landed') {   // not over the landing itself; over the landers' tour, yes
         const ids = STORY_EXPEDITIONS.sites.filter((x) => !x.reveal).map((x) => x.id);   // story.sites holds the first-wave sites' cells, in this order
         s.beacons = createSiteBeacons(c.scene, s.sites.map((ci, i) => ({ id: ids[i], ci, point: c.graph().centers[ci], model: () => c.storyBase()?.structure(ids[i])?.holder })).filter((x) => x.id), { metres: c.cellSide() / 10 });
         if (!c.pilotMode() && !c.briefQ()) showBrief('sites_seen');
@@ -128,7 +128,7 @@ export function createProgrammeHost(c) {
             const view = (p, lim) => { const q = new THREE.Vector3(...p).project(c.camera); return q.z < 1 && Math.abs(q.x) < lim && Math.abs(q.y) < lim; };
             s.gsFly ??= createGunshipAuto({ G: G0, tune: GUNSHIP_AUTO, onScreen: view, callout: (t) => c.callout?.(t, 'co-victory'), sfx: c.sfx, hasCue: (k) => !!SOUNDS[k],
               friends: () => { const g = c.graph(), b = c.storyBase(), cells = [c.dungeon().heart, ...(b?.anchors() ?? []), ...(c.story().wallCells ?? [])]; return [...cells.filter((ci) => ci >= 0).map((ci) => g.centers[ci]), ...(c.playerPos() ? [c.playerPos()] : [])]; },
-              units: () => [c.playerPos(), c.isao()?.obj?.position.toArray()].filter(Boolean) });
+              units: () => [c.playerPos(), c.isao()?.obj?.position.toArray()].filter(Boolean), hull: () => (c.playerHP() > 0 ? c.playerPos() : null) });
             s.gsFly.tick(dt, seated);
           }
         }

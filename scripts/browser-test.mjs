@@ -972,12 +972,12 @@ try{
   /* all three over his face (the owner's second playtest: "a close-up of Isao saying he'll cannibalize the rocket to get started with terraforming") */
   const onFace=[...new Set(talk.map(r=>r[6]).filter(Boolean))];
   assert.deepEqual(onFace,['Rough landing!','So much to build!',"I'll cannibalize the rocket to get the terraforming started."],`his three lines over his face (${onFace})`);
-  assert.equal(a.fov,a.lens,'the lens is the game\'s again');assert.equal(s.shot,null);assert.equal(await evaluate('getComputedStyle(document.querySelector("#td-stats")).display'),'block','and the HUD is back');
+  assert.equal(a.fov,a.lens,'the lens is the game\'s again');assert.ok([null,'sitesTour'].includes(s.shot),`no shot or the landers' tour (2026-10-03) (${s.shot})`);assert.equal(await evaluate('getComputedStyle(document.querySelector("#td-stats")).display'),'block','and the HUD is back');
   const seen=await evaluate('JSON.parse(localStorage.getItem("stalheart:v1:td.briefs")||"[]")');for(const id of ['rough_landing','so_much_to_build','foundry_deploy'])assert(!seen.includes(id),`the old landing line ${id} is not said over the arrival`);
   console.log(`  grow: the arrival ${a.cut} s of landing (${land.length} frames) + ${a.talk} s on his face (${talk.length} frames); lines ${lines.join(' / ')}`);}
  // THE PLAYER LOOKS AROUND (owner, 2026-09-30: "first beat, player should be in charge of something, a free camera"): the landing
  // hands over to the orbit camera, and no seat has glided in yet
- {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.view,'orbit',`the landing ends on the free camera (${s.view})`);assert.equal(s.glide.n,0);}
+ {const s=await evaluate('window.__stalheartTest.state()');assert.ok(s.view==='orbit'||s.shot==='sitesTour',`the landing ends on the free camera or the landers' tour (${s.view}, ${s.shot})`);assert.equal(s.glide.n,0);}
  const g0=await evaluate('window.__stalheartTest.state()');assert.equal(g0.programme.grow,true);assert.equal(g0.programme.gate.built,false,'no gate at the landing');assert.deepEqual(g0.programme.printed,[]);assert.deepEqual(g0.bays,[],'the bays are not printed yet');
  // SECTOR 0 (owner, 2026-09-24: "The Tank is built by the Stalheart"): the opening is Isao coming out and building; no MÖRK is drawn or driven
  assert.equal(g0.hull.state,'held','no hull at the landing');assert.equal(g0.hull.visible,false,'the hull is not drawn');assert(g0.hull.door>=0,`the Stålheart has a door to roll the hull out of (${JSON.stringify(g0.hull)})`);
@@ -2057,7 +2057,7 @@ try{
  await evaluate('(()=>{window.__rotorHeatMax=0;window.__rotorHeatFrames=0;const tick=()=>{const t=window.__stalheartPilotTest;if(!t)return;let p;try{p=t.state();}catch(e){return;}if(p.key!=="rotor")return;window.__rotorHeatMax=Math.max(window.__rotorHeatMax,p.heat||0);window.__rotorHeatFrames++;requestAnimationFrame(tick);};requestAnimationFrame(tick);})()');
  await until('window.__stalheartTest.state().performance.enemies>0',60000);await delay(14000);
  const fodder=await evaluate('window.__stalheartTest.state()');{const {STORY_EXPEDITIONS:X}=await import('../src/content/story-defaults.js'),guards=X.sites.filter((x)=>!x.reveal).reduce((n,x)=>n+x.guards.reduce((a,g)=>a+g.count,0),0);assert(fodder.performance.enemies>=2&&fodder.performance.enemies<=50+guards,`fodder alive ${fodder.performance.enemies} (with ${guards} site guards)`);}   // the first wave is one fifty-strong swarmassert.equal(fodder.performance.wave,0,'no wave arms');
- assert.ok(fodder.enemyTypes.includes('amoeba')&&fodder.enemyTypes.every((t)=>['amoeba','barbed'].includes(t)),`the first wave is the white amoeba (and the site guards, amoeba and barbed, since 2026-10-03: ${fodder.enemyTypes})`);assert.equal(fodder.insideEnemies,0,'the closed gate holds the fodder outside');assert.equal(fodder.queued,0);
+ assert.ok(fodder.enemyTypes.includes('amoeba')&&fodder.enemyTypes.every((t)=>['amoeba','barbed','phage'].includes(t)),`the first wave is the white amoeba (and the site guards, amoeba and barbed, since 2026-10-03: ${fodder.enemyTypes})`);assert.equal(fodder.insideEnemies,0,'the closed gate holds the fodder outside');assert.equal(fodder.queued,0);
  current='story-world-fodder';await finish();
  await until('window.__stalheartPilotTest.aimEnemy()!==null',15000);const victim=await evaluate('window.__stalheartPilotTest.aimEnemy()');assert(victim!==null,'an amoeba is in reach and sight of the Rotor');   // the pile at the gate shuffles; give it a moment
  await evaluate('window.__stalheartPilotTest.hold(true)');

@@ -40,3 +40,17 @@ export function planKick({ pos, heading, toWall, slid, share, cellSide, blocked 
   const side = (n[1] * heading[2] - n[2] * heading[1]) * off[0] + (n[2] * heading[0] - n[0] * heading[2]) * off[1] + (n[0] * heading[1] - n[1] * heading[0]) * off[2];
   return { to, side: side < 0 ? -1 : 1, heading: norm([heading[0] + sl[0] * share, heading[1] + sl[1] * share, heading[2] + sl[2] * share]) };
 }
+
+// THE HOVER GLIDE (owner, 2026-10-03: "a forward bias, and the feeling that the hover technology helping it lift also helps it avoid some
+// basic collision, so it almost glides on the walls"): with rock `ahead` cells in front, a hull meeting it at less than `glideAngle` from
+// parallel turns toward the wall's tangent at `glide` rad/s, before it touches; a square-on approach is left alone (that is a kick).
+// `pos` the hull, `heading` its unit heading, `toWall` the unit way from the hull to the rock: the new heading
+export function glideHeading(pos, heading, toWall, dt, tune) {
+  const n = norm(pos), into = heading[0] * toWall[0] + heading[1] * toWall[1] + heading[2] * toWall[2];
+  if (!(into > 0) || Math.acos(Math.min(1, into)) < Math.PI / 2 - tune.glideAngle) return heading;
+  const t = [heading[0] - toWall[0] * into, heading[1] - toWall[1] * into, heading[2] - toWall[2] * into], tl = Math.hypot(t[0], t[1], t[2]);
+  if (tl < 1e-9) return heading;
+  const k = Math.min(1, tune.glide * dt), h = [heading[0] + (t[0] / tl - heading[0]) * k, heading[1] + (t[1] / tl - heading[1]) * k, heading[2] + (t[2] / tl - heading[2]) * k];
+  const dn = h[0] * n[0] + h[1] * n[1] + h[2] * n[2];
+  return norm([h[0] - n[0] * dn, h[1] - n[1] * dn, h[2] - n[2] * dn]);
+}

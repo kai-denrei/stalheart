@@ -1,7 +1,7 @@
 import { createSentryPilot } from './sentry-pilot.js';
 import { DEFAULT_TANK, SHELL_SPEED, SHELL_REACH, TANK_DRIVE, TANK_STEER, TANK_WALL, TANK_KICK } from './content/tank.js'; import { makeDriveRamp, stepDriveRamp, scrubDriveRamp } from './domain/drive-ramp.js'; import { hullDepth, deepensContact } from './domain/hull-contact.js'; import { makeSteerEase, stepSteerEase, steerBank } from './domain/steer-ease.js'; import { baseFor, restoreSeatView } from './domain/seat-view.js'; import { BASE_REPAIR, BASE_BUILDER } from './content/base-programme.js';
 import { createGameBreaches } from './game-breaches.js'; import { ramShotPose } from './domain/showcase-shot.js';   /* THE RAM BEAT'S OWN FRAMING: low behind the hull (src/domain/showcase-shot.js; the band of cells it drives into is the showcase hooks') */
-import { createBoardSurface } from './fx/board-surface.js'; import { createCampaignDebrief, sparkline } from './fx/campaign-debrief.js'; import { createSectorRun } from './fx/sector-run.js'; import { createBackDoor } from './fx/back-door.js'; import { isaoFace, orbitFrame, sitesDir, sitesRadius } from './domain/story-shots.js';
+import { createBoardSurface } from './fx/board-surface.js'; import { createCampaignDebrief, sparkline } from './fx/campaign-debrief.js'; import { createSectorRun } from './fx/sector-run.js'; import { createBackDoor } from './fx/back-door.js'; import { isaoFace, orbitFrame, sitesDir, sitesRadius, tourFrame } from './domain/story-shots.js';
 import { startDiveShot } from './fx/dive-shot.js'; import { createCameraShots } from './fx/camera-shot.js'; import { createIntegrityHud } from './fx/integrity-hud.js'; import { createSeatGlide } from './fx/seat-glide.js'; import { LOOK_TOAST } from './fx/arrival.js'; import { viewEdge, viewportLine } from './domain/view-edge.js'; import { boxOverlaps } from './domain/box-overlaps.js'; import { makeShaderWarmer } from './fx/shader-warm.js'; import { waveGap } from './domain/wave-spread.js';
 import { BREACH_SOUNDS } from './content/breach-defaults.js';
 import { SOUNDS } from './content/runtime.js';
@@ -26,7 +26,7 @@ import { storage as localStorage } from './storage.js';
 // story is the game (docs/STATE.md); the campaign board under it serves the acceptance runs and the wave simulator.
 
 import { makeStuck, stepStuck, unstick } from './domain/hull-stuck.js'; import { highlightSeat } from './fx/seat-highlight.js'; import { HULL_STUCK, TANK_PLASMA } from './content/tank.js'; import { QUIVER_SPLASH, STORY_SENTRIES } from './content/sentries.js';   // the hull gets unstuck (owner, 2026-10-02)
-import { makeKick, startKick, stepKick, kicking, planKick } from './domain/hover-kick.js';
+import { makeKick, startKick, stepKick, kicking, planKick, glideHeading } from './domain/hover-kick.js'; import { guardExits } from './domain/guard-aggro.js';
 import * as THREE from '../vendor/three.module.js';
 import GUI from '../vendor/lil-gui.esm.js';
 import { bfsDist, BLOCKED, PATH, ROOM } from './dungeon.js';
@@ -2312,6 +2312,7 @@ export function initTdTab(root) {
       else if (drive !== 0) {
         const v = params.speed * speedBonus * cellSide * 1.6 * drive * rampMul
           * (1 - 0.65 * bumpFactor()) * (storyBase?.gateEase(player.pos) ?? 1); // run-over drag; a door opening (story-base gateEase)
+        { const ahead = norm3(add3(player.pos, scale3(player.heading, cellSide * TANK_KICK.ahead))), w = freeBlocked(ahead) ? nearestWall(ahead) : null; if (w) player.heading = glideHeading(player.pos, player.heading, norm3(sub3(w, player.pos)), dt, TANK_KICK); }   // THE HOVER GLIDE (src/domain/hover-kick.js)
         const step = scale3(player.heading, v * dt), before = player.pos;
         let cand = norm3(add3(player.pos, step));
         if (freeBlocked(cand)) {
@@ -3598,19 +3599,9 @@ export function initTdTab(root) {
     }
   }
 
-  // AUTO GUNNER: in auto mode the tank fights for itself — shells at the
-  // nearest enemy in range (the 3 s cannon heat is the fire rate). The
-  // directives shape it: 'conserve' and 'ram' spend shells only on the
-  // unrammable tier; portals are always worth a shell when nothing else
-  // is pressing. Manual mode leaves the trigger entirely to the player.
-  // AUTO SECONDARY (operator, 2026-09-01). The lasers cost nothing — no
-  // ammo, only heat — so auto uses them in EVERY directive. That is why
-  // this does not touch the shell rules below: 'conserve' is conserving
-  // limited shells, and there is nothing to conserve about the secondary.
-  //
-  // RAM is the one exception, and only half an exception: it will not burn
-  // a target it is lining up to ram, but it still answers the hard tier it
-  // refuses to charge.
+  // AUTO GUNNER: in auto mode shells go at the nearest enemy in range (the cannon heat is the rate); 'conserve' and 'ram' spend them only
+  // on the unrammable tier, portals when nothing presses; manual leaves the trigger to the player. AUTO SECONDARY (2026-09-01): the lasers
+  // cost only heat, so every directive uses them; RAM will not burn a target it is lining up to ram, but still answers the hard tier
   let autoLaserWant = false;
   function autoSecondary() {
     autoLaserWant = false;
@@ -3957,20 +3948,9 @@ export function initTdTab(root) {
     spawnOrbs();
     spawnEnemies();
     spawnRewards();
-    // EVERY RESET ENTERS THE WORLD THE SAME WAY. Brand-new game, browser
-    // reload, forced reset, retry after a loss — they all come through
-    // regenerate, so they all start with the hull in its berth driving out.
-    // Preludes only change what the camera was doing beforehand.
-    //
-    // Deliberately NOT in applyLook: a look swap is a cosmetic, and
-    // cosmetics never reset the run.
-    //
-    // A RESET ALSO ENDS WHATEVER SHOT WAS RUNNING. Regenerate is on the GUI
-    // and on Retry, so it can land mid-reveal — and a reveal that survives a
-    // reset keeps its skip listeners registered and then fires its onEnd
-    // against revealCells captured from the board that no longer exists.
-    // Same rule as runGen for timers, one level up: work started by the dead
-    // run must not land on the live one.
+    // EVERY RESET ENTERS THE WORLD THE SAME WAY (new game, reload, reset, retry: all through regenerate, the hull in its berth driving
+    // out; not in applyLook, a cosmetic never resets). A RESET ENDS WHATEVER SHOT WAS RUNNING: a reveal surviving it would keep its skip
+    // listeners and fire its onEnd against cells of a board that no longer exists (runGen's rule for timers, one level up)
     endShot();
     // ...and any brief mid-sentence, plus whatever was queued behind it. A
     // reset that leaves Isao talking over the new run is the same defect class
@@ -4369,7 +4349,7 @@ export function initTdTab(root) {
         let pool = null; if (isScared(e, tNow)) { const away = awayExits(exits, graph.centers, e.cur, e.scareFrom); if (away.length) pool = away; }
         if (!pool) { const down = exits.filter((c) => dungeon.distToHeart[c] < dungeon.distToHeart[e.cur]); pool = (down.length && whim() > 0.05) ? down : exits; }
         // THE STORY'S HARD CORES HOLD OFF THE WALL: once inside the holding ring they only wander within it (operator, while the lock is tuned)
-        if (e.guard) { const stay = exits.filter((c) => dist3(graph.centers[c], e.guard.c) < e.guard.r); pool = stay.length ? stay : [e.cur]; } else if (story?.ring.size && e.type === story.hardcore && story.ring.has(e.cur)) { const stay = exits.filter((c) => story.ring.has(c)); pool = stay.length ? stay : [e.cur]; }
+        if (e.guard) pool = guardExits({ exits, centers: graph.centers, guard: e.guard, cur: e.cur, hull: playerHP > 0 && !playerDown ? player.pos : null, aggro: STORY_EXPEDITIONS.aggro }); else if (story?.ring.size && e.type === story.hardcore && story.ring.has(e.cur)) { const stay = exits.filter((c) => story.ring.has(c)); pool = stay.length ? stay : [e.cur]; }
         e.next = pool.length ? pool[Math.floor(whim() * pool.length)] : e.cur;
       }
       const a = graph.centers[e.cur];
@@ -8145,7 +8125,7 @@ export function initTdTab(root) {
     stepBriefClock(dt);
     if (pilotMode && shotId() !== 'takeControl') endShot();
     stepShot(dt);
-    const frozen = buildFrozen() || (shotActive() && !/^(breach|sol88Launch|isaoTalk)$/.test(shotId()));   // live shots: the world runs under them
+    const frozen = buildFrozen() || (shotActive() && !/^(breach|sol88Launch|isaoTalk|sitesTour)$/.test(shotId()));   // live shots: the world runs under them
     // The BUILD pause holds the WORLD still, not the DRIVER (planning used to take three switches); a reveal or a tutorial hold
     // stops everything, because those are the game speaking.
     // the cold open holds the hull for its first two beats and lets go for
@@ -8449,7 +8429,8 @@ export function initTdTab(root) {
     // station from orbit for a free pass
     stalheartStands: () => !!story?.hull?.out(),
     gunshipArrive: () => { if (!story) return; story.gunshipIn = true; startStation(gunship, GUNSHIP_ORBIT); showBrief('gunship_overhead'); }, camera, startShot, snapCamera, sfx, drone: () => isao,
-    freeLook: () => { setView('orbit'); centerBuildOnHeart(); followSuspend = true; buildDist = 1.65; snapCamera(); showToast(LOOK_TOAST, 5000); },   /* THE ARRIVAL's hands (src/fx/arrival.js); freeLook: the landing hands over to the free camera */
+    freeLook: () => { const done = () => { setView('orbit'); centerBuildOnHeart(); followSuspend = true; buildDist = 1.65; snapCamera(); showToast(LOOK_TOAST, 5000); }, pts = (story?.sites ?? []).slice(0, 3).map((ci) => graph.centers[ci]);   // THE TOUR OF THE LANDERS (src/domain/story-shots.js tourFrame), live: the beats run under it and the override cuts in
+      if (!pts.length) return done(); startShot({ id: 'sitesTour', dur: 2 + 2.8 * pts.length, poseAt: (u, out) => poseCamera(tourFrame(u, graph.centers[dungeon.heart], pts), out), onEnd: done }); },   /* THE ARRIVAL's hands (src/fx/arrival.js); freeLook: the landing hands over to the free camera */
   },
   // ISAO KEEPS BUILDING (src/fx/programme-host.js): perks, hasPerk, build, repaired, printed
   createProgrammeHost({
@@ -8550,7 +8531,7 @@ export function initTdTab(root) {
   {
     let saved = null;
     try { saved = localStorage.getItem(PERF_KEY); } catch { /* fine */ }
-    if (urlParams.get('fps') === '1' || (urlParams.get('fps') !== '0' && (saved === '1' || (saved === null && urlParams.get('acceptance') === '1')))) setPerfOverlay(true,false);   /* off for players; on when turned on (backtick, DEV · Frame readout) and for the acceptance runs that read it */
+    if (urlParams.get('fps') === '1' || (urlParams.get('fps') !== '0' && (saved === '1' || saved === null))) setPerfOverlay(true,false);   /* off for players; on when turned on (backtick, DEV · Frame readout) and for the acceptance runs that read it */
     if (urlParams.get('fps') === '1') {
       console.log(`PERFOVERLAY on=${perfOn} el=${!!perfEl}`
         + ` hidden=${perfEl ? perfEl.classList.contains('hidden') : '?'}`
