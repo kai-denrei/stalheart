@@ -43,23 +43,37 @@ const stamp = (key, i) => {
 const crate = (at) => `<svg class="sdb-glyph sdb-crate" data-drop data-at="${at}" viewBox="0 0 40 40" aria-hidden="true"><rect x="12" y="3" width="16" height="5"/><rect x="3" y="8" width="34" height="28"/><path d="M3 8 L37 36 M37 8 L3 36 M3 22 H37"/></svg>`;
 const hull = (at) => `<svg class="sdb-glyph sdb-hull" data-drop data-at="${at}" viewBox="0 0 56 36" aria-hidden="true"><path d="M5 26 H47 L43 33 H9 Z M9 26 L13 18 H39 L43 26 M19 18 V12 H31 V18 M31 14 H51"/><path class="sdb-x" d="M10 6 L46 34 M46 6 L10 34"/></svg>`;
 
+// THE SUMMARY, ONE SCREEN (owner, 2026-10-03: "end of sector scoreboard has too many sections ... trim, organize into one screen with lots
+// of info, sparklines, tighter, smaller callouts for bonuses ... keep the tabs for the more detailed info, but they must be optional, not
+// forced to click continue 5x"). The outcome word, eight numbers, one chip per breach, the kill tempo as a sparkline with the belt ladder
+// under it, and the citations as small chips. CONTINUE is on this page; the other four pages are tabs, there for whoever wants them.
 function pageHero(r) {
-  const lost = r.outcome === 'lost', s = r.score || {}, b = r.biomass || {}, list = r.breaches || [];
-  const points = list.reduce((a, x) => a + num(x.leftInField && x.leftInField.points), 0);
-  const stamps = r.stamps || [];
-  const sub = lost ? 'THE COLONY FELL · THE LOG GOT OUT'
-    : `${list.length === 2 ? 'BOTH BREACHES' : `${list.length} BREACHES`} CLOSED · NOTHING LEFT ALIVE`;
-  return `<section class="sdb-page sdb-hero">
-    <div class="sdb-kicker" data-reveal data-at="0">SECTOR ${pad2(r.sector)} · ${esc(r.name)}</div>
-    <h1 class="sdb-word" data-reveal data-at="60">${lost ? 'LAST <span>TRANSMISSION</span>' : 'SECURE'}</h1>
-    <div class="sdb-sub" data-reveal data-at="240">${sub}</div>
-    <div class="sdb-stats">
-      <div class="sdb-stat" data-reveal data-at="300"><span>TIME</span>${roll(r.seconds, { fmt: 'clock', at: 340, dur: 900 })}<small>ON THE CLOCK</small></div>
-      <div class="sdb-stat" data-reveal data-at="420"><span>SCORE</span>${roll(s.total, { at: 460, dur: 1400 })}<small>${roll(s.kills, { at: 700, dur: 900, cls: 'sdb-num--s' })} KILLS · ${roll(s.rams, { at: 780, dur: 900, cls: 'sdb-num--s' })} RAMS · ${roll(s.bonuses, { at: 860, dur: 900, cls: 'sdb-num--s' })} BONUS</small></div>
-      <div class="sdb-stat" data-reveal data-at="540"><span>BIOMASS EARNED</span>${roll(b.earned, { at: 580, dur: 1100 })}${unit('KG')}<small>${roll(b.bank, { at: 900, dur: 800, cls: 'sdb-num--s' })} KG IN THE BANK</small></div>
-      <div class="sdb-stat${num(b.leftInField) ? ' sdb-stat--warn' : ''}" data-reveal data-at="660"><span>LEFT IN THE FIELD</span>${roll(b.leftInField, { at: 700, dur: 1000 })}${unit('KG')}<small>${roll(points, { at: 980, dur: 800, cls: 'sdb-num--s' })} POINTS NEVER CAME</small></div>
+  const lost = r.outcome === 'lost', s = r.score || {}, b = r.biomass || {}, list = r.breaches || [], k = r.kills || {}, t = r.tank || {};
+  const stamps = r.stamps || [], acc = accuracy(num(t.shotsHit), num(t.shotsFired));
+  const tile = (label, inner, at, warn = false) => `<div class="sdb-sum-t${warn ? ' is-warn' : ''}" data-reveal data-at="${at}"><span>${label}</span>${inner}</div>`;
+  const chips = list.map((x, i) => { const c = closedByLabel(x.closedBy); return `<div class="sdb-sum-chip" data-reveal data-at="${560 + i * 90}"><b>${breachLetter(i)}</b><span>${esc(sideLabel(x.side))}</span><em>${esc(c.label)}</em><span>${num(x.kills)} KILLS</span></div>`; }).join('');
+  const tempo = k.tempo || [], W = 600, H = 56, tp = tempoPath(tempo, W, H);
+  const belts = beltEntries(k.byBelt, BELT_ORDER).filter((x) => x.value > 0), btot = Math.max(1, belts.reduce((a, x) => a + x.value, 0));
+  const ladder = belts.map((x) => `<i style="flex:${x.value};background:${hex(BELT_HEX[x.key] ?? 0x888888)}" title="${esc(x.label)} ${x.value}"></i>`).join('');
+  const cites = stamps.map((key) => `<span class="sdb-sum-cite" data-reveal data-at="1300" title="${esc(stampNote(key))}">${esc(stampLabel(key))}</span>`).join('');
+  return `<section class="sdb-page sdb-hero sdb-sum">
+    <div class="sdb-sum-head" data-reveal data-at="0"><h1 class="sdb-word">${lost ? 'LAST <span>TRANSMISSION</span>' : 'SECURE'}</h1><div class="sdb-kicker">SECTOR ${pad2(r.sector)} · ${esc(r.name)}</div></div>
+    <div class="sdb-sum-grid">
+      ${tile('TIME', roll(r.seconds, { fmt: 'clock', at: 120, dur: 700 }), 100)}
+      ${tile('SCORE', roll(s.total, { at: 160, dur: 1000 }), 140)}
+      ${tile('KILLS', roll(k.total, { at: 200, dur: 900 }), 180)}
+      ${tile('RAMS', `${roll(t.rams, { at: 240, dur: 800 })}<small>BEST ${formatValue(num(t.bestCombo), 'combo')}</small>`, 220)}
+      ${tile('BIOMASS', `${roll(b.earned, { at: 280, dur: 900 })}${unit('KG')}<small>${formatValue(num(b.bank), 'int')} IN THE BANK</small>`, 260)}
+      ${tile('LEFT IN FIELD', `${roll(b.leftInField, { at: 320, dur: 800 })}${unit('KG')}`, 300, num(b.leftInField) > 0)}
+      ${tile('ACCURACY', roll(Math.round(acc * 100), { fmt: 'pct', at: 360, dur: 800 }), 340)}
+      ${tile('HULLS LOST', roll(t.hullsLost, { at: 400, dur: 600 }), 380, num(t.hullsLost) > 0)}
     </div>
-    <div class="sdb-stamps" data-count="${stamps.length}">${stamps.length ? stamps.map(stamp).join('') : '<div class="sdb-none" data-reveal data-at="1800">NO CITATIONS THIS SECTOR</div>'}</div>
+    <div class="sdb-sum-chips">${chips}</div>
+    <div class="sdb-sum-spark" data-reveal data-at="700"><span>TEMPO · KILLS PER 5 S</span>
+      <svg class="sdb-spark" data-grow="1" data-at="760" data-dur="900" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><path class="sdb-spark-area" d="${tp.area}"/><path class="sdb-spark-line" d="${tp.line}"/></svg>
+      <div class="sdb-sum-ladder" title="the belt ladder, white to red">${ladder}</div>
+    </div>
+    <div class="sdb-sum-cites">${cites || '<span class="sdb-sum-cite is-none" data-reveal data-at="1300">NO CITATIONS</span>'}</div>
   </section>`;
 }
 
@@ -261,7 +275,7 @@ export function createSectorDebrief(host, options = {}) {
   root.innerHTML = `<div class="sdb-frame">
     <header class="sdb-head"><div class="sdb-tx"><i class="sdb-dot"></i><span data-f="tx"></span></div><nav class="sdb-tabs" data-f="tabs"></nav></header>
     <div class="sdb-body" data-f="body"></div>
-    <footer class="sdb-foot"><button type="button" class="sdb-btn" data-act="back">&#9664; BACK</button><span class="sdb-count" data-f="count"></span><span class="sdb-hint">CLICK · SPACE &nbsp;SKIP / NEXT</span><span class="sdb-acts" data-f="acts"></span></footer>
+    <footer class="sdb-foot"><button type="button" class="sdb-btn" data-act="back">&#9664; BACK</button><span class="sdb-count" data-f="count"></span><span class="sdb-hint">SPACE &nbsp;CONTINUE · TABS FOR DETAIL</span><span class="sdb-acts" data-f="acts"></span></footer>
     <div class="sdb-scan" aria-hidden="true"></div>
   </div>`;
   host.append(root);
@@ -380,8 +394,7 @@ export function createSectorDebrief(host, options = {}) {
     back.hidden = labels.length < 2;
     root.querySelector('[data-f=acts]').innerHTML = mode === 'campaign'
       ? '<button type="button" class="sdb-btn" data-act="newrun">NEW RUN</button><button type="button" class="sdb-btn sdb-btn--go" data-act="keep">KEEP HOLDING &#9654;</button>'
-      : last ? '<button type="button" class="sdb-btn sdb-btn--go" data-act="continue">CONTINUE &#9654;</button>'
-        : '<button type="button" class="sdb-btn" data-act="next">NEXT &#9654;</button>';
+      : (last ? '' : '<button type="button" class="sdb-btn" data-act="next">DETAIL &#9654;</button>') + '<button type="button" class="sdb-btn sdb-btn--go" data-act="continue">CONTINUE &#9654;</button>';   // CONTINUE on every page: the detail tabs are optional (2026-10-03)
     body.innerHTML = mode === 'campaign' ? pageCampaign(campaign, isao) : REPORT_PAGES[index](report, isao);
     body.scrollTop = 0;
     collect();
@@ -419,10 +432,11 @@ export function createSectorDebrief(host, options = {}) {
     go.focus({ preventScroll: true });
     go.classList.remove('sdb-nudge'); void go.offsetWidth; go.classList.add('sdb-nudge');
   }
+  // a press completes the page, the next one closes the card: the summary is the debrief, the tabs are for whoever wants them
   function advance() {
     if (!mode) return;
     if (complete()) return;
-    if (index < labels.length - 1) goTo(index + 1); else nudge();
+    if (mode === 'report') close(onContinue); else nudge();
   }
   function close(callback) {
     const data = mode === 'campaign' ? campaign : report;
@@ -461,7 +475,7 @@ export function createSectorDebrief(host, options = {}) {
     e.stopPropagation();
     const button = e.target.closest && e.target.closest('button');
     if (button && root.contains(button)) { if (!button.disabled) act(button); return; }
-    if (frame.contains(e.target)) advance();
+    if (frame.contains(e.target)) complete();   // a stray click lands the numbers; it never closes the card
   }
   const swallow = (e) => e.stopPropagation();
   view.addEventListener('keydown', onKey, true);

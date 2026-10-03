@@ -13,7 +13,7 @@ import { LASER_AUDIO } from '../content/orbital-laser.js';
 // the story world's cues, with SOL-82's burning ground once the orbital laser is in the arsenal (src/fx/laser-arsenal.js)
 const STORY_WORLD_SOUNDS = Object.freeze({ ...STORY_SOUNDS, ...LASER_AUDIO });
 export { STORY_WORLD_SOUNDS as STORY_SOUNDS };
-import { ISLANDS, STRUCTURES, KIT, STAGES, withLandmarkTiers, landmarkTierMode } from '../content/base-layout.js';
+import { ISLANDS, STRUCTURES, KIT, STAGES, SOLID_STRUCTURES, withLandmarkTiers, landmarkTierMode } from '../content/base-layout.js';
 import { SHIELD_ARRAY } from '../content/shield-array.js';
 import { createStoryBase, basisAt } from '../fx/story-base.js';
 import { createArrival } from '../fx/arrival.js';
@@ -102,7 +102,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   for (const ci of plan.open) built.dungeon.tags[ci] = PATH;   // the ground under a landed rocket first, then the gate's walls on top
   for (const w of plan.walls) if (w.cell >= 0 && !w.pending) built.dungeon.tags[w.cell] = BLOCKED;   // a pending wall blocks once it is printed (the controller's storyApi.printed)
   // the game prints the real Rotor; the static model stays a lab thing
-  const base = createStoryBase(scene, { plan, placer, metres: 1 / planet.radius, kit: KIT, skip: ['rotor'], sfx, warm });
+  const base = createStoryBase(scene, { plan, placer, metres: 1 / planet.radius, kit: KIT, skip: ['rotor'], sfx, warm, solid: new Set(SOLID_STRUCTURES) });
   // which gate (if any) owns a lattice cell: built from the plan once, so the pathfinder's per-step lookup is a map hit
   const gateCellMap = new Map();
   for (const g of plan.gates ?? []) for (const ci of g.cells ?? []) if (ci >= 0) gateCellMap.set(ci, g.id ?? 'gate');
@@ -138,6 +138,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     sockets: new Set(), home: plan.cells.landing, socketLift: 0,
     // the solar array's shield pad (src/content/shield-array.js): its island's centre on the unit sphere, standing once the island is; a build programme stands it later by setting `standing`
     arrayPad: padOf(SHIELD_ARRAY.island),
+    paintPad: padOf(BASE_PERKS.paint.island, BASE_PERKS.paint.pad),   // PIMP MY RIDE: the purple pad beside the bays (src/fx/paint-pad.js)
     armoryPad: padOf(BASE_PERKS.armory.island, BASE_PERKS.armory.pad),   // the armory's reload pad by the assembly line (src/fx/armory-pad.js), live once the armory is printed
     // a run that starts at or past the expedition (a jump link) has no expedition of its own to wait for (src/fx/sector-run.js)
     lateStart: phase != null && STORY_PHASES.indexOf(phase) >= STORY_PHASES.indexOf('expedition'),
@@ -187,7 +188,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
 // unit sphere; the pose is written into the host's camera goal.
 // from: { pos, quat } of the camera the hand-over starts in (another seat): the first `pull` of the shot backs out of it, up and away,
 // before the orbit round the new mount (owner, 2026-10-02: "switch from Rotor to Quiver should zoom out of the Rotor")
-export function takeControlPose(centre, normal, lane, cellSide, wallHeight, from = null, pull = 0.35) {
+export function takeControlPose(centre, normal, lane, cellSide, wallHeight, from = null, pull = 0.3) {
   const c = new THREE.Vector3(...centre).multiplyScalar(1 + wallHeight), n = new THREE.Vector3(...normal).normalize();
   const toLane = new THREE.Vector3(...lane).sub(new THREE.Vector3(...centre)); toLane.sub(n.clone().multiplyScalar(toLane.dot(n))).normalize();
   const side = new THREE.Vector3().crossVectors(n, toLane).normalize();
@@ -200,11 +201,18 @@ export function takeControlPose(centre, normal, lane, cellSide, wallHeight, from
     tmp.lookAt(goal.pos, look, n); goal.quat.setFromRotationMatrix(tmp);
   };
   if (!from) return orbit;
-  const back = from.pos.clone().addScaledVector(n, cellSide * 2.4).addScaledVector(new THREE.Vector3(0, 0, 1).applyQuaternion(from.quat), cellSide * 2.2), start = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
-  orbit(0, start);
+  // FROM ONE SEAT TO THE NEXT, THREE STATES (owner, 2026-10-03: "Rotor action is over. Entirely switch off, to a high view, so we see the
+  // enemies in the distance, then it zooms back into the new sentry; the quiver. We need a clearer distinct change of states"): the eye
+  // leaves the old optic and climbs to a HIGH VIEW over the new mount looking out down its lane (the swarm in the distance) by `pull`,
+  // holds it until `hold`, then dives to the new mount's shoulder; the seat glide lands it on the optic
+  const high = { pos: c.clone().addScaledVector(n, cellSide * 7).addScaledVector(toLane, -cellSide * 5), quat: new THREE.Quaternion() };
+  tmp.lookAt(high.pos, c.clone().addScaledVector(toLane, cellSide * 12), n); high.quat.setFromRotationMatrix(tmp);
+  const end = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() }, hold = 0.62;
+  orbit(1, end);
   return (u, goal) => {
-    if (u < pull) { const k = u / pull, e = k * k * (3 - 2 * k); goal.pos.copy(from.pos).lerp(back, e); goal.quat.copy(from.quat).slerp(start.quat, e * 0.6); return; }
-    const k = (u - pull) / (1 - pull), e = k * k * (3 - 2 * k);
-    orbit(k, goal); goal.pos.lerp(back, 1 - e);
+    if (u < pull) { const k = u / pull, e = k * k * (3 - 2 * k); goal.pos.copy(from.pos).lerp(high.pos, e).addScaledVector(n, Math.sin(Math.PI * e) * cellSide * 2); goal.quat.copy(from.quat).slerp(high.quat, e); return; }
+    if (u < hold) { const k = (u - pull) / (hold - pull); goal.pos.copy(high.pos).addScaledVector(toLane, k * cellSide * 0.6); goal.quat.copy(high.quat); return; }
+    const k = (u - hold) / (1 - hold), e = k * k * (3 - 2 * k);
+    goal.pos.copy(high.pos).lerp(end.pos, e); goal.quat.copy(high.quat).slerp(end.quat, e);
   };
 }

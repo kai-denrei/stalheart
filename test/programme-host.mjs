@@ -28,6 +28,7 @@ function controller(o = {}) {
     syncLifeContainers: rec('lives'), rebuildAfterBreach: rec('rebuild'), recomputePortalDist: rec('portalDist'), adoptBays: rec('adoptBays'), eco: () => ({ addBiomass: rec('biomass') }),
     laserStation: { seated: () => false }, shotId: () => null, deployStart: (n) => { log.push(['deployStart', n]); s.deploy = { n }; }, deployStep: () => { s.deploy = null; },
     leavePilot: rec('leavePilot'), camera: null, startShot: rec('shot'), deployFramePoseFor: rec('frame'), camA: {}, setView: rec('view'),
+    callout: rec('callout'), enemies: () => s.enemies ?? [], graph: () => ({ centers: Array.from({ length: 16 }, (_, i) => [i, 0, 0]) }), cellSide: () => 0.1,
     setPlayerHP: (v) => { s.playerHP = v; }, setBerths: (v) => { s.berths = v; }, setPlayerDown: (v) => { s.playerDown = v; }, setDeploy: (v) => { s.deploy = v; },
   };
   for (const k of ['story', 'playerHP', 'sectorRun', 'waveActive', 'dungeon', 'tdFullTags', 'storyBase', 'pilotMode', 'briefQ', 'pilot', 'deploy', 't', 'storyViews']) c[k] = () => s[k];
@@ -66,9 +67,17 @@ function controller(o = {}) {
   log.length = 0; api.repaired(orders[0].repair);
   assert.deepEqual([s.dungeon.tags[5], s.tdFullTags[5], breachedCells.has(5), breachQueue], [BLOCKED, BLOCKED, false, [5]]);
   assert.deepEqual(log, [['restoreWall', 5], ['rebuild'], ['portalDist'], ['hud']]);
-  // mid-wave: no repair, the next step instead
-  orders.length = 0; s.dungeon.tags[5] = PATH; s.waveActive = true; api.build();
-  assert.deepEqual(orders.map((x) => [x.kind, x.ci]), [['structure', 6]], 'a wave on: the Stålheart, not the wall');
+  // HIS CHECK (2026-10-03): he hovers BASE_REPAIR.check seconds over the mended wall, nothing starts meanwhile, then he says it is sealed
+  api.build(); assert.equal(orders.length, 1, 'checking: nothing new');
+  s.t += BASE_REPAIR.check; log.length = 0; orders.length = 0; api.build();
+  assert.deepEqual(log[0], ['callout', BASE_REPAIR.sealed, 'co-victory'], 'the breach is sealed');
+  assert.deepEqual(orders.map((x) => [x.kind, x.ci]), [['structure', 6]], 'and back to the programme');
+  // mid-wave with a body by the hole: no repair, the next step instead
+  orders.length = 0; s.story.programme.active = null; s.dungeon.tags[5] = PATH; s.waveActive = true; s.enemies = [{ alive: true, pos: [5, 0, 0] }]; api.build();
+  assert.deepEqual(orders.map((x) => [x.kind, x.ci]), [['structure', 6]], 'a wave on and a body at the hole: the Stålheart, not the wall');
+  // mid-wave with nobody near it: the hole is mended at once (owner, 2026-10-03: "not reactive enough")
+  orders.length = 0; s.enemies = [{ alive: true, pos: [15, 0, 0] }]; s.story.programme.active = null; api.build();
+  assert.deepEqual(orders.map((x) => [x.kind, x.ci]), [['repair', 5]], 'a wave on, the hole clear: he mends it now');
 }
 // TWO DOORS: the worst gate first, found by its id; a gate repaired goes back to full through the sector loop
 {

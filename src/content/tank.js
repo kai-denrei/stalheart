@@ -20,3 +20,10 @@ export const HULL_STUCK = Object.freeze({ after: 0.25, ramp: 0.35, share: 0.3, r
 // THE PLASMA COSTS BIOMASS (owner, 2026-10-02: "using the plasma throwers on the tank costs some biomass"): kilograms a second while
 // the twin plasma fires in the story; with nothing in the bank the trigger is dry and the panel says so (once every few seconds)
 export const TANK_PLASMA = Object.freeze({ kgPerSecond: 3, dry: '<div class="wave-num">PLASMA DRY</div><div class="wave-role">no biomass to burn</div>' });
+
+// A WALL IS FRICTION, NOT A THUD (owner, 2026-10-03: "bumping into walls with the tank feels wrong… repeated jagged staccato movements,
+// which loses the feeling of weight and mass"). A head-on hit used to fire the run-over thud: a 65% drag, a camera dip and the run-up
+// wiped, then the run-up rebuilt into the same wall, again and again. Now the into-wall share of each step bleeds the run-up at `scrub`
+// per second and turns the heading toward the slide at `align` per second, so the hull scrapes along and comes round parallel. Against a
+// building (no rock cell to slide off) the step is tried `glance` radians either side.
+export const TANK_WALL = Object.freeze({ scrub: 2.5, align: 3.5, glance: Object.freeze([0.5, -0.5, 1.0, -1.0]) });

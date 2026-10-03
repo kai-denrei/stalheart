@@ -220,6 +220,11 @@ export const BRIEFS = {
     id: 'sites_seen', face: 'curious', title: 'COMMS · ISAO', once: true,
     lines: ['We were not the only rocket. Three more came down off course.', 'See the beacons? Something worth fetching at each. Later, with a hull.'],
   },
+  // the bays' purple pad (src/fx/paint-pad.js): his lines over the shop when the player parks on it
+  paint_pad: {
+    id: 'paint_pad', face: 'glee', title: 'PIMP MY RIDE · ISAO',
+    lines: ['Parked on the pad. Good.', 'Every dye I have pulled out of them is on the rack.'],
+  },
   dyes_found: {
     id: 'dyes_found', face: 'glee', title: 'PAINT SHOP · ISAO',
     lines: ['Their biomass has pigment in it. I can print it as paint.', 'Take a breath. Pick a colour. The hull has been grey long enough.'],

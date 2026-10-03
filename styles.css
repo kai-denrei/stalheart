@@ -4796,3 +4796,25 @@ body.seat-gliding #seat-vignette { display: none; }
 /* the story's sentry count under the biomass in the radial's centre (src/fx/shop-radial.js) */
 #td-shop .radial-center small { display: block; font-size: 8px; letter-spacing: .04em; opacity: .8; line-height: 1.1; }
 #td-shop .radial-center:has(small) { flex-direction: column; }
+
+/* THE SUMMARY ON ONE SCREEN (src/fx/sector-debrief.js pageHero, owner 2026-10-03): tighter, every number at once, small citation chips */
+.sdb-sum { gap: clamp(8px, 1.4cqi, 14px); }
+.sdb-sum .sdb-word { font-size: clamp(26px, 4.6cqi, 54px); margin: 0; }
+.sdb-sum-head { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; }
+.sdb-sum-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--sdb-faint); border-block: 1px solid var(--sdb-faint); }
+.sdb-sum-t { background: rgba(4, 12, 12, 0.92); padding: 8px 12px; min-width: 0; }
+.sdb-sum-t > span { display: block; font-size: 12px; letter-spacing: 0.2em; color: var(--sdb-dim); white-space: nowrap; }
+.sdb-sum-t .sdb-num { font-size: clamp(20px, 3cqi, 34px); }
+.sdb-sum-t small { display: block; font-size: 11px; letter-spacing: 0.12em; color: var(--sdb-dim); margin-top: 2px; }
+.sdb-sum-t.is-warn .sdb-num { color: #ffb26b; }
+.sdb-sum-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.sdb-sum-chip { display: flex; gap: 8px; align-items: baseline; padding: 4px 10px; border: 1px solid var(--sdb-faint); font-size: 13px; letter-spacing: 0.1em; color: var(--sdb-ink); }
+.sdb-sum-chip b { color: var(--sdb-hi); } .sdb-sum-chip em { font-style: normal; color: var(--sdb-hi); }
+.sdb-sum-spark > span { display: block; font-size: 12px; letter-spacing: 0.2em; color: var(--sdb-dim); margin-bottom: 4px; }
+.sdb-sum-spark .sdb-spark { display: block; width: 100%; height: clamp(36px, 6cqi, 56px); }
+.sdb-sum-ladder { display: flex; height: 6px; margin-top: 4px; gap: 1px; }
+.sdb-sum-cites { display: flex; gap: 6px; flex-wrap: wrap; }
+.sdb-sum-cite { font-size: 11px; letter-spacing: 0.14em; padding: 3px 8px; border: 1px solid var(--sdb-accent); color: var(--sdb-accent); background: var(--sdb-accent-soft); transform: rotate(-1.5deg); }
+.sdb-sum-cite:nth-child(2n) { transform: rotate(1.5deg); }
+.sdb-sum-cite.is-none { border-color: var(--sdb-faint); color: var(--sdb-dim); transform: none; }
+@container (max-width: 560px) { .sdb-sum-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

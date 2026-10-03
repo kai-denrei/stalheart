@@ -544,13 +544,14 @@ try{
  await evaluate(`${T}.sectorClearField()`);await until(`${T}.state().sector.secure`,30000);await until(`${T}.state().sector.debriefOpen`,20000);await delay(1500);
  assert(await evaluate('!!document.querySelector(".sdb-root:not([hidden])")'),'the debrief card is up');
  {const pages=+(await evaluate('document.querySelector(".sdb-root").dataset.pages'));assert(pages>=2,`a multi-page report (${pages})`);
-  await thumb('.sdb-acts .sdb-btn','NEXT');await reachable('.sdb-acts .sdb-btn','NEXT');await layout(['.sdb-frame'],'the debrief');
-  // a tap on the page completes it, the next tap advances: page 0 to page 1 by two thumbs on the body
+  await thumb('.sdb-acts .sdb-btn','DETAIL');await reachable('.sdb-acts .sdb-btn','DETAIL');await thumb('.sdb-acts [data-act=continue]','CONTINUE');await layout(['.sdb-frame'],'the debrief');
+  // a tap on the page lands its numbers and never closes or turns it: the summary is the debrief, CONTINUE is already on it (2026-10-03)
   const body=await centre('.sdb-body');await tapAt(body.x,body.y);await delay(200);await tapAt(body.x,body.y);await delay(300);
-  assert.equal(await evaluate('document.querySelector(".sdb-root").dataset.page'),'1','two taps on the page turn it');
+  assert.equal(await evaluate('document.querySelector(".sdb-root").dataset.page'),'0','taps on the page leave it on the summary');
+  assert.equal(await evaluate('!!document.querySelector(".sdb-acts [data-act=continue]")'),true,'CONTINUE stands on the summary');
   current='phone-debrief';await finish();
-  // NEXT to the last page, where CONTINUE stands
-  for(let i=1;i<pages-1;i++){await tap('.sdb-acts [data-act=next]','NEXT');await delay(250);}
+  // the detail pages are optional: DETAIL walks them to the last, where CONTINUE stands too
+  for(let i=0;i<pages-1;i++){await tap('.sdb-acts [data-act=next]','DETAIL');await delay(250);}
   assert.equal(await evaluate('document.querySelector(".sdb-root").dataset.page'),String(pages-1),'on the last page');
   await thumb('.sdb-acts [data-act=continue]','CONTINUE');await reachable('.sdb-acts [data-act=continue]','CONTINUE');
   current='phone-debrief-last';await finish();
@@ -1599,6 +1600,36 @@ try{
  const l1=(await st()).laser;console.log(`  round9: SOL ${JSON.stringify(seen.filter(x=>x.b).slice(0,4))} burned ${JSON.stringify(l1.burned)}`);
  assert.ok(seen.some(x=>x.b&&x.s),'an automated burn leaves from a source in the sky');
  for(const k of ['towers','walls','tank','structures','heart'])assert.equal(l1.burned[k]??0,0,`the automated pass burned no ${k}`);
+ } else if(args.includes('--base-look')) {
+ // a still of the finished base from above, for placing things (no assertions)
+ const T='window.__stalheartTest';
+ await go('base-look','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await delay(4000);
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card{display:none!important}</style>")');
+ await evaluate(`${T}.showcase.ground(${T}.state().storyHome,70,1)`);await delay(2500);current='base-look-top';await finish();
+ } else if(args.includes('--round10')) {
+ // THE OWNER'S TENTH NOTES (2026-10-03): the purple pad before the bays opens the paint shop over a paused game; a sentry's level on its
+ // pedestal; the boards bigger, west of the Stålheart; the debrief on one screen with CONTINUE on it
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), col=async()=>(await st()).programme.colony;
+ await go('round10-base','index.html?sw=0&acceptance=1&cine=0&world=story&stage=8&phase=expedition#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await delay(2000);
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card{display:none!important}</style>")');
+ await until(`(${T}.state().programme.colony.paintPad||{}).standing`,30000).catch(async()=>assert.fail(`the paint pad stands with the bays (${JSON.stringify((await col()).paintPad)})`));
+ const pad=(await col()).paintPad;
+ await until(`!${T}.state().shot`,30000).catch(()=>{});await delay(1000);
+ console.log(`  round10: before ${JSON.stringify(await evaluate(`(()=>{const s=${T}.state();return {deploy:s.deploy??null,playerDown:s.playerDown??null,hull:s.hull??null,paused:s.paused};})()`))}`);
+ await evaluate(`${T}.deployHull(0)`);await until(`!${T}.state().deploying`,30000).catch(()=>{});await delay(500);
+ await evaluate(`${T}.placeTank(${pad.cell})`);await delay(500);console.log(`  round10: tank ${JSON.stringify(await evaluate(`${T}.seatState().tankPos`))} pad ${JSON.stringify((await col()).paintPad)}`);
+ await until(`${T}.state().programme.colony.shop`,10000).catch(async()=>assert.fail(`parked on the pad, the paint shop opens (${JSON.stringify((await col()).paintPad)} seat ${JSON.stringify(await evaluate(`${T}.seatState()`))})`));
+ assert.equal((await st()).paused,true,'the game waits under the shop');
+ assert.match(await evaluate('document.querySelector("#paint-shop header")?.textContent||""'),/PIMP MY RIDE/);
+ await delay(600);current='round10-paint-pad';await finish();
+ await evaluate('document.querySelector("#paint-shop [data-done]").click()');await delay(400);
+ assert.equal((await st()).paused,false,'DONE lets the game go');
+ await delay(1500);assert.equal((await col()).shop,false,'it does not reopen while the hull is still on the pad');
+ // a sentry's level plate
+ const tw=(await st()).towerCells?.[0];
+ if(tw){await evaluate(`${T}.showcase.ground(${tw[1]},1.2,2.4)`);await delay(1800);current='round10-tier-plate';await finish();}
  } else if(args.includes('--units-sky')) {
  // THE SKY ON THE BENCH (owner, 2026-10-01: "UNITS are not showing all the units; we should see SOL, and the Gunship. also show
  // Wireframe for all units"): the KORP, SOL-82 and SOL-88 are catalogue entries built from their pinned GLBs, and the wireframe

@@ -57,7 +57,8 @@ export const nodeNamed = (root, name) => { let hit = null; root.traverse((o) => 
 // only becomes the tier to swap to once its programs are linked and first-used: the dive's pass over the base paid
 // 55 ms + 32 ms of links otherwise, and a tier shown on the frame it linked still paid 53-72 ms. The far tier stands a
 // few frames longer; the swap itself is unchanged.
-export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [], sfx = null, warm = null }) {
+export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [], sfx = null, warm = null, solid = new Set() }) {
+  const solidV = new THREE.Vector3();
   const group = new THREE.Group(); group.name = 'Story base'; scene.add(group);
   const mixers = [], owned = new Set(), errors = [], bays = [], lod = [];
   const records = new Map();   // every landmark by id, for the beats' hands (reveal, conceal, structure)
@@ -229,6 +230,30 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     droppedCells: () => [...new Set([...dropped].map((k) => plan.walls[k].cell).filter((c) => c >= 0))],
     dropWallsAt: (cell) => { let n = 0; plan.walls.forEach((w, k) => { if (w.cell === cell && !dropped.has(k)) { n++; for (const o of group.children) if (o.isInstancedMesh && o.name === 'walls') { o.setMatrixAt(k, ZERO); o.instanceMatrix.needsUpdate = true; } dropped.add(k); } }); return n; },
     restoreWall: (cell) => { let n = 0; plan.walls.forEach((w, k) => { if (w.cell !== cell) return; n++; dropped.delete(k); grown.walls.set(k, 1); for (const s of wallMeshes) { s.inst.setMatrixAt(k, wallMatrix(plan.walls[k], s.src, 1)); s.inst.instanceMatrix.needsUpdate = true; s.inst.computeBoundingSphere(); } }); return n > 0; },
+    // THE BUILDINGS ARE SOLID TO THE HULL (owner, 2026-10-03: "some structures in the base allow the Tank to pass through them, they should
+    // feel solid (except those where the tank can go under like the Stalheart)"). `solid` (src/content/base-layout.js SOLID_STRUCTURES) names
+    // the ones that stop it; each one standing and shown keeps a footprint measured once off its model in its holder's own frame: the
+    // box of the meshes that reach down to its ground (an arm or a gantry overhead is not a wall). solidAt(p, pad): a unit point within
+    // `pad` scene units of one
+    solidAt(p, pad = 0) {
+      for (const st of plan.structures) {
+        if (!solid.has(st.id) || kOf(grown.structures, st.id, st) < 1) continue;
+        const r = records.get(st.id), root = r && (r.near ?? r.far); if (!root || r.holder.visible === false) continue;
+        let f = r.foot;
+        if (!f || f.root !== root) {
+          r.holder.updateWorldMatrix(true, true);
+          const inv = new THREE.Matrix4().copy(r.holder.matrixWorld).invert(), boxes = [];
+          root.traverse((o) => { if (!o.isMesh || !o.geometry) return; o.geometry.boundingBox ?? o.geometry.computeBoundingBox(); boxes.push(o.geometry.boundingBox.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld))); });
+          if (!boxes.length) continue;
+          const low = Math.min(...boxes.map((b) => b.min.y)), reach = 2.5 * metres / r.holder.matrixWorld.getMaxScaleOnAxis(), foot = new THREE.Box3();
+          for (const b of boxes) if (b.min.y <= low + reach) foot.union(b);
+          f = r.foot = { root, inv, foot, scale: r.holder.matrixWorld.getMaxScaleOnAxis() };
+        }
+        const q = solidV.set(p[0], p[1], p[2]).applyMatrix4(f.inv), m = pad / f.scale;
+        if (q.x > f.foot.min.x - m && q.x < f.foot.max.x + m && q.z > f.foot.min.z - m && q.z < f.foot.max.z + m) return st.id;
+      }
+      return null;
+    },
     // THE BUILDINGS A WEAPON CAN BURN (SOL-82): every landmark that is standing, printed and shown, with where it stands on the
     // host's sphere. A structure still pending its print, or already concealed by a burn, is not there to be hit.
     standing: () => plan.structures.filter((s) => (kOf(grown.structures, s.id, s)) >= 1 && records.get(s.id)?.holder?.visible !== false)

@@ -21,6 +21,7 @@ import { due as programmeDue, begin as programmeBegin, finish as programmeFinish
 import { createArcLaunch } from './arc-launch.js';
 const LAUNCH_SHOT = 22;   // seconds of the first launch's cinematic: the charge, the release, the petals unfolding
 import { createArmoryPad } from './armory-pad.js';
+import { createPaintPad } from './paint-pad.js';
 import { ORBITAL_WORKS } from '../content/orbital-works.js';
 import { makeWorks, launchDue, beginLaunch, collectorUp, energyBonus } from '../domain/orbital-works.js';
 import { createOrbitalRing } from './orbital-ring.js';
@@ -78,12 +79,25 @@ export function createProgrammeHost(c) {
         const n = pad.ring.tick(dt, c.playerHP() > 0 ? c.playerPos?.() : null, c.ammo?.() ?? 0, c.ammoMax ?? 9, c.t());
         if (n > 0) { c.setAmmo?.(c.ammo() + n); c.sfx?.play?.('tank_shells'); updateHud(); }
       }
+      // PIMP MY RIDE (src/fx/paint-pad.js): the purple pad beside the bays, live once the bays stand; parked on it, the paint shop opens
+      // over the paused game with every dye extracted so far
+      const pp = s.paintPad;
+      if (pp && c.scene && !pp.ring) pp.ring = createPaintPad(c.scene, { pos: pp.cell >= 0 ? c.graph().centers[pp.cell] : pp.pos, cellSide: c.cellSide(), tune: BASE_PERKS.paint });   // centred on its cell: open ground a hull can stand on
+      if (pp?.ring) {
+        pp.ring.stand(programmeHas(pg, 'hulls'));
+        const dt = Math.max(0, Math.min(0.1, c.t() - (pp.at ?? c.t()))); pp.at = c.t();
+        if (pp.ring.tick(dt, c.playerHP() > 0 && !c.pilotMode() ? c.playerPos?.() : null, c.t()) && !s.shop && typeof document !== 'undefined') {
+          s.dyes ??= makeDyeBook(loadDyes(), DYES); c.pause?.(true);
+          s.shop = openPaintShop({ root: c.root ?? document.body, book: s.dyes, save: saveDyes, hull: () => c.hull?.(), lines: BRIEFS[BASE_PERKS.paint.brief].lines, title: BRIEFS[BASE_PERKS.paint.brief].title, onClose: () => { s.shop = null; c.pause?.(false); } });
+        }
+      }
       s.launch?.tick();
       // THE SCOREBOARDS (src/fx/scoreboard.js): two plaques on the slab once the step stands, the player's and Isao's, fed the run's books
       // every tick: the player gathers and kills, Isao uses and (once) kills. They face the Stålheart, not the gate: the player reads them from the base
       const dt = Math.max(0, Math.min(0.1, c.t() - (s.hostAt ?? c.t()))); s.hostAt = c.t();
       if (programmeHas(pg, 'board') && c.scene && c.kills) {
-        if (!s.boards) { const step = pg.steps.find((x) => x.id === 'board'); const bed = step && s.print.bed(step); if (bed) { const face = (a, b) => [b[0] - a[0], b[1] - a[1], b[2] - a[2]], m = c.cellSide() / 10; s.boards = [[-0.5, 'YOU', '#ffd27a', true, 'beacon_rivalry'], [0.5, 'ISAO', '#b8f5c6', false, 'splitflap_rivalry']].map(([x, title, accent, flag, variant]) => { const at = bed(x, 0, 0); return createScoreboard(c.scene, { at, up: at, facing: face(bed(x, -1, 0), bed(x, 1, 0)), metres: m * 0.75, title, accent, flag, variant }); }); } }
+        // the two boards end to end along their slab, facing the Stålheart (src/content/base-layout.js 'board'), at 2.25
+        if (!s.boards) { const step = pg.steps.find((x) => x.id === 'board'); const bed = step && s.print.bed(step); if (bed) { const face = (a, b) => [b[0] - a[0], b[1] - a[1], b[2] - a[2]], m = c.cellSide() / 10; s.boards = [[0.53, 'YOU', '#ffd27a', true, 'beacon_rivalry'], [-0.53, 'ISAO', '#b8f5c6', false, 'splitflap_rivalry']].map(([y, title, accent, flag, variant]) => { const at = bed(0, y, 0); return createScoreboard(c.scene, { at, up: at, facing: face(bed(-1, y, 0), bed(1, y, 0)), metres: m * 2.25, title, accent, flag, variant }); }); } }
         if (s.boards) {
           const e = c.eco?.(), you = c.hands?.() ?? 0;
           s.boards[0].update({ rows: [['KILLS', you], ['GATHERED', Math.round(e?.earned ?? 0)], ['USED', 0]], rank: c.rank?.() ?? 0 });
@@ -168,7 +182,10 @@ export function createProgrammeHost(c) {
       // drew ROCK there, before the gate. The rim is only repairable once it stands, exactly as a static stage-4 base has it from the
       // first frame
       const stood = programmeHas(pg, 'gate'), broke = stood ? [...new Set([...(c.story().wallCells ?? []).filter((wc) => c.dungeon().tags[wc] !== BLOCKED), ...(c.storyBase()?.droppedCells?.() ?? [])])] : [],   // a burned segment on standing rock is a hole too (owner, 2026-10-02: "after a breach, isao only builds a gate, he should also build walls")
-       repair = stood ? nextRepair({ gates: c.sectorRun()?.gates() ?? [], walls: broke, quiet: !c.waveActive() && (c.sectorRun()?.doorsQuiet?.() ?? true) }, BASE_REPAIR) : null;
+       near = (ci) => { const p = c.graph().centers[ci], r = BASE_REPAIR.clearCells * c.cellSide(); return c.enemies().some((e) => e.alive && Math.hypot(e.pos[0] - p[0], e.pos[1] - p[1], e.pos[2] - p[2]) < r); };
+      // HIS CHECK (BASE_REPAIR.check): after a wall he hovers over it, then says whether the breach is sealed; nothing new starts meanwhile
+      if (s.checking) { if (c.t() < s.checking.until) return; s.checking = null; c.callout?.(broke.length ? BASE_REPAIR.open : BASE_REPAIR.sealed, broke.length ? 'co-victory-sub' : 'co-victory'); }
+      const repair = stood ? nextRepair({ gates: c.sectorRun()?.gates() ?? [], walls: broke, quiet: !c.waveActive() && (c.sectorRun()?.doorsQuiet?.() ?? true), clear: (ci) => !near(ci) }, BASE_REPAIR) : null;
       // ISAO MENDS WHAT THE SWARM BROKE (owner, 2026-09-16): between waves the door and the holes come before the next new building
       if (repair) {
         const rci = repair.kind === 'gate' ? (repair.id ? (c.story().gateCellOf?.(repair.id) ?? -1) : c.story().gateCell ?? -1) : repair.ci;
@@ -222,7 +239,7 @@ export function createProgrammeHost(c) {
     // segments standing again (dungeon.mended, src/fx/board-surface.js), so what he printed reads as a wall and not a rock
     repaired: (repair) => {
       if (repair.kind === 'gate') { c.sectorRun()?.repairGate(repair.id ?? 'gate'); if (!repair.id) c.storyBase()?.restoreWall(-1); }   // and the segments on the door's own cell
-      else { const rci = repair.ci; if (c.dungeon().tags[rci] !== BLOCKED) (c.dungeon().mended ??= new Set()).add(rci); c.dungeon().tags[rci] = BLOCKED; if (c.tdFullTags()) c.tdFullTags()[rci] = BLOCKED; breachedCells.delete(rci); breachQueue.push(rci); c.storyBase()?.restoreWall(rci); rebuildAfterBreach(); recomputePortalDist(); }
+      else { const rci = repair.ci; if (c.dungeon().tags[rci] !== BLOCKED) (c.dungeon().mended ??= new Set()).add(rci); c.dungeon().tags[rci] = BLOCKED; if (c.tdFullTags()) c.tdFullTags()[rci] = BLOCKED; breachedCells.delete(rci); breachQueue.push(rci); c.storyBase()?.restoreWall(rci); rebuildAfterBreach(); recomputePortalDist(); c.story().checking = { ci: rci, until: c.t() + BASE_REPAIR.check }; }
       updateHud();
     },
     printed: (step) => {
@@ -274,6 +291,6 @@ export function createProgrammeHost(c) {
     swell: () => (c.story()?.gsAuto ? GUNSHIP_AUTO.swell : 1),
     // what the harness reads: the launch beat, the pad, the calibration
     gunshipAuto: () => ({ auto: !!c.story()?.gsAuto, manned: c.story()?.gsManned ?? 0, fly: c.story()?.gsFly?.state() ?? null }),
-    colony: () => ({ beacons: c.story()?.beacons?.ids() ?? null, beaconPulse: c.story()?.beacons?.state() ?? null, gunship: { auto: !!c.story()?.gsAuto, manned: c.story()?.gsManned ?? 0, fly: c.story()?.gsFly?.state() ?? null, swell: c.story()?.gsAuto ? GUNSHIP_AUTO.swell : 1, budget: c.story()?.gsAuto ? GUNSHIP_AUTO.aliveBudget : null }, board: c.story()?.boards?.map((b) => b.state()) ?? null, isaoKills: c.story()?.isaoKills ?? 0, strike: c.story()?.strike?.state() ?? (c.story()?.strikeDone ? 'done' : null), dyes: c.story()?.dyes ?? null, shop: !!c.story()?.shop, painted: c.story()?.painted ?? 0, boardCell: (() => { const st = c.story()?.programme?.steps.find((x) => x.id === 'board'); return st ? c.story().print.cellOf(st) : -1; })(), launch: c.story()?.launch?.state() ?? null, works: c.story()?.works ? { ...c.story().works, ring: c.story().worksRing?.state() ?? null } : null, sol88: !!c.story()?.sol88, pad: c.story()?.armoryPad?.ring?.state() ?? null, cell: c.story()?.armoryPad?.cell ?? -1, calibrated: !!c.story()?.calibrated, manned: c.laserStation?.manned?.() ?? 0 }),
+    colony: () => ({ paintPad: c.story()?.paintPad?.ring ? { ...c.story().paintPad.ring.state(), cell: c.story().paintPad.cell } : null, shop: !!c.story()?.shop, beacons: c.story()?.beacons?.ids() ?? null, beaconPulse: c.story()?.beacons?.state() ?? null, gunship: { auto: !!c.story()?.gsAuto, manned: c.story()?.gsManned ?? 0, fly: c.story()?.gsFly?.state() ?? null, swell: c.story()?.gsAuto ? GUNSHIP_AUTO.swell : 1, budget: c.story()?.gsAuto ? GUNSHIP_AUTO.aliveBudget : null }, board: c.story()?.boards?.map((b) => b.state()) ?? null, isaoKills: c.story()?.isaoKills ?? 0, strike: c.story()?.strike?.state() ?? (c.story()?.strikeDone ? 'done' : null), dyes: c.story()?.dyes ?? null, shop: !!c.story()?.shop, painted: c.story()?.painted ?? 0, boardCell: (() => { const st = c.story()?.programme?.steps.find((x) => x.id === 'board'); return st ? c.story().print.cellOf(st) : -1; })(), launch: c.story()?.launch?.state() ?? null, works: c.story()?.works ? { ...c.story().works, ring: c.story().worksRing?.state() ?? null } : null, sol88: !!c.story()?.sol88, pad: c.story()?.armoryPad?.ring?.state() ?? null, cell: c.story()?.armoryPad?.cell ?? -1, calibrated: !!c.story()?.calibrated, manned: c.laserStation?.manned?.() ?? 0 }),
   };
 }

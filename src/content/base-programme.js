@@ -70,7 +70,11 @@ export const BASE_BUILDER = Object.freeze({ cellsPerSecond: 4.2 });
 // the colony's perks (2026-10-01): farmKg biomass at each sector start while the farm stands; chipsPeriod scales the uplink's pass
 // period while the chip plant stands; the armory's pad refills `shellsPerSecond` while the hull's centre is within radiusMetres of
 // the island's centre (the solar array's pad is the model, src/content/shield-array.js)
-export const BASE_PERKS = Object.freeze({ gunshipMeter: 1.5, rebuildHulls: 1, farmKg: 40, chipsPeriod: 0.8, armory: Object.freeze({ radiusMetres: 12, shellsPerSecond: 2, lift: 0.6, island: 'assembly', pad: [-18, 1] }) });   // island/pad: the pad is `pad` metres off that island's centre (west of the assembly line)
+export const BASE_PERKS = Object.freeze({ gunshipMeter: 1.5, rebuildHulls: 1, farmKg: 40, chipsPeriod: 0.8, armory: Object.freeze({ radiusMetres: 12, shellsPerSecond: 2, lift: 0.6, island: 'assembly', pad: [-18, 1] }),
+  // PIMP MY RIDE (owner, 2026-10-03): the purple pad beside the bays (`pad` metres off the bay island's centre: east of it, off the
+  // roll-out a fresh hull takes out of the doors, so a deploy never parks on it); the hull inside
+  // `radiusMetres` and slower than `still` m/s for `settle` seconds opens the paint shop (src/fx/paint-pad.js)
+  paint: Object.freeze({ radiusMetres: 8, lift: 0.6, island: 'bay', pad: [27, 0], settle: 0.8, still: 1.5, brief: 'paint_pad' }) });   // island/pad: the pad is `pad` metres off that island's centre (west of the assembly line)
 
 // ISAO MENDS WHAT THE SWARM BROKE (owner, 2026-09-16: "Isao should go and build walls/a gate in between waves when a breach of the
 // base happened"). The rule is src/domain/repair-orders.js; these are the numbers. `gateAt` is the share of the gate's hp below
@@ -78,6 +82,9 @@ export const BASE_PERKS = Object.freeze({ gunshipMeter: 1.5, rebuildHulls: 1, fa
 // bigger job. `brief` is his line the first time he flies out to a repair.
 export const BASE_REPAIR = Object.freeze({
   gateAt: 0.75, brief: 'isao_repair',
+  // mid-wave a wall cell is mended when no body is within `clearCells` of it; after each wall he hovers `check` seconds and says whether
+  // the breach is sealed (`sealed`) or which way he goes next (`open`) (owner, 2026-10-03: "a confirmation state")
+  clearCells: 3, check: 1.6, sealed: 'BREACH SEALED', open: 'STILL OPEN · NEXT SEGMENT',
 // `plot` is the half extents in metres, across and along the piece's heading, that his print beam rasters over while he mends it
 // (src/fx/base-print.js repairBed): the door's own footprint and one wall segment's, so the beam works the thing and not the dirt.
   gate: Object.freeze({ seconds: 8, metres: 6, label: 'GATE', plot: [7, 3] }),

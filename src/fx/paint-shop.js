@@ -26,7 +26,7 @@ export function applyLivery(root, livery) {
 }
 
 // host: { root (DOM parent), book, save(book), hull() (the player's hull root), lines: [two strings], onClose() }
-export function openPaintShop({ root, book, save, hull, lines, onClose }) {
+export function openPaintShop({ root, book, save, hull, lines, onClose, title = DYE_SHOP.title }) {
   const el = document.createElement('div');
   el.id = 'paint-shop';
   const row = (slot) => {
@@ -35,7 +35,7 @@ export function openPaintShop({ root, book, save, hull, lines, onClose }) {
     return `<div class="ps-row"><div class="ps-slot">${slot.label}</div><div class="ps-sws">${sw('factory', '#2b3a44', 'FACTORY')}${DYES.map((d) => { const q = p.find((x) => x.id === d.id); return sw(d.id, d.paint, d.label, !q.unlocked, q.unlocked ? '' : `${q.need - q.have} MORE`); }).join('')}</div></div>`;
   };
   const draw = () => {
-    el.innerHTML = `<div class="ps-card"><header>${DYE_SHOP.title}</header><p>${lines.map((l) => `<span>${l}</span>`).join('')}</p>${DYE_SLOTS.map(row).join('')}<footer><button type="button" data-done>DONE</button></footer></div>`;
+    el.innerHTML = `<div class="ps-card"><header>${title}</header><p>${lines.map((l) => `<span>${l}</span>`).join('')}</p>${DYE_SLOTS.map(row).join('')}<footer><button type="button" data-done>DONE</button></footer></div>`;
   };
   draw();
   el.addEventListener('click', (ev) => {

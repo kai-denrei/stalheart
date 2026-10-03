@@ -15,9 +15,12 @@ const SHARE = (gate) => (gate && gate.max > 0 ? gate.hp / gate.max : 1);
 // gate: { hp, max, broken } (null where the world has no gate). walls: cells that should be rock and are not, in the caller's order.
 // quiet: no wave is running and the lane is clear. busy: a worker already has an order (the player's, a build step, an earlier repair).
 // Returns { kind: 'gate' } | { kind: 'wall', ci } | null.
+// A HOLE IN THE WALL WILL NOT WAIT FOR THE WAVE (owner, 2026-10-03: "Isao is not reactive enough in fixing breaches with walls"): with
+// `clear(ci)` given, a wall cell no body is near is mended mid-wave as well; the gate still waits for a quiet lane, the pile is on it.
 export function nextRepair(state = {}, tune = {}) {
-  const { walls = [], quiet = false, busy = false } = state;
-  if (!quiet || busy) return null;
+  const { walls = [], quiet = false, busy = false, clear = null } = state;
+  if (busy) return null;
+  if (!quiet) { const ci = clear ? walls.find((c) => Number.isInteger(c) && c >= 0 && clear(c)) : undefined; return ci === undefined ? null : { kind: 'wall', ci }; }
   const g = worstGate(state, tune);
   if (g) return g;
   const ci = walls.find((c) => Number.isInteger(c) && c >= 0);

@@ -28,7 +28,10 @@ export const ISLANDS = Object.freeze([
   // THE COLONY (owner, 2026-10-01): the armory behind the bays beside the back lane, the farm east of the Stålheart between the solar
   // array and the assembly line, the chip plant past the assembly line, and the ARC-01's long island on the west rim between HUGIN and
   // the radar, its rail pointed out over the rock
-  { id: 'board', w: 14, d: 6, x: -21, z: -52, stage: 9 },   // two A6 rivalry boards side by side at 0.75 (6 m each)
+  // THE BOARDS, BIG (owner, 2026-10-03: "the diegetic scoreboards larger without using more fps? 4x larger if we can afford it"): the A6
+  // board is 380 triangles in one draw call, so size costs nothing; room does. Two boards at 2.25 (18 m wide each, 3x the old 6 m) stand
+  // end to end on a long slab west of the Stålheart, facing it, 4 m clear of HUGIN, the launcher and the radar (4x does not fit between them)
+  { id: 'board', w: 12, d: 36, x: -38, z: 2, stage: 9 },
   { id: 'armory', w: 24, d: 20, x: -34, z: 62, stage: 9 },
   { id: 'farm', w: 20, d: 22, x: 48, z: -30, stage: 9 },
   { id: 'chips', w: 14, d: 12, x: 60, z: 40, stage: 9 },
@@ -120,3 +123,10 @@ export function withLandmarkTiers(structures, mode = 'shipped') {
 export function landmarkTierMode(search) {
   return new URLSearchParams(search || '').get('landmarks') === 'candidate' ? 'candidate' : 'shipped';
 }
+
+// THE BUILDINGS THAT STOP THE HULL (owner, 2026-10-03: "they should feel solid (except those where the tank can go under like the
+// Stalheart)"; src/fx/story-base.js solidAt). Not the Stålheart (the hull drives under its gantry), the bays (the hull lives in them),
+// the solar array (its charging pad is at its centre) or the Rotor on its wall. The standing landers at the expedition sites are solid;
+// the two wrecks lie on their sides across their sites and the part's crate waits beside them, so they stay passable
+export const SOLID_STRUCTURES = Object.freeze(['sh02', 'foundry', 'sh02-salvage', 'hugin', 'assembly', 'radar', 'armory', 'greenhouse', 'bio-a', 'bio-b', 'bio-c', 'chips',
+  'ammo-a', 'ammo-b', 'ammo-c', 'launcher', 'rocket-a', 'rocket-b', 'rocket-c', 'rocket-d']);
