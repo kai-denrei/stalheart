@@ -66,6 +66,21 @@ Evidence:
 - git log on main from 5f5e1a11 to b472b4a1
 - the suites and probes named in each round's entry (--round10, --round13, --opening-probe, --canyon-probe, --study-probe)
 
+## 2026-10-03 — Isao's first recorded takes wired in for testing: the mission card and three briefs speak
+
+change · accepted · 2026-10-03-isao-voice-first-recorded-takes
+
+Owner, 2026-10-03: a separate project (~/Dev/seiyu_voice) renders Isao's lines in voice A; four samples exist, 'let's wire these in to test'. Its manifest export is not built yet, so the clips are wired by hand.
+
+Four takes encoded to mono 96 kbps MP3 (assets/audio/isao_<trigger>_<nn>.mp3, pinned in docs/isao-voice-audio.lock.json, checked by npm run assets:check). content/story-defaults.js ISAO_VOICE maps a trigger to its takes (mission, rough_landing, so_much_to_build, gate_broken) and adds them to STORY_SOUNDS, so only story pages load them. src/fx/isao-voice.js isaoSay plays one take per trigger, never the one that played last; td-tab calls it where a brief is shown (after the click) and when the mission card opens. The gate_broken take ('Perimeter breach detected') and the so_much_to_build take ('Empty planet. Full schedule.') do not match the brief's on-screen text; that is accepted for a test. td-tab paid its bytes by reflowing three brief comments; budgets lowered to 8992 lines and 523502 bytes.
+
+Alternatives: Reading seiyu_voice's export/manifest.json at runtime: the export does not exist yet; the trigger table has the same shape so the manifest can replace it later; A voice bus in the mixer: four clips on the ui bus at gain 1 are enough to judge the voice; a bus is a mix decision for later
+
+Evidence:
+
+- npm test (test/isao-voice.mjs 24/24: every take a pinned story sound, triggers are briefs or the mission, no back-to-back repeat), npm run check, npm run build green
+- Browser suite not run: the memory guardrail was at WARN (swap 3.8 GB) at the time; the clips are unheard in the game until the owner or a later run plays the opening
+
 ## 2026-10-03 — The owner's fourteenth notes: a tour of the landers fills the opening's dead time, the hover glide along walls, the fps readout on, many more soft bodies by sector, the MK-9 thrown left in full view and only on the hull's side, harder balance, and nests that hunt the hull
 
 change · accepted · 2026-10-03-fourteenth-notes-landers-tour-hover-glide-fps-swarm-nuke-view-hunting-nests

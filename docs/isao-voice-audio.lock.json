@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "source": "Owner-provided Isao voice A renders (seiyu_voice, Kokoro + ring-mod chain), 24 kHz mono WAV, encoded to mono 96 kbps 44.1 kHz MP3 with ffmpeg, no normalisation",
+  "files": [
+    {
+      "path": "assets/audio/isao_mission_01.mp3",
+      "originalFilename": "Mission01_WeLandWeTakeWeBuild.wav",
+      "sha256": "d8d3dd0cec5a9cf55d95dbc243d936911566ce8dc58d53abdb04facd002b36da",
+      "bytes": 66186,
+      "durationSeconds": 5.451
+    },
+    {
+      "path": "assets/audio/isao_rough_landing_01.mp3",
+      "originalFilename": "RoughLanding01_rough_landing.wav",
+      "sha256": "964878a9c12b4d8daea91142a9b863ca29efc3bee8b4dbaac5a15e54e7d00e32",
+      "bytes": 16344,
+      "durationSeconds": 1.291
+    },
+    {
+      "path": "assets/audio/isao_so_much_to_build_02.mp3",
+      "originalFilename": "SoMuchToBuild_02_EmptyPlanetFullSchedule.wav",
+      "sha256": "788d509fcfd7e21b87dc569b82f281a79d58dd998f6456e363ce34925ad21617",
+      "bytes": 29196,
+      "durationSeconds": 2.357
+    },
+    {
+      "path": "assets/audio/isao_gate_broken_05.mp3",
+      "originalFilename": "GateBroken_05_PerimeterBreachDetected01.wav",
+      "sha256": "2ae24f6355b73f7784236faf6db33b7b8bd73dee95fa4e0a92448a095f5a97ff",
+      "bytes": 56155,
+      "durationSeconds": 4.608
+    }
+  ]
+}

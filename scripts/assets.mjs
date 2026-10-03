@@ -114,6 +114,13 @@ for(const file of storyAudio.files){
  if(bytes.length!==file.bytes||sha(bytes)!==file.sha256)throw Error('Story audio checksum mismatch: '+file.path);
 }
 console.log('Pinned story gate audio verified.');
+const isaoVoice=JSON.parse(readFileSync(resolve(root,'docs/isao-voice-audio.lock.json'),'utf8'));
+for(const file of isaoVoice.files){
+ if(!/^assets\/audio\/isao_[a-z_]+_\d\d\.mp3$/.test(file.path))throw Error('Unexpected Isao voice path');
+ const bytes=readFileSync(resolve(root,file.path));
+ if(bytes.length!==file.bytes||sha(bytes)!==file.sha256)throw Error('Isao voice checksum mismatch: '+file.path);
+}
+console.log(`Pinned Isao voice takes verified: ${isaoVoice.files.length}`);
 
 {const lock=JSON.parse(readFileSync(resolve(root,'docs/far-tier-assets.lock.json'),'utf8'));
  for(const d of lock.derivations){

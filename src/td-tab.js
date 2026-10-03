@@ -85,7 +85,7 @@ import { A6_TUNE, magFor, makeA6, stepA6, arc as a6Arc } from './heptapod.js';
 import { SENTRY_TUNE } from './sentry.js';
 import { makeLock } from './lockon.js';
 import { TOWER_LOOK_NAMES, DEFAULT_TOWER_LOOK, buildTowerLook, preloadLook, lookReady } from './towerlooks.js';
-import { makeAudio } from './audio.js';
+import { makeAudio } from './audio.js'; import { isaoSay } from './fx/isao-voice.js';
 import { DEATH_KEYS } from './audiomanifest.js';
 
 export function initTdTab(root) {
@@ -692,11 +692,9 @@ export function initTdTab(root) {
   const briefDots = root.querySelector('#td-brief-dots');
   const BRIEF_SEEN = 'td.briefs';
   let briefQ = null, briefAt = 0, briefFaceT = 0;
-  // Seconds left on the current LINE. A countdown driven from the frame loop,
-  // deliberately not a setTimeout: this file has already paid once for
-  // deferred work outliving the run that scheduled it (the death timer that
-  // fired after a retry), and a frame-loop accumulator cannot outlive
-  // anything. `briefDwell` is kept only to size the progress bar.
+  // Seconds left on the current LINE. A countdown driven from the frame loop, deliberately not a setTimeout: this file has
+  // already paid once for deferred work outliving the run that scheduled it (the death timer that fired after a retry), and a
+  // frame-loop accumulator cannot outlive anything. `briefDwell` is kept only to size the progress bar.
   let briefLeft = 0, briefDwell = 1;
   let briefPending = null;   // at most one beat waiting its turn
   const briefSeen = (() => {
@@ -721,13 +719,10 @@ export function initTdTab(root) {
     if (!b || !briefEl) return;
     if (b.once && briefSeen.includes(id)) return;
     if (b.once && briefPending === id) return;
-    // ONE DEEP, AND NO DEEPER. With eight beats two can come due together —
-    // the first kill of a wave that has only just been announced, say. Showing
-    // the new one on top loses the old one for good, because a `once` beat is
-    // marked seen the moment it appears; queueing everything turns Isao into
-    // the wall of messages this work exists to remove. So: hold exactly one,
-    // and drop any further arrivals on the floor. A beat worth saying twice
-    // should not be `once` in the first place.
+    // ONE DEEP, AND NO DEEPER. With eight beats two can come due together — the first kill of a wave that has only just been
+    // announced, say. Showing the new one on top loses the old one for good, because a `once` beat is marked seen the moment it
+    // appears; queueing everything turns Isao into the wall of messages this work exists to remove. So: hold exactly one, and
+    // drop any further arrivals on the floor. A beat worth saying twice should not be `once` in the first place.
     if (briefQ) { if (!briefPending) briefPending = id; return; }
     if (b.once) {
       briefSeen.push(id);
@@ -736,13 +731,11 @@ export function initTdTab(root) {
     briefQ = b; briefAt = 0; briefFaceT = 0;
     briefDwell = briefLeft = lineDwell(b, 0);
     briefEl.classList.remove('hidden');
-    sfx.play('laser_click');
+    sfx.play('laser_click'); isaoSay(sfx, id);
     paintBrief();
   }
-  // `auto` = the line ran out of time rather than being tapped through. The
-  // click is the player's, so it keeps its click; a line retiring on its own
-  // must not make a noise, or the panel is still demanding attention — which
-  // is the whole thing being fixed.
+  // `auto` = the line ran out of time rather than being tapped. A tap keeps its click; a line retiring on its own makes no
+  // noise, or the panel is still demanding attention, the very thing being fixed.
   function stepBrief(auto) {
     if (!briefQ) return;
     briefAt++;
@@ -8399,7 +8392,7 @@ export function initTdTab(root) {
     // station from orbit for a free pass
     stalheartStands: () => !!story?.hull?.out(),
     gunshipArrive: () => { if (!story) return; story.gunshipIn = true; startStation(gunship, GUNSHIP_ORBIT); showBrief('gunship_overhead'); }, camera, startShot, snapCamera, sfx, drone: () => isao,
-    mission: () => showMission(root, STORY_MISSION),
+    mission: () => (isaoSay(sfx, 'mission'), showMission(root, STORY_MISSION)),
     freeLook: () => { const done = () => { setView('orbit'); centerBuildOnHeart(); followSuspend = true; buildDist = 1.65; snapCamera(); showToast(LOOK_TOAST, 5000); }, pts = (story?.sites ?? []).slice(0, 3).map((ci) => graph.centers[ci]);   // THE TOUR OF THE LANDERS (src/domain/story-shots.js tourFrame), live: the beats run under it and the override cuts in
       if (!pts.length) return done(); const from = { pos: camera.position.clone(), quat: camera.quaternion.clone() }, dur = 2 + 2.8 * pts.length;
       startShot({ id: 'sitesTour', dur, poseAt: (u, out) => { poseCamera(tourFrame(u, graph.centers[dungeon.heart], pts), out); const k = Math.min(1, u * dur / 1.6), e = k * k * (3 - 2 * k); out.pos.lerpVectors(from.pos, out.pos, e); out.quat.slerpQuaternions(from.quat, out.quat.clone(), e); }, onEnd: done }); },   // out of the close-up without a cut (2026-10-03)   /* THE ARRIVAL's hands (src/fx/arrival.js); freeLook: the landing hands over to the free camera */
