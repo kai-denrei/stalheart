@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "asset_family": "mork_hover_tank",
+  "preset_id": "factory",
+  "label": "Factory M\u00d6RK",
+  "paint": {
+    "primary": "#426067",
+    "secondary": "#799093",
+    "accent": "#d1d8ca"
+  },
+  "pattern": "solid",
+  "finish": "factory",
+  "name": "MORK",
+  "number": "06",
+  "message": "FACTORY ISSUE",
+  "decals": [
+    {
+      "zone": "turret",
+      "symbol": "none",
+      "scale": 0.9,
+      "rotation": 0
+    },
+    {
+      "zone": "badge",
+      "symbol": "none",
+      "scale": 0.9,
+      "rotation": 0
+    },
+    {
+      "zone": "message",
+      "symbol": "none",
+      "scale": 0.9,
+      "rotation": 0
+    }
+  ]
+}

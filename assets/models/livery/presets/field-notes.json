@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "asset_family": "mork_hover_tank",
+  "preset_id": "field-notes",
+  "label": "Field Notes",
+  "paint": {
+    "primary": "#596347",
+    "secondary": "#292e27",
+    "accent": "#c7b787"
+  },
+  "pattern": "camouflage",
+  "finish": "matte",
+  "name": "DUST EATER",
+  "number": "27",
+  "message": "STILL HERE",
+  "decals": [
+    {
+      "zone": "turret",
+      "symbol": "star",
+      "scale": 0.9,
+      "rotation": 0
+    },
+    {
+      "zone": "badge",
+      "symbol": "star",
+      "scale": 0.9,
+      "rotation": 0
+    },
+    {
+      "zone": "message",
+      "symbol": "star",
+      "scale": 0.9,
+      "rotation": 0
+    }
+  ]
+}

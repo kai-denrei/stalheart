@@ -41,7 +41,8 @@ export function createIsaoStrike(host, tune) {
         const low = Math.max(1 + cell * tune.carryCells, alt - (alt - 1 - cell * tune.carryCells) * e);   // he comes down to the hull's eye line as he arrives
         isao.obj.position.copy(up.multiplyScalar(low - sag)).addScaledVector(side, Number.isFinite(side.x) ? sway : 0);
         isao.obj.rotation.z = Math.sin(t * 2.3) * 0.18;
-        if (missile) { missile.position.copy(isao.obj.position).addScaledVector(isao.obj.position.clone().normalize(), -cell * 0.9); missile.lookAt(missile.position.clone().multiplyScalar(0.5)); }
+        // the round hugged under his body (2026-10-03: "carried much closer to its body")
+        if (missile) { missile.position.copy(isao.obj.position).addScaledVector(isao.obj.position.clone().normalize(), -cell * 0.22); missile.lookAt(missile.position.clone().multiplyScalar(0.5)); }
         if (k >= 1) { phase = 'fall'; t = 0; dropAt = missile ? missile.position.clone() : isao.obj.position.clone(); host.sfx?.play?.('tank_shells'); }
         return true;
       }

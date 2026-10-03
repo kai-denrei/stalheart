@@ -35,6 +35,7 @@ export const ISLANDS = Object.freeze([
   { id: 'armory', w: 24, d: 20, x: -34, z: 62, stage: 9 },
   { id: 'farm', w: 20, d: 22, x: 48, z: -30, stage: 9 },
   { id: 'chips', w: 14, d: 12, x: 60, z: 40, stage: 9 },
+  { id: 'garage', w: 12, d: 18, x: 31, z: 62, stage: 9 },   // THE GARAGE (owner, 2026-10-03: "there is a new Garage to use"): the A6 open-roof paint bay east of the bays
   { id: 'launcher', w: 16, d: 30, x: -62, z: 2, stage: 9 },
 ]);
 
@@ -71,6 +72,7 @@ export const STRUCTURES = Object.freeze([
   { id: 'bio-a', asset: 'assets/models/astro/bio_cassette_d0_lod1.glb', island: 'farm', stage: 9, scale: 1, offset: [6.5, 0, -6], batch: true },
   { id: 'bio-b', asset: 'assets/models/astro/bio_cassette_d0_lod1.glb', island: 'farm', stage: 9, scale: 1, offset: [6.5, 0, -2.5], batch: true },
   { id: 'bio-c', asset: 'assets/models/astro/bio_cassette_d0_lod1.glb', island: 'farm', stage: 9, scale: 1, offset: [6.5, 0, 1], batch: true },
+  { id: 'garage', asset: 'assets/models/garage/mork_garage_d0_lod1.glb', far: 'assets/models/garage/mork_garage_d0_lod2.glb', island: 'garage', stage: 9, scale: 1, offset: [0, 0, 0], heading: [0, -1] },   // not batched: its paint arm moves (assets/models/garage/runtime.js)
   { id: 'chips', asset: 'assets/models/astro/lit01_chip_writer_d0_lod1.glb', far: 'assets/models/astro/lit01_chip_writer_d0_lod2.glb', island: 'chips', stage: 9, scale: 1, offset: [0, 0, 0], batch: true },
   // THE AMMUNITION DUMP (owner, 2026-10-02: "add missiles of various sizes ... near the robotic assembly. It becomes a spot where the Tank
   // can go to replenish shells"): three projectiles laid on their sides on the ground west of the assembly line, round the armory's

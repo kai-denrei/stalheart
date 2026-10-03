@@ -134,6 +134,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     phase = 'landing'; t = 0;
     hud(true);
     camera.fov = shot.camera(0).fov; camera.updateProjectionMatrix(); apply(0, 0);
+    api.mission?.();   // the why, laconic, over the descent (src/fx/mission-card.js)
     api.startShot({ id: 'arrival', dur: shot.cut + 2, poseAt: railPose, unlock: !!api.sfx && !api.sfx.ready, onEnd: () => { if (!cutting) finish(true); } });   // its end is the cut (tick), not its clock
   }
   function railPose(u, out) {

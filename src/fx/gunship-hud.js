@@ -38,8 +38,8 @@ export function createGunshipHud(root) {
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) P.push(`<line x1="${cx + dx * d * 1.15}" y1="${cy + dy * d * 1.15}" x2="${cx + dx * L}" y2="${cy + dy * L}" stroke="${col}" stroke-width="1.2" opacity="0.6"/>`);
       // DANGER CLOSE IS SAID BEFORE THE RELEASE, NOT AFTER (owner, 2026-09-16): the MK-9's 55 m takes our own walls and sentries
       // exactly as the strike does, so while a cell is painted the banner names what stands in it; only a clear ring says RELEASE.
-      if (painted || warn) { const text = warn ? `DANGER CLOSE · ${warn}` : 'TARGET PAINTED · FIRE TO RELEASE', wide = Math.max(180, text.length * 7);
-        P.push(`<rect x="${cx - wide / 2}" y="${cy - L - 21}" width="${wide}" height="15" fill="#ff2a1a" opacity="0.92"/><text x="${cx}" y="${cy - L - 10}" fill="#12202a" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="700" letter-spacing="3" text-anchor="middle">${text}</text>`); }
+      if (painted || warn) { const text = warn ? `DANGER CLOSE · ${warn}` : 'TARGET PAINTED · FIRE TO RELEASE', wide = Math.max(180, text.length * 9.6 + 18);   // 10 px mono with 3 px tracking runs ~9.6 px a glyph (2026-10-03: the text ran past its frame)
+        P.push(`<rect x="${cx - wide / 2}" y="${cy - L - 21}" width="${wide}" height="15" fill="#ff2a1a" opacity="0.92"/><text x="${cx}" y="${cy - L - 10}" fill="#12202a" font-family="ui-monospace,Menlo,monospace" font-size="10" font-weight="700" letter-spacing="3" text-anchor="middle" textLength="${wide - 18}" lengthAdjust="spacingAndGlyphs">${text}</text>`); }
       else P.push(`<text x="${cx}" y="${cy + L + 17}" fill="${col}" ${mono} opacity="0.85">MK-9 · MINI NUKE · ${state}</text>`);
     }
     return P.join('');

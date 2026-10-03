@@ -14,7 +14,10 @@ export function launchDart(pool,{config,from,target,direction,scale=1,sphere=fal
 }
 export function advanceDart(pool,m,dt,target=m.target) {
   m.target=target.slice();
-  m.t=Math.min(m.config.duration,m.t+Math.max(0,dt));
+  // THE PLUNGE (owner, 2026-10-03: "once it reaches the apex and starts going down it should be very fast"): past its crest a round with
+  // `diveRate` runs its clock that many times faster, so the lit descent snaps down and lands sooner; the climb is untouched
+  const k=m.config.diveRate&&/^(Crest|Hook|Dive)$/.test(m.pose?.phase??'')?m.config.diveRate:1;
+  m.t=Math.min(m.config.duration,m.t+Math.max(0,dt)*k);
   m.pose=(m.sphere?sampleSphereMissile:sampleMissile)(m.frame,m.t/m.config.duration,m.config.profile,m.target);
   pool.pose(m.mesh,m.pose,m.config.exhaust);
   return m.t>=m.config.duration;

@@ -4831,3 +4831,12 @@ body.seat-gliding #seat-vignette { display: none; }
   border: 1px solid rgba(159, 220, 255, .55); box-shadow: 0 0 8px rgba(255, 230, 180, .25); transition: background .6s linear; }
 #day-dial i { position: absolute; inset: -4px; border-radius: 50%; }
 #day-dial i::before { content: ''; position: absolute; left: 50%; top: 0; width: 2px; height: 4px; margin-left: -1px; background: #cfe9ff; }
+
+/* THE WHY, LACONIC (src/fx/mission-card.js): the beats over the landing, one word at a time, then Isao's one line */
+#mission-card { position: absolute; top: 15%; left: 50%; transform: translateX(-50%); z-index: 13; pointer-events: none; text-align: center; width: max-content; max-width: 92vw; transition: opacity .6s; }
+#mission-card.out { opacity: 0; }
+#mission-card .mc-beats { display: flex; gap: 0.9em; justify-content: center; flex-wrap: wrap; font-family: var(--font-shout); font-size: calc(var(--shout-unit) * 1.1); letter-spacing: .16em; color: #eafff2; text-shadow: var(--shout-halo); }
+#mission-card .mc-beats span { opacity: 0; animation: mc-in .35s ease-out forwards; }
+#mission-card .mc-beats span:last-child { color: #ffd27a; }
+#mission-card .mc-line { margin-top: 10px; font: 14px/1.4 'Share Tech Mono', ui-monospace, monospace; letter-spacing: .08em; color: #9fdcff; opacity: 0; animation: mc-in .5s ease-out forwards; }
+@keyframes mc-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }

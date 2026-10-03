@@ -1050,7 +1050,7 @@ try{
  await evaluate('window.__stalheartTest.hitTank()');await delay(800);const hullsLost=(await evaluate('window.__stalheartTest.state()')).hulls;
  await evaluate('window.__stalheartTest.setSector(2)');
  await until('window.__stalheartTest.state().programme.printed.includes("assembly")',300000);await mark('radar and assembly line stand');
- {const s=await evaluate('window.__stalheartTest.state()');assert.deepEqual(s.programme.printed,['gate','stalheart','landing','foundry','solar','bays','hugin','radar','assembly'],'every step, in order');assert.equal(s.programme.next,'backgate','the back gate is next in order and waits for the surprise (passable: the colony prints meanwhile)');assert.deepEqual(s.programme.owed,['board','armory','farm','chips'],`the colony is owed, the passable back gate and launcher are not (${s.programme.owed})`);assert(!s.programme.perks.includes('backgate'));assert.deepEqual(s.programme.perks.slice().sort(),['gate','gunship','hulls','rebuild','stalheart','station','uplink']);assert.equal(s.hulls,hullsLost,'no rebuild inside the sector the line was printed in');}
+ {const s=await evaluate('window.__stalheartTest.state()');assert.deepEqual(s.programme.printed,['gate','stalheart','landing','foundry','solar','bays','hugin','radar','assembly'],'every step, in order');assert.equal(s.programme.next,'backgate','the back gate is next in order and waits for the surprise (passable: the colony prints meanwhile)');assert.deepEqual(s.programme.owed,['board','garage','armory','farm','chips'],`the colony is owed, the passable back gate and launcher are not (${s.programme.owed})`);assert(!s.programme.perks.includes('backgate'));assert.deepEqual(s.programme.perks.slice().sort(),['gate','gunship','hulls','rebuild','stalheart','station','uplink']);assert.equal(s.hulls,hullsLost,'no rebuild inside the sector the line was printed in');}
  await evaluate('window.__stalheartTest.setSector(3)');await until(`window.__stalheartTest.state().hulls===${Math.min(3,hullsLost+1)}`,10000).catch(()=>{});   /* a condition, not 800 ms: the rebuild lands on the programme's next build tick */
  assert.equal((await evaluate('window.__stalheartTest.state()')).hulls,Math.min(3,hullsLost+1),'the assembly line rebuilds a lost hull at the next sector start');
  await shotBase('grow-finished');
@@ -1380,13 +1380,8 @@ try{
   await until(`${T}.state().performance.enemies>=${ISAO_STRIKE.alive}`,30000).catch(async()=>assert.fail(`a strong wave is up (${(await st()).performance.enemies})`));
   await until(`${T}.state().foes.length>20`,20000);
   {const f=(await st()).foes;await evaluate(`${T}.placeTank(${f[Math.floor(f.length/2)][0]})`);}   // the hull beside the swarm, on screen
-  await until(`(c=>c.strike&&c.strike!=='done')(${T}.state().programme.colony)`,30000).catch(async()=>assert.fail(`Isao comes with his missile (${JSON.stringify((await prog()).colony)})`));
-  await until(`(c=>c.strike&&c.strike.phase==='carry'&&c.strike.t>7)(${T}.state().programme.colony)`,20000).catch(()=>{});current='colony-isao-carry';await finish();
-  await until(`${T}.state().programme.colony.isaoKills===1`,30000).catch(async()=>assert.fail(`his missile lands and kills one (${JSON.stringify((await prog()).colony)})`));
-  await until(`(b=>b&&b[1]&&b[1].scores&&b[1].scores.kills===1)(${T}.state().programme.colony.board)`,8000).catch(async()=>assert.fail(`Isao's A6 board reads 1 (${JSON.stringify((await prog()).colony.board)})`));
-  await evaluate(`${T}.showcase.ground(${(await prog()).colony.boardCell}, 1.6, 3)`);await delay(1500);current='colony-isao-one';await finish();
-  await evaluate(`${T}.showcase.follow()`);
-  await until(`${T}.state().programme.colony.strike==='done'`,20000);
+  /* A LAST DITCH SINCE 2026-10-03 (test/isao-strike.mjs has the rule): not in sector 4, and not without a door in trouble */
+  await delay(6000);assert.ok(!(await prog()).colony.strike,`no missile in sector 4 with the doors whole (${JSON.stringify((await prog()).colony.strike)})`);
   await evaluate(`${T}.sectorClearField()`);}
  // 3. TWO MANNED PASSES: the player in the seat with the beam held is a manned pass; Isao's calibration comes with the second
  for(let k=1;k<=2;k++){
@@ -1594,8 +1589,10 @@ try{
  // THE OWNER'S TENTH NOTES (2026-10-03): the purple pad before the bays opens the paint shop over a paused game; a sentry's level on its
  // pedestal; the boards bigger, west of the Stålheart; the debrief on one screen with CONTINUE on it
  const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), col=async()=>(await st()).programme.colony;
- await go('round10-base','index.html?sw=0&acceptance=1&cine=0&world=story&stage=8&phase=expedition#td');
- await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await delay(2000);
+ await go('round10-base','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await until(`${T}.state().sector.n===1`,60000);await evaluate(`${T}.sectorQuiet(true)`);
+ /* THE GARAGE (2026-10-03): Isao prints it after the board, between waves; the purple pad stands in it */
+ await until(`${T}.state().programme.perks.includes('garage')`,150000).catch(async()=>assert.fail(`Isao prints the garage (${JSON.stringify((await st()).programme)})`));await delay(2000);
  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card{display:none!important}</style>")');
  await until(`(${T}.state().programme.colony.paintPad||{}).standing`,30000).catch(async()=>assert.fail(`the paint pad stands with the bays (${JSON.stringify((await col()).paintPad)})`));
  const pad=(await col()).paintPad;
@@ -1607,7 +1604,9 @@ try{
  assert.equal((await st()).paused,true,'the game waits under the shop');
  assert.match(await evaluate('document.querySelector("#paint-shop header")?.textContent||""'),/PIMP MY RIDE/);
  // THE PALETTES (2026-10-03): every one open; a swatch paints the hull at once and the choice is kept for the next run
- assert.ok(await evaluate('document.querySelectorAll("#paint-shop [data-dye]").length')>=9,'the factory paint and the palettes');
+ assert.ok(await evaluate('document.querySelectorAll("#paint-shop [data-dye]").length')>=16,'the factory paint, the three A6 looks and the palettes');
+ await evaluate('document.querySelector("#paint-shop [data-dye=night-circuit]").click()');await delay(1500);current='round10-night-circuit';await finish();
+ await evaluate('document.querySelector("#paint-shop [data-dye=hazard]").click()');await delay(1500);current='round10-hazard';await finish();
  await evaluate('document.querySelector("#paint-shop [data-dye=desert]").click()');await delay(400);
  assert.equal((await col()).dyes.palette,'desert','the desert palette is on');assert.ok((await col()).painted>0,'the hull has paintable surfaces');
  await delay(600);current='round10-paint-pad';await finish();

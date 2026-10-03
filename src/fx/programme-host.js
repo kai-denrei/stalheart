@@ -22,6 +22,7 @@ import { createArcLaunch } from './arc-launch.js';
 const LAUNCH_SHOT = 22;   // seconds of the first launch's cinematic: the charge, the release, the petals unfolding
 import { createArmoryPad } from './armory-pad.js';
 import { createPaintPad } from './paint-pad.js';
+import { applyGarage } from '../../assets/models/garage/runtime.js';
 import { ORBITAL_WORKS } from '../content/orbital-works.js';
 import { makeWorks, launchDue, beginLaunch, collectorUp, energyBonus } from '../domain/orbital-works.js';
 import { createOrbitalRing } from './orbital-ring.js';
@@ -36,7 +37,7 @@ import { onStation, startStation } from '../domain/gunship.js';
 import { SOUNDS } from '../content/audio-defaults.js';
 import { strikeDue, pickStrikeTarget } from '../domain/isao-strike.js';
 import { ISAO_STRIKE } from '../content/base-programme.js';
-import { PALETTES, DYE_SHOP } from '../content/dyes.js';
+import { LIVERY_IDS, DYE_SHOP } from '../content/dyes.js';
 import { makeDyeBook } from '../domain/dyes.js';
 import { openPaintShop, applyLivery } from './paint-shop.js';
 import { BRIEFS } from '../isaobriefs.js';
@@ -83,10 +84,12 @@ export function createProgrammeHost(c) {
       const pp = s.paintPad;
       if (pp && c.scene && !pp.ring) pp.ring = createPaintPad(c.scene, { pos: pp.cell >= 0 ? c.graph().centers[pp.cell] : pp.pos, cellSide: c.cellSide(), tune: BASE_PERKS.paint });   // centred on its cell: open ground a hull can stand on
       if (pp?.ring) {
-        pp.ring.stand(programmeHas(pg, 'hulls'));
+        pp.ring.stand(programmeHas(pg, 'garage'));
+        // the garage's paint arm sprays while the shop is open (the A6 cycle, assets/models/garage/runtime.js), parked otherwise
+        const gar = c.storyBase()?.structure?.('garage')?.near; if (gar) { try { applyGarage(gar, s.shop ? (performance.now() / 1000 - (s.shopWall ??= performance.now() / 1000)) : 0, 1); } catch { /* a tier without the arm */ } if (!s.shop) s.shopWall = null; }
         const dt = Math.max(0, Math.min(0.1, c.t() - (pp.at ?? c.t()))); pp.at = c.t();
         if (pp.ring.tick(dt, c.playerHP() > 0 && !c.pilotMode() ? c.playerPos?.() : null, c.t()) && !s.shop && typeof document !== 'undefined') {
-          s.dyes ??= makeDyeBook(loadDyes(), PALETTES); c.pause?.(true);
+          s.dyes ??= makeDyeBook(loadDyes(), LIVERY_IDS); c.pause?.(true);
           s.shop = openPaintShop({ root: c.root ?? document.body, book: s.dyes, save: saveDyes, hull: () => c.hull?.(), lines: BRIEFS[BASE_PERKS.paint.brief].lines, title: BRIEFS[BASE_PERKS.paint.brief].title, onClose: () => { s.shop = null; c.pause?.(false); } });
         }
       }
@@ -140,7 +143,8 @@ export function createProgrammeHost(c) {
         const onScreen = () => c.enemies().filter((x) => { if (!x.alive) return false; const q = new THREE.Vector3(...x.pos).project(c.camera); return q.z < 1 && Math.abs(q.x) < 0.8 && Math.abs(q.y) < 0.8; });
         const isao = c.isao(), live = onScreen(), tank = c.playerPos?.();
         const ndc = tank ? new THREE.Vector3(...tank).project(c.camera) : null, inView = !!ndc && ndc.z < 1 && Math.abs(ndc.x) < ISAO_STRIKE.view && Math.abs(ndc.y) < ISAO_STRIKE.view;
-        if (strikeDue({ done: s.strikeDone, alive: c.enemies().filter((x) => x.alive).length, threshold: ISAO_STRIKE.alive, inView, seated: c.pilotMode() || !!c.laserStation?.seated?.(), isaoFree: !isao.order && !isao.held && isao.state === 'idle', hullUp: c.playerHP() > 0 })
+        const doors = c.sectorRun()?.gates?.() ?? [], pressure = doors.some((g) => g.broken || (g.max > 0 && g.hp / g.max < ISAO_STRIKE.gateShare));
+        if (strikeDue({ done: s.strikeDone, sector: s.sectorN ?? 0, minSector: ISAO_STRIKE.minSector, pressure, alive: c.enemies().filter((x) => x.alive).length, threshold: ISAO_STRIKE.alive, inView, seated: c.pilotMode() || !!c.laserStation?.seated?.(), isaoFree: !isao.order && !isao.held && isao.state === 'idle', hullUp: c.playerHP() > 0 })
           && pickStrikeTarget(live, tank, c.cellSide(), ISAO_STRIKE.near)) {
           s.strikeDone = true;
           s.strike = createIsaoStrike({ isao: () => isao, enemies: onScreen, tank: () => c.playerPos(), cellSide: () => c.cellSide(), scene: c.scene, explode: c.explode, kill: (e) => c.kill(e, 'isao'), brief: (id) => showBrief(id), sfx: c.sfx,
@@ -148,8 +152,8 @@ export function createProgrammeHost(c) {
         }
       }
       // THE PAINT (src/domain/dyes.js): the hull wears the palette chosen on the bays' pad, re-applied whenever the hull is a new mesh
-      s.dyes ??= makeDyeBook(loadDyes(), PALETTES);
-      { const hull = c.hull?.(); if (hull && hull !== s.paintedHull) { s.paintedHull = hull; s.painted = applyLivery(hull, s.dyes); } }
+      s.dyes ??= makeDyeBook(loadDyes(), LIVERY_IDS);
+      { const hull = c.hull?.(); if (hull && hull !== s.paintedHull) { s.paintedHull = hull; applyLivery(hull, s.dyes).then((n) => { s.painted = n; }); } }
       // THE ORBITAL WORKS (src/domain/orbital-works.js): once SOL-88 is up, a collector goes up at the start of every sector after a
       // secured one; each in orbit is a light on the ring and seconds of beam for SOL
       s.works ??= makeWorks();

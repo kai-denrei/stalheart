@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/jelaludo/SentryTowers_A6",
+  "revision": "25ccffa1e90109d8a49fcef53222767fedfc9bc4",
+  "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/25ccffa1e90109d8a49fcef53222767fedfc9bc4/",
+  "credit": "Models, livery art and runtimes by jelaludo (https://jelaludo.github.io/SentryTowers_A6/hover-tank/customize/ and /mork-garage/), reused with attribution under the upstream ASSET-LICENSE.md",
+  "note": "The M\u00d6RK livery runtime (createAppearance, presets Bunny Overdrive, Night Circuit, Field Notes, Factory) and the open-roof customization garage, for the PIMP MY RIDE station (2026-10-03)",
+  "files": [
+    {
+      "path": "assets/models/livery/runtime.js",
+      "sourcePath": "assets/hover-tank/customization/runtime.js",
+      "sha256": "1f465371a7516d7ebf830aef38853a0a7787b05f1d0af64a04dacf6c467c1551",
+      "bytes": 9379
+    },
+    {
+      "path": "assets/models/livery/art.js",
+      "sourcePath": "assets/hover-tank/customization/art.js",
+      "sha256": "c451ac9fe1875142267ad7e2b098f2c95432176e3949c0bc4e3e0dd2875a83f7",
+      "bytes": 7202
+    },
+    {
+      "path": "assets/models/livery/presets/bunny-overdrive.json",
+      "sourcePath": "assets/hover-tank/customization/presets/bunny-overdrive.json",
+      "sha256": "22322cbcaccd612266b435191d262a69c9d93e1a4e45e8217b2d114566fdc9c9",
+      "bytes": 680
+    },
+    {
+      "path": "assets/models/livery/presets/night-circuit.json",
+      "sourcePath": "assets/hover-tank/customization/presets/night-circuit.json",
+      "sha256": "12c1f255ad86b3cbabc92f6eacf8866bc359851bf576aabc7586fa62f2f90831",
+      "bytes": 666
+    },
+    {
+      "path": "assets/models/livery/presets/field-notes.json",
+      "sourcePath": "assets/hover-tank/customization/presets/field-notes.json",
+      "sha256": "1e27bda408dc2d0ed5e67f67121620b592b4614a2839f76c4223b01ee2e5fa57",
+      "bytes": 653
+    },
+    {
+      "path": "assets/models/livery/presets/factory.json",
+      "sourcePath": "assets/hover-tank/customization/presets/factory.json",
+      "sha256": "b492309371c4e4cd2e7f7a71e2d878eb10b59878be25d1fa9c608291795057a8",
+      "bytes": 649
+    },
+    {
+      "path": "assets/models/garage/runtime.js",
+      "sourcePath": "assets/mork-garage/runtime.js",
+      "sha256": "7d1260df6021a43ed7fb1ddf6c2814d2c5a9c3b84a7449ffc7a415b8c94d029e",
+      "bytes": 1089
+    },
+    {
+      "path": "assets/models/garage/mork_garage_d0_lod1.glb",
+      "sourcePath": "assets/mork-garage/lod1/mork_garage_d0_lod1.glb",
+      "sha256": "dde77c48d8d8b6ae0ff59279b685a3f2a2913617314a059910afa9193c568576",
+      "bytes": 150416
+    },
+    {
+      "path": "assets/models/garage/mork_garage_d0_lod2.glb",
+      "sourcePath": "assets/mork-garage/lod2/mork_garage_d0_lod2.glb",
+      "sha256": "2508d4035a06b749b958bcef7afa4f2bd35c6bfdced12a9714698f241e2fa710",
+      "bytes": 129916
+    }
+  ]
+}

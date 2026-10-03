@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { strikeDue, pickStrikeTarget } from '../src/domain/isao-strike.js';
 import { ISAO_STRIKE } from '../src/content/base-programme.js';
 import { BRIEFS } from '../src/isaobriefs.js';
-const ok = { done: false, alive: 200, threshold: ISAO_STRIKE.alive, inView: true, seated: false, isaoFree: true, hullUp: true };
+const ok = { done: false, alive: ISAO_STRIKE.alive + 50, threshold: ISAO_STRIKE.alive, inView: true, seated: false, isaoFree: true, hullUp: true, sector: ISAO_STRIKE.minSector, minSector: ISAO_STRIKE.minSector, pressure: true };
+// the last ditch (2026-10-03): not before minSector, not without the base in trouble
+assert.equal(strikeDue({ ...ok, sector: ISAO_STRIKE.minSector - 1 }), false); assert.equal(strikeDue({ ...ok, pressure: false }), false);
 assert.equal(strikeDue(ok), true);
 for (const [k, v] of [['done', true], ['alive', 10], ['inView', false], ['seated', true], ['isaoFree', false], ['hullUp', false]]) assert.equal(strikeDue({ ...ok, [k]: v }), false, `not when ${k} is ${v}`);
 const cell = 0.01, tank = [0, 0, 1], at = (c) => ({ pos: [Math.sin(c * cell), 0, Math.cos(c * cell)] });

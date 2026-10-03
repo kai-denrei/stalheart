@@ -39,7 +39,7 @@ export const SECTORS = freeze([
   // comes up at the far end of a canyon cut at the antipode (CANYON) and SOL-82's first pass is laid over it
   { n: 3, name: 'THE CANYON', breaches: { gate: 1 }, waves: 4, ladderStart: 2, threat: 1.8, pulse: 14, held: { kg: 50, points: 500 }, canyon: true,
     gunshipCall: true, backDoor: false, laser: true, hardcoresEveryWave: false, new: 'SOL-82 online',
-    brief: ['A tremor on the far side of the world. A swarm, massing in a canyon.', 'SOL-82 comes online over it. All of it, in one place.'] },
+    brief: ['A tremor on the far side of the world. A swarm, massing in a canyon.', 'The gate waits for you. The far side does not.'] },
   { n: 4, name: 'THE PRESS', breaches: { gate: 2 }, waves: 4, ladderStart: 4, threat: 2.1, pulse: 13, held: { kg: 55, points: 550 },
     gunshipCall: true, backDoor: false, laser: true, hardcoresEveryWave: false, new: null,
     brief: ['They are pressing harder. The lane is never empty now.', 'Spend what you have. The colony can print more.'] },
@@ -163,7 +163,9 @@ export const SECTOR_FORFEIT = freeze({ killShare: 1, streak: 1 });
 // firstSectorDue): the expedition Isao has just sent the tank on
 // `soft` (2026-10-03): every rammable entry of a sector's waves is multiplied by up to it, climbing `softStep` a sector from x1 at sector 1
 // (x2 from sector 5: the lane's first sectors held by sentries alone fell at x2); the alive budget rose with it (520 -> 900)
-export const SECTOR_TIMING = freeze({ briefSeconds: 6, staggerSeconds: 1.5, backDoorLead: 5, securePause: 3, lostHold: 2.5, pace: 1.5, aliveBudget: 900, firstGrace: 90, soft: 2, softStep: 0.25 });
+// (2026-10-03, second pass: "still very comfortable 50fps constant ... not enough enemies. Canon fodder! more!") x4 at most, +0.5 a
+// sector (x2 at sector 3, x4 from sector 7), the alive budget 900 -> 1500
+export const SECTOR_TIMING = freeze({ briefSeconds: 6, staggerSeconds: 1.5, backDoorLead: 5, securePause: 3, lostHold: 2.5, pace: 1.5, aliveBudget: 1500, firstGrace: 90, soft: 4, softStep: 0.5 });
 
 // THE GATE TAKES THE PRESSURE (QA 2026-09-16: a closed gate held a pile of 116 forever and a sector could not be lost).
 // Enemies within pressCells of the gate cell wear it down: dps per soft body, per solid core. At zero it breaks and stands

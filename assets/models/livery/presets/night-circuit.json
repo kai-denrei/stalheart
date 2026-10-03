@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "asset_family": "mork_hover_tank",
+  "preset_id": "night-circuit",
+  "label": "Night Circuit",
+  "paint": {
+    "primary": "#101923",
+    "secondary": "#24343e",
+    "accent": "#47ecff"
+  },
+  "pattern": "circuit",
+  "finish": "satin",
+  "name": "NIGHT RUNNER",
+  "number": "01",
+  "message": "END OF LINE",
+  "decals": [
+    {
+      "zone": "turret",
+      "symbol": "circuit",
+      "scale": 0.9,
+      "rotation": 0
+    },
+    {
+      "zone": "badge",
+      "symbol": "circuit",
+      "scale": 0.9,
+      "rotation": 0
+    },
+    {
+      "zone": "message",
+      "symbol": "circuit",
+      "scale": 0.9,
+      "rotation": 0
+    }
+  ]
+}

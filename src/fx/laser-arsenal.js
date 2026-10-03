@@ -157,7 +157,7 @@ export function createLaserArsenal(scene, host) {
   }
 
   function edge(e) {
-    if (e === 'arrive') { laser?.setSource(null); count = auto ? LASER_AUTO.countdown : 0; said = -1; passes++; host.brief?.(auto ? LASER_AUTO.brief : 'laser_pass'); autoT = 0; autoAim = null; }
+    if (e === 'arrive') { laser?.setSource(null); count = auto ? LASER_AUTO.countdown : 0; said = -1; passes++; if (!special) host.brief?.(auto ? LASER_AUTO.brief : 'laser_pass');   /* a pass laid over a place (the canyon) has its own one line (2026-10-03: three messages, one should suffice) */ autoT = 0; autoAim = null; }
     if (e === 'close') { lift(); if (mannedThisPass) manned++; mannedThisPass = false; autoAim = null; if (special) { special = null; normalPass(); st.energy = beam.energy; } host.passEnded?.(); }
     return e;
   }

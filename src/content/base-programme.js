@@ -57,6 +57,8 @@ export const BASE_PROGRAMME = Object.freeze([
   // more kills"; and "A flag showing the Rank"): a slab Isao prints first thing after the handover; the host raises the plaque and the rank
   // flag on it (src/fx/scoreboard.js) and feeds it the run's books. The first thing the player owns in the base: their count and their rank
   { id: 'board', label: 'scoreboard', islands: ['board'], when: { sector: 1, idle: true }, seconds: 6, metres: 3, brief: 'build_board', perk: 'board' },
+  // THE GARAGE (owner, 2026-10-03): the A6 paint bay, printed straight after the board; its perk puts the purple PIMP MY RIDE pad in it
+  { id: 'garage', label: 'paint garage', islands: ['garage'], structures: ['garage'], when: { sector: 1, idle: true }, seconds: 10, metres: 6, brief: 'build_garage', perk: 'garage' },
   { id: 'armory', label: 'armory', islands: ['armory'], structures: ['armory', 'ammo-a', 'ammo-b', 'ammo-c'], when: { sector: 2, idle: true }, seconds: 16, metres: 8, brief: 'build_armory', perk: 'armory' },
   { id: 'farm', label: 'greenhouse', islands: ['farm'], structures: ['greenhouse', 'bio-a', 'bio-b', 'bio-c'], when: { sector: 3, idle: true }, seconds: 16, metres: 6, brief: 'build_farm', perk: 'farm' },
   { id: 'chips', label: 'chip plant', islands: ['chips'], structures: ['chips'], when: { sector: 4, idle: true }, seconds: 14, metres: 5, brief: 'build_chips', perk: 'chips' },
@@ -76,7 +78,7 @@ export const BASE_PERKS = Object.freeze({ gunshipMeter: 1.5, rebuildHulls: 1, fa
   // PIMP MY RIDE (owner, 2026-10-03): the purple pad beside the bays (`pad` metres off the bay island's centre: east of it, off the
   // roll-out a fresh hull takes out of the doors, so a deploy never parks on it); the hull inside
   // `radiusMetres` and slower than `still` m/s for `settle` seconds opens the paint shop (src/fx/paint-pad.js)
-  paint: Object.freeze({ radiusMetres: 8, lift: 0.6, island: 'bay', pad: [27, 0], settle: 0.8, still: 1.5, brief: 'paint_pad' }) });   // island/pad: the pad is `pad` metres off that island's centre (west of the assembly line)
+  paint: Object.freeze({ radiusMetres: 8, lift: 0.6, island: 'garage', pad: [0, 0], settle: 0.8, still: 1.5, brief: 'paint_pad' }) });   // island/pad: the pad is `pad` metres off that island's centre (west of the assembly line)
 
 // ISAO MENDS WHAT THE SWARM BROKE (owner, 2026-09-16: "Isao should go and build walls/a gate in between waves when a breach of the
 // base happened"). The rule is src/domain/repair-orders.js; these are the numbers. `gateAt` is the share of the gate's hp below
@@ -99,5 +101,6 @@ export const BASE_REPAIR = Object.freeze({
 // in a seat, and Isao is free, he takes one missile off the dump and flies it over the swarm `near` cells round the hull, slowly
 // (`travel` seconds, wobbling `wobble` cells, coming down to `carryCells` over the ground so the chase camera sees him), lets go, the round falls for `fall` seconds and lands as `blast`, and it kills exactly one
 // body: his first. The board celebrates for `celebrate` seconds. `missile` is the pinned round (docs/colony-assets.lock.json).
-export const ISAO_STRIKE = Object.freeze({ alive: 120, view: 0.6, near: [1.5, 7], travel: 9, wobble: 0.35, carryCells: 2.2, fall: 1.4, blast: 'gunship.heavy', celebrate: 5,
+// (2026-10-03) a last-ditch effort: not before sector `minSector`, and only with a door below `gateShare` of its hp (or down)
+export const ISAO_STRIKE = Object.freeze({ minSector: 6, gateShare: 0.5, alive: 300, view: 0.6, near: [1.5, 7], travel: 9, wobble: 0.35, carryCells: 2.2, fall: 1.4, blast: 'gunship.heavy', celebrate: 5,
   missile: 'assets/models/astro/ammo_missile_heavy_projectile_game.glb', missileMetres: 6.4, go: 'isao_strike_go', hit: 'isao_strike_hit' });

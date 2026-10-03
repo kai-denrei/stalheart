@@ -219,6 +219,7 @@ export const BRIEFS = {
     lines: ['We were not the only rocket. Three more came down off course.', 'See the beacons? Something worth fetching at each. Later, with a hull.'],
   },
   // the bays' purple pad (src/fx/paint-pad.js): his lines over the shop when the player parks on it
+  build_garage: { id: 'build_garage', face: 'glee', title: 'ISAO · THE GARAGE', lines: ['A paint bay. The crew asked. I said yes.'] },
   paint_pad: {
     id: 'paint_pad', face: 'glee', title: 'PIMP MY RIDE · ISAO',
     lines: ['Parked on the pad. Good.', 'Pick a scheme. The hull has been grey long enough.'],
@@ -446,7 +447,7 @@ export const BRIEFS = {
   },
   canyon_pass: {
     id: 'canyon_pass', face: 'determined', title: 'SOL-82 · THE CANYON',
-    lines: ['SOL-82 is over the canyon. The beam is yours.', 'Hold it and walk it down the canyon. Leave nothing to walk here.'],
+    lines: ['SOL-82 is over the canyon. Hold the beam and walk it down: leave nothing to walk here.'],
   },
   // THE SIDE BREACH (sector 5, owner 2026-10-01: "it reveals that the walls can be breached"): the wall beside the gate is broken
   side_breach: {

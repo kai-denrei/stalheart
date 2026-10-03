@@ -13,10 +13,22 @@ export const PALETTES = Object.freeze([
   { id: 'stone', label: 'SAND & STONE', armour: '#b5a587', edge: '#55524b' },
   { id: 'crimson', label: 'CRIMSON', armour: '#7a1f1f', edge: '#262626' },
   { id: 'teal', label: 'TEAL & BONE', armour: '#2e6867', edge: '#d1c5a0' },
-  { id: 'hazard', label: 'HAZARD', armour: '#d2a32a', edge: '#1b1b1b' },
+  { id: 'hazard', label: 'HAZARD', armour: '#d2a32a', edge: '#1b1b1b', stripes: true },   // black and yellow stripes down the sides (2026-10-03)
   { id: 'night', label: 'NIGHT OPS', armour: '#17191d', edge: '#3d434a' },
 ].map(Object.freeze));
 export const PALETTE_BY_ID = Object.freeze(Object.fromEntries(PALETTES.map((p) => [p.id, p])));
+
+// THE A6 LOOKS (owner, 2026-10-03: "it should have the bunny overdrive look, the night circuit, and the field notes looks"): the upstream
+// livery presets, applied whole by the A6 livery runtime (assets/models/livery/, docs/livery-assets.lock.json); `preset` is the file name
+export const LIVERY_LOOKS = Object.freeze([
+  { id: 'bunny-overdrive', label: 'BUNNY OVERDRIVE', swatch: ['#f06aa8', '#351443'] },
+  { id: 'night-circuit', label: 'NIGHT CIRCUIT', swatch: ['#101923', '#47ecff'] },
+  { id: 'field-notes', label: 'FIELD NOTES', swatch: ['#6b7550', '#f5ebce'] },
+].map(Object.freeze));
+// every id the book may hold: the looks and the palettes (and 'factory')
+export const LIVERY_IDS = Object.freeze([...LIVERY_LOOKS.map((l) => l.id), ...PALETTES.map((p) => p.id)]);
+// a palette as an A6 recipe: its two paints and an ivory stencil, no pattern, no marks (the Hazard's stripes are drawn by the shop)
+export const ACCENT = '#e9e2cf';
 
 // the hull's two paintable surfaces (the A6 MÖRK's own material names, src/fx/weathered-material.js MORK_SURFACES); FACTORY is its own paint
 export const DYE_SLOTS = Object.freeze([

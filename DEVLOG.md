@@ -68,6 +68,23 @@ Evidence:
 - --story-world, --chapters, --round7, --round9, --sectors, --canyon, --gunship-auto, --skip-tutorial, --colony, --grow and the default suite green
 - Not yet seen in play: the glide's feel, the frame rate with the bigger swarms and nests, the thrown MK-9 from the seat
 
+## 2026-10-03 — The owner's fifteenth notes: much more fodder, the tour out of the close-up without a cut, Isao's missile a late last ditch, the build menu closed by a scene, sentries printed in wireframe then skinned, the painted banner fitted, the Quiver's fast plunge, the A6 looks and the garage, the mission in five words, SOL said once
+
+change · accepted · 2026-10-03-fifteenth-notes-fodder-print-looks-garage-mission-strike-dive
+
+Owner, 2026-10-03, after playtesting to sector 7 at a constant 50 fps: not enough enemies, cannon fodder, more. 1) the intro is much better, one jump cut could be smoother; 2) Isao's carried bomb: closer to his body, reserved for much later, a last-ditch help with his board going 0 -> 1; 3) a tower's radial stayed stuck when SOL's scene arrived; 4) a tower appears big then shrinks: print it as a wireframe like a 3D printer, then skin it; 5) TARGET PAINTED overruns its red frame; 6) the Quiver round's lit descent should be very fast once past the apex; 7) the Pimp My Ride shop should have Bunny Overdrive, Night Circuit and Field Notes, the new garage, and Hazard with black and yellow stripes; 8) a very short laconic exposé of the why: Land > Resources > Build > Defend > link the satellites to the Dyson Sphere; 9) SOL's explanation is three messages, one should do.
+
+0) Rammable entries of a sector's waves x(1 + 0.5 a sector past the first, up to x4), the alive budget 1500 (the gunship's auto 2000). 1) The landers' tour leaves from the camera where the close-up left it, blended over 1.6 s. 2) ISAO_STRIKE: not before sector 6, only with a door below half or down, 300 bodies up; the round hugged 0.22 cells under him. 3) Entering any seat, SOL's seat or any camera shot closes the build menu. 4) src/fx/tower-print.js: the print ghost is the sentry's look in wireframe in its colour, placed exactly as the sentry will be (the old ghost skipped TOWER_SCALE and the perch: the big-then-small), revealed by a rising clip plane; at the end the real sentry's skin rises over it and the wireframe fades (renderer.localClippingEnabled). 5) The banner's width counts the 3 px tracking and the text is fitted to it. 6) A round with diveRate (the Quiver's 2.6) runs its clock that much faster past its crest (src/missiles.js); the pinned A6 flight is untouched. 7) docs/livery-assets.lock.json pins the A6 livery runtime, its four presets and the open-roof garage (lod1, lod2, runtime) at 25ccffa; vendor/DecalGeometry.js (three r160). The paint is the A6 runtime's createAppearance on the game's own hull (its material names match): LOOKS Factory, Bunny Overdrive, Night Circuit, Field Notes and PAINT the twelve palettes as recipes; Hazard's pattern textures are swapped for diagonal black-and-yellow bands. The garage is a programme step after the board (island 12 x 18 m east of the bays), the purple pad stands in it with its perk, and its arm runs the A6 paint cycle while the shop is open. 8) src/fx/mission-card.js over the landing: LAND · HARVEST · BUILD · DEFEND · LINK THE SPHERE, then 'ISAO · We land. We take. We build. We hold. Then we wire this world to the star.' 9) A pass laid over the canyon says only the canyon's one line (no generic pass line); the sector 3 brief's second line no longer repeats SOL.
+
+Alternatives: Swapping the in-game hull for the A6 customization model: the runtime matched the game's own hull by material name, so the hull stays; Editing the pinned A6 flight curve for the plunge: a clock rate past the crest keeps the upstream file untouched
+
+Evidence:
+
+- scripts/browser-lock.sh node scripts/browser-test.mjs --round10 (the garage printed, the pad in it, Night Circuit and Hazard on the hull: artifacts/browser/round10-night-circuit.png, round10-hazard.png)
+- node scripts/assets.mjs (the livery lock verified)
+- --round7, --story-world, --chapters, --grow, --colony, --sectors, --canyon, --round9, --round13, --skip-tutorial, --gunship-auto and the default suite green
+- Not yet seen in play: the wireframe print, the mission card over the landing, the fodder at x4
+
 ## 2026-10-03 — The owner's eleventh notes: SOL-88 climbs out of sight, blasts scatter the swarm, the opening reaches the Rotor in half the time, the hand-over at the open lens, the landers' nests from the start, the canyon twice as fast, the hull's flanks, a lighter camp, no snag on open ground, natural palettes
 
 change · accepted · 2026-10-03-eleventh-notes-launch-scatter-opening-lens-guards-canyon-hull-palettes
