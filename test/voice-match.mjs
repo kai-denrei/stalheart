@@ -1,7 +1,7 @@
 // voice-match — which trigger a game moment belongs to, and the line picker's rules, over the real generated table.
 import { ISAO_TRIGGERS } from '../src/content/isao-voice.js';
 import { VOICE_HOOKS } from '../src/content/voice-hooks.js';
-import { createVoiceIndex, eligible, pickLine, readPicks, writePicks, normText } from '../src/domain/voice-match.js';
+import { createVoiceIndex, eligible, pickLine, readPicks, writePicks, normText, dbGain } from '../src/domain/voice-match.js';
 
 let n = 0, bad = 0;
 const ok = (label, cond) => { n++; if (cond) console.log('  ok  ', label); else { bad++; console.log('  FAIL', label); } };
@@ -18,6 +18,8 @@ ok('RAM milestones only', ix.resolve('RAM ×10') === 'ram_chain_milestones' && i
 ok('the sector briefs speak sector_brief', ix.resolve('sector_3') === 'sector_brief');
 ok('an unknown moment is silent', ix.resolve('nothing_here') === null && ix.resolve('') === null && ix.resolve(null) === null);
 ok('the mission event', ix.resolve('mission') === 'mission');
+{ const ix2 = createVoiceIndex({ sector_brief: { aliases: [], lines: [] }, sector_1: { aliases: [], lines: [] } }, { sector_brief: ['sector_1', 'sector_2'] });
+  ok('a brief recorded on its own outranks the alias that stood in for it', ix2.resolve('sector_1') === 'sector_1' && ix2.resolve('sector_2') === 'sector_brief'); }
 ok('normText', normText(' a <i>b</i>  c ') === 'A B C');
 
 const fc = ISAO_TRIGGERS.first_contact.lines;
@@ -27,6 +29,11 @@ ok('pickLine avoids the last', pickLine(fc.slice(0, 2), fc[0].id, 0).id === fc[1
 
 const p = readPicks(writePicks({ muted: true, off: new Set(['b', 'a']), quiet: new Set(['idle']) }));
 ok('picks round-trip', p.muted && p.off.has('a') && p.off.has('b') && p.quiet.has('idle'));
+const cal = readPicks(writePicks({ muted: false, off: new Set(), quiet: new Set(), db: 6, duck: 0.3 }));
+ok('the voice trim and the duck round-trip', cal.db === 6 && cal.duck === 0.3);
+ok('trim and duck out of range read as the defaults', readPicks('{"db":40,"duck":5}').db === 0 && readPicks('{"db":40,"duck":5}').duck === null);
+ok('no trim stored is 0 dB, no duck is the game\'s', readPicks('{}').db === 0 && readPicks('{}').duck === null && !('db' in JSON.parse(writePicks(readPicks('{}')))));
+ok('dB to gain', Math.abs(dbGain(6) - 1.995) < 0.001 && dbGain(0) === 1 && Math.abs(dbGain(-20) - 0.1) < 1e-9);
 ok('malformed picks read as all on', !readPicks('{nope').muted && readPicks(null).off.size === 0 && readPicks('{"off":[3,"x"]}').off.size === 1);
 
 let lines = 0; for (const t of Object.values(ISAO_TRIGGERS)) lines += t.lines.length;

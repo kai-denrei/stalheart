@@ -1666,6 +1666,15 @@ try{
  await evaluate('document.querySelector("#tab-voice").scrollTop=0');await delay(200);await click('#tab-voice [data-filter="unwired"]');await delay(300);current='voice-tab-unwired';await finish();
  await click('#tab-voice [data-all]');await delay(200);assert.equal((await evaluate(`${V}.picks()`)).off.length,0,'all on again');
  await click('#tab-voice [data-filter="all"]');await delay(300);current='voice-tab';await finish();
+ // THE CALIBRATION BENCH (2026-10-04): a scene of the game's own sounds, the voice trim and the duck set by ear, kept in the game's picks
+ await evaluate('document.querySelector("#tab-voice").scrollTop=0');await delay(200);
+ await click('#tab-voice [data-scene="attack"]');await until(`${V}.scene()==="attack" && ${V}.audio().active.includes("boss_tension")`,20000).catch(async()=>assert.fail(`the scene plays (${JSON.stringify(await evaluate(`${V}.audio()`))})`));
+ await evaluate('(()=>{const i=document.querySelector("#tab-voice [data-db]");i.value="6";i.dispatchEvent(new Event("input",{bubbles:true}));const d=document.querySelector("#tab-voice [data-duck]");d.value="30";d.dispatchEvent(new Event("input",{bubbles:true}));})()');
+ assert.equal((await evaluate(`${V}.picks()`)).db,6,'the voice trim is kept');assert.equal((await evaluate(`${V}.picks()`)).duck,0.3,'and the duck');
+ await click('#tab-voice [data-say]');await until(`${V}.audio().active.some(k=>k.startsWith("isao_"))`,15000).catch(async()=>assert.fail(`Isao speaks over the scene (${JSON.stringify(await evaluate(`${V}.audio()`))})`));
+ current='voice-calibrate';await finish();
+ await click('#tab-voice [data-cal-reset]');await delay(200);assert.equal((await evaluate(`${V}.picks()`)).db,undefined,'RESET: no trim stored');
+ await click('#tab-voice [data-scene-stop]');await delay(400);assert.equal(await evaluate(`${V}.scene()`),null,'the scene stops');
  // THE GAME: a story page, one gesture for the audio, and Isao answers the sector's brief or callouts with a recorded line
  const T='window.__stalheartTest';
  await go('voice-game','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence#td');
@@ -1685,6 +1694,23 @@ try{
  console.log(consoleLines.filter(l=>/audio|AUDIO|voice|isao/i.test(l)).slice(0,40).join('\n'));
  console.log('ERRORS',JSON.stringify(errors).slice(0,1500));
  console.log('FAILED',JSON.stringify(requests.filter(r=>r.status>=400)).slice(0,800));
+ } else if(args.includes('--seat-switch')) {
+ // ONE SEAT TO THE NEXT (owner, 2026-10-04: the gunship's planet "layered", and it stayed): from the Quiver straight to the gunship and on
+ // to the Rotor. The Quiver's scope panels leave with the Quiver, the gunship is thermal, the Rotor is not and wears its own header
+ const T='window.__stalheartTest',flir='import("./src/fx/flir-pass.js").then(m=>m.flirLive.on)';
+ await go('seat-switch','index.html?sw=0&world=story&cine=0&acceptance=1&skip=quiver&gunship=station&brief=0#td');
+ await until(`!!${T} && !!document.querySelector("#story-views [data-mount=quiver]")`,120000);await delay(3000);
+ await evaluate('document.querySelector("#story-views [data-mount=quiver]").click()');await delay(3000);
+ assert.notEqual(await evaluate('getComputedStyle(document.querySelector("#story-scope")).display'),'none','the Quiver seat shows its scope');
+ await until('!document.querySelector("#story-views [data-mount=gunship]").disabled',30000);
+ await evaluate('document.querySelector("#story-views [data-mount=gunship]").click()');await delay(2000);await evaluate('document.querySelector("#gunship-briefing [data-skip]")?.click()');
+ await until(`${T}.state().gunship.seat`,15000);await delay(1500);
+ assert.equal(await evaluate('getComputedStyle(document.querySelector("#story-scope")).display'),'none','the Quiver\'s panels left with the Quiver');
+ assert(await evaluate(flir),'the gunship is thermal');current='seat-switch-gunship';await finish();
+ await evaluate('document.querySelector("#story-views [data-mount=rotor]").click()');await delay(2500);
+ assert.equal(await evaluate(flir),false,'the Rotor is not thermal');
+ assert(!/KORP/.test(await evaluate('document.querySelector("#sentry-pilot header")?.textContent||""')),'the Rotor wears its own header, not the gunship\'s');
+ current='seat-switch-rotor';await finish();
  } else if(args.includes('--opening-probe')) {
  // THE OPENING'S TIMELINE from a bare page: phase, shot, view, Isao's panel, every change (no assertions)
  const T='window.__stalheartTest';

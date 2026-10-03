@@ -6,7 +6,7 @@
 // and dropped if it arrives more than `late` seconds after its moment. A page whose audio has no voice lines stays silent.
 import { ISAO_TRIGGERS } from '../content/isao-voice.js';
 import { VOICE_HOOKS, VOICE_TUNE, VOICE_STORE, voiceKey } from '../content/voice-hooks.js';
-import { createVoiceIndex, eligible, pickLine, readPicks } from '../domain/voice-match.js';
+import { createVoiceIndex, eligible, pickLine, readPicks, dbGain } from '../domain/voice-match.js';
 import { storage } from '../storage.js';
 
 export function createIsaoVoice({ triggers = ISAO_TRIGGERS, hooks = VOICE_HOOKS, tune = VOICE_TUNE, picks = () => readPicks(storage.getItem(VOICE_STORE)),
@@ -25,7 +25,7 @@ export function createIsaoVoice({ triggers = ISAO_TRIGGERS, hooks = VOICE_HOOKS,
     last.set(key, line.id); lastAt.set(key, t); busyUntil = t + line.duration + tune.gap;
     const k = voiceKey(line.id), entry = { at: t, from: String(id), trigger: key, id: line.id, played: false };
     note(entry);
-    const go = () => { if (now() - t > tune.late) { entry.late = true; busyUntil = now(); return; } sfx?.play(k); if (tune.duck) sfx?.duck?.(tune.duck.buses, tune.duck.depth, line.duration); entry.played = true; };
+    const go = () => { if (now() - t > tune.late) { entry.late = true; busyUntil = now(); return; } sfx?.play(k, { gain: dbGain(p.db) }); if (tune.duck) sfx?.duck?.(tune.duck.buses, p.duck ?? tune.duck.depth, line.duration); entry.played = true; };   // the voice tab's trim and duck
     if (sfx?.prime) sfx.prime(k).then((ok) => (ok ? go() : (entry.failed = true))); else go();
     return line;
   }

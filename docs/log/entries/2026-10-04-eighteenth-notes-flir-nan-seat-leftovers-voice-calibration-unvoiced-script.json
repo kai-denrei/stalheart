@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "2026-10-04-eighteenth-notes-flir-nan-seat-leftovers-voice-calibration-unvoiced-script",
+  "date": "2026-10-04",
+  "type": "change",
+  "status": "accepted",
+  "title": "The owner's eighteenth notes: the gunship's layered planet (the WebGL FLIR read no-number pixels as heat), the Quiver's panels and the gunship's header left behind by a seat switch, a calibration bench for Isao's voice, and the script of every line he has not said",
+  "context": "Owner, 2026-10-04 (live, on 16735000, screenshot): 1) going to the gunship shows a strange layered effect of the planet surface, and it remains when switching to other modes; 2) the DEV voice tab needs a way to calibrate Isao's loudness against the environment; 3) tomorrow: record all of Isao's lines that are not spoken yet.",
+  "outcome": "1) Reproduced on the Quiver -> gunship route: the new FLIR pass drew a dense bright lattice the CSS filter never showed, with the same draw calls on both builds; a pass-through shader showed none, so the pixels were dark on screen and bright through the ironbow: no-number (NaN) pixels, which display black, made the table look-up land anywhere. The shader now reads NaN and infinity as cold and clamps its index. The same route showed two seat-switch leftovers: the Quiver's scope panels stayed up in the gunship (only a seated Quiver feeds them; src/fx/story-scope.js now hides itself 0.6 s after its last feed) and the gunship's header stayed on the Rotor's panel (src/sentry-pilot.js restores the seat's own header on leaving the gunship). 2) The voice tab's CALIBRATE bench plays the game's own sounds at the game's levels (a quiet base, the base under attack, the gunship), with VOICE (-18..+12 dB) and WORLD UNDER HIM (the duck, 10..100 %) sliders, SAY A LINE and a line every 5 s; both values live in the game's picks (td.voice db, duck), the game's voice applies them to every line, and EXPORT PICKS carries them for baking. 3) src/domain/voice-script.js + scripts/isao-unvoiced.mjs (and EXPORT UNVOICED in the tab) write docs/ISAO-UNVOICED-LINES.md in the seiyu_voice format: 33 silent briefs and the unrecorded on-screen text of the spoken ones, 186 lines in 76 triggers, each trigger once, a wildcard brief (build_armory) its own trigger; seiyu_voice's parser reads it (186 lines, no errors). A trigger's own key now outranks another trigger's alias, so a newly recorded brief (sector_1) speaks for itself.",
+  "alternatives": [
+    "Going back to the CSS filter for thermal: Safari draws none of it over the WebGL canvas",
+    "A loudness meter instead of the bench: the owner's question is how he sounds over the game, which is answered by ear against the game's own mix",
+    "Writing the unvoiced lines into seiyu_voice's ISAO-VOICE-LINES.md directly: that file is that project's source of truth; the merge is the owner's"
+  ],
+  "evidence": [
+    "Quiver -> gunship screenshots on be751aab and 16735000 (dense lattice only on the new build, 741 vs 740 calls), the pass-through probe, and the fixed build matching the CSS look; the Rotor after the gunship clean",
+    "--seat-switch (new): the scope hidden in the gunship, the gunship thermal, the Rotor not and with its own header; --voice: the attack scene plays, +6 dB and 30 % kept, Isao speaks over it, RESET clears",
+    "test/voice-match.mjs 24/24, test/isao-voice.mjs 18/18, test/voice-script.mjs, seiyu_voice parse_script on the generated file: 186 lines, 76 triggers"
+  ],
+  "supersedes": []
+}

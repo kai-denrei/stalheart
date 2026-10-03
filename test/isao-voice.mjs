@@ -12,9 +12,9 @@ const T = {
   b: { aliases: ['b'], lines: [{ id: 'b_01', text: 'b', kind: 'spoken', duration: 2 }, { id: 'b_02', text: 'q', kind: 'spoken', duration: 1, qualifier: 'q' }] },
 };
 let clock = 0, picks = { muted: false, off: new Set(), quiet: new Set() }, r = 7;
-const played = [], primed = [];
+const played = [], primed = [], gains = [];
 const ducks = [];
-const sfx = { prime: (k) => { primed.push(k); return Promise.resolve(true); }, play: (k) => played.push(k), duck: (b, d, s) => ducks.push([b, d, s]) };
+const sfx = { prime: (k) => { primed.push(k); return Promise.resolve(true); }, play: (k, o) => { played.push(k); gains.push(o?.gain); }, duck: (b, d, s) => ducks.push([b, d, s]) };
 const say = createIsaoVoice({ triggers: T, hooks: {}, tune: { gap: 0.5, repeat: 10, late: 1.5, gain: 1, duck: { buses: ['tank'], depth: 0.4 } }, picks: () => picks, now: () => clock, rand: () => (r = (r * 9301 + 49297) % 233280) / 233280 });
 
 ok('a moment with lines speaks', say(sfx, 'a')?.id.startsWith('a_'));
@@ -48,6 +48,11 @@ let release; const slow = { prime: () => new Promise((res) => { release = res; }
 const line = say(slow, 'a'); clock += 2; release(true); await tick();
 ok('a line back too late is dropped', line && played.length === 0 && say.log.at(-1).late === true);
 clock += 0.1; ok('and the voice is free again', say(slow, 'b') !== null);
+// the voice tab's calibration: the trim reaches the line and the duck its depth
+clock += 11; picks = { muted: false, off: new Set(), quiet: new Set(), db: 6, duck: 0.25 }; ducks.length = 0; gains.length = 0;
+say(sfx, 'b'); await tick();
+ok('the voice trim is the line\'s gain', Math.abs(gains.at(-1) - 1.995) < 0.001);
+ok('the calibrated duck replaces the game\'s', ducks.at(-1)?.[1] === 0.25);
 ok('keys', voiceKey('a_01') === 'isao_a_01');
 
 console.log(`\n${n - bad}/${n} passed`);

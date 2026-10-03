@@ -294,3 +294,11 @@
 .voice-lab .vl-said { color: var(--dim); font-size: 11px; margin-top: 2px; }
 .voice-lab .vl-empty { color: var(--dim); }
 @media (max-width: 860px) { .voice-lab .vl-body { grid-template-columns: 1fr; } .voice-lab .vl-gaps { position: static; max-height: none; } .voice-lab code { min-width: 0; } }
+.voice-lab .vl-cal { margin: 12px 0 0; padding: 10px 12px; border: 1px solid var(--line); background: #0a171c; }
+.voice-lab .vl-cal h2 { margin: 0 0 8px; font-size: 12px; letter-spacing: .14em; color: #9fdcff; }
+.voice-lab .vl-cal-row { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; margin: 6px 0; }
+.voice-lab .vl-cal-k { font-size: 11px; letter-spacing: .12em; color: var(--dim); min-width: 52px; }
+.voice-lab .vl-cal input[type=range] { width: min(240px, 60vw); accent-color: #6fe6ff; }
+.voice-lab .vl-cal output { color: var(--ink); min-width: 120px; font-size: 12px; }
+.voice-lab .vl-cal button.on { border-color: var(--cyan); color: var(--cyan); }
+.voice-lab .vl-cal-note { color: var(--dim); font-size: 11px; }

@@ -31,13 +31,14 @@ const LH = 14;
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 const text = (l) => (typeof l === 'string' ? l : l.s);
 
+const STALE = 0.6;   // seconds without a feed before the scope hides itself
 export function createStoryScope(root) {
   const layer = document.createElement('div'); layer.id = 'story-scope'; layer.style.display = 'none';
   layer.innerHTML = '<canvas class="reticle" aria-hidden="true"></canvas>';
   root.append(layer);
   const canvas = layer.querySelector('canvas'), ctx = canvas.getContext('2d');
   const reduced = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
-  let clock = 0, prev = 0, spin = 0, counter = 0;
+  let clock = 0, prev = 0, spin = 0, counter = 0, stale = 0;
 
   function fit(w, h) {
     const dpr = Math.min(devicePixelRatio || 1, 2), W = Math.round(w * dpr), H = Math.round(h * dpr);
@@ -87,7 +88,11 @@ export function createStoryScope(root) {
     // `sx`/`sy` are the held body's own point on the glass, so the inner box closes on THAT body and no other.
     update({ on, w, h, meter = 0, locked = false, target = null, max = 0, zoom = 1, box = 0, cone = 0, lockTime = 0, flight = 0, ready = true, cooldown = 0, sx = null, sy = null }) {
       layer.style.display = on ? '' : 'none';
+      // A SEAT THAT IS LEFT FOR ANOTHER SEAT never says off (owner, 2026-10-04: the Quiver's panels stayed up in the gunship): the scope
+      // is fed every frame while its mount is seated, so a feed that stops for `STALE` seconds takes the layer down by itself
+      clearTimeout(stale);
       if (!on) { prev = 0; return; }
+      stale = setTimeout(() => { layer.style.display = 'none'; prev = 0; }, STALE * 1000);
       const now = (typeof performance === 'object' ? performance.now() : Date.now()) / 1000;
       const dt = prev ? Math.min(0.1, now - prev) : 0; prev = now; clock += dt;
       const still = !!reduced?.matches;

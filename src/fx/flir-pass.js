@@ -27,10 +27,12 @@ export const FlirShader = {
   vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
   fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv;
     const float R[11] = ${arr(IRONBOW.r)}; const float G[11] = ${arr(IRONBOW.g)}; const float B[11] = ${arr(IRONBOW.b)};
-    float at(float t[11], float x) { int i = int(min(floor(x), 9.0)); float f = x - float(i); return mix(t[i], t[i + 1], f); }
+    float at(float t[11], float x) { int i = clamp(int(floor(x)), 0, 9); float f = clamp(x - float(i), 0.0, 1.0); return mix(t[i], t[i + 1], f); }
     void main() {
       vec4 c = texture2D(tDiffuse, vUv);
-      float x = clamp(dot(c.rgb, vec3(0.2126, 0.7152, 0.0722)), 0.0, 1.0) * 10.0;
+      float l = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
+      if (isnan(l) || isinf(l)) l = 0.0;   // a pixel with no number shows black on screen; it must read cold here too, not a random step of the ramp
+      float x = clamp(l, 0.0, 1.0) * 10.0;
       gl_FragColor = vec4(at(R, x), at(G, x), at(B, x), c.a);
     }`,
 };
