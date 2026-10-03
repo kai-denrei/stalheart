@@ -5,6 +5,17 @@
 // sector loop (src/fx/sector-run.js waveOf) hands in the plan's entries, ENEMY_SPEC and the content (src/content/sectors.js SECTOR_STAMPEDE).
 export const isStampede = (index, tune) => !!tune && tune.every > 0 && index % tune.every === tune.every - 1;
 
+// (2026-10-03, owner: "more waves of soft-body only… spaced just right that it takes some effort (keeping some alive until the last
+// moment) to time continuing bonuses"; and "as Isao takes control of the Gunship and SOL ... crazier and crazier waves") the stampedes
+// alternate: the first of each pair is a TRICKLE (soft only, `trickle` x the plan's rammables, one body every `trickleGap` seconds so a
+// steady rammer can keep the combo alive), the second a FLOOD (`size` x, `cores` hard cores); `tier` (the automations Isao runs) adds
+// `tierSize` to both multipliers and `tierCores` cores to the flood. Returns { entries, gap } (gap: the queue's spacing, or null)
+export function stampedeWave(entries, spec, tune, { index = 1, tier = 0 } = {}) {
+  const trickle = Math.floor(index / tune.every) % 2 === 0, k = tier * (tune.tierSize ?? 0);
+  if (trickle) return { entries: stampedeOf(entries, spec, { ...tune, size: tune.trickle + k, cores: 0 }), gap: tune.trickleGap, kind: 'trickle' };
+  return { entries: stampedeOf(entries, spec, { ...tune, size: tune.size + k, cores: tune.cores + tier * (tune.tierCores ?? 0) }), gap: null, kind: 'flood' };
+}
+
 export function stampedeOf(entries, spec, tune) {
   const soft = entries.filter((e) => spec[e.type]?.rammable), total = entries.reduce((n, e) => n + e.count, 0);
   const out = soft.length ? soft.map((e) => ({ type: e.type, count: Math.round(e.count * tune.size) })) : [{ type: tune.fallback, count: Math.round(total * tune.size) }];

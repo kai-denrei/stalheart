@@ -16,7 +16,7 @@ import { makeSectorStats, record, report as sectorReport, mergeBests, campaignTo
 import { makeGateIntegrity, pressGate, mendGate, gateShare } from '../domain/gate-integrity.js';
 import { computeWavePlan, ENEMY_SPEC } from '../enemyspec.js';
 import { waveCount, waveGap } from '../domain/wave-spread.js';
-import { isStampede, stampedeOf } from '../domain/stampede.js';
+import { isStampede, stampedeWave } from '../domain/stampede.js';
 import { POINT_SCALE, waveScore } from '../score.js';
 import { waveClearBonus } from '../domain/economy.js';
 import { createSectorDebrief } from './sector-debrief.js';
@@ -95,13 +95,13 @@ export function createSectorRun(h) {
     if (b.side === 'canyon') return { entries: computeWavePlan(def.waveBase + CANYON.ladder, 1, h.waveSize, def.threat * (h.threatMult ?? 1) * (api.swell?.() ?? 1)).entries.map((e) => ({ ...e, count: e.count * CANYON.swarm * 2 })), pace: SECTOR_TIMING.pace, spread: CANYON.spread, dens: CANYON.dens };
     const entries = computeWavePlan(wave, 1, h.waveSize, def.threat * (h.threatMult ?? 1) * (api.swell?.() ?? 1)).entries.map((e) => ({ ...e }));
     // THE STAMPEDE (src/domain/stampede.js): every second wave a mouth sends is a flood of rammable bodies with a few hard cores in it
-    if ((b.side === 'gate' || b.side === 'back') && isStampede(b.wavesReleased ?? 0, SECTOR_STAMPEDE)) return { entries: stampedeOf(entries, ENEMY_SPEC, SECTOR_STAMPEDE), pace: SECTOR_TIMING.pace, stampede: true };
+    if ((b.side === 'gate' || b.side === 'back') && isStampede(b.wavesReleased ?? 0, SECTOR_STAMPEDE)) { const w = stampedeWave(entries, ENEMY_SPEC, SECTOR_STAMPEDE, { index: b.wavesReleased ?? 0, tier: api.tier?.() ?? 0 }); return { entries: w.entries, gap: w.gap, pace: SECTOR_TIMING.pace, stampede: w.kind }; }
     if (def.hardcoresEveryWave && h.hardcore) entries.push({ type: h.hardcore, count: def.hardcores ?? 1 });
     return { entries, pace: SECTOR_TIMING.pace };
   }
   // the queue entries for a wave, spread over it the way the board's own spawner spreads a wave (src/domain/wave-spread.js)
-  function queueOf({ entries, pace, spread = 0.8, dens }, sp) {
-    const gap = waveGap(entries, h.spawnGap?.spread ?? 3.2, h.spawnGap?.max ?? 0.45);
+  function queueOf({ entries, pace, spread = 0.8, dens, gap: fixed = null }, sp) {
+    const gap = fixed ?? waveGap(entries, h.spawnGap?.spread ?? 3.2, h.spawnGap?.max ?? 0.45);   // a trickle stampede keeps its own spacing
     const out = []; let n = 0;
     for (const { type, count } of entries) for (let k = 0; k < count; k++) out.push({ type, sp, at: n++ * gap, spread, pace, ...(dens ? { dens } : {}) });
     return out;
@@ -112,7 +112,7 @@ export function createSectorRun(h) {
     if (next === null) return null;
     const wave = waveOf(b, next), feasting = feastFor(b), r = releaseWave(sector, b.id, t);
     if (feasting) feast = { id: b.id, at: t, scrambled: 0 };
-    if (wave.stampede) { h.callout(SECTOR_STAMPEDE.callout, 'co-victory'); stampedes++; }
+    if (wave.stampede) { h.callout(wave.stampede === 'trickle' ? SECTOR_STAMPEDE.trickleCallout : SECTOR_STAMPEDE.callout, 'co-victory'); stampedes++; }
     return { r, entries: queueOf(wave, sp) };
   }
   // how many of the sector's bodies the next pulse would send from the breaches that are open now

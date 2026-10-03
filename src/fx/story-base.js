@@ -202,6 +202,18 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
         driveGate(g, dt);
       }
     },
+    // THE HULL WAITS FOR THE DOOR (owner, 2026-10-03: "we auto-slow down in front of a gate to let the open animation play"; and "we can go
+    // through when half-open"): gateEase(p) is the hull's pace share near a built gate still opening, from `floor` at the door to 1 at
+    // `reach` door-radii; gateShut(p) is true inside the door's own span while it is less than `clear` open
+    gateEase(p, { reach = 0.9, floor = 0.12 } = {}) {
+      let k = 1;
+      for (const g of gates) { if (!g.built || !g.position || !g.duration || g.open) continue; const d = g.position.distanceTo(solidV.set(p[0], p[1], p[2])), r = g.radius * reach; if (d < r) k = Math.min(k, Math.max(floor + (1 - floor) * (g.t / g.duration), floor + (1 - floor) * Math.max(0, (d - r * 0.35) / (r * 0.65)))); }
+      return k;
+    },
+    gateShut(p, { span = 6, clear = 0.85 } = {}) {
+      for (const g of gates) if (g.built && g.position && g.duration && g.t / g.duration < clear && g.position.distanceTo(solidV.set(p[0], p[1], p[2])) < span * metres) return true;
+      return false;
+    },
     gate: (id = null) => { const g = id ? gates.find((x) => x.id === id) : gate; return g ? { present: !!g.action, built: g.built, open: g.open, want: g.want, t: +g.t.toFixed(2) } : null; },
     // a closed, standing door, by id: the pathfinder asks this once per enemy per step, so it allocates nothing
     gateSealed: (id) => { const g = gates.find((x) => x.id === id); return !!g && g.built && !g.open; },

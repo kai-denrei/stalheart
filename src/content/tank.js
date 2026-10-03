@@ -29,3 +29,9 @@ export const TANK_PLASMA = Object.freeze({ kgPerSecond: 3, dry: '<div class="wav
 // `width`: the flank probes' distance off the centre line as a share of the nose's (owner, 2026-10-03: "Mork still clips on some walls too easily");
 // 0 turns them off: the next playtest found the handling worse ("unnatural staccato bumping ... it got worse in the last updates")
 export const TANK_WALL = Object.freeze({ scrub: 2.5, align: 3.5, glance: Object.freeze([0.5, -0.5, 1.0, -1.0]), width: 0 });
+
+// THE HOVER KICK (src/domain/hover-kick.js; owner, 2026-10-03: "a lateral bump, as if the hovering system got miscalibrated"): a hit with
+// more than `headOn` of the step into the rock starts a kick of `seconds` to a free point `back` cells off the wall and `along` cells along
+// it (the target checked free, or just `back`, or no kick), rolling up to `roll` radians and settling; `cool` seconds before the next;
+// `keep` of the run-up survives it
+export const TANK_KICK = Object.freeze({ headOn: 0.45, seconds: 0.55, back: 0.32, along: 0.35, roll: 0.22, cool: 0.6, keep: 0.55 });

@@ -206,15 +206,16 @@ export const STORY_CHAPTER_END = Object.freeze({ id: 'sector-1', label: 'SECTOR 
 
 // EXPEDITIONS (docs/superpowers/specs/2026-09-14-handover-gunship-call-expeditions-design.md): the landing sites, the tower each
 // part unlocks, the guard nest, and when a later site reveals (after N parts are home). The Rotor and Quiver are the base.
+// (2026-10-03, owner: "more low level enemies protecting the extra landing sites") the nests' soft bodies x2.5: a ram feast at every lander
 export const STORY_EXPEDITIONS = Object.freeze({
   base: Object.freeze(['rotor', 'quiver']),
   deliverCells: 3,   // how close to the landing (the foundry) a carried part counts as home, in cells
   sites: Object.freeze([
-    { id: 'rocket-a', tower: 'relay', part: 'field coil', reveal: null, guards: [{ type: 'barbed', count: 2 }, { type: 'amoeba', count: 8 }] },
-    { id: 'rocket-b', tower: 'mortar', part: 'breech', reveal: null, guards: [{ type: 'barbed', count: 2 }, { type: 'amoeba', count: 10 }] },
-    { id: 'wreck', tower: 'lancer', part: 'lens', reveal: null, guards: [{ type: 'barbed', count: 3 }, { type: 'amoeba', count: 12 }] },
-    { id: 'rocket-c', tower: 'plasma', part: 'coil stack', reveal: { after: 3 }, guards: [{ type: 'barbed', count: 3 }, { type: 'amoeba', count: 14 }] },
-    { id: 'rocket-d', tower: 'needle', part: 'optic', reveal: { after: 3 }, guards: [{ type: 'barbed', count: 3 }, { type: 'amoeba', count: 14 }] },
-    { id: 'wreck-b', tower: 'heptapod', part: 'walker core', reveal: { after: 5 }, guards: [{ type: 'barbed', count: 4 }, { type: 'amoeba', count: 18 }] },
+    { id: 'rocket-a', tower: 'relay', part: 'field coil', reveal: null, guards: [{ type: 'barbed', count: 2 }, { type: 'amoeba', count: 20 }] },
+    { id: 'rocket-b', tower: 'mortar', part: 'breech', reveal: null, guards: [{ type: 'barbed', count: 2 }, { type: 'amoeba', count: 24 }] },
+    { id: 'wreck', tower: 'lancer', part: 'lens', reveal: null, guards: [{ type: 'barbed', count: 3 }, { type: 'amoeba', count: 30 }] },
+    { id: 'rocket-c', tower: 'plasma', part: 'coil stack', reveal: { after: 3 }, guards: [{ type: 'barbed', count: 3 }, { type: 'amoeba', count: 32 }] },
+    { id: 'rocket-d', tower: 'needle', part: 'optic', reveal: { after: 3 }, guards: [{ type: 'barbed', count: 3 }, { type: 'amoeba', count: 32 }] },
+    { id: 'wreck-b', tower: 'heptapod', part: 'walker core', reveal: { after: 5 }, guards: [{ type: 'barbed', count: 4 }, { type: 'amoeba', count: 40 }] },
   ].map(Object.freeze)),
 });

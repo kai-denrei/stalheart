@@ -1572,7 +1572,7 @@ try{
  await evaluate(`${T}.sectorRelease(${JSON.stringify(gate.id)})`);await delay(300);
  const before=await evaluate(`${T}.state().sector.breaches.find(b=>b.id===${JSON.stringify(gate.id)}).wavesReleased`);
  if(before%2===1){await evaluate(`${T}.sectorRelease(${JSON.stringify(gate.id)})`);}
- await until('/STAMPEDE/.test(document.querySelector("#td-callouts")?.textContent||"")',4000).catch(async()=>assert.fail(`the stampede is called (${await callouts()}, released ${before})`));
+ await until('/STAMPEDE|SOFT ONES/.test(document.querySelector("#td-callouts")?.textContent||"")',4000).catch(async()=>assert.fail(`the stampede is called (${await callouts()}, released ${before})`));
  await delay(6000);current='round9-stampede';await finish();
  // SOL on auto: the countdown, one source, nothing of ours burned
  await evaluate(`${T}.laserAuto(true)`);await evaluate(`${T}.laserPassNow()`);
@@ -1636,6 +1636,22 @@ try{
  while(Date.now()-t0<60000){const r=await evaluate(`(()=>{const s=${T}.state(),b=document.querySelector("#td-brief"),c=document.querySelector(".sec-card,#sector-card");return [s.sector?.n,s.sector?.phase,s.shot,s.laser?.phase,s.laser?.seated,b&&!b.classList.contains("hidden")?(b.textContent||"").replace(/\\s+/g," ").slice(14,50):"-"].join(" | ");})()`);
   if(r!==last){rows.push(((Date.now()-t0)/1000).toFixed(1)+'s '+r);last=r;}if(/\| true \|/.test(r))break;await delay(150);}
  console.log(rows.join('\n'));
+ } else if(args.includes('--round13')) {
+ // THE OWNER'S THIRTEENTH NOTES (2026-10-03): the hull drives into the rim: a hit is one hover kick off the wall, not a grind; it never
+ // stalls; the gate slows the hull while it opens
+ const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`);
+ await go('round13-base','index.html?sw=0&acceptance=1&cine=0&world=story&stage=8&phase=expedition#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await delay(2000);
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card{display:none!important}</style>")');
+ await evaluate(`${T}.deployHull(0)`);await until(`!${T}.state().deploying`,30000).catch(()=>{});await delay(500);
+ const k0=(await st()).kicks,path=[];
+ await send('Input.dispatchKeyEvent',{type:'keyDown',key:'w',code:'KeyW',windowsVirtualKeyCode:87});
+ for(let i=0;i<120;i++){const s=await evaluate(`${T}.seatState().tankPos`);path.push(s);if(i===60)await send('Input.dispatchKeyEvent',{type:'keyDown',key:'a',code:'KeyA',windowsVirtualKeyCode:65});await delay(100);}
+ await send('Input.dispatchKeyEvent',{type:'keyUp',key:'a',code:'KeyA',windowsVirtualKeyCode:65});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'w',code:'KeyW',windowsVirtualKeyCode:87});
+ const d=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]),steps=path.slice(1).map((p,i)=>d(p,path[i])),moved=steps.reduce((a,b)=>a+b,0),still=steps.filter((x)=>x<1e-6).length;
+ const k1=(await st()).kicks;console.log(`  round13: drove ${moved.toFixed(4)} units in 12 s, ${still} still samples of 119, kicks ${k1-k0}`);
+ assert.ok(moved>0.05,'the hull drives');assert.ok(still<40,`it never sits ground against a wall for long (${still} still samples)`);
+ current='round13-drive';await finish();
  } else if(args.includes('--units-sky')) {
  // THE SKY ON THE BENCH (owner, 2026-10-01: "UNITS are not showing all the units; we should see SOL, and the Gunship. also show
  // Wireframe for all units"): the KORP, SOL-82 and SOL-88 are catalogue entries built from their pinned GLBs, and the wireframe

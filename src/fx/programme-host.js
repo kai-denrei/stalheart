@@ -173,7 +173,7 @@ export function createProgrammeHost(c) {
       // as breaches at the landing and sent Isao out to "repair" them one by one — each trip tagged its cell BLOCKED and the lattice
       // drew ROCK there, before the gate. The rim is only repairable once it stands, exactly as a static stage-4 base has it from the
       // first frame
-      const stood = programmeHas(pg, 'gate'), broke = stood ? [...new Set([...(c.story().wallCells ?? []).filter((wc) => c.dungeon().tags[wc] !== BLOCKED), ...(c.storyBase()?.droppedCells?.() ?? [])])] : [],   // a burned segment on standing rock is a hole too (owner, 2026-10-02: "after a breach, isao only builds a gate, he should also build walls")
+      const stood = programmeHas(pg, 'gate'), broke = stood ? [...new Set([...(c.story().wallCells ?? []), ...(c.story().backHoles ?? [])].filter((wc) => c.dungeon().tags[wc] !== BLOCKED).concat(c.storyBase()?.droppedCells?.() ?? []))] : [],   // a burned segment on standing rock is a hole too (owner, 2026-10-02: "after a breach, isao only builds a gate, he should also build walls")
        near = (ci) => { const p = c.graph().centers[ci], r = BASE_REPAIR.clearCells * c.cellSide(); return c.enemies().some((e) => e.alive && Math.hypot(e.pos[0] - p[0], e.pos[1] - p[1], e.pos[2] - p[2]) < r); };
       // HIS CHECK (BASE_REPAIR.check): after a wall he hovers over it, then says whether the breach is sealed; nothing new starts meanwhile
       if (s.checking) { if (c.t() < s.checking.until) return; s.checking = null; c.callout?.(broke.length ? BASE_REPAIR.open : BASE_REPAIR.sealed, broke.length ? 'co-victory-sub' : 'co-victory'); }
@@ -231,7 +231,8 @@ export function createProgrammeHost(c) {
     // segments standing again (dungeon.mended, src/fx/board-surface.js), so what he printed reads as a wall and not a rock
     repaired: (repair) => {
       if (repair.kind === 'gate') { c.sectorRun()?.repairGate(repair.id ?? 'gate'); if (!repair.id) c.storyBase()?.restoreWall(-1); }   // and the segments on the door's own cell
-      else { const rci = repair.ci; if (c.dungeon().tags[rci] !== BLOCKED) (c.dungeon().mended ??= new Set()).add(rci); c.dungeon().tags[rci] = BLOCKED; if (c.tdFullTags()) c.tdFullTags()[rci] = BLOCKED; breachedCells.delete(rci); breachQueue.push(rci); c.storyBase()?.restoreWall(rci); rebuildAfterBreach(); recomputePortalDist(); c.story().checking = { ci: rci, until: c.t() + BASE_REPAIR.check }; }
+      // a hole with kit walls of its own is drawn as floor under them; one without (the back mouth's flanks) is rock again
+      else { const rci = repair.ci, walled = (c.story().wallCells ?? []).includes(rci); if (walled && c.dungeon().tags[rci] !== BLOCKED) (c.dungeon().mended ??= new Set()).add(rci); c.dungeon().tags[rci] = BLOCKED; if (c.tdFullTags()) c.tdFullTags()[rci] = BLOCKED; breachedCells.delete(rci); breachQueue.push(rci); c.storyBase()?.restoreWall(rci); rebuildAfterBreach(); recomputePortalDist(); c.story().checking = { ci: rci, until: c.t() + BASE_REPAIR.check }; }
       updateHud();
     },
     printed: (step) => {
@@ -239,7 +240,9 @@ export function createProgrammeHost(c) {
       programmeFinish(c.story().programme, step);
       // THE BACK GATE STANDS: it seals its mouth through story.sealed, and its mounts beside the back lane become sockets a sentry
       // can be ordered on
-      if (step.gate === 'back') { for (const sk of c.story().backSockets ?? []) c.story().socketToward[sk.cell] = sk.toward; recomputePortalDist(); }
+      // AND THEN HE CHECKS THE MOUTH (owner, 2026-10-03: "he only fixes one gate, with openings left and right; he needs to do a check. Is it
+      // fully secure again? If not: build walls"): every cell the back collapse opened that the door does not cover goes on his repair book
+      if (step.gate === 'back') { for (const sk of c.story().backSockets ?? []) c.story().socketToward[sk.cell] = sk.toward; const m = c.story().backMouth, door = new Set((c.storyBase()?.gateList?.() ?? []).filter((g) => g.id === 'back').flatMap((g) => g.cells ?? [])), dc = c.story().gateCellOf?.('back'); if (m) c.story().backHoles = [...m.cells, ...m.flank].filter((ci) => ci !== dc && !door.has(ci)); recomputePortalDist(); }
       c.sectorRun()?.note({ type: 'print', id: step.id });   // the sector books Isao's base prints too, not only tower orders
       // the walls are rock to the swarm and the tank once they stand, in the full world too: applySector rewrites the tags from it
       if (step.walls) { for (const ci of c.story().wallCells) { c.dungeon().tags[ci] = BLOCKED; if (c.tdFullTags()) c.tdFullTags()[ci] = BLOCKED; breachQueue.push(ci); } gunshipRig.forgetWalls(); rebuildAfterBreach(); recomputePortalDist(); }
@@ -272,8 +275,11 @@ export function createProgrammeHost(c) {
     // ask is answered no, and the next sector begins as it always did
     interlude: () => false,
     // THE ENVELOPE (GUNSHIP_AUTO): while the gunship flies itself the sectors hold more bodies and size their waves larger
-    aliveBudget: () => (c.story()?.gsAuto ? GUNSHIP_AUTO.aliveBudget : undefined),
-    swell: () => (c.story()?.gsAuto ? GUNSHIP_AUTO.swell : 1),
+    // ...AND IT RISES WITH EVERY AUTOMATION (owner, 2026-10-03: "as Isao takes control of the Gunship and SOL, it should coincide with
+    // crazier and crazier waves"): `tier` counts them (the gunship on auto, SOL-88 up), each one swells the waves and arms the stampedes
+    tier: () => (c.story()?.gsAuto ? 1 : 0) + (c.story()?.sol88 ? 1 : 0),
+    aliveBudget: () => (c.story()?.gsAuto || c.story()?.sol88 ? GUNSHIP_AUTO.aliveBudget : undefined),
+    swell: () => (c.story()?.gsAuto ? GUNSHIP_AUTO.swell : 1) * (c.story()?.sol88 ? LASER_AUTO.swell : 1),
     // what the harness reads: the launch beat, the pad, the calibration
     gunshipAuto: () => ({ auto: !!c.story()?.gsAuto, manned: c.story()?.gsManned ?? 0, fly: c.story()?.gsFly?.state() ?? null }),
     colony: () => ({ paintPad: c.story()?.paintPad?.ring ? { ...c.story().paintPad.ring.state(), cell: c.story().paintPad.cell } : null, shop: !!c.story()?.shop, beacons: c.story()?.beacons?.ids() ?? null, beaconPulse: c.story()?.beacons?.state() ?? null, gunship: { auto: !!c.story()?.gsAuto, manned: c.story()?.gsManned ?? 0, fly: c.story()?.gsFly?.state() ?? null, swell: c.story()?.gsAuto ? GUNSHIP_AUTO.swell : 1, budget: c.story()?.gsAuto ? GUNSHIP_AUTO.aliveBudget : null }, board: c.story()?.boards?.map((b) => b.state()) ?? null, isaoKills: c.story()?.isaoKills ?? 0, strike: c.story()?.strike?.state() ?? (c.story()?.strikeDone ? 'done' : null), dyes: c.story()?.dyes ?? null, shop: !!c.story()?.shop, painted: c.story()?.painted ?? 0, boardCell: (() => { const st = c.story()?.programme?.steps.find((x) => x.id === 'board'); return st ? c.story().print.cellOf(st) : -1; })(), launch: c.story()?.launch?.state() ?? null, works: c.story()?.works ? { ...c.story().works, ring: c.story().worksRing?.state() ?? null } : null, sol88: !!c.story()?.sol88, pad: c.story()?.armoryPad?.ring?.state() ?? null, cell: c.story()?.armoryPad?.cell ?? -1, calibrated: !!c.story()?.calibrated, manned: c.laserStation?.manned?.() ?? 0 }),

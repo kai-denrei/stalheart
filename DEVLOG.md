@@ -17,6 +17,23 @@ Evidence:
 - scripts/browser-lock.sh node scripts/browser-test.mjs --round7 (QUIVER MANUAL OVERRIDE! called; mid-flight the HUD and the spotting monitor stay hidden; the day dial in the HUD)
 - --round6, --story-world, --chapters and the default suite green (the default suite's Units missile step timed out once and passed on a rerun)
 
+## 2026-10-03 — The owner's thirteenth notes: the hull slows for an opening gate and cannot pass a half-open one, a hover kick instead of the wall grind, Isao checks and seals the back mouth, the waves swell with each automation, soft trickles and floods for the ram chains, bigger nests at the landers
+
+change · accepted · 2026-10-03-thirteenth-notes-gate-ease-hover-kick-back-mouth-tier-ramp-trickles
+
+Owner, 2026-10-03 (on be5b805f): 1) auto-slow in front of a gate to let its open animation play; 2) keep working on wall bumps: perhaps a lateral bump, as if the hover system lost calibration, and use that animation's time to clear obstacles and re-centre the tank smoothly; 3) as Isao takes the gunship and SOL, crazier waves of harder enemies, ramming, the shield, SOL and the nuke saving the day; 4) after the back door Isao fixes one gate with openings left and right: check, and build walls; 5) more chances for huge ram bonuses: more low enemies at the extra landing sites, soft-only waves spaced so the chain takes effort to keep.
+
+1) story-base gateEase: within 0.9 of a built gate's open radius while it is still opening, the hull's pace falls toward 12% at the door, rising with the opening; gateShut: inside 6 m of the door it is solid while less than 85% open. 2) src/domain/hover-kick.js: a hit with more than TANK_KICK.headOn of the step into rock starts one 0.55 s kick to a point checked free 0.32 cells off the wall and 0.35 along it (or just off it); the hull rolls up to 0.22 rad and settles, nothing else moves it meanwhile (the wall cushion waits), 55% of the run-up survives, 0.6 s before the next. --round13 drove 12 s into the rim with no still samples and two kicks. 4) When the back gate prints, the cells the back collapse opened that the door does not cover go on Isao's repair book; he seals them and calls BREACH SEALED or STILL OPEN after each (his check from the tenth notes). The mouth has no kit walls, so a sealed cell is rim rock again; a cell with kit walls stays drawn as floor under them, so no invisible block. 3) programme-host tier counts the automations (the gunship on auto, SOL-88 up); the waves swell 1.35x with the gunship and 1.25x more with SOL-88 (LASER_AUTO.swell); each tier adds a body per stampede multiplier and two cores to the flood. 5) Stampedes alternate (src/domain/stampede.js stampedeWave): a soft TRICKLE (rammables x2, one every 1.3 s, inside the 4 s ram combo window, called SOFT ONES — KEEP THE CHAIN) then a FLOOD (x3 with cores); the first three landers' nests carry 20, 24 and 30 amoeba (was 8, 10, 12), the later ones 32 and 40.
+
+Alternatives: Printing kit walls in the back mouth: the plan has no wall segments there and adding them reaches the front gate's wall print; rock restores the rim the swarm cracked; A detect-and-force fix on top of the old corrections: one kick that owns the hull while it runs replaces the corrections fighting each other
+
+Evidence:
+
+- scripts/browser-lock.sh node scripts/browser-test.mjs --round13 (12 s into the rim: moving the whole time, 2 kicks)
+- test/hover-kick.mjs, test/stampede.mjs, test/programme-host.mjs
+- --back-gate, --backdoor, --round9, --grow, --skip-tutorial, --story-world, --round7, --sectors, --colony, --round10 and the default suite green
+- Not yet seen: the gate ease and the back mouth's sealing in play; the stampedes' balance against the alive budget
+
 ## 2026-10-03 — The owner's tenth notes: bigger boards, wall contact as friction, the wedged hull threads on its centre, a three-state seat hand-over, level shapes on the pedestals, the debrief on one screen, the mortar lands, Isao mends walls mid-wave and checks them, solid buildings, and the purple Pimp My Ride pad
 
 change · accepted · 2026-10-03-tenth-notes-boards-walls-handover-tiers-debrief-repairs-paint-pad

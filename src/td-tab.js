@@ -1,5 +1,5 @@
 import { createSentryPilot } from './sentry-pilot.js';
-import { DEFAULT_TANK, SHELL_SPEED, SHELL_REACH, TANK_DRIVE, TANK_STEER, TANK_WALL } from './content/tank.js'; import { makeDriveRamp, stepDriveRamp, scrubDriveRamp } from './domain/drive-ramp.js'; import { hullDepth, deepensContact } from './domain/hull-contact.js'; import { makeSteerEase, stepSteerEase, steerBank } from './domain/steer-ease.js'; import { baseFor, restoreSeatView } from './domain/seat-view.js'; import { BASE_REPAIR, BASE_BUILDER } from './content/base-programme.js';
+import { DEFAULT_TANK, SHELL_SPEED, SHELL_REACH, TANK_DRIVE, TANK_STEER, TANK_WALL, TANK_KICK } from './content/tank.js'; import { makeDriveRamp, stepDriveRamp, scrubDriveRamp } from './domain/drive-ramp.js'; import { hullDepth, deepensContact } from './domain/hull-contact.js'; import { makeSteerEase, stepSteerEase, steerBank } from './domain/steer-ease.js'; import { baseFor, restoreSeatView } from './domain/seat-view.js'; import { BASE_REPAIR, BASE_BUILDER } from './content/base-programme.js';
 import { createGameBreaches } from './game-breaches.js'; import { ramShotPose } from './domain/showcase-shot.js';   /* THE RAM BEAT'S OWN FRAMING: low behind the hull (src/domain/showcase-shot.js; the band of cells it drives into is the showcase hooks') */
 import { createBoardSurface } from './fx/board-surface.js'; import { createCampaignDebrief, sparkline } from './fx/campaign-debrief.js'; import { createSectorRun } from './fx/sector-run.js'; import { createBackDoor } from './fx/back-door.js'; import { isaoFace, orbitFrame, sitesDir, sitesRadius } from './domain/story-shots.js';
 import { startDiveShot } from './fx/dive-shot.js'; import { createCameraShots } from './fx/camera-shot.js'; import { createIntegrityHud } from './fx/integrity-hud.js'; import { createSeatGlide } from './fx/seat-glide.js'; import { LOOK_TOAST } from './fx/arrival.js'; import { viewEdge, viewportLine } from './domain/view-edge.js'; import { boxOverlaps } from './domain/box-overlaps.js'; import { makeShaderWarmer } from './fx/shader-warm.js'; import { waveGap } from './domain/wave-spread.js';
@@ -26,6 +26,7 @@ import { storage as localStorage } from './storage.js';
 // story is the game (docs/STATE.md); the campaign board under it serves the acceptance runs and the wave simulator.
 
 import { makeStuck, stepStuck, unstick } from './domain/hull-stuck.js'; import { highlightSeat } from './fx/seat-highlight.js'; import { HULL_STUCK, TANK_PLASMA } from './content/tank.js'; import { QUIVER_SPLASH, STORY_SENTRIES } from './content/sentries.js';   // the hull gets unstuck (owner, 2026-10-02)
+import { makeKick, startKick, stepKick, kicking, planKick } from './domain/hover-kick.js';
 import * as THREE from '../vendor/three.module.js';
 import GUI from '../vendor/lil-gui.esm.js';
 import { bfsDist, BLOCKED, PATH, ROOM } from './dungeon.js';
@@ -1166,7 +1167,7 @@ export function initTdTab(root) {
     const hull = (p) => [{ p, clearance: Math.min(unitScale * 0.3, cellSide * 0.3) }, ...(squeeze ? [] : [[1, 0], [-1, 0], ...(TANK_WALL.width ? [[0, 1], [0, -1]] : [])]).map(([k, w]) => ({ p: norm3(add3(add3(p, scale3(player.smoothDir, k * half)), scale3(side, w * half * TANK_WALL.width))), clearance: cellSide * 0.04 }))];   // nose, tail and both flanks; wedged: they let go and it threads on its centre (2026-10-03)
     const board = { cellOf: cellIndex, blocked: (nb) => nb !== ci && crowdedBy(nb), centers: graph.centers, adj: graph.adj };
     if (stuck.t < HULL_STUCK.after + HULL_STUCK.ramp && deepensContact(hullDepth(hull(player.pos), board), hullDepth(hull(cand), board), cellSide * 0.002)) return true;   // fully wedged on open ground, no snag holds it (2026-10-03)
-    if (storyBase?.solidAt(cand) && !storyBase.solidAt(player.pos)) return true;   // the buildings are solid (src/fx/story-base.js solidAt)
+    if ((storyBase?.solidAt(cand) && !storyBase.solidAt(player.pos)) || (storyBase?.gateShut(cand) && !storyBase.gateShut(player.pos))) return true;   // and a door not yet open   // the buildings are solid (src/fx/story-base.js solidAt)
     return unitBlocker(cand);
   }
 
@@ -1231,7 +1232,7 @@ export function initTdTab(root) {
     droneUp: false, droneDown: false };   // the last two only while flying Isao
   // CRUISE: player-triggered auto-forward. A quick double-tap of the
   // forward control (W / ▲) toggles it; S/▼ always kills it.
-  let cruise = false, stuck = makeStuck();   // stuck: driving that goes nowhere (src/domain/hull-stuck.js)
+  let cruise = false, stuck = makeStuck(), kick = makeKick();   // stuck: driving that goes nowhere (src/domain/hull-stuck.js)
   // THROTTLE — one lever replacing the ▲/▼ pair. It HOLDS where you put it,
   // so setting it IS cruise; there is no separate mode to engage. Reverse is
   // the same lever continued below zero and capped: backing up cannot match
@@ -2306,9 +2307,11 @@ export function initTdTab(root) {
       const drive = keys.slow ? -0.55
         : keys.fast ? (cruise ? 1.45 : 1)
         : (throttle !== 0 ? throttle : (cruise ? 1 : 0)); const rampMul = stepDriveRamp(driveRamp, dt, drive, keys.left || keys.right, TANK_DRIVE);
-      if (drive !== 0) {
+      const kp = stepKick(kick, dt, TANK_KICK);   // THE HOVER KICK (src/domain/hover-kick.js): while it runs it alone moves the hull
+      if (kp) { player.pos = kp; const ci = cellIndex(kp); if (ci !== -1 && ci !== player.cur) arriveAt(ci); }
+      else if (drive !== 0) {
         const v = params.speed * speedBonus * cellSide * 1.6 * drive * rampMul
-          * (1 - 0.65 * bumpFactor()); // the run-over drag
+          * (1 - 0.65 * bumpFactor()) * (storyBase?.gateEase(player.pos) ?? 1); // run-over drag; a door opening (story-base gateEase)
         const step = scale3(player.heading, v * dt), before = player.pos;
         let cand = norm3(add3(player.pos, step));
         if (freeBlocked(cand)) {
@@ -2320,7 +2323,8 @@ export function initTdTab(root) {
             // a mostly head-on hit THUDS like running something over;
             // the bumpLeft gate keeps grinding along a wall from
             // re-triggering every frame
-            const slid = sub3(step, scale3(toWall, into)), share = into / (len3(step) || 1);
+            const slid = sub3(step, scale3(toWall, into)), share = into / (len3(step) || 1), kq = kick.cool > 0 ? null : planKick({ pos: player.pos, heading: player.heading, toWall, slid, share, cellSide, blocked: freeBlocked }, TANK_KICK);
+            if (kq && startKick(kick, { from: player.pos, ...kq }, TANK_KICK)) { scrubDriveRamp(driveRamp, 1 - TANK_KICK.keep, TANK_DRIVE); player.heading = kq.heading; }
             scrubDriveRamp(driveRamp, share * TANK_WALL.scrub * dt, TANK_DRIVE); if (len3(slid) > 1e-9) player.heading = norm3(add3(player.heading, scale3(norm3(slid), share * TANK_WALL.align * dt)));   // A WALL IS FRICTION, NOT A THUD (src/content/tank.js TANK_WALL)
             cand = norm3(add3(player.pos, slid));
             if (freeBlocked(cand)) cand = null;
@@ -2348,7 +2352,7 @@ export function initTdTab(root) {
         const k = stepStuck(stuck, { driving: true, moved: dist3(player.pos, before), expected: Math.abs(v) * dt, dt }, HULL_STUCK);   // wedged: eased to open ground (owner, 2026-10-02)
         if (k > 0) player.pos = unstick(player.pos, graph.centers[player.cur], k * HULL_STUCK.rate * cellSide * dt);
       } else stepStuck(stuck, { driving: false, moved: 0, expected: 0, dt }, HULL_STUCK);
-      player.pos = wallCushion(player.pos);
+      if (!kicking(kick)) player.pos = wallCushion(player.pos);
       const nf = norm3(player.pos);
       player.heading = norm3(sub3(player.heading, scale3(nf, dot3(player.heading, nf))));
       updateSmoothDir(dt);
@@ -3802,21 +3806,9 @@ export function initTdTab(root) {
     // opening biomass: exactly a Rapid (70kg) + a Slow (100kg) — your first plan
     eco = makeEconomy({ startBiomass: GAME_START_BIOMASS });
     score.reset();
-    // THE OPENING GARRISON (sim batch: the heart pays half its total in
-    // waves 1-3, before any kit exists).
-    //
-    // It used to stand PRE-BUILT on the walls nearest the heart — two towers
-    // that simply existed, behind the Stalheart, doing their work from
-    // somewhere the player never looks. Both halves of that were wrong
-    // (operator, 2026-09-02): nothing the player builds is built by the
-    // player, and that rule should hold from the first second, so ISAO flies
-    // out and prints these like any other order; and tucked in behind the
-    // heart they were shooting at things that had already arrived.
-    //
-    // The board opens on a drone doing its job at a place worth looking at.
-    // The garrison is still FREE — the biomass is credited before the orders
-    // are placed, so orderTower's own spend nets to zero and every other
-    // rule (the queue, the travel, the print clock) applies unchanged.
+    // THE OPENING GARRISON (sim batch: the heart pays half its total in waves 1-3, before any kit exists). Not pre-built behind the heart
+    // (operator, 2026-09-02: nothing the player has is built by nobody): Isao flies out and prints these like any order, still free (the
+    // biomass is credited before the orders, so the spend nets to zero and the queue, travel and print clock apply unchanged)
     queueMicrotask(() => {
       if (!storyMode) { eco.addBiomass(starterTower().cost * 2); for (const ci of garrisonSites(2)) orderTower(starterTower().key, ci, { quiet: true }); }   // the story's first print is Isao's Rotor on the wall, nothing before it
       spawnIsao();   // on shift from the first second, order or no order
@@ -6887,20 +6879,8 @@ export function initTdTab(root) {
         //  - it starts at the muzzle's REAL position, runs along the barrel's own world quaternion, and is a straight line in the world
         //    marched against terrain: ground and walls stop it with an impact; enemies do not, it damages every one it passes.
         const from3 = muzzle;
-        // FROM THE MUZZLE TIP, TOWARD THE TARGET. The first cut took the
-        // direction from the muzzle empty's own world +Z — the model's
-        // stated forward — and MEASURED it against the bearing to the
-        // target: 2 degrees apart sometimes and 42 apart at others. A
-        // muzzle empty's local orientation is simply not a contract the
-        // Workshop makes (ROOT/BASE/YAW/PITCH/RECOIL and the muzzle's
-        // POSITION are), so it is not something to aim a weapon with.
-        //
-        // The tip is what the operator asked for and the tip is what this
-        // gives: the beam starts exactly at the barrel's mouth. Where it
-        // goes is the weapon's business, and the weapon is shooting at the
-        // target. The gate below keeps the two honest — a turret still
-        // slewing does not fire, so the tube and the beam agree to within
-        // the drive's own tolerance whenever a burst leaves.
+        // FROM THE MUZZLE TIP, TOWARD THE TARGET: the muzzle empty's own +Z was measured 2 to 42 degrees off the bearing (its orientation is
+        // not a Workshop contract, its position is), so the beam starts at the tip and aims at the target; a turret still slewing does not fire
         const dir3 = norm3(sub3(target.pos, from3));
         const stop = lanceReach(from3, dir3, range, tw.ci);
         let struck = 0;
@@ -7963,7 +7943,7 @@ export function initTdTab(root) {
 
     // slow both ways: an engine SPOOLS. Rising a touch slower than it falls
     // reads as taking up load, then setting the weight back down.
-    stepTankFeel(feel, dt, engineRunning, FEEL); feel.bank = steerBank(steerEase, TANK_STEER);   /* the hull rolls into its turn (src/domain/steer-ease.js) */
+    stepTankFeel(feel, dt, engineRunning, FEEL); feel.bank = steerBank(steerEase, TANK_STEER) + kick.roll;   /* the hull rolls into its turn (src/domain/steer-ease.js) */
 
     if (moving && !engineRunning) {
       sfx.play('tank_spool_up'); // hydraulics lift it off the deck
@@ -8757,7 +8737,7 @@ export function initTdTab(root) {
         cargo: story?.glue?.state() ?? null,
         unlocked: automated() ? unlockedTowers(story.expeditions, STORY_EXPEDITIONS.base) : null,
         storyHome: story?.home ?? -1,
-        story: story?.beats.state() ?? null, arrival: story?.arrival.state() ?? null, integrity: integrityHud?.state() ?? null, glide: seatGlide.state(),
+        story: story?.beats.state() ?? null, arrival: story?.arrival.state() ?? null, integrity: integrityHud?.state() ?? null, glide: seatGlide.state(), kicks: kick.n ?? 0,
         hull: story?.hull ? { ...story.hull.state(), visible: !!playerMesh?.visible, tankButton: (() => { const b = document.querySelector('#story-views [data-view="tank"]'); return b ? !b.hidden : null; })() } : null,
         automated: automated(),
         gunshipCall: { ...gunshipRig.call },
