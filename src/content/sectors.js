@@ -29,7 +29,7 @@ const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 
 export const SECTORS = freeze([
   { n: 1, name: 'THE LANE', breaches: { gate: 2 }, waves: 4, ladderStart: 0, threat: 1.2, pulse: 16, held: { kg: 40, points: 400 },
     gunshipCall: true, backDoor: false, laser: false, hardcoresEveryWave: false, new: 'the gunship call-in',
-    brief: ['Two mouths out on the lane. They come four times each.', 'Close one early and you give up what it would have paid.'] },
+    brief: ['Two mouths out on the lane. They come four times each.', 'Close one too early and we lose the biomass it would have paid.'] },
   { n: 2, name: 'THE LONG LANE', breaches: { gate: 2 }, waves: 4, ladderStart: 1, threat: 1.5, pulse: 15, held: { kg: 45, points: 450 },
     gunshipCall: true, backDoor: false, laser: false, hardcoresEveryWave: false, new: null,
     brief: ['More of them this time, and closer together.', 'Keep the lane clear and the gate whole.'] },

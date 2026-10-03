@@ -8,7 +8,9 @@
 // the blend while a glide runs. `cancel()` ends it at once (a seat left mid-glide). `hold()` true (the game paused): no glide starts.
 import * as THREE from '../../vendor/three.module.js';
 
-export function createSeatGlide({ seconds = 1.4, far = 3.2, lift = 0.35, hold = () => false, body = globalThis.document?.body ?? null } = {}) {
+// `wait()` true (the scripted hand-over shot is flying): the glide holds, the seat's chrome stays hidden and the camera follows the goal,
+// so the next optic's HUD only shows once the eye is on it (owner, 2026-10-03: "we only ever see the HUD of what we commandeer")
+export function createSeatGlide({ seconds = 1.4, far = 3.2, lift = 0.35, hold = () => false, wait = () => false, body = globalThis.document?.body ?? null } = {}) {
   const fromPos = new THREE.Vector3(), fromQuat = new THREE.Quaternion(), up = new THREE.Vector3(), dir = new THREE.Vector3(), to = new THREE.Vector3(), side = new THREE.Vector3();
   let age = -1, n = 0, span = seconds;   // span: this glide's seconds, decided on its first frame   // n: glides begun, for the harness
   const mark = (on) => body?.classList.toggle('seat-gliding', on);
@@ -18,7 +20,7 @@ export function createSeatGlide({ seconds = 1.4, far = 3.2, lift = 0.35, hold = 
     cancel() { if (age >= 0) { age = -1; mark(false); } },
     active: () => age >= 0,
     place(camera, goal, dt) {
-      if (age < 0) { camera.position.copy(goal.pos); camera.quaternion.copy(goal.quat); return; }
+      if (age < 0 || wait()) { camera.position.copy(goal.pos); camera.quaternion.copy(goal.quat); return; }
       if (!span) span = fromPos.dot(goal.pos) / ((fromPos.length() * goal.pos.length()) || 1) < 0.5 ? far : seconds;   // a trip round the planet takes `far` seconds
       age += dt;
       const u = Math.min(1, age / span), e = u * u * (3 - 2 * u);

@@ -9,14 +9,16 @@
 // hides them and the player sees the sun go down behind the rock. Added to the light's parent; restore() takes them out.
 import * as THREE from '../../vendor/three.module.js';
 import { sunAngle, sunDirection, daylightOf } from '../core/daylight.js';
-export function createDaylight({ hemi, sun, bg, day, tune, phase = 0 }) {
+// `dial`: an element the HUD's day dial goes in (owner, 2026-10-03: "a small day/night cycle moving animation in the main hud ... a circle
+// getting increasingly darker and brighter"): a disc lit by the daylight, warm at the golden hour, a tick going round its rim with the day
+export function createDaylight({ hemi, sun, bg, day, tune, phase = 0, dial = null }) {
   const c = (v) => new THREE.Color(v);
   let night = null, p = phase, d = 0, elevation = 0;
   const rebase = () => { night = { hemi: [hemi.color.clone(), hemi.groundColor.clone(), hemi.intensity], sun: [sun.color.clone(), sun.intensity], bg: bg.clone() }; };
   rebase();
   const dayHemi = [c(day.hemi[0]), c(day.hemi[1])], daySun = c(day.sun[0]), dayBg = c(day.bg), tmp = new THREE.Color();
   const dusk = tune.dusk ? { sun: c(tune.dusk.sun), sky: c(tune.dusk.sky), bg: c(tune.dusk.bg), share: tune.dusk.share, band: tune.dusk.band } : null;
-  const discs = tune.discs && sun.parent ? makeDiscs(sun.parent, tune.discs) : null;
+  const discs = tune.discs && sun.parent ? makeDiscs(sun.parent, tune.discs) : null, face = dial ? makeDial(dial) : null;
   let g = 0;
   function apply() {
     const dir = sunDirection(sunAngle(p, tune.dayShare), tune.tilt); elevation = dir[1]; d = daylightOf(elevation);
@@ -26,7 +28,7 @@ export function createDaylight({ hemi, sun, bg, day, tune, phase = 0 }) {
     bg.copy(night.bg).lerp(tmp.copy(dayBg), d);
     g = dusk ? Math.max(0, 1 - Math.abs(elevation - 0.04) / dusk.band) ** 1.5 * dusk.share : 0;   // the golden hour, either side of the horizon
     if (g > 0) { sun.color.lerp(dusk.sun, g); hemi.color.lerp(dusk.sky, g * 0.7); bg.lerp(dusk.bg, g); }
-    discs?.place(dir, g);
+    discs?.place(dir, g); face?.set(p, d, g);
     return d;
   }
   apply();
@@ -35,7 +37,7 @@ export function createDaylight({ hemi, sun, bg, day, tune, phase = 0 }) {
     set(phase) { p = ((phase % 1) + 1) % 1; return apply(); },
     rebase() { rebase(); apply(); },
     // the rig's night back on the lights, before another rig is built over them (2026-09-25: a NEW RUN at noon took noon for night)
-    restore() { discs?.dispose(); hemi.color.copy(night.hemi[0]); hemi.groundColor.copy(night.hemi[1]); hemi.intensity = night.hemi[2]; sun.color.copy(night.sun[0]); sun.intensity = night.sun[1]; bg.copy(night.bg); },
+    restore() { discs?.dispose(); face?.dispose(); hemi.color.copy(night.hemi[0]); hemi.groundColor.copy(night.hemi[1]); hemi.intensity = night.hemi[2]; sun.color.copy(night.sun[0]); sun.intensity = night.sun[1]; bg.copy(night.bg); },
     state: () => ({ phase: +p.toFixed(4), daylight: +d.toFixed(3), elevation: +elevation.toFixed(3), dusk: +g.toFixed(3), sunShown: !!discs }),
   };
 }
@@ -62,5 +64,20 @@ function makeDiscs(parent, { distance, sunSize, moonSize, sun: sunHex, low: lowH
       sunS.scale.setScalar(sunSize * (1 + 0.5 * g));   // a low sun swells
     },
     dispose() { for (const m of [sunS, moonS]) { parent.remove(m); m.material.dispose(); } tex.dispose(); },
+  };
+}
+
+// the HUD's day dial: a disc whose light is the daylight (a warm cast at the golden hour) and a tick at the day's phase round its rim
+function makeDial(parent) {
+  if (typeof document === 'undefined') return null;
+  const el = document.createElement('div'); el.id = 'day-dial'; el.setAttribute('aria-hidden', 'true');
+  const tick = document.createElement('i'); el.append(tick); parent.append(el);
+  return {
+    set(p, d, g) {
+      const l = 10 + 72 * d, warm = Math.min(1, g * 1.4);
+      el.style.background = `hsl(${Math.round(210 - 170 * warm)}, ${Math.round(25 + 55 * warm)}%, ${l.toFixed(0)}%)`;
+      tick.style.transform = `rotate(${(p * 360).toFixed(1)}deg)`;
+    },
+    dispose() { el.remove(); },
   };
 }

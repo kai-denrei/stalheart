@@ -1163,7 +1163,7 @@ export function initTdTab(root) {
       ? (nb) => dungeon.tags[nb] === BLOCKED
       : (nb) => dungeon.tags[nb] === BLOCKED || containerBlocked(nb);
     const half = Math.min(unitScale * 0.73, cellSide * 0.6), squeeze = stuck.t >= HULL_STUCK.after, side = cross3(norm3(player.pos), player.smoothDir);
-    const hull = (p) => [{ p, clearance: Math.min(unitScale * 0.3, cellSide * 0.3) }, ...(squeeze ? [] : [[1, 0], [-1, 0], [0, 1], [0, -1]]).map(([k, w]) => ({ p: norm3(add3(add3(p, scale3(player.smoothDir, k * half)), scale3(side, w * half * TANK_WALL.width))), clearance: cellSide * 0.04 }))];   // nose, tail and both flanks; wedged: they let go and it threads on its centre (2026-10-03)
+    const hull = (p) => [{ p, clearance: Math.min(unitScale * 0.3, cellSide * 0.3) }, ...(squeeze ? [] : [[1, 0], [-1, 0], ...(TANK_WALL.width ? [[0, 1], [0, -1]] : [])]).map(([k, w]) => ({ p: norm3(add3(add3(p, scale3(player.smoothDir, k * half)), scale3(side, w * half * TANK_WALL.width))), clearance: cellSide * 0.04 }))];   // nose, tail and both flanks; wedged: they let go and it threads on its centre (2026-10-03)
     const board = { cellOf: cellIndex, blocked: (nb) => nb !== ci && crowdedBy(nb), centers: graph.centers, adj: graph.adj };
     if (stuck.t < HULL_STUCK.after + HULL_STUCK.ramp && deepensContact(hullDepth(hull(player.pos), board), hullDepth(hull(cand), board), cellSide * 0.002)) return true;   // fully wedged on open ground, no snag holds it (2026-10-03)
     if (storyBase?.solidAt(cand) && !storyBase.solidAt(player.pos)) return true;   // the buildings are solid (src/fx/story-base.js solidAt)
@@ -1527,7 +1527,7 @@ export function initTdTab(root) {
     }
   }
 
-  const camGoal = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() }, seatGlide = createSeatGlide({ hold: () => paused });
+  const camGoal = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() }, seatGlide = createSeatGlide({ hold: () => paused, wait: () => shotId() === 'takeControl' });
   // two more of the same, for blending between two framings (the cold open)
   // two spare pose slots, for blending one framing into another
   const camA = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
@@ -3448,7 +3448,7 @@ export function initTdTab(root) {
   // are playing against, so they stay. With the words stripped, in every
   // language, because "×1.45" is the whole message and "STREAK" was only ever
   // decoration on it.
-  const CALLOUT_NUMERIC = { 'co-streak': true, 'co-milestone': true, 'co-cargo': true };   /* co-cargo is information (a part secured, a tower unlocked): it survives the praise switch whole */
+  const CALLOUT_NUMERIC = { 'co-streak': true, 'co-milestone': true, 'co-cargo': true, 'co-cta': true };   /* co-cargo is information (a part secured, a tower unlocked): it survives the praise switch whole */
   const numbersOnly = (t) => {
     const m = String(t).match(/[×x]\s*[\d.]+/);
     return m ? m[0].replace(/\s+/g, '') : t;
@@ -3465,7 +3465,7 @@ export function initTdTab(root) {
     d.className = `callout ${cls}`;
     d.textContent = text;
     calloutsEl.appendChild(d);
-    setTimeout(() => d.remove(), cls === 'co-cargo' ? 2600 : 1200);
+    setTimeout(() => d.remove(), cls === 'co-cargo' || cls === 'co-cta' ? 2600 : 1200);
   }
   // one class on the tab root moves both number slots off the middle of the
   // screen; the CSS owns where, so this never has to know
@@ -3828,7 +3828,7 @@ export function initTdTab(root) {
     ramCombo = 0; ramComboT = 0; syncCombo();
     breachedCells.clear(); explosions.clear(); sealedBreachCells.clear(); laserStation.reset(); // a NEW world owes nothing to the old one's holes, its fire, its sealed sinkholes or SOL-82's scorch
     const built = buildGameWorld({ world: storyQuery.world, params, stage: storyQuery.stage, landmarks: storyQuery.landmarks, phase: storyQuery.phase, grow: storyQuery.grow, chapter: storyQuery.chapter, scene, sfx, warm: warmShaders });
-    mesh = built.mesh; dungeon = built.dungeon; if (built.wallHeight) params.wallHeight = built.wallHeight; storyBase?.dispose(); storyBase = built.base; foundryFx?.dispose(); foundryFx = null; story?.glue?.dispose(); story = built.story ?? null; sectorRun = story ? makeSectorRun() : null; storyMonitor?.dispose(); storyMonitor = story ? createStoryMonitor(root) : null; storyScope?.dispose(); storyScope = story ? createStoryScope(root) : null; daylight?.restore(); daylight = story ? createDaylight({ hemi, sun, bg: mainBg, day: story.day.day, tune: story.day, phase: +new URLSearchParams(location.search).get('day') || 0 }) : null; gunshipRig.reset();   /* A NEW RUN LEAVES NOTHING BEHIND (2026-09-25): the lights' night, the gunship and a falling MK-9 go with the old world */   // the story planet has a day   // 4 m walls on the story sphere; the story's islands, structures, sockets and beats at the requested stage
+    mesh = built.mesh; dungeon = built.dungeon; if (built.wallHeight) params.wallHeight = built.wallHeight; storyBase?.dispose(); storyBase = built.base; foundryFx?.dispose(); foundryFx = null; story?.glue?.dispose(); story = built.story ?? null; sectorRun = story ? makeSectorRun() : null; storyMonitor?.dispose(); storyMonitor = story ? createStoryMonitor(root) : null; storyScope?.dispose(); storyScope = story ? createStoryScope(root) : null; daylight?.restore(); daylight = story ? createDaylight({ hemi, sun, bg: mainBg, day: story.day.day, tune: story.day, phase: +new URLSearchParams(location.search).get('day') || 0, dial: root }) : null; gunshipRig.reset();   /* A NEW RUN LEAVES NOTHING BEHIND (2026-09-25): the lights' night, the gunship and a falling MK-9 go with the old world */   // the story planet has a day   // 4 m walls on the story sphere; the story's islands, structures, sockets and beats at the requested stage
     graph = dungeon.graph; cellSide = mesh.defaultSide;
     // THE CAMP, BEFORE ANY ACTOR IS PLACED. Berth cells are graph maths,
     // so they are known now rather than whenever the container model
@@ -5494,19 +5494,8 @@ export function initTdTab(root) {
   });
 
   // Respawn beside the HEART, facing outward: the gate is enemy ground by the time you die. DEPLOY is the one way a tank enters the
-  // world: every reset starts the hull at rest in its berth and drives it out in manual; preludes only differ in the camera before it.
-  //
-  // "Entirely out" is measured in CELLS, not in metres of model: the box
-  // occupies its berth cell, so a hull whose centre has reached the exit
-  // cell's centre is clear of it by construction. That stays true when the
-  // container model has not loaded at all — which it may not have, since the
-  // model is now decoration and DEPLOY does not wait for it.
-  //
-  // DEPLOY is NOT auto mode and NOT cruise. Auto stays something the player
-  // chooses (operator, 2026-09-01); and cruise left engaged by a berth
-  // respawn is precisely what made the throttle lever read as dead. It is its
-  // own short scripted beat, and it ends with the controls in the player's
-  // hands and the lever at zero.
+  // world: the hull starts at rest in its berth and drives out in manual. "Entirely out" is measured in CELLS (its centre on the exit
+  // cell's), so it holds with no container model loaded. DEPLOY is not auto and not cruise: it ends with the lever at zero.
   let deploy = null;   // { n, from[3], to[3], segLen, travelled }
   const deployActive = () => deploy !== null;
 
@@ -8471,7 +8460,7 @@ export function initTdTab(root) {
     pilot: (ci, laneCi) => {
       if (pilot?.gunship || laserStation.seated()) return;   // a scripted hand-over never evicts a gunner or SOL-82: the beat is deferred, not the player (2026-09-23)
       const from = pilotMode ? { pos: camera.position.clone(), quat: camera.quaternion.clone() } : null, perch = perchOf(towerByCell.get(ci) ?? { ci }), lit = from && highlightSeat(scene, perch, graph.normals[ci], cellSide);   // from one seat to the next: back out, the next one lit (owner, 2026-10-02)
-      seatGlide.begin(camera); enterPilot([ci, ...towers.map((t) => t.ci).filter((c) => c !== ci)]); if (from) showCallout(`TRANSFER TO THE ${(TOWER_BY_KEY[towerByCell.get(ci)?.key]?.label ?? 'next seat').replace(/^\d+\.\s*/, '').toUpperCase()}! LOCK IN!`, 'co-cargo');
+      seatGlide.begin(camera); enterPilot([ci, ...towers.map((t) => t.ci).filter((c) => c !== ci)]); showCallout(`${(TOWER_BY_KEY[towerByCell.get(ci)?.key]?.label ?? 'sentry').replace(/^\d+\.\s*/, '').toUpperCase()} MANUAL OVERRIDE!`, 'co-cta');   // the call to action, red, front and centre (owner, 2026-10-03)
       startShot({ id: 'takeControl', dur: from ? 5.6 : 3.2, poseAt: takeControlPose(perch, graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight, from), onEnd: () => { lit?.(); seatGlide.begin(camera); setView('bastion'); pilotHost?.zoom(pilot?.state.zoom ?? 1); } }); camera.fov = seatBase?.fov ?? 68; camera.updateProjectionMatrix();   // the shot at the open lens, the new optic's zoom only once it lands (owner, 2026-10-03: the zoom carried between views)
     },
   };

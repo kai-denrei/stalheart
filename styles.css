@@ -4736,7 +4736,7 @@ body.mobile-shell #td-stats.ih-panel-hit { animation: ih-panel 0.9s ease-out; }
 /* THE SEAT GLIDE (src/fx/seat-glide.js, owner 2026-09-30): the optic's chrome is gone while the camera travels to the new post and
    fades in as it lands */
 #sentry-pilot, #story-scope { transition: opacity 0.35s ease-out; }
-body.seat-gliding #sentry-pilot, body.seat-gliding #story-scope { opacity: 0; transition: none; }
+body.seat-gliding #sentry-pilot, body.seat-gliding #story-scope, body.seat-gliding #story-monitor { opacity: 0; transition: none; }   /* and the Quiver's spotting monitor: only the HUD of what we sit in (2026-10-03) */
 
 /* THE SEATS SAY LESS ON A PHONE (2026-09-19-phone-seats-say-less, built 2026-10-01; owner: "too much info on screen"): in a seat
    the thumb needs the gun buttons, the aim, the fire button, one line of state and the strip. The telemetry plate and the panel's
@@ -4821,3 +4821,13 @@ body.seat-gliding #seat-vignette { display: none; }
 /* a palette swatch is two-tone: the armour over the edge (src/content/dyes.js PALETTES) */
 #paint-shop .ps-pal i { width: 40px; height: 22px; background: linear-gradient(135deg, var(--c) 0 62%, var(--e) 62% 100%); }
 #paint-shop .ps-pal span { font-size: 10px; letter-spacing: .08em; white-space: nowrap; }
+
+/* THE CALL TO ACTION (owner, 2026-10-03: "larger quick CALL to Action in Red in the center ... ROTOR MANUAL OVERRIDE!"): the seat hand-over's
+   order, bigger and redder than a callout, held 2.6 s; Isao's panel keeps the why */
+.co-cta { color: #ff3b2f; --r: 2.4; letter-spacing: 0.12em; text-shadow: 0 0 22px rgba(255, 50, 40, 0.9), 0 0 60px rgba(255, 30, 20, 0.6), var(--shout-halo); animation-duration: 2.6s; }
+
+/* THE DAY DIAL (src/fx/daylight.js makeDial): top centre beside the sound toggle, a lit disc and its tick going round with the day */
+#day-dial { position: absolute; top: 56px; left: calc(50% - 44px); width: 16px; height: 16px; border-radius: 50%; z-index: 11; pointer-events: none;
+  border: 1px solid rgba(159, 220, 255, .55); box-shadow: 0 0 8px rgba(255, 230, 180, .25); transition: background .6s linear; }
+#day-dial i { position: absolute; inset: -4px; border-radius: 50%; }
+#day-dial i::before { content: ''; position: absolute; left: 50%; top: 0; width: 2px; height: 4px; margin-left: -1px; background: #cfe9ff; }

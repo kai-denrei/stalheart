@@ -26,5 +26,6 @@ export const TANK_PLASMA = Object.freeze({ kgPerSecond: 3, dry: '<div class="wav
 // wiped, then the run-up rebuilt into the same wall, again and again. Now the into-wall share of each step bleeds the run-up at `scrub`
 // per second and turns the heading toward the slide at `align` per second, so the hull scrapes along and comes round parallel. Against a
 // building (no rock cell to slide off) the step is tried `glance` radians either side.
-// `width`: the flank probes' distance off the centre line as a share of the nose's (owner, 2026-10-03: "Mork still clips on some walls too easily")
-export const TANK_WALL = Object.freeze({ scrub: 2.5, align: 3.5, glance: Object.freeze([0.5, -0.5, 1.0, -1.0]), width: 0.55 });
+// `width`: the flank probes' distance off the centre line as a share of the nose's (owner, 2026-10-03: "Mork still clips on some walls too easily");
+// 0 turns them off: the next playtest found the handling worse ("unnatural staccato bumping ... it got worse in the last updates")
+export const TANK_WALL = Object.freeze({ scrub: 2.5, align: 3.5, glance: Object.freeze([0.5, -0.5, 1.0, -1.0]), width: 0 });

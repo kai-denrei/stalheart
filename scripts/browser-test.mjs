@@ -1544,8 +1544,9 @@ try{
  await evaluate('window.__stalheartPilotTest.hold(true)');
  await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("wave_cleared"))return true;const t=window.__stalheartPilotTest;if(t.state().overheated)return false;t.aimEnemy();return false;})()',480000);
  await evaluate('window.__stalheartPilotTest.hold(false)');
- await until(`${T}.state().shot==='takeControl' && /TRANSFER TO THE QUIVER! LOCK IN!/.test(document.querySelector("#td-callouts")?.textContent??"")`,120000).catch(async()=>assert.fail(`the hand-over called out (${(await st()).shot}, ${await evaluate('document.querySelector("#td-callouts")?.textContent')})`));
- await delay(1000);current='round7-quiver-transfer';await finish();
+ await until(`${T}.state().shot==='takeControl' && /QUIVER MANUAL OVERRIDE!/.test(document.querySelector("#td-callouts")?.textContent??"")`,120000).catch(async()=>assert.fail(`the hand-over called out (${(await st()).shot}, ${await evaluate('document.querySelector("#td-callouts")?.textContent')})`));
+ await delay(2500);assert.equal(await evaluate('document.body.classList.contains("seat-gliding")'),true,'mid-flight the Quiver\'s HUD stays hidden (2026-10-03)');assert.equal(await evaluate('(e=>!e||e.style.display==="none"||getComputedStyle(e).opacity==="0")(document.querySelector("#story-monitor"))'),true,'and its spotting monitor');current='round7-quiver-transfer';await finish();
+ assert.ok(await evaluate('!!document.querySelector("#day-dial")'),'the day dial is in the HUD');
  await until(`${T}.seatState().seatKey==="quiver" && !document.body.classList.contains("seat-gliding") && ${T}.state().shot!=='takeControl'`,20000).catch(async()=>assert.fail(`into the Quiver (${JSON.stringify(await evaluate(`${T}.seatState()`))})`));
  await delay(900);current='round7-quiver-in';await finish();
  } else if(args.includes('--study-probe')) {
