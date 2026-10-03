@@ -314,7 +314,13 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 40 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 41 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### Session sync after the tenth to fifteenth notes: what broke along the way, why, and what no one has seen yet, before the session restarts
+
+`2026-10-03-session-sync-rounds-ten-to-fifteen-lessons-and-open-checks` · issue · **observed**
+
+Six owner rounds shipped on 2026-10-03 (2026-10-03-tenth-notes-boards-walls-handover-tiers-debrief-repairs-paint-pad through 2026-10-03-fifteenth-notes-fodder-print-looks-garage-mission-strike-dive; main up to b472b4a1, with docs/ISAO-VOICE-LINES.md). The owner playtested to sector 7 at a constant 50 fps and asked for much more fodder. The session restarts with a cleared context before the next round.
 
 ### Proposed: two scoreboards (the player's and Isao's: kills, biomass gathered, biomass used), Isao's one missile that takes his kills from 0 to 1 with a celebration, and a livery Isao can print once he finds dyes in the biomass
 

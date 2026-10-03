@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "2026-10-03-session-sync-rounds-ten-to-fifteen-lessons-and-open-checks",
+  "date": "2026-10-03",
+  "type": "issue",
+  "status": "observed",
+  "title": "Session sync after the tenth to fifteenth notes: what broke along the way, why, and what no one has seen yet, before the session restarts",
+  "context": "Six owner rounds shipped on 2026-10-03 (2026-10-03-tenth-notes-boards-walls-handover-tiers-debrief-repairs-paint-pad through 2026-10-03-fifteenth-notes-fodder-print-looks-garage-mission-strike-dive; main up to b472b4a1, with docs/ISAO-VOICE-LINES.md). The owner playtested to sector 7 at a constant 50 fps and asked for much more fodder. The session restarts with a cleared context before the next round.",
+  "outcome": "Lessons, each observed this session: (1) A trailing // comment on a one-line block in src/fx swallowed its closing braces four times (programme-host twice, isao-strike, the back-door repair): put the comment on the line above. (2) Every faster beat broke a browser check written for the slower one (the override, the first barrel, the recycler beat, the free camera after the landing, the guard counts): when a beat changes, grep the suites for its old state before running them. (3) A rule that pleases the owner in play can halve a scripted proxy: the scatter-on-blast made the canyon beam test fall from ~220 to ~50 kills; the threshold was lowered with the reason in the test rather than the feel reverted, and the owner was told. (4) Coupling between features shows up only in suites: the site guards from the start broke three suites that counted every body as fodder. (5) The A6 livery runtime drove the game's own MÖRK because the material names match: check the contract before swapping a model. (6) A watcher loop that waits on the last line of an output file never ends once the harness appends its exit line: wait on DONE markers. (7) The controller's byte budget was paid every round by compressing comment blocks; one compression invented a reason and was caught and rewritten: compress from the text, never from memory. Not yet seen in play: the wireframe print, the mission card, the fodder at x4, Isao's last-ditch missile (sector 6+, a door below half), the hover glide and kick in a real corridor, the gate ease, the back mouth's sealing, the thrown MK-9 from the seat, the garage's arm. Hypotheses to watch: SOL's bite now that bodies bolt; whether x4 fodder holds 50 fps on the owner's machine (it did at the earlier ramp to sector 7).",
+  "alternatives": [
+    "Folding these lessons into the round entries: those are immutable; one observed entry keeps them findable"
+  ],
+  "evidence": [
+    "git log on main from 5f5e1a11 to b472b4a1",
+    "the suites and probes named in each round's entry (--round10, --round13, --opening-probe, --canyon-probe, --study-probe)"
+  ],
+  "supersedes": []
+}
