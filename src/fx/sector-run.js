@@ -20,6 +20,7 @@ import { isStampede, stampedeWave } from '../domain/stampede.js';
 import { POINT_SCALE, waveScore } from '../score.js';
 import { waveClearBonus } from '../domain/economy.js';
 import { createSectorDebrief } from './sector-debrief.js';
+import { isaoSpeak } from './isao-voice.js';
 
 export const SECTOR_BESTS_KEY = 'td.story.sector-bests';
 const LETTERS = 'ABCDEFGHIJ';
@@ -418,7 +419,7 @@ export function createSectorRun(h) {
     hullLost: () => { note({ type: 'damage', amount: 1 }); note({ type: 'hullLost' }); },
     heartHit: (dmg) => { note({ type: 'leak' }); note({ type: 'heartDamage', amount: dmg }); },
     // the colony is lost: LAST TRANSMISSION after the wreck has played. False when no sector is running (the caller shows its own)
-    lose() { if (!['brief', 'fighting', 'secure'].includes(phase)) return false; phase = 'lost'; left = SECTOR_TIMING.lostHold; h.hud(); return true; },
+    lose() { if (!['brief', 'fighting', 'secure'].includes(phase)) return false; phase = 'lost'; left = SECTOR_TIMING.lostHold; isaoSpeak('sector_lost'); h.hud(); return true; },
     state: () => ({
       phase, n: def?.n ?? 0, name: def?.name ?? null, doorAt, canyon: canyon ? { phase: canyon.phase, id: canyon.id, spawn: canyon.plan.spawn, mouth: canyon.plan.mouth, floor: canyon.plan.floor.length, rock: canyon.plan.rock.length } : null, feast: feast ? { at: +feast.at.toFixed(1), scrambled: !!feast.scrambled } : null, omens: [...omens], strays: phase === 'idle' ? 0 : (h.breaches?.() ?? []).filter((sp) => sp.alive && idOf(sp) === null).length, secure: ['secure', 'debrief', 'campaign'].includes(phase), debriefOpen: !!story.debrief?.isOpen(), reports: reports.length,
       gate: gate ? { hp: +gate.hp.toFixed(1), broken: gate.broken, breaks: gate.breaks } : null,

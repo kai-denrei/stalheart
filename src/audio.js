@@ -320,9 +320,9 @@ export function makeAudio(opts = {}) {
     if (ctx && ctx.state === 'running') {
       while (readyCbs.length) { try { readyCbs.shift()(); } catch { /* caller's problem */ } }
     }
-    const total = Object.keys(soundDefs).length;
+    const eager = Object.keys(soundDefs).filter((k) => !soundDefs[k].lazy), total = eager.length;
     let ok = 0, failed = 0;
-    for (const k of Object.keys(soundDefs)) {
+    for (const k of eager) {
       if (buffers[k] === 'failed') failed++;
       else if (buffers[k]) ok++;
     }
@@ -495,8 +495,18 @@ export function makeAudio(opts = {}) {
     if (loadPromise) return loadPromise;
     if (!decodeContext()) return Promise.resolve();
     loadStarted = true;
-    loadPromise = Promise.all(Object.keys(soundDefs).flatMap(key=>[decodeOne(key),...(soundDefs[key].loopFile?[decodeOne(key,soundDefs[key].loopFile,key+':loop')]:[])]));
+    loadPromise = Promise.all(Object.keys(soundDefs).filter(key=>!soundDefs[key].lazy).flatMap(key=>[decodeOne(key),...(soundDefs[key].loopFile?[decodeOne(key,soundDefs[key].loopFile,key+':loop')]:[])]));
     return loadPromise;
+  }
+  // A LAZY SOUND (spec.lazy: Isao's 154 voice lines, src/fx/isao-voice.js) is not decoded with the rest: decoding every line up
+  // front is ~70 MB of PCM for lines a run may never say. prime(key) decodes one on demand, once; it resolves true when it can play.
+  const priming = new Map();
+  function prime(key) {
+    if (!soundDefs[key]) return Promise.resolve(false);
+    if (buffers[key] && buffers[key] !== 'failed') return Promise.resolve(true);
+    if (!decodeContext()) return Promise.resolve(false);
+    if (!priming.has(key)) priming.set(key, decodeOne(key).then(() => { priming.delete(key); return !!buffers[key] && buffers[key] !== 'failed'; }));
+    return priming.get(key);
   }
 
   function stopVoice(id, fade = STEAL_FADE) {
@@ -723,6 +733,10 @@ export function makeAudio(opts = {}) {
     reseed(seed) { jitter = mulberry32(seed >>> 0 || 1); },
 
     play(key, o = {}) { start(key, o, false); },
+    prime,
+    // a voice the caller can stop or time (the voice line's own handle); null when it cannot start
+    say(key, o = {}) { return start(key, o, false); },
+    stop(handle, fade) { if (handle) stopVoice(handle.id, fade); },
 
     // a handle rather than a key, because the bed is continuous: the
     // caller nudges gain and rate every frame from the tank's speed

@@ -6,6 +6,7 @@
 // and the sentry's own materials come back. Needs renderer.localClippingEnabled. Every material here is a clone: a look's materials are
 // shared by every sentry of its kind.
 import * as THREE from '../../vendor/three.module.js';
+import { isaoSpeak } from './isao-voice.js';
 
 const box = new THREE.Box3(), up = new THREE.Vector3(), lo = new THREE.Vector3(), hi = new THREE.Vector3();
 
@@ -45,6 +46,7 @@ export function skinIn(obj, ghost, { seconds = 0.8, now = () => performance.now(
       if (ghostPrint) for (const m of ghostPrint.mats) m.opacity = 0.85 * (1 - e);
       if (k < 1) return false;
       for (const [o, was, cl] of own) { o.material = was; for (const c of cl) c.dispose(); }
+      isaoSpeak('print_done');   // "Done." (src/fx/isao-voice.js)
       return true;
     },
   };

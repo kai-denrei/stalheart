@@ -3430,12 +3430,10 @@ export function initTdTab(root) {
   // callout pop-ups + the ram combo counter (both pointer-transparent)
   const calloutsEl = root.querySelector('#td-callouts');
   const comboEl = root.querySelector('#td-combo'), ramFloat = createRamReadout(root, { project: (p) => new THREE.Vector3(p[0], p[1], p[2]).project(camera) });
-  // WHAT SURVIVES THE ENCOURAGEMENT BEING SWITCHED OFF. The praise is the
-  // part the operator wants gone — RECKLESS!, すげ〜!, the heart's lines. The
-  // SCORING is not praise: a streak multiplier and a ram count are facts you
-  // are playing against, so they stay. With the words stripped, in every
-  // language, because "×1.45" is the whole message and "STREAK" was only ever
-  // decoration on it.
+  // WHAT SURVIVES THE ENCOURAGEMENT BEING SWITCHED OFF. The praise is the part the operator wants gone — RECKLESS!, すげ〜!, the
+  // heart's lines. The SCORING is not praise: a streak multiplier and a ram count are facts you are playing against, so they
+  // stay. With the words stripped, in every language, because "×1.45" is the whole message and "STREAK" was only ever decoration
+  // on it.
   const CALLOUT_NUMERIC = { 'co-streak': true, 'co-milestone': true, 'co-cargo': true, 'co-cta': true };   /* co-cargo is information (a part secured, a tower unlocked): it survives the praise switch whole */
   const numbersOnly = (t) => {
     const m = String(t).match(/[×x]\s*[\d.]+/);
@@ -3443,7 +3441,7 @@ export function initTdTab(root) {
   };
 
   function showCallout(text, cls) {
-    if (!calloutsEl) return;
+    isaoSay(sfx, text); if (!calloutsEl) return;
     if (!params.callouts) {
       if (!CALLOUT_NUMERIC[cls]) return;   // the praise goes quiet
       text = numbersOnly(text);
@@ -3512,7 +3510,7 @@ export function initTdTab(root) {
   const toastEl = root.querySelector('#td-toast');
   let toastTimer = null;
   function showToast(html, ms = 3000) {
-    if (!toastEl) return;
+    isaoSay(sfx, html); if (!toastEl) return;
     toastEl.innerHTML = html;
     // the toast is pointer-transparent by default (it sits over the board);
     // it only accepts taps when it is carrying one to accept
@@ -3530,11 +3528,9 @@ export function initTdTab(root) {
     });
   }
 
-  // The instrument panel. Three reading distances, three brightness tiers:
-  // vitals bright and big (sub-second combat reads), resources mid (biomass
-  // orange as ever, the wave numeral the largest thing on the panel), meta
-  // and objectives dim. The who-is-driving line is GONE from the panel —
-  // control state lives ON the AUTO button now, where the control is.
+  // The instrument panel. Three reading distances, three brightness tiers: vitals bright and big (sub-second combat reads),
+  // resources mid (biomass orange as ever, the wave numeral the largest thing on the panel), meta and objectives dim. The
+  // who-is-driving line is GONE from the panel — control state lives ON the AUTO button now, where the control is.
   function updateHud() { if (inFrame && hudFrame === frameNo) { hudDirty = true; return; } hudFrame = frameNo; hudDirty = false; paintHud(); }   /* INSIDE A FRAME, ONCE PLUS ONE CATCH-UP (2026-09-25): a strike on a pile rebuilt the panel's HTML once per kill. Outside a frame (a hook, a handler) it paints at once */ function paintHud() {
     if (eco && eco.biomass > run.peakBiomass) { run.peakBiomass = eco.biomass; checkAchievements(); }
     if (lifeContainers.length) syncLifeContainers();
@@ -3647,10 +3643,9 @@ export function initTdTab(root) {
     updateHud();
   }
 
-  // wave announcement banner — HokorobiTawaa's "New Threat" card, complete
-  // with its spinning live model of the enemy. The sprite renderer is ONE
-  // persistent context created up front (never per-announcement — contexts
-  // are a scarce browser resource and leak on loss).
+  // wave announcement banner — HokorobiTawaa's "New Threat" card, complete with its spinning live model of the enemy. The sprite
+  // renderer is ONE persistent context created up front (never per-announcement — contexts are a scarce browser resource and leak
+  // on loss).
   const waveEl = root.querySelector('#td-wave');
   let waveTimer = null;
   // preserveDrawingBuffer: the glossary snapshots toDataURL() this canvas
@@ -3761,11 +3756,9 @@ export function initTdTab(root) {
     // same world in place, towers standing.) Clear towers first: stale
     // towerCells would poison openNeighbors during board generation.
     round = 1;
-    // A FRESH RUN GETS A FRESH AUDIO GRAPH. Beds are owned by handles, and a
-    // regenerate throws the owners away — so anything still looping kept
-    // looping, and the next run layered its own on top. Two games in, that
-    // is two engine beds and every voice either has ever fired still wired
-    // to a bus (operator: "the sound started to lag after the second game").
+    // A FRESH RUN GETS A FRESH AUDIO GRAPH. Beds are owned by handles, and a regenerate throws the owners away — so anything
+    // still looping kept looping, and the next run layered its own on top. Two games in, that is two engine beds and every voice
+    // either has ever fired still wired to a bus (operator: "the sound started to lag after the second game").
     sfx.panic();
     stopEngine(0, true);
     sectorStartWave = 0; sectorsCleared = 0;
@@ -3805,12 +3798,10 @@ export function initTdTab(root) {
     record('camp.placed', { heartLook: params.heartLook, footprintRadius, cellSide, berths });
     // THE BAYS ARE THE LIFE CONTAINERS: the parked hull in each is the spare, hidden once it has driven out; the sealed bay opens when its turn comes
     adoptBays(storyBase);   // the first scene: the bays land after the opening roll-out, so roll out again where they can be seen
-    // LANES (HT): keep the dungeon carve — rooms joined by WIDE corridors
-    // are the monster lanes, and the wall mass between them is the HIGH
-    // GROUND where towers mount. generateDungeon already supplies heart,
-    // spawn, and distToHeart over the open subgraph.
-    // TD: remember the FULL world, then seal everything beyond round 1's
-    // inner sector — the run reveals it back band by band
+    // LANES (HT): keep the dungeon carve — rooms joined by WIDE corridors are the monster lanes, and the wall mass between them
+    // is the HIGH GROUND where towers mount. generateDungeon already supplies heart, spawn, and distToHeart over the open
+    // subgraph. TD: remember the FULL world, then seal everything beyond round 1's inner sector — the run reveals it back band by
+    // band
     tdFullTags = dungeon.tags.slice();
     tdFullDist = Array.from(dungeon.distToHeart);
     tdMaxD = 0;

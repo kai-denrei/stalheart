@@ -38,6 +38,7 @@ const routes = {
   laser: () => import('./labs/laser-tab.js').then(m => m.initLaserTab),
   gunship: () => import('./labs/gunship-tab.js').then(m => m.initGunshipTab),
   debrief: () => import('./labs/debrief-tab.js').then(m => m.initDebriefTab),
+  voice: () => import('./labs/voice-tab.js').then(m => m.initVoiceTab),
 };
 const name = location.hash.slice(1) || (workshop ? 'units' : 'td');
 // the retired roadmap tab: the workshop opens with the docs overlay on the roadmap

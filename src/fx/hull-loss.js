@@ -14,6 +14,7 @@
 // setRamComboT, setTankLostDeploys, setPlayerDown). The controller calls loseTank from playerHit while a hull is left.
 import { rankLabel } from '../ranks.js';
 import { berthIndexFor } from '../domain/berths.js';
+import { isaoSpeak } from './isao-voice.js';
 import { landTankFeel, applyTankHealth } from '../tankfeel.js';
 
 const DOWN_DASH = 1.0;   // seconds of camera, wreck -> camp
@@ -69,6 +70,7 @@ export function createHullLoss(host) {
         },
         // BEAT 3 — the next hull rolls out of its berth, live.
         onEnd: () => {
+          isaoSpeak('hull_rebuilt');   // src/fx/isao-voice.js
           host.setTankLostDeploys(host.tankLostDeploys() + 1);
           host.playerMesh().visible = true;
           host.setPlayerDown(false);

@@ -3,6 +3,7 @@
 // (src/enemyspec.js INTROS) and the two facts a driver needs, whether it goes under the treads and how much it takes. It never
 // pauses the game or covers the middle of the screen; cards that arrive together queue, one at a time. The UNITS bench has the rest.
 import { CREATURE_TINTS, ENEMY_SPEC, INTROS } from '../enemyspec.js';
+import { isaoSpeak } from './isao-voice.js';
 
 const SHOW_MS = 5200;
 
@@ -15,6 +16,7 @@ export function showContact(root, type) {
     const t = q.queue.shift(); if (!t) { q.busy = false; return; }
     q.busy = true;
     const i = INTROS.find((x) => x.type === t), s = ENEMY_SPEC[t], tint = '#' + (CREATURE_TINTS[t] ?? 0xffffff).toString(16).padStart(6, '0');
+    isaoSpeak('first_contact', { qualifier: s?.rammable ? 'rammable' : 'solid core' });   // Isao names it (src/fx/isao-voice.js)
     const card = document.createElement('div'); card.className = 'contact-card'; card.style.setProperty('--tint', tint);
     const head = document.createElement('div'); head.className = 'contact-head'; head.textContent = 'NEW CONTACT';
     const name = document.createElement('div'); name.className = 'contact-name'; name.textContent = (i?.label ?? t).replace(/^THE /, '');

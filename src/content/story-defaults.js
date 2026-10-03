@@ -64,20 +64,6 @@ export const STORY_SOUNDS = Object.freeze({
   rocket_thrust: { file: 'assets/audio/rocket_thrust.mp3', bus: 'tank', gain: 0.9, maxVoices: 1, minInterval: 0, rateJitter: 0 },
   gate_hydraulics: { file: 'assets/audio/gate_hydraulics.mp3', bus: 'ui', gain: 2, maxVoices: 1, minInterval: 0.5, rateJitter: 0.02 },
   gate_slam: { file: 'assets/audio/gate_slam.mp3', bus: 'ui', gain: 0.8, maxVoices: 1, minInterval: 0.5, rateJitter: 0.03 },
-  ...isaoClips(['mission_01', 'rough_landing_01', 'so_much_to_build_02', 'gate_broken_05']),
-});
-
-// ISAO'S RECORDED VOICE (owner, 2026-10-03: the first samples from ~/Dev/seiyu_voice, voice A, "wire these in to test"). Each
-// trigger is a brief id (or `mission`, the landing card) and lists its takes; src/fx/isao-voice.js plays one when the beat shows,
-// never the same take twice running. A trigger with no take stays silent. Clips pinned in docs/isao-voice-audio.lock.json.
-function isaoClips(ids) {
-  return Object.fromEntries(ids.map((id) => [`isao_${id}`, { file: `assets/audio/isao_${id}.mp3`, bus: 'ui', gain: 1, maxVoices: 1, minInterval: 0, rateJitter: 0 }]));
-}
-export const ISAO_VOICE = Object.freeze({
-  mission: Object.freeze(['isao_mission_01']),
-  rough_landing: Object.freeze(['isao_rough_landing_01']),
-  so_much_to_build: Object.freeze(['isao_so_much_to_build_02']),
-  gate_broken: Object.freeze(['isao_gate_broken_05']),
 });
 
 // Six engines under the skirt, each with its own cadence, so the cluster

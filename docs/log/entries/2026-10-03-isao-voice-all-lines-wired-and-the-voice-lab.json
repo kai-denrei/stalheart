@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "2026-10-03-isao-voice-all-lines-wired-and-the-voice-lab",
+  "date": "2026-10-03",
+  "type": "change",
+  "status": "accepted",
+  "title": "Isao's 154 recorded lines wired to the game's moments, and a Workshop voice lab to switch them and see what still needs a hook or a voice",
+  "context": "Owner, 2026-10-03: ~/Dev/seiyu_voice has 154 candidate voice tracks for Isao; 'we might not use them all, but let's wire them, along with a DEV workshop tab for voice acting, where we can manage the voices; which ones to toggle on/off, and triggers that still need a sound effect or voice'. The export (manifest.json + isao/<id>.wav, first unapproved pass) names 48 triggers by the script's words.",
+  "outcome": "scripts/import-isao-voice.mjs turns the export into assets/audio/isao/<id>.mp3 (mono 64 kbps, 3.0 MB for 154 lines, deterministic), the generated table src/content/isao-voice.js and docs/isao-voice-audio.lock.json (checked by assets:check, which also refuses unpinned files); it replaces the four hand-wired takes. src/domain/voice-match.js resolves a moment to a trigger (exact alias, callout text by its start, then the build_* wildcard) and picks a line (switched on, qualifier matched, never the last). src/content/voice-hooks.js holds the game's side: extra aliases (sector briefs, the SOL countdown at 3, RAM milestones, MORK DOWN!, PLASMA DRY), the callout texts and named events the game raises, and the timing (one line at a time, a trigger rests 12 s, a line later than 1.5 s is dropped). src/audio.js gains lazy sounds and prime(key): voice lines decode on demand instead of ~70 MB of PCM at load. src/fx/isao-voice.js speaks from td-tab's showBrief, showCallout and showToast and the mission card, and through isaoSpeak from the contact card (rammable or solid core), a sentry's print standing, the next hull, a sector lost and the armory's shells. 44 of 48 triggers are wired; good_hit, mk9_lands, chain_broken and idle have no game moment yet. The Workshop's voice tab (src/labs/voice-tab.js, labs.html#voice) lists every trigger with its game moments, plays and switches each line or trigger, mutes the voice, exports and imports the picks, and lists the triggers needing a hook and the 33 briefs needing a voice. The picks live in storage td.voice and the game reads them on every line.",
+  "alternatives": [
+    "Decoding the voice with the other sounds: ~70 MB of decoded audio on every story page, most of it never said in a run",
+    "Reading the export's manifest.json at runtime: the game would depend on a sibling project's folder; the import pins what ships",
+    "Wiring the four remaining triggers now: no clean game event exists for a good hit, the MK-9's landing, a broken chain in the game, or idling"
+  ],
+  "evidence": [
+    "test/voice-match.mjs 19/19, test/voice-hooks.mjs 34/34 (every listed callout is a text the game shows, every event is raised), test/isao-voice.mjs 15/15; npm test, check, build green",
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --voice: 154 lines listed, 44 triggers wired, a line plays from the tab, a switch lands in td.voice; in the story Isao said sector_brief_02 on the sector 1 brief"
+  ],
+  "supersedes": [
+    "2026-10-03-isao-voice-first-recorded-takes"
+  ]
+}

@@ -1,22 +1,40 @@
-// isao-voice.js — Isao's recorded lines, played when his beat shows (content/story-defaults.js ISAO_VOICE). One take per trigger
-// per call, picked at random but never the take that played last for that trigger; a trigger without takes, or a page whose
-// audio has no such sample (sfx.play ignores an unknown key), stays silent.
-import { ISAO_VOICE } from '../content/story-defaults.js';
+// isao-voice.js — Isao's recorded lines, said when the game reaches their moment (owner, 2026-10-03: "154 candidate voice tracks to
+// give life to Isao ... let's wire them"). td-tab calls isaoSay(sfx, id) as a brief shows, as a callout shows and at the mission card;
+// src/domain/voice-match.js says which trigger the moment belongs to and which of its lines; this module keeps time. One line at a
+// time (a brief and its callout often land together), each trigger resting VOICE_TUNE.repeat seconds before it speaks again, the
+// player's picks (the Workshop's voice tab) honoured on every call. Lines are lazy sounds: the chosen one is decoded as it is wanted
+// and dropped if it arrives more than `late` seconds after its moment. A page whose audio has no voice lines stays silent.
+import { ISAO_TRIGGERS } from '../content/isao-voice.js';
+import { VOICE_HOOKS, VOICE_TUNE, VOICE_STORE, voiceKey } from '../content/voice-hooks.js';
+import { createVoiceIndex, eligible, pickLine, readPicks } from '../domain/voice-match.js';
+import { storage } from '../storage.js';
 
-export function pickTake(takes, last, roll = Math.random()) {
-  if (!takes?.length) return null;
-  const pool = takes.length > 1 ? takes.filter((k) => k !== last) : takes;
-  return pool[Math.min(pool.length - 1, Math.floor(roll * pool.length))];
+export function createIsaoVoice({ triggers = ISAO_TRIGGERS, hooks = VOICE_HOOKS, tune = VOICE_TUNE, picks = () => readPicks(storage.getItem(VOICE_STORE)),
+  now = () => performance.now() / 1000, rand = Math.random } = {}) {
+  const index = createVoiceIndex(triggers, hooks), last = new Map(), lastAt = new Map(), log = [];
+  let busyUntil = -Infinity;
+  const note = (entry) => { log.push(entry); if (log.length > 40) log.shift(); };
+  function say(sfx, id, { qualifier = null } = {}) {
+    const key = index.resolve(id);
+    if (!key) return null;
+    const p = picks(), t = now();
+    if (p.muted || p.quiet.has(key)) return null;
+    if (t < busyUntil || t - (lastAt.get(key) ?? -Infinity) < tune.repeat) return null;
+    const line = pickLine(eligible(triggers[key].lines, { off: p.off, qualifier }), last.get(key), rand());
+    if (!line) return null;
+    last.set(key, line.id); lastAt.set(key, t); busyUntil = t + line.duration + tune.gap;
+    const k = voiceKey(line.id), entry = { at: t, from: String(id), trigger: key, id: line.id, played: false };
+    note(entry);
+    const go = () => { if (now() - t > tune.late) { entry.late = true; busyUntil = now(); return; } sfx?.play(k); entry.played = true; };
+    if (sfx?.prime) sfx.prime(k).then((ok) => (ok ? go() : (entry.failed = true))); else go();
+    return line;
+  }
+  return Object.assign(say, { index, log, reset() { last.clear(); lastAt.clear(); busyUntil = -Infinity; log.length = 0; } });
 }
 
-export function createIsaoVoice(table = ISAO_VOICE, rand = Math.random) {
-  const last = new Map();
-  return function say(sfx, trigger) {
-    const key = pickTake(table[trigger], last.get(trigger), rand());
-    if (key) { last.set(trigger, key); sfx?.play(key); }
-    return key;
-  };
-}
-
-// the game's one voice; td-tab calls it from the brief presenter and the mission card
-export const isaoSay = createIsaoVoice();
+// the game's one voice. td-tab hands it the sound engine on every brief, callout and toast; a module with no engine of its own
+// (a contact card, a print, a hull rolling out) speaks through isaoSpeak, which uses the engine it was last handed
+const voice = createIsaoVoice();
+let sink = null;
+export const isaoSay = Object.assign((sfx, id, o) => { if (sfx) sink = sfx; return voice(sfx, id, o); }, { log: voice.log, index: voice.index });
+export const isaoSpeak = (id, o) => voice(sink, id, o);

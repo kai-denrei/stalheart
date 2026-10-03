@@ -1648,6 +1648,34 @@ try{
  console.log(`  round16: lance re-aims ${calls} in 3 s, its start travelled ${moved.toExponential(2)} with the muzzle`);
  assert.ok(calls>=10,'an automated Lancer\'s held beam is re-aimed every frame');
  await evaluate(`${T}.showcase.ground(${sock[0]},1.2,2.4)`);await delay(1200);current='round16-lancer';await finish();
+ } else if(args.includes('--voice')) {
+ // ISAO'S VOICE (owner, 2026-10-03): the Workshop's voice tab lists every trigger with the moments that raise it, plays a line, and its
+ // switches are the game's own picks; in the story Isao says a recorded line when his moment comes
+ const V='window.__stalheartVoiceTest';
+ await go('voice-tab','labs.html?sw=0&acceptance=1#voice');
+ await until(`!!${V}`,30000);
+ const cov=await evaluate(`${V}.coverage()`);console.log(`  voice: ${cov.wired} triggers wired, unwired ${cov.unwired.join(' ')}, ${cov.silent} briefs with no line`);
+ assert.ok(cov.wired>=40,'most triggers have a game moment');
+ assert.equal(await evaluate('document.querySelectorAll("#tab-voice [data-line]").length'),154,'every line is listed');
+ const into=(sel)=>evaluate(`document.querySelector(${JSON.stringify(sel)}).scrollIntoView({block:'center'})`).then(()=>delay(200));
+ await into('#tab-voice [data-play="gate_broken_01"]');await click('#tab-voice [data-play="gate_broken_01"]');
+ await until('/Playing gate_broken_01/.test(document.querySelector("#tab-voice [data-status]").textContent)',15000).catch(async()=>assert.fail(`the line plays (${await evaluate('document.querySelector("#tab-voice [data-status]").textContent')} ${JSON.stringify(await evaluate(`${V}.audio()`))})`));
+ await into('#tab-voice [data-line-on="gate_broken_01"]');await click('#tab-voice [data-line-on="gate_broken_01"]');await delay(200);
+ assert.deepEqual((await evaluate(`${V}.picks()`)).off,['gate_broken_01'],'a line switched off');
+ assert.equal(await evaluate(`JSON.parse(localStorage.getItem('stalheart:v1:td.voice')).off[0]`),'gate_broken_01','kept where the game reads it');
+ await evaluate('document.querySelector("#tab-voice").scrollTop=0');await delay(200);await click('#tab-voice [data-filter="unwired"]');await delay(300);current='voice-tab-unwired';await finish();
+ await click('#tab-voice [data-all]');await delay(200);assert.equal((await evaluate(`${V}.picks()`)).off.length,0,'all on again');
+ await click('#tab-voice [data-filter="all"]');await delay(300);current='voice-tab';await finish();
+ // THE GAME: a story page, one gesture for the audio, and Isao answers the sector's brief or callouts with a recorded line
+ const T='window.__stalheartTest';
+ await go('voice-game','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ await send('Input.dispatchMouseEvent',{type:'mousePressed',x:720,y:450,button:'left',clickCount:1});await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:720,y:450,button:'left',clickCount:1});
+ const said='(async()=>(await import("./src/fx/isao-voice.js")).isaoSay.log.map(e=>({from:e.from.slice(0,40),id:e.id,played:e.played,late:!!e.late,failed:!!e.failed})))()';
+ await until(`(async()=>(await import("./src/fx/isao-voice.js")).isaoSay.log.some(e=>e.played))()`,90000).catch(async()=>assert.fail(`Isao says a line (${JSON.stringify(await evaluate(said))})`));
+ const log=await evaluate(said);console.log(`  voice: said ${JSON.stringify(log)}`);
+ assert.ok(log.some(e=>e.played&&/^[a-z0-9_]+_\d\d$/.test(e.id)),'a recorded line played in the story');
+ current='voice-game';await finish();
  } else if(args.includes('--opening-probe')) {
  // THE OPENING'S TIMELINE from a bare page: phase, shot, view, Isao's panel, every change (no assertions)
  const T='window.__stalheartTest';

@@ -1,4 +1,4 @@
-import { readFileSync, existsSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
+import { readdirSync, readFileSync, existsSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -116,11 +116,12 @@ for(const file of storyAudio.files){
 console.log('Pinned story gate audio verified.');
 const isaoVoice=JSON.parse(readFileSync(resolve(root,'docs/isao-voice-audio.lock.json'),'utf8'));
 for(const file of isaoVoice.files){
- if(!/^assets\/audio\/isao_[a-z_]+_\d\d\.mp3$/.test(file.path))throw Error('Unexpected Isao voice path');
+ if(!/^assets\/audio\/isao\/[a-z0-9_]+_\d\d\.mp3$/.test(file.path))throw Error('Unexpected Isao voice path');
  const bytes=readFileSync(resolve(root,file.path));
  if(bytes.length!==file.bytes||sha(bytes)!==file.sha256)throw Error('Isao voice checksum mismatch: '+file.path);
 }
-console.log(`Pinned Isao voice takes verified: ${isaoVoice.files.length}`);
+{const on=new Set(isaoVoice.files.map(f=>f.path.split('/').pop()));for(const f of readdirSync(resolve(root,'assets/audio/isao')))if(!on.has(f))throw Error('Unpinned Isao voice file: '+f);}
+console.log(`Pinned Isao voice lines verified: ${isaoVoice.files.length}`);
 
 {const lock=JSON.parse(readFileSync(resolve(root,'docs/far-tier-assets.lock.json'),'utf8'));
  for(const d of lock.derivations){

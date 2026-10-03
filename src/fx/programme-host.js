@@ -40,6 +40,7 @@ import { ISAO_STRIKE } from '../content/base-programme.js';
 import { LIVERY_IDS, DYE_SHOP } from '../content/dyes.js';
 import { makeDyeBook } from '../domain/dyes.js';
 import { openPaintShop, applyLivery } from './paint-shop.js';
+import { isaoSpeak } from './isao-voice.js';
 import { BRIEFS } from '../isaobriefs.js';
 import { storage } from '../storage.js';
 import * as THREE from '../../vendor/three.module.js';
@@ -77,7 +78,7 @@ export function createProgrammeHost(c) {
         pad.ring.stand(programmeHas(pg, 'armory'));
         const dt = Math.max(0, Math.min(0.1, c.t() - (pad.at ?? c.t()))); pad.at = c.t();
         const n = pad.ring.tick(dt, c.playerHP() > 0 ? c.playerPos?.() : null, c.ammo?.() ?? 0, c.ammoMax ?? 9, c.t());
-        if (n > 0) { c.setAmmo?.(c.ammo() + n); c.sfx?.play?.('tank_shells'); updateHud(); }
+        if (n > 0) { c.setAmmo?.(c.ammo() + n); c.sfx?.play?.('tank_shells'); isaoSpeak('shells_refilled'); updateHud(); }
       }
       // PIMP MY RIDE (src/fx/paint-pad.js): the purple pad beside the bays, live once the bays stand; parked on it, the paint shop opens
       // over the paused game with every dye extracted so far
