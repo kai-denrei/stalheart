@@ -4818,3 +4818,6 @@ body.seat-gliding #seat-vignette { display: none; }
 .sdb-sum-cite:nth-child(2n) { transform: rotate(1.5deg); }
 .sdb-sum-cite.is-none { border-color: var(--sdb-faint); color: var(--sdb-dim); transform: none; }
 @container (max-width: 560px) { .sdb-sum-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* a palette swatch is two-tone: the armour over the edge (src/content/dyes.js PALETTES) */
+#paint-shop .ps-pal i { width: 40px; height: 22px; background: linear-gradient(135deg, var(--c) 0 62%, var(--e) 62% 100%); }
+#paint-shop .ps-pal span { font-size: 10px; letter-spacing: .08em; white-space: nowrap; }

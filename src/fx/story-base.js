@@ -57,7 +57,7 @@ export const nodeNamed = (root, name) => { let hit = null; root.traverse((o) => 
 // only becomes the tier to swap to once its programs are linked and first-used: the dive's pass over the base paid
 // 55 ms + 32 ms of links otherwise, and a tier shown on the frame it linked still paid 53-72 ms. The far tier stands a
 // few frames longer; the swap itself is unchanged.
-export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [], sfx = null, warm = null, solid = new Set() }) {
+export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [], sfx = null, warm = null, solid = new Set(), inset = 0.3 }) {
   const solidV = new THREE.Vector3();
   const group = new THREE.Group(); group.name = 'Story base'; scene.add(group);
   const mixers = [], owned = new Set(), errors = [], bays = [], lod = [];
@@ -247,6 +247,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
           if (!boxes.length) continue;
           const low = Math.min(...boxes.map((b) => b.min.y)), reach = 2.5 * metres / r.holder.matrixWorld.getMaxScaleOnAxis(), foot = new THREE.Box3();
           for (const b of boxes) if (b.min.y <= low + reach) foot.union(b);
+          const sz = foot.getSize(new THREE.Vector3()); foot.expandByVector(sz.multiplyScalar(-inset / 2));   // the core of it, not its widest reach: the camp stays drivable
           f = r.foot = { root, inv, foot, scale: r.holder.matrixWorld.getMaxScaleOnAxis() };
         }
         const q = solidV.set(p[0], p[1], p[2]).applyMatrix4(f.inv), m = pad / f.scale;

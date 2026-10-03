@@ -1162,10 +1162,11 @@ export function initTdTab(root) {
     const crowdedBy = berthed()
       ? (nb) => dungeon.tags[nb] === BLOCKED
       : (nb) => dungeon.tags[nb] === BLOCKED || containerBlocked(nb);
-    const half = Math.min(unitScale * 0.73, cellSide * 0.6), squeeze = stuck.t >= HULL_STUCK.after, hull = (p) => [{ p, clearance: Math.min(unitScale * 0.3, cellSide * 0.3) }, ...(squeeze ? [] : [1, -1]).map((k) => ({ p: norm3(add3(p, scale3(player.smoothDir, k * half))), clearance: cellSide * 0.04 }))];   // wedged: the nose and tail let go and it threads on its centre (2026-10-03)
+    const half = Math.min(unitScale * 0.73, cellSide * 0.6), squeeze = stuck.t >= HULL_STUCK.after, side = cross3(norm3(player.pos), player.smoothDir);
+    const hull = (p) => [{ p, clearance: Math.min(unitScale * 0.3, cellSide * 0.3) }, ...(squeeze ? [] : [[1, 0], [-1, 0], [0, 1], [0, -1]]).map(([k, w]) => ({ p: norm3(add3(add3(p, scale3(player.smoothDir, k * half)), scale3(side, w * half * TANK_WALL.width))), clearance: cellSide * 0.04 }))];   // nose, tail and both flanks; wedged: they let go and it threads on its centre (2026-10-03)
     const board = { cellOf: cellIndex, blocked: (nb) => nb !== ci && crowdedBy(nb), centers: graph.centers, adj: graph.adj };
-    if (deepensContact(hullDepth(hull(player.pos), board), hullDepth(hull(cand), board), cellSide * 0.002)) return true;
-    if (storyBase?.solidAt(cand, unitScale * 0.45) && !storyBase.solidAt(player.pos, unitScale * 0.45)) return true;   // the buildings are solid (src/fx/story-base.js solidAt)
+    if (stuck.t < HULL_STUCK.after + HULL_STUCK.ramp && deepensContact(hullDepth(hull(player.pos), board), hullDepth(hull(cand), board), cellSide * 0.002)) return true;   // fully wedged on open ground, no snag holds it (2026-10-03)
+    if (storyBase?.solidAt(cand) && !storyBase.solidAt(player.pos)) return true;   // the buildings are solid (src/fx/story-base.js solidAt)
     return unitBlocker(cand);
   }
 
@@ -2138,21 +2139,9 @@ export function initTdTab(root) {
     poseCamera(tankViewPose({ c: player.pos, h: player.smoothDir, third: params.view === 'third', mobile: mobileShell, dip, kick, wallHeight: params.wallHeight, cellSide, unitScale }), camGoal, true);
   }
 
-  // THE CANVAS IS NOT WHAT THE PLAYER SEES. On a phone `innerHeight` — and
-  // therefore the canvas — includes the strip behind the browser's own
-  // chrome, while `visualViewport` is the part that is actually on screen.
-  // The third-person rig frames the tank a third up the CANVAS, and when the
-  // chrome eats the bottom that lands below the fold: the tank is drawn, in
-  // frustum, the right size, and invisible. That is the `chrome` verdict the
-  // watchdog has been reporting and refusing to act on, and it is the shape
-  // of the recurring "not in third person, nor top view" report — the camera
-  // was never stuck, it was aiming at a part of the canvas nobody can see.
-  //
-  // The correction is a pitch: bias the camera by the angle that moves the
-  // target from the centre of the CANVAS to the centre of the VISIBLE band.
-  // On a desktop, and headless, visualViewport reports the full canvas and
-  // this is exactly zero — which is the right no-op, and the reason it can
-  // ship without a device to test it on.
+  // THE CANVAS IS NOT WHAT THE PLAYER SEES: on a phone the canvas runs behind the browser's chrome, so a tank framed a third up it can
+  // land below the fold (the watchdog's `chrome` verdict). The camera is pitched by the angle from the canvas centre to the visible band's;
+  // on a desktop and headless visualViewport is the whole canvas and this is exactly zero
   let camBiasNdc = 0;
   function viewportBias() {
     const vv = window.visualViewport;
@@ -4250,7 +4239,7 @@ export function initTdTab(root) {
       const entry = spawnQueue.shift(), { type, sp } = entry;   // a story swarm entry also carries delay, spread and harmless
       if (!sp.alive) continue;   // its gate died while it was queued
       if(!gameBreaches.ready(sp.obj)){spawnQueue.unshift({...entry,at:spawnClock});break;}
-      const spec = ENEMY_SPEC[type]; if (storyMode && !seenTypes.has(type)) { seenTypes.add(type); showContact(root, type); }   // first contact: src/fx/contact-card.js
+      const spec = ENEMY_SPEC[type]; if (storyMode && !entry.guard && !seenTypes.has(type)) { seenTypes.add(type); showContact(root, type); }   // first contact: src/fx/contact-card.js
       const obj = makeDotEnemy(type, { walker: CREATURE_TINTS[type], walkerHi: accentFor(type) }, entry.dens);
       const size = spec.size * 0.7;
       const scale0 = cellSide * size;
@@ -8462,7 +8451,7 @@ export function initTdTab(root) {
     isao: () => !!isao,
     // a queued spawn is already an enemy to the beats: the second hard core sat in the queue the tick the first died, and the
     // Quiver beat settled with it still to come
-    enemies: () => enemies.filter((e) => e.alive).length + spawnQueue.length,
+    enemies: () => enemies.filter((e) => e.alive && !e.guard).length + spawnQueue.filter((q) => !q.guard).length,   // the site guards are not the beats' business
     spawn: (type, ci, o = null) => { spawnQueue.push({ type, sp: o?.guard ? { ci, alive: true, obj: new THREE.Group() } : story?.source ?? { ci, alive: true, obj: new THREE.Group() }, at: spawnClock, ...o }); },
     brief: (id) => showBrief(id),
     tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null),
@@ -8483,7 +8472,7 @@ export function initTdTab(root) {
       if (pilot?.gunship || laserStation.seated()) return;   // a scripted hand-over never evicts a gunner or SOL-82: the beat is deferred, not the player (2026-09-23)
       const from = pilotMode ? { pos: camera.position.clone(), quat: camera.quaternion.clone() } : null, perch = perchOf(towerByCell.get(ci) ?? { ci }), lit = from && highlightSeat(scene, perch, graph.normals[ci], cellSide);   // from one seat to the next: back out, the next one lit (owner, 2026-10-02)
       seatGlide.begin(camera); enterPilot([ci, ...towers.map((t) => t.ci).filter((c) => c !== ci)]); if (from) showCallout(`TRANSFER TO THE ${(TOWER_BY_KEY[towerByCell.get(ci)?.key]?.label ?? 'next seat').replace(/^\d+\.\s*/, '').toUpperCase()}! LOCK IN!`, 'co-cargo');
-      startShot({ id: 'takeControl', dur: from ? 5.6 : 3.2, poseAt: takeControlPose(perch, graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight, from), onEnd: () => { lit?.(); seatGlide.begin(camera); setView('bastion'); } });   // eased onto the optic, no cut (owner, 2026-10-02)
+      startShot({ id: 'takeControl', dur: from ? 5.6 : 3.2, poseAt: takeControlPose(perch, graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight, from), onEnd: () => { lit?.(); seatGlide.begin(camera); setView('bastion'); pilotHost?.zoom(pilot?.state.zoom ?? 1); } }); camera.fov = seatBase?.fov ?? 68; camera.updateProjectionMatrix();   // the shot at the open lens, the new optic's zoom only once it lands (owner, 2026-10-03: the zoom carried between views)
     },
   };
   Object.assign(storyApi, {

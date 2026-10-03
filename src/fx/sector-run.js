@@ -373,7 +373,7 @@ export function createSectorRun(h) {
     // holds its bodies until the hole is open. Breaches not yet due simply join a later pulse.
     canRelease: () => !quiet && phase === 'fighting' && !(feast && !feast.scrambled) && sector.breaches.some((b) => b.state === 'open' && sps.get(b.id)?.alive && b.wavesReleased < b.wavesPlanned) && pulseFits(aliveSectorEnemies(true), nextPulseSize(), api.aliveBudget?.() ?? SECTOR_TIMING.aliveBudget),   // the gunship on auto raises it (GUNSHIP_AUTO)
     // the seconds from one pulse leaving the breaches to the next (null: no sector is fighting, the board keeps its own gap)
-    pulseGap: () => (phase === 'fighting' && def ? def.pulse ?? null : null),
+    pulseGap: () => (phase === 'fighting' && def ? (canyon?.phase === 'rising' && !breachOf(canyon.id)?.wavesReleased ? CANYON.firstPulse : def.pulse ?? null) : null),   // the canyon's swarm does not wait a whole pulse (2026-10-03)
     // a pulse is over once its bodies have left the queue; guards waiting at expedition sites are not the sector's
     pulseOver: (queue) => !queue.some((q) => !q.guard),
     // one programme wave from every live breach: queue entries with `at` offsets from now

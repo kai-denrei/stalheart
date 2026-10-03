@@ -18,8 +18,9 @@ assert.equal(far.scareAt, undefined, 'an unscared body is left alone');
 
 assert.equal(isScared(near, 11.9), true);
 assert.equal(isScared(near, 12), false, 'the scare runs out');
-assert.equal(scarePace(near, 10.1, 0.35), 0, 'frozen first');
-assert.equal(scarePace(near, 10.5, 0.35), 1.35, 'then hurrying away');
+assert.equal(scarePace(near, 10.1, 0.35), 0.3, 'a stumble first, not a freeze');
+assert.ok(scarePace(near, 10.4, 0.35) > 2.2, 'then a bolt');
+assert.ok(scarePace(near, 10.4, 0.35) > scarePace(near, 11.9, 0.35), 'easing as the scare runs out');
 assert.equal(scarePace(near, 12.5, 0.35), 1, 'then back to its pace');
 assert.equal(scarePace(far, 10.1, 0.35), 1);
 
@@ -35,7 +36,7 @@ assert.deepEqual(awayExits([1, 2, 3], centers, 0, blast), [2, 3], 'only exits le
 assert.deepEqual(awayExits([1], centers, 0, blast), [], 'none, and the caller keeps its own exits');
 
 // every use that lands scares; the MK-9's ignition is the one burst in the air (300 m up), and it has no ground to scare
-const AIRBORNE = new Set(['gunship.ignite', 'rock.dust']);   // in the air, or not an impact at all (the back mouth's dust)
+const AIRBORNE = new Set(['gunship.ignite', 'rock.dust', 'laser.contact', 'laser.smoke']);   // and (2026-10-03) the beam's own contact and smoke: SOL pins what it burns   // in the air, or not an impact at all (the back mouth's dust)
 assert.deepEqual(Object.keys(EXPLOSION_SCARE).sort(), Object.keys(EXPLOSION_USES).filter((u) => !AIRBORNE.has(u)).sort(), 'every explosion use that lands scares');
 for (const [use, s] of Object.entries(EXPLOSION_SCARE)) assert.ok(s.cells > 0 && s.seconds > SCARE_FREEZE_S, `${use}: a radius and a scare longer than the freeze`);
 console.log('Impact scare: radius, stamped on the step clock, freeze then flight, turn from the blast, exits away, every use scares.');

@@ -18,6 +18,10 @@ Design: `docs/superpowers/specs/2026-09-15-v1-session-design.md`. Two entry poin
 - **Expeditions you can see:** our flag over a cleared site, the crate on the MÖRK's back, the drop at the foundry with the unlock callout, trophy flags at home (`src/fx/cargo.js`, `src/fx/expedition-glue.js`).
 - **The campaign board stays underneath** for the acceptance runs and the wave simulator (`?acceptance=1`, `?sim=`).
 
+## What landed on 2026-10-03 (the eleventh notes)
+
+`2026-10-03-eleventh-notes-launch-scatter-opening-lens-guards-canyon-hull-palettes`: SOL-88 climbs out of sight; blasts make the swarm stumble and bolt (not freeze); the opening reaches the Rotor at 24 s (was 51); the hand-over at the open lens; the landers' nests from the landing; the canyon to SOL's seat in 12.3 s (was 18.6); flank probes on the hull, a lighter camp, no snag on open ground once wedged; twelve natural palettes on the bays' pad. Watch: SOL's bite now the bodies bolt (the scripted canyon path takes about half what it did).
+
 ## What landed on 2026-10-03 (the tenth notes: the first playtest round after the sync)
 
 `2026-10-03-tenth-notes-boards-walls-handover-tiers-debrief-repairs-paint-pad`: the boards at 3x on a slab west of the Stålheart; wall contact as friction that turns the hull along the wall; a wedged hull threads on its centre; the seat hand-over goes out, high over the lane, then into the next mount; square, hexagon and circle level plates on the pedestals; the debrief on one screen with CONTINUE on it; mortar shells land before they burst; Isao mends clear wall cells mid-wave and calls BREACH SEALED; the buildings stop the hull; the purple PIMP MY RIDE pad beside the bays opens the paint shop.

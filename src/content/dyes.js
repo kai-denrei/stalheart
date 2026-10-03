@@ -1,19 +1,22 @@
-// THE DYES (owner, 2026-10-02: "as Isao processes the biomass of the enemies for printing material, he discovers that he can also
-// extract extra dyes and offers the player to pimp his ride", and "it will offer some respite from the action to cool down at some key
-// moments"). One dye per belt of the ladder (src/content/sectors.js BELTS): the swarm you kill is the colour you can wear. A belt's dye
-// is extracted once `kills` of that belt have gone through Isao's processing (every kill, any source, is biomass), cumulative across
-// runs. `paint` is the hull colour, chosen to read as paint on a dark hull, not the creature's own glow. Pure data.
-import { BELTS } from './sectors.js';
-
-const PAINT = {
-  white: '#dfe6ea', grey: '#7d8792', yellow: '#d8b734', blue: '#2e67c9', orange: '#d9742a',
-  green: '#3d9a57', purple: '#7346b8', brown: '#7a5030', black: '#16181c', red: '#b92c27',
-};
-// the low belts come in their hundreds, the high ones a few at a time: the counts follow
-const KILLS = { white: 60, grey: 60, yellow: 50, blue: 50, orange: 30, green: 30, purple: 20, brown: 15, black: 8, red: 5 };
-
-export const DYES = Object.freeze(BELTS.map((belt) => Object.freeze({ id: belt, label: `${belt.toUpperCase()} BELT`, paint: PAINT[belt], kills: KILLS[belt] })));
-export const DYE_BY_ID = Object.freeze(Object.fromEntries(DYES.map((d) => [d.id, d])));
+// THE PAINT (owner, 2026-10-02: "as Isao processes the biomass of the enemies for printing material ... offers the player to pimp his
+// ride"; and 2026-10-03: "abandon the bjj belts scheme, and offer more natural regular palettes"). The belt dyes and their kill counts
+// are gone: the paint shop on the bays' purple pad (src/fx/paint-pad.js) offers these palettes, every one from the start. A palette paints
+// both of the hull's surfaces, `armour` and `edge`, colours chosen to read as paint on the MÖRK in the planet's light. Pure data.
+export const PALETTES = Object.freeze([
+  { id: 'desert', label: 'DESERT', armour: '#b99a63', edge: '#5e4d33' },
+  { id: 'forest', label: 'FOREST', armour: '#3f5a3a', edge: '#262e22' },
+  { id: 'arctic', label: 'ARCTIC', armour: '#d6dce1', edge: '#76848f' },
+  { id: 'navy', label: 'NAVY', armour: '#23344f', edge: '#9aa6b2' },
+  { id: 'rust', label: 'RUST', armour: '#8a4b2c', edge: '#36271f' },
+  { id: 'olive', label: 'OLIVE DRAB', armour: '#5d6136', edge: '#2d2e1f' },
+  { id: 'gunmetal', label: 'GUNMETAL', armour: '#3b4147', edge: '#b4bbc2' },
+  { id: 'stone', label: 'SAND & STONE', armour: '#b5a587', edge: '#55524b' },
+  { id: 'crimson', label: 'CRIMSON', armour: '#7a1f1f', edge: '#262626' },
+  { id: 'teal', label: 'TEAL & BONE', armour: '#2e6867', edge: '#d1c5a0' },
+  { id: 'hazard', label: 'HAZARD', armour: '#d2a32a', edge: '#1b1b1b' },
+  { id: 'night', label: 'NIGHT OPS', armour: '#17191d', edge: '#3d434a' },
+].map(Object.freeze));
+export const PALETTE_BY_ID = Object.freeze(Object.fromEntries(PALETTES.map((p) => [p.id, p])));
 
 // the hull's two paintable surfaces (the A6 MÖRK's own material names, src/fx/weathered-material.js MORK_SURFACES); FACTORY is its own paint
 export const DYE_SLOTS = Object.freeze([
@@ -22,5 +25,5 @@ export const DYE_SLOTS = Object.freeze([
 ]);
 export const FACTORY = 'factory';
 
-// the paint shop opens at the break between sectors when there is a dye the player has not been offered yet; Isao's lines
-export const DYE_SHOP = Object.freeze({ store: 'dyes', brief: 'dyes_found', title: 'PAINT SHOP · ISAO' });
+// where the choice is kept, and the card's title
+export const DYE_SHOP = Object.freeze({ store: 'dyes', title: 'PAINT SHOP · ISAO' });

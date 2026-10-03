@@ -48,6 +48,8 @@ export const EXPLOSION_USES = Object.freeze({
 // THE IMPACT SCARES (owner, 2026-09-14): bodies within `cells` of a landing freeze for SCARE_FREEZE_S, then turn from it
 // and take exits leading away until `seconds` after the impact, then resume for the heart. A player can herd a swarm
 // into one place with small rounds before the big hit.
+// (2026-10-03) the beam's own contact and smoke, every few frames under it, scare nothing: since the scare became a bolt (scarePace) they
+// drove every body out of SOL's footprint and the canyon pass took half as many; its ignition and its plume still scatter the swarm
 export const EXPLOSION_SCARE = Object.freeze({
   'gunship.rotary': Object.freeze({ cells: 2, seconds: 1.2 }),
   'gunship.bofors': Object.freeze({ cells: 3, seconds: 1.8 }),
@@ -58,12 +60,10 @@ export const EXPLOSION_SCARE = Object.freeze({
   'mortar.shell': Object.freeze({ cells: 2.8, seconds: 1.4 }),
   'lancer.burn': Object.freeze({ cells: 0.6, seconds: 0.5 }),   // a scorch under the beam: a flinch, not a rout
   'strike.orbital': Object.freeze({ cells: 12, seconds: 3 }),
-  'laser.ignite': Object.freeze({ cells: 8, seconds: 2 }),
-  'laser.contact': Object.freeze({ cells: 3, seconds: 0.6 }),
-  'laser.smoke': Object.freeze({ cells: 2, seconds: 0.8 }),
+  'laser.ignite': Object.freeze({ cells: 4, seconds: 1.5 }),   // the strike's own flash: a ring of bodies bolts, the pile under the beam stays to burn
   'laser.plume': Object.freeze({ cells: 2.5, seconds: 0.8 }),
 });
-export const SCARE_FREEZE_S = 0.35;
+export const SCARE_FREEZE_S = 0.12;   // a stumble, not a freeze: then they bolt (src/domain/impact-scare.js scarePace)
 
 // ordered by brightness; the lab's defaults
 export const EXPLOSION_PALETTE = Object.freeze({

@@ -12,10 +12,9 @@ export const BASE_PROGRAMME = Object.freeze([
   // — the 16 x 12 m deck of the authored model, so the raster lies on the machine and not on the dirt beside it. Eight seconds plus the
   // flight out and back is what this beat costs the gate behind it, and the tremor waits for the gate: the first wave pays for every
   // second spent here, which is why it is eight and not the twelve the job would like
-  { id: 'foundry', label: 'seed foundry', over: 'foundry', plot: [8, 6], when: { phase: 'rotor-ready' }, seconds: 4, metres: 6, brief: 'build_foundry', perk: null },
   // the gate next, and the tremor waits for it: without a gate no fodder comes, and without fodder the tutorial never reaches the
   // handover. Printed straight after the Rotor, which stands beside it, so the wait before the tremor is one print and no trip
-  { id: 'gate', label: 'gate and walls', gate: true, walls: true, when: { phase: 'rotor-ready' }, seconds: 6, metres: 6, brief: 'build_gate', perk: 'gate' },
+  { id: 'gate', label: 'gate and walls', gate: true, walls: true, when: { phase: 'rotor-ready' }, seconds: 4, metres: 6, brief: 'build_gate', perk: 'gate' },
   // SECTOR 0: THE STÅLHEART'S CONSTRUCTION IS DEFENDED (owner, 2026-09-24: "The Tank is built by the Stalheart ... the first few waves
   // before the stalheart is ready could be more intense POV sentries and Gunship shooting from above to protect the construction").
   // Straight after the gate, and one long print: while it runs the first wave, the Quiver's cores and the construction waves are
@@ -25,6 +24,9 @@ export const BASE_PROGRAMME = Object.freeze([
   // while it prints (src/fx/build-readout.js)
   { id: 'stalheart', label: 'Stålheart', islands: ['stalheart'], structures: ['stalheart'], when: { phase: 'rotor-ready' }, seconds: 75, metres: 24, brief: 'stalheart_begins', perk: 'stalheart', hull: true, readout: 'STÅLHEART' },
   { id: 'landing', label: 'landing pad', islands: ['landing'], when: { phase: 'rotor-ready' }, seconds: 4, metres: 2, brief: 'build_landing', perk: null },
+  // (2026-10-03) Isao's work on the recycler comes after the Stålheart's print, not before the gate: the gate and the tremor no longer
+  // wait on it (owner: "faster intro, more intensity")
+  { id: 'foundry', label: 'seed foundry', over: 'foundry', plot: [8, 6], when: { phase: 'rotor-ready' }, seconds: 4, metres: 6, brief: 'build_foundry', perk: null },
   { id: 'solar', label: 'solar array', islands: ['solar'], structures: ['solar'], when: { phase: 'expedition' }, seconds: 14, metres: 8, brief: 'build_solar', perk: 'station' },
   { id: 'bays', label: 'tank bays', islands: ['bay'], structures: ['bays'], when: { sector: 1, idle: true }, seconds: 16, metres: 8, brief: 'build_bays', perk: 'hulls' },
   { id: 'hugin', label: 'HUGIN arm', islands: ['hugin'], structures: ['hugin'], when: { sector: 1, idle: true }, seconds: 16, metres: 16, brief: 'build_hugin', perk: 'gunship' },

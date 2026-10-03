@@ -81,8 +81,13 @@ export function makeStoryBeats({
       else if (faces === 1 && clock >= faceDelays[1]) { api.brief?.('so_much_to_build'); faces = 2; }
       if (fd) for (const e of stepFoundry(fd, dt, foundry)) { api.foundry?.(typeof e === 'string' ? e : e.ev, typeof e === 'string' ? null : e); if (e === 'barrel') api.grant(foundry.feedstockPerBarrel); }
       if (phase === 'landed' && fd && released && faces === 2 && clock >= rotorDelay) { api.foundry?.(deployFoundry(fd), null); api.brief?.('foundry_deploy'); enter('foundry'); }
-      else if (phase === 'foundry' && fd.barrels >= 1) { if (api.order(key, socket)) { enter('printing'); orderedAt = clock; } }
+      // THE ROTOR DOES NOT WAIT FOR THE FIRST BARREL (owner, 2026-10-03: "faster intro, more intensity"): Isao prints it from the landing's
+      // stock the moment the AFR-01 is down, and the barrels it cuts pay for what comes after
+      // THE OTHER LANDERS ARE MANNED FROM THE START (owner, 2026-10-03: "they should be there from the start"): their nests rise as the
+      // AFR-01 goes down, not after the first wave (idempotent: the expedition beat opens them again harmlessly)
+      else if (phase === 'foundry') { api.expeditionsBegin?.(); if (!fd.barrels) api.grant(api.cost(key)); if (api.order(key, socket)) { enter('printing'); orderedAt = clock; } }
       else if (phase === 'landed' && !fd && released && clock >= rotorDelay) {
+        api.expeditionsBegin?.();
         api.grant(api.cost(key));
         if (api.order(key, socket)) { enter('printing'); orderedAt = clock; }
       } else if (phase === 'printing' && api.built(socket)) { enter('rotor-ready'); readyAt = clock; }

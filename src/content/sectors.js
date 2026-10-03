@@ -64,7 +64,10 @@ export const SECTOR_STAMPEDE = freeze({ every: 2, size: 3, cores: 2, core: 'barb
 // pass is laid over the canyon with `pass` (overhead and energy in seconds, radius in metres, slew m/s), the player in its seat.
 // The base's own breach opens `gateAfter` seconds after the pass's overhead ends (the player is in SOL-82's seat until then).
 // Isao: `brief` as the swarm rises, `passBrief` as SOL-82 comes over it
-export const CANYON = freeze({ length: 48, halfWidth: 1.2, wall: 3, swarm: 5, ladder: 2, spread: 1.2, dens: 0.35, seatAfter: 6,
+// (owner, 2026-10-03: "Canyon announce to control of SOL too long, 2x faster exposition, same for Canyon round 2") the swarm is released
+// `firstPulse` seconds into the sector instead of after a whole pulse (14 s), and SOL comes over it `seatAfter` seconds after its last body
+// is up (was 6). Compressing the rise itself left the swarm bunched at the deep end and the beam's first pass took half as many
+export const CANYON = freeze({ length: 48, halfWidth: 1.2, wall: 3, swarm: 5, ladder: 2, spread: 1.2, dens: 0.35, firstPulse: 3, seatAfter: 2,
   pass: { overhead: 45, energy: 25, radius: 12, slew: 16 }, gateAfter: 4, brief: 'canyon_rises', passBrief: 'canyon_pass', briefAgain: 'canyon_again' });
 
 // WHERE THE SIDE BREACH COMES UP (src/domain/side-breach.js), in cells: on open ground outside the clearing, between minWall and

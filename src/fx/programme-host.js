@@ -36,9 +36,8 @@ import { onStation, startStation } from '../domain/gunship.js';
 import { SOUNDS } from '../content/audio-defaults.js';
 import { strikeDue, pickStrikeTarget } from '../domain/isao-strike.js';
 import { ISAO_STRIKE } from '../content/base-programme.js';
-import { DYES, DYE_SHOP } from '../content/dyes.js';
-import { BELT_OF } from '../content/sectors.js';
-import { makeDyeBook, processKills, unoffered, markOffered } from '../domain/dyes.js';
+import { PALETTES, DYE_SHOP } from '../content/dyes.js';
+import { makeDyeBook } from '../domain/dyes.js';
 import { openPaintShop, applyLivery } from './paint-shop.js';
 import { BRIEFS } from '../isaobriefs.js';
 import { storage } from '../storage.js';
@@ -87,7 +86,7 @@ export function createProgrammeHost(c) {
         pp.ring.stand(programmeHas(pg, 'hulls'));
         const dt = Math.max(0, Math.min(0.1, c.t() - (pp.at ?? c.t()))); pp.at = c.t();
         if (pp.ring.tick(dt, c.playerHP() > 0 && !c.pilotMode() ? c.playerPos?.() : null, c.t()) && !s.shop && typeof document !== 'undefined') {
-          s.dyes ??= makeDyeBook(loadDyes(), DYES); c.pause?.(true);
+          s.dyes ??= makeDyeBook(loadDyes(), PALETTES); c.pause?.(true);
           s.shop = openPaintShop({ root: c.root ?? document.body, book: s.dyes, save: saveDyes, hull: () => c.hull?.(), lines: BRIEFS[BASE_PERKS.paint.brief].lines, title: BRIEFS[BASE_PERKS.paint.brief].title, onClose: () => { s.shop = null; c.pause?.(false); } });
         }
       }
@@ -107,7 +106,7 @@ export function createProgrammeHost(c) {
       }
       // THE ROCKETS THAT CAME DOWN OFF COURSE (src/fx/site-beacons.js): beacons over the landing sites from the first free camera after the
       // landing, each gone once its site is visited; Isao names them once
-      if (!s.beacons && c.scene && s.sites?.length && !c.shotId?.()) {
+      if (!s.beacons && c.scene && s.sites?.length && !c.shotId?.() && c.story().beats?.phase?.() !== 'landed') {   // not over the landing itself
         const ids = STORY_EXPEDITIONS.sites.filter((x) => !x.reveal).map((x) => x.id);   // story.sites holds the first-wave sites' cells, in this order
         s.beacons = createSiteBeacons(c.scene, s.sites.map((ci, i) => ({ id: ids[i], ci, point: c.graph().centers[ci], model: () => c.storyBase()?.structure(ids[i])?.holder })).filter((x) => x.id), { metres: c.cellSide() / 10 });
         if (!c.pilotMode() && !c.briefQ()) showBrief('sites_seen');
@@ -148,16 +147,9 @@ export function createProgrammeHost(c) {
             onKill: () => { s.isaoKills = (s.isaoKills ?? 0) + 1; c.sectorRun()?.note({ type: 'isaoKill' }); s.boards?.[1].celebrate(ISAO_STRIKE.celebrate); updateHud(); } }, ISAO_STRIKE);
         }
       }
-      // THE DYES (src/domain/dyes.js): every kill is biomass Isao processes; a belt's dye is extracted at its count, the book is saved,
-      // and the hull wears the livery (re-applied whenever the hull is a new mesh: a deploy, a rebuilt hull)
-      if (c.killsByType) {
-        s.dyes ??= makeDyeBook(loadDyes(), DYES);
-        const kt = c.killsByType() ?? {}, seen = (s.dyeSeen ??= {});
-        let moved = false;
-        for (const [type, n] of Object.entries(kt)) { const d = n - (seen[type] ?? 0); if (d > 0) { seen[type] = n; const belt = BELT_OF[type]; if (belt) { processKills(s.dyes, belt, d, DYES); moved = true; } } }
-        if (moved && c.t() - (s.dyesSavedAt ?? -99) > 5) { saveDyes(s.dyes); s.dyesSavedAt = c.t(); }
-        const hull = c.hull?.(); if (hull && hull !== s.paintedHull) { s.paintedHull = hull; s.painted = applyLivery(hull, s.dyes.livery); }
-      }
+      // THE PAINT (src/domain/dyes.js): the hull wears the palette chosen on the bays' pad, re-applied whenever the hull is a new mesh
+      s.dyes ??= makeDyeBook(loadDyes(), PALETTES);
+      { const hull = c.hull?.(); if (hull && hull !== s.paintedHull) { s.paintedHull = hull; s.painted = applyLivery(hull, s.dyes); } }
       // THE ORBITAL WORKS (src/domain/orbital-works.js): once SOL-88 is up, a collector goes up at the start of every sector after a
       // secured one; each in orbit is a light on the ring and seconds of beam for SOL
       s.works ??= makeWorks();
@@ -276,16 +268,9 @@ export function createProgrammeHost(c) {
         }
       }
     },
-    // THE PAINT SHOP AT THE BREAK (owner, 2026-10-02: "it will offer some respite from the action to cool down at some key moments"): the
-    // sector loop asks before the next sector begins; with a dye extracted and not yet offered, the shop opens over the paused game and the
-    // next sector waits for DONE. Returns whether it took the break
-    interlude: (go) => {
-      const s = c.story(); if (!s?.dyes || !unoffered(s.dyes).length || typeof document === 'undefined') return false;
-      markOffered(s.dyes); saveDyes(s.dyes);
-      c.storyViews?.()?.active?.('tank');
-      s.shop = openPaintShop({ root: c.root ?? document.body, book: s.dyes, save: saveDyes, hull: () => c.hull?.(), lines: BRIEFS[DYE_SHOP.brief].lines, onClose: () => { s.shop = null; go(); } });
-      return true;
-    },
+    // THE PAINT SHOP AT THE BREAK is retired (2026-10-03: the palettes are all open, the bays' purple pad is the shop): the sector loop's
+    // ask is answered no, and the next sector begins as it always did
+    interlude: () => false,
     // THE ENVELOPE (GUNSHIP_AUTO): while the gunship flies itself the sectors hold more bodies and size their waves larger
     aliveBudget: () => (c.story()?.gsAuto ? GUNSHIP_AUTO.aliveBudget : undefined),
     swell: () => (c.story()?.gsAuto ? GUNSHIP_AUTO.swell : 1),

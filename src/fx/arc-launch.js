@@ -9,7 +9,7 @@
 import * as THREE from '../../vendor/three.module.js';
 import { loadModelFixture, cloneFixture } from './model-fixture.js';
 
-export const LAUNCH = Object.freeze({ duration: 30, radius: 40, sweep: 1.05, start: 8, seconds: 0.4, satellite: 'assets/models/astro/arc01_satellite_d0_lod1.glb' });
+export const LAUNCH = Object.freeze({ duration: 30, radius: 40, sweep: 1.05, start: 8, seconds: 0.4, climb: 6, satellite: 'assets/models/astro/arc01_satellite_d0_lod1.glb' });
 const RELEASE = LAUNCH.start + LAUNCH.seconds;
 const clamp = (v) => Math.min(1, Math.max(0, v));
 const ease = (t, a, b) => { const u = clamp((t - a) / (b - a)); return u * u * (3 - 2 * u); };
@@ -26,7 +26,10 @@ export function launchState(seconds) {
   else if (t < 18) sled = extensionPose(3.2 * (1 - ease(t, 16, 18)));
   else if (t < 26) sled = railPose(1 - ease(t, 18, 26));
   else { sled = railPose(0); sled.position[2] -= 4 * ease(t, 26, 29); }
-  const payload = t < RELEASE ? { position: [...sled.position], pitch: sled.pitch } : extensionPose(35 * (1 - (1 - clamp((t - RELEASE) / (1 / 3))) ** 2));
+  // ...AND KEEPS CLIMBING (owner, 2026-10-03: "it should go higher in space, currently it looks like it stops too low"): past the
+  // rail's kick the payload accelerates on along the tangent at LAUNCH.climb m/s² until it is gone, hundreds of metres up
+  const away = Math.max(0, t - RELEASE - 1 / 3);
+  const payload = t < RELEASE ? { position: [...sled.position], pitch: sled.pitch } : extensionPose(35 * (1 - (1 - clamp((t - RELEASE) / (1 / 3))) ** 2) + 0.5 * LAUNCH.climb * away * away);
   const phase = t < 4 ? 'loading' : t < LAUNCH.start ? 'charging' : t < RELEASE ? 'accelerating' : t < 17 ? 'released' : t < 21 ? 'unfolding' : t < 26 ? 'insertion' : 'reset';
   return { t, sled, payload, phase, charge: t < LAUNCH.start ? ease(t, 4, LAUNCH.start) : t < RELEASE ? 1 : 1 - ease(t, RELEASE, RELEASE + 2), clamp: 1 - ease(t, RELEASE - 0.04, RELEASE), deploy: ease(t, 17, 21), burn: t >= 21 && t < 26, done: t >= LAUNCH.duration };
 }

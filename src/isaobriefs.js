@@ -195,8 +195,6 @@ export const BRIEFS = {
     lines: ['Look up. That light is ours.', 'A ring of them one day, and then a shell. The colony builds outward now.'],
   },
   // THE COLONY GROWS (owner, 2026-10-01: "make the base more fully developed"): the armory, the farm, the chip plant, the launcher
-  // THE DYES (owner, 2026-10-02: "as Isao processes the biomass of the enemies ... he discovers that he can also extract extra dyes and
-  // offers the player to pimp his ride"): the paint shop's opening line
   // THE GUNSHIP ON AUTO (GUNSHIP_AUTO): his word when the calibration is in, and the line when it first flies itself
   gunship_calibrated: {
     id: 'gunship_calibrated', face: 'determined', title: 'COMMS · ISAO', once: true,
@@ -223,11 +221,7 @@ export const BRIEFS = {
   // the bays' purple pad (src/fx/paint-pad.js): his lines over the shop when the player parks on it
   paint_pad: {
     id: 'paint_pad', face: 'glee', title: 'PIMP MY RIDE · ISAO',
-    lines: ['Parked on the pad. Good.', 'Every dye I have pulled out of them is on the rack.'],
-  },
-  dyes_found: {
-    id: 'dyes_found', face: 'glee', title: 'PAINT SHOP · ISAO',
-    lines: ['Their biomass has pigment in it. I can print it as paint.', 'Take a breath. Pick a colour. The hull has been grey long enough.'],
+    lines: ['Parked on the pad. Good.', 'Pick a scheme. The hull has been grey long enough.'],
   },
   isao_strike_go: {
     id: 'isao_strike_go', face: 'determined', title: 'ISAO · INBOUND', once: true,
@@ -444,11 +438,11 @@ export const BRIEFS = {
   // end of the canyon on the far side of the world, and SOL-82's first pass comes over it with the player in its seat
   canyon_rises: {
     id: 'canyon_rises', face: 'scan', title: 'THE FAR SIDE',
-    lines: ['There they are: the far side of the world, a canyon full of them.', 'Hundreds. They will walk here if we let them.'],
+    lines: ['The far side of the world: a canyon full of them. Hundreds.'],
   },
   canyon_again: {
     id: 'canyon_again', face: 'focused', title: 'THE FAR SIDE · AGAIN',
-    lines: ['The canyon is full again, deeper than before.', 'Same drill. Walk the beam down it and leave nothing to march here.'],
+    lines: ['The canyon is full again, deeper than before. Same drill.'],
   },
   canyon_pass: {
     id: 'canyon_pass', face: 'determined', title: 'SOL-82 · THE CANYON',

@@ -935,7 +935,7 @@ try{
   await until('!!window.__stalheartTest.state().arrival?.on',30000).catch(async()=>assert.fail(`?story=0 lands the rocket (${JSON.stringify(await evaluate('window.__stalheartTest.state().arrival'))})`));}
  await finish();
  await go('grow-bare','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none#td');await until('!!window.__stalheartTest&&!!window.__stalheartTest.state().programme',90000);
- {const b=await evaluate('window.__stalheartTest.state()');assert.equal(b.programme.grow,true,'a story page with no stage grows its base');assert.equal(b.programme.next,'foundry','he works the recycler before he prints the gate');assert.equal(b.programme.gate.built,false);
+ {const b=await evaluate('window.__stalheartTest.state()');assert.equal(b.programme.grow,true,'a story page with no stage grows its base');assert.equal(b.programme.next,'gate','the gate is his first print (2026-10-03: the recycler beat waits for the Stålheart)');assert.equal(b.programme.gate.built,false);
   assert.equal(b.hull?.state,'held','SECTOR 0: a bare page has no hull until the Stålheart stands');}
  await finish();
  await go('grow-landing','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=1&grow=1#td');await until('!!window.__stalheartTest',90000);
@@ -956,7 +956,7 @@ try{
  {const s=await evaluate('window.__stalheartTest.state()'),a=s.arrival;assert.equal(s.shot,'arrivalTalk');assert.equal(a.phase,'talk');
   assert(a.eye[2]>0&&a.eye[2]<a.to[2],`the camera stands between Isao and the rocket, the rocket behind it (camera ${a.eye}, Isao ${a.to}, the rocket at 0)`);
   assert(a.rocket===false&&a.salvage===true&&a.foundry===true,`the rocket is the salvage and the foundry now (${JSON.stringify(a)})`);assert(a.fov<30,`a long lens on his face (${a.fov})`);
-  assert.equal(s.story.phase,'foundry','the AFR-01 deployed on the cut');}
+  assert.ok(['foundry','printing'].includes(s.story.phase),`the AFR-01 deployed on the cut (${s.story.phase}: the Rotor is ordered with it since 2026-10-03)`);}
  current='grow-arrival-talk';await finish();
  await until('window.__arrivalDone===true',20000);await mark('the arrival ends: back on the base');
  {const L=await evaluate('window.__arrival'),s=await evaluate('window.__stalheartTest.state()'),a=s.arrival;
@@ -984,15 +984,8 @@ try{
  assert.deepEqual(await evaluate(hiddenNear),[]);current='grow-landing';await finish();
  await mark('landed (the base, the rocket recycling)');
  await until('window.__stalheartTest.state().towers===1',120000);await mark('Rotor printed');
- // ISAO WORKS THE RECYCLER FIRST (owner, 2026-09-16): before the gate he flies to the AFR-01 and holds the beam on it. The beat prints
- // nothing, so nothing may stand at the end of it, and the gate must not be pushed materially later than the baseline 26.0 s
- await until('window.__stalheartTest.state().programme.active==="foundry"',60000);await mark('foundry beat begins');await delay(5000);
- {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.programme.print.step,'foundry','his beam is on the AFR-01');
-  assert(s.programme.print.k>0&&s.programme.print.k<1,`the beat is under way (k ${s.programme.print.k})`);
-  assert.deepEqual(s.programme.printed,[],'working the recycler prints nothing');assert.equal(s.programme.gate.built,false);}
- current='grow-foundry-beam';await finish();
- await until('window.__stalheartTest.state().programme.printed.includes("foundry")',60000);await mark('foundry beat ends');
- await until('window.__stalheartTest.state().programme.active==="gate"',60000);const walls0=(await evaluate('window.__stalheartTest.state()')).wallCount;await mark('gate print begins');await delay(5000);
+ // THE GATE FOLLOWS THE ROTOR (2026-10-03, "faster intro, more intensity"): the recycler beat waits behind the Stålheart's print now
+ await until('window.__stalheartTest.state().programme.active==="gate"',60000);const walls0=(await evaluate('window.__stalheartTest.state()')).wallCount;await mark('gate print begins');await until('window.__stalheartTest.state().programme.print?.step==="gate"&&window.__stalheartTest.state().programme.print.k>0',30000);
  {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.story.phase,'rotor-ready','the tremor waits while the gate prints');assert.equal(s.programme.gate.built,false);assert.equal(s.wallCount,walls0,'the walls block only once they stand');assert(s.programme.print.step==='gate'&&s.programme.print.k>0,'the print is under way');}
  current='grow-gate-printing';await finish();
  await until('window.__stalheartTest.state().programme.printed.includes("gate")',90000);await mark('gate stands');
@@ -1039,7 +1032,7 @@ try{
  else{const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.hull.state,'out',`no construction only when the Stålheart already stood at the Quiver's clear (${JSON.stringify(s.hull)})`);}
  await until('["settled","study-talk","study","expedition"].includes(window.__stalheartTest.state().story.phase)',30000);
  await evaluate('window.__stalheartPilotTest?.hold(false)');await mark('settled (the handover)');current='grow-settled';await finish();
- {const seen=await evaluate('JSON.parse(localStorage.getItem("stalheart:v1:td.briefs")||"[]")');for(const id of ['stalheart_begins','gunship_overhead','stalheart_stands'])assert(seen.includes(id),`Isao said ${id} (${seen})`);}
+ {const seen=await evaluate('JSON.parse(localStorage.getItem("stalheart:v1:td.briefs")||"[]")');for(const id of ['gunship_overhead','stalheart_stands'])assert(seen.includes(id),`Isao said ${id} (${seen})`);}   /* stalheart_begins: since 2026-10-03 its print starts with the player already in the Rotor's seat, and he never talks over a manned seat */
  await until('window.__stalheartTest.state().screenOpen',60000);await mark('study screen');current='grow-study';await finish();
  await click('#synthetic-modal [data-continue]');await until('window.__stalheartTest.state().story.phase==="expedition"',8000);await mark('expedition');
  assert.equal(await evaluate('window.__stalheartTest.state().automated'),true,'the handover reached from a bare opening');
@@ -1057,7 +1050,7 @@ try{
  await evaluate('window.__stalheartTest.hitTank()');await delay(800);const hullsLost=(await evaluate('window.__stalheartTest.state()')).hulls;
  await evaluate('window.__stalheartTest.setSector(2)');
  await until('window.__stalheartTest.state().programme.printed.includes("assembly")',300000);await mark('radar and assembly line stand');
- {const s=await evaluate('window.__stalheartTest.state()');assert.deepEqual(s.programme.printed,['foundry','gate','stalheart','landing','solar','bays','hugin','radar','assembly'],'every step, in order');assert.equal(s.programme.next,'backgate','the back gate is next in order and waits for the surprise (passable: the colony prints meanwhile)');assert.deepEqual(s.programme.owed,['board','armory','farm','chips'],`the colony is owed, the passable back gate and launcher are not (${s.programme.owed})`);assert(!s.programme.perks.includes('backgate'));assert.deepEqual(s.programme.perks.slice().sort(),['gate','gunship','hulls','rebuild','stalheart','station','uplink']);assert.equal(s.hulls,hullsLost,'no rebuild inside the sector the line was printed in');}
+ {const s=await evaluate('window.__stalheartTest.state()');assert.deepEqual(s.programme.printed,['gate','stalheart','landing','foundry','solar','bays','hugin','radar','assembly'],'every step, in order');assert.equal(s.programme.next,'backgate','the back gate is next in order and waits for the surprise (passable: the colony prints meanwhile)');assert.deepEqual(s.programme.owed,['board','armory','farm','chips'],`the colony is owed, the passable back gate and launcher are not (${s.programme.owed})`);assert(!s.programme.perks.includes('backgate'));assert.deepEqual(s.programme.perks.slice().sort(),['gate','gunship','hulls','rebuild','stalheart','station','uplink']);assert.equal(s.hulls,hullsLost,'no rebuild inside the sector the line was printed in');}
  await evaluate('window.__stalheartTest.setSector(3)');await until(`window.__stalheartTest.state().hulls===${Math.min(3,hullsLost+1)}`,10000).catch(()=>{});   /* a condition, not 800 ms: the rebuild lands on the programme's next build tick */
  assert.equal((await evaluate('window.__stalheartTest.state()')).hulls,Math.min(3,hullsLost+1),'the assembly line rebuilds a lost hull at the next sector start');
  await shotBase('grow-finished');
@@ -1173,7 +1166,7 @@ try{
  await until(`${T}.state().arrival.phase==="done"`,5000);await delay(600);
  {const s=await st();assert.equal(await evaluate('location.href'),landingHref,'the landing\'s NEXT is in the page: no reload');
   assert.equal(s.arrival.skipped,true,'NEXT skipped the landing');assert.deepEqual([s.arrival.rocket,s.arrival.salvage,s.arrival.foundry],[false,true,true],'the swap came with it');
-  assert.equal(s.story.phase,'foundry','the beats are at ROTOR\'s start, not past it: the press ended the landing once');
+  assert.ok(['foundry','printing'].includes(s.story.phase),`the beats are at ROTOR's start, not past it: the press ended the landing once (${s.story.phase}; the Rotor is ordered at once since 2026-10-03)`);
   assert.equal(await evaluate('!!document.activeElement?.matches?.("#skip-tutorial [data-next]")'),false,'NEXT lets go of the focus: a Space later must not press it again');
   const c=await card();assert.match(c.where,/^TUTORIAL 2\/6\s*ROTOR/,`2/6 (${c.where})`);assert.match(c.next,/^NEXT ›\s*FIRST WAVE$/);}
  current='chapters-rotor';await finish();
@@ -1357,9 +1350,6 @@ try{
  // launches SOL-88 on its sled, and the next pass fires on its own at the densest pile with nobody in the seat
  const T='window.__stalheartTest', st=()=>evaluate(`${T}.state()`), prog=async()=>(await st()).programme;
  const {BASE_PERKS}=await import('../src/content/base-programme.js'),{LASER_AUTO}=await import('../src/content/orbital-laser.js'),{LAUNCH}=await import('../src/fx/arc-launch.js');
- // THE DYES: a book with the white dye extracted and never offered, so the break after this sector opens the paint shop
- await go('colony-seed','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4&laser=online#td');
- await evaluate(`localStorage.setItem('stalheart:v1:dyes', JSON.stringify({ kills: { white: 60 }, unlocked: ['white'], offered: [], livery: { armour: 'factory', edge: 'factory' } }))`);
  await go('colony-load','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=4&laser=online&x=1#td');
  await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
  await until(`${T}.state().sector.n===4`,60000);
@@ -1439,16 +1429,8 @@ try{
  await until(`${T}.state().sector.debriefOpen`,30000).catch(async()=>assert.fail(`the sector is secured and debriefed (${JSON.stringify((await st()).sector)})`));
  {const r=await evaluate(`${T}.sectorReport()`);assert.ok(r.colony.launches>=1,`the books count SOL-88's launch (${JSON.stringify(r.colony)})`);}
  await evaluate(`${T}.sectorContinue()`);
- // THE BREAK: the paint shop opens over the paused game; a white swatch paints the armour; DONE lets the next sector begin
- await until(`${T}.state().programme.colony.shop`,10000).catch(async()=>assert.fail(`the paint shop opens at the break (${JSON.stringify((await prog()).colony.dyes)})`));
- {const n=(await st()).sector.n;assert.equal(n,4,'the next sector waits for the shop');}
- await evaluate('document.querySelector(\'#paint-shop [data-slot=armour][data-dye=white]\').click()');await delay(400);
- assert.equal((await prog()).colony.dyes.livery.armour,'white','the armour is painted white');
- assert.ok((await prog()).colony.painted>0,'the hull has paintable surfaces');
- current='colony-paint-shop';await finish();
- await evaluate('document.querySelector(\'#paint-shop [data-done]\').click()');
- await until(`${T}.state().sector.n===5`,30000);
- assert.equal(await evaluate(`JSON.parse(localStorage.getItem('stalheart:v1:dyes')).livery.armour`),'white','the livery is kept for the next run');
+ // THE BREAK goes straight on (2026-10-03: the paint shop lives on the bays' pad now, tested in --round10)
+ await until(`${T}.state().sector.n===5`,30000);assert.equal((await prog()).colony.shop,false,'no shop at the break');
  await until(`${T}.state().programme.colony.works && ${T}.state().programme.colony.works.launching`,15000).catch(async()=>assert.fail(`a collector goes up at the next sector's start (${JSON.stringify((await prog()).colony)})`));
  await until(`${T}.state().programme.colony.launch && ${T}.state().programme.colony.launch.phase==="released"`,20000);
  current='colony-works-launch';await finish();
@@ -1623,13 +1605,36 @@ try{
  await until(`${T}.state().programme.colony.shop`,10000).catch(async()=>assert.fail(`parked on the pad, the paint shop opens (${JSON.stringify((await col()).paintPad)} seat ${JSON.stringify(await evaluate(`${T}.seatState()`))})`));
  assert.equal((await st()).paused,true,'the game waits under the shop');
  assert.match(await evaluate('document.querySelector("#paint-shop header")?.textContent||""'),/PIMP MY RIDE/);
+ // THE PALETTES (2026-10-03): every one open; a swatch paints the hull at once and the choice is kept for the next run
+ assert.ok(await evaluate('document.querySelectorAll("#paint-shop [data-dye]").length')>=9,'the factory paint and the palettes');
+ await evaluate('document.querySelector("#paint-shop [data-dye=desert]").click()');await delay(400);
+ assert.equal((await col()).dyes.palette,'desert','the desert palette is on');assert.ok((await col()).painted>0,'the hull has paintable surfaces');
  await delay(600);current='round10-paint-pad';await finish();
  await evaluate('document.querySelector("#paint-shop [data-done]").click()');await delay(400);
+ assert.equal(await evaluate(`JSON.parse(localStorage.getItem('stalheart:v1:dyes')).palette`),'desert','kept for the next run');
  assert.equal((await st()).paused,false,'DONE lets the game go');
  await delay(1500);assert.equal((await col()).shop,false,'it does not reopen while the hull is still on the pad');
  // a sentry's level plate
  const tw=(await st()).towerCells?.[0];
  if(tw){await evaluate(`${T}.showcase.ground(${tw[1]},1.2,2.4)`);await delay(1800);current='round10-tier-plate';await finish();}
+ } else if(args.includes('--opening-probe')) {
+ // THE OPENING'S TIMELINE from a bare page: phase, shot, view, Isao's panel, every change (no assertions)
+ const T='window.__stalheartTest';
+ await go('opening-probe','index.html?sw=0&acceptance=1&world=story#td');
+ await until(`!!${T}`,90000);
+ const rows=[],t0=Date.now();let last='';
+ while(Date.now()-t0<75000){const r=await evaluate(`(()=>{const s=${T}.state(),v=${T}.seatState(),b=document.querySelector("#td-brief");return [s.story?.phase,s.shot,v.view,v.seatKey,b&&!b.classList.contains("hidden")?(b.textContent||"").replace(/\\s+/g," ").slice(14,60):"-"].join(" | ");})()`);
+  if(r!==last){rows.push(((Date.now()-t0)/1000).toFixed(1)+'s '+r);last=r;}await delay(150);}
+ console.log(rows.join('\n'));
+ } else if(args.includes('--canyon-probe')) {
+ // THE CANYON'S TIMELINE to SOL's seat (no assertions): sector phase, shot, laser phase and seat, Isao's panel, each change
+ const T='window.__stalheartTest',n=args.includes('--again')?6:3;
+ await go('canyon-probe',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${n}#td`);
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ const rows=[],t0=Date.now();let last='';
+ while(Date.now()-t0<60000){const r=await evaluate(`(()=>{const s=${T}.state(),b=document.querySelector("#td-brief"),c=document.querySelector(".sec-card,#sector-card");return [s.sector?.n,s.sector?.phase,s.shot,s.laser?.phase,s.laser?.seated,b&&!b.classList.contains("hidden")?(b.textContent||"").replace(/\\s+/g," ").slice(14,50):"-"].join(" | ");})()`);
+  if(r!==last){rows.push(((Date.now()-t0)/1000).toFixed(1)+'s '+r);last=r;}if(/\| true \|/.test(r))break;await delay(150);}
+ console.log(rows.join('\n'));
  } else if(args.includes('--units-sky')) {
  // THE SKY ON THE BENCH (owner, 2026-10-01: "UNITS are not showing all the units; we should see SOL, and the Gunship. also show
  // Wireframe for all units"): the KORP, SOL-82 and SOL-88 are catalogue entries built from their pinned GLBs, and the wireframe
@@ -1702,7 +1707,9 @@ try{
   await evaluate(`${T}.laserHold(false)`);
   frames=await evaluate('(f=>{const d=[];for(let i=1;i<f.length;i++)d.push(f[i]-f[i-1]);d.sort((a,b)=>a-b);return {n:d.length,median:+d[d.length>>1].toFixed(1),p95:+d[Math.floor(d.length*0.95)].toFixed(1)};})(window.__fr)');
   const s=await st();console.log(`  canyon: ${s.laser.burned.bodies-before} burned in ${((Date.now()-t0)/1000).toFixed(0)} s, ${s.performance.enemies} left, frames ${JSON.stringify(frames)}`);
-  assert(s.laser.burned.bodies-before>=100,`the beam takes them by the score (${s.laser.burned.bodies-before})`);
+  /* 100 until 2026-10-03; since then a blast's scare is a bolt (owner: "they stop and scatter in the other direction, frantic") and this
+     fixed beam path, walked to the mouth, loses the bodies that bolt out of it: 50-100 a run where it was ~220 */
+  assert(s.laser.burned.bodies-before>=40,`the beam takes them by the score (${s.laser.burned.bodies-before})`);
   assert(!String(s.sector.phase).startsWith('lost'),`the colony holds while the player burns the far side (${s.sector.phase})`);}
  current='skip-tutorial-'+tag+'-burn';await finish();
  } else if(args.includes('--showcase')) {
@@ -1996,7 +2003,7 @@ try{
  assert.equal(await evaluate('!document.querySelector("#td-intro")'),true,'no field manual in the story world');
  await finish();
  await until('window.__stalheartTest.state().towers===1',90000);const printed=await evaluate('window.__stalheartTest.state()');
- assert.equal(printed.towers,1,'Isao printed the Rotor');assert(printed.story.foundry&&printed.story.foundry.barrels>=1,`the Rotor was paid for by the foundry's first barrel (${JSON.stringify(printed.story.foundry)})`);assert.equal(printed.wallCount,one.wallCount,'the socket is floor, not rock');assert.equal(printed.queued,0);
+ assert.equal(printed.towers,1,'Isao printed the Rotor');assert(printed.story.foundry&&printed.story.foundry.phase!=='stowed',`the AFR-01 is down and cutting; the Rotor no longer waits for its first barrel (2026-10-03) (${JSON.stringify(printed.story.foundry)})`);assert.equal(printed.wallCount,one.wallCount,'the socket is floor, not rock');assert.equal(printed.queued,0);
  await delay(1500);current='story-world-rotor';await finish();
  try{await until('!!window.__stalheartPilotTest',30000);}catch(e){console.log('STORY BEATS',JSON.stringify(await evaluate('(s=>({story:s.story,towers:s.towerCells,biomass:s.biomass}))(window.__stalheartTest.state())')));throw e;}await delay(500);const took=await evaluate('window.__stalheartPilotTest.state()');
  assert.equal(took.key,'rotor','control taken of the printed Rotor');assert.equal(took.posts.length,1);assert.deepEqual(printed.towerCells,[['rotor',took.ci]],'the only tower is the one under control');
@@ -2004,7 +2011,7 @@ try{
  await evaluate('window.__stalheartPilotTest.view("third")');await delay(600);assert.equal(await evaluate('window.__stalheartPilotTest.state().view'),'third');current='story-world-third';await finish();
  await evaluate('window.__stalheartPilotTest.view("map")');await delay(600);current='story-world-map';await finish();
  await evaluate('window.__stalheartPilotTest.view("pov")');await delay(600);assert.equal(await evaluate('window.__stalheartPilotTest.state().view'),'pov');
- await delay(6000);assert.equal((await evaluate('window.__stalheartTest.state()')).performance.enemies,0,'no fodder before a gate stands');
+ await delay(6000);{const {STORY_EXPEDITIONS:X}=await import('../src/content/story-defaults.js'),guards=X.sites.filter((x)=>!x.reveal).reduce((n,x)=>n+x.guards.reduce((a,g)=>a+g.count,0),0);assert.ok((await evaluate('window.__stalheartTest.state()')).performance.enemies<=guards,'no fodder before a gate stands (only the landing sites\' guards, there from the start since 2026-10-03)');}
  await go('story-world-gate','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=4#td');await until('!!window.__stalheartTest',90000);await delay(2500);
  const four=await evaluate('window.__stalheartTest.state()');assert.equal(four.wallCount-w.wallCount,0,'stage 4 and 6 block the same wall cells');assert(four.wallCount>one.wallCount,'walls are rock to the pathfinder');
  await finish();
@@ -2013,11 +2020,11 @@ try{
  await until('window.__stalheartTest.state().story.phase==="breach"',20000);await until('window.__stalheartTest.state().shot==="breach"',15000);await delay(1200);
  assert((await evaluate('window.__stalheartTest.state().breaches')).length>0,'the ground opened');current='story-world-breach';await finish();
  // THE PLANET STAYS IN FRAME: the orbit shot holds through the opening and the first fodder emerging, then hands back
- await until('window.__stalheartTest.state().story.spawned>=2',20000);assert.equal(await evaluate('window.__stalheartTest.state().shot'),'breach','still from orbit while the first fodder emerge');current='story-world-breach-emerge';await finish();
+ await until('window.__stalheartTest.state().story.spawned>=2',20000);assert.ok(['breach','takeControl'].includes(await evaluate('window.__stalheartTest.state().shot')),'from orbit while the first fodder emerge, or already into the Rotor (2026-10-03: the seat comes on the first body)');current='story-world-breach-emerge';await finish();
  await until('window.__stalheartTest.state().shot!=="breach"',20000);
  await until('/^(override|piloting)$/.test(window.__stalheartTest.state().story.phase)',90000);await delay(300);
  await until('window.__stalheartTest.state().story.said.includes("manual_override")',8000).catch(()=>assert.fail('Isao speaks the override line'));   // spoken as the seat is taken (seventh notes): the panel may already be the optic's
- const held=await evaluate('window.__stalheartTest.state()');assert.equal(held.kills,0,'the sentry did not fire on its own');assert(held.performance.enemies>=held.story.spawned-1&&held.performance.enemies>0,`every spawned enemy is still alive (${held.performance.enemies} of ${held.story.spawned}, the last may still be emerging)`);current='story-world-override';await finish();
+ const held=await evaluate('window.__stalheartTest.state()');assert.equal(held.kills,0,'the sentry did not fire on its own');assert(held.performance.enemies>0,`bodies on the field (${held.performance.enemies}; since 2026-10-03 the landing sites' guards are counted with them, so the count no longer proves each spawned body alive)`);current='story-world-override';await finish();
  if(held.story.phase==='override')assert.equal(await evaluate('typeof window.__stalheartPilotTest'),'undefined','no control before the override');
  await until('!!window.__stalheartPilotTest',30000);
  // THE ROTOR'S VOICES STAY WITH THE ROTOR (2026-09-25 playtest: its spin and fire carried into the next seat). A real key arms the
@@ -2032,8 +2039,8 @@ try{
  // changes (the Quiver hand-over), the seat is left (the hook is deleted) or state() throws. The assertion below reads its peak.
  await evaluate('(()=>{window.__rotorHeatMax=0;window.__rotorHeatFrames=0;const tick=()=>{const t=window.__stalheartPilotTest;if(!t)return;let p;try{p=t.state();}catch(e){return;}if(p.key!=="rotor")return;window.__rotorHeatMax=Math.max(window.__rotorHeatMax,p.heat||0);window.__rotorHeatFrames++;requestAnimationFrame(tick);};requestAnimationFrame(tick);})()');
  await until('window.__stalheartTest.state().performance.enemies>0',60000);await delay(14000);
- const fodder=await evaluate('window.__stalheartTest.state()');assert(fodder.performance.enemies>=2&&fodder.performance.enemies<=50,`fodder alive ${fodder.performance.enemies}`);   // the first wave is one fifty-strong swarmassert.equal(fodder.performance.wave,0,'no wave arms');
- assert.deepEqual(fodder.enemyTypes,['amoeba'],'the first wave is the white amoeba');assert.equal(fodder.insideEnemies,0,'the closed gate holds the fodder outside');assert.equal(fodder.queued,0);
+ const fodder=await evaluate('window.__stalheartTest.state()');{const {STORY_EXPEDITIONS:X}=await import('../src/content/story-defaults.js'),guards=X.sites.filter((x)=>!x.reveal).reduce((n,x)=>n+x.guards.reduce((a,g)=>a+g.count,0),0);assert(fodder.performance.enemies>=2&&fodder.performance.enemies<=50+guards,`fodder alive ${fodder.performance.enemies} (with ${guards} site guards)`);}   // the first wave is one fifty-strong swarmassert.equal(fodder.performance.wave,0,'no wave arms');
+ assert.ok(fodder.enemyTypes.includes('amoeba')&&fodder.enemyTypes.every((t)=>['amoeba','barbed'].includes(t)),`the first wave is the white amoeba (and the site guards, amoeba and barbed, since 2026-10-03: ${fodder.enemyTypes})`);assert.equal(fodder.insideEnemies,0,'the closed gate holds the fodder outside');assert.equal(fodder.queued,0);
  current='story-world-fodder';await finish();
  await until('window.__stalheartPilotTest.aimEnemy()!==null',15000);const victim=await evaluate('window.__stalheartPilotTest.aimEnemy()');assert(victim!==null,'an amoeba is in reach and sight of the Rotor');   // the pile at the gate shuffles; give it a moment
  await evaluate('window.__stalheartPilotTest.hold(true)');
@@ -2064,7 +2071,7 @@ try{
  if(!(await evaluate('window.__stalheartTest.state().story.said')).includes('wave_cleared'))assert.equal(await evaluate('document.querySelector("#story-views")'),null,'no view strip before the wave is cleared');   // a piloted Rotor can clear the whole wave during the kills above (2026-09-14), and phase can move past 'cleared' to 'quiver-piloting' the same tick it is set, so said is checked instead of the exact phase
  await evaluate('window.__stalheartPilotTest.hold(true)');
  await until('(()=>{const s=window.__stalheartTest.state();if(s.story.said.includes("wave_cleared"))return true;const t=window.__stalheartPilotTest;if(t.state().overheated)return false;t.aimEnemy();return false;})()',480000);
- await evaluate('window.__stalheartPilotTest.hold(false)');const cleared=await evaluate('window.__stalheartTest.state()');assert(cleared.story.said.includes('wave_cleared'));await until('!(window.__stalheartTest.state().enemyTypes||[]).includes("amoeba")',5000);   // the performance block is a periodic sample. NOT a count of zero any more: the Quiver now stands before the wave is down and its first hard core rises within a third of a second of `cleared` (STORY_QUIVER.delay 0.3, 2026-09-18), so the field is never empty here. The fifty white amoeba being gone is the same claim, made of the wave this step is about
+ await evaluate('window.__stalheartPilotTest.hold(false)');const cleared=await evaluate('window.__stalheartTest.state()');assert(cleared.story.said.includes('wave_cleared'));/* (2026-10-03) the site guards, amoeba among them, stand at the landers from the start: the wave's amoeba are gone when said wave_cleared, which is asserted above */   // the performance block is a periodic sample. NOT a count of zero any more: the Quiver now stands before the wave is down and its first hard core rises within a third of a second of `cleared` (STORY_QUIVER.delay 0.3, 2026-09-18), so the field is never empty here. The fifty white amoeba being gone is the same claim, made of the wave this step is about
  await until('!!document.querySelector("#story-views")',5000);await delay(600);current='story-world-cleared';await finish();
  // the view strip is exercised after the Quiver: the hand-over now follows the cleared wave almost at once (owner, 2026-09-13)
  // THE QUIVER: printed across the lane while the wave was fought, handed over the moment the wave is down (its post first,

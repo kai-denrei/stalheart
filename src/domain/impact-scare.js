@@ -1,4 +1,4 @@
-// An impact scares the bodies near it: they freeze for a moment, turn from the blast, take exits that lead away until
+// An impact scares the bodies near it: they stumble, turn from the blast and bolt, take exits that lead away until
 // the scare runs out, then go back to seeking the heart. Pure: positions are [x, y, z] arrays on the unit sphere, and
 // the controller owns the cell graph and the clock. An impact only marks the bodies it caught; the enemy step stamps
 // the scare with its own clock the next time it moves them, so callers need no clock of their own.
@@ -27,10 +27,14 @@ export function stampScare(e, now) {
 
 export const isScared = (e, now) => !!e.scareFrom && e.scareAt !== null && now < e.scareUntil;
 
-// the pace multiplier: stopped for the first `freezeS`, then hurrying away, then normal
-export function scarePace(e, now, freezeS) {
+// the pace multiplier: a stumble for the first `freezeS` (owner, 2026-10-03: "they do not stop and freeze, they stop and scatter in the
+// other direction, frantic"), then a bolt at `flee` that eases to `trail` as the scare runs out, then normal
+export function scarePace(e, now, freezeS, { flee = 2.4, trail = 1.3 } = {}) {
   if (!isScared(e, now)) return 1;
-  return now - e.scareAt < freezeS ? 0 : 1.35;
+  const t = now - e.scareAt;
+  if (t < freezeS) return 0.3;
+  const u = Math.min(1, (t - freezeS) / Math.max(1e-6, e.scareSeconds - freezeS));
+  return flee + (trail - flee) * u;
 }
 
 // true when the step from `cur` to `next` closes on the blast

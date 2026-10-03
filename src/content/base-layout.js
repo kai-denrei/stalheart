@@ -128,5 +128,6 @@ export function landmarkTierMode(search) {
 // Stalheart)"; src/fx/story-base.js solidAt). Not the Stålheart (the hull drives under its gantry), the bays (the hull lives in them),
 // the solar array (its charging pad is at its centre) or the Rotor on its wall. The standing landers at the expedition sites are solid;
 // the two wrecks lie on their sides across their sites and the part's crate waits beside them, so they stay passable
-export const SOLID_STRUCTURES = Object.freeze(['sh02', 'foundry', 'sh02-salvage', 'hugin', 'assembly', 'radar', 'armory', 'greenhouse', 'bio-a', 'bio-b', 'bio-c', 'chips',
-  'ammo-a', 'ammo-b', 'ammo-c', 'launcher', 'rocket-a', 'rocket-b', 'rocket-c', 'rocket-d']);
+// TOO MUCH, THE FIRST TIME (owner, 2026-10-03: "now the camp is hard to navigate as the tank bumps into everything"): the small pieces (the
+// salvage, the ammunition, the bio containers) are passable again, and each footprint is its core, 30% in from its widest reach (story-base inset)
+export const SOLID_STRUCTURES = Object.freeze(['sh02', 'foundry', 'hugin', 'assembly', 'radar', 'armory', 'greenhouse', 'chips', 'launcher', 'rocket-a', 'rocket-b', 'rocket-c', 'rocket-d']);
