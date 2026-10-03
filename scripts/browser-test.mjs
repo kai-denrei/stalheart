@@ -1711,6 +1711,27 @@ try{
  assert.equal(await evaluate(flir),false,'the Rotor is not thermal');
  assert(!/KORP/.test(await evaluate('document.querySelector("#sentry-pilot header")?.textContent||""')),'the Rotor wears its own header, not the gunship\'s');
  current='seat-switch-rotor';await finish();
+ } else if(args.includes('--opening')) {
+ // THE OPENING HAS SOUND (owner, 2026-10-04: "until we take manual control of the Rotor, there are no sounds"): the landing waits on the
+ // start gate for the gesture that starts the sound, then the thrusters burn; Isao's close-up says its lines word for word, line by line
+ // (Rough landing!, So much to build!), and each lost lander's beacon pings once
+ const T='window.__stalheartTest',A=`${T}.state().arrival`;
+ await go('opening-gate','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=1&grow=1&gate=1#td');
+ await until(`!!${T} && ${A}?.gate==="shown"`,90000).catch(async()=>assert.fail(`the landing waits on the gate (${JSON.stringify(await evaluate(A))})`));
+ assert.equal((await evaluate(A)).phase,'waiting','nothing lands before the gesture');assert(await evaluate('!!document.querySelector("#start-gate:not(.out)")'),'the gate shows');
+ current='opening-gate';await finish();
+ await send('Input.dispatchMouseEvent',{type:'mousePressed',x:720,y:450,button:'left',clickCount:1});await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:720,y:450,button:'left',clickCount:1});
+ await until(`${A}.phase==="landing"`,15000).catch(async()=>assert.fail(`the gesture lands the rocket (${JSON.stringify(await evaluate(A))})`));
+ await until(`${A}.thrust===true`,15000).catch(async()=>assert.fail(`the thrusters are heard during the descent (${JSON.stringify(await evaluate(A))})`));
+ current='opening-landing';await finish();
+ const said='(async()=>(await import("./src/fx/isao-voice.js")).isaoSay.log.filter(e=>e.played).map(e=>e.id))()';
+ await until(`(async()=>{const l=await ${said};return l.includes("rough_landing_01")&&l.includes("so_much_to_build_01");})()`,60000).catch(async()=>assert.fail(`Isao says his close-up (${JSON.stringify(await evaluate(said))})`));
+ const ids=await evaluate(said);console.log(`  opening: said ${ids.join(' ')}`);
+ assert(ids.indexOf('rough_landing_01')<ids.indexOf('so_much_to_build_01'),'in the order they show');
+ await until(`(${T}.state().programme.colony.beaconPings||[]).length>0`,120000).catch(async()=>assert.fail(`a beacon pings (${JSON.stringify((await evaluate(`${T}.state().programme.colony`)).beaconPulse)})`));
+ const pc=await evaluate(`${T}.state().programme.colony`);console.log(`  opening: beacons ${JSON.stringify(pc.beacons)} pinged ${JSON.stringify(pc.beaconPings)}`);
+ assert.equal(new Set(pc.beaconPings).size,pc.beaconPings.length,'each beacon pings once');
+ current='opening-beacons';await finish();
  } else if(args.includes('--opening-probe')) {
  // THE OPENING'S TIMELINE from a bare page: phase, shot, view, Isao's panel, every change (no assertions)
  const T='window.__stalheartTest';

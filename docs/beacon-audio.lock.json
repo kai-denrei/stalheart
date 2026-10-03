@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "source": "Synthesised by scripts/synth-beacon-ping.sh (ffmpeg sine partials 1318.5 + 659.25 Hz, exponential decay, echo, limiter)",
+  "files": [
+    {
+      "path": "assets/audio/beacon_ping.mp3",
+      "sha256": "da3c9cb1b62c043e957b31ee0c24c95e5a00ce222c999e7af78dad7d87153599",
+      "bytes": 22589,
+      "durationSeconds": 1.81
+    }
+  ]
+}

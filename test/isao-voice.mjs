@@ -15,7 +15,8 @@ let clock = 0, picks = { muted: false, off: new Set(), quiet: new Set() }, r = 7
 const played = [], primed = [], gains = [];
 const ducks = [];
 const sfx = { prime: (k) => { primed.push(k); return Promise.resolve(true); }, play: (k, o) => { played.push(k); gains.push(o?.gain); }, duck: (b, d, s) => ducks.push([b, d, s]) };
-const say = createIsaoVoice({ triggers: T, hooks: {}, tune: { gap: 0.5, repeat: 10, late: 1.5, gain: 1, duck: { buses: ['tank'], depth: 0.4 } }, picks: () => picks, now: () => clock, rand: () => (r = (r * 9301 + 49297) % 233280) / 233280 });
+const queued = [];
+const say = createIsaoVoice({ later: (fn, s) => queued.push([fn, s]), triggers: T, hooks: {}, tune: { gap: 0.5, repeat: 10, late: 1.5, gain: 1, duck: { buses: ['tank'], depth: 0.4 } }, picks: () => picks, now: () => clock, rand: () => (r = (r * 9301 + 49297) % 233280) / 233280 });
 
 ok('a moment with lines speaks', say(sfx, 'a')?.id.startsWith('a_'));
 await tick();
@@ -53,6 +54,16 @@ clock += 11; picks = { muted: false, off: new Set(), quiet: new Set(), db: 6, du
 say(sfx, 'b'); await tick();
 ok('the voice trim is the line\'s gain', Math.abs(gains.at(-1) - 1.995) < 0.001);
 ok('the calibrated duck replaces the game\'s', ducks.at(-1)?.[1] === 0.25);
+// THE WORDS ON SCREEN: a recording of exactly the shown text is said as it shows, whatever the moment's id, with no rest between lines
+clock += 11; picks = { muted: false, off: new Set(), quiet: new Set() };
+ok('the shown words pick their own take', say(sfx, 'some_brief', { text: '2!' })?.id === 'a_02');
+clock += 0.5; queued.length = 0;
+ok('the next line on screen while he still speaks: not said yet', say(sfx, 'some_brief#1', { text: '3' }) === null && queued.length === 1);
+clock += queued[0][1]; ok('but said the moment he is free', queued[0][0]()?.id === 'a_03');
+clock += 1.6; say(sfx, 'x', { text: 'b' }); clock += 0.1; queued.length = 0; say(sfx, 'x', { text: '1' }); ok('a line due later than `late` after him is not kept (he speaks 2 s more)', queued.length === 0);
+clock += 1.6;
+clock += 1.6; picks = { muted: false, off: new Set(['a_01']), quiet: new Set() };
+ok('a switched-off take is not said for its words', say(sfx, 'a', { text: '1' }) === null || say.log.at(-1).id !== 'a_01');
 ok('keys', voiceKey('a_01') === 'isao_a_01');
 
 console.log(`\n${n - bad}/${n} passed`);

@@ -33,6 +33,7 @@ import { PLUME_CLUSTER, SH02_WELL, STORY_ARRIVAL } from '../content/story-defaul
 import { makeArrivalShot } from '../domain/arrival-shot.js';
 import { isaoFace } from '../domain/story-shots.js';
 import { BRIEFS, lineDwell } from '../isaobriefs.js';
+import { createStartGate } from './start-gate.js';
 
 const IDS = ['sh02', 'sh02-salvage', 'foundry'];
 export const LOOK_TOAST = '<div class="wave-num">LOOK AROUND</div><div class="wave-role">drag to turn the planet \u00b7 wheel or pinch to zoom</div>';
@@ -51,7 +52,9 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   const toWorld = (p, out = new THREE.Vector3()) => out.set(p[0] * metres, p[1] * metres, p[2] * metres).applyMatrix4(site);
   const pose = (out, eye, look, n) => { m4.lookAt(eye, look, n); out.quat.setFromRotationMatrix(m4); out.pos.copy(eye); };
   let api = null, camera = null, fov = null, rocket = null, drone = null, size = 0, to = null, fxRoot = null, scorch = null, dust = null;
-  let t = 0, talkT = 0, waited = 0, cutting = false, deployed = false, skipped = false, thrust = null, heard = null, cues = [], late = phase === 'done' ? new Set(IDS) : null, plumes = [];
+  let t = 0, talkT = 0, waited = 0, cutting = false, deployed = false, skipped = false, thrust = null, heard = null, cues = [], late = phase === 'done' ? new Set(IDS) : null, plumes = [], gate = null;
+  // the start gate (src/fx/start-gate.js) when the sound has not started; an acceptance run lands without it unless it asks (?gate=1)
+  const q = typeof location === 'object' ? new URLSearchParams(location.search) : null, gated = !q || q.get('acceptance') !== '1' || q.get('gate') === '1';
 
   const drop = (o) => { o.removeFromParent(); o.geometry?.dispose(); o.material?.dispose(); };
   const hud = (on) => globalThis.document?.body.classList.toggle('arrival-on', on);   // styles.css hides the chrome while it plays
@@ -181,7 +184,10 @@ export function createArrival({ on = false, past = false, base = null, beats = n
         waited += dt;
         if (base.structure('sh02')?.holder.visible) base.conceal('sh02');   // nothing stands before it lands
         const d = api.drone(); if (d) d.obj.visible = false;
-        if (d && IDS.every((id) => base.structure(id))) start();
+        if (d && IDS.every((id) => base.structure(id))) {
+          if (gated && api.sfx && !api.sfx.ready && !gate?.opened) { if (!gate) { gate = createStartGate(globalThis.document?.body); hud(true); } return; }   // the landing waits for the gesture that starts its sound
+          start();
+        }
         else if (waited > tune.wait || base.errors.some((e) => IDS.some((id) => e.startsWith(`${id}:`)))) release();
         return;
       }
@@ -191,7 +197,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     },
     state: () => {
       const vis = (id) => base?.structure(id)?.holder.visible ?? null, local = (v) => v.clone().applyMatrix4(inv).divideScalar(metres).toArray().map((x) => +x.toFixed(1));
-      return { on, phase, cues: cues.slice(-12), sound: api?.sfx?.ready ?? null, t: +t.toFixed(2), cut: +shot.cut.toFixed(2), talk: +talkSeconds.toFixed(2), talkT: +talkT.toFixed(2), waited: +waited.toFixed(1), deployed, skipped,
+      return { on, phase, gate: gate ? (gate.opened ? 'opened' : 'shown') : null, thrust: !!thrust, cues: cues.slice(-12), sound: api?.sfx?.ready ?? null, t: +t.toFixed(2), cut: +shot.cut.toFixed(2), talk: +talkSeconds.toFixed(2), talkT: +talkT.toFixed(2), waited: +waited.toFixed(1), deployed, skipped,
         to: to?.map((x) => +x.toFixed(1)) ?? null, eye: camera ? local(camera.position) : null, at: drone ? local(drone.obj.position) : null,   // metres around the island: the camera and Isao
         altitude: rocket ? +shot.stateAt(phase === 'landing' ? t : shot.cut).altitude.toFixed(1) : null, rocket: vis('sh02'), salvage: vis('sh02-salvage'), foundry: vis('foundry'),
         isao: drone ? { visible: drone.obj.visible, scale: +(drone.obj.scale.x / size).toFixed(2), face: drone.obj.userData.getFace?.() ?? null } : null, fov: camera ? +camera.fov.toFixed(1) : null, lens: fov };   // lens: the game's own, put back at the end

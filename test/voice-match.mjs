@@ -18,6 +18,8 @@ ok('RAM milestones only', ix.resolve('RAM ×10') === 'ram_chain_milestones' && i
 ok('the sector briefs speak sector_brief', ix.resolve('sector_3') === 'sector_brief');
 ok('an unknown moment is silent', ix.resolve('nothing_here') === null && ix.resolve('') === null && ix.resolve(null) === null);
 ok('the mission event', ix.resolve('mission') === 'mission');
+ok('a line of a brief resolves only through its own hook', ix.resolve('arrival_talk#2') === 'foundry_deploy' && ix.resolve('arrival_talk#1') === null && ix.resolve('build_armory#1') === null);
+ok('a recording is found by its words, punctuation aside', ix.spoken('So much to build!')?.[1].id === 'so_much_to_build_01' && ix.spoken('rough  landing') ?.[1].id === 'rough_landing_01' && ix.spoken('Nothing like this.') === null);
 { const ix2 = createVoiceIndex({ sector_brief: { aliases: [], lines: [] }, sector_1: { aliases: [], lines: [] } }, { sector_brief: ['sector_1', 'sector_2'] });
   ok('a brief recorded on its own outranks the alias that stood in for it', ix2.resolve('sector_1') === 'sector_1' && ix2.resolve('sector_2') === 'sector_brief'); }
 ok('normText', normText(' a <i>b</i>  c ') === 'A B C');

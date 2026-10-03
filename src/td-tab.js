@@ -731,7 +731,7 @@ export function initTdTab(root) {
     briefQ = b; briefAt = 0; briefFaceT = 0;
     briefDwell = briefLeft = lineDwell(b, 0);
     briefEl.classList.remove('hidden');
-    sfx.play('laser_click'); isaoSay(sfx, id);
+    sfx.play('laser_click'); isaoSay(sfx, id, { text: b.lines[0] });
     paintBrief();
   }
   // `auto` = the line ran out of time rather than being tapped. A tap keeps its click; a line retiring on its own makes no
@@ -740,7 +740,7 @@ export function initTdTab(root) {
     if (!briefQ) return;
     briefAt++;
     if (briefAt >= briefQ.lines.length) { endBrief(); return; }
-    if (!auto) sfx.play('laser_click');
+    if (!auto) sfx.play('laser_click'); isaoSay(sfx, `${briefQ.id}#${briefAt}`, { text: briefQ.lines[briefAt] });
     briefDwell = briefLeft = lineDwell(briefQ, briefAt);
     paintBrief();
   }
@@ -1025,11 +1025,9 @@ export function initTdTab(root) {
     group.position.set(c[0], c[1], c[2]);
     tmpN.set(n[0], n[1], n[2]);
     group.quaternion.setFromUnitVectors(Y_AXIS, tmpN); // local +Y = surface normal
-    // transform-only idle: spin PURELY about the cell's normal. Euler trap:
-    // writing rotation.y would REPLACE the alignment quaternion above (they
-    // are two views of one rotation) and spin about world-Y — shells then
-    // tilt into the ground everywhere but the pole. Compose quaternions:
-    // base alignment × local-Y spin.
+    // transform-only idle: spin PURELY about the cell's normal. Euler trap: writing rotation.y would REPLACE the alignment
+    // quaternion above (they are two views of one rotation) and spin about world-Y — shells then tilt into the ground everywhere
+    // but the pole. Compose quaternions: base alignment × local-Y spin.
     const baseQ = group.quaternion.clone();
     const spinQ = new THREE.Quaternion();
     group.userData.tick = (t) => {
@@ -1101,12 +1099,9 @@ export function initTdTab(root) {
   let cellIndex = () => -1; // voxel-hash nearest-cell lookup, built per board
   let unitBlocker = () => false; // per-tab solid units (tanks, structures)
 
-  // free-move collision: the position is blocked if its cell is wall, if it
-  // presses into a blocked neighbour's margin (no more nosing into walls),
-  // or if a solid unit stands there
-  // how many open neighbours a cell has — ≤3 means a narrow hall or a
-  // corner pocket, where the anti-clipping margins must relax or the
-  // hitbox wedges the tank (the stuck-in-width-1-corridor bug)
+  // free-move collision: the position is blocked if its cell is wall, if it presses into a blocked neighbour's margin (no more
+  // nosing into walls), or if a solid unit stands there how many open neighbours a cell has — ≤3 means a narrow hall or a corner
+  // pocket, where the anti-clipping margins must relax or the hitbox wedges the tank (the stuck-in-width-1-corridor bug)
   function openCount(ci) {
     let n = 0;
     for (const nb of graph.adj[ci]) if (dungeon.tags[nb] !== BLOCKED) n++;
@@ -1119,11 +1114,9 @@ export function initTdTab(root) {
   function containerBlocked(ci) {
     return ci !== player.cur && lifeContainers.some((cc) => cc.ci === ci);
   }
-  // ...and while you are still IN a berth, the boxes either side of you do
-  // not crowd the exit. The margin test below treats a solid neighbour as a
-  // no-go shell around the lane, which between three boxes in a row leaves a
-  // gap the hull cannot thread — the second half of the operator's
-  // can't-get-out report. Clear of the berth, they go solid again.
+  // ...and while you are still IN a berth, the boxes either side of you do not crowd the exit. The margin test below treats a
+  // solid neighbour as a no-go shell around the lane, which between three boxes in a row leaves a gap the hull cannot thread —
+  // the second half of the operator's can't-get-out report. Clear of the berth, they go solid again.
   const berthed = () => lifeContainers.some((cc) => cc.ci === player.cur);
   // THE TERRAFORMER IS SOLID TOO (operator, 2026-09-02: "currently the tank
   // can drive under"). Its pad radius is measured off the model, so a
@@ -1216,11 +1209,9 @@ export function initTdTab(root) {
   // CRUISE: player-triggered auto-forward. A quick double-tap of the
   // forward control (W / ▲) toggles it; S/▼ always kills it.
   let cruise = false, stuck = makeStuck(), kick = makeKick();   // stuck: driving that goes nowhere (src/domain/hull-stuck.js)
-  // THROTTLE — one lever replacing the ▲/▼ pair. It HOLDS where you put it,
-  // so setting it IS cruise; there is no separate mode to engage. Reverse is
-  // the same lever continued below zero and capped: backing up cannot match
-  // going forward. The zero detent sits proportionally, so the shorter
-  // reverse travel shows you that before you try it.
+  // THROTTLE — one lever replacing the ▲/▼ pair. It HOLDS where you put it, so setting it IS cruise; there is no separate mode to
+  // engage. Reverse is the same lever continued below zero and capped: backing up cannot match going forward. The zero detent
+  // sits proportionally, so the shorter reverse travel shows you that before you try it.
   const THROTTLE_REV = 0.4;                       // reverse ceiling vs forward
   const THROTTLE_ZERO = 1 / (1 + THROTTLE_REV);   // where 0 sits down the track
   let throttle = 0; const driveRamp = makeDriveRamp();   // the run-up a hull builds held forward (content/tank.js TANK_DRIVE)
@@ -1235,11 +1226,9 @@ export function initTdTab(root) {
   let autoMode = false; // AUTO is opt-in (the directive chip); MANUAL is sticky
 
 
-  // TAP-TO-GO (ruling 1, 2026-09-02). On the phone the tank is COMMANDED, not
-  // driven: a tap on the ground is a destination, and the graph walker that
-  // already serves the auto directives walks it there. A BFS field from the
-  // tapped cell is the goal, exactly as distToHeart is the goal for 'home';
-  // arriving hands control back to manual, which stops the tank.
+  // TAP-TO-GO (ruling 1, 2026-09-02). On the phone the tank is COMMANDED, not driven: a tap on the ground is a destination, and
+  // the graph walker that already serves the auto directives walks it there. A BFS field from the tapped cell is the goal,
+  // exactly as distToHeart is the goal for 'home'; arriving hands control back to manual, which stops the tank.
   let gotoField = null, gotoCi = -1;
   function gotoCell(ci) {
     if (ci < 0 || dungeon.tags[ci] === BLOCKED) return false;
@@ -1274,13 +1263,10 @@ export function initTdTab(root) {
     + ` paused=${paused}`
     + ` shot=${shotId() || '-'}`
     + ` buildMode=${buildMode} active=${active}`;
-  // THE WATCHDOG. It watches for the symptom as the player describes it —
-  // asking the tank to move and the tank not moving — rather than for any
-  // one cause, and prints the whole gate row when it happens. Always on:
-  // the bug is rare and lives on the operator's phone, so a probe that only
-  // runs under a flag is a probe that will never see it. One line per
-  // episode (re-armed only after the tank moves again), so a genuinely
-  // wedged hull cannot flood the console.
+  // THE WATCHDOG. It watches for the symptom as the player describes it — asking the tank to move and the tank not moving —
+  // rather than for any one cause, and prints the whole gate row when it happens. Always on: the bug is rare and lives on the
+  // operator's phone, so a probe that only runs under a flag is a probe that will never see it. One line per episode (re-armed
+  // only after the tank moves again), so a genuinely wedged hull cannot flood the console.
   let ctlStillFor = 0, ctlBarked = false;
   const ctlLastPos = [0, 0, 0];
   // RAW INPUT, READ BEFORE ANYTHING CAN SWALLOW IT. The first cut of this
@@ -1353,13 +1339,10 @@ export function initTdTab(root) {
     vwFrustum.setFromProjectionMatrix(vwMat.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
     return vwFrustum.containsPoint(vwPt.set(player.pos[0], player.pos[1], player.pos[2]));
   }
-  // THE VIEW WATCHDOG (operator, builds 1974eb11..42e61776: "I still do not
-  // see the tank", "recurring", "a game stopper on mobile"). The camera's
-  // pose could not be read on the device, so the shell watches for the
-  // symptom itself: in DRIVE, with no shot, no deploy and no pause, the
-  // tank out of the camera's frustum for 1.5 s is a stuck camera, whatever
-  // stuck it. It re-seats — ends any shot, forces third, snaps the goal —
-  // and paints what it found on the caption lane so a screenshot carries
+  // THE VIEW WATCHDOG (operator, builds 1974eb11..42e61776: "I still do not see the tank", "recurring", "a game stopper on
+  // mobile"). The camera's pose could not be read on the device, so the shell watches for the symptom itself: in DRIVE, with no
+  // shot, no deploy and no pause, the tank out of the camera's frustum for 1.5 s is a stuck camera, whatever stuck it. It
+  // re-seats — ends any shot, forces third, snaps the goal — and paints what it found on the caption lane so a screenshot carries
   // it. Always on for the shell; ?viewwatch=0 turns it off.
   let vwOut = 0, vwCool = 0, vwFires = 0; const diagHtml = (txt) => `<div class="wave-role" style="font-size:9px;text-align:left;white-space:pre-wrap">${txt}</div>`;
   function viewWatch(dt) {
@@ -1382,14 +1365,11 @@ export function initTdTab(root) {
       + ` unit=${unitScale.toFixed(3)} bias=${camBiasNdc.toFixed(3)}`
       + ` canvas=${cv0.clientWidth}x${cv0.clientHeight}`
       + ` visual=${viewportLine(vv0)} edge=${viewEdge(sight, vv0)}`;   /* src/domain/view-edge.js */
-    // ONLY A POSE FAULT IS WORTH RE-SEATING. Snapping the camera at a tank
-    // that is covered by a caption, or under the URL bar, moves nothing and
-    // hides the evidence — the report is the whole value in those cases.
-    // CHROME COUNTS NOW. It used to be filed under "re-seating would not
-    // help", which was true while the rig aimed at the middle of the canvas:
-    // snapping put the tank back in the same invisible strip. With the
-    // viewport bias there IS something to do — re-seating re-derives the
-    // pose against the band that is actually on screen.
+    // ONLY A POSE FAULT IS WORTH RE-SEATING. Snapping the camera at a tank that is covered by a caption, or under the URL bar,
+    // moves nothing and hides the evidence — the report is the whole value in those cases. CHROME COUNTS NOW. It used to be filed
+    // under "re-seating would not help", which was true while the rig aimed at the middle of the canvas: snapping put the tank
+    // back in the same invisible strip. With the viewport bias there IS something to do — re-seating re-derives the pose against
+    // the band that is actually on screen.
     const fixable = sight.why === 'behind' || sight.why === 'off-canvas' || sight.why === 'chrome';
     if (fixable) {
       endShot();
@@ -1404,13 +1384,10 @@ export function initTdTab(root) {
     }
   }
 
-  // THE DIAGNOSTICS OVERLAY (operator, 2026-09-04, after four blind fixes of
-  // the phone's third-person view: "ultrathink a better approach"). The
-  // approach: the phone prints every number the camera and the tank depend
-  // on, on screen, from the game's own state — no URL, no keyboard: tap the
-  // hearts three times (or ?diag=1). A tap on the panel opens the last
-  // sixty lines as selectable text. A screenshot of this decides, in one
-  // go, whether the camera is where it should be, whether the tank mesh is
+  // THE DIAGNOSTICS OVERLAY (operator, 2026-09-04, after four blind fixes of the phone's third-person view: "ultrathink a better
+  // approach"). The approach: the phone prints every number the camera and the tank depend on, on screen, from the game's own
+  // state — no URL, no keyboard: tap the hearts three times (or ?diag=1). A tap on the panel opens the last sixty lines as
+  // selectable text. A screenshot of this decides, in one go, whether the camera is where it should be, whether the tank mesh is
   // drawing, and what the deploy, the shot and the view are doing.
   const diagQ = new URLSearchParams(location.search);   // urlParams is declared far below; this runs at init
   let diagEl = null, diagOn = diagQ.get('diag') === '1', diagT = 0, diagTaps = [], diagRing = [];
@@ -1677,12 +1654,10 @@ export function initTdTab(root) {
       });
     }
     {
-      // THE LIFE CONTAINERS v2 (operator's staging): TWO containers, side
-      // by side on the EMPTIEST flank of the heart's chamber — adjacent
-      // open cells at distToHeart 2-3, the pair chosen for the fewest
-      // open neighbours (a wall-side berth, clear of the lanes). Two
-      // hull bays per container; the run's spare tanks rack there, and
-      // every spawn — first scene included — drives OUT of a container.
+      // THE LIFE CONTAINERS v2 (operator's staging): TWO containers, side by side on the EMPTIEST flank of the heart's chamber —
+      // adjacent open cells at distToHeart 2-3, the pair chosen for the fewest open neighbours (a wall-side berth, clear of the
+      // lanes). Two hull bays per container; the run's spare tanks rack there, and every spawn — first scene included — drives
+      // OUT of a container.
       const cgen = ++containerGen;
       Promise.all([storyMode || preloadContainer(), preloadMork()]).then(() => {   // the story never shows the old boxes, so it never fetches them
         if (cgen !== containerGen || !dungeon) return; // board changed since

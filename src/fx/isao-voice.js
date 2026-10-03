@@ -10,17 +10,25 @@ import { createVoiceIndex, eligible, pickLine, readPicks, dbGain } from '../doma
 import { storage } from '../storage.js';
 
 export function createIsaoVoice({ triggers = ISAO_TRIGGERS, hooks = VOICE_HOOKS, tune = VOICE_TUNE, picks = () => readPicks(storage.getItem(VOICE_STORE)),
-  now = () => performance.now() / 1000, rand = Math.random } = {}) {
+  now = () => performance.now() / 1000, rand = Math.random, later = (fn, s) => setTimeout(fn, s * 1000) } = {}) {
   const index = createVoiceIndex(triggers, hooks), last = new Map(), lastAt = new Map(), log = [];
   let busyUntil = -Infinity;
   const note = (entry) => { log.push(entry); if (log.length > 40) log.shift(); };
-  function say(sfx, id, { qualifier = null } = {}) {
-    const key = index.resolve(id);
-    if (!key) return null;
-    const p = picks(), t = now();
-    if (p.muted || p.quiet.has(key)) return null;
-    if (t < busyUntil || t - (lastAt.get(key) ?? -Infinity) < tune.repeat) return null;
-    const line = pickLine(eligible(triggers[key].lines, { off: p.off, qualifier }), last.get(key), rand());
+  // `text`: the words on screen. A recording of exactly those words is said as they show (a brief's lines in order, each its own take);
+  // otherwise the moment's trigger picks a line, resting between turns
+  function say(sfx, id, { qualifier = null, text = null } = {}) {
+    const p = picks(), t = now(), exact = text ? index.spoken(text) : null;
+    if (p.muted) return null;
+    // A LINE ON SCREEN WAITS ITS TURN (2026-10-04: the close-up's "So much to build!" came while "Rough landing!" was still being said):
+    // its own take is said as soon as the voice is free, if that is within `late`; anything else is dropped while he speaks
+    if (t < busyUntil) { if (exact && busyUntil - t <= tune.late) later(() => say(sfx, id, { qualifier, text }), busyUntil - t + 0.01); return null; }
+    let key, line;
+    if (exact && !p.quiet.has(exact[0]) && !p.off.has(exact[1].id)) [key, line] = exact;
+    else {
+      key = index.resolve(id);
+      if (!key || p.quiet.has(key) || t - (lastAt.get(key) ?? -Infinity) < tune.repeat) return null;
+      line = pickLine(eligible(triggers[key].lines, { off: p.off, qualifier }), last.get(key), rand());
+    }
     if (!line) return null;
     last.set(key, line.id); lastAt.set(key, t); busyUntil = t + line.duration + tune.gap;
     const k = voiceKey(line.id), entry = { at: t, from: String(id), trigger: key, id: line.id, played: false };

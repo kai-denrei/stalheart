@@ -11,6 +11,9 @@ export const VOICE_HOOKS = Object.freeze({
   sol_firing: Object.freeze(['SOL FIRING IN 3…']),   // the automated pass's countdown opens at 3 (src/fx/laser-arsenal.js)
   ram_chain_milestones: Object.freeze(['RAM ×10', 'RAM ×25', 'RAM ×50']),
   hull_lost: Object.freeze(['MÖRK DOWN!']),
+  // the arrival's close-up, line by line (owner, 2026-10-04: "Isao says rough landing and another line about building"): its first two
+  // lines are recorded word for word (rough_landing_01, so_much_to_build_01); the third, the cannibalized rocket, is the foundry's
+  foundry_deploy: Object.freeze(['arrival_talk#2']),
   plasma_dry: Object.freeze(['PLASMA DRY']),
 });
 

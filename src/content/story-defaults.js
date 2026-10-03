@@ -64,6 +64,8 @@ export const STORY_SOUNDS = Object.freeze({
   rocket_thrust: { file: 'assets/audio/rocket_thrust.mp3', bus: 'tank', gain: 0.9, maxVoices: 1, minInterval: 0, rateJitter: 0 },
   gate_hydraulics: { file: 'assets/audio/gate_hydraulics.mp3', bus: 'ui', gain: 2, maxVoices: 1, minInterval: 0.5, rateJitter: 0.02 },
   gate_slam: { file: 'assets/audio/gate_slam.mp3', bus: 'ui', gain: 0.8, maxVoices: 1, minInterval: 0.5, rateJitter: 0.03 },
+  // a lost lander's distress beacon, once per beacon (src/fx/site-beacons.js onPulse; scripts/synth-beacon-ping.sh)
+  beacon_ping: { file: 'assets/audio/beacon_ping.mp3', bus: 'ui', gain: 0.7, maxVoices: 2, minInterval: 0.4, rateJitter: 0.02 },
 });
 
 // Six engines under the skirt, each with its own cadence, so the cluster

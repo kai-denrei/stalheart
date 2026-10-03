@@ -6,7 +6,9 @@
 // wildcard alias ('build_*' takes every build_ brief no other trigger names exactly).
 
 export const normText = (s) => String(s ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase();
-const isId = (a) => /^[a-z0-9_]+$/.test(a);
+const isId = (a) => /^[a-z0-9_]+(#\d+)?$/.test(a);   // a brief id, or one line of it: arrival_talk#2
+// the words of a line, for matching a recording to the text on screen: case, punctuation and spacing aside
+export const lineWords = (s) => String(s ?? '').toLowerCase().replace(/[^a-z0-9åäöüéè]+/g, ' ').trim();
 
 export function createVoiceIndex(triggers, hooks = {}) {
   const exact = new Map(), texts = [], wild = [];
@@ -20,14 +22,18 @@ export function createVoiceIndex(triggers, hooks = {}) {
     }
   }
   texts.sort((a, b) => b[0].length - a[0].length);   // the longest callout alias wins a shared prefix
+  const said = new Map();   // the words of every recorded line -> [trigger, line]
+  for (const [key, t] of Object.entries(triggers)) for (const l of t.lines ?? []) { const w = lineWords(l.text); if (w && !said.has(w)) said.set(w, [key, l]); }
   return {
+    // the recording of exactly these words, if there is one
+    spoken: (text) => said.get(lineWords(text)) ?? null,
     aliasesOf: (key) => [key, ...(triggers[key]?.aliases ?? []), ...(hooks[key] ?? [])],
     resolve(id) {
       if (id == null) return null;
       if (exact.has(id)) return exact.get(id);
       const n = normText(id);
       if (n) for (const [t, key] of texts) if (n === t || n.startsWith(t + ' ') || n.startsWith(t + '·') || n.startsWith(t + ' ·')) return key;
-      if (isId(id)) for (const [p, key] of wild) if (id.startsWith(p)) return key;
+      if (isId(id) && !id.includes('#')) for (const [p, key] of wild) if (id.startsWith(p)) return key;
       return null;
     },
   };

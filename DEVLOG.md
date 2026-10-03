@@ -19,6 +19,21 @@ Evidence:
 - --voice and the default suite (46 steps) green. --gunship still fails its later skip step (enemyTypes expects only amoeba; stage 6 now raises amoeba, barbed and phage, 247 bodies): stale since the denser waves of rounds 14-15, untouched here
 - Not covered by a browser run: a shell's hole being mended (no harness hook aims a shell at a chosen cell); the rule is unit-tested and wired
 
+## 2026-10-04 — The owner's nineteenth notes: the opening has sound (a start gate before the landing opens the browser's sound), Isao says the close-up line by line, and each lost lander's beacon pings once
+
+change · accepted · 2026-10-04-nineteenth-notes-opening-sound-start-gate-line-by-line-voice-beacon-ping
+
+Owner, 2026-10-04: when the rocket first lands, and until the player takes manual control of the Rotor, there are no sounds; there should be at least the rocket's thrusters as it lands, Isao saying rough landing and a line about building, a sound for each beacon.
+
+Root cause: a browser starts no sound before the page's first click, tap or key (src/audio.js waits for that gesture; the probe logs 'no AudioContext — the gesture never armed it'), and the landing played before anyone touched anything, so the thrusters, the pneumatics and Isao were all dropped until the first input, usually the Rotor's seat. src/fx/start-gate.js: when the landing is loaded and the sound has not started, the arrival holds on a STÅLHEART card (click, tap or any key); that gesture opens the sound and the rocket comes down with its thrusters. Acceptance runs skip it unless ?gate=1. Isao: the close-up (arrival_talk) had no voice; briefs now hand the voice each line's words as it shows (showBrief and stepBrief), a recording of exactly those words is said for it (Rough landing! = rough_landing_01, So much to build! = so_much_to_build_01; tomorrow's recordings wire the same way), a line with no such take falls to a line hook (arrival_talk#2 -> foundry_deploy) or the brief's trigger, and a line on screen waits up to `late` for the voice to be free instead of being dropped. A trigger's key may now carry a line (#n) and the build_* wildcard never takes one. The beacons: scripts/synth-beacon-ping.sh synthesises assets/audio/beacon_ping.mp3 (pinned in docs/beacon-audio.lock.json); src/fx/site-beacons.js reports each pulse and programme-host pings once per beacon, on its first.
+
+Alternatives: Starting the sound without a gesture: no browser allows it; the gate is the one honest way to have the landing heard; Gating only the first visit: every page load starts mute, so every story start that plays the landing needs it; A ping on every beacon pulse: three beacons every 5.5 s for as long as they stand; 'one each' was the note
+
+Evidence:
+
+- --opening (new): the landing waits on the gate, the click lands it, the thrust bed starts in the descent; Isao said mission_02, rough_landing_01, so_much_to_build_01 in that order; a beacon pinged, each once
+- test/isao-voice.mjs 23/23 (shown words, the wait for a free voice), test/voice-match.mjs 26/26, test/voice-hooks.mjs 36/36, test/start-gate.mjs; npm test, check, build green
+
 ## 2026-10-04 — The owner's eighteenth notes: the gunship's layered planet (the WebGL FLIR read no-number pixels as heat), the Quiver's panels and the gunship's header left behind by a seat switch, a calibration bench for Isao's voice, and the script of every line he has not said
 
 change · accepted · 2026-10-04-eighteenth-notes-flir-nan-seat-leftovers-voice-calibration-unvoiced-script

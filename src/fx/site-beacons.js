@@ -19,7 +19,8 @@ function topOf(obj, n) {
 }
 
 // sites: [{ id, ci?: its lattice cell (the harness), point: unit vector, model?: () => Object3D }]; metres: scene units per metre
-export function createSiteBeacons(scene, sites, { metres, color = 0xffb347, period = 5.5, flash = 1.6, reach = 70, streak = 60, fallback = 30 } = {}) {
+// onPulse(id): a beacon's pulse begins (its rocket found and lit), for its sound
+export function createSiteBeacons(scene, sites, { metres, color = 0xffb347, period = 5.5, flash = 1.6, reach = 70, streak = 60, fallback = 30, onPulse = null } = {}) {
   const group = new THREE.Group(); group.name = 'site beacons'; scene.add(group);
   const add = (geo) => new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
   const beams = new Map();
@@ -31,17 +32,18 @@ export function createSiteBeacons(scene, sites, { metres, color = 0xffb347, peri
     const ring = add(new THREE.RingGeometry(0.92, 1, 48)); ring.rotation.x = -Math.PI / 2;
     const ray = add(new THREE.CylinderGeometry(0.15 * metres, 0.9 * metres, 1, 8, 1, true));
     holder.add(flare, ring, ray); holder.visible = false; group.add(holder);
-    beams.set(s.id, { ci: s.ci ?? -1, holder, flare, ring, ray, n, model: s.model, placed: false, phase: (i * 0.37 % 1) * period });
+    beams.set(s.id, { ci: s.ci ?? -1, holder, flare, ring, ray, n, model: s.model, placed: false, phase: (i * 0.37 % 1) * period, cycle: -1 });
   });
   let time = 0, look = 0;
   return {
     tick(dt) {
       time += dt; look -= dt;
-      for (const b of beams.values()) {
+      for (const [id, b] of beams) {
         if (!b.placed && look <= 0) { const top = topOf(b.model?.(), b.n); if (top) { b.holder.position.copy(top); b.placed = true; } }
-        const u = ((time + b.phase) % period) / flash;
+        const u = ((time + b.phase) % period) / flash, cycle = Math.floor((time + b.phase) / period);
         b.holder.visible = u < 1;
         if (u >= 1) continue;
+        if (cycle !== b.cycle) { b.cycle = cycle; if (b.placed) onPulse?.(id); }
         const fade = (1 - u) * (1 - u), e = 1 - (1 - u) ** 3;
         b.flare.material.opacity = 0.95 * fade; b.flare.scale.setScalar(1 + 2.5 * e);
         const r = reach * metres * e; b.ring.scale.set(r, r, r); b.ring.material.opacity = 0.7 * fade;

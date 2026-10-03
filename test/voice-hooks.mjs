@@ -20,7 +20,8 @@ for (const c of VOICE_CALLOUTS) {
 for (const k of Object.keys(VOICE_HOOKS)) ok(`hook ${k} names a trigger`, !!ISAO_TRIGGERS[k]);
 for (const k of VOICE_HOOKS.sector_brief) ok(`${k} is a brief`, !!BRIEFS[k]);
 ok('the mission event is raised (td-tab)', VOICE_EVENTS.includes('mission') && /isaoSay\(sfx, 'mission'\)/.test(game));
-ok('briefs speak (td-tab showBrief)', /isaoSay\(sfx, id\)/.test(game));
+ok('briefs speak (td-tab showBrief), their first line\'s words with them', /isaoSay\(sfx, id, \{ text: b\.lines\[0\] \}\)/.test(game));
+ok('and every later line as it shows (td-tab stepBrief)', /isaoSay\(sfx, `\$\{briefQ\.id\}#\$\{briefAt\}`, \{ text: briefQ\.lines\[briefAt\] \}\)/.test(game));
 ok('callouts speak (td-tab showCallout)', /function showCallout\(text, cls\) \{\s*isaoSay\(sfx, text\)/.test(game));
 ok('toasts speak (td-tab showToast)', /function showToast\(html, ms = 3000\) \{\s*isaoSay\(sfx, html\)/.test(game));
 for (const ev of VOICE_EVENTS.filter((e) => e !== 'mission')) ok(`the ${ev} event is raised`, game.includes(`isaoSpeak('${ev}'`));
