@@ -20,7 +20,7 @@ Design: `docs/superpowers/specs/2026-09-15-v1-session-design.md`. Two entry poin
 
 ## What landed on 2026-10-03 (the tenth notes: the first playtest round after the sync)
 
-`2026-10-03-tenth-notes-boards-wall-feel-squeeze-handover-tiers-debrief-mortar-repairs-solids-paint-pad`: the boards at 3x on a slab west of the Stålheart; wall contact as friction that turns the hull along the wall; a wedged hull threads on its centre; the seat hand-over goes out, high over the lane, then into the next mount; square, hexagon and circle level plates on the pedestals; the debrief on one screen with CONTINUE on it; mortar shells land before they burst; Isao mends clear wall cells mid-wave and calls BREACH SEALED; the buildings stop the hull; the purple PIMP MY RIDE pad beside the bays opens the paint shop.
+`2026-10-03-tenth-notes-boards-walls-handover-tiers-debrief-repairs-paint-pad`: the boards at 3x on a slab west of the Stålheart; wall contact as friction that turns the hull along the wall; a wedged hull threads on its centre; the seat hand-over goes out, high over the lane, then into the next mount; square, hexagon and circle level plates on the pedestals; the debrief on one screen with CONTINUE on it; mortar shells land before they burst; Isao mends clear wall cells mid-wave and calls BREACH SEALED; the buildings stop the hull; the purple PIMP MY RIDE pad beside the bays opens the paint shop.
 
 ## What landed on 2026-10-02 (the ninth notes: friendly fire, SOL's countdown and one source, tracers, the stampede)
 
