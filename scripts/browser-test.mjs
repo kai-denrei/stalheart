@@ -1570,8 +1570,13 @@ try{
  await until('/STAMPEDE|SOFT ONES/.test(document.querySelector("#td-callouts")?.textContent||"")',4000).catch(async()=>assert.fail(`the stampede is called (${await callouts()}, released ${before})`));
  await delay(6000);current='round9-stampede';await finish();
  // SOL on auto: the countdown, one source, nothing of ours burned
- await evaluate(`${T}.laserAuto(true)`);await evaluate(`${T}.laserPassNow()`);
+ // ON ISAO'S BEATS (2026-10-04): with the sound running, the pass starts a sol_firing line and the 3 shows on its first beat (~1.1-1.5 s)
+ await send('Input.dispatchMouseEvent',{type:'mousePressed',x:5,y:5,button:'left',clickCount:1});await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:5,y:5,button:'left',clickCount:1});await delay(1500);
+ await evaluate(`${T}.laserAuto(true)`);const solT0=Date.now();await evaluate(`${T}.laserPassNow()`);
  await until('/SOL FIRING IN/.test(document.querySelector("#td-callouts")?.textContent||"")',5000).catch(async()=>assert.fail(`SOL counts down (${await callouts()}; ${JSON.stringify((await st()).laser)})`));
+ {const firstAt=(Date.now()-solT0)/1000,sol=await evaluate('(async()=>(await import("./src/fx/isao-voice.js")).isaoSay.log.filter(e=>e.trigger==="sol_firing").map(e=>({id:e.id,played:e.played})))()');
+  console.log(`  round9: SOL's 3 at ${firstAt.toFixed(2)} s, voice ${JSON.stringify(sol)}`);
+  if(sol.some(e=>e.played))assert(firstAt>=0.9,`the count waits for the line's first beat (${firstAt.toFixed(2)} s)`);}
  const l0=(await st()).laser;assert.equal(l0.burning,false,'no beam during the countdown');
  await until(`${T}.state().laser.burning`,15000).catch(async()=>assert.fail(`the automated pass burns after the countdown (${JSON.stringify((await st()).laser)})`));
  const seen=[];for(let k=0;k<8;k++){const l=(await st()).laser;seen.push({c:l.contact,s:l.source,b:l.burning});await delay(700);if(k===3){current='round9-sol-burn';await finish();}}
@@ -1656,7 +1661,7 @@ try{
  await until(`!!${V}`,30000);
  const cov=await evaluate(`${V}.coverage()`);console.log(`  voice: ${cov.wired} triggers wired, unwired ${cov.unwired.join(' ')}, ${cov.silent} briefs with no line`);
  assert.ok(cov.wired>=40,'most triggers have a game moment');
- assert.equal(await evaluate('document.querySelectorAll("#tab-voice [data-line]").length'),154,'every line is listed');
+ assert.equal(await evaluate('document.querySelectorAll("#tab-voice [data-line]").length'),Object.values((await import('../src/content/isao-voice.js')).ISAO_TRIGGERS).reduce((a,t)=>a+t.lines.length,0),'every line is listed');
  const into=(sel)=>evaluate(`document.querySelector(${JSON.stringify(sel)}).scrollIntoView({block:'center'})`).then(()=>delay(200));
  await into('#tab-voice [data-play="gate_broken_01"]');await click('#tab-voice [data-play="gate_broken_01"]');
  await until('/Playing gate_broken_01/.test(document.querySelector("#tab-voice [data-status]").textContent)',15000).catch(async()=>assert.fail(`the line plays (${await evaluate('document.querySelector("#tab-voice [data-status]").textContent')} ${JSON.stringify(await evaluate(`${V}.audio()`))})`));

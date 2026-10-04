@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { autoEarned, densestTarget } from '../src/domain/laser-auto.js';
+import { autoEarned, densestTarget, countdownTimes } from '../src/domain/laser-auto.js';
 import { LASER_AUTO } from '../src/content/orbital-laser.js';
 import { BRIEFS } from '../src/isaobriefs.js';
 
@@ -23,4 +23,9 @@ const many = Array.from({ length: 400 }, (_, i) => ({ pos: unit(i * 0.7, (i % 17
 const pile8 = Array.from({ length: 8 }, (_, k) => ({ pos: unit(3 + k * step * 0.2, -0.3 + (k % 3) * step * 0.2) }));
 const t2 = densestTarget([...many, ...pile8], { radius: 12, metres: m, sample: 80 });
 assert.ok(pile8.some((b) => b.pos.every((v, i) => Math.abs(v - t2[i]) < 1e-9)) || many.some((b) => b.pos.every((v, i) => Math.abs(v - t2[i]) < 1e-9)), 'a target is returned under the cap');
-console.log('Laser auto: the automation is earned after two manned passes and aims at the densest pile.');
+// THE COUNT ON ISAO'S BEATS (2026-10-04): number k at beats[k]; a short line's missing numbers a second apart; the plain clock without one
+const near = (a, b) => a.length === b.length && a.every((x, i) => Math.abs(x - b[i]) < 1e-9);
+{ const c = countdownTimes([1.111, 2.111, 3.111], 3); assert(near(c.at, [1.111, 2.111, 3.111]) && Math.abs(c.end - 4.111) < 1e-9, 'three beats, three numbers, the strike a second on'); }
+{ const c = countdownTimes([1.3563, 2.3563], 3); assert(near(c.at, [1.3563, 2.3563, 3.3563]) && Math.abs(c.end - 4.3563) < 1e-9, '"three... two... light them up!": the 1 follows a second later'); }
+assert.deepEqual(countdownTimes(null, 3), { at: [0, 1, 2], end: 3 }, 'no line: the old one-second count');
+console.log('Laser auto: the automation is earned after two manned passes and aims at the densest pile; its count follows the voice.');

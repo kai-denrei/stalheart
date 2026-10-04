@@ -7,7 +7,7 @@ import { makeAudio } from '../audio.js';
 import { SOUNDS } from '../audiomanifest.js';
 import { ISAO_TRIGGERS, ISAO_VOICE_SOURCE } from '../content/isao-voice.js';
 import { VOICE_HOOKS, VOICE_CALLOUTS, VOICE_EVENTS, VOICE_STORE, VOICE_TUNE, voiceKey, voiceSounds } from '../content/voice-hooks.js';
-import { createVoiceIndex, readPicks, writePicks, dbGain, PICK_DB, PICK_DUCK } from '../domain/voice-match.js';
+import { createVoiceIndex, readPicks, writePicks, prunePicks, dbGain, PICK_DB, PICK_DUCK } from '../domain/voice-match.js';
 import { unvoicedScript } from '../domain/voice-script.js';
 import { BRIEFS } from '../isaobriefs.js';
 import { storage } from '../storage.js';
@@ -38,7 +38,9 @@ export function initVoiceTab(root) {
   audio.arm();
   const cov = voiceCoverage(), keys = Object.keys(ISAO_TRIGGERS);
   const total = keys.reduce((a, k) => a + ISAO_TRIGGERS[k].lines.length, 0);
-  let picks = readPicks(storage.getItem(VOICE_STORE)), filter = 'all', query = '', playing = null, lastPreview = new Map(), scene = null, beds = [], timers = [], auto = 0;
+  // a drop that retired lines leaves their ids in the stored picks: they go, and the pruned picks are saved
+  const stored = readPicks(storage.getItem(VOICE_STORE)), knownIds = new Set(keys.flatMap((k) => ISAO_TRIGGERS[k].lines.map((l) => l.id)));
+  let picks = prunePicks(stored, knownIds, new Set(keys)), filter = 'all', query = '', playing = null, lastPreview = new Map(), scene = null, beds = [], timers = [], auto = 0;
   const save = () => { storage.setItem(VOICE_STORE, writePicks(picks)); paintHead(); };
 
   const el = document.createElement('section'); el.className = 'voice-lab';
@@ -160,6 +162,7 @@ export function initVoiceTab(root) {
   });
   $('[data-q]').addEventListener('input', (ev) => { query = ev.target.value; paintList(); });
   for (const s of ['[data-db]', '[data-duck]']) $(s).addEventListener('input', (ev) => ev.target.dispatchEvent(new Event('change', { bubbles: true })));
+  if (writePicks(picks) !== writePicks(stored)) storage.setItem(VOICE_STORE, writePicks(picks));
   paintHead(); paintList(); paintGaps();
   if (new URLSearchParams(location.search).get('acceptance') === '1') window.__stalheartVoiceTest = { coverage: () => ({ unwired: cov.unwired, silent: cov.silent.length, wired: keys.length - cov.unwired.length }), picks: () => JSON.parse(writePicks(picks)), audio: () => ({ context: audio.contextState, voices: audio.voices, active: audio.activeVoices.map((v) => v.key) }), scene: () => scene };
   return { setActive() {}, dispose() { stopScene(); clearInterval(auto); audio.dispose(); el.remove(); delete window.__stalheartVoiceTest; } };

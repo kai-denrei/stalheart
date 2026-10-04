@@ -64,6 +64,12 @@ clock += 1.6; say(sfx, 'x', { text: 'b' }); clock += 0.1; queued.length = 0; say
 clock += 1.6;
 clock += 1.6; picks = { muted: false, off: new Set(['a_01']), quiet: new Set() };
 ok('a switched-off take is not said for its words', say(sfx, 'a', { text: '1' }) === null || say.log.at(-1).id !== 'a_01');
+// onStart: the moment the line is heard, with the line (a countdown's beats run from there); never for a line dropped
+clock += 11; let heard = null; say(sfx, 'a', { onStart: (l) => { heard = l.id; } }); await tick();
+ok('onStart hands over the line as it plays', heard && heard.startsWith('a_'));
+clock += 11; heard = null; let release2; const slow2 = { prime: () => new Promise((res) => { release2 = res; }), play: () => {} };
+say(slow2, 'a', { onStart: () => { heard = 'late'; } }); clock += 2; release2(true); await tick();
+ok('and never for a line that came too late', heard === null);
 ok('keys', voiceKey('a_01') === 'isao_a_01');
 
 console.log(`\n${n - bad}/${n} passed`);

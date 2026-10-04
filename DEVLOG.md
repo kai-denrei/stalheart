@@ -49,6 +49,21 @@ Evidence:
 - --opening (new): the landing waits on the gate, the click lands it, the thrust bed starts in the descent; Isao said mission_02, rough_landing_01, so_much_to_build_01 in that order; a beacon pinged, each once
 - test/isao-voice.mjs 23/23 (shown words, the wait for a free voice), test/voice-match.mjs 26/26, test/voice-hooks.mjs 36/36, test/start-gate.mjs; npm test, check, build green
 
+## 2026-10-04 — Isao's second voice drop (155 lines, 51 retired, 52 new) taken whole, retired ids pruned from the picks, and SOL's automated count runs on the countdown line's beats
+
+change · accepted · 2026-10-04-isao-voice-second-drop-and-the-count-on-his-beats
+
+Owner, 2026-10-04: several voices reworked in ~/Dev/seiyu_voice; take the new master's export whole per its contract: look events up by slug or alias, never the same id twice running, qualifiers are game-side conditions, a countdown fires number k at beats[k] after playback starts, key saved data on id and drop references to ids that no longer exist, a trigger the game does not know is a new event to wire.
+
+seiyu_voice main = origin/main ac4aaa8 (A-1, 2026-10-04T05:47:34Z, unapproved). scripts/import-isao-voice.mjs replaced the lines whole: 155 in the same 48 triggers, aliases unchanged; 51 ids retired (their files deleted), 52 added, the 103 kept byte-identical; no new trigger to wire. No code or test named a retired id; the stored picks now drop retired ids and trigger keys (src/domain/voice-match.js prunePicks: the game on reading, the voice tab on loading, saved back). The countdown: an automated SOL pass asks for a sol_firing line as it arrives (isaoSpeak, with onStart: the moment the line is heard); once heard, SOL FIRING IN k shows at its beats (src/domain/laser-auto.js countdownTimes; a two-beat line's 1 a second after its 2, the strike a second after the last); no line within 0.6 s (voice off, decoding) keeps the plain one-second count. The 'SOL FIRING IN 3...' callout no longer starts the voice. docs/ISAO-UNVOICED-LINES.md regenerated (187 lines).
+
+Alternatives: Starting the voice beats[0] early against the existing count: the line would have to be chosen and decoded before the count's first second, and a two-beat line still ends out of step
+
+Evidence:
+
+- a probe on the defence base with the sound on: sol_firing_05 heard at 0 s, the 3, 2, 1 at 1.12, 2.12, 3.12 s against beats 1.111, 2.111, 3.111
+- test/laser-auto.mjs countdownTimes, test/voice-match.mjs prunePicks and the pinned count, test/isao-voice.mjs onStart; npm test, check; --voice, --opening and the default suite. --round9 fails at its stampede callout on e511e778 too (before this change), so its SOL part is checked by the probe
+
 ## 2026-10-04 — The gunship's flickering 'layered planet' was the WebGL FLIR pass swapping the composer's buffers into its depth-less target; the NaN guard of the eighteenth notes did not fix it
 
 issue · accepted · 2026-10-04-gunship-flicker-the-flir-pass-swapped-into-the-depthless-target

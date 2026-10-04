@@ -63,6 +63,11 @@ export function readPicks(raw) {
   return { muted: v?.muted === true, off: ids(v?.off), quiet: ids(v?.quiet), db: within(v?.db, PICK_DB) ?? 0, duck: within(v?.duck, PICK_DUCK) };
 }
 export const dbGain = (db) => 10 ** ((db ?? 0) / 20);
+// a voice drop retires ids (seiyu_voice's contract: an id never changes meaning, but lines are replaced and demoted): the picks keep
+// only the line ids and trigger keys the current table has. `ids` and `keys` are Sets
+export function prunePicks(p, ids, keys) {
+  return { ...p, off: new Set([...p.off].filter((id) => ids.has(id))), quiet: new Set([...p.quiet].filter((k) => keys.has(k))) };
+}
 export function writePicks(p) {
   return JSON.stringify({ muted: !!p.muted, off: [...p.off].sort(), quiet: [...p.quiet].sort(), ...(p.db ? { db: p.db } : {}), ...(p.duck != null ? { duck: p.duck } : {}) });
 }

@@ -27,3 +27,13 @@ export function densestTarget(bodies, { radius, metres, sample = 160 }) {
   }
   return best ? [best[0], best[1], best[2]] : null;
 }
+
+// THE COUNT FOLLOWS THE VOICE (the seiyu_voice contract, 2026-10-04: "for kind countdown, fire number k at beats[k] seconds after
+// playback starts"): `n` numbers counted down, the k-th shown at beats[k] from the line's start; a line that counts fewer numbers than
+// `n` ("three... two... light them up!") has the rest follow a `step` apart. Without a line, the plain clock: 0, 1, 2. The strike
+// lands a `step` after the last number. Returns { at: [seconds per number, n first], end }.
+export function countdownTimes(beats, n = 3, step = 1) {
+  const at = [];
+  for (let k = 0; k < n; k++) at.push(Array.isArray(beats) && Number.isFinite(beats[k]) ? beats[k] : k === 0 ? 0 : at[k - 1] + step);
+  return { at, end: at[n - 1] + step };
+}

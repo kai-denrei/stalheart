@@ -8,7 +8,6 @@ import { ISAO_TRIGGERS } from './isao-voice.js';
 // trigger -> extra aliases: brief ids, callout texts (matched on their start) or event names
 export const VOICE_HOOKS = Object.freeze({
   sector_brief: Object.freeze(['sector_1', 'sector_2', 'sector_3', 'sector_4', 'sector_5']),
-  sol_firing: Object.freeze(['SOL FIRING IN 3…']),   // the automated pass's countdown opens at 3 (src/fx/laser-arsenal.js)
   ram_chain_milestones: Object.freeze(['RAM ×10', 'RAM ×25', 'RAM ×50']),
   hull_lost: Object.freeze(['MÖRK DOWN!']),
   // the arrival's close-up, line by line (owner, 2026-10-04: "Isao says rough landing and another line about building"): its first two
@@ -19,11 +18,12 @@ export const VOICE_HOOKS = Object.freeze({
 
 // the callout and toast texts the game shows that a trigger answers (src/td-tab.js showCallout, showToast and the modules' host.callout)
 export const VOICE_CALLOUTS = Object.freeze(['SECTOR SECURE', 'STAMPEDE — RAM THEM', 'SOFT ONES — KEEP THE CHAIN', 'TACTICAL NUKE LAUNCHED',
-  'THE WALL IS BREACHED', 'BREACH SEALED', 'STILL OPEN · NEXT SEGMENT', 'SOL FIRING IN 3…', 'RAM ×10', 'RAM ×25', 'RAM ×50', 'MÖRK DOWN!', 'PLASMA DRY']);
+  'THE WALL IS BREACHED', 'BREACH SEALED', 'STILL OPEN · NEXT SEGMENT', 'RAM ×10', 'RAM ×25', 'RAM ×50', 'MÖRK DOWN!', 'PLASMA DRY']);
 
 // named moments the game raises itself (not a brief, not a callout): the landing's mission card, a new enemy's card, a sentry's print
-// standing, the next hull out of its berth, a sector lost, the armory's pad loading shells (src/fx/isao-voice.js isaoSpeak)
-export const VOICE_EVENTS = Object.freeze(['mission', 'first_contact', 'print_done', 'hull_rebuilt', 'sector_lost', 'shells_refilled']);
+// standing, the next hull out of its berth, a sector lost, the armory's pad loading shells, an automated SOL pass's countdown (the count
+// then runs on the line's beats, src/fx/laser-arsenal.js) (src/fx/isao-voice.js isaoSpeak)
+export const VOICE_EVENTS = Object.freeze(['mission', 'first_contact', 'print_done', 'hull_rebuilt', 'sector_lost', 'shells_refilled', 'sol_firing']);
 
 // one line at a time, `gap` seconds of air after it; a trigger rests `repeat` seconds before it speaks again (the first time is always
 // said); a line whose file arrives more than `late` seconds after its moment is dropped rather than said out of place

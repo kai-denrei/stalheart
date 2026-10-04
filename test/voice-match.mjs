@@ -1,7 +1,7 @@
 // voice-match — which trigger a game moment belongs to, and the line picker's rules, over the real generated table.
 import { ISAO_TRIGGERS } from '../src/content/isao-voice.js';
 import { VOICE_HOOKS } from '../src/content/voice-hooks.js';
-import { createVoiceIndex, eligible, pickLine, readPicks, writePicks, normText, dbGain } from '../src/domain/voice-match.js';
+import { createVoiceIndex, eligible, pickLine, readPicks, writePicks, normText, dbGain, prunePicks } from '../src/domain/voice-match.js';
 
 let n = 0, bad = 0;
 const ok = (label, cond) => { n++; if (cond) console.log('  ok  ', label); else { bad++; console.log('  FAIL', label); } };
@@ -13,7 +13,7 @@ ok('the build_* wildcard takes the other build briefs', ix.resolve('build_armory
 ok('a callout resolves on its text', ix.resolve('THE WALL IS BREACHED') === 'gate_broken' && ix.resolve('SECTOR SECURE') === 'sector_secure');
 ok('case, tags and spacing are ignored', ix.resolve('<b>sector  secure</b>') === 'sector_secure');
 ok('a callout with a tail still resolves', ix.resolve('SECTOR SECURE · +40 KG') === 'sector_secure');
-ok('the SOL countdown opens at 3 only', ix.resolve('SOL FIRING IN 3…') === 'sol_firing' && ix.resolve('SOL FIRING IN 2…') === null);
+ok('the SOL count does not start the voice (the pass does, and counts on its beats)', ix.resolve('SOL FIRING IN 3…') === null && ix.resolve('SOL FIRING IN 2…') === null);
 ok('RAM milestones only', ix.resolve('RAM ×10') === 'ram_chain_milestones' && ix.resolve('RAM ×11') === null && ix.resolve('RAM ×100') === null);
 ok('the sector briefs speak sector_brief', ix.resolve('sector_3') === 'sector_brief');
 ok('an unknown moment is silent', ix.resolve('nothing_here') === null && ix.resolve('') === null && ix.resolve(null) === null);
@@ -36,10 +36,13 @@ ok('the voice trim and the duck round-trip', cal.db === 6 && cal.duck === 0.3);
 ok('trim and duck out of range read as the defaults', readPicks('{"db":40,"duck":5}').db === 0 && readPicks('{"db":40,"duck":5}').duck === null);
 ok('no trim stored is 0 dB, no duck is the game\'s', readPicks('{}').db === 0 && readPicks('{}').duck === null && !('db' in JSON.parse(writePicks(readPicks('{}')))));
 ok('dB to gain', Math.abs(dbGain(6) - 1.995) < 0.001 && dbGain(0) === 1 && Math.abs(dbGain(-20) - 0.1) < 1e-9);
+{ const pr = prunePicks({ muted: false, off: new Set(['mission_01', 'mission_04']), quiet: new Set(['gone', 'idle']), db: 3, duck: 0.5 }, new Set(['mission_04']), new Set(['idle']));
+  ok('a retired id leaves the picks; the rest stay', [...pr.off].join() === 'mission_04' && [...pr.quiet].join() === 'idle' && pr.db === 3 && pr.duck === 0.5); }
 ok('malformed picks read as all on', !readPicks('{nope').muted && readPicks(null).off.size === 0 && readPicks('{"off":[3,"x"]}').off.size === 1);
 
 let lines = 0; for (const t of Object.values(ISAO_TRIGGERS)) lines += t.lines.length;
-ok(`the table carries 154 lines in 48 triggers (${lines})`, lines === 154 && Object.keys(ISAO_TRIGGERS).length === 48);
+const pinned = JSON.parse((await import('node:fs')).readFileSync(new URL('../docs/isao-voice-audio.lock.json', import.meta.url), 'utf8')).files.length;
+ok(`the table carries every pinned line (${lines} of ${pinned}) in its 48 triggers`, lines === pinned && Object.keys(ISAO_TRIGGERS).length === 48);
 const ids = Object.values(ISAO_TRIGGERS).flatMap((t) => t.lines.map((l) => l.id));
 ok('line ids are unique', new Set(ids).size === ids.length);
 

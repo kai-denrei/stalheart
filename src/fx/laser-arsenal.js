@@ -11,10 +11,11 @@
 // a sphere of radius R about the origin. R = 10 / cellSide, so a scene point times R is the same point in metres.
 import * as THREE from '../../vendor/three.module.js';
 import { LASER_ORBIT, LASER_BEAM, LASER_BURN, LASER_GAME, LASER_CONTACT_RATE, LASER_SMOKE_RATE, LASER_SOUNDS, LASER_STRUCTURES, LASER_AUTO, LASER_PLATFORMS } from '../content/orbital-laser.js';
-import { densestTarget } from '../domain/laser-auto.js';
+import { densestTarget, countdownTimes } from '../domain/laser-auto.js';
 import { makeLaser, stepLaser, aimLaser, burnLaser, burnContacts, laserProgress, clampToRange, inFootprint, laserStrip } from '../domain/orbital-laser.js';
 import { createOrbitalLaser } from './orbital-laser.js';
 import { BLOCKED } from '../dungeon.js';
+import { isaoSpeak } from './isao-voice.js';
 
 const METRES_PER_CELL = 10;
 const NOTHING = Object.freeze({ soft: 0, hard: 0, wall: 0, rock: 0, tower: 0, seal: 0, tank: 0, heart: 0, structure: 0 });
@@ -157,7 +158,7 @@ export function createLaserArsenal(scene, host) {
   }
 
   function edge(e) {
-    if (e === 'arrive') { laser?.setSource(null); count = auto ? LASER_AUTO.countdown : 0; said = -1; passes++; if (!special) host.brief?.(auto ? LASER_AUTO.brief : 'laser_pass');   /* a pass laid over a place (the canyon) has its own one line (2026-10-03: three messages, one should suffice) */ autoT = 0; autoAim = null; }
+    if (e === 'arrive') { laser?.setSource(null); startCount(); passes++; if (!special) host.brief?.(auto ? LASER_AUTO.brief : 'laser_pass');   /* a pass laid over a place (the canyon) has its own one line (2026-10-03: three messages, one should suffice) */ autoT = 0; autoAim = null; }
     if (e === 'close') { lift(); if (mannedThisPass) manned++; mannedThisPass = false; autoAim = null; if (special) { special = null; normalPass(); st.energy = beam.energy; } host.passEnded?.(); }
     return e;
   }
@@ -176,10 +177,23 @@ export function createLaserArsenal(scene, host) {
   const unsafe = (u) => { const r = (beam.radius + LASER_AUTO.safeMetres) / metres(), r2 = r * r; return friends.some((f) => (f[0] - u[0]) ** 2 + (f[1] - u[1]) ** 2 + (f[2] - u[2]) ** 2 < r2); };
   // SOL FIRING IN 3… 2… (owner, 2026-10-02: "same as TACTICAL NUKE message"): an automated pass holds its fire `LASER_AUTO.countdown`
   // seconds after it arrives and calls each second out, so the strike is announced before it lands
-  let count = 0, said = -1;
+  // ON ISAO'S BEATS (2026-10-04): the pass asks him for a countdown line as it arrives; once it is heard, number k shows at its beats[k]
+  // (src/domain/laser-auto.js countdownTimes). A line that does not start within `COUNT_WAIT` (his voice off, or still loading) leaves
+  // the count to the plain one-second clock
+  const COUNT_WAIT = 0.6;
+  let cd = null;   // { t, at: null until the clock is chosen, shown }
+  function startCount() {
+    cd = auto && !special ? { t: 0, at: null, shown: 0 } : null;
+    if (cd) { const mine = cd; isaoSpeak('sol_firing', { onStart: (line) => { if (cd === mine && !mine.at) { mine.at = countdownTimes(line.beats, LASER_AUTO.countdown); mine.t = 0; } } }); }
+  }
   function automatedAim(dt) {
     if (!auto || seated || special || st.phase !== 'overhead') return null;
-    if (count > 0) { const n = Math.ceil(count); if (n !== said) { said = n; host.callout?.(`SOL FIRING IN ${n}…`); } count -= dt; return null; }
+    if (cd) {
+      cd.t += dt;
+      if (!cd.at && cd.t >= COUNT_WAIT) { cd.at = countdownTimes(null, LASER_AUTO.countdown); cd.t = 0; }
+      if (cd.at) { while (cd.shown < cd.at.at.length && cd.t >= cd.at.at[cd.shown]) { host.callout?.(`SOL FIRING IN ${LASER_AUTO.countdown - cd.shown}…`); cd.shown++; } if (cd.t >= cd.at.end) cd = null; }
+      return null;
+    }
     autoT -= dt;
     if (autoT <= 0 || !autoAim) {
       autoT = LASER_AUTO.retarget;

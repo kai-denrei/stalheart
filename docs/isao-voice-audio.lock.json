@@ -1,27 +1,27 @@
 {
  "schema": 2,
- "source": "seiyu_voice export A-1 2026-10-03T14:22:47Z: 24 kHz mono WAV, encoded by scripts/import-isao-voice.mjs to mono 64 kbps MP3, no normalisation",
+ "source": "seiyu_voice export A-1 2026-10-04T05:47:34Z: 24 kHz mono WAV, encoded by scripts/import-isao-voice.mjs to mono 64 kbps MP3, no normalisation",
  "files": [
   {
-   "path": "assets/audio/isao/mission_01.mp3",
-   "id": "mission_01",
-   "sha256": "020f466e29eaee74ef0bbaaa4f56e9b9387d08ff99492bff3f21c0abfcd1fec5",
-   "bytes": 44372,
-   "sourceSha256": "bfe8b095521e0d02582323aa1f576a1b5f21b3c9759e01beaca55a9eeee311a0"
+   "path": "assets/audio/isao/mission_04.mp3",
+   "id": "mission_04",
+   "sha256": "f59c515ef41d31fe3c7080924f88fbf08a49895f768e4333974ff7fe35b8b0d9",
+   "bytes": 24212,
+   "sourceSha256": "48ba845b15f87a50e99bc6d34e9fa63f33c3fd8db892061a506d8c7a605d08d7"
   },
   {
-   "path": "assets/audio/isao/mission_02.mp3",
-   "id": "mission_02",
-   "sha256": "32bdc548c7ce4ce0b5b98990685638ed1387746e93b5c084ea14c1c6fc99a227",
-   "bytes": 36308,
-   "sourceSha256": "0a20c49f3df639d68e86224a18db057b079584cdf6bbf248c9d331df097920af"
+   "path": "assets/audio/isao/mission_05.mp3",
+   "id": "mission_05",
+   "sha256": "be80921e9f8acc95a6e815bd63257dd3ba6fb0cd3372efc5f388a02fef13ff60",
+   "bytes": 26900,
+   "sourceSha256": "f143b141e9a00d29aef282ff58c81fc7745b38ad1a0a23186ef6e0532d8cecde"
   },
   {
-   "path": "assets/audio/isao/mission_03.mp3",
-   "id": "mission_03",
-   "sha256": "577a312b9e3585df8f8270360e1e8f41fadd916142140ffb4fc62f336eb7f34b",
-   "bytes": 28820,
-   "sourceSha256": "03bb1585ee0967dcacc642fa72dd792d99bd76f3c838bc2ae39500241e05f806"
+   "path": "assets/audio/isao/mission_06.mp3",
+   "id": "mission_06",
+   "sha256": "074aaccfb97750538c904aecd33ff4f9a1c4447e750877c0d17de8fdd4d20f5e",
+   "bytes": 20948,
+   "sourceSha256": "bf93133ff54af4ce57f458d35f7e610253fe0b91b75f6b3cc8b1b338425ed4fb"
   },
   {
    "path": "assets/audio/isao/rough_landing_01.mp3",
@@ -31,18 +31,18 @@
    "sourceSha256": "562bc928b75705489f606bd680e25460f84c9f0c8719c649417da53b2175b9cf"
   },
   {
-   "path": "assets/audio/isao/rough_landing_02.mp3",
-   "id": "rough_landing_02",
-   "sha256": "3903ebca683bddb56ab5e16fbe240c996590fa2889da3671f8dd9d66d79c7893",
-   "bytes": 20756,
-   "sourceSha256": "a34fb6dd3dcf5d00605cf9b8c39da1651fd6b1fb7fd597a98df1520ac8159232"
+   "path": "assets/audio/isao/rough_landing_05.mp3",
+   "id": "rough_landing_05",
+   "sha256": "10ffffe854e12b372fef7b0b2f8bdbaeb417daaf7a60fd79291b20673762dbf5",
+   "bytes": 13268,
+   "sourceSha256": "38a959518a515ba214aa8f122e4979c0fba933f8676ac705c22c0bdd03d0c661"
   },
   {
-   "path": "assets/audio/isao/rough_landing_03.mp3",
-   "id": "rough_landing_03",
-   "sha256": "28835fcf91d46281aa9356665b851fce464895ac26de68861633e4ec85b00475",
-   "bytes": 24980,
-   "sourceSha256": "bacb2597b98af25c0c00a3bfce08a4ad6b46a5302a1242a6ed66a126657b4782"
+   "path": "assets/audio/isao/rough_landing_04.mp3",
+   "id": "rough_landing_04",
+   "sha256": "8143286ca115c10691bb5a613ad72d510b2fbe94ae0e14cc726365688f67370c",
+   "bytes": 25748,
+   "sourceSha256": "c160fc1e093832ada05d1563e2bb221be11652176416c493d083a4187806c9af"
   },
   {
    "path": "assets/audio/isao/so_much_to_build_01.mp3",
@@ -66,39 +66,39 @@
    "sourceSha256": "1cbbe2af97b4e002f35a81cb4dc77b98b42425fe8236392a3a26f57f35595cf6"
   },
   {
-   "path": "assets/audio/isao/foundry_deploy_01.mp3",
-   "id": "foundry_deploy_01",
-   "sha256": "3f8c727338786555a63fcd5c39f6e8c901e36680fc54931aeec1d853169bd888",
-   "bytes": 26132,
-   "sourceSha256": "9998a2ad190e324a8d2533fba6381aace7503ec791a27b2d17cf0772a2f0d261"
+   "path": "assets/audio/isao/foundry_deploy_04.mp3",
+   "id": "foundry_deploy_04",
+   "sha256": "e5df91c95ab36ccc1a9edeec08cd45708b23412ffd8851178ad26dcfb51db222",
+   "bytes": 30932,
+   "sourceSha256": "5cd461ec15b8f7a5866da047c836b5f412a5c38562a3dfc172d8da45b0bc0b01"
   },
   {
-   "path": "assets/audio/isao/foundry_deploy_02.mp3",
-   "id": "foundry_deploy_02",
-   "sha256": "b95a25a7517d338cc57b3fadbe35b5a0d80a4fe0c0db10acc0cb67ddebbd6f8d",
-   "bytes": 16916,
-   "sourceSha256": "76faad9b64ec1543a49019a301fea1fcab8c1fb7afae8af3abd291d1fab8846f"
+   "path": "assets/audio/isao/foundry_deploy_05.mp3",
+   "id": "foundry_deploy_05",
+   "sha256": "79347e844149b84b58d724556e54d879a6ffa990af3bfa1de4130b004ae8e140",
+   "bytes": 15572,
+   "sourceSha256": "bf78e42498059c6c45608bad46e781b1c026cc487cd6d0682fe1741158f5751d"
   },
   {
-   "path": "assets/audio/isao/foundry_deploy_03.mp3",
-   "id": "foundry_deploy_03",
-   "sha256": "b4573072942b97efefaeceef5d10baf4eb5f1e1e685af42f015af1c431c2a7b5",
-   "bytes": 24212,
-   "sourceSha256": "f7c8b6bdf82b84e78280a3673bee895c34f4a546f1bf044f210c7747f29c0067"
+   "path": "assets/audio/isao/foundry_deploy_06.mp3",
+   "id": "foundry_deploy_06",
+   "sha256": "48f58cd8106c4b4829c067f54433a6b8f35f93e37a87d6886ed62665b579813d",
+   "bytes": 25940,
+   "sourceSha256": "206fb00b2ed05f194c4751a1624f821da1a6366e7fd5627392f3c8bff3ba5039"
   },
   {
-   "path": "assets/audio/isao/sites_seen_01.mp3",
-   "id": "sites_seen_01",
-   "sha256": "64fbd5f0c6eb4df70a2a9532c2b741b53ffae9ed968a1e93b10aa31720b4dcbe",
-   "bytes": 18644,
-   "sourceSha256": "c10e8d199f150fea8cb59260bf744842defd3a9f98d4ff23611374b56cebb48f"
+   "path": "assets/audio/isao/sites_seen_05.mp3",
+   "id": "sites_seen_05",
+   "sha256": "5fdca757da64054a6acce96839c2173d73e6c9b65d53b52256d3396795bad06b",
+   "bytes": 26900,
+   "sourceSha256": "5e06f5fed38d6785e139288015d03ab65189e515a4f231d9fce803ae1887d103"
   },
   {
-   "path": "assets/audio/isao/sites_seen_02.mp3",
-   "id": "sites_seen_02",
-   "sha256": "19bc13e253f5a5873fbbd93787a5ec6b41d871a9a85e6703df637da39037c189",
-   "bytes": 35732,
-   "sourceSha256": "3f11519226a71b83ccfd47d3c005c7696bdb65e658c098a1df390bc8e0797467"
+   "path": "assets/audio/isao/sites_seen_06.mp3",
+   "id": "sites_seen_06",
+   "sha256": "49f1bc71798525dabefc5f28c51d3595b9bab08080d8c36791387e87e2e62986",
+   "bytes": 19028,
+   "sourceSha256": "c7dadb3420ee97eb13224020096ca665b8a9bacfef9c36bfc691757f5cf0304d"
   },
   {
    "path": "assets/audio/isao/sites_seen_03.mp3",
@@ -108,11 +108,11 @@
    "sourceSha256": "3ad0e73dea4b63bb16b10e4e3d5fecaf0fb4fc42d1a8fd617fea591824e477ca"
   },
   {
-   "path": "assets/audio/isao/sites_seen_04.mp3",
-   "id": "sites_seen_04",
-   "sha256": "fa02f09a37b5f1df1f25aa7acdab468e1de8f055953ab430c23e6926d525590f",
+   "path": "assets/audio/isao/sites_seen_07.mp3",
+   "id": "sites_seen_07",
+   "sha256": "1dd7d8b83bcf662c402820bbbcd5bfa6360ccec3d8aceff9b52dd2f9ce4bcccd",
    "bytes": 27476,
-   "sourceSha256": "1badb717212b85ee0f40f80aa8195fa9e7f6eac88e458faf6991b7b8bdc75487"
+   "sourceSha256": "ee258137fdd3ed48ae92baa7b5a8444eed675b1fbe5caa60825f4b97e06b4dae"
   },
   {
    "path": "assets/audio/isao/site_cleared_01.mp3",
@@ -136,11 +136,11 @@
    "sourceSha256": "cbe5e0f8d886bb3509b794979020f6141b345cfe3375b2c78c863af3b756ffb4"
   },
   {
-   "path": "assets/audio/isao/site_cleared_04.mp3",
-   "id": "site_cleared_04",
-   "sha256": "3af1ba9680994516baef10957b6fb435b9dc90ab6839ab827ddfba64db3ca273",
-   "bytes": 31124,
-   "sourceSha256": "b529864c351032577a7f3c36063ee6cbe9a71fa27aaac83d0820994518f56645"
+   "path": "assets/audio/isao/site_cleared_05.mp3",
+   "id": "site_cleared_05",
+   "sha256": "e4ac1b8f2b2a6e3dc8bbb22508e0694c04cd8a8528c745722ce9ba9543518eea",
+   "bytes": 19412,
+   "sourceSha256": "a8e9ec2a20cdc2a7c795609ecc7788e7df0ce8e21a1c88305eccc50a8a51e423"
   },
   {
    "path": "assets/audio/isao/build_start_01.mp3",
@@ -213,11 +213,11 @@
    "sourceSha256": "faa1c134a5bb7907a6bc7b6f83a26680445a8d227513699f66bbead8be0e4297"
   },
   {
-   "path": "assets/audio/isao/build_gate_02.mp3",
-   "id": "build_gate_02",
-   "sha256": "40d8d3fd5056630e6050194408e5b7ad53c12c9ece8da4cd81ee8d21fbe87cc9",
-   "bytes": 20564,
-   "sourceSha256": "3a61b61c627d3f4039b169d4c9b8520c8d4217c31784679ce4656f647c483282"
+   "path": "assets/audio/isao/build_gate_03.mp3",
+   "id": "build_gate_03",
+   "sha256": "0c1d00fb330bc72b2343e829e4a75791050044bf82c39a064e4a0fab5cca5bef",
+   "bytes": 29972,
+   "sourceSha256": "26574f50ebe1ad14a1de6042cc85bad96980ed45e4ff00dff9561d04fc0ee7de"
   },
   {
    "path": "assets/audio/isao/stalheart_begins_01.mp3",
@@ -241,25 +241,25 @@
    "sourceSha256": "3777b29142d0fb326bb894b2f71cc7e523c1b417debfd6b135150ac372a64b34"
   },
   {
-   "path": "assets/audio/isao/stalheart_begins_04.mp3",
-   "id": "stalheart_begins_04",
-   "sha256": "7061f158d73471b27b2fdbee7ab20fd8613a15a6e7a399c2af8702fe3145db78",
-   "bytes": 22868,
-   "sourceSha256": "5de45deead1a52002fa90fd356a425a020357d50f5f5ac241b988fc72e6c50d6"
+   "path": "assets/audio/isao/stalheart_begins_05.mp3",
+   "id": "stalheart_begins_05",
+   "sha256": "6048562a777c877347cfb0da06da5b72089fb943743d85eb03920ab10b1c6c00",
+   "bytes": 27668,
+   "sourceSha256": "657e32cc935a1ef7a6428e4b9c4f9f17064d346d528c486ad5d12173d3c641ad"
   },
   {
-   "path": "assets/audio/isao/build_garage_01.mp3",
-   "id": "build_garage_01",
-   "sha256": "dda4cd16b9ed71719d80b1f7189c45e40c33b3867777b04c2371397d9391b1e9",
-   "bytes": 25748,
-   "sourceSha256": "a6d0df4b69d94c799d0db82713bab6a5993a44438f2d3881beeaebc3e2bdd803"
+   "path": "assets/audio/isao/build_garage_06.mp3",
+   "id": "build_garage_06",
+   "sha256": "785fc0f37bc5fa5237ab486722d2c169bccfe45615a68d16d302076e50a5955f",
+   "bytes": 21524,
+   "sourceSha256": "a1f55529dca1338678ab10aa89d5c89278a3c065113a01dafd821f833e5dd428"
   },
   {
-   "path": "assets/audio/isao/build_garage_02.mp3",
-   "id": "build_garage_02",
-   "sha256": "700e835f1df7e3152ea89729b712c0d40b63eda6a77e2be375ca9eee313d8267",
-   "bytes": 23636,
-   "sourceSha256": "b7eab1c76ca3a28ca507d1eeae1e02eb69f0224eba2680b114269935aacd636c"
+   "path": "assets/audio/isao/build_garage_05.mp3",
+   "id": "build_garage_05",
+   "sha256": "3252e66a9b911dcfd7b26b23153d2d012fb196e18eff4485612e1297a8005674",
+   "bytes": 22676,
+   "sourceSha256": "8440d05139c888564eae7326e11fd941be1f90f93c33ffe93ee8f0f789e9e814"
   },
   {
    "path": "assets/audio/isao/build_garage_03.mp3",
@@ -283,25 +283,25 @@
    "sourceSha256": "426ac2c3982e6c986a5792734ef99ed616fa0787a20b31dc4fc8207ceebd848f"
   },
   {
-   "path": "assets/audio/isao/manual_override_02.mp3",
-   "id": "manual_override_02",
-   "sha256": "6aba9a75fd9747ace06e219e8ae11bf77d06de9df99c4127502f2712dd86f3b7",
-   "bytes": 35348,
-   "sourceSha256": "6f75ea9aa7b1e2b984ea02849fd94f52d6088aae43881e3c09435ddc353cfeab"
+   "path": "assets/audio/isao/manual_override_06.mp3",
+   "id": "manual_override_06",
+   "sha256": "549877af868c5671a057fc9ff32401a65a2997e4618dfdbb4cd1ab106b6759ed",
+   "bytes": 31316,
+   "sourceSha256": "9d8246fb0f1276728b4530173e8c3c9e6913d60c2369718aa24820558fea207e"
   },
   {
-   "path": "assets/audio/isao/manual_override_03.mp3",
-   "id": "manual_override_03",
-   "sha256": "0aa120ea126f338de81b759ba6a500bc663fbfe38361b452c5762604abe7b104",
-   "bytes": 24020,
-   "sourceSha256": "8753fd3f16383a5a30b24e117c776f753bb1ff8afa5ff175d7e4f4baccb50431"
+   "path": "assets/audio/isao/manual_override_05.mp3",
+   "id": "manual_override_05",
+   "sha256": "e12b2ce60e910231003f716b406ee3163c2e2030b73508fc873938a3532ef3f8",
+   "bytes": 16724,
+   "sourceSha256": "863981cb8653b60cd52a532b69846d4b132087bedcc1b940e90890ad8e5acd63"
   },
   {
-   "path": "assets/audio/isao/manual_override_04.mp3",
-   "id": "manual_override_04",
-   "sha256": "ad2648c2eb40abd8072e2e6f9b393ae64b36ecb3dfdb9720e5b7e5ed1b5539cf",
-   "bytes": 19796,
-   "sourceSha256": "43a293efa655c4519fad179ef0314b42fac3a889274928f56e1e72a6f0401a62"
+   "path": "assets/audio/isao/manual_override_07.mp3",
+   "id": "manual_override_07",
+   "sha256": "13253a271d7ac7c0f91a1a6264db6705a32a02b187dc7cc8f112fd5a27fa0ddf",
+   "bytes": 19412,
+   "sourceSha256": "c802ce22b10725ac410411df6e9d79dd901e4e8d4cb6ff9a7f7836aab813e9c0"
   },
   {
    "path": "assets/audio/isao/quiver_override_01.mp3",
@@ -311,25 +311,25 @@
    "sourceSha256": "80db3e0042555b279d3271696594dcb157ed5a5b5f980455f6df876ddc35137a"
   },
   {
-   "path": "assets/audio/isao/quiver_override_02.mp3",
-   "id": "quiver_override_02",
-   "sha256": "730a4d36cde7128c32cfc9d7f35dc88376ab92ec770b98b341b045e18ed6f834",
+   "path": "assets/audio/isao/quiver_override_05.mp3",
+   "id": "quiver_override_05",
+   "sha256": "1d54f0ff25d40f31ccca8eda24ee478b62dc55637dc209dd6ad5c75bbba28ea1",
+   "bytes": 27668,
+   "sourceSha256": "f1e813078b94a64d607ad6c4275ab1c69fd03efb4afd5e05ac81b3a61dd7e662"
+  },
+  {
+   "path": "assets/audio/isao/quiver_override_06.mp3",
+   "id": "quiver_override_06",
+   "sha256": "73d16beffa463ab7486c491d5187360171c2f4ceef61a38918ae257567beae77",
    "bytes": 28820,
-   "sourceSha256": "25646a91a3349d9f8fc76772558a7a623665de1224860321e93e8cb841f71608"
+   "sourceSha256": "0118d53342ad52711d5bc6823b37ad819439adfe53051a2c4d3c921552cbc4a5"
   },
   {
-   "path": "assets/audio/isao/quiver_override_03.mp3",
-   "id": "quiver_override_03",
-   "sha256": "e8504b02d5d38693fadd74994ce9fc11b3d39d1f1ada2a8a6d95b30bd92c1092",
-   "bytes": 19412,
-   "sourceSha256": "dab840d212c9bf431a2cba79511dc41cf1db4755dd4713500638374c30485f7a"
-  },
-  {
-   "path": "assets/audio/isao/quiver_override_04.mp3",
-   "id": "quiver_override_04",
-   "sha256": "0433255c181edfa62a355b25fbd498996d951492fa5914435d71465ab245ecf8",
-   "bytes": 16532,
-   "sourceSha256": "4d697778ea202b9fb3e59b4c1001f2638a42d19c739e65b6fa040ba62fbdb920"
+   "path": "assets/audio/isao/quiver_override_07.mp3",
+   "id": "quiver_override_07",
+   "sha256": "ea4b826721b0889386c2a3972848b0837c8ae9392ddbe1c3eacc07d2ec80fa6d",
+   "bytes": 28436,
+   "sourceSha256": "b8a64f09f82a418295c353ad98ca3698c3ee124058204b2f7d7f2055a3482574"
   },
   {
    "path": "assets/audio/isao/good_hit_01.mp3",
@@ -367,11 +367,11 @@
    "sourceSha256": "f76847f405c44198af5a41ac284f1b1262060933efe2805c75399e4e339fb61f"
   },
   {
-   "path": "assets/audio/isao/gunship_overhead_03.mp3",
-   "id": "gunship_overhead_03",
-   "sha256": "77dfe71f36ddab78b5b043e0d4cb48d72eea1069ef9daf45bc1ca2ac39f7db5c",
-   "bytes": 20756,
-   "sourceSha256": "5eb552fa79a6e10179ef8acc04e7498deef95392b1554b7aa523d05e60a5a8d0"
+   "path": "assets/audio/isao/gunship_overhead_04.mp3",
+   "id": "gunship_overhead_04",
+   "sha256": "318b1e6cec880b066c3fca8c848ed30cdb1d0f6edacfb0e841aca079df4da529",
+   "bytes": 29396,
+   "sourceSha256": "d8d4bb34ee7ad0d1fcaaafd3cb9d25786e26a296947bbd69097b642c36f6cc32"
   },
   {
    "path": "assets/audio/isao/mk9_release_01.mp3",
@@ -388,25 +388,25 @@
    "sourceSha256": "19b6392786e3c3ac3bc05c6acec946ec2fa7c7de3c1abf35099511c25ef28169"
   },
   {
-   "path": "assets/audio/isao/mk9_release_03.mp3",
-   "id": "mk9_release_03",
-   "sha256": "94563b96132f292670b64cb2f514006812fb0d5098427750b20faf580d0b715c",
-   "bytes": 22676,
-   "sourceSha256": "3e558bf94b54944128e4ae46702351b8a99dbe3153a310e3fdb8eed8e8833815"
+   "path": "assets/audio/isao/mk9_release_06.mp3",
+   "id": "mk9_release_06",
+   "sha256": "87304282b30735c140d0e3405734874f8f59526e401640bd60e37a9e8b530df1",
+   "bytes": 14804,
+   "sourceSha256": "5431f68ce67642f70673fb21c706c7d95377fe2e528f9b35622111a3f6ed205e"
   },
   {
-   "path": "assets/audio/isao/mk9_release_04.mp3",
-   "id": "mk9_release_04",
-   "sha256": "7a604e35cb590bd89a6ae5c74b27f7d4aae844021317e1cc54ecdacdb7de26d9",
-   "bytes": 17300,
-   "sourceSha256": "1082ee7c5da8a6629729666e8fb6ba3c8c437c6f99867639a9a3ca3a7289050c"
+   "path": "assets/audio/isao/mk9_release_07.mp3",
+   "id": "mk9_release_07",
+   "sha256": "731f059e7bc633b9a8bc7717dacbfa6d85d45e39f164390a7ff64520d52acd44",
+   "bytes": 28628,
+   "sourceSha256": "25f52878018ca61e633490e7caa5b687f0c958fa259dd278e9835fb59208e21d"
   },
   {
-   "path": "assets/audio/isao/mk9_release_05.mp3",
-   "id": "mk9_release_05",
-   "sha256": "4aab19eee22c640b22ed587e69dd6c0b6c1bb935c3621d31c486db01061e1f8c",
-   "bytes": 18452,
-   "sourceSha256": "84183eacbfde08e2182f0abab9986c892d68782db68ee9b7fe7c13872e9f47a6"
+   "path": "assets/audio/isao/mk9_release_08.mp3",
+   "id": "mk9_release_08",
+   "sha256": "8ce2dcae57f05b78d555de1f18b7b71fb2a0eb6bfebe6305bd2aa0e68294f1a0",
+   "bytes": 24020,
+   "sourceSha256": "b0758d344e1face348abf9b10bdb263cd47e77acf5deae6e96ba2f78b893a858"
   },
   {
    "path": "assets/audio/isao/mk9_lands_01.mp3",
@@ -430,46 +430,53 @@
    "sourceSha256": "70fa7f18be503c6c51c3ed02ec62d971818af20bc024435d484da7ebe1f8895e"
   },
   {
-   "path": "assets/audio/isao/gunship_calibrated_01.mp3",
-   "id": "gunship_calibrated_01",
-   "sha256": "033aa0f2ab1247471d4525670f56626476f906e3576eba6092da6c3490b732b0",
-   "bytes": 26324,
-   "sourceSha256": "db0aa8d2edb714bded5d7938c37bc948ed801c0d711df36eca1fa6fd324d6150"
+   "path": "assets/audio/isao/gunship_calibrated_04.mp3",
+   "id": "gunship_calibrated_04",
+   "sha256": "40438c20657fad94b34eed63a6a03c9194dee66c7d9e7cae791ecbdc62ca8195",
+   "bytes": 21332,
+   "sourceSha256": "1fadce8a05054a2b1a0a021cdbea07990bca3495bec89b64e855aec764a21f0b"
   },
   {
-   "path": "assets/audio/isao/gunship_calibrated_02.mp3",
-   "id": "gunship_calibrated_02",
-   "sha256": "629447afa85c6a8175c3c8cf85240ed01b7315fe88c7c0260cb13454954f8a2f",
-   "bytes": 36692,
-   "sourceSha256": "f301ca216704e3445204bfc7f8d5c744778b4c22623587056e59da80e17b609c"
+   "path": "assets/audio/isao/gunship_calibrated_05.mp3",
+   "id": "gunship_calibrated_05",
+   "sha256": "894f87e7c80d9cdba8e3664152bf99e2caf2c295d7f006472f0812375a5d759d",
+   "bytes": 28436,
+   "sourceSha256": "9f7f7e4325cdb2065381821588321da792cd258a7ca1e08b2b4b2f0f6dcb3620"
   },
   {
-   "path": "assets/audio/isao/gunship_calibrated_03.mp3",
-   "id": "gunship_calibrated_03",
-   "sha256": "7cb1803b48e690ee9ded49ceb953c874ce41cd66dddb084c67ed15184bd45678",
-   "bytes": 33428,
-   "sourceSha256": "edb835e57ed9df97efc8c88625e86b1d36469747a703f54bb74a1f1d0d753fc5"
+   "path": "assets/audio/isao/gunship_calibrated_06.mp3",
+   "id": "gunship_calibrated_06",
+   "sha256": "f0c0a30a5476cb6863a3cb92e8c950331e7a0950c9cfbcd7fdc749d4bdc0d803",
+   "bytes": 30548,
+   "sourceSha256": "fa02d96ab8818dafd022a9e91ba7bdca1585526e40f10532c6733aded4d4a105"
   },
   {
-   "path": "assets/audio/isao/canyon_pass_01.mp3",
-   "id": "canyon_pass_01",
-   "sha256": "4d644705f1947f98191c298ce5cf5d580fd68acaeaacc43c308ae99b3c74109a",
+   "path": "assets/audio/isao/canyon_pass_05.mp3",
+   "id": "canyon_pass_05",
+   "sha256": "9c3e21bc150b2a0a8e550f8a26bd546561c26da83cd02dcfdd09237b33999cf0",
+   "bytes": 27284,
+   "sourceSha256": "9978ba54fc38426247f0e5ccea17cc84482a80e2ce21a3812732e6c8c6c3869c"
+  },
+  {
+   "path": "assets/audio/isao/canyon_pass_06.mp3",
+   "id": "canyon_pass_06",
+   "sha256": "5c3c13c5c988398eebc2ae2df5a9cd363cff3f4b4f161acc74265240fb9d9d31",
+   "bytes": 34196,
+   "sourceSha256": "0dd7ebab8bb37fc393ce6f6573811466182b0e24405089e2d3bf0af93d55ed2b"
+  },
+  {
+   "path": "assets/audio/isao/canyon_pass_07.mp3",
+   "id": "canyon_pass_07",
+   "sha256": "5ea6bea635993b3b792153ab0a15a1775af93f1e82cccc778224d400507a2a7c",
    "bytes": 28052,
-   "sourceSha256": "0b6d0b9ce2819e4798eb0c566aeb7389a69d9d8379b57d2f10a3a6da25060b7a"
+   "sourceSha256": "89bd84ae1a1c3e6dd7a7deab70e42ba4c4004678759507f5caff553873123037"
   },
   {
-   "path": "assets/audio/isao/canyon_pass_02.mp3",
-   "id": "canyon_pass_02",
-   "sha256": "42ba277d090084667e76710d70308720f091f2b5114d4359349facc845130c5c",
-   "bytes": 18260,
-   "sourceSha256": "09cc34c1ce6045f9aa8f28c55905ada58b53cdcf6776ab826d441cf23aee537d"
-  },
-  {
-   "path": "assets/audio/isao/canyon_pass_03.mp3",
-   "id": "canyon_pass_03",
-   "sha256": "510b56435826d8009e76bb0bceb260fd7eb7be35e97845a6eade097d524cc074",
-   "bytes": 25940,
-   "sourceSha256": "cd5a6870759137b5ffd8bef02b50d11b785fa7eeb0e81e89eb25d9746528f6c3"
+   "path": "assets/audio/isao/canyon_pass_04.mp3",
+   "id": "canyon_pass_04",
+   "sha256": "cbd98568661c0d82615eb161487f595b75fb6418aad8a59879012ccf4fa6ab0d",
+   "bytes": 25364,
+   "sourceSha256": "de74f31d36cb6b7cf95894381d3dbb83112b558f9059ae1b4121a276aa1e0b2b"
   },
   {
    "path": "assets/audio/isao/sol_firing_01.mp3",
@@ -479,11 +486,11 @@
    "sourceSha256": "2c716ff7453e52619998bc16c9ce618ccea9b0e89f54847a30d64f1cbd4203fa"
   },
   {
-   "path": "assets/audio/isao/sol_firing_02.mp3",
-   "id": "sol_firing_02",
-   "sha256": "6e9d7d8a93eefe478d5ef2fbf19bed03f1d25ebe266ada1d767bb9ad10813bb7",
-   "bytes": 33620,
-   "sourceSha256": "d272afba6a4a371070d202e2b5eec7c94997ce1bd50cf2198be2418bf3c0db9a"
+   "path": "assets/audio/isao/sol_firing_05.mp3",
+   "id": "sol_firing_05",
+   "sha256": "656919fa6f9e3d2e4247093abe068fbd58af75096f77cb872c0b88c4cea99480",
+   "bytes": 31124,
+   "sourceSha256": "8c05771acbdaa7a5516c59b9fb7de8e43037cb6fdbe7701a58a3deb5be082871"
   },
   {
    "path": "assets/audio/isao/sol_firing_03.mp3",
@@ -500,11 +507,11 @@
    "sourceSha256": "ea0c7d3a791f79f66ba854d18e9844738db10c6729a4d62e044a4f782de23d9d"
   },
   {
-   "path": "assets/audio/isao/laser_calibrated_01.mp3",
-   "id": "laser_calibrated_01",
-   "sha256": "07e9eb73b6093a808e158b2bf5368f404b819555b5ecb28c06668ec959e1025b",
-   "bytes": 31124,
-   "sourceSha256": "5ba7fafb7ffced37dad608ac3ff16b5e3da50b45935c67faf19d662ccf999eca"
+   "path": "assets/audio/isao/laser_calibrated_04.mp3",
+   "id": "laser_calibrated_04",
+   "sha256": "680b32463c80f925545a305538d47bc11b1b08bc5b287693e4bdeba4573be0b8",
+   "bytes": 19796,
+   "sourceSha256": "b44ae885388904622f16be04d350b0e051ae8a30c20a179460cce18b93d2fb0b"
   },
   {
    "path": "assets/audio/isao/laser_calibrated_02.mp3",
@@ -535,11 +542,11 @@
    "sourceSha256": "84730bb367acb1fd3a79b27afb9f958f4384a85087a1c735812ba6597d7cddbc"
   },
   {
-   "path": "assets/audio/isao/sol88_charge_03.mp3",
-   "id": "sol88_charge_03",
-   "sha256": "9f18bc90b3ecd21ccbf5f02fbb2a2ade6fbabd21262c5fcc8f242b56bb3660eb",
-   "bytes": 17492,
-   "sourceSha256": "4f5bf7b868975dab2776b6d4c14523d96fb4b0de023eeb4955ae6a5dbc14c624"
+   "path": "assets/audio/isao/sol88_charge_05.mp3",
+   "id": "sol88_charge_05",
+   "sha256": "faee175e5f6b4b02d82a7db7759a9aaa7ac731e6c3d05a2162a40c510a532dae",
+   "bytes": 22100,
+   "sourceSha256": "8b8243a35e4eed4f890156434d842fec1182e007aa8baa3087a6ab644b1a262e"
   },
   {
    "path": "assets/audio/isao/sol88_charge_04.mp3",
@@ -549,11 +556,11 @@
    "sourceSha256": "666b60aedf9d92cda780ae140b473b3f5cc6eece30a57df476152918a4f123eb"
   },
   {
-   "path": "assets/audio/isao/tremor_01.mp3",
-   "id": "tremor_01",
-   "sha256": "e17ce8931f7a6f85430282f37e212de179a40fbebe93e3777e000b47d6fb4de3",
+   "path": "assets/audio/isao/tremor_04.mp3",
+   "id": "tremor_04",
+   "sha256": "ae73bb794973ca4679fee68719e2ec57bc641a63f9206880dfd53699e6960822",
    "bytes": 14804,
-   "sourceSha256": "0fce16bb26a1d7b19a69f501bc198b89b517c6f0425679d99c5744a7a50cb021"
+   "sourceSha256": "6012a78192e6ea4eef843b8275850f46dc51fb37f885ae063e6f9569f50bf716"
   },
   {
    "path": "assets/audio/isao/tremor_02.mp3",
@@ -563,11 +570,11 @@
    "sourceSha256": "a56a02579ba240ed9fe3e8e377d06d4e0c1c3b53a45c304e949cd3db87953789"
   },
   {
-   "path": "assets/audio/isao/tremor_03.mp3",
-   "id": "tremor_03",
-   "sha256": "dde7513704024d22a4456df6bc84e6d2c3a27e8bf8c3d840cb28a7ce97317dcc",
-   "bytes": 11924,
-   "sourceSha256": "16003615df39e01db7a2e2e7f281c6694798f3e352a71441f4e02a9a3f173235"
+   "path": "assets/audio/isao/tremor_05.mp3",
+   "id": "tremor_05",
+   "sha256": "57dafa8557d8bfe1fa4c1098c39c3c4bc8b69578feb2c425f6d12fbe8547677e",
+   "bytes": 16724,
+   "sourceSha256": "009ea192ccedd66b09d6b48af0e9a139c0a3f6941e968cec52d9da5f613bb39f"
   },
   {
    "path": "assets/audio/isao/first_contact_01.mp3",
@@ -591,18 +598,18 @@
    "sourceSha256": "4545cda8d0c1b8117d94f6c69c8c0004c2770309b995aefb325621bf768a36b7"
   },
   {
-   "path": "assets/audio/isao/first_contact_04.mp3",
-   "id": "first_contact_04",
-   "sha256": "1127282dfe0d30cce6e7ec9e58edf11af9e1ce4e495fd9385676a6d2a6cdfe95",
-   "bytes": 17876,
-   "sourceSha256": "ff7393b38faada48ceaa1210a539d9b2d49d1902363c72da7e1825e1b94196b9"
+   "path": "assets/audio/isao/first_contact_06.mp3",
+   "id": "first_contact_06",
+   "sha256": "17bdec6b3b9f4143ee5baa95d9bd9b6507f9fe20118598c9450ef57083dbae0a",
+   "bytes": 21524,
+   "sourceSha256": "b2ce8bcd045318332f9aa1d5e82a4c7769c341020fff23b0409d00c7ebb8cf94"
   },
   {
-   "path": "assets/audio/isao/first_contact_05.mp3",
-   "id": "first_contact_05",
-   "sha256": "cd6abe86ff71f60aa28d62091f131b33b25dec79a4335de1e0f2391e67adcd9c",
-   "bytes": 15764,
-   "sourceSha256": "69606ac5f21e9cc89a53f23d79919abb39713310cd74d91b364febb0337a4d09"
+   "path": "assets/audio/isao/first_contact_07.mp3",
+   "id": "first_contact_07",
+   "sha256": "c7844cd3985c9bb8210d9d543ee49444a78c6568d22500270ca1f176b8f6d9fc",
+   "bytes": 15956,
+   "sourceSha256": "3e88ebac7c6306ac2b5703f61e5c40ae8946cc8c06f005ffc28d149eec730982"
   },
   {
    "path": "assets/audio/isao/stampede_ram_them_01.mp3",
@@ -626,18 +633,18 @@
    "sourceSha256": "72c59dd6dd1b5d21ffa84c8289aee2d80439f8df25968a340645fc770d06c9cb"
   },
   {
-   "path": "assets/audio/isao/soft_ones_keep_the_chain_01.mp3",
-   "id": "soft_ones_keep_the_chain_01",
-   "sha256": "68f067d3bb532ea17ae291671bde80453e710b13f2f2f7f893c3c793e1b9419a",
-   "bytes": 20756,
-   "sourceSha256": "08ebdea90a2bcad0199b17bf8f4b612d74f269816ccc743ba22323d93061a9e2"
+   "path": "assets/audio/isao/soft_ones_keep_the_chain_04.mp3",
+   "id": "soft_ones_keep_the_chain_04",
+   "sha256": "24542628c17c01921f4568c5c18191c2e280ccdfdbe751ce6851a3d8fcf36c31",
+   "bytes": 18836,
+   "sourceSha256": "417fbe02870cf2a76235303ba39de56d08b81c2b37be1337334e2d0ba4f4db43"
   },
   {
-   "path": "assets/audio/isao/soft_ones_keep_the_chain_02.mp3",
-   "id": "soft_ones_keep_the_chain_02",
-   "sha256": "272c5deac65aa1edbd277ccb737472a0a7a7585305c8bc4b70d4bf0e7d6b728c",
-   "bytes": 23252,
-   "sourceSha256": "6b4f05b8479888076eb607025a5e19df27831ff124c084229614ae9a82614aed"
+   "path": "assets/audio/isao/soft_ones_keep_the_chain_05.mp3",
+   "id": "soft_ones_keep_the_chain_05",
+   "sha256": "10bff21ec23794037b46d7ab8a58bc208fa0dacc1c7becc74690f0a30ffa57c3",
+   "bytes": 19796,
+   "sourceSha256": "4e8f1ff1e099ce91bc21efdedf46615ed9f8c20bf924efaad0c14333fec5df64"
   },
   {
    "path": "assets/audio/isao/soft_ones_keep_the_chain_03.mp3",
@@ -668,18 +675,18 @@
    "sourceSha256": "800d7029b654717eaf63c9318c7f73420cb6db776c2b24c1e995af3638310eea"
   },
   {
-   "path": "assets/audio/isao/chain_broken_01.mp3",
-   "id": "chain_broken_01",
-   "sha256": "316f2fe759ca9a0ea0e9fed2ab12c35ee03c4d818de3c94f5ce168a366a6f9f4",
-   "bytes": 12884,
-   "sourceSha256": "35c1d01ce632c89818f97de93aec09e861ea0548f6ddec48110ef7e14354df4f"
+   "path": "assets/audio/isao/chain_broken_03.mp3",
+   "id": "chain_broken_03",
+   "sha256": "a2a5e28d96eac31d6effd26273a849e8591bcd5806cffba9145a22c1363d7df9",
+   "bytes": 10388,
+   "sourceSha256": "36cd5471d8750daab5beab5f0bbb292c7ab46485d03b5265073551747bd86bbc"
   },
   {
-   "path": "assets/audio/isao/chain_broken_02.mp3",
-   "id": "chain_broken_02",
-   "sha256": "fdefabf7b968a1d85f2caa649fa78643657a04af99ac00578bad1899e9960dd8",
-   "bytes": 15956,
-   "sourceSha256": "e4a3e65cdc8f1635b198aca573242c1d8bd5d9d4df6d85969865e7726e054c77"
+   "path": "assets/audio/isao/chain_broken_04.mp3",
+   "id": "chain_broken_04",
+   "sha256": "26c44d4a10208ddc2f1a5f7e0c593de4cb72e6512a88214fa768dbcaaf87c102",
+   "bytes": 14804,
+   "sourceSha256": "746184077fb7b19f16691194162690b923f59e536e36bb406e15d53c2f2683e3"
   },
   {
    "path": "assets/audio/isao/gate_half_01.mp3",
@@ -738,11 +745,11 @@
    "sourceSha256": "1fcb816cfe6ce04ba42bed8e34ed5038382f98d5934b388b964b7921cfaed6a2"
   },
   {
-   "path": "assets/audio/isao/gate_broken_05.mp3",
-   "id": "gate_broken_05",
-   "sha256": "1756855709bee8818aabf8938be32d885d70fa7e426806bf74ecf7f6c3cb5834",
-   "bytes": 38420,
-   "sourceSha256": "ce41645b8fbb25d69a9e416a614bbc544e279876fa6ab2cf552726069716d393"
+   "path": "assets/audio/isao/gate_broken_06.mp3",
+   "id": "gate_broken_06",
+   "sha256": "01e0be58948951ed910be00b99767005ae1de272d9a22b700335e6cf8812b78f",
+   "bytes": 16340,
+   "sourceSha256": "9a09be2a305ebebe791cf00a299848216dff4b37babe9f08f4469897e158b3ad"
   },
   {
    "path": "assets/audio/isao/heart_hit_01.mp3",
@@ -808,11 +815,11 @@
    "sourceSha256": "16033124f8160bfcf56cf10dc63a0cd895cc995d223464af8b2627b4043e3b2e"
   },
   {
-   "path": "assets/audio/isao/breach_sealed_04.mp3",
-   "id": "breach_sealed_04",
-   "sha256": "7f52a2530064ea33565fabf01b1a39531295d87796c85fc73b9e784e6beba147",
-   "bytes": 18260,
-   "sourceSha256": "1ba0be81021c6ee96cd5b4e7760c2d8ad049cae66c2c31dc3e138dae016873fc"
+   "path": "assets/audio/isao/breach_sealed_05.mp3",
+   "id": "breach_sealed_05",
+   "sha256": "5b8ac56157d1d90b889dc5ed97b88a1b6de61751153663b411081fe38f2bc54d",
+   "bytes": 24788,
+   "sourceSha256": "1ef302e169090fea83a5db7cf29b55f429039c95d6a837c8c1a51f7d3dd8599e"
   },
   {
    "path": "assets/audio/isao/gate_mended_01.mp3",
@@ -829,11 +836,11 @@
    "sourceSha256": "384848ce1b95b3e2ca9c19073a9b898a258e924da156e0319f805f4b792705f9"
   },
   {
-   "path": "assets/audio/isao/sector_brief_01.mp3",
-   "id": "sector_brief_01",
-   "sha256": "8a98abe582b0d48cb4419412c79a1a0a2038bd10aa3019ec4d40f5b77ae715d3",
-   "bytes": 25172,
-   "sourceSha256": "2c8ab4d5f584b1a212feac2fd3308c30aa3f0f4d217c9436cf19e94bd4a93023"
+   "path": "assets/audio/isao/sector_brief_04.mp3",
+   "id": "sector_brief_04",
+   "sha256": "4cd8d1caf2b93f77e3a595bc71814bb60b4870e5f6e5bbaafd7ae944c9fbab04",
+   "bytes": 16148,
+   "sourceSha256": "b4686b38769c58968cfe4bb7fcc8870dece5a3b65220e4be07318e8ea83e0123"
   },
   {
    "path": "assets/audio/isao/sector_brief_02.mp3",
@@ -892,18 +899,18 @@
    "sourceSha256": "5b87ead1969a15e40501b82c770af90806e281dbe712d58a419d97600c28667a"
   },
   {
-   "path": "assets/audio/isao/back_door_02.mp3",
-   "id": "back_door_02",
-   "sha256": "22e8f6ede8c847fd6bb65b2d7d2e7abe332877770cac96a65d549368ade5f6d8",
-   "bytes": 20180,
-   "sourceSha256": "cad09d8f218d023f9b8594c075aed8683ef80657d9b39a7a383f10657ca27c5f"
+   "path": "assets/audio/isao/back_door_05.mp3",
+   "id": "back_door_05",
+   "sha256": "a7009a454a6b6cc255848a12b5924adcf68fa8bb9126e3f5abfa167f4ae181fc",
+   "bytes": 18836,
+   "sourceSha256": "f4a4f11e2d9121bbf07ad7dc8da565965844e07979d26fd06e8c36d9e78052ce"
   },
   {
-   "path": "assets/audio/isao/back_door_03.mp3",
-   "id": "back_door_03",
-   "sha256": "85c68818bb9a9fd26a7aab50569d8551e1a5a74ca7f4ea5d7bcbcc5563d4008c",
-   "bytes": 14612,
-   "sourceSha256": "31dd75712dd0cbae31b33ce7fd62960ed30447195cabb465bcde779b7ed49ee1"
+   "path": "assets/audio/isao/back_door_04.mp3",
+   "id": "back_door_04",
+   "sha256": "371749845cae4282fa2967cb93cb32e425c12c3af0cee4be3346cc13a32f0c1f",
+   "bytes": 17684,
+   "sourceSha256": "d7e532ade69bde63c216d08762326f5be43c89470342d1fb068cfd7b5cfe78de"
   },
   {
    "path": "assets/audio/isao/canyon_rises_01.mp3",
@@ -913,11 +920,11 @@
    "sourceSha256": "822de185cd402003b7f9259a86d81280eb5a60013792cfab7e997d42167d95c4"
   },
   {
-   "path": "assets/audio/isao/canyon_rises_02.mp3",
-   "id": "canyon_rises_02",
-   "sha256": "e1f694cc9596d4d592134dd58862d621f12592c74bcde49b88b05aab176a2b64",
-   "bytes": 29396,
-   "sourceSha256": "cbdd39dc68c67e1abcf1c463710edf5c3854937d1d7290a2dbff12786808af1a"
+   "path": "assets/audio/isao/canyon_rises_03.mp3",
+   "id": "canyon_rises_03",
+   "sha256": "49b6434343dccce02963e70e546eee824c4f57e0932bfb845be0543d0f8e8f64",
+   "bytes": 29972,
+   "sourceSha256": "315655045399abbf427e38dd34ca7267cc27defb8c36800481c3d820a218f738"
   },
   {
    "path": "assets/audio/isao/array_charging_01.mp3",
@@ -1025,11 +1032,11 @@
    "sourceSha256": "00cbd457d460a4054f5690e51ac661434e20c696faa289ddf7bea62e2802b072"
   },
   {
-   "path": "assets/audio/isao/isao_strike_go_04.mp3",
-   "id": "isao_strike_go_04",
-   "sha256": "37dc138e43b08c3ac8d5c244d42fb0af1d3f26b9362a47bee77deee814041995",
-   "bytes": 18068,
-   "sourceSha256": "af445eb70f73c2c66b98131c1771aa3ac836f235b85c5f74cc38ef1d49e87382"
+   "path": "assets/audio/isao/isao_strike_go_07.mp3",
+   "id": "isao_strike_go_07",
+   "sha256": "ef0278905c89018579c6207880bb2b4d0ce4b026586d64cd6111db3e47458202",
+   "bytes": 25556,
+   "sourceSha256": "3f4b37f247c413d5b713cd57dfb451ef3452ddd1e5a3e1f5c59fa28e2fdd70d9"
   },
   {
    "path": "assets/audio/isao/isao_strike_go_05.mp3",
@@ -1067,11 +1074,11 @@
    "sourceSha256": "1e05c32cf0288eeb709928a85f20d6ebda64ede74c89b9e90992ff9a9fb8d09d"
   },
   {
-   "path": "assets/audio/isao/idle_04.mp3",
-   "id": "idle_04",
-   "sha256": "58cb5b9487ff0af662a35c12aa0d336ca386b918a5e97e7db97a857d97ecf422",
-   "bytes": 30740,
-   "sourceSha256": "9a85971fcdc4e2dadadf3bd0aca492f73f633d3b9293144e54ad8abe173be47e"
+   "path": "assets/audio/isao/idle_06.mp3",
+   "id": "idle_06",
+   "sha256": "41a7c06abf923f98b479a4d9545c3da9b0b394f76ca32eb2c47381afcbb01448",
+   "bytes": 33812,
+   "sourceSha256": "446ccc008b9eadea44fdd38ddb9c89bfd092a4ec94cc78b6f5213ecd1d94e95f"
   },
   {
    "path": "assets/audio/isao/idle_05.mp3",
