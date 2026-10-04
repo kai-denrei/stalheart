@@ -115,8 +115,8 @@ for(const file of storyAudio.files){
 }
 console.log('Pinned story gate audio verified.');
 {const lock=JSON.parse(readFileSync(resolve(root,'docs/beacon-audio.lock.json'),'utf8'));
- for(const file of lock.files){if(file.path!=='assets/audio/beacon_ping.mp3')throw Error('Unexpected beacon audio path');const bytes=readFileSync(resolve(root,file.path));if(bytes.length!==file.bytes||sha(bytes)!==file.sha256)throw Error('Beacon audio checksum mismatch, run scripts/synth-beacon-ping.sh: '+file.path);}
- console.log('Synthesised beacon ping verified.');}
+ for(const file of lock.files){if(!['assets/audio/beacon_ping.mp3','assets/audio/ambient_gust.mp3'].includes(file.path))throw Error('Unexpected story ambience path');const bytes=readFileSync(resolve(root,file.path));if(bytes.length!==file.bytes||sha(bytes)!==file.sha256)throw Error('Beacon audio checksum mismatch, run scripts/synth-beacon-ping.sh: '+file.path);}
+ console.log('Story ambience verified (beacon ping, ambient gust).');}
 const isaoVoice=JSON.parse(readFileSync(resolve(root,'docs/isao-voice-audio.lock.json'),'utf8'));
 for(const file of isaoVoice.files){
  if(!/^assets\/audio\/isao\/[a-z0-9_]+_\d\d\.mp3$/.test(file.path))throw Error('Unexpected Isao voice path');

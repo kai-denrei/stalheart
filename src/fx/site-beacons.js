@@ -18,7 +18,8 @@ function topOf(obj, n) {
   return c.addScaledVector(n, h);
 }
 
-// sites: [{ id, ci?: its lattice cell (the harness), point: unit vector, model?: () => Object3D }]; metres: scene units per metre
+// sites: [{ id, ci?: its lattice cell (the harness), point: unit vector, model?: () => Object3D, start?: seconds }]; metres: scene units per metre.
+// `start`: dark until then, its first pulse at that second (the landers' tour lights them one by one as the eye arrives, 2026-10-04)
 // onPulse(id): a beacon's pulse begins (its rocket found and lit), for its sound
 export function createSiteBeacons(scene, sites, { metres, color = 0xffb347, period = 5.5, flash = 1.6, reach = 70, streak = 60, fallback = 30, onPulse = null } = {}) {
   const group = new THREE.Group(); group.name = 'site beacons'; scene.add(group);
@@ -32,7 +33,7 @@ export function createSiteBeacons(scene, sites, { metres, color = 0xffb347, peri
     const ring = add(new THREE.RingGeometry(0.92, 1, 48)); ring.rotation.x = -Math.PI / 2;
     const ray = add(new THREE.CylinderGeometry(0.15 * metres, 0.9 * metres, 1, 8, 1, true));
     holder.add(flare, ring, ray); holder.visible = false; group.add(holder);
-    beams.set(s.id, { ci: s.ci ?? -1, holder, flare, ring, ray, n, model: s.model, placed: false, phase: (i * 0.37 % 1) * period, cycle: -1 });
+    beams.set(s.id, { ci: s.ci ?? -1, holder, flare, ring, ray, n, model: s.model, placed: false, phase: s.start != null ? period - (s.start % period) : (i * 0.37 % 1) * period, start: s.start ?? 0, cycle: -1 });
   });
   let time = 0, look = 0;
   return {
@@ -41,6 +42,7 @@ export function createSiteBeacons(scene, sites, { metres, color = 0xffb347, peri
       for (const [id, b] of beams) {
         if (!b.placed && look <= 0) { const top = topOf(b.model?.(), b.n); if (top) { b.holder.position.copy(top); b.placed = true; } }
         const u = ((time + b.phase) % period) / flash, cycle = Math.floor((time + b.phase) / period);
+        if (time < b.start) { b.holder.visible = false; continue; }
         b.holder.visible = u < 1;
         if (u >= 1) continue;
         if (cycle !== b.cycle) { b.cycle = cycle; if (b.placed) onPulse?.(id); }

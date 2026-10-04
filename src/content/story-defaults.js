@@ -66,6 +66,8 @@ export const STORY_SOUNDS = Object.freeze({
   gate_slam: { file: 'assets/audio/gate_slam.mp3', bus: 'ui', gain: 0.8, maxVoices: 1, minInterval: 0.5, rateJitter: 0.03 },
   // a lost lander's distress beacon, once per beacon (src/fx/site-beacons.js onPulse; scripts/synth-beacon-ping.sh)
   beacon_ping: { file: 'assets/audio/beacon_ping.mp3', bus: 'ui', gain: 0.7, maxVoices: 2, minInterval: 0.4, rateJitter: 0.02 },
+  // the planet's wind in a quiet stretch (owner, 2026-10-04: "small ambient sound when there's quiet once in a while"; src/fx/ambient-gust.js)
+  ambient_gust: { file: 'assets/audio/ambient_gust.mp3', bus: 'ambient', gain: 1, maxVoices: 1, minInterval: 20, rateJitter: 0.08 },
 });
 
 // Six engines under the skirt, each with its own cadence, so the cluster

@@ -41,6 +41,8 @@ import { LIVERY_IDS, DYE_SHOP } from '../content/dyes.js';
 import { makeDyeBook } from '../domain/dyes.js';
 import { openPaintShop, applyLivery } from './paint-shop.js';
 import { isaoSpeak } from './isao-voice.js';
+import { tourStops } from '../domain/story-shots.js';
+import { createAmbientGust } from './ambient-gust.js';
 import { BRIEFS } from '../isaobriefs.js';
 import { storage } from '../storage.js';
 import * as THREE from '../../vendor/three.module.js';
@@ -95,6 +97,7 @@ export function createProgrammeHost(c) {
         }
       }
       s.launch?.tick();
+      (s.gust ??= createAmbientGust(c.sfx)).tick(Math.max(0, Math.min(0.1, c.t() - (s.gustAt ?? c.t())))); s.gustAt = c.t();   // the wind in the quiet (src/fx/ambient-gust.js)
       // THE SCOREBOARDS (src/fx/scoreboard.js): two plaques on the slab once the step stands, the player's and Isao's, fed the run's books
       // every tick: the player gathers and kills, Isao uses and (once) kills. They face the Stålheart, not the gate: the player reads them from the base
       const dt = Math.max(0, Math.min(0.1, c.t() - (s.hostAt ?? c.t()))); s.hostAt = c.t();
@@ -112,7 +115,8 @@ export function createProgrammeHost(c) {
       // landing, each gone once its site is visited; Isao names them once
       if (!s.beacons && c.scene && s.sites?.length && (!c.shotId?.() || c.shotId() === 'sitesTour') && c.story().beats?.phase?.() !== 'landed') {   // not over the landing itself; over the landers' tour, yes
         const ids = STORY_EXPEDITIONS.sites.filter((x) => !x.reveal).map((x) => x.id);   // story.sites holds the first-wave sites' cells, in this order
-        s.beacons = createSiteBeacons(c.scene, s.sites.map((ci, i) => ({ id: ids[i], ci, point: c.graph().centers[ci], model: () => c.storyBase()?.structure(ids[i])?.holder })).filter((x) => x.id), { metres: c.cellSide() / 10, onPulse: (id) => { if ((s.pinged ??= new Set()).has(id)) return; s.pinged.add(id); c.sfx?.play?.('beacon_ping', { dist: 0 }); } });   // each beacon pings once, its first pulse
+        const stops = c.shotId?.() === 'sitesTour' ? tourStops(s.sites.slice(0, 3).length) : [];   // over the tour, each lights as the eye reaches it (src/domain/story-shots.js)
+        s.beacons = createSiteBeacons(c.scene, s.sites.map((ci, i) => ({ id: ids[i], ci, point: c.graph().centers[ci], model: () => c.storyBase()?.structure(ids[i])?.holder, start: stops[i] != null ? Math.max(0, stops[i] - 0.5) : undefined })).filter((x) => x.id), { metres: c.cellSide() / 10, onPulse: (id) => { if ((s.pinged ??= new Set()).has(id)) return; s.pinged.add(id); c.sfx?.play?.('beacon_ping', { dist: 0 }); } });   // each beacon pings once, its first pulse
         if (!c.pilotMode() && !c.briefQ()) showBrief('sites_seen');
       }
       if (s.beacons) { s.beacons.tick(dt); for (const x of s.expeditions?.sites ?? []) if (x.state !== 'hidden' && x.state !== 'guarded') s.beacons.drop(x.id); }
@@ -289,6 +293,6 @@ export function createProgrammeHost(c) {
     swell: () => (c.story()?.gsAuto ? GUNSHIP_AUTO.swell : 1) * (c.story()?.sol88 ? LASER_AUTO.swell : 1),
     // what the harness reads: the launch beat, the pad, the calibration
     gunshipAuto: () => ({ auto: !!c.story()?.gsAuto, manned: c.story()?.gsManned ?? 0, fly: c.story()?.gsFly?.state() ?? null }),
-    colony: () => ({ paintPad: c.story()?.paintPad?.ring ? { ...c.story().paintPad.ring.state(), cell: c.story().paintPad.cell } : null, shop: !!c.story()?.shop, beacons: c.story()?.beacons?.ids() ?? null, beaconPulse: c.story()?.beacons?.state() ?? null, beaconPings: [...(c.story()?.pinged ?? [])], gunship: { auto: !!c.story()?.gsAuto, manned: c.story()?.gsManned ?? 0, fly: c.story()?.gsFly?.state() ?? null, swell: c.story()?.gsAuto ? GUNSHIP_AUTO.swell : 1, budget: c.story()?.gsAuto ? GUNSHIP_AUTO.aliveBudget : null }, board: c.story()?.boards?.map((b) => b.state()) ?? null, isaoKills: c.story()?.isaoKills ?? 0, strike: c.story()?.strike?.state() ?? (c.story()?.strikeDone ? 'done' : null), dyes: c.story()?.dyes ?? null, shop: !!c.story()?.shop, painted: c.story()?.painted ?? 0, boardCell: (() => { const st = c.story()?.programme?.steps.find((x) => x.id === 'board'); return st ? c.story().print.cellOf(st) : -1; })(), launch: c.story()?.launch?.state() ?? null, works: c.story()?.works ? { ...c.story().works, ring: c.story().worksRing?.state() ?? null } : null, sol88: !!c.story()?.sol88, pad: c.story()?.armoryPad?.ring?.state() ?? null, cell: c.story()?.armoryPad?.cell ?? -1, calibrated: !!c.story()?.calibrated, manned: c.laserStation?.manned?.() ?? 0 }),
+    colony: () => ({ paintPad: c.story()?.paintPad?.ring ? { ...c.story().paintPad.ring.state(), cell: c.story().paintPad.cell } : null, shop: !!c.story()?.shop, beacons: c.story()?.beacons?.ids() ?? null, beaconPulse: c.story()?.beacons?.state() ?? null, beaconPings: [...(c.story()?.pinged ?? [])], gusts: c.story()?.gust?.gusts ?? 0, gunship: { auto: !!c.story()?.gsAuto, manned: c.story()?.gsManned ?? 0, fly: c.story()?.gsFly?.state() ?? null, swell: c.story()?.gsAuto ? GUNSHIP_AUTO.swell : 1, budget: c.story()?.gsAuto ? GUNSHIP_AUTO.aliveBudget : null }, board: c.story()?.boards?.map((b) => b.state()) ?? null, isaoKills: c.story()?.isaoKills ?? 0, strike: c.story()?.strike?.state() ?? (c.story()?.strikeDone ? 'done' : null), dyes: c.story()?.dyes ?? null, shop: !!c.story()?.shop, painted: c.story()?.painted ?? 0, boardCell: (() => { const st = c.story()?.programme?.steps.find((x) => x.id === 'board'); return st ? c.story().print.cellOf(st) : -1; })(), launch: c.story()?.launch?.state() ?? null, works: c.story()?.works ? { ...c.story().works, ring: c.story().worksRing?.state() ?? null } : null, sol88: !!c.story()?.sol88, pad: c.story()?.armoryPad?.ring?.state() ?? null, cell: c.story()?.armoryPad?.cell ?? -1, calibrated: !!c.story()?.calibrated, manned: c.laserStation?.manned?.() ?? 0 }),
   };
 }

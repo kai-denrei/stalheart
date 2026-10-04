@@ -190,7 +190,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
 // unit sphere; the pose is written into the host's camera goal.
 // from: { pos, quat } of the camera the hand-over starts in (another seat): the first `pull` of the shot backs out of it, up and away,
 // before the orbit round the new mount (owner, 2026-10-02: "switch from Rotor to Quiver should zoom out of the Rotor")
-export function takeControlPose(centre, normal, lane, cellSide, wallHeight, from = null, pull = 0.3) {
+export function takeControlPose(centre, normal, lane, cellSide, wallHeight, from = null, pull = 0.3, direct = false) {
   const c = new THREE.Vector3(...centre).multiplyScalar(1 + wallHeight), n = new THREE.Vector3(...normal).normalize();
   const toLane = new THREE.Vector3(...lane).sub(new THREE.Vector3(...centre)); toLane.sub(n.clone().multiplyScalar(toLane.dot(n))).normalize();
   const side = new THREE.Vector3().crossVectors(n, toLane).normalize();
@@ -203,6 +203,18 @@ export function takeControlPose(centre, normal, lane, cellSide, wallHeight, from
     tmp.lookAt(goal.pos, look, n); goal.quat.setFromRotationMatrix(tmp);
   };
   if (!from) return orbit;
+  // THE FIRST HAND-OVER DIVES (owner, 2026-10-04: "the view deep dives directly towards the rotor, without cut"): from wherever the eye is
+  // (the tour's or the free camera's planet view) straight down on an arc to the mount's shoulder, turning to the lane as it comes
+  if (direct) {
+    const end = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
+    orbit(1, end);
+    const lift = from.pos.distanceTo(end.pos) * 0.12;
+    return (u, goal) => {
+      const e = u * u * (3 - 2 * u), q = Math.min(1, u * 1.35), eq = q * q * (3 - 2 * q);
+      goal.pos.copy(from.pos).lerp(end.pos, e).addScaledVector(n, Math.sin(Math.PI * e) * lift * (1 - e));
+      goal.quat.copy(from.quat).slerp(end.quat, eq);
+    };
+  }
   // FROM ONE SEAT TO THE NEXT, THREE STATES (owner, 2026-10-03: "Rotor action is over. Entirely switch off, to a high view, so we see the
   // enemies in the distance, then it zooms back into the new sentry; the quiver. We need a clearer distinct change of states"): the eye
   // leaves the old optic and climbs to a HIGH VIEW over the new mount looking out down its lane (the swarm in the distance) by `pull`,

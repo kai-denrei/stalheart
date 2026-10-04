@@ -28,7 +28,7 @@ export const VOICE_EVENTS = Object.freeze(['mission', 'first_contact', 'print_do
 // one line at a time, `gap` seconds of air after it; a trigger rests `repeat` seconds before it speaks again (the first time is always
 // said); a line whose file arrives more than `late` seconds after its moment is dropped rather than said out of place
 // said on the voice bus; while a line plays the world's buses dip to `duck.depth` of their level so he sits over the ambient (2026-10-04)
-export const VOICE_TUNE = Object.freeze({ gap: 0.35, repeat: 12, late: 1.5, gain: 1, duck: Object.freeze({ buses: Object.freeze(['towers', 'tank', 'enemies']), depth: 0.45 }) });
+export const VOICE_TUNE = Object.freeze({ gap: 0.35, repeat: 12, late: 1.5, gain: 1, duck: Object.freeze({ buses: Object.freeze(['towers', 'tank', 'enemies', 'ambient']), depth: 0.45 }) });
 
 // the player's picks (the Workshop's voice tab): src/storage.js key
 export const VOICE_STORE = 'td.voice';

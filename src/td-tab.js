@@ -1,7 +1,7 @@
 import { createSentryPilot } from './sentry-pilot.js';
 import { DEFAULT_TANK, SHELL_SPEED, SHELL_REACH, TANK_DRIVE, TANK_STEER, TANK_WALL, TANK_KICK } from './content/tank.js'; import { makeDriveRamp, stepDriveRamp, scrubDriveRamp } from './domain/drive-ramp.js'; import { hullDepth, deepensContact } from './domain/hull-contact.js'; import { makeSteerEase, stepSteerEase, steerBank } from './domain/steer-ease.js'; import { baseFor, restoreSeatView } from './domain/seat-view.js'; import { BASE_REPAIR, BASE_BUILDER } from './content/base-programme.js';
 import { createGameBreaches } from './game-breaches.js'; import { ramShotPose } from './domain/showcase-shot.js';   /* THE RAM BEAT'S OWN FRAMING: low behind the hull (src/domain/showcase-shot.js; the band of cells it drives into is the showcase hooks') */
-import { createBoardSurface } from './fx/board-surface.js'; import { createCampaignDebrief, sparkline } from './fx/campaign-debrief.js'; import { createSectorRun } from './fx/sector-run.js'; import { createBackDoor } from './fx/back-door.js'; import { isaoFace, orbitFrame, sitesDir, sitesRadius, tourFrame } from './domain/story-shots.js';
+import { createBoardSurface } from './fx/board-surface.js'; import { createCampaignDebrief, sparkline } from './fx/campaign-debrief.js'; import { createSectorRun } from './fx/sector-run.js'; import { createBackDoor } from './fx/back-door.js'; import { isaoFace, orbitFrame, sitesDir, sitesRadius, tourFrame, tourSeconds } from './domain/story-shots.js';
 import { startDiveShot } from './fx/dive-shot.js'; import { createCameraShots } from './fx/camera-shot.js'; import { createIntegrityHud } from './fx/integrity-hud.js'; import { createSeatGlide } from './fx/seat-glide.js'; import { LOOK_TOAST } from './fx/arrival.js'; import { viewEdge, viewportLine } from './domain/view-edge.js'; import { boxOverlaps } from './domain/box-overlaps.js'; import { makeShaderWarmer } from './fx/shader-warm.js'; import { waveGap } from './domain/wave-spread.js';
 import { BREACH_SOUNDS } from './content/breach-defaults.js';
 import { SOUNDS } from './content/runtime.js';
@@ -1709,11 +1709,9 @@ export function initTdTab(root) {
           lifeContainers.push({ obj: g, tanks: [tank], ci, exit: exitCi });
         }
         syncLifeContainers();
-        // the FIRST SCENE: the opening hull drives out of its bay — if
-        // the player has not yet gone anywhere, restage them at the doors
-        // escapes=a,b,c is the invariant the operator's can't-get-out report
-        // turned into a rule: every berth must show at least 1, or auto-nav
-        // has nowhere to steer and the hull sits in the box forever
+        // the FIRST SCENE: the opening hull drives out of its bay — if the player has not yet gone anywhere, restage them at the
+        // doors escapes=a,b,c is the invariant the operator's can't-get-out report turned into a rule: every berth must show at
+        // least 1, or auto-nav has nowhere to steer and the hull sits in the box forever
         console.log(`CONTAINERS placed=${lifeContainers.length}`
           + ` cells=${berths.map((b2) => b2.ci).join(',')}`
           + ` spares=${Math.max(0, playerHP - 1)}`
@@ -1748,25 +1746,19 @@ export function initTdTab(root) {
       creaturePos = null;
       creatureGeo = null;
       playerMesh = dressMetal(buildCreature(params.creature, { walker: look().walker, walkerHi: look().walkerHi }));
-      // the PLAY size from the first frame, never the bare base: the base
-      // alone is ~27x the tank, and placeActors — which used to be the only
-      // place the unit scale was multiplied in — runs on events, so anything
-      // that skipped or threw between the two left an enormous tank on the
-      // board (operator, build f2a9aeca, desktop, mid-tutorial: "the tank
-      // got enormous … and now it seems fixed")
+      // the PLAY size from the first frame, never the bare base: the base alone is ~27x the tank, and placeActors — which used to
+      // be the only place the unit scale was multiplied in — runs on events, so anything that skipped or threw between the two
+      // left an enormous tank on the board (operator, build f2a9aeca, desktop, mid-tutorial: "the tank got enormous … and now it
+      // seems fixed")
       playerMesh.scale.setScalar(unitScale * (playerMesh.userData.baseScale ?? 1));
     }
     scene.add(playerMesh);
 
-    // minimap self-marker: a fat arrowhead nosing along the heading — the
-    // map is heading-up, so YOU are the big pulsing arrow pointing up.
-    // Sized against the SPHERE, not the cell: the map always frames the
-    // whole ball, so cell-relative sizes vanish on dense boards.
-    // Geometry pre-rotated so the cone's nose is +Z (lookAt convention).
-    // The radar draws YOU itself now. The arrow survives because
-    // placeActors drives its transform every frame — parked on the map
-    // layer, which nothing renders, so it stays invisible instead of
-    // suddenly appearing in the WORLD when the map renderer went away.
+    // minimap self-marker: a fat arrowhead nosing along the heading — the map is heading-up, so YOU are the big pulsing arrow
+    // pointing up. Sized against the SPHERE, not the cell: the map always frames the whole ball, so cell-relative sizes vanish on
+    // dense boards. Geometry pre-rotated so the cone's nose is +Z (lookAt convention). The radar draws YOU itself now. The arrow
+    // survives because placeActors drives its transform every frame — parked on the map layer, which nothing renders, so it stays
+    // invisible instead of suddenly appearing in the WORLD when the map renderer went away.
     markerMesh = new THREE.Mesh(
       new THREE.ConeGeometry(0.05, 0.115, 4).rotateX(Math.PI / 2),
       new THREE.MeshBasicMaterial({ color: look().marker }),
@@ -1788,11 +1780,9 @@ export function initTdTab(root) {
     const hPos = add3(hc, scale3(hn, params.wallHeight * 0.6 + cellSide * hlp.lift));
     heartSprite.position.set(hPos[0], hPos[1], hPos[2]);
     heartSprite.userData.sizeScale = cellSide * hlp.scale;
-    // APPLY IT NOW, not on the next frame. Both looks only read sizeScale
-    // inside tick(), so a freshly built Stalheart stands at its raw model
-    // size until the frame loop reaches it — which for the Terraformer is
-    // 2 world units, about THIRTY cells across. One tick settles it before
-    // anything is drawn.
+    // APPLY IT NOW, not on the next frame. Both looks only read sizeScale inside tick(), so a freshly built Stalheart stands at
+    // its raw model size until the frame loop reaches it — which for the Terraformer is 2 world units, about THIRTY cells across.
+    // One tick settles it before anything is drawn.
     heartSprite.userData.setHealth?.(heartHP / HEART_MAX);
     if (heartSprite.userData.tick) heartSprite.userData.tick(runContext.time);
     tmpN.set(hn[0], hn[1], hn[2]);
@@ -1922,12 +1912,10 @@ export function initTdTab(root) {
     bqM.makeBasis(bqX, bqY, bqZ);
     buildQ.setFromRotationMatrix(bqM);
   }
-  // Build mode drives now, so the free camera has a duty it did not have
-  // before: if the tank leaves the frame, swing to bring it back. Top-down
-  // is a real control mode only if the thing you are controlling cannot
-  // escape the screen. The follow NEVER fights a drag — a finger on the
-  // board owns the view outright — and it eases harder the further out the
-  // tank is, so a nudge at the edge is gentle and an off-screen tank is not.
+  // Build mode drives now, so the free camera has a duty it did not have before: if the tank leaves the frame, swing to bring it
+  // back. Top-down is a real control mode only if the thing you are controlling cannot escape the screen. The follow NEVER fights
+  // a drag — a finger on the board owns the view outright — and it eases harder the further out the tank is, so a nudge at the
+  // edge is gentle and an off-screen tank is not.
   const followQ = new THREE.Quaternion();
   const followV = new THREE.Vector3();
   // A deliberate pan SUSPENDS the follow — on a phone you explore in
@@ -8330,9 +8318,10 @@ export function initTdTab(root) {
     screen: (id) => { if (id !== 'synthetic') return; syntheticModal ??= createSyntheticModal(root); const was = paused; paused = true; syntheticModal.open(BRIEFS.vibration_study.lines, () => { paused = was; }); },
     pilot: (ci, laneCi) => {
       if (pilot?.gunship || laserStation.seated()) return;   // a scripted hand-over never evicts a gunner or SOL-82: the beat is deferred, not the player (2026-09-23)
-      const from = pilotMode ? { pos: camera.position.clone(), quat: camera.quaternion.clone() } : null, perch = perchOf(towerByCell.get(ci) ?? { ci }), lit = from && highlightSeat(scene, perch, graph.normals[ci], cellSide);   // from one seat to the next: back out, the next one lit (owner, 2026-10-02)
+      const seat = pilotMode, from = { pos: camera.position.clone(), quat: camera.quaternion.clone() }, perch = perchOf(towerByCell.get(ci) ?? { ci }), lit = seat ? highlightSeat(scene, perch, graph.normals[ci], cellSide) : null;   // from one seat to the next: back out, the next one lit (owner, 2026-10-02)
       seatGlide.begin(camera); enterPilot([ci, ...towers.map((t) => t.ci).filter((c) => c !== ci)]); showCallout(`${(TOWER_BY_KEY[towerByCell.get(ci)?.key]?.label ?? 'sentry').replace(/^\d+\.\s*/, '').toUpperCase()} MANUAL OVERRIDE!`, 'co-cta');   // the call to action, red, front and centre (owner, 2026-10-03)
-      startShot({ id: 'takeControl', dur: from ? 5.6 : 3.2, poseAt: takeControlPose(perch, graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight, from), onEnd: () => { lit?.(); seatGlide.begin(camera); setView('bastion'); pilotHost?.zoom(pilot?.state.zoom ?? 1); } }); camera.fov = seatBase?.fov ?? 68; camera.updateProjectionMatrix();   // the shot at the open lens, the new optic's zoom only once it lands (owner, 2026-10-03: the zoom carried between views)
+      // the shot at the open lens, the new optic's zoom only once it lands (owner, 2026-10-03: the zoom carried between views)
+      startShot({ id: 'takeControl', dur: seat ? 5.6 : 4, poseAt: takeControlPose(perch, graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight, from, 0.3, !seat), onEnd: () => { lit?.(); seatGlide.begin(camera); setView('bastion'); pilotHost?.zoom(pilot?.state.zoom ?? 1); } }); camera.fov = seatBase?.fov ?? 68; camera.updateProjectionMatrix();
     },
   };
   Object.assign(storyApi, {
@@ -8341,9 +8330,9 @@ export function initTdTab(root) {
     stalheartStands: () => !!story?.hull?.out(),
     gunshipArrive: () => { if (!story) return; story.gunshipIn = true; startStation(gunship, GUNSHIP_ORBIT); showBrief('gunship_overhead'); }, camera, startShot, snapCamera, sfx, drone: () => isao,
     mission: () => (isaoSay(sfx, 'mission'), showMission(root, STORY_MISSION)),
-    freeLook: () => { const done = () => { setView('orbit'); centerBuildOnHeart(); followSuspend = true; buildDist = 1.65; snapCamera(); showToast(LOOK_TOAST, 5000); }, pts = (story?.sites ?? []).slice(0, 3).map((ci) => graph.centers[ci]);   // THE TOUR OF THE LANDERS (src/domain/story-shots.js tourFrame), live: the beats run under it and the override cuts in
-      if (!pts.length) return done(); const from = { pos: camera.position.clone(), quat: camera.quaternion.clone() }, dur = 2 + 2.8 * pts.length;
-      startShot({ id: 'sitesTour', dur, poseAt: (u, out) => { poseCamera(tourFrame(u, graph.centers[dungeon.heart], pts), out); const k = Math.min(1, u * dur / 1.6), e = k * k * (3 - 2 * k); out.pos.lerpVectors(from.pos, out.pos, e); out.quat.slerpQuaternions(from.quat, out.quat.clone(), e); }, onEnd: done }); },   // out of the close-up without a cut (2026-10-03)   /* THE ARRIVAL's hands (src/fx/arrival.js); freeLook: the landing hands over to the free camera */
+    freeLook: () => { const done = (glide) => { setView('orbit'); centerBuildOnHeart(); followSuspend = true; buildDist = 1.65; if (!glide) snapCamera(); showToast(LOOK_TOAST, 5000); }, pts = (story?.sites ?? []).slice(0, 3).map((ci) => graph.centers[ci]);   // THE TOUR OF THE LANDERS (src/domain/story-shots.js tourFrame), live: the beats run under it and the override cuts in
+      if (!pts.length) return done(); const from = { pos: camera.position.clone(), quat: camera.quaternion.clone() }, dur = tourSeconds(pts.length);
+      startShot({ id: 'sitesTour', dur, poseAt: (u, out) => { poseCamera(tourFrame(u, graph.centers[dungeon.heart], pts), out); const k = Math.min(1, u * dur / 1.6), e = k * k * (3 - 2 * k); out.pos.lerpVectors(from.pos, out.pos, e); out.quat.slerpQuaternions(from.quat, out.quat.clone(), e); }, onEnd: () => done(1) }); },   // out of the close-up without a cut (2026-10-03)   /* THE ARRIVAL's hands (src/fx/arrival.js); freeLook: the landing hands over to the free camera */
   },
   // ISAO KEEPS BUILDING (src/fx/programme-host.js): perks, hasPerk, build, repaired, printed
   createProgrammeHost({

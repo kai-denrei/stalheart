@@ -41,3 +41,9 @@ export function tourFrame(u, home, sites, { high = 1.75, low = 1.28, arc = 0.45 
   const up = dot3(m, m) > 1e-10 ? norm3(m) : norm3(cross3(d, Math.abs(d[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0]));
   return { eye, look, up };
 }
+
+// THE TOUR'S CLOCK (owner, 2026-10-04: "planet view, the beacons lit one by one"): `lead` seconds out of the close-up, then `per` for each
+// lander; tourStops are the seconds at which the eye is over each site (tourFrame's keyframes: home, the sites, home), so a site's
+// beacon can light as the camera arrives
+export const tourSeconds = (n, lead = 2, per = 2.8) => lead + per * n;
+export const tourStops = (n, lead, per) => Array.from({ length: n }, (_, i) => tourSeconds(n, lead, per) * (i + 1) / (n + 1));

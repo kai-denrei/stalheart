@@ -1732,6 +1732,23 @@ try{
  const pc=await evaluate(`${T}.state().programme.colony`);console.log(`  opening: beacons ${JSON.stringify(pc.beacons)} pinged ${JSON.stringify(pc.beaconPings)}`);
  assert.equal(new Set(pc.beaconPings).size,pc.beaconPings.length,'each beacon pings once');
  current='opening-beacons';await finish();
+ } else if(args.includes('--opening-cuts')) {
+ // NO JUMP CUT INTO THE ROTOR (owner, 2026-10-04: "the view jump cuts twice to different views of the planet and it is jarring; expected
+ // a) planet view, the beacons lit one by one, b) then the view deep dives directly towards the rotor, without cut"): every frame's
+ // camera from the end of the close-up to the Rotor's optic; no frame may move the eye by more than `cut` x the planet's radius
+ const T='window.__stalheartTest',cut=0.06;
+ await go('opening-cuts','index.html?sw=0&acceptance=1&world=story#td');
+ await until(`!!${T}`,90000);
+ await evaluate(`(()=>{const T=${T},L=window.__cam=[];(function f(){try{const s=T.seatState(),st=T.state();L.push([performance.now()/1000,s.pos,st.shot||"",s.view,s.seatKey||"",(st.programme?.colony?.beaconPulse||[]).filter(b=>b.lit).map(b=>b.id).join(",")]);}catch(e){}requestAnimationFrame(f);})();})()`);
+ await until(`${T}.seatState().seatKey==="rotor"`,150000).catch(async()=>assert.fail('the Rotor is taken'));await delay(4000);
+ const L=await evaluate('window.__cam'),d=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
+ const from=L.findIndex(r=>r[2]==='sitesTour');assert(from>=0,'the tour of the landers plays');
+ const jumps=[];for(let i=Math.max(1,from);i<L.length;i++){const m=d(L[i][1],L[i-1][1]);if(m>cut){jumps.push(`${(L[i][0]-L[from][0]).toFixed(2)} s ${L[i-1][2]||L[i-1][3]} -> ${L[i][2]||L[i][3]} ${m.toFixed(3)}`);if(args.includes('--probe'))for(let k=Math.max(0,i-4);k<Math.min(L.length,i+4);k++)console.log(`    ${(L[k][0]-L[from][0]).toFixed(3)} ${L[k][2]||'-'} ${L[k][3]} r=${Math.hypot(...L[k][1]).toFixed(4)} step=${k?d(L[k][1],L[k-1][1]).toFixed(4):0}`);}}
+ const shots=[];for(let i=from;i<L.length;i++)if(!i||L[i][2]!==L[i-1][2]||L[i][3]!==L[i-1][3])shots.push(`${(L[i][0]-L[from][0]).toFixed(1)} s ${L[i][2]||'-'} / ${L[i][3]}`);
+ const lit=[];for(let i=from;i<L.length;i++)for(const id of (L[i][5]||'').split(',').filter(Boolean))if(!lit.some(x=>x.id===id))lit.push({id,t:+(L[i][0]-L[from][0]).toFixed(1)});
+ console.log(`  cuts: ${L.length-from} frames from the tour; shots ${shots.join(' | ')}`);console.log(`  cuts: beacons first lit ${JSON.stringify(lit)}`);console.log(`  cuts: jumps ${jumps.length?jumps.join(' ; '):'none'}`);
+ if(!args.includes('--probe'))assert.deepEqual(jumps,[],'the camera never jumps from the tour to the Rotor');
+ current='opening-cuts';await finish();
  } else if(args.includes('--opening-probe')) {
  // THE OPENING'S TIMELINE from a bare page: phase, shot, view, Isao's panel, every change (no assertions)
  const T='window.__stalheartTest';
