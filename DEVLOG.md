@@ -49,6 +49,21 @@ Evidence:
 - --opening (new): the landing waits on the gate, the click lands it, the thrust bed starts in the descent; Isao said mission_02, rough_landing_01, so_much_to_build_01 in that order; a beacon pinged, each once
 - test/isao-voice.mjs 23/23 (shown words, the wait for a free voice), test/voice-match.mjs 26/26, test/voice-hooks.mjs 36/36, test/start-gate.mjs; npm test, check, build green
 
+## 2026-10-04 — The gunship's flickering 'layered planet' was the WebGL FLIR pass swapping the composer's buffers into its depth-less target; the NaN guard of the eighteenth notes did not fix it
+
+issue · accepted · 2026-10-04-gunship-flicker-the-flir-pass-swapped-into-the-depthless-target
+
+Owner, 2026-10-04 (on 8b857503, Safari and Chrome): the gunship view is still broken with misaligned layers, a heavy flicker a screenshot cannot catch. The eighteenth notes had blamed NaN pixels read as heat and shipped a guard as the fix, judged from one frame each. (entry 2026-10-04-eighteenth-notes-flir-nan-seat-leftovers-voice-calibration-unvoiced-script, part 1; its other parts stand)
+
+Measured with bursts of eight screenshots in the seat and per-pixel frame differences: 1723b6ca (CSS filter) and be751aab steady (~26k changed pixels a frame, the scene's own motion), 16735000 onward ~40k with the far side's dense lattice in every other frame, still so with a pass-through shader (not its colour maths), gone with the pass added but never enabled. postfx's finalComposer.renderTarget1 is built without depth or MSAA (a measured saving) on the premise that the scene's RenderPass always draws into renderTarget2: the add and the OutputPass swap twice a frame. A third swap from the new last pass flipped which target the next frame's scene landed in, so every other frame drew the planet with no depth test. src/fx/flir-pass.js sets needsSwap = false (the last pass draws to the screen and has nothing to swap); frame differences back to ~26k, the ironbow steady. The NaN guard stays as a harmless defence, its comment corrected. Safari's silence: after a restart of Safari the owner hears the sound on 8b857503; the engine's ledger had shown 9 unclosed contexts; not reproduced further.
+
+Alternatives: Giving renderTarget1 a depth buffer: undoes a measured GPU saving (the 2026-09-16 horde profile) to paper over an odd swap; Back to the CSS filter: Safari does not draw it over the WebGL canvas
+
+Evidence:
+
+- flicker bursts (scratch probe, CDP screenshots, PIL): pre [~26k], be751aab [~26k], 16735000 [38-44k], 8b857503 [25-44k], pass-through [26-42k], never-enabled [~26k], needsSwap false [~26k]
+- test/flir-pass.mjs asserts the pass never swaps; --gunship, --seat-switch, --opening and the default suite
+
 ## 2026-10-04 — The owner's eighteenth notes: the gunship's layered planet (the WebGL FLIR read no-number pixels as heat), the Quiver's panels and the gunship's header left behind by a seat switch, a calibration bench for Isao's voice, and the script of every line he has not said
 
 change · accepted · 2026-10-04-eighteenth-notes-flir-nan-seat-leftovers-voice-calibration-unvoiced-script

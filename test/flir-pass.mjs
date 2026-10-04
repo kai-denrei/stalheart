@@ -19,6 +19,7 @@ let enabled = false; const passes = [];
 const postfx = { addFinalPass: (p) => passes.push(p), setEnabled: (v) => { enabled = v; }, get enabled() { return enabled; } };
 const flir = createFlir(postfx);
 assert.equal(passes.length, 1); assert.equal(passes[0].enabled, false, 'added off');
+assert.equal(passes[0].needsSwap, false, 'the last pass never swaps: an odd swap count put every other frame\'s scene in postfx\'s depth-less target (the flickering planet, 2026-10-04)');
 flir.set(true); assert(passes[0].enabled && enabled && flir.on, 'thermal on: the pass and the composer run');
 flir.set(false); assert(!passes[0].enabled && !enabled && !flir.on, 'off again: the board goes back to no composer');
 enabled = true; flir.set(true); flir.set(false); assert.equal(enabled, true, 'a board with its own composer keeps it');

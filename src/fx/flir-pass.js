@@ -31,7 +31,7 @@ export const FlirShader = {
     void main() {
       vec4 c = texture2D(tDiffuse, vUv);
       float l = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
-      if (isnan(l) || isinf(l)) l = 0.0;   // a pixel with no number shows black on screen; it must read cold here too, not a random step of the ramp
+      if (isnan(l) || isinf(l)) l = 0.0;   // a defensive guard: such a pixel shows black on screen and must read cold here too (the layered planet itself was the swap, below)
       float x = clamp(l, 0.0, 1.0) * 10.0;
       gl_FragColor = vec4(at(R, x), at(G, x), at(B, x), c.a);
     }`,
@@ -45,6 +45,11 @@ export function createFlir(postfx) {
   if (!postfx?.addFinalPass) return { set() {}, get on() { return false; } };
   const pass = new ShaderPass(FlirShader);
   pass.enabled = false;
+  // NO SWAP (owner, 2026-10-04: the seat "broken with misaligned layers ... heavy flickering"): postfx's renderTarget1 has no depth
+  // buffer, and the scene's RenderPass draws into whichever target the last frame's swaps left as the read buffer. The add and the
+  // OutputPass swap twice, an even count; a third swap here put every other frame's scene in the depth-less target, its hidden
+  // lattice drawn over the front. The last pass draws to the screen, so it has nothing to swap.
+  pass.needsSwap = false;
   postfx.addFinalPass(pass);
   // LINKED NOW, NOT IN THE SEAT: its program would otherwise compile on the frame the gunship is first taken (the seat's hitch guard,
   // scripts/browser-test.mjs --gunship). One pixel drawn to the screen as the seat draws it, before the board's first frame paints over it
