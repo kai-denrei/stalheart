@@ -100,7 +100,7 @@ export function makeAudio(opts = {}) {
   const LEAK_KEY = 'ssg.audio.ledger';
   function ledgerRead() { return ledger(null); }
   function ledger(patch) {
-    let v = { created: 0, closed: 0, loads: 0 };
+    let v = { created: 0, closed: 0, loads: 0, asked: 0, hides: 0 };
     try {
       const raw = localStorage.getItem(LEAK_KEY);
       if (raw) v = { ...v, ...JSON.parse(raw) };
@@ -401,7 +401,13 @@ export function makeAudio(opts = {}) {
     // `armed` is true (so arm() returns early). The context was destroyed
     // with no path back, and audio was gone for the rest of the session.
     // That is a worse bug than the leak it was written to fix.
+    // THE TWO HALVES OF A CLOSE, COUNTED APART (owner, 2026-10-04: "contexts piling up across reloads ... neither theory was ever
+    // measured"). `closed` counts a close that RESOLVED, which a page being torn down rarely lives to see, so a clean close read as a
+    // leak. `asked` counts the close requested, synchronously, before the page can go; `hides` counts the pagehide events that reached
+    // this engine at all. created = asked = hides across reloads: every context is let go and Safari is the one holding them.
+    // asked or hides short of created: the release never ran, and the page is the leak.
     const release = () => {
+      if (ctx) ledger((v) => ({ asked: (v.asked ?? 0) + 1 }));
       if (ctx) {
         // count the close when it RESOLVES. A close that is requested and
         // never settles looks identical to a healthy one from the call site,
@@ -419,6 +425,7 @@ export function makeAudio(opts = {}) {
       if (armed) startListening();   // whatever happens next, we can rebuild
     };
     releaseAudio = release;
+    addEventListener('pagehide', () => ledger((v) => ({ hides: (v.hides ?? 0) + 1 })));   // counted before the release, so a release that throws still shows the event came
     addEventListener('pagehide', release);
     // restored from the back/forward cache: the context is gone, so listen
     // for the gesture that will rebuild it
@@ -434,7 +441,7 @@ export function makeAudio(opts = {}) {
     // report one created outside a gesture as `running` and still produce no
     // output), and the decode now rides the same context.
     const led = ledger((v) => ({ loads: v.loads + 1 }));
-    const leaked = led.created - led.closed;
+    const leaked = led.created - led.closed, unasked = led.created - (led.asked ?? 0);
     console.log('AUDIO armed (context and decode both wait for a gesture)'
       + ` muted=${muted} master=${levels.master}`);
     // THE ONE LINE TO READ AT THE NEXT SILENCE. WebKit's cap on concurrent
@@ -442,9 +449,10 @@ export function makeAudio(opts = {}) {
     // the leak theory is measured rather than assumed. If it is 0 or 1 and
     // the page is still silent, the theory is dead and this line says so.
     console.log(`AUDIO ledger origin=${location.origin} loads=${led.loads}`
-      + ` contexts created=${led.created} closed=${led.closed}`
-      + ` LEAKED=${leaked}`
-      + `${leaked > 3 ? ' — climbing; this is the leak, and pagehide is not releasing'
+      + ` contexts created=${led.created} close-asked=${led.asked ?? 0} closed=${led.closed} pagehides=${led.hides ?? 0}`
+      + ` UNRESOLVED=${leaked} NEVER-ASKED=${unasked}`
+      + `${unasked > 1 ? ' — the page never released them: the leak is ours'
+        : leaked > 3 ? ' — every one released, the closes never resolved: if Safari goes silent, it is holding them'
         : ' — healthy'}`
       + ' (audio.resetLedger() to zero it)');
     startListening();
@@ -668,7 +676,7 @@ export function makeAudio(opts = {}) {
     // had; `audio.resetLedger()` zeroes it to start a clean count.
     get ledger() {
       const v = ledgerRead();
-      return { ...v, leaked: v.created - v.closed, origin: location.origin };
+      return { ...v, leaked: v.created - v.closed, unasked: v.created - (v.asked ?? 0), origin: location.origin };
     },
     resetLedger,
 

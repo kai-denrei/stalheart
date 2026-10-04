@@ -80,6 +80,21 @@ Evidence:
 - --seat-switch (new): the scope hidden in the gunship, the gunship thermal, the Rotor not and with its own header; --voice: the attack scene plays, +6 dB and 30 % kept, Isao speaks over it, RESET clears
 - test/voice-match.mjs 24/24, test/isao-voice.mjs 18/18, test/voice-script.mjs, seiyu_voice parse_script on the generated file: 186 lines, 76 triggers
 
+## 2026-10-04 — The audio ledger counts a close when it is asked and every pagehide, so Safari's silence can be told apart: the page leaking its contexts, or Safari holding contexts the page let go
+
+change · accepted · 2026-10-04-audio-ledger-counts-the-close-asked-and-the-pagehide
+
+Owner, 2026-10-04: Safari's silence returned after the voice work and cleared when Safari was restarted; two theories in src/audio.js's comments (a context created outside a gesture; contexts piling up across reloads) were never measured. The first does not hold: the engine's only constructor runs from the gesture's rebuild (and beep, after it), as the owner's Safari log shows. The second was unreadable: `closed` counted a close only when it resolved, which a page being torn down rarely lives to see, so the owner's log's LEAKED=9 could be clean closes.
+
+src/audio.js's ledger adds `asked` (the close requested, synchronously in the release) and `hides` (every pagehide that reached the engine); the armed line reports created, close-asked, closed and pagehides with UNRESOLVED and NEVER-ASKED, and reads them: contexts never asked to close mean the page is the leak; all asked but unresolved, with Safari silent, mean Safari is holding them. audio.ledger in the console carries `unasked`. Measured in Chrome over four loads: created = asked = closed = pagehides = 3. Safari's reading waits for its next silence.
+
+Alternatives: Also releasing on visibilitychange: a tab switch would end the sound; only worth it if Safari's ledger shows pagehide not arriving
+
+Evidence:
+
+- scratch probe, Chrome, four loads each with a click: close-asked, closed and pagehides each 3 of 3 created, NEVER-ASKED 0
+- npm test, check; the default browser suite (46 steps)
+
 ## 2026-10-03 — The owner's twelfth notes: the next seat's HUD only once the eye is on it, red MANUAL OVERRIDE calls to action, the early-close line, a day dial in the HUD, the flank probes off; the tank collision overhaul and SOL's reach answered as options
 
 change · accepted · 2026-10-03-twelfth-notes-hud-on-arrival-cta-copy-day-dial-flank-probes-off
