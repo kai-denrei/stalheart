@@ -70,6 +70,17 @@ ok('onStart hands over the line as it plays', heard && heard.startsWith('a_'));
 clock += 11; heard = null; let release2; const slow2 = { prime: () => new Promise((res) => { release2 = res; }), play: () => {} };
 say(slow2, 'a', { onStart: () => { heard = 'late'; } }); clock += 2; release2(true); await tick();
 ok('and never for a line that came too late', heard === null);
+// THE LINE FOR ITS MOMENT, LESS AND LATER, AND THE FORCED LINE (owner, 2026-10-05)
+{ let c = 0; const pl = [], st = []; const s2 = { play: (k) => pl.push(k), say: (k) => { pl.push(k); return { id: k }; }, stop: (h) => st.push(h.id) };
+  const T2 = { m: { aliases: ['m', 'RAM ×25', 'RAM ×50'], lines: [{ id: 'm_01', text: '25', duration: 1 }, { id: 'm_02', text: '50', duration: 1 }] },
+    o: { aliases: ['o'], lines: [{ id: 'o_01', text: 'o', duration: 1 }] }, n: { aliases: ['n'], lines: [{ id: 'n_01', text: 'nuke', duration: 1 }] } };
+  const v = createIsaoVoice({ triggers: T2, hooks: {}, moments: { m_01: ['RAM ×25'], m_02: ['RAM ×50'] }, tune: { gap: 0.2, space: 4, repeat: 1, rest: { o: 100 }, late: 1.5, gain: 1 }, picks: () => ({ muted: false, off: new Set(), quiet: new Set() }), now: () => c, rand: () => 0 });
+  ok('a numbered line plays at its own milestone', v(s2, 'RAM ×50')?.id === 'm_02');
+  c += 1.5; ok('nothing unprompted within `space` after a line', v(s2, 'o') === null);
+  c += 4; ok('and the 25 at the 25', v(s2, 'RAM ×25')?.id === 'm_01');
+  c += 6; ok('a chatty trigger rests its own longer time', v(s2, 'o')?.id === 'o_01' && (c += 50, v(s2, 'o')) === null);
+  c += 0.2; await tick(); const said = v(s2, 'n', { force: true }); await tick();
+  ok('a forced line cuts in over him, past every rest', said?.id === 'n_01' && pl.at(-1) === 'isao_n_01'); }
 ok('keys', voiceKey('a_01') === 'isao_a_01');
 
 console.log(`\n${n - bad}/${n} passed`);

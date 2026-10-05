@@ -126,5 +126,5 @@ SOUNDS.sentry_quiver = { ...SOUNDS.seeker_fire };
 SOUNDS.sentry_relay = { ...SOUNDS.field_pulse };
 SOUNDS.sentry_mortar = { ...SOUNDS.blast_fire };
 SOUNDS.sentry_lancer = { ...SOUNDS.plasma_fire, loopFile: `${A}/sentry_beam_sustain.wav` };
-SOUNDS.sentry_needle = { ...SOUNDS.tank_main };
+SOUNDS.sentry_needle = { ...SOUNDS.tank_main, file: `${A}/needle_fire.mp3` };   // the main gun's report with its reload click 12 dB down (scripts/derive-needle-fire.sh, 2026-10-05)
 SOUNDS.sentry_heptapod = { ...SOUNDS.seeker_fire };

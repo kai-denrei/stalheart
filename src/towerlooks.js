@@ -111,7 +111,7 @@ function loadSentryModel(def, tier = 1) {
       // survive the fit untouched. That is the whole reason this can be a
       // plain clone rather than a re-export.
       sentryProtos.set(url,
-        fitModel(mergeByMaterial(scene, [...pivots]), { height: 1.35, maxSpan: 2.2 }));
+        fitModel(mergeByMaterial(scene, [...pivots]), { height: 1.35, maxSpan: 2.2, recentreOn: 'YAW' }));   // on its turntable, not its bounding box (below)
       sentryClips.set(url, clips);
     } else {
       // THE TURRET KEEPS ITS PIVOTS. `mergeByMaterial` takes the nodes that
@@ -122,7 +122,8 @@ function loadSentryModel(def, tier = 1) {
       // empties and survive the merge on their own.
       sentryProtos.set(url,
         fitModel(mergeByMaterial(scene, ['YAW', 'PITCH', 'RECOIL', 'ROTOR']),
-          { height: 1.35, maxSpan: 2.2 }));
+          { height: 1.35, maxSpan: 2.2, recentreOn: 'YAW' }));   // ON ITS PEDESTAL (owner, 2026-10-05: the Needle stood outside its base):
+          // a long barrel pulled the bounding box's centre forward, so the base sat off the pedestal; the turntable's pivot is the base's centre
     }
     return true;
   }).catch(() => false);

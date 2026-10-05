@@ -48,7 +48,7 @@ import { storage } from '../storage.js';
 import * as THREE from '../../vendor/three.module.js';
 const loadDyes = () => { try { return JSON.parse(storage.getItem(DYE_SHOP.store) ?? 'null'); } catch { return null; } };
 const saveDyes = (b) => { try { storage.setItem(DYE_SHOP.store, JSON.stringify(b)); } catch { /* a refused store: the dyes last this run */ } };
-import { nextRepair, shotHoles } from '../domain/repair-orders.js';
+import { nextRepair, shotHoles, rimHoles } from '../domain/repair-orders.js';
 import { sideBreachCandidates } from '../domain/side-breach.js';
 import { planCanyon } from '../domain/canyon.js';
 import { SIDE_BREACH, CANYON } from '../content/sectors.js';
@@ -184,7 +184,9 @@ export function createProgrammeHost(c) {
       // first frame
       // and the holes a shell blew through the base's rock (src/domain/repair-orders.js shotHoles), the back door's mouth excepted
       const holesShot = () => { const st = c.story(), m = st.backMouth; return st.shot?.size ? shotHoles({ shot: st.shot, keep: m ? new Set([...(m.cells ?? []), ...(m.flank ?? [])]) : null, open: (ci) => c.dungeon().tags[ci] !== BLOCKED, centers: c.graph().centers, heart: c.dungeon().heart, rim: st.wallCells ?? [], margin: BASE_REPAIR.shotMargin * c.cellSide() }) : []; };
-      const stood = programmeHas(pg, 'gate'), broke = stood ? [...new Set([...(c.story().wallCells ?? []), ...(c.story().backHoles ?? [])].filter((wc) => c.dungeon().tags[wc] !== BLOCKED).concat(c.storyBase()?.droppedCells?.() ?? [], holesShot()))] : [],   // a burned segment on standing rock is a hole too (owner, 2026-10-02: "after a breach, isao only builds a gate, he should also build walls")
+      // and the rock blown open beside a rim wall (src/domain/repair-orders.js rimHoles): the doors, the back mouth and the canyon's cut kept
+      const holesBeside = () => { const st = c.story(), m = st.backMouth, keep = new Set([st.gateCell, st.gateCellOf?.('back'), ...(m?.cells ?? []), ...(m?.flank ?? []), ...(st.carved ?? [])].filter((x) => Number.isInteger(x) && x >= 0)); return rimHoles({ walls: st.wallCells ?? [], adj: c.graph().adj, open: (ci) => c.dungeon().tags[ci] !== BLOCKED, wasRock: (ci) => breachedCells.has(ci), keep }); };
+      const stood = programmeHas(pg, 'gate'), broke = stood ? [...new Set([...(c.story().wallCells ?? []), ...(c.story().backHoles ?? [])].filter((wc) => c.dungeon().tags[wc] !== BLOCKED).concat(c.storyBase()?.droppedCells?.() ?? [], holesShot(), holesBeside()))] : [],   // a burned segment on standing rock is a hole too (owner, 2026-10-02: "after a breach, isao only builds a gate, he should also build walls")
        near = (ci) => { const p = c.graph().centers[ci], r = BASE_REPAIR.clearCells * c.cellSide(); return c.enemies().some((e) => e.alive && Math.hypot(e.pos[0] - p[0], e.pos[1] - p[1], e.pos[2] - p[2]) < r); };
       // HIS CHECK (BASE_REPAIR.check): after a wall he hovers over it, then says whether the breach is sealed; nothing new starts meanwhile
       if (s.checking) { if (c.t() < s.checking.until) return; s.checking = null; c.callout?.(broke.length ? BASE_REPAIR.open : BASE_REPAIR.sealed, broke.length ? 'co-victory-sub' : 'co-victory'); }
@@ -228,7 +230,7 @@ export function createProgrammeHost(c) {
     canyonPass: (o) => c.laserStation.passOver(o),   // SOL-82's pass laid over the canyon, the player in its seat (src/fx/laser-station.js)
     canyonCut: (plan) => {
       const tags = c.dungeon().tags, full = c.tdFullTags();
-      for (const ci of plan.floor) { tags[ci] = PATH; if (full) full[ci] = PATH; breachedCells.add(ci); breachQueue.push(ci); }
+      for (const ci of plan.floor) { tags[ci] = PATH; if (full) full[ci] = PATH; breachedCells.add(ci); breachQueue.push(ci); (c.story().carved ??= new Set()).add(ci); }   // carved on purpose: never a hole to mend
       for (const ci of plan.rock) { tags[ci] = BLOCKED; if (full) full[ci] = BLOCKED; breachedCells.delete(ci); breachQueue.push(ci); }
       rebuildAfterBreach(); recomputePortalDist();
     },

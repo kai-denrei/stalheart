@@ -27,6 +27,7 @@ export const CARGO_LOOK = Object.freeze({
   crateBeside: 5,          // metres from the site flag to its waiting crate
   trophyEdge: 9.5,         // metres from the landing island's centre to its trophy row (the island is 16 m)
   trophyGap: 2.6,          // metres between trophy flags
+  signScale: 0.6,          // the DROP-OFF POINT board, a minimal one: this share of the base's scoreboards (src/fx/expedition-glue.js)
   deckInset: 0.22,         // where the crate rides along the hull, as a fraction of its length in from the rear
   lift: 0.5,               // the swing onto the deck
   liftArc: 4,              // metres the swing rises above the straight line

@@ -14,7 +14,7 @@ ok('a callout resolves on its text', ix.resolve('THE WALL IS BREACHED') === 'gat
 ok('case, tags and spacing are ignored', ix.resolve('<b>sector  secure</b>') === 'sector_secure');
 ok('a callout with a tail still resolves', ix.resolve('SECTOR SECURE · +40 KG') === 'sector_secure');
 ok('the SOL count does not start the voice (the pass does, and counts on its beats)', ix.resolve('SOL FIRING IN 3…') === null && ix.resolve('SOL FIRING IN 2…') === null);
-ok('RAM milestones only', ix.resolve('RAM ×10') === 'ram_chain_milestones' && ix.resolve('RAM ×11') === null && ix.resolve('RAM ×100') === null);
+ok('RAM milestones only, ×25 and ×50 (×10 is not called, 2026-10-05)', ix.resolve('RAM ×25') === 'ram_chain_milestones' && ix.resolve('RAM ×10') === null && ix.resolve('RAM ×11') === null && ix.resolve('RAM ×100') === null);
 ok('the sector briefs speak sector_brief', ix.resolve('sector_3') === 'sector_brief');
 ok('an unknown moment is silent', ix.resolve('nothing_here') === null && ix.resolve('') === null && ix.resolve(null) === null);
 ok('the mission event', ix.resolve('mission') === 'mission');

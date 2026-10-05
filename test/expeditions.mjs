@@ -26,6 +26,7 @@ reveal(ex, 'rocket-b'); guardsCleared(ex, 'rocket-b');
 assert.equal(reach(ex, 'rocket-b'), false, 'one part carried at a time');
 assert.equal(hullLost(ex), true, 'losing the hull drops the part');
 assert.equal(siteState(ex, 'rocket-a'), 'cleared', 'back at its site');
+{ const e2 = makeExpeditions([{ id: 'x', tower: 't', part: 'p' }]); reveal(e2, 'x'); guardsCleared(e2, 'x'); reach(e2, 'x'); hullLost(e2, 7); assert.equal(e2.sites[0].at, 7, 'given the cell the hull fell on, the part waits there'); }
 assert.equal(ex.carrying, null);
 assert.equal(deliver(ex), null, 'nothing to deliver');
 reach(ex, 'rocket-a');

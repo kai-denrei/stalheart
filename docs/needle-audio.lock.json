@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "source": "Derived by scripts/derive-needle-fire.sh from assets/audio/tank_main.mp3: the shot untouched, the reload clicks from 0.66 s brought down 12 dB",
+  "files": [
+    {
+      "path": "assets/audio/needle_fire.mp3",
+      "sourcePath": "assets/audio/tank_main.mp3",
+      "sourceSha256": "42b1a64bd219b1bc60a5dd5dd10cf41ae368edffbf49695d93779649396ba67f",
+      "sha256": "701d7ff747b37d79bb296dd2a10084a02d4f905a8386eece757ae4277da86e99",
+      "bytes": 15066
+    }
+  ]
+}

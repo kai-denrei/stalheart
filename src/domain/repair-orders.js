@@ -65,3 +65,12 @@ export function shotHoles({ shot = [], keep = null, open = () => true, centers, 
   for (const ci of shot) if (centers[ci] && !keep?.has(ci) && open(ci) && d(ci) <= reach) out.push(ci);
   return out.sort((a, b) => d(a) - d(b));
 }
+
+// ONE WALL MORE THAN SEEMS NEEDED (owner, 2026-10-05: "a wall covering half a tile, and the enemies can still go through"): a wall cell
+// mended stands, but rock beside it that a beam, a strike or a shell blew open still lets the swarm round it. Every open cell next to a
+// rim wall cell that was rock (`wasRock`: the breach record) is a hole too, `keep` aside (the doors, the back mouth, the canyon cut)
+export function rimHoles({ walls = [], adj, open = () => true, wasRock = () => false, keep = null }) {
+  const out = new Set();
+  for (const w of walls) for (const nb of adj?.[w] ?? []) if (!keep?.has(nb) && open(nb) && wasRock(nb)) out.add(nb);
+  return [...out];
+}

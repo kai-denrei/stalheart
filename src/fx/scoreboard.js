@@ -16,7 +16,8 @@ let manifest = null;
 const loadManifest = () => (manifest ??= fetch(DIR + 'manifest.json').then((r) => r.json()));
 
 // variant: 'beacon_rivalry' | 'splitflap_rivalry' | 'flipdot_rivalry' (the LOD1 game tier is the one pinned)
-export function createScoreboard(scene, { at, up, facing, metres = 1, title = 'YOU', accent = '#ffd27a', flag = true, variant = 'beacon_rivalry' }) {
+// rowLabels: { kills, gathered, used } to rename the three rows (the drop-off sign, src/fx/expedition-glue.js)
+export function createScoreboard(scene, { at, up, facing, metres = 1, title = 'YOU', accent = '#ffd27a', flag = true, variant = 'beacon_rivalry', rowLabels = null }) {
   const group = new THREE.Group(); group.name = `Scoreboard ${title}`;
   const u = new THREE.Vector3().fromArray(up).normalize(), f = new THREE.Vector3().fromArray(facing); f.addScaledVector(u, -f.dot(u)).normalize();
   const basis = new THREE.Matrix4().makeBasis(new THREE.Vector3().crossVectors(u, f), u, f);   // right-handed: +Z (the face) along `facing`
@@ -29,7 +30,7 @@ export function createScoreboard(scene, { at, up, facing, metres = 1, title = 'Y
     const entry = man.assets.find((x) => x.id === `${variant}_d0_lod1`);
     board = cloneFixture(model); group.add(board);
     const socket = board.getObjectByName('SOCKET_FX'); if (socket) socket.getWorldPosition(fx) && group.worldToLocal(fx);
-    live = attachRivalryDisplay(THREE, board, entry, {}, { label: title, color: accent });
+    live = attachRivalryDisplay(THREE, board, entry, {}, { label: title, color: accent, ...(rowLabels ? { rowLabels } : {}) });
     if (pending) { live.setScores(pending, { duration: 0 }); pending = null; }
   }).catch((e) => console.warn('SCOREBOARD failed', e));
   // the rank flag: a pole beside the board, a cloth in the tier's colour with the badge, a slow wave in the cloth's vertices

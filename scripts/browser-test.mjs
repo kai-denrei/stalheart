@@ -1754,6 +1754,29 @@ try{
  console.log(`  cuts: ${L.length-from} frames from the tour; shots ${shots.join(' | ')}`);console.log(`  cuts: beacons first lit ${JSON.stringify(lit)}`);console.log(`  cuts: jumps ${jumps.length?jumps.join(' ; '):'none'}`);
  if(!args.includes('--probe'))assert.deepEqual(jumps,[],'the camera never jumps from the tour to the Rotor');
  current='opening-cuts';await finish();
+ } else if(args.includes('--round22')) {
+ // THE OWNER'S NOTES OF 2026-10-05: every MK-9 is announced by Isao; the Needle stands on its pedestal; the Lancer fires at the body and
+ // its burn is wider; a DROP-OFF POINT board stands by the landing
+ const T='window.__stalheartTest',said='(async()=>(await import("./src/fx/isao-voice.js")).isaoSay.log.filter(e=>e.trigger==="mk9_release").map(e=>({id:e.id,played:e.played})))()';
+ await go('round22-nuke','index.html?sw=0&cine=0&world=story&stage=6&acceptance=1&gunship=station&skip=gunship&enemies=24&brief=0#td');
+ await until(`!!${T} && ${T}.state().gunship.seat`,120000);await delay(2000);
+ await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Shift',code:'ShiftLeft'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Shift',code:'ShiftLeft'});await delay(1200);   // a gesture: the sound starts
+ await evaluate(`${T}.gunshipGun("heavy")`);await delay(300);await until(`${T}.state().gunship.nuke?.ready`,40000);
+ await evaluate(`${T}.gunshipHold(true)`);await delay(250);await evaluate(`${T}.gunshipHold(true)`);await delay(250);
+ await until(`${T}.state().gunship.heavy.phase==="released"`,5000).catch(async()=>assert.fail(`the MK-9 is released (${JSON.stringify((await evaluate(`${T}.state().gunship`)).heavy)})`));
+ await until(`(async()=>(await ${said}).some(e=>e.played))()`,8000).catch(async()=>assert.fail(`Isao announces the MK-9 (${JSON.stringify(await evaluate(said))})`));
+ console.log(`  round22: MK-9 announced ${JSON.stringify(await evaluate(said))}`);current='round22-nuke';await finish();
+ // the sentries: a Needle and a Lancer on the sockets, a crowd coming
+ await go('round22-base','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await until(`${T}.state().sector.n===1`,60000);await evaluate(`${T}.sectorQuiet(true)`);
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,#td-brief{display:none!important}</style>")');
+ const sock=(await evaluate(`${T}.state()`)).sector.sockets||[];assert(sock.length>=2,'two sockets');
+ assert(await evaluate(`${T}.commitTower('needle',${sock[0]})`),'a Needle');assert(await evaluate(`${T}.commitTower('lancer',${sock[1]})`),'a Lancer');
+ await until(`${T}.state().programme.colony?.gusts!==undefined && ${T}.state().cargo?.sign===true`,60000).catch(async()=>assert.fail(`the DROP-OFF POINT board stands (${JSON.stringify(await evaluate(`${T}.state().cargo`))})`));
+ await evaluate(`${T}.spawnFodder(30)`);await delay(4000);
+ await evaluate(`${T}.showcase.ground(${sock[0]},0.9,1.6)`);await delay(1800);current='round22-needle';await finish();
+ await evaluate(`${T}.showcase.ground(${sock[1]},1.4,2.2)`);await delay(2500);current='round22-lancer';await finish();
+ await evaluate(`${T}.showcase.ground(${T}.state().storyHome,1.2,2.6)`);await delay(2500);current='round22-dropoff';await finish();
  } else if(args.includes('--opening-probe')) {
  // THE OPENING'S TIMELINE from a bare page: phase, shot, view, Isao's panel, every change (no assertions)
  const T='window.__stalheartTest';

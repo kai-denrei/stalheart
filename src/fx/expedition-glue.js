@@ -32,12 +32,27 @@ const along = (origin, dir, dist) => { const o = v3(origin), r = o.length(); ret
 export function createExpeditionGlue(h) {
   const look = h.look ?? CARGO_LOOK, metres = h.cellSide / 10;
   const ex = () => h.story.expeditions, cellOf = (id) => h.story.siteCells[id];
-  let cargo = null, receipt = null;
+  // where a part waits: its site, or the cell a hull carrying it was lost on (src/domain/expeditions.js hullLost)
+  const spotOf = (id) => { const at = ex()?.sites.find((x) => x.id === id)?.at; return Number.isInteger(at) ? { cell: at, clear: 10 } : cellOf(id); };
+  let cargo = null, receipt = null, sign = null, signAsked = false;
+  // THE DROP-OFF POINT, SIGNED (owner, 2026-10-05: "there should be a dedicated drop-off point in the base ... re-use a minimalist version of
+  // a scoreboard to write DROP-OFF POINT"): a small split-flap board at the head of the trophy row, facing out where the hulls come in,
+  // with the parts HOME, waiting in the FIELD and the SITES known. Made once the first site is out; a page without a document has none
+  function signStep(e) {
+    if (!signAsked && typeof document !== 'undefined' && h.scene && e.sites.some((s) => s.state !== 'hidden')) {
+      signAsked = true;
+      import('./scoreboard.js').then(({ createScoreboard }) => {
+        const p = trophyPose(-1.6);
+        sign = createScoreboard(h.scene, { at: p.point.toArray(), up: p.normal.toArray(), facing: p.facing.toArray(), metres: metres * look.signScale, title: 'DROP-OFF POINT', accent: '#ffd27a', flag: false, variant: 'splitflap_rivalry', rowLabels: { kills: 'HOME', gathered: 'FIELD', used: 'SITES' } });
+      }).catch(() => {});
+    }
+    sign?.update({ rows: [['HOME', e.sites.filter((s) => s.state === 'delivered').length], ['FIELD', e.sites.filter((s) => s.state === 'cleared' || s.state === 'carried').length], ['SITES', e.sites.filter((s) => s.state !== 'hidden').length]], rank: 0 });
+  }
   const fx = () => (cargo ??= createCargo(h.scene, { sfx: h.sfx, hasCue: h.hasCue, metres, look }));
   const homeAt = () => h.centers()[h.story.home];
 
   function sitePose(id) {
-    const c = h.centers()[cellOf(id).cell], dir = toward(c, homeAt()), p = along(c, dir, look.siteOffset * metres);
+    const c = h.centers()[spotOf(id).cell], dir = toward(c, homeAt()), p = along(c, dir, look.siteOffset * metres);
     return { point: p, normal: p.clone().normalize(), facing: dir };
   }
   // the trophy row: along the landing island's edge in its own frame when the base has one, else beside home
@@ -106,7 +121,8 @@ export function createExpeditionGlue(h) {
         const c = cellOf(s.id); if (!c) continue;
         if (s.state === 'guarded' && !h.guardsLeft(s.id)) { guardsCleared(e, s.id); h.brief('site_cleared'); }
         if (s.state === 'cleared' && !fx().hasFlag(s.id)) { const p = sitePose(s.id); fx().raiseFlag(s.id, p.point, p.normal, p.facing); }
-        if (s.state === 'cleared' && !e.carrying && chord(pos, centers[c.cell]) < h.cellSide * (c.clear / 10 + 1) && reach(e, s.id)) {
+        const at = spotOf(s.id);
+        if (s.state === 'cleared' && !e.carrying && chord(pos, centers[at.cell]) < h.cellSide * (at.clear / 10 + 1) && reach(e, s.id)) {
           fx().pickUp(s.id, h.hull);
           h.callout(`PART SECURED · ${String(STORY_EXPEDITIONS.sites.find((x) => x.id === s.id)?.part ?? 'part').toUpperCase()}`);
         }
@@ -125,14 +141,17 @@ export function createExpeditionGlue(h) {
           if (more.length) h.brief('sites_revealed');
         }
       }
+      signStep(e);
       h.story.hud.sites(e.sites.filter((s) => (s.state === 'guarded' || s.state === 'cleared' || s.state === 'carried') && (s.state === 'carried' || !!cellOf(s.id)))
-        .map((s) => ({ dir: unitArr(centers[s.state === 'carried' ? h.story.home : cellOf(s.id).cell]), state: s.state })));
+        .map((s) => ({ dir: unitArr(centers[s.state === 'carried' ? h.story.home : spotOf(s.id).cell]), state: s.state })));
     },
-    // the hull is gone: the part goes back to its site (the rule), the crate tumbles off and the site's flag comes down (the look);
-    // the next step raises the flag again over the part once it is down
+    // the hull is gone: the part waits where it fell (the rule), the crate tumbles off and its flag comes down (the look); the next step
+    // raises the flag again over the part, at the wreck
     hullLost() {
-      const e = ex(), id = e?.carrying;
-      if (!e || !hullLost(e)) return false;
+      const e = ex(), id = e?.carrying, pos = h.tankPos(), centers = h.centers();
+      let cell = -1, best = -Infinity;   // the cell the hull died on: its part waits there
+      if (pos) { const l = Math.hypot(...pos) || 1; for (let i = 0; i < centers.length; i++) { const c = centers[i], d = (c[0] * pos[0] + c[1] * pos[1] + c[2] * pos[2]) / l; if (d > best) { best = d; cell = i; } } }
+      if (!e || !hullLost(e, cell)) return false;
       if (cargo) { cargo.throwOff(); cargo.lowerFlag(id); }
       return true;
     },
@@ -163,13 +182,13 @@ export function createExpeditionGlue(h) {
       return hits.slice(0, 6).map((x) => [`${x.object.parent?.name || '-'}/${x.object.name || x.object.type}/${[x.object.material].flat()[0]?.name || '-'}`, +(x.distance / metres).toFixed(1), shown(x.object)]).concat([['target', +(len / metres).toFixed(1), true]]);
     },
     tick(dt) {
-      cargo?.tick(dt);
+      cargo?.tick(dt); sign?.tick(dt);
       /* the crate he was coming for is gone (holdMax, or pushed off the landing by newer crates): the part is in all the same */
       if (receipt?.held && !cargo?.state().crates.some((p) => p === 'fall' || p === 'settle' || p === 'rest')) endReceipt(receipt);
     },
     view: (kind, id) => cargo?.view(kind, id) ?? null,
-    state: () => ({ ...(cargo ? cargo.state() : { carrying: null, attached: false, flags: [], trophies: 0, crates: [], errors: [] }), receiving: !!receipt?.held }),
-    dispose() { cargo?.dispose(); cargo = null; },
+    state: () => ({ ...(cargo ? cargo.state() : { carrying: null, attached: false, flags: [], trophies: 0, crates: [], errors: [] }), receiving: !!receipt?.held, sign: !!sign }),
+    dispose() { cargo?.dispose(); cargo = null; sign?.dispose?.(); sign = null; },
   };
   return glue;
 }

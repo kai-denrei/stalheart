@@ -9,6 +9,9 @@ const v = new THREE.Vector3();
 // what the last re-aim did, for the acceptance probe (scripts/browser-test.mjs --round16): calls so far, the start and the aim point
 export const lanceTrace = { calls: 0, from: null, aim: null };
 
+// AT THE BODY, NOT ITS FEET (owner, 2026-10-05: "the lancer always seems to aim just a little bit too low"): a body's `pos` is the
+// ground under it; it is drawn `lift` x its size above that (td-tab's walk), and its rendered position is where the beam belongs
+export const bodyAt = (e) => (e?.obj?.position ? e.obj.position.toArray() : e?.pos);
 export function lanceFollow(tw, opts) { const r = followOf(tw, opts); if (r) { lanceTrace.calls++; lanceTrace.from = r.from; lanceTrace.aim = r.aim; } return r; }
 function followOf(tw, { piloted = false, camera = null, range = 0 } = {}) {
   const m = tw.lastMuzzle;
@@ -22,5 +25,5 @@ function followOf(tw, { piloted = false, camera = null, range = 0 } = {}) {
     return { from, aim: [from[0] + d.x, from[1] + d.y, from[2] + d.z] };
   }
   const t = tw.trackTarget;
-  return t?.alive && t.pos ? { from, aim: t.pos } : null;
+  return t?.alive && t.pos ? { from, aim: bodyAt(t) } : null;
 }

@@ -8,7 +8,7 @@ import { ISAO_TRIGGERS } from './isao-voice.js';
 // trigger -> extra aliases: brief ids, callout texts (matched on their start) or event names
 export const VOICE_HOOKS = Object.freeze({
   sector_brief: Object.freeze(['sector_1', 'sector_2', 'sector_3', 'sector_4', 'sector_5']),
-  ram_chain_milestones: Object.freeze(['RAM ×10', 'RAM ×25', 'RAM ×50']),
+  ram_chain_milestones: Object.freeze(['RAM ×25', 'RAM ×50']),   // ×10 is too low to call (owner, 2026-10-05)
   hull_lost: Object.freeze(['MÖRK DOWN!']),
   // the arrival's close-up, line by line (owner, 2026-10-04: "Isao says rough landing and another line about building"): its first two
   // lines are recorded word for word (rough_landing_01, so_much_to_build_01); the third, the cannibalized rocket, is the foundry's
@@ -18,17 +18,28 @@ export const VOICE_HOOKS = Object.freeze({
 
 // the callout and toast texts the game shows that a trigger answers (src/td-tab.js showCallout, showToast and the modules' host.callout)
 export const VOICE_CALLOUTS = Object.freeze(['SECTOR SECURE', 'STAMPEDE — RAM THEM', 'SOFT ONES — KEEP THE CHAIN', 'TACTICAL NUKE LAUNCHED',
-  'THE WALL IS BREACHED', 'BREACH SEALED', 'STILL OPEN · NEXT SEGMENT', 'RAM ×10', 'RAM ×25', 'RAM ×50', 'MÖRK DOWN!', 'PLASMA DRY']);
+  'THE WALL IS BREACHED', 'BREACH SEALED', 'STILL OPEN · NEXT SEGMENT', 'RAM ×25', 'RAM ×50', 'MÖRK DOWN!', 'PLASMA DRY']);
 
 // named moments the game raises itself (not a brief, not a callout): the landing's mission card, a new enemy's card, a sentry's print
 // standing, the next hull out of its berth, a sector lost, the armory's pad loading shells, an automated SOL pass's countdown (the count
 // then runs on the line's beats, src/fx/laser-arsenal.js) (src/fx/isao-voice.js isaoSpeak)
-export const VOICE_EVENTS = Object.freeze(['mission', 'first_contact', 'print_done', 'hull_rebuilt', 'sector_lost', 'shells_refilled', 'sol_firing']);
+export const VOICE_EVENTS = Object.freeze(['mission', 'first_contact', 'print_done', 'hull_rebuilt', 'sector_lost', 'shells_refilled', 'sol_firing', 'mk9_release']);   // mk9_release: every MK-9 launched (src/fx/gunship-rig.js launchHeavy)
+
+// THE LINE FOR ITS MOMENT (owner, 2026-10-05: "'The Stålheart stands, MÖRK rolling out' said much too early"; "'25, show-off' at a ram
+// bonus of 16"): a line that names a particular moment plays only at that moment (a brief id or a callout text); unlisted lines play
+// at any of their trigger's moments
+export const VOICE_LINE_MOMENTS = Object.freeze({
+  stalheart_begins_01: Object.freeze(['stalheart_begins']), stalheart_begins_02: Object.freeze(['stalheart_begins']),
+  stalheart_begins_03: Object.freeze(['stalheart_stands']), stalheart_begins_05: Object.freeze(['stalheart_stands']),
+  ram_chain_milestones_01: Object.freeze(['RAM ×10']), ram_chain_milestones_02: Object.freeze(['RAM ×25']), ram_chain_milestones_03: Object.freeze(['RAM ×50']),
+});
 
 // one line at a time, `gap` seconds of air after it; a trigger rests `repeat` seconds before it speaks again (the first time is always
 // said); a line whose file arrives more than `late` seconds after its moment is dropped rather than said out of place
 // said on the voice bus; while a line plays the world's buses dip to `duck.depth` of their level so he sits over the ambient (2026-10-04)
-export const VOICE_TUNE = Object.freeze({ gap: 0.35, repeat: 12, late: 1.5, gain: 1, duck: Object.freeze({ buses: Object.freeze(['towers', 'tank', 'enemies', 'ambient']), depth: 0.45 }) });
+// LESS, LATER (owner, 2026-10-05: "too many too early"): after any line, `space` more seconds of quiet before a moment's own pick (a
+// brief's next line on screen and a forced line do not wait), and the chatty triggers rest longer than `repeat` (`rest`, seconds)
+export const VOICE_TUNE = Object.freeze({ gap: 0.35, space: 4, repeat: 12, rest: Object.freeze({ print_done: 60, build_start: 45, idle: 90, good_hit: 30 }), late: 1.5, gain: 1, duck: Object.freeze({ buses: Object.freeze(['towers', 'tank', 'enemies', 'ambient']), depth: 0.45 }) });
 
 // the player's picks (the Workshop's voice tab): src/storage.js key
 export const VOICE_STORE = 'td.voice';

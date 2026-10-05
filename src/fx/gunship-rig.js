@@ -21,6 +21,7 @@ import { BASE_PERKS } from '../content/base-programme.js';
 import { GUNSHIP_CALL, GUNSHIP_FAR, GUNSHIP_GUNS, GUNSHIP_GUN_ORDER, GUNSHIP_NUKE, GUNSHIP_ORBIT, GUNSHIP_PLATFORM, GUNSHIP_TRACK } from '../content/gunship.js';
 import { createGunshipOptic } from './gunship-optic.js';
 import { createGunshipDrop } from './gunship-drop.js';
+import { isaoSpeak } from './isao-voice.js';
 
 export function createGunshipRig(host) {
   const { scene, sfx, explode, automated, gunship, strike, sealedBreachCells, camDist, cellAtScreen, centerBuildOnHeart, damageEnemy, executeStrike, warnRing, showRangeRing, hideRangeRing } = host;
@@ -129,7 +130,7 @@ export function createGunshipRig(host) {
     laser: (ci) => { if (ci >= 0) showRangeRing(ci, host.strikeTune().blastCells, 0xff2a1a); else hideRangeRing(); },
     loop: (name, o) => sfx.loop(name, o),
     paintHeavy: (ci) => paintHeavy(gunship, ci, GUNSHIP_GUNS),
-    launchHeavy: () => launchHeavy(gunship, GUNSHIP_GUNS),
+    launchHeavy: () => { const lc = launchHeavy(gunship, GUNSHIP_GUNS); if (lc >= 0) isaoSpeak('mk9_release', { force: true }); return lc; },   // every MK-9 is announced, manned or automated (owner, 2026-10-05)
     nudgeHeavy: (ci) => nudgeHeavy(gunship, ci),
     stepHeavy: () => stepHeavy(gunship),
     heavyState: () => heavyState(gunship, GUNSHIP_GUNS),

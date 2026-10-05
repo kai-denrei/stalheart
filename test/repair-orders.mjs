@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { nextRepair, repairsPending, repairCost, shotHoles } from '../src/domain/repair-orders.js';
+import { nextRepair, repairsPending, repairCost, shotHoles, rimHoles } from '../src/domain/repair-orders.js';
 import { BASE_REPAIR } from '../src/content/base-programme.js';
 import { BRIEFS } from '../src/isaobriefs.js';
 
@@ -79,4 +79,8 @@ assert.deepEqual(repairCost({ kind: 'wall', ci: 1 }, {}), { seconds: 6, metres: 
   assert.deepEqual(shotHoles({ ...base, shot: [2], rim: [] }), [], 'no rim, no base to mend');
   assert.deepEqual(shotHoles({ ...base, shot: new Set([3]) }), [3], 'the shot set itself is accepted');
   assert.equal(typeof T.shotMargin, 'number'); }
+// ONE WALL MORE (2026-10-05): open cells beside rim walls that were rock are holes; floor that was always floor, and the kept, are not
+{ const adj = { 1: [2, 3, 4], 5: [4, 6] }, open = (c) => c !== 3, wasRock = (c) => c !== 6;
+  assert.deepEqual(rimHoles({ walls: [1, 5], adj, open, wasRock }).sort(), [2, 4], 'blown rock beside the walls, each once; a closed cell and old floor are not');
+  assert.deepEqual(rimHoles({ walls: [1, 5], adj, open, wasRock, keep: new Set([2]) }), [4], 'a door, the back mouth or the canyon is kept open'); }
 console.log(`Repair orders: the gate first below ${T.gateAt} of its hp, then the walls in rim order, only between waves and never ahead of the player.`);

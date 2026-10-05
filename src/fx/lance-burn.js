@@ -5,7 +5,8 @@
 import * as THREE from '../../vendor/three.module.js';
 import { createScorchTrail } from './scorch-trail.js';
 
-export function createLanceBurn(scene, { cellSide, cap = 160, life = 20, hot = 2.5, cells = 0.45 } = {}) {
+// `cells`: the stamp's width in cells, 0.45 -> 1.1 (owner, 2026-10-05: "the burned ground effect of the laser is too small")
+export function createLanceBurn(scene, { cellSide, cap = 160, life = 20, hot = 2.5, cells = 1.1 } = {}) {
   const group = new THREE.Group(); group.name = 'lance burns'; scene.add(group);
   const scorch = createScorchTrail(group, { cap, life, hot, stack: 0.8, size: cellSide * cells, lift: cellSide * 0.01, name: 'Lance scorch' });
   let last = performance.now();

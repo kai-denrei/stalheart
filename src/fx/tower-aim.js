@@ -21,6 +21,7 @@
 // drift apart. (The range's own degree-based rules are src/sentry.js; this
 // is the board's radian twin over live nodes, kept bit-for-bit as it was.)
 import * as THREE from '../../vendor/three.module.js';
+import { bodyAt } from './lance-follow.js';
 import { makeLock } from '../domain/lockon.js';
 import { stepMissileLock } from '../domain/missile-targeting.js';
 import { pickTarget } from '../towers.js';
@@ -62,7 +63,8 @@ export function createTowerAim(host) {
       const target = manual ? manualTarget : config ? acquired : pickTarget(graph.centers[tw.ci], eff.range * cellSide, enemies, chord);
       tw.trackTarget = target;   // what the head is turning to: a held lance follows it (src/fx/lance-follow.js)
       if (target) {
-        aimV.set(target.pos[0], target.pos[1], target.pos[2]);
+        const tp = tw.def.attack === 'lance' ? bodyAt(target) : target.pos;   // a Lancer aims at the body itself (src/fx/lance-follow.js)
+        aimV.set(tp[0], tp[1], tp[2]);
         tw.obj.worldToLocal(aimV);
         tw.aim = Math.atan2(aimV.x, aimV.z) - facing;
         // ELEVATION, from the trunnion. The pivot on these families sits

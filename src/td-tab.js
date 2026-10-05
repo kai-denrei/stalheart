@@ -85,7 +85,7 @@ import { A6_TUNE, magFor, makeA6, stepA6, arc as a6Arc } from './heptapod.js';
 import { SENTRY_TUNE } from './sentry.js';
 import { makeLock } from './lockon.js';
 import { TOWER_LOOK_NAMES, DEFAULT_TOWER_LOOK, buildTowerLook, preloadLook, lookReady } from './towerlooks.js';
-import { makeAudio } from './audio.js'; import { isaoSay } from './fx/isao-voice.js'; import { lanceFollow } from './fx/lance-follow.js';
+import { makeAudio } from './audio.js'; import { isaoSay } from './fx/isao-voice.js'; import { lanceFollow, bodyAt } from './fx/lance-follow.js';
 import { DEATH_KEYS } from './audiomanifest.js';
 
 export function initTdTab(root) {
@@ -2350,11 +2350,9 @@ export function initTdTab(root) {
       }
     }
 
-    // world-space motion: speed is distance/sec over THIS segment's length,
-    // so a long chord between large cells takes proportionally longer — the
-    // grid offers the space, the motion traverses it. The creature's own
-    // locomotion profile modulates the pace on top.
-    // manual: motion only while W/S are held; auto: the creature's own pace
+    // world-space motion: speed is distance/sec over THIS segment's length, so a long chord between large cells takes
+    // proportionally longer — the grid offers the space, the motion traverses it. The creature's own locomotion profile modulates
+    // the pace on top. manual: motion only while W/S are held; auto: the creature's own pace
     const prof = MOVES[params.creature];
     const pace = params.speed * speedBonus * (prof ? prof.speed(runContext.time) : 1)
       * (1 - 0.65 * bumpFactor()); // the run-over drag
@@ -6704,8 +6702,8 @@ export function initTdTab(root) {
           m0.updateWorldMatrix(true, false);
           m0.getWorldPosition(gunV);
           const f0 = [gunV.x, gunV.y, gunV.z];
-          const d0 = norm3(sub3(target.pos, f0));
-          const need = Math.hypot(target.pos[0] - f0[0], target.pos[1] - f0[1], target.pos[2] - f0[2]);
+          const tb = bodyAt(target), d0 = norm3(sub3(tb, f0));
+          const need = Math.hypot(tb[0] - f0[0], tb[1] - f0[1], tb[2] - f0[2]);
           const los = lanceReach(f0, d0, need, tw.ci);
           if (los.len < need - cellSide * 0.3) continue;
         }
@@ -6760,7 +6758,7 @@ export function initTdTab(root) {
         const from3 = muzzle;
         // FROM THE MUZZLE TIP, TOWARD THE TARGET: the muzzle empty's own +Z was measured 2 to 42 degrees off the bearing (its orientation is
         // not a Workshop contract, its position is), so the beam starts at the tip and aims at the target; a turret still slewing does not fire
-        const dir3 = norm3(sub3(target.pos, from3));
+        const dir3 = norm3(sub3(bodyAt(target), from3));
         const stop = lanceReach(from3, dir3, range, tw.ci);
         let struck = 0;
         // MEASURED ON THE ARC THE BEAM IS DRAWN ALONG. This used distToSeg —

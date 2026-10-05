@@ -35,10 +35,13 @@ export function deliver(st) {
   return s.tower;
 }
 
-export function hullLost(st) {
+// WHERE THE HULL FELL (owner, 2026-10-05: "what happens if a MORK dies while carrying a package? It should be left on the ground there
+// for the player to go get back"): `at`, the cell it died on, is where the part now waits (s.at); without it, back at its site as before
+export function hullLost(st, at = null) {
   const s = st.carrying ? siteOf(st, st.carrying) : null;
   if (!s) return false;
   s.state = 'cleared'; st.carrying = null;
+  if (Number.isInteger(at) && at >= 0) s.at = at;
   return true;
 }
 

@@ -130,6 +130,7 @@ function makeHull() {
   assert.equal(glue.state().carrying, 'rocket-b');
   assert.equal(glue.hullLost(), true);
   assert.equal(siteState(story.expeditions, 'rocket-b'), 'cleared'); assert.equal(glue.state().carrying, null);
+  assert.equal(story.expeditions.sites.find((s) => s.id === 'rocket-b').at, 2, 'the part waits on the cell the hull was lost on (2026-10-05)');
   assert.equal(glue.state().flags.find((f) => f.id === 'rocket-b').state, 'lowering');
   tank = centers[0];
   for (let i = 0; i < Math.round((CARGO_LOOK.lower + CARGO_LOOK.raise + 0.3) * 60); i++) { glue.tick(1 / 60); glue.step(); }   // down, then up again
