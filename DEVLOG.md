@@ -94,6 +94,22 @@ Evidence:
 - unit tests: line moments, forced line, space and rests (isao-voice), RAM x10 silent (voice-match), rimHoles and shotHoles (repair-orders), hullLost at a cell (expeditions, cargo); the Needle's click measured -2 -> -15 dB peak
 - --grow, --shield-story, --voice, --opening and the default suite (46 steps)
 
+## 2026-10-05 — Squads: a big wave's soft bodies past the first fifty come five to an entity, one draw call and one walk, shedding a member (and paying its kill) at each body's worth of damage, five rams in one contact
+
+change · accepted · 2026-10-05-squads-five-bodies-to-an-entity
+
+Owner, 2026-10-05, after the frame-rate notes (sector 6 at 7 fps, sector 9 at 3 fps): 'to represent thousands of units and not lose on fps, is it possible to hack the visual and have one unit representing 5 or so, maybe elongated shape, and every n unit is one of those, visually looks almost similar, if hit by a tank, it registers as 5 kills'. Then: 'yes, build the squads and push; record these for the roadmap too'. Measured before: drawing is most of the cost, about 2.5 draw calls a body.
+
+src/domain/squads.js packSquads: a breach's wave with SQUADS.over (150) soft bodies or more keeps SQUADS.single (50) single, in proportion across the soft types, and packs the rest SQUADS.size (5) to an entry; hard cores never. The sector queue packs every wave (src/fx/sector-run.js queueOf) and counts a squad as its members. src/fx/squads.js makeDotSquad: one dot cloud with five copies of the creature in a staggered file, each member a run of dots at SQUADS.dens of a body's density, a shed member drawn no more (setDrawRange); the contact radius SQUADS.reach (1.8) times a body's, the lift kept. In td-tab: a squad's health is five bodies'; each hit sheds the members its health no longer covers and pays each one (bounty, score, wave and sector books, tank harvest) through the same block a kill uses; the gunship's rounds and strikes and SOL hit every member (SQUADS.area); a ram pays its members one by one (combo, kg, milestones). Roadmap: the squads' follow-ups and batched drawing of the crowd as candidates.
+
+Alternatives: Batched drawing first: one draw call per type keeps one entity per body, but means moving every per-body effect into instance attributes; kept as the next candidate, and squads batch the same way; A fixed lower crowd: fewer bodies, which the owner did not want ('FUN!')
+
+Evidence:
+
+- --squads (new): sector 4 with 74 squads up, 194 entities standing for 490 bodies at 16.7 ms a frame; a squad rammed pays rams in fives (RAM x128 in one run through the field); screenshots squads-field, squads-ram
+- test/squads.mjs (the same bodies, hard cores single, about fifty singles, far fewer entities); test/sector-run.mjs counts the canyon's swarm in bodies and sees squads in it
+- --grow, --round23 and the default browser suite
+
 ## 2026-10-05 — The intro goes straight to the action: the Rotor at the tour's end with the swarm in sight, the Quiver's hard cores already up, the gunship's seat on NUKE THE ENTRANCE, and the tank handed over facing the blast
 
 change · accepted · 2026-10-05-intro-straight-to-the-action
@@ -109,6 +125,20 @@ Evidence:
 - --opening-probe: tour 10.3 -> 20.6 s, piloting at 20.6 s, foes 8.7 cells from the Rotor; --opening-cuts: no jumps, the tour straight into takeControl
 - --round23 (new): two hard cores up 6.1 cells from the Quiver; the second kill seats the gunship, MK-9 up, the order shown; the blast hands the hull over ('early', drawn, out of the seat, construction still on); screenshots show the order over the thermal view and the hull nose to the smoke column
 - --grow passes end to end (its tremor steps replaced by the first fodder during the tour); default suite, --opening, unit tests and the architecture guard pass
+
+## 2026-10-05 — Batched drawing of the crowd: one draw call per creature type, the per-body effects as instance attributes, as the lasting cure for the crowd's frame rate
+
+decision · proposed · 2026-10-05-batched-drawing-of-the-crowd
+
+Measured 2026-10-05 (--crowd-probe, M4): 3,000 bodies cost 34.8 ms a frame, 2.6 ms of it the enemies' CPU and most of the rest about 2.5 draw calls a body (7,679). The owner played sector 6 at 7 fps and sector 9 at 3 fps. The crowd cap and the squads are in; the owner agreed batching is the real fix and asked for it on the roadmap.
+
+Not scheduled. ROADMAP.md, Candidate: 'Batched drawing of the crowd'. Each creature type's dot clouds merged into one Points buffer (or instanced), with place, scale, wobble phase, emergence and hit flash per body; squads batch the same way.
+
+Alternatives: Leaving it to the crowd cap and the squads: they hold the frame by holding fewer entities, and stop short of thousands on a slower machine
+
+Evidence:
+
+- --crowd-probe: 500 bodies 16.7 ms, 1,000 18 ms, 2,000 25.5 ms, 3,000 34.8 ms with 7,679 draw calls
 
 ## 2026-10-04 — The owner's twentieth notes: the opening runs from the landers' tour to the Rotor without a cut, the beacons light one by one as the tour reaches them, and a gust of wind in the quiet
 

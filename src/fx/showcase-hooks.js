@@ -134,8 +134,8 @@ export function createShowcaseHooks(host) {
     // while seventy bodies sat in the shaft. The LAST such body, not the first: the newest is the one that just came up out of
     // the breach this beat is about, while the oldest is a guard standing over a site on the far side of the map. On ground
     // the hull can stand on, too: dropped onto rock it sits inside the rubble and the chase camera photographs a boulder
-    ramNext: () => {
-      const e = enemies.findLast((x) => x.alive && x.id > 0 && x.spec.rammable && x.emergeAge >= 1.2 && host.dungeon().tags[x.cur] !== BLOCKED);
+    ramNext: (squad = false) => {   // squad: a squad's clump only (src/fx/squads.js)
+      const e = enemies.findLast((x) => x.alive && x.id > 0 && x.spec.rammable && x.emergeAge >= 1.2 && host.dungeon().tags[x.cur] !== BLOCKED && (!squad || x.members > 1));
       if (!e) return false;
       host.placeTank(e.cur);
       return true;

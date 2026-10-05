@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "2026-10-05-batched-drawing-of-the-crowd",
+  "date": "2026-10-05",
+  "type": "decision",
+  "status": "proposed",
+  "title": "Batched drawing of the crowd: one draw call per creature type, the per-body effects as instance attributes, as the lasting cure for the crowd's frame rate",
+  "context": "Measured 2026-10-05 (--crowd-probe, M4): 3,000 bodies cost 34.8 ms a frame, 2.6 ms of it the enemies' CPU and most of the rest about 2.5 draw calls a body (7,679). The owner played sector 6 at 7 fps and sector 9 at 3 fps. The crowd cap and the squads are in; the owner agreed batching is the real fix and asked for it on the roadmap.",
+  "outcome": "Not scheduled. ROADMAP.md, Candidate: 'Batched drawing of the crowd'. Each creature type's dot clouds merged into one Points buffer (or instanced), with place, scale, wobble phase, emergence and hit flash per body; squads batch the same way.",
+  "alternatives": [
+    "Leaving it to the crowd cap and the squads: they hold the frame by holding fewer entities, and stop short of thousands on a slower machine"
+  ],
+  "evidence": [
+    "--crowd-probe: 500 bodies 16.7 ms, 1,000 18 ms, 2,000 25.5 ms, 3,000 34.8 ms with 7,679 draw calls"
+  ],
+  "supersedes": []
+}

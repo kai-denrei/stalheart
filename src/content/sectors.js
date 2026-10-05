@@ -58,6 +58,13 @@ export const SECTORS = freeze([
 // trickle / trickleGap / tierSize / tierCores / trickleCallout (2026-10-03): the soft trickle between floods and the automation's ramp (src/domain/stampede.js stampedeWave)
 // THE CROWD FITS THE MACHINE (src/domain/crowd-cap.js): bodies alive at once start at `start` and follow the frame between `min` and
 // `max` (the gunship's own aliveBudget, 3500); under 28 fps (36 ms) it comes down 15% a second, over 42 fps (24 ms) it goes up 6%
+// THE SQUADS (owner, 2026-10-05: "one unit 'representing' 5 or so, maybe elongated shape, and every n unit is one of those, visually
+// looks almost similar, if hit by a tank, it registers as 5 kills"). A wave with `over` or more soft bodies keeps `single` of them as
+// themselves (the front of it, the ones a player meets one by one) and packs the rest `size` to a body: one entity, one draw call,
+// `size` bodies of health, a member shed (and paid) at each body's worth of damage, `size` rams in one (src/domain/squads.js,
+// src/fx/squads.js). `dens`: a member's dots against a single body's; `reach`: the clump's contact radius against a body's; `area`:
+// the damage sources that hit every member at once (the gunship's rounds and strikes, SOL's beam)
+export const SQUADS = freeze({ over: 150, single: 50, size: 5, dens: 0.6, reach: 1.8, area: ['strike', 'laser'] });
 export const CROWD_CAP = freeze({ start: 1500, min: 400, max: 3500, slowMs: 36, fastMs: 24, down: 0.85, up: 1.06, every: 1 });
 export const SECTOR_STAMPEDE = freeze({ every: 2, size: 3, cores: 2, core: 'barbed', fallback: 'amoeba', callout: 'STAMPEDE — RAM THEM', trickle: 2, trickleGap: 1.3, trickleMax: 24, tierSize: 1, tierCores: 2, trickleCallout: 'SOFT ONES — KEEP THE CHAIN' });
 

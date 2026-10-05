@@ -239,17 +239,51 @@ measured. Wanted: a way to hold a large live population without turning the
 game off. Note that `docs/STATE.md`'s 5,334 bodies at wave 75 are **scheduled
 across a wave, not concurrent** — concurrency is what costs.
 
-### The board, not the crowd
+**Update, 2026-10-05.** Found, with `--crowd-probe` (held crowds on the story
+planet, M4): 500 bodies 16.7 ms a frame, 1,000 18 ms, 2,000 25.5 ms, 3,000
+34.8 ms. The enemies' own CPU is 2.6 ms of that at 3,000; the rest is drawing,
+about 2.5 draw calls a body (7,679 at 3,000). The owner played sector 6 at
+7 fps ("but FUN!") and sector 9 at 3 fps. Two answers are in: the **crowd cap**
+(`src/domain/crowd-cap.js`: the bodies alive at once follow the measured frame,
+a flood waits in the queue) and the **squads** (below). The lasting one is the
+next section.
 
-With one enemy alive the scene is already **1,120 draw calls and 375,000
-triangles**. Enemies add 250–800 on top. If anything on this board wants
-optimising it is the static base, the towers and the postfx — and nobody has
-looked at that yet.
+### Batched drawing of the crowd
 
-### Merging the dot clouds
+Wanted now (it was "worth doing when a weaker device says so": the owner's
+machine said so). One draw call per creature type instead of one per body: the
+dot clouds of a type merged into one `Points` buffer (or instanced), each
+body's place, scale, wobble phase, emergence and hit flash carried as
+per-instance attributes the dot shader reads. Squads stay as they are and
+batch the same way. Expected: the 7,679 calls at 3,000 bodies down to tens, so
+the crowd cap rises on every machine and the squads' 5x multiplies on top.
 
-A 16× win on paper (1,092 calls → 1) that is currently saving 1.5 ms nothing is
-short of. Worth doing when a weaker device says so, not before.
+The care it needs: everything that reaches for `e.obj` today (the hit flash,
+the slow tint, the scale step, disposal, the bloom groups, the breach
+emergence, the rotation idles) moves to the buffer's slot for that body.
+
+### Squads: what comes after the first cut
+
+Built 2026-10-05 (owner: "one unit 'representing' 5 or so ... if hit by a
+tank, it registers as 5 kills"): a wave with 150 soft bodies or more at one
+breach keeps 50 single and packs the rest five to an entity (`SQUADS` in
+`src/content/sectors.js`). Open:
+
+- **The numbers.** `over`, `single`, `size` and `dens` were set by eye on one
+  machine. A larger `size` (10) for the floods of the late sectors, and
+  squads in sector 0's construction waves and the canyon's far swarm, are the
+  obvious next turns.
+- **The look.** A squad is five copies in a loose file, shedding one per
+  body's worth of damage. Whether it should read as a squad (a formation, a
+  marker) or pass as five bodies is the owner's call.
+- **The walk.** A squad moves as one: it cannot split around a wall or a
+  ram. Splitting a squad into singles when it is hit by a ram, or when the
+  crowd cap has room, would hide that.
+- **The scores.** One contact rams five, so RAM ×N climbs five times as fast
+  in a squad wave. The ram milestones and the bests may want their own tiers.
+- **Single-target weapons.** A tower shot or a shell takes one member; the
+  gunship's rounds, strikes and SOL take all five (`SQUADS.area`). The tank's
+  shell splash and the Lancer's pierce are worth a look in play.
 
 ### The autopilot is steering, and half of it is already pure
 
@@ -337,13 +371,19 @@ First step, when it is picked up: `@ts-check` on `src/domain` as a trial, to see
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 42 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 43 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
 
 ### Type checking without TypeScript files: @ts-check and JSDoc with tsc --noEmit, adopted layer by layer, rather than converting to .ts
 
 `2026-10-05-type-checking-without-typescript-files` · decision · **proposed**
 
 Owner, 2026-10-05: a friend says using JavaScript was a terrible decision and the project should be TypeScript. Discussed; the owner asked to keep the recommendation as a roadmap item that might be implemented in the future.
+
+### Batched drawing of the crowd: one draw call per creature type, the per-body effects as instance attributes, as the lasting cure for the crowd's frame rate
+
+`2026-10-05-batched-drawing-of-the-crowd` · decision · **proposed**
+
+Measured 2026-10-05 (--crowd-probe, M4): 3,000 bodies cost 34.8 ms a frame, 2.6 ms of it the enemies' CPU and most of the rest about 2.5 draw calls a body (7,679). The owner played sector 6 at 7 fps and sector 9 at 3 fps. The crowd cap and the squads are in; the owner agreed batching is the real fix and asked for it on the roadmap.
 
 ### Session sync after the tenth to fifteenth notes: what broke along the way, why, and what no one has seen yet, before the session restarts
 

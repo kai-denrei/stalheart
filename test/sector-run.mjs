@@ -194,7 +194,8 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
   assert.ok(w.briefs.includes(CANYON.brief), 'Isao sees them rise');
   const pulse = w.run.release(w.t), swarm = pulse.filter((q) => q.sp === far);
   const one = (await import('../src/enemyspec.js')).computeWavePlan(SECTORS[2].ladderStart + CANYON.ladder, 1, 4, SECTORS[2].threat).entries.reduce((n, e) => n + e.count, 0);
-  assert.equal(swarm.length, one * CANYON.swarm * 2, `five two-breach pulses at once (${swarm.length})`);
+  const bodies = swarm.reduce((n, q) => n + (q.squad || 1), 0);   // a big swarm comes partly in squads (src/domain/squads.js)
+  assert.equal(bodies, one * CANYON.swarm * 2, `five two-breach pulses at once (${bodies} bodies)`); assert.ok(swarm.some((q) => q.squad), 'the swarm packs squads');
   assert.ok(swarm.every((q) => q.spread === CANYON.spread && q.dens === CANYON.dens), 'risen with the canyon\'s scatter, drawn light');
   w.spawn(pulse);
   w.step(CANYON.seatAfter - 1);

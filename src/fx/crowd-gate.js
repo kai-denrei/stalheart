@@ -3,14 +3,15 @@
 import { makeCrowdCap, stepCrowdCap } from '../domain/crowd-cap.js';
 import { CROWD_CAP } from '../content/sectors.js';
 
-export const crowdTrace = { cap: null, alive: 0, ema: null, held: 0 };   // the acceptance probe's view (scripts/browser-test.mjs --crowd-probe)
+export const crowdTrace = { cap: null, alive: 0, ema: null, held: 0, squads: 0, bodies: 0 };   // squads/bodies: the squads up and the bodies they and the singles stand for   // the acceptance probe's view (scripts/browser-test.mjs --crowd-probe)
 export function createCrowdGate(tune = CROWD_CAP, now = () => performance.now()) {
   const c = makeCrowdCap(tune);
   let last = null, alive = 0;
   return {
     // `timed`: a real frame (the zero-step calls between frames only recount)
     frame(enemies, timed) {
-      alive = 0; for (const e of enemies) if (e.alive && !e.guard) alive++;
+      alive = 0; let squads = 0, bodies = 0; for (const e of enemies) if (e.alive && !e.guard) { alive++; bodies += e.members || 1; if (e.members) squads++; }
+      crowdTrace.squads = squads; crowdTrace.bodies = bodies;
       if (timed) { const t = now(); if (last != null) stepCrowdCap(c, t - last, alive); last = t; }
       crowdTrace.cap = c.cap; crowdTrace.alive = alive; crowdTrace.ema = c.ema;
     },

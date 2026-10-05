@@ -1839,6 +1839,21 @@ try{
   const p=await evaluate(`${T}.state().performance`),s=await evaluate(`${T}.state()`);
   const g=await evaluate('(async()=>(await import("./src/fx/crowd-gate.js")).crowdTrace)()');
   console.log(`  crowd asked ${n}, up ${s.enemiesAlive}, queued ${s.queued}, cap ${g.cap} (frame ema ${g.ema?.toFixed(1)} ms): frame ${p.frameMs.toFixed(1)} ms, cpu enemies ${p.cpu.enemies.toFixed(1)} towers ${p.cpu.towers.toFixed(1)} frame ${p.cpu.frame.toFixed(1)}, calls ${p.calls}, gpu ${p.gpuMs?.toFixed(1)??'-'}`);}
+ } else if(args.includes('--squads')) {
+ // THE SQUADS (owner, 2026-10-05: "one unit 'representing' 5 or so ... if hit by a tank, it registers as 5 kills"): a big sector wave
+ // comes partly in squads, five bodies to an entity; a squad rammed is five rams; the crowd's bodies outnumber its entities
+ const T='window.__stalheartTest',C='(async()=>(await import("./src/fx/crowd-gate.js")).crowdTrace)()';
+ await go('squads',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${process.env.SECTOR||4}&fps=1#td`);
+ await until(`!!${T} && ${T}.state().sector?.n>=1`,120000);
+ await until(`(async()=>(await ${C}).squads>=10)()`,90000).catch(async()=>assert.fail(`squads come with a big wave (${JSON.stringify(await evaluate(C))})`));
+ await delay(3000);
+ {const c=await evaluate(C),p=await evaluate(`${T}.state().performance`);console.log(`  squads: ${c.squads} squads, ${c.alive} entities standing for ${c.bodies} bodies; frame ${p?.frameMs?.toFixed(1)} ms, ${p?.calls} calls`);assert(c.bodies>c.alive+4*c.squads-1,'each squad stands for five');}
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,#td-brief{display:none!important}</style>")');
+ const r0=(await evaluate(`${T}.state()`)).ram.rams;let rammed=0;
+ for(let i=0;i<12&&!rammed;i++){await evaluate(`${T}.showcase.ram(true)`);if(!await evaluate(`${T}.showcase.ramNext(true)`)){await delay(1000);continue;}await delay(700);rammed=(await evaluate(`${T}.state()`)).ram.rams-r0;}
+ console.log(`  squads: rammed ${rammed} bodies in one contact`);assert(rammed>=5,`a squad rammed is five rams (${rammed})`);
+ await delay(800);current='squads-ram';await finish();
+ await evaluate(`${T}.showcase.ram(false)`);await evaluate(`${T}.showcase.ground(${T}.showcase.source(),1.6,2.4)`);await delay(2500);current='squads-field';await finish();
  } else if(args.includes('--canyon-probe')) {
  // THE CANYON'S TIMELINE to SOL's seat (no assertions): sector phase, shot, laser phase and seat, Isao's panel, each change
  const T='window.__stalheartTest',n=args.includes('--again')?6:3;

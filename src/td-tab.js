@@ -85,7 +85,7 @@ import { A6_TUNE, magFor, makeA6, stepA6, arc as a6Arc } from './heptapod.js';
 import { SENTRY_TUNE } from './sentry.js';
 import { makeLock } from './lockon.js';
 import { TOWER_LOOK_NAMES, DEFAULT_TOWER_LOOK, buildTowerLook, preloadLook, lookReady } from './towerlooks.js';
-import { makeAudio } from './audio.js'; import { isaoSay } from './fx/isao-voice.js'; import { lanceFollow, bodyAt } from './fx/lance-follow.js'; import { createCrowdGate } from './fx/crowd-gate.js';
+import { makeAudio } from './audio.js'; import { isaoSay } from './fx/isao-voice.js'; import { lanceFollow, bodyAt } from './fx/lance-follow.js'; import { createCrowdGate } from './fx/crowd-gate.js'; import { makeDotSquad, shedSquad, squadDamage } from './fx/squads.js';
 import { DEATH_KEYS } from './audiomanifest.js';
 
 export function initTdTab(root) {
@@ -104,12 +104,10 @@ export function initTdTab(root) {
     seed: 7,
     heartLook: 'sentryTerraformer', // what stands at the pole — see HEART_LOOKS. The pre-A6 terraformer (the wide machine on a round pad) was purged 2026-09-14
     callouts: true,           // the encouragement layer; numbers survive it going off
-    // The whole unlock run — every wave until the last tower unlocks — is
-    // a guided tutorial, and it should be played on a TIGHT board: at 3000
-    // the opening sector was 146 open cells, at 500 it is 84. Cells are
-    // also ~2.4x wider, so the board reads chunky and legible rather than
-    // sprawling. Sector expansion is unaffected — round 2 still opens 278.
-    // Larger maps for the post-tutorial game are a separate, later change.
+    // The whole unlock run — every wave until the last tower unlocks — is a guided tutorial, and it should be played on a TIGHT
+    // board: at 3000 the opening sector was 146 open cells, at 500 it is 84. Cells are also ~2.4x wider, so the board reads
+    // chunky and legible rather than sprawling. Sector expansion is unaffected — round 2 still opens 278. Larger maps for the
+    // post-tutorial game are a separate, later change.
     points: 500, // ONE pre-decided lane world; sectors unseal it in bands
     rooms: 16,          // lane structure: rooms joined by wide corridors
     roomRadius: 4,
@@ -217,10 +215,9 @@ export function initTdTab(root) {
           if (r.cssRules && !(r instanceof CSSMediaRule)) { walk(r.cssRules); continue; }
           if (!(r instanceof CSSMediaRule)) continue;
           const t = r.media.mediaText;
-          // BOTH sides of the pointer: coarse/hover-none become true AND
-          // fine/hover-hover become false — headless is `pointer: fine`, and
-          // leaving that half alone hid the thumbs (a fine-pointer block)
-          // under a coarse layout, a combination no device has
+          // BOTH sides of the pointer: coarse/hover-none become true AND fine/hover-hover become false — headless is `pointer:
+          // fine`, and leaving that half alone hid the thumbs (a fine-pointer block) under a coarse layout, a combination no
+          // device has
           if (!/pointer:\s*(coarse|fine)|hover:\s*(none|hover)/.test(t)) { walk(r.cssRules || []); continue; }
           r.media.mediaText = t
             .replace(/\(pointer:\s*coarse\)/g, '(min-width: 0px)')
@@ -234,12 +231,9 @@ export function initTdTab(root) {
     }
     return flipped;
   }
-  // ?coarse=1 — SIMULATE A COARSE POINTER for the ruler. No headless flag
-  // makes `(pointer: coarse)` true (primaryPointerType blink-settings were
-  // tried: still false), so every rule in the phone's coarse blocks was
-  // invisible to ?layout, which reported 0 overlaps on a layout the phone
-  // never shows — the operator's screenshot showed the radar swallowing the
-  // launch console.
+  // ?coarse=1 — SIMULATE A COARSE POINTER for the ruler. No headless flag makes `(pointer: coarse)` true (primaryPointerType
+  // blink-settings were tried: still false), so every rule in the phone's coarse blocks was invisible to ?layout, which reported
+  // 0 overlaps on a layout the phone never shows — the operator's screenshot showed the radar swallowing the launch console.
   if (mobileParam === '1' && new URLSearchParams(location.search).get('coarse') === '1') {
     console.log(`COARSE simulated at init: ${simulateCoarse()} media blocks now apply`);
   }
@@ -345,11 +339,9 @@ export function initTdTab(root) {
   sfx.arm();
   // THE ALARM IS THE PROOF OF LIFE (operator, 2026-09-01): the klaxon fires the moment the audio context runs, on the first click
   sfx.whenRunning(() => {
-    // TWO sounds, deliberately, by two completely different routes. The
-    // oscillator uses NONE of the sample path — no decoded buffer, no bus,
-    // no master, no mix admission — so hearing one and not the other
-    // localises the fault without needing a special URL or another round
-    // trip. Six attempts failed to ask this question; now every load asks it.
+    // TWO sounds, deliberately, by two completely different routes. The oscillator uses NONE of the sample path — no decoded
+    // buffer, no bus, no master, no mix admission — so hearing one and not the other localises the fault without needing a
+    // special URL or another round trip. Six attempts failed to ask this question; now every load asks it.
     sfx.beep(880, 220);            // route A: oscillator -> destination
     console.log('AUDIO proof-of-life A: beep (oscillator, no buffer/bus/master)');
   });
@@ -1676,9 +1668,8 @@ export function initTdTab(root) {
           if (!g) break;
           const c = graph.centers[ci];
           const nrm2 = graph.normals[ci];
-          // SHALLOW: the full-length box hid its cargo in shadow (operator
-          // report). Depth squashed to 0.55 — one hull fits, and you can
-          // SEE it from the doors.
+          // SHALLOW: the full-length box hid its cargo in shadow (operator report). Depth squashed to 0.55 — one hull fits, and
+          // you can SEE it from the doors.
           g.scale.set(cellSide * 0.9, cellSide * 0.9, cellSide * 0.9 * 0.55);
           g.position.set(c[0], c[1], c[2]);
           // doors onto the exit lane: the bays still face home, and now the
@@ -1691,11 +1682,9 @@ export function initTdTab(root) {
           tank.scale.setScalar(0.32);
           // counter-stretch: the parent's z-squash would flatten the hull
           tank.scale.z /= 0.55;
-          // AT THE DOORS, not in the middle (operator, 2026-08-31: you could
-          // not see there was a hull in there). The fitted box runs z ±0.80
-          // with the doors at +z and the hull is ~0.29 long in the same
-          // units, so 0.52 puts its nose on the door plane and its whole
-          // body in the light.
+          // AT THE DOORS, not in the middle (operator, 2026-08-31: you could not see there was a hull in there). The fitted box
+          // runs z ±0.80 with the doors at +z and the hull is ~0.29 long in the same units, so 0.52 puts its nose on the door
+          // plane and its whole body in the light.
           tank.position.set(0, 0.12, 0.52);
           g.add(tank);
           scene.add(g);
@@ -2163,12 +2152,9 @@ export function initTdTab(root) {
         }
       }
     }
-    // SOLID units hurt to touch, and no autopilot order should drive the
-    // hull through one (operator ruling, filed against seek-home): every
-    // directive except RAM (its chase must not be disrupted) and AVOID
-    // (which already flees everything) gets a flee vector away from the
-    // dangerous tier, weighted by proximity so it outvotes the goal field
-    // only at close range.
+    // SOLID units hurt to touch, and no autopilot order should drive the hull through one (operator ruling, filed against
+    // seek-home): every directive except RAM (its chase must not be disrupted) and AVOID (which already flees everything) gets a
+    // flee vector away from the dangerous tier, weighted by proximity so it outvotes the goal field only at close range.
     let fleeVec = null;
     if (!active && params.directive !== 'ram' && params.directive !== 'avoid') {
       const R = cellSide * 4;
@@ -2262,8 +2248,7 @@ export function initTdTab(root) {
           if (w) {
             const toWall = norm3(sub3(w, player.pos));
             const into = Math.max(0, dot3(step, toWall));
-            // a mostly head-on hit THUDS like running something over;
-            // the bumpLeft gate keeps grinding along a wall from
+            // a mostly head-on hit THUDS like running something over; the bumpLeft gate keeps grinding along a wall from
             // re-triggering every frame
             const slid = sub3(step, scale3(toWall, into)), share = into / (len3(step) || 1), kq = kick.cool > 0 ? null : planKick({ pos: player.pos, heading: player.heading, toWall, slid, share, cellSide, blocked: freeBlocked }, TANK_KICK);
             if (kq && startKick(kick, { from: player.pos, ...kq }, TANK_KICK)) { scrubDriveRamp(driveRamp, 1 - TANK_KICK.keep, TANK_DRIVE); player.heading = kq.heading; }
@@ -2271,9 +2256,8 @@ export function initTdTab(root) {
             cand = norm3(add3(player.pos, slid));
             if (freeBlocked(cand)) cand = null;
           } else { cand = null; for (const a of TANK_WALL.glance) { const n0 = norm3(player.pos), r = add3(scale3(step, Math.cos(a)), scale3(cross3(n0, step), Math.sin(a))), c2 = norm3(add3(player.pos, scale3(r, Math.cos(a)))); if (!freeBlocked(c2)) { cand = c2; break; } } }   // a building: glance off it
-          // wedged with nowhere to slide? creep toward the CURRENT cell's
-          // center — it is open ground by definition, so the tank can
-          // always un-stick itself, shells or no shells
+          // wedged with nowhere to slide? creep toward the CURRENT cell's center — it is open ground by definition, so the tank
+          // can always un-stick itself, shells or no shells
           if (!cand) { scrubDriveRamp(driveRamp, 1, TANK_DRIVE);   // wedged: nothing built survives
             const home = graph.centers[player.cur];
             const toHome = sub3(home, player.pos);
@@ -2432,11 +2416,9 @@ export function initTdTab(root) {
 
   function onKeyEvent(ev, down) {
     if (!active || pilotMode) return;
-    // a clicked button (lil-gui title, d-pad, modal regen) keeps FOCUS, and
-    // the browser "clicks" the focused button again on Space — which is the
-    // fire key. That's how the panel kept "opening by itself" mid-battle.
-    // Drop button focus before handling any game key. Inputs keep focus
-    // (typing a seed must not drive the tank's keys into blur).
+    // a clicked button (lil-gui title, d-pad, modal regen) keeps FOCUS, and the browser "clicks" the focused button again on
+    // Space — which is the fire key. That's how the panel kept "opening by itself" mid-battle. Drop button focus before handling
+    // any game key. Inputs keep focus (typing a seed must not drive the tank's keys into blur).
     if (down && document.activeElement && document.activeElement.tagName === 'BUTTON') {
       document.activeElement.blur();
     }
@@ -2499,19 +2481,15 @@ export function initTdTab(root) {
       return;
     }
     if (down && (k === ' ' || k === 'spacebar')) { fire(); ev.preventDefault(); return; }
-    // T FOR TATE (盾), not S. S is REVERSE — it is in CTL_DRIVE_KEYS with w/a/d
-    // — so binding the shield to it meant every time the player backed up they
-    // also spent a charge. My earlier check grepped for `k === 's'` and found
-    // nothing, which is exactly the wrong question: the drive keys are read
-    // through a MAP, not a literal, so the conflict was invisible to the search
-    // and would have shown up as a rack that emptied itself.
+    // T FOR TATE (盾), not S. S is REVERSE — it is in CTL_DRIVE_KEYS with w/a/d — so binding the shield to it meant every time the
+    // player backed up they also spent a charge. My earlier check grepped for `k === 's'` and found nothing, which is exactly the
+    // wrong question: the drive keys are read through a MAP, not a literal, so the conflict was invisible to the search and would
+    // have shown up as a rack that emptied itself.
     if (down && k === 't') { deployShieldNow(); ev.preventDefault(); return; }
     if (down && k === 'h') pulseHint();
     if (down && k === 'v') toggleView();
-    // views land on number keys and on the letters that say them: 1/M/O all
-    // read as "map" and go to orbit, 2 is first person, 3 third person (T is
-    // the SHIELD now, and V still cycles). The radar's heart/player toggle
-    // lives on the MAP button alone.
+    // views land on number keys and on the letters that say them: 1/M/O all read as "map" and go to orbit, 2 is first person, 3
+    // third person (T is the SHIELD now, and V still cycles). The radar's heart/player toggle lives on the MAP button alone.
     if (down && (k === '1' || k === 'm' || k === 'o')) setView('orbit');
     if (down && k === '2') setView('pov');
     // THIRD PERSON LOSES ITS LETTER to the shield. It keeps `3`, and `v`
@@ -2545,13 +2523,10 @@ export function initTdTab(root) {
   addEventListener('keyup', (ev) => onKeyEvent(ev, false));
   const releaseInputs = () => { releaseHeld(keys, Object.keys(keys)); pilot?.release?.(); };   /* EVERY held input goes, not just the five drive keys: taking a screenshot moves focus off the page, the keyup never lands, and the tank went on firing with the not-ready cue behind it (owner, 2026-09-16). Which events count is src/core/held-input.js's ruling */ for (const type of RELEASE_EVENTS) (type === 'mouseleave' ? renderer.domElement : type === 'blur' ? window : document).addEventListener(type, () => { if (releasesHeld(type, { hidden: document.visibilityState === 'hidden', locked: !!document.pointerLockElement, wasLocked: true })) releaseInputs(); }); addEventListener('keydown', (ev) => { if (ev.repeat || /INPUT|SELECT|TEXTAREA/.test(ev.target?.tagName ?? '') || shopCi !== -1) return; const seat = { 7: '[data-view="tank"]', 8: '[data-mount="gunship"]', 9: '[data-view="laser"]', 0: '[data-view="map"]' }[ev.key]; if (!seat) return; document.querySelector(`#story-views ${seat}`)?.click(); ev.preventDefault(); }, true);   /* 7 8 9 0 TAKE THE SEATS (owner, 2026-09-16): each key clicks the views strip's own button, so a seat that is not available yet refuses exactly as the button does, and the strip stays the one place a seat is chosen. Capture phase, registered before any seat installs its own handler, so it answers from the tank and from inside a seat alike */
 
-  // T1 tank first person · T3 tank third person · O1 orbital. Bastion left
-  // the cycle (tower-watching was a spectator mode nobody drove from), and
-  // nothing auto-centres any more — the two CENTRE buttons do it on demand.
-  // V toggles the two views that have buttons. POV is parked (operator: it
-  // earns its screen space on nobody's phone) but still selectable from the
-  // GUI, and the DRONE is not on the cycle at all — you get it by reaching
-  // for Isao, which is the point of it.
+  // T1 tank first person · T3 tank third person · O1 orbital. Bastion left the cycle (tower-watching was a spectator mode nobody
+  // drove from), and nothing auto-centres any more — the two CENTRE buttons do it on demand. V toggles the two views that have
+  // buttons. POV is parked (operator: it earns its screen space on nobody's phone) but still selectable from the GUI, and the
+  // DRONE is not on the cycle at all — you get it by reaching for Isao, which is the point of it.
   function toggleView() {
     setView(params.view === 'third' ? 'orbit' : 'third');
   }
@@ -4101,7 +4076,7 @@ export function initTdTab(root) {
       if (!sp.alive) continue;   // its gate died while it was queued
       if(!gameBreaches.ready(sp.obj)||crowdGate.full(entry)){spawnQueue.unshift({...entry,at:spawnClock});break;}
       const spec = ENEMY_SPEC[type]; if (storyMode && !entry.guard && !seenTypes.has(type)) { seenTypes.add(type); showContact(root, type); }   // first contact: src/fx/contact-card.js
-      const obj = makeDotEnemy(type, { walker: CREATURE_TINTS[type], walkerHi: accentFor(type) }, entry.dens);
+      const obj = (entry.squad ? makeDotSquad : makeDotEnemy)(type, { walker: CREATURE_TINTS[type], walkerHi: accentFor(type) }, entry.dens, entry.squad);
       const size = spec.size * 0.7;
       const scale0 = cellSide * size;
       obj.scale.setScalar(scale0); obj.userData.s0 = scale0;
@@ -4109,7 +4084,7 @@ export function initTdTab(root) {
       const exits = openNeighbors(sp.ci);
       enemies.push({
         id: nextEnemyId++,
-        type, spec, scale0, size,breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:-(entry.delay??0),harmless:!!entry.harmless,emergeOff:entry.spread?(()=>{const [u,v]=tangentBasis(norm3(graph.centers[sp.ci])),a=whim()*6.283,r=Math.sqrt(whim())*entry.spread*cellSide;return add3(scale3(u,Math.cos(a)*r),scale3(v,Math.sin(a)*r));})():null,   // THE SWARM (owner, 2026-09-13): the whole crater boils, not one point
+        type, spec, scale0, size: size * (obj.userData.reach ?? 1),breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:-(entry.delay??0),harmless:!!entry.harmless,emergeOff:entry.spread?(()=>{const [u,v]=tangentBasis(norm3(graph.centers[sp.ci])),a=whim()*6.283,r=Math.sqrt(whim())*entry.spread*cellSide;return add3(scale3(u,Math.cos(a)*r),scale3(v,Math.sin(a)*r));})():null,   // THE SWARM (owner, 2026-09-13): the whole crater boils, not one point
         cur: sp.ci, prev: -1,
         next: exits.length ? exits[Math.floor(whim() * exits.length)] : sp.ci,
         prog: sp.obj.userData.breach?0:whim() * 0.4, pos: graph.centers[sp.ci].slice(), dir: [0, 1, 0],
@@ -4117,7 +4092,7 @@ export function initTdTab(root) {
         // a deterministic pace of its own: identical speeds are what let a
         // clump that chose the same exit stay one silhouette all the way in
         paceJitter: (0.9 + whim() * 0.22) * (entry.pace ?? 1),   /* a spawn may set its own march: the story swarm surges up the lane */
-        hp: spec.hp, behMult: 1, behUntil: -1, touchCd: -1,
+        hp: spec.hp * (entry.squad || 1), members: entry.squad || 0, behMult: 1, behUntil: -1, touchCd: -1,
         slowFactor: 1, slowUntil: -1, guard: entry.guard ?? null,
       });
     }
@@ -4310,6 +4285,7 @@ export function initTdTab(root) {
           scene.add(burst);
           debris.push(burst);
           bumpLeft = BUMP_LEN;
+          for (let m = e.members || 1; m > 0; m--) {   // a squad rams as its members
           const kg = gunshipRig.feed(eco.award(spec.bounty, { ram: true })); // the ram premium
           scoreKill(spec.bounty, { src: 'tank', ram: true,
             alive: enemies.filter((x) => x.alive).length });
@@ -4323,16 +4299,15 @@ export function initTdTab(root) {
           }
           noteStreak();
           harvestTankKill(spec);
+          }
           killCreature(e, true);
           checkVictory();
           continue;
         }
         if (shieldUp()) {
-          // PUSHED ASIDE, NOT DESTROYED. No damage either way and no shield
-          // time spent: the bubble is mobility, never a weapon. A shielded
-          // tank that killed the hard tier would make `rammable` stop being
-          // the read the whole board is built on, and that read is worth
-          // more than the damage would be.
+          // PUSHED ASIDE, NOT DESTROYED. No damage either way and no shield time spent: the bubble is mobility, never a weapon. A
+          // shielded tank that killed the hard tier would make `rammable` stop being the read the whole board is built on, and
+          // that read is worth more than the damage would be.
           if (tNow > e.touchCd) {
             e.touchCd = tNow + 0.4;
             e.shove = { dir: shoveVec(e.pos, player.pos, player.heading), t: shieldTune.shoveLife };
@@ -4468,17 +4443,17 @@ export function initTdTab(root) {
     if (react && spec.slowOnHit) { e.behMult = spec.slowOnHit; e.behUntil = tNow + 1.2; }
     if (react && spec.accelOnHit) { e.behMult = spec.accelOnHit; e.behUntil = tNow + 1.2; }
     e.lastHitT = tNow; // resets the regenerators' out-of-combat clock
-    e.hp -= dmg;
-    if (e.hp <= 0) {
+    e.hp -= squadDamage(e, dmg, src);
+    for (let k = shedSquad(e) + (e.hp <= 0); k > 0; k--) {   // each body pays, a squad's shed members too
       // any weapon's kill pays — but not the same
       gunshipRig.feed(eco.award(Math.max(1, Math.ceil(spec.bounty * (KILL_PAY[src] ?? 0.5)))));
       scoreKill(spec.bounty, { src, alive: enemies.filter((x) => x.alive).length });
       noteWaveKill(e.type, src); sectorRun?.kill(e, src, via);
       noteKillContext(e, src);
       if (src === 'tank') harvestTankKill(spec);
-      killCreature(e, true);
-      return true;
     }
+    if (e.hp <= 0) { killCreature(e, true); return true; }
+    if (e.members) return false;
     const sv = e.scale0 * (0.7 + 0.3 * Math.max(0, e.hp) / spec.hp);
     e.obj.scale.setScalar(sv);
     e.obj.userData.s0 = sv;
@@ -4694,11 +4669,9 @@ export function initTdTab(root) {
     // holding the trigger against locked tubes CLICKS — the gun says no
     if (wantFire && laserOverheat) sfx.play('laser_click');
     if (wantFire && !laserOverheat) {
-      // THE BEAMS. One per secondary, each leaving its own muzzle and running
-      // straight down its own barrel — the direction is read from the gun's
-      // world quaternion, never re-derived, and then flattened onto the
-      // tangent plane because the board is a sphere and the weapon has to
-      // agree with the ground it fires over.
+      // THE BEAMS. One per secondary, each leaving its own muzzle and running straight down its own barrel — the direction is
+      // read from the gun's world quaternion, never re-derived, and then flattened onto the tangent plane because the board is a
+      // sphere and the weapon has to agree with the ground it fires over.
       if (!beamOn) {
         beamOn = true;
         beamPhase[0] = 0; beamPhase[1] = 0;   // both sweeps start together
@@ -4711,11 +4684,9 @@ export function initTdTab(root) {
         const gun = guns[gi];
         gun.getWorldPosition(tmpV);
         const from = norm3([tmpV.x, tmpV.y, tmpV.z]);
-        // THE MUZZLE'S OWN RADIUS. The beam used to be flattened onto the
-        // ground lift and so left from UNDER the hull rather than out of the
-        // secondaries — invisible at this scale, obvious in the lab where the
-        // tank is drawn 12x larger. Floored at the ground clearance so it
-        // still rides over wall tops.
+        // THE MUZZLE'S OWN RADIUS. The beam used to be flattened onto the ground lift and so left from UNDER the hull rather than
+        // out of the secondaries — invisible at this scale, obvious in the lab where the tank is drawn 12x larger. Floored at the
+        // ground clearance so it still rides over wall tops.
         const gunR = Math.max(tmpV.length(), 1 + params.wallHeight * 0.5);
         gun.getWorldQuaternion(tmpQ);
         tmpV.set(0, 0, 1).applyQuaternion(tmpQ);
@@ -4753,12 +4724,10 @@ export function initTdTab(root) {
           const ci = cellIndex(q);
           if (ci !== -1 && dungeon.tags[ci] === BLOCKED) {
             len = m;
-            // HOW MUCH of the beam the rock is eating, not merely THAT there
-            // is rock. This map is dense — measured, a beam standing on
-            // all-open ground still clips rock at 2.5 of its 2.6 cells, so a
-            // flat penalty on contact would bog the weapon EVERYWHERE and the
-            // sweep would never move. Bite is the same currency a body pays
-            // in: 0 when the wall is out at the tip, 1 at point-blank.
+            // HOW MUCH of the beam the rock is eating, not merely THAT there is rock. This map is dense — measured, a beam
+            // standing on all-open ground still clips rock at 2.5 of its 2.6 cells, so a flat penalty on contact would bog the
+            // weapon EVERYWHERE and the sweep would never move. Bite is the same currency a body pays in: 0 when the wall is out
+            // at the tip, 1 at point-blank.
             bite = wallBiteFor(m, reach);
             break;
           }
@@ -4773,8 +4742,7 @@ export function initTdTab(root) {
           if (pr.s < 0 || pr.s > len) continue;
           const r = cellSide * Math.max(0.4, (e.size ?? e.spec.size) * 0.8);
           if (pr.off >= r) continue;
-          // `hard` is beamburn's word for the not-rammable tier — the same
-          // read the board already carries in colour
+          // `hard` is beamburn's word for the not-rammable tier — the same read the board already carries in colour
           along.push({ e, t: pr.s, hard: !e.spec.rammable });
         }
         // A WALL BOGS IT LIKE ARMOUR DOES (operator), and ends the beam; ONE COPY OF THE RULE (beamburn.js, nearest-first). `bite` is
@@ -4785,10 +4753,8 @@ export function initTdTab(root) {
         // draw the CHOKED length, not the clear-air one
         drawBeam(gi, from, dir, Math.max(cellSide * 0.15, reachLeft),
           laserHeat / LASER_MAX_HEAT, gunR);
-        // ADVANCE THIS BEAM'S SWEEP, slowed by what it is chewing through.
-        // Capped so it always creeps, never freezes; uncapped at the top so a
-        // beam that spends the burst inside a hard cluster simply does not
-        // finish its arc.
+        // ADVANCE THIS BEAM'S SWEEP, slowed by what it is chewing through. Capped so it always creeps, never freezes; uncapped at
+        // the top so a beam that spends the burst inside a hard cluster simply does not finish its arc.
         beamPhase[gi] = Math.min(1, beamPhase[gi]
           + sweepAdvance(dt, LASER_MAX_HEAT, drag));
       }
@@ -4900,11 +4866,9 @@ export function initTdTab(root) {
   // not six of each.
   function breachWallCell(ci) {
     if (towerByCell.has(ci)) return false; // a mounted tower anchors its wall
-    // ...but an ORDER is not a tower. A queued build does not anchor anything,
-    // so the wall goes and Isao is left flying to a site that no longer
-    // exists. finishOrder would refuse it on arrival, but silently and late —
-    // the biomass should come back the moment the ground does, and he should
-    // not spend the trip.
+    // ...but an ORDER is not a tower. A queued build does not anchor anything, so the wall goes and Isao is left flying to a site
+    // that no longer exists. finishOrder would refuse it on arrival, but silently and late — the biomass should come back the
+    // moment the ground does, and he should not spend the trip.
     if (orderByCell.has(ci)) cancelOrder(ci, 'the wall under your order was blown out');
     breachedCells.add(ci); // demolition is permanent across rounds
     dungeon.tags[ci] = PATH;
@@ -4982,9 +4946,8 @@ export function initTdTab(root) {
             rs.shells++;
             if (killedByShell > rs.bestShell.kills) rs.bestShell = { kills: killedByShell, wave };
           }
-          // an explosion you can HEAR and SEE: the heavy blast lands at
-          // the impact (fire already played tank_main at the muzzle), and
-          // the strike's full three-ring language at shell scale
+          // an explosion you can HEAR and SEE: the heavy blast lands at the impact (fire already played tank_main at the muzzle),
+          // and the strike's full three-ring language at shell scale
           sfx.play('blast_fire', { dist: camDist(p.pos) });
           const sci = cellIndex(p.pos);
           if (sci !== -1) {
@@ -5371,11 +5334,9 @@ export function initTdTab(root) {
     const v = params.speed * speedBonus * cellSide * 1.6;
     deploy.age = (deploy.age || 0) + dt;
     const segLen = Math.max(1e-9, dist3(...berthSeg(b)));
-    // A DEPLOY WITH NO SPEED IS HUNG BY DEFINITION, so its expected duration
-    // is ZERO, not Infinity. The first cut wrote Infinity here — mathematically
-    // honest, and it made the one case this check exists for
-    // (`params.speed` at 0, the hull never leaving the berth) the one case it
-    // could never catch.
+    // A DEPLOY WITH NO SPEED IS HUNG BY DEFINITION, so its expected duration is ZERO, not Infinity. The first cut wrote Infinity
+    // here — mathematically honest, and it made the one case this check exists for (`params.speed` at 0, the hull never leaving
+    // the berth) the one case it could never catch.
     const expect = deploy.clip || (v > 1e-9 ? segLen / v : 0);
     if (deploy.age > expect * 2 + DEPLOY_GRACE) {
       console.warn(`SHOTWATCH deploy hung: ${deploy.age.toFixed(1)}s for a ${Number.isFinite(expect) ? expect.toFixed(1) : '∞'}s`
@@ -5492,18 +5453,14 @@ export function initTdTab(root) {
     // is very often not standing on one.
     if (tower.a6) {
       const p = tower.a6.pos, at = cellIndex(p), top = 1 + (at === tower.ci ? (story?.sockets.has(at) ? story.socketLift : params.wallHeight) : dungeon.tags[at] === BLOCKED ? params.wallHeight : 0);
-      // NO BOB. It was a stand-in for a walk cycle the model could not play,
-      // and now that the legs actually move it is just a hop laid over them —
-      // which is what "it jumps instead of walking" was. The clip is the
-      // walk; the hull rides the ground.
+      // NO BOB. It was a stand-in for a walk cycle the model could not play, and now that the legs actually move it is just a hop
+      // laid over them — which is what "it jumps instead of walking" was. The clip is the walk; the hull rides the ground.
       const going = !!tower.a6.moving;
       if (obj.userData.setGait) obj.userData.setGait(going);
       obj.position.set(p[0] * top, p[1] * top, p[2] * top);
-      // ...AND IT FACES WHERE IT IS WALKING. Setting `up` alone leaves the
-      // heading at whatever the identity quaternion gives, so a machine with
-      // six legs and a clear front was crabbing sideways down its own path
-      // — half of why the gait did not read. The Workshop's models are +Y up
-      // and +Z forward, so the basis is (up × forward, up, forward).
+      // ...AND IT FACES WHERE IT IS WALKING. Setting `up` alone leaves the heading at whatever the identity quaternion gives, so
+      // a machine with six legs and a clear front was crabbing sideways down its own path — half of why the gait did not read.
+      // The Workshop's models are +Y up and +Z forward, so the basis is (up × forward, up, forward).
       tmpN.set(p[0], p[1], p[2]);
       const h = tower.a6.head;
       if (h) {
@@ -5625,11 +5582,9 @@ export function initTdTab(root) {
     const def = TOWER_BY_KEY[key];
     const obj = buildTowerLook(params.towerLook, def);
     const tower = { key, def, tier: 0, ci, obj, cooldown: 0, spent, id: nextTowerId++ };
-    // A WALKER IS BORN AT ITS BERTH AND THEN STOPS BEING THERE. The cell it
-    // was placed on is its home, not its position — everything else about a
-    // tower (the purse, the queue, the upgrade, the sell) is unchanged, and
-    // that is deliberate: it is a tower with a life, not a new kind of thing
-    // the rest of the board has to know about.
+    // A WALKER IS BORN AT ITS BERTH AND THEN STOPS BEING THERE. The cell it was placed on is its home, not its position —
+    // everything else about a tower (the purse, the queue, the upgrade, the sell) is unchanged, and that is deliberate: it is a
+    // tower with a life, not a new kind of thing the rest of the board has to know about.
     if (def.attack === 'walker') {
       tower.a6 = makeA6(norm3(graph.centers[ci]), 0);
       tower.hp = def.hullHp ?? 9;
@@ -5735,20 +5690,16 @@ export function initTdTab(root) {
     tmpObj.position.copy(w.obj.position);
     tmpObj.up.set(w.dir[0], w.dir[1], w.dir[2]);
 
-    // WHILE PILOTED HE FACES WHERE HE IS FLYING. This is the bug the operator
-    // saw as "rotates on an unnatural axis": the aim below falls back to
-    // w.loiter, and pilotIsao sets loiter to his own POSITION, so the
-    // lookAt target sat on top of him, the distance guard skipped the lookAt
-    // entirely, and his quaternion was left stale from whatever it last was.
-    // He was not rotating oddly — he was not being oriented at all.
+    // WHILE PILOTED HE FACES WHERE HE IS FLYING. This is the bug the operator saw as "rotates on an unnatural axis": the aim
+    // below falls back to w.loiter, and pilotIsao sets loiter to his own POSITION, so the lookAt target sat on top of him, the
+    // distance guard skipped the lookAt entirely, and his quaternion was left stale from whatever it last was. He was not
+    // rotating oddly — he was not being oriented at all.
     if (w === isao && params.view === 'drone' && isaoHeading) {
       const ahead = add3(p, scale3(isaoHeading, cellSide));
       tmpObj.lookAt(ahead[0], ahead[1], ahead[2]);
       w.obj.quaternion.copy(tmpObj.quaternion);
-      // LEAN AND BANK, composed as quaternions onto the facing — never
-      // written as Euler on the same object, which would replace the whole
-      // orientation and put us straight back to an unnatural axis. This
-      // project has that dead end on record twice.
+      // LEAN AND BANK, composed as quaternions onto the facing — never written as Euler on the same object, which would replace
+      // the whole orientation and put us straight back to an unnatural axis. This project has that dead end on record twice.
       tmpQ.setFromAxisAngle(X_AXIS, isaoLean);
       w.obj.quaternion.multiply(tmpQ);
       tmpQ.setFromAxisAngle(Z_AXIS, isaoRoll);
@@ -5976,9 +5927,8 @@ export function initTdTab(root) {
         w.t = (w.order.head ?? 0) * w.dur;
         w.shown = -1;
         if (w.order.kind === 'tower') {
-          // the print: the tower itself grows out of the wall top. Built
-          // here rather than at order time so a queued site costs nothing
-          // but a ring of points.
+          // the print: the tower itself grows out of the wall top. Built here rather than at order time so a queued site costs
+          // nothing but a ring of points.
           const g = buildTowerLook(params.towerLook, w.order.def); printGhost(g, w.order.def.color);   // printed in wireframe (src/fx/tower-print.js)
           w.order.ghost = g;
           scene.add(g);
@@ -6525,11 +6475,9 @@ export function initTdTab(root) {
       const live = Math.ceil((tw.a6.ammo / Math.max(1, tw.a6.mag)) * tw.rings.length);
       tw.rings.forEach((r, i) => { r.visible = i < live; });
     }
-    // THE HEADING AND THE CADENCE, BOTH MEASURED FROM THE MOVE IT ACTUALLY
-    // MADE rather than from where it would like to be. A leg cycle that runs
-    // at a fixed rate while the body's speed changes is the thing that reads
-    // as skating, and a heading taken from the WANT points at a waypoint the
-    // machine may be walking around.
+    // THE HEADING AND THE CADENCE, BOTH MEASURED FROM THE MOVE IT ACTUALLY MADE rather than from where it would like to be. A leg
+    // cycle that runs at a fixed rate while the body's speed changes is the thing that reads as skating, and a heading taken from
+    // the WANT points at a waypoint the machine may be walking around.
     const moved = sub3(tw.a6.pos, was);
     const n2 = norm3(tw.a6.pos);
     const flatMove = sub3(moved, scale3(n2, dot3(moved, n2)));
@@ -6605,11 +6553,9 @@ export function initTdTab(root) {
       if (missileOf(tw.key) && !missileCanFire(tw.lock, target,
         missileDistance(tp, target.pos), tw.aimErr, engagementConfig(tw), tw.cooldown,
         !!missilePool?.available && !tw.obj.userData.loading)) continue;
-      // A LANCE WILL NOT FIRE INTO DIRT. It is a straight line stopped by
-      // terrain, so a target behind a rise is a target it cannot reach —
-      // and firing anyway spends a two-second burst on a beam that ends in
-      // the ground, which looks broken and is. The ray it is about to draw
-      // is the ray that answers this, so it is asked first.
+      // A LANCE WILL NOT FIRE INTO DIRT. It is a straight line stopped by terrain, so a target behind a rise is a target it
+      // cannot reach — and firing anyway spends a two-second burst on a beam that ends in the ground, which looks broken and is.
+      // The ray it is about to draw is the ray that answers this, so it is asked first.
       if (tw.def.attack === 'lance') {
         // ON TARGET FIRST. The lance is drawn along the BARREL, not along the bearing to the target, so a burst fired mid-slew
         // goes wherever the tube happens to be pointing — which the sentry range learned the hard way and this had not yet been
@@ -6652,11 +6598,9 @@ export function initTdTab(root) {
       const flat = norm3(sub3(raw, scale3(norm3(tp), dot3(raw, norm3(tp)))));
       const atk = manual && tw.key==='heptapod' ? 'seeker' : tw.def.attack;
       if (tw.def.hitscan) {
-        // THE SNIPER IS A HEAVY SHOT, not a beam. The beam pair read as a
-        // laser (operator ruling), so now the damage still lands this frame
-        // — a sniper does not miss — but what you SEE is one fat slug
-        // crossing the whole line in ~0.13s, trailing ghosts, with the
-        // impact fx landing when the slug does. Straight line, one round.
+        // THE SNIPER IS A HEAVY SHOT, not a beam. The beam pair read as a laser (operator ruling), so now the damage still lands
+        // this frame — a sniper does not miss — but what you SEE is one fat slug crossing the whole line in ~0.13s, trailing
+        // ghosts, with the impact fx landing when the slug does. Straight line, one round.
         if (!target.pilotAim) damageEnemy(target, tNow, eff.dmg, true, 'tower', tw.key);
         const hitP = add3(target.pos, scale3(norm3(target.pos), cellSide * 0.3));
         spawnSlug(muzzle, hitP, tw.def.color, cellIndex(target.pos));
@@ -6718,10 +6662,8 @@ export function initTdTab(root) {
           if (!e.alive) continue;
           const d = chord(tp, e.pos);
           if (d > range) continue;
-          // A tower with no damage must not call damageEnemy at all: even at
-          // 0 it resets a regenerator's out-of-combat clock and fires the
-          // on-hit reactions — a barbed ACCELERATES when hit, so a "slow"
-          // tower would have been speeding it up.
+          // A tower with no damage must not call damageEnemy at all: even at 0 it resets a regenerator's out-of-combat clock and
+          // fires the on-hit reactions — a barbed ACCELERATES when hit, so a "slow" tower would have been speeding it up.
           if (eff.dmg > 0) damageEnemy(e, tNow, eff.dmg, true, 'tower', tw.key);
           if (!e.alive) continue;
           e.slowFactor = eff.slowFactor;
@@ -6854,12 +6796,10 @@ export function initTdTab(root) {
     for (let i = towerShots.length - 1; i >= 0; i--) {
       const p = towerShots[i];
       const v = p.speed; // each tower's own tempo — HK's feel lives here
-      // HOMING CHASES, per HokorobiTawaa: the velocity is steered toward the
-      // live target's position every frame with a dt-scaled rate — the old
-      // fixed 0.75/0.25 blend was frame-rate-DEPENDENT (limp at 30fps, stiff
-      // at 120) and too soft to read as pursuit at any of them. k = 6/s is
-      // HK's own constant: tight enough to whip round a fleeing phage,
-      // loose enough that the curve is visible, which is the whole point.
+      // HOMING CHASES, per HokorobiTawaa: the velocity is steered toward the live target's position every frame with a dt-scaled
+      // rate — the old fixed 0.75/0.25 blend was frame-rate-DEPENDENT (limp at 30fps, stiff at 120) and too soft to read as
+      // pursuit at any of them. k = 6/s is HK's own constant: tight enough to whip round a fleeing phage, loose enough that the
+      // curve is visible, which is the whole point.
       if (p.homing && p.homing.alive) {
         const raw = sub3(p.homing.pos, p.pos);
         const n0 = norm3(p.pos);
@@ -6918,8 +6858,7 @@ export function initTdTab(root) {
           if (p.splash > 0) detonate(p, tNow);
           else {
             damageEnemy(e, tNow, p.dmg, true, 'tower', p.key);
-            // HK's hit spark, through the pooled rings — a strike that
-            // lands should flash WHERE it landed, and an object per hit
+            // HK's hit spark, through the pooled rings — a strike that lands should flash WHERE it landed, and an object per hit
             // would be churn the pool exists to avoid
             warnRing(cellIndex(e.pos), p.color, 0.22, cellSide * 0.55);
             if (p.manual) { const b = makeDotBurst(0xffffff, norm3(e.pos), 10); b.scale.setScalar(cellSide * 0.25); b.position.set(e.pos[0], e.pos[1], e.pos[2]).addScaledVector(new THREE.Vector3(...norm3(e.pos)), cellSide * 0.3); scene.add(b); debris.push(b); sfx.play('kinetic_fire', { dist: camDist(e.pos), gain: 0.5, rate: 1.25 }); pilot?.hit?.(); }   /* THE HIT REGISTERED (owner, 2026-09-14): a white spark on the body, a click, and the reticle's flash */
@@ -7393,13 +7332,10 @@ export function initTdTab(root) {
       run.sectorCleared = true;
       logSector();   // the campaign remembers every round, for the final debrief
       checkAchievements();
-      // THE ENDING IS NOT ANOTHER LEVEL (operator). The last enemy used to
-      // fall and the analysis board simply appeared — the single most
-      // consequential moment in the game had no moment. So: a red shout while
-      // the body is still coming apart, then the camera LEAVES, pulling back
-      // off the hull until the whole planet is a marble against the galaxy,
-      // and only then the debrief. The pull-out is the beat that says the
-      // scale of the thing you just finished; a cut to a modal cannot.
+      // THE ENDING IS NOT ANOTHER LEVEL (operator). The last enemy used to fall and the analysis board simply appeared — the
+      // single most consequential moment in the game had no moment. So: a red shout while the body is still coming apart, then
+      // the camera LEAVES, pulling back off the hull until the whole planet is a marble against the galaxy, and only then the
+      // debrief. The pull-out is the beat that says the scale of the thing you just finished; a cut to a modal cannot.
       const finalPlanet = round >= SECTORS_TOTAL;
       showCallout(finalPlanet ? 'PLANET CLEARED' : 'LAST ENEMY VANQUISHED', 'co-victory');
       setTimeout(() => showCallout(finalPlanet
@@ -7491,11 +7427,9 @@ export function initTdTab(root) {
       },
     });
     buildGeometry();
-    // THE SAFETY NET. Breach persistence keeps corridors open, but a tank
-    // parked on a later-band lane it reached THROUGH a breach can still
-    // have the band gate reseal the ground under it — walls closing over
-    // the hull (operator bug report). If the shift entombed the tank,
-    // redeploy it beside the heart and say so.
+    // THE SAFETY NET. Breach persistence keeps corridors open, but a tank parked on a later-band lane it reached THROUGH a breach
+    // can still have the band gate reseal the ground under it — walls closing over the hull (operator bug report). If the shift
+    // entombed the tank, redeploy it beside the heart and say so.
     if (player.cur >= 0 && dungeon.tags[player.cur] === BLOCKED && !playerDown) {
       deployStart(berthIndexFor(playerHP));
       showToast(`<div class="wave-num">REDEPLOYED</div>`
@@ -7990,8 +7924,7 @@ export function initTdTab(root) {
         waveCharge = Math.max(0, Math.min(1, 1 - waveIn / WAVE_WARN));
         warnBeat -= dt;
         if (warnBeat <= 0) {
-          // beats accelerate from ~0.7s apart to ~0.18s: the cadence IS
-          // the countdown, and it is legible without reading anything
+          // beats accelerate from ~0.7s apart to ~0.18s: the cadence IS the countdown, and it is legible without reading anything
           warnBeat = 0.72 - 0.54 * waveCharge;
           for (const sp of spawnPoints) {
             if (sp.alive) warnRing(sp.ci, CREATURE_TINTS[sp.type] ?? 0xffffff,
@@ -8010,9 +7943,8 @@ export function initTdTab(root) {
               biomass: eco.biomass, towers: towers.length, score: score.points });
           }
           if (!storyMode && sectorWave() === params.wavesPerSector) {   // the story's sectors collapse their own breaches
-            // the HOLD is over: the gates lose their seals and the sector
-            // becomes a hunt. This is the loudest beat in a sector and it
-            // gets the loudest card the toast layer has.
+            // the HOLD is over: the gates lose their seals and the sector becomes a hunt. This is the loudest beat in a sector
+            // and it gets the loudest card the toast layer has.
             programmeSpent();
             showBrief('gates');
           } else if (!storyMode) showSitrep(); // the recap IS the cleared card now (not in the story)

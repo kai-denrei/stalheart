@@ -7,7 +7,7 @@
 // Composition only: the rules are src/domain/sectors.js, sector-stats.js and gate-integrity.js with the numbers in
 // src/content/sectors.js. The controller hands in hooks (spawning, sealing, paying, briefing, pausing, polling) and calls
 // the returned object at its real sites; nothing here imports the controller.
-import { SECTOR_STAMPEDE, SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, SECTOR_STATS, SECTOR_STAMPS, SECTOR_RECORDS, SECTOR_TIMING, SECTOR_GATE, BELT_OF, BREACH_CLOSERS, BACK_OMENS, BACK_SCRAMBLE, SIDE_BREACH, CANYON, SECTOR_CANYON_AGAIN } from '../content/sectors.js';
+import { SQUADS, SECTOR_STAMPEDE, SECTORS, SECTOR_HOLD, SECTOR_DOOR, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_GENERATOR, SECTOR_PLACEMENT, SECTOR_FORFEIT, SECTOR_STATS, SECTOR_STAMPS, SECTOR_RECORDS, SECTOR_TIMING, SECTOR_GATE, BELT_OF, BREACH_CLOSERS, BACK_OMENS, BACK_SCRAMBLE, SIDE_BREACH, CANYON, SECTOR_CANYON_AGAIN } from '../content/sectors.js';
 import { omenDue } from '../domain/back-omens.js';
 import { GUNSHIP_GUN_ORDER } from '../content/gunship.js';
 import { snapshot as programmeSnapshot } from '../domain/build-programme.js';
@@ -17,6 +17,7 @@ import { makeGateIntegrity, pressGate, mendGate, gateShare } from '../domain/gat
 import { computeWavePlan, ENEMY_SPEC } from '../enemyspec.js';
 import { waveCount, waveGap } from '../domain/wave-spread.js';
 import { isStampede, stampedeWave } from '../domain/stampede.js';
+import { packSquads } from '../domain/squads.js';
 import { POINT_SCALE, waveScore } from '../score.js';
 import { waveClearBonus } from '../domain/economy.js';
 import { createSectorDebrief } from './sector-debrief.js';
@@ -109,10 +110,11 @@ export function createSectorRun(h) {
     return { entries, pace: SECTOR_TIMING.pace };
   }
   // the queue entries for a wave, spread over it the way the board's own spawner spreads a wave (src/domain/wave-spread.js)
-  function queueOf({ entries, pace, spread = 0.8, dens, gap: fixed = null }, sp) {
-    const gap = fixed ?? waveGap(entries, h.spawnGap?.spread ?? 3.2, h.spawnGap?.max ?? 0.45);   // a trickle stampede keeps its own spacing
+  // A BIG WAVE COMES PARTLY IN SQUADS (src/domain/squads.js): its soft bodies past the first fifty five to an entity
+  function queueOf({ entries: plan, pace, spread = 0.8, dens, gap: fixed = null }, sp) {
+    const entries = packSquads(plan, ENEMY_SPEC, SQUADS), gap = fixed ?? waveGap(entries, h.spawnGap?.spread ?? 3.2, h.spawnGap?.max ?? 0.45);   // a trickle stampede keeps its own spacing
     const out = []; let n = 0;
-    for (const { type, count } of entries) for (let k = 0; k < count; k++) out.push({ type, sp, at: n++ * gap, spread, pace, ...(dens ? { dens } : {}) });
+    for (const { type, count, squad } of entries) for (let k = 0; k < count; k++) out.push({ type, sp, at: n++ * gap, spread, pace, ...(dens ? { dens } : {}), ...(squad ? { squad } : {}) });
     return out;
   }
   // one breach sends its next wave: the books count it, a feast is noted, and its queue entries come back (null: nothing to send)
@@ -208,8 +210,8 @@ export function createSectorRun(h) {
   function aliveSectorEnemies(budget = false) {
     let n = 0;
     const far = budget && canyon ? sps.get(canyon.id) : null;
-    for (const e of h.enemies()) if (e.alive && !e.guard && !e.harmless && !(far && e.breachSource === far.obj)) n++;   // sector 0's harmless leftovers are not the sector's
-    for (const q of h.queue()) if (!q.guard && !q.harmless && q.sp?.alive && !(far && q.sp === far)) n++;
+    for (const e of h.enemies()) if (e.alive && !e.guard && !e.harmless && !(far && e.breachSource === far.obj)) n += e.members || 1;   // sector 0's harmless leftovers are not the sector's; a squad is its members
+    for (const q of h.queue()) if (!q.guard && !q.harmless && q.sp?.alive && !(far && q.sp === far)) n += q.squad || 1;
     return n;
   }
 
