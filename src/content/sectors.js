@@ -56,6 +56,9 @@ export const SECTORS = freeze([
 // shield): every `every`-th wave of a gate or back breach is its plan's rammable bodies `size` times over with `cores` x `core` in them
 // (src/domain/stampede.js); `callout` as it leaves the mouth
 // trickle / trickleGap / tierSize / tierCores / trickleCallout (2026-10-03): the soft trickle between floods and the automation's ramp (src/domain/stampede.js stampedeWave)
+// THE CROWD FITS THE MACHINE (src/domain/crowd-cap.js): bodies alive at once start at `start` and follow the frame between `min` and
+// `max` (the gunship's own aliveBudget, 3500); under 28 fps (36 ms) it comes down 15% a second, over 42 fps (24 ms) it goes up 6%
+export const CROWD_CAP = freeze({ start: 1500, min: 400, max: 3500, slowMs: 36, fastMs: 24, down: 0.85, up: 1.06, every: 1 });
 export const SECTOR_STAMPEDE = freeze({ every: 2, size: 3, cores: 2, core: 'barbed', fallback: 'amoeba', callout: 'STAMPEDE — RAM THEM', trickle: 2, trickleGap: 1.3, trickleMax: 24, tierSize: 1, tierCores: 2, trickleCallout: 'SOFT ONES — KEEP THE CHAIN' });
 
 // THE CANYON, in cells: `length` long and open `halfWidth` either side of its centre line, `wall` cells of rock beyond that and

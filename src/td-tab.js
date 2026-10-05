@@ -85,7 +85,7 @@ import { A6_TUNE, magFor, makeA6, stepA6, arc as a6Arc } from './heptapod.js';
 import { SENTRY_TUNE } from './sentry.js';
 import { makeLock } from './lockon.js';
 import { TOWER_LOOK_NAMES, DEFAULT_TOWER_LOOK, buildTowerLook, preloadLook, lookReady } from './towerlooks.js';
-import { makeAudio } from './audio.js'; import { isaoSay } from './fx/isao-voice.js'; import { lanceFollow, bodyAt } from './fx/lance-follow.js';
+import { makeAudio } from './audio.js'; import { isaoSay } from './fx/isao-voice.js'; import { lanceFollow, bodyAt } from './fx/lance-follow.js'; import { createCrowdGate } from './fx/crowd-gate.js';
 import { DEATH_KEYS } from './audiomanifest.js';
 
 export function initTdTab(root) {
@@ -4095,11 +4095,11 @@ export function initTdTab(root) {
   }
 
   function releaseSpawns(dtSeconds) {
-    spawnClock += dtSeconds;
+    spawnClock += dtSeconds; crowdGate.frame(enemies, dtSeconds > 0);
     while (spawnQueue.length && spawnQueue[0].at <= spawnClock) {
       const entry = spawnQueue.shift(), { type, sp } = entry;   // a story swarm entry also carries delay, spread and harmless
       if (!sp.alive) continue;   // its gate died while it was queued
-      if(!gameBreaches.ready(sp.obj)){spawnQueue.unshift({...entry,at:spawnClock});break;}
+      if(!gameBreaches.ready(sp.obj)||crowdGate.full(entry)){spawnQueue.unshift({...entry,at:spawnClock});break;}
       const spec = ENEMY_SPEC[type]; if (storyMode && !entry.guard && !seenTypes.has(type)) { seenTypes.add(type); showContact(root, type); }   // first contact: src/fx/contact-card.js
       const obj = makeDotEnemy(type, { walker: CREATURE_TINTS[type], walkerHi: accentFor(type) }, entry.dens);
       const size = spec.size * 0.7;
@@ -4132,7 +4132,7 @@ export function initTdTab(root) {
   const spawnQueue = [];
   let spawnClock = 0;
   const SPAWN_SPREAD = 3.2;   // seconds a whole wave takes to come through
-  const SPAWN_GAP_MAX = 0.45; // ...but never slower than this per contact
+  const SPAWN_GAP_MAX = 0.45, crowdGate = createCrowdGate(); // ...but never slower than this per contact
 
   const ENEMY_SPEED = 1.0; // cells/s toward the Heart — FASTER still
   function updateEnemies(dt, tNow) {
@@ -4732,12 +4732,9 @@ export function initTdTab(root) {
           const lat = sub3(from, player.pos);                     // gun -> out
           const latT = sub3(lat, scale3(from, dot3(lat, from)));  // onto tangent
           const right = norm3(cross3(from, dir));
-          // Toward the centreline. This sign was briefly flipped on the
-          // strength of a probe that measured separation at FULL REACH — but
-          // the guns are already toed in, so the pair crosses before then and
-          // the far-end gap grows for BOTH signs. The metric was the bug, not
-          // the sign; fixing the probe to measure the crossing point put this
-          // back where it started.
+          // Toward the centreline. This sign was briefly flipped on the strength of a probe that measured separation at FULL
+          // REACH — but the guns are already toed in, so the pair crosses before then and the far-end gap grows for BOTH signs.
+          // The metric was the bug, not the sign; fixing the probe to measure the crossing point put this back where it started.
           const sgn = dot3(latT, right) > 0 ? -1 : 1;             // toward centre
           const c = Math.cos(swing), sn = Math.sin(swing) * sgn;
           dir = norm3(add3(scale3(dir, c), scale3(right, sn)));
@@ -6614,12 +6611,9 @@ export function initTdTab(root) {
       // the ground, which looks broken and is. The ray it is about to draw
       // is the ray that answers this, so it is asked first.
       if (tw.def.attack === 'lance') {
-        // ON TARGET FIRST. The lance is drawn along the BARREL, not along
-        // the bearing to the target, so a burst fired mid-slew goes wherever
-        // the tube happens to be pointing — which the sentry range learned
-        // the hard way and this had not yet been told. Two seconds of
-        // cooldown is far too expensive to spend on a shot the drive has not
-        // finished aiming.
+        // ON TARGET FIRST. The lance is drawn along the BARREL, not along the bearing to the target, so a burst fired mid-slew
+        // goes wherever the tube happens to be pointing — which the sentry range learned the hard way and this had not yet been
+        // told. Two seconds of cooldown is far too expensive to spend on a shot the drive has not finished aiming.
         if ((tw.aimErr ?? 99) > SENTRY_TUNE.tolerance) continue;
 
         const mz0 = tw.obj.userData.muzzles;
@@ -6687,14 +6681,11 @@ export function initTdTab(root) {
         const dir3 = norm3(sub3(bodyAt(target), from3));
         const stop = lanceReach(from3, dir3, range, tw.ci);
         let struck = 0;
-        // MEASURED ON THE ARC THE BEAM IS DRAWN ALONG. This used distToSeg —
-        // a straight chord — and the sag is not a rounding error: across the
-        // lance's seven cells it is 0.0389 units against a hit radius of
-        // cellSide * 0.5 = 0.04. A target standing on the ground at mid-range
-        // sat 97% of the way out of a beam the picture showed passing
-        // straight through it, so the lance was barely clipping the middle of
-        // its own reach. projectToArc returns the same { s, off } and is what
-        // the tank's secondary already measures with.
+        // MEASURED ON THE ARC THE BEAM IS DRAWN ALONG. This used distToSeg — a straight chord — and the sag is not a rounding
+        // error: across the lance's seven cells it is 0.0389 units against a hit radius of cellSide * 0.5 = 0.04. A target
+        // standing on the ground at mid-range sat 97% of the way out of a beam the picture showed passing straight through it, so
+        // the lance was barely clipping the middle of its own reach. projectToArc returns the same { s, off } and is what the
+        // tank's secondary already measures with.
         const fromU3 = norm3(from3);
         const dTan3 = norm3(sub3(dir3, scale3(fromU3, dot3(dir3, fromU3))));
         for (const e of enemies) {
@@ -6718,14 +6709,10 @@ export function initTdTab(root) {
       } else if (atk === 'slowfield') {
         // Continuous shield transfer runs outside the attack cadence.
         if (towerOffline(shield, tw.id, tNow)) continue;
-        // THE FIELD IS UNIVERSAL, THE PICTURE IS THREE BOLTS. Every hostile
-        // in range is still slowed — that is two numbers written on an
-        // enemy and it costs nothing. What cost tower × enemy was the
-        // PICTURE: a lightning bolt AND a 12-point dot burst spawned per
-        // hostile per shot. Now the NEAREST three get a bolt and nobody gets a
-        // burst, so the effect's draw cost is bounded by the tower count
-        // alone and a crowd is free. The nearest three are also the three
-        // the player is looking at.
+        // THE FIELD IS UNIVERSAL, THE PICTURE IS THREE BOLTS. Every hostile in range is still slowed — that is two numbers
+        // written on an enemy and it costs nothing. What cost tower × enemy was the PICTURE: a lightning bolt AND a 12-point dot
+        // burst spawned per hostile per shot. Now the NEAREST three get a bolt and nobody gets a burst, so the effect's draw cost
+        // is bounded by the tower count alone and a crowd is free. The nearest three are also the three the player is looking at.
         const near = [];   // { e, d }, ascending, at most SLOW_BOLTS
         for (const e of enemies) {
           if (!e.alive) continue;

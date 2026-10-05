@@ -62,6 +62,22 @@ Evidence:
 - --round22, --grow, --shield-story, --voice, --opening, --seat-switch and the default suite
 - Not reproduced in a browser: the HUGIN lane (footprint rule only), sectors 5 and 6 (traced by an investigation, fixed by rule)
 
+## 2026-10-05 — The twenty-fourth notes: the Lancer's held beam runs down the barrel, the auto gunship's guns stay within reach of the ship, and the bodies alive at once follow the machine's frame (the sector 6 and 9 frame rates)
+
+change · accepted · 2026-10-05-twenty-fourth-notes-lance-on-barrel-gunship-reach-crowd-cap
+
+Owner, 2026-10-05: 1) the Lancer's beam sometimes does not follow the muzzle when it moves fast to a new target; 2) sector 6 dropped to 7 fps but was fun (RAMMED 3,000x): how to calibrate, perhaps successive waves but at most some thousands at a time; 3) sector 7: the gunship shooting at seemingly nothing, perhaps enemies on the other side of the planet; 4) sector 9: 3 fps.
+
+1) lanceFollow draws the held beam along the muzzle's own +Z at the target's distance (or the range), and onto the body only once the barrel is within 4 degrees of it; a dead target no longer leaves it hanging. 3) The auto gunship's rotary and Bofors take only bodies within GUNSHIP_AUTO.reachDeg (25) of the ship; the densest pile had been the far landers' guards. The MK-9 keeps its own on-screen rule. 2, 4) Measured on the M4 with a held crowd: 500 bodies 16.7 ms a frame, 1000 18 ms, 2000 25.5 ms, 3000 34.8 ms; the enemies' CPU is 2.6 ms of that, the rest is drawing, about 2.5 draw calls a body (7679 at 3000). A crowd cap (src/domain/crowd-cap.js, CROWD_CAP, the gate in src/fx/crowd-gate.js at td-tab releaseSpawns) follows the real frame: from 1500, down 15% a second at 36 ms and over, up 6% at 24 ms and under but only with the field at 80% of the cap, between 400 and 3500. A queued body waits while the field holds the cap and rises as it thins: the waves still come whole, in succession. The lasting cure is drawing the crowd batched (instanced points per creature type), proposed next.
+
+Alternatives: A fixed lower alive budget: one number cannot fit both the M4 and a slower machine; the owner asked how to calibrate; Batching the crowd's draw calls now: the real fix, but a rewrite of the enemy mesh path (per-body wobble, swim, scale, emergence, hit flash) to do carefully on its own
+
+Evidence:
+
+- --crowd-probe (new): asked 5000, 1975 up and 4158 queued, the cap settled at 1896 with frames at 25 ms (before: 3000 up at 34.8 ms, and nothing held a flood)
+- test/crowd-cap.mjs; test/gunship-auto-safe.mjs (guns fire on a pile under the ship, hold on one beyond reach)
+- --round16, --round22, --round23, --grow and the default browser suite
+
 ## 2026-10-05 — The owner's twenty-first notes: Isao's lines at their own moments and fewer early, every MK-9 announced, the Lancer at the body with a wider burn, the Needle's quieter click and centred on its pedestal, a DROP-OFF POINT board, a lost hull's part left where it fell, Isao closing the rock beside a wall
 
 change · accepted · 2026-10-05-twenty-first-notes-voice-moments-lancer-needle-drop-off-lost-parts-repairs

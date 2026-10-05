@@ -83,5 +83,7 @@ export const GUNSHIP_GUN_ORDER = Object.freeze(['rotary', 'bofors', 'heavy']);
 // player's screen and `nukeSafeCells` clear of its blast from the base and the hull (seventh notes), it drops the MK-9 there with the
 // callout and one of `nukeCalls`.
 // While it is on, the sectors may hold `aliveBudget` bodies and size their waves `swell` times larger: the envelope being pushed.
-export const GUNSHIP_AUTO = Object.freeze({ afterManned: 2, burst: 2.6, rest: 1.4, nukePile: 25, nukeView: 0.75, nukeSafeCells: 3, gunSafeCells: 1.5, nukeFacing: 0.8, callout: 'TACTICAL NUKE LAUNCHED',
+// `reachDeg`: the guns only take bodies within this arc of the planet's centre from under the ship (owner, 2026-10-05: "gunship shooting
+// at seemingly nothing ... perhaps at enemies on the other side of the planet?": the densest pile was the far landers' guards)
+export const GUNSHIP_AUTO = Object.freeze({ reachDeg: 25, afterManned: 2, burst: 2.6, rest: 1.4, nukePile: 25, nukeView: 0.75, nukeSafeCells: 3, gunSafeCells: 1.5, nukeFacing: 0.8, callout: 'TACTICAL NUKE LAUNCHED',
   nukeCalls: Object.freeze(['gunship_nuke_call', 'gunship_nuke_hello']), aliveBudget: 3500, swell: 2, brief: 'gunship_calibrated', autoBrief: 'gunship_auto' });

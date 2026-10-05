@@ -1821,14 +1821,24 @@ try{
  } else if(args.includes('--sector-probe')) {
  // A SECTOR'S CLOCK from its start (no assertions): phase, bodies up and queued, each breach's waves released of planned; SECTOR=n
  const T='window.__stalheartTest',n=+process.env.SECTOR||4,dur=(+process.env.PROBE_S||150)*1000;
- await go('sector-probe',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${n}#td`);
+ await go('sector-probe',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${n}${process.env.PERF?'&fps=1':''}#td`);
  await until(`!!${T} && ${T}.state().sector?.n===${n}`,120000);
  const rows=[],t0=Date.now();let last='';
- while(Date.now()-t0<dur){const r=await evaluate(`(()=>{const s=${T}.state(),c=s.sector;return ['S'+c.n,c.phase,'alive '+s.enemiesAlive,'q '+s.queued,'gs '+(s.gunship.seat?'seat':s.gunship.station?'stn':'-'),'sol '+(s.laser?.phase??'-')+(s.laser?.seated?'*':''),(c.breaches||[]).map(b=>b.side[0]+b.wavesReleased+'/'+b.wavesPlanned+(b.live?'':'x')).join(' ')].join(' | ');})()`);
+ while(Date.now()-t0<dur){const r=await evaluate(`(()=>{const s=${T}.state(),c=s.sector;return ['S'+c.n,c.phase,'alive '+s.enemiesAlive,'q '+s.queued,'gs '+(s.gunship.seat?'seat':s.gunship.station?'stn':'-'),'sol '+(s.laser?.phase??'-')+(s.laser?.seated?'*':''),(c.breaches||[]).map(b=>b.side[0]+b.wavesReleased+'/'+b.wavesPlanned+(b.live?'':'x')).join(' '),${process.env.PERF?1:0}&&s.performance?'perf '+s.performance.frameMs.toFixed(0)+'ms cpuE '+s.performance.cpu.enemies.toFixed(1)+' cpuT '+s.performance.cpu.towers.toFixed(1)+' calls '+s.performance.calls+' gpu '+(s.performance.gpuMs?.toFixed(1)??'-'):''].join(' | ');})()`);
   if(r!==last){rows.push(((Date.now()-t0)/1000).toFixed(0)+'s '+r);last=r;}
   if(process.env.PLAY){await evaluate(`${T}.sectorCull(999)`);if(await evaluate(`${T}.state().sector.debriefOpen`)){await evaluate(`${T}.sectorContinue()`);await delay(300);await evaluate(`${T}.sectorContinue()`);}}   // PLAY=1: a player who clears the field and reads on
   await delay(2000);}
  console.log(rows.join('\n'));
+ } else if(args.includes('--crowd-probe')) {
+ // THE CROWD'S COST (no assertions): bodies held on the field at each count, the frame, the enemies' CPU, the draw calls, the GPU
+ const T='window.__stalheartTest';
+ await go('crowd-probe','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&fps=1#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await until(`${T}.state().sector.n===1`,60000);await evaluate(`${T}.sectorQuiet(true)`);
+ for(const n of (process.env.COUNTS||'500,1000,2000,3000').split(',').map(Number)){
+  const have=await evaluate(`${T}.state().enemiesAlive`);if(n>have)await evaluate(`${T}.spawnFodder(${n-have})`);await delay(9000);
+  const p=await evaluate(`${T}.state().performance`),s=await evaluate(`${T}.state()`);
+  const g=await evaluate('(async()=>(await import("./src/fx/crowd-gate.js")).crowdTrace)()');
+  console.log(`  crowd asked ${n}, up ${s.enemiesAlive}, queued ${s.queued}, cap ${g.cap} (frame ema ${g.ema?.toFixed(1)} ms): frame ${p.frameMs.toFixed(1)} ms, cpu enemies ${p.cpu.enemies.toFixed(1)} towers ${p.cpu.towers.toFixed(1)} frame ${p.cpu.frame.toFixed(1)}, calls ${p.calls}, gpu ${p.gpuMs?.toFixed(1)??'-'}`);}
  } else if(args.includes('--canyon-probe')) {
  // THE CANYON'S TIMELINE to SOL's seat (no assertions): sector phase, shot, laser phase and seat, Isao's panel, each change
  const T='window.__stalheartTest',n=args.includes('--again')?6:3;

@@ -59,8 +59,12 @@ export function createGunshipAuto({ G, tune, onScreen, callout, sfx, hasCue, fri
       // the guns: a burst, a rest, the other gun
       if (phase === 'rest') { if (t >= tune.rest) { phase = 'burst'; t = 0; gun = gun === 'rotary' ? 'bofors' : 'rotary'; G.select(gun); target = null; } landGunshipRounds(G); G.step(dt, false); return true; }
       if (!target || t % 0.6 < dt) {
+        // WITHIN REACH: the guns take the bodies under the ship's sky, not the densest pile on the planet (the far landers' guards drew
+        // their fire; the MK-9 has its own on-screen rule above)
+        const ship = G.optic.muzzle(gun), sl = Math.hypot(ship[0], ship[1], ship[2]) || 1, reach = Math.cos((tune.reachDeg ?? 180) * Math.PI / 180);
+        const inReach = (q) => (q[0] * ship[0] + q[1] * ship[1] + q[2] * ship[2]) / (sl * (Math.hypot(q[0], q[1], q[2]) || 1)) >= reach;
         const keep = (G.guns[gun].blastCells + (tune.gunSafeCells ?? 1.5)) * G.cs, near = units(), clear = (q) => near.every((f) => Math.hypot(q[0] - f[0], q[1] - f[1], q[2] - f[2]) > keep);
-        const p = densestTarget(live.filter((e) => clear(e.pos)), { radius: G.guns[gun].blastCells * G.cs * 10, metres: 10 }); target = p && clear(p) ? p : null;
+        const p = densestTarget(live.filter((e) => clear(e.pos) && inReach(e.pos)), { radius: G.guns[gun].blastCells * G.cs * 10, metres: 10 }); target = p && clear(p) ? p : null;
       }
       const n = target ? G.step(dt, true) : (G.step(dt, false), 0);
       const g = G.guns[gun];

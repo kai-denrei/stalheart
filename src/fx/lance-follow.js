@@ -5,7 +5,12 @@
 // only; the damage stays with the shot. Returns null to leave the beam as it is (no barrel, nothing alive to point at).
 import * as THREE from '../../vendor/three.module.js';
 
-const v = new THREE.Vector3();
+const v = new THREE.Vector3(), q = new THREE.Quaternion(), f = new THREE.Vector3();
+// THE BEAM LEAVES ALONG THE BARREL (owner, 2026-10-05: "sometimes the laser beam does not follow the muzzle when it moves too fast to a
+// new target"): re-aimed at the target, a held beam swung off the barrel while the head was still slewing to it, and hung where it was
+// once the target died. Now it runs down the muzzle's own +Z (the Workshop's models are +Z forward, td-tab towerBarrel) at the target's
+// distance (or the full range), and snaps onto the body only once the barrel is within ON_TARGET of it
+const ON_TARGET = Math.cos(4 * Math.PI / 180);
 // what the last re-aim did, for the acceptance probe (scripts/browser-test.mjs --round16): calls so far, the start and the aim point
 export const lanceTrace = { calls: 0, from: null, aim: null };
 
@@ -18,12 +23,21 @@ function followOf(tw, { piloted = false, camera = null, range = 0 } = {}) {
   if (!m) return null;
   m.updateWorldMatrix(true, false);
   const from = m.getWorldPosition(v).toArray();
+  m.getWorldQuaternion(q); f.set(0, 0, 1).applyQuaternion(q);
+  const barrel = f.lengthSq() > 1e-9 ? f.normalize().toArray() : null;
+  const along = (aim) => {
+    if (!barrel) return aim ? { from, aim } : null;   // no barrel to follow: on the target, or left as it is
+    const d = aim ? [aim[0] - from[0], aim[1] - from[1], aim[2] - from[2]] : null, len = d ? Math.hypot(...d) : range;
+    if (d && len > 1e-9 && (d[0] * barrel[0] + d[1] * barrel[1] + d[2] * barrel[2]) / len >= ON_TARGET) return { from, aim };
+    const L = len > 1e-9 ? len : range;
+    return { from, aim: [from[0] + barrel[0] * L, from[1] + barrel[1] * L, from[2] + barrel[2] * L] };
+  };
   if (piloted) {
-    if (tw.pilotTarget?.pos) return { from, aim: tw.pilotTarget.pos };
+    if (tw.pilotTarget?.pos) return along(tw.pilotTarget.pos);
     if (!camera) return null;
     const d = camera.getWorldDirection(v).multiplyScalar(range);
     return { from, aim: [from[0] + d.x, from[1] + d.y, from[2] + d.z] };
   }
   const t = tw.trackTarget;
-  return t?.alive && t.pos ? { from, aim: bodyAt(t) } : null;
+  return along(t?.alive && t.pos ? bodyAt(t) : null);
 }
