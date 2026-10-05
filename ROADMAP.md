@@ -266,6 +266,29 @@ makes the gunship's GET TO SAFETY beat a call rather than a copy.
 
 Not urgent. Worth doing the next time anything touches auto mode.
 
+### Type checking without TypeScript files
+
+Discussed 2026-10-05 (a friend's view: plain JavaScript is a mistake, it should be TypeScript). Not
+scheduled; we might do it later.
+
+The recommendation: **TypeScript checking without TypeScript files.** Keep `.js` and the no-build
+setup, but add `// @ts-check` with JSDoc type comments, and run `tsc --noEmit` as an extra check,
+like `npm run architecture`.
+
+- Most of the type safety (wrong arguments, misspelt fields, calling something that isn't a
+  function) with no change to how the game runs or deploys: the browser still loads the source as
+  it is, and the Node tests still import the same files.
+- Adoptable gradually: the pure layers (`src/domain`, `src/core`, `src/content`) first, since they
+  are small and have clear inputs and outputs, then `src/fx`, leaving `src/td-tab.js` for last.
+- Projects like Preact and webpack's own source take this approach.
+
+Why not convert to `.ts`: it adds a compile step between editing and running, to the build, the
+tests and the browser loading, and means typing hundreds of loosely shaped host objects: weeks of
+churn mid-playtest. Types would help here (this session's `lit?.()` on `false` and the `headWas`
+name clash are the kind they catch), but conversion is not the cheapest way to get them.
+
+First step, when it is picked up: `@ts-check` on `src/domain` as a trial, to see what it catches.
+
 ## Question
 
 - **Does the shader wobble read well on the phage?** It deforms now; whether it
@@ -314,7 +337,13 @@ Not urgent. Worth doing the next time anything touches auto mode.
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 41 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 42 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### Type checking without TypeScript files: @ts-check and JSDoc with tsc --noEmit, adopted layer by layer, rather than converting to .ts
+
+`2026-10-05-type-checking-without-typescript-files` · decision · **proposed**
+
+Owner, 2026-10-05: a friend says using JavaScript was a terrible decision and the project should be TypeScript. Discussed; the owner asked to keep the recommendation as a roadmap item that might be implemented in the future.
 
 ### Session sync after the tenth to fifteenth notes: what broke along the way, why, and what no one has seen yet, before the session restarts
 

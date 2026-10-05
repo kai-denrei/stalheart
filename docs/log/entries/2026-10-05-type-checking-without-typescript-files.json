@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "2026-10-05-type-checking-without-typescript-files",
+  "date": "2026-10-05",
+  "type": "decision",
+  "status": "proposed",
+  "title": "Type checking without TypeScript files: @ts-check and JSDoc with tsc --noEmit, adopted layer by layer, rather than converting to .ts",
+  "context": "Owner, 2026-10-05: a friend says using JavaScript was a terrible decision and the project should be TypeScript. Discussed; the owner asked to keep the recommendation as a roadmap item that might be implemented in the future.",
+  "outcome": "Not scheduled. When picked up: keep .js and the no-build setup, add // @ts-check with JSDoc types and a tsc --noEmit check beside npm run architecture, starting with src/domain as a trial, then src/core and src/content, then src/fx, src/td-tab.js last. ROADMAP.md, Candidate: 'Type checking without TypeScript files'.",
+  "alternatives": [
+    "Converting to .ts: a compile step between editing and running for the build, the Node tests and the browser, and typing hundreds of loosely shaped host objects; weeks of churn mid-playtest",
+    "Staying untyped: the tests, the architecture guard and the asset locks catch behaviour, not shapes; this session's lit?.() on false and the headWas name clash were shape bugs"
+  ],
+  "evidence": [
+    "Discussion with the owner, 2026-10-05; nothing implemented"
+  ],
+  "supersedes": []
+}
