@@ -110,6 +110,19 @@ Evidence:
 - test/squads.mjs (the same bodies, hard cores single, about fifty singles, far fewer entities); test/sector-run.mjs counts the canyon's swarm in bodies and sees squads in it
 - --grow, --round23 and the default browser suite
 
+## 2026-10-05 — Session sync after the sixteenth to twenty-fourth notes, Isao's voice, the welcome and the squads: what broke along the way, why, and what the owner has not yet seen in play
+
+issue · observed · 2026-10-05-session-sync-rounds-sixteen-to-twenty-four-voice-welcome-squads
+
+Seventeen commits on main since d85c8cf0, each round shipped live on the owner's standing OK for the playtest loop and recorded in its own entry: Isao's recorded voice (seiyu_voice drops, the Workshop's voice tab, the calibration bench, the unvoiced script), the opening's sound and its cuts, the FLIR pass, rounds sixteen to twenty-four, the intro straight to the action, the welcome guide, the crowd cap and the squads.
+
+Lessons, each observed this session: (1) A pass added after the OutputPass swapped the composer's buffers, so every other frame the scene drew into renderTarget1, which has no depth: a 'layered planet' that flickered. A single screenshot cannot show a flicker; a burst of frames diffed pixel by pixel found it, and the first theory (NaN pixels) was wrong. (2) Safari's silence was a cached page and leaked contexts, not the code that was suspected; the ledger that counts asked, closed and hidden contexts is what made it readable. Measure before theorising. (3) A trailing // on a one-line block swallowed its closing code twice more (programme-host, story-beats): put the comment on the line above, or use /* */. (4) The world is frozen through the arrival's shots (beats tick 0), so opening a breach earlier gained nothing; only a probe of the live clock (--opening-probe with the swarm's distance) showed where the 20 s went. (5) A multiplier raised for one feel scaled another rule: the sector soft multiplier grew the trickle stampede to 1058 bodies at 1.3 s apart, and sectors 4 and 5 waited on a queue that dripped for a quarter of an hour. Probe the queue, not only the phases (--sector-probe). (6) A rule that picks 'the densest pile' over the whole planet fired at the far landers' guards; a global choice needs a reach. (7) The crowd's cost was drawing, not the enemies' CPU (2.6 ms of 35 at 3,000 bodies); --crowd-probe measured it before anything was chosen. (8) Test hooks written for the old flow broke on the new one (aimEnemy in the gunship's seat, the start gate's click, the hard-core count): when a flow changes, grep the suites for its old states first. (9) The voice's spacing silently dropped the line after a forced one (the mission after Ad Astra); isaoFree clears it. Not yet seen by the owner in play: the intro's new timing (the Rotor at 20.6 s with the swarm in sight, both hard cores on the ring, NUKE THE ENTRANCE, the tank handed over nose to the blast), the language analysis line, the trickle cap in sectors 4 and 5, the engaged gate in a real fight, the welcome guide on a phone and the Latin as Kokoro says it, the Lancer's beam down the barrel, the gunship's 25 degree reach in sector 7, the crowd cap and the squads on his machine (sector 5's flood peaked at about 2,450 bodies before them), and the ram combo climbing five at a time.
+
+Evidence:
+
+- git log on main from d85c8cf0 to 9d6655e8
+- the probes and suites named in each round's entry: --opening-probe, --opening-cuts, --round23, --sector-probe (PLAY=1, PERF=1), --crowd-probe, --squads, --opening, --grow, the default suite
+
 ## 2026-10-05 — The intro goes straight to the action: the Rotor at the tour's end with the swarm in sight, the Quiver's hard cores already up, the gunship's seat on NUKE THE ENTRANCE, and the tank handed over facing the blast
 
 change · accepted · 2026-10-05-intro-straight-to-the-action

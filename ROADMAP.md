@@ -371,13 +371,19 @@ First step, when it is picked up: `@ts-check` on `src/domain` as a trial, to see
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 43 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 44 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
 
 ### Type checking without TypeScript files: @ts-check and JSDoc with tsc --noEmit, adopted layer by layer, rather than converting to .ts
 
 `2026-10-05-type-checking-without-typescript-files` · decision · **proposed**
 
 Owner, 2026-10-05: a friend says using JavaScript was a terrible decision and the project should be TypeScript. Discussed; the owner asked to keep the recommendation as a roadmap item that might be implemented in the future.
+
+### Session sync after the sixteenth to twenty-fourth notes, Isao's voice, the welcome and the squads: what broke along the way, why, and what the owner has not yet seen in play
+
+`2026-10-05-session-sync-rounds-sixteen-to-twenty-four-voice-welcome-squads` · issue · **observed**
+
+Seventeen commits on main since d85c8cf0, each round shipped live on the owner's standing OK for the playtest loop and recorded in its own entry: Isao's recorded voice (seiyu_voice drops, the Workshop's voice tab, the calibration bench, the unvoiced script), the opening's sound and its cuts, the FLIR pass, rounds sixteen to twenty-four, the intro straight to the action, the welcome guide, the crowd cap and the squads.
 
 ### Batched drawing of the crowd: one draw call per creature type, the per-body effects as instance attributes, as the lasting cure for the crowd's frame rate
 
