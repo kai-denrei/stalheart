@@ -1,6 +1,6 @@
 {
  "schema": 2,
- "source": "seiyu_voice export A-1 2026-10-05T09:01:29Z: 24 kHz mono WAV, encoded by scripts/import-isao-voice.mjs to mono 64 kbps MP3, no normalisation",
+ "source": "seiyu_voice export A-1 2026-10-05T09:55:35Z: 24 kHz mono WAV, encoded by scripts/import-isao-voice.mjs to mono 64 kbps MP3, no normalisation",
  "files": [
   {
    "path": "assets/audio/isao/mission_04.mp3",
@@ -85,6 +85,27 @@
    "sha256": "48f58cd8106c4b4829c067f54433a6b8f35f93e37a87d6886ed62665b579813d",
    "bytes": 25940,
    "sourceSha256": "206fb00b2ed05f194c4751a1624f821da1a6366e7fd5627392f3c8bff3ba5039"
+  },
+  {
+   "path": "assets/audio/isao/welcome_01.mp3",
+   "id": "welcome_01",
+   "sha256": "e8c701e7e80d92b58323e8bb7582a10415dd14b8d026abdca89fa726aac0b1bb",
+   "bytes": 8468,
+   "sourceSha256": "a969845bf37c0a50ef2c8926f65acda8f8420fa9f9a928ecf5e8efcfc5cb87ca"
+  },
+  {
+   "path": "assets/audio/isao/welcome_settle_01.mp3",
+   "id": "welcome_settle_01",
+   "sha256": "d3b8235a891905a0140ff27751c877288d41303559956ddbac1c8dc3d5ca53cb",
+   "bytes": 20564,
+   "sourceSha256": "81cd723ddc189534c6c04ff61551b062d797496fa29dc4df45a3d21d00c97c3c"
+  },
+  {
+   "path": "assets/audio/isao/ad_astra_01.mp3",
+   "id": "ad_astra_01",
+   "sha256": "0bf02113d34207656686acb6b8cfe6046faf45f1ce5a81ed26270016991caabd",
+   "bytes": 17876,
+   "sourceSha256": "aa30ea362218954bb170c365102e3c70d81102b55c331e8ff045a3526fb68372"
   },
   {
    "path": "assets/audio/isao/sites_seen_05.mp3",

@@ -1724,9 +1724,17 @@ try{
  const T='window.__stalheartTest',A=`${T}.state().arrival`;
  await go('opening-gate','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none&stage=1&grow=1&gate=1#td');
  await until(`!!${T} && ${A}?.gate==="shown"`,90000).catch(async()=>assert.fail(`the landing waits on the gate (${JSON.stringify(await evaluate(A))})`));
- assert.equal((await evaluate(A)).phase,'waiting','nothing lands before the gesture');assert(await evaluate('!!document.querySelector("#start-gate:not(.out)")'),'the gate shows');
+ assert.equal((await evaluate(A)).phase,'waiting','nothing lands before the gesture');assert(await evaluate('!!document.querySelector("#start-gate:not(.out) [data-start]")'),'the welcome guide shows, START on it');
  current='opening-gate';await finish();
- await send('Input.dispatchMouseEvent',{type:'mousePressed',x:720,y:450,button:'left',clickCount:1});await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:720,y:450,button:'left',clickCount:1});
+ // THE WELCOME (owner, 2026-10-05): a click on the page is not START; a keyword shows its wireframe; START lands after Ad Astra
+ await send('Input.dispatchMouseEvent',{type:'mousePressed',x:30,y:200,button:'left',clickCount:1});await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:30,y:200,button:'left',clickCount:1});await delay(1500);
+ assert.equal((await evaluate(A)).phase,'waiting','a click elsewhere on the guide does not land');
+ {const said=await evaluate('(async()=>(await import("./src/fx/isao-voice.js")).isaoSay.log.map(e=>e.id))()');console.log(`  opening: welcome said ${said.join(' ')}`);assert(said.includes('welcome_01'),'Isao says WELCOME! on the first gesture');}
+ {const r=await evaluate('(()=>{const b=document.querySelector("#start-gate .wg-key[data-unit=stalheart]");b.scrollIntoView({block:"center"});const q=b.getBoundingClientRect();return 1;})()');await delay(400);const r2=await evaluate('(()=>{const q=document.querySelector("#start-gate .wg-key[data-unit=stalheart]").getBoundingClientRect();return [q.left+q.width/2,q.top+q.height/2];})()');await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:r2[0],y:r2[1]});await delay(2500);
+  assert(await evaluate('!document.querySelector("#start-gate .wg-pop").hidden'),'hovering Stålheart shows its wireframe');current='opening-welcome-hover';await finish();}
+ current='opening-welcome';await evaluate('document.querySelector("#start-gate").scrollTop=0');await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:5,y:5});await delay(400);await finish();
+ {const r=await evaluate('(()=>{const q=document.querySelector("#start-gate [data-start]").getBoundingClientRect();return [q.left+q.width/2,q.top+q.height/2];})()');await send('Input.dispatchMouseEvent',{type:'mousePressed',x:r[0],y:r[1],button:'left',clickCount:1});await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:r[0],y:r[1],button:'left',clickCount:1});}
+ await until('(async()=>(await import("./src/fx/isao-voice.js")).isaoSay.log.some(e=>e.id==="ad_astra_01"))()',5000).catch(async()=>assert.fail('Ad Astra Per Aspera on START'));
  await until(`${A}.phase==="landing"`,15000).catch(async()=>assert.fail(`the gesture lands the rocket (${JSON.stringify(await evaluate(A))})`));
  await until(`${A}.thrust===true`,15000).catch(async()=>assert.fail(`the thrusters are heard during the descent (${JSON.stringify(await evaluate(A))})`));
  current='opening-landing';await finish();

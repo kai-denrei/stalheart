@@ -25,7 +25,7 @@ export const VOICE_CALLOUTS = Object.freeze(['SECTOR SECURE', 'STAMPEDE — RAM 
 // named moments the game raises itself (not a brief, not a callout): the landing's mission card, a new enemy's card, a sentry's print
 // standing, the next hull out of its berth, a sector lost, the armory's pad loading shells, an automated SOL pass's countdown (the count
 // then runs on the line's beats, src/fx/laser-arsenal.js) (src/fx/isao-voice.js isaoSpeak)
-export const VOICE_EVENTS = Object.freeze(['mission', 'first_contact', 'print_done', 'hull_rebuilt', 'sector_lost', 'shells_refilled', 'sol_firing', 'mk9_release', 'paint_pad', 'language_analysis']);   // paint_pad: the shop opens (src/fx/programme-host.js)   // mk9_release: every MK-9 launched (src/fx/gunship-rig.js launchHeavy)   // language_analysis: Isao's study screen opens (src/fx/synthetic-modal.js)
+export const VOICE_EVENTS = Object.freeze(['mission', 'first_contact', 'print_done', 'hull_rebuilt', 'sector_lost', 'shells_refilled', 'sol_firing', 'mk9_release', 'paint_pad', 'language_analysis', 'welcome', 'welcome_settle', 'ad_astra']);   // paint_pad: the shop opens (src/fx/programme-host.js)   // mk9_release: every MK-9 launched (src/fx/gunship-rig.js launchHeavy)   // language_analysis: Isao's study screen opens (src/fx/synthetic-modal.js)   // welcome, welcome_settle, ad_astra: the welcome guide and its START (src/fx/start-gate.js)
 
 // THE LINE FOR ITS MOMENT (owner, 2026-10-05: "'The Stålheart stands, MÖRK rolling out' said much too early"; "'25, show-off' at a ram
 // bonus of 16"): a line that names a particular moment plays only at that moment (a brief id or a callout text); unlisted lines play

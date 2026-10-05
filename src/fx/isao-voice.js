@@ -46,7 +46,7 @@ export function createIsaoVoice({ flavor = VOICE_FLAVOR, moments = VOICE_LINE_MO
     if (sfx?.prime) sfx.prime(k).then((ok) => (ok ? go() : (entry.failed = true))); else go();
     return line;
   }
-  return Object.assign(say, { index, log, reset() { last.clear(); lastAt.clear(); busyUntil = -Infinity; log.length = 0; } });
+  return Object.assign(say, { index, log, reset() { last.clear(); lastAt.clear(); busyUntil = -Infinity; log.length = 0; }, free() { busyUntil = quietUntil = -Infinity; } });   // free: the next line need not wait out the last one's space (the welcome's Ad Astra, then the mission)
 }
 
 // the game's one voice. td-tab hands it the sound engine on every brief, callout and toast; a module with no engine of its own
@@ -55,3 +55,4 @@ const voice = createIsaoVoice();
 let sink = null;
 export const isaoSay = Object.assign((sfx, id, o) => { if (sfx) sink = sfx; return voice(sfx, id, o); }, { log: voice.log, index: voice.index });
 export const isaoSpeak = (id, o) => voice(sink, id, o);
+export const isaoFree = () => voice.free();

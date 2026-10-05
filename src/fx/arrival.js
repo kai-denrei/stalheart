@@ -52,7 +52,8 @@ export function createArrival({ on = false, past = false, base = null, beats = n
   const pose = (out, eye, look, n) => { m4.lookAt(eye, look, n); out.quat.setFromRotationMatrix(m4); out.pos.copy(eye); };
   let api = null, camera = null, fov = null, rocket = null, drone = null, size = 0, to = null, fxRoot = null, scorch = null, dust = null;
   let t = 0, talkT = 0, waited = 0, cutting = false, deployed = false, skipped = false, thrust = null, heard = null, cues = [], late = phase === 'done' ? new Set(IDS) : null, plumes = [], gate = null;
-  // the start gate (src/fx/start-gate.js) when the sound has not started; an acceptance run lands without it unless it asks (?gate=1)
+  // the start gate (src/fx/start-gate.js), the welcome guide, from the first frame: the landing loads behind it and waits for START;
+  // an acceptance run lands without it unless it asks (?gate=1)
   const q = typeof location === 'object' ? new URLSearchParams(location.search) : null, gated = !q || q.get('acceptance') !== '1' || q.get('gate') === '1';
 
   const drop = (o) => { o.removeFromParent(); o.geometry?.dispose(); o.material?.dispose(); };
@@ -180,13 +181,12 @@ export function createArrival({ on = false, past = false, base = null, beats = n
         return;
       }
       if (phase === 'waiting') {
-        waited += dt;
         if (base.structure('sh02')?.holder.visible) base.conceal('sh02');   // nothing stands before it lands
         const d = api.drone(); if (d) d.obj.visible = false;
-        if (d && IDS.every((id) => base.structure(id))) {
-          if (gated && api.sfx && !api.sfx.ready && !gate?.opened) { if (!gate) { gate = createStartGate(globalThis.document?.body); hud(true); } return; }   // the landing waits for the gesture that starts its sound
-          start();
-        }
+        if (gated && !gate) { gate = createStartGate(globalThis.document?.body, { sfx: api.sfx }); hud(true); }
+        if (gate && !gate.opened) return;   // the welcome holds the landing; its load clock starts on START
+        waited += dt;
+        if (d && IDS.every((id) => base.structure(id))) start();
         else if (waited > tune.wait || base.errors.some((e) => IDS.some((id) => e.startsWith(`${id}:`)))) release();
         return;
       }

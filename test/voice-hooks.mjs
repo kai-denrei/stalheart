@@ -24,7 +24,7 @@ ok('briefs speak (td-tab showBrief), their first line\'s words with them', /isao
 ok('and every later line as it shows (td-tab stepBrief)', /isaoSay\(sfx, `\$\{briefQ\.id\}#\$\{briefAt\}`, \{ text: briefQ\.lines\[briefAt\] \}\)/.test(game));
 ok('callouts speak (td-tab showCallout)', /function showCallout\(text, cls\) \{\s*isaoSay\(sfx, text\)/.test(game));
 ok('toasts speak (td-tab showToast)', /function showToast\(html, ms = 3000\) \{\s*isaoSay\(sfx, html\)/.test(game));
-for (const ev of VOICE_EVENTS.filter((e) => e !== 'mission')) ok(`the ${ev} event is raised`, game.includes(`isaoSpeak('${ev}'`));
+for (const ev of VOICE_EVENTS.filter((e) => e !== 'mission')) ok(`the ${ev} event is raised`, game.includes(`isaoSpeak('${ev}'`) || game.includes(`isaoSay(sfx, '${ev}'`));   // the welcome speaks before any engine was handed to isaoSpeak
 
 const lock = JSON.parse(readFileSync(new URL('../docs/isao-voice-audio.lock.json', import.meta.url), 'utf8'));
 const pinned = new Set(lock.files.map((f) => f.path)), defs = voiceSounds();
