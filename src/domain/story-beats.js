@@ -5,7 +5,8 @@
 //                 and the lines are its own) nothing is said or deployed here: the arrival calls deploy(api) on its cut to his face
 //   foundry       (with a foundry tune) Isao deploys the AFR-01; the arm cuts the SH02; the first barrel is the Rotor's feedstock
 //   printing      Isao prints the Rotor on the wall beside the tunnel mouth
-//   rotor-ready   the sentry stands
+//   rotor-ready   the sentry stands. On a landing (`arrival`) the sinkhole has opened, quiet, during the beacons' tour (`earlyBreach`)
+//                 and the Rotor is taken the moment the tour is over: no tremor, breach, approach or override (owner, 2026-10-05)
 //   tremor        a contact on the radar, far out (gated worlds only)
 //   breach        the ground opens from orbit; fodder starts to emerge
 //   approach      fodder walks up the lane until one reaches the closed gate
@@ -15,11 +16,13 @@
 //   quiver-*      Isao prints the Quiver across the lane the moment the gate stands (2026-09-24: ahead of the Stålheart's long print
 //                 in his queue), so it stands while the first wave is fought; the moment the wave is down a hard core rises and the
 //                 player goes straight from the Rotor into the Quiver's optic (owner, 2026-09-13: almost immediate); a second hard
-//                 core later; two TALON shots, then construction (or settled when the Stålheart already stands)
+//                 core later; two TALON shots, then construction (or settled when the Stålheart already stands). Given `quiverRise`
+//                 cells (the holding ring's far side) both rise there at once, in sight as the optic opens (owner, 2026-10-05)
 //   construction  SECTOR 0 (owner, 2026-09-24): the Stålheart is still printing, so its construction is defended. The gunship
 //                 arrives from orbit once; a wave rises from the sinkhole every `construction.every` seconds, cycling through the
 //                 table (held back while `alive` stand); once the host's stalheartStands() (its first hull out) and the field is down
-//                 to `mopUp`, settled. Only a growing base passes a table
+//                 to `mopUp`, settled. Only a growing base passes a table. It opens in the gunship's seat (`gunshipSeat`: NUKE THE
+//                 ENTRANCE), and `tankAfterNuke` seconds after its first MK-9 blast the player is handed the hull (`tankReady`)
 //   study-talk    a close-up of Isao saying it, face neutral, skeptical, then to work (owner, 2026-09-13)
 //   study         Isao's screen, retitled: Preliminary Alien Vibration Language Analysis
 //   expedition    the screen closed: Isao sends the tank for material at the other rocket landing sites, the planet pulled back
@@ -29,7 +32,7 @@ import { STORY_PHASES } from './automation.js';
 export function makeStoryBeats({
   socket, foundry = null, lane = -1, fodder = -1, gate = -1, rotorDelay = 2, key = 'rotor',
   fodderType = 'amoeba', fodderEvery = 2.5, fodderAlive = 8, fodderTotal = 20, fodderEmerge = null,
-  controlDelay = 1.5, tremorDelay = 1.5, breachDelay = 4, overrideDelay = 2.5, spawnDelay = 1, overrideCells = 2.2,
+  controlDelay = 1.5, tremorDelay = 1.5, breachDelay = 4, overrideDelay = 2.5, spawnDelay = 1, overrideCells = 2.2, earlyBreach = null, tankAfterNuke = null, quiverRise = [],
   faceDelays = [0.6, 4], commsKills = 5, harvestKills = 10, quiverSocket = -1, quiver = null, startPhase = 'landed',
   gateReady = () => true,   // a growing base: the tremor waits for Isao to print the gate (src/content/base-programme.js)
   construction = null,      // a growing base: the waves that come while the Stålheart prints (src/content/story-defaults.js STORY_CONSTRUCTION)
@@ -54,6 +57,9 @@ export function makeStoryBeats({
   // A LATE START (a jump past the handover): the landing faces are already said, and the views strip is offered on the first tick
   const late = startPhase !== 'landed';
   let offered = false, released = !arrival;   // an arrival holds `landed` until its cut
+  // STRAIGHT TO THE ACTION: a landing opens the sinkhole while the beacons are toured, so the swarm is up the lane when the Rotor is taken
+  const early = arrival && gated && earlyBreach != null;
+  let releasedAt = null, opened = false, nukes0 = null, nukeAt = null;
   if (late || arrival) faces = 2;
   const enter = (p) => { phase = p; at = clock; };
   const spawnTick = (api) => {
@@ -79,6 +85,8 @@ export function makeStoryBeats({
       // Isao's two faces play over the landing, whatever else is happening: the angry one the moment he is out of the hatch
       if (faces === 0 && clock >= faceDelays[0] && api.isao()) { api.brief?.('rough_landing'); faces = 1; }
       else if (faces === 1 && clock >= faceDelays[1]) { api.brief?.('so_much_to_build'); faces = 2; }
+      if (early && released && !opened && clock - releasedAt >= earlyBreach && STORY_PHASES.indexOf(phase) < STORY_PHASES.indexOf('piloting')) { api.breach?.(fodder, { quiet: true }); opened = true; nextSpawn = clock + spawnDelay; }
+      if (opened && STORY_PHASES.indexOf(phase) < STORY_PHASES.indexOf('piloting')) spawnTick(api);
       if (fd) for (const e of stepFoundry(fd, dt, foundry)) { api.foundry?.(typeof e === 'string' ? e : e.ev, typeof e === 'string' ? null : e); if (e === 'barrel') api.grant(foundry.feedstockPerBarrel); }
       if (phase === 'landed' && fd && released && faces === 2 && clock >= rotorDelay) { api.foundry?.(deployFoundry(fd), null); api.brief?.('foundry_deploy'); enter('foundry'); }
       // THE ROTOR DOES NOT WAIT FOR THE FIRST BARREL (owner, 2026-10-03: "faster intro, more intensity"): Isao prints it from the landing's
@@ -91,6 +99,7 @@ export function makeStoryBeats({
         api.grant(api.cost(key));
         if (api.order(key, socket)) { enter('printing'); orderedAt = clock; }
       } else if (phase === 'printing' && api.built(socket)) { enter('rotor-ready'); readyAt = clock; }
+      else if (phase === 'rotor-ready' && opened) { if (gateAt === null && gateReady()) { gateAt = clock; orderQuiver(api); } if (!api.touring?.()) { api.brief?.('manual_override'); said.add('manual_override'); api.pilot?.(socket, lane); enter('piloting'); } }   // the tour over: straight into the Rotor
       else if (phase === 'rotor-ready' && gated && gateAt === null) { if (gateReady()) { gateAt = clock; orderQuiver(api); } }   // THE TREMOR WAITS FOR THE GATE: no fodder before it stands; the Quiver goes on the book with it
       else if (phase === 'rotor-ready' && clock - Math.max(at, gateAt ?? at) >= (gated ? tremorDelay : controlDelay)) {
         if (gated) { api.tremor?.(fodder); api.brief?.('tremor'); enter('tremor'); }
@@ -101,6 +110,7 @@ export function makeStoryBeats({
       else if (phase === 'override') { spawnTick(api); if (clock - at >= overrideDelay) { api.pilot?.(socket, lane); enter('piloting'); orderQuiver(api); } }   // Isao prints the Quiver while the wave is fought (normally ordered with the gate already)
       else if (phase === 'piloting' && fodder >= 0) {
         spawnTick(api);
+        if (gated && gateAt === null && gateReady()) { gateAt = clock; orderQuiver(api); }   // taken before the gate stood: the Quiver follows it
         const kills = api.kills?.() ?? 0;
         if (kills >= commsKills && !said.has('alien_comms')) { api.brief?.('alien_comms'); said.add('alien_comms'); }
         if (kills >= harvestKills && !said.has('harvest_biomass')) { api.brief?.('harvest_biomass'); said.add('harvest_biomass'); }
@@ -109,14 +119,16 @@ export function makeStoryBeats({
         if (!quiverOrdered && !api.built(quiverSocket)) { api.brief?.('quiver_intro'); if (!fd) api.grant(api.cost(quiver.key)); quiverOrdered = !!api.order(quiver.key, quiverSocket); }
         if (api.built(quiverSocket)) {   // straight off the Rotor into the Quiver, the optic on the lane as the hard core rises
           if (api.sourceAlive && !api.sourceAlive()) api.breach?.(fodder);   // a strike may have filled the sinkhole: the hard cores need it open
-          api.spawn(quiver.hardcore, fodder); hardcores = 1; api.brief?.('quiver_override'); api.pilot?.(quiverSocket, lane); enter('quiver-piloting'); nextSpawn = clock + quiver.secondDelay;
+          if (quiverRise.length) { for (const ci of quiverRise) api.spawn(quiver.hardcore, ci, { here: true }); hardcores = quiverRise.length >= 2 ? 2 : 1; }   // on the ring, in sight
+          else { api.spawn(quiver.hardcore, fodder); hardcores = 1; }
+          api.brief?.('quiver_override'); api.pilot?.(quiverSocket, lane); enter('quiver-piloting'); nextSpawn = clock + quiver.secondDelay;
         }
       }
       else if (phase === 'quiver-piloting') {
         if (hardcores < 2 && clock >= nextSpawn) { api.spawn(quiver.hardcore, fodder); hardcores = 2; }
         if (hardcores >= 2 && api.enemies() === 0) {
           api.brief?.('quiver_cleared'); said.add('quiver_cleared');
-          if (construction && api.stalheartStands && !api.stalheartStands()) { enter('construction'); api.gunshipArrive?.(); nextSpawn = clock + (construction.first ?? construction.every); }
+          if (construction && api.stalheartStands && !api.stalheartStands()) { enter('construction'); api.gunshipArrive?.(); if (tankAfterNuke != null) api.gunshipSeat?.(); nukes0 = api.nukes?.() ?? 0; nextSpawn = clock + (construction.first ?? construction.every); }
           else { enter('settled'); api.unlock?.('views'); }
         }
       } else if (phase === 'construction') {
@@ -124,6 +136,10 @@ export function makeStoryBeats({
         // work (and the seats'): the automatic towers fire without the seat's multipliers and would take minutes over what a
         // player clears in seconds, and a live body holds every wave clock and idle print after it. No new wave once it stands.
         const up = !api.stalheartStands || api.stalheartStands();
+        // THE TANK AFTER THE NUKE (owner, 2026-10-05: "after the nuke is dropped, we take control of the tank ... facing where the explosion
+        // just took place"): the first MK-9 blast of sector 0, and `tankAfterNuke` seconds later the hull is the player's
+        if (tankAfterNuke != null && nukes0 != null && nukeAt === null && (api.nukes?.() ?? 0) > nukes0) nukeAt = clock;
+        if (nukeAt !== null && !said.has('tank_ready') && clock - nukeAt >= tankAfterNuke) { api.tankReady?.(); said.add('tank_ready'); }
         if (up && upAt === null) upAt = clock;
         // ...or once the hull has had `mopUpSeconds` at them: a player who drives off instead never stalls the story (unmanned towers
         // do not fire before the handover), and the harmless leftovers roll on into sector 1 as bodies to ram
@@ -135,7 +151,7 @@ export function makeStoryBeats({
         if (!up && !sealed && cWaves > reminded && api.enemies() === 0) { api.brief?.(reminded === 0 ? 'sinkhole_strike' : 'sinkhole_strike_again'); reminded = cWaves; }
         if (up && (api.enemies() <= (construction?.mopUp ?? 0) || clock - upAt >= (construction?.mopUpSeconds ?? Infinity))) { studyDelay = construction?.studyDelay ?? studyDelay; enter('settled'); api.unlock?.('views'); }   // and the hull is the player's for a moment before the study
         else if (!up && construction && !sealed && clock >= nextSpawn && api.enemies() < (construction.alive ?? Infinity)) { constructionWave(api); nextSpawn = clock + construction.every; }   // a wave waits while the field is full
-      } else if (phase === 'settled' && quiver && clock - at >= studyDelay) { api.closeup?.('isao'); api.brief?.('vibration_study'); said.add('vibration_study'); enter('study-talk'); }
+      } else if (phase === 'settled' && quiver && clock - at >= studyDelay && !api.engaged?.()) {   /* never over a fight in the gunship's or SOL's seat */ api.closeup?.('isao'); api.brief?.('vibration_study'); said.add('vibration_study'); enter('study-talk'); }
       else if (phase === 'study-talk' && clock - at >= 0.5 && !api.briefing?.()) { api.screen?.('synthetic'); enter('study'); }   // the lines run out (or were seen before), then the screen
       else if (phase === 'study' && !api.screenOpen?.()) { api.brief?.('rocket_sites'); api.sites?.(); api.expeditionsBegin?.(); api.planetView?.(); said.add('rocket_sites'); enter('expedition'); }
     },
@@ -143,7 +159,7 @@ export function makeStoryBeats({
     // call, on the cut to his face, and says nothing of its own. Once, from `landed` only; true when it released the beats
     deploy(api) {
       if (released || phase !== 'landed') return false;
-      released = true;
+      released = true; releasedAt = clock;
       if (fd) { api.foundry?.(deployFoundry(fd), null); enter('foundry'); }
       return true;
     },

@@ -332,7 +332,7 @@ export function createSectorRun(h) {
     }
     if (cardLeft > 0) { cardLeft -= dt; if (cardLeft <= 0) card([]); }
     if (phase === 'lost') { left -= dt; if (left <= 0) finish('lost'); return; }
-    if (phase === 'secure') { left -= dt; if (left <= 0) finish('secure'); return; }
+    if (phase === 'secure') { left -= dt; if (left <= 0 && !api.engaged?.()) finish('secure'); return; }   // the debrief waits out a fight in the gunship's or SOL's seat
     if (phase !== 'fighting') return;
     for (const id of pending.slice()) {
       const b = breachOf(id);

@@ -120,7 +120,7 @@ export function createGunshipRig(host) {
       ...(host.isao() ? [{ kind: 'isao', pos: host.isao().obj.position.toArray() }] : []),
     ],
     danger: (p, r) => dangerReport(p, r, host.pilotHost().gunship.bodies()),
-    blast: (ci) => { if (ci >= 0) executeStrike(ci, host.t(), 'gunship.nuke', GUNSHIP_GUNS.heavy.blastCells); },
+    blast: (ci) => { if (ci >= 0) { executeStrike(ci, host.t(), 'gunship.nuke', GUNSHIP_GUNS.heavy.blastCells); host.story()?.nukes?.push(ci); } },   // the story counts them: its first hands over the tank
     drop: { release: (from, to, up, vel) => !!drop?.release(from, to, up, vel), steer: (to) => drop?.steer(to) },
     vel: () => track ? scale3(track.heading, track.speed * host.cellSide()) : [0, 0, 0],
     explode: (use, p) => explode(use, p),

@@ -986,13 +986,14 @@ try{
  await until('window.__stalheartTest.state().towers===1',120000);await mark('Rotor printed');
  // THE GATE FOLLOWS THE ROTOR (2026-10-03, "faster intro, more intensity"): the recycler beat waits behind the Stålheart's print now
  await until('window.__stalheartTest.state().programme.active==="gate"',60000);const walls0=(await evaluate('window.__stalheartTest.state()')).wallCount;await mark('gate print begins');await until('window.__stalheartTest.state().programme.print?.step==="gate"&&window.__stalheartTest.state().programme.print.k>0',30000);
- {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.story.phase,'rotor-ready','the tremor waits while the gate prints');assert.equal(s.programme.gate.built,false);assert.equal(s.wallCount,walls0,'the walls block only once they stand');assert(s.programme.print.step==='gate'&&s.programme.print.k>0,'the print is under way');}
+ {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.story.phase,'rotor-ready','the Rotor waits for the tour while the gate prints');assert.equal(s.programme.gate.built,false);assert.equal(s.wallCount,walls0,'the walls block only once they stand');assert(s.programme.print.step==='gate'&&s.programme.print.k>0,'the print is under way');}
  current='grow-gate-printing';await finish();
  await until('window.__stalheartTest.state().programme.printed.includes("gate")',90000);await mark('gate stands');
  {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.programme.gate.built,true);assert(s.wallCount>walls0&&s.wallCount<=walls0+12,`the walls are rock once printed (${walls0} -> ${s.wallCount})`);assert.notEqual(s.story.gateAt,null);}
- await until('window.__stalheartTest.state().story.phase==="tremor"',20000);await mark('tremor');current='grow-tremor';await finish();
- await until('window.__stalheartTest.state().story.phase==="breach"||window.__stalheartTest.state().story.spawned>0',40000);await mark('breach');
+ // STRAIGHT TO THE ACTION (owner, 2026-10-05): the sinkhole opened quiet over the beacons' tour and the Rotor is taken as the tour ends,
+ // the gate standing or not: no tremor, breach or override beat on a landing
  await until('window.__stalheartTest.state().story.spawned>0',40000);await mark('first fodder');
+ {const s=await evaluate('window.__stalheartTest.state()');assert(!s.story.said.includes('tremor'),'no tremor beat on a landing');}
  await until('window.__stalheartTest.state().towerCells.some(([k])=>k==="quiver")',60000);await mark('Quiver stands');   // ordered by the beats the moment the gate stood, ahead of the Stålheart in Isao's queue
  await until('(()=>{const p=window.__stalheartTest.state().programme;return p.isao?.state==="build"&&p.isao.order==="structure"&&p.print.step==="stalheart";})()',90000);await mark('Stålheart print begins');
  {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.programme.active,'stalheart');assert(!s.programme.printed.includes('landing'),'the Stålheart prints straight after the gate: the pad waits behind it');assert.equal(s.hull.state,'held');}
@@ -1013,12 +1014,12 @@ try{
  await until('window.__stalheartTest.state().story.phase==="quiver-piloting"',150000);await delay(600);await mark('Quiver optic');
  await evaluate('window.__stalheartPilotTest.hold(true)');
  // the player's hands in sector 0: re-aim every half second, and hop to the other mount when this one has had nothing in reach for 3 s
- const aimOn=(stop)=>`(()=>{const s=window.__stalheartTest.state();if(${stop})return true;const t=window.__stalheartPilotTest;if(!t)return false;if(!window.__aimAt||Date.now()-window.__aimAt>500){window.__aimAt=Date.now();if(t.aimEnemy())window.__seen=Date.now();else if(Date.now()-(window.__seen||0)>3000){window.__seen=Date.now();const k=t.state().key==='rotor'?'quiver':'rotor';document.querySelector('#story-views [data-mount="'+k+'"]')?.click();setTimeout(()=>window.__stalheartPilotTest?.hold(true),300);}}return false;})()`;
+ const aimOn=(stop)=>`(()=>{const s=window.__stalheartTest.state();if(${stop})return true;const t=window.__stalheartPilotTest;if(!t||s.gunship.seat)return false;if(!window.__aimAt||Date.now()-window.__aimAt>500){window.__aimAt=Date.now();if(t.aimEnemy())window.__seen=Date.now();else if(Date.now()-(window.__seen||0)>3000){window.__seen=Date.now();const k=t.state().key==='rotor'?'quiver':'rotor';document.querySelector('#story-views [data-mount="'+k+'"]')?.click();setTimeout(()=>window.__stalheartPilotTest?.hold(true),300);}}return false;})()`;
  const seat=async(key)=>{await evaluate(`document.querySelector('#story-views [data-mount="${key}"]')?.click()`);await delay(400);await evaluate('window.__stalheartPilotTest?.hold(true)');};
  await until(aimOn('["construction","settled","study-talk","study","expedition"].includes(s.story.phase)'),200000);
  if((await evaluate('window.__stalheartTest.state().story.phase'))==='construction'){await mark('construction (sector 0)');
   // SECTOR 0: the gunship arrives from orbit for a free pass, and waves rise from the sinkhole on a clock while the Stålheart prints
-  {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.gunship.station,true,`the gunship is on station over the construction (${JSON.stringify(s.gunship)})`);assert.equal(s.automated,false,'the towers are still the player\'s: the seats are the fight');assert.equal(s.hull.state,'held');}
+  {const s=await evaluate('window.__stalheartTest.state()');assert.equal(s.gunship.station,true,`the gunship is on station over the construction (${JSON.stringify(s.gunship)})`);assert.equal(s.gunship.seat,true,'the Quiver\'s second kill hands to the gunship\'s seat (NUKE THE ENTRANCE)');assert.equal(s.automated,false,'the towers are still the player\'s: the seats are the fight');assert.equal(s.hull.state,'held');}
   await until(aimOn('s.story.construction.waves>=1'),30000);await mark('first construction wave');current='grow-construction';await finish();
   await seat('rotor');   // soft bodies: the Rotor's seat, as a player hops to it
   await until(aimOn('s.hull.state!=="held"'),150000);await mark('Stålheart stands, the hull rolls out');
@@ -1185,7 +1186,7 @@ try{
  await go('chapters-quiver',`index.html?${H}&skip=quiver#td`);await loaded('chapters-quiver');
  {await world('quiver',['foundry','gate'],['rotor','quiver']);const c=await card();assert.match(c.where,/^TUTORIAL 4\/6\s*QUIVER/,`4/6 (${c.where})`);}
  await until(`${T}.state().story.phase==="quiver-piloting"`,20000);
- {const s=await st();assert.equal(s.story.hardcores,1,'the first hard core');assert(s.glide.n>=1,`the Quiver's optic is glided into, not cut to (${JSON.stringify(s.glide)})`);assert.equal(s.programme.active,'stalheart','Isao prints the Stålheart');}
+ {const s=await st();assert.equal(s.story.hardcores,2,'both hard cores, up on the ring at once (2026-10-05)');assert(s.glide.n>=1,`the Quiver's optic is glided into, not cut to (${JSON.stringify(s.glide)})`);assert.equal(s.programme.active,'stalheart','Isao prints the Stålheart');}
  await until(`${T}.state().programme.isao?.state==="build"`,30000);
  {const k=(await st()).programme.isao.printK;assert(k>=0.33,`the Stålheart print is a third done (${k})`);}
  await finish();
@@ -1777,14 +1778,48 @@ try{
  await evaluate(`${T}.showcase.ground(${sock[0]},0.9,1.6)`);await delay(1800);current='round22-needle';await finish();
  await evaluate(`${T}.showcase.ground(${sock[1]},1.4,2.2)`);await delay(2500);current='round22-lancer';await finish();
  await evaluate(`${T}.showcase.ground(${T}.state().storyHome,1.2,2.6)`);await delay(2500);current='round22-dropoff';await finish();
+ } else if(args.includes('--round23')) {
+ // THE OWNER'S NOTES OF 2026-10-05 ("straight to the action"): the Quiver's two hard cores are up and in sight as its optic opens; the
+ // second kill hands to the gunship's thermal seat, the MK-9 up, NUKE THE ENTRANCE over it; the first MK-9 blast hands over the hull
+ // on the lane, nose to the blast
+ const T='window.__stalheartTest',P='window.__stalheartPilotTest',st=()=>evaluate(`${T}.state()`);
+ await go('round23-quiver','index.html?sw=0&acceptance=1&cine=0&skip=quiver#td');
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card{display:none!important}</style>")');
+ await until(`!!${T} && ${T}.state().story?.phase==="quiver-piloting"`,90000);
+ assert.equal((await st()).story.hardcores,2,'both hard cores rise at once');
+ await delay(1500);
+ {const s=await st(),q=(s.towerCells||[]).find(([k])=>k==='quiver')?.[1],d=await evaluate(`${T}.showcase.foeDist(${q})`);console.log(`  round23: ${s.enemiesAlive} up, nearest ${d} cells from the Quiver`);assert(d<=10,`the hard cores are near and in sight (${d} cells)`);}
+ current='round23-quiver';await finish();
+ await until(`(()=>{const s=${T}.state();if(s.story.phase!=="quiver-piloting")return true;const t=${P};if(t){t.aimEnemy();t.hold(true);}return false;})()`,90000).catch(async()=>assert.fail(`the Quiver kills both (${JSON.stringify((await st()).story)})`));
+ await until(`${T}.state().gunship.seat===true`,5000).catch(async()=>assert.fail(`the second kill hands to the gunship's seat (${JSON.stringify((await st()).gunship)})`));
+ {const s=await st();console.log(`  round23: phase ${s.story.phase}, gun ${s.gunship.gun}, order ${await evaluate('document.querySelector("#td-order")?.textContent')}`);
+  assert.equal(s.story.phase,'construction');assert.equal(s.gunship.gun,'heavy','the MK-9 is up');assert.match(await evaluate('document.querySelector("#td-order")?.textContent||""'),/NUKE THE ENTRANCE!press 1-2-3/,'the order and its keys');}
+ await delay(1200);current='round23-gunship';await finish();
+ await evaluate(`${T}.gunshipHold(true)`);await delay(300);await evaluate(`${T}.gunshipHold(true)`);
+ await until(`${T}.state().gunship.heavy.phase==="released"||${T}.state().gunship.heavy.phase==="ignited"`,5000).catch(async()=>assert.fail(`the MK-9 is released (${JSON.stringify((await st()).gunship.heavy)})`));
+ console.log(`  round23: MK-9 on cell ${(await st()).gunship.heavy.ci}, sinkhole ${await evaluate(`${T}.showcase.source()`)}`);
+ await until(`${T}.state().story.said.includes("tank_ready")`,20000).catch(async()=>assert.fail(`the blast hands over the hull (${JSON.stringify((await st()).hull)})`));
+ {const s=await st(),v=await evaluate(`${T}.seatState()`);console.log(`  round23: hull ${JSON.stringify(s.hull)}, view ${v.view}, seat ${v.seatKey}`);assert.equal(s.hull.state,'early');assert.equal(s.hull.visible,true,'the hull is drawn');assert.equal(s.gunship.seat,false,'out of the gunship');assert.equal(s.story.phase,'construction','the Stålheart still prints');assert.match(await evaluate('document.querySelector("#td-order")?.textContent||""'),/TANK IS READY, GET IN THERE!/);}
+ await delay(1500);current='round23-tank';await finish();
  } else if(args.includes('--opening-probe')) {
  // THE OPENING'S TIMELINE from a bare page: phase, shot, view, Isao's panel, every change (no assertions)
  const T='window.__stalheartTest';
  await go('opening-probe','index.html?sw=0&acceptance=1&world=story#td');
  await until(`!!${T}`,90000);
+ const rows=[],t0=Date.now();let last='',lastTick=-1;
+ while(Date.now()-t0<(+process.env.PROBE_S||75)*1000){const r=await evaluate(`(()=>{const s=${T}.state(),v=${T}.seatState(),b=document.querySelector("#td-brief");return [s.story?.phase,s.shot,v.view,v.seatKey,b&&!b.classList.contains("hidden")?(b.textContent||"").replace(/\\s+/g," ").slice(14,60):"-","foes "+s.enemiesAlive+" @"+(s.story?${T}.showcase.foeDist(s.story.socket):"-")+" cells"].join(" | ");})()`);
+  const k=r.replace(/foes.*$/,""),tick=Math.floor((Date.now()-t0)/1000);if(k!==last.replace(/foes.*$/,"")||tick!==lastTick&&/piloting|quiver/.test(r)){rows.push(((Date.now()-t0)/1000).toFixed(1)+'s '+r);last=r;lastTick=tick;}await delay(150);}
+ console.log(rows.join('\n'));
+ } else if(args.includes('--sector-probe')) {
+ // A SECTOR'S CLOCK from its start (no assertions): phase, bodies up and queued, each breach's waves released of planned; SECTOR=n
+ const T='window.__stalheartTest',n=+process.env.SECTOR||4,dur=(+process.env.PROBE_S||150)*1000;
+ await go('sector-probe',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${n}#td`);
+ await until(`!!${T} && ${T}.state().sector?.n===${n}`,120000);
  const rows=[],t0=Date.now();let last='';
- while(Date.now()-t0<75000){const r=await evaluate(`(()=>{const s=${T}.state(),v=${T}.seatState(),b=document.querySelector("#td-brief");return [s.story?.phase,s.shot,v.view,v.seatKey,b&&!b.classList.contains("hidden")?(b.textContent||"").replace(/\\s+/g," ").slice(14,60):"-"].join(" | ");})()`);
-  if(r!==last){rows.push(((Date.now()-t0)/1000).toFixed(1)+'s '+r);last=r;}await delay(150);}
+ while(Date.now()-t0<dur){const r=await evaluate(`(()=>{const s=${T}.state(),c=s.sector;return ['S'+c.n,c.phase,'alive '+s.enemiesAlive,'q '+s.queued,'gs '+(s.gunship.seat?'seat':s.gunship.station?'stn':'-'),'sol '+(s.laser?.phase??'-')+(s.laser?.seated?'*':''),(c.breaches||[]).map(b=>b.side[0]+b.wavesReleased+'/'+b.wavesPlanned+(b.live?'':'x')).join(' ')].join(' | ');})()`);
+  if(r!==last){rows.push(((Date.now()-t0)/1000).toFixed(0)+'s '+r);last=r;}
+  if(process.env.PLAY){await evaluate(`${T}.sectorCull(999)`);if(await evaluate(`${T}.state().sector.debriefOpen`)){await evaluate(`${T}.sectorContinue()`);await delay(300);await evaluate(`${T}.sectorContinue()`);}}   // PLAY=1: a player who clears the field and reads on
+  await delay(2000);}
  console.log(rows.join('\n'));
  } else if(args.includes('--canyon-probe')) {
  // THE CANYON'S TIMELINE to SOL's seat (no assertions): sector phase, shot, laser phase and seat, Isao's panel, each change

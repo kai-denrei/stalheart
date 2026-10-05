@@ -4807,6 +4807,9 @@ body.seat-gliding #seat-vignette { display: none; }
 /* THE CALL TO ACTION (owner, 2026-10-03: "larger quick CALL to Action in Red in the center ... ROTOR MANUAL OVERRIDE!"): the seat hand-over's
    order, bigger and redder than a callout, held 2.6 s; Isao's panel keeps the why */
 .co-cta { color: #ff3b2f; --r: 2.4; letter-spacing: 0.12em; text-shadow: 0 0 22px rgba(255, 50, 40, 0.9), 0 0 60px rgba(255, 30, 20, 0.6), var(--shout-halo); animation-duration: 2.6s; }
+/* THE ORDER (src/fx/order-callout.js): the same shout in its own centre box, a seat or not, with the keys under it in small type */
+#td-order { position: absolute; top: 38%; left: 50%; transform: translateX(-50%); z-index: 12; pointer-events: none; text-align: center; width: max-content; max-width: 96vw; }
+#td-order small { display: block; margin-top: 0.6em; font-size: 0.3em; letter-spacing: 0.2em; color: #ffd6cf; }
 
 /* THE DAY DIAL (src/fx/daylight.js makeDial): top centre beside the sound toggle, a lit disc and its tick going round with the day */
 #day-dial { position: absolute; top: 56px; left: calc(50% - 44px); width: 16px; height: 16px; border-radius: 50%; z-index: 11; pointer-events: none;

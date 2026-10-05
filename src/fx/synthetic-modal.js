@@ -7,6 +7,7 @@ import nbbXor from '../../vendor/synthetic-learningx58/nbb-xor.js';
 import twoSeq from '../../vendor/synthetic-learningx58/two-sequence.js';
 import emSeg from '../../vendor/synthetic-learningx58/em-segmentation.js';
 import linTfm from '../../vendor/synthetic-learningx58/linear-transformers.js';
+import { isaoSpeak } from './isao-voice.js';
 // four of the seven (owner's pick): the oscilloscope pair, the Hinton diagram, the fast-weight pairs and the segmentation stack.
 // The other three stay in the vendored library for the workshop; a modal reads better at four panels twice the size.
 const PANELS = [twoSeq, nbbXor, linTfm, emSeg];
@@ -29,7 +30,7 @@ export function createSyntheticModal(root) {
   el.querySelector('[data-continue]').addEventListener('click', close);
   addEventListener('keydown', (e) => { if (!el.hidden && e.key === 'Escape') { e.stopImmediatePropagation(); close(); } }, true);
   return {
-    open(lines, after = null) { isao.textContent = lines.join(' '); onClose = after; el.hidden = false; opened++; frame = 0; raf = requestAnimationFrame(tick); },
+    open(lines, after = null) { isao.textContent = lines.join(' '); onClose = after; el.hidden = false; opened++; frame = 0; raf = requestAnimationFrame(tick); isaoSpeak('language_analysis', { force: true }); },   // the screen's title, said (owner, 2026-10-05)
     close, isOpen: () => !el.hidden, opened: () => opened,
     dispose() { cancelAnimationFrame(raf); el.remove(); },
   };

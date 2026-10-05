@@ -16,6 +16,21 @@ Evidence:
 
 - Discussion with the owner, 2026-10-05; nothing implemented
 
+## 2026-10-05 — The twenty-third notes: the study screen is voiced, the Lancer's burn decal is gone, a trickle stampede is capped (the sector 4 and 5 lulls), and timed beats wait out a fight in the gunship's or SOL's seat
+
+change · accepted · 2026-10-05-twenty-third-notes-analysis-voice-no-lance-burn-trickle-cap-engaged
+
+Owner, 2026-10-05: 1) the preliminary language analysis needs a voice, made with seiyu_voice; 2) the Lancer's burn effect is not working, remove it for now; 3) sector 4: a lull, nothing comes out any more; 4) in the gunship or SOL, surrounded by enemies, a fixed-delay event must not interrupt; delay it until the action seems complete; 5) sector 5 seems broken too, the next waves did not trigger.
+
+1) seiyu_voice trigger language_analysis (section 7, two lines, exported unapproved) imported; the study screen says it as it opens (isaoSpeak, forced; VOICE_EVENTS). 2) createLanceBurn is no longer called (the module stays for later); the hit splash stays. 3, 5) Root cause: the stampede's trickle multiplies the plan's soft bodies, which the sector soft multiplier had grown to hundreds, and drips them trickleGap (1.3 s) apart: sector 4's second wave queued 1058 bodies, about 20 minutes of drip, and the sector waits on its queue. A trickle is now at most SECTOR_STAMPEDE.trickleMax (24) bodies, in proportion. 4) storyApi.engaged (programme host): in the gunship's or SOL's seat with hostile bodies up; the study close-up after sector 0 and a sector's debrief wait while it holds.
+
+Alternatives: Speeding the trickle's gap: a trickle of hundreds is a flood; the rammer's combo wants a steady few; Waiting for the player to leave the seat whatever the field: an idle gunner would hold the story until the pass ends
+
+Evidence:
+
+- --sector-probe (new) at sector 4, passive: wave 2 queued 1058 before, 44 after; with PLAY=1 (cull the field, continue debriefs) sectors 4, 5 and 6 release every wave, secure and move on
+- test/stampede.mjs: the trickle cap
+
 ## 2026-10-05 — The owner's twenty-second notes: the alien-language voice synced from seiyu_voice, flavour lines speak less, sectors move themselves on, gunship rounds fly on after the seat, the Lancer's burn on the face and the ground, holes come back as walls, a lander's footprint from its body, hundreds of bodies, the Heptapod walks the floor and fires
 
 change · accepted · 2026-10-05-twenty-second-notes-alien-voice-sectors-move-on-rounds-fly-on-walkers-walk
@@ -47,6 +62,22 @@ Evidence:
 - --round22 (new): Isao announced the manned MK-9 (mk9_release_06); the Needle centred on its pedestal; the DROP-OFF POINT board by the landing (screenshots)
 - unit tests: line moments, forced line, space and rests (isao-voice), RAM x10 silent (voice-match), rimHoles and shotHoles (repair-orders), hullLost at a cell (expeditions, cargo); the Needle's click measured -2 -> -15 dB peak
 - --grow, --shield-story, --voice, --opening and the default suite (46 steps)
+
+## 2026-10-05 — The intro goes straight to the action: the Rotor at the tour's end with the swarm in sight, the Quiver's hard cores already up, the gunship's seat on NUKE THE ENTRANCE, and the tank handed over facing the blast
+
+change · accepted · 2026-10-05-intro-straight-to-the-action
+
+Owner, 2026-10-05: no more LOOK AROUND after the beacons; the Rotor a few seconds sooner with the enemies close and in sight at the takeover; no wait for the Quiver's slow hard cores; after the second Quiver kill straight to the gunship's thermal view with NUKE THE ENTRANCE! and, smaller, press 1-2-3 to cycle the weapons; after the nuke, the tank ('Tank is ready, get in there') facing the explosion with its smoke behind. Measured before: Rotor taken at 24.2 s, the swarm only up at 34 s and 22 cells out, at the gate at about 48 s (the world is frozen through the landing and Isao's close-up, the hole takes about 8 s to open and the march about 13 s).
+
+On a landing the sinkhole opens quiet as the beacons' tour starts (STORY_BEATS.earlyBreach) and the Rotor is taken the moment the tour ends (storyApi.touring, arrival done()); no tremor, breach, approach or override beat, the Quiver ordered once the gate stands. The LOOK AROUND toast is gone. The sightline is 130 m (was 240), so the sinkhole sits about 12 cells out: the Rotor is taken at 20.6 s with the swarm up 8.7 cells away, at the gate by 29 s. The Quiver's two hard cores rise together on the holding ring's far side, in sight (quiverRise, a spawn `here`), about 6 cells from the mount. The second kill seats the gunship (unlock host gunshipSeat: the MK-9 selected, the briefing deferred) under a centred red order NUKE THE ENTRANCE! with the keys in small type (src/fx/order-callout.js). The first MK-9 blast of sector 0 (story.nukes, pushed by the rig's blast) hands the hull over 1.6 s later (STORY_BEATS.tankAfterNuke): hull state 'early', on a lane berth out of the gate toward the blast cell (the sinkhole when that line is rock), the camera eased down from the seat, TANK IS READY, GET IN THERE!; the Stålheart's line and its door berths when it stands.
+
+Alternatives: Keeping the 240 m sinkhole and opening it during the landing: the world is frozen until the tour, so nothing marches before 10 s and the swarm could not be close by the takeover; Bodies spawned part-way up the lane: no way to pre-advance a body along its path without the frame loop; Issuing the hull from the Stålheart's door after the nuke: the Stålheart is still printing, and the door faces away from the blast
+
+Evidence:
+
+- --opening-probe: tour 10.3 -> 20.6 s, piloting at 20.6 s, foes 8.7 cells from the Rotor; --opening-cuts: no jumps, the tour straight into takeControl
+- --round23 (new): two hard cores up 6.1 cells from the Quiver; the second kill seats the gunship, MK-9 up, the order shown; the blast hands the hull over ('early', drawn, out of the seat, construction still on); screenshots show the order over the thermal view and the hull nose to the smoke column
+- --grow passes end to end (its tremor steps replaced by the first fodder during the tour); default suite, --opening, unit tests and the architecture guard pass
 
 ## 2026-10-04 — The owner's twentieth notes: the opening runs from the landers' tour to the Rotor without a cut, the beacons light one by one as the tour reaches them, and a gust of wind in the quiet
 

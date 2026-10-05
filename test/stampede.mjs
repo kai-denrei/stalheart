@@ -17,4 +17,11 @@ assert.ok(ENEMY_SPEC[tune.fallback].rammable && !ENEMY_SPEC[tune.core].rammable)
   const f2 = stampedeWave(plan, ENEMY_SPEC, tune, { index: 3, tier: 2 });
   assert.equal(f2.entries.at(-1).count, tune.cores + 2 * tune.tierCores, 'more cores with each automation');
   assert.ok(f2.entries[0].count > f1.entries[0].count, 'and more bodies'); }
+// a trickle stays a trickle (2026-10-05, the sector 4 lull): however big the plan, at most trickleMax bodies, so it is over in under a minute
+{ const big = stampedeWave([{ type: 'amoeba', count: 400 }, { type: 'phage', count: 100 }], ENEMY_SPEC, tune, { index: 1, tier: 2 }), n = big.entries.reduce((a, e) => a + e.count, 0);
+  assert.ok(n <= tune.trickleMax + big.entries.length && n >= tune.trickleMax - big.entries.length, `capped near ${tune.trickleMax} (${n})`);
+  assert.ok(n * tune.trickleGap < 60, 'a trickle drips for under a minute');
+  assert.ok(big.entries[0].count > big.entries[1].count, 'in proportion');
+  const small = stampedeWave(plan, ENEMY_SPEC, tune, { index: 1 });
+  assert.equal(small.entries.reduce((a, e) => a + e.count, 0), Math.min(tune.trickleMax, Math.round(26 * tune.trickle)), 'a small plan is untouched'); }
 console.log('stampede: every second wave is a flood of rammable bodies with a few hard cores.');

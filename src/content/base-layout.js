@@ -103,7 +103,7 @@ export const KIT = Object.freeze({
   // ordered on that side from then on; `openRadius` is how close a friendly hull has to be for the door to open for it.
   backGate: { openRadius: 22, sockets: 2 },
   wallMetres: 4,                              // the lattice rock's roof height, where sentries mount
-  sightline: { metres: 240, halfWidth: 7 },   // a straight lane cut from the forward cell out to the sinkhole, so the Quiver has a long clear shot (owner, 2026-09-13); replaces the fodderSteps walk
+  sightline: { metres: 130, halfWidth: 7 },   // a straight lane cut from the forward cell out to the sinkhole, so the Quiver has a long clear shot (owner, 2026-09-13); replaces the fodderSteps walk
   fodderSteps: 28,                            // lane cells outward from the mouth where the ground opens: a tank trip to investigate
   rotorSteps: 2, quiverSteps: 1, rotorEdge: 0.4,   // the Quiver's wall cell touches the lane one step nearer the gate, on the Rotor's side: the sightline to the gate pile is proven there              // the first Rotor's wall cell touches the lane cell this many steps past the forward cell; the lab's static model stands this share of the way toward the lane (the game perches every tower on its wall's edge)
   bay: { roll: 2, doorSeconds: 2.4, rollOutMetres: 19, rollOutSeconds: 8 },

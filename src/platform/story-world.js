@@ -6,7 +6,7 @@ import * as THREE from '../../vendor/three.module.js';
 import { buildWorld } from '../domain/world-recipe.js';
 import { planBase } from '../domain/base-plan.js';
 import { voiceSounds } from '../content/voice-hooks.js';
-import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT, STORY_SCALE, STORY_BREACH, STORY_QUIVER, STORY_DAY, STORY_FODDER, STORY_HANDOVER, STORY_EXPEDITIONS, STORY_BACK_DOOR, STORY_SKIP, STORY_BEATS, STORY_CONSTRUCTION, STORY_ROLLOUT, STORY_CHAPTERS, STORY_CHAPTER_END } from '../content/story-defaults.js';
+import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT, STORY_SCALE, STORY_BREACH, STORY_QUIVER, STORY_DAY, STORY_FODDER, STORY_HANDOVER, STORY_EXPEDITIONS, STORY_BACK_DOOR, STORY_SKIP, STORY_BEATS, STORY_CONSTRUCTION, STORY_ROLLOUT, STORY_CHAPTERS, STORY_CHAPTER_END, STORY_NUKE_TANK } from '../content/story-defaults.js';
 import { findBackMouth } from '../domain/back-door.js';
 import { CONTENT } from '../content/runtime.js';
 import { FOUNDRY_TUNE } from '../content/foundry.js';
@@ -86,6 +86,24 @@ function holdRing(built, planet, from, [lo, hi], perch = null) {
   return ring;
 }
 
+// the Quiver's two hard cores: the ring's two cells farthest from the forward cell that stand at least two cells apart
+function riseCells(ring, centers, from) {
+  if (from < 0 || !ring.size) return [];
+  const d = (a, b) => Math.hypot(centers[a][0] - centers[b][0], centers[a][1] - centers[b][1], centers[a][2] - centers[b][2]);
+  const far = [...ring].sort((a, b) => d(b, from) - d(a, from)), first = far[0], gap = d(first, from) / 9 * 2;
+  const second = far.find((ci) => d(ci, first) >= gap) ?? far[1];
+  return second == null ? [first] : [first, second];
+}
+
+// a berth on the lane, [a, b] cells out from `from` along the great circle to `to`: { ci, exit, pos, out } as the bays' are, or null
+function laneBerth(planet, dungeon, from, to, [a, b]) {
+  if (from < 0 || to < 0) return null;
+  const C = planet.graph.centers, f = C[from], t = C[to], span = Math.hypot(t[0] - f[0], t[1] - f[1], t[2] - f[2]) / planet.cellSide;
+  const at = (k) => { const u = Math.min(1, k / span), v = f.map((x, i) => x + (t[i] - x) * u), l = Math.hypot(...v); return v.map((x) => x / l); };
+  const pos = at(a), out = at(b), ci = nearestCell(C, pos), exit = nearestCell(C, out);
+  return ci === exit || dungeon.tags[ci] === BLOCKED || dungeon.tags[exit] === BLOCKED ? null : { ci, exit, pos, out };
+}
+
 export function buildGameWorld({ world, params, stage, scene, sfx = null, landmarks = 'shipped', phase = null, grow = false, warm = null, chapter = null }) {
   const built = buildWorld({ world, params, story: { recipe: STORY_RECIPE, clearing: STORY_CLEARING, bake: planetBake() } });
   if (!built.planet) return { ...built, base: null };
@@ -134,7 +152,10 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   const sh02 = plan.structures.find((s) => s.id === 'sh02');
   const arrives = grow && stage === 1 && phase == null && !!sh02 && ['sh02-salvage', 'foundry'].every((id) => plan.structures.some((s) => s.id === id));
   const pastLanding = stage === 1 && phase != null && phase !== 'landed';   // a chapter or a jump past it: the rocket is already salvage
-  const beats = stage >= 1 ? makeStoryBeats({ fodderEvery: STORY_FODDER.every, fodderAlive: STORY_FODDER.alive, fodderTotal: STORY_FODDER.total, fodderEmerge: STORY_FODDER, socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, ...STORY_BEATS, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER, foundry: FOUNDRY_TUNE, startPhase: phase ?? 'landed', gateReady: () => base.gate().built, construction: hullStep ? STORY_CONSTRUCTION : null, arrival: arrives, foundryCut: chapter?.foundry ?? null }) : null;
+  // the hard cores' holding ring: lane cells hold[0]..hold[1] hops outside the forward cell, seen from the Quiver; a held one only
+  // wanders within it. The Quiver's two rise on its far side, already in sight as its optic opens (owner, 2026-10-05)
+  const ring = holdRing(built, planet, plan.cells.forward, STORY_QUIVER.hold, plan.sockets[1]?.pos ?? null), rise = riseCells(ring, planet.graph.centers, plan.cells.forward);
+  const beats = stage >= 1 ? makeStoryBeats({ fodderEvery: STORY_FODDER.every, fodderAlive: STORY_FODDER.alive, fodderTotal: STORY_FODDER.total, fodderEmerge: STORY_FODDER, socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, ...STORY_BEATS, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER, quiverRise: rise, foundry: FOUNDRY_TUNE, startPhase: phase ?? 'landed', gateReady: () => base.gate().built, construction: hullStep ? STORY_CONSTRUCTION : null, arrival: arrives, foundryCut: chapter?.foundry ?? null }) : null;
   const story = stage >= 1 ? {
     sockets: new Set(), home: plan.cells.landing, socketLift: 0,
     // the solar array's shield pad (src/content/shield-array.js): its island's centre on the unit sphere, standing once the island is; a build programme stands it later by setting `standing`
@@ -148,10 +169,12 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     // (`berths`: past the hull's issue the Stålheart's door is every berth, as the issue leaves it, src/fx/hull-issue.js)
     chapter: chapter ? { id: chapter.id, n: STORY_CHAPTERS.includes(chapter) ? STORY_CHAPTERS.indexOf(chapter) : STORY_CHAPTERS.length, printed: chapter.printed, head: chapter.head, towers: chapter.towers.map((key) => ({ key, ci: plan.cells[key] ?? -1 })), berths: door && !hullHeld ? [door, door, door] : null } : null,
     hull: createHullIssue({ held: hullHeld, perk: hullStep?.perk, door, lead: STORY_ROLLOUT.lead }),   // the first hull, held until the Stålheart stands
+    // the MK-9 blasts (src/fx/gunship-rig.js), and the berth the nuke's tank stands on: out of the gate toward the blast, or toward the
+    // sinkhole when that line runs into rock
+    nukes: [], nukeBerth: (ci) => (ci >= 0 && laneBerth(planet, built.dungeon, plan.cells.forward, ci, STORY_NUKE_TANK.berth)) || laneBerth(planet, built.dungeon, plan.cells.forward, plan.cells.fodder, STORY_NUKE_TANK.berth),
     // the story's Quiver fires the TALON: the game's quiver config with the lab's heavy round on top
     missiles: { quiver: { ...CONTENT.missiles.quiver, ...STORY_QUIVER.missile } },
-    // the hard cores' holding ring: lane cells hold[0]..hold[1] hops outside the forward cell; a held one only wanders within it
-    ring: holdRing(built, planet, plan.cells.forward, STORY_QUIVER.hold, plan.sockets[1]?.pos ?? null), hardcore: STORY_QUIVER.hardcore, quiverZoom: STORY_QUIVER.zoom, quiverCone: Math.tan(STORY_QUIVER.coneDeg * Math.PI / 180),
+    ring, hardcore: STORY_QUIVER.hardcore, quiverZoom: STORY_QUIVER.zoom, quiverCone: Math.tan(STORY_QUIVER.coneDeg * Math.PI / 180),
     hud: createStoryHud(), source: null,   // the radar overlay, and the breach the fodder comes from once it opens
     // A CLOSED DOOR IS A WALL TO THE SWARM, and the tank opens it. Every gate on the plan answers for its own cells, so the back
     // door blocks the back mouth exactly as the front gate blocks the lane; an unprinted gate seals nothing (2026-09-18).

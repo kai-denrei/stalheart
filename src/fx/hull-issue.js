@@ -14,6 +14,7 @@
 // States: held (no hull) -> rolling (issued, still on screen) -> out.
 import { hasPerk as programmeHas } from '../domain/build-programme.js';
 import { berthIndexFor } from '../domain/berths.js';
+import { showOrder } from './order-callout.js';
 
 export function createHullIssue({ held = false, perk = 'stalheart', door = null, lead = 1.6 } = {}) {
   let state = held ? 'held' : 'out', issuedAt = null, quiet = null;
@@ -23,8 +24,12 @@ export function createHullIssue({ held = false, perk = 'stalheart', door = null,
     issued: () => state !== 'held',
     out: () => state === 'out',
     door: () => door,
+    // THE NUKE'S TANK (owner, 2026-10-05): issued before the Stålheart stands, on the lane; `out` (and the Stålheart's own line, and
+    // its door as every berth) only once it does
+    early(host, berth) { if (state !== 'held' || !berth) return false; state = 'early'; issuedAt = host.now(); host.early(berth); return true; },
     tick(host) {
-      if (state === 'held') {
+      if (state === 'early') { if (host.stands(perk)) { state = 'out'; host.stood(); } }
+      else if (state === 'held') {
         if (!host.stands(perk)) return;
         state = 'rolling'; issuedAt = host.now(); quiet = !!host.seated();
         host.issue(quiet);
@@ -49,6 +54,18 @@ export function createHullHost(c) {
     seated: () => !!(c.pilot()?.gunship || laserStation.seated()),
     busy: () => !!c.deploy() || shotId() === 'rollout',
     now: () => c.t(),
+    early: (berth) => {
+      c.setBerths([berth, berth, berth]);
+      const n = berthIndexFor(c.playerHP());
+      c.setPlayerDown(false);
+      leavePilot(); c.glide?.();   // out of the gunship's seat without a cut: the camera eases down to the hull
+      c.storyViews()?.tank(true); c.storyViews()?.active('tank');
+      deployStart(n);
+      for (let i = 0; i < 600 && c.deploy(); i++) deployStep(0.05);   // already out on the lane, nose to the blast
+      setView('third');
+      showOrder(c.hud ?? document.body, 'TANK IS READY, GET IN THERE!', '', 3500);
+    },
+    stood: () => { const d = c.story().hull.door(); if (d) c.setBerths([d, d, d]); showBrief('stalheart_stands'); },
     issue: (quiet) => {
       const d = c.story().hull.door();
       if (d) c.setBerths([d, d, d]);

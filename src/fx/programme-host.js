@@ -61,6 +61,14 @@ export function createProgrammeHost(c) {
     // orbital laser, the shield station and the gunship meter consult
     perks: () => (c.story()?.programme ? programmePerks(c.story().programme) : new Set()),
     hasPerk: (name) => !!c.story()?.programme && programmeHas(c.story().programme, name),
+    // THE NUKE'S TANK (src/domain/story-beats.js tankAfterNuke): the MK-9 blasts so far, and the hull handed over on the lane before
+    // the Stålheart stands (src/fx/hull-issue.js early)
+    nukes: () => c.story()?.nukes?.length ?? 0,
+    // THE PLAYER IS BUSY (owner, 2026-10-05: "if the user is in given special action. Gunship/SOL, surrounded by enemies; do not
+    // interrupt with a fixed delay event"): in the gunship's or SOL's seat with hostile bodies still up. The story's timed beats
+    // (src/domain/story-beats.js) and a sector's debrief (src/fx/sector-run.js) wait until it is not
+    engaged: () => !!(c.pilot()?.gunship || c.laserStation?.seated?.()) && c.enemies().some((e) => e.alive && !e.guard && !e.harmless),
+    tankReady: () => { const s = c.story(); return !!s?.hull?.early(s.hullHost ??= createHullHost(c), s.nukeBerth?.(s.nukes.at(-1) ?? -1)); },
     build: () => {
       const pg = c.story().programme, sector = c.story().sectorN ?? 0;
       // THE FIRST MÖRK ROLLS OUT OF THE STÅLHEART (src/fx/hull-issue.js): the camera runs to the door's framing with the hull

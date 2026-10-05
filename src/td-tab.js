@@ -2,7 +2,7 @@ import { createSentryPilot } from './sentry-pilot.js';
 import { DEFAULT_TANK, SHELL_SPEED, SHELL_REACH, TANK_DRIVE, TANK_STEER, TANK_WALL, TANK_KICK } from './content/tank.js'; import { makeDriveRamp, stepDriveRamp, scrubDriveRamp } from './domain/drive-ramp.js'; import { hullDepth, deepensContact } from './domain/hull-contact.js'; import { makeSteerEase, stepSteerEase, steerBank } from './domain/steer-ease.js'; import { baseFor, restoreSeatView } from './domain/seat-view.js'; import { BASE_REPAIR, BASE_BUILDER } from './content/base-programme.js';
 import { createGameBreaches } from './game-breaches.js'; import { ramShotPose } from './domain/showcase-shot.js';   /* THE RAM BEAT'S OWN FRAMING: low behind the hull (src/domain/showcase-shot.js; the band of cells it drives into is the showcase hooks') */
 import { createBoardSurface } from './fx/board-surface.js'; import { createCampaignDebrief, sparkline } from './fx/campaign-debrief.js'; import { createSectorRun } from './fx/sector-run.js'; import { createBackDoor } from './fx/back-door.js'; import { isaoFace, orbitFrame, sitesDir, sitesRadius, tourFrame, tourSeconds } from './domain/story-shots.js';
-import { startDiveShot } from './fx/dive-shot.js'; import { createCameraShots } from './fx/camera-shot.js'; import { createIntegrityHud } from './fx/integrity-hud.js'; import { createSeatGlide } from './fx/seat-glide.js'; import { LOOK_TOAST } from './fx/arrival.js'; import { viewEdge, viewportLine } from './domain/view-edge.js'; import { boxOverlaps } from './domain/box-overlaps.js'; import { makeShaderWarmer } from './fx/shader-warm.js'; import { waveGap } from './domain/wave-spread.js';
+import { startDiveShot } from './fx/dive-shot.js'; import { createCameraShots } from './fx/camera-shot.js'; import { createIntegrityHud } from './fx/integrity-hud.js'; import { createSeatGlide } from './fx/seat-glide.js'; import { viewEdge, viewportLine } from './domain/view-edge.js'; import { boxOverlaps } from './domain/box-overlaps.js'; import { makeShaderWarmer } from './fx/shader-warm.js'; import { waveGap } from './domain/wave-spread.js';
 import { BREACH_SOUNDS } from './content/breach-defaults.js';
 import { SOUNDS } from './content/runtime.js';
 import { emergence } from './domain/breach-waves.js'; import { applyScare, stampScare, scarePace, isScared, towardScare, awayExits } from './domain/impact-scare.js'; import { EXPLOSION_SCARE, SCARE_FREEZE_S } from './content/explosions.js'; import { createThermalHeat } from './fx/thermal-heat.js'; import { isAutomated, pilotMultipliers } from './domain/automation.js'; import { fillFromKill, fillFromWaveClear, isFull as callFull, callProgress } from './domain/gunship-call.js'; import { GUNSHIP_CALL, GUNSHIP_FAR } from './content/gunship.js'; import { unlockedTowers } from './domain/expeditions.js'; import { createExpeditionsHost } from './fx/expedition-glue.js'; import { CARGO_LOOK } from './content/cargo.js'; import { STORY_EXPEDITIONS } from './content/story-defaults.js'; import { makeSiteRing as siteRing, disposeSiteRing } from './fx/site-ring.js'; import { hasPerk as programmeHas, snapshot as programmeSnapshot, lose as programmeLose } from './domain/build-programme.js'; import { createProgramWarm } from './fx/program-warm.js';
@@ -71,7 +71,7 @@ import { makeScore } from './score.js';
 import { TOWERS, TOWER_BY_KEY, MAX_TIER, upgradeCost, effectiveStats as baseEffectiveStats, pickTarget, shotInterval, unlockedTowerKeys, TOWER_ORDER, starterTower, towerSound, ROSTER } from './towers.js';
 import { makeEconomy, sellRefund } from './economy.js';
 import { pickTier } from './perftier.js';
-import { applyWeatheredMaterial } from './fx/weathered-material.js'; import { createLanceBurn } from './fx/lance-burn.js'; import { showContact } from './fx/contact-card.js'; import { sentryBookFull } from './domain/sentry-cap.js'; import { setTierPlate } from './fx/tier-plate.js';
+import { applyWeatheredMaterial } from './fx/weathered-material.js'; import { showContact } from './fx/contact-card.js'; import { sentryBookFull } from './domain/sentry-cap.js'; import { setTierPlate } from './fx/tier-plate.js';
 import { STICK, stickVector, knobOffset } from './stick.js';
 import { makeBloom } from './postfx.js';
 import { TANK_FEEL, TANK_FEEL_KNOBS, makeTankFeel, stepTankFeel, landTankFeel, fireTankFeel, applyTankFeel, applyTankHealth } from './tankfeel.js';
@@ -1665,16 +1665,11 @@ export function initTdTab(root) {
         if (berths.length !== 3 || storyMode) return;
         for (let bi = 0; bi < berths.length; bi++) {
           const ci = berths[bi].ci;
-          // THE DOORS FACE THE LANE THE HULL LEAVES BY. They used to face
-          // the Heart, which is only ever approximately the way out: the
-          // exit is a graph neighbour and can sit 40-odd degrees off that
-          // bearing, so the hull drove out on a diagonal and clipped its own
-          // door frame (operator, twice). Aim the box at the actual exit and
-          // the two are the same line by construction. Most-heartward escape
-          // wins, so the row still faces home.
-          // the exit is CARRIED, not re-derived here: computeBerths picked
-          // it, the doors point at it and DEPLOY drives at it, and those
-          // three must never disagree
+          // THE DOORS FACE THE LANE THE HULL LEAVES BY. They used to face the Heart, which is only ever approximately the way
+          // out: the exit is a graph neighbour and can sit 40-odd degrees off that bearing, so the hull drove out on a diagonal
+          // and clipped its own door frame (operator, twice). Aim the box at the actual exit and the two are the same line by
+          // construction. Most-heartward escape wins, so the row still faces home. the exit is CARRIED, not re-derived here:
+          // computeBerths picked it, the doors point at it and DEPLOY drives at it, and those three must never disagree
           const exitCi = berths[bi].exit;
           const ec = graph.centers[exitCi];
           const g = dressMetal(makeContainerFixture(bi + 1)); // painted 1-2-3, left to right
@@ -6440,7 +6435,7 @@ export function initTdTab(root) {
         stoppedBy === 'wall' ? 18 : 12);
       b.scale.setScalar(cellSide * (stoppedBy === 'wall' ? 1.5 : 1.1));
       b.position.set(at[0], at[1], at[2]);
-      scene.add(b); debris.push(b); explode('lancer.burn', at); (lanceBeam.burn ??= createLanceBurn(scene, { cellSide })).hit(at, dir, stoppedBy === 'wall');   // and what stopped it burns: src/fx/lance-burn.js
+      scene.add(b); debris.push(b); explode('lancer.burn', at);
     }
   }
 
@@ -8229,7 +8224,7 @@ export function initTdTab(root) {
     // a queued spawn is already an enemy to the beats: the second hard core sat in the queue the tick the first died, and the
     // Quiver beat settled with it still to come
     enemies: () => enemies.filter((e) => e.alive && !e.guard).length + spawnQueue.filter((q) => !q.guard).length,   // the site guards are not the beats' business
-    spawn: (type, ci, o = null) => { spawnQueue.push({ type, sp: o?.guard ? { ci, alive: true, obj: new THREE.Group() } : story?.source ?? { ci, alive: true, obj: new THREE.Group() }, at: spawnClock, ...o }); },
+    spawn: (type, ci, o = null) => { spawnQueue.push({ type, sp: o?.guard || o?.here ? { ci, alive: true, obj: new THREE.Group() } : story?.source ?? { ci, alive: true, obj: new THREE.Group() }, at: spawnClock, ...o }); },
     brief: (id) => showBrief(id),
     tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null),
     // the sinkhole is a spawn point: an orbital strike on it fills it like any other (operator, 2026-09-13)
@@ -8258,14 +8253,14 @@ export function initTdTab(root) {
     // station from orbit for a free pass
     stalheartStands: () => !!story?.hull?.out(),
     gunshipArrive: () => { if (!story) return; story.gunshipIn = true; startStation(gunship, GUNSHIP_ORBIT); showBrief('gunship_overhead'); }, camera, startShot, snapCamera, sfx, drone: () => isao,
-    mission: () => (isaoSay(sfx, 'mission'), showMission(root, STORY_MISSION)),
-    freeLook: () => { const done = (glide) => { setView('orbit'); centerBuildOnHeart(); followSuspend = true; buildDist = 1.65; if (!glide) snapCamera(); showToast(LOOK_TOAST, 5000); }, pts = (story?.sites ?? []).slice(0, 3).map((ci) => graph.centers[ci]);   // THE TOUR OF THE LANDERS (src/domain/story-shots.js tourFrame), live: the beats run under it and the override cuts in
+    mission: () => (isaoSay(sfx, 'mission'), showMission(root, STORY_MISSION)), touring: () => !story?.arrival.done() || shotId() === 'sitesTour',
+    freeLook: () => { const done = (glide) => { setView('orbit'); centerBuildOnHeart(); followSuspend = true; buildDist = 1.65; if (!glide) snapCamera(); }, pts = (story?.sites ?? []).slice(0, 3).map((ci) => graph.centers[ci]);   // THE TOUR OF THE LANDERS (src/domain/story-shots.js tourFrame), live: the beats run under it and the override cuts in
       if (!pts.length) return done(); const from = { pos: camera.position.clone(), quat: camera.quaternion.clone() }, dur = tourSeconds(pts.length);
       startShot({ id: 'sitesTour', dur, poseAt: (u, out) => { poseCamera(tourFrame(u, graph.centers[dungeon.heart], pts), out); const k = Math.min(1, u * dur / 1.6), e = k * k * (3 - 2 * k); out.pos.lerpVectors(from.pos, out.pos, e); out.quat.slerpQuaternions(from.quat, out.quat.clone(), e); }, onEnd: () => done(1) }); },   // out of the close-up without a cut (2026-10-03)   /* THE ARRIVAL's hands (src/fx/arrival.js); freeLook: the landing hands over to the free camera */
   },
   // ISAO KEEPS BUILDING (src/fx/programme-host.js): perks, hasPerk, build, repaired, printed
   createProgrammeHost({
-    laserStation, shotId, showBrief, deployStart, deployStep, breachWallCell, graph: () => graph, cellSide: () => cellSide, leavePilot, camera, startShot, deployFramePoseFor, camA, setView, PLAYER_MAX, orders, breachQueue, breachedCells, gunshipRig, spawnIsao, updateHud, syncLifeContainers, rebuildAfterBreach, recomputePortalDist, adoptBays,
+    laserStation, shotId, showBrief, hud: root, glide: () => seatGlide.begin(camera), deployStart, deployStep, breachWallCell, graph: () => graph, cellSide: () => cellSide, leavePilot, camera, startShot, deployFramePoseFor, camA, setView, PLAYER_MAX, orders, breachQueue, breachedCells, gunshipRig, spawnIsao, updateHud, syncLifeContainers, rebuildAfterBreach, recomputePortalDist, adoptBays,
     scene, sfx, eco: () => eco, ammo: () => ammo, ammoMax: AMMO_MAX, setAmmo: (v) => { ammo = v; }, playerPos: () => player.pos, kills: () => rs?.bySrc ?? {}, rank: () => tankRank, hands: () => tankKills, killsByType: () => rs?.kills, hull: () => playerMesh,
     isao: () => isao, enemies: () => enemies, explode: (u, p) => explode(u, p), callout: (x, k) => showCallout(x, k), pause: (on) => { paused = on; }, kill: (e, src) => (e.alive ? (damageEnemy(e, t, e.hp + 1, true, src), true) : false),   // the colony's hands
     story: () => story, pilot: () => pilot, deploy: () => deploy, t: () => t, playerHP: () => playerHP, storyViews: () => storyViews, sectorRun: () => sectorRun, waveActive: () => waveActive, dungeon: () => dungeon, tdFullTags: () => tdFullTags, storyBase: () => storyBase, pilotMode: () => pilotMode, briefQ: () => briefQ,

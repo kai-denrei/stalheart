@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "2026-10-05-intro-straight-to-the-action",
+  "date": "2026-10-05",
+  "type": "change",
+  "status": "accepted",
+  "title": "The intro goes straight to the action: the Rotor at the tour's end with the swarm in sight, the Quiver's hard cores already up, the gunship's seat on NUKE THE ENTRANCE, and the tank handed over facing the blast",
+  "context": "Owner, 2026-10-05: no more LOOK AROUND after the beacons; the Rotor a few seconds sooner with the enemies close and in sight at the takeover; no wait for the Quiver's slow hard cores; after the second Quiver kill straight to the gunship's thermal view with NUKE THE ENTRANCE! and, smaller, press 1-2-3 to cycle the weapons; after the nuke, the tank ('Tank is ready, get in there') facing the explosion with its smoke behind. Measured before: Rotor taken at 24.2 s, the swarm only up at 34 s and 22 cells out, at the gate at about 48 s (the world is frozen through the landing and Isao's close-up, the hole takes about 8 s to open and the march about 13 s).",
+  "outcome": "On a landing the sinkhole opens quiet as the beacons' tour starts (STORY_BEATS.earlyBreach) and the Rotor is taken the moment the tour ends (storyApi.touring, arrival done()); no tremor, breach, approach or override beat, the Quiver ordered once the gate stands. The LOOK AROUND toast is gone. The sightline is 130 m (was 240), so the sinkhole sits about 12 cells out: the Rotor is taken at 20.6 s with the swarm up 8.7 cells away, at the gate by 29 s. The Quiver's two hard cores rise together on the holding ring's far side, in sight (quiverRise, a spawn `here`), about 6 cells from the mount. The second kill seats the gunship (unlock host gunshipSeat: the MK-9 selected, the briefing deferred) under a centred red order NUKE THE ENTRANCE! with the keys in small type (src/fx/order-callout.js). The first MK-9 blast of sector 0 (story.nukes, pushed by the rig's blast) hands the hull over 1.6 s later (STORY_BEATS.tankAfterNuke): hull state 'early', on a lane berth out of the gate toward the blast cell (the sinkhole when that line is rock), the camera eased down from the seat, TANK IS READY, GET IN THERE!; the Stålheart's line and its door berths when it stands.",
+  "alternatives": [
+    "Keeping the 240 m sinkhole and opening it during the landing: the world is frozen until the tour, so nothing marches before 10 s and the swarm could not be close by the takeover",
+    "Bodies spawned part-way up the lane: no way to pre-advance a body along its path without the frame loop",
+    "Issuing the hull from the Stålheart's door after the nuke: the Stålheart is still printing, and the door faces away from the blast"
+  ],
+  "evidence": [
+    "--opening-probe: tour 10.3 -> 20.6 s, piloting at 20.6 s, foes 8.7 cells from the Rotor; --opening-cuts: no jumps, the tour straight into takeControl",
+    "--round23 (new): two hard cores up 6.1 cells from the Quiver; the second kill seats the gunship, MK-9 up, the order shown; the blast hands the hull over ('early', drawn, out of the seat, construction still on); screenshots show the order over the thermal view and the hull nose to the smoke column",
+    "--grow passes end to end (its tremor steps replaced by the first fodder during the tour); default suite, --opening, unit tests and the architecture guard pass"
+  ],
+  "supersedes": []
+}

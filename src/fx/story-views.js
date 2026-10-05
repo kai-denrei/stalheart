@@ -4,10 +4,11 @@
 // host owns what each means; the strip only names them. On a growing page there
 // is no TANK until the first hull rolls out of the Stålheart (src/fx/hull-issue.js):
 // tank(false) hides the button and disables it, so its hotkey (7) refuses too.
-import { onStation, phaseLeft, startStation } from '../domain/gunship.js';
+import { onStation, phaseLeft, startStation, selectGun } from '../domain/gunship.js';
 import { callGunship } from '../domain/gunship-call.js';
-import { GUNSHIP_ORBIT } from '../content/gunship.js';
+import { GUNSHIP_ORBIT, GUNSHIP_GUNS } from '../content/gunship.js';
 import { createGunshipBriefing } from './gunship-briefing.js';
+import { showOrder } from './order-callout.js';
 
 export function createStoryViews(root, on) {
   const nav = document.createElement('nav'); nav.id = 'story-views'; root.append(nav);
@@ -53,6 +54,17 @@ export function createStoryViews(root, on) {
 export function createUnlockHost(host) {
   const { root, towers, gunship, gunshipRig, automated, enterPilot, leavePilot, setView, showBrief } = host;
   return {
+    // THE QUIVER'S SECOND KILL HANDS STRAIGHT TO THE GUNSHIP (owner, 2026-10-05: "the player is going straight to the Gunship thermal
+    // view"): on station, the seat taken with the MK-9 up and the order over it; the briefing waits for the next sector's brief
+    gunshipSeat: () => {
+      if (!onStation(gunship) || !host.storyViews()) return false;
+      (host.gunshipBriefing() ?? host.setGunshipBriefing(createGunshipBriefing(root))).later();
+      selectGun(gunship, 'heavy', GUNSHIP_GUNS);
+      if (!host.pilotMode()) enterPilot(towers.map((t) => t.ci));
+      if (host.pilot()?.mountGunship() !== 'mounted') return false;
+      host.storyViews().active('gunship'); showOrder(root, 'NUKE THE ENTRANCE!', 'press 1-2-3 to cycle the weapons', 5000);
+      return true;
+    },
     unlock: (what) => {
       if (what === 'views') {
         host.storyViews() ?? host.setStoryViews(createStoryViews(root, {

@@ -36,7 +36,6 @@ import { BRIEFS, lineDwell } from '../isaobriefs.js';
 import { createStartGate } from './start-gate.js';
 
 const IDS = ['sh02', 'sh02-salvage', 'foundry'];
-export const LOOK_TOAST = '<div class="wave-num">LOOK AROUND</div><div class="wave-role">drag to turn the planet \u00b7 wheel or pinch to zoom</div>';
 const CLIPS = ['Legs_Deploy', 'Landing_Shock', 'Top_Door_Open'];
 
 // `site`: the landing island's world basis (src/fx/story-base.js basisAt: +y its up, +z toward the pole), `metres`: world units a metre.
@@ -120,9 +119,9 @@ export function createArrival({ on = false, past = false, base = null, beats = n
     beats.deploy(api);
     api.brief(tune.talk.brief);
   }
-  // THE PLAYER LOOKS AROUND (owner, 2026-09-30: "1) first beat, player should be in charge of something, a free camera. At least"): the
-  // landing hands over to the orbit camera on the base (drag, wheel, pinch) until the first seat glides in (src/fx/seat-glide.js)
-  const look = () => (api.freeLook ? api.freeLook() : api.snapCamera());   // freeLook shows LOOK_TOAST
+  // THE LANDING HANDS OVER TO THE TOUR of the landers, and the tour dives straight into the Rotor (owner, 2026-10-05: "no more 'look
+  // around' the map after the beacon"; it was a free orbit camera since 2026-09-30); without a tour, the orbit camera on the base
+  const look = () => (api.freeLook ? api.freeLook() : api.snapCamera());
   function start() {
     rocket = base.structure('sh02'); drone = api.drone(); camera = api.camera; fov = camera.fov; size = drone.obj.scale.x;
     // where he ends: `clear` metres toward the pole at his own hover height, so the game takes him back without a jump
@@ -195,6 +194,7 @@ export function createArrival({ on = false, past = false, base = null, beats = n
       else talkT += dt;
       if (phase !== 'done') api.snapCamera();   // on the rail exactly: the chase view's lag would trail a falling rocket
     },
+    done: () => phase === 'done',   // the beats' Rotor waits for it (and for the tour after it)
     state: () => {
       const vis = (id) => base?.structure(id)?.holder.visible ?? null, local = (v) => v.clone().applyMatrix4(inv).divideScalar(metres).toArray().map((x) => +x.toFixed(1));
       return { on, phase, gate: gate ? (gate.opened ? 'opened' : 'shown') : null, thrust: !!thrust, cues: cues.slice(-12), sound: api?.sfx?.ready ?? null, t: +t.toFixed(2), cut: +shot.cut.toFixed(2), talk: +talkSeconds.toFixed(2), talkT: +talkT.toFixed(2), waited: +waited.toFixed(1), deployed, skipped,

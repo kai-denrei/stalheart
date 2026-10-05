@@ -1,6 +1,6 @@
 {
  "schema": 2,
- "source": "seiyu_voice export A-1 2026-10-05T05:46:37Z: 24 kHz mono WAV, encoded by scripts/import-isao-voice.mjs to mono 64 kbps MP3, no normalisation",
+ "source": "seiyu_voice export A-1 2026-10-05T09:01:29Z: 24 kHz mono WAV, encoded by scripts/import-isao-voice.mjs to mono 64 kbps MP3, no normalisation",
  "files": [
   {
    "path": "assets/audio/isao/mission_04.mp3",
@@ -701,6 +701,20 @@
    "sha256": "c93b258729c52d570569c3693a6354369502e898adeff416deed466631306abb",
    "bytes": 28436,
    "sourceSha256": "f10ff9747b687f757c9c6c928921a2372e7fff7171a3f4318223cc0eee6fe040"
+  },
+  {
+   "path": "assets/audio/isao/language_analysis_01.mp3",
+   "id": "language_analysis_01",
+   "sha256": "ae99b235d940e528ec3ab44dbeb870d8c812b388b958d943ee10737c77a6936b",
+   "bytes": 30548,
+   "sourceSha256": "97afd912ebb67a3f9fcb0f681945542a056c3599ffe2f19744a42a2413edbddd"
+  },
+  {
+   "path": "assets/audio/isao/language_analysis_02.mp3",
+   "id": "language_analysis_02",
+   "sha256": "3ed130ee52b9f923e5f8b495b0ca764ceaad33e43864d91641c77823e415e334",
+   "bytes": 25940,
+   "sourceSha256": "96b5d4aad1c8735c02780511289d1dbc8e379341353efc5844952ea65edec174"
   },
   {
    "path": "assets/audio/isao/gate_half_01.mp3",

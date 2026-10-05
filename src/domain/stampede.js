@@ -12,8 +12,17 @@ export const isStampede = (index, tune) => !!tune && tune.every > 0 && index % t
 // `tierSize` to both multipliers and `tierCores` cores to the flood. Returns { entries, gap } (gap: the queue's spacing, or null)
 export function stampedeWave(entries, spec, tune, { index = 1, tier = 0 } = {}) {
   const trickle = Math.floor(index / tune.every) % 2 === 0, k = tier * (tune.tierSize ?? 0);
-  if (trickle) return { entries: stampedeOf(entries, spec, { ...tune, size: tune.trickle + k, cores: 0 }), gap: tune.trickleGap, kind: 'trickle' };
+  if (trickle) return { entries: capped(stampedeOf(entries, spec, { ...tune, size: tune.trickle + k, cores: 0 }), tune.trickleMax), gap: tune.trickleGap, kind: 'trickle' };
   return { entries: stampedeOf(entries, spec, { ...tune, size: tune.size + k, cores: tune.cores + tier * (tune.tierCores ?? 0) }), gap: null, kind: 'flood' };
+}
+
+// A TRICKLE STAYS A TRICKLE (owner, 2026-10-05: "sector 4; lull, nothing comes out anymore"): the sectors' soft multiplier made one
+// of hundreds of bodies, and at `trickleGap` apart it dripped for a quarter of an hour while the sector waited on it. At most `max`
+// bodies, shared across the entries in proportion
+function capped(out, max) {
+  const total = out.reduce((n, e) => n + e.count, 0);
+  if (!(max > 0) || total <= max) return out;
+  return out.map((e) => ({ ...e, count: Math.max(1, Math.round(e.count * max / total)) }));
 }
 
 export function stampedeOf(entries, spec, tune) {

@@ -56,7 +56,7 @@ export const SECTORS = freeze([
 // shield): every `every`-th wave of a gate or back breach is its plan's rammable bodies `size` times over with `cores` x `core` in them
 // (src/domain/stampede.js); `callout` as it leaves the mouth
 // trickle / trickleGap / tierSize / tierCores / trickleCallout (2026-10-03): the soft trickle between floods and the automation's ramp (src/domain/stampede.js stampedeWave)
-export const SECTOR_STAMPEDE = freeze({ every: 2, size: 3, cores: 2, core: 'barbed', fallback: 'amoeba', callout: 'STAMPEDE — RAM THEM', trickle: 2, trickleGap: 1.3, tierSize: 1, tierCores: 2, trickleCallout: 'SOFT ONES — KEEP THE CHAIN' });
+export const SECTOR_STAMPEDE = freeze({ every: 2, size: 3, cores: 2, core: 'barbed', fallback: 'amoeba', callout: 'STAMPEDE — RAM THEM', trickle: 2, trickleGap: 1.3, trickleMax: 24, tierSize: 1, tierCores: 2, trickleCallout: 'SOFT ONES — KEEP THE CHAIN' });
 
 // THE CANYON, in cells: `length` long and open `halfWidth` either side of its centre line, `wall` cells of rock beyond that and
 // across its deep end (src/domain/canyon.js). The swarm is `swarm` times a sector pulse of the ladder wave `ladder` past the sector's

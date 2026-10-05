@@ -137,10 +137,17 @@ export const STORY_QUIVER = Object.freeze({ key: 'quiver', delay: 0.3, hardcore:
 // (owner, 2026-10-02: "Shorten the time from Beacons to 1st Rotor, and we enter the Rotor right away") it fires on the first body up:
 // the player is in the Rotor's optic watching the swarm come out of the ground, and the AFR-01's first cycle plays faster
 // (src/content/foundry.js rate)
+// STRAIGHT TO THE ACTION (owner, 2026-10-05: "the player immediately dives into the action by taking over the Rotor ... we must see the
+// enemies closer and already in-sight"): on a landing page the sinkhole opens, quiet, `earlyBreach` seconds into the beacons' tour
+// instead of after the gate, and the Rotor is taken the moment the tour ends (src/domain/story-beats.js). `tankAfterNuke`: the seconds
+// between sector 0's first MK-9 blast and the hull handed to the player (src/fx/hull-issue.js early)
 export const STORY_BEATS = Object.freeze({
   rotorDelay: 1.5, faceDelays: Object.freeze([0.6, 1.6]), controlDelay: 1.5,
-  tremorDelay: 0.6, breachDelay: 1.5, spawnDelay: 0.3, overrideDelay: 0.8, overrideCells: 99,
+  tremorDelay: 0.6, breachDelay: 1.5, spawnDelay: 0.3, overrideDelay: 0.8, overrideCells: 99, earlyBreach: 0, tankAfterNuke: 1.6,
 });
+// THE NUKE'S TANK: the berth on the lane outside the gate it is handed on, `berth` [from, to] cells out from the forward cell along the
+// line to the sinkhole, so it stands nose to the blast with the smoke ahead of it
+export const STORY_NUKE_TANK = Object.freeze({ berth: Object.freeze([1.5, 3]) });
 
 // SECTOR 0: THE FOUNDATION (owner, 2026-09-24: "the first few waves before the stalheart is ready could be more intense POV sentries
 // and Gunship shooting from above to protect the construction of the stalheart"). On a growing page, once the Quiver's two hard cores
