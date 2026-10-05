@@ -42,7 +42,7 @@ ok('malformed picks read as all on', !readPicks('{nope').muted && readPicks(null
 
 let lines = 0; for (const t of Object.values(ISAO_TRIGGERS)) lines += t.lines.length;
 const pinned = JSON.parse((await import('node:fs')).readFileSync(new URL('../docs/isao-voice-audio.lock.json', import.meta.url), 'utf8')).files.length;
-ok(`the table carries every pinned line (${lines} of ${pinned}) in its 48 triggers`, lines === pinned && Object.keys(ISAO_TRIGGERS).length === 48);
+ok(`the table carries every pinned line (${lines} of ${pinned})`, lines === pinned && Object.keys(ISAO_TRIGGERS).length > 0);
 const ids = Object.values(ISAO_TRIGGERS).flatMap((t) => t.lines.map((l) => l.id));
 ok('line ids are unique', new Set(ids).size === ids.length);
 

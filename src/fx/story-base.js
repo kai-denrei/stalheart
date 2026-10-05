@@ -62,6 +62,8 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
   const group = new THREE.Group(); group.name = 'Story base'; scene.add(group);
   const mixers = [], owned = new Set(), errors = [], bays = [], lod = [];
   const records = new Map();   // every landmark by id, for the beats' hands (reveal, conceal, structure)
+  const FOOT_BULK = 0.08, solidS = new THREE.Vector3();   // solidAt: the share of the largest part's volume a part needs to be footprint
+  const patches = new Map();   // cell -> the meshes of a wall printed where the plan had rock (patchWall)
   const dropped = new Set(), ZERO = new THREE.Matrix4().set(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);   // kit wall segments burned away (walls(), dropWall())
   const own = (root) => root.traverse((o) => { if (o.geometry) owned.add(o.geometry); for (const m of [o.material].flat().filter(Boolean)) owned.add(m); });
   // tilt (degrees about the local X, a wreck on its side) and lift (metres up, after the tilt) are for props that do not stand on their base
@@ -241,6 +243,25 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     // the lattice cells of the segments burned away whose cell still stands (SOL burns a segment and leaves the rock): Isao's repairs
     droppedCells: () => [...new Set([...dropped].map((k) => plan.walls[k].cell).filter((c) => c >= 0))],
     dropWallsAt: (cell) => { let n = 0; plan.walls.forEach((w, k) => { if (w.cell === cell && !dropped.has(k)) { n++; for (const o of group.children) if (o.isInstancedMesh && o.name === 'walls') { o.setMatrixAt(k, ZERO); o.instanceMatrix.needsUpdate = true; } dropped.add(k); } }); return n; },
+    // A WALL PRINTED INTO A HOLE THAT WAS ROCK (owner, 2026-10-05: "when the player opens a breach with a tank shell and Isao repairs it,
+    // Isao should create a wall or gate, not a rock"): the plan has no segment there, so the nearest one is copied and turned about the
+    // planet's centre onto the cell (a rotation keeps it upright on the sphere and close to the rim's own heading). One per cell
+    patchWall: (cell, at) => {
+      if (!wallMeshes.length || !plan.walls.length || patches.has(cell)) return false;
+      const target = new THREE.Vector3(...at);
+      group.updateMatrixWorld(true);
+      let best = -1, bestD = Infinity;
+      plan.walls.forEach((w, k) => { const d = placer.toWorld([w.x, 0, w.z]).distanceTo(target); if (d < bestD) { bestD = d; best = k; } });
+      const w = plan.walls[best], from = placer.toWorld([w.x, 0, w.z]), q = new THREE.Quaternion().setFromUnitVectors(from.clone().normalize(), target.clone().normalize());
+      const turn = new THREE.Matrix4().makeRotationFromQuaternion(q), inv = group.matrixWorld.clone().invert(), back = group.matrixWorld.clone(), made = [];
+      for (const s of wallMeshes) {
+        const m = new THREE.Mesh(s.inst.geometry, s.inst.material); m.matrixAutoUpdate = false; m.name = 'wall patch'; m.castShadow = true;
+        m.matrix.copy(inv).multiply(turn).multiply(back).multiply(wallMatrix(w, s.src, 1)); group.add(m); made.push(m);
+      }
+      patches.set(cell, made);
+      return true;
+    },
+    patchedCells: () => [...patches.keys()],
     restoreWall: (cell) => { let n = 0; plan.walls.forEach((w, k) => { if (w.cell !== cell) return; n++; dropped.delete(k); grown.walls.set(k, 1); for (const s of wallMeshes) { s.inst.setMatrixAt(k, wallMatrix(plan.walls[k], s.src, 1)); s.inst.instanceMatrix.needsUpdate = true; s.inst.computeBoundingSphere(); } }); return n > 0; },
     // THE BUILDINGS ARE SOLID TO THE HULL (owner, 2026-10-03: "some structures in the base allow the Tank to pass through them, they should
     // feel solid (except those where the tank can go under like the Stalheart)"). `solid` (src/content/base-layout.js SOLID_STRUCTURES) names
@@ -258,7 +279,11 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
           root.traverse((o) => { if (!o.isMesh || !o.geometry) return; o.geometry.boundingBox ?? o.geometry.computeBoundingBox(); boxes.push(o.geometry.boundingBox.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld))); });
           if (!boxes.length) continue;
           const low = Math.min(...boxes.map((b) => b.min.y)), reach = 2.5 * metres / r.holder.matrixWorld.getMaxScaleOnAxis(), foot = new THREE.Box3();
-          for (const b of boxes) if (b.min.y <= low + reach) foot.union(b);
+          // THE BODY, NOT ITS LEGS (owner, 2026-10-05: the tank "always gets stuck" by the HUGIN, "bumping erratically against an unseen
+          // obstacle"): a lander's thin legs and feet splay far past its hull, and the union of their boxes walled the lane beside it. Only
+          // the parts near the ground with a real share of the bulk (`bulk` of the largest's volume) make the footprint
+          const near = boxes.filter((b) => b.min.y <= low + reach), vol = (b) => { const s = b.getSize(solidS); return s.x * s.y * s.z; }, most = Math.max(...near.map(vol));
+          for (const b of near) if (vol(b) >= most * FOOT_BULK) foot.union(b);
           const sz = foot.getSize(new THREE.Vector3()); foot.expandByVector(sz.multiplyScalar(-inset / 2));   // the core of it, not its widest reach: the camp stays drivable
           f = r.foot = { root, inv, foot, scale: r.holder.matrixWorld.getMaxScaleOnAxis() };
         }

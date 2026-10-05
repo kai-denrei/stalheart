@@ -165,7 +165,8 @@ export const SECTOR_FORFEIT = freeze({ killShare: 1, streak: 1 });
 // (x2 from sector 5: the lane's first sectors held by sentries alone fell at x2); the alive budget rose with it (520 -> 900)
 // (2026-10-03, second pass: "still very comfortable 50fps constant ... not enough enemies. Canon fodder! more!") x4 at most, +0.5 a
 // sector (x2 at sector 3, x4 from sector 7), the alive budget 900 -> 1500
-export const SECTOR_TIMING = freeze({ briefSeconds: 6, staggerSeconds: 1.5, backDoorLead: 5, securePause: 3, lostHold: 2.5, pace: 1.5, aliveBudget: 1500, firstGrace: 90, soft: 4, softStep: 0.5 });
+// `stall`: seconds a fighting sector may go without a kill, a wave or a breach opening before it moves itself on (2026-10-05)
+export const SECTOR_TIMING = freeze({ stall: 20, briefSeconds: 6, staggerSeconds: 1.5, backDoorLead: 5, securePause: 3, lostHold: 2.5, pace: 1.5, aliveBudget: 2500, firstGrace: 90, soft: 8, softStep: 1, softBase: 2 });   // HUNDREDS (owner, 2026-10-05: "dozens of enemies, there should be hundreds"): x2 soft bodies from sector 1, +1 a sector, to x8; room for 2500
 
 // THE GATE TAKES THE PRESSURE (QA 2026-09-16: a closed gate held a pile of 116 forever and a sector could not be lost).
 // Enemies within pressCells of the gate cell wear it down: dps per soft body, per solid core. At zero it breaks and stands

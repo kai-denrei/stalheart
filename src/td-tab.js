@@ -2707,19 +2707,15 @@ export function initTdTab(root) {
   syncDirectiveChip();
   root.querySelector('#td-pad-map').addEventListener('click', () => toggleMap());
 
-  // build-camera input: drag = azimuth orbit, wheel = zoom, TAP = select a
-  // cell (shop/upgrade). A tap is a press that never traveled; anything
-  // that moves >8 px is an orbit. Action-mode pointers stay untouched.
-  // build-mode input: single finger orbits the azimuth, TWO fingers pinch to
-  // zoom. Track pointers by id so a pinch never fires a tower-placing tap.
+  // build-camera input: drag = azimuth orbit, wheel = zoom, TAP = select a cell (shop/upgrade). A tap is a press that never
+  // traveled; anything that moves >8 px is an orbit. Action-mode pointers stay untouched. build-mode input: single finger orbits
+  // the azimuth, TWO fingers pinch to zoom. Track pointers by id so a pinch never fires a tower-placing tap.
   const buildPointers = new Map(); // pointerId -> {x, y}
   let pinchPrev = null;            // last two-finger pixel distance
   let pinched = false;             // ≥2 fingers touched this gesture → no tap
   let tapStart = null;
-  // A tap is a press that never travelled. 8px is a trackpad's idea of
-  // "never"; a finger on glass jitters more than that (PLAYTEST-TODO §1:
-  // "a tap that moves 6px is still a tap to a human"). The shell's slop is
-  // finger-sized; desktop keeps its 8.
+  // A tap is a press that never travelled. 8px is a trackpad's idea of "never"; a finger on glass jitters more than that
+  // (PLAYTEST-TODO §1: "a tap that moves 6px is still a tap to a human"). The shell's slop is finger-sized; desktop keeps its 8.
   const tapSlop = () => (mobileShell ? 14 : 8);
   // LONG-PRESS is the secondary action (plan §2.3): on the shell, in BUILD,
   // holding a finger on a tower orders its upgrade — the desktop's U key,
@@ -2760,11 +2756,9 @@ export function initTdTab(root) {
     showToast(`<div class="wave-num">${tw.def.label} &middot; TIER ${tw.tier}</div>`
       + `<div class="wave-role">${note}</div>`, 2200);
   }
-  // A REFUSED PLACEMENT SAYS WHY, on the shell (PLAYTEST-TODO §1). The
-  // desktop's silence rule stands there — a radial of greyed-out towers is
-  // worse than nothing — but a caption is not a radial, and on glass a tap
-  // that does nothing is indistinguishable from a tap that missed. Same
-  // reason twice inside a second and a half is said once.
+  // A REFUSED PLACEMENT SAYS WHY, on the shell (PLAYTEST-TODO §1). The desktop's silence rule stands there — a radial of
+  // greyed-out towers is worse than nothing — but a caption is not a radial, and on glass a tap that does nothing is
+  // indistinguishable from a tap that missed. Same reason twice inside a second and a half is said once.
   let refuseLast = { why: '', t: 0 };
   function refuseCaption(why) {
     const t = performance.now();
@@ -2841,11 +2835,9 @@ export function initTdTab(root) {
         return;
       }
       lastTap = { t: tnow, x: ev.clientX, y: ev.clientY };
-      // TAP ISAO TO RIDE HIM. The drone camera is not on the view cycle,
-      // because reaching for the machine you want to look through is a
-      // better gesture than tapping past two other cameras to find it. It
-      // asks first: a mis-tap that hijacks your camera mid-wave is worse
-      // than no shortcut at all.
+      // TAP ISAO TO RIDE HIM. The drone camera is not on the view cycle, because reaching for the machine you want to look
+      // through is a better gesture than tapping past two other cameras to find it. It asks first: a mis-tap that hijacks your
+      // camera mid-wave is worse than no shortcut at all.
       if (isao && params.view !== 'drone' && !mobileShell) {
         const r0 = renderer.domElement.getBoundingClientRect();
         ndc.set(((ev.clientX - r0.left) / r0.width) * 2 - 1,
@@ -2889,10 +2881,8 @@ export function initTdTab(root) {
   addEventListener('pointercancel', endBuildPointer);
   container.addEventListener('pointerdown', (ev) => {
     if (strike.falling <= 0 || strikeGrace > 0) return;
-    // Aim is two-fold: the paint chose the area, and ONE burst mid-fall can
-    // vector the munition onto what the target drifted into. A tap on the
-    // GROUND spends the burst; a tap on the sky — or any tap after it is
-    // spent — skips to impact.
+    // Aim is two-fold: the paint chose the area, and ONE burst mid-fall can vector the munition onto what the target drifted
+    // into. A tap on the GROUND spends the burst; a tap on the sky — or any tap after it is spent — skips to impact.
     if (strike.retargetsLeft > 0) {
       const ci = cellAtScreen(ev.clientX, ev.clientY);
       if (ci !== -1 && retargetStrike(strike, ci)) {
@@ -2917,10 +2907,9 @@ export function initTdTab(root) {
     if (sb) sb.addEventListener('click', () => deployShieldNow());
   }
 
-  // --- LAUNCH CONTROL: DeepWatch's console, driving OUR state machine -------
-  // The safety toggle arms, the readout narrates, the chunky button goes
-  // grey -> orange (needs a target) -> red (authorised). Same ritual, real
-  // instrument. armBtn keeps its name: it gates syncArmUi in the loop.
+  // --- LAUNCH CONTROL: DeepWatch's console, driving OUR state machine ------- The safety toggle arms, the readout narrates, the
+  // chunky button goes grey -> orange (needs a target) -> red (authorised). Same ritual, real instrument. armBtn keeps its name:
+  // it gates syncArmUi in the loop.
   const armBtn = root.querySelector('#td-launch');
   const safetyEl = root.querySelector('#td-safety');
   const safetyImg = root.querySelector('#td-safety-img');
@@ -2997,10 +2986,9 @@ export function initTdTab(root) {
     refuseArm();
   });
 
-  // The blast itself. Portals inside the radius are not damaged — they are
-  // DESTROYED, which is the reason the weapon exists. Enemies take squared
-  // falloff. The world does the announcing: rings, a kick of the same shock
-  // cloud the wave telegraph uses, and the loudest sample in the manifest.
+  // The blast itself. Portals inside the radius are not damaged — they are DESTROYED, which is the reason the weapon exists.
+  // Enemies take squared falloff. The world does the announcing: rings, a kick of the same shock cloud the wave telegraph uses,
+  // and the loudest sample in the manifest.
   function executeStrike(ci, tNow, use = 'strike.orbital', blastCells = null) {   /* blastCells: the round's own killing radius when it is not the orbital strike's — the MK-9 mini nuke is wider than the strike tune */
     const before = {
       portals: spawnPoints.filter((q) => q.alive).length,
@@ -3011,10 +2999,8 @@ export function initTdTab(root) {
     const c = graph.centers[ci];
     const radius = cellSide * (blastCells ?? strikeTune.blastCells);
     sfx.play('tank_destroyed', { dist: camDist(c) });
-    // Rings tell the TRUTH now: the outermost ring IS the damage radius.
-    // The first cut drew them out to 2.2x it, so level-1 fodder stood
-    // visibly "inside the blast" and walked away — the visuals were writing
-    // a cheque the falloff did not honour.
+    // Rings tell the TRUTH now: the outermost ring IS the damage radius. The first cut drew them out to 2.2x it, so level-1
+    // fodder stood visibly "inside the blast" and walked away — the visuals were writing a cheque the falloff did not honour.
     warnRing(ci, 0xffffff, 1.0, radius);
     warnRing(ci, 0xffb347, 0.7, radius * 0.72);
     warnRing(ci, 0xfff2c0, 0.45, radius * 0.42);
@@ -3032,12 +3018,10 @@ export function initTdTab(root) {
       scene.add(burst);
       debris.push(burst);
     }
-    // Terrain and towers, when the toggles allow. Towers FIRST: a mounted
-    // tower anchors its wall (breachWallCell refuses it), so the order is
-    // what lets one strike flatten a defended rampart. Walls batch into a
-    // single BFS + rebuild — six breaches must not cost six rebuilds.
-    // DEEPWATCH is about portals specifically, so it is counted here rather
-    // than inferred from the log line below
+    // Terrain and towers, when the toggles allow. Towers FIRST: a mounted tower anchors its wall (breachWallCell refuses it), so
+    // the order is what lets one strike flatten a defended rampart. Walls batch into a single BFS + rebuild — six breaches must
+    // not cost six rebuilds. DEEPWATCH is about portals specifically, so it is counted here rather than inferred from the log
+    // line below
     strikePortalsBefore = before.portals;
     if (strikeTune.breakTowers) {
       for (const tw of [...towers]) {
@@ -3109,11 +3093,9 @@ export function initTdTab(root) {
   let hintTimer = null;
   // the coach's callout; flash = big centred, hold = no auto-hide
   let tutTimer = null;
-  // THE SHELL'S WORDS. The tutorial teaches treads, lasers, shell, throttle,
-  // build — in the desktop's vocabulary. On the shell there is no throttle
-  // and no key; the same lessons are said in the shell's terms here, at the
-  // one place every banner passes through, so the phase machine is untouched.
-  // (The operator's first phone screen: "cannot figure out the controls".)
+  // THE SHELL'S WORDS. The tutorial teaches treads, lasers, shell, throttle, build — in the desktop's vocabulary. On the shell
+  // there is no throttle and no key; the same lessons are said in the shell's terms here, at the one place every banner passes
+  // through, so the phase machine is untouched. (The operator's first phone screen: "cannot figure out the controls".)
   const SHELL_WORDS = [
     ['RAM THEM · drive straight through them',
       'RAM THEM · TAP THE GROUND beyond them, or DRAG on the left half to drive — through them'],
@@ -3193,15 +3175,11 @@ export function initTdTab(root) {
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') holdWake(); });
   root.addEventListener('pointerdown', () => holdWake(), { once: true });
   holdWake();
-  // THE COACH. The tutorial runs once per browser and teaches the game; a
-  // phone that has already seen it (the operator's) boots straight into a
-  // wave with nothing on screen saying how to move — tap-to-go is invisible
-  // until someone has done it. Three coach marks, shell only, once per
-  // browser, each holding until the thing it names has happened:
-  //   1. TAP THE GROUND        until a destination is accepted
-  //   2. the thumbs            until a thumb is pressed (or 12s)
-  //   3. BUILD                 when a tower is affordable, until one is ordered
-  // Not the tutorial: it never spawns anything and never freezes the game.
+  // THE COACH. The tutorial runs once per browser and teaches the game; a phone that has already seen it (the operator's) boots
+  // straight into a wave with nothing on screen saying how to move — tap-to-go is invisible until someone has done it. Three
+  // coach marks, shell only, once per browser, each holding until the thing it names has happened:   1. TAP THE GROUND
+  // until a destination is accepted   2. the thumbs            until a thumb is pressed (or 12s)   3. BUILD                 when
+  // a tower is affordable, until one is ordered Not the tutorial: it never spawns anything and never freezes the game.
   const COACH_KEY = 'td.shellCoachSeen';
   const coach = {
     step: 0, t: 0, pulseT: 0, shown: false, fired: false, ordersAt: 0,
@@ -3262,12 +3240,10 @@ export function initTdTab(root) {
     const el = root.querySelector(sel);
     if (el) el.addEventListener('pointerdown', () => { coach.fired = true; }, { once: true });
   }
-  // THE STICK (src/stick.js; operator, 2026-09-03: "I cannot find a way to
-  // move the tank manually anymore"). Shell, DRIVE mode, left half of the
-  // board, not on a control: a finger down puts the ring there, a drag
-  // drives — throttle up/down, steer past the band — and a finger that
-  // never left the dead zone was a tap, which the tap handlers still get.
-  // Release stops the tank (throttle 0, keys off); a stick is held.
+  // THE STICK (src/stick.js; operator, 2026-09-03: "I cannot find a way to move the tank manually anymore"). Shell, DRIVE mode,
+  // left half of the board, not on a control: a finger down puts the ring there, a drag drives — throttle up/down, steer past the
+  // band — and a finger that never left the dead zone was a tap, which the tap handlers still get. Release stops the tank
+  // (throttle 0, keys off); a stick is held.
   const stickEl = root.querySelector('#td-stick');
   const stickKnob = stickEl && stickEl.querySelector('.stick-knob');
   let stick = null;   // { id, x, y }
@@ -3712,10 +3688,9 @@ export function initTdTab(root) {
     runTimers.clear();
     runContext.begin();
     record('run.start', { seed: params.seed, mission: new URLSearchParams(location.search).get('mission') || 'defense', roster: ROSTER.id, points: params.points });   // anything the old run left in flight is now stale by number
-    // a regenerate is a FRESH RUN: sector 1, towers gone, fresh purse.
-    // (Round expansion never comes through here — expandRound reveals the
-    // same world in place, towers standing.) Clear towers first: stale
-    // towerCells would poison openNeighbors during board generation.
+    // a regenerate is a FRESH RUN: sector 1, towers gone, fresh purse. (Round expansion never comes through here — expandRound
+    // reveals the same world in place, towers standing.) Clear towers first: stale towerCells would poison openNeighbors during
+    // board generation.
     round = 1;
     // A FRESH RUN GETS A FRESH AUDIO GRAPH. Beds are owned by handles, and a regenerate throws the owners away — so anything
     // still looping kept looping, and the next run layered its own on top. Two games in, that is two engine beds and every voice
@@ -3750,10 +3725,9 @@ export function initTdTab(root) {
     const built = buildGameWorld({ world: storyQuery.world, params, stage: storyQuery.stage, landmarks: storyQuery.landmarks, phase: storyQuery.phase, grow: storyQuery.grow, chapter: storyQuery.chapter, scene, sfx, warm: warmShaders });
     mesh = built.mesh; dungeon = built.dungeon; if (built.wallHeight) params.wallHeight = built.wallHeight; storyBase?.dispose(); storyBase = built.base; foundryFx?.dispose(); foundryFx = null; story?.glue?.dispose(); story = built.story ?? null; sectorRun = story ? makeSectorRun() : null; storyMonitor?.dispose(); storyMonitor = story ? createStoryMonitor(root) : null; storyScope?.dispose(); storyScope = story ? createStoryScope(root) : null; daylight?.restore(); daylight = story ? createDaylight({ hemi, sun, bg: mainBg, day: story.day.day, tune: story.day, phase: +new URLSearchParams(location.search).get('day') || 0, dial: root }) : null; gunshipRig.reset();   /* A NEW RUN LEAVES NOTHING BEHIND (2026-09-25): the lights' night, the gunship and a falling MK-9 go with the old world */   // the story planet has a day   // 4 m walls on the story sphere; the story's islands, structures, sockets and beats at the requested stage
     graph = dungeon.graph; cellSide = mesh.defaultSide;
-    // THE CAMP, BEFORE ANY ACTOR IS PLACED. Berth cells are graph maths,
-    // so they are known now rather than whenever the container model
-    // happens to land — which is what lets a reset place the tank once
-    // instead of standing it beside the Heart and teleporting it later.
+    // THE CAMP, BEFORE ANY ACTOR IS PLACED. Berth cells are graph maths, so they are known now rather than whenever the container
+    // model happens to land — which is what lets a reset place the tank once instead of standing it beside the Heart and
+    // teleporting it later.
     const footprintRadius = (heartLook().footprint || 0) * heartLook().scale * cellSide;
     berths = story?.berths ?? computeBerths(dungeon, graph, { footprintRadius, cellSide });   // the story's tank bay is the camp once it stands
     record('camp.placed', { heartLook: params.heartLook, footprintRadius, cellSide, berths });
@@ -3769,15 +3743,11 @@ export function initTdTab(root) {
     for (let i = 0; i < dungeon.tags.length; i++) {
       if (tdFullTags[i] !== BLOCKED) tdMaxD = Math.max(tdMaxD, tdFullDist[i]);
     }
-    // carve the sector map. Raw azimuth wedges fail on a lane world
-    // (corridors cross wedge borders and re-seal as unreachable), and
-    // one-gate-per-compass-point collapses when few lanes exit the disk.
-    // So: ITERATIVE DIRECTIONAL GROWTH. Each sector claims an equal
-    // share of the remaining land, grown breadth-first from a frontier
-    // seed picked in its compass direction — sector 2 one way, sector 3
-    // BEHIND it, sectors 4/5 the perpendicular pair. Seeds sit on the
-    // already-open frontier, so every sector is connected by
-    // construction; the applySector re-seal stays as a safety net.
+    // carve the sector map. Raw azimuth wedges fail on a lane world (corridors cross wedge borders and re-seal as unreachable),
+    // and one-gate-per-compass-point collapses when few lanes exit the disk. So: ITERATIVE DIRECTIONAL GROWTH. Each sector claims
+    // an equal share of the remaining land, grown breadth-first from a frontier seed picked in its compass direction — sector 2
+    // one way, sector 3 BEHIND it, sectors 4/5 the perpendicular pair. Seeds sit on the already-open frontier, so every sector is
+    // connected by construction; the applySector re-seal stays as a safety net.
     tdSectorId = new Int8Array(dungeon.tags.length).fill(storyMode ? 1 : 6);   // THE STORY IS ONE SECTOR: round 1 sealed all but 2,817 cells, burying the back lanes and rocket-a, rocket-d and wreck-b (2026-09-16)
     {
       const C = dungeon.tags.length;
@@ -3827,10 +3797,9 @@ export function initTdTab(root) {
     player.freeMode = false;
     player.virtualStart = null;
 
-    // Round start mirrors the death respawn: beside the HEART, not at
-    // dungeon.spawn — the carve's "spawn" often lands in the same far band
-    // the gates seed into, which put a fresh player nose-to-nose with a
-    // forming portal before they had touched a control.
+    // Round start mirrors the death respawn: beside the HEART, not at dungeon.spawn — the carve's "spawn" often lands in the same
+    // far band the gates seed into, which put a fresh player nose-to-nose with a forming portal before they had touched a
+    // control.
     let startCi = dungeon.heart;
     outer:
     for (let d = 1; d <= 3; d++) {
@@ -3887,10 +3856,8 @@ export function initTdTab(root) {
     // out; not in applyLook, a cosmetic never resets). A RESET ENDS WHATEVER SHOT WAS RUNNING: a reveal surviving it would keep its skip
     // listeners and fire its onEnd against cells of a board that no longer exists (runGen's rule for timers, one level up)
     endShot();
-    // ...and any brief mid-sentence, plus whatever was queued behind it. A
-    // reset that leaves Isao talking over the new run is the same defect class
-    // as a camera shot surviving one: state from the old run painted on top of
-    // the new board.
+    // ...and any brief mid-sentence, plus whatever was queued behind it. A reset that leaves Isao talking over the new run is the
+    // same defect class as a camera shot surviving one: state from the old run painted on top of the new board.
     clearBriefs();
     revealCells = [];
     deployStart(berthIndexFor(playerHP));
@@ -3915,13 +3882,10 @@ export function initTdTab(root) {
     seedCtrl.updateDisplay();
     regenerate();
   };
-  // ANOTHER PLANET (operator, 2026-09-02): "New Planet restarts the same
-  // planet. it should be another planet. a bigger one, different topology."
-  // The final verdict's button called regenerate(), which keeps the seed —
-  // the same world, re-rolled. A new planet is a new SEED (topology) and
-  // more of it (size): sample points up ~18% and two more rooms per planet
-  // cleared, capped where the draw-call budget says stop. The planet count
-  // is what the run already persists.
+  // ANOTHER PLANET (operator, 2026-09-02): "New Planet restarts the same planet. it should be another planet. a bigger one,
+  // different topology." The final verdict's button called regenerate(), which keeps the seed — the same world, re-rolled. A new
+  // planet is a new SEED (topology) and more of it (size): sample points up ~18% and two more rooms per planet cleared, capped
+  // where the draw-call budget says stop. The planet count is what the run already persists.
   const PLANET_GROWTH = 1.18, PLANET_POINTS_CAP = 900, PLANET_ROOMS_CAP = 28;
   params.newPlanet = () => {
     params.seed = randomSeed() % 100000;
@@ -4043,10 +4007,9 @@ export function initTdTab(root) {
     if(!sp.alive)return;
     if(sp.obj.userData.breach&&!['strike','gunship','shells','laser','exhausted'].includes(reason))return;
     sp.alive = false; sectorRun?.closed(sp, reason);   // a story sector books who closed its breach
-    // THE GATE GOES LIKE THE TANK GOES (operator): its own wreckage, a big
-    // burst in its own colour, and the heavy sound — the same three parts as
-    // destroyPlayer, because that is the vocabulary the board already has for
-    // "something substantial just ended".
+    // THE GATE GOES LIKE THE TANK GOES (operator): its own wreckage, a big burst in its own colour, and the heavy sound — the
+    // same three parts as destroyPlayer, because that is the vocabulary the board already has for "something substantial just
+    // ended".
     const nrm = norm3(graph.centers[sp.ci]);
     sfx.play('tank_destroyed');
     if (sp.obj) {
@@ -4064,11 +4027,9 @@ export function initTdTab(root) {
     recomputePortalDist();
   }
 
-  // Arm the next wave: one entry point, so nothing can spawn unannounced.
-  // Idempotent — a stalled field re-asks every frame and must not re-fire the
-  // cue or reset the countdown it is already running.
-  // First dangerous contact of the wave: klaxon + a CRT-red warning. Once
-  // per wave BY DESIGN — a constant siren is the alarm you learn to ignore.
+  // Arm the next wave: one entry point, so nothing can spawn unannounced. Idempotent — a stalled field re-asks every frame and
+  // must not re-fire the cue or reset the countdown it is already running. First dangerous contact of the wave: klaxon + a
+  // CRT-red warning. Once per wave BY DESIGN — a constant siren is the alarm you learn to ignore.
   const dangerEl = root.querySelector('#td-danger');
   let dangerTimer = null;
   function dangerFlash() {
@@ -4081,10 +4042,8 @@ export function initTdTab(root) {
 
   function armWave() { if (storyMode && !automated()) return;   // the story world has no wave clock until the handover
     if (waveIn >= 0) return;
-    // THE SECTOR HAS A FIXED PROGRAMME. Once it is spent no more waves are
-    // sent, whatever the clock thinks — the remaining gates are a mop-up,
-    // not a siege, and a sector that kept sending waves forever would make
-    // the wave count meaningless again.
+    // THE SECTOR HAS A FIXED PROGRAMME. Once it is spent no more waves are sent, whatever the clock thinks — the remaining gates
+    // are a mop-up, not a siege, and a sector that kept sending waves forever would make the wave count meaningless again.
     if (sectorRun ? !sectorRun.canRelease() : programmeDone()) return;   // the story's sectors own their breaches and their programmes (src/fx/sector-run.js)
     hideSitrep(); // the telegraph outranks the recap
     if (!storyMode) showBrief('motive');   // why they come, as the first one is dialled (the story's sector brief says it)
@@ -4169,17 +4128,12 @@ export function initTdTab(root) {
     }
   }
 
-  // THE WAVE ARRIVES, IT DOES NOT APPEAR. Every enemy in a wave used to be
-  // created in one frame, all of them standing on the two portal cells with
-  // the same speed — so four phage on two portals read as TWO contacts, and
-  // twenty-six read as two blobs. The towers shot at things nobody could
-  // see, because the things were inside each other. (Measured: wave 3,
-  // 26 alive, distinctCells=2.)
-  //
-  // Two fixes, and both are needed. The queue staggers WHEN they come
-  // through, so a wave walks out of a gate instead of materialising; the
-  // pace jitter stops a group that picks the same exit from travelling as
-  // one perfectly superimposed silhouette forever after.
+  // THE WAVE ARRIVES, IT DOES NOT APPEAR. Every enemy in a wave used to be created in one frame, all of them standing on the two
+  // portal cells with the same speed — so four phage on two portals read as TWO contacts, and twenty-six read as two blobs. The
+  // towers shot at things nobody could see, because the things were inside each other. (Measured: wave 3, 26 alive,
+  // distinctCells=2.)  Two fixes, and both are needed. The queue staggers WHEN they come through, so a wave walks out of a gate
+  // instead of materialising; the pace jitter stops a group that picks the same exit from travelling as one perfectly
+  // superimposed silhouette forever after.
   const spawnQueue = [];
   let spawnClock = 0;
   const SPAWN_SPREAD = 3.2;   // seconds a whole wave takes to come through
@@ -4232,10 +4186,9 @@ export function initTdTab(root) {
       // jink (saucer): a second, faster weave stacked on the bursts —
       // 0.55×–1.45× at 6.3 rad/s reads as a dogfight, not a walk
       if (spec.jink) pace *= 0.55 + 0.9 * (0.5 + 0.5 * Math.sin(tNow * 6.3 + e.phase * 11));
-      // tactician (shellback): holds at the EDGE of tower coverage until
-      // enough minions arrive to soak fire, then bursts through with them.
-      // Re-evaluated at 2 Hz, staggered by phase — towers are few, and a
-      // per-frame sweep would be spent on a decision that changes slowly.
+      // tactician (shellback): holds at the EDGE of tower coverage until enough minions arrive to soak fire, then bursts through
+      // with them. Re-evaluated at 2 Hz, staggered by phase — towers are few, and a per-frame sweep would be spent on a decision
+      // that changes slowly.
       if (spec.tactician) {
         if (tNow >= (e.tacUntil ?? 0)) {
           e.tacUntil = tNow + 0.5 + e.phase * 0.1;
@@ -4291,11 +4244,9 @@ export function initTdTab(root) {
       const b = graph.centers[e.next];
       const f = Math.min(e.prog, 1);
       e.pos = norm3([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]);
-      // THE SHOVE IS AN OFFSET, NOT A MOVE. e.pos is rebuilt from the cell
-      // path every frame, so writing a displaced position lasts exactly one
-      // tick. Applied HERE,
-      // after the interpolation and re-normalised onto the sphere, it decays
-      // and the body slides back into its own lane.
+      // THE SHOVE IS AN OFFSET, NOT A MOVE. e.pos is rebuilt from the cell path every frame, so writing a displaced position
+      // lasts exactly one tick. Applied HERE, after the interpolation and re-normalised onto the sphere, it decays and the body
+      // slides back into its own lane.
       if (e.shove) {
         e.shove.t -= dt;
         if (e.shove.t <= 0) e.shove = null;
@@ -4336,10 +4287,9 @@ export function initTdTab(root) {
         dangerWarnedWave = wave;
         dangerFlash();
       }
-      // A WALKER IS IN THE FIGHT, so the fight can reach it. Only the
-      // dangerous tier does anything — the fodder the A6 refuses to shoot at
-      // cannot hurt it either, which is the same asymmetry the tank lives
-      // under and the reason the A6's own targeting rule is not a free pass.
+      // A WALKER IS IN THE FIGHT, so the fight can reach it. Only the dangerous tier does anything — the fodder the A6 refuses to
+      // shoot at cannot hurt it either, which is the same asymmetry the tank lives under and the reason the A6's own targeting
+      // rule is not a free pass.
       if (!spec.rammable) {
         for (const tw of towers) {
           if (!tw.a6 || tw.hp <= 0) continue;
@@ -4540,37 +4490,25 @@ export function initTdTab(root) {
     return false;
   }
 
-  // --- twin mini-lasers: hold-to-fire, they overheat -----------------------
-  // Trigger: hold Shift (or the secondary fire button). Fire builds heat;
-  // at the cap the guns lock out until fully cooled — the gun tubes glow
-  // from cyan to red as the diegetic gauge. Bolt origin/direction derive
-  // from the gun groups' WORLD transforms (toe-in included) — same-source
-  // rule, third use. No wall carving, no spawn-point damage, no on-hit
-  // reactions: shells stay the answer to everything that matters.
+  // --- twin mini-lasers: hold-to-fire, they overheat ----------------------- Trigger: hold Shift (or the secondary fire button).
+  // Fire builds heat; at the cap the guns lock out until fully cooled — the gun tubes glow from cyan to red as the diegetic
+  // gauge. Bolt origin/direction derive from the gun groups' WORLD transforms (toe-in included) — same-source rule, third use. No
+  // wall carving, no spawn-point damage, no on-hit reactions: shells stay the answer to everything that matters.
   const laserShots = []; // { pos, dir, dist, mesh }
   let laserHeat = 0, laserOverheat = false, plasmaToldAt = -9; const plasmaDry = () => { if (t - plasmaToldAt > 6) { plasmaToldAt = t; showToast(TANK_PLASMA.dry, 1600); } return false; };
 
-  // --- the twin beams -----------------------------------------------------
-  // ONE PLACE for the preset, so a tuning session in the beam tab drops in as
-  // a paste rather than a hunt. Widths are expressed in CELLS and multiplied
-  // by cellSide at use: the lab tunes against a 1-unit tank, the board runs a
-  // tank about 0.85 of a cell wide, and a width copied across raw is either
-  // invisible or swallows the screen.
-  // The preset and the peak both live in beamdraw.js now, so a tuning session
-  // in the lab lands in ONE file rather than in two that must be kept in
-  // agreement by hand.
+  // --- the twin beams ----------------------------------------------------- ONE PLACE for the preset, so a tuning session in the
+  // beam tab drops in as a paste rather than a hunt. Widths are expressed in CELLS and multiplied by cellSide at use: the lab
+  // tunes against a 1-unit tank, the board runs a tank about 0.85 of a cell wide, and a width copied across raw is either
+  // invisible or swallows the screen. The preset and the peak both live in beamdraw.js now, so a tuning session in the lab lands
+  // in ONE file rather than in two that must be kept in agreement by hand.
   const BEAM_PRESET = { ...BOARD_PRESET };
-  // THE SWEEP (operator, 2026-09-01). Across the six seconds the toe-in runs
-  // 0 -> BEAM_SWEEP -> 0, so the pair opens parallel, scissors inward through
-  // the midpoint and opens again: the beams sweep the ground in front instead
-  // of burning one fixed line. Damage follows for free, because it is
-  // measured against the same swept direction the beam is drawn along.
-  //
-  // Radians. Started at 0.4 (~23 degrees each side) from the operator's
-  // "0 to 4 to 0"; played, that was a wider scissor than the weapon wants —
-  // the beams spent the burst pointing away from what was in front of them.
-  // 0.2 rad (~11 degrees each side) keeps the traverse legible while the pair
-  // stays on target. This is the one number to move.
+  // THE SWEEP (operator, 2026-09-01). Across the six seconds the toe-in runs 0 -> BEAM_SWEEP -> 0, so the pair opens parallel,
+  // scissors inward through the midpoint and opens again: the beams sweep the ground in front instead of burning one fixed line.
+  // Damage follows for free, because it is measured against the same swept direction the beam is drawn along.  Radians. Started
+  // at 0.4 (~23 degrees each side) from the operator's "0 to 4 to 0"; played, that was a wider scissor than the weapon wants —
+  // the beams spent the burst pointing away from what was in front of them. 0.2 rad (~11 degrees each side) keeps the traverse
+  // legible while the pair stays on target. This is the one number to move.
   const BEAM_SWEEP = 0.20;
   // THE SWEEP IS A MOTOR UNDER LOAD (operator, 2026-09-01). Mass in the beam
   // slows its traverse — per beam, independently — so the pair falls out of
@@ -4629,10 +4567,9 @@ export function initTdTab(root) {
   function applyReachToe() {
     const guns = playerMesh && playerMesh.userData && playerMesh.userData.laserGuns;
     if (!guns || guns.length < 2 || !playerMesh) return;
-    // ZERO THE TOE BEFORE MEASURING. The gap is read off the live world
-    // transforms, and those already carry whatever toe was applied last — so
-    // measuring without resetting feeds the previous answer back in and the
-    // angle walks every time the rank changes.
+    // ZERO THE TOE BEFORE MEASURING. The gap is read off the live world transforms, and those already carry whatever toe was
+    // applied last — so measuring without resetting feeds the previous answer back in and the angle walks every time the rank
+    // changes.
     applySecondaryToe(playerMesh, 0);
     playerMesh.updateMatrixWorld(true);
     guns[0].getWorldPosition(toeA);
@@ -4657,13 +4594,9 @@ export function initTdTab(root) {
 
   const laserBtnEl = root.querySelector('#td-pad-laser');
   let laserBtnBand = -1, laserDrainPct = -1;
-  // THE SECONDARY IS A BEAM (operator, 2026-09-01). Twin sustained beams out
-  // of the secondary muzzles, running straight down each barrel and passing
-  // THROUGH everything they touch.
-  //
-  // 6 seconds is not a feel number: the burst is exactly as long as
-  // assets/audio/tank_beam.mp3, so the sound and the fire begin and end
-  // together. Change one and the other has to move.
+  // THE SECONDARY IS A BEAM (operator, 2026-09-01). Twin sustained beams out of the secondary muzzles, running straight down each
+  // barrel and passing THROUGH everything they touch.  6 seconds is not a feel number: the burst is exactly as long as
+  // assets/audio/tank_beam.mp3, so the sound and the fire begin and end together. Change one and the other has to move.
   const LASER_MAX_HEAT = 6.0; // s of fire — the length of the sound
   // COOLDOWN DURATION IS UNCHANGED. It was MAX_HEAT / COOL = 2.4 / 1.4 ≈
   // 1.71 s, and the operator asked for the same cooldown, so the shed rate
@@ -5566,14 +5499,12 @@ export function initTdTab(root) {
     // unit direction, so it is its own normal — no cell lookup, because it
     // is very often not standing on one.
     if (tower.a6) {
-      const top = 1 + params.wallHeight;
-      const p = tower.a6.pos;
+      const p = tower.a6.pos, at = cellIndex(p), top = 1 + (at === tower.ci ? (story?.sockets.has(at) ? story.socketLift : params.wallHeight) : dungeon.tags[at] === BLOCKED ? params.wallHeight : 0);
       // NO BOB. It was a stand-in for a walk cycle the model could not play,
       // and now that the legs actually move it is just a hop laid over them —
       // which is what "it jumps instead of walking" was. The clip is the
       // walk; the hull rides the ground.
-      const going = tower.a6.state === 'patrol' || tower.a6.state === 'engage'
-        || tower.a6.state === 'home';
+      const going = !!tower.a6.moving;
       if (obj.userData.setGait) obj.userData.setGait(going);
       obj.position.set(p[0] * top, p[1] * top, p[2] * top);
       // ...AND IT FACES WHERE IT IS WALKING. Setting `up` alone leaves the
@@ -6549,7 +6480,7 @@ export function initTdTab(root) {
     if (!tw.lock) tw.lock = makeLock();
     let lockStepped = false;
     stepA6(tw.a6, dt, {
-      range, minRange: metresToArc(config.minRange, cellSide), cellSide, tune: A6_TUNE, rand: a6Rng,
+      range, minRange: metresToArc(config.minRange, cellSide), cellSide, tune: A6_TUNE, rand: a6Rng, open: (q) => { const c = cellIndex(q); return c === tw.ci || dungeon.tags[c] !== BLOCKED; },
       // Retain a living hard target inside the same metre band used by the lab.
       sense: from => {
         const e = acquireMissileTarget(tw, from, config);

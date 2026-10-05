@@ -12,9 +12,9 @@ import { densestTarget } from '../domain/laser-auto.js';
 // gunship nor orbital laser should fire too close to friendly units"). The guns cannot hurt a wall or a sentry, so the gate's pile stays theirs
 // `hull()`: the tank's unit position; the MK-9 only goes down on a pile within `nukeFacing` (a dot product) of it, so the player sees the
 // strike from the hull (owner, 2026-10-03: "a tactical nuke launched, and from the tank PoV it is nowhere to be seen")
-export function createGunshipAuto({ G, tune, onScreen, callout, sfx, hasCue, friends = () => [], units = () => [], hull = () => null }) {
-  let gun = 'rotary', phase = 'rest', t = 0, nukePass = -1, rounds = 0, target = null;
-  function landRounds() {
+// what lands this tick with nobody in the seat: the rounds still in the air and a released MK-9, the seat's own landing rules (the seat
+// lands them itself while it is taken); the auto pass and the controller with no auto both call it (src/fx/programme-host.js)
+export function landGunshipRounds(G) {
     for (const r of G.landed()) {
       const g = G.guns[r.gun], rc = G.cell(r.point), R = g.blastCells * G.cs;
       for (const e of G.enemies()) { const d = Math.hypot(e.pos[0] - r.point[0], e.pos[1] - r.point[1], e.pos[2] - r.point[2]); if (d < R) G.damage(e, G.splash(d, R, g.damage)); }
@@ -23,11 +23,13 @@ export function createGunshipAuto({ G, tune, onScreen, callout, sfx, hasCue, fri
     }
     const lc = G.stepHeavy(); if (lc >= 0) { G.blast(lc); G.laser(-1); }
   }
+export function createGunshipAuto({ G, tune, onScreen, callout, sfx, hasCue, friends = () => [], units = () => [], hull = () => null }) {
+  let gun = 'rotary', phase = 'rest', t = 0, nukePass = -1, rounds = 0, target = null;
   return {
     // seated: the player is in the seat (the seat runs the guns); returns whether auto flew this tick
     tick(dt, seated) {
       const st = G.state;
-      if (!seated) G.optic.fade?.(dt);   // nobody's pose() is ageing the tracers
+      if (!seated) { G.optic.fade?.(dt); landGunshipRounds(G); }   // nobody's pose() is ageing the tracers; what is in the air still lands
       if (seated || !G.onStation()) { phase = 'rest'; t = 0; return false; }
       if (!st.mounted) G.mount();
       t += dt;
@@ -55,7 +57,7 @@ export function createGunshipAuto({ G, tune, onScreen, callout, sfx, hasCue, fri
         }
       }
       // the guns: a burst, a rest, the other gun
-      if (phase === 'rest') { if (t >= tune.rest) { phase = 'burst'; t = 0; gun = gun === 'rotary' ? 'bofors' : 'rotary'; G.select(gun); target = null; } landRounds(); G.step(dt, false); return true; }
+      if (phase === 'rest') { if (t >= tune.rest) { phase = 'burst'; t = 0; gun = gun === 'rotary' ? 'bofors' : 'rotary'; G.select(gun); target = null; } landGunshipRounds(G); G.step(dt, false); return true; }
       if (!target || t % 0.6 < dt) {
         const keep = (G.guns[gun].blastCells + (tune.gunSafeCells ?? 1.5)) * G.cs, near = units(), clear = (q) => near.every((f) => Math.hypot(q[0] - f[0], q[1] - f[1], q[2] - f[2]) > keep);
         const p = densestTarget(live.filter((e) => clear(e.pos)), { radius: G.guns[gun].blastCells * G.cs * 10, metres: 10 }); target = p && clear(p) ? p : null;
@@ -69,7 +71,7 @@ export function createGunshipAuto({ G, tune, onScreen, callout, sfx, hasCue, fri
         G.fire(gun, aim, g.travel); G.optic.flight(G.optic.muzzle(gun), aim, g.ringHex, g.travel, gun === 'bofors' ? 0.5 : 0.25);
         if (!g.loop && i === 0) G.sfx(g.sound, G.optic.muzzle(gun), { rate: g.pitch ?? 1 });
       }
-      landRounds();
+      landGunshipRounds(G);
       if (t >= tune.burst) { phase = 'rest'; t = 0; }
       return true;
     },

@@ -225,5 +225,16 @@ console.log('narrow engagement bands and pause:');
   check('unavailable launcher keeps its cassette intact',held.ammo===held.mag && spent===0);
 }
 
+// THE WALKER WALKS (2026-10-05): never onto rock; an approach it cannot close fires from where it stands when in range; still legs when still
+{
+  const a6=makeA6(BERTH,0), far={id:801,pos:pointNear(BERTH,9*CELL,0)};
+  const wall=(p)=>arc(p,BERTH)<0.5*CELL;   // only the berth's own ground is open: every step out of it is onto rock
+  for(let i=0;i<60;i++)stepA6(a6,1/30,{range:3*CELL,cellSide:CELL,sense:()=>far,ready:()=>true,emit:()=>{},rand:()=>.5,open:(p)=>arc(p,BERTH)<1e-9});
+  check('the walker never steps onto rock',arc(a6.pos,BERTH)<0.5*CELL);
+  check('and it is not walking on the spot',a6.moving===false);
+  const b6=makeA6(BERTH,0), near={id:802,pos:pointNear(BERTH,2.5*CELL,0)};let shots=0;
+  for(let i=0;i<120;i++)stepA6(b6,1/30,{range:3*CELL,cellSide:CELL,sense:()=>near,ready:()=>true,emit:()=>shots++,rand:()=>.5,open:wall});
+  check('held by rock but in range: it fires from where it stands',shots>0&&arc(b6.pos,BERTH)<0.5*CELL);
+}
 console.log(failures ? `\n${failures} FAILURES` : '\nall heptapod invariants hold');
 process.exit(failures ? 1 : 0);

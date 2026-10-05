@@ -53,6 +53,12 @@ export function createSectorRun(h) {
   // first sector's grace ran out behind it. Every time the sector keeps (its books included) is on this clock.
   let clock = 0;
   const now = () => clock;
+  // THE SECTOR MOVES ON (owner, 2026-10-05: sector 5, "no enemies coming, nothing happening, no resolution"; "something seems broken in the
+  // sectors progression"): a body that cannot reach the base held the pulse budget and the SECURE count for good. After `stall` seconds
+  // with no kill, no wave and no breach opening, the next wave goes regardless of the field, a breach whose waves are all out collapses
+  // with its queue stuck, and the bodies left no longer hold SECURE
+  let progressAt = 0;
+  const progress = () => { progressAt = clock; }, stalled = () => phase === 'fighting' && clock - progressAt > SECTOR_TIMING.stall;
 
   // THE GATES: each door has its own hit points and its own pathfinder rule, which gives way while that door is broken. The front
   // gate exists from the first frame of a sector; the BACK GATE (2026-09-18) only once Isao has printed it, so the map fills in as
@@ -96,7 +102,7 @@ export function createSectorRun(h) {
     if (b.side === 'canyon') return { entries: computeWavePlan(def.waveBase + CANYON.ladder, 1, h.waveSize, def.threat * (h.threatMult ?? 1) * (api.swell?.() ?? 1)).entries.map((e) => ({ ...e, count: e.count * CANYON.swarm * 2 })), pace: SECTOR_TIMING.pace, spread: CANYON.spread, dens: CANYON.dens };
     // MORE OF THE LOW ONES (owner, 2026-10-03: "increase the number of low-level enemies considerably. Testing the limits"; and "it feels
     // a bit too easy"): every rammable entry of a sector's plan x SECTOR_TIMING.soft
-    const entries = computeWavePlan(wave, 1, h.waveSize, def.threat * (h.threatMult ?? 1) * (api.swell?.() ?? 1)).entries.map((e) => ({ ...e, count: ENEMY_SPEC[e.type]?.rammable ? Math.round(e.count * Math.min(SECTOR_TIMING.soft ?? 1, 1 + (SECTOR_TIMING.softStep ?? 0) * ((def.n ?? 1) - 1))) : e.count }));   // ramping by sector
+    const entries = computeWavePlan(wave, 1, h.waveSize, def.threat * (h.threatMult ?? 1) * (api.swell?.() ?? 1)).entries.map((e) => ({ ...e, count: ENEMY_SPEC[e.type]?.rammable ? Math.round(e.count * Math.min(SECTOR_TIMING.soft ?? 1, (SECTOR_TIMING.softBase ?? 1) + (SECTOR_TIMING.softStep ?? 0) * ((def.n ?? 1) - 1))) : e.count }));   // ramping by sector
     // THE STAMPEDE (src/domain/stampede.js): every second wave a mouth sends is a flood of rammable bodies with a few hard cores in it
     if ((b.side === 'gate' || b.side === 'back') && isStampede(b.wavesReleased ?? 0, SECTOR_STAMPEDE)) { const w = stampedeWave(entries, ENEMY_SPEC, SECTOR_STAMPEDE, { index: b.wavesReleased ?? 0, tier: api.tier?.() ?? 0 }); return { entries: w.entries, gap: w.gap, pace: SECTOR_TIMING.pace, stampede: w.kind }; }
     if (def.hardcoresEveryWave && h.hardcore) entries.push({ type: h.hardcore, count: def.hardcores ?? 1 });
@@ -194,7 +200,7 @@ export function createSectorRun(h) {
     // world, and the towers alone lose the base inside a minute, 2026-09-24-pacing-probe); the canyon opens at once
     if (canyon) for (const b of sector.breaches) b.openAt = b.side === 'canyon' ? t0 : Infinity;
     pending = sector.breaches.map((b) => b.id);
-    phase = 'fighting';
+    phase = 'fighting'; progress();
   }
 
   // the sector's live bodies; `budget`: only those the frame budget weighs against the next pulse (the canyon's swarm is out of sight
@@ -334,7 +340,7 @@ export function createSectorRun(h) {
       // a breach that opens once the fight is on opens quietly: no establishing dive under a player who is driving or aiming
       pending.splice(pending.indexOf(id), 1);
       const far = b.side === 'canyon';   // the canyon's breach opens without the establishing dive (the seat's glide is its reveal) and nothing seals it
-      sps.set(b.id, h.open(b.cell, { quiet: far || sector.breaches.some((x) => x !== b && sps.has(x.id)), clear: b.side === 'side' ? SIDE_BREACH.clearRadius : far ? 0.5 : undefined, keep: far })); b.openedAt = t;
+      progress(); sps.set(b.id, h.open(b.cell, { quiet: far || sector.breaches.some((x) => x !== b && sps.has(x.id)), clear: b.side === 'side' ? SIDE_BREACH.clearRadius : far ? 0.5 : undefined, keep: far })); b.openedAt = t;
       if (far) h.brief(def.n <= SECTORS.length ? CANYON.brief : CANYON.briefAgain);   // the first time, or the canyon again
       // THE WALL CAN BE BREACHED (owner, 2026-10-01: "a chekov's gun of sorts"): the side breach cuts its lane and breaks the wall
       if (b.side === 'side' && api.breakSide?.(b.carve ?? [])) { b.broke = true; h.callout(SIDE_BREACH.callout, 'co-victory'); h.brief(SIDE_BREACH.brief); }
@@ -344,14 +350,14 @@ export function createSectorRun(h) {
     tickCanyon(t);
     for (const b of sector.breaches) {
       const sp = sps.get(b.id);
-      if (b.state !== 'open' || !sp || b.wavesReleased < b.wavesPlanned || h.queued(sp)) continue;
+      if (b.state !== 'open' || !sp || b.wavesReleased < b.wavesPlanned || (h.queued(sp) && !stalled())) continue;
       const bonus = spendBreach(sector, b.id, t);
       if (!bonus) continue;
       h.pay(bonus); note({ type: 'score', points: bonus.points, kind: 'bonus' });
       h.collapse(sp); retarget();
       h.callout(`BREACH ${b.id} HELD · +${bonus.kg} KG`, 'co-victory-sub'); h.hud();
     }
-    if (!pending.length && isSecure(sector, aliveSectorEnemies())) {
+    if (!pending.length && isSecure(sector, stalled() ? 0 : aliveSectorEnemies())) {
       phase = 'secure'; left = SECTOR_TIMING.securePause; sector.securedAt = t;
       h.callout('SECTOR SECURE', 'co-victory'); h.sfx?.('tank_pickup'); h.hud();
     }
@@ -374,14 +380,17 @@ export function createSectorRun(h) {
     // THE CLOCK (2026-09-24): a pulse may arm whenever a breach that has opened still has waves to send, whatever is alive, as long
     // as the field plus the pulse fit the budget and no feast is being fought. A breach still opening is fine: the release path
     // holds its bodies until the hole is open. Breaches not yet due simply join a later pulse.
-    canRelease: () => !quiet && phase === 'fighting' && !(feast && !feast.scrambled) && sector.breaches.some((b) => b.state === 'open' && sps.get(b.id)?.alive && b.wavesReleased < b.wavesPlanned) && pulseFits(aliveSectorEnemies(true), nextPulseSize(), api.aliveBudget?.() ?? SECTOR_TIMING.aliveBudget),   // the gunship on auto raises it (GUNSHIP_AUTO)
+    canRelease: () => !quiet && phase === 'fighting' && !(feast && !feast.scrambled) && sector.breaches.some((b) => b.state === 'open' && sps.get(b.id)?.alive && b.wavesReleased < b.wavesPlanned) && (stalled() || pulseFits(aliveSectorEnemies(true), nextPulseSize(), api.aliveBudget?.() ?? SECTOR_TIMING.aliveBudget)),   // the gunship on auto raises it (GUNSHIP_AUTO)
     // the seconds from one pulse leaving the breaches to the next (null: no sector is fighting, the board keeps its own gap)
     pulseGap: () => (phase === 'fighting' && def ? (canyon?.phase === 'rising' && !breachOf(canyon.id)?.wavesReleased ? CANYON.firstPulse : def.pulse ?? null) : null),   // the canyon's swarm does not wait a whole pulse (2026-10-03)
     // a pulse is over once its bodies have left the queue; guards waiting at expedition sites are not the sector's
     pulseOver: (queue) => !queue.some((q) => !q.guard),
     // one programme wave from every live breach: queue entries with `at` offsets from now
-    release: () => { if (phase !== 'fighting' || !sector) return []; const out = []; for (const b of sector.breaches) { const sp = sps.get(b.id); if (b.state !== 'open' || !sp?.alive) continue; const sent = sendWave(b, sp, now()); if (sent) out.push(...sent.entries); } omen(); h.hud(); return out; },
+    release: () => { if (phase !== 'fighting' || !sector) return []; progress(); const out = []; for (const b of sector.breaches) { const sp = sps.get(b.id); if (b.state !== 'open' || !sp?.alive) continue; const sent = sendWave(b, sp, now()); if (sent) out.push(...sent.entries); } omen(); h.hud(); return out; },
     active: () => phase !== 'idle',
+    // the cells a side breach cut through the wall while it still sends waves: Isao leaves its lane open until it is done (2026-10-05:
+    // a lane mended mid-wave stranded its bodies outside and the sector waited on them)
+    lanes: () => (sector?.breaches ?? []).filter((b) => b.side === 'side' && b.state === 'open' && b.wavesReleased < b.wavesPlanned).flatMap((b) => b.carve ?? []),
     owns: (sp) => idOf(sp) !== null,
     /* a broken door is held open for everyone: one flag per gate id, which the story base reads per door */
     gateForce: () => { let any = null; for (const d of standing()) if (doorOf(d.id).integrity.broken) { any ??= {}; any[d.id] = true; } return any; },
@@ -412,7 +421,7 @@ export function createSectorRun(h) {
     kill(e, src, via = null) {
       if (!stats) return;
       const k = killSource(src, via);
-      note({ type: 'kill', ...k, belt: BELT_OF[e.type], breach: idOfObj(e.breachSource) ?? undefined, t: now() });
+      note({ type: 'kill', ...k, belt: BELT_OF[e.type], breach: idOfObj(e.breachSource) ?? undefined, t: now() }); progress();
       if (src === 'ram') note({ type: 'ram', combo: via ?? 0 });
     },
     note,

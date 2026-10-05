@@ -30,7 +30,7 @@ import { createScoreboard } from './scoreboard.js';
 import { createSiteBeacons } from './site-beacons.js';
 import { STORY_EXPEDITIONS } from '../content/story-defaults.js';
 import { createIsaoStrike } from './isao-strike.js';
-import { createGunshipAuto } from './gunship-auto.js';
+import { createGunshipAuto, landGunshipRounds } from './gunship-auto.js';
 import { GUNSHIP_AUTO, GUNSHIP_ORBIT } from '../content/gunship.js';
 import { callGunship, isFull as callFull } from '../domain/gunship-call.js';
 import { onStation, startStation } from '../domain/gunship.js';
@@ -92,7 +92,7 @@ export function createProgrammeHost(c) {
         const gar = c.storyBase()?.structure?.('garage')?.near; if (gar) { try { applyGarage(gar, s.shop ? (performance.now() / 1000 - (s.shopWall ??= performance.now() / 1000)) : 0, 1); } catch { /* a tier without the arm */ } if (!s.shop) s.shopWall = null; }
         const dt = Math.max(0, Math.min(0.1, c.t() - (pp.at ?? c.t()))); pp.at = c.t();
         if (pp.ring.tick(dt, c.playerHP() > 0 && !c.pilotMode() ? c.playerPos?.() : null, c.t()) && !s.shop && typeof document !== 'undefined') {
-          s.dyes ??= makeDyeBook(loadDyes(), LIVERY_IDS); c.pause?.(true);
+          s.dyes ??= makeDyeBook(loadDyes(), LIVERY_IDS); c.pause?.(true); isaoSpeak('paint_pad');   // the shop's own lines (src/content/voice-hooks.js)
           s.shop = openPaintShop({ root: c.root ?? document.body, book: s.dyes, save: saveDyes, hull: () => c.hull?.(), lines: BRIEFS[BASE_PERKS.paint.brief].lines, title: BRIEFS[BASE_PERKS.paint.brief].title, onClose: () => { s.shop = null; c.pause?.(false); } });
         }
       }
@@ -138,7 +138,7 @@ export function createProgrammeHost(c) {
               friends: () => { const g = c.graph(), b = c.storyBase(), cells = [c.dungeon().heart, ...(b?.anchors() ?? []), ...(c.story().wallCells ?? [])]; return [...cells.filter((ci) => ci >= 0).map((ci) => g.centers[ci]), ...(c.playerPos() ? [c.playerPos()] : [])]; },
               units: () => [c.playerPos(), c.isao()?.obj?.position.toArray()].filter(Boolean), hull: () => (c.playerHP() > 0 ? c.playerPos() : null) });
             s.gsFly.tick(dt, seated);
-          }
+          } else if (!seated) { G0.optic?.fade?.(dt); landGunshipRounds(G0); }   // before the auto pass exists, the player's rounds and MK-9 still land after they leave the seat
         }
       }
       // ISAO'S MISSILE (src/fx/isao-strike.js): once a run, in a strong wave, with the hull on screen and nobody seated
@@ -186,7 +186,8 @@ export function createProgrammeHost(c) {
       const holesShot = () => { const st = c.story(), m = st.backMouth; return st.shot?.size ? shotHoles({ shot: st.shot, keep: m ? new Set([...(m.cells ?? []), ...(m.flank ?? [])]) : null, open: (ci) => c.dungeon().tags[ci] !== BLOCKED, centers: c.graph().centers, heart: c.dungeon().heart, rim: st.wallCells ?? [], margin: BASE_REPAIR.shotMargin * c.cellSide() }) : []; };
       // and the rock blown open beside a rim wall (src/domain/repair-orders.js rimHoles): the doors, the back mouth and the canyon's cut kept
       const holesBeside = () => { const st = c.story(), m = st.backMouth, keep = new Set([st.gateCell, st.gateCellOf?.('back'), ...(m?.cells ?? []), ...(m?.flank ?? []), ...(st.carved ?? [])].filter((x) => Number.isInteger(x) && x >= 0)); return rimHoles({ walls: st.wallCells ?? [], adj: c.graph().adj, open: (ci) => c.dungeon().tags[ci] !== BLOCKED, wasRock: (ci) => breachedCells.has(ci), keep }); };
-      const stood = programmeHas(pg, 'gate'), broke = stood ? [...new Set([...(c.story().wallCells ?? []), ...(c.story().backHoles ?? [])].filter((wc) => c.dungeon().tags[wc] !== BLOCKED).concat(c.storyBase()?.droppedCells?.() ?? [], holesShot(), holesBeside()))] : [],   // a burned segment on standing rock is a hole too (owner, 2026-10-02: "after a breach, isao only builds a gate, he should also build walls")
+      const lanes = new Set(c.sectorRun()?.lanes?.() ?? []);   // an open side breach's lane stays open until its waves are out (src/fx/sector-run.js lanes)
+      const stood = programmeHas(pg, 'gate'), broke = stood ? [...new Set([...(c.story().wallCells ?? []), ...(c.story().backHoles ?? [])].filter((wc) => c.dungeon().tags[wc] !== BLOCKED).concat(c.storyBase()?.droppedCells?.() ?? [], holesShot(), holesBeside()))].filter((ci) => !lanes.has(ci)) : [],   // a burned segment on standing rock is a hole too (owner, 2026-10-02: "after a breach, isao only builds a gate, he should also build walls")
        near = (ci) => { const p = c.graph().centers[ci], r = BASE_REPAIR.clearCells * c.cellSide(); return c.enemies().some((e) => e.alive && Math.hypot(e.pos[0] - p[0], e.pos[1] - p[1], e.pos[2] - p[2]) < r); };
       // HIS CHECK (BASE_REPAIR.check): after a wall he hovers over it, then says whether the breach is sealed; nothing new starts meanwhile
       if (s.checking) { if (c.t() < s.checking.until) return; s.checking = null; c.callout?.(broke.length ? BASE_REPAIR.open : BASE_REPAIR.sealed, broke.length ? 'co-victory-sub' : 'co-victory'); }
@@ -245,7 +246,7 @@ export function createProgrammeHost(c) {
     repaired: (repair) => {
       if (repair.kind === 'gate') { c.sectorRun()?.repairGate(repair.id ?? 'gate'); if (!repair.id) c.storyBase()?.restoreWall(-1); }   // and the segments on the door's own cell
       // a hole with kit walls of its own is drawn as floor under them; one without (the back mouth's flanks) is rock again
-      else { const rci = repair.ci, walled = (c.story().wallCells ?? []).includes(rci); if (walled && c.dungeon().tags[rci] !== BLOCKED) (c.dungeon().mended ??= new Set()).add(rci); c.dungeon().tags[rci] = BLOCKED; if (c.tdFullTags()) c.tdFullTags()[rci] = BLOCKED; breachedCells.delete(rci); c.story().shot?.delete(rci); breachQueue.push(rci); c.storyBase()?.restoreWall(rci); rebuildAfterBreach(); recomputePortalDist(); c.story().checking = { ci: rci, until: c.t() + BASE_REPAIR.check }; }
+      else { const rci = repair.ci, printed = !(c.story().wallCells ?? []).includes(rci) && !(c.story().backHoles ?? []).includes(rci) && !!c.storyBase()?.patchWall?.(rci, c.graph().centers[rci]), walled = printed || (c.story().wallCells ?? []).includes(rci); /* a hole that was rock comes back as a wall (story-base patchWall) */ if (walled && c.dungeon().tags[rci] !== BLOCKED) (c.dungeon().mended ??= new Set()).add(rci); c.dungeon().tags[rci] = BLOCKED; if (c.tdFullTags()) c.tdFullTags()[rci] = BLOCKED; breachedCells.delete(rci); c.story().shot?.delete(rci); breachQueue.push(rci); c.storyBase()?.restoreWall(rci); rebuildAfterBreach(); recomputePortalDist(); c.story().checking = { ci: rci, until: c.t() + BASE_REPAIR.check }; }
       updateHud();
     },
     printed: (step) => {

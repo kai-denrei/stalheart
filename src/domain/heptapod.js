@@ -128,8 +128,20 @@ export function makeA6(berth, tier = 0, tune = A6_TUNE) {
 // lock-on weapon does: it is on target, it is not allowed to shoot yet. The
 // state says `lockon` while that lasts, so a HUD can say why a machine that
 // is clearly aimed at something is clearly not firing.
+// THE WALKER WALKS (owner, 2026-10-05: the Heptapod "glides too much instead of walking", "treats ground as if it was walls and flies", "moves
+// around but never settles and fires"): `open(pos)`, when given, is the ground it may step onto (no rock, no wall): a step onto anything
+// else is not taken, a patrol waypoint behind rock is picked again, an approach that cannot close fires from where it stands if the
+// target is in range. `a6.moving` says whether the body moved this frame, for the legs: no stride while it stands
 export function stepA6(a6, dt, ctx) {
-  const { range, minRange = 0, cellSide, sense, emit, ready, rand = () => 0.5, tune = A6_TUNE } = ctx;
+  if (dt <= 0) return a6;   // paused: nothing changes, not even the gait
+  const before = a6.pos;
+  stepA6Core(a6, dt, ctx);
+  a6.moving = before !== a6.pos && arc(before, a6.pos) > 1e-7;
+  return a6;
+}
+function stepA6Core(a6, dt, ctx) {
+  const { range, minRange = 0, cellSide, sense, emit, ready, rand = () => 0.5, tune = A6_TUNE, open = null } = ctx;
+  const go = (next) => { if (open && !open(next)) return false; a6.pos = next; return true; };
   if (dt <= 0) return a6;
   const walk = tune.walkCells * cellSide * dt;
   const run = tune.runCells * cellSide * dt;
@@ -183,7 +195,7 @@ export function stepA6(a6, dt, ctx) {
       a6.want = pointNear(a6.berth, tune.patrolCells * cellSide,
         rand() * Math.PI * 2 + a6.leg * 2.399963);   // the golden angle: no short cycle
     }
-    a6.pos = stepToward(a6.pos, a6.want, walk);
+    if (!go(stepToward(a6.pos, a6.want, walk))) a6.dwell = 0;   // rock ahead: a new waypoint next frame
     return a6;
   }
 
@@ -193,12 +205,12 @@ export function stepA6(a6, dt, ctx) {
   // it is bombarding — and keeps the rockets' flight long enough to read.
   const stop = Math.min(range, Math.max(minRange + (range-minRange)*.1, range * tune.standoff));
   if (d > stop + 1e-10) {
-    a6.state = 'engage';
     // a step towards the enemy, clamped so the step itself cannot take it
     // past the leash — checked on the RESULT, which is the only honest way
     const next = stepToward(a6.pos, seen.pos, Math.min(walk, d - stop));
-    if (arc(a6.berth, next) <= leash) a6.pos = next;
-    return a6;
+    if (arc(a6.berth, next) <= leash && go(next)) { a6.state = 'engage'; return a6; }
+    // it cannot close (the leash, or rock in the way): in range, it fires from here; out of range, it lets the target go
+    if (d > range + 1e-12) { a6.state = 'patrol'; a6.target = null; return a6; }
   }
 
   if (d < minRange - 1e-12 || d > range + 1e-12 || (ready && !ready(seen))) {

@@ -47,8 +47,9 @@ export function createGunshipOptic(scene, { cellSide, metresPerCell = 10 }) {
   return {
     active: () => mounted,
     mount() { mounted = true; rings.visible = true; },
-    // leaving the seat takes the painted targets and the rounds in the air with it: they only fade in pose(), which stops with the seat
-    dismount() { mounted = false; rings.visible = false; if (model) model.visible = true; for (const pt of paints) { pt.m.removeFromParent(); pt.m.material.dispose(); } paints.length = 0; for (const f of flights) { f.line.visible = false; f.line.userData.life = 0; } flights.length = 0; },
+    // leaving the seat takes the painted targets with it; the rounds in the air fly on (owner, 2026-10-05: "the shells launched from the air
+    // disappear if the player switches seats"), their tracers aged by fade() while nobody is seated (src/fx/gunship-auto.js, programme-host)
+    dismount() { mounted = false; rings.visible = false; if (model) model.visible = true; for (const pt of paints) { pt.m.removeFromParent(); pt.m.material.dispose(); } paints.length = 0; },
     hull(on) { if (model) model.visible = on; },
     // the world position of a muzzle socket: the rotary pair alternates, the heavy has one
     muzzle(gun) { const n = gun === 'heavy' ? node('SOCKET_MUZZLE_HEAVY') : node(`SOCKET_MUZZLE_${(side++ & 1) ? 'R' : 'L'}`); (n ?? platform).getWorldPosition(wp); return wp.toArray(); },

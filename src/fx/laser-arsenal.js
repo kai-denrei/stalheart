@@ -308,7 +308,9 @@ export function createLaserArsenal(scene, host) {
       special = { axis };
       orbit.overhead = overhead ?? orbit.overhead; Object.assign(beam, { energy: energy ?? beam.energy, radius: radius ?? beam.radius, slew: slew ?? beam.slew });
       laser?.tune({ radius: beam.radius });
-      if (st.phase !== 'overhead') edge(stepLaser(st, st.left, orbit, beam)); else st.left = orbit.overhead;
+      // A PASS LAID WHILE SOL IS ALREADY UP (owner, 2026-10-05: sector 6's SOL control did not work right after using SOL by hand): the old
+      // pass's beam and contacts go, as an arrival would take them, before this one is laid
+      if (st.phase !== 'overhead') edge(stepLaser(st, st.left, orbit, beam)); else { lift(); st.left = orbit.overhead; }
       st.energy = beam.energy; st.contact = onSphere(point, metres()); st.fresh = false; st.speed = 0; testTarget = null;
     },
     range: () => (special ? Infinity : LASER_GAME.range),   // the scope's in-range call: everything is in range on a pass laid over a place

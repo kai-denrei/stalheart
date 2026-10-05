@@ -37,7 +37,7 @@ export function stepGunship(st, dt, orbit) {
 }
 
 // A round leaves now and lands where the gunner aimed, `travel` seconds later: what stands there THEN takes the hit,
-// so a moving swarm has to be led. Rounds are dropped with the seat.
+// so a moving swarm has to be led. Rounds already in the air land whether or not the seat is still taken (2026-10-05).
 export function fireRound(st, gun, point, travel) { st.rounds.push({ gun, point: [point[0], point[1], point[2]], at: st.clock + travel, from: st.clock }); }
 export function stepRounds(st) { const landed = []; st.rounds = st.rounds.filter((r) => { if (r.at <= st.clock) { landed.push(r); return false; } return true; }); return landed; }
 
@@ -65,7 +65,9 @@ export function mountGunship(st) {
   st.mounted = true; st.accum = 0;
   return 'mounted';
 }
-export function dismountGunship(st) { st.mounted = false; st.accum = 0; st.rounds = []; st.heavyPaint = null; }
+// ROUNDS IN THE AIR LAND (owner, 2026-10-05: "once a nuke has been fired, if the player quickly switches seats ... it does not cancel the
+// nuke. Same for the secondary weapons"): leaving the seat drops only the paint not yet launched; the rounds and a released MK-9 fly on
+export function dismountGunship(st) { st.mounted = false; st.accum = 0; st.heavyPaint = null; }
 
 export function selectGun(st, key, guns) {
   if (!guns[key]) return false;

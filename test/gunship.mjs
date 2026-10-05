@@ -117,7 +117,7 @@ console.log('rounds in flight:');
   soak(st, 0.6, { pass: 10, station: 40 });
   check('the bofors shell lands at two point six', stepRounds(st).length === 1 && st.rounds.length === 0);
   fireRound(st, 'rotary', [1, 0, 0], 2); dismountGunship(st);
-  check('leaving the seat drops the rounds in the air', st.rounds.length === 0);
+  check('leaving the seat keeps the rounds in the air: they land (2026-10-05)', st.rounds.length > 0);
 }
 console.log('downtime:');
 {

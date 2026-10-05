@@ -1,6 +1,6 @@
 {
  "schema": 2,
- "source": "seiyu_voice export A-1 2026-10-04T05:47:34Z: 24 kHz mono WAV, encoded by scripts/import-isao-voice.mjs to mono 64 kbps MP3, no normalisation",
+ "source": "seiyu_voice export A-1 2026-10-05T05:46:37Z: 24 kHz mono WAV, encoded by scripts/import-isao-voice.mjs to mono 64 kbps MP3, no normalisation",
  "files": [
   {
    "path": "assets/audio/isao/mission_04.mp3",
@@ -640,11 +640,11 @@
    "sourceSha256": "417fbe02870cf2a76235303ba39de56d08b81c2b37be1337334e2d0ba4f4db43"
   },
   {
-   "path": "assets/audio/isao/soft_ones_keep_the_chain_05.mp3",
-   "id": "soft_ones_keep_the_chain_05",
-   "sha256": "10bff21ec23794037b46d7ab8a58bc208fa0dacc1c7becc74690f0a30ffa57c3",
-   "bytes": 19796,
-   "sourceSha256": "4e8f1ff1e099ce91bc21efdedf46615ed9f8c20bf924efaad0c14333fec5df64"
+   "path": "assets/audio/isao/soft_ones_keep_the_chain_06.mp3",
+   "id": "soft_ones_keep_the_chain_06",
+   "sha256": "7813fcb51150239f4b0f5e2797300f77baeb2fa748f5772f1d2ab9163667d161",
+   "bytes": 24596,
+   "sourceSha256": "6b48fea4aa0d2ebc089ec2985de8122eae34710e39c6a4a1bd69600844b2cd52"
   },
   {
    "path": "assets/audio/isao/soft_ones_keep_the_chain_03.mp3",
@@ -687,6 +687,20 @@
    "sha256": "26c44d4a10208ddc2f1a5f7e0c593de4cb72e6512a88214fa768dbcaaf87c102",
    "bytes": 14804,
    "sourceSha256": "746184077fb7b19f16691194162690b923f59e536e36bb406e15d53c2f2683e3"
+  },
+  {
+   "path": "assets/audio/isao/vibration_study_01.mp3",
+   "id": "vibration_study_01",
+   "sha256": "0032f3748a386941d2026d38633124e6cd67041713bf4627b11feff14b35547d",
+   "bytes": 32276,
+   "sourceSha256": "1dfed5bbf2cd0a6bb36e0a073fff1e044eb332fc4f1b3ce95a366873b82aeaa4"
+  },
+  {
+   "path": "assets/audio/isao/vibration_study_02.mp3",
+   "id": "vibration_study_02",
+   "sha256": "c93b258729c52d570569c3693a6354369502e898adeff416deed466631306abb",
+   "bytes": 28436,
+   "sourceSha256": "f10ff9747b687f757c9c6c928921a2372e7fff7171a3f4318223cc0eee6fe040"
   },
   {
    "path": "assets/audio/isao/gate_half_01.mp3",

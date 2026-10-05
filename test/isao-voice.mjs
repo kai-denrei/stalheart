@@ -81,6 +81,15 @@ ok('and never for a line that came too late', heard === null);
   c += 6; ok('a chatty trigger rests its own longer time', v(s2, 'o')?.id === 'o_01' && (c += 50, v(s2, 'o')) === null);
   c += 0.2; await tick(); const said = v(s2, 'n', { force: true }); await tick();
   ok('a forced line cuts in over him, past every rest', said?.id === 'n_01' && pl.at(-1) === 'isao_n_01'); }
+// FLAVOUR SPEAKS LESS, A BRIEF'S LINES IN ORDER (2026-10-05)
+{ let c = 0, r = 0.9; const s3 = { play() {}, say: (k) => ({ id: k }), stop() {} };
+  const T3 = { f: { aliases: ['f'], lines: [{ id: 'f_01', text: 'x', duration: 1 }] }, b: { aliases: ['b', 'b#2'], lines: [{ id: 'b_01', text: 'one', duration: 1 }, { id: 'b_02', text: 'two', duration: 1 }] } };
+  const v = createIsaoVoice({ triggers: T3, hooks: {}, flavor: ['f'], moments: { b_01: ['b'], b_02: ['b#2'] }, tune: { flavor: { chance: 0.35, rest: 90 }, gap: 0.2, space: 4, repeat: 12, late: 1.5, gain: 1 }, picks: () => ({ muted: false, off: new Set(), quiet: new Set() }), now: () => c, rand: () => r });
+  ok('a flavour line passed over on a bad roll', v(s3, 'f') === null);
+  c += 30; r = 0.1; ok('and it rests its flavour time even then', v(s3, 'f') === null);
+  c += 70; ok('then speaks on a good roll', v(s3, 'f')?.id === 'f_01');
+  c += 10; ok('a brief\'s first line', v(s3, 'b')?.id === 'b_01');
+  c += 1.5; ok('its later line, the same trigger, no rest', v(s3, 'b#2')?.id === 'b_02'); }
 ok('keys', voiceKey('a_01') === 'isao_a_01');
 
 console.log(`\n${n - bad}/${n} passed`);
