@@ -32,7 +32,7 @@ import { STORY_PHASES } from './automation.js';
 export function makeStoryBeats({
   socket, foundry = null, lane = -1, fodder = -1, gate = -1, rotorDelay = 2, key = 'rotor',
   fodderType = 'amoeba', fodderEvery = 2.5, fodderAlive = 8, fodderTotal = 20, fodderEmerge = null,
-  controlDelay = 1.5, tremorDelay = 1.5, breachDelay = 4, overrideDelay = 2.5, spawnDelay = 1, overrideCells = 2.2, earlyBreach = null, tankAfterNuke = null, quiverRise = [],
+  controlDelay = 1.5, tremorDelay = 1.5, breachDelay = 4, overrideDelay = 2.5, spawnDelay = 1, overrideCells = 2.2, earlyBreach = null, tankAfterNuke = null, quiverRise = [], calmMax = Infinity,
   faceDelays = [0.6, 4], commsKills = 5, harvestKills = 10, quiverSocket = -1, quiver = null, startPhase = 'landed',
   gateReady = () => true,   // a growing base: the tremor waits for Isao to print the gate (src/content/base-programme.js)
   construction = null,      // a growing base: the waves that come while the Stålheart prints (src/content/story-defaults.js STORY_CONSTRUCTION)
@@ -151,7 +151,7 @@ export function makeStoryBeats({
         if (!up && !sealed && cWaves > reminded && api.enemies() === 0) { api.brief?.(reminded === 0 ? 'sinkhole_strike' : 'sinkhole_strike_again'); reminded = cWaves; }
         if (up && (api.enemies() <= (construction?.mopUp ?? 0) || clock - upAt >= (construction?.mopUpSeconds ?? Infinity))) { studyDelay = construction?.studyDelay ?? studyDelay; enter('settled'); api.unlock?.('views'); }   // and the hull is the player's for a moment before the study
         else if (!up && construction && !sealed && clock >= nextSpawn && api.enemies() < (construction.alive ?? Infinity)) { constructionWave(api); nextSpawn = clock + construction.every; }   // a wave waits while the field is full
-      } else if (phase === 'settled' && quiver && clock - at >= studyDelay && !api.engaged?.()) {   /* never over a fight in the gunship's or SOL's seat */ api.closeup?.('isao'); api.brief?.('vibration_study'); said.add('vibration_study'); enter('study-talk'); }
+      } else if (phase === 'settled' && quiver && clock - at >= studyDelay && (!api.engaged?.() || clock - at >= studyDelay + calmMax)) {   /* never over a fight: the end of it, or calmMax at most */ api.closeup?.('isao'); api.brief?.('vibration_study'); said.add('vibration_study'); enter('study-talk'); }
       else if (phase === 'study-talk' && clock - at >= 0.5 && !api.briefing?.()) { api.screen?.('synthetic'); enter('study'); }   // the lines run out (or were seen before), then the screen
       else if (phase === 'study' && !api.screenOpen?.()) { api.brief?.('rocket_sites'); api.sites?.(); api.expeditionsBegin?.(); api.planetView?.(); said.add('rocket_sites'); enter('expedition'); }
     },

@@ -7,13 +7,20 @@ export { createMissilePool } from './missile-presentation.js';
 export function launchDart(pool,{config,from,target,direction,scale=1,sphere=false,metre=undefined}) {
   const mesh=pool?.acquire(config.length*scale);
   if(!mesh)return null;
-  const m={mesh,config:{...config},target:target.slice(),t:0,sphere,
+  const m={mesh,config:{...config},target:target.slice(),launchTarget:target.slice(),t:0,sphere,
     frame:(sphere?sphereMissileFrame:missileFrame)(from,target,direction,metre===undefined?{}:{metre})};   // metre: one metre in the scene's units, so the pop-out's cap reads in metres
   advanceDart(pool,m,0);
   return m;
 }
 export function advanceDart(pool,m,dt,target=m.target) {
-  m.target=target.slice();
+  // THE CLIMB IS BLIND, THE DIVE HOMES (owner, 2026-10-05: "sometimes it seems like it is adjusting its trajectory laterally after
+  // having been shot, that should be impossible. it only hones into the target from the apex"). The curve's end is pulled toward the
+  // target as the round goes, so a live target moving under the climb bent it sideways. Up to the crest it flies at where the target was
+  // at launch; from the crest the live target is eased in over the rest of the flight, so the path never jumps
+  const past=/^(Crest|Hook|Dive)$/.test(m.pose?.phase??'');
+  if(past&&m.crestT==null)m.crestT=m.t;
+  const w=past?Math.min(1,(m.t-m.crestT)/Math.max(1e-6,m.config.duration-m.crestT)):0,e=w*w*(3-2*w);
+  m.target=m.launchTarget?m.launchTarget.map((v,i)=>v+(target[i]-v)*e):target.slice();
   // THE PLUNGE (owner, 2026-10-03: "once it reaches the apex and starts going down it should be very fast"): past its crest a round with
   // `diveRate` runs its clock that many times faster, so the lit descent snaps down and lands sooner; the climb is untouched
   const k=m.config.diveRate&&/^(Crest|Hook|Dive)$/.test(m.pose?.phase??'')?m.config.diveRate:1;

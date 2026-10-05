@@ -11,6 +11,7 @@ import { CARGO_LOOK } from '../content/cargo.js';
 import { TOWER_BY_KEY } from '../towers.js';
 import { norm3 } from '../vec3.js';
 import { createCargo } from './cargo.js';
+import { makePadRing, glowPadRing } from './shield-array.js';
 
 const v3 = (a) => new THREE.Vector3(a[0], a[1], a[2]);
 const chord = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
@@ -34,7 +35,7 @@ export function createExpeditionGlue(h) {
   const ex = () => h.story.expeditions, cellOf = (id) => h.story.siteCells[id];
   // where a part waits: its site, or the cell a hull carrying it was lost on (src/domain/expeditions.js hullLost)
   const spotOf = (id) => { const at = ex()?.sites.find((x) => x.id === id)?.at; return Number.isInteger(at) ? { cell: at, clear: 10 } : cellOf(id); };
-  let cargo = null, receipt = null, sign = null, signAsked = false;
+  let cargo = null, receipt = null, sign = null, signAsked = false, pad = null;
   // THE DROP-OFF POINT, SIGNED (owner, 2026-10-05: "there should be a dedicated drop-off point in the base ... re-use a minimalist version of
   // a scoreboard to write DROP-OFF POINT"): a small split-flap board at the head of the trophy row, facing out where the hulls come in,
   // with the parts HOME, waiting in the FIELD and the SITES known. Made once the first site is out; a page without a document has none
@@ -43,7 +44,7 @@ export function createExpeditionGlue(h) {
       signAsked = true;
       import('./scoreboard.js').then(({ createScoreboard }) => {
         const p = trophyPose(-1.6);
-        sign = createScoreboard(h.scene, { at: p.point.toArray(), up: p.normal.toArray(), facing: p.facing.toArray(), metres: metres * look.signScale, title: 'DROP-OFF POINT', accent: '#ffd27a', flag: false, variant: 'splitflap_rivalry', rowLabels: { kills: 'HOME', gathered: 'FIELD', used: 'SITES' } });
+        sign = createScoreboard(h.scene, { at: p.point.toArray(), up: p.normal.toArray(), facing: p.facing.toArray(), metres: metres * look.signScale, title: 'CARGO DROP-OFF', accent: '#ffd27a', flag: false, variant: 'splitflap_rivalry', rowLabels: { kills: 'HOME', gathered: 'FIELD', used: 'SITES' } });
       }).catch(() => {});
     }
     sign?.update({ rows: [['HOME', e.sites.filter((s) => s.state === 'delivered').length], ['FIELD', e.sites.filter((s) => s.state === 'cleared' || s.state === 'carried').length], ['SITES', e.sites.filter((s) => s.state !== 'hidden').length]], rank: 0 });
@@ -54,6 +55,32 @@ export function createExpeditionGlue(h) {
   function sitePose(id) {
     const c = h.centers()[spotOf(id).cell], dir = toward(c, homeAt()), p = along(c, dir, look.siteOffset * metres);
     return { point: p, normal: p.clone().normalize(), facing: dir };
+  }
+  // THE CARGO DROP-OFF PAD (CARGO_LOOK.drop): out in front of the middle of the trophy row, where a part is home; `pad` once a site is
+  // out, its ring idling, and pulsing while a part rides the hull. The point on the unit sphere and the reach in its units
+  function dropPose() {
+    const m = trophyPose((STORY_EXPEDITIONS.sites.length - 1) / 2), p = along(m.point.toArray(), m.facing, (look.drop?.ahead ?? 7) * metres);
+    return { point: p, normal: p.clone().normalize(), facing: m.facing };
+  }
+  // on the lattice: the open cell nearest the ideal spot, so a hull parked on it is on the pad (kept once the landing has a frame)
+  let padPoint = null;
+  const dropAt = () => {
+    if (padPoint) return padPoint;
+    const want = dropPose().normal.toArray(), C = h.centers(); let best = -1, bd = Infinity;
+    for (let i = 0; i < C.length; i++) { if (i === h.story.home || !(h.open?.(i) ?? true)) continue; const d = chord(C[i], want); if (d < bd) { bd = d; best = i; } }
+    const at = best >= 0 && bd < dropReach() * 2.5 ? C[best].slice() : want;
+    if (h.landing?.()) padPoint = at;
+    return at;
+  };
+  const dropReach = () => (look.drop?.radius ?? 8) * metres;
+  function padStep(e) {
+    if (!pad && h.scene && e.sites.some((s) => s.state !== 'hidden')) {
+      const at = dropAt(), ring = makePadRing(at, dropReach(), 1 + 0.3 * metres, { color: look.drop?.color ?? 0xffb43c, rings: [1, 0.62, 0.24], size: 3.5 });
+      h.scene.add(ring); pad = { at, ring };
+    }
+    if (!pad) return;
+    glowPadRing(pad.ring, e.carrying ? 'charging' : 'idle', typeof performance === 'object' ? performance.now() / 1000 : 0);
+    if (!e.carrying) pad.ring.material.opacity *= 0.7;   // waiting for a part: there, but quiet
   }
   // the trophy row: along the landing island's edge in its own frame when the base has one, else beside home
   function trophyPose(i) {
@@ -124,11 +151,11 @@ export function createExpeditionGlue(h) {
         const at = spotOf(s.id);
         if (s.state === 'cleared' && !e.carrying && chord(pos, centers[at.cell]) < h.cellSide * (at.clear / 10 + 1) && reach(e, s.id)) {
           fx().pickUp(s.id, h.hull);
-          h.callout(`PART SECURED · ${String(STORY_EXPEDITIONS.sites.find((x) => x.id === s.id)?.part ?? 'part').toUpperCase()}`);
+          h.callout(`PART SECURED · ${String(STORY_EXPEDITIONS.sites.find((x) => x.id === s.id)?.part ?? 'part').toUpperCase()} · TO THE CARGO DROP-OFF`);
         }
       }
       const carried = e.carrying;
-      if (carried && chord(pos, homeAt()) < h.cellSide * STORY_EXPEDITIONS.deliverCells) {
+      if (carried && chord(pos, dropAt()) < dropReach() * 1.15) {   // home is the pad, by the trophy flags
         const tower = deliver(e);
         if (tower) {
           h.brief('part_home');
@@ -141,9 +168,9 @@ export function createExpeditionGlue(h) {
           if (more.length) h.brief('sites_revealed');
         }
       }
-      signStep(e);
+      signStep(e); padStep(e);
       h.story.hud.sites(e.sites.filter((s) => (s.state === 'guarded' || s.state === 'cleared' || s.state === 'carried') && (s.state === 'carried' || !!cellOf(s.id)))
-        .map((s) => ({ dir: unitArr(centers[s.state === 'carried' ? h.story.home : spotOf(s.id).cell]), state: s.state })));
+        .map((s) => ({ dir: s.state === 'carried' ? unitArr(dropAt()) : unitArr(centers[spotOf(s.id).cell]), state: s.state })));
     },
     // the hull is gone: the part waits where it fell (the rule), the crate tumbles off and its flag comes down (the look); the next step
     // raises the flag again over the part, at the wreck
@@ -160,15 +187,17 @@ export function createExpeditionGlue(h) {
     standCell(kind, id = null, open = () => true) {
       const centers = h.centers(), site = kind === 'site' ? cellOf(id) : null;
       if (kind === 'site' && !site) return -1;
-      const p = site ? sitePose(id) : trophyPose((STORY_EXPEDITIONS.sites.length - 1) / 2);
-      const target = along(p.point, p.facing, (site ? 8 : 6) * metres), avoid = site ? site.cell : h.story.home;
-      const reachAt = site ? centers[site.cell] : homeAt(), reachR = h.cellSide * (site ? site.clear / 10 + 1 : STORY_EXPEDITIONS.deliverCells);
+      const p = site ? sitePose(id) : dropPose();
+      const target = site ? along(p.point.toArray(), p.facing, 8 * metres) : v3(dropAt()), avoid = site ? site.cell : h.story.home;   // home: the drop-off pad's middle
+      const reachAt = site ? centers[site.cell] : dropAt(), reachR = site ? h.cellSide * (site.clear / 10 + 1) : dropReach() * 1.6;
       let best = -1, bestD = Infinity;
       for (let i = 0; i < centers.length; i++) {
         if (i === avoid || !open(i)) continue;
         const d = chord(centers[i], [target.x, target.y, target.z]);
         if (d < bestD && chord(centers[i], reachAt) < reachR * 0.9) { best = i; bestD = d; }
       }
+      // home on a sparse board: the open cell nearest the pad's middle
+      if (best < 0 && !site) for (let i = 0; i < centers.length; i++) { const d = chord(centers[i], [target.x, target.y, target.z]); if (i !== avoid && open(i) && d < bestD) { best = i; bestD = d; } }
       // a lander stands in a pocket of rock: when no open floor is in reach, the nearest cell still serves the acceptance route
       return best < 0 && open.length ? glue.standCell(kind, id) : best;
     },
@@ -187,8 +216,8 @@ export function createExpeditionGlue(h) {
       if (receipt?.held && !cargo?.state().crates.some((p) => p === 'fall' || p === 'settle' || p === 'rest')) endReceipt(receipt);
     },
     view: (kind, id) => cargo?.view(kind, id) ?? null,
-    state: () => ({ ...(cargo ? cargo.state() : { carrying: null, attached: false, flags: [], trophies: 0, crates: [], errors: [] }), receiving: !!receipt?.held, sign: !!sign }),
-    dispose() { cargo?.dispose(); cargo = null; sign?.dispose?.(); sign = null; },
+    state: () => ({ ...(cargo ? cargo.state() : { carrying: null, attached: false, flags: [], trophies: 0, crates: [], errors: [] }), receiving: !!receipt?.held, sign: !!sign, pad: pad ? { at: pad.at.map((v) => +v.toFixed(5)), reach: +dropReach().toFixed(5), visible: pad.ring.visible } : null }),
+    dispose() { cargo?.dispose(); cargo = null; sign?.dispose?.(); sign = null; if (pad) { h.scene?.remove(pad.ring); pad.ring.geometry.dispose(); pad.ring.material.dispose(); pad = null; } },
   };
   return glue;
 }
@@ -211,6 +240,7 @@ export function createExpeditionsHost(c) {
       spawn: (...a) => storyApi.spawn(...a), revealSite: (id) => c.storyBase()?.reveal(id), landing: () => c.storyBase()?.structure('foundry')?.holder ?? null,
       brief: showBrief, callout: (text) => showCallout(text, 'co-cargo'), toast: showTowerToast,
       // ISAO RECEIVES THE PART: an order that yields to every other (stepWorker)
+      open: (ci) => c.open?.(ci) ?? true,   // open floor: the cargo drop-off pad sits on it
       receive: (r) => { orders.push({ kind: 'receive', ci: c.cellIndex()(norm3(r.point)), cost: 0, seconds: r.seconds, bed: r.bed, done: r.done }); spawnIsao(); updateHud(); return true; },
     })),
     expeditionsBegin: () => { if (c.story()?.expeditions) storyApi.expeditions().begin(); },

@@ -126,7 +126,10 @@ export const STORY_DAY = Object.freeze({ seconds: 300, dayShare: 0.6, tilt: 60, 
 // coneDeg: the half-angle of the LOCK BOX drawn on the optic. Anything inside it is the target, it stays the target while it stays
 // inside (no flicker between bodies), a timer runs, and at full it is locked. No minimum or maximum range: on a 753 m planet the
 // horizon from a 4 m mount is about 80 m, so a 400 m reach is no limit at all, and the range test can never reset the timer.
-export const STORY_QUIVER = Object.freeze({ key: 'quiver', delay: 0.3, hardcore: 'barbed', secondDelay: 3, hold: [5, 9], nearCells: 12, zoom: 3, studyDelay: 1.5, coneDeg: 14, missile: Object.freeze({ mesh: 'talon', profile: 'heavy', duration: 6, diveRate: 2.6, length: 1.0, dmgMul: 25, minRange: 0, maxRange: 400, lockTime: 0.6, lockGate: 1e4, lockBreak: 1e4, aimTolerance: 180 }) });   // the box is the gate; the code's mrad gates are opened out of the way   // a heavy payload (one round, one solid core), a long reach (the hard cores hold 50 to 90 m out), and a quick first-encounter lock: 0.4 s inside a 5 degree cone
+// rise: the lane hops (from the forward cell, seen from the Quiver) where its two hard cores come up, past the hold ring: on the horizon
+// as the optic opens, walking in to be held (owner, 2026-10-05: on the ring they were "much too close, making a long-range strike
+// somewhat useless"; from the sinkhole they had taken five seconds and more to show)
+export const STORY_QUIVER = Object.freeze({ key: 'quiver', delay: 0.3, hardcore: 'barbed', secondDelay: 3, hold: [5, 9], rise: [10, 13], nearCells: 12, zoom: 3, studyDelay: 1.5, coneDeg: 14, missile: Object.freeze({ mesh: 'talon', profile: 'heavy', duration: 6, diveRate: 2.6, length: 1.0, dmgMul: 25, minRange: 0, maxRange: 400, lockTime: 0.6, lockGate: 1e4, lockBreak: 1e4, aimTolerance: 180 }) });   // the box is the gate; the code's mrad gates are opened out of the way   // a heavy payload (one round, one solid core), a long reach (the hard cores hold 50 to 90 m out), and a quick first-encounter lock: 0.4 s inside a 5 degree cone
 
 // THE BEAT CLOCK (owner, 2026-09-18: "everything must feel faster"). Every wait in src/domain/story-beats.js that the player only
 // watches, gathered here as content. `faceDelays` are Isao's two landing lines; `rotorDelay` the pause before he deploys the AFR-01;
@@ -137,6 +140,12 @@ export const STORY_QUIVER = Object.freeze({ key: 'quiver', delay: 0.3, hardcore:
 // (owner, 2026-10-02: "Shorten the time from Beacons to 1st Rotor, and we enter the Rotor right away") it fires on the first body up:
 // the player is in the Rotor's optic watching the swarm come out of the ground, and the AFR-01's first cycle plays faster
 // (src/content/foundry.js rate)
+// THE PLAYER IS BUSY (owner, 2026-10-05: "never interrupt a player in a dangerous situation with a tank with an announcement such as
+// 'alien vibration language'. Wait for a time-down. Delay the announcement to the end of a beat or a wave or sector"): busy is a
+// hostile anywhere on the field, anything (the harmless swarm too) within `near` cells of the hull, or a body up while the player is in
+// the gunship's or SOL's seat; the timed beats and the debrief wait until it has been clear for `calm` seconds (at most `maxHold`, so
+// the story never stalls for good), and a camera shot that would cut in is skipped while the hull is in danger (src/fx/programme-host.js)
+export const STORY_CALM = Object.freeze({ near: 8, calm: 3, maxHold: 120 });
 // STRAIGHT TO THE ACTION (owner, 2026-10-05: "the player immediately dives into the action by taking over the Rotor ... we must see the
 // enemies closer and already in-sight"): on a landing page the sinkhole opens, quiet, `earlyBreach` seconds into the beacons' tour
 // instead of after the gate, and the Rotor is taken the moment the tour ends (src/domain/story-beats.js). `tankAfterNuke`: the seconds

@@ -123,13 +123,11 @@ export function initTdTab(root) {
     speed: 1.1, // cells per second, wanderer pace
     recoil: 8, // shell-recoil intensity, dialed to MAX per operator
     directive: 'wander', // auto-mode order: wander/avoid/ram/conserve/home/portal
-    // Hover feel, all live-tunable — these were guessed wrong twice, so they
-    // are knobs rather than constants. Units: `hoverRise` is in MODEL units
-    // (the tank is ~3.24 tall there), because it moves the body group inside
-    // the model, not the unit on the sphere.
-    // MÖRK by default: the authored hover tank, and the ONLY hull. Async —
-    // buildUnit stands an empty placeholder until the bytes land and
-    // applyCreature swaps the real one in; no other tank is ever drawn.
+    // Hover feel, all live-tunable — these were guessed wrong twice, so they are knobs rather than constants. Units: `hoverRise`
+    // is in MODEL units (the tank is ~3.24 tall there), because it moves the body group inside the model, not the unit on the
+    // sphere.
+    // MÖRK by default: the authored hover tank, and the ONLY hull. Async — buildUnit stands an empty placeholder until the bytes
+    // land and applyCreature swaps the real one in; no other tank is ever drawn.
     creature: DEFAULT_TANK,
     // balance (operator pass): heavier early waves, but a richer field —
     // more triads on the ground and a longer breath between waves
@@ -379,12 +377,10 @@ export function initTdTab(root) {
   // board itself (four merged meshes), the few hand-placed markers, and ONE
   // pooled blip cloud carrying every enemy and tower.
   //
-  // A blip per enemy would have been an object per enemy, which is the cost
-  // being removed. One buffer rewritten each frame is one draw call for the
-  // lot, however many there are.
-  // Layer 1 survives as a tag on the board meshes (harmless), but nothing
-  // renders it any more: the minimap's second WebGL scene is gone, replaced
-  // by the 2D radar below.
+  // A blip per enemy would have been an object per enemy, which is the cost being removed. One buffer rewritten each frame is one
+  // draw call for the lot, however many there are.
+  // Layer 1 survives as a tag on the board meshes (harmless), but nothing renders it any more: the minimap's second WebGL scene
+  // is gone, replaced by the 2D radar below.
   const MAP_LAYER = 1;
 
   // --- wave telegraph: the gate CHARGES (swells, brightens, beats faster, a shock ring each beat) over the last seconds, so the warning
@@ -860,13 +856,11 @@ export function initTdTab(root) {
   let playerDown = false;
   let carryingRegen = false;
   let speedBonus = 1; // permanent, from power rewards
-  // the energy shield: a timed bubble over the hull — touch damage
-  // bounces off while it holds. shieldObj is lazy-built, scene-level
-  // (positioned each frame like the marker, so parent scale can't warp it)
-  // a plain spread, exactly as `mineTune` below — there is no tuner panel for
-  // either, and inventing one for the shield alone would be a second idiom for
-  // the same job. The knobs are reachable BY NAME from the URL, which is how
-  // SENTRY_TUNE and BALLISTICS_TUNE are already moved.
+  // the energy shield: a timed bubble over the hull — touch damage bounces off while it holds. shieldObj is lazy-built,
+  // scene-level (positioned each frame like the marker, so parent scale can't warp it)
+  // a plain spread, exactly as `mineTune` below — there is no tuner panel for either, and inventing one for the shield alone
+  // would be a second idiom for the same job. The knobs are reachable BY NAME from the URL, which is how SENTRY_TUNE and
+  // BALLISTICS_TUNE are already moved.
   const shieldTune = { ...SHIELD_TUNE };
   const shield = makeShield(shieldTune), arrayStation = makeArrayStation(SHIELD_ARRAY), refillArrays = () => { if (!story?.lost?.has('solar')) refillArray(arrayStation, SHIELD_ARRAY); updateHud(); };   /* A BURNED SOLAR COMPLEX DRIES THE ARRAY: the pad still stands, the reserve never comes back */   /* the solar array's reserve: each sector start calls refillArrays (src/content/shield-array.js) */
   const shieldUp = () => shield.t > 0;
@@ -4348,15 +4342,12 @@ export function initTdTab(root) {
     updateHud();
   }
 
-  // damage an enemy: shrink-step so it reads, kill at zero. Shells (dmg 1,
-  // react) trigger the borrowed on-hit reactions; laser ticks (dmg 0.4,
-  // react=false) don't — a constant graze must not keep barbed/knot
-  // permanently accelerated. Returns true on kill.
-  // `src` decides the pay. The base bounty is HALVED and a tank kill pays
-  // double the new base (i.e. the old full bounty): towers earn passively,
-  // so passive income is what got cheaper — getting close is what pays now.
-  // Rams keep their premium on top; the orbital strike pays base, because
-  // nothing about it is close.
+  // damage an enemy: shrink-step so it reads, kill at zero. Shells (dmg 1, react) trigger the borrowed on-hit reactions; laser
+  // ticks (dmg 0.4, react=false) don't — a constant graze must not keep barbed/knot permanently accelerated. Returns true on
+  // kill.
+  // `src` decides the pay. The base bounty is HALVED and a tank kill pays double the new base (i.e. the old full bounty): towers
+  // earn passively, so passive income is what got cheaper — getting close is what pays now. Rams keep their premium on top; the
+  // orbital strike pays base, because nothing about it is close.
   const KILL_PAY = { tank: 1.0, tower: 0.5, strike: 0.5 };
 
   // --- field promotion ------------------------------------------------------
@@ -5428,15 +5419,12 @@ export function initTdTab(root) {
   // the object with multiplyScalar — otherwise the visual silently carries
   // tier state, and any rebuild (a look swap) would quietly lose it.
   const TIER_BULK = 1.12;
-  // HOW BIG A TOWER IS, as a knob rather than a constant baked into a
-  // multiply (operator: "the towers feel too big and bulky compared to the
-  // tank... smaller and more detailed, more like precision engineering").
-  // The models carry far more detail than the old procedural masts did, and
-  // detail reads better small — a bulky machine looks moulded, a small one
-  // looks machined. ?towerscale= is here so the number can be argued with
-  // rather than guessed at once.
-  // (its own URLSearchParams: `urlParams` is declared three thousand lines
-  // below this and a const in the temporal dead zone throws on read)
+  // HOW BIG A TOWER IS, as a knob rather than a constant baked into a multiply (operator: "the towers feel too big and bulky
+  // compared to the tank... smaller and more detailed, more like precision engineering"). The models carry far more detail than
+  // the old procedural masts did, and detail reads better small — a bulky machine looks moulded, a small one looks machined.
+  // ?towerscale= is here so the number can be argued with rather than guessed at once.
+  // (its own URLSearchParams: `urlParams` is declared three thousand lines below this and a const in the temporal dead zone
+  // throws on read)
   const TOWER_SCALE = (() => {
     const v = parseFloat(new URLSearchParams(location.search).get('towerscale'));
     return Number.isFinite(v) && v > 0.1 && v < 4 ? v : 0.72;
@@ -7504,16 +7492,13 @@ export function initTdTab(root) {
     applyFontPack(n, document.documentElement, TYPE);
     try { localStorage.setItem('ssg-font', n); } catch (e) { /* private mode */ }
   });
-  // The type KNOBS live on the units tab's fonts bench, not here. Two GUIs
-  // over two copies of the same values is the drift this repo has already
-  // paid for once (the hover params vs the viewer's defaults), and the
-  // operator's actual complaint was that tuning type mid-game is
-  // impossible — a shout lives 1.2 seconds. This tab keeps the face
-  // switch, which is a glance, and hands the sliders to the bench.
-  // Guessed wrong twice by eye, so they are dialled by hand — but the folder
-  // is GENERATED from the shared schema and writes to the shared object. The
-  // unit viewer's tuning modal is built from the same list over the same
-  // values, so a setting found on the bench is already in force here.
+  // The type KNOBS live on the units tab's fonts bench, not here. Two GUIs over two copies of the same values is the drift this
+  // repo has already paid for once (the hover params vs the viewer's defaults), and the operator's actual complaint was that
+  // tuning type mid-game is impossible — a shout lives 1.2 seconds. This tab keeps the face switch, which is a glance, and hands
+  // the sliders to the bench.
+  // Guessed wrong twice by eye, so they are dialled by hand — but the folder is GENERATED from the shared schema and writes to
+  // the shared object. The unit viewer's tuning modal is built from the same list over the same values, so a setting found on the
+  // bench is already in force here.
   loadFeel();   // whatever was dialled in the viewer is already in force
   const feelFolders = new Map();
   for (const k of TANK_FEEL_KNOBS) {
@@ -7976,7 +7961,7 @@ export function initTdTab(root) {
     },opened=>{
       sfx.play('sinkhole_quake',{dist:Math.min(...opened.map(obj=>camDist(obj.position.toArray())))});
       // One skippable establishing shot per new group, never per wave.
-      if((wave>0||storyMode)&&!paused&&!shotActive()&&!pilotMode&&!pilot?.gunship&&!laserStation.seated()&&!opened.every(o=>o.userData.quiet)){   // never while a seat is manned: the cut took the gunner's camera mid-aim (owner, 2026-09-15); the quake still sounds
+      if((wave>0||storyMode)&&!paused&&!shotActive()&&!pilotMode&&!pilot?.gunship&&!laserStation.seated()&&!storyApi.danger?.()&&!opened.every(o=>o.userData.quiet)){   // never while a seat is manned: the cut took the gunner's camera mid-aim (owner, 2026-09-15); the quake still sounds
         const sb=storyMode?story?.breachShot:null;   // IN THE STORY: the whole planet through the pre-roll, then as the ground opens a FAST DIVE to a close view over the sinkhole, held while the fodder emerge, then a short blend back
         startDiveShot({camera,startShot,cellSide},opened[0].position.clone().normalize(),{preRoll:sb?.preRoll??CONTENT.breach.preRoll,hold:sb?CONTENT.breach.duration+(sb.emergeHold??0):0,tail:sb?sb.tail??1.8:1.8,dive:sb});
       }
@@ -8188,7 +8173,7 @@ export function initTdTab(root) {
   // THE EXPEDITIONS (src/fx/expedition-glue.js): expeditions, expeditionsBegin, expeditionStep
   createExpeditionsHost({
     storyApi, scene, sfx, SOUNDS, BREACH_SOUNDS, STORY_SOUNDS, player, enemies, spawnQueue, orders, showBrief, showCallout, showTowerToast, spawnIsao, updateHud,
-    story: () => story, graph: () => graph, cellSide: () => cellSide, playerMesh: () => playerMesh, storyBase: () => storyBase, cellIndex: () => cellIndex,
+    story: () => story, graph: () => graph, cellSide: () => cellSide, playerMesh: () => playerMesh, storyBase: () => storyBase, cellIndex: () => cellIndex, open: (ci) => dungeon.tags[ci] !== BLOCKED,
   }),
   // THE VIEW STRIP (src/fx/story-views.js): unlock
   createUnlockHost({

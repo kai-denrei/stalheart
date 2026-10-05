@@ -117,10 +117,13 @@ function makeHull() {
   assert.deepEqual(glue.state().flags.map((f) => f.id), ['rocket-a'], 'our flag goes up over the cleared site');
   tank = centers[1]; glue.step();
   assert.equal(story.expeditions.carrying, 'rocket-a');
-  assert.ok(said.includes('PART SECURED · FIELD COIL'), `the pickup callout (${said})`);
+  assert.ok(said.some((x) => x.startsWith('PART SECURED · FIELD COIL') && x.includes('CARGO DROP-OFF')), `the pickup callout, and where to take it (${said})`);
   glue.tick(0.6); assert.equal(glue.state().attached, true, 'the crate is on the deck');
   assert.ok(marks.some((m) => m.state === 'carried'), 'the radar points home while carrying');
-  tank = centers[0]; glue.step();
+  const pad = glue.state().pad; assert.ok(pad && pad.reach > 0, 'the cargo drop-off pad stands once a site is out');
+  assert.ok(Math.abs(Math.hypot(...marks.find((m) => m.state === 'carried').dir.map((v, i) => v - pad.at[i]))) < 1e-4, 'the radar points at the pad');
+  tank = [0, -1, 0]; glue.step(); assert.equal(siteState(story.expeditions, 'rocket-a'), 'carried', 'away from the pad it is not home');
+  tank = pad.at; glue.step();
   assert.equal(siteState(story.expeditions, 'rocket-a'), 'delivered'); assert.ok(briefs.includes('part_home'));
   for (let i = 0; i < 240; i++) glue.tick(1 / 60);
   assert.ok(said.includes(`${towerName('relay')} UNLOCKED`) && towerName('relay') === 'RELAY', `the unlock callout on landing (${said})`);
@@ -147,7 +150,7 @@ function makeHull() {
   const story = { expeditions: makeExpeditions(STORY_EXPEDITIONS.sites), siteCells: { 'rocket-a': { cell: 1, clear: 16 } }, home: 0, hud: { sites: () => {} } };
   let tank = centers[0]; const said = [], sent = [];
   const glue = createExpeditionGlue({ story, scene, sfx, cellSide: 0.05, centers: () => centers, tankPos: () => tank, hull: () => hull, guardsLeft: () => false, spawn: () => {}, revealSite: () => {}, landing: () => null, brief: () => {}, callout: (t) => said.push(t), toast: () => {}, receive: (r) => { sent.push(r); return true; } });
-  glue.begin(); glue.step(); tank = centers[1]; glue.step(); glue.tick(0.6); tank = centers[0]; glue.step();
+  glue.begin(); glue.step(); tank = centers[1]; glue.step(); glue.tick(0.6); tank = glue.state().pad.at; glue.step();   // home is the cargo drop-off pad
   for (let i = 0; i < 120; i++) glue.tick(1 / 60);
   assert.equal(sent.length, 1, 'one receive order for the landed crate');
   const r = sent[0];
@@ -176,7 +179,7 @@ function makeHull() {
   const story = { expeditions: makeExpeditions(STORY_EXPEDITIONS.sites), siteCells: { 'rocket-a': { cell: 1, clear: 16 } }, home: 0, hud: { sites: () => {} } };
   let tank = centers[0]; const said = [];
   const glue = createExpeditionGlue({ story, scene, sfx, cellSide: 0.05, centers: () => centers, tankPos: () => tank, hull: () => hull, guardsLeft: () => false, spawn: () => {}, revealSite: () => {}, landing: () => null, brief: () => {}, callout: (t) => said.push(t), toast: () => {}, receive: () => true });
-  glue.begin(); glue.step(); tank = centers[1]; glue.step(); glue.tick(0.6); tank = centers[0]; glue.step();
+  glue.begin(); glue.step(); tank = centers[1]; glue.step(); glue.tick(0.6); tank = glue.state().pad.at; glue.step();   // home is the cargo drop-off pad
   for (let i = 0; i < 60 * (CARGO_LOOK.receive.holdMax - 1); i++) glue.tick(1 / 60);
   assert.equal(glue.state().receiving, true, 'still held short of holdMax');
   for (let i = 0; i < 60 * 3; i++) glue.tick(1 / 60);
@@ -206,7 +209,7 @@ function makeHull() {
   assert.equal(siteState(story.expeditions, 'rocket-a'), 'cleared', 'a dead guard does not');
   player.pos = centers[1]; storyApi.expeditionStep(); glue.tick(0.6);
   assert.equal(story.expeditions.carrying, 'rocket-a'); assert.ok(log.some((l) => l[0] === 'callout' && /PART SECURED/.test(l[1]) && l[2] === 'co-cargo'));
-  player.pos = centers[0]; storyApi.expeditionStep();
+  player.pos = glue.state().pad.at; storyApi.expeditionStep();   // home is the cargo drop-off pad
   for (let i = 0; i < 120; i++) glue.tick(1 / 60);
   assert.deepEqual(orders.map((o) => [o.kind, o.ci, o.cost, o.seconds, typeof o.bed, typeof o.done]), [['receive', 0, 0, CARGO_LOOK.receive.seconds, 'function', 'function']], 'the landed part is an order for Isao');
   assert.deepEqual(log.slice(-2), [['isao'], ['hud']]);

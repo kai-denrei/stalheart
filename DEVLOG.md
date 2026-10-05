@@ -94,6 +94,23 @@ Evidence:
 - unit tests: line moments, forced line, space and rests (isao-voice), RAM x10 silent (voice-match), rimHoles and shotHoles (repair-orders), hullLost at a cell (expeditions, cargo); the Needle's click measured -2 -> -15 dB peak
 - --grow, --shield-story, --voice, --opening and the default suite (46 steps)
 
+## 2026-10-05 — The twenty-fifth notes: the Quiver's hard cores rise on the horizon, nothing interrupts the hull in a fight, the Quiver's round climbs blind and homes only from its crest, and a cargo drop-off pad by the trophy flags
+
+change · accepted · 2026-10-05-twenty-fifth-notes-quiver-horizon-calm-blind-climb-drop-off-pad
+
+Owner, 2026-10-05: 1) the Quiver's enemies were overcorrected: once too far (five seconds and more to appear), now much too close, which makes a long-range strike somewhat useless; desired: visible on the horizon as the Quiver's view opens. 2) No more announcements taking the player out of play: never interrupt a player in danger in the tank with an announcement such as 'alien vibration language'; wait for a time-down, to the end of a beat, a wave or a sector. 3) The Quiver's shot sometimes seems to adjust its trajectory laterally after it is fired; it should only home into the target from the apex. 4) A clear Cargo Drop Off Point to bring the boxes back to, close to where the flags are kept.
+
+1) The two hard cores rise on lane cells STORY_QUIVER.rise (10 to 13 hops out, seen from the Quiver), past the hold ring (5 to 9), and walk in to be held; the ring's far side is the fallback. 2) STORY_CALM { near 8, calm 3, maxHold 120 }: storyApi.danger() is a body within 8 cells of the hull or any body up while the player is in the gunship's or SOL's seat; engaged() is danger or a hostile anywhere, and for 3 s after. Isao's study close-up (the vibration language) and a sector's debrief wait on engaged (120 s at most); the back door's collapse shot, SOL-88's launch shot and a sector breach's dive are skipped while the hull is in danger. 3) Cause: the flight's end is pulled toward the target as the round goes, and the live target was used from launch, so a target moving under the climb bent it sideways. advanceDart now flies at the launch target up to the crest and eases the live target in from the crest to impact (no jump). 4) CARGO_LOOK.drop: an amber pad ring 8 m across, 7 m out from the middle of the trophy row; a part is home only on it (not anywhere near the landing), the radar points at it while carrying, the pickup callout ends TO THE CARGO DROP-OFF, the board reads CARGO DROP-OFF. The pad stands on the open cell nearest its ideal spot, so a hull parked there is on it; the acceptance route's home stand is that cell. Measured: the hard cores rise 8.8 cells from the Quiver (6.1 on the ring), over the planet's curve, and the chapter's still shows both on the far lane at the horizon line.
+
+Alternatives: Spawning the hard cores at the sinkhole again: the five-second wait the owner first objected to; Holding every announcement until the sector ends: the study would wait a whole sector; engaged() waits for the field (or the hull's surroundings) to be clear for three seconds instead
+
+Evidence:
+
+- test/sphere-missile-flight.mjs: a target sliding under the climb leaves the round where a still target would, the round lands on the live target, no jump
+- test/cargo.mjs: away from the pad a part is not home, the radar points at the pad, delivery on the pad
+- --round23 (the hard cores 8 to 16 cells from the Quiver as they rise; 8.8 measured), --defense, --round22, --chapters, --grow, --story-world and the default suite
+- --story-world's breach step was stale since 2026-10-04 (the opening's breach is quiet, no cut-away): it now checks the ground opens with no breach shot
+
 ## 2026-10-05 — Squads: a big wave's soft bodies past the first fifty come five to an entity, one draw call and one walk, shedding a member (and paying its kill) at each body's worth of damage, five rams in one contact
 
 change · accepted · 2026-10-05-squads-five-bodies-to-an-entity

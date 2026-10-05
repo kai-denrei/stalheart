@@ -33,3 +33,20 @@ for(const config of Object.values(MISSILE_DEFAULTS)){
 }
 assert.equal(launchDart({acquire:()=>null},{config:MISSILE_DEFAULTS.quiver}),null);
 console.log('Shared DART timing and sphere launch/arrival, moving targets, poles and finite poses pass.');
+// THE CLIMB IS BLIND, THE DIVE HOMES (2026-10-05): a target sliding sideways under the climb does not move the round before its crest;
+// it lands on the live target all the same, and the path never jumps
+for(const config of Object.values(MISSILE_DEFAULTS)){
+ const pool={acquire:length=>({length}),pose:(mesh,pose)=>{mesh.pose=pose;}};
+ const from=[2,3,4],target=[2,0,24],direction=[0,.8,.6],slide=(t)=>[2+t*3,0,24];
+ const a=launchDart(pool,{config:{...config},from,target,direction}),b=launchDart(pool,{config:{...config},from,target,direction});
+ const dt=config.duration/400;let t=0,jump=0,last=b.pose.position,firstPast=null;
+ while(!advanceDart(pool,b,dt,slide(t+=dt))){
+  advanceDart(pool,a,dt,target);
+  if(/^(Crest|Hook|Dive)$/.test(b.pose.phase)&&firstPast===null)firstPast=t;
+  if(firstPast===null)near(b.pose.position,a.pose.position);
+  jump=Math.max(jump,Math.hypot(...b.pose.position.map((v,i)=>v-last[i])));last=b.pose.position;
+ }
+ assert(firstPast!==null,`${config.profile} reaches a crest`);
+ near(b.pose.position,b.target);assert(Math.hypot(...b.target.map((v,i)=>v-slide(t)[i]))<1e-9,'it lands on the live target');
+ assert(jump<1.5,`no jump in the path (${jump.toFixed(3)})`);
+}

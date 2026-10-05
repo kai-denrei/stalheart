@@ -54,6 +54,14 @@ export function createShowcaseHooks(host) {
     }),
     // how near the swarm is to a cell, in cells (the opening's probe: the bodies in sight as the player takes the Rotor); Infinity with none up
     foeDist: (ci) => { const c = host.graph().centers[ci]; let m = Infinity; for (const e of enemies) if (e.alive && !e.guard) m = Math.min(m, Math.hypot(e.pos[0] - c[0], e.pos[1] - c[1], e.pos[2] - c[2])); return +(m / host.cellSide()).toFixed(1); },
+    // whether each body up (not a guard) is in the camera's line of sight past the planet's curve: the segment from the eye to it
+    // clears the ground sphere (radius `ground`, the surface's unit radius); for the Quiver's horizon (2026-10-05)
+    foeSeen: (ground = 1) => enemies.filter((e) => e.alive && !e.guard).map((e) => {
+      const a = camera.position.toArray(), b = e.obj.position.toArray(), d = b.map((v, i) => v - a[i]), dd = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
+      const t = Math.max(0, Math.min(1, -(a[0] * d[0] + a[1] * d[1] + a[2] * d[2]) / (dd || 1))), m = a.map((v, i) => v + d[i] * t);
+      const ndc = e.obj.position.clone().project(camera);
+      return { clear: +(Math.hypot(...m) - ground).toFixed(5), ndc: [+ndc.x.toFixed(2), +ndc.y.toFixed(2), +ndc.z.toFixed(3)] };   // clear > 0: over the curve; ndc: where it is on screen (-1..1)
+    }),
     source: () => {
       if (!host.story()) return -1;
       // A BREACH THE SWARM CAN USE: releaseSpawns holds the queue until the hole has finished opening, so the montage takes a

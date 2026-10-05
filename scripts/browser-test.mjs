@@ -1795,9 +1795,10 @@ try{
  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card{display:none!important}</style>")');
  await until(`!!${T} && ${T}.state().story?.phase==="quiver-piloting"`,90000);
  assert.equal((await st()).story.hardcores,2,'both hard cores rise at once');
+ const qd=async()=>{const s=await st(),q=(s.towerCells||[]).find(([k])=>k==='quiver')?.[1];return evaluate(`${T}.showcase.foeDist(${q})`);},d0=await qd();
  await delay(1500);
- {const s=await st(),q=(s.towerCells||[]).find(([k])=>k==='quiver')?.[1],d=await evaluate(`${T}.showcase.foeDist(${q})`);console.log(`  round23: ${s.enemiesAlive} up, nearest ${d} cells from the Quiver`);assert(d<=10,`the hard cores are near and in sight (${d} cells)`);}
- current='round23-quiver';await finish();
+ {const d=await qd();console.log(`  round23: nearest hard core ${d0} cells from the Quiver as it rises, ${d} after 1.5 s`);current='round23-quiver';await finish();
+  assert(d0>=8&&d0<=16,`the hard cores rise on the horizon: a long shot, not a wait (${d0} cells; 2026-10-05: on the ring, 6, they were too close)`);}
  await until(`(()=>{const s=${T}.state();if(s.story.phase!=="quiver-piloting")return true;const t=${P};if(t){t.aimEnemy();t.hold(true);}return false;})()`,90000).catch(async()=>assert.fail(`the Quiver kills both (${JSON.stringify((await st()).story)})`));
  await until(`${T}.state().gunship.seat===true`,5000).catch(async()=>assert.fail(`the second kill hands to the gunship's seat (${JSON.stringify((await st()).gunship)})`));
  {const s=await st();console.log(`  round23: phase ${s.story.phase}, gun ${s.gunship.gun}, order ${await evaluate('document.querySelector("#td-order")?.textContent')}`);
@@ -2261,10 +2262,10 @@ try{
  await finish();
  await until('window.__stalheartTest.state().towers===1',90000);
  await until('window.__stalheartTest.state().story.phase==="tremor"',20000);await delay(600);current='story-world-tremor';await finish();
- await until('window.__stalheartTest.state().story.phase==="breach"',20000);await until('window.__stalheartTest.state().shot==="breach"',15000);await delay(1200);
+ await until('window.__stalheartTest.state().story.phase!=="tremor"',20000);await until('window.__stalheartTest.state().breaches.length>0',15000);await delay(1200);   // quiet since 2026-10-04: no cut-away to the breach, the dive goes straight to the Rotor
  assert((await evaluate('window.__stalheartTest.state().breaches')).length>0,'the ground opened');current='story-world-breach';await finish();
  // THE PLANET STAYS IN FRAME: the orbit shot holds through the opening and the first fodder emerging, then hands back
- await until('window.__stalheartTest.state().story.spawned>=2',20000);assert.ok(['breach','takeControl'].includes(await evaluate('window.__stalheartTest.state().shot')),'from orbit while the first fodder emerge, or already into the Rotor (2026-10-03: the seat comes on the first body)');current='story-world-breach-emerge';await finish();
+ await until('window.__stalheartTest.state().story.spawned>=2',20000);assert.notEqual(await evaluate('window.__stalheartTest.state().shot'),'breach','no cut-away to the breach (2026-10-04): the seat comes on the first body');current='story-world-breach-emerge';await finish();
  await until('window.__stalheartTest.state().shot!=="breach"',20000);
  await until('/^(override|piloting)$/.test(window.__stalheartTest.state().story.phase)',90000);await delay(300);
  await until('window.__stalheartTest.state().story.said.includes("manual_override")',8000).catch(()=>assert.fail('Isao speaks the override line'));   // spoken as the seat is taken (seventh notes): the panel may already be the optic's

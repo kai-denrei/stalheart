@@ -6,7 +6,7 @@ import * as THREE from '../../vendor/three.module.js';
 import { buildWorld } from '../domain/world-recipe.js';
 import { planBase } from '../domain/base-plan.js';
 import { voiceSounds } from '../content/voice-hooks.js';
-import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT, STORY_SCALE, STORY_BREACH, STORY_QUIVER, STORY_DAY, STORY_FODDER, STORY_HANDOVER, STORY_EXPEDITIONS, STORY_BACK_DOOR, STORY_SKIP, STORY_BEATS, STORY_CONSTRUCTION, STORY_ROLLOUT, STORY_CHAPTERS, STORY_CHAPTER_END, STORY_NUKE_TANK } from '../content/story-defaults.js';
+import { STORY_RECIPE, STORY_CLEARING, STORY_SOUNDS, STORY_PILOT, STORY_SCALE, STORY_BREACH, STORY_QUIVER, STORY_DAY, STORY_FODDER, STORY_HANDOVER, STORY_EXPEDITIONS, STORY_BACK_DOOR, STORY_SKIP, STORY_BEATS, STORY_CONSTRUCTION, STORY_ROLLOUT, STORY_CHAPTERS, STORY_CHAPTER_END, STORY_NUKE_TANK, STORY_CALM } from '../content/story-defaults.js';
 import { findBackMouth } from '../domain/back-door.js';
 import { CONTENT } from '../content/runtime.js';
 import { FOUNDRY_TUNE } from '../content/foundry.js';
@@ -153,9 +153,10 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   const arrives = grow && stage === 1 && phase == null && !!sh02 && ['sh02-salvage', 'foundry'].every((id) => plan.structures.some((s) => s.id === id));
   const pastLanding = stage === 1 && phase != null && phase !== 'landed';   // a chapter or a jump past it: the rocket is already salvage
   // the hard cores' holding ring: lane cells hold[0]..hold[1] hops outside the forward cell, seen from the Quiver; a held one only
-  // wanders within it. The Quiver's two rise on its far side, already in sight as its optic opens (owner, 2026-10-05)
-  const ring = holdRing(built, planet, plan.cells.forward, STORY_QUIVER.hold, plan.sockets[1]?.pos ?? null), rise = riseCells(ring, planet.graph.centers, plan.cells.forward);
-  const beats = stage >= 1 ? makeStoryBeats({ fodderEvery: STORY_FODDER.every, fodderAlive: STORY_FODDER.alive, fodderTotal: STORY_FODDER.total, fodderEmerge: STORY_FODDER, socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, ...STORY_BEATS, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER, quiverRise: rise, foundry: FOUNDRY_TUNE, startPhase: phase ?? 'landed', gateReady: () => base.gate().built, construction: hullStep ? STORY_CONSTRUCTION : null, arrival: arrives, foundryCut: chapter?.foundry ?? null }) : null;
+  // wanders within it. The Quiver's two rise beyond it (STORY_QUIVER.rise), on the horizon as its optic opens, and walk in (owner, 2026-10-05)
+  const perch = plan.sockets[1]?.pos ?? null, ring = holdRing(built, planet, plan.cells.forward, STORY_QUIVER.hold, perch), far = holdRing(built, planet, plan.cells.forward, STORY_QUIVER.rise, perch);
+  const rise = riseCells(far.size >= 2 ? far : ring, planet.graph.centers, plan.cells.forward);
+  const beats = stage >= 1 ? makeStoryBeats({ fodderEvery: STORY_FODDER.every, fodderAlive: STORY_FODDER.alive, fodderTotal: STORY_FODDER.total, fodderEmerge: STORY_FODDER, socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, ...STORY_BEATS, calmMax: STORY_CALM.maxHold, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER, quiverRise: rise, foundry: FOUNDRY_TUNE, startPhase: phase ?? 'landed', gateReady: () => base.gate().built, construction: hullStep ? STORY_CONSTRUCTION : null, arrival: arrives, foundryCut: chapter?.foundry ?? null }) : null;
   const story = stage >= 1 ? {
     sockets: new Set(), home: plan.cells.landing, socketLift: 0,
     // the solar array's shield pad (src/content/shield-array.js): its island's centre on the unit sphere, standing once the island is; a build programme stands it later by setting `standing`

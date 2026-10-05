@@ -47,8 +47,8 @@ export function createBackDoor(host) {
       showBrief('back_door');
       host.story().hud.tremor(null);
       host.story().hud.back(m.dir);
-      // the dive shot only when nothing else owns the camera
-      if (!host.paused() && !host.deploy() && !shotActive() && !host.pilotMode() && !host.pilot()?.gunship) startDiveShot({ camera, startShot, cellSide: host.cellSide() }, new THREE.Vector3(...m.dir), { id: 'backdoor', preRoll: host.story().backDoor.preRoll, hold: host.story().backDoor.hold, tail: host.story().breachShot.tail ?? 1.8, dive: host.story().backDoor.dive, fromCamera: true });
+      // the dive shot only when nothing else owns the camera, and never over the hull in a crowd (STORY_CALM)
+      if (!host.paused() && !host.deploy() && !shotActive() && !host.pilotMode() && !host.pilot()?.gunship && !storyApi.danger?.()) startDiveShot({ camera, startShot, cellSide: host.cellSide() }, new THREE.Vector3(...m.dir), { id: 'backdoor', preRoll: host.story().backDoor.preRoll, hold: host.story().backDoor.hold, tail: host.story().breachShot.tail ?? 1.8, dive: host.story().backDoor.dive, fromCamera: true });
       return down.length;
     },
     backDoorOpen: () => !!host.story()?.backOpen,

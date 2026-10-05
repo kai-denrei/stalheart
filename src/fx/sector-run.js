@@ -18,6 +18,7 @@ import { computeWavePlan, ENEMY_SPEC } from '../enemyspec.js';
 import { waveCount, waveGap } from '../domain/wave-spread.js';
 import { isStampede, stampedeWave } from '../domain/stampede.js';
 import { packSquads } from '../domain/squads.js';
+import { STORY_CALM } from '../content/story-defaults.js';
 import { POINT_SCALE, waveScore } from '../score.js';
 import { waveClearBonus } from '../domain/economy.js';
 import { createSectorDebrief } from './sector-debrief.js';
@@ -334,7 +335,7 @@ export function createSectorRun(h) {
     }
     if (cardLeft > 0) { cardLeft -= dt; if (cardLeft <= 0) card([]); }
     if (phase === 'lost') { left -= dt; if (left <= 0) finish('lost'); return; }
-    if (phase === 'secure') { left -= dt; if (left <= 0 && !api.engaged?.()) finish('secure'); return; }   // the debrief waits out a fight in the gunship's or SOL's seat
+    if (phase === 'secure') { left -= dt; if ((left <= 0 && !api.engaged?.()) || left <= -STORY_CALM.maxHold) finish('secure'); return; }   // the debrief waits out a fight (STORY_CALM)
     if (phase !== 'fighting') return;
     for (const id of pending.slice()) {
       const b = breachOf(id);

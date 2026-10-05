@@ -28,7 +28,7 @@ import { makeWorks, launchDue, beginLaunch, collectorUp, energyBonus } from '../
 import { createOrbitalRing } from './orbital-ring.js';
 import { createScoreboard } from './scoreboard.js';
 import { createSiteBeacons } from './site-beacons.js';
-import { STORY_EXPEDITIONS } from '../content/story-defaults.js';
+import { STORY_EXPEDITIONS, STORY_CALM } from '../content/story-defaults.js';
 import { createIsaoStrike } from './isao-strike.js';
 import { createGunshipAuto, landGunshipRounds } from './gunship-auto.js';
 import { GUNSHIP_AUTO, GUNSHIP_ORBIT } from '../content/gunship.js';
@@ -56,6 +56,11 @@ import { createHullHost } from './hull-issue.js';
 
 export function createProgrammeHost(c) {
   const { PLAYER_MAX, orders, breachQueue, breachedCells, gunshipRig, showBrief, spawnIsao, updateHud, syncLifeContainers, rebuildAfterBreach, recomputePortalDist, adoptBays } = c;
+  const danger = () => {   // engaged() below
+    const seat = !!(c.pilot()?.gunship || c.laserStation?.seated?.()), hull = c.playerPos(), r = STORY_CALM.near * c.cellSide();
+    for (const e of c.enemies()) if (e.alive && !e.guard && (seat || Math.hypot(e.pos[0] - hull[0], e.pos[1] - hull[1], e.pos[2] - hull[2]) < r)) return true;
+    return false;
+  };
   return {
     // ISAO KEEPS BUILDING (src/content/base-programme.js, src/domain/build-programme.js): perks() and hasPerk(name) are what the
     // orbital laser, the shield station and the gunship meter consult
@@ -64,10 +69,17 @@ export function createProgrammeHost(c) {
     // THE NUKE'S TANK (src/domain/story-beats.js tankAfterNuke): the MK-9 blasts so far, and the hull handed over on the lane before
     // the Stålheart stands (src/fx/hull-issue.js early)
     nukes: () => c.story()?.nukes?.length ?? 0,
-    // THE PLAYER IS BUSY (owner, 2026-10-05: "if the user is in given special action. Gunship/SOL, surrounded by enemies; do not
-    // interrupt with a fixed delay event"): in the gunship's or SOL's seat with hostile bodies still up. The story's timed beats
-    // (src/domain/story-beats.js) and a sector's debrief (src/fx/sector-run.js) wait until it is not
-    engaged: () => !!(c.pilot()?.gunship || c.laserStation?.seated?.()) && c.enemies().some((e) => e.alive && !e.guard && !e.harmless),
+    // THE PLAYER IS BUSY (STORY_CALM; owner, 2026-10-05, twice: the gunship's or SOL's seat surrounded, then the hull in a crowd).
+    // danger(): a body within `near` cells of the hull, or any body up while the player is in the gunship's or SOL's seat: a camera
+    // shot that would cut in now is skipped (the back door's collapse, SOL-88's launch, a sector breach's dive). engaged(): danger, or a
+    // hostile anywhere, and for `calm` seconds after: the story's timed beats (src/domain/story-beats.js) and a sector's debrief
+    // (src/fx/sector-run.js) wait it out
+    danger,
+    engaged: () => {
+      const s = c.story(), t = c.t(); if (!s) return false;
+      if (danger() || c.enemies().some((e) => e.alive && !e.guard && !e.harmless)) s.busyAt = t;
+      return t - (s.busyAt ?? -Infinity) < STORY_CALM.calm;
+    },
     tankReady: () => { const s = c.story(); return !!s?.hull?.early(s.hullHost ??= createHullHost(c), s.nukeBerth?.(s.nukes.at(-1) ?? -1)); },
     build: () => {
       const pg = c.story().programme, sector = c.story().sectorN ?? 0;
@@ -278,7 +290,7 @@ export function createProgrammeHost(c) {
         // seconds while Isao narrates the phases; skippable, and never over a manned seat
         const say = { charging: 'sol88_charge', released: 'sol88_away' };
         c.story().launch = createArcLaunch({ launcher: root, now: () => c.t(), sfx: c.sfx, onPhase: (ph) => { if (say[ph]) showBrief(say[ph]); }, onComplete: () => { c.laserStation?.setAuto?.(true); c.story().sol88 = true; c.story().launch = null; c.sectorRun()?.note({ type: 'launch', id: 'sol88' }); if (!c.pilotMode() && !c.briefQ()) showBrief('sol88_online'); updateHud(); } });
-        if (root && c.startShot && !c.pilotMode() && !c.laserStation?.seated?.()) {
+        if (root && c.startShot && !c.pilotMode() && !c.laserStation?.seated?.() && !danger()) {   // never over the hull in a crowd (STORY_CALM)
           const L = root.getWorldPosition(new THREE.Vector3()), n = L.clone().normalize(), m = c.cellSide() / 10;
           const side = new THREE.Vector3().setFromMatrixColumn(root.matrixWorld, 0).normalize(), fwd = new THREE.Vector3().setFromMatrixColumn(root.matrixWorld, 2).normalize();
           // behind the breech on the base side, a little off the rail and above it, looking down the rail the way the payload flies
