@@ -4447,6 +4447,11 @@ body.playing:not(.shell-open) #shell-bar { opacity: 0.32; }
 .sdb-clip { margin: 0; border: 1px solid var(--sdb-line); background: #000; }
 .sdb-clip canvas { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; filter: grayscale(1) contrast(1.25) brightness(1.05); }
 .sdb-clip figcaption { padding: 6px 10px; font-size: 14px; letter-spacing: 0.1em; color: var(--sdb-accent); }
+.sdb-lapse-film { max-width: min(100%, 720px, calc((100cqh - 260px) * 16 / 9)); margin-top: clamp(14px, 2cqi, 26px); }
+.sdb-lapse-film canvas { filter: none; }
+.sdb-lapse-film figcaption { display: flex; align-items: center; gap: 14px; }
+.sdb-lapse-bar { flex: 1; height: 3px; background: var(--sdb-faint); }
+.sdb-lapse-bar > i { display: block; height: 100%; width: 0; background: var(--sdb-accent); }
 .sdb-best-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: clamp(10px, 1.6cqi, 22px); margin-top: clamp(14px, 2cqi, 26px); }
 .sdb-best { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: 1px solid var(--sdb-line); background: var(--sdb-faint); }
 .sdb-best > span { font-size: 14px; letter-spacing: 0.12em; color: var(--sdb-dim); }

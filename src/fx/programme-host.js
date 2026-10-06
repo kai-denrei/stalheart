@@ -47,6 +47,7 @@ import { BRIEFS } from '../isaobriefs.js';
 import { storage } from '../storage.js';
 import * as THREE from '../../vendor/three.module.js';
 import { createMomentReel } from './moment-reel.js';
+import { createColonyLapse } from './colony-lapse.js';
 const loadDyes = () => { try { return JSON.parse(storage.getItem(DYE_SHOP.store) ?? 'null'); } catch { return null; } };
 const saveDyes = (b) => { try { storage.setItem(DYE_SHOP.store, JSON.stringify(b)); } catch { /* a refused store: the dyes last this run */ } };
 import { nextRepair, shotHoles, rimHoles } from '../domain/repair-orders.js';
@@ -88,11 +89,17 @@ export function createProgrammeHost(c) {
       const pg = c.story().programme, sector = c.story().sectorN ?? 0;
       // THE BEST MOMENTS, FILMED (src/fx/moment-reel.js): the run's best ram combo and every tactical nuke, for the campaign card
       if (c.renderer && typeof document !== 'undefined') (c.story().reel ??= createMomentReel(c.renderer)).watch(c.t(), { combo: c.combo?.() ?? 0, nukes: c.story().nukes?.length ?? 0, strikeKills: c.kills?.()?.strike ?? 0, sector });
+      // THE COLONY RISES (src/fx/colony-lapse.js): framed on the heart and the rim at the first tick, a still then and at every print and sector
+      if (c.renderer && c.scene && typeof document !== 'undefined' && !(c.story().lapse ??= createColonyLapse(c.renderer, c.scene)).framed()) {
+        const g = c.graph(), h = g.centers[c.dungeon().heart], d = (ci) => Math.hypot(g.centers[ci][0] - h[0], g.centers[ci][1] - h[1], g.centers[ci][2] - h[2]);
+        c.story().lapse.frame(h, Math.max(c.cellSide() * 8, ...(c.story().wallCells ?? []).map(d))); c.story().lapse.shoot('THE LANDING');
+      }
       // THE FIRST MÖRK ROLLS OUT OF THE STÅLHEART (src/fx/hull-issue.js): the camera runs to the door's framing with the hull
       // standing under the gantry, then it drives out as any deploy does; under a gunner it is set down outside the door
       c.story().hull?.tick(c.story().hullHost ??= createHullHost(c));
       // the assembly line rebuilds a lost hull at a sector's start; the farm pays its biomass
       if (sectorStarted(pg, sector)) {
+        c.story().lapse?.shoot(`SECTOR ${String(sector).padStart(2, '0')}`);
         if (programmeHas(pg, 'rebuild') && c.playerHP() < PLAYER_MAX) { c.setPlayerHP(Math.min(PLAYER_MAX, c.playerHP() + BASE_PERKS.rebuildHulls)); syncLifeContainers(); updateHud(); }
         if (programmeHas(pg, 'farm') && sector > 0) { c.eco?.()?.addBiomass(BASE_PERKS.farmKg, { category: 'farm' }); updateHud(); }
       }
@@ -277,6 +284,7 @@ export function createProgrammeHost(c) {
     },
     printed: (step) => {
       c.story().print.finish(step);
+      c.story().lapse?.shoot(String(step.label ?? step.id).toUpperCase());
       programmeFinish(c.story().programme, step);
       // THE BACK GATE STANDS: it seals its mouth through story.sealed, and its mounts beside the back lane become sockets a sentry
       // can be ordered on

@@ -78,6 +78,15 @@ export function initDebriefTab(root) {
       g.fillStyle = '#fff'; g.fillRect(i * 10, 60, 28, 22); return c; }) });
     return (clips ??= [film('RAM COMBO ×24 · SECTOR 03', 'ram', 24, 160), film('TACTICAL NUKE · 61 KILLS · SECTOR 02', 'nuke', 61, 30)]);
   }
+  // stand-in stills for THE COLONY RISES (src/fx/colony-lapse.js shoots the real ones): a base growing block by block
+  let lapse = null;
+  function sampleLapse() {
+    const names = ['THE LANDING', 'FOUNDRY', 'ROTOR', 'GATE', 'WALLS', 'QUIVER', 'STALHEART', 'SECTOR 01', 'RADAR', 'ARMORY', 'SECTOR 05', 'ARC-01'];
+    return (lapse ??= names.map((label, i) => { const c = document.createElement('canvas'); c.width = 384; c.height = 216; const g = c.getContext('2d');
+      g.fillStyle = '#12201c'; g.fillRect(0, 0, 384, 216); g.fillStyle = '#2f6b5c';
+      for (let k = 0; k <= i; k++) g.fillRect(150 + ((k * 47) % 120) - 40, 70 + ((k * 31) % 80), 26, 18 + k * 2);
+      return { label, frame: c }; }));
+  }
   function dismissed(what) {
     events.push({ what, sample });
     idle.querySelector('[data-f=why]').textContent = what;
@@ -85,7 +94,7 @@ export function initDebriefTab(root) {
   }
   function run() {
     idle.hidden = true;
-    if (sample === 'campaign') debrief.showCampaign({ ...DEBRIEF_SAMPLES.campaign, clips: sampleClips() }, { isao: DEBRIEF_SAMPLE_ISAO.campaign });
+    if (sample === 'campaign') debrief.showCampaign({ ...DEBRIEF_SAMPLES.campaign, clips: sampleClips(), lapse: sampleLapse() }, { isao: DEBRIEF_SAMPLE_ISAO.campaign });
     else debrief.show(DEBRIEF_SAMPLES[sample], { isao: DEBRIEF_SAMPLE_ISAO[sample] });
     paintBar();
   }

@@ -41,6 +41,20 @@ Evidence:
 - --debrief passes, the campaign's three pages at full, 1280 and 400 px; it had been failing on main since the 2026-10-03 summary page (a report's press closes the card; the hero's grid is .sdb-sum-grid): the step now walks a report's tabs with the arrow
 - npm test (181 programs) and npm run check pass
 
+## 2026-10-06 — The ending, step three: THE COLONY RISES, a still of the base at every print and sector played back as a time-lapse
+
+change · accepted · 2026-10-06-the-colony-rises-time-lapse
+
+Owner, 2026-10-06 (on note 6): 'maybe a 3/4 or top-down time-lapse of the colony being built from nothing to fully developed'. Plan: 2026-10-06-the-ending-plan-and-the-run-recap.
+
+src/fx/colony-lapse.js: one fixed camera three-quarters over the heart (framed at the programme's first tick from the heart and the farthest rim wall cell), a still drawn into a 384 x 216 render target and read back at the first tick (THE LANDING), at every print Isao finishes (named by its step) and at every sector's start; up to 90. The sector run hands story.lapse.stills() to the campaign card, whose fourth page THE COLONY RISES plays them at 420 ms a still with the step's name and a progress bar, holding the last. The debrief lab shows stand-in stills.
+
+Evidence:
+
+- new step --colony-lapse: a growing bare page shoots THE LANDING, GATE AND WALLS, STÅLHEART, LANDING PAD in its first four minutes; three stills saved (artifacts/browser/colony-lapse-*.png)
+- --debrief passes with four campaign pages
+- open: the stills are not tone-mapped (a render target skips three's tone mapping), so the lattice reads brighter than in play, and the rim's walls sit at the frame's edge; framing worth the owner's eye
+
 ## 2026-10-06 — The ending, step two: the run's best ram combo and best tactical nuke filmed in play and played back grey on THE BEST MOMENTS
 
 change · accepted · 2026-10-06-the-best-moments-filmed

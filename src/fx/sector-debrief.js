@@ -303,7 +303,15 @@ function pageBest(camp) {
     ${clips}<div class="sdb-best-grid">${tiles || '<div class="sdb-none">NOTHING TO SHOW YET</div>'}</div>
   </section>`;
 }
-const CAMPAIGN_PAGES = [pageCampaign, pageRun, pageBest];
+// THE COLONY RISES: the stills of src/fx/colony-lapse.js, the landing to the last print, played as a time-lapse (mountLapse)
+function pageLapse(camp) {
+  const n = (camp?.lapse ?? []).length;
+  return `<section class="sdb-page sdb-lapse">
+    <h2 class="sdb-title" data-reveal data-at="0">THE COLONY RISES</h2>
+    ${n ? `<figure class="sdb-clip sdb-lapse-film" data-reveal data-at="200"><div data-lapse></div><figcaption><span data-lapse-label></span><i class="sdb-lapse-bar"><i data-lapse-k></i></i></figcaption></figure>` : '<div class="sdb-none">NO STILLS FROM THIS RUN</div>'}
+  </section>`;
+}
+const CAMPAIGN_PAGES = [pageCampaign, pageRun, pageBest, pageLapse];
 
 const REPORT_PAGES = [pageHero, pageBreaches, pageKills, pageTank, pageColony];
 
@@ -542,7 +550,7 @@ export function createSectorDebrief(host, options = {}) {
   }
   function showCampaign(nextCampaign, { isao: lines } = {}) {
     mode = 'campaign'; campaign = nextCampaign; report = null; isao = lines || null;
-    labels = ['THE COLONY HOLDS', 'THE RUN', 'THE BEST MOMENTS'];
+    labels = ['THE COLONY HOLDS', 'THE RUN', 'THE BEST MOMENTS', 'THE COLONY RISES'];
     seen = new Set();
     root.dataset.mode = 'campaign';
     root.dataset.outcome = 'secure';
@@ -562,6 +570,15 @@ export function createSectorDebrief(host, options = {}) {
       let k = 0;
       const step = () => { g.drawImage(frames[Math.min(k, frames.length - 1)], 0, 0); k = (k + 1) % (frames.length + hold); };
       step(); clipTimers.push(view.setInterval(step, 1000 / (clip.fps ?? 8)));
+    }
+    // the time-lapse: a still every LAPSE_MS with its name under it, the last one held, then again from the landing
+    const slot = body.querySelector('[data-lapse]'), stills = campaign?.lapse ?? [];
+    if (slot && stills.length) {
+      const cv = doc.createElement('canvas'); cv.width = stills[0].frame.width; cv.height = stills[0].frame.height; slot.append(cv);
+      const g = cv.getContext('2d'), label = body.querySelector('[data-lapse-label]'), bar = body.querySelector('[data-lapse-k]'), LAPSE_MS = 420, hold = 6;
+      let k = 0;
+      const step = () => { const i = Math.min(k, stills.length - 1); g.drawImage(stills[i].frame, 0, 0); label.textContent = stills[i].label; bar.style.width = `${(((i + 1) / stills.length) * 100).toFixed(1)}%`; k = (k + 1) % (stills.length + hold); };
+      step(); clipTimers.push(view.setInterval(step, LAPSE_MS));
     }
   }
   function hide() {

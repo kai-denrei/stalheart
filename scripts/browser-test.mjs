@@ -1602,6 +1602,17 @@ try{
  assert(r.frames>=1&&r.w===256,'the clip holds small frames of the game');
  {const url=await evaluate(`${T}.showcase.reelFrame('ram',${Math.floor(r.frames*0.6)})`);writeFileSync(join(output,'moment-reel-frame.png'),Buffer.from(url.split(',')[1],'base64'));}
  current='moment-reel';await finish();
+ } else if(args.includes('--colony-lapse')) {
+ // THE COLONY RISES (owner, 2026-10-06): a growing base shoots a still at its first tick and at every print; four of them saved
+ const T='window.__stalheartTest';
+ await go('colony-lapse','index.html?sw=0&acceptance=1&cine=0&world=story&threat=0.35&heart=none#td');
+ await until(`!!${T}&&!!${T}.state().programme`,90000);
+ await until(`${T}.showcase.lapse().length>=1`,60000).catch(async()=>assert.fail('no still at the first tick'));
+ await until(`${T}.showcase.lapse().length>=4`,240000).catch(()=>{});
+ const names=await evaluate(`${T}.showcase.lapse()`);console.log(`COLONY LAPSE ${names.length} stills: ${names.join(' · ')}`);
+ assert(names.length>=2,'a still per print');
+ for(const i of [0,Math.floor(names.length/2),names.length-1]){const url=await evaluate(`${T}.showcase.lapseFrame(${i})`);writeFileSync(join(output,`colony-lapse-${i}.png`),Buffer.from(url.split(',')[1],'base64'));}
+ current='colony-lapse';await finish();
  } else if(args.includes('--round9')) {
  // THE OWNER'S NINTH NOTES (2026-10-02): SOL's automated pass counts down, fires from one point in the sky and spares the base; the
  // stampede (every second wave a mouth sends) floods the lane with rammable bodies; the auto gunship's tracers age out
@@ -2814,7 +2825,7 @@ try{
  // of the frame sideways. Dismissed by hand only: Space on the last page points at CONTINUE, Esc changes nothing, and
  // only the buttons close the card.
  const PAGES=['THE BREACHES','THE KILLS','THE TANK','THE COLONY'];
- const LABELS={secure:['SECURE',...PAGES],flawless:['SECURE',...PAGES],lost:['LAST TRANSMISSION',...PAGES],campaign:['THE COLONY HOLDS','THE RUN','THE BEST MOMENTS']};
+ const LABELS={secure:['SECURE',...PAGES],flawless:['SECURE',...PAGES],lost:['LAST TRANSMISSION',...PAGES],campaign:['THE COLONY HOLDS','THE RUN','THE BEST MOMENTS','THE COLONY RISES']};
  const dbf=()=>evaluate('window.__stalheartDebriefTest.state()');
  const press=async key=>{const code=key===' '?'Space':key;
   await send('Input.dispatchKeyEvent',{type:'keyDown',key,code,...(key===' '?{text:' '}:{})});await send('Input.dispatchKeyEvent',{type:'keyUp',key,code});await delay(120);};
