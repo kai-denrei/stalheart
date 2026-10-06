@@ -89,7 +89,7 @@ import { makeAudio } from './audio.js'; import { isaoSay } from './fx/isao-voice
 import { DEATH_KEYS } from './audiomanifest.js';
 
 export function initTdTab(root) {
-  let controlsCard = null, pilotMode = false, storyViews = null, pilotHost = null, storyMonitor = null, daylight = null, storyScope = null, syntheticModal = null, brass = null, hudFrame = -1, hudDirty = false, frameNo = 0, inFrame = false;   // the story enters it at runtime; the view strip unlocks after the first wave
+  let controlsCard = null, pilotMode = false, storyViews = null, viewWas = null, pilotHost = null, storyMonitor = null, daylight = null, storyScope = null, syntheticModal = null, brass = null, hudFrame = -1, hudDirty = false, frameNo = 0, inFrame = false;   // the story enters it at runtime; the view strip unlocks after the first wave
   let pilot = null;
   let pilotPosts = [], pilotPost = 0;
   const pilotMounts = [];
@@ -1942,13 +1942,8 @@ export function initTdTab(root) {
   // follow-cam — mean exactly "is the free camera up", and that meaning is
   // unchanged. It is assigned in ONE place, here.
   function setView(v) {
-    // THE SHELL HAS TWO VIEWS (ruling 3): DRIVE is third person, BUILD is
-    // orbit. First person, the drone ride and the bastion cam are desktop
-    // pleasures; on a phone the drone ride was one tap on Isao (he hovers
-    // beside the tank printing towers) and one on the toast's button in the
-    // caption lane — and the operator was riding him without knowing it:
-    // "the tank is below the frame, I only see the tip of its plasma, the
-    // POV looks too high".
+    // THE SHELL HAS TWO VIEWS (ruling 3): DRIVE is third person, BUILD is orbit. First person, the drone and the bastion cam are desktop
+    // only: on a phone one tap on Isao rode the drone unawares ("the tank is below the frame ... the POV looks too high")
     if (mobileShell && (v === 'pov' || v === 'drone' || v === 'bastion') && !pilotMode) v = 'third';
     // the drone view needs a drone: he is normally on shift from the first
     // second, but a board that has not finished loading his bytes yet would
@@ -8138,9 +8133,9 @@ export function initTdTab(root) {
     screenOpen: () => !!syntheticModal?.isOpen(),
     // FACE ON (the first framing sat between his legs and the rocket): in front of the LED panel along his own forward, a
     // drone-size or two out, the queued line cleared so his first line is the first thing on the panel
-    closeup: () => { if (!isao) return; leavePilot(); storyViews?.active('tank'); clearBriefs(); startShot({ id: 'isaoTalk', dur: 9, poseAt: (u, out) => poseCamera(isaoFace(isao.obj.position.toArray(), isao.dir, isao.obj.getWorldDirection(new THREE.Vector3()).toArray(), isao.obj.scale.x, u), out) }); },
+    closeup: () => { if (!isao) return; viewWas = { view: params.view, seat: storyViews?.now() }; leavePilot(); storyViews?.active('tank'); clearBriefs(); startShot({ id: 'isaoTalk', dur: 9, poseAt: (u, out) => poseCamera(isaoFace(isao.obj.position.toArray(), isao.dir, isao.obj.getWorldDirection(new THREE.Vector3()).toArray(), isao.obj.scale.x, u), out) }); },
     sites: () => story.hud.sites(story.sites.map((ci) => norm3(graph.centers[ci]))),
-    planetView: () => { if (!story.sites.length) return; const d = sitesDir(story.sites.map((ci) => graph.centers[ci])); startShot({ id: 'sites', dur: 5, poseAt: (u, out) => poseCamera(orbitFrame(d, sitesRadius(u)), out), onEnd: () => setView('orbit') }); },
+    planetView: () => { if (!story.sites.length) return; const d = sitesDir(story.sites.map((ci) => graph.centers[ci])); startShot({ id: 'sites', dur: 5, poseAt: (u, out) => poseCamera(orbitFrame(d, sitesRadius(u)), out), onEnd: () => storyViews ? storyViews.back(viewWas, setView) : setView('orbit') }); },
     near: (ci, r = 2.2) => enemies.some((e) => e.alive && chord(e.pos, graph.centers[ci]) < cellSide * r),
     kills: () => rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike,
     screen: (id) => { if (id !== 'synthetic') return; syntheticModal ??= createSyntheticModal(root); const was = paused; paused = true; syntheticModal.open(BRIEFS.vibration_study.lines, () => { paused = was; }); },

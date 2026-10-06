@@ -1554,6 +1554,22 @@ try{
  while(Date.now()-t0<40000){const r=await evaluate(`(()=>{const s=${T}.state(),b=document.querySelector("#td-brief"),m=document.querySelector(".synthetic-modal,#synthetic-modal");return [s.story?.phase,s.shot,b&&!b.classList.contains("hidden")?(b.textContent||"").replace(/\\s+/g," ").slice(0,70):"-",m&&!m.hidden&&getComputedStyle(m).display!=="none"?"SCREEN":""].join(" | ");})()`);
   if(r!==last){rows.push(((Date.now()-t0)/1000).toFixed(1)+'s '+r);last=r;}await delay(200);}
  console.log(rows.join('\n'));
+ } else if(args.includes('--study-view')) {
+ // THE VIEW BACK (owner, 2026-10-06: "after the language analysis the player is left in a bird's-eye view: go back to whichever view
+ // was interrupted"): the hull in third person before Isao's close-up, the screen, the sites from orbit, then third person again
+ const T='window.__stalheartTest';
+ await go('study-view','index.html?sw=0&acceptance=1&cine=0&skip=expedition#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ const build=()=>evaluate('!!document.querySelector("#story-views")?.closest(".build")');
+ await until('!!document.querySelector("#synthetic-modal:not([hidden])")',60000);
+ assert.equal(await build(),false,'the study interrupted the drive, not the map');
+ await delay(800);await evaluate('document.querySelector("#synthetic-modal [data-continue]").click()');
+ await until(`${T}.state().story.phase==="expedition"`,20000);
+ await until(`${T}.state().shot===null`,20000);await delay(600);
+ const after=await evaluate('[document.querySelector("#story-views button.active")?.dataset.view,!!document.querySelector("#story-views")?.closest(".build")]');
+ console.log(`STUDY VIEW after the sites: strip ${after[0]} build ${after[1]}`);
+ assert.deepEqual(after,['tank',false],'back to the drive the close-up interrupted, not the bird\'s-eye view');
+ current='study-view-back';await finish();
  } else if(args.includes('--round9')) {
  // THE OWNER'S NINTH NOTES (2026-10-02): SOL's automated pass counts down, fires from one point in the sky and spares the base; the
  // stampede (every second wave a mouth sends) floods the lane with rammable bodies; the auto gunship's tracers age out

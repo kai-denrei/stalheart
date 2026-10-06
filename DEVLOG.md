@@ -15,6 +15,19 @@ Evidence:
 - --opening: hovering ISAO 01 then 02 logs welcome_panic_01 and welcome_frood_01 after welcome_01 welcome_settle_01; the landing's lines follow unchanged
 - the unit sounds are not asserted in headless Chrome (sfx.say returns a handle only with a decoded buffer); worth the owner's ear
 
+## 2026-10-06 — After the language analysis the player goes back to the view Isao's close-up interrupted, not the bird's-eye view
+
+change · accepted · 2026-10-06-view-back-after-the-study
+
+Owner, 2026-10-06 (twenty-sixth notes, 2): after the language analysis the player is left in a bird's-eye view; go back to whichever view was interrupted. The study's sites shot (storyApi.planetView) ended in setView('orbit') whatever the player had been in.
+
+storyApi.closeup remembers the camera view and the strip's view (viewWas) before it takes the camera; the sites shot ends in storyViews.back(viewWas, setView) (src/fx/story-views.js now/back): a seat whose strip button is still lit is taken again through that button, else the camera view the player had, the strip marked to match. td-tab paid for it by compressing the setView comment (byte budget 522450, line budget 8752).
+
+Evidence:
+
+- new step --study-view (?skip=expedition): the screen opens over the drive, CONTINUE, the sites shot, then the strip on TANK and no build view
+- npm run architecture passes
+
 ## 2026-10-06 — Session sync after the twenty-fifth notes: three lessons from the round, and the owner's twenty-sixth notes queued for the next session
 
 issue · observed · 2026-10-06-session-sync-twenty-fifth-notes-and-the-twenty-sixth-queued

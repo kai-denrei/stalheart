@@ -38,7 +38,16 @@ export function createStoryViews(root, on) {
     next.click();
   };
   globalThis.addEventListener?.('keydown', onKey, true);
-  return { active, mounts, station, meter, sol82, tank, dispose() { globalThis.removeEventListener?.('keydown', onKey, true); nav.remove(); } };
+  // THE VIEW BACK (owner, 2026-10-06: "after the language analysis the player is left in a bird's-eye view: go back to whichever view
+  // was interrupted"): `now` is the strip's view; `back(was, setView)` takes a seat again through its own button when it is still lit,
+  // else the camera view the player had
+  const now = () => current;
+  function back(was, setView) {
+    const b = was && !['tank', 'map'].includes(was.seat) && nav.querySelector(`[data-mount="${was.seat}"], [data-view="${was.seat}"]`);
+    if (b && !b.hidden && !b.disabled) { b.click(); return; }
+    setView(was?.view ?? 'orbit'); active(was?.view === 'orbit' ? 'map' : 'tank');
+  }
+  return { active, mounts, station, meter, sol82, tank, now, back, dispose() { globalThis.removeEventListener?.('keydown', onKey, true); nav.remove(); } };
 }
 
 // THE CONTROLLER'S SIDE of the strip, moved out of the controller's storyApi unchanged; the controller merges it back into
