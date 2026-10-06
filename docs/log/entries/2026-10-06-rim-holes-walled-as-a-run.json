@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "2026-10-06-rim-holes-walled-as-a-run",
+  "date": "2026-10-06",
+  "type": "change",
+  "status": "resolved",
+  "title": "A hole in the rim's rock comes back as a run of kit walls along the rim's line, not one lone segment",
+  "context": "Owner, 2026-10-06 (twenty-seventh notes, 8): walls from breaches not fully rebuilt; better, but edge cases still fail: one breach covered by a run of kit walls, one failure with a few lone segments in an open area. Of the four repair paths only the wall cells' restoreWall and the back door's patchLine laid a line; a shell's hole and a rim hole (2026-10-04, 2026-10-05) went through patchWall, which copied the nearest front segment turned about the planet's centre onto the cell: one 4 m segment in the middle of a 10 m cell drawn as floor, at the front wall's heading whatever the hole's side of the base, so a few mended cells together read as lone segments in open ground (the same failure 2026-10-06-back-gate-shoulders-walled recorded and fixed for the back only).",
+  "outcome": "src/fx/story-base.js patchWall(cell, at, owns): the rim is the circle round the base's centre (the frame's pole) through the cell; segments are laid along it wallLength apart, each facing the centre, and the ones ownCell puts on this cell are printed (two or more a cell), so neighbouring holes continue one another's run; none owned, the cell stays rock. programme-host hands the ownership test; showcase.cells reports the segments a patched cell carries. New step --rim-holes: ?blast=3 opens the three rock cells nearest the hull, Isao's repair walls them, each patched cell with two or more segments.",
+  "alternatives": [
+    "Extending the front arc's formula past wallsPerSide: only covers holes beside the front gate; the rim circle through the hole covers any side",
+    "Flush rock for holes the line does not cross: kept as the fallback when no segment is owned"
+  ],
+  "evidence": [
+    "--rim-holes: three cells shot open at boot (?blast=3), each closed by Isao's repair as rock with three kit segments (rim-holes-walled, rim-holes-wide stills)",
+    "--back-shoulders still passes (the door's line on the shoulders is patchLine, unchanged)",
+    "worth the owner's eye: a shell hole and a strike crater on the rim mended in play"
+  ],
+  "supersedes": [
+    "2026-10-05-twenty-second-notes-alien-voice-sectors-move-on-rounds-fly-on-walkers-walk"
+  ]
+}

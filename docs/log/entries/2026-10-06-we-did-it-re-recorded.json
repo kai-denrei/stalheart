@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "2026-10-06-we-did-it-re-recorded",
+  "date": "2026-10-06",
+  "type": "change",
+  "status": "resolved",
+  "title": "The ending's WE DID IT re-recorded as 'WE DID it!': a shouted all-caps short word is read as letters",
+  "context": "Owner, 2026-10-06 (twenty-seventh notes, 10): the line says 'it' as the letters I and T. seiyu_voice's shout variant for announce lines reads short all-caps words letter by letter (the lesson recorded in 2026-10-06-session-sync-twenty-sixth-notes-and-the-twenty-seventh-queued).",
+  "outcome": "seiyu_voice 6a3d2c0: a text_for_tts override on ending_did_it_01 ('WE DID it!'), re-rendered (1.099 s, was 1.312) and exported; scripts/import-isao-voice.mjs re-imported (only ending_did_it_01.mp3 and its lock entry changed). The screen still prints WE DID IT! (src/fx/orbital-finale.js LINES); the script text is unchanged.",
+  "alternatives": [
+    "Editing the script line itself to 'WE DID it!': the override keeps the script's text and id and changes only what is spoken"
+  ],
+  "evidence": [
+    "docs/isao-voice-audio.lock.json: ending_did_it_01 duration 1.099",
+    "npm test (183) green; the owner's ear on the line"
+  ],
+  "supersedes": []
+}

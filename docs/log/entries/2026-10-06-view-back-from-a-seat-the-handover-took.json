@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "2026-10-06-view-back-from-a-seat-the-handover-took",
+  "date": "2026-10-06",
+  "type": "change",
+  "status": "resolved",
+  "title": "The view back after the study, from a seat the handover took away: the hull's own view, never the seat's bastion camera",
+  "context": "Owner, 2026-10-06 (twenty-seventh notes, 2): STILL not solved, after the language analysis the player is set to a bird's-eye view. The 2026-10-06-view-back-after-the-study fix passed --study-view (?skip=expedition, the hull in third person) and failed in play. On the real path the player finishes sector 0 from the Rotor's or Quiver's seat; the handover at 'settled' automates the towers and the strip loses their buttons (createUnlockHost mounts([])), but the player stays seated until Isao's close-up, which records viewWas = { view: 'bastion', seat: 'rotor' }. storyViews.back() found no button and set the recorded view, 'bastion', with no seat open: the high camera over the heart, the strip saying TANK.",
+  "outcome": "src/fx/story-views.js back(): a seat whose button is gone hands back takeSeatView(was).view (src/domain/seat-view.js: bastion and drone are not places a leave returns to), so the hull's chase view comes back, the map only when the map was interrupted, third when nothing was recorded. test/story-views.mjs covers the four cases; --study-view asserts the camera view is third or pov (the old assertion, the strip not inside .build, could not see a bastion camera); --grow asserts the same after the study on the real path (the Rotor's seat through sector 0). Lesson kept: reproduce from the real handover before calling a camera fix done.",
+  "alternatives": [
+    "Re-seating the player in the automated tower: the seat is no longer his after the handover",
+    "Recording viewWas after leavePilot (the seat's base view): that is the map for a seat first taken from the map, the bird's-eye view again"
+  ],
+  "evidence": [
+    "node test/story-views.mjs",
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --study-view (this round)",
+    "--grow (this round, the real path)"
+  ],
+  "supersedes": [
+    "2026-10-06-view-back-after-the-study"
+  ]
+}

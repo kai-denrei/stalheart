@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "2026-10-06-corridor-probe-and-the-hull-in-narrow-tiles",
+  "date": "2026-10-06",
+  "type": "change",
+  "status": "resolved",
+  "title": "The MÖRK through the narrow tiles: a virtual driver's probe to rocket-b, and four hull fixes it found (the glide pinning the steer, the stuck detector blind to rocking, the wall inside rock, the building slide)",
+  "context": "Owner, 2026-10-06 (twenty-seventh notes, 3): the second-closest cargo: there is STILL a problem going through narrow tiles with the MÖRK. Nothing had ever driven the hull through a one-cell corridor (the twelfth to fourteenth notes tuned the kick and the glide on the rim, --defense teleports to the sites). New step --corridor-probe (SITE, SECS, STUCK_S, ASSERT): the shortest open route from the hull's cell to the site's stand (showcase.route, the buildings solid to the hull as walls), a driver that steers toward the next route cell, holds W, backs out of pockets, with the guards down and the sectors quiet; a per-sample trace (artifacts/corridor-trace.json) of cell, route index, open neighbours, movement, bearing, kicks, shot and pause. Rocket-b's route: 84 cells, 32 of them corridors.",
+  "outcome": "First runs: 19 of 81 cells then 134 s in one corridor cell, moving every frame and never leaving. The trace named four faults. (1) THE HOVER GLIDE PINNED THE STEER: with rock 0.9 cells ahead the glide turned the heading toward the wall's tangent at 4 rad/s every frame, outrunning the 2.6 rad/s steer, so at a bend the heading settled 0.65 rad off the tangent into the wall and the hull rocked there with A held; the glide now never runs against a held steer key. (2) THE STUCK DETECTOR WAS BLIND TO ROCKING: a step refused one frame and a creep back to the cell's centre the next moved the hull every frame, so src/domain/hull-stuck.js never fired and the squeeze that drops the nose and tail probes never came; progress is now the signed advance along the drive, counted from where the last frame left the hull (creep, ease and cushion included) and judged over HULL_STUCK.span 0.25 s. (3) nearestWall for a point already inside rock names that rock, not that rock's neighbours. (4) A building that stops the hull (story-base solidAt) is the wall the slide and the kick work off, its centre the way in; beside rock the hull only crept at a lander's footprint. Then the hull ran the whole route in 41 s with no slow cell and wedged only at the last corridor cell before rocket-b's clearing (506 -> 504), 2.7 cells from the lander, with nothing the diagnostics could name ahead (open, not rock, not solid): NOT FOUND. The part is secured there instead: the pickup radius is clear/10 + 1.3 cells (was + 1), and at least the chord to the nearest floor a hull can stand on beside a pocketed lander (open to the grid and clear of the solid buildings), at most two cells past the radius (expedition-glue standReach). The probe now reaches PART SECURED at route cell 77 of 84 in 41.5 s, six kicks, no slow cell.",
+  "alternatives": [
+    "Dropping the nose and tail probes in narrow cells: not tried; the stuck fix drops them within a quarter second of going nowhere",
+    "Carving the sites' clearings wider (clear 16 -> 24 m): changes the baked carve of the planet; not for this round",
+    "Leaving the last wedge: the owner's experience there is the part secured and the turn home, which is what the radius now gives"
+  ],
+  "evidence": [
+    "artifacts/round27-corridor-probe.log, artifacts/corridor-trace.json (the last run: REACHED at cell 77 of 84 in 41.5 s; kicks 6; still 0 of 392 samples; slow cells [])",
+    "node test/hull-stuck.mjs (rocking is stuck; moving on never is; release within a span), test/cargo.mjs (the stand reach, its cap)",
+    "--defense and --round13 pass with the hull changes (round13: 0.47 units in 12 s, 0 still samples, 2 kicks); --corridor-probe ASSERT=1: REACHED at cell 77 of 84 in 49.2 s, 8 kicks, no still sample, no slow cell; the default browser suite's 46 steps pass",
+    "OPEN: the refusal at rocket-b's last corridor cell (506 -> 504); the probe's trace is the tool, and a freeBlocked-reason hook would be the next step"
+  ],
+  "supersedes": []
+}

@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "2026-10-06-squads-closer-staggered-mixed-big-waves-only",
+  "date": "2026-10-06",
+  "type": "change",
+  "status": "resolved",
+  "title": "Squads only for the big waves, singles mixed among them, the clump closer and staggered with each member on its own wobble phase",
+  "context": "Owner, 2026-10-06 (twenty-seventh notes, 4 and 5): the clusters should be closer together and slightly staggered, otherwise how they move looks unnatural and unorganic; not for the earlier waves, which are not that big: only when there are hundreds or thousands, and mix regular single bodies with the 5x ones, a compromise between frame rate and looking organic. Before: a wave of 150 soft bodies packed, 50 singles then every squad after them, five members abreast 0.78 body-units apart, all pulsing on the unit's one phase.",
+  "outcome": "src/content/sectors.js SQUADS: over 300 (a wave of hundreds before any packing), the singles the greater of `single` 60 and `share` 0.2 of the wave, dealt in `runs` 3 alternating runs with the squads (src/domain/squads.js packSquads: singles first, then a run of squads, and so on per type); members `spacing` 0.55 apart in two rows `stagger` 0.7 apart, each a little off its mark, the contact reach 1.6; src/fx/squads.js writes a per-dot `aPhase` attribute (member k at k x 1.9) that src/fx/dot-material.js adds to the unit's phase, so the five wobble out of step; a cloud without the attribute reads 0. Entities for a 1,500-body wave: 546 (was about 350), a fifth of the bodies single.",
+  "alternatives": [
+    "share 0.3: 666 entities for 1,500 bodies, closer to the owner's organic end but the frame rate pays; 0.2 keeps the crowd under half its bodies",
+    "Interleaving in the spawn queue instead of the entry list: the entry order is the spawn order already"
+  ],
+  "evidence": [
+    "node test/squads.mjs: the singles' share, the runs alternate, under `over` untouched",
+    "--squads at sector 6 (sector 4's waves, 130-265 soft bodies each, stay single now): 68 squads among 572 entities standing for 844 bodies, 21-24 ms a frame, RAM x191 in one run through the field; squads-field and squads-ram stills",
+    "worth the owner's eye: the clump's look and gait in play"
+  ],
+  "supersedes": [
+    "2026-10-05-squads-five-bodies-to-an-entity"
+  ]
+}

@@ -371,7 +371,19 @@ First step, when it is picked up: `@ts-check` on `src/domain` as a trial, to see
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 45 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 47 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### Session sync after the twenty-sixth notes and THE ENDING: lessons, and the owner's twenty-seventh notes queued for the next session
+
+`2026-10-06-session-sync-twenty-sixth-notes-and-the-twenty-seventh-queued` · issue · **observed**
+
+Nine commits since the last sync (7bc7ef58..78b55764): the back gate's shoulders, the welcome's keywords sound, the view back after the study, SOL's first aim, and THE ENDING in five steps (2026-10-06-the-ending-plan-and-the-run-recap). The owner played the build and closes the session ('sync, commit and push, then we will /clear'), handing over the next round's notes.
+
+### Session sync after the twenty-seventh notes: ten notes shipped, lessons, and what is left open
+
+`2026-10-06-session-sync-twenty-seventh-notes-shipped` · issue · **observed**
+
+The owner's twenty-seventh notes (queued in 2026-10-06-session-sync-twenty-sixth-notes-and-the-twenty-seventh-queued), worked on Fable in one session on main, one commit a note, and pushed on his word ('keep going, then sync and push when the round is done').
 
 ### Session sync after the twenty-fifth notes: three lessons from the round, and the owner's twenty-sixth notes queued for the next session
 

@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "2026-10-06-session-sync-twenty-seventh-notes-shipped",
+  "date": "2026-10-06",
+  "type": "issue",
+  "status": "observed",
+  "title": "Session sync after the twenty-seventh notes: ten notes shipped, lessons, and what is left open",
+  "context": "The owner's twenty-seventh notes (queued in 2026-10-06-session-sync-twenty-sixth-notes-and-the-twenty-seventh-queued), worked on Fable in one session on main, one commit a note, and pushed on his word ('keep going, then sync and push when the round is done').",
+  "outcome": "Shipped: (1) the site guard that never stands still, (2) the view back from a seat the handover took, (3) the corridor probe and four hull fixes (the last wedge open), (4-5) the squads for the big waves only, mixed, closer and staggered, (6) Isao's filament back, (7) the automated nuke booked apart, (8) the rim holes walled as a run, (9) the ending before the score over our own planet, (10) 'WE DID it!'. Lessons: (a) a camera fix needs the path the owner takes, seat and automation state included; assert the camera, not a proxy (--study-view asserted the strip and passed while the view was wrong). (b) A three.js Line rewritten every frame must set frustumCulled = false or its first bounding sphere culls it for good. (c) A hull problem reported from play wants a driver, not a teleport: the virtual driver's trace found four faults in an afternoon that three rounds of tuning on the rim had missed. (d) The stuck detector must count what every later pass (creep, ease, cushion) does to the hull, and over a span, or rocking reads as driving. (e) The guard's `window` word check reaches comments: name a knob `span`. (f) The voice tool's override keeps a script line's id and text while changing what is spoken. Open: the refusal at rocket-b's last corridor cell (a freeBlocked-reason hook next); the sites sealed in rock and the squads' look in play are the owner's eye. Worth his eye first: STATE.md's list. Observed, not settled: --grow stalled late on Isao's orders in three of four runs on the tree (at three different steps) and passed its fourth and the baseline's one; the three ran under other suites or right after the Node suite.",
+  "alternatives": [],
+  "evidence": [
+    "git log 4b1b85cf..HEAD",
+    "npm test (183), npm run check, npm run build",
+    "the default browser suite (46 steps), --study-view, --finale, --squads, --rim-holes, --back-shoulders, --defense, --round13, --corridor-probe ASSERT=1, --grow: passed on the fourth run of the tree (the real-path view-back assertion passed on all four); three earlier runs timed out at different late waits on Isao's orders (the gate repair not taken in 40 s; the assembly print not done in 90 s; the gate not closed 20 s after its climb), two of them before the guard trail; the pre-round commit 4b1b85cf passed one run in a worktree alongside the fourth. NOT SETTLED: worth a few more --grow runs next session before blaming the round"
+  ],
+  "supersedes": []
+}

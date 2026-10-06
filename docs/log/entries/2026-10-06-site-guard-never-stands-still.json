@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-10-06-site-guard-never-stands-still",
+  "date": "2026-10-06",
+  "type": "change",
+  "status": "resolved",
+  "title": "A site guard never stands still where it has an exit: the cargo not unlocking after the site was cleared",
+  "context": "Owner, 2026-10-06 (twenty-seventh notes, 1): sometimes clearing the first landing spot does not unlock the cargo; a hidden unregistered enemy is suspected, on the radar but not on the screen. The site stays guarded while any guard is alive (src/fx/expedition-glue.js guardsLeft) and the radar draws every live body. src/domain/guard-aggro.js guardExits gave a guard its own cell forever whenever no exit lay inside the nest: one that had chased the hull out of the nest and lost it, or stood on the nest's edge with every exit outside, parked wherever the chase ended, often a corridor behind rock the player never looked into.",
+  "outcome": "guardExits: outside the nest a guard takes the exits that bring it home, else any exit; only a cell with no exit holds it. test/guard-aggro.mjs covers the stranded guard, the edge, the dead end and the no-exit cell. Not changed: a site sealed in rock by applySector (its guards would stand inside rock on a BLOCKED cell; the 2026-09-16 standCell note records rocket-a with no open floor in reach) and guards spawning on the lander's own cell (transient). If the owner sees it again, log the guard's cell tag and its distance from the nest.",
+  "alternatives": [
+    "Counting only guards within the nest as holding the site: hides the bug instead of moving the guard",
+    "Spawning no guards on a sealed site: not shown to be the case"
+  ],
+  "evidence": [
+    "node test/guard-aggro.mjs",
+    "worth the owner's eye: a cleared site's flag rising after a chase"
+  ],
+  "supersedes": []
+}

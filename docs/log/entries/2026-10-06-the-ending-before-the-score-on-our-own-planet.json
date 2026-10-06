@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "id": "2026-10-06-the-ending-before-the-score-on-our-own-planet",
+  "date": "2026-10-06",
+  "type": "change",
+  "status": "resolved",
+  "title": "The ending plays when the final sector is held, before its report and the campaign card, and the constellation turns over our own planet",
+  "context": "Owner, 2026-10-06 (twenty-seventh notes, 9): the Dyson preparation should show our actual planet, not the placeholder one, and play as a celebration cinematic AFTER the final wave, before the score is looked at. Until now the diorama and the constellation played on leaving THE COLONY HOLDS (KEEP HOLDING or NEW RUN), after the report and the four campaign pages, over A6's procedural placeholder sphere.",
+  "outcome": "src/fx/sector-run.js: finish('secure') on the final sector (doorAt + 1, BOTH WALLS) enters phase 'finale' and asks the host's finale (the diorama, then the constellation) first, once; its report shows when the finale hands back, then the campaign card as before; the card's exits go straight on (no finale again). src/fx/orbital-finale.js ownPlanet: given the board's surface meshes (floor, rock, the edge lines, through the host bag's new map() getter in td-tab) and the heart's unit vector, the small world is the game's own surface on the same geometry buffers under its own Lambert materials, scaled to the planet's radius and turned so the heart stands under the pad at the pole (heartToPole); the atmosphere, stars, galaxy, SOL-88 and the launches unchanged; without a map, the placeholder. The finale element carries data-own / data-loaded for the harness.",
+  "alternatives": [
+    "Rendering the game's planet to a texture for the small world: a second renderer cannot share the first's textures; the geometry can be shared",
+    "Keeping the finale on the card's exits as well: the owner asked for it before the score, once"
+  ],
+  "evidence": [
+    "node test/sector-run.mjs: the door sector held shows its report; the final sector held plays the finale first, the report on the hand-back, then the campaign, and leaving the card plays none",
+    "node test/orbital-finale.mjs: the own planet's meshes, materials, scale and turn",
+    "--finale: the diorama, data-own 1, three stills of the constellation over the board's own surface (finale-orbit-a/-b/-c: the pad on the base at the pole with WE DID IT!, the lattice planet under 28 / 48, the pull-back), the three lines, the hand-back",
+    "worth the owner's eye: the planet's look in the constellation, the real transition from the last wave"
+  ],
+  "supersedes": [
+    "2026-10-06-the-orbital-constellation"
+  ]
+}

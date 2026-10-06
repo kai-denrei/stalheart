@@ -15,6 +15,39 @@ Evidence:
 - --opening: hovering ISAO 01 then 02 logs welcome_panic_01 and welcome_frood_01 after welcome_01 welcome_settle_01; the landing's lines follow unchanged
 - the unit sounds are not asserted in headless Chrome (sfx.say returns a handle only with a decoded buffer); worth the owner's ear
 
+## 2026-10-06 — The ending's WE DID IT re-recorded as 'WE DID it!': a shouted all-caps short word is read as letters
+
+change · resolved · 2026-10-06-we-did-it-re-recorded
+
+Owner, 2026-10-06 (twenty-seventh notes, 10): the line says 'it' as the letters I and T. seiyu_voice's shout variant for announce lines reads short all-caps words letter by letter (the lesson recorded in 2026-10-06-session-sync-twenty-sixth-notes-and-the-twenty-seventh-queued).
+
+seiyu_voice 6a3d2c0: a text_for_tts override on ending_did_it_01 ('WE DID it!'), re-rendered (1.099 s, was 1.312) and exported; scripts/import-isao-voice.mjs re-imported (only ending_did_it_01.mp3 and its lock entry changed). The screen still prints WE DID IT! (src/fx/orbital-finale.js LINES); the script text is unchanged.
+
+Alternatives: Editing the script line itself to 'WE DID it!': the override keeps the script's text and id and changes only what is spoken
+
+Evidence:
+
+- docs/isao-voice-audio.lock.json: ending_did_it_01 duration 1.099
+- npm test (183) green; the owner's ear on the line
+
+## 2026-10-06 — The view back after the study, from a seat the handover took away: the hull's own view, never the seat's bastion camera
+
+change · resolved · 2026-10-06-view-back-from-a-seat-the-handover-took
+
+Owner, 2026-10-06 (twenty-seventh notes, 2): STILL not solved, after the language analysis the player is set to a bird's-eye view. The 2026-10-06-view-back-after-the-study fix passed --study-view (?skip=expedition, the hull in third person) and failed in play. On the real path the player finishes sector 0 from the Rotor's or Quiver's seat; the handover at 'settled' automates the towers and the strip loses their buttons (createUnlockHost mounts([])), but the player stays seated until Isao's close-up, which records viewWas = { view: 'bastion', seat: 'rotor' }. storyViews.back() found no button and set the recorded view, 'bastion', with no seat open: the high camera over the heart, the strip saying TANK.
+
+src/fx/story-views.js back(): a seat whose button is gone hands back takeSeatView(was).view (src/domain/seat-view.js: bastion and drone are not places a leave returns to), so the hull's chase view comes back, the map only when the map was interrupted, third when nothing was recorded. test/story-views.mjs covers the four cases; --study-view asserts the camera view is third or pov (the old assertion, the strip not inside .build, could not see a bastion camera); --grow asserts the same after the study on the real path (the Rotor's seat through sector 0). Lesson kept: reproduce from the real handover before calling a camera fix done.
+
+Alternatives: Re-seating the player in the automated tower: the seat is no longer his after the handover; Recording viewWas after leavePilot (the seat's base view): that is the map for a seat first taken from the map, the bird's-eye view again
+
+Evidence:
+
+- node test/story-views.mjs
+- scripts/browser-lock.sh node scripts/browser-test.mjs --study-view (this round)
+- --grow (this round, the real path)
+
+Supersedes: 2026-10-06-view-back-after-the-study
+
 ## 2026-10-06 — After the language analysis the player goes back to the view Isao's close-up interrupted, not the bird's-eye view
 
 change · accepted · 2026-10-06-view-back-after-the-study
@@ -56,6 +89,25 @@ Evidence:
 
 - --debrief passes, the campaign's three pages at full, 1280 and 400 px; it had been failing on main since the 2026-10-03 summary page (a report's press closes the card; the hero's grid is .sdb-sum-grid): the step now walks a report's tabs with the arrow
 - npm test (181 programs) and npm run check pass
+
+## 2026-10-06 — The ending plays when the final sector is held, before its report and the campaign card, and the constellation turns over our own planet
+
+change · resolved · 2026-10-06-the-ending-before-the-score-on-our-own-planet
+
+Owner, 2026-10-06 (twenty-seventh notes, 9): the Dyson preparation should show our actual planet, not the placeholder one, and play as a celebration cinematic AFTER the final wave, before the score is looked at. Until now the diorama and the constellation played on leaving THE COLONY HOLDS (KEEP HOLDING or NEW RUN), after the report and the four campaign pages, over A6's procedural placeholder sphere.
+
+src/fx/sector-run.js: finish('secure') on the final sector (doorAt + 1, BOTH WALLS) enters phase 'finale' and asks the host's finale (the diorama, then the constellation) first, once; its report shows when the finale hands back, then the campaign card as before; the card's exits go straight on (no finale again). src/fx/orbital-finale.js ownPlanet: given the board's surface meshes (floor, rock, the edge lines, through the host bag's new map() getter in td-tab) and the heart's unit vector, the small world is the game's own surface on the same geometry buffers under its own Lambert materials, scaled to the planet's radius and turned so the heart stands under the pad at the pole (heartToPole); the atmosphere, stars, galaxy, SOL-88 and the launches unchanged; without a map, the placeholder. The finale element carries data-own / data-loaded for the harness.
+
+Alternatives: Rendering the game's planet to a texture for the small world: a second renderer cannot share the first's textures; the geometry can be shared; Keeping the finale on the card's exits as well: the owner asked for it before the score, once
+
+Evidence:
+
+- node test/sector-run.mjs: the door sector held shows its report; the final sector held plays the finale first, the report on the hand-back, then the campaign, and leaving the card plays none
+- node test/orbital-finale.mjs: the own planet's meshes, materials, scale and turn
+- --finale: the diorama, data-own 1, three stills of the constellation over the board's own surface (finale-orbit-a/-b/-c: the pad on the base at the pole with WE DID IT!, the lattice planet under 28 / 48, the pull-back), the three lines, the hand-back
+- worth the owner's eye: the planet's look in the constellation, the real transition from the last wave
+
+Supersedes: 2026-10-06-the-orbital-constellation
 
 ## 2026-10-06 — The ending, step four: leaving THE COLONY HOLDS plays a diorama, the player's MÖRK and Isao before the celebrating rivalry boards
 
@@ -103,6 +155,24 @@ Evidence:
 - --debrief passes with the clips on the campaign's third page; npm test and npm run check pass
 - not seen: a tactical nuke's clip in a browser (the unit test covers its counting)
 
+## 2026-10-06 — Squads only for the big waves, singles mixed among them, the clump closer and staggered with each member on its own wobble phase
+
+change · resolved · 2026-10-06-squads-closer-staggered-mixed-big-waves-only
+
+Owner, 2026-10-06 (twenty-seventh notes, 4 and 5): the clusters should be closer together and slightly staggered, otherwise how they move looks unnatural and unorganic; not for the earlier waves, which are not that big: only when there are hundreds or thousands, and mix regular single bodies with the 5x ones, a compromise between frame rate and looking organic. Before: a wave of 150 soft bodies packed, 50 singles then every squad after them, five members abreast 0.78 body-units apart, all pulsing on the unit's one phase.
+
+src/content/sectors.js SQUADS: over 300 (a wave of hundreds before any packing), the singles the greater of `single` 60 and `share` 0.2 of the wave, dealt in `runs` 3 alternating runs with the squads (src/domain/squads.js packSquads: singles first, then a run of squads, and so on per type); members `spacing` 0.55 apart in two rows `stagger` 0.7 apart, each a little off its mark, the contact reach 1.6; src/fx/squads.js writes a per-dot `aPhase` attribute (member k at k x 1.9) that src/fx/dot-material.js adds to the unit's phase, so the five wobble out of step; a cloud without the attribute reads 0. Entities for a 1,500-body wave: 546 (was about 350), a fifth of the bodies single.
+
+Alternatives: share 0.3: 666 entities for 1,500 bodies, closer to the owner's organic end but the frame rate pays; 0.2 keeps the crowd under half its bodies; Interleaving in the spawn queue instead of the entry list: the entry order is the spawn order already
+
+Evidence:
+
+- node test/squads.mjs: the singles' share, the runs alternate, under `over` untouched
+- --squads at sector 6 (sector 4's waves, 130-265 soft bodies each, stay single now): 68 squads among 572 entities standing for 844 bodies, 21-24 ms a frame, RAM x191 in one run through the field; squads-field and squads-ram stills
+- worth the owner's eye: the clump's look and gait in play
+
+Supersedes: 2026-10-05-squads-five-bodies-to-an-entity
+
 ## 2026-10-06 — SOL's seat opens on the densest pile, and the pointer takes the aim only once it means it
 
 change · accepted · 2026-10-06-sol-first-aim
@@ -119,6 +189,21 @@ Evidence:
 - --laser-game and --seats pass (both failed on a first cut that laid the contact with fresh false: the harness's first aim dragged instead of snapping)
 - not verified in a browser: the hover's arming and the absence of the jump in play; headless Chrome paints too few frames for the pass clock to move (0.47 s in 20 s). Worth the owner's hand
 
+## 2026-10-06 — A site guard never stands still where it has an exit: the cargo not unlocking after the site was cleared
+
+change · resolved · 2026-10-06-site-guard-never-stands-still
+
+Owner, 2026-10-06 (twenty-seventh notes, 1): sometimes clearing the first landing spot does not unlock the cargo; a hidden unregistered enemy is suspected, on the radar but not on the screen. The site stays guarded while any guard is alive (src/fx/expedition-glue.js guardsLeft) and the radar draws every live body. src/domain/guard-aggro.js guardExits gave a guard its own cell forever whenever no exit lay inside the nest: one that had chased the hull out of the nest and lost it, or stood on the nest's edge with every exit outside, parked wherever the chase ended, often a corridor behind rock the player never looked into.
+
+guardExits: outside the nest a guard takes the exits that bring it home, else any exit; only a cell with no exit holds it. test/guard-aggro.mjs covers the stranded guard, the edge, the dead end and the no-exit cell. Not changed: a site sealed in rock by applySector (its guards would stand inside rock on a BLOCKED cell; the 2026-09-16 standCell note records rocket-a with no open floor in reach) and guards spawning on the lander's own cell (transient). If the owner sees it again, log the guard's cell tag and its distance from the nest.
+
+Alternatives: Counting only guards within the nest as holding the site: hides the bug instead of moving the guard; Spawning no guards on a sealed site: not shown to be the case
+
+Evidence:
+
+- node test/guard-aggro.mjs
+- worth the owner's eye: a cleared site's flag rising after a chase
+
 ## 2026-10-06 — Session sync after the twenty-sixth notes and THE ENDING: lessons, and the owner's twenty-seventh notes queued for the next session
 
 issue · observed · 2026-10-06-session-sync-twenty-sixth-notes-and-the-twenty-seventh-queued
@@ -132,6 +217,20 @@ Evidence:
 - git log 7bc7ef58..78b55764
 - the owner's message of 2026-10-06 (the twenty-seventh notes, two screenshots)
 
+## 2026-10-06 — Session sync after the twenty-seventh notes: ten notes shipped, lessons, and what is left open
+
+issue · observed · 2026-10-06-session-sync-twenty-seventh-notes-shipped
+
+The owner's twenty-seventh notes (queued in 2026-10-06-session-sync-twenty-sixth-notes-and-the-twenty-seventh-queued), worked on Fable in one session on main, one commit a note, and pushed on his word ('keep going, then sync and push when the round is done').
+
+Shipped: (1) the site guard that never stands still, (2) the view back from a seat the handover took, (3) the corridor probe and four hull fixes (the last wedge open), (4-5) the squads for the big waves only, mixed, closer and staggered, (6) Isao's filament back, (7) the automated nuke booked apart, (8) the rim holes walled as a run, (9) the ending before the score over our own planet, (10) 'WE DID it!'. Lessons: (a) a camera fix needs the path the owner takes, seat and automation state included; assert the camera, not a proxy (--study-view asserted the strip and passed while the view was wrong). (b) A three.js Line rewritten every frame must set frustumCulled = false or its first bounding sphere culls it for good. (c) A hull problem reported from play wants a driver, not a teleport: the virtual driver's trace found four faults in an afternoon that three rounds of tuning on the rim had missed. (d) The stuck detector must count what every later pass (creep, ease, cushion) does to the hull, and over a span, or rocking reads as driving. (e) The guard's `window` word check reaches comments: name a knob `span`. (f) The voice tool's override keeps a script line's id and text while changing what is spoken. Open: the refusal at rocket-b's last corridor cell (a freeBlocked-reason hook next); the sites sealed in rock and the squads' look in play are the owner's eye. Worth his eye first: STATE.md's list. Observed, not settled: --grow stalled late on Isao's orders in three of four runs on the tree (at three different steps) and passed its fourth and the baseline's one; the three ran under other suites or right after the Node suite.
+
+Evidence:
+
+- git log 4b1b85cf..HEAD
+- npm test (183), npm run check, npm run build
+- the default browser suite (46 steps), --study-view, --finale, --squads, --rim-holes, --back-shoulders, --defense, --round13, --corridor-probe ASSERT=1, --grow: passed on the fourth run of the tree (the real-path view-back assertion passed on all four); three earlier runs timed out at different late waits on Isao's orders (the gate repair not taken in 40 s; the assembly print not done in 90 s; the gate not closed 20 s after its climb), two of them before the guard trail; the pre-round commit 4b1b85cf passed one run in a worktree alongside the fourth. NOT SETTLED: worth a few more --grow runs next session before blaming the round
+
 ## 2026-10-06 — Session sync after the twenty-fifth notes: three lessons from the round, and the owner's twenty-sixth notes queued for the next session
 
 issue · observed · 2026-10-06-session-sync-twenty-fifth-notes-and-the-twenty-sixth-queued
@@ -144,6 +243,57 @@ Evidence:
 
 - git log 8fd15baf..c07ad1a1
 - the owner's message of 2026-10-06 (the twenty-sixth notes)
+
+## 2026-10-06 — A hole in the rim's rock comes back as a run of kit walls along the rim's line, not one lone segment
+
+change · resolved · 2026-10-06-rim-holes-walled-as-a-run
+
+Owner, 2026-10-06 (twenty-seventh notes, 8): walls from breaches not fully rebuilt; better, but edge cases still fail: one breach covered by a run of kit walls, one failure with a few lone segments in an open area. Of the four repair paths only the wall cells' restoreWall and the back door's patchLine laid a line; a shell's hole and a rim hole (2026-10-04, 2026-10-05) went through patchWall, which copied the nearest front segment turned about the planet's centre onto the cell: one 4 m segment in the middle of a 10 m cell drawn as floor, at the front wall's heading whatever the hole's side of the base, so a few mended cells together read as lone segments in open ground (the same failure 2026-10-06-back-gate-shoulders-walled recorded and fixed for the back only).
+
+src/fx/story-base.js patchWall(cell, at, owns): the rim is the circle round the base's centre (the frame's pole) through the cell; segments are laid along it wallLength apart, each facing the centre, and the ones ownCell puts on this cell are printed (two or more a cell), so neighbouring holes continue one another's run; none owned, the cell stays rock. programme-host hands the ownership test; showcase.cells reports the segments a patched cell carries. New step --rim-holes: ?blast=3 opens the three rock cells nearest the hull, Isao's repair walls them, each patched cell with two or more segments.
+
+Alternatives: Extending the front arc's formula past wallsPerSide: only covers holes beside the front gate; the rim circle through the hole covers any side; Flush rock for holes the line does not cross: kept as the fallback when no segment is owned
+
+Evidence:
+
+- --rim-holes: three cells shot open at boot (?blast=3), each closed by Isao's repair as rock with three kit segments (rim-holes-walled, rim-holes-wide stills)
+- --back-shoulders still passes (the door's line on the shoulders is patchLine, unchanged)
+- worth the owner's eye: a shell hole and a strike crater on the rim mended in play
+
+Supersedes: 2026-10-05-twenty-second-notes-alien-voice-sectors-move-on-rounds-fly-on-walkers-walk
+
+## 2026-10-06 — Isao's filament back: the print beam was frustum-culled off most prints, and the Birudorōn's Tool_Fabricate clip now runs while he prints
+
+change · resolved · 2026-10-06-isao-filament-back
+
+Owner, 2026-10-06 (twenty-seventh notes, 6): when Isao builds it should look like he is dropping filament; there used to be an effect, it is no longer seen. Nothing had been removed (git log -S filament finds lore only): the print beam of bca7dcb5 (one Line rewritten every frame, the bead trail, raster, perimeter and travel patterns) was still drawn, but three.js computes a line's bounding sphere once, on its first render, and the beam never set frustumCulled = false, so it was culled whenever the first print's spot was off screen: most prints on the story planet. The controller's warnMesh and foundry-fx already carried the guard. And the A6 drone's setWork had been a no-op since Isao-Birudorōn (2026-09-13): the authored Tool_Fabricate clip was never played.
+
+src/td-tab.js: printBeam.frustumCulled = false. src/units.js makeBirudoron: setWork plays Tool_Fabricate (the nozzle's extend, pitch and yaw only; the face clips do not touch those joints) while the work is up and fades it out after. td-tab 8744 lines, 522280 bytes after a comment reflow.
+
+Alternatives: A new filament particle effect: the beam and its beads already are the filament; they only needed to be visible
+
+Evidence:
+
+- three.module.js: Line.computeBoundingSphere is called once by WebGLRenderer when boundingSphere is null
+- assets/models/isao/isao_birudoron_lod1.glb: Tool_Fabricate drives TOOL_NOZZLE_EXTEND/PITCH/YAW
+- worth the owner's eye: a print in play, the beam and the nozzle
+
+## 2026-10-06 — The MÖRK through the narrow tiles: a virtual driver's probe to rocket-b, and four hull fixes it found (the glide pinning the steer, the stuck detector blind to rocking, the wall inside rock, the building slide)
+
+change · resolved · 2026-10-06-corridor-probe-and-the-hull-in-narrow-tiles
+
+Owner, 2026-10-06 (twenty-seventh notes, 3): the second-closest cargo: there is STILL a problem going through narrow tiles with the MÖRK. Nothing had ever driven the hull through a one-cell corridor (the twelfth to fourteenth notes tuned the kick and the glide on the rim, --defense teleports to the sites). New step --corridor-probe (SITE, SECS, STUCK_S, ASSERT): the shortest open route from the hull's cell to the site's stand (showcase.route, the buildings solid to the hull as walls), a driver that steers toward the next route cell, holds W, backs out of pockets, with the guards down and the sectors quiet; a per-sample trace (artifacts/corridor-trace.json) of cell, route index, open neighbours, movement, bearing, kicks, shot and pause. Rocket-b's route: 84 cells, 32 of them corridors.
+
+First runs: 19 of 81 cells then 134 s in one corridor cell, moving every frame and never leaving. The trace named four faults. (1) THE HOVER GLIDE PINNED THE STEER: with rock 0.9 cells ahead the glide turned the heading toward the wall's tangent at 4 rad/s every frame, outrunning the 2.6 rad/s steer, so at a bend the heading settled 0.65 rad off the tangent into the wall and the hull rocked there with A held; the glide now never runs against a held steer key. (2) THE STUCK DETECTOR WAS BLIND TO ROCKING: a step refused one frame and a creep back to the cell's centre the next moved the hull every frame, so src/domain/hull-stuck.js never fired and the squeeze that drops the nose and tail probes never came; progress is now the signed advance along the drive, counted from where the last frame left the hull (creep, ease and cushion included) and judged over HULL_STUCK.span 0.25 s. (3) nearestWall for a point already inside rock names that rock, not that rock's neighbours. (4) A building that stops the hull (story-base solidAt) is the wall the slide and the kick work off, its centre the way in; beside rock the hull only crept at a lander's footprint. Then the hull ran the whole route in 41 s with no slow cell and wedged only at the last corridor cell before rocket-b's clearing (506 -> 504), 2.7 cells from the lander, with nothing the diagnostics could name ahead (open, not rock, not solid): NOT FOUND. The part is secured there instead: the pickup radius is clear/10 + 1.3 cells (was + 1), and at least the chord to the nearest floor a hull can stand on beside a pocketed lander (open to the grid and clear of the solid buildings), at most two cells past the radius (expedition-glue standReach). The probe now reaches PART SECURED at route cell 77 of 84 in 41.5 s, six kicks, no slow cell.
+
+Alternatives: Dropping the nose and tail probes in narrow cells: not tried; the stuck fix drops them within a quarter second of going nowhere; Carving the sites' clearings wider (clear 16 -> 24 m): changes the baked carve of the planet; not for this round; Leaving the last wedge: the owner's experience there is the part secured and the turn home, which is what the radius now gives
+
+Evidence:
+
+- artifacts/round27-corridor-probe.log, artifacts/corridor-trace.json (the last run: REACHED at cell 77 of 84 in 41.5 s; kicks 6; still 0 of 392 samples; slow cells [])
+- node test/hull-stuck.mjs (rocking is stuck; moving on never is; release within a span), test/cargo.mjs (the stand reach, its cap)
+- --defense and --round13 pass with the hull changes (round13: 0.47 units in 12 s, 0 still samples, 2 kicks); --corridor-probe ASSERT=1: REACHED at cell 77 of 84 in 49.2 s, 8 kicks, no still sample, no slow cell; the default browser suite's 46 steps pass
+- OPEN: the refusal at rocket-b's last corridor cell (506 -> 504); the probe's trace is the tool, and a freeBlocked-reason hook would be the next step
 
 ## 2026-10-06 — The back gate's shoulders: Isao walls the flank of the back collapse on the door's own line, out to the rock
 
@@ -159,6 +309,21 @@ Evidence:
 
 - --back-shoulders: mouth [1086,34817], flank [1084,34814,45955,34815]; three shoulders patched, 45955 rock; screenshots back-shoulders-walled/-close show a continuous wall run from the door to the rock on both sides
 - --back-gate passes unchanged; npm test (180 programs) and npm run check pass
+
+## 2026-10-06 — The automated gunship's MK-9 is booked apart from the gunner's: a player who takes over still has the pass's nuke
+
+change · resolved · 2026-10-06-automated-nuke-booked-apart
+
+Owner, 2026-10-06 (twenty-seventh notes, 7): '1 per wave' is set, but sometimes when the player takes over there is no nuke available; increase the nukes: even if the auto gunship shot one, a player who takes over can shoot one too. The rule is one release a station pass (GUNSHIP_GUNS.heavy.perPass), and the automated gunship fired it through the same heavyPass stamp and the same 20 s safing, so a gunner taking the seat behind it found SPENT or IMPACT · SAFING. The 'tremor hole closed early costs biomass' the owner mentions is the sector forfeit (LEFT IN THE FIELD), not a nuke cost.
+
+src/domain/gunship.js: paintHeavy/launchHeavy take { auto }; an automated release stamps heavyAutoPass (once a pass, never after the gunner has fired) and locks the tube only for the round's fall, no safing; the gunner's release is unchanged (one a pass, 20 s safing, then SPENT), and the automated gunship holds its fire once the gunner has fired. src/fx/gunship-auto.js and gunship-rig.js pass the flag. Net: one automated and one manned MK-9 a pass at most.
+
+Alternatives: Resetting heavyPass when the seat is mounted: refunds the gunner's own release on a re-mount; Two releases a pass for everyone: the owner asked for the taking-over case, not a faster nuke
+
+Evidence:
+
+- node test/gunship.mjs: the automated release, the tube clear at once, the gunner's release behind it, neither again, the gunner first
+- npm test (183) green
 
 ## 2026-10-05 — The start gate becomes the welcome: the A6 settlement pocket guide over the landing, keywords that turn their unit in wireframe, START A NEW PLANET as the call to action, and Isao's WELCOME! / Let's settle a new planet together! / Ad Astra Per Aspera
 

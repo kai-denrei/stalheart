@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-10-06-isao-filament-back",
+  "date": "2026-10-06",
+  "type": "change",
+  "status": "resolved",
+  "title": "Isao's filament back: the print beam was frustum-culled off most prints, and the Birudorōn's Tool_Fabricate clip now runs while he prints",
+  "context": "Owner, 2026-10-06 (twenty-seventh notes, 6): when Isao builds it should look like he is dropping filament; there used to be an effect, it is no longer seen. Nothing had been removed (git log -S filament finds lore only): the print beam of bca7dcb5 (one Line rewritten every frame, the bead trail, raster, perimeter and travel patterns) was still drawn, but three.js computes a line's bounding sphere once, on its first render, and the beam never set frustumCulled = false, so it was culled whenever the first print's spot was off screen: most prints on the story planet. The controller's warnMesh and foundry-fx already carried the guard. And the A6 drone's setWork had been a no-op since Isao-Birudorōn (2026-09-13): the authored Tool_Fabricate clip was never played.",
+  "outcome": "src/td-tab.js: printBeam.frustumCulled = false. src/units.js makeBirudoron: setWork plays Tool_Fabricate (the nozzle's extend, pitch and yaw only; the face clips do not touch those joints) while the work is up and fades it out after. td-tab 8744 lines, 522280 bytes after a comment reflow.",
+  "alternatives": [
+    "A new filament particle effect: the beam and its beads already are the filament; they only needed to be visible"
+  ],
+  "evidence": [
+    "three.module.js: Line.computeBoundingSphere is called once by WebGLRenderer when boundingSphere is null",
+    "assets/models/isao/isao_birudoron_lod1.glb: Tool_Fabricate drives TOOL_NOZZLE_EXTEND/PITCH/YAW",
+    "worth the owner's eye: a print in play, the beam and the nozzle"
+  ],
+  "supersedes": []
+}

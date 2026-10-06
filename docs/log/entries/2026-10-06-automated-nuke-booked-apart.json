@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-10-06-automated-nuke-booked-apart",
+  "date": "2026-10-06",
+  "type": "change",
+  "status": "resolved",
+  "title": "The automated gunship's MK-9 is booked apart from the gunner's: a player who takes over still has the pass's nuke",
+  "context": "Owner, 2026-10-06 (twenty-seventh notes, 7): '1 per wave' is set, but sometimes when the player takes over there is no nuke available; increase the nukes: even if the auto gunship shot one, a player who takes over can shoot one too. The rule is one release a station pass (GUNSHIP_GUNS.heavy.perPass), and the automated gunship fired it through the same heavyPass stamp and the same 20 s safing, so a gunner taking the seat behind it found SPENT or IMPACT · SAFING. The 'tremor hole closed early costs biomass' the owner mentions is the sector forfeit (LEFT IN THE FIELD), not a nuke cost.",
+  "outcome": "src/domain/gunship.js: paintHeavy/launchHeavy take { auto }; an automated release stamps heavyAutoPass (once a pass, never after the gunner has fired) and locks the tube only for the round's fall, no safing; the gunner's release is unchanged (one a pass, 20 s safing, then SPENT), and the automated gunship holds its fire once the gunner has fired. src/fx/gunship-auto.js and gunship-rig.js pass the flag. Net: one automated and one manned MK-9 a pass at most.",
+  "alternatives": [
+    "Resetting heavyPass when the seat is mounted: refunds the gunner's own release on a re-mount",
+    "Two releases a pass for everyone: the owner asked for the taking-over case, not a faster nuke"
+  ],
+  "evidence": [
+    "node test/gunship.mjs: the automated release, the tube clear at once, the gunner's release behind it, neither again, the gunner first",
+    "npm test (183) green"
+  ],
+  "supersedes": []
+}
