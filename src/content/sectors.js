@@ -63,8 +63,13 @@ export const SECTORS = freeze([
 // themselves (the front of it, the ones a player meets one by one) and packs the rest `size` to a body: one entity, one draw call,
 // `size` bodies of health, a member shed (and paid) at each body's worth of damage, `size` rams in one (src/domain/squads.js,
 // src/fx/squads.js). `dens`: a member's dots against a single body's; `reach`: the clump's contact radius against a body's; `area`:
-// the damage sources that hit every member at once (the gunship's rounds and strikes, SOL's beam)
-export const SQUADS = freeze({ over: 150, single: 50, size: 5, dens: 0.6, reach: 1.8, area: ['strike', 'laser'] });
+// the damage sources that hit every member at once (the gunship's rounds and strikes, SOL's beam).
+// ONLY THE BIG WAVES, AND MIXED (owner, 2026-10-06: "not for the earlier waves, which are not that big; only when there are hundreds or
+// thousands, and mix regular single bodies with the 5x ones"): `over` is the wave that packs at all; the singles are `single` or `share`
+// of the wave, whichever is more, dealt among the squads in `runs` alternating runs. CLOSER AND STAGGERED ("their clusters should be
+// closer together and slightly staggered; otherwise how they move looks unnatural"): members `spacing` apart in two rows `stagger`
+// apart, each with its own wobble phase
+export const SQUADS = freeze({ over: 300, single: 60, share: 0.2, runs: 3, size: 5, dens: 0.6, spacing: 0.55, stagger: 0.7, reach: 1.6, area: ['strike', 'laser'] });
 export const CROWD_CAP = freeze({ start: 1500, min: 400, max: 3500, slowMs: 36, fastMs: 24, down: 0.85, up: 1.06, every: 1 });
 export const SECTOR_STAMPEDE = freeze({ every: 2, size: 3, cores: 2, core: 'barbed', fallback: 'amoeba', callout: 'STAMPEDE — RAM THEM', trickle: 2, trickleGap: 1.3, trickleMax: 24, tierSize: 1, tierCores: 2, trickleCallout: 'SOFT ONES — KEEP THE CHAIN' });
 

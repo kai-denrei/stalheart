@@ -43,11 +43,12 @@ export function makeDotMaterial({ size = 2.1, wobble = true, phase = 0,
       uniform vec4 uSwim;
       uniform vec2 uSpan;
       attribute vec3 color;
+      attribute float aPhase;   // a per-dot phase on top of the unit's (a squad's members, src/fx/squads.js); a cloud without it reads 0
       varying vec3 vColor;
       void main() {
         vColor = color;
         vec3 p = position;
-        ${swim ? swimGlsl() : (wobble ? wobbleGlsl() : '')}
+        ${(swim ? swimGlsl() : (wobble ? wobbleGlsl() : '')).replace(/\buPhase\b/g, '(uPhase + aPhase)')}
         vec4 mv = modelViewMatrix * vec4(p, 1.0);
         gl_Position = projectionMatrix * mv;
         // sizeAttenuation the way PointsMaterial does it: shrink with depth,
