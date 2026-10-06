@@ -60,7 +60,7 @@ console.log('galaxyseed: all green');
   check('the black hole well above the horizon at the pole', h[1] > 0.3);
   check('on the far side of the sky from the home galaxy', h[0] * g[0] + h[1] * g[1] + h[2] * g[2] < 0);
   const deg = 2 * Math.atan(SKY_HOLE.across / 2 / SKY_HOLE.dist) * 180 / Math.PI;
-  check(`big in the sky, not the whole sky (${deg.toFixed(0)} degrees)`, deg > 35 && deg < 60);
-  check('re-aimed low from the bays toward the Stålheart once the base stands', SKY_HOLE.toward === 'stalheart' && SKY_HOLE.from === 'bays' && SKY_HOLE.elevation > 0.1 && SKY_HOLE.elevation < 0.35);
+  check(`big in the sky, not the whole sky (${deg.toFixed(0)} degrees)`, deg > 30 && deg < 60);
+  check('re-aimed low from the bays toward the Stålheart once the base stands', SKY_HOLE.toward === 'stalheart' && SKY_HOLE.from === 'bays' && SKY_HOLE.elevation >= 0 && SKY_HOLE.elevation < 0.3 && SKY_HOLE.dist < 50);
   if (failures) { console.error(`galaxyseed: ${failures} failed`); process.exit(1); }
 }

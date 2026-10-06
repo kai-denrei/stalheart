@@ -62,11 +62,11 @@ export const HOME_GALAXY = { dir: [15, -3.5, -12], tilt: [1.1, 0.3, 0.6] };
 // THE BLACK HOLE NOT FAR (owner, 2026-10-06: "it should be there not just at the ending, but during the entire game"): the accretion
 // disk of src/fx/accretion.js hung in the game's scene as world-fixed planes (src/fx/programme-host.js; not in the sky cube, which
 // fades with the day), on the far side of the sky from the home galaxy and above the base's horizon (the heart is at the pole, +Y),
-// `across` scene units wide `dist` out (about 56 degrees of sky, within the camera's far plane), its glow `glow` times the picture's.
+// `across` scene units wide `dist` out (about 39 degrees of sky, within the camera's far plane), its glow `glow` times the picture's.
 // LOW BEHIND THE STÅLHEART (owner, 2026-10-06: "too high in the sky and we hardly ever get to see it; make it much lower, so it appears
 // behind the gantry"): once the base stands it is re-aimed the way `from` the bays `toward` the Stålheart (the hull's view from its berth), `elevation` radians above the
 // horizon, so from the bays the disk rises behind the gantry; `dir` is where it hangs until then
-export const SKY_HOLE = { dir: [-0.62, 0.5, 0.6], toward: 'stalheart', from: 'bays', elevation: 0.2, dist: 30, across: 32, glow: 1.6 };
+export const SKY_HOLE = { dir: [-0.62, 0.5, 0.6], toward: 'stalheart', from: 'bays', elevation: 0.02, dist: 40, across: 28, glow: 1.6 };   // 2026-10-06, the owner: lower still (the disk's top above the horizon from the chase view), a bit smaller, further
 export function galaxyLayout(seed, count = 1) {
   const rng = mulberry32((seed >>> 0) ^ 0x6A1A8);
   const norm = (v) => { const l = Math.hypot(...v) || 1; return v.map((x) => x / l); };
