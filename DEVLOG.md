@@ -261,6 +261,21 @@ Evidence:
 - git log 8fd15baf..c07ad1a1
 - the owner's message of 2026-10-06 (the twenty-sixth notes)
 
+## 2026-10-06 — Session close after the twenty-seventh round and the black hole: main 29f74569, everything pushed; what the owner has not yet seen
+
+issue · observed · 2026-10-06-session-close-twenty-seventh-round-and-the-black-hole
+
+The owner closes the session ('sync, commit and push, then we will /clear') after the twenty-seventh notes (2026-10-06-session-sync-twenty-seventh-notes-shipped) and the accretion disk (2026-10-06-the-black-hole-not-far).
+
+Pushed: main 29f74569, twelve commits since 4b1b85cf, the tree clean, the td-tab budgets ratcheted to 8735 lines / 522391 bytes / 16 long lines. Unseen by the owner, worth his eye first: the ending's new order with the accretion disk behind the planet (and on a phone), the view back from a seat after the study, a cleared site's flag after a chase, a nuke taken over behind the automated one, Isao's beam and nozzle on a print, the squads' clumps at sectors 5 and 6, a rim hole mended as a run, the hull in the corridors to the sites. Open: the wedge at rocket-b's last corridor cell (a freeBlocked-reason hook next), --grow's late stalls (1 of 4 on the tree, the baseline 1 of 1; run it a few times before blaming the round).
+
+Evidence:
+
+- git log 4b1b85cf..29f74569
+- docs/STATE.md (2026-10-06, the twenty-seventh notes)
+
+Supersedes: 2026-10-06-session-sync-twenty-seventh-notes-shipped
+
 ## 2026-10-06 — A hole in the rim's rock comes back as a run of kit walls along the rim's line, not one lone segment
 
 change · resolved · 2026-10-06-rim-holes-walled-as-a-run
