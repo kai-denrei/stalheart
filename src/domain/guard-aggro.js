@@ -4,18 +4,22 @@
 // A GUARD NEVER STANDS STILL (owner, 2026-10-06: "clearing the first landing spot does not unlock the cargo; a hidden enemy on the
 // radar but not on the screen"): one that had chased the hull out of its nest, or stood on the nest's edge, found no exit inside the
 // nest and was given its own cell forever, parked wherever the chase had ended, a corridor the player never looked into, while the site
-// stayed guarded. Outside the nest it takes the exits that bring it home, else any exit at all; only a cell with no exit holds it.
+// stayed guarded. A chase now leaves a trail (`guard.trail`, the cells walked out of the nest); the hull gone, the guard walks the trail
+// back, then the exits that bring it home; a guard never wanders (a wanderer drifted to the base and held its lane busy). Only a
+// cell with no exit at all holds it.
 const d2 = (a, b) => (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2;
 
 export function guardExits({ exits, centers, guard, cur, hull, aggro }) {
   if (!exits.length) return [cur];
-  const r2 = (guard.r * aggro) ** 2;
+  const r2 = (guard.r * aggro) ** 2, inNest = (c) => d2(centers[c], guard.c) < guard.r * guard.r;
   if (hull && d2(hull, guard.c) < r2) {
     const here = d2(centers[cur], hull), closer = exits.filter((c) => d2(centers[c], hull) < here);
-    if (closer.length) return closer;
+    if (closer.length) { if (!inNest(cur) || closer.some((c) => !inNest(c))) { guard.trail ??= []; if (guard.trail.at(-1) !== cur) guard.trail.push(cur); } return closer; }
   }
-  const stay = exits.filter((c) => d2(centers[c], guard.c) < guard.r * guard.r);
-  if (stay.length) return stay;
+  const stay = exits.filter(inNest);
+  if (stay.length) { if (guard.trail?.length) guard.trail.length = 0; return stay; }
+  // THE WAY BACK: the trail's last cell that is a neighbour (the trail is cut there), else the exits nearer the nest, else stand
+  if (guard.trail?.length) { while (guard.trail.length) { const back = guard.trail.pop(); if (exits.includes(back)) return [back]; } }
   const here = d2(centers[cur], guard.c), home = exits.filter((c) => d2(centers[c], guard.c) < here);
-  return home.length ? home : exits;
+  return home.length ? home : [cur];
 }
