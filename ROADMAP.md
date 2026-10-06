@@ -371,7 +371,13 @@ First step, when it is picked up: `@ts-check` on `src/domain` as a trial, to see
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 44 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 45 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### Session sync after the twenty-fifth notes: three lessons from the round, and the owner's twenty-sixth notes queued for the next session
+
+`2026-10-06-session-sync-twenty-fifth-notes-and-the-twenty-sixth-queued` · issue · **observed**
+
+One commit since the last sync (c07ad1a1, recorded in 2026-10-05-twenty-fifth-notes-quiver-horizon-calm-blind-climb-drop-off-pad). The owner closes the session ('sync, commit and push, then we will /clear') and hands over the next round's notes to work on after the clear.
 
 ### Type checking without TypeScript files: @ts-check and JSDoc with tsc --noEmit, adopted layer by layer, rather than converting to .ts
 

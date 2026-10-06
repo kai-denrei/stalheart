@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "id": "2026-10-06-session-sync-twenty-fifth-notes-and-the-twenty-sixth-queued",
+  "date": "2026-10-06",
+  "type": "issue",
+  "status": "observed",
+  "title": "Session sync after the twenty-fifth notes: three lessons from the round, and the owner's twenty-sixth notes queued for the next session",
+  "context": "One commit since the last sync (c07ad1a1, recorded in 2026-10-05-twenty-fifth-notes-quiver-horizon-calm-blind-climb-drop-off-pad). The owner closes the session ('sync, commit and push, then we will /clear') and hands over the next round's notes to work on after the clear.",
+  "outcome": "Lessons, observed in the twenty-fifth round: (1) A browser check had been failing since the change it described: --story-world waited for a breach shot that the 2026-10-04 quiet breach removed; run the suites that cover a beat when the beat changes, not only the new step. (2) The glue's along() takes an array and was handed a THREE.Vector3 twice (the new drop pose, and an older site stand whose target had silently been NaN); a helper that indexes [0] does not fail on a Vector3, it returns NaN. (3) A screenshot taken at the end of a seat glide showed only sky while the pilot's lock meter read 0.9: a capture timed off the shot clock can catch the camera between two owners; judge a view from a still the suite takes in that view (chapters-quiver showed both hard cores at the horizon). QUEUED, the owner's twenty-sixth notes (2026-10-06), verbatim in substance: 1) the Pocket Guide (the welcome): hovering ISAO, SH02, MÖRK etc. also plays some of their sounds; Isao's name appears twice (01 and 02): for 01 record 'DON'T PANIC', for 02 'You're a good frood, let's do this!' (hommages to the Hitchhiker's Guide), with seiyu_voice, recorded there and synced. 2) After the language analysis the player is left in a bird's-eye view: go back to whichever view was interrupted. 3) SOL taken manually sometimes starts with its red laser on one spot and then jumps elsewhere: a consistent initial aim. 4) Sector 6 or 7 dropped briefly to 30 fps with thousands of enemies and came back to 50: satisfying, good enough for now (no work). 5) Isao still does not fix the breaches (the owner's screenshot, not in the repo): a gate only, no walls at its sides closing the area flush with the natural rock. 6) At the end: more time for the player to read the details (max RAM bonus, which wave, and so on), and a feel-good diorama of the MÖRK and Isao together looking at the diegetic scoreboard. 7) Then a short animation from the A6 orbital cinematic (jelaludo.github.io/SentryTowers_A6/orbital-cinematic/): an orbital constellation built by repeated satellite launches, with new Isao lines 'WE DID IT', 'We connected this planet to the Dyson Sphere', 'Ready for the next one? AH AH!'.",
+  "alternatives": [],
+  "evidence": [
+    "git log 8fd15baf..c07ad1a1",
+    "the owner's message of 2026-10-06 (the twenty-sixth notes)"
+  ],
+  "supersedes": []
+}
