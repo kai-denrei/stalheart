@@ -261,6 +261,21 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       patches.set(cell, made);
       return true;
     },
+    // THE BACK DOOR'S SHOULDERS (owner, 2026-10-06: "a gate only, no walls at its sides closing the area flush with the natural rock"):
+    // segments on the door's own line, spaced and turned as the front rim's are beside the front gate, out from the door's plot; the ones
+    // `owns(world point)` puts on this cell are printed. None on it: false, and the caller leaves the cell rock
+    patchLine: (cell, id, owns) => {
+      const g = planGates.find((p) => (p.id ?? 'gate') === id);
+      if (!g || !wallMeshes.length || patches.has(cell)) return false;
+      const ax = -g.heading[1], az = g.heading[0], made = [];
+      for (const side of [-1, 1]) for (let k = 0; k < 12; k++) {
+        const d = side * (kit.gatePlot[0] / 2 + kit.wallLength * (k + 0.5)), w = { x: g.x + ax * d, z: g.z + az * d, y: 0, heading: g.heading };
+        if (!owns(placer.toWorld([w.x, 0, w.z]))) continue;
+        for (const s of wallMeshes) { const m = new THREE.Mesh(s.inst.geometry, s.inst.material); m.matrixAutoUpdate = false; m.name = 'wall patch'; m.castShadow = true; m.matrix.copy(wallMatrix(w, s.src, 1)); group.add(m); made.push(m); }
+      }
+      if (made.length) patches.set(cell, made);
+      return made.length > 0;
+    },
     patchedCells: () => [...patches.keys()],
     restoreWall: (cell) => { let n = 0; plan.walls.forEach((w, k) => { if (w.cell !== cell) return; n++; dropped.delete(k); grown.walls.set(k, 1); for (const s of wallMeshes) { s.inst.setMatrixAt(k, wallMatrix(plan.walls[k], s.src, 1)); s.inst.instanceMatrix.needsUpdate = true; s.inst.computeBoundingSphere(); } }); return n > 0; },
     // THE BUILDINGS ARE SOLID TO THE HULL (owner, 2026-10-03: "some structures in the base allow the Tank to pass through them, they should

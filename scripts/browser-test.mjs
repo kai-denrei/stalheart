@@ -2175,6 +2175,33 @@ try{
  await evaluate('window.__stalheartTest.viewBack()');await delay(800);current='back-gate-down';await finish();
  console.log('PASS back-gate: the programme queues it once the surprise is held, the print stands it, its mounts take a sentry, and it is a wall to the swarm until it is down.');
  await evaluate('window.__stalheartTest.begin()');
+ } else if(args.includes('--back-shoulders')) {
+ // THE BACK GATE'S SHOULDERS (owner, 2026-10-06: "Isao still does not fix the breaches: a gate only, no walls at its sides closing the
+ // area flush with the natural rock"): the collapse is the mouth and its flank; the door stands on the mouth, and after it Isao's
+ // check finds the flank open and prints a kit wall on each shoulder, rock to the swarm and the tank.
+ await go('back-shoulders','index.html?sw=0&acceptance=1&cine=0&skip=defence#td');
+ await until('!!window.__stalheartTest',90000);await delay(2500);
+ const T='window.__stalheartTest';
+ await evaluate(`${T}.begin()`);await evaluate(`${T}.sectorQuiet(true)`);
+ await until(`!${T}.state().deploying`,30000);await delay(500);
+ const mouth=await evaluate(`${T}.backMouth()`);
+ console.log(`BACK SHOULDERS mouth ${JSON.stringify(mouth.cells)} flank ${JSON.stringify(mouth.flank)}`);
+ assert(mouth.flank.length>=1,'the collapse has shoulders');
+ assert(await evaluate(`${T}.openBackDoor()`)>=2,'the mouth came down');
+ await until(`${T}.state().shot===null`,30000);await delay(500);
+ await evaluate(`${T}.setSector(2)`);
+ await until(`(${T}.state().programme.gates||[]).some(g=>g.id==="back"&&g.built)`,180000)
+   .catch(async()=>assert.fail(`the back gate never stood: ${JSON.stringify(await evaluate(`${T}.state().programme`))}`));
+ const shoulders=mouth.flank.filter(c=>!mouth.cells.includes(c));
+ await until(`${T}.showcase.cells(${JSON.stringify(shoulders)}).every(c=>c.rock)&&${T}.state().programme.isao?.order!=="repair"`,240000)
+   .catch(async()=>assert.fail(`the shoulders were never walled: ${JSON.stringify(await evaluate(`${T}.showcase.cells(${JSON.stringify(shoulders)})`))} isao ${JSON.stringify(await evaluate(`${T}.state().programme.isao`))} repairing ${JSON.stringify(await evaluate(`${T}.state().programme.repairing`))}`));
+ for(const c of await evaluate(`${T}.showcase.cells(${JSON.stringify(mouth.cells)})`)) assert(!c.rock,'the mouth itself stays the door\'s lane');
+ {const cs=await evaluate(`${T}.showcase.cells(${JSON.stringify(shoulders)})`);console.log(`BACK SHOULDERS ${JSON.stringify(cs)}`);
+  assert(cs.some(c=>c.patched),'a line of kit walls stands on the shoulders the door\'s line crosses');}
+ await delay(1500);
+ await evaluate(`${T}.viewBack()`);await delay(1200);current='back-shoulders-walled';await finish();await evaluate(`${T}.begin()`);
+ await evaluate(`${T}.viewBack(1.6,-3)`);await delay(1200);current='back-shoulders-close';await finish();await evaluate(`${T}.begin()`);
+ console.log('PASS back-shoulders: the door on the mouth, a kit wall printed on each of its shoulders, rock to the swarm.');
  } else if(args.includes('--quiver-frame')) {
  // THE QUIVER'S ROCKET STAYS IN FRAME (owner, 2026-09-16; src/core/round-framing.js): from the Quiver's hand-over one TALON leaves from the
  // PoV seat and one from third person. Every frame of each flight the round is projected through the real camera; from launch through

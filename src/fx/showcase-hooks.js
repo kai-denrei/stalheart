@@ -185,6 +185,8 @@ export function createShowcaseHooks(host) {
       storyApi.closeup();
       return !!host.isao();
     },
+    // what each cell is now: rock to the pathfinder, and whether Isao printed a kit wall into it (the --back-shoulders step)
+    cells: (list) => list.map((ci) => ({ ci, rock: host.dungeon().tags[ci] === BLOCKED, patched: !!host.storyBase()?.patchedCells?.().includes(ci) })),
   };
   return hooks;
 }

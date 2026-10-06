@@ -56,6 +56,8 @@ import { createHullHost } from './hull-issue.js';
 
 export function createProgrammeHost(c) {
   const { PLAYER_MAX, orders, breachQueue, breachedCells, gunshipRig, showBrief, spawnIsao, updateHud, syncLifeContainers, rebuildAfterBreach, recomputePortalDist, adoptBays } = c;
+  // a point (the placer's world) stands on lattice cell ci: ci is its nearest of ci and ci's neighbours, within one cell (patchLine's owns)
+  const ownCell = (ci, p) => { const g = c.graph(), u = p.clone().normalize(), d = (k) => u.distanceTo(new THREE.Vector3(...g.centers[k])); return d(ci) < c.cellSide() && g.adj[ci].every((nb) => d(nb) >= d(ci)); };
   const danger = () => {   // engaged() below
     const seat = !!(c.pilot()?.gunship || c.laserStation?.seated?.()), hull = c.playerPos(), r = STORY_CALM.near * c.cellSide();
     for (const e of c.enemies()) if (e.alive && !e.guard && (seat || Math.hypot(e.pos[0] - hull[0], e.pos[1] - hull[1], e.pos[2] - hull[2]) < r)) return true;
@@ -265,8 +267,9 @@ export function createProgrammeHost(c) {
     // segments standing again (dungeon.mended, src/fx/board-surface.js), so what he printed reads as a wall and not a rock
     repaired: (repair) => {
       if (repair.kind === 'gate') { c.sectorRun()?.repairGate(repair.id ?? 'gate'); if (!repair.id) c.storyBase()?.restoreWall(-1); }   // and the segments on the door's own cell
-      // a hole with kit walls of its own is drawn as floor under them; one without (the back mouth's flanks) is rock again
-      else { const rci = repair.ci, printed = !(c.story().wallCells ?? []).includes(rci) && !(c.story().backHoles ?? []).includes(rci) && !!c.storyBase()?.patchWall?.(rci, c.graph().centers[rci]), walled = printed || (c.story().wallCells ?? []).includes(rci); /* a hole that was rock comes back as a wall (story-base patchWall) */ if (walled && c.dungeon().tags[rci] !== BLOCKED) (c.dungeon().mended ??= new Set()).add(rci); c.dungeon().tags[rci] = BLOCKED; if (c.tdFullTags()) c.tdFullTags()[rci] = BLOCKED; breachedCells.delete(rci); c.story().shot?.delete(rci); breachQueue.push(rci); c.storyBase()?.restoreWall(rci); rebuildAfterBreach(); recomputePortalDist(); c.story().checking = { ci: rci, until: c.t() + BASE_REPAIR.check }; }
+      // a hole with kit walls of its own is drawn as floor under them; a shell's hole gets one printed; a back shoulder gets the door's
+      // line of segments where the line crosses it (story-base patchLine), else it is rock again
+      else { const rci = repair.ci, printed = (c.story().backHoles ?? []).includes(rci) ? !!c.storyBase()?.patchLine?.(rci, 'back', (p) => ownCell(rci, p)) : !(c.story().wallCells ?? []).includes(rci) && !!c.storyBase()?.patchWall?.(rci, c.graph().centers[rci]), walled = printed || (c.story().wallCells ?? []).includes(rci); /* a hole that was rock comes back as a wall (story-base patchWall) */ if (walled && c.dungeon().tags[rci] !== BLOCKED) (c.dungeon().mended ??= new Set()).add(rci); c.dungeon().tags[rci] = BLOCKED; if (c.tdFullTags()) c.tdFullTags()[rci] = BLOCKED; breachedCells.delete(rci); c.story().shot?.delete(rci); breachQueue.push(rci); c.storyBase()?.restoreWall(rci); rebuildAfterBreach(); recomputePortalDist(); c.story().checking = { ci: rci, until: c.t() + BASE_REPAIR.check }; }
       updateHud();
     },
     printed: (step) => {
@@ -276,7 +279,10 @@ export function createProgrammeHost(c) {
       // can be ordered on
       // AND THEN HE CHECKS THE MOUTH (owner, 2026-10-03: "he only fixes one gate, with openings left and right; he needs to do a check. Is it
       // fully secure again? If not: build walls"): every cell the back collapse opened that the door does not cover goes on his repair book
-      if (step.gate === 'back') { for (const sk of c.story().backSockets ?? []) c.story().socketToward[sk.cell] = sk.toward; const m = c.story().backMouth, door = new Set((c.storyBase()?.gateList?.() ?? []).filter((g) => g.id === 'back').flatMap((g) => g.cells ?? [])), dc = c.story().gateCellOf?.('back'); if (m) c.story().backHoles = [...m.cells, ...m.flank].filter((ci) => ci !== dc && !door.has(ci)); recomputePortalDist(); }
+      // THE DOOR STANDS ON THE MOUTH ONLY (owner, 2026-10-06: "a gate only, no walls at its sides closing the area flush with the natural
+      // rock"): the plan's door cells are the whole collapse, so they seal the flank to the swarm, but nothing stood there and the book
+      // above came out empty. The flank is his: a kit wall on each shoulder, out to the rock
+      if (step.gate === 'back') { for (const sk of c.story().backSockets ?? []) c.story().socketToward[sk.cell] = sk.toward; const m = c.story().backMouth; if (m) c.story().backHoles = m.flank.filter((ci) => !m.cells.includes(ci)); recomputePortalDist(); }
       c.sectorRun()?.note({ type: 'print', id: step.id });   // the sector books Isao's base prints too, not only tower orders
       // the walls are rock to the swarm and the tank once they stand, in the full world too: applySector rewrites the tags from it
       if (step.walls) { for (const ci of c.story().wallCells) { c.dungeon().tags[ci] = BLOCKED; if (c.tdFullTags()) c.tdFullTags()[ci] = BLOCKED; breachQueue.push(ci); } gunshipRig.forgetWalls(); rebuildAfterBreach(); recomputePortalDist(); }

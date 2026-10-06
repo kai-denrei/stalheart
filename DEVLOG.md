@@ -15,6 +15,21 @@ Evidence:
 - git log 8fd15baf..c07ad1a1
 - the owner's message of 2026-10-06 (the twenty-sixth notes)
 
+## 2026-10-06 — The back gate's shoulders: Isao walls the flank of the back collapse on the door's own line, out to the rock
+
+change · accepted · 2026-10-06-back-gate-shoulders-walled
+
+Owner, 2026-10-06 (twenty-sixth notes, 5, with a screenshot of sector 9): Isao still does not fix the breaches: a gate only, no walls at its sides closing the area flush with the natural rock. Root cause: the back gate's plan cells are the whole collapse (the two mouth cells and the four flank cells), so the door sealed the flank to the pathfinder while nothing stood there, and the 2026-10-03 check (backHoles = collapse minus the door's cells) always came out empty.
+
+src/fx/programme-host.js: when the back gate prints, backHoles is the flank alone (the mouth is the door's), so Isao's repair book takes each shoulder after the door, with his check. A shoulder is repaired with story-base patchLine: kit wall segments on the back gate's own line, spaced (wallLength) and turned (the door's heading) as the front rim's walls are beside the front gate, printed on the cells the line crosses (ownCell: nearest of the cell and its neighbours, within a cell); a shoulder the line does not cross is rock again. The door still seals its plan cells, so there is no gap in the meantime. New harness probe showcase.cells(list) (rock, patched) and browser step --back-shoulders.
+
+Alternatives: patchWall per shoulder (the shell-hole repair): one segment copied from the nearest rim wall and turned about the planet's centre; tried first, it left four lone segments at odd headings in the middle of large cells (artifacts back-shoulders-close, first run); plain rock on the shoulders: flush, but the owner asked for walls (2026-10-05: 'a wall or gate, not a rock')
+
+Evidence:
+
+- --back-shoulders: mouth [1086,34817], flank [1084,34814,45955,34815]; three shoulders patched, 45955 rock; screenshots back-shoulders-walled/-close show a continuous wall run from the door to the rock on both sides
+- --back-gate passes unchanged; npm test (180 programs) and npm run check pass
+
 ## 2026-10-05 — The start gate becomes the welcome: the A6 settlement pocket guide over the landing, keywords that turn their unit in wireframe, START A NEW PLANET as the call to action, and Isao's WELCOME! / Let's settle a new planet together! / Ad Astra Per Aspera
 
 change · accepted · 2026-10-05-welcome-settlement-guide
