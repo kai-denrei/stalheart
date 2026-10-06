@@ -1625,9 +1625,16 @@ try{
  await until(`${T}.state().shot==="diorama"`,5000);
  await delay(2500);current='finale-diorama-a';await finish();
  await delay(3500);current='finale-diorama-b';await finish();
- await until('(window.__stalheartFinaleDone??0)>=1',30000).catch(async()=>assert.fail(`the finale never handed back (${JSON.stringify(await evaluate(`${T}.state().shot`))})`));
+ // THE ORBITAL CONSTELLATION (src/fx/orbital-finale.js) after it, its own canvas over the game, Isao's three lines
+ await until('!!document.querySelector("#orbital-finale")',15000).catch(()=>assert.fail('the constellation never opened'));
+ for(const [at,name] of [[4,'a'],[12,'b'],[22,'c']]){await until(`(()=>{const e=document.querySelector("#orbital-finale");return !e||+getComputedStyle(e).opacity>0.9;})()`,10000).catch(()=>{});await delay(at===4?4000:at===12?8000:10000);if(!(await evaluate('!!document.querySelector("#orbital-finale")')))break;current=`finale-orbit-${name}`;await finish();}
+ await until('(window.__stalheartFinaleDone??0)>=1',60000).catch(async()=>assert.fail(`the finale never handed back (${JSON.stringify(await evaluate(`${T}.state().shot`))})`));
+ {/* the page's own copy of the module: a built page loads it with its ?v= token, and a bare import would be a second, silent copy */
+  const said=await evaluate('(async()=>(await import(performance.getEntriesByType("resource").map(e=>e.name).find(n=>/\\/src\\/fx\\/isao-voice\\.js/.test(n))??"./src/fx/isao-voice.js")).isaoSay.log.map(e=>e.id))()');console.log(`FINALE said ${said.filter(x=>/^ending_/.test(x)).join(' ')}`);
+  assert(['ending_did_it_01','ending_dyson_01','ending_next_01'].every(id=>said.includes(id)),'Isao says all three lines');}
+ assert(!(await evaluate('!!document.querySelector("#orbital-finale")')),'the constellation is gone when it hands back');
  assert.equal(await evaluate(`${T}.state().shot`),null,'and the camera is the player\'s again');
- console.log('PASS finale: the diorama plays and hands back');
+ console.log('PASS finale: the diorama, the constellation, and the hand-back');
  } else if(args.includes('--round9')) {
  // THE OWNER'S NINTH NOTES (2026-10-02): SOL's automated pass counts down, fires from one point in the sky and spares the base; the
  // stampede (every second wave a mouth sends) floods the lane with rammable bodies; the auto gunship's tracers age out

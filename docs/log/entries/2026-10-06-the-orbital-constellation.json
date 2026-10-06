@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-10-06-the-orbital-constellation",
+  "date": "2026-10-06",
+  "type": "change",
+  "status": "accepted",
+  "title": "The ending, step five: after the diorama, A6's orbital constellation, forty-eight HEL-01 heads put up from the ARC-01, with Isao's WE DID IT, the Dyson Sphere and the next one",
+  "context": "Owner, 2026-10-06 (twenty-sixth notes, 7): then a short animation from the A6 orbital cinematic (jelaludo.github.io/SentryTowers_A6/orbital-cinematic/): an orbital constellation built by repeated satellite launches, with new Isao lines 'WE DID IT', 'We connected this planet to the Dyson Sphere', 'Ready for the next one? AH AH!'. Plan: 2026-10-06-the-ending-plan-and-the-run-recap.",
+  "outcome": "src/fx/orbital-finale.js ports the last chapters of A6's First Light (SentryTowers_A6 deaf9206 orbital-cinematic/: timeline.js, scene.js, galaxy.js, mirror-head.js): the small rotating planet and its atmosphere, the star field, the distant spiral galaxy, SOL-88 on station, the ARC-01 on its pad, and the 48 HEL-01 heads launched 0.65 s apart and spread over three tilted rings, the camera pulling back; upstream 50 to 100 s played in 26 s on its own overlay canvas and renderer (ACES, as upstream), disposed after; any key or click skips. Isao says ending_did_it, ending_dyson and ending_next at 1.2, 9.5 and 19.5 s with the line on screen; a counter reads n / 48 HEL-01 IN ORBIT. The programme host's finale plays it after the diorama (or alone when no boards stand), holding the game under it; then the next sector or the new run. New pinned asset: the HEL-01 lod1 head (docs/orbital-finale-assets.lock.json, 18,036 bytes; the cinematic's 36-triangle head is derived from its palette at run time, as upstream). The ARC-01's sled is not animated (the launches are the streaks).",
+  "alternatives": [
+    "the whole 100 s cinematic: the owner asked for a short animation of the constellation",
+    "the game's own scene and camera: the cinematic's planet is a different, small world; a separate canvas leaves the game's scene and post chain untouched"
+  ],
+  "evidence": [
+    "test/orbital-finale.mjs: none up at 50 s, all 48 by 100 s, never back, rings well clear of the planet, the camera pulls back",
+    "--finale passes on source and on dist (--dist): the diorama, three stills of the constellation (artifacts/browser/finale-orbit-a/-b/-c.png: the pad with WE DID IT!, 27 / 48 with the Dyson line, 48 / 48 with the next one), the three lines in Isao's log, the overlay gone at the hand-back. On dist the step reads the page's own ?v= copy of isao-voice.js (a bare import was a second, silent copy)",
+    "npm test (183), npm run check, npm run build (the packed head keeps MIRROR_BACK, OPTICAL_FACE and its colours)"
+  ],
+  "supersedes": []
+}

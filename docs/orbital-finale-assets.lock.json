@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/jelaludo/SentryTowers_A6",
+  "revision": "deaf9206192d6ed2849c08a474c41660654cbc07",
+  "baseUrl": "https://raw.githubusercontent.com/jelaludo/SentryTowers_A6/deaf9206192d6ed2849c08a474c41660654cbc07/",
+  "credit": "Models and the First Light orbital cinematic by jelaludo (https://jelaludo.github.io/SentryTowers_A6/orbital-cinematic/): the HEL-01 heliostat mirror, reused with attribution under the upstream ASSET-LICENSE.md",
+  "note": "THE ORBITAL CONSTELLATION (owner, 2026-10-06: the ending's short animation from the A6 orbital cinematic). The cinematic's HEL-01 distance head is derived from this lod1 head at run time (src/fx/orbital-finale.js, after upstream orbital-cinematic/mirror-head.js): only the MIRROR_BACK and OPTICAL_FACE palettes and materials are read. The ARC-01 and SOL-88 come from docs/colony-assets.lock.json.",
+  "files": [
+    {
+      "path": "assets/models/orbital/hel01_mirror_d0_lod1.glb",
+      "sourcePath": "assets/settlement-industry/lod1/mirror_d0_lod1.glb",
+      "sha256": "743f9b99dc4571bcb3b9f35f0ebb657bc1cb690bf853cc2d91355639acda1762",
+      "bytes": 18036,
+      "nodes": ["MIRROR_BACK", "OPTICAL_FACE"]
+    }
+  ]
+}

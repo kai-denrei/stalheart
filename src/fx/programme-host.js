@@ -49,6 +49,7 @@ import * as THREE from '../../vendor/three.module.js';
 import { createMomentReel } from './moment-reel.js';
 import { createColonyLapse } from './colony-lapse.js';
 import { playDiorama } from './finale-diorama.js';
+import { playOrbitalFinale } from './orbital-finale.js';
 const loadDyes = () => { try { return JSON.parse(storage.getItem(DYE_SHOP.store) ?? 'null'); } catch { return null; } };
 const saveDyes = (b) => { try { storage.setItem(DYE_SHOP.store, JSON.stringify(b)); } catch { /* a refused store: the dyes last this run */ } };
 import { nextRepair, shotHoles, rimHoles } from '../domain/repair-orders.js';
@@ -326,9 +327,12 @@ export function createProgrammeHost(c) {
     // THE PAINT SHOP AT THE BREAK is retired (2026-10-03: the palettes are all open, the bays' purple pad is the shop): the sector loop's
     // ask is answered no, and the next sector begins as it always did
     interlude: () => false,
-    // THE FINALE (src/fx/finale-diorama.js, then the orbital constellation): the world runs again under the host's own shots, and
+    // THE FINALE (src/fx/finale-diorama.js, then src/fx/orbital-finale.js): the world runs again under the host's own shot, and
     // `then` (the next sector, or a new run) runs when they end
-    finale: (then) => { c.pause?.(false); return playDiorama(c, then); },
+    finale: (then) => {
+      const orbit = () => { c.pause?.(true); playOrbitalFinale(c.hud ?? document.body, { sfx: c.sfx, done: then }); };   // the game holds under it; `then` lets it go
+      c.pause?.(false); if (!playDiorama(c, orbit)) orbit(); return true;
+    },
     // THE ENVELOPE (GUNSHIP_AUTO): while the gunship flies itself the sectors hold more bodies and size their waves larger
     // ...AND IT RISES WITH EVERY AUTOMATION (owner, 2026-10-03: "as Isao takes control of the Gunship and SOL, it should coincide with
     // crazier and crazier waves"): `tier` counts them (the gunship on auto, SOL-88 up), each one swells the waves and arms the stampedes

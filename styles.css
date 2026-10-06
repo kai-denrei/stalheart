@@ -4939,3 +4939,13 @@ body.seat-gliding #seat-vignette { display: none; }
 @media (max-width: 999px) { #start-gate .wg { padding: 18px 24px; } #start-gate .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } #start-gate .step:nth-child(3) { border-left: 0; } #start-gate .step:nth-child(n+3) { border-top: 1px dashed #b4aa91; } #start-gate .drawing { height: 200px; } #start-gate .edition span:last-child { display: none; } #start-gate .guide-footer { align-items: flex-start; } }
 @media (max-width: 560px) { #start-gate .wg { padding: 16px; } #start-gate .seal { width: 75px; height: 75px; margin: 0 8px 0 12px; gap: 3px; } #start-gate .seal strong { font-size: 16px; } #start-gate .seal > span { font-size: 5px; letter-spacing: 0; } #start-gate h1 { font-size: 36px; letter-spacing: -1.8px; } #start-gate .steps { grid-template-columns: 1fr; } #start-gate .step + .step { border-left: 0; border-top: 1px dashed #b4aa91; } #start-gate .guide-footer { flex-direction: column; gap: 14px; } #start-gate .completion { text-align: left; } #start-gate .stamp { font-size: 12px; min-height: 44px; } #start-gate .wg-cta { width: 100%; } }
 @media (prefers-reduced-motion: reduce) { #start-gate .wg-cta { animation: none; } }
+
+/* THE ORBITAL CONSTELLATION (src/fx/orbital-finale.js): its own canvas over everything, Isao's line under it */
+#orbital-finale { position: fixed; inset: 0; z-index: 2147483000; background: #020610; opacity: 0; }
+#orbital-finale canvas { display: block; width: 100%; height: 100%; }
+#orbital-finale .of-line { position: absolute; left: 50%; bottom: clamp(56px, 12vh, 120px); translate: -50% 0; margin: 0; max-width: min(92vw, 900px); text-align: center;
+  font: 600 clamp(20px, 3.2vw, 38px)/1.2 ui-monospace, 'JetBrains Mono', monospace; letter-spacing: 0.04em; color: #f2fff9; text-shadow: 0 0 18px rgba(53, 255, 208, 0.55); opacity: 0; }
+#orbital-finale .of-line.on { animation: of-line 6.5s ease forwards; }
+@keyframes of-line { 0% { opacity: 0; translate: -50% 8px; } 8% { opacity: 1; translate: -50% 0; } 85% { opacity: 1; } 100% { opacity: 0; } }
+#orbital-finale .of-count { position: absolute; left: 16px; top: 14px; margin: 0; font: 13px/1 ui-monospace, monospace; letter-spacing: 0.14em; color: #62978d; }
+#orbital-finale .of-skip { position: absolute; right: 16px; bottom: 14px; margin: 0; font: 12px/1 ui-monospace, monospace; letter-spacing: 0.14em; color: #62978d; }
