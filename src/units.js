@@ -1407,7 +1407,10 @@ function makeBirudoron(tint) {
   g.userData.tickFace = (dt) => mixer.update(dt);
   g.userData.getFace = () => face;
   g.userData.spinRotors = (dt, load = 0) => { if (rotor) rotor.timeScale = 1 + 1.3 * load; };
-  g.userData.setWork = () => {};
+  // THE TOOL WORKS WHILE HE PRINTS (owner, 2026-10-06: "when Isao builds it should look like he is dropping filament"): the authored
+  // Tool_Fabricate clip (the nozzle's extend, pitch and yaw, nothing the face clips pose) runs while `work` is up and fades when it is not
+  const fab = byName.get('Tool_Fabricate') ? mixer.clipAction(byName.get('Tool_Fabricate')) : null; let fabOn = false;
+  g.userData.setWork = (work) => { if (!fab || (work > 0) === fabOn) return; fabOn = work > 0; if (fabOn) { fab.reset(); fab.enabled = true; fab.setEffectiveWeight(1); fab.fadeIn(0.3).play(); } else fab.fadeOut(0.3); };
   g.userData.nozzle = g.getObjectByName('TOOL_TIP') || null;
   g.userData.kind = 'fixture'; g.userData.asset = 'isao-birudoron';
   g.userData.setFace('neutral'); mixer.update(0);

@@ -5937,9 +5937,7 @@ export function initTdTab(root) {
     if (!isao) return;
     const working = isao.state === 'build';
     lookIsao(isao, dt);   // his face, rotors and work light (src/fx/isao-look.js; a shot runs it too, frozen)
-    // the print beam: ONE line object, rewritten in place. The effects rule
-    // on this board is that activity must not add objects, and a beam that
-    // exists for the whole build is exactly the thing that would.
+    // the print beam: ONE line object, rewritten in place (activity must not add objects; a beam that exists for the whole build would)
     if (working) {
       const noz = isao.obj.userData.nozzle;
       const a = new THREE.Vector3();
@@ -5953,16 +5951,12 @@ export function initTdTab(root) {
             color: ISAO_TINT, transparent: true, opacity: 0.85,
             blending: THREE.AdditiveBlending, depthWrite: false,
           }));
+        printBeam.frustumCulled = false;   // the buffer is rewritten; its bounds lie (2026-10-06: it was culled off most prints)
         scene.add(printBeam);
       }
-      // THE HEAD MOVES. A steady line from the nozzle to the middle of the
-      // cell reads as a laser; a printer rasters, walks a perimeter, and
-      // stops extruding while it travels. printpath.js owns those three
-      // patterns and the cycle between them; this only lays them on the
-      // cell's tangent plane. The trail is sampled BACKWARDS along the same
-      // path rather than remembered, so it stays deterministic and costs no
-      // state — and it is what makes a zigzag legible as a zigzag.
-      // sized to THIS build, so even the shortest job shows all three
+      // THE HEAD MOVES. A steady line from the nozzle to the cell's middle reads as a laser; a printer rasters, walks a perimeter and stops
+      // extruding while it travels (printpath.js owns the three patterns and their cycle; this lays them on the cell's tangent plane). The
+      // trail is sampled BACKWARDS along the same path, not remembered: deterministic, no state, and what makes a zigzag legible as one
       const { pattern, u } = printPhase(isao.t, patternSecsFor(isao.dur));
       const nrm = graph.normals[isao.order.ci];
       const [t1, t2] = tangentBasis(nrm);
