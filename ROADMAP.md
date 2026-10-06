@@ -371,7 +371,7 @@ First step, when it is picked up: `@ts-check` on `src/domain` as a trial, to see
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 48 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 49 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
 
 ### Session sync after the twenty-sixth notes and THE ENDING: lessons, and the owner's twenty-seventh notes queued for the next session
 
@@ -396,6 +396,12 @@ One commit since the last sync (c07ad1a1, recorded in 2026-10-05-twenty-fifth-no
 `2026-10-06-session-close-twenty-seventh-round-and-the-black-hole` · issue · **observed**
 
 The owner closes the session ('sync, commit and push, then we will /clear') after the twenty-seventh notes (2026-10-06-session-sync-twenty-seventh-notes-shipped) and the accretion disk (2026-10-06-the-black-hole-not-far).
+
+### Session close: the black hole placed low behind the Stålheart (main dd834e1c); queued, a day/night cycle with a mini-HUD of it, and the owner's own better celestial objects
+
+`2026-10-06-session-close-the-black-hole-placed-and-the-day-night-queued` · issue · **observed**
+
+The owner, 2026-10-06, after three placements of the accretion disk (2026-10-06-the-black-hole-low-behind-the-stalheart and dd834e1c: a fiftieth of a radian up, 28 across, 40 out): 'sync, commit and push, then we will /clear. we need a bit night/day cycle and mini-hud viz of it too. and I will work on better celestial objects. the current galaxies are a bit underwhelming.'
 
 ### Type checking without TypeScript files: @ts-check and JSDoc with tsc --noEmit, adopted layer by layer, rather than converting to .ts
 

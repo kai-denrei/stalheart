@@ -309,6 +309,21 @@ Evidence:
 
 Supersedes: 2026-10-06-session-sync-twenty-seventh-notes-shipped
 
+## 2026-10-06 — Session close: the black hole placed low behind the Stålheart (main dd834e1c); queued, a day/night cycle with a mini-HUD of it, and the owner's own better celestial objects
+
+issue · observed · 2026-10-06-session-close-the-black-hole-placed-and-the-day-night-queued
+
+The owner, 2026-10-06, after three placements of the accretion disk (2026-10-06-the-black-hole-low-behind-the-stalheart and dd834e1c: a fiftieth of a radian up, 28 across, 40 out): 'sync, commit and push, then we will /clear. we need a bit night/day cycle and mini-hud viz of it too. and I will work on better celestial objects. the current galaxies are a bit underwhelming.'
+
+Pushed: main dd834e1c, the tree clean. QUEUED for the next session: (1) a night/day cycle with a mini-HUD visualisation of it; there is already a daylight pass (src/fx/daylight.js, STORY_DAY: the sun, the dusk, the stars fading with the day, ?day= for the harness), so the work is the cycle's rhythm over a run and a small HUD dial or arc that shows where in it the colony is. (2) The owner makes better celestial objects himself (the baked galaxies of src/galaxyseed.js / galaxybake.js read as underwhelming); the accretion disk's path, a one-shot render in its own context hung as world-fixed planes (src/fx/accretion.js, SKY_HOLE), is the pattern for whatever he brings.
+
+Evidence:
+
+- git log 20c764eb..dd834e1c
+- the --sky-hole still at dd834e1c
+
+Supersedes: 2026-10-06-session-close-twenty-seventh-round-and-the-black-hole
+
 ## 2026-10-06 — A hole in the rim's rock comes back as a run of kit walls along the rim's line, not one lone segment
 
 change · resolved · 2026-10-06-rim-holes-walled-as-a-run
