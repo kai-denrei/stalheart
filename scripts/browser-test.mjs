@@ -2801,7 +2801,7 @@ try{
  // of the frame sideways. Dismissed by hand only: Space on the last page points at CONTINUE, Esc changes nothing, and
  // only the buttons close the card.
  const PAGES=['THE BREACHES','THE KILLS','THE TANK','THE COLONY'];
- const LABELS={secure:['SECURE',...PAGES],flawless:['SECURE',...PAGES],lost:['LAST TRANSMISSION',...PAGES],campaign:['THE COLONY HOLDS']};
+ const LABELS={secure:['SECURE',...PAGES],flawless:['SECURE',...PAGES],lost:['LAST TRANSMISSION',...PAGES],campaign:['THE COLONY HOLDS','THE RUN','THE BEST MOMENTS']};
  const dbf=()=>evaluate('window.__stalheartDebriefTest.state()');
  const press=async key=>{const code=key===' '?'Space':key;
   await send('Input.dispatchKeyEvent',{type:'keyDown',key,code,...(key===' '?{text:' '}:{})});await send('Input.dispatchKeyEvent',{type:'keyUp',key,code});await delay(120);};
@@ -2825,11 +2825,13 @@ try{
     assert.equal(s.stamps,s.stampsTotal,`${name} page ${i+1}: every stamp is down after the skip`);
     assert(s.overflowX<=1&&!s.poking.length,`${name} page ${i+1} at ${w} px: nothing pokes out sideways (${s.overflowX} ${JSON.stringify(s.poking)})`);
     current=`debrief-${w}-${name}-p${i+1}`;await delay(150);await finish();
-    if(i<LABELS[name].length-1){await press(' ');assert.equal((await dbf()).page,i+1,`${name}: the next press advances`);}
+    /* a report's press closes it once the page is complete (CONTINUE on every page, 2026-10-03): its tabs are walked with the arrow;
+       the campaign's pages are read in turn, a press goes on to the next (2026-10-06) */
+    if(i<LABELS[name].length-1){await press(name==='campaign'?' ':'ArrowRight');assert.equal((await dbf()).page,i+1,`${name}: the next ${name==='campaign'?'press':'arrow'} advances`);}
    }
-   await press(' ');s=await dbf();
-   assert(s.open,`${name}: Space on the last page never dismisses`);
-   assert(await evaluate('document.activeElement?.classList.contains("sdb-btn--go")'),`${name}: it points at the way out`);
+   if(name==='campaign'){await press(' ');s=await dbf();
+    assert(s.open,`${name}: Space on the last page never dismisses`);
+    assert(await evaluate('document.activeElement?.classList.contains("sdb-btn--go")'),`${name}: it points at the way out`);}
    if(name==='secure'){
     await press('ArrowLeft');s=await dbf();assert.equal(s.page,3,'ArrowLeft goes back');assert(!s.animating,'a page already seen comes back complete');
     await press('ArrowRight');assert.equal((await dbf()).page,4,'ArrowRight goes forward');
@@ -2848,7 +2850,7 @@ try{
  {assert.equal(await evaluate('window.__stalheartDebriefTest.width("400")'),400,'the host is 400 px wide');
   await evaluate('window.__stalheartDebriefTest.show("flawless")');const s=await dbf();
   assert(!s.animating&&s.stamps===s.stampsTotal,'?still=1 shows the page complete, stamps down');
-  assert.equal(await evaluate('getComputedStyle(document.querySelector(".sdb-stats")).gridTemplateColumns.split(" ").length'),2,'a 400 px host stacks the hero stats in two columns');
+  assert.equal(await evaluate('getComputedStyle(document.querySelector(".sdb-sum-grid")).gridTemplateColumns.split(" ").length'),2,'a 400 px host stacks the summary tiles in two columns (the hero is .sdb-sum since the summary page)');
   assert(s.overflowX<=1&&!s.poking.length,`nothing pokes out of a 400 px host (${JSON.stringify(s.poking)})`);
   current='debrief-width-400-on-1280';await finish();
   await evaluate('window.__stalheartDebriefTest.show("campaign")');await click('.sdb-root [data-act=newrun]');await delay(150);

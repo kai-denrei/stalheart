@@ -16,6 +16,7 @@ import {
   clamp01, easeRoll, easeGrow, formatValue, formatClock, accuracy, closedByLabel, sideLabel, breachLetter,
   stampLabel, stampNote, beltEntries, sourceRows, debriefPageLabels, tempoPath, campaignTotals,
 } from '../core/debrief-format.js';
+import { recapRows, runTempo, runBests, bars } from '../core/run-recap.js';
 
 const BELT_ORDER = [...Object.keys(SAFE_HUES), ...Object.keys(ALARM_HUES)];
 const BELT_HEX = { ...SAFE_HUES, ...ALARM_HUES };
@@ -258,6 +259,50 @@ function pageCampaign(camp, isao) {
   </section>`;
 }
 
+// THE RUN (owner, 2026-10-06: "no re-cap of all the waves ... graphs, sparklines, spanning the entire rounds"): every sector's kill
+// tempo laid end to end with a tick where each starts, then one small bar chart per measure across the sectors, its best bar lit
+const RUN_MULTIPLES = [
+  { label: 'KILLS', of: (x) => x.kills }, { label: 'SCORE', of: (x) => x.score }, { label: 'BEST RAM COMBO', of: (x) => x.combo, fmt: 'combo' },
+  { label: 'BIOMASS KG', of: (x) => x.biomass }, { label: 'TANK KILLS', of: (x) => x.by.tank }, { label: 'TOWER KILLS', of: (x) => x.by.towers },
+  { label: 'GUNSHIP KILLS', of: (x) => x.by.gunship }, { label: 'SOL KILLS', of: (x) => x.by.laser }, { label: 'HULLS LOST', of: (x) => x.hulls, warn: true },
+];
+function pageRun(camp) {
+  const reps = (camp && camp.reports) || [], rows = recapRows(reps), t = runTempo(reps), W = 900, H = 110, tp = tempoPath(t.bins, W, H);
+  const step = t.bins.length > 1 ? W / (t.bins.length - 1) : 0;
+  const ticks = t.marks.map((m) => `<line class="sdb-spark-grid sdb-run-tick" x1="${(m.at * step).toFixed(1)}" y1="0" x2="${(m.at * step).toFixed(1)}" y2="${H}"/>`).join('');
+  const names = t.marks.map((m, i) => { const x0 = m.at * step, x1 = i + 1 < t.marks.length ? t.marks[i + 1].at * step : W; return `<span style="left:${((x0 / W) * 100).toFixed(2)}%;width:${(((x1 - x0) / W) * 100).toFixed(2)}%">${pad2(m.sector)}</span>`; }).join('');
+  const peakSector = tp.peak ? t.marks.filter((m) => m.at <= tp.peak.index).at(-1)?.sector : null;
+  const peak = tp.peak && tp.peak.value > 0 ? `<div class="sdb-peak${tp.peak.x > W * 0.72 ? ' is-right' : tp.peak.x < W * 0.22 ? ' is-left' : ''}" data-reveal data-at="1700" style="left:${((tp.peak.x / W) * 100).toFixed(2)}%;top:${((tp.peak.y / H) * 100).toFixed(2)}%"><span>PEAK ${tp.peak.value} / 5 S · SECTOR ${pad2(peakSector)}</span></div>` : '';
+  const multiples = RUN_MULTIPLES.map((d, k) => {
+    const g = bars(rows, d.of, 300, 64, 3), at = 1900 + k * 120, best = g.peak >= 0 ? rows[g.peak] : null;
+    const rects = g.bars.map((b, i) => `<rect class="${i === g.peak ? 'is-peak' : ''}${rows[i].lost ? ' is-lost' : ''}" x="${b.x}" y="${(64 - b.h).toFixed(1)}" width="${b.w}" height="${b.h}"/>`).join('');
+    return `<div class="sdb-mult${d.warn ? ' is-warn' : ''}" data-reveal data-at="${at}"><div class="sdb-h"><span>${d.label}</span><span>${best ? `${formatValue(d.of(best), d.fmt ?? 'int')} · S${pad2(best.sector)}` : '—'}</span></div><svg viewBox="0 0 300 64" preserveAspectRatio="none" aria-hidden="true">${rects}</svg></div>`;
+  }).join('');
+  return `<section class="sdb-page sdb-run">
+    <h2 class="sdb-title" data-reveal data-at="0">THE RUN</h2>
+    <div class="sdb-tempo">
+      <div class="sdb-h" data-reveal data-at="200"><span>EVERY SECTOR · KILLS PER 5 S</span><span>${formatClock(t.bins.length * 5)}</span></div>
+      <div class="sdb-spark-wrap sdb-run-spark">
+        <svg class="sdb-spark" data-grow="1" data-at="300" data-dur="1400" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${ticks}<path class="sdb-spark-area" d="${tp.area}"/><path class="sdb-spark-line" d="${tp.line}"/></svg>
+        ${peak}
+      </div>
+      <div class="sdb-run-names" data-reveal data-at="400">${names}</div>
+    </div>
+    <div class="sdb-mults">${multiples}</div>
+  </section>`;
+}
+
+// THE BEST MOMENTS: the run's bests, each with the sector it came in
+function pageBest(camp) {
+  const best = runBests(recapRows((camp && camp.reports) || []));
+  const tiles = best.map((b, i) => `<div class="sdb-best" data-reveal data-at="${200 + i * 160}"><span>${b.label}</span>${roll(b.value, { fmt: b.fmt === 'x' ? 'combo' : b.fmt ?? 'int', at: 240 + i * 160, dur: 800 })}<small>SECTOR ${pad2(b.sector)} · ${esc(b.name)}</small></div>`).join('');
+  return `<section class="sdb-page sdb-bests">
+    <h2 class="sdb-title" data-reveal data-at="0">THE BEST MOMENTS</h2>
+    <div class="sdb-best-grid">${tiles || '<div class="sdb-none">NOTHING TO SHOW YET</div>'}</div>
+  </section>`;
+}
+const CAMPAIGN_PAGES = [pageCampaign, pageRun, pageBest];
+
 const REPORT_PAGES = [pageHero, pageBreaches, pageKills, pageTank, pageColony];
 
 export function createSectorDebrief(host, options = {}) {
@@ -393,9 +438,9 @@ export function createSectorDebrief(host, options = {}) {
     back.disabled = index === 0;
     back.hidden = labels.length < 2;
     root.querySelector('[data-f=acts]').innerHTML = mode === 'campaign'
-      ? '<button type="button" class="sdb-btn" data-act="newrun">NEW RUN</button><button type="button" class="sdb-btn sdb-btn--go" data-act="keep">KEEP HOLDING &#9654;</button>'
+      ? (last ? '' : '<button type="button" class="sdb-btn" data-act="next">DETAIL &#9654;</button>') + '<button type="button" class="sdb-btn" data-act="newrun">NEW RUN</button><button type="button" class="sdb-btn sdb-btn--go" data-act="keep">KEEP HOLDING &#9654;</button>'
       : (last ? '' : '<button type="button" class="sdb-btn" data-act="next">DETAIL &#9654;</button>') + '<button type="button" class="sdb-btn sdb-btn--go" data-act="continue">CONTINUE &#9654;</button>';   // CONTINUE on every page: the detail tabs are optional (2026-10-03)
-    body.innerHTML = mode === 'campaign' ? pageCampaign(campaign, isao) : REPORT_PAGES[index](report, isao);
+    body.innerHTML = mode === 'campaign' ? CAMPAIGN_PAGES[index](campaign, isao) : REPORT_PAGES[index](report, isao);
     body.scrollTop = 0;
     collect();
     const quiet = still();
@@ -436,7 +481,7 @@ export function createSectorDebrief(host, options = {}) {
   function advance() {
     if (!mode) return;
     if (complete()) return;
-    if (mode === 'report') close(onContinue); else nudge();
+    if (mode === 'report') close(onContinue); else if (index < labels.length - 1) goTo(index + 1); else nudge();   /* the campaign's pages are read in turn */
   }
   function close(callback) {
     const data = mode === 'campaign' ? campaign : report;
@@ -494,7 +539,7 @@ export function createSectorDebrief(host, options = {}) {
   }
   function showCampaign(nextCampaign, { isao: lines } = {}) {
     mode = 'campaign'; campaign = nextCampaign; report = null; isao = lines || null;
-    labels = ['THE COLONY HOLDS'];
+    labels = ['THE COLONY HOLDS', 'THE RUN', 'THE BEST MOMENTS'];
     seen = new Set();
     root.dataset.mode = 'campaign';
     root.dataset.outcome = 'secure';

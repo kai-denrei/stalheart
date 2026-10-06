@@ -28,6 +28,19 @@ Evidence:
 - new step --study-view (?skip=expedition): the screen opens over the drive, CONTINUE, the sites shot, then the strip on TANK and no build view
 - npm run architecture passes
 
+## 2026-10-06 — The ending is THE COLONY HOLDS: a run recap read at the player's pace, then a diorama, then the orbital constellation; first step, THE RUN and THE BEST MOMENTS pages
+
+decision · accepted · 2026-10-06-the-ending-plan-and-the-run-recap
+
+Owner, 2026-10-06 (twenty-sixth notes, 6 and 7): at the end, more time to read the details (max RAM bonus, which wave), a feel-good diorama of the MÖRK and Isao looking at the diegetic scoreboard, then a short animation from the A6 orbital cinematic (an orbital constellation built by repeated satellite launches) with Isao's 'WE DID IT', 'We connected this planet to the Dyson Sphere', 'Ready for the next one? AH AH!'. Asked which end: THE COLONY HOLDS (the campaign card after BOTH WALLS). Asked what cuts the reading short: 'there's not enough details available, no re-cap of all the waves, we need more sense of revisiting the best moments, maybe small recordings of the highest RAM bonus in black and white, or the best Tactical Nuke, something visual, graphs, sparklines, spanning the entire rounds. maybe a 3/4 or top-down time-lapse of the colony being built from nothing to fully developed.'
+
+Plan, five steps: (1) the campaign card's whole-run pages; (2) the best moments as black-and-white flipbook clips captured in play (highest RAM combo, best tactical nuke); (3) a time-lapse of the colony from a fixed camera, a still per print; (4) the diorama: MÖRK and Isao at the scoreboard; (5) the HEL-01 constellation chapter of A6's First Light cinematic (pinned at deaf9206), shortened, with the three ending lines (recorded in seiyu_voice 5e017fe). Step 1 done: src/core/run-recap.js (recapRows, runTempo, runBests, bars; test/run-recap.mjs); the campaign card has three pages: THE COLONY HOLDS, THE RUN (every sector's kill tempo end to end with sector ticks and its peak's sector; nine small bar charts across the sectors, kills, score, best RAM combo, biomass, tank, tower, gunship and SOL kills, hulls lost, each with its best sector lit) and THE BEST MOMENTS (the run's bests with the sector each came in). The card is still dismissed by hand only; a press now reads the campaign's pages in turn.
+
+Evidence:
+
+- --debrief passes, the campaign's three pages at full, 1280 and 400 px; it had been failing on main since the 2026-10-03 summary page (a report's press closes the card; the hero's grid is .sdb-sum-grid): the step now walks a report's tabs with the arrow
+- npm test (181 programs) and npm run check pass
+
 ## 2026-10-06 — SOL's seat opens on the densest pile, and the pointer takes the aim only once it means it
 
 change · accepted · 2026-10-06-sol-first-aim

@@ -4431,6 +4431,23 @@ body.playing:not(.shell-open) #shell-bar { opacity: 0.32; }
 .sdb-swatch { display: block; width: 100%; max-width: 44px; height: 6px; background: var(--belt); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6); }
 .sdb-belt-l { font-size: 14px; letter-spacing: 0.04em; color: var(--sdb-dim); white-space: nowrap; }
 .sdb-tempo { margin-top: 4px; }
+/* the campaign's THE RUN and THE BEST MOMENTS (src/core/run-recap.js) */
+.sdb-run-spark { height: clamp(90px, 11cqi, 130px); }
+.sdb-run-tick { stroke: var(--sdb-line); }
+.sdb-run-names { position: relative; height: 18px; margin-top: 4px; }
+.sdb-run-names > span { position: absolute; top: 0; font-size: 13px; letter-spacing: 0.1em; color: var(--sdb-dim); text-align: center; overflow: hidden; border-left: 1px solid var(--sdb-line); }
+.sdb-mults { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(10px, 1.6cqi, 22px) clamp(12px, 2cqi, 28px); margin-top: clamp(14px, 2cqi, 26px); }
+@container (max-width: 640px) { .sdb-mults { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.sdb-mult svg { display: block; width: 100%; height: clamp(40px, 5cqi, 64px); margin-top: 6px; background: var(--sdb-faint); }
+.sdb-mult rect { fill: var(--sdb-glow); opacity: 0.55; }
+.sdb-mult rect.is-peak { fill: var(--sdb-accent); opacity: 1; }
+.sdb-mult rect.is-lost { fill: var(--sdb-dim); }
+.sdb-mult.is-warn rect.is-peak { fill: #ff4d2e; }
+.sdb-best-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: clamp(10px, 1.6cqi, 22px); margin-top: clamp(14px, 2cqi, 26px); }
+.sdb-best { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: 1px solid var(--sdb-line); background: var(--sdb-faint); }
+.sdb-best > span { font-size: 14px; letter-spacing: 0.12em; color: var(--sdb-dim); }
+.sdb-best > .sdb-num { font-size: clamp(30px, 3.6cqi, 48px); line-height: 1.05; color: var(--sdb-hi); text-shadow: 0 0 12px var(--sdb-glow-soft); }
+.sdb-best > small { font-size: 13px; letter-spacing: 0.08em; color: var(--sdb-dim); }
 .sdb-spark-wrap { position: relative; height: clamp(70px, 8.4cqi, 100px); margin-top: 26px; }
 .sdb-spark { display: block; width: 100%; height: 100%; overflow: visible; clip-path: inset(-30px calc((1 - var(--g, 0)) * 100%) -2px -2px); }
 .sdb-spark-grid { stroke: var(--sdb-faint); stroke-width: 1; vector-effect: non-scaling-stroke; }
