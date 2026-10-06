@@ -1,6 +1,6 @@
 {
  "schema": 2,
- "source": "seiyu_voice export A-1 2026-10-06T06:10:54Z: 24 kHz mono WAV, encoded by scripts/import-isao-voice.mjs to mono 64 kbps MP3, no normalisation",
+ "source": "seiyu_voice export A-1 2026-10-06T09:15:11Z: 24 kHz mono WAV, encoded by scripts/import-isao-voice.mjs to mono 64 kbps MP3, no normalisation",
  "files": [
   {
    "path": "assets/audio/isao/mission_04.mp3",
@@ -992,9 +992,9 @@
   {
    "path": "assets/audio/isao/ending_did_it_01.mp3",
    "id": "ending_did_it_01",
-   "sha256": "aa1468bec3a84f127b55bf3fcdcc8b2713dbce2d6b0ebe325dbe0a8a2354a9b5",
-   "bytes": 11156,
-   "sourceSha256": "e15ebb8cc034988e5ab01c4730bd3e23d8ad5a93feef4095a5685cdba31bc53f"
+   "sha256": "6d221eb2b2e1cd38aa49d67c9f72dd473fb0f92fe5e6f166000bd7f229a37ad9",
+   "bytes": 9428,
+   "sourceSha256": "45df011fbfbb9df338c7417cee500b556878697985831a45b9992ddf4694b7f2"
   },
   {
    "path": "assets/audio/isao/ending_dyson_01.mp3",
