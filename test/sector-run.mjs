@@ -268,4 +268,54 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
   assert.equal(w.run.doorsQuiet(), true, 'harmless fodder at the gate neither wears it nor keeps Isao off it');
   w.step(3); assert.equal(w.run.state().gate.hp, SECTOR_GATE.hp, 'the gate is untouched');
 }
+// THE ENDING BEFORE THE SCORE (owner, 2026-10-06, twenty-seventh notes, 9: "play as a celebration cinematic AFTER the final wave, before
+// the score is looked at"): the door sector held shows its report at once; the sector after it (BOTH WALLS) held plays the host's finale
+// first, its report when the finale hands back, then the campaign card, and leaving the card goes straight on, no finale again
+{
+  const w = world({ firstSector: SECTOR_DOOR.earliest, unlocked: true, canyon: null }), log = [];
+  const debrief = { show: () => log.push(['report', run.state().n]), showCampaign: () => log.push(['campaign']), hide: () => {}, isOpen: () => false };
+  let hand = null;
+  // the same world with a finale and a fake card: rebuilt through its own hooks
+  const api = { openBackDoor: () => {}, backBreachCandidates: () => [], sideBreachCandidates: () => [], canyonPlan: () => null, finale: (then) => { log.push(['finale']); hand = then; return true; } };
+  const { createSectorRun: make } = await import('../src/fx/sector-run.js');
+  const centers = [], dist = [];
+  for (let i = 0; i < 260; i++) { const a = (i / 120) * Math.PI * 2; centers.push([Math.cos(a), Math.sin(a), i >= 200 ? 1 : 0]); dist.push(i >= 200 ? 30 : 30 + (i % 30)); }
+  const ww = { t: 0, enemies: [], queue: [], opened: [] };
+  const story = { sealed: () => false, gateCell: -1, lateStart: true, expeditions: { sites: [{ id: 'a', state: 'delivered' }] } };
+  const run = make({
+    story, api, waveSize: 4, threatMult: 1, hardcore: 'knot', spawnGap: { spread: 3.2, max: 0.45 }, store: null, rng: () => 0, ready: () => true, firstSector: SECTOR_DOOR.earliest,
+    field: () => ({ cellSide: 0.001, centers, dist, rim: centers.map((_, i) => (i % 2 ? 4 : 20)), inside: () => false, excluded: [], farHops: 69, fallback: () => 0 }),
+    open: (cell, o) => { const sp = { ci: cell, alive: true, obj: { cell }, quiet: !!o?.quiet, clear: o?.clear, keep: !!o?.keep }; ww.opened.push(sp); return sp; },
+    collapse: (sp) => { sp.alive = false; }, breaches: () => ww.opened, enemies: () => ww.enemies, queue: () => ww.queue,
+    queued: (sp) => ww.queue.some((q) => q.sp === sp), push: (qs) => ww.queue.push(...qs), seal: () => {}, clearField: () => {},
+    poll: () => ({ passes: 0, drawn: 0, delivered: ['a'], earned: 0, spent: 0, shieldUp: false, laser: null }),
+    bank: () => ({}), pause: () => {}, brief: () => {}, callout: () => {}, hud: () => {}, sfx: () => {}, pay: () => {},
+    centers: () => centers, cellSide: () => 0.001, reload: () => log.push(['reload']), makeDebrief: () => debrief,
+  });
+  const step = (secs, dt = 0.25) => { for (let k = 0; k < secs / dt; k++) { ww.t += dt; run.tick(dt); } };
+  // hold a sector: every pulse released and spawned, every body killed, the breaches spent, the secure pause out
+  const hold = () => {
+    for (let guard = 0; guard < 400 && run.state().phase === 'fighting'; guard++) {
+      run.release(ww.t); step(0.5);
+      ww.enemies.push(...ww.queue.splice(0).map((q) => ({ alive: false, guard: null, breachSource: q.sp.obj, type: q.type })));
+      step(SECTOR_TIMING.stall + 1);
+    }
+    assert.ok(['secure', 'finale', 'debrief'].includes(run.state().phase), `held (${run.state().phase})`);
+    step(SECTOR_TIMING.securePause + 1);
+  };
+  step(1); assert.equal(run.state().n, SECTOR_DOOR.earliest, 'the door sector'); assert.equal(run.state().doorAt, SECTOR_DOOR.earliest);
+  hold();
+  assert.deepEqual(log, [['report', SECTOR_DOOR.earliest]], 'the door sector held: its report, no finale');
+  run.test.cont(); step(1); assert.equal(run.state().n, SECTOR_DOOR.earliest + 1, 'BOTH WALLS');
+  hold();
+  assert.deepEqual(log.slice(1), [['finale']], 'the final sector held: the finale first, before any score');
+  assert.equal(run.state().phase, 'finale'); assert.equal(run.state().secure, true, 'held, under the finale');
+  hand();
+  assert.deepEqual(log.slice(2), [['report', SECTOR_DOOR.earliest + 1]], 'the finale over: the report');
+  run.test.cont(); assert.deepEqual(log.slice(3), [["campaign"]], "then the campaign card");
+  run.test.keepHolding(); step(1);
+  assert.ok(!log.slice(4).some((l) => l[0] === 'finale'), `leaving the card plays no finale again (${JSON.stringify(log.slice(4))})`);
+  assert.equal(run.state().n, SECTOR_DOOR.earliest + 2, 'and the next sector begins');
+  assert.equal(run.state().phase, 'fighting');
+}
 console.log('Sector run: the back door\'s omens, breaches open under the card, pulses on the clock and under the budget, the feast, the scramble and the gate side after it.');

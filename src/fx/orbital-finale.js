@@ -8,6 +8,10 @@
 // It is its own small world on its own canvas over the game (one more WebGL context for half a minute, disposed after), so nothing in
 // the game's scene, camera or post chain changes for it. Any key or click ends it. The ARC-01's sled is not animated here: the HEL-01
 // launches are the rising streaks, as upstream draws them past their first 0.85 s.
+// OUR OWN PLANET (owner, 2026-10-06, twenty-seventh notes, 9: "it should show our actual planet, not the placeholder one"): given
+// `planet` ({ map: the board's surface meshes, heart: the heart's unit vector }), the small world is the game's own surface, its floor,
+// rock and edge lines drawn from the same geometry buffers, turned so the heart sits under the pad at the pole; without it, the
+// upstream placeholder sphere.
 import * as THREE from '../../vendor/three.module.js';
 import { loadModelFixture, cloneFixture } from './model-fixture.js';
 import { isaoSay } from './isao-voice.js';
@@ -80,17 +84,41 @@ function galaxy() {
   return g;
 }
 
+// the turn that stands the heart at the pole (+Y), so the base sits under the pad; identity for a heart already there
+export function heartToPole(heart) {
+  const h = new THREE.Vector3(...(heart ?? [0, 1, 0])); if (h.lengthSq() < 1e-12) h.set(0, 1, 0);
+  return new THREE.Quaternion().setFromUnitVectors(h.normalize(), new THREE.Vector3(0, 1, 0));
+}
+
+// the game's own surface as the small world's planet: the board's floor and rock meshes and its edge lines on the same buffers, lit by
+// this scene's lights (Lambert, as the board draws them), the whole unit sphere scaled to the planet's radius and turned heart-up
+export function ownPlanet(planet, radius = PLANET_RADIUS) {
+  const g = new THREE.Group(), world = new THREE.Group();
+  for (const src of planet?.map ?? []) {
+    if (!src?.geometry) continue;
+    const m = src.isLine ? new THREE.LineSegments(src.geometry, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.3, depthWrite: false })) : new THREE.Mesh(src.geometry, new THREE.MeshLambertMaterial({ vertexColors: true }));
+    m.frustumCulled = false; world.add(m);
+  }
+  world.quaternion.copy(heartToPole(planet?.heart)); world.scale.setScalar(radius); g.add(world);
+  g.userData.meshes = world.children.length;
+  return g;
+}
+
 // THE SMALL WORLD (upstream scene.js): the planet's vertex colours, its atmosphere, the stars, the pad, SOL-88, the heads, guides and trails
-function buildWorld({ launcher, sol, mirror }) {
+function buildWorld({ launcher, sol, mirror, planet: own = null }) {
   const scene = new THREE.Scene(); scene.background = new THREE.Color(0x020610);
   const center = new THREE.Vector3(...CENTER), site = new THREE.Group(); scene.add(site);
-  const sphere = new THREE.SphereGeometry(PLANET_RADIUS, 96, 64), p = sphere.attributes.position, colors = new Float32Array(p.count * 3);
-  for (let i = 0; i < p.count; i++) {
-    const n = new THREE.Vector3().fromBufferAttribute(p, i).normalize(), v = Math.sin(n.x * 6 + Math.sin(n.z * 5)) * Math.cos(n.y * 8 - n.z * 3) + Math.sin(n.y * 15 + n.x * 4) * 0.5;
-    const c = new THREE.Color(Math.abs(n.y) > 0.88 ? 0xcbd9d8 : v > 0.22 ? (v > 0.8 ? 0x697354 : 0x366651) : 0x123d59); c.multiplyScalar(0.9 + Math.sin(n.x * 31 + n.z * 47) * 0.035); colors.set(c.toArray(), i * 3);
+  let planet;
+  if (own?.map?.length) { planet = ownPlanet(own); planet.position.copy(center); scene.add(planet); }
+  else {
+    const sphere = new THREE.SphereGeometry(PLANET_RADIUS, 96, 64), p = sphere.attributes.position, colors = new Float32Array(p.count * 3);
+    for (let i = 0; i < p.count; i++) {
+      const n = new THREE.Vector3().fromBufferAttribute(p, i).normalize(), v = Math.sin(n.x * 6 + Math.sin(n.z * 5)) * Math.cos(n.y * 8 - n.z * 3) + Math.sin(n.y * 15 + n.x * 4) * 0.5;
+      const c = new THREE.Color(Math.abs(n.y) > 0.88 ? 0xcbd9d8 : v > 0.22 ? (v > 0.8 ? 0x697354 : 0x366651) : 0x123d59); c.multiplyScalar(0.9 + Math.sin(n.x * 31 + n.z * 47) * 0.035); colors.set(c.toArray(), i * 3);
+    }
+    sphere.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    planet = new THREE.Mesh(sphere, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.12 })); planet.position.copy(center); scene.add(planet);
   }
-  sphere.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  const planet = new THREE.Mesh(sphere, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.12 })); planet.position.copy(center); scene.add(planet);
   const air = new THREE.Mesh(new THREE.SphereGeometry(PLANET_RADIUS * 1.025, 64, 48), new THREE.ShaderMaterial({ transparent: true, side: THREE.BackSide, depthWrite: false, blending: THREE.AdditiveBlending,
     vertexShader: 'varying vec3 n;varying vec3 v;void main(){vec4 p=modelViewMatrix*vec4(position,1.0);n=normalize(normalMatrix*normal);v=normalize(-p.xyz);gl_Position=projectionMatrix*p;}',
     fragmentShader: 'varying vec3 n;varying vec3 v;void main(){float a=pow(1.0-abs(dot(normalize(n),normalize(v))),3.0);gl_FragColor=vec4(.16,.58,.85,a*.32);}' }));
@@ -132,12 +160,14 @@ function buildWorld({ launcher, sol, mirror }) {
   return { scene, pose };
 }
 
-// root: the DOM parent to cover; sfx: the sound engine for Isao; done(): runs once when it ends or is skipped. Returns { stop }
-export function playOrbitalFinale(root, { sfx = null, done = null } = {}) {
+// root: the DOM parent to cover; sfx: the sound engine for Isao; done(): runs once when it ends or is skipped; planet: the game's own
+// surface for the small world (ownPlanet above), or null for the placeholder. Returns { stop, state }
+export function playOrbitalFinale(root, { sfx = null, done = null, planet = null } = {}) {
   const el = document.createElement('div'); el.id = 'orbital-finale';
   el.innerHTML = '<canvas></canvas><p class="of-line" aria-live="polite"></p><p class="of-count"></p><p class="of-skip">ANY KEY · SKIP</p>';
   (root ?? document.body).append(el);
   const canvas = el.querySelector('canvas'), line = el.querySelector('.of-line'), count = el.querySelector('.of-count');
+  el.dataset.own = planet?.map?.length ? '1' : '0';   // what the harness reads: the game's own planet, or the placeholder
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(2, globalThis.devicePixelRatio || 1)); renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
   const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 4000);
@@ -165,8 +195,8 @@ export function playOrbitalFinale(root, { sfx = null, done = null } = {}) {
   addEventListener('keydown', skip, true); el.addEventListener('pointerdown', skip, true);
   Promise.all(Object.values(MODELS).map((u) => loadModelFixture(u).then((m) => cloneFixture(m)).catch(() => null))).then(([launcher, sol, mirror]) => {
     if (ended) return;
-    try { world = buildWorld({ launcher, sol, mirror }); } catch { stop(); }
+    try { world = buildWorld({ launcher, sol, mirror, planet }); el.dataset.loaded = '1'; } catch { stop(); }
   });
   raf = requestAnimationFrame(frame);
-  return { stop, state: () => ({ on: !ended, loaded: !!world, said, line: line.textContent, count: count.textContent }) };
+  return { stop, state: () => ({ on: !ended, loaded: !!world, own: !!planet?.map?.length, said, line: line.textContent, count: count.textContent }) };
 }

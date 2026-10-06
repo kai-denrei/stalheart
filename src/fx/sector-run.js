@@ -46,7 +46,7 @@ export function killSource(src, via = null) {
 // hooks: see the controller's createSectorRun call (src/td-tab.js). Every one is required unless marked optional there.
 export function createSectorRun(h) {
   const story = h.story, api = h.api ?? {};
-  let phase = 'idle', def = null, sector = null, stats = null, left = 0, at = 0, pending = [], cardLeft = 0, feast = null, stampedes = 0, backOpenedAt = null, campaignShown = false, lastPoll = null, lastReport = null, quiet = false, doorAt = null, canyon = null;   // canyon: { plan, id, phase, upAt } in THE CANYON
+  let phase = 'idle', def = null, sector = null, stats = null, left = 0, at = 0, pending = [], cardLeft = 0, feast = null, stampedes = 0, backOpenedAt = null, campaignShown = false, finaleShown = false, lastPoll = null, lastReport = null, quiet = false, doorAt = null, canyon = null;   // canyon: { plan, id, phase, upAt } in THE CANYON
   const sps = new Map(), reports = [], omens = new Set();
   let doorsQuiet = true;   // no sector body within quietCells of any standing door, as of the last tick
   let readySince = null;   // when the story first said it was ready for the first sector
@@ -91,10 +91,13 @@ export function createSectorRun(h) {
   const nextLines = () => [...defOf((def?.n ?? 0) + 1).brief];   // Isao's two lines about the next sector, for the card's last page
   const debrief = () => (story.debrief ??= (h.makeDebrief ?? createSectorDebrief)(h.host, {
     play: h.sfx, beep: h.beep, reducedMotion: !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
-    // THE FINALE (owner, 2026-10-06): leaving THE COLONY HOLDS, either way, plays the host's diorama and orbital constellation first
-    onContinue: () => cont(), onNewRun: () => finale(() => h.reload()), onKeepHolding: () => finale(next),
+    onContinue: () => cont(), onNewRun: () => h.reload(), onKeepHolding: next,
   }));
+  // THE FINALE (owner, 2026-10-06, twenty-sixth notes: the diorama and the orbital constellation; twenty-seventh notes, 9: "play as a
+  // celebration cinematic AFTER the final wave, before the score is looked at"): the host plays it once, when the final sector (the one
+  // after the door, BOTH WALLS) is held, before that sector's report and the campaign card; leaving the card then goes straight on
   const finale = (then) => { if (!api.finale?.(then)) then(); };
+  const finalSector = () => doorAt !== null && def?.n === doorAt + 1;
   const loadBests = () => { try { const v = JSON.parse(h.store?.getItem(SECTOR_BESTS_KEY) || '{}'); return v && typeof v === 'object' ? v : {}; } catch { return {}; } };
 
   // ONE BREACH'S NEXT WAVE, at ladder wave `wave`: THE FEAST (sector 2's back breach, first wave: the content's soft flood at its own
@@ -259,16 +262,14 @@ export function createSectorRun(h) {
     const r = sectorReport(stats, sector ?? makeSector(def, [], stats.t0), { t: now(), bank: h.bank(), outcome, bests, stamps: SECTOR_STAMPS, records: SECTOR_RECORDS });
     try { h.store?.setItem(SECTOR_BESTS_KEY, JSON.stringify(mergeBests(bests, r.records))); } catch { /* the store refused: the bests simply are not kept */ }
     reports.push(r); lastReport = r;
-    phase = outcome === 'lost' ? 'lost-shown' : 'debrief';
-    h.pause(true);
-    debrief().show(r, { isao: outcome === 'lost' ? undefined : nextLines() });
-    h.hud();
+    const show = () => { phase = outcome === 'lost' ? 'lost-shown' : 'debrief'; h.pause(true); debrief().show(r, { isao: outcome === 'lost' ? undefined : nextLines() }); h.hud(); };
+    if (outcome === 'secure' && finalSector() && !finaleShown) { finaleShown = true; phase = 'finale'; h.hud(); finale(show); } else show();   // THE ENDING before the score
   }
   // the break between sectors: the host may take it (the paint shop, src/fx/programme-host.js interlude) and hand it back when done
   function next() { if (phase !== 'debrief' && phase !== 'campaign') return; debrief().hide(); const go = () => { h.pause(false); begin(def.n + 1); }; phase = 'break'; if (!api.interlude?.(go)) go(); }
   function cont() {
     if (phase === 'lost-shown') { h.reload(); return; }
-    if (phase === 'debrief' && doorAt !== null && def.n === doorAt + 1 && !campaignShown) { campaignShown = true; phase = 'campaign'; debrief().showCampaign({ reports: reports.slice(), totals: campaignTotals(reports), clips: story.reel?.clips() ?? [], lapse: story.lapse?.stills() ?? [] }, { isao: nextLines() }); return; }
+    if (phase === 'debrief' && finalSector() && !campaignShown) { campaignShown = true; phase = 'campaign'; debrief().showCampaign({ reports: reports.slice(), totals: campaignTotals(reports), clips: story.reel?.clips() ?? [], lapse: story.lapse?.stills() ?? [] }, { isao: nextLines() }); return; }
     next();
   }
 
@@ -435,7 +436,7 @@ export function createSectorRun(h) {
     // the colony is lost: LAST TRANSMISSION after the wreck has played. False when no sector is running (the caller shows its own)
     lose() { if (!['brief', 'fighting', 'secure'].includes(phase)) return false; phase = 'lost'; left = SECTOR_TIMING.lostHold; isaoSpeak('sector_lost'); h.hud(); return true; },
     state: () => ({
-      phase, n: def?.n ?? 0, name: def?.name ?? null, doorAt, canyon: canyon ? { phase: canyon.phase, id: canyon.id, spawn: canyon.plan.spawn, mouth: canyon.plan.mouth, floor: canyon.plan.floor.length, rock: canyon.plan.rock.length } : null, feast: feast ? { at: +feast.at.toFixed(1), scrambled: !!feast.scrambled } : null, omens: [...omens], strays: phase === 'idle' ? 0 : (h.breaches?.() ?? []).filter((sp) => sp.alive && idOf(sp) === null).length, secure: ['secure', 'debrief', 'campaign'].includes(phase), debriefOpen: !!story.debrief?.isOpen(), reports: reports.length,
+      phase, n: def?.n ?? 0, name: def?.name ?? null, doorAt, canyon: canyon ? { phase: canyon.phase, id: canyon.id, spawn: canyon.plan.spawn, mouth: canyon.plan.mouth, floor: canyon.plan.floor.length, rock: canyon.plan.rock.length } : null, feast: feast ? { at: +feast.at.toFixed(1), scrambled: !!feast.scrambled } : null, omens: [...omens], strays: phase === 'idle' ? 0 : (h.breaches?.() ?? []).filter((sp) => sp.alive && idOf(sp) === null).length, secure: ['secure', 'finale', 'debrief', 'campaign'].includes(phase), debriefOpen: !!story.debrief?.isOpen(), reports: reports.length,
       gate: gate ? { hp: +gate.hp.toFixed(1), broken: gate.broken, breaks: gate.breaks } : null,
       gates: integrities().map((g) => ({ id: g.id, hp: +g.hp.toFixed(1), max: g.max, broken: g.broken, breaks: g.breaks })),
       breaches: (sector?.breaches ?? []).map((b) => ({ id: b.id, side: b.side, cell: b.cell, broke: !!b.broke, opened: sps.has(b.id), live: b.state === 'open' && !!sps.get(b.id)?.alive, wavesReleased: b.wavesReleased, wavesPlanned: b.wavesPlanned, closedBy: b.closedBy, leftInField: { ...b.leftInField }, bonus: { ...b.bonus } })),

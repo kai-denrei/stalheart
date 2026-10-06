@@ -279,9 +279,10 @@ export function createProgrammeHost(c) {
     // segments standing again (dungeon.mended, src/fx/board-surface.js), so what he printed reads as a wall and not a rock
     repaired: (repair) => {
       if (repair.kind === 'gate') { c.sectorRun()?.repairGate(repair.id ?? 'gate'); if (!repair.id) c.storyBase()?.restoreWall(-1); }   // and the segments on the door's own cell
-      // a hole with kit walls of its own is drawn as floor under them; a shell's hole gets one printed; a back shoulder gets the door's
-      // line of segments where the line crosses it (story-base patchLine), else it is rock again
-      else { const rci = repair.ci, printed = (c.story().backHoles ?? []).includes(rci) ? !!c.storyBase()?.patchLine?.(rci, 'back', (p) => ownCell(rci, p)) : !(c.story().wallCells ?? []).includes(rci) && !!c.storyBase()?.patchWall?.(rci, c.graph().centers[rci]), walled = printed || (c.story().wallCells ?? []).includes(rci); /* a hole that was rock comes back as a wall (story-base patchWall) */ if (walled && c.dungeon().tags[rci] !== BLOCKED) (c.dungeon().mended ??= new Set()).add(rci); c.dungeon().tags[rci] = BLOCKED; if (c.tdFullTags()) c.tdFullTags()[rci] = BLOCKED; breachedCells.delete(rci); c.story().shot?.delete(rci); breachQueue.push(rci); c.storyBase()?.restoreWall(rci); rebuildAfterBreach(); recomputePortalDist(); c.story().checking = { ci: rci, until: c.t() + BASE_REPAIR.check }; }
+      // a hole with kit walls of its own is drawn as floor under them; a shell's or the rim's hole gets a run of segments on the rim's
+      // line through it, a back shoulder the door's line of segments, where the line crosses it (story-base patchWall, patchLine), else
+      // it is rock again
+      else { const rci = repair.ci, printed = (c.story().backHoles ?? []).includes(rci) ? !!c.storyBase()?.patchLine?.(rci, 'back', (p) => ownCell(rci, p)) : !(c.story().wallCells ?? []).includes(rci) && !!c.storyBase()?.patchWall?.(rci, c.graph().centers[rci], (p) => ownCell(rci, p)), walled = printed || (c.story().wallCells ?? []).includes(rci); /* a hole that was rock comes back as a wall (story-base patchWall) */ if (walled && c.dungeon().tags[rci] !== BLOCKED) (c.dungeon().mended ??= new Set()).add(rci); c.dungeon().tags[rci] = BLOCKED; if (c.tdFullTags()) c.tdFullTags()[rci] = BLOCKED; breachedCells.delete(rci); c.story().shot?.delete(rci); breachQueue.push(rci); c.storyBase()?.restoreWall(rci); rebuildAfterBreach(); recomputePortalDist(); c.story().checking = { ci: rci, until: c.t() + BASE_REPAIR.check }; }
       updateHud();
     },
     printed: (step) => {
@@ -330,7 +331,9 @@ export function createProgrammeHost(c) {
     // THE FINALE (src/fx/finale-diorama.js, then src/fx/orbital-finale.js): the world runs again under the host's own shot, and
     // `then` (the next sector, or a new run) runs when they end
     finale: (then) => {
-      const orbit = () => { c.pause?.(true); playOrbitalFinale(c.hud ?? document.body, { sfx: c.sfx, done: then }); };   // the game holds under it; `then` lets it go
+      // OUR OWN PLANET under the constellation (owner, 2026-10-06, twenty-seventh notes, 9): the board's own surface, the base at the pad
+      const planet = c.map && c.dungeon() ? { map: c.map(), heart: c.graph().centers[c.dungeon().heart] } : null;
+      const orbit = () => { c.pause?.(true); playOrbitalFinale(c.hud ?? document.body, { sfx: c.sfx, done: then, planet }); };   // the game holds under it; `then` lets it go
       c.pause?.(false); if (!playDiorama(c, orbit)) orbit(); return true;
     },
     // THE ENVELOPE (GUNSHIP_AUTO): while the gunship flies itself the sectors hold more bodies and size their waves larger
