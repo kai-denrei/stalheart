@@ -8,7 +8,7 @@
 // the montage writes as setters (setPaused, setFollowSuspend, setRamCam, setGunshipTrack), and placeTank from the
 // acceptance hooks. The hooks call each other through the returned object, as they did through gameHooks.showcase.
 import * as THREE from '../../vendor/three.module.js';
-import { norm3, sub3 } from '../vec3.js';
+import { norm3, sub3, scale3, dot3, cross3 } from '../vec3.js';
 import { BLOCKED } from '../dungeon.js';
 import { cellsAhead } from '../domain/showcase-shot.js';
 import { fillFromKill } from '../domain/gunship-call.js';
@@ -192,7 +192,33 @@ export function createShowcaseHooks(host) {
     reelFrame: (kind, i) => host.story()?.reel?.clips().find((c) => c.kind === kind)?.frames[i]?.toDataURL() ?? null,
     reel: () => (host.story()?.reel?.clips() ?? []).map((c) => ({ kind: c.kind, score: c.score, label: c.label, frames: c.frames.length, w: c.frames[0]?.width ?? 0 })),
     // what each cell is now: rock to the pathfinder, and whether Isao printed a kit wall into it (the --back-shoulders step)
-    cells: (list) => list.map((ci) => ({ ci, rock: host.dungeon().tags[ci] === BLOCKED, patched: !!host.storyBase()?.patchedCells?.().includes(ci) })),
+    cells: (list) => list.map((ci) => ({ ci, rock: host.dungeon().tags[ci] === BLOCKED, patched: !!host.storyBase()?.patchedCells?.().includes(ci), segments: host.storyBase()?.patchedSegments?.(ci) ?? 0 })),
+    shotHoles: () => [...(host.story()?.shot ?? [])],   // the cells a shell (or ?blast=N) opened
+    // THE CORRIDOR PROBE (--corridor-probe; owner's twenty-seventh notes, 3): the shortest open route between two cells with each cell's
+    // open-neighbour count, the hull turned to face a cell, its signed bearing to a cell (+ is a left turn), and where it is
+    // (`hull`: the buildings solid to the hull (story-base solidAt) are walls to the route too, as they are to the MÖRK)
+    route: (from, to, hull = false) => {
+      const g = host.graph(), tags = host.dungeon().tags, sb = host.storyBase(), prev = new Map([[from, -1]]), q = [from];
+      const open = (ci) => tags[ci] !== BLOCKED && !(hull && sb?.solidAt(g.centers[ci]));
+      while (q.length && !prev.has(to)) { const c = q.shift(); for (const nb of g.adj[c]) if (!prev.has(nb) && open(nb)) { prev.set(nb, c); q.push(nb); } }
+      if (!prev.has(to)) return [];
+      const path = []; for (let c = to; c !== -1; c = prev.get(c)) path.push(c);
+      return path.reverse().map((ci) => ({ ci, open: g.adj[ci].filter((nb) => tags[nb] !== BLOCKED).length, solid: !!sb?.solidAt(g.centers[ci]) }));
+    },
+    solid: (ci) => !!host.storyBase()?.solidAt(host.graph().centers[ci]),
+    // the hull against a site, for the corridor probe: its distance to the site cell in cells, the site's reach, and what the points ahead of it meet
+    probeSite: (id) => {
+      const st = host.story(), c = st?.siteCells?.[id], cs = host.cellSide(), g = host.graph(), tags = host.dungeon().tags, sb = host.storyBase();
+      if (!c) return null;
+      const d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+      const ring = new Set([player.cur]); for (const a of g.adj[player.cur]) { ring.add(a); for (const b of g.adj[a]) ring.add(b); }
+      const nearCell = (p) => { let best = -1, bd = Infinity; for (const ci of ring) { const dd = d(p, g.centers[ci]); if (dd < bd) { bd = dd; best = ci; } } return best; };
+      const ahead = [0.25, 0.5, 0.75, 1, 1.5].map((k) => { const p = norm3([0, 1, 2].map((i) => player.pos[i] + player.heading[i] * k * cs)), ci = nearCell(p); return { k, cell: ci, rock: ci >= 0 ? tags[ci] === BLOCKED : null, solid: sb?.solidAt(p) ?? null }; });
+      return { cell: c.cell, clear: c.clear, dist: d(player.pos, g.centers[c.cell]) / cs, reach: st.glue?.reachOf?.(id) ?? null, cur: player.cur, curSolid: sb?.solidAt(player.pos) ?? null, ahead };
+    },
+    aimHull: (ci) => { const n = norm3(player.pos), to = sub3(host.graph().centers[ci], player.pos), t = sub3(to, scale3(n, dot3(to, n))); if (Math.hypot(...t) > 1e-9) { player.heading = norm3(t); player.smoothDir = player.heading.slice(); } },
+    bearing: (ci) => { const n = norm3(player.pos), h = player.heading, to = sub3(host.graph().centers[ci], player.pos), d = norm3(sub3(to, scale3(n, dot3(to, n)))); return Math.atan2(dot3(n, cross3(h, d)), dot3(h, d)); },
+    drive: () => { const adj = host.graph().adj[player.cur].filter((nb) => host.dungeon().tags[nb] !== BLOCKED); return { pos: player.pos.slice(), heading: player.heading.slice(), cur: player.cur, open: adj.length, adj }; },
   };
   return hooks;
 }

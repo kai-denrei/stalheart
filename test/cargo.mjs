@@ -109,6 +109,19 @@ function makeHull() {
   assert.equal(glue.standCell('site', 'rocket-a', (ci) => ci !== 4), stand, 'open floor is preferred when there is some');
   assert.equal(glue.standCell('site', 'rocket-a', (ci) => ci !== stand), stand, 'with no open floor in reach (a lander in a pocket of rock) the nearest cell still serves');
   assert.ok(glue.standCell('home') >= 0 && glue.standCell('home') !== 0, 'a stand cell at home, not the foundry\'s own');
+  // AS CLOSE AS THE POCKET LETS A HULL COME (2026-10-06): the floor a hull can stand on nearest the lander sets the pickup reach when it
+  // lies past the radius (the cells nearer are rock or the lander's own footprint), at most two cells past it
+  { const site = [0.6, 0.8, 0], off = (t) => { const v = [site[0] + 0.8 * t, site[1] - 0.6 * t, 0], l = Math.hypot(...v); return v.map((x) => x / l); };
+    const cs = [[0, 1, 0], site, off(0.17), off(0.1), off(0.35)];   // 2: floor 3.4 cells out; 3: the footprint 2 cells out; 4: floor 7 cells out
+    const st = { expeditions: makeExpeditions(STORY_EXPEDITIONS.sites), siteCells: { 'rocket-a': { cell: 1, clear: 16 } }, home: 0, hud: { sites: () => {} } };
+    let at = cs[0]; const calls = [];
+    const g2 = createExpeditionGlue({ story: st, scene, sfx, cellSide: 0.05, centers: () => cs, tankPos: () => at, hull: () => hull, guardsLeft: () => false, spawn: () => {}, revealSite: () => {}, landing: () => null, brief: () => {}, callout: (t) => calls.push(t), toast: () => {}, open: (ci) => ci !== 0, solid: (p) => p === cs[3] });
+    g2.begin(); g2.step(); at = cs[4]; g2.step(); assert.equal(st.expeditions.carrying, null, 'seven cells out: not yet');
+    at = cs[2]; g2.step(); assert.equal(st.expeditions.carrying, 'rocket-a', 'on the nearest floor a hull can stand on, 3.4 cells out: the part is secured');
+    g2.dispose();
+    const st3 = { expeditions: makeExpeditions(STORY_EXPEDITIONS.sites), siteCells: { 'rocket-a': { cell: 1, clear: 16 } }, home: 0, hud: { sites: () => {} } };
+    at = cs[4]; const g3 = createExpeditionGlue({ story: st3, scene, sfx, cellSide: 0.05, centers: () => cs, tankPos: () => at, hull: () => hull, guardsLeft: () => false, spawn: () => {}, revealSite: () => {}, landing: () => null, brief: () => {}, callout: () => {}, toast: () => {}, open: (ci) => ci === 0 || ci === 4, solid: () => false });
+    g3.begin(); g3.step(); g3.step(); assert.equal(st3.expeditions.carrying, null, 'the nearest floor seven cells out, the hull on it: the reach stops two cells past the radius'); g3.dispose(); }
   glue.begin();
   assert.ok(spawned.includes('rocket-a') && spawned.includes('rocket-b'), 'the first sites open with their nests');
   glue.step(); assert.equal(siteState(story.expeditions, 'rocket-a'), 'guarded');

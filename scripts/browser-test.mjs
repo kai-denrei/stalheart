@@ -1632,6 +1632,9 @@ try{
  await delay(3500);current='finale-diorama-b';await finish();
  // THE ORBITAL CONSTELLATION (src/fx/orbital-finale.js) after it, its own canvas over the game, Isao's three lines
  await until('!!document.querySelector("#orbital-finale")',15000).catch(()=>assert.fail('the constellation never opened'));
+ // OUR OWN PLANET (owner's twenty-seventh notes, 9): the small world is the board's own surface, not the placeholder sphere
+ await until('document.querySelector("#orbital-finale")?.dataset.loaded==="1"',15000).catch(()=>{});
+ assert.equal(await evaluate('document.querySelector("#orbital-finale")?.dataset.own'),'1','the constellation turns over our own planet');
  for(const [at,name] of [[4,'a'],[12,'b'],[22,'c']]){await until(`(()=>{const e=document.querySelector("#orbital-finale");return !e||+getComputedStyle(e).opacity>0.9;})()`,10000).catch(()=>{});await delay(at===4?4000:at===12?8000:10000);if(!(await evaluate('!!document.querySelector("#orbital-finale")')))break;current=`finale-orbit-${name}`;await finish();}
  await until('(window.__stalheartFinaleDone??0)>=1',60000).catch(async()=>assert.fail(`the finale never handed back (${JSON.stringify(await evaluate(`${T}.state().shot`))})`));
  {/* the page's own copy of the module: a built page loads it with its ?v= token, and a bare import would be a second, silent copy */
@@ -1938,7 +1941,8 @@ try{
  // THE SQUADS (owner, 2026-10-05: "one unit 'representing' 5 or so ... if hit by a tank, it registers as 5 kills"): a big sector wave
  // comes partly in squads, five bodies to an entity; a squad rammed is five rams; the crowd's bodies outnumber its entities
  const T='window.__stalheartTest',C='(async()=>(await import("./src/fx/crowd-gate.js")).crowdTrace)()';
- await go('squads',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${process.env.SECTOR||4}&fps=1#td`);
+ // (2026-10-06: squads come only with a wave of SQUADS.over soft bodies or more, hundreds; sector 4's waves stay single, sector 6's pack)
+ await go('squads',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${process.env.SECTOR||6}&fps=1#td`);
  await until(`!!${T} && ${T}.state().sector?.n>=1`,120000);
  await until(`(async()=>(await ${C}).squads>=10)()`,90000).catch(async()=>assert.fail(`squads come with a big wave (${JSON.stringify(await evaluate(C))})`));
  await delay(3000);
@@ -1974,6 +1978,58 @@ try{
  const k1=(await st()).kicks;console.log(`  round13: drove ${moved.toFixed(4)} units in 12 s, ${still} still samples of 119, kicks ${k1-k0}`);
  assert.ok(moved>0.05,'the hull drives');assert.ok(still<40,`it never sits ground against a wall for long (${still} still samples)`);
  current='round13-drive';await finish();
+ } else if(args.includes('--corridor-probe')) {
+ // THE MÖRK THROUGH THE NARROW TILES (owner's twenty-seventh notes, 3: "there is STILL a problem going through narrow tiles with the
+ // MÖRK" near the second site): a virtual driver takes the hull from the base along the shortest open route to a site (SITE, default
+ // rocket-b), steering toward the next route cell and holding W, and the probe reports how far along it got, how long it took, the
+ // kicks, the still samples and every cell it took more than STUCK_S seconds to leave, with the cell's open-neighbour count (2 = a corridor).
+ // No assertions unless ASSERT=1: a measure first, then the fix
+ const T='window.__stalheartTest',site=process.env.SITE||'rocket-b',secs=+(process.env.SECS||90),stuckS=+(process.env.STUCK_S||2.5);
+ await go('corridor-probe','index.html?sw=0&acceptance=1&cine=0&world=story&stage=8&phase=expedition#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await delay(2000);
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,#td-brief{display:none!important}</style>")');
+ await evaluate(`${T}.deployHull(0)`);await until(`!${T}.state().deploying`,30000).catch(()=>{});await delay(500);
+ // a drive, not a fight: every site's guards down, the sectors held quiet
+ await evaluate(`${T}.sectorQuiet(true)`);for(const id of ['rocket-a','rocket-b','wreck','rocket-c'])await evaluate(`${T}.killGuards("${id}")`);
+ const from=await evaluate(`${T}.showcase.drive().cur`),to=await evaluate(`${T}.cargoStand("site","${site}")`);
+ let route=await evaluate(`${T}.showcase.route(${from},${to},true)`);
+ if(route.length<=2){const plain=await evaluate(`${T}.showcase.route(${from},${to})`);console.log(`CORRIDOR PROBE ${site}: no route keeps clear of the buildings; the plain route runs through ${plain.filter(r=>r.solid).length} solid cells (${plain.filter(r=>r.solid).map(r=>r.ci)})`);route=plain;}
+ assert(route.length>2,`a route from the hull's cell ${from} to ${site} (${to})`);
+ const narrow=route.filter(r=>r.open<=2).length;console.log(`CORRIDOR PROBE ${site}: ${route.length} cells, ${narrow} of them corridor (<=2 open neighbours), ${route.filter(r=>r.open<=3).length} narrow (<=3)`);
+ const ids=route.map(r=>r.ci),at=(ci)=>ids.indexOf(ci);
+ await evaluate(`${T}.showcase.aimHull(${ids[1]})`);await delay(200);
+ const K=(type,key,code,vk)=>send('Input.dispatchKeyEvent',{type,key,code,windowsVirtualKeyCode:vk});
+ await K('keyDown','w','KeyW',87);
+ let turning=null,best=0,still=0,samples=0,lastPos=null,lastCur=-1,since=0,sinceK=0,behind=0,backing=0;const slow=[],trace=[],t0=Date.now(),k0=(await evaluate(`${T}.state()`)).kicks;let reached=false;
+ while(Date.now()-t0<secs*1000){
+  const d=await evaluate(`(()=>{const s=${T}.state();return {...${T}.showcase.drive(),kicks:s.kicks,shot:s.shot,paused:s.paused,carrying:s.expeditions?.carrying??null};})()`);const idx=at(d.cur);samples++;
+  const moved=lastPos?Math.hypot(d.pos[0]-lastPos[0],d.pos[1]-lastPos[1],d.pos[2]-lastPos[2]):0;if(lastPos&&moved<1e-6)still++;lastPos=d.pos;
+  if(idx>best)best=idx;
+  if(d.cur===lastCur)since+=0.1;else{if(since>=stuckS)slow.push({ci:lastCur,i:at(lastCur),open:trace.at(-1)?.open,s:+since.toFixed(1),kicks:sinceK});since=0;sinceK=0;lastCur=d.cur;}
+  // the target: the route cell after the one the hull is in; off the route, after the furthest route cell beside it, else the furthest reached
+  // off the route the hull aims at the route cell beside it first (a target beyond it may lie round a corner of rock), else at the furthest reached
+  const beside=idx>=0?idx:Math.max(-1,...d.adj.map(at));const next=idx>=0?ids[Math.min(ids.length-1,idx+1)]:beside>=0?ids[beside]:ids[Math.min(ids.length-1,best+1)];
+  const b=await evaluate(`${T}.showcase.bearing(${next})`);
+  if(trace.length&&d.kicks>trace.at(-1).kicks)sinceK++;
+  trace.push({t:+((Date.now()-t0)/1000).toFixed(1),cur:d.cur,i:idx,open:d.open,moved:+moved.toExponential(2),b:+b.toFixed(2),turn:turning,back:backing>0,kicks:d.kicks,shot:d.shot,paused:d.paused});
+  if(idx>=ids.length-1||d.cur===to||d.carrying===site){reached=true;if(d.carrying===site)console.log(`CORRIDOR PROBE ${site}: PART SECURED at route cell ${idx+1} of ${ids.length} (cell ${d.cur}), ${trace.at(-1).t} s`);break;}
+  // THE DRIVER: steer toward the target; a target behind for a second is backed out of (S with the steer reversed, 1.2 s), as a player would
+  behind=Math.abs(b)>2.2?behind+0.1:0;
+  if(backing<=0&&behind>=1){backing=1.2;behind=0;await K('keyUp','w','KeyW',87);await K('keyDown','s','KeyS',83);}
+  if(backing>0){backing-=0.1;if(backing<=0){await K('keyUp','s','KeyS',83);await K('keyDown','w','KeyW',87);}}
+  const fwd=backing<=0,want=b>0.12?(fwd?'a':'d'):b<-0.12?(fwd?'d':'a'):null;
+  if(want!==turning){if(turning)await K('keyUp',turning,turning==='a'?'KeyA':'KeyD',turning==='a'?65:68);if(want)await K('keyDown',want,want==='a'?'KeyA':'KeyD',want==='a'?65:68);turning=want;}
+  await delay(100);
+ }
+ if(backing>0)await K('keyUp','s','KeyS',83);
+ if(since>=stuckS)slow.push({ci:lastCur,i:at(lastCur),open:trace.at(-1)?.open,s:+since.toFixed(1),kicks:sinceK});
+ if(turning)await K('keyUp',turning,turning==='a'?'KeyA':'KeyD',turning==='a'?65:68);await K('keyUp','w','KeyW',87);
+ const k1=(await evaluate(`${T}.state()`)).kicks,took=((Date.now()-t0)/1000).toFixed(1);
+ console.log(`CORRIDOR PROBE ${site}: at the end ${JSON.stringify(await evaluate(`${T}.showcase.probeSite("${site}")`))}`);
+ const {writeFileSync}=await import('node:fs');writeFileSync('artifacts/corridor-trace.json',JSON.stringify({site,route,trace},null,0));
+ console.log(`CORRIDOR PROBE ${site}: ${reached?'REACHED':'stopped'} at cell ${best+1} of ${ids.length} in ${took} s; kicks ${k1-k0}; still ${still} of ${samples} samples; slow cells ${JSON.stringify(slow)}; trace artifacts/corridor-trace.json`);
+ current='corridor-probe-end';await finish();
+ if(process.env.ASSERT){assert(reached,`the hull reaches ${site} (${best+1} of ${ids.length})`);assert(slow.length===0,`no cell holds the hull ${stuckS} s (${JSON.stringify(slow)})`);}
  } else if(args.includes('--units-sky')) {
  // THE SKY ON THE BENCH (owner, 2026-10-01: "UNITS are not showing all the units; we should see SOL, and the Gunship. also show
  // Wireframe for all units"): the KORP, SOL-82 and SOL-88 are catalogue entries built from their pinned GLBs, and the wireframe
@@ -2269,6 +2325,27 @@ try{
  await evaluate('window.__stalheartTest.viewBack()');await delay(800);current='back-gate-down';await finish();
  console.log('PASS back-gate: the programme queues it once the surprise is held, the print stands it, its mounts take a sentry, and it is a wall to the swarm until it is down.');
  await evaluate('window.__stalheartTest.begin()');
+ } else if(args.includes('--rim-holes')) {
+ // HOLES IN THE RIM'S ROCK COME BACK AS A RUN OF KIT WALLS (owner, 2026-10-06, twenty-seventh notes, 8: "edge cases still fail: a few
+ // lone segments in an open area"): ?blast=N shoots the N rock cells nearest the hull open at boot; Isao's repair prints each hole a
+ // run of segments on the rim's line through it (story-base patchWall), two or more a cell, rock to the swarm again
+ await go('rim-holes','index.html?sw=0&acceptance=1&cine=0&skip=defence&blast=3#td');
+ await until('!!window.__stalheartTest',90000);await delay(2500);
+ const T='window.__stalheartTest';
+ await evaluate(`${T}.begin()`);await evaluate(`${T}.sectorQuiet(true)`);
+ await until(`!${T}.state().deploying`,30000);await delay(500);
+ const holes=await evaluate(`${T}.showcase.shotHoles()`);
+ console.log(`RIM HOLES shot ${JSON.stringify(holes)} ${JSON.stringify(await evaluate(`${T}.showcase.cells(${JSON.stringify(holes)})`))}`);
+ assert(holes.length>=1,'the blast opened rock');
+ await until(`(${T}.state().programme.perks||[]).includes("gate")`,240000).catch(async()=>assert.fail(`the gate never stood: ${JSON.stringify(await evaluate(`${T}.state().programme`))}`));
+ await until(`${T}.showcase.cells(${JSON.stringify(holes)}).every(c=>c.rock)&&${T}.state().programme.isao?.order!=="repair"`,300000)
+   .catch(async()=>assert.fail(`the holes were never closed: ${JSON.stringify(await evaluate(`${T}.showcase.cells(${JSON.stringify(holes)})`))} isao ${JSON.stringify(await evaluate(`${T}.state().programme.isao`))}`));
+ {const cs=await evaluate(`${T}.showcase.cells(${JSON.stringify(holes)})`);console.log(`RIM HOLES closed ${JSON.stringify(cs)}`);
+  const patched=cs.filter(c=>c.patched);assert(patched.length>=1,'a hole inside the base came back as kit walls, not rock');
+  for(const c of patched)assert(c.segments>=2,`a run of segments across the cell, not one (${c.ci}: ${c.segments})`);}
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card{display:none!important}</style>")');
+ await evaluate(`${T}.showcase.ground(${holes[0]},2.2,3.2)`);await delay(1200);current='rim-holes-walled';await finish();
+ await evaluate(`${T}.showcase.ground(${holes[holes.length-1]},6,6)`);await delay(800);current='rim-holes-wide';await finish();await evaluate(`${T}.begin()`);
  } else if(args.includes('--back-shoulders')) {
  // THE BACK GATE'S SHOULDERS (owner, 2026-10-06: "Isao still does not fix the breaches: a gate only, no walls at its sides closing the
  // area flush with the natural rock"): the collapse is the mouth and its flank; the door stands on the mouth, and after it Isao's

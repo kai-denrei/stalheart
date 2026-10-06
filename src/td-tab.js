@@ -1100,14 +1100,11 @@ export function initTdTab(root) {
   function containerBlocked(ci) {
     return ci !== player.cur && lifeContainers.some((cc) => cc.ci === ci);
   }
-  // ...and while you are still IN a berth, the boxes either side of you do not crowd the exit. The margin test below treats a
-  // solid neighbour as a no-go shell around the lane, which between three boxes in a row leaves a gap the hull cannot thread —
-  // the second half of the operator's can't-get-out report. Clear of the berth, they go solid again.
+  // ...and while you are still IN a berth, the boxes either side do not crowd the exit (the margin test's no-go shell round three
+  // boxes in a row left a gap the hull could not thread); clear of the berth, they go solid again
   const berthed = () => lifeContainers.some((cc) => cc.ci === player.cur);
-  // THE TERRAFORMER IS SOLID TOO (operator, 2026-09-02: "currently the tank
-  // can drive under"). Its pad radius is measured off the model, so a
-  // re-export follows. Enemies are NOT kept out — they have to reach the
-  // heart — so the cells stay open and only the TANK is turned away.
+  // THE TERRAFORMER IS SOLID TOO (operator, 2026-09-02: "the tank can drive under"). Its pad radius is measured off the model, so a
+  // re-export follows. Enemies are NOT kept out (they have to reach the heart): the cells stay open and only the TANK is turned away
   function pedestalRadius() {
     if (heartLook().footprint) return heartLook().footprint * heartLook().scale * cellSide;
     return heartSprite && heartSprite.userData.padR
@@ -1120,8 +1117,8 @@ export function initTdTab(root) {
     const ci = cellIndex(cand);
     if (ci === -1 || dungeon.tags[ci] === BLOCKED || containerBlocked(ci)) return true;
     if (dist3(cand, graph.centers[dungeon.heart]) < pedestalRadius() + cellSide * 0.3 || breachBlocked(cand)) return true;   // the pad, and any open sinkhole: no-go
-    // THE HULL'S OWN FOOTPRINT against the rock faces (operator, 2026-09-13: still clipping, and faster now): its centre with half the hull's
-    // width, nose and tail along its facing. A move may not take it deeper into a face than it already is (src/domain/hull-contact.js)
+    // THE HULL'S OWN FOOTPRINT against the rock faces (operator, 2026-09-13): its centre, nose and tail; a move may not take it deeper
+    // into a face than it already is (src/domain/hull-contact.js)
     const crowdedBy = berthed()
       ? (nb) => dungeon.tags[nb] === BLOCKED
       : (nb) => dungeon.tags[nb] === BLOCKED || containerBlocked(nb);
@@ -1133,10 +1130,11 @@ export function initTdTab(root) {
     return unitBlocker(cand);
   }
 
-  // nearest blocked neighbour's center, for wall sliding
+  // nearest blocked neighbour's centre for wall sliding; a point inside rock names that rock
   function nearestWall(cand) {
     const ci = cellIndex(cand);
     if (ci === -1) return null;
+    if (dungeon.tags[ci] === BLOCKED) return graph.centers[ci];
     let best = null, bd = Infinity;
     for (const nb of graph.adj[ci]) {
       if (dungeon.tags[nb] !== BLOCKED) continue;
@@ -1150,7 +1148,7 @@ export function initTdTab(root) {
   unitBlocker = (cand) => spawnPoints.some((s) => s.alive && dist3(cand, graph.centers[s.ci]) < cellSide * 0.6);
 
   // WALL CUSHION, corridor-safe: adaptive margins (narrow cells skip diagonals), pushes net-summed and applied once (opposing walls
-  // centre instead of fighting), capped per frame well below drive speed: it corrects clipping over a few frames and never pins.
+  // centre instead of fighting), capped per frame well below drive speed: corrects clipping over a few frames, never pins
   const CRATER_PAD = 0.6;   // cells beyond a sinkhole's crater the hull keeps off: the ground there is open, not drivable
   const breachBlocked = (p, pad = CRATER_PAD) => gameBreaches.craters().some((k) => dist3(p, k.p) < (k.r + pad) * cellSide);
   function wallCushion(pos) {
@@ -2198,8 +2196,7 @@ export function initTdTab(root) {
   function advanceMotion(dt) {
     if (player.won || playerDown || player.next === -1) return;
 
-    // continuous steering while held; ANY key claims manual control —
-    // and an engaged cruise keeps manual alive without touching a key
+    // continuous steering while held; ANY key claims manual control, and an engaged cruise keeps manual alive without a key
     const anyKey = keys.left || keys.right || keys.fast || keys.slow;
     if (anyKey || cruise) autoMode = false; // any drive input takes the wheel — sticky, no timer
     steerHold = anyKey ? 0 : steerHold + dt;
@@ -2207,17 +2204,12 @@ export function initTdTab(root) {
     const steerRate = stepSteerEase(steerEase, dt, (keys.left ? 1 : 0) - (keys.right ? 1 : 0), TANK_STEER);   /* the hull eases into a turn and settles out of it instead of snapping (owner, 2026-09-16; src/domain/steer-ease.js) */
     if (steerRate) rotate(steerRate * dt);
 
-    // MANUAL = FREE movement: kinematics leave the grid entirely. W drives
-    // along the heading, S reverses, A/D steer continuously; the grid is
-    // consulted only as a collision oracle (blocked cell? no entry) and to
-    // keep semantics (current cell, visited, absorption) in sync.
+    // MANUAL = FREE movement: kinematics leave the grid entirely (W drives along the heading, S reverses, A/D steer); the grid is
+    // only a collision oracle (blocked cell? no entry) and keeps the semantics (current cell, visited, absorption) in sync
     if (manual) {
       player.freeMode = true;
-      // forward is PLAYER-TRIGGERED: hold W to drive, or double-tap W/▲
-      // to engage CRUISE (rolls on its own; W boosts, S kills it). The
-      // old always-rolls-forward manual proved too aggressive.
-      // keys still override (a held key is an explicit act); otherwise the
-      // lever's resting position is the speed
+      // forward is PLAYER-TRIGGERED: hold W to drive, or double-tap W/▲ for CRUISE (rolls on its own; W boosts, S kills it); the old
+      // always-rolls-forward manual proved too aggressive. Keys override (a held key is an explicit act), else the lever's rest is the speed
       const drive = keys.slow ? -0.55
         : keys.fast ? (cruise ? 1.45 : 1)
         : (throttle !== 0 ? throttle : (cruise ? 1 : 0)); const rampMul = stepDriveRamp(driveRamp, dt, drive, keys.left || keys.right, TANK_DRIVE);
@@ -2226,25 +2218,23 @@ export function initTdTab(root) {
       else if (drive !== 0) {
         const v = params.speed * speedBonus * cellSide * 1.6 * drive * rampMul
           * (1 - 0.65 * bumpFactor()) * (storyBase?.gateEase(player.pos) ?? 1); // run-over drag; a door opening (story-base gateEase)
-        { const ahead = norm3(add3(player.pos, scale3(player.heading, cellSide * TANK_KICK.ahead))), w = freeBlocked(ahead) ? nearestWall(ahead) : null; if (w) player.heading = glideHeading(player.pos, player.heading, norm3(sub3(w, player.pos)), dt, TANK_KICK); }   // THE HOVER GLIDE (src/domain/hover-kick.js)
+        { const ahead = norm3(add3(player.pos, scale3(player.heading, cellSide * TANK_KICK.ahead))), w = !steerRate && freeBlocked(ahead) ? nearestWall(ahead) : null; if (w) player.heading = glideHeading(player.pos, player.heading, norm3(sub3(w, player.pos)), dt, TANK_KICK); }   // THE HOVER GLIDE (src/domain/hover-kick.js), never against the player's own steer (it pinned the hull in bends)
         const step = scale3(player.heading, v * dt), before = player.pos;
         let cand = norm3(add3(player.pos, step));
         if (freeBlocked(cand)) {
-          // slide: strip the into-wall component and try again
-          const w = nearestWall(cand);
+          // slide: strip the into-wall component and try again; a building that stops the hull (solidAt) is the wall, its centre the way in
+          const sid = storyBase?.solidAt(cand), w = sid ? storyBase.structure(sid)?.holder?.getWorldPosition(new THREE.Vector3()).toArray() ?? nearestWall(cand) : nearestWall(cand);
           if (w) {
             const toWall = norm3(sub3(w, player.pos));
             const into = Math.max(0, dot3(step, toWall));
-            // a mostly head-on hit THUDS like running something over; the bumpLeft gate keeps grinding along a wall from
-            // re-triggering every frame
+            // a mostly head-on hit THUDS like running something over; the bumpLeft gate keeps a grind from re-triggering every frame
             const slid = sub3(step, scale3(toWall, into)), share = into / (len3(step) || 1), kq = kick.cool > 0 ? null : planKick({ pos: player.pos, heading: player.heading, toWall, slid, share, cellSide, blocked: freeBlocked }, TANK_KICK);
             if (kq && startKick(kick, { from: player.pos, ...kq }, TANK_KICK)) { scrubDriveRamp(driveRamp, 1 - TANK_KICK.keep, TANK_DRIVE); player.heading = kq.heading; }
             scrubDriveRamp(driveRamp, share * TANK_WALL.scrub * dt, TANK_DRIVE); if (len3(slid) > 1e-9) player.heading = norm3(add3(player.heading, scale3(norm3(slid), share * TANK_WALL.align * dt)));   // A WALL IS FRICTION, NOT A THUD (src/content/tank.js TANK_WALL)
             cand = norm3(add3(player.pos, slid));
             if (freeBlocked(cand)) cand = null;
           } else { cand = null; for (const a of TANK_WALL.glance) { const n0 = norm3(player.pos), r = add3(scale3(step, Math.cos(a)), scale3(cross3(n0, step), Math.sin(a))), c2 = norm3(add3(player.pos, scale3(r, Math.cos(a)))); if (!freeBlocked(c2)) { cand = c2; break; } } }   // a building: glance off it
-          // wedged with nowhere to slide? creep toward the CURRENT cell's center — it is open ground by definition, so the tank
-          // can always un-stick itself, shells or no shells
+          // wedged with nowhere to slide? creep toward the CURRENT cell's centre: open ground by definition, so it can always un-stick
           if (!cand) { scrubDriveRamp(driveRamp, 1, TANK_DRIVE);   // wedged: nothing built survives
             const home = graph.centers[player.cur];
             const toHome = sub3(home, player.pos);
@@ -2262,10 +2252,11 @@ export function initTdTab(root) {
           const ci = cellIndex(cand);
           if (ci !== -1 && ci !== player.cur) arriveAt(ci);
         }
-        const k = stepStuck(stuck, { driving: true, moved: dist3(player.pos, before), expected: Math.abs(v) * dt, dt }, HULL_STUCK);   // wedged: eased to open ground (owner, 2026-10-02)
+        const k = stepStuck(stuck, { driving: true, moved: dot3(sub3(player.pos, stuck.p ?? before), player.heading) * Math.sign(drive), expected: Math.abs(v) * dt, dt }, HULL_STUCK);   // wedged: eased to open ground; progress counts from where the last frame left it (creep, ease and cushion included)
         if (k > 0) player.pos = unstick(player.pos, graph.centers[player.cur], k * HULL_STUCK.rate * cellSide * dt);
       } else stepStuck(stuck, { driving: false, moved: 0, expected: 0, dt }, HULL_STUCK);
       if (!kicking(kick)) player.pos = wallCushion(player.pos);
+      stuck.p = player.pos.slice();
       const nf = norm3(player.pos);
       player.heading = norm3(sub3(player.heading, scale3(nf, dot3(player.heading, nf))));
       updateSmoothDir(dt);
@@ -5937,7 +5928,7 @@ export function initTdTab(root) {
     if (!isao) return;
     const working = isao.state === 'build';
     lookIsao(isao, dt);   // his face, rotors and work light (src/fx/isao-look.js; a shot runs it too, frozen)
-    // the print beam: ONE line object, rewritten in place (activity must not add objects; a beam that exists for the whole build would)
+    // the print beam: ONE line object, rewritten in place (activity must not add objects)
     if (working) {
       const noz = isao.obj.userData.nozzle;
       const a = new THREE.Vector3();
@@ -5951,7 +5942,7 @@ export function initTdTab(root) {
             color: ISAO_TINT, transparent: true, opacity: 0.85,
             blending: THREE.AdditiveBlending, depthWrite: false,
           }));
-        printBeam.frustumCulled = false;   // the buffer is rewritten; its bounds lie (2026-10-06: it was culled off most prints)
+        printBeam.frustumCulled = false;   // the buffer is rewritten; its bounds lie (it was culled off most prints)
         scene.add(printBeam);
       }
       // THE HEAD MOVES. A steady line from the nozzle to the cell's middle reads as a laser; a printer rasters, walks a perimeter and stops

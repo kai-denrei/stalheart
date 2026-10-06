@@ -118,6 +118,23 @@ export function createExpeditionGlue(h) {
     const t = trophyPose(r.index); fx().trophy(r.index, t.point, t.normal, t.facing);
   }
 
+  // AS CLOSE AS THE POCKET LETS A HULL COME (owner, 2026-10-06, twenty-seventh notes, 3: "the second-closest cargo: STILL a problem going
+  // through narrow tiles with the MÖRK"): a lander stands in a pocket of rock, its own solid footprint across the corridor cells beside
+  // it, and the floor a hull can stand on may all lie beyond the pickup radius; the hull then wedged against the footprint a cell short
+  // of the part. The reach is at least the chord to the nearest floor a hull may stand on (open to the grid and clear of the buildings
+  // solid to it, `h.open` / `h.solid`), plus most of a cell, and at most two cells past the pickup radius; measured once per site
+  // the pickup radius past the clearing, in cells (1 until 2026-10-06; 1.3 secures the part where the hull arrives at rocket-b: a cell
+  // short of the clearing's far side, where --corridor-probe still wedges it against the lander's corridor with nothing reported ahead)
+  const PICKUP_CELLS = 1.3;
+  const stands = new Map();
+  const standReach = (id, at) => {
+    if (!stands.has(id)) {
+      const centers = h.centers(); let best = Infinity;
+      if (h.open) for (let i = 0; i < centers.length; i++) { if (i === at.cell || !h.open(i) || h.solid?.(centers[i])) continue; const d = chord(centers[i], centers[at.cell]); if (d < best) best = d; }
+      stands.set(id, Math.min(h.cellSide * (at.clear / 10 + 3), Number.isFinite(best) ? best + h.cellSide * 0.8 : 0));
+    }
+    return stands.get(id);
+  };
   const glue = {
     openSite(id) {
       const cfg = STORY_EXPEDITIONS.sites.find((s) => s.id === id), c = cellOf(id);
@@ -149,7 +166,7 @@ export function createExpeditionGlue(h) {
         if (s.state === 'guarded' && !h.guardsLeft(s.id)) { guardsCleared(e, s.id); h.brief('site_cleared'); }
         if (s.state === 'cleared' && !fx().hasFlag(s.id)) { const p = sitePose(s.id); fx().raiseFlag(s.id, p.point, p.normal, p.facing); }
         const at = spotOf(s.id);
-        if (s.state === 'cleared' && !e.carrying && chord(pos, centers[at.cell]) < h.cellSide * (at.clear / 10 + 1) && reach(e, s.id)) {
+        if (s.state === 'cleared' && !e.carrying && chord(pos, centers[at.cell]) < Math.max(h.cellSide * (at.clear / 10 + PICKUP_CELLS), standReach(s.id, at)) && reach(e, s.id)) {
           fx().pickUp(s.id, h.hull);
           h.callout(`PART SECURED · ${String(STORY_EXPEDITIONS.sites.find((x) => x.id === s.id)?.part ?? 'part').toUpperCase()} · TO THE CARGO DROP-OFF`);
         }
@@ -201,6 +218,8 @@ export function createExpeditionGlue(h) {
       // a lander stands in a pocket of rock: when no open floor is in reach, the nearest cell still serves the acceptance route
       return best < 0 && open.length ? glue.standCell(kind, id) : best;
     },
+    // the pickup reach of a site in cells (the radius, or the nearest standable floor), for the harness
+    reachOf(id) { const at = spotOf(id); return at ? Math.max(h.cellSide * (at.clear / 10 + PICKUP_CELLS), standReach(id, at)) / h.cellSide : -1; },
     // what stands between two world points, nearest first, for the acceptance stills: [name, metres from `from`, visible]
     sight(scene, from, to) {
       const a = v3(from), dir = v3(to).sub(a), len = dir.length(), ray = new THREE.Raycaster(a, dir.normalize(), 0, len * 1.2);
@@ -240,7 +259,7 @@ export function createExpeditionsHost(c) {
       spawn: (...a) => storyApi.spawn(...a), revealSite: (id) => c.storyBase()?.reveal(id), landing: () => c.storyBase()?.structure('foundry')?.holder ?? null,
       brief: showBrief, callout: (text) => showCallout(text, 'co-cargo'), toast: showTowerToast,
       // ISAO RECEIVES THE PART: an order that yields to every other (stepWorker)
-      open: (ci) => c.open?.(ci) ?? true,   // open floor: the cargo drop-off pad sits on it
+      open: (ci) => c.open?.(ci) ?? true, solid: (p) => !!c.storyBase()?.solidAt?.(p),   // open floor: the cargo drop-off pad sits on it; a building solid to the hull
       receive: (r) => { orders.push({ kind: 'receive', ci: c.cellIndex()(norm3(r.point)), cost: 0, seconds: r.seconds, bed: r.bed, done: r.done }); spawnIsao(); updateHud(); return true; },
     })),
     expeditionsBegin: () => { if (c.story()?.expeditions) storyApi.expeditions().begin(); },
