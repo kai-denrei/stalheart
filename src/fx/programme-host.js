@@ -46,6 +46,7 @@ import { createAmbientGust } from './ambient-gust.js';
 import { BRIEFS } from '../isaobriefs.js';
 import { storage } from '../storage.js';
 import * as THREE from '../../vendor/three.module.js';
+import { createMomentReel } from './moment-reel.js';
 const loadDyes = () => { try { return JSON.parse(storage.getItem(DYE_SHOP.store) ?? 'null'); } catch { return null; } };
 const saveDyes = (b) => { try { storage.setItem(DYE_SHOP.store, JSON.stringify(b)); } catch { /* a refused store: the dyes last this run */ } };
 import { nextRepair, shotHoles, rimHoles } from '../domain/repair-orders.js';
@@ -85,6 +86,8 @@ export function createProgrammeHost(c) {
     tankReady: () => { const s = c.story(); return !!s?.hull?.early(s.hullHost ??= createHullHost(c), s.nukeBerth?.(s.nukes.at(-1) ?? -1)); },
     build: () => {
       const pg = c.story().programme, sector = c.story().sectorN ?? 0;
+      // THE BEST MOMENTS, FILMED (src/fx/moment-reel.js): the run's best ram combo and every tactical nuke, for the campaign card
+      if (c.renderer && typeof document !== 'undefined') (c.story().reel ??= createMomentReel(c.renderer)).watch(c.t(), { combo: c.combo?.() ?? 0, nukes: c.story().nukes?.length ?? 0, strikeKills: c.kills?.()?.strike ?? 0, sector });
       // THE FIRST MÖRK ROLLS OUT OF THE STÅLHEART (src/fx/hull-issue.js): the camera runs to the door's framing with the hull
       // standing under the gantry, then it drives out as any deploy does; under a gunner it is set down outside the door
       c.story().hull?.tick(c.story().hullHost ??= createHullHost(c));

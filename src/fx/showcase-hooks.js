@@ -185,6 +185,9 @@ export function createShowcaseHooks(host) {
       storyApi.closeup();
       return !!host.isao();
     },
+    // the moments the reel has kept so far (src/fx/moment-reel.js; the --moment-reel step)
+    reelFrame: (kind, i) => host.story()?.reel?.clips().find((c) => c.kind === kind)?.frames[i]?.toDataURL() ?? null,
+    reel: () => (host.story()?.reel?.clips() ?? []).map((c) => ({ kind: c.kind, score: c.score, label: c.label, frames: c.frames.length, w: c.frames[0]?.width ?? 0 })),
     // what each cell is now: rock to the pathfinder, and whether Isao printed a kit wall into it (the --back-shoulders step)
     cells: (list) => list.map((ci) => ({ ci, rock: host.dungeon().tags[ci] === BLOCKED, patched: !!host.storyBase()?.patchedCells?.().includes(ci) })),
   };

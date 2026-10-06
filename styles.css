@@ -4443,6 +4443,10 @@ body.playing:not(.shell-open) #shell-bar { opacity: 0.32; }
 .sdb-mult rect.is-peak { fill: var(--sdb-accent); opacity: 1; }
 .sdb-mult rect.is-lost { fill: var(--sdb-dim); }
 .sdb-mult.is-warn rect.is-peak { fill: #ff4d2e; }
+.sdb-clips { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: clamp(10px, 1.6cqi, 22px); margin: clamp(14px, 2cqi, 26px) 0 0; }
+.sdb-clip { margin: 0; border: 1px solid var(--sdb-line); background: #000; }
+.sdb-clip canvas { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; filter: grayscale(1) contrast(1.25) brightness(1.05); }
+.sdb-clip figcaption { padding: 6px 10px; font-size: 14px; letter-spacing: 0.1em; color: var(--sdb-accent); }
 .sdb-best-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: clamp(10px, 1.6cqi, 22px); margin-top: clamp(14px, 2cqi, 26px); }
 .sdb-best { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: 1px solid var(--sdb-line); background: var(--sdb-faint); }
 .sdb-best > span { font-size: 14px; letter-spacing: 0.12em; color: var(--sdb-dim); }

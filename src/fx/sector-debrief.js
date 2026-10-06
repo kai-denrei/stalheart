@@ -295,10 +295,12 @@ function pageRun(camp) {
 // THE BEST MOMENTS: the run's bests, each with the sector it came in
 function pageBest(camp) {
   const best = runBests(recapRows((camp && camp.reports) || []));
+  // the moments filmed in play (src/fx/moment-reel.js), mounted as flipbooks after the page is painted (mountClips)
+  const clips = (camp?.clips ?? []).length ? `<div class="sdb-clips">${camp.clips.map((c, i) => `<figure class="sdb-clip" data-reveal data-at="${100 + i * 160}"><div data-clip="${i}"></div><figcaption>${esc(c.label)}</figcaption></figure>`).join('')}</div>` : '';
   const tiles = best.map((b, i) => `<div class="sdb-best" data-reveal data-at="${200 + i * 160}"><span>${b.label}</span>${roll(b.value, { fmt: b.fmt === 'x' ? 'combo' : b.fmt ?? 'int', at: 240 + i * 160, dur: 800 })}<small>SECTOR ${pad2(b.sector)} · ${esc(b.name)}</small></div>`).join('');
   return `<section class="sdb-page sdb-bests">
     <h2 class="sdb-title" data-reveal data-at="0">THE BEST MOMENTS</h2>
-    <div class="sdb-best-grid">${tiles || '<div class="sdb-none">NOTHING TO SHOW YET</div>'}</div>
+    ${clips}<div class="sdb-best-grid">${tiles || '<div class="sdb-none">NOTHING TO SHOW YET</div>'}</div>
   </section>`;
 }
 const CAMPAIGN_PAGES = [pageCampaign, pageRun, pageBest];
@@ -441,6 +443,7 @@ export function createSectorDebrief(host, options = {}) {
       ? (last ? '' : '<button type="button" class="sdb-btn" data-act="next">DETAIL &#9654;</button>') + '<button type="button" class="sdb-btn" data-act="newrun">NEW RUN</button><button type="button" class="sdb-btn sdb-btn--go" data-act="keep">KEEP HOLDING &#9654;</button>'
       : (last ? '' : '<button type="button" class="sdb-btn" data-act="next">DETAIL &#9654;</button>') + '<button type="button" class="sdb-btn sdb-btn--go" data-act="continue">CONTINUE &#9654;</button>';   // CONTINUE on every page: the detail tabs are optional (2026-10-03)
     body.innerHTML = mode === 'campaign' ? CAMPAIGN_PAGES[index](campaign, isao) : REPORT_PAGES[index](report, isao);
+    mountClips();
     body.scrollTop = 0;
     collect();
     const quiet = still();
@@ -546,7 +549,24 @@ export function createSectorDebrief(host, options = {}) {
     index = 0;
     paint(open());
   }
+  // THE FILMED MOMENTS PLAY: each clip's frames flipped at its own rate, on a loop, a beat held on the last frame
+  let clipTimers = [];
+  function mountClips() {
+    for (const id of clipTimers) view.clearInterval(id);
+    clipTimers = [];
+    for (const slot of body.querySelectorAll('[data-clip]')) {
+      const clip = campaign?.clips?.[num(slot.dataset.clip)], frames = clip?.frames ?? [];
+      if (!frames.length) continue;
+      const cv = doc.createElement('canvas'); cv.width = frames[0].width; cv.height = frames[0].height; slot.append(cv);
+      const g = cv.getContext('2d'), hold = Math.round((clip.fps ?? 8) * 0.8);
+      let k = 0;
+      const step = () => { g.drawImage(frames[Math.min(k, frames.length - 1)], 0, 0); k = (k + 1) % (frames.length + hold); };
+      step(); clipTimers.push(view.setInterval(step, 1000 / (clip.fps ?? 8)));
+    }
+  }
   function hide() {
+    for (const id of clipTimers) view.clearInterval(id);
+    clipTimers = [];
     view.cancelAnimationFrame(raf);
     done = true;
     mode = null;

@@ -266,7 +266,7 @@ export function createSectorRun(h) {
   function next() { if (phase !== 'debrief' && phase !== 'campaign') return; debrief().hide(); const go = () => { h.pause(false); begin(def.n + 1); }; phase = 'break'; if (!api.interlude?.(go)) go(); }
   function cont() {
     if (phase === 'lost-shown') { h.reload(); return; }
-    if (phase === 'debrief' && doorAt !== null && def.n === doorAt + 1 && !campaignShown) { campaignShown = true; phase = 'campaign'; debrief().showCampaign({ reports: reports.slice(), totals: campaignTotals(reports) }, { isao: nextLines() }); return; }
+    if (phase === 'debrief' && doorAt !== null && def.n === doorAt + 1 && !campaignShown) { campaignShown = true; phase = 'campaign'; debrief().showCampaign({ reports: reports.slice(), totals: campaignTotals(reports), clips: story.reel?.clips() ?? [] }, { isao: nextLines() }); return; }
     next();
   }
 

@@ -68,6 +68,16 @@ export function initDebriefTab(root) {
   };
   const debrief = createSectorDebrief(host, options);
 
+  // stand-in films for THE BEST MOMENTS (src/fx/moment-reel.js records the real ones in play): a block sweeping a field, frame by frame
+  let clips = null;
+  function sampleClips() {
+    const film = (label, kind, score, hue) => ({ kind, score, label, fps: 8, frames: Array.from({ length: 24 }, (_, i) => {
+      const c = document.createElement('canvas'); c.width = 256; c.height = 144; const g = c.getContext('2d');
+      g.fillStyle = `hsl(${hue} 40% 14%)`; g.fillRect(0, 0, 256, 144); g.fillStyle = `hsl(${hue} 70% 60%)`;
+      for (let k = 0; k < 18; k++) g.fillRect((k * 37 + i * 3) % 256, 30 + ((k * 53) % 100), 6, 6);
+      g.fillStyle = '#fff'; g.fillRect(i * 10, 60, 28, 22); return c; }) });
+    return (clips ??= [film('RAM COMBO ×24 · SECTOR 03', 'ram', 24, 160), film('TACTICAL NUKE · 61 KILLS · SECTOR 02', 'nuke', 61, 30)]);
+  }
   function dismissed(what) {
     events.push({ what, sample });
     idle.querySelector('[data-f=why]').textContent = what;
@@ -75,7 +85,7 @@ export function initDebriefTab(root) {
   }
   function run() {
     idle.hidden = true;
-    if (sample === 'campaign') debrief.showCampaign(DEBRIEF_SAMPLES.campaign, { isao: DEBRIEF_SAMPLE_ISAO.campaign });
+    if (sample === 'campaign') debrief.showCampaign({ ...DEBRIEF_SAMPLES.campaign, clips: sampleClips() }, { isao: DEBRIEF_SAMPLE_ISAO.campaign });
     else debrief.show(DEBRIEF_SAMPLES[sample], { isao: DEBRIEF_SAMPLE_ISAO[sample] });
     paintBar();
   }

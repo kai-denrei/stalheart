@@ -1589,6 +1589,19 @@ try{
  await sit();{const l=await L();console.log(`SOL FIRST AIM second seat: nearest body ${l.nearestBodyM?.toFixed(1)} m`);
   assert(l.nearestBodyM!==null&&l.nearestBodyM<15,'and the next seat on the pile again');}
  current='sol-first-aim';await finish();
+ } else if(args.includes('--moment-reel')) {
+ // THE BEST MOMENTS, FILMED (owner, 2026-10-06): in a real game the reel grabs the frame and keeps the run's best ram combo as a clip
+ const T='window.__stalheartTest';
+ await go('moment-reel','index.html?sw=0&acceptance=1&cine=0&world=story&stage=6&phase=expedition#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await delay(2500);
+ await evaluate(`${T}.begin()`);await evaluate(`${T}.sectorQuiet(true)`);
+ await evaluate(`${T}.spawnFodder(40)`);await delay(7000);
+ for(let k=0;k<14;k++){await evaluate(`${T}.showcase.ramNext()`);await delay(350);}
+ await until(`${T}.showcase.reel().some(c=>c.kind==="ram")`,30000).catch(async()=>assert.fail(`no ram clip kept (${JSON.stringify(await evaluate(`${T}.showcase.reel()`))}, combo ${JSON.stringify(await evaluate(`${T}.state().rs?.maxCombo??null`))})`));
+ const r=(await evaluate(`${T}.showcase.reel()`)).find(c=>c.kind==='ram');console.log(`MOMENT REEL ${JSON.stringify(r)}`);
+ assert(r.frames>=1&&r.w===256,'the clip holds small frames of the game');
+ {const url=await evaluate(`${T}.showcase.reelFrame('ram',${Math.floor(r.frames*0.6)})`);writeFileSync(join(output,'moment-reel-frame.png'),Buffer.from(url.split(',')[1],'base64'));}
+ current='moment-reel';await finish();
  } else if(args.includes('--round9')) {
  // THE OWNER'S NINTH NOTES (2026-10-02): SOL's automated pass counts down, fires from one point in the sky and spares the base; the
  // stampede (every second wave a mouth sends) floods the lane with rammable bodies; the auto gunship's tracers age out

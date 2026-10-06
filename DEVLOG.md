@@ -41,6 +41,23 @@ Evidence:
 - --debrief passes, the campaign's three pages at full, 1280 and 400 px; it had been failing on main since the 2026-10-03 summary page (a report's press closes the card; the hero's grid is .sdb-sum-grid): the step now walks a report's tabs with the arrow
 - npm test (181 programs) and npm run check pass
 
+## 2026-10-06 — The ending, step two: the run's best ram combo and best tactical nuke filmed in play and played back grey on THE BEST MOMENTS
+
+change · accepted · 2026-10-06-the-best-moments-filmed
+
+Owner, 2026-10-06 (on note 6): 'maybe small recordings of the highest RAM bonus in black and white, or the best Tactical Nuke, something visual'. Plan: 2026-10-06-the-ending-plan-and-the-run-recap.
+
+src/fx/moment-reel.js: renderer.render is wrapped; 8 times a second the frame is copied (256 x 144, the middle of the frame) right after a pass to the screen, into a ring of pre + post seconds (2.2 + 1.6). A new run-best ram combo or a tactical nuke marks a moment; it is cut post seconds after the combo stops climbing (or after the nuke, measured by the strike kills in the 0.6 s after it) and kept when it beats the best of its kind. The programme host drives it every tick (story.reel; td-tab passes renderer and the run's best combo, paid by compressing the HOLD comment: byte budget 522406, lines 8750); the sector run hands story.reel.clips() to the campaign card, whose THE BEST MOMENTS page flips each clip on a loop above the records, grey and contrasted by CSS (a canvas filter is not on every Safari). The debrief lab shows two stand-in films.
+
+Alternatives: MediaRecorder on canvas.captureStream: a live encoder for the whole run, heavier, and Safari's support is uneven
+
+Evidence:
+
+- test/moment-reel.mjs: grabs only after a pass to the screen, the combo cut once it stops climbing, the nuke counted from the strike kills before its tick, the best clip of a kind kept
+- new step --moment-reel: fourteen rams in a real game keep RAM COMBO ×38 as a 30-frame clip; one frame saved (artifacts/browser/moment-reel-frame.png) shows the ram's burst on the lattice
+- --debrief passes with the clips on the campaign's third page; npm test and npm run check pass
+- not seen: a tactical nuke's clip in a browser (the unit test covers its counting)
+
 ## 2026-10-06 — SOL's seat opens on the densest pile, and the pointer takes the aim only once it means it
 
 change · accepted · 2026-10-06-sol-first-aim
