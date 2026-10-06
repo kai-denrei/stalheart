@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "id": "2026-10-06-welcome-keywords-sound",
+  "date": "2026-10-06",
+  "type": "change",
+  "status": "accepted",
+  "title": "The welcome's keywords sound: each unit's own sound on hover, and ISAO says DON'T PANIC under 01 and 'You're a good frood, let's do this!' under 02",
+  "context": "Owner, 2026-10-06 (twenty-sixth notes, 1): in the Pocket Guide, hovering ISAO, SH02, MÖRK etc. also plays some of their sounds; Isao's name appears twice (01 and 02): for 01 record 'DON'T PANIC', for 02 'You're a good frood, let's do this!' (hommages to the Hitchhiker's Guide), with seiyu_voice, recorded there and synced.",
+  "outcome": "seiyu_voice 5e017fe (local): triggers welcome_panic and welcome_frood in section 1, and the ending's three lines (ending_did_it 'WE DID IT!', ending_dyson 'We connected this planet to the Dyson Sphere.', ending_next 'Ready for the next one? AH AH!') recorded ahead of note 7, all exported unapproved; scripts/import-isao-voice.mjs: 167 lines in 58 triggers. src/fx/start-gate.js: hover, focus or tap plays the unit's sound (SH02 rocket_thrust, Stålheart tower_upgrade, MÖRK tank_main, KORP gunship_bofors_fire, SOL-88 laser_burn, ARC-01 seeker_fire), cut short as the card goes and on START; ISAO says the step's line (01 welcome_panic, 02 welcome_frood), forced, not again while it still plays. Silent until a gesture has started the sound.",
+  "alternatives": [],
+  "evidence": [
+    "--opening: hovering ISAO 01 then 02 logs welcome_panic_01 and welcome_frood_01 after welcome_01 welcome_settle_01; the landing's lines follow unchanged",
+    "the unit sounds are not asserted in headless Chrome (sfx.say returns a handle only with a decoded buffer); worth the owner's ear"
+  ],
+  "supersedes": []
+}

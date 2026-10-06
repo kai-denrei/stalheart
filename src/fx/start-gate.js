@@ -11,13 +11,13 @@ import { createWireframeStage } from './wireframe-stage.js';
 
 // the keywords' wireframes: the unit, its model, one line
 const UNITS = {
-  sh02: { name: 'SH02', url: 'assets/models/story/sh_rocket.glb', line: 'Your ride down. Also your first spare parts.' },
+  sh02: { name: 'SH02', url: 'assets/models/story/sh_rocket.glb', line: 'Your ride down. Also your first spare parts.', sound: 'rocket_thrust' },
   isao: { name: 'ISAO', url: 'assets/models/isao/isao_birudoron_lod1.glb', line: 'An enthusiastic little builder drone.' },
-  stalheart: { name: 'STÅLHEART', url: 'assets/models/astro/terraformer_3000_d0_lod1.glb', line: 'The terraformer. Home is where the giant robot is.' },
-  mork: { name: 'MÖRK', url: 'assets/models/hover-tank/mork_hover_tank_d0_lod2.glb', line: 'The hover tank. Rams first, asks later.' },
-  korp: { name: 'KORP', url: 'assets/models/korp/korp_d0_lod1.glb', line: 'The heavy gunship, on orbital station.' },
-  sol: { name: 'SOL-88', url: 'assets/models/sol88/sol88_platform_game.glb', line: 'The orbital platform. Star power, aimed.' },
-  arc01: { name: 'ARC-01', url: 'assets/models/astro/arc01_launcher_d0_lod1.glb', line: 'The satellite launcher.' },
+  stalheart: { name: 'STÅLHEART', url: 'assets/models/astro/terraformer_3000_d0_lod1.glb', line: 'The terraformer. Home is where the giant robot is.', sound: 'tower_upgrade' },
+  mork: { name: 'MÖRK', url: 'assets/models/hover-tank/mork_hover_tank_d0_lod2.glb', line: 'The hover tank. Rams first, asks later.', sound: 'tank_main' },
+  korp: { name: 'KORP', url: 'assets/models/korp/korp_d0_lod1.glb', line: 'The heavy gunship, on orbital station.', sound: 'gunship_bofors_fire' },
+  sol: { name: 'SOL-88', url: 'assets/models/sol88/sol88_platform_game.glb', line: 'The orbital platform. Star power, aimed.', sound: 'laser_burn' },
+  arc01: { name: 'ARC-01', url: 'assets/models/astro/arc01_launcher_d0_lod1.glb', line: 'The satellite launcher.', sound: 'seeker_fire' },
 };
 const key = (id, text = UNITS[id].name) => `<button type="button" class="wg-key" data-unit="${id}">${text}</button>`;
 const STEPS = [
@@ -79,16 +79,28 @@ export function createStartGate(root, { onOpen = null, sfx = null } = {}) {
     clearTimeout(hideT);
     hideT = setTimeout(() => { pop.hidden = true; cancelAnimationFrame(raf); raf = 0; stage?.dispose(); stage = null; popFor = null; }, now ? 0 : 160);
   }
+  // THE KEYWORDS SOUND (owner, 2026-10-06: "hovering ISAO, SH02, MÖRK etc. also plays some of their sounds"): a unit's own sound,
+  // cut short as the card goes; ISAO is Isao himself, a Hitchhiker's line per step (01 DON'T PANIC, 02 the good frood). Nothing until
+  // a gesture has started the sound, and a line is not said again while it still plays
+  let voiceTill = 0, sound = null;
+  const SAYS = { '01': 'welcome_panic', '02': 'welcome_frood' };
+  function hear(btn) {
+    if (!sfx?.ready || gate.starting) return;
+    const id = btn.dataset.unit, say = id === 'isao' && SAYS[btn.closest('.step')?.querySelector('.number')?.textContent];
+    if (say) { if (performance.now() < voiceTill) return; const line = isaoSay(sfx, say, { force: true }); if (line) voiceTill = performance.now() + line.duration * 1000; return; }
+    if (UNITS[id]?.sound) { sfx.stop?.(sound, 0.15); sound = sfx.say?.(UNITS[id].sound) ?? null; }
+  }
+  const hush = () => { sfx?.stop?.(sound, 0.4); sound = null; };
   for (const b of el.querySelectorAll('.wg-key')) {
-    b.addEventListener('pointerenter', () => show(b)); b.addEventListener('pointerleave', () => hide());
+    b.addEventListener('pointerenter', () => { show(b); hear(b); }); b.addEventListener('pointerleave', () => { hide(); hush(); });
     b.addEventListener('focus', () => show(b)); b.addEventListener('blur', () => hide());
-    b.addEventListener('click', () => (pop.hidden || popFor !== b.dataset.unit ? show(b) : hide(true)));   // a tap on a touch screen
+    b.addEventListener('click', () => { if (pop.hidden || popFor !== b.dataset.unit) { show(b); hear(b); } else { hide(true); hush(); } });   // a tap on a touch screen
   }
   el.addEventListener('scroll', () => hide(true), { passive: true });
 
   // START: Ad Astra Per Aspera, the guide fades, and the landing begins as the line ends
   function start() {
-    if (gate.starting) return; gate.starting = true; hide(true);
+    if (gate.starting) return; gate.starting = true; hide(true); hush();
     removeEventListener('pointerup', firstGesture); removeEventListener('keyup', firstGesture);
     const line = isaoSay(sfx, 'ad_astra', { force: true });
     el.classList.add('out');

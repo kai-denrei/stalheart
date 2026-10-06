@@ -1732,6 +1732,14 @@ try{
  {const said=await evaluate('(async()=>(await import("./src/fx/isao-voice.js")).isaoSay.log.map(e=>e.id))()');console.log(`  opening: welcome said ${said.join(' ')}`);assert(said.includes('welcome_01'),'Isao says WELCOME! on the first gesture');}
  {const r=await evaluate('(()=>{const b=document.querySelector("#start-gate .wg-key[data-unit=stalheart]");b.scrollIntoView({block:"center"});const q=b.getBoundingClientRect();return 1;})()');await delay(400);const r2=await evaluate('(()=>{const q=document.querySelector("#start-gate .wg-key[data-unit=stalheart]").getBoundingClientRect();return [q.left+q.width/2,q.top+q.height/2];})()');await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:r2[0],y:r2[1]});await delay(2500);
   assert(await evaluate('!document.querySelector("#start-gate .wg-pop").hidden'),'hovering Stålheart shows its wireframe');current='opening-welcome-hover';await finish();}
+ /* THE KEYWORDS SOUND (owner, 2026-10-06): ISAO under 01 says DON'T PANIC, under 02 the good frood */
+ for(const [k,id] of [[0,'welcome_panic_01'],[1,'welcome_frood_01']]){await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:5,y:5});await delay(300);
+  await evaluate(`document.querySelectorAll("#start-gate .wg-key[data-unit=isao]")[${k}].scrollIntoView({block:"center"})`);await delay(400);
+  const q=await evaluate(`(()=>{const r=document.querySelectorAll("#start-gate .wg-key[data-unit=isao]")[${k}].getBoundingClientRect();return [r.left+r.width/2,r.top+r.height/2];})()`);
+  await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:q[0],y:q[1]});await delay(2600);
+  const said=await evaluate('(async()=>(await import("./src/fx/isao-voice.js")).isaoSay.log.map(e=>e.id))()');
+  assert(said.includes(id),`hovering ISAO ${k+1} says ${id} (${said.join(' ')})`);}
+ console.log('  opening: hovering ISAO says DON\'T PANIC under 01 and the good frood under 02');
  current='opening-welcome';await evaluate('document.querySelector("#start-gate").scrollTop=0');await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:5,y:5});await delay(400);await finish();
  {const r=await evaluate('(()=>{const q=document.querySelector("#start-gate [data-start]").getBoundingClientRect();return [q.left+q.width/2,q.top+q.height/2];})()');await send('Input.dispatchMouseEvent',{type:'mousePressed',x:r[0],y:r[1],button:'left',clickCount:1});await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:r[0],y:r[1],button:'left',clickCount:1});}
  await until('(async()=>(await import("./src/fx/isao-voice.js")).isaoSay.log.some(e=>e.id==="ad_astra_01"))()',5000).catch(async()=>assert.fail('Ad Astra Per Aspera on START'));

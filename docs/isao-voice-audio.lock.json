@@ -1,6 +1,6 @@
 {
  "schema": 2,
- "source": "seiyu_voice export A-1 2026-10-05T09:55:35Z: 24 kHz mono WAV, encoded by scripts/import-isao-voice.mjs to mono 64 kbps MP3, no normalisation",
+ "source": "seiyu_voice export A-1 2026-10-06T06:10:54Z: 24 kHz mono WAV, encoded by scripts/import-isao-voice.mjs to mono 64 kbps MP3, no normalisation",
  "files": [
   {
    "path": "assets/audio/isao/mission_04.mp3",
@@ -106,6 +106,20 @@
    "sha256": "0bf02113d34207656686acb6b8cfe6046faf45f1ce5a81ed26270016991caabd",
    "bytes": 17876,
    "sourceSha256": "aa30ea362218954bb170c365102e3c70d81102b55c331e8ff045a3526fb68372"
+  },
+  {
+   "path": "assets/audio/isao/welcome_panic_01.mp3",
+   "id": "welcome_panic_01",
+   "sha256": "16fbb897f05519985ecdc1b44d343e8c5bab35485514e6566364f6469d0a0af4",
+   "bytes": 10580,
+   "sourceSha256": "5e1124925407954574470909215afa4e72a001b2150e50218c0224521bdaca55"
+  },
+  {
+   "path": "assets/audio/isao/welcome_frood_01.mp3",
+   "id": "welcome_frood_01",
+   "sha256": "1c5a95aa8efe98b64175e9c10582c4268fc3f7222e311acb9b8bcb55c39ad64e",
+   "bytes": 18644,
+   "sourceSha256": "79711b24be864c8bc65fea1107b24b29efb7f4b15324c24afcd1e20711670c38"
   },
   {
    "path": "assets/audio/isao/sites_seen_05.mp3",
@@ -974,6 +988,27 @@
    "sha256": "49b6434343dccce02963e70e546eee824c4f57e0932bfb845be0543d0f8e8f64",
    "bytes": 29972,
    "sourceSha256": "315655045399abbf427e38dd34ca7267cc27defb8c36800481c3d820a218f738"
+  },
+  {
+   "path": "assets/audio/isao/ending_did_it_01.mp3",
+   "id": "ending_did_it_01",
+   "sha256": "aa1468bec3a84f127b55bf3fcdcc8b2713dbce2d6b0ebe325dbe0a8a2354a9b5",
+   "bytes": 11156,
+   "sourceSha256": "e15ebb8cc034988e5ab01c4730bd3e23d8ad5a93feef4095a5685cdba31bc53f"
+  },
+  {
+   "path": "assets/audio/isao/ending_dyson_01.mp3",
+   "id": "ending_dyson_01",
+   "sha256": "dee98d9bf9ecbc0930c64b2ff25505f8388c88e6a0be4dd1aefdcf16c72f2e3d",
+   "bytes": 24404,
+   "sourceSha256": "45c21ef576212dca3fc41043eeb401d522fd66e85d1e6713fa0058b5e3e569e4"
+  },
+  {
+   "path": "assets/audio/isao/ending_next_01.mp3",
+   "id": "ending_next_01",
+   "sha256": "d9a577fe9554cb5d8fdb02316b2a16f4378ef8c44ae70f869b60d85f01bb7137",
+   "bytes": 21140,
+   "sourceSha256": "e9c15a08dd968baf904218b91acf634187716055576bca0b9c88233a83e5a5f0"
   },
   {
    "path": "assets/audio/isao/array_charging_01.mp3",
