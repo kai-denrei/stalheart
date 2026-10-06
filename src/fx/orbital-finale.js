@@ -12,12 +12,17 @@
 // `planet` ({ map: the board's surface meshes, heart: the heart's unit vector }), the small world is the game's own surface, its floor,
 // rock and edge lines drawn from the same geometry buffers, turned so the heart sits under the pad at the pole; without it, the
 // upstream placeholder sphere.
+// THE BLACK HOLE NOT FAR (owner, 2026-10-06: "the feeling that an amazing TON 618-like black hole is not far"): the accretion disk of
+// src/fx/accretion.js, rendered once and hung as a billboard behind the planet on the camera's line, HOLE.across units wide at HOLE.at,
+// so it fills a third of the frame as the camera pulls back; the spiral galaxy moved off to its side.
 import * as THREE from '../../vendor/three.module.js';
 import { loadModelFixture, cloneFixture } from './model-fixture.js';
 import { isaoSay } from './isao-voice.js';
+import { renderAccretion, accretionSprite, accretionShadow, faceShadow } from './accretion.js';
 
 export const SECONDS = 26;
 const FROM = 50, TO = 100, PLANET_RADIUS = 195, MIRROR_COUNT = 48, CENTER = [0, -PLANET_RADIUS, 0];
+export const HOLE = Object.freeze({ at: Object.freeze([-330, -850, -1375]), across: 1500, galaxyAt: Object.freeze([-1750, -150, -1800]) });   // a little to the pulled-back camera's right: the shadow shows beside the planet, the disk behind it
 const MODELS = { launcher: 'assets/models/astro/arc01_launcher_d0_lod1.glb', sol: 'assets/models/sol88/sol88_platform_game.glb', mirror: 'assets/models/orbital/hel01_mirror_d0_lod1.glb' };
 // Isao's three lines, at these seconds of the shot
 const LINES = [[1.2, 'ending_did_it', 'WE DID IT!'], [9.5, 'ending_dyson', 'We connected this planet to the Dyson Sphere.'], [19.5, 'ending_next', 'Ready for the next one? AH AH!']];
@@ -65,7 +70,7 @@ function mirrorHead(source) {
 
 // THE DISTANT GALAXY (upstream galaxy.js): 11,000 point sprites in four arms and a soft core, fixed far behind the planet
 function galaxy() {
-  const g = new THREE.Group(); g.position.set(-700, -650, -1900); g.rotation.set(0.22, -0.12, -0.32);
+  const g = new THREE.Group(); g.position.set(...HOLE.galaxyAt); g.rotation.set(0.22, -0.12, -0.32);
   const n = 11000, pos = new Float32Array(n * 3), col = new Float32Array(n * 3), size = new Float32Array(n);
   let seed = 8817; const rnd = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
   for (let i = 0; i < n; i++) {
@@ -105,8 +110,12 @@ export function ownPlanet(planet, radius = PLANET_RADIUS) {
 }
 
 // THE SMALL WORLD (upstream scene.js): the planet's vertex colours, its atmosphere, the stars, the pad, SOL-88, the heads, guides and trails
-function buildWorld({ launcher, sol, mirror, planet: own = null }) {
+function buildWorld({ launcher, sol, mirror, planet: own = null, renderer = null }) {
   const scene = new THREE.Scene(); scene.background = new THREE.Color(0x020610);
+  let hole = null, shade = null;
+  if (renderer && globalThis.location?.search?.includes('hole=0') !== true) {   // no hole on a context that refuses the shader; ?hole=0 leaves it out (the harness)
+    try { const { texture, shadow } = renderAccretion() ?? {}; if (texture) { hole = accretionSprite(texture, HOLE.across); hole.position.set(...HOLE.at); scene.add(hole); shade = accretionShadow(shadow, HOLE.across); scene.add(shade); } } catch { hole = shade = null; }
+  }
   const center = new THREE.Vector3(...CENTER), site = new THREE.Group(); scene.add(site);
   let planet;
   if (own?.map?.length) { planet = ownPlanet(own); planet.position.copy(center); scene.add(planet); }
@@ -157,7 +166,8 @@ function buildWorld({ launcher, sol, mirror, planet: own = null }) {
     tg.attributes.position.needsUpdate = true; guides.visible = s.guides;
     return s;
   }
-  return { scene, pose };
+  const faceCamera = (camera) => { if (shade) faceShadow(shade, hole.position, camera); };   // the shadow turned to the camera, every frame
+  return { scene, pose, faceCamera, hole: !!hole, holeProbe: hole?.material.map?.userData.probe ?? null, dispose: () => { hole?.material.map?.dispose(); hole?.material.dispose(); shade?.geometry.dispose(); shade?.material.dispose(); } };
 }
 
 // root: the DOM parent to cover; sfx: the sound engine for Isao; done(): runs once when it ends or is skipped; planet: the game's own
@@ -180,7 +190,7 @@ export function playOrbitalFinale(root, { sfx = null, done = null, planet = null
     const sec = (now - start) / 1000;
     if (sec >= SECONDS) { stop(); return; }
     const s = world.pose(FROM + (sec / SECONDS) * (TO - FROM));
-    camera.position.fromArray(s.camera); camera.lookAt(...s.target);
+    camera.position.fromArray(s.camera); camera.lookAt(...s.target); world.faceCamera(camera);
     size(); renderer.render(world.scene, camera);
     while (said < LINES.length && sec >= LINES[said][0]) { const [, id, text] = LINES[said++]; isaoSay(sfx, id, { force: true }); line.textContent = text; line.classList.remove('on'); void line.offsetWidth; line.classList.add('on'); }
     const n = `${String(s.deployed).padStart(2, '0')} / ${MIRROR_COUNT} HEL-01 IN ORBIT`; if (count.textContent !== n) count.textContent = n;
@@ -189,14 +199,14 @@ export function playOrbitalFinale(root, { sfx = null, done = null, planet = null
   function stop() {
     if (ended) return; ended = true;
     cancelAnimationFrame(raf); removeEventListener('keydown', skip, true); el.removeEventListener('pointerdown', skip, true);
-    renderer.dispose(); renderer.forceContextLoss?.(); el.remove(); done?.();
+    world?.dispose?.(); renderer.dispose(); renderer.forceContextLoss?.(); el.remove(); done?.();
   }
   const skip = (e) => { e.preventDefault?.(); e.stopImmediatePropagation?.(); stop(); };
   addEventListener('keydown', skip, true); el.addEventListener('pointerdown', skip, true);
   Promise.all(Object.values(MODELS).map((u) => loadModelFixture(u).then((m) => cloneFixture(m)).catch(() => null))).then(([launcher, sol, mirror]) => {
     if (ended) return;
-    try { world = buildWorld({ launcher, sol, mirror, planet }); el.dataset.loaded = '1'; } catch { stop(); }
+    try { world = buildWorld({ launcher, sol, mirror, planet, renderer }); el.dataset.loaded = '1'; el.dataset.hole = world.hole ? '1' : '0'; el.dataset.holeProbe = JSON.stringify(world.holeProbe); } catch { stop(); }
   });
   raf = requestAnimationFrame(frame);
-  return { stop, state: () => ({ on: !ended, loaded: !!world, own: !!planet?.map?.length, said, line: line.textContent, count: count.textContent }) };
+  return { stop, state: () => ({ on: !ended, loaded: !!world, own: !!planet?.map?.length, hole: !!world?.hole, said, line: line.textContent, count: count.textContent }) };
 }

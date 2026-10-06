@@ -138,6 +138,23 @@ Evidence:
 - --debrief passes with four campaign pages
 - open: the stills are not tone-mapped (a render target skips three's tone mapping), so the lattice reads brighter than in play, and the rim's walls sit at the frame's edge; framing worth the owner's eye
 
+## 2026-10-06 — The black hole not far: the owner's accretion-disk shader rendered once and hung behind the planet in the ending's constellation
+
+change · resolved · 2026-10-06-the-black-hole-not-far
+
+Owner, 2026-10-06, after the twenty-seventh round: Accretion.html (90 lines: a Schwarzschild photon ray march through a thin disk with flow-map noise, Doppler beaming and gravitational redshift, tone-mapped in the shader) to replace or join the finale's background galaxy; 'we don't have to run it as code, we could extract key static shots'; the goal, 'the feeling that an amazing TON 618-like black hole is not far'. Two hundred and twenty steps a pixel is too heavy to run live under the finale on a phone; a baked still would be an asset to pin and would not scale.
+
+src/fx/accretion.js: the shader ported verbatim but for its own stars (the sky has them) and a fade to the picture's square edge; renderAccretion renders it ONCE in its own small WebGL context exactly as the owner's page does (1024 square, the Tilted pose), reads the pixels back, loses the context and hands them to three.js as a linear DataTexture (the output's sRGB encode lifts the disk toward white, the look of the first pass); the shadow's extent is read off the picture (the run of opaque black down the middle row and column). Two layers in the finale's sky: the glow as an ADDITIVE depth-tested sprite 1500 units across (black adds nothing, so the empty sky cannot show as a square), and the shadow as an opaque black disc of the picture's radius, turned to the camera every frame (faceShadow). HOLE.at a little to the pulled-back camera's right, so the shadow shows beside the planet with the disk wrapping behind it; from the pad the disk's glow rises over the horizon; the spiral galaxy moved off to the side (HOLE.galaxyAt). Dead ends, each measured: a three.js render target sampled by a normal-blended sprite showed a dark square over the sky whatever its alpha said (the readback was 0,0,0,0 at the corners); mipmaps and an alpha test made no difference; a pixel count of the stills showed the stars were never hidden inside the square (3.9 vs 4.0 per 10k px), only the disk's clipped rim read as one. ?hole=0 leaves the hole out (the harness).
+
+Alternatives: Key static shots as PNG assets: a 1 MB pin per pose and no resolution independence; the shader is the picture; Running the shader live each frame at a reduced scale: the flow would move, at 220 steps a pixel on a phone under the finale's own scene; not for V1; Replacing the galaxy: added beside it instead, as the owner allowed
+
+Evidence:
+
+- --finale: the hole probe (corner and sky alpha 0, the shadow at 0.52/0.54 of the picture, radius 0.118), data-hole 1; stills finale-orbit-a/-b/-c: the glow over the horizon from the pad, the disk behind the planet at 28/48, the shadow beside the planet at 48/48
+- node test/orbital-finale.mjs: the shader's uniforms, loop and alpha, no stars of its own, the Tilted pose, the additive depth-tested sprite, the shadow disc's radius, offset and turn, the hole within 20 degrees of the pulled-back camera's line, the galaxy off to its side
+- npm test (183), npm run check, npm run build (764 files)
+- worth the owner's eye: the whole 26 s with the hole, and on a phone
+
 ## 2026-10-06 — The ending, step two: the run's best ram combo and best tactical nuke filmed in play and played back grey on THE BEST MOMENTS
 
 change · accepted · 2026-10-06-the-best-moments-filmed

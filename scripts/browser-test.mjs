@@ -1621,7 +1621,7 @@ try{
  } else if(args.includes('--finale')) {
  // THE FINALE (owner, 2026-10-06): the diorama, the player's MÖRK and Isao before the rivalry boards, then the next step
  const T='window.__stalheartTest';
- await go('finale','index.html?sw=0&acceptance=1&cine=0&skip=defence#td');
+ await go('finale',`index.html?sw=0&acceptance=1&cine=0&skip=defence${process.env.HOLE==='0'?'&hole=0':''}#td`);
  await until(`!!${T}`,90000);await delay(2500);await evaluate(`${T}.begin()`);await evaluate(`${T}.sectorQuiet(true)`);
  await until(`!${T}.state().deploying`,30000);await delay(1500);
  await until(`(${T}.state().programme.printed||[]).includes('board')||(${T}.state().programme.done||[]).includes('board')`,300000).catch(async()=>console.log('FINALE no board yet: '+JSON.stringify(await evaluate(`${T}.state().programme.next`))));await delay(2000);
@@ -1635,6 +1635,8 @@ try{
  // OUR OWN PLANET (owner's twenty-seventh notes, 9): the small world is the board's own surface, not the placeholder sphere
  await until('document.querySelector("#orbital-finale")?.dataset.loaded==="1"',15000).catch(()=>{});
  assert.equal(await evaluate('document.querySelector("#orbital-finale")?.dataset.own'),'1','the constellation turns over our own planet');
+ if(process.env.HOLE!=='0')assert.equal(await evaluate('document.querySelector("#orbital-finale")?.dataset.hole'),'1','the accretion disk rendered and hung in the sky (src/fx/accretion.js)');
+ {const pr=JSON.parse(await evaluate('document.querySelector("#orbital-finale")?.dataset.holeProbe||"null"'));console.log(`FINALE hole probe ${JSON.stringify(pr)}`);if(pr)assert(pr.corner[3]<=2,`the empty sky round the hole is clear (corner alpha ${pr.corner[3]})`);}
  for(const [at,name] of [[4,'a'],[12,'b'],[22,'c']]){await until(`(()=>{const e=document.querySelector("#orbital-finale");return !e||+getComputedStyle(e).opacity>0.9;})()`,10000).catch(()=>{});await delay(at===4?4000:at===12?8000:10000);if(!(await evaluate('!!document.querySelector("#orbital-finale")')))break;current=`finale-orbit-${name}`;await finish();}
  await until('(window.__stalheartFinaleDone??0)>=1',60000).catch(async()=>assert.fail(`the finale never handed back (${JSON.stringify(await evaluate(`${T}.state().shot`))})`));
  {/* the page's own copy of the module: a built page loads it with its ?v= token, and a bare import would be a second, silent copy */

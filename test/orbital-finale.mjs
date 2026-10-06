@@ -29,3 +29,26 @@ console.log(`Orbital finale: 48 heads up between 52.4 s and ${(52.4 + 47 * 0.65 
   assert.ok(Math.abs(heartToPole(null).w - 1) < 1e-9 && heartToPole([0, 0, 0]).w === 1, 'no heart: no turn');
 }
 console.log('Orbital finale: the game\'s own surface stands in for the planet, heart up.');
+
+// THE BLACK HOLE NOT FAR (2026-10-06): the accretion shader is the owner's port with an alpha (the shadow opaque, the sky clear), the
+// billboard faces the camera at the size asked, and the hole hangs on the finale camera's line behind the planet, the galaxy off to its side
+{
+  const { accretionShader, accretionSprite, accretionShadow, faceShadow, ACCRETION } = await import('../src/fx/accretion.js');
+  const { HOLE } = await import('../src/fx/orbital-finale.js');
+  const THREE = await import('../vendor/three.module.js');
+  const src = accretionShader();
+  for (const w of ['uniform vec2 R', 'uniform float T', 'uniform vec2 C', 'for(int i=0;i<220;i++)', 'float alpha=', 'gl_FragColor=vec4(col,alpha)']) assert.ok(src.includes(w), `the shader carries ${w}`);
+  assert.ok(!/step\(\.997,h\(sp\)\)/.test(src), 'the original\'s own stars are left out: the sky has its own');
+  assert.deepEqual([...ACCRETION.pose], [0.32, -0.45], 'the Tilted pose');
+  const sp = accretionSprite(new THREE.Texture(), 1500);
+  assert.ok(sp.isSprite && sp.scale.x === 1500 && sp.material.blending === THREE.AdditiveBlending && sp.material.depthTest && !sp.material.depthWrite && !sp.material.toneMapped, 'the glow: an additive sprite, never tone-mapped twice');
+  const disc = accretionShadow({ cx: 0.6, cy: 0.5, r: 0.07 }, 1500), c2 = new THREE.PerspectiveCamera(); c2.position.set(0, 0, 100); c2.lookAt(0, 0, 0); c2.updateMatrixWorld();
+  faceShadow(disc, new THREE.Vector3(10, 20, -500), c2);
+  assert.ok(disc.isMesh && Math.abs(disc.geometry.parameters.radius - 105) < 1e-9 && disc.material.color.getHex() === 0 && disc.position.x > 10 && disc.position.z > -500, 'the shadow: a black disc of the picture\'s radius, offset to the picture\'s centre, a hair toward the camera');
+  assert.ok(disc.quaternion.equals(c2.quaternion), 'turned to the camera');
+  const cam = new THREE.Vector3(610, 330, 820), to = new THREE.Vector3(0, -195, 0).sub(cam).normalize(), at = new THREE.Vector3(...HOLE.at).sub(cam).normalize();
+  assert.ok(Math.acos(to.dot(at)) < 0.35, `the hole hangs within 20 degrees of the pulled-back camera's line (${(Math.acos(to.dot(at)) * 180 / Math.PI).toFixed(1)})`);
+  const gal = new THREE.Vector3(...HOLE.galaxyAt).sub(cam).normalize();
+  assert.ok(Math.acos(at.dot(gal)) > 0.25, 'the galaxy off to its side');
+}
+console.log('Orbital finale: the accretion disk hangs behind the planet, the galaxy beside it.');
