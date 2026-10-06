@@ -50,6 +50,8 @@ import { createMomentReel } from './moment-reel.js';
 import { createColonyLapse } from './colony-lapse.js';
 import { playDiorama } from './finale-diorama.js';
 import { playOrbitalFinale } from './orbital-finale.js';
+import { renderAccretion, accretionSkyPlanes } from './accretion.js';
+import { SKY_HOLE } from '../galaxyseed.js';
 const loadDyes = () => { try { return JSON.parse(storage.getItem(DYE_SHOP.store) ?? 'null'); } catch { return null; } };
 const saveDyes = (b) => { try { storage.setItem(DYE_SHOP.store, JSON.stringify(b)); } catch { /* a refused store: the dyes last this run */ } };
 import { nextRepair, shotHoles, rimHoles } from '../domain/repair-orders.js';
@@ -60,6 +62,12 @@ import { createHullHost } from './hull-issue.js';
 
 export function createProgrammeHost(c) {
   const { PLAYER_MAX, orders, breachQueue, breachedCells, gunshipRig, showBrief, spawnIsao, updateHud, syncLifeContainers, rebuildAfterBreach, recomputePortalDist, adoptBays } = c;
+  // THE BLACK HOLE NOT FAR (owner, 2026-10-06: "not just at the ending, but during the entire game"; galaxyseed.js SKY_HOLE): the
+  // owner's accretion disk rendered once (src/fx/accretion.js) and hung in the scene as world-fixed planes beyond the planet, which hides
+  // it below the horizon; it outlives world rebuilds (the sky is not the world's) and the day (the baked stars fade, this does not)
+  if (c.scene && !c.scene.getObjectByName('sky-hole')) {
+    try { const h = renderAccretion(); if (h) { const planes = accretionSkyPlanes(h.texture, h.shadow, SKY_HOLE); planes.name = 'sky-hole'; for (const o of planes.children) { o.material.depthTest = true; o.frustumCulled = false; } c.scene.add(planes); if (typeof document !== 'undefined') document.documentElement.dataset.skyHole = JSON.stringify(planes.userData.hole); } } catch { /* a context that refuses the shader: no hole */ }
+  }
   // a point (the placer's world) stands on lattice cell ci: ci is its nearest of ci and ci's neighbours, within one cell (patchLine's owns)
   const ownCell = (ci, p) => { const g = c.graph(), u = p.clone().normalize(), d = (k) => u.distanceTo(new THREE.Vector3(...g.centers[k])); return d(ci) < c.cellSide() && g.adj[ci].every((nb) => d(nb) >= d(ci)); };
   const danger = () => {   // engaged() below

@@ -1,5 +1,5 @@
 // galaxyseed.mjs — the sky is a function of the seed, and only the seed.
-import { GALAXY_PALETTES, HOME_GALAXY, buildFieldStars, buildGalaxyDust, buildGalaxyStars, galaxyLayout, galaxyParams } from '../src/galaxyseed.js';
+import { SKY_HOLE, GALAXY_PALETTES, HOME_GALAXY, buildFieldStars, buildGalaxyDust, buildGalaxyStars, galaxyLayout, galaxyParams } from '../src/galaxyseed.js';
 
 let failures = 0;
 const check = (name, cond, detail = '') => {
@@ -53,3 +53,13 @@ check('layout is deterministic', JSON.stringify(galaxyLayout(9, 5)) === JSON.str
 
 if (failures) { console.error(`galaxyseed: ${failures} FAILED`); process.exit(1); }
 console.log('galaxyseed: all green');
+
+// THE BLACK HOLE NOT FAR (2026-10-06): above the base's horizon, on the far side of the sky from the home galaxy, about 47 degrees across
+{
+  const n = (v) => { const l = Math.hypot(...v); return v.map((x) => x / l); }, h = n(SKY_HOLE.dir), g = n(HOME_GALAXY.dir);
+  check('the black hole well above the horizon at the pole', h[1] > 0.3);
+  check('on the far side of the sky from the home galaxy', h[0] * g[0] + h[1] * g[1] + h[2] * g[2] < 0);
+  const deg = 2 * Math.atan(SKY_HOLE.across / 2 / SKY_HOLE.dist) * 180 / Math.PI;
+  check(`big in the sky, not the whole sky (${deg.toFixed(0)} degrees)`, deg > 35 && deg < 60);
+  if (failures) { console.error(`galaxyseed: ${failures} failed`); process.exit(1); }
+}

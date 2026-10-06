@@ -155,6 +155,21 @@ Evidence:
 - npm test (183), npm run check, npm run build (764 files)
 - worth the owner's eye: the whole 26 s with the hole, and on a phone
 
+## 2026-10-06 — The black hole all game long: the accretion disk hung in the game's sky as world-fixed planes beyond the planet, not only in the ending
+
+change · resolved · 2026-10-06-the-black-hole-all-game-long
+
+Owner, 2026-10-06, at 20c764eb: 'i don't see the blackhole yet. it should be there not just at the ending, but during the entire game.' The first pass (2026-10-06-the-black-hole-not-far) hung it only in the ending's own scene. A bake into the sky cube was tried first: it works, but the cube is drawn faint (SKY_PRESET.intensity 0.65) and fades with the day like the stars, and from the base the hole was all but gone.
+
+src/fx/programme-host.js hangs it once at creation: the owner's shader rendered once (src/fx/accretion.js renderAccretion) and accretionSkyPlanes (the glow as an additive plane, the shadow as a black disc, both facing the origin, depth-tested so the planet hides them below the horizon) 26 scene units wide 30 out along galaxyseed.js SKY_HOLE.dir, high on the far side of the sky from the home galaxy, about 47 degrees across: a third of the sky's height from the base, bright by day and night, outliving world rebuilds (the sky is not the world's). document.documentElement.dataset.skyHole carries where it hangs for the harness. New step --sky-hole (showcase.look turns the hull to the sky direction's azimuth in the first-person view); test/galaxyseed.mjs pins the direction (above the pole's horizon, opposite the galaxy, 35-60 degrees); test/orbital-finale.mjs the planes.
+
+Alternatives: Baked into the sky cube (tried): fades with the day and the cube's faint intensity; and a sprite seams across the cube's faces; Live every frame at reduced resolution: 220 steps a pixel, not for a phone
+
+Evidence:
+
+- --sky-hole: SKY HOLE {dir [-0.62,0.50,0.60], dist 30, across 26, shadow r 0.118}; the sky-hole-look still: the disk's glow over the base from the hull
+- npm test (183), npm run architecture
+
 ## 2026-10-06 — The ending, step two: the run's best ram combo and best tactical nuke filmed in play and played back grey on THE BEST MOMENTS
 
 change · accepted · 2026-10-06-the-best-moments-filmed

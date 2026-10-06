@@ -33,7 +33,7 @@ console.log('Orbital finale: the game\'s own surface stands in for the planet, h
 // THE BLACK HOLE NOT FAR (2026-10-06): the accretion shader is the owner's port with an alpha (the shadow opaque, the sky clear), the
 // billboard faces the camera at the size asked, and the hole hangs on the finale camera's line behind the planet, the galaxy off to its side
 {
-  const { accretionShader, accretionSprite, accretionShadow, faceShadow, ACCRETION } = await import('../src/fx/accretion.js');
+  const { accretionShader, accretionSprite, accretionShadow, faceShadow, accretionSkyPlanes, ACCRETION } = await import('../src/fx/accretion.js');
   const { HOLE } = await import('../src/fx/orbital-finale.js');
   const THREE = await import('../vendor/three.module.js');
   const src = accretionShader();
@@ -46,6 +46,13 @@ console.log('Orbital finale: the game\'s own surface stands in for the planet, h
   faceShadow(disc, new THREE.Vector3(10, 20, -500), c2);
   assert.ok(disc.isMesh && Math.abs(disc.geometry.parameters.radius - 105) < 1e-9 && disc.material.color.getHex() === 0 && disc.position.x > 10 && disc.position.z > -500, 'the shadow: a black disc of the picture\'s radius, offset to the picture\'s centre, a hair toward the camera');
   assert.ok(disc.quaternion.equals(c2.quaternion), 'turned to the camera');
+  // in a sky bake: a plane and a disc at `dist` along `dir`, facing the eye at the origin, the disc a hair nearer
+  const sky = accretionSkyPlanes(new THREE.Texture(), { cx: 0.55, cy: 0.5, r: 0.1 }, { dir: [0, 1, 0], dist: 30, across: 26, glow: 1.6 });
+  sky.updateMatrixWorld(true);
+  const [plane, discSky] = sky.children, fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(sky.quaternion);
+  assert.ok(sky.position.y === 30 && fwd.dot(sky.position.clone().normalize()) < -0.999, 'thirty out, facing the origin');
+  assert.ok(plane.material.blending === THREE.AdditiveBlending && !plane.material.depthTest && plane.material.color.r === 1.6, 'the glow added, lifted');
+  assert.ok(discSky.getWorldPosition(new THREE.Vector3()).length() < 30 && Math.abs(discSky.geometry.parameters.radius - 2.6) < 1e-9, 'the shadow a hair nearer the eye, of the picture\'s radius');
   const cam = new THREE.Vector3(610, 330, 820), to = new THREE.Vector3(0, -195, 0).sub(cam).normalize(), at = new THREE.Vector3(...HOLE.at).sub(cam).normalize();
   assert.ok(Math.acos(to.dot(at)) < 0.35, `the hole hangs within 20 degrees of the pulled-back camera's line (${(Math.acos(to.dot(at)) * 180 / Math.PI).toFixed(1)})`);
   const gal = new THREE.Vector3(...HOLE.galaxyAt).sub(cam).normalize();

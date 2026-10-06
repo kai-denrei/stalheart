@@ -59,6 +59,11 @@ export function galaxyParams(seed) {
 // within ~35° of each other, each with a seed of its own. Distance is the
 // demo's zoom: nearer is bigger, and the sprite scale follows clip.w.
 export const HOME_GALAXY = { dir: [15, -3.5, -12], tilt: [1.1, 0.3, 0.6] };
+// THE BLACK HOLE NOT FAR (owner, 2026-10-06: "it should be there not just at the ending, but during the entire game"): the accretion
+// disk of src/fx/accretion.js hung in the game's scene as world-fixed planes (src/fx/programme-host.js; not in the sky cube, which
+// fades with the day), on the far side of the sky from the home galaxy and above the base's horizon (the heart is at the pole, +Y),
+// `across` scene units wide `dist` out (about 47 degrees of sky, within the camera's far plane), its glow `glow` times the picture's
+export const SKY_HOLE = { dir: [-0.62, 0.5, 0.6], dist: 30, across: 26, glow: 1.6 };
 export function galaxyLayout(seed, count = 1) {
   const rng = mulberry32((seed >>> 0) ^ 0x6A1A8);
   const norm = (v) => { const l = Math.hypot(...v) || 1; return v.map((x) => x / l); };

@@ -218,6 +218,9 @@ export function createShowcaseHooks(host) {
     },
     aimHull: (ci) => { const n = norm3(player.pos), to = sub3(host.graph().centers[ci], player.pos), t = sub3(to, scale3(n, dot3(to, n))); if (Math.hypot(...t) > 1e-9) { player.heading = norm3(t); player.smoothDir = player.heading.slice(); } },
     bearing: (ci) => { const n = norm3(player.pos), h = player.heading, to = sub3(host.graph().centers[ci], player.pos), d = norm3(sub3(to, scale3(n, dot3(to, n)))); return Math.atan2(dot3(n, cross3(h, d)), dot3(h, d)); },
+    // THE SKY FROM THE HULL (--sky-hole): the hull turned to a world direction's azimuth and the first-person view, whose horizon sits
+    // mid-frame, so a sky direction up to the lens's half height shows
+    look: (dir) => { const n = norm3(player.pos), d = sub3(dir, scale3(n, dot3(dir, n))); if (Math.hypot(...d) > 1e-9) { player.heading = norm3(d); player.smoothDir = player.heading.slice(); } endShot(); setView('pov'); },
     drive: () => { const adj = host.graph().adj[player.cur].filter((nb) => host.dungeon().tags[nb] !== BLOCKED); return { pos: player.pos.slice(), heading: player.heading.slice(), cur: player.cur, open: adj.length, adj }; },
   };
   return hooks;

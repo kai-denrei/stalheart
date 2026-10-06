@@ -99,3 +99,18 @@ export function faceShadow(disc, at, camera) {
   disc.quaternion.copy(camera.quaternion);
   disc.position.copy(at).add(disc.userData.offset.clone().applyQuaternion(camera.quaternion)).addScaledVector(new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion), 1);   // a hair toward the camera: in front of the glow
 }
+
+// THE HOLE IN A SKY BAKE (src/galaxybake.js; the game's sky is a cubemap drawn once): a plane `across` units wide `dist` out along `dir`,
+// turned to face the bake's eye at the origin, the glow added at `glow` times its strength (the cube is drawn faint), and the shadow a
+// black disc of the picture's radius at the picture's centre, a hair nearer the eye. Planes, not sprites: a sprite turns to each of the
+// six faces' cameras and seams at the edges
+export function accretionSkyPlanes(texture, shadow, { dir, dist, across, glow = 1 }) {
+  const g = new THREE.Group(), d = new THREE.Vector3(...dir).normalize();
+  g.position.copy(d).multiplyScalar(dist); g.lookAt(0, 0, 0);
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(across, across), new THREE.MeshBasicMaterial({ map: texture, transparent: true, blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false, toneMapped: false, color: new THREE.Color(glow, glow, glow) }));
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(shadow.r * across, 64), new THREE.MeshBasicMaterial({ color: 0x000000, depthTest: false, depthWrite: false, toneMapped: false }));
+  disc.position.set((shadow.cx - 0.5) * across, (shadow.cy - 0.5) * across, 0.2);   // local +z faces the eye after lookAt
+  g.add(plane, disc);
+  g.userData.hole = { dir: d.toArray(), dist, across, shadow: { ...shadow } };
+  return g;
+}

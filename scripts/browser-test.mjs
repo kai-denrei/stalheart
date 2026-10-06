@@ -2032,6 +2032,17 @@ try{
  console.log(`CORRIDOR PROBE ${site}: ${reached?'REACHED':'stopped'} at cell ${best+1} of ${ids.length} in ${took} s; kicks ${k1-k0}; still ${still} of ${samples} samples; slow cells ${JSON.stringify(slow)}; trace artifacts/corridor-trace.json`);
  current='corridor-probe-end';await finish();
  if(process.env.ASSERT){assert(reached,`the hull reaches ${site} (${best+1} of ${ids.length})`);assert(slow.length===0,`no cell holds the hull ${stuckS} s (${JSON.stringify(slow)})`);}
+ } else if(args.includes('--sky-hole')) {
+ // THE BLACK HOLE NOT FAR, all game long (owner, 2026-10-06): the accretion disk baked into the sky cube; the bake says where it hangs,
+ // and the still looks up at it from the base
+ const T='window.__stalheartTest';
+ await go('sky-hole',`index.html?sw=0&acceptance=1&cine=0&skip=defence&sky=7${process.env.DAY?`&day=${process.env.DAY}`:''}#td`);
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await delay(1500);
+ const hole=JSON.parse(await evaluate('document.documentElement.dataset.skyHole||"null"'));console.log(`SKY HOLE ${JSON.stringify(hole)}`);
+ assert(hole&&hole.shadow.r>0.05,'the accretion disk was baked into the sky with its shadow');
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,#td-brief{display:none!important}</style>")');
+ await evaluate(`${T}.showcase.look(${JSON.stringify(hole.dir)})`);await delay(2500);current='sky-hole-look';await finish();
+ await evaluate(`${T}.focusHeart()`);await delay(1200);current='sky-hole-orbit-again';await finish();
  } else if(args.includes('--units-sky')) {
  // THE SKY ON THE BENCH (owner, 2026-10-01: "UNITS are not showing all the units; we should see SOL, and the Gunship. also show
  // Wireframe for all units"): the KORP, SOL-82 and SOL-88 are catalogue entries built from their pinned GLBs, and the wireframe
