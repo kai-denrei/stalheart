@@ -9,6 +9,7 @@ import { callGunship } from '../domain/gunship-call.js';
 import { GUNSHIP_ORBIT, GUNSHIP_GUNS } from '../content/gunship.js';
 import { createGunshipBriefing } from './gunship-briefing.js';
 import { showOrder } from './order-callout.js';
+import { takeSeatView } from '../domain/seat-view.js';
 
 export function createStoryViews(root, on) {
   const nav = document.createElement('nav'); nav.id = 'story-views'; root.append(nav);
@@ -38,14 +39,16 @@ export function createStoryViews(root, on) {
     next.click();
   };
   globalThis.addEventListener?.('keydown', onKey, true);
-  // THE VIEW BACK (owner, 2026-10-06: "after the language analysis the player is left in a bird's-eye view: go back to whichever view
-  // was interrupted"): `now` is the strip's view; `back(was, setView)` takes a seat again through its own button when it is still lit,
-  // else the camera view the player had
+  // THE VIEW BACK (owner, 2026-10-06, twice: "after the language analysis the player is left in a bird's-eye view: go back to
+  // whichever view was interrupted"): `now` is the strip's view; `back(was, setView)` takes a seat again through its own button when
+  // it is still lit, else the camera view the player had. A seat whose button is gone (the handover automated the towers while the
+  // player sat in one, the pass ended) cannot be given back, and its camera ('bastion') is not a place to leave the player: the
+  // hull's own view then (src/domain/seat-view.js takeSeatView), the map only if the map was what the close-up interrupted
   const now = () => current;
   function back(was, setView) {
     const b = was && !['tank', 'map'].includes(was.seat) && nav.querySelector(`[data-mount="${was.seat}"], [data-view="${was.seat}"]`);
     if (b && !b.hidden && !b.disabled) { b.click(); return; }
-    setView(was?.view ?? 'orbit'); active(was?.view === 'orbit' ? 'map' : 'tank');
+    const v = takeSeatView(was).view; setView(v); active(v === 'orbit' ? 'map' : 'tank');
   }
   return { active, mounts, station, meter, sol82, tank, now, back, dispose() { globalThis.removeEventListener?.('keydown', onKey, true); nav.remove(); } };
 }

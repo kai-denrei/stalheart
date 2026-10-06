@@ -1037,6 +1037,10 @@ try{
  await until('window.__stalheartTest.state().screenOpen',60000);await mark('study screen');current='grow-study';await finish();
  await click('#synthetic-modal [data-continue]');await until('window.__stalheartTest.state().story.phase==="expedition"',8000);await mark('expedition');
  assert.equal(await evaluate('window.__stalheartTest.state().automated'),true,'the handover reached from a bare opening');
+ // THE VIEW BACK on the real path (owner's twenty-seventh notes, 2): the close-up interrupted the Rotor's seat, which the handover took
+ // away; after the sites shot the player is on the hull's own camera, not the seat's bird's-eye view, and the strip says TANK
+ await until('window.__stalheartTest.state().shot===null',20000);await delay(600);
+ {const v=await evaluate('[window.__stalheartTest.state().view,document.querySelector("#story-views button.active")?.dataset.view]');console.log(`  grow: after the study the view is ${v[0]}, the strip ${v[1]}`);assert(['third','pov'].includes(v[0])&&v[1]==='tank',`back to the hull after the study from a seat (${v})`);}
  await until('window.__stalheartTest.state().programme.printed.includes("landing")',90000);await mark('landing pad stands');
  await until('window.__stalheartTest.state().programme.active==="solar"',90000);await delay(7000);await shotBase('grow-solar-rising');
  await until('window.__stalheartTest.state().programme.printed.includes("solar")',90000);await mark('solar stands');
@@ -1566,9 +1570,10 @@ try{
  await delay(800);await evaluate('document.querySelector("#synthetic-modal [data-continue]").click()');
  await until(`${T}.state().story.phase==="expedition"`,20000);
  await until(`${T}.state().shot===null`,20000);await delay(600);
- const after=await evaluate('[document.querySelector("#story-views button.active")?.dataset.view,!!document.querySelector("#story-views")?.closest(".build")]');
- console.log(`STUDY VIEW after the sites: strip ${after[0]} build ${after[1]}`);
- assert.deepEqual(after,['tank',false],'back to the drive the close-up interrupted, not the bird\'s-eye view');
+ const after=await evaluate(`[document.querySelector("#story-views button.active")?.dataset.view,!!document.querySelector("#story-views")?.closest(".build"),${T}.state().view]`);
+ console.log(`STUDY VIEW after the sites: strip ${after[0]} build ${after[1]} view ${after[2]}`);
+ assert.deepEqual(after.slice(0,2),['tank',false],'back to the drive the close-up interrupted, not the bird\'s-eye view');
+ assert(['third','pov'].includes(after[2]),`the hull's own camera, not a seat's bastion view (${after[2]})`);   /* 2026-10-06, the owner's twenty-seventh notes: the strip said TANK over a bird's-eye camera */
  current='study-view-back';await finish();
  } else if(args.includes('--sol-first-aim')) {
  // ONE FIRST AIM (owner, 2026-10-06: "SOL taken manually sometimes starts with its red laser on one spot and then jumps elsewhere"): the

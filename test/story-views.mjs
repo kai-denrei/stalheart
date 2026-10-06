@@ -11,8 +11,9 @@ class El {
   append(c) { this.kids.push(c); }
   set innerHTML(html) { this.kids = [...html.matchAll(/<button([^>]*)>([^<]*)<\/button>/g)].map(([, attrs, label]) => { const b = new El('button'); b.textContent = label; for (const [, k, v] of attrs.matchAll(/data-(\w+)="([^"]*)"/g)) b.dataset[k] = v; b.hidden = /\shidden/.test(attrs); return b; }); }
   querySelectorAll() { return this.kids.filter((k) => k.tag === 'button'); }
-  querySelector(sel) { const [, k, v] = /^\[data-(\w+)="([^"]*)"\]$/.exec(sel); return this.kids.find((b) => b.dataset[k] === v) ?? null; }
+  querySelector(sel) { for (const one of sel.split(',')) { const [, k, v] = /^\[data-(\w+)="([^"]*)"\]$/.exec(one.trim()); const b = this.kids.find((b) => b.dataset[k] === v); if (b) return b; } return null; }
   addEventListener(type, fn) { this.on[type] = fn; }
+  click() { this.on.click?.(); }
   remove() {}
 }
 globalThis.document = { createElement: (tag) => new El(tag) };
@@ -79,5 +80,20 @@ const lit = (k) => k.nav().kids.filter((b) => b.cls.has('active')).map((b) => b.
   b.pause.set(true); assert.equal(calm.s.paused, true); assert.equal(b.pause.get(), true, 'the game paused under it');
   calm.gunship.phase = 'away'; b.close(); assert.deepEqual([calm.log, lit(calm)], [[], ['tank']], 'the pass ended during the brief: back to TANK');
   calm.gunship.phase = 'station'; b.close(); assert.deepEqual(calm.log.map((l) => l[0]), ['enterPilot', 'mountGunship', 'brief'], 'closed on station: the seat');
+}
+// THE VIEW BACK after Isao's close-up and the sites shot (owner, 2026-10-06, twice): a seat still on the strip is taken again
+// through its button; a seat whose button is gone (the handover automated the towers while the player sat in the Rotor) hands
+// back the hull's own view, never the seat's 'bastion' camera; the map comes back only when the map was interrupted
+{
+  const k = controller(); k.api.unlock('views');
+  k.s.storyViews.back({ view: 'bastion', seat: 'rotor' }, k.host.setView);
+  assert.deepEqual(k.log.at(-1), ['enterPilot', [11, 12]], 'the Rotor still on the strip: its seat again, through its button');
+  const auto = controller({ automated: true }); auto.api.unlock('views');
+  auto.s.storyViews.back({ view: 'bastion', seat: 'rotor' }, auto.host.setView);
+  assert.deepEqual([auto.log, lit(auto)], [[['view', 'third']], ['tank']], 'the Rotor automated away under the player: the hull\'s view, not the seat\'s bird\'s-eye camera');
+  auto.log.length = 0; auto.s.storyViews.back({ view: 'orbit', seat: 'map' }, auto.host.setView);
+  assert.deepEqual([auto.log, lit(auto)], [[['view', 'orbit']], ['map']], 'the map interrupted: the map again');
+  auto.log.length = 0; auto.s.storyViews.back(null, auto.host.setView);
+  assert.deepEqual([auto.log, lit(auto)], [[['view', 'third']], ['tank']], 'nothing recorded: the hull');
 }
 console.log('Story views: built once and named (no mounts on an automated page, no TANK while the hull is held), the optic, the switch, the map, TANK, and the gunship seat behind its briefing.');
