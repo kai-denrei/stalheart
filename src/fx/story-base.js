@@ -244,22 +244,25 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
     droppedCells: () => [...new Set([...dropped].map((k) => plan.walls[k].cell).filter((c) => c >= 0))],
     dropWallsAt: (cell) => { let n = 0; plan.walls.forEach((w, k) => { if (w.cell === cell && !dropped.has(k)) { n++; for (const o of group.children) if (o.isInstancedMesh && o.name === 'walls') { o.setMatrixAt(k, ZERO); o.instanceMatrix.needsUpdate = true; } dropped.add(k); } }); return n; },
     // A WALL PRINTED INTO A HOLE THAT WAS ROCK (owner, 2026-10-05: "when the player opens a breach with a tank shell and Isao repairs it,
-    // Isao should create a wall or gate, not a rock"): the plan has no segment there, so the nearest one is copied and turned about the
-    // planet's centre onto the cell (a rotation keeps it upright on the sphere and close to the rim's own heading). One per cell
-    patchWall: (cell, at) => {
-      if (!wallMeshes.length || !plan.walls.length || patches.has(cell)) return false;
-      const target = new THREE.Vector3(...at);
-      group.updateMatrixWorld(true);
-      let best = -1, bestD = Infinity;
-      plan.walls.forEach((w, k) => { const d = placer.toWorld([w.x, 0, w.z]).distanceTo(target); if (d < bestD) { bestD = d; best = k; } });
-      const w = plan.walls[best], from = placer.toWorld([w.x, 0, w.z]), q = new THREE.Quaternion().setFromUnitVectors(from.clone().normalize(), target.clone().normalize());
-      const turn = new THREE.Matrix4().makeRotationFromQuaternion(q), inv = group.matrixWorld.clone().invert(), back = group.matrixWorld.clone(), made = [];
-      for (const s of wallMeshes) {
-        const m = new THREE.Mesh(s.inst.geometry, s.inst.material); m.matrixAutoUpdate = false; m.name = 'wall patch'; m.castShadow = true;
-        m.matrix.copy(inv).multiply(turn).multiply(back).multiply(wallMatrix(w, s.src, 1)); group.add(m); made.push(m);
+    // Isao should create a wall or gate, not a rock"), AS A RUN ON THE RIM'S LINE (owner, 2026-10-06: "edge cases still fail: a few lone
+    // segments in an open area"; one copied segment per cell, turned to the nearest front wall's heading, stood alone at odd headings in
+    // the middle of a 10 m cell). The rim is the circle round the base's centre (the frame's pole) through the cell: segments are laid
+    // along that circle `wallLength` apart, each facing the centre, and the ones `owns(world point)` puts on this cell are printed, so
+    // neighbouring holes continue one another's run. None on it: false, and the caller leaves the cell rock
+    patchWall: (cell, at, owns = () => true) => {
+      if (!wallMeshes.length || patches.has(cell)) return false;
+      const pole = placer.toWorld([0, 0, 0]).normalize(), T = new THREE.Vector3(...at).normalize(), ring = Math.sqrt(Math.max(0, 1 - Math.min(1, pole.dot(T) ** 2)));
+      if (ring < 1e-6) return false;
+      const step = kit.wallLength * metres / ring, made = [];   // radians round the pole between neighbouring segments on this circle
+      for (let k = -3; k <= 3; k++) {
+        const p = T.clone().applyAxisAngle(pole, k * step), up = p.clone().normalize(), inward = pole.clone().addScaledVector(up, -pole.dot(up)).normalize();
+        if (!owns(p)) continue;
+        const right = new THREE.Vector3().crossVectors(up, inward).normalize(), fwd = new THREE.Vector3().crossVectors(right, up).normalize();
+        const basis = new THREE.Matrix4().makeBasis(right, up, fwd).setPosition(p).multiply(rise(1)).multiply(new THREE.Matrix4().makeScale(metres, metres, metres));
+        for (const s of wallMeshes) { const m = new THREE.Mesh(s.inst.geometry, s.inst.material); m.matrixAutoUpdate = false; m.name = 'wall patch'; m.castShadow = true; m.matrix.copy(basis).multiply(s.src); group.add(m); made.push(m); }
       }
-      patches.set(cell, made);
-      return true;
+      if (made.length) patches.set(cell, made);
+      return made.length > 0;
     },
     // THE BACK DOOR'S SHOULDERS (owner, 2026-10-06: "a gate only, no walls at its sides closing the area flush with the natural rock"):
     // segments on the door's own line, spaced and turned as the front rim's are beside the front gate, out from the door's plot; the ones
@@ -277,6 +280,7 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       return made.length > 0;
     },
     patchedCells: () => [...patches.keys()],
+    patchedSegments: (cell) => (patches.get(cell)?.length ?? 0) / Math.max(1, wallMeshes.length),   // kit segments printed on a patched cell
     restoreWall: (cell) => { let n = 0; plan.walls.forEach((w, k) => { if (w.cell !== cell) return; n++; dropped.delete(k); grown.walls.set(k, 1); for (const s of wallMeshes) { s.inst.setMatrixAt(k, wallMatrix(plan.walls[k], s.src, 1)); s.inst.instanceMatrix.needsUpdate = true; s.inst.computeBoundingSphere(); } }); return n > 0; },
     // THE BUILDINGS ARE SOLID TO THE HULL (owner, 2026-10-03: "some structures in the base allow the Tank to pass through them, they should
     // feel solid (except those where the tank can go under like the Stalheart)"). `solid` (src/content/base-layout.js SOLID_STRUCTURES) names
