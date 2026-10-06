@@ -1570,6 +1570,25 @@ try{
  console.log(`STUDY VIEW after the sites: strip ${after[0]} build ${after[1]}`);
  assert.deepEqual(after,['tank',false],'back to the drive the close-up interrupted, not the bird\'s-eye view');
  current='study-view-back';await finish();
+ } else if(args.includes('--sol-first-aim')) {
+ // ONE FIRST AIM (owner, 2026-10-06: "SOL taken manually sometimes starts with its red laser on one spot and then jumps elsewhere"): the
+ // seat opens on the densest pile, and the next seat on the pile again. (Motion is not checked here: headless Chrome paints too few
+ // frames for the pass clock to move, so neither the hover's arming, src/fx/laser-seat.js HOVER_ARM, nor a drag can be seen.)
+ const T='window.__stalheartTest',L=()=>evaluate(`${T}.state().laser`);
+ await go('sol-first-aim','index.html?sw=0&acceptance=1&cine=0&world=story&stage=6&phase=expedition&laser=online#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await delay(2500);
+ await evaluate(`${T}.spawnFodder(24)`);await delay(6000);
+ const sit=async()=>{await evaluate(`${T}.laserPassNow()`);await until(`${T}.state().laser.overhead`,5000);
+  await until('document.querySelector("#story-views [data-view=laser]")?.textContent==="SOL-82 OVERHEAD"',5000);
+  await evaluate('document.querySelector("#story-views [data-view=laser]").click()');
+  await until(`!!document.querySelector("#sol82-briefing [data-skip]") || ${T}.state().laser.seated`,5000);
+  await evaluate('document.querySelector("#sol82-briefing [data-skip]")?.click()');await until(`${T}.state().laser.seated`,15000);await delay(300);};
+ await sit();{const l=await L();console.log(`SOL FIRST AIM first seat: contact ${l.contact?'on':'off'}, nearest body ${l.nearestBodyM?.toFixed(1)} m`);
+  assert(l.contact&&l.nearestBodyM!==null&&l.nearestBodyM<15,'the seat opens on the pile');}
+ await evaluate('document.querySelector("#laser-seat-keys [data-tank]")?.click()');await until(`!${T}.state().laser.seated`,8000);
+ await sit();{const l=await L();console.log(`SOL FIRST AIM second seat: nearest body ${l.nearestBodyM?.toFixed(1)} m`);
+  assert(l.nearestBodyM!==null&&l.nearestBodyM<15,'and the next seat on the pile again');}
+ current='sol-first-aim';await finish();
  } else if(args.includes('--round9')) {
  // THE OWNER'S NINTH NOTES (2026-10-02): SOL's automated pass counts down, fires from one point in the sky and spares the base; the
  // stampede (every second wave a mouth sends) floods the lane with rammable bodies; the auto gunship's tracers age out
@@ -2731,8 +2750,9 @@ try{
   assert(!l.pilot&&!l.gunshipSeat,'and the gunship seat is LEFT, not kept underneath it');
   assert.equal(l.fov,solo.fov,'the same lens whichever seat it is entered from');
   assert.equal(l.view,solo.view,'the same view whichever seat it is entered from');
-  assert(Math.abs(l.pos[0]-solo.pos[0])<1e-3&&Math.abs(l.pos[1]-solo.pos[1])<1e-3&&Math.abs(l.pos[2]-solo.pos[2])<1e-3,
-   `SOL-82's own ground view, not the gunship's (${l.pos} vs ${solo.pos})`);
+  /* its own ground view, as high over the ground as when entered alone; not the same spot since 2026-10-06: a seat opens on the densest pile */
+  assert(Math.abs(Math.hypot(...l.pos)-Math.hypot(...solo.pos))<1e-3&&Math.hypot(l.pos[0]-g.pos[0],l.pos[1]-g.pos[1],l.pos[2]-g.pos[2])>0.05,
+   `SOL-82's own ground view, not the gunship's (${l.pos} vs ${solo.pos}, gunship ${g.pos})`);
   back('tank>gunship>sol82>tank',await toTank());}
  // a seat, MAP, and back to the hull
  {await stripClick('[data-mount=gunship]');const m=await stripClick('[data-view=map]');assert.equal(m.view,'orbit','MAP is the global view');

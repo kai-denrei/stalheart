@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-10-06-sol-first-aim",
+  "date": "2026-10-06",
+  "type": "change",
+  "status": "accepted",
+  "title": "SOL's seat opens on the densest pile, and the pointer takes the aim only once it means it",
+  "context": "Owner, 2026-10-06 (twenty-sixth notes, 3): SOL taken manually sometimes starts with its red laser on one spot and then jumps elsewhere; wanted: a consistent initial aim. Two causes read from the code: the seat opened its red guide on whatever contact was left (an earlier pass, SOL-88's own aim), and the hover on the lens steers, so the first twitch of the pointer that had just clicked the strip's SOL button (it sits on the lens) snapped the aim across the field.",
+  "outcome": "src/fx/laser-arsenal.js seat(true): the contact is laid on the densest pile of live bodies (densestTarget, SOL-88's own rule), the breach's lane with none up; a pass laid over a place (the canyon) keeps its point; fresh stays true, so a deliberate first aim (and the harness's laserSteer) still snaps. src/fx/laser-seat.js: the hover takes the aim only after a press in the lens or HOVER_ARM (24 px) of pointer travel inside it since the seat opened; until then events on the lens are still the seat's. --seats' check that SOL entered from the gunship is SOL's own ground view now compares the height over the ground and the distance from the gunship's camera, not the same spot (the second seat opens on the pile, not on the stale contact).",
+  "alternatives": [
+    "hover never steers, only a press: rejected, it takes pre-aiming with the mouse away"
+  ],
+  "evidence": [
+    "new step --sol-first-aim: both seats open within 1 m of a body (a smoke check: the old code also opened over the breach on a fresh page)",
+    "--laser-game and --seats pass (both failed on a first cut that laid the contact with fresh false: the harness's first aim dragged instead of snapping)",
+    "not verified in a browser: the hover's arming and the absence of the jump in play; headless Chrome paints too few frames for the pass clock to move (0.47 s in 20 s). Worth the owner's hand"
+  ],
+  "supersedes": []
+}

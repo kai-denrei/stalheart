@@ -41,6 +41,10 @@ export function createLaserSeat(root, host) {
   const holdBtn = keysEl.querySelector('[data-hold]');
 
   let mouseHeld = false, spaceHeld = false, buttonHeld = false, steering = false, touchSteer = false, last = performance.now();
+  // the hover takes the aim only once it means it: a press in the lens, or HOVER_ARM px of travel inside it since the seat opened (the
+  // pointer that clicked the strip's SOL button sits on the lens, and its first twitch dragged the first aim across the field)
+  const HOVER_ARM = 24;
+  let armed = false, travel = 0, lastAt = null;
   let steerN = [0.5, 0.5];
   const keys = new Set(), padIntent = { x: 0, z: 0 }, padVel = { x: 0, z: 0 };
   const held = () => mouseHeld || spaceHeld || buttonHeld;
@@ -79,6 +83,7 @@ export function createLaserSeat(root, host) {
     e.preventDefault();
     const at = onLens(e);
     if (!at.inside) return;
+    armed = true;
     steerTo(at);
     steering = !keys.size;
     if (e.pointerType === 'mouse') { if (e.button === 0) mouseHeld = true; } else touchSteer = true;
@@ -87,7 +92,9 @@ export function createLaserSeat(root, host) {
   listen(window, 'pointermove', (e) => {
     const at = onLens(e);
     /* the mouse aims while it hovers on the lens; a touch aims while the finger that started on the lens stays down */
-    if (touchSteer || at.inside) { steerTo(at); steering = !keys.size; e.stopImmediatePropagation(); }
+    if (!armed && at.inside) { if (lastAt) travel += Math.hypot(e.clientX - lastAt[0], e.clientY - lastAt[1]); lastAt = [e.clientX, e.clientY]; armed = travel >= HOVER_ARM; }
+    if (touchSteer || (at.inside && armed)) { steerTo(at); steering = !keys.size; e.stopImmediatePropagation(); }
+    else if (at.inside) e.stopImmediatePropagation();
     else if (e.pointerType === 'mouse' && !mouseHeld) steering = false;
   }, { capture: true });
   const release = () => { mouseHeld = false; touchSteer = false; steering = false; };

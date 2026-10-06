@@ -269,7 +269,16 @@ export function createLaserArsenal(scene, host) {
     beam: () => beam, orbit: () => orbit,   // the live pass numbers the seat and the briefing read
     forwardAt,
     online: () => online,
-    seat(on) { seated = !!on; if (!seated) { testHeld = false; lift(); laser?.hideGuide(); } },
+    // ONE FIRST AIM (owner, 2026-10-06: "SOL taken manually sometimes starts with its red laser on one spot and then jumps elsewhere"):
+    // the seat used to open on whatever the last contact was (an old pass, SOL-88's own aim); it opens on the densest pile now, the
+    // breach's lane with nobody up. A pass laid over a place (the canyon) keeps its own point
+    seat(on) {
+      seated = !!on;
+      if (!seated) { testHeld = false; lift(); laser?.hideGuide(); return; }
+      if (special) return;
+      const centers = host.centers(), pile = densestTarget(host.enemies().filter((e) => e.alive).map((e) => ({ pos: centers[e.cur] ?? e.pos })), { radius: beam.radius, metres: metres() });
+      lift(); st.contact = onSphere(pile ?? host.lane(), metres()); st.fresh = true; st.speed = 0; st.axis = null; testTarget = null;   /* fresh: a deliberate first aim still snaps */
+    },
 
     tick(dt, input = null) {
       if (!online) return;
