@@ -91,8 +91,10 @@ export function createSectorRun(h) {
   const nextLines = () => [...defOf((def?.n ?? 0) + 1).brief];   // Isao's two lines about the next sector, for the card's last page
   const debrief = () => (story.debrief ??= (h.makeDebrief ?? createSectorDebrief)(h.host, {
     play: h.sfx, beep: h.beep, reducedMotion: !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
-    onContinue: () => cont(), onNewRun: () => h.reload(), onKeepHolding: () => next(),
+    // THE FINALE (owner, 2026-10-06): leaving THE COLONY HOLDS, either way, plays the host's diorama and orbital constellation first
+    onContinue: () => cont(), onNewRun: () => finale(() => h.reload()), onKeepHolding: () => finale(next),
   }));
+  const finale = (then) => { if (!api.finale?.(then)) then(); };
   const loadBests = () => { try { const v = JSON.parse(h.store?.getItem(SECTOR_BESTS_KEY) || '{}'); return v && typeof v === 'object' ? v : {}; } catch { return {}; } };
 
   // ONE BREACH'S NEXT WAVE, at ladder wave `wave`: THE FEAST (sector 2's back breach, first wave: the content's soft flood at its own

@@ -186,6 +186,7 @@ export function createShowcaseHooks(host) {
       return !!host.isao();
     },
     // the moments the reel has kept so far (src/fx/moment-reel.js; the --moment-reel step)
+    finale: () => !!storyApi.finale?.(() => { globalThis.__stalheartFinaleDone = (globalThis.__stalheartFinaleDone ?? 0) + 1; }),   // the --finale step
     lapse: () => (host.story()?.lapse?.stills() ?? []).map((x) => x.label),
     lapseFrame: (i) => host.story()?.lapse?.stills()[i]?.frame.toDataURL() ?? null,
     reelFrame: (kind, i) => host.story()?.reel?.clips().find((c) => c.kind === kind)?.frames[i]?.toDataURL() ?? null,

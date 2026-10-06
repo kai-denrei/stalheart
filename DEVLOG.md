@@ -41,6 +41,21 @@ Evidence:
 - --debrief passes, the campaign's three pages at full, 1280 and 400 px; it had been failing on main since the 2026-10-03 summary page (a report's press closes the card; the hero's grid is .sdb-sum-grid): the step now walks a report's tabs with the arrow
 - npm test (181 programs) and npm run check pass
 
+## 2026-10-06 — The ending, step four: leaving THE COLONY HOLDS plays a diorama, the player's MÖRK and Isao before the celebrating rivalry boards
+
+change · accepted · 2026-10-06-the-diorama
+
+Owner, 2026-10-06 (twenty-sixth notes, 6): 'a feel-good diorama of the MÖRK and Isao together looking at the diegetic scoreboard'. Plan: 2026-10-06-the-ending-plan-and-the-run-recap.
+
+src/fx/sector-run.js: KEEP HOLDING and NEW RUN on the campaign card go through api.finale(then) first. src/fx/programme-host.js finale: unpauses and plays src/fx/finale-diorama.js, which sets copies of the player's hull (its livery) and of Isao before the two boards on their slab (the tank facing them, Isao up off the left end), makes both boards celebrate, and eases a camera in from behind the pair for DIORAMA_SECONDS (8); the world is still under the shot, the boards' party is driven from the shot's pose; the copies go when it ends, skipped or not, and `then` runs (the next sector, or the new run). Every distance comes from the hull's measured size and the boards' span: a planet metre (cellSide/10) put the camera inside the tank. With no boards printed the finale is declined and `then` runs at once.
+
+Alternatives: the live tank and Isao moved into place: the run's state would carry the move into KEEP HOLDING
+
+Evidence:
+
+- new step --finale (?skip=defence, waits for the board print): the host takes the finale, the shot is 'diorama', two stills (artifacts/browser/finale-diorama-a/-b.png: the MÖRK before the YOU and ISAO boards, Isao over YOU, the boards bursting), then the camera is handed back
+- npm test and npm run check pass
+
 ## 2026-10-06 — The ending, step three: THE COLONY RISES, a still of the base at every print and sector played back as a time-lapse
 
 change · accepted · 2026-10-06-the-colony-rises-time-lapse

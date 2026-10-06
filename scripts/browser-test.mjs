@@ -1613,6 +1613,21 @@ try{
  assert(names.length>=2,'a still per print');
  for(const i of [0,Math.floor(names.length/2),names.length-1]){const url=await evaluate(`${T}.showcase.lapseFrame(${i})`);writeFileSync(join(output,`colony-lapse-${i}.png`),Buffer.from(url.split(',')[1],'base64'));}
  current='colony-lapse';await finish();
+ } else if(args.includes('--finale')) {
+ // THE FINALE (owner, 2026-10-06): the diorama, the player's MÖRK and Isao before the rivalry boards, then the next step
+ const T='window.__stalheartTest';
+ await go('finale','index.html?sw=0&acceptance=1&cine=0&skip=defence#td');
+ await until(`!!${T}`,90000);await delay(2500);await evaluate(`${T}.begin()`);await evaluate(`${T}.sectorQuiet(true)`);
+ await until(`!${T}.state().deploying`,30000);await delay(1500);
+ await until(`(${T}.state().programme.printed||[]).includes('board')||(${T}.state().programme.done||[]).includes('board')`,300000).catch(async()=>console.log('FINALE no board yet: '+JSON.stringify(await evaluate(`${T}.state().programme.next`))));await delay(2000);
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card{display:none!important}</style>")');
+ assert(await evaluate(`${T}.showcase.finale()`),'the host takes the finale (the boards stand on a finished base)');
+ await until(`${T}.state().shot==="diorama"`,5000);
+ await delay(2500);current='finale-diorama-a';await finish();
+ await delay(3500);current='finale-diorama-b';await finish();
+ await until('(window.__stalheartFinaleDone??0)>=1',30000).catch(async()=>assert.fail(`the finale never handed back (${JSON.stringify(await evaluate(`${T}.state().shot`))})`));
+ assert.equal(await evaluate(`${T}.state().shot`),null,'and the camera is the player\'s again');
+ console.log('PASS finale: the diorama plays and hands back');
  } else if(args.includes('--round9')) {
  // THE OWNER'S NINTH NOTES (2026-10-02): SOL's automated pass counts down, fires from one point in the sky and spares the base; the
  // stampede (every second wave a mouth sends) floods the lane with rammable bodies; the auto gunship's tracers age out
