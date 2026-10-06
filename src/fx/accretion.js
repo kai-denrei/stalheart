@@ -1,7 +1,7 @@
 // THE ACCRETION DISK (owner, 2026-10-06: "the feeling that an amazing TON 618-like black hole is not far"). A port of the owner's
 // Accretion.html: a Schwarzschild photon ray march (Rs = 1) through a thin disk between 2.5 and 14 Rs, flow-map noise crossfaded so
 // the shear never blows up, Doppler beaming and gravitational redshift on the near side, tone-mapped in the shader as the original.
-// Two hundred and twenty steps a pixel is not a thing to run every frame under the finale on a phone, so it is rendered ONCE into a
+// The lens is wider than the owner's page (1.45 against .85) so the whole disk sits inside a round fade. Two hundred and twenty steps a pixel is not a thing to run every frame under the finale on a phone, so it is rendered ONCE into a
 // square texture (renderAccretion) and hung in the finale's sky in two layers: the glow as an ADDITIVE billboard (black adds nothing,
 // so the empty sky round it cannot show as a square; a normal-blended sprite did, whatever its alpha said), and the shadow, the rays
 // that fell in, as an opaque black disc sized from the rendered picture, turned to the camera (accretionShadow). No asset, no pin:
@@ -37,7 +37,7 @@ void main(){
  float cr=cos(C.y),sr=sin(C.y);uv=mat2(cr,-sr,sr,cr)*uv;
  vec3 ro=22.*vec3(0.,sin(C.x),-cos(C.x));
  vec3 f=normalize(-ro),rt=normalize(cross(vec3(0,1,0),f)),up=cross(f,rt);
- vec3 p=ro,v=normalize(f+.85*(uv.x*rt+uv.y*up)),col=vec3(0.);float a=1.;
+ vec3 p=ro,v=normalize(f+1.45*(uv.x*rt+uv.y*up)),col=vec3(0.);float a=1.;
  vec3 L=cross(p,v);float h2=dot(L,L);
  for(int i=0;i<220;i++){
   float r=length(p);if(r<1.02){a=0.;break;}
@@ -48,7 +48,7 @@ void main(){
    if(rr>2.5&&rr<14.){vec4 d=disk(q,rr,normalize(v));col+=a*d.rgb;a*=1.-d.a;}}
   p=pn;if(r>40.)break;}
  col=pow(1.-exp(-col*1.4),vec3(.85));
- col*=1.-smoothstep(.36,.5,max(abs(uv.x),abs(uv.y)));   // the picture fades to its square's edge, so the disk's outer rim is never cut straight
+ col*=1.-smoothstep(.4,.5,length(uv));   // the picture fades out in a circle inside its square, so the disk's rim is never cut straight (the lens above is wide enough to hold the whole disk)
  float alpha=clamp(max(max(col.r,col.g),col.b)*2.5+(1.-a),0.,1.);   // the glow, and the shadow of what fell in; clear sky elsewhere
  gl_FragColor=vec4(col,alpha);}`;
 }
@@ -113,4 +113,19 @@ export function accretionSkyPlanes(texture, shadow, { dir, dist, across, glow = 
   g.add(plane, disc);
   g.userData.hole = { dir: d.toArray(), dist, across, shadow: { ...shadow } };
   return g;
+}
+
+// THE HOLE RE-AIMED (the base's Stålheart stands: the hole goes low behind it): `dir` the new unit direction, the planes moved and turned
+export function aimSkyPlanes(planes, dir) {
+  const d = new THREE.Vector3(...dir).normalize(), dist = planes.userData.hole?.dist ?? planes.position.length();
+  planes.position.copy(d).multiplyScalar(dist); planes.lookAt(0, 0, 0);
+  if (planes.userData.hole) planes.userData.hole.dir = d.toArray();
+  return planes;
+}
+// the sky direction `elevation` radians above the horizon at `heart` (a unit vector), the way from the point `from` toward the point
+// `at` (both on the sphere; `from` defaults to the heart itself)
+export function skyDirectionToward(heart, at, elevation, from = null) {
+  const h = new THREE.Vector3(...heart).normalize(), a = new THREE.Vector3(...at).sub(from ? new THREE.Vector3(...from) : new THREE.Vector3()), t = a.clone().addScaledVector(h, -a.dot(h));
+  if (t.lengthSq() < 1e-12) return h.toArray();
+  return t.normalize().multiplyScalar(Math.cos(elevation)).addScaledVector(h, Math.sin(elevation)).toArray();
 }

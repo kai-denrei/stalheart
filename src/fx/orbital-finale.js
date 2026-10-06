@@ -22,7 +22,7 @@ import { renderAccretion, accretionSprite, accretionShadow, faceShadow } from '.
 
 export const SECONDS = 26;
 const FROM = 50, TO = 100, PLANET_RADIUS = 195, MIRROR_COUNT = 48, CENTER = [0, -PLANET_RADIUS, 0];
-export const HOLE = Object.freeze({ at: Object.freeze([-330, -850, -1375]), across: 1500, galaxyAt: Object.freeze([-1750, -150, -1800]) });   // a little to the pulled-back camera's right: the shadow shows beside the planet, the disk behind it
+export const HOLE = Object.freeze({ at: Object.freeze([-330, -850, -1375]), across: 2000, galaxyAt: Object.freeze([-1750, -150, -1800]) });   // a little to the pulled-back camera's right: the shadow shows beside the planet, the disk behind it
 const MODELS = { launcher: 'assets/models/astro/arc01_launcher_d0_lod1.glb', sol: 'assets/models/sol88/sol88_platform_game.glb', mirror: 'assets/models/orbital/hel01_mirror_d0_lod1.glb' };
 // Isao's three lines, at these seconds of the shot
 const LINES = [[1.2, 'ending_did_it', 'WE DID IT!'], [9.5, 'ending_dyson', 'We connected this planet to the Dyson Sphere.'], [19.5, 'ending_next', 'Ready for the next one? AH AH!']];

@@ -40,8 +40,16 @@ console.log('Orbital finale: the game\'s own surface stands in for the planet, h
   for (const w of ['uniform vec2 R', 'uniform float T', 'uniform vec2 C', 'for(int i=0;i<220;i++)', 'float alpha=', 'gl_FragColor=vec4(col,alpha)']) assert.ok(src.includes(w), `the shader carries ${w}`);
   assert.ok(!/step\(\.997,h\(sp\)\)/.test(src), 'the original\'s own stars are left out: the sky has its own');
   assert.deepEqual([...ACCRETION.pose], [0.32, -0.45], 'the Tilted pose');
-  const sp = accretionSprite(new THREE.Texture(), 1500);
-  assert.ok(sp.isSprite && sp.scale.x === 1500 && sp.material.blending === THREE.AdditiveBlending && sp.material.depthTest && !sp.material.depthWrite && !sp.material.toneMapped, 'the glow: an additive sprite, never tone-mapped twice');
+  assert.ok(src.includes('1.45*(uv.x*rt+uv.y*up)') && src.includes('length(uv)'), 'the lens wider than the page\'s, the fade round: no straight edge on the disk');
+  const { skyDirectionToward, aimSkyPlanes } = await import('../src/fx/accretion.js');
+  const low = skyDirectionToward([0, 1, 0], [0.1, 0.99, 0], 0.2, [-0.1, 0.99, 0]);
+  assert.ok(Math.abs(low[1] - Math.sin(0.2)) < 1e-9 && low[0] > 0.97, 'the way from the bays toward the Stålheart, a fifth of a radian up');
+  assert.deepEqual(skyDirectionToward([0, 1, 0], [0, 1, 0], 0.2), [0, 1, 0], 'no way to take: straight up');
+  const sky2 = accretionSkyPlanes(new THREE.Texture(), { cx: 0.5, cy: 0.5, r: 0.1 }, { dir: [0, 1, 0], dist: 30, across: 32 });
+  aimSkyPlanes(sky2, [1, 0, 0]); sky2.updateMatrixWorld(true);
+  assert.ok(Math.abs(sky2.position.x - 30) < 1e-9 && new THREE.Vector3(0, 0, 1).applyQuaternion(sky2.quaternion).x < -0.999, 're-aimed: thirty out the new way, facing the origin');
+  const sp = accretionSprite(new THREE.Texture(), 2000);
+  assert.ok(sp.isSprite && sp.scale.x === 2000 && sp.material.blending === THREE.AdditiveBlending && sp.material.depthTest && !sp.material.depthWrite && !sp.material.toneMapped, 'the glow: an additive sprite, never tone-mapped twice');
   const disc = accretionShadow({ cx: 0.6, cy: 0.5, r: 0.07 }, 1500), c2 = new THREE.PerspectiveCamera(); c2.position.set(0, 0, 100); c2.lookAt(0, 0, 0); c2.updateMatrixWorld();
   faceShadow(disc, new THREE.Vector3(10, 20, -500), c2);
   assert.ok(disc.isMesh && Math.abs(disc.geometry.parameters.radius - 105) < 1e-9 && disc.material.color.getHex() === 0 && disc.position.x > 10 && disc.position.z > -500, 'the shadow: a black disc of the picture\'s radius, offset to the picture\'s centre, a hair toward the camera');

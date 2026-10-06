@@ -155,6 +155,24 @@ Evidence:
 - npm test (183), npm run check, npm run build (764 files)
 - worth the owner's eye: the whole 26 s with the hole, and on a phone
 
+## 2026-10-06 — The black hole low behind the Stålheart: re-aimed from the bays toward the gantry a fifth of a radian up, and the picture's disk whole in a round fade
+
+change · resolved · 2026-10-06-the-black-hole-low-behind-the-stalheart
+
+Owner, 2026-10-06, with two screenshots at 08d9f718: 'beautiful, but a bit of clipping bottom left and right, straight angles' (the disk's lower rim cut by the picture's square edge: the page's lens, .85, does not hold the whole disk), and 'too high in the sky and we hardly ever get to see it; make it much lower, so it appears behind the gantry Stålheart in this view' (the hull's chase view from the bays toward the base).
+
+src/fx/accretion.js: the lens 1.45 (the whole disk inside the square) and the fade a circle, 1 - smoothstep(.4, .5, length(uv)), so no rim is cut straight; skyDirectionToward(heart, at, elevation, from) and aimSkyPlanes. galaxyseed SKY_HOLE: toward 'stalheart', from 'bays', elevation 0.2, across 32 (about 56 degrees of sky). programme-host aims the planes once per world on the build tick, when the base's structures stand: the way from the bays' holder toward the Stålheart's, 0.2 rad above the horizon at the heart. The --sky-hole still from the hull's first-person view at the bays shows the disk and its shadow rising behind the gantry. The finale's sprite 2000 across for the wider picture.
+
+Alternatives: Aiming from the heart toward the Stålheart: the Stålheart stands AT the heart (base-layout x 0, z 0), no way to take; A fixed world direction: the base's yaw is the recipe's; the structures' own positions are the truth
+
+Evidence:
+
+- --sky-hole: SKY HOLE dir [-0.01, 0.20, 0.98] after the aim, shadow r 0.069; the sky-hole-look still
+- node test/orbital-finale.mjs (the lens, the round fade, the direction from the bays, the re-aim), test/galaxyseed.mjs (toward, from, elevation); npm test (183)
+- --finale with the wider picture: the shadow beside the planet, the disk whole, no straight edge
+
+Supersedes: 2026-10-06-the-black-hole-all-game-long
+
 ## 2026-10-06 — The black hole all game long: the accretion disk hung in the game's sky as world-fixed planes beyond the planet, not only in the ending
 
 change · resolved · 2026-10-06-the-black-hole-all-game-long
