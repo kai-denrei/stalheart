@@ -153,5 +153,23 @@ console.log('the gunship\'s MK-9:');
   soak(st, 400, O); soak(st, 10, O); mountGunship(st);
   check('the next pass carries a fresh round', heavyState(st, GUNSHIP_GUNS).phase === 'ready' && paintHeavy(st, 7, GUNSHIP_GUNS) && launchHeavy(st, GUNSHIP_GUNS) === 7);
 }
+// THE AUTOMATED GUNSHIP'S ROUND IS NOT THE GUNNER'S (owner, 2026-10-06: "even if the auto gunship shot one, a player who takes over can
+// shoot one too"): its release is booked on its own pass, locks the tube only for the fall, and the gunner who takes over behind it
+// still has the pass's one; the automated one never fires twice, nor after the gunner
+console.log('the automated gunship\'s MK-9 beside the gunner\'s:');
+{
+  const O = { pass: 10, station: 400 }, st = makeGunship(O, { station: true }); mountGunship(st);
+  check('the automated gunship releases its own', paintHeavy(st, 9, GUNSHIP_GUNS, { auto: true }) && launchHeavy(st, GUNSHIP_GUNS, { auto: true }) === 9 && st.heavyAutoPass === st.passes && st.heavyPass !== st.passes);
+  check('a second automated one this pass is refused while it falls', !paintHeavy(st, 9, GUNSHIP_GUNS, { auto: true }));
+  let landed = -1; for (let i = 0; i < Math.round(GUNSHIP_GUNS.heavy.travel * 60) + 2 && landed < 0; i++) { stepGunship(st, 1 / 60, O); landed = stepHeavy(st); }
+  check('its round down, the tube is clear at once for the gunner: no safing after the automated round', landed === 9 && heavyState(st, GUNSHIP_GUNS).phase === 'ready');
+  check('and the automated gunship is done for the pass', !paintHeavy(st, 9, GUNSHIP_GUNS, { auto: true }));
+  check('the gunner who takes over still has the pass\'s release', paintHeavy(st, 11, GUNSHIP_GUNS) && launchHeavy(st, GUNSHIP_GUNS) === 11 && st.heavyPass === st.passes);
+  landed = -1; for (let i = 0; i < Math.round(GUNSHIP_GUNS.heavy.travel * 60) + 2 && landed < 0; i++) { stepGunship(st, 1 / 60, O); landed = stepHeavy(st); }
+  soak(st, GUNSHIP_GUNS.heavy.reload + 0.1, O);
+  check('after the gunner\'s, neither fires again this pass', heavyState(st, GUNSHIP_GUNS).phase === 'spent' && !paintHeavy(st, 9, GUNSHIP_GUNS, { auto: true }) && !paintHeavy(st, 9, GUNSHIP_GUNS));
+  const st2 = makeGunship(O, { station: true }); mountGunship(st2);
+  check('the gunner first: the automated gunship then holds its fire for the pass', paintHeavy(st2, 3, GUNSHIP_GUNS) && launchHeavy(st2, GUNSHIP_GUNS) === 3 && !paintHeavy(st2, 4, GUNSHIP_GUNS, { auto: true }));
+}
 if (failures) { console.log(`${failures} failure(s)`); process.exit(1); }
 console.log('gunship ok');

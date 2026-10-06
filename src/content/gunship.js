@@ -63,7 +63,9 @@ export const GUNSHIP_NUKE = Object.freeze({
 // Downtime: the rotary overheats after `heatSeconds` of fire and cools for
 // `coolSeconds`; the Bofors reloads for `reload` s after `magazine` rounds;
 // the MK-9 is one per pass (`perPass`) and locks out for `reload` s after the
-// blast. Ammo is otherwise unlimited. The heavy has no cadence here: its
+// blast; the automated gunship's own release is booked apart, so a gunner who
+// takes over still has the pass's (src/domain/gunship.js). Ammo is otherwise
+// unlimited. The heavy has no cadence here: its
 // release is the paint-then-fire ritual in src/domain/gunship.js.
 export const GUNSHIP_GUNS = Object.freeze({
   rotary: Object.freeze({ key: 'rotary', label: '25MM', cue: 'trrrrrrrrrr', rate: 30, damage: 0.22, blastCells: 0.45, dangerCells: 0.8, travel: 2.0, zoom: 2.6, heatSeconds: 12, coolSeconds: 3.5, sound: 'gunship_rotary_fire', loop: true, pitch: 1, impact: 'kinetic_fire', ringHex: 0xdfe8ee, clip: 'Rotary_Fire', strike: false }),

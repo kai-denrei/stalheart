@@ -129,8 +129,8 @@ export function createGunshipRig(host) {
     burst: (p, hex, n, scale) => { const b = makeDotBurst(hex, norm3(p), n); b.scale.setScalar(host.cellSide() * scale); b.position.set(p[0], p[1], p[2]); scene.add(b); host.debris().push(b); },
     laser: (ci) => { if (ci >= 0) showRangeRing(ci, host.strikeTune().blastCells, 0xff2a1a); else hideRangeRing(); },
     loop: (name, o) => sfx.loop(name, o),
-    paintHeavy: (ci) => paintHeavy(gunship, ci, GUNSHIP_GUNS),
-    launchHeavy: () => { const lc = launchHeavy(gunship, GUNSHIP_GUNS); if (lc >= 0) isaoSpeak('mk9_release', { force: true }); return lc; },   // every MK-9 is announced, manned or automated (owner, 2026-10-05)
+    paintHeavy: (ci, o) => paintHeavy(gunship, ci, GUNSHIP_GUNS, o),
+    launchHeavy: (o) => { const lc = launchHeavy(gunship, GUNSHIP_GUNS, o); if (lc >= 0) isaoSpeak('mk9_release', { force: true }); return lc; },   // every MK-9 is announced, manned or automated (owner, 2026-10-05); the automated one is booked apart ({ auto: true })
     nudgeHeavy: (ci) => nudgeHeavy(gunship, ci),
     stepHeavy: () => stepHeavy(gunship),
     heavyState: () => heavyState(gunship, GUNSHIP_GUNS),
