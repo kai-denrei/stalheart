@@ -360,7 +360,10 @@ export function createProgrammeHost(c) {
     // `then` (the next sector, or a new run) runs when they end
     finale: (then) => {
       // OUR OWN PLANET under the constellation (owner, 2026-10-06, twenty-seventh notes, 9): the board's own surface, the base at the pad
-      const planet = c.map && c.dungeon() ? { map: c.map(), heart: c.graph().centers[c.dungeon().heart] } : null;
+      // ...AND THE BASE ITSELF on it (owner, 2026-10-07: the ARC-01 should be the one in our base; an extension of the base): its group
+      // cloned, its launcher's point and scale for the heads' rail
+      const sb = c.storyBase(), la = sb?.structure?.('launcher')?.holder;
+      const planet = c.map && c.dungeon() ? { map: c.map(), heart: c.graph().centers[c.dungeon().heart], base: sb?.group ?? null, launcher: la ? la.getWorldPosition(new THREE.Vector3()).toArray() : null, metres: la ? la.getWorldScale(new THREE.Vector3()).x : null } : null;
       const orbit = () => { c.pause?.(true); playOrbitalFinale(c.hud ?? document.body, { sfx: c.sfx, done: then, planet }); };   // the game holds under it; `then` lets it go
       c.pause?.(false); if (!playDiorama(c, orbit)) orbit(); return true;
     },

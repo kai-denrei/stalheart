@@ -67,3 +67,33 @@ console.log('Orbital finale: the game\'s own surface stands in for the planet, h
   assert.ok(Math.acos(at.dot(gal)) > 0.25, 'the galaxy off to its side');
 }
 console.log('Orbital finale: the accretion disk hangs behind the planet, the galaxy beside it.');
+
+// THE BASE ITSELF under the constellation (2026-10-07): the story base's group cloned onto the own planet, the placeholder's launcher
+// and pad left out, and the heads' rail exit over the base's own launcher
+{
+  const { ownPlanet, exitOf, constellationState, EXIT } = await import('../src/fx/orbital-finale.js');
+  const THREE = await import('../vendor/three.module.js');
+  const base = new THREE.Group(); base.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial()));
+  const heart = [0, 1, 0], launcher = [Math.sin(0.08), Math.cos(0.08), 0];   // the launcher 0.08 rad from the heart
+  const g = ownPlanet({ map: [], heart, base, launcher, metres: 1 / 753 }, 195);
+  const snap = g.children[0].children[0];
+  assert.ok(g.userData.base && snap !== base && snap.children.length === 1 && snap.children[0].geometry === base.children[0].geometry && snap.children[0].material === base.children[0].material, 'the base snapshotted onto the world: the same geometry and material, not a clone');
+  const e = g.userData.exit;
+  assert.ok(Math.abs(e.x - Math.sin(0.08) * 195) < 1e-9 && e.y > 195 * (Math.cos(0.08) - 1) && e.y < 195 * (Math.cos(0.08) - 1) + 8 && e.z > 0 && e.z < 6, `the exit over the base's launcher, the rail's rise in the finale's metres (${JSON.stringify(e)})`);
+  const own = exitOf([0, 1, 0], [0, 1, 0], 1 / 753, 195);
+  assert.ok(Math.abs(own.x) < 1e-9 && own.y > 5 && own.y < 7 && own.z > 3 && own.z < 5, 'at the pole: the rail scaled to the planet');
+  const at = constellationState(52.5, e).mirrors[0].position, std = constellationState(52.5, EXIT).mirrors[0].position, a = (52.4 - 7) * 0.018;   // the exit turns with the planet
+  assert.ok(Math.abs(Math.hypot(at[0], at[2]) - Math.hypot(e.x, e.z)) < 1e-6 && Math.abs(at[0] - (e.x * Math.cos(a) + e.z * Math.sin(a))) < 1e-6 && at[1] > e.y && at[1] - e.y < 60, 'the first head leaves from the base\'s exit, turned with the planet');
+  assert.ok(Math.abs(std[0] - Math.sin(a) * EXIT.z) < 1e-9 && Math.abs(std[2] - Math.cos(a) * EXIT.z) < 1e-9, 'the placeholder\'s exit as before');
+  assert.ok(!ownPlanet({ map: [], heart }, 195).userData.base, 'no base: the placeholder\'s own launcher');
+}
+// NO FLICKER (2026-10-07): the shadow disc a share of the camera's distance in front of the glow, shrunk by the same share
+{
+  const { accretionShadow, faceShadow, SHADOW_STEP } = await import('../src/fx/accretion.js');
+  const THREE = await import('../vendor/three.module.js');
+  const disc = accretionShadow({ cx: 0.5, cy: 0.5, r: 0.07 }, 2000), cam = new THREE.PerspectiveCamera(); cam.position.set(0, 0, 2000); cam.lookAt(0, 0, 0); cam.updateMatrixWorld();
+  faceShadow(disc, new THREE.Vector3(0, 0, 0), cam);
+  assert.ok(Math.abs(disc.position.z - 2000 * SHADOW_STEP) < 1e-6 && Math.abs(disc.scale.x - (1 - SHADOW_STEP)) < 1e-9, 'two thousand out: twenty-four units forward, the disc 1.2% smaller');
+  assert.ok(2000 * SHADOW_STEP > 5, 'well past the depth step there (about 3 units)');
+}
+console.log('Orbital finale: the base itself under the constellation, the heads off its own ARC, the shadow steady.');

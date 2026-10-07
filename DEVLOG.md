@@ -35,6 +35,21 @@ Evidence:
 - scripts/browser-lock.sh node scripts/browser-test.mjs --sky-hole: SKY HOLE dir [-0.01,0.02,1.00] 40 out 28 across; SKY-VEIL dir [0.01,0.10,-0.99] 46 out 12 across (180 degrees round); SKY-BLOOM dir [0.88,0.47,0.01] 45 out 16 across; stills sky-veil-look (the veil small over the bays' roofs on the opposite horizon) and sky-bloom-look (the blue spiral high over the dish)
 - npm test (184 programs, test/nebulae.mjs new), npm run check, npm run architecture, npm run build
 
+## 2026-10-07 — The base itself under the constellation: the run's own buildings on the finale's planet at their true size, the heads off the base's own ARC-01, and the black hole's shadow steady
+
+change · resolved · 2026-10-07-the-base-itself-under-the-constellation
+
+Owner, 2026-10-07 (twenty-eighth notes, 10): 'final victory screen; the ARC01 is too big, it should be the one in our base. The black circle of the black hole displays with a little flickering glitch in the final sequence. Goal: it should feel like an extension cinematic of the base in which the player just spent 30 minutes.' The finale drew the arc01 launcher at scale 1 (a metre a unit) on a 195-unit planet whose game metre is 0.26 units, 3.9 times too big and at the pole, over an invented pad; ownPlanet drew the board's floor and rock only. The shadow disc sat one unit in front of the glow sprite, less than the depth buffer's step two thousand units out (about 3 units), so the glow's pixels inside the circle won and lost the depth test frame by frame.
+
+src/fx/orbital-finale.js: ownPlanet takes the story base's group and snapshots it onto the same world (baseSnapshot: every visible mesh re-mounted on the same geometry and material at its world matrix; not a clone, which round-trips userData through JSON and threw), so every building the run printed stands under the constellation at its true size, the ARC-01 among them; the placeholder's launcher and pad are left out when the base is there; the heads' rail exit is over the base's own launcher (exitOf: its unit-sphere point turned heart-up and scaled, the rail's rise in the finale's metres), and constellationState takes the exit. programme-host hands the base group, the launcher's point and its scale. accretion.js faceShadow: the disc a share (SHADOW_STEP 1.2%) of the camera's distance in front of the glow and shrunk by the same share. --finale asserts dataset.base. First attempt: cloneSkinned of the base group threw inside buildWorld's catch and the constellation never opened: a swallowed catch is a silent failure; the harness's 'never opened' was the only sign.
+
+Alternatives: Scaling the finale's own launcher to the planet's metre at the base's launcher position: the base's other buildings would still be missing, and the owner asked for the base
+
+Evidence:
+
+- --finale: PASS finale-orbit-a/b/c, dataset.base 1; the orbit-a still: the base at the pole with the ARC-01 and the gantry at their size, the first heads rising from it
+- node test/orbital-finale.mjs (the snapshot, the exit, the shadow step)
+
 ## 2026-10-07 — The nest cleared: a site guard never takes a cell under the lander's own footprint, and the site clears with fewer than three guards left
 
 change · resolved · 2026-10-07-nest-cleared-never-under-the-lander-and-below-three

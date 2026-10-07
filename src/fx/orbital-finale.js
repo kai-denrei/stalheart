@@ -33,14 +33,17 @@ const mix = (a, b, u) => a.map((v, i) => v + (b[i] - v) * u);
 const planetAngle = (t) => Math.max(0, t - 7) * 0.018;
 const orbitPosition = (a, r = 365, tilt = 0.52) => [Math.sin(a) * r, CENTER[1] + Math.cos(a) * r * Math.cos(tilt), Math.cos(a) * r * Math.sin(tilt)];
 export function mirrorOrbit(i, t) { const ring = i % 3, slot = Math.floor(i / 3), angle = slot / 16 * Math.PI * 2 + (t - 52) * (0.011 + ring * 0.002), r = 310 + ring * 26, tilt = [-0.8, 0.15, 0.95][ring], x = Math.cos(angle) * r; return [x * Math.cos(tilt), CENTER[1] + Math.sin(angle) * r, x * Math.sin(tilt)]; }
-// the rail's exit on the pad (upstream extensionPose(0) of the ARC-01 runtime: a 40 m arc swept 1.05 rad from 2.6 m up, 20 m back), turned with the planet
-const EXIT = [2.6 + 40 * (1 - Math.cos(1.05)) + 0.43 * Math.cos(-1.05), -20 + 40 * Math.sin(1.05) + 0.43 * Math.sin(-1.05)];
-function straightFlight(release, t, speed) { const a = planetAngle(release); return [Math.sin(a) * EXIT[1], EXIT[0] + Math.max(0, t - release) * speed, Math.cos(a) * EXIT[1]]; }
-export function constellationState(t) {
+// the rail's exit on the pad (upstream extensionPose(0) of the ARC-01 runtime: a 40 m arc swept 1.05 rad from 2.6 m up, 20 m back), turned
+// with the planet: RAIL [up, back] in the launcher's metres, EXIT the point in the site's frame (the launcher at the pole at scale 1, as the
+// placeholder stands; ownPlanet gives the base's own, src/fx/orbital-finale.js exitOf)
+const RAIL = [2.6 + 40 * (1 - Math.cos(1.05)) + 0.43 * Math.cos(-1.05), -20 + 40 * Math.sin(1.05) + 0.43 * Math.sin(-1.05)];
+export const EXIT = Object.freeze({ x: 0, y: RAIL[0], z: RAIL[1] });
+function straightFlight(release, t, speed, exit) { const a = planetAngle(release); return [exit.x * Math.cos(a) + exit.z * Math.sin(a), exit.y + Math.max(0, t - release) * speed, -exit.x * Math.sin(a) + exit.z * Math.cos(a)]; }
+export function constellationState(t, exit = EXIT) {
   const sol = orbitPosition(0.34 + (Math.max(23, t) - 23) * 0.009);
   const mirrors = Array.from({ length: MIRROR_COUNT }, (_, i) => {
     const launchAt = 52.4 + i * 0.65, age = t - launchAt, deployed = age >= 5, launching = age >= 0 && age < 0.85;
-    return { visible: launching || deployed, launching, deployed, position: deployed ? mirrorOrbit(i, t) : straightFlight(launchAt, t, 470), scale: deployed ? 4 * smooth(age, 5, 5.55) : 0.2 };
+    return { visible: launching || deployed, launching, deployed, position: deployed ? mirrorOrbit(i, t) : straightFlight(launchAt, t, 470, exit), scale: deployed ? 4 * smooth(age, 5, 5.55) : 0.2 };
   });
   let camera, target;
   if (t < 53) { const k = smooth(t, 45, 53); camera = mix([230, 140, 360], [68, 42, 75], k); target = mix(mix(sol, CENTER, 0.38), [0, 16, 0], k); }
@@ -96,7 +99,11 @@ export function heartToPole(heart) {
 }
 
 // the game's own surface as the small world's planet: the board's floor and rock meshes and its edge lines on the same buffers, lit by
-// this scene's lights (Lambert, as the board draws them), the whole unit sphere scaled to the planet's radius and turned heart-up
+// this scene's lights (Lambert, as the board draws them), the whole unit sphere scaled to the planet's radius and turned heart-up.
+// AND THE BASE ITSELF (owner, 2026-10-07: "the ARC01 is too big, it should be the one in our base ... an extension cinematic of the
+// base the player just spent 30 minutes in"): `planet.base`, the story base's group, snapshotted onto the same world (baseSnapshot), so
+// every building the run printed stands under the constellation at its true size, the ARC-01 among them; `planet.launcher` (its
+// holder's unit-sphere point) and `planet.metres` (scene units a metre) give the rail's exit (userData.exit) for the heads to leave from
 export function ownPlanet(planet, radius = PLANET_RADIUS) {
   const g = new THREE.Group(), world = new THREE.Group();
   for (const src of planet?.map ?? []) {
@@ -104,9 +111,32 @@ export function ownPlanet(planet, radius = PLANET_RADIUS) {
     const m = src.isLine ? new THREE.LineSegments(src.geometry, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.3, depthWrite: false })) : new THREE.Mesh(src.geometry, new THREE.MeshLambertMaterial({ vertexColors: true }));
     m.frustumCulled = false; world.add(m);
   }
+  if (planet?.base) world.add(baseSnapshot(planet.base));
   world.quaternion.copy(heartToPole(planet?.heart)); world.scale.setScalar(radius); g.add(world);
-  g.userData.meshes = world.children.length;
+  g.userData.meshes = world.children.length; g.userData.base = !!planet?.base;
+  if (planet?.launcher) g.userData.exit = exitOf(planet.launcher, planet.heart, planet.metres ?? 1 / radius, radius);
   return g;
+}
+// THE BASE AS IT STANDS: every visible mesh of the story base's group re-mounted on the same geometry and material at its world matrix
+// (the game scene's unit-sphere frame, which is the world group's), still under the finale's own lights. Not a clone: Object3D.clone
+// round-trips userData through JSON, and the base's holders carry more than JSON takes; skinned meshes (Isao) are left out
+export function baseSnapshot(group) {
+  const g = new THREE.Group(); g.name = 'base snapshot';
+  group.updateWorldMatrix(true, true);
+  group.traverseVisible((o) => {
+    if (!o.geometry || !o.material || o.isSkinnedMesh) return;
+    const m = o.isInstancedMesh ? new THREE.InstancedMesh(o.geometry, o.material, o.count) : o.isLineSegments ? new THREE.LineSegments(o.geometry, o.material) : o.isLine ? new THREE.Line(o.geometry, o.material) : o.isPoints ? new THREE.Points(o.geometry, o.material) : new THREE.Mesh(o.geometry, o.material);
+    if (o.isInstancedMesh) { m.instanceMatrix.copy(o.instanceMatrix); m.count = o.count; }
+    m.matrixAutoUpdate = false; m.matrix.copy(o.matrixWorld); m.frustumCulled = false; m.renderOrder = o.renderOrder;
+    g.add(m);
+  });
+  return g;
+}
+// the rail's exit over the base's own launcher: its unit-sphere point turned heart-up and scaled, in the site's frame (the pole's surface
+// at the origin), the rail's rise and set-back in the finale's metres
+export function exitOf(launcher, heart, metres, radius = PLANET_RADIUS) {
+  const p = new THREE.Vector3(...launcher).applyQuaternion(heartToPole(heart)).multiplyScalar(radius), k = radius * metres;
+  return { x: p.x, y: p.y - radius + RAIL[0] * k, z: p.z + RAIL[1] * k };
 }
 
 // THE SMALL WORLD (upstream scene.js): the planet's vertex colours, its atmosphere, the stars, the pad, SOL-88, the heads, guides and trails
@@ -132,8 +162,11 @@ function buildWorld({ launcher, sol, mirror, planet: own = null, renderer = null
     vertexShader: 'varying vec3 n;varying vec3 v;void main(){vec4 p=modelViewMatrix*vec4(position,1.0);n=normalize(normalMatrix*normal);v=normalize(-p.xyz);gl_Position=projectionMatrix*p;}',
     fragmentShader: 'varying vec3 n;varying vec3 v;void main(){float a=pow(1.0-abs(dot(normalize(n),normalize(v))),3.0);gl_FragColor=vec4(.16,.58,.85,a*.32);}' }));
   air.position.copy(center); scene.add(air);
-  if (launcher) site.add(launcher);
-  const pad = new THREE.Mesh(new THREE.CylinderGeometry(35, 37, 1.6, 64), new THREE.MeshStandardMaterial({ color: 0x26363e, roughness: 0.85, metalness: 0.25 })); pad.position.y = -0.81; site.add(pad);
+  if (!planet.userData?.base) {   // the placeholder's launcher and pad at the pole; with the base there, its own ARC-01 stands at its true size
+    if (launcher) site.add(launcher);
+    const pad = new THREE.Mesh(new THREE.CylinderGeometry(35, 37, 1.6, 64), new THREE.MeshStandardMaterial({ color: 0x26363e, roughness: 0.85, metalness: 0.25 })); pad.position.y = -0.81; site.add(pad);
+  }
+  const exit = planet.userData?.exit ?? EXIT;
   const stars = new Float32Array(1800 * 3);
   for (let i = 0; i < 1800; i++) { const y = 1 - 2 * (i + 0.5) / 1800, a = i * 2.399963, r = Math.sqrt(1 - y * y); stars.set([Math.cos(a) * r * 1600, y * 1600 - 140, Math.sin(a) * r * 1600], i * 3); }
   const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(stars, 3));
@@ -154,7 +187,7 @@ function buildWorld({ launcher, sol, mirror, planet: own = null, renderer = null
   const rim = new THREE.DirectionalLight(0x66a9ff, 0.75); rim.position.set(-300, 30, -200); scene.add(rim);
   const dummy = new THREE.Object3D(), face = new THREE.Vector3(1, 0.55, 1).normalize(), down = new THREE.Vector3(0, -1, 0);
   function pose(t) {
-    const s = constellationState(t), before = constellationState(Math.max(FROM, t - 0.14)), arr = tg.attributes.position.array;
+    const s = constellationState(t, exit), before = constellationState(Math.max(FROM, t - 0.14), exit), arr = tg.attributes.position.array;
     planet.rotation.y = site.rotation.y = s.planetAngle;
     solRig.position.fromArray(s.sol); solRig.quaternion.setFromUnitVectors(down, center.clone().sub(solRig.position).normalize());
     s.mirrors.forEach((m, i) => {
@@ -167,7 +200,7 @@ function buildWorld({ launcher, sol, mirror, planet: own = null, renderer = null
     return s;
   }
   const faceCamera = (camera) => { if (shade) faceShadow(shade, hole.position, camera); };   // the shadow turned to the camera, every frame
-  return { scene, pose, faceCamera, hole: !!hole, holeProbe: hole?.material.map?.userData.probe ?? null, dispose: () => { hole?.material.map?.dispose(); hole?.material.dispose(); shade?.geometry.dispose(); shade?.material.dispose(); } };
+  return { scene, pose, faceCamera, hole: !!hole, base: !!planet.userData?.base, holeProbe: hole?.material.map?.userData.probe ?? null, dispose: () => { hole?.material.map?.dispose(); hole?.material.dispose(); shade?.geometry.dispose(); shade?.material.dispose(); } };
 }
 
 // root: the DOM parent to cover; sfx: the sound engine for Isao; done(): runs once when it ends or is skipped; planet: the game's own
@@ -177,7 +210,7 @@ export function playOrbitalFinale(root, { sfx = null, done = null, planet = null
   el.innerHTML = '<canvas></canvas><p class="of-line" aria-live="polite"></p><p class="of-count"></p><p class="of-skip">ANY KEY · SKIP</p>';
   (root ?? document.body).append(el);
   const canvas = el.querySelector('canvas'), line = el.querySelector('.of-line'), count = el.querySelector('.of-count');
-  el.dataset.own = planet?.map?.length ? '1' : '0';   // what the harness reads: the game's own planet, or the placeholder
+  el.dataset.own = planet?.map?.length ? '1' : '0'; el.dataset.base = planet?.base ? '1' : '0';   // what the harness reads: the game's own planet and base, or the placeholder
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(2, globalThis.devicePixelRatio || 1)); renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
   const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 4000);

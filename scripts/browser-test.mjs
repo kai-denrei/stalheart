@@ -1636,6 +1636,7 @@ try{
  // OUR OWN PLANET (owner's twenty-seventh notes, 9): the small world is the board's own surface, not the placeholder sphere
  await until('document.querySelector("#orbital-finale")?.dataset.loaded==="1"',15000).catch(()=>{});
  assert.equal(await evaluate('document.querySelector("#orbital-finale")?.dataset.own'),'1','the constellation turns over our own planet');
+ assert.equal(await evaluate('document.querySelector("#orbital-finale")?.dataset.base'),'1','and over the base itself (owner, 2026-10-07: the ARC-01 the one in our base)');
  if(process.env.HOLE!=='0')assert.equal(await evaluate('document.querySelector("#orbital-finale")?.dataset.hole'),'1','the accretion disk rendered and hung in the sky (src/fx/accretion.js)');
  {const pr=JSON.parse(await evaluate('document.querySelector("#orbital-finale")?.dataset.holeProbe||"null"'));console.log(`FINALE hole probe ${JSON.stringify(pr)}`);if(pr)assert(pr.corner[3]<=2,`the empty sky round the hole is clear (corner alpha ${pr.corner[3]})`);}
  for(const [at,name] of [[4,'a'],[12,'b'],[22,'c']]){await until(`(()=>{const e=document.querySelector("#orbital-finale");return !e||+getComputedStyle(e).opacity>0.9;})()`,10000).catch(()=>{});await delay(at===4?4000:at===12?8000:10000);if(!(await evaluate('!!document.querySelector("#orbital-finale")')))break;current=`finale-orbit-${name}`;await finish();}

@@ -113,9 +113,15 @@ export function accretionShadow(shadow, across) {
   m.userData.offset = new THREE.Vector3((shadow.cx - 0.5) * across, (shadow.cy - 0.5) * across, 0);
   return m;
 }
+// NO FLICKER (owner, 2026-10-07: "the black circle displays with a little flickering glitch in the final sequence"): a single unit
+// toward the camera was less than the depth buffer's step two thousand units out (about 3 units there), so the glow's pixels inside the
+// circle won and lost the depth test frame by frame; the step is a share of the distance now, and the disc shrinks by the same share
+export const SHADOW_STEP = 0.012;
 export function faceShadow(disc, at, camera) {
   disc.quaternion.copy(camera.quaternion);
-  disc.position.copy(at).add(disc.userData.offset.clone().applyQuaternion(camera.quaternion)).addScaledVector(new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion), 1);   // a hair toward the camera: in front of the glow
+  const dist = camera.position.distanceTo(at), step = Math.max(1, dist * SHADOW_STEP);
+  disc.position.copy(at).add(disc.userData.offset.clone().applyQuaternion(camera.quaternion)).addScaledVector(new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion), step);   // toward the camera: in front of the glow
+  disc.scale.setScalar((dist - step) / dist);
 }
 
 // A PICTURE HUNG IN THE SKY (the hole, and the owner's nebulae of src/fx/nebulae.js): a plane `across` units wide `dist` out along
