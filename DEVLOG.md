@@ -206,6 +206,20 @@ Evidence:
 - --finale: PASS finale-orbit-a/b/c, dataset.base 1; the orbit-a still: the base at the pole with the ARC-01 and the gantry at their size, the first heads rising from it
 - node test/orbital-finale.mjs (the snapshot, the exit, the shadow step)
 
+## 2026-10-07 — The terraformer yard is src/fx/terraformer-yard.js
+
+change · accepted · 2026-10-07-terraformer-yard-is-a-module
+
+The refactor run's Task 17: the Terraformer's builds as a time-keeping milestone (containers, a hull), its yard and queue, the doors, the drones' auto-upgrade and the HUD's terraformer line sat in src/td-tab.js (about 180 lines).
+
+createTerraformerYard(host) owns them (start, tick, reset, autoUpgradeTick, milestone, line); storyMode is a lazy getter, playerHP a getter with a setter. tfTick, tfReset, tfMilestone, autoUpgradeTick and terraLine stay one-liners. td-tab 6,278 -> 6,135 lines.
+
+Evidence:
+
+- Equivalence harness (session scratchpad tf-scenario.mjs): the original block through new Function beside the module: four milestones, 400 frames of the yard and the auto-upgrade, a hull delivered, the reset and the HUD line: identical 839-entry logs; test/terraformer-yard.mjs pins the digest
+- undef-diff, tdz-check and host contracts (49 factories) clean
+- npm test, npm run check, npm run build; snapshot suites --base-look --base --defense pass; --grow timed out once on the gate's repair (after the radar and assembly line stood) and passed on the re-run, as it did on main e4853f55 in the same window
+
 ## 2026-10-07 — The tank's laser and the towers' plasma beams are fx modules
 
 change · accepted · 2026-10-07-tank-laser-and-plasma-beams-are-modules

@@ -60,7 +60,7 @@ import { computeBerths, berthIndexFor } from './berths.js'; import { createProgr
 import { createSkyRig } from './fx/sky-rig.js'; import { createIsaoMoments } from './fx/isao-moments.js'; import { createColonyTick } from './fx/colony-tick.js'; import { createAutoSupport } from './fx/auto-support.js';
 import { createCanyonRun } from './fx/canyon-run.js'; import { createEndingHost } from './fx/ending-host.js'; import { createIsaoWorker } from './fx/isao-worker.js'; import { createHullDrive } from './fx/hull-drive.js'; import { createTowerCombat } from './fx/tower-combat.js';
 import { createEnemyStep } from './fx/enemy-step.js'; import { createTankLaser } from './fx/tank-laser.js'; import { createPlasmaBeams } from './fx/plasma-beams.js'; import { createWarnRing } from './fx/warn-ring.js'; import { createHullHost } from './fx/hull-issue.js'; import { createWaveCard } from './fx/wave-card.js'; import { createTankInput } from './platform/tank-input.js'; import { createBuildPointer } from './fx/build-pointer.js';
-import { createStrikeConsole } from './fx/strike-console.js';
+import { createStrikeConsole } from './fx/strike-console.js'; import { createTerraformerYard } from './fx/terraformer-yard.js';
 import { wantsSecondary, shellsForAll } from './autofire.js';
 import { PLASMA_DEFAULTS } from './beamdraw.js';
 import { sub3, add3, scale3, dot3, cross3, norm3, len3, dist3, segKey } from './vec3.js';
@@ -4430,185 +4430,42 @@ export function initTdTab(root) {
   function updateBeams(...a) { return towerCombat.updateBeams(...a); }
   function clearTowers(...a) { return towerCombat.clearTowers(...a); }
 
-  // --- THE TERRAFORMER BUILDS (operator, 2026-09-02) ---------------------
-  // "give the image that the Terraformer is active by having it build things,
-  // this also acts as a time-keeping milestone of sorts. small containers, a
-  // new tank."
-  //
-  // Two products, on two clocks, both keyed to the WAVE counter so they read
-  // as time passing rather than as rewards: every second wave a small
-  // container is printed into a yard beside the Stalheart — the yard is the
-  // clock, you count it — and every fifth wave a new hull is printed and
-  // racked in a berth, if there is room for one. While a job runs the rig
-  // works visibly faster and the site pulses; when it lands, a toast says so.
-  const TF = { containerEvery: 2, hullEvery: 5, containerSecs: 7, hullSecs: 10, yardMax: 8,
-    caseEvery: 3 };   // ...and a case of mines, between the other two clocks
-  const tfYard = [];        // { obj, ci }
-  const tfQueue = [];       // kinds waiting for the bed
-  let tfJob = null;         // { kind, obj, ci, t, dur, pulseT }
-  let tfContainers = 0;
-
-  // A yard cell: open, two or three hops from the heart, not a berth, not
-  // already used. Deterministic order (cell index), so the yard grows the
-  // same way on the same seed.
-  // ON THE PEDESTAL'S RIM, measured from the pedestal rather than counted in
-  // hops: hop 2-3 landed stores at 2.0-2.7 cells while the pad reaches 1.43,
-  // which is "somewhere near the heart" rather than "at the Terraformer's
-  // feet". Nearest first, so the yard grows outward from the rim.
-  function tfYardCell() {
-    const taken = new Set([...tfYard.map((y) => y.ci), ...berths.map((b) => b.ci),
-      ...lifeContainers.map((c) => c.ci)]);
-    const hc = graph.centers[dungeon.heart];
-    const pad = heartSprite && heartSprite.userData.padR
-      ? (heartSprite.userData.padR * heartSprite.userData.sizeScale) / cellSide : 1.4;
-    let best = -1, bd = Infinity;
-    for (let i = 0; i < dungeon.tags.length; i++) {
-      if (dungeon.tags[i] === BLOCKED || taken.has(i)) continue;
-      const d = dist3(hc, graph.centers[i]) / cellSide;
-      if (d < pad + 0.35 || d > pad + 1.6) continue;
-      if (d < bd) { bd = d; best = i; }
-    }
-    return best;
-  }
-  function tfStart(kind) { if (storyMode) return;
-    if (tfJob) { tfQueue.push(kind); return; }
-    if (kind === 'hull' && playerHP >= PLAYER_MAX) kind = 'container';   // full: build the other thing
-    if (kind === 'container' && tfYard.length >= TF.yardMax) return;     // the yard is the clock; it has a face
-    if (kind === 'container') {
-      const ci = tfYardCell();
-      const g = ci >= 0 ? dressMetal(makeContainerFixture(0)) : null;
-      if (!g) {
-        // MODEL NOT LANDED YET. The first cut dropped the job here — one way
-        // a Terraformer "moves as if building something but builds nothing".
-        // Wait for the bytes and start the same job.
-        if (ci >= 0) preloadContainer().then((ok) => { if (ok && !tfJob) tfStart('container'); });
-        return;
-      }
-      // SEALED, BY GEOMETRY. Rotation 0 is not "shut" — measured, the leaf at
-      // 0 still stands 0.50 deep in the box's frame (the authored rest pose is
-      // ajar), which is why the stores read as open. Find the angle at which
-      // each leaf lies flattest in the end wall and use that.
-      shutDoors(g);
-      const c = graph.centers[ci], n = graph.normals[ci], hc = graph.centers[dungeon.heart];
-      g.userData.full = [cellSide * 0.45, cellSide * 0.45, cellSide * 0.45 * 0.55];
-      g.scale.set(0.001, 0.001, 0.001);
-      g.position.set(c[0], c[1], c[2]);
-      tmpObj.position.copy(g.position); tmpObj.up.set(n[0], n[1], n[2]);
-      tmpObj.lookAt(hc[0], hc[1], hc[2]);
-      g.quaternion.copy(tmpObj.quaternion);
-      scene.add(g);
-      tfJob = { kind, obj: g, ci, t: 0, dur: TF.containerSecs, pulseT: 0 };
-    } else {
-      tfJob = { kind: 'hull', obj: null, ci: dungeon.heart, t: 0, dur: TF.hullSecs, pulseT: 0 };
-    }
-    if (heartSprite) heartSprite.userData.working = 1;
-  }
-  const doorBox = new THREE.Box3(), doorSz = new THREE.Vector3(), doorInv = new THREE.Matrix4();
-  function shutDoors(g) {
-    g.updateMatrixWorld(true);
-    doorInv.copy(g.matrixWorld).invert();
-    for (const name of ['Door_L_Pivot', 'Door_R_Pivot']) {
-      const piv = g.getObjectByName(name);
-      if (!piv) continue;
-      let bestA = 0, bestZ = Infinity;
-      for (let a = -1.2; a <= 1.2001; a += 0.05) {
-        piv.rotation.y = a; g.updateMatrixWorld(true);
-        doorBox.makeEmpty();
-        piv.traverse((o) => { if (o.isMesh) doorBox.union(new THREE.Box3().setFromObject(o).applyMatrix4(doorInv)); });
-        doorBox.getSize(doorSz);
-        if (doorSz.z < bestZ) { bestZ = doorSz.z; bestA = a; }
-      }
-      piv.rotation.y = bestA;
-      piv.userData.shutAngle = bestA; piv.userData.shutDepth = bestZ;
-    }
-    g.updateMatrixWorld(true);
-  }
-  // AUTO-UPGRADE (operator, 2026-09-02: "IF excess cash AND some towers are
-  // not upgraded, THEN go around and upgrade them"). Off by default; a
-  // checkbox on the panel. "Excess" means the purse would still hold the
-  // reserve after paying — a drone that spends your last biomass on a tier
-  // you did not choose is a drone you switch off. One order at a time and
-  // never more than the drones can carry, so the queue stays yours.
-  const AUTO_RESERVE = 150;
-  let autoUpClock = 0;
-  function autoUpgradeTick(dt) {
-    if (!params.autoUpgrade || !eco) return;
-    autoUpClock += dt;
-    if (autoUpClock < 1.5) return;
-    autoUpClock = 0;
-    if (orders.length >= workers().length) return;
-    let bestT = null, bestC = Infinity;
-    for (const tw of towers) {
-      if (orderByCell.has(tw.ci)) continue;
-      const c = upgradeCost(tw.def, tw.tier);
-      if (c === null) continue;                              // topped out
-      if (eco.biomass - c < AUTO_RESERVE) continue;          // not excess
-      if (c < bestC) { bestC = c; bestT = tw; }
-    }
-    if (bestT) orderUpgrade(bestT);
-  }
-  function tfMilestone(w) {
-    if (storyMode) return;
-    if (w > 0 && w % TF.hullEvery === 0) tfStart('hull');
-    else if (w > 0 && w % TF.containerEvery === 0) tfStart('container');
-  }
-  function tfTick(dt) {
-    if (!tfJob) { if (tfQueue.length) tfStart(tfQueue.shift()); return; }
-    tfJob.t += dt;
-    const u = Math.min(1, tfJob.t / tfJob.dur);
-    const e = u * u * (3 - 2 * u);
-    if (tfJob.obj) {
-      const f = tfJob.obj.userData.full;
-      const k = Math.max(0.02, e);
-      tfJob.obj.scale.set(f[0] * k, f[1] * k, f[2] * k);
-    }
-    // the site pulses while the bed is live — the same ring the strike and
-    // the shell speak, at build scale
-    tfJob.pulseT -= dt;
-    if (tfJob.pulseT <= 0) {
-      tfJob.pulseT = 0.7;
-      warnRing(tfJob.ci, 0x9fdcff, 0.5, cellSide * (tfJob.kind === 'hull' ? 2.2 : 1.2));
-    }
-    if (u < 1) return;
-    // LANDED
-    if (heartSprite) heartSprite.userData.working = 0;
-    const nrm = norm3(graph.centers[tfJob.ci]);
-    const burst = makeDotBurst(0x9fdcff, nrm, tfJob.kind === 'hull' ? 60 : 30);
-    burst.scale.setScalar(cellSide * (tfJob.kind === 'hull' ? 1.2 : 0.7));
-    const bp = scale3(nrm, 1 + cellSide * 0.3);
-    burst.position.set(bp[0], bp[1], bp[2]);
-    scene.add(burst); debris.push(burst);
-    if (tfJob.kind === 'container') {
-      tfYard.push({ obj: tfJob.obj, ci: tfJob.ci });
-      tfContainers++;
-      showToast(`<div class="wave-num">TERRAFORMER &#9656; STORE ${tfContainers}</div>`
-        + `<div class="wave-role">a container printed into the yard · wave ${wave}</div>`, 2400);
-    } else {
-      playerHP = Math.min(PLAYER_MAX, playerHP + 1);
-      syncLifeContainers();
-      sfx.play('tank_spool_up');
-      showToast(`<div class="wave-num">TERRAFORMER &#9656; NEW HULL</div>`
-        + `<div class="wave-role">a mk-cx printed and racked · hulls ${playerHP}/${PLAYER_MAX}</div>`, 3000);
-      updateHud();
-    }
-    tfJob = null;
-  }
-  function tfReset() {
-    for (const y of tfYard) { scene.remove(y.obj); disposeObj(y.obj); }
-    tfYard.length = 0; tfQueue.length = 0;
-    if (tfJob && tfJob.obj) { scene.remove(tfJob.obj); disposeObj(tfJob.obj); }
-    tfJob = null; tfContainers = 0;
-    if (heartSprite) heartSprite.userData.working = 0;
-  }
-  // the HUD line, beside ISAO's: what is on the bed, or what the clock says
-  function terraLine() {
-    if (tfJob) {
-      const pct = Math.round(Math.min(1, tfJob.t / tfJob.dur) * 100);
-      return `<div class="hud-obj hud-isao">TERRAFORMER &#9656; printing ${tfJob.kind === 'hull' ? 'a new hull' : `store ${tfContainers + 1}`} ${pct}%</div>`;
-    }
-    const left = TF.hullEvery - (wave % TF.hullEvery);
-    return `<div class="hud-obj hud-isao">TERRAFORMER &#9656; yard ${tfYard.length} · next hull in ${left} wave${left === 1 ? '' : 's'}</div>`;
-  }
+  // --- THE TERRAFORMER BUILDS (operator, 2026-09-02; src/fx/terraformer-yard.js): containers and a hull as a milestone, the drones' auto-upgrade
+  const terraformerYard = createTerraformerYard({
+    PLAYER_MAX,
+    dressMetal,
+    tmpObj,
+    scene,
+    params,
+    orders,
+    workers,
+    orderUpgrade,
+    towers,
+    orderByCell,
+    debris,
+    warnRing,
+    showToast,
+    syncLifeContainers,
+    sfx,
+    updateHud,
+    disposeObj,
+    berths: () => berths,
+    lifeContainers: () => lifeContainers,
+    graph: () => graph,
+    dungeon: () => dungeon,
+    heartSprite: () => heartSprite,
+    cellSide: () => cellSide,
+    storyMode: () => storyMode,
+    eco: () => eco,
+    wave: () => wave,
+    playerHP: () => playerHP,
+    setPlayerHP: (v) => (playerHP = v),
+  });
+  function autoUpgradeTick(...a) { return terraformerYard.autoUpgradeTick(...a); }
+  function tfMilestone(...a) { return terraformerYard.milestone(...a); }
+  function tfTick(...a) { return terraformerYard.tick(...a); }
+  function tfReset(...a) { return terraformerYard.reset(...a); }
+  function terraLine(...a) { return terraformerYard.line(...a); }
 
   // HOW LONG UNTIL THE NEXT WAVE, in seconds. Infinity while one is already
   // running, and while the board has no live gate to send it. Factored out of

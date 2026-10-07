@@ -571,7 +571,7 @@ The story's per-frame tick leaves `src/fx/programme-host.js` for modules named a
 - Create: `src/fx/terraformer-yard.js` — from td-tab 6963–7130 (`TF`, `tfYard`, `tfQueue`, `tfJob`, `tfContainers`, `tfYardCell`, `tfStart`, `doorBox`, `shutDoors`, `AUTO_RESERVE`, `autoUpClock`, `autoUpgradeTick`, `tfMilestone`, `tfTick`, `tfReset`, `terraLine`): `createTerraformerYard(host) -> { start(), tick(dt), reset(), autoUpgradeTick(dt), milestone(), line() }`.
 - Test: `test/terraformer-yard.mjs` — `tfTick` for 100 frames from `tfStart` on fakes, old vs new.
 
-- [ ] Steps as Task 8. Suites: `--grow`, `--base`, `--defense`. Commit — `The terraformer yard is src/fx/terraformer-yard.js; td-tab -<n> lines`.
+- [x] Steps as Task 8. Suites: `--grow`, `--base`, `--defense`. Commit — `The terraformer yard is src/fx/terraformer-yard.js; td-tab -<n> lines`.
 
 ---
 
