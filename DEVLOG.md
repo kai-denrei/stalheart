@@ -238,6 +238,22 @@ Evidence:
 - --nuke-key: NUKE KEY 2 hole(s) up, paused false; N filled every open hole (2 -> 0)
 - npm run architecture: budgets lowered to 8734 lines / 522369 bytes
 
+## 2026-10-07 — Isao the worker is src/fx/isao-worker.js: the order book, the travel and the print, flying him by hand
+
+change · accepted · 2026-10-07-isao-the-worker-is-a-module
+
+The refactor run's Task 8: about 390 lines of src/td-tab.js were the construction drone's work: his tuning, the assistant, the order book, his flight over the sphere, the print beam, the four order functions and the hand-flown drone view.
+
+createIsaoWorker(host) owns the ISAO_* tuning, the assistant's spawn, the print beam, orders and orderByCell, isaoPos, stepDir, spawnIsao, placeWorker, placeIsao, the site rings, orderTower/orderUpgrade/cancelOrder/finishOrder, pilotIsao (isaoAlt, the heading, lean and roll), stepWorker and updateIsao. td-tab keeps the two drones (isao, assistant: lets read at about thirty sites) and hands them in as getters with setters; the type-feel block that sat in the middle of the region (TYPE, applyType) stays. Call sites are unchanged through hoisted one-liners (spawnIsao, spawnAssistant, dropSiteRing, orderTower, orderUpgrade, cancelOrder, updateIsao) and const { orders, orderByCell, workers }; the drone camera reads isaoWorker.heading(), the Q/E keys isaoWorker.alt()/setAlt(). Eleven imports left td-tab with the code. td-tab 8,761 -> 8,417 lines.
+
+Alternatives: Move the isao and assistant lets into the module with getters: rejected, about thirty controller sites read them (cameras, probes, the colony's hosts) and would each change.
+
+Evidence:
+
+- Equivalence harness (session scratchpad isao-equiv.mjs): the original block through new Function beside the module on the same fakes, 700 frames (a structure printed, a repair done, an upgrade cancelled for a refund) and 30 frames flown by hand: identical logs of 2,923 entries; test/isao-worker.mjs pins the digest
+- tools/refactor/undef-diff.mjs clean; node test/host-contracts.mjs holds for 39 factories
+- npm test, npm run check, npm run build; snapshot suites --sectors --base --base-look --laser-game --defense --back-gate --grow
+
 ## 2026-10-07 — Host contracts: td-tab's literals and the host modules agree, checked without a parser
 
 change · accepted · 2026-10-07-host-contracts-test

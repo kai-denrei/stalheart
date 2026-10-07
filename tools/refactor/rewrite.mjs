@@ -33,7 +33,18 @@ for (const ref of fnScope.through) {
   if (ref.isWrite()) {
     if (kind !== 'set') throw Error(`write to ${name} needs "set"`);
     const asg = parents.get(id);
-    if (asg.type !== 'AssignmentExpression' || asg.operator !== '=') throw Error(`unsupported write to ${name}: ${asg.type} ${asg.operator ?? ''}`);
+    const Set = `${H}.set${name[0].toUpperCase()}${name.slice(1)}`;
+    if (asg.type === 'UpdateExpression') {   // `x++` / `x--` as a statement only (its value would change)
+      if (parents.get(asg).type !== 'ExpressionStatement') throw Error(`${name}${asg.operator} used as a value`);
+      edits.push([asg.range[0], asg.range[1], `${Set}(${H}.${name}() ${asg.operator[0]} 1)`]);
+      continue;
+    }
+    if (asg.type !== 'AssignmentExpression') throw Error(`unsupported write to ${name}: ${asg.type}`);
+    if (asg.operator !== '=') {   // `x op= rhs` -> `host.setX(host.x() op (rhs))`
+      edits.push([asg.range[0], asg.right.range[0], `${Set}(${H}.${name}() ${asg.operator.slice(0, -1)} (`]);
+      edits.push([asg.range[1], asg.range[1], '))']);
+      continue;
+    }
     // `x = rhs` -> `host.setX(rhs)`: the head and the tail are separate edits, so names inside rhs are rewritten too
     edits.push([asg.range[0], asg.right.range[0], `${H}.set${name[0].toUpperCase()}${name.slice(1)}(`]);
     edits.push([asg.range[1], asg.range[1], ')']);

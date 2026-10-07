@@ -472,10 +472,10 @@ The story's per-frame tick leaves `src/fx/programme-host.js` for modules named a
 - Modify: `src/td-tab.js` — the region becomes `const isaoWorker = createIsaoWorker({ … })` plus hoisted one-liners for the hot names (`function spawnIsao() { return isaoWorker.spawnIsao(); }`) where callers run at init time (TDZ: the programme host's literal reads `orders` and `spawnIsao` as values — hand it `isaoWorker.orders` and the one-liner).
 - Test: `test/isao-worker.mjs` — `stepWorker` and `pilotIsao` on recording fakes (real `THREE.Vector3`/`Quaternion`, a recorded scene and `sfx`), expectations produced by the ORIGINAL block through `new Function` over the same fakes, for three inputs: an order with no worker, a worker mid-print, a cancelled order.
 
-- [ ] **Step 1:** list the closure names the region reads (`node --check` on a copy of the region wrapped in a function reports nothing; use the eslint `no-undef` diff from the toolkit note: `~/.npm/_npx/515228b7c8d004a2/node_modules/.bin/eslint` with a flat config of `no-undef`, pass the file by a relative name).
-- [ ] **Step 2:** harness first (the test), then the module, then the wiring.
-- [ ] **Step 3: Verify** — `npm test`, `npm run check`, `npm run build`; snapshot: `--sectors`, `--base`, `--base-look`, `--laser-game`, `--defense`, `--back-gate`, `--grow`.
-- [ ] **Step 4: Commit** — `Isao the worker is src/fx/isao-worker.js (orders, the print, his flight); the programme host reads it through the controller's literal; td-tab -<n> lines`.
+- [x] **Step 1:** list the closure names the region reads (`node --check` on a copy of the region wrapped in a function reports nothing; use the eslint `no-undef` diff from the toolkit note: `~/.npm/_npx/515228b7c8d004a2/node_modules/.bin/eslint` with a flat config of `no-undef`, pass the file by a relative name).
+- [x] **Step 2:** harness first (the test), then the module, then the wiring.
+- [x] **Step 3: Verify** — `npm test`, `npm run check`, `npm run build`; snapshot: `--sectors`, `--base`, `--base-look`, `--laser-game`, `--defense`, `--back-gate`, `--grow`.
+- [x] **Step 4: Commit** — `Isao the worker is src/fx/isao-worker.js (orders, the print, his flight); the programme host reads it through the controller's literal; td-tab -<n> lines`.
 
 ---
 
