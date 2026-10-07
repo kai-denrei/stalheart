@@ -6,7 +6,7 @@
   "longLines": {
     "over": 500,
     "budgets": {
-      "src/td-tab.js": 16
+      "src/td-tab.js": 0
     }
   },
   "topLevelModules": [

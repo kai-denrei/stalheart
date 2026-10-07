@@ -381,12 +381,12 @@ function keysOf(literal, where) {
 
 Pure reflow: imports one `import` per line; a packed statement list one statement per line at the enclosing indent; an object literal one member per line; a trailing `/* ... */` comment becomes `//` lines above the code it describes. No token changes.
 
-- [ ] **Step 1:** `cp src/td-tab.js /tmp/td-before.js` (the scratchpad path is fine too).
-- [ ] **Step 2:** Break each line. After each: `node --check src/td-tab.js`.
-- [ ] **Step 3: Prove** — `node tools/refactor/astsame.mjs /tmp/td-before.js src/td-tab.js` — Expected: `same`. Then check every comment survived: `grep -o '/\*[^*]*\*/\|//.*' /tmp/td-before.js | wc -l` vs the same on the new file (the count may rise as block comments split into lines, never fall).
-- [ ] **Step 4:** `awk 'length($0)>500 {print NR}' src/td-tab.js` — Expected: no output. Lower `longLines.budgets["src/td-tab.js"]` to `0` in `docs/architecture-budget.json`.
-- [ ] **Step 5:** `npm test && npm run check && npm run build`, then from a snapshot: `--defense`, `--seats`, `--laser-game` (the lines touched the laser station literal, the seat hand-over and the frame).
-- [ ] **Step 6: Commit** — `No line of the controller is over 500 characters (whole-file AST identity); the long-line budget is 0`
+- [x] **Step 1:** `cp src/td-tab.js /tmp/td-before.js` (the scratchpad path is fine too).
+- [x] **Step 2:** Break each line. After each: `node --check src/td-tab.js`.
+- [x] **Step 3: Prove** — `node tools/refactor/astsame.mjs /tmp/td-before.js src/td-tab.js` — Expected: `same`. Then check every comment survived: `grep -o '/\*[^*]*\*/\|//.*' /tmp/td-before.js | wc -l` vs the same on the new file (the count may rise as block comments split into lines, never fall).
+- [x] **Step 4:** `awk 'length($0)>500 {print NR}' src/td-tab.js` — Expected: no output. Lower `longLines.budgets["src/td-tab.js"]` to `0` in `docs/architecture-budget.json`.
+- [x] **Step 5:** `npm test && npm run check && npm run build`, then from a snapshot: `--defense`, `--seats`, `--laser-game` (the lines touched the laser station literal, the seat hand-over and the frame).
+- [x] **Step 6: Commit** — `No line of the controller is over 500 characters (whole-file AST identity); the long-line budget is 0`
 
 ---
 

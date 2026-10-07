@@ -5,8 +5,31 @@ import { createBoardSurface } from './fx/board-surface.js'; import { createCampa
 import { startDiveShot } from './fx/dive-shot.js'; import { createCameraShots } from './fx/camera-shot.js'; import { createIntegrityHud } from './fx/integrity-hud.js'; import { createSeatGlide } from './fx/seat-glide.js'; import { viewEdge, viewportLine } from './domain/view-edge.js'; import { boxOverlaps } from './domain/box-overlaps.js'; import { makeShaderWarmer } from './fx/shader-warm.js'; import { waveGap } from './domain/wave-spread.js';
 import { BREACH_SOUNDS } from './content/breach-defaults.js';
 import { SOUNDS } from './content/runtime.js';
-import { emergence } from './domain/breach-waves.js'; import { applyScare, stampScare, scarePace, isScared, towardScare, awayExits } from './domain/impact-scare.js'; import { EXPLOSION_SCARE, SCARE_FREEZE_S } from './content/explosions.js'; import { createThermalHeat } from './fx/thermal-heat.js'; import { isAutomated, pilotMultipliers } from './domain/automation.js'; import { fillFromKill, fillFromWaveClear, isFull as callFull, callProgress } from './domain/gunship-call.js'; import { GUNSHIP_CALL, GUNSHIP_FAR } from './content/gunship.js'; import { unlockedTowers } from './domain/expeditions.js'; import { createExpeditionsHost } from './fx/expedition-glue.js'; import { CARGO_LOOK } from './content/cargo.js'; import { STORY_EXPEDITIONS } from './content/story-defaults.js'; import { makeSiteRing as siteRing, disposeSiteRing } from './fx/site-ring.js'; import { hasPerk as programmeHas, snapshot as programmeSnapshot, lose as programmeLose } from './domain/build-programme.js'; import { createProgramWarm } from './fx/program-warm.js';
-import { sinkholeGroundHeight } from './core/sinkhole-shape.js'; import { devModeOn } from './core/dev-mode.js'; import { createControlsCard } from './fx/controls-card.js'; import { createTutorialCard } from './fx/tutorial-card.js'; import { openStoryAt } from './fx/story-entry.js'; import { isStoryRoute } from './core/story-route.js'; import { STORY_SKIP, STORY_MISSION } from './content/story-defaults.js'; import { createShowcase } from './fx/showcase.js'; import { showcaseOn } from './platform/showcase-entry.js';   /* THE SHOWCASE (owner, 2026-09-18): the core loop as a montage over this very world, before the landing */   /* SKIP TUTORIAL (owner, 2026-09-16): the player's own way past the opening, and the state ?skip=defence starts in */
+import { emergence } from './domain/breach-waves.js';
+import { applyScare, stampScare, scarePace, isScared, towardScare, awayExits } from './domain/impact-scare.js';
+import { EXPLOSION_SCARE, SCARE_FREEZE_S } from './content/explosions.js';
+import { createThermalHeat } from './fx/thermal-heat.js';
+import { isAutomated, pilotMultipliers } from './domain/automation.js';
+import { fillFromKill, fillFromWaveClear, isFull as callFull, callProgress } from './domain/gunship-call.js';
+import { GUNSHIP_CALL, GUNSHIP_FAR } from './content/gunship.js';
+import { unlockedTowers } from './domain/expeditions.js';
+import { createExpeditionsHost } from './fx/expedition-glue.js';
+import { CARGO_LOOK } from './content/cargo.js';
+import { STORY_EXPEDITIONS } from './content/story-defaults.js';
+import { makeSiteRing as siteRing, disposeSiteRing } from './fx/site-ring.js';
+import { hasPerk as programmeHas, snapshot as programmeSnapshot, lose as programmeLose } from './domain/build-programme.js';
+import { createProgramWarm } from './fx/program-warm.js';
+import { sinkholeGroundHeight } from './core/sinkhole-shape.js';
+import { devModeOn } from './core/dev-mode.js';
+import { createControlsCard } from './fx/controls-card.js';
+import { createTutorialCard } from './fx/tutorial-card.js';
+import { openStoryAt } from './fx/story-entry.js';
+import { isStoryRoute } from './core/story-route.js';
+// SKIP TUTORIAL (owner, 2026-09-16): the player's own way past the opening, and the state ?skip=defence starts in
+import { STORY_SKIP, STORY_MISSION } from './content/story-defaults.js';
+// THE SHOWCASE (owner, 2026-09-18): the core loop as a montage over this very world, before the landing
+import { createShowcase } from './fx/showcase.js';
+import { showcaseOn } from './platform/showcase-entry.js';
 import { makeOrdnanceShell } from './shell.js'; import { createHullLoss } from './fx/hull-loss.js'; import { bayContainers, syncBays } from './fx/life-bays.js';
 import { firingFor } from './content/firing-defaults.js'; import { RELEASE_EVENTS, releasesHeld, releaseHeld } from './core/held-input.js';
 import { METRES_PER_CELL, arcToMetres, metresToArc } from './core/stage-units.js';
@@ -30,7 +53,17 @@ import { makeKick, startKick, stepKick, kicking, planKick, glideHeading } from '
 import * as THREE from '../vendor/three.module.js';
 import GUI from '../vendor/lil-gui.esm.js';
 import { bfsDist, BLOCKED, PATH, ROOM } from './dungeon.js';
-import { buildGameWorld, readStoryQuery, STORY_SOUNDS, takeControlPose } from './platform/story-world.js'; import { SENTRY_HEAT } from './content/sentry-heat.js'; import { coolHeat } from './core/heat.js'; import { paintBarrelHeat } from './fx/barrel-heat.js'; import { createUnlockHost } from './fx/story-views.js'; import { buildReadout } from './fx/build-readout.js'; import { createStoryMonitor } from './fx/story-monitor.js'; import { createDaylight } from './fx/daylight.js'; import { createStoryScope, createScopeFeed } from './fx/story-scope.js'; import { createSyntheticModal } from './fx/synthetic-modal.js'; import { createBrass } from './fx/brass.js';
+import { buildGameWorld, readStoryQuery, STORY_SOUNDS, takeControlPose } from './platform/story-world.js';
+import { SENTRY_HEAT } from './content/sentry-heat.js';
+import { coolHeat } from './core/heat.js';
+import { paintBarrelHeat } from './fx/barrel-heat.js';
+import { createUnlockHost } from './fx/story-views.js';
+import { buildReadout } from './fx/build-readout.js';
+import { createStoryMonitor } from './fx/story-monitor.js';
+import { createDaylight } from './fx/daylight.js';
+import { createStoryScope, createScopeFeed } from './fx/story-scope.js';
+import { createSyntheticModal } from './fx/synthetic-modal.js';
+import { createBrass } from './fx/brass.js';
 import { mulberry32, randomSeed } from './rng.js';
 import { createLaserStation, structureLostHtml } from './fx/laser-station.js'; import { LASER_GAME } from './content/orbital-laser.js'; import { createGlossaryModals } from './fx/glossary-modals.js'; import { makeTriadIcon, glossCard, GAMEPLAY_TIPS } from './fx/briefing-cards.js';
 import { computeBerths, berthIndexFor } from './berths.js'; import { createProgrammeHost } from './fx/programme-host.js'; import { strikeFallPose, droneRidePose, bastionPose, tankViewPose } from './domain/camera-goal.js'; import { createShopRadial } from './fx/shop-radial.js'; import { berthRun, berthHeading, deployU, easeDeploy, deployFraming } from './domain/deploy-path.js';
@@ -315,7 +348,14 @@ export function initTdTab(root) {
   scene.background = mainBg;
 
   const camera = new THREE.PerspectiveCamera(68, 1, 0.004, 50);
-  const postfx = makeBloom(renderer, scene, camera, { scale: tier.bloomScale }); const warmShaders = makeShaderWarmer(renderer, scene, camera); const programWarm = createProgramWarm(renderer, scene, camera); const explosions = createExplosions(scene, { onError: (error) => record('explosions.unavailable', { message: error.message }) }); const thermalHeat = createThermalHeat(() => ({ warm: [storyBase?.group, playerMesh, ...towers.map((tw) => tw.obj)], hot: [...['stalheart', 'foundry', 'assembly'].map((id) => storyBase?.structure(id)?.holder), isao?.obj] }), { postfx }); const automated = () => !!story && isAutomated(story.beats.phase(), story.handover); const explode = (use, p) => { const sc = EXPLOSION_SCARE[use]; if (sc) applyScare(enemies, p, { radius: sc.cells * cellSide, seconds: sc.seconds }); return explosions.spawn(use, p, norm3(p), cellSide); };   // the lab's explosions (src/fx/explosions.js); callers keep their dot bursts when this returns false
+  const postfx = makeBloom(renderer, scene, camera, { scale: tier.bloomScale });
+  const warmShaders = makeShaderWarmer(renderer, scene, camera);
+  const programWarm = createProgramWarm(renderer, scene, camera);
+  const explosions = createExplosions(scene, { onError: (error) => record('explosions.unavailable', { message: error.message }) });
+  const thermalHeat = createThermalHeat(() => ({ warm: [storyBase?.group, playerMesh, ...towers.map((tw) => tw.obj)], hot: [...['stalheart', 'foundry', 'assembly'].map((id) => storyBase?.structure(id)?.holder), isao?.obj] }), { postfx });
+  const automated = () => !!story && isAutomated(story.beats.phase(), story.handover);
+  // the lab's explosions (src/fx/explosions.js); callers keep their dot bursts when this returns false
+  const explode = (use, p) => { const sc = EXPLOSION_SCARE[use]; if (sc) applyScare(enemies, p, { radius: sc.cells * cellSide, seconds: sc.seconds }); return explosions.spawn(use, p, norm3(p), cellSide); };
   // sound. The context can only be born on a user gesture, so arm() wires
   // one-shot listeners and the first tap/keypress creates it. Until then
   // every play() is a silent no-op -- the game never waits on audio.
@@ -329,9 +369,43 @@ export function initTdTab(root) {
     enemies: () => enemies, breaches: () => spawnPoints.filter((sp) => sp.alive && sp.obj?.userData.breach && !sp.obj.userData.keep).sort((a, b) => (sectorRun?.owns(b) ? 1 : 0) - (sectorRun?.owns(a) ? 1 : 0)), towers: () => towers, walls: () => storyBase?.walls?.() ?? [], anchors: () => storyBase?.anchors?.() ?? new Set(),
     burnBody: (e) => damageEnemy(e, t, e.hp + 1, true, 'laser'), seal: (sp) => killPortal(sp, 'laser'), burnTower: (tw) => destroyTower(tw), burnWall: (w) => storyBase?.dropWall(w.index),
     breakCells: (cells) => { if (cells.filter((ci) => breachWallCell(ci)).length) rebuildAfterBreach(); }, burnHeart: () => heartHit(heartHP), burnTank: (p) => playerHit('laser', p),
-    structures: () => storyBase?.standing?.() ?? [], burnStructure: (id) => { if (!story || story.lost.has(id)) return; story.lost.add(id); storyBase?.conceal(id); const gone = programmeLose(story.programme, id); if (id === 'radar') laserStation.setOnline(false);   /* A BURNED RADAR TAKES SOL-82 OFFLINE: no uplink, no pass */ if (id === 'bays' && playerHP > 1) { playerHP = 1; syncLifeContainers(); }   /* burned bays lose the spare hulls racked under them */ updateHud(); showToast(structureLostHtml(id, gone), 3200); },   /* OURS UNDER THE BEAM was the warning; this is the bill */ explode: (use, p) => explode(use, p), brief: (id) => showBrief(id), callout: (x) => showCallout(x, 'co-victory'), loop: (key) => sfx.loop(key), views: () => storyViews, canvas: () => renderer.domElement, fov: () => camera.fov,
+    structures: () => storyBase?.standing?.() ?? [],
+    // OURS UNDER THE BEAM was the warning; this is the bill
+    burnStructure: (id) => {
+      if (!story || story.lost.has(id)) return;
+      story.lost.add(id);
+      storyBase?.conceal(id);
+      const gone = programmeLose(story.programme, id);
+      // A BURNED RADAR TAKES SOL-82 OFFLINE: no uplink, no pass
+      if (id === 'radar') laserStation.setOnline(false);
+      // burned bays lose the spare hulls racked under them
+      if (id === 'bays' && playerHP > 1) { playerHP = 1; syncLifeContainers(); }
+      updateHud();
+      showToast(structureLostHtml(id, gone), 3200);
+    },
+    explode: (use, p) => explode(use, p),
+    brief: (id) => showBrief(id),
+    callout: (x) => showCallout(x, 'co-victory'),
+    loop: (key) => sfx.loop(key),
+    views: () => storyViews,
+    canvas: () => renderer.domElement,
+    fov: () => camera.fov,
     paused: (v) => { const was = paused; if (v !== undefined) paused = v; return was; }, togglePause: () => togglePause(),   /* the seat's P shows the pause card, as ESC does (2026-09-25) */
-    vacate: () => leavePilot(), enter: (fov) => { closeShop(); seatGlide.begin(camera); seatBase = baseFor(seatBase, pilotMode, { view: params.view, fov: camera.fov }); keys.left = keys.right = keys.fast = keys.slow = keys.laser = false; cruise = false; throttle = 0; endShot(); camera.fov = fov; camera.updateProjectionMatrix(); snapCamera(); },   /* OCCUPANCY IS EXCLUSIVE (src/domain/seat-view.js): the strip button is caught here, so `vacate` leaves the seat the player was in first; SOL-82 once opened on top of the gunship (owner, 2026-09-23) */
+    // OCCUPANCY IS EXCLUSIVE (src/domain/seat-view.js): the strip button is caught here, so `vacate` leaves the seat the player was
+    // in first; SOL-82 once opened on top of the gunship (owner, 2026-09-23)
+    vacate: () => leavePilot(),
+    enter: (fov) => {
+      closeShop();
+      seatGlide.begin(camera);
+      seatBase = baseFor(seatBase, pilotMode, { view: params.view, fov: camera.fov });
+      keys.left = keys.right = keys.fast = keys.slow = keys.laser = false;
+      cruise = false;
+      throttle = 0;
+      endShot();
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+      snapCamera();
+    },
     leave: () => { seatGlide.begin(camera); restoreSeat(); },   /* the lens and the view this chain of seats was entered from (2026-09-15-gunship-track-latched-and-seat-lens-reset, 2026-09-23-seat-changes-robust) */
   });
   sfx.arm();
@@ -2498,7 +2572,21 @@ export function initTdTab(root) {
   }
   addEventListener('keydown', (ev) => onKeyEvent(ev, true));
   addEventListener('keyup', (ev) => onKeyEvent(ev, false));
-  const releaseInputs = () => { releaseHeld(keys, Object.keys(keys)); pilot?.release?.(); };   /* EVERY held input goes, not just the five drive keys: taking a screenshot moves focus off the page, the keyup never lands, and the tank went on firing with the not-ready cue behind it (owner, 2026-09-16). Which events count is src/core/held-input.js's ruling */ for (const type of RELEASE_EVENTS) (type === 'mouseleave' ? renderer.domElement : type === 'blur' ? window : document).addEventListener(type, () => { if (releasesHeld(type, { hidden: document.visibilityState === 'hidden', locked: !!document.pointerLockElement, wasLocked: true })) releaseInputs(); }); addEventListener('keydown', (ev) => { if (ev.repeat || /INPUT|SELECT|TEXTAREA/.test(ev.target?.tagName ?? '') || shopCi !== -1) return; const seat = { 7: '[data-view="tank"]', 8: '[data-mount="gunship"]', 9: '[data-view="laser"]', 0: '[data-view="map"]' }[ev.key]; if (!seat) return; document.querySelector(`#story-views ${seat}`)?.click(); ev.preventDefault(); }, true);   /* 7 8 9 0 TAKE THE SEATS (owner, 2026-09-16): each key clicks the views strip's own button, so a seat that is not available yet refuses exactly as the button does, and the strip stays the one place a seat is chosen. Capture phase, registered before any seat installs its own handler, so it answers from the tank and from inside a seat alike */
+  // EVERY held input goes, not just the five drive keys: taking a screenshot moves focus off the page, the keyup never lands, and
+  // the tank went on firing with the not-ready cue behind it (owner, 2026-09-16). Which events count is src/core/held-input.js's
+  // ruling
+  const releaseInputs = () => { releaseHeld(keys, Object.keys(keys)); pilot?.release?.(); };
+  for (const type of RELEASE_EVENTS) (type === 'mouseleave' ? renderer.domElement : type === 'blur' ? window : document).addEventListener(type, () => { if (releasesHeld(type, { hidden: document.visibilityState === 'hidden', locked: !!document.pointerLockElement, wasLocked: true })) releaseInputs(); });
+  // 7 8 9 0 TAKE THE SEATS (owner, 2026-09-16): each key clicks the views strip's own button, so a seat that is not available yet
+  // refuses exactly as the button does, and the strip stays the one place a seat is chosen. Capture phase, registered before any
+  // seat installs its own handler, so it answers from the tank and from inside a seat alike
+  addEventListener('keydown', (ev) => {
+    if (ev.repeat || /INPUT|SELECT|TEXTAREA/.test(ev.target?.tagName ?? '') || shopCi !== -1) return;
+    const seat = { 7: '[data-view="tank"]', 8: '[data-mount="gunship"]', 9: '[data-view="laser"]', 0: '[data-view="map"]' }[ev.key];
+    if (!seat) return;
+    document.querySelector(`#story-views ${seat}`)?.click();
+    ev.preventDefault();
+  }, true);
 
   // T1 tank first person · T3 tank third person · O1 orbital. Bastion left the cycle (tower-watching was a spectator mode nobody
   // drove from), and nothing auto-centres any more — the two CENTRE buttons do it on demand. V toggles the two views that have
@@ -3670,7 +3758,26 @@ export function initTdTab(root) {
     ramCombo = 0; ramComboT = 0; syncCombo();
     breachedCells.clear(); explosions.clear(); sealedBreachCells.clear(); laserStation.reset(); // a NEW world owes nothing to the old one's holes, its fire, its sealed sinkholes or SOL-82's scorch
     const built = buildGameWorld({ world: storyQuery.world, params, stage: storyQuery.stage, landmarks: storyQuery.landmarks, phase: storyQuery.phase, grow: storyQuery.grow, chapter: storyQuery.chapter, scene, sfx, warm: warmShaders });
-    mesh = built.mesh; dungeon = built.dungeon; if (built.wallHeight) params.wallHeight = built.wallHeight; storyBase?.dispose(); storyBase = built.base; foundryFx?.dispose(); foundryFx = null; story?.glue?.dispose(); story = built.story ?? null; sectorRun = story ? makeSectorRun() : null; storyMonitor?.dispose(); storyMonitor = story ? createStoryMonitor(root) : null; storyScope?.dispose(); storyScope = story ? createStoryScope(root) : null; daylight?.restore(); daylight = story ? createDaylight({ hemi, sun, bg: mainBg, day: story.day.day, tune: story.day, phase: +new URLSearchParams(location.search).get('day') || 0, dial: root }) : null; gunshipRig.reset();   /* A NEW RUN LEAVES NOTHING BEHIND (2026-09-25): the lights' night, the gunship and a falling MK-9 go with the old world */   // the story planet has a day   // 4 m walls on the story sphere; the story's islands, structures, sockets and beats at the requested stage
+    // 4 m walls on the story sphere; the story's islands, structures, sockets and beats at the requested stage
+    mesh = built.mesh;
+    dungeon = built.dungeon;
+    if (built.wallHeight) params.wallHeight = built.wallHeight;
+    storyBase?.dispose();
+    storyBase = built.base;
+    foundryFx?.dispose();
+    foundryFx = null;
+    story?.glue?.dispose();
+    story = built.story ?? null;
+    sectorRun = story ? makeSectorRun() : null;
+    storyMonitor?.dispose();
+    storyMonitor = story ? createStoryMonitor(root) : null;
+    storyScope?.dispose();
+    storyScope = story ? createStoryScope(root) : null;
+    // A NEW RUN LEAVES NOTHING BEHIND (2026-09-25): the lights' night, the gunship and a falling MK-9 go with the old world
+    // the story planet has a day
+    daylight?.restore();
+    daylight = story ? createDaylight({ hemi, sun, bg: mainBg, day: story.day.day, tune: story.day, phase: +new URLSearchParams(location.search).get('day') || 0, dial: root }) : null;
+    gunshipRig.reset();
     graph = dungeon.graph; cellSide = mesh.defaultSide;
     // THE CAMP, BEFORE ANY ACTOR IS PLACED. Berth cells are graph maths, so they are known now rather than whenever the container
     // model happens to land — which is what lets a reset place the tank once instead of standing it beside the Heart and
@@ -5417,7 +5524,18 @@ export function initTdTab(root) {
     const obj = tower.obj;
     const s = (obj.userData.baseScale ?? 1) * cellSide * 0.62 * TOWER_SCALE * Math.pow(TIER_BULK, tower.tier); obj.scale.setScalar(s);
     // the pedestal's half-width in model units, measured once per model, so the perch knows how far it may slide
-    if (obj.userData.footprintUnit === undefined) { const p = obj.position.clone(), q = obj.quaternion.clone(); obj.position.set(0, 0, 0); obj.quaternion.identity(); obj.scale.setScalar(1); const bb = new THREE.Box3().setFromObject(obj); obj.userData.footprintUnit = Number.isFinite(bb.max.x) ? Math.min(bb.max.x - bb.min.x, bb.max.z - bb.min.z) / 2 : 0;   /* the pedestal's half width: the long axis is the barrels, which may reach over the edge */ obj.position.copy(p); obj.quaternion.copy(q); obj.scale.setScalar(s); }
+    if (obj.userData.footprintUnit === undefined) {
+      const p = obj.position.clone(), q = obj.quaternion.clone();
+      obj.position.set(0, 0, 0);
+      obj.quaternion.identity();
+      obj.scale.setScalar(1);
+      const bb = new THREE.Box3().setFromObject(obj);
+      // the pedestal's half width: the long axis is the barrels, which may reach over the edge
+      obj.userData.footprintUnit = Number.isFinite(bb.max.x) ? Math.min(bb.max.x - bb.min.x, bb.max.z - bb.min.z) / 2 : 0;
+      obj.position.copy(p);
+      obj.quaternion.copy(q);
+      obj.scale.setScalar(s);
+    }
     obj.userData.footprintR = obj.userData.footprintUnit * s; if (!tower.a6) setTierPlate(obj, tower.tier, tower.def.color);   // its level on its foot: square, hexagon, circle
     // ...and a WALKER is wherever it has walked to. Its own position is a
     // unit direction, so it is its own normal — no cell lookup, because it
@@ -6693,7 +6811,10 @@ export function initTdTab(root) {
   function spawnTowerShot(pos, dir, tw, eff, homing, arcTotal = 0, straightTo = null) {
     const sfx2 = shotOf(tw.def);
     const shell=tw.def.key==='mortar';
-    const manual = pilotMode && pilot?.state.tower === tw, mesh = manual && !shell ? new THREE.Line(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(3 * ((sfx2.trail ?? 0) + 9)), 3)), new THREE.LineBasicMaterial({ color: tw.def.color, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false })) : shell?   /* TRACERS FROM THE OPTIC (owner, 2026-09-14): a piloted round is a STREAK, a line through its trail points, not a round dot */makeOrdnanceShell(cellSide*.45):makeTracer(tw.def.color, (sfx2.projPx ?? 5) * (manual ? 1.9 : 1), (sfx2.trail ?? 0) + (manual ? 6 : 0));
+    const manual = pilotMode && pilot?.state.tower === tw, mesh = manual && !shell
+      // TRACERS FROM THE OPTIC (owner, 2026-09-14): a piloted round is a STREAK, a line through its trail points, not a round dot
+      ? new THREE.Line(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(3 * ((sfx2.trail ?? 0) + 9)), 3)), new THREE.LineBasicMaterial({ color: tw.def.color, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }))
+      : shell ? makeOrdnanceShell(cellSide*.45) : makeTracer(tw.def.color, (sfx2.projPx ?? 5) * (manual ? 1.9 : 1), (sfx2.trail ?? 0) + (manual ? 6 : 0));
     const p0 = norm3(pos);
     const lift0 = 1 + params.wallHeight * 0.5;
     const attr = mesh.geometry.getAttribute('position');
@@ -7330,7 +7451,20 @@ export function initTdTab(root) {
 
   // --- THE DEBRIEF, THE CAMPAIGN LOG AND THE VERDICT (operator, 2026-09-02) live in src/fx/campaign-debrief.js: the analyst's six
   // windows with the strike replay, a snapshot per cleared sector, and the verdict with its orders. The campaign board only.
-  const { renderAnalysis, renderVerdict, logSector, campaignReset, showSitrep, campaign } = createCampaignDebrief({ msgEl, sitrepEl, spriteShot, makeDotEnemy, coins: () => coins(), runAchvBlock: () => runAchvBlock(), ctx: () => ({ rs, ws, run, score, biomass: eco.biomass, earned: eco.earned, spent: eco.spent, heartHP, HEART_MAX, playerHP, PLAYER_MAX, towers: towers.length, tankRank, tankKills, round, wave, sectorsTotal: SECTORS_TOTAL, wavesPerSector: params.wavesPerSector, sectorWave: sectorWave(), programmeDone: programmeDone(), time: runContext.time, toll: sectorToll(), shield, shieldTune, assistant: !!assistant }) });
+  const { renderAnalysis, renderVerdict, logSector, campaignReset, showSitrep, campaign } = createCampaignDebrief({
+    msgEl,
+    sitrepEl,
+    spriteShot,
+    makeDotEnemy,
+    coins: () => coins(),
+    runAchvBlock: () => runAchvBlock(),
+    ctx: () => ({
+      rs, ws, run, score, biomass: eco.biomass, earned: eco.earned, spent: eco.spent, heartHP, HEART_MAX, playerHP, PLAYER_MAX,
+      towers: towers.length, tankRank, tankKills, round, wave, sectorsTotal: SECTORS_TOTAL, wavesPerSector: params.wavesPerSector,
+      sectorWave: sectorWave(), programmeDone: programmeDone(), time: runContext.time, toll: sectorToll(), shield, shieldTune,
+      assistant: !!assistant,
+    }),
+  });
   // THE COIN. Retro, by request: winning a planet mints one; CONTINUE? spends
   // it. Persists, so a player who walks away with a coin still has it.
   const COIN_KEY = 'td.coins';
@@ -7803,7 +7937,17 @@ export function initTdTab(root) {
     }
     gpuBegin();
     const cpuStart=perfOn?performance.now():0;
-    inFrame = true; try { frame(dt, false); } catch (err) { const k = String(err?.stack ?? err); if (!frameFaults.has(k)) { frameFaults.add(k); setTimeout(() => { throw err; }); } try { postfx.render(); } catch { /* the renderer is what failed: nothing more to draw this frame */ } } inFrame = false;   /* A FAULT IN THE FRAME (2026-09-25) froze the picture: the world still draws, and each distinct fault is rethrown ONCE on its own turn for the error handlers, the diagnostics ring and the suites */
+    // A FAULT IN THE FRAME (2026-09-25) froze the picture: the world still draws, and each distinct fault is rethrown ONCE on its
+    // own turn for the error handlers, the diagnostics ring and the suites
+    inFrame = true;
+    try {
+      frame(dt, false);
+    } catch (err) {
+      const k = String(err?.stack ?? err);
+      if (!frameFaults.has(k)) { frameFaults.add(k); setTimeout(() => { throw err; }); }
+      try { postfx.render(); } catch { /* the renderer is what failed: nothing more to draw this frame */ }
+    }
+    inFrame = false;
     if(perfOn)perfCpu.frame+=performance.now()-cpuStart;
     gpuEnd(); if (hudDirty) { hudDirty = false; hudFrame = frameNo; paintHud(); }   /* the HUD's catch-up paint (updateHud) */
   }
@@ -8036,7 +8180,13 @@ export function initTdTab(root) {
     } else if (playerMesh.userData.tick) {
       playerMesh.userData.tick(t);
     }
-    buildFollowTank(dt); if (story) (controlsCard ??= createControlsCard(root, { mobile: mobileShell, briefing: () => (gunshipBriefing ??= createGunshipBriefing(root)).openPaused({ get: () => paused, set: (v) => { paused = v; } }) })).tick(automated() && !pilotMode && !laserStation.seated(), !shotActive() && story.beats.phase() !== 'landed');   /* the controls page, once, as the landing hands over (src/fx/controls-card.js) */ if (story && !storyQuery.skip && !showcaseMode) (skipCard ??= createTutorialCard(root, { search: location.search, from: story.chapter?.n ?? 0, skipLanding: () => /^arrival/.test(shotId() ?? '') && (endShot(), true) })).tick(story.beats.phase(), automated() && (!story.grow || !!sectorRun?.active()));   /* the chapter, NEXT, SKIP ALL (src/fx/tutorial-card.js) */ if (showcaseMode) (showcase ??= createShowcase(root, gameHooks.showcase)).tick(dt);   /* THE SHOWCASE: the montage cuts its own shots over this run (src/fx/showcase.js) */
+    buildFollowTank(dt);
+    // the controls page, once, as the landing hands over (src/fx/controls-card.js)
+    if (story) (controlsCard ??= createControlsCard(root, { mobile: mobileShell, briefing: () => (gunshipBriefing ??= createGunshipBriefing(root)).openPaused({ get: () => paused, set: (v) => { paused = v; } }) })).tick(automated() && !pilotMode && !laserStation.seated(), !shotActive() && story.beats.phase() !== 'landed');
+    // the chapter, NEXT, SKIP ALL (src/fx/tutorial-card.js)
+    if (story && !storyQuery.skip && !showcaseMode) (skipCard ??= createTutorialCard(root, { search: location.search, from: story.chapter?.n ?? 0, skipLanding: () => /^arrival/.test(shotId() ?? '') && (endShot(), true) })).tick(story.beats.phase(), automated() && (!story.grow || !!sectorRun?.active()));
+    // THE SHOWCASE: the montage cuts its own shots over this run (src/fx/showcase.js)
+    if (showcaseMode) (showcase ??= createShowcase(root, gameHooks.showcase)).tick(dt);
     if (story && automated() && !frozen && !player.won) laserStation.tick(dt);   // SOL-82: the pass clock once online, the seat's hands, the beam
     updateCameraGoal();
 
@@ -8067,7 +8217,17 @@ export function initTdTab(root) {
     if (simSkip) return; // sim pass: state advanced, nothing painted
     // in PoV the camera sits inside the creature — hide it there
     playerMesh.visible = params.view !== 'pov' && !deploy?.clip && !story?.hull?.held();   // the bay's authored hull rolls out alone (operator, 2026-09-13: two turrets, one static, one sweeping); no hull before the Stålheart issues it
-    postfx.render(); storyMonitor?.render(renderer, scene, (pilot?.gunship ? gunshipRig.drop?.mesh() : null) ?? towerSeekers.find((m) => m.pool === talonPool && talonPool && m.by === pilot?.state.tower)?.mesh ?? null, cellSide, dt, pilot?.gunship ? pilot.gunshipOptic() : (pilotMode && pilot?.state.tower && missileOf(pilot.state.tower.key) && pilot.state.tower.pilotTarget && !pilot.state.tower.pilotTarget.pilotAim ? { from: perchOf(pilot.state.tower), pos: pilot.state.tower.pilotTarget.pos } : null));   // the seeker feed rides behind a TALON in flight; the gunship's monitor is the ground truth at the impact point; otherwise the optic inset on the tracked target
+    postfx.render();
+    // the seeker feed rides behind a TALON in flight; the gunship's monitor is the ground truth at the impact point; otherwise the
+    // optic inset on the tracked target
+    storyMonitor?.render(
+      renderer,
+      scene,
+      (pilot?.gunship ? gunshipRig.drop?.mesh() : null) ?? towerSeekers.find((m) => m.pool === talonPool && talonPool && m.by === pilot?.state.tower)?.mesh ?? null,
+      cellSide,
+      dt,
+      pilot?.gunship ? pilot.gunshipOptic() : (pilotMode && pilot?.state.tower && missileOf(pilot.state.tower.key) && pilot.state.tower.pilotTarget && !pilot.state.tower.pilotTarget.pilotAim ? { from: perchOf(pilot.state.tower), pos: pilot.state.tower.pilotTarget.pos } : null),
+    );
     radarScope.draw(t); story?.hud.paint(radarCtx, { m: radarCss, cpos: pilot?.state.tower ? graph.centers[pilot.state.tower.ci] : player.pos, up: pilot?.state.tower ? new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray() : player.smoothDir, range: mapMode === 'heart' ? 2.02 : pilotMode ? cellSide * 12 : 1.15, t, mapMode });
     laserStation.render(renderer, scene); programWarm.tick(dt);   /* THE SEAT'S FIRST-USE HITCH (src/fx/program-warm.js): the canvas's own programs are linked two objects a frame, here where nothing is bound, instead of 18 at once under the gunner */
   }
@@ -8082,7 +8242,19 @@ export function initTdTab(root) {
     return createSectorRun({ story, host: root, api: storyApi, waveSize: params.waveSize, threatMult, hardcore: story.hardcore, spawnGap: { spread: SPAWN_SPREAD, max: SPAWN_GAP_MAX }, store: localStorage, rng: () => whim(),
       ready: () => automated() && (story.beats.phase() === 'expedition' || story.handover.stage >= (story.handover.defendStage ?? 8)) && !briefQ && !shotActive() && !syntheticModal?.isOpen() && !paused, firstSector: storyQuery.firstSector,   /* SKIP TUTORIAL opens the run at the back-door sector: its collapse and breach are the first thing the player sees */
       centers: () => graph.centers, cellSide: () => cellSide, enemies: () => enemies, queue: () => spawnQueue, bank: () => eco.biomass, reload: () => location.reload(),
-      field: () => ({ cellSide, centers: graph.centers, dist: bfsDist(graph.adj, [dungeon.heart], (ci) => dungeon.tags[ci] !== BLOCKED), inside: (ci) => story.inside(ci), rim: (story.rimHops ??= (() => { const seeds = []; for (let ci = 0; ci < graph.centers.length; ci++) if (story.inside(ci)) seeds.push(ci); return bfsDist(graph.adj, seeds, () => true); })()),   /* hops from the clearing over any ground, rock or not: a breach's blast carves rock. Once per world: the clearing never changes */ excluded: [...sealedBreachCells, ...spawnPoints.filter((s) => s.alive).map((s) => s.ci)], farHops: GUNSHIP_FAR.hops, fallback: () => gunshipRig.far() }),   /* the ring the gunship's far breach walks: a minute out */
+      // the ring the gunship's far breach walks: a minute out
+      field: () => ({
+        cellSide,
+        centers: graph.centers,
+        dist: bfsDist(graph.adj, [dungeon.heart], (ci) => dungeon.tags[ci] !== BLOCKED),
+        inside: (ci) => story.inside(ci),
+        // hops from the clearing over any ground, rock or not: a breach's blast carves rock. Once per world: the clearing never
+        // changes
+        rim: (story.rimHops ??= (() => { const seeds = []; for (let ci = 0; ci < graph.centers.length; ci++) if (story.inside(ci)) seeds.push(ci); return bfsDist(graph.adj, seeds, () => true); })()),
+        excluded: [...sealedBreachCells, ...spawnPoints.filter((s) => s.alive).map((s) => s.ci)],
+        farHops: GUNSHIP_FAR.hops,
+        fallback: () => gunshipRig.far(),
+      }),
       open: (ci, o) => storyApi.breach(ci, o), collapse: (sp) => killPortal(sp, 'exhausted'), queued: (sp) => spawnQueue.some((q) => q.sp === sp),
       push: (list) => { for (const q of list) spawnQueue.push({ ...q, at: spawnClock + q.at }); spawnQueue.sort((a, b) => a.at - b.at); },
       clearField: () => { for (const e of enemies) if (e.alive && !e.guard) killCreature(e, false); for (let i = spawnQueue.length - 1; i >= 0; i--) if (!spawnQueue[i].guard) spawnQueue.splice(i, 1); updateHud(); },
@@ -8647,7 +8819,34 @@ export function initTdTab(root) {
   };
     if (urlParams.get('acceptance') === '1') window.__stalheartTest = gameHooks;   // Browser acceptance adapter, published only when explicitly requested; the showcase holds the same object directly
 
-  function leavePilot() { if (!pilotMode) return; seatGlide.cancel(); pilot?.dispose(); for (const tw of towers) hushRotor(tw); pilot = null; pilotHost = null; pilotMode = false; storyScope?.update({ on: false }); /* the scope leaves with the optic */ params.callouts = true; delete window.__stalheartPilotTest; restoreSeat(); }   /* back to the hull, at the lens and the view the seat was taken from: the seat's zoom narrowed it (owner, 2026-09-15: the tank after the gunship at the wrong angle; 2026-09-23: and after SOL-82 too) */ let seatBase = null; function restoreSeat() { const b = restoreSeatView(seatBase); seatBase = null; camera.fov = b.fov; camera.updateProjectionMatrix(); if (!b.lock && document.pointerLockElement) document.exitPointerLock?.(); setView(b.view); snapCamera(); }   /* THE ONE RESTORE (src/domain/seat-view.js): every leave puts back the camera the FIRST seat of the chain recorded, whichever seat comes next, and drops a pointer lock the hull never asked for */
+  // back to the hull, at the lens and the view the seat was taken from: the seat's zoom narrowed it (owner, 2026-09-15: the tank
+  // after the gunship at the wrong angle; 2026-09-23: and after SOL-82 too)
+  function leavePilot() {
+    if (!pilotMode) return;
+    seatGlide.cancel();
+    pilot?.dispose();
+    for (const tw of towers) hushRotor(tw);
+    pilot = null;
+    pilotHost = null;
+    pilotMode = false;
+    // the scope leaves with the optic
+    storyScope?.update({ on: false });
+    params.callouts = true;
+    delete window.__stalheartPilotTest;
+    restoreSeat();
+  }
+  let seatBase = null;
+  // THE ONE RESTORE (src/domain/seat-view.js): every leave puts back the camera the FIRST seat of the chain recorded, whichever
+  // seat comes next, and drops a pointer lock the hull never asked for
+  function restoreSeat() {
+    const b = restoreSeatView(seatBase);
+    seatBase = null;
+    camera.fov = b.fov;
+    camera.updateProjectionMatrix();
+    if (!b.lock && document.pointerLockElement) document.exitPointerLock?.();
+    setView(b.view);
+    snapCamera();
+  }
   function enterPilot(posts) { closeShop(); keys.left = keys.right = keys.fast = keys.slow = keys.laser = false; pilot?.dispose(); seatBase = baseFor(seatBase, pilotMode || laserStation.seated(), { view: params.view, fov: camera.fov }); pilotMode = true;   // one optic at a time: a hand-over while already piloting replaces the panel. the story hands over its mounts
     function installPilot(key) {
       const old=pilotMounts[pilotPost];
