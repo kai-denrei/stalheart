@@ -2773,6 +2773,16 @@ try{
  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'n',code:'KeyN'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'n',code:'KeyN'});await delay(1500);
  const left=await evaluate(`${T}.state().breaches.length`);assert.equal(left,0,`N filled every open hole (${open} -> ${left})`);
  current='nuke-key';await finish();
+ // ...AND IT FINISHES THE ROUND AT THE CANYON (owner, 2026-10-07: 'sector 7: pressing N does not finish the round'): the canyon's hole
+ // sealed before its pass left the gate side locked for ever; now the gate opens and N forgoes what is still to open
+ const {SECTOR_DOOR}=await import('../src/content/sectors.js');
+ await go('nuke-key-canyon',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${SECTOR_DOOR.earliest-1}#td`);
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);
+ await until(`${T}.state().sector.canyon && ${T}.state().sector.canyon.floor>20`,60000);await until(`${T}.state().performance.enemies>=50`,60000);
+ await send('Input.dispatchKeyEvent',{type:'keyDown',key:'n',code:'KeyN'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'n',code:'KeyN'});await delay(1500);
+ for(let k=0;k<30;k++){const S=await evaluate(`JSON.stringify({phase:${T}.state().sector.phase,alive:${T}.state().performance.enemies,holes:${T}.state().breaches.length,canyon:${T}.state().sector.canyon?.phase})`);const s=JSON.parse(S);if(k%5===0)console.log(`NUKE KEY canyon +${k*2}s ${S}`);if(s.phase==='secure'||s.phase==='debrief')break;await evaluate(`${T}.sectorCull(999)`);if(s.holes>0){await send('Input.dispatchKeyEvent',{type:'keyDown',key:'n',code:'KeyN'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'n',code:'KeyN'});}await delay(2000);}
+ const ph=await evaluate(`${T}.state().sector.phase`);assert(ph==='secure'||ph==='debrief',`the round ends after N at the canyon (${ph})`);
+ current='nuke-key-canyon';await finish();
  } else if(args.includes('--footprints')) {
  // THE FOOTPRINTS (owner, 2026-10-07: the solar array solid, but no building's whole perimeter an invisible wall; src/domain/footprint.js):
  // the grown base's solid structures, each with its holder point and the lattice cells round it the base calls solid

@@ -2478,7 +2478,7 @@ export function initTdTab(root) {
       showToast('<div class="wave-num">CHEAT · MISSILE LOADED</div>'
         + `<div class="wave-role">ready ${strike.ready}</div>`, 1200);
     }
-    if (cheat && k === 'n') { let n = 0; for (const sp of spawnPoints) if (sp.alive && sp.obj?.userData.breach) { executeStrike(sp.ci, t); n++; } showToast(`<div class="wave-num">CHEAT · HOLES NUKED · ${n}</div>`, 1200); }   /* N FOR NUKE (owner, 2026-10-07): the open holes filled, to move on to the thing being debugged */
+    if (cheat && k === 'n') { let n = 0; for (const sp of spawnPoints) if (sp.alive && sp.obj?.userData.breach) { executeStrike(sp.ci, t); n++; } sectorRun?.test.forgo(); showToast(`<div class="wave-num">CHEAT · HOLES NUKED · ${n}</div>`, 1200); }   /* N FOR NUKE (owner, 2026-10-07): holes filled, the rest forgone */
     // Q/E nudge the throttle lever from the keyboard — up for speed, down
     // through zero into reverse. Key auto-repeat does the holding.
     if (down && (k === 'q' || k === 'e')) {

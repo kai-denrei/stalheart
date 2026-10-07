@@ -318,6 +318,11 @@ export function createSectorRun(h) {
       h.hud(); return;
     }
     const sp = sps.get(canyon.id), b = breachOf(canyon.id);
+    // THE CANYON SEALED BEFORE ITS PASS (owner, 2026-10-07: 'pressing N does not finish the round'; a nuke on the canyon's hole did the
+    // same): its queued pulses never come (the spawn clock stops with no hole alive, so they never left the queue either, and `queued`
+    // held this tick forever), so there is no pass to lay over an empty canyon: the gate side opens now. Sealed by a weapon (the breach
+    // closed), not spent: the hole collapses on its own once its one swarm is out, and the pass is laid over the swarm, not the hole
+    if (b && b.state === 'closed') { canyon.phase = 'done'; for (const x of sector.breaches) if (x.openAt === Infinity) x.openAt = t; h.hud(); return; }
     if (!sp || !b || b.wavesReleased < 1 || h.queued(sp)) return;
     canyon.upAt ??= t;
     if (t - canyon.upAt < CANYON.seatAfter) return;
@@ -456,6 +461,7 @@ export function createSectorRun(h) {
       keepHolding: () => next(),
       // an acceptance run about something else (towers, the gunship, expeditions): no programme waves and no gate wear
       quiet: (on) => { quiet = !!on; },
+      forgo: () => { const t = now(), ids = pending.splice(0); for (const id of ids) closeBreach(sector, id, CLOSER_OF.strike, t); if (ids.length) { retarget(); h.hud(); } return ids.length; },   // the breaches still to open never do: closed as struck (N for nuke, dev: the round ends once the bodies are dead; a breach is born 'open', so isSecure needs them closed)
       doorNext: () => { if (doorAt === null && def) doorAt = def.n + 1; return doorAt; },   // the back door next, whatever is unlocked
       report: () => lastReport,
       reports: () => reports.slice(),

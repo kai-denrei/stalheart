@@ -78,6 +78,19 @@ Evidence:
 - TIMELINE=1 scripts/browser-lock.sh node scripts/browser-test.mjs --canyon-again before: CANYON TIMELINE {passOff 18, secure 166, debrief 270}, far 318 until +140; after: {passOff 4, secure 147, debrief 155}, far 319 -> 42 by +91
 - npm test (185)
 
+## 2026-10-07 — Sector 7 ends again: a canyon sealed before its pass opens the gate side at once instead of locking it for ever, and N forgoes the breaches still to open
+
+change · resolved · 2026-10-07-the-canyon-sealed-before-its-pass-and-n-forgoes-the-rest
+
+Owner, 2026-10-07 (twenty-ninth notes, 2): 'something odd with sector 7. Both in normal mode and in cheat mode, pressing N does not finish the round. I suspect it has to do with how we manage the different canyon wave.' Read: the canyon sector holds its gate-side breaches at openAt Infinity until the pass is over, and tickCanyon waits for the canyon's swarm to be out (wavesReleased, not queued) before laying the pass. A nuke on the canyon's hole (N, or the gunship's MK-9 in normal play) killed the hole with its pulses still queued; the spawn clock only runs while a hole is alive, so those entries never left the queue, `queued` held the tick for ever, the pass was never laid and the gate side never opened: pending never emptied and the sector could not secure. On top of that, a breach is born 'open' before its hole appears, so even emptied pending left isSecure false.
+
+src/fx/sector-run.js tickCanyon: the canyon's breach closed by a weapon (state 'closed'; not 'spent', the hole collapses on its own once its swarm is out and the pass is laid over the swarm) ends the canyon phase and opens the gate side at once. test API forgo(): the pending breaches closed as struck (closeBreach), retargeted; the N key calls it after filling the holes (td-tab, the comment trimmed to pay for it). --nuke-key gains the canyon case: N at THE CANYON AGAIN, the round SECURE in the same tick. First cut keyed on the hole being dead and skipped every pass (test/sector-run caught it: the hole is collapsed by the spend loop before the pass).
+
+Evidence:
+
+- --nuke-key: PASS nuke-key, NUKE KEY canyon +0s {phase secure, holes 0, canyon done}, PASS nuke-key-canyon
+- node test/sector-run.mjs; npm test (185)
+
 ## 2026-10-07 — The gunship's 40 mm twice the blast: the burst twice as wide, four damage a round over a blast of 2.2 cells, distinctly above the quiver and the mortar
 
 change · resolved · 2026-10-07-the-bofors-twice-the-blast
