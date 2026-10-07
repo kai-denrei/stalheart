@@ -61,7 +61,7 @@ import { createLaserStation, structureLostHtml } from './fx/laser-station.js'; i
 import { computeBerths, berthIndexFor } from './berths.js'; import { createProgrammeHost } from './fx/programme-host.js'; import { strikeFallPose, droneRidePose, bastionPose, tankViewPose } from './domain/camera-goal.js'; import { createShopRadial } from './fx/shop-radial.js'; import { berthRun, berthHeading, deployU, easeDeploy, deployFraming } from './domain/deploy-path.js';
 import { createSkyRig } from './fx/sky-rig.js'; import { createIsaoMoments } from './fx/isao-moments.js'; import { createColonyTick } from './fx/colony-tick.js'; import { createAutoSupport } from './fx/auto-support.js';
 import { createCanyonRun } from './fx/canyon-run.js'; import { createEndingHost } from './fx/ending-host.js'; import { createIsaoWorker } from './fx/isao-worker.js'; import { createHullDrive } from './fx/hull-drive.js'; import { createTowerCombat } from './fx/tower-combat.js';
-import { createEnemyStep } from './fx/enemy-step.js'; import { createTankLaser } from './fx/tank-laser.js'; import { createPlasmaBeams } from './fx/plasma-beams.js'; import { createWarnRing } from './fx/warn-ring.js'; import { createHullHost } from './fx/hull-issue.js';
+import { createEnemyStep } from './fx/enemy-step.js'; import { createTankLaser } from './fx/tank-laser.js'; import { createPlasmaBeams } from './fx/plasma-beams.js'; import { createWarnRing } from './fx/warn-ring.js'; import { createHullHost } from './fx/hull-issue.js'; import { createWaveCard } from './fx/wave-card.js';
 import { wantsSecondary, shellsForAll } from './autofire.js';
 import { PLASMA_DEFAULTS } from './beamdraw.js';
 import { sub3, add3, scale3, dot3, cross3, norm3, len3, dist3, segKey, tangentBasis } from './vec3.js';
@@ -75,7 +75,7 @@ import { applyFontPack, currentFontPack, loadTypeFeel } from './fonts.js';
 import { UNITS, buildUnit, buildCreature, preloadMork, makeShieldShell, preloadContainer, makeContainerFixture, makeBulletCloud, makeRewardSolid, makeShellSolid, makeDebris, makeDotBurst, makeHeartCloud, makeDotEnemy } from './units.js';
 import { LOOKS } from './looks.js';
 import { makeCellIndex } from './cellindex.js';
-import { CREATURE_TINTS, ENEMY_SPEC, INTROS, computeWavePlan } from './enemyspec.js';
+import { CREATURE_TINTS, ENEMY_SPEC, INTROS } from './enemyspec.js';
 import { PICKUPS } from './pickups.js'; import { hushRotor } from './fx/rotor-voice.js';
 import { rankFor, rankLabel, badgeSVG } from './ranks.js';
 import { beamStep, isBeamStep } from './beamranks.js';
@@ -3196,79 +3196,33 @@ export function initTdTab(root) {
     updateHud();
   }
 
-  // wave announcement banner — HokorobiTawaa's "New Threat" card, complete with its spinning live model of the enemy. The sprite
-  // renderer is ONE persistent context created up front (never per-announcement — contexts are a scarce browser resource and leak
-  // on loss).
+  // THE WAVE CARD (src/fx/wave-card.js): HokorobiTawaa's "New Threat" banner with its live model, and the next-wave chip
   const waveEl = root.querySelector('#td-wave');
   let waveTimer = null;
-  // preserveDrawingBuffer: the glossary snapshots toDataURL() this canvas
-  const waveSpriteRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-  waveSpriteRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  waveSpriteRenderer.setSize(96, 96);
-  waveSpriteRenderer.domElement.className = 'wave-sprite';
-  const waveScene = new THREE.Scene();
-  const waveCam = new THREE.PerspectiveCamera(38, 1, 0.1, 10);
-  waveCam.position.set(0, 0.55, 2.7);
-  waveCam.lookAt(0, 0.3, 0);
-  waveScene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 2.6));
-  const waveSun = new THREE.DirectionalLight(0xffffff, 1.4);
-  waveSun.position.set(2, 3, 2);
-  waveScene.add(waveSun);
-  let waveUnit = null;
-
-  function announceWave(intro) {
-    const tint = '#' + CREATURE_TINTS[intro.type].toString(16).padStart(6, '0');
-    const spec = ENEMY_SPEC[intro.type];
-    // the one fact the player must not miss: can I drive over it?
-    const ram = spec.rammable
-      ? '<div class="wave-ram" style="color:#66ff88">▼ RAMMABLE — run it over</div>'
-      : '<div class="wave-ram" style="color:#ff5340">× DO NOT RAM — shells only</div>';
-    waveEl.style.borderColor = tint;
-    waveEl.style.color = tint;
-    waveEl.innerHTML = `<div class="wave-num">WAVE ${intro.wave} · NEW THREAT</div>` +
-      `<div class="wave-name">${intro.label}</div>` +
-      `<div class="wave-role">${intro.role}</div>` + ram;
-    // live model between the header and the name (innerHTML wipe means the
-    // canvas must be re-inserted each announcement)
-    waveEl.insertBefore(waveSpriteRenderer.domElement, waveEl.querySelector('.wave-name'));
-    if (waveUnit) { waveScene.remove(waveUnit); disposeObj(waveUnit); }
-    waveUnit = buildCreature(intro.type, { walker: CREATURE_TINTS[intro.type], walkerHi: 0xffffff });
-    // mesh units stand on y=0, clouds center on the origin — lift clouds
-    if (waveUnit.userData.kind === 'cloud') waveUnit.position.y = 0.3;
-    waveScene.add(waveUnit);
-    waveEl.classList.remove('hidden');
-    clearTimeout(waveTimer);
-    waveTimer = setTimeout(() => waveEl.classList.add('hidden'), 4200);
-  }
-
-  const nextEl = root.querySelector('#td-next');
-  function updateNextPreview() {
-    if (player.won || !nextEl) { nextEl && nextEl.classList.add('hidden'); return; }
-    const n = wave + 1;
-    const plan = computeWavePlan(n, round, params.waveSize, threatMult);
-    const chips = plan.entries.map((e, i) => {
-      const tint = '#' + CREATURE_TINTS[e.type].toString(16).padStart(6, '0');
-      const mark = i === 0 ? '◈' : '●';
-      const nm = (INTROS.find((iv) => iv.type === e.type)?.label || e.type).toLowerCase();
-      return `<span class="nx-chip" style="color:${tint}">${mark} ${nm} ×${e.count}</span>`;
-    }).join('');
-    if (storyMode) { nextEl.classList.add('hidden'); return; } const frozen = buildFrozen() || shotId() === 'reveal';   // the story world has no wave clock to count down
-    let when;
-    if (frozen) when = 'ready · leave BUILD to engage';
-    else if (waveActive && !enemies.every((e) => !e.alive)) {
-      // mid-wave the chip said 'clear the field' — permanent furniture
-      // saying something the board already says. It HIDES now: the chip
-      // appears at wave-clear with the countdown and leaves at spawn.
-      nextEl.classList.add('hidden');
-      return;
-    }
-    // the armed countdown is the truth once it is running — during a stall
-    // the gap clock is not what decides when the wave lands
-    else if (waveIn >= 0) when = `in ${Math.max(0, Math.ceil(waveIn))}s`;
-    else when = `in ${Math.max(0, Math.ceil(params.waveGap - interClock))}s`;
-    nextEl.innerHTML = `<div class="nx-head">NEXT WAVE ${n} · ${when}</div><div class="nx-row">${chips}</div>`;
-    nextEl.classList.remove('hidden');
-  }
+  const waveCard = createWaveCard({
+    root,
+    waveEl,
+    disposeObj,
+    player,
+    params,
+    buildFrozen,
+    shotId,
+    enemies,
+    wave: () => wave,
+    round: () => round,
+    threatMult: () => threatMult,
+    storyMode: () => storyMode,
+    waveActive: () => waveActive,
+    waveIn: () => waveIn,
+    interClock: () => interClock,
+    waveTimer: () => waveTimer,
+    setWaveTimer: (v) => (waveTimer = v),
+    // preserveDrawingBuffer: the glossary snapshots toDataURL() this canvas
+    makeRenderer: () => new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }),
+  });
+  const { waveSpriteRenderer, waveScene, waveCam } = waveCard;
+  function announceWave(...a) { return waveCard.announceWave(...a); }
+  function updateNextPreview(...a) { return waveCard.updateNextPreview(...a); }
 
   // tower-unlock toast — own element (#td-tower) so it never clobbers the
   // enemy "NEW THREAT" waveEl card that fires on the same spawnWave() call
@@ -5929,6 +5883,7 @@ export function initTdTab(root) {
     heartSprite.userData.tick(t);
 
     // announce card: spin the introduced enemy while the banner is up
+    const waveUnit = waveCard.unit();
     if (waveUnit && !waveEl.classList.contains('hidden')) {
       waveUnit.rotation.y = t * 0.8; // HokorobiTawaa's announce spin
       if (waveUnit.userData.tick) waveUnit.userData.tick(t);

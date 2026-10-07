@@ -540,7 +540,7 @@ The story's per-frame tick leaves `src/fx/programme-host.js` for modules named a
 - Create: `src/fx/wave-card.js` — from td-tab 3533–3602 (`waveEl`, `waveTimer`, the sprite renderer, scene, camera, sun, `waveUnit`, `announceWave`, `nextEl`, `updateNextPreview`), as `createWaveCard(root, host) -> { announce(wave), preview(), dispose() }`. **Behaviour unchanged**, the second renderer included; its replacement by a render target on the main renderer is the owner's call (recorded in Task 18).
 - Test: `test/wave-card.mjs` on a fake `THREE` surface? No: it constructs a real `WebGLRenderer`; test the HTML the card writes by stubbing `createWaveCard`'s renderer through an injected `makeRenderer` host member (default `() => new THREE.WebGLRenderer(...)`), which the test replaces with a recorder.
 
-- [ ] Steps as Task 8. Suites: `--defense`, `--sectors`, `--round9`. Commit — `The wave card is src/fx/wave-card.js (unchanged: its own renderer is an open finding)`.
+- [x] Steps as Task 8. Suites: `--defense`, `--sectors`, `--round9`. Commit — `The wave card is src/fx/wave-card.js (unchanged: its own renderer is an open finding)`.
 
 ---
 
