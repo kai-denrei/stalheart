@@ -6,7 +6,7 @@ export const EXPLOSION_MODULES = Object.freeze(['rotary-pop', 'bofors-burst', 'h
 export const EXPLOSION_USES = Object.freeze({
   // radii from the owner's brief (a cell is 10 m), doubled in the seat, then half again for effect (owner, 2026-09-14)
   'gunship.rotary': Object.freeze({ module: 'rotary-pop', scale: 1.65 }),    // 25 mm: 4.5 m module, ~7.5 m, 0.4 s
-  'gunship.bofors': Object.freeze({ module: 'bofors-burst', scale: 1.35 }),  // 40 mm: 11 m module, ~15 m, 1.2 s
+  'gunship.bofors': Object.freeze({ module: 'bofors-burst', scale: 2.7 }),   // 40 mm: 11 m module, ~30 m, 1.2 s: twice what it was (owner, 2026-10-07)
   'gunship.heavy': Object.freeze({ module: 'howitzer-blast', scale: 1.41 }), // 105 mm: 32 m module, ~45 m, 3 s — kept for the retired shell's record and the tank-tier blast
   // THE MK-9 MINI NUKE (owner, 2026-09-16): the gunship's third weapon is a missile now, and it yields like one. The orbital
   // strike's own module at 0.8 is ~72 m and 10 s: half again the 105's 45 m fireball and its column, and clearly short of the
@@ -52,7 +52,7 @@ export const EXPLOSION_USES = Object.freeze({
 // drove every body out of SOL's footprint and the canyon pass took half as many; its ignition and its plume still scatter the swarm
 export const EXPLOSION_SCARE = Object.freeze({
   'gunship.rotary': Object.freeze({ cells: 2, seconds: 1.2 }),
-  'gunship.bofors': Object.freeze({ cells: 3, seconds: 1.8 }),
+  'gunship.bofors': Object.freeze({ cells: 5, seconds: 1.8 }),   // a wider scare for the wider burst (2026-10-07)
   'gunship.heavy': Object.freeze({ cells: 6, seconds: 2.5 }),
   'gunship.nuke': Object.freeze({ cells: 10, seconds: 4 }),   // the swarm scatters from a mini nuke: 100 m of bodies turned and running, four seconds of it
   'tank.shell': Object.freeze({ cells: 2, seconds: 1.2 }),

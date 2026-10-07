@@ -136,7 +136,8 @@ console.log('downtime:');
 // modelled: RELEASED while the motor is cold, IGNITED once it lights at `freeFall`, impact at `travel`. One release a pass.
 console.log('the gunship\'s MK-9:');
 {
-  check('the third gun is the nuke, and it is the widest', GUNSHIP_GUNS.heavy.blastCells > GUNSHIP_GUNS.bofors.blastCells * 3 && GUNSHIP_GUNS.heavy.perPass === 1);
+  check('the third gun is the nuke, and it is the widest', GUNSHIP_GUNS.heavy.blastCells > GUNSHIP_GUNS.bofors.blastCells * 2 && GUNSHIP_GUNS.heavy.perPass === 1);
+  check('the bofors twice the rotary\'s blast and more (owner, 2026-10-07: distinctly more powerful than the quiver or mortar)', GUNSHIP_GUNS.bofors.blastCells >= 2 && GUNSHIP_GUNS.bofors.damage >= 4 && GUNSHIP_GUNS.bofors.dangerCells > GUNSHIP_GUNS.bofors.blastCells);
   check('it falls before it burns', GUNSHIP_GUNS.heavy.freeFall > 0 && GUNSHIP_GUNS.heavy.travel > GUNSHIP_GUNS.heavy.freeFall);
   const O = { pass: 10, station: 400 }, st = makeGunship(O, { station: true }); mountGunship(st);
   check('ready, nothing painted', heavyState(st, GUNSHIP_GUNS).phase === 'ready' && launchHeavy(st, GUNSHIP_GUNS) === -1);

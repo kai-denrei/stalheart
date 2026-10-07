@@ -18,7 +18,7 @@ assert.equal(EXPLOSION_SCARE['gunship.ignite'], undefined, 'a motor lighting in 
 }
 for (const [use, spec] of Object.entries(EXPLOSION_USES)) {
   assert.ok(EXPLOSION_MODULES.includes(spec.module), `${use}: unknown module ${spec.module}`);
-  assert.ok(spec.scale > 0 && spec.scale <= 2, `${use}: scale ${spec.scale}`);
+  assert.ok(spec.scale > 0 && spec.scale <= 3, `${use}: scale ${spec.scale}`);   // 3: the bofors burst at 2.7 since 2026-10-07 (twice its size; the adapter scales a uniform, nothing caps it)
 }
 assert.deepEqual(Object.keys(EXPLOSION_PALETTE), ['white', 'hot', 'warm', 'ember', 'smoke', 'soot']);
 for (const hex of Object.values(EXPLOSION_PALETTE)) assert.match(hex, /^#[0-9a-f]{6}$/);

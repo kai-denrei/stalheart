@@ -78,6 +78,20 @@ Evidence:
 - TIMELINE=1 scripts/browser-lock.sh node scripts/browser-test.mjs --canyon-again before: CANYON TIMELINE {passOff 18, secure 166, debrief 270}, far 318 until +140; after: {passOff 4, secure 147, debrief 155}, far 319 -> 42 by +91
 - npm test (185)
 
+## 2026-10-07 — The gunship's 40 mm twice the blast: the burst twice as wide, four damage a round over a blast of 2.2 cells, distinctly above the quiver and the mortar
+
+change · resolved · 2026-10-07-the-bofors-twice-the-blast
+
+Owner, 2026-10-07 (twenty-ninth notes, 1): 'make the explosions from the Gunship secondary 2x bigger than they are now, and more AoE damage. Should feel distinctly more powerful than the quiver or mortar.' The Bofors was 2.6 damage over 1.1 cells with its burst drawn at 1.35 of the 11 m module (about 15 m); the quiver does 0.14 a seeker shot, the mortar 0.3 with a 2.2 splash.
+
+src/content/gunship.js bofors: damage 4, blastCells 2.2 (four times the ground), dangerCells 2.6 (the pilot's own danger wider with it); src/content/explosions.js 'gunship.bofors' scale 2.7 (about 30 m) and its scare 5 cells. Both the pilot's rounds and the automated gun land through the same path (src/fx/gunship-auto.js landed: splash falloff over blastCells, the burst at the point). test/gunship.mjs pins it (the nuke still the widest at 2.5 times); test/explosions-content.mjs's scale cap raised to 3 (a sanity bound; the adapter scales a uniform).
+
+Alternatives: The 105's howitzer-blast module for the Bofors: three seconds a burst at 2.4 rounds a second stacks six on screen; the Bofors burst stretched keeps its 1.2 s
+
+Evidence:
+
+- --gunship: PASS gunship-bofors-burst, the still with the wider bursts; node test/gunship.mjs, test/gunship-auto-safe.mjs, test/explosions-content.mjs
+
 ## 2026-10-07 — The base itself under the constellation: the run's own buildings on the finale's planet at their true size, the heads off the base's own ARC-01, and the black hole's shadow steady
 
 change · resolved · 2026-10-07-the-base-itself-under-the-constellation
