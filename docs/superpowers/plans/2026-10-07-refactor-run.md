@@ -561,7 +561,7 @@ The story's per-frame tick leaves `src/fx/programme-host.js` for modules named a
 - Create: `src/fx/strike-console.js` — from td-tab 2860–3037 (`armBtn`…`launchLatin`, `refuseArm`, `armUiKey`, `syncArmUi`, the listeners, `executeStrike`, `strikePortalsBefore`) and 404–443 (`strikecamEl`, `scInfoEl`, `scRangeEl`, `strikingUi`, `STRIKE_M_PER_UNIT`, `scSkipEl`, `strikeFeedInfo`, `syncStrikeFeed`): `createStrikeConsole(root, host) -> { syncArmUi(), syncStrikeFeed(), executeStrike(), striking: () => strikingUi }`.
 - Test: `test/strike-console.mjs` — `syncArmUi` for the four arm states on a fake root (the class list and text written), old vs new.
 
-- [ ] Steps as Task 8. Suites: `--nuke-key`, `--defense`, `--laser-game`, `--round13`. Commit — `The strike console is src/fx/strike-console.js; td-tab -<n> lines`.
+- [x] Steps as Task 8. Suites: `--nuke-key`, `--defense`, `--laser-game`, `--round13`. Commit — `The strike console is src/fx/strike-console.js; td-tab -<n> lines`.
 
 ---
 

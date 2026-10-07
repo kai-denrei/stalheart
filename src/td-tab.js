@@ -60,9 +60,10 @@ import { computeBerths, berthIndexFor } from './berths.js'; import { createProgr
 import { createSkyRig } from './fx/sky-rig.js'; import { createIsaoMoments } from './fx/isao-moments.js'; import { createColonyTick } from './fx/colony-tick.js'; import { createAutoSupport } from './fx/auto-support.js';
 import { createCanyonRun } from './fx/canyon-run.js'; import { createEndingHost } from './fx/ending-host.js'; import { createIsaoWorker } from './fx/isao-worker.js'; import { createHullDrive } from './fx/hull-drive.js'; import { createTowerCombat } from './fx/tower-combat.js';
 import { createEnemyStep } from './fx/enemy-step.js'; import { createTankLaser } from './fx/tank-laser.js'; import { createPlasmaBeams } from './fx/plasma-beams.js'; import { createWarnRing } from './fx/warn-ring.js'; import { createHullHost } from './fx/hull-issue.js'; import { createWaveCard } from './fx/wave-card.js'; import { createTankInput } from './platform/tank-input.js'; import { createBuildPointer } from './fx/build-pointer.js';
+import { createStrikeConsole } from './fx/strike-console.js';
 import { wantsSecondary, shellsForAll } from './autofire.js';
 import { PLASMA_DEFAULTS } from './beamdraw.js';
-import { sub3, add3, scale3, dot3, cross3, norm3, len3, dist3, segKey, tangentBasis } from './vec3.js';
+import { sub3, add3, scale3, dot3, cross3, norm3, len3, dist3, segKey } from './vec3.js';
 import { CREATURES, waveJelly } from './creatures.js';
 import { brief, lineDwell, BRIEFS } from './isaobriefs.js'; import { lookIsao } from './fx/isao-look.js';
 import { drawEmotion } from './emotions.js';
@@ -97,8 +98,7 @@ import { makeBloom } from './postfx.js';
 import { TANK_FEEL, makeTankFeel, stepTankFeel, landTankFeel, fireTankFeel, applyTankFeel, applyTankHealth } from './tankfeel.js';
 import { FEEL } from './feelstore.js';
 import { makeStrike, makeStrikeParams, grantStrikes, stepStrike,
-  toggleArm, launchStrike, stepFall, fallProgress,
-  strikeDamage, orbitProgress } from './strike.js'; import { makeGunship, onStation, phaseLeft, selectGun, startStation } from './domain/gunship.js'; import { GUNSHIP_GUNS, GUNSHIP_ORBIT } from './content/gunship.js'; import { createGunshipBriefing } from './fx/gunship-briefing.js'; import { createFoundryFx } from './fx/foundry-fx.js'; import { createExplosions } from './fx/explosions.js';
+  stepFall, fallProgress } from './strike.js'; import { makeGunship, onStation, phaseLeft, selectGun, startStation } from './domain/gunship.js'; import { GUNSHIP_GUNS, GUNSHIP_ORBIT } from './content/gunship.js'; import { createGunshipBriefing } from './fx/gunship-briefing.js'; import { createFoundryFx } from './fx/foundry-fx.js'; import { createExplosions } from './fx/explosions.js';
 import { createRadarScope } from './fx/radar-scope.js'; import { createTowerAim } from './fx/tower-aim.js'; import { buildVarsModal } from './fx/vars-modal.js'; import { startVictoryPull } from './fx/victory-pull.js'; import { createShowcaseHooks } from './fx/showcase-hooks.js'; import { createGunshipRig } from './fx/gunship-rig.js';
 import { makeA6, arc as a6Arc } from './heptapod.js';
 import { DEFAULT_TOWER_LOOK, buildTowerLook, preloadLook, lookReady } from './towerlooks.js';
@@ -459,46 +459,7 @@ export function initTdTab(root) {
   const strikeTune = makeStrikeParams();
   let strikeGrace = 0;   // s after launch during which a tap cannot skip
   let shopMute = 0;      // s after impact during which the shop stays shut
-  const strikecamEl = root.querySelector('#td-strikecam');
-  const scInfoEl = root.querySelector('#sc-info');
-  const scRangeEl = root.querySelector('#sc-range');
-  let strikingUi = false;
-  // The feed: B&W filter class, the ops HUD, and the range counter. The
-  // counter is the camera's own distance to the target in fictional metres —
-  // it rides the same smoothstep as the fall, so it decelerates hard as the
-  // ground arrives, which is what makes the last 200m feel like a held
-  // breath rather than a number spinning to zero.
-  const STRIKE_M_PER_UNIT = 4800;   // planet radius 1 == ~4.8km of fiction
-  const scSkipEl = root.querySelector('#td-strikecam .sc-skip');
-  function strikeFeedInfo() {
-    const ci = strike.fallCi;
-    scInfoEl.textContent =
-      `ORBITAL STRIKE · OTS-723\n`
-      + `WARHEAD 489KG · KINETIC\n`
-      + `TGT CELL ${String(Math.max(0, ci)).padStart(4, '0')} · SECTOR R${round}\n`
-      + `FEED SAT-CAM 2 · LIVE`
-      + (strike.retargetsLeft > 0 ? `\nVECTOR BURST ×${strike.retargetsLeft}` : '\nVECTOR SPENT');
-    scSkipEl.textContent = strike.retargetsLeft > 0
-      ? 'TAP GROUND TO RE-AIM · TAP SKY TO SKIP'
-      : 'TAP TO SKIP';
-  }
-  function syncStrikeFeed() {
-    const on = strike.falling > 0;
-    if (on !== strikingUi) {
-      strikingUi = on;
-      console.log(`FEED ${on ? 'ON' : 'OFF'} range=${scRangeEl.textContent}`);
-      root.classList.toggle('striking', on);
-      strikecamEl.classList.toggle('hidden', !on);
-      if (on) strikeFeedInfo();
-    }
-    if (on && strike.fallCi >= 0) {
-      const c = graph.centers[strike.fallCi];
-      const d = Math.hypot(camera.position.x - c[0], camera.position.y - c[1],
-        camera.position.z - c[2]);
-      const m = Math.max(0, Math.round(d * STRIKE_M_PER_UNIT / 10) * 10);
-      scRangeEl.textContent = `${String(m).padStart(4, '0')}M`;
-    }
-  }
+  // the strike cam's feed (strikecamEl, the ops HUD, the range counter) is the strike console's (src/fx/strike-console.js)
 
   // THE WARN RINGS (src/fx/warn-ring.js): one pooled cloud for every ring, main view only — the map has its blips
   const warnRings = createWarnRing(scene, {
@@ -2171,187 +2132,48 @@ export function initTdTab(root) {
   });
   function refuseCaption(...a) { return buildPointer.refuseCaption(...a); }
 
-  // --- LAUNCH CONTROL: DeepWatch's console, driving OUR state machine ------- The safety toggle arms, the readout narrates, the
-  // chunky button goes grey -> orange (needs a target) -> red (authorised). Same ritual, real instrument. armBtn keeps its name:
-  // it gates syncArmUi in the loop.
-  const armBtn = root.querySelector('#td-launch');
-  const safetyEl = root.querySelector('#td-safety');
-  const safetyImg = root.querySelector('#td-safety-img');
-  const launchBtn = root.querySelector('#td-launch-btn');
-  const launchStatus = root.querySelector('#td-launch-status');
-  const launchTarget = root.querySelector('#td-launch-target');
-  const launchLatin = root.querySelector('#td-launch-latin');
-  function refuseArm() {
-    // DeepWatch's flickerOrdnance: the console says no, briefly
-    armBtn.classList.remove('flicker');
-    void armBtn.offsetWidth;
-    armBtn.classList.add('flicker');
-  }
-  let armUiKey = '';
-
-  function syncArmUi() {
-    // narrate the state; write the DOM only when the state actually moves
-    const orbit = strike.reserved > 0 ? Math.round(strike.gauge * 100) : -1;
-    const reorbit = strike.cooldown > 0 ? Math.round(orbitProgress(strike) * 100) : -1;
-    const key = `${strike.armed}|${strike.target}|${strike.ready}|${strike.reserved}|${orbit}|${reorbit}`;
-    if (key === armUiKey) return;
-    armUiKey = key;
-    // the console carries its own armed state, so CSS can decide what a
-    // small screen shows: on a phone it is a SWITCH until it is armed, and
-    // the readout and the launch key only appear once you have committed
-    if (armBtn) armBtn.classList.toggle('armed', strike.armed);
-    safetyEl.setAttribute('aria-pressed', String(strike.armed));
-    safetyImg.src = strike.armed ? 'assets/ui/switch-on.png' : 'assets/ui/switch-off.png';
-    safetyEl.classList.toggle('locked', !strike.armed && (strike.ready <= 0 || strike.cooldown > 0));
-    let status, cls = 'status';
-    if (strike.armed && strike.target >= 0) { status = 'LAUNCH AUTHORIZED'; cls += ' armed'; }
-    else if (strike.armed) { status = 'AWAITING TARGET'; cls += ' armed'; }
-    else if (reorbit >= 0) {
-      // spent platform repositioning: ready assets exist but must wait
-      status = `ENTERING ORBIT ${reorbit}%`;
-      cls += ' charging';
-    } else if (strike.ready > 0) {
-      status = strike.ready > 1 ? `READY ×${strike.ready} · FLIP ON` : 'READY · FLIP TO ON';
-      cls += ' ready';
-    } else if (strike.reserved > 0) { status = `ORBIT ${orbit}%`; cls += ' charging'; }
-    else status = 'STANDBY';
-    launchStatus.textContent = status;
-    launchStatus.className = cls;
-    const locked = strike.target >= 0;
-    launchTarget.textContent = locked ? `TGT CELL ${String(strike.target).padStart(4, '0')}` : 'NO TARGET';
-    launchTarget.className = locked ? 'target set' : 'target';
-    launchBtn.className = 'launch-button' + (strike.armed ? (locked ? ' armed' : ' target') : '');
-    launchLatin.textContent = strike.armed && !locked ? 'TARGET' : 'LAUNCH';
-  }
-  safetyEl.addEventListener('click', () => {
-    const r = toggleArm(strike);
-    if (r === 'refused') { refuseArm(); return; }
-    sfx.play('tank_pickup');   // the click; DeepWatch calls it satisfying
-    if (r === 'safe') hideRangeRing();
-    armUiKey = ''; syncArmUi();
-    resize();   // armed promotes the minimap to a radar; safe demotes it
+  // --- LAUNCH CONTROL (src/fx/strike-console.js): the strike cam's feed, the safety, arm and launch over strike.js, and the blast
+  const strikeConsole = createStrikeConsole({
+    root,
+    strike,
+    camera,
+    sfx,
+    hideRangeRing,
+    resize,
+    strikeTune,
+    closeShop,
+    showToast,
+    spawnPoints,
+    enemies,
+    camDist,
+    warnRing,
+    explode,
+    updateHud,
+    checkVictory,
+    scene,
+    debris,
+    destroyTower,
+    rebuildAfterBreach,
+    breachWallCell,
+    killPortal,
+    damageEnemy,
+    checkAchievements,
+    round: () => round,
+    graph: () => graph,
+    towers: () => towers,
+    dungeon: () => dungeon,
+    cellSide: () => cellSide,
+    flashEl: () => flashEl,
+    rs: () => rs,
+    wave: () => wave,
+    run: () => run,
+    setStrikeGrace: (v) => (strikeGrace = v),
   });
-  launchBtn.addEventListener('click', () => {
-    if (strike.armed && strike.target >= 0) {
-      const ci = launchStrike(strike, strikeTune);
-      if (ci >= 0) {
-        strikeGrace = 0.25;   // the launching click must not skip its own cam
-        closeShop();          // the camera is about to ride a munition down
-        hideRangeRing();
-        sfx.play('tank_main');
-        showToast('<div class="wave-num">MUNITION RELEASED</div>'
-          + '<div class="wave-role">tap to skip to impact</div>', 1400);
-      } else refuseArm();
-      armUiKey = ''; syncArmUi();
-      resize();   // the radar stands down with the safety
-      return;
-    }
-    // orange state: the button itself says what is missing
-    refuseArm();
-  });
-
-  // The blast itself. Portals inside the radius are not damaged — they are DESTROYED, which is the reason the weapon exists.
-  // Enemies take squared falloff. The world does the announcing: rings, a kick of the same shock cloud the wave telegraph uses,
-  // and the loudest sample in the manifest.
-  function executeStrike(ci, tNow, use = 'strike.orbital', blastCells = null) {   /* blastCells: the round's own killing radius when it is not the orbital strike's — the MK-9 mini nuke is wider than the strike tune */
-    const before = {
-      portals: spawnPoints.filter((q) => q.alive).length,
-      enemies: enemies.filter((e) => e.alive).length,
-      towers: towers.length,
-      walls: dungeon.tags.filter((tg) => tg === BLOCKED).length,
-    };
-    const c = graph.centers[ci];
-    const radius = cellSide * (blastCells ?? strikeTune.blastCells);
-    sfx.play('tank_destroyed', { dist: camDist(c) });
-    // Rings tell the TRUTH now: the outermost ring IS the damage radius. The first cut drew them out to 2.2x it, so level-1
-    // fodder stood visibly "inside the blast" and walked away — the visuals were writing a cheque the falloff did not honour.
-    warnRing(ci, 0xffffff, 1.0, radius);
-    warnRing(ci, 0xffb347, 0.7, radius * 0.72);
-    warnRing(ci, 0xfff2c0, 0.45, radius * 0.42);
-    // the screen takes the hit too — the sector-reveal flash, borrowed
-    flashEl.classList.remove('on');
-    void flashEl.offsetWidth;
-    flashEl.classList.add('on');
-    // the lab's explosion for this use; the old dot-burst firework only when it could not load
-    const bn = graph.normals[ci];
-    const bp = add3(c, scale3(bn, cellSide * 0.35));
-    if (!explode(use, c)) for (const [hex, sc, cnt] of [[0xffffff, 1.5, 140], [0xfff2c0, 2.4, 110], [0xffb347, 3.4, 90], [0xff7744, 4.4, 70], [0xff4433, 5.4, 50]]) {
-      const burst = makeDotBurst(hex, bn, cnt);
-      burst.scale.setScalar(cellSide * sc);
-      burst.position.set(bp[0], bp[1], bp[2]);
-      scene.add(burst);
-      debris.push(burst);
-    }
-    // Terrain and towers, when the toggles allow. Towers FIRST: a mounted tower anchors its wall (breachWallCell refuses it), so
-    // the order is what lets one strike flatten a defended rampart. Walls batch into a single BFS + rebuild — six breaches must
-    // not cost six rebuilds. DEEPWATCH is about portals specifically, so it is counted here rather than inferred from the log
-    // line below
-    strikePortalsBefore = before.portals;
-    if (strikeTune.breakTowers) {
-      for (const tw of [...towers]) {
-        if (dist3(c, graph.centers[tw.ci]) < radius) destroyTower(tw);
-      }
-    }
-    if (strikeTune.breakWalls) {
-      let breached = 0;
-      for (let ci2 = 0; ci2 < graph.centers.length; ci2++) {
-        if (dungeon.tags[ci2] !== BLOCKED) continue;
-        if (dist3(c, graph.centers[ci2]) < radius && breachWallCell(ci2)) breached++;
-      }
-      if (breached > 0) rebuildAfterBreach();
-    }
-    for (const sp of spawnPoints) {
-      if (sp.alive && dist3(c, graph.centers[sp.ci]) < radius) {
-        sp.found = true;
-        killPortal(sp, use.startsWith('gunship.') ? 'gunship' : 'strike');
-      }
-    }
-    // THE REPLAY IS RECORDED AT IMPACT, not reconstructed later: every body
-    // near the blast, projected onto the tangent plane at ground zero in
-    // cells, and whether it was alive after. The debrief plays this back.
-    const [rbU, rbV] = tangentBasis(norm3(c));
-    const watched = [];
-    for (const e of enemies) {
-      if (!e.alive) continue;
-      const d = dist3(c, e.pos);
-      if (d < radius * 1.9) {
-        const rel = sub3(e.pos, c);
-        watched.push({ e, x: dot3(rel, rbU) / cellSide, y: dot3(rel, rbV) / cellSide, type: e.type });
-      }
-    }
-    for (const e of enemies) {
-      if (!e.alive) continue;
-      const dmg = strikeDamage(dist3(c, e.pos), radius, strikeTune);
-      if (dmg > 0) damageEnemy(e, tNow, dmg, false, 'strike', use);
-    }
-    if (rs) {
-      const killedByStrike = before.enemies
-        - enemies.reduce((n2, x) => n2 + (x.alive ? 1 : 0), 0);
-      if (killedByStrike >= rs.bestStrike.kills) {
-        rs.bestStrike = {
-          kills: killedByStrike, wave,
-          replay: {
-            radius: radius / cellSide,
-            portals: before.portals - spawnPoints.filter((q) => q.alive).length,
-            bodies: watched.map((w) => ({ x: w.x, y: w.y, type: w.type, died: !w.e.alive })),
-          },
-        };
-      }
-    }
-    updateHud();
-    checkVictory();
-    // the proof line goes LAST — its first draft sat above the kill loops
-    // and reported 2->2 portals on a direct hit: a bug in the REPORTING that
-    // read exactly like a bug in the weapon
-    console.log(`STRIKE ci=${ci}`
-      + ` portals ${before.portals}->${spawnPoints.filter((q) => q.alive).length}`
-      + ` enemies ${before.enemies}->${enemies.filter((e) => e.alive).length}`
-      + ` towers ${before.towers}->${towers.length}`
-      + ` walls ${before.walls}->${dungeon.tags.filter((tg) => tg === BLOCKED).length}`);
-    const killed = strikePortalsBefore - spawnPoints.filter((q) => q.alive).length;
-    if (killed > 0) { run.strikePortalKills += killed; checkAchievements(); }
-  }
-  let strikePortalsBefore = 0;
+  const { armBtn } = strikeConsole;
+  function strikeFeedInfo(...a) { return strikeConsole.strikeFeedInfo(...a); }
+  function syncStrikeFeed(...a) { return strikeConsole.syncStrikeFeed(...a); }
+  function syncArmUi(...a) { return strikeConsole.syncArmUi(...a); }
+  function executeStrike(...a) { return strikeConsole.executeStrike(...a); }
 
   // ☆ flash the neighbouring cell that is one hop closer to the heart
   let hintTimer = null;

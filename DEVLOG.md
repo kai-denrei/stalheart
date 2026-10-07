@@ -234,6 +234,20 @@ Evidence:
 - undef-diff, tdz-check and host contracts (47 factories) clean; tools/refactor/drop-unread.mjs drops a write-only let's getter
 - npm test, npm run check, npm run build; snapshot suites --base-look --seats --seat-switch --defense --skip-tutorial --phone --nuke-key pass
 
+## 2026-10-07 — The strike console is src/fx/strike-console.js
+
+change · accepted · 2026-10-07-strike-console-is-a-module
+
+The refactor run's Task 16: the orbital strike's feed (the strike cam, the ops HUD, the range counter) near the top of src/td-tab.js and its launch console (the safety, the arm, the launch, the refusals and executeStrike, the blast) about 1,700 lines further down.
+
+createStrikeConsole(host) owns both, created where the launch console stood so its listeners register at the same point of start-up; the feed's declarations moved down with it (they are only read at run time). The strike's state (strike, strikeTune, strikeGrace) stays in td-tab; towers and flashEl are lazy getters; strikeGrace is written through a setter alone. armBtn is destructured and strikeFeedInfo, syncStrikeFeed, syncArmUi and executeStrike stay one-liners for their callers (the gunship rig, the build pointer, the acceptance hooks). Five imports left td-tab. td-tab 6,456 -> 6278 lines.
+
+Evidence:
+
+- Equivalence harness (session scratchpad strike-scenario.mjs): the original blocks through new Function beside the module over a real strike state machine (strike.js): its click handlers fired, syncArmUi after each, a blast, the feed on and off: identical logs; test/strike-console.mjs pins the digest
+- undef-diff, tdz-check and host contracts (48 factories) clean
+- npm test, npm run check, npm run build; snapshot suites --base-look --nuke-key --defense --laser-game --round13 --gunship --sectors pass
+
 ## 2026-10-07 — A gameplay change to investigate: the player starts with a truck that rams the weak and lures the hard-core to the defence; the tank with its cannon is unlocked later; the plasma thrusters after that
 
 decision · proposed · 2026-10-07-start-with-the-truck-unlock-the-tank-then-the-thrusters
