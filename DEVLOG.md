@@ -206,6 +206,24 @@ Evidence:
 - --footprints: solar {atSolid false, solid 3 of 55 cells}, hugin {false, 3 of 50}, rocket-a {true, 1 of 54}, foundry {true, 1 of 55}, launcher {false, 4 of 56}; PASS footprints
 - node test/footprint.mjs; npm run architecture (125 modules)
 
+## 2026-10-07 — The controller's byte budget goes; its line budget becomes a ceiling re-based by decision; host contracts take the budget's job
+
+decision · accepted · 2026-10-07-byte-budget-goes-line-ceiling
+
+Owner, 2026-10-07: the refactor run is 'to identify key areas of potential improvements'; 'an arbitrary rule does not seem like the wisest choice ... including the option to get rid of our arbitrary byte budget if necessary', and the call was delegated ('default clear to get rid of it if Fable/Opus make the call that it makes sense'). The three per-commit ratchets on src/td-tab.js (lines 8,734, bytes 522,369, long lines 16) had taken it from 13,505 lines since 2026-09-25, but every one-line fix had to pay for itself with a trimmed comment, and behaviour that could not land in td-tab landed in src/fx/programme-host.js, whose build() became the story's whole per-frame tick reading 44 controller members (37 commits in twelve days).
+
+scripts/architecture.mjs reads lineCeilings instead of lineBudgets/byteBudgets: td-tab may not pass 9,000 lines, and nothing asks for the ceiling to be lowered per commit; it is re-based at the end of an extraction round. The long-line count (lines over 500 characters, 16) still ratchets down, which is what stops packing. The hint prefix is 'Guard:'. Ownership is checked by test/host-contracts.mjs (the refactor run's Task 2). AGENTS.md, docs/ARCHITECTURE.md and the add-module and architecture-review skills say so.
+
+Alternatives: Keep all three ratchets: rejected, the numbers were whatever the file measured on the day and the tax pushed behaviour into hosts that read the controller's members.; Drop every size rule: rejected for this run, the ceiling is the one number that stops the controller regrowing while the hosts are split; the owner may drop it after the run.; A per-function size cap: rejected, it measures shape, not ownership, and td-tab's largest functions are the frame and the world build, which stay the controller's.
+
+Evidence:
+
+- node test/architecture.mjs (the ceiling fails only past it and never asks to be lowered; byteBudgets is no longer read; the long-line ratchet stays)
+- npm run architecture: Guard: src/td-tab.js: 8734 lines under its ceiling 9000
+- docs/superpowers/plans/2026-10-07-refactor-run.md (the budget decision)
+
+Supersedes: 2026-09-25-controller-dead-code-and-ratchets
+
 ## 2026-10-07 — Reflection to design against: an enemy that makes the tank's shell meaningful
 
 decision · proposed · 2026-10-07-an-enemy-that-makes-the-tank-shell-meaningful

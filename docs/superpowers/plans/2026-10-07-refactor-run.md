@@ -203,7 +203,7 @@ Expected: both exist.
 - Modify: `test/architecture.mjs` (the analyzer's budget cases)
 - Modify: `AGENTS.md:20`, `docs/ARCHITECTURE.md:40` (the ratchet paragraph), `.claude/skills/add-module/SKILL.md:27`, `.claude/skills/architecture-review/SKILL.md:13`
 
-- [ ] **Step 1: Write the failing test** in `test/architecture.mjs` (append; keep the existing cases):
+- [x] **Step 1: Write the failing test** in `test/architecture.mjs` (append; keep the existing cases):
 
 ```js
 {
@@ -220,9 +220,9 @@ Expected: both exist.
 }
 ```
 
-- [ ] **Step 2: Run it** — `node test/architecture.mjs` — Expected: FAIL (lineCeilings unknown, byteBudgets still enforced).
+- [x] **Step 2: Run it** — `node test/architecture.mjs` — Expected: FAIL (lineCeilings unknown, byteBudgets still enforced).
 
-- [ ] **Step 3: Change the analyzer.** Replace the `lineBudgets` and `byteBudgets` loops in `scripts/architecture.mjs` with:
+- [x] **Step 3: Change the analyzer.** Replace the `lineBudgets` and `byteBudgets` loops in `scripts/architecture.mjs` with:
 
 ```js
 export function analyzeArchitecture(sources,kernel=[],{lineCeilings={},longLines=null,topLevelModules=null}={}) {
@@ -241,7 +241,7 @@ export function analyzeArchitecture(sources,kernel=[],{lineCeilings={},longLines
 
 Keep the `longLines` loop and everything after it unchanged. Change the final success line (`:69`) to `... game/lab controller boundaries, the line ceiling, the long-line budget and top-level placement hold.` and the hint prefix (`:66`) from `Ratchet:` to `Guard:`.
 
-- [ ] **Step 4: Rewrite `docs/architecture-budget.json`:**
+- [x] **Step 4: Rewrite `docs/architecture-budget.json`:**
 
 ```json
 {
@@ -259,11 +259,11 @@ Keep the `longLines` loop and everything after it unchanged. Change the final su
 }
 ```
 
-- [ ] **Step 5: Docs.** In `AGENTS.md:20` replace "the `src/td-tab.js` line budget and the frozen top-level module list in `docs/architecture-budget.json`; budgets only go down" with "the `src/td-tab.js` line ceiling (re-based by decision after an extraction round, never ratcheted per commit), its long-line budget (only down) and the frozen top-level module list in `docs/architecture-budget.json`; host contracts are checked by `test/host-contracts.mjs`". In `docs/ARCHITECTURE.md` rewrite the paragraph at line 40 to the same effect (name the 2026-10-07 decision and why the byte budget went). In `.claude/skills/add-module/SKILL.md:27` replace the line-budget sentence with: "`src/td-tab.js` has a line ceiling. A hookup may add lines, but a block of behaviour belongs in a module with its own host literal; `test/host-contracts.mjs` fails when the literal and the module disagree." In `.claude/skills/architecture-review/SKILL.md:13` replace "the controller line budget" with "the controller line ceiling and long-line budget" and add to the evidence list: "4. `node test/host-contracts.mjs`. Quote the result."
+- [x] **Step 5: Docs.** In `AGENTS.md:20` replace "the `src/td-tab.js` line budget and the frozen top-level module list in `docs/architecture-budget.json`; budgets only go down" with "the `src/td-tab.js` line ceiling (re-based by decision after an extraction round, never ratcheted per commit), its long-line budget (only down) and the frozen top-level module list in `docs/architecture-budget.json`; host contracts are checked by `test/host-contracts.mjs`". In `docs/ARCHITECTURE.md` rewrite the paragraph at line 40 to the same effect (name the 2026-10-07 decision and why the byte budget went). In `.claude/skills/add-module/SKILL.md:27` replace the line-budget sentence with: "`src/td-tab.js` has a line ceiling. A hookup may add lines, but a block of behaviour belongs in a module with its own host literal; `test/host-contracts.mjs` fails when the literal and the module disagree." In `.claude/skills/architecture-review/SKILL.md:13` replace "the controller line budget" with "the controller line ceiling and long-line budget" and add to the evidence list: "4. `node test/host-contracts.mjs`. Quote the result."
 
-- [ ] **Step 6: Verify** — `node test/architecture.mjs && npm run architecture && npm run check` — Expected: all pass; the guard prints `Guard: src/td-tab.js: 8734 lines under its ceiling 9000`.
+- [x] **Step 6: Verify** — `node test/architecture.mjs && npm run architecture && npm run check` — Expected: all pass; the guard prints `Guard: src/td-tab.js: 8734 lines under its ceiling 9000`.
 
-- [ ] **Step 7: Commit** — `The byte budget goes and the line budget becomes a ceiling (owner's delegation, 2026-10-07): re-based by decision, never per commit; the long-line count still ratchets; ownership moves to test/host-contracts.mjs` — and record the decision with `/deban` (type decision, the alternatives: keep all three ratchets; drop every size rule; a per-function cap).
+- [x] **Step 7: Commit** — `The byte budget goes and the line budget becomes a ceiling (owner's delegation, 2026-10-07): re-based by decision, never per commit; the long-line count still ratchets; ownership moves to test/host-contracts.mjs` — and record the decision with `/deban` (type decision, the alternatives: keep all three ratchets; drop every size rule; a per-function cap).
 
 ---
 

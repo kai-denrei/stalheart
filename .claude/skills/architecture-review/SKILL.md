@@ -10,8 +10,9 @@ Find structural regressions in the diff without redesigning healthy code. Scope 
 ## Required evidence, in this order
 
 1. `git show --stat <rev>` or `git diff --stat`. State the net line change of `src/td-tab.js` and of every other file over 1,000 lines. Growth of the controller is a finding, not background.
-2. `npm run architecture`. Quote the result. The guard covers `src/core`, `src/domain`, `src/content`, controller/lab coupling, the controller line budget and top-level placement; everything else is your job.
+2. `npm run architecture`. Quote the result. The guard covers `src/core`, `src/domain`, `src/content`, controller/lab coupling, the controller line ceiling and long-line budget and top-level placement; everything else is your job.
 3. For each new concept in the diff, grep `src/domain/`, `src/core/`, `src/labs/` and `src/content/` for an existing owner of the same concept and say what you found. New code that reimplements an existing domain module (for example manual aiming beside `src/domain/manual-weapon.js`) is a parallel implementation.
+4. `node test/host-contracts.mjs`. Quote the result.
 
 ## Check for
 

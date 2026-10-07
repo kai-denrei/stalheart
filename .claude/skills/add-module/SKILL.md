@@ -5,7 +5,7 @@ description: Use when adding a new source module, rule, system or file to Stalhe
 
 # Add module
 
-A new module owns one responsibility that no existing module owns. Placement is enforced: `npm run architecture` rejects new top-level `src/*.js` files, forbidden layer imports, and any growth of `src/td-tab.js` past `docs/architecture-budget.json`.
+A new module owns one responsibility that no existing module owns. Placement is enforced: `npm run architecture` rejects new top-level `src/*.js` files, forbidden layer imports, and any growth of `src/td-tab.js` past its ceiling in `docs/architecture-budget.json`.
 
 ## Before creating it
 
@@ -24,7 +24,7 @@ A new module owns one responsibility that no existing module owns. Placement is 
 
 ## Wiring into the game
 
-`src/td-tab.js` has a line budget that only goes down. A hookup that adds lines there fails the guard. Either replace an existing inline block with the call so the net line count does not rise, or wire through an existing extension point (run context, wave stepper, reward placement). If neither is possible, extract the surrounding block into the new module first.
+`src/td-tab.js` has a line ceiling. A hookup may add lines, but a block of behaviour belongs in a module with its own host literal; `test/host-contracts.mjs` fails when the literal and the module disagree.
 
 ## Finish
 

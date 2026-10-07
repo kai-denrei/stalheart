@@ -4,21 +4,17 @@ import { posix, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const controlled=p=>/^src\/(core|domain|content)\//.test(p);
-export function analyzeArchitecture(sources,kernel=[],{lineBudgets={},byteBudgets={},longLines=null,topLevelModules=null}={}) {
+export function analyzeArchitecture(sources,kernel=[],{lineCeilings={},longLines=null,topLevelModules=null}={}) {
   const graph={},problems=[],hints=[];
-  for(const [file,budget] of Object.entries(lineBudgets)) {
+  // A CEILING, NOT A RATCHET (owner, 2026-10-07, the refactor run): the controller may not grow past the ceiling, and nothing asks
+  // for the ceiling to be lowered per commit; it is re-based by decision at the end of an extraction round. The byte budget is gone
+  // (it taxed every one-line fix with a trimmed comment and pushed behaviour into hosts); the long-line count still ratchets down,
+  // which is what stops packing. Ownership is checked by test/host-contracts.mjs.
+  for(const [file,ceiling] of Object.entries(lineCeilings)) {
     if(!Object.hasOwn(sources,file))continue;
     const lines=(sources[file].match(/\n/g)||[]).length;
-    if(lines>budget)problems.push(`${file}: ${lines} lines exceeds line budget ${budget}; extract instead of growing`);
-    else if(lines<budget)hints.push(`${file}: ${lines} lines; lower its line budget to ${lines}`);
-  }
-  // A LINE BUDGET CAN BE MET BY PACKING (2026-09-25): appending to an existing one-liner costs no line, and the controller grew 5 KB
-  // that way under a line budget it never broke. The bytes and the count of very long lines ratchet down beside it.
-  for(const [file,budget] of Object.entries(byteBudgets)) {
-    if(!Object.hasOwn(sources,file))continue;
-    const bytes=Buffer.byteLength(sources[file]);
-    if(bytes>budget)problems.push(`${file}: ${bytes} bytes exceeds byte budget ${budget}; extract instead of packing code into existing lines`);
-    else if(bytes<budget)hints.push(`${file}: ${bytes} bytes; lower its byte budget to ${bytes}`);
+    if(lines>ceiling)problems.push(`${file}: ${lines} lines exceeds its line ceiling ${ceiling}; extract instead of growing`);
+    else hints.push(`${file}: ${lines} lines under its ceiling ${ceiling}`);
   }
   if(longLines)for(const [file,budget] of Object.entries(longLines.budgets??{})) {
     if(!Object.hasOwn(sources,file))continue;
@@ -63,8 +59,8 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
   const kernel=Object.keys(JSON.parse(readFileSync(resolve(root,'docs/kernel-provenance.json'),'utf8')).files);
   const budget=JSON.parse(readFileSync(resolve(root,'docs/architecture-budget.json'),'utf8'));
   const result=analyzeArchitecture(sources,kernel,budget);
-  for(const hint of result.hints)console.log(`Ratchet: ${hint} in docs/architecture-budget.json`);
+  for(const hint of result.hints)console.log(`Guard: ${hint} in docs/architecture-budget.json`);
   if(process.argv.includes('--report')){mkdirSync(resolve(root,'artifacts'),{recursive:true});writeFileSync(resolve(root,'artifacts/architecture.json'),JSON.stringify(result,null,2)+'\n');}
   if(result.problems.length){console.error(result.problems.join('\n'));process.exitCode=1;}
-  else console.log(`Architecture: ${result.controlled.length} pure-layer modules checked; game/lab controller boundaries, line, byte and long-line budgets and top-level placement hold.`);
+  else console.log(`Architecture: ${result.controlled.length} pure-layer modules checked; game/lab controller boundaries, the line ceiling, the long-line budget and top-level placement hold.`);
 }
