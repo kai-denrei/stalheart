@@ -60,7 +60,8 @@ import { mulberry32, randomSeed } from './rng.js';
 import { createLaserStation, structureLostHtml } from './fx/laser-station.js'; import { LASER_GAME } from './content/orbital-laser.js'; import { createGlossaryModals } from './fx/glossary-modals.js'; import { makeTriadIcon, glossCard, GAMEPLAY_TIPS } from './fx/briefing-cards.js';
 import { computeBerths, berthIndexFor } from './berths.js'; import { createProgrammeHost } from './fx/programme-host.js'; import { strikeFallPose, droneRidePose, bastionPose, tankViewPose } from './domain/camera-goal.js'; import { createShopRadial } from './fx/shop-radial.js'; import { berthRun, berthHeading, deployU, easeDeploy, deployFraming } from './domain/deploy-path.js';
 import { createSkyRig } from './fx/sky-rig.js'; import { createIsaoMoments } from './fx/isao-moments.js'; import { createColonyTick } from './fx/colony-tick.js'; import { createAutoSupport } from './fx/auto-support.js';
-import { createCanyonRun } from './fx/canyon-run.js'; import { createEndingHost } from './fx/ending-host.js'; import { createIsaoWorker } from './fx/isao-worker.js'; import { createHullDrive } from './fx/hull-drive.js'; import { createTowerCombat } from './fx/tower-combat.js'; import { createEnemyStep } from './fx/enemy-step.js'; import { createTankLaser } from './fx/tank-laser.js'; import { createPlasmaBeams } from './fx/plasma-beams.js'; import { createHullHost } from './fx/hull-issue.js';
+import { createCanyonRun } from './fx/canyon-run.js'; import { createEndingHost } from './fx/ending-host.js'; import { createIsaoWorker } from './fx/isao-worker.js'; import { createHullDrive } from './fx/hull-drive.js'; import { createTowerCombat } from './fx/tower-combat.js';
+import { createEnemyStep } from './fx/enemy-step.js'; import { createTankLaser } from './fx/tank-laser.js'; import { createPlasmaBeams } from './fx/plasma-beams.js'; import { createWarnRing } from './fx/warn-ring.js'; import { createHullHost } from './fx/hull-issue.js';
 import { wantsSecondary, shellsForAll } from './autofire.js';
 import { PLASMA_DEFAULTS } from './beamdraw.js';
 import { sub3, add3, scale3, dot3, cross3, norm3, len3, dist3, segKey, tangentBasis } from './vec3.js';
@@ -501,64 +502,13 @@ export function initTdTab(root) {
     }
   }
 
-  // One pooled cloud for every ring, main view only — the map has its blips.
-  const WARN_MAX = 1200;   // ~4 rings alive per gate at the fastest cadence
-  const warnPos = new Float32Array(WARN_MAX * 3);
-  const warnCol = new Float32Array(WARN_MAX * 3);
-  const warnGeo = new THREE.BufferGeometry();
-  warnGeo.setAttribute('position', new THREE.BufferAttribute(warnPos, 3));
-  warnGeo.setAttribute('color', new THREE.BufferAttribute(warnCol, 3));
-  warnGeo.setDrawRange(0, 0);
-  const warnMesh = new THREE.Points(warnGeo, new THREE.PointsMaterial({
-    size: 3.6, sizeAttenuation: false, vertexColors: true,
-    transparent: true, opacity: 0.9,
-  }));
-  warnMesh.frustumCulled = false;   // the buffer is rewritten; its bounds lie
-  scene.add(warnMesh);
-  const warnFx = [];   // { c, t1, t2, a, r0, r1, t, life, col }
-
-  // A ring lying ON the surface, so it reads as a shock across the floor
-  // rather than a sphere hanging in the air. The basis comes from the cell's
-  // own normal; a fixed up-vector degenerates wherever the sphere faces it.
-  function warnRing(ci, hex, life, r1, at = null) {   // `at`: ring this point (a round's exact impact), not the cell's centre
-    const nrm = at ? norm3(at) : graph.normals[ci];
-    let t1 = cross3(nrm, [0, 1, 0]);
-    if (len3(t1) < 1e-3) t1 = cross3(nrm, [1, 0, 0]);
-    t1 = norm3(t1);
-    const t2 = norm3(cross3(nrm, t1));
-    const c = add3(at ?? graph.centers[ci], scale3(nrm, cellSide * 0.12));
-    // dense enough to read as a RING and not as scattered dots: the radius
-    // grows to several cells, and 34 points across that is just confetti
-    const N = 72;
-    for (let i = 0; i < N && warnFx.length < WARN_MAX; i++) {
-      warnFx.push({ c, t1, t2, a: (i / N) * Math.PI * 2, r0: cellSide * 0.3, r1,
-        t: 0, life, col: new THREE.Color(hex) });
-    }
-  }
-
-  function stepWarnFx(dt) {
-    let k = 0;
-    for (let i = warnFx.length - 1; i >= 0; i--) {
-      warnFx[i].t += dt;
-      if (warnFx[i].t >= warnFx[i].life) warnFx.splice(i, 1);
-    }
-    for (const f of warnFx) {
-      const u = f.t / f.life;
-      const r = f.r0 + (f.r1 - f.r0) * u;
-      const ca = Math.cos(f.a) * r, sa = Math.sin(f.a) * r;
-      warnPos[k * 3] = f.c[0] + f.t1[0] * ca + f.t2[0] * sa;
-      warnPos[k * 3 + 1] = f.c[1] + f.t1[1] * ca + f.t2[1] * sa;
-      warnPos[k * 3 + 2] = f.c[2] + f.t1[2] * ca + f.t2[2] * sa;
-      const fade = 1 - u;
-      warnCol[k * 3] = f.col.r * fade;
-      warnCol[k * 3 + 1] = f.col.g * fade;
-      warnCol[k * 3 + 2] = f.col.b * fade;
-      k++;
-    }
-    warnGeo.setDrawRange(0, k);
-    warnGeo.attributes.position.needsUpdate = true;
-    warnGeo.attributes.color.needsUpdate = true;
-  }
+  // THE WARN RINGS (src/fx/warn-ring.js): one pooled cloud for every ring, main view only — the map has its blips
+  const warnRings = createWarnRing(scene, {
+    graph: () => graph,
+    cellSide: () => cellSide,
+  });
+  function warnRing(...a) { return warnRings.ring(...a); }
+  function stepWarnFx(...a) { return warnRings.tick(...a); }
 
   // --- the radar ------------------------------------------------------------
   // The minimap stopped being a minimap the day the board went to one merged

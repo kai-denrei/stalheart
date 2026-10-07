@@ -523,12 +523,14 @@ The story's per-frame tick leaves `src/fx/programme-host.js` for modules named a
 
 ### Task 13: The wave clock and the warn ring
 
+> **Executed in part (2026-10-07):** the warn ring moved (src/fx/warn-ring.js). The wave clock did not: its seven lets are read and written at about twenty controller sites and its cleared branch interleaves the clock's writes with the score, the sim curve, the hold and the sitrep, so a decisions interface would reorder effects. Next round: gather the seven lets into one state object first (entry 2026-10-07-warn-ring-module-wave-clock-deferred).
+
 **Files:**
 - Create: `src/domain/wave-clock.js` — pure: `createWaveClock({ warn: WAVE_WARN }) -> { tick(dt, { waveActive, pulseGap, cleared, stalled, canArm, anyAlive }) -> { arm: bool, spawn: bool, charge, beat: bool } , arm(), state() }` holding `waveIn`, `waveCharge`, `warnBeat`, `interClock`, `waveAge` with the exact branch logic of td-tab's frame (the block from `if (waveIn >= 0)` through the boss omen) and `armWave`'s timer part. The decisions (when to arm, when to spawn, when a warn beat fires, when the omen cues) are returned; the controller performs them (`spawnWave()`, `warnRing(...)`, `sfx.play`).
 - Create: `src/fx/warn-ring.js` — `createWarnRing(scene, { max: WARN_MAX }) -> { ring(ci, color, life, radius, centers), tick(dt) }` from td-tab 446–502.
 - Test: `test/wave-clock.mjs` — a 40-second scripted run (cleared field, a wave arming, the stall safety, the boss omen at 10 s) asserting the sequence of decisions equals the one the ORIGINAL frame block produces under `new Function` with the same inputs.
 
-- [ ] Steps as Task 8. Suites: `--defense`, `--sectors`, `--round6`, `--round7`, `--pacing`. Commit — `The wave clock is a domain rule and the warn ring an fx module; the frame performs their decisions`.
+- [x] Steps as Task 8. Suites: `--defense`, `--sectors`, `--round6`, `--round7`, `--pacing`. Commit — `The wave clock is a domain rule and the warn ring an fx module; the frame performs their decisions`.
 
 ---
 
