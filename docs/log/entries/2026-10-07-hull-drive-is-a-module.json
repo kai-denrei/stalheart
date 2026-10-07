@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-10-07-hull-drive-is-a-module",
+  "date": "2026-10-07",
+  "type": "change",
+  "status": "accepted",
+  "title": "The hull's drive is src/fx/hull-drive.js",
+  "context": "The refactor run's Task 9: movement over the cell graph sat in src/td-tab.js (about 290 lines): tangentDirTo, openNeighbors, the wanderer's chooseNext, arriveAt, advanceMotion (steer, glide, the hover kick, wall contact, respawn, absorb), rotate and the smoothed direction.",
+  "outcome": "createHullDrive(host) owns them; the domain rules it calls stay in src/domain. The ram bump, the recoil and the cannon heat stay in td-tab (fire, the frame and the HUD write and read them), with steerEase; the module takes bumpFactor and steerEase as values, autoMode as a setter, respawnClock and steerHold as getters with setters, and towerCells as a lazy getter (declared three thousand lines below the drive). Call sites unchanged through one-liners (openNeighbors, arriveAt, advanceMotion) and const { tangentDirTo }. Twelve imports left td-tab. td-tab 8,417 -> 8,178 lines. A first snapshot booted to a ReferenceError (towerCells passed as a value while still in its dead zone): every browser suite timed out at load; tools/refactor/tdz-check.mjs now checks each literal's values against their declaration lines.",
+  "alternatives": [
+    "Move the bump, recoil and heat lets into the module with getters: rejected, they are the cannon's state and fire and the frame write them."
+  ],
+  "evidence": [
+    "Equivalence harness (session scratchpad drive-equiv.mjs): the original block through new Function beside the module, 160 frames of the wanderer on auto past a blocked cell and 160 driven by hand with a turn: identical logs (330 and 342 entries); test/hull-drive.mjs pins the digest",
+    "undef-diff clean; tdz-check clean; host contracts hold for 40 factories",
+    "npm test, npm run check, npm run build; snapshot suites --base-look --seats --seat-switch --defense --sectors --backdoor --footprints --pacing pass; --canyon red as on main e4853f55 (the swarm rises, 215 alive)"
+  ],
+  "supersedes": []
+}

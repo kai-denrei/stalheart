@@ -486,7 +486,7 @@ The story's per-frame tick leaves `src/fx/programme-host.js` for modules named a
 - Modify: `src/td-tab.js` — the frame's `advanceMotion(dt)` and the heat-sleeve lines read the drive's state through getters.
 - Test: `test/hull-drive.mjs` — `advanceMotion` for 120 frames on a fixed fake graph (three cells in a line, a wall), old block vs module, deep-equal logs and equal final `player.pos`/`player.cur`.
 
-- [ ] Steps as Task 8. Suites: `--seats`, `--seat-switch`, `--defense`, `--sectors`, `--canyon`, `--backdoor`, `--footprints`, `--pacing`. Commit — `The hull's drive is src/fx/hull-drive.js; td-tab -<n> lines`.
+- [x] Steps as Task 8. Suites: `--seats`, `--seat-switch`, `--defense`, `--sectors`, `--canyon`, `--backdoor`, `--footprints`, `--pacing`. Commit — `The hull's drive is src/fx/hull-drive.js; td-tab -<n> lines`.
 
 ---
 

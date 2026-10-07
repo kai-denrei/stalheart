@@ -40,6 +40,11 @@ for (const ref of fnScope.through) {
       continue;
     }
     if (asg.type !== 'AssignmentExpression') throw Error(`unsupported write to ${name}: ${asg.type}`);
+    if (asg.operator === '??=' || asg.operator === '||=' || asg.operator === '&&=') {   // `x ??= v` -> `(host.x() ?? host.setX(v))`
+      edits.push([asg.range[0], asg.right.range[0], `(${H}.${name}() ${asg.operator.slice(0, -1)} ${Set}(`]);
+      edits.push([asg.range[1], asg.range[1], '))']);
+      continue;
+    }
     if (asg.operator !== '=') {   // `x op= rhs` -> `host.setX(host.x() op (rhs))`
       edits.push([asg.range[0], asg.right.range[0], `${Set}(${H}.${name}() ${asg.operator.slice(0, -1)} (`]);
       edits.push([asg.range[1], asg.range[1], '))']);

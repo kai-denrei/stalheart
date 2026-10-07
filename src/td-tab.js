@@ -1,5 +1,5 @@
 import { createSentryPilot } from './sentry-pilot.js';
-import { DEFAULT_TANK, SHELL_SPEED, SHELL_REACH, TANK_DRIVE, TANK_STEER, TANK_WALL, TANK_KICK } from './content/tank.js'; import { makeDriveRamp, stepDriveRamp, scrubDriveRamp } from './domain/drive-ramp.js'; import { hullDepth, deepensContact } from './domain/hull-contact.js'; import { makeSteerEase, stepSteerEase, steerBank } from './domain/steer-ease.js'; import { baseFor, restoreSeatView } from './domain/seat-view.js'; import { BASE_REPAIR } from './content/base-programme.js';
+import { DEFAULT_TANK, SHELL_SPEED, SHELL_REACH, TANK_DRIVE, TANK_STEER, TANK_WALL } from './content/tank.js'; import { makeDriveRamp } from './domain/drive-ramp.js'; import { hullDepth, deepensContact } from './domain/hull-contact.js'; import { makeSteerEase, steerBank } from './domain/steer-ease.js'; import { baseFor, restoreSeatView } from './domain/seat-view.js'; import { BASE_REPAIR } from './content/base-programme.js';
 import { createGameBreaches } from './game-breaches.js'; import { ramShotPose } from './domain/showcase-shot.js';   /* THE RAM BEAT'S OWN FRAMING: low behind the hull (src/domain/showcase-shot.js; the band of cells it drives into is the showcase hooks') */
 import { createBoardSurface } from './fx/board-surface.js'; import { createCampaignDebrief, sparkline } from './fx/campaign-debrief.js'; import { createSectorRun } from './fx/sector-run.js'; import { createBackDoor } from './fx/back-door.js'; import { isaoFace, orbitFrame, tourFrame, tourSeconds } from './domain/story-shots.js';
 import { startDiveShot } from './fx/dive-shot.js'; import { createCameraShots } from './fx/camera-shot.js'; import { createIntegrityHud } from './fx/integrity-hud.js'; import { createSeatGlide } from './fx/seat-glide.js'; import { viewEdge, viewportLine } from './domain/view-edge.js'; import { boxOverlaps } from './domain/box-overlaps.js'; import { makeShaderWarmer } from './fx/shader-warm.js'; import { waveGap } from './domain/wave-spread.js';
@@ -46,8 +46,8 @@ import { storage as localStorage } from './storage.js';
 // rules live in src/core, src/domain and src/content and the composition in src/fx and src/platform (docs/ARCHITECTURE.md). The
 // story is the game (docs/STATE.md); the campaign board under it serves the acceptance runs and the wave simulator.
 
-import { makeStuck, stepStuck, unstick } from './domain/hull-stuck.js'; import { highlightSeat } from './fx/seat-highlight.js'; import { HULL_STUCK, TANK_PLASMA } from './content/tank.js'; import { QUIVER_SPLASH, STORY_SENTRIES } from './content/sentries.js';   // the hull gets unstuck (owner, 2026-10-02)
-import { makeKick, startKick, stepKick, kicking, planKick, glideHeading } from './domain/hover-kick.js'; import { guardExits } from './domain/guard-aggro.js'; import { showMission } from './fx/mission-card.js'; 
+import { makeStuck } from './domain/hull-stuck.js'; import { highlightSeat } from './fx/seat-highlight.js'; import { HULL_STUCK, TANK_PLASMA } from './content/tank.js'; import { QUIVER_SPLASH, STORY_SENTRIES } from './content/sentries.js';   // the hull gets unstuck (owner, 2026-10-02)
+import { makeKick } from './domain/hover-kick.js'; import { guardExits } from './domain/guard-aggro.js'; import { showMission } from './fx/mission-card.js'; 
 import * as THREE from '../vendor/three.module.js';
 import GUI from '../vendor/lil-gui.esm.js';
 import { bfsDist, BLOCKED, PATH, ROOM } from './dungeon.js';
@@ -66,11 +66,11 @@ import { mulberry32, randomSeed } from './rng.js';
 import { createLaserStation, structureLostHtml } from './fx/laser-station.js'; import { LASER_GAME } from './content/orbital-laser.js'; import { createGlossaryModals } from './fx/glossary-modals.js'; import { makeTriadIcon, glossCard, GAMEPLAY_TIPS } from './fx/briefing-cards.js';
 import { computeBerths, berthIndexFor } from './berths.js'; import { createProgrammeHost } from './fx/programme-host.js'; import { strikeFallPose, droneRidePose, bastionPose, tankViewPose } from './domain/camera-goal.js'; import { createShopRadial } from './fx/shop-radial.js'; import { berthRun, berthHeading, deployU, easeDeploy, deployFraming } from './domain/deploy-path.js';
 import { createSkyRig } from './fx/sky-rig.js'; import { createIsaoMoments } from './fx/isao-moments.js'; import { createColonyTick } from './fx/colony-tick.js'; import { createAutoSupport } from './fx/auto-support.js';
-import { createCanyonRun } from './fx/canyon-run.js'; import { createEndingHost } from './fx/ending-host.js'; import { createIsaoWorker } from './fx/isao-worker.js'; import { createHullHost } from './fx/hull-issue.js';
+import { createCanyonRun } from './fx/canyon-run.js'; import { createEndingHost } from './fx/ending-host.js'; import { createIsaoWorker } from './fx/isao-worker.js'; import { createHullDrive } from './fx/hull-drive.js'; import { createHullHost } from './fx/hull-issue.js';
 import { wantsSecondary, shellsForAll } from './autofire.js';
 import { createBeam } from './beamfx.js';
 import { createBeamRig, PLASMA_DEFAULTS, BOARD_PRESET, BEAM_PEAK } from './beamdraw.js';
-import { sub3, add3, scale3, dot3, cross3, norm3, len3, dist3, segKey, tangentDir, tangentBasis } from './vec3.js';
+import { sub3, add3, scale3, dot3, cross3, norm3, len3, dist3, segKey, tangentBasis } from './vec3.js';
 import { CREATURES, waveJelly } from './creatures.js';
 import { brief, lineDwell, BRIEFS } from './isaobriefs.js'; import { lookIsao } from './fx/isao-look.js';
 import { drawEmotion } from './emotions.js';
@@ -2052,272 +2052,6 @@ export function initTdTab(root) {
     camera.quaternion.copy(camGoal.quat); camera.updateMatrixWorld();   // a snap holds at once
   }
 
-  // --- movement over the cell graph ---------------------------------------
-  // the projection itself lives in vec3.js, so berths.js (pure, Node-tested)
-  // and this file cannot drift apart; the wrapper just supplies `graph`
-  const tangentDirTo = (from, to) =>
-    tangentDir(graph.normals[from], graph.centers[from], graph.centers[to]);
-
-  function openNeighbors(ci) {
-    // towers block PATHING for everyone — they are the walls you buy
-    return graph.adj[ci].filter((nb) => dungeon.tags[nb] !== BLOCKED && !towerCells.has(nb));
-  }
-
-  // --- the wanderer: exit choice = steering bias + its own whims -----------
-  // Scored, not commanded: alignment with the steering intent dominates when
-  // the player is actively steering, but unvisited-cell curiosity, a
-  // backtrack penalty, and noise keep the walker willful.
-  function chooseNext() {
-    let exits = openNeighbors(player.cur);
-    // auto never routes THROUGH a berth (free movement already refuses);
-    // if the boxes somehow wall the only way out, solidity yields
-    const clear = exits.filter((e2) => !containerBlocked(e2) && !pedestalBlocked(e2) && !breachBlocked(graph.centers[e2], 0.2));   // the autopilot keeps off the sinkholes too
-    if (clear.length) exits = clear;
-    if (exits.length === 0) return -1;
-    // control mode: while the user steers, their intent dominates — the
-    // creature's curiosity, backtrack aversion, and whims all yield
-    const active = steeringActive() || manualActive();
-    // DIRECTIVE: a high-level order shapes the wander. Vector goals
-    // (avoid/ram) become a tangent to chase or flee; field goals
-    // (home/portal) score descending hop-distance.
-    let goalVec = null, goalField = null, goalSign = 1;
-    if (!active) {
-      const d = params.directive;
-      if (d === 'home') goalField = dungeon.distToHeart;
-      else if (d === 'goto' && gotoField) goalField = gotoField;
-      else if (d === 'portal' && portalDist) goalField = portalDist;
-      else if (d === 'avoid' || d === 'ram') {
-        let bt = null, bd = Infinity;
-        for (const en of enemies) {
-          if (!en.alive) continue;
-          if (d === 'ram' && !en.spec.rammable) continue;
-          const dd = dist3(player.pos, en.pos);
-          if (dd < bd) { bd = dd; bt = en; }
-        }
-        if (bt && bd < cellSide * 14) {
-          const n = norm3(player.pos);
-          const raw = sub3(bt.pos, player.pos);
-          const flat = sub3(raw, scale3(n, dot3(raw, n)));
-          const l = len3(flat);
-          if (l > 1e-9) {
-            goalVec = scale3(flat, 1 / l);
-            goalSign = d === 'avoid' ? -1 : 1;
-          }
-        }
-      }
-    }
-    // SOLID units hurt to touch, and no autopilot order should drive the hull through one (operator ruling, filed against
-    // seek-home): every directive except RAM (its chase must not be disrupted) and AVOID (which already flees everything) gets a
-    // flee vector away from the dangerous tier, weighted by proximity so it outvotes the goal field only at close range.
-    let fleeVec = null;
-    if (!active && params.directive !== 'ram' && params.directive !== 'avoid') {
-      const R = cellSide * 4;
-      let fx = 0, fy = 0, fz = 0, any = false;
-      for (const en of enemies) {
-        if (!en.alive || en.spec.rammable) continue;
-        const dd = dist3(player.pos, en.pos);
-        if (dd > R) continue;
-        const w = 1 - dd / R;
-        fx += (player.pos[0] - en.pos[0]) * w;
-        fy += (player.pos[1] - en.pos[1]) * w;
-        fz += (player.pos[2] - en.pos[2]) * w;
-        any = true;
-      }
-      if (any) {
-        const n = norm3(player.pos);
-        const raw = [fx, fy, fz];
-        const flat = sub3(raw, scale3(n, dot3(raw, n)));
-        const l = len3(flat);
-        if (l > 1e-9) fleeVec = scale3(flat, Math.min(1, l / cellSide) / l);
-      }
-    }
-    let best = exits[0], bestScore = -Infinity;
-    for (const e of exits) {
-      const dir = tangentDirTo(player.cur, e);
-      let score = (active ? 4.5 : 2.2) * dot3(player.heading, dir);
-      if (!active && !player.visited.has(e)) score += 1.1;      // curiosity
-      if (!active && e === player.prev && exits.length > 1) score -= 2.4;
-      if (goalVec) score += 3.2 * goalSign * dot3(dir, goalVec);
-      if (fleeVec) score += 3.6 * dot3(dir, fleeVec);
-      if (goalField) {
-        const gain = goalField[player.cur] - goalField[e];      // +1 closer
-        score += 3.2 * Math.max(-1, Math.min(1, gain));
-      }
-      score += (whim() - 0.5) * (active ? 0.4 : 1.6);           // its own will
-      if (score > bestScore) { bestScore = score; best = e; }
-    }
-    return best;
-  }
-
-  // NOTE: reaching the heart is NOT a win here (that's the maze tabs'
-  // rule) — the pole is home turf. The only victory is checkVictory's:
-  // every spawn point destroyed and the field cleared.
-  function arriveAt(cell) {
-    player.prev = player.cur;
-    player.cur = cell;
-    player.moves++;
-    player.visited.add(cell);
-    paintCell(player.prev, floorColorOf(player.prev));
-    updateHud();
-  }
-
-  // called once per frame: steer, glide (creature-paced), respawn, absorb
-  function advanceMotion(dt) {
-    if (player.won || playerDown || player.next === -1) return;
-
-    // continuous steering while held; ANY key claims manual control, and an engaged cruise keeps manual alive without a key
-    const anyKey = keys.left || keys.right || keys.fast || keys.slow;
-    if (anyKey || cruise) autoMode = false; // any drive input takes the wheel — sticky, no timer
-    steerHold = anyKey ? 0 : steerHold + dt;
-    const manual = manualActive();
-    const steerRate = stepSteerEase(steerEase, dt, (keys.left ? 1 : 0) - (keys.right ? 1 : 0), TANK_STEER);   /* the hull eases into a turn and settles out of it instead of snapping (owner, 2026-09-16; src/domain/steer-ease.js) */
-    if (steerRate) rotate(steerRate * dt);
-
-    // MANUAL = FREE movement: kinematics leave the grid entirely (W drives along the heading, S reverses, A/D steer); the grid is
-    // only a collision oracle (blocked cell? no entry) and keeps the semantics (current cell, visited, absorption) in sync
-    if (manual) {
-      player.freeMode = true;
-      // forward is PLAYER-TRIGGERED: hold W to drive, or double-tap W/▲ for CRUISE (rolls on its own; W boosts, S kills it); the old
-      // always-rolls-forward manual proved too aggressive. Keys override (a held key is an explicit act), else the lever's rest is the speed
-      const drive = keys.slow ? -0.55
-        : keys.fast ? (cruise ? 1.45 : 1)
-        : (throttle !== 0 ? throttle : (cruise ? 1 : 0)); const rampMul = stepDriveRamp(driveRamp, dt, drive, keys.left || keys.right, TANK_DRIVE);
-      const kp = stepKick(kick, dt, TANK_KICK);   // THE HOVER KICK (src/domain/hover-kick.js): while it runs it alone moves the hull
-      if (kp) { player.pos = kp; const ci = cellIndex(kp); if (ci !== -1 && ci !== player.cur) arriveAt(ci); }
-      else if (drive !== 0) {
-        const v = params.speed * speedBonus * cellSide * 1.6 * drive * rampMul
-          * (1 - 0.65 * bumpFactor()) * (storyBase?.gateEase(player.pos) ?? 1); // run-over drag; a door opening (story-base gateEase)
-        { const ahead = norm3(add3(player.pos, scale3(player.heading, cellSide * TANK_KICK.ahead))), w = !steerRate && freeBlocked(ahead) ? nearestWall(ahead) : null; if (w) player.heading = glideHeading(player.pos, player.heading, norm3(sub3(w, player.pos)), dt, TANK_KICK); }   // THE HOVER GLIDE (src/domain/hover-kick.js), never against the player's own steer (it pinned the hull in bends)
-        const step = scale3(player.heading, v * dt), before = player.pos;
-        let cand = norm3(add3(player.pos, step));
-        if (freeBlocked(cand)) {
-          // slide: strip the into-wall component and try again; a building that stops the hull (solidAt) is the wall, its centre the way in
-          const sid = storyBase?.solidAt(cand), w = sid ? storyBase.structure(sid)?.holder?.getWorldPosition(new THREE.Vector3()).toArray() ?? nearestWall(cand) : nearestWall(cand);
-          if (w) {
-            const toWall = norm3(sub3(w, player.pos));
-            const into = Math.max(0, dot3(step, toWall));
-            // a mostly head-on hit THUDS like running something over; the bumpLeft gate keeps a grind from re-triggering every frame
-            const slid = sub3(step, scale3(toWall, into)), share = into / (len3(step) || 1), kq = kick.cool > 0 ? null : planKick({ pos: player.pos, heading: player.heading, toWall, slid, share, cellSide, blocked: freeBlocked }, TANK_KICK);
-            if (kq && startKick(kick, { from: player.pos, ...kq }, TANK_KICK)) { scrubDriveRamp(driveRamp, 1 - TANK_KICK.keep, TANK_DRIVE); player.heading = kq.heading; }
-            scrubDriveRamp(driveRamp, share * TANK_WALL.scrub * dt, TANK_DRIVE); if (len3(slid) > 1e-9) player.heading = norm3(add3(player.heading, scale3(norm3(slid), share * TANK_WALL.align * dt)));   // A WALL IS FRICTION, NOT A THUD (src/content/tank.js TANK_WALL)
-            cand = norm3(add3(player.pos, slid));
-            if (freeBlocked(cand)) cand = null;
-          } else { cand = null; for (const a of TANK_WALL.glance) { const n0 = norm3(player.pos), r = add3(scale3(step, Math.cos(a)), scale3(cross3(n0, step), Math.sin(a))), c2 = norm3(add3(player.pos, scale3(r, Math.cos(a)))); if (!freeBlocked(c2)) { cand = c2; break; } } }   // a building: glance off it
-          // wedged with nowhere to slide? creep toward the CURRENT cell's centre: open ground by definition, so it can always un-stick
-          if (!cand) { scrubDriveRamp(driveRamp, 1, TANK_DRIVE);   // wedged: nothing built survives
-            const home = graph.centers[player.cur];
-            const toHome = sub3(home, player.pos);
-            const l = len3(toHome);
-            if (l > 1e-6) {
-              const creep = norm3(add3(player.pos,
-                scale3(toHome, Math.min(1, (v * dt) / l))));
-              if (!freeBlocked(creep)) cand = creep;
-            }
-          }
-        }
-        if (cand) {
-          player.pos = cand;
-          player.travelDir = drive > 0 ? player.heading.slice() : scale3(player.heading, -1);
-          const ci = cellIndex(cand);
-          if (ci !== -1 && ci !== player.cur) arriveAt(ci);
-        }
-        const k = stepStuck(stuck, { driving: true, moved: dot3(sub3(player.pos, stuck.p ?? before), player.heading) * Math.sign(drive), expected: Math.abs(v) * dt, dt }, HULL_STUCK);   // wedged: eased to open ground; progress counts from where the last frame left it (creep, ease and cushion included)
-        if (k > 0) player.pos = unstick(player.pos, graph.centers[player.cur], k * HULL_STUCK.rate * cellSide * dt);
-      } else stepStuck(stuck, { driving: false, moved: 0, expected: 0, dt }, HULL_STUCK);
-      if (!kicking(kick)) player.pos = wallCushion(player.pos);
-      stuck.p = player.pos.slice();
-      const nf = norm3(player.pos);
-      player.heading = norm3(sub3(player.heading, scale3(nf, dot3(player.heading, nf))));
-      updateSmoothDir(dt);
-      // food systems keep running while driving free
-      if (params.orbRespawn > 0) {
-        respawnClock += dt;
-        if (respawnClock >= params.orbRespawn) {
-          respawnClock = 0;
-          if (orbMeshes.size < params.orbs) spawnOneOrb();
-        }
-      }
-      checkAbsorb();
-      return;
-    }
-
-    // AUTO resumes from wherever free movement left off: the nearest open
-    // cell becomes home, and the first glide eases out from the actual
-    // position (virtualStart) instead of snapping to a cell center
-    if (player.freeMode) {
-      player.freeMode = false;
-      const ci = cellIndex(player.pos);
-      if (ci !== -1 && dungeon.tags[ci] !== BLOCKED) player.cur = ci;
-      player.prev = -1;
-      player.next = chooseNext();
-      player.prog = 0;
-      player.virtualStart = player.pos.slice();
-      if (player.next !== -1) {
-        player.segLen = Math.max(1e-9, dist3(player.pos, graph.centers[player.next]));
-      }
-    }
-
-    // U-turn: heading swung behind the motion — reverse the glide in place.
-    if (steeringActive() && dot3(player.heading, player.travelDir) < -0.35
-      && player.prog > 0.04 && player.prog < 0.96) {
-      const old = player.cur;
-      player.cur = player.next;
-      player.next = old;
-      player.prog = 1 - player.prog;
-      player.prev = -1;
-    }
-
-    // orb respawn: the maze regrows food over time
-    if (params.orbRespawn > 0) {
-      respawnClock += dt;
-      if (respawnClock >= params.orbRespawn) {
-        respawnClock = 0;
-        if (orbMeshes.size < params.orbs) spawnOneOrb();
-      }
-    }
-
-    // world-space motion: speed is distance/sec over THIS segment's length, so a long chord between large cells takes
-    // proportionally longer — the grid offers the space, the motion traverses it. The creature's own locomotion profile modulates
-    // the pace on top. manual: motion only while W/S are held; auto: the creature's own pace
-    const prof = MOVES[params.creature];
-    const pace = params.speed * speedBonus * (prof ? prof.speed(runContext.time) : 1)
-      * (1 - 0.65 * bumpFactor()); // the run-over drag
-    player.prog += (pace * cellSide * dt) / player.segLen;
-    while (player.prog >= 1 && !player.won) {
-      const carry = (player.prog - 1) * player.segLen; // leftover distance
-      player.virtualStart = null;
-      arriveAt(player.next);
-      // idle: steering intent drifts toward actual travel; while the user
-      // steers, their intent is left untouched
-      if (!steeringActive() && !manualActive()) {
-        const td = tangentDirTo(player.prev, player.cur);
-        player.heading = norm3(add3(scale3(player.heading, 0.65), scale3(td, 0.35)));
-      }
-      player.next = chooseNext();
-      if (player.next === -1) { player.prog = 0; break; }
-      player.segLen = Math.max(1e-9, dist3(graph.centers[player.cur], graph.centers[player.next]));
-      player.prog = carry / player.segLen;
-    }
-    // interpolate along the chord, then push back onto the sphere
-    const a = player.virtualStart || graph.centers[player.cur];
-    const b = graph.centers[player.next === -1 ? player.cur : player.next];
-    const f = Math.min(player.prog, 1);
-    const p = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
-    player.pos = norm3(p); // radius 1
-    const n = player.pos;
-    const d = sub3(b, player.pos);
-    const flat = sub3(d, scale3(n, dot3(d, n)));
-    const l = Math.hypot(flat[0], flat[1], flat[2]);
-    if (l > 1e-9) player.travelDir = scale3(flat, 1 / l);
-    // cushion AFTER travelDir so the push shifts the body, not the aim
-    player.pos = wallCushion(player.pos);
-    // keep the steering intent in the local tangent plane as we move
-    player.heading = norm3(sub3(player.heading, scale3(n, dot3(player.heading, n))));
-
-    updateSmoothDir(dt);
-    checkAbsorb();
-  }
-
   // ram bump: running something over has WEIGHT — a short window where the
   // tank loses pace and the camera dips, like the suspension taking it.
   // Countdown-seconds (not a timestamp) so it works on both clocks.
@@ -2338,28 +2072,56 @@ export function initTdTab(root) {
   const sleeveHot = new THREE.Color(0xff2a10);
 
   const steerEase = makeSteerEase();   // the eased yaw rate; the top rate and its ramp are src/content/tank.js TANK_STEER
-  function rotate(theta) {
-    const n = norm3(player.pos);
-    const h = player.heading;
-    const c = Math.cos(theta), s = Math.sin(theta);
-    const nxh = cross3(n, h);
-    player.heading = norm3(add3(scale3(h, c), scale3(nxh, s)));
-  }
-
-  // smoothDir chases travelDir at a bounded angular rate — the no-jump
-  // guarantee for cameras and the creature at exits and U-turns
-  const SMOOTH_RATE = 5.0; // rad/s
-  function updateSmoothDir(dt) {
-    const n = norm3(player.pos);
-    let s = norm3(sub3(player.smoothDir, scale3(n, dot3(player.smoothDir, n))));
-    const raw = manualActive() ? player.heading : player.travelDir;
-    const g = norm3(sub3(raw, scale3(n, dot3(raw, n))));
-    const ang = Math.atan2(dot3(cross3(s, g), n), Math.max(-1, Math.min(1, dot3(s, g))));
-    const step = Math.max(-SMOOTH_RATE * dt, Math.min(SMOOTH_RATE * dt, ang));
-    const c = Math.cos(step), si = Math.sin(step);
-    const nxs = cross3(n, s);
-    player.smoothDir = norm3(add3(scale3(s, c), scale3(nxs, si)));
-  }
+  // THE HULL'S DRIVE (src/fx/hull-drive.js): movement over the cell graph, the wanderer's exits, the per-frame steer and glide
+  const hullDrive = createHullDrive({
+    MOVES,
+    breachBlocked,
+    bumpFactor,
+    checkAbsorb,
+    containerBlocked,
+    driveRamp,
+    enemies,
+    floorColorOf,
+    freeBlocked,
+    keys,
+    manualActive,
+    nearestWall,
+    orbMeshes,
+    paintCell,
+    params,
+    pedestalBlocked,
+    player,
+    runContext,
+    spawnOneOrb,
+    steerEase,
+    steeringActive,
+    updateHud,
+    wallCushion,
+    cellIndex: () => cellIndex,
+    towerCells: () => towerCells,
+    cellSide: () => cellSide,
+    cruise: () => cruise,
+    dungeon: () => dungeon,
+    gotoField: () => gotoField,
+    graph: () => graph,
+    kick: () => kick,
+    playerDown: () => playerDown,
+    portalDist: () => portalDist,
+    speedBonus: () => speedBonus,
+    storyBase: () => storyBase,
+    stuck: () => stuck,
+    throttle: () => throttle,
+    whim: () => whim,
+    setAutoMode: (v) => (autoMode = v),
+    respawnClock: () => respawnClock,
+    setRespawnClock: (v) => (respawnClock = v),
+    steerHold: () => steerHold,
+    setSteerHold: (v) => (steerHold = v),
+  });
+  const { tangentDirTo } = hullDrive;
+  function openNeighbors(...a) { return hullDrive.openNeighbors(...a); }
+  function arriveAt(...a) { return hullDrive.arriveAt(...a); }
+  function advanceMotion(...a) { return hullDrive.advanceMotion(...a); }
 
   function onKeyEvent(ev, down) {
     if (!active || pilotMode) return;
