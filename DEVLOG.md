@@ -101,6 +101,18 @@ Owner, 2026-10-07 (twenty-eighth notes, 6): 'thinking about a gameplay change: a
 
 Filed, not started. The investigation to run first: the truck's model and its tiers (asset tiers, docs/log 2026-09 asset-tiers) against the frame budget with the crowd up; what the hull's ram, cannon and thrusters each gate today (src/content/tank.js, the hull host src/fx/hull-issue.js, the handover stages in src/domain/story-beats.js) and where an unlock would sit in the base programme (src/content/base-programme.js); whether luring is readable to a player (the hard-core tier's aggro, guard-aggro and the squads' chase).
 
+## 2026-10-07 — Session sync after the twenty-eighth notes: the nebulae, ten notes answered one commit each, the twenty-seventh notes confirmed, lessons
+
+change · resolved · 2026-10-07-session-sync-twenty-eighth-notes
+
+The owner's twenty-eighth notes (2026-10-07), with the welcome page's hover sound and the nebulae before them. Note 1 asked to confirm the twenty-seventh notes (2026-10-06-session-sync-twenty-sixth-notes-and-the-twenty-seventh-queued) were done: they were, by round 27, except the two that came back as notes 2 and 3 here (the hidden enemy at the nest, the camera after the study) and the hull's wedge at rocket-b's last corridor cell, still open (2026-10-06-corridor-probe-and-the-hull-in-narrow-tiles).
+
+Pushed to main, one commit a note: the nebulae (2026-10-07-the-owners-nebulae-in-the-sky), the nest (2026-10-07-nest-cleared-never-under-the-lander-and-below-three), the study's camera (2026-10-07-the-study-straight-back-to-the-tank), the footprints (2026-10-07-footprints-from-the-geometry-the-solar-array-solid), the voices (2026-10-07-the-owners-lab-lines-wired), the truck and the shell-worthy enemy filed (2026-10-07-start-with-the-truck-unlock-the-tank-then-the-thrusters, 2026-10-07-an-enemy-that-makes-the-tank-shell-meaningful), the N key (2026-10-07-n-for-nuke-the-dev-key), the sector-7 lull (2026-10-07-the-canyon-strays-do-not-hold-the-sector), the finale (2026-10-07-the-base-itself-under-the-constellation), and the hover sound as the browser's rule (2026-10-07-the-welcome-hover-sound-waits-for-the-first-gesture). Lessons: (1) showcase.look never turned the camera by itself (the camera chases travelDir; the bay's roll-out owns it until the handover): a harness hook that passed by coincidence is a hook untested. (2) A `catch { stop() }` round a scene build swallows a throw whole; the harness's 'never opened' was the only sign: log or rethrow in a catch that ends a feature. (3) The controller is at its byte budget: a line there costs a trimmed comment in the same commit, and the hooks modules are the place for new behaviour. (4) A model's ground slab rasterises as solid everywhere; a footprint triangle must rise over the ground. (5) zsh does not split an unquoted list variable into CLI arguments. UNSEEN BY THE OWNER, worth his eye first: the veil and the bloom's size, height and glow; the base under the constellation and the heads off its ARC; the solar array's collision in the camp; the nest clearing in real play; Isao's new lines at their moments (the START hover, the liftoff, four hearts, repairs, bodies at the heart, the cap, the quiet); sector 7's rhythm after the pass.
+
+Evidence:
+
+- npm test (185), npm run check, npm run architecture, npm run build; the browser steps named in each note's record
+
 ## 2026-10-07 — The nest cleared: a site guard never takes a cell under the lander's own footprint, and the site clears with fewer than three guards left
 
 change · resolved · 2026-10-07-nest-cleared-never-under-the-lander-and-below-three
