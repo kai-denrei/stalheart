@@ -35,10 +35,9 @@ import { firingFor } from './content/firing-defaults.js'; import { RELEASE_EVENT
 import { METRES_PER_CELL, arcToMetres, metresToArc } from './core/stage-units.js';
 import { pickMissileTarget, missileLimits, stepMissileLock, missileCanFire } from './domain/missile-targeting.js';
 import { createRunContext } from './domain/run-context.js'; import { trunkCells, simDirective, simPick } from './domain/sim-policy.js'; import { towerPerch } from './domain/tower-perch.js';
-import { createRunTimers } from './platform/run-timers.js'; import { createSimRun } from './platform/sim-run.js';
+import { createRunTimers } from './platform/run-timers.js'; import { createSimRun } from './platform/sim-run.js'; import { createDiagOverlay } from './platform/diag-overlay.js'; import { createPerfOverlay } from './platform/perf-overlay.js'; import { createDevPanel } from './platform/dev-panel.js';
 import { createMissilePool, launchDart, advanceDart } from './missiles.js';
 import { MISSILE_LAUNCH_ELEVATION } from './content/missile-defaults.js';
-import { renderWorkload, performanceSummary } from './render-workload.js';
 import { CONTENT } from './content/runtime.js';
 import { preloadSentryTerraformer, makeSentryTerraformer } from './terraformer.js';
 import { GAME_START_BIOMASS, SINK, tollFor, breachGrant, debriefAffordable } from './campaign.js';
@@ -78,11 +77,10 @@ import { drawEmotion } from './emotions.js';
 import { ACHIEVEMENTS, ACHV_GROUPS, achievement, blankRun, earned, freshlyEarned,
   sanitiseRecord }
   from './achievements.js';
-import { applyFontPack, currentFontPack, FONT_NAMES,
-  loadTypeFeel } from './fonts.js';
+import { applyFontPack, currentFontPack, loadTypeFeel } from './fonts.js';
 import { SECONDARY_TOE, applySecondaryToe } from './units.js';
-import { UNITS, UNIT_NAMES, buildUnit, buildCreature, preloadMork, makeShieldShell, preloadContainer, makeContainerFixture, preloadFabricator, makeIsaoDrone, makeBulletCloud, makeRewardSolid, makeShellSolid, makeDebris, makeDotBurst, makeHeartCloud, makeDotEnemy } from './units.js';
-import { LOOKS, LOOK_NAMES } from './looks.js';
+import { UNITS, buildUnit, buildCreature, preloadMork, makeShieldShell, preloadContainer, makeContainerFixture, preloadFabricator, makeIsaoDrone, makeBulletCloud, makeRewardSolid, makeShellSolid, makeDebris, makeDotBurst, makeHeartCloud, makeDotEnemy } from './units.js';
+import { LOOKS } from './looks.js';
 import { makeCellIndex } from './cellindex.js';
 import { CREATURE_TINTS, ENEMY_SPEC, INTROS, computeWavePlan, accentFor } from './enemyspec.js';
 import { PICKUPS } from './pickups.js'; import { rotorVoice, hushRotor } from './fx/rotor-voice.js';
@@ -97,7 +95,7 @@ import { SHIELD_TUNE, SHIELD_KNOBS, makeShield, charge as chargeShield,
   deploy as deployShield, tickShield, stepShieldFrame, restockShield, towerOffline,
   waveReset as shieldWaveReset, shoveVec, shoveMag, makeArrayStation, refillArray } from './shield.js'; import { SHIELD_ARRAY } from './content/shield-array.js'; import { makePadRing, glowPadRing, shieldPanel } from './fx/shield-array.js'; import { createRamReadout } from './fx/ram-readout.js';
 import { deepLink, wireDeepLink } from './deeplink.js';
-import { labLine, parseLabQuery } from './lab.js';
+import { parseLabQuery } from './lab.js';
 import { bakeGalaxyCube } from './galaxybake.js';
 import { SKY_PRESET } from './galaxyseed.js';
 import { makeScore } from './score.js';
@@ -107,17 +105,16 @@ import { pickTier } from './perftier.js';
 import { applyWeatheredMaterial } from './fx/weathered-material.js'; import { showContact } from './fx/contact-card.js'; import { sentryBookFull } from './domain/sentry-cap.js'; import { setTierPlate } from './fx/tier-plate.js';
 import { STICK, stickVector, knobOffset } from './stick.js';
 import { makeBloom } from './postfx.js';
-import { TANK_FEEL, TANK_FEEL_KNOBS, makeTankFeel, stepTankFeel, landTankFeel, fireTankFeel, applyTankFeel, applyTankHealth } from './tankfeel.js';
-import { FEEL, loadFeel, saveFeel } from './feelstore.js';
-import { STRIKE_KNOBS, makeStrike, makeStrikeParams, grantStrikes, stepStrike,
+import { TANK_FEEL, makeTankFeel, stepTankFeel, landTankFeel, fireTankFeel, applyTankFeel, applyTankHealth } from './tankfeel.js';
+import { FEEL } from './feelstore.js';
+import { makeStrike, makeStrikeParams, grantStrikes, stepStrike,
   toggleArm, paintTarget, launchStrike, stepFall, skipFall, fallProgress,
   strikeDamage, retargetStrike, orbitProgress } from './strike.js'; import { makeGunship, onStation, phaseLeft, selectGun, startStation } from './domain/gunship.js'; import { GUNSHIP_GUNS, GUNSHIP_ORBIT } from './content/gunship.js'; import { createGunshipBriefing } from './fx/gunship-briefing.js'; import { createFoundryFx } from './fx/foundry-fx.js'; import { createExplosions } from './fx/explosions.js';
 import { createRadarScope } from './fx/radar-scope.js'; import { createTowerAim } from './fx/tower-aim.js'; import { buildVarsModal } from './fx/vars-modal.js'; import { startVictoryPull } from './fx/victory-pull.js'; import { createShowcaseHooks } from './fx/showcase-hooks.js'; import { createGunshipRig } from './fx/gunship-rig.js';
-import { BLOOM_GROUPS } from './bloomweights.js';
 import { A6_TUNE, magFor, makeA6, stepA6, arc as a6Arc } from './heptapod.js';
 import { SENTRY_TUNE } from './sentry.js';
 import { makeLock } from './lockon.js';
-import { TOWER_LOOK_NAMES, DEFAULT_TOWER_LOOK, buildTowerLook, preloadLook, lookReady } from './towerlooks.js';
+import { DEFAULT_TOWER_LOOK, buildTowerLook, preloadLook, lookReady } from './towerlooks.js';
 import { makeAudio } from './audio.js'; import { isaoSay } from './fx/isao-voice.js'; import { lanceFollow, bodyAt } from './fx/lance-follow.js'; import { createCrowdGate } from './fx/crowd-gate.js'; import { makeDotSquad, shedSquad, squadDamage } from './fx/squads.js';
 import { DEATH_KEYS } from './audiomanifest.js';
 
@@ -1339,11 +1336,10 @@ export function initTdTab(root) {
   addEventListener('keydown', (ev) => {
     const k = (ev.key || '').toLowerCase();
     if (CTL_DRIVE_KEYS.includes(k)) { ctlRawT = performance.now() / 1000; ctlRawKey = k; }
-    if (ev.key === '`') setPerfOverlay(!perfOn);
+    if (ev.key === '`') setPerfOverlay(!perfOverlay.on());
     if (ev.key === 'Escape') document.body.classList.remove('vars-open');
   }, true);
   let ctlSwallowBarked = false;
-  const vwFrustum = new THREE.Frustum(), vwMat = new THREE.Matrix4(), vwPt = new THREE.Vector3();
   // CAN A PERSON SEE THE TANK (not just: is it in the frustum). 'behind' / 'off-canvas' are pose faults the watchdog re-seats; 'chrome'
   // (under iOS's URL bar or toolbar), 'covered' (a HUD element on it) and 'tiny' need the framing to change. Headless can only see
   // 'ok' or a pose fault: it models neither the visual viewport nor env(safe-area-inset)
@@ -1392,129 +1388,40 @@ export function initTdTab(root) {
   const sightLine = (s2) => `${s2.why}${s2.by ? ' by ' + s2.by : ''}`
     + ` ${s2.x.toFixed(0)},${s2.y.toFixed(0)} r${s2.px.toFixed(0)}px ${(s2.frac * 100).toFixed(1)}%`;
 
-  function tankInFrustum() {
-    camera.updateMatrixWorld();
-    vwFrustum.setFromProjectionMatrix(vwMat.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
-    return vwFrustum.containsPoint(vwPt.set(player.pos[0], player.pos[1], player.pos[2]));
-  }
-  // THE VIEW WATCHDOG (operator, builds 1974eb11..42e61776: "I still do not see the tank", "recurring", "a game stopper on
-  // mobile"). The camera's pose could not be read on the device, so the shell watches for the symptom itself: in DRIVE, with no
-  // shot, no deploy and no pause, the tank out of the camera's frustum for 1.5 s is a stuck camera, whatever stuck it. It
-  // re-seats — ends any shot, forces third, snaps the goal — and paints what it found on the caption lane so a screenshot carries
-  // it. Always on for the shell; ?viewwatch=0 turns it off.
-  let vwOut = 0, vwCool = 0, vwFires = 0; const diagHtml = (txt) => `<div class="wave-role" style="font-size:9px;text-align:left;white-space:pre-wrap">${txt}</div>`;
-  function viewWatch(dt) {
-    if (!mobileShell || !playerMesh || playerDown || player.won) return;
-    if (vwCool > 0) { vwCool -= dt; return; }
-    const driving = params.view === 'third' && !buildMode && !shots.shot && !deploy && !paused;
-    if (!driving) { vwOut = 0; return; }
-    const sight = tankSight();
-    if (sight.why === 'ok') { vwOut = 0; return; }
-    vwOut += dt;
-    if (vwOut < 1.5) return;
-    vwOut = 0; vwCool = 5; vwFires++;
-    const vv0 = window.visualViewport;
-    const cv0 = renderer.domElement;
-    const before = `${sightLine(sight)} view=${params.view} build=${buildMode} shot=${shotId() || '-'} deploy=${!!deploy} camToTank=${(camera.position.distanceTo(vwPt) / cellSide).toFixed(1)}c cur=${player.cur} next=${player.next}`
-      // WHICH EDGE, AND BY HOW MUCH. "chrome 430,516" says the tank is
-      // outside the visible band but not which side of it, and the two have
-      // opposite fixes. The bias is printed too, so the next screenshot says
-      // whether the correction is being applied at all.
-      + ` unit=${unitScale.toFixed(3)} bias=${camBiasNdc.toFixed(3)}`
-      + ` canvas=${cv0.clientWidth}x${cv0.clientHeight}`
-      + ` visual=${viewportLine(vv0)} edge=${viewEdge(sight, vv0)}`;   /* src/domain/view-edge.js */
-    // ONLY A POSE FAULT IS WORTH RE-SEATING. Snapping the camera at a tank that is covered by a caption, or under the URL bar,
-    // moves nothing and hides the evidence — the report is the whole value in those cases. CHROME COUNTS NOW. It used to be filed
-    // under "re-seating would not help", which was true while the rig aimed at the middle of the canvas: snapping put the tank
-    // back in the same invisible strip. With the viewport bias there IS something to do — re-seating re-derives the pose against
-    // the band that is actually on screen.
-    const fixable = sight.why === 'behind' || sight.why === 'off-canvas' || sight.why === 'chrome';
-    if (fixable) {
-      endShot();
-      setView('third');
-      snapCamera();
-    }
-    console.warn(`VIEWWATCH #${vwFires} ${fixable ? 'recentred' : 'REPORTED (re-seating would not help)'}: ${before}`);
-    if (toastEl) {
-      toastEl.innerHTML = diagHtml(`VIEWWATCH #${vwFires} ${before}`);
-      toastEl.classList.remove('hidden');
-      setTimeout(() => toastEl.classList.add('hidden'), 6000);
-    }
-  }
-
-  // THE DIAGNOSTICS OVERLAY (operator, 2026-09-04, after four blind fixes of the phone's third-person view: "ultrathink a better
-  // approach"). The approach: the phone prints every number the camera and the tank depend on, on screen, from the game's own
-  // state — no URL, no keyboard: tap the hearts three times (or ?diag=1). A tap on the panel opens the last sixty lines as
-  // selectable text. A screenshot of this decides, in one go, whether the camera is where it should be, whether the tank mesh is
-  // drawing, and what the deploy, the shot and the view are doing.
-  const diagQ = new URLSearchParams(location.search);   // urlParams is declared far below; this runs at init
-  let diagEl = null, diagOn = diagQ.get('diag') === '1', diagT = 0, diagTaps = [], diagRing = [];
-  const diagNdc = new THREE.Vector3();
-  function diagLine() {
-    const cp = camera.position, pp = player.pos;
-    diagNdc.set(pp[0], pp[1], pp[2]).project(camera);
-    const vv = window.visualViewport;
-    const pm = playerMesh;
-    const sight = tankSight();
-    return [
-      // THE ANSWER FIRST. Everything under this line is why; this line is
-      // what. A screenshot that shows only the top of the panel still says
-      // whether the tank is visible and, if not, which of the four reasons.
-      `SEEN: ${sightLine(sight)}`,
-      `HUNG: ${shots.watch()}`
-        + ` shot=${shots.shot ? `${shots.shot.id} ${shots.shot.age.toFixed(1)}/${shots.shot.dur.toFixed(1)}s` : '-'}`
-        + ` deploy=${deploy ? `${(deploy.age || 0).toFixed(1)}s` : '-'}`,
-      `t=${t.toFixed(1)} build=${(document.querySelector('script[src*="main.js"]')?.src.match(/v=([0-9a-f]{8})/) || [, '?'])[1]} shell=${mobileShell}`,
-      `view=${params.view} buildMode=${buildMode} shot=${shots.shot ? shots.shot.id + '@' + (1 - shots.shot.left / shots.shot.dur).toFixed(2) : '-'} deploy=${deploy ? `#${deploy.n}@${deployProgress().toFixed(2)}` : '-'}`,
-      `paused=${paused} down=${!!playerDown} won=${player.won} msg=${!!(msgEl && !msgEl.classList.contains('hidden'))}`,
-      `tank cur=${player.cur} next=${player.next} free=${!!player.freeMode} thr=${throttle.toFixed(2)} cruise=${cruise} auto=${autoMode} goto=${gotoCi} keys=${['left', 'right', 'fast', 'slow', 'fire', 'laser'].filter((k) => keys[k]).join(',') || '-'} stick=${!!stick}`,
-      `mesh vis=${!!(pm && pm.visible)} inScene=${!!(pm && pm.parent === scene)} scale=${pm ? pm.scale.x.toFixed(4) : '-'} unitScale=${unitScale.toFixed(4)} base=${pm ? (pm.userData.baseScale ?? 1) : '-'} pos=${pp.map((v) => v.toFixed(3)).join(',')}`,
-      `cam pos=${cp.x.toFixed(3)},${cp.y.toFixed(3)},${cp.z.toFixed(3)} toTank=${(cp.distanceTo(diagNdc.set(pp[0], pp[1], pp[2])) / cellSide).toFixed(2)}c fov=${camera.fov} aspect=${camera.aspect.toFixed(3)} far=${camera.far}`,
-      `tankScreen=${(() => { diagNdc.set(pp[0], pp[1], pp[2]).project(camera); return `${diagNdc.x.toFixed(2)},${diagNdc.y.toFixed(2)},${diagNdc.z.toFixed(3)}`; })()} inFrustum=${tankInFrustum()}`,
-      `canvas=${renderer.domElement.width}x${renderer.domElement.height} css=${renderer.domElement.clientWidth}x${renderer.domElement.clientHeight} inner=${innerWidth}x${innerHeight} visual=${viewportLine(vv)}${vv ? ` s${vv.scale.toFixed(2)}` : ''} dpr=${devicePixelRatio} cell=${cellSide.toFixed(4)} wall=${params.wallHeight}`,
-      `viewwatch fires=${vwFires} out=${vwOut.toFixed(1)}s bias=${camBiasNdc.toFixed(3)}`,
-    ].join('\n');
-  }
-  function diagToggle(on) {
-    diagOn = on;
-    if (!diagEl) {
-      diagEl = document.createElement('pre');
-      diagEl.id = 'td-diag';
-      diagEl.style.cssText = 'position:fixed;left:8px;top:calc(env(safe-area-inset-top,0px) + 92px);z-index:60;margin:0;max-width:62vw;padding:6px 8px;'
-        + 'font:10px/1.35 ui-monospace,Menlo,monospace;color:#9dffb0;background:rgba(0,10,4,0.82);border:1px solid rgba(100,255,140,0.4);'
-        + 'border-radius:6px;white-space:pre-wrap;pointer-events:auto;-webkit-user-select:text;user-select:text;';
-      diagEl.addEventListener('click', () => {
-        // the ring, as selectable text, for a copy — tap again to close
-        if (diagEl.dataset.ring === '1') { diagEl.dataset.ring = '0'; return; }
-        diagEl.dataset.ring = '1';
-        diagEl.textContent = 'DIAG ring (last 60, 2 s apart) — tap to close\n' + diagRing.join('\n---\n');
-      });
-      root.appendChild(diagEl);
-    }
-    diagEl.style.display = on ? 'block' : 'none';
-  }
-  const diagHearts = root.querySelector('#td-stats');   // statsEl is declared further down; this block runs at init
-  if (diagHearts) diagHearts.addEventListener('pointerdown', () => {
-    const now = performance.now();
-    diagTaps = diagTaps.filter((x) => now - x < 900); diagTaps.push(now);
-    if (diagTaps.length >= 3) { diagTaps = []; diagToggle(!diagOn); }
+  // THE VIEW WATCHDOG AND THE DIAGNOSTICS OVERLAY (src/platform/diag-overlay.js): viewWatch and tick from the frame, html for captions
+  const diagOverlay = createDiagOverlay(root, {
+    mobileShell,
+    player,
+    params,
+    renderer,
+    camera,
+    scene,
+    keys,
+    tankSight,
+    sightLine,
+    setView,
+    snapCamera,
+    deployProgress,
+    endShot: () => endShot(),
+    shotId: () => shotId(),
+    playerMesh: () => playerMesh,
+    playerDown: () => playerDown,
+    buildMode: () => buildMode,
+    shots: () => shots,
+    deploy: () => deploy,
+    paused: () => paused,
+    cellSide: () => cellSide,
+    unitScale: () => unitScale,
+    camBiasNdc: () => camBiasNdc,
+    toastEl: () => toastEl,
+    msgEl: () => msgEl,
+    throttle: () => throttle,
+    cruise: () => cruise,
+    autoMode: () => autoMode,
+    gotoCi: () => gotoCi,
+    stick: () => stick,
+    t: () => t,
   });
-  function diagTick(dt) {
-    if (!diagOn) return;
-    diagT += dt;
-    if (diagT < 0.25) return;
-    diagT = 0;
-    const line = diagLine();
-    if (diagEl && diagEl.dataset.ring !== '1') diagEl.textContent = 'DIAG · tap hearts ×3 to hide · tap panel for the ring\n' + line;
-    // the ring: one entry every 2 s, kept across a reload for a copy after the fact
-    if (!diagRing.length || (diagRing._t ?? -9) + 2 <= t) {
-      diagRing.push(line); diagRing._t = t;
-      if (diagRing.length > 60) diagRing.shift();
-      try { localStorage.setItem('td.diag', diagRing.join('\n---\n')); } catch (e) { /* private mode */ }
-      if (diagQ.get('diag') === '1') console.log('DIAG ' + line.replace(/\n/g, ' | '));
-    }
-  }
-  if (diagOn) setTimeout(() => diagToggle(true), 500);
 
   function ctlWatch(dt) {
     // what the player is asking for, not what the game decided to do with it
@@ -7561,154 +7468,26 @@ export function initTdTab(root) {
 
   // --- dashboard -----------------------------------------------------------
   const gui = new GUI({ title: 'TD', container: root });
-  // hero + portal styling swap IN PLACE — cosmetics never reset a run
-  gui.add(params, 'creature', UNIT_NAMES).onChange(() => {
-    applyCreature();
+  // THE DEV PANEL (src/platform/dev-panel.js): looks, camera, world knobs, feel, strike, plasma, bloom, sound
+  const { viewCtrl, directiveCtrl, seedCtrl } = createDevPanel(gui, {
+    params,
+    DIRECTIVES,
+    HEART_LOOKS,
+    PLASMA,
+    TYPE,
+    strikeTune,
+    postfx,
+    sfx,
+    root,
+    applyCreature,
+    applyLook,
+    applyTowerLook,
+    regenerate,
+    setView,
+    syncCalloutMode,
+    syncDirectiveChip,
+    plasma: () => plasma,
   });
-  gui.add(params, 'look', LOOK_NAMES).onChange(applyLook);
-  gui.add(params, 'wallTops', ['auto', 'bright', 'dim', 'black'])
-    .name('wall tops').onChange(applyLook);
-  const viewCtrl = gui.add(params, 'view', ['pov', 'third', 'orbit', 'drone'])
-    .name('camera (V)').onChange((v) => setView(v));
-  gui.add(params, 'speed', 0.2, 4, 0.1).name('wander speed');
-  const directiveCtrl = gui.add(params, 'directive', DIRECTIVES).name('auto directive').onChange(syncDirectiveChip);
-  gui.add(params, 'recoil', 0, 8, 0.1).name('shell recoil');
-  gui.add(params, 'callouts').name('callout messages').onChange(syncCalloutMode);
-  // Changing the physical footprint needs a new camp and spawn layout.
-  gui.add(params, 'heartLook', Object.keys(HEART_LOOKS)).name('stalheart (new run)')
-    .onFinishChange(regenerate);
-  gui.add(params, 'waveSize', 1, 6, 1).name('wave size').onFinishChange(regenerate);
-  gui.add(params, 'wavesPerSector', 5, 40, 1).name('waves per sector');
-  gui.add(params, 'waveGap', 3, 20, 1).name('wave gap (s)');
-  gui.add(params, 'waveCap', 15, 60, 1).name('wave cap (s)');
-  gui.add(params, 'obstacles', 0.05, 0.4, 0.05).onFinishChange(regenerate);
-  gui.add(params, 'rewards', 0, 12, 1).onFinishChange(regenerate);
-  gui.add(params, 'orbs', 0, 40, 1).name('missile triads').onFinishChange(regenerate);
-  gui.add(params, 'orbRespawn', 0, 30, 1).name('triad respawn (s)');
-  const seedCtrl = gui.add(params, 'seed', 0, 99999, 1).onFinishChange(regenerate);
-  gui.add(params, 'points', 150, 8000, 50).name('sample points').onFinishChange(regenerate);
-  gui.add(params, 'rooms', 2, 24, 1).onFinishChange(regenerate);
-  gui.add(params, 'roomRadius', 1, 8, 1).name('room radius').onFinishChange(regenerate);
-  gui.add(params, 'corridorWidth', 1, 4, 1).name('corridor width').onFinishChange(regenerate);
-  gui.add(params, 'extraCorridors', 0, 5, 1).name('extra corridors').onFinishChange(regenerate);
-  gui.add(params, 'wallHeight', 0.02, 0.15, 0.005).name('wall height').onFinishChange(regenerate);
-  gui.add(params, 'relaxIters', 0, 200, 10).name('relax iters').onFinishChange(regenerate);
-  gui.add(params, 'randomize').name('↻ random seed');
-  gui.add(params, 'regenerate').name('↻ regenerate');
-  gui.add(params, 'previewDestruction').name('✳ destroy tank (preview)');
-
-  gui.add(params, 'towerLook', TOWER_LOOK_NAMES)
-    .name('tower look').onChange(applyTowerLook);
-  gui.add(params, 'font', FONT_NAMES).name('message font').onChange((n) => {
-    applyFontPack(n, document.documentElement, TYPE);
-    try { localStorage.setItem('ssg-font', n); } catch (e) { /* private mode */ }
-  });
-  // The type KNOBS live on the units tab's fonts bench, not here. Two GUIs over two copies of the same values is the drift this
-  // repo has already paid for once (the hover params vs the viewer's defaults), and the operator's actual complaint was that
-  // tuning type mid-game is impossible — a shout lives 1.2 seconds. This tab keeps the face switch, which is a glance, and hands
-  // the sliders to the bench.
-  // Guessed wrong twice by eye, so they are dialled by hand — but the folder is GENERATED from the shared schema and writes to
-  // the shared object. The unit viewer's tuning modal is built from the same list over the same values, so a setting found on the
-  // bench is already in force here.
-  loadFeel();   // whatever was dialled in the viewer is already in force
-  const feelFolders = new Map();
-  for (const k of TANK_FEEL_KNOBS) {
-    if (!feelFolders.has(k.group)) {
-      const f = gui.addFolder(k.group);
-      f.close();
-      feelFolders.set(k.group, f);
-    }
-    feelFolders.get(k.group).add(FEEL, k.key, k.min, k.max, k.step)
-      .name(k.label).onFinishChange(saveFeel);
-  }
-
-  // strike knobs share the schema machinery with the feel folders
-  const strikeF = gui.addFolder('orbital strike');
-  for (const k of STRIKE_KNOBS) {
-    if (k.bool) strikeF.add(strikeTune, k.key).name(k.label);
-    else strikeF.add(strikeTune, k.key, k.min, k.max, k.step).name(k.label);
-  }
-  strikeF.close();
-
-  // THE PLUME, by eye. Colour and reach are the rank's and are not touchable
-  // here; the SHAPE of the flame is taste, and taste is judged with the
-  // controls in hand rather than reasoned from a number.
-  const plasmaF = gui.addFolder('plasma');
-  plasmaF.add(PLASMA, 'coreFrac', 0, 1, 0.01).name('hot root length');
-  plasmaF.add(PLASMA, 'dots').name('dots on');
-  plasmaF.add(PLASMA, 'plumeLen', 0, 1, 0.01).name('dots length (x beam)');
-  plasmaF.add(PLASMA, 'plumeWidth', 0, 5, 0.05).name('dots width (x beam)');
-  plasmaF.add(PLASMA, 'coreRoot', 0.05, 1, 0.01).name('width at muzzle');
-  plasmaF.add(PLASMA, 'squash', 0, 1.5, 0.05).name('vertical squash');
-  plasmaF.add(PLASMA, 'flow', 0, 6, 0.05).name('flow speed');
-  plasmaF.add(PLASMA, 'bias', 0.5, 3, 0.05).name('root density');
-  plasmaF.add(PLASMA, 'twist', 0, 24, 0.5).name('corkscrew');
-  plasmaF.add(PLASMA, 'size', 1, 8, 0.1).name('dot size').onChange((v) => {
-    if (plasma) for (const pl of plasma) pl.pts.material.size = v;
-  });
-  plasmaF.close();
-  gui.add(params, 'autoUpgrade').name('drones auto-upgrade');
-
-  const bloomF = gui.addFolder('bloom');
-  bloomF.add(postfx.params, 'enabled').name('enabled').onChange((v) => postfx.setEnabled(v));
-  bloomF.add(postfx.params, 'strength', 0, 3, 0.05).onChange((v) => postfx.setParams({ strength: v }));
-  bloomF.add(postfx.params, 'radius', 0, 1, 0.01).onChange((v) => postfx.setParams({ radius: v }));
-  bloomF.add(postfx.params, 'threshold', 0, 1, 0.01).onChange((v) => postfx.setParams({ threshold: v }));
-
-  // per-group glow. These are AMOUNTS, not brightness: the map can stay a
-  // bright cyan wireframe while barely blooming at all.
-  const weightsF = bloomF.addFolder('weights');
-  for (const g of BLOOM_GROUPS) {
-    weightsF.add(postfx.weights, g, 0, 3, 0.05).name(g);
-  }
-  // a tuning session must survive a reload
-  const BW_KEY = 'ssg.td.bloomWeights';
-  try {
-    const savedW = JSON.parse(localStorage.getItem(BW_KEY) || 'null');
-    if (savedW && typeof savedW === 'object') {
-      for (const g of BLOOM_GROUPS) {
-        if (typeof savedW[g] === 'number') postfx.weights[g] = savedW[g];
-      }
-      weightsF.controllers.forEach((c) => c.updateDisplay());
-    }
-  } catch { /* private mode or corrupt value — defaults are fine */ }
-  weightsF.onChange(() => {
-    try { localStorage.setItem(BW_KEY, JSON.stringify(postfx.weights)); } catch { /* ignore */ }
-  });
-
-  // sound. The encode is peak-normalized and the manifest carries each
-  // sound's trim gain, so these are the coarse balance -- and the tuning
-  // surface, since the levels shipped were derived from durations and
-  // fire rates rather than heard.
-  const soundF = gui.addFolder('sound');
-  const soundState = { ...sfx.levels, mute: sfx.muted };
-  soundF.add(soundState, 'master', 0, 1, 0.01).onChange((v) => sfx.setMaster(v));
-  soundF.add(soundState, 'towers', 0, 1, 0.01).onChange((v) => sfx.setBus('towers', v));
-  soundF.add(soundState, 'tank', 0, 1, 0.01).onChange((v) => sfx.setBus('tank', v));
-  soundF.add(soundState, 'enemies', 0, 1, 0.01).onChange((v) => sfx.setBus('enemies', v));
-  soundF.add(soundState, 'ui', 0, 1, 0.01).onChange((v) => sfx.setBus('ui', v));
-  const muteCtrl = soundF.add(soundState, 'mute').onChange((v) => { sfx.setMute(v); syncSoundChip(); });
-
-  // the pad button and the panel toggle are one state, two surfaces
-  const soundBtn = root.querySelector('#td-pad-sound');
-  function syncSoundChip() {
-    if (soundBtn) {
-      soundBtn.textContent = sfx.muted ? '\u2298' : '\u266A';   // off / on, monochrome
-      soundBtn.classList.toggle('on', !sfx.muted);
-    }
-  }
-  if (soundBtn) {
-    soundBtn.addEventListener('click', () => {
-      sfx.setMute(!sfx.muted);
-      soundState.mute = sfx.muted;
-      muteCtrl.updateDisplay();
-      syncSoundChip();
-    });
-  }
-  syncSoundChip();
-
-  // phones: start with the panel folded so the maze isn't buried
-  if (matchMedia('(pointer: coarse), (max-width: 700px)').matches) gui.close();
 
   // --- render loop: PoV + minimap inset ------------------------------------
   const mapBg = new THREE.Color(0x080a10);
@@ -7786,119 +7565,29 @@ export function initTdTab(root) {
     }
   }
 
-  // --- THE FRAME READOUT (operator, 2026-09-02) ---------------------------
-  // fps, ms, and what the frame is made of — draw calls, triangles, points —
-  // because "it feels slower" needs a number before it can be argued about.
-  // renderer.info is reset by hand each frame while the readout is on, and
-  // left alone when it is off so it costs nothing. Half-second EMA so the
-  // digits are readable rather than jittery.
-  const perfEl = root.querySelector('#td-perf');
-  let perfOn = false, perfFrames = 0, perfAcc = 0, perfFps = 0;
-  let perfSample=null,perfDetails=false,perfSampleAt=-Infinity,perfGroupAt=-Infinity,perfGroups=[];
-  const perfCpu={enemies:0,towers:0,frame:0};
-  function performanceGroups(){
-    return renderWorkload([
-      ...TOWERS.map(def=>({label:def.label,objects:towers.filter(tw=>tw.key===def.key).map(tw=>tw.obj)})),
-      {label:'Tank',objects:playerMesh?[playerMesh]:[]},
-      {label:'Terraformer',objects:heartSprite?[heartSprite]:[]},
-      {label:'Enemies',objects:enemies.filter(e=>e.alive).map(e=>e.obj)},
-      {label:'Breaches',objects:spawnPoints.filter(p=>p.alive).map(p=>p.obj)},
-      {label:'Beams / lightning',objects:[...beams.map(b=>b.mesh),...[...plasmaBeams.values()].flatMap(e=>e.links.map(b=>b.mesh))]},
-      {label:'Projectiles',objects:[...towerSeekers,...towerShots,...projectiles].map(p=>p.mesh)},
-      {label:'Debris / bursts',objects:debris},
-      {label:'Shield',objects:shieldObj?[shieldObj]:[]},
-      {label:'World / other',objects:[scene]},
-    ]);
-  }
-  perfEl?.addEventListener('pointerdown',e=>e.stopPropagation());
-  perfEl?.addEventListener('toggle',e=>{if(e.target.isConnected && e.target.tagName==='DETAILS')perfDetails=e.target.open;},true);
-  perfEl?.addEventListener('click',async e=>{
-    e.stopPropagation();
-    if(!e.target.closest('[data-copy-perf]'))return;
-    const summary=performanceSummary(perfSample);
-    try{await navigator.clipboard.writeText(summary);e.target.textContent='Copied';}
-    catch{const box=document.createElement('textarea');box.value=summary;box.readOnly=true;perfEl.append(box);box.focus();box.select();box.addEventListener('blur',()=>box.remove(),{once:true});}
+  // THE FRAME READOUT (operator, 2026-09-02; src/platform/perf-overlay.js): fps, ms, the frame's workload and the GPU timer
+  const perfOverlay = createPerfOverlay(root, {
+    renderer,
+    scene,
+    lab,
+    statsEl,
+    beams,
+    debris,
+    enemies,
+    plasmaBeams,
+    projectiles,
+    spawnPoints,
+    towerSeekers,
+    towerShots,
+    towers,
+    heartSprite: () => heartSprite,
+    pilotMode: () => pilotMode,
+    playerMesh: () => playerMesh,
+    shieldObj: () => shieldObj,
+    wave: () => wave,
+    perfCtl: () => perfCtl,
   });
-  const PERF_KEY = 'ssg.td.perf';
-  function setPerfOverlay(on, persist = true) {
-    perfOn = !!on;
-    if (perfEl) {
-      perfEl.classList.toggle('hidden', !perfOn);
-      // say something at once — the first real sample is half a second away
-      // and an empty box looks like a box that failed
-      if (perfOn && !perfEl.textContent) perfEl.textContent = 'measuring…';
-    }
-    renderer.info.autoReset = !perfOn;
-    if(!perfOn){for(const query of gpuPending)gl.deleteQuery(query);gpuPending.length=0;}
-    if (persist) { try { localStorage.setItem(PERF_KEY, perfOn ? '1' : '0'); } catch { /* fine */ } }
-    if (perfCtl) perfCtl.updateDisplay();
-  }
-  // GPU TIME, from the GPU (2026-09-03). fps says whether the frame fits;
-  // it does not say which side of the bus is full. One TIME_ELAPSED query is
-  // opened around frame() and read back a few frames later — one per frame,
-  // not one per draw: per-draw queries split the render pass on a tiled GPU
-  // and overcount ~4x (research.md). Only while the readout is on.
-  const gl = renderer.getContext();
-  const gpuExt = gl.getExtension('EXT_disjoint_timer_query_webgl2');
-  const gpuPending = [];
-  let gpuOpen = null, perfGpu = 0, gpuAcc = 0, gpuN = 0;
-  function gpuBegin() {
-    if (!perfOn || !gpuExt || gpuOpen || gpuPending.length>=8) return;
-    gpuOpen = gl.createQuery(); gl.beginQuery(gpuExt.TIME_ELAPSED_EXT, gpuOpen);
-  }
-  function gpuEnd() {
-    if (!gpuOpen) return;
-    gl.endQuery(gpuExt.TIME_ELAPSED_EXT); gpuPending.push(gpuOpen); gpuOpen = null;
-    if(gl.getParameter(gpuExt.GPU_DISJOINT_EXT)){
-      for(const query of gpuPending)gl.deleteQuery(query);gpuPending.length=0;gpuAcc=0;gpuN=0;perfGpu=0;return;
-    }
-    for (let i = gpuPending.length - 1; i >= 0; i--) {
-      const q = gpuPending[i];
-      if (!gl.getQueryParameter(q, gl.QUERY_RESULT_AVAILABLE)) continue;
-      gpuAcc += gl.getQueryParameter(q, gl.QUERY_RESULT) / 1e6; gpuN++;
-      gl.deleteQuery(q); gpuPending.splice(i, 1);
-    }
-  }
-  let labLineAcc = 0;
-  function perfTick(dt) {
-    if (!perfOn || !perfEl) return;
-    perfFrames++; perfAcc += dt;
-    if (perfAcc < 0.5) { renderer.info.reset(); return; }
-    const fps = perfFrames / perfAcc;
-    perfFps = perfFps ? perfFps * 0.5 + fps * 0.5 : fps;
-    if (gpuN) { const g = gpuAcc / gpuN; perfGpu = perfGpu ? perfGpu * 0.5 + g * 0.5 : g; gpuAcc = 0; gpuN = 0; }
-    const r = renderer.info.render;
-    perfEl.style.top=`${pilotMode ? 220 : Math.max(48,statsEl.getBoundingClientRect().bottom+6)}px`;
-    if(performance.now()-perfGroupAt>=2000){perfGroupAt=performance.now();perfGroups=performanceGroups();}
-    const groups=perfGroups;
-    perfSample={wave,fps:perfFps,frameMs:1000/perfFps,gpuMs:gpuExt && perfGpu>0?perfGpu:null,
-      calls:r.calls,triangles:r.triangles,enemies:enemies.filter(e=>e.alive).length,
-      cpu:{enemies:perfCpu.enemies/perfFrames,towers:perfCpu.towers/perfFrames,frame:perfCpu.frame/perfFrames},groups};
-    perfCpu.enemies=perfCpu.towers=perfCpu.frame=0;
-    if(performance.now()-perfSampleAt>=5000){perfSampleAt=performance.now();record('performance.sample',perfSample);}
-    if(!perfEl.querySelector('textarea'))perfEl.innerHTML = `<b>${perfFps.toFixed(0)}</b> fps · ${(1000 / perfFps).toFixed(1)} ms`
-      + (gpuExt ? ` · gpu ${perfGpu.toFixed(1)} ms` : '')
-      + ` · <b>${r.calls}</b> calls · ${(r.triangles / 1000).toFixed(1)}k tris`
-      + ` · ${(r.points / 1000).toFixed(1)}k pts`
-      + (lab.on ? ` · <b>LAB</b> ×${lab.waveMult}` : '')
-      + `<details ${perfDetails?'open':''}><summary>Wave ${wave} · ${perfSample.enemies} enemies · workload</summary>`
-      + `<div>CPU ms: enemies ${perfSample.cpu.enemies.toFixed(1)} · towers ${perfSample.cpu.towers.toFixed(1)} · frame ${perfSample.cpu.frame.toFixed(1)}</div>`
-      + `<div>Scene estimates before culling; GPU cost varies by shader.</div>`
-      + groups.map(row=>`<div>${row.label} ×${row.objects}: ${row.batches} batches · ${(row.triangles/1000).toFixed(1)}k tris · ${(row.points/1000).toFixed(1)}k points</div>`).join('')
-      + `<button type="button" data-copy-perf>Copy performance</button></details>`;
-    // the lab's line, every 2 s, for a headless run to grep
-    labLineAcc += perfAcc;
-    if (lab.on && labLineAcc >= 2) {
-      labLineAcc = 0;
-      console.log(labLine({ fps: perfFps, ms: 1000 / perfFps, gpuMs: gpuExt ? perfGpu : NaN,
-        calls: r.calls, tris: r.triangles, pts: r.points,
-        enemies: enemies.reduce((n, e) => n + (e.alive ? 1 : 0), 0), wave,
-        waveMult: lab.waveMult, bg: lab.bg,
-        bloom: lab.bloom }));
-    }
-    perfFrames = 0; perfAcc = 0;
-    renderer.info.reset();
-  }
+  const { el: perfEl, cpu: perfCpu, set: setPerfOverlay, gpuExt, gpuBegin, gpuEnd, tick: perfTick, key: PERF_KEY } = perfOverlay;
   let perfCtl = null;
 
   function animate() {
@@ -7936,7 +7625,7 @@ export function initTdTab(root) {
       return;
     }
     gpuBegin();
-    const cpuStart=perfOn?performance.now():0;
+    const cpuStart=perfOverlay.on()?performance.now():0;
     // A FAULT IN THE FRAME (2026-09-25) froze the picture: the world still draws, and each distinct fault is rethrown ONCE on its
     // own turn for the error handlers, the diagnostics ring and the suites
     inFrame = true;
@@ -7948,7 +7637,7 @@ export function initTdTab(root) {
       try { postfx.render(); } catch { /* the renderer is what failed: nothing more to draw this frame */ }
     }
     inFrame = false;
-    if(perfOn)perfCpu.frame+=performance.now()-cpuStart;
+    if(perfOverlay.on())perfCpu.frame+=performance.now()-cpuStart;
     gpuEnd(); if (hudDirty) { hudDirty = false; hudFrame = frameNo; paintHud(); }   /* the HUD's catch-up paint (updateHud) */
   }
 
@@ -8098,15 +7787,15 @@ export function initTdTab(root) {
     stepShieldDynamics(dt,t);
     if (!frozen) {
       runContext.advance(dt);   // THE RUN'S CLOCK RIDES THE WORLD'S (2026-10-01): it advanced only with the hull's motion, so the heart's breathing, the regrow queue, the orbs and the pad rings all stopped while the player sat in a seat or the hull was down
-      let cpuStart=perfOn?performance.now():0;
+      let cpuStart=perfOverlay.on()?performance.now():0;
       if (!(lab.on && lab.freezeEnemies)) updateEnemies(dt, t);
-      if(perfOn)perfCpu.enemies+=performance.now()-cpuStart;
+      if(perfOverlay.on())perfCpu.enemies+=performance.now()-cpuStart;
       checkRewards();
       updateProjectiles(dt, t);
       updateLasers(dt, t);
-      cpuStart=perfOn?performance.now():0;
+      cpuStart=perfOverlay.on()?performance.now():0;
       stepTowers(dt, t);
-      if(perfOn)perfCpu.towers+=performance.now()-cpuStart;
+      if(perfOverlay.on())perfCpu.towers+=performance.now()-cpuStart;
       updateTowerShots(dt, t);
     }
     // the breaches' own motion
@@ -8196,8 +7885,8 @@ export function initTdTab(root) {
       camera.position.lerp(camGoal.pos, 0.14);
       camera.quaternion.slerp(camGoal.quat, 0.14);
     }
-    if (!pilotMode && urlParams.get('viewwatch') !== '0') viewWatch(dt);
-    diagTick(dt);
+    if (!pilotMode && urlParams.get('viewwatch') !== '0') diagOverlay.viewWatch(dt);
+    diagOverlay.tick(dt);
 
     heartSprite.userData.tick(t);
 
@@ -8405,14 +8094,14 @@ export function initTdTab(root) {
   deployStart(berthIndexFor(playerHP));
   if (!storyMode && !debugging) showBriefing();
 
-  perfCtl = gui.add({ get on() { return perfOn; }, set on(v) { setPerfOverlay(v); } }, 'on').name('fps readout (`)');   /* a root control, so the VARS modal puts it on the game page */
+  perfCtl = gui.add({ get on() { return perfOverlay.on(); }, set on(v) { setPerfOverlay(v); } }, 'on').name('fps readout (`)');   /* a root control, so the VARS modal puts it on the game page */
   buildVarsModal({ root, gui, lab, urlParams, skySeed, applySky, spawnWave, postfx, setPerfOverlay, gpuExt });   /* THE VARIABLES MODAL and its lab page (src/fx/vars-modal.js) */
   {
     let saved = null;
     try { saved = localStorage.getItem(PERF_KEY); } catch { /* fine */ }
     if (urlParams.get('fps') === '1' || (urlParams.get('fps') !== '0' && (saved === '1' || saved === null))) setPerfOverlay(true,false);   /* off for players; on when turned on (backtick, DEV · Frame readout) and for the acceptance runs that read it */
     if (urlParams.get('fps') === '1') {
-      console.log(`PERFOVERLAY on=${perfOn} el=${!!perfEl}`
+      console.log(`PERFOVERLAY on=${perfOverlay.on()} el=${!!perfEl}`
         + ` hidden=${perfEl ? perfEl.classList.contains('hidden') : '?'}`
         + ` text="${perfEl ? perfEl.textContent : ''}"`);
     }
@@ -8480,7 +8169,7 @@ export function initTdTab(root) {
     // console, and the fact that decides a "the tank is not in view" report
     // (the tank's screen-y, the visual viewport vs the canvas) is only
     // measurable THERE
-    const onScreen = (txt) => { if (mobileShell && toastEl) { toastEl.innerHTML = diagHtml(txt); toastEl.classList.remove('hidden'); } };
+    const onScreen = (txt) => { if (mobileShell && toastEl) { toastEl.innerHTML = diagOverlay.html(txt); toastEl.classList.remove('hidden'); } };
     const line = (k) => {
       const cp = camera.position;
       const ndc = new THREE.Vector3(...player.pos).project(camera);
@@ -8636,7 +8325,7 @@ export function initTdTab(root) {
         heartAsset: heartSprite?.userData.asset || params.heartLook,
         laser: laserStation.state(),
         heartAssetState: heartSprite?.userData.assetState,
-        performance:perfSample,
+        performance:perfOverlay.sample(),
         programs:renderer.info.programs?.length??-1,
         warm:programWarm.state(),
         shieldClock:t,

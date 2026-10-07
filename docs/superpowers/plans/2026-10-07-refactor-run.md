@@ -392,6 +392,8 @@ Pure reflow: imports one `import` per line; a packed statement list one statemen
 
 ### Task 4: The programme host is the programme again
 
+> **Executed after Task 5 (executor, 2026-10-07):** the reflow of Task 3 left td-tab at 8,933 lines; this task's seven literals one member per line cost about +160, which would pass the 9,000 ceiling. Task 5 (about -310) went first; nothing else depends on the order.
+
 The story's per-frame tick leaves `src/fx/programme-host.js` for modules named after their subjects, each with its own host literal in td-tab; `createHullHost` gets its own literal; the order of the tick is preserved exactly.
 
 **Files:**
@@ -430,10 +432,10 @@ The story's per-frame tick leaves `src/fx/programme-host.js` for modules named a
 - Modify: `src/td-tab.js` — the three regions become one call each.
 - Test: `test/diag-overlay.mjs`, `test/perf-overlay.mjs`, `test/dev-panel.mjs` on fakes (a fake `root.querySelector`, a recording `gui.add` returning a recording controller) asserting the same binding list and labels as the original.
 
-- [ ] **Step 1:** write the three tests from the ORIGINAL blocks run under `new Function` over the fakes (the labels and the order of `gui.add` calls are the contract).
-- [ ] **Step 2:** move the blocks; wire; `node --check`.
-- [ ] **Step 3: Verify** — `npm test`, `npm run check`, `npm run build`; snapshot suites: `--defense`, `--probe`, `--seats`; a manual check of `?diag=1` and the perf overlay (the `details` element opens and shows frame costs) through `scripts/browser-lock.sh node scripts/serve.mjs --read-only` is optional if `--probe` covers them (read the suite first).
-- [ ] **Step 4: Commit** — `The diag overlay, the perf overlay and the dev panel are platform modules; td-tab -<n> lines`
+- [x] **Step 1:** write the three tests from the ORIGINAL blocks run under `new Function` over the fakes (the labels and the order of `gui.add` calls are the contract).
+- [x] **Step 2:** move the blocks; wire; `node --check`.
+- [x] **Step 3: Verify** — `npm test`, `npm run check`, `npm run build`; snapshot suites: `--defense`, `--probe`, `--seats`; a manual check of `?diag=1` and the perf overlay (the `details` element opens and shows frame costs) through `scripts/browser-lock.sh node scripts/serve.mjs --read-only` is optional if `--probe` covers them (read the suite first).
+- [x] **Step 4: Commit** — `The diag overlay, the perf overlay and the dev panel are platform modules; td-tab -<n> lines`
 
 ---
 

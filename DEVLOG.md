@@ -234,6 +234,22 @@ Evidence:
 - --footprints: solar {atSolid false, solid 3 of 55 cells}, hugin {false, 3 of 50}, rocket-a {true, 1 of 54}, foundry {true, 1 of 55}, launcher {false, 4 of 56}; PASS footprints
 - node test/footprint.mjs; npm run architecture (125 modules)
 
+## 2026-10-07 — The view watchdog and diagnostics overlay, the frame readout and the dev panel are platform modules
+
+change · accepted · 2026-10-07-dev-instrumentation-leaves-the-controller
+
+The refactor run (docs/superpowers/plans/2026-10-07-refactor-run.md, Task 5): dev instrumentation sat in src/td-tab.js beside the game, about 380 lines that no player path needs. Done before the programme-host split (Task 4) because that split's literals, one member per line, cost about 160 lines and td-tab stood at 8,933 under its 9,000 ceiling after the long-line reflow.
+
+src/platform/diag-overlay.js (createDiagOverlay(root, host): viewWatch, tick, html; the watchdog, tankInFrustum and the ?diag=1 panel), src/platform/perf-overlay.js (createPerfOverlay(root, host): the frame readout, its workload groups, the GPU timer; on(), sample(), cpu, set, gpuBegin/gpuEnd, tick, key) and src/platform/dev-panel.js (createDevPanel(gui, host): the lil-gui bindings; the GUI and its vendor import stay in td-tab; returns viewCtrl, directiveCtrl, seedCtrl). Their constant tables are imported by the modules, not handed in. td-tab 8,933 -> 8,622 lines. Behaviour unchanged.
+
+Alternatives: Keep the dev panel in td-tab as configuration: rejected, its 80 bindings are a subject of their own and only three controls are read back.; Hand every constant table in through the host: rejected, the tables are module imports (units, looks, fonts, tank feel, strike, bloom weights, tower looks) that never change.
+
+Evidence:
+
+- Equivalence harnesses (session scratchpad): the original td-tab blocks run through new Function beside each module on the same fakes produce identical call logs (diag 65 entries: two re-seats, the panel's ring and taps; perf 98 entries: GPU queries, readout, lab line; dev panel 307 entries: 80 bindings, every callback fired)
+- test/diag-overlay.mjs, test/perf-overlay.mjs, test/dev-panel.mjs pin those logs' digests; tools/refactor/undef-diff.mjs before/after: no new undefined or unused names
+- npm test, npm run check, npm run build; browser suites from a snapshot: --defense, --probe, --seats
+
 ## 2026-10-07 — The controller's byte budget goes; its line budget becomes a ceiling re-based by decision; host contracts take the budget's job
 
 decision · accepted · 2026-10-07-byte-budget-goes-line-ceiling
