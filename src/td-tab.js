@@ -2459,10 +2459,7 @@ export function initTdTab(root) {
       return;
     }
     if (down && (k === ' ' || k === 'spacebar')) { fire(); ev.preventDefault(); return; }
-    // T FOR TATE (盾), not S. S is REVERSE — it is in CTL_DRIVE_KEYS with w/a/d — so binding the shield to it meant every time the
-    // player backed up they also spent a charge. My earlier check grepped for `k === 's'` and found nothing, which is exactly the
-    // wrong question: the drive keys are read through a MAP, not a literal, so the conflict was invisible to the search and would
-    // have shown up as a rack that emptied itself.
+    // T FOR TATE (盾), not S: S is REVERSE in CTL_DRIVE_KEYS (a map, so a grep for 's' never showed it)
     if (down && k === 't') { deployShieldNow(); ev.preventDefault(); return; }
     if (down && k === 'h') pulseHint();
     if (down && k === 'v') toggleView();
@@ -2475,11 +2472,13 @@ export function initTdTab(root) {
     // no key at all that did not already mean something else.
     if (down && k === '3') setView('third');
     // C for Cheat (moved off M, which is a VIEW now)
-    if (down && k === 'c' && (urlParams.get('acceptance') === '1' || devModeOn({ buildToken: document.querySelector('meta[name="cb"]')?.content, search: location.search, stored: localStorage.getItem('ssg.dev-face') }).on)) {   /* a cheat for DEV and the acceptance runs, not for players */
+    const cheat = down && (k === 'c' || k === 'n') && (urlParams.get('acceptance') === '1' || devModeOn({ buildToken: document.querySelector('meta[name="cb"]')?.content, search: location.search, stored: localStorage.getItem('ssg.dev-face') }).on);   /* cheats for DEV and the acceptance runs, not for players */
+    if (cheat && k === 'c') {
       strike.ready = Math.min(9, strike.ready + 1);
       showToast('<div class="wave-num">CHEAT · MISSILE LOADED</div>'
         + `<div class="wave-role">ready ${strike.ready}</div>`, 1200);
     }
+    if (cheat && k === 'n') { let n = 0; for (const sp of spawnPoints) if (sp.alive && sp.obj?.userData.breach) { executeStrike(sp.ci, t); n++; } showToast(`<div class="wave-num">CHEAT · HOLES NUKED · ${n}</div>`, 1200); }   /* N FOR NUKE (owner, 2026-10-07): the open holes filled, to move on to the thing being debugged */
     // Q/E nudge the throttle lever from the keyboard — up for speed, down
     // through zero into reverse. Key auto-repeat does the holding.
     if (down && (k === 'q' || k === 'e')) {

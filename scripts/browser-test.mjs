@@ -2753,6 +2753,15 @@ try{
   // THE REST OF THE OLD WORLD GOES TOO (2026-09-25): the gunship's pass count and any MK-9 in flight
   const g=await evaluate('window.__stalheartTest.state().gunship');assert.equal(g.passes,0,`the gunship's passes start over (${JSON.stringify(g)})`);assert(!g.nuke?.flying,`no MK-9 falls into the new run (the rig itself comes back empty, on demand) (${JSON.stringify(g.nuke)})`);}
  current='laser-game-new-run';await finish();
+ } else if(args.includes('--nuke-key')) {
+ // N FOR NUKE (owner, 2026-10-07, dev and the acceptance runs only): the open tremor holes filled at once, to move on to what is being debugged
+ const T='window.__stalheartTest';
+ await go('nuke-key','index.html?sw=0&acceptance=1&cine=0&skip=defence&sector=1#td');   // the bare opening is frozen until the tour: a sector in play
+ await until(`${T}?.state().breaches.length>0`,120000);await delay(2000);
+ const open=await evaluate(`${T}.state().breaches.length`),paused=await evaluate(`${T}.state().paused`);console.log(`NUKE KEY ${open} hole(s) up, paused ${paused}`);
+ await send('Input.dispatchKeyEvent',{type:'keyDown',key:'n',code:'KeyN'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'n',code:'KeyN'});await delay(1500);
+ const left=await evaluate(`${T}.state().breaches.length`);assert.equal(left,0,`N filled every open hole (${open} -> ${left})`);
+ current='nuke-key';await finish();
  } else if(args.includes('--laser')) {
  // THE ORBITAL LASER LAB. Open it, wait for the real base and for the sinkhole's crater to actually open, jump the
  // clock to a pass, then hold the beam and drag it up the trench through the test hook — the pointer only steers

@@ -49,6 +49,19 @@ Evidence:
 
 - node test/guard-aggro.mjs, node test/expeditions.mjs; npm test (184), npm run check, npm run architecture
 
+## 2026-10-07 — N for nuke: a dev key that fills every open tremor hole at once
+
+change · resolved · 2026-10-07-n-for-nuke-the-dev-key
+
+Owner, 2026-10-07 (twenty-eighth notes, 8): 'just for dev in local, add a keyboard shortcut that auto-nukes the opened tremor holes so we can move on to debug. Use a letter we don't use yet. Maybe N for Nuke or T for Tactical.' T is the shield (tate); N was free.
+
+src/td-tab.js: beside the C cheat (a missile loaded), gated the same way (dev mode or ?acceptance=1, never for players), N runs executeStrike on every live breach spawn point and toasts CHEAT · HOLES NUKED · n. The controller is at its byte budget: the shield key's four-line comment paid for the line. New step --nuke-key (a sector in play from ?skip=defence&sector=1: the bare opening is frozen until the tour, so keys there are dropped).
+
+Evidence:
+
+- --nuke-key: NUKE KEY 2 hole(s) up, paused false; N filled every open hole (2 -> 0)
+- npm run architecture: budgets lowered to 8734 lines / 522369 bytes
+
 ## 2026-10-06 — The welcome's keywords sound: each unit's own sound on hover, and ISAO says DON'T PANIC under 01 and 'You're a good frood, let's do this!' under 02
 
 change · accepted · 2026-10-06-welcome-keywords-sound
