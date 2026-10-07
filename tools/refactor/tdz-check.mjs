@@ -4,7 +4,8 @@ import { createRequire } from 'node:module';
 import fs from 'node:fs';
 const req = createRequire(process.env.HOME + '/.npm/_npx/515228b7c8d004a2/node_modules/');
 const espree = req('espree'), scope = req('eslint-scope');
-const [file, line, ...names] = process.argv.slice(2);
+let [file, line, ...names] = process.argv.slice(2);
+if (names.length === 1 && names[0].startsWith('@')) { const sp = JSON.parse(fs.readFileSync(names[0].slice(1), 'utf8')).names; names = Object.keys(sp).filter((k) => sp[k] === 'value'); }   // @spec.json: its values
 const ast = espree.parse(fs.readFileSync(file, 'utf8'), { ecmaVersion: 'latest', sourceType: 'module', loc: true, range: true });
 const sm = scope.analyze(ast, { ecmaVersion: 2022, sourceType: 'module' });
 const bad = [];

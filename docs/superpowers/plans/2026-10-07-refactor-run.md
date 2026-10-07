@@ -506,7 +506,7 @@ The story's per-frame tick leaves `src/fx/programme-host.js` for modules named a
 - Create: `src/fx/enemy-step.js` — `createEnemyStep(host) -> { clearEnemies, spawnEnemies, hopEstimate, addSpawnPoint, seedPortals, gateTakesShell, killPortal, armWave, spawnWave, releaseSpawns, updateEnemies(dt), killCreature(e, src), spawnQueue, state }` from td-tab 3870–4326 and the spawn queue 4084–4089; `enemies`, `spawnPoints`, `wave`, `waveActive` stay in td-tab as values/getters/setters.
 - Test: `test/enemy-step.mjs` — `updateEnemies` for 30 frames with three fake enemies (one walking, one at the heart, one dead) old vs new; `releaseSpawns` with a queue of two.
 
-- [ ] Steps as Task 8. Suites: `--sectors`, `--breach-game`, `--crowd-probe`, `--defense`, `--canyon`, `--backdoor`, `--rim-holes`, `--pacing`. Commit — `The enemy loop is src/fx/enemy-step.js; td-tab -<n> lines`.
+- [x] Steps as Task 8. Suites: `--sectors`, `--breach-game`, `--crowd-probe`, `--defense`, `--canyon`, `--backdoor`, `--rim-holes`, `--pacing`. Commit — `The enemy loop is src/fx/enemy-step.js; td-tab -<n> lines`.
 
 ---
 

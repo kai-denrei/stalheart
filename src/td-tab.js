@@ -2,12 +2,11 @@ import { createSentryPilot } from './sentry-pilot.js';
 import { DEFAULT_TANK, SHELL_SPEED, SHELL_REACH, TANK_DRIVE, TANK_STEER, TANK_WALL } from './content/tank.js'; import { makeDriveRamp } from './domain/drive-ramp.js'; import { hullDepth, deepensContact } from './domain/hull-contact.js'; import { makeSteerEase, steerBank } from './domain/steer-ease.js'; import { baseFor, restoreSeatView } from './domain/seat-view.js'; import { BASE_REPAIR } from './content/base-programme.js';
 import { createGameBreaches } from './game-breaches.js'; import { ramShotPose } from './domain/showcase-shot.js';   /* THE RAM BEAT'S OWN FRAMING: low behind the hull (src/domain/showcase-shot.js; the band of cells it drives into is the showcase hooks') */
 import { createBoardSurface } from './fx/board-surface.js'; import { createCampaignDebrief, sparkline } from './fx/campaign-debrief.js'; import { createSectorRun } from './fx/sector-run.js'; import { createBackDoor } from './fx/back-door.js'; import { isaoFace, orbitFrame, tourFrame, tourSeconds } from './domain/story-shots.js';
-import { startDiveShot } from './fx/dive-shot.js'; import { createCameraShots } from './fx/camera-shot.js'; import { createIntegrityHud } from './fx/integrity-hud.js'; import { createSeatGlide } from './fx/seat-glide.js'; import { viewEdge, viewportLine } from './domain/view-edge.js'; import { boxOverlaps } from './domain/box-overlaps.js'; import { makeShaderWarmer } from './fx/shader-warm.js'; import { waveGap } from './domain/wave-spread.js';
+import { startDiveShot } from './fx/dive-shot.js'; import { createCameraShots } from './fx/camera-shot.js'; import { createIntegrityHud } from './fx/integrity-hud.js'; import { createSeatGlide } from './fx/seat-glide.js'; import { viewEdge, viewportLine } from './domain/view-edge.js'; import { boxOverlaps } from './domain/box-overlaps.js'; import { makeShaderWarmer } from './fx/shader-warm.js'; 
 import { BREACH_SOUNDS } from './content/breach-defaults.js';
 import { SOUNDS } from './content/runtime.js';
-import { emergence } from './domain/breach-waves.js';
-import { applyScare, stampScare, scarePace, isScared, towardScare, awayExits } from './domain/impact-scare.js';
-import { EXPLOSION_SCARE, SCARE_FREEZE_S } from './content/explosions.js';
+import { applyScare } from './domain/impact-scare.js';
+import { EXPLOSION_SCARE } from './content/explosions.js';
 import { createThermalHeat } from './fx/thermal-heat.js';
 import { isAutomated } from './domain/automation.js';
 import { fillFromKill, fillFromWaveClear, isFull as callFull, callProgress } from './domain/gunship-call.js';
@@ -18,7 +17,6 @@ import { CARGO_LOOK } from './content/cargo.js';
 import { STORY_EXPEDITIONS } from './content/story-defaults.js'; import { RECKLESS_MSGS, HEART_MSGS, DIRECTIVE_LABEL, AUTO_OPTIONS, SHELL_WORDS, VERDICT_LOW, VERDICT_MID, VERDICT_HIGH } from './content/controller-copy.js';
 import { hasPerk as programmeHas, snapshot as programmeSnapshot, lose as programmeLose } from './domain/build-programme.js';
 import { createProgramWarm } from './fx/program-warm.js';
-import { sinkholeGroundHeight } from './core/sinkhole-shape.js';
 import { devModeOn } from './core/dev-mode.js';
 import { createControlsCard } from './fx/controls-card.js';
 import { createTutorialCard } from './fx/tutorial-card.js';
@@ -47,7 +45,7 @@ import { storage as localStorage } from './storage.js';
 // story is the game (docs/STATE.md); the campaign board under it serves the acceptance runs and the wave simulator.
 
 import { makeStuck } from './domain/hull-stuck.js'; import { highlightSeat } from './fx/seat-highlight.js'; import { HULL_STUCK, TANK_PLASMA } from './content/tank.js'; import { QUIVER_SPLASH, STORY_SENTRIES } from './content/sentries.js';   // the hull gets unstuck (owner, 2026-10-02)
-import { makeKick } from './domain/hover-kick.js'; import { guardExits } from './domain/guard-aggro.js'; import { showMission } from './fx/mission-card.js'; 
+import { makeKick } from './domain/hover-kick.js'; import { showMission } from './fx/mission-card.js'; 
 import * as THREE from '../vendor/three.module.js';
 import GUI from '../vendor/lil-gui.esm.js';
 import { bfsDist, BLOCKED, PATH, ROOM } from './dungeon.js';
@@ -62,7 +60,7 @@ import { mulberry32, randomSeed } from './rng.js';
 import { createLaserStation, structureLostHtml } from './fx/laser-station.js'; import { LASER_GAME } from './content/orbital-laser.js'; import { createGlossaryModals } from './fx/glossary-modals.js'; import { makeTriadIcon, glossCard, GAMEPLAY_TIPS } from './fx/briefing-cards.js';
 import { computeBerths, berthIndexFor } from './berths.js'; import { createProgrammeHost } from './fx/programme-host.js'; import { strikeFallPose, droneRidePose, bastionPose, tankViewPose } from './domain/camera-goal.js'; import { createShopRadial } from './fx/shop-radial.js'; import { berthRun, berthHeading, deployU, easeDeploy, deployFraming } from './domain/deploy-path.js';
 import { createSkyRig } from './fx/sky-rig.js'; import { createIsaoMoments } from './fx/isao-moments.js'; import { createColonyTick } from './fx/colony-tick.js'; import { createAutoSupport } from './fx/auto-support.js';
-import { createCanyonRun } from './fx/canyon-run.js'; import { createEndingHost } from './fx/ending-host.js'; import { createIsaoWorker } from './fx/isao-worker.js'; import { createHullDrive } from './fx/hull-drive.js'; import { createTowerCombat } from './fx/tower-combat.js'; import { createHullHost } from './fx/hull-issue.js';
+import { createCanyonRun } from './fx/canyon-run.js'; import { createEndingHost } from './fx/ending-host.js'; import { createIsaoWorker } from './fx/isao-worker.js'; import { createHullDrive } from './fx/hull-drive.js'; import { createTowerCombat } from './fx/tower-combat.js'; import { createEnemyStep } from './fx/enemy-step.js'; import { createHullHost } from './fx/hull-issue.js';
 import { wantsSecondary, shellsForAll } from './autofire.js';
 import { createBeam } from './beamfx.js';
 import { createBeamRig, PLASMA_DEFAULTS, BOARD_PRESET, BEAM_PEAK } from './beamdraw.js';
@@ -78,7 +76,7 @@ import { SECONDARY_TOE, applySecondaryToe } from './units.js';
 import { UNITS, buildUnit, buildCreature, preloadMork, makeShieldShell, preloadContainer, makeContainerFixture, makeBulletCloud, makeRewardSolid, makeShellSolid, makeDebris, makeDotBurst, makeHeartCloud, makeDotEnemy } from './units.js';
 import { LOOKS } from './looks.js';
 import { makeCellIndex } from './cellindex.js';
-import { CREATURE_TINTS, ENEMY_SPEC, INTROS, computeWavePlan, accentFor } from './enemyspec.js';
+import { CREATURE_TINTS, ENEMY_SPEC, INTROS, computeWavePlan } from './enemyspec.js';
 import { PICKUPS } from './pickups.js'; import { hushRotor } from './fx/rotor-voice.js';
 import { rankFor, rankLabel, badgeSVG } from './ranks.js';
 import { beamStep, isBeamStep } from './beamranks.js';
@@ -89,16 +87,16 @@ import { makeSeekerMesh, aimSeeker,
   LANCE_LOOK as SHOT_LANCE_LOOK, THROW_LOOK as SHOT_THROW_LOOK } from './shotfx.js';
 import { SHIELD_TUNE, SHIELD_KNOBS, makeShield, charge as chargeShield,
   deploy as deployShield, tickShield, stepShieldFrame, restockShield, towerOffline,
-  waveReset as shieldWaveReset, shoveVec, shoveMag, makeArrayStation, refillArray } from './shield.js'; import { SHIELD_ARRAY } from './content/shield-array.js'; import { makePadRing, glowPadRing, shieldPanel } from './fx/shield-array.js'; import { createRamReadout } from './fx/ram-readout.js';
+  makeArrayStation, refillArray } from './shield.js'; import { SHIELD_ARRAY } from './content/shield-array.js'; import { makePadRing, glowPadRing, shieldPanel } from './fx/shield-array.js'; import { createRamReadout } from './fx/ram-readout.js';
 import { deepLink, wireDeepLink } from './deeplink.js';
 import { parseLabQuery } from './lab.js';
 import { bakeGalaxyCube } from './galaxybake.js';
 import { SKY_PRESET } from './galaxyseed.js';
 import { makeScore } from './score.js';
-import { TOWERS, TOWER_BY_KEY, MAX_TIER, upgradeCost, effectiveStats as baseEffectiveStats, shotInterval, unlockedTowerKeys, TOWER_ORDER, starterTower, ROSTER } from './towers.js';
+import { TOWERS, TOWER_BY_KEY, MAX_TIER, upgradeCost, effectiveStats as baseEffectiveStats, shotInterval, unlockedTowerKeys, starterTower, ROSTER } from './towers.js';
 import { makeEconomy, sellRefund } from './economy.js';
 import { pickTier } from './perftier.js';
-import { applyWeatheredMaterial } from './fx/weathered-material.js'; import { showContact } from './fx/contact-card.js'; import { sentryBookFull } from './domain/sentry-cap.js'; import { setTierPlate } from './fx/tier-plate.js';
+import { applyWeatheredMaterial } from './fx/weathered-material.js'; import { sentryBookFull } from './domain/sentry-cap.js'; import { setTierPlate } from './fx/tier-plate.js';
 import { STICK, stickVector, knobOffset } from './stick.js';
 import { makeBloom } from './postfx.js';
 import { TANK_FEEL, makeTankFeel, stepTankFeel, landTankFeel, fireTankFeel, applyTankFeel, applyTankHealth } from './tankfeel.js';
@@ -109,8 +107,7 @@ import { makeStrike, makeStrikeParams, grantStrikes, stepStrike,
 import { createRadarScope } from './fx/radar-scope.js'; import { createTowerAim } from './fx/tower-aim.js'; import { buildVarsModal } from './fx/vars-modal.js'; import { startVictoryPull } from './fx/victory-pull.js'; import { createShowcaseHooks } from './fx/showcase-hooks.js'; import { createGunshipRig } from './fx/gunship-rig.js';
 import { makeA6, arc as a6Arc } from './heptapod.js';
 import { DEFAULT_TOWER_LOOK, buildTowerLook, preloadLook, lookReady } from './towerlooks.js';
-import { makeAudio } from './audio.js'; import { isaoSay } from './fx/isao-voice.js'; import { lanceFollow } from './fx/lance-follow.js'; import { createCrowdGate } from './fx/crowd-gate.js'; import { makeDotSquad, shedSquad, squadDamage } from './fx/squads.js';
-import { DEATH_KEYS } from './audiomanifest.js';
+import { makeAudio } from './audio.js'; import { isaoSay } from './fx/isao-voice.js'; import { lanceFollow } from './fx/lance-follow.js'; import { createCrowdGate } from './fx/crowd-gate.js'; import { shedSquad, squadDamage } from './fx/squads.js';
 
 export function initTdTab(root) {
   const flags = readGameFlags();   // THE URL FLAGS, read once (src/platform/game-flags.js)
@@ -3611,215 +3608,6 @@ export function initTdTab(root) {
   }
 
 
-  // --- enemies: easy AI, they only wander ----------------------------------
-  function clearEnemies() {
-    for (const e of enemies) {
-      scene.remove(e.obj);
-      // traverse, not e.obj.geometry: a non-rammable enemy carries a solid
-      // core as a CHILD, and disposing only the root leaks it every wipe
-      disposeObj(e.obj);
-    }
-    enemies.length = 0;
-  }
-
-  function spawnEnemies() {
-    // battle reset — clear all enemies and gates, then seed the starting
-    // neutral portals; the wave plan decides what pours out of them
-    clearEnemies();
-    gameBreaches.reset();
-    spawnQueue.length = 0; spawnClock = 0;
-    for (const sp of spawnPoints) {
-      scene.remove(sp.obj);
-      disposeObj(sp.obj);
-      if (sp.mapMarker) { scene.remove(sp.mapMarker); disposeObj(sp.mapMarker); }
-    }
-    spawnPoints.length = 0;
-    wave = 0;
-    waveActive = false; waveAge = 0; interClock = params.waveGap * 0.5;
-    portalDist = null;
-    clearTimeout(waveTimer);
-    waveEl.classList.add('hidden');
-    seenTypes.clear();
-    seedPortals(2);
-    // a new game means a new magazine: leftovers do not survive regenerate
-    strike.reserved = 0; strike.ready = 0; strike.gauge = 0;
-    strike.armed = false; strike.target = -1; strike.falling = -1;
-    grantStrikes(strike, spawnPoints.filter((sp2) => sp2.alive).length, strikeTune);
-  }
-
-  // cheap hop estimate for spreading spawn points (chord distance in cells)
-  function hopEstimate(a, b) {
-    return dist3(graph.centers[a], graph.centers[b]) / cellSide;
-  }
-
-  // a sector's gates are spatial sources, not type-bound — place one far
-  // from the heart, spread from existing gates; 3 hits to destroy
-  function addSpawnPoint() {
-    let maxD = 0;
-    for (let i = 0; i < dungeon.tags.length; i++) {
-      if (dungeon.tags[i] !== BLOCKED) maxD = Math.max(maxD, dungeon.distToHeart[i]);
-    }
-    let best = -1, bs = -1;
-    for (let ci = 0; ci < dungeon.tags.length; ci++) {
-      if (dungeon.tags[ci] === BLOCKED || dungeon.distToHeart[ci] < maxD * 0.55) continue;
-      if (spawnPoints.some((s) => s.ci === ci)) continue;
-      let s = dungeon.distToHeart[ci];
-      for (const other of spawnPoints) s += Math.min(20, hopEstimate(ci, other.ci));
-      if (s > bs) { bs = s; best = ci; }
-    }
-    if (best === -1) best = dungeon.spawn;
-    // the source is a PORTAL, standing upright like a gate (local +Y =
-    // surface normal); neutral tint — the wave plan decides what pours out
-    const obj = buildPortalObj(best, whim() * 6.283);
-    scene.add(obj);
-    // minimap beacon — neutral blue, dark until the player FINDS the source
-    const mapMarker = new THREE.Mesh(
-      new THREE.SphereGeometry(0.035, 10, 10),
-      new THREE.MeshBasicMaterial({ color: 0x9fdcff }));
-    const mm = scale3(graph.centers[best], 1 + params.wallHeight * 1.6);
-    mapMarker.position.set(mm[0], mm[1], mm[2]);
-    mapMarker.visible = false;
-    mapMarker.layers.set(MAP_LAYER);   // map only
-    scene.add(mapMarker);
-    spawnPoints.push({ ci: best, hp: 3, obj, alive: true, found: false, mapMarker });
-    recomputePortalDist();
-  }
-
-  // a sector's gates are spatial sources, not type-bound — seed a small
-  // fixed set; the wave plan decides what pours out of them
-  function seedPortals(n) { if (storyMode) return; for (let i = 0; i < n; i++) addSpawnPoint(); }
-
-  // a ground breach closes only to a strike or exhaustion; a shell on it marks it on the scope. A sector's breach takes three
-  function gateTakesShell(sp) {
-    sp.found = true; if (sectorRun?.owns(sp) && --sp.hp <= 0) killPortal(sp, 'shells');
-    return false;
-  }
-
-  function killPortal(sp,reason='impact') {
-    if(!sp.alive)return;
-    if(sp.obj.userData.breach&&!['strike','gunship','shells','laser','exhausted'].includes(reason))return;
-    sp.alive = false; sectorRun?.closed(sp, reason);   // a story sector books who closed its breach
-    // THE GATE GOES LIKE THE TANK GOES (operator): its own wreckage, a big burst in its own colour, and the heavy sound — the
-    // same three parts as destroyPlayer, because that is the vocabulary the board already has for "something substantial just
-    // ended".
-    const nrm = norm3(graph.centers[sp.ci]);
-    sfx.play('tank_destroyed');
-    if (sp.obj) {
-      if(!sp.obj.userData.breach){const fx = makeDebris(sp.obj, nrm);scene.add(fx);debris.push(fx);}
-      const burst = makeDotBurst(0x8fe8ff, nrm, 90);
-      burst.scale.setScalar(cellSide * 1.6);
-      const bp = scale3(nrm, 1 + cellSide * 0.6);
-      burst.position.set(bp[0], bp[1], bp[2]);
-      scene.add(burst); debris.push(burst);
-    }
-    if(sp.obj.userData.breach){gameBreaches.seal(sp.obj);sealedBreachCells.add(sp.ci);}
-    else {scene.remove(sp.obj);disposeObj(sp.obj);}
-    if (sp.mapMarker) { scene.remove(sp.mapMarker); disposeObj(sp.mapMarker); }
-    sp.mapMarker = null;
-    recomputePortalDist();
-  }
-
-  // Arm the next wave: one entry point, so nothing can spawn unannounced. Idempotent — a stalled field re-asks every frame and
-  // must not re-fire the cue or reset the countdown it is already running. First dangerous contact of the wave: klaxon + a
-  // CRT-red warning. Once per wave BY DESIGN — a constant siren is the alarm you learn to ignore.
-  const dangerEl = root.querySelector('#td-danger');
-  let dangerTimer = null;
-  function dangerFlash() {
-    sfx.play('danger_alert');
-    if (!dangerEl) return;
-    dangerEl.classList.remove('hidden');
-    clearTimeout(dangerTimer);
-    dangerTimer = setTimeout(() => dangerEl.classList.add('hidden'), 1900);
-  }
-
-  function armWave() { if (storyMode && !automated()) return;   // the story world has no wave clock until the handover
-    if (waveIn >= 0) return;
-    // THE SECTOR HAS A FIXED PROGRAMME. Once it is spent no more waves are sent, whatever the clock thinks — the remaining gates
-    // are a mop-up, not a siege, and a sector that kept sending waves forever would make the wave count meaningless again.
-    if (sectorRun ? !sectorRun.canRelease() : programmeDone()) return;   // the story's sectors own their breaches and their programmes (src/fx/sector-run.js)
-    hideSitrep(); // the telegraph outranks the recap
-    if (!storyMode) showBrief('motive');   // why they come, as the first one is dialled (the story's sector brief says it)
-    waveIn = WAVE_WARN;
-    warnBeat = 0;
-    waveCharge = 0;
-  }
-
-  function spawnWave() {
-    waveIn = -1;
-    resetWaveStats();
-    // the release — a wide, brief ring from every gate that is opening
-    for (const sp of spawnPoints) {
-      if (sp.alive) warnRing(sp.ci, CREATURE_TINTS[sp.type] ?? 0xffffff, 0.75, cellSide * 5.5);
-      if (sp.alive) {
-        sp.obj.scale.setScalar(sp.obj.userData.sizeScale ?? 1);
-        if (sp.obj.userData.setDim) sp.obj.userData.setDim(1);
-      }
-    }
-    waveCharge = 0;
-    warnBeat = 0;
-    wave++;
-    record('wave.start', { wave, sector: round, biomass: eco.biomass });
-    shieldWaveReset(shield, shieldTune);   // the heart pad refills each wave
-    waveActive = true; waveAge = 0;
-    tfMilestone(wave);   // the Terraformer keeps time in waves
-    const plan = computeWavePlan(wave, round, params.waveSize, (lab.on ? lab.waveMult : 1) * threatMult);
-    // NEW THREAT reveal the first time a headline type appears
-    if (!storyMode && !seenTypes.has(plan.headline)) {   // the story's sectors brief their own threats
-      seenTypes.add(plan.headline);
-      const intro = INTROS.find((iv) => iv.type === plan.headline);
-      if (intro) announceWave(intro);
-    }
-    // one new tower unlocks per wave through wave 8
-    if (!storyMode && wave >= 1 && wave <= TOWER_ORDER.length) showTowerToast(TOWER_ORDER[wave - 1]);   // the story unlocks towers by expedition
-    const live = spawnPoints.filter((s) => s.alive);
-    if (sectorRun) { for (const q of sectorRun.release()) spawnQueue.push({ ...q, at: spawnClock + q.at }); spawnQueue.sort((a, b) => a.at - b.at); releaseSpawns(0); }   // the story's sectors: every live breach sends its own programme wave, and queued guards stay queued
-    else if (live.length) {
-      const gap = waveGap(plan.entries, SPAWN_SPREAD, SPAWN_GAP_MAX);
-      spawnQueue.length = 0;
-      spawnClock = 0;
-      let pi = 0, n = 0;
-      for (const { type, count } of plan.entries) {
-        for (let k = 0; k < count; k++) {
-          spawnQueue.push({ type, sp: live[pi % live.length], at: n * gap });
-          pi++; n++;
-        }
-      }
-      // the FIRST one is already through, so a wave never opens on an empty
-      // field while the clock counts
-      releaseSpawns(0);
-    }
-    updateHud();
-  }
-
-  function releaseSpawns(dtSeconds) {
-    spawnClock += dtSeconds; crowdGate.frame(enemies, dtSeconds > 0);
-    while (spawnQueue.length && spawnQueue[0].at <= spawnClock) {
-      const entry = spawnQueue.shift(), { type, sp } = entry;   // a story swarm entry also carries delay, spread and harmless
-      if (!sp.alive) continue;   // its gate died while it was queued
-      if(!gameBreaches.ready(sp.obj)||crowdGate.full(entry)){spawnQueue.unshift({...entry,at:spawnClock});break;}
-      const spec = ENEMY_SPEC[type]; if (storyMode && !entry.guard && !seenTypes.has(type)) { seenTypes.add(type); showContact(root, type); }   // first contact: src/fx/contact-card.js
-      const obj = (entry.squad ? makeDotSquad : makeDotEnemy)(type, { walker: CREATURE_TINTS[type], walkerHi: accentFor(type) }, entry.dens, entry.squad);
-      const size = spec.size * 0.7;
-      const scale0 = cellSide * size;
-      obj.scale.setScalar(scale0); obj.userData.s0 = scale0;
-      scene.add(obj);
-      const exits = openNeighbors(sp.ci);
-      enemies.push({
-        id: nextEnemyId++,
-        type, spec, scale0, size: size * (obj.userData.reach ?? 1),breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:-(entry.delay??0),harmless:!!entry.harmless,emergeOff:entry.spread?(()=>{const [u,v]=tangentBasis(norm3(graph.centers[sp.ci])),a=whim()*6.283,r=Math.sqrt(whim())*entry.spread*cellSide;return add3(scale3(u,Math.cos(a)*r),scale3(v,Math.sin(a)*r));})():null,   // THE SWARM (owner, 2026-09-13): the whole crater boils, not one point
-        cur: sp.ci, prev: -1,
-        next: exits.length ? exits[Math.floor(whim() * exits.length)] : sp.ci,
-        prog: sp.obj.userData.breach?0:whim() * 0.4, pos: graph.centers[sp.ci].slice(), dir: [0, 1, 0],
-        obj, alive: true, phase: whim() * 6.283,
-        // a deterministic pace of its own: identical speeds are what let a
-        // clump that chose the same exit stay one silhouette all the way in
-        paceJitter: (0.9 + whim() * 0.22) * (entry.pace ?? 1),   /* a spawn may set its own march: the story swarm surges up the lane */
-        hp: spec.hp * (entry.squad || 1), members: entry.squad || 0, behMult: 1, behUntil: -1, touchCd: -1,
-        slowFactor: 1, slowUntil: -1, guard: entry.guard ?? null,
-      });
-    }
-  }
-
   // THE WAVE ARRIVES, IT DOES NOT APPEAR. Every enemy in a wave used to be created in one frame, all of them standing on the two
   // portal cells with the same speed — so four phage on two portals read as TWO contacts, and twenty-six read as two blobs. The
   // towers shot at things nobody could see, because the things were inside each other. (Measured: wave 3, 26 alive,
@@ -3831,244 +3619,111 @@ export function initTdTab(root) {
   const SPAWN_SPREAD = 3.2;   // seconds a whole wave takes to come through
   const SPAWN_GAP_MAX = 0.45, crowdGate = createCrowdGate(); // ...but never slower than this per contact
 
-  const ENEMY_SPEED = 1.0; // cells/s toward the Heart — FASTER still
-  function updateEnemies(dt, tNow) {
-    releaseSpawns(dt);
-    for (const e of enemies) {
-      if (!e.alive) continue;
-      const spec = e.spec;
-      if(e.breachSource&&e.emergeAge<1.2){
-        e.emergeAge+=dt;const f=emergence(Math.max(0,e.emergeAge),1.2),entry=e.breachSource.userData.breach;
-        const height=-CONTENT.breach.craterRadius*.55*cellSide+e.scale0*(e.obj.userData.lift??.85)*f.rise-e.scale0*(1-f.rise);
-        const n=norm3(e.emergeOff?add3(graph.centers[e.cur],e.emergeOff):graph.centers[e.cur]);e.pos=n;e.obj.position.fromArray(scale3(n,1+height));e.obj.scale.setScalar(e.scale0*f.scale);e.obj.material.opacity=.95*f.opacity;
-        e.obj.quaternion.copy(e.breachSource.quaternion);e.obj.userData.tick?.(tNow+e.phase);continue;
-      }
-      // HK healOOC: regenerators knit themselves back together while
-      // nothing has hit them for 1.2 s — burst them down or ram them
-      if (spec.regen && e.hp < spec.hp && tNow - (e.lastHitT ?? -9) > 1.2) {
-        e.hp = Math.min(spec.hp, e.hp + spec.regen * dt);
-        const sv = e.scale0 * (0.7 + 0.3 * e.hp / spec.hp);
-        e.obj.scale.setScalar(sv);
-        e.obj.userData.s0 = sv;
-      }
-      let pace = ENEMY_SPEED * spec.speed * (e.paceJitter ?? 1);
-      if (tNow < e.behUntil) pace *= e.behMult; stampScare(e, tNow); pace *= scarePace(e, tNow, SCARE_FREEZE_S); // on-hit reaction window; an impact's scare stops it, then hurries it away (src/domain/impact-scare.js)
-      if (tNow < e.slowUntil) pace *= e.slowFactor; // slow-tower debuff
-      // the slow READS for its full duration: the whole cloud tints ice —
-      // and so does the solid core, or a slowed drifter would show a frozen
-      // cloud around a body still in its own colour
-      const slowed = tNow < e.slowUntil;
-      // white clears the tint on the CLOUD (vertexColors multiply), but a
-      // solid has to be restored to the colour it was built with
-      // A MESH-BODIED ENEMY MAY NOT HAVE A `.color`. Every hostile was a dot
-      // cloud or a lambert solid when this was written, so it reached straight
-      // through the material — and the jelly's ShaderMaterial has no such
-      // property, so the first boss to arrive threw once per frame. Units that
-      // know how to be tinted say so; the rest keep the old path, guarded.
-      if (e.obj.userData.setTint) e.obj.userData.setTint(slowed ? 0x8fd4ff : null);
-      else if (e.obj.material && e.obj.material.color) {
-        e.obj.material.color.setHex(slowed ? 0x8fd4ff : 0xffffff);
-      }
-      const solid = e.obj.userData.solid;
-      if (solid && solid.material) {
-        solid.material.color.setHex(slowed ? 0x8fd4ff : (solid.userData.baseColor ?? 0xffffff));
-      }
-      // erratic (phage): HokorobiTawaa velocity bursts, 0.7×–1.3×
-      if (spec.erratic) pace *= 0.7 + 0.6 * (0.5 + 0.5 * Math.sin(tNow * 3.1 + e.phase * 7));
-      // jink (saucer): a second, faster weave stacked on the bursts —
-      // 0.55×–1.45× at 6.3 rad/s reads as a dogfight, not a walk
-      if (spec.jink) pace *= 0.55 + 0.9 * (0.5 + 0.5 * Math.sin(tNow * 6.3 + e.phase * 11));
-      // tactician (shellback): holds at the EDGE of tower coverage until enough minions arrive to soak fire, then bursts through
-      // with them. Re-evaluated at 2 Hz, staggered by phase — towers are few, and a per-frame sweep would be spent on a decision
-      // that changes slowly.
-      if (spec.tactician) {
-        if (tNow >= (e.tacUntil ?? 0)) {
-          e.tacUntil = tNow + 0.5 + e.phase * 0.1;
-          let covered = false;
-          for (const tw of towers) {
-            const r = effectiveStats(tw.def, tw.tier).range * cellSide;
-            if (chord(graph.centers[tw.ci], e.pos) < r + cellSide * 1.2) { covered = true; break; }
-          }
-          if (!covered) e.tacMult = 1;
-          else {
-            let cover = 0;
-            for (const e2 of enemies) {
-              if (e2.alive && e2 !== e && dist3(e2.pos, e.pos) < cellSide * 2.4) cover++;
-            }
-            e.tacMult = cover >= 3 ? 1.9 : 0.3; // burst with the pack, or wait
-          }
-        }
-        pace *= e.tacMult ?? 1;
-      }
-      // STAGGERED: it stands where it was thrown. Zeroing `pace` and not
-      // `e.prog` is deliberate — the path is untouched, so when it recovers it
-      // carries on from exactly where it was rather than restarting a cell.
-      if (tNow < (e.stagUntil ?? -1)) pace = 0;
-      // cloaked (phantom): optical camo. A haze most of the time — the
-      // cloud sits near-invisible — with a brief shimmer of presence every
-      // ~6s. The radar shares the same decloak window: no window, no blip.
-      if (spec.cloaked) {
-        const vis = ((tNow * 0.16 + e.phase) % 1) < 0.12;
-        const op = vis ? 0.55 : 0.14 + 0.05 * Math.sin(tNow * 2.7 + e.phase * 9);
-        if (e.obj.material) e.obj.material.opacity = op;
-        const core = e.obj.userData.solid;
-        if (core && core.material) {
-          core.material.transparent = true;
-          core.material.opacity = Math.min(1, op * 1.6); // the glint lags the fade
-        }
-        e.decloaked = vis;
-      }
-      if (isScared(e, tNow) && e.prog < 1 && towardScare(graph.centers[e.cur], graph.centers[e.next], e.scareFrom)) { const back = e.cur; e.cur = e.next; e.next = back; e.prog = 1 - e.prog; } e.prog += pace * dt;
-      while (e.prog >= 1) {
-        e.prog -= 1;
-        e.prev = e.cur;
-        e.cur = e.next;
-        // heart-seeking: drawn HARD toward the heart — only a sliver of
-        // wobble left so the streams braid but visibly converge
-        const exits = openNeighbors(e.cur).filter((c) => !story?.sealed(c));   // a closed story gate is a wall to them
-        let pool = null; if (isScared(e, tNow)) { const away = awayExits(exits, graph.centers, e.cur, e.scareFrom); if (away.length) pool = away; }
-        if (!pool) { const down = exits.filter((c) => dungeon.distToHeart[c] < dungeon.distToHeart[e.cur]); pool = (down.length && whim() > 0.05) ? down : exits; }
-        // THE STORY'S HARD CORES HOLD OFF THE WALL: once inside the holding ring they only wander within it (operator, while the lock is tuned)
-        if (e.guard) pool = guardExits({ exits, centers: graph.centers, guard: e.guard, cur: e.cur, hull: playerHP > 0 && !playerDown ? player.pos : null, aggro: STORY_EXPEDITIONS.aggro }); else if (story?.ring.size && e.type === story.hardcore && story.ring.has(e.cur)) { const stay = exits.filter((c) => story.ring.has(c)); pool = stay.length ? stay : [e.cur]; }
-        e.next = pool.length ? pool[Math.floor(whim() * pool.length)] : e.cur;
-      }
-      const a = graph.centers[e.cur];
-      const b = graph.centers[e.next];
-      const f = Math.min(e.prog, 1);
-      e.pos = norm3([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]);
-      // THE SHOVE IS AN OFFSET, NOT A MOVE. e.pos is rebuilt from the cell path every frame, so writing a displaced position
-      // lasts exactly one tick. Applied HERE, after the interpolation and re-normalised onto the sphere, it decays and the body
-      // slides back into its own lane.
-      if (e.shove) {
-        e.shove.t -= dt;
-        if (e.shove.t <= 0) e.shove = null;
-        else {
-          const off = shoveMag(e.shove, shieldTune) * cellSide;
-          e.pos = norm3(add3(e.pos, scale3(e.shove.dir, off)));
-        }
-      }
-      const n = e.pos;
-      const raw = sub3(b, e.pos);
-      const flat = sub3(raw, scale3(n, dot3(raw, n)));
-      const l = Math.hypot(flat[0], flat[1], flat[2]);
-      if (l > 1e-9) e.dir = scale3(flat, 1 / l);
-      const s = cellSide * (e.size ?? spec.size);
-      let lift = s * (e.obj.userData.lift ?? 0.85);
-      if(e.breachSource){const entry=e.breachSource.userData.breach;if(entry){const local=new THREE.Vector3(...e.pos).applyMatrix4(entry.fx.inverseFrame.value),r=entry.fx.tune.planetRadius;local.y+=r;const a=Math.atan2(Math.hypot(local.x,local.z),local.y)*r,angle=Math.atan2(local.z,local.x);lift+=sinkholeGroundHeight(Math.cos(angle)*a,Math.sin(angle)*a,entry.fx.hole.value)*cellSide;}}
-
-      e.obj.position.set(e.pos[0] + n[0] * lift, e.pos[1] + n[1] * lift, e.pos[2] + n[2] * lift);
-      tmpObj.position.copy(e.obj.position);
-      tmpObj.up.set(n[0], n[1], n[2]);
-      tmpObj.lookAt(e.obj.position.x + e.dir[0], e.obj.position.y + e.dir[1], e.obj.position.z + e.dir[2]);
-      e.obj.quaternion.copy(tmpObj.quaternion);
-      if (e.obj.userData.tick) e.obj.userData.tick(tNow + e.phase);
-
-      // the Heart: contact costs heartDmg and consumes the creature
-      if (dist3(e.pos, graph.centers[dungeon.heart]) < cellSide * 0.75) {
-        killCreature(e);
-        if (!e.harmless) heartHit(spec.heartDmg);   /* harmless fodder cannot hurt the heart */
-        continue;
-      }
-      // the player's tank is strong: fodder dies under the treads for
-      // free; the dangerous tier hurts to touch and shrugs the ram off
-      // (per-enemy cooldown so overlap isn't a blender)
-      const touchR = cellSide * Math.max(0.4, (e.size ?? spec.size) * 0.8);
-      // a unit that HURTS to touch is closing in: warn, once per wave
-      if (!playerDown && !spec.rammable && dangerWarnedWave !== wave
-          && dist3(e.pos, player.pos) < cellSide * 3.5) {
-        dangerWarnedWave = wave;
-        dangerFlash();
-      }
-      // A WALKER IS IN THE FIGHT, so the fight can reach it. Only the dangerous tier does anything — the fodder the A6 refuses to
-      // shoot at cannot hurt it either, which is the same asymmetry the tank lives under and the reason the A6's own targeting
-      // rule is not a free pass.
-      if (!spec.rammable) {
-        for (const tw of towers) {
-          if (!tw.a6 || tw.hp <= 0) continue;
-          if (dist3(e.pos, tw.a6.pos) > touchR + cellSide * 0.3) continue;
-          if (tNow <= (e.a6Cd ?? -1)) continue;
-          e.a6Cd = tNow + 1.2;
-          tw.hp -= 1;
-          const bn = norm3(tw.a6.pos);
-          const spark = makeDotBurst(0xff7744, bn, 14);
-          spark.scale.setScalar(cellSide * 0.5);
-          spark.position.set(tw.a6.pos[0], tw.a6.pos[1], tw.a6.pos[2]);
-          scene.add(spark); debris.push(spark);
-          if (tw.hp <= 0) killWalker(tw);
-        }
-      }
-      if (!playerDown && dist3(e.pos, player.pos) < touchR) {
-        if (spec.rammable) {
-          // run over: tinted splat under the treads + the weight bump
-          const burst = makeDotBurst(CREATURE_TINTS[e.type], n);
-          burst.scale.setScalar(cellSide * 0.8);
-          const bp = add3(e.pos, scale3(n, cellSide * 0.12));
-          burst.position.set(bp[0], bp[1], bp[2]);
-          scene.add(burst);
-          debris.push(burst);
-          bumpLeft = BUMP_LEN;
-          for (let m = e.members || 1; m > 0; m--) {   // a squad rams as its members
-          const kg = gunshipRig.feed(eco.award(spec.bounty, { ram: true })); // the ram premium
-          scoreKill(spec.bounty, { src: 'tank', ram: true,
-            alive: enemies.filter((x) => x.alive).length });
-          ramCombo++; ramComboT = RAM_COMBO_GAP; ramFloat.show(player.pos, kg, ramCombo);   // +N kg ×M over the hull (src/fx/ram-readout.js)
-          noteWaveKill(e.type, 'tank'); sectorRun?.kill(e, 'ram', ramCombo);
-          if (ws) ws.rams++;
-          if (rs) { rs.rams++; rs.maxCombo = Math.max(rs.maxCombo, ramCombo); }
-          syncCombo();
-          if (ramCombo >= 10 && ramCombo % 10 === 0) {
-            showCallout(`RAM ×${ramCombo}`, 'co-milestone');
-          }
-          noteStreak();
-          harvestTankKill(spec);
-          }
-          killCreature(e, true);
-          checkVictory();
-          continue;
-        }
-        if (shieldUp()) {
-          // PUSHED ASIDE, NOT DESTROYED. No damage either way and no shield time spent: the bubble is mobility, never a weapon. A
-          // shielded tank that killed the hard tier would make `rammable` stop being the read the whole board is built on, and
-          // that read is worth more than the damage would be.
-          if (tNow > e.touchCd) {
-            e.touchCd = tNow + 0.4;
-            e.shove = { dir: shoveVec(e.pos, player.pos, player.heading), t: shieldTune.shoveLife };
-            e.stagUntil = tNow + shieldTune.shoveStun;
-            playerHit(e.type, e.pos);   // the ripple and the hull bump, no HP
-          }
-          continue;   // NOT a ram: pays nothing, scores nothing, combo untouched
-        }
-        if (tNow > e.touchCd && !e.harmless) { e.touchCd = tNow + 1.2; playerHit(e.type, e.pos); }   // the story's first wave cannot hurt the tank
-      }
-    }   let live = 0; for (const e of enemies) if (e.alive) enemies[live++] = e; enemies.length = live;   /* THE DEAD ARE LET GO (2026-09-25): killCreature only marks a record, and every per-frame walk over this array paid for every body ever spawned (~28 KB each, ~100 MB by sector 3). Compacted in place once a frame, after the walk: nothing keeps an index into it across frames */
-  }
-
-  function killCreature(e, fx = false) {
-    e.alive = false;
-    // gated on fx: killCreature is ALSO called with fx=false to tear the
-    // board down (tutorial clear, wave reset, regenerate). Ungated, a
-    // regenerate would fire a death-sound storm.
-    if (fx) {
-      sfx.play(DEATH_KEYS[Math.floor(deathPick() * DEATH_KEYS.length) % DEATH_KEYS.length],
-        { dist: camDist(e.pos) });
-    }
-    // mesh enemies blow apart; dot-clouds burst into tinted dots
-    if (fx && e.obj.userData.kind === 'mesh') {
-      const d = makeDebris(e.obj, norm3(e.pos));
-      scene.add(d);
-      debris.push(d);
-    } else if (fx) {
-      const d = makeDotBurst(CREATURE_TINTS[e.type] ?? 0xffffff, norm3(e.pos), 24);
-      d.scale.setScalar(cellSide * 0.6);
-      const dp = add3(e.pos, scale3(norm3(e.pos), cellSide * 0.15));
-      d.position.set(dp[0], dp[1], dp[2]);
-      scene.add(d);
-      debris.push(d);
-    }
-    scene.remove(e.obj);
-    disposeObj(e.obj);
-    updateHud();
-  }
+  // --- enemies (src/fx/enemy-step.js): the board's enemies and gates, the wave's arming and spawning, the release, every frame
+  const enemyStep = createEnemyStep({
+    root,
+    enemies,
+    scene,
+    disposeObj,
+    gameBreaches,
+    spawnQueue,
+    spawnPoints,
+    params,
+    waveEl,
+    seenTypes,
+    strike,
+    strikeTune,
+    buildPortalObj,
+    MAP_LAYER,
+    recomputePortalDist,
+    sfx,
+    debris,
+    sealedBreachCells,
+    automated,
+    programmeDone,
+    hideSitrep,
+    showBrief,
+    WAVE_WARN,
+    resetWaveStats,
+    shield,
+    shieldTune,
+    tfMilestone,
+    lab,
+    showTowerToast,
+    updateHud,
+    warnRing,
+    announceWave,
+    SPAWN_SPREAD,
+    SPAWN_GAP_MAX,
+    crowdGate,
+    openNeighbors,
+    tmpObj,
+    player,
+    effectiveStats,
+    heartHit,
+    killWalker,
+    shieldUp,
+    BUMP_LEN,
+    checkVictory,
+    gunshipRig,
+    scoreKill,
+    RAM_COMBO_GAP,
+    ramFloat,
+    noteWaveKill,
+    syncCombo,
+    noteStreak,
+    harvestTankKill,
+    showCallout,
+    playerHit,
+    camDist,
+    waveTimer: () => waveTimer,
+    graph: () => graph,
+    cellSide: () => cellSide,
+    dungeon: () => dungeon,
+    whim: () => whim,
+    storyMode: () => storyMode,
+    sectorRun: () => sectorRun,
+    round: () => round,
+    eco: () => eco,
+    threatMult: () => threatMult,
+    playerDown: () => playerDown,
+    towers: () => towers,
+    chord: () => chord,
+    playerHP: () => playerHP,
+    story: () => story,
+    ws: () => ws,
+    rs: () => rs,
+    deathPick: () => deathPick,
+    spawnClock: () => spawnClock,
+    setSpawnClock: (v) => (spawnClock = v),
+    wave: () => wave,
+    setWave: (v) => (wave = v),
+    setWaveActive: (v) => (waveActive = v),
+    setWaveAge: (v) => (waveAge = v),
+    setInterClock: (v) => (interClock = v),
+    setPortalDist: (v) => (portalDist = v),
+    waveIn: () => waveIn,
+    setWaveIn: (v) => (waveIn = v),
+    setWarnBeat: (v) => (warnBeat = v),
+    setWaveCharge: (v) => (waveCharge = v),
+    nextEnemyId: () => nextEnemyId,
+    setNextEnemyId: (v) => (nextEnemyId = v),
+    dangerWarnedWave: () => dangerWarnedWave,
+    setDangerWarnedWave: (v) => (dangerWarnedWave = v),
+    setBumpLeft: (v) => (bumpLeft = v),
+    ramCombo: () => ramCombo,
+    setRamCombo: (v) => (ramCombo = v),
+    setRamComboT: (v) => (ramComboT = v),
+  });
+  function spawnEnemies(...a) { return enemyStep.spawnEnemies(...a); }
+  function seedPortals(...a) { return enemyStep.seedPortals(...a); }
+  function gateTakesShell(...a) { return enemyStep.gateTakesShell(...a); }
+  function killPortal(...a) { return enemyStep.killPortal(...a); }
+  function armWave(...a) { return enemyStep.armWave(...a); }
+  function spawnWave(...a) { return enemyStep.spawnWave(...a); }
+  function releaseSpawns(...a) { return enemyStep.releaseSpawns(...a); }
+  function updateEnemies(...a) { return enemyStep.updateEnemies(...a); }
+  function killCreature(...a) { return enemyStep.killCreature(...a); }
 
   // damage an enemy: shrink-step so it reads, kill at zero. Shells (dmg 1, react) trigger the borrowed on-hit reactions; laser
   // ticks (dmg 0.4, react=false) don't — a constant graze must not keep barbed/knot permanently accelerated. Returns true on

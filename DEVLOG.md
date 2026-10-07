@@ -314,6 +314,22 @@ Evidence:
 - --footprints: solar {atSolid false, solid 3 of 55 cells}, hugin {false, 3 of 50}, rocket-a {true, 1 of 54}, foundry {true, 1 of 55}, launcher {false, 4 of 56}; PASS footprints
 - node test/footprint.mjs; npm run architecture (125 modules)
 
+## 2026-10-07 — The enemy loop is src/fx/enemy-step.js
+
+change · accepted · 2026-10-07-enemy-loop-is-a-module
+
+The refactor run's Task 11: about 450 lines of src/td-tab.js were the board's enemies and gates: clearEnemies, spawnEnemies, hopEstimate, addSpawnPoint, the portals and their deaths, the danger flash, armWave, spawnWave, releaseSpawns, updateEnemies and killCreature.
+
+createEnemyStep(host) owns them. The spawn queue and its clock, SPAWN_SPREAD, SPAWN_GAP_MAX and the crowd gate stay in td-tab with their comment (the frame, the sector loop and the acceptance hooks read them) and come in as values or a getter with a setter; the wave clock's lets and the ram combo's are written through setters (eight of them write-only, so setters alone); storyMode, threatMult, towers and chord are lazy getters (declared below). Postfix increments used as values (nextEnemyId++) become the setter's return less one. Call sites unchanged through one-liners. Eighteen imports left td-tab. td-tab 7,664 -> 7,326 lines.
+
+Alternatives: Move the spawn queue into the module (the plan's sketch): rejected for this run, fourteen controller sites read or write it.
+
+Evidence:
+
+- Equivalence harness (session scratchpad enemy-equiv.mjs): the original block through new Function beside the module on the same fakes, three spawns released on the queue's clock, 400 frames walking, a kill and clearEnemies: identical 429-entry logs; test/enemy-step.mjs pins the digest
+- undef-diff, tdz-check and host contracts (41 factories) clean
+- npm test, npm run check, npm run build; snapshot suites --base-look --sectors --breach-game --crowd-probe --defense --backdoor --rim-holes --pacing pass; --canyon red as on main e4853f55 (the swarm rises, 215 alive)
+
 ## 2026-10-07 — The view watchdog and diagnostics overlay, the frame readout and the dev panel are platform modules
 
 change · accepted · 2026-10-07-dev-instrumentation-leaves-the-controller

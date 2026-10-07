@@ -35,8 +35,9 @@ for (const ref of fnScope.through) {
     const asg = parents.get(id);
     const Set = `${H}.set${name[0].toUpperCase()}${name.slice(1)}`;
     if (asg.type === 'UpdateExpression') {   // `x++` / `x--` as a statement only (its value would change)
-      if (parents.get(asg).type !== 'ExpressionStatement') throw Error(`${name}${asg.operator} used as a value`);
-      edits.push([asg.range[0], asg.range[1], `${Set}(${H}.${name}() ${asg.operator[0]} 1)`]);
+      // as a statement: `host.setX(host.x() + 1)`; as a value the setter's return (the new value) is undone for a postfix
+      const stmt = parents.get(asg).type === 'ExpressionStatement', op = asg.operator[0], back = op === '+' ? '-' : '+';
+      edits.push([asg.range[0], asg.range[1], stmt || asg.prefix ? `${Set}(${H}.${name}() ${op} 1)` : `(${Set}(${H}.${name}() ${op} 1) ${back} 1)`]);
       continue;
     }
     if (asg.type !== 'AssignmentExpression') throw Error(`unsupported write to ${name}: ${asg.type}`);
