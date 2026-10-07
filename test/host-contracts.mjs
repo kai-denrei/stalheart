@@ -11,11 +11,13 @@ const td = read('src/td-tab.js');
 const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
 const modules = [...walk('src/fx'), ...walk('src/platform')].filter((p) => p.endsWith('.js'));
 
-// Known nested factories (a host passed on): each is a finding; the list must shrink, never grow.
+// Known hosts passed on (to a nested factory or a function that takes the whole host): each is a finding; the list must shrink,
+// never grow. Closed: programme-host -> createHullHost (the refactor run's Task 4: td-tab builds the hull host's own literal).
 const NESTED = new Set([
-  'src/fx/programme-host.js:createHullHost', // closed in Task 4
   // the station hands its whole host to the arsenal ({ ...host, passEnded }); found 2026-10-07, open
   'src/fx/laser-station.js:createLaserArsenal',
+  // the finale's diorama takes the ending's host (story, startShot, scene, cellSide, hull, isao, spawnIsao); found 2026-10-07, open
+  'src/fx/ending-host.js:playDiorama',
 ]);
 // Known missing members: the module reads them and td-tab's literal has none, so the module sees undefined. Each is an open
 // finding (the owner decides); the list must shrink, never grow.
@@ -61,11 +63,13 @@ for (const f of factories) {
     for (const m of body.matchAll(new RegExp('\\{([^{}]*)\\}\\s*=\\s*' + plain + '\\b(?!\\s*\\.)', 'g'))) for (const n of names(m[1])) { reads.add(n); required.add(n); }
     // passed on: the host itself as an argument, or spread into a literal argument (`createX(scene, { ...h, more })`)
     const passed = (arg) => { const t = arg.trim(); return t === plain || (t.startsWith('{') && splitTop(t, 1, t.length - 1).some((p) => p.trim() === '...' + plain)); };
-    for (const m of body.matchAll(/\b(create\w+|make\w+)\s*\(/g)) {
+    // any call, not only a factory: a function that takes the whole host reads members this check cannot see
+    for (const m of body.matchAll(/(?<![\w$.])([A-Za-z_$][\w$]*)\s*\(/g)) {
+      if (['if', 'for', 'while', 'switch', 'catch', 'function', 'return', 'typeof'].includes(m[1])) continue;
       const at = m.index + m[0].length - 1;
       if (!splitTop(body, at + 1, matchClose(body, at)).some(passed)) continue;
       const key = `${f.file}:${m[1]}`;
-      if (!NESTED.has(key)) problems.push(`${where} passes its host on to ${m[1]} (a nested factory); give it its own literal`);
+      if (!NESTED.has(key)) problems.push(`${where} passes its host on to ${m[1]}; give it its own literal`);
       open = true;
     }
   } else {

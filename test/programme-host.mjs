@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { createProgrammeHost } from '../src/fx/programme-host.js';
-import { createHullIssue } from '../src/fx/hull-issue.js';
+import { createHullIssue, createHullHost } from '../src/fx/hull-issue.js';
+import { createSkyRig } from '../src/fx/sky-rig.js';
+import { createIsaoMoments } from '../src/fx/isao-moments.js';
+import { createColonyTick } from '../src/fx/colony-tick.js';
+import { createAutoSupport } from '../src/fx/auto-support.js';
+import { createCanyonRun } from '../src/fx/canyon-run.js';
+import { createEndingHost } from '../src/fx/ending-host.js';
 import { makeBuildProgramme, snapshot } from '../src/domain/build-programme.js';
 import { BASE_PROGRAMME, BASE_REPAIR, BASE_PERKS } from '../src/content/base-programme.js';
 import { BLOCKED, PATH } from '../src/dungeon.js';
@@ -32,7 +38,16 @@ function controller(o = {}) {
     setPlayerHP: (v) => { s.playerHP = v; }, setBerths: (v) => { s.berths = v; }, setPlayerDown: (v) => { s.playerDown = v; }, setDeploy: (v) => { s.deploy = v; },
   };
   for (const k of ['story', 'playerHP', 'sectorRun', 'waveActive', 'dungeon', 'tdFullTags', 'storyBase', 'pilotMode', 'briefQ', 'pilot', 'deploy', 't', 'storyViews']) c[k] = () => s[k];
-  return { s, c, log, orders, breachQueue, breachedCells, api: createProgrammeHost(c) };
+  return { s, c, log, orders, breachQueue, breachedCells, api: storyApiOf(c) };
+}
+// THE STORY'S TICK as the controller composes it since the refactor run (2026-10-07; src/td-tab.js storyApi.build): the modules over
+// one host, in the order programme-host's build() ran them, the first hull's host made once per story
+function storyApiOf(c) {
+  const sky = createSkyRig(c), moments = createIsaoMoments(c), colony = createColonyTick(c), auto = createAutoSupport(c);
+  createCanyonRun(c); createEndingHost(c);
+  c.danger = moments.danger; c.hullHost = () => createHullHost(c);
+  const programme = createProgrammeHost(c);
+  return { ...programme, build: () => { sky.tick(); moments.tick(); const f = colony.open(); const st = c.story(); st.hull?.tick(st.hullHost ??= c.hullHost()); colony.perks(f); auto.tick(f); colony.works(f); programme.build(f); } };
 }
 
 // ISAO KEEPS BUILDING: the next step becomes one order for him, with its line, and nothing more while it waits for him

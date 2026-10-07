@@ -34,8 +34,9 @@ for (const ref of fnScope.through) {
     if (kind !== 'set') throw Error(`write to ${name} needs "set"`);
     const asg = parents.get(id);
     if (asg.type !== 'AssignmentExpression' || asg.operator !== '=') throw Error(`unsupported write to ${name}: ${asg.type} ${asg.operator ?? ''}`);
-    const rhs = src.slice(asg.right.range[0], asg.right.range[1]);
-    edits.push([asg.range[0], asg.range[1], `${H}.set${name[0].toUpperCase()}${name.slice(1)}(${rhs})`]);
+    // `x = rhs` -> `host.setX(rhs)`: the head and the tail are separate edits, so names inside rhs are rewritten too
+    edits.push([asg.range[0], asg.right.range[0], `${H}.set${name[0].toUpperCase()}${name.slice(1)}(`]);
+    edits.push([asg.range[1], asg.range[1], ')']);
     continue;
   }
   rep = kind === 'value' ? `${H}.${name}` : `${H}.${name}()`;
@@ -43,8 +44,8 @@ for (const ref of fnScope.through) {
   edits.push([id.range[0], id.range[1], rep]);
 }
 if (unknown.size) { console.error('unknown free names: ' + [...unknown].sort().join(' ')); process.exit(1); }
-// apply right to left; drop identifier edits nested inside an assignment edit (the rhs was copied raw: rewrite it first)
-edits.sort((a, b) => b[0] - a[0]);
+// apply right to left (an insertion at a point sorts after an edit ending there)
+edits.sort((a, b) => b[0] - a[0] || b[1] - a[1]);
 let s = src;
 for (const [a, b, r] of edits) s = s.slice(0, a) + r + s.slice(b);
 s = s.slice(pre.length, s.length - 2);

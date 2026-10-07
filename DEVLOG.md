@@ -177,6 +177,24 @@ Evidence:
 - grep -n 'beep' src/fx/sector-run.js src/fx/sector-debrief.js src/td-tab.js
 - node test/host-contracts.mjs
 
+## 2026-10-07 — The programme host is the programme again: the story's tick is a module per subject, each with its own literal
+
+change · accepted · 2026-10-07-programme-host-is-the-programme-again
+
+src/fx/programme-host.js (392 lines, 37 commits since 2026-09-25, 44 controller members) was documented as the controller's side of Isao's build programme, but its build() was the story's whole per-frame tick: the sky hole and nebulae, Isao's threat and idle lines, the moment reel, the colony lapse, the first hull's roll-out through createHullHost(c) (the host handed on to a nested factory), the perks, the pads, the scoreboards, the beacons, the gunship on auto, Isao's missile, the paint, the orbital works and SOL's calibration, and only then the repairs and the next step (the refactor run's Task 4).
+
+New owners, each taking a host literal of its own from td-tab: src/fx/sky-rig.js (tick), src/fx/isao-moments.js (tick, danger, engaged, hopsToHeart), src/fx/colony-tick.js (open, perks(f), works(f), colony), src/fx/auto-support.js (tick(f), nukes, tier, aliveBudget, swell, gunshipAuto), src/fx/canyon-run.js (the side breach and the canyon's six members), src/fx/ending-host.js (interlude, finale). programme-host keeps perks, hasPerk, tankReady, build(f) (the repairs and the next step), repaired, printed. td-tab's storyApi.build runs them in the old order: sky, moments, colony.open, the first hull's tick, colony.perks, the fire support, colony.works, the programme; the frame f carries the programme, the sector, the shared step dt and SOL's manned count, so each is computed once as before. The first hull's host is td-tab's own literal (makeHullHost, one per story as before); nothing nests a host any more except two findings listed in test/host-contracts.mjs (laser-station's arsenal, the finale's diorama, which the contract test now catches as any call taking the whole host). storyApi's member names are unchanged. One dead member dropped (killsByType). td-tab 8,622 -> 8,827 lines (the literals one member per line); programme-host 392 -> 133.
+
+Alternatives: One literal shared by all the new modules: rejected, that is the 44-member host again under another name.; Move the tick's composition into a story-tick module: rejected, the order of the frame's ticks is the controller's job; td-tab now shows it in nine lines.
+
+Evidence:
+
+- Session scratchpad t4diff.mjs: the old build() body (lines 132-289) equals the new parts in order with only the glue lines (the frame f) removed
+- test/programme-host.mjs composes the tick as td-tab does and keeps every old assertion green; new tests test/sky-rig.mjs, isao-moments.mjs, auto-support.mjs, canyon-run.mjs
+- node test/host-contracts.mjs: Host contracts hold for 38 factories
+- npm test, npm run check, npm run build; snapshot suites --sectors --canyon --canyon-again --backdoor --gunship-auto --laser-game --sky-hole --colony --colony-lapse --moment-reel --finale --showcase --defense
+- Red, and red on main e4853f55 too (same snapshot battery): --canyon stops at "the swarm rises (215 alive)" (needs 250) and --showcase at "Isao says his landing lines after PLAY"; --backdoor failed once (wall count 54 under) and passed on the re-run on the branch and on main
+
 ## 2026-10-07 — The nest cleared: a site guard never takes a cell under the lander's own footprint, and the site clears with fewer than three guards left
 
 change · resolved · 2026-10-07-nest-cleared-never-under-the-lander-and-below-three

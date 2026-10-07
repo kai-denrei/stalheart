@@ -2,7 +2,7 @@
 # Run browser suites one after another from a frozen snapshot, waiting while memory is not OK.
 # Usage: tools/refactor/suites.sh <snapshot-dir> <logdir> --flag [--flag ...]
 # Each suite's output goes to <logdir>/<flag>.log; one summary line per suite goes to <logdir>/summary.log.
-# A WARN that is only the swap (desktop Chrome pins it over 3 GB) with at least 30% headroom counts as OK; anything else waits.
+# A WARN that is only the swap (desktop Chrome pins it over 3 GB) with at least 20% headroom counts as OK; anything else waits.
 snap=$1; shift
 logs=$1; shift
 mkdir -p $logs
@@ -13,7 +13,7 @@ for flag in "$@"; do
     level=$(echo $line | sed -n 's/.*level=\([A-Z]*\).*/\1/p')
     head=$(echo $line | sed -n 's/.*headroom=\([0-9]*\).*/\1/p')
     [[ $level == OK ]] && break
-    [[ $level == WARN && ${head:-0} -ge 30 ]] && break
+    [[ $level == WARN && ${head:-0} -ge 20 ]] && break
     (( waited % 600 == 0 )) && echo "memory=$level headroom=$head before $flag, waited ${waited}s" >> $logs/summary.log
     sleep 60; (( waited += 60 ))
   done

@@ -66,6 +66,8 @@ import { createBrass } from './fx/brass.js';
 import { mulberry32, randomSeed } from './rng.js';
 import { createLaserStation, structureLostHtml } from './fx/laser-station.js'; import { LASER_GAME } from './content/orbital-laser.js'; import { createGlossaryModals } from './fx/glossary-modals.js'; import { makeTriadIcon, glossCard, GAMEPLAY_TIPS } from './fx/briefing-cards.js';
 import { computeBerths, berthIndexFor } from './berths.js'; import { createProgrammeHost } from './fx/programme-host.js'; import { strikeFallPose, droneRidePose, bastionPose, tankViewPose } from './domain/camera-goal.js'; import { createShopRadial } from './fx/shop-radial.js'; import { berthRun, berthHeading, deployU, easeDeploy, deployFraming } from './domain/deploy-path.js';
+import { createSkyRig } from './fx/sky-rig.js'; import { createIsaoMoments } from './fx/isao-moments.js'; import { createColonyTick } from './fx/colony-tick.js'; import { createAutoSupport } from './fx/auto-support.js';
+import { createCanyonRun } from './fx/canyon-run.js'; import { createEndingHost } from './fx/ending-host.js'; import { createHullHost } from './fx/hull-issue.js';
 import { wantsSecondary, shellsForAll } from './autofire.js';
 import { printPhase, printOffset, printOn, patternSecsFor } from './printpath.js';
 import { createBeam } from './beamfx.js';
@@ -7990,6 +7992,178 @@ export function initTdTab(root) {
       startShot({ id: 'takeControl', dur: seat ? 5.6 : 4, poseAt: takeControlPose(perch, graph.normals[ci], graph.centers[laneCi >= 0 ? laneCi : ci], cellSide, params.wallHeight, from, 0.3, !seat), onEnd: () => { lit?.(); seatGlide.begin(camera); setView('bastion'); pilotHost?.zoom(pilot?.state.zoom ?? 1); } }); camera.fov = seatBase?.fov ?? 68; camera.updateProjectionMatrix();
     },
   };
+  // THE STORY'S TICK AND ITS NEIGHBOURS (the refactor run, 2026-10-07): what was src/fx/programme-host.js's whole build() is a module
+  // per subject, each with its own literal; storyApi.build below runs them in the order the one build() did
+  // THE BLACK HOLE AND THE NEBULAE (src/fx/sky-rig.js): hung once here, aimed behind the Stålheart once per world
+  const skyRig = createSkyRig({
+    scene,
+    storyBase: () => storyBase,
+    dungeon: () => dungeon,
+    graph: () => graph,
+  });
+  // ISAO'S MOMENTS (src/fx/isao-moments.js): his lines on the heart's threat and in the quiet; danger, engaged, hopsToHeart
+  const isaoMoments = createIsaoMoments({
+    laserStation,
+    story: () => story,
+    dungeon: () => dungeon,
+    t: () => t,
+    enemies: () => enemies,
+    pilot: () => pilot,
+    playerPos: () => player.pos,
+    cellSide: () => cellSide,
+  });
+  // THE COLONY'S TICK (src/fx/colony-tick.js): the reel, the lapse, the perks, the pads, the boards, the beacons, the works
+  const colonyTick = createColonyTick({
+    PLAYER_MAX,
+    showBrief,
+    updateHud,
+    syncLifeContainers,
+    scene,
+    renderer,
+    sfx,
+    laserStation,
+    ammoMax: AMMO_MAX,
+    story: () => story,
+    t: () => t,
+    graph: () => graph,
+    dungeon: () => dungeon,
+    cellSide: () => cellSide,
+    playerHP: () => playerHP,
+    playerPos: () => player.pos,
+    pilotMode: () => pilotMode,
+    briefQ: () => briefQ,
+    storyBase: () => storyBase,
+    sectorRun: () => sectorRun,
+    shotId,
+    eco: () => eco,
+    ammo: () => ammo,
+    kills: () => rs?.bySrc ?? {},
+    rank: () => tankRank,
+    hands: () => tankKills,
+    combo: () => rs?.maxCombo ?? 0,
+    hull: () => playerMesh,
+    setPlayerHP: (v) => { playerHP = v; },
+    setAmmo: (v) => { ammo = v; },
+    pause: (on) => { paused = on; },
+  });
+  // THE FIRE SUPPORT ON AUTO (src/fx/auto-support.js): the gunship flying itself, Isao's missile, the envelope
+  const autoSupport = createAutoSupport({
+    showBrief,
+    updateHud,
+    gunshipRig,
+    camera,
+    sfx,
+    scene,
+    laserStation,
+    explode: (u, p) => explode(u, p),
+    kill: (e, src) => (e.alive ? (damageEnemy(e, t, e.hp + 1, true, src), true) : false),   // the colony's hands
+    callout: (x, k) => showCallout(x, k),
+    story: () => story,
+    pilot: () => pilot,
+    pilotMode: () => pilotMode,
+    briefQ: () => briefQ,
+    cellSide: () => cellSide,
+    graph: () => graph,
+    storyBase: () => storyBase,
+    dungeon: () => dungeon,
+    playerPos: () => player.pos,
+    playerHP: () => playerHP,
+    isao: () => isao,
+    enemies: () => enemies,
+    sectorRun: () => sectorRun,
+  });
+  // THE CANYON AND THE SIDE BREACH (src/fx/canyon-run.js)
+  const canyonRun = createCanyonRun({
+    breachQueue,
+    breachedCells,
+    rebuildAfterBreach,
+    recomputePortalDist,
+    breachWallCell,
+    laserStation,
+    story: () => story,
+    dungeon: () => dungeon,
+    graph: () => graph,
+    cellSide: () => cellSide,
+    tdFullTags: () => tdFullTags,
+    storyBase: () => storyBase,
+  });
+  // THE ENDING (src/fx/ending-host.js): the finale; story, startShot, scene, cellSide, hull, isao and spawnIsao are the diorama's
+  const endingHost = createEndingHost({
+    storyBase: () => storyBase,
+    map: () => [floorMesh, wallMesh, edgeMesh, topMesh],
+    dungeon: () => dungeon,
+    graph: () => graph,
+    pause: (on) => { paused = on; },
+    hud: root,
+    sfx,
+    story: () => story,
+    startShot,
+    scene,
+    cellSide: () => cellSide,
+    hull: () => playerMesh,
+    isao: () => isao,
+    spawnIsao,
+  });
+  // ISAO KEEPS BUILDING (src/fx/programme-host.js): perks, hasPerk, tankReady, the programme's part of the tick, repaired, printed
+  const programme = createProgrammeHost({
+    orders,
+    breachQueue,
+    breachedCells,
+    gunshipRig,
+    showBrief,
+    spawnIsao,
+    updateHud,
+    rebuildAfterBreach,
+    recomputePortalDist,
+    adoptBays,
+    laserStation,
+    startShot,
+    sfx,
+    callout: (x, k) => showCallout(x, k),
+    danger: isaoMoments.danger,
+    hullHost: makeHullHost,
+    story: () => story,
+    sectorRun: () => sectorRun,
+    waveActive: () => waveActive,
+    dungeon: () => dungeon,
+    tdFullTags: () => tdFullTags,
+    storyBase: () => storyBase,
+    pilotMode: () => pilotMode,
+    briefQ: () => briefQ,
+    graph: () => graph,
+    cellSide: () => cellSide,
+    enemies: () => enemies,
+    t: () => t,
+    storyViews: () => storyViews,
+    setBerths: (v) => { berths = v; },
+  });
+  // THE FIRST MÖRK'S HOST (src/fx/hull-issue.js createHullHost): one per story, made when the programme first asks for it
+  function makeHullHost() {
+    return createHullHost({
+      laserStation,
+      shotId,
+      showBrief,
+      deployStart,
+      deployStep,
+      leavePilot,
+      camera,
+      startShot,
+      deployFramePoseFor,
+      camA,
+      setView,
+      story: () => story,
+      pilot: () => pilot,
+      deploy: () => deploy,
+      t: () => t,
+      playerHP: () => playerHP,
+      storyViews: () => storyViews,
+      setBerths: (v) => { berths = v; },
+      setPlayerDown: (v) => { playerDown = v; },
+      setDeploy: (v) => { deploy = v; },
+      glide: () => seatGlide.begin(camera),
+      hud: root,
+    });
+  }
   Object.assign(storyApi, {
     // SECTOR 0 (src/domain/story-beats.js construction): the Stålheart stands once its first hull is out; the gunship comes on
     // station from orbit for a free pass
@@ -8000,14 +8174,45 @@ export function initTdTab(root) {
       if (!pts.length) return done(); const from = { pos: camera.position.clone(), quat: camera.quaternion.clone() }, dur = tourSeconds(pts.length);
       startShot({ id: 'sitesTour', dur, poseAt: (u, out) => { poseCamera(tourFrame(u, graph.centers[dungeon.heart], pts), out); const k = Math.min(1, u * dur / 1.6), e = k * k * (3 - 2 * k); out.pos.lerpVectors(from.pos, out.pos, e); out.quat.slerpQuaternions(from.quat, out.quat.clone(), e); }, onEnd: () => done(1) }); },   // out of the close-up without a cut (2026-10-03)   /* THE ARRIVAL's hands (src/fx/arrival.js); freeLook: the landing hands over to the free camera */
   },
-  // ISAO KEEPS BUILDING (src/fx/programme-host.js): perks, hasPerk, build, repaired, printed
-  createProgrammeHost({
-    laserStation, shotId, showBrief, hud: root, glide: () => seatGlide.begin(camera), deployStart, deployStep, breachWallCell, graph: () => graph, cellSide: () => cellSide, leavePilot, camera, startShot, deployFramePoseFor, camA, setView, PLAYER_MAX, orders, breachQueue, breachedCells, gunshipRig, spawnIsao, updateHud, syncLifeContainers, rebuildAfterBreach, recomputePortalDist, adoptBays,
-    scene, sfx, renderer, map: () => [floorMesh, wallMesh, edgeMesh, topMesh], combo: () => rs?.maxCombo ?? 0, eco: () => eco, ammo: () => ammo, ammoMax: AMMO_MAX, setAmmo: (v) => { ammo = v; }, playerPos: () => player.pos, kills: () => rs?.bySrc ?? {}, rank: () => tankRank, hands: () => tankKills, killsByType: () => rs?.kills, hull: () => playerMesh,
-    isao: () => isao, enemies: () => enemies, explode: (u, p) => explode(u, p), callout: (x, k) => showCallout(x, k), pause: (on) => { paused = on; }, kill: (e, src) => (e.alive ? (damageEnemy(e, t, e.hp + 1, true, src), true) : false),   // the colony's hands
-    story: () => story, pilot: () => pilot, deploy: () => deploy, t: () => t, playerHP: () => playerHP, storyViews: () => storyViews, sectorRun: () => sectorRun, waveActive: () => waveActive, dungeon: () => dungeon, tdFullTags: () => tdFullTags, storyBase: () => storyBase, pilotMode: () => pilotMode, briefQ: () => briefQ,
-    setBerths: (v) => { berths = v; }, setPlayerDown: (v) => { playerDown = v; }, setDeploy: (v) => { deploy = v; }, setPlayerHP: (v) => { playerHP = v; },
-  }),
+  // ISAO KEEPS BUILDING and the story's tick (src/fx/programme-host.js and its neighbours above): storyApi's members as they were
+  {
+    perks: programme.perks,
+    hasPerk: programme.hasPerk,
+    nukes: autoSupport.nukes,
+    danger: isaoMoments.danger,
+    engaged: isaoMoments.engaged,
+    tankReady: programme.tankReady,
+    // THE STORY'S TICK, once per unfrozen frame, in the order programme-host's build() ran it: the sky, Isao's moments, the colony's
+    // opening props, the first hull, the colony's perks, the fire support, the colony's works, then at most one order for Isao
+    build: () => {
+      skyRig.tick();
+      isaoMoments.tick();
+      const f = colonyTick.open();
+      // THE FIRST MÖRK ROLLS OUT OF THE STÅLHEART (src/fx/hull-issue.js): the camera runs to the door's framing with the hull
+      // standing under the gantry, then it drives out as any deploy does; under a gunner it is set down outside the door
+      story.hull?.tick(story.hullHost ??= makeHullHost());
+      colonyTick.perks(f);
+      autoSupport.tick(f);
+      colonyTick.works(f);
+      programme.build(f);
+    },
+    sideBreachCandidates: canyonRun.sideBreachCandidates,
+    canyonPlan: canyonRun.canyonPlan,
+    canyonPass: canyonRun.canyonPass,
+    canyonOver: canyonRun.canyonOver,
+    hopsToHeart: isaoMoments.hopsToHeart,
+    canyonCut: canyonRun.canyonCut,
+    breakSide: canyonRun.breakSide,
+    repaired: programme.repaired,
+    printed: programme.printed,
+    interlude: endingHost.interlude,
+    finale: endingHost.finale,
+    tier: autoSupport.tier,
+    aliveBudget: autoSupport.aliveBudget,
+    swell: autoSupport.swell,
+    gunshipAuto: autoSupport.gunshipAuto,
+    colony: colonyTick.colony,
+  },
   // THE EXPEDITIONS (src/fx/expedition-glue.js): expeditions, expeditionsBegin, expeditionStep
   createExpeditionsHost({
     storyApi, scene, sfx, SOUNDS, BREACH_SOUNDS, STORY_SOUNDS, player, enemies, spawnQueue, orders, showBrief, showCallout, showTowerToast, spawnIsao, updateHud,
