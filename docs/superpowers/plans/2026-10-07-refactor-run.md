@@ -95,7 +95,7 @@ All scratch tools live in `tools/refactor/` inside the worktree and are committe
 **Interfaces:**
 - Produces: `node tools/refactor/astsame.mjs A.js B.js` (exit 0 when the two files have the same AST ignoring positions and raw text); `tools/refactor/harness.mjs` exports `recorder()`, `fakeScene()`, `fakeCtx()`, `deepEqualLogs(a, b)`; `scripts/refactor-snapshot.sh <tag>` prints the snapshot directory it made.
 
-- [ ] **Step 1: Write `tools/refactor/astsame.mjs`**
+- [x] **Step 1: Write `tools/refactor/astsame.mjs`**
 
 ```js
 // Whole-file AST identity: the proof of a pure reflow (a line broken up, a member per line) and of a comment-only edit.
@@ -123,7 +123,7 @@ const d = diffPath(parse(process.argv[2]), parse(process.argv[3]));
 if (d) { console.error('differs at ' + d); process.exit(1); } else console.log('same');
 ```
 
-- [ ] **Step 2: Write `tools/refactor/harness.mjs`**
+- [x] **Step 2: Write `tools/refactor/harness.mjs`**
 
 ```js
 // Recording fakes for side-by-side runs of a controller block (old text, run through new Function) and its extracted module.
@@ -160,7 +160,7 @@ export function deepEqualLogs(a, b) {
 //   oldFn(input); newFn(input); deepEqualLogs(logOld, logNew)
 ```
 
-- [ ] **Step 3: Write `scripts/refactor-snapshot.sh`**
+- [x] **Step 3: Write `scripts/refactor-snapshot.sh`**
 
 ```zsh
 #!/bin/zsh
@@ -182,16 +182,16 @@ ln -s $(pwd)/node_modules $dest/node_modules
 echo $dest
 ```
 
-- [ ] **Step 4: Write `tools/refactor/README.md`** naming the three tools, the npx cache path (`~/.npm/_npx/515228b7c8d004a2/node_modules` for espree, `~/.npm/_npx/0f94ee7615faf582/node_modules` for escodegen) and the rule that nothing in `tools/refactor` is imported by `src/`.
+- [x] **Step 4: Write `tools/refactor/README.md`** naming the three tools, the npx cache path (`~/.npm/_npx/515228b7c8d004a2/node_modules` for espree, `~/.npm/_npx/0f94ee7615faf582/node_modules` for escodegen) and the rule that nothing in `tools/refactor` is imported by `src/`.
 
-- [ ] **Step 5: Verify**
+- [x] **Step 5: Verify**
 
 Run: `chmod +x scripts/refactor-snapshot.sh && node tools/refactor/astsame.mjs src/td-tab.js src/td-tab.js`
 Expected: `same`
 Run: `d=$(scripts/refactor-snapshot.sh t0); ls $d/src/td-tab.js $d/assets | head -3`
 Expected: both exist.
 
-- [ ] **Step 6: Commit** — `Refactor run, tools: whole-file AST identity, recording fakes, the APFS snapshot runner`
+- [x] **Step 6: Commit** — `Refactor run, tools: whole-file AST identity, recording fakes, the APFS snapshot runner`
 
 ---
 
