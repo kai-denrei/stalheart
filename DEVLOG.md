@@ -18,6 +18,20 @@ Evidence:
 - tools/refactor/undef-diff.mjs: no new undefined or unused names; grep: no urlParams or URLSearchParams left in src/td-tab.js
 - npm test, npm run check, npm run build; snapshot suites --defense --sectors --showcase --phone --sky-hole --laser-game --seats --pacing --passive
 
+## 2026-10-07 — The tower combat loop is src/fx/tower-combat.js
+
+change · accepted · 2026-10-07-tower-combat-loop-is-a-module
+
+The refactor run's Task 10: the largest block of src/td-tab.js by bytes (about 580 lines): the A6 walker's frame, stepTowers (aim, fire, heat, seekers, plasma, lance), the line of sight, the tracers and shells and their landings, the beams, the lightning, the slugs and clearTowers.
+
+createTowerCombat(host) owns them; the lists (towers, towerByCell, towerCells, towerShots, beams, towerSeekers) stay the controller's and come in as values; brass and isao are getters with setters, watchTower a setter alone, storyMode a lazy getter (declared below). Call sites unchanged through one-liners (stepTowers, losClear, spawnLightning, updateTowerShots, stepSlugs, updateBeams, clearTowers). Twenty-four imports left td-tab with the code. td-tab 8,178 -> 7,664 lines.
+
+Evidence:
+
+- Equivalence harness (session scratchpad combat-equiv.mjs): the original block through new Function beside the module on the same fakes, 90 frames each of needle+mortar, plasma+lancer, quiver+relay and rotor+heptapod (hitscan hits, mortar shells landing with their warn rings, plasma and rotor tracers fired and retired), then the line of sight and clearTowers: identical logs; test/tower-combat.mjs pins the digest
+- undef-diff (the eslint no-undef/no-unused-vars diff) clean, tdz-check clean, host contracts hold
+- npm test, npm run check, npm run build; snapshot suites --defense --gunship --missile-parity --sectors --quiver-frame --laser --shield-perf --pacing --passive
+
 ## 2026-10-07 — The welcome page's hover sound cannot start before the first click, tap or key: the browser's rule, not the page's
 
 issue · observed · 2026-10-07-the-welcome-hover-sound-waits-for-the-first-gesture

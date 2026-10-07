@@ -9,7 +9,7 @@ import { emergence } from './domain/breach-waves.js';
 import { applyScare, stampScare, scarePace, isScared, towardScare, awayExits } from './domain/impact-scare.js';
 import { EXPLOSION_SCARE, SCARE_FREEZE_S } from './content/explosions.js';
 import { createThermalHeat } from './fx/thermal-heat.js';
-import { isAutomated, pilotMultipliers } from './domain/automation.js';
+import { isAutomated } from './domain/automation.js';
 import { fillFromKill, fillFromWaveClear, isFull as callFull, callProgress } from './domain/gunship-call.js';
 import { GUNSHIP_CALL, GUNSHIP_FAR } from './content/gunship.js';
 import { unlockedTowers } from './domain/expeditions.js';
@@ -32,7 +32,7 @@ import { showcaseOn } from './platform/showcase-entry.js';
 import { makeOrdnanceShell } from './shell.js'; import { createHullLoss } from './fx/hull-loss.js'; import { bayContainers, syncBays } from './fx/life-bays.js';
 import { firingFor } from './content/firing-defaults.js'; import { RELEASE_EVENTS, releasesHeld, releaseHeld } from './core/held-input.js';
 import { METRES_PER_CELL, arcToMetres, metresToArc } from './core/stage-units.js';
-import { pickMissileTarget, missileLimits, stepMissileLock, missileCanFire } from './domain/missile-targeting.js';
+import { pickMissileTarget, missileLimits } from './domain/missile-targeting.js';
 import { createRunContext } from './domain/run-context.js'; import { trunkCells, simDirective, simPick } from './domain/sim-policy.js'; import { towerPerch } from './domain/tower-perch.js';
 import { createRunTimers } from './platform/run-timers.js'; import { createSimRun } from './platform/sim-run.js'; import { createDiagOverlay } from './platform/diag-overlay.js'; import { readGameFlags } from './platform/game-flags.js'; import { createPerfOverlay } from './platform/perf-overlay.js'; import { createDevPanel } from './platform/dev-panel.js';
 import { createMissilePool, launchDart, advanceDart } from './missiles.js';
@@ -52,21 +52,17 @@ import * as THREE from '../vendor/three.module.js';
 import GUI from '../vendor/lil-gui.esm.js';
 import { bfsDist, BLOCKED, PATH, ROOM } from './dungeon.js';
 import { buildGameWorld, readStoryQuery, STORY_SOUNDS, takeControlPose } from './platform/story-world.js';
-import { SENTRY_HEAT } from './content/sentry-heat.js';
-import { coolHeat } from './core/heat.js';
-import { paintBarrelHeat } from './fx/barrel-heat.js';
 import { createUnlockHost } from './fx/story-views.js';
 import { buildReadout } from './fx/build-readout.js';
 import { createStoryMonitor } from './fx/story-monitor.js';
 import { createDaylight } from './fx/daylight.js';
 import { createStoryScope, createScopeFeed } from './fx/story-scope.js';
 import { createSyntheticModal } from './fx/synthetic-modal.js';
-import { createBrass } from './fx/brass.js';
 import { mulberry32, randomSeed } from './rng.js';
 import { createLaserStation, structureLostHtml } from './fx/laser-station.js'; import { LASER_GAME } from './content/orbital-laser.js'; import { createGlossaryModals } from './fx/glossary-modals.js'; import { makeTriadIcon, glossCard, GAMEPLAY_TIPS } from './fx/briefing-cards.js';
 import { computeBerths, berthIndexFor } from './berths.js'; import { createProgrammeHost } from './fx/programme-host.js'; import { strikeFallPose, droneRidePose, bastionPose, tankViewPose } from './domain/camera-goal.js'; import { createShopRadial } from './fx/shop-radial.js'; import { berthRun, berthHeading, deployU, easeDeploy, deployFraming } from './domain/deploy-path.js';
 import { createSkyRig } from './fx/sky-rig.js'; import { createIsaoMoments } from './fx/isao-moments.js'; import { createColonyTick } from './fx/colony-tick.js'; import { createAutoSupport } from './fx/auto-support.js';
-import { createCanyonRun } from './fx/canyon-run.js'; import { createEndingHost } from './fx/ending-host.js'; import { createIsaoWorker } from './fx/isao-worker.js'; import { createHullDrive } from './fx/hull-drive.js'; import { createHullHost } from './fx/hull-issue.js';
+import { createCanyonRun } from './fx/canyon-run.js'; import { createEndingHost } from './fx/ending-host.js'; import { createIsaoWorker } from './fx/isao-worker.js'; import { createHullDrive } from './fx/hull-drive.js'; import { createTowerCombat } from './fx/tower-combat.js'; import { createHullHost } from './fx/hull-issue.js';
 import { wantsSecondary, shellsForAll } from './autofire.js';
 import { createBeam } from './beamfx.js';
 import { createBeamRig, PLASMA_DEFAULTS, BOARD_PRESET, BEAM_PEAK } from './beamdraw.js';
@@ -83,13 +79,13 @@ import { UNITS, buildUnit, buildCreature, preloadMork, makeShieldShell, preloadC
 import { LOOKS } from './looks.js';
 import { makeCellIndex } from './cellindex.js';
 import { CREATURE_TINTS, ENEMY_SPEC, INTROS, computeWavePlan, accentFor } from './enemyspec.js';
-import { PICKUPS } from './pickups.js'; import { rotorVoice, hushRotor } from './fx/rotor-voice.js';
+import { PICKUPS } from './pickups.js'; import { hushRotor } from './fx/rotor-voice.js';
 import { rankFor, rankLabel, badgeSVG } from './ranks.js';
 import { beamStep, isBeamStep } from './beamranks.js';
 import { burn, sweepAdvance, wallBite as wallBiteFor } from './beamburn.js';
-import { arcPoint, projectToArc, toeForCrossing } from './arc.js'; import { marchToTerrain, roundEnd, flyStraight, marchAlongArc, arcOf, pointAlongArc } from './domain/round-path.js';
-import { shotOf, muzzleOf, impactOf, tuneFor, resolveImpactColors } from './sentryfx.js'; import { makeImpactBurst, orientImpact } from './impactfx.js';   // the package's muzzle recipe is the one master setting
-import { makeTracerMesh, makeLightningMesh, makeSeekerMesh, aimSeeker,
+import { arcPoint, projectToArc, toeForCrossing } from './arc.js'; import { marchToTerrain, roundEnd, marchAlongArc, arcOf, pointAlongArc } from './domain/round-path.js';
+import { shotOf, impactOf } from './sentryfx.js'; // the package's muzzle recipe is the one master setting
+import { makeSeekerMesh, aimSeeker,
   LANCE_LOOK as SHOT_LANCE_LOOK, THROW_LOOK as SHOT_THROW_LOOK } from './shotfx.js';
 import { SHIELD_TUNE, SHIELD_KNOBS, makeShield, charge as chargeShield,
   deploy as deployShield, tickShield, stepShieldFrame, restockShield, towerOffline,
@@ -99,7 +95,7 @@ import { parseLabQuery } from './lab.js';
 import { bakeGalaxyCube } from './galaxybake.js';
 import { SKY_PRESET } from './galaxyseed.js';
 import { makeScore } from './score.js';
-import { TOWERS, TOWER_BY_KEY, MAX_TIER, upgradeCost, effectiveStats as baseEffectiveStats, pickTarget, shotInterval, unlockedTowerKeys, TOWER_ORDER, starterTower, towerSound, ROSTER } from './towers.js';
+import { TOWERS, TOWER_BY_KEY, MAX_TIER, upgradeCost, effectiveStats as baseEffectiveStats, shotInterval, unlockedTowerKeys, TOWER_ORDER, starterTower, ROSTER } from './towers.js';
 import { makeEconomy, sellRefund } from './economy.js';
 import { pickTier } from './perftier.js';
 import { applyWeatheredMaterial } from './fx/weathered-material.js'; import { showContact } from './fx/contact-card.js'; import { sentryBookFull } from './domain/sentry-cap.js'; import { setTierPlate } from './fx/tier-plate.js';
@@ -111,11 +107,9 @@ import { makeStrike, makeStrikeParams, grantStrikes, stepStrike,
   toggleArm, paintTarget, launchStrike, stepFall, skipFall, fallProgress,
   strikeDamage, retargetStrike, orbitProgress } from './strike.js'; import { makeGunship, onStation, phaseLeft, selectGun, startStation } from './domain/gunship.js'; import { GUNSHIP_GUNS, GUNSHIP_ORBIT } from './content/gunship.js'; import { createGunshipBriefing } from './fx/gunship-briefing.js'; import { createFoundryFx } from './fx/foundry-fx.js'; import { createExplosions } from './fx/explosions.js';
 import { createRadarScope } from './fx/radar-scope.js'; import { createTowerAim } from './fx/tower-aim.js'; import { buildVarsModal } from './fx/vars-modal.js'; import { startVictoryPull } from './fx/victory-pull.js'; import { createShowcaseHooks } from './fx/showcase-hooks.js'; import { createGunshipRig } from './fx/gunship-rig.js';
-import { A6_TUNE, magFor, makeA6, stepA6, arc as a6Arc } from './heptapod.js';
-import { SENTRY_TUNE } from './sentry.js';
-import { makeLock } from './lockon.js';
+import { makeA6, arc as a6Arc } from './heptapod.js';
 import { DEFAULT_TOWER_LOOK, buildTowerLook, preloadLook, lookReady } from './towerlooks.js';
-import { makeAudio } from './audio.js'; import { isaoSay } from './fx/isao-voice.js'; import { lanceFollow, bodyAt } from './fx/lance-follow.js'; import { createCrowdGate } from './fx/crowd-gate.js'; import { makeDotSquad, shedSquad, squadDamage } from './fx/squads.js';
+import { makeAudio } from './audio.js'; import { isaoSay } from './fx/isao-voice.js'; import { lanceFollow } from './fx/lance-follow.js'; import { createCrowdGate } from './fx/crowd-gate.js'; import { makeDotSquad, shedSquad, squadDamage } from './fx/squads.js';
 import { DEATH_KEYS } from './audiomanifest.js';
 
 export function initTdTab(root) {
@@ -5745,590 +5739,82 @@ export function initTdTab(root) {
     }
   }
 
-  // ONE A6, ONE FRAME. The module owns the decisions; this owns the world.
-  // `sense` is the board's own enemy list rather than a second index — the
-  // A6 sees what a tower on its cell would see, from wherever it is
-  // standing, which is the whole point of it moving.
-  function stepWalker(tw, dt, tNow) {
-    const was = tw.a6.pos.slice();
-    const eff = effectiveStats(tw.def, tw.tier);
-    const range = eff.range * cellSide;
-    // an upgrade is a bigger cassette, applied the moment it lands rather
-    // than at the next reload — you paid for it now
-    const want = magFor(tw.tier);
-    if (tw.a6.mag !== want) {
-      tw.a6.ammo += want - tw.a6.mag;
-      tw.a6.mag = want;
-      tw.a6.ammo = Math.max(0, Math.min(want, tw.a6.ammo));
-    }
-    const config = engagementConfig(tw);
-    if (!tw.lock) tw.lock = makeLock();
-    let lockStepped = false;
-    stepA6(tw.a6, dt, {
-      range, minRange: metresToArc(config.minRange, cellSide), cellSide, tune: A6_TUNE, rand: a6Rng, open: (q) => { const c = cellIndex(q); return c === tw.ci || dungeon.tags[c] !== BLOCKED; },
-      // Retain a living hard target inside the same metre band used by the lab.
-      sense: from => {
-        const e = acquireMissileTarget(tw, from, config);
-        if (!e || tw.lock.id !== e.id) tw.lock = makeLock();
-        return e ? { id: e.id, pos: e.pos, e } : null;
-      },
-      ready: seen => {
-        const distance = missileDistance(tw.a6.pos, seen.pos);
-        stepMissileLock(tw.lock, dt, seen, distance, 0, config);
-        lockStepped = true;
-        return missileCanFire(tw.lock, seen, distance, 0, config, 0,
-          !!missilePool?.available && !tw.obj.userData.loading);
-      },
-      emit: (seen) => {
-        const target = seen.e;
-        if (!target || !target.alive) return;
-        const p = tw.a6.pos;
-        const n = norm3(p);
-        const muzzle = towerMuzzle(tw, add3(scale3(p, 1 + params.wallHeight), scale3(n, cellSide * 0.5)));
-        // The shared DART flight leaves the actual vertical cassette socket.
-        // The board owns its target; the lock drops when the cell fires.
-        const flew = launchTowerSeeker(tw, muzzle, target, tNow);
-        tw.lock = makeLock();
-        if (flew) sfx.play(towerSound(tw.def), { dist: camDist(p) });   // the launch report only when a rocket left: a refused launch (one round in flight, pool loading) is silent (owner, 2026-09-15: "pops non-stop")
-      },
-    });
-    if (!lockStepped) tw.lock = makeLock();
-    if (tw.a6.target === null || tw.a6.state === 'home' || tw.a6.state === 'refill') {
-      tw.missileTarget = null; tw.lock = makeLock();
-    }
-    tw.a6.steps = (tw.a6.steps || 0) + 1;
-    // THE CASSETTE IS THE GAUGE (operator: "diegetic view of missiles remaining"): one lamp at each launch cell's MUZZLE empty (the
-    // Workshop's readiness rings weld into the body in mergeByMaterial), put out as that cell is spent. No HUD number.
-    if (tw.rings === undefined) {
-      tw.rings = [];
-      const mz = tw.obj.userData.muzzles || [];
-      for (let i = 0; i < mz.length; i++) {
-        const pip = new THREE.Mesh(
-          new THREE.SphereGeometry(0.09, 6, 5),
-          new THREE.MeshBasicMaterial({ color: tw.def.color }));
-        pip.position.set(0, 0.16, 0);   // just proud of the cell mouth
-        mz[i].add(pip);
-        tw.rings.push(pip);
-      }
-    }
-    if (tw.rings.length && tw.ringsShown !== tw.a6.ammo) {
-      tw.ringsShown = tw.a6.ammo;
-      // the cassette holds more than there are cells at tier 2 and 3, so the
-      // lamps show the FRACTION rather than pretending to be a tally
-      const live = Math.ceil((tw.a6.ammo / Math.max(1, tw.a6.mag)) * tw.rings.length);
-      tw.rings.forEach((r, i) => { r.visible = i < live; });
-    }
-    // THE HEADING AND THE CADENCE, BOTH MEASURED FROM THE MOVE IT ACTUALLY MADE rather than from where it would like to be. A leg
-    // cycle that runs at a fixed rate while the body's speed changes is the thing that reads as skating, and a heading taken from
-    // the WANT points at a waypoint the machine may be walking around.
-    const moved = sub3(tw.a6.pos, was);
-    const n2 = norm3(tw.a6.pos);
-    const flatMove = sub3(moved, scale3(n2, dot3(moved, n2)));
-    const sp = Math.hypot(flatMove[0], flatMove[1], flatMove[2]) / Math.max(1e-6, dt);
-    if (sp > cellSide * 0.02) {
-      const want = scale3(flatMove, 1 / (sp * dt));
-      // eased, so a waypoint change is a turn and not a snap
-      tw.a6.head = tw.a6.head
-        ? norm3(add3(scale3(tw.a6.head, 0.86), scale3(want, 0.14)))
-        : want;
-    }
-    if (tw.obj.userData.setGaitRate) {
-      // the clip was authored for one stride a cycle; the reference speed is
-      // the module's own patrol pace, so a walker that is hurrying home
-      // steps faster rather than sliding
-      tw.obj.userData.setGaitRate(sp / (A6_TUNE.walkCells * cellSide));
-    }
-    placeTowerObj(tw);
-  }
-
-  function stepTowers(dt, tNow) {
-    if (dt <= 0) return;
-    stepPlasmaBeams(tNow);
-    stepTowerSeekers(dt, tNow);
-    for (const tw of towers) {
-      const manual = pilotMode && !automated(); if (manual && tw !== pilot?.state.tower) {tw.cooldown=Math.max(0,tw.cooldown-dt);hushRotor(tw);continue;}   // only a HAND on a mount parks the others: past the handover every tower keeps working while the gunship is ridden
-      // idle first, aim second: the idle sets rotation.y unconditionally, and
-      // a tracking head must have the last word on where it looks
-      if (tw.obj.userData.tick) tw.obj.userData.tick(tNow + tw.ci);
-      // A WALKER RUNS ITS OWN LOOP and never touches the static path below:
-      // it has no cooldown the tab owns, no fixed cell to shoot from, and no
-      // head to aim. Everything it decides is heptapod.js's; everything it
-      // DOES — the rocket, the sound, the model — is the board's.
-      if (tw.a6 && !manual) { stepWalker(tw, dt, tNow); continue; }
-      if (tw.key === 'rotor') { const h = SENTRY_HEAT.rotor; tw.heat = coolHeat(tw.heat ?? 0, dt, h); if (tw.overheated && tw.heat < h.resume) tw.overheated = false; paintBarrelHeat(tw.obj, tw.heat); }   // RED TO WHITE HOT: the barrels carry their heat, and a mount that ran too hot waits
-      if((tw.def.attack==='slowfield' && towerOffline(shield,tw.id,tNow)) || (storyMode && !pilotMode && !automated())){hushRotor(tw);continue;}   // story sentries: no auto-targeting until the manual override
-      aimTower(tw, dt);
-      if(tw.key==='rotor'){
-        const spin=manual ? !!pilot?.state.held : !!pickTarget(graph.centers[tw.ci],effectiveStats(tw.def,tw.tier).range*cellSide,enemies,chord);
-        tw.spinning=spin; tw.spinRate=(tw.spinRate??0)+((spin?34:0)-(tw.spinRate??0))*Math.min(1,dt*2.5); if(tw.spinRate>0.05)(tw.rotorNode??=tw.obj.getObjectByName('ROTOR'))?.rotateZ(tw.spinRate*dt);   // the barrel cluster winds up and down
-        rotorVoice(sfx, tw, { s01: (tw.spinRate??0)/34, att: 1/(1+(camDist(graph.centers[tw.ci])/(cellSide*6))**2), povFiring: pilotMode&&pilot?.state.tower===tw&&tNow-(tw.firedAt??-9)<Math.max(0.2,(tw.fireGap??0.1)*1.8) });   // the spool and the sight's fire (src/fx/rotor-voice.js)
-      }
-      tw.cooldown -= dt;
-      if (manual) {
-        const distance=tw.pilotTarget && !tw.pilotTarget.pilotAim ? missileDistance(graph.centers[tw.ci],tw.pilotTarget.pos) : null;
-        const maxRange=effectiveStats(tw.def,tw.tier).range*METRES_PER_CELL;
-        const status=tw.overheated?`OVERHEATED · ${Math.round(tw.heat*100)}%`:tw.obj.userData.loading?'LOADING':distance!==null && distance>maxRange?'OUT OF RANGE':tw.cooldown>0?`COOLING ${tw.cooldown.toFixed(1)} s`:missileOf(tw.key) && !tw.lock?.locked?'ACQUIRING':tw.aimErr>SENTRY_TUNE.tolerance?'TRAVERSING':'READY';
-        pilot.update(`${tw.def.label} · POST ${pilotPost+1}/${pilotPosts.length} · WAVE ${wave} · HEART ${Math.ceil(heartHP)}\nMAX ${Math.round(maxRange)} m · ${distance===null?'NO TARGET':`TRACK ${Math.round(distance)} m`} · ${status}${tw.heat>0.02?` · HEAT ${Math.round(Math.min(1,tw.heat)*100)}%`:''}`);
-        feedScope(tw, distance, maxRange);   /* THE SCOPE (a guided mount in the story): the workshop's reticle and TRACK panel (src/fx/story-scope.js) */
-        if (!pilot.state.held || pilot.isMap()) continue;
-      }
-      if (tw.cooldown > 0 || tw.overheated) continue;
-      const eff = effectiveStats(tw.def, tw.tier);
-      const range = eff.range * cellSide;
-      const tp = graph.centers[tw.ci];
-      let target = manual ? (missileOf(tw.key) ? tw.missileTarget : tw.pilotTarget) : missileOf(tw.key) ? tw.missileTarget : pickTarget(tp, range, enemies, chord, tw.def.prefers);
-      if (manual && target && !target.pilotAim && missileDistance(tp,target.pos) > eff.range*METRES_PER_CELL) continue;
-      // the railgun does not shoot THROUGH walls: if the nearest pick is
-      // occluded by high ground, take the nearest VISIBLE enemy instead
-      if (!manual && target && tw.def.hitscan && !losClear(tw.ci, target.pos, perchOf(tw))) {
-        target = null;
-        let bd = Infinity;
-        for (const e of enemies) {
-          if (!e.alive) continue;
-          const d = chord(tp, e.pos);
-          if (d <= range && d < bd && losClear(tw.ci, e.pos, perchOf(tw))) { bd = d; target = e; }
-        }
-      }
-      if (!target) continue;
-      // ...and a LAUNCHER waits for its lock. Everything else fires the
-      // moment it has something in range.
-      if (tw.def.lock && !(tw.lock && tw.lock.locked)) continue;
-      if (missileOf(tw.key) && !missileCanFire(tw.lock, target,
-        missileDistance(tp, target.pos), tw.aimErr, engagementConfig(tw), tw.cooldown,
-        !!missilePool?.available && !tw.obj.userData.loading)) continue;
-      // A LANCE WILL NOT FIRE INTO DIRT. It is a straight line stopped by terrain, so a target behind a rise is a target it
-      // cannot reach — and firing anyway spends a two-second burst on a beam that ends in the ground, which looks broken and is.
-      // The ray it is about to draw is the ray that answers this, so it is asked first.
-      if (tw.def.attack === 'lance') {
-        // ON TARGET FIRST. The lance is drawn along the BARREL, not along the bearing to the target, so a burst fired mid-slew
-        // goes wherever the tube happens to be pointing — which the sentry range learned the hard way and this had not yet been
-        // told. Two seconds of cooldown is far too expensive to spend on a shot the drive has not finished aiming.
-        if ((tw.aimErr ?? 99) > SENTRY_TUNE.tolerance) continue;
-
-        const mz0 = tw.obj.userData.muzzles;
-        if (mz0 && mz0.length) {
-          const m0 = mz0[(tw.shots ?? 0) % mz0.length];
-          m0.updateWorldMatrix(true, false);
-          m0.getWorldPosition(gunV);
-          const f0 = [gunV.x, gunV.y, gunV.z];
-          const tb = bodyAt(target), d0 = norm3(sub3(tb, f0));
-          const need = Math.hypot(tb[0] - f0[0], tb[1] - f0[1], tb[2] - f0[2]);
-          const los = lanceReach(f0, d0, need, tw.ci);
-          if (los.len < need - cellSide * 0.3) continue;
-        }
-      }
-      if (tw.def.hitscan && (tw.aimErr ?? 99) > SENTRY_TUNE.tolerance) continue;
-      tw.cooldown = shotInterval(eff.rate * (manual ? pilotMultipliers(automated(), story?.pilot).rateMul : 1)); if (tw.key === 'rotor') { tw.heat = (tw.heat ?? 0) + SENTRY_HEAT.rotor.perShot; if (tw.heat >= 1) tw.overheated = true; }   // the story's piloted sentry streams rounds; every round heats the barrels
-      if (manual) pilot.state.shots++; tw.firedAt = tNow; tw.fireGap = tw.cooldown;   // the first-person bullet track follows the rounds actually fired (owner, 2026-09-15)
-      // one line, every tower: the key IS the def key, unless the def says
-      // otherwise — which the second roster's do, since there is no
-      // `tower_rotor` and a missing sample is silence nobody notices
-      if (!missileOf(tw.key) && (tw.key !== 'rotor' || tNow - (tw.soundAt ?? -9) >= shotInterval(tw.def.rate) * 0.98)) { tw.soundAt = tNow; sfx.play(towerSound(tw.def), { dist: camDist(tp) }); }   // THE ROTOR'S REPORT AT ITS OWN CADENCE (owner, 2026-09-13: spherical-stalberg sounded better): six rounds a shot and sentry control's rate made the one sample a buzz, so it plays once per shot of the gun's own rate
-      const n = graph.normals[tw.ci];
-      const muzzle = towerMuzzle(tw, add3(tp, scale3(n, cellSide * 0.55)));
-      // the gun rides back on every round, and the flash leaves the barrel; a Rotor also spits its case sideways when the camera is close enough to see it (docs/AMMUNITION.md)
-      tw.recoil = 1; if (tw.key === 'rotor' && tw.rotorNode && camDist(tp) < cellSide * 8) { brass ??= createBrass(scene, { metres: cellSide / METRES_PER_CELL }); brass.eject(tw.rotorNode, { side: 1, floorR: len3(perchOf(tw)) * (1 + params.wallHeight) }); }
-      if (tw.obj.userData.muzzles && tw.obj.userData.muzzles.length) {
-        // THE SAME MUZZLE AS THE WORKSHOP: the package's recipe, tune and colours, authored in lab metres
-        // and scaled onto the sphere. One master setting for every mode; no spark reads as a bullet.
-        const f0 = norm3(sub3(target.pos, muzzle)), mz = muzzleOf(tw.def);
-        const fl = makeImpactBurst(mz.recipe, tuneFor(mz), resolveImpactColors(mz, { weapon: shotOf(tw.def).beamColor ?? tw.def.color }), tw.id, mz.size);
-        orientImpact(fl, muzzle, f0); fl.scale.multiplyScalar(cellSide / METRES_PER_CELL);
-        fl.geometry = { dispose: () => { for (const c of fl.children) disposeObj(c); } };   // the reaper disposes a geometry; a burst is a group of them
-        scene.add(fl); debris.push(fl);   // the board's own transient list, ticked and reaped
-      }
-      const raw = sub3(target.pos, tp);
-      const flat = norm3(sub3(raw, scale3(norm3(tp), dot3(raw, norm3(tp)))));
-      const atk = manual && tw.key==='heptapod' ? 'seeker' : tw.def.attack;
-      if (tw.def.hitscan) {
-        // THE SNIPER IS A HEAVY SHOT, not a beam. The beam pair read as a laser (operator ruling), so now the damage still lands
-        // this frame — a sniper does not miss — but what you SEE is one fat slug crossing the whole line in ~0.13s, trailing
-        // ghosts, with the impact fx landing when the slug does. Straight line, one round.
-        if (!target.pilotAim) damageEnemy(target, tNow, eff.dmg, true, 'tower', tw.key);
-        const hitP = add3(target.pos, scale3(norm3(target.pos), cellSide * 0.3));
-        spawnSlug(muzzle, hitP, tw.def.color, cellIndex(target.pos));
-        warnRing(tw.ci, tw.def.color, 0.35, cellSide * 0.9); // muzzle pulse
-      } else if (atk === 'seeker') {
-        // FIRE AND FORGET. The missile carries the target it was launched
-        // at, so the launcher has no reason to keep looking at it — and
-        // every reason not to, which is the lesson the sentry range taught:
-        // a Quiver that holds its lock empties itself into one walker while
-        // the rest of the wave goes past.
-        if (launchTowerSeeker(tw, muzzle, target, tNow)) sfx.play(towerSound(tw.def), { dist: camDist(tp) });   // a launcher reports its rocket, not its cooldown
-        if (tw.lock) tw.lock = makeLock();
-      } else if (atk === 'lance') {
-        // THE LANCE LEAVES THE MUZZLE TIP, ALONG THE BARREL, and stops at
-        // the first thing solid (operator). Three corrections in one:
-        //
-        //  - it starts at the muzzle's REAL position, runs along the barrel's own world quaternion, and is a straight line in the world
-        //    marched against terrain: ground and walls stop it with an impact; enemies do not, it damages every one it passes.
-        const from3 = muzzle;
-        // FROM THE MUZZLE TIP, TOWARD THE TARGET: the muzzle empty's own +Z was measured 2 to 42 degrees off the bearing (its orientation is
-        // not a Workshop contract, its position is), so the beam starts at the tip and aims at the target; a turret still slewing does not fire
-        const dir3 = norm3(sub3(bodyAt(target), from3));
-        const stop = lanceReach(from3, dir3, range, tw.ci);
-        let struck = 0;
-        // MEASURED ON THE ARC THE BEAM IS DRAWN ALONG. This used distToSeg — a straight chord — and the sag is not a rounding
-        // error: across the lance's seven cells it is 0.0389 units against a hit radius of cellSide * 0.5 = 0.04. A target
-        // standing on the ground at mid-range sat 97% of the way out of a beam the picture showed passing straight through it, so
-        // the lance was barely clipping the middle of its own reach. projectToArc returns the same { s, off } and is what the
-        // tank's secondary already measures with.
-        const fromU3 = norm3(from3);
-        const dTan3 = norm3(sub3(dir3, scale3(fromU3, dot3(dir3, fromU3))));
-        for (const e of enemies) {
-          if (!e.alive) continue;
-          const pr = projectToArc(fromU3, dTan3, e.pos);
-          if (pr.s < 0 || pr.s > stop.len) continue;
-          const r = cellSide * Math.max(0.5, (e.size ?? e.spec.size) * 0.9);
-          if (pr.off >= r) continue;
-          damageEnemy(e, tNow, eff.dmg, true, 'tower', tw.key);
-          struck++;
-        }
-        tw.lastStruck = struck;
-        tw.lastStop = stop;
-        lanceBeam(tw, from3, dir3, stop.len, tNow, struck, stop.hit);
-      } else if (atk === 'beam') {
-        // hitscan: damage now, draw the light
-        if (!target.pilotAim) damageEnemy(target, tNow, eff.dmg, true, 'tower', tw.key);
-        const at = add3(target.pos, scale3(norm3(target.pos), cellSide * 0.3));
-        if (shotOf(tw.def).plasma) throwPlasma(tw, muzzle, at, tNow);
-        else spawnBeam(muzzle, at, tw.def.color);
-      } else if (atk === 'slowfield') {
-        // Continuous shield transfer runs outside the attack cadence.
-        if (towerOffline(shield, tw.id, tNow)) continue;
-        // THE FIELD IS UNIVERSAL, THE PICTURE IS THREE BOLTS. Every hostile in range is still slowed — that is two numbers
-        // written on an enemy and it costs nothing. What cost tower × enemy was the PICTURE: a lightning bolt AND a 12-point dot
-        // burst spawned per hostile per shot. Now the NEAREST three get a bolt and nobody gets a burst, so the effect's draw cost
-        // is bounded by the tower count alone and a crowd is free. The nearest three are also the three the player is looking at.
-        const near = [];   // { e, d }, ascending, at most SLOW_BOLTS
-        for (const e of enemies) {
-          if (!e.alive) continue;
-          const d = chord(tp, e.pos);
-          if (d > range) continue;
-          // A tower with no damage must not call damageEnemy at all: even at 0 it resets a regenerator's out-of-combat clock and
-          // fires the on-hit reactions — a barbed ACCELERATES when hit, so a "slow" tower would have been speeding it up.
-          if (eff.dmg > 0) damageEnemy(e, tNow, eff.dmg, true, 'tower', tw.key);
-          if (!e.alive) continue;
-          e.slowFactor = eff.slowFactor;
-          e.slowUntil = tNow + eff.slowDur;
-          // insertion into a 3-slot list: one pass, no sort of the crowd
-          let i = near.length;
-          while (i > 0 && near[i - 1].d > d) i--;
-          if (i < SLOW_BOLTS) {
-            near.splice(i, 0, { e, d });
-            if (near.length > SLOW_BOLTS) near.pop();
-          }
-        }
-        for (const t3 of near) spawnLightning(muzzle, t3.e.pos, tw.def.color, tNow);
-      } else if (atk === 'spread') {
-        for (let p = 0; p < eff.pellets; p++) {
-          const ang = (p - (eff.pellets - 1) / 2) * 0.22;
-          const cs = Math.cos(ang), sn = Math.sin(ang);
-          const nn = norm3(tp);
-          const nxd = cross3(nn, flat);
-          const dir = norm3(add3(scale3(flat, cs), scale3(nxd, sn)));
-          spawnTowerShot(muzzle, dir, tw, eff, null);
-        }
-      } else {
-        spawnTowerShot(muzzle, flat, tw, eff, atk === 'homing' ? target : null,
-          atk === 'mortar' ? chord(tp, target.pos) : 0,
-          // EVERY STRAIGHT ROUND FLIES FROM THE BARREL TO THE BODY, automatic ones too (2026-10-01; they flew along the surface at 2 m, their tracer from there, through the 4 m walls)
-          atk === 'homing' || atk === 'mortar' ? null : target.pilotAim && pilotMode && pilot?.state.tower === tw ? target.pos : add3(target.pos, scale3(norm3(target.pos), cellSide * 0.3)));   // FROM THE BARREL TO THE RETICLE (owner, 2026-09-14): a piloted round flies a straight line in space from the muzzle to the body under the reticle, not along the surface at wall height; with no body, to the reticle's point on the ground
-      }
-    }
-  }
-
-  // Line of sight for hitscan: sample the chord from the mast's cell to
-  // the target every ~0.45 cells; any BLOCKED cell along it (other than
-  // the tower's own — the mast stands ON high ground) refuses the shot.
-  // Adjacent ridge cells block a shot along the ridge, which is correct:
-  // that is what 'not through walls' means for a gun at wall height.
-  // `from` may be the mount's perch: a gun standing at the lane edge of its rock sights along the lane, not along its own ridge
-  function losClear(fromCi, toPos, from = graph.centers[fromCi]) {
-    const a = from;
-    const steps = Math.max(2, Math.ceil(dist3(a, toPos) / (cellSide * 0.45)));
-    for (let i = 1; i < steps; i++) { const t = i / steps;
-      const pmid = norm3([
-        a[0] + (toPos[0] - a[0]) * t,
-        a[1] + (toPos[1] - a[1]) * t,
-        a[2] + (toPos[2] - a[2]) * t]);
-      const ci = cellIndex(pmid);
-      if (ci !== -1 && ci !== fromCi && dungeon.tags[ci] === BLOCKED) return false;
-    }
-    return true;
-  }
-
-  // HK's projectile identity: every shot is a TRACER — a bright additive
-  // head dragging the profile's `trail` ghost points, dimming to the tail. Each
-  // tracer is one small Points object (≤12 verts), rebuilt per shot.
-  // DELEGATED. This built the tracer inline, which meant the shooting lab
-  // could only guess at it — and a guess is what made the lab's Mortar look
-  // like a different weapon from the board's. One builder, two callers.
-  function makeTracer(color, px, trailN) {
-    return makeTracerMesh(color, px, trailN);
-  }
-
-  function spawnTowerShot(pos, dir, tw, eff, homing, arcTotal = 0, straightTo = null) {
-    const sfx2 = shotOf(tw.def);
-    const shell=tw.def.key==='mortar';
-    const manual = pilotMode && pilot?.state.tower === tw, mesh = manual && !shell
-      // TRACERS FROM THE OPTIC (owner, 2026-09-14): a piloted round is a STREAK, a line through its trail points, not a round dot
-      ? new THREE.Line(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(3 * ((sfx2.trail ?? 0) + 9)), 3)), new THREE.LineBasicMaterial({ color: tw.def.color, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }))
-      : shell ? makeOrdnanceShell(cellSide*.45) : makeTracer(tw.def.color, (sfx2.projPx ?? 5) * (manual ? 1.9 : 1), (sfx2.trail ?? 0) + (manual ? 6 : 0));
-    const p0 = norm3(pos);
-    const lift0 = 1 + params.wallHeight * 0.5;
-    const attr = mesh.geometry.getAttribute('position');
-    for (let i = 0; !shell && i < attr.count; i++) { const s0 = straightTo ? pos : [p0[0] * lift0, p0[1] * lift0, p0[2] * lift0]; attr.setXYZ(i, s0[0], s0[1], s0[2]); }
-    attr.needsUpdate = true;if(shell)mesh.position.set(pos[0],pos[1],pos[2]);   // the shell leaves the barrel, not the pedestal (owner, 2026-10-02)
-    scene.add(mesh);
-    // a lobbed shell knows where it will land before it leaves the tube —
-    // the marker on that cell is most of the mortar's feel: threat you can
-    // read, and step out of
-    const landCi = arcTotal > 0
-      ? cellIndex(norm3(add3(p0, scale3(dir, arcTotal)))) : -1;
-    const sd = straightTo && norm3(sub3(straightTo, pos)), reach = eff.range * cellSide * 1.35, end = sd && arcTotal <= 0 ? roundEnd(pos, sd, reach, terrainOf(tw.ci)) : null;   // where a straight round's line meets the terrain: its tracer ends there and it lands there
-    towerShots.push({
-      pos: p0, dir, dist: 0, mesh, shell,
-      dmg: eff.dmg * (manual ? pilotMultipliers(automated(), story?.pilot).dmgMul : 1), splash: (eff.splash || 0) * cellSide, homing,   // ...and each round hits harder
-      range: end ? end.len : sd ? rayToTerrain(pos, sd, reach, tw.ci).len : Math.min(reach, rayToTerrain(scale3(p0, lift0), dir, reach, tw.ci).len), terrain: true, straight: sd ? { p: pos.slice(), d: sd, end } : null,   // a round stops at the first rock it flies into; a straight round carries its own point and direction in space, and its end
-      speed: (sfx2.projSpeed ?? 16) * cellSide, // per-tower tempo
-      arcTotal, arcH: cellSide * 2.3, color: tw.def.color, // a lob, not a moonshot
-      landCi, markT: 0, px: (sfx2.projPx ?? 5) * (manual ? 1.9 : 1), manual, key: tw.key, h0: shell ? len3(pos) : 0,
-    });
-  }
-
-  function killTowerShot(i) {
-    scene.remove(towerShots[i].mesh);
-    towerShots[i].mesh.geometry.dispose(); // per-shot tracer geometry
-    towerShots[i].mesh.material.dispose();
-    towerShots.splice(i, 1);
-  }
-  // A ROUND'S END: counted for the seat, its impact where it meets the terrain. A straight round lands on the exact point its line
-  // meets the ground or a wall, its tracer's last drawn head, the frame after that head was drawn (owner, 2026-09-25: "the trace
-  // should land on the same path as the impact"); one still in the air goes out. rs.pilotGap: drawn head to burst, metres, widest.
-  function endTowerShot(i, hit) {
-    const p = towerShots[i], end = p.straight?.end, at = end ? end.point : p.pos;
-    if (!hit && p.terrain && p.arcTotal <= 0 && (!end || end.hit)) {
-      warnRing(cellIndex(norm3(at)), p.color, 0.3, cellSide * 0.6, end && at);
-      const fl = makeDotBurst(p.color, norm3(at), 8); fl.scale.setScalar(cellSide * 1.6); fl.position.fromArray(at); scene.add(fl); debris.push(fl);
-      if (p.manual && end && !p.shell) rs.pilotGap = Math.max(rs.pilotGap ?? 0, fl.position.distanceTo(tmpV.fromBufferAttribute(p.mesh.geometry.getAttribute('position'), 0)) / cellSide * METRES_PER_CELL);
-    }
-    if (p.manual) { rs.pilotRounds = (rs.pilotRounds ?? 0) + 1; if (hit || p.through) rs.pilotHits = (rs.pilotHits ?? 0) + 1; }   // a hit, even one that flew on
-    killTowerShot(i);
-  }
-
-  // splash detonation: tinted burst + damage to everything in the radius.
-  // The show scales with the SPLASH, so a mortar shell that threatens two
-  // cells looks like it — and the ground takes a shock ring, the same
-  // language as the orbital strike one register down.
-  function detonate(p, tNow) {
-    for (const e2 of enemies) {
-      if (e2.alive && chord(p.pos, e2.pos) <= p.splash) damageEnemy(e2, tNow, p.dmg, true, 'tower', p.key);
-    }
-    const splashCells = p.splash / cellSide;
-    const impactCi = cellIndex(p.pos);
-    if (impactCi !== -1 && splashCells > 0.5) {
-      warnRing(impactCi, p.color, 0.5, p.splash * 1.1); explode('mortar.shell', scale3(norm3(p.pos), 1 + (dungeon.tags[impactCi] === BLOCKED ? params.wallHeight : 0)));   // its smoke and shock ring ON the ground under the burst, not at the burst's height (owner, 2026-10-02)
-    }
-    const boom = makeDotBurst(p.color, norm3(p.pos), Math.round(42 + splashCells * 40));
-    boom.scale.setScalar(cellSide * (1.1 + splashCells * 0.6));
-    const bp = add3(p.pos, scale3(norm3(p.pos), cellSide * 0.2));
-    boom.position.set(bp[0], bp[1], bp[2]);
-    scene.add(boom);
-    debris.push(boom);
-  }
-
-  function updateTowerShots(dt, tNow) {
-    for (let i = towerShots.length - 1; i >= 0; i--) {
-      const p = towerShots[i];
-      const v = p.speed; // each tower's own tempo — HK's feel lives here
-      // HOMING CHASES, per HokorobiTawaa: the velocity is steered toward the live target's position every frame with a dt-scaled
-      // rate — the old fixed 0.75/0.25 blend was frame-rate-DEPENDENT (limp at 30fps, stiff at 120) and too soft to read as
-      // pursuit at any of them. k = 6/s is HK's own constant: tight enough to whip round a fleeing phage, loose enough that the
-      // curve is visible, which is the whole point.
-      if (p.homing && p.homing.alive) {
-        const raw = sub3(p.homing.pos, p.pos);
-        const n0 = norm3(p.pos);
-        const want = norm3(sub3(raw, scale3(n0, dot3(raw, n0))));
-        const k = Math.min(1, 6 * dt);
-        p.dir = norm3(add3(scale3(p.dir, 1 - k), scale3(want, k)));
-      }
-      if (p.straight) { if (flyStraight(p, v * dt)) { endTowerShot(i, false); continue; } p.pos = norm3(p.straight.p); } else { p.pos = norm3(add3(p.pos, scale3(p.dir, v * dt))); p.dist += v * dt; }   // its head was drawn on its end: it lands
-      const n = p.pos;
-      p.dir = norm3(sub3(p.dir, scale3(n, dot3(p.dir, n))));
-      // mortar lofts: a sine arc over its measured throw
-      // BALLISTIC, not a sine hump. Warping the flight fraction (u^1.35)
-      // pushes the apex past 60% of the flight and compresses the whole
-      // descent into the remainder — the shell hangs, then PLUMMETS, which
-      // is what heavy looks like. The old symmetric sine floated down as
-      // gently as it rose.
-      const u = p.arcTotal > 0 ? Math.min(1, p.dist / p.arcTotal) : 0;
-      const uw = Math.pow(u, 1.35);   // (`v` is this scope's speed)
-      const arc = p.arcTotal > 0 ? 4 * uw * (1 - uw) * p.arcH : 0;
-      const floor = p.shell ? 1 + (dungeon.tags[p.landCi] === BLOCKED ? params.wallHeight : 0) : 1 + params.wallHeight * 0.5, lift = floor + arc + (p.h0 ? (p.h0 - floor) * (1 - u) : 0);   // a shell leaves its muzzle and comes down ON the ground, where it bursts (owner, 2026-10-03)
-      // the shell SWELLS toward apex — nearer the top-down camera, and it
-      // sells the height even from the chase cam
-      if (p.arcTotal > 0 && !p.shell) p.mesh.material.size = p.px * (1 + 1.1 * (arc / p.arcH));
-      // the landing cell blinks while the shell is up: readable threat,
-      // through the same pooled rings as everything else
-      if (p.landCi >= 0) {
-        p.markT -= dt;
-        if (p.markT <= 0) {
-          p.markT = 0.3;
-          warnRing(p.landCi, p.color, 0.28, p.splash > 0 ? p.splash * 0.85 : cellSide);
-        }
-      }
-      // tracer: ghosts shift back one slot, the head takes the new point
-      if(p.shell){
-        const previous=p.mesh.position.clone();p.mesh.position.set(p.pos[0]*lift,p.pos[1]*lift,p.pos[2]*lift);
-        const direction=p.mesh.position.clone().sub(previous).normalize();if(direction.lengthSq()>0)p.mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),direction);
-      }else{
-      const attr = p.mesh.geometry.getAttribute('position');
-      for (let k = attr.count - 1; k > 0; k--) {
-        attr.setXYZ(k, attr.getX(k - 1), attr.getY(k - 1), attr.getZ(k - 1));
-      }
-      const hp = p.straight ? p.straight.p : [p.pos[0] * lift, p.pos[1] * lift, p.pos[2] * lift]; attr.setXYZ(0, hp[0], hp[1], hp[2]);
-      attr.needsUpdate = true;
-      }
-      // mortar detonates at the end of its arc, hit or not
-      if (p.arcTotal > 0 && p.dist >= p.arcTotal) {
-        detonate(p, tNow);
-        killTowerShot(i);
-        continue;
-      }
-      if (p.shell && p.arcTotal > 0) continue;   // a shell in its arc passes over bodies: it bursts only where it lands
-      let hit = false;
-      for (const e of enemies) {
-        if (!e.alive || p.hitBy?.has(e)) continue;   // ONCE PER BODY: a round through a body over several frames hit it every frame (a V1 known gap, closed 2026-10-01)
-        if ((p.straight ? dist3(p.straight.p, add3(e.pos, scale3(norm3(e.pos), cellSide * 0.3))) : chord(p.pos, e.pos)) < cellSide * Math.max(p.manual ? 0.6 : 0.42, (e.size ?? e.spec.size) * (p.manual ? 1.1 : 0.8))) {   // a straight round is tested in space against the body's centre; a piloted round hits a little wider: the reticle on the body is the intent, the cloud's edge is the body
-          if (p.splash > 0) detonate(p, tNow);
-          else {
-            damageEnemy(e, tNow, p.dmg, true, 'tower', p.key);
-            // HK's hit spark, through the pooled rings — a strike that lands should flash WHERE it landed, and an object per hit
-            // would be churn the pool exists to avoid
-            warnRing(cellIndex(e.pos), p.color, 0.22, cellSide * 0.55);
-            if (p.manual) { const b = makeDotBurst(0xffffff, norm3(e.pos), 10); b.scale.setScalar(cellSide * 0.25); b.position.set(e.pos[0], e.pos[1], e.pos[2]).addScaledVector(new THREE.Vector3(...norm3(e.pos)), cellSide * 0.3); scene.add(b); debris.push(b); sfx.play('kinetic_fire', { dist: camDist(e.pos), gain: 0.5, rate: 1.25 }); pilot?.hit?.(); }   /* THE HIT REGISTERED (owner, 2026-09-14): a white spark on the body, a click, and the reticle's flash */
-          }
-          hit = true; (p.hitBy ??= new Set()).add(e);
-          if (!p.manual || (p.through = (p.through ?? 0) + 1) >= 3) break;   // a piloted round goes on through the pile: up to three bodies (owner, 2026-09-14: fish in a barrel)
-        }
-      }
-      if (hit && p.manual && (p.through ?? 0) < 3 && p.dist <= p.range) hit = false; /* still flying */ if (hit || p.dist > p.range) endTowerShot(i, hit);
-    }
-  }
-
-  // beams: a thin bright segment that burns out fast — laser + slow tethers
-  const beamGeo = new THREE.BoxGeometry(1, 1, 1);
-  function spawnBeam(a, b, color, ttl = 0.16, width = 0.03) {
-    const mat = new THREE.MeshBasicMaterial({
-      color, transparent: true, opacity: 0.9,
-      blending: THREE.AdditiveBlending, depthWrite: false,
-    });
-    const mesh = new THREE.Mesh(beamGeo, mat);
-    const mid = scale3(add3(a, b), 0.5 * (1 + params.wallHeight * 0.5));
-    mesh.position.set(mid[0], mid[1], mid[2]);
-    const d = sub3(b, a);
-    const len = len3(d);
-    mesh.scale.set(cellSide * width, cellSide * width, Math.max(1e-6, len));
-    tmpV.set(d[0], d[1], d[2]).normalize();
-    mesh.quaternion.setFromUnitVectors(Z_AXIS, tmpV);
-    scene.add(mesh);
-    beams.push({ mesh, ttl, ttl0: ttl });
-  }
-
-  // lightning tether (slow field): a jagged additive polyline from the
-  // tower head to the victim — HK's slow-tower identity. Jitter is a
-  // pure function of segment index + time: deterministic, and it never
-  // touches the gameplay rng stream.
-  // The BOLT is shotfx's; the lifetime stays here, which is the one thing the
-  // board and the lab genuinely differ about. radialLift is the board's own:
-  // it pushes the bolt out from the sphere's centre so it rides above the
-  // wall tops, and a flat lab passes 0.
-  function spawnLightning(a, b, color, tNow) {
-    const line = makeLightningMesh(a, b, color,
-      { t: tNow, radialLift: params.wallHeight * 0.5 });
-    scene.add(line);
-    beams.push({ mesh: line, ttl: 0.32, ttl0: 0.32, dg: true });
-  }
-
-  // cosmetic railgun slugs: the hit already landed; the SHOT is what flies
-  const slugFx = []; // { a, b, t, dur, mesh, color, ci }
-  function spawnSlug(a, b, color, impactCi) {
-    const mesh = makeTracer(0xffffff, 14, 6);
-    scene.add(mesh);
-    slugFx.push({ a, b, t: 0, dur: 0.13, mesh, color, ci: impactCi });
-  }
-  function stepSlugs(dt) {
-    for (let i = slugFx.length - 1; i >= 0; i--) {
-      const sl = slugFx[i];
-      sl.t += dt;
-      const f = Math.min(1, sl.t / sl.dur);
-      const attr = sl.mesh.geometry.getAttribute('position');
-      for (let k = 0; k < attr.count; k++) {
-        const fk = Math.max(0, f - k * 0.045); // ghosts trail the head
-        attr.setXYZ(k,
-          sl.a[0] + (sl.b[0] - sl.a[0]) * fk,
-          sl.a[1] + (sl.b[1] - sl.a[1]) * fk,
-          sl.a[2] + (sl.b[2] - sl.a[2]) * fk);
-      }
-      attr.needsUpdate = true;
-      if (f >= 1) {
-        // arrival IS the impact: ring + spark land with the slug
-        if (sl.ci !== -1) {
-          warnRing(sl.ci, 0xffffff, 0.3, cellSide * 0.7);
-          warnRing(sl.ci, sl.color, 0.35, cellSide * 0.5);
-        }
-        scene.remove(sl.mesh);
-        sl.mesh.geometry.dispose();
-        sl.mesh.material.dispose();
-        slugFx.splice(i, 1);
-      }
-    }
-  }
-
-  function updateBeams(dt) {
-    for (let i = beams.length - 1; i >= 0; i--) {
-      beams[i].ttl -= dt;
-      beams[i].mesh.material.opacity = Math.max(0, beams[i].ttl / (beams[i].ttl0 || 0.16)) * 0.9;
-      if (beams[i].ttl <= 0) {
-        scene.remove(beams[i].mesh);
-        beams[i].mesh.material.dispose();
-        if (beams[i].dg) beams[i].mesh.geometry.dispose(); // per-bolt geometry
-        beams.splice(i, 1);
-      }
-    }
-  }
-
-  function clearTowers() {
-    // the order book dies with the board, and so does its biomass: this is
-    // a fresh run, not a refund
-    for (const o of orders) {
-      dropSiteRing(o);
-      if (o.ghost) { scene.remove(o.ghost); disposeObj(o.ghost); }
-    }
-    orders.length = 0;
-    orderByCell.clear();
-    if (isao) {
-      scene.remove(isao.obj);
-      disposeObj(isao.obj);
-      isao = null;
-    }
-    for (const tw of towers) { scene.remove(tw.obj); disposeObj(tw.obj); }
-    for (const m of towerSeekers) missilePool?.release(m.mesh);
-    towerSeekers.length=0;
-    for (const tw of towers) tw.spool?.stop(0.05); towers.length = 0;
-    towerByCell.clear();
-    towerCells.clear();
-    watchTower = null;
-    for (let i = towerShots.length - 1; i >= 0; i--) killTowerShot(i);
-    for (let i = beams.length - 1; i >= 0; i--) {
-      scene.remove(beams[i].mesh);
-      beams[i].mesh.material.dispose();
-      beams.splice(i, 1);
-    }
-    hideRangeRing();
-    closeShop();
-  }
+  // THE TOWER COMBAT LOOP (src/fx/tower-combat.js): the A6 walkers, every tower's frame, the shots, beams, lightning and slugs
+  const towerCombat = createTowerCombat({
+    SLOW_BOLTS,
+    Z_AXIS,
+    a6Rng,
+    aimTower,
+    automated,
+    beams,
+    chord,
+    debris,
+    enemies,
+    explode,
+    feedScope,
+    gunV,
+    lanceReach,
+    missileDistance,
+    missileOf,
+    orderByCell,
+    orders,
+    params,
+    perchOf,
+    scene,
+    sfx,
+    shield,
+    tmpV,
+    towerByCell,
+    towerCells,
+    towerSeekers,
+    towerShots,
+    towers,
+    acquireMissileTarget,
+    camDist,
+    closeShop,
+    damageEnemy,
+    disposeObj,
+    dropSiteRing,
+    effectiveStats,
+    engagementConfig,
+    hideRangeRing,
+    lanceBeam,
+    launchTowerSeeker,
+    placeTowerObj,
+    rayToTerrain,
+    stepPlasmaBeams,
+    stepTowerSeekers,
+    terrainOf,
+    throwPlasma,
+    towerMuzzle,
+    warnRing,
+    cellIndex: () => cellIndex,
+    cellSide: () => cellSide,
+    dungeon: () => dungeon,
+    graph: () => graph,
+    heartHP: () => heartHP,
+    missilePool: () => missilePool,
+    pilot: () => pilot,
+    pilotMode: () => pilotMode,
+    pilotPost: () => pilotPost,
+    pilotPosts: () => pilotPosts,
+    rs: () => rs,
+    story: () => story,
+    wave: () => wave,
+    storyMode: () => storyMode,
+    brass: () => brass,
+    setBrass: (v) => (brass = v),
+    isao: () => isao,
+    setIsao: (v) => (isao = v),
+    setWatchTower: (v) => (watchTower = v),
+  });
+  function stepTowers(...a) { return towerCombat.stepTowers(...a); }
+  function losClear(...a) { return towerCombat.losClear(...a); }
+  function spawnLightning(...a) { return towerCombat.spawnLightning(...a); }
+  function updateTowerShots(...a) { return towerCombat.updateTowerShots(...a); }
+  function stepSlugs(...a) { return towerCombat.stepSlugs(...a); }
+  function updateBeams(...a) { return towerCombat.updateBeams(...a); }
+  function clearTowers(...a) { return towerCombat.clearTowers(...a); }
 
   // --- THE TERRAFORMER BUILDS (operator, 2026-09-02) ---------------------
   // "give the image that the Terraformer is active by having it build things,
