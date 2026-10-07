@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-10-07-footprints-from-the-geometry-the-solar-array-solid",
+  "date": "2026-10-07",
+  "type": "change",
+  "status": "resolved",
+  "title": "A building's footprint is its geometry's: the triangles near the ground on a grid, so the solar array is solid at its panels with its charging pad open, and a lander blocks where it stands rather than its whole perimeter",
+  "context": "Owner, 2026-10-07 (twenty-eighth notes, 4): 'the solar array should be impossible for the tank to go through. Collision ON, but not so much that its entire perimeter becomes an invisible wall. Same with the landing rocket.' story-base solidAt kept one box round a structure's near-ground bulk (the parts with a share of the largest's volume, shrunk 30%): a lander's box walled the lane beside it (2026-10-05 FOOT_BULK, PICKUP_CELLS 1.3 worked round it), and the solar array was left out of SOLID_STRUCTURES because one box would have covered its charging pad at its centre.",
+  "outcome": "src/domain/footprint.js rasterFootprint (pure, tested): triangles in the structure's own XZ on a grid of cells (a triangle against a square by separating axes; touching is not overlapping), hit(x, z, pad). src/fx/story-base.js solidAt: once a tier, every mesh's triangles in the holder's frame, those within 2.5 m of the structure's ground that rise at least 0.5 m over it (a slab or a pad is the ground, not a wall), rasterised on 0.5 m cells; the point test is the grid's. FOOT_BULK and the inset are gone. base-layout SOLID_STRUCTURES gains 'solar'. New showcase hook footprint(id) and step --footprints: each solid structure's holder point and the lattice cells round it the base calls solid. First run: the solar's centre read solid (its model's ground slab), hence the lip. The hull still tests its centre point only (td-tab freeBlocked), and the slide still pushes off the holder's centre: a panel row is a thin wall the centre meets.",
+  "alternatives": [
+    "Per-structure authored boxes in content: more to maintain, and the model is the truth",
+    "A ring footprint for the solar array alone: the general cure fixes the landers too"
+  ],
+  "evidence": [
+    "--footprints: solar {atSolid false, solid 3 of 55 cells}, hugin {false, 3 of 50}, rocket-a {true, 1 of 54}, foundry {true, 1 of 55}, launcher {false, 4 of 56}; PASS footprints",
+    "node test/footprint.mjs; npm run architecture (125 modules)"
+  ],
+  "supersedes": []
+}

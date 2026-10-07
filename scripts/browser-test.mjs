@@ -2763,6 +2763,16 @@ try{
  await send('Input.dispatchKeyEvent',{type:'keyDown',key:'n',code:'KeyN'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'n',code:'KeyN'});await delay(1500);
  const left=await evaluate(`${T}.state().breaches.length`);assert.equal(left,0,`N filled every open hole (${open} -> ${left})`);
  current='nuke-key';await finish();
+ } else if(args.includes('--footprints')) {
+ // THE FOOTPRINTS (owner, 2026-10-07: the solar array solid, but no building's whole perimeter an invisible wall; src/domain/footprint.js):
+ // the grown base's solid structures, each with its holder point and the lattice cells round it the base calls solid
+ const T='window.__stalheartTest',{SOLID_STRUCTURES}=await import('../src/content/base-layout.js');
+ await go('footprints','index.html?sw=0&acceptance=1&cine=0&skip=defence#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await delay(1500);
+ const fps={};for(const id of SOLID_STRUCTURES){fps[id]=JSON.parse(await evaluate(`JSON.stringify(${T}.showcase.footprint(${JSON.stringify(id)}))`));console.log(`FOOTPRINT ${id}: ${JSON.stringify(fps[id])}`);}
+ const solar=fps.solar;assert(solar&&solar.solid>0,`the solar array is solid somewhere (${JSON.stringify(solar)})`);assert(!solar.atSolid,'its charging pad at its centre is open');
+ for(const id of ['rocket-a','hugin','foundry'])if(fps[id])assert(fps[id].solid>0&&fps[id].solid<fps[id].near*0.6,`${id}: solid where it stands, not its whole surround (${JSON.stringify(fps[id])})`);
+ current='footprints';await finish();
  } else if(args.includes('--laser')) {
  // THE ORBITAL LASER LAB. Open it, wait for the real base and for the sinkhole's crater to actually open, jump the
  // clock to a pass, then hold the beam and drag it up the trench through the test hook — the pointer only steers

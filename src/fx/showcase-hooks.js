@@ -220,6 +220,9 @@ export function createShowcaseHooks(host) {
     bearing: (ci) => { const n = norm3(player.pos), h = player.heading, to = sub3(host.graph().centers[ci], player.pos), d = norm3(sub3(to, scale3(n, dot3(to, n)))); return Math.atan2(dot3(n, cross3(h, d)), dot3(h, d)); },
     // THE SKY FROM THE HULL (--sky-hole): the hull turned to a world direction's azimuth and the first-person view, whose horizon sits
     // mid-frame, so a sky direction up to the lens's half height shows; the travel direction too, or the camera chases it back within a second
+    // THE FOOTPRINTS (--footprints; owner, 2026-10-07: "collision ON, but not so much that its entire perimeter becomes an invisible wall"):
+    // a structure's holder point (its pad or its body), whether the base calls it solid, and how many lattice cells within `cells` of it are
+    footprint: (id, cells = 4) => { const sb = host.storyBase(), st = sb?.structure?.(id); if (!st?.holder) return null; const at = st.holder.getWorldPosition(new THREE.Vector3()).toArray(), g = host.graph(), r = cells * host.cellSide(); let n = 0, near = 0; for (const c of g.centers) { if (Math.hypot(c[0] - at[0], c[1] - at[1], c[2] - at[2]) > r) continue; near++; if (sb.solidAt(c)) n++; } return { id, atSolid: !!sb.solidAt(at), solid: n, near }; },
     deploying: () => !!host.deploy(),   // the bay's roll-out owns the camera and the hull's heading until it hands over: a look waits for it
     look: (dir) => { const n = norm3(player.pos), d = sub3(dir, scale3(n, dot3(dir, n))); if (Math.hypot(...d) > 1e-9) { player.heading = norm3(d); player.travelDir = player.heading.slice(); player.smoothDir = player.heading.slice(); } endShot(); setView('pov'); },
     drive: () => { const adj = host.graph().adj[player.cur].filter((nb) => host.dungeon().tags[nb] !== BLOCKED); return { pos: player.pos.slice(), heading: player.heading.slice(), cur: player.cur, open: adj.length, adj }; },

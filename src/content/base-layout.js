@@ -127,9 +127,12 @@ export function landmarkTierMode(search) {
 }
 
 // THE BUILDINGS THAT STOP THE HULL (owner, 2026-10-03: "they should feel solid (except those where the tank can go under like the
-// Stalheart)"; src/fx/story-base.js solidAt). Not the Stålheart (the hull drives under its gantry), the bays (the hull lives in them),
-// the solar array (its charging pad is at its centre) or the Rotor on its wall. The standing landers at the expedition sites are solid;
-// the two wrecks lie on their sides across their sites and the part's crate waits beside them, so they stay passable
+// Stalheart)"; src/fx/story-base.js solidAt). Not the Stålheart (the hull drives under its gantry), the bays (the hull lives in them)
+// or the Rotor on its wall. The standing landers at the expedition sites are solid; the two wrecks lie on their sides across their sites
+// and the part's crate waits beside them, so they stay passable
 // TOO MUCH, THE FIRST TIME (owner, 2026-10-03: "now the camp is hard to navigate as the tank bumps into everything"): the small pieces (the
-// salvage, the ammunition, the bio containers) are passable again, and each footprint is its core, 30% in from its widest reach (story-base inset)
-export const SOLID_STRUCTURES = Object.freeze(['sh02', 'foundry', 'hugin', 'assembly', 'radar', 'armory', 'greenhouse', 'chips', 'launcher', 'rocket-a', 'rocket-b', 'rocket-c', 'rocket-d']);
+// salvage, the ammunition, the bio containers) are passable again. THE FOOTPRINT IS THE GEOMETRY'S (owner, 2026-10-07: "collision ON, but
+// not so much that its entire perimeter becomes an invisible wall"): the triangles near the ground on a grid (src/domain/footprint.js),
+// so a lander's body stops the hull where it stands and the lane past its legs is open, and the solar array can be solid at last, its
+// charging pad open between its panels
+export const SOLID_STRUCTURES = Object.freeze(['sh02', 'foundry', 'hugin', 'assembly', 'radar', 'armory', 'greenhouse', 'chips', 'launcher', 'solar', 'rocket-a', 'rocket-b', 'rocket-c', 'rocket-d']);   // the solar array too (owner, 2026-10-07): its panels block, its charging pad between them is open (the footprint is the geometry's now, src/domain/footprint.js)

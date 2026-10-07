@@ -3,6 +3,7 @@
 // landmark models on their islands. Consumes a base plan and a placer that
 // maps frame metres onto whichever sphere the host renders.
 import * as THREE from '../../vendor/three.module.js';
+import { rasterFootprint } from '../domain/footprint.js';
 import { GLTFLoader } from '../../vendor/GLTFLoader.js';
 import { MeshoptDecoder } from '../../vendor/meshopt_decoder.module.js';
 import { batchStaticAsset } from './asset-batching.js';
@@ -57,12 +58,11 @@ export const nodeNamed = (root, name) => { let hit = null; root.traverse((o) => 
 // only becomes the tier to swap to once its programs are linked and first-used: the dive's pass over the base paid
 // 55 ms + 32 ms of links otherwise, and a tier shown on the frame it linked still paid 53-72 ms. The far tier stands a
 // few frames longer; the swap itself is unchanged.
-export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [], sfx = null, warm = null, solid = new Set(), inset = 0.3 }) {
+export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [], sfx = null, warm = null, solid = new Set(), footCell = 0.5, footLip = 0.5 }) {
   const solidV = new THREE.Vector3();
   const group = new THREE.Group(); group.name = 'Story base'; scene.add(group);
   const mixers = [], owned = new Set(), errors = [], bays = [], lod = [];
   const records = new Map();   // every landmark by id, for the beats' hands (reveal, conceal, structure)
-  const FOOT_BULK = 0.08, solidS = new THREE.Vector3();   // solidAt: the share of the largest part's volume a part needs to be footprint
   const patches = new Map();   // cell -> the meshes of a wall printed where the plan had rock (patchWall)
   const dropped = new Set(), ZERO = new THREE.Matrix4().set(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);   // kit wall segments burned away (walls(), dropWall())
   const own = (root) => root.traverse((o) => { if (o.geometry) owned.add(o.geometry); for (const m of [o.material].flat().filter(Boolean)) owned.add(m); });
@@ -293,21 +293,21 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
         const r = records.get(st.id), root = r && (r.near ?? r.far); if (!root || r.holder.visible === false) continue;
         let f = r.foot;
         if (!f || f.root !== root) {
+          // THE FOOTPRINT FROM THE GEOMETRY (owner, 2026-10-07: "collision ON, but not so much that its entire perimeter becomes an
+          // invisible wall"; src/domain/footprint.js): the triangles within `reach` of the structure's ground, in the holder's own frame,
+          // rasterised on `footCell`-metre cells; a lander's body and legs block where they stand, the lane beside them stays open, and
+          // the solar array's panels block round its open charging pad. A triangle that never rises `footLip` metres over the ground is
+          // the ground (a slab, a pad), not a wall. Once a tier, off whichever tier stands
           r.holder.updateWorldMatrix(true, true);
-          const inv = new THREE.Matrix4().copy(r.holder.matrixWorld).invert(), boxes = [];
-          root.traverse((o) => { if (!o.isMesh || !o.geometry) return; o.geometry.boundingBox ?? o.geometry.computeBoundingBox(); boxes.push(o.geometry.boundingBox.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld))); });
-          if (!boxes.length) continue;
-          const low = Math.min(...boxes.map((b) => b.min.y)), reach = 2.5 * metres / r.holder.matrixWorld.getMaxScaleOnAxis(), foot = new THREE.Box3();
-          // THE BODY, NOT ITS LEGS (owner, 2026-10-05: the tank "always gets stuck" by the HUGIN, "bumping erratically against an unseen
-          // obstacle"): a lander's thin legs and feet splay far past its hull, and the union of their boxes walled the lane beside it. Only
-          // the parts near the ground with a real share of the bulk (`bulk` of the largest's volume) make the footprint
-          const near = boxes.filter((b) => b.min.y <= low + reach), vol = (b) => { const s = b.getSize(solidS); return s.x * s.y * s.z; }, most = Math.max(...near.map(vol));
-          for (const b of near) if (vol(b) >= most * FOOT_BULK) foot.union(b);
-          const sz = foot.getSize(new THREE.Vector3()); foot.expandByVector(sz.multiplyScalar(-inset / 2));   // the core of it, not its widest reach: the camp stays drivable
-          f = r.foot = { root, inv, foot, scale: r.holder.matrixWorld.getMaxScaleOnAxis() };
+          const inv = new THREE.Matrix4().copy(r.holder.matrixWorld).invert(), scale = r.holder.matrixWorld.getMaxScaleOnAxis(), reach = 2.5 * metres / scale, lip = footLip * metres / scale, tris = [], v = new THREE.Vector3(), m = new THREE.Matrix4();
+          let low = Infinity;
+          root.traverse((o) => { if (!o.isMesh || !o.geometry?.attributes.position) return; m.multiplyMatrices(inv, o.matrixWorld); const pos = o.geometry.attributes.position, idx = o.geometry.index; const n = idx ? idx.count : pos.count, at = (k) => { v.fromBufferAttribute(pos, idx ? idx.getX(k) : k).applyMatrix4(m); return [v.x, v.y, v.z]; };
+            for (let k = 0; k + 2 < n; k += 3) { const a = at(k), b = at(k + 1), c = at(k + 2), y = Math.min(a[1], b[1], c[1]); if (y < low) low = y; tris.push(y, Math.max(a[1], b[1], c[1]), a[0], a[2], b[0], b[2], c[0], c[2]); } });
+          const xz = []; for (let k = 0; k < tris.length; k += 8) if (tris[k] <= low + reach && tris[k + 1] >= low + lip) xz.push(tris[k + 2], tris[k + 3], tris[k + 4], tris[k + 5], tris[k + 6], tris[k + 7]);
+          f = r.foot = { root, inv, scale, grid: rasterFootprint(xz, footCell * metres / scale) };
         }
-        const q = solidV.set(p[0], p[1], p[2]).applyMatrix4(f.inv), m = pad / f.scale;
-        if (q.x > f.foot.min.x - m && q.x < f.foot.max.x + m && q.z > f.foot.min.z - m && q.z < f.foot.max.z + m) return st.id;
+        const q = solidV.set(p[0], p[1], p[2]).applyMatrix4(f.inv);
+        if (f.grid.hit(q.x, q.z, pad / f.scale)) return st.id;
       }
       return null;
     },
