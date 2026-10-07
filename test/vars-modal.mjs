@@ -3,6 +3,7 @@
 // a page without the modal's markup still gets its lab folder.
 import assert from 'node:assert/strict';
 import { buildVarsModal } from '../src/fx/vars-modal.js';
+import { readGameFlags } from '../src/platform/game-flags.js';
 
 function node(tag = 'div') {
   const classes = new Set(), listeners = {}, kids = [];
@@ -25,7 +26,7 @@ function page({ markup = true, query = '', lab = { on: false } } = {}) {
   const folder = (title) => ({ _title: title, domElement: node(), opened: false, controls: [], open() { this.opened = true; }, add(o, k) { const c = control(k); c.target = o; this.controls.push(c); return c; }, controllersRecursive() { return this.controls; } });
   const gui = { controllers: [control('seed'), control('fps readout')], folders: [folder('bloom'), folder('tank feel')], domElement: node(), addFolder(t) { const f = folder(t); this.folders.push(f); return f; } };
   const calls = [];
-  buildVarsModal({ root, gui, lab, urlParams: new URLSearchParams(query), skySeed: 4242, gpuExt: null,
+  buildVarsModal({ root, gui, lab, flags: readGameFlags(query), skySeed: 4242, gpuExt: null,
     applySky: () => calls.push(['sky', lab.galaxySeed]), spawnWave: () => calls.push(['wave']), postfx: { setEnabled: (v) => calls.push(['bloom', v]) },
     setPerfOverlay: (...a) => calls.push(['perf', ...a]) });
   return { nav, body, close, modal, toggle, gui, calls, doc: globalThis.document };

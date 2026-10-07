@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-10-07-url-flags-read-once",
+  "date": "2026-10-07",
+  "type": "change",
+  "status": "accepted",
+  "title": "The game's URL flags are parsed once, in src/platform/game-flags.js; the controller reads a frozen object",
+  "context": "The refactor run's Task 6: src/td-tab.js read location.search at 33 sites, eleven of them with their own new URLSearchParams because the shared urlParams was a const declared thousands of lines below the first readers (two comments said so). The variables modal took urlParams whole.",
+  "outcome": "readGameFlags(search) returns Object.freeze({ every key td-tab and the variables modal read, null when absent, '' when present without a value, and shield: the SHIELD_KNOBS by name }). td-tab declares `const flags = readGameFlags()` as initTdTab's first statement; every get became flags.<key>, the debug-hook list reads flags[k], the shield knobs read flags.shield[k.key]; urlParams and the TDZ comments are gone; buildVarsModal takes flags (has(k) is flags[k] !== null). Behaviour unchanged: the deep link rewrites the address mid-run only by carrying the search and overriding seed, so the run-time sites (mission, day, coarse) read the same values as before. src/platform/diag-overlay.js keeps its own ?diag read. td-tab 8,827 -> 8,825 lines.",
+  "alternatives": [
+    "Hand the modules a get(key) function over one URLSearchParams: rejected, a frozen object makes the set of flags visible and testable."
+  ],
+  "evidence": [
+    "test/game-flags.mjs (every key equals URLSearchParams.get on the same query; frozen; the shield knobs); test/vars-modal.mjs over flags",
+    "tools/refactor/undef-diff.mjs: no new undefined or unused names; grep: no urlParams or URLSearchParams left in src/td-tab.js",
+    "npm test, npm run check, npm run build; snapshot suites --defense --sectors --showcase --phone --sky-hole --laser-game --seats --pacing --passive"
+  ],
+  "supersedes": []
+}

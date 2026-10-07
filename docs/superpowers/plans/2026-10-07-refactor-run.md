@@ -446,9 +446,9 @@ The story's per-frame tick leaves `src/fx/programme-host.js` for modules named a
 - Modify: `src/td-tab.js` — one `const flags = readGameFlags();` at the top of `initTdTab` (line 92), every site reads `flags.<key>`; `urlParams` (8077) and the eleven `new URLSearchParams(location.search)` go. The comments "urlParams is declared further down" go with them.
 - Test: `test/game-flags.mjs` — the parser on `?mobile=1&coarse=1&metal=0&tier=low&sim=style1&seed=1000`, defaults for absent keys (`null`, never `undefined`, so `=== '1'` comparisons keep their meaning), and that the result is frozen.
 
-- [ ] **Step 1:** test first; **Step 2:** the module; **Step 3:** the sites, one grep-driven pass, `node --check` after each file save.
-- [ ] **Step 4: Verify** — `npm test`, `npm run check`, `npm run build`; snapshot suites that use flags: `--defense`, `--sectors` (`?skip=defence&sector=N`), `--showcase`, `--phone` (known stop at step 5: compare against main), `--sky-hole`, `--laser-game`, `--seats`; `?sim=style1&seed=1000&simfast=50&simcap=180&roster=2` through `--pacing`/`--passive`.
-- [ ] **Step 5: Commit** — `The URL flags are parsed once in src/platform/game-flags.js; the controller reads a frozen object`
+- [x] **Step 1:** test first; **Step 2:** the module; **Step 3:** the sites, one grep-driven pass, `node --check` after each file save.
+- [x] **Step 4: Verify** — `npm test`, `npm run check`, `npm run build`; snapshot suites that use flags: `--defense`, `--sectors` (`?skip=defence&sector=N`), `--showcase`, `--phone` (known stop at step 5: compare against main), `--sky-hole`, `--laser-game`, `--seats`; `?sim=style1&seed=1000&simfast=50&simcap=180&roster=2` through `--pacing`/`--passive`.
+- [x] **Step 5: Commit** — `The URL flags are parsed once in src/platform/game-flags.js; the controller reads a frozen object`
 
 ---
 

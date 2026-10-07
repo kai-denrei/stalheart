@@ -6,12 +6,12 @@
 // right-edge column. The lil-gui DOM is MOVED into #td-vars as pages — root
 // controls become the GAME page, each folder its own page — so nothing
 // about any control changes, only where it lives and how it is reached.
-export function buildVarsModal({ root, gui, lab, urlParams, skySeed, applySky, spawnWave, postfx, setPerfOverlay, gpuExt }) {
+export function buildVarsModal({ root, gui, lab, flags, skySeed, applySky, spawnWave, postfx, setPerfOverlay, gpuExt }) {
   // THE LAB PAGE (?lab=1). A folder here becomes a page in VARS below, for free.
   const applyLabSky = applySky;   // the lab's knobs feed the same bake
   if (lab.on) {
     // the lab opens on the run's own sky unless the URL named a seed
-    if (!urlParams.has('labseed') && !urlParams.has('labGalaxySeed')) lab.galaxySeed = skySeed;
+    if (flags.labseed === null && flags.labGalaxySeed === null) lab.galaxySeed = skySeed;
     const f = gui.addFolder('lab');
     f.add(lab, 'waveMult', 1, 20, 1).name('wave ×');
     f.add({ spawn: () => spawnWave() }, 'spawn').name('⚡ spawn a wave now');
@@ -82,7 +82,7 @@ export function buildVarsModal({ root, gui, lab, urlParams, skySeed, applySky, s
   show(0);
   // ?vars=1 opens it; ?fps=1 turns the readout on — for screenshots and
   // for linking a state rather than describing it
-  if (urlParams.get('vars') === '1') document.body.classList.add('vars-open');
+  if (flags.vars === '1') document.body.classList.add('vars-open');
   if (lab.on) {
     const i = pages.findIndex((pg) => pg.title === 'lab');
     if (i >= 0) show(i);

@@ -35,7 +35,7 @@ import { firingFor } from './content/firing-defaults.js'; import { RELEASE_EVENT
 import { METRES_PER_CELL, arcToMetres, metresToArc } from './core/stage-units.js';
 import { pickMissileTarget, missileLimits, stepMissileLock, missileCanFire } from './domain/missile-targeting.js';
 import { createRunContext } from './domain/run-context.js'; import { trunkCells, simDirective, simPick } from './domain/sim-policy.js'; import { towerPerch } from './domain/tower-perch.js';
-import { createRunTimers } from './platform/run-timers.js'; import { createSimRun } from './platform/sim-run.js'; import { createDiagOverlay } from './platform/diag-overlay.js'; import { createPerfOverlay } from './platform/perf-overlay.js'; import { createDevPanel } from './platform/dev-panel.js';
+import { createRunTimers } from './platform/run-timers.js'; import { createSimRun } from './platform/sim-run.js'; import { createDiagOverlay } from './platform/diag-overlay.js'; import { readGameFlags } from './platform/game-flags.js'; import { createPerfOverlay } from './platform/perf-overlay.js'; import { createDevPanel } from './platform/dev-panel.js';
 import { createMissilePool, launchDart, advanceDart } from './missiles.js';
 import { MISSILE_LAUNCH_ELEVATION } from './content/missile-defaults.js';
 import { CONTENT } from './content/runtime.js';
@@ -121,6 +121,7 @@ import { makeAudio } from './audio.js'; import { isaoSay } from './fx/isao-voice
 import { DEATH_KEYS } from './audiomanifest.js';
 
 export function initTdTab(root) {
+  const flags = readGameFlags();   // THE URL FLAGS, read once (src/platform/game-flags.js)
   let controlsCard = null, pilotMode = false, storyViews = null, viewWas = null, pilotHost = null, storyMonitor = null, daylight = null, storyScope = null, syntheticModal = null, brass = null, hudFrame = -1, hudDirty = false, frameNo = 0, inFrame = false;   // the story enters it at runtime; the view strip unlocks after the first wave
   let pilot = null;
   let pilotPosts = [], pilotPost = 0;
@@ -227,14 +228,14 @@ export function initTdTab(root) {
   // shell is a body class the phone CSS keys off and a handful of intents the
   // game already had. Detection is coarse pointer AND a phone-class width,
   // overridable either way by ?mobile=1|0 so it can be looked at anywhere.
-  const mobileParam = new URLSearchParams(location.search).get('mobile');
+  const mobileParam = flags.mobile;
   const mobileShell = mobileParam === '1' ? true : mobileParam === '0' ? false
     : (matchMedia('(pointer: coarse)').matches && Math.min(innerWidth, innerHeight) < 900);
   document.body.classList.toggle('mobile-shell', mobileShell);
   // ?coarse=1 — SIMULATE A COARSE POINTER for the ruler: no headless flag makes `(pointer: coarse)` true, so the media conditions
   // in the loaded sheets are rewritten; called again at measure time (at init `cssRules` is empty) and it says how many it flipped.
   function simulateCoarse() {
-    if (mobileParam !== '1' || new URLSearchParams(location.search).get('coarse') !== '1') return 0;
+    if (mobileParam !== '1' || flags.coarse !== '1') return 0;
     let flipped = 0;
     for (const sheet of document.styleSheets) {
       let rules;
@@ -264,7 +265,7 @@ export function initTdTab(root) {
   // ?coarse=1 — SIMULATE A COARSE POINTER for the ruler. No headless flag makes `(pointer: coarse)` true (primaryPointerType
   // blink-settings were tried: still false), so every rule in the phone's coarse blocks was invisible to ?layout, which reported
   // 0 overlaps on a layout the phone never shows — the operator's screenshot showed the radar swallowing the launch console.
-  if (mobileParam === '1' && new URLSearchParams(location.search).get('coarse') === '1') {
+  if (mobileParam === '1' && flags.coarse === '1') {
     console.log(`COARSE simulated at init: ${simulateCoarse()} media blocks now apply`);
   }
 
@@ -277,7 +278,7 @@ export function initTdTab(root) {
   // containers, the Terraformer, the gates — at the tier's size, KEEPING
   // the grey ladder's colour and emissive: the board is dimly lit and the
   // rungs are why the machines read. ?metal=0 returns the flat cast.
-  const metalOn = new URLSearchParams(location.search).get('metal') !== '0';
+  const metalOn = flags.metal !== '0';
   let metalEnv = null, metalEnvSky = null;
   function metalEnvironment() {
     // the board's own sky bake, through PMREM, for the dressed casts only —
@@ -301,7 +302,7 @@ export function initTdTab(root) {
   const tier = pickTier({
     coarse: matchMedia('(pointer: coarse)').matches,
     shortSide: Math.min(innerWidth, innerHeight),
-    forced: new URLSearchParams(location.search).get('tier')
+    forced: flags.tier
       || (mobileParam === '1' ? 'phone' : mobileParam === '0' ? 'desktop' : null),
   });
 
@@ -318,7 +319,7 @@ export function initTdTab(root) {
   // ?sky=N pins the sky's seed: the sky is the one thing on the board
   // allowed a fresh seed per reset, and the one thing that made two
   // director captures of the same script differ in every frame
-  const skyQ = new URLSearchParams(location.search).get('sky');   // urlParams is declared further down
+  const skyQ = flags.sky;
   let skySeed = skyQ != null ? (parseInt(skyQ, 10) >>> 0) % 100000 : randomSeed() % 100000;
   function applySky() {
     const want = lab.on
@@ -362,7 +363,7 @@ export function initTdTab(root) {
   const gameBreaches=createGameBreaches(scene,camera,sfx,{look:()=>params.look});
   // SOL-82 IN THE ARSENAL (src/fx/laser-station.js): the pass clock, the seat, the beam through the game's own paths
   const laserStation = createLaserStation(root, scene, {
-    online: LASER_GAME.online || new URLSearchParams(location.search).get('laser') === 'online', get mobile() { return mobileShell; },
+    online: LASER_GAME.online || flags.laser === 'online', get mobile() { return mobileShell; },
     cellSide: () => cellSide, wallHeight: () => params.wallHeight, centers: () => graph.centers, adj: () => graph.adj, tags: () => dungeon.tags, cellAt: (p) => cellIndex(norm3(p)),
     heart: () => graph.centers[dungeon.heart], heartCell: () => dungeon.heart, lane: () => graph.centers[gunshipRig.lane()], tank: () => player.pos,
     enemies: () => enemies, breaches: () => spawnPoints.filter((sp) => sp.alive && sp.obj?.userData.breach && !sp.obj.userData.keep).sort((a, b) => (sectorRun?.owns(b) ? 1 : 0) - (sectorRun?.owns(a) ? 1 : 0)), towers: () => towers, walls: () => storyBase?.walls?.() ?? [], anchors: () => storyBase?.anchors?.() ?? new Set(),
@@ -468,7 +469,7 @@ export function initTdTab(root) {
   // --- orbital strike -------------------------------------------------------
   // All logic lives in strike.js (pure, tested); this file owns only what it
   // looks and sounds like. strikeTune is the live knob object the GUI writes.
-  const sealedBreachCells = new Set(); const strike = makeStrike(), gunship = makeGunship(GUNSHIP_ORBIT, { station: new URLSearchParams(location.search).get('gunship') === 'station' }); let gunshipBriefing = null, foundryFx = null;   /* the platform's schedule runs on the game clock beside the strike's ration; ?gunship=station opens its first pass at once, for acceptance */
+  const sealedBreachCells = new Set(); const strike = makeStrike(), gunship = makeGunship(GUNSHIP_ORBIT, { station: flags.gunship === 'station' }); let gunshipBriefing = null, foundryFx = null;   /* the platform's schedule runs on the game clock beside the strike's ration; ?gunship=station opens its first pass at once, for acceptance */
   const gunshipRig = createGunshipRig({ scene, sfx, explode, automated, gunship, strike, sealedBreachCells, camDist, cellAtScreen, centerBuildOnHeart, damageEnemy, executeStrike, warnRing, showRangeRing, hideRangeRing, cellIndex: (p) => cellIndex(p), setFollowSuspend: (v) => { followSuspend = v; }, setBuildDist: (v) => { buildDist = v; },   /* THE GUNSHIP RIG (src/fx/gunship-rig.js): optic, track, MK-9, wall cache and call meter */
     story: () => story, storyViews: () => storyViews, graph: () => graph, dungeon: () => dungeon, cellSide: () => cellSide, pilot: () => pilot, pilotHost: () => pilotHost, isao: () => isao, t: () => t, gunshipBriefing: () => gunshipBriefing, enemies: () => enemies, spawnPoints: () => spawnPoints, debris: () => debris, player: () => player, towers: () => towers, strikeTune: () => strikeTune });
   const strikeTune = makeStrikeParams();
@@ -2455,7 +2456,7 @@ export function initTdTab(root) {
     // no key at all that did not already mean something else.
     if (down && k === '3') setView('third');
     // C for Cheat (moved off M, which is a VIEW now)
-    const cheat = down && (k === 'c' || k === 'n') && (urlParams.get('acceptance') === '1' || devModeOn({ buildToken: document.querySelector('meta[name="cb"]')?.content, search: location.search, stored: localStorage.getItem('ssg.dev-face') }).on);   /* cheats for DEV and the acceptance runs, not for players */
+    const cheat = down && (k === 'c' || k === 'n') && (flags.acceptance === '1' || devModeOn({ buildToken: document.querySelector('meta[name="cb"]')?.content, search: location.search, stored: localStorage.getItem('ssg.dev-face') }).on);   /* cheats for DEV and the acceptance runs, not for players */
     if (cheat && k === 'c') {
       strike.ready = Math.min(9, strike.ready + 1);
       showToast('<div class="wave-num">CHEAT · MISSILE LOADED</div>'
@@ -3631,7 +3632,7 @@ export function initTdTab(root) {
     const t0 = performance.now();
     runTimers.clear();
     runContext.begin();
-    record('run.start', { seed: params.seed, mission: new URLSearchParams(location.search).get('mission') || 'defense', roster: ROSTER.id, points: params.points });   // anything the old run left in flight is now stale by number
+    record('run.start', { seed: params.seed, mission: flags.mission || 'defense', roster: ROSTER.id, points: params.points });   // anything the old run left in flight is now stale by number
     // a regenerate is a FRESH RUN: sector 1, towers gone, fresh purse. (Round expansion never comes through here — expandRound
     // reveals the same world in place, towers standing.) Clear towers first: stale towerCells would poison openNeighbors during
     // board generation.
@@ -3685,7 +3686,7 @@ export function initTdTab(root) {
     // A NEW RUN LEAVES NOTHING BEHIND (2026-09-25): the lights' night, the gunship and a falling MK-9 go with the old world
     // the story planet has a day
     daylight?.restore();
-    daylight = story ? createDaylight({ hemi, sun, bg: mainBg, day: story.day.day, tune: story.day, phase: +new URLSearchParams(location.search).get('day') || 0, dial: root }) : null;
+    daylight = story ? createDaylight({ hemi, sun, bg: mainBg, day: story.day.day, tune: story.day, phase: +flags.day || 0, dial: root }) : null;
     gunshipRig.reset();
     graph = dungeon.graph; cellSide = mesh.defaultSide;
     // THE CAMP, BEFORE ANY ACTOR IS PLACED. Berth cells are graph maths, so they are known now rather than whenever the container
@@ -5422,10 +5423,8 @@ export function initTdTab(root) {
   // compared to the tank... smaller and more detailed, more like precision engineering"). The models carry far more detail than
   // the old procedural masts did, and detail reads better small — a bulky machine looks moulded, a small one looks machined.
   // ?towerscale= is here so the number can be argued with rather than guessed at once.
-  // (its own URLSearchParams: `urlParams` is declared three thousand lines below this and a const in the temporal dead zone
-  // throws on read)
   const TOWER_SCALE = (() => {
-    const v = parseFloat(new URLSearchParams(location.search).get('towerscale'));
+    const v = parseFloat(flags.towerscale);
     return Number.isFinite(v) && v > 0.1 && v < 4 ? v : 0.72;
   })();
   const perchOf = (tower) => towerPerch(tower, graph, dungeon, mesh, story?.socketToward);   // EVERY TOWER STANDS AT ITS WALL'S EDGE, NEVER OVER IT (src/domain/tower-perch.js)
@@ -7887,7 +7886,7 @@ export function initTdTab(root) {
       camera.position.lerp(camGoal.pos, 0.14);
       camera.quaternion.slerp(camGoal.quat, 0.14);
     }
-    if (!pilotMode && urlParams.get('viewwatch') !== '0') diagOverlay.viewWatch(dt);
+    if (!pilotMode && flags.viewwatch !== '0') diagOverlay.viewWatch(dt);
     diagOverlay.tick(dt);
 
     heartSprite.userData.tick(t);
@@ -7925,8 +7924,7 @@ export function initTdTab(root) {
 
   const radarScope = createRadarScope({ ctx: radarCtx, player, camera, towers, enemies, spawnPoints, strike, poleFrame, graph: () => graph, dungeon: () => dungeon, size: () => radarCss, mapMode: () => mapMode, pilot: () => pilot, pilotMode: () => pilotMode, cellSide: () => cellSide, waveCharge: () => waveCharge });   /* THE SCOPE (src/fx/radar-scope.js), painted before story.hud paints over it */
 
-  const urlParams = new URLSearchParams(location.search);
-  const seedOverride = parseInt(urlParams.get('seed') || '', 10);
+  const seedOverride = parseInt(flags.seed || '', 10);
   if (Number.isFinite(seedOverride)) params.seed = seedOverride >>> 0; const showcaseMode = showcaseOn(location.search), storyQuery = readStoryQuery(showcaseMode ? '?skip=defence' : location.search), threatMult = storyQuery.threat, storyMode = storyQuery.world === 'story'; root.classList.toggle('story-world', storyMode);   /* the campaign's buttons and key hint stay off in the story (styles.css) */   // tabula rasa past the landing: no old heart, waves, portals, camp or yard
   // THE SECTORS (src/fx/sector-run.js): the story's loop past the handover, fed from the board's real sites
   function makeSectorRun() {
@@ -8231,26 +8229,26 @@ export function initTdTab(root) {
     simDone: () => simDone, heartHP: () => heartHP, playerHP: () => playerHP, round: () => round, wave: () => wave, t: () => t, simCap: () => simCap, simStyle: () => simStyle, score: () => score, eco: () => eco, ecoClockT: () => ecoClockT, ecoAffordT: () => ecoAffordT,
     setSimDone: (v) => { simDone = v; },
   });
-  const simParam = urlParams.get('sim');
+  const simParam = flags.sim;
   storyApi.setLaserOnline = (on) => laserStation.setOnline(on);   // the sectors switch SOL-82 on (V1 design: sector 2)
   if (simParam) {
     simStyle = simParam;
-    simFast = Math.max(1, Math.min(120, parseInt(urlParams.get('simfast') || '50', 10)));
-    simCap = Math.max(30, parseInt(urlParams.get('simcap') || '600', 10));
+    simFast = Math.max(1, Math.min(120, parseInt(flags.simfast || '50', 10)));
+    simCap = Math.max(30, parseInt(flags.simcap || '600', 10));
     console.log(`SIMBOOT style=${simStyle} fast=${simFast} cap=${simCap}`);
     postfx.setEnabled(false);   // bare-minimum paint: no bloom chain
     sfx.setMute(true);          // 50x audio is a fire alarm
     document.body.classList.add('simming');
   }
-  if (urlParams.get('callouts') === '0') params.callouts = false;
+  if (flags.callouts === '0') params.callouts = false;
   syncCalloutMode();
-  const heartOverride = urlParams.get('heart') ?? (storyQuery.short || storyMode ? 'none' : null);   // the story world always has the empty heart: its base owns the Stalheart
+  const heartOverride = flags.heart ?? (storyQuery.short || storyMode ? 'none' : null);   // the story world always has the empty heart: its base owns the Stalheart
   if (HEART_LOOKS[heartOverride]) params.heartLook = heartOverride;
-  const lookOverride = urlParams.get('look');
+  const lookOverride = flags.look;
   if (LOOKS[lookOverride]) params.look = lookOverride;
-  const wtOverride = urlParams.get('walltops');
+  const wtOverride = flags.walltops;
   if (['bright', 'dim', 'black'].includes(wtOverride)) params.wallTops = wtOverride;
-  const creatureOverride = urlParams.get('creature');
+  const creatureOverride = flags.creature;
   if (UNITS[creatureOverride]) params.creature = creatureOverride;
   gui.controllersRecursive().forEach((c) => c.updateDisplay());
 
@@ -8271,7 +8269,7 @@ export function initTdTab(root) {
 
   // ?blast=N breaches the N wall cells nearest the player — exercises the
   // carve + debris + rebuild path without needing a live shot
-  const blastN = parseInt(urlParams.get('blast') || '0', 10);
+  const blastN = parseInt(flags.blast || '0', 10);
   for (let i = 0; i < blastN; i++) {
     let best = -1, bd = Infinity;
     for (let ci = 0; ci < dungeon.tags.length; ci++) {
@@ -8286,7 +8284,7 @@ export function initTdTab(root) {
   // ?brief=<id> plays one of Isao's beats on demand, ignoring the once-only
   // memory — otherwise a beat can be looked at exactly once per browser,
   // ever, which is not a thing you can iterate on
-  const briefQ2 = urlParams.get('brief');
+  const briefQ2 = flags.brief;
   if (briefQ2) {
     const i = briefSeen.indexOf(briefQ2);
     if (i >= 0) briefSeen.splice(i, 1);
@@ -8294,18 +8292,18 @@ export function initTdTab(root) {
   }
 
   const debugging = pilotMode || ['blast', 'laser', 'mode', 'brief', 'layout', 'sim']
-    .some((k) => urlParams.get(k));
+    .some((k) => flags[k]);
   // the campaign board opens on the briefing; the story and every debug hook go straight to the game (a frozen sim would break a headless run)
   deployStart(berthIndexFor(playerHP));
   if (!storyMode && !debugging) showBriefing();
 
   perfCtl = gui.add({ get on() { return perfOverlay.on(); }, set on(v) { setPerfOverlay(v); } }, 'on').name('fps readout (`)');   /* a root control, so the VARS modal puts it on the game page */
-  buildVarsModal({ root, gui, lab, urlParams, skySeed, applySky, spawnWave, postfx, setPerfOverlay, gpuExt });   /* THE VARIABLES MODAL and its lab page (src/fx/vars-modal.js) */
+  buildVarsModal({ root, gui, lab, flags, skySeed, applySky, spawnWave, postfx, setPerfOverlay, gpuExt });   /* THE VARIABLES MODAL and its lab page (src/fx/vars-modal.js) */
   {
     let saved = null;
     try { saved = localStorage.getItem(PERF_KEY); } catch { /* fine */ }
-    if (urlParams.get('fps') === '1' || (urlParams.get('fps') !== '0' && (saved === '1' || saved === null))) setPerfOverlay(true,false);   /* off for players; on when turned on (backtick, DEV · Frame readout) and for the acceptance runs that read it */
-    if (urlParams.get('fps') === '1') {
+    if (flags.fps === '1' || (flags.fps !== '0' && (saved === '1' || saved === null))) setPerfOverlay(true,false);   /* off for players; on when turned on (backtick, DEV · Frame readout) and for the acceptance runs that read it */
+    if (flags.fps === '1') {
       console.log(`PERFOVERLAY on=${perfOverlay.on()} el=${!!perfEl}`
         + ` hidden=${perfEl ? perfEl.classList.contains('hidden') : '?'}`
         + ` text="${perfEl ? perfEl.textContent : ''}"`);
@@ -8317,7 +8315,7 @@ export function initTdTab(root) {
   // headless will not lay out below ~500px, it lays out wide and CROPS, so a
   // phone-sized picture shows phone-sized pixels of a tablet-sized layout.
   // Rectangles do not lie.
-  const layoutAt = parseFloat(urlParams.get('layout') || '0');
+  const layoutAt = parseFloat(flags.layout || '0');
   if (layoutAt > 0) {
     setTimeout(() => {
       // the sheets are certainly loaded by now, which they were not at init —
@@ -8360,7 +8358,7 @@ export function initTdTab(root) {
       const clashes = boxOverlaps(box).map((c) => console.log(`LAYOUT OVERLAP ${c.a} x ${c.b} — ${Math.round(c.x)}x${Math.round(c.y)}px`)).length;   /* src/domain/box-overlaps.js */
       console.log(`LAYOUT viewport ${innerWidth}x${innerHeight}`
         + ` coarse=${matchMedia('(pointer: coarse)').matches}`
-        + `${urlParams.get('coarse') === '1' ? ' (SIMULATED)' : ''}`
+        + `${flags.coarse === '1' ? ' (SIMULATED)' : ''}`
         + ` dpr=${devicePixelRatio} — ${clashes} overlaps`);
     }, layoutAt * 1000);
   }
@@ -8369,7 +8367,7 @@ export function initTdTab(root) {
   // game is in. For "it starts and I cannot move" reports, where the
   // question is WHICH thing is holding the tank — a pause, a shot, a deploy
   // that never ends, a death loop — and a screenshot cannot say.
-  if (urlParams.get('stateprobe') === '1') {
+  if (flags.stateprobe === '1') {
     // on the shell the line also goes to the caption lane: a phone has no
     // console, and the fact that decides a "the tank is not in view" report
     // (the tank's screen-y, the visual viewport vs the canvas) is only
@@ -8403,7 +8401,7 @@ export function initTdTab(root) {
   // range and the value is CLAMPED to it: a URL is untrusted input like any
   // other, including our own from a stale bookmark.
   for (const k of SHIELD_KNOBS) {
-    const raw = urlParams.get(k.key);
+    const raw = flags.shield[k.key];
     if (raw === null) continue;
     const v = parseFloat(raw);
     if (!Number.isFinite(v)) continue;
@@ -8423,7 +8421,7 @@ export function initTdTab(root) {
   // This dispatches actual KeyboardEvents and reports what moved, which is the
   // only check that could have caught it: a binding conflict is invisible to
   // source search and obvious to a keypress.
-  if (urlParams.get('keyprobe') === '1') {
+  if (flags.keyprobe === '1') {
     setTimeout(() => {
       for (const id of ['#td-msg']) {
         const el = root.querySelector(id);
@@ -8711,7 +8709,7 @@ export function initTdTab(root) {
         setPaused: (v) => { paused = v; }, setFollowSuspend: (v) => { followSuspend = v; }, setRamCam: (v) => { showcaseRamCam = v; }, setGunshipTrack: (v) => { gunshipRig.setTrack(v); },
       }),
   };
-    if (urlParams.get('acceptance') === '1') window.__stalheartTest = gameHooks;   // Browser acceptance adapter, published only when explicitly requested; the showcase holds the same object directly
+    if (flags.acceptance === '1') window.__stalheartTest = gameHooks;   // Browser acceptance adapter, published only when explicitly requested; the showcase holds the same object directly
 
   // back to the hull, at the lens and the view the seat was taken from: the seat's zoom narrowed it (owner, 2026-09-15: the tank
   // after the gunship at the wrong angle; 2026-09-23: and after SOL-82 too)
@@ -8770,7 +8768,7 @@ export function initTdTab(root) {
     deploy=null;endShot();paused=false;
     for(let i=0;i<pilotPosts.length;i++)pilotMounts[i]=towerByCell.get(pilotPosts[i]);
     clearBriefs();params.callouts=false;setView('bastion');if(pilotPosts.length)pilot.select(pilotMounts[0]?.key||'rotor');hideRangeRing();snapCamera();   // no posts yet (the gunship's seat before any sentry stands): nothing to install
-    if(urlParams.get('acceptance')==='1')window.__stalheartPilotTest={
+    if(flags.acceptance==='1')window.__stalheartPilotTest={
       state:()=>({
         paused,
         seed:params.seed,
