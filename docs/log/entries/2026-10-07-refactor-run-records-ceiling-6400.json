@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-10-07-refactor-run-records-ceiling-6400",
+  "date": "2026-10-07",
+  "type": "decision",
+  "status": "accepted",
+  "title": "The refactor run's records: td-tab 8,734 -> 6,135 lines, twenty-three modules, the line ceiling re-based to 6,400",
+  "context": "The refactor run (docs/superpowers/plans/2026-10-07-refactor-run.md) ends; its budget decision (2026-10-07-byte-budget-goes-line-ceiling) re-bases the line ceiling at the end of a round by decision.",
+  "outcome": "lineCeilings['src/td-tab.js'] = 6,400 (6,135 rounded up to the next hundred, plus 200). Long lines: 0 over 500 characters, budget 0. td-tab 522,363 -> 340,801 bytes. Modules made: src/fx sky-rig, isao-moments, colony-tick, auto-support, canyon-run, ending-host, isao-worker, hull-drive, tower-combat, enemy-step, tank-laser, plasma-beams, warn-ring, wave-card, build-pointer, strike-console, terraformer-yard; src/platform diag-overlay, perf-overlay, dev-panel, game-flags, tank-input; src/content controller-copy; programme-host trimmed to the programme. Not done: the wave clock (Task 13 in part), and by the plan buildActors/placeActors, gameHooks and regenerate. Branch refactor-run, unmerged, unpushed; the owner test-runs it first.",
+  "alternatives": [
+    "Drop the ceiling now: the owner may, after this run; it is the one size rule left and stops regrowth while the hosts settle."
+  ],
+  "evidence": [
+    "npm run architecture: Guard: src/td-tab.js: 6135 lines under its ceiling 6400",
+    "node test/host-contracts.mjs: Host contracts hold for 49 factories",
+    "docs/STATE.md, the refactor run's section"
+  ],
+  "supersedes": []
+}

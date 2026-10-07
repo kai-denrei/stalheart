@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "id": "2026-10-07-wave-card-second-renderer",
+  "date": "2026-10-07",
+  "type": "issue",
+  "status": "observed",
+  "title": "Open: the wave card draws its 96 px sprite with a second WebGL context",
+  "context": "Found by the refactor run's ownership map (2026-10-07). src/fx/wave-card.js (until then src/td-tab.js) renders the NEW THREAT banner's spinning enemy with its own THREE.WebGLRenderer (alpha, preserveDrawingBuffer for the glossary's toDataURL snapshot), made by the controller at start-up (src/td-tab.js, the waveCard literal's makeRenderer). That is a second GL context on every device, phones included, for a 96 px canvas.",
+  "outcome": "Behaviour left unchanged by the run. The owner decides: draw the sprite with the main renderer into a render target and copy it to a 2D canvas (one context, and the glossary still gets its image), or keep the second context. The move made it a one-member change: the module never constructs a context itself.",
+  "alternatives": [],
+  "evidence": [
+    "src/fx/wave-card.js (host.makeRenderer); src/td-tab.js waveCard literal; the glossary's snapshot reads waveSpriteRenderer"
+  ],
+  "supersedes": []
+}

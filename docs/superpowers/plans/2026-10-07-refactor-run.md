@@ -582,8 +582,8 @@ The story's per-frame tick leaves `src/fx/programme-host.js` for modules named a
 - Modify: `docs/STATE.md` — a "What landed on 2026-10-07 (the refactor run, branch `refactor-run`)" section in the register of the 2026-09-25 one: the budget decision, the ownership map's outcome (td-tab lines before/after, the modules made), the two open findings (the wave card's second renderer; `gameHooks` as the reader that keeps lets lets), what was left for a later round (`buildActors`/`placeActors`, `gameHooks`, `regenerate`).
 - Deban: one entry per task if not already written; two `status: open` findings.
 
-- [ ] **Step 1:** `wc -l src/td-tab.js`, `npm run architecture` (quote), `node test/host-contracts.mjs` (quote), `npm test`, `npm run check`, `npm run build`; the full snapshot battery once: `--defense --sectors --canyon --backdoor --gunship --gunship-auto --laser --laser-game --seats --showcase --finale --sky-hole --colony --debrief --pacing --passive --phone --shield-story` (the last two compared with `main`).
-- [ ] **Step 2:** write STATE.md and the entries; `npm run log:check`.
-- [ ] **Step 3: Commit** — `Records: the refactor run (td-tab <before> -> <after> lines, <n> modules, the ceiling re-based to <N>), STATE.md current`.
+- [x] **Step 1:** `wc -l src/td-tab.js`, `npm run architecture` (quote), `node test/host-contracts.mjs` (quote), `npm test`, `npm run check`, `npm run build`; the full snapshot battery once: `--defense --sectors --canyon --backdoor --gunship --gunship-auto --laser --laser-game --seats --showcase --finale --sky-hole --colony --debrief --pacing --passive --phone --shield-story` (the last two compared with `main`).
+- [x] **Step 2:** write STATE.md and the entries; `npm run log:check`.
+- [x] **Step 3: Commit** — `Records: the refactor run (td-tab <before> -> <after> lines, <n> modules, the ceiling re-based to <N>), STATE.md current`.
 
 Then stop. Do not merge, do not push. Report: the per-task table (task, commit, td-tab delta, suites run and their results, anything red and whether it is red on main), the open findings, and the line ceiling you set.

@@ -1,7 +1,7 @@
 {
   "note": "Enforced by npm run architecture. lineCeilings: a file may not grow past its ceiling; the ceiling is re-based by decision at the end of an extraction round, never ratcheted per commit (owner, 2026-10-07). longLines budgets only go down. topLevelModules is the frozen list of existing src/*.js files: new modules go into src/core, src/domain, src/content, src/platform, src/fx or src/labs. Ownership is checked by test/host-contracts.mjs.",
   "lineCeilings": {
-    "src/td-tab.js": 9000
+    "src/td-tab.js": 6400
   },
   "longLines": {
     "over": 500,

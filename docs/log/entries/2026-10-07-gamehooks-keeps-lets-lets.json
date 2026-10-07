@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "id": "2026-10-07-gamehooks-keeps-lets-lets",
+  "date": "2026-10-07",
+  "type": "issue",
+  "status": "observed",
+  "title": "Open: gameHooks (about 170 members) is the only reader of many controller lets, which is what keeps them lets",
+  "context": "Found by the refactor run (2026-10-07). The acceptance adapter window.__stalheartTest (src/td-tab.js gameHooks, about 250 lines) reads and writes controller state directly; for many lets it is their only reader outside their owner's block, so every extraction had to keep the let in td-tab and hand it to the new module as a getter with a setter. The wave clock's seven lets (wave, waveActive, waveAge, waveIn, waveCharge, warnBeat, interClock) are the clearest case and the reason the run did not move the clock.",
+  "outcome": "Left as it is. The next round's first steps: gather the wave clock's lets into one state object (then the clock can move), and let gameHooks read the modules' own state() members instead of the lets.",
+  "alternatives": [],
+  "evidence": [
+    "src/td-tab.js gameHooks; 2026-10-07-warn-ring-module-wave-clock-deferred"
+  ],
+  "supersedes": []
+}

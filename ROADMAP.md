@@ -371,7 +371,13 @@ First step, when it is picked up: `@ts-check` on `src/domain` as a trial, to see
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 53 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 55 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### Open: the wave card draws its 96 px sprite with a second WebGL context
+
+`2026-10-07-wave-card-second-renderer` · issue · **observed**
+
+Found by the refactor run's ownership map (2026-10-07). src/fx/wave-card.js (until then src/td-tab.js) renders the NEW THREAT banner's spinning enemy with its own THREE.WebGLRenderer (alpha, preserveDrawingBuffer for the glossary's toDataURL snapshot), made by the controller at start-up (src/td-tab.js, the waveCard literal's makeRenderer). That is a second GL context on every device, phones included, for a 96 px canvas.
 
 ### The welcome page's hover sound cannot start before the first click, tap or key: the browser's rule, not the page's
 
@@ -390,6 +396,12 @@ Owner, 2026-10-07 (twenty-eighth notes, 6): 'thinking about a gameplay change: a
 `2026-10-07-sector-debrief-beep-never-supplied` · issue · **observed**
 
 Found by test/host-contracts.mjs on 2026-10-07. src/fx/sector-run.js builds the debrief with { play: h.sfx, beep: h.beep, ... }; td-tab's createSectorRun literal has no beep member and no beep name in scope. src/fx/sector-debrief.js returns early from its tick when beep is falsy (line 344) and falls back from play to beep elsewhere.
+
+### Open: gameHooks (about 170 members) is the only reader of many controller lets, which is what keeps them lets
+
+`2026-10-07-gamehooks-keeps-lets-lets` · issue · **observed**
+
+Found by the refactor run (2026-10-07). The acceptance adapter window.__stalheartTest (src/td-tab.js gameHooks, about 250 lines) reads and writes controller state directly; for many lets it is their only reader outside their owner's block, so every extraction had to keep the let in td-tab and hand it to the new module as a getter with a setter. The wave clock's seven lets (wave, waveActive, waveAge, waveIn, waveCharge, warnBeat, interClock) are the clearest case and the reason the run did not move the clock.
 
 ### Reflection to design against: an enemy that makes the tank's shell meaningful
 
