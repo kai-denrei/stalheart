@@ -17,6 +17,20 @@ Evidence:
 - scripts/browser-lock.sh node scripts/browser-test.mjs --sky-hole: SKY HOLE dir [-0.01,0.02,1.00] 40 out 28 across; SKY-VEIL dir [0.01,0.10,-0.99] 46 out 12 across (180 degrees round); SKY-BLOOM dir [0.88,0.47,0.01] 45 out 16 across; stills sky-veil-look (the veil small over the bays' roofs on the opposite horizon) and sky-bloom-look (the blue spiral high over the dish)
 - npm test (184 programs, test/nebulae.mjs new), npm run check, npm run architecture, npm run build
 
+## 2026-10-07 — The nest cleared: a site guard never takes a cell under the lander's own footprint, and the site clears with fewer than three guards left
+
+change · resolved · 2026-10-07-nest-cleared-never-under-the-lander-and-below-three
+
+Owner, 2026-10-07 (twenty-eighth notes, 2): 'the first nest cleared sometimes takes up to 20 seconds+ to register, as if an invisible enemy remained. Workaround: the cargo becomes available once there are fewer than 3 enemies at a nest.' The 2026-10-06 fix (2026-10-06-site-guard-never-stands-still) stopped a guard parking outside the nest. Reading the code again: guardsLeft counts any live guard tagged for the site wherever it is; the nest's cells include those under the lander's solid footprint (base-layout SOLID_STRUCTURES), where a guard is drawn inside the model at ground height and the hull cannot drive in to ram it (solidAt blocks the hull); it leaves only when its walk happens to take it out. Guards also spawn on the lander's own cell.
+
+src/domain/guard-aggro.js: the guard carries `avoid(point)` (expedition-glue hands it the base's solidAt) and guardExits strikes those cells off the exits unless they are all there is; the nest's open cells are its ground. src/content/story-defaults.js STORY_EXPEDITIONS.clearBelow 3 and expedition-glue guardsLeft counts live plus queued guards against it: the last two stragglers do not hold the cargo (the owner's workaround, as asked). Tests: guard-aggro (the avoided cell is no exit, nor a way to chase), expeditions (the threshold). Not reproduced in a browser step: no step clears a site by real combat; if the owner sees it again, log each remaining guard's cell, solidAt and distance from the nest.
+
+Alternatives: Counting only the guards inside the nest: rejected on 2026-10-06 as hiding the bug; the avoid rule moves the guard instead, and the threshold is a floor under it; All enemies avoiding solid buildings: a solidAt per exit per enemy for the whole crowd; the guards are the ones that live beside a lander
+
+Evidence:
+
+- node test/guard-aggro.mjs, node test/expeditions.mjs; npm test (184), npm run check, npm run architecture
+
 ## 2026-10-06 — The welcome's keywords sound: each unit's own sound on hover, and ISAO says DON'T PANIC under 01 and 'You're a good frood, let's do this!' under 02
 
 change · accepted · 2026-10-06-welcome-keywords-sound

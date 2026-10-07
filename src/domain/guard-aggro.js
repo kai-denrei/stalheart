@@ -7,10 +7,14 @@
 // stayed guarded. A chase now leaves a trail (`guard.trail`, the cells walked out of the nest); the hull gone, the guard walks the trail
 // back, then the exits that bring it home; a guard never wanders (a wanderer drifted to the base and held its lane busy). Only a
 // cell with no exit at all holds it.
+// NEVER UNDER THE LANDER (owner, 2026-10-07: the first 'nest cleared' took 20 s+ "as if an invisible enemy remained"): the nest's
+// cells include the ones under the lander's own solid footprint, where a guard is drawn inside the model and the hull cannot drive in to
+// ram it; `guard.avoid(point)` (the base's solidAt) strikes those cells off the exits, unless they are all there is.
 const d2 = (a, b) => (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2;
 
-export function guardExits({ exits, centers, guard, cur, hull, aggro }) {
-  if (!exits.length) return [cur];
+export function guardExits({ exits: all, centers, guard, cur, hull, aggro }) {
+  if (!all.length) return [cur];
+  const clear = guard.avoid ? all.filter((c) => !guard.avoid(centers[c])) : all, exits = clear.length ? clear : all;
   const r2 = (guard.r * aggro) ** 2, inNest = (c) => d2(centers[c], guard.c) < guard.r * guard.r;
   if (hull && d2(hull, guard.c) < r2) {
     const here = d2(centers[cur], hull), closer = exits.filter((c) => d2(centers[c], hull) < here);

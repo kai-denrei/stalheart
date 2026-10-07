@@ -231,6 +231,7 @@ export const STORY_CHAPTER_END = Object.freeze({ id: 'sector-1', label: 'SECTOR 
 // (src/domain/guard-aggro.js)
 export const STORY_EXPEDITIONS = Object.freeze({
   aggro: 3,
+  clearBelow: 3,   // THE NEST IS CLEARED with fewer than this many guards left (owner, 2026-10-07: the first 'nest cleared' took 20 s+ as if an invisible enemy remained; 'the cargo becomes available once there are fewer than 3 enemies at a nest')
   base: Object.freeze(['rotor', 'quiver']),
   deliverCells: 3,   // how close to the landing (the foundry) a carried part counts as home, in cells
   sites: Object.freeze([

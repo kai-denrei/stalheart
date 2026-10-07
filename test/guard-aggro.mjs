@@ -20,3 +20,9 @@ assert.deepEqual(guardExits({ exits: [], centers: far, guard, cur: 0, hull: null
 assert.deepEqual(guardExits({ exits: [2, 3], centers: far, guard, cur: 0, hull: [6.5, 0, 0], aggro: 3 }), [0], 'chasing into a dead end with no trail: it holds there');
 assert.deepEqual(guardExits({ exits: [2, 3], centers: far, guard: { ...guard, trail: [5, 3] }, cur: 0, hull: [6.5, 0, 0], aggro: 3 }), [3], 'with a trail: back along it (the trail cut to the neighbour)');
 console.log('guard-aggro: the nests keep home until the hull comes, then chase it, and a guard never stands still where it has an exit.');
+// NEVER UNDER THE LANDER (2026-10-07): a cell the base calls solid is struck off the exits, unless every exit is
+{ const g = { c: [0, 0, 0], r: 1.5, avoid: (p) => p[0] < 0 };
+  assert.deepEqual(guardExits({ exits: [1, 2, 3], centers, guard: g, cur: 0, hull: null, aggro: 3 }), [1], 'the cell under the lander is not an exit');
+  assert.deepEqual(guardExits({ exits: [2], centers, guard: g, cur: 0, hull: null, aggro: 3 }), [2], 'unless it is the only one');
+  assert.deepEqual(guardExits({ exits: [1, 2, 3], centers, guard: g, cur: 0, hull: [-4, 0, 0], aggro: 3 }), [1], 'nor a way to chase the hull: it keeps to the nest\'s open cells');
+}

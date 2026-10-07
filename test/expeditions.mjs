@@ -55,3 +55,5 @@ assert.ok(STORY_EXPEDITIONS.deliverCells > 0);
   assert.deepEqual(nextReveals(st), [], 'two parts home do not reveal the later sites');
 }
 console.log('Expeditions: hidden, guarded, cleared, carried, delivered; one part at a time; the drop on hull loss; unlocks; later reveals; the skipped tutorial\'s two parts.');
+// THE NEST IS CLEARED with fewer than three guards left (owner, 2026-10-07): the content pins the threshold the host counts against
+assert.equal(STORY_EXPEDITIONS.clearBelow, 3, 'fewer than three guards: cleared');

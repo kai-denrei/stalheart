@@ -140,7 +140,7 @@ export function createExpeditionGlue(h) {
       const cfg = STORY_EXPEDITIONS.sites.find((s) => s.id === id), c = cellOf(id);
       if (!cfg || !c || !reveal(ex(), id)) return;
       h.revealSite(id);
-      for (const g of cfg.guards) for (let k = 0; k < g.count; k++) h.spawn(g.type, c.cell, { spread: 1.2, delay: k * 0.3, guard: { site: id, c: h.centers()[c.cell], r: h.cellSide * (c.clear / 10 + 2) } });
+      for (const g of cfg.guards) for (let k = 0; k < g.count; k++) h.spawn(g.type, c.cell, { spread: 1.2, delay: k * 0.3, guard: { site: id, c: h.centers()[c.cell], r: h.cellSide * (c.clear / 10 + 2), avoid: h.solid } });   // avoid: never a cell under the lander itself (guard-aggro.js)
     },
     begin() { for (const s of STORY_EXPEDITIONS.sites) if (!s.reveal) glue.openSite(s.id); },
     // THE SKIP TUTORIAL ENTRY (owner, 2026-09-16): these parts came home before the player arrived. The rule says
@@ -255,7 +255,7 @@ export function createExpeditionsHost(c) {
     expeditions: () => (c.story().glue ??= createExpeditionGlue({
       story: c.story(), scene, sfx, hasCue: (k) => !!(SOUNDS[k] || BREACH_SOUNDS[k] || STORY_SOUNDS[k]), cellSide: c.cellSide(),
       centers: () => c.graph().centers, tankPos: () => player.pos, hull: () => c.playerMesh(),
-      guardsLeft: (id) => enemies.some((e) => e.alive && e.guard?.site === id) || spawnQueue.some((q) => q.guard?.site === id),
+      guardsLeft: (id) => enemies.filter((e) => e.alive && e.guard?.site === id).length + spawnQueue.filter((q) => q.guard?.site === id).length >= STORY_EXPEDITIONS.clearBelow,   // the last stragglers do not hold the cargo (STORY_EXPEDITIONS.clearBelow)
       spawn: (...a) => storyApi.spawn(...a), revealSite: (id) => c.storyBase()?.reveal(id), landing: () => c.storyBase()?.structure('foundry')?.holder ?? null,
       brief: showBrief, callout: (text) => showCallout(text, 'co-cargo'), toast: showTowerToast,
       // ISAO RECEIVES THE PART: an order that yields to every other (stepWorker)
