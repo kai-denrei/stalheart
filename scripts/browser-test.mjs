@@ -2124,7 +2124,7 @@ try{
   await evaluate(`window.__fr=[];(function f(t){window.__fr.push(t);if(window.__fr.length<600)requestAnimationFrame(f);})(performance.now())`);
   /* as a player would: the trigger held and the beam walked down the canyon from the deep end toward its mouth */
   const mouth=(await st()).sector.canyon.mouth;await evaluate(`${T}.laserSteer(${mouth})`);await evaluate(`${T}.laserHold(true)`);
-  for(let i=0;i<120;i++){const S=await st(),s=S.laser;if(i%4===0)console.log(`  canyon t+${i/4}s heart ${S.integrity?.heart} hulls ${S.hulls} phase ${S.sector.phase} alive ${S.performance.enemies} burned ${s.burned.bodies} tank ${s.burned.tank} heartBurn ${s.burned.heart}`);if(!s.overhead||s.energy<=0.5)break;await delay(250);}
+  for(let i=0;i<120;i++){const S=await st(),s=S.laser;if(i%4===0)console.log(`  canyon t+${i/4}s heart ${S.integrity?.heart} hulls ${S.hulls} phase ${S.sector.phase} alive ${S.performance.enemies} burned ${s.burned.bodies} tank ${s.burned.tank} heartBurn ${s.burned.heart}`);if(!s.overhead||s.energy<=0.05)break;await delay(250);}
   await evaluate(`${T}.laserHold(false)`);
   frames=await evaluate('(f=>{const d=[];for(let i=1;i<f.length;i++)d.push(f[i]-f[i-1]);d.sort((a,b)=>a-b);return {n:d.length,median:+d[d.length>>1].toFixed(1),p95:+d[Math.floor(d.length*0.95)].toFixed(1)};})(window.__fr)');
   const s=await st();console.log(`  canyon: ${s.laser.burned.bodies-before} burned in ${((Date.now()-t0)/1000).toFixed(0)} s, ${s.performance.enemies} left, frames ${JSON.stringify(frames)}`);
@@ -2133,6 +2133,16 @@ try{
   assert(s.laser.burned.bodies-before>=40,`the beam takes them by the score (${s.laser.burned.bodies-before})`);
   assert(!String(s.sector.phase).startsWith('lost'),`the colony holds while the player burns the far side (${s.sector.phase})`);}
  current='skip-tutorial-'+tag+'-burn';await finish();
+ // THE TIMELINE AFTER THE PASS (owner, 2026-10-07: 'after the second SOL manual canyon there is a downtime in action'; TIMELINE=1): every
+ // five seconds until the debrief (or ten minutes): the pass, the gate, the bodies near the base and the strays far out, the sector's phase
+ // (the base is held for it as --pacing holds it: every body that reaches a door dies there, sectorCull, so what the clock measures is the sector's own rhythm)
+ if(process.env.TIMELINE){const t0=Date.now(),marks={};let last='',culled=0;
+  for(let i=0;i<300;i++){culled+=await evaluate(`${T}.sectorCull(8)`);const S=await st(),sec=Math.round((Date.now()-t0)/1000),strays=await evaluate(`${T}.showcase.strays()`),open=S.breaches.length;
+   const line=`phase ${S.sector.phase} pass ${S.laser.special?'on':'off'} holes ${open} near ${strays.near} far ${strays.far} alive ${S.performance.enemies}`;
+   if(!S.laser.special)marks.passOff??=sec;if(open>1)marks.gateOpen??=sec;if(S.sector.phase==='secure')marks.secure??=sec;if(S.sector.phase==='debrief'||S.sector.phase==='finale')marks.debrief??=sec;
+   if(line!==last&&(sec-(marks.lastLog??-10)>=10||/phase (secure|debrief|finale|lost)/.test(line)&&!/phase fighting/.test(last))){console.log(`  timeline +${sec}s ${line} culled ${culled}`);last=line;marks.lastLog=sec;}
+   if(marks.debrief||String(S.sector.phase).startsWith('lost'))break;await delay(2000);}
+  delete marks.lastLog;console.log(`CANYON TIMELINE ${JSON.stringify(marks)} culled ${culled}`);}
  } else if(args.includes('--showcase')) {
  // THE SHOWCASE (owner, 2026-09-24; docs/log/entries/2026-09-24-intro-simplified.json). FOUR BEATS, and each one drives a
  // real system in a real run of the skipped world. So this step does not look at the rail's intentions — it photographs

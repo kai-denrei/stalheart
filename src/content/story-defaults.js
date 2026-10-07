@@ -145,7 +145,7 @@ export const STORY_QUIVER = Object.freeze({ key: 'quiver', delay: 0.3, hardcore:
 // hostile anywhere on the field, anything (the harmless swarm too) within `near` cells of the hull, or a body up while the player is in
 // the gunship's or SOL's seat; the timed beats and the debrief wait until it has been clear for `calm` seconds (at most `maxHold`, so
 // the story never stalls for good), and a camera shot that would cut in is skipped while the hull is in danger (src/fx/programme-host.js)
-export const STORY_CALM = Object.freeze({ near: 8, calm: 3, maxHold: 120, heartHops: 6 });   // heartHops: a hostile this close to the heart (walking hops) is 'getting closer to the Stålheart' (Isao's heart_threat, src/fx/programme-host.js)
+export const STORY_CALM = Object.freeze({ near: 8, calm: 3, maxHold: 120, heartHops: 6, farHops: 60 });   // farHops: a hostile further than this from the heart (walking hops) does not keep the player engaged (the canyon's stray walkers, 2026-10-07)   // heartHops: a hostile this close to the heart (walking hops) is 'getting closer to the Stålheart' (Isao's heart_threat, src/fx/programme-host.js)
 // STRAIGHT TO THE ACTION (owner, 2026-10-05: "the player immediately dives into the action by taking over the Rotor ... we must see the
 // enemies closer and already in-sight"): on a landing page the sinkhole opens, quiet, `earlyBreach` seconds into the beacons' tour
 // instead of after the gate, and the Rotor is taken the moment the tour ends (src/domain/story-beats.js). `tankAfterNuke`: the seconds

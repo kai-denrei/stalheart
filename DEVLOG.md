@@ -63,6 +63,21 @@ Evidence:
 
 - node test/voice-hooks.mjs (59/59), npm test (185); --sky-hole and --nuke-key as a smoke of the host tick
 
+## 2026-10-07 — No lull after the canyon's pass: the laid pass closes when its beam is spent, the gate opens right after, the survivors charge the base, and a stray still far out holds neither the sector's end nor the debrief
+
+change · resolved · 2026-10-07-the-canyon-strays-do-not-hold-the-sector
+
+Owner, 2026-10-07 (twenty-eighth notes, 9): 'Sector 7 after the second SOL manual canyon, there is a downtime in action. Nothing happens for too long. I suspect it is the enemies who survived the canyon that take a long time to reach the base.' Measured with the new TIMELINE=1 --canyon-again (the base held as --pacing holds it, every body at a door culled), from the end of the burn: the pass closed at its overhead's end (+18 s, the beam spent 20 s earlier), the gate side opened at +28, its bodies were dead by +68, then from +78 to +140 nothing happened at the base (near 15, far 318: the survivors on their two-kilometre walk), SECURE came at +166 once they had walked in and been fought, and the debrief at +270 after engaged() waited them out (STORY_CALM.maxHold 120).
+
+src/content/sectors.js CANYON: pass.drainedAfter 3 (src/fx/laser-arsenal.js: a laid pass closes three seconds after its energy is spent, not at its overhead's end), gateAfter now counts from the pass's close (sector-run tickCanyon: api.canyonOver, the station's special pass gone, or the overhead's cap), charge 2 (the canyon's walkers and its queued bodies double their pace from then: they rush the base) and strayHops 60 (aliveSectorEnemies: a canyon walker still that far from the heart, or still queued at the canyon, is not counted for SECURE); STORY_CALM.farHops 60 (programme-host engaged(): a hostile that far out does not hold the debrief; hopsToHeart from dungeon.distToHeart). New showcase hook strays(hops): hostiles near and far. After, same harness: the pass closed at +4 (three seconds after the beam was spent), the gate open by +10, the survivors charging (far 319 -> 42 by +91 where it had stayed 318 until +140), the base under attack without a break from +20 to SECURE at +147, the debrief eight seconds later (+155) instead of 104 s later. The harness used to release the trigger at half a second of energy; it burns to the last drop now, as a player does.
+
+Alternatives: Culling the survivors at the pass's end: they are the canyon's point; charging keeps them; Only the stray rule: the sixty-second hole between the gate's bodies and the survivors would remain
+
+Evidence:
+
+- TIMELINE=1 scripts/browser-lock.sh node scripts/browser-test.mjs --canyon-again before: CANYON TIMELINE {passOff 18, secure 166, debrief 270}, far 318 until +140; after: {passOff 4, secure 147, debrief 155}, far 319 -> 42 by +91
+- npm test (185)
+
 ## 2026-10-07 — The base itself under the constellation: the run's own buildings on the finale's planet at their true size, the heads off the base's own ARC-01, and the black hole's shadow steady
 
 change · resolved · 2026-10-07-the-base-itself-under-the-constellation

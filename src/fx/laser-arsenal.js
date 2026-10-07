@@ -286,6 +286,8 @@ export function createLaserArsenal(scene, host) {
       orbit.period = LASER_ORBIT.period * periodScale;   // the chip plant's perk: passes closer together
       edge(stepLaser(st, dt, orbit, beam));
       burn(dt, input);
+      // A SPENT PASS CLOSES (CANYON.pass.drainedAfter): the player is not held DRAINED in the seat for the rest of the overhead
+      if (special?.drainedAfter != null && st.phase === 'overhead') { if (st.energy > 0) special.drainedAt = null; else if ((special.drainedAt ??= st.left) - st.left >= special.drainedAfter) edge(stepLaser(st, st.left, orbit, beam)); }
       /* the silent red pointer while the seat is manned and the column is not firing: where it will land */
       if (seated && !st.burning) { const a = anchor(); laser.guideAt(ground.fromArray(groundAt(a)), normal.fromArray(a).normalize(), st.phase === 'overhead' ? 1 : 0.35); }
       else laser.hideGuide();
@@ -312,9 +314,9 @@ export function createLaserArsenal(scene, host) {
     },
     passNow() { if (online && st.phase !== 'overhead') edge(stepLaser(st, st.left, orbit, beam)); },
     // a pass over `point` (a unit direction) now, with { overhead, energy, radius, slew } for this pass only and forward along `axis`
-    passOver({ point, axis = null, overhead, energy, radius, slew }) {
+    passOver({ point, axis = null, overhead, energy, radius, slew, drainedAfter = null }) {
       online = true;
-      special = { axis };
+      special = { axis, drainedAfter, drainedAt: null };   // drainedAfter: the pass closes this long after its energy is spent (the canyon, 2026-10-07)
       orbit.overhead = overhead ?? orbit.overhead; Object.assign(beam, { energy: energy ?? beam.energy, radius: radius ?? beam.radius, slew: slew ?? beam.slew });
       laser?.tune({ radius: beam.radius });
       // A PASS LAID WHILE SOL IS ALREADY UP (owner, 2026-10-05: sector 6's SOL control did not work right after using SOL by hand): the old

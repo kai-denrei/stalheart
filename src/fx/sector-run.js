@@ -213,10 +213,12 @@ export function createSectorRun(h) {
 
   // the sector's live bodies; `budget`: only those the frame budget weighs against the next pulse (the canyon's swarm is out of sight
   // on the far side of the world and must not hold the base's own waves back)
+  // THE STRAYS (owner, 2026-10-07: 'nothing happens for too long; the enemies who survived the canyon take a long time to reach the base'):
+  // a canyon walker still CANYON.strayHops hops from the heart, or still queued at the canyon, is not the sector's to wait for
   function aliveSectorEnemies(budget = false) {
     let n = 0;
-    const far = budget && canyon ? sps.get(canyon.id) : null;
-    for (const e of h.enemies()) if (e.alive && !e.guard && !e.harmless && !(far && e.breachSource === far.obj)) n += e.members || 1;   // sector 0's harmless leftovers are not the sector's; a squad is its members
+    const far = canyon ? sps.get(canyon.id) : null, stray = (e) => far && e.breachSource === far.obj && (budget || (api.hopsToHeart?.(e.cur) ?? 0) > CANYON.strayHops);
+    for (const e of h.enemies()) if (e.alive && !e.guard && !e.harmless && !stray(e)) n += e.members || 1;   // sector 0's harmless leftovers are not the sector's; a squad is its members
     for (const q of h.queue()) if (!q.guard && !q.harmless && q.sp?.alive && !(far && q.sp === far)) n += q.squad || 1;
     return n;
   }
@@ -305,8 +307,12 @@ export function createSectorRun(h) {
   // canyon's own pass and the player is put in its seat (the game glides the camera there)
   function tickCanyon(t) {
     if (!canyon || canyon.phase === 'done') return;
-    if (canyon.phase === 'pass') {   // the pass is over (its overhead and the glide in): the gate side opens
-      if (t - canyon.passAt < CANYON.pass.overhead + CANYON.gateAfter) return;
+    if (canyon.phase === 'pass') {   // the pass is over (closed: drained or its overhead up, or the overhead's cap): the gate side opens gateAfter later
+      const over = t - canyon.passAt >= CANYON.gateAfter + 2 && api.canyonOver?.();
+      if (!over && t - canyon.passAt < CANYON.pass.overhead + CANYON.gateAfter) return;
+      // THE SURVIVORS CHARGE (CANYON.charge): the swarm the beam spared rushes the base from here, so the fight follows the pass at once
+      const sp = sps.get(canyon.id);
+      if (sp) { for (const e of h.enemies()) if (e.alive && e.breachSource === sp.obj) e.paceJitter = (e.paceJitter ?? 1) * CANYON.charge; for (const q of h.queue()) if (q.sp === sp) q.pace = (q.pace ?? 1) * CANYON.charge; }
       canyon.phase = 'done';
       for (const b of sector.breaches) if (b.openAt === Infinity) b.openAt = t;
       h.hud(); return;

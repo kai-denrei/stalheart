@@ -100,6 +100,7 @@ export function createProgrammeHost(c) {
   };
   // a point (the placer's world) stands on lattice cell ci: ci is its nearest of ci and ci's neighbours, within one cell (patchLine's owns)
   const ownCell = (ci, p) => { const g = c.graph(), u = p.clone().normalize(), d = (k) => u.distanceTo(new THREE.Vector3(...g.centers[k])); return d(ci) < c.cellSide() && g.adj[ci].every((nb) => d(nb) >= d(ci)); };
+  const hopsToHeart = (ci) => c.dungeon()?.distToHeart?.[ci] ?? -1;   // walking hops from the heart, -1 unknown
   const danger = () => {   // engaged() below
     const seat = !!(c.pilot()?.gunship || c.laserStation?.seated?.()), hull = c.playerPos(), r = STORY_CALM.near * c.cellSide();
     for (const e of c.enemies()) if (e.alive && !e.guard && (seat || Math.hypot(e.pos[0] - hull[0], e.pos[1] - hull[1], e.pos[2] - hull[2]) < r)) return true;
@@ -121,7 +122,7 @@ export function createProgrammeHost(c) {
     danger,
     engaged: () => {
       const s = c.story(), t = c.t(); if (!s) return false;
-      if (danger() || c.enemies().some((e) => e.alive && !e.guard && !e.harmless)) s.busyAt = t;
+      if (danger() || c.enemies().some((e) => e.alive && !e.guard && !e.harmless && !(hopsToHeart(e.cur) > STORY_CALM.farHops))) s.busyAt = t;   // a stray far out does not hold the debrief
       return t - (s.busyAt ?? -Infinity) < STORY_CALM.calm;
     },
     tankReady: () => { const s = c.story(); return !!s?.hull?.early(s.hullHost ??= createHullHost(c), s.nukeBerth?.(s.nukes.at(-1) ?? -1)); },
@@ -301,7 +302,7 @@ export function createProgrammeHost(c) {
       for (let h = 0; h < q.length; h++) for (const nb of g.adj[q[h]]) if (tags[nb] !== BLOCKED && dist[nb] === Infinity) { dist[nb] = dist[q[h]] + 1; q.push(nb); }
       return planCanyon({ centers: g.centers, heart, dist, cellArc: c.cellSide(), tune: CANYON });
     },
-    canyonPass: (o) => c.laserStation.passOver(o),   // SOL-82's pass laid over the canyon, the player in its seat (src/fx/laser-station.js)
+    canyonPass: (o) => c.laserStation.passOver(o), canyonOver: () => !c.laserStation?.state?.().special, hopsToHeart,   // canyonOver: the laid pass has closed (drained or its overhead up); hopsToHeart: for the sector's strays   // SOL-82's pass laid over the canyon, the player in its seat (src/fx/laser-station.js)
     canyonCut: (plan) => {
       const tags = c.dungeon().tags, full = c.tdFullTags();
       for (const ci of plan.floor) { tags[ci] = PATH; if (full) full[ci] = PATH; breachedCells.add(ci); breachQueue.push(ci); (c.story().carved ??= new Set()).add(ci); }   // carved on purpose: never a hole to mend

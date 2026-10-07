@@ -84,7 +84,13 @@ export const SECTOR_STAMPEDE = freeze({ every: 2, size: 3, cores: 2, core: 'barb
 // `firstPulse` seconds into the sector instead of after a whole pulse (14 s), and SOL comes over it `seatAfter` seconds after its last body
 // is up (was 6). Compressing the rise itself left the swarm bunched at the deep end and the beam's first pass took half as many
 export const CANYON = freeze({ length: 48, halfWidth: 1.2, wall: 3, swarm: 5, ladder: 2, spread: 1.2, dens: 0.35, firstPulse: 3, seatAfter: 2,
-  pass: { overhead: 45, energy: 25, radius: 12, slew: 16 }, gateAfter: 4, brief: 'canyon_rises', passBrief: 'canyon_pass', briefAgain: 'canyon_again' });
+  pass: { overhead: 45, energy: 25, radius: 12, slew: 16, drainedAfter: 3 }, gateAfter: 4, charge: 2, strayHops: 60, brief: 'canyon_rises', passBrief: 'canyon_pass', briefAgain: 'canyon_again' });
+// NO LULL AFTER THE PASS (owner, 2026-10-07: 'after the second SOL manual canyon there is a downtime in action; nothing happens for
+// too long; the enemies who survived the canyon take a long time to reach the base'; measured: the base's own bodies dead a minute
+// after the gate, then sixty seconds of nothing while 318 survivors walked, the debrief 104 s after SECURE waiting them out).
+// pass.drainedAfter: the laid pass closes this long after its energy is spent, not at its overhead's end; gateAfter: the gate side opens
+// this long after the pass closes; charge: the survivors' pace from then on (they rush the base); strayHops: a survivor still this many
+// walking hops from the heart is a stray: it holds neither the sector's end nor the debrief, and comes in during the next
 
 // WHERE THE SIDE BREACH COMES UP (src/domain/side-breach.js), in cells: on open ground outside the clearing, between minWall and
 // maxWall from the nearest wall, within reach of a sentry socket (the Rotor and the Quiver reach 3.5 to 3.6, src/towers.js) and at least
