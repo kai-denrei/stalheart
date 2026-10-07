@@ -57,25 +57,43 @@ void main(){
 // pixels and handed to three.js as a DataTexture (read as linear: the output's sRGB encode brightens the disk; no mipmaps). null where WebGL is refused.
 // THE SHADOW'S EXTENT is read off the picture: the run of alpha-255 black pixels (rays that fell in) across the middle row and column,
 // a centre and radius in texture units (0..1 of the side, y up); the probe (corner, sky, shadow) is what the harness reads
-export function renderAccretion({ size = ACCRETION.size, pose = ACCRETION.pose, time = ACCRETION.time } = {}) {
+// A SHADER RENDERED ONCE (the owner's pages render their sky objects live; the game renders each once, as his page does, and hangs the
+// picture): its own small WebGL context (gone again once read), a full-screen triangle, `frag` the fragment source, `uniforms` set on the
+// linked program by `bind(gl, loc)` (loc: a uniform's location by name), the picture read back as pixels. null where WebGL is refused.
+export function renderShaderStill(frag, size, bind) {
   const cv = document.createElement('canvas'); cv.width = cv.height = size;
   const gl = cv.getContext('webgl', { alpha: true, premultipliedAlpha: false, preserveDrawingBuffer: true, antialias: false, depth: false, stencil: false });
   if (!gl) return null;
   const sh = (t, src) => { const o = gl.createShader(t); gl.shaderSource(o, src); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw Error(gl.getShaderInfoLog(o)); return o; };
-  const pr = gl.createProgram(); gl.attachShader(pr, sh(gl.VERTEX_SHADER, 'attribute vec2 p;void main(){gl_Position=vec4(p,0,1);}')); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, accretionShader())); gl.linkProgram(pr); gl.useProgram(pr);
+  const pr = gl.createProgram(); gl.attachShader(pr, sh(gl.VERTEX_SHADER, 'attribute vec2 p;void main(){gl_Position=vec4(p,0,1);}')); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, frag)); gl.linkProgram(pr); gl.useProgram(pr);
   gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
   gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
   gl.viewport(0, 0, size, size); gl.disable(gl.BLEND); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
-  gl.uniform2f(gl.getUniformLocation(pr, 'R'), size, size); gl.uniform1f(gl.getUniformLocation(pr, 'T'), time); gl.uniform2f(gl.getUniformLocation(pr, 'C'), pose[0], pose[1]);
+  gl.uniform2f(gl.getUniformLocation(pr, 'R'), size, size); bind(gl, (name) => gl.getUniformLocation(pr, name));
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   const px = new Uint8Array(size * size * 4); gl.readPixels(0, 0, size, size, gl.RGBA, gl.UNSIGNED_BYTE, px);
   gl.getExtension('WEBGL_lose_context')?.loseContext();
+  return px;
+}
+// ...and handed to three.js as a DataTexture (read as linear: the output's sRGB encode brightens the picture; no mipmaps)
+export function stillTexture(px, size) {
+  const texture = new THREE.DataTexture(px, size, size, THREE.RGBAFormat, THREE.UnsignedByteType);
+  texture.colorSpace = THREE.NoColorSpace; texture.minFilter = texture.magFilter = THREE.LinearFilter; texture.generateMipmaps = false; texture.needsUpdate = true;
+  return texture;
+}
+
+// the hole rendered once, as the owner's page renders it (renderShaderStill), the picture as a DataTexture (read as linear: the output's
+// sRGB encode brightens the disk). null where WebGL is refused.
+// THE SHADOW'S EXTENT is read off the picture: the run of alpha-255 black pixels (rays that fell in) across the middle row and column,
+// a centre and radius in texture units (0..1 of the side, y up); the probe (corner, sky, shadow) is what the harness reads
+export function renderAccretion({ size = ACCRETION.size, pose = ACCRETION.pose, time = ACCRETION.time } = {}) {
+  const px = renderShaderStill(accretionShader(), size, (gl, loc) => { gl.uniform1f(loc('T'), time); gl.uniform2f(loc('C'), pose[0], pose[1]); });
+  if (!px) return null;
   const at = (x, y) => (y * size + x) * 4, dark = (k) => px[k + 3] >= 250 && px[k] < 8;
   const run = (step, k0) => { let a = -1, b = -1; for (let i = 0; i < size; i++) { const k = k0 + i * step; if (dark(k)) { if (a < 0) a = i; b = i; } } return a < 0 ? null : [a, b]; };
   const rx = run(4, at(0, size >> 1)), ry = run(size * 4, at(size >> 1, 0));
   const shadow = rx && ry ? { cx: (rx[0] + rx[1] + 1) / 2 / size, cy: (ry[0] + ry[1] + 1) / 2 / size, r: Math.max(rx[1] - rx[0], ry[1] - ry[0]) / 2 / size } : { cx: 0.5, cy: 0.5, r: 0.07 };
-  const texture = new THREE.DataTexture(px, size, size, THREE.RGBAFormat, THREE.UnsignedByteType);
-  texture.colorSpace = THREE.NoColorSpace; texture.minFilter = texture.magFilter = THREE.LinearFilter; texture.generateMipmaps = false; texture.needsUpdate = true;   // read as linear, so the output's own sRGB encode lifts the shader's tone-mapped disk toward white: the brighter look of the first pass
+  const texture = stillTexture(px, size);
   texture.userData.probe = { corner: [...px.subarray(at(2, 2), at(2, 2) + 4)], sky: [...px.subarray(at(size >> 3, (size * 7) >> 3), at(size >> 3, (size * 7) >> 3) + 4)], shadow };
   return { texture, shadow };
 }
@@ -100,26 +118,34 @@ export function faceShadow(disc, at, camera) {
   disc.position.copy(at).add(disc.userData.offset.clone().applyQuaternion(camera.quaternion)).addScaledVector(new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion), 1);   // a hair toward the camera: in front of the glow
 }
 
-// THE HOLE IN A SKY BAKE (src/galaxybake.js; the game's sky is a cubemap drawn once): a plane `across` units wide `dist` out along `dir`,
-// turned to face the bake's eye at the origin, the glow added at `glow` times its strength (the cube is drawn faint), and the shadow a
-// black disc of the picture's radius at the picture's centre, a hair nearer the eye. Planes, not sprites: a sprite turns to each of the
-// six faces' cameras and seams at the edges
-export function accretionSkyPlanes(texture, shadow, { dir, dist, across, glow = 1 }) {
+// A PICTURE HUNG IN THE SKY (the hole, and the owner's nebulae of src/fx/nebulae.js): a plane `across` units wide `dist` out along
+// `dir`, turned to face the eye at the origin, the picture added at `glow` times its strength (black adds nothing, so the square round it
+// cannot show). A plane, not a sprite: a sprite turns to each of a cube bake's six cameras and seams at the edges. userData.sky says
+// where it hangs (what the harness reads)
+export function skyGlowPlane(texture, { dir, dist, across, glow = 1 }) {
   const g = new THREE.Group(), d = new THREE.Vector3(...dir).normalize();
   g.position.copy(d).multiplyScalar(dist); g.lookAt(0, 0, 0);
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(across, across), new THREE.MeshBasicMaterial({ map: texture, transparent: true, blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false, toneMapped: false, color: new THREE.Color(glow, glow, glow) }));
+  g.add(new THREE.Mesh(new THREE.PlaneGeometry(across, across), new THREE.MeshBasicMaterial({ map: texture, transparent: true, blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false, toneMapped: false, color: new THREE.Color(glow, glow, glow) })));
+  g.userData.sky = { dir: d.toArray(), dist, across };
+  return g;
+}
+// THE HOLE IN THE SKY (once a bake into the sky cube, src/galaxybake.js; now the game's own scene): the glow plane, and the shadow a black
+// disc of the picture's radius at the picture's centre, a hair nearer the eye
+export function accretionSkyPlanes(texture, shadow, opts) {
+  const g = skyGlowPlane(texture, opts), { across } = opts;
   const disc = new THREE.Mesh(new THREE.CircleGeometry(shadow.r * across, 64), new THREE.MeshBasicMaterial({ color: 0x000000, depthTest: false, depthWrite: false, toneMapped: false }));
   disc.position.set((shadow.cx - 0.5) * across, (shadow.cy - 0.5) * across, 0.2);   // local +z faces the eye after lookAt
-  g.add(plane, disc);
-  g.userData.hole = { dir: d.toArray(), dist, across, shadow: { ...shadow } };
+  g.add(disc);
+  g.userData.hole = { ...g.userData.sky, shadow: { ...shadow } };
   return g;
 }
 
-// THE HOLE RE-AIMED (the base's Stålheart stands: the hole goes low behind it): `dir` the new unit direction, the planes moved and turned
+// THE PICTURE RE-AIMED (the base's Stålheart stands: the hole goes low behind it, the nebulae turn with it): `dir` the new unit
+// direction, the planes moved and turned
 export function aimSkyPlanes(planes, dir) {
-  const d = new THREE.Vector3(...dir).normalize(), dist = planes.userData.hole?.dist ?? planes.position.length();
+  const d = new THREE.Vector3(...dir).normalize(), dist = planes.userData.sky?.dist ?? planes.position.length();
   planes.position.copy(d).multiplyScalar(dist); planes.lookAt(0, 0, 0);
-  if (planes.userData.hole) planes.userData.hole.dir = d.toArray();
+  for (const k of ['sky', 'hole']) if (planes.userData[k]) planes.userData[k].dir = d.toArray();
   return planes;
 }
 // the sky direction `elevation` radians above the horizon at `heart` (a unit vector), the way from the point `from` toward the point
@@ -128,4 +154,12 @@ export function skyDirectionToward(heart, at, elevation, from = null) {
   const h = new THREE.Vector3(...heart).normalize(), a = new THREE.Vector3(...at).sub(from ? new THREE.Vector3(...from) : new THREE.Vector3()), t = a.clone().addScaledVector(h, -a.dot(h));
   if (t.lengthSq() < 1e-12) return h.toArray();
   return t.normalize().multiplyScalar(Math.cos(elevation)).addScaledVector(h, Math.sin(elevation)).toArray();
+}
+// the sky direction a turn of `angle` radians round the zenith at `heart` from `dir`'s compass point (pi: the exact opposite side of the
+// sky), `elevation` radians above the horizon: where the owner's nebulae hang relative to the hole
+export function turnSkyDirection(heart, dir, angle, elevation) {
+  const h = new THREE.Vector3(...heart).normalize(), d = new THREE.Vector3(...dir), t = d.clone().addScaledVector(h, -d.dot(h));
+  if (t.lengthSq() < 1e-12) return h.toArray();
+  const n = t.normalize(), r = n.clone().multiplyScalar(Math.cos(angle)).addScaledVector(h.clone().cross(n), Math.sin(angle));
+  return r.multiplyScalar(Math.cos(elevation)).addScaledVector(h, Math.sin(elevation)).toArray();
 }

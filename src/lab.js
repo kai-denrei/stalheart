@@ -38,7 +38,7 @@ export const LAB_KNOBS = [
   { key: 'immortalTank', label: 'immortal tank', group: 'health', bool: true },
   { key: 'bg', label: 'background', group: 'sky', choices: ['none', 'galaxy'] },
   { key: 'galaxySeed', label: 'galaxy seed', group: 'sky', min: 0, max: 99999, step: 1 },
-  { key: 'galaxyScale', label: 'galaxy size', group: 'sky', min: 0.25, max: 4, step: 0.05 },
+  { key: 'galaxyScale', label: 'galaxy size', group: 'sky', min: 0.1, max: 4, step: 0.05 },   // the floor is the bake's own (galaxybake.js); the game sits on it since 2026-10-07
   { key: 'galaxies', label: 'galaxies', group: 'sky', min: 1, max: 8, step: 1 },
   { key: 'galaxyCore', label: 'core size ×', group: 'sky', min: 0.25, max: 3, step: 0.05 },
   { key: 'bgIntensity', label: 'sky intensity', group: 'sky', min: 0, max: 1.5, step: 0.05 },

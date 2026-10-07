@@ -2042,6 +2042,17 @@ try{
  assert(hole&&hole.shadow.r>0.05,'the accretion disk was baked into the sky with its shadow');
  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,#td-brief{display:none!important}</style>")');
  await evaluate(`${T}.showcase.look(${JSON.stringify(hole.dir)})`);await delay(2500);current='sky-hole-look';await finish();
+ // ...AND THE OWNER'S NEBULAE (2026-10-07; src/fx/nebulae.js): the veil the exact opposite side of the sky on the horizon, the bloom a quarter turn round and high.
+ // The bay's roll-out owns the camera and the hull's heading until it hands over (the hole above happens to lie the way the berth faces), so these looks wait for it
+ await until(`!${T}.showcase.deploying()`,90000);
+ for(const [key,name] of [['skyVeil','sky-veil'],['skyBloom','sky-bloom']]){
+  const sky=JSON.parse(await evaluate(`document.documentElement.dataset.${key}||"null"`));console.log(`${name.toUpperCase()} ${JSON.stringify(sky)}`);
+  assert(sky&&sky.across>0,`the ${name} hangs in the sky`);
+  const az=(d)=>Math.atan2(d[0],d[2]),turn=Math.abs(((az(sky.dir)-az(hole.dir))%(2*Math.PI)+3*Math.PI)%(2*Math.PI)-Math.PI);
+  if(key==='skyVeil')assert(turn>Math.PI-0.05,`the veil opposite the hole (${(turn*180/Math.PI).toFixed(0)} degrees round)`);
+  for(let k=0;k<8;k++){await evaluate(`${T}.showcase.look(${JSON.stringify(sky.dir)})`);await delay(1500);const st=JSON.parse(await evaluate(`JSON.stringify({view:${T}.state().view,shot:${T}.state().shot})`));if(st.view==='pov'&&!st.shot)break;}   // the sector card's orbit cuts in at the handover: look again until the first-person view holds
+  current=`${name}-look`;await finish();
+ }
  await evaluate(`${T}.focusHeart()`);await delay(1200);current='sky-hole-orbit-again';await finish();
  } else if(args.includes('--units-sky')) {
  // THE SKY ON THE BENCH (owner, 2026-10-01: "UNITS are not showing all the units; we should see SOL, and the Gunship. also show

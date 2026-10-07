@@ -22,7 +22,7 @@ export function buildVarsModal({ root, gui, lab, urlParams, skySeed, applySky, s
     f.add(lab, 'bg', ['none', 'galaxy']).name('background').onChange(applyLabSky);
     f.add(lab, 'galaxySeed', 0, 99999, 1).name('galaxy seed').onFinishChange(applyLabSky);
     f.add({ roll: () => { lab.galaxySeed = Math.floor(Math.random() * 100000); applyLabSky(); f.controllersRecursive().forEach((c) => c.updateDisplay()); } }, 'roll').name('↻ new galaxy');
-    f.add(lab, 'galaxyScale', 0.25, 4, 0.05).name('galaxy size').onFinishChange(applyLabSky);
+    f.add(lab, 'galaxyScale', 0.1, 4, 0.05).name('galaxy size').onFinishChange(applyLabSky);
     f.add(lab, 'galaxies', 1, 8, 1).name('galaxies').onFinishChange(applyLabSky);
     f.add(lab, 'galaxyCore', 0.25, 3, 0.05).name('core size ×').onFinishChange(applyLabSky);
     f.add(lab, 'bgIntensity', 0, 1.5, 0.05).name('sky intensity');

@@ -50,8 +50,9 @@ import { createMomentReel } from './moment-reel.js';
 import { createColonyLapse } from './colony-lapse.js';
 import { playDiorama } from './finale-diorama.js';
 import { playOrbitalFinale } from './orbital-finale.js';
-import { renderAccretion, accretionSkyPlanes, aimSkyPlanes, skyDirectionToward } from './accretion.js';
-import { SKY_HOLE } from '../galaxyseed.js';
+import { renderAccretion, accretionSkyPlanes, skyGlowPlane, aimSkyPlanes, skyDirectionToward, turnSkyDirection } from './accretion.js';
+import { renderNebula } from './nebulae.js';
+import { SKY_HOLE, SKY_VEIL, SKY_BLOOM } from '../galaxyseed.js';
 const loadDyes = () => { try { return JSON.parse(storage.getItem(DYE_SHOP.store) ?? 'null'); } catch { return null; } };
 const saveDyes = (b) => { try { storage.setItem(DYE_SHOP.store, JSON.stringify(b)); } catch { /* a refused store: the dyes last this run */ } };
 import { nextRepair, shotHoles, rimHoles } from '../domain/repair-orders.js';
@@ -64,17 +65,27 @@ export function createProgrammeHost(c) {
   const { PLAYER_MAX, orders, breachQueue, breachedCells, gunshipRig, showBrief, spawnIsao, updateHud, syncLifeContainers, rebuildAfterBreach, recomputePortalDist, adoptBays } = c;
   // THE BLACK HOLE NOT FAR (owner, 2026-10-06: "not just at the ending, but during the entire game"; galaxyseed.js SKY_HOLE): the
   // owner's accretion disk rendered once (src/fx/accretion.js) and hung in the scene as world-fixed planes beyond the planet, which hides
-  // it below the horizon; it outlives world rebuilds (the sky is not the world's) and the day (the baked stars fade, this does not)
-  const skyHoleNote = (planes) => { if (typeof document !== 'undefined') document.documentElement.dataset.skyHole = JSON.stringify(planes.userData.hole); };   // what the harness reads
-  if (c.scene && !c.scene.getObjectByName('sky-hole')) {
-    try { const h = renderAccretion(); if (h) { const planes = accretionSkyPlanes(h.texture, h.shadow, SKY_HOLE); planes.name = 'sky-hole'; for (const o of planes.children) { o.material.depthTest = true; o.frustumCulled = false; } c.scene.add(planes); skyHoleNote(planes); } } catch { /* a context that refuses the shader: no hole */ }
-  }
-  // ...and LOW BEHIND THE STÅLHEART once it stands (SKY_HOLE.toward / elevation): aimed once per world, from the heart toward the structure
+  // it below the horizon; it outlives world rebuilds (the sky is not the world's) and the day (the baked stars fade, this does not).
+  // AND HIS NEBULAE (2026-10-07; src/fx/nebulae.js, SKY_VEIL / SKY_BLOOM): the veil on the exact opposite side of the sky from the hole,
+  // on the horizon, the bloom a quarter turn round and high, each a turn round the zenith from the hole's compass point
+  const skyNote = (g) => { if (typeof document !== 'undefined') document.documentElement.dataset[g.userData.note] = JSON.stringify(g.userData.hole ?? g.userData.sky); };   // what the harness reads
+  const hangSky = (name, note, make) => {
+    if (!c.scene || c.scene.getObjectByName(name)) return;
+    try { const g = make(); if (!g) return; g.name = name; g.userData.note = note; for (const o of g.children) { o.material.depthTest = true; o.frustumCulled = false; } c.scene.add(g); skyNote(g); } catch { /* a context that refuses the shader: no picture */ }
+  };
+  const nebulaPlane = (k, heart, holeDir) => { const t = renderNebula(k.kind); return t && skyGlowPlane(t, { ...k, dir: turnSkyDirection(heart, holeDir, k.turn, k.elevation) }); };
+  const SKY = [['sky-veil', 'skyVeil', SKY_VEIL], ['sky-bloom', 'skyBloom', SKY_BLOOM]], POLE = [0, 1, 0];   // the heart is at the pole until the world says where
+  hangSky('sky-hole', 'skyHole', () => { const h = renderAccretion(); return h && accretionSkyPlanes(h.texture, h.shadow, SKY_HOLE); });
+  for (const [name, note, k] of SKY) hangSky(name, note, () => nebulaPlane(k, POLE, SKY_HOLE.dir));
+  // ...and LOW BEHIND THE STÅLHEART once it stands (SKY_HOLE.toward / elevation): aimed once per world, from the heart toward the structure,
+  // the nebulae turned with it
   const aimSkyHole = () => {
     const planes = c.scene?.getObjectByName('sky-hole'), sb = c.storyBase(), st = SKY_HOLE.toward && sb?.structure?.(SKY_HOLE.toward), fr = SKY_HOLE.from && sb?.structure?.(SKY_HOLE.from), hp = c.dungeon()?.heart;
     if (!planes || !st?.holder || !fr?.holder || !(hp >= 0) || planes.userData.aimedFor === sb) return;
-    const at = st.holder.getWorldPosition(new THREE.Vector3()).toArray(), from = fr.holder.getWorldPosition(new THREE.Vector3()).toArray();
-    aimSkyPlanes(planes, skyDirectionToward(c.graph().normals[hp], at, SKY_HOLE.elevation, from)); planes.userData.aimedFor = sb; skyHoleNote(planes);
+    const at = st.holder.getWorldPosition(new THREE.Vector3()).toArray(), from = fr.holder.getWorldPosition(new THREE.Vector3()).toArray(), heart = c.graph().normals[hp];
+    const dir = skyDirectionToward(heart, at, SKY_HOLE.elevation, from);
+    aimSkyPlanes(planes, dir); planes.userData.aimedFor = sb; skyNote(planes);
+    for (const [name, , k] of SKY) { const g = c.scene.getObjectByName(name); if (g) { aimSkyPlanes(g, turnSkyDirection(heart, dir, k.turn, k.elevation)); skyNote(g); } }
   };
   // a point (the placer's world) stands on lattice cell ci: ci is its nearest of ci and ci's neighbours, within one cell (patchLine's owns)
   const ownCell = (ci, p) => { const g = c.graph(), u = p.clone().normalize(), d = (k) => u.distanceTo(new THREE.Vector3(...g.centers[k])); return d(ci) < c.cellSide() && g.adj[ci].every((nb) => d(nb) >= d(ci)); };

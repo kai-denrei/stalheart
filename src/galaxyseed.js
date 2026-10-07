@@ -27,7 +27,9 @@ function gaussian(rng) {
 // galaxies, small and far, faint. The seed is fresh on every reset — the sky
 // is dressing, not game logic, so it is the one thing on the board that is
 // allowed a non-deterministic seed.
-export const SKY_PRESET = { galaxies: 2, scale: 0.25, coreScale: 0.25, intensity: 0.65 };
+// MUCH SMALLER, FURTHER AWAY (owner, 2026-10-07, his own nebulae in the sky instead): the bake's floor, the discs at a tenth of
+// the tuned size, two and a half times further than before; baked once into the cube, they cost nothing to draw
+export const SKY_PRESET = { galaxies: 2, scale: 0.1, coreScale: 0.25, intensity: 0.65 };
 
 export const GALAXY_PALETTES = [
   { name: 'Andromeda', c0: [1.00, 0.70, 0.40], c1: [0.93, 0.87, 0.80], c2: [0.55, 0.70, 1.00], core: [1.00, 0.84, 0.58] },
@@ -67,6 +69,12 @@ export const HOME_GALAXY = { dir: [15, -3.5, -12], tilt: [1.1, 0.3, 0.6] };
 // behind the gantry"): once the base stands it is re-aimed the way `from` the bays `toward` the Stålheart (the hull's view from its berth), `elevation` radians above the
 // horizon, so from the bays the disk rises behind the gantry; `dir` is where it hangs until then
 export const SKY_HOLE = { dir: [-0.62, 0.5, 0.6], toward: 'stalheart', from: 'bays', elevation: 0.02, dist: 40, across: 28, glow: 1.6 };   // 2026-10-06, the owner: lower still (the disk's top above the horizon from the chase view), a bit smaller, further
+// THE OWNER'S NEBULAE (2026-10-07; src/fx/nebulae.js, his twirling-lights pages rendered once and hung as world-fixed planes like the
+// hole): each hangs `turn` radians round the zenith from the hole's compass point, `elevation` above the horizon, `across` units wide
+// `dist` out, its picture at `glow` times its strength; re-aimed with the hole once the base stands. The veil on the exact opposite side
+// of the sky from the hole, on the horizon, small (about 15 degrees); the bloom a quarter turn round, high
+export const SKY_VEIL = { kind: 'veil', turn: Math.PI, elevation: 0.1, dist: 46, across: 12, glow: 1.4 };
+export const SKY_BLOOM = { kind: 'bloom', turn: Math.PI / 2, elevation: 0.4, dist: 45, across: 16, glow: 1.3 };   // 0.4: whole in the first-person view's half height
 export function galaxyLayout(seed, count = 1) {
   const rng = mulberry32((seed >>> 0) ^ 0x6A1A8);
   const norm = (v) => { const l = Math.hypot(...v) || 1; return v.map((x) => x / l); };
