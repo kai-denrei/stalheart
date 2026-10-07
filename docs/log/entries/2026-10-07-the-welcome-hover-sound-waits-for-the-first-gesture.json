@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "2026-10-07-the-welcome-hover-sound-waits-for-the-first-gesture",
+  "date": "2026-10-07",
+  "type": "issue",
+  "status": "observed",
+  "title": "The welcome page's hover sound cannot start before the first click, tap or key: the browser's rule, not the page's",
+  "context": "Owner, 2026-10-07: 'landing page pocket guide: sound fx and visual on hover; the sound only triggers after something has been clicked the first time. It should trigger right away on hovering.'",
+  "outcome": "Not changed. Every browser refuses to start audio until the page has had a user activation, and the activating events are mousedown/pointerdown (Chrome), pointerup/touchend/click and keys; hovering (pointerenter, mousemove) is not one. The sound engine (src/audio.js) builds its context on the first such gesture anywhere on the page, and the start gate's hover (src/fx/start-gate.js hear) plays once sfx.ready, so the first click or key anywhere, not a particular button, unlocks it; the eager context was tried before and dropped (Safari reports a context created outside a gesture as running and outputs nothing). Chrome does allow sound without a gesture on two paths outside the page's control: a same-origin navigation after a gesture on the previous page (a reload after a click), and a site whose media engagement score is high, which is why the owner sometimes hears the hover at once. Lab 144's ALL SYSTEMS NOMINAL on the START button's hover (2026-10-07-the-owners-lab-lines-wired) lives under the same rule.",
+  "alternatives": [
+    "Creating the audio context at load and resuming it on hover: Chrome keeps it suspended until a gesture, and Safari's silent-running context was the 2026-10-04 bug"
+  ],
+  "evidence": [
+    "src/audio.js ARM_EVENTS / CREATE_EVENTS and their comments; src/fx/start-gate.js hear()"
+  ],
+  "supersedes": []
+}

@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "id": "2026-10-07-an-enemy-that-makes-the-tank-shell-meaningful",
+  "date": "2026-10-07",
+  "type": "decision",
+  "status": "proposed",
+  "title": "Reflection to design against: an enemy that makes the tank's shell meaningful",
+  "context": "Owner, 2026-10-07 (twenty-eighth notes, 7): 'reflection; we need some enemy to make the tank shell feel meaningful.' Today the hull rams fodder for free, the dangerous tier hurts to touch, and the shells (the armory's pad, plasma dry) have no body that only a shell answers.",
+  "outcome": "Filed. Candidates to weigh with the owner: a shelled or armoured body the ram bounces off and only a shell cracks (a shell-only tier in src/enemyspec.js with a ram-immune flag); a body that must be hit at range before it closes (a spitter or a charger whose touch costs a heart); a breach lid or a nest shell only a shell opens. Each needs its own look (the enemy representation decision) and a count small enough to read.",
+  "alternatives": [],
+  "evidence": [],
+  "supersedes": []
+}

@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "id": "2026-10-07-start-with-the-truck-unlock-the-tank-then-the-thrusters",
+  "date": "2026-10-07",
+  "type": "decision",
+  "status": "proposed",
+  "title": "A gameplay change to investigate: the player starts with a truck that rams the weak and lures the hard-core to the defence; the tank with its cannon is unlocked later; the plasma thrusters after that",
+  "context": "Owner, 2026-10-07 (twenty-eighth notes, 6): 'thinking about a gameplay change: a) player starts with the truck (jelaludo.github.io/SentryTowers_A6/settlement-industry/) or a similar smaller machine; it can RAM weak enemies, but must avoid the hard-core ones and lure them to the defense. b) later stage we unlock the tank with the cannon. c) later we add the plasma thrusters. Just file as roadmap for now. We first investigate the implication for fps and gameplay.'",
+  "outcome": "Filed, not started. The investigation to run first: the truck's model and its tiers (asset tiers, docs/log 2026-09 asset-tiers) against the frame budget with the crowd up; what the hull's ram, cannon and thrusters each gate today (src/content/tank.js, the hull host src/fx/hull-issue.js, the handover stages in src/domain/story-beats.js) and where an unlock would sit in the base programme (src/content/base-programme.js); whether luring is readable to a player (the hard-core tier's aggro, guard-aggro and the squads' chase).",
+  "alternatives": [],
+  "evidence": [],
+  "supersedes": []
+}
