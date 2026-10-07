@@ -459,9 +459,9 @@ The story's per-frame tick leaves `src/fx/programme-host.js` for modules named a
 - Modify: `src/td-tab.js` — one import line (on an existing import line of `./content/…`), the tables deleted.
 - Test: `test/controller-copy.mjs` — each export is frozen, non-empty, and the verdict tables have the same keys as each other.
 
-`MOVES` (149–191) and `params` (99–145) stay: they reference closure state.
+`MOVES` (149–191) and `params` (99–145) stay: they reference closure state. **Executed (2026-10-07):** `HEART_LOOKS` stays too, for the same reason (its entries call `look()`, the terraformer's preload/make and THREE).
 
-- [ ] Steps: test, module, delete, `node --check`, `npm test && npm run check && npm run build`, snapshot `--debrief`, `--defense`, `--skip-tutorial`. Commit — `The controller's copy tables are content (verdicts, callouts, shell words, directive labels, heart looks)`.
+- [x] Steps: test, module, delete, `node --check`, `npm test && npm run check && npm run build`, snapshot `--debrief`, `--defense`, `--skip-tutorial`. Commit — `The controller's copy tables are content (verdicts, callouts, shell words, directive labels, heart looks)`.
 
 ---
 

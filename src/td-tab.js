@@ -15,7 +15,7 @@ import { GUNSHIP_CALL, GUNSHIP_FAR } from './content/gunship.js';
 import { unlockedTowers } from './domain/expeditions.js';
 import { createExpeditionsHost } from './fx/expedition-glue.js';
 import { CARGO_LOOK } from './content/cargo.js';
-import { STORY_EXPEDITIONS } from './content/story-defaults.js';
+import { STORY_EXPEDITIONS } from './content/story-defaults.js'; import { RECKLESS_MSGS, HEART_MSGS, DIRECTIVE_LABEL, AUTO_OPTIONS, SHELL_WORDS, VERDICT_LOW, VERDICT_MID, VERDICT_HIGH } from './content/controller-copy.js';
 import { makeSiteRing as siteRing, disposeSiteRing } from './fx/site-ring.js';
 import { hasPerk as programmeHas, snapshot as programmeSnapshot, lose as programmeLose } from './domain/build-programme.js';
 import { createProgramWarm } from './fx/program-warm.js';
@@ -950,17 +950,8 @@ export function initTdTab(root) {
   const BOSS_WAVE = INTROS.find((i) => ENEMY_SPEC[i.type]?.boss)?.wave ?? -1;
   let bossCued = false;
   let dangerWarnedWave = -1;
-  // Callouts: quick bragging text for the plays worth bragging about.
-  // Message lists ROTATE (a counter, not Math.random — house rule) so
-  // repeats spread out deterministically.
-  const RECKLESS_MSGS = ['RECKLESS!', 'すげ〜！', 'CLOSE CALL!', 'ヤバイ！',
-    'TIGHT!', '接近だ！', 'FEARLESS!', '接近過ぎ！',
-    "pt1 c'est chaud!", 'ギリギリ', 'NEAR MISS', '危機一髪',
-    'DODGE THIS', '助かった', 'DOWN TO THE WIRE', 'あぶねー',
-    'SKETCHY', 'セーフ！', 'moins une!', "c'est limite la",
-    'ca passe ou ca casse'];
-  const HEART_MSGS = ['PROTECT THE HEART!', 'LIVING DANGEROUSLY!',
-    'NEED SAFETY BUFFER!', 'LAST LINE HOLDS!'];
+  // Callouts: quick bragging text for the plays worth bragging about (RECKLESS_MSGS, HEART_MSGS: src/content/controller-copy.js),
+  // rotated by a counter, not Math.random — house rule
   let recklessIdx = 0, heartIdx = 0;
   let heartCalloutCd = 0;   // seconds; near-heart kills happen in bursts
   let streakMark = 0;       // last streak milestone already called out
@@ -1825,10 +1816,6 @@ export function initTdTab(root) {
 
   // AUTO DIRECTIVES: high-level orders for the wanderer
   const DIRECTIVES = ['wander', 'avoid', 'ram', 'conserve', 'home', 'portal'];
-  const DIRECTIVE_LABEL = {
-    wander: 'WANDER', avoid: 'AVOID', ram: 'RAM',
-    conserve: 'SAVE AMMO', home: 'HOME', portal: 'PORTAL',
-  };
   let portalDist = null; // BFS field to the nearest live portal (directive)
   // BASTION view: third-person from behind the Heart — or behind any
   // tower you click while in it. watchTower null = the Heart.
@@ -2610,10 +2597,6 @@ export function initTdTab(root) {
   // blind-cycling six of them — on a phone, cycling meant tapping through
   // five states you did not want to reach the one you did.
   const autoRadial = root.querySelector('#td-auto-radial');
-  const AUTO_OPTIONS = [
-    ['wander', 'WANDER'], ['avoid', 'AVOID'], ['ram', 'RAM'],
-    ['conserve', 'SAVE SHELLS'], ['portal', 'SEEK PORTAL'], ['home', 'SEEK HOME'],
-  ];
   for (const [key, label] of AUTO_OPTIONS) {
     const b = document.createElement('button');
     b.type = 'button';
@@ -3038,16 +3021,7 @@ export function initTdTab(root) {
   let hintTimer = null;
   // the coach's callout; flash = big centred, hold = no auto-hide
   let tutTimer = null;
-  // THE SHELL'S WORDS. The tutorial teaches treads, lasers, shell, throttle, build — in the desktop's vocabulary. On the shell
-  // there is no throttle and no key; the same lessons are said in the shell's terms here, at the one place every banner passes
-  // through, so the phase machine is untouched. (The operator's first phone screen: "cannot figure out the controls".)
-  const SHELL_WORDS = [
-    ['RAM THEM · drive straight through them',
-      'RAM THEM · TAP THE GROUND beyond them, or DRAG on the left half to drive — through them'],
-    ['hold to sweep them with the lasers', 'hold &#8767; (bottom right) to sweep them with the plasma'],
-    ['Build Towers — tap any HIGH GROUND cell, from any camera. ',
-      'BUILD · tap the BUILD button, then any HIGH GROUND cell. Hold a tower to upgrade. '],
-  ];
+  // THE SHELL'S WORDS (SHELL_WORDS, src/content/controller-copy.js): the tutorial's lessons in the shell's terms
   function shellWords(html) {
     if (!mobileShell) return html;
     if (html.startsWith('THROTTLE ·')) {
@@ -5141,45 +5115,7 @@ export function initTdTab(root) {
       + ` · bounty ${spec.bounty}`;
   });
 
-  // The verdict lists. Three tiers by how far the run got; picked by
-  // score modulo (deterministic per run — a replayed seed gets the same
-  // eulogy). Low tier is the low-key diss track the operator ordered.
-  const VERDICT_LOW = [
-    'SNAFU · K-KILL ×3 · try harder next time',
-    'THAT WAS THE TUTORIAL, LAD',
-    'the heart deserved better',
-    'portals 2 · you 0 · do the math',
-    'walked the wrong pole, soldier',
-    'the phage send their regards',
-    'logistics called — they want the tank back',
-    'a bold strategy: dying early',
-    'brief. very brief.',
-    'the SITREP is one word long: OOF',
-  ];
-  const VERDICT_MID = [
-    'GOOD RUN, LAD',
-    'held the line — for a while',
-    'a proper scrap, that one',
-    'the heart remembers who stood',
-    'they earned that one. barely.',
-    'decent tread-work, commander',
-    'the wall of you nearly held',
-    'a fighting retreat, well fought',
-    'they will find the wreck FACING them',
-    'not the worst transmission we have logged',
-  ];
-  const VERDICT_HIGH = [
-    'OUTSTANDING, COMMANDER',
-    'the sector will sing of this',
-    'textbook defense · filthy execution',
-    'a masterclass in applied violence',
-    'the portals BLINKED first',
-    'carve this one into the hull',
-    'the heart beat louder for you',
-    'legendary tread-work · the ranks agree',
-    'they will teach this run at the academy',
-    'send THIS transmission twice',
-  ];
+  // The verdict lists (VERDICT_LOW/MID/HIGH, src/content/controller-copy.js): three tiers by how far the run got, picked by score
   function loseGame(reason) {
     if (player.won) return;
     player.won = true; // stops motion; same flag, sadder modal

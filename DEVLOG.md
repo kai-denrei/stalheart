@@ -284,6 +284,20 @@ Evidence:
 - test/diag-overlay.mjs, test/perf-overlay.mjs, test/dev-panel.mjs pin those logs' digests; tools/refactor/undef-diff.mjs before/after: no new undefined or unused names
 - npm test, npm run check, npm run build; browser suites from a snapshot: --defense, --probe, --seats
 
+## 2026-10-07 — The controller's copy tables are content: src/content/controller-copy.js
+
+change · accepted · 2026-10-07-controller-copy-is-content
+
+The refactor run's Task 7: fixed lines and labels sat in src/td-tab.js as closure consts (the verdicts, the callouts, the shell's words, the directive labels, the auto radial's options).
+
+RECKLESS_MSGS, HEART_MSGS, DIRECTIVE_LABEL, AUTO_OPTIONS, SHELL_WORDS, VERDICT_LOW, VERDICT_MID and VERDICT_HIGH are frozen exports of src/content/controller-copy.js with their comments; td-tab imports them on an existing content import line and keeps a pointer comment where each stood. HEART_LOOKS stays in td-tab against the plan: its entries call closures (look(), the Sentry terraformer's preload/make, THREE) and content may not. The tables are only read (by index and key), so freezing changes nothing. td-tab 8,825 -> 8,761 lines.
+
+Evidence:
+
+- Each export deep-equals the literal it replaced, evaluated from td-tab before the move (session scratchpad t7eq.mjs)
+- test/controller-copy.mjs; tools/refactor/comments-kept.mjs: every comment word kept; undef-diff clean
+- npm test, npm run check, npm run build; snapshot suites --debrief --defense --skip-tutorial
+
 ## 2026-10-07 — The controller's byte budget goes; its line budget becomes a ceiling re-based by decision; host contracts take the budget's job
 
 decision · accepted · 2026-10-07-byte-budget-goes-line-ceiling
