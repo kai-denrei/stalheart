@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "id": "2026-10-07-sector-debrief-beep-never-supplied",
+  "date": "2026-10-07",
+  "type": "issue",
+  "status": "observed",
+  "title": "Open: sector-run hands the debrief h.beep, which td-tab never supplies, so the debrief's page ticks are silent",
+  "context": "Found by test/host-contracts.mjs on 2026-10-07. src/fx/sector-run.js builds the debrief with { play: h.sfx, beep: h.beep, ... }; td-tab's createSectorRun literal has no beep member and no beep name in scope. src/fx/sector-debrief.js returns early from its tick when beep is falsy (line 344) and falls back from play to beep elsewhere.",
+  "outcome": "Behaviour left unchanged (the refactor run changes no behaviour): the debrief's tick sound never plays in the game. The owner decides whether the debrief should tick (supply beep: (f, ms) => sfx.beep(f, ms)) or the member should go. Allow-listed in MISSING in test/host-contracts.mjs. A second structural finding sits beside it: src/fx/laser-station.js passes its whole host on to createLaserArsenal ({ ...host, passEnded }), listed in NESTED.",
+  "alternatives": [],
+  "evidence": [
+    "grep -n 'beep' src/fx/sector-run.js src/fx/sector-debrief.js src/td-tab.js",
+    "node test/host-contracts.mjs"
+  ],
+  "supersedes": []
+}

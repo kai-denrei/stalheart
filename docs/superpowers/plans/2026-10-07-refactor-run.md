@@ -275,7 +275,7 @@ Keep the `longLines` loop and everything after it unchanged. Change the final su
 **Interfaces:**
 - Produces: a node test program (picked up by `npm test`) that discovers every host factory wired from `src/td-tab.js` and fails when a module reads a member td-tab does not supply, when td-tab supplies a member no module reads, or when a host parameter is passed on to another factory.
 
-- [ ] **Step 1: Write the test**
+- [x] **Step 1: Write the test**
 
 ```js
 // HOST CONTRACTS (the refactor run, 2026-10-07): the controller hands each src/fx and src/platform host module a literal of named
@@ -366,11 +366,11 @@ function keysOf(literal, where) {
 }
 ```
 
-- [ ] **Step 2: Run it** — `node test/host-contracts.mjs` — Expected: it fails with the real list: at least `programme-host.js: createProgrammeHost passes its host on to createHullHost`, plus any supplied-but-unread or read-but-missing members. **Every line of that output is a finding.** Add `src/fx/programme-host.js:createHullHost` to `NESTED` with a comment pointing at Task 4; for each unread member, confirm with grep that no nested factory reads it, then remove it from td-tab's literal (that is a dead member) or, if a nested factory reads it, leave it until Task 4 and note it in the commit message. For each missing member, the literal is wrong and the game has a latent `undefined` call: record it as a finding and fix the literal only if the fix is a missing getter for an existing name.
+- [x] **Step 2: Run it** — `node test/host-contracts.mjs` — Expected: it fails with the real list: at least `programme-host.js: createProgrammeHost passes its host on to createHullHost`, plus any supplied-but-unread or read-but-missing members. **Every line of that output is a finding.** Add `src/fx/programme-host.js:createHullHost` to `NESTED` with a comment pointing at Task 4; for each unread member, confirm with grep that no nested factory reads it, then remove it from td-tab's literal (that is a dead member) or, if a nested factory reads it, leave it until Task 4 and note it in the commit message. For each missing member, the literal is wrong and the game has a latent `undefined` call: record it as a finding and fix the literal only if the fix is a missing getter for an existing name.
 
-- [ ] **Step 3: Verify** — `node test/host-contracts.mjs && npm test && node --check src/td-tab.js` — Expected: pass, `Host contracts hold for N factories.`
+- [x] **Step 3: Verify** — `node test/host-contracts.mjs && npm test && node --check src/td-tab.js` — Expected: pass, `Host contracts hold for N factories.`
 
-- [ ] **Step 4: Commit** — `Host contracts: td-tab's literals and the host modules agree, proven without a parser; <N> dead members removed; the hull host's nesting listed as the open finding`
+- [x] **Step 4: Commit** — `Host contracts: td-tab's literals and the host modules agree, proven without a parser; <N> dead members removed; the hull host's nesting listed as the open finding`
 
 ---
 

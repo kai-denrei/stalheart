@@ -371,7 +371,7 @@ First step, when it is picked up: `@ts-check` on `src/domain` as a trial, to see
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 52 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 53 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
 
 ### The welcome page's hover sound cannot start before the first click, tap or key: the browser's rule, not the page's
 
@@ -384,6 +384,12 @@ Owner, 2026-10-07: 'landing page pocket guide: sound fx and visual on hover; the
 `2026-10-07-start-with-the-truck-unlock-the-tank-then-the-thrusters` · decision · **proposed**
 
 Owner, 2026-10-07 (twenty-eighth notes, 6): 'thinking about a gameplay change: a) player starts with the truck (jelaludo.github.io/SentryTowers_A6/settlement-industry/) or a similar smaller machine; it can RAM weak enemies, but must avoid the hard-core ones and lure them to the defense. b) later stage we unlock the tank with the cannon. c) later we add the plasma thrusters. Just file as roadmap for now. We first investigate the implication for fps and gameplay.'
+
+### Open: sector-run hands the debrief h.beep, which td-tab never supplies, so the debrief's page ticks are silent
+
+`2026-10-07-sector-debrief-beep-never-supplied` · issue · **observed**
+
+Found by test/host-contracts.mjs on 2026-10-07. src/fx/sector-run.js builds the debrief with { play: h.sfx, beep: h.beep, ... }; td-tab's createSectorRun literal has no beep member and no beep name in scope. src/fx/sector-debrief.js returns early from its tick when beep is falsy (line 344) and falls back from play to beep elsewhere.
 
 ### Reflection to design against: an enemy that makes the tank's shell meaningful
 

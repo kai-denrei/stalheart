@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-10-07-host-contracts-test",
+  "date": "2026-10-07",
+  "type": "change",
+  "status": "accepted",
+  "title": "Host contracts: td-tab's literals and the host modules agree, checked without a parser",
+  "context": "The refactor run's budget decision (2026-10-07-byte-budget-goes-line-ceiling) moves the guard's job from the controller's size to ownership: a host module that reads a member td-tab does not supply sees undefined, a member td-tab supplies and nobody reads is dead wiring, and a host passed on to another factory hides a second reader of the controller's members.",
+  "outcome": "test/host-contracts.mjs finds every src/fx and src/platform factory whose td-tab call passes an object literal (28 at the start), maps the literal to the parameter in the same position, reads the module's uses inside the factory's own body (h.x, ...h.x, destructuring; h.x ?? d, h.x || d and h.x?.( are optional, as are pattern members with a default), evaluates the literal under `with` over a sentinel Proxy for its keys, and fails on a required read the literal lacks, a supplied key nobody reads, or a host handed to a nested factory (as an argument or spread into a literal). One dead member removed: sector-run's spReady (td-tab 8086). Two open findings are allow-listed, never to grow: programme-host's createHullHost(c) (closed by the run's Task 4) and laser-station's createLaserArsenal(scene, { ...host, passEnded }). HOST_CONTRACTS_LIST=1 prints the factories found.",
+  "alternatives": [
+    "Parse with espree from the npx cache: rejected for a test in npm test, the cache is not part of the repo; a bracket-aware scanner and the sentinel evaluation are enough for literals one member per line.",
+    "Treat every reading of a member that falls back (h.x ?? d) as required: rejected, the fallbacks are the modules' own defaults (programme-host's c.root ?? document.body, sector-run's h.makeDebrief ?? createSectorDebrief)."
+  ],
+  "evidence": [
+    "node test/host-contracts.mjs: Host contracts hold for 28 factories.",
+    "Before the spReady removal it printed: src/fx/sector-run.js: createSectorRun (td-tab:8082): td-tab supplies spReady but the module never reads it; grep -rn spReady src shows no other reader"
+  ],
+  "supersedes": []
+}

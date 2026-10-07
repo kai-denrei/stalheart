@@ -164,6 +164,19 @@ Evidence:
 
 - npm test (185), npm run check, npm run architecture, npm run build; the browser steps named in each note's record
 
+## 2026-10-07 — Open: sector-run hands the debrief h.beep, which td-tab never supplies, so the debrief's page ticks are silent
+
+issue · observed · 2026-10-07-sector-debrief-beep-never-supplied
+
+Found by test/host-contracts.mjs on 2026-10-07. src/fx/sector-run.js builds the debrief with { play: h.sfx, beep: h.beep, ... }; td-tab's createSectorRun literal has no beep member and no beep name in scope. src/fx/sector-debrief.js returns early from its tick when beep is falsy (line 344) and falls back from play to beep elsewhere.
+
+Behaviour left unchanged (the refactor run changes no behaviour): the debrief's tick sound never plays in the game. The owner decides whether the debrief should tick (supply beep: (f, ms) => sfx.beep(f, ms)) or the member should go. Allow-listed in MISSING in test/host-contracts.mjs. A second structural finding sits beside it: src/fx/laser-station.js passes its whole host on to createLaserArsenal ({ ...host, passEnded }), listed in NESTED.
+
+Evidence:
+
+- grep -n 'beep' src/fx/sector-run.js src/fx/sector-debrief.js src/td-tab.js
+- node test/host-contracts.mjs
+
 ## 2026-10-07 — The nest cleared: a site guard never takes a cell under the lander's own footprint, and the site clears with fewer than three guards left
 
 change · resolved · 2026-10-07-nest-cleared-never-under-the-lander-and-below-three
@@ -190,6 +203,21 @@ Evidence:
 
 - --nuke-key: NUKE KEY 2 hole(s) up, paused false; N filled every open hole (2 -> 0)
 - npm run architecture: budgets lowered to 8734 lines / 522369 bytes
+
+## 2026-10-07 — Host contracts: td-tab's literals and the host modules agree, checked without a parser
+
+change · accepted · 2026-10-07-host-contracts-test
+
+The refactor run's budget decision (2026-10-07-byte-budget-goes-line-ceiling) moves the guard's job from the controller's size to ownership: a host module that reads a member td-tab does not supply sees undefined, a member td-tab supplies and nobody reads is dead wiring, and a host passed on to another factory hides a second reader of the controller's members.
+
+test/host-contracts.mjs finds every src/fx and src/platform factory whose td-tab call passes an object literal (28 at the start), maps the literal to the parameter in the same position, reads the module's uses inside the factory's own body (h.x, ...h.x, destructuring; h.x ?? d, h.x || d and h.x?.( are optional, as are pattern members with a default), evaluates the literal under `with` over a sentinel Proxy for its keys, and fails on a required read the literal lacks, a supplied key nobody reads, or a host handed to a nested factory (as an argument or spread into a literal). One dead member removed: sector-run's spReady (td-tab 8086). Two open findings are allow-listed, never to grow: programme-host's createHullHost(c) (closed by the run's Task 4) and laser-station's createLaserArsenal(scene, { ...host, passEnded }). HOST_CONTRACTS_LIST=1 prints the factories found.
+
+Alternatives: Parse with espree from the npx cache: rejected for a test in npm test, the cache is not part of the repo; a bracket-aware scanner and the sentinel evaluation are enough for literals one member per line.; Treat every reading of a member that falls back (h.x ?? d) as required: rejected, the fallbacks are the modules' own defaults (programme-host's c.root ?? document.body, sector-run's h.makeDebrief ?? createSectorDebrief).
+
+Evidence:
+
+- node test/host-contracts.mjs: Host contracts hold for 28 factories.
+- Before the spReady removal it printed: src/fx/sector-run.js: createSectorRun (td-tab:8082): td-tab supplies spReady but the module never reads it; grep -rn spReady src shows no other reader
 
 ## 2026-10-07 — A building's footprint is its geometry's: the triangles near the ground on a grid, so the solar array is solid at its panels with its charging pad open, and a lander blocks where it stands rather than its whole perimeter
 
