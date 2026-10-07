@@ -551,7 +551,7 @@ The story's per-frame tick leaves `src/fx/programme-host.js` for modules named a
 - Create: `src/fx/build-pointer.js` — from 2660–2858 (build pointers, pinch, long press, `refuseCaption`, `endBuildPointer`, the fire pad): `createBuildPointer(container, host) -> { dispose() }`.
 - Tests: `test/tank-input.mjs` (synthetic `keydown`/`keyup` through a fake `addEventListener` registry: the `keys` map after W, shift, release-all), `test/build-pointer.mjs` (a tap, a drag, a long press through fake pointer events: the host calls recorded).
 
-- [ ] Steps as Task 8. Suites: `--seats`, `--seat-switch`, `--defense`, `--skip-tutorial`, `--phone` (compare with main's step-5 stop), `--nuke-key`. Commit — `The tank's input is a platform module and the build pointer an fx module; td-tab -<n> lines`.
+- [x] Steps as Task 8. Suites: `--seats`, `--seat-switch`, `--defense`, `--skip-tutorial`, `--phone` (compare with main's step-5 stop), `--nuke-key`. Commit — `The tank's input is a platform module and the build pointer an fx module; td-tab -<n> lines`.
 
 ---
 

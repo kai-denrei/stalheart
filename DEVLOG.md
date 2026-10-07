@@ -220,6 +220,20 @@ Evidence:
 - undef-diff, tdz-check and host contracts (43 factories) clean
 - npm test, npm run check, npm run build; snapshot suites --base-look --laser --laser-game --quiver-frame --defense --seats pass
 
+## 2026-10-07 — The tank's input is a platform module and the build pointer an fx module
+
+change · accepted · 2026-10-07-tank-input-and-build-pointer-are-modules
+
+The refactor run's Task 15: about 470 lines of src/td-tab.js registered and handled input: the keyboard, the held-input release, the seat keys, the pad's hold buttons, the throttle lever, the directive chip and auto radial, and the build camera's pointers (drag, pinch, wheel, tap, double tap, long press, the strike's paint, the fire pad).
+
+src/platform/tank-input.js (createTankInput) and src/fx/build-pointer.js (createBuildPointer) register their listeners when created, at the controller's own point of start-up, so their order against every other listener is unchanged. The input state (keys, cruise, throttle, autoMode, steerHold, the buildcam's lets) and buildPointers (setView clears it) stay in td-tab and come in as values, lazy getters (towerByCell, orderByCell, openShop, ndc, raycaster, towers, isaoWorker, directiveCtrl are declared below) and setters (seven write-only lets as setters alone). paintThrottle, syncDirectiveChip and refuseCaption stay one-liners. Eight imports left td-tab. td-tab 6,817 -> 6,456 lines.
+
+Evidence:
+
+- Equivalence harnesses (session scratchpad input- and pointer-scenario.mjs): the original blocks through new Function beside the modules, every handler they register fired with the same synthetic key, pointer, wheel, click and blur events: identical logs and state; test/tank-input.mjs and test/build-pointer.mjs pin the digests
+- undef-diff, tdz-check and host contracts (47 factories) clean; tools/refactor/drop-unread.mjs drops a write-only let's getter
+- npm test, npm run check, npm run build; snapshot suites --base-look --seats --seat-switch --defense --skip-tutorial --phone --nuke-key pass
+
 ## 2026-10-07 — A gameplay change to investigate: the player starts with a truck that rams the weak and lures the hard-core to the defence; the tank with its cannon is unlocked later; the plasma thrusters after that
 
 decision · proposed · 2026-10-07-start-with-the-truck-unlock-the-tank-then-the-thrusters

@@ -14,10 +14,9 @@ import { GUNSHIP_CALL, GUNSHIP_FAR } from './content/gunship.js';
 import { unlockedTowers } from './domain/expeditions.js';
 import { createExpeditionsHost } from './fx/expedition-glue.js';
 import { CARGO_LOOK } from './content/cargo.js';
-import { STORY_EXPEDITIONS } from './content/story-defaults.js'; import { RECKLESS_MSGS, HEART_MSGS, DIRECTIVE_LABEL, AUTO_OPTIONS, SHELL_WORDS, VERDICT_LOW, VERDICT_MID, VERDICT_HIGH } from './content/controller-copy.js';
+import { STORY_EXPEDITIONS } from './content/story-defaults.js'; import { RECKLESS_MSGS, HEART_MSGS, DIRECTIVE_LABEL, SHELL_WORDS, VERDICT_LOW, VERDICT_MID, VERDICT_HIGH } from './content/controller-copy.js';
 import { hasPerk as programmeHas, snapshot as programmeSnapshot, lose as programmeLose } from './domain/build-programme.js';
 import { createProgramWarm } from './fx/program-warm.js';
-import { devModeOn } from './core/dev-mode.js';
 import { createControlsCard } from './fx/controls-card.js';
 import { createTutorialCard } from './fx/tutorial-card.js';
 import { openStoryAt } from './fx/story-entry.js';
@@ -28,7 +27,6 @@ import { STORY_SKIP, STORY_MISSION } from './content/story-defaults.js';
 import { createShowcase } from './fx/showcase.js';
 import { showcaseOn } from './platform/showcase-entry.js';
 import { createHullLoss } from './fx/hull-loss.js'; import { bayContainers, syncBays } from './fx/life-bays.js';
-import { RELEASE_EVENTS, releasesHeld, releaseHeld } from './core/held-input.js';
 import { METRES_PER_CELL, arcToMetres, metresToArc } from './core/stage-units.js';
 import { pickMissileTarget, missileLimits } from './domain/missile-targeting.js';
 import { createRunContext } from './domain/run-context.js'; import { trunkCells, simDirective, simPick } from './domain/sim-policy.js'; import { towerPerch } from './domain/tower-perch.js';
@@ -61,7 +59,7 @@ import { createLaserStation, structureLostHtml } from './fx/laser-station.js'; i
 import { computeBerths, berthIndexFor } from './berths.js'; import { createProgrammeHost } from './fx/programme-host.js'; import { strikeFallPose, droneRidePose, bastionPose, tankViewPose } from './domain/camera-goal.js'; import { createShopRadial } from './fx/shop-radial.js'; import { berthRun, berthHeading, deployU, easeDeploy, deployFraming } from './domain/deploy-path.js';
 import { createSkyRig } from './fx/sky-rig.js'; import { createIsaoMoments } from './fx/isao-moments.js'; import { createColonyTick } from './fx/colony-tick.js'; import { createAutoSupport } from './fx/auto-support.js';
 import { createCanyonRun } from './fx/canyon-run.js'; import { createEndingHost } from './fx/ending-host.js'; import { createIsaoWorker } from './fx/isao-worker.js'; import { createHullDrive } from './fx/hull-drive.js'; import { createTowerCombat } from './fx/tower-combat.js';
-import { createEnemyStep } from './fx/enemy-step.js'; import { createTankLaser } from './fx/tank-laser.js'; import { createPlasmaBeams } from './fx/plasma-beams.js'; import { createWarnRing } from './fx/warn-ring.js'; import { createHullHost } from './fx/hull-issue.js'; import { createWaveCard } from './fx/wave-card.js';
+import { createEnemyStep } from './fx/enemy-step.js'; import { createTankLaser } from './fx/tank-laser.js'; import { createPlasmaBeams } from './fx/plasma-beams.js'; import { createWarnRing } from './fx/warn-ring.js'; import { createHullHost } from './fx/hull-issue.js'; import { createWaveCard } from './fx/wave-card.js'; import { createTankInput } from './platform/tank-input.js'; import { createBuildPointer } from './fx/build-pointer.js';
 import { wantsSecondary, shellsForAll } from './autofire.js';
 import { PLASMA_DEFAULTS } from './beamdraw.js';
 import { sub3, add3, scale3, dot3, cross3, norm3, len3, dist3, segKey, tangentBasis } from './vec3.js';
@@ -99,8 +97,8 @@ import { makeBloom } from './postfx.js';
 import { TANK_FEEL, makeTankFeel, stepTankFeel, landTankFeel, fireTankFeel, applyTankFeel, applyTankHealth } from './tankfeel.js';
 import { FEEL } from './feelstore.js';
 import { makeStrike, makeStrikeParams, grantStrikes, stepStrike,
-  toggleArm, paintTarget, launchStrike, stepFall, skipFall, fallProgress,
-  strikeDamage, retargetStrike, orbitProgress } from './strike.js'; import { makeGunship, onStation, phaseLeft, selectGun, startStation } from './domain/gunship.js'; import { GUNSHIP_GUNS, GUNSHIP_ORBIT } from './content/gunship.js'; import { createGunshipBriefing } from './fx/gunship-briefing.js'; import { createFoundryFx } from './fx/foundry-fx.js'; import { createExplosions } from './fx/explosions.js';
+  toggleArm, launchStrike, stepFall, fallProgress,
+  strikeDamage, orbitProgress } from './strike.js'; import { makeGunship, onStation, phaseLeft, selectGun, startStation } from './domain/gunship.js'; import { GUNSHIP_GUNS, GUNSHIP_ORBIT } from './content/gunship.js'; import { createGunshipBriefing } from './fx/gunship-briefing.js'; import { createFoundryFx } from './fx/foundry-fx.js'; import { createExplosions } from './fx/explosions.js';
 import { createRadarScope } from './fx/radar-scope.js'; import { createTowerAim } from './fx/tower-aim.js'; import { buildVarsModal } from './fx/vars-modal.js'; import { startVictoryPull } from './fx/victory-pull.js'; import { createShowcaseHooks } from './fx/showcase-hooks.js'; import { createGunshipRig } from './fx/gunship-rig.js';
 import { makeA6, arc as a6Arc } from './heptapod.js';
 import { DEFAULT_TOWER_LOOK, buildTowerLook, preloadLook, lookReady } from './towerlooks.js';
@@ -2060,477 +2058,118 @@ export function initTdTab(root) {
   function arriveAt(...a) { return hullDrive.arriveAt(...a); }
   function advanceMotion(...a) { return hullDrive.advanceMotion(...a); }
 
-  function onKeyEvent(ev, down) {
-    if (!active || pilotMode) return;
-    // a clicked button (lil-gui title, d-pad, modal regen) keeps FOCUS, and the browser "clicks" the focused button again on
-    // Space — which is the fire key. That's how the panel kept "opening by itself" mid-battle. Drop button focus before handling
-    // any game key. Inputs keep focus (typing a seed must not drive the tank's keys into blur).
-    if (down && document.activeElement && document.activeElement.tagName === 'BUTTON') {
-      document.activeElement.blur();
-    }
-    const k = ev.key.toLowerCase();
-    // QoL: with a tower SELECTED (its radial open, or watched in bastion),
-    // W/↑ upgrades it instead of driving — HK's shortcut, kept out of the
-    // tank's way by requiring a selection context
-    // U upgrades the selected tower. It was W, which is ALSO the drive key —
-    // a shortcut that fires while you are steering is a trap, not a shortcut.
-    if (down && k === 'u') {
-      const sel = towerByCell.get(shopCi);
-      if (sel) {
-        if (orderUpgrade(sel)) {
-          if (shopCi !== -1) openShop(shopCi); // refresh the radial
-        } else if (shopCi !== -1) {
-          flashShopNote(upgradeCost(sel.def, sel.tier) === null ? 'max tier' : 'not enough biomass');
-        }
-        ev.preventDefault();
-        return;
-      }
-    }
-    const m = { arrowleft: 'left', a: 'left', arrowright: 'right', d: 'right',
-      arrowup: 'fast', w: 'fast', arrowdown: 'slow', s: 'slow',
-      shift: 'laser' }[k];
-    if (m) {
-      if (down && m === 'fast' && !keys.fast) noteFastTap(); // double-tap → cruise
-      // the brake kills BOTH holds, or releasing S would drive off again
-      if (down && m === 'slow') { cruise = false; throttle = 0; paintThrottle(); }
-      keys[m] = down;
-      ev.preventDefault();
-      return;
-    }
-    // the tower radial claims the keyboard while it is up: digits place
-    // (1..8 in unlock order — the same order the wheel shows), ESC closes.
-    // Claimed even when the placement fails (locked / can't afford), so a
-    // miss never falls through and flips the camera instead.
-    if (down && shopCi !== -1) {
-      if (k === 'escape') { closeShop(); ev.preventDefault(); return; }
-      const d = parseInt(k, 10);
-      // Catalog numbers, radial slots and keyboard digits share one order.
-      if (d >= 1 && d <= TOWERS.length && !towerByCell.get(shopCi)) {
-        const def = TOWERS[d - 1];
-        const tkey = def.key;
-        const unlocked = new Set((automated() ? unlockedTowers(story.expeditions, STORY_EXPEDITIONS.base) : unlockedTowerKeys(wave)));
-        if (unlocked.has(tkey) && !placeError(shopCi) && eco.canAfford(def.cost)) {
-          if (orderTower(tkey, shopCi)) closeShop();
-        }
-        ev.preventDefault();
-        return;
-      }
-    }
-    if (down && k === 'escape') { togglePause(); ev.preventDefault(); return; }
-    if (paused) return; // frozen: only ESC gets through
-    // FLYING HIM, SPACE AND SHIFT ARE ALTITUDE. Context-scoped exactly like
-    // the U-upgrade shortcut: the drone view is the only place these mean
-    // anything else, and a tank commander is not firing while he is a drone.
-    if (params.view === 'drone' && (k === ' ' || k === 'spacebar' || k === 'shift')) {
-      keys[k === 'shift' ? 'droneDown' : 'droneUp'] = down;
-      ev.preventDefault();
-      return;
-    }
-    if (down && (k === ' ' || k === 'spacebar')) { fire(); ev.preventDefault(); return; }
-    // T FOR TATE (盾), not S: S is REVERSE in CTL_DRIVE_KEYS (a map, so a grep for 's' never showed it)
-    if (down && k === 't') { deployShieldNow(); ev.preventDefault(); return; }
-    if (down && k === 'h') pulseHint();
-    if (down && k === 'v') toggleView();
-    // views land on number keys and on the letters that say them: 1/M/O all read as "map" and go to orbit, 2 is first person, 3
-    // third person (T is the SHIELD now, and V still cycles). The radar's heart/player toggle lives on the MAP button alone.
-    if (down && (k === '1' || k === 'm' || k === 'o')) setView('orbit');
-    if (down && k === '2') setView('pov');
-    // THIRD PERSON LOSES ITS LETTER to the shield. It keeps `3`, and `v`
-    // still cycles views, so no way in is actually gone — where the shield had
-    // no key at all that did not already mean something else.
-    if (down && k === '3') setView('third');
-    // C for Cheat (moved off M, which is a VIEW now)
-    const cheat = down && (k === 'c' || k === 'n') && (flags.acceptance === '1' || devModeOn({ buildToken: document.querySelector('meta[name="cb"]')?.content, search: location.search, stored: localStorage.getItem('ssg.dev-face') }).on);   /* cheats for DEV and the acceptance runs, not for players */
-    if (cheat && k === 'c') {
-      strike.ready = Math.min(9, strike.ready + 1);
-      showToast('<div class="wave-num">CHEAT · MISSILE LOADED</div>'
-        + `<div class="wave-role">ready ${strike.ready}</div>`, 1200);
-    }
-    if (cheat && k === 'n') { let n = 0; for (const sp of spawnPoints) if (sp.alive && sp.obj?.userData.breach) { executeStrike(sp.ci, t); n++; } sectorRun?.test.forgo(); showToast(`<div class="wave-num">CHEAT · HOLES NUKED · ${n}</div>`, 1200); }   /* N FOR NUKE (owner, 2026-10-07): holes filled, the rest forgone */
-    // Q/E nudge the throttle lever from the keyboard — up for speed, down
-    // through zero into reverse. Key auto-repeat does the holding.
-    if (down && (k === 'q' || k === 'e')) {
-      // FLYING HIM: the same pair is altitude, which is the axis a ground
-      // vehicle never had and a drone obviously should
-      if (params.view === 'drone') {
-        isaoWorker.setAlt(Math.max(1.2, Math.min(9, isaoWorker.alt() + (k === 'q' ? 0.35 : -0.35))));
-        return;
-      }
-      const step = k === 'q' ? 0.12 : -0.12;
-      let v2 = throttle + step;
-      if (Math.abs(v2) < 0.07) v2 = 0;   // same detent the lever has
-      throttle = Math.min(1, Math.max(-THROTTLE_REV, v2));
-      if (throttle !== 0) { cruise = false; autoMode = false; }
-      paintThrottle();
-    }
-  }
-  addEventListener('keydown', (ev) => onKeyEvent(ev, true));
-  addEventListener('keyup', (ev) => onKeyEvent(ev, false));
-  // EVERY held input goes, not just the five drive keys: taking a screenshot moves focus off the page, the keyup never lands, and
-  // the tank went on firing with the not-ready cue behind it (owner, 2026-09-16). Which events count is src/core/held-input.js's
-  // ruling
-  const releaseInputs = () => { releaseHeld(keys, Object.keys(keys)); pilot?.release?.(); };
-  for (const type of RELEASE_EVENTS) (type === 'mouseleave' ? renderer.domElement : type === 'blur' ? window : document).addEventListener(type, () => { if (releasesHeld(type, { hidden: document.visibilityState === 'hidden', locked: !!document.pointerLockElement, wasLocked: true })) releaseInputs(); });
-  // 7 8 9 0 TAKE THE SEATS (owner, 2026-09-16): each key clicks the views strip's own button, so a seat that is not available yet
-  // refuses exactly as the button does, and the strip stays the one place a seat is chosen. Capture phase, registered before any
-  // seat installs its own handler, so it answers from the tank and from inside a seat alike
-  addEventListener('keydown', (ev) => {
-    if (ev.repeat || /INPUT|SELECT|TEXTAREA/.test(ev.target?.tagName ?? '') || shopCi !== -1) return;
-    const seat = { 7: '[data-view="tank"]', 8: '[data-mount="gunship"]', 9: '[data-view="laser"]', 0: '[data-view="map"]' }[ev.key];
-    if (!seat) return;
-    document.querySelector(`#story-views ${seat}`)?.click();
-    ev.preventDefault();
-  }, true);
-
-  // T1 tank first person · T3 tank third person · O1 orbital. Bastion left the cycle (tower-watching was a spectator mode nobody
-  // drove from), and nothing auto-centres any more — the two CENTRE buttons do it on demand. V toggles the two views that have
-  // buttons. POV is parked (operator: it earns its screen space on nobody's phone) but still selectable from the GUI, and the
-  // DRONE is not on the cycle at all — you get it by reaching for Isao, which is the point of it.
-  function toggleView() {
-    setView(params.view === 'third' ? 'orbit' : 'third');
-  }
-
-  // touch zones/buttons: press-and-hold, like the keys; onPress fires per
-  // fresh tap. The .pressed glow is the zones' only feedback — they carry
-  // no labels, so the glow IS the affordance.
-  function holdButton(sel, flag, onPress) {
-    const el = root.querySelector(sel);
-    el.addEventListener('pointerdown', (ev) => {
-      ev.preventDefault();
-      if (onPress) onPress();
-      keys[flag] = true;
-      el.classList.add('pressed');
-    });
-    for (const evt of ['pointerup', 'pointerleave', 'pointercancel']) {
-      el.addEventListener(evt, () => {
-        keys[flag] = false;
-        el.classList.remove('pressed');
-      });
-    }
-  }
-  // --- throttle lever -----------------------------------------------------
-  const throtEl = root.querySelector('#td-throttle');
-  const throtTrack = throtEl.querySelector('.throttle-track');
-  const throtFill = throtEl.querySelector('.throttle-fill');
-  const throtHandle = throtEl.querySelector('.throttle-handle');
-  const throtRead = throtEl.querySelector('.throttle-read');
-
-  function paintThrottle() {
-    const zeroPct = THROTTLE_ZERO * 100;
-    // handle position, measured down from the top of the track
-    const t = throttle >= 0
-      ? THROTTLE_ZERO * (1 - throttle)
-      : THROTTLE_ZERO + (-throttle / THROTTLE_REV) * (1 - THROTTLE_ZERO);
-    throtHandle.style.top = `${t * 100}%`;
-    // the fill grows from the zero line toward the handle, either way
-    const a = Math.min(t * 100, zeroPct);
-    const b = Math.max(t * 100, zeroPct);
-    throtFill.style.top = `${a}%`;
-    throtFill.style.height = `${b - a}%`;
-    throtEl.classList.toggle('rev', throttle < 0);
-    throtEl.classList.toggle('idle', throttle === 0);
-    throtRead.textContent = throttle === 0 ? '0' : `${Math.round(throttle * 100)}`;
-  }
-
-  function setThrottleFromY(clientY) {
-    const r = throtTrack.getBoundingClientRect();
-    const t = Math.min(1, Math.max(0, (clientY - r.top) / (r.height || 1)));
-    let v = t <= THROTTLE_ZERO
-      ? (THROTTLE_ZERO - t) / THROTTLE_ZERO
-      : -((t - THROTTLE_ZERO) / (1 - THROTTLE_ZERO)) * THROTTLE_REV;
-    if (Math.abs(v) < 0.07) v = 0;   // detent, so "stop" is findable by feel
-    throttle = Math.min(1, Math.max(-THROTTLE_REV, v));
-    if (throttle !== 0) { cruise = false; autoMode = false; }
-    paintThrottle();
-  }
-
-  throtEl.addEventListener('pointerdown', (ev) => {
-    ev.preventDefault();
-    throtEl.setPointerCapture(ev.pointerId);
-    throtEl.classList.add('pressed');
-    setThrottleFromY(ev.clientY);
+  // THE TANK'S INPUT (src/platform/tank-input.js): the keys, the seat keys, the hold buttons, the throttle lever, the directive chip
+  const tankInput = createTankInput({
+    root,
+    params,
+    pulseHint,
+    setView,
+    flags,
+    orderUpgrade,
+    flashShopNote,
+    keys,
+    noteFastTap,
+    closeShop,
+    automated,
+    placeError,
+    orderTower,
+    togglePause,
+    fire,
+    deployShieldNow,
+    strike,
+    showToast,
+    spawnPoints,
+    executeStrike,
+    THROTTLE_REV,
+    renderer,
+    THROTTLE_ZERO,
+    player,
+    bqZ,
+    bqY,
+    buildFrame,
+    bqX,
+    bqM,
+    buildQ,
+    centerBuildOnHeart,
+    updateHud,
+    manualActive,
+    toggleMap,
+    active: () => active,
+    pilotMode: () => pilotMode,
+    shopCi: () => shopCi,
+    paused: () => paused,
+    towerByCell: () => towerByCell,
+    openShop: () => openShop,
+    story: () => story,
+    wave: () => wave,
+    eco: () => eco,
+    sectorRun: () => sectorRun,
+    t: () => t,
+    isaoWorker: () => isaoWorker,
+    pilot: () => pilot,
+    directiveCtrl: () => directiveCtrl,
+    setCruise: (v) => (cruise = v),
+    throttle: () => throttle,
+    setThrottle: (v) => (throttle = v),
+    setAutoMode: (v) => (autoMode = v),
+    setFollowSuspend: (v) => (followSuspend = v),
+    setBuildDist: (v) => (buildDist = v),
+    setSteerHold: (v) => (steerHold = v),
   });
-  throtEl.addEventListener('pointermove', (ev) => {
-    if (!throtEl.hasPointerCapture(ev.pointerId)) return;
-    setThrottleFromY(ev.clientY);
-  });
-  for (const evt of ['pointerup', 'pointercancel']) {
-    throtEl.addEventListener(evt, () => throtEl.classList.remove('pressed'));
-  }
-  paintThrottle();
-  holdButton('#td-pad-laser', 'laser');
-  holdButton('#td-pad-left', 'left');
-  holdButton('#td-pad-right', 'right');
-  root.querySelector('#td-pad-tank').addEventListener('click', () => setView('third'));
-  root.querySelector('#td-pad-orbit').addEventListener('click', () => setView('orbit'));
-  // CENTRE controls: the camera never sticks to anything now — these two
-  // aim the orbital view on demand (and take you there if you are not in it)
-  function centerBuildOnTank() {
-    followSuspend = false;
-    if (!player.pos) return;
-    const nrm = norm3(player.pos);
-    bqZ.set(nrm[0], nrm[1], nrm[2]);
-    bqY.copy(buildFrame().up);
-    bqX.crossVectors(bqY, bqZ).normalize();
-    bqY.crossVectors(bqZ, bqX).normalize();
-    bqM.makeBasis(bqX, bqY, bqZ);
-    buildQ.setFromRotationMatrix(bqM);
-  }
-  root.querySelector('#td-pad-ctrheart').addEventListener('click', () => {
-    if (params.view !== 'orbit') setView('orbit');
-    centerBuildOnHeart();
-    buildDist = 3.4;   // the heart centre IS the strategic pose: whole planet
-  });
-  root.querySelector('#td-pad-ctrtank').addEventListener('click', () => {
-    if (params.view !== 'orbit') setView('orbit');
-    centerBuildOnTank();
-    buildDist = 2.0;   // the tank centre is tactical: close enough to read cells
-  });
-  function syncDirectiveChip() {
-    const chip = root.querySelector('#td-pad-dir');
-    if (chip) chip.textContent = DIRECTIVE_LABEL[params.directive] || 'WANDER';
-  }
-  // TANK-AUTO: the button opens a small radial of directives instead of
-  // blind-cycling six of them — on a phone, cycling meant tapping through
-  // five states you did not want to reach the one you did.
-  const autoRadial = root.querySelector('#td-auto-radial');
-  for (const [key, label] of AUTO_OPTIONS) {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.textContent = label;
-    b.dataset.dir = key;
-    b.addEventListener('click', () => {
-      params.directive = key;
-      autoMode = true;   // picking a directive is the ONLY way into auto
-      steerHold = 1.2;   // give auto its takeover window
-      cruise = false;
-      directiveCtrl.updateDisplay();
-      syncDirectiveChip();
-      updateHud();
-      autoRadial.classList.add('hidden');
-    });
-    autoRadial.appendChild(b);
-  }
-  function syncAutoRadial() {
-    for (const b of autoRadial.children) {
-      b.classList.toggle('active', b.dataset.dir === params.directive && !manualActive());
-    }
-  }
-  root.querySelector('#td-pad-dir').addEventListener('click', () => {
-    const open = autoRadial.classList.toggle('hidden');
-    if (!open) syncAutoRadial();
-  });
-  // any tap that is not the radial closes it — a menu must not linger
-  addEventListener('pointerdown', (ev) => {
-    if (!autoRadial.classList.contains('hidden')
-      && !autoRadial.contains(ev.target)
-      && ev.target !== root.querySelector('#td-pad-dir')) {
-      autoRadial.classList.add('hidden');
-    }
-  });
+  function paintThrottle(...a) { return tankInput.paintThrottle(...a); }
+  function syncDirectiveChip(...a) { return tankInput.syncDirectiveChip(...a); }
 
-  syncDirectiveChip();
-  root.querySelector('#td-pad-map').addEventListener('click', () => toggleMap());
-
-  // build-camera input: drag = azimuth orbit, wheel = zoom, TAP = select a cell (shop/upgrade). A tap is a press that never
-  // traveled; anything that moves >8 px is an orbit. Action-mode pointers stay untouched. build-mode input: single finger orbits
-  // the azimuth, TWO fingers pinch to zoom. Track pointers by id so a pinch never fires a tower-placing tap.
   const buildPointers = new Map(); // pointerId -> {x, y}
-  let pinchPrev = null;            // last two-finger pixel distance
-  let pinched = false;             // ≥2 fingers touched this gesture → no tap
-  let tapStart = null;
-  // A tap is a press that never travelled. 8px is a trackpad's idea of "never"; a finger on glass jitters more than that
-  // (PLAYTEST-TODO §1: "a tap that moves 6px is still a tap to a human"). The shell's slop is finger-sized; desktop keeps its 8.
-  const tapSlop = () => (mobileShell ? 14 : 8);
-  // LONG-PRESS is the secondary action (plan §2.3): on the shell, in BUILD,
-  // holding a finger on a tower orders its upgrade — the desktop's U key,
-  // without a key. Cleared by travel, a second finger, or lifting.
-  const LONG_PRESS_MS = 550;
-  let pressTimer = 0;
-  let pressFired = false;          // the press was spent: the lift is not a tap
-  container.addEventListener('pointerdown', (ev) => {
-    // taps are tracked under EVERY camera — the shop opens anywhere now.
-    // Drag-orbit and pinch stay orbit-only; the chase cams own their framing.
-    clearTimeout(pressTimer); pressFired = false;
-    if (buildMode) {
-      buildPointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
-      if (buildPointers.size >= 2) { pinched = true; pinchPrev = null; tapStart = null; return; }
-    }
-    tapStart = [ev.clientX, ev.clientY];
-    if (mobileShell && buildMode) {
-      const px = ev.clientX, py = ev.clientY;
-      pressTimer = setTimeout(() => {
-        if (!tapStart || pinched) return;
-        const ci = cellAtScreen(px, py);
-        const tw = ci !== -1 ? towerByCell.get(ci) : null;
-        if (!tw) return;
-        pressFired = true; tapStart = null;
-        longPressUpgrade(tw);
-      }, LONG_PRESS_MS);
-    }
+  // THE BUILD POINTER (src/fx/build-pointer.js): drag, pinch, wheel, tap, double tap and long press on the build camera; the fire pad
+  const buildPointer = createBuildPointer({
+    container,
+    root,
+    mobileShell,
+    buildPointers,
+    cellAtScreen,
+    orderUpgrade,
+    closeShop,
+    showToast,
+    sfx,
+    buildFrame,
+    dragUp,
+    dragRight,
+    buildQ,
+    bqTmp,
+    strike,
+    showRangeRing,
+    strikeTune,
+    syncArmUi,
+    DTAP_MS,
+    DTAP_PX,
+    params,
+    centerBuildOnHeart,
+    renderer,
+    camera,
+    askDroneView,
+    gotoCell,
+    placeError,
+    strikeFeedInfo,
+    fire,
+    deployShieldNow,
+    buildMode: () => buildMode,
+    towerByCell: () => towerByCell,
+    orderByCell: () => orderByCell,
+    eco: () => eco,
+    isao: () => isao,
+    openShop: () => openShop,
+    ndc: () => ndc,
+    raycaster: () => raycaster,
+    towers: () => towers,
+    strikeGrace: () => strikeGrace,
+    buildDist: () => buildDist,
+    setBuildDist: (v) => (buildDist = v),
+    setFollowSuspend: (v) => (followSuspend = v),
+    lastTap: () => lastTap,
+    setLastTap: (v) => (lastTap = v),
+    setWatchTower: (v) => (watchTower = v),
   });
-  function longPressUpgrade(tw) {
-    const cost = upgradeCost(tw.def, tw.tier);
-    let note;
-    if (cost === null) note = 'at MAX tier';
-    else if (orderByCell.has(tw.ci)) note = 'already on the list';
-    else if (!eco.canAfford(cost)) note = `upgrade needs ${cost}kg &middot; you have ${eco.biomass}kg`;
-    else if (orderUpgrade(tw)) { note = `+1 ordered &middot; ${cost}kg`; sfx.play('laser_click'); }
-    else note = 'could not order';
-    closeShop();
-    showToast(`<div class="wave-num">${tw.def.label} &middot; TIER ${tw.tier}</div>`
-      + `<div class="wave-role">${note}</div>`, 2200);
-  }
-  // A REFUSED PLACEMENT SAYS WHY, on the shell (PLAYTEST-TODO §1). The desktop's silence rule stands there — a radial of
-  // greyed-out towers is worse than nothing — but a caption is not a radial, and on glass a tap that does nothing is
-  // indistinguishable from a tap that missed. Same reason twice inside a second and a half is said once.
-  let refuseLast = { why: '', t: 0 };
-  function refuseCaption(why) {
-    const t = performance.now();
-    if (why === refuseLast.why && t - refuseLast.t < 1500) return;
-    refuseLast = { why, t };
-    showToast(`<div class="wave-num">NOT HERE</div><div class="wave-role">${why}</div>`, 1800);
-  }
-  addEventListener('pointermove', (ev) => {
-    if (!buildMode) return;
-    const prev = buildPointers.get(ev.pointerId);
-    if (!prev) return;
-    const dx = ev.clientX - prev.x;
-    const dy = ev.clientY - prev.y;
-    prev.x = ev.clientX; prev.y = ev.clientY;
-    if (buildPointers.size >= 2) {
-      const p = [...buildPointers.values()];
-      const d = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
-      if (pinchPrev !== null && d > 0) {
-        buildDist = Math.min(4, Math.max(1.4, buildDist * (pinchPrev / d)));
-      }
-      pinchPrev = d; pinched = true; tapStart = null; clearTimeout(pressTimer);
-      return;
-    }
-    if (tapStart && Math.hypot(ev.clientX - tapStart[0], ev.clientY - tapStart[1]) > tapSlop()) {
-      tapStart = null; // it's a pan now
-      clearTimeout(pressTimer);
-    }
-    // grab the sphere and roll it: the drag rotates the carried frame about
-    // its own up/right axes. Same feel as the old flick-to-pan, but it can
-    // go all the way round instead of stopping at a ceiling.
-    {
-      const f = buildFrame();
-      dragUp.copy(f.up);
-      dragRight.copy(f.right);
-      const k = buildDist * 0.0016; // px → radians, zoom-aware
-      followSuspend = true; // exploring: the follow waits for the wheel
-      buildQ.premultiply(bqTmp.setFromAxisAngle(dragUp, -dx * k));
-      buildQ.premultiply(bqTmp.setFromAxisAngle(dragRight, -dy * k));
-      buildQ.normalize();
-    }
-  });
-  function endBuildPointer(ev) {
-    clearTimeout(pressTimer);
-    const wasTap = !pinched && !pressFired && tapStart
-      && Math.hypot(ev.clientX - tapStart[0], ev.clientY - tapStart[1]) <= tapSlop();
-    buildPointers.delete(ev.pointerId);
-    if (buildPointers.size < 2) pinchPrev = null;
-    if (strike.falling > 0 && wasTap) {
-      // the feed owns every tap while the munition flies: pointerdown already
-      // spent this one on retarget-or-skip, and letting it fall through
-      // opened the tower shop underneath the strike camera
-      lastTap = null;
-    } else if (strike.armed && wasTap) {
-      // painting outranks every other tap while armed: the board is a
-      // targeting surface until the safety goes back on
-      const ci = cellAtScreen(ev.clientX, ev.clientY);
-      if (ci !== -1 && paintTarget(strike, ci) === 'locked') {
-        sfx.play('tank_shells');
-        showRangeRing(ci, strikeTune.blastCells, 0xffb347, 30);
-        syncArmUi();
-      }
-    } else if (wasTap) {
-      // double-tap in ORBIT rides the view home AND pulls back to the whole
-      // planet — the strategic pose is one gesture from anywhere. Checked
-      // BEFORE the shop opens, closing whatever the first tap opened.
-      const tnow = performance.now();
-      const dbl = buildMode && lastTap && tnow - lastTap.t < DTAP_MS
-        && Math.hypot(ev.clientX - lastTap.x, ev.clientY - lastTap.y) <= DTAP_PX;
-      if (dbl) {
-        lastTap = null;
-        closeShop();
-        centerBuildOnHeart();
-        buildDist = 3.4;
-        return;
-      }
-      lastTap = { t: tnow, x: ev.clientX, y: ev.clientY };
-      // TAP ISAO TO RIDE HIM. The drone camera is not on the view cycle, because reaching for the machine you want to look
-      // through is a better gesture than tapping past two other cameras to find it. It asks first: a mis-tap that hijacks your
-      // camera mid-wave is worse than no shortcut at all.
-      if (isao && params.view !== 'drone' && !mobileShell) {
-        const r0 = renderer.domElement.getBoundingClientRect();
-        ndc.set(((ev.clientX - r0.left) / r0.width) * 2 - 1,
-          -((ev.clientY - r0.top) / r0.height) * 2 + 1);
-        raycaster.setFromCamera(ndc, camera);
-        if (raycaster.intersectObject(isao.obj, true).length) {
-          askDroneView();
-          return;
-        }
-      }
-      // bastion first claim: a tap on a TOWER watches it
-      if (params.view === 'bastion') {
-        const r = renderer.domElement.getBoundingClientRect();
-        ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1,
-          -((ev.clientY - r.top) / r.height) * 2 + 1);
-        raycaster.setFromCamera(ndc, camera);
-        const hits = raycaster.intersectObjects(towers.map((tw) => tw.obj), true);
-        if (hits.length) {
-          let obj = hits[0].object;
-          while (obj && !towers.some((tw) => tw.obj === obj)) obj = obj.parent;
-          watchTower = towers.find((tw) => tw.obj === obj) || null;
-          return;
-        }
-        watchTower = null;
-      }
-      // the shop opens under EVERY camera — building is not a mode
-      const ci = cellAtScreen(ev.clientX, ev.clientY);
-      // TAP-TO-GO, on the shell, while driving: open ground is a destination.
-      if (mobileShell && !buildMode && wasTap && ci !== -1) {
-        if (gotoCell(ci)) return;
-      }
-      if (mobileShell && buildMode && ci !== -1 && !towerByCell.get(ci) && !orderByCell.get(ci)) {
-        const why = placeError(ci);
-        if (why) { refuseCaption(why); return; }
-      }
-      if (ci !== -1) openShop(ci, ev.clientX, ev.clientY);
-    }
-    if (buildPointers.size === 0) { pinched = false; tapStart = null; pressFired = false; }
-  }
-  addEventListener('pointerup', endBuildPointer);
-  addEventListener('pointercancel', endBuildPointer);
-  container.addEventListener('pointerdown', (ev) => {
-    if (strike.falling <= 0 || strikeGrace > 0) return;
-    // Aim is two-fold: the paint chose the area, and ONE burst mid-fall can vector the munition onto what the target drifted
-    // into. A tap on the GROUND spends the burst; a tap on the sky — or any tap after it is spent — skips to impact.
-    if (strike.retargetsLeft > 0) {
-      const ci = cellAtScreen(ev.clientX, ev.clientY);
-      if (ci !== -1 && retargetStrike(strike, ci)) {
-        sfx.play('tank_secondary');
-        strikeFeedInfo();   // TGT CELL changes; the feed should say so
-        return;
-      }
-    }
-    skipFall(strike);
-  });
-  container.addEventListener('wheel', (ev) => {
-    if (!buildMode) return;
-    buildDist = Math.min(4, Math.max(1.4, buildDist + ev.deltaY * 0.002));
-    ev.preventDefault();
-  }, { passive: false });
-  root.querySelector('#td-pad-fire').addEventListener('click', () => fire());
-  {
-    // the fourth pad. Same tap-not-hold rule: a held shield pad would burn
-    // the rack into a bubble that was already up, which the module refuses
-    // anyway — but refusing four times a second is not feedback.
-    const sb = root.querySelector('#td-pad-shield');
-    if (sb) sb.addEventListener('click', () => deployShieldNow());
-  }
+  function refuseCaption(...a) { return buildPointer.refuseCaption(...a); }
 
   // --- LAUNCH CONTROL: DeepWatch's console, driving OUR state machine ------- The safety toggle arms, the readout narrates, the
   // chunky button goes grey -> orange (needs a target) -> red (authorised). Same ritual, real instrument. armBtn keeps its name:
