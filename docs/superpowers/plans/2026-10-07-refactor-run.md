@@ -517,7 +517,7 @@ The story's per-frame tick leaves `src/fx/programme-host.js` for modules named a
 - Create: `src/fx/plasma-beams.js` — from 6230–6368 (`plasmaBeams`, `PLASMA_LINKS`, `PLASMA_W`, `makePlasmaLinks`, `throwPlasma`, `lanceBeam`, `stepPlasmaBeams`).
 - Tests: `test/tank-laser.mjs` (`updateLasers` 60 frames: held, overheated, released), `test/plasma-beams.mjs` (`throwPlasma` then 20 `stepPlasmaBeams`).
 
-- [ ] Steps as Task 8. Suites: `--laser`, `--laser-game`, `--quiver-frame`, `--defense`, `--seats`. Commit — `The tank's laser and the plasma beams are fx modules; td-tab -<n> lines`.
+- [x] Steps as Task 8. Suites: `--laser`, `--laser-game`, `--quiver-frame`, `--defense`, `--seats`. Commit — `The tank's laser and the plasma beams are fx modules; td-tab -<n> lines`.
 
 ---
 

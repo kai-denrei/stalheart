@@ -27,8 +27,8 @@ import { STORY_SKIP, STORY_MISSION } from './content/story-defaults.js';
 // THE SHOWCASE (owner, 2026-09-18): the core loop as a montage over this very world, before the landing
 import { createShowcase } from './fx/showcase.js';
 import { showcaseOn } from './platform/showcase-entry.js';
-import { makeOrdnanceShell } from './shell.js'; import { createHullLoss } from './fx/hull-loss.js'; import { bayContainers, syncBays } from './fx/life-bays.js';
-import { firingFor } from './content/firing-defaults.js'; import { RELEASE_EVENTS, releasesHeld, releaseHeld } from './core/held-input.js';
+import { createHullLoss } from './fx/hull-loss.js'; import { bayContainers, syncBays } from './fx/life-bays.js';
+import { RELEASE_EVENTS, releasesHeld, releaseHeld } from './core/held-input.js';
 import { METRES_PER_CELL, arcToMetres, metresToArc } from './core/stage-units.js';
 import { pickMissileTarget, missileLimits } from './domain/missile-targeting.js';
 import { createRunContext } from './domain/run-context.js'; import { trunkCells, simDirective, simPick } from './domain/sim-policy.js'; import { towerPerch } from './domain/tower-perch.js';
@@ -60,10 +60,9 @@ import { mulberry32, randomSeed } from './rng.js';
 import { createLaserStation, structureLostHtml } from './fx/laser-station.js'; import { LASER_GAME } from './content/orbital-laser.js'; import { createGlossaryModals } from './fx/glossary-modals.js'; import { makeTriadIcon, glossCard, GAMEPLAY_TIPS } from './fx/briefing-cards.js';
 import { computeBerths, berthIndexFor } from './berths.js'; import { createProgrammeHost } from './fx/programme-host.js'; import { strikeFallPose, droneRidePose, bastionPose, tankViewPose } from './domain/camera-goal.js'; import { createShopRadial } from './fx/shop-radial.js'; import { berthRun, berthHeading, deployU, easeDeploy, deployFraming } from './domain/deploy-path.js';
 import { createSkyRig } from './fx/sky-rig.js'; import { createIsaoMoments } from './fx/isao-moments.js'; import { createColonyTick } from './fx/colony-tick.js'; import { createAutoSupport } from './fx/auto-support.js';
-import { createCanyonRun } from './fx/canyon-run.js'; import { createEndingHost } from './fx/ending-host.js'; import { createIsaoWorker } from './fx/isao-worker.js'; import { createHullDrive } from './fx/hull-drive.js'; import { createTowerCombat } from './fx/tower-combat.js'; import { createEnemyStep } from './fx/enemy-step.js'; import { createHullHost } from './fx/hull-issue.js';
+import { createCanyonRun } from './fx/canyon-run.js'; import { createEndingHost } from './fx/ending-host.js'; import { createIsaoWorker } from './fx/isao-worker.js'; import { createHullDrive } from './fx/hull-drive.js'; import { createTowerCombat } from './fx/tower-combat.js'; import { createEnemyStep } from './fx/enemy-step.js'; import { createTankLaser } from './fx/tank-laser.js'; import { createPlasmaBeams } from './fx/plasma-beams.js'; import { createHullHost } from './fx/hull-issue.js';
 import { wantsSecondary, shellsForAll } from './autofire.js';
-import { createBeam } from './beamfx.js';
-import { createBeamRig, PLASMA_DEFAULTS, BOARD_PRESET, BEAM_PEAK } from './beamdraw.js';
+import { PLASMA_DEFAULTS } from './beamdraw.js';
 import { sub3, add3, scale3, dot3, cross3, norm3, len3, dist3, segKey, tangentBasis } from './vec3.js';
 import { CREATURES, waveJelly } from './creatures.js';
 import { brief, lineDwell, BRIEFS } from './isaobriefs.js'; import { lookIsao } from './fx/isao-look.js';
@@ -72,7 +71,6 @@ import { ACHIEVEMENTS, ACHV_GROUPS, achievement, blankRun, earned, freshlyEarned
   sanitiseRecord }
   from './achievements.js';
 import { applyFontPack, currentFontPack, loadTypeFeel } from './fonts.js';
-import { SECONDARY_TOE, applySecondaryToe } from './units.js';
 import { UNITS, buildUnit, buildCreature, preloadMork, makeShieldShell, preloadContainer, makeContainerFixture, makeBulletCloud, makeRewardSolid, makeShellSolid, makeDebris, makeDotBurst, makeHeartCloud, makeDotEnemy } from './units.js';
 import { LOOKS } from './looks.js';
 import { makeCellIndex } from './cellindex.js';
@@ -80,11 +78,9 @@ import { CREATURE_TINTS, ENEMY_SPEC, INTROS, computeWavePlan } from './enemyspec
 import { PICKUPS } from './pickups.js'; import { hushRotor } from './fx/rotor-voice.js';
 import { rankFor, rankLabel, badgeSVG } from './ranks.js';
 import { beamStep, isBeamStep } from './beamranks.js';
-import { burn, sweepAdvance, wallBite as wallBiteFor } from './beamburn.js';
-import { arcPoint, projectToArc, toeForCrossing } from './arc.js'; import { marchToTerrain, roundEnd, marchAlongArc, arcOf, pointAlongArc } from './domain/round-path.js';
-import { shotOf, impactOf } from './sentryfx.js'; // the package's muzzle recipe is the one master setting
-import { makeSeekerMesh, aimSeeker,
-  LANCE_LOOK as SHOT_LANCE_LOOK, THROW_LOOK as SHOT_THROW_LOOK } from './shotfx.js';
+import { marchToTerrain, roundEnd, marchAlongArc, arcOf } from './domain/round-path.js';
+import { impactOf } from './sentryfx.js'; // the package's muzzle recipe is the one master setting
+import { makeSeekerMesh, aimSeeker } from './shotfx.js';
 import { SHIELD_TUNE, SHIELD_KNOBS, makeShield, charge as chargeShield,
   deploy as deployShield, tickShield, stepShieldFrame, restockShield, towerOffline,
   makeArrayStation, refillArray } from './shield.js'; import { SHIELD_ARRAY } from './content/shield-array.js'; import { makePadRing, glowPadRing, shieldPanel } from './fx/shield-array.js'; import { createRamReadout } from './fx/ram-readout.js';
@@ -107,7 +103,7 @@ import { makeStrike, makeStrikeParams, grantStrikes, stepStrike,
 import { createRadarScope } from './fx/radar-scope.js'; import { createTowerAim } from './fx/tower-aim.js'; import { buildVarsModal } from './fx/vars-modal.js'; import { startVictoryPull } from './fx/victory-pull.js'; import { createShowcaseHooks } from './fx/showcase-hooks.js'; import { createGunshipRig } from './fx/gunship-rig.js';
 import { makeA6, arc as a6Arc } from './heptapod.js';
 import { DEFAULT_TOWER_LOOK, buildTowerLook, preloadLook, lookReady } from './towerlooks.js';
-import { makeAudio } from './audio.js'; import { isaoSay } from './fx/isao-voice.js'; import { lanceFollow } from './fx/lance-follow.js'; import { createCrowdGate } from './fx/crowd-gate.js'; import { shedSquad, squadDamage } from './fx/squads.js';
+import { makeAudio } from './audio.js'; import { isaoSay } from './fx/isao-voice.js'; import { createCrowdGate } from './fx/crowd-gate.js'; import { shedSquad, squadDamage } from './fx/squads.js';
 
 export function initTdTab(root) {
   const flags = readGameFlags();   // THE URL FLAGS, read once (src/platform/game-flags.js)
@@ -3834,39 +3830,11 @@ export function initTdTab(root) {
     return false;
   }
 
-  // --- twin mini-lasers: hold-to-fire, they overheat ----------------------- Trigger: hold Shift (or the secondary fire button).
-  // Fire builds heat; at the cap the guns lock out until fully cooled — the gun tubes glow from cyan to red as the diegetic
-  // gauge. Bolt origin/direction derive from the gun groups' WORLD transforms (toe-in included) — same-source rule, third use. No
-  // wall carving, no spawn-point damage, no on-hit reactions: shells stay the answer to everything that matters.
   const laserShots = []; // { pos, dir, dist, mesh }
   let laserHeat = 0, laserOverheat = false, plasmaToldAt = -9; const plasmaDry = () => { if (t - plasmaToldAt > 6) { plasmaToldAt = t; showToast(TANK_PLASMA.dry, 1600); } return false; };
-
-  // --- the twin beams ----------------------------------------------------- ONE PLACE for the preset, so a tuning session in the
-  // beam tab drops in as a paste rather than a hunt. Widths are expressed in CELLS and multiplied by cellSide at use: the lab
-  // tunes against a 1-unit tank, the board runs a tank about 0.85 of a cell wide, and a width copied across raw is either
-  // invisible or swallows the screen. The preset and the peak both live in beamdraw.js now, so a tuning session in the lab lands
-  // in ONE file rather than in two that must be kept in agreement by hand.
-  const BEAM_PRESET = { ...BOARD_PRESET };
-  // THE SWEEP (operator, 2026-09-01). Across the six seconds the toe-in runs 0 -> BEAM_SWEEP -> 0, so the pair opens parallel,
-  // scissors inward through the midpoint and opens again: the beams sweep the ground in front instead of burning one fixed line.
-  // Damage follows for free, because it is measured against the same swept direction the beam is drawn along.  Radians. Started
-  // at 0.4 (~23 degrees each side) from the operator's "0 to 4 to 0"; played, that was a wider scissor than the weapon wants —
-  // the beams spent the burst pointing away from what was in front of them. 0.2 rad (~11 degrees each side) keeps the traverse
-  // legible while the pair stays on target. This is the one number to move.
-  const BEAM_SWEEP = 0.20;
-  // THE SWEEP IS A MOTOR UNDER LOAD (operator, 2026-09-01). Mass in the beam
-  // slows its traverse — per beam, independently — so the pair falls out of
-  // step and the tank visibly labours through a crowd. This is the inverse of
-  // knock-back: nothing is pushed, something is HELD.
-  //
-  // The drag is keyed to the belt colour: soft things barely slow the beam, a solid core bogs it, so a lagging beam is a DANGER
-  // READOUT. The rule (DRAG_SOFT/HARD/CAP) lives in beamburn.js for the lab too. A bogged beam stays behind: catching up would hide the cost.
-  const beamPhase = [0, 0];
-  const CELL_WIDTH_KEYS = ['coreWidth', 'glowWidth', 'jitterAmount'];
   // `plasma` is a view ONTO the rig's plumes (beamdraw.js), kept as a name because
   // the plasma folder's dot size walks it
   let plasma = null;
-  let beamOn = false, beamVoice = null;
 
   // --- THE PLASMA (operator, 2026-09-02) ---------------------------------- "the beam extends in the air, and for game play we
   // should have hug the curvature of the planet, more like plasma flamethrower than pure laser."  The anatomy, the meshes and the
@@ -3875,299 +3843,56 @@ export function initTdTab(root) {
   // project has already paid for that once with a preset tuned under tone mapping the game did not have.  PLASMA is a LIVE
   // object: the GUI mutates it and the rig reads it every frame, so the knobs stay knobs.
   const PLASMA = { ...PLASMA_DEFAULTS };
-
-  let beamRig = null;
-  function ensureBeams() {
-    if (beamRig) return beamRig;
-    beamRig = createBeamRig({
-      scene, guns: 2, preset: BEAM_PRESET, plasma: PLASMA,
-      seed: (params.seed ^ 0x91a5be) >>> 0,
-      widthKeys: CELL_WIDTH_KEYS,
-    });
-    plasma = beamRig.plumes;
-    applyBeamRank();   // a fresh rig must not be born the base colour
-    return beamRig;
-  }
-
-  // The colour is written to the LIVE uniform rather than baked into BEAM_PRESET at construction, so a promotion that lands
-  // mid-burst recolours the beam already in the air — which is the whole point of putting the readout on the weapon instead of in
-  // the corner.
-  let beamStepNow = beamStep(0);
-  function applyBeamRank() {
-    beamStepNow = beamStep(tankRank);
-    LASER_DPS = beamStepNow.dps;
-    LASER_REACH = beamStepNow.reach;
-    if (beamRig) beamRig.setColor(beamStepNow.color);
-    applyReachToe();
-  }
-
-  // THE TOE SCALES WITH REACH (operator, 2026-09-02: "the toe-in should scale with reach so they always cross").  A fixed angle
-  // cannot be right across a 2.5x reach ladder: the apex sits at gap/(2·tan(toe)), so the shipped 0.035 rad put it about 9.5
-  // cells out — past a rank-1 beam's whole four cells, and well inside a rank-15 one. Solve for the angle instead, from the
-  // muzzle gap MEASURED off the model rather than assumed, so a new tank does not silently break it.
-  const TOE_CROSS_FRAC = 0.7;   // they meet at 70% of the reach: out in front,
-                                // but comfortably before the tip
-  const toeA = new THREE.Vector3(), toeB = new THREE.Vector3();
-  function applyReachToe() {
-    const guns = playerMesh && playerMesh.userData && playerMesh.userData.laserGuns;
-    if (!guns || guns.length < 2 || !playerMesh) return;
-    // ZERO THE TOE BEFORE MEASURING. The gap is read off the live world transforms, and those already carry whatever toe was
-    // applied last — so measuring without resetting feeds the previous answer back in and the angle walks every time the rank
-    // changes.
-    applySecondaryToe(playerMesh, 0);
-    playerMesh.updateMatrixWorld(true);
-    guns[0].getWorldPosition(toeA);
-    guns[1].getWorldPosition(toeB);
-    const gap = toeA.distanceTo(toeB) / cellSide;          // cells
-    const toe = toeForCrossing(gap, TOE_CROSS_FRAC * LASER_REACH);
-    applySecondaryToe(playerMesh, toe || SECONDARY_TOE);
-    playerMesh.updateMatrixWorld(true);
-  }
-
-  function drawBeam(i, from, dir, len, heatFrac, lift) {
-    ensureBeams().draw(i, {
-      from, dir, len, heat: heatFrac,
-      lift: lift ?? (1 + params.wallHeight * 0.5),
-      scale: cellSide, time: runContext.time, peak: BEAM_PEAK,
-    });
-  }
-
-  function hideBeams() {
-    if (beamRig) beamRig.hide();
-  }
-
-  const laserBtnEl = root.querySelector('#td-pad-laser');
-  let laserBtnBand = -1, laserDrainPct = -1;
-  // THE SECONDARY IS A BEAM (operator, 2026-09-01). Twin sustained beams out of the secondary muzzles, running straight down each
-  // barrel and passing THROUGH everything they touch.  6 seconds is not a feel number: the burst is exactly as long as
-  // assets/audio/tank_beam.mp3, so the sound and the fire begin and end together. Change one and the other has to move.
-  const LASER_MAX_HEAT = 6.0; // s of fire — the length of the sound
-  // COOLDOWN DURATION IS UNCHANGED. It was MAX_HEAT / COOL = 2.4 / 1.4 ≈
-  // 1.71 s, and the operator asked for the same cooldown, so the shed rate
-  // rises with the budget instead of the lockout stretching to 4.3 s.
-  // LOCKOUT 1.71s -> 4.5s (operator, 2026-09-02: "longer delay between
-  // plasma gun uses"). The burst stays the length of the sound; what grew is
-  // the wait after it.
-  const LASER_LOCKOUT = 4.5;
-  const LASER_COOL = LASER_MAX_HEAT / LASER_LOCKOUT;
-  // Damage is SUSTAINED, not per bolt. The old bolt stream was about 2.86/s
-  // into ONE target. This is well under it (operator: currently overpowered)
-  // and the multi-target advantage is now paid for twice — the sweep bogs,
-  // and the reach chokes. A beam that reaches three bodies is working hard
-  // for them.
-  // BOTH ARE THE PILOT'S RANK NOW (operator, 2026-09-02) — see beamranks.js
-  // for the four steps and for why penetration had to become a fraction. They
-  // are seeded at the rank-1 step and rewritten by applyBeamRank(); `let`
-  // rather than `const` is the honest shape for a value the ladder moves.
-  let LASER_DPS = beamStep(0).dps;
-  let LASER_REACH = beamStep(0).reach;   // cells
-  // Bolts were BoxGeometry — literally blocky (operator ruling). They are
-  // round tracers now, the same idiom every tower shot speaks: a hot head
-  // with three ghosts strung behind it along the flight line.
   const Z_AXIS = new THREE.Vector3(0, 0, 1);
-  const gunColCool = new THREE.Color(0x7df9ff);
-  const gunColHot = new THREE.Color(0xff5340);
-  const gunEmiCool = new THREE.Color(0x06262c);
-  const gunEmiHot = new THREE.Color(0xff2200);
-
-  function killLaser(i) {
-    scene.remove(laserShots[i].mesh);
-    laserShots[i].mesh.geometry.dispose(); // per-bolt tracer geometry now
-    laserShots[i].mesh.material.dispose();
-    laserShots.splice(i, 1);
-  }
-
-  function updateLasers(dt, tNow) {
-    const guns = playerMesh && playerMesh.userData.laserGuns;
-    // auto holds the SAME trigger the player does, so there is one firing
-    // path, one heat model and one overheat lockout — not a parallel copy
-    const wantFire = (keys.laser || autoLaserWant) && guns && !player.won && !playerDown
-      && (!story || laserOverheat || eco.spend(TANK_PLASMA.kgPerSecond * dt) || plasmaDry());   // THE PLASMA COSTS BIOMASS (owner, 2026-10-02)
-    // heat: build while firing, shed otherwise; overheat locks the trigger
-    // until the tubes are fully cold (no feathering the cap)
-    if (laserOverheat) {
-      laserHeat = Math.max(0, laserHeat - LASER_COOL * dt);
-      if (laserHeat === 0) laserOverheat = false;
-    } else if (wantFire) {
-      laserHeat += dt;
-      if (laserHeat >= LASER_MAX_HEAT) { laserHeat = LASER_MAX_HEAT; laserOverheat = true; }
-    } else {
-      laserHeat = Math.max(0, laserHeat - LASER_COOL * dt);
-    }
-    // diegetic gauge: both tubes share one material per tank. The mkcx
-    // tank exposes a private clone (gunHeatMat) whose EMISSIVE carries the
-    // heat — its textured PBR gun barely shows a color multiply, and the
-    // emissive is what the bloom chain turns into a visible glow.
-    if (guns) {
-      const f = laserHeat / LASER_MAX_HEAT;
-      const mat = playerMesh.userData.gunHeatMat
-        || (guns[0].children[0] && guns[0].children[0].material);
-      if (mat && mat.color) {
-        mat.color.lerpColors(gunColCool, gunColHot, f);
-        if (mat.emissive) {
-          mat.emissive.lerpColors(gunEmiCool, gunEmiHot, f);
-          mat.emissiveIntensity = 0.3 + 1.7 * f;
-        }
-      }
-      // the sleeves are the gauge that actually READS — same instrument as
-      // the cannon's mid-barrel band, driven the same way
-      const smat = playerMesh.userData.laserSleeveMat;
-      if (smat) smat.color.lerpColors(gunColCool, gunColHot, f);
-    }
-    // ...and the same cycle on the pad button: white -> orange -> red as
-    // heat builds, blinking red through the lockout. Style only when the
-    // band CHANGES — per-frame style writes on a button are layout noise.
-    if (laserBtnEl) {
-      const f = laserHeat / LASER_MAX_HEAT;
-      const band = laserOverheat ? 3 : f > 0.66 ? 2 : f > 0.33 ? 1 : 0;
-      if (band !== laserBtnBand) {
-        laserBtnBand = band;
-        const col = ['', '#ffaa44', '#ff6633', '#ff3322'][band];
-        laserBtnEl.style.color = col;
-        laserBtnEl.style.borderColor = col;
-        laserBtnEl.classList.toggle('overheat', band === 3);
-        if (band !== 3) laserBtnEl.style.background = '';
-      }
-      // the cooldown is VISUAL: through the lockout the red drains out of
-      // the button bottom-up as the tubes shed heat (4% steps, not every
-      // frame — a style write per frame on a button is layout noise)
-      if (laserOverheat) {
-        const drain = Math.round(f * 25) * 4;
-        if (drain !== laserDrainPct) {
-          laserDrainPct = drain;
-          laserBtnEl.style.background =
-            `linear-gradient(to top, rgba(255,51,34,0.5) ${drain}%, rgba(255,51,34,0.08) ${drain}%)`;
-        }
-      } else laserDrainPct = -1;
-    }
-    // holding the trigger against locked tubes CLICKS — the gun says no
-    if (wantFire && laserOverheat) sfx.play('laser_click');
-    if (wantFire && !laserOverheat) {
-      // THE BEAMS. One per secondary, each leaving its own muzzle and running straight down its own barrel — the direction is
-      // read from the gun's world quaternion, never re-derived, and then flattened onto the tangent plane because the board is a
-      // sphere and the weapon has to agree with the ground it fires over.
-      if (!beamOn) {
-        beamOn = true;
-        beamPhase[0] = 0; beamPhase[1] = 0;   // both sweeps start together
-        // one 6-second take, started as a loop so the burst can stop it the
-        // moment the trigger releases or the tubes lock
-        beamVoice = sfx.loop('tank_beam', { gain: 1 });
-      }
-      const reach = LASER_REACH * cellSide;
-      for (let gi = 0; gi < 2 && gi < guns.length; gi++) {
-        const gun = guns[gi];
-        gun.getWorldPosition(tmpV);
-        const from = norm3([tmpV.x, tmpV.y, tmpV.z]);
-        // THE MUZZLE'S OWN RADIUS. The beam used to be flattened onto the ground lift and so left from UNDER the hull rather than
-        // out of the secondaries — invisible at this scale, obvious in the lab where the tank is drawn 12x larger. Floored at the
-        // ground clearance so it still rides over wall tops.
-        const gunR = Math.max(tmpV.length(), 1 + params.wallHeight * 0.5);
-        gun.getWorldQuaternion(tmpQ);
-        tmpV.set(0, 0, 1).applyQuaternion(tmpQ);
-        const d0 = [tmpV.x, tmpV.y, tmpV.z];
-        let dir = norm3(sub3(d0, scale3(from, dot3(d0, from))));
-        // SWEEP IT INWARD, by the bell, toward the hull's centreline. Which
-        // way "inward" is comes from the gun's own offset from the hull —
-        // never from its L/R name, which is exactly what made the model's
-        // toe-in ambiguous in the first place.
-        // ...by this beam's OWN phase, which is where the two decouple: the
-        // heat clock is shared, the sweeps are not.
-        const swing = BEAM_SWEEP * Math.sin(Math.min(1, beamPhase[gi]) * Math.PI);
-        if (swing > 1e-4) {
-          const lat = sub3(from, player.pos);                     // gun -> out
-          const latT = sub3(lat, scale3(from, dot3(lat, from)));  // onto tangent
-          const right = norm3(cross3(from, dir));
-          // Toward the centreline. This sign was briefly flipped on the strength of a probe that measured separation at FULL
-          // REACH — but the guns are already toed in, so the pair crosses before then and the far-end gap grows for BOTH signs.
-          // The metric was the bug, not the sign; fixing the probe to measure the crossing point put this back where it started.
-          const sgn = dot3(latT, right) > 0 ? -1 : 1;             // toward centre
-          const c = Math.cos(swing), sn = Math.sin(swing) * sgn;
-          dir = norm3(add3(scale3(dir, c), scale3(right, sn)));
-        }
-        // WALLS STOP IT, enemies do not. March in half-cells to the first
-        // blocked cell so a beam cannot reach through the maze you built.
-        let len = reach;
-        let bite = 0;
-        // ALONG THE GROUND, not through it. `m` is arc length now — on a
-        // unit sphere that is radians, so no conversion — and arcPoint lands
-        // ON the surface by construction. The old `norm3(from + dir*m)`
-        // pointed the right way but under-reached by atan(m) instead of m:
-        // 15.7% short at the rank-15 reach, over a cell of missing beam.
-        for (let m = cellSide * 0.5; m <= reach; m += cellSide * 0.5) {
-          const q = arcPoint(from, dir, m);
-          const ci = cellIndex(q);
-          if (ci !== -1 && dungeon.tags[ci] === BLOCKED) {
-            len = m;
-            // HOW MUCH of the beam the rock is eating, not merely THAT there is rock. This map is dense — measured, a beam
-            // standing on all-open ground still clips rock at 2.5 of its 2.6 cells, so a flat penalty on contact would bog the
-            // weapon EVERYWHERE and the sweep would never move. Bite is the same currency a body pays in: 0 when the wall is out
-            // at the tip, 1 at point-blank.
-            bite = wallBiteFor(m, reach);
-            break;
-          }
-        }
-        // IT PIERCES, BUT IT PAYS TO: every body passed eats into the beam's reach, nearest first (fodder barely, a solid core a big
-        // bite), so it shortens against a crowd. Measured along the arc it is drawn on: a straight chord left every body past ~5 cells unhittable
-        const along = [];
-        for (const e of enemies) {
-          if (!e.alive) continue;
-          const pr = projectToArc(from, dir, e.pos);
-          // s is SIGNED — behind the muzzle must be rejected, not folded
-          if (pr.s < 0 || pr.s > len) continue;
-          const r = cellSide * Math.max(0.4, (e.size ?? e.spec.size) * 0.8);
-          if (pr.off >= r) continue;
-          // `hard` is beamburn's word for the not-rammable tier — the same read the board already carries in colour
-          along.push({ e, t: pr.s, hard: !e.spec.rammable });
-        }
-        // A WALL BOGS IT LIKE ARMOUR DOES (operator), and ends the beam; ONE COPY OF THE RULE (beamburn.js, nearest-first). `bite` is
-        // reported, not applied (WALL_STALLS makes rock a flat stall); the explicit wall flag keeps rock at the tip from reading as none.
-        const bu = burn(along, len, reach, bite, len < reach);
-        for (const hit of bu.hits) damageEnemy(hit.e, tNow, LASER_DPS * dt, false, 'tank');
-        const drag = bu.drag, reachLeft = bu.reachLeft;
-        // draw the CHOKED length, not the clear-air one
-        drawBeam(gi, from, dir, Math.max(cellSide * 0.15, reachLeft),
-          laserHeat / LASER_MAX_HEAT, gunR);
-        // ADVANCE THIS BEAM'S SWEEP, slowed by what it is chewing through. Capped so it always creeps, never freezes; uncapped at
-        // the top so a beam that spends the burst inside a hard cluster simply does not finish its arc.
-        beamPhase[gi] = Math.min(1, beamPhase[gi]
-          + sweepAdvance(dt, LASER_MAX_HEAT, drag));
-      }
-    } else if (beamOn) {
-      beamOn = false;
-      if (beamVoice) { beamVoice.stop(); beamVoice = null; }
-      hideBeams();
-    }
-  }
-
-  // --- firing: the shot leaves along the turret's CURRENT sweep ------------
-  function fire(aimDir = null) {
-    closeShop();   // you cannot be shopping and shooting at the same time
-    if (player.won || playerDown || paused || ammo <= 0 || cannonHeat > 0) return;
-    ammo--;
-    sfx.play('tank_main'); // the player's own act — always at full presence
-    cannonHeat = CANNON_COOL; // the sleeve glows red-hot, cools over 3 s
-    recoilLeft = recoilLen();
-    bumpLeft = Math.max(bumpLeft, BUMP_LEN * 0.4); // the shot rocks the hull too
-    let dir = aimDir;
-    const turret = playerMesh.userData.turret;
-    if (!dir && turret) {
-      // world +Z of the turret group, flattened into the tangent plane —
-      // aim IS the sweep; no sign conventions to get wrong
-      turret.getWorldQuaternion(tmpQ);
-      tmpV.set(0, 0, 1).applyQuaternion(tmpQ);
-      const n = norm3(player.pos);
-      const d = [tmpV.x, tmpV.y, tmpV.z];
-      dir = norm3(sub3(d, scale3(n, dot3(d, n))));
-    } else if (!dir) {
-      dir = player.smoothDir.slice(); // turretless units fire straight ahead
-    }
-    // the Braille bullet, nose along the flight direction
-    const mesh = makeOrdnanceShell(2,'y');
-    mesh.scale.setScalar(cellSide * 0.16);
-    scene.add(mesh);
-    projectiles.push({ pos: player.pos.slice(), dir, dist: 0, mesh });
-    updateHud();
-  }
+  // THE TANK'S LASER (src/fx/tank-laser.js): the twin mini-lasers, the plasma beam rig, the heat and lockout, the cannon's fire
+  const tankLaser = createTankLaser({
+    root,
+    scene,
+    PLASMA,
+    params,
+    runContext,
+    laserShots,
+    keys,
+    player,
+    plasmaDry,
+    sfx,
+    tmpV,
+    tmpQ,
+    enemies,
+    damageEnemy,
+    closeShop,
+    CANNON_COOL,
+    recoilLen,
+    BUMP_LEN,
+    projectiles,
+    updateHud,
+    tankRank: () => tankRank,
+    playerMesh: () => playerMesh,
+    cellSide: () => cellSide,
+    autoLaserWant: () => autoLaserWant,
+    playerDown: () => playerDown,
+    story: () => story,
+    eco: () => eco,
+    cellIndex: () => cellIndex,
+    dungeon: () => dungeon,
+    paused: () => paused,
+    setPlasma: (v) => (plasma = v),
+    laserOverheat: () => laserOverheat,
+    setLaserOverheat: (v) => (laserOverheat = v),
+    laserHeat: () => laserHeat,
+    setLaserHeat: (v) => (laserHeat = v),
+    ammo: () => ammo,
+    setAmmo: (v) => (ammo = v),
+    cannonHeat: () => cannonHeat,
+    setCannonHeat: (v) => (cannonHeat = v),
+    setRecoilLeft: (v) => (recoilLeft = v),
+    bumpLeft: () => bumpLeft,
+    setBumpLeft: (v) => (bumpLeft = v),
+  });
+  function applyBeamRank(...a) { return tankLaser.applyBeamRank(...a); }
+  function killLaser(...a) { return tankLaser.killLaser(...a); }
+  function updateLasers(...a) { return tankLaser.updateLasers(...a); }
+  function fire(...a) { return tankLaser.fire(...a); }
 
 
 
@@ -5242,157 +4967,26 @@ export function initTdTab(root) {
     }
   }
 
-  // --- the PLASMA THROWER's beam ------------------------------------------
-  // The tank's secondary, emplaced. It uses the SAME shader the pilot's
-  // plasma does (beamfx's createBeam, the board preset) rather than a second
-  // look that would drift from it — but not the tank's RIG, because that rig
-  // draws along a great circle at a constant radius, which is right for a
-  // hull firing across the ground and wrong for a tower on a wall firing DOWN
-  // onto it. Straight 3D from muzzle to target is what a downward throw is,
-  // and over 2.6 cells the difference between that and an arc is a fraction
-  // of a cell.
-  //
-  // One beam per tower, five links each so the root tapers rather than
-  // reading as a stack of boxes — the same reason the tank's has five.
+  // --- the PLASMA THROWER's and the LANCER's beams (src/fx/plasma-beams.js): one beam per tower, five links each
   const plasmaBeams = new Map();   // tower -> { links[], until }
-  const PLASMA_LINKS = 5;
-  // the board preset's widths are written in CELLS, same convention as the
-  // tank's CELL_WIDTH_KEYS — scaled here and nowhere else
-  const PLASMA_W = {
-    coreWidth: BOARD_PRESET.coreWidth * 1.6,
-    glowWidth: BOARD_PRESET.glowWidth * 0.55,
-    jitterAmount: BOARD_PRESET.jitterAmount * 0.55,
-  };
-  const pa = new THREE.Vector3(), pb = new THREE.Vector3();
-
-  // ONE CONSTRUCTOR for both beams: a thrower is wide, hot and jittery (a spray of matter), a lance thin and steady (light; operator:
-  // "much thinner and straighter, no jitter"): jitter to nothing, noise and flicker most of the way down, a fifth of the width. The looks
-  // live in shotfx.js so the shooting lab draws the same lance and throw the board does.
-  const LANCE_LOOK = SHOT_LANCE_LOOK;
-  const THROW_LOOK = SHOT_THROW_LOOK;
-
-  function makePlasmaLinks(tw, look = THROW_LOOK) {
-    const links = [];
-    for (let i = 0; i < PLASMA_LINKS; i++) {
-      const bm = createBeam(new THREE.Vector3(), new THREE.Vector3(), {
-        ...BOARD_PRESET,
-        ...(look.noiseAmount !== undefined ? { noiseAmount: look.noiseAmount } : {}),
-        ...(look.flicker !== undefined ? { flicker: look.flicker } : {}),
-        ...(look.scrollSpeed !== undefined ? { scrollSpeed: look.scrollSpeed } : {}),
-        // the BEAM's colour if the def names one, else the tower's own — so
-        // a Plasma Thrower reads as one of ITS family and not as a second
-        // tank, and a green laser does not have to be a green tower
-        glowColor: `#${(shotOf(tw.def).beamColor ?? tw.def.color).toString(16).padStart(6, '0')}`,
-        coreWidth: PLASMA_W.coreWidth * cellSide * look.width,
-        glowWidth: PLASMA_W.glowWidth * cellSide * look.width,
-        jitterAmount: PLASMA_W.jitterAmount * cellSide * look.jitter,
-      });
-      bm.mesh.visible = false;
-      bm.mesh.renderOrder = 10;
-      scene.add(bm.mesh);
-      links.push(bm);
-    }
-    return links;
-  }
-
-  function throwPlasma(tw, from, to, tNow) {
-    let ent = plasmaBeams.get(tw);
-    if (!ent) {
-      ent = { links: makePlasmaLinks(tw), until: 0 };
-      plasmaBeams.set(tw, ent);
-    }
-    // HELD PAST THE TICK. The weapon fires six times a second and the hold
-    // is longer than the gap, so what the player sees is one continuous
-    // throw that ends when the tower stops firing rather than a strobe.
-    ent.until = tNow + firingFor('plasma').beamHold;
-    const a = scale3(from, 1);
-    for (let k = 0; k < PLASMA_LINKS; k++) {
-      const f0 = k / PLASMA_LINKS, f1 = (k + 1) / PLASMA_LINKS;
-      pa.set(a[0] + (to[0] - a[0]) * f0, a[1] + (to[1] - a[1]) * f0, a[2] + (to[2] - a[2]) * f0);
-      pb.set(a[0] + (to[0] - a[0]) * f1, a[1] + (to[1] - a[1]) * f1, a[2] + (to[2] - a[2]) * f1);
-      const bm = ent.links[k];
-      bm.setEndpoints(pa, pb);
-      // narrow at the muzzle, opening down the throw — one curve, same shape
-      // as the tank's widthAt, applied to the BASE widths rather than to
-      // whatever the uniform happened to hold last frame (which would ratchet
-      // the beam wider or thinner every tick).
-      const w = 0.35 + 0.65 * Math.pow((k + 0.5) / PLASMA_LINKS, 0.7);
-      for (const [key, base] of Object.entries(PLASMA_W)) {
-        const u = bm.uniforms[`u${key[0].toUpperCase()}${key.slice(1)}`];
-        if (u) u.value = base * cellSide * w;
-      }
-      const cs = bm.uniforms.uCapStart, ce = bm.uniforms.uCapEnd;
-      if (cs) cs.value = k === 0 ? BOARD_PRESET.capStart : 0;
-      if (ce) ce.value = k === PLASMA_LINKS - 1 ? BOARD_PRESET.capEnd : 0;
-      const gi = bm.uniforms.uGlowIntensity;
-      if (gi) gi.value = BEAM_PEAK * 0.55 * w;
-      bm.mesh.visible = true;
-      bm.update(tNow);
-      bm.setAlpha(1);
-    }
-  }
-
-  // THE LANCE'S OWN DRAW. Same engine as the plasma — the beamfx shader, so
-  // the board has ONE plasma look and not two — but pointed differently on
-  // purpose: straight along the ground arc rather than down onto a body,
-  // held for a long burst rather than re-lit six times a second, and thin,
-  // because a lance is a line and a thrower is a spray.
-  function lanceBeam(tw, from, dir, len, tNow, struck, stoppedBy) {
-    let ent = plasmaBeams.get(tw);
-    if (!ent) {
-      ent = { links: makePlasmaLinks(tw, LANCE_LOOK), until: 0 };
-      plasmaBeams.set(tw, ent);
-    }
-    ent.until = tNow + firingFor('lancer').beamHold;
-    // IT HUGS THE PLANET (operator: a straight chord dove 0.49 cells underground across seven cells): drawn along the great circle,
-    // descending at the barrel's pitch, the same curve its stop is solved on (src/domain/round-path.js lanceReach, pointAlongArc)
-    const { fromU, dTan, r0, slope } = arcOf(from, dir);
-    const at = (m) => pointAlongArc(fromU, dTan, r0, slope, m);
-    for (let k = 0; k < PLASMA_LINKS; k++) {
-      const m0 = len * (k / PLASMA_LINKS), m1 = len * ((k + 1) / PLASMA_LINKS);
-      const p0 = at(m0), p1 = at(m1);
-      pa.set(p0[0], p0[1], p0[2]);
-      pb.set(p1[0], p1[1], p1[2]);
-      const bm = ent.links[k];
-      bm.setEndpoints(pa, pb);
-      const cs = bm.uniforms.uCapStart, ce = bm.uniforms.uCapEnd;
-      if (cs) cs.value = k === 0 ? BOARD_PRESET.capStart : 0;
-      if (ce) ce.value = k === PLASMA_LINKS - 1 ? BOARD_PRESET.capEnd : 0;
-      const gi = bm.uniforms.uGlowIntensity;
-      // BRIGHTER FOR EVERY BODY IT IS THROUGH. The one thing a piercing
-      // weapon should say out loud is how many it caught.
-      if (gi) gi.value = BEAM_PEAK * (0.5 + 0.22 * Math.min(4, struck));
-      bm.mesh.visible = true;
-      bm.update(tNow);
-      bm.setAlpha(1);
-    }
-    // WHERE IT IS STOPPED, SAID OUT LOUD: a splash on the rock reads as a hit, not a beam too short; rate-limited to the burst
-    if (stoppedBy && tNow - (tw.lastSpark ?? -9) > (tw.def.burst ?? 0.6) * 0.9) {
-      tw.lastSpark = tNow;
-      const at = pointAlongArc(fromU, dTan, r0, slope, len);   // the splash where the curve ends
-      const b = makeDotBurst(shotOf(tw.def).beamColor ?? tw.def.color, norm3(at),
-        stoppedBy === 'wall' ? 18 : 12);
-      b.scale.setScalar(cellSide * (stoppedBy === 'wall' ? 1.5 : 1.1));
-      b.position.set(at[0], at[1], at[2]);
-      scene.add(b); debris.push(b); explode('lancer.burn', at);
-    }
-  }
-
-  function stepPlasmaBeams(tNow) {
-    for (const [tw, ent] of plasmaBeams) {
-      const live = tNow < ent.until && towerByCell.get(tw.ci) === tw;
-      const range = effectiveStats(tw.def, tw.tier).range * cellSide, fl = live && tw.key === 'lancer' && lanceFollow(tw, { piloted: pilotMode && pilot?.state.tower === tw, camera, range });
-      if (fl) { const until = ent.until, dir = norm3(sub3(fl.aim, fl.from)); lanceBeam(tw, fl.from, dir, lanceReach(fl.from, dir, range, tw.ci).len, tNow, tw.lastStruck ?? 0, null); ent.until = until; }   // on the barrel every frame; no longer burst, no damage
-      for (const bm of ent.links) {
-        if (!live) { bm.mesh.visible = false; continue; }
-        bm.update(tNow);
-      }
-      if (!live && !towers.includes(tw)) {
-        for (const bm of ent.links) { scene.remove(bm.mesh); disposeObj(bm.mesh); }
-        plasmaBeams.delete(tw);
-      }
-    }
-  }
+  const plasmaBeamsFx = createPlasmaBeams({
+    scene,
+    plasmaBeams,
+    debris,
+    explode,
+    towerByCell,
+    effectiveStats,
+    camera,
+    towers,
+    lanceReach,
+    disposeObj,
+    cellSide: () => cellSide,
+    pilotMode: () => pilotMode,
+    pilot: () => pilot,
+  });
+  function throwPlasma(...a) { return plasmaBeamsFx.throwPlasma(...a); }
+  function lanceBeam(...a) { return plasmaBeamsFx.lanceBeam(...a); }
+  function stepPlasmaBeams(...a) { return plasmaBeamsFx.stepPlasmaBeams(...a); }
 
   // THE TOWER COMBAT LOOP (src/fx/tower-combat.js): the A6 walkers, every tower's frame, the shots, beams, lightning and slugs
   const towerCombat = createTowerCombat({

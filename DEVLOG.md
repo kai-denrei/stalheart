@@ -174,6 +174,20 @@ Evidence:
 - --finale: PASS finale-orbit-a/b/c, dataset.base 1; the orbit-a still: the base at the pole with the ARC-01 and the gantry at their size, the first heads rising from it
 - node test/orbital-finale.mjs (the snapshot, the exit, the shadow step)
 
+## 2026-10-07 — The tank's laser and the towers' plasma beams are fx modules
+
+change · accepted · 2026-10-07-tank-laser-and-plasma-beams-are-modules
+
+The refactor run's Task 12: the twin mini-lasers, their plasma beam rig, heat and lockout and the cannon's fire (about 330 lines), and the plasma thrower's and lancer's beams on the towers (about 150 lines) sat in src/td-tab.js.
+
+src/fx/tank-laser.js (createTankLaser: ensureBeams, applyBeamRank, applyReachToe, drawBeam, hideBeams, killLaser, updateLasers, fire) and src/fx/plasma-beams.js (createPlasmaBeams: makePlasmaLinks, throwPlasma, lanceBeam, stepPlasmaBeams). td-tab keeps the state other blocks read: laserShots, the heat lets and plasmaDry, the plume view plasma (the dev panel walks it), the live PLASMA knobs, Z_AXIS and the plasmaBeams map (the frame readout counts it); they come in as values or getters with setters (plasma and recoilLeft as setters alone). Call sites unchanged through one-liners. Nineteen imports left td-tab. td-tab 7,326 -> 6,914 lines.
+
+Evidence:
+
+- Equivalence harnesses (session scratchpad laser-equiv.mjs with laser- and plasma-scenario.mjs): the original blocks through new Function beside the modules on the same fakes: the laser held 250 frames to the overheat and the lockout, released and cooled, then the cannon fired; a plasma throw stepped 20 frames, a lance, the beams retired with their towers: identical logs; test/tank-laser.mjs and test/plasma-beams.mjs pin the digests
+- undef-diff, tdz-check and host contracts (43 factories) clean
+- npm test, npm run check, npm run build; snapshot suites --base-look --laser --laser-game --quiver-frame --defense --seats pass
+
 ## 2026-10-07 — A gameplay change to investigate: the player starts with a truck that rams the weak and lures the hard-core to the defence; the tank with its cannon is unlocked later; the plasma thrusters after that
 
 decision · proposed · 2026-10-07-start-with-the-truck-unlock-the-tank-then-the-thrusters
