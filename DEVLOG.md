@@ -75,6 +75,18 @@ Evidence:
 
 - node test/voice-hooks.mjs (59/59), npm test (185); --sky-hole and --nuke-key as a smoke of the host tick
 
+## 2026-10-07 — The --gunship skip check had rotted: the sites' guards are alive at that skip, so 'only amoeba' failed on main before any of today's changes
+
+issue · resolved · 2026-10-07-the-gunship-skip-check-rotted-with-the-nests-guards
+
+Running --gunship for the Bofors note, gunship-skip failed on 'the skip raises the white amoeba swarm' with enemyTypes [amoeba, barbed, phage]. Suspecting the day's changes, the same step was run on the session's starting commit (d3a6bb62) in a worktree: it fails the same way. The check predates the nests' guards (2026-10-03, barbed and phage at the landing sites), which are alive at ?skip=gunship.
+
+The check counts the skip's own bodies (showcase.strays(), guards left out) and asks that amoeba are among the types. A step outside a round's chain can rot unseen (the --debrief lesson of 2026-10-06 again); a baseline run on the starting commit is the quickest way to tell a regression from rot.
+
+Evidence:
+
+- --gunship on d3a6bb62 (worktree): AssertionError the skip raises the white amoeba swarm; on main after the change: PASS gunship-skip-enemies, Browser acceptance passed
+
 ## 2026-10-07 — No lull after the canyon's pass: the laid pass closes when its beam is spent, the gate opens right after, the survivors charge the base, and a stray still far out holds neither the sector's end nor the debrief
 
 change · resolved · 2026-10-07-the-canyon-strays-do-not-hold-the-sector
