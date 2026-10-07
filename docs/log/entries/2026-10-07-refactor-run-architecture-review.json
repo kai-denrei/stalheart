@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-10-07-refactor-run-architecture-review",
+  "date": "2026-10-07",
+  "type": "decision",
+  "status": "accepted",
+  "title": "The refactor run's branch reviewed: build on it; two modules want tests, the proofs pin digests, h.beep was never supplied",
+  "context": "Architecture review of branch refactor-run (20 commits, 0fd9fd24..c7f195b3) against main e4853f55, per the architecture-review skill. Checked: git diff --stat (94 files, +8,153/-4,041); src/td-tab.js 8,734 -> 6,135 lines, 522,363 -> 340,801 bytes, 16 -> 0 lines over 500 characters; src/fx/programme-host.js 392 -> 135 lines; no other file over 1,000 lines changed. npm run architecture: 'Guard: src/td-tab.js: 6135 lines under its ceiling 6400' and '126 pure-layer modules checked; game/lab controller boundaries, the line ceiling, the long-line budget and top-level placement hold.' node test/host-contracts.mjs: 'Host contracts hold for 49 factories.' npm test (208 programs), npm run check and npm run build green on the branch. None of the 23 new modules imports the controller or a lab. Every name a new fx module defines that is also exported by src/domain or src/core (reach, arc, summary) is a local of a different meaning, not a parallel implementation. The browser battery's two red suites, --canyon ('the swarm rises', 215 alive of 250) and --showcase ('Isao says his landing lines after PLAY'), are red on main at e4853f55 in the run's own baselines (scratch main1, main2); --grow is green on main (main3).",
+  "outcome": "Build on it. Findings, most structural first: (1) src/fx/colony-tick.js and src/fx/ending-host.js have no test/<module>.mjs (the add-module skill asks for one per module; the plan asked for tests on the four other Task 4 modules only) — add one each before the next change to them. (2) The move proofs in test/ (hull-drive, tower-combat, enemy-step and the rest) pin a sha of the recorded call log: a strong proof of the move, a weak regression test, since a deliberate change to a module breaks the digest with no readable diff and gets re-pinned blind — when a module is next changed on purpose, replace its digest with the harness's deepEqualLogs against a kept expectation or with named assertions. (3) test/host-contracts.mjs found that src/fx/sector-run.js reads h.beep (the debrief's page tick) and td-tab never supplied it (2026-10-07-sector-debrief-beep-never-supplied): a real pre-existing gap, listed in MISSING; the owner decides whether the ticks should sound. (4) Two hosts are still handed on whole (laser-station -> createLaserArsenal, ending-host -> playDiorama), listed in NESTED with reasons; the hull host's nesting is closed. (5) Not done: the wave clock half of Task 13 (seven lets read and written at about twenty sites; moving them reorders side effects) — the deferral is recorded with the first step for the next round (gather them into one state object). Leave for now: td-tab's older host literals (the sector run's and the showcase's, 2026-09-16/25) still pack several members per line; the new literals are one per line. The owner test-runs locally before any merge; nothing was pushed.",
+  "alternatives": [
+    "Reject the branch until the wave clock moves: not worth it, the deferral is reasoned and the rest stands on its own proofs.",
+    "Re-run --canyon and --showcase under the review: the run's own main baselines at the same commit already show both red; the owner's local playtest is the better check."
+  ],
+  "evidence": [
+    "git diff --stat main..refactor-run; wc -l src/td-tab.js src/fx/programme-host.js; npm run architecture; node test/host-contracts.mjs; npm test; npm run check; npm run build (all on the worktree ~/Dev/stalheart-refactor-run at c7f195b3)",
+    "scratch suite summaries main1 (--canyon rc=1, --backdoor rc=0), main2 (--showcase rc=1), main3 (--grow rc=0), s18 (the final battery: 16 of 18)"
+  ],
+  "supersedes": []
+}
