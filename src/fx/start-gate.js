@@ -83,11 +83,13 @@ export function createStartGate(root, { onOpen = null, sfx = null } = {}) {
   // cut short as the card goes; ISAO is Isao himself, a Hitchhiker's line per step (01 DON'T PANIC, 02 the good frood). Nothing until
   // a gesture has started the sound, and a line is not said again while it still plays
   let voiceTill = 0, sound = null;
-  const SAYS = { '01': 'welcome_panic', '02': 'welcome_frood' };
+  const SAYS = { '01': 'welcome_panic', '02': 'idle_flavor' };   // 02 cycles through his flavour lines (owner, 2026-10-07: 'keep the first Isao to DON'T PANIC; the Isao voices for 02 cycle between all the filler lines'); a trigger never repeats its last line
+  let korpTurn = 0;   // KORP: its gun one hover, a nuke-launch line the next (owner, 2026-10-07: 'cycle sound effects to the Nuclear Launch voices too')
   function hear(btn) {
     if (!sfx?.ready || gate.starting) return;
     const id = btn.dataset.unit, say = id === 'isao' && SAYS[btn.closest('.step')?.querySelector('.number')?.textContent];
     if (say) { if (performance.now() < voiceTill) return; const line = isaoSay(sfx, say, { force: true }); if (line) voiceTill = performance.now() + line.duration * 1000; return; }
+    if (id === 'korp' && korpTurn++ % 2) { if (performance.now() < voiceTill) return; const line = isaoSay(sfx, 'mk9_release', { force: true }); if (line) voiceTill = performance.now() + line.duration * 1000; return; }
     if (UNITS[id]?.sound) { sfx.stop?.(sound, 0.15); sound = sfx.say?.(UNITS[id].sound) ?? null; }
   }
   const hush = () => { sfx?.stop?.(sound, 0.4); sound = null; };

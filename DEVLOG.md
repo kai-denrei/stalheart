@@ -16,6 +16,18 @@ Evidence:
 
 - src/audio.js ARM_EVENTS / CREATE_EVENTS and their comments; src/fx/start-gate.js hear()
 
+## 2026-10-07 — The welcome's keys: ISAO 01 keeps DON'T PANIC, ISAO 02 cycles through his flavour lines, and KORP alternates its gun with a nuke-launch line
+
+change · resolved · 2026-10-07-the-welcome-cycles-isaos-flavour-and-the-nuke-lines
+
+Owner, 2026-10-07 (twenty-ninth notes, 3): 'sound effects on the landing page, pocket guide; keep the first Isao to Don't Panic. Then the Isao voices for 02; make them cycle between all the filler lines of Isao. For KORP gunship cycle sound effects to the Nuclear Launch voices too.'
+
+src/fx/start-gate.js: SAYS 02 is idle_flavor (the twenty-six flavour lines; a trigger never repeats its last line, so each hover is a new one), 01 stays welcome_panic; KORP says its Bofors on one hover and a mk9_release line (five recorded) on the next, forced like the ISAO lines. welcome_frood has no page any more (its recording stays in the export).
+
+Evidence:
+
+- node test/voice-hooks.mjs (59); the welcome page by hand
+
 ## 2026-10-07 — After the language study the camera goes straight back to the tank: no orbit pull-back over the sites, no swoop down
 
 change · resolved · 2026-10-07-the-study-straight-back-to-the-tank
