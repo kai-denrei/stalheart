@@ -87,6 +87,17 @@ export function createProgrammeHost(c) {
     aimSkyPlanes(planes, dir); planes.userData.aimedFor = sb; skyNote(planes);
     for (const [name, , k] of SKY) { const g = c.scene.getObjectByName(name); if (g) { aimSkyPlanes(g, turnSkyDirection(heart, dir, k.turn, k.elevation)); skyNote(g); } }
   };
+  // ISAO ON THE HEART'S THREAT, AND IN THE QUIET (owner, 2026-10-07, labs 117 then 118: "when enemies are getting closer to the Stålheart";
+  // the flavour lines from lab 106 on, "mostly flavor text"): a hostile within STORY_CALM.heartHops walking hops of the heart says
+  // heart_threat, and heart_threat_more as it ends (the voice's own rest keeps it to once in a while); no hostile up at all, the idle
+  // flavour (VOICE_FLAVOR: a chance, a long rest), asked every few seconds
+  const isaoOnTheHeart = () => {
+    const s = c.story(), d = c.dungeon()?.distToHeart, t = c.t(); if (!s || !d) return;
+    let near = false, any = false;
+    for (const e of c.enemies()) if (e.alive && !e.guard && !e.harmless) { any = true; if (d[e.cur] >= 0 && d[e.cur] <= STORY_CALM.heartHops) { near = true; break; } }
+    if (near) { if (t - (s.threatAskedAt ?? -Infinity) < 5) return; s.threatAskedAt = t; const line = isaoSpeak('heart_threat'); if (line && typeof setTimeout === 'function') setTimeout(() => isaoSpeak('heart_threat_more', { force: true }), (line.duration + 0.6) * 1000); }
+    else if (!any && !danger() && t - (s.idleAskedAt ?? -Infinity) >= 5) { s.idleAskedAt = t; isaoSpeak('idle_flavor'); }
+  };
   // a point (the placer's world) stands on lattice cell ci: ci is its nearest of ci and ci's neighbours, within one cell (patchLine's owns)
   const ownCell = (ci, p) => { const g = c.graph(), u = p.clone().normalize(), d = (k) => u.distanceTo(new THREE.Vector3(...g.centers[k])); return d(ci) < c.cellSide() && g.adj[ci].every((nb) => d(nb) >= d(ci)); };
   const danger = () => {   // engaged() below
@@ -115,7 +126,7 @@ export function createProgrammeHost(c) {
     },
     tankReady: () => { const s = c.story(); return !!s?.hull?.early(s.hullHost ??= createHullHost(c), s.nukeBerth?.(s.nukes.at(-1) ?? -1)); },
     build: () => {
-      aimSkyHole();
+      aimSkyHole(); isaoOnTheHeart();
       const pg = c.story().programme, sector = c.story().sectorN ?? 0;
       // THE BEST MOMENTS, FILMED (src/fx/moment-reel.js): the run's best ram combo and every tactical nuke, for the campaign card
       if (c.renderer && typeof document !== 'undefined') (c.story().reel ??= createMomentReel(c.renderer)).watch(c.t(), { combo: c.combo?.() ?? 0, nukes: c.story().nukes?.length ?? 0, strikeKills: c.kills?.()?.strike ?? 0, sector });
@@ -260,7 +271,7 @@ export function createProgrammeHost(c) {
         if (rci >= 0) {
           // HIS REPAIR IS ANIMATED: the print beam rasters the door's own footprint, and the gate climbs under it
           orders.push({ kind: 'repair', repair, ci: rci, cost: 0, seconds: BASE_REPAIR[repair.kind].seconds, bed: c.story().print.repairBed(repair, BASE_REPAIR[repair.kind]) });
-          spawnIsao();
+          spawnIsao(); isaoSpeak('repair_underway');   // ADAPT. IMPROVISE. OVERCOME (owner, 2026-10-07, lab 138: 'when ISAO is fixing breaches'), resting between orders
           if (!c.pilotMode() && !c.briefQ()) showBrief(BASE_REPAIR.brief);
           updateHud();
           return;
@@ -336,8 +347,8 @@ export function createProgrammeHost(c) {
         // THE FIRST LAUNCH IS A CINEMATIC (owner, 2026-10-02: "launching the automated SOL is a key moment, let's have a small cinematic of
         // the first satellite launch, with Isao explaining"): a camera beside the rail follows the sled and the payload up for LAUNCH_SHOT
         // seconds while Isao narrates the phases; skippable, and never over a manned seat
-        const say = { charging: 'sol88_charge', released: 'sol88_away' };
-        c.story().launch = createArcLaunch({ launcher: root, now: () => c.t(), sfx: c.sfx, onPhase: (ph) => { if (say[ph]) showBrief(say[ph]); }, onComplete: () => { c.laserStation?.setAuto?.(true); c.story().sol88 = true; c.story().launch = null; c.sectorRun()?.note({ type: 'launch', id: 'sol88' }); if (!c.pilotMode() && !c.briefQ()) showBrief('sol88_online'); updateHud(); } });
+        const say = { charging: 'sol88_charge' };   // the release is Isao's TO INFINITY! and BEYOND! (owner, 2026-10-07, lab 120: 'when we launch the first satellite')
+        c.story().launch = createArcLaunch({ launcher: root, now: () => c.t(), sfx: c.sfx, onPhase: (ph) => { if (ph === 'released') isaoSpeak('sol88_liftoff', { force: true }); if (say[ph]) showBrief(say[ph]); }, onComplete: () => { c.laserStation?.setAuto?.(true); c.story().sol88 = true; c.story().launch = null; c.sectorRun()?.note({ type: 'launch', id: 'sol88' }); if (!c.pilotMode() && !c.briefQ()) showBrief('sol88_online'); updateHud(); } });
         if (root && c.startShot && !c.pilotMode() && !c.laserStation?.seated?.() && !danger()) {   // never over the hull in a crowd (STORY_CALM)
           const L = root.getWorldPosition(new THREE.Vector3()), n = L.clone().normalize(), m = c.cellSide() / 10;
           const side = new THREE.Vector3().setFromMatrixColumn(root.matrixWorld, 0).normalize(), fwd = new THREE.Vector3().setFromMatrixColumn(root.matrixWorld, 2).normalize();

@@ -11,7 +11,7 @@
 // hidden }. The host owns the hit points; this only compares them with the last frame. `reset()` for a new run.
 // ON A PHONE the strip is not shown (styles.css; the owner's open complaint is a cluttered phone HUD, and the strip had no free slot
 // in either orientation): the stats panel already carries the hearts and GATE %, so a hit flashes that panel instead (`ih-panel-hit`).
-const HEART_LINES = [[1, 'heart_hit'], [0.5, 'heart_half'], [0.3, 'heart_critical']];   // [share at or below which, brief], said once a run each
+const HEART_LINES = [[1, 'heart_hit'], [0.5, 'heart_half'], [0.4, 'heart_below_five'], [0.3, 'heart_critical']];   // below five: GAME OVER MAN! (owner, 2026-10-07, lab 121)   // [share at or below which, brief], said once a run each
 const GATE_LINES = [[0.5, 'gate_half'], [0.25, 'gate_failing']];
 const WORN = 0.6;   // seconds a gate stays UNDER ATTACK after its last loss
 

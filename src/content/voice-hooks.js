@@ -16,6 +16,9 @@ export const VOICE_HOOKS = Object.freeze({
   // THE ALIEN LANGUAGE (owner, 2026-10-05, lines promoted in seiyu_voice): the study's first line, then its third, "Need more compute"
   vibration_study: Object.freeze(['vibration_study#2']),
   plasma_dry: Object.freeze(['PLASMA DRY']),
+  // THE SENTRY CAP REFUSED (owner, 2026-10-07, labs 145 and 146: 'when the player tries to build extra sentries above 10'): the NOT HERE
+  // toast with STORY_SENTRIES.full (td-tab refuseCaption), matched on its start
+  sentry_overload: Object.freeze(['NOT HERE Isao keeps 10 sentries']),
 });
 
 // the callout and toast texts the game shows that a trigger answers (src/td-tab.js showCallout, showToast and the modules' host.callout)
@@ -25,7 +28,8 @@ export const VOICE_CALLOUTS = Object.freeze(['SECTOR SECURE', 'STAMPEDE — RAM 
 // named moments the game raises itself (not a brief, not a callout): the landing's mission card, a new enemy's card, a sentry's print
 // standing, the next hull out of its berth, a sector lost, the armory's pad loading shells, an automated SOL pass's countdown (the count
 // then runs on the line's beats, src/fx/laser-arsenal.js) (src/fx/isao-voice.js isaoSpeak)
-export const VOICE_EVENTS = Object.freeze(['mission', 'first_contact', 'print_done', 'hull_rebuilt', 'sector_lost', 'shells_refilled', 'sol_firing', 'mk9_release', 'paint_pad', 'language_analysis', 'welcome', 'welcome_settle', 'ad_astra']);   // paint_pad: the shop opens (src/fx/programme-host.js)   // mk9_release: every MK-9 launched (src/fx/gunship-rig.js launchHeavy)   // language_analysis: Isao's study screen opens (src/fx/synthetic-modal.js)   // welcome, welcome_settle, ad_astra: the welcome guide and its START (src/fx/start-gate.js)
+export const VOICE_EVENTS = Object.freeze(['mission', 'first_contact', 'print_done', 'hull_rebuilt', 'sector_lost', 'shells_refilled', 'sol_firing', 'mk9_release', 'paint_pad', 'language_analysis', 'welcome', 'welcome_settle', 'ad_astra',
+  'welcome_nominal', 'sol88_liftoff', 'heart_threat', 'heart_threat_more', 'repair_underway', 'idle_flavor']);   // 2026-10-07, the owner's labs: the START button hovered, the first satellite's release, bodies at the heart (117 then 118), a repair order, the quiet   // paint_pad: the shop opens (src/fx/programme-host.js)   // mk9_release: every MK-9 launched (src/fx/gunship-rig.js launchHeavy)   // language_analysis: Isao's study screen opens (src/fx/synthetic-modal.js)   // welcome, welcome_settle, ad_astra: the welcome guide and its START (src/fx/start-gate.js)
 
 // THE LINE FOR ITS MOMENT (owner, 2026-10-05: "'The Stålheart stands, MÖRK rolling out' said much too early"; "'25, show-off' at a ram
 // bonus of 16"): a line that names a particular moment plays only at that moment (a brief id or a callout text); unlisted lines play
@@ -46,9 +50,9 @@ export const VOICE_LINE_MOMENTS = Object.freeze({
 // brief's next line on screen and a forced line do not wait), and the chatty triggers rest longer than `repeat` (`rest`, seconds)
 // FLAVOUR SPEAKS LESS (owner, 2026-10-05: "reduce for flavor text and encouragements ... 'pace yourself', 'next'; keep key announcements and
 // nukes always"): these triggers speak on `chance` of their moments, `rest` seconds apart at the least; every other trigger as before
-export const VOICE_FLAVOR = Object.freeze(['soft_ones_keep_the_chain', 'stampede_ram_them', 'ram_chain_milestones', 'chain_broken', 'good_hit', 'idle', 'board_lead',
+export const VOICE_FLAVOR = Object.freeze(['soft_ones_keep_the_chain', 'stampede_ram_them', 'ram_chain_milestones', 'chain_broken', 'good_hit', 'idle', 'idle_flavor', 'board_lead',
   'print_done', 'build_start', 'build_gate', 'breach_sealed', 'isao_repair', 'gate_mended', 'gate_half', 'shells_refilled', 'hull_rebuilt', 'array_charging']);
-export const VOICE_TUNE = Object.freeze({ flavor: Object.freeze({ chance: 0.35, rest: 90 }), gap: 0.35, space: 4, repeat: 12, rest: Object.freeze({ print_done: 60, build_start: 45, idle: 90, good_hit: 30 }), late: 1.5, gain: 1, duck: Object.freeze({ buses: Object.freeze(['towers', 'tank', 'enemies', 'ambient']), depth: 0.45 }) });
+export const VOICE_TUNE = Object.freeze({ flavor: Object.freeze({ chance: 0.35, rest: 90 }), gap: 0.35, space: 4, repeat: 12, rest: Object.freeze({ print_done: 60, build_start: 45, idle: 90, good_hit: 30, repair_underway: 60, heart_threat: 120, sentry_overload: 20 }), late: 1.5, gain: 1, duck: Object.freeze({ buses: Object.freeze(['towers', 'tank', 'enemies', 'ambient']), depth: 0.45 }) });
 
 // the player's picks (the Workshop's voice tab): src/storage.js key
 export const VOICE_STORE = 'td.voice';

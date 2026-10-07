@@ -477,6 +477,10 @@ export const BRIEFS = {
     id: 'heart_half', face: 'frustrated', title: 'THE STÅLHEART · HALF',
     lines: ['The Stålheart is half gone.', 'If it falls, there is no colony. Hold the line.'],
   },
+  heart_below_five: {
+    id: 'heart_below_five', face: 'angry', title: 'THE STÅLHEART · BELOW FIVE',
+    lines: ['GAME OVER MAN! GAME. OVER.'],   // the owner's lab 121 (2026-10-07), said at four hearts, once a run (src/fx/integrity-hud.js)
+  },
   heart_critical: {
     id: 'heart_critical', face: 'angry', title: 'THE STÅLHEART · CRITICAL',
     lines: ['The Stålheart cannot take much more!', 'Nothing else gets through. Nothing.'],

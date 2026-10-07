@@ -35,6 +35,20 @@ Evidence:
 - scripts/browser-lock.sh node scripts/browser-test.mjs --sky-hole: SKY HOLE dir [-0.01,0.02,1.00] 40 out 28 across; SKY-VEIL dir [0.01,0.10,-0.99] 46 out 12 across (180 degrees round); SKY-BLOOM dir [0.88,0.47,0.01] 45 out 16 across; stills sky-veil-look (the veil small over the bays' roofs on the opposite horizon) and sky-bloom-look (the blue spiral high over the dish)
 - npm test (184 programs, test/nebulae.mjs new), npm run check, npm run architecture, npm run build
 
+## 2026-10-07 — The owner's lab lines wired: ALL SYSTEMS NOMINAL on the START button, TO INFINITY on the first satellite's release, GAME OVER MAN below five hearts, ADAPT IMPROVISE OVERCOME on a repair, 'Get away from her' then 'She creates' with bodies at the heart, OVERLOAD at the sentry cap, and twenty-six flavour lines in the quiet
+
+change · resolved · 2026-10-07-the-owners-lab-lines-wired
+
+Owner, 2026-10-07 (twenty-eighth notes, 5): 'we have more voices to integrate, from lab 106 onward, mostly flavor text; a few would trigger at specific times: Lab 144 all systems nominal when the player hovers the start button; Lab 120 to infinity and beyond when we launch the first satellite; Lab 121 GAME OVER MAN when the heart is below 5 health; Lab 138 when ISAO is fixing breaches; Lab 117 when enemies are getting closer to the Stålheart, followed by lab 118; Lab 145 and 146 when the player tries to build extra sentries above 10.' The lab lines lived only as lab renders in seiyu_voice (state/lab.json, renders/A); lab lines are never exported until promoted into the script.
+
+seiyu_voice (commit ed4cc5b): `isao lab promote` into triggers welcome_nominal (section 1), sol88_liftoff (6), heart_below_five, heart_threat, heart_threat_more (8), repair_underway (9), sentry_overload x2 (3) and idle_flavor x26 (13, labs 106-116, 119, 122-136, 142), approved, exported with the earlier unapproved lines kept; scripts/import-isao-voice.mjs: 201 lines in 66 triggers (34 new mp3s). The game: start-gate says welcome_nominal (forced) when the START button is hovered, once the sound can start (a browser starts no sound before the first click, tap or key: see the hover-sound note); programme-host says sol88_liftoff forced at the launch's 'released' phase (the sol88_away brief no longer plays there), repair_underway on each repair order (rest 60 s), and in its build tick isaoOnTheHeart: a hostile within STORY_CALM.heartHops (6) walking hops of the heart says heart_threat (rest 120 s) with heart_threat_more forced as it ends; no hostile up and no danger, idle_flavor asked every 5 s (VOICE_FLAVOR: 35% of the time, 90 s rest). integrity-hud HEART_LINES gains [0.4, heart_below_five] with its brief (isaobriefs, the recorded words), said once a run at four hearts. voice-hooks: VOICE_HOOKS.sentry_overload matches the NOT HERE toast's start (td-tab refuseCaption with STORY_SENTRIES.full), VOICE_EVENTS names the six events. test/voice-hooks (59 checks): the toast resolves, an ordinary NOT HERE does not, the brief is recorded word for word, every new trigger has lines.
+
+Alternatives: Adding lab 120 as a line of sol88_charge/sol88_away: a trigger picks among its lines, and the owner wants that line at that moment
+
+Evidence:
+
+- node test/voice-hooks.mjs (59/59), npm test (185); --sky-hole and --nuke-key as a smoke of the host tick
+
 ## 2026-10-07 — The base itself under the constellation: the run's own buildings on the finale's planet at their true size, the heads off the base's own ARC-01, and the black hole's shadow steady
 
 change · resolved · 2026-10-07-the-base-itself-under-the-constellation

@@ -107,6 +107,8 @@ export function createStartGate(root, { onOpen = null, sfx = null } = {}) {
     setTimeout(() => { isaoFree(); gate.opened = true; dispose(); onOpen?.(); }, line ? (line.duration + 0.25) * 1000 : 600);
   }
   cta.addEventListener('click', start);
+  // ALL SYSTEMS NOMINAL (owner, 2026-10-07, lab 144: 'when the player hovers on the beginning start button'), once the sound can start
+  cta.addEventListener('pointerenter', () => { if (!sfx?.ready || gate.starting || performance.now() < voiceTill) return; const line = isaoSay(sfx, 'welcome_nominal', { force: true }); if (line) voiceTill = performance.now() + line.duration * 1000; });
   queueMicrotask(() => cta.focus({ preventScroll: true }));   // Enter starts too
   function dispose() { hide(true); removeEventListener('pointerup', firstGesture); removeEventListener('keyup', firstGesture); el.classList.add('out'); setTimeout(() => el.remove(), 500); }
   return gate;
