@@ -1567,9 +1567,10 @@ try{
  const build=()=>evaluate('!!document.querySelector("#story-views")?.closest(".build")');
  await until('!!document.querySelector("#synthetic-modal:not([hidden])")',60000);
  assert.equal(await build(),false,'the study interrupted the drive, not the map');
- await delay(800);await evaluate('document.querySelector("#synthetic-modal [data-continue]").click()');
+ await delay(800);const t0=Date.now();await evaluate('document.querySelector("#synthetic-modal [data-continue]").click()');
  await until(`${T}.state().story.phase==="expedition"`,20000);
- await until(`${T}.state().shot===null`,20000);await delay(600);
+ await until(`${T}.state().shot===null`,20000);const took=Date.now()-t0;await delay(600);
+ console.log(`STUDY VIEW the shot gone ${took} ms after the screen`);assert(took<2500,`straight back to the tank, no orbit pull-back (owner, 2026-10-07: too many cuts): ${took} ms`);
  const after=await evaluate(`[document.querySelector("#story-views button.active")?.dataset.view,!!document.querySelector("#story-views")?.closest(".build"),${T}.state().view]`);
  console.log(`STUDY VIEW after the sites: strip ${after[0]} build ${after[1]} view ${after[2]}`);
  assert.deepEqual(after.slice(0,2),['tank',false],'back to the drive the close-up interrupted, not the bird\'s-eye view');

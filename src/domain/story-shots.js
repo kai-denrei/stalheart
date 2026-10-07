@@ -19,8 +19,6 @@ export function orbitFrame(d, radius) {
   return { eye: scale3(d, radius), look: [0, 0, 0], up };
 }
 // the sites' mean direction, and the climb from 1.6 to 3.3 planet radii in the first 62.5% of the shot
-export const sitesDir = (points) => norm3(points.reduce((a, c) => add3(a, c), [0, 0, 0]));
-export const sitesRadius = (u) => 1.6 + 1.7 * Math.min(1, u * 1.6);
 
 // THE TOUR OF THE LANDERS (owner, 2026-10-03: "after Isao starts building, there's an awkward dead time ... a) it zooms out to a planetary
 // view b) the camera moves one by one quickly to each beacon (landing sites), giving a clear idea of a mission, and c) from there we jump
