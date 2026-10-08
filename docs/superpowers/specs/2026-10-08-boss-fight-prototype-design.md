@@ -27,13 +27,14 @@ nuke; the gunship's hull in the sky; sound beyond the game's existing cues; the 
 | `src/labs/boss/cannon.js` | labs | the tank's shells: `createCannon(scene, host)` |
 | `src/labs/boss/friendlies.js` | labs | the gunship's rounds, SOL's beam, the red spots: `createFriendlies(scene, host)` |
 | `src/labs/boss/round.js` | labs | the health bar, the clock, the cards, the reset: `createRound(stage, host)` |
-| `src/labs/boss-tab.js` | labs | composition only: wires the four above to the creature, the frame and the readout |
+| `src/labs/boss-tab.js` | labs | wires the four above to the creature, the frame and the readout; it also holds the body's own lab rules (the blocker, the shell's hit test, the shove, the circle controller) and the round's reset. Moving the body's rules to `src/labs/boss/body.js` is the next refactor |
 | `test/boss-fight.mjs` | test | the domain rules |
 | `scripts/browser-test.mjs` | scripts | the `--boss-fight` step |
 
 The four lab files import `src/fx`, `src/content`, `src/domain`, `src/labs`, the vendored three and the shared top-level
 builders the labs already use (`tankfeel.js`, `shell.js`, `units.js`); never `td-tab.js`. `src/domain/boss-fight.js`
-imports nothing (the numbers come in as a `tune` argument, the project's domain rule: content stays out of domain).
+imports only `./gunship.js`'s falloff (`splashDamage`, so a landing hurts exactly as the game's splash); the numbers come in
+as a `tune` argument (the project's domain rule: content stays out of domain).
 
 ## 2. The drive: the game's feel on the plane
 
@@ -86,8 +87,10 @@ Two shooters, both standalone pieces of the game already in the tree:
   landing is `explosions.spawn('gunship.bofors', point, normal, cellSide)` and the gun's impact cue.
 - **SOL-88**: `createOrbitalLaser(scene, { cellSide: 10, metresPerCell: 10 })`, standalone as the laser lab uses it: every
   `BOSS_FIGHT.sol.every` seconds a strike: `aim` for the warning time with the laser's own red pointer (`guideAt`), then
-  `lay` and a burn of `sol.burn` seconds following the contact (`aim` each frame, the `laser_burn` loop, `laser.ignite` once
-  and `laser.contact` every eighth), then `lift`. The footprint is the game pass's 8 m.
+  `lay` and a burn of `sol.burn` seconds on that same spot (the `laser_burn` loop, `laser.ignite` once and `laser.contact`
+  every eighth), then `lift`. The footprint is the game pass's 8 m. **Decision (the code):** the burn stays on the spot the
+  pointer showed and does not follow the creature: the spot is the promise, the red ring is where it burns, so a player who
+  is out of the ring is safe for the whole burn.
 
 **Aim.** Both shooters aim at the creature's centre led by its velocity over the time to landing (`lead` knob, default 1),
 scattered by the game's rule: a golden-angle jitter within half the blast radius (Bofors) or the footprint (SOL), from a
@@ -116,27 +119,29 @@ SOL's footprint during the burn, is a lost hull.
   kit's is 2.4), so the body collapses under its own weight; a card `KILLED <time>` with the hits, three seconds, then the
   reset restores the preset's gravity.
 - **LOST**: the creature captures the tank (feeding leaves `hunting`), or a landing ring takes it: a card `LOST <reason>`,
-  three seconds (the feeding plays out meanwhile; a landing hides the hull with a `tank.shell` burst), then the reset.
+  three seconds (the feeding plays out meanwhile; a landing hides the hull with a `tank.shell` burst, and a lost hull is
+  nobody's prey until the reset: it does not drive, the lure is not fed, the shooters see it a world away and the creature's
+  feeding is off), then the reset. A creature reloaded mid-fight (a variant switch) starts a new round, so no strike is owed
+  for the seconds the load skipped.
 - **The reset**: the tank respawns 40 m out on the side away from the creature, the creature resets to its rest
   (`creature.reset()`) at the frame's origin, `hp = max`, the clock at zero, the schedule cleared, the spots gone.
-- **Balance** (why the numbers below): Bofors at 2.4 rounds/s in 2.6 s bursts with 1.4 s rests is 1.56 rounds/s; a creature
-  30 m across under a 22 m scatter takes nearly every round somewhere on the body, at the falloff's mean about 0.6 of 4
-  damage, so about 3.7 hp/s; SOL at 2 s of burn every 8 s at 10 hp/s is 2.5 hp/s; together about 6 hp/s, so a creature
-  that stands in it dies in about 30 s with `health = 230`. Every term is a knob and the readout shows the measured
-  `hp/s` and the projected time to kill, so the owner tunes by eye.
+- **Balance** (why the numbers below): the Bofors fire 2.4 rounds/s in 2.6 s bursts with 1.4 s rests, 1.56 rounds/s, at 4
+  damage under the falloff `1 - (d / r)^2` over 22 m measured to the nearest floor contact; SOL burns 10 hp/s for 2 s every
+  8 s. A first estimate (a 30 m body taking about 0.6 of each round, about 6 hp/s with SOL) set `health = 230`; the
+  measurements replaced it. The standing creature's floor contacts, read in the lab with the instinct off, are 44 nodes in
+  six feet of seven or eight, 12.5 to 16.2 m from the centre and none under the middle, so a round near the centre is far
+  from every contact: at 230 the standing body died in 43.86 s in the lab (5.24 hp/s) and in 43.85 s in node on the same 44
+  contacts. Health is therefore **155**: a standing creature dies in 30.62 s in node and in 30.62 s in the lab (`KILLED
+  0:30.6`, 43 hits, 5.06 hp/s); the node test's bound is 24 to 36 s. Every term is a knob and the readout shows the
+  measured `hp/s` and the projected time to kill, so the owner tunes by eye.
 
-`BOSS_FIGHT` (content): `{ health: 155 (230 at first; see below), warn: 1.5, lead: 1, bofors: { burst: 2.6, rest: 1.4, damage: 4, radius: 22,
-travel: 2.6 }, sol: { every: 8, aim: 1.5, burn: 2, dps: 10, radius: 8 }, hull: { radius: 4.2 }, card: 3, respawn: 40 }`.
-**Corrected by Task 0's measurement:** a round landing anywhere on a dense body does near-full damage (the falloff is
-measured to the nearest contact, not to the centre), so the Bofors deal about 6 hp/s, not 3.7; with health 180 the node
-proof killed a standing creature in 24.7 s. **Corrected again by the real body (Task 5):** the standing creature's floor
-contacts, read in the lab with the instinct off, are 44 nodes in six feet 12.5 to 16.2 m from the centre and none under the
-middle, so a round near the centre is far from every contact; health 230 died in 43.86 s in the lab (5.24 hp/s) against the
-disc's 30.6 s. The node test's fixture is now those 44 contacts (230 gives 43.85 s in node too). Health is 155: a standing
-creature dies in 30.62 s in node and in 30.62 s in the lab (`KILLED 0:30.6`, 43 hits, 5.06 hp/s); the node test's bound stays
-24 to 36 s.
+`BOSS_FIGHT` (content): `{ health: 155, warn: 1.5, lead: 1, scatter: 0.5, bofors: { burst: 2.6, rest: 1.4, rate: 2.4,
+damage: 4, radius: 22, travel: 2.6 }, sol: { every: 8, aim: 1.5, burn: 2, dps: 10, radius: 8 }, hull: { radius: 4.2 },
+card: 3, respawn: 40, deathGravity: 10 }`.
 The gun's own rate, travel and damage are read from `GUNSHIP_GUNS.bofors` where the lab fires it; the content holds the
-fight's copies for the domain so the rule stays pure.
+fight's copies for the domain so the rule stays pure, and the node test holds the copies to the game's (`burst` and `rest`
+to `GUNSHIP_AUTO`, `rate` and `travel` to `GUNSHIP_GUNS.bofors`, `radius` to its `blastCells` at ten metres a cell);
+`damage` is the fight's own knob.
 
 ## 6. The domain module
 
@@ -144,14 +149,14 @@ fight's copies for the domain so the rule stays pure.
 plane `[x, z]`:
 
 - `makeFight(tune) -> state` with `{ phase: 'idle' | 'fight' | 'lost' | 'killed', hp, max, clock, card, hits, damage,
-  provokes, strikes: [], seed }`.
+  strikes: [], seed }` (the cannon's provokes are the lab's count, not the fight's).
 - `startFight(state)`: idle to fight, clock 0.
 - `schedule(state, now, creature: { centre: [x, z], velocity: [x, z], radius }, tune) -> plans[]`: advances the Bofors
   burst/rest cycle and SOL's clock and returns the new plans, each `{ kind: 'bofors' | 'sol', at: [x, z], radius, showAt,
   fireAt, land, until }` (`until` = `land` for a round, `land + burn` for SOL); the aim is the centre led by the velocity
   over `land - now`, scattered by the golden-angle sequence from `state.seed`.
 - `resolveLanding(state, plan, creature: { contacts: [[x, z], ...] }, tank: { pos: [x, z], radius }) -> { damage,
-  tankHit }`: the falloff on the nearest contact; `tankHit` when `dist(tank.pos, plan.at) < plan.radius + tank.radius`;
+  tankHit }`: `splashDamage` (from `./gunship.js`) on the nearest contact; `tankHit` when `dist(tank.pos, plan.at) < plan.radius + tank.radius`;
   applies the damage to `state.hp` and counts a hit.
 - `burn(state, plan, dt, creature, tank) -> { damage, tankHit }` for SOL's footprint while `now < plan.until`.
 - `capture(state, reason)`: fight to lost with the reason; `kill(state)`: fight to killed; `tick(state, dt)`: the clock
@@ -170,16 +175,23 @@ hp/s · ttk <s> · provokes <n>`.
 
 ## 8. Tests
 
-- `test/boss-fight.mjs`: with the content's numbers, a stationary creature of radius 15 m at the origin: `schedule` over 30
-  s yields the expected count of plans (within one burst's worth) with `showAt = land - warn` and `fireAt = land -
-  travel`; every Bofors plan lands within half the radius of the centre; `resolveLanding` on a contact at the landing point
-  gives full damage and at the ring's edge zero; the tank at the ring's edge plus its radius is not hit, one metre inside
-  is; a 30 s run of schedule + resolve on a 15 m contact disc brings `hp` to zero between 24 and 36 s (the balance claim,
-  as a bound); `capture` then `tick` returns `'reset'` after the card; the seeded scatter is repeatable.
-- Browser `--boss-fight`: open the lab with `acceptance=1`, turn the fight on, drive away and circle at 40 m for 35 s with
-  the harness's `driveTank`, assert the readout's `hp` fell below half within 20 s, that at least one `bofors` and one `sol`
-  plan showed (`readout().strikes`), and that `hits > 0`; then park the tank at the creature and assert `phase` becomes
-  `lost` within 15 s and `'reset'` follows. The handle gains `fight()` (the state readout), `setFight(on)` and
+- `test/boss-fight.mjs`: with the content's numbers, a stationary creature at the origin whose contacts are the real body's
+  44 floor contacts as the lab measured them (six feet, 12.5 to 16.2 m out): `schedule` over 30 s yields exactly the
+  expected count of Bofors plans (whole cycles of `round(burst * rate)` rounds plus the partial cycle's) with the exact gaps
+  inside and between bursts, SOL's lands at `every + aim` and `2 * every + aim`, `showAt = land - warn` and `fireAt = land -
+  travel`; every Bofors plan lands within the scatter of the centre; the lead aims ahead of a moving creature; a switched-off
+  shooter makes no plans; `resolveLanding` on a contact at the landing point gives full damage and at the ring's edge zero;
+  the tank at the ring's edge plus its radius is not hit, one metre inside is; a run of schedule + resolve + burn on the 44
+  contacts brings `hp` to zero between 24 and 36 s (the balance claim, as a bound; 30.62 s); the guards (no damage outside
+  the fight, `startFight` only from idle, no strikes after capture); `capture` then `tick` returns `'reset'` after the card;
+  the seeded scatter is repeatable; the fight's copies of the gun's numbers equal the game's.
+- Browser `--boss-fight`: open the lab with `acceptance=1`, turn the fight on, circle at 45 m with the handle's `circle`
+  until 22 s of fight clock (90 s of real time at most: headless advances the game clock slowly, so every wait is on the
+  fight's clock with a real-time cap); assert the hp fell below half by 24 s of fight clock or its rate would take it there
+  (`hpPerSecond >= max / 2 / 24`), logging the measured time; that at least one `bofors` and one `sol` plan showed
+  (`fight().strikes`), and that `hits > 0`; then park the tank at the creature and assert `phase` becomes `lost` within
+  20 s and the reset follows (within 30 s); then the creature held still (instinct off) dies between 24 and 36 s of fight
+  clock (90 s of real time at most). The handle gains `fight()` (the state readout), `setFight(on)` and
   `circle(seconds, radius)`.
 
 ## Open questions for the boss spec (after this prototype)
