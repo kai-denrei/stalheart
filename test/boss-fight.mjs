@@ -192,8 +192,10 @@ for (let i = 0; i <= 60 * 60 && killedAt === null; i++) {
   tick(s2, dt);
   if (s2.hp <= 0) killedAt = now;
 }
-// a wide guard: the final health is set from a survival run (Task 7), which tightens this bound to the measured time +- 20 %
-assert.ok(killedAt !== null && killedAt >= 15 && killedAt <= 40, `time to kill ${killedAt}`);
+// the regression anchor (next-round spec, section 6): the held creature's time to kill at the survival-balanced health, measured 27.80 s
+// (the health was set so the browser's dodging circle kills in about 30 s); +- 20 % of that
+const HELD_STILL = 27.8, HELD_BAND = 0.2;
+assert.ok(killedAt !== null && Math.abs(killedAt - HELD_STILL) <= HELD_STILL * HELD_BAND, `time to kill ${killedAt} (${HELD_STILL} s +- ${HELD_BAND * 100} %)`);
 const ro = readout(s2);
 assert.ok(ro.hp === 0 && ro.hits > 0 && ro.hpPerSecond > 0 && Math.abs(ro.clock - killedAt - 1 / 60) < 1e-6, 'the readout');
 assert.equal(readout(fight()).timeToKill, Infinity, 'no projection before any damage');

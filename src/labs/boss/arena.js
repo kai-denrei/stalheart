@@ -125,7 +125,7 @@ export function createArena(sphere, { surface, cellSide = 10, explosions = null,
       x[i * 3] = m.x / scale; x[i * 3 + 2] = m.z / scale;
       const vn = v[i * 3] * m.nx + v[i * 3 + 2] * m.nz;
       if (vn < 0) { v[i * 3] -= vn * m.nx; v[i * 3 + 2] -= vn * m.nz; }
-      pushedNodes.push([m.x, pos[i * 3 + 1], m.z]);
+      pushedNodes.push([i, m.x, pos[i * 3 + 1], m.z]);
     }
     pushed = moves.length;
   }

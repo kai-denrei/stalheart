@@ -5,7 +5,7 @@
 const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 'object') freeze(v); return Object.freeze(o); };
 
 export const BOSS_FIGHT = freeze({
-  health: 155,        // the creature's hit points: a held creature (tank far) dies in 24.22 s in node with the four guns (the real feet); Task 7 sets the final value
+  health: 180,        // the creature's hit points, set from the browser's survival run (next-round spec, section 6): a tank that circles at 45 m and widens to clear each MK-9 ring kills it in 26.26 s and 26.03 s (mean 26.15) at 155 and in 31.03 s at 180; a held creature (tank far) dies in 27.80 s in node with the four guns (the real feet), 24.22 s at 155
   warn: 1.5,          // a red spot shows this long before its shot lands
   lead: 1,            // the aim leads the creature's velocity by this fraction of the time to landing
   scatter: 0.5,       // the jitter's reach as a fraction of the blast radius (Bofors) or the footprint (SOL)

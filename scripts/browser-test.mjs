@@ -2103,10 +2103,74 @@ try{
  console.log('BOSS-FIGHT '+JSON.stringify({standing:kill}));
  assert.equal(k.phase,'killed',k.phase==='fight'?`the standing body was not killed within 90 s of real time (${kill.clock} s of fight clock, ${kill.hpPerSecond} hp/s; ${JSON.stringify(kill)})`:`the standing body is killed, not ${k.phase} (${k.reason}) (${JSON.stringify(kill)})`);
  assert(k.clock>=24&&k.clock<=36,`the standing body dies within 24 to 36 s of fight clock (${kill.clock} s)`);
+ // the survival run (next-round spec, section 6): the instinct back on, a fresh round, every shooter, the fear and the arena on, and
+ // a player who dodges: the circle at 45 m, widened to 75 m while a nuke's ring shows (the handle's dodge), back to 45 m after it
+ // lands. Until KILLED or 60 s of fight clock (180 s of real time as the cap). A LOST round is not a measurement. The kill's clock
+ // sets the health (BOSS_FIGHT.health = health x 30 / the clock, to 5) and must land within 25 to 35 s
+ await until(`${B}.fight().phase === "idle" && ${B}.readout().fight.card === null`,60000);
+ await evaluate(`${B}.setInstinct(true); ${B}.reset()`);await delay(1500);
+ const taken1=await evaluate(`${B}.readout().taken`);
+ await evaluate(`${B}.stopTank({ near: true, at: ${60/scale} }); ${B}.dodge(300, 45, 75)`);
+ await until(`${B}.fight().phase === "fight"`,20000);
+ let sv=await evaluate(F);const svReal=Date.now(),svKinds=new Set(),svTrace=[];
+ for(;Date.now()-svReal<180000;){
+   await delay(250);sv=await evaluate(F);sv.strikes.forEach(k=>svKinds.add(k));
+   if(sv.clock>=17&&sv.clock<=27){const g=await evaluate(`(()=>{const f=${B}.fight(),r=${B}.readout();return [f.centre,r.tank.x,r.tank.z];})()`);svTrace.push([+sv.clock.toFixed(1),+Math.hypot(g[1]-g[0][0],g[2]-g[0][1]).toFixed(0)]);}   // the tank's distance from the centre round the first nuke
+   if(sv.phase!=='fight'||sv.clock>=60)break;
+ }
+ const svTaken=await evaluate(`${B}.readout().taken`);
+ const survival={phase:sv.phase,reason:sv.reason,clock:+sv.clock.toFixed(2),hp:+sv.hp.toFixed(1),max:sv.max,hits:sv.hits,hpPerSecond:+sv.hpPerSecond.toFixed(2),frights:sv.frights,stuns:sv.stuns,taken:svTaken-taken1,real:+((Date.now()-svReal)/1000).toFixed(1),strikes:[...svKinds]};
+ console.log('BOSS-FIGHT '+JSON.stringify({survival}));console.log('BOSS-FIGHT survival tank distance by fight clock '+JSON.stringify(svTrace));
+ console.log(`BOSS-FIGHT survival: ${sv.phase==='killed'?'KILLED':sv.phase.toUpperCase()} at ${survival.clock} s of fight clock (health ${sv.max}, ${survival.hpPerSecond} hp/s, ${sv.frights} frights, ${sv.stuns} stuns, taken ${survival.taken}, ${survival.real} s of real time)`);
+ assert.equal(sv.phase,'killed',`the survival run is KILLED, not ${sv.phase} (${sv.reason}) at ${survival.clock} s of fight clock (${JSON.stringify(survival)}); a LOST or unfinished run is not a measurement`);
+ assert.equal(survival.taken,0,`the dodging tank was never taken (${survival.taken}) (${JSON.stringify(survival)})`);
+ assert(survival.clock>=25&&survival.clock<=35,`the survival run kills in 25 to 35 s of fight clock (${survival.clock} s at health ${sv.max})`);
  await evaluate(`${B}.setInstinct(true)`);
  const readout=await evaluate(`${B}.readout()`);
  assert.deepEqual(readout.shaderErrors,[],'no shader errors');assert(!readout.error,`no frame error (${readout.error})`);
  current='boss-fight-reset';await finish();
+ } else if(args.includes('--boss-walls')) {
+ // THE WALL MEASUREMENT (next-round spec, section 3; 2026-10-08): no shooters, the creature's target pinned on w1's middle with the
+ // routing off and the tank held still behind it for 10 s of lab clock (real-time cap 60 s). Logs the push-out's cost per solver step
+ // and per frame (the step cost x the steps a frame runs), the nodes pushed (the last step of each frame) and the jitter: the mean
+ // frame-to-frame displacement, in metres, of the same pushed node over the last 3 s, sampled in the page on every frame. Asserted:
+ // under 1 ms a frame. The jitter is logged for the owner's judgement. One screenshot with w1 in view is kept (WALLS_SHOT, or artifacts/)
+ const B='window.__bossLab';
+ await go('boss-walls','labs.html?sw=0&acceptance=1#boss');
+ await until(`!!${B} && ${B}.readout().steps > 0`,60000);
+ await evaluate(`${B}.setFight(false); ${B}.setLure("tank")`);
+ await delay(1000);
+ const t0=await evaluate(`${B}.arena().clock`),taken0=await evaluate(`${B}.readout().taken`);
+ // the page's sampler: every new lab-clock value, the pushed nodes by index (sampling over CDP would see a fraction of the frames)
+ await evaluate(`(()=>{const S=window.__wallSamples={frames:[],stop:false,steps:[]};let last=-1;const tick=()=>{if(S.stop)return;const a=${B}.arena();if(a.clock!==last){last=a.clock;S.frames.push({t:a.clock,pushed:a.pushed,nodes:a.pushedNodes,ms:a.ms});}requestAnimationFrame(tick);};requestAnimationFrame(tick);})()`);
+ const pin=await evaluate(`${B}.pinTo("w1", 10)`);
+ assert(pin,'w1 exists and the creature does');
+ console.log('BOSS-WALLS pin '+JSON.stringify(pin));
+ let shot=false;const real0=Date.now();let now=t0;const shotPath=process.env.WALLS_SHOT||join(output,'boss-walls-w1.png');
+ for(;Date.now()-real0<60000;){
+   await delay(250);now=await evaluate(`${B}.arena().clock`);
+   if(!shot&&now-t0>=6){await send('Page.captureScreenshot',{format:'png'}).then(r=>writeFileSync(shotPath,Buffer.from(r.data,'base64')));shot=true;}
+   if(now-t0>=10)break;
+ }
+ const sum=await evaluate(`(()=>{const S=window.__wallSamples;S.stop=true;const end=S.frames.at(-1).t,from=end-3;
+   const win=S.frames.filter(f=>f.t>=from),all=S.frames;
+   const meanPushed=(fs)=>fs.reduce((a,f)=>a+f.pushed,0)/Math.max(1,fs.length);
+   let sumD=0,n=0,max=0;for(let i=1;i<win.length;i++){const prev=new Map(win[i-1].nodes.map(p=>[p[0],p]));for(const p of win[i].nodes){const q=prev.get(p[0]);if(!q)continue;const d=Math.hypot(p[1]-q[1],p[2]-q[2],p[3]-q[3]);sumD+=d;n++;if(d>max)max=d;}}
+   const r=${B}.readout(),a=${B}.arena();
+   return {frames:all.length,windowFrames:win.length,span:+(end-all[0].t).toFixed(2),meanPushedWindow:meanPushed(win),meanPushedAll:meanPushed(all),emptyWindow:win.filter(f=>f.pushed===0).length,maxPushed:Math.max(...all.map(f=>f.pushed)),
+     jitter:n?sumD/n:null,jitterPairs:n,jitterMax:max,msStep:a.ms,stepsPerFrame:r.steps,taken:r.taken,phase:r.fight.phase,reason:r.fight.reason,centre:${B}.fight().centre,live:a.live};})()`);
+ const perFrame=sum.msStep*sum.stepsPerFrame;
+ console.log('BOSS-WALLS '+JSON.stringify({...sum,msFrame:perFrame,labSeconds:+(now-t0).toFixed(2),real:+((Date.now()-real0)/1000).toFixed(1),taken0,shot:shotPath}));
+ console.log(`BOSS-WALLS push-out ${sum.msStep.toFixed(4)} ms a step x ${sum.stepsPerFrame.toFixed(2)} steps = ${perFrame.toFixed(4)} ms a frame; ${sum.meanPushedWindow.toFixed(1)} nodes pushed a frame over the last 3 s (${sum.meanPushedAll.toFixed(1)} over all ${sum.span} s); jitter ${sum.jitter===null?'(no node pushed on consecutive frames)':sum.jitter.toFixed(4)+' m a frame (max '+sum.jitterMax.toFixed(3)+', '+sum.jitterPairs+' pairs)'}; taken ${sum.taken}`);
+ assert(now-t0>=10,`the lab clock ran the 10 s (${(now-t0).toFixed(1)} s in 60 s of real time)`);
+ assert(sum.frames>30,`the sampler saw frames (${sum.frames})`);
+ assert(sum.msStep>0,'the push-out ran (its cost is priced)');
+ assert(sum.maxPushed>0,'the wall pushed at least one node');
+ assert(perFrame<1,`the push-out costs under 1 ms a frame (${perFrame.toFixed(4)} ms)`);
+ assert.equal(sum.taken,taken0,`the pinned tank was not taken (taken ${taken0} -> ${sum.taken})`);
+ const readout=await evaluate(`${B}.readout()`);
+ assert.deepEqual(readout.shaderErrors,[],'no shader errors');assert(!readout.error,`no frame error (${readout.error})`);
+ current='boss-walls';await finish();
  } else if(args.includes('--boss')) {
  // THE BOSS LAB (2026-10-08; src/labs/boss-tab.js): Nih-Dairia at thirty metres on the story planet, the tank its prey. The solver steps,
  // the creature is boss-sized in the world, a driving tank inside its reach counts as held and is not taken, a parked one is.

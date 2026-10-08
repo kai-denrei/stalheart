@@ -216,7 +216,7 @@ export function initBossTab(root) {
   addEventListener('keydown', onDown); addEventListener('keyup', onUp); addEventListener('blur', onBlur);
   const keysHeld = () => DRIVE_KEYS.some((k) => keys.has(k));
   function driveInput() {
-    if (scripted?.circle && t < scripted.until && creature) return body.circleInput(scripted.circle);
+    if (scripted?.circle && t < scripted.until && creature) return body.circleInput(typeof scripted.circle === 'function' ? scripted.circle() : scripted.circle);
     if (scripted && t < scripted.until) return scripted;
     scripted = null;
     const tap = cruiseTap; cruiseTap = false;
@@ -855,13 +855,30 @@ export function initBossTab(root) {
     driveTank(seconds = 1) { scripted = { throttle: 1, turn: 0, until: t + seconds }; return true; },
     // scripted input each frame for `seconds`: orbit the creature's centre at `radius` metres with the game's drive
     circle(seconds = 10, radius = 40) { scripted = { circle: radius, until: t + seconds }; return true; },
+    // the survival run's player: the circle at `near` metres, widened while a nuke's ring shows (its plan between showAt and land on the
+    // lab's clock `t`, which the plans are made on) to `far` metres, or wider where the ring's point is (it lies up to tens of metres off
+    // the creature's centre, so a circle of `far` about the centre can still cross it): far enough to keep the hull clear of the ring's
+    // edge by 3 m. Back to `near` after the landing. Acceptance only: the rules never see it
+    dodge(seconds = 60, near = 45, far = 75) {
+      const radius = () => {
+        let r = near;
+        for (const p of fight.strikes) {
+          if (p.kind !== 'nuke' || t < p.showAt || t >= p.land) continue;
+          const c = creatureNow().centre;
+          r = Math.max(r, far, Math.hypot(p.at[0] - c[0], p.at[1] - c[1]) + p.radius + fightTune.hull.radius + 3);
+        }
+        return r;
+      };
+      scripted = { circle: radius, until: t + seconds };
+      return true;
+    },
     // stop beside the creature, outside the kit's reach (see stopTank), so the creature walks onto it and takes it
     park: () => lab.stopTank({ near: true, at: 0.15 }),
     setFight,
     fire: () => fireCannon(),
     // the arena: the live obstacles' ids, the push-out's nodes moved in the last step (`pushed`), its mean cost per step (`ms`) and the
-    // local [x, y, z] of those nodes (`pushedNodes`, for the jitter)
-    arena: () => { const s = arena.stats(); return { live: arena.live(), pushed: s.pushed, ms: s.ms, pushedNodes: s.nodes }; },
+    // local [i, x, y, z] (node index and position) of those nodes (`pushedNodes`, for the jitter) and the lab's clock `clock` (seconds)
+    arena: () => { const s = arena.stats(); return { live: arena.live(), pushed: s.pushed, ms: s.ms, pushedNodes: s.nodes, clock: t }; },
     // the measurement's hold: the creature's target on the shape's centre for `seconds` of lab clock with the routing off, the tank
     // parked behind it (the far side from the creature, outside the shape plus 6 m) and held still; null for an unknown id
     pinTo(id, seconds = 10) {
@@ -881,7 +898,7 @@ export function initBossTab(root) {
     // the state readout; `centre` and `contacts` ([[x, z], ...], the floor nodes) in local metres, as the rules see the body
     fight: () => {
       const c = creature ? creatureNow() : { centre: null, contacts: [] };
-      return { ...fightReadout(fight), phase: fight.phase, reason: fight.reason, strikes: fight.strikes.map((p) => p.kind), ...fear.counts(), fearMode: fear.mode(), centre: c.centre, contacts: c.contacts };
+      return { ...fightReadout(fight), phase: fight.phase, reason: fight.reason, strikes: fight.strikes.map((p) => p.kind), nukes: fight.strikes.filter((p) => p.kind === 'nuke').map((p) => ({ showAt: p.showAt, land: p.land, at: [...p.at], radius: p.radius })), ...fear.counts(), fearMode: fear.mode(), centre: c.centre, contacts: c.contacts };
     },
     // the panel's instinct switch: off holds the creature still (the balance's standing body)
     setInstinct(on) {
