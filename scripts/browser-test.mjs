@@ -2170,6 +2170,34 @@ try{
  assert(sum.jitterPairs>0,`the jitter has data (${sum.jitterPairs} node pairs on consecutive frames, ${sum.skippedPairs} skipped)`);
  assert(perFrame<1,`the push-out costs under 1 ms a frame (${perFrame.toFixed(4)} ms)`);
  assert.equal(sum.taken,taken0,`the pinned tank was not taken (taken ${taken0} -> ${sum.taken})`);
+ // THE ROCK AS A SHIELD (final review, 2026-10-08): a tank that STOPS behind a permanent rock is not held, and the creature's routing
+ // replaces its target with a waypoint that is always within the kit's capture radius of the torso (0.075 native = ~13 m): without
+ // the lab holding the target while routed, the kit captured the waypoint and ate the tank through the rock. A fresh round, the
+ // fight off (obstacles on), the tank parked 8 m behind r1 (far side from the creature) with no input (the kit's `held` flag then comes from the lab's routing only), 15 s of lab clock. The page samples
+ // every frame: the feeding phase, `taken`, the creature-to-tank distance and whether r1 stands on the segment between them. A capture
+ // of the real tank leaves it where it stands (the prey is the tank); a capture of a waypoint moves the tank to the waypoint, so
+ // the tank's jump across the capturing frame, and the creature-to-tank distance just before, tell the two apart (the routing's
+ // circle is the clearance past r1's face, so r1 need not be on the segment). Asserted: a capture, if any, leaves the tank in place
+ // (under 1 m) with the creature within twice the kit's capture radius of it. Logged: the closest approach (before any capture)
+ await evaluate(`${B}.setFight(false); ${B}.setLure("tank"); ${B}.reset()`);
+ await delay(1500);
+ const park=await evaluate(`${B}.parkBehind("r1", 8)`);
+ assert(park&&park.radius>0,'r1 exists and the creature does');
+ const taken1=await evaluate(`${B}.readout().taken`),c0=await evaluate(`${B}.arena().clock`);
+ await evaluate(`(()=>{const rock=${JSON.stringify({at:park.at,radius:park.radius})};const S=window.__shield={frames:[],stop:false};let last=-1;
+   const blocked=(c,k)=>{const sx=k[0]-c[0],sz=k[1]-c[1],l2=sx*sx+sz*sz;if(l2<1e-9)return false;let u=((rock.at[0]-c[0])*sx+(rock.at[1]-c[1])*sz)/l2;u=Math.max(0,Math.min(1,u));return Math.hypot(c[0]+u*sx-rock.at[0],c[1]+u*sz-rock.at[1])<rock.radius;};
+   const tick=()=>{if(S.stop)return;const a=${B}.arena(),r=${B}.readout();if(a.clock!==last){last=a.clock;const c=${B}.fight().centre,k=[r.tank.x,r.tank.z];
+     S.frames.push({t:a.clock,phase:r.phase,taken:r.taken,d:Math.hypot(c[0]-k[0],c[1]-k[1]),blocked:blocked(c,k),held:r.held,rk:a.at.r1,tank:k,centre:c});}requestAnimationFrame(tick);};requestAnimationFrame(tick);})()`);
+ let now1=c0;for(const end=Date.now()+90000;Date.now()<end&&now1-c0<15;){await delay(250);now1=await evaluate(`${B}.arena().clock`);}
+ const shield=await evaluate(`(()=>{const S=window.__shield;S.stop=true;const f=S.frames;let minD=Infinity,minBlocked=Infinity,cap=-1;
+   for(let i=0;i<f.length;i++){if(cap<0&&(f[i].phase!=='hunting'||f[i].taken>${taken1}))cap=i;if(cap>=0)break;minD=Math.min(minD,f[i].d);if(f[i].blocked)minBlocked=Math.min(minBlocked,f[i].d);}   /* the closest approach is before any capture: a meal respawns the tank */
+   const before=cap>0?f[cap-1]:null,jump=before?Math.hypot(f[cap].tank[0]-before.tank[0],f[cap].tank[1]-before.tank[1]):null;
+   return {jump,reach:0.075*${B}.readout().scale,frames:f.length,span:+(f.at(-1).t-f[0].t).toFixed(2),minD,minBlocked:Number.isFinite(minBlocked)?minBlocked:null,capturedAt:cap<0?null:+(f[cap].t-f[0].t).toFixed(2),blockedBeforeCapture:before?before.blocked:null,distBeforeCapture:before?before.d:null,phaseAtCapture:cap<0?null:f[cap].phase,
+     everHeld:f.some(x=>x.held),trace:f.filter((x,i)=>i%90===0).map(x=>[+(x.t-f[0].t).toFixed(1),x.phase,+x.d.toFixed(1),+Math.hypot(x.centre[0]-x.rk[0],x.centre[1]-x.rk[1]).toFixed(1)]),   /* [s, phase, to the tank, to r1's centre] */roundedRock:f.some(x=>!x.blocked&&x.t-f[0].t>1),last:f.at(-1)};})()`);
+ console.log('BOSS-WALLS shield '+JSON.stringify(shield));
+ console.log(`BOSS-WALLS shield: the tank parked 8 m behind r1 for ${shield.span} s of lab clock; closest approach ${shield.minD.toFixed(1)} m (${shield.minBlocked===null?'never':shield.minBlocked.toFixed(1)+' m'} with r1 between); ${shield.capturedAt===null?'not captured':'captured at '+shield.capturedAt+' s, '+shield.distBeforeCapture.toFixed(1)+' m from the tank the frame before, the tank moved '+shield.jump.toFixed(1)+' m (r1 '+(shield.blockedBeforeCapture?'still between them':'no longer between them')+')'}`);
+ assert(shield.frames>30&&shield.span>=14,`the shield sampler saw the 15 s (${shield.frames} frames, ${shield.span} s)`);
+ assert(shield.capturedAt===null||(shield.jump!==null&&shield.jump<1&&shield.distBeforeCapture<2*shield.reach),`the creature ate the tank through r1: captured at ${shield.capturedAt} s with the tank ${shield.distBeforeCapture===null?'?':shield.distBeforeCapture.toFixed(1)} m away, and the tank moved ${shield.jump===null?'?':shield.jump.toFixed(1)} m to the waypoint (${JSON.stringify(shield)})`);
  const readout=await evaluate(`${B}.readout()`);
  assert.deepEqual(readout.shaderErrors,[],'no shader errors');assert(!readout.error,`no frame error (${readout.error})`);
  current='boss-walls';await finish();

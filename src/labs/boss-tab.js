@@ -568,6 +568,9 @@ export function initBossTab(root) {
         routed = w[0] !== aim.x * scale || w[1] !== aim.z * scale;
         if (routed) aim.set(w[0] / scale, ARENA.lureHeight, w[1] / scale);
       }
+      // a routed or fleeing target is a waypoint or a flee point, never the tank: the kit must not capture it (`targetHeld` only gates
+      // the capture, behavior.js), or a tank stopped behind a rock is eaten through it and moved to the waypoint
+      if (routed || fr.mode === 'flee') m.targetHeld = true;
       creature.setTarget(aim);
     }
     let steps = 0;
@@ -878,7 +881,7 @@ export function initBossTab(root) {
     fire: () => fireCannon(),
     // the arena: the live obstacles' ids, the push-out's nodes moved in the last step (`pushed`), its mean cost per step (`ms`) and the
     // local [i, x, y, z] (node index and position) of those nodes (`pushedNodes`, for the jitter) the lab's clock `clock` (seconds) and the re-anchor count (the nodes' local positions jump by the shift across one)
-    arena: () => { const s = arena.stats(); return { live: arena.live(), pushed: s.pushed, ms: s.ms, pushedNodes: s.nodes, clock: t, reanchors }; },
+    arena: () => { const s = arena.stats(); return { live: arena.live(), pushed: s.pushed, ms: s.ms, pushedNodes: s.nodes, clock: t, reanchors, at: Object.fromEntries(arena.shapes.map((sh) => [sh.id, [...sh.at]])) }; },
     // the measurement's hold: the creature's target on the shape's centre for `seconds` of lab clock with the routing off, the tank
     // parked behind it (the far side from the creature, outside the shape plus 6 m) and held still; null for an unknown id
     pinTo(id, seconds = 10) {
@@ -894,6 +897,20 @@ export function initBossTab(root) {
       pin = { id, shape: sh, until: t + seconds };
       placeTank();
       return { id, at: [...sh.at], tank: { x: drive.x, z: drive.z } };
+    },
+    // park the tank on the far side of the shape from the creature, `off` metres off the shape's face and not held (no input, no
+    // throttle): the case a held tank hides, a stopped tank the creature must go round the shape to reach. Acceptance only
+    parkBehind(id = 'r1', off = 8) {
+      const sh = arena.shapes.find((s) => s.id === id);
+      if (!sh || !creature) return null;
+      const c = creature.motion.center, cx = c.x * scale, cz = c.z * scale;
+      let dx = sh.at[0] - cx, dz = sh.at[1] - cz; const d = Math.hypot(dx, dz);
+      if (d > 1e-6) { dx /= d; dz /= d; } else { dx = 1; dz = 0; }
+      const out = (sh.kind === 'rock' ? sh.radius : sh.size[0] / 2) + off;
+      keys.clear(); scripted = null; pin = null;
+      plane.reset(sh.at[0] + dx * out, sh.at[1] + dz * out, Math.atan2(-dx, -dz));
+      placeTank();
+      return { id, at: [...sh.at], radius: sh.kind === 'rock' ? sh.radius : null, tank: { x: drive.x, z: drive.z } };
     },
     // the state readout; `centre` and `contacts` ([[x, z], ...], the floor nodes) in local metres, as the rules see the body
     fight: () => {
