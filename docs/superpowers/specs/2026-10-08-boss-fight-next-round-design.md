@@ -61,7 +61,9 @@ projection is `e = max(contacts · u - c · u)` (0 if no contacts).
 - **SOL-88, a tracking wall.** The pointer shows `sol.aim` (1.5 s) at the strike's first point, then the burn of `sol.burn`
   (6 s). Its point is re-solved every frame of the burn: `c + u * (e + front)`, clamped as the Bofors' (radius 8 + hull +
   margin from the tank); when it cannot clear, it hugs the front edge (`c + u * e`) and burns the creature. The ring moves
-  with the beam (the ring is what burns). Damage as before: `sol.dps` (10) while any contact is inside.
+  with the beam (the ring is what burns). Damage as before: `sol.dps` (10) while any contact is inside. SOL never takes
+  the tank: its plans carry `spares: true` and `burn` reports no `tankHit` for them (the hug is the only way the beam can
+  touch the hull, and the hull touching the creature's front edge is being caught anyway).
 
 **Plans.** `schedule` returns plans of four kinds; a stream and a burn carry `moving: true` and the lab asks the domain for
 their point each frame (`aimNow(plan, creature, tank, tune)`); a round and the nuke carry a fixed `at`. The lab never
@@ -113,7 +115,8 @@ run-up scrubbed head-on (the drive's existing response).
 
 **The creature, steering.** `route(c, target, shapes, clear)`: if the segment from `c` to the target passes within `clear`
 (`wall.clear`, 6 m) of a live shape's footprint, the target becomes a waypoint: the tangent point of that shape's footprint
-inflated by `clear`, on the side with the shorter path, the nearest such shape first. One waypoint at a time; recomputed
+inflated by `clear`, on the side with the shorter path, the nearest such shape first. A wall routes as its bounding
+circle (half its length); the push-out and the tank's blocker use the true box. One waypoint at a time; recomputed
 every frame. Applied to the tank and to a flee point alike.
 
 **The creature, push-out.** The lab wraps the body's `step` on the creature's instance (the kit's `creature.update` calls
