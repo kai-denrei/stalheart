@@ -2042,7 +2042,7 @@ try{
  // (24 to 36 s on the fight's clock). Every wait is on the fight's clock with a generous real-time cap: headless advances
  // the game's clock slowly, so a wall-clock bound measures the frame rate, not the fight
  const B='window.__bossLab';
- const F=`(()=>{const f=${B}.fight();return {hp:f.hp,max:f.max,clock:f.clock,hits:f.hits,hpPerSecond:f.hpPerSecond,phase:f.phase,reason:f.reason,strikes:f.strikes}})()`;
+ const F=`(()=>{const f=${B}.fight();return {hp:f.hp,max:f.max,clock:f.clock,hits:f.hits,hpPerSecond:f.hpPerSecond,phase:f.phase,reason:f.reason,strikes:f.strikes,frights:f.frights,stuns:f.stuns,fearMode:f.fearMode}})()`;
  await go('boss-fight','labs.html?sw=0&acceptance=1#boss');
  await until(`!!${B} && ${B}.readout().steps > 0`,60000);
  await evaluate(`${B}.setLure("tank"); ${B}.setFight(true); ${B}.circle(35, 45)`);
@@ -2065,9 +2065,18 @@ try{
  assert(halfOk||rateOk,`${why} (${JSON.stringify(circling)})`);
  assert(['rotary','bofors','nuke','sol'].every(k=>kinds.has(k)),`all four shooters' plans showed (${[...kinds]})`);
  assert(f.hits>0,'the rounds hit');
+ // the fear (next-round spec, section 2): a Bofors burst or the beam within reach frightened it and the MK-9 stunned it. The first
+ // nuke lands at 24.2 s of fight clock, after the loop above: the wait for the stun alone goes on to 32 s (the circle runs 35 s) with
+ // 60 s of real time as the cap
+ if(f.phase==='fight')await evaluate(`${B}.circle(30, 80)`);
+ let fear=f;for(const end=Date.now()+60000;Date.now()<end&&fear.phase==='fight'&&(fear.frights===0||fear.stuns===0)&&fear.clock<32;){await delay(250);fear=await evaluate(F);}
+ console.log('BOSS-FIGHT '+JSON.stringify({fear:{frights:fear.frights,stuns:fear.stuns,mode:fear.fearMode,clock:+fear.clock.toFixed(2),phase:fear.phase,reason:fear.reason}}));
+ assert(fear.frights>0,`the creature was frightened at least once (frights ${fear.frights}, ${fear.phase} at ${fear.clock.toFixed(1)} s)`);
+ assert(fear.stuns>0,`the MK-9 stunned it at least once (stuns ${fear.stuns}, ${fear.phase} at ${fear.clock.toFixed(1)} s of fight clock)`);
+ f=fear;   // the phase below is the one after the wait (a nuke that killed it sends the step through the reset)
  // parked beside the creature: lost (caught, or under a landing); a creature the circling killed first resets, then a
  // fresh fight starts on a nudge beside it. Then the reset after the card
- if(f.phase!=='fight'){await until(`${B}.fight().phase === "idle" && ${B}.readout().fight.card === null`,20000);await evaluate(`${B}.driveTank(0.05)`);await until(`${B}.fight().phase === "fight"`,10000);}
+ if(f.phase!=='fight'){await until(`${B}.fight().phase === "idle" && ${B}.readout().fight.card === null`,60000);await evaluate(`${B}.driveTank(0.05)`);await until(`${B}.fight().phase === "fight"`,10000);}
  await evaluate(`${B}.park()`);
  await until(`["lost","killed"].includes(${B}.fight().phase)`,20000);
  const end1=await evaluate(F);console.log('BOSS-FIGHT '+JSON.stringify({parked:{phase:end1.phase,reason:end1.reason,clock:+end1.clock.toFixed(2),card:await evaluate(`${B}.readout().fight.card`)}}));

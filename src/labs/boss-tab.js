@@ -27,6 +27,7 @@ import { createPlaneDrive } from './boss/drive.js';
 import { createBodyRules } from './boss/body.js';
 import { createCannon } from './boss/cannon.js';
 import { createFriendlies } from './boss/friendlies.js';
+import { createFear } from './boss/fear.js';
 import { createRound } from './boss/round.js';
 import { makeFight, startFight, capture, readout as fightReadout } from '../domain/boss-fight.js';
 import { BOSS_FIGHT } from '../content/boss-fight.js';
@@ -252,7 +253,7 @@ export function initBossTab(root) {
   // (the panel's fight folder writes it; `makeFight` reads it at each reset, `schedule` every frame); its seed advances a round
   // unless `pinSeed`. `fightOn` holds the switches: `fight` off is the lab as before (no shooters, no bar, no round)
   const fightTune = { ...JSON.parse(JSON.stringify(BOSS_FIGHT)), seed: 1 };
-  const fightOn = { fight: true, rotary: true, bofors: true, nuke: true, sol: true, cannon: true, pinSeed: false };
+  const fightOn = { fight: true, rotary: true, bofors: true, nuke: true, sol: true, fear: true, cannon: true, pinSeed: false };
   let fight = makeFight(fightTune);
   let hullLost = false;        // a landing took the hull: hidden until the reset
   let resetDue = -1;           // seconds a due reset has waited for a meal to finish; -1 when none is due
@@ -263,9 +264,17 @@ export function initBossTab(root) {
     for (let i = 0; i < c.length; i++) if (c[i] > 0) contacts.push([b.x[i * 3] * scale, b.x[i * 3 + 2] * scale]);
     return { centre: [m.center.x * scale, m.center.z * scale], velocity: [m.velocity.x * scale, m.velocity.z * scale], radius: native * scale / 2, contacts };
   }
+  const tankNow = () => ({ pos: hullLost ? [1e9, 1e9] : [drive.x, drive.z], radius: fightTune.hull.radius });   // a lost hull is no target
+  // THE FEAR (./boss/fear.js, the rules in src/domain/boss-fear.js): what the friendlies report frightens the creature or stuns it
+  let stunned = false;   // `motion.active` is held false by a stun in progress
+  const fear = createFear({
+    tune: () => fightTune, creature: creatureNow, tank: tankNow, fight: () => fight, now: () => t,
+    kit: () => creature, on: () => fightOn.fight && fightOn.fear,
+  });
   const friendlies = createFriendlies(scene, {
     sphere, surface, cellSide: 10, explosions, sfx: audio, tune: () => fightTune, fight: () => fight, now: () => t,
-    creature: creatureNow, tank: () => ({ pos: hullLost ? [1e9, 1e9] : [drive.x, drive.z], radius: fightTune.hull.radius }),   // a lost hull is no target
+    creature: creatureNow, tank: tankNow,
+    onLanding: (plan, { point }) => fear.landed(plan, point), onBeam: (plan, point) => fear.beam(plan, point),
     onTankHit: loseHull, enabled: () => Object.fromEntries(['rotary', 'bofors', 'nuke', 'sol'].map((k) => [k, fightOn.fight && fightOn[k]])),
   });
   // a landing on the hull: the hull goes in a shell's burst and stays hidden until the reset. While it is lost it is nobody's prey:
@@ -341,7 +350,7 @@ export function initBossTab(root) {
   // from the creature, facing it, and a fresh fight. `taken` stays; a scripted drive (the harness's) carries on
   function newRound() {
     resetDue = -1;
-    friendlies.reset(); cannon.clear();
+    friendlies.reset(); cannon.clear(); fear.reset(); stunned = false;
     if (!fightOn.pinSeed) fightTune.seed = (fightTune.seed | 0) + 1;
     fight = makeFight(fightTune);
     hullLost = false; feedWas = 'hunting';
@@ -366,7 +375,7 @@ export function initBossTab(root) {
   // the fight switch: off is the lab as before (an idle fight, no bar, no shooters; a dead creature stands again where it lies)
   function setFight(on) {
     fightOn.fight = !!on;
-    friendlies.reset(); cannon.clear(); resetDue = -1; hullLost = false;
+    friendlies.reset(); cannon.clear(); fear.reset(); stunned = false; resetDue = -1; hullLost = false;
     fight = makeFight(fightTune);
     restoreCreature();
     gui.controllersRecursive().forEach((c) => c.updateDisplay());
@@ -416,6 +425,7 @@ export function initBossTab(root) {
     const l = toLocal(frame, w, 1); drive.x = l[0]; drive.z = l[2];   // the tank stays put in the world
     cannon.shift(shift[0] * scale, shift[2] * scale);                 // and so do the shells in flight
     friendlies.shift(shift[0] * scale, shift[2] * scale);             // and the strikes' landings
+    fear.shift(shift[0] * scale, shift[2] * scale);                   // and what frightens it
     reanchors++;
     return true;
   }
@@ -522,7 +532,17 @@ export function initBossTab(root) {
     const moving = driving || keysHeld() || (scripted && t < scripted.until);
     m.targetHeld = state.lure === 'tank' && !hullLost ? !!moving : false;   // the point and the auto-lure are never held, nor a lost hull
     auto.enabled = state.lure === 'auto';
-    if (!f.locked && !(hullLost && state.lure === 'tank')) { dtNow = dt; creature.setTarget(lureTarget().setY(ARENA.lureHeight)); }
+    // the fear: a stun holds the instinct off (restored only while the fight is on: a kill has set it false for good), a flight
+    // replaces the lure with the flee point (local metres to native, as the lure is)
+    const fr = fear.step(t);
+    if (fr.mode === 'stun') { stunned = true; m.active = false; }
+    else if (stunned) { stunned = false; if (fightOn.fight && fight.phase === 'fight') m.active = params.instinct; }
+    if (!f.locked && !(hullLost && state.lure === 'tank')) {
+      dtNow = dt;
+      const aim = lureTarget();
+      if (fr.mode === 'flee') aim.set(fr.point[0] / scale, 0, fr.point[1] / scale);
+      creature.setTarget(aim.setY(ARENA.lureHeight));
+    }
     let steps = 0;
     try {
       steps = creature.update(dt);
@@ -628,7 +648,7 @@ export function initBossTab(root) {
       size: state.sizeMetres, scale, lure: state.lure, variant: state.variant, cut: cutFrames.mean() > 0, frames, reanchors,
       speed: drive.speed, blocked, cruise: drive.cruise, provokes, heat: cannon.heat(), shells: cannon.shells(),
       tank: { x: drive.x, z: drive.z, yaw: drive.yaw, speed: drive.speed, visible: tank.visible },
-      fight: { ...fightReadout(fight), phase: fight.phase, reason: fight.reason, on: fightOn.fight, rings: friendlies.rings(), card: round.card(), nukeIn: fight.nuke ? Math.max(0, fight.nuke.next) : null },
+      fight: { ...fightReadout(fight), phase: fight.phase, reason: fight.reason, on: fightOn.fight, rings: friendlies.rings(), card: round.card(), ...fear.counts(), fearMode: fear.mode(), nukeIn: fight.nuke ? Math.max(0, fight.nuke.next) : null },
       shaderErrors: shaderErrors.slice(), error: fatal ?? frameError, cropped,
       kernel: !!creature?.body.kernel,
     };
@@ -642,6 +662,7 @@ export function initBossTab(root) {
     if (r.fight.on) html += ` &middot; hp <b>${fmt(r.fight.hp, 0)}/${r.fight.max}</b> &middot; hits <b>${r.fight.hits}</b> &middot; <b>${fmt(r.fight.hpPerSecond, 1)}</b> hp/s`
       + ` &middot; ttk <b>${Number.isFinite(r.fight.timeToKill) ? `${fmt(r.fight.timeToKill, 0)} s` : '&mdash;'}</b>`
       + `<br>rot <b>${fmt(r.fight.byKind.rotary, 0)}</b> &middot; bof <b>${fmt(r.fight.byKind.bofors, 0)}</b> &middot; nuke <b>${fmt(r.fight.byKind.nuke, 0)}</b> &middot; sol <b>${fmt(r.fight.byKind.sol, 0)}</b>`
+      + ` &middot; frights <b>${r.fight.frights}</b> &middot; stuns <b>${r.fight.stuns}</b>`
       + ` &middot; nuke in <b>${r.fight.nukeIn === null ? '&mdash;' : `${fmt(r.fight.nukeIn, 1)} s`}</b>`;
     html += ` &middot; provokes <b>${r.provokes}</b>`
       + `<br>size ${r.size} m (&times;${fmt(r.scale, 0)}) &middot; ${r.state ?? '—'} &middot; ${r.variant} &middot; lure ${r.lure}`
@@ -704,6 +725,7 @@ export function initBossTab(root) {
   fightGui.add(fightOn, 'bofors').name('Bofors (40 mm)');
   fightGui.add(fightOn, 'nuke').name('MK-9 nuke');
   fightGui.add(fightOn, 'sol').name('SOL-88');
+  fightGui.add(fightOn, 'fear').name('fear (flight, stun)');
   fightGui.add(fightOn, 'cannon').name('cannon (Space)');
   fightGui.add(fightTune, 'health', 10, 1000, 10).name('health (at reset)');
   fightGui.add(fightTune, 'warn', 0.2, 4, 0.1).name('warn (s)');
@@ -715,6 +737,9 @@ export function initBossTab(root) {
   fightGui.add(fightTune.nuke, 'damage', 0, 200, 1).name('nuke damage');
   fightGui.add(fightTune.nuke, 'every', 5, 60, 1).name('nuke every (s)');
   fightGui.add(fightTune.nuke, 'stun', 0, 5, 0.1).name('nuke stun (s)');
+  fightGui.add(fightTune.fear, 'reach', 0, 30, 1).name('fear reach (m)');
+  fightGui.add(fightTune.fear, 'flee', 0, 60, 1).name('fear flee (m)');
+  fightGui.add(fightTune.fear, 'bofors', 0, 5, 0.1).name('fear Bofors (s)');
   fightGui.add(fightTune.bofors, 'burst', 0.5, 6, 0.1).name('Bofors burst (s)');
   fightGui.add(fightTune.bofors, 'rest', 0, 6, 0.1).name('Bofors rest (s)');
   fightGui.add(fightTune.bofors, 'damage', 0, 20, 0.5).name('Bofors damage');
@@ -803,7 +828,7 @@ export function initBossTab(root) {
     // the state readout; `centre` and `contacts` ([[x, z], ...], the floor nodes) in local metres, as the rules see the body
     fight: () => {
       const c = creature ? creatureNow() : { centre: null, contacts: [] };
-      return { ...fightReadout(fight), phase: fight.phase, reason: fight.reason, strikes: fight.strikes.map((p) => p.kind), centre: c.centre, contacts: c.contacts };
+      return { ...fightReadout(fight), phase: fight.phase, reason: fight.reason, strikes: fight.strikes.map((p) => p.kind), ...fear.counts(), fearMode: fear.mode(), centre: c.centre, contacts: c.contacts };
     },
     // the panel's instinct switch: off holds the creature still (the balance's standing body)
     setInstinct(on) {
