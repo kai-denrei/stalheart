@@ -174,6 +174,12 @@ for (const p of sol) {
   assert.ok(Math.abs(r.damage - T.sol.dps * 0.5) < 1e-12 && !r.tankHit, 'SOL burns dps x dt and spares the tank in the footprint');
   assert.equal(burn(fight(), rotary[0], 0.5, { contacts: [] }, { pos: rotary[0].at, radius: T.hull.radius }).tankHit, true, 'the stream takes a tank inside its ring');
   assert.equal(burn(b, q, 0.5, { contacts: [[q.at[0] + q.radius + 1, q.at[1]]] }, far).damage, 0, 'nothing outside the footprint');
+  // two burns overlapping (the rotary's stream under SOL's beam) alternate frame by frame: a plan is one hit, however often it returns
+  const two = fight(), under = { contacts: [rotary[0].at, q.at] };
+  for (let i = 0; i < 6; i++) { burn(two, i % 2 ? q : rotary[0], 0.1, under, far); }
+  assert.equal(two.hits, 2, 'two plans alternating are two hits, not six');
+  burn(two, rotary[0], 0.1, under, far); assert.equal(two.hits, 2, 'and a plan back again is not counted again');
+  assert.equal(two.burnt.size, 2, 'the fight holds the two plans it counted');
 }
 
 // the balance: a creature held still, the tank far; every gun at its own schedule

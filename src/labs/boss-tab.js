@@ -14,9 +14,9 @@
 // THE FEEDING RULE IS THE MODE IDEA: a tank that is driving counts as held and cannot be taken; a stopped tank within reach is
 // cradled, covered and absorbed, `taken` rises, and the tank respawns thirty metres from the frame's origin.
 //
-// THE FIGHT (spec section 5): the gunship's Bofors and SOL-88 on the creature (./boss/friendlies.js), the round's bar, cards and
-// ending (./boss/round.js). KILLED is the v1 death: every movement stops and the gravity goes to `deathGravity`. LOST is a meal
-// (feeding leaving `hunting`) or a landing on the hull. THE RESET (the round's, or the panel's button) puts the creature back at
+// THE FIGHT (spec section 5): the gunship's rotary, Bofors, MK-9 and SOL-88 on the creature (./boss/friendlies.js), the fear and the arena
+// (./boss/fear.js, ./boss/arena.js), the round's bar, cards and ending (./boss/round.js). KILLED is the v1 death: every movement stops and
+// the gravity goes to `deathGravity`. LOST is a meal (feeding leaving `hunting`) or a landing on the hull. THE RESET (the round's, or the panel's button) puts the creature back at
 // the frame's origin and the tank `respawn` metres out on the far side; it waits for a meal in progress (MEAL_WAIT at most) so
 // the meal is counted in `taken` and the prey is never moved under the kit.
 import * as THREE from '../../vendor/three.module.js';
@@ -251,9 +251,9 @@ export function initBossTab(root) {
   }
   const cannon = createCannon(scene, { sphere, surface, cellSide: 10, explosions, sfx: audio, feel, cool: CANNON_COOL, onHit: provoke });
   // --- the fight: the rules (src/domain/boss-fight.js) on the lab's clock `t`, started by the tank's first movement; the gunship's
-  // Bofors and SOL-88 fire on the creature from above (./boss/friendlies.js). `fightTune` is the lab's live copy of the numbers
+  // rotary, Bofors, MK-9 and SOL-88 fire on the creature from above (./boss/friendlies.js). `fightTune` is the lab's live copy of the numbers
   // (the panel's fight folder writes it; `makeFight` reads it at each reset, `schedule` every frame); its seed advances a round
-  // unless `pinSeed`. `fightOn` holds the switches: `fight` off is the lab as before (no shooters, no bar, no round)
+  // unless `pinSeed`. `fightOn` holds the switches: `fight` off is the lab as before but for the obstacles, which stay (no shooters, no bar, no round)
   const fightTune = { ...JSON.parse(JSON.stringify(BOSS_FIGHT)), seed: 1 };
   const fightOn = { fight: true, rotary: true, bofors: true, nuke: true, sol: true, fear: true, obstacles: true, cannon: true, pinSeed: false };
   let fight = makeFight(fightTune);
@@ -388,7 +388,8 @@ export function initBossTab(root) {
     creature.phys.gravity = params.phys.gravity;
     creature.motion.active = params.instinct; creature.motion.feeding.enabled = params.feeding;
   }
-  // the fight switch: off is the lab as before (an idle fight, no bar, no shooters; a dead creature stands again where it lies)
+  // the fight switch: off is the lab as before (an idle fight, no bar, no shooters; a dead creature stands again where it lies), but the
+  // obstacles stay (their own switch)
   function setFight(on) {
     fightOn.fight = !!on;
     friendlies.reset(); cannon.clear(); fear.reset(); stunned = false; resetDue = -1; hullLost = false; pin = null;
@@ -683,7 +684,7 @@ export function initBossTab(root) {
       size: state.sizeMetres, scale, lure: state.lure, variant: state.variant, cut: cutFrames.mean() > 0, frames, reanchors,
       speed: drive.speed, blocked, cruise: drive.cruise, provokes, heat: cannon.heat(), shells: cannon.shells(),
       tank: { x: drive.x, z: drive.z, yaw: drive.yaw, speed: drive.speed, visible: tank.visible },
-      fight: { ...fightReadout(fight), phase: fight.phase, reason: fight.reason, on: fightOn.fight, rings: friendlies.rings(), card: round.card(), ...fear.counts(), fearMode: fear.mode(), nukeIn: fight.nuke ? Math.max(0, fight.nuke.next) : null },
+      fight: { ...fightReadout(fight), nukeOn: fightOn.nuke, phase: fight.phase, reason: fight.reason, on: fightOn.fight, rings: friendlies.rings(), card: round.card(), ...fear.counts(), fearMode: fear.mode(), nukeIn: fight.nuke ? Math.max(0, fight.nuke.next) : null },
       arena: { on: fightOn.obstacles, live: arena.live().length, ...(({ pushed, ms }) => ({ pushed, ms }))(arena.stats()) },
       shaderErrors: shaderErrors.slice(), error: fatal ?? frameError, cropped,
       kernel: !!creature?.body.kernel,
@@ -700,9 +701,9 @@ export function initBossTab(root) {
       + `<br>rot <b>${fmt(r.fight.byKind.rotary, 0)}</b> &middot; bof <b>${fmt(r.fight.byKind.bofors, 0)}</b> &middot; nuke <b>${fmt(r.fight.byKind.nuke, 0)}</b> &middot; sol <b>${fmt(r.fight.byKind.sol, 0)}</b>`
       + ` &middot; fear <b>${r.fight.fearMode}</b> (fleeing <b>${fmt(r.fight.fleeShare * 100, 0)}%</b>, stunned <b>${fmt(r.fight.stunShare * 100, 0)}%</b> of the round)`
       + ` &middot; frights <b>${r.fight.frights}</b> &middot; stuns <b>${r.fight.stuns}</b>`
-      + ` &middot; nuke in <b>${r.fight.nukeIn === null ? '&mdash;' : `${fmt(r.fight.nukeIn, 1)} s`}</b>`;
+      + ` &middot; nuke in <b>${!r.fight.nukeOn ? 'off' : r.fight.nukeIn === null ? '&mdash;' : `${fmt(r.fight.nukeIn, 1)} s`}</b>`;
     html += ` &middot; provokes <b>${r.provokes}</b>`
-      + (r.arena.on ? ` &middot; push <b>${r.arena.pushed}</b> &middot; <b>${fmt(r.arena.ms, 3)} ms</b>` : '')
+      + (r.arena.on ? ` &middot; push <b>${r.arena.pushed}</b> &middot; <b>${fmt(r.arena.ms, 3)} ms/step</b>` : '')
       + `<br>size ${r.size} m (&times;${fmt(r.scale, 0)}) &middot; ${r.state ?? '—'} &middot; ${r.variant} &middot; lure ${r.lure}`
       + ` &middot; ${r.kernel ? 'wasm kernel' : 'js solver'} &middot; re-anchored ${r.reanchors}`;
     if (shaderErrors.length) html += `<br><b class="late">shader: ${escapeHtml(shaderErrors[shaderErrors.length - 1])}</b>`;

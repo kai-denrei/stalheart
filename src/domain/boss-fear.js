@@ -1,7 +1,9 @@
 // The creature's fright and the nuke's stun as a pure rule (spec 2026-10-08-boss-fight-next-round-design.md, section 2).
 // A Bofors landing or a live SOL beam within radius + reach of a foot frightens the creature: for the fright's duration its
 // pursuit target is a flee point, 20 m from the centre, away from the live threats (SOL weighs twice a landing). The nuke stuns
-// it instead. Local metres on the frame's plane [x, z]; `now` is the fight's clock. Imports nothing: `tune` is the whole
+// it instead. Local metres on the frame's plane [x, z]; `now` is the lab's monotonic clock, not the fight's: clearFear keeps
+// `lastDisturb` (the disturb cooldown outlives a round's reset), and the fight's clock restarts at 0 each round, which would put
+// the cooldown's last stamp in the future. Imports nothing: `tune` is the whole
 // BOSS_FIGHT, so the numbers are tune.fear.* and tune.nuke.stun. The lab's guards (feeding locked, KILLED, fight off) are the
 // caller's.
 

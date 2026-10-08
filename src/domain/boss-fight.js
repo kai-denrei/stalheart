@@ -36,7 +36,7 @@ export function makeFight(tune) {
   return {
     phase: 'idle', hp: tune.health, max: tune.health, clock: 0, card: 0, cardSeconds: tune.card, reason: null,
     hits: 0, damage: 0, byKind: tally(), strikes: [], seed: Math.abs(Math.floor(tune.seed ?? 1)) || 1,
-    at: null, gun: null, nuke: null, sol: null, burning: null,
+    at: null, gun: null, nuke: null, sol: null, burnt: new Set(),
   };
 }
 
@@ -44,7 +44,7 @@ export function makeFight(tune) {
 export function startFight(state) {
   if (state.phase !== 'idle') return;
   Object.assign(state, { phase: 'fight', hp: state.max, clock: 0, card: 0, reason: null, hits: 0, damage: 0, byKind: tally(),
-    strikes: [], at: null, gun: null, nuke: null, sol: null, burning: null });
+    strikes: [], at: null, gun: null, nuke: null, sol: null, burnt: new Set() });
 }
 
 // the line from the creature's centre toward the tank: `u` the unit (+z under a metre), `e` the front edge's projection on it
@@ -173,11 +173,11 @@ export function resolveLanding(state, plan, creature, tank) {
 }
 
 // a footprint's burn for dt seconds (SOL's, or the rotary's stream; the caller runs it between plan.land and plan.until): the
-// plan's dps while any contact is inside the footprint; a plan that touches counts one hit. A plan that `spares` (SOL) never
-// reports the tank hit
+// plan's dps while any contact is inside the footprint; a plan that touches counts one hit, however often it returns while another
+// burn overlaps it (`state.burnt` holds every plan counted). A plan that `spares` (SOL) never reports the tank hit
 export function burn(state, plan, dt, creature, tank) {
   const damage = harm(state, nearest(creature.contacts, plan.at) < plan.radius ? plan.damage * dt : 0, plan.kind);
-  if (damage > 0 && state.burning !== plan) { state.burning = plan; state.hits++; }
+  if (damage > 0 && !state.burnt.has(plan)) { state.burnt.add(plan); state.hits++; }
   return { damage, tankHit: !plan.spares && dist(tank.pos, plan.at) < plan.radius + tank.radius };
 }
 
@@ -198,7 +198,7 @@ export function tick(state, dt) {
   state.card -= dt;
   if (state.card > 0) return null;
   Object.assign(state, { phase: 'idle', hp: state.max, clock: 0, card: 0, reason: null, hits: 0, damage: 0, byKind: tally(),
-    strikes: [], at: null, gun: null, nuke: null, sol: null, burning: null });
+    strikes: [], at: null, gun: null, nuke: null, sol: null, burnt: new Set() });
   return 'reset';
 }
 
