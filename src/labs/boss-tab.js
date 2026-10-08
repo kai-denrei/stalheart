@@ -281,6 +281,10 @@ export function initBossTab(root) {
   }
   // --- the cannon: the hull's muzzle along the turret, the hit on the body and the shove -------------------------------------
   const explosions = createExplosions(sphere, { onError: (e) => shaderErrors.push(`explosions: ${e.message}`) });
+  // the layer programs compiled now, not on the first Bofors landing: prewarm takes its lights from the scene it was given, and
+  // the lights are on `scene`, not the sphere group, so its compile is pointed at `scene` (the key the real frames use)
+  explosions.prewarm({ compile: (s, c) => renderer.compile(s, c, scene), getRenderTarget: () => renderer.getRenderTarget(),
+    setRenderTarget: (target) => renderer.setRenderTarget(target) }, cam);
   // the ground under a local point, in sphere space (the explosions and the shells live in the sphere group)
   function surface(x, z) {
     const p = tankWorld(x, z), point = new THREE.Vector3(p[0], p[1], p[2]);
@@ -305,15 +309,17 @@ export function initBossTab(root) {
   }
   const friendlies = createFriendlies(scene, {
     sphere, surface, cellSide: 10, explosions, sfx: audio, tune: () => fightTune, fight: () => fight, now: () => t,
-    creature: creatureNow, tank: () => ({ pos: [drive.x, drive.z], radius: fightTune.hull.radius }),
+    creature: creatureNow, tank: () => ({ pos: hullLost ? [1e9, 1e9] : [drive.x, drive.z], radius: fightTune.hull.radius }),   // a lost hull is no target
     onTankHit: loseHull, enabled: () => ({ gunship: fightOn.fight && fightOn.gunship, sol: fightOn.fight && fightOn.sol }),
   });
-  // a landing on the hull: the hull goes in a shell's burst and stays hidden until the reset. A second landing during the card
-  // finds the fight no longer running: the domain's capture guard and this one cover it (the provider keeps reporting the hull)
+  // a landing on the hull: the hull goes in a shell's burst and stays hidden until the reset. While it is lost it is nobody's prey:
+  // the drive stands still, the lure is not fed, the shooters' provider reports it a world away and the feeding is off (the
+  // reset's restoreCreature turns it back on), so the creature cannot take an invisible hull and stretch the card with a meal
   function loseHull(reason) {
     if (fight.phase !== 'fight') return;
     capture(fight, reason);
     hullLost = true;
+    if (creature) creature.motion.feeding.enabled = false;
     const at = surface(drive.x, drive.z);
     explosions.spawn('tank.shell', at.point.toArray(), at.normal.toArray(), 10);
     audio.play('blast_fire');
@@ -487,12 +493,15 @@ export function initBossTab(root) {
     try {
       const next = await createNihDairia({ ...params.motion }, variant, { models: NIH_DAIRIA_MODELS, look: NIH_DAIRIA_LOOK, phys });
       if (disposed) { next.dispose(); return; }
+      const reload = !!creature;
       creature?.dispose();
       creature = next; state.variant = variant;
       creature.motion.feeding.enabled = params.feeding; creature.motion.active = params.instinct;
       rig.add(creature.mesh);
       native = nativeExtent(creature.body); applySize();
       lastMeals = 0; fatal = null;
+      // a reload: a fresh round, so no plan is owed for the seconds the load skipped (the schedule would land them all at once)
+      if (reload) newRound();
       warmPrey();
     } catch (e) {
       fatal = `Nih-Dairia could not load: ${e.message}`;
@@ -571,12 +580,13 @@ export function initBossTab(root) {
     tryReanchor(REANCHOR_METRES);
     const pinned = state.lure === 'tank' && MEAL_PHASES.has(f.phase);
     let driving = false;
-    if (!pinned) { projectBody(); ({ moving: driving, blocked } = plane.step(dt, driveInput(), bodyBlocker)); }
+    if (hullLost) { drive.speed = 0; blocked = false; }   // a lost hull neither drives nor reads input (a harness script carries on after the reset)
+    else if (!pinned) { projectBody(); ({ moving: driving, blocked } = plane.step(dt, driveInput(), bodyBlocker)); }
     else { drive.speed = 0; scripted = null; blocked = false; }
     const moving = driving || keysHeld() || (scripted && t < scripted.until);
-    m.targetHeld = state.lure === 'tank' ? !!moving : false;   // the point and the auto-lure are never held
+    m.targetHeld = state.lure === 'tank' && !hullLost ? !!moving : false;   // the point and the auto-lure are never held, nor a lost hull
     auto.enabled = state.lure === 'auto';
-    if (!f.locked) { dtNow = dt; creature.setTarget(lureTarget().setY(ARENA.lureHeight)); }
+    if (!f.locked && !(hullLost && state.lure === 'tank')) { dtNow = dt; creature.setTarget(lureTarget().setY(ARENA.lureHeight)); }
     let steps = 0;
     try {
       steps = creature.update(dt);

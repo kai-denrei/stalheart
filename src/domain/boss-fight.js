@@ -6,10 +6,13 @@
 // The scatter: plan n of a fight takes k = seed + n of the golden-angle sequence, r = scatter * radius * sqrt((k % 8 + 0.5)
 // / 8) at a = k * 2.399963 rad, so eight plans fill the disc evenly and two fights from one seed make identical plans.
 //
-// Contracts with the lab (the caller): `now` is monotonic (the lab's own clock); `provokes` is lab-owned (the cannon counts
-// it, the domain never touches it); the domain never ends the fight on its own: the lab calls `kill` when `readout(state).hp`
-// reaches 0 and `capture` when the creature takes the tank or a landing does; `tankHit` is meaningful only while
-// `phase === 'fight'` (it is computed regardless, `capture` is guarded).
+// Contracts with the lab (the caller): `now` is monotonic (the lab's own clock); the domain never ends the fight on its own:
+// the lab calls `kill` when `readout(state).hp` reaches 0 and `capture` when the creature takes the tank or a landing does;
+// `tankHit` is meaningful only while `phase === 'fight'` (it is computed regardless, `capture` is guarded).
+//
+// Imports only ./gunship.js's falloff (`splashDamage`), so a landing hurts exactly as the game's splash does.
+
+import { splashDamage } from './gunship.js';
 
 const GOLDEN = 2.399963, SPREAD = 8;
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
@@ -18,7 +21,7 @@ const nearest = (contacts, at) => contacts.reduce((m, c) => Math.min(m, dist(c, 
 export function makeFight(tune) {
   return {
     phase: 'idle', hp: tune.health, max: tune.health, clock: 0, card: 0, cardSeconds: tune.card, reason: null,
-    hits: 0, damage: 0, provokes: 0, strikes: [], seed: Math.abs(Math.floor(tune.seed ?? 1)) || 1,
+    hits: 0, damage: 0, strikes: [], seed: Math.abs(Math.floor(tune.seed ?? 1)) || 1,
     at: null, bofors: null, sol: null, burning: null,
   };
 }
@@ -26,7 +29,7 @@ export function makeFight(tune) {
 // idle to fight: the clock, the health and the schedule start afresh
 export function startFight(state) {
   if (state.phase !== 'idle') return;
-  Object.assign(state, { phase: 'fight', hp: state.max, clock: 0, card: 0, reason: null, hits: 0, damage: 0, provokes: 0,
+  Object.assign(state, { phase: 'fight', hp: state.max, clock: 0, card: 0, reason: null, hits: 0, damage: 0,
     strikes: [], at: null, bofors: null, sol: null, burning: null });
 }
 
@@ -87,11 +90,10 @@ function harm(state, dmg) {
   return dealt;
 }
 
-// a landing: the plan's damage times the falloff 1 - (d / r)^2 on the nearest contact, zero outside the ring (the game's
-// splashDamage); the tank inside the ring plus its hull is a lost hull
+// a landing: the game's splashDamage (1 - (d / r)^2, zero outside the ring) on the nearest contact; the tank inside the ring
+// plus its hull is a lost hull
 export function resolveLanding(state, plan, creature, tank) {
-  const d = nearest(creature.contacts, plan.at), u = d / plan.radius;
-  const damage = harm(state, plan.radius > 0 && d < plan.radius ? plan.damage * (1 - u * u) : 0);
+  const damage = harm(state, splashDamage(nearest(creature.contacts, plan.at), plan.radius, plan.damage));
   if (damage > 0) state.hits++;
   return { damage, tankHit: dist(tank.pos, plan.at) < plan.radius + tank.radius };
 }
@@ -120,7 +122,7 @@ export function tick(state, dt) {
   if (state.phase !== 'lost' && state.phase !== 'killed') return null;
   state.card -= dt;
   if (state.card > 0) return null;
-  Object.assign(state, { phase: 'idle', hp: state.max, clock: 0, card: 0, reason: null, hits: 0, damage: 0, provokes: 0,
+  Object.assign(state, { phase: 'idle', hp: state.max, clock: 0, card: 0, reason: null, hits: 0, damage: 0,
     strikes: [], at: null, bofors: null, sol: null, burning: null });
   return 'reset';
 }

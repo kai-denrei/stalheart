@@ -3,6 +3,7 @@
 // creature standing in both shooters dies in about thirty seconds.
 import assert from 'node:assert/strict';
 import { BOSS_FIGHT as T } from '../src/content/boss-fight.js';
+import { GUNSHIP_GUNS, GUNSHIP_AUTO } from '../src/content/gunship.js';
 import { makeFight, startFight, schedule, resolveLanding, burn, capture, kill, tick, readout } from '../src/domain/boss-fight.js';
 
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
@@ -24,6 +25,15 @@ const fight = () => { const s = makeFight(T); startFight(s); return s; };
 const run = (s, secs) => { const plans = []; for (let i = 0; i <= secs * 60; i++) plans.push(...schedule(s, i / 60, creature, T)); return plans; };
 
 assert.ok(Object.isFrozen(T) && Object.isFrozen(T.bofors) && Object.isFrozen(T.sol) && Object.isFrozen(T.hull), 'the content is deep-frozen');
+// the fight's copies of the gun's numbers stay the game's (the domain takes them as `tune`, so they are copied, not imported):
+// the auto pattern's burst and rest, the 40 mm's rate and travel, its blast in metres at ten a cell. `damage` is the fight's
+// own knob (the boss's health is tuned against it), so it is free to leave the gun's
+{
+  const gun = GUNSHIP_GUNS.bofors;
+  assert.equal(T.bofors.burst, GUNSHIP_AUTO.burst, 'the burst is the game\'s auto pattern'); assert.equal(T.bofors.rest, GUNSHIP_AUTO.rest, 'the rest is the game\'s auto pattern');
+  assert.equal(T.bofors.rate, gun.rate, 'the rate is the 40 mm\'s'); assert.equal(T.bofors.travel, gun.travel, 'the travel is the 40 mm\'s');
+  assert.equal(T.bofors.radius, gun.blastCells * 10, 'the radius is the 40 mm\'s blast at ten metres a cell');
+}
 const idle = makeFight(T);
 assert.equal(idle.phase, 'idle'); assert.equal(idle.hp, T.health); assert.equal(idle.max, T.health);
 assert.deepEqual(schedule(idle, 0, creature, T), [], 'no strikes before the fight starts');

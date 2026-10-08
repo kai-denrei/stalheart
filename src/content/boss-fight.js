@@ -5,7 +5,7 @@
 const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 'object') freeze(v); return Object.freeze(o); };
 
 export const BOSS_FIGHT = freeze({
-  health: 155,        // the creature's hit points: a standing creature dies in 30.62 s in node (the real feet), 0:3x in the lab
+  health: 155,        // the creature's hit points: a standing creature dies in 30.62 s in node (the real feet) and in the lab
   warn: 1.5,          // a red spot shows this long before its shot lands
   lead: 1,            // the aim leads the creature's velocity by this fraction of the time to landing
   scatter: 0.5,       // the jitter's reach as a fraction of the blast radius (Bofors) or the footprint (SOL)
