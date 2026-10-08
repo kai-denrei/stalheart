@@ -364,7 +364,7 @@ export function initBossTab(root) {
     meanSolver.push(tm.solver); meanSkin.push(tm.skin); meanSteps.push(steps); cutFrames.push(cut ? 1 : 0);
     meanCentre.push(m.velocity.length() * scale);
     meanReach.push(reachLocal() * scale);
-    meanSag.push(sagitta(farthestFoot() * scale, planet.radius));
+    meanSag.push(sagitta(farthestContact() * scale, planet.radius));
   }
   // the farther probing arm's tip from the centre: the outermost node of the lead and second-lead limbs
   function reachLocal() {
@@ -376,10 +376,10 @@ export function initBossTab(root) {
     }
     return best;
   }
-  // the planted foot farthest from the frame's origin, where the flat floor departs most from the sphere
-  function farthestFoot() {
-    const g = creature.motion.gait; let best = 0;
-    for (let i = 0; i < g.feet.length; i++) if (g.planted[i]) best = Math.max(best, Math.hypot(g.feet[i].x, g.feet[i].z));
+  // the floor contact farthest from the frame's origin, where the flat floor departs most from the sphere
+  function farthestContact() {
+    const b = creature.body, c = b.contact; let best = 0;
+    for (let i = 0; i < c.length; i++) if (c[i] > 0) best = Math.max(best, Math.hypot(b.x[i * 3], b.x[i * 3 + 2]));
     return best;
   }
 

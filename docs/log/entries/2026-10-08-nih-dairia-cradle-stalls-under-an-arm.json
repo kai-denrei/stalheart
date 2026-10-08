@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "id": "2026-10-08-nih-dairia-cradle-stalls-under-an-arm",
+  "date": "2026-10-08",
+  "type": "issue",
+  "status": "observed",
+  "title": "A tank stopped under an arm, inside the skin, stalls the kit's cradle for ever",
+  "context": "Found in the boss lab's final review (2026-10-08-nih-dairia-boss-lab-final-review-fixes). The port rule is kit unchanged, so it was not fixed there.",
+  "outcome": "The cradle's minimum gap stays at -0.002 against the -0.0005 limit, so the capture never completes. A player can cause it by driving under the creature and stopping. reset recovers. The lab could refuse a capture that starts inside the skin. For the boss spec; the --boss step parks the tank outside the reach.",
+  "alternatives": [],
+  "evidence": [],
+  "supersedes": []
+}

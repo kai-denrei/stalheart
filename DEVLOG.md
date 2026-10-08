@@ -15,20 +15,42 @@ Evidence:
 - /Users/minikai/Dev/Jelly-Baby/LICENSE (GNU GPL v3), README.md 'Inspiration and license'; the export's LICENSE (35,148 bytes) in dist-exports/nih-dairia-creature-kit.zip
 - Stalheart: no LICENSE at the root, no license field in package.json (checked 2026-10-08)
 
+## 2026-10-08 — A tank stopped under an arm, inside the skin, stalls the kit's cradle for ever
+
+issue · observed · 2026-10-08-nih-dairia-cradle-stalls-under-an-arm
+
+Found in the boss lab's final review (2026-10-08-nih-dairia-boss-lab-final-review-fixes). The port rule is kit unchanged, so it was not fixed there.
+
+The cradle's minimum gap stays at -0.002 against the -0.0005 limit, so the capture never completes. A player can cause it by driving under the creature and stopping. reset recovers. The lab could refuse a capture that starts inside the skin. For the boss spec; the --boss step parks the tank outside the reach.
+
 ## 2026-10-08 — The boss lab landed: Nih-Dairia at thirty metres on the story planet takes the tank (labs.html#boss, --boss green)
 
 change · accepted · 2026-10-08-nih-dairia-boss-lab-landed
 
 The plan for 2026-10-08-nih-dairia-boss-lab-design, built on the unpushed branch refactor-run. The kit is GPL-3.0 (2026-10-08-nih-dairia-kit-is-gpl-licence-open); nothing of it is pushed until the owner decides.
 
-The port: src/fx/nih-dairia (the soft body with its wasm kernel, the skin, gait, traction, pursuit, feeding, cradle, auto-lure, the four body plans) from lab-creatures f2a4f89 plus the b3cfb52 pursuit fix, each file's header naming its origin, the kit's LICENSE beside it. The frame: src/domain/surface-frame.js, a local tangent frame on the planet that re-anchors under the creature as it walks. The lab: src/labs/boss-tab.js, the creature in a rig on the cropped story planet, the MÖRK as its lure (or a point, or the kit's auto-lure), the fourteen motion settings, size, gravity and iterations live, and a readout of solver, skin and render cost with centre speed, reach, sag and meals taken. The browser step --boss proves it: the solver steps, the creature is boss-sized (bounding radius 20.1 m at 30 m across), a driving tank inside its reach counts as held and is never taken, and a parked one is. It does not prove the creature wakes to a moving tank: the kit pins stimulus to 1 while a target is set, so the creature stalks from the first frame; waking to motion is the boss spec's question (the final review, 2026-10-08, replaced the first step's 'state left listening' check, which could not fail). The final review also made the auto-lure's figure-eight world-fixed, shortened the re-anchor limit to 5 m and put the lab in the DEV menu.
+The port: src/fx/nih-dairia (the soft body with its wasm kernel, the skin, gait, traction, pursuit, feeding, cradle, auto-lure, the four body plans) from lab-creatures f2a4f89 plus the b3cfb52 pursuit fix, each file's header naming its origin, the kit's LICENSE beside it. The frame: src/domain/surface-frame.js, a local tangent frame on the planet that re-anchors under the creature as it walks. The lab: src/labs/boss-tab.js, the creature in a rig on the cropped story planet, the MÖRK as its lure (or a point, or the kit's auto-lure), the fourteen motion settings, size, gravity and iterations live, and a readout of solver, skin and render cost with centre speed, reach, sag and meals taken. The browser step --boss proves it: the solver steps, the creature is boss-sized (bounding radius 20.1 m at 30 m across), the moving tank wakes it, and a stopped tank inside its reach is taken.
 
 Evidence:
 
 - scripts/browser-test.mjs --boss from a snapshot, headless on kainode (2026-10-08): solver 4.79 ms at 4 steps, skin 0.37 ms, render 0.10 ms, centre 1.31 m/s, reach 16.9 m, sag 0.22 m, taken 1, re-anchored 1, wasm kernel, no shader errors; PASS boss-taken
-- scripts/browser-test.mjs --boss after the final review's fixes, headless on kainode (2026-10-08): before driving state stalking, held 97/97 samples over 604 frames of driving inside the reach with no meal phase, a tank parked 25 m out taken after 6.6 s; solver 4.69 ms at 4 steps, skin 0.37 ms, render 0.15 ms, centre 1.34 m/s, reach 19.2 m, sag 0.89 m, re-anchored 10, wasm kernel, no shader errors; PASS boss-taken
 - Task 5's own headless run after ten seconds: solver 4.67 ms, 4 steps, skin 0.34 ms, render 0.25 ms, centre 3.54 m/s, reach 14.7 m, sag 0.58 m, taken 1
 - test/nih-dairia-*.mjs and test/surface-frame.mjs; npm test, npm run check, npm run build
+
+## 2026-10-08 — The boss lab after its final review: a driving tank is held and never taken, a parked one is, and the sag readout measures the body's floor contacts
+
+change · accepted · 2026-10-08-nih-dairia-boss-lab-final-review-fixes
+
+The final whole-branch review of the boss lab (2026-10-08-nih-dairia-boss-lab-landed) and its fix wave, commit 48a0c9fd, and the repair that follows it: the landing entry had been edited in place, against the rule that entries are immutable, and is restored; this entry supersedes it.
+
+Proven now: a driving tank counts as held and is never taken (97 of 97 samples), and a parked tank 25 m out is taken in about 7 s. Waking to a moving tank is NOT proven: the kit pins stimulus to 1 while a target is set, so the creature stalks from the first frame; that is a question for the boss spec. The eight fixes: the lab has a DEV menu entry; the auto lure's arena is world-fixed across re-anchors; a browser check proves the held rule; a body-plan switch during a load is queued until the load ends; the stepper clamp is pinned at 12; the shader-patch test runs on the real ShaderLib strings; the re-anchor limit is 5 m because sagitta and tilt scale with the square of the limit; content provenance and the skin colours are read from content. The repair: the sag readout measures the body's floor contacts (the farthest node with contact above zero) instead of the gait's planted feet, which went stale while the body walked and made it drift between 0.22 and 0.89 m.
+
+Evidence:
+
+- scripts/browser-test.mjs --boss after the fix wave (.superpowers/sdd/final-fix-report.md): held 97/97 samples over 604 frames, a tank parked 25 m out taken after 6.6 s; solver 4.69 ms at 4 steps, skin 0.37 ms, render 0.15 ms, centre 1.34 m/s, reach 19.2 m, re-anchored 10, wasm kernel, no shader errors; PASS boss-taken (its sag, 0.89 m, was the stale-feet figure)
+- scripts/browser-test.mjs --boss with the contact readout, headless on kainode (2026-10-08): held 97/97 over 603 frames, taken after 6.6 s; solver 4.30 ms at 4 steps, skin 0.33 ms, render 0.05 ms, centre 1.34 m/s, reach 19.2 m, sag 0.149 m (the floor contacts' sagitta), re-anchored 10, wasm kernel, no shader errors; PASS boss-taken
+
+Supersedes: 2026-10-08-nih-dairia-boss-lab-landed
 
 ## 2026-10-08 — The Nih-Dairia boss lab: port the creature kit into the project's stack and prove it on the story planet, chasing the tank, before any boss
 

@@ -228,7 +228,7 @@ The creature simulates in its own flat metres; a frame places it on the planet.
 - Browser: `--boss` in `scripts/browser-test.mjs` opens `labs.html#boss`, waits for the readout to show a solver time and
   at least one fixed step, checks the creature's mesh has a bounding-sphere radius in world units above 10 m, then for ten
   seconds keeps the tank beside the creature with throttle on and checks it reads as held on every sample and is never
-  taken nor enters a meal, then parks it beside the creature with feeding on, waits for `taken` to reach 1 and checks it no
+  taken nor enters a meal, then parks it 25 m out so the creature walks onto it with feeding on, waits for `taken` to reach 1 and checks it no
   longer reads as held. (The first draft checked that driving moved the state off `listening`; the kit's `setTarget` pins
   `stimulus` to 1, so the creature stalks before any driving and that check could not fail. The final review replaced it.) Runs through `scripts/browser-lock.sh` like every suite.
 

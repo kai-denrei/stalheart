@@ -371,13 +371,19 @@ First step, when it is picked up: `@ts-check` on `src/domain` as a trial, to see
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 59 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 60 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
 
 ### Open: the Nih-Dairia kit is GPL-3.0 and Stalheart's public repository has no licence; the owner decides before any push
 
 `2026-10-08-nih-dairia-kit-is-gpl-licence-open` · issue · **observed**
 
 Found while revising the boss lab spec (docs/superpowers/specs/2026-10-08-nih-dairia-boss-lab-design.md). The creature comes from the owner's lab-creatures project (/Users/minikai/Dev/Jelly-Baby, f2a4f89), which 'preserves the upstream GPL-3.0 license' of Jelly Baby by scottstts; its kit export carries the LICENSE file. Stalheart's repository (public, kai-denrei/stalheart, source on GitHub and the build on Pages) has no licence file and no licence field in package.json; docs/ASSETS.md licenses only the SentryTowers_A6 assets.
+
+### A tank stopped under an arm, inside the skin, stalls the kit's cradle for ever
+
+`2026-10-08-nih-dairia-cradle-stalls-under-an-arm` · issue · **observed**
+
+Found in the boss lab's final review (2026-10-08-nih-dairia-boss-lab-final-review-fixes). The port rule is kit unchanged, so it was not fixed there.
 
 ### The Nih-Dairia boss lab: port the creature kit into the project's stack and prove it on the story planet, chasing the tank, before any boss
 

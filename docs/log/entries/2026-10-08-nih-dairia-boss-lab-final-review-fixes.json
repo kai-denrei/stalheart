@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "2026-10-08-nih-dairia-boss-lab-final-review-fixes",
+  "date": "2026-10-08",
+  "type": "change",
+  "status": "accepted",
+  "title": "The boss lab after its final review: a driving tank is held and never taken, a parked one is, and the sag readout measures the body's floor contacts",
+  "context": "The final whole-branch review of the boss lab (2026-10-08-nih-dairia-boss-lab-landed) and its fix wave, commit 48a0c9fd, and the repair that follows it: the landing entry had been edited in place, against the rule that entries are immutable, and is restored; this entry supersedes it.",
+  "outcome": "Proven now: a driving tank counts as held and is never taken (97 of 97 samples), and a parked tank 25 m out is taken in about 7 s. Waking to a moving tank is NOT proven: the kit pins stimulus to 1 while a target is set, so the creature stalks from the first frame; that is a question for the boss spec. The eight fixes: the lab has a DEV menu entry; the auto lure's arena is world-fixed across re-anchors; a browser check proves the held rule; a body-plan switch during a load is queued until the load ends; the stepper clamp is pinned at 12; the shader-patch test runs on the real ShaderLib strings; the re-anchor limit is 5 m because sagitta and tilt scale with the square of the limit; content provenance and the skin colours are read from content. The repair: the sag readout measures the body's floor contacts (the farthest node with contact above zero) instead of the gait's planted feet, which went stale while the body walked and made it drift between 0.22 and 0.89 m.",
+  "alternatives": [],
+  "evidence": [
+    "scripts/browser-test.mjs --boss after the fix wave (.superpowers/sdd/final-fix-report.md): held 97/97 samples over 604 frames, a tank parked 25 m out taken after 6.6 s; solver 4.69 ms at 4 steps, skin 0.37 ms, render 0.15 ms, centre 1.34 m/s, reach 19.2 m, re-anchored 10, wasm kernel, no shader errors; PASS boss-taken (its sag, 0.89 m, was the stale-feet figure)",
+    "scripts/browser-test.mjs --boss with the contact readout, headless on kainode (2026-10-08): held 97/97 over 603 frames, taken after 6.6 s; solver 4.30 ms at 4 steps, skin 0.33 ms, render 0.05 ms, centre 1.34 m/s, reach 19.2 m, sag 0.149 m (the floor contacts' sagitta), re-anchored 10, wasm kernel, no shader errors; PASS boss-taken"
+  ],
+  "supersedes": [
+    "2026-10-08-nih-dairia-boss-lab-landed"
+  ]
+}
