@@ -106,8 +106,11 @@ SOL's footprint during the burn, is a lost hull.
   with its `<i>` fill, `ih-num`): `NIH-DAIRIA`, the fill at `hp / max`, amber at 25 % as the game's gates; beside it the
   fight clock (`0:00.0`) and `hits <n>`.
 - **The fight**: starts when the tank first moves. `hp` starts at `BOSS_FIGHT.health`. Hits and SOL contact bring it down.
-- **KILLED**: `hp <= 0`: the creature goes still (`motion.active = false`, feeding off) and slumps (`creature.phys.gravity`
-  x4 for the card's duration), a card `KILLED <time>` with the hits, three seconds, then the reset.
+- **KILLED**: `hp <= 0`: the v1 death (owner, 2026-10-08: "set its gravity to 10 (max) and stop all movements"): every
+  movement stops (`motion.active = false`, feeding off, the pursuit, gait and traction forces no longer applied, so only
+  the solver's own elasticity and the floor act) and `creature.phys.gravity = 10` (the lab's gravity knob's maximum; the
+  kit's is 2.4), so the body collapses under its own weight; a card `KILLED <time>` with the hits, three seconds, then the
+  reset restores the preset's gravity.
 - **LOST**: the creature captures the tank (feeding leaves `hunting`), or a landing ring takes it: a card `LOST <reason>`,
   three seconds (the feeding plays out meanwhile; a landing hides the hull with a `tank.shell` burst), then the reset.
 - **The reset**: the tank respawns 40 m out on the side away from the creature, the creature resets to its rest
@@ -171,7 +174,7 @@ hp/s · ttk <s> · provokes <n>`.
 
 The base and the creature's attention between it and the tank (the kit pins stimulus while a target is set); the gunship
 seen in the sky and the MK-9; what the tank's shells should do to a boss in the real game (nothing, per this prototype);
-the creature's death look (the kit has none; the slump is a stand-in); the cost of the laser and the explosions on a
+the creature's death look beyond v1's collapse (the kit has none); the cost of the laser and the explosions on a
 phone next to the solver.
 
 ## Records
