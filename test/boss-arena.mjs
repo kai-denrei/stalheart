@@ -69,15 +69,40 @@ assert.deepEqual(route([-30, 0], [30, 0], [rock([0, 0], 8, { live: false })], 6)
 // the nearest shape first
 const far8 = rock([20, 0], 4, { id: 'f' }), near8 = rock([-10, 0], 4, { id: 'n' });
 wp = route([-40, 0], [40, 0], [far8, near8], 6); near(Math.hypot(wp[0] + 10, wp[1]), 10 * 1.02, 'the nearest crossed shape is routed first'); assert.ok(wp[0] < 0, 'on its near side');
-// inside the inflated circle: crossed only while the target lies behind the shape; then pushed radially out, two percent past the edge
-wp = route([3, 0], [-30, 0], [rk8], 6); near(wp[0], W, 'pushed out along the radius'); near(wp[1], 0, 'on the same ray');
-wp = route([0, 5], [0, -30], [rk8], 6); near(wp[0], 0, 'x'); near(wp[1], W, 'pushed out to 14.28');
+// inside the inflated circle: crossed only while the target lies behind the shape; then a point ahead along the waypoint circle,
+// 0.3 rad round from c's own bearing on the side nearer the target (the waypoint never equals c, so steering cannot stall on it)
+const STEP = 0.3, bearing = (p) => Math.atan2(p[1], p[0]);
+wp = route([3, 0], [-30, 10], [rk8], 6);
+near(Math.hypot(wp[0], wp[1]), W, 'ahead on the waypoint circle, 14.28 m from the rock'); near(bearing(wp), STEP, 'turned 0.3 rad from c, toward +z where the target lies');
+wp = route([3, 0], [-30, -10], [rk8], 6); near(Math.hypot(wp[0], wp[1]), W, 'radius (other side)'); near(bearing(wp), -STEP, 'turned 0.3 rad toward -z where the target lies');
+wp = route([0, 5], [-10, -30], [rk8], 6);
+near(Math.hypot(wp[0], wp[1]), W, 'radius (c on the z axis)'); near(bearing(wp) - Math.PI / 2, STEP, 'turned 0.3 rad toward -x, the side nearer the target');
+wp = route([14.28, 0], [-30, 10], [rk8], 6); assert.ok(Math.hypot(wp[0] - 14.28, wp[1]) > 1, 'a c standing on the waypoint circle is not handed its own position');
 assert.deepEqual(route([3, 0], [30, 0], [rk8], 6), [30, 0], 'inside, the target leading outward: not crossed');
 assert.deepEqual(route([0, 5], [0, 30], [rk8], 6), [0, 30], 'inside, the target leading outward (z): not crossed');
 assert.deepEqual(route([3, 0], [3, 40], [rk8], 6), [3, 40], 'inside, a target at right angles to the radius is not behind the shape');
 // a target inside a shape's clearance: that shape is never routed round
 assert.deepEqual(route([0, -40], [0, 12], [rock([0, 0], 8)], 6), [0, 12], 'a target inside the clearance is approached directly');
 assert.deepEqual(route([-30, 0], [10, 0], [rk8], 6), [10, 0], 'a target inside the clearance, c beyond it on the line, is approached directly');
+// a target is skipped only when it stands within the clearance of the shape's real footprint, not of its bounding circle:
+// a wall 20 x 3, clear 6: a tank 10 m behind its face is inside the 16 m bounding circle yet well clear of the wall
+const wl = wall([0, 0], 0);
+wp = route([0, -30], [0, 11.5], [wl], 6); assert.notDeepEqual(wp, [0, 11.5], 'a target 10 m behind the face is routed round the wall');
+near(Math.hypot(wp[0], wp[1]), 16 * 1.02, 'at the wall\'s waypoint circle');
+assert.deepEqual(route([0, -30], [0, 5], [wl], 6), [0, 5], 'a target 3.5 m off the face is inside the clearance: approached directly');
+// a clamped steering loop (2 m a step, at most 400) walks to the target from inside the waypoint circle and from outside it
+const walk = (c0, target, shapes) => {
+  let c = c0.slice();
+  for (let i = 0; i < 400 && Math.hypot(target[0] - c[0], target[1] - c[1]) > 0.5; i++) {
+    const w = route(c, target, shapes, 6), dx = w[0] - c[0], dz = w[1] - c[1], d = Math.hypot(dx, dz), k = Math.min(2, d) / d;
+    if (d > 1e-12) c = [c[0] + dx * k, c[1] + dz * k];
+  }
+  return Math.hypot(target[0] - c[0], target[1] - c[1]);
+};
+assert.ok(walk([0, -5], [0, 40], [rk8]) < 1, 'clamped steering from inside R, the target behind a rock, arrives');
+assert.ok(walk([0, -40], [0, 40], [rk8]) < 1, 'clamped steering from outside R, the target behind a rock, arrives');
+assert.ok(walk([0, -6], [0, 40], [wl]) < 1, 'clamped steering from inside R, the target behind a wall, arrives');
+assert.ok(walk([0, -40], [0, 40], [wl]) < 1, 'clamped steering from outside R, the target behind a wall, arrives');
 // a wall routes as its bounding circle (half its length)
 wp = route([-60, 0], [60, 0], [wall([0, 0], 0)], 6); near(Math.hypot(wp[0], wp[1]), (10 + 6) * 1.02, 'a wall routes at half its length plus the clear');
 
