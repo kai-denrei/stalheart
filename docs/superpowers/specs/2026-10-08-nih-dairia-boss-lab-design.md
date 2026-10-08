@@ -151,11 +151,17 @@ The creature simulates in its own flat metres; a frame places it on the planet.
   a zero shift. The old `east` as the reference transports the heading along the surface (parallel transport: a few
   degrees over 20 m at radius 750, never a flip). The creature applies the shift to
   `body.x` and `body.previous` (and the kernel's views, which are the same memory), to `motion.target`, to the feeding
-  cycle's prey and captured positions, to the cradle's anchor and to the traction anchors, inside one fixed step between
-  `motion.step` and `body.step`, so velocities are untouched and the solver never sees a jump. Re-anchoring is refused
+  cycle's prey and captured positions, to the cradle's anchor, to the traction anchors **and to the gait's foot positions**
+  (Task 5 found the legs jerk without it; a node check matched an unshifted run to five decimals), between two frames (no
+  fixed step runs between `update` calls, so positions and previous positions move together), so velocities are untouched
+  and the solver never sees a jump. Re-anchoring is refused
   while feeding is locked (the prey must not move). The yaw is kept, so the creature's heading does not snap.
 - The tank drives in the same local plane (the swarm lab's `stepYardDrive` in metres, no boxes) and is placed through the
-  same frame at scale 1, so both actors sit on the curve correctly and the lure mapping is exact.
+  same frame at scale 1, then dropped onto the curved surface along the normal (Task 5: left on the flat plane it would
+  float 0.6 m at 30 m out), so both actors sit on the curve and the lure mapping is exact.
+- The display scale is derived from each body plan's measured width (about 167 for the ancestor's 0.180 m, not a fixed
+  170), so `size` means the same metres for every plan. The planet draw is a cropped copy of the story mesh's triangles
+  within 400 m of the pole (`story-planet-mesh.js` offers no draw range for a cap and is unchanged).
 
 ## 4. The lab (`src/labs/boss-tab.js`)
 
