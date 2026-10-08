@@ -45,13 +45,17 @@ the lab's `{ x, z, yaw, speed }` in local metres and composes the game's own rul
   constant while the throttle is held, scrubbed by turning; `drive` is +1 forward, -0.55 reverse (the game's values), 1.45
   on cruise (double-tap W, as the game);
 - pace: `v = 1.1 * 1.6 * 10 * drive * mul` m/s (the game's `params.speed` x `cellSide * 1.6` x drive x ramp, at ten metres a
-  cell): about 24 m/s at the first touch, 46 m/s after four seconds held, 13 m/s in reverse;
+  cell): about 24 m/s at the first touch, about 38 m/s after four seconds held (Task 1 measured 26.5 to 37.8; the ramp's
+  ceiling of 46 m/s takes about twenty seconds), 13 m/s in reverse; cruise is the game's: a second W tap within 0.35 s
+  toggles it, it keeps the hull rolling with no key held, S cancels it;
 - the hover, idle vibration, touchdown rock and recoil pitch: `stepTankFeel` / `applyTankFeel` with the stored `FEEL`,
   `feel.bank` from the steer ease, `fireTankFeel` on a shot;
-- "while not hitting anything": the creature's body is a blocker. Each frame the tank's local position is tested against
-  the creature's floor contacts (`body.contact[i] > 0`, scaled); inside the hull radius of any contact the tank is pushed
-  out along the contact's outward direction, its speed set to zero and the ramp scrubbed head-on (`scrubDriveRamp(ramp,
-  1, TANK_DRIVE)`). No walls on the cap; the tank may drive off the cropped planet, where the readout says so and `reset`
+- "while not hitting anything": the creature's body is a blocker. Each frame the tank's moved position is tested against
+  the creature's body nodes that sit in the hull's height band (scaled local height under 3 m, so the raised torso does
+  not block and a hull cannot slip between floor contacts); within the hull radius (4.2 m) of the nearest such node the
+  tank is pushed away from that node by the overlap, its speed set to zero and the ramp scrubbed head-on
+  (`scrubDriveRamp(ramp, 1, TANK_DRIVE)`). A parked tank is not shoved (the drive consults the blocker only when it
+  moved), so a meal can close on it (Task 1's review). No walls on the cap; the tank may drive off the cropped planet, where the readout says so and `reset`
   brings it back.
 
 The engine loop (`tank_engine`) and the drive keys are the swarm lab's (held keys, not key events); the lab gains audio
