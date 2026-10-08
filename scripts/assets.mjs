@@ -6,11 +6,12 @@ const root=fileURLToPath(new URL('../',import.meta.url));
 
 const sha=data=>createHash('sha256').update(data).digest('hex');
 const fetchMissing=process.argv[2]==='fetch';
-for(const lockFile of ['docs/orbital-finale-assets.lock.json','docs/isao-birudoron-assets.lock.json','docs/sentry-assets.lock.json','docs/missile-assets.lock.json','docs/hover-tank-assets.lock.json','docs/needle-assets.lock.json','docs/astro-assets.lock.json','docs/astro-industry-assets.lock.json','docs/sh-rocket-assets.lock.json','docs/base-kit-assets.lock.json','docs/antenna-assets.lock.json','docs/container-assets.lock.json','docs/solar-lod-assets.lock.json','docs/hugin-flight-assets.lock.json','docs/ammunition-assets.lock.json','docs/hover-tank-tiers-assets.lock.json','docs/landmark-tiers-assets.lock.json','docs/korp-assets.lock.json','docs/sol82-assets.lock.json','docs/arrival-foundry-assets.lock.json','docs/cargo-assets.lock.json','docs/colony-assets.lock.json','docs/scoreboard-assets.lock.json','docs/livery-assets.lock.json']) {
+for(const lockFile of ['docs/orbital-finale-assets.lock.json','docs/isao-birudoron-assets.lock.json','docs/sentry-assets.lock.json','docs/missile-assets.lock.json','docs/hover-tank-assets.lock.json','docs/needle-assets.lock.json','docs/astro-assets.lock.json','docs/astro-industry-assets.lock.json','docs/sh-rocket-assets.lock.json','docs/base-kit-assets.lock.json','docs/antenna-assets.lock.json','docs/container-assets.lock.json','docs/solar-lod-assets.lock.json','docs/hugin-flight-assets.lock.json','docs/ammunition-assets.lock.json','docs/hover-tank-tiers-assets.lock.json','docs/landmark-tiers-assets.lock.json','docs/korp-assets.lock.json','docs/sol82-assets.lock.json','docs/arrival-foundry-assets.lock.json','docs/cargo-assets.lock.json','docs/colony-assets.lock.json','docs/scoreboard-assets.lock.json','docs/livery-assets.lock.json','docs/nih-dairia-assets.lock.json']) {
 const lock=JSON.parse(readFileSync(resolve(root,lockFile),'utf8'));
 for(const file of lock.files){
  const path=resolve(root,file.path);
  if(!path.startsWith(resolve(root,'assets')+'/') && !(lockFile==='docs/missile-assets.lock.json' && file.path==='src/core/a6-missile-flight.js'))throw Error('Asset outside allowed pinned paths');
+ if(!existsSync(path)&&fetchMissing&&!lock.baseUrl)throw Error(`No upstream for ${file.path}; restore it from the owner's export`);
  if(!existsSync(path) && fetchMissing){
   const response=await fetch(lock.baseUrl+file.sourcePath);if(!response.ok)throw Error(`HTTP ${response.status}: ${file.sourcePath}`);
   const bytes=Buffer.from(await response.arrayBuffer());if(sha(bytes)!==file.sha256)throw Error(`Upstream checksum mismatch: ${file.sourcePath}`);

@@ -1,0 +1,92 @@
+{
+  "sourceHash": "crown-spider-v3",
+  "limbCount": 8,
+  "volume": 0.00004909555708659217,
+  "layout": {
+    "positions": {
+      "offset": 0,
+      "length": 28224,
+      "type": "Float32Array"
+    },
+    "normals": {
+      "offset": 112896,
+      "length": 28224,
+      "type": "Float32Array"
+    },
+    "indices": {
+      "offset": 225792,
+      "length": 56436,
+      "type": "Uint32Array"
+    },
+    "particles": {
+      "offset": 451536,
+      "length": 3816,
+      "type": "Float64Array"
+    },
+    "tets": {
+      "offset": 482064,
+      "length": 13032,
+      "type": "Uint32Array"
+    },
+    "volumes": {
+      "offset": 534192,
+      "length": 3258,
+      "type": "Float64Array"
+    },
+    "bindingIds": {
+      "offset": 560256,
+      "length": 37632,
+      "type": "Uint32Array"
+    },
+    "bindingWeights": {
+      "offset": 710784,
+      "length": 37632,
+      "type": "Float64Array"
+    },
+    "tetIds": {
+      "offset": 1011840,
+      "length": 9408,
+      "type": "Uint32Array"
+    },
+    "contacts": {
+      "offset": 1049472,
+      "length": 1740,
+      "type": "Uint32Array"
+    },
+    "opticalPositions": {
+      "offset": 1056432,
+      "length": 28224,
+      "type": "Float32Array"
+    },
+    "opticalNormals": {
+      "offset": 1169328,
+      "length": 28224,
+      "type": "Float32Array"
+    },
+    "opticalIndices": {
+      "offset": 1282224,
+      "length": 56436,
+      "type": "Uint32Array"
+    },
+    "opticalBindingIds": {
+      "offset": 1507968,
+      "length": 37632,
+      "type": "Uint32Array"
+    },
+    "opticalBindingWeights": {
+      "offset": 1658496,
+      "length": 37632,
+      "type": "Float64Array"
+    },
+    "thicknessIds": {
+      "offset": 1959552,
+      "length": 28224,
+      "type": "Uint32Array"
+    },
+    "thicknessWeights": {
+      "offset": 2072448,
+      "length": 28224,
+      "type": "Float32Array"
+    }
+  }
+}

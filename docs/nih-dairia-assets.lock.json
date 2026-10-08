@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "upstream": "lab-creatures (kai-denrei), derived from Jelly Baby by scottstts",
+  "revision": "f2a4f89",
+  "baseUrl": null,
+  "credit": "Nih-Dairia and its body plans (brood, reed, crown) by the owner's lab-creatures project, export of 2026-10-08, GPL-3.0; model source hash nih-dairia-spider-v2. The owner's own export: nothing to fetch.",
+  "note": "Soft-body cage models: typed-array slices described by each .json manifest, read by src/fx/nih-dairia/cage-model.js. Not GLB: the build copies them unchanged.",
+  "files": [
+    {
+      "path": "assets/creatures/nih-dairia/brood.bin",
+      "sha256": "c4a6b735fbefaf3546f76077993e2b2594d88f9e96739e2ea1f43eab65ceb8e6"
+    },
+    {
+      "path": "assets/creatures/nih-dairia/brood.json",
+      "sha256": "f9ea469448c249594676b4f2d9fb4d2993d4be25e8576b2bb7cf2dd0399507e0"
+    },
+    {
+      "path": "assets/creatures/nih-dairia/crown.bin",
+      "sha256": "3aec16bc8d55639c45f8d9e510391fc47e8df7cf4da345332302e4358b148cc2"
+    },
+    {
+      "path": "assets/creatures/nih-dairia/crown.json",
+      "sha256": "b4c355fd64eebf5fd8604104bf7df3a4fd8be1befbc9d1f43c985eb13c04a7f6"
+    },
+    {
+      "path": "assets/creatures/nih-dairia/nih-dairia.bin",
+      "sha256": "4c72a5f07eeffd32251655bc8e07add99066737bea6791f4aa499af638e5f1b8"
+    },
+    {
+      "path": "assets/creatures/nih-dairia/nih-dairia.json",
+      "sha256": "5784989fa7d4162d58c8f823c5897099eb543ea36dc2e6557c17b075aab645da"
+    },
+    {
+      "path": "assets/creatures/nih-dairia/reed.bin",
+      "sha256": "3bc1339ea9b57d436cc43cde2ad9801d6f4877fa245fa5bd688e51cf91ed5207"
+    },
+    {
+      "path": "assets/creatures/nih-dairia/reed.json",
+      "sha256": "785fc6806856c6d774e3bf9fb011920b88729ee5d392f3afb30f3113d001b008"
+    }
+  ]
+}
