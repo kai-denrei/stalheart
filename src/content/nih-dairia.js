@@ -1,7 +1,9 @@
-// Origin: the export's motion-settings.json (version 1) from lab-creatures f2a4f89 (kai-denrei, export of 2026-10-08; GPL-3.0, see src/fx/nih-dairia/LICENSE).
+// Origin: lab-creatures f2a4f89 (kai-denrei, export of 2026-10-08; see src/fx/nih-dairia/LICENSE). The motion is the OWNER'S
+// preset, tuned in the boss lab and pasted on 2026-10-08 ("slower creature by default": speed 0.1, a ten-times reach, the
+// arms stretched and spread wide); the export's own defaults were speed 1.8, reachTime 2.4, stretch 2.2, spread 1.6.
 // Nih-Dairia: the soft-body creature's preset, size, look and model URLs.
 export const NIH_DAIRIA_MOTION = Object.freeze({
-  speed: 1.8, reachTime: 2.4, pullTime: 2, pauseTime: 1.25, erratic: 2, stretch: 2.2, spread: 1.6,
+  speed: 0.1, reachTime: 10, pullTime: 2, pauseTime: 1.25, erratic: 2, stretch: 5, spread: 3.5,
   stepHeight: 0.032, stepDuration: 0.12, stepSpacing: 0.035, stride: 0.022, recoil: 1,
   grip: 1.5, sweep: 1,
 });

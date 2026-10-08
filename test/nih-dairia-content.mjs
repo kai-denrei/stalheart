@@ -19,9 +19,9 @@ assert.ok(NIH_DAIRIA_MODELS[NIH_DAIRIA_VARIANT], 'the default variant has a mode
 assert.equal(Object.keys(NIH_DAIRIA_MOTION).length, 14, 'fourteen motion settings');
 for (const [k, v] of Object.entries(NIH_DAIRIA_MOTION)) assert.ok(Number.isFinite(v) && v > 0, `${k} is a positive number`);
 assert.deepEqual(NIH_DAIRIA_MOTION, {
-  speed: 1.8, reachTime: 2.4, pullTime: 2, pauseTime: 1.25, erratic: 2, stretch: 2.2, spread: 1.6,
+  speed: 0.1, reachTime: 10, pullTime: 2, pauseTime: 1.25, erratic: 2, stretch: 5, spread: 3.5,
   stepHeight: 0.032, stepDuration: 0.12, stepSpacing: 0.035, stride: 0.022, recoil: 1, grip: 1.5, sweep: 1,
-}, "the export's motion-settings.json, version 1");
+}, "the owner's preset pasted from the boss lab on 2026-10-08 (slower by default)");
 assert.equal(NIH_DAIRIA_SIZE_METRES, 30);
 assert.deepEqual(NIH_DAIRIA_LOOK, {
   pale: '#b8b99a', dark: '#374237', roughness: 0.26, metalness: 0, transmission: 0.65, thickness: 0.012, ior: 1.37,
