@@ -877,8 +877,8 @@ export function initBossTab(root) {
     setFight,
     fire: () => fireCannon(),
     // the arena: the live obstacles' ids, the push-out's nodes moved in the last step (`pushed`), its mean cost per step (`ms`) and the
-    // local [i, x, y, z] (node index and position) of those nodes (`pushedNodes`, for the jitter) and the lab's clock `clock` (seconds)
-    arena: () => { const s = arena.stats(); return { live: arena.live(), pushed: s.pushed, ms: s.ms, pushedNodes: s.nodes, clock: t }; },
+    // local [i, x, y, z] (node index and position) of those nodes (`pushedNodes`, for the jitter) the lab's clock `clock` (seconds) and the re-anchor count (the nodes' local positions jump by the shift across one)
+    arena: () => { const s = arena.stats(); return { live: arena.live(), pushed: s.pushed, ms: s.ms, pushedNodes: s.nodes, clock: t, reanchors }; },
     // the measurement's hold: the creature's target on the shape's centre for `seconds` of lab clock with the routing off, the tank
     // parked behind it (the far side from the creature, outside the shape plus 6 m) and held still; null for an unknown id
     pinTo(id, seconds = 10) {
