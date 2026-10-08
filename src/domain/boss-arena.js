@@ -38,8 +38,11 @@ export function blockAt(x, z, r, shapes) {
   return best;
 }
 
+// the waypoint's radius is the clearance plus this margin, so the creature passes the edge instead of converging to it
+const PASS = 1.02;
+
 // the tangent point from c to the circle (o, R) on the shorter side toward the target, or the point pushed out radially when
-// c is already inside it
+// c is already inside it (R here is the waypoint's radius, already past the clearance)
 function around(c, target, o, R) {
   const ox = c[0] - o[0], oz = c[1] - o[1], dc = Math.hypot(ox, oz);
   if (dc <= R) {
@@ -57,19 +60,25 @@ function around(c, target, o, R) {
 }
 
 // where the creature should head: the target, or the waypoint round the nearest live shape (a rock by its radius, a wall by half
-// its length, both inflated by `clear`) that the segment c -> target crosses. One waypoint at a time
+// its length, both inflated by `clear` to R) that the segment c -> target crosses. One waypoint at a time. A centre inside R counts
+// as crossing only while the target lies behind the shape, (target - c) . (c - o) < 0; a target leading outward leaves it uncrossed.
+// A shape whose R already holds the target is never routed round (the creature must reach a tank parked by a rock; pushOut keeps
+// the body out of the rock itself). The waypoint, the radial push-out or the tangent point, stands at R * 1.02, two percent past the
+// edge, so the creature passes it rather than converging to it and stalling there
 export function route(c, target, shapes, clear) {
   const sx = target[0] - c[0], sz = target[1] - c[1], len2 = sx * sx + sz * sz;
   let pick = null, pickDist = Infinity;
   for (const sh of live(shapes)) {
     const R = (sh.kind === 'rock' ? sh.radius : sh.size[0] / 2) + clear;
     const ox = sh.at[0] - c[0], oz = sh.at[1] - c[1], dc = Math.hypot(ox, oz);
-    let crosses = dc < R;                                    // c inside the inflated circle: pushed out
-    if (!crosses && len2 > 1e-12) {
+    if (Math.hypot(target[0] - sh.at[0], target[1] - sh.at[1]) < R) continue;   // the target is inside the clearance: approach it
+    let crosses = false;
+    if (dc < R) crosses = sx * ox + sz * oz > 0;             // c inside the inflated circle: crossed only while the target lies behind the shape
+    else if (len2 > 1e-12) {
       const t = (ox * sx + oz * sz) / len2;                  // the closest point must lie between the ends
       crosses = t > 0 && t < 1 && Math.hypot(ox - t * sx, oz - t * sz) < R;
     }
-    if (crosses && dc < pickDist) { pickDist = dc; pick = { sh, R }; }
+    if (crosses && dc < pickDist) { pickDist = dc; pick = { sh, R: R * PASS }; }
   }
   return pick ? around(c, target, pick.sh.at, pick.R) : [target[0], target[1]];
 }

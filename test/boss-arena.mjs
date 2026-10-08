@@ -52,13 +52,13 @@ assert.equal(blockAt(10, 0, 4.2, [rock([0, 0], 8, { live: false })]), null, 'a d
 b = blockAt(0, 5, 4.2, [w0]); near(b.depth, 4.2 - 3.5, 'a wall blocks by its box'); assert.deepEqual([b.nx, b.nz], [0, 1]);
 
 // the creature's routing
-const R = 8 + T.wall.clear;
+const R = 8 + T.wall.clear, W = R * 1.02;       // the waypoint sits two percent past the clearance
 assert.deepEqual(route([-30, 0], [30, 0], [], 6), [30, 0], 'no shapes: the target');
 assert.deepEqual(route([-30, 0], [30, 0], [rock([0, 40], 8)], 6), [30, 0], 'an unobstructed segment returns the target');
 let wp = route([-30, 0], [30, 0], [rk8], 6);
-near(Math.hypot(wp[0], wp[1]), R, 'the waypoint stands 14 m from the rock'); assert.ok(Math.abs(wp[1]) > 0, 'and off the line');
+near(Math.hypot(wp[0], wp[1]), W, 'the waypoint stands 14.28 m from the rock'); assert.ok(Math.abs(wp[1]) > 0, 'and off the line');
 const detour = Math.hypot(wp[0] + 30, wp[1]) + Math.hypot(30 - wp[0], wp[1]);
-const tangent = Math.sqrt(30 * 30 - R * R); assert.ok(Math.abs(Math.hypot(wp[0] + 30, wp[1]) - tangent) < 1e-9, 'a tangent point: the leg is the tangent length'); assert.ok(detour > 60);
+const tangent = Math.sqrt(30 * 30 - W * W); assert.ok(Math.abs(Math.hypot(wp[0] + 30, wp[1]) - tangent) < 1e-9, 'a tangent point: the leg is the tangent length'); assert.ok(detour > 60);
 // the side with the shorter path: a rock that sits a little to the +z side of the line sends the path to the -z side
 wp = route([-30, 0], [30, 0], [rock([0, 3], 8)], 6); assert.ok(wp[1] < 0, `the shorter side is -z: ${wp[1]}`);
 wp = route([-30, 0], [30, 0], [rock([0, -3], 8)], 6); assert.ok(wp[1] > 0, `the shorter side is +z: ${wp[1]}`);
@@ -68,12 +68,18 @@ assert.deepEqual(route([-30, 0], [-12, 0], [rk8], 6), [-12, 0], 'a rock beyond t
 assert.deepEqual(route([-30, 0], [30, 0], [rock([0, 0], 8, { live: false })], 6), [30, 0], 'a dead shape routes nothing');
 // the nearest shape first
 const far8 = rock([20, 0], 4, { id: 'f' }), near8 = rock([-10, 0], 4, { id: 'n' });
-wp = route([-40, 0], [40, 0], [far8, near8], 6); assert.ok(Math.hypot(wp[0] + 10, wp[1]) - 10 < 1e-9 && wp[0] < 0, 'the nearest crossed shape is routed first');
-// inside the inflated circle: pushed radially out to its edge
-wp = route([3, 0], [30, 0], [rk8], 6); near(wp[0], R, 'pushed out along the radius'); near(wp[1], 0, 'on the same ray');
-wp = route([0, 5], [0, 30], [rk8], 6); near(wp[0], 0, 'x'); near(wp[1], R, 'pushed out to 14');
+wp = route([-40, 0], [40, 0], [far8, near8], 6); near(Math.hypot(wp[0] + 10, wp[1]), 10 * 1.02, 'the nearest crossed shape is routed first'); assert.ok(wp[0] < 0, 'on its near side');
+// inside the inflated circle: crossed only while the target lies behind the shape; then pushed radially out, two percent past the edge
+wp = route([3, 0], [-30, 0], [rk8], 6); near(wp[0], W, 'pushed out along the radius'); near(wp[1], 0, 'on the same ray');
+wp = route([0, 5], [0, -30], [rk8], 6); near(wp[0], 0, 'x'); near(wp[1], W, 'pushed out to 14.28');
+assert.deepEqual(route([3, 0], [30, 0], [rk8], 6), [30, 0], 'inside, the target leading outward: not crossed');
+assert.deepEqual(route([0, 5], [0, 30], [rk8], 6), [0, 30], 'inside, the target leading outward (z): not crossed');
+assert.deepEqual(route([3, 0], [3, 40], [rk8], 6), [3, 40], 'inside, a target at right angles to the radius is not behind the shape');
+// a target inside a shape's clearance: that shape is never routed round
+assert.deepEqual(route([0, -40], [0, 12], [rock([0, 0], 8)], 6), [0, 12], 'a target inside the clearance is approached directly');
+assert.deepEqual(route([-30, 0], [10, 0], [rk8], 6), [10, 0], 'a target inside the clearance, c beyond it on the line, is approached directly');
 // a wall routes as its bounding circle (half its length)
-wp = route([-60, 0], [60, 0], [wall([0, 0], 0)], 6); near(Math.hypot(wp[0], wp[1]), 10 + 6, 'a wall routes at half its length plus the clear');
+wp = route([-60, 0], [60, 0], [wall([0, 0], 0)], 6); near(Math.hypot(wp[0], wp[1]), (10 + 6) * 1.02, 'a wall routes at half its length plus the clear');
 
 // the push-out of the body's nodes: flat [x, y, z, ...] in local metres
 const pos = [3, 1, 0, 3, 7, 0, 20, 1, 0, 0, 1, 4];
@@ -100,6 +106,8 @@ assert.deepEqual(destroyIn(lay, [0, 0], 55), [], 'a dead shape is not destroyed 
 assert.equal(blockAt(35, 30, 4.2, lay), null, 'a destroyed rock blocks nothing');
 restore(lay); assert.ok(lay.every((s) => s.live), 'restore stands every obstacle again');
 assert.deepEqual(destroyIn(lay, [100, 100], 10), [], 'nothing within reach, nothing destroyed');
+assert.deepEqual(destroyIn(lay, [35, 38], 2.5), [], 'a landing 3 m off the r 5 rock\'s edge with a 2.5 m ring is just outside its reach');
+assert.ok(lay.every((s) => s.live), 'and leaves it standing');
 assert.deepEqual(destroyIn(lay, [35, 30], 1), ['r3'], 'a landing on a small rock takes only it');
 
 // the clear respawn
@@ -109,7 +117,7 @@ const turned = clearSpawn([-30, 25], sp, hull);
 assert.notDeepEqual(turned, [-30, 25]); near(Math.hypot(...turned), Math.hypot(-30, 25), 'the same radius');
 assert.equal(blockAt(turned[0], turned[1], hull, sp), null, 'a clear bearing');
 const ang = (Math.atan2(turned[1], turned[0]) - Math.atan2(25, -30)) * 180 / Math.PI;
-assert.ok(Math.abs(ang / 10 - Math.round(ang / 10)) < 1e-6, `a multiple of ten degrees: ${ang}`);
+near(ang, 20, 'turned exactly +20 degrees (both +-10 are blocked, +20 comes first)');
 const walled = [rock([0, 0], 1000)];
 assert.deepEqual(clearSpawn([5, 5], walled, 4.2), [5, 5], 'no clear bearing: the original point');
 
