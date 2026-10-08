@@ -117,10 +117,13 @@ labs' shared helpers, never the game controller. The game controller imports non
 
 The creature simulates in its own flat metres; a frame places it on the planet.
 
-- `frameAt(point, radius, yaw)`: `point` is a unit direction (the planet's centre is the origin, as in the story planet,
-  where a surface point is `direction * (radius + altitude)` and the scene is shifted so the pole sits at y = 0). Returns
-  `{ origin: [x, y, z] (direction * radius), up: direction, east, north }` with `east`/`north` the tangent basis rotated by
-  `yaw` about `up`.
+- `frameAt(point, radius, yaw, reference = null)`: `point` is a unit direction (the planet's centre is the origin, as in
+  the story planet, where a surface point is `direction * (radius + altitude)` and the scene is shifted so the pole sits at
+  y = 0). Returns `{ origin: [x, y, z] (direction * radius), up: direction, east, north, yaw }` with `east`/`north` the
+  tangent basis rotated by `yaw` about `up`, **right-handed** (`east x up = north`, so `makeBasis(east, up, north)` is a
+  rotation, never a reflection). `reference`, when given, is a world tangent the new `east` is projected from, so a frame
+  made from an old frame's `east` keeps its heading continuously (Task 1's review, 2026-10-08: the helper axis alone flips
+  the heading by 180 degrees across one latitude band).
 - `toWorld(frame, local, scale)`: `origin + (local.x * east + local.y * up + local.z * north) * scale`. The creature's local
   floor plane (y = `PHYS.floor`) lands on the surface at the origin and departs from it by the sphere's sagitta further out:
   `d^2 / (2 * radius)`, 15 cm at 15 m on a 750 m planet, under the scaled step height of 5.4 m (32 mm x 170). The lab's
@@ -129,8 +132,10 @@ The creature simulates in its own flat metres; a frame places it on the planet.
   clamped to the kit's lure height (`ARENA.lureHeight`, 0.012 m) so the pursuit and the feeding aim at the floor, as the
   kit's arena does.
 - `reanchor(frame, localCentre, radius, scale, limit)`: when `hypot(localCentre.x, localCentre.z) * scale > limit`
-  (two cells, 20 m), returns `{ frame: frameAt(normalise(toWorld(frame, [centre.x, 0, centre.z], scale)), radius, yaw),
-  shift: [-centre.x, 0, -centre.z] }`; otherwise the same frame and a zero shift. The creature applies the shift to
+  (two cells, 20 m), returns `{ frame: frameAt(normalise(toWorld(frame, [centre.x, 0, centre.z], scale)), radius, 0,
+  frame.east)` with the old `yaw` kept on the record, `shift: [-centre.x, 0, -centre.z] }`; otherwise the same frame and
+  a zero shift. The old `east` as the reference transports the heading along the surface (parallel transport: a few
+  degrees over 20 m at radius 750, never a flip). The creature applies the shift to
   `body.x` and `body.previous` (and the kernel's views, which are the same memory), to `motion.target`, to the feeding
   cycle's prey and captured positions, to the cradle's anchor and to the traction anchors, inside one fixed step between
   `motion.step` and `body.step`, so velocities are untouched and the solver never sees a jump. Re-anchoring is refused
