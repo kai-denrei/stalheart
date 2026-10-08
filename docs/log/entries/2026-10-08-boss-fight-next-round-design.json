@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "2026-10-08-boss-fight-next-round-design",
+  "date": "2026-10-08",
+  "type": "decision",
+  "status": "accepted",
+  "title": "The boss fight's next round, as brainstormed with the owner: the gunship's three guns in front of, at and behind the creature, SOL's tracking wall, a creature that flees what has landed and is stunned by the nuke, six obstacles the creature steers round and is pushed out of, and the health set from a survival run",
+  "context": "The proposal 2026-10-08-boss-fight-next-round-airborne-friendlies-protect-the-tank (the owner's six points, status proposed) was taken through a brainstorm with the owner on 2026-10-08. His answers fixed the open questions: the gunship fires straight at the creature with the rotary, in front of it with the Bofors to steer it away from the tank, and a bit behind it with the MK-9 so as not to cause friendly fire; the nuke always drops and its ring kills the tank like any other; the creature fears what has landed, not the warnings; SOL's beam tracks during its burn; obstacles are terrain the strikes ignore; the creature steers round obstacles and a lab-side push-out keeps its nodes out of them; the nuke slightly stuns the creature and destroys the small obstacles. The prototype's balance (a standing creature dies in 30 s) no longer describes a fight in which the creature runs from the fire and the tank keeps out of reach.",
+  "outcome": "Accepted: the design in docs/superpowers/specs/2026-10-08-boss-fight-next-round-design.md, built on branch refactor-run (the game controller and src/fx/nih-dairia untouched): the body rules move to src/labs/boss/body.js; the three guns and SOL on the game's cadence with one aim rule each (rotary at the farthest foot, Bofors c + u(e + 10) clear of the tank, MK-9 at c - 15u with its 55 m ring, SOL tracking and hugging the front edge, sparing the tank); the fright (a Bofors landing or a live beam within reach flees 20 m, 1.2 s) and the MK-9's 1.5 s stun; six obstacles (two rocks that stay, two rocks and two walls the MK-9 breaks) that block the tank, turn the creature's route and push its nodes out after every solver step; walls as a measured lab push-out, with kernel walls (the owner's lab-creatures) the recorded fallback if the measurement is bad; the health set so a dodging tank's survival run kills in about 30 s, the held-still node time recorded as the regression anchor. The proposed entry is superseded by this decision.",
+  "alternatives": [
+    "Walls as constraints in the C kernel (lab-creatures, the owner's project): kept as the recorded fallback; the measured push-out (below one millisecond a frame) makes it unnecessary for now.",
+    "A fear of the warning rings, not only of what has landed: out of scope (the owner chose B, what has landed).",
+    "Cover from strikes behind obstacles: out of scope (obstacles are terrain the strikes ignore).",
+    "The nuke clamped off the tank: rejected by the owner (the ring kills the tank like any other)."
+  ],
+  "evidence": [
+    "docs/superpowers/specs/2026-10-08-boss-fight-next-round-design.md",
+    "2026-10-08-boss-fight-next-round-airborne-friendlies-protect-the-tank (the proposal)",
+    "The owner's brainstorm answers of 2026-10-08, quoted in the spec's opening"
+  ],
+  "supersedes": [
+    "2026-10-08-boss-fight-next-round-airborne-friendlies-protect-the-tank"
+  ]
+}
