@@ -118,11 +118,15 @@ SOL's footprint during the burn, is a lost hull.
 - **Balance** (why the numbers below): Bofors at 2.4 rounds/s in 2.6 s bursts with 1.4 s rests is 1.56 rounds/s; a creature
   30 m across under a 22 m scatter takes nearly every round somewhere on the body, at the falloff's mean about 0.6 of 4
   damage, so about 3.7 hp/s; SOL at 2 s of burn every 8 s at 10 hp/s is 2.5 hp/s; together about 6 hp/s, so a creature
-  that stands in it dies in about 30 s with `health = 180`. Every term is a knob and the readout shows the measured
+  that stands in it dies in about 30 s with `health = 230`. Every term is a knob and the readout shows the measured
   `hp/s` and the projected time to kill, so the owner tunes by eye.
 
-`BOSS_FIGHT` (content): `{ health: 180, warn: 1.5, lead: 1, bofors: { burst: 2.6, rest: 1.4, damage: 4, radius: 22,
+`BOSS_FIGHT` (content): `{ health: 230, warn: 1.5, lead: 1, bofors: { burst: 2.6, rest: 1.4, damage: 4, radius: 22,
 travel: 2.6 }, sol: { every: 8, aim: 1.5, burn: 2, dps: 10, radius: 8 }, hull: { radius: 4.2 }, card: 3, respawn: 40 }`.
+**Corrected by Task 0's measurement:** a round landing anywhere on a dense body does near-full damage (the falloff is
+measured to the nearest contact, not to the centre), so the Bofors deal about 6 hp/s, not 3.7; with health 180 the node
+proof killed a standing creature in 24.7 s. Health is 230: the node proof kills a standing creature in 30.62 s; the node test's
+bound stays 24 to 36 s.
 The gun's own rate, travel and damage are read from `GUNSHIP_GUNS.bofors` where the lab fires it; the content holds the
 fight's copies for the domain so the rule stays pure.
 

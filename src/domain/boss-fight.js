@@ -13,7 +13,7 @@ const nearest = (contacts, at) => contacts.reduce((m, c) => Math.min(m, dist(c, 
 export function makeFight(tune) {
   return {
     phase: 'idle', hp: tune.health, max: tune.health, clock: 0, card: 0, cardSeconds: tune.card, reason: null,
-    hits: 0, damage: 0, provokes: 0, strikes: [], seed: tune.seed ?? 1,
+    hits: 0, damage: 0, provokes: 0, strikes: [], seed: Math.abs(Math.floor(tune.seed ?? 1)) || 1,
     at: null, bofors: null, sol: null, burning: null,
   };
 }

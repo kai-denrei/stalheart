@@ -12,6 +12,7 @@ const disc = Array.from({ length: 60 }, (_, i) => {   // 60 contacts spread even
 });
 const creature = { centre: [0, 0], velocity: [0, 0], radius: 15, contacts: disc };
 const far = { pos: [500, 0], radius: T.hull.radius };
+const harmless = (s) => resolveLanding(s, { at: [0, 0], radius: 22, damage: 4 }, { contacts: [[0, 0]] }, far).damage + burn(s, { at: [0, 0], radius: 8, damage: 10 }, 1, { contacts: [[0, 0]] }, far).damage;
 const fight = () => { const s = makeFight(T); startFight(s); return s; };
 const run = (s, secs) => { const plans = []; for (let i = 0; i <= secs * 60; i++) plans.push(...schedule(s, i / 60, creature, T)); return plans; };
 
@@ -23,9 +24,20 @@ assert.deepEqual(schedule(idle, 0, creature, T), [], 'no strikes before the figh
 // the schedule over 30 s
 const s1 = fight(), plans = run(s1, 30);
 const bofors = plans.filter((p) => p.kind === 'bofors'), sol = plans.filter((p) => p.kind === 'sol');
-const perBurst = Math.round(T.bofors.burst * T.bofors.rate);
-const expected = Math.floor(30 / (T.bofors.burst + T.bofors.rest)) * perBurst;
-assert.ok(Math.abs(bofors.length - expected) <= perBurst, `bofors plans ${bofors.length} vs ${expected}`);
+const B = T.bofors, perBurst = Math.round(B.burst * B.rate), cycle = B.burst + B.rest;
+const cycles = Math.floor(30 / cycle), rem = 30 - cycles * cycle;
+const partial = rem >= B.burst ? perBurst : Math.floor(rem * B.rate + 1e-9) + 1;   // rounds at 0, 1/rate, ... within the partial cycle's seconds
+const expected = cycles * perBurst + partial;
+assert.equal(bofors.length, expected, `bofors plans ${bofors.length} vs ${expected}`);
+assert.ok(Math.abs(sol[0].land - (T.sol.every + T.sol.aim)) < 1e-9, 'SOL\'s first land is every + aim');
+assert.ok(Math.abs(sol[1].land - (2 * T.sol.every + T.sol.aim)) < 1e-9, 'SOL\'s second land is 2 * every + aim');
+for (let i = 1; i < bofors.length; i++) {
+  const gap = bofors[i].land - bofors[i - 1].land;
+  // inside a burst: 1 / rate. Between bursts: the next burst starts one cycle after the last, and the last round fired
+  // (perBurst - 1) / rate into its own burst, so the gap is cycle - (perBurst - 1) / rate (rest + 1 / rate only when the burst is a whole number of rounds long).
+  const want = i % perBurst === 0 ? cycle - (perBurst - 1) / B.rate : 1 / B.rate;
+  assert.ok(Math.abs(gap - want) < 1e-9, `bofors gap ${i}: ${gap} vs ${want}`);
+}
 assert.ok(sol.length === Math.floor(30 / T.sol.every) || sol.length === Math.floor(30 / T.sol.every) + 1, `sol plans ${sol.length}`);
 assert.equal(s1.strikes.length, plans.length, 'the state keeps every plan made this fight');
 for (const p of bofors) {
@@ -93,6 +105,18 @@ assert.ok(ro.hp === 0 && ro.hits > 0 && ro.hpPerSecond > 0 && Math.abs(ro.clock 
 assert.equal(readout(fight()).timeToKill, Infinity, 'no projection before any damage');
 kill(s2);
 assert.equal(s2.phase, 'killed');
+
+// the guards
+{
+  const s = makeFight(T);
+  assert.equal(harmless(s), 0, 'damage outside the fight phase is zero');
+  assert.equal(s.hp, T.health);
+  startFight(s); const strikes = s.strikes, clock = s.clock; s.hp -= 1; startFight(s);
+  assert.equal(s.hp, T.health - 1, 'startFight is a no-op unless idle'); assert.equal(s.strikes, strikes); assert.equal(s.clock, clock);
+  schedule(s, 0, creature, T); capture(s, 'caught');
+  assert.deepEqual(schedule(s, 5, creature, T), [], 'no strikes after capture');
+  assert.equal(makeFight({ ...T, seed: -3.7 }).seed, 4, 'the seed is a positive integer'); assert.equal(makeFight({ ...T, seed: 0 }).seed, 1);
+}
 
 // the round's cards
 {
