@@ -200,20 +200,34 @@ export function initBossTab(root) {
       cruiseTap: tap,
     };
   }
-  // THE BODY IS A BLOCKER: the creature's floor contacts in local metres; within the hull's radius of the nearest one the tank is
-  // pushed out away from the creature's centre by what it overlaps
+  // THE BODY IS A BLOCKER: every body node in the hull's height band (under 3 m scaled), projected to the plane in local metres,
+  // listed once a frame; within the hull's radius of the nearest one the tank is pushed straight away from it by what it overlaps
+  const BAND_M = 3;
+  let bandNodes = new Float64Array(0), bandCount = 0;
+  function projectBody() {
+    bandCount = 0;
+    if (!creature) return;
+    const b = creature.body, n = b.x.length / 3;
+    if (bandNodes.length < n * 2) bandNodes = new Float64Array(n * 2);
+    for (let i = 0; i < n; i++) {
+      if (b.x[i * 3 + 1] * scale >= BAND_M) continue;
+      bandNodes[bandCount * 2] = b.x[i * 3] * scale; bandNodes[bandCount * 2 + 1] = b.x[i * 3 + 2] * scale; bandCount++;
+    }
+  }
   function bodyBlocker(x, z) {
-    if (!creature) return null;
-    const b = creature.body, c = b.contact;
-    let best = Infinity;
-    for (let i = 0; i < c.length; i++) {
-      if (!(c[i] > 0)) continue;
-      const d = Math.hypot(x - b.x[i * 3] * scale, z - b.x[i * 3 + 2] * scale); if (d < best) best = d;
+    let best = Infinity, bx = 0, bz = 0;
+    for (let i = 0; i < bandCount; i++) {
+      const px = bandNodes[i * 2], pz = bandNodes[i * 2 + 1], d = Math.hypot(x - px, z - pz);
+      if (d < best) { best = d; bx = px; bz = pz; }
     }
     if (!(best < DRIVE_R)) return null;
-    const m = creature.motion.center;
-    let nx = x - m.x * scale, nz = z - m.z * scale; const l = Math.hypot(nx, nz);
-    if (l > 1e-9) { nx /= l; nz /= l; } else { [nx, nz] = plane.heading().map((v) => -v); }
+    let nx, nz;
+    if (best > 1e-6) { nx = (x - bx) / best; nz = (z - bz) / best; }
+    else {
+      const m = creature.motion.center; nx = x - m.x * scale; nz = z - m.z * scale;
+      const l = Math.hypot(nx, nz);
+      if (l > 1e-9) { nx /= l; nz /= l; } else { nx = 1; nz = 0; }
+    }
     return { nx, nz, depth: DRIVE_R - best };
   }
   // the tank's sphere-space position: the frame's tangent point dropped onto the sphere, so the hull never floats
@@ -371,7 +385,7 @@ export function initBossTab(root) {
     tryReanchor(REANCHOR_METRES);
     const pinned = state.lure === 'tank' && MEAL_PHASES.has(f.phase);
     let driving = false;
-    if (!pinned) ({ moving: driving, blocked } = plane.step(dt, driveInput(), bodyBlocker));
+    if (!pinned) { projectBody(); ({ moving: driving, blocked } = plane.step(dt, driveInput(), bodyBlocker)); }
     else { drive.speed = 0; scripted = null; blocked = false; }
     const moving = driving || keysHeld() || (scripted && t < scripted.until);
     m.targetHeld = state.lure === 'tank' ? !!moving : false;   // the point and the auto-lure are never held
