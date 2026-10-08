@@ -2214,6 +2214,72 @@ try{
  const readout=await evaluate(`${B}.readout()`);
  assert.deepEqual(readout.shaderErrors,[],'no shader errors');assert(!readout.error,`no frame error (${readout.error})`);
  current='boss-walls';await finish();
+ } else if(args.includes('--boss-cam')) {
+ // THE BOSS LAB'S GAME CAMERA (2026-10-08; src/labs/boss/game-cam.js, spec docs/superpowers/specs/2026-10-08-boss-lab-game-camera-design.md): V and the
+ // panel flip the driving camera to the game's own tankViewPose, lens and lag, with a rear feed bottom right. At DPR 2 so the device-pixel box is
+ // checked. Fight off (no Bofors ring takes the hull), 5 s forward then 3 s of turn on the lab's clock (real-time cap 120 s a leg). Asserted:
+ // the eye within one cell (10 m) of the pose's eye after the first second, the lens 68, the rear viewport 224 x 140 CSS px bottom right (x2), the
+ // renderer's viewport and scissor test put back, V toggles, the lab's chase and its lens come back. One screenshot (BOSSCAM_SHOT or the artifacts' boss-cam.png)
+ const B='window.__bossLab',shotPath=process.env.BOSSCAM_SHOT||join(output,'boss-cam.png');
+ await go('boss-cam','labs.html?sw=0&acceptance=1#boss',1440,900,'labs.html?sw=0&acceptance=1#boss',2);
+ await until(`!!${B} && ${B}.readout().steps > 0`,60000);
+ await evaluate(`${B}.setFight(false); ${B}.setLure("tank")`);
+ const lab0=await evaluate(`${B}.cam()`);
+ assert.equal(lab0.mode,'lab','the default is the lab camera');assert.equal(lab0.on,false,'the game camera is off by default');
+ assert(lab0.fov!==68,`the lab keeps its own lens (${lab0.fov})`);
+ // V flips it (the key handler's rules: lab active, no repeat, no modifier); a repeat and a ctrl chord do not
+ await evaluate(`dispatchEvent(new KeyboardEvent("keydown",{key:"v",ctrlKey:true}));dispatchEvent(new KeyboardEvent("keyup",{key:"v"}))`);
+ assert.equal(await evaluate(`${B}.cam().mode`),'lab','ctrl+V does not flip it');
+ await evaluate(`dispatchEvent(new KeyboardEvent("keydown",{key:"v"}));dispatchEvent(new KeyboardEvent("keydown",{key:"v",repeat:true}));dispatchEvent(new KeyboardEvent("keyup",{key:"v"}))`);
+ assert.equal(await evaluate(`${B}.cam().mode`),'game','V flips to the game camera (and a repeat does not flip it back)');
+ assert.equal(await evaluate(`document.querySelector('#boss [data-k="cam"]').value`),'game','the panel follows V');
+ await evaluate(`${B}.camera("lab")`);assert.equal(await evaluate(`${B}.cam().mode`),'lab');
+ await evaluate(`${B}.camera("game")`);
+ await until(`${B}.cam().on && ${B}.cam().pose && ${B}.cam().ms > 0`,30000);
+ const frame=await evaluate(`(()=>{const f=[...document.querySelectorAll('#boss .sw-stage div')].find(d=>d.textContent==='REAR'&&d.children.length===0)?.parentElement;const cv=document.querySelector('#boss .sw-stage canvas'),r=f.getBoundingClientRect(),c=cv.getBoundingClientRect();const g=document.querySelector('.lil-gui.root').getBoundingClientRect();return {w:r.width,h:r.height,right:c.right-r.right,panel:Math.max(0,c.right-g.left),bottom:c.bottom-r.bottom,cw:c.width,ch:c.height,shown:getComputedStyle(f).display,dpr:devicePixelRatio,border:getComputedStyle(f).borderTopColor};})()`);
+ console.log('BOSS-CAM frame '+JSON.stringify(frame));
+ assert.equal(frame.dpr,2,'loaded on a Retina surface');
+ assert(frame.shown==='block'&&frame.w===224&&frame.h===140&&frame.right===12+frame.panel&&frame.bottom===64,`the frame is the monitor's box, clear of the lab's panel (${JSON.stringify(frame)})`);
+ const rear=await evaluate(`${B}.cam().rear`),want={x:(frame.cw-12-frame.panel-224)*2,y:64*2,w:224*2,h:140*2};
+ assert.deepEqual(rear,want,`the rear viewport is the bottom-right 224 x 140 (left of the panel) in device pixels (${JSON.stringify(rear)} vs ${JSON.stringify(want)})`);
+ const gl0=await evaluate(`(()=>{const cv=document.querySelector('#boss .sw-stage canvas'),x=cv.getContext("webgl2")||cv.getContext("webgl");return {vp:Array.from(x.getParameter(x.VIEWPORT)),sc:x.isEnabled(x.SCISSOR_TEST),buf:[x.drawingBufferWidth,x.drawingBufferHeight]};})()`);
+ assert.deepEqual(gl0.vp,[0,0,...gl0.buf],`the main viewport is back after the inset (${JSON.stringify(gl0)})`);assert.equal(gl0.sc,false,'the scissor test is back off');
+ assert.equal((await evaluate(`${B}.cam()`)).fov,68,"the game's lens, TANK_LENS");
+ // drive: forward 5 s, then a turn for 3 s, sampling the camera against the pose each 200 ms from the first second of the game camera
+ const clock=()=>evaluate(`${B}.arena().clock`);
+ const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
+ const samples=[];let shot=false;
+ const leg=async(name,seconds,turn,shootAt)=>{
+   await evaluate(`${B}.driveTank(${seconds},${turn})`);
+   const c0=await clock(),real0=Date.now();let now=c0;
+   for(;Date.now()-real0<120000&&now-c0<seconds;){
+     await delay(200);now=await clock();
+     const c=await evaluate(`${B}.cam()`);
+     const fr=(await evaluate(`${B}.readout().frames`));
+     if(c.pose&&now-c0>=1)samples.push({leg:name,t:+(now-c0).toFixed(2),d:dist(c.eye,c.pose.eye),frames:fr,clock:now});
+     if(!shot&&shootAt!==null&&now-c0>=shootAt){await send('Page.captureScreenshot',{format:'png'}).then(r=>writeFileSync(shotPath,Buffer.from(r.data,'base64')));shot=true;}
+   }
+   assert(now-c0>=seconds,`the ${name} leg ran its ${seconds} s of lab clock (${(now-c0).toFixed(1)} s in 120 s)`);
+ };
+ await leg('forward',5,0,4);await leg('turn',3,1,null);
+ // THE GAME'S LERP IS PER FRAME (0.14 a frame), so the lag in metres grows with the frame's length: a lab frame here is dtPer lab seconds (the lab
+ // caps a step at 50 ms, and headless runs slower than 60 fps), the game's is 1/60. The lag the game would show is the measured one x (1/60) / dtPer
+ const dtPer=(samples.at(-1).clock-samples[0].clock)/(samples.at(-1).frames-samples[0].frames),norm=(1/60)/dtPer;
+ const worst=samples.reduce((m,x)=>Math.max(m,x.d),0),by=(leg)=>Math.max(...samples.filter(x=>x.leg===leg).map(x=>x.d));
+ console.log(`BOSS-CAM lag: ${samples.length} samples after the first second of each leg; a lab frame is ${(dtPer*1000).toFixed(1)} ms of lab clock (${(1/dtPer).toFixed(0)} fps), the game's 16.7 ms; the eye is within ${worst.toFixed(2)} m of the pose's eye at worst (forward ${by('forward').toFixed(2)} m, turn ${by('turn').toFixed(2)} m), which at the game's 60 fps is ${(worst*norm).toFixed(2)} m (forward ${(by('forward')*norm).toFixed(2)}, turn ${(by('turn')*norm).toFixed(2)}); limit 10 m, one cell`);
+ assert(samples.length>=10,`the lag was sampled (${samples.length})`);
+ assert(worst*norm<10,`the eye stays within one cell (10 m) of the pose's eye at the game's frame rate (worst ${(worst*norm).toFixed(2)} m, ${worst.toFixed(2)} m measured at ${(dtPer*1000).toFixed(1)} ms a frame)`);
+ const ms=await evaluate(`${B}.cam().ms`),r1=await evaluate(`${B}.readout()`);
+ console.log(`BOSS-CAM rear inset ${ms.toFixed(3)} ms a frame (GPU-finished sample, rolling mean); render ${r1.render.toFixed(2)} ms; shot ${shotPath}`);
+ assert(Number.isFinite(ms)&&ms>0,'the inset is priced');
+ assert.deepEqual(r1.shaderErrors,[],'no shader errors');assert(!r1.error,`no frame error (${r1.error})`);
+ // back to the lab's chase: the lens, the frame and the readout's line
+ await evaluate(`${B}.camera("lab")`);await delay(600);
+ const back=await evaluate(`${B}.cam()`);
+ assert(back.mode==='lab'&&back.on===false&&back.fov===lab0.fov,`the lab's chase and lens are back (${JSON.stringify({mode:back.mode,on:back.on,fov:back.fov})})`);
+ assert.equal(await evaluate(`${B}.readout().rearMs`),null,'no rear line in the lab camera');
+ assert.equal((await evaluate(`[...document.querySelectorAll('#boss .sw-stage div')].find(d=>d.textContent==='REAR'&&d.children.length===0).parentElement.style.display`)),'none','the frame is hidden');
+ current='boss-cam';await finish();
  } else if(args.includes('--boss')) {
  // THE BOSS LAB (2026-10-08; src/labs/boss-tab.js): Nih-Dairia at thirty metres on the story planet, the tank its prey. The solver steps,
  // the creature is boss-sized in the world, a driving tank inside its reach counts as held and is not taken, a parked one is.

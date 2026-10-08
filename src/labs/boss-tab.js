@@ -30,6 +30,7 @@ import { createFriendlies } from './boss/friendlies.js';
 import { createFear } from './boss/fear.js';
 import { createArena, deeper } from './boss/arena.js';
 import { createRound } from './boss/round.js';
+import { createGameCam } from './boss/game-cam.js';
 import { makeFight, startFight, capture, readout as fightReadout } from '../domain/boss-fight.js';
 import { BOSS_FIGHT } from '../content/boss-fight.js';
 import { LASER_AUDIO } from '../content/orbital-laser.js';
@@ -116,6 +117,7 @@ export function initBossTab(root) {
       <label>body <select data-k="variant">${CREATURE_VARIANTS.map((v) => `<option value="${v.id}">${v.name}</option>`).join('')}</select></label>
       <label>lure <select data-k="lure"><option value="tank">the tank (WASD)</option><option value="point">a point (click the ground)</option><option value="auto">the figure-eight</option></select></label>
       <label>view <select data-k="view"><option value="chase">chase</option><option value="free">free orbit</option></select></label>
+      <label>camera (V) <select data-k="cam"><option value="lab">lab</option><option value="game">game (rear view)</option></select></label>
       <button type="button" class="sw-run" data-act="disturb">disturb</button>
       <button type="button" class="sw-run" data-act="reset">reset</button>
       <button type="button" class="sw-run" data-act="reanchor">re-anchor now</button>
@@ -158,11 +160,11 @@ export function initBossTab(root) {
   const sphere = new THREE.Group(); scene.add(sphere);
   const rig = new THREE.Group(); rig.name = 'Nih-Dairia rig'; sphere.add(rig);
 
-  const state = { variant: NIH_DAIRIA_VARIANT, lure: 'tank', view: 'chase', sizeMetres: NIH_DAIRIA_SIZE_METRES };
+  const state = { variant: NIH_DAIRIA_VARIANT, lure: 'tank', view: 'chase', cam: 'lab', sizeMetres: NIH_DAIRIA_SIZE_METRES };
   variantSelect.value = state.variant;   // the default is content's, not the option order's
   const params = { motion: { ...NIH_DAIRIA_MOTION }, phys: { gravity: PHYS.gravity, iterations: PHYS.iterations }, feeding: true, instinct: true };
   let active = false, disposed = false, built = false, raf = 0, last = performance.now(), t = 0;
-  let planet = null, planetMesh = null, frame = null, creature = null, prey = null, cropped = null;
+  let planet = null, planetMesh = null, frame = null, creature = null, prey = null, cropped = null, gameCam = null;
   let native = 0.176, scale = state.sizeMetres / native, taken = 0, lastMeals = 0, frames = 0, programsSeen = 0;
   let loading = false, fatal = null, frameError = null, frameErrorAt = -1, reanchors = 0, firstRender = false;
   const auto = new AutoLure();
@@ -210,6 +212,7 @@ export function initBossTab(root) {
     }
     if (k === ' ') { e.preventDefault(); if (!keys.has(k)) fireCannon(); }   // the key-down edge: a held Space does not repeat
     if (k === 'r' && active && !e.repeat && !keys.has(k) && !e.ctrlKey && !e.metaKey && !e.altKey) newRound();   // a new round at the key-down edge (a held R or a browser reload chord does not repeat it)
+    if (k === 'v' && active && !e.repeat && !keys.has(k) && !e.ctrlKey && !e.metaKey && !e.altKey) setCam(state.cam === 'game' ? 'lab' : 'game');   // the driving camera, at the key-down edge
     keys.add(k); if (DRIVE_KEYS.includes(k)) e.preventDefault();
   };
   const onUp = (e) => keys.delete(e.key.toLowerCase());
@@ -231,6 +234,11 @@ export function initBossTab(root) {
   function tankWorld(x = drive.x, z = drive.z) {
     const p = toWorld(frame, [x, 0, z], 1), l = Math.hypot(p[0], p[1], p[2]) || 1, r = planet.radius;
     return [p[0] / l * r, p[1] / l * r, p[2] / l * r];
+  }
+  // the hull for the game camera: its ground point and its heading as a world tangent (placeTank's frame, turned by the yaw)
+  function hullPose() {
+    const w = tankWorld(), tf = frameAt(w, planet.radius, 0, frame.east), s = Math.sin(drive.yaw), c = Math.cos(drive.yaw);
+    return { pos: w, heading: [tf.east[0] * s + tf.north[0] * c, tf.east[1] * s + tf.north[1] * c, tf.east[2] * s + tf.north[2] * c] };
   }
   const basis = new THREE.Matrix4(), turnQ = new THREE.Quaternion(), Y = new THREE.Vector3(0, 1, 0);
   function placeTank() {
@@ -381,7 +389,7 @@ export function initBossTab(root) {
     const R = fightTune.respawn;
     const at = arena.spawn([cx + dx * R, cz + dz * R]);   // clear of the obstacles by the hull and two metres
     plane.reset(at[0], at[1], Math.atan2(cx - at[0], cz - at[1]));   // facing the creature
-    tank.visible = true; placeTank();
+    tank.visible = true; placeTank(); gameCam?.snap();
     pointWorld = toWorld(frame, creature.motion.target.toArray(), scale);
   }
   function restoreCreature() {
@@ -506,6 +514,8 @@ export function initBossTab(root) {
     frame = frameAt(anchorUp, planet.radius, 0);
     prey = createPrey(NIH_DAIRIA_LOOK); prey.mesh.visible = false; rig.add(prey.mesh);
     placeRig(); placeTank();
+    gameCam = createGameCam({ renderer, scene, camera: cam, planetRadius: planet.radius, cellSide: STORY_RECIPE.metresPerCell, host: { stage, hull: hullPose, clearRight: () => Math.max(0, stage.getBoundingClientRect().right - gui.domElement.getBoundingClientRect().left) } });
+    gameCam.setOn(state.cam === 'game' && state.view !== 'free');
     read.textContent = 'loading the creature…';
     await makeCreature();
     if (disposed || !creature) return;
@@ -639,9 +649,11 @@ export function initBossTab(root) {
 
   const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3(), tmpUp = new THREE.Vector3();
   const scenePoint = (w, out) => out.set(w[0], w[1] - planet.radius, w[2]);
-  function frameCamera() {
+  function frameCamera(dt) {
     controls.enabled = state.view === 'free';
+    gameCam?.setOn(state.cam === 'game' && state.view !== 'free');   // the game's own camera takes the chase's place (./boss/game-cam.js)
     if (state.view === 'free') { controls.update(); return; }
+    if (gameCam?.isOn()) { gameCam.step(dt); return; }
     const c = creature.motion.center, cw = toWorld(frame, [c.x, 0, c.z], scale), tw = tankWorld();
     const up = tmpUp.set(...frame.up);
     const creatureAt = scenePoint(cw, tmpA), tankAt = scenePoint(tw, tmpB);
@@ -689,6 +701,7 @@ export function initBossTab(root) {
       arena: { on: fightOn.obstacles, live: arena.live().length, ...(({ pushed, ms }) => ({ pushed, ms }))(arena.stats()) },
       shaderErrors: shaderErrors.slice(), error: fatal ?? frameError, cropped,
       kernel: !!creature?.body.kernel,
+      cam: state.cam, rearMs: gameCam?.isOn() ? gameCam.stats().ms : null,
     };
   }
   function drawReadout() {
@@ -706,7 +719,8 @@ export function initBossTab(root) {
     html += ` &middot; provokes <b>${r.provokes}</b>`
       + (r.arena.on ? ` &middot; push <b>${r.arena.pushed}</b> &middot; <b>${fmt(r.arena.ms, 3)} ms/step</b>` : '')
       + `<br>size ${r.size} m (&times;${fmt(r.scale, 0)}) &middot; ${r.state ?? '—'} &middot; ${r.variant} &middot; lure ${r.lure}`
-      + ` &middot; ${r.kernel ? 'wasm kernel' : 'js solver'} &middot; re-anchored ${r.reanchors}`;
+      + ` &middot; ${r.kernel ? 'wasm kernel' : 'js solver'} &middot; re-anchored ${r.reanchors}`
+      + (r.rearMs !== null ? ` &middot; camera game &middot; rear <b>${fmt(r.rearMs)} ms</b>` : '');
     if (shaderErrors.length) html += `<br><b class="late">shader: ${escapeHtml(shaderErrors[shaderErrors.length - 1])}</b>`;
     if (frameError && t - frameErrorAt < 5) html += `<br><b class="late">${escapeHtml(frameError)}; reset</b>`;
     read.innerHTML = html;
@@ -728,9 +742,10 @@ export function initBossTab(root) {
     resize();
     if (!planet) return;
     root.querySelector('[data-keys]').hidden = state.lure !== 'tank';
-    if (creature && !loading && !fatal) { step(dt, cut); frameCamera(); }
+    if (creature && !loading && !fatal) { step(dt, cut); frameCamera(dt); }
     try {
       renderer.render(scene, cam);
+      gameCam?.renderRear();   // the rear feed over the main frame, straight to the canvas (./boss/game-cam.js)
       frames++;
       if (!firstRender) { firstRender = true; checkPrograms(); }
       checkPrograms();
@@ -802,10 +817,17 @@ export function initBossTab(root) {
     if (kind === 'point' && creature && frame) pointWorld = toWorld(frame, creature.motion.target.toArray(), scale);
     return true;
   }
+  // the driving camera: the lab's chase or the game's own (./boss/game-cam.js); the switch and V follow each other
+  function setCam(mode) {
+    if (mode !== 'lab' && mode !== 'game') return false;
+    state.cam = mode; root.querySelector('[data-k="cam"]').value = mode;
+    return true;
+  }
   for (const el of root.querySelectorAll('[data-k]')) el.addEventListener('input', () => {
     const k = el.dataset.k;
     if (k === 'lure') setLure(el.value);
     else if (k === 'view') state.view = el.value;
+    else if (k === 'cam') { setCam(el.value); el.blur(); }   // the select must not keep V's keystrokes
     else if (k === 'variant' && el.value !== state.variant && planet && !loading) makeCreature(el.value);   // during a load: picked up after it
   });
   const copyBox = root.querySelector('[data-copy]');
@@ -838,7 +860,7 @@ export function initBossTab(root) {
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
       renderer.domElement.removeEventListener('pointerup', onPointerUp);
       creature?.dispose(); if (prey) { prey.mesh.geometry.dispose(); prey.mesh.material.dispose(); }
-      cannon.dispose(); friendlies.dispose(); arena.dispose(); round.dispose(); explosions.dispose();
+      gameCam?.dispose(); cannon.dispose(); friendlies.dispose(); arena.dispose(); round.dispose(); explosions.dispose();
       planetMesh?.userData.dispose(); disposeObj(tank); gui.destroy(); controls.dispose(); renderer.dispose(); renderer.domElement.remove();
       engine?.stop(0); engine = null; audio.dispose();
       if (window.__bossLab === lab) delete window.__bossLab;
@@ -862,7 +884,12 @@ export function initBossTab(root) {
       }
       return { x: drive.x, z: drive.z };
     },
-    driveTank(seconds = 1) { scripted = { throttle: 1, turn: 0, until: t + seconds }; return true; },
+    driveTank(seconds = 1, turn = 0) { scripted = { throttle: 1, turn, until: t + seconds }; return true; },
+    // the driving camera: camera('game') or camera('lab') sets it (V and the panel do the same); the game camera's state:
+    // { mode, eye, look, pose: { eye, look }, rear: { x, y, w, h }, ms }, eye and look where the camera is and pose the game's tankViewPose
+    // for the smoothed state, all in the scene's metres; rear the inset's box in device pixels from the canvas's bottom left, ms its cost
+    camera: (mode) => (setCam(mode), state.cam),
+    cam: () => ({ mode: state.cam, on: !!gameCam?.isOn(), fov: cam.fov, ...(gameCam ? gameCam.state() : {}) }),
     // scripted input each frame for `seconds`: orbit the creature's centre at `radius` metres with the game's drive
     circle(seconds = 10, radius = 40) { scripted = { circle: radius, until: t + seconds }; return true; },
     // the survival run's player: the circle at `near` metres, widened while a nuke's ring shows (its plan between showAt and land on the
