@@ -12,7 +12,7 @@
 // after each fixed step every node in a live shape's footprint goes to the boundary and loses its inward velocity. The kernel's
 // `body.x` and `body.velocity` are shared typed arrays, read through the body on every call. Native units are local / scale.
 import * as THREE from '../../../vendor/three.module.js';
-import { makeArena, blockAt, route, pushOut, destroyIn, restore, clearSpawn } from '../../domain/boss-arena.js';
+import { makeArena, blockAt, route, pushOut, destroyIn, restore, restoreClear, withdrawFrom, clearSpawn } from '../../domain/boss-arena.js';
 
 const JITTER = 0.12;        // a rock's vertices move this fraction of its radius, radially, by a seeded sequence
 const SEED = 0x5ca1ab1e;
@@ -56,8 +56,9 @@ export const deeper = (a, b) => (!a ? b : !b ? a : b.depth > a.depth ? b : a);
 
 // `sphere` the group the rings live in; `surface(x, z)` -> { point, normal } (Vector3s, sphere space); `tune()` the fight's live numbers
 // (arena, hull.radius, wall.clear); `scaleOf()` the display scale; `extentOf()` the body's width in local metres; `enabled()` the
-// obstacles switch; `colors` { rock, wall } hexes in the lab's ground palette
-export function createArena(sphere, { surface, cellSide = 10, explosions = null, tune, scaleOf, extentOf, enabled = () => true, colors = {} } = {}) {
+// obstacles switch; `occupants()` the circles { at: [x, z], radius } of what must not be built over, the creature (centre and its extent) and
+// the tank (the hull), for the resets and the switch that leave them where they stand; `colors` { rock, wall } hexes in the lab's ground palette
+export function createArena(sphere, { surface, cellSide = 10, explosions = null, tune, scaleOf, extentOf, enabled = () => true, occupants = () => [], colors = {} } = {}) {
   const unit = cellSide / 10;   // scene units per metre
   const layout = tune().arena;
   const shapes = makeArena(layout);
@@ -162,17 +163,23 @@ export function createArena(sphere, { surface, cellSide = 10, explosions = null,
     return ids;
   }
 
-  // a round's reset: every shape live again; `home` (the frame went back to the origin) also puts each back where the layout has it
+  // a round's reset: every shape live again; `home` (the frame went back to the origin) also puts each back where the layout has it.
+  // Without `home` (the frame and the occupants stay) only the shapes clear of the creature and the tank stand up, and the ids still
+  // down are returned: they come back at the next round
   function reset(home = true) {
-    restore(shapes);
-    if (home) shapes.forEach((sh, i) => { sh.at[0] = layout[i].at[0]; sh.at[1] = layout[i].at[1]; });
+    let left = [];
+    if (home) { restore(shapes); shapes.forEach((sh, i) => { sh.at[0] = layout[i].at[0]; sh.at[1] = layout[i].at[1]; }); }
+    else left = restoreClear(shapes, occupants());
     dirty = true;
+    return left;
   }
+  // the obstacles switch came on: a shape that stands on the creature or the tank (they moved while it was off) is taken down till the next round
+  function settle() { const gone = withdrawFrom(shapes, occupants()); dirty = true; return gone; }
   // a re-anchor moves every local position by the same vector
   function shift(sx, sz) { for (const sh of shapes) { sh.at[0] += sx; sh.at[1] += sz; } dirty = true; }
 
   return {
-    shapes, blocker, route: routeTo, spawn, wrapStep, landed, reset, shift, sync,
+    shapes, blocker, route: routeTo, spawn, wrapStep, landed, reset, settle, shift, sync,
     live: () => shapes.filter((s) => s.live).map((s) => s.id),
     stats: () => ({ pushed, ms: costN ? costSum / costN : 0, nodes: pushedNodes }),
     dispose() {

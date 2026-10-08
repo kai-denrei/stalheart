@@ -278,8 +278,10 @@ export function initBossTab(root) {
   const ground = (rgb) => new THREE.Color().setRGB(rgb[0], rgb[1], rgb[2]).getHex();
   const arena = createArena(sphere, {
     surface, cellSide: 10, explosions, tune: () => fightTune, scaleOf: () => scale, extentOf: () => native * scale,
-    enabled: () => fightOn.obstacles, colors: { rock: ground(look.floors.visited), wall: ground(look.floors.spawn) },
+    enabled: () => fightOn.obstacles, occupants: () => occupantsNow(), colors: { rock: ground(look.floors.visited), wall: ground(look.floors.spawn) },
   });
+  // what no shape may be stood up on: the creature (its centre and its extent) and the tank (the hull), unless the hull is lost
+  const occupantsNow = () => [...(creature ? [{ at: [creature.motion.center.x * scale, creature.motion.center.z * scale], radius: native * scale }] : []), ...(hullLost ? [] : [{ at: [drive.x, drive.z], radius: fightTune.hull.radius }])];
   const tankBlocker = (x, z) => deeper(body.blocker(x, z), arena.blocker(x, z));   // the body's or the arena's, whichever pushes deeper
   const friendlies = createFriendlies(scene, {
     sphere, surface, cellSide: 10, explosions, sfx: audio, tune: () => fightTune, fight: () => fight, now: () => t,
@@ -390,7 +392,7 @@ export function initBossTab(root) {
   function setFight(on) {
     fightOn.fight = !!on;
     friendlies.reset(); cannon.clear(); fear.reset(); stunned = false; resetDue = -1; hullLost = false; pin = null;
-    arena.reset(false);   // the frame stays: the obstacles come back where they stand
+    arena.reset(false);   // the frame stays: the obstacles come back where they stand, but not on the creature or the tank (the next round's)
     fight = makeFight(fightTune);
     restoreCreature();
     gui.controllersRecursive().forEach((c) => c.updateDisplay());
@@ -762,7 +764,7 @@ export function initBossTab(root) {
   fightGui.add(fightOn, 'nuke').name('MK-9 nuke');
   fightGui.add(fightOn, 'sol').name('SOL-88');
   fightGui.add(fightOn, 'fear').name('fear (flight, stun)');
-  fightGui.add(fightOn, 'obstacles').name('obstacles (arena)');
+  fightGui.add(fightOn, 'obstacles').name('obstacles (arena)').onChange((on) => { if (on) arena.settle(); });
   fightGui.add(fightTune.wall, 'clear', 0, 20, 0.5).name('wall clear (m)');
   fightGui.add(fightOn, 'cannon').name('cannon (Space)');
   fightGui.add(fightTune, 'health', 10, 1000, 10).name('health (at reset)');

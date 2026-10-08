@@ -3,7 +3,7 @@
 // destruction, the restore and the clear respawn.
 import assert from 'node:assert/strict';
 import { BOSS_FIGHT as T } from '../src/content/boss-fight.js';
-import { makeArena, footprint, blockAt, route, pushOut, destroyIn, restore, clearSpawn } from '../src/domain/boss-arena.js';
+import { makeArena, footprint, blockAt, route, pushOut, destroyIn, restore, restoreClear, withdrawFrom, clearSpawn } from '../src/domain/boss-arena.js';
 
 const EPS = 1e-9;
 const near = (a, b, msg) => assert.ok(Math.abs(a - b) < EPS, `${msg}: ${a} vs ${b}`);
@@ -134,6 +134,22 @@ assert.deepEqual(destroyIn(lay, [100, 100], 10), [], 'nothing within reach, noth
 assert.deepEqual(destroyIn(lay, [35, 38], 2.5), [], 'a landing 3 m off the r 5 rock\'s edge with a 2.5 m ring is just outside its reach');
 assert.ok(lay.every((s) => s.live), 'and leaves it standing');
 assert.deepEqual(destroyIn(lay, [35, 30], 1), ['r3'], 'a landing on a small rock takes only it');
+
+// the in-place reset and the switch: a shape stands up only where neither the creature nor the tank is on it
+{
+  const a = makeArena(T.arena), body = { at: [35, 30], radius: 12 }, hullAt = { at: [-30, 25], radius: T.hull.radius };   // on r3, and on r4
+  destroyIn(a, [0, 0], 55);
+  assert.deepEqual(restoreClear(a, [body, hullAt]), ['r3', 'r4'], 'a shape under the creature or the tank stays down');
+  assert.deepEqual(a.filter((s) => !s.live).map((s) => s.id), ['r3', 'r4'], 'the walls (w1, w2) stand again');
+  const off = { at: [35, 30 + 5 + 12 + 0.01], radius: 12 };   // r3's radius is 5: this body is just clear of its edge
+  assert.deepEqual(restoreClear(a, [off, hullAt]), ['r4'], 'a body just clear of the rock lets it stand; the hull still holds r4 down');
+  assert.deepEqual(restoreClear(a, []), [], 'no occupants: the rest stand');
+  assert.ok(a.every((s) => s.live), 'every obstacle stands');
+  // the switch coming on over a creature and a hull that moved while it was off
+  assert.deepEqual(withdrawFrom(a, [body, hullAt]), ['r3', 'r4'], 'the shapes under them come down');
+  assert.deepEqual(withdrawFrom(a, [body, hullAt]), [], 'a shape already down is not taken twice');
+  assert.ok(a.find((s) => s.id === 'r1').live && a.find((s) => s.id === 'w1').live, 'the clear ones stand');
+}
 
 // the clear respawn
 const sp = makeArena(T.arena), hull = T.hull.radius;

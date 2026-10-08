@@ -122,6 +122,24 @@ export function destroyIn(shapes, at, radius) {
 
 export function restore(shapes) { for (const sh of shapes) sh.live = true; }
 
+// IN PLACE. A round's reset puts every shape back at once; a reset that leaves the creature and the tank where they stand must not stand a
+// shape up inside either. `occupants` are circles { at: [x, z], radius }; a shape is clear of one when its footprint lies at least
+// `radius` from the centre.
+const clearOf = (sh, occupants) => occupants.every((o) => footprint(sh, o.at).d >= o.radius);
+// stands up the dead shapes that are clear of every occupant; the ids still dead (they come back at the next round's restore)
+export function restoreClear(shapes, occupants) {
+  const left = [];
+  for (const sh of shapes) if (!sh.live) { if (clearOf(sh, occupants)) sh.live = true; else left.push(sh.id); }
+  return left;
+}
+// takes down the standing shapes that are not clear of an occupant (the obstacles switch coming on over a creature that moved while
+// it was off); the ids taken down, which come back at the next round's restore
+export function withdrawFrom(shapes, occupants) {
+  const gone = [];
+  for (const sh of shapes) if (sh.live && !clearOf(sh, occupants)) { sh.live = false; gone.push(sh.id); }
+  return gone;
+}
+
 // a respawn point clear of the shapes by the hull: the point, or turned about the origin by +10, -10, +20, ... degrees to the
 // first clear bearing (at most 36 steps; the original point when none is clear)
 export function clearSpawn(point, shapes, r) {
