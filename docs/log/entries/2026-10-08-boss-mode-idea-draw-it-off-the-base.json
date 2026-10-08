@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "id": "2026-10-08-boss-mode-idea-draw-it-off-the-base",
+  "date": "2026-10-08",
+  "type": "decision",
+  "status": "proposed",
+  "title": "A boss mode: the tank draws the huge creature off the base and escapes its tentacles while the gunship and SOL take aim",
+  "context": "Owner, 2026-10-08, opening the Nih-Dairia boss lab: \"Idea for a game mode; the creature is huge, doesn't move too fast. The tank must draw its attention away from the base, moving around and escaping its tentacles, while the Gunship and the SOL take aim at it. goal: stress of avoiding tentacles, relying on the team, death from above.\" The creature is the owner's lab-creatures Nih-Dairia (soft-body, a spider gait, two probing arms, prey capture: unheld prey that stays within reach is cradled, covered and absorbed).",
+  "outcome": "Recorded for the boss spec that follows the lab (docs/superpowers/specs/2026-10-08-nih-dairia-boss-lab-design.md is the lab only). The lab already maps the idea's core: the tank is the creature's prey; while it drives it counts as held and cannot be taken; a tank that stops within the creature's reach is cradled and absorbed (a lost hull). The mode's other halves (the creature's attention between the base and the tank, the gunship's and SOL-88's fire on its body, damage and death from above, the stress of the tentacles) are the boss spec's questions, not the lab's.",
+  "alternatives": [],
+  "evidence": [
+    "lab-creatures (/Users/minikai/Dev/Jelly-Baby, f2a4f89): src/monster/feeding.ts, cradle.ts, pursuit.ts; README 'Nih-Dairia experiment 001'"
+  ],
+  "supersedes": []
+}
