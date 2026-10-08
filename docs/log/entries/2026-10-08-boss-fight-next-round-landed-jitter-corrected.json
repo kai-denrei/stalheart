@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "2026-10-08-boss-fight-next-round-landed-jitter-corrected",
+  "date": "2026-10-08",
+  "type": "change",
+  "status": "accepted",
+  "title": "The boss fight's next round, walls measurement corrected: the 8 m moves in the first jitter numbers were re-anchors, not wall flips; with them skipped the jitter is 0.075 to 0.078 m a frame and the largest move is a 3 m flip across the wall",
+  "context": "2026-10-08-boss-fight-next-round-landed reported the walls' jitter as 0.074, 0.112 and 0.115 m a frame with single moves up to 3.0 to 8.0 m, and explained the large moves as a node changing side of the wall. The task review found the sampler differenced consecutive frames' pushed-node positions, which are in the lab's local frame, without allowing for a re-anchor (the frame re-anchors every 5 m, shifting every local position): the two runs with 8 m moves had re-anchored in the 3 s window.",
+  "outcome": "The sampler (`--boss-walls` in scripts/browser-test.mjs) now reads the re-anchor count (`arena().reanchors`) on every frame and skips a frame pair across a change of it, and the pair after it, which may still hold the old frame's nodes. Corrected, from a frozen snapshot, three runs: jitter 0.0782, 0.0748 and 0.0779 m a frame (2739, 2718 and 2708 node pairs), the largest single move 3.071, 3.036 and 3.051 m, 0, 2 and 2 pairs skipped across a re-anchor, and 9, 8 and 8 moves over 1.5 m in the 3 s window. So no 8 m moves exist; what remains is a node jumping about 3 m, the thickness of the wall, about eight or nine times in three seconds across about 16 pushed nodes: a node near the wall's middle switches to the other face as the creature leans. The owner should judge whether that reads as pressed or as torn in the playtest. The cost, three runs: 0.1417, 0.1467 and 0.1300 ms a solver step, 0.567, 0.587 and 0.520 ms a frame, 15.8, 15.8 and 15.7 nodes pushed a frame (the earlier entry's 0.53 to 0.59 ms stands); the survival run in the final --boss-fight KILLED at 31.86 s at health 180 (the earlier 31.03 s twice; the health stays 180); the standing body died at 28.0 s. The wall screenshot: a chase-view shot at 9 s shows w1 upright, flat on the ground and face-on, nothing of the body through it; an oblique view was tried by a synthetic mouse drag on the free orbit and the camera did not turn (the lab's handle exposes no camera, none was added), so the wall's far side is still unseen. The earlier entry's other numbers and judgement points stand.",
+  "alternatives": [
+    "Edit the earlier entry: rejected, validated entries are immutable; this entry supersedes it."
+  ],
+  "evidence": [
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --boss-walls (three runs from a snapshot after the fix)",
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --boss-fight: survival KILLED 31.86 s, standing 28.0 s, PASS",
+    "2026-10-08-boss-fight-next-round-landed"
+  ],
+  "supersedes": [
+    "2026-10-08-boss-fight-next-round-landed"
+  ]
+}
