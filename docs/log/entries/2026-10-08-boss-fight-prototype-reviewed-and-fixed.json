@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-10-08-boss-fight-prototype-reviewed-and-fixed",
+  "date": "2026-10-08",
+  "type": "change",
+  "status": "accepted",
+  "title": "The boss fight prototype reviewed whole: a fix wave (a reload starts a round, a lost hull is nobody's prey, the browser step on the fight clock, explosions prewarmed, the falloff shared, drift guards) and a re-review that says ready for the owner's playtest",
+  "context": "After 2026-10-08-boss-fight-prototype-landed, the final whole-branch review (architecture-review skill: td-tab net 0, the guard and host contracts hold, 130 pure-layer modules) found no Critical items and seven to fix before a feel playtest: a body-plan reload mid-fight released every missed strike in one frame; a hull hidden by a landing was still driven, held, lured and feedable during the LOST card; the --boss-fight step was bounded by wall-clock time while the fight runs on the lab's capped frame clock (a flake on slow headless frames); the explosions were never prewarmed (a shader compile at the first landing); resolveLanding re-implemented src/domain/gunship.js splashDamage; the copied gun numbers had no drift guard; the spec's prose was out of step with the measured code.",
+  "outcome": "Commits d4cdfb64 and 153b1bf5 on refactor-run: makeCreature starts a new round after a reload; loseHull skips the drive, clears targetHeld, stops the lure, turns feeding off until the reset and reports the hull at [1e9, 1e9] to the shooters; the step waits on fight().clock with real-time caps and names each failure; explosions.prewarm through a small adapter that compiles against the scene (the lights live there, the explosions on the sphere group); resolveLanding imports splashDamage (the domain module now imports only ./gunship.js's falloff); test/boss-fight.mjs asserts the fight's Bofors burst/rest/rate/travel/radius equal GUNSHIP_AUTO and GUNSHIP_GUNS.bofors (damage stays the fight's knob); the dead provokes field removed; the spec aligned (health 155 measured once, the 44-contact fixture, 45 m, 20 s, SOL's fixed spot as the decision, boss-tab.js's own rules named with body.js as the next refactor). --boss now switches the fight off first (it tests the held/taken rule, which a Bofors ring preempted). Both suites green: --boss-fight below half at 18.07 s of fight clock, standing kill at 30.61 s, PASS boss-fight-reset; --boss held 97/97, taken at 10.3 s. Re-review: ready for the owner's playtest. Left for later: the caught path has no browser coverage with the fight on (setFight takes no shooter switches); rateOk can pass on little data (require clock >= 15); one 20 s wall-clock wait in the parked step; move the body rules out of boss-tab.js into src/labs/boss/body.js before the next feature; measure the prewarm's effect on the first landing.",
+  "alternatives": [
+    "Keep the falloff copy for a domain module that imports nothing: rejected, domain modules import domain modules in this tree (round-path.js imports gunship.js), and a copy is the parallel implementation the architecture-review skill names.",
+    "Ignore gaps in schedule instead of starting a round on reload: rejected for now, a reload mid-fight is a lab action, not play; a fresh round is the honest state."
+  ],
+  "evidence": [
+    ".superpowers/sdd/fight-final-fix-report.md (session scratch, git-ignored); the final reviewer's two reports",
+    "node test/boss-fight.mjs: a standing creature dies in 30.62 s (unchanged by the splashDamage import)"
+  ],
+  "supersedes": ["2026-10-08-boss-fight-prototype-landed"]
+}

@@ -107,6 +107,23 @@ Evidence:
 
 - lab-creatures (/Users/minikai/Dev/Jelly-Baby, f2a4f89): src/monster/feeding.ts, cradle.ts, pursuit.ts; README 'Nih-Dairia experiment 001'
 
+## 2026-10-08 — The boss fight prototype reviewed whole: a fix wave (a reload starts a round, a lost hull is nobody's prey, the browser step on the fight clock, explosions prewarmed, the falloff shared, drift guards) and a re-review that says ready for the owner's playtest
+
+change · accepted · 2026-10-08-boss-fight-prototype-reviewed-and-fixed
+
+After 2026-10-08-boss-fight-prototype-landed, the final whole-branch review (architecture-review skill: td-tab net 0, the guard and host contracts hold, 130 pure-layer modules) found no Critical items and seven to fix before a feel playtest: a body-plan reload mid-fight released every missed strike in one frame; a hull hidden by a landing was still driven, held, lured and feedable during the LOST card; the --boss-fight step was bounded by wall-clock time while the fight runs on the lab's capped frame clock (a flake on slow headless frames); the explosions were never prewarmed (a shader compile at the first landing); resolveLanding re-implemented src/domain/gunship.js splashDamage; the copied gun numbers had no drift guard; the spec's prose was out of step with the measured code.
+
+Commits d4cdfb64 and 153b1bf5 on refactor-run: makeCreature starts a new round after a reload; loseHull skips the drive, clears targetHeld, stops the lure, turns feeding off until the reset and reports the hull at [1e9, 1e9] to the shooters; the step waits on fight().clock with real-time caps and names each failure; explosions.prewarm through a small adapter that compiles against the scene (the lights live there, the explosions on the sphere group); resolveLanding imports splashDamage (the domain module now imports only ./gunship.js's falloff); test/boss-fight.mjs asserts the fight's Bofors burst/rest/rate/travel/radius equal GUNSHIP_AUTO and GUNSHIP_GUNS.bofors (damage stays the fight's knob); the dead provokes field removed; the spec aligned (health 155 measured once, the 44-contact fixture, 45 m, 20 s, SOL's fixed spot as the decision, boss-tab.js's own rules named with body.js as the next refactor). --boss now switches the fight off first (it tests the held/taken rule, which a Bofors ring preempted). Both suites green: --boss-fight below half at 18.07 s of fight clock, standing kill at 30.61 s, PASS boss-fight-reset; --boss held 97/97, taken at 10.3 s. Re-review: ready for the owner's playtest. Left for later: the caught path has no browser coverage with the fight on (setFight takes no shooter switches); rateOk can pass on little data (require clock >= 15); one 20 s wall-clock wait in the parked step; move the body rules out of boss-tab.js into src/labs/boss/body.js before the next feature; measure the prewarm's effect on the first landing.
+
+Alternatives: Keep the falloff copy for a domain module that imports nothing: rejected, domain modules import domain modules in this tree (round-path.js imports gunship.js), and a copy is the parallel implementation the architecture-review skill names.; Ignore gaps in schedule instead of starting a round on reload: rejected for now, a reload mid-fight is a lab action, not play; a fresh round is the honest state.
+
+Evidence:
+
+- .superpowers/sdd/fight-final-fix-report.md (session scratch, git-ignored); the final reviewer's two reports
+- node test/boss-fight.mjs: a standing creature dies in 30.62 s (unchanged by the splashDamage import)
+
+Supersedes: 2026-10-08-boss-fight-prototype-landed
+
 ## 2026-10-08 — The boss fight prototype landed: the creature standing in the Bofors and SOL-88 dies in 30.6 s at health 155 (--boss-fight green: the rings, the hits, the loss and the reset)
 
 change · accepted · 2026-10-08-boss-fight-prototype-landed
@@ -136,6 +153,19 @@ Alternatives: Make the tank's shells wound the boss (rejected in the brainstorm:
 Evidence:
 
 - docs/superpowers/specs/2026-10-08-boss-fight-prototype-design.md (corrected twice by measurement: Task 0's node proof, then the real body's floor contacts in Task 5)
+
+## 2026-10-08 — Next round of the boss fight (owner, 2026-10-08): every gunship strike including the nuke, SOL and the gunship's second weapon firing in front of the creature to protect the tank, a creature afraid of the laser and big blasts, obstacles in the arena, and the open question of walls
+
+decision · proposed · 2026-10-08-boss-fight-next-round-airborne-friendlies-protect-the-tank
+
+Owner, 2026-10-08, after the fight prototype's final review, to be built in a fresh session on Opus 5.5: "1) include all strikes from the gunship, including the nuke. 2) the SOL fires for longer, and tries to shoot in front of the creature, to protect the tank. 3) the creature is afraid the SOL laser and large explosions, it avoids them. 4) gunship also shoots #2 weapons in front. goal: airborne friendlies try to protect the tank. the user is just in survival mode. 5) we add some obstacles in the arena. 6) we need to figure out how to have the creature deal with walls." The prototype as it stands: docs/superpowers/specs/2026-10-08-boss-fight-prototype-design.md and 2026-10-08-boss-fight-prototype-reviewed-and-fixed; the lab at labs.html#boss, the rules in src/domain/boss-fight.js, the shooters in src/labs/boss/friendlies.js, the creature's behaviour in src/fx/nih-dairia/behavior.js (a port of the owner's lab-creatures, pinned at f2a4f89 plus the b3cfb52 pursuit fix).
+
+Proposed, for the next session's brainstorm, with what the tree already offers and where each item cuts: (1) the gunship's three guns are in src/domain/gunship.js (rotary, Bofors, heavy: selectGun, paintHeavy, launchHeavy, stepHeavy; GUNSHIP_GUNS in content) and the MK-9's body in src/fx/gunship-drop.js; the nuke's blast (5.5 cells, 72 m, ~10 s) needs its own ring and the fight's rule must say what it does to the tank at that radius. (2) "In front of the creature" is a new aim rule in the domain: the landing point on the segment from the creature's centre toward the tank, at a lead distance, not the led centre; SOL's burn lengthens by a knob. (3) Fear is a new INPUT to the creature: the kit's behaviour has stimulus, recoil and a target, no threat; a lab-side override (steer motion.target away from a threat point while a beam or blast is near) is the cheap first cut; a real avoidance belongs in lab-creatures' pursuit (the owner's project), the port then refreshed by the strip-and-diff method. (4) the gunship's second weapon follows rule (2). (5) obstacles are lab props on the cap: blockers for the tank through the drive's blocker callback (already an interface), and shelter from landings if the rule says a ring behind cover does not hit. (6) walls for the creature are the hard one: the solver's only contact is the floor plane (soft-body.js solveContacts, the kernel's floor parameter); walls would be new constraints in the C kernel (the owner's project), or the lab keeps the body off walls by steering only (the target routed round obstacles, the body passing through if it must). Recommend steering first and a measured decision on kernel walls after the owner's playtest.
+
+Evidence:
+
+- The owner's message of 2026-10-08 (quoted in context)
+- src/domain/gunship.js, src/fx/gunship-drop.js, src/fx/nih-dairia/{behavior,pursuit,soft-body}.js, src/labs/boss/{friendlies,drive}.js
 
 ## 2026-10-07 — Open: the wave card draws its 96 px sprite with a second WebGL context
 

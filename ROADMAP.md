@@ -371,7 +371,7 @@ First step, when it is picked up: `@ts-check` on `src/domain` as a trial, to see
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 61 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 62 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
 
 ### Open: the Nih-Dairia kit is GPL-3.0 and Stalheart's public repository has no licence; the owner decides before any push
 
@@ -408,6 +408,12 @@ Owner, 2026-10-08, opening the Nih-Dairia boss lab: "Idea for a game mode; the c
 `2026-10-08-boss-fight-prototype-design` · decision · **proposed**
 
 Owner, 2026-10-08, after seeing the boss lab: "add the tank driving feel from the main game ... allows the tank to shoot ... health bar for the boss ... the gunship and SOL fire from above. goal of the player is to avoid where the shots will be landing (they show as red laser spots on the ground). goal: if the player avoid the creature for about 30 seconds the friendlies should have landed enough hits to kill it." Decided in the brainstorm: the friendlies take the health down, the tank provokes and does not wound; caught means a lost hull and the round resets; a red spot shows about 1.5 s before its shot lands; the v1 death is gravity 10 and every movement stopped (owner).
+
+### Next round of the boss fight (owner, 2026-10-08): every gunship strike including the nuke, SOL and the gunship's second weapon firing in front of the creature to protect the tank, a creature afraid of the laser and big blasts, obstacles in the arena, and the open question of walls
+
+`2026-10-08-boss-fight-next-round-airborne-friendlies-protect-the-tank` · decision · **proposed**
+
+Owner, 2026-10-08, after the fight prototype's final review, to be built in a fresh session on Opus 5.5: "1) include all strikes from the gunship, including the nuke. 2) the SOL fires for longer, and tries to shoot in front of the creature, to protect the tank. 3) the creature is afraid the SOL laser and large explosions, it avoids them. 4) gunship also shoots #2 weapons in front. goal: airborne friendlies try to protect the tank. the user is just in survival mode. 5) we add some obstacles in the arena. 6) we need to figure out how to have the creature deal with walls." The prototype as it stands: docs/superpowers/specs/2026-10-08-boss-fight-prototype-design.md and 2026-10-08-boss-fight-prototype-reviewed-and-fixed; the lab at labs.html#boss, the rules in src/domain/boss-fight.js, the shooters in src/labs/boss/friendlies.js, the creature's behaviour in src/fx/nih-dairia/behavior.js (a port of the owner's lab-creatures, pinned at f2a4f89 plus the b3cfb52 pursuit fix).
 
 ### Open: the wave card draws its 96 px sprite with a second WebGL context
 
