@@ -17,7 +17,10 @@ import * as THREE from '../../vendor/three.module.js';
 import { OrbitControls } from '../../vendor/OrbitControls.js';
 import GUI from '../../vendor/lil-gui.esm.js';
 import { buildUnit, preloadMork } from '../units.js';
-import { stepYardDrive } from '../domain/yard-drive.js';
+import { createPlaneDrive } from './boss/drive.js';
+import { makeTankFeel, stepTankFeel, applyTankFeel, landTankFeel } from '../tankfeel.js';
+import { FEEL, loadFeel } from '../feelstore.js';
+import { makeAudio } from '../audio.js';
 import { frameAt, toWorld, toLocal, reanchor, sagitta } from '../domain/surface-frame.js';
 import { LOOKS } from '../looks.js';
 import { STORY_RECIPE, STORY_CLEARING, STORY_DAY } from '../content/story-defaults.js';
@@ -35,7 +38,8 @@ import { CREATURE_VARIANTS } from '../fx/nih-dairia/variants.js';
 import { NIH_DAIRIA_MOTION, NIH_DAIRIA_VARIANT, NIH_DAIRIA_SIZE_METRES, NIH_DAIRIA_LOOK, NIH_DAIRIA_MODELS } from '../content/nih-dairia.js';
 
 const TANK_R = 3.4;          // the swarm lab's hull scale: MÖRK at its real size
-const DRIVE_R = 4.2;         // hull radius handed to the drive's blocker test (no blockers here)
+const DRIVE_R = 4.2;         // the hull's radius against the creature's body (the blocker)
+const CRUISE_TAP = 0.35;     // seconds between two W taps that toggle cruise (td-tab.js noteFastTap)
 const CAP_CELLS = 40;        // the planet is drawn within this many cells of the anchor
 const RESPAWN_METRES = 30;   // after a meal the tank comes back this far east of the frame's origin
 const CHASE = { up: 11, back: 26 };   // the chase camera's height and lead, as the swarm lab frames the tank
@@ -103,7 +107,7 @@ export function initBossTab(root) {
     </div>
     <div class="sw-stage">
       <div class="sw-callouts" data-callouts></div>
-      <div class="sw-keys" data-keys>W A S D / arrows &middot; drive</div>
+      <div class="sw-keys" data-keys>W A S D / arrows &middot; drive &middot; W twice &middot; cruise</div>
       <div class="sw-read" data-read>generating the story planet&hellip;</div>
     </div>
   </div>`;
@@ -159,12 +163,29 @@ export function initBossTab(root) {
     if (!m || m.userData.loading) return;
     sphere.remove(tank); disposeObj(tank); m.scale.setScalar(TANK_R); tank = m; sphere.add(tank);
   }).catch(() => { /* the placeholder hull stands in */ });
-  // local metres in the frame's plane: x east, z north; yaw 0 drives +z (north), as stepYardDrive moves (sin yaw, cos yaw)
-  const drive = { x: RESPAWN_METRES, z: 0, yaw: Math.PI / 2, speed: 0, blocked: false };
+  // local metres in the frame's plane: x east, z north; yaw 0 drives +z (north), the heading (sin yaw, cos yaw). The drive is the
+  // game's feel (./boss/drive.js); `drive` is its state, which the lab places, re-anchors and pins
+  loadFeel();                       // the tuning the unit bench saved
+  const feel = makeTankFeel();
+  const plane = createPlaneDrive({ feel }), drive = plane.state;
+  plane.reset(RESPAWN_METRES, 0, Math.PI / 2);
   let scripted = null;   // { throttle, turn, until } from driveTank()
+  let blocked = false, cruiseTap = false, lastFastTap = -9;
+  // the engine bed: a looped handle, retried every frame while moving (loop() is null until the samples decode), as the game does
+  const audio = makeAudio({ base: '../' }); audio.arm();   // the context is born on the first gesture
+  let engine = null, engineRunning = false;
   const keys = new Set();
   const isText = (e) => /^(INPUT|SELECT|TEXTAREA)$/.test(e.target?.tagName ?? '');
-  const onDown = (e) => { if (isText(e)) return; const k = e.key.toLowerCase(); keys.add(k); if (DRIVE_KEYS.includes(k)) e.preventDefault(); };
+  const onDown = (e) => {
+    if (isText(e)) return;
+    const k = e.key.toLowerCase();
+    if ((k === 'w' || k === 'arrowup') && !keys.has(k)) {   // a double tap of forward toggles cruise, as the game's input
+      const s = performance.now() / 1000;
+      if (s - lastFastTap < CRUISE_TAP) cruiseTap = true;
+      lastFastTap = s;
+    }
+    keys.add(k); if (DRIVE_KEYS.includes(k)) e.preventDefault();
+  };
   const onUp = (e) => keys.delete(e.key.toLowerCase());
   const onBlur = () => keys.clear();
   addEventListener('keydown', onDown); addEventListener('keyup', onUp); addEventListener('blur', onBlur);
@@ -172,10 +193,28 @@ export function initBossTab(root) {
   function driveInput() {
     if (scripted && t < scripted.until) return scripted;
     scripted = null;
+    const tap = cruiseTap; cruiseTap = false;
     return {
       throttle: (keys.has('w') || keys.has('arrowup') ? 1 : 0) - (keys.has('s') || keys.has('arrowdown') ? 1 : 0),
       turn: (keys.has('a') || keys.has('arrowleft') ? 1 : 0) - (keys.has('d') || keys.has('arrowright') ? 1 : 0),
+      cruiseTap: tap,
     };
+  }
+  // THE BODY IS A BLOCKER: the creature's floor contacts in local metres; within the hull's radius of the nearest one the tank is
+  // pushed out away from the creature's centre by what it overlaps
+  function bodyBlocker(x, z) {
+    if (!creature) return null;
+    const b = creature.body, c = b.contact;
+    let best = Infinity;
+    for (let i = 0; i < c.length; i++) {
+      if (!(c[i] > 0)) continue;
+      const d = Math.hypot(x - b.x[i * 3] * scale, z - b.x[i * 3 + 2] * scale); if (d < best) best = d;
+    }
+    if (!(best < DRIVE_R)) return null;
+    const m = creature.motion.center;
+    let nx = x - m.x * scale, nz = z - m.z * scale; const l = Math.hypot(nx, nz);
+    if (l > 1e-9) { nx /= l; nz /= l; } else { [nx, nz] = plane.heading().map((v) => -v); }
+    return { nx, nz, depth: DRIVE_R - best };
   }
   // the tank's sphere-space position: the frame's tangent point dropped onto the sphere, so the hull never floats
   function tankWorld(x = drive.x, z = drive.z) {
@@ -190,7 +229,7 @@ export function initBossTab(root) {
     tank.quaternion.multiply(turnQ.setFromAxisAngle(Y, drive.yaw));
   }
   function respawnTank() {
-    drive.x = RESPAWN_METRES; drive.z = 0; drive.yaw = Math.PI / 2; drive.speed = 0; scripted = null;
+    plane.reset(RESPAWN_METRES, 0, Math.PI / 2); scripted = null;
     tank.visible = true;
   }
 
@@ -331,9 +370,10 @@ export function initBossTab(root) {
     const m = creature.motion, f = m.feeding;
     tryReanchor(REANCHOR_METRES);
     const pinned = state.lure === 'tank' && MEAL_PHASES.has(f.phase);
-    if (!pinned) stepYardDrive(drive, driveInput(), dt, [], DRIVE_R);
-    else { drive.speed = 0; scripted = null; }
-    const moving = keysHeld() || (scripted && t < scripted.until) || Math.abs(drive.speed) > 0.05;
+    let driving = false;
+    if (!pinned) ({ moving: driving, blocked } = plane.step(dt, driveInput(), bodyBlocker));
+    else { drive.speed = 0; scripted = null; blocked = false; }
+    const moving = driving || keysHeld() || (scripted && t < scripted.until);
     m.targetHeld = state.lure === 'tank' ? !!moving : false;   // the point and the auto-lure are never held
     auto.enabled = state.lure === 'auto';
     if (!f.locked) { dtNow = dt; creature.setTarget(lureTarget().setY(ARENA.lureHeight)); }
@@ -359,12 +399,21 @@ export function initBossTab(root) {
     if (state.lure === 'point' && f.locked) pointWorld = toWorld(frame, m.target.toArray(), scale);   // follows the kit's spawn
     prey.update(f); prey.mesh.visible = state.lure !== 'tank' && f.visible;
     placeTank();
+    // hover, idle vibration, the touchdown rock and the bank: the game's own, read through the persisted tuning
+    stepTankFeel(feel, dt, driving, FEEL);
+    applyTankFeel(tank, feel, FEEL);
+    runEngine(driving);
     // the readout's numbers, per frame, into the rolling means
     const tm = creature.timings;
     meanSolver.push(tm.solver); meanSkin.push(tm.skin); meanSteps.push(steps); cutFrames.push(cut ? 1 : 0);
     meanCentre.push(m.velocity.length() * scale);
     meanReach.push(reachLocal() * scale);
     meanSag.push(sagitta(farthestContact() * scale, planet.radius));
+  }
+  function runEngine(on) {
+    if (on) { engineRunning = true; if (!engine) engine = audio.loop('tank_engine'); return; }
+    if (!engineRunning) return;
+    engineRunning = false; engine?.stop(); engine = null; landTankFeel(feel);   // it sets down, and rocks as it lands
   }
   // the farther probing arm's tip from the centre: the outermost node of the lead and second-lead limbs
   function reachLocal() {
@@ -428,6 +477,7 @@ export function initBossTab(root) {
       ready: !!creature && !loading, solver: meanSolver.mean(), steps: meanSteps.mean(), skin: meanSkin.mean(), render: meanRender.mean(),
       centre: meanCentre.mean(), reach: meanReach.mean(), sag: meanSag.mean(), taken, state: m?.state ?? null, phase: m?.feeding.phase ?? null, held: !!m?.targetHeld,
       size: state.sizeMetres, scale, lure: state.lure, variant: state.variant, cut: cutFrames.mean() > 0, frames, reanchors,
+      speed: drive.speed, blocked, cruise: drive.cruise,
       tank: { x: drive.x, z: drive.z, speed: drive.speed, visible: tank.visible },
       shaderErrors: shaderErrors.slice(), error: fatal ?? frameError, cropped,
       kernel: !!creature?.body.kernel,
@@ -531,7 +581,7 @@ export function initBossTab(root) {
     setActive(on) {
       active = on;
       if (on) { last = performance.now(); if (!built) setTimeout(build, 30); cancelAnimationFrame(raf); loop(); }
-      else cancelAnimationFrame(raf);
+      else { cancelAnimationFrame(raf); runEngine(false); }
     },
     dispose() {
       if (disposed) return;
@@ -541,6 +591,7 @@ export function initBossTab(root) {
       renderer.domElement.removeEventListener('pointerup', onPointerUp);
       creature?.dispose(); if (prey) { prey.mesh.geometry.dispose(); prey.mesh.material.dispose(); }
       planetMesh?.userData.dispose(); disposeObj(tank); gui.destroy(); controls.dispose(); renderer.dispose(); renderer.domElement.remove();
+      engine?.stop(0); engine = null; audio.dispose();
       if (window.__bossLab === lab) delete window.__bossLab;
     },
   };
@@ -553,12 +604,12 @@ export function initBossTab(root) {
     // default 0.05 is inside the kit's 0.075 capture radius and can land under an arm: a prey inside the skin never lets the
     // cradle finish (its minimum gap stays below -0.0005), so a meal is tested from outside the reach, as the kit's prey is
     stopTank({ near = false, at = 0.05 } = {}) {
-      keys.clear(); scripted = null; drive.speed = 0;
+      keys.clear(); scripted = null; plane.reset();
       if (near && creature) {
         const c = creature.motion.center, cx = c.x * scale, cz = c.z * scale;
         let dx = drive.x - cx, dz = drive.z - cz; const d = Math.hypot(dx, dz) || 1; dx /= d; dz /= d;
         const r = at * scale;
-        drive.x = cx + dx * r; drive.z = cz + dz * r;
+        plane.reset(cx + dx * r, cz + dz * r);
       }
       return { x: drive.x, z: drive.z };
     },
