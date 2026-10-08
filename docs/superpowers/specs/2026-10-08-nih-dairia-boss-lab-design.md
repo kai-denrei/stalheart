@@ -43,7 +43,9 @@ never tuned at that scale; the lab exists to show whether the scaled motion read
 reach is about 13 m and a captured tank is a lost hull: the mode idea's "escaping its tentacles" is the kit's own feeding
 rule, with the tank as prey.
 
-**Licence (the owner's decision, open).** lab-creatures is GPL-3.0, derived from scottstts/Jelly-Baby, and the kit's
+**Licence (closed by the owner, 2026-10-08, `2026-10-08-nih-dairia-is-the-owners-own-creature`: "the lab creature is my
+own creature. it was very loosely inspired from a jelly creature, and now became something else entirely. it is ours to do
+as we please." The merge waits on his playtest only. The paragraph below is kept as the question was raised.)** lab-creatures is GPL-3.0, derived from scottstts/Jelly-Baby, and the kit's
 export carries that LICENSE. Stalheart's repository has no licence file and is public with its source on GitHub and its
 build on Pages. Porting the kit into `src/` makes the published combined work subject to the GPL's terms. Nothing in this
 spec is pushed until the owner decides: accept GPL-3.0 for Stalheart's published source, keep the creature out of the

@@ -15,6 +15,23 @@ Evidence:
 - /Users/minikai/Dev/Jelly-Baby/LICENSE (GNU GPL v3), README.md 'Inspiration and license'; the export's LICENSE (35,148 bytes) in dist-exports/nih-dairia-creature-kit.zip
 - Stalheart: no LICENSE at the root, no license field in package.json (checked 2026-10-08)
 
+## 2026-10-08 — Nih-Dairia is the owner's own creature; the licence question is closed by his decision and the merge gate is lifted
+
+decision · accepted · 2026-10-08-nih-dairia-is-the-owners-own-creature
+
+The boss lab's review had raised 2026-10-08-nih-dairia-kit-is-gpl-licence-open: the lab-creatures project's README and LICENSE say the work is derived from Jelly Baby by scottstts and preserves its GPL-3.0, and Stalheart's public repository has no licence. Owner, 2026-10-08: "the lab creature is my own creature. it was very loosely inspired from a jelly creature, and now became something else entirely. it is ours to do as we please."
+
+The owner's decision: the creature (its body plans, gait, pursuit, feeding, cradle and the lab) is his own work, loosely inspired, and Stalheart may use it as it pleases. The merge and push of branch refactor-run no longer wait on a licence decision; they wait on his playtest. For the record, two things remain as they are until he says otherwise: the port's file headers still quote the lab-creatures notices (origin, the Jelly Baby inspiration, GPL-3.0, the copied LICENSE beside the port), because those notices are what his own repository states; and the soft-body solver's first comment there says it was derived from the jelly reference. If he wants Stalheart free of those claims, the lab-creatures notices are where the change starts, and the headers follow.
+
+Alternatives: Keep the gate until a licence file is added to Stalheart: rejected by the owner's statement; the choice of licence for his own work is his.
+
+Evidence:
+
+- The owner's message of 2026-10-08 (quoted in context)
+- /Users/minikai/Dev/Jelly-Baby README.md 'Inspiration and license'; src/physics/soft-body.js line 1
+
+Supersedes: 2026-10-08-nih-dairia-kit-is-gpl-licence-open
+
 ## 2026-10-08 — A tank stopped under an arm, inside the skin, stalls the kit's cradle for ever
 
 issue · observed · 2026-10-08-nih-dairia-cradle-stalls-under-an-arm
