@@ -2069,10 +2069,18 @@ try{
  // nuke lands at 24.2 s of fight clock, after the loop above: the wait for the stun alone goes on to 32 s (the circle runs 35 s) with
  // 60 s of real time as the cap
  if(f.phase==='fight')await evaluate(`${B}.circle(30, 80)`);
- let fear=f;for(const end=Date.now()+60000;Date.now()<end&&fear.phase==='fight'&&(fear.frights===0||fear.stuns===0)&&fear.clock<32;){await delay(250);fear=await evaluate(F);}
+ let fear=f,arenaAt=await evaluate(`${B}.arena()`),liveMin=arenaAt.live.length,pushedMax=arenaAt.pushed,msMax=arenaAt.ms;
+ for(const end=Date.now()+60000;Date.now()<end&&fear.phase==='fight'&&(fear.frights===0||fear.stuns===0)&&fear.clock<32;){
+   await delay(250);fear=await evaluate(F);
+   arenaAt=await evaluate(`${B}.arena()`);liveMin=Math.min(liveMin,arenaAt.live.length);pushedMax=Math.max(pushedMax,arenaAt.pushed);msMax=Math.max(msMax,arenaAt.ms);
+ }
  console.log('BOSS-FIGHT '+JSON.stringify({fear:{frights:fear.frights,stuns:fear.stuns,mode:fear.fearMode,clock:+fear.clock.toFixed(2),phase:fear.phase,reason:fear.reason}}));
  assert(fear.frights>0,`the creature was frightened at least once (frights ${fear.frights}, ${fear.phase} at ${fear.clock.toFixed(1)} s)`);
  assert(fear.stuns>0,`the MK-9 stunned it at least once (stuns ${fear.stuns}, ${fear.phase} at ${fear.clock.toFixed(1)} s of fight clock)`);
+ // the arena (next-round spec, section 3): the circling tank met the rocks and walls, and the nuke that landed broke at least one breakable
+ console.log('BOSS-FIGHT '+JSON.stringify({arena:{live:arenaAt.live,liveMin,pushedMax,msMean:+arenaAt.ms.toFixed(4),msMax:+msMax.toFixed(4),clock:+fear.clock.toFixed(2)}}));
+ assert(liveMin<6,`a nuke landing destroyed at least one breakable (live ${arenaAt.live}, ${fear.phase} at ${fear.clock.toFixed(1)} s of fight clock)`);
+ assert(['r1','r2'].every(id=>arenaAt.live.includes(id)),`the permanent rocks stand (${arenaAt.live})`);
  f=fear;   // the phase below is the one after the wait (a nuke that killed it sends the step through the reset)
  // parked beside the creature: lost (caught, or under a landing); a creature the circling killed first resets, then a
  // fresh fight starts on a nudge beside it. Then the reset after the card
@@ -2083,6 +2091,8 @@ try{
  await until(`["idle","fight"].includes(${B}.fight().phase)`,30000).catch(()=>{});   // the card's seconds on the fight's clock, then any meal
  const after=await evaluate(F);
  assert(['idle','fight'].includes(after.phase),`the round reset after the card within 30 s of real time (still ${after.phase}, ${after.reason})`);
+ const restored=await evaluate(`${B}.arena()`);
+ assert.deepEqual([...restored.live].sort(),['r1','r2','r3','r4','w1','w2'],`the reset restored all six obstacles (${restored.live})`);
  // the standing body: the instinct off, a fresh round, the tank nudged 60 m out to start the fight
  await until(`${B}.fight().phase === "idle" && ${B}.readout().fight.card === null`,20000);
  const scale=await evaluate(`${B}.readout().scale`);

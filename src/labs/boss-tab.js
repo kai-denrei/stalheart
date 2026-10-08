@@ -28,6 +28,7 @@ import { createBodyRules } from './boss/body.js';
 import { createCannon } from './boss/cannon.js';
 import { createFriendlies } from './boss/friendlies.js';
 import { createFear } from './boss/fear.js';
+import { createArena, deeper } from './boss/arena.js';
 import { createRound } from './boss/round.js';
 import { makeFight, startFight, capture, readout as fightReadout } from '../domain/boss-fight.js';
 import { BOSS_FIGHT } from '../content/boss-fight.js';
@@ -192,6 +193,7 @@ export function initBossTab(root) {
   // the body's rules (./boss/body.js): the blocker, the projected nodes, the circle controller, the shell's hit and the shove
   const body = createBodyRules({ getCreature: () => creature, getScale: () => scale, drive });
   let scripted = null;   // { throttle, turn, until } from driveTank()
+  let pin = null;        // { id, shape, until }: pinTo()'s hold of the creature's target on a shape's centre, the routing off
   let blocked = false, cruiseTap = false, lastFastTap = -9;
   // the engine bed: a looped handle, retried every frame while moving (loop() is null until the samples decode), as the game does
   const audio = makeAudio({ base: '../', sounds: { ...SOUNDS, ...LASER_AUDIO } }); audio.arm();   // the context is born on the first gesture; SOL's burn loop is the laser lab's sample
@@ -253,7 +255,7 @@ export function initBossTab(root) {
   // (the panel's fight folder writes it; `makeFight` reads it at each reset, `schedule` every frame); its seed advances a round
   // unless `pinSeed`. `fightOn` holds the switches: `fight` off is the lab as before (no shooters, no bar, no round)
   const fightTune = { ...JSON.parse(JSON.stringify(BOSS_FIGHT)), seed: 1 };
-  const fightOn = { fight: true, rotary: true, bofors: true, nuke: true, sol: true, fear: true, cannon: true, pinSeed: false };
+  const fightOn = { fight: true, rotary: true, bofors: true, nuke: true, sol: true, fear: true, obstacles: true, cannon: true, pinSeed: false };
   let fight = makeFight(fightTune);
   let hullLost = false;        // a landing took the hull: hidden until the reset
   let resetDue = -1;           // seconds a due reset has waited for a meal to finish; -1 when none is due
@@ -271,10 +273,19 @@ export function initBossTab(root) {
     tune: () => fightTune, creature: creatureNow, tank: tankNow, fight: () => fight, now: () => t,
     kit: () => creature, on: () => fightOn.fight && fightOn.fear,
   });
+  // THE ARENA (./boss/arena.js, the rules in src/domain/boss-arena.js): two rocks that stay and four obstacles the MK-9 breaks, in the
+  // lab's ground palette. They block the tank, turn the creature's hunt round them and push its body out of them after every step
+  const ground = (rgb) => new THREE.Color().setRGB(rgb[0], rgb[1], rgb[2]).getHex();
+  const arena = createArena(sphere, {
+    surface, cellSide: 10, explosions, tune: () => fightTune, scaleOf: () => scale, extentOf: () => native * scale,
+    enabled: () => fightOn.obstacles, colors: { rock: ground(look.floors.visited), wall: ground(look.floors.spawn) },
+  });
+  const tankBlocker = (x, z) => deeper(body.blocker(x, z), arena.blocker(x, z));   // the body's or the arena's, whichever pushes deeper
   const friendlies = createFriendlies(scene, {
     sphere, surface, cellSide: 10, explosions, sfx: audio, tune: () => fightTune, fight: () => fight, now: () => t,
     creature: creatureNow, tank: tankNow,
-    onLanding: (plan, { point }) => fear.landed(plan, point), onBeam: (plan, point) => fear.beam(plan, point),
+    // plans in flight keep landing after a loss or a kill: the arena breaks only in a running fight
+    onLanding: (plan, { point }) => { fear.landed(plan, point); if (fight.phase === 'fight') arena.landed(plan, point); }, onBeam: (plan, point) => fear.beam(plan, point),
     onTankHit: loseHull, enabled: () => Object.fromEntries(['rotary', 'bofors', 'nuke', 'sol'].map((k) => [k, fightOn.fight && fightOn[k]])),
   });
   // a landing on the hull: the hull goes in a shell's burst and stays hidden until the reset. While it is lost it is nobody's prey:
@@ -342,7 +353,8 @@ export function initBossTab(root) {
     tank.userData.heatSleeve?.material.color.lerpColors(SLEEVE_COOL, SLEEVE_HOT, cannon.heat() / CANNON_COOL);
   }
   function respawnTank() {
-    plane.reset(RESPAWN_METRES, 0, Math.PI / 2); scripted = null;
+    const at = arena.spawn([RESPAWN_METRES, 0]);   // turned round the origin when a shape stands on it
+    plane.reset(at[0], at[1], Math.PI / 2); scripted = null;
     tank.visible = true;
   }
   // THE ROUND'S RESET (the domain's 'reset' or the panel's button): the shooters, the shells and the scorch gone, the creature at
@@ -350,7 +362,8 @@ export function initBossTab(root) {
   // from the creature, facing it, and a fresh fight. `taken` stays; a scripted drive (the harness's) carries on
   function newRound() {
     resetDue = -1;
-    friendlies.reset(); cannon.clear(); fear.reset(); stunned = false;
+    friendlies.reset(); cannon.clear(); fear.reset(); stunned = false; pin = null;
+    arena.reset();   // every obstacle back, where the layout has it (the frame goes back to the origin below)
     if (!fightOn.pinSeed) fightTune.seed = (fightTune.seed | 0) + 1;
     fight = makeFight(fightTune);
     hullLost = false; feedWas = 'hunting';
@@ -363,7 +376,8 @@ export function initBossTab(root) {
     let dx = l[0] - cx, dz = l[2] - cz; const d = Math.hypot(dx, dz);
     if (d > 1e-6) { dx /= d; dz /= d; } else { dx = 1; dz = 0; }
     const R = fightTune.respawn;
-    plane.reset(cx + dx * R, cz + dz * R, Math.atan2(-dx, -dz));
+    const at = arena.spawn([cx + dx * R, cz + dz * R]);   // clear of the obstacles by the hull and two metres
+    plane.reset(at[0], at[1], Math.atan2(cx - at[0], cz - at[1]));   // facing the creature
     tank.visible = true; placeTank();
     pointWorld = toWorld(frame, creature.motion.target.toArray(), scale);
   }
@@ -375,7 +389,8 @@ export function initBossTab(root) {
   // the fight switch: off is the lab as before (an idle fight, no bar, no shooters; a dead creature stands again where it lies)
   function setFight(on) {
     fightOn.fight = !!on;
-    friendlies.reset(); cannon.clear(); fear.reset(); stunned = false; resetDue = -1; hullLost = false;
+    friendlies.reset(); cannon.clear(); fear.reset(); stunned = false; resetDue = -1; hullLost = false; pin = null;
+    arena.reset(false);   // the frame stays: the obstacles come back where they stand
     fight = makeFight(fightTune);
     restoreCreature();
     gui.controllersRecursive().forEach((c) => c.updateDisplay());
@@ -426,6 +441,7 @@ export function initBossTab(root) {
     cannon.shift(shift[0] * scale, shift[2] * scale);                 // and so do the shells in flight
     friendlies.shift(shift[0] * scale, shift[2] * scale);             // and the strikes' landings
     fear.shift(shift[0] * scale, shift[2] * scale);                   // and what frightens it
+    arena.shift(shift[0] * scale, shift[2] * scale);                  // and the obstacles
     reanchors++;
     return true;
   }
@@ -442,6 +458,7 @@ export function initBossTab(root) {
       const reload = !!creature;
       creature?.dispose();
       creature = next; state.variant = variant;
+      arena.wrapStep(creature);   // the new body's step pushes its nodes out of the obstacles
       creature.motion.feeding.enabled = params.feeding; creature.motion.active = params.instinct;
       rig.add(creature.mesh);
       native = nativeExtent(creature.body); applySize();
@@ -520,14 +537,15 @@ export function initBossTab(root) {
     auto.step(dtNow, target, centre);
     return target.add(arenaCentre);
   }
-  let dtNow = 0;
+  let dtNow = 0, routed = false, rawX = 0, rawZ = 0;
   function step(dt, cut) {
     const m = creature.motion, f = m.feeding;
+    routed = false;
     tryReanchor(REANCHOR_METRES);
     const pinned = state.lure === 'tank' && MEAL_PHASES.has(f.phase);
     let driving = false;
     if (hullLost) { drive.speed = 0; blocked = false; }   // a lost hull neither drives nor reads input (a harness script carries on after the reset)
-    else if (!pinned) { body.project(); ({ moving: driving, blocked } = plane.step(dt, driveInput(), body.blocker)); }
+    else if (!pinned) { body.project(); ({ moving: driving, blocked } = plane.step(dt, driveInput(), tankBlocker)); }
     else { drive.speed = 0; scripted = null; blocked = false; }
     const moving = driving || keysHeld() || (scripted && t < scripted.until);
     m.targetHeld = state.lure === 'tank' && !hullLost ? !!moving : false;   // the point and the auto-lure are never held, nor a lost hull
@@ -541,11 +559,22 @@ export function initBossTab(root) {
       dtNow = dt;
       const aim = lureTarget();
       if (fr.mode === 'flee') aim.set(fr.point[0] / scale, 0, fr.point[1] / scale);
-      creature.setTarget(aim.setY(ARENA.lureHeight));
+      aim.setY(ARENA.lureHeight);
+      routed = false;
+      if (pin && t < pin.until) aim.set(pin.shape.at[0] / scale, ARENA.lureHeight, pin.shape.at[1] / scale);   // the measurement's hold: no routing
+      else if (fr.mode !== 'stun') {   // the hunt (or the flight) goes round what stands in the way, in local metres
+        rawX = aim.x; rawZ = aim.z;
+        const c = m.center, w = arena.route([c.x * scale, c.z * scale], [aim.x * scale, aim.z * scale]);
+        routed = w[0] !== aim.x * scale || w[1] !== aim.z * scale;
+        if (routed) aim.set(w[0] / scale, ARENA.lureHeight, w[1] / scale);
+      }
+      creature.setTarget(aim);
     }
     let steps = 0;
     try {
       steps = creature.update(dt);
+      // the figure-eight reads the kit's target as its own path next frame: it gets the lure's point back, not the waypoint
+      if (routed && state.lure === 'auto') m.target.set(rawX, ARENA.lureHeight, rawZ);
     } catch (e) {
       // a non-finite body: say so, start over, keep the frame going
       frameError = String(e.message); frameErrorAt = t;
@@ -571,6 +600,7 @@ export function initBossTab(root) {
     runEngine(driving);
     stepFight(dt, driving);
     stepCannon(dt);
+    arena.sync();   // the obstacles shown, hidden and placed on the frame as it stands now
     // the readout's numbers, per frame, into the rolling means
     const tm = creature.timings;
     meanSolver.push(tm.solver); meanSkin.push(tm.skin); meanSteps.push(steps); cutFrames.push(cut ? 1 : 0);
@@ -649,6 +679,7 @@ export function initBossTab(root) {
       speed: drive.speed, blocked, cruise: drive.cruise, provokes, heat: cannon.heat(), shells: cannon.shells(),
       tank: { x: drive.x, z: drive.z, yaw: drive.yaw, speed: drive.speed, visible: tank.visible },
       fight: { ...fightReadout(fight), phase: fight.phase, reason: fight.reason, on: fightOn.fight, rings: friendlies.rings(), card: round.card(), ...fear.counts(), fearMode: fear.mode(), nukeIn: fight.nuke ? Math.max(0, fight.nuke.next) : null },
+      arena: { on: fightOn.obstacles, live: arena.live().length, ...(({ pushed, ms }) => ({ pushed, ms }))(arena.stats()) },
       shaderErrors: shaderErrors.slice(), error: fatal ?? frameError, cropped,
       kernel: !!creature?.body.kernel,
     };
@@ -665,6 +696,7 @@ export function initBossTab(root) {
       + ` &middot; frights <b>${r.fight.frights}</b> &middot; stuns <b>${r.fight.stuns}</b>`
       + ` &middot; nuke in <b>${r.fight.nukeIn === null ? '&mdash;' : `${fmt(r.fight.nukeIn, 1)} s`}</b>`;
     html += ` &middot; provokes <b>${r.provokes}</b>`
+      + (r.arena.on ? ` &middot; push <b>${r.arena.pushed}</b> &middot; <b>${fmt(r.arena.ms, 3)} ms</b>` : '')
       + `<br>size ${r.size} m (&times;${fmt(r.scale, 0)}) &middot; ${r.state ?? '—'} &middot; ${r.variant} &middot; lure ${r.lure}`
       + ` &middot; ${r.kernel ? 'wasm kernel' : 'js solver'} &middot; re-anchored ${r.reanchors}`;
     if (shaderErrors.length) html += `<br><b class="late">shader: ${escapeHtml(shaderErrors[shaderErrors.length - 1])}</b>`;
@@ -726,6 +758,8 @@ export function initBossTab(root) {
   fightGui.add(fightOn, 'nuke').name('MK-9 nuke');
   fightGui.add(fightOn, 'sol').name('SOL-88');
   fightGui.add(fightOn, 'fear').name('fear (flight, stun)');
+  fightGui.add(fightOn, 'obstacles').name('obstacles (arena)');
+  fightGui.add(fightTune.wall, 'clear', 0, 20, 0.5).name('wall clear (m)');
   fightGui.add(fightOn, 'cannon').name('cannon (Space)');
   fightGui.add(fightTune, 'health', 10, 1000, 10).name('health (at reset)');
   fightGui.add(fightTune, 'warn', 0.2, 4, 0.1).name('warn (s)');
@@ -794,7 +828,7 @@ export function initBossTab(root) {
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
       renderer.domElement.removeEventListener('pointerup', onPointerUp);
       creature?.dispose(); if (prey) { prey.mesh.geometry.dispose(); prey.mesh.material.dispose(); }
-      cannon.dispose(); friendlies.dispose(); round.dispose(); explosions.dispose();
+      cannon.dispose(); friendlies.dispose(); arena.dispose(); round.dispose(); explosions.dispose();
       planetMesh?.userData.dispose(); disposeObj(tank); gui.destroy(); controls.dispose(); renderer.dispose(); renderer.domElement.remove();
       engine?.stop(0); engine = null; audio.dispose();
       if (window.__bossLab === lab) delete window.__bossLab;
@@ -825,6 +859,25 @@ export function initBossTab(root) {
     park: () => lab.stopTank({ near: true, at: 0.15 }),
     setFight,
     fire: () => fireCannon(),
+    // the arena: the live obstacles' ids, the push-out's nodes moved in the last step (`pushed`), its mean cost per step (`ms`) and the
+    // local [x, y, z] of those nodes (`pushedNodes`, for the jitter)
+    arena: () => { const s = arena.stats(); return { live: arena.live(), pushed: s.pushed, ms: s.ms, pushedNodes: s.nodes }; },
+    // the measurement's hold: the creature's target on the shape's centre for `seconds` of lab clock with the routing off, the tank
+    // parked behind it (the far side from the creature, outside the shape plus 6 m) and held still; null for an unknown id
+    pinTo(id, seconds = 10) {
+      const sh = arena.shapes.find((s) => s.id === id);
+      if (!sh || !creature) return null;
+      const c = creature.motion.center, cx = c.x * scale, cz = c.z * scale;
+      let dx = sh.at[0] - cx, dz = sh.at[1] - cz; const d = Math.hypot(dx, dz);
+      if (d > 1e-6) { dx /= d; dz /= d; } else { dx = 1; dz = 0; }
+      const out = (sh.kind === 'rock' ? sh.radius : sh.size[0] / 2) + 6;
+      keys.clear();
+      plane.reset(sh.at[0] + dx * out, sh.at[1] + dz * out, Math.atan2(-dx, -dz));
+      scripted = { throttle: 0, turn: 0, until: t + seconds };   // held: no input moves it, and a held tank is not a meal
+      pin = { id, shape: sh, until: t + seconds };
+      placeTank();
+      return { id, at: [...sh.at], tank: { x: drive.x, z: drive.z } };
+    },
     // the state readout; `centre` and `contacts` ([[x, z], ...], the floor nodes) in local metres, as the rules see the body
     fight: () => {
       const c = creature ? creatureNow() : { centre: null, contacts: [] };
