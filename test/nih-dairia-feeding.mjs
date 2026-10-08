@@ -2,8 +2,8 @@
 // scottstts; GPL-3.0, see src/fx/nih-dairia/LICENSE), pointed at the port.
 // Changes from the kit's script: imports go to src/fx/nih-dairia and the vendored three; the models load
 // from assets/creatures/nih-dairia relative to this file; PREY_SHAPES and preyImprint come from
-// prey-shapes.js (the logic half of the kit's prey.ts); AutoLure (src/monster/auto-lure.ts, not part of
-// this port) is copied below, types stripped, as a test fixture; the kit's diagnostic console.log lines
+// prey-shapes.js (the logic half of the kit's prey.ts); AutoLure is imported from auto-lure.js, the
+// port of src/monster/auto-lure.ts; the kit's diagnostic console.log lines
 // are folded into the one summary line at the end.
 // createPrey (the mesh half of prey.ts) is Task 4's, so the shape section runs without the rendered mesh:
 //   dropped: 'wrapped prey has no red emission' (material.emissiveIntensity 0) and 'wrapped prey has
@@ -18,31 +18,10 @@ import { Vector3 } from '../vendor/three.module.js';
 import { FeedingCycle } from '../src/fx/nih-dairia/feeding.js';
 import { MonsterBehavior } from '../src/fx/nih-dairia/behavior.js';
 import { ARENA } from '../src/fx/nih-dairia/arena.js';
+import { AutoLure } from '../src/fx/nih-dairia/auto-lure.js';
 import { parseCage } from '../src/fx/nih-dairia/cage-model.js';
 import { SoftBody } from '../src/fx/nih-dairia/soft-body.js';
 import { PHYS } from '../src/fx/nih-dairia/constants.js';
-
-// The kit's src/monster/auto-lure.ts, types stripped (a test fixture here).
-/** Bounded, smooth figure-eight stimulus. Manual grabbing switches it off. */
-class AutoLure {
-  enabled=false;
-  time=0;
-  destination=new Vector3();
-  reset(){this.time=0;}
-  step(h,target,creature){
-    if(!this.enabled||h<=0)return;
-    const distance=Math.hypot(target.x-creature.x,target.z-creature.z);
-    this.time+=h*(distance>.22?.35:1);
-    const phase=this.time*.45;
-    this.destination.set(Math.sin(phase)*.34,ARENA.lureHeight,Math.sin(phase*2+.6)*.18);
-    const radius=Math.hypot(this.destination.x,this.destination.z);
-    if(radius>ARENA.lureRadius)this.destination.multiplyScalar(ARENA.lureRadius/radius);
-    this.destination.y=ARENA.lureHeight;
-    const delta=this.destination.sub(target),length=delta.length();
-    const speed=distance>.22?.025:.105;
-    if(length>0)target.addScaledVector(delta,Math.min(1,speed*h/length));
-  }
-}
 
 const feeding=new FeedingCycle(),target=new Vector3(.02,.012,0),center=new Vector3(0,.03,0);
 for(let i=0;i<120;i++)feeding.step(PHYS.step,target,center,false);

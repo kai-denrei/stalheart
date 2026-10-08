@@ -1,4 +1,4 @@
-// Ported from lab-creatures src/monster/pursuit.ts (kai-denrei, f2a4f89, export of 2026-10-08; derived from Jelly Baby by scottstts; GPL-3.0, see ./LICENSE), types stripped; the solver, the gait, the pursuit and the feeding are unchanged.
+// Ported from lab-creatures src/monster/pursuit.ts (kai-denrei, f2a4f89 with the pursuit fix of b3cfb52, export of 2026-10-08; derived from Jelly Baby by scottstts; GPL-3.0, see ./LICENSE), types stripped; the solver, the gait, the pursuit and the feeding are unchanged.
 import { Vector3 } from '../../../vendor/three.module.js';
 import { DEFAULT_MOTION } from './motion-settings.js';
 
@@ -20,7 +20,6 @@ export class TentaclePursuit {
   phase='reach';
   elapsed=0;
   burst=0;
-  heading=new Vector3(1,0,0);
   engaged=false;
   clock=0;
   settings;
@@ -29,7 +28,6 @@ export class TentaclePursuit {
   constructor(settings={...DEFAULT_MOTION},count=6){this.settings=settings;this.count=count;this.spacing=2*Math.PI/count;}
   reset(){this.lead=0;this.secondLead=1;this.reach=0;this.secondReach=0;this.pull=0;this.speed=0;this.side=0;this.phase='reach';this.elapsed=0;this.burst=0;this.clock=0;this.engaged=false;}
   selectArms(direction){
-    this.heading.copy(direction);
     const angle=Math.atan2(direction.z,direction.x);
     this.lead=(Math.round(angle/this.spacing)+this.count)%this.count;
     const delta=Math.atan2(Math.sin(angle-this.lead*this.spacing),Math.cos(angle-this.lead*this.spacing));
@@ -40,7 +38,9 @@ export class TentaclePursuit {
     this.searchScale=smooth((distance-.045)/.18);
     this.clock+=h;
     if(!engaged){this.engaged=false;this.reach*=Math.exp(-h*14);this.secondReach*=Math.exp(-h*14);this.pull=0;this.speed=0;this.side=0;return;}
-    if(!this.engaged||this.heading.dot(direction)<.55){
+    // A moving target must not restart every long reach and starve the pull phase.
+    // Sensor directions follow it continuously; arm selection changes between bursts.
+    if(!this.engaged){
       this.phase='reach';this.elapsed=0;this.reach=0;this.secondReach=0;this.pull=0;this.selectArms(direction);
     }
     this.engaged=true;this.elapsed+=h;

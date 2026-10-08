@@ -1,9 +1,9 @@
 // The kit's scripts/verify-monster.mjs and scripts/verify-probes.mjs as of the export's commit f2a4f89 (lab-creatures, kai-denrei;
-// derived from Jelly Baby by scottstts; GPL-3.0, see src/fx/nih-dairia/LICENSE), pointed at the port.
+// derived from Jelly Baby by scottstts; GPL-3.0, see src/fx/nih-dairia/LICENSE), pointed at the port, plus the test of upstream b3cfb52 (turning prey must not starve the pull phase; the pursuit fix).
 // Changes from the kit's scripts: imports go to src/fx/nih-dairia and the vendored three; the models load
 // from assets/creatures/nih-dairia relative to this file; verify-monster's parseBabyCage (in the kit an
-// alias of parseCage) is parseCage; AutoLure (src/monster/auto-lure.ts, not part of this port) is copied
-// below, types stripped, as a test fixture so its assertions stay; the kit's diagnostic console.log lines
+// alias of parseCage) is parseCage; AutoLure is imported from auto-lure.js, the port of
+// src/monster/auto-lure.ts; the kit's diagnostic console.log lines
 // are folded into the one summary line at the end. No assertion is dropped: verify-monster already ran
 // on the nih-dairia model, so none of its assertions is baby-only.
 import assert from 'node:assert/strict';
@@ -17,33 +17,12 @@ import { Vector3 } from '../vendor/three.module.js';
 import { DEFAULT_MOTION, MOTION_CONTROLS, normalizeMotion } from '../src/fx/nih-dairia/motion-settings.js';
 import { TentaclePursuit } from '../src/fx/nih-dairia/pursuit.js';
 import { ARENA } from '../src/fx/nih-dairia/arena.js';
+import { AutoLure } from '../src/fx/nih-dairia/auto-lure.js';
 
 const load=name=>{
   const bytes=readFileSync(new URL(`../assets/creatures/nih-dairia/${name}.bin`,import.meta.url));
   return parseCage(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength),JSON.parse(readFileSync(new URL(`../assets/creatures/nih-dairia/${name}.json`,import.meta.url),'utf8')));
 };
-
-// The kit's src/monster/auto-lure.ts, types stripped (a test fixture here).
-/** Bounded, smooth figure-eight stimulus. Manual grabbing switches it off. */
-class AutoLure {
-  enabled=false;
-  time=0;
-  destination=new Vector3();
-  reset(){this.time=0;}
-  step(h,target,creature){
-    if(!this.enabled||h<=0)return;
-    const distance=Math.hypot(target.x-creature.x,target.z-creature.z);
-    this.time+=h*(distance>.22?.35:1);
-    const phase=this.time*.45;
-    this.destination.set(Math.sin(phase)*.34,ARENA.lureHeight,Math.sin(phase*2+.6)*.18);
-    const radius=Math.hypot(this.destination.x,this.destination.z);
-    if(radius>ARENA.lureRadius)this.destination.multiplyScalar(ARENA.lureRadius/radius);
-    this.destination.y=ARENA.lureHeight;
-    const delta=this.destination.sub(target),length=delta.length();
-    const speed=distance>.22?.025:.105;
-    if(length>0)target.addScaledVector(delta,Math.min(1,speed*h/length));
-  }
-}
 
 // ---- verify-monster.mjs ----
 // Keep the original choreography as a regression fixture; exercise the user's
@@ -316,8 +295,21 @@ function sweepTravel(sweep){
 const steady=sweepTravel(0),sweeping=sweepTravel(3);
 for(let i=0;i<2;i++)assert(sweeping.ranges[i]>steady.ranges[i]+.15,'each actual arm sweeps through a visibly larger arc');
 assert(sweeping.staggered>10,'arms are not locked into mirrored arcs');
+
+// A target that turns during a long reach used to reset the phase indefinitely.
+// Exercise live slider changes and maximum duration against repeated direction changes.
+const pursuit=rig.pursuit;pursuit.reset();
+const direction=rig.target.clone();let pulls=0;
+Object.assign(rig.settings,DEFAULT_MOTION,{reachTime:10,sweep:5});
+for(let i=0;i<240*20;i++){
+ const angle=i/240*3;direction.set(Math.cos(angle),0,Math.sin(angle));
+ if(i===240*5)Object.assign(rig.settings,{stretch:5,spread:6,grip:5,pauseTime:12});
+ pursuit.step(PHYS.step,direction,true,.3);
+ if(pursuit.speed>0)pulls++;
+}
+assert(pulls>100,'turning prey and live tuning must not starve the pull phase');
 probes={long:long.lengths.map(v=>+v.toFixed(3)),sweep:sweeping.ranges.map(v=>+v.toFixed(2))};
 }
 
 const f=v=>+v.toFixed(4);
-console.log(`Nih-Dairia motion: settings, pursuit, gait, stance (core ${f(coreClearance)} m up), stalk, envelop, recoil, two-arm reach (${armExtensions.map(f).join(', ')} m), auto lure (furthest ${f(furthest)} m), grip (drift ${drift.map(f).join(' / ')}; slip ${slip.map(f).join(' / ')}), limb separation, probes (stretch ${probes.long.join(', ')} m; sweep ${probes.sweep.join(', ')} rad) as the kit verifies them.`);
+console.log(`Nih-Dairia motion: settings, pursuit, gait, stance (core ${f(coreClearance)} m up), stalk, envelop, recoil, two-arm reach (${armExtensions.map(f).join(', ')} m), auto lure (furthest ${f(furthest)} m), grip (drift ${drift.map(f).join(' / ')}; slip ${slip.map(f).join(' / ')}), limb separation, probes (stretch ${probes.long.join(', ')} m; sweep ${probes.sweep.join(', ')} rad; turning prey keeps pulling) as the kit verifies them.`);
