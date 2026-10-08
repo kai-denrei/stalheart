@@ -21,4 +21,13 @@ export const BOSS_FIGHT = freeze({
   card: 3,                 // the KILLED / LOST card's seconds before the reset
   respawn: 40,             // the tank respawns this far out, away from the creature
   deathGravity: 10,        // the v1 death: the lab's gravity knob's maximum, the body collapses
+  wall: { clear: 6 },      // the creature's routing keeps this far from a live shape's footprint (next-round spec, section 3)
+  arena: [                 // the obstacles, local metres at the creature's rest; a wall's yaw in degrees, its length along (cos yaw, sin yaw) in [x, z]
+    { id: 'r1', kind: 'rock', at: [0, 55], radius: 8, height: 6, breakable: false },
+    { id: 'r2', kind: 'rock', at: [-40, -45], radius: 8, height: 6, breakable: false },
+    { id: 'r3', kind: 'rock', at: [35, 30], radius: 5, height: 6, breakable: true },
+    { id: 'r4', kind: 'rock', at: [-30, 25], radius: 6, height: 6, breakable: true },
+    { id: 'w1', kind: 'wall', at: [25, -40], size: [20, 3], yaw: 30, height: 3, breakable: true },
+    { id: 'w2', kind: 'wall', at: [-55, 0], size: [20, 3], yaw: 90, height: 3, breakable: true },
+  ],
 });
