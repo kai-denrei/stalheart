@@ -19,6 +19,11 @@ import GUI from '../../vendor/lil-gui.esm.js';
 import { buildUnit, preloadMork } from '../units.js';
 import { createPlaneDrive } from './boss/drive.js';
 import { createCannon } from './boss/cannon.js';
+import { createFriendlies } from './boss/friendlies.js';
+import { makeFight, startFight, capture, kill, tick as tickFight, readout as fightReadout } from '../domain/boss-fight.js';
+import { BOSS_FIGHT } from '../content/boss-fight.js';
+import { LASER_AUDIO } from '../content/orbital-laser.js';
+import { SOUNDS } from '../audiomanifest.js';
 import { createExplosions } from '../fx/explosions.js';
 import { makeTankFeel, stepTankFeel, applyTankFeel, landTankFeel } from '../tankfeel.js';
 import { FEEL, loadFeel } from '../feelstore.js';
@@ -181,7 +186,7 @@ export function initBossTab(root) {
   let scripted = null;   // { throttle, turn, until } from driveTank()
   let blocked = false, cruiseTap = false, lastFastTap = -9;
   // the engine bed: a looped handle, retried every frame while moving (loop() is null until the samples decode), as the game does
-  const audio = makeAudio({ base: '../' }); audio.arm();   // the context is born on the first gesture
+  const audio = makeAudio({ base: '../', sounds: { ...SOUNDS, ...LASER_AUDIO } }); audio.arm();   // the context is born on the first gesture; SOL's burn loop is the laser lab's sample
   let engine = null, engineRunning = false;
   const keys = new Set();
   const isText = (e) => /^(INPUT|SELECT|TEXTAREA)$/.test(e.target?.tagName ?? '');
@@ -260,6 +265,27 @@ export function initBossTab(root) {
     return { point, normal: point.clone().normalize() };
   }
   const cannon = createCannon(scene, { sphere, surface, cellSide: 10, explosions, sfx: audio, feel, cool: CANNON_COOL, onHit: provoke });
+  // --- the fight: the rules (src/domain/boss-fight.js) on the lab's clock `t`, started by the tank's first movement; the gunship's
+  // Bofors and SOL-88 fire on the creature from above (./boss/friendlies.js). `fightTune` is the lab's live copy of the numbers
+  const fightTune = JSON.parse(JSON.stringify(BOSS_FIGHT)), fightOn = { gunship: true, sol: true };
+  const fight = makeFight(fightTune);
+  // the creature for the rules, in local metres: the centre, its velocity, half the body's extent, the nodes on the floor
+  function creatureNow() {
+    const m = creature.motion, b = creature.body, c = b.contact, contacts = [];
+    for (let i = 0; i < c.length; i++) if (c[i] > 0) contacts.push([b.x[i * 3] * scale, b.x[i * 3 + 2] * scale]);
+    return { centre: [m.center.x * scale, m.center.z * scale], velocity: [m.velocity.x * scale, m.velocity.z * scale], radius: native * scale / 2, contacts };
+  }
+  const friendlies = createFriendlies(scene, {
+    sphere, surface, cellSide: 10, explosions, sfx: audio, tune: () => fightTune, fight: () => fight, now: () => t,
+    creature: creatureNow, tank: () => ({ pos: [drive.x, drive.z], radius: fightTune.hull.radius }),
+    onTankHit: (reason) => capture(fight, reason), enabled: () => fightOn,   // the LOST card and the reset are Task 4's
+  });
+  function stepFight(dt, driving) {
+    if (driving && fight.phase === 'idle') startFight(fight);
+    friendlies.tick(dt);
+    if (fight.phase === 'fight' && fight.hp <= 0) kill(fight);
+    if (tickFight(fight, dt) === 'reset') friendlies.reset();
+  }
   const muzzleV = new THREE.Vector3(), aimQ = new THREE.Quaternion(), aimV = new THREE.Vector3();
   function fireCannon() {
     if (!planet || !frame || !tank.visible) return false;
@@ -357,6 +383,7 @@ export function initBossTab(root) {
     frame = next; placeRig();
     const l = toLocal(frame, w, 1); drive.x = l[0]; drive.z = l[2];   // the tank stays put in the world
     cannon.shift(shift[0] * scale, shift[2] * scale);                 // and so do the shells in flight
+    friendlies.shift(shift[0] * scale, shift[2] * scale);             // and the strikes' landings
     reanchors++;
     return true;
   }
@@ -486,6 +513,7 @@ export function initBossTab(root) {
     stepTankFeel(feel, dt, driving, FEEL);
     applyTankFeel(tank, feel, FEEL);
     runEngine(driving);
+    stepFight(dt, driving);
     stepCannon(dt);
     // the readout's numbers, per frame, into the rolling means
     const tm = creature.timings;
@@ -563,6 +591,7 @@ export function initBossTab(root) {
       size: state.sizeMetres, scale, lure: state.lure, variant: state.variant, cut: cutFrames.mean() > 0, frames, reanchors,
       speed: drive.speed, blocked, cruise: drive.cruise, provokes, heat: cannon.heat(), shells: cannon.shells(),
       tank: { x: drive.x, z: drive.z, yaw: drive.yaw, speed: drive.speed, visible: tank.visible },
+      fight: { ...fightReadout(fight), phase: fight.phase, rings: friendlies.rings() },
       shaderErrors: shaderErrors.slice(), error: fatal ?? frameError, cropped,
       kernel: !!creature?.body.kernel,
     };
@@ -573,6 +602,8 @@ export function initBossTab(root) {
     const stepsHtml = r.cut ? `<b class="late">${fmt(r.steps, 1)}</b>` : `<b>${fmt(r.steps, 1)}</b>`;
     let html = `solver <b>${fmt(r.solver)} ms</b> (${stepsHtml} steps) &middot; skin <b>${fmt(r.skin)} ms</b> &middot; render <b>${fmt(r.render)} ms</b>`
       + ` &middot; centre <b>${fmt(r.centre)} m/s</b> &middot; reach <b>${fmt(r.reach, 1)} m</b> &middot; sag <b>${fmt(r.sag)} m</b> &middot; taken <b>${r.taken}</b> &middot; provokes <b>${r.provokes}</b>`
+      + ` &middot; hp <b>${fmt(r.fight.hp, 0)}/${r.fight.max}</b> &middot; hits <b>${r.fight.hits}</b> &middot; <b>${fmt(r.fight.hpPerSecond, 1)}</b> hp/s`
+      + ` &middot; ttk <b>${Number.isFinite(r.fight.timeToKill) ? `${fmt(r.fight.timeToKill, 0)} s` : '&mdash;'}</b>`
       + `<br>size ${r.size} m (&times;${fmt(r.scale, 0)}) &middot; ${r.state ?? '—'} &middot; ${r.variant} &middot; lure ${r.lure}`
       + ` &middot; ${r.kernel ? 'wasm kernel' : 'js solver'} &middot; re-anchored ${r.reanchors}`;
     if (shaderErrors.length) html += `<br><b class="late">shader: ${escapeHtml(shaderErrors[shaderErrors.length - 1])}</b>`;
@@ -674,7 +705,7 @@ export function initBossTab(root) {
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
       renderer.domElement.removeEventListener('pointerup', onPointerUp);
       creature?.dispose(); if (prey) { prey.mesh.geometry.dispose(); prey.mesh.material.dispose(); }
-      cannon.dispose(); explosions.dispose();
+      cannon.dispose(); friendlies.dispose(); explosions.dispose();
       planetMesh?.userData.dispose(); disposeObj(tank); gui.destroy(); controls.dispose(); renderer.dispose(); renderer.domElement.remove();
       engine?.stop(0); engine = null; audio.dispose();
       if (window.__bossLab === lab) delete window.__bossLab;
@@ -700,6 +731,7 @@ export function initBossTab(root) {
     },
     driveTank(seconds = 1) { scripted = { throttle: 1, turn: 0, until: t + seconds }; return true; },
     fire: () => fireCannon(),
+    fight: () => ({ ...fightReadout(fight), phase: fight.phase, reason: fight.reason, strikes: fight.strikes.map((p) => p.kind) }),
     copySettings, reset, reanchor: () => tryReanchor(0),
   };
   if (q.get('acceptance') === '1') window.__bossLab = lab;
