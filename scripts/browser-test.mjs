@@ -2034,6 +2034,52 @@ try{
  console.log(`CORRIDOR PROBE ${site}: ${reached?'REACHED':'stopped'} at cell ${best+1} of ${ids.length} in ${took} s; kicks ${k1-k0}; still ${still} of ${samples} samples; slow cells ${JSON.stringify(slow)}; trace artifacts/corridor-trace.json`);
  current='corridor-probe-end';await finish();
  if(process.env.ASSERT){assert(reached,`the hull reaches ${site} (${best+1} of ${ids.length})`);assert(slow.length===0,`no cell holds the hull ${stuckS} s (${JSON.stringify(slow)})`);}
+ } else if(args.includes('--boss-fight')) {
+ // THE BOSS FIGHT (2026-10-08; spec docs/superpowers/specs/2026-10-08-boss-fight-prototype-design.md, section 8): the gunship's
+ // Bofors and SOL-88 on Nih-Dairia while the tank circles at 45 m; the hp falls below half within 20 s, both shooters' rings
+ // show, the rounds hit; parked beside it the tank is lost and the round resets; then, the creature held still (instinct
+ // off), the standing body dies within the balance's bound (24 to 36 s on the fight's clock)
+ const B='window.__bossLab',{BOSS_FIGHT:tune}=await import('../src/content/boss-fight.js');
+ const F=`(()=>{const f=${B}.fight();return {hp:f.hp,max:f.max,clock:f.clock,hits:f.hits,hpPerSecond:f.hpPerSecond,phase:f.phase,reason:f.reason,strikes:f.strikes}})()`;
+ await go('boss-fight','labs.html?sw=0&acceptance=1#boss');
+ await until(`!!${B} && ${B}.readout().steps > 0`,60000);
+ await evaluate(`${B}.setLure("tank"); ${B}.setFight(true); ${B}.circle(35, 45)`);
+ await until(`${B}.fight().phase === "fight"`,10000);
+ let f,half=null,minHp=Infinity;const kinds=new Set(),phases=new Set();
+ for(const end=Date.now()+35000;Date.now()<end;){
+   await delay(250);f=await evaluate(F);phases.add(f.phase);   // a quarter second, so the half's clock is late by no more
+   if(f.phase!=='fight')break;
+   f.strikes.forEach(k=>kinds.add(k));minHp=Math.min(minHp,f.hp);
+   if(half===null&&f.hp<f.max/2)half=f.clock;
+ }
+ const circling={hp:+f.hp.toFixed(1),max:f.max,min:+minHp.toFixed(1),clock:+f.clock.toFixed(2),hits:f.hits,hpPerSecond:+f.hpPerSecond.toFixed(2),half:half&&+half.toFixed(2),strikes:[...kinds],phase:f.phase,reason:f.reason,phases:[...phases]};
+ console.log('BOSS-FIGHT '+JSON.stringify({circling}));
+ assert(half!==null&&half<=20,`the hp falls below half within 20 s of circling (${JSON.stringify(circling)})`);
+ assert(kinds.has('bofors')&&kinds.has('sol'),`both shooters' rings showed (${[...kinds]})`);
+ assert(f.hits>0,'the rounds hit');
+ // parked beside the creature: lost (caught, or under a landing); a creature the circling killed first resets, then a
+ // fresh fight starts on a nudge beside it. Then the reset after the card
+ if(f.phase!=='fight'){await until(`${B}.fight().phase === "idle" && ${B}.readout().fight.card === null`,20000);await evaluate(`${B}.driveTank(0.05)`);await until(`${B}.fight().phase === "fight"`,10000);}
+ await evaluate(`${B}.park()`);
+ await until(`["lost","killed"].includes(${B}.fight().phase)`,20000);
+ const end1=await evaluate(F);console.log('BOSS-FIGHT '+JSON.stringify({parked:{phase:end1.phase,reason:end1.reason,clock:+end1.clock.toFixed(2),card:await evaluate(`${B}.readout().fight.card`)}}));
+ await delay(tune.card*1000+500);
+ const after=await evaluate(F);
+ assert(['idle','fight'].includes(after.phase),`the round reset after the card (${after.phase})`);
+ // the standing body: the instinct off, a fresh round, the tank nudged 60 m out to start the fight
+ await until(`${B}.fight().phase === "idle" && ${B}.readout().fight.card === null`,20000);
+ const scale=await evaluate(`${B}.readout().scale`);
+ await evaluate(`${B}.setInstinct(false); ${B}.reset()`);await delay(1500);
+ await evaluate(`${B}.stopTank({ near: true, at: ${60/scale} }); ${B}.driveTank(0.05)`);await delay(500);await evaluate(`${B}.stopTank()`);
+ await until(`${B}.fight().phase !== "fight" && ${B}.fight().phase !== "idle"`,45000);
+ const k=await evaluate(F),kill={phase:k.phase,reason:k.reason,clock:+k.clock.toFixed(2),hits:k.hits,hpPerSecond:+k.hpPerSecond.toFixed(2),max:k.max,card:await evaluate(`${B}.readout().fight.card`)};
+ console.log('BOSS-FIGHT '+JSON.stringify({standing:kill}));
+ assert.equal(k.phase,'killed',`the standing body is killed (${JSON.stringify(kill)})`);
+ assert(k.clock>=24&&k.clock<=36,`the standing body dies within 24 to 36 s (${kill.clock} s)`);
+ await evaluate(`${B}.setInstinct(true)`);
+ const readout=await evaluate(`${B}.readout()`);
+ assert.deepEqual(readout.shaderErrors,[],'no shader errors');assert(!readout.error,`no frame error (${readout.error})`);
+ current='boss-fight-reset';await finish();
  } else if(args.includes('--boss')) {
  // THE BOSS LAB (2026-10-08; src/labs/boss-tab.js): Nih-Dairia at thirty metres on the story planet, the tank its prey. The solver steps,
  // the creature is boss-sized in the world, a driving tank inside its reach counts as held and is not taken, a parked one is.

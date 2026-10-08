@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "2026-10-08-boss-fight-prototype-design",
+  "date": "2026-10-08",
+  "type": "decision",
+  "status": "proposed",
+  "title": "The boss fight prototype in the Nih-Dairia lab: the game's drive, the tank's cannon, the gunship's Bofors and SOL-88 from above with red landing rings, a health bar and the round, so a creature avoided for thirty seconds dies",
+  "context": "Owner, 2026-10-08, after seeing the boss lab: \"add the tank driving feel from the main game ... allows the tank to shoot ... health bar for the boss ... the gunship and SOL fire from above. goal of the player is to avoid where the shots will be landing (they show as red laser spots on the ground). goal: if the player avoid the creature for about 30 seconds the friendlies should have landed enough hits to kill it.\" Decided in the brainstorm: the friendlies take the health down, the tank provokes and does not wound; caught means a lost hull and the round resets; a red spot shows about 1.5 s before its shot lands; the v1 death is gravity 10 and every movement stopped (owner).",
+  "outcome": "Spec: docs/superpowers/specs/2026-10-08-boss-fight-prototype-design.md. The rules as a pure domain module (src/domain/boss-fight.js) with its numbers in content (src/content/boss-fight.js) and a node test; the lab's pieces under src/labs/boss/ (drive, cannon, friendlies, round) composed by src/labs/boss-tab.js; a --boss-fight browser step. The base, the creature's attention, the gunship in the sky and the nuke are out. Builds on the unpushed branch refactor-run; the game controller is untouched. Proposed until the owner has played it.",
+  "alternatives": [
+    "Make the tank's shells wound the boss (rejected in the brainstorm: the tank provokes and draws it, the friendlies kill)"
+  ],
+  "evidence": [
+    "docs/superpowers/specs/2026-10-08-boss-fight-prototype-design.md (corrected twice by measurement: Task 0's node proof, then the real body's floor contacts in Task 5)"
+  ],
+  "supersedes": []
+}

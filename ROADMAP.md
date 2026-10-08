@@ -371,7 +371,7 @@ First step, when it is picked up: `@ts-check` on `src/domain` as a trial, to see
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 60 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 61 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
 
 ### Open: the Nih-Dairia kit is GPL-3.0 and Stalheart's public repository has no licence; the owner decides before any push
 
@@ -402,6 +402,12 @@ Owner, 2026-10-08, while opening the Nih-Dairia boss lab (docs/superpowers/specs
 `2026-10-08-boss-mode-idea-draw-it-off-the-base` · decision · **proposed**
 
 Owner, 2026-10-08, opening the Nih-Dairia boss lab: "Idea for a game mode; the creature is huge, doesn't move too fast. The tank must draw its attention away from the base, moving around and escaping its tentacles, while the Gunship and the SOL take aim at it. goal: stress of avoiding tentacles, relying on the team, death from above." The creature is the owner's lab-creatures Nih-Dairia (soft-body, a spider gait, two probing arms, prey capture: unheld prey that stays within reach is cradled, covered and absorbed).
+
+### The boss fight prototype in the Nih-Dairia lab: the game's drive, the tank's cannon, the gunship's Bofors and SOL-88 from above with red landing rings, a health bar and the round, so a creature avoided for thirty seconds dies
+
+`2026-10-08-boss-fight-prototype-design` · decision · **proposed**
+
+Owner, 2026-10-08, after seeing the boss lab: "add the tank driving feel from the main game ... allows the tank to shoot ... health bar for the boss ... the gunship and SOL fire from above. goal of the player is to avoid where the shots will be landing (they show as red laser spots on the ground). goal: if the player avoid the creature for about 30 seconds the friendlies should have landed enough hits to kill it." Decided in the brainstorm: the friendlies take the health down, the tank provokes and does not wound; caught means a lost hull and the round resets; a red spot shows about 1.5 s before its shot lands; the v1 death is gravity 10 and every movement stopped (owner).
 
 ### Open: the wave card draws its 96 px sprite with a second WebGL context
 

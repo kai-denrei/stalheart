@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-10-08-boss-fight-prototype-landed",
+  "date": "2026-10-08",
+  "type": "change",
+  "status": "accepted",
+  "title": "The boss fight prototype landed: the creature standing in the Bofors and SOL-88 dies in 30.6 s at health 155 (--boss-fight green: the rings, the hits, the loss and the reset)",
+  "context": "The plan for 2026-10-08-boss-fight-prototype-design, built on the unpushed branch refactor-run. The node proof first balanced a 60-point contact disc at health 230 (30.62 s); the lab then measured the real standing body dying in 44 s, because its floor contacts are fewer and farther out than the disc.",
+  "outcome": "The rules: src/domain/boss-fight.js (the strike schedule with its warnings and seeded scatter, the landings' falloff to the nearest floor contact, SOL's burn, the cards, the readout) with BOSS_FIGHT in src/content/boss-fight.js and test/boss-fight.mjs. The lab: the game's drive feel and the body as a blocker (src/labs/boss/drive.js), the tank's shell that shoves and provokes but never wounds (cannon.js), the gunship's Bofors and SOL-88 with every landing a red ring 1.5 s ahead (friendlies.js), the bar, the clock, KILLED (the v1 collapse under gravity 10) and LOST (caught, a Bofors round, SOL-88) with the reset (round.js), the fight's knobs on a lab-owned copy and the readout's hp/s and time to kill. The balance from the real body: with the instinct off the lab reads 44 floor contacts in six feet 12.5 to 16.2 m from the centre and none under the middle; the node test's fixture is those 44 contacts (health 230 gives 43.85 s in node, 43.86 s in the lab), and health is 155: a standing creature dies in 30.62 s in node and in the lab (KILLED 0:30.6, 43 hits, 5.06 hp/s). Two lab fixes with it: the LOST/KILLED card stays up while the reset waits for a meal, and switching the fight off clears the shells in flight. The handle gains fight().centre/contacts and setInstinct(on). Balance observations for the boss spec: a creature hunting the tank walks its rings onto it (the aim leads the creature); SOL's footprint never catches the tank; a tank parked beside the creature (25 m) goes to the first Bofors round at 2.6 s before the creature can take it; circling at 45 m the hunting creature died in 28.3 to 28.7 s at 5.4 to 5.5 hp/s, below half at 18.1 to 19.2 s over three runs against the step's 20 s bound (little margin).",
+  "alternatives": [
+    "Keep health 230 and the disc fixture (rejected: the real standing body took 44 s, half again the owner's thirty)"
+  ],
+  "evidence": [
+    "scripts/browser-test.mjs --boss-fight from a snapshot through the lock, headless on kainode (2026-10-08, the last of three green runs): BOSS-FIGHT circling {hp 0 of 155, clock 28.28, hits 38, 5.48 hp/s, half at 18.13 s, strikes bofors and sol, killed}; parked {lost, 'a Bofors round', at 2.6 s}; standing {killed, clock 30.61, 43 hits, 5.06 hp/s}; PASS boss-fight-reset; --boss still PASS boss-taken",
+    "the node sweep on the real-feet fixture: health 200 39.02 s, 180 35.03, 170 32.28, 160 31.45, 155 30.62, 150 28.70, 140 27.45, 130 24.70 (153 to 156 all 30.62)",
+    "test/boss-fight.mjs: 'a standing creature dies in 30.62 s'; npm test, npm run check, npm run build"
+  ],
+  "supersedes": []
+}
