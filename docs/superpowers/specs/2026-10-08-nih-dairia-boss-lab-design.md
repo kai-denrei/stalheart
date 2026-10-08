@@ -16,6 +16,13 @@ scratchpad as `kit-export/`). It adds prey capture and feeding, guided cradling,
 reach sweeps, two more motion settings (fourteen) and four body plans with their own models. The spec below describes that
 kit.
 
+**Second revision (Task 3's review, same day):** the owner's project kept moving while the port ran (head b3cfb52 at
+11:00 JST: four more body plans, a dorsal module, mobile controls, and a six-line fix in `pursuit.ts` so a target that
+keeps turning no longer restarts every reach and starves the pull). The port stays pinned at f2a4f89 except for that
+pursuit fix, which is taken as-is (a turning tank is exactly its case) with its upstream test (`verify-probes.mjs` at
+b3cfb52: 20 s of a turning target must count more than 100 pulls), the file's header naming b3cfb52 for it. The newer
+body plans are a later refresh, not this lab.
+
 ## What the kit is
 
 A portable soft-body creature: 1,187 particles and 3,312 tetrahedra (the ancestor plan) solved as neo-Hookean XPBD at
@@ -103,8 +110,9 @@ labs' shared helpers, never the game controller. The game controller imports non
 - `model.ts` folds into `creature.js`: the fetches take the URLs from content, resolved against `document.baseURI` so the
   Workshop page and the built site both find them (the build copies `assets/` unchanged; nothing under `assets/creatures`
   is quantised or packed).
-- Not ported: `graphics/renderer.ts` (WebGPU), `auto-lure.ts` (the lab re-creates its figure-eight in ten lines against
-  the kit's `ARENA` radii scaled), `scripts/*` (the models are shipped built; rebuilding needs the kit's toolchain and is
+- `auto-lure.ts` is ported as `auto-lure.js` after all (Task 3's review: the kit's own tests use it, and one port beats
+  two copies); the lab uses it with the kit's `ARENA` radii in local metres.
+- Not ported: `graphics/renderer.ts` (WebGPU), `scripts/*` (the models are shipped built; rebuilding needs the kit's toolchain and is
   not a project task), `main.ts`, `variants.selectedVariant` (reads `location`).
 - The JS fallback (`stepJS`) stays and is tested; a browser without WebAssembly moves the creature slowly rather than not at all.
 - The kit's invariants are kept as written: the host never moves the mesh transform independently of the body (the frame
