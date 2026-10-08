@@ -5,6 +5,11 @@
 //
 // The scatter: plan n of a fight takes k = seed + n of the golden-angle sequence, r = scatter * radius * sqrt((k % 8 + 0.5)
 // / 8) at a = k * 2.399963 rad, so eight plans fill the disc evenly and two fights from one seed make identical plans.
+//
+// Contracts with the lab (the caller): `now` is monotonic (the lab's own clock); `provokes` is lab-owned (the cannon counts
+// it, the domain never touches it); the domain never ends the fight on its own: the lab calls `kill` when `readout(state).hp`
+// reaches 0 and `capture` when the creature takes the tank or a landing does; `tankHit` is meaningful only while
+// `phase === 'fight'` (it is computed regardless, `capture` is guarded).
 
 const GOLDEN = 2.399963, SPREAD = 8;
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
