@@ -18,6 +18,8 @@ import { OrbitControls } from '../../vendor/OrbitControls.js';
 import GUI from '../../vendor/lil-gui.esm.js';
 import { buildUnit, preloadMork } from '../units.js';
 import { createPlaneDrive } from './boss/drive.js';
+import { createCannon } from './boss/cannon.js';
+import { createExplosions } from '../fx/explosions.js';
 import { makeTankFeel, stepTankFeel, applyTankFeel, landTankFeel } from '../tankfeel.js';
 import { FEEL, loadFeel } from '../feelstore.js';
 import { makeAudio } from '../audio.js';
@@ -51,6 +53,13 @@ const LURES = ['tank', 'point', 'auto'];
 // the distance (d^2 / 2R: 0.27 m at the old two cells, 20 m; 17 mm at 5 m) and tilts it by d / R, and both grow with the
 // square of the limit, while the shift itself is a few array passes: so a short limit, often
 const REANCHOR_METRES = 5;
+// THE CANNON (./boss/cannon.js): the game's three-second barrel (td-tab.js CANNON_COOL) and the sleeve's cool and hot colours
+const CANNON_COOL = 3;
+const SLEEVE_COOL = new THREE.Color(0x232833), SLEEVE_HOT = new THREE.Color(0xff2a10);
+// a shell meets the body within HIT_M (the blast's half) of a body node under HIT_BAND_M (the hull's band plus 3 m, so a shell at
+// 1.2 m meets the raised torso's underside); the shove is radial from the hit, in native units: the strength capped, its radius, the lift
+const HIT_M = 2, HIT_BAND_M = 6;
+const SHOVE = { strength: 0.08, radius: 0.04, lift: 0.02 };
 
 // a rolling mean over the last n samples
 function roll(n) {
@@ -107,7 +116,7 @@ export function initBossTab(root) {
     </div>
     <div class="sw-stage">
       <div class="sw-callouts" data-callouts></div>
-      <div class="sw-keys" data-keys>W A S D / arrows &middot; drive &middot; W twice &middot; cruise</div>
+      <div class="sw-keys" data-keys>W A S D / arrows &middot; drive &middot; W twice &middot; cruise &middot; Space &middot; fire</div>
       <div class="sw-read" data-read>generating the story planet&hellip;</div>
     </div>
   </div>`;
@@ -147,7 +156,7 @@ export function initBossTab(root) {
   const auto = new AutoLure();
   const meanSolver = roll(WINDOW), meanSkin = roll(WINDOW), meanSteps = roll(WINDOW), meanCentre = roll(WINDOW);
   const meanReach = roll(WINDOW), meanSag = roll(WINDOW), meanRender = roll(2), cutFrames = roll(WINDOW);
-  let renderMs = 0, readAcc = 0;
+  let renderMs = 0, readAcc = 0, provokes = 0;
   let pointWorld = null;   // the point lure, in sphere space (world-fixed, so a re-anchor never moves it)
   // the auto-lure's arena centre in the creature's local metres: the kit's figure-eight is centred on the local origin, so
   // without this every re-anchor would re-centre it on the creature and it would random-walk off the cap. It takes every
@@ -184,6 +193,7 @@ export function initBossTab(root) {
       if (s - lastFastTap < CRUISE_TAP) cruiseTap = true;
       lastFastTap = s;
     }
+    if (k === ' ') { e.preventDefault(); if (!keys.has(k)) fireCannon(); }   // the key-down edge: a held Space does not repeat
     keys.add(k); if (DRIVE_KEYS.includes(k)) e.preventDefault();
   };
   const onUp = (e) => keys.delete(e.key.toLowerCase());
@@ -242,6 +252,64 @@ export function initBossTab(root) {
     tank.quaternion.setFromRotationMatrix(basis.makeBasis(new THREE.Vector3(...tf.east), new THREE.Vector3(...tf.up), new THREE.Vector3(...tf.north)));
     tank.quaternion.multiply(turnQ.setFromAxisAngle(Y, drive.yaw));
   }
+  // --- the cannon: the hull's muzzle along the turret, the hit on the body and the shove -------------------------------------
+  const explosions = createExplosions(sphere, { onError: (e) => shaderErrors.push(`explosions: ${e.message}`) });
+  // the ground under a local point, in sphere space (the explosions and the shells live in the sphere group)
+  function surface(x, z) {
+    const p = tankWorld(x, z), point = new THREE.Vector3(p[0], p[1], p[2]);
+    return { point, normal: point.clone().normalize() };
+  }
+  const cannon = createCannon(scene, { sphere, surface, cellSide: 10, explosions, sfx: audio, feel, cool: CANNON_COOL, onHit: provoke });
+  const muzzleV = new THREE.Vector3(), aimQ = new THREE.Quaternion(), aimV = new THREE.Vector3();
+  function fireCannon() {
+    if (!planet || !frame || !tank.visible) return false;
+    if (state.lure === 'tank' && MEAL_PHASES.has(creature?.motion.feeding.phase)) return false;   // the prey cannot shoot
+    let from = [drive.x, drive.z], dir = plane.heading();
+    tank.updateMatrixWorld(true);
+    const muzzle = tank.userData.muzzle, turret = tank.userData.turret;
+    if (muzzle) {
+      sphere.worldToLocal(muzzle.getWorldPosition(muzzleV));
+      const l = toLocal(frame, muzzleV.toArray(), 1); from = [l[0], l[2]];
+    }
+    if (turret) {   // the turret's world +Z flattened into the plane (the sphere group is not rotated: a world direction is its own)
+      aimV.set(0, 0, 1).applyQuaternion(turret.getWorldQuaternion(aimQ));
+      const e = frame.east, n = frame.north, dx = aimV.x * e[0] + aimV.y * e[1] + aimV.z * e[2], dz = aimV.x * n[0] + aimV.y * n[1] + aimV.z * n[2];
+      if (Math.hypot(dx, dz) > 1e-3) dir = [dx, dz];
+    }
+    return cannon.fire(from, dir);
+  }
+  // the nearest body node under the band within HIT_M of the shell, in local metres; the hit point is that node
+  function shellHit(x, z) {
+    if (!creature) return null;
+    const b = creature.body, n = b.x.length / 3;
+    let best = HIT_M, hit = null;
+    for (let i = 0; i < n; i++) {
+      if (b.x[i * 3 + 1] * scale >= HIT_BAND_M) continue;
+      const px = b.x[i * 3] * scale, pz = b.x[i * 3 + 2] * scale, d = Math.hypot(x - px, z - pz);
+      if (d < best) { best = d; hit = { x: px, z: pz }; }
+    }
+    return hit;
+  }
+  // no wound (owner, brainstorm): the shell shoves the body away from the hit and the creature flinches; the tank provokes
+  function provoke(x, z) {
+    if (!creature) return;
+    const b = creature.body, v = b.velocity, n = b.x.length / 3, hx = x / scale, hz = z / scale;
+    b.wake?.();
+    for (let i = 0; i < n; i++) {
+      const dx = b.x[i * 3] - hx, dz = b.x[i * 3 + 2] - hz, d = Math.hypot(dx, dz);
+      if (d >= SHOVE.radius) continue;
+      const f = 1 - d / SHOVE.radius, push = SHOVE.strength * f;
+      if (d > 1e-9) { v[i * 3] += dx / d * push; v[i * 3 + 2] += dz / d * push; }
+      v[i * 3 + 1] += SHOVE.lift * f;
+    }
+    creature.motion.disturb();
+    provokes++;
+  }
+  function stepCannon(dt) {
+    cannon.tick(dt, shellHit);
+    explosions.tick(dt);
+    tank.userData.heatSleeve?.material.color.lerpColors(SLEEVE_COOL, SLEEVE_HOT, cannon.heat() / CANNON_COOL);
+  }
   function respawnTank() {
     plane.reset(RESPAWN_METRES, 0, Math.PI / 2); scripted = null;
     tank.visible = true;
@@ -288,6 +356,7 @@ export function initBossTab(root) {
     shiftCreature(shift[0], shift[2]);
     frame = next; placeRig();
     const l = toLocal(frame, w, 1); drive.x = l[0]; drive.z = l[2];   // the tank stays put in the world
+    cannon.shift(shift[0] * scale, shift[2] * scale);                 // and so do the shells in flight
     reanchors++;
     return true;
   }
@@ -417,6 +486,7 @@ export function initBossTab(root) {
     stepTankFeel(feel, dt, driving, FEEL);
     applyTankFeel(tank, feel, FEEL);
     runEngine(driving);
+    stepCannon(dt);
     // the readout's numbers, per frame, into the rolling means
     const tm = creature.timings;
     meanSolver.push(tm.solver); meanSkin.push(tm.skin); meanSteps.push(steps); cutFrames.push(cut ? 1 : 0);
@@ -491,8 +561,8 @@ export function initBossTab(root) {
       ready: !!creature && !loading, solver: meanSolver.mean(), steps: meanSteps.mean(), skin: meanSkin.mean(), render: meanRender.mean(),
       centre: meanCentre.mean(), reach: meanReach.mean(), sag: meanSag.mean(), taken, state: m?.state ?? null, phase: m?.feeding.phase ?? null, held: !!m?.targetHeld,
       size: state.sizeMetres, scale, lure: state.lure, variant: state.variant, cut: cutFrames.mean() > 0, frames, reanchors,
-      speed: drive.speed, blocked, cruise: drive.cruise,
-      tank: { x: drive.x, z: drive.z, speed: drive.speed, visible: tank.visible },
+      speed: drive.speed, blocked, cruise: drive.cruise, provokes, heat: cannon.heat(), shells: cannon.shells(),
+      tank: { x: drive.x, z: drive.z, yaw: drive.yaw, speed: drive.speed, visible: tank.visible },
       shaderErrors: shaderErrors.slice(), error: fatal ?? frameError, cropped,
       kernel: !!creature?.body.kernel,
     };
@@ -502,7 +572,7 @@ export function initBossTab(root) {
     const r = readout();
     const stepsHtml = r.cut ? `<b class="late">${fmt(r.steps, 1)}</b>` : `<b>${fmt(r.steps, 1)}</b>`;
     let html = `solver <b>${fmt(r.solver)} ms</b> (${stepsHtml} steps) &middot; skin <b>${fmt(r.skin)} ms</b> &middot; render <b>${fmt(r.render)} ms</b>`
-      + ` &middot; centre <b>${fmt(r.centre)} m/s</b> &middot; reach <b>${fmt(r.reach, 1)} m</b> &middot; sag <b>${fmt(r.sag)} m</b> &middot; taken <b>${r.taken}</b>`
+      + ` &middot; centre <b>${fmt(r.centre)} m/s</b> &middot; reach <b>${fmt(r.reach, 1)} m</b> &middot; sag <b>${fmt(r.sag)} m</b> &middot; taken <b>${r.taken}</b> &middot; provokes <b>${r.provokes}</b>`
       + `<br>size ${r.size} m (&times;${fmt(r.scale, 0)}) &middot; ${r.state ?? '—'} &middot; ${r.variant} &middot; lure ${r.lure}`
       + ` &middot; ${r.kernel ? 'wasm kernel' : 'js solver'} &middot; re-anchored ${r.reanchors}`;
     if (shaderErrors.length) html += `<br><b class="late">shader: ${escapeHtml(shaderErrors[shaderErrors.length - 1])}</b>`;
@@ -604,6 +674,7 @@ export function initBossTab(root) {
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
       renderer.domElement.removeEventListener('pointerup', onPointerUp);
       creature?.dispose(); if (prey) { prey.mesh.geometry.dispose(); prey.mesh.material.dispose(); }
+      cannon.dispose(); explosions.dispose();
       planetMesh?.userData.dispose(); disposeObj(tank); gui.destroy(); controls.dispose(); renderer.dispose(); renderer.domElement.remove();
       engine?.stop(0); engine = null; audio.dispose();
       if (window.__bossLab === lab) delete window.__bossLab;
@@ -628,6 +699,7 @@ export function initBossTab(root) {
       return { x: drive.x, z: drive.z };
     },
     driveTank(seconds = 1) { scripted = { throttle: 1, turn: 0, until: t + seconds }; return true; },
+    fire: () => fireCannon(),
     copySettings, reset, reanchor: () => tryReanchor(0),
   };
   if (q.get('acceptance') === '1') window.__bossLab = lab;
