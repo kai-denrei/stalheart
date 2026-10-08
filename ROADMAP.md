@@ -371,7 +371,25 @@ First step, when it is picked up: `@ts-check` on `src/domain` as a trial, to see
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 55 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 58 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### Open: the Nih-Dairia kit is GPL-3.0 and Stalheart's public repository has no licence; the owner decides before any push
+
+`2026-10-08-nih-dairia-kit-is-gpl-licence-open` · issue · **observed**
+
+Found while revising the boss lab spec (docs/superpowers/specs/2026-10-08-nih-dairia-boss-lab-design.md). The creature comes from the owner's lab-creatures project (/Users/minikai/Dev/Jelly-Baby, f2a4f89), which 'preserves the upstream GPL-3.0 license' of Jelly Baby by scottstts; its kit export carries the LICENSE file. Stalheart's repository (public, kai-denrei/stalheart, source on GitHub and the build on Pages) has no licence file and no licence field in package.json; docs/ASSETS.md licenses only the SentryTowers_A6 assets.
+
+### Explore mesh2motion (https://app.mesh2motion.org/) as a source of boss animation
+
+`2026-10-08-mesh2motion-as-a-boss-animation-source` · experiment · **proposed**
+
+Owner, 2026-10-08, while opening the Nih-Dairia boss lab (docs/superpowers/specs/2026-10-08-nih-dairia-boss-lab-design.md): "make a separate note to explore this project as a potential source for animation of bosses. https://app.mesh2motion.org/". Not part of the soft-body lab: the Nih-Dairia creature animates itself through physics and a gait; this is a separate route for bosses that are rigged meshes.
+
+### A boss mode: the tank draws the huge creature off the base and escapes its tentacles while the gunship and SOL take aim
+
+`2026-10-08-boss-mode-idea-draw-it-off-the-base` · decision · **proposed**
+
+Owner, 2026-10-08, opening the Nih-Dairia boss lab: "Idea for a game mode; the creature is huge, doesn't move too fast. The tank must draw its attention away from the base, moving around and escaping its tentacles, while the Gunship and the SOL take aim at it. goal: stress of avoiding tentacles, relying on the team, death from above." The creature is the owner's lab-creatures Nih-Dairia (soft-body, a spider gait, two probing arms, prey capture: unheld prey that stays within reach is cradled, covered and absorbed).
 
 ### Open: the wave card draws its 96 px sprite with a second WebGL context
 
