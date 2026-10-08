@@ -424,7 +424,7 @@ export function initBossTab(root) {
   // the fight switch: off is the lab as before (an idle fight, no bar, no shooters; a dead creature stands again where it lies)
   function setFight(on) {
     fightOn.fight = !!on;
-    friendlies.reset(); resetDue = -1; hullLost = false;
+    friendlies.reset(); cannon.clear(); resetDue = -1; hullLost = false;
     fight = makeFight(fightTune);
     restoreCreature();
     gui.controllersRecursive().forEach((c) => c.updateDisplay());
@@ -844,7 +844,18 @@ export function initBossTab(root) {
     park: () => lab.stopTank({ near: true, at: 0.15 }),
     setFight,
     fire: () => fireCannon(),
-    fight: () => ({ ...fightReadout(fight), phase: fight.phase, reason: fight.reason, strikes: fight.strikes.map((p) => p.kind) }),
+    // the state readout; `centre` and `contacts` ([[x, z], ...], the floor nodes) in local metres, as the rules see the body
+    fight: () => {
+      const c = creature ? creatureNow() : { centre: null, contacts: [] };
+      return { ...fightReadout(fight), phase: fight.phase, reason: fight.reason, strikes: fight.strikes.map((p) => p.kind), centre: c.centre, contacts: c.contacts };
+    },
+    // the panel's instinct switch: off holds the creature still (the balance's standing body)
+    setInstinct(on) {
+      params.instinct = !!on;
+      if (creature) creature.motion.active = params.instinct;
+      gui.controllersRecursive().forEach((c) => c.updateDisplay());
+      return params.instinct;
+    },
     copySettings, reset, reanchor: () => tryReanchor(0),
   };
   if (q.get('acceptance') === '1') window.__bossLab = lab;

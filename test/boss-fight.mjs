@@ -6,11 +6,18 @@ import { BOSS_FIGHT as T } from '../src/content/boss-fight.js';
 import { makeFight, startFight, schedule, resolveLanding, burn, capture, kill, tick, readout } from '../src/domain/boss-fight.js';
 
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
-const disc = Array.from({ length: 60 }, (_, i) => {   // 60 contacts spread evenly over a 15 m disc
-  const r = 15 * Math.sqrt((i + 0.5) / 60), a = i * 2.399963;
-  return [r * Math.cos(a), r * Math.sin(a)];
-});
-const creature = { centre: [0, 0], velocity: [0, 0], radius: 15, contacts: disc };
+// the standing body's floor contacts as the lab measured them (2026-10-08, Task 5: `__bossLab.fight().contacts` with the
+// instinct off, relative to the centre, in local metres): 44 nodes, six feet of seven or eight at 12.5 to 16.2 m out, none
+// under the middle; the 60-point disc it replaces was denser and closer than the real body (44 s in the lab against 30.6)
+const feet = [
+  [-7.73, -12.8], [-6.55, -12.87], [-6.41, -12.92], [-7.8, -12.99], [-7.89, -11.84], [-6.61, -11.75], [-6.5, -11.59], [-7.86, -11.6],
+  [5.93, -12.83], [7.22, -12.78], [5.94, -12.97], [7.3, -11.73], [7.31, -11.52], [6.01, -11.61], [13.65, -0.28], [13.49, -0.37],
+  [14.76, -0.29], [14.77, -0.41], [-14.08, -0.37], [-12.85, -0.35], [13.47, 1], [14.79, 1.01], [-14.15, 1.04], [-12.87, 1.08],
+  [-6.51, 11], [7.45, 11.04], [-7.83, 11.02], [-6.64, 11.09], [-7.77, 12.14], [-6.63, 12.32], [-6.45, 12.25], [-7.82, 12.21],
+  [6, 12.24], [7.34, 12.21], [-6.54, 13.62], [8.65, 12.34], [6.1, 10.97], [7.4, 11.1], [5.99, 12.18], [7.28, 12.18],
+  [-13.97, -0.24], [8.62, 13.72], [7.29, 13.65], [-15.55, -0.35],
+];
+const creature = { centre: [0, 0], velocity: [0, 0], radius: 15, contacts: feet };
 const far = { pos: [500, 0], radius: T.hull.radius };
 const harmless = (s) => resolveLanding(s, { at: [0, 0], radius: 22, damage: 4 }, { contacts: [[0, 0]] }, far).damage + burn(s, { at: [0, 0], radius: 8, damage: 10 }, 1, { contacts: [[0, 0]] }, far).damage;
 const fight = () => { const s = makeFight(T); startFight(s); return s; };

@@ -125,12 +125,16 @@ SOL's footprint during the burn, is a lost hull.
   that stands in it dies in about 30 s with `health = 230`. Every term is a knob and the readout shows the measured
   `hp/s` and the projected time to kill, so the owner tunes by eye.
 
-`BOSS_FIGHT` (content): `{ health: 230, warn: 1.5, lead: 1, bofors: { burst: 2.6, rest: 1.4, damage: 4, radius: 22,
+`BOSS_FIGHT` (content): `{ health: 155 (230 at first; see below), warn: 1.5, lead: 1, bofors: { burst: 2.6, rest: 1.4, damage: 4, radius: 22,
 travel: 2.6 }, sol: { every: 8, aim: 1.5, burn: 2, dps: 10, radius: 8 }, hull: { radius: 4.2 }, card: 3, respawn: 40 }`.
 **Corrected by Task 0's measurement:** a round landing anywhere on a dense body does near-full damage (the falloff is
 measured to the nearest contact, not to the centre), so the Bofors deal about 6 hp/s, not 3.7; with health 180 the node
-proof killed a standing creature in 24.7 s. Health is 230: the node proof kills a standing creature in 30.62 s; the node test's
-bound stays 24 to 36 s.
+proof killed a standing creature in 24.7 s. **Corrected again by the real body (Task 5):** the standing creature's floor
+contacts, read in the lab with the instinct off, are 44 nodes in six feet 12.5 to 16.2 m from the centre and none under the
+middle, so a round near the centre is far from every contact; health 230 died in 43.86 s in the lab (5.24 hp/s) against the
+disc's 30.6 s. The node test's fixture is now those 44 contacts (230 gives 43.85 s in node too). Health is 155: a standing
+creature dies in 30.62 s in node and in 30.62 s in the lab (`KILLED 0:30.6`, 43 hits, 5.06 hp/s); the node test's bound stays
+24 to 36 s.
 The gun's own rate, travel and damage are read from `GUNSHIP_GUNS.bofors` where the lab fires it; the content holds the
 fight's copies for the domain so the rule stays pure.
 
