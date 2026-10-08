@@ -21,7 +21,8 @@
 //
 // Contracts with the lab (the caller): `now` is monotonic (the lab's own clock); the domain never ends the fight on its own:
 // the lab calls `kill` when `readout(state).hp` reaches 0 and `capture` when the creature takes the tank or a landing does;
-// `tankHit` is meaningful only while `phase === 'fight'` (it is computed regardless, `capture` is guarded).
+// `tankHit` is meaningful only while `phase === 'fight'` (it is computed regardless, `capture` is guarded). A `lost` round resets
+// itself after its card (`tick` returns 'reset'); a `killed` one never does, the lab's own restart (a new state) replaces it.
 //
 // Imports only ./gunship.js's falloff (`splashDamage`), so a landing hurts exactly as the game's splash does.
 
@@ -191,10 +192,11 @@ export function kill(state) {
   Object.assign(state, { phase: 'killed', card: state.cardSeconds });
 }
 
-// the fight's clock while fighting; the card's countdown while lost or killed, then the fight back to idle and 'reset'
+// the fight's clock while fighting; the card's countdown while lost, then the fight back to idle and 'reset'. A killed fight
+// never counts down and never resets: it lies as it fell, its card up, until the lab starts a new round itself
 export function tick(state, dt) {
   if (state.phase === 'fight') { state.clock += dt; return null; }
-  if (state.phase !== 'lost' && state.phase !== 'killed') return null;
+  if (state.phase !== 'lost') return null;
   state.card -= dt;
   if (state.card > 0) return null;
   Object.assign(state, { phase: 'idle', hp: state.max, clock: 0, card: 0, reason: null, hits: 0, damage: 0, byKind: tally(),

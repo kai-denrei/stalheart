@@ -4,7 +4,8 @@
 // THE ROUND OWNS THE ENDING. Each `tick(dt)`, after the lab has applied the frame's damage (friendlies.tick): hp at or below
 // zero in a running fight calls the domain's `kill` HERE, then `onKilled()` once (the lab plays the v1 death); a phase that has
 // become `lost` (the lab's `capture`: the meal or a landing) calls `onLost(reason)` once; then the domain's `tick(state, dt)`
-// runs the clock or the card, and its `'reset'` calls `onReset()`; the card stays until the lab's new state replaces this one. The lab never calls `kill` or `tick`.
+// runs the clock or a lost round's card, and its `'reset'` calls `onReset()`; a killed round never resets: its card stays until the lab's
+// own restart (a new state) replaces this one, as a lost one's does if the reset waits. The lab never calls `kill` or `tick`.
 // `fight()` is read every frame, so the lab may replace the state object (a new round, the switch) at any time. `tune` is part
 // of the lab's contract but unread here: the card's seconds are the state's own (`makeFight` copies them from the tune).
 //
@@ -56,7 +57,7 @@ export function createRound(stage, { tune, fight, on = () => true, onKilled = ()
     const s = fight(), shown = !!on();
     if (s !== seen) { seen = s; told = false; card.hidden = true; }
     if (s.phase === 'fight' && s.hp <= 0) kill(s);
-    if (!told && s.phase === 'killed') { told = true; showCard('KILLED', `${clockText(s.clock)} · ${s.hits} hits`); onKilled(); }
+    if (!told && s.phase === 'killed') { told = true; showCard('KILLED', `${clockText(s.clock)} · ${s.hits} hits · R or Reset to restart`); onKilled(); }
     if (!told && s.phase === 'lost') { told = true; showCard('LOST', `· ${s.reason ?? '—'}`); onLost(s.reason); }
     // the card stays up while the lab's reset is still due (a meal finishing first); the new round's state hides it above
     if (tickFight(s, dt) === 'reset') { told = false; onReset(); }

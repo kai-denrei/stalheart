@@ -2082,12 +2082,25 @@ try{
  assert(liveMin<6,`a nuke landing destroyed at least one breakable (live ${arenaAt.live}, ${fear.phase} at ${fear.clock.toFixed(1)} s of fight clock)`);
  assert(['r1','r2'].every(id=>arenaAt.live.includes(id)),`the permanent rocks stand (${arenaAt.live})`);
  f=fear;   // the phase below is the one after the wait (a nuke that killed it sends the step through the reset)
- // parked beside the creature: lost (caught, or under a landing); a creature the circling killed first resets, then a
- // fresh fight starts on a nudge beside it. Then the reset after the card
- if(f.phase!=='fight'){await until(`${B}.fight().phase === "idle" && ${B}.readout().fight.card === null`,60000);await evaluate(`${B}.driveTank(0.05)`);await until(`${B}.fight().phase === "fight"`,10000);}
+ // parked beside the creature: lost (caught, or under a landing); a creature the circling killed first stays killed (no automatic
+ // reset) until the restart, then a fresh fight starts on a nudge beside it. Then the reset after a LOST round's card
+ const stayDead=async(why,key=false,instinct=true)=>{   // KILLED for at least 5 s of the lab's clock (real-time cap 60 s), the card up, then the restart
+   const c0=(await evaluate(`${B}.arena()`)).clock;let c1=c0;
+   for(const end=Date.now()+60000;Date.now()<end&&c1-c0<5;){await delay(250);c1=(await evaluate(`${B}.arena()`)).clock;}
+   const d=await evaluate(F),card=await evaluate(`${B}.readout().fight.card`);
+   console.log('BOSS-FIGHT '+JSON.stringify({stayedDead:{why,labClock:+(c1-c0).toFixed(2),phase:d.phase,card}}));
+   assert(c1-c0>=5,`${why}: 5 s of lab clock passed within 60 s of real time (${(c1-c0).toFixed(2)})`);
+   assert.equal(d.phase,'killed',`${why}: the creature stays killed, no automatic reset (${d.phase})`);
+   assert(/R or Reset to restart/.test(card??''),`${why}: the KILLED card stays up with its restart hint (${card})`);
+   await evaluate(key?`window.dispatchEvent(new KeyboardEvent('keydown',{key:'r',code:'KeyR'}));window.dispatchEvent(new KeyboardEvent('keyup',{key:'r',code:'KeyR'}))`:`${B}.reset()`);   // R, or the panel's Reset (the handle's reset)
+   const r=await evaluate(`(()=>{const c=${B}.creature();return {phase:${B}.fight().phase,card:${B}.readout().fight.card,active:c.motion.active,feeding:c.motion.feeding.enabled,gravity:c.phys.gravity}})()`);
+   assert(r.phase==='idle'&&r.card===null&&r.active===instinct&&r.feeding===true&&r.gravity<10,`${why}: the restart revives the creature (${JSON.stringify(r)})`);
+ };
+ if(f.phase!=='fight'){if(f.phase==='killed')await stayDead('killed in the circling');else await until(`${B}.fight().phase === "idle" && ${B}.readout().fight.card === null`,60000);await evaluate(`${B}.driveTank(0.05)`);await until(`${B}.fight().phase === "fight"`,10000);}
  await evaluate(`${B}.park()`);
  await until(`["lost","killed"].includes(${B}.fight().phase)`,20000);
  const end1=await evaluate(F);console.log('BOSS-FIGHT '+JSON.stringify({parked:{phase:end1.phase,reason:end1.reason,clock:+end1.clock.toFixed(2),card:await evaluate(`${B}.readout().fight.card`)}}));
+ if(end1.phase==='killed')await stayDead('killed while parked');
  await until(`["idle","fight"].includes(${B}.fight().phase)`,30000).catch(()=>{});   // the card's seconds on the fight's clock, then any meal
  const after=await evaluate(F);
  assert(['idle','fight'].includes(after.phase),`the round reset after the card within 30 s of real time (still ${after.phase}, ${after.reason})`);
@@ -2107,7 +2120,7 @@ try{
  // a player who dodges: the circle at 45 m, widened to max(75 m, the ring's point distance + ring + hull + 3 m) while a nuke's ring shows (the handle's dodge), back to 45 m after it
  // lands. Until KILLED or 60 s of fight clock (180 s of real time as the cap). A LOST round is not a measurement. The kill's clock
  // sets the health (BOSS_FIGHT.health = health x 30 / the clock, to 5) and must land within 25 to 35 s
- await until(`${B}.fight().phase === "idle" && ${B}.readout().fight.card === null`,60000);
+ await stayDead('the standing body',true,false);   // the kill above: it lies there for 5 s of lab clock, then the restart
  await evaluate(`${B}.setInstinct(true); ${B}.reset()`);await delay(1500);
  const taken1=await evaluate(`${B}.readout().taken`);
  await evaluate(`${B}.stopTank({ near: true, at: ${60/scale} }); ${B}.dodge(300, 45, 75)`);

@@ -231,8 +231,10 @@ assert.equal(s2.phase, 'killed');
   assert.equal(tick(s, 0.02), 'reset', 'the reset once the card expires');
   assert.equal(s.phase, 'idle'); assert.equal(s.hp, T.health); assert.equal(s.strikes.length, 0); assert.equal(s.clock, 0);
   assert.equal(s.gun, null); assert.equal(s.nuke, null); assert.deepEqual(Object.values(s.byKind), [0, 0, 0, 0], 'the reset clears the cadence and the per-shooter tally');
+  // a KILLED creature stays killed with its card up however long the ticks run: only the lab's manual restart starts a new round
   const k = fight(); kill(k);
-  assert.equal(tick(k, T.card + 0.01), 'reset', 'killed resets after the card too');
+  for (const dt of [T.card + 0.01, 1, 60, 3600]) assert.equal(tick(k, dt), null, `killed returns null after a tick of ${dt} s`);
+  assert.equal(k.phase, 'killed', 'killed stays killed'); assert.equal(k.card, T.card, 'the killed card does not count down');
 }
 
 // the seeded scatter is repeatable

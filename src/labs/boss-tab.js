@@ -209,6 +209,7 @@ export function initBossTab(root) {
       lastFastTap = s;
     }
     if (k === ' ') { e.preventDefault(); if (!keys.has(k)) fireCannon(); }   // the key-down edge: a held Space does not repeat
+    if (k === 'r' && active && !e.repeat && !keys.has(k) && !e.ctrlKey && !e.metaKey && !e.altKey) newRound();   // a new round at the key-down edge (a held R or a browser reload chord does not repeat it)
     keys.add(k); if (DRIVE_KEYS.includes(k)) e.preventDefault();
   };
   const onUp = (e) => keys.delete(e.key.toLowerCase());
