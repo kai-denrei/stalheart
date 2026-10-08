@@ -83,7 +83,7 @@ first two.
 | `docs/nih-dairia-assets.lock.json` | docs | sha256 of the eight files; credit "lab-creatures (kai-denrei, derived from Jelly Baby by scottstts, GPL-3.0), export of 2026-10-08, model source hash nih-dairia-spider-v2 and its variants"; no upstream URL (the owner's own export) |
 | `labs.html`, `src/main.js` | composition | `<div id="tab-boss" class="tab tab-hidden"></div>`; `boss: () => import('./labs/boss-tab.js').then(m => m.initBossTab)` |
 | `scripts/assets.mjs` | scripts | the lock file added to the list it checks |
-| `test/surface-frame.mjs`, `test/nih-dairia-port.mjs`, `test/nih-dairia-feeding.mjs`, `test/nih-dairia-variants.mjs`, `test/nih-dairia-content.mjs` | test | below |
+| `test/surface-frame.mjs`, `test/nih-dairia-physics.mjs`, `test/nih-dairia-motion.mjs`, `test/nih-dairia-feeding.mjs`, `test/nih-dairia-variants.mjs`, `test/nih-dairia-content.mjs` | test | below |
 | `scripts/browser-test.mjs` | scripts | the `--boss` smoke step |
 
 The layer rules hold by construction: `src/domain/surface-frame.js` imports nothing; `src/content/nih-dairia.js`
@@ -146,7 +146,9 @@ The creature simulates in its own flat metres; a frame places it on the planet.
   clamped to the kit's lure height (`ARENA.lureHeight`, 0.012 m) so the pursuit and the feeding aim at the floor, as the
   kit's arena does.
 - `reanchor(frame, localCentre, radius, scale, limit)`: when `hypot(localCentre.x, localCentre.z) * scale > limit`
-  (two cells, 20 m), returns `{ frame: frameAt(normalise(toWorld(frame, [centre.x, 0, centre.z], scale)), radius, 0,
+  (5 m, `REANCHOR_METRES` in the lab; the first draft said two cells, 20 m: each re-anchor pops the creature by the sagitta
+  of the limit, 0.27 m at 20 m and 17 mm at 5 m, and tilts it by limit / radius, and both grow with the square of the
+  limit while the shift itself is a few cheap array passes, so the final review shortened it), returns `{ frame: frameAt(normalise(toWorld(frame, [centre.x, 0, centre.z], scale)), radius, 0,
   frame.east)` with the old `yaw` kept on the record, `shift: [-centre.x, 0, -centre.z] }`; otherwise the same frame and
   a zero shift. The old `east` as the reference transports the heading along the surface (parallel transport: a few
   degrees over 20 m at radius 750, never a flip). The creature applies the shift to
@@ -177,7 +179,8 @@ The creature simulates in its own flat metres; a frame places it on the planet.
   feeding cycle's `preyPosition`, `scale` and `visible` drive the tank's visibility and a `TAKEN` callout), and the kit's
   prey mesh when the lure is a point or the auto-lure.
 - **Lure selector:** `tank` (default), `point` (click on the surface moves it), `auto` (the figure-eight re-created from
-  the kit's `AutoLure` against the scaled arena). The tank counts as held (`motion.targetHeld`) while its throttle or
+  the kit's `AutoLure` against the scaled arena, world-fixed: its centre takes every re-anchor's shift, so it stays where the
+  lab started instead of re-centring on the creature). The tank counts as held (`motion.targetHeld`) while its throttle or
   steering is non-zero, so a driving tank cannot be taken and a stopped tank within reach is: the mode idea's rule. After
   a meal the tank respawns at the frame's origin plus 30 m and the `taken` count rises on the readout.
 - **Variant selector:** the four body plans; switching disposes and recreates the creature with the current settings.
@@ -212,7 +215,7 @@ The creature simulates in its own flat metres; a frame places it on the planet.
   that returns the local point within 1e-9; `reanchor` with a centre 25 m out returns a frame whose origin is the
   surface point under the centre and a shift that brings the centre to [0, y, 0]; below 20 m it returns the same frame
   and a zero shift; yaw is preserved.
-- `test/nih-dairia-port.mjs`: the kit's `verify-monster.mjs` and `verify-probes.mjs` ported (imports to the port, the
+- `test/nih-dairia-physics.mjs` and `test/nih-dairia-motion.mjs` (the first draft named one `test/nih-dairia-port.mjs`; the kit's scripts are in the motion test, the kernel/JS agreement and the stepper in the physics test): the kit's `verify-monster.mjs` and `verify-probes.mjs` ported (imports to the port, the
   model read from `assets/creatures/nih-dairia/`), plus: 200 fixed steps from rest with the kernel and with the JS
   fallback (`body.kernel = null`) agree on the centre within 1 mm, and `volumeRatio()` stays within 1.05 of 1.
 - `test/nih-dairia-feeding.mjs`: the kit's `verify-feeding.mjs` ported (alignment before descent, torso ground contact,
@@ -223,9 +226,11 @@ The creature simulates in its own flat metres; a frame places it on the planet.
   values; `NIH_DAIRIA_SIZE_METRES` is a positive finite number; every variant in `NIH_DAIRIA_MODELS` has both files on disk
   and in the lock.
 - Browser: `--boss` in `scripts/browser-test.mjs` opens `labs.html#boss`, waits for the readout to show a solver time and
-  at least one fixed step, checks the creature's mesh has a bounding-sphere radius in world units above 10 m, drives the
-  tank for two seconds and checks the state left `listening`, then stops the tank beside the creature with feeding on and
-  waits for `taken` to reach 1. Runs through `scripts/browser-lock.sh` like every suite.
+  at least one fixed step, checks the creature's mesh has a bounding-sphere radius in world units above 10 m, then for ten
+  seconds keeps the tank beside the creature with throttle on and checks it reads as held on every sample and is never
+  taken nor enters a meal, then parks it beside the creature with feeding on, waits for `taken` to reach 1 and checks it no
+  longer reads as held. (The first draft checked that driving moved the state off `listening`; the kit's `setTarget` pins
+  `stimulus` to 1, so the creature stalks before any driving and that check could not fail. The final review replaced it.) Runs through `scripts/browser-lock.sh` like every suite.
 
 ## Open questions for the boss spec (not this one)
 
@@ -233,6 +238,9 @@ What the body is to a shell, a round, a laser and the tank's ram (the kit has `g
 creature's attention between the base and the tank; whether it walks the cell graph or the free surface; how its size
 interacts with gates and walls (no collision in the kit beyond the floor and its own limbs); the cost on a phone (the
 lab's readout on the owner's device decides); the look under the game's post-processing; the licence decision above.
+Whether the creature wakes to motion at all: the kit pins `stimulus` to 1 whenever a target is set, so in the lab it stalks
+any lure from the first frame; the lab proves only that a driving tank counts as held and cannot be taken while a parked one
+is. Listening, and what wakes it, is the boss spec's question.
 
 ## Records
 

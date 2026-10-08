@@ -2036,17 +2036,37 @@ try{
  if(process.env.ASSERT){assert(reached,`the hull reaches ${site} (${best+1} of ${ids.length})`);assert(slow.length===0,`no cell holds the hull ${stuckS} s (${JSON.stringify(slow)})`);}
  } else if(args.includes('--boss')) {
  // THE BOSS LAB (2026-10-08; src/labs/boss-tab.js): Nih-Dairia at thirty metres on the story planet, the tank its prey. The solver steps,
- // the creature is boss-sized in the world, the tank wakes it, and a stopped tank inside its reach is taken
+ // the creature is boss-sized in the world, a driving tank inside its reach counts as held and is not taken, a parked one is.
+ // The kit pins stimulus to 1 while a target is set, so the creature stalks before any driving: waking to motion is not
+ // testable here (the boss spec's question); the held rule is what driving changes
  const B='window.__bossLab';
  await go('boss','labs.html?sw=0&acceptance=1#boss');
  await until(`!!${B} && ${B}.readout().steps > 0`,60000);
  assert((await evaluate(`${B}.readout().solver`))>0,'the solver runs');
  const radius=await evaluate(`(()=>{const g=${B}.creature().mesh.geometry;if(!g.boundingSphere)g.computeBoundingSphere();return g.boundingSphere.radius*${B}.readout().scale;})()`);
  console.log(`BOSS RADIUS ${radius.toFixed(1)} m`);assert(radius>10,`the creature is boss-sized (${radius.toFixed(1)} m across its bounding radius)`);
- await evaluate(`${B}.driveTank(2)`);await delay(2500);
- assert((await evaluate(`${B}.readout().state`))!=='listening','the tank wakes the creature');
- await evaluate(`${B}.setLure("tank"); ${B}.stopTank({ near: true })`);
+ const before=await evaluate(`${B}.readout()`);console.log(`BOSS BEFORE DRIVING state ${before.state} held ${before.held} taken ${before.taken}`);
+ assert.equal(before.taken,0,'nothing taken before the tank comes near');
+ // drive inside the reach: put the tank beside the creature and give it throttle, again every 100 ms, for ten seconds
+ await evaluate(`${B}.setLure("tank"); ${B}.stopTank({ near: true }); ${B}.driveTank(0.3)`);
+ await until(`${B}.readout().held`,20000);   // the rule is applied in the next frame's step
+ const phases=new Set(),framesFrom=(await evaluate(`${B}.readout()`)).frames;let heldSamples=0,samples=0;
+ for(const end=Date.now()+10000;Date.now()<end;){
+   await evaluate(`${B}.stopTank({ near: true }); ${B}.driveTank(0.3)`);
+   await delay(100);
+   const after=await evaluate(`${B}.readout()`);samples++;if(after.held)heldSamples++;phases.add(after.phase);
+   assert.equal(after.taken,0,`a driving tank inside the reach is not taken (state ${after.state}, phase ${after.phase})`);
+ }
+ console.log(`BOSS DRIVING held ${heldSamples}/${samples} over ${(await evaluate(`${B}.readout()`)).frames-framesFrom} frames, phases ${[...phases].join(',')}`);
+ assert.equal(heldSamples,samples,'a driving tank counts as held on every sample');
+ assert(!['cradling','covering','dropping','absorbing'].some((p)=>phases.has(p)),`a held tank never enters a meal (${[...phases]})`);
+ // parked outside the reach (0.15 native, 25 m) so the creature walks onto it as the kit's prey is approached; parked
+ // inside it the tank can land under an arm and the cradle never finishes (the prey inside the skin)
+ await evaluate(`${B}.stopTank({ near: true, at: 0.15 })`);
+ const parkedAt=Date.now();
  await until(`${B}.readout().taken >= 1`,60000);
+ console.log(`BOSS PARKED taken after ${((Date.now()-parkedAt)/1000).toFixed(1)} s`);
+ assert((await evaluate(`${B}.readout().held`))===false,'a parked tank is not held');
  const readout=await evaluate(`${B}.readout()`);console.log('BOSS '+JSON.stringify(readout));
  assert.deepEqual(readout.shaderErrors,[],'no shader errors');assert(!readout.error,`no frame error (${readout.error})`);
  current='boss-taken';await finish();

@@ -6,7 +6,7 @@
 // checked over a real feeding cycle as the kit does, with the tissue colour at coverage 1 added for the r160 material.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { Color, Vector3 } from '../vendor/three.module.js';
+import { Color, Vector3, ShaderLib } from '../vendor/three.module.js';
 import { parseCage } from '../src/fx/nih-dairia/cage-model.js';
 import { SoftBody } from '../src/fx/nih-dairia/soft-body.js';
 import { FeedingCycle } from '../src/fx/nih-dairia/feeding.js';
@@ -36,9 +36,14 @@ assert.equal(mask.count,positions.length/3,'one transmission mask value per surf
 assert(mask.array.every(m=>m===1),'the mask starts fully transmissive');
 const material=appearance.mesh.material;
 assert(material.isMeshPhysicalMaterial&&material.vertexColors&&material.transmission===NIH_DAIRIA_LOOK.transmission&&material.clearcoat===NIH_DAIRIA_LOOK.clearcoat,'the skin is the look on MeshPhysicalMaterial');
-const shader={vertexShader:'#include <common>\n#include <begin_vertex>',fragmentShader:'#include <common>\n#include <transmission_fragment>'};
+// the patch runs on r160's real physical shader strings, so a renamed include fails here and not first in a browser
+const physical=ShaderLib.physical;
+assert(physical.vertexShader.includes('#include <begin_vertex>')&&physical.fragmentShader.includes('#include <transmission_fragment>'),'r160 physical shader has the patched includes');
+const shader={vertexShader:physical.vertexShader,fragmentShader:physical.fragmentShader};
 material.onBeforeCompile(shader);
-assert(shader.vertexShader.includes('vTransmissionMask = transmissionMask;')&&shader.fragmentShader.includes('material.transmission = transmission * vTransmissionMask;')&&!shader.fragmentShader.includes('#include <transmission_fragment>'),'the shader patch scales transmission by the mask');
+assert(shader.vertexShader.includes('attribute float transmissionMask;')&&shader.vertexShader.includes('vTransmissionMask = transmissionMask;'),'the vertex patch declares and passes the mask');
+assert(shader.fragmentShader.includes('varying float vTransmissionMask;')&&shader.fragmentShader.includes('material.transmission = transmission * vTransmissionMask;')&&!shader.fragmentShader.includes('#include <transmission_fragment>'),'the shader patch scales transmission by the mask');
+assert(!shader.fragmentShader.includes('material.transmission = transmission;'),'no unmasked transmission assignment is left');
 
 const base=colors.array.slice(),distance=i=>Math.hypot(positions[i*3]-feeding.capturedPosition.x,positions[i*3+2]-feeding.capturedPosition.z);
 feeding.phase='covering';feeding.skinCoverage=1;feeding.capturedPosition.set(.03,.012,0);

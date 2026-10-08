@@ -14,5 +14,6 @@ const js = new SoftBody(load('nih-dairia')); js.kernel = null; run(js, 200);
 assert.ok(js.center.distanceTo(wasm.center) < 0.001, `kernel and JS agree on the centre (${js.center.distanceTo(wasm.center)} m)`);
 const clock = new FixedStepper(PHYS.step); let n = 0;
 assert.equal(clock.advance(1 / 60, () => n++), 4); assert.equal(n, 4);
-assert.ok(clock.advance(1, () => n++) <= 12, 'the 50 ms clamp caps the steps');
+// a one-second frame is clamped to 50 ms, which is exactly 12 steps at 240 Hz (fixed-step.js also caps the loop at 12)
+assert.equal(clock.advance(1, () => n++), 12, 'the 50 ms clamp caps the steps at 12');
 console.log('Nih-Dairia physics: parses, settles, keeps volume, kernel and JS agree, the stepper clamps.');

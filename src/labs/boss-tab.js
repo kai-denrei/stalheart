@@ -7,7 +7,7 @@
 // inside it. The tank drives in the same local plane in real metres and is placed through the same frame at scale 1, then
 // dropped onto the sphere, so the lure (the tank mapped back with toLocal) is exact.
 //
-// RE-ANCHORING. When the creature's centre walks two cells from the origin the frame slides under it and every local position
+// RE-ANCHORING. When the creature's centre walks REANCHOR_METRES from the origin the frame slides under it and every local position
 // the solver and the behaviour hold shifts by the same vector, between frames, so no fixed step sees a jump. Refused while
 // feeding is locked: the prey must not move.
 //
@@ -43,6 +43,10 @@ const WINDOW = 60;           // rolling means over this many frames
 const DRIVE_KEYS = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'];
 const MEAL_PHASES = new Set(['cradling', 'covering', 'dropping', 'absorbing']);   // the tank is the prey, pinned
 const LURES = ['tank', 'point', 'auto'];
+// the frame slides under the creature once its centre is this far out. Each re-anchor pops the creature by the sagitta of
+// the distance (d^2 / 2R: 0.27 m at the old two cells, 20 m; 17 mm at 5 m) and tilts it by d / R, and both grow with the
+// square of the limit, while the shift itself is a few array passes: so a short limit, often
+const REANCHOR_METRES = 5;
 
 // a rolling mean over the last n samples
 function roll(n) {
@@ -105,6 +109,7 @@ export function initBossTab(root) {
   </div>`;
   const stage = root.querySelector('.sw-stage'), read = root.querySelector('[data-read]');
   const stateLine = root.querySelector('[data-state]'), calloutsEl = root.querySelector('[data-callouts]');
+  const variantSelect = root.querySelector('[data-k="variant"]');
   const look = LOOKS.tronColors;
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -129,6 +134,7 @@ export function initBossTab(root) {
   const rig = new THREE.Group(); rig.name = 'Nih-Dairia rig'; sphere.add(rig);
 
   const state = { variant: NIH_DAIRIA_VARIANT, lure: 'tank', view: 'chase', sizeMetres: NIH_DAIRIA_SIZE_METRES };
+  variantSelect.value = state.variant;   // the default is content's, not the option order's
   const params = { motion: { ...NIH_DAIRIA_MOTION }, phys: { gravity: PHYS.gravity, iterations: PHYS.iterations }, feeding: true, instinct: true };
   let active = false, disposed = false, built = false, raf = 0, last = performance.now(), t = 0;
   let planet = null, planetMesh = null, frame = null, creature = null, prey = null, cropped = null;
@@ -139,6 +145,10 @@ export function initBossTab(root) {
   const meanReach = roll(WINDOW), meanSag = roll(WINDOW), meanRender = roll(2), cutFrames = roll(WINDOW);
   let renderMs = 0, readAcc = 0;
   let pointWorld = null;   // the point lure, in sphere space (world-fixed, so a re-anchor never moves it)
+  // the auto-lure's arena centre in the creature's local metres: the kit's figure-eight is centred on the local origin, so
+  // without this every re-anchor would re-centre it on the creature and it would random-walk off the cap. It takes every
+  // re-anchor's shift like any other local position, so the figure-eight stays where the lab started.
+  const arenaCentre = new THREE.Vector3();
 
   // --- the tank -----------------------------------------------------------------------------------------------------------
   const hullCols = { walker: 0x9fdcff, walkerHi: 0xffffff };
@@ -211,6 +221,9 @@ export function initBossTab(root) {
     const shiftV = (v) => { v.x += sx; v.z += sz; };
     for (const v of [m.target, m.center, m.torsoCenter, m.feeding.preyPosition, m.feeding.capturedPosition, m.cradle.anchor, b.center]) shiftV(v);
     for (const list of [m.gait.feet, m.gait.starts, m.gait.goals]) list.forEach(shiftV);
+    shiftV(arenaCentre);
+    // not redundant with update(): update only re-skins when it takes a fixed step, and a frame with none would draw the
+    // unshifted skin in the moved rig
     b.updateSurface(); creature.appearance.update();
   }
   function tryReanchor(limit) {
@@ -227,14 +240,16 @@ export function initBossTab(root) {
   }
 
   // --- the creature -------------------------------------------------------------------------------------------------------
-  async function makeCreature() {
+  // THE VARIANT. state.variant names the creature that exists (the export reads it), so it changes only once the new body
+  // has loaded; the select is the request, and a switch made during a load is picked up when the load finishes.
+  async function makeCreature(variant = state.variant) {
     loading = true;
     const phys = { ...PHYS, ...params.phys };
     try {
-      const next = await createNihDairia({ ...params.motion }, state.variant, { models: NIH_DAIRIA_MODELS, look: NIH_DAIRIA_LOOK, phys });
+      const next = await createNihDairia({ ...params.motion }, variant, { models: NIH_DAIRIA_MODELS, look: NIH_DAIRIA_LOOK, phys });
       if (disposed) { next.dispose(); return; }
       creature?.dispose();
-      creature = next;
+      creature = next; state.variant = variant;
       creature.motion.feeding.enabled = params.feeding; creature.motion.active = params.instinct;
       rig.add(creature.mesh);
       native = nativeExtent(creature.body); applySize();
@@ -243,7 +258,10 @@ export function initBossTab(root) {
     } catch (e) {
       fatal = `Nih-Dairia could not load: ${e.message}`;
       read.textContent = fatal;
+      variantSelect.value = state.variant;
     } finally { loading = false; }
+    const wanted = variantSelect.value;
+    if (!disposed && !fatal && wanted !== state.variant) await makeCreature(wanted);
   }
   // r160 compiles another program once the prey's clearcoat leaves 0, which the first wrap of a session would pay mid-feed:
   // compile both now, with the prey visible (compile only walks visible objects)
@@ -298,18 +316,20 @@ export function initBossTab(root) {
   renderer.domElement.addEventListener('pointerup', onPointerUp);
 
   // --- the frame's work ---------------------------------------------------------------------------------------------------
-  const lureV = new THREE.Vector3();
+  const lureV = new THREE.Vector3(), arenaV = new THREE.Vector3();
   function lureTarget() {
     const m = creature.motion;
     if (state.lure === 'tank') return lureV.fromArray(toLocal(frame, tankWorld(), scale));
     if (state.lure === 'point') return pointWorld ? lureV.fromArray(toLocal(frame, pointWorld, scale)) : lureV.copy(m.target);
-    auto.step(dtNow, m.target, m.center);   // the kit's figure-eight, in the creature's local metres
-    return lureV.copy(m.target);
+    // the kit's figure-eight, in the creature's local metres about the world-fixed arena centre
+    const target = lureV.copy(m.target).sub(arenaCentre), centre = arenaV.copy(m.center).sub(arenaCentre);
+    auto.step(dtNow, target, centre);
+    return target.add(arenaCentre);
   }
   let dtNow = 0;
   function step(dt, cut) {
     const m = creature.motion, f = m.feeding;
-    tryReanchor(2 * planet.cellMetres);
+    tryReanchor(REANCHOR_METRES);
     const pinned = state.lure === 'tank' && MEAL_PHASES.has(f.phase);
     if (!pinned) stepYardDrive(drive, driveInput(), dt, [], DRIVE_R);
     else { drive.speed = 0; scripted = null; }
@@ -406,7 +426,7 @@ export function initBossTab(root) {
     const m = creature?.motion;
     return {
       ready: !!creature && !loading, solver: meanSolver.mean(), steps: meanSteps.mean(), skin: meanSkin.mean(), render: meanRender.mean(),
-      centre: meanCentre.mean(), reach: meanReach.mean(), sag: meanSag.mean(), taken, state: m?.state ?? null, phase: m?.feeding.phase ?? null,
+      centre: meanCentre.mean(), reach: meanReach.mean(), sag: meanSag.mean(), taken, state: m?.state ?? null, phase: m?.feeding.phase ?? null, held: !!m?.targetHeld,
       size: state.sizeMetres, scale, lure: state.lure, variant: state.variant, cut: cutFrames.mean() > 0, frames, reanchors,
       tank: { x: drive.x, z: drive.z, speed: drive.speed, visible: tank.visible },
       shaderErrors: shaderErrors.slice(), error: fatal ?? frameError, cropped,
@@ -484,10 +504,7 @@ export function initBossTab(root) {
     const k = el.dataset.k;
     if (k === 'lure') setLure(el.value);
     else if (k === 'view') state.view = el.value;
-    else if (k === 'variant' && el.value !== state.variant) {
-      state.variant = el.value;
-      if (planet && !loading) makeCreature();
-    }
+    else if (k === 'variant' && el.value !== state.variant && planet && !loading) makeCreature(el.value);   // during a load: picked up after it
   });
   const copyBox = root.querySelector('[data-copy]');
   function copySettings() {
@@ -532,13 +549,15 @@ export function initBossTab(root) {
     readout,
     creature: () => creature,
     setLure,
-    // a stopped tank; `near` puts it inside the creature's reach, on the side it already stands
-    stopTank({ near = false } = {}) {
+    // a stopped tank; `near` puts it `at` native metres from the creature's centre, on the side it already stands. The
+    // default 0.05 is inside the kit's 0.075 capture radius and can land under an arm: a prey inside the skin never lets the
+    // cradle finish (its minimum gap stays below -0.0005), so a meal is tested from outside the reach, as the kit's prey is
+    stopTank({ near = false, at = 0.05 } = {}) {
       keys.clear(); scripted = null; drive.speed = 0;
       if (near && creature) {
         const c = creature.motion.center, cx = c.x * scale, cz = c.z * scale;
         let dx = drive.x - cx, dz = drive.z - cz; const d = Math.hypot(dx, dz) || 1; dx /= d; dz /= d;
-        const r = 0.05 * scale;   // inside the kit's 0.075 capture radius
+        const r = at * scale;
         drive.x = cx + dx * r; drive.z = cz + dz * r;
       }
       return { x: drive.x, z: drive.z };
