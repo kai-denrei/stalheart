@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "2026-10-08-nih-dairia-boss-lab-design",
+  "date": "2026-10-08",
+  "type": "decision",
+  "status": "proposed",
+  "title": "The Nih-Dairia boss lab: port the creature kit into the project's stack and prove it on the story planet, chasing the tank, before any boss",
+  "context": "Owner, 2026-10-08: \"create a lab to test integrating this as a boss ... it would be quite large.\" Chosen in the brainstorm: two to four cells across (20 to 40 m), the kit's jelly look ported, the creature on the sphere chasing the tank, ported as a separate lab experiment first. The source is the owner's lab-creatures project (/Users/minikai/Dev/Jelly-Baby) at f2a4f89 through its own kit export, plus the b3cfb52 pursuit fix.",
+  "outcome": "Spec: docs/superpowers/specs/2026-10-08-nih-dairia-boss-lab-design.md. Three pieces: the port (src/fx/nih-dairia, the content preset, the pinned assets), the surface frame (a local tangent frame on the planet, re-anchored as the creature walks), and the lab (labs.html#boss); the boss as an enemy is a later spec. The game imports none of it. Proposed until the owner has seen it.",
+  "alternatives": [
+    "Load the kit's own bundle beside the game instead of porting it (rejected in the brainstorm: the lab is to test integrating it into the game's stack)"
+  ],
+  "evidence": [
+    "docs/superpowers/specs/2026-10-08-nih-dairia-boss-lab-design.md (two revisions the same day: the lab-creatures export over the Downloads kit, then the b3cfb52 pursuit fix)"
+  ],
+  "supersedes": []
+}

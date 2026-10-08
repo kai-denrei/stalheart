@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "id": "2026-10-08-nih-dairia-boss-lab-landed",
+  "date": "2026-10-08",
+  "type": "change",
+  "status": "accepted",
+  "title": "The boss lab landed: Nih-Dairia at thirty metres on the story planet takes the tank (labs.html#boss, --boss green)",
+  "context": "The plan for 2026-10-08-nih-dairia-boss-lab-design, built on the unpushed branch refactor-run. The kit is GPL-3.0 (2026-10-08-nih-dairia-kit-is-gpl-licence-open); nothing of it is pushed until the owner decides.",
+  "outcome": "The port: src/fx/nih-dairia (the soft body with its wasm kernel, the skin, gait, traction, pursuit, feeding, cradle, auto-lure, the four body plans) from lab-creatures f2a4f89 plus the b3cfb52 pursuit fix, each file's header naming its origin, the kit's LICENSE beside it. The frame: src/domain/surface-frame.js, a local tangent frame on the planet that re-anchors under the creature as it walks. The lab: src/labs/boss-tab.js, the creature in a rig on the cropped story planet, the MÖRK as its lure (or a point, or the kit's auto-lure), the fourteen motion settings, size, gravity and iterations live, and a readout of solver, skin and render cost with centre speed, reach, sag and meals taken. The browser step --boss proves it: the solver steps, the creature is boss-sized (bounding radius 20.1 m at 30 m across), the moving tank wakes it, and a stopped tank inside its reach is taken.",
+  "alternatives": [],
+  "evidence": [
+    "scripts/browser-test.mjs --boss from a snapshot, headless on kainode (2026-10-08): solver 4.79 ms at 4 steps, skin 0.37 ms, render 0.10 ms, centre 1.31 m/s, reach 16.9 m, sag 0.22 m, taken 1, re-anchored 1, wasm kernel, no shader errors; PASS boss-taken",
+    "Task 5's own headless run after ten seconds: solver 4.67 ms, 4 steps, skin 0.34 ms, render 0.25 ms, centre 3.54 m/s, reach 14.7 m, sag 0.58 m, taken 1",
+    "test/nih-dairia-*.mjs and test/surface-frame.mjs; npm test, npm run check, npm run build"
+  ],
+  "supersedes": []
+}

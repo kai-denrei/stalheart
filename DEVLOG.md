@@ -15,6 +15,34 @@ Evidence:
 - /Users/minikai/Dev/Jelly-Baby/LICENSE (GNU GPL v3), README.md 'Inspiration and license'; the export's LICENSE (35,148 bytes) in dist-exports/nih-dairia-creature-kit.zip
 - Stalheart: no LICENSE at the root, no license field in package.json (checked 2026-10-08)
 
+## 2026-10-08 — The boss lab landed: Nih-Dairia at thirty metres on the story planet takes the tank (labs.html#boss, --boss green)
+
+change · accepted · 2026-10-08-nih-dairia-boss-lab-landed
+
+The plan for 2026-10-08-nih-dairia-boss-lab-design, built on the unpushed branch refactor-run. The kit is GPL-3.0 (2026-10-08-nih-dairia-kit-is-gpl-licence-open); nothing of it is pushed until the owner decides.
+
+The port: src/fx/nih-dairia (the soft body with its wasm kernel, the skin, gait, traction, pursuit, feeding, cradle, auto-lure, the four body plans) from lab-creatures f2a4f89 plus the b3cfb52 pursuit fix, each file's header naming its origin, the kit's LICENSE beside it. The frame: src/domain/surface-frame.js, a local tangent frame on the planet that re-anchors under the creature as it walks. The lab: src/labs/boss-tab.js, the creature in a rig on the cropped story planet, the MÖRK as its lure (or a point, or the kit's auto-lure), the fourteen motion settings, size, gravity and iterations live, and a readout of solver, skin and render cost with centre speed, reach, sag and meals taken. The browser step --boss proves it: the solver steps, the creature is boss-sized (bounding radius 20.1 m at 30 m across), the moving tank wakes it, and a stopped tank inside its reach is taken.
+
+Evidence:
+
+- scripts/browser-test.mjs --boss from a snapshot, headless on kainode (2026-10-08): solver 4.79 ms at 4 steps, skin 0.37 ms, render 0.10 ms, centre 1.31 m/s, reach 16.9 m, sag 0.22 m, taken 1, re-anchored 1, wasm kernel, no shader errors; PASS boss-taken
+- Task 5's own headless run after ten seconds: solver 4.67 ms, 4 steps, skin 0.34 ms, render 0.25 ms, centre 3.54 m/s, reach 14.7 m, sag 0.58 m, taken 1
+- test/nih-dairia-*.mjs and test/surface-frame.mjs; npm test, npm run check, npm run build
+
+## 2026-10-08 — The Nih-Dairia boss lab: port the creature kit into the project's stack and prove it on the story planet, chasing the tank, before any boss
+
+decision · proposed · 2026-10-08-nih-dairia-boss-lab-design
+
+Owner, 2026-10-08: "create a lab to test integrating this as a boss ... it would be quite large." Chosen in the brainstorm: two to four cells across (20 to 40 m), the kit's jelly look ported, the creature on the sphere chasing the tank, ported as a separate lab experiment first. The source is the owner's lab-creatures project (/Users/minikai/Dev/Jelly-Baby) at f2a4f89 through its own kit export, plus the b3cfb52 pursuit fix.
+
+Spec: docs/superpowers/specs/2026-10-08-nih-dairia-boss-lab-design.md. Three pieces: the port (src/fx/nih-dairia, the content preset, the pinned assets), the surface frame (a local tangent frame on the planet, re-anchored as the creature walks), and the lab (labs.html#boss); the boss as an enemy is a later spec. The game imports none of it. Proposed until the owner has seen it.
+
+Alternatives: Load the kit's own bundle beside the game instead of porting it (rejected in the brainstorm: the lab is to test integrating it into the game's stack)
+
+Evidence:
+
+- docs/superpowers/specs/2026-10-08-nih-dairia-boss-lab-design.md (two revisions the same day: the lab-creatures export over the Downloads kit, then the b3cfb52 pursuit fix)
+
 ## 2026-10-08 — Explore mesh2motion (https://app.mesh2motion.org/) as a source of boss animation
 
 experiment · proposed · 2026-10-08-mesh2motion-as-a-boss-animation-source

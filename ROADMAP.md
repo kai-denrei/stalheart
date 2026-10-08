@@ -371,13 +371,19 @@ First step, when it is picked up: `@ts-check` on `src/domain` as a trial, to see
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 58 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 59 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
 
 ### Open: the Nih-Dairia kit is GPL-3.0 and Stalheart's public repository has no licence; the owner decides before any push
 
 `2026-10-08-nih-dairia-kit-is-gpl-licence-open` · issue · **observed**
 
 Found while revising the boss lab spec (docs/superpowers/specs/2026-10-08-nih-dairia-boss-lab-design.md). The creature comes from the owner's lab-creatures project (/Users/minikai/Dev/Jelly-Baby, f2a4f89), which 'preserves the upstream GPL-3.0 license' of Jelly Baby by scottstts; its kit export carries the LICENSE file. Stalheart's repository (public, kai-denrei/stalheart, source on GitHub and the build on Pages) has no licence file and no licence field in package.json; docs/ASSETS.md licenses only the SentryTowers_A6 assets.
+
+### The Nih-Dairia boss lab: port the creature kit into the project's stack and prove it on the story planet, chasing the tank, before any boss
+
+`2026-10-08-nih-dairia-boss-lab-design` · decision · **proposed**
+
+Owner, 2026-10-08: "create a lab to test integrating this as a boss ... it would be quite large." Chosen in the brainstorm: two to four cells across (20 to 40 m), the kit's jelly look ported, the creature on the sphere chasing the tank, ported as a separate lab experiment first. The source is the owner's lab-creatures project (/Users/minikai/Dev/Jelly-Baby) at f2a4f89 through its own kit export, plus the b3cfb52 pursuit fix.
 
 ### Explore mesh2motion (https://app.mesh2motion.org/) as a source of boss animation
 

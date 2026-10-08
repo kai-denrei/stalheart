@@ -2034,6 +2034,22 @@ try{
  console.log(`CORRIDOR PROBE ${site}: ${reached?'REACHED':'stopped'} at cell ${best+1} of ${ids.length} in ${took} s; kicks ${k1-k0}; still ${still} of ${samples} samples; slow cells ${JSON.stringify(slow)}; trace artifacts/corridor-trace.json`);
  current='corridor-probe-end';await finish();
  if(process.env.ASSERT){assert(reached,`the hull reaches ${site} (${best+1} of ${ids.length})`);assert(slow.length===0,`no cell holds the hull ${stuckS} s (${JSON.stringify(slow)})`);}
+ } else if(args.includes('--boss')) {
+ // THE BOSS LAB (2026-10-08; src/labs/boss-tab.js): Nih-Dairia at thirty metres on the story planet, the tank its prey. The solver steps,
+ // the creature is boss-sized in the world, the tank wakes it, and a stopped tank inside its reach is taken
+ const B='window.__bossLab';
+ await go('boss','labs.html?sw=0&acceptance=1#boss');
+ await until(`!!${B} && ${B}.readout().steps > 0`,60000);
+ assert((await evaluate(`${B}.readout().solver`))>0,'the solver runs');
+ const radius=await evaluate(`(()=>{const g=${B}.creature().mesh.geometry;if(!g.boundingSphere)g.computeBoundingSphere();return g.boundingSphere.radius*${B}.readout().scale;})()`);
+ console.log(`BOSS RADIUS ${radius.toFixed(1)} m`);assert(radius>10,`the creature is boss-sized (${radius.toFixed(1)} m across its bounding radius)`);
+ await evaluate(`${B}.driveTank(2)`);await delay(2500);
+ assert((await evaluate(`${B}.readout().state`))!=='listening','the tank wakes the creature');
+ await evaluate(`${B}.setLure("tank"); ${B}.stopTank({ near: true })`);
+ await until(`${B}.readout().taken >= 1`,60000);
+ const readout=await evaluate(`${B}.readout()`);console.log('BOSS '+JSON.stringify(readout));
+ assert.deepEqual(readout.shaderErrors,[],'no shader errors');assert(!readout.error,`no frame error (${readout.error})`);
+ current='boss-taken';await finish();
  } else if(args.includes('--sky-hole')) {
  // THE BLACK HOLE NOT FAR, all game long (owner, 2026-10-06): the accretion disk baked into the sky cube; the bake says where it hangs,
  // and the still looks up at it from the base
