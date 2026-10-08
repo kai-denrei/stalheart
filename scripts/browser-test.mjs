@@ -2042,7 +2042,7 @@ try{
  // (24 to 36 s on the fight's clock). Every wait is on the fight's clock with a generous real-time cap: headless advances
  // the game's clock slowly, so a wall-clock bound measures the frame rate, not the fight
  const B='window.__bossLab';
- const F=`(()=>{const f=${B}.fight();return {hp:f.hp,max:f.max,clock:f.clock,hits:f.hits,hpPerSecond:f.hpPerSecond,phase:f.phase,reason:f.reason,strikes:f.strikes,frights:f.frights,stuns:f.stuns,fearMode:f.fearMode}})()`;
+ const F=`(()=>{const f=${B}.fight();return {hp:f.hp,max:f.max,clock:f.clock,hits:f.hits,hpPerSecond:f.hpPerSecond,phase:f.phase,reason:f.reason,strikes:f.strikes,frights:f.frights,stuns:f.stuns,fearMode:f.fearMode,fleeShare:f.fleeShare,stunShare:f.stunShare}})()`;
  await go('boss-fight','labs.html?sw=0&acceptance=1#boss');
  await until(`!!${B} && ${B}.readout().steps > 0`,60000);
  await evaluate(`${B}.setLure("tank"); ${B}.setFight(true); ${B}.circle(35, 45)`);
@@ -2118,9 +2118,9 @@ try{
    if(sv.phase!=='fight'||sv.clock>=60)break;
  }
  const svTaken=await evaluate(`${B}.readout().taken`);
- const survival={phase:sv.phase,reason:sv.reason,clock:+sv.clock.toFixed(2),hp:+sv.hp.toFixed(1),max:sv.max,hits:sv.hits,hpPerSecond:+sv.hpPerSecond.toFixed(2),frights:sv.frights,stuns:sv.stuns,taken:svTaken-taken1,real:+((Date.now()-svReal)/1000).toFixed(1),strikes:[...svKinds]};
+ const survival={phase:sv.phase,reason:sv.reason,clock:+sv.clock.toFixed(2),hp:+sv.hp.toFixed(1),max:sv.max,hits:sv.hits,hpPerSecond:+sv.hpPerSecond.toFixed(2),frights:sv.frights,stuns:sv.stuns,fleeShare:+sv.fleeShare.toFixed(3),stunShare:+sv.stunShare.toFixed(3),taken:svTaken-taken1,real:+((Date.now()-svReal)/1000).toFixed(1),strikes:[...svKinds]};
  console.log('BOSS-FIGHT '+JSON.stringify({survival}));
- console.log(`BOSS-FIGHT survival: ${sv.phase==='killed'?'KILLED':sv.phase.toUpperCase()} at ${survival.clock} s of fight clock (health ${sv.max}, ${survival.hpPerSecond} hp/s, ${sv.frights} frights, ${sv.stuns} stuns, taken ${survival.taken}, ${survival.real} s of real time)`);
+ console.log(`BOSS-FIGHT survival: ${sv.phase==='killed'?'KILLED':sv.phase.toUpperCase()} at ${survival.clock} s of fight clock (health ${sv.max}, ${survival.hpPerSecond} hp/s, ${sv.frights} frights, ${sv.stuns} stuns, fleeing ${(sv.fleeShare*100).toFixed(1)} % and stunned ${(sv.stunShare*100).toFixed(1)} % of the fight, taken ${survival.taken}, ${survival.real} s of real time)`);
  assert.equal(sv.phase,'killed',`the survival run is KILLED, not ${sv.phase} (${sv.reason}) at ${survival.clock} s of fight clock (${JSON.stringify(survival)}); a LOST or unfinished run is not a measurement`);
  assert.equal(survival.taken,0,`the dodging tank was never taken (${survival.taken}) (${JSON.stringify(survival)})`);
  assert(survival.clock>=25&&survival.clock<=35,`the survival run kills in 25 to 35 s of fight clock (${survival.clock} s at health ${sv.max})`);

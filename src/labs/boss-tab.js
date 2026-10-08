@@ -696,6 +696,7 @@ export function initBossTab(root) {
     if (r.fight.on) html += ` &middot; hp <b>${fmt(r.fight.hp, 0)}/${r.fight.max}</b> &middot; hits <b>${r.fight.hits}</b> &middot; <b>${fmt(r.fight.hpPerSecond, 1)}</b> hp/s`
       + ` &middot; ttk <b>${Number.isFinite(r.fight.timeToKill) ? `${fmt(r.fight.timeToKill, 0)} s` : '&mdash;'}</b>`
       + `<br>rot <b>${fmt(r.fight.byKind.rotary, 0)}</b> &middot; bof <b>${fmt(r.fight.byKind.bofors, 0)}</b> &middot; nuke <b>${fmt(r.fight.byKind.nuke, 0)}</b> &middot; sol <b>${fmt(r.fight.byKind.sol, 0)}</b>`
+      + ` &middot; fear <b>${r.fight.fearMode}</b> (fleeing <b>${fmt(r.fight.fleeShare * 100, 0)}%</b>, stunned <b>${fmt(r.fight.stunShare * 100, 0)}%</b> of the round)`
       + ` &middot; frights <b>${r.fight.frights}</b> &middot; stuns <b>${r.fight.stuns}</b>`
       + ` &middot; nuke in <b>${r.fight.nukeIn === null ? '&mdash;' : `${fmt(r.fight.nukeIn, 1)} s`}</b>`;
     html += ` &middot; provokes <b>${r.provokes}</b>`
