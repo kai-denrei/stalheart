@@ -101,9 +101,15 @@ labs' shared helpers, never the game controller. The game controller imports non
 - **Two real rewrites, both presentation:** `appearance.js` and `prey.js` use TSL node materials in the kit
   (`MeshPhysicalNodeMaterial` with `colorNode`, `clearcoatNode`, a `positionWorld`/`smoothstep` imprint tint around the
   prey). In r160 WebGL they become `MeshPhysicalMaterial` with the same scalar values, and the two node expressions become
-  CPU-updated attributes: the skin's imprint tint is written into the skin's `color` attribute each frame feeding is
-  active (the 9,408 vertices near the prey only, `needsUpdate` once), and the prey's colour blend from red to tissue is
-  `material.color.lerpColors(red, tissue, coverage)` with `clearcoat = 0.65 * coverage`, the prey keeping one material. The
+  CPU-updated attributes. **Corrected in Task 4 (the first draft said a colour tint; the kit's expression is a
+  transmission mask):** the skin's `transmissionNode` is `(1 - (1 - smoothstep(0.016, 0.040, distance from
+  feeding.capturedPosition in body space)) * coverage) * 0.65` with `coverage = skinCoverage * (phase === 'recovering' ?
+  drop : 1)`, so the membrane turns opaque where it molds around the prey. The port writes that factor into a per-vertex
+  `transmissionMask` attribute (the vertices near the captured point only, `needsUpdate` once per change, restored to 1
+  once when coverage returns to 0) and a small `onBeforeCompile` patch multiplies the material's transmission by it in the
+  fragment shader; the vertex colours stay the kit's tissue pigment. The prey's colour blend from red to tissue is
+  `material.color.lerpColors(red, tissue, coverage)` (the mean tissue colour over its geometry, the kit mixes per vertex)
+  with `clearcoat = 0.65 * coverage` and the kit's metalness/roughness/emissive scalars, the prey keeping one material. The
   shape-specific imprint itself is physical (the body's forces) and needs nothing from the material. The plan's test for
   these two files is visual (the `--boss` step reads coverage reaching 1 during a meal) plus a node test that the colour
   arrays change where the prey is and nowhere else.
