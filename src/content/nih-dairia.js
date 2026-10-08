@@ -1,9 +1,8 @@
 // Nih-Dairia: the soft-body creature's preset, size, look and model URLs.
-// The twelve base motion values are the owner's tuned preset. grip and sweep
-// are in the export's motion-settings.json; they equal the kit's DEFAULT_MOTION (grip 1.5, sweep 1).
+// The motion values are the export's motion-settings.json (version 1, lab-creatures f2a4f89, export of 2026-10-08).
 export const NIH_DAIRIA_MOTION = Object.freeze({
-  speed: 3, reachTime: 4, pullTime: 2, pauseTime: 2.7, erratic: 3, stretch: 2.5, spread: 3,
-  stepHeight: 0.05, stepDuration: 0.08, stepSpacing: 0.015, stride: 0.05, recoil: 1,
+  speed: 1.8, reachTime: 2.4, pullTime: 2, pauseTime: 1.25, erratic: 2, stretch: 2.2, spread: 1.6,
+  stepHeight: 0.032, stepDuration: 0.12, stepSpacing: 0.035, stride: 0.022, recoil: 1,
   grip: 1.5, sweep: 1,
 });
 export const NIH_DAIRIA_VARIANT = 'nih-dairia';
