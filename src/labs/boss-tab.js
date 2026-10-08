@@ -252,7 +252,7 @@ export function initBossTab(root) {
   // (the panel's fight folder writes it; `makeFight` reads it at each reset, `schedule` every frame); its seed advances a round
   // unless `pinSeed`. `fightOn` holds the switches: `fight` off is the lab as before (no shooters, no bar, no round)
   const fightTune = { ...JSON.parse(JSON.stringify(BOSS_FIGHT)), seed: 1 };
-  const fightOn = { fight: true, gunship: true, sol: true, cannon: true, pinSeed: false };
+  const fightOn = { fight: true, rotary: true, bofors: true, nuke: true, sol: true, cannon: true, pinSeed: false };
   let fight = makeFight(fightTune);
   let hullLost = false;        // a landing took the hull: hidden until the reset
   let resetDue = -1;           // seconds a due reset has waited for a meal to finish; -1 when none is due
@@ -266,7 +266,7 @@ export function initBossTab(root) {
   const friendlies = createFriendlies(scene, {
     sphere, surface, cellSide: 10, explosions, sfx: audio, tune: () => fightTune, fight: () => fight, now: () => t,
     creature: creatureNow, tank: () => ({ pos: hullLost ? [1e9, 1e9] : [drive.x, drive.z], radius: fightTune.hull.radius }),   // a lost hull is no target
-    onTankHit: loseHull, enabled: () => ({ gunship: fightOn.fight && fightOn.gunship, sol: fightOn.fight && fightOn.sol }),
+    onTankHit: loseHull, enabled: () => Object.fromEntries(['rotary', 'bofors', 'nuke', 'sol'].map((k) => [k, fightOn.fight && fightOn[k]])),
   });
   // a landing on the hull: the hull goes in a shell's burst and stays hidden until the reset. While it is lost it is nobody's prey:
   // the drive stands still, the lure is not fed, the shooters' provider reports it a world away and the feeding is off (the
@@ -628,7 +628,7 @@ export function initBossTab(root) {
       size: state.sizeMetres, scale, lure: state.lure, variant: state.variant, cut: cutFrames.mean() > 0, frames, reanchors,
       speed: drive.speed, blocked, cruise: drive.cruise, provokes, heat: cannon.heat(), shells: cannon.shells(),
       tank: { x: drive.x, z: drive.z, yaw: drive.yaw, speed: drive.speed, visible: tank.visible },
-      fight: { ...fightReadout(fight), phase: fight.phase, reason: fight.reason, on: fightOn.fight, rings: friendlies.rings(), card: round.card() },
+      fight: { ...fightReadout(fight), phase: fight.phase, reason: fight.reason, on: fightOn.fight, rings: friendlies.rings(), card: round.card(), nukeIn: fight.nuke ? Math.max(0, fight.nuke.next) : null },
       shaderErrors: shaderErrors.slice(), error: fatal ?? frameError, cropped,
       kernel: !!creature?.body.kernel,
     };
@@ -640,7 +640,9 @@ export function initBossTab(root) {
     let html = `solver <b>${fmt(r.solver)} ms</b> (${stepsHtml} steps) &middot; skin <b>${fmt(r.skin)} ms</b> &middot; render <b>${fmt(r.render)} ms</b>`
       + ` &middot; centre <b>${fmt(r.centre)} m/s</b> &middot; reach <b>${fmt(r.reach, 1)} m</b> &middot; sag <b>${fmt(r.sag)} m</b> &middot; taken <b>${r.taken}</b>`;
     if (r.fight.on) html += ` &middot; hp <b>${fmt(r.fight.hp, 0)}/${r.fight.max}</b> &middot; hits <b>${r.fight.hits}</b> &middot; <b>${fmt(r.fight.hpPerSecond, 1)}</b> hp/s`
-      + ` &middot; ttk <b>${Number.isFinite(r.fight.timeToKill) ? `${fmt(r.fight.timeToKill, 0)} s` : '&mdash;'}</b>`;
+      + ` &middot; ttk <b>${Number.isFinite(r.fight.timeToKill) ? `${fmt(r.fight.timeToKill, 0)} s` : '&mdash;'}</b>`
+      + `<br>rot <b>${fmt(r.fight.byKind.rotary, 0)}</b> &middot; bof <b>${fmt(r.fight.byKind.bofors, 0)}</b> &middot; nuke <b>${fmt(r.fight.byKind.nuke, 0)}</b> &middot; sol <b>${fmt(r.fight.byKind.sol, 0)}</b>`
+      + ` &middot; nuke in <b>${r.fight.nukeIn === null ? '&mdash;' : `${fmt(r.fight.nukeIn, 1)} s`}</b>`;
     html += ` &middot; provokes <b>${r.provokes}</b>`
       + `<br>size ${r.size} m (&times;${fmt(r.scale, 0)}) &middot; ${r.state ?? '—'} &middot; ${r.variant} &middot; lure ${r.lure}`
       + ` &middot; ${r.kernel ? 'wasm kernel' : 'js solver'} &middot; re-anchored ${r.reanchors}`;
@@ -698,13 +700,21 @@ export function initBossTab(root) {
   // THE FIGHT'S KNOBS (spec section 7) on the lab's copy: the cadence and the damage apply to the next plans, `health` at the reset
   const fightGui = gui.addFolder('fight');
   fightGui.add(fightOn, 'fight').name('fight').onChange(setFight);
-  fightGui.add(fightOn, 'gunship').name('gunship (Bofors)');
+  fightGui.add(fightOn, 'rotary').name('rotary (25 mm)');
+  fightGui.add(fightOn, 'bofors').name('Bofors (40 mm)');
+  fightGui.add(fightOn, 'nuke').name('MK-9 nuke');
   fightGui.add(fightOn, 'sol').name('SOL-88');
   fightGui.add(fightOn, 'cannon').name('cannon (Space)');
   fightGui.add(fightTune, 'health', 10, 1000, 10).name('health (at reset)');
   fightGui.add(fightTune, 'warn', 0.2, 4, 0.1).name('warn (s)');
   fightGui.add(fightTune, 'lead', 0, 2, 0.05).name('lead');
   fightGui.add(fightTune, 'scatter', 0, 1.5, 0.05).name('scatter');
+  fightGui.add(fightTune, 'front', 0, 40, 1).name('front (m)');
+  fightGui.add(fightTune, 'behind', 0, 60, 1).name('behind (m)');
+  fightGui.add(fightTune.rotary, 'dps', 0, 30, 0.1).name('rotary dps');
+  fightGui.add(fightTune.nuke, 'damage', 0, 200, 1).name('nuke damage');
+  fightGui.add(fightTune.nuke, 'every', 5, 60, 1).name('nuke every (s)');
+  fightGui.add(fightTune.nuke, 'stun', 0, 5, 0.1).name('nuke stun (s)');
   fightGui.add(fightTune.bofors, 'burst', 0.5, 6, 0.1).name('Bofors burst (s)');
   fightGui.add(fightTune.bofors, 'rest', 0, 6, 0.1).name('Bofors rest (s)');
   fightGui.add(fightTune.bofors, 'damage', 0, 20, 0.5).name('Bofors damage');

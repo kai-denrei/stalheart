@@ -2036,8 +2036,8 @@ try{
  if(process.env.ASSERT){assert(reached,`the hull reaches ${site} (${best+1} of ${ids.length})`);assert(slow.length===0,`no cell holds the hull ${stuckS} s (${JSON.stringify(slow)})`);}
  } else if(args.includes('--boss-fight')) {
  // THE BOSS FIGHT (2026-10-08; spec docs/superpowers/specs/2026-10-08-boss-fight-prototype-design.md, section 8): the gunship's
- // Bofors and SOL-88 on Nih-Dairia while the tank circles at 45 m; the hp falls below half by 24 s of fight clock (or the
- // rate over the circling would take it there), both shooters' rings show, the rounds hit; parked beside it the tank is lost
+ // rotary, Bofors, MK-9 and SOL-88 on Nih-Dairia while the tank circles at 45 m; the hp falls below half by 24 s of fight clock (or the
+ // rate over the circling would take it there), all four shooters' rings show, the rounds hit; parked beside it the tank is lost
  // and the round resets; then, the creature held still (instinct off), the standing body dies within the balance's bound
  // (24 to 36 s on the fight's clock). Every wait is on the fight's clock with a generous real-time cap: headless advances
  // the game's clock slowly, so a wall-clock bound measures the frame rate, not the fight
@@ -2063,7 +2063,7 @@ try{
    :f.phase==='fight'&&f.clock<22?`the circling reached only ${circling.clock} s of fight clock in 90 s of real time, and the hp neither fell below half nor ran at ${circling.need} hp/s (${circling.hpPerSecond})`
    :`the hp did not fall below half by 24 s of fight clock (half ${circling.half}) and its rate ${circling.hpPerSecond} hp/s is under the ${circling.need} hp/s that would`;
  assert(halfOk||rateOk,`${why} (${JSON.stringify(circling)})`);
- assert(kinds.has('bofors')&&kinds.has('sol'),`both shooters' rings showed (${[...kinds]})`);
+ assert(['rotary','bofors','nuke','sol'].every(k=>kinds.has(k)),`all four shooters' plans showed (${[...kinds]})`);
  assert(f.hits>0,'the rounds hit');
  // parked beside the creature: lost (caught, or under a landing); a creature the circling killed first resets, then a
  // fresh fight starts on a nudge beside it. Then the reset after the card
