@@ -280,8 +280,8 @@ export function initBossTab(root) {
     surface, cellSide: 10, explosions, tune: () => fightTune, scaleOf: () => scale, extentOf: () => native * scale,
     enabled: () => fightOn.obstacles, occupants: () => occupantsNow(), colors: { rock: ground(look.floors.visited), wall: ground(look.floors.spawn) },
   });
-  // what no shape may be stood up on: the creature (its centre and its extent) and the tank (the hull), unless the hull is lost
-  const occupantsNow = () => [...(creature ? [{ at: [creature.motion.center.x * scale, creature.motion.center.z * scale], radius: native * scale }] : []), ...(hullLost ? [] : [{ at: [drive.x, drive.z], radius: fightTune.hull.radius }])];
+  // what no shape may be stood up on: the creature (its centre and its half-width plus 2 m, as creatureNow's radius) and the tank (the hull), unless the hull is lost
+  const occupantsNow = () => [...(creature ? [{ at: [creature.motion.center.x * scale, creature.motion.center.z * scale], radius: native * scale / 2 + 2 }] : []), ...(hullLost ? [] : [{ at: [drive.x, drive.z], radius: fightTune.hull.radius }])];
   const tankBlocker = (x, z) => deeper(body.blocker(x, z), arena.blocker(x, z));   // the body's or the arena's, whichever pushes deeper
   const friendlies = createFriendlies(scene, {
     sphere, surface, cellSide: 10, explosions, sfx: audio, tune: () => fightTune, fight: () => fight, now: () => t,
@@ -781,6 +781,8 @@ export function initBossTab(root) {
   fightGui.add(fightTune.fear, 'reach', 0, 30, 1).name('fear reach (m)');
   fightGui.add(fightTune.fear, 'flee', 0, 60, 1).name('fear flee (m)');
   fightGui.add(fightTune.fear, 'bofors', 0, 5, 0.1).name('fear Bofors (s)');
+  fightGui.add(fightTune.fear, 'after', 0, 3, 0.1).name('fear after beam (s)');
+  fightGui.add(fightTune.fear.weight, 'sol', 0, 4, 0.1).name('fear SOL weight');
   fightGui.add(fightTune.bofors, 'burst', 0.5, 6, 0.1).name('Bofors burst (s)');
   fightGui.add(fightTune.bofors, 'rest', 0, 6, 0.1).name('Bofors rest (s)');
   fightGui.add(fightTune.bofors, 'damage', 0, 20, 0.5).name('Bofors damage');
