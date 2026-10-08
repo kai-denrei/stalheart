@@ -7,8 +7,8 @@
 //   flat on the surface normal and lifted 0.1 m. Its radius is the damage radius: what you see is what kills.
 // - THE BOFORS: the gun model on station for ever (makeGunship / mountGunship / fireRound / stepRounds, src/domain/gunship.js), a
 //   round fired at the plan's `fireAt` with a tracer from the sky point (the platform's altitude over the frame's origin, 120 m
-//   east); at the plan's `land` (the plan is trusted; stepRounds is the gun model's bookkeeping) the burst, the impact cue and the
-//   landing resolved.
+//   east), its flight the time left to `land` so the head arrives at the burst; at the plan's `land` (the plan is trusted;
+//   stepRounds is the gun model's bookkeeping) the burst, the impact cue and the landing resolved.
 // - SOL-88: the orbital laser standalone, as the laser lab uses it: the pointer (`guideAt`) until `land`, then `lay`, the ignite
 //   burst and the burn loop, `aim` at the plan's point (the spot is the promise: the contact never chases) with a contact burst
 //   every 1 / LASER_CONTACT_RATE seconds and `burn` every frame until `until`, then `lift`.
@@ -83,9 +83,10 @@ export function createFriendlies(scene, {
     if (p.kind === 'bofors') {
       if (!e.fired && t >= p.fireAt) {
         e.fired = true;
-        const to = here.point.toArray();
-        fireRound(gs, gun.key, to, gun.travel);
-        optic.flight(skyPoint(), to, TRACER.hex, gun.travel, TRACER.width);
+        // the flight is what is left to the landing, so the tracer's head arrives at the burst (a frame may start it late)
+        const to = here.point.toArray(), flight = Math.max(1e-3, p.land - t);
+        fireRound(gs, gun.key, to, flight);
+        optic.flight(skyPoint(), to, TRACER.hex, flight, TRACER.width);
       }
       if (t < p.land) return false;
       explosions?.spawn(`gunship.${gun.key}`, here.point.toArray(), here.normal.toArray(), cellSide);
@@ -128,11 +129,11 @@ export function createFriendlies(scene, {
     optic.fade(dt);
   }
 
-  // a new round owes nothing to the old one: the plans, the spots, the rounds and the tracers in the air, the beam
+  // a new round owes nothing to the old one: the plans, the spots, the rounds and the tracers in the air, the beam and its scorch
   function reset() {
     for (const e of pending) drop(e);
     pending.length = 0; gs.rounds.length = 0;
-    endBurn();
+    endBurn(); laser.clear();
     optic.fade(1e6);   // every tracer to the end of its flight
   }
 

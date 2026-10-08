@@ -13,6 +13,12 @@
 //
 // THE FEEDING RULE IS THE MODE IDEA: a tank that is driving counts as held and cannot be taken; a stopped tank within reach is
 // cradled, covered and absorbed, `taken` rises, and the tank respawns thirty metres from the frame's origin.
+//
+// THE FIGHT (spec section 5): the gunship's Bofors and SOL-88 on the creature (./boss/friendlies.js), the round's bar, cards and
+// ending (./boss/round.js). KILLED is the v1 death: every movement stops and the gravity goes to `deathGravity`. LOST is a meal
+// (feeding leaving `hunting`) or a landing on the hull. THE RESET (the round's, or the panel's button) puts the creature back at
+// the frame's origin and the tank `respawn` metres out on the far side; it waits for a meal in progress (MEAL_WAIT at most) so
+// the meal is counted in `taken` and the prey is never moved under the kit.
 import * as THREE from '../../vendor/three.module.js';
 import { OrbitControls } from '../../vendor/OrbitControls.js';
 import GUI from '../../vendor/lil-gui.esm.js';
@@ -20,7 +26,8 @@ import { buildUnit, preloadMork } from '../units.js';
 import { createPlaneDrive } from './boss/drive.js';
 import { createCannon } from './boss/cannon.js';
 import { createFriendlies } from './boss/friendlies.js';
-import { makeFight, startFight, capture, kill, tick as tickFight, readout as fightReadout } from '../domain/boss-fight.js';
+import { createRound } from './boss/round.js';
+import { makeFight, startFight, capture, readout as fightReadout } from '../domain/boss-fight.js';
 import { BOSS_FIGHT } from '../content/boss-fight.js';
 import { LASER_AUDIO } from '../content/orbital-laser.js';
 import { SOUNDS } from '../audiomanifest.js';
@@ -65,6 +72,10 @@ const SLEEVE_COOL = new THREE.Color(0x232833), SLEEVE_HOT = new THREE.Color(0xff
 // 1.2 m meets the raised torso's underside); the shove is radial from the hit, in native units: the strength capped, its radius, the lift
 const HIT_M = 2, HIT_BAND_M = 6;
 const SHOVE = { strength: 0.08, radius: 0.04, lift: 0.02 };
+// a round's reset waits at most this many seconds for a meal in progress to finish (a prey under an arm never finishes)
+const MEAL_WAIT = 12;
+// circle(): the heading controller's gain (turn per radian of error) and the radial correction's weight per metre of error
+const CIRCLE = { gain: 2.5, radial: 0.08 };
 
 // a rolling mean over the last n samples
 function roll(n) {
@@ -206,6 +217,7 @@ export function initBossTab(root) {
   addEventListener('keydown', onDown); addEventListener('keyup', onUp); addEventListener('blur', onBlur);
   const keysHeld = () => DRIVE_KEYS.some((k) => keys.has(k));
   function driveInput() {
+    if (scripted?.circle && t < scripted.until && creature) return circleInput(scripted.circle);
     if (scripted && t < scripted.until) return scripted;
     scripted = null;
     const tap = cruiseTap; cruiseTap = false;
@@ -214,6 +226,16 @@ export function initBossTab(root) {
       turn: (keys.has('a') || keys.has('arrowleft') ? 1 : 0) - (keys.has('d') || keys.has('arrowright') ? 1 : 0),
       cruiseTap: tap,
     };
+  }
+  // circle(): orbit the creature's centre at `radius` metres, counter-clockwise, with the drive's own turn and throttle: the
+  // wanted heading is the tangent bent toward the circle by the radial error, the turn proportional to the heading error
+  function circleInput(radius) {
+    const c = creature.motion.center, rx = drive.x - c.x * scale, rz = drive.z - c.z * scale, d = Math.hypot(rx, rz) || 1;
+    const ux = rx / d, uz = rz / d, pull = Math.max(-1, Math.min(1, (d - radius) * CIRCLE.radial));
+    const hx = -uz - ux * pull, hz = ux - uz * pull;
+    let err = Math.atan2(hx, hz) - drive.yaw;
+    err = Math.atan2(Math.sin(err), Math.cos(err));
+    return { throttle: 1, turn: Math.max(-1, Math.min(1, err * CIRCLE.gain)), cruiseTap: false };
   }
   // THE BODY IS A BLOCKER: every body node in the hull's height band (under 3 m scaled), projected to the plane in local metres,
   // listed once a frame; within the hull's radius of the nearest one the tank is pushed straight away from it by what it overlaps
@@ -267,8 +289,14 @@ export function initBossTab(root) {
   const cannon = createCannon(scene, { sphere, surface, cellSide: 10, explosions, sfx: audio, feel, cool: CANNON_COOL, onHit: provoke });
   // --- the fight: the rules (src/domain/boss-fight.js) on the lab's clock `t`, started by the tank's first movement; the gunship's
   // Bofors and SOL-88 fire on the creature from above (./boss/friendlies.js). `fightTune` is the lab's live copy of the numbers
-  const fightTune = JSON.parse(JSON.stringify(BOSS_FIGHT)), fightOn = { gunship: true, sol: true };
-  const fight = makeFight(fightTune);
+  // (the panel's fight folder writes it; `makeFight` reads it at each reset, `schedule` every frame); its seed advances a round
+  // unless `pinSeed`. `fightOn` holds the switches: `fight` off is the lab as before (no shooters, no bar, no round)
+  const fightTune = { ...JSON.parse(JSON.stringify(BOSS_FIGHT)), seed: 1 };
+  const fightOn = { fight: true, gunship: true, sol: true, cannon: true, pinSeed: false };
+  let fight = makeFight(fightTune);
+  let hullLost = false;        // a landing took the hull: hidden until the reset
+  let resetDue = -1;           // seconds a due reset has waited for a meal to finish; -1 when none is due
+  let feedWas = 'hunting';     // the feeding phase last frame, for the capture on leaving 'hunting'
   // the creature for the rules, in local metres: the centre, its velocity, half the body's extent, the nodes on the floor
   function creatureNow() {
     const m = creature.motion, b = creature.body, c = b.contact, contacts = [];
@@ -278,17 +306,43 @@ export function initBossTab(root) {
   const friendlies = createFriendlies(scene, {
     sphere, surface, cellSide: 10, explosions, sfx: audio, tune: () => fightTune, fight: () => fight, now: () => t,
     creature: creatureNow, tank: () => ({ pos: [drive.x, drive.z], radius: fightTune.hull.radius }),
-    onTankHit: (reason) => capture(fight, reason), enabled: () => fightOn,   // the LOST card and the reset are Task 4's
+    onTankHit: loseHull, enabled: () => ({ gunship: fightOn.fight && fightOn.gunship, sol: fightOn.fight && fightOn.sol }),
   });
+  // a landing on the hull: the hull goes in a shell's burst and stays hidden until the reset. A second landing during the card
+  // finds the fight no longer running: the domain's capture guard and this one cover it (the provider keeps reporting the hull)
+  function loseHull(reason) {
+    if (fight.phase !== 'fight') return;
+    capture(fight, reason);
+    hullLost = true;
+    const at = surface(drive.x, drive.z);
+    explosions.spawn('tank.shell', at.point.toArray(), at.normal.toArray(), 10);
+    audio.play('blast_fire');
+  }
+  const round = createRound(stage, {
+    tune: () => fightTune, fight: () => fight, on: () => fightOn.fight,
+    onKilled: dieV1, onLost: () => {}, onReset: () => { resetDue = 0; },
+  });
+  // THE V1 DEATH (owner, 2026-10-08: "set its gravity to 10 (max) and stop all movements")
+  function dieV1() {
+    if (!creature) return;
+    creature.motion.active = false; creature.motion.feeding.enabled = false;
+    creature.phys.gravity = fightTune.deathGravity;
+  }
   function stepFight(dt, driving) {
-    if (driving && fight.phase === 'idle') startFight(fight);
+    const f = creature.motion.feeding;
+    if (fightOn.fight && state.lure === 'tank' && feedWas === 'hunting' && f.phase !== 'hunting') capture(fight, 'caught');
+    feedWas = f.phase;
+    if (fightOn.fight && driving && fight.phase === 'idle' && resetDue < 0) startFight(fight);
     friendlies.tick(dt);
-    if (fight.phase === 'fight' && fight.hp <= 0) kill(fight);
-    if (tickFight(fight, dt) === 'reset') friendlies.reset();
+    round.tick(dt);
+    if (resetDue >= 0) {   // a meal in progress finishes first, so it counts and the prey is never moved under the kit
+      resetDue += dt;
+      if (!(MEAL_PHASES.has(f.phase) && f.enabled) || resetDue >= MEAL_WAIT) newRound();
+    }
   }
   const muzzleV = new THREE.Vector3(), aimQ = new THREE.Quaternion(), aimV = new THREE.Vector3();
   function fireCannon() {
-    if (!planet || !frame || !tank.visible) return false;
+    if (!planet || !frame || !tank.visible || !fightOn.cannon) return false;
     if (state.lure === 'tank' && MEAL_PHASES.has(creature?.motion.feeding.phase)) return false;   // the prey cannot shoot
     let from = [drive.x, drive.z], dir = plane.heading();
     tank.updateMatrixWorld(true);
@@ -339,6 +393,42 @@ export function initBossTab(root) {
   function respawnTank() {
     plane.reset(RESPAWN_METRES, 0, Math.PI / 2); scripted = null;
     tank.visible = true;
+  }
+  // THE ROUND'S RESET (the domain's 'reset' or the panel's button): the shooters, the shells and the scorch gone, the creature at
+  // its rest with the preset's gravity and instinct, the frame back on the origin, the tank `respawn` metres out on the side away
+  // from the creature, facing it, and a fresh fight. `taken` stays; a scripted drive (the harness's) carries on
+  function newRound() {
+    resetDue = -1;
+    friendlies.reset(); cannon.clear();
+    if (!fightOn.pinSeed) fightTune.seed = (fightTune.seed | 0) + 1;
+    fight = makeFight(fightTune);
+    hullLost = false; feedWas = 'hunting';
+    if (!creature || !frame) return;
+    const was = tankWorld();
+    creature.reset(); lastMeals = 0; auto.reset();
+    restoreCreature();
+    frame = frameAt([0, 1, 0], planet.radius, 0); placeRig(); arenaCentre.set(0, 0, 0);
+    const c = creature.motion.center, cx = c.x * scale, cz = c.z * scale, l = toLocal(frame, was, 1);
+    let dx = l[0] - cx, dz = l[2] - cz; const d = Math.hypot(dx, dz);
+    if (d > 1e-6) { dx /= d; dz /= d; } else { dx = 1; dz = 0; }
+    const R = fightTune.respawn;
+    plane.reset(cx + dx * R, cz + dz * R, Math.atan2(-dx, -dz));
+    tank.visible = true; placeTank();
+    pointWorld = toWorld(frame, creature.motion.target.toArray(), scale);
+  }
+  function restoreCreature() {
+    if (!creature) return;
+    creature.phys.gravity = params.phys.gravity;
+    creature.motion.active = params.instinct; creature.motion.feeding.enabled = params.feeding;
+  }
+  // the fight switch: off is the lab as before (an idle fight, no bar, no shooters; a dead creature stands again where it lies)
+  function setFight(on) {
+    fightOn.fight = !!on;
+    friendlies.reset(); resetDue = -1; hullLost = false;
+    fight = makeFight(fightTune);
+    restoreCreature();
+    gui.controllersRecursive().forEach((c) => c.updateDisplay());
+    return fightOn.fight;
   }
 
   // --- the rig ------------------------------------------------------------------------------------------------------------
@@ -504,8 +594,8 @@ export function initBossTab(root) {
       // the kit holds the prey fixed: the tank is wherever the prey is, and gone once it is concealed
       const p = toWorld(frame, f.preyPosition.toArray(), scale), l = toLocal(frame, p, 1);
       drive.x = l[0]; drive.z = l[2];
-      tank.visible = f.visible;
-    } else tank.visible = true;
+      tank.visible = f.visible && !hullLost;
+    } else tank.visible = !hullLost;
     if (state.lure === 'point' && f.locked) pointWorld = toWorld(frame, m.target.toArray(), scale);   // follows the kit's spawn
     prey.update(f); prey.mesh.visible = state.lure !== 'tank' && f.visible;
     placeTank();
@@ -587,11 +677,12 @@ export function initBossTab(root) {
     const m = creature?.motion;
     return {
       ready: !!creature && !loading, solver: meanSolver.mean(), steps: meanSteps.mean(), skin: meanSkin.mean(), render: meanRender.mean(),
-      centre: meanCentre.mean(), reach: meanReach.mean(), sag: meanSag.mean(), taken, state: m?.state ?? null, phase: m?.feeding.phase ?? null, held: !!m?.targetHeld,
+      centre: meanCentre.mean(), reach: meanReach.mean(), sag: meanSag.mean(), taken, held: !!m?.targetHeld,
+      state: (fight.phase === 'killed' || fight.phase === 'lost') ? fight.phase : (m?.state ?? null), phase: m?.feeding.phase ?? null,
       size: state.sizeMetres, scale, lure: state.lure, variant: state.variant, cut: cutFrames.mean() > 0, frames, reanchors,
       speed: drive.speed, blocked, cruise: drive.cruise, provokes, heat: cannon.heat(), shells: cannon.shells(),
       tank: { x: drive.x, z: drive.z, yaw: drive.yaw, speed: drive.speed, visible: tank.visible },
-      fight: { ...fightReadout(fight), phase: fight.phase, rings: friendlies.rings() },
+      fight: { ...fightReadout(fight), phase: fight.phase, reason: fight.reason, on: fightOn.fight, rings: friendlies.rings(), card: round.card() },
       shaderErrors: shaderErrors.slice(), error: fatal ?? frameError, cropped,
       kernel: !!creature?.body.kernel,
     };
@@ -601,9 +692,10 @@ export function initBossTab(root) {
     const r = readout();
     const stepsHtml = r.cut ? `<b class="late">${fmt(r.steps, 1)}</b>` : `<b>${fmt(r.steps, 1)}</b>`;
     let html = `solver <b>${fmt(r.solver)} ms</b> (${stepsHtml} steps) &middot; skin <b>${fmt(r.skin)} ms</b> &middot; render <b>${fmt(r.render)} ms</b>`
-      + ` &middot; centre <b>${fmt(r.centre)} m/s</b> &middot; reach <b>${fmt(r.reach, 1)} m</b> &middot; sag <b>${fmt(r.sag)} m</b> &middot; taken <b>${r.taken}</b> &middot; provokes <b>${r.provokes}</b>`
-      + ` &middot; hp <b>${fmt(r.fight.hp, 0)}/${r.fight.max}</b> &middot; hits <b>${r.fight.hits}</b> &middot; <b>${fmt(r.fight.hpPerSecond, 1)}</b> hp/s`
-      + ` &middot; ttk <b>${Number.isFinite(r.fight.timeToKill) ? `${fmt(r.fight.timeToKill, 0)} s` : '&mdash;'}</b>`
+      + ` &middot; centre <b>${fmt(r.centre)} m/s</b> &middot; reach <b>${fmt(r.reach, 1)} m</b> &middot; sag <b>${fmt(r.sag)} m</b> &middot; taken <b>${r.taken}</b>`;
+    if (r.fight.on) html += ` &middot; hp <b>${fmt(r.fight.hp, 0)}/${r.fight.max}</b> &middot; hits <b>${r.fight.hits}</b> &middot; <b>${fmt(r.fight.hpPerSecond, 1)}</b> hp/s`
+      + ` &middot; ttk <b>${Number.isFinite(r.fight.timeToKill) ? `${fmt(r.fight.timeToKill, 0)} s` : '&mdash;'}</b>`;
+    html += ` &middot; provokes <b>${r.provokes}</b>`
       + `<br>size ${r.size} m (&times;${fmt(r.scale, 0)}) &middot; ${r.state ?? '—'} &middot; ${r.variant} &middot; lure ${r.lure}`
       + ` &middot; ${r.kernel ? 'wasm kernel' : 'js solver'} &middot; re-anchored ${r.reanchors}`;
     if (shaderErrors.length) html += `<br><b class="late">shader: ${escapeHtml(shaderErrors[shaderErrors.length - 1])}</b>`;
@@ -657,6 +749,26 @@ export function initBossTab(root) {
   body.add(params.phys, 'iterations', 1, 8, 1).name('iterations').onChange((v) => { if (creature) creature.phys.iterations = v; });
   body.add(params, 'feeding').name('feeding').onChange((v) => { if (creature) creature.motion.feeding.enabled = v; });
   body.add(params, 'instinct').name('instinct').onChange((v) => { if (creature) creature.motion.active = v; });
+  // THE FIGHT'S KNOBS (spec section 7) on the lab's copy: the cadence and the damage apply to the next plans, `health` at the reset
+  const fightGui = gui.addFolder('fight');
+  fightGui.add(fightOn, 'fight').name('fight').onChange(setFight);
+  fightGui.add(fightOn, 'gunship').name('gunship (Bofors)');
+  fightGui.add(fightOn, 'sol').name('SOL-88');
+  fightGui.add(fightOn, 'cannon').name('cannon (Space)');
+  fightGui.add(fightTune, 'health', 10, 1000, 10).name('health (at reset)');
+  fightGui.add(fightTune, 'warn', 0.2, 4, 0.1).name('warn (s)');
+  fightGui.add(fightTune, 'lead', 0, 2, 0.05).name('lead');
+  fightGui.add(fightTune, 'scatter', 0, 1.5, 0.05).name('scatter');
+  fightGui.add(fightTune.bofors, 'burst', 0.5, 6, 0.1).name('Bofors burst (s)');
+  fightGui.add(fightTune.bofors, 'rest', 0, 6, 0.1).name('Bofors rest (s)');
+  fightGui.add(fightTune.bofors, 'damage', 0, 20, 0.5).name('Bofors damage');
+  fightGui.add(fightTune.bofors, 'radius', 2, 40, 1).name('Bofors radius (m)');
+  fightGui.add(fightTune.sol, 'every', 2, 30, 0.5).name('SOL every (s)');
+  fightGui.add(fightTune.sol, 'burn', 0.5, 8, 0.1).name('SOL burn (s)');
+  fightGui.add(fightTune.sol, 'dps', 0, 50, 1).name('SOL dps');
+  fightGui.add(fightTune.sol, 'radius', 2, 30, 0.5).name('SOL radius (m)');
+  fightGui.add(fightTune, 'seed', 1, 999, 1).name('seed').listen();   // advances each round unless pinned
+  fightGui.add(fightOn, 'pinSeed').name('pin seed');
 
   function setLure(kind) {
     if (!LURES.includes(kind)) return false;
@@ -679,11 +791,7 @@ export function initBossTab(root) {
     else fallback();
     return json;
   }
-  function reset() {
-    if (!creature) return;
-    creature.reset(); lastMeals = 0; respawnTank(); auto.reset();
-    if (pointWorld && frame) pointWorld = toWorld(frame, creature.motion.target.toArray(), scale);
-  }
+  const reset = () => newRound();
   root.querySelector('.sw-side').addEventListener('click', (e) => {
     const act = e.target.closest('[data-act]')?.dataset.act;
     if (act === 'disturb') creature?.motion.disturb();
@@ -705,7 +813,7 @@ export function initBossTab(root) {
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
       renderer.domElement.removeEventListener('pointerup', onPointerUp);
       creature?.dispose(); if (prey) { prey.mesh.geometry.dispose(); prey.mesh.material.dispose(); }
-      cannon.dispose(); friendlies.dispose(); explosions.dispose();
+      cannon.dispose(); friendlies.dispose(); round.dispose(); explosions.dispose();
       planetMesh?.userData.dispose(); disposeObj(tank); gui.destroy(); controls.dispose(); renderer.dispose(); renderer.domElement.remove();
       engine?.stop(0); engine = null; audio.dispose();
       if (window.__bossLab === lab) delete window.__bossLab;
@@ -730,6 +838,11 @@ export function initBossTab(root) {
       return { x: drive.x, z: drive.z };
     },
     driveTank(seconds = 1) { scripted = { throttle: 1, turn: 0, until: t + seconds }; return true; },
+    // scripted input each frame for `seconds`: orbit the creature's centre at `radius` metres with the game's drive
+    circle(seconds = 10, radius = 40) { scripted = { circle: radius, until: t + seconds }; return true; },
+    // stop beside the creature, outside the kit's reach (see stopTank), so the creature walks onto it and takes it
+    park: () => lab.stopTank({ near: true, at: 0.15 }),
+    setFight,
     fire: () => fireCannon(),
     fight: () => ({ ...fightReadout(fight), phase: fight.phase, reason: fight.reason, strikes: fight.strikes.map((p) => p.kind) }),
     copySettings, reset, reanchor: () => tryReanchor(0),

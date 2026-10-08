@@ -5,7 +5,7 @@
 //
 // THE HIT IS THE LAB'S: `tick(dt, hitTest)` asks `hitTest(x, z)` for each shell; a hit point bursts there and calls `onHit(x, z)`.
 // A shell past its reach bursts on the ground. The burst is explosions.spawn('tank.shell') and `blast_fire`.
-// `shift(sx, sz)` moves every shell in flight with a re-anchor of the lab's frame (local metres), as the tank's position is kept.
+// `clear()` drops every shell in flight (a new round). `shift(sx, sz)` moves every shell in flight with a re-anchor of the lab's frame (local metres), as the tank's position is kept.
 import * as THREE from '../../../vendor/three.module.js';
 import { makeOrdnanceShell } from '../../shell.js';
 import { fireTankFeel } from '../../tankfeel.js';
@@ -71,6 +71,7 @@ export function createCannon(scene, { sphere = scene, surface, cellSide = 10, ex
     fire, tick, shift,
     heat: () => heat,
     shells: () => live.length,
+    clear() { while (live.length) remove(live.length - 1); },   // a new round: the shells in flight go without a burst
     dispose() { while (live.length) remove(live.length - 1); },
   };
 }

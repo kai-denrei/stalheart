@@ -146,6 +146,28 @@
   background:#10241f;color:#7fe6d0;font:11px/1 ui-monospace,Menlo,monospace;letter-spacing:2px;
   text-transform:uppercase;border-radius:2px;cursor:pointer}
 #boss .sw-run:hover{background:#16332c}
+/* the fight's round (src/labs/boss/round.js): the bar row is the integrity HUD's gate row (styles.css scopes its .ih-* rules to
+   #integrity-hud, the game's fixed strip, so the same look is restated here, under the keys strip); the card a small panel */
+#boss .sw-hud{position:absolute;left:12px;top:48px;padding:5px 8px;border:1px solid #23303c;
+  background:rgba(6,9,12,.82);color:#cfe2ec;font:600 11px/1.5 ui-monospace,Menlo,monospace;
+  letter-spacing:.08em;border-radius:2px;pointer-events:none;font-variant-numeric:tabular-nums}
+#boss .sw-hud[hidden]{display:none}
+#boss .ih-row{display:flex;align-items:center;gap:8px;color:#b8ffca}
+#boss .ih-lbl{font-size:10px;letter-spacing:.16em;color:#4fae63}
+#boss .ih-num{min-width:7ch}
+#boss .ih-bar{position:relative;width:140px;height:7px;border:1px solid rgba(184,255,202,.45)}
+#boss .ih-bar i{position:absolute;inset:0 auto 0 0;background:#b8ffca;transition:width .25s linear}
+#boss .ih-low .ih-bar i{background:#ffb347}
+#boss .ih-low .ih-num{color:#ff6a88}
+#boss .rd-clock{color:#cfe2ec;min-width:7ch}
+#boss .rd-hits{color:#9fb3c2}
+#boss .sw-card{position:absolute;top:20%;left:50%;transform:translateX(-50%);z-index:20;padding:10px 16px;
+  border:1px solid #23303c;background:rgba(6,9,12,.92);border-radius:3px;pointer-events:none;
+  font:11px/1.5 ui-monospace,Menlo,monospace;color:#b9cdd9}
+#boss .sw-card[hidden]{display:none}
+#boss .sw-card-head{display:flex;align-items:baseline;gap:10px}
+#boss .sw-card-head b{color:#e8f2f8;letter-spacing:4px;text-transform:uppercase;font-size:15px}
+#boss .sw-card-head span{color:#9fb3c2;letter-spacing:1px;font-variant-numeric:tabular-nums}
 @media (max-width:760px){#boss{flex-direction:column}#boss .sw-side{width:auto;flex:0 0 auto;border-right:0;border-bottom:1px solid #1d2630}}
 #swarm .sw-card{position:absolute;inset:16px;z-index:20;overflow:auto;padding:14px;
   border:1px solid #23303c;background:rgba(6,9,12,.95);border-radius:3px;
