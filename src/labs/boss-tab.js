@@ -57,7 +57,7 @@ import { ARENA } from '../fx/nih-dairia/arena.js';
 import { PHYS } from '../fx/nih-dairia/constants.js';
 import { MOTION_CONTROLS } from '../fx/nih-dairia/motion-settings.js';
 import { CREATURE_VARIANTS } from '../fx/nih-dairia/variants.js';
-import { NIH_DAIRIA_MOTION, NIH_DAIRIA_VARIANT, NIH_DAIRIA_SIZE_METRES, NIH_DAIRIA_LOOK, NIH_DAIRIA_MODELS } from '../content/nih-dairia.js';
+import { NIH_DAIRIA_MOTION, NIH_DAIRIA_PREDATOR, NIH_DAIRIA_VARIANT, NIH_DAIRIA_SIZE_METRES, NIH_DAIRIA_LOOK, NIH_DAIRIA_MODELS } from '../content/nih-dairia.js';
 
 const TANK_R = 3.4;          // the swarm lab's hull scale: MÖRK at its real size
 const CRUISE_TAP = 0.35;     // seconds between two W taps that toggle cruise (td-tab.js noteFastTap)
@@ -80,6 +80,9 @@ const MEAL_WAIT = 12;
 // THE LAB'S CELL IN ITS OWN UNITS: the scene is in metres (the sphere group's radius is planet.radius, 753 m), so a cell is planet.cellSide
 // (unit sphere) x planet.radius = planet.cellMetres, which is STORY_RECIPE.metresPerCell by construction (src/domain/story-planet.js:37-39)
 const CELL = STORY_RECIPE.metresPerCell;
+// THE BAIT MODE'S BOSS HEALTH (docs/superpowers/specs/2026-10-09-boss-bait-arena-and-feel-design.md, item 5): its own knob, so the owner tunes
+// the kill's length for his aim without touching the tank mode's `health`
+const BAIT_HEALTH = 180;
 
 // a rolling mean over the last n samples
 function roll(n) {
@@ -281,7 +284,9 @@ export function initBossTab(root) {
   // unless `pinSeed`. `fightOn` holds the switches: `fight` off is the lab as before but for the obstacles, which stay (no shooters, no bar, no round)
   const fightTune = { ...JSON.parse(JSON.stringify(BOSS_FIGHT)), seed: 1 };
   const fightOn = { fight: true, rotary: true, bofors: true, nuke: true, sol: true, fear: true, obstacles: true, cannon: true, pinSeed: false };
-  let fight = makeFight(fightTune);
+  const baitOpts = { health: BAIT_HEALTH };
+  const roundTune = () => (state.mode === 'tank' ? fightTune : { ...fightTune, health: baitOpts.health });   // the round's health is the mode's
+  let fight = makeFight(roundTune());
   let hullLost = false;        // a landing took the hull: hidden until the reset
   let resetDue = -1;           // seconds a due reset has waited for a meal to finish; -1 when none is due
   let feedWas = 'hunting';     // the feeding phase last frame, for the capture on leaving 'hunting'
@@ -302,9 +307,19 @@ export function initBossTab(root) {
   // THE ARENA (./boss/arena.js, the rules in src/domain/boss-arena.js): two rocks that stay and four obstacles the MK-9 breaks, in the
   // lab's ground palette. They block the tank, turn the creature's hunt round them and push its body out of them after every step
   const ground = (rgb) => new THREE.Color().setRGB(rgb[0], rgb[1], rgb[2]).getHex();
+  // THE ARENA'S WORLD-FIXED PLANE: the frame at the pole every round starts on (newRound). The bound's ring and the gunship's orbit are drawn
+  // through it, so a re-anchor (which re-projects the lab's frame) never moves them; its origin is the arena's centre
+  let homeFrame = null;
+  function fixedWorld(x, z) {
+    homeFrame ??= frameAt([0, 1, 0], planet.radius, 0);
+    const p = toWorld(homeFrame, [x, 0, z], 1), l = Math.hypot(p[0], p[1], p[2]) || 1, r = planet.radius;
+    return [p[0] / l * r, p[1] / l * r, p[2] / l * r];
+  }
+  const fixedSurface = (x, z) => { const point = new THREE.Vector3(...fixedWorld(x, z)); return { point, normal: point.clone().normalize() }; };
   const arena = createArena(sphere, {
     surface, cellSide: CELL, explosions: fx, tune: () => fightTune, scaleOf: () => scale, extentOf: () => native * scale,
     enabled: () => fightOn.obstacles, occupants: () => occupantsNow(), colors: { rock: ground(look.floors.visited), wall: ground(look.floors.spawn) },
+    bounded: () => !tankOn(), fixed: fixedSurface,   // the bait mode's bound: Isao and the creature stay inside it
   });
   // what no shape may be stood up on: the creature (its centre and its half-width plus 2 m, as creatureNow's radius) and the tank (the hull), unless the hull is lost
   const occupantsNow = () => [...(creature ? [{ at: [creature.motion.center.x * scale, creature.motion.center.z * scale], radius: native * scale / 2 + 2 }] : []), ...(hullLost || !tankOn() ? [] : [{ at: [drive.x, drive.z], radius: fightTune.hull.radius }])];
@@ -343,14 +358,16 @@ export function initBossTab(root) {
       fx.spawn('tank.shell', p.toArray(), at.normal.toArray(), CELL); audio.play('blast_fire');
     },
     caption: (text, seconds) => showCallout(text, seconds * 1000),
+    clamp: (p) => arena.clamp(p, fightTune.bounds.baitMargin),   // his wanted point, after the routing, inside the bound
   });
   // THE GUNNER SEAT (./boss/game-seat.js): in the bait mode the player sits in the game's own gunship seat (src/sentry-pilot.js), its
   // thermal and its GROUND TRUTH monitor; every round it fires is resolved by the fight through the friendlies' paths
   const seat = createGameSeat({
     stage, renderer, scene, sphere, camera: cam, audio, explosions, planet: () => planet, ground: (x, z) => tankWorld(x, z),
     local: (p) => { const u = frame.up, k = planet.radius / (p[0] * u[0] + p[1] * u[1] + p[2] * u[2]), l = toLocal(frame, [p[0] * k, p[1] * k, p[2] * k], 1); return [l[0], l[2]]; },
-    north: () => frame.north, tune: () => fightTune, fight: () => fight, now: () => t, creature: creatureNow, isao: () => bait.marker(),
-    parts: () => ({ creature: creature?.mesh, isao: sphere.getObjectByName('Isao') }), resolve: friendlies.resolve,
+    tune: () => fightTune, fight: () => fight, now: () => t, creature: creatureNow, isao: () => bait.marker(),
+    parts: () => ({ creature: creature?.mesh, isao: sphere.getObjectByName('Isao'), ring: arena.ring }), resolve: friendlies.resolve,
+    orbitGround: fixedWorld,   // the platform's orbit round the arena's centre, world-fixed
     gate: () => ({ fight: fightOn.fight, rotary: fightOn.rotary, bofors: fightOn.bofors, nuke: fightOn.nuke }),   // the fight folder's switches gate the player's guns as the schedule's
     focus: () => { const c = creatureNow().centre, b = bait.pos() ?? c; return [(c[0] + b[0]) / 2, (c[1] + b[1]) / 2]; },
     clear: () => Math.max(0, stage.getBoundingClientRect().right - gui.domElement.getBoundingClientRect().left),   // what the panel covers: the HUD's readout and the monitor stand left of it
@@ -427,7 +444,7 @@ export function initBossTab(root) {
     friendlies.reset(); seat.reset(); cannon.clear(); fear.reset(); stunned = false; pin = null;
     arena.reset();   // every obstacle back, where the layout has it (the frame goes back to the origin below)
     if (!fightOn.pinSeed) fightTune.seed = (fightTune.seed | 0) + 1;
-    fight = makeFight(fightTune);
+    fight = makeFight(roundTune());
     hullLost = false; feedWas = 'hunting';
     if (!creature || !frame) return;
     const bm = !tankOn(), was = bm && bait.groundWorld() ? bait.groundWorld() : tankWorld();
@@ -454,7 +471,7 @@ export function initBossTab(root) {
     fightOn.fight = !!on;
     friendlies.reset(); cannon.clear(); fear.reset(); stunned = false; resetDue = -1; hullLost = false; pin = null;
     arena.reset(false);   // the frame stays: the obstacles come back where they stand, but not on the creature or the tank (the next round's)
-    fight = makeFight(fightTune);
+    fight = makeFight(roundTune());
     restoreCreature();
     seat.release();   // the trigger's hold goes with the fight (the seat's guns are silent while it is off)
     if (!tankOn() && bait.has()) bait.reset(bait.pos());   // Isao whole again where he is
@@ -635,6 +652,7 @@ export function initBossTab(root) {
         const c = m.center, w = arena.route([c.x * scale, c.z * scale], [aim.x * scale, aim.z * scale]);
         routed = w[0] !== aim.x * scale || w[1] !== aim.z * scale;
         if (routed) aim.set(w[0] / scale, ARENA.lureHeight, w[1] / scale);
+        if (bm) { const b = arena.clamp([aim.x * scale, aim.z * scale], fightTune.bounds.creatureMargin); aim.set(b[0] / scale, ARENA.lureHeight, b[1] / scale); }   // the bait mode's bound, after the flight's point and the routing
       }
       // a routed or fleeing target is a waypoint or a flee point, never the tank: the kit must not capture it (`targetHeld` only gates
       // the capture, behavior.js), or a tank stopped behind a rock is eaten through it and moved to the waypoint
@@ -710,6 +728,10 @@ export function initBossTab(root) {
     if (seat.owns()) { seat.pose(); return; }   // the game seat's pose frames the camera (./boss/game-seat.js)
     if (state.view === 'free') { controls.update(); return; }
     if (gameCam?.isOn()) { gameCam.step(dt); return; }
+    chaseCam();
+  }
+  // the lab's chase: behind the tank (or Isao) looking past it at the creature
+  function chaseCam() {
     const c = creature.motion.center, cw = toWorld(frame, [c.x, 0, c.z], scale), tw = tankOn() ? tankWorld() : bait.air();   // the chase follows the tank, or Isao in the bait mode
     const up = tmpUp.set(...frame.up);
     const creatureAt = scenePoint(cw, tmpA), tankAt = scenePoint(tw, tmpB);
@@ -850,8 +872,10 @@ export function initBossTab(root) {
   fightGui.add(fightTune.wall, 'clear', 0, 20, 0.5).name('wall clear (m)');
   const cannonCtl = fightGui.add(fightOn, 'cannon').name('cannon (Space)');
   const altCtl = fightGui.add(bait.params, 'altitude', 2, 20, 0.5).name('bait altitude (m)');
+  const erraticCtl = fightGui.add(fightTune.bait, 'erratic', 0, 1, 0.05).name('Isao erratic');   // 0 the smooth flight, 1 the bursts, brakes, jinks and bob
+  const baitHealthCtl = fightGui.add(baitOpts, 'health', 10, 1000, 10).name('bait mode boss health (at reset)');
   const reloadCtl = fightGui.add(seat.params, 'reload', 1, 30, 0.5).name('MK-9 reload (s)');   // the seat's MK-9: no limit a pass, this reload between releases
-  fightGui.add(fightTune, 'health', 10, 1000, 10).name('health (at reset)');
+  const healthCtl = fightGui.add(fightTune, 'health', 10, 1000, 10).name('health (at reset)');
   fightGui.add(fightTune, 'warn', 0.2, 4, 0.1).name('warn (s)');
   fightGui.add(fightTune, 'lead', 0, 2, 0.05).name('lead');
   fightGui.add(fightTune, 'scatter', 0, 1.5, 0.05).name('scatter');
@@ -889,7 +913,8 @@ export function initBossTab(root) {
     const bm = !tankOn();
     for (const el of root.querySelectorAll('[data-tank-only]')) el.hidden = bm;
     for (const el of root.querySelectorAll('[data-bait-only]')) el.hidden = !bm;
-    solCtl.show(!bm); cannonCtl.show(!bm); altCtl.show(bm); reloadCtl.show(bm);   // SOL and the cannon are not in the bait mode; the altitude and the seat's reload are only there
+    solCtl.show(!bm); cannonCtl.show(!bm); healthCtl.show(!bm);   // SOL, the cannon and the tank's health are not in the bait mode; its altitude, erratic, health and the seat's reload are only there
+    for (const c of [altCtl, reloadCtl, erraticCtl, baitHealthCtl]) c.show(bm);
   }
   modePanel();
   // the mode: the tank, or Isao as the bait (the tank out); a new round puts the right one `respawn` metres out
@@ -897,10 +922,17 @@ export function initBossTab(root) {
     if (mode !== 'tank' && mode !== 'bait') return false;
     state.mode = mode; root.querySelector('[data-k="mode"]').value = mode;
     bait.setOn(mode === 'bait'); keys.clear(); scripted = null; cruiseTap = false; seat.release();
+    motionPreset(mode === 'bait' ? NIH_DAIRIA_PREDATOR : NIH_DAIRIA_MOTION);   // the bait mode's predator, the tank's slower creature (item 4)
     if (mode === 'bait') { tank.visible = false; gameCam?.setOn(false); }   // the game camera is the tank's: its rear frame goes and the lens is back before the optic takes it
     modePanel();
     newRound();
     return true;
+  }
+  // a motion preset into the panel's knobs and the creature now (the knobs still tune it after)
+  function motionPreset(preset) {
+    Object.assign(params.motion, preset);
+    if (creature) for (const [k, v] of Object.entries(preset)) creature.settings[k] = v;
+    gui.controllersRecursive().forEach((c) => c.updateDisplay());
   }
   // the driving camera: the lab's chase or the game's own (./boss/game-cam.js); the switch and V follow each other
   function setCam(mode) {
@@ -958,6 +990,7 @@ export function initBossTab(root) {
     setScripted: (v) => { scripted = v; }, setPin: (v) => { pin = v; },
     readout, setLure, setCam, setMode, bait, seat, setFight, fireCannon: () => fireCannon(), copySettings, reset, tryReanchor, placeTank, creatureNow,
     plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene,
+    chase: () => { if (state.view !== 'free' || !creature) return false; chaseCam(); return true; },
   });
   if (q.get('acceptance') === '1') window.__bossLab = lab;
   resize();

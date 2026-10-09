@@ -21,6 +21,10 @@
 // `bait_death` on its own clock), each once a round (`bait_hurt` twice). Through the game's Isao voice when the export has the trigger
 // (src/fx/isao-voice.js), else the text as a caption on the stage.
 //
+// THE ARENA AND THE FEEL (docs/superpowers/specs/2026-10-09-boss-bait-arena-and-feel-design.md, items 1 and 3): the routed wanted point is
+// held inside the bound (`clamp`, the arena's, `bounds.radius - bounds.baitMargin`); the flight is the domain's erratic one (`bait.erratic`,
+// the panel's `Isao erratic`), seeded by the round's seed, and its `bob` is added to his altitude.
+//
 // Positions are the lab's local metres [x, z]; the host gives the ground under a point and the frame there, so this file knows no planet.
 import * as THREE from '../../../vendor/three.module.js';
 import { makeBait, planBait, moveBait, hurtBait, baitCaught } from '../../domain/boss-bait.js';
@@ -52,8 +56,9 @@ const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 // `stage` the lab's stage (the health row joins the round's `.sw-hud` in it, built first), `sphere` the planet-centred group the model
 // lives in; `tune()` the lab's fight numbers (`.bait`), `fight()` the round's state, `now()` the lab's clock, `creature()` the rules'
 // creature, `route(from, to)` the arena's waypoint, `ground(x, z)` the sphere-space point on the surface and `tangent(world)` the frame
-// there ({ east, up, north }), `burst(x, z, alt)` Isao's end, `caption(text, seconds)` a line on the stage, `sfx` the sound engine
-export function createBaitMode({ stage, sphere, tune, fight, now, creature, route, ground, tangent, burst, caption, sfx }) {
+// there ({ east, up, north }), `burst(x, z, alt)` Isao's end, `caption(text, seconds)` a line on the stage, `sfx` the sound engine,
+// `clamp(point)` the wanted point held inside the arena's bound (a fresh array)
+export function createBaitMode({ stage, sphere, tune, fight, now, creature, route, ground, tangent, burst, caption, sfx, clamp = (p) => [p[0], p[1]] }) {
   const params = { altitude: ALTITUDE };
   const hud = stage.querySelector('.sw-hud');
   const row = document.createElement('div');
@@ -62,7 +67,7 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
   hud.append(row);
   const fill = row.querySelector('i'), num = row.querySelector('.ih-num');
 
-  let on = false, bait = null, alt = ALTITUDE, gone = false, model = null, disposed = false, drawn = '';
+  let on = false, bait = null, alt = ALTITUDE, bob = 0, gone = false, model = null, disposed = false, drawn = '';
   let hits = 0, lastLineAt = -Infinity, deathAt = null, notTodayDone = false;
   const air = [0, 0, 0];                        // his place in sphere space
   const held = new Map();                       // cell -> { p, at }: the contacts of the last HOLD seconds, newest position per cell
@@ -84,7 +89,7 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
   function place() {
     if (!bait) return;
     const w = ground(bait.pos[0], bait.pos[1]), tf = tangent(w);
-    for (let i = 0; i < 3; i++) air[i] = w[i] + tf.up[i] * alt;
+    for (let i = 0; i < 3; i++) air[i] = w[i] + tf.up[i] * (alt + bob);
     if (!model) return;
     model.position.set(air[0], air[1], air[2]);
     model.quaternion.setFromRotationMatrix(basis.makeBasis(new THREE.Vector3(...tf.east), new THREE.Vector3(...tf.up), new THREE.Vector3(...tf.north)));
@@ -148,9 +153,9 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
     // a new round: Isao at `at`, hit points whole, facing the creature; no line spoken, none due
     reset(at) {
       const T = tune(), c = creature();
-      bait = makeBait(at, T);
+      bait = makeBait(at, T, T.seed ?? 1);   // the round's seed: a round flies one way
       bait.heading = Math.atan2(c.centre[1] - at[1], c.centre[0] - at[0]);
-      alt = params.altitude; gone = false; hits = 0; lastLineAt = -Infinity; deathAt = null; notTodayDone = false;
+      alt = params.altitude; bob = 0; gone = false; hits = 0; lastLineAt = -Infinity; deathAt = null; notTodayDone = false;
       held.clear(); view = null;
       said.clear(); for (const k of Object.keys(due)) due[k] = false;
       drawn = ''; place(); draw();
@@ -173,7 +178,7 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
       if (fight().phase === 'fight') {
         view = heldView(creature());
         const want = planBait(bait, view, T);
-        moveBait(bait, dt, route(bait.pos, want), T);
+        ({ bob } = moveBait(bait, dt, clamp(route(bait.pos, want)), T));
       }
       alt += Math.max(-CLIMB * dt, Math.min(CLIMB * dt, params.altitude - alt));
       place();
@@ -216,7 +221,7 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
     state() {
       if (!bait) return null;
       const c = creature(), here = lineOf(view ?? c, bait);
-      return { pos: [...bait.pos], hp: bait.hp, max: bait.max, heading: bait.heading, alt, gone, fleeing: bait.fleeing, gap: dist(bait.pos, c.centre) - here.e, hits, said: [...said] };   // gap: against the held edge
+      return { pos: [...bait.pos], hp: bait.hp, max: bait.max, heading: bait.heading, alt, bob, speed: bait.flight?.speed ?? null, gone, fleeing: bait.fleeing, gap: dist(bait.pos, c.centre) - here.e, hits, said: [...said] };   // gap: against the held edge
     },
     dispose() {
       disposed = true; row.remove();

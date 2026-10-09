@@ -2292,7 +2292,12 @@ try{
  // monitor riding the falling MK-9); R restarts whole; the MK-9 is not one a pass (a second goes out after the reload); the MK-9 on the creature's middle
  // with it at 15 hp takes both in one frame (KILLED, the card reads `Isao down`); the 25 mm led onto the creature's far foot kills it (90 s real-time cap)
  // and the KILLED card holds five seconds with Isao's hit points on it while the held trigger fires nothing. The screenshot: BOSSBAIT_SHOT or the
- // artifacts' boss-bait-seat.png
+ // artifacts' boss-bait-seat.png. THE ARENA AND THE FEEL (2026-10-09-boss-bait-arena-and-feel-design.md, Task C): the bait mode loads the predator preset
+ // and its own boss health (180), the bound is on; over 30 s of lab clock Isao and every floor contact stay within the bound's 120 m (the max logged),
+ // the platform flies 90 +- 15 degrees of its orbit with the seat mounted throughout, Isao's measured speed outside panic stays in 8-26 m/s (1 m/s of
+ // sampling slack) with the erratic flight's swings, his heading rate logged; on 90 consecutive frames the camera rides the platform without a jump and
+ // holds its world aim as the hull turns. ARENA_SHOTS (a directory): arena-seat.png (the seat zoomed out over the centre: the ring, the orbit's slant)
+ // and arena-chase.png (the free orbit put behind Isao, the creature hunting him)
  const B='window.__bossLab',shotPath=process.env.BOSSBAIT_SHOT||join(output,'boss-bait-seat.png');
  const {BOSS_FIGHT}=await import('../src/content/boss-fight.js');
  const {GUNSHIP_GUNS,GUNSHIP_PLATFORM}=await import('../src/content/gunship.js');
@@ -2303,6 +2308,14 @@ try{
  await until(`${B}.fight().phase === "fight" && ${B}.bait() && ${B}.bait().max > 0 && !!${B}.seat()`,30000);
  const S=`(()=>{const f=${B}.fight(),b=${B}.bait(),r=${B}.readout();return {clock:${B}.arena().clock,fclock:f.clock,phase:f.phase,reason:f.reason,hp:f.hp,max:f.max,hits:f.hits,contacts:f.contacts,centre:f.centre,bait:b,seat:${B}.seat(),card:r.fight.card,mode:r.mode}})()`;
  const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+ const knob=(name)=>evaluate(`(()=>{const n=[...document.querySelectorAll('.lil-gui .name')].find(n=>n.textContent===${JSON.stringify(name)});return n?{value:+n.parentElement.querySelector('input').value,shown:getComputedStyle(n.closest('.controller')).display!=='none'}:null})()`);
+ {const {NIH_DAIRIA_PREDATOR}=await import('../src/content/nih-dairia.js');
+  const speed=await knob('Chase speed'),pause=await knob('Pause between bursts'),hp=await knob('bait mode boss health (at reset)'),err=await knob('Isao erratic'),tankHp=await knob('health (at reset)'),s0=await evaluate(S),bound=await evaluate(`${B}.arena().bound`);
+  console.log('BOSS-BAIT feel '+JSON.stringify({speed,pause,baitHealth:hp,erratic:err,tankHealthShown:tankHp.shown,max:s0.max,bound}));
+  assert(speed.value===NIH_DAIRIA_PREDATOR.speed&&pause.value===NIH_DAIRIA_PREDATOR.pauseTime,`the bait mode loads the predator preset (chase speed ${speed.value}, pause ${pause.value})`);
+  assert(hp.shown&&hp.value===180&&s0.max===180,`the bait mode's boss health knob shows, 180, and the round's creature has it (${hp.value}, max ${s0.max})`);
+  assert(err.shown&&err.value===BOSS_FIGHT.bait.erratic&&!tankHp.shown,`the Isao erratic knob shows at ${BOSS_FIGHT.bait.erratic} and the tank's health knob is hidden (${JSON.stringify({err,tankHp})})`);
+  assert(bound.on&&bound.radius===BOSS_FIGHT.bounds.radius,`the arena's bound is on at ${BOSS_FIGHT.bounds.radius} m (${JSON.stringify(bound)})`);}
  const far=(s)=>s.contacts.reduce((best,p)=>dist(p,s.bait.pos)>dist(best,s.bait.pos)?p:best,s.contacts[0]??s.centre);   // the creature's contact farthest from Isao
  const pace=async(seconds,each,cap=120000)=>{   // each(s) runs ~10 times a second of real time for `seconds` of lab clock or until it returns true
    const s0=await evaluate(S),real=Date.now();let s=s0;
@@ -2395,6 +2408,79 @@ try{
  console.log('BOSS-BAIT gap '+JSON.stringify(gap));
  assert(gaps.length>=40,`enough gap samples (${gaps.length})`);
  assert(gap.median>=17&&gap.median<=23,`Isao keeps 17-23 m from the creature's front edge (median ${gap.median}, min ${gap.min}, p90 ${gap.p90})`);
+ // THE ARENA (Task C): 30 s of lab clock, nothing aimed. The bound: Isao and every floor contact within its radius of its centre (a round lost on the way
+ // restarts by itself; the bound is read through it). The orbit: the platform's ground point swept round the centre, the seat mounted all along (its
+ // panel node and its mount count unchanged). Isao's speed: his displacement over each poll's lab seconds, outside panic, and the flight's own speed
+ {const A=`(()=>{const f=${B}.fight(),b=${B}.bait(),a=${B}.arena(),st=${B}.seat();return {clock:a.clock,phase:f.phase,bound:a.bound,contacts:f.contacts,bait:b,seat:st,panel:document.querySelector('#boss #sentry-pilot')===window.__arenaPanel}})()`;
+  await evaluate(`window.__arenaPanel=document.querySelector('#boss #sentry-pilot')`);
+  const first=await evaluate(A),mounts0=first.seat.mounts,R=BOSS_FIGHT.bounds.radius;
+  let prevA=first,sweep=0,maxIsao=0,maxContact=0,mounted=true,polls=0,restarts=0;const speeds=[],flown=[],turns=[];
+  const ang=(s)=>Math.atan2(s.seat.platform.at[1]-s.bound.at[1],s.seat.platform.at[0]-s.bound.at[0]);
+  for(const real=Date.now();Date.now()-real<150000;){
+    await delay(100);const s=await evaluate(A);polls++;
+    mounted=mounted&&!!s.seat&&s.panel&&s.seat.mounts===mounts0;if(!s.seat)break;
+    let da=ang(s)-ang(prevA);da-=Math.round(da/(2*Math.PI))*2*Math.PI;sweep+=da;
+    for(const p of s.contacts)maxContact=Math.max(maxContact,dist(p,s.bound.at));
+    if(s.bait&&!s.bait.gone)maxIsao=Math.max(maxIsao,dist(s.bait.pos,s.bound.at));
+    if(s.phase!=='fight'&&prevA.phase==='fight')restarts++;
+    const dt=s.clock-prevA.clock;
+    if(dt>=0.05&&s.phase==='fight'&&prevA.phase==='fight'&&s.bait&&prevA.bait&&!s.bait.gone&&!prevA.bait.gone&&!s.bait.fleeing&&!prevA.bait.fleeing&&s.clock-first.clock>1){
+      speeds.push(dist([s.bait.pos[0]-s.bound.at[0],s.bait.pos[1]-s.bound.at[1]],[prevA.bait.pos[0]-prevA.bound.at[0],prevA.bait.pos[1]-prevA.bound.at[1]])/dt);flown.push(s.bait.speed);turns.push(Math.abs(s.bait.heading-prevA.bait.heading)/dt);}
+    prevA=s;if(s.clock-first.clock>=30)break;
+  }
+  const lab=prevA.clock-first.clock,deg=sweep*180/Math.PI,pct=(a,p)=>{const b=[...a].sort((x,y)=>x-y);return b.length?+b[Math.min(b.length-1,Math.floor(b.length*p))].toFixed(2):null;};
+  const arenaLog={lab:+lab.toFixed(1),polls,restarts,maxIsaoM:+maxIsao.toFixed(1),maxContactM:+maxContact.toFixed(1),bound:R,orbit:{deg:+deg.toFixed(1),seatClock:+(prevA.seat.platform.t-first.seat.platform.t).toFixed(1),bank:+prevA.seat.platform.bank.toFixed(3),mounted,mounts:prevA.seat.mounts},
+    speed:{n:speeds.length,p5:pct(speeds,0.05),median:pct(speeds,0.5),p95:pct(speeds,0.95),min:pct(speeds,0),max:pct(speeds,1),flight:[pct(flown,0),pct(flown,1)]},headingRate:{median:pct(turns,0.5),p95:pct(turns,0.95),max:pct(turns,1)}};
+  console.log('BOSS-BAIT arena '+JSON.stringify(arenaLog));
+  assert(lab>=30,`the arena run covered 30 s of lab clock (${lab.toFixed(1)} s in the 150 s real cap)`);
+  assert(maxIsao<=R+1e-6,`Isao stays within the ${R} m bound (max ${maxIsao.toFixed(1)} m)`);
+  assert(maxContact<=R+1e-6,`every floor contact stays within the ${R} m bound (max ${maxContact.toFixed(1)} m)`);
+  assert(mounted,'the seat stays mounted through the orbit (the same panel, no new mount)');
+  assert(Math.abs(deg-90)<=15,`the platform flies a quarter lap in 30 s (${deg.toFixed(1)} degrees)`);
+  // the bound bites: squeezed 10 m inside the farthest of Isao and the floor contacts now (60 to 110 m) for 15 s of lab clock, Isao (held 10 m in) and every
+  // floor contact (the backstop, which puts a node on the circle: 1e-6 m of rounding) stay inside it
+  const sq0=await evaluate(A),reachNow=Math.max(...sq0.contacts.map(p=>dist(p,sq0.bound.at)),sq0.bait?dist(sq0.bait.pos,sq0.bound.at):0),SQ=Math.round(Math.min(110,Math.max(60,reachNow-10)));
+  await evaluate(`${B}.bounds(${SQ})`);let sq={isao:0,contact:0,lab:0,restarts:0},sqPrev=sq0;
+  for(const real=Date.now();Date.now()-real<90000;){await delay(100);const s=await evaluate(A);
+    for(const p of s.contacts)sq.contact=Math.max(sq.contact,dist(p,s.bound.at));if(s.bait&&!s.bait.gone&&s.clock-sq0.clock>2)sq.isao=Math.max(sq.isao,dist(s.bait.pos,s.bound.at));   // he flies in from where he was: 2 s to come inside
+    if(s.phase!=='fight'&&sqPrev.phase==='fight')sq.restarts++;sqPrev=s;sq.lab=s.clock-sq0.clock;if(sq.lab>=15)break;}
+  await evaluate(`${B}.bounds(${R})`);
+  console.log('BOSS-BAIT squeezed '+JSON.stringify({radius:SQ,reachBefore:+reachNow.toFixed(1),lab:+sq.lab.toFixed(1),maxIsaoM:+sq.isao.toFixed(1),maxContactM:+sq.contact.toFixed(1),restarts:sq.restarts}));
+  assert(sq.lab>=15&&sq.isao<=SQ+1e-6&&sq.contact<=SQ+1e-6,`squeezed to ${SQ} m, Isao and the floor contacts stay inside (${JSON.stringify(sq)})`);
+  assert(speeds.length>=60,`enough speed samples outside panic (${speeds.length})`);
+  assert(arenaLog.speed.p5>=8-1&&arenaLog.speed.p95<=26+1,`Isao's measured speed stays in 8-26 m/s outside panic (p5 ${arenaLog.speed.p5}, p95 ${arenaLog.speed.p95})`);
+  assert(arenaLog.speed.p95-arenaLog.speed.p5>=6,`and swings with the erratic flight's bursts and brakes (p5 ${arenaLog.speed.p5} to p95 ${arenaLog.speed.p95})`);
+  assert(arenaLog.speed.flight[0]>=8-1e-6&&arenaLog.speed.flight[1]<=26+1e-6,`the flight's own speed stays in 8-26 m/s (${arenaLog.speed.flight})`);}
+ // THE CAMERA RIDES THE PLATFORM (Task C): 90 consecutive frames, nothing aimed: the camera's position and view direction step smoothly (no frame turns the view
+ // by 0.5 degrees or moves it by more than three times the median step) and the view keeps its world direction while the hull's heading turns (holdAim): the
+ // direction's turn over the run stays under half the heading's
+ {const camRun=await evaluate(`new Promise((resolve)=>{const L=window.__bossLab,out=[];const tick=()=>{const w=L.world(),st=L.seat();out.push({f:L.readout().frames,p:w.camera.position,q:w.camera.quaternion,h:st.platform.heading,r:st.reticle,clock:L.arena().clock});if(out.length<90)requestAnimationFrame(tick);else resolve(out);};requestAnimationFrame(tick);})`);
+  const fwd=(q)=>{const [x,y,z,w]=q;return [-(2*(x*z+w*y)),-(2*(y*z-w*x)),-(1-2*(x*x+y*y))];};   // the camera's -z in the world
+  const angle=(a,b)=>Math.acos(Math.max(-1,Math.min(1,a[0]*b[0]+a[1]*b[1]+a[2]*b[2])))*180/Math.PI;
+  const steps=camRun.slice(1).map((x,i)=>({turn:angle(fwd(x.q),fwd(camRun[i].q)),move:Math.hypot(x.p[0]-camRun[i].p[0],x.p[1]-camRun[i].p[1],x.p[2]-camRun[i].p[2])}));
+  const moves=steps.map(x=>x.move).sort((a,b)=>a-b),medianMove=moves[moves.length>>1],worstTurn=Math.max(...steps.map(x=>x.turn)),worstMove=moves.at(-1);
+  const viewTurn=angle(fwd(camRun[0].q),fwd(camRun.at(-1).q)),headingTurn=Math.abs(camRun.at(-1).h-camRun[0].h)*180/Math.PI,labSpan=camRun.at(-1).clock-camRun[0].clock;
+  const drift=labSpan>0?dist(camRun.at(-1).r,camRun[0].r)/labSpan:0,fr=camRun.map(x=>x.f);
+  console.log('BOSS-BAIT camera '+JSON.stringify({frames:[fr[0],fr.at(-1)],lab:+labSpan.toFixed(2),worstTurnDeg:+worstTurn.toFixed(3),medianMove:+medianMove.toExponential(2),worstMove:+worstMove.toExponential(2),viewTurnDeg:+viewTurn.toFixed(2),headingTurnDeg:+headingTurn.toFixed(2),reticleDriftMps:+drift.toFixed(1)}));
+  assert(fr.at(-1)-fr[0]===89&&new Set(fr).size===90,`the camera run covers 90 consecutive frames (${fr[0]}..${fr.at(-1)})`);
+  assert(worstTurn<0.5,`the camera's view never jumps (worst ${worstTurn.toFixed(3)} degrees a frame)`);
+  assert(worstMove<=Math.max(3*medianMove,1e-9),`the camera rides the platform without a jump (worst step ${worstMove.toExponential(2)}, median ${medianMove.toExponential(2)} in the game's units)`);
+  assert(headingTurn>0.5&&viewTurn<headingTurn/2,`the view keeps its world aim as the hull turns (view ${viewTurn.toFixed(2)} degrees against the heading's ${headingTurn.toFixed(2)})`);}
+ // THE SCREENSHOTS (ARENA_SHOTS, a directory): the seat zoomed out to 1x on the arena's centre (the ring, the orbit's slant), then the free orbit put behind
+ // Isao by the lab's chase (the creature hunting him); back in the seat after
+ if(process.env.ARENA_SHOTS){
+   const wheel=(dy,n)=>evaluate(`(()=>{const cv=document.querySelector('#boss .sw-stage canvas');for(let i=0;i<${n};i++)cv.dispatchEvent(new WheelEvent('wheel',{deltaY:${dy},bubbles:true,cancelable:true}));return ${B}.seat().zoom})()`);
+   await wheel(100,8);
+   for(const end=Date.now()+2000;Date.now()<end;){await evaluate(`${B}.aim(${B}.arena().bound.at)`);await delay(100);}
+   writeFileSync(join(process.env.ARENA_SHOTS,'arena-seat.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'));
+   console.log('BOSS-BAIT arena-seat.png '+JSON.stringify({zoom:(await evaluate(`${B}.seat()`)).zoom,platform:(await evaluate(`${B}.seat()`)).platform}));
+   await wheel(-100,4);
+   await setSel('view','free');await until(`${B}.seat() === null`,10000);
+   await evaluate(`${B}.chase()`);await delay(600);await evaluate(`${B}.chase()`);await delay(200);
+   writeFileSync(join(process.env.ARENA_SHOTS,'arena-chase.png'),Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'));
+   const sc=await evaluate(S);console.log('BOSS-BAIT arena-chase.png '+JSON.stringify({bait:sc.bait.pos,centre:sc.centre,gap:sc.bait.gap,phase:sc.phase}));
+   await setSel('view','chase');await until(`!!${B}.seat() && ${B}.fight().phase === "fight"`,15000);
+ }
  const baitHp0=(await evaluate(S)).bait.max;
  // the HUD's danger report: the 40 mm's ring on Isao names him in `In blast`; on the creature's far side it is clear
  await evaluate(`${B}.gun("bofors")`);
@@ -2429,8 +2515,12 @@ try{
    shot={head:await evaluate(`document.querySelector('#boss #story-monitor .head').textContent`),heavy:(await evaluate(`${B}.seat()`)).heavy.phase,warn:await evaluate(`document.querySelector('#boss #gunship-hud svg').textContent`)};
    writeFileSync(shotPath,Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'));
  }
- await pace(30,(s)=>s.phase!=='fight');
- await until(`!!${B}.readout().fight.card`,3000);   // the card is drawn by the frame after the loss (the round ticks before the bait)
+ // the erratic flight (Task B: bursts, brakes, 40 degree jinks) can carry him out of a 4.2 s lead: each MK-9 that lands and leaves him flying is followed by
+ // another once the reload is done, led over a second of his track (the lead's meaning is unchanged: the round is put where he is going)
+ let pm=await evaluate(S);
+ const c2=await pace(60,(s)=>{if(s.phase!=='fight')return true;if(s.clock-pm.clock>=1){if(s.seat.heavy.phase==='ready'){const at=leadAt(s,pm,BOSS_FIGHT.nuke.travel);void evaluate(`${B}.aim(${JSON.stringify(at)}); ${B}.fire(true); ${B}.fire(false)`);}pm=s;}});
+ console.log('BOSS-BAIT MK-9s at Isao '+JSON.stringify({lab:+(c2.s.clock-c2.s0.clock).toFixed(1),phase:c2.s.phase,reason:c2.s.reason,nuke:c2.s.seat.shots.nuke,isaoHp:c2.s.bait.hp,timedOut:c2.timedOut}));
+ await until(`!!${B}.readout().fight.card`,15000);   // the card is drawn by the frame after the loss (the round ticks before the bait); a generous real-time cap on the loaded machine
  const c1=await evaluate(S);
  console.log('BOSS-BAIT MK-9 led onto Isao '+JSON.stringify({clock:+(c.s.clock-c.s0.clock).toFixed(1),phase:c1.phase,reason:c1.reason,isaoHp:c1.bait.hp,gone:c1.bait.gone,card:c1.card,nuke:c1.seat.shots.nuke,shot:{...shot,path:shotPath}}));
  assert(shot&&shot.head==='MK-9 · ROUND IN FLIGHT',`the monitor rides the falling MK-9 (${JSON.stringify(shot)})`);
@@ -2438,12 +2528,17 @@ try{
  assert(c1.bait.gone&&/LOST/.test(c1.card??''),`he goes in a burst and the LOST card shows (${c1.card})`);
  // R restarts: whole creature, whole Isao, a running fight, the seat still mounted and its aim back on the middle of the creature and Isao
  const restart=async()=>{await evaluate(`dispatchEvent(new KeyboardEvent("keydown",{key:"r"}));dispatchEvent(new KeyboardEvent("keyup",{key:"r"}))`);await until(`${B}.fight().phase === "fight" && ${B}.bait() && !${B}.bait().gone && ${B}.fight().hp === ${B}.fight().max`,20000);};
- await restart();
+ // the aim is read frame by frame from the R in a rAF (the platform orbits now and the reticle slides with it at 10 to 15 m/s, as the creature and Isao move
+ // the middle: a read 300 ms late measured the drift, not the reset): the first five frames of the new round, the nearest of them within the bound
+ const afterR=await evaluate(`new Promise((resolve)=>{const L=window.__bossLab,out=[],t0=performance.now();dispatchEvent(new KeyboardEvent("keydown",{key:"r"}));dispatchEvent(new KeyboardEvent("keyup",{key:"r"}));
+   const tick=()=>{const f=L.fight(),b=L.bait(),st=L.seat();if(f.phase==='fight'&&f.hp===f.max&&b&&!b.gone&&st&&st.reticle&&f.clock<1)out.push({clock:f.clock,off:Math.hypot(st.reticle[0]-st.look[0],st.reticle[1]-st.look[1]),reticle:st.reticle,look:st.look});
+     if(out.length>=5||performance.now()-t0>20000)resolve(out);else requestAnimationFrame(tick);};requestAnimationFrame(tick);})`);
+ await until(`${B}.fight().phase === "fight" && ${B}.bait() && !${B}.bait().gone && ${B}.fight().hp === ${B}.fight().max`,20000);
  const r1=await evaluate(S);
  assert(r1.hp===r1.max&&r1.bait.hp===r1.bait.max&&!r1.bait.gone,`R restarts the round whole (hp ${r1.hp}/${r1.max}, Isao ${r1.bait.hp}/${r1.bait.max})`);
- await delay(300);const rs=await evaluate(`${B}.seat()`);
- console.log('BOSS-BAIT after R '+JSON.stringify({reticle:rs.reticle,look:rs.look,off:+dist(rs.reticle,rs.look).toFixed(1),heavy:rs.heavy.phase}));
- assert(rs.reticle&&dist(rs.reticle,rs.look)<3,`after R the aim is back on the middle of the creature and Isao (${JSON.stringify({reticle:rs.reticle,look:rs.look})})`);
+ const rs=await evaluate(`${B}.seat()`),nearest=afterR.reduce((a,x)=>(!a||x.off<a.off?x:a),null);
+ console.log('BOSS-BAIT after R '+JSON.stringify({frames:afterR.map(x=>({clock:+x.clock.toFixed(3),off:+x.off.toFixed(1)})),reticle:nearest?.reticle,look:nearest?.look,heavy:rs.heavy.phase}));
+ assert(nearest&&nearest.off<4,`after R the aim is back on the middle of the creature and Isao (${JSON.stringify(afterR)})`);
  assert.equal(rs.heavy.phase,'ready','after R the MK-9 is ready (nothing falling, no reload owed)');
  // MULTIPLE NUKES: the MK-9 has no limit a pass; a second goes out after the first lands and the reload (the knob, 6 s) passes. Aimed 120 m out
  // from the creature's centre on the side away from Isao (he circles about 35 m from it: never within the 55 m blast), the reload read from the panel
@@ -2459,16 +2554,16 @@ try{
  const footLead=(s,p0)=>{const at=far(s);if(!p0||s.clock-p0.clock<0.05)return at;const v=[(s.centre[0]-p0.centre[0])/(s.clock-p0.clock),(s.centre[1]-p0.centre[1])/(s.clock-p0.clock)];return [at[0]+v[0]*rotaryTravel,at[1]+v[1]*rotaryTravel];};
  // THE 25 MM IS THE GAME'S NOW: thirty rounds a second that land two seconds after the trigger, scattered, and the barrels overheat after
  // twelve seconds of fire, where the old seat's stream burned on the foot the instant it was held. Measured, a led far foot costs the
- // creature about 1.3 hp a second of real time headless; the kills below run on a 60 hp creature (the panel's `health (at reset)`) so they
- // fit the 90 s caps, and the 25 mm's own rate is logged
+ // creature about 1.3 hp a second of real time headless; the kills below run on a 60 hp creature (the panel's `bait mode boss health (at reset)`) so they
+ // fit 90 s of lab clock (a generous real-time cap beside it: the loaded machine's clock lags), and the 25 mm's own rate is logged
  const setKnob=(name,v)=>evaluate(`(()=>{const i=[...document.querySelectorAll('.lil-gui .name')].find(n=>n.textContent===${JSON.stringify(name)}).parentElement.querySelector('input');i.value=${JSON.stringify(String(v))};i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));return i.value;})()`);
- await setKnob('health (at reset)',60);await restart();
+ await setKnob('bait mode boss health (at reset)',60);await restart();
  assert.equal((await evaluate(S)).max,60,'the kills run on a 60 hp creature');
  // (d0) the pyrrhic win (the owner's call: a shared-frame kill is KILLED, the creature is dead, and the card says Isao is down): the 25 mm wears the creature to 15 hp or less,
  // then, the creature standing (instinct off), the MK-9 on its middle (Isao circles within 49 m of it, the MK-9's lethal radius for his twelve) takes both in one frame. A round lost on the way is restarted
  await evaluate(`${B}.gun("rotary")`);
- const p0=Date.now();let pk={phase:'fight',hp:1e9},pRestarts=0,pp=null;
- for(const end=p0+90000;Date.now()<end;){
+ const p0=Date.now(),pc0=(await evaluate(S)).clock;let pk={phase:'fight',hp:1e9,clock:pc0},pRestarts=0,pp=null;
+ for(const end=p0+300000;Date.now()<end&&pk.clock-pc0<90;){
    await delay(200);pk=await evaluate(S);
    if(pk.phase==='lost'){pRestarts++;await restart();pp=null;continue;}
    if(pk.phase!=='fight'||pk.hp<=15)break;
@@ -2486,14 +2581,14 @@ try{
  assert(/KILLED/.test(pe.card)&&/Isao down/.test(pe.card),`the card is KILLED and reads Isao down (${pe.card})`);
  await evaluate(`${B}.setInstinct(true)`);await restart();await evaluate(`${B}.gun("rotary")`);
  // (d) the scripted kill: the 25 mm held on the creature's far foot, led; a round lost on the way is restarted
- let t0=Date.now();let k={phase:'fight'},restarts=0,kp=null,r0=(await evaluate(S)).seat.shots.rotary;
- for(const end=t0+90000;Date.now()<end;){
+ let t0=Date.now(),k0=await evaluate(S);let k={phase:'fight',clock:k0.clock},restarts=0,kp=null,r0=k0.seat.shots.rotary,kc0=k0.clock;
+ for(const end=t0+300000;Date.now()<end&&k.clock-kc0<90;){
    await delay(200);k=await evaluate(S);
    if(k.phase==='killed')break;
-   if(k.phase==='lost'){restarts++;await restart();kp=null;t0=Date.now();r0=(await evaluate(S)).seat.shots.rotary;continue;}
+   if(k.phase==='lost'){restarts++;await restart();kp=null;t0=Date.now();const kr=await evaluate(S);r0=kr.seat.shots.rotary;kc0=kr.clock;k=kr;continue;}
    await evaluate(`${B}.aim(${JSON.stringify(footLead(k,kp))}); ${B}.fire(true)`);kp=k;
  }
- assert.equal(k.phase,'killed',`the 25 mm on the far foot killed the creature in 90 s of real time (${k.phase} ${k.reason}, hp ${k.hp}/${k.max}, ${restarts} restarts)`);
+ assert.equal(k.phase,'killed',`the 25 mm on the far foot killed the creature in 90 s of lab clock (${k.phase} ${k.reason}, hp ${k.hp}/${k.max}, ${restarts} restarts, ${(k.clock-kc0).toFixed(1)} s of lab clock in ${((Date.now()-t0)/1000).toFixed(0)} s real)`);
 const killReal=(Date.now()-t0)/1000;
  // the rate the records quote is per LAB second (the fight's clock, `fight().clock`): headless advances the lab's clock slower than the wall's, so hp per real second understates it
  console.log('BOSS-BAIT kill '+JSON.stringify({real:+killReal.toFixed(1),fightClock:+k.fclock.toFixed(1),labClock:+k.clock.toFixed(1),restarts,isaoHp:k.bait.hp,card:k.card,rounds:k.seat.shots.rotary,hpPerRealSecond:+(k.max/killReal).toFixed(2),hpPerLabSecond:+(k.max/k.fclock).toFixed(2),labPerReal:+(k.fclock/killReal).toFixed(2),
@@ -2526,12 +2621,14 @@ const killReal=(Date.now()-t0)/1000;
   assert(fr.at(-1)-fr[0]===89&&new Set(fr).size===90,`the rock run covers 90 consecutive frames (${fr[0]}..${fr.at(-1)})`);
   assert(onRock<3,`the reticle is on the rock r3 (${onRock.toFixed(1)} m off its centre ${JSON.stringify(rockAt)}), so the patch holds it`);
   assert(median<0.5,`the rock does not flicker in the thermal: the patch's luminance changes by a median ${median.toFixed(3)} a frame (bound 0.5; a rock that comes and goes with the post chain's targets changes by about 6)`);}
- await setKnob('health (at reset)',BOSS_FIGHT.health);
+ await setKnob('bait mode boss health (at reset)',180);
  // Esc leaves the seat for the tank, and the lab is the lab again (no seat, the scene back in metres)
  await evaluate(`dispatchEvent(new KeyboardEvent("keydown",{key:"Escape"}))`);
  await until(`${B}.mode() === "tank" && ${B}.seat() === null && !document.querySelector('#boss #sentry-pilot') && !document.querySelector('#boss #story-monitor')`,10000);
  const worldEnd=await evaluate(`${B}.world()`);
  assert.deepEqual([worldEnd.scale,worldEnd.position],[world0.scale,world0.position],'Esc gives the scene back in the lab\'s own scale and position');
+ {const {NIH_DAIRIA_MOTION}=await import('../src/content/nih-dairia.js');const sp=await knob('Chase speed'),hp=await knob('health (at reset)'),bd=await evaluate(`${B}.arena().bound`);
+  assert(sp.value===NIH_DAIRIA_MOTION.speed&&hp.shown&&!bd.on,`the tank mode is back on the slower preset, its own health knob, no bound (chase speed ${sp.value}, ${JSON.stringify(bd)})`);}
  const rd=await evaluate(`${B}.readout()`);
  assert.deepEqual(rd.shaderErrors,[],'no shader errors');assert(!rd.error,`no frame error (${rd.error})`);
  current='boss-bait';await finish();

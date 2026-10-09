@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { NIH_DAIRIA_MOTION, NIH_DAIRIA_VARIANT, NIH_DAIRIA_SIZE_METRES, NIH_DAIRIA_LOOK, NIH_DAIRIA_MODELS } from '../src/content/nih-dairia.js';
+import { NIH_DAIRIA_MOTION, NIH_DAIRIA_PREDATOR, NIH_DAIRIA_VARIANT, NIH_DAIRIA_SIZE_METRES, NIH_DAIRIA_LOOK, NIH_DAIRIA_MODELS } from '../src/content/nih-dairia.js';
 const lock = JSON.parse(fs.readFileSync(new URL('../docs/nih-dairia-assets.lock.json', import.meta.url), 'utf8'));
 const locked = new Set(lock.files.map((f) => f.path));
 for (const [variant, { bin, json }] of Object.entries(NIH_DAIRIA_MODELS)) {
@@ -22,6 +22,12 @@ assert.deepEqual(NIH_DAIRIA_MOTION, {
   speed: 0.1, reachTime: 10, pullTime: 2, pauseTime: 1.25, erratic: 2, stretch: 5, spread: 3.5,
   stepHeight: 0.032, stepDuration: 0.12, stepSpacing: 0.035, stride: 0.022, recoil: 1, grip: 1.5, sweep: 1,
 }, "the owner's preset pasted from the boss lab on 2026-10-08 (slower by default)");
+// the bait mode's predator: the slower preset with the pursuit and the arms turned up, every value inside the panel's range
+const { MOTION_CONTROLS } = await import('../src/fx/nih-dairia/motion-settings.js');
+assert.deepEqual(NIH_DAIRIA_PREDATOR, { ...NIH_DAIRIA_MOTION, speed: 0.22, pullTime: 3, pauseTime: 0.8, erratic: 3, stretch: 5, spread: 4.5 }, 'the predator preset (spec item 4)');
+for (const c of MOTION_CONTROLS) assert.ok(NIH_DAIRIA_PREDATOR[c.key] >= c.min && NIH_DAIRIA_PREDATOR[c.key] <= c.max, `predator ${c.key} ${NIH_DAIRIA_PREDATOR[c.key]} inside the panel's ${c.min}..${c.max}`);
+assert.ok(NIH_DAIRIA_PREDATOR.speed > NIH_DAIRIA_MOTION.speed && NIH_DAIRIA_PREDATOR.pauseTime < NIH_DAIRIA_MOTION.pauseTime && NIH_DAIRIA_PREDATOR.pullTime > NIH_DAIRIA_MOTION.pullTime, 'faster, longer surges, shorter pauses than the slower preset');
+assert.ok(Object.isFrozen(NIH_DAIRIA_PREDATOR));
 assert.equal(NIH_DAIRIA_SIZE_METRES, 30);
 assert.deepEqual(NIH_DAIRIA_LOOK, {
   pale: '#b8b99a', dark: '#374237', roughness: 0.26, metalness: 0, transmission: 0.65, thickness: 0.012, ior: 1.37,
@@ -30,4 +36,4 @@ assert.deepEqual(NIH_DAIRIA_LOOK, {
 }, 'the look as the content module defines it');
 assert.ok(Object.isFrozen(NIH_DAIRIA_MOTION) && Object.isFrozen(NIH_DAIRIA_LOOK) && Object.isFrozen(NIH_DAIRIA_MODELS));
 assert.ok(NIH_DAIRIA_LOOK.transmission >= 0 && NIH_DAIRIA_LOOK.transmission <= 1);
-console.log('Nih-Dairia content: four models on disk and locked, fourteen settings, the look in range.');
+console.log('Nih-Dairia content: four models on disk and locked, fourteen settings, the predator preset inside the panel, the look in range.');

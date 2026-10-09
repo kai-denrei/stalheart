@@ -7,14 +7,15 @@ import { readout as fightReadout } from '../../domain/boss-fight.js';
 export function createLabHandle({
   getCreature, getScale, getT, getFight, getGameCam, getReanchors, setScripted, setPin,
   readout, setLure, setCam, setMode, bait, seat, setFight, fireCannon, copySettings, reset, tryReanchor, placeTank, creatureNow,
-  plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene,
+  plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene, chase,
 }) {
   const lab = {
     readout,
     creature: () => getCreature(),
     setLure,
     // the bait mode: mode('bait') or mode('tank') switches (a new round, as the panel's select does) and returns the mode; bait() is
-    // Isao now, { pos: [x, z], hp, max, heading, alt, gone, fleeing, gap, hits, said } with `gap` his metres beyond the creature's front
+    // Isao now, { pos: [x, z], hp, max, heading, alt, bob, speed, gone, fleeing, gap, hits, said } with `bob` the erratic flight's altitude
+    // offset, `speed` its speed (m/s) and `gap` his metres beyond the creature's front
     // edge along the line toward him (null before his first round)
     mode: (m) => (m === undefined ? state.mode : (setMode(m), state.mode)),
     bait: () => bait.state(),
@@ -22,7 +23,8 @@ export function createLabHandle({
     // gun(key) picks 'rotary' | 'bofors' | 'nuke' (the MK-9; 'heavy' and 1-3 too) through the seat's own gun buttons and returns the gun,
     // fire(on) holds or lets go of the trigger (the MK-9's fire(true) is a paint and a release over two frames; in the tank mode
     // `fire(true)` is the cannon and `fire(false)` does nothing); seat() is { gun, reticle (the impact, local), look (the point a round
-    // opens on), zoom, held, shots: { rotary, bofors, nuke }, altitude (m over the ground), cellMetres, heavy (the MK-9's state), thermal, view },
+    // opens on), zoom, held, shots: { rotary, bofors, nuke }, altitude (m over the ground), cellMetres, heavy (the MK-9's state), thermal, view,
+    // platform: { at (its ground point, local), t (the orbit's clock), heading (unwrapped), bank (the hull's, radians) }, mounts (so far) },
     // null while the seat is not mounted
     aim: (at) => seat.aim(at), gun: (key) => seat.gun(key), fire: (on = true) => (state.mode === 'bait' ? seat.fire(on) : (on ? fireCannon() : false)), seat: () => seat.state(),
     // a stopped tank; `near` puts it `at` native metres from the creature's centre, on the side it already stands. The
@@ -73,7 +75,13 @@ export function createLabHandle({
     setFight,
     // the arena: the live obstacles' ids, the push-out's nodes moved in the last step (`pushed`), its mean cost per step (`ms`) and the
     // local [i, x, y, z] (node index and position) of those nodes (`pushedNodes`, for the jitter) the lab's clock `clock` (seconds) and the re-anchor count (the nodes' local positions jump by the shift across one)
-    arena: () => { const s = arena.stats(); return { live: arena.live(), pushed: s.pushed, ms: s.ms, pushedNodes: s.nodes, clock: getT(), reanchors: getReanchors(), at: Object.fromEntries(arena.shapes.map((sh) => [sh.id, [...sh.at]])) }; },
+    // `bound` the bait mode's arena bound ({ at, radius, on }: its centre in local metres, shifting with a re-anchor)
+    arena: () => { const s = arena.stats(); return { live: arena.live(), pushed: s.pushed, ms: s.ms, pushedNodes: s.nodes, clock: getT(), reanchors: getReanchors(), at: Object.fromEntries(arena.shapes.map((sh) => [sh.id, [...sh.at]])), bound: arena.bound() }; },
+    // in the free orbit, the camera put where the lab's chase would (behind Isao in the bait mode, looking past him at the creature), for a
+    // screenshot of the hunt; false outside the free orbit
+    chase: () => chase(),
+    // the bound's radius: bounds(r) sets the lab's copy (the ring, the clamps and the backstop follow at once), bounds() reads it. Acceptance only
+    bounds: (r) => { if (r !== undefined) fightTune.bounds.radius = r; return fightTune.bounds.radius; },
     // the measurement's hold: the creature's target on the shape's centre for `seconds` of lab clock with the routing off, the tank
     // parked behind it (the far side from the creature, outside the shape plus 6 m) and held still; null for an unknown id
     pinTo(id, seconds = 10) {

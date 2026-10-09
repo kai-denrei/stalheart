@@ -18,10 +18,16 @@
 //
 // THE RIG. src/fx/gunship-rig.js is not reused: its bag reads the game's GUNSHIP_GUNS (the lab needs its copy, `perPass` 0 and the knob's
 // MK-9 reload) and its host is the game's board (story, dungeon, towers, the strike). The lab steps the same pieces in the same order:
-// the platform's clock, held on station for ever (the lab's `stationForever`), the optic riding the track, the MK-9's body, the warn
-// rings, then the seat's `gunshipTick`. The track: the platform's ground point eases toward the middle of the creature and Isao at the
-// game's top ground speed while it is more than the game's loiter radius (GUNSHIP_TRACK.loiterCells) out, and holds otherwise, north up:
-// the seat's yaw and pitch are the platform's, so a moving platform carries the aim (and a falling MK-9 follows the aim's cell once).
+// the platform's clock, held on station for ever (the lab's `stationForever`), the optic riding the orbit, the MK-9's body, the warn
+// rings, then the seat's `gunshipTick`. THE ORBIT (docs/superpowers/specs/2026-10-09-boss-bait-arena-and-feel-design.md, item 1): the
+// platform flies src/domain/boss-orbit.js `orbitAt` round the arena's centre (`orbit.radius` 200 m, one lap per `orbit.lap` 120 s) at the
+// game's altitude, its heading along the circle, on the seat's own clock (it runs with the lab's, held by P), continuous through a round's
+// reset: the seat never leaves, no departure, no arrival, no cut. The orbit's ground point is the host's world-fixed `orbitGround`, so a
+// re-anchor of the lab's frame never moves it. The seat's yaw is the platform's and sentry-pilot.js's holdAim gives back what the heading
+// turned, so the view keeps its world direction and slides with the platform: the gunner corrects the drift (a falling MK-9 follows the
+// aim's cell once). THE BANK (`orbit.bank`, into the turn) is the KORP hull's: the optic is a stabilised gimbal, its frame (the platform
+// object the pilot aims through) stays level. Rolled, the frame would tilt the pilot's forward out of the horizontal and its aim, which
+// sentry-pilot.js reads back through that frame, would miss by some twenty metres at the orbit's slant.
 //
 // THE RULES: every round the seat fires is resolved by the boss fight through the friendlies' landing and burn paths (`resolve`), which
 // tell the fear, Isao and the arena as they do for the schedule's plans: a 25 mm round burns the fight's rotary footprint for 1/rate s
@@ -46,7 +52,8 @@ import { createWarnRing } from '../../fx/warn-ring.js';
 import { createExplosions } from '../../fx/explosions.js';
 import { isaoSay, isaoSpeak } from '../../fx/isao-voice.js';
 import { makeGunship, stepGunship, onStation, phaseLeft, passProgress, mountGunship, dismountGunship, selectGun, stepGun, aimOnSphere, splashDamage, dangerReport, fireRound, stepRounds, paintHeavy, launchHeavy, nudgeHeavy, stepHeavy, heavyState } from '../../domain/gunship.js';
-import { GUNSHIP_GUNS, GUNSHIP_GUN_ORDER, GUNSHIP_NUKE, GUNSHIP_ORBIT, GUNSHIP_PLATFORM, GUNSHIP_TRACK } from '../../content/gunship.js';
+import { GUNSHIP_GUNS, GUNSHIP_GUN_ORDER, GUNSHIP_NUKE, GUNSHIP_ORBIT, GUNSHIP_PLATFORM } from '../../content/gunship.js';
+import { orbitAt } from '../../domain/boss-orbit.js';
 
 const GAME_LENS = { near: 0.004, far: 50 };   // td-tab.js's camera, in the game's units
 const RELOAD = 6;                // the lab's MK-9 reload, seconds (the knob's default; the game's is 20)
@@ -88,13 +95,14 @@ function createPost(renderer, scene, camera) {
 // `camera`, `sphere` the planet-centred group (metres), `audio` the lab's sound engine, `explosions` the lab's (in the sphere, metres:
 // cleared when the seat changes the world's units), `onError(message)` an explosion that cannot build,
 // `planet()` the lab's story planet, `ground(x, z)` the sphere-space surface point under a local
-// point and `local(p)` a sphere-space point to local [x, z], `north()` the frame's north (sphere space), `tune()` the fight's numbers,
+// point and `local(p)` a sphere-space point to local [x, z], `tune()` the fight's numbers (`orbit` the platform's),
 // `fight()` the round, `now()` the lab clock, `creature()` the rules' creature, `isao()` his marker ({ air, hp, max } or null),
-// `parts()` { creature, isao } the meshes the thermal heats, `resolve(plan, dt)` the friendlies', `gate()` the panel's switches
+// `parts()` { creature, isao, ring } the meshes the thermal heats (the arena's bound ring warm), `resolve(plan, dt)` the friendlies', `gate()` the panel's switches
 // ({ fight, rotary, bofors, nuke }), `focus()` the local point a round opens on, `clear()` the stage's px the lab panel covers on the
-// right, `leave()` back to the tank, `pause()` the lab's pause
-export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, explosions, planet, ground, local, north,
-  tune, fight, now, creature, isao, parts, resolve, gate, focus, clear = () => 0, leave = () => {}, pause = () => {}, onError = () => {} }) {
+// right, `leave()` back to the tank, `pause()` the lab's pause, `orbitGround(x, z)` the sphere-space surface point (metres) of a point
+// [x, z] round the arena's centre, world-fixed (the orbit's ground track)
+export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, explosions, planet, ground, local,
+  tune, fight, now, creature, isao, parts, resolve, gate, focus, orbitGround, clear = () => 0, leave = () => {}, pause = () => {}, onError = () => {} }) {
   isaoSay(audio, 'boss lab seat');   // the voice's sink: isaoSpeak('mk9_release') speaks through the lab's engine (an id no trigger answers: nothing is said)
   const params = { reload: RELOAD };
   // the lab's copy of the guns: the MK-9 has no limit a pass, and its reload is the knob's
@@ -104,6 +112,7 @@ export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, 
   const shots = { rotary: 0, bofors: 0, nuke: 0 };
   const v = new THREE.Vector3(), look = new THREE.Vector3(), ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), goal = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() };
   let m = null;   // the mounted seat: { pilot, G, gs, game, optic, drop, warn, monitor, post, thermal, over, saved, ... }
+  let m0 = 0;     // the mounts so far (the harness checks the seat is never left and re-entered)
   let index = null, indexOf = null, heavyPress = 0, aimFocus = false, stream = null, streamAt = -Infinity, clearPx = -1;
 
   const norm = (p) => { const l = Math.hypot(p[0], p[1], p[2]) || 1; return [p[0] / l, p[1] / l, p[2] / l]; };
@@ -162,16 +171,22 @@ export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, 
     return [{ id: 1, alive: true, pos: toGame(ground(c[0], c[1])), size: 1 }];
   }
 
-  // the platform's ground point holds while the focus is within the loiter radius, else eases toward it at the game's top ground speed
-  // until it is within half of it; north up
+  // the platform on its orbit `dt` seconds on: over the ground point, along the circle, the hull banked into the turn (see THE BANK above)
+  const head = new THREE.Vector3(), side = new THREE.Vector3(), inward = new THREE.Vector3(), Z = new THREE.Vector3(0, 0, 1), bankQ = new THREE.Quaternion();
   function ride(dt) {
-    const want = v.fromArray(norm(ground(...focus()))), d = m.over.angleTo(want), loiter = GUNSHIP_TRACK.loiterCells * m.c;
-    if (d > loiter) m.moving = true; else if (d < loiter / 2) m.moving = false;
-    if (m.moving && d > 1e-9) m.over.lerp(want, Math.min(1, GUNSHIP_TRACK.speedCells * m.c * dt / d)).normalize();
-    const n = north(), h = new THREE.Vector3(n[0], n[1], n[2]); h.addScaledVector(m.over, -h.dot(m.over));
-    const was = m.optic.platformObject().position.clone();
-    m.optic.ride(m.over.toArray(), h.normalize().toArray(), true, 1);
-    const now3 = m.optic.platformObject().position;
+    m.orbitT += dt;
+    const o = orbitAt(m.orbitT, tune()), h = o.heading, g = orbitGround(o.pos[0], o.pos[1]), a = orbitGround(o.pos[0] + Math.cos(h), o.pos[1] + Math.sin(h)), c = orbitGround(0, 0);
+    m.over.set(g[0], g[1], g[2]).normalize();
+    head.set(a[0] - g[0], a[1] - g[1], a[2] - g[2]);
+    const platform = m.optic.platformObject(), was = platform.position.clone();
+    m.optic.ride(m.over.toArray(), head.toArray(), true, 1);
+    // the inside wing down: the platform's +x toward the centre goes under the horizon
+    side.set(1, 0, 0).applyQuaternion(platform.quaternion); inward.set(c[0] - g[0], c[1] - g[1], c[2] - g[2]);
+    m.bank = -Math.sign(side.dot(inward) || 1) * o.bank;
+    const hull = platform.children[0];
+    if (hull) { hull.userData.level ??= hull.quaternion.clone(); hull.quaternion.copy(bankQ.setFromAxisAngle(Z, m.bank)).multiply(hull.userData.level); }
+    m.heading = h;
+    const now3 = platform.position;
     m.vel = dt > 0 ? [(now3.x - was.x) / dt, (now3.y - was.y) / dt, (now3.z - was.z) / dt] : [0, 0, 0];
   }
 
@@ -198,9 +213,10 @@ export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, 
       onIgnite: (p) => { audio.play(GUNSHIP_NUKE.igniteSound, { dist: camDist(p) }); explode('gunship.ignite', p); } });
     const post = createPost(renderer, scene, camera);
     explosions.clear();   // a puff of the lab's in flight would be the radius times too big in the game's units
-    m = { c, R, gs, game, boom: createExplosions(game, { onError: (e) => onError(`explosions: ${e.message}`) }), moving: false, optic, makeDrop, drop: makeDrop(), warn: createWarnRing(game, { graph: () => P.graph, cellSide: () => c }), post, saved,
-      over: new THREE.Vector3().fromArray(norm(ground(...focus()))), vel: [0, 0, 0], ring: null };
-    m.thermal = createThermalHeat(() => ({ warm: [parts().creature], hot: [parts().isao, m?.drop.mesh()] }), { postfx: post });
+    m = { c, R, gs, game, boom: createExplosions(game, { onError: (e) => onError(`explosions: ${e.message}`) }), optic, makeDrop, drop: makeDrop(), warn: createWarnRing(game, { graph: () => P.graph, cellSide: () => c }), post, saved,
+      over: new THREE.Vector3(), orbitT: 0, heading: 0, bank: 0, mounts: m0 + 1, vel: [0, 0, 0], ring: null };
+    m0 = m.mounts;
+    m.thermal = createThermalHeat(() => ({ warm: [parts().creature, parts().ring], hot: [parts().isao, m?.drop.mesh()] }), { postfx: post });
     m.G = {
       state: gs, strike: null, tune: null, guns, order: GUNSHIP_GUN_ORDER, platform: GUNSHIP_PLATFORM,
       centers: P.graph.centers, normals: P.graph.normals,
@@ -256,7 +272,7 @@ export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, 
   function unmount() {
     const s = m.saved;
     m.pilot.dispose(); m.thermal.dispose(); m.monitor.dispose(); rangeRing(-1);
-    // the KORP model rides the platform, which optic.dispose() only detaches: its geometry, materials and textures go first
+    // the KORP model rides the platform, which optic.dispose() only detaches: its geometry, materials and textures go first (the hull's bank with it)
     m.optic.platformObject().traverse((o) => { o.geometry?.dispose?.(); for (const mat of [].concat(o.material ?? [])) { for (const t of Object.values(mat)) if (t?.isTexture) t.dispose(); mat.dispose?.(); } });
     m.drop.dispose(); m.optic.dispose(); m.post.dispose(); m.boom.dispose(); explosions.clear();
     m.game.traverse((o) => { o.geometry?.dispose?.(); o.material?.dispose?.(); }); m.game.removeFromParent();
@@ -270,7 +286,7 @@ export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, 
     // the seat mounted or not: the lab asks each frame (the bait mode, not the free orbit, the planet and the creature there)
     sync(want) { if (want && !m) mount(); else if (!want && m) unmount(); return !!m; },
     owns: () => !!m,
-    // the rig's frame, where the lab's fight steps (before the friendlies): the clock on station, the track, the MK-9's body, the rings, the seat
+    // the rig's frame, where the lab's fight steps (before the friendlies): the clock on station, the orbit, the MK-9's body, the rings, the seat
     tick(dt) {
       if (!m) return;
       stepGunship(m.gs, dt, GUNSHIP_ORBIT); m.gs.phase = 'station'; m.gs.left = GUNSHIP_ORBIT.station;
@@ -295,14 +311,14 @@ export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, 
       m.monitor.render(renderer, scene, m.pilot.gunship ? m.drop.mesh() : null, m.c, dt, m.pilot.gunship ? m.pilot.gunshipOptic() : null);
       return true;
     },
-    // a new round: no round in the air, no MK-9 falling, the tube clear, the aim back on the middle of the creature and Isao
+    // a new round: no round in the air, no MK-9 falling, the tube clear, the aim back on the middle of the creature and Isao; the orbit flies on (no cut)
     reset() {
       if (!m) return;
       const gun = m.gs.gun;
       Object.assign(m.gs, makeGunship(GUNSHIP_ORBIT, { station: true }), { gun }); mountGunship(m.gs);
       if (m.drop.mesh()) { m.drop.dispose(); m.drop = m.makeDrop(); }
       m.optic.fade(1e6); rangeRing(-1); heavyPress = 0; stream = null; m.pilot.state.held = false;
-      m.over.fromArray(norm(ground(...focus()))); aimFocus = true;
+      aimFocus = true;
     },
     // the trigger let go (the fight switched off, the mode changed)
     release() { heavyPress = 0; if (m) m.pilot.state.held = false; },
@@ -323,7 +339,9 @@ export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, 
       if (!m) return null;
       const o = m.pilot.gunshipOptic(), p = m.optic.platformObject().position, f = focus();
       return { gun: NAME[m.gs.gun], reticle: o ? atLocal(o.pos) : null, look: f, zoom: m.pilot.state.zoom, held: !!m.pilot.state.held, shots: { ...shots },
-        altitude: (p.length() - 1) * m.R, cellMetres: m.c * m.R, heavy: heavyState(m.gs, guns), thermal: m.thermal.flir, view: m.pilot.state.view };
+        altitude: (p.length() - 1) * m.R, cellMetres: m.c * m.R, heavy: heavyState(m.gs, guns), thermal: m.thermal.flir, view: m.pilot.state.view,
+        // the platform: its ground point (local metres), the orbit's clock, heading (unwrapped) and the hull's bank (radians), and the mounts so far
+        platform: { at: atLocal(p.toArray()), t: m.orbitT, heading: m.heading, bank: m.bank }, mounts: m.mounts };
     },
     dispose() { if (m) unmount(); },
   };
