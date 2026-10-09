@@ -6,7 +6,7 @@ import { readout as fightReadout } from '../../domain/boss-fight.js';
 
 export function createLabHandle({
   getCreature, getScale, getT, getFight, getGameCam, getReanchors, setScripted, setPin,
-  readout, setLure, setCam, setMode, bait, setFight, fireCannon, copySettings, reset, tryReanchor, placeTank, creatureNow,
+  readout, setLure, setCam, setMode, bait, seat, setFight, fireCannon, copySettings, reset, tryReanchor, placeTank, creatureNow,
   plane, drive, keys, state, cam, params, gui, arena, fear, fightTune,
 }) {
   const lab = {
@@ -18,6 +18,10 @@ export function createLabHandle({
     // edge along the line toward him (null before his first round)
     mode: (m) => (m === undefined ? state.mode : (setMode(m), state.mode)),
     bait: () => bait.state(),
+    // the gunner seat (bait mode): aim([x, z]) puts the reticle on a local ground point (until the pointer moves), gun(key) picks
+    // 'rotary' | 'bofors' | 'nuke' (the MK-9; 'heavy' and 1-3 too) and returns it, fire(on) holds or lets go of the trigger (the MK-9 fires
+    // once per hold; in the tank mode it is the cannon, as before); seat() is { gun, reticle, look, zoom, held, shots: { rotary, bofors, nuke } }
+    aim: (at) => seat.aim(at), gun: (key) => seat.gun(key), fire: (on = true) => (state.mode === 'bait' ? seat.fire(on) : fireCannon()), seat: () => seat.state(),
     // a stopped tank; `near` puts it `at` native metres from the creature's centre, on the side it already stands. The
     // default 0.05 is inside the kit's 0.075 capture radius and can land under an arm: a prey inside the skin never lets the
     // cradle finish (its minimum gap stays below -0.0005), so a meal is tested from outside the reach, as the kit's prey is
@@ -61,7 +65,6 @@ export function createLabHandle({
     // stop beside the creature, outside the kit's reach (see stopTank), so the creature walks onto it and takes it
     park: () => lab.stopTank({ near: true, at: 0.15 }),
     setFight,
-    fire: () => fireCannon(),
     // the arena: the live obstacles' ids, the push-out's nodes moved in the last step (`pushed`), its mean cost per step (`ms`) and the
     // local [i, x, y, z] (node index and position) of those nodes (`pushedNodes`, for the jitter) the lab's clock `clock` (seconds) and the re-anchor count (the nodes' local positions jump by the shift across one)
     arena: () => { const s = arena.stats(); return { live: arena.live(), pushed: s.pushed, ms: s.ms, pushedNodes: s.nodes, clock: getT(), reanchors: getReanchors(), at: Object.fromEntries(arena.shapes.map((sh) => [sh.id, [...sh.at]])) }; },

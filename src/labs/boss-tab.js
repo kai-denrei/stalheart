@@ -31,6 +31,7 @@ import { createFear } from './boss/fear.js';
 import { createArena, deeper } from './boss/arena.js';
 import { createRound } from './boss/round.js';
 import { createBaitMode } from './boss/bait.js';
+import { createSeat } from './boss/seat.js';
 import { createGameCam } from './boss/game-cam.js';
 import { createLabHandle } from './boss/handle.js';
 import { makeFight, startFight, capture, readout as fightReadout } from '../domain/boss-fight.js';
@@ -332,6 +333,13 @@ export function initBossTab(root) {
     },
     caption: (text, seconds) => showCallout(text, seconds * 1000),
   });
+  // THE GUNNER SEAT (./boss/seat.js): in the bait mode the player is the gunship: the optic is the camera, the rounds the fight's own plans, adopted by the friendlies
+  const seat = createSeat({
+    stage, camera: cam, canvas: renderer.domElement, sphere, surface, radius: () => planet.radius, tune: () => fightTune, fight: () => fight, now: () => t,
+    local: (v) => { const u = frame.up, k = planet.radius / (v.x * u[0] + v.y * u[1] + v.z * u[2]), l = toLocal(frame, [v.x * k, v.y * k, v.z * k], 1); return [l[0], l[2]]; },
+    adopt: friendlies.adopt, armed: () => !tankOn(), free: () => state.view === 'free', keys,
+    focus: () => { const c = creatureNow().centre, b = bait.pos() ?? c; return [(c[0] + b[0]) / 2, (c[1] + b[1]) / 2]; },
+  });
   // THE V1 DEATH (owner, 2026-10-08: "set its gravity to 10 (max) and stop all movements")
   function dieV1() {
     if (!creature) return;
@@ -343,6 +351,7 @@ export function initBossTab(root) {
     if (fightOn.fight && tankOn() && state.lure === 'tank' && feedWas === 'hunting' && f.phase !== 'hunting') capture(fight, 'caught');
     feedWas = f.phase;
     if (fightOn.fight && driving && fight.phase === 'idle' && resetDue < 0) startFight(fight);
+    seat.tick(dt);   // the player's shots join the friendlies' plans before they tick
     friendlies.tick(dt);
     round.tick(dt);
     bait.tick(dt);   // after the round, so a kill the same frame wins over Isao's loss
@@ -391,7 +400,7 @@ export function initBossTab(root) {
   // from the creature, facing it, and a fresh fight. `taken` stays; a scripted drive (the harness's) carries on
   function newRound() {
     resetDue = -1;
-    friendlies.reset(); cannon.clear(); fear.reset(); stunned = false; pin = null;
+    friendlies.reset(); seat.reset(); cannon.clear(); fear.reset(); stunned = false; pin = null;
     arena.reset();   // every obstacle back, where the layout has it (the frame goes back to the origin below)
     if (!fightOn.pinSeed) fightTune.seed = (fightTune.seed | 0) + 1;
     fight = makeFight(fightTune);
@@ -469,11 +478,8 @@ export function initBossTab(root) {
     shiftCreature(shift[0], shift[2]);
     frame = next; placeRig();
     const l = toLocal(frame, w, 1); drive.x = l[0]; drive.z = l[2];   // the tank stays put in the world
-    cannon.shift(shift[0] * scale, shift[2] * scale);                 // and so do the shells in flight
-    friendlies.shift(shift[0] * scale, shift[2] * scale);             // and the strikes' landings
-    bait.shift(shift[0] * scale, shift[2] * scale);                   // and Isao
-    fear.shift(shift[0] * scale, shift[2] * scale);                   // and what frightens it
-    arena.shift(shift[0] * scale, shift[2] * scale);                  // and the obstacles
+    // everything placed in the plane stays where it is in the world: the shells in flight, the strikes' landings, Isao, the optic and its reticle, what frightens the creature, the obstacles
+    for (const part of [cannon, friendlies, bait, seat, fear, arena]) part.shift(shift[0] * scale, shift[2] * scale);
     reanchors++;
     return true;
   }
@@ -675,6 +681,7 @@ export function initBossTab(root) {
   const scenePoint = (w, out) => out.set(w[0], w[1] - planet.radius, w[2]);
   function frameCamera(dt) {
     controls.enabled = state.view === 'free';
+    if (seat.owns()) return;   // the gunner's optic frames the camera (./boss/seat.js)
     gameCam?.setOn(state.cam === 'game' && state.view !== 'free' && tankOn());   // the game's own camera takes the chase's place (./boss/game-cam.js); it is the tank's, so not in the bait mode
     if (state.view === 'free') { controls.update(); return; }
     if (gameCam?.isOn()) { gameCam.step(dt); return; }
@@ -896,7 +903,7 @@ export function initBossTab(root) {
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
       renderer.domElement.removeEventListener('pointerup', onPointerUp);
       creature?.dispose(); if (prey) { prey.mesh.geometry.dispose(); prey.mesh.material.dispose(); }
-      gameCam?.dispose(); bait.dispose(); cannon.dispose(); friendlies.dispose(); arena.dispose(); round.dispose(); explosions.dispose();
+      gameCam?.dispose(); seat.dispose(); bait.dispose(); cannon.dispose(); friendlies.dispose(); arena.dispose(); round.dispose(); explosions.dispose();
       planetMesh?.userData.dispose(); disposeObj(tank); gui.destroy(); controls.dispose(); renderer.dispose(); renderer.domElement.remove();
       engine?.stop(0); engine = null; audio.dispose();
       if (window.__bossLab === lab) delete window.__bossLab;
@@ -906,7 +913,7 @@ export function initBossTab(root) {
   const lab = createLabHandle({
     getCreature: () => creature, getScale: () => scale, getT: () => t, getFight: () => fight, getGameCam: () => gameCam, getReanchors: () => reanchors,
     setScripted: (v) => { scripted = v; }, setPin: (v) => { pin = v; },
-    readout, setLure, setCam, setMode, bait, setFight, fireCannon: () => fireCannon(), copySettings, reset, tryReanchor, placeTank, creatureNow,
+    readout, setLure, setCam, setMode, bait, seat, setFight, fireCannon: () => fireCannon(), copySettings, reset, tryReanchor, placeTank, creatureNow,
     plane, drive, keys, state, cam, params, gui, arena, fear, fightTune,
   });
   if (q.get('acceptance') === '1') window.__bossLab = lab;

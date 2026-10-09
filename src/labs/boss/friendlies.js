@@ -21,7 +21,8 @@
 //
 // THE HOST'S HOOKS (default no-ops): `onTankHit(reason)`, `onLanding(plan, { damage, point })` for every Bofors and MK-9 landing,
 // `onBeam(plan, point)` each frame SOL burns and `onBurn(plan, dt)` each frame a stream or the beam burns (the bait mode's Isao is
-// hurt by them as the creature is); `point` is the plan's local [x, z], a fresh array each call.
+// hurt by them as the creature is); `point` is the plan's local [x, z], a fresh array each call. `adopt(plan)` takes a plan the
+// player made (src/labs/boss/seat.js) into the same presentation.
 //
 // POSITIONS: plans are in the lab's local metres [x, z]; `surface(x, z)` gives the ground in the planet-centred `sphere` group,
 // where the rings, the tracers, the laser and the explosions all live. `shift(sx, sz)` follows a re-anchor of the lab's frame.
@@ -179,12 +180,16 @@ export function createFriendlies(scene, {
     return false;
   }
 
+  // a plan made elsewhere joins the ones in flight and is drawn and resolved as the schedule's are (the bait mode's gunner seat makes
+  // the player's with playerShot; `spares` is the schedule's, so a player's plan hits whatever `tank()` reports, a world away there)
+  function adopt(plan) { pending.push({ plan, ring: null, fired: false, laid: false, contactT: 0, streamT: STREAM.every, voice: null }); return plan; }
+
   function tick(dt) {
     const t = now(), state = fight(), c = creature(), k = tank();
     stepGunship(gs, dt, GUNSHIP_ORBIT);
     gs.phase = 'station'; gs.left = GUNSHIP_ORBIT.station;   // on station for ever, as the gunship lab's stationForever
     stepRounds(gs);
-    for (const plan of schedule(state, t, c, tuneNow(), k)) pending.push({ plan, ring: null, fired: false, laid: false, contactT: 0, streamT: STREAM.every, voice: null });
+    for (const plan of schedule(state, t, c, tuneNow(), k)) adopt(plan);
     for (let i = 0; i < pending.length; i++) {
       if (!advance(pending[i], t, dt, state, c, k)) continue;
       drop(pending[i]); pending.splice(i--, 1);
@@ -208,7 +213,7 @@ export function createFriendlies(scene, {
   function shift(sx, sz) { for (const e of pending) { e.plan.at[0] += sx; e.plan.at[1] += sz; } }
 
   return {
-    tick, shift, reset,
+    tick, shift, reset, adopt,
     rings: () => pending.reduce((n, e) => n + (e.ring ? 1 : 0), 0),
     dispose() {
       reset();
