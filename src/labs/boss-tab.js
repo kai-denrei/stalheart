@@ -77,6 +77,9 @@ const CANNON_COOL = 3;
 const SLEEVE_COOL = new THREE.Color(0x232833), SLEEVE_HOT = new THREE.Color(0xff2a10);
 // a round's reset waits at most this many seconds for a meal in progress to finish (a prey under an arm never finishes)
 const MEAL_WAIT = 12;
+// THE LAB'S CELL IN ITS OWN UNITS: the scene is in metres (the sphere group's radius is planet.radius, 753 m), so a cell is planet.cellSide
+// (unit sphere) x planet.radius = planet.cellMetres, which is STORY_RECIPE.metresPerCell by construction (src/domain/story-planet.js:37-39)
+const CELL = STORY_RECIPE.metresPerCell;
 
 // a rolling mean over the last n samples
 function roll(n) {
@@ -266,7 +269,7 @@ export function initBossTab(root) {
     const p = tankWorld(x, z), point = new THREE.Vector3(p[0], p[1], p[2]);
     return { point, normal: point.clone().normalize() };
   }
-  const cannon = createCannon(scene, { sphere, surface, cellSide: 10, explosions, sfx: audio, feel, cool: CANNON_COOL, onHit: provoke });
+  const cannon = createCannon(scene, { sphere, surface, cellSide: CELL, explosions, sfx: audio, feel, cool: CANNON_COOL, onHit: provoke });
   // --- the fight: the rules (src/domain/boss-fight.js) on the lab's clock `t`, started by the tank's first movement; the gunship's
   // rotary, Bofors, MK-9 and SOL-88 fire on the creature from above (./boss/friendlies.js). `fightTune` is the lab's live copy of the numbers
   // (the panel's fight folder writes it; `makeFight` reads it at each reset, `schedule` every frame); its seed advances a round
@@ -295,14 +298,14 @@ export function initBossTab(root) {
   // lab's ground palette. They block the tank, turn the creature's hunt round them and push its body out of them after every step
   const ground = (rgb) => new THREE.Color().setRGB(rgb[0], rgb[1], rgb[2]).getHex();
   const arena = createArena(sphere, {
-    surface, cellSide: 10, explosions, tune: () => fightTune, scaleOf: () => scale, extentOf: () => native * scale,
+    surface, cellSide: CELL, explosions, tune: () => fightTune, scaleOf: () => scale, extentOf: () => native * scale,
     enabled: () => fightOn.obstacles, occupants: () => occupantsNow(), colors: { rock: ground(look.floors.visited), wall: ground(look.floors.spawn) },
   });
   // what no shape may be stood up on: the creature (its centre and its half-width plus 2 m, as creatureNow's radius) and the tank (the hull), unless the hull is lost
   const occupantsNow = () => [...(creature ? [{ at: [creature.motion.center.x * scale, creature.motion.center.z * scale], radius: native * scale / 2 + 2 }] : []), ...(hullLost || !tankOn() ? [] : [{ at: [drive.x, drive.z], radius: fightTune.hull.radius }])];
   const tankBlocker = (x, z) => deeper(body.blocker(x, z), arena.blocker(x, z));   // the body's or the arena's, whichever pushes deeper
   const friendlies = createFriendlies(scene, {
-    sphere, surface, cellSide: 10, explosions, sfx: audio, tune: () => fightTune, fight: () => fight, now: () => t,
+    sphere, surface, cellSide: CELL, explosions, sfx: audio, tune: () => fightTune, fight: () => fight, now: () => t,
     creature: creatureNow, tank: tankNow,
     // plans in flight keep landing after a loss or a kill: the arena breaks only in a running fight
     onLanding: (plan, { point }) => { fear.landed(plan, point); bait.hurt(plan); if (fight.phase === 'fight') arena.landed(plan, point); }, onBeam: (plan, point) => fear.beam(plan, point),
@@ -318,7 +321,7 @@ export function initBossTab(root) {
     hullLost = true;
     if (creature) creature.motion.feeding.enabled = false;
     const at = surface(drive.x, drive.z);
-    explosions.spawn('tank.shell', at.point.toArray(), at.normal.toArray(), 10);
+    explosions.spawn('tank.shell', at.point.toArray(), at.normal.toArray(), CELL);
     audio.play('blast_fire');
   }
   const round = createRound(stage, {
@@ -332,7 +335,7 @@ export function initBossTab(root) {
     ground: (x, z) => tankWorld(x, z), tangent: (w) => frameAt(w, planet.radius, 0, frame.east), sfx: audio,
     burst: (x, z, alt) => {   // his end, the shell's burst where he flew
       const at = surface(x, z), p = at.point.clone().addScaledVector(at.normal, alt);
-      explosions.spawn('tank.shell', p.toArray(), at.normal.toArray(), 10); audio.play('blast_fire');
+      explosions.spawn('tank.shell', p.toArray(), at.normal.toArray(), CELL); audio.play('blast_fire');
     },
     caption: (text, seconds) => showCallout(text, seconds * 1000),
   });
@@ -340,7 +343,7 @@ export function initBossTab(root) {
   const seat = createSeat({
     stage, camera: cam, canvas: renderer.domElement, sphere, surface, radius: () => planet.radius, tune: () => fightTune, fight: () => fight, now: () => t,
     local: (v) => { const u = frame.up, k = planet.radius / (v.x * u[0] + v.y * u[1] + v.z * u[2]), l = toLocal(frame, [v.x * k, v.y * k, v.z * k], 1); return [l[0], l[2]]; },
-    adopt: friendlies.adopt, armed: () => !tankOn(), free: () => state.view === 'free', keys,
+    adopt: friendlies.adopt, cellSide: CELL, armed: () => !tankOn(), free: () => state.view === 'free', keys,
     gate: () => ({ fight: fightOn.fight, rotary: fightOn.rotary, bofors: fightOn.bofors, nuke: fightOn.nuke }),   // the fight folder's switches gate the player's guns as the schedule's
     isao: () => bait.marker(), clear: () => ({ right: Math.max(0, stage.getBoundingClientRect().right - gui.domElement.getBoundingClientRect().left), bottom: Math.max(0, stage.getBoundingClientRect().bottom - read.getBoundingClientRect().top) }),   // what the panel and the readout cover
     focus: () => { const c = creatureNow().centre, b = bait.pos() ?? c; return [(c[0] + b[0]) / 2, (c[1] + b[1]) / 2]; },
@@ -546,7 +549,7 @@ export function initBossTab(root) {
     frame = frameAt(anchorUp, planet.radius, 0);
     prey = createPrey(NIH_DAIRIA_LOOK); prey.mesh.visible = false; rig.add(prey.mesh);
     placeRig(); placeTank();
-    gameCam = createGameCam({ renderer, scene, camera: cam, planetRadius: planet.radius, cellSide: STORY_RECIPE.metresPerCell, host: { stage, hull: hullPose, clearRight: () => Math.max(0, stage.getBoundingClientRect().right - gui.domElement.getBoundingClientRect().left) } });
+    gameCam = createGameCam({ renderer, scene, camera: cam, planetRadius: planet.radius, cellSide: CELL, host: { stage, hull: hullPose, clearRight: () => Math.max(0, stage.getBoundingClientRect().right - gui.domElement.getBoundingClientRect().left) } });
     gameCam.setOn(state.cam === 'game' && state.view !== 'free');
     read.textContent = 'loading the creature…';
     await makeCreature();
