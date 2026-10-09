@@ -342,6 +342,7 @@ export function initBossTab(root) {
     local: (v) => { const u = frame.up, k = planet.radius / (v.x * u[0] + v.y * u[1] + v.z * u[2]), l = toLocal(frame, [v.x * k, v.y * k, v.z * k], 1); return [l[0], l[2]]; },
     adopt: friendlies.adopt, armed: () => !tankOn(), free: () => state.view === 'free', keys,
     gate: () => ({ fight: fightOn.fight, rotary: fightOn.rotary, bofors: fightOn.bofors, nuke: fightOn.nuke }),   // the fight folder's switches gate the player's guns as the schedule's
+    isao: () => bait.marker(), clear: () => ({ right: Math.max(0, stage.getBoundingClientRect().right - gui.domElement.getBoundingClientRect().left), bottom: Math.max(0, stage.getBoundingClientRect().bottom - read.getBoundingClientRect().top) }),   // what the panel and the readout cover
     focus: () => { const c = creatureNow().centre, b = bait.pos() ?? c; return [(c[0] + b[0]) / 2, (c[1] + b[1]) / 2]; },
   });
   // THE V1 DEATH (owner, 2026-10-08: "set its gravity to 10 (max) and stop all movements")
@@ -436,6 +437,7 @@ export function initBossTab(root) {
     arena.reset(false);   // the frame stays: the obstacles come back where they stand, but not on the creature or the tank (the next round's)
     fight = makeFight(fightTune);
     restoreCreature();
+    seat.release();   // the trigger's hold and its stream go with the fight (the seat's strip says it is off)
     if (!tankOn() && bait.has()) bait.reset(bait.pos());   // Isao whole again where he is
     gui.controllersRecursive().forEach((c) => c.updateDisplay());
     return fightOn.fight;
@@ -868,7 +870,7 @@ export function initBossTab(root) {
   function setMode(mode) {
     if (mode !== 'tank' && mode !== 'bait') return false;
     state.mode = mode; root.querySelector('[data-k="mode"]').value = mode;
-    bait.setOn(mode === 'bait'); keys.clear(); scripted = null;
+    bait.setOn(mode === 'bait'); keys.clear(); scripted = null; cruiseTap = false; seat.release();
     if (mode === 'bait') { tank.visible = false; gameCam?.setOn(false); }   // the game camera is the tank's: its rear frame goes and the lens is back before the optic takes it
     modePanel();
     newRound();

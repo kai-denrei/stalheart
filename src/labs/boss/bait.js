@@ -107,7 +107,7 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
   function say(key) {
     const line = LINES[key];
     lastLineAt = now(); said.add(key);
-    if (ISAO_TRIGGERS[line.id] && isaoSay(sfx, line.id, { force: true })) return;   // recorded: his own voice
+    if (ISAO_TRIGGERS[line.id] && isaoSay(sfx, line.id, { force: true, text: line.text })) return;   // recorded: his own voice, the take that matches the caption's words
     caption(line.text, CAPTION_SECONDS);
   }
   function lines() {
@@ -210,6 +210,8 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
     },
     // the KILLED card's addition: his hit points, or `Isao down` when the same blow that killed the creature downed him (a pyrrhic win, still KILLED)
     cardText: () => (on && bait ? (bait.hp <= 0 ? ' · Isao down' : ` · Isao ${Math.ceil(bait.hp)}/${bait.max}`) : ''),
+    // what the gunner's optic marks: his place in the air (sphere space) and his hit points; null when he is not in the sky
+    marker: () => (on && bait && !gone ? { air: [...air], hp: bait.hp, max: bait.max } : null),
     // the handle's view, and the gap to the creature's front edge along the line toward him
     state() {
       if (!bait) return null;
