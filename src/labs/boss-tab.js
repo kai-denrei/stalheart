@@ -143,12 +143,12 @@ export function initBossTab(root) {
       <p class="sw-note" data-bait-only hidden>Bait mode: Isao flies low on autopilot and the creature hunts him; you are in the game's gunship
       seat. Click to lock the mouse and aim with it, <b>Space</b> or the button fires, <b>1 2 3</b> the 25 mm, 40 mm and MK-9 (paint, then
       release; no limit a pass, the reload is the fight folder's knob), <b>V</b> the ship, the wheel zooms, <b>Esc</b> the tank. The fight
-      folder's rotary, Bofors and MK-9 switches gate your guns; every landing hurts Isao as it hurts the creature. <b>R</b> restarts, <b>C</b> copies
-      the values to paste.</p>
+      folder's rotary, Bofors and MK-9 switches gate your guns; every landing hurts Isao as it hurts the creature. The monitor is Isao's camera;
+      <b>I</b> gives back the game's ground truth and MK-9 feed. <b>R</b> restarts, <b>C</b> copies the values to paste.</p>
       <p class="sw-note" data-friend hidden>Isao is the bait: he flies low and the creature hunts him. You are the gunship overhead.
       Click to lock the mouse and aim with it; <b>Space</b> or the mouse button fires; <b>1 2 3</b> pick the 25 mm, 40 mm and MK-9 nuke
       (paint, then release). Every hit hurts Isao too: place your strikes between the creature and Isao to drive it off, and nuke when
-      <b>NUKE CLEAR</b> lights. <b>V</b> switches the view, the wheel zooms, <b>Esc</b> frees the mouse, <b>R</b> restarts. Desktop only.</p>
+      <b>NUKE CLEAR</b> lights. The monitor is Isao's camera (<b>I</b> the impact view). <b>V</b> switches the view, the wheel zooms, <b>Esc</b> frees the mouse, <b>R</b> restarts. Desktop only.</p>
       <p class="sw-note" data-state>&nbsp;</p>
     </div>
     <div class="sw-stage">
@@ -387,18 +387,25 @@ export function initBossTab(root) {
     tune: () => fightTune, fight: () => fight, now: () => t, creature: creatureNow, isao: () => bait.marker(),
     parts: () => ({ creature: creature?.mesh, isao: sphere.getObjectByName('Isao'), ring: arena.ring }), resolve: friendlies.resolve,
     orbitGround: fixedWorld,   // the platform's orbit round the arena's centre, world-fixed
+    isaoCam: () => (creature ? bait.cam(creatureAim()) : null),   // the monitor on Isao, looking at the creature (./boss/bait.js ISAO'S CAMERA)
     gate: () => ({ fight: fightOn.fight, rotary: fightOn.rotary, bofors: fightOn.bofors, nuke: fightOn.nuke }),   // the fight folder's switches gate the player's guns as the schedule's
     focus: () => { const c = creatureNow().centre, b = bait.pos() ?? c; return [(c[0] + b[0]) / 2, (c[1] + b[1]) / 2]; },
     clear: () => panelCover(),   // what the panel covers: the HUD's readout and the monitor stand left of it
     leave: () => { if (!PLAYTEST) setMode('tank'); },   // in the friends' link Esc only frees the mouse (the seat's own first Esc) pause: () => { paused = !paused; }, onError: (m) => shaderErrors.push(m),
   });
-  // R and C in the seat: the seat swallows every key in the capture phase; this capture listener is registered before any seat, so it runs first
+  // the creature's body centre in sphere space (its mass centre in the rig, the frame's tangent space), `lift` metres up: Isao's camera's aim
+  function creatureAim(lift = 2) {
+    const c = creature.motion.center, p = toWorld(frame, [c.x, c.y, c.z], scale);
+    return [p[0] + frame.up[0] * lift, p[1] + frame.up[1] * lift, p[2] + frame.up[2] * lift];
+  }
+  // R, C and I in the seat: the seat swallows every key in the capture phase; this capture listener is registered before any seat, so it runs first
   // T (the game's top view) is swallowed too: the lab has no map to show, and the seat would hide its HUD for a view it cannot draw
   const onSeatKey = (e) => {
     if (!seat.owns() || !active || isText(e) || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.code === 'KeyT') { e.stopImmediatePropagation(); e.preventDefault(); return; }
     if (e.key.toLowerCase() === 'r' && !e.repeat) newRound();
     if (e.code === 'KeyC' && !e.repeat) copySettings();   // the values to paste, from the seat
+    if (e.code === 'KeyI' && !e.repeat) seat.monitorCam(!seat.monitorCam());   // the monitor: Isao's camera, or the game's GROUND TRUTH and MK-9 feed
   };
   addEventListener('keydown', onSeatKey, { capture: true });
   // THE V1 DEATH (owner, 2026-10-08: "set its gravity to 10 (max) and stop all movements")
@@ -1068,7 +1075,7 @@ export function initBossTab(root) {
   const lab = createLabHandle({
     getCreature: () => creature, getScale: () => scale, getT: () => t, getFight: () => fight, getGameCam: () => gameCam, getReanchors: () => reanchors,
     setScripted: (v) => { scripted = v; }, setPin: (v) => { pin = v; },
-    readout, setLure, setCam, setMode, bait, seat, setFight, fireCannon: () => fireCannon(), copySettings, reset, tryReanchor, placeTank, creatureNow, temperament,
+    readout, setLure, setCam, setMode, bait, seat, setFight, fireCannon: () => fireCannon(), copySettings, reset, tryReanchor, placeTank, creatureNow, creatureAim, temperament,
     plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene,
     chase: () => { if (state.view !== 'free' || !creature) return false; chaseCam(); return true; },
   });

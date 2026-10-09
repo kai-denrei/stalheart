@@ -14,7 +14,8 @@ export function createStoryMonitor(root) {
   return {
     shown: () => shown,
     // mesh: a round in flight (the feed rides behind it); otherwise optic: { from, pos } frames the tracked target through a long lens,
-    // fitting `span` scene units (default 1.2 cells) with the eye `lift` above `from` (default 0.6 cells)
+    // fitting `span` scene units (default 1.2 cells) with the eye `lift` above `from` (default 0.6 cells); an optic's own `fov` (degrees,
+    // vertical) replaces that 3-30 degree lens (the boss lab's camera on Isao, 2026-10-09; the game's callers give none)
     render(renderer, scene, mesh, cellSide, dt = 0, optic = null) {
       if (mesh) linger = 1.2; else linger = Math.max(0, linger - dt);
       const on = !!mesh || linger > 0 || !!optic; box.style.display = on ? '' : 'none';
@@ -24,7 +25,7 @@ export function createStoryMonitor(root) {
       // a round can ask to be watched from further up its own vertical: a seeker climbing away is framed from behind (the default), but
       // a round FALLING from 340 m has the sky behind it that way — the gunship's MK-9 asks for a camera above it, so the ground is the backdrop
       if (mesh) { fwd.set(0, 0, 1).applyQuaternion(mesh.quaternion); up.copy(mesh.position).normalize(); eye.copy(mesh.position).addScaledVector(fwd, -cellSide * (mesh.userData?.feedBack ?? 0.9)).addScaledVector(up, cellSide * (mesh.userData?.feedLift ?? 0.35)); cam.fov = 42; tgt.copy(mesh.position); }
-      else { from.fromArray(optic.from); up.copy(from).normalize(); eye.copy(from).addScaledVector(up, optic.lift ?? cellSide * 0.6); tgt.fromArray(optic.pos); cam.fov = Math.max(3, Math.min(30, (2 * Math.atan((optic.span ?? cellSide * 1.2) / (2 * eye.distanceTo(tgt))) * 180) / Math.PI)); }
+      else { from.fromArray(optic.from); up.copy(from).normalize(); eye.copy(from).addScaledVector(up, optic.lift ?? cellSide * 0.6); tgt.fromArray(optic.pos); cam.fov = optic.fov ?? Math.max(3, Math.min(30, (2 * Math.atan((optic.span ?? cellSide * 1.2) / (2 * eye.distanceTo(tgt))) * 180) / Math.PI)); }
       cam.position.copy(eye); cam.up.copy(up); cam.lookAt(tgt); cam.aspect = r.width / r.height; cam.updateProjectionMatrix();
       // TWO UNITS, AND THEY ARE NOT THE SAME. three's setViewport/setScissor take CSS pixels — the renderer multiplies them
       // by its own pixel ratio on the way to gl.viewport (WebGLRenderer.setSize does exactly setViewport(0,0,cssW,cssH)).

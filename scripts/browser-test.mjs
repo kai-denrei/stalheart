@@ -2404,7 +2404,7 @@ try{
  console.log('BOSS-BAIT seat '+JSON.stringify(look));
  assert(look.panel&&/KORP/.test(look.header)&&look.hud&&look.seat,`the game's gunship seat is in the stage (${JSON.stringify(look)})`);
  assert(look.thermal&&look.thermalClass,'the seat is thermal');
- assert.equal(look.head,'GROUND TRUTH · IMPACT','the monitor is the ground truth at the impact point');
+ assert.equal(look.head,'ISAO · CAM','the monitor is Isao\'s camera in the bait mode');
  assert(look.monitor.w>=200&&look.monitor.clearOfPanel&&look.monitor.bottom>40&&look.monitor.bottom<120,`the monitor sits bottom right, clear of the lab's panel (${JSON.stringify(look.monitor)})`);
  assert(Math.abs(look.cellMetres-10)<1e-6&&Math.abs(look.altitude-GUNSHIP_PLATFORM.altitudeCells*10)<0.5,`the platform rides ${GUNSHIP_PLATFORM.altitudeCells} cells of 10 m up (${look.altitude} m, a cell ${look.cellMetres} m)`);
  // THE THERMAL HOLDS EVERY FRAME (the review: the lab's every-30th-frame render-cost probe drew the plain scene over the FLIR picture and the monitor): a patch
@@ -2573,9 +2573,24 @@ try{
     console.log('BOSS-BAIT fly-over '+JSON.stringify(out));return out;
   };
   await setKnob(HOP_KNOB,0);await restart();await pace(3);
+  // ISAO'S CAMERA THROUGH THE HOP (2026-10-09): every frame of the forced hop, read in a rAF after the lab's, the picture's right-hand vector (the look crossed
+  // with the planet's up at the eye, as the monitor's lookAt rolls its camera) turns by less than 10 degrees a frame (the facing's 3 rad/s at the lab's 0.05 s
+  // frame cap is 8.6); the bearing from him to the creature's centre, which the camera would follow and spin with over the top, logged beside it
+  await evaluate(`(()=>{const L=window.__bossLab;window.__camRun=[];window.__camStop=false;const tick=()=>{const m=L.seat()?.monitor,k=L.isaoCam(),b=L.bait();
+    if(m&&m.from&&k&&b)window.__camRun.push({hop:b.hop,clock:L.arena().clock,from:m.from,pos:m.pos,air:k.air,centre:k.centre});if(!window.__camStop&&window.__camRun.length<4000)requestAnimationFrame(tick);};requestAnimationFrame(tick);})()`);
   let started=false;for(const end=Date.now()+30000;!started&&Date.now()<end;){started=await evaluate(`${B}.hop()`);if(!started)await delay(200);}   // not while an escape or a trapped hop flies
   assert.equal(started,true,'hop() starts a fly-over');
   const forced=await fly('forced');
+  {const run=await evaluate(`(window.__camStop=true,window.__camRun)`),len=(a)=>Math.hypot(...a),sub=(a,b)=>a.map((x,i)=>x-b[i]);
+   const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],unit=(a)=>{const l=len(a)||1;return a.map(x=>x/l);};
+   const turn=(a,b)=>Math.acos(Math.max(-1,Math.min(1,a[0]*b[0]+a[1]*b[1]+a[2]*b[2])))*180/Math.PI;
+   let rightMax=0,bearMax=0,frames=0,pitchMax=0;for(let i=1;i<run.length;i++){const p=run[i-1],q=run[i];if(!p.hop||!q.hop)continue;frames++;
+    const r=(x)=>unit(cross(sub(x.pos,x.from),unit(x.from))),hz=(x)=>{const u=unit(x.air),d=sub(x.centre,x.air),v=d[0]*u[0]+d[1]*u[1]+d[2]*u[2];return unit(sub(d,u.map(c=>c*v)));};
+    rightMax=Math.max(rightMax,turn(r(p),r(q)));bearMax=Math.max(bearMax,turn(hz(p),hz(q)));
+    const l=unit(sub(q.pos,q.from));pitchMax=Math.max(pitchMax,Math.asin(Math.abs(l[0]*unit(q.from)[0]+l[1]*unit(q.from)[1]+l[2]*unit(q.from)[2]))*180/Math.PI);}
+   const spin={frames,pictureTurnMaxDeg:+rightMax.toFixed(2),bearingTurnMaxDeg:+bearMax.toFixed(2),lookPitchMaxDeg:+pitchMax.toFixed(1)};
+   console.log('BOSS-BAIT isao cam hop '+JSON.stringify(spin));
+   assert(frames>=20&&rightMax<10,`Isao's camera does not spin through the hop: the picture turns ${rightMax.toFixed(2)} degrees a frame at most (bound 10; ${JSON.stringify(spin)})`);}
   assert(!forced.lost&&forced.why==='forced'&&forced.phases.join()==='climb,cross,descend',`the forced hop climbs, crosses and descends (${JSON.stringify(forced)})`);
   assert(forced.turnedDeg>120,`he crosses to the creature's far side (${forced.turnedDeg} degrees round its centre, bound 120)`);
   assert(forced.crossMinAlt>forced.creatureTopM,`the cross flies above the creature's top (lowest ${forced.crossMinAlt} m, the top ${forced.creatureTopM} m)`);
@@ -2766,10 +2781,45 @@ try{
  const b1=await evaluate(S);
  console.log('BOSS-BAIT 40 mm led onto Isao '+JSON.stringify({clock:+(b.s.clock-b.s0.clock).toFixed(1),isaoHp:b1.bait.hp,phase:b1.phase}));
  assert(b1.bait.hp<baitHp0,`the 40 mm led onto Isao costs him hit points (${baitHp0} -> ${b1.bait.hp} in ${(b.s.clock-b.s0.clock).toFixed(1)} s)`);
+ // ISAO'S CAMERA (owner, 2026-10-09: "the camera still says 'ground truth/impact', it is not the POV of Isao"; src/labs/boss/bait.js and game-seat.js): over 10 s
+ // of lab clock (the fly-over off, a fresh round: here, after the gap runs, the sampling does not move where the creature
+ // stands when they start) the monitor reads ISAO · CAM, the camera it drew is within 3 m of Isao's origin and looks at the creature's mass centre
+ // within 10 degrees, and his body faces the creature (median within 5 degrees) whatever way he flies (his flight heading's offset logged); I gives back
+ // the game's GROUND TRUTH · IMPACT and I again Isao's camera; the monitor's render ms (its JS call, the canvas copy's sync included) by view, 3 s of each
+ {const C=`(()=>{const L=window.__bossLab,m=L.seat().monitor,k=L.isaoCam(),b=L.bait(),f=L.fight();return {clock:L.arena().clock,m,k,b:{pos:b.pos,facing:b.facing,heading:b.heading,hop:b.hop,gone:b.gone},centre:f.centre}})()`;
+  const sub=(a,b)=>a.map((x,i)=>x-b[i]),len=(a)=>Math.hypot(...a),deg=(r)=>r*180/Math.PI,wrapD=(a)=>Math.abs(deg(a-Math.round(a/(2*Math.PI))*2*Math.PI));
+  const angle=(a,b)=>deg(Math.acos(Math.max(-1,Math.min(1,(a[0]*b[0]+a[1]*b[1]+a[2]*b[2])/(len(a)*len(b))))));
+  await restart();const samples=[];await pace(2);
+  for(const real=Date.now(),c0=(await evaluate(C)).clock;Date.now()-real<60000;){await delay(100);const x=await evaluate(C);if(x.b.gone||x.b.hop||!x.m.from)continue;
+   const bear=Math.atan2(x.centre[1]-x.b.pos[1],x.centre[0]-x.b.pos[0]);
+   samples.push({head:x.m.head,eye:len(sub(x.m.from,x.k.air)),look:angle(sub(x.m.pos,x.m.from),sub(x.k.centre,x.m.from)),face:wrapD(x.b.facing-bear),fly:wrapD(x.b.heading-bear)});if(x.clock-c0>=10)break;}
+  const med=(a)=>{const q=[...a].sort((u,v)=>u-v);return q[q.length>>1];},mx=(a)=>Math.max(...a);
+  const camLog={n:samples.length,heads:[...new Set(samples.map(x=>x.head))],eyeMaxM:+mx(samples.map(x=>x.eye)).toFixed(2),lookMaxDeg:+mx(samples.map(x=>x.look)).toFixed(2),
+   faceMedianDeg:+med(samples.map(x=>x.face)).toFixed(1),faceMaxDeg:+mx(samples.map(x=>x.face)).toFixed(1),flightOffMedianDeg:+med(samples.map(x=>x.fly)).toFixed(1),flightOffMaxDeg:+mx(samples.map(x=>x.fly)).toFixed(1)};
+  console.log('BOSS-BAIT isao cam '+JSON.stringify(camLog));
+  assert(samples.length>=15&&camLog.heads.length===1&&camLog.heads[0]==='ISAO · CAM',`the monitor reads ISAO · CAM throughout (${JSON.stringify(camLog)})`);
+  assert(camLog.eyeMaxM<3&&camLog.lookMaxDeg<10,`Isao's camera is within 3 m of him and looks at the creature's centre within 10 degrees (${JSON.stringify(camLog)})`);
+  assert(camLog.faceMedianDeg<5,`his body faces the creature (${JSON.stringify(camLog)})`);
+  if(process.env.ISAO_CAM_SHOT)writeFileSync(process.env.ISAO_CAM_SHOT,Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'));   // the monitor showing the creature from Isao
+  const key=(k)=>evaluate(`dispatchEvent(new KeyboardEvent("keydown",{key:"${k}",code:"Key${k.toUpperCase()}",bubbles:true}));dispatchEvent(new KeyboardEvent("keyup",{key:"${k}",code:"Key${k.toUpperCase()}",bubbles:true}))`);
+  const cost=async()=>{const a=(await evaluate(C)).m.cost;await delay(3000);const b=(await evaluate(C)).m.cost;const per=(k)=>b[k][1]>a[k][1]?+((b[k][0]-a[k][0])/(b[k][1]-a[k][1])).toFixed(3):null;return {isao:per('isao'),game:per('game'),frames:{isao:b.isao[1]-a.isao[1],game:b.game[1]-a.game[1]}};};
+  const costIsao=await cost();
+  await key('i');await delay(400);const off=await evaluate(C);
+  const costGame=await cost();
+  await key('i');await delay(400);const back=await evaluate(C);
+  console.log('BOSS-BAIT isao cam key I '+JSON.stringify({off:{head:off.m.head,isao:off.m.isao,from:off.m.from},back:{head:back.m.head,isao:back.m.isao}}));
+  console.log('BOSS-BAIT monitor ms '+JSON.stringify({groundTruth:costGame.game,isaoCam:costIsao.isao,frames:{groundTruth:costGame.frames.game,isaoCam:costIsao.frames.isao}}));
+  assert(off.m.head==='GROUND TRUTH · IMPACT'&&off.m.isao===false&&off.m.from===null,`I gives back the game's GROUND TRUTH impact view (${JSON.stringify(off.m.head)})`);
+  assert(back.m.head==='ISAO · CAM'&&back.m.isao===true,`I again gives Isao's camera back (${JSON.stringify(back.m.head)})`);}
  // (c) the MK-9 led onto him: LOST `Isao down`. While it falls, the screenshot: thermal, the monitor riding the round. On a 1000 hp creature: his escapes
  // from under it break the lead, and in one run the fifth MK-9 that took him had killed the creature on the way (KILLED, not LOST); 180 again after
  await setKnob('bait mode boss health (at reset)',1000);await restart();
  await evaluate(`${B}.gun("nuke")`);
+ // NO NUKE LINES (owner, 2026-10-09): Isao's voice log (src/fx/isao-voice.js, the module the lab speaks through) gains no mk9_release take over these MK-9 releases;
+ // the monitor put on the game's view (I) so it rides the falling round for the screenshot
+ const voiceLog='(async()=>{const l=(await import("./src/fx/isao-voice.js")).isaoSay.log;return {all:l.length,mk9:l.filter(e=>e.trigger==="mk9_release"||e.from==="mk9_release").length,keys:[...new Set(l.map(e=>e.trigger))]}})()';
+ const voice0=await evaluate(voiceLog),nuke0=(await evaluate(`${B}.seat()`)).shots.nuke;
+ await evaluate(`${B}.monitorCam(false)`);
  prev=await evaluate(S);let fired=false,shot=null;
  const c=await pace(30,(s)=>{if(s.phase!=='fight')return true;if(!fired&&s.clock-prev.clock>=0.3){const at=leadAt(s,prev,BOSS_FIGHT.nuke.travel);prev=s;void evaluate(`${B}.aim(${JSON.stringify(at)}); ${B}.fire(true); ${B}.fire(false)`);fired=s.seat.shots.nuke>0;}if(fired&&!shot)return true;});
  if(fired){
@@ -2786,6 +2836,10 @@ try{
  const c1=await evaluate(S);
  console.log('BOSS-BAIT MK-9 led onto Isao '+JSON.stringify({clock:+(c.s.clock-c.s0.clock).toFixed(1),phase:c1.phase,reason:c1.reason,isaoHp:c1.bait.hp,gone:c1.bait.gone,card:c1.card,nuke:c1.seat.shots.nuke,shot:{...shot,path:shotPath}}));
  assert(shot&&shot.head==='MK-9 · ROUND IN FLIGHT',`the monitor rides the falling MK-9 (${JSON.stringify(shot)})`);
+ {const voice1=await evaluate(voiceLog),nukes=c1.seat.shots.nuke-nuke0;
+  console.log('BOSS-BAIT no nuke lines '+JSON.stringify({nukes,before:voice0,after:voice1}));
+  assert(nukes>0&&voice1.mk9===voice0.mk9,`no mk9_release line in Isao's voice over ${nukes} MK-9 releases (${voice0.mk9} -> ${voice1.mk9})`);}
+ await evaluate(`${B}.monitorCam(true)`);
  assert(c1.phase==='lost'&&c1.reason==='Isao down',`the MK-9 on Isao is LOST Isao down (${c1.phase} ${c1.reason}, shots ${JSON.stringify(c1.seat.shots)})`);
  assert(c1.bait.gone&&/LOST/.test(c1.card??''),`he goes in a burst and the LOST card shows (${c1.card})`);
  await setKnob('bait mode boss health (at reset)',180);

@@ -6,7 +6,7 @@ import { readout as fightReadout } from '../../domain/boss-fight.js';
 
 export function createLabHandle({
   getCreature, getScale, getT, getFight, getGameCam, getReanchors, setScripted, setPin,
-  readout, setLure, setCam, setMode, bait, seat, setFight, fireCannon, copySettings, reset, tryReanchor, placeTank, creatureNow, temperament,
+  readout, setLure, setCam, setMode, bait, seat, setFight, fireCannon, copySettings, reset, tryReanchor, placeTank, creatureNow, creatureAim, temperament,
   plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene, chase,
 }) {
   const lab = {
@@ -39,6 +39,9 @@ export function createLabHandle({
     // opens on), zoom, held, shots: { rotary, bofors, nuke }, altitude (m over the ground), cellMetres, heavy (the MK-9's state), thermal, view,
     // platform: { at (its ground point, local), t (the orbit's clock), heading (unwrapped), bank (the hull's, radians) }, mounts (so far) },
     // null while the seat is not mounted
+    // the monitor on Isao (./game-seat.js ISAO'S CAMERA; the seat's state().monitor is the camera drawn): monitorCam(on) chooses it (the lab's I), monitorCam() reads it;
+    // isaoCam() is { air (his origin), centre (the creature's mass centre) } in sphere metres, null without a creature
+    monitorCam: (on) => seat.monitorCam(on), isaoCam: () => (getCreature() ? { air: bait.air(), centre: creatureAim(0) } : null),
     aim: (at) => seat.aim(at), gun: (key) => seat.gun(key), fire: (on = true) => (state.mode === 'bait' ? seat.fire(on) : (on ? fireCannon() : false)), seat: () => seat.state(),
     // a stopped tank; `near` puts it `at` native metres from the creature's centre, on the side it already stands. The
     // default 0.05 is inside the kit's 0.075 capture radius and can land under an arm: a prey inside the skin never lets the

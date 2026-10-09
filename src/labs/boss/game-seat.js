@@ -41,6 +41,13 @@
 // centre at the release) from where the platform is now (`holdRound`, the seat's own attach), plus what the mouse turned it by since the last frame, so the aim's
 // cell changes only when the player moves the mouse. After a move the point held is where the aim then landed (`G.aim`, read back each tick).
 //
+// ISAO'S CAMERA (owner, 2026-10-09: "the camera still says 'ground truth/impact', it is not the POV of Isao"): the monitor shows his camera (`isaoCam()`, the
+// lab's: his nose looking at the creature, ./bait.js) through a 70 degree lens, labelled ISAO · CAM, whenever he flies; `monitorCam(false)` (the lab's I)
+// gives back the game's GROUND TRUTH impact view and its MK-9 feed, and with him gone the game's view comes back by itself. NO NUKE LINES (owner, 2026-10-09:
+// "while in this mode, we should disable the 'nuke launched' lines, since they are the same voice as ISAO it is confusing"): the game's rig announces every
+// MK-9 in Isao's voice (gunship-rig.js isaoSpeak('mk9_release')); this seat is the bait mode's, where Isao is the one being shot at, so its release says
+// nothing (the release clunk, the motor and the blast are sounds, and stay). His own lines on the MK-9 are the chatter director's (./bait.js).
+//
 // KEYS: the seat swallows every key but H in the capture phase. Esc is its `leave` (the lab goes back to the tank), P its `pause`; the
 // lab's R is a capture listener registered before any seat (boss-tab.js), so it runs first and the game's sentry-pilot.js is unchanged.
 import * as THREE from '../../../vendor/three.module.js';
@@ -55,7 +62,6 @@ import { createGunshipOptic } from '../../fx/gunship-optic.js';
 import { createGunshipDrop } from '../../fx/gunship-drop.js';
 import { createWarnRing } from '../../fx/warn-ring.js';
 import { createExplosions } from '../../fx/explosions.js';
-import { isaoSay, isaoSpeak } from '../../fx/isao-voice.js';
 import { makeGunship, stepGunship, onStation, phaseLeft, passProgress, mountGunship, dismountGunship, selectGun, stepGun, aimOnSphere, splashDamage, dangerReport, fireRound, stepRounds, paintHeavy, launchHeavy, nudgeHeavy, stepHeavy, heavyState } from '../../domain/gunship.js';
 import { GUNSHIP_GUNS, GUNSHIP_GUN_ORDER, GUNSHIP_NUKE, GUNSHIP_ORBIT, GUNSHIP_PLATFORM } from '../../content/gunship.js';
 import { orbitAt } from '../../domain/boss-orbit.js';
@@ -66,6 +72,7 @@ const STREAM_GAP = 0.3;          // 25 mm rounds landing closer than this in tim
 const WALL_LIFT = 0.4 * 0.7;     // the range ring's lift in cells: td-tab's wallHeight (4 m walls, 0.4 cells) x 0.7
 const KEY = { rotary: 'rotary', bofors: 'bofors', nuke: 'heavy', heavy: 'heavy' };   // the lab's names to the game's
 const NAME = { rotary: 'rotary', bofors: 'bofors', heavy: 'nuke' };
+const ISAO_CAM = { fov: 70, label: 'ISAO · CAM' };   // the monitor on Isao: a drone camera's wide lens (the game's optic is 3-30 degrees)
 
 // the game's post chain, small: the scene into a target, the OutputPass to display space, and the passes added after it (the FLIR) last,
 // as src/postfx.js makeBloom's finalComposer runs them (its MSAA on the scene's buffer, none on the other); off, the scene goes straight
@@ -105,11 +112,12 @@ function createPost(renderer, scene, camera) {
 // `parts()` { creature, isao, ring } the meshes the thermal heats (the arena's bound ring warm), `resolve(plan, dt)` the friendlies', `gate()` the panel's switches
 // ({ fight, rotary, bofors, nuke }), `focus()` the local point a round opens on, `clear()` the stage's px the lab panel covers on the
 // right, `leave()` back to the tank, `pause()` the lab's pause, `orbitGround(x, z)` the sphere-space surface point (metres) of a point
-// [x, z] round the arena's centre, world-fixed (the orbit's ground track)
+// [x, z] round the arena's centre, world-fixed (the orbit's ground track), `isaoCam()` Isao's camera ({ from, pos } sphere space, null when he is not flying)
 export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, explosions, planet, ground, local,
-  tune, fight, now, creature, isao, parts, resolve, gate, focus, orbitGround, clear = () => 0, leave = () => {}, pause = () => {}, onError = () => {} }) {
-  isaoSay(audio, 'boss lab seat');   // the voice's sink: isaoSpeak('mk9_release') speaks through the lab's engine (an id no trigger answers: nothing is said)
+  tune, fight, now, creature, isao, parts, resolve, gate, focus, orbitGround, isaoCam = () => null, clear = () => 0, leave = () => {}, pause = () => {}, onError = () => {} }) {
   const params = { reload: RELOAD };
+  let camIsao = true;   // the monitor on Isao (ISAO'S CAMERA); false: the game's GROUND TRUTH
+  const feed = { last: null, cost: { isao: [0, 0], game: [0, 0] } };   // the descriptor drawn last frame (null: the game's) and the monitor's ms and frames by view
   // the lab's copy of the guns: the MK-9 has no limit a pass, and its reload is the knob's
   const heavy = { ...GUNSHIP_GUNS.heavy, perPass: 0 };
   Object.defineProperty(heavy, 'reload', { get: () => params.reload, enumerable: true });
@@ -266,7 +274,7 @@ export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, 
       laser: (ci) => rangeRing(ci),
       loop: (name, o) => audio.loop(name, o),
       paintHeavy: (ci, o) => allowed('heavy') && live() && paintHeavy(gs, ci, guns, o),
-      launchHeavy: (o) => { if (!live()) return -1; const lc = launchHeavy(gs, guns, o); if (lc >= 0) { shots.nuke++; fired.at = now(); isaoSpeak('mk9_release', { force: true }); } return lc; },   // every MK-9 is announced (gunship-rig.js)
+      launchHeavy: (o) => { if (!live()) return -1; const lc = launchHeavy(gs, guns, o); if (lc >= 0) { shots.nuke++; fired.at = now(); } return lc; },   // no voice: NO NUKE LINES (above)
       nudgeHeavy: (ci) => nudgeHeavy(gs, ci),
       stepHeavy: () => stepHeavy(gs),
       heavyState: () => heavyState(gs, guns),
@@ -329,7 +337,9 @@ export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, 
       const px = Math.round(clear());
       if (px !== clearPx) { clearPx = px; stage.style.setProperty('--seat-clear', `${px}px`); }
       m.post.render(dt);
-      m.monitor.render(renderer, scene, m.pilot.gunship ? m.drop.mesh() : null, m.c, dt, m.pilot.gunship ? m.pilot.gunshipOptic() : null);
+      const v = m.pilot.gunship && camIsao ? isaoCam() : null, own = v ? { from: toGame(v.from), pos: toGame(v.pos), lift: 0, ...ISAO_CAM } : null, a = performance.now();
+      m.monitor.render(renderer, scene, own ? null : m.pilot.gunship ? m.drop.mesh() : null, m.c, dt, own ?? (m.pilot.gunship ? m.pilot.gunshipOptic() : null));
+      const k = feed.cost[own ? 'isao' : 'game']; k[0] += performance.now() - a; k[1]++; feed.last = v;
       return true;
     },
     // a new round: no round in the air, no MK-9 falling, the tube clear, the aim back on the middle of the creature and Isao; the orbit flies on (no cut)
@@ -341,6 +351,8 @@ export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, 
       m.optic.fade(1e6); rangeRing(-1); heavyPress = 0; stream = null; m.pilot.state.held = false;
       aimFocus = true;
     },
+    // the monitor's view: monitorCam(true) Isao's camera, monitorCam(false) the game's GROUND TRUTH; returns the choice
+    monitorCam(on) { if (on !== undefined) camIsao = !!on; return camIsao; },
     // the trigger let go (the fight switched off, the mode changed)
     release() { heavyPress = 0; if (m) m.pilot.state.held = false; },
     // the player's fire for Isao's lines (./bait.js): the gun ('rotary' | 'bofors' | 'nuke'), the reticle (local metres; with the MK-9 only, else null), the lab's
@@ -371,7 +383,11 @@ export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, 
         // the platform: its ground point (local metres), the orbit's clock, heading (unwrapped) and the hull's bank (radians), and the mounts so far
         platform: { at: atLocal(p.toArray()), t: m.orbitT, heading: m.heading, bank: m.bank }, mounts: m.mounts,
         // the falling MK-9's hold: the held ground point (local metres, null when no round falls) and the frames held so far
-        hold: m.hold ? atLocal(m.hold.at) : null, holds: m.holds };
+        hold: m.hold ? atLocal(m.hold.at) : null, holds: m.holds,
+        // the monitor: its label, Isao's camera chosen (`isao`) and drawn last frame (`from`, `pos` sphere metres; null when the game's view was), and the ms its
+        // render took (summed) and the frames, by view
+        monitor: { head: stage.querySelector('#story-monitor .head')?.textContent ?? null, isao: camIsao, from: feed.last?.from ?? null, pos: feed.last?.pos ?? null,
+          fov: feed.last ? ISAO_CAM.fov : null, cost: { isao: [...feed.cost.isao], game: [...feed.cost.game] } } };
     },
     dispose() { if (m) unmount(); },
   };
