@@ -126,6 +126,7 @@
 #boss .sw-side h2{margin:0 0 12px;font-size:13px;letter-spacing:3px;text-transform:uppercase;color:#8fb6c9;font-weight:600}
 #boss .sw-side label{display:block;margin:0 0 11px;font-size:11px;letter-spacing:1px;color:#9fb3c2;text-transform:uppercase}
 #boss .sw-side select{width:100%;margin-top:4px}
+#boss .sw-side label[hidden],#boss .sw-note[hidden]{display:none}
 #boss .sw-side b{color:#e8f2f8;font-variant-numeric:tabular-nums}
 #boss .sw-side textarea{width:100%;box-sizing:border-box;background:#05080b;color:#b9cdd9;border:1px solid #23303c;font:10.5px/1.4 ui-monospace,Menlo,monospace}
 #boss .sw-note{font-size:10.5px;line-height:1.5;color:#6b8494;border-top:1px solid #1d2630;padding-top:10px;margin-top:14px}
@@ -167,6 +168,7 @@
   border-radius:2px;white-space:nowrap}
 #boss .seat-gun{padding:2px 8px;border:1px solid #2c3944;border-radius:2px}
 #boss .seat-gun.on{color:#0a1014;background:#ffb347;border-color:#ffb347}
+#boss .seat-gun.off{opacity:.35;text-decoration:line-through}
 #boss .seat-info{margin-left:8px;color:#b9cdd9;font-variant-numeric:tabular-nums}
 #boss .seat-info.wait{color:#ff9a6b}
 #boss .seat-hint{position:absolute;left:50%;bottom:112px;transform:translateX(-50%);color:#6b8494;font:10.5px/1.4 ui-monospace,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap}

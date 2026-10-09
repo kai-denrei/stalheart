@@ -119,7 +119,7 @@ export function initBossTab(root) {
     <div class="sw-side">
       <h2>boss study</h2>
       <label>body <select data-k="variant">${CREATURE_VARIANTS.map((v) => `<option value="${v.id}">${v.name}</option>`).join('')}</select></label>
-      <label>lure <select data-k="lure"><option value="tank">the tank (WASD)</option><option value="point">a point (click the ground)</option><option value="auto">the figure-eight</option></select></label>
+      <label data-tank-only>lure <select data-k="lure"><option value="tank">the tank (WASD)</option><option value="point">a point (click the ground)</option><option value="auto">the figure-eight</option></select></label>
       <label>view <select data-k="view"><option value="chase">chase</option><option value="free">free orbit</option></select></label>
       <label>mode <select data-k="mode"><option value="tank">tank (WASD)</option><option value="bait">bait (Isao flies, the creature hunts him)</option></select></label>
       <label>camera (V) <select data-k="cam"><option value="lab">lab</option><option value="game">game (rear view)</option></select></label>
@@ -128,9 +128,12 @@ export function initBossTab(root) {
       <button type="button" class="sw-run" data-act="reanchor">re-anchor now</button>
       <button type="button" class="sw-run" data-act="copy">copy settings</button>
       <textarea data-copy hidden readonly rows="8"></textarea>
-      <p class="sw-note">A driving tank counts as held and cannot be taken. Stop within reach and it is cradled, covered and
+      <p class="sw-note" data-tank-only>A driving tank counts as held and cannot be taken. Stop within reach and it is cradled, covered and
       absorbed; the tank comes back thirty metres out and <b>taken</b> rises. The physics runs at the kit's native scale; size
       only places it.</p>
+      <p class="sw-note" data-bait-only hidden>Bait mode: Isao flies low on autopilot and the creature hunts him; you are the gunship. Point to aim, hold
+      to fire, <b>1 2 3</b> pick the 25 mm, 40 mm and MK-9, WASD pans, the wheel zooms. The fight folder's rotary, Bofors and MK-9
+      switches gate your guns; every landing hurts Isao as it hurts the creature. <b>R</b> restarts.</p>
       <p class="sw-note" data-state>&nbsp;</p>
     </div>
     <div class="sw-stage">
@@ -338,6 +341,7 @@ export function initBossTab(root) {
     stage, camera: cam, canvas: renderer.domElement, sphere, surface, radius: () => planet.radius, tune: () => fightTune, fight: () => fight, now: () => t,
     local: (v) => { const u = frame.up, k = planet.radius / (v.x * u[0] + v.y * u[1] + v.z * u[2]), l = toLocal(frame, [v.x * k, v.y * k, v.z * k], 1); return [l[0], l[2]]; },
     adopt: friendlies.adopt, armed: () => !tankOn(), free: () => state.view === 'free', keys,
+    gate: () => ({ fight: fightOn.fight, rotary: fightOn.rotary, bofors: fightOn.bofors, nuke: fightOn.nuke }),   // the fight folder's switches gate the player's guns as the schedule's
     focus: () => { const c = creatureNow().centre, b = bait.pos() ?? c; return [(c[0] + b[0]) / 2, (c[1] + b[1]) / 2]; },
   });
   // THE V1 DEATH (owner, 2026-10-08: "set its gravity to 10 (max) and stop all movements")
@@ -681,8 +685,8 @@ export function initBossTab(root) {
   const scenePoint = (w, out) => out.set(w[0], w[1] - planet.radius, w[2]);
   function frameCamera(dt) {
     controls.enabled = state.view === 'free';
+    gameCam?.setOn(state.cam === 'game' && state.view !== 'free' && tankOn());   // the game's own camera takes the chase's place (./boss/game-cam.js); it is the tank's, so not in the bait mode (its rear frame and lens go)
     if (seat.owns()) return;   // the gunner's optic frames the camera (./boss/seat.js)
-    gameCam?.setOn(state.cam === 'game' && state.view !== 'free' && tankOn());   // the game's own camera takes the chase's place (./boss/game-cam.js); it is the tank's, so not in the bait mode
     if (state.view === 'free') { controls.update(); return; }
     if (gameCam?.isOn()) { gameCam.step(dt); return; }
     const c = creature.motion.center, cw = toWorld(frame, [c.x, 0, c.z], scale), tw = tankOn() ? tankWorld() : bait.air();   // the chase follows the tank, or Isao in the bait mode
@@ -728,7 +732,7 @@ export function initBossTab(root) {
       size: state.sizeMetres, scale, lure: state.lure, variant: state.variant, cut: cutFrames.mean() > 0, frames, reanchors,
       speed: drive.speed, blocked, cruise: drive.cruise, provokes, heat: cannon.heat(), shells: cannon.shells(),
       tank: { x: drive.x, z: drive.z, yaw: drive.yaw, speed: drive.speed, visible: tank.visible },
-      fight: { ...fightReadout(fight), nukeOn: fightOn.nuke, phase: fight.phase, reason: fight.reason, on: fightOn.fight, rings: friendlies.rings(), card: round.card(), ...fear.counts(), fearMode: fear.mode(), nukeIn: fight.nuke ? Math.max(0, fight.nuke.next) : null },
+      fight: { ...fightReadout(fight), nukeOn: fightOn.nuke, phase: fight.phase, reason: fight.reason, on: fightOn.fight, rings: friendlies.rings(), card: round.card(), ...fear.counts(), fearMode: fear.mode(), nukeIn: fight.nuke && tankOn() ? Math.max(0, fight.nuke.next) : null, mk9In: Math.max(0, fightTune.nuke.every - (t - (fight.player?.nuke ?? -Infinity))) },
       arena: { on: fightOn.obstacles, live: arena.live().length, ...(({ pushed, ms }) => ({ pushed, ms }))(arena.stats()) },
       shaderErrors: shaderErrors.slice(), error: fatal ?? frameError, cropped,
       kernel: !!creature?.body.kernel,
@@ -746,10 +750,12 @@ export function initBossTab(root) {
       + `<br>rot <b>${fmt(r.fight.byKind.rotary, 0)}</b> &middot; bof <b>${fmt(r.fight.byKind.bofors, 0)}</b> &middot; nuke <b>${fmt(r.fight.byKind.nuke, 0)}</b> &middot; sol <b>${fmt(r.fight.byKind.sol, 0)}</b>`
       + ` &middot; fear <b>${r.fight.fearMode}</b> (fleeing <b>${fmt(r.fight.fleeShare * 100, 0)}%</b>, stunned <b>${fmt(r.fight.stunShare * 100, 0)}%</b> of the round)`
       + ` &middot; frights <b>${r.fight.frights}</b> &middot; stuns <b>${r.fight.stuns}</b>`
-      + ` &middot; nuke in <b>${!r.fight.nukeOn ? 'off' : r.fight.nukeIn === null ? '&mdash;' : `${fmt(r.fight.nukeIn, 1)} s`}</b>`;
+      + (r.mode === 'bait'   // the player's MK-9 (its reload), not the schedule's
+        ? ` &middot; MK-9 <b>${!r.fight.nukeOn ? 'off' : r.fight.mk9In > 0 ? `in ${fmt(r.fight.mk9In, 1)} s` : 'ready'}</b>`
+        : ` &middot; nuke in <b>${!r.fight.nukeOn ? 'off' : r.fight.nukeIn === null ? '&mdash;' : `${fmt(r.fight.nukeIn, 1)} s`}</b>`);
     html += ` &middot; provokes <b>${r.provokes}</b>`
       + (r.arena.on ? ` &middot; push <b>${r.arena.pushed}</b> &middot; <b>${fmt(r.arena.ms, 3)} ms/step</b>` : '')
-      + `<br>size ${r.size} m (&times;${fmt(r.scale, 0)}) &middot; ${r.state ?? '—'} &middot; ${r.variant} &middot; lure ${r.lure}`
+      + `<br>size ${r.size} m (&times;${fmt(r.scale, 0)}) &middot; ${r.state ?? '—'} &middot; ${r.variant}${r.mode === 'bait' ? '' : ` &middot; lure ${r.lure}`}`
       + ` &middot; ${r.kernel ? 'wasm kernel' : 'js solver'} &middot; re-anchored ${r.reanchors}`
       + (r.rearMs !== null ? ` &middot; camera game &middot; rear <b>${fmt(r.rearMs)} ms</b>` : '');
     if (r.mode === 'bait' && r.bait) html += `<br>Isao <b>${fmt(r.bait.hp, 1)}/${r.bait.max}</b> &middot; gap <b>${fmt(r.bait.gap, 1)} m</b> &middot; alt <b>${fmt(r.bait.alt, 1)} m</b> &middot; ${r.bait.gone ? 'gone' : r.bait.fleeing ? 'backing off' : 'circling'}`;
@@ -811,12 +817,12 @@ export function initBossTab(root) {
   fightGui.add(fightOn, 'rotary').name('rotary (25 mm)');
   fightGui.add(fightOn, 'bofors').name('Bofors (40 mm)');
   fightGui.add(fightOn, 'nuke').name('MK-9 nuke');
-  fightGui.add(fightOn, 'sol').name('SOL-88');
+  const solCtl = fightGui.add(fightOn, 'sol').name('SOL-88');
   fightGui.add(fightOn, 'fear').name('fear (flight, stun)');
   fightGui.add(fightOn, 'obstacles').name('obstacles (arena)').onChange((on) => { if (on) arena.settle(); });
   fightGui.add(fightTune.wall, 'clear', 0, 20, 0.5).name('wall clear (m)');
-  fightGui.add(fightOn, 'cannon').name('cannon (Space)');
-  fightGui.add(bait.params, 'altitude', 2, 20, 0.5).name('bait altitude (m)');
+  const cannonCtl = fightGui.add(fightOn, 'cannon').name('cannon (Space)');
+  const altCtl = fightGui.add(bait.params, 'altitude', 2, 20, 0.5).name('bait altitude (m)');
   fightGui.add(fightTune, 'health', 10, 1000, 10).name('health (at reset)');
   fightGui.add(fightTune, 'warn', 0.2, 4, 0.1).name('warn (s)');
   fightGui.add(fightTune, 'lead', 0, 2, 0.05).name('lead');
@@ -850,12 +856,21 @@ export function initBossTab(root) {
     if (kind === 'point' && creature && frame) pointWorld = toWorld(frame, creature.motion.target.toArray(), scale);
     return true;
   }
+  // what applies in the mode: the tank's lure, note, SOL and cannon switches, or the bait's note and altitude knob
+  function modePanel() {
+    const bm = !tankOn();
+    for (const el of root.querySelectorAll('[data-tank-only]')) el.hidden = bm;
+    for (const el of root.querySelectorAll('[data-bait-only]')) el.hidden = !bm;
+    solCtl.show(!bm); cannonCtl.show(!bm); altCtl.show(bm);   // SOL and the cannon are not in the bait mode; the altitude is only there
+  }
+  modePanel();
   // the mode: the tank, or Isao as the bait (the tank out); a new round puts the right one `respawn` metres out
   function setMode(mode) {
     if (mode !== 'tank' && mode !== 'bait') return false;
     state.mode = mode; root.querySelector('[data-k="mode"]').value = mode;
     bait.setOn(mode === 'bait'); keys.clear(); scripted = null;
-    if (mode === 'bait') tank.visible = false;
+    if (mode === 'bait') { tank.visible = false; gameCam?.setOn(false); }   // the game camera is the tank's: its rear frame goes and the lens is back before the optic takes it
+    modePanel();
     newRound();
     return true;
   }

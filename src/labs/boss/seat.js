@@ -15,6 +15,8 @@
 // 0.1 s lapses the stream and the next frame makes a new one. The 40 mm asks `playerShot` every frame (it rate-limits itself), the MK-9
 // once per press (its reload shows on the HUD). A plan is the rules' and has no `spares`: the lab's tank is a world away in this mode.
 //
+// THE PANEL'S SWITCHES gate these guns as they gate the schedule's (`gate()`): a gun switched off cannot be selected or fired, and its chip dims.
+//
 // POSITIONS are the lab's local metres [x, z] on the frame's plane; `surface(x, z)` gives the ground in the planet-centred `sphere` group.
 import * as THREE from '../../../vendor/three.module.js';
 import { playerShot, holdStream } from '../../domain/boss-fight.js';
@@ -33,8 +35,8 @@ const SVG = 'http://www.w3.org/2000/svg';
 // the pole), `surface(x, z)` -> { point, normal } in it, `local(v)` a sphere-space point to [x, z], `radius()` the planet's,
 // `tune()` the lab's fight numbers, `fight()` the round's state, `now()` the lab's clock, `adopt(plan)` the friendlies', `focus()` the
 // point a round opens on, `armed()` the bait mode on, `free()` the panel's free orbit (the optic then leaves the camera alone),
-// `keys` the lab's held keys (lower case)
-export function createSeat({ stage, camera, canvas, sphere, surface, local, radius, tune, fight, now, adopt, focus, armed, free, keys, cellSide = 10 }) {
+// `keys` the lab's held keys (lower case), `gate()` the panel's switches as { rotary, bofors, nuke } (true: on; default all)
+export function createSeat({ stage, camera, canvas, sphere, surface, local, radius, tune, fight, now, adopt, focus, armed, free, keys, gate = () => ({ rotary: true, bofors: true, nuke: true }), cellSide = 10 }) {
   const altitude = GUNSHIP_PLATFORM.altitudeCells * cellSide;
   const root = document.createElement('div');
   root.className = 'seat'; root.hidden = true;
@@ -61,7 +63,7 @@ export function createSeat({ stage, camera, canvas, sphere, surface, local, radi
   const typing = (e) => /^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName || '') || e.target?.isContentEditable;
   function choose(key) {
     const k = key === 'heavy' ? 'nuke' : key;
-    if (!ORDER.includes(k)) return false;
+    if (!ORDER.includes(k) || !gate()[k]) return false;   // a gun the panel has switched off is not in the seat
     if (k !== gun) zoom = 0;   // each gun has its own framing; the wheel adjusts it until the next switch
     gun = k; press = false;
     return true;
@@ -129,16 +131,18 @@ export function createSeat({ stage, camera, canvas, sphere, surface, local, radi
     cross.setAttribute('d', `M${x - 14} ${y}H${x - 4}M${x + 4} ${y}H${x + 14}M${x} ${y - 14}V${y - 4}M${x} ${y + 4}V${y + 14}`);
   }
   function drawHud() {
-    for (const c of chips) c.classList.toggle('on', c.dataset.gun === gun);
+    const g = gate();
+    for (const c of chips) { c.classList.toggle('on', c.dataset.gun === gun); c.classList.toggle('off', !g[c.dataset.gun]); }
     const N = tune().nuke, P = fight().player, wait = Math.max(0, N.every - (now() - (P?.nuke ?? -Infinity)));
-    const text = `${flash && now() < flashUntil ? `${flash} · ` : ''}MK-9 ${wait > 0 ? `${Math.ceil(wait)} s` : 'ready'} · x${zoomOf().toFixed(1)}`;
+    const text = `${flash && now() < flashUntil ? `${flash} · ` : ''}MK-9 ${!g.nuke ? 'off' : wait > 0 ? `${Math.ceil(wait)} s` : 'ready'} · x${zoomOf().toFixed(1)}`;
     if (text !== infoText) { infoText = text; info.textContent = text; info.classList.toggle('wait', wait > 0); }
   }
   function say(text) { flash = text; flashUntil = now() + 1.5; }
 
   // the trigger: the 25 mm holds its stream on the reticle, the 40 mm asks each frame, the MK-9 once a press
   function trigger() {
-    const t = now(), f = fight(), tn = tune();
+    const t = now(), f = fight(), tn = tune(), g = gate();
+    if (!g[gun]) { stream = null; if (held || press) say(`${GUNSHIP_GUNS[OPTIC[gun]].label} off`); press = false; return; }   // a gun switched off in the panel does not fire
     if (gun === 'rotary') {
       if (!held) return;
       if (stream && stream.until > t) { stream.at = [...reticle]; holdStream(stream, t); return; }

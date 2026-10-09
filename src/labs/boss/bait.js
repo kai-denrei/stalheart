@@ -110,7 +110,7 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
     if (ISAO_TRIGGERS[line.id] && isaoSay(sfx, line.id, { force: true })) return;   // recorded: his own voice
     caption(line.text, CAPTION_SECONDS);
   }
-    function lines() {
+  function lines() {
     const t = now();
     if (deathAt !== null && bait.hp > 0 && !notTodayDone && t - deathAt >= NOT_TODAY) { notTodayDone = true; say('notToday'); return; }
     if (t - lastLineAt < GAP) return;
@@ -195,10 +195,11 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
     tick(dt) {
       if (!on || !bait) { draw(); return; }
       const s = fight();
-      if (s.phase === 'fight' && !gone) {
+      // downed is downed whatever the phase: a shared frame (the MK-9 finishing both) leaves the round KILLED, and he still goes in his burst
+      if (bait.hp <= 0 && !gone) { capture(s, 'Isao down'); vanish(); }   // `capture` is a no-op outside a running fight
+      else if (s.phase === 'fight' && !gone) {
         const T = tune(), c = creature();
-        if (bait.hp <= 0) { capture(s, 'Isao down'); vanish(); }
-        else if (baitCaught(bait, c, dt, T)) { capture(s, 'Isao taken'); vanish(); }
+        if (baitCaught(bait, c, dt, T)) { capture(s, 'Isao taken'); vanish(); }
         else {
           if (bait.hp / bait.max < DEATH_SHARE) due.death = true;
           if (!due.taunt && (c.contacts ?? []).some((p) => dist(p, bait.pos) < TAUNT_AT)) due.taunt = true;
@@ -207,8 +208,8 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
       }
       draw();
     },
-    // the KILLED card's addition
-    cardText: () => (on && bait ? ` · Isao ${Math.ceil(bait.hp)}/${bait.max}` : ''),
+    // the KILLED card's addition: his hit points, or `Isao down` when the same blow that killed the creature downed him (a pyrrhic win, still KILLED)
+    cardText: () => (on && bait ? (bait.hp <= 0 ? ' · Isao down' : ` · Isao ${Math.ceil(bait.hp)}/${bait.max}`) : ''),
     // the handle's view, and the gap to the creature's front edge along the line toward him
     state() {
       if (!bait) return null;
