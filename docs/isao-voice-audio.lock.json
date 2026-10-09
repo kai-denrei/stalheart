@@ -1,6 +1,6 @@
 {
  "schema": 2,
- "source": "seiyu_voice export A-1 2026-10-09T06:46:16Z: 24 kHz mono WAV, encoded by scripts/import-isao-voice.mjs to mono 64 kbps MP3, no normalisation",
+ "source": "seiyu_voice export A-1 2026-10-09T07:44:39Z: 24 kHz mono WAV, encoded by scripts/import-isao-voice.mjs to mono 64 kbps MP3, no normalisation",
  "files": [
   {
    "path": "assets/audio/isao/mission_04.mp3",
@@ -1464,6 +1464,55 @@
    "sha256": "75070b9706f7e446109c1eca1781a79a54847473b2157bcfed503be6ed6cdd8f",
    "bytes": 15956,
    "sourceSha256": "7b9403bfb0bf48e2671227e4f9d7d75b273f9c611d24d83561143f084ca3ae90"
+  },
+  {
+   "path": "assets/audio/isao/bait_close_call_01.mp3",
+   "id": "bait_close_call_01",
+   "sha256": "a4c8e48c2ff861806d6d51d961380b8f0bade8717f88740f2750ebba55d20d3b",
+   "bytes": 15764,
+   "sourceSha256": "567504fd9cb517ce2cbe1fd089019750b35e6e20644f3dac3c97ed06b8afa35b"
+  },
+  {
+   "path": "assets/audio/isao/bait_help_01.mp3",
+   "id": "bait_help_01",
+   "sha256": "0fcf690ca360e722c1dec0015f6d0bbee5ed992c9b86eefe6024dede23e0065e",
+   "bytes": 15572,
+   "sourceSha256": "e5439a1659874d8da029050ed29a55ed777ff358e7dc852fafe60e694a9bf786"
+  },
+  {
+   "path": "assets/audio/isao/bait_barrage_01.mp3",
+   "id": "bait_barrage_01",
+   "sha256": "6fd496f4bd9dd77573685af282684c13feb227f49c9c7e598c25cf679810772d",
+   "bytes": 22868,
+   "sourceSha256": "cda1e093d1ed973188e6c929f43bcc73bd1578ed4dadcb1882502c681c68d9b0"
+  },
+  {
+   "path": "assets/audio/isao/bait_stagger_01.mp3",
+   "id": "bait_stagger_01",
+   "sha256": "b3dc8c75f1fb02e15ebda7af3985599c36534b5923e4c5e5ec4af98d3b7d8c9c",
+   "bytes": 22100,
+   "sourceSha256": "462578884d35b0fed93a1dab12f3ac356b6f8982295d5f5f4454c518523d4130"
+  },
+  {
+   "path": "assets/audio/isao/bait_use_40_01.mp3",
+   "id": "bait_use_40_01",
+   "sha256": "b083c426248a36d00d53129c8221498f7a3149bd795c2077bc26b115716beb2a",
+   "bytes": 18260,
+   "sourceSha256": "eebaeb933407a85489fbfe276b52a82fd42c56137439b9530bcc4740282a15ef"
+  },
+  {
+   "path": "assets/audio/isao/bait_nuke_careful_01.mp3",
+   "id": "bait_nuke_careful_01",
+   "sha256": "3654aff61c670233a7acbd42e0330d2a7d238deba182b40252a26460cd43341a",
+   "bytes": 14228,
+   "sourceSha256": "aeb7b33e842d295230e556ccff211ad48d9a236f613060b6c43250e259d33749"
+  },
+  {
+   "path": "assets/audio/isao/bait_nuke_face_01.mp3",
+   "id": "bait_nuke_face_01",
+   "sha256": "2df20b4f269722207fc4198ac94676b75d3daa696e9e6c50653eabeb99748ebd",
+   "bytes": 30932,
+   "sourceSha256": "dab4a143eded3b111977146139948d61f809af19f0cca4f282f609606ab38035"
   }
  ]
 }
