@@ -172,5 +172,33 @@ console.log('the automated gunship\'s MK-9 beside the gunner\'s:');
   const st2 = makeGunship(O, { station: true }); mountGunship(st2);
   check('the gunner first: the automated gunship then holds its fire for the pass', paintHeavy(st2, 3, GUNSHIP_GUNS) && launchHeavy(st2, GUNSHIP_GUNS) === 3 && !paintHeavy(st2, 4, GUNSHIP_GUNS, { auto: true }));
 }
+// MULTIPLE NUKES (owner, 2026-10-09: the boss lab's seat "except we want multiple nukes"): `perPass` is a count of the gunner's
+// releases a pass, 0 for no limit; the game's content keeps its one a pass and its 20 s reload. Each release still waits out the
+// fall and the reload, and the next pass counts afresh
+console.log('the MK-9\'s releases a pass as a count:');
+{
+  const O = { pass: 10, station: 400 }, guns = (perPass, reload = 6) => ({ ...GUNSHIP_GUNS, heavy: { ...GUNSHIP_GUNS.heavy, perPass, reload } });
+  const release = (st, g, ci) => {   // paint and release, land, wait out the reload; true when the release went out
+    if (!paintHeavy(st, ci, g) || launchHeavy(st, g) !== ci) return false;
+    let landed = -1; for (let i = 0; i < Math.round(g.heavy.travel * 60) + 2 && landed < 0; i++) { stepGunship(st, 1 / 60, O); landed = stepHeavy(st); }
+    soak(st, g.heavy.reload + 0.1, O);
+    return landed === ci;
+  };
+  check('the game keeps one a pass and its 20 s reload', GUNSHIP_GUNS.heavy.perPass === 1 && GUNSHIP_GUNS.heavy.reload === 20);
+  const one = makeGunship(O, { station: true }); mountGunship(one);
+  check('one a pass: the second is refused', release(one, GUNSHIP_GUNS, 5) && heavyState(one, GUNSHIP_GUNS).phase === 'spent' && !paintHeavy(one, 6, GUNSHIP_GUNS));
+  const g3 = guns(3), three = makeGunship(O, { station: true }); mountGunship(three);
+  check('three a pass: three releases go out', release(three, g3, 1) && heavyState(three, g3).phase === 'ready' && release(three, g3, 2) && release(three, g3, 3));
+  check('and the fourth is refused, the pass spent', heavyState(three, g3).phase === 'spent' && !paintHeavy(three, 4, g3) && launchHeavy(three, g3) === -1);
+  soak(three, 400, O); soak(three, 10, O); mountGunship(three);
+  check('the next pass counts three afresh', release(three, g3, 7) && release(three, g3, 8) && release(three, g3, 9) && heavyState(three, g3).phase === 'spent');
+  const g0 = guns(0), free = makeGunship(O, { station: true }); mountGunship(free);
+  let n = 0; for (let k = 0; k < 6; k++) if (release(free, g0, 20 + k)) n++;
+  check('0 is no limit: six releases in one pass, never spent', n === 6 && heavyState(free, g0).phase === 'ready');
+  const busy = makeGunship(O, { station: true }); mountGunship(busy);
+  check('no limit still waits out the fall and the reload', paintHeavy(busy, 1, g0) && launchHeavy(busy, g0) === 1 && !paintHeavy(busy, 2, g0) && heavyState(busy, g0).phase === 'released');
+  const a3 = makeGunship(O, { station: true }); mountGunship(a3);
+  check('the automated gunship still holds its fire once the gunner has fired this pass', release(a3, g3, 1) && !paintHeavy(a3, 2, g3, { auto: true }) && paintHeavy(a3, 2, g3));
+}
 if (failures) { console.log(`${failures} failure(s)`); process.exit(1); }
 console.log('gunship ok');

@@ -19,7 +19,7 @@ export function makeGunship(orbit, { station = false } = {}) {
     rounds: [],        // rounds in the air: { gun, point, at } arriving at `at` on the clock
     heat: 0, overheated: false,   // the rotary
     mag: -1, reloadUntil: 0,      // the Bofors: rounds left in the magazine (-1: full, not yet counted), reloading until
-    heavyPaint: null, heavyReadyAt: 0, heavyFalling: null, heavyPass: -1, heavyAutoPass: -1,   // the MK-9: the painted cell, when the tube is clear again, the round in the air, the pass whose one release the gunner has spent, and the pass the automated gunship has fired its own in
+    heavyPaint: null, heavyReadyAt: 0, heavyFalling: null, heavyPass: -1, heavyCount: 0, heavyAutoPass: -1,   // the MK-9: the painted cell, when the tube is clear again, the round in the air, the pass the gunner last released in and his releases in it, and the pass the automated gunship has fired its own in
   };
 }
 
@@ -100,18 +100,22 @@ export function stepGun(st, dt, held, guns) {
 
 // THE MK-9 MINI NUKE (owner, 2026-09-16; it replaced the 105's instant strike): a one-two. Paint a cell, then release: the round
 // falls unpowered for `freeFall` seconds, its motor lights, and it drives down onto the painted cell at `travel` (the host applies
-// the blast and owns the modelled body). Then the tube locks out for `reload` seconds, and that is the pass's ONE release: `perPass`
-// releases per station pass, so the heaviest tool the seat owns cannot be spammed down a lane.
+// the blast and owns the modelled body). Then the tube locks out for `reload` seconds, and that is one of the pass's `perPass` releases
+// (the game's content: ONE, so the heaviest tool the seat owns cannot be spammed down a lane). `perPass` is a count (owner, 2026-10-09:
+// the boss lab wants "multiple nukes"): `heavyCount` releases in `heavyPass`, 0 for no limit; each still waits out the fall and the reload.
 // THE AUTOMATED GUNSHIP'S ROUND IS NOT THE GUNNER'S (owner, 2026-10-06: "sometimes when the player takes over there is no nuke
 // available; even if the auto gunship shot one, a player who takes over can shoot one too"): a release with `auto` set is booked on
 // `heavyAutoPass`, once a pass and never after the gunner has fired, and it locks the tube only for its own fall (no `reload` after
 // it), so a gunner who takes the seat behind it still has the pass's release, ready as soon as that round has landed.
-const heavySpent = (st, guns, auto = false) => (guns.heavy.perPass ?? 0) > 0 && (st.heavyPass === st.passes || (auto && st.heavyAutoPass === st.passes));
+const heavySpent = (st, guns, auto = false) => {
+  const n = guns.heavy.perPass ?? 0, mine = st.heavyPass === st.passes ? st.heavyCount ?? 1 : 0;
+  return n > 0 && (auto ? mine > 0 || st.heavyAutoPass === st.passes : mine >= n);   // the automated round never follows any of the gunner's
+};
 export function paintHeavy(st, ci, guns, { auto = false } = {}) { if (!st.mounted || st.phase !== 'station' || ci < 0 || st.heavyFalling || st.clock < st.heavyReadyAt || heavySpent(st, guns, auto)) return false; st.heavyPaint = ci; return true; }
 export function launchHeavy(st, guns, { auto = false } = {}) {
   const gun = guns.heavy; if (!st.mounted || st.phase !== 'station' || st.heavyPaint == null || st.heavyFalling || st.clock < st.heavyReadyAt || heavySpent(st, guns, auto)) return -1;
   const ci = st.heavyPaint; st.heavyPaint = null; st.heavyFalling = { ci, at: st.clock + gun.travel, from: st.clock, lit: st.clock + (gun.freeFall ?? 0) };
-  if (auto) { st.heavyReadyAt = st.clock + gun.travel; st.heavyAutoPass = st.passes; } else { st.heavyReadyAt = st.clock + gun.travel + gun.reload; st.heavyPass = st.passes; }
+  if (auto) { st.heavyReadyAt = st.clock + gun.travel; st.heavyAutoPass = st.passes; } else { st.heavyReadyAt = st.clock + gun.travel + gun.reload; st.heavyCount = st.heavyPass === st.passes ? (st.heavyCount ?? 1) + 1 : 1; st.heavyPass = st.passes; }
   return ci;
 }
 // one nudge while it falls: the round is steered onto another cell, once
