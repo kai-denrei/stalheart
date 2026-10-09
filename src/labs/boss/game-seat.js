@@ -74,6 +74,11 @@ function createPost(renderer, scene, camera) {
       renderer.getSize(size);
       if (!size.equals(had)) { had.copy(size); composer.setSize(size.x, size.y); }
       composer.render(dt);
+      // ONE SWAP A FRAME IS ODD (owner, 2026-10-09: the rocks "flicker" in the thermal): the game's chain swaps twice (the bloom's add, the OutputPass), this one
+      // only once, so the scene's RenderPass, which draws into the read buffer and does not swap, drew into renderTarget2 (MSAA, with a depth buffer) and renderTarget1
+      // (neither) on alternate frames, and with no depth test the ground drew over a rock, which came and went at half the frame rate. Put back, the scene
+      // always goes into renderTarget2
+      if (composer.readBuffer !== composer.renderTarget2) composer.swapBuffers();
     },
     dispose() { for (const p of composer.passes) p.dispose?.(); composer.dispose(); },
   };

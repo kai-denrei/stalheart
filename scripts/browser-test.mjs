@@ -2506,6 +2506,26 @@ const killReal=(Date.now()-t0)/1000;
  assert(heldSeat,'the trigger stayed held through the card');assert.equal(fired1,fired0,`a held trigger after KILLED fires nothing (${fired0} -> ${fired1} rounds)`);await evaluate(`${B}.fire(false)`);
  const kc=await evaluate(S);
  console.log(`BOSS-BAIT card held ${held} polls over 5 s: ${kc.card}`);
+ // THE ROCKS HOLD STILL IN THE THERMAL (owner, 2026-10-09: "the rocks as obstacles display poorly on the thermal, flickering"): the seat's post chain swapped an odd
+ // number of times a frame, so the scene's pass drew into the composer's two targets by turns, and the one without a depth buffer lost the rock under the ground
+ // (a rock came and went at half the frame rate). After the kill, with the fight over and the rocks standing, the reticle held on the breakable rock r3 (checked to be on it), a 40 px patch of the canvas read on 90 consecutive
+ // frames: the median change of its luminance from one frame to the next (0 to 255) stays under 0.5 (5.9 with the flicker, 0.001 without)
+ const rockAt=await evaluate(`${B}.arena().at.r3`);
+ await evaluate(`${B}.aim(${B}.arena().at.r3)`);await delay(1500);
+ const rockRun=await evaluate(`new Promise((resolve)=>{
+   const L=window.__bossLab,cv=document.querySelector('#boss .sw-stage canvas'),W=40,H=40,sx=(cv.width-W)>>1,sy=(cv.height-H)>>1,c2=document.createElement('canvas');c2.width=W;c2.height=H;
+   const g=c2.getContext('2d',{willReadFrequently:true}),out=[];
+   const tick=()=>{
+     L.aim(L.arena().at.r3);g.drawImage(cv,sx,sy,W,H,0,0,W,H);const d=g.getImageData(0,0,W,H).data;let s=0;
+     for(let i=0;i<d.length;i+=4)s+=0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2];
+     out.push({f:L.readout().frames,l:s/(W*H),at:L.arena().at.r3,reticle:L.seat().reticle});
+     if(out.length<90)requestAnimationFrame(tick);else resolve(out);};
+   requestAnimationFrame(tick);})`);
+ {const fr=rockRun.map(x=>x.f),diff=rockRun.slice(1).map((x,i)=>Math.abs(x.l-rockRun[i].l)).sort((a,b)=>a-b),median=diff[diff.length>>1],last=rockRun.at(-1),onRock=Math.hypot(last.reticle[0]-last.at[0],last.reticle[1]-last.at[1]);
+  console.log('BOSS-BAIT rocks '+JSON.stringify({frames:[fr[0],fr.at(-1)],medianChange:+median.toFixed(4),worst:+diff.at(-1).toFixed(2),lum:rockRun.slice(0,6).map(x=>+x.l.toFixed(1)),reticleOffRockM:+onRock.toFixed(2)}));
+  assert(fr.at(-1)-fr[0]===89&&new Set(fr).size===90,`the rock run covers 90 consecutive frames (${fr[0]}..${fr.at(-1)})`);
+  assert(onRock<3,`the reticle is on the rock r3 (${onRock.toFixed(1)} m off its centre ${JSON.stringify(rockAt)}), so the patch holds it`);
+  assert(median<0.5,`the rock does not flicker in the thermal: the patch's luminance changes by a median ${median.toFixed(3)} a frame (bound 0.5; a rock that comes and goes with the post chain's targets changes by about 6)`);}
  await setKnob('health (at reset)',BOSS_FIGHT.health);
  // Esc leaves the seat for the tank, and the lab is the lab again (no seat, the scene back in metres)
  await evaluate(`dispatchEvent(new KeyboardEvent("keydown",{key:"Escape"}))`);
