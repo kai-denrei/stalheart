@@ -6,8 +6,19 @@
 // the cooldown's last stamp in the future. Imports nothing: `tune` is the whole
 // BOSS_FIGHT, so the numbers are tune.fear.* and tune.nuke.stun. The lab's guards (feeding locked, KILLED, fight off) are the
 // caller's.
+//
+// THE BAIT MODE'S FEAR PER GUN (owner, 2026-10-09: "#2 or #3 hits gets it wild temporarily, hurrying away from the impact ... #1 registers a little as a
+// barrage, #2 a lot"; the numbers tune.gunFear.*). The 25 mm fills a barrage meter (`barrage`): `amount` a round, drained `drain` a second, and at 1 the
+// creature flinches, the meter back at 0. The 40 mm sends it wild, the MK-9 into a panic (`scare`). A flight is one at a time (`fear.flight`): a fresh hit
+// extends it to its own end when that is later and re-aims it from the newest impact; a stronger level takes over the flight's numbers, a weaker one keeps
+// them. `flightNow` steers it: its flee point `flee` metres from the centre straight away from the impact (the tank mode's `fearNow` stays as it was).
 
-export function makeFear() { return { threats: new Map(), stunUntil: -Infinity, lastDisturb: -Infinity, frights: 0, stuns: 0 }; }
+const LEVEL = { rotary: 'flinch', bofors: 'wild', nuke: 'panic' }, RANK = { flinch: 1, wild: 2, panic: 3 };
+
+export function makeFear() {
+  return { threats: new Map(), stunUntil: -Infinity, lastDisturb: -Infinity, frights: 0, stuns: 0,
+    meter: 0, meterAt: -Infinity, flight: null, scares: { flinch: 0, wild: 0, panic: 0 } };
+}
 
 // Whether the nearest contact lies within `radius + reach` of the point `at`.
 export function inReach(at, radius, contacts, reach) {
@@ -29,9 +40,9 @@ export function frighten(fear, key, at, kind, seconds, now, tune) {
   return { fresh, disturb };
 }
 
-// The nuke's landing within reach: stunned for nuke.stun seconds, and the kit is disturbed.
-export function stun(fear, now, tune) {
-  fear.stunUntil = now + tune.nuke.stun; fear.stuns++; fear.lastDisturb = now;
+// The nuke's landing within reach: stunned for `seconds` (nuke.stun; the bait mode passes its own, and calls this only above 0), and the kit is disturbed.
+export function stun(fear, now, tune, seconds = tune.nuke.stun) {
+  fear.stunUntil = now + seconds; fear.stuns++; fear.lastDisturb = now;
   return { disturb: true };
 }
 
@@ -51,5 +62,44 @@ export function fearNow(fear, now, c, u, tune) {
   return { mode: 'flee', point: [c[0] + f * dx, c[1] + f * dz] };
 }
 
-// The round's reset: no threats, no stun (the counts stay the run's record).
-export function clearFear(fear) { fear.threats.clear(); fear.stunUntil = -Infinity; }
+// The round's reset: no threats, no stun, no flight, the meter empty (the counts stay the run's record).
+export function clearFear(fear) { fear.threats.clear(); fear.stunUntil = -Infinity; fear.meter = 0; fear.meterAt = -Infinity; fear.flight = null; }
+
+// The barrage meter at `now`: drained `gunFear.rotary.drain` a second since its last change.
+export function meterNow(fear, now, tune) {
+  return Math.max(0, fear.meter - tune.gunFear.rotary.drain * Math.max(0, now - fear.meterAt));
+}
+
+// A 25 mm round landing within reach at `at`: the meter up by `amount`; at 1 a flinch (the meter back at 0). Returns `scare`'s report, or null below 1.
+export function barrage(fear, at, now, tune) {
+  const m = meterNow(fear, now, tune) + tune.gunFear.rotary.amount;
+  fear.meterAt = now;
+  if (m < 1 - 1e-9) { fear.meter = m; return null; }
+  fear.meter = 0;
+  return scare(fear, 'rotary', at, now, tune);
+}
+
+// A gun's fright at `at` (`gun` 'rotary' the meter's flinch, 'bofors' wild, 'nuke' panic). Returns { level, fresh, escalated, disturb }: `fresh` no flight
+// was running, `escalated` a stronger level took a running one over, `disturb` a fresh one past the disturb cooldown (`fear.cooldown`, shared with the frights).
+export function scare(fear, gun, at, now, tune) {
+  const level = LEVEL[gun], G = tune.gunFear[gun], f = fear.flight, live = !!f && f.until > now;
+  const keep = live && RANK[f.level] > RANK[level];   // a stronger flight running keeps its level and numbers
+  const src = keep ? f : { level, flee: G.flee, speed: G.speed, erratic: G.erratic };
+  fear.flight = { level: src.level, flee: src.flee, speed: src.speed, erratic: src.erratic, at: [at[0], at[1]],
+    since: live ? f.since : now, until: Math.max(live ? f.until : -Infinity, now + G.duration) };
+  fear.scares[level]++;
+  const disturb = !live && now - fear.lastDisturb >= tune.fear.cooldown;
+  if (disturb) fear.lastDisturb = now;
+  return { level, fresh: !live, escalated: live && !keep && RANK[level] > RANK[f.level], disturb };
+}
+
+// What the creature does now in the bait mode: 'stun', 'flee' (the flight's point `flee` metres from the centre `c` straight away from its impact; on the
+// impact itself away from the bait, -`u`) or 'hunt'. `flight` is the running flight ({ level, flee, speed, erratic, at, since, until }) or null.
+export function flightNow(fear, now, c, u) {
+  if (now < fear.stunUntil) return { mode: 'stun', point: null, flight: fear.flight && fear.flight.until > now ? fear.flight : null };
+  const f = fear.flight;
+  if (!f || f.until <= now) { fear.flight = null; return { mode: 'hunt', point: null, flight: null }; }
+  const dx = c[0] - f.at[0], dz = c[1] - f.at[1], d = Math.hypot(dx, dz);
+  const ux = d > 1e-9 ? dx / d : -u[0], uz = d > 1e-9 ? dz / d : -u[1];
+  return { mode: 'flee', point: [c[0] + f.flee * ux, c[1] + f.flee * uz], flight: f };
+}

@@ -30,4 +30,9 @@ assert.equal(block, [
 ].join('\n'), 'the block: one line a group, numbers trimmed to four decimals');
 const tank = settingsBlock({ head: { mode: 'tank' }, motion: { speed: 0.1 }, phys: { gravity: 2.4 }, bait: null, fight: {}, fear: { reach: 8 } });
 assert.equal(tank, 'mode=tank\nmotion: speed=0.1\nphys: gravity=2.4\nfight: defaults\nfear: reach=8', 'no bait line outside the bait mode; an untouched fight folder reads "defaults"');
-console.log(`Boss settings copy: ${block.split('\n').length} lines a paste (head, motion, phys, bait, fight's moved knobs, fear), numbers to four decimals, "defaults" for an untouched fight folder.`);
+// wave B: the bait mode's further groups (the fear per gun, the temperament), a line each after the fear's, in their order
+const more = settingsBlock({ head: { mode: 'bait' }, motion: { speed: 1.2 }, phys: { gravity: 2.4 }, bait: { altitude: 4 }, fight: {}, fear: { reach: 8 },
+  more: { 'gun fear': { '25mm.amount': 0.06, '40mm.flee': 35, 'mk9.stun': 0 }, temperament: { speed: 1.2, lunges: true, lungeSpeed: 3, reach: 1.5 } } });
+assert.equal(more, 'mode=bait\nmotion: speed=1.2\nphys: gravity=2.4\nbait: altitude=4\nfight: defaults\nfear: reach=8\ngun fear: 25mm.amount=0.06 40mm.flee=35 mk9.stun=0\ntemperament: speed=1.2 lunges=true lungeSpeed=3 reach=1.5',
+  'the further groups follow the fear\'s line, one line each');
+console.log(`Boss settings copy: ${block.split('\n').length} lines a paste (head, motion, phys, bait, fight's moved knobs, fear), numbers to four decimals, "defaults" for an untouched fight folder; the bait mode's gun fear and temperament after (${more.split('\n').length} lines).`);

@@ -2,16 +2,18 @@
 // mode for me to paste here"): one line a group, `key=value` pairs, numbers trimmed to four decimals, so a paste reads at a glance and a reply can
 // quote a line back. The groups: the head (mode, body, size), the creature's motion (every knob), its physics and switches, the bait mode's own
 // knobs (in the bait mode only), the fight folder's knobs and switches that differ from where the panel started ("defaults" when none do), and the
-// fear's numbers (all of them). Pure: plain objects in, a string out; boss-tab.js gathers the values (the C key and the panel's button).
+// fear's numbers (all of them), then any further groups (`more`, { name: values }; the bait mode's fear per gun and temperament, wave B). Pure: plain objects in,
+// a string out; boss-tab.js gathers the values (the C key and the panel's button).
 
 const num = (v) => (typeof v === 'number' ? String(+v.toFixed(4)) : String(v));
 const pairs = (o) => Object.entries(o).map(([k, v]) => `${k}=${num(v)}`).join(' ');
 
-// { head, motion, phys, bait (null outside the bait mode), fight, fear } -> the block
-export function settingsBlock({ head, motion, phys, bait = null, fight = {}, fear = {} }) {
+// { head, motion, phys, bait (null outside the bait mode), fight, fear, more (null or { name: values }) } -> the block
+export function settingsBlock({ head, motion, phys, bait = null, fight = {}, fear = {}, more = null }) {
   const lines = [pairs(head), `motion: ${pairs(motion)}`, `phys: ${pairs(phys)}`];
   if (bait) lines.push(`bait: ${pairs(bait)}`);
   lines.push(`fight: ${Object.keys(fight).length ? pairs(fight) : 'defaults'}`, `fear: ${pairs(fear)}`);
+  for (const [name, values] of Object.entries(more ?? {})) lines.push(`${name}: ${pairs(values)}`);
   return lines.join('\n');
 }
 

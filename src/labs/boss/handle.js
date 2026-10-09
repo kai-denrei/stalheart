@@ -6,7 +6,7 @@ import { readout as fightReadout } from '../../domain/boss-fight.js';
 
 export function createLabHandle({
   getCreature, getScale, getT, getFight, getGameCam, getReanchors, setScripted, setPin,
-  readout, setLure, setCam, setMode, bait, seat, setFight, fireCannon, copySettings, reset, tryReanchor, placeTank, creatureNow,
+  readout, setLure, setCam, setMode, bait, seat, setFight, fireCannon, copySettings, reset, tryReanchor, placeTank, creatureNow, temperament,
   plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene, chase,
 }) {
   const lab = {
@@ -25,6 +25,13 @@ export function createLabHandle({
     hop: () => bait.hop(),
     // Isao put under the creature's centre now (the round goes on): the escape's case; false outside a flying round
     under: () => bait.putAt(creatureNow().centre),
+    // Isao put at a local ground point now (the round goes on): the NUKE CLEAR cue's case; false outside a flying round
+    putIsao: (at) => bait.putAt(at),
+    // WAVE B (2026-10-09): the bait mode's temperament ({ phase: 'base' | 'lunge' | 'easing' | 'flinch' | 'wild' | 'panic', lunges, lunge, next (seconds to the
+    // next lunge due), weights: { lunge, fear }, live (the settings written, null in the tank mode) }) and fear per gun ({ flinch, wild, panic (the run's
+    // scares), meter (the 25 mm's barrage), flight ({ level, at, since, until, flee, speed, erratic } or null) })
+    temperament: () => temperament.state(),
+    gunFear: () => fear.guns(),
     // the game's gunship seat (bait mode, ./game-seat.js): aim([x, z]) turns the optic onto a local ground point (until the mouse moves it),
     // gun(key) picks 'rotary' | 'bofors' | 'nuke' (the MK-9; 'heavy' and 1-3 too) through the seat's own gun buttons and returns the gun,
     // fire(on) holds or lets go of the trigger (the MK-9's fire(true) is a paint and a release over two frames; in the tank mode

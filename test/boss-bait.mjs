@@ -24,7 +24,8 @@ assert.ok(E.trapBound === 12 && E.trapNear === 25 && E.underCore === 0.5 && E.un
 assert.ok(E.trapNear > E.keep && E.underNear < E.keep && E.reachHeight < E.hopAlt && E.hopSpeed <= E.speedMax, 'trapped is the creature at his keep, under is closer; the hop flies above the reach, no faster than his band');
 assert.ok(Math.abs(B.altitude - (3.4 * 0.03 + 0.08 / 2) * 125) < 1e-9, `Isao's altitude is the game's 3.4 wall-heights above the surface plus half a cell, in metres: ${B.altitude}`);
 assert.ok(E.erratic === 1 && E.speedMin === 8 && E.speedMax === 26 && E.accel === 30 && E.jinkMin === 0.6 && E.jinkMax === 2 && E.bob === 1.5 && Math.abs(E.jink - 40 * Math.PI / 180) < 1e-12, 'the erratic numbers: on by default, 8-26 m/s, 30 m/s2, jinks of 40 degrees (radians) every 0.6-2 s, a 1.5 m bob');
-assert.ok(E.speedMin < E.speed && E.speed < E.speedMax && E.flee <= E.speedMax, 'the cruise and the flee lie inside the speed band');
+assert.ok(E.speedMin < E.speed && E.speed < E.speedMax, 'the cruise lies inside the speed band');
+assert.ok(E.flee === 32 && E.flee > E.speedMax, 'the flee is 32 m/s, above the band (wave B, 2026-10-09: he outruns the creature\'s base pace)');
 assert.ok(B.keep > B.panic, 'the keep distance is outside the panic ring');
 
 // the autopilot: 30 s round a static creature and round a walking one, the front edge toward him stays `keep` away within KEEP_BOUND
@@ -224,8 +225,10 @@ const hashOf = (calm) => {                   // the recorded run: two scenarios 
   return createHash('sha256').update(Buffer.from(new Float64Array(out).buffer)).digest('hex');
 };
 const RECORDED = '0e7ec4edc33f159f5623a25d10528b19a4cea5390d34bed72babc0b148e5d4f5';   // sha256 of that run, recorded on the commit before the erratic flight
-assert.equal(hashOf(T), RECORDED, 'erratic 0 reproduces the smooth flight bit for bit');
-const noKey = { ...T, bait: Object.fromEntries(Object.entries(B).filter(([k]) => k !== 'erratic')) };
+// the run was recorded at the flee of its day, 24 m/s (wave B raised the content's to 32): the rule is unchanged, so the run is replayed on that number
+const T24 = { ...T, bait: { ...B, flee: 24 } };
+assert.equal(hashOf(T24), RECORDED, 'erratic 0 reproduces the smooth flight bit for bit');
+const noKey = { ...T24, bait: Object.fromEntries(Object.entries(T24.bait).filter(([k]) => k !== 'erratic')) };
 assert.equal(hashOf(noKey), RECORDED, 'and so does a tune with no erratic key');
 const wild = { ...T, bait: { ...E, erratic: 1 } };
 

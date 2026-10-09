@@ -22,7 +22,7 @@ export const BOSS_FIGHT = freeze({
     health: 12,            // his hit points
     keep: 20,              // he keeps this far outside the creature's reach toward himself (the outermost body node, arms included, when the lab gives the nodes; else the floor contacts' front edge)
     envelopeTime: 1,       // seconds: that reach is smoothed over this long, so a sweeping arm does not yank him back and forth
-    speed: 14, flee: 24,   // his cruise round the creature, and the straight back-off when an arm closes (m/s)
+    speed: 14, flee: 32,   // his cruise round the creature, and the straight back-off when an arm closes (m/s); the flee 32 (24 before wave B, 2026-10-09) so he outruns the creature's base pace
     panic: 12,             // a floor contact, or a body node under `panicHeight`, this close makes him flee
     panicHeight: 6,        // metres: a body node below this is an arm near the ground for his panic
     turn: 3,               // his heading eases at this many radians a second
@@ -55,6 +55,47 @@ export const BOSS_FIGHT = freeze({
     reachHeight: 18,       // metres: above this the creature's floor contacts cannot take him (the hold does not count)
     underCore: 0.5,        // a share of the creature's half-width (`radius`): his ground point this near its centre is under it
     underNear: 15,         // metres: floor contacts this near him on opposite sides have him under it
+  },
+  nukeClear: 8,            // the bait mode's NUKE CLEAR cue (wave B, 2026-10-09: "create an opportunity for a clean nuke"): lit while Isao is beyond the MK-9's radius plus this many metres from the creature's centre
+  // THE BAIT MODE'S FEAR PER GUN (owner, 2026-10-09: "we want 'fear'... #2 or #3 hits gets it wild temporarily, hurrying away from the impact ... the user learns that he
+  // can place strikes to separate the predator from Isao, and create an opportunity for a clean nuke. #1 registers a little as a barrage, #2 a lot"). The 25 mm fills a
+  // barrage meter `amount` a round landing within reach, drained `drain` a second, and at 1 the creature flinches; the 40 mm sends it wild, the MK-9 into a panic. Each
+  // flight runs from the newest impact for `duration` seconds, its flee point `flee` metres ahead (as the tank mode's `fear.flee`), at `speed` times the base chase speed,
+  // the kit's erratic motion up by `erratic`. `nuke.stun` is the bait mode's own MK-9 stun (0: the panic at once; the tank mode keeps `nuke.stun` above)
+  gunFear: {
+    rotary: { amount: 0.06, drain: 0.5, flee: 10, duration: 0.8, speed: 1.3, erratic: 0 },
+    bofors: { flee: 35, duration: 2.5, speed: 2, erratic: 2 },
+    nuke: { flee: 50, duration: 3.5, speed: 2.5, erratic: 1, stun: 0 },
+  },
+  // THE BAIT MODE'S TEMPERAMENT (owner, 2026-10-09: "chase speed we need basic speed and a measure of sudden accelerations once in a while, the threatening look comes from
+  // the tentacles lengthening/reaching, and from sudden bursts of speed"): the base is the mode's own motion (the panel's knobs, chase speed 1.2); every `everyMin`..`everyMax`
+  // seconds (seeded) a lunge of `forMin`..`forMax` seconds at chase speed `lungeSpeed` (the owner's 3), the arms' reach duration, stretch and spread times `reach` within the
+  // kit's ranges, eased in and out over `ease` seconds; `lunges` false keeps the base
+  temperament: { lunges: true, lungeSpeed: 3, everyMin: 3, everyMax: 8, forMin: 0.6, forMax: 1.2, reach: 1.5, ease: 0.2 },
+  // ISAO'S CHATTER (owner, 2026-10-09: "Isao is too verbose with the three lines about elevation. reduce the frequency ... and add more diversity"): a director says one line
+  // at a time, at least `gap` seconds apart. Per line: `priority` (the highest wanted line goes first; the situational lines above the fly-over's chatter), `cooldown` (seconds
+  // between two of it), `per` (at most this many a round), `ttl` (seconds a want waits for its turn before it is dropped; none: until said), `variants` (its takes:
+  // `ordered` in turn, else at random never the same twice running), `chance` (the share of its triggers that ask), `then`/`after` (a line wanted `after` seconds once it is said)
+  chatter: {
+    gap: 6,
+    // the lab's triggers (src/labs/boss/bait.js): a landing within `closeRing` m outside his ring, or an escape from an arm that came within `closeEscape` m, is a close
+    // call; a body node within `barrageNear` m and no player fire for `barrageQuiet` s asks for a barrage; no 40 mm for `fortyQuiet` s with a node within `fortyNear` m asks
+    // for the 40 mm; an MK-9 landing within `faceNear` m that he survives is in his face
+    triggers: { closeRing: 6, closeEscape: 5, barrageNear: 25, barrageQuiet: 5, fortyQuiet: 20, fortyNear: 30, faceNear: 70 },
+    lines: {
+      death: { priority: 10, per: 1, then: 'notToday', after: 2 },
+      notToday: { priority: 10, per: 1 },
+      nukeFace: { priority: 8, cooldown: 20, ttl: 4 },
+      help: { priority: 7, cooldown: 15, ttl: 3 },
+      closeCall: { priority: 7, cooldown: 12, ttl: 2.5 },
+      hurt: { priority: 6, per: 2, ttl: 5, variants: 2, ordered: true },
+      stagger: { priority: 6, per: 1, ttl: 5 },
+      nukeCareful: { priority: 5, cooldown: 20, ttl: 3 },
+      useForty: { priority: 4, cooldown: 30, ttl: 5 },
+      barrage: { priority: 4, cooldown: 25, ttl: 5 },
+      taunt: { priority: 3, per: 1, ttl: 6 },
+      flyover: { priority: 1, cooldown: 12, ttl: 2, variants: 3, chance: 1 / 3 },
+    },
   },
   bounds: { radius: 120, baitMargin: 10, creatureMargin: 15 },   // the arena disc round the origin: Isao's wanted point stays radius - baitMargin in, the creature's target radius - creatureMargin, the body's nodes are pushed back inside radius
   orbit: { radius: 200, lap: 120, bank: 0.12 },   // the gunship platform's ground track round the origin: 200 m, one lap per 120 s (10.5 m/s); the bank in radians is about twice the coordinated 0.056 (v squared over r g) so the roll reads on the seat's camera without lurching

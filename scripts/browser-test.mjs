@@ -2280,6 +2280,34 @@ try{
  assert.equal(await evaluate(`${B}.readout().rearMs`),null,'no rear line in the lab camera');
  assert.equal((await evaluate(`[...document.querySelectorAll('#boss .sw-stage div')].find(d=>d.textContent==='REAR'&&d.children.length===0).parentElement.style.display`)),'none','the frame is hidden');
  current='boss-cam';await finish();
+ } else if(args.includes('--boss-under')) {
+ // THE ESCAPES FROM UNDER THE CREATURE, BEFORE AND AFTER WAVE B (2026-10-09): the bait mode on its own defaults (the predator, the temperament where the tree has
+ // one), the random fly-over off as the suite's gap run has it, 5 s to settle, then 30 s of lab clock polled ten times a second of real time: the share of polls
+ // Isao spends in an escape from under the creature (a fly-over whose why is 'under'), in any fly-over and panicking, his fly-overs by why, the creature's
+ // centre speed between polls (m/s; from the bound's centre and in the lab's own frame, which re-anchors every 5 m: both are noisy at the
+ // top, p90 26 to 46 m/s and maxima to 137 m/s, where the kit's own velocity reads a mean of 8 to 17 m/s, so the tails are not the creature's pace) and the round's losses (each restarted). Logged, not asserted; it reads only bait(), fight() and arena(), so the same
+ // probe runs on the tree before wave B. BOSS_UNDER_SET (JSON, { knob name: value }) sets panel knobs first (a variant); each escape's start is
+ // logged by its cause: his ground point inside half the body's half-width of its centre ('core'), else floor contacts within 15 m on opposite sides ('arms')
+ const B='window.__bossLab';
+ await go('boss-under','labs.html?sw=0&acceptance=1#boss');
+ await until(`!!${B} && ${B}.readout().steps > 0`,60000);
+ await evaluate(`${B}.mode("bait")`);
+ await until(`${B}.fight().phase === "fight" && ${B}.bait() && ${B}.bait().max > 0 && !!${B}.seat()`,30000);
+ await evaluate(`(()=>{const i=[...document.querySelectorAll('.lil-gui .name')].find(n=>n.textContent==='Isao fly-over chance (/s)').parentElement.querySelector('input');i.value='0';i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+ for(const [k,v] of Object.entries(JSON.parse(process.env.BOSS_UNDER_SET||'{}')))await evaluate(`(()=>{const i=[...document.querySelectorAll('.lil-gui .name')].find(n=>n.textContent===${JSON.stringify(k)}).parentElement.querySelector('input');if(i.type==='checkbox'){if(i.checked!==${JSON.stringify(v)})i.click();return;}i.value=${JSON.stringify(String(v))};i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+ const P=`(()=>{const L=window.__bossLab,f=L.fight(),b=L.bait();const at=L.arena().bound.at;return {clock:L.arena().clock,phase:f.phase,centre:f.centre,world:[f.centre[0]-at[0],f.centre[1]-at[1]],contacts:f.contacts,pos:b?.pos,hop:b?.hop??null,why:b?.hopWhy??null,hops:b?.hops??0,fleeing:!!b?.fleeing,gone:!!b?.gone,temper:L.temperament?L.temperament().phase:null,size:L.readout().size}})()`;
+ const restartU=async()=>{await evaluate(`dispatchEvent(new KeyboardEvent("keydown",{key:"r"}));dispatchEvent(new KeyboardEvent("keyup",{key:"r"}))`);await until(`${B}.fight().phase === "fight" && ${B}.bait() && !${B}.bait().gone`,20000);};
+ const run=async(seconds,each)=>{const s0=await evaluate(P);let prev=s0;for(const real=Date.now();Date.now()-real<300000;){await delay(100);const s=await evaluate(P);if(s.phase!=='fight'||s.gone){await restartU();prev=await evaluate(P);each?.(null);continue;}each?.(s,prev);prev=s;if(s.clock-s0.clock>=seconds)break;}return prev.clock-s0.clock;};
+ await run(5);
+ let polls=0,under=0,hopping=0,fled=0,losses=0;const whys={},speeds=[],local=[],tempers={},causes=[];let lastHop=null;
+ const lab=await run(30,(s,prev)=>{if(!s){losses++;return;}polls++;if(s.why==='under')under++;if(s.hop)hopping++;if(s.fleeing)fled++;if(s.temper)tempers[s.temper]=(tempers[s.temper]??0)+1;
+   if(s.hop&&!lastHop){whys[s.why]=(whys[s.why]??0)+1;if(s.why==='under')causes.push(Math.hypot(s.pos[0]-s.centre[0],s.pos[1]-s.centre[1])<s.size/2*0.5?'core':'arms');}lastHop=s.hop;const dt=s.clock-prev.clock;if(dt>0.02){speeds.push(Math.hypot(s.world[0]-prev.world[0],s.world[1]-prev.world[1])/dt);local.push(Math.hypot(s.centre[0]-prev.centre[0],s.centre[1]-prev.centre[1])/dt);}});
+ speeds.sort((a,b)=>a-b);const q=(p)=>speeds.length?+speeds[Math.min(speeds.length-1,Math.floor(speeds.length*p))].toFixed(1):null;
+ console.log('BOSS-UNDER '+JSON.stringify({lab:+lab.toFixed(1),polls,underShare:+(under/Math.max(1,polls)).toFixed(2),hopShare:+(hopping/Math.max(1,polls)).toFixed(2),fleeShare:+(fled/Math.max(1,polls)).toFixed(2),hops:whys,causes,set:process.env.BOSS_UNDER_SET||null,losses,
+   centreMps:{median:q(0.5),p90:q(0.9),max:q(1)},localFrameMps:(()=>{local.sort((a,b)=>a-b);const r=(p)=>local.length?+local[Math.min(local.length-1,Math.floor(local.length*p))].toFixed(1):null;return {median:r(0.5),p90:r(0.9),max:r(1)};})(),temper:tempers,chase:await evaluate(`[...document.querySelectorAll('.lil-gui .name')].find(n=>n.textContent==='Chase speed').parentElement.querySelector('input').value`)}));
+ const rd=await evaluate(`${B}.readout()`);
+ assert.deepEqual(rd.shaderErrors,[],'no shader errors');assert(!rd.error,`no frame error (${rd.error})`);
+ current='boss-under';await finish();
  } else if(args.includes('--boss-bait')) {
  // THE BOSS LAB'S BAIT MODE IN THE GAME'S GUNSHIP SEAT (2026-10-09; src/labs/boss/bait.js and game-seat.js, specs docs/superpowers/specs/2026-10-09-boss-bait-mode-design.md
  // and 2026-10-09-boss-bait-game-seat-design.md): Isao flies low on autopilot with the creature hunting him, the player sits in the game's own gunship
@@ -2301,6 +2329,9 @@ try{
  // speed 3, reach duration 5, reach sweep 4, foot grip 3 and 40 m (30 m back in the tank mode); the copied block's six lines and C in the seat; the random
  // fly-over off for the measured and aimed runs (on in the arena run, which logs the hops), a forced hop over the creature's top to its far side and back
  // down within 10 s, a trapped hop within 5 s of the bound squeezed onto him, out from under the creature 8 m clear of its body within 6 s; HOP_SHOT a screenshot mid-cross in the lab's chase
+ // WAVE B (2026-10-09): the predator's base chase speed 1.2 with the temperament's lunges at 3, the copy's gun fear and temperament lines, the fear per gun's and the
+ // temperament's knobs, NUKE CLEAR lit and grey, a 40 mm between the creature and Isao sending it wild away from the impact faster than 1.5 times its base, a 25 mm
+ // barrage tipping the meter, 60 s of chatter never two lines within 6 s and at least three distinct; the aimed runs and kills with the fear off
  const B='window.__bossLab',shotPath=process.env.BOSSBAIT_SHOT||join(output,'boss-bait-seat.png');
  const {BOSS_FIGHT}=await import('../src/content/boss-fight.js');
  const {GUNSHIP_GUNS,GUNSHIP_PLATFORM}=await import('../src/content/gunship.js');
@@ -2315,6 +2346,7 @@ try{
  const knob=(name)=>evaluate(`(()=>{const n=[...document.querySelectorAll('.lil-gui .name')].find(n=>n.textContent===${JSON.stringify(name)});return n?{value:+n.parentElement.querySelector('input').value,shown:getComputedStyle(n.closest('.controller')).display!=='none'}:null})()`);
  const setKnob=(name,v)=>evaluate(`(()=>{const i=[...document.querySelectorAll('.lil-gui .name')].find(n=>n.textContent===${JSON.stringify(name)}).parentElement.querySelector('input');i.value=${JSON.stringify(String(v))};i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));return i.value;})()`);
  const HOP_KNOB='Isao fly-over chance (/s)';
+ const setBool=(name,v)=>evaluate(`(()=>{const i=[...document.querySelectorAll('.lil-gui .name')].find(n=>n.textContent===${JSON.stringify(name)}).parentElement.querySelector('input');if(i.checked!==${!!v})i.click();return i.checked;})()`);
  {const {NIH_DAIRIA_PREDATOR}=await import('../src/content/nih-dairia.js');
   const speed=await knob('Chase speed'),pause=await knob('Pause between bursts'),hp=await knob('bait mode boss health (at reset)'),err=await knob('Isao erratic'),tankHp=await knob('health (at reset)'),s0=await evaluate(S),bound=await evaluate(`${B}.arena().bound`);
   console.log('BOSS-BAIT feel '+JSON.stringify({speed,pause,baitHealth:hp,erratic:err,tankHealthShown:tankHp.shown,max:s0.max,bound}));
@@ -2322,7 +2354,7 @@ try{
   // the owner's first values (2026-10-09): chase speed 3, reach duration 5, reach sweep 4, foot grip 3, size 40; the fly-over's chance knob at its default
   const owner={speed:speed.value,reach:(await knob('Reach duration')).value,sweep:(await knob('Reach sweep')).value,grip:(await knob('Foot grip')).value,size:(await knob('size (m)')).value,readSize:await evaluate(`${B}.readout().size`),hop:await knob(HOP_KNOB)};
   console.log('BOSS-BAIT owner values '+JSON.stringify(owner));
-  assert(owner.speed===3&&owner.reach===5&&owner.sweep===4&&owner.grip===3&&owner.size===40&&owner.readSize===40,`the predator's owner values: chase speed 3, reach duration 5, reach sweep 4, foot grip 3, 40 m (${JSON.stringify(owner)})`);
+  assert(owner.speed===1.2&&owner.reach===5&&owner.sweep===4&&owner.grip===3&&owner.size===40&&owner.readSize===40,`the predator's owner values: base chase speed 1.2 (wave B; the owner's 3 is the lunge's), reach duration 5, reach sweep 4, foot grip 3, 40 m (${JSON.stringify(owner)})`);
   assert(owner.hop.shown&&owner.hop.value===BOSS_FIGHT.bait.hopChance,`the fly-over chance knob shows at ${BOSS_FIGHT.bait.hopChance} (${JSON.stringify(owner.hop)})`);
   assert(hp.shown&&hp.value===180&&s0.max===180,`the bait mode's boss health knob shows, 180, and the round's creature has it (${hp.value}, max ${s0.max})`);
   assert(err.shown&&err.value===BOSS_FIGHT.bait.erratic&&!tankHp.shown,`the Isao erratic knob shows at ${BOSS_FIGHT.bait.erratic} and the tank's health knob is hidden (${JSON.stringify({err,tankHp})})`);
@@ -2331,8 +2363,11 @@ try{
  // the box below the buttons holding it when the headless page has no clipboard) and does not reach the seat
  {const text=await evaluate(`${B}.copySettings()`),lines=text.split('\n');
   console.log('BOSS-BAIT copy\n'+text);
-  assert(/^mode=bait variant=\S+ size=40$/.test(lines[0])&&/^motion: speed=3 reachTime=5 /.test(lines[1])&&/ sweep=4( |$)/.test(lines[1])&&/ grip=3( |$)/.test(lines[1]),`the block's head and motion lines (${lines.slice(0,2).join(' | ')})`);
-  assert(/^phys: gravity=\S+ iterations=\d+/.test(lines[2])&&/^bait: altitude=\S+ erratic=\S+ health=180 reload=\S+ hopChance=0\.03$/.test(lines[3])&&/^fight: /.test(lines[4])&&/^fear: reach=/.test(lines[5])&&lines.length===6,`the block's phys, bait, fight and fear lines (${lines.slice(2).join(' | ')})`);
+  assert(/^mode=bait variant=\S+ size=40$/.test(lines[0])&&/^motion: speed=1.2 reachTime=5 /.test(lines[1])&&/ sweep=4( |$)/.test(lines[1])&&/ grip=3( |$)/.test(lines[1]),`the block's head and motion lines (${lines.slice(0,2).join(' | ')})`);
+  assert(/^phys: gravity=\S+ iterations=\d+/.test(lines[2])&&/^bait: altitude=\S+ erratic=\S+ health=180 reload=\S+ hopChance=0\.03$/.test(lines[3])&&/^fight: /.test(lines[4])&&/^fear: reach=/.test(lines[5])&&lines.length===8,`the block's phys, bait, fight and fear lines (${lines.slice(2).join(' | ')})`);
+  // wave B: the bait mode's fear per gun and temperament, a line each
+  assert(/^gun fear: 25mm\.amount=0\.06 25mm\.drain=0\.5 25mm\.flee=10 25mm\.duration=0\.8 25mm\.speed=1\.3 25mm\.erratic=0 40mm\.flee=35 40mm\.duration=2\.5 40mm\.speed=2 40mm\.erratic=2 mk9\.flee=50 mk9\.duration=3\.5 mk9\.speed=2\.5 mk9\.erratic=1 mk9\.stun=0$/.test(lines[6])
+    &&/^temperament: speed=1\.2 lunges=true lungeSpeed=3 everyMin=3 everyMax=8 forMin=0\.6 forMax=1\.2 reach=1\.5 ease=0\.2$/.test(lines[7]),`the block's gun fear and temperament lines (${lines.slice(6).join(' | ')})`);
   await evaluate(`document.querySelector('#boss [data-callouts]').replaceChildren(); document.querySelector('#boss [data-copy]').hidden=true; document.querySelector('#boss [data-copy]').value=''`);
   const seat0=await evaluate(`${B}.seat().view`);
   await evaluate(`dispatchEvent(new KeyboardEvent("keydown",{key:"c",code:"KeyC",bubbles:true}));dispatchEvent(new KeyboardEvent("keyup",{key:"c",code:"KeyC",bubbles:true}))`);
@@ -2458,9 +2493,12 @@ try{
   await evaluate(`${B}.fire(false)`);await pace(BOSS_FIGHT.bofors.travel+0.5,(s)=>s.phase!=='fight');const o1=await evaluate(S);
   console.log('BOSS-BAIT owner far side 40 mm '+JSON.stringify({lab:+(oa.s.clock-oa.s0.clock).toFixed(1),hits:o1.hits-o0.hits,shots:o1.seat.shots.bofors-o0.seat.shots.bofors,hp:[+o0.hp.toFixed(1),+o1.hp.toFixed(1)],isaoHp:[o0.bait.hp,o1.bait.hp],phase:o1.phase,reason:o1.reason}));
   if(o1.phase!=='fight')await restart();}
- const ownerKnobs={'Chase speed':3,'Reach duration':5,'Reach sweep':4,'Foot grip':3,'size (m)':40};
+ const ownerKnobs={'Chase speed':1.2,'Reach duration':5,'Reach sweep':4,'Foot grip':3,'size (m)':40};   // wave B: the base chase speed 1.2, the lunges at the owner's 3
  const earlier={'Chase speed':0.22,'Reach duration':10,'Reach sweep':1,'Foot grip':1.5,'size (m)':30};
- for(const [k,v] of Object.entries(earlier))await setKnob(k,v);
+ // the earlier pursuit runs with the temperament's lunges off (WAVE B: they would lift its chase speed from 0.22 to 3 every few seconds); the owner's with them on
+ const useEarlier=async()=>{for(const [k,v] of Object.entries(earlier))await setKnob(k,v);await setBool('lunges',false);};
+ const useOwner=async()=>{for(const [k,v] of Object.entries(ownerKnobs))await setKnob(k,v);await setBool('lunges',true);};
+ await useEarlier();
  await restart();
  const gap=await gapRun('earlier pursuit');
  assert(!gap.timedOut&&gap.phase==='fight',`the gap was sampled for 10 s of lab clock (${JSON.stringify(gap)})`);
@@ -2509,8 +2547,9 @@ try{
   assert(speeds.length>=40,`enough speed samples outside panic, the fly-overs and the bound's clamp (${speeds.length}; 55 to 158 in the runs since the fly-over)`);
   assert(arenaLog.speed.p5>=8-1&&arenaLog.speed.p95<=26+1,`Isao's measured speed stays in 8-26 m/s outside panic (p5 ${arenaLog.speed.p5}, p95 ${arenaLog.speed.p95})`);
   assert(arenaLog.speed.p95-arenaLog.speed.p5>=6,`and swings with the erratic flight's bursts and brakes (p5 ${arenaLog.speed.p5} to p95 ${arenaLog.speed.p95})`);
-  assert(arenaLog.speed.flight[0]>=8-1e-6&&arenaLog.speed.flight[1]<=26+1e-6,`the flight's own speed stays in 8-26 m/s (${arenaLog.speed.flight})`);}
- for(const [k,v] of Object.entries(ownerKnobs))await setKnob(k,v);   // the owner's predator again for the fly-over and the shots
+  // WAVE B: his flee is 32 m/s, above the band, and the speed he leaves a panic at slews back down at 30 m/s2: the top is the flee's
+  assert(arenaLog.speed.flight[0]>=8-1e-6&&arenaLog.speed.flight[1]<=Math.max(26,BOSS_FIGHT.bait.flee)+1e-6,`the flight's own speed stays in 8-26 m/s, or above it on the way down from a ${BOSS_FIGHT.bait.flee} m/s flee (${arenaLog.speed.flight})`);}
+ await useOwner();   // the owner's predator again for the fly-over and the shots
  // THE FLY-OVER (owner, 2026-10-09: "Isao gets stuck between an invisible wall (the boundaries) and the creature too often. once in a while have Isao fly
  // OVER it"): (a) a forced hop (`hop()`) climbs over the creature to its far side: the angle round the creature's centre turns by more than 120 degrees,
  // every cross sample is above the creature's top (the body's highest node, measured through the hop), and he is back at his flying altitude within 10 s
@@ -2530,7 +2569,7 @@ try{
       prev=h;if(!h.bait.hop){landed={lab:+(h.clock-h0.clock).toFixed(2),alt:+h.bait.alt.toFixed(2)};break;}
       if(h.clock-h0.clock>20)break;
     }
-    const out={label,why:h0.bait.hopWhy,phases,turnedDeg:+(Math.abs(sweep)*180/Math.PI).toFixed(0),crossMinAlt:+crossMin.toFixed(1),creatureTopM:+topMax.toFixed(1),landed,lost,said:prev.bait.said};
+    const out={label,why:h0.bait.hopWhy,phases,turnedDeg:+(Math.abs(sweep)*180/Math.PI).toFixed(0),crossMinAlt:+crossMin.toFixed(1),creatureTopM:+topMax.toFixed(1),landed,lost,said:prev.bait.said,start:h0.clock,lines:(prev.bait.lines??[]).filter(l=>l.at>h0.clock-10)};
     console.log('BOSS-BAIT fly-over '+JSON.stringify(out));return out;
   };
   await setKnob(HOP_KNOB,0);await restart();await pace(3);
@@ -2541,11 +2580,13 @@ try{
   assert(forced.turnedDeg>120,`he crosses to the creature's far side (${forced.turnedDeg} degrees round its centre, bound 120)`);
   assert(forced.crossMinAlt>forced.creatureTopM,`the cross flies above the creature's top (lowest ${forced.crossMinAlt} m, the top ${forced.creatureTopM} m)`);
   assert(forced.landed&&forced.landed.lab<=10&&Math.abs(forced.landed.alt-altKnob)<0.01,`and lands back at his ${altKnob} m within 10 s (${JSON.stringify(forced.landed)})`);
-  assert(forced.said.includes('flyover'),`the fly-over's line is said (${forced.said})`);
+  // WAVE B: the chatter director says it unless its 6 s gap holds it past the line's 2 s (a line said in the 6 s before the hop)
+  {const before=forced.lines.filter(l=>l.at<=forced.start+2&&l.at>forced.start-BOSS_FIGHT.chatter.gap&&l.key!=='flyover');
+   assert(forced.said.includes('flyover')||before.length>0,`the fly-over's line is said, or the director's gap held it (${JSON.stringify({said:forced.said,before})})`);}
   // (b) trapped: the bound 3 m beyond him on a fresh round (the creature at the centre, he 40 m out); his wanted point is held 10 m inside it, the creature hunts
   // him there, and pressed against the bound he hops. On the earlier pursuit and arms at 30 m, as the keep above: the owner's arms sweep round him (out to
   // about 90 m) and have him under the creature, escaping, before the bound can trap him (the first run of this case: an 'under' escape 0.11 s in)
-  for(const [k,v] of Object.entries(earlier))await setKnob(k,v);
+  await useEarlier();
   await restart();await pace(1);
   const t0=await evaluate(H),R0=Math.round(dist(t0.bait.pos,t0.bound.at)+3);
   await evaluate(`${B}.bounds(${R0})`);
@@ -2557,7 +2598,7 @@ try{
   // over him against the bound); the trapped rule's own timing is node-tested (test/boss-bait.mjs)
   assert(tr&&['trapped','under'].includes(tr.bait.hopWhy)&&tr.clock-t0.clock<=5,`pressed against the bound he hops within 5 s (${JSON.stringify(trapLog)})`);
   if(tr)await fly(tr.bait.hopWhy);
-  for(const [k,v] of Object.entries(ownerKnobs))await setKnob(k,v);
+  await useOwner();
   // (c) UNDER THE CREATURE (owner, 2026-10-09: "Isao gets stuck too easily under the creature"): put under its centre, he escapes up and out ('under') and is
   // clear of the body (every floor contact more than 8 m from his ground point, and his ground point beyond the body's half-width from its centre) within 6 s
   // of lab clock, never taken
@@ -2578,9 +2619,97 @@ try{
     await until(`!${B}.bait().hop`,30000).catch(()=>{});
     await setSel('view','chase');await until(`!!${B}.seat() && ${B}.fight().phase === "fight"`,15000);
   }
+  // WAVE B (owner, 2026-10-09): the fear per gun, the temperament, Isao's chatter director and the NUKE CLEAR cue, on the owner's predator (the base chase
+  // speed 1.2, the lunges at 3). (1) the panel: the two folders show in the bait mode with the owner's numbers, the bait mode's MK-9 stun its own (0) and the
+  // tank's hidden; (2) NUKE CLEAR lit with Isao put 90 m from the creature's centre, grey under it; (3) THE 40 MM SENDS IT WILD: the lunges off, its base is its
+  // mean centre speed over 4 s of lab clock; a 40 mm burst led between it and Isao (15 m from its centre toward him) puts it in a wild flight that runs away
+  // from the impact (the mean cosine of its velocity with the way from the impact, over the samples faster than the base mean, above 0.5, and the centre
+  // carried away by more than 10 m) faster than 1.5 times the base mean for more than 1 s of lab clock; (4) a sustained 25 mm barrage on its centre tips the
+  // meter into a flinch; (5) THE CHATTER over 60 s of lab clock (the lunges and the random fly-over on; idle, then the MK-9 aimed on Isao, then the 40 mm just
+  // outside his ring): never two lines within 6 s, at least three distinct lines
+  {const W=`(()=>{const L=window.__bossLab,f=L.fight(),b=L.bait();return {clock:L.arena().clock,phase:f.phase,centre:f.centre,bait:b,gf:L.gunFear(),temper:L.temperament(),seat:L.seat()}})()`;
+   const panel=await evaluate(`(()=>{const folder=(t)=>[...document.querySelectorAll('.lil-gui .lil-gui')].find(g=>g.querySelector(':scope > .title')?.textContent===t);
+     const val=(f,n)=>{const c=[...f.querySelectorAll('.controller')].find(c=>c.querySelector('.name')?.textContent===n);if(!c)return null;const i=c.querySelector('input');return i.type==='checkbox'?i.checked:+i.value;};
+     const gf=folder('fear per gun (bait)'),tm=folder('temperament (bait)'),fi=folder('fight'),tankStun=[...fi.querySelectorAll('.controller')].find(c=>c.querySelector('.name')?.textContent==='nuke stun (s)');
+     return {gf:!!gf&&getComputedStyle(gf).display!=='none',tm:!!tm&&getComputedStyle(tm).display!=='none',amount:val(gf,'25 mm barrage a round'),drain:val(gf,'25 mm barrage drain (/s)'),flee25:val(gf,'25 mm flee (m)'),flee40:val(gf,'40 mm flee (m)'),speed40:val(gf,'40 mm speed ×'),dur40:val(gf,'40 mm duration (s)'),flee9:val(gf,'MK-9 flee (m)'),speed9:val(gf,'MK-9 speed ×'),stun:val(gf,'nuke stun (s)'),tankStun:getComputedStyle(tankStun).display,
+       base:val(tm,'base speed'),lunge:val(tm,'lunge speed'),every:[val(tm,'lunge every min (s)'),val(tm,'lunge every max (s)')],dur:[val(tm,'lunge duration min (s)'),val(tm,'lunge duration max (s)')],boost:val(tm,'lunge reach boost ×'),lunges:val(tm,'lunges')}})()`);
+   console.log('BOSS-BAIT wave B panel '+JSON.stringify(panel));
+   assert(panel.gf&&panel.amount===0.06&&panel.drain===0.5&&panel.flee25===10&&panel.flee40===35&&panel.speed40===2&&panel.dur40===2.5&&panel.flee9===50&&panel.speed9===2.5&&panel.stun===0&&panel.tankStun==='none',`the fear per gun's knobs show with the owner's numbers, the bait mode's MK-9 stun 0 and the tank's hidden (${JSON.stringify(panel)})`);
+   assert(panel.tm&&panel.base===1.2&&panel.lunge===3&&panel.every.join()==='3,8'&&panel.dur.join()==='0.6,1.2'&&panel.boost===1.5&&panel.lunges===true,`the temperament's knobs: base 1.2, lunges at 3 every 3-8 s for 0.6-1.2 s, reach x1.5 (${JSON.stringify(panel)})`);
+   // (2) NUKE CLEAR
+   await restart();await pace(1);
+   {const n0=await evaluate(W),bAt=(await evaluate(`${B}.arena().bound.at`)),c0=n0.centre;let dx=bAt[0]-c0[0],dz=bAt[1]-c0[1];const dl=Math.hypot(dx,dz);if(dl<1){dx=1;dz=0;}else{dx/=dl;dz/=dl;}
+    const ring=BOSS_FIGHT.nuke.radius+BOSS_FIGHT.nukeClear;
+    const cue=()=>evaluate(`(()=>{const c=document.querySelector('#boss .nk-cue'),b=${B}.bait(),f=${B}.fight();return {shown:!!c&&!c.hidden&&getComputedStyle(c).display!=='none',lit:!!c&&c.classList.contains('nk-on'),clear:b.nukeClear,d:+Math.hypot(b.pos[0]-f.centre[0],b.pos[1]-f.centre[1]).toFixed(1)}})()`);
+    await evaluate(`${B}.putIsao(${JSON.stringify([c0[0]+dx*90,c0[1]+dz*90])})`);
+    let lit=null;for(const end=Date.now()+5000;Date.now()<end&&!lit;){const q=await cue();if(q.lit)lit=q;else await delay(50);}
+    await evaluate(`${B}.under()`);
+    let grey=null;for(const end=Date.now()+5000;Date.now()<end&&!grey;){const q=await cue();if(q.shown&&!q.lit)grey=q;else await delay(50);}
+    console.log('BOSS-BAIT nuke clear '+JSON.stringify({ring,lit,grey}));
+    assert(lit&&lit.shown&&lit.clear&&lit.d>ring,`NUKE CLEAR lights with Isao beyond ${ring} m of the creature's centre (${JSON.stringify(lit)})`);
+    assert(grey&&!grey.clear&&grey.d<=ring,`and greys with him under it (${JSON.stringify(grey)})`);
+    await until(`!${B}.bait().hop`,30000).catch(()=>{});}
+   // (3) the 40 mm's wild flight
+   await setBool('lunges',false);await restart();await pace(2);
+   const sc=await evaluate(`${B}.readout().scale`);
+   const sampler=(seconds,stop='false')=>evaluate(`new Promise((resolve)=>{const L=window.__bossLab,out=[],t0=L.arena().clock,r0=performance.now();const tick=()=>{const c=L.creature(),v=c.motion.velocity,f=L.fight(),g=L.gunFear();out.push({clock:L.arena().clock,v:[v.x*${sc},v.z*${sc}],c:f.centre,b:L.arena().bound.at,phase:f.phase,flight:g.flight,temper:L.temperament().phase,live:L.temperament().live?.speed??null});if(L.arena().clock-t0>=${seconds}||performance.now()-r0>150000||(${stop}))resolve(out);else requestAnimationFrame(tick);};requestAnimationFrame(tick);})`);
+   const spd=(x)=>Math.hypot(x.v[0],x.v[1]);
+   const timeMean=(a,f)=>{let w=0,s=0;for(let i=1;i<a.length;i++){const dt=a[i].clock-a[i-1].clock;w+=dt;s+=f(a[i])*dt;}return w>0?s/w:0;};
+   const baseRun=await sampler(4),baseMean=timeMean(baseRun.filter(x=>x.phase==='fight'),spd);
+   await evaluate(`${B}.gun("bofors")`);
+   let wildAt=null,prevW=await evaluate(W);const wild0=prevW.gf.wild,bof0=prevW.seat.shots.bofors;
+   for(const end=Date.now()+90000;Date.now()<end;){
+     await delay(100);const s=await evaluate(W);if(s.phase!=='fight'||s.bait.gone)break;
+     if(s.gf.wild>wild0&&s.gf.flight?.level==='wild'){wildAt=s;break;}
+     if(s.seat.shots.bofors<bof0+2){const dt=Math.max(1e-3,s.clock-prevW.clock),v=[(s.centre[0]-prevW.centre[0])/dt,(s.centre[1]-prevW.centre[1])/dt],T=BOSS_FIGHT.bofors.travel,c=[s.centre[0]+v[0]*T,s.centre[1]+v[1]*T],d=dist(s.bait.pos,c)||1,k=Math.min(15,d/2);
+       await evaluate(`${B}.aim(${JSON.stringify([c[0]+(s.bait.pos[0]-c[0])/d*k,c[1]+(s.bait.pos[1]-c[1])/d*k])}); ${B}.fire(true)`);}
+     else await evaluate(`${B}.fire(false)`);
+     prevW=s;
+   }
+   await evaluate(`${B}.fire(false)`);
+   assert(wildAt,`a 40 mm landing between the creature and Isao sends it wild (${JSON.stringify(prevW.gf)})`);
+   const flightRun=await sampler(BOSS_FIGHT.gunFear.bofors.duration*2,'!g.flight'),wild=flightRun.filter(x=>x.flight&&x.flight.level==='wild'&&x.phase==='fight');
+   assert(wild.length>=5,`the wild flight was sampled (${wild.length} frames)`);
+   let above=0,cosSum=0,cosW=0;for(let i=1;i<wild.length;i++){const x=wild[i],dt=x.clock-wild[i-1].clock,s=spd(x);if(s>1.5*baseMean)above+=dt;
+     if(s>baseMean){const ax=x.c[0]-x.flight.at[0],az=x.c[1]-x.flight.at[1],al=Math.hypot(ax,az)||1;cosSum+=(x.v[0]*ax+x.v[1]*az)/(s*al)*dt;cosW+=dt;}}
+   // the centre's displacement over the flight measured from the bound's centre (world-fixed: the lab's frame re-anchors every 5 m and shifts every local point)
+   const w0=wild[0],w1=wild.at(-1),ux=w0.c[0]-w0.flight.at[0],uz=w0.c[1]-w0.flight.at[1],ul=Math.hypot(ux,uz)||1,away=(((w1.c[0]-w1.b[0])-(w0.c[0]-w0.b[0]))*ux+((w1.c[1]-w1.b[1])-(w0.c[1]-w0.b[1]))*uz)/ul;
+   const wildLog={baseMeanMps:+baseMean.toFixed(1),wildMeanMps:+timeMean(wild,spd).toFixed(1),aboveS:+above.toFixed(2),lab:+(w1.clock-w0.clock).toFixed(2),cos:+(cosW>0?cosSum/cosW:0).toFixed(2),awayM:+away.toFixed(1),impactFromCentreM:+ul.toFixed(1),
+     live:[...new Set(wild.map(x=>x.live?.toFixed(2)))].slice(0,6),temper:[...new Set(flightRun.map(x=>x.temper))],shots:(await evaluate(W)).seat.shots.bofors-bof0};
+   console.log('BOSS-BAIT 40 mm wild '+JSON.stringify(wildLog));
+   assert(wildLog.cos>0.5&&away>10,`the wild flight runs away from the impact (mean cosine ${wildLog.cos}, ${wildLog.awayM} m away)`);
+   assert(above>1,`faster than 1.5 times its base mean (${wildLog.baseMeanMps} m/s) for more than 1 s (${wildLog.aboveS} s of ${wildLog.lab} s)`);
+   // (4) the 25 mm's barrage meter
+   await until(`!${B}.gunFear().flight`,30000).catch(()=>{});
+   await evaluate(`${B}.gun("rotary")`);
+   {const f0=(await evaluate(W)).gf.flinch,c0=(await evaluate(W)).clock;let maxMeter=0,flinched=null,last=null;
+    for(const end=Date.now()+90000;Date.now()<end;){await delay(100);const s=await evaluate(W);last=s;if(s.phase!=='fight'||s.bait.gone)break;maxMeter=Math.max(maxMeter,s.gf.meter);if(s.gf.flinch>f0){flinched=s;break;}await evaluate(`${B}.aim(${JSON.stringify(s.centre)}); ${B}.fire(true)`);}
+    await evaluate(`${B}.fire(false)`);
+    console.log('BOSS-BAIT 25 mm barrage '+JSON.stringify({maxMeter:+maxMeter.toFixed(2),flinchAfterS:flinched?+(flinched.clock-c0).toFixed(2):null,level:flinched?.gf.flight?.level??null,rounds:last?.seat.shots.rotary,phase:last?.phase}));
+    assert(flinched&&maxMeter>0,`a sustained 25 mm barrage tips the meter into a flinch (meter up to ${maxMeter.toFixed(2)})`);}
+   // (5) the chatter director over 60 s of lab clock
+   await setBool('lunges',true);await setKnob(HOP_KNOB,BOSS_FIGHT.bait.hopChance);await restart();
+   {const c0=(await evaluate(W)).clock;let restarts=0,last=null;
+    for(const end=Date.now()+480000;Date.now()<end;){
+      await delay(100);const s=await evaluate(W);last=s;const el=s.clock-c0;
+      if(s.phase!=='fight'){await evaluate(`${B}.fire(false)`);restarts++;await restart();continue;}
+      if(el>=60)break;
+      if(el>=20&&el<27){if(s.seat.gun!=='nuke')await evaluate(`${B}.gun("nuke")`);await evaluate(`${B}.aim(${JSON.stringify(s.bait.pos)})`);}   // the MK-9 on him, not released
+      else if(el>=27&&el<40){if(s.seat.gun!=='bofors')await evaluate(`${B}.gun("bofors")`);const d=dist(s.bait.pos,s.centre)||1,off=BOSS_FIGHT.bofors.radius+3;
+        await evaluate(`${B}.aim(${JSON.stringify([s.bait.pos[0]+(s.bait.pos[0]-s.centre[0])/d*off,s.bait.pos[1]+(s.bait.pos[1]-s.centre[1])/d*off])}); ${B}.fire(true)`);}   // just outside his ring, his far side
+      else await evaluate(`${B}.fire(false)`);
+    }
+    await evaluate(`${B}.fire(false)`);
+    const lines=(await evaluate(`${B}.bait().lines`)).filter(l=>l.at>=c0),gaps=lines.slice(1).map((l,i)=>l.at-lines[i].at),keys=[...new Set(lines.map(l=>l.key))];
+    console.log('BOSS-BAIT chatter '+JSON.stringify({lab:+(last.clock-c0).toFixed(1),restarts,n:lines.length,keys,minGapS:gaps.length?+Math.min(...gaps).toFixed(2):null,lines:lines.map(l=>`${(l.at-c0).toFixed(1)} ${l.key}${l.variant?`#${l.variant}`:''} ${l.via}`)}));
+    assert(last.clock-c0>=60,`the chatter run covered 60 s of lab clock (${(last.clock-c0).toFixed(1)})`);
+    assert(gaps.every(g=>g>=BOSS_FIGHT.chatter.gap-1e-9),`never two lines within ${BOSS_FIGHT.chatter.gap} s (closest ${gaps.length?Math.min(...gaps).toFixed(2):'-'} s)`);
+    assert(keys.length>=3,`at least three distinct lines (${keys.join(', ')})`);}
+   await setKnob(HOP_KNOB,0);}
   // the aimed runs below on the predator's earlier pursuit and arms at 30 m, as the kills: against the owner's arms the creature's far contact is an arm's tip
-  // swept out to about 90 m and the 40 mm led there missed in one run (0 hits of 6); the owner's values come back at the end
-  for(const [k,v] of Object.entries(earlier))await setKnob(k,v);
+  // swept out to about 90 m and the 40 mm led there missed in one run (0 hits of 6); the owner's values come back at the end. WAVE B: the fear off for them (the
+  // fight's flow is under test; the fear per gun sends the creature 35 m from a far-side 40 mm, toward Isao, and flinches it at the 25 mm's far foot), on again at the end
+  await useEarlier();await setBool('fear (flight, stun)',false);
   await restart();}
  // THE CAMERA RIDES THE PLATFORM (Task C): 90 consecutive frames, nothing aimed: the camera's position and view direction step smoothly (no frame turns the view
  // by 0.5 degrees or moves it by more than three times the median step) and the view keeps its world direction while the hull's heading turns (holdAim): the
@@ -2710,7 +2839,7 @@ try{
  // fit 90 to 120 s of lab clock (a generous real-time cap beside it: the loaded machine's clock lags), and the 25 mm's own rate is logged
  // the kills on the predator's earlier pursuit and arms at 30 m (the fight's flow is under test, not the feel): against the owner's arms, swept out to about
  // 90 m, the far foot the 25 mm is led onto is an arm's tip and the first run wore a 60 hp creature only to 44 hp in 90 s of lab clock
- for(const [k,v] of Object.entries(earlier))await setKnob(k,v);
+ await useEarlier();
  await setKnob('bait mode boss health (at reset)',60);await restart();
  assert.equal((await evaluate(S)).max,60,'the kills run on a 60 hp creature');
  // (d0) the pyrrhic win (the owner's call: a shared-frame kill is KILLED, the creature is dead, and the card says Isao is down): the 25 mm wears the creature to 15 hp or less,
@@ -2775,7 +2904,7 @@ const killReal=(Date.now()-t0)/1000;
   assert(fr.at(-1)-fr[0]===89&&new Set(fr).size===90,`the rock run covers 90 consecutive frames (${fr[0]}..${fr.at(-1)})`);
   assert(onRock<3,`the reticle is on the rock r3 (${onRock.toFixed(1)} m off its centre ${JSON.stringify(rockAt)}), so the patch holds it`);
   assert(median<0.5,`the rock does not flicker in the thermal: the patch's luminance changes by a median ${median.toFixed(3)} a frame (bound 0.5; a rock that comes and goes with the post chain's targets changes by about 6)`);}
- await setKnob('bait mode boss health (at reset)',180);for(const [k,v] of Object.entries(ownerKnobs))await setKnob(k,v);
+ await setKnob('bait mode boss health (at reset)',180);await useOwner();await setBool('fear (flight, stun)',true);
  // Esc leaves the seat for the tank, and the lab is the lab again (no seat, the scene back in metres)
  await evaluate(`dispatchEvent(new KeyboardEvent("keydown",{key:"Escape"}))`);
  await until(`${B}.mode() === "tank" && ${B}.seat() === null && !document.querySelector('#boss #sentry-pilot') && !document.querySelector('#boss #story-monitor')`,10000);

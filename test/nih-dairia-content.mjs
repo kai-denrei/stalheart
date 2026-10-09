@@ -24,7 +24,7 @@ assert.deepEqual(NIH_DAIRIA_MOTION, {
 }, "the owner's preset pasted from the boss lab on 2026-10-08 (slower by default)");
 // the bait mode's predator: the slower preset with the pursuit and the arms turned up, every value inside the panel's range
 const { MOTION_CONTROLS } = await import('../src/fx/nih-dairia/motion-settings.js');
-assert.deepEqual(NIH_DAIRIA_PREDATOR, { ...NIH_DAIRIA_MOTION, speed: 3, reachTime: 5, pullTime: 3, pauseTime: 0.8, erratic: 3, stretch: 5, spread: 4.5, sweep: 4, grip: 3 }, "the predator preset (spec item 4, the owner's chase speed 3, reach duration 5, reach sweep 4, foot grip 3 of 2026-10-09)");
+assert.deepEqual(NIH_DAIRIA_PREDATOR, { ...NIH_DAIRIA_MOTION, speed: 1.2, reachTime: 5, pullTime: 3, pauseTime: 0.8, erratic: 3, stretch: 5, spread: 4.5, sweep: 4, grip: 3 }, "the predator preset (spec item 4, the owner's reach duration 5, reach sweep 4, foot grip 3 of 2026-10-09; wave B's base chase speed 1.2, the owner's 3 the lunge's)");
 for (const c of MOTION_CONTROLS) assert.ok(NIH_DAIRIA_PREDATOR[c.key] >= c.min && NIH_DAIRIA_PREDATOR[c.key] <= c.max, `predator ${c.key} ${NIH_DAIRIA_PREDATOR[c.key]} inside the panel's ${c.min}..${c.max}`);
 assert.ok(NIH_DAIRIA_PREDATOR.speed > NIH_DAIRIA_MOTION.speed && NIH_DAIRIA_PREDATOR.pauseTime < NIH_DAIRIA_MOTION.pauseTime && NIH_DAIRIA_PREDATOR.pullTime > NIH_DAIRIA_MOTION.pullTime, 'faster, longer surges, shorter pauses than the slower preset');
 assert.ok(Object.isFrozen(NIH_DAIRIA_PREDATOR));

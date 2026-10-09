@@ -28,6 +28,7 @@ import { createBodyRules } from './boss/body.js';
 import { createCannon } from './boss/cannon.js';
 import { createFriendlies } from './boss/friendlies.js';
 import { createFear } from './boss/fear.js';
+import { createTemperament } from './boss/temperament.js';
 import { createArena, deeper } from './boss/arena.js';
 import { createRound } from './boss/round.js';
 import { createBaitMode } from './boss/bait.js';
@@ -304,10 +305,16 @@ export function initBossTab(root) {
   const tankNow = () => ({ pos: hullLost || !tankOn() ? [1e9, 1e9] : [drive.x, drive.z], radius: fightTune.hull.radius });   // a lost hull is no target
   // THE FEAR (./boss/fear.js, the rules in src/domain/boss-fear.js): what the friendlies report frightens the creature or stuns it
   let stunned = false;   // `motion.active` is held false by a stun in progress
+  // in the bait mode the fear per gun (wave B): the 25 mm's barrage meter, the 40 mm's wild flight, the MK-9's panic, the arms counting for the reach; the
+  // round's first 40 mm fright asks Isao for his stagger line
   const fear = createFear({
     tune: () => fightTune, creature: creatureNow, tank: () => (tankOn() ? tankNow() : bait.asTank()), fight: () => fight, now: () => t,
     kit: () => creature, on: () => fightOn.fight && fightOn.fear,
+    gunFear: () => !tankOn(), nodes: () => body.nodes(), onScare: (r) => { if (r.level === 'wild') bait.want('stagger'); },
   });
+  // THE TEMPERAMENT (./boss/temperament.js, wave B): in the bait mode one layer writes the creature's live motion, the panel's knobs its base, with the
+  // lunges and the fear's flights over it
+  const temperament = createTemperament({ tune: () => fightTune, kit: () => creature, base: () => params.motion, on: () => !tankOn() });
   // THE ARENA (./boss/arena.js, the rules in src/domain/boss-arena.js): two rocks that stay and four obstacles the MK-9 breaks, in the
   // lab's ground palette. They block the tank, turn the creature's hunt round them and push its body out of them after every step
   const ground = (rgb) => new THREE.Color().setRGB(rgb[0], rgb[1], rgb[2]).getHex();
@@ -333,7 +340,7 @@ export function initBossTab(root) {
     creature: creatureNow, tank: tankNow,
     // plans in flight keep landing after a loss or a kill: the arena breaks only in a running fight
     onLanding: (plan, { point }) => { fear.landed(plan, point); bait.hurt(plan); if (fight.phase === 'fight') arena.landed(plan, point); }, onBeam: (plan, point) => fear.beam(plan, point),
-    onBurn: (plan, dt) => bait.burn(plan, dt),   // a landing and a burn hurt Isao as they hurt the creature (./boss/bait.js; nothing out of the bait mode)
+    onBurn: (plan, dt) => { bait.burn(plan, dt); if (plan.player && plan.kind === 'rotary') fear.round(plan, plan.at); },   // a landing and a burn hurt Isao as they hurt the creature (./boss/bait.js; nothing out of the bait mode); each 25 mm round of the seat's fills the barrage meter
     onTankHit: loseHull, enabled: () => Object.fromEntries(['rotary', 'bofors', 'nuke', 'sol'].map((k) => [k, fightOn.fight && fightOn[k] && tankOn()])),   // the bait mode makes no automatic plans: the player's are the seat's
   });
   // a landing on the hull: the hull goes in a shell's burst and stays hidden until the reset. While it is lost it is nobody's prey:
@@ -365,6 +372,7 @@ export function initBossTab(root) {
     clamp: (p) => arena.clamp(p, fightTune.bounds.baitMargin),   // his wanted point, after the routing, inside the bound
     hold: (p) => arena.clamp(p, 0), nodes: () => body.nodes(),   // his ground point inside the bound itself after the move; the body's nodes for his reach envelope
     bound: () => { const b = arena.bound(); return b.on ? { at: b.at, radius: b.radius, inset: fightTune.bounds.baitMargin } : null; },   // the fly-over's: trapped against it, and the far side held inside it
+    gunner: () => seat.gunner(),   // the player's fire, for his lines
   });
   // THE GUNNER SEAT (./boss/game-seat.js): in the bait mode the player sits in the game's own gunship seat (src/sentry-pilot.js), its
   // thermal and its GROUND TRUTH monitor; every round it fires is resolved by the fight through the friendlies' paths
@@ -451,6 +459,7 @@ export function initBossTab(root) {
     friendlies.reset(); seat.reset(); cannon.clear(); fear.reset(); stunned = false; pin = null;
     arena.reset();   // every obstacle back, where the layout has it (the frame goes back to the origin below)
     if (!fightOn.pinSeed) fightTune.seed = (fightTune.seed | 0) + 1;
+    temperament.reset(fightTune.seed);   // the round's lunges from its seed
     fight = makeFight(roundTune());
     hullLost = false; feedWas = 'hunting';
     if (!creature || !frame) return;
@@ -646,6 +655,7 @@ export function initBossTab(root) {
     // the fear: a stun holds the instinct off (restored only while the fight is on: a kill has set it false for good), a flight
     // replaces the lure with the flee point (local metres to native, as the lure is)
     const fr = fear.step(t);
+    temperament.step(dt, fr.flight);   // the bait mode's live motion: the base, a lunge, the fear's flight
     if (fr.mode === 'stun') { stunned = true; m.active = false; }
     else if (stunned) { stunned = false; if (fightOn.fight && fight.phase === 'fight') m.active = params.instinct; }
     if (!f.locked && !(hullLost && state.lure === 'tank' && !bm) && !(bm && bait.gone())) {
@@ -788,6 +798,7 @@ export function initBossTab(root) {
       shaderErrors: shaderErrors.slice(), error: fatal ?? frameError, cropped,
       kernel: !!creature?.body.kernel,
       cam: state.cam, rearMs: gameCam?.isOn() ? gameCam.stats().ms : null, mode: state.mode, bait: bait.state(),
+      temper: temperament.state(), gunFear: fear.guns(),   // the bait mode's temperament and fear per gun
     };
   }
   function drawReadout() {
@@ -809,7 +820,8 @@ export function initBossTab(root) {
       + `<br>size ${r.size} m (&times;${fmt(r.scale, 0)}) &middot; ${r.state ?? '—'} &middot; ${r.variant}${r.mode === 'bait' ? '' : ` &middot; lure ${r.lure}`}`
       + ` &middot; ${r.kernel ? 'wasm kernel' : 'js solver'} &middot; re-anchored ${r.reanchors}`
       + (r.rearMs !== null ? ` &middot; camera game &middot; rear <b>${fmt(r.rearMs)} ms</b>` : '');
-    if (r.mode === 'bait' && r.bait) html += `<br>Isao <b>${fmt(r.bait.hp, 1)}/${r.bait.max}</b> &middot; gap <b>${fmt(r.bait.gap, 1)} m</b> &middot; alt <b>${fmt(r.bait.alt, 1)} m</b> &middot; ${r.bait.gone ? 'gone' : r.bait.hop ? `flying over (${r.bait.hop})` : r.bait.fleeing ? 'backing off' : 'circling'}`;
+    if (r.mode === 'bait' && r.bait) html += `<br>Isao <b>${fmt(r.bait.hp, 1)}/${r.bait.max}</b> &middot; gap <b>${fmt(r.bait.gap, 1)} m</b> &middot; alt <b>${fmt(r.bait.alt, 1)} m</b> &middot; ${r.bait.gone ? 'gone' : r.bait.hop ? `flying over (${r.bait.hop})` : r.bait.fleeing ? 'backing off' : 'circling'}`
+      + ` &middot; temper <b>${r.temper.phase}</b> (lunges <b>${r.temper.lunges}</b>) &middot; barrage <b>${fmt(r.gunFear.meter, 2)}</b> &middot; flinch/wild/panic <b>${r.gunFear.flinch}/${r.gunFear.wild}/${r.gunFear.panic}</b>`;
     if (shaderErrors.length) html += `<br><b class="late">shader: ${escapeHtml(shaderErrors[shaderErrors.length - 1])}</b>`;
     if (frameError && t - frameErrorAt < 5) html += `<br><b class="late">${escapeHtml(frameError)}; reset</b>`;
     read.innerHTML = html;
@@ -897,7 +909,7 @@ export function initBossTab(root) {
   fightGui.add(fightTune.rotary, 'dps', 0, 30, 0.1).name('rotary dps');
   fightGui.add(fightTune.nuke, 'damage', 0, 200, 1).name('nuke damage');
   fightGui.add(fightTune.nuke, 'every', 5, 60, 1).name('nuke every (s)');
-  fightGui.add(fightTune.nuke, 'stun', 0, 5, 0.1).name('nuke stun (s)');
+  const tankStunCtl = fightGui.add(fightTune.nuke, 'stun', 0, 5, 0.1).name('nuke stun (s)');
   fightGui.add(fightTune.fear, 'reach', 0, 30, 1).name('fear reach (m)');
   fightGui.add(fightTune.fear, 'flee', 0, 60, 1).name('fear flee (m)');
   fightGui.add(fightTune.fear, 'bofors', 0, 5, 0.1).name('fear Bofors (s)');
@@ -913,6 +925,28 @@ export function initBossTab(root) {
   fightGui.add(fightTune.sol, 'radius', 2, 30, 0.5).name('SOL radius (m)');
   const seedCtl = fightGui.add(fightTune, 'seed', 1, 999, 1).name('seed').listen();   // advances each round unless pinned
   fightGui.add(fightOn, 'pinSeed').name('pin seed');
+  // THE BAIT MODE'S FEAR PER GUN AND TEMPERAMENT (wave B): their own folders, shown in the bait mode only. The base speed is the motion's chase speed (the Pursuit
+  // folder's knob, the same value)
+  const gunFearGui = gui.addFolder('fear per gun (bait)'), GF = fightTune.gunFear;
+  gunFearGui.add(GF.rotary, 'amount', 0, 0.5, 0.01).name('25 mm barrage a round');
+  gunFearGui.add(GF.rotary, 'drain', 0, 3, 0.05).name('25 mm barrage drain (/s)');
+  for (const [k, label] of [['rotary', '25 mm'], ['bofors', '40 mm'], ['nuke', 'MK-9']]) {
+    gunFearGui.add(GF[k], 'flee', 0, 100, 1).name(`${label} flee (m)`);
+    gunFearGui.add(GF[k], 'duration', 0, 8, 0.1).name(`${label} duration (s)`);
+    gunFearGui.add(GF[k], 'speed', 0.5, 4, 0.05).name(`${label} speed ×`);
+    gunFearGui.add(GF[k], 'erratic', 0, 6, 0.1).name(`${label} erratic +`);
+  }
+  gunFearGui.add(GF.nuke, 'stun', 0, 5, 0.1).name('nuke stun (s)');   // the bait mode's own (0: the panic at once); the fight folder's is the tank mode's
+  const temperGui = gui.addFolder('temperament (bait)'), TM = fightTune.temperament;
+  temperGui.add(params.motion, 'speed', 0.1, 6, 0.05).name('base speed').listen()   // follows the Pursuit folder's chase speed (the same value)
+    .onChange((v) => { if (creature && tankOn()) creature.settings.speed = v; gui.controllersRecursive().forEach((c) => c.updateDisplay()); });   // the Pursuit folder's chase speed shows it
+  temperGui.add(TM, 'lunges').name('lunges');
+  temperGui.add(TM, 'lungeSpeed', 0.1, 6, 0.05).name('lunge speed');
+  temperGui.add(TM, 'everyMin', 0.5, 20, 0.5).name('lunge every min (s)');
+  temperGui.add(TM, 'everyMax', 0.5, 30, 0.5).name('lunge every max (s)');
+  temperGui.add(TM, 'forMin', 0.1, 3, 0.05).name('lunge duration min (s)');
+  temperGui.add(TM, 'forMax', 0.1, 3, 0.05).name('lunge duration max (s)');
+  temperGui.add(TM, 'reach', 1, 3, 0.05).name('lunge reach boost ×');
 
   function setLure(kind) {
     if (!LURES.includes(kind)) return false;
@@ -926,8 +960,9 @@ export function initBossTab(root) {
     const bm = !tankOn();
     for (const el of root.querySelectorAll('[data-tank-only]')) el.hidden = bm;
     for (const el of root.querySelectorAll('[data-bait-only]')) el.hidden = !bm;
-    solCtl.show(!bm); cannonCtl.show(!bm); healthCtl.show(!bm);   // SOL, the cannon and the tank's health are not in the bait mode; its altitude, erratic, health and the seat's reload are only there
+    solCtl.show(!bm); cannonCtl.show(!bm); healthCtl.show(!bm); tankStunCtl.show(!bm);   // SOL, the cannon, the tank's health and its MK-9 stun are not in the bait mode; its altitude, erratic, health and the seat's reload are only there
     for (const c of [altCtl, reloadCtl, erraticCtl, baitHealthCtl, hopCtl]) c.show(bm);
+    gunFearGui.show(bm); temperGui.show(bm);
   }
   modePanel();
   // the mode: the tank, or Isao as the bait (the tank out); a new round puts the right one `respawn` metres out
@@ -973,7 +1008,7 @@ export function initBossTab(root) {
   const knobPaths = new Map([[fightTune, ''], [fightTune.wall, 'wall.'], [fightTune.rotary, 'rotary.'], [fightTune.nuke, 'nuke.'], [fightTune.fear, 'fear.'],
     [fightTune.fear.weight, 'fear.weight.'], [fightTune.bofors, 'bofors.'], [fightTune.sol, 'sol.'], [fightOn, '']]);
   function copySettings() {
-    const m = creature?.settings ?? params.motion, bm = !tankOn();
+    const m = params.motion, bm = !tankOn();   // the base: in the bait mode the kit's own settings carry the temperament's lunge or flight
     const { fight: changed, fear: fearNow } = folderGroups(fightGui.controllers, knobPaths, new Set([altCtl, erraticCtl, baitHealthCtl, reloadCtl, hopCtl, seedCtl]));
     const text = settingsBlock({
       head: { mode: state.mode, variant: state.variant, size: state.sizeMetres },
@@ -981,6 +1016,10 @@ export function initBossTab(root) {
       phys: { gravity: params.phys.gravity, iterations: params.phys.iterations, feeding: params.feeding, instinct: params.instinct },
       bait: bm ? { altitude: bait.params.altitude, erratic: fightTune.bait.erratic, health: baitOpts.health, reload: seat.params.reload, hopChance: fightTune.bait.hopChance } : null,
       fight: changed, fear: fearNow,
+      more: bm ? {   // the bait mode's fear per gun and temperament (wave B)
+        'gun fear': Object.fromEntries(['rotary', 'bofors', 'nuke'].flatMap((k) => Object.entries(fightTune.gunFear[k]).map(([p, v]) => [`${{ rotary: '25mm', bofors: '40mm', nuke: 'mk9' }[k]}.${p}`, v]))),
+        temperament: { speed: params.motion.speed, ...fightTune.temperament },
+      } : null,
     });
     const fallback = () => { copyBox.hidden = false; copyBox.value = text; copyBox.focus(); copyBox.select(); };
     if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(() => { copyBox.hidden = true; showCallout('COPIED'); }, fallback);
@@ -1019,7 +1058,7 @@ export function initBossTab(root) {
   const lab = createLabHandle({
     getCreature: () => creature, getScale: () => scale, getT: () => t, getFight: () => fight, getGameCam: () => gameCam, getReanchors: () => reanchors,
     setScripted: (v) => { scripted = v; }, setPin: (v) => { pin = v; },
-    readout, setLure, setCam, setMode, bait, seat, setFight, fireCannon: () => fireCannon(), copySettings, reset, tryReanchor, placeTank, creatureNow,
+    readout, setLure, setCam, setMode, bait, seat, setFight, fireCannon: () => fireCannon(), copySettings, reset, tryReanchor, placeTank, creatureNow, temperament,
     plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene,
     chase: () => { if (state.view !== 'free' || !creature) return false; chaseCam(); return true; },
   });

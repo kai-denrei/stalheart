@@ -119,6 +119,7 @@ export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, 
   let m = null;   // the mounted seat: { pilot, G, gs, game, optic, drop, warn, monitor, post, thermal, over, saved, ... }
   let m0 = 0;     // the mounts so far (the harness checks the seat is never left and re-entered)
   let index = null, indexOf = null, heavyPress = 0, aimFocus = false, stream = null, streamAt = -Infinity, clearPx = -1;
+  const fired = { at: -Infinity, forty: -Infinity };   // the lab's clock at the player's last round of any gun, and of the 40 mm (Isao's lines)
 
   const norm = (p) => { const l = Math.hypot(p[0], p[1], p[2]) || 1; return [p[0] / l, p[1] / l, p[2] / l]; };
   const live = () => fight().phase === 'fight' && gate().fight !== false;
@@ -249,7 +250,7 @@ export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, 
       mount: () => mountGunship(gs), dismount: () => dismountGunship(gs),
       select: (k) => allowed(k) && selectGun(gs, k, guns),
       step: (dt, held) => stepGun(gs, dt, held && live() && allowed(gs.gun), guns),
-      fire: (g, p, travel) => { fireRound(gs, g, p, travel); shots[NAME[g]]++; },
+      fire: (g, p, travel) => { fireRound(gs, g, p, travel); shots[NAME[g]]++; fired.at = now(); if (g === 'bofors') fired.forty = now(); },
       landed: () => land(stepRounds(gs)),
       aim: (eye, dir) => (m.aimed = aimOnSphere(eye, dir)),   // the aim's ground point, read back by the MK-9's hold
       splash: splashDamage,
@@ -265,7 +266,7 @@ export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, 
       laser: (ci) => rangeRing(ci),
       loop: (name, o) => audio.loop(name, o),
       paintHeavy: (ci, o) => allowed('heavy') && live() && paintHeavy(gs, ci, guns, o),
-      launchHeavy: (o) => { if (!live()) return -1; const lc = launchHeavy(gs, guns, o); if (lc >= 0) { shots.nuke++; isaoSpeak('mk9_release', { force: true }); } return lc; },   // every MK-9 is announced (gunship-rig.js)
+      launchHeavy: (o) => { if (!live()) return -1; const lc = launchHeavy(gs, guns, o); if (lc >= 0) { shots.nuke++; fired.at = now(); isaoSpeak('mk9_release', { force: true }); } return lc; },   // every MK-9 is announced (gunship-rig.js)
       nudgeHeavy: (ci) => nudgeHeavy(gs, ci),
       stepHeavy: () => stepHeavy(gs),
       heavyState: () => heavyState(gs, guns),
@@ -342,6 +343,13 @@ export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, 
     },
     // the trigger let go (the fight switched off, the mode changed)
     release() { heavyPress = 0; if (m) m.pilot.state.held = false; },
+    // the player's fire for Isao's lines (./bait.js): the gun ('rotary' | 'bofors' | 'nuke'), the reticle (local metres; with the MK-9 only, else null), the lab's
+    // clock at the last round of any gun and of the 40 mm; null while the seat is not mounted
+    gunner() {
+      if (!m) return null;
+      const gun = NAME[m.gs.gun], o = gun === 'nuke' ? m.pilot.gunshipOptic() : null;
+      return { gun, reticle: o ? atLocal(o.pos) : null, shotAt: fired.at, fortyAt: fired.forty };
+    },
     // seconds until the next MK-9 can be released: its fall and reload while one is out
     mk9In() { if (!m) return 0; const h = heavyState(m.gs, guns); return h.phase === 'released' || h.phase === 'ignited' ? h.left + guns.heavy.reload : h.phase === 'reloading' ? h.left : 0; },
     // the handle's: the reticle on a local ground point, a gun by the lab's name, the trigger (the MK-9's press paints and releases)
