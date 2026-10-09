@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "2026-10-09-boss-bait-mode-design",
+  "date": "2026-10-09",
+  "type": "decision",
+  "status": "accepted",
+  "title": "The boss lab's bait mode, as brainstormed with the owner: Isao flies low on autopilot as the creature's bait with twelve hit points and five new lines, and the player is the gunship in the game's gunner seat",
+  "context": "Owner, 2026-10-08: \"next we will test another mode; Isao the drone is flying low and acting as the bait, and we control the gunship, we must kill the creature without hurting Isao.\" The brainstorm (2026-10-08/09) fixed the open questions with the owner's answers: Isao on autopilot (not steered by the player); the game's gunner seat for the player (the gunship lab's lens and controls); Isao has a small health bar; and the owner asked for a few basic new lines to be recorded: \"It's just a fleshwound\", \"This but a scratch\", \"Come at me bro!\", \"What do we say to death?\", \"Not Today\". Built on branch refactor-run on the boss lab of 2026-10-08 (the game controller and src/fx/nih-dairia untouched).",
+  "outcome": "Accepted: the design in docs/superpowers/specs/2026-10-09-boss-bait-mode-design.md. A panel switch `mode: tank | bait` (default tank, every earlier step unchanged). In bait mode there is no tank and no automatic gunship; the creature hunts Isao through the tank's own target writer (fear, routing and dead-stays-dead carry over). Isao's autopilot (src/domain/boss-bait.js, pure) keeps 20 m outside the creature's front edge toward himself, circles it at 14 m/s, and backs off at 24 m/s when a floor contact comes within 12 m; his twelve hit points take the creature's splash falloff (a 40 mm direct hit 4, the 25 mm stream its dps while he is in the ring, the MK-9 60); he is LOST `Isao down` at zero and `Isao taken` when a floor contact stays within 3 m for half a second. The player's guns are the fight's own plans (`playerShot` in src/domain/boss-fight.js: the 25 mm a stream held on the reticle, the 40 mm a round at its rate, the MK-9 at its reload), handed to the friendlies' presentation, so a landing hurts the creature and Isao alike. The lines are recorded in the owner's voice project (`bait_hurt`, `bait_taunt`, `bait_death`, `bait_not_today`) and play through the game's Isao voice once exported, as captions until then. Left out of this round: the tank and the bait together, SOL in the bait mode, tuning the creature's health for a player's aim (the owner's playtest).",
+  "alternatives": [
+    "The player steering Isao while the gunship fires automatically (the tank mode with the roles swapped): not chosen; the owner chose Isao on autopilot and the player in the gunship.",
+    "Isao with no health, or invulnerable bait: not chosen; the owner asked for a small health bar.",
+    "The tank and the bait together, SOL in the bait mode: out of scope for this round.",
+    "A second presentation path for the player's rounds: rejected; the player's plans join the friendlies' own so one set of rings, tracers and landings is drawn and resolved."
+  ],
+  "evidence": [
+    "docs/superpowers/specs/2026-10-09-boss-bait-mode-design.md",
+    "The owner's brainstorm answers of 2026-10-08/09, quoted in the spec's opening",
+    "2026-10-08-nih-dairia-boss-lab-landed, 2026-10-08-boss-fight-next-round-design (the lab and the fight this builds on)"
+  ],
+  "supersedes": []
+}

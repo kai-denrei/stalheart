@@ -2280,6 +2280,142 @@ try{
  assert.equal(await evaluate(`${B}.readout().rearMs`),null,'no rear line in the lab camera');
  assert.equal((await evaluate(`[...document.querySelectorAll('#boss .sw-stage div')].find(d=>d.textContent==='REAR'&&d.children.length===0).parentElement.style.display`)),'none','the frame is hidden');
  current='boss-cam';await finish();
+ } else if(args.includes('--boss-bait')) {
+ // THE BOSS LAB'S BAIT MODE (2026-10-09; src/labs/boss/bait.js and seat.js, spec docs/superpowers/specs/2026-10-09-boss-bait-mode-design.md): Isao flies low on
+ // autopilot with the creature hunting him, the player is the gunship. Asserted, every wait on the lab's clock with a real-time cap (headless advances
+ // the game's clock slowly): the game camera's rear inset is off and the readout names neither the lure nor the automatic nuke; Isao's gap to the
+ // creature's HELD front edge (`bait().gap`) has a median within 17-23 m over 10 s of lab clock (arm lunges dip lower: min, median, p90 are logged);
+ // the 40 mm on the creature's far side for 3 s lands (hits) and costs Isao nothing; the 40 mm led onto him costs hit points; the MK-9 led onto him is
+ // LOST `Isao down` (his marker goes with him); R restarts whole; the MK-9 on the creature's middle with it at 15 hp takes both in one frame (the pyrrhic win: KILLED, the card reads `Isao down`); the 25 mm held on the creature's far foot kills it (90 s real-time cap) and the KILLED
+ // card holds five seconds with Isao's hit points on it. One screenshot of the seat with Isao's marker (BOSSBAIT_SHOT or the artifacts' boss-bait-seat.png)
+ const B='window.__bossLab',shotPath=process.env.BOSSBAIT_SHOT||join(output,'boss-bait-seat.png');
+ const {BOSS_FIGHT}=await import('../src/content/boss-fight.js');
+ await go('boss-bait','labs.html?sw=0&acceptance=1#boss');
+ await until(`!!${B} && ${B}.readout().steps > 0`,60000);
+ await evaluate(`${B}.camera("game"); ${B}.mode("bait")`);   // the game camera asked for first: the bait mode must take it away
+ await until(`${B}.fight().phase === "fight" && ${B}.bait() && ${B}.bait().max > 0`,30000);
+ const S=`(()=>{const f=${B}.fight(),b=${B}.bait(),r=${B}.readout();return {clock:${B}.arena().clock,phase:f.phase,reason:f.reason,hp:f.hp,max:f.max,hits:f.hits,contacts:f.contacts,centre:f.centre,bait:b,seat:${B}.seat(),card:r.fight.card,mode:r.mode}})()`;
+ const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+ const far=(s)=>s.contacts.reduce((best,p)=>dist(p,s.bait.pos)>dist(best,s.bait.pos)?p:best,s.contacts[0]??s.centre);   // the creature's contact farthest from Isao
+ const pace=async(seconds,each,cap=120000)=>{   // each(s) runs ~10 times a second of real time for `seconds` of lab clock or until it returns true
+   const s0=await evaluate(S),real=Date.now();let s=s0;
+   while(Date.now()-real<cap){await delay(100);s=await evaluate(S);if(each?.(s,s0))return {s,s0,timedOut:false};if(s.clock-s0.clock>=seconds)return {s,s0,timedOut:false};}
+   return {s,s0,timedOut:true};
+ };
+ // the optic's view of the world, and the panel: the rear inset is gone and the readout names no tank or automatic gun
+ const cam0=await evaluate(`${B}.cam()`);
+ assert.equal(cam0.on,false,'the game camera is off in the bait mode');assert.notEqual(cam0.fov,68,`the optic's lens, not the game camera's (${cam0.fov})`);
+ assert.equal(await evaluate(`${B}.readout().rearMs`),null,'no rear line in the bait mode');
+ assert.equal(await evaluate(`[...document.querySelectorAll('#boss .sw-stage div')].find(d=>d.textContent==='REAR'&&d.children.length===0).parentElement.style.display`),'none','the rear frame is hidden in the bait mode');
+ await delay(500);
+ const text=await evaluate(`document.querySelector('#boss [data-read]').textContent`);
+ assert(!/lure|nuke in|camera game/.test(text),`the readout has no lure, automatic nuke or camera line (${text.slice(-260)})`);
+ assert(/MK-9 (ready|in )/.test(text),`the readout shows the player's MK-9 reload (${text.slice(-260)})`);
+ assert.equal(await evaluate(`getComputedStyle(document.querySelector('#boss [data-k="lure"]').parentElement).display`),'none','the lure select is hidden in the bait mode');
+ // the panel's switches gate the player's guns (a gun switched off is not in the seat), and the fight's own switch silences the seat and says so
+ const flip=(name)=>evaluate(`[...document.querySelectorAll('.lil-gui .name')].find(n=>n.textContent===${JSON.stringify(name)}).parentElement.querySelector('input').click()`);
+ assert.equal(await evaluate(`${B}.gun("bofors")`),'bofors','the 40 mm is in the seat');
+ await flip('Bofors (40 mm)');
+ assert.equal(await evaluate(`${B}.gun("rotary")`),'rotary','the 25 mm is in the seat');assert.equal(await evaluate(`${B}.gun("bofors")`),'rotary','a 40 mm switched off in the panel cannot be selected');
+ await flip('Bofors (40 mm)');assert.equal(await evaluate(`${B}.gun("bofors")`),'bofors','and is back when the switch is');
+ assert.equal(await evaluate(`getComputedStyle([...document.querySelectorAll('.lil-gui .name')].find(n=>n.textContent==='SOL-88').closest('.controller')).display`),'none','the SOL switch is hidden (no SOL in the bait mode)');
+ await flip('fight');await delay(500);
+ assert(/the fight is off/.test(await evaluate(`document.querySelector('#boss .seat-info').textContent`)),'the seat says the fight is off');
+ await flip('fight');await until(`${B}.fight().phase === "fight"`,30000);
+ // Isao's gap: 10 s of lab clock after the first 5 s settle
+ await pace(5);
+ const gaps=[];const gp=await pace(10,(s)=>{if(s.bait&&!s.bait.gone&&Number.isFinite(s.bait.gap))gaps.push(s.bait.gap);return s.phase!=='fight';});
+ assert(!gp.timedOut&&gp.s.phase==='fight',`the gap was sampled for 10 s of lab clock (${(gp.s.clock-gp.s0.clock).toFixed(1)} s, phase ${gp.s.phase} ${gp.s.reason})`);
+ gaps.sort((a,b)=>a-b);const q=(p)=>gaps[Math.min(gaps.length-1,Math.floor(gaps.length*p))];
+ const gap={n:gaps.length,min:+gaps[0].toFixed(1),median:+q(0.5).toFixed(1),p90:+q(0.9).toFixed(1),max:+gaps.at(-1).toFixed(1),within:+(gaps.filter(g=>g>=17&&g<=23).length/gaps.length).toFixed(2)};
+ console.log('BOSS-BAIT gap '+JSON.stringify(gap));
+ assert(gaps.length>=40,`enough gap samples (${gaps.length})`);
+ assert(gap.median>=17&&gap.median<=23,`Isao keeps 17-23 m from the creature's front edge (median ${gap.median}, min ${gap.min}, p90 ${gap.p90})`);
+ const baitHp0=(await evaluate(S)).bait.max;
+ // (a) the 40 mm on the creature's far side: hits, Isao untouched. The screenshot, with his marker in the view, is taken first
+ await evaluate(`${B}.gun("bofors")`);
+ let hit0=(await evaluate(S));
+ const MARK=`(()=>{const g=document.querySelector('#boss .seat-isao');return {vis:g.getAttribute('visibility'),edge:g.dataset.edge,depth:+g.dataset.depth,text:g.querySelector('text').textContent,r:+g.querySelector('circle').getAttribute('r')}})()`;
+ let mark=await evaluate(MARK);   // the optic is narrow and fixed: he leaves it now and then, and his ring then sits at the edge with an arrow
+ assert.equal(mark.vis,'visible',`Isao's marker shows in the seat (${JSON.stringify(mark)})`);assert(/^ISAO \d+$/.test(mark.text),`the tag is ISAO and his hit points (${mark.text})`);
+ for(const end=Date.now()+30000;!(mark.edge==='0'&&mark.depth>=90)&&Date.now()<end;){await delay(200);mark=await evaluate(MARK);}   // the screenshot is taken with him in the view
+ console.log('BOSS-BAIT marker '+JSON.stringify(mark));
+ const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync(shotPath,Buffer.from(shot.data,'base64'));
+ const a=await pace(3,(s)=>{if(s.phase!=='fight')return true;void evaluate(`${B}.aim(${JSON.stringify(far(s))}); ${B}.fire(true)`);});
+ await evaluate(`${B}.fire(false)`);
+ await pace(BOSS_FIGHT.bofors.travel+0.5,(s)=>s.phase!=='fight');   // the last rounds are still in the air (2.6 s of flight): let them land
+ const a1=await evaluate(S);
+ console.log('BOSS-BAIT far side 40 mm '+JSON.stringify({clock:+(a.s.clock-a.s0.clock).toFixed(1),hitsBefore:hit0.hits,hits:a1.hits,hp:[hit0.hp,a1.hp],isaoHp:a1.bait.hp,shots:a1.seat.shots.bofors,shot:shotPath}));
+ assert(a1.phase==='fight',`still fighting after the far-side shots (${a1.phase} ${a1.reason})`);
+ assert(a1.hits>hit0.hits&&a1.seat.shots.bofors>0,`the far-side rounds hit the creature (hits ${hit0.hits} -> ${a1.hits}, ${a1.seat.shots.bofors} shots)`);
+ assert.equal(a1.bait.hp,baitHp0,'Isao is untouched by rounds on the far side');
+ // (b) the 40 mm led onto Isao by his measured velocity over the round's flight: his hit points fall
+ const leadAt=(s,prev,travel)=>{const dt=Math.max(1e-3,s.clock-prev.clock),v=[(s.bait.pos[0]-prev.bait.pos[0])/dt,(s.bait.pos[1]-prev.bait.pos[1])/dt];return [s.bait.pos[0]+v[0]*travel,s.bait.pos[1]+v[1]*travel];};
+ let prev=await evaluate(S);
+ const b=await pace(12,(s)=>{if(s.phase!=='fight'||s.bait.hp<baitHp0)return true;if(s.clock-prev.clock>=0.3){const at=leadAt(s,prev,BOSS_FIGHT.bofors.travel);prev=s;void evaluate(`${B}.aim(${JSON.stringify(at)}); ${B}.fire(true)`);}});
+ await evaluate(`${B}.fire(false)`);
+ const b1=await evaluate(S);
+ console.log('BOSS-BAIT 40 mm led onto Isao '+JSON.stringify({clock:+(b.s.clock-b.s0.clock).toFixed(1),isaoHp:b1.bait.hp,phase:b1.phase}));
+ assert(b1.bait.hp<baitHp0,`the 40 mm led onto Isao costs him hit points (${baitHp0} -> ${b1.bait.hp} in ${(b.s.clock-b.s0.clock).toFixed(1)} s)`);
+ // (c) the MK-9 led onto him: LOST `Isao down`, his marker gone with him
+ await evaluate(`${B}.gun("nuke")`);
+ prev=await evaluate(S);let fired=false;
+ const c=await pace(30,(s)=>{if(s.phase!=='fight')return true;if(!fired&&s.clock-prev.clock>=0.3){const at=leadAt(s,prev,BOSS_FIGHT.nuke.travel);prev=s;void evaluate(`${B}.aim(${JSON.stringify(at)}); ${B}.fire(true); ${B}.fire(false)`);fired=s.seat.shots.nuke>0;}});
+ await until(`!!${B}.readout().fight.card`,3000);   // the card is drawn by the frame after the loss (the round ticks before the bait)
+ const c1=await evaluate(S);
+ console.log('BOSS-BAIT MK-9 led onto Isao '+JSON.stringify({clock:+(c.s.clock-c.s0.clock).toFixed(1),phase:c1.phase,reason:c1.reason,isaoHp:c1.bait.hp,gone:c1.bait.gone,card:c1.card,nuke:c1.seat.shots.nuke}));
+ assert(c1.phase==='lost'&&c1.reason==='Isao down',`the MK-9 on Isao is LOST Isao down (${c1.phase} ${c1.reason}, shots ${JSON.stringify(c1.seat.shots)})`);
+ assert(c1.bait.gone&&/LOST/.test(c1.card??''),`he goes in a burst and the LOST card shows (${c1.card})`);
+ assert.equal(await evaluate(`document.querySelector('#boss .seat-isao').getAttribute('visibility')`),'hidden','his marker goes with him');
+ // R restarts: whole creature, whole Isao, a running fight
+ await evaluate(`dispatchEvent(new KeyboardEvent("keydown",{key:"r"}));dispatchEvent(new KeyboardEvent("keyup",{key:"r"}))`);
+ await until(`${B}.fight().phase === "fight" && ${B}.bait() && !${B}.bait().gone`,20000);
+ const r1=await evaluate(S);
+ assert(r1.hp===r1.max&&r1.bait.hp===r1.bait.max&&!r1.bait.gone,`R restarts the round whole (hp ${r1.hp}/${r1.max}, Isao ${r1.bait.hp}/${r1.bait.max})`);
+ assert.equal(await evaluate(`document.querySelector('#boss .seat-isao').getAttribute('visibility')`),'visible','his marker is back');
+ await delay(500);const rs=await evaluate(`${B}.seat()`);
+ assert(dist(rs.reticle,rs.look)<1,`after R the reticle is on the look point (${JSON.stringify({reticle:rs.reticle,look:rs.look})})`);
+ const restart=async()=>{await evaluate(`dispatchEvent(new KeyboardEvent("keydown",{key:"r"}));dispatchEvent(new KeyboardEvent("keyup",{key:"r"}))`);await until(`${B}.fight().phase === "fight" && ${B}.bait() && !${B}.bait().gone`,20000);};
+ // (d0) the pyrrhic win (the owner's call: a shared-frame kill is KILLED, the creature is dead, and the card says Isao is down): the 25 mm wears the creature to 15 hp or less,
+ // then, the creature standing (instinct off), the MK-9 on its middle (Isao circles within 49 m of it, the MK-9's lethal radius for his twelve) takes both in one frame. A round lost on the way is restarted
+ await evaluate(`${B}.gun("rotary")`);
+ const p0=Date.now();let pk={phase:'fight',hp:1e9},pRestarts=0;
+ for(const end=p0+90000;Date.now()<end;){
+   await delay(200);pk=await evaluate(S);
+   if(pk.phase==='lost'){pRestarts++;await restart();continue;}
+   if(pk.phase!=='fight'||pk.hp<=15)break;
+   await evaluate(`${B}.aim(${JSON.stringify(far(pk))}); ${B}.fire(true)`);
+ }
+ await evaluate(`${B}.fire(false)`);
+ assert(pk.phase==='fight'&&pk.hp<=15,`the 25 mm wore the creature to 15 hp (${pk.phase} ${pk.reason}, hp ${pk.hp})`);
+ await evaluate(`${B}.setInstinct(false); ${B}.gun("nuke")`);   // the creature stands (it would walk 25 m toward him in the MK-9's 4.2 s): the middle is then a fixed point 36-45 m from him
+ let pv=await evaluate(S),pfired=false;
+ const pf=await pace(30,(s)=>{if(s.phase!=='fight')return true;if(!pfired&&s.clock-pv.clock>=0.3){pv=s;void evaluate(`${B}.aim(${JSON.stringify(s.centre)}); ${B}.fire(true); ${B}.fire(false)`);pfired=s.seat.shots.nuke>0;}});   // on the creature's middle: he circles within 49 m of it, where the MK-9 still costs him his twelve
+ const pe=await evaluate(S);
+ console.log('BOSS-BAIT pyrrhic '+JSON.stringify({restarts:pRestarts,hpBefore:+pk.hp.toFixed(1),phase:pe.phase,reason:pe.reason,isaoHp:pe.bait.hp,gone:pe.bait.gone,card:pe.card}));
+ assert.equal(pe.phase,'killed',`the MK-9 on Isao with the creature at 15 hp kills the creature (${pe.phase} ${pe.reason}, hp ${pe.hp})`);
+ assert(pe.bait.hp<=0&&pe.bait.gone,`and takes Isao in the same blow (${pe.bait.hp}, gone ${pe.bait.gone})`);
+ assert(/KILLED/.test(pe.card)&&/Isao down/.test(pe.card),`the card is KILLED and reads Isao down (${pe.card})`);
+ await evaluate(`${B}.setInstinct(true)`);await restart();await evaluate(`${B}.gun("rotary")`);
+ // (d) the scripted kill: the 25 mm held on the creature's far foot; a round lost on the way is restarted
+ const t0=Date.now();let k={phase:'fight'},restarts=0;
+ for(const end=t0+90000;Date.now()<end;){
+   await delay(200);k=await evaluate(S);
+   if(k.phase==='killed')break;
+   if(k.phase==='lost'){restarts++;await evaluate(`dispatchEvent(new KeyboardEvent("keydown",{key:"r"}));dispatchEvent(new KeyboardEvent("keyup",{key:"r"}))`);await until(`${B}.fight().phase === "fight"`,20000);continue;}
+   await evaluate(`${B}.aim(${JSON.stringify(far(k))}); ${B}.fire(true)`);
+ }
+ assert.equal(k.phase,'killed',`the 25 mm on the far foot killed the creature in 90 s of real time (${k.phase} ${k.reason}, hp ${k.hp}/${k.max}, ${restarts} restarts)`);
+ console.log('BOSS-BAIT kill '+JSON.stringify({real:+((Date.now()-t0)/1000).toFixed(1),clock:+k.clock.toFixed(1),restarts,isaoHp:k.bait.hp,card:k.card}));
+ // the KILLED card holds five seconds, with Isao's hit points on it; the trigger is still held and renews no stream (no red ring is left)
+ const h0=Date.now();let held=0,heldSeat=true;
+ while(Date.now()-h0<5000){const s=await evaluate(S);heldSeat=heldSeat&&s.seat.held;assert.equal(s.phase,'killed','the creature stays dead');if(Date.now()-h0>1500)assert.equal(await evaluate(`${B}.readout().fight.rings`),0,'a held trigger after KILLED renews no stream');assert(/KILLED/.test(s.card??'')&&/Isao (\d+\/\d+|down)/.test(s.card),`the KILLED card holds, Isao on it (${s.card})`);held++;await delay(250);}
+ assert(heldSeat,'the trigger stayed held through the card');await evaluate(`${B}.fire(false)`);
+ const kc=await evaluate(S);
+ console.log(`BOSS-BAIT card held ${held} polls over 5 s: ${kc.card}`);
+ const rd=await evaluate(`${B}.readout()`);
+ assert.deepEqual(rd.shaderErrors,[],'no shader errors');assert(!rd.error,`no frame error (${rd.error})`);
+ current='boss-bait';await finish();
  } else if(args.includes('--boss')) {
  // THE BOSS LAB (2026-10-08; src/labs/boss-tab.js): Nih-Dairia at thirty metres on the story planet, the tank its prey. The solver steps,
  // the creature is boss-sized in the world, a driving tank inside its reach counts as held and is not taken, a parked one is.
