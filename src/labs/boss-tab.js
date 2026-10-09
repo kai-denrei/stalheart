@@ -216,7 +216,8 @@ export function initBossTab(root) {
   let pin = null;        // { id, shape, until }: pinTo()'s hold of the creature's target on a shape's centre, the routing off
   let blocked = false, cruiseTap = false, lastFastTap = -9;
   // the engine bed: a looped handle, retried every frame while moving (loop() is null until the samples decode), as the game does
-  const audio = makeAudio({ base: '../', sounds: { ...SOUNDS, ...LASER_AUDIO, ...voiceSounds() } }); audio.arm();   // the context is born on the first gesture; SOL's burn loop is the laser lab's sample
+  // the samples' paths are the page's own (as the other labs'): a base of '../' climbed out of a sub-path (a CDN's /<user>/<repo>/<commit>/labs.html) and every sound 404ed
+  const audio = makeAudio({ base: '', sounds: { ...SOUNDS, ...LASER_AUDIO, ...voiceSounds() } }); audio.arm();   // the context is born on the first gesture; SOL's burn loop is the laser lab's sample
   let engine = null, engineRunning = false;
   const keys = new Set();
   const isText = (e) => /^(INPUT|SELECT|TEXTAREA)$/.test(e.target?.tagName ?? '');
@@ -362,6 +363,7 @@ export function initBossTab(root) {
     },
     caption: (text, seconds) => showCallout(text, seconds * 1000),
     clamp: (p) => arena.clamp(p, fightTune.bounds.baitMargin),   // his wanted point, after the routing, inside the bound
+    hold: (p) => arena.clamp(p, 0), nodes: () => body.nodes(),   // his ground point inside the bound itself after the move; the body's nodes for his reach envelope
     bound: () => { const b = arena.bound(); return b.on ? { at: b.at, radius: b.radius, inset: fightTune.bounds.baitMargin } : null; },   // the fly-over's: trapped against it, and the far side held inside it
   });
   // THE GUNNER SEAT (./boss/game-seat.js): in the bait mode the player sits in the game's own gunship seat (src/sentry-pilot.js), its
@@ -374,7 +376,7 @@ export function initBossTab(root) {
     orbitGround: fixedWorld,   // the platform's orbit round the arena's centre, world-fixed
     gate: () => ({ fight: fightOn.fight, rotary: fightOn.rotary, bofors: fightOn.bofors, nuke: fightOn.nuke }),   // the fight folder's switches gate the player's guns as the schedule's
     focus: () => { const c = creatureNow().centre, b = bait.pos() ?? c; return [(c[0] + b[0]) / 2, (c[1] + b[1]) / 2]; },
-    clear: () => Math.max(0, stage.getBoundingClientRect().right - gui.domElement.getBoundingClientRect().left),   // what the panel covers: the HUD's readout and the monitor stand left of it
+    clear: () => panelCover(),   // what the panel covers: the HUD's readout and the monitor stand left of it
     leave: () => setMode('tank'), pause: () => { paused = !paused; }, onError: (m) => shaderErrors.push(m),
   });
   // R and C in the seat: the seat swallows every key in the capture phase; this capture listener is registered before any seat, so it runs first
@@ -587,12 +589,13 @@ export function initBossTab(root) {
     frame = frameAt(anchorUp, planet.radius, 0);
     prey = createPrey(NIH_DAIRIA_LOOK); prey.mesh.visible = false; rig.add(prey.mesh);
     placeRig(); placeTank();
-    gameCam = createGameCam({ renderer, scene, camera: cam, planetRadius: planet.radius, cellSide: CELL, host: { stage, hull: hullPose, clearRight: () => Math.max(0, stage.getBoundingClientRect().right - gui.domElement.getBoundingClientRect().left) } });
+    gameCam = createGameCam({ renderer, scene, camera: cam, planetRadius: planet.radius, cellSide: CELL, host: { stage, hull: hullPose, clearRight: panelCover } });
     gameCam.setOn(state.cam === 'game' && state.view !== 'free');
     read.textContent = 'loading the creature…';
     await makeCreature();
     if (disposed || !creature) return;
     pointWorld = toWorld(frame, creature.motion.target.toArray(), scale);
+    if (q.get('mode') === 'bait' && state.mode !== 'bait') setMode('bait');   // ?mode=bait (the friends' link): the lab opens in the bait mode
   }
 
   // --- the point lure: a click on the ground ------------------------------------------------------------------------------
@@ -852,6 +855,10 @@ export function initBossTab(root) {
 
   // --- the panel ----------------------------------------------------------------------------------------------------------
   const gui = new GUI({ title: 'NIH-DAIRIA', container: root });
+  // ?playtest=1 (the friends' link, src/core/dev-mode.js turns the shell's DEV off with it): the knobs' panel is hidden; the side panel and its mode select stay
+  if (q.get('playtest') === '1') gui.hide();
+  // the stage's px the knobs' panel covers on the right (none while it is hidden): the seat's readout and monitor, and the game camera's rear frame, stand left of it
+  const panelCover = () => (gui._hidden ? 0 : Math.max(0, stage.getBoundingClientRect().right - gui.domElement.getBoundingClientRect().left));
   const folders = {};
   for (const c of MOTION_CONTROLS) {
     const folder = folders[c.group] ??= gui.addFolder(c.group);
@@ -924,12 +931,17 @@ export function initBossTab(root) {
   }
   modePanel();
   // the mode: the tank, or Isao as the bait (the tank out); a new round puts the right one `respawn` metres out
+  // EACH MODE KEEPS ITS OWN TUNING (2026-10-09: Esc to the tank threw the owner's live predator away): a working copy of the motion knobs and the size
+  // per mode, seeded from the two presets (the predator's 40 m, the tank's slower creature at 30), saved on leaving a mode and put back on entering it
+  const modeMotion = { tank: { ...NIH_DAIRIA_MOTION }, bait: { ...NIH_DAIRIA_PREDATOR } };
+  const modeSize = { tank: NIH_DAIRIA_SIZE_METRES, bait: NIH_DAIRIA_PREDATOR_SIZE_METRES };
   function setMode(mode) {
     if (mode !== 'tank' && mode !== 'bait') return false;
+    modeMotion[state.mode] = { ...params.motion }; modeSize[state.mode] = state.sizeMetres;   // the mode left keeps what was tuned in it
     state.mode = mode; root.querySelector('[data-k="mode"]').value = mode;
     bait.setOn(mode === 'bait'); keys.clear(); scripted = null; cruiseTap = false; seat.release();
-    state.sizeMetres = mode === 'bait' ? NIH_DAIRIA_PREDATOR_SIZE_METRES : NIH_DAIRIA_SIZE_METRES; applySize();   // the predator's 40 m, the tank's 30 (owner, 2026-10-09)
-    motionPreset(mode === 'bait' ? NIH_DAIRIA_PREDATOR : NIH_DAIRIA_MOTION);   // the bait mode's predator, the tank's slower creature (item 4)
+    state.sizeMetres = modeSize[mode]; applySize();
+    motionPreset(modeMotion[mode]);
     if (mode === 'bait') { tank.visible = false; gameCam?.setOn(false); }   // the game camera is the tank's: its rear frame goes and the lens is back before the optic takes it
     modePanel();
     newRound();

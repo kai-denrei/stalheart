@@ -36,6 +36,11 @@
 // contacts; `G.bodies()` is Isao, so the readout's `In blast` and the MK-9's DANGER CLOSE warn before a round lands on him. The panel's
 // switches gate the guns (`gate()`), and a round that is not running fires nothing.
 //
+// THE MK-9 HOLDS ITS GROUND POINT (2026-10-09: the orbit's drift used up the falling round's one nudge, src/sentry-pilot.js gunshipTick nudges it onto the aim's
+// cell as soon as that changes): while a round is released or ignited, before each seat tick the reticle is put back on the round's ground point (its cell's
+// centre at the release) from where the platform is now (`holdRound`, the seat's own attach), plus what the mouse turned it by since the last frame, so the aim's
+// cell changes only when the player moves the mouse. After a move the point held is where the aim then landed (`G.aim`, read back each tick).
+//
 // KEYS: the seat swallows every key but H in the capture phase. Esc is its `leave` (the lab goes back to the tank), P its `pause`; the
 // lab's R is a capture listener registered before any seat (boss-tab.js), so it runs first and the game's sentry-pilot.js is unchanged.
 import * as THREE from '../../../vendor/three.module.js';
@@ -199,6 +204,19 @@ export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, 
     return at;
   }
 
+  // the falling MK-9's hold (see THE MK-9 HOLDS ITS GROUND POINT): before the seat's tick, the reticle back on the held point from the platform's place now,
+  // turned on by the mouse's yaw and pitch since the last frame; returns whether the mouse moved it (the point is then re-read after the tick)
+  function holdRound() {
+    const h = heavyState(m.gs, guns), s = m.pilot.state;
+    if (h.phase !== 'released' && h.phase !== 'ignited') { m.hold = null; return false; }
+    m.hold ??= { at: m.G.centers[h.ci].slice(), yaw: s.yaw, pitch: s.pitch };   // the first frame after the release: the round's cell centre, the mouse not counted
+    const dy = s.yaw - m.hold.yaw, dp = s.pitch - m.hold.pitch, up = m.optic.platformObject().position.clone().normalize(), p = m.hold.at;
+    m.pilot.aimAt([p[0] + up.x * m.c, p[1] + up.y * m.c, p[2] + up.z * m.c]);   // lifted a cell, as aimAt below: the gunner's ray lands on the point
+    s.yaw += dy; s.pitch += dp;
+    m.hold.yaw = s.yaw; m.hold.pitch = s.pitch;
+    return dy !== 0 || dp !== 0;
+  }
+
   function mount() {
     const P = planet(), R = P.radius, c = P.cellSide;
     if (indexOf !== P) { index = makeCellIndex(P.graph.centers, c * 1.7); indexOf = P; }
@@ -214,7 +232,7 @@ export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, 
     const post = createPost(renderer, scene, camera);
     explosions.clear();   // a puff of the lab's in flight would be the radius times too big in the game's units
     m = { c, R, gs, game, boom: createExplosions(game, { onError: (e) => onError(`explosions: ${e.message}`) }), optic, makeDrop, drop: makeDrop(), warn: createWarnRing(game, { graph: () => P.graph, cellSide: () => c }), post, saved,
-      over: new THREE.Vector3(), orbitT: 0, heading: 0, bank: 0, mounts: m0 + 1, vel: [0, 0, 0], ring: null };
+      over: new THREE.Vector3(), orbitT: 0, heading: 0, bank: 0, mounts: m0 + 1, vel: [0, 0, 0], ring: null, aimed: null, hold: null, holds: 0 };
     m0 = m.mounts;
     m.thermal = createThermalHeat(() => ({ warm: [parts().creature, parts().ring], hot: [parts().isao, m?.drop.mesh()] }), { postfx: post });
     m.G = {
@@ -233,7 +251,7 @@ export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, 
       step: (dt, held) => stepGun(gs, dt, held && live() && allowed(gs.gun), guns),
       fire: (g, p, travel) => { fireRound(gs, g, p, travel); shots[NAME[g]]++; },
       landed: () => land(stepRounds(gs)),
-      aim: aimOnSphere,
+      aim: (eye, dir) => (m.aimed = aimOnSphere(eye, dir)),   // the aim's ground point, read back by the MK-9's hold
       splash: splashDamage,
       bodies: () => { const b = isao(); return b ? [{ kind: 'isao', pos: toGame(b.air) }] : []; },
       danger: (p, r) => dangerReport(p, r, m.G.bodies()),
@@ -293,7 +311,9 @@ export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, 
       ride(dt);
       m.drop.tick(dt); m.warn.tick(dt); m.boom.tick(dt);
       if (heavyPress > 0 && !m.pilot.state.held) { m.pilot.state.held = true; heavyPress--; }   // the handle's MK-9: paint, then release
+      const moved = holdRound();
       m.pilot.gunshipTick(dt);
+      if (m.hold) { m.holds++; if (moved && m.aimed) m.hold.at = m.aimed.slice(); }
       if (heavyPress === 1 && heavyState(m.gs, guns).phase !== 'painted') heavyPress = 0;   // nothing painted: no release owed
       if (aimFocus) { aimFocus = false; aimAt(focus()); }
     },
@@ -341,7 +361,9 @@ export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, 
       return { gun: NAME[m.gs.gun], reticle: o ? atLocal(o.pos) : null, look: f, zoom: m.pilot.state.zoom, held: !!m.pilot.state.held, shots: { ...shots },
         altitude: (p.length() - 1) * m.R, cellMetres: m.c * m.R, heavy: heavyState(m.gs, guns), thermal: m.thermal.flir, view: m.pilot.state.view,
         // the platform: its ground point (local metres), the orbit's clock, heading (unwrapped) and the hull's bank (radians), and the mounts so far
-        platform: { at: atLocal(p.toArray()), t: m.orbitT, heading: m.heading, bank: m.bank }, mounts: m.mounts };
+        platform: { at: atLocal(p.toArray()), t: m.orbitT, heading: m.heading, bank: m.bank }, mounts: m.mounts,
+        // the falling MK-9's hold: the held ground point (local metres, null when no round falls) and the frames held so far
+        hold: m.hold ? atLocal(m.hold.at) : null, holds: m.holds };
     },
     dispose() { if (m) unmount(); },
   };

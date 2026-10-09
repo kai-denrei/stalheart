@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { BOSS_FIGHT as T_FIGHT } from '../src/content/boss-fight.js';
 import { makeFight, startFight, schedule, aimNow, lineOf, resolveLanding, playerShot, holdStream } from '../src/domain/boss-fight.js';
-import { makeBait, planBait, moveBait, stepBait, hurtBait, baitCaught, hopBait, startHop, trappedBait, underBait } from '../src/domain/boss-bait.js';
+import { makeBait, planBait, moveBait, stepBait, hurtBait, baitCaught, hopBait, startHop, trappedBait, underBait, reachOf, envelopeBait } from '../src/domain/boss-bait.js';
 
 // the autopilot checks below are the smooth flight of the first round: `erratic` 0; the erratic flight has its own section at the end
 const T = { ...T_FIGHT, bait: { ...T_FIGHT.bait, erratic: 0 } };
@@ -19,7 +19,7 @@ const EPS = 1e-9;
 
 // the content: the bait's numbers, deep-frozen, with Isao's altitude from the game (3.4 wall-heights x 0.03 + half a cell, at 125 m a world unit)
 assert.ok(Object.isFrozen(E), 'the bait content is frozen');
-assert.deepEqual(Object.keys(E).sort(), ['accel', 'altitude', 'bob', 'bobPeriod', 'caught', 'caughtFor', 'erratic', 'flee', 'health', 'hopAlt', 'hopChance', 'hopClimb', 'hopCooldown', 'hopCross', 'hopSpeed', 'jink', 'jinkMax', 'jinkMin', 'keep', 'panic', 'reachHeight', 'speed', 'speedMax', 'speedMin', 'surgeMax', 'surgeMin', 'trapBound', 'trapFor', 'trapNear', 'turn', 'underCore', 'underNear']);
+assert.deepEqual(Object.keys(E).sort(), ['accel', 'altitude', 'bob', 'bobPeriod', 'caught', 'caughtFor', 'envelopeTime', 'erratic', 'flee', 'health', 'hopAlt', 'hopChance', 'hopClimb', 'hopCooldown', 'hopCross', 'hopSpeed', 'jink', 'jinkMax', 'jinkMin', 'keep', 'panic', 'panicHeight', 'reachHeight', 'speed', 'speedMax', 'speedMin', 'surgeMax', 'surgeMin', 'trapBound', 'trapFor', 'trapNear', 'turn', 'underCore', 'underNear']);
 assert.ok(E.trapBound === 12 && E.trapNear === 25 && E.underCore === 0.5 && E.underNear === 15 && E.trapFor === 0.8 && E.hopChance === 0.03 && E.hopCooldown === 8 && E.hopAlt === 30 && E.hopClimb === 20 && E.hopSpeed === 22 && E.reachHeight === 18, 'the fly-over numbers');
 assert.ok(E.trapNear > E.keep && E.underNear < E.keep && E.reachHeight < E.hopAlt && E.hopSpeed <= E.speedMax, 'trapped is the creature at his keep, under is closer; the hop flies above the reach, no faster than his band');
 assert.ok(Math.abs(B.altitude - (3.4 * 0.03 + 0.08 / 2) * 125) < 1e-9, `Isao's altitude is the game's 3.4 wall-heights above the surface plus half a cell, in metres: ${B.altitude}`);
@@ -46,6 +46,76 @@ for (const walk of [0, 2]) {
 assert.ok(worst < KEEP_BOUND, `the keep distance holds within ${KEEP_BOUND} m over 30 s: worst error ${worst.toFixed(2)} m`);
 assert.ok(swept > 1, `he circles the creature counter-clockwise (the angle grows): ${swept.toFixed(2)} rad in 30 s`);
 assert.ok(minContact > B.panic, `no contact ever comes inside the panic ring on a clear run: ${minContact.toFixed(1)} m`);
+
+// THE REACH ENVELOPE (owner's predator, 2026-10-09: arms swept out to about 90 m and the 20 m keep from the floor contacts meant nothing): round a creature
+// whose eight arms reach 60 m from its centre, 3 m off the ground, turning slowly (0.3 rad/s, the arms sweep across his line), the keep holds from the arm
+// tips: over 30 s after a 5 s settle, the distance from him to the outermost node along his line (this frame's envelope, unsmoothed) has a median within
+// KEEP_BOUND of `keep`, no arm node ever comes inside the panic ring, and he still circles. Without nodes the planner is the floor contacts' as before
+const ARMS = 8, ARM_TIP = 60, ARM_SPIN = 0.3, ARM_LIFT = 3;
+const armed = (x, z, t) => {
+  const b = bodyAt(x, z), nodes = b.contacts.map((p) => [p[0], p[1], 0]);
+  for (let k = 0; k < ARMS; k++) { const a = k * 2 * Math.PI / ARMS + ARM_SPIN * t; for (let r = 15; r <= ARM_TIP; r += 5) nodes.push([x + Math.cos(a) * r, z + Math.sin(a) * r, ARM_LIFT]); }
+  return { ...b, nodes };
+};
+const envLog = {};
+{
+  const tip = reachOf(armed(0, 0, 0), [0, 80]);
+  assert.ok(Math.abs(tip.e - ARM_TIP) < 1e-9, `the reach toward an arm's line is its tip (${tip.e})`);
+  assert.ok(Math.abs(reachOf(bodyAt(0, 0), [0, 80]).e - lineOf(bodyAt(0, 0), { pos: [0, 80] }).e) < 1e-12, 'without nodes the reach is the floor contacts\' front edge');
+  for (const walk of [0, 2]) {
+    const bait = makeBait([0, 90], T); let turned = 0, last = Math.atan2(90, 0), minArm = Infinity;
+    const gaps = [], smooth = [];
+    for (let i = 0; i < 35 * 60; i++) {
+      const t = i * DT, body = armed(walk * t * 0.6, walk * t * 0.8, t);
+      stepBait(bait, DT, body, T);
+      assert.ok(bait.reach && Number.isFinite(bait.reach.e) && Number.isFinite(bait.reach.now), 'the envelope is kept while the creature has nodes');
+      if (i < 5 * 60) continue;
+      const rho = dist(bait.pos, body.centre), now = reachOf(body, bait.pos).e;
+      gaps.push(rho - now); smooth.push(rho - bait.reach.e);
+      minArm = Math.min(minArm, ...body.nodes.map((p) => dist(p, bait.pos)));
+      const a = Math.atan2(bait.pos[1] - body.centre[1], bait.pos[0] - body.centre[0]); let d = a - last; d -= Math.round(d / (2 * Math.PI)) * 2 * Math.PI; turned += d; last = a;
+    }
+    gaps.sort((a, b) => a - b); smooth.sort((a, b) => a - b);
+    const med = gaps[gaps.length >> 1], medS = smooth[smooth.length >> 1];
+    assert.ok(Math.abs(med - B.keep) < KEEP_BOUND, `${walk ? 'walking' : 'standing'}, the keep holds from the arm tips: median ${med.toFixed(2)} m from the envelope (keep ${B.keep}, bound ${KEEP_BOUND})`);
+    assert.ok(Math.abs(medS - B.keep) < 1, `and from the smoothed envelope the median is the keep (${medS.toFixed(2)} m)`);
+    assert.ok(minArm > B.panic, `no arm node comes inside the panic ring (${minArm.toFixed(1)} m)`);
+    assert.ok(turned > 1, `he circles the armed creature (${turned.toFixed(2)} rad)`);
+    envLog[walk ? 'walking' : 'standing'] = { median: +med.toFixed(2), smoothed: +medS.toFixed(2), p10: +gaps[Math.floor(gaps.length * 0.1)].toFixed(1), minArm: +minArm.toFixed(1) };
+  }
+  // the smoothing: a reach that jumps from 20 to 60 m is 1 - 1/e of the way there after envelopeTime seconds
+  const b = makeBait([0, 90], T), short = { ...bodyAt(0, 0), nodes: [[0, 20, 0]] }, long = { ...bodyAt(0, 0), nodes: [[0, 60, 0]] };
+  envelopeBait(b, short, DT, T);
+  assert.ok(Math.abs(b.reach.e - 20) < 1e-9, 'the first frame takes the reach as it is');
+  for (let i = 0; i < Math.round(B.envelopeTime / DT); i++) envelopeBait(b, long, DT, T);
+  assert.ok(Math.abs((b.reach.e - 20) / 40 - (1 - Math.exp(-1))) < 0.01 && b.reach.now === 60, `smoothed over ${B.envelopeTime} s (${b.reach.e.toFixed(2)} of 60)`);
+  envelopeBait(b, bodyAt(0, 0), DT, T);
+  assert.equal(b.reach, null, 'no nodes, no envelope');
+  // the panic: an arm node under `panicHeight` within `panic` is an arm near the ground; one above it is not
+  const low = makeBait([0, 30], T), high = makeBait([0, 30], T);
+  planBait(low, { ...bodyAt(0, 0), nodes: [[0, 30 - (B.panic - 2), B.panicHeight - 1]] }, T);
+  planBait(high, { ...bodyAt(0, 0), nodes: [[0, 30 - (B.panic - 2), B.panicHeight + 1]] }, T);
+  assert.ok(low.fleeing && !high.fleeing, `a node ${B.panic - 2} m off panics him under ${B.panicHeight} m, not above`);
+}
+
+// AN ESCAPE THE BOUND HEMS IN GOES OVER (wave A): under a creature that stands against the bound, the near side's goal would be held inside the bound and
+// still under the body; he escapes over it to the far side instead. Away from the bound the escape is through the near side as before. The hop's goal is
+// `keep` beyond the reach envelope when the creature carries its nodes
+{
+  const bound = { at: [0, 0], radius: 120, inset: 10 }, body = bodyAt(0, 100);
+  const hemmed = makeBait([0, 105], T);
+  hopBait(hemmed, DT, body, T, { bound, alt: 4, base: 4 });
+  assert.ok(hemmed.hop?.why === 'under' && hemmed.hop.side === -1, `under the creature at the bound he escapes over it (${JSON.stringify(hemmed.hop)})`);
+  let t = 0; while (hemmed.hop && t < 20) { hopBait(hemmed, DT, body, T, { bound, alt: hemmed.hop.alt, base: 4 }); t += DT; }
+  assert.ok(!hemmed.hop && !underBait(hemmed, body, T) && hemmed.pos[1] < 100 - 14, `and lands clear on the inside (${hemmed.pos.map((x) => x.toFixed(1))} after ${t.toFixed(1)} s)`);
+  const open = makeBait([0, 5], T);
+  hopBait(open, DT, bodyAt(0, 0), T, { bound, alt: 4, base: 4 });
+  assert.ok(open.hop?.why === 'under' && open.hop.side === 1, 'in the open the escape is through the near side');
+  const reach = makeBait([0, 5], T), armedBody = armed(0, 0, 0);
+  hopBait(reach, DT, armedBody, T, { bound: null, alt: 4, base: 4 });
+  let t2 = 0; while (reach.hop && t2 < 20) { hopBait(reach, DT, armedBody, T, { bound: null, alt: reach.hop.alt, base: 4 }); t2 += DT; }
+  assert.ok(Math.abs(dist(reach.pos, armedBody.centre) - reachOf(armedBody, reach.pos).e - B.keep) < 3, `the escape lands keep beyond the arms' envelope (${(dist(reach.pos, armedBody.centre) - reachOf(armedBody, reach.pos).e).toFixed(1)} m)`);
+}
 
 // the stepper is deterministic
 { const run = () => { const b = makeBait([10, 50], T); for (let i = 0; i < 600; i++) stepBait(b, DT, bodyAt(0, 0), T); return [b.pos, b.heading]; };
@@ -353,4 +423,4 @@ let hopLog = null, randomRate = null;
   for (let i = 0; i < 600 * 60 && !any; i++) any = !!hopBait(scared, DT, body, { ...T, bait: { ...B, hopChance: 5 } }, { bound: far, alt: 4, base: 4 });
   assert.ok(!any, 'no random hop while he panics');
 }
-console.log(`Boss bait: Isao keeps ${B.keep} m within ${worst.toFixed(2)} m (bound ${KEEP_BOUND}) over 30 s and circles ${swept.toFixed(1)} rad, panic backs off, a 40 mm costs ${T.bofors.damage}, a stream dps x dt, the MK-9 ${T.nuke.damage} of his ${B.health}, a ${B.caughtFor} s hold within ${B.caught} m takes him, the player's three guns make the schedule's plans at the MK-9's reload; erratic 1 over ${SEEDS.length * 2} runs: median keep error ${median(medians).toFixed(2)} m (worst ${Math.max(...medians).toFixed(2)}, bound ${KEEP_MEDIAN}), speed ${swing(speedLow).toFixed(1)}..${spread(speedHigh).toFixed(1)} m/s in [${E.speedMin}, ${E.speedMax}], acceleration at most ${spread(accelWorst).toFixed(1)} of ${E.accel} m/s2, jink gaps ${swing(gapLow).toFixed(2)}..${spread(gapHigh).toFixed(2)} s in [${E.jinkMin}, ${E.jinkMax}], erratic 0 bit-identical to the recorded run; the fly-over ${hopLog.phases.join('-')} lands in ${hopLog.landed.t.toFixed(1)} s (bound ${HOP_LAND}) ${hopLog.turned.toFixed(0)} degrees round (bound ${HOP_TURN}) at ${hopLog.crossAlt[0]} m, random hops at ${randomRate.toFixed(4)}/s (asked ${B.hopChance}); under the creature he is 8 m clear of its feet in ${hopLog.under.worstClear} s at worst (bound 6).`);
+console.log(`Boss bait: Isao keeps ${B.keep} m within ${worst.toFixed(2)} m (bound ${KEEP_BOUND}) over 30 s and circles ${swept.toFixed(1)} rad, panic backs off, a 40 mm costs ${T.bofors.damage}, a stream dps x dt, the MK-9 ${T.nuke.damage} of his ${B.health}, a ${B.caughtFor} s hold within ${B.caught} m takes him, the player's three guns make the schedule's plans at the MK-9's reload; erratic 1 over ${SEEDS.length * 2} runs: median keep error ${median(medians).toFixed(2)} m (worst ${Math.max(...medians).toFixed(2)}, bound ${KEEP_MEDIAN}), speed ${swing(speedLow).toFixed(1)}..${spread(speedHigh).toFixed(1)} m/s in [${E.speedMin}, ${E.speedMax}], acceleration at most ${spread(accelWorst).toFixed(1)} of ${E.accel} m/s2, jink gaps ${swing(gapLow).toFixed(2)}..${spread(gapHigh).toFixed(2)} s in [${E.jinkMin}, ${E.jinkMax}], erratic 0 bit-identical to the recorded run; the fly-over ${hopLog.phases.join('-')} lands in ${hopLog.landed.t.toFixed(1)} s (bound ${HOP_LAND}) ${hopLog.turned.toFixed(0)} degrees round (bound ${HOP_TURN}) at ${hopLog.crossAlt[0]} m, random hops at ${randomRate.toFixed(4)}/s (asked ${B.hopChance}); under the creature he is 8 m clear of its feet in ${hopLog.under.worstClear} s at worst (bound 6); round arms of ${ARM_TIP} m he keeps a median ${envLog.standing.median} m (standing) and ${envLog.walking.median} m (walking) from the envelope (keep ${B.keep}).`);

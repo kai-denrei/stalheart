@@ -9,4 +9,6 @@ assert.deepEqual(devModeOn({ buildToken: 'a1b2c3d4', search: '', stored: '1' }),
 assert.deepEqual(devModeOn({ buildToken: 'a1b2c3d4', search: '?dev=0', stored: '1' }), { on: false, store: '' }, '?dev=0 forgets');
 assert.deepEqual(devModeOn({ buildToken: '00000000', search: '?dev=0', stored: null }), { on: true, store: '' }, 'the source tree is always dev');
 assert.deepEqual(devModeOn({ buildToken: undefined, search: '', stored: null }), { on: false, store: null }, 'no token is a release');
-console.log('Dev mode: source, release, ?dev=1 remembered, ?dev=0 forgotten.');
+assert.deepEqual(devModeOn({ buildToken: '00000000', search: '?playtest=1&mode=bait', stored: '1' }), { on: false, store: null }, '?playtest=1 offers no DEV, the source tree included, and forgets nothing');
+assert.deepEqual(devModeOn({ buildToken: 'a1b2c3d4', search: '?playtest=1&dev=1', stored: null }), { on: false, store: null }, '?playtest=1 wins over ?dev=1 and remembers nothing');
+console.log('Dev mode: source, release, ?dev=1 remembered, ?dev=0 forgotten, ?playtest=1 off.');

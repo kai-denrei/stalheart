@@ -6,7 +6,8 @@
 // THE BODY IS A BLOCKER: every body node in the hull's height band (under 3 m scaled), projected to the plane in local metres,
 // listed once a frame by project(); within the hull's radius of the nearest one the tank is pushed straight away from it by what it
 // overlaps, `blocker(x, z) -> null | { nx, nz, depth }`. circleInput(radius) is the heading controller the harness's circle() runs;
-// shellHit(x, z) is the cannon's test of a shell against the body; shove(x, z) is the shell's push on the nodes around a hit.
+// shellHit(x, z) is the cannon's test of a shell against the body; shove(x, z) is the shell's push on the nodes around a hit; nodes() is every
+// node in local metres ([x, z, height]) for the bait's reach envelope.
 const DRIVE_R = 4.2;         // the hull's radius against the creature's body (the blocker)
 const BAND_M = 3;
 // a shell meets the body within HIT_M (the blast's half) of a body node under HIT_BAND_M (the hull's band plus 3 m, so a shell at
@@ -86,5 +87,13 @@ export function createBodyRules({ getCreature, getScale, drive, tune = {} } = {}
       v[i * 3 + 1] += T.SHOVE.lift * f;
     }
   }
-  return { project, blocker, circleInput, shellHit, shove };
+  // every body node in local metres, [x, z, height]: the creature's reach as the bait's envelope reads it (src/domain/boss-bait.js `envelopeBait`), the arms with the feet
+  function nodes() {
+    const creature = getCreature(), scale = getScale(), out = [];
+    if (!creature) return out;
+    const b = creature.body, n = b.x.length / 3;
+    for (let i = 0; i < n; i++) out.push([b.x[i * 3] * scale, b.x[i * 3 + 2] * scale, b.x[i * 3 + 1] * scale]);
+    return out;
+  }
+  return { project, blocker, circleInput, shellHit, shove, nodes };
 }

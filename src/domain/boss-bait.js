@@ -34,6 +34,13 @@
 // chance ignored, panicking or not): he climbs and flies out together, through the near side (from the centre through him, toward the bound's centre
 // when he is on the centre), to `keep` beyond the edge there, and comes down.
 //
+// THE REACH ENVELOPE (owner's predator, 2026-10-09: its arms sweep out to about 90 m, and a keep from the floor contacts' front edge had him under them
+// all the time). When the lab gives the creature's body nodes (`creature.nodes`, [x, z, height] in local metres, every node: the reaching arms with
+// the feet), `envelopeBait` measures the creature's reach toward him: the outermost node (or held contact) projected on the line from its centre to him,
+// smoothed over `envelopeTime` seconds so a sweeping arm does not yank him back and forth (`bait.reach`: `e` smoothed, `now` this frame's). The planner then
+// keeps `keep` beyond that envelope, not beyond the floor contacts' front edge, and his panic counts every node under `panicHeight` (an arm near the ground)
+// with the floor contacts. Without nodes (`bait.reach` null) both are the floor contacts' as before, bit for bit.
+//
 // Imports only the domain: ./gunship.js's falloff (`splashDamage`) and the fight's `lineOf`.
 
 import { splashDamage } from './gunship.js';
@@ -61,7 +68,7 @@ export function makeBait(at, tune, seed = 1) {
   flight.phase = [draw(flight) * 2 * Math.PI, draw(flight) * 2 * Math.PI];
   // the fly-over's state: the hop in progress ({ phase, why, dir, alt, t, cross }) or null, the hops so far, the seconds trapped, the cooldown left
   const hops = { hop: null, hops: 0, trapT: 0, hopWait: 0, hopRng: { rng: Math.imul(seed >>> 0, 0x9E3779B1) >>> 0 } };
-  return { pos: [at[0], at[1]], heading: 0, hp: B.health, max: B.health, fleeing: false, held: 0, flight, ...hops };
+  return { pos: [at[0], at[1]], heading: 0, hp: B.health, max: B.health, fleeing: false, held: 0, reach: null, flight, ...hops };
 }
 
 // the nearest floor contact to a point (null and Infinity with none)
@@ -71,17 +78,45 @@ function nearestOf(contacts, at) {
   return { at: best, d: far };
 }
 
-// the point he wants now: the one `keep` metres outside the front edge, a short way ahead round the circle; or, with an arm inside
-// `panic`, a point straight away from it. Sets `bait.fleeing` for `moveBait` (the cruise or the flee speed)
+// what his panic counts: the floor contacts, and with the body's nodes every node under `panicHeight` (an arm near the ground)
+function lowOf(creature, B) {
+  if (!creature.nodes?.length) return creature.contacts;
+  const low = [...(creature.contacts ?? [])];
+  for (const p of creature.nodes) if (p[2] < B.panicHeight) low.push(p);
+  return low;
+}
+
+// the creature's reach toward `at` now: the outermost body node or floor contact projected on the line from its centre to `at` (`lineOf`'s unit `u`); with
+// no nodes, the floor contacts' front edge (`lineOf`'s `e`)
+export function reachOf(creature, at) {
+  const here = lineOf(creature, { pos: at }), c = here.c, u = here.u;
+  let e = here.e;
+  for (const p of creature.nodes ?? []) e = Math.max(e, (p[0] - c[0]) * u[0] + (p[1] - c[1]) * u[1]);
+  return { u, e };
+}
+
+// the envelope he keeps from, each frame before the planner: this frame's reach toward him (`now`) and its smoothing over `envelopeTime` seconds (`e`, the
+// first frame's own). Null, and `bait.reach` null, when the creature carries no nodes (the planner keeps the floor contacts' front edge)
+export function envelopeBait(bait, creature, dt, tune) {
+  if (!creature.nodes?.length) { bait.reach = null; return null; }
+  const now = reachOf(creature, bait.pos).e;
+  if (!bait.reach) bait.reach = { e: now, now };
+  else { bait.reach.e += (now - bait.reach.e) * (1 - Math.exp(-dt / tune.bait.envelopeTime)); bait.reach.now = now; }
+  return bait.reach;
+}
+
+// the point he wants now: the one `keep` metres outside the reach envelope (`bait.reach`, else the floor contacts' front edge), a short way ahead round the
+// circle; or, with an arm inside `panic` (a floor contact, or a body node under `panicHeight`), a point straight away from it. Sets `bait.fleeing` for
+// `moveBait` (the cruise or the flee speed)
 export function planBait(bait, creature, tune) {
-  const B = tune.bait, near = nearestOf(creature.contacts, bait.pos);
+  const B = tune.bait, near = nearestOf(lowOf(creature, B), bait.pos);
   bait.fleeing = near.d < B.panic;
   if (bait.fleeing) {
     const away = near.d < 1e-6 ? [0, 1] : [(bait.pos[0] - near.at[0]) / near.d, (bait.pos[1] - near.at[1]) / near.d];
     return [bait.pos[0] + away[0] * FLEE_STEP, bait.pos[1] + away[1] * FLEE_STEP];
   }
   const c = creature.centre, here = lineOf(creature, bait), rho = Math.hypot(bait.pos[0] - c[0], bait.pos[1] - c[1]);
-  const lead = B.speed * AHEAD, err = here.e + B.keep - rho, radial = Math.max(-RADIAL_MAX, Math.min(RADIAL_MAX, err * PULL));
+  const lead = B.speed * AHEAD, err = (bait.reach?.e ?? here.e) + B.keep - rho, radial = Math.max(-RADIAL_MAX, Math.min(RADIAL_MAX, err * PULL));
   // counter-clockwise: the tangent is the unit rotated a quarter turn the way the angle grows; the radial pull closes the keep error
   return [bait.pos[0] - here.u[1] * lead + here.u[0] * radial, bait.pos[1] + here.u[0] * lead + here.u[1] * radial];
 }
@@ -123,8 +158,9 @@ export function moveBait(bait, dt, want, tune) {
   return { want, heading: bait.heading, bob };
 }
 
-// plan and move in one: the autopilot without routing
+// the envelope, the plan and the move in one: the autopilot without routing
 export function stepBait(bait, dt, creature, tune) {
+  envelopeBait(bait, creature, dt, tune);
   return moveBait(bait, dt, planBait(bait, creature, tune), tune);
 }
 
@@ -175,11 +211,13 @@ export function underBait(bait, creature, tune) {
 }
 
 // the hop's goal: `keep` metres beyond the creature's edge on the side `side` x `dir` (`dir` the unit from its centre toward where he started; side -1
-// the far side, 1 the near side), held `bound.inset + trapBound` metres inside the bound
+// the far side, 1 the near side), held `bound.inset + trapBound` metres inside the bound. The edge is the reach envelope's when the creature carries its
+// nodes (the outermost node that way, arms included), else the floor contacts'
 function farPoint(creature, dir, tune, bound, side = -1) {
   const c = creature.centre, u = [side * dir[0], side * dir[1]];
   let e = 0;
   for (const p of creature.contacts ?? []) e = Math.max(e, (p[0] - c[0]) * u[0] + (p[1] - c[1]) * u[1]);
+  for (const p of creature.nodes ?? []) e = Math.max(e, (p[0] - c[0]) * u[0] + (p[1] - c[1]) * u[1]);
   let x = c[0] + u[0] * (e + tune.bait.keep), z = c[1] + u[1] * (e + tune.bait.keep);
   if (bound) {
     const r = Math.max(0, bound.radius - (bound.inset ?? 0) - tune.bait.trapBound), dx = x - bound.at[0], dz = z - bound.at[1], d = Math.hypot(dx, dz);
@@ -189,12 +227,21 @@ function farPoint(creature, dir, tune, bound, side = -1) {
 }
 
 // a hop starts now from altitude `alt` (`why`: 'trapped', 'random', 'under' or the caller's own, e.g. 'forced'); the jink is dropped. 'under' flies out
-// through the near side (toward the bound's centre when he is on the creature's centre), the others to the far side
+// through the near side (toward the bound's centre when he is on the creature's centre), the others to the far side. AN ESCAPE THE BOUND HEMS IN goes over
+// (wave A, 2026-10-09: with the creature on him at the bound the near side's goal was held inside the bound, still under the body; he landed there, was under it
+// again and hopped again, 100 % of a run): when the near side's goal, held inside the bound, is less than `keep` beyond the creature's edge that way, and the
+// far side's is farther from its centre, he escapes over the creature to the far side
 export function startHop(bait, creature, tune, why, alt, bound = null) {
   const c = creature.centre, dx = bait.pos[0] - c[0], dz = bait.pos[1] - c[1], d = Math.hypot(dx, dz);
   let dir = d < 1e-6 ? [0, 1] : [dx / d, dz / d];
   if (d < 1 && bound) { const bx = bound.at[0] - c[0], bz = bound.at[1] - c[1], b = Math.hypot(bx, bz); if (b > 1e-6) dir = [bx / b, bz / b]; }
-  bait.hop = { phase: 'climb', why, dir, side: why === 'under' ? 1 : -1, alt, t: 0, cross: 0 };
+  let side = why === 'under' ? 1 : -1;
+  if (side === 1 && bound) {
+    const free = farPoint(creature, dir, tune, null, 1), near = farPoint(creature, dir, tune, bound, 1), far = farPoint(creature, dir, tune, bound, -1);
+    const out = (p) => Math.hypot(p[0] - c[0], p[1] - c[1]);
+    if (out(free) - out(near) > tune.bait.keep / 2 && out(far) > out(near)) side = -1;   // the bound took more than half his keep off the near side's goal
+  }
+  bait.hop = { phase: 'climb', why, dir, side, alt, t: 0, cross: 0 };
   bait.hops++; bait.trapT = 0; bait.fleeing = false;
   if (bait.flight) { bait.flight.jink = 0; bait.flight.jinkTarget = 0; }
   return bait.hop;

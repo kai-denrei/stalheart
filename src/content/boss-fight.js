@@ -20,9 +20,11 @@ export const BOSS_FIGHT = freeze({
   hull: { radius: 4.2 },   // the tank's hull for the rings and the creature's capture
   bait: {                  // bait mode (2026-10-09-boss-bait-mode-design.md): Isao the drone flies on autopilot as the creature's prey, the player in the gunship
     health: 12,            // his hit points
-    keep: 20,              // he keeps this far outside the creature's front edge toward himself
+    keep: 20,              // he keeps this far outside the creature's reach toward himself (the outermost body node, arms included, when the lab gives the nodes; else the floor contacts' front edge)
+    envelopeTime: 1,       // seconds: that reach is smoothed over this long, so a sweeping arm does not yank him back and forth
     speed: 14, flee: 24,   // his cruise round the creature, and the straight back-off when an arm closes (m/s)
-    panic: 12,             // a floor contact this close makes him flee
+    panic: 12,             // a floor contact, or a body node under `panicHeight`, this close makes him flee
+    panicHeight: 6,        // metres: a body node below this is an arm near the ground for his panic
     turn: 3,               // his heading eases at this many radians a second
     altitude: 17.75,       // metres above the surface: src/fx/isao-worker.js ISAO_ALT 3.4 is in wall-heights (td-tab wallHeight 0.03), so 0.102 world units, plus half a cell (cellSide 0.08 / 2) = 0.142; a 10 m cell is 0.08, so 125 m a world unit
     caught: 3, caughtFor: 0.5,   // a floor contact within this many metres of his ground point for this long takes him

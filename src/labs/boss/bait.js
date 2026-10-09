@@ -32,9 +32,14 @@
 // game's voice when the trigger is recorded, else the caption), past the lines' gap but one every FLYOVER_GAP seconds at most. `hop()` forces one (the acceptance's). Under the creature (owner,
 // 2026-10-09: "Isao gets stuck too easily under the creature") the domain's escape hop takes him up and out at once.
 //
+// THE REACH ENVELOPE (owner's predator, 2026-10-09: its arms sweep to about 90 m, and the keep from the floor contacts had him escaping from under them
+// all the time): the planner's creature carries the body's nodes (`nodes()`, every node in local metres, the arms with the feet), so the domain keeps him
+// `keep` beyond the outermost node toward him, smoothed over a second, and panics on the nodes near the ground (`envelopeBait`, `planBait`). After the
+// move his ground point is held inside the bound itself (`hold`): a jink off a wanted point on the circle could carry him out.
+//
 // Positions are the lab's local metres [x, z]; the host gives the ground under a point and the frame there, so this file knows no planet.
 import * as THREE from '../../../vendor/three.module.js';
-import { makeBait, planBait, moveBait, hurtBait, baitCaught, hopBait, startHop } from '../../domain/boss-bait.js';
+import { makeBait, planBait, moveBait, hurtBait, baitCaught, hopBait, startHop, envelopeBait, reachOf } from '../../domain/boss-bait.js';
 import { lineOf, capture } from '../../domain/boss-fight.js';
 import { makeIsaoDrone, preloadFabricator } from '../../units.js';
 import { STORY_SCALE } from '../../content/story-defaults.js';
@@ -66,8 +71,9 @@ const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 // lives in; `tune()` the lab's fight numbers (`.bait`), `fight()` the round's state, `now()` the lab's clock, `creature()` the rules'
 // creature, `route(from, to)` the arena's waypoint, `ground(x, z)` the sphere-space point on the surface and `tangent(world)` the frame
 // there ({ east, up, north }), `burst(x, z, alt)` Isao's end, `caption(text, seconds)` a line on the stage, `sfx` the sound engine,
-// `clamp(point)` the wanted point held inside the arena's bound (a fresh array), `bound()` the bound for the fly-over ({ at, radius, inset } or null)
-export function createBaitMode({ stage, sphere, tune, fight, now, creature, route, ground, tangent, burst, caption, sfx, clamp = (p) => [p[0], p[1]], bound = () => null }) {
+// `clamp(point)` the wanted point held inside the arena's bound (a fresh array), `hold(point)` his ground point held inside the bound itself (a fresh
+// array), `bound()` the bound for the fly-over ({ at, radius, inset } or null), `nodes()` the body's nodes ([x, z, height] local metres) for the reach envelope
+export function createBaitMode({ stage, sphere, tune, fight, now, creature, route, ground, tangent, burst, caption, sfx, clamp = (p) => [p[0], p[1]], hold = (p) => [p[0], p[1]], bound = () => null, nodes = () => [] }) {
   const params = { altitude: ALTITUDE };
   const hud = stage.querySelector('.sw-hud');
   const row = document.createElement('div');
@@ -191,12 +197,14 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
       const T = tune();
       if (fight().phase === 'fight') {
         const c = creature();
-        view = heldView(c);
-        const flying = hopBait(bait, dt, c, T, { bound: bound(), alt, base: params.altitude });   // the fly-over first: trapped, at random, or flying
+        view = { ...heldView(c), nodes: nodes() };   // the held contacts and every body node: the planner's reach envelope and panic
+        envelopeBait(bait, view, dt, T);   // smoothed through the hops too, so the landing plans from the reach as it is
+        const flying = hopBait(bait, dt, { ...c, nodes: view.nodes }, T, { bound: bound(), alt, base: params.altitude });   // the fly-over first: trapped, at random, or flying (its goal beyond the reach envelope)
         if (flying) { alt = flying.alt; bob = 0; if (flying.started) flyover(); }
         else {
           const want = planBait(bait, view, T);
           ({ bob } = moveBait(bait, dt, clamp(route(bait.pos, want)), T));
+          const kept = hold(bait.pos); bait.pos[0] = kept[0]; bait.pos[1] = kept[1];   // a jink off a wanted point on the circle does not carry him out
         }
       }
       if (!bait.hop) alt += Math.max(-CLIMB * dt, Math.min(CLIMB * dt, params.altitude - alt));
@@ -251,9 +259,11 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
     // the handle's view, and the gap to the creature's front edge along the line toward him
     state() {
       if (!bait) return null;
-      const c = creature(), here = lineOf(view ?? c, bait);
-      return { pos: [...bait.pos], hp: bait.hp, max: bait.max, heading: bait.heading, alt, bob, speed: bait.flight?.speed ?? null, gone, fleeing: bait.fleeing, gap: dist(bait.pos, c.centre) - here.e, hits, said: [...said],
-        hop: bait.hop?.phase ?? null, hopWhy: bait.hop?.why ?? null, hops: bait.hops, trapped: bait.trapT };   // gap: against the held edge; hop: the fly-over's phase
+      const c = creature(), here = lineOf(view ?? c, bait), rho = dist(bait.pos, c.centre), reach = reachOf({ ...c, nodes: nodes() }, bait.pos).e;
+      return { pos: [...bait.pos], hp: bait.hp, max: bait.max, heading: bait.heading, alt, bob, speed: bait.flight?.speed ?? null, gone, fleeing: bait.fleeing, gap: rho - here.e, hits, said: [...said],
+        hop: bait.hop?.phase ?? null, hopWhy: bait.hop?.why ?? null, hops: bait.hops, trapped: bait.trapT,
+        // the reach envelope: `reach` the outermost node toward him now, `envelope` the planner's smoothed one; `keep` his distance beyond `reach`, `keepSmoothed` beyond `envelope`
+        reach, envelope: bait.reach?.e ?? null, keep: rho - reach, keepSmoothed: bait.reach ? rho - bait.reach.e : null };   // gap: against the held edge; hop: the fly-over's phase
     },
     dispose() {
       disposed = true; row.remove();

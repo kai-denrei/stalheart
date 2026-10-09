@@ -2309,7 +2309,8 @@ try{
  const world0=await evaluate(`${B}.world()`);   // the lab's scene frame, which the seat takes (scaled and lifted to the game's units) and must give back
  await evaluate(`${B}.camera("game"); ${B}.mode("bait")`);   // the game camera asked for first: the bait mode must take it away
  await until(`${B}.fight().phase === "fight" && ${B}.bait() && ${B}.bait().max > 0 && !!${B}.seat()`,30000);
- const S=`(()=>{const f=${B}.fight(),b=${B}.bait(),r=${B}.readout();return {clock:${B}.arena().clock,fclock:f.clock,phase:f.phase,reason:f.reason,hp:f.hp,max:f.max,hits:f.hits,contacts:f.contacts,centre:f.centre,bait:b,seat:${B}.seat(),card:r.fight.card,mode:r.mode}})()`;
+ const S=`(()=>{const f=${B}.fight(),b=${B}.bait(),r=${B}.readout(),body=${B}.creature()?.body;let arm=0;if(body)for(let i=0;i<body.x.length;i+=3)arm=Math.max(arm,Math.hypot(body.x[i]*r.scale-f.centre[0],body.x[i+2]*r.scale-f.centre[1]));
+  return {clock:${B}.arena().clock,fclock:f.clock,phase:f.phase,reason:f.reason,hp:f.hp,max:f.max,hits:f.hits,contacts:f.contacts,centre:f.centre,bait:b,seat:${B}.seat(),card:r.fight.card,mode:r.mode,armM:arm,boundAt:${B}.arena().bound.at}})()`;   // armM: the body's farthest node from the creature's centre (m)
  const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
  const knob=(name)=>evaluate(`(()=>{const n=[...document.querySelectorAll('.lil-gui .name')].find(n=>n.textContent===${JSON.stringify(name)});return n?{value:+n.parentElement.querySelector('input').value,shown:getComputedStyle(n.closest('.controller')).display!=='none'}:null})()`);
  const setKnob=(name,v)=>evaluate(`(()=>{const i=[...document.querySelectorAll('.lil-gui .name')].find(n=>n.textContent===${JSON.stringify(name)}).parentElement.querySelector('input');i.value=${JSON.stringify(String(v))};i.dispatchEvent(new Event('input',{bubbles:true}));i.dispatchEvent(new Event('change',{bubbles:true}));return i.value;})()`);
@@ -2431,15 +2432,32 @@ try{
  // 1.9 m in three runs, then 18.2 (the keep does not hold reliably against it: the owner's to tune; 3.1 m on the earlier pursuit at 40 m in that run). The
  // autopilot's keep is then asserted as before (median 17-23 m) where it was set: the predator's earlier pursuit and arms (chase speed 0.22, reach duration
  // 10, sweep 1, grip 1.5) at 30 m; the arena run below measures his flight on
- // them too (against the owner's arms he panics most of the time: 47 calm samples of 289), and the owner's values are put back after it
+ // them too (against the owner's arms he panics most of the time: 47 calm samples of 289), and the owner's values are put back after it.
+ // WAVE A: the keep is measured from the creature's REACH ENVELOPE (the outermost body node toward him, the arms included, smoothed over a second): the
+ // assertion is the planner's (the smoothed envelope); this frame's envelope, the floor contacts' edge, the arms' extent, the escapes from under it and his
+ // place against the bound are logged for both runs
  const gapRun=async(label)=>{
    await pace(5);
-   const gaps=[],near=[];let polls=0,hopping=0;const gp=await pace(10,(s)=>{polls++;if(s.bait?.hop)hopping++;if(s.bait&&!s.bait.gone&&!s.bait.hop&&Number.isFinite(s.bait.gap)){gaps.push(s.bait.gap);near.push(Math.min(...s.contacts.map(p=>dist(p,s.bait.pos))));}return s.phase!=='fight';});   // a trapped fly-over is not the keep
-   gaps.sort((a,b)=>a-b);near.sort((a,b)=>a-b);const q=(a,p)=>a[Math.min(a.length-1,Math.floor(a.length*p))];
-   const gap={label,centreMps:+(await evaluate(`${B}.readout().centre`)).toFixed(1),n:gaps.length,min:+gaps[0]?.toFixed(1),median:+q(gaps,0.5)?.toFixed(1),p90:+q(gaps,0.9)?.toFixed(1),max:+gaps.at(-1)?.toFixed(1),within:+(gaps.filter(g=>g>=17&&g<=23).length/gaps.length).toFixed(2),nearestContactMedian:+q(near,0.5)?.toFixed(1),hopShare:+(hopping/Math.max(1,polls)).toFixed(2),timedOut:gp.timedOut,phase:gp.s.phase,reason:gp.s.reason};
+   const gaps=[],near=[],keeps=[],smooth=[],reaches=[],arms=[],fromBound=[];let polls=0,hopping=0,under=0,atBound=0,fled=0;
+   const R0=(await evaluate(`${B}.arena().bound`)).radius;
+   const gp=await pace(10,(s)=>{polls++;if(s.bait?.hop)hopping++;if(s.bait?.hopWhy==='under')under++;if(s.bait?.fleeing)fled++;
+     if(s.bait&&!s.bait.gone){const out=dist(s.bait.pos,s.boundAt);fromBound.push(out);if(R0-out<=BOSS_FIGHT.bounds.baitMargin+1)atBound++;}
+     if(Number.isFinite(s.armM))arms.push(s.armM);
+     if(s.bait&&!s.bait.gone&&!s.bait.hop&&Number.isFinite(s.bait.gap)){gaps.push(s.bait.gap);near.push(Math.min(...s.contacts.map(p=>dist(p,s.bait.pos))));keeps.push(s.bait.keep);reaches.push(s.bait.reach);if(Number.isFinite(s.bait.keepSmoothed))smooth.push(s.bait.keepSmoothed);}return s.phase!=='fight';});   // a trapped fly-over is not the keep
+   for(const a of [gaps,near,keeps,smooth,reaches,arms,fromBound])a.sort((x,y)=>x-y);const q=(a,p)=>a[Math.min(a.length-1,Math.floor(a.length*p))];
+   const gap={label,centreMps:+(await evaluate(`${B}.readout().centre`)).toFixed(1),n:gaps.length,min:+gaps[0]?.toFixed(1),median:+q(gaps,0.5)?.toFixed(1),p90:+q(gaps,0.9)?.toFixed(1),max:+gaps.at(-1)?.toFixed(1),within:+(gaps.filter(g=>g>=17&&g<=23).length/gaps.length).toFixed(2),nearestContactMedian:+q(near,0.5)?.toFixed(1),hopShare:+(hopping/Math.max(1,polls)).toFixed(2),underShare:+(under/Math.max(1,polls)).toFixed(2),fleeShare:+(fled/Math.max(1,polls)).toFixed(2),
+     // THE REACH ENVELOPE (wave A, 2026-10-09): his distance beyond the outermost body node toward him (`keep`, this frame's; `keepSmoothed`, the planner's), that reach from the creature's centre, the arms' farthest node from it, and his place against the bound
+     keep:{n:keeps.length,p10:+q(keeps,0.1)?.toFixed(1),median:+q(keeps,0.5)?.toFixed(1),p90:+q(keeps,0.9)?.toFixed(1)},keepSmoothed:{median:+q(smooth,0.5)?.toFixed(1)},reachMedian:+q(reaches,0.5)?.toFixed(1),armMaxM:{median:+q(arms,0.5)?.toFixed(1),max:+arms.at(-1)?.toFixed(1)},fromBoundCentre:{median:+q(fromBound,0.5)?.toFixed(1),max:+fromBound.at(-1)?.toFixed(1)},atBoundShare:+(atBound/Math.max(1,polls)).toFixed(2),
+     timedOut:gp.timedOut,phase:gp.s.phase,reason:gp.s.reason};
    console.log('BOSS-BAIT gap '+JSON.stringify(gap));return gap;
  };
  await gapRun('owner');
+ // THE OWNER'S VALUES, LOGGED (wave A): the 40 mm on the creature's far foot (its floor contact farthest from Isao) for 3 s against the owner's predator, as (a) below runs it on the earlier pursuit
+ {await evaluate(`${B}.gun("bofors")`);const o0=await evaluate(S);
+  const oa=await pace(3,(s)=>{if(s.phase!=='fight')return true;void evaluate(`${B}.aim(${JSON.stringify(far(s))}); ${B}.fire(true)`);});
+  await evaluate(`${B}.fire(false)`);await pace(BOSS_FIGHT.bofors.travel+0.5,(s)=>s.phase!=='fight');const o1=await evaluate(S);
+  console.log('BOSS-BAIT owner far side 40 mm '+JSON.stringify({lab:+(oa.s.clock-oa.s0.clock).toFixed(1),hits:o1.hits-o0.hits,shots:o1.seat.shots.bofors-o0.seat.shots.bofors,hp:[+o0.hp.toFixed(1),+o1.hp.toFixed(1)],isaoHp:[o0.bait.hp,o1.bait.hp],phase:o1.phase,reason:o1.reason}));
+  if(o1.phase!=='fight')await restart();}
  const ownerKnobs={'Chase speed':3,'Reach duration':5,'Reach sweep':4,'Foot grip':3,'size (m)':40};
  const earlier={'Chase speed':0.22,'Reach duration':10,'Reach sweep':1,'Foot grip':1.5,'size (m)':30};
  for(const [k,v] of Object.entries(earlier))await setKnob(k,v);
@@ -2447,7 +2465,7 @@ try{
  const gap=await gapRun('earlier pursuit');
  assert(!gap.timedOut&&gap.phase==='fight',`the gap was sampled for 10 s of lab clock (${JSON.stringify(gap)})`);
  assert(gap.n>=40,`enough gap samples (${gap.n})`);
- assert(gap.median>=17&&gap.median<=23,`Isao keeps 17-23 m from the creature's front edge (median ${gap.median}, min ${gap.min}, p90 ${gap.p90})`);
+ assert(gap.keepSmoothed.median>=17&&gap.keepSmoothed.median<=23,`Isao keeps 17-23 m beyond the creature's reach envelope (median ${gap.keepSmoothed.median} from the smoothed envelope, ${gap.keep.median} from this frame's; ${gap.median} from the held floor contacts' edge)`);
  // THE ARENA (Task C): 30 s of lab clock, nothing aimed. The bound: Isao and every floor contact within its radius of its centre (a round lost on the way
  // restarts by itself; the bound is read through it). The orbit: the platform's ground point swept round the centre, the seat mounted all along (its
  // panel node and its mount count unchanged). Isao's speed: his displacement over each poll's lab seconds, outside panic, and the flight's own speed
@@ -2660,9 +2678,28 @@ try{
  await evaluate(`${B}.gun("nuke")`);
  const reload=await evaluate(`[...document.querySelectorAll('.lil-gui .name')].find(n=>n.textContent==='MK-9 reload (s)').parentElement.querySelector('input').value`);
  const away=(s)=>{const d=dist(s.centre,s.bait.pos)||1;return [s.centre[0]+(s.centre[0]-s.bait.pos[0])/d*120,s.centre[1]+(s.centre[1]-s.bait.pos[1])/d*120];};
- let two=0;const mk=await pace(40,(s)=>{if(s.phase!=='fight')return true;const sh=s.seat;two=sh.shots.nuke-rs.shots.nuke;if(two>=2)return true;if(sh.heavy.phase==='ready')void evaluate(`${B}.aim(${JSON.stringify(away(s))}); ${B}.fire(true)`);});
- console.log('BOSS-BAIT two MK-9s '+JSON.stringify({releases:two,clock:+(mk.s.clock-mk.s0.clock).toFixed(1),reload,phase:mk.s.phase,reason:mk.s.reason,hp:+mk.s.hp.toFixed(1)}));
+ // THE MK-9 HOLDS ITS GROUND POINT (wave A): while each falls, nothing aimed, the platform's orbit no longer drifts the reticle off its cell, so the round's one
+ // nudge is not used up (before: the reticle slid 10.8 to 14.6 m/s and nudged it within the fall); the reticle's distance from the held point is logged
+ let two=0,falls=0,nudged=0,holdOff=0;const mk=await pace(40,(s)=>{if(s.phase!=='fight')return true;const sh=s.seat;two=sh.shots.nuke-rs.shots.nuke;
+   if(['released','ignited'].includes(sh.heavy.phase)&&sh.hold&&sh.reticle){falls++;if(sh.heavy.nudged)nudged++;holdOff=Math.max(holdOff,dist(sh.reticle,sh.hold));}
+   if(two>=2&&!['released','ignited'].includes(sh.heavy.phase))return true;if(sh.heavy.phase==='ready'&&two<2)void evaluate(`${B}.aim(${JSON.stringify(away(s))}); ${B}.fire(true)`);});
+ console.log('BOSS-BAIT two MK-9s '+JSON.stringify({releases:two,clock:+(mk.s.clock-mk.s0.clock).toFixed(1),reload,phase:mk.s.phase,reason:mk.s.reason,hp:+mk.s.hp.toFixed(1),hold:{samples:falls,nudged,worstReticleOffM:+holdOff.toFixed(1)}}));
  assert(two>=2,`a second MK-9 goes out in the same pass (${two} releases in ${(mk.s.clock-mk.s0.clock).toFixed(1)} s, ${mk.s.phase} ${mk.s.reason})`);
+ assert(falls>=10&&nudged===0,`the falling MK-9s hold their ground point: no nudge spent by the orbit's drift (${nudged} nudged of ${falls} samples in the fall; the reticle at most ${holdOff.toFixed(1)} m off the held point)`);
+ assert(holdOff<5,`the reticle stays on the held point through the fall (worst ${holdOff.toFixed(1)} m; a cell is 10 m)`);
+ // and an aim moved in the fall (the handle's aim, as a mouse move) nudges it: the hold then follows the new point
+ if(mk.s.phase==='fight'){
+   await until(`${B}.seat().heavy.phase === 'ready'`,30000).catch(()=>{});
+   const s1=await evaluate(S);await evaluate(`${B}.aim(${JSON.stringify(away(s1))}); ${B}.fire(true)`);
+   await until(`['released','ignited'].includes(${B}.seat().heavy.phase) && !!${B}.seat().hold`,15000);
+   const h1=(await evaluate(`${B}.seat()`)).hold,moved=[h1[0]+40,h1[1]];await delay(300);
+   const before=(await evaluate(`${B}.seat()`)).heavy.nudged;
+   await evaluate(`${B}.aim(${JSON.stringify(moved)})`);await delay(600);
+   const h2=await evaluate(`${B}.seat()`);
+   console.log('BOSS-BAIT MK-9 moved in the fall '+JSON.stringify({before,nudged:h2.heavy.nudged,phase:h2.heavy.phase,hold:h2.hold,asked:moved,offM:h2.hold?+dist(h2.hold,moved).toFixed(1):null}));
+   assert(!before&&h2.heavy.nudged&&(!h2.hold||dist(h2.hold,moved)<6),`an aim moved 40 m in the fall nudges the round once and the hold follows it (${JSON.stringify({before,nudged:h2.heavy.nudged,hold:h2.hold})})`);
+   await until(`!['released','ignited'].includes(${B}.seat().heavy.phase)`,20000).catch(()=>{});
+ }
  await restart();
  // the 25 mm on the creature's far foot, led by the centre's measured velocity over the round's two seconds; a round lost on the way is restarted
  const rotaryTravel=GUNSHIP_GUNS.rotary.travel;
@@ -2747,9 +2784,41 @@ const killReal=(Date.now()-t0)/1000;
  {const {NIH_DAIRIA_MOTION}=await import('../src/content/nih-dairia.js');const sp=await knob('Chase speed'),hp=await knob('health (at reset)'),bd=await evaluate(`${B}.arena().bound`);
   assert(sp.value===NIH_DAIRIA_MOTION.speed&&hp.shown&&!bd.on,`the tank mode is back on the slower preset, its own health knob, no bound (chase speed ${sp.value}, ${JSON.stringify(bd)})`);
   const tankSize=await evaluate(`${B}.readout().size`);assert.equal(tankSize,30,`the tank mode is back at 30 m (${tankSize})`);}
+ // EACH MODE KEEPS ITS OWN TUNING (wave A): a reach sweep tweaked in the bait mode and a chase speed tweaked in the tank mode survive a round trip through the
+ // other mode (Esc used to throw the bait mode's live tuning away for the preset), and each mode's size comes back with it (40 bait, 30 tank)
+ {const {NIH_DAIRIA_MOTION}=await import('../src/content/nih-dairia.js');
+  const tankSpeed=+(NIH_DAIRIA_MOTION.speed+0.05).toFixed(2);await setKnob('Chase speed',tankSpeed);
+  await evaluate(`${B}.mode("bait")`);await until(`${B}.mode() === "bait" && !!${B}.seat()`,20000);
+  const inBait={speed:(await knob('Chase speed')).value,sweep:(await knob('Reach sweep')).value,size:await evaluate(`${B}.readout().size`)};
+  await setKnob('Reach sweep',3.5);
+  await evaluate(`${B}.mode("tank")`);await until(`${B}.mode() === "tank" && ${B}.seat() === null`,10000);
+  const inTank={speed:(await knob('Chase speed')).value,sweep:(await knob('Reach sweep')).value,size:await evaluate(`${B}.readout().size`)};
+  await evaluate(`${B}.mode("bait")`);await until(`${B}.mode() === "bait" && !!${B}.seat()`,20000);
+  const back={speed:(await knob('Chase speed')).value,sweep:(await knob('Reach sweep')).value,size:await evaluate(`${B}.readout().size`)};
+  await setKnob('Reach sweep',ownerKnobs['Reach sweep']);
+  await evaluate(`${B}.mode("tank")`);await until(`${B}.mode() === "tank" && ${B}.seat() === null`,10000);
+  const tankBack={speed:(await knob('Chase speed')).value,size:await evaluate(`${B}.readout().size`)};
+  console.log('BOSS-BAIT mode copies '+JSON.stringify({inBait,inTank,back,tankBack,tankSpeed}));
+  assert(inBait.speed===ownerKnobs['Chase speed']&&inBait.size===40,`the bait mode comes back with its own chase speed and 40 m, not the tank's tweak (${JSON.stringify(inBait)})`);
+  assert(inTank.speed===tankSpeed&&inTank.size===30,`the tank mode keeps its tweaked chase speed and 30 m (${JSON.stringify(inTank)})`);
+  assert(back.sweep===3.5&&back.speed===ownerKnobs['Chase speed']&&back.size===40,`a reach sweep tweaked in the bait mode survives the round trip through the tank (${JSON.stringify(back)})`);
+  assert(tankBack.speed===tankSpeed&&tankBack.size===30,`and the tank's tweak survives the bait mode (${JSON.stringify(tankBack)})`);
+  await setKnob('Chase speed',NIH_DAIRIA_MOTION.speed);}
  const rd=await evaluate(`${B}.readout()`);
  assert.deepEqual(rd.shaderErrors,[],'no shader errors');assert(!rd.error,`no frame error (${rd.error})`);
  current='boss-bait';await finish();
+ // THE FRIENDS' LINK (wave A): ?playtest=1&mode=bait opens the lab in the bait mode (the select reads the bait option), the knobs' panel hidden, the shell offering
+ // PLAYTEST only (src/core/dev-mode.js), the seat's readout and monitor using the stage's full width; no acceptance handle is needed for any of it
+ await go('boss-bait-friends','labs.html?sw=0&playtest=1&mode=bait#boss');
+ await until(`(()=>{const s=document.querySelector('#boss [data-k="mode"]');return !!s&&s.value==='bait'&&!!document.querySelector('#boss #sentry-pilot')})()`,90000);
+ const friends=await evaluate(`(()=>{const s=document.querySelector('#boss [data-k="mode"]'),g=document.querySelector('#tab-boss .lil-gui.root'),bar=document.querySelector('#shell-bar');
+   return {mode:s.value,label:s.selectedOptions[0].textContent,gui:g?getComputedStyle(g).display:null,dev:!!bar?.querySelector('[data-mode="dev"]'),current:bar?.querySelector('.current')?.dataset.mode??null,handle:!!window.__bossLab,
+     seatClear:getComputedStyle(document.querySelector('#boss .sw-stage')).getPropertyValue('--seat-clear').trim()}})()`);
+ console.log('BOSS-BAIT friends '+JSON.stringify(friends));
+ assert(friends.mode==='bait'&&friends.label==='bait (Isao flies, the creature hunts him)',`?mode=bait opens the bait mode, the select reading it (${JSON.stringify(friends)})`);
+ assert(friends.gui==='none'&&!friends.dev&&friends.current==='playtest',`?playtest=1 hides the knobs' panel and the shell offers PLAYTEST only (${JSON.stringify(friends)})`);
+ assert(!friends.handle&&friends.seatClear==='0px',`no acceptance handle, and the seat's HUD uses the full stage (${JSON.stringify(friends)})`);
+ current='boss-bait-friends';await finish();
  } else if(args.includes('--boss')) {
  // THE BOSS LAB (2026-10-08; src/labs/boss-tab.js): Nih-Dairia at thirty metres on the story planet, the tank its prey. The solver steps,
  // the creature is boss-sized in the world, a driving tank inside its reach counts as held and is not taken, a parked one is.
