@@ -2948,6 +2948,22 @@ const killReal=(Date.now()-t0)/1000;
  assert(friends.gui==='none'&&!friends.dev&&friends.current==='playtest',`?playtest=1 hides the knobs' panel and the shell offers PLAYTEST only (${JSON.stringify(friends)})`);
  assert(!friends.handle&&friends.seatClear==='0px',`no acceptance handle, and the seat's HUD uses the full stage (${JSON.stringify(friends)})`);
  current='boss-bait-friends';await finish();
+ } else if(args.includes('--boss-friends')) {
+ // THE FRIENDS' LINK ALONE (2026-10-09, before the push): ?playtest=1&mode=bait opens the bait mode in the game's seat with the dev controls hidden,
+ // the friends' note shown, and Esc freeing the mouse without leaving the bait mode
+ await go('boss-friends','labs.html?sw=0&playtest=1&mode=bait#boss');
+ await until(`(()=>{const s=document.querySelector('#boss [data-k="mode"]');return !!s&&s.value==='bait'&&!!document.querySelector('#boss #sentry-pilot')})()`,90000);
+ const fr=await evaluate(`(()=>{const q=(x)=>document.querySelector('#boss '+x),vis=(e)=>!!e&&!e.hidden&&!e.closest('[hidden]');
+   return {friend:vis(q('[data-friend]')),devShown:[...document.querySelectorAll('#boss [data-dev]')].filter(vis).length,
+     baitNote:vis(q('[data-bait-only]')),tankNote:vis(q('[data-tank-only]')),reset:vis(q('[data-act="reset"]'))}})()`);
+ console.log('BOSS-FRIENDS '+JSON.stringify(fr));
+ assert(fr.friend&&fr.devShown===0&&!fr.baitNote&&!fr.tankNote&&fr.reset,`the friends' note shown, every dev control and dev note hidden, Reset kept (${JSON.stringify(fr)})`);
+ await evaluate(`dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',code:'Escape',bubbles:true}))`);
+ await evaluate(`dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',code:'Escape',bubbles:true}))`);
+ await delay(500);
+ const after=await evaluate(`(()=>({mode:document.querySelector('#boss [data-k="mode"]').value,seat:!!document.querySelector('#boss #sentry-pilot')}))()`);
+ assert(after.mode==='bait'&&after.seat,`Esc twice keeps the friend in the bait mode and the seat (${JSON.stringify(after)})`);
+ current='boss-friends';await finish();
  } else if(args.includes('--boss')) {
  // THE BOSS LAB (2026-10-08; src/labs/boss-tab.js): Nih-Dairia at thirty metres on the story planet, the tank its prey. The solver steps,
  // the creature is boss-sized in the world, a driving tank inside its reach counts as held and is not taken, a parked one is.

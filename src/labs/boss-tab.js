@@ -123,18 +123,19 @@ function cropToCap(group, anchorUp, radius, capMetres) {
 
 export function initBossTab(root) {
   const q = new URLSearchParams(location.search);
+  const PLAYTEST = q.get('playtest') === '1';   // the friends' link: the dev controls hidden, Esc only frees the mouse
   root.innerHTML = `<div id="boss">
     <div class="sw-side">
       <h2>boss study</h2>
-      <label>body <select data-k="variant">${CREATURE_VARIANTS.map((v) => `<option value="${v.id}">${v.name}</option>`).join('')}</select></label>
-      <label data-tank-only>lure <select data-k="lure"><option value="tank">the tank (WASD)</option><option value="point">a point (click the ground)</option><option value="auto">the figure-eight</option></select></label>
-      <label>view <select data-k="view"><option value="chase">chase</option><option value="free">free orbit</option></select></label>
-      <label>mode <select data-k="mode"><option value="tank">tank (WASD)</option><option value="bait">bait (Isao flies, the creature hunts him)</option></select></label>
-      <label>camera (V) <select data-k="cam"><option value="lab">lab</option><option value="game">game (rear view)</option></select></label>
-      <button type="button" class="sw-run" data-act="disturb">disturb</button>
+      <label data-dev>body <select data-k="variant">${CREATURE_VARIANTS.map((v) => `<option value="${v.id}">${v.name}</option>`).join('')}</select></label>
+      <label data-dev data-tank-only>lure <select data-k="lure"><option value="tank">the tank (WASD)</option><option value="point">a point (click the ground)</option><option value="auto">the figure-eight</option></select></label>
+      <label data-dev>view <select data-k="view"><option value="chase">chase</option><option value="free">free orbit</option></select></label>
+      <label data-dev>mode <select data-k="mode"><option value="tank">tank (WASD)</option><option value="bait">bait (Isao flies, the creature hunts him)</option></select></label>
+      <label data-dev>camera (V) <select data-k="cam"><option value="lab">lab</option><option value="game">game (rear view)</option></select></label>
+      <button type="button" class="sw-run" data-dev data-act="disturb">disturb</button>
       <button type="button" class="sw-run" data-act="reset">reset</button>
-      <button type="button" class="sw-run" data-act="reanchor">re-anchor now</button>
-      <button type="button" class="sw-run" data-act="copy">copy settings (C)</button>
+      <button type="button" class="sw-run" data-dev data-act="reanchor">re-anchor now</button>
+      <button type="button" class="sw-run" data-dev data-act="copy">copy settings (C)</button>
       <textarea data-copy hidden readonly rows="8"></textarea>
       <p class="sw-note" data-tank-only>A driving tank counts as held and cannot be taken. Stop within reach and it is cradled, covered and
       absorbed; the tank comes back thirty metres out and <b>taken</b> rises. The physics runs at the kit's native scale; size
@@ -144,6 +145,10 @@ export function initBossTab(root) {
       release; no limit a pass, the reload is the fight folder's knob), <b>V</b> the ship, the wheel zooms, <b>Esc</b> the tank. The fight
       folder's rotary, Bofors and MK-9 switches gate your guns; every landing hurts Isao as it hurts the creature. <b>R</b> restarts, <b>C</b> copies
       the values to paste.</p>
+      <p class="sw-note" data-friend hidden>Isao is the bait: he flies low and the creature hunts him. You are the gunship overhead.
+      Click to lock the mouse and aim with it; <b>Space</b> or the mouse button fires; <b>1 2 3</b> pick the 25 mm, 40 mm and MK-9 nuke
+      (paint, then release). Every hit hurts Isao too: place your strikes between the creature and Isao to drive it off, and nuke when
+      <b>NUKE CLEAR</b> lights. <b>V</b> switches the view, the wheel zooms, <b>Esc</b> frees the mouse, <b>R</b> restarts. Desktop only.</p>
       <p class="sw-note" data-state>&nbsp;</p>
     </div>
     <div class="sw-stage">
@@ -385,7 +390,7 @@ export function initBossTab(root) {
     gate: () => ({ fight: fightOn.fight, rotary: fightOn.rotary, bofors: fightOn.bofors, nuke: fightOn.nuke }),   // the fight folder's switches gate the player's guns as the schedule's
     focus: () => { const c = creatureNow().centre, b = bait.pos() ?? c; return [(c[0] + b[0]) / 2, (c[1] + b[1]) / 2]; },
     clear: () => panelCover(),   // what the panel covers: the HUD's readout and the monitor stand left of it
-    leave: () => setMode('tank'), pause: () => { paused = !paused; }, onError: (m) => shaderErrors.push(m),
+    leave: () => { if (!PLAYTEST) setMode('tank'); },   // in the friends' link Esc only frees the mouse (the seat's own first Esc) pause: () => { paused = !paused; }, onError: (m) => shaderErrors.push(m),
   });
   // R and C in the seat: the seat swallows every key in the capture phase; this capture listener is registered before any seat, so it runs first
   // T (the game's top view) is swallowed too: the lab has no map to show, and the seat would hide its HUD for a view it cannot draw
@@ -868,7 +873,12 @@ export function initBossTab(root) {
   // --- the panel ----------------------------------------------------------------------------------------------------------
   const gui = new GUI({ title: 'NIH-DAIRIA', container: root });
   // ?playtest=1 (the friends' link, src/core/dev-mode.js turns the shell's DEV off with it): the knobs' panel is hidden; the side panel and its mode select stay
-  if (q.get('playtest') === '1') gui.hide();
+  if (PLAYTEST) {
+    gui.hide();
+    for (const el of root.querySelectorAll('[data-dev], [data-bait-only], [data-tank-only]')) el.hidden = true;
+    root.querySelector('[data-friend]').hidden = false;
+    root.querySelector('[data-read]').style.visibility = 'hidden';   // the solver/fear readout is dev text (it keeps updating for the harness)
+  }
   // the stage's px the knobs' panel covers on the right (none while it is hidden): the seat's readout and monitor, and the game camera's rear frame, stand left of it
   const panelCover = () => (gui._hidden ? 0 : Math.max(0, stage.getBoundingClientRect().right - gui.domElement.getBoundingClientRect().left));
   const folders = {};
@@ -958,8 +968,8 @@ export function initBossTab(root) {
   // what applies in the mode: the tank's lure, note, SOL and cannon switches, or the bait's note and altitude knob
   function modePanel() {
     const bm = !tankOn();
-    for (const el of root.querySelectorAll('[data-tank-only]')) el.hidden = bm;
-    for (const el of root.querySelectorAll('[data-bait-only]')) el.hidden = !bm;
+    for (const el of root.querySelectorAll('[data-tank-only]')) el.hidden = PLAYTEST || bm;
+    for (const el of root.querySelectorAll('[data-bait-only]')) el.hidden = PLAYTEST || !bm;
     solCtl.show(!bm); cannonCtl.show(!bm); healthCtl.show(!bm); tankStunCtl.show(!bm);   // SOL, the cannon, the tank's health and its MK-9 stun are not in the bait mode; its altitude, erratic, health and the seat's reload are only there
     for (const c of [altCtl, reloadCtl, erraticCtl, baitHealthCtl, hopCtl]) c.show(bm);
     gunFearGui.show(bm); temperGui.show(bm);
