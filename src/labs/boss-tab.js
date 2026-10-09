@@ -799,12 +799,17 @@ export function initBossTab(root) {
     if (!seat.sync(!tankOn() && state.view !== 'free' && !!creature && !loading && !fatal)) paused = false;   // the game seat is mounted in the bait mode only (its keys are the window's); its pause goes with it
     if (creature && !loading && !fatal) { if (!paused) step(dt, cut); frameCamera(dt); }
     try {
-      if (!seat.render(dt)) renderer.render(scene, cam);   // the seat draws through its thermal and adds the GROUND TRUTH monitor
+      const probe = creature && frames % 30 === 29, a = probe ? performance.now() : 0;   // the frame that is the 30th: the render's cost is read off it
+      const drawn = seat.render(dt);   // the seat draws through its thermal and adds the GROUND TRUTH monitor
+      if (!drawn) renderer.render(scene, cam);
       gameCam?.renderRear();   // the rear feed over the main frame, straight to the canvas (./boss/game-cam.js)
       frames++;
       if (!firstRender) { firstRender = true; checkPrograms(); }
       checkPrograms();
-      if (creature && frames % 30 === 0) { renderMs = costMs(); meanRender.push(renderMs); }
+      if (probe) {   // the seat's own frame is timed as drawn: costMs draws the plain scene to the canvas, over the FLIR picture and the monitor
+        if (drawn) { gl.finish(); renderMs = performance.now() - a; } else renderMs = costMs();
+        meanRender.push(renderMs);
+      }
     } catch (e) {
       shaderErrors.push(`render: ${e.message}`); active = false;   // a shader that cannot build: say so and stop drawing
       drawReadout(); return;

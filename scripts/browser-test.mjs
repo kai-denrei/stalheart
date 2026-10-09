@@ -2330,6 +2330,23 @@ try{
  assert.equal(look.head,'GROUND TRUTH · IMPACT','the monitor is the ground truth at the impact point');
  assert(look.monitor.w>=200&&look.monitor.clearOfPanel&&look.monitor.bottom>40&&look.monitor.bottom<120,`the monitor sits bottom right, clear of the lab's panel (${JSON.stringify(look.monitor)})`);
  assert(Math.abs(look.cellMetres-10)<1e-6&&Math.abs(look.altitude-GUNSHIP_PLATFORM.altitudeCells*10)<0.5,`the platform rides ${GUNSHIP_PLATFORM.altitudeCells} cells of 10 m up (${look.altitude} m, a cell ${look.cellMetres} m)`);
+ // THE THERMAL HOLDS EVERY FRAME (the review: the lab's every-30th-frame render-cost probe drew the plain scene over the FLIR picture and the monitor): a patch
+ // of the canvas at its centre, read in a rAF that runs after the lab's own, is on the ironbow curve on 120 consecutive frames (90 are asked, the lab's
+ // frame counter proves they are consecutive and cross three multiples of 30)
+ const {IRONBOW}=await import('../src/fx/flir-pass.js');
+ const flirRun=await evaluate(`new Promise((resolve)=>{
+   const IR=${JSON.stringify(IRONBOW)},curve=[];for(let i=0;i<=200;i++){const x=i/200*10,k=Math.min(9,Math.floor(x)),f=x-k;curve.push(['r','g','b'].map(c=>IR[c][k]+(IR[c][k+1]-IR[c][k])*f));}
+   const cv=document.querySelector('#boss .sw-stage canvas'),W=48,H=27,sx=(cv.width-W)>>1,sy=(cv.height-H)>>1,c2=document.createElement('canvas');c2.width=W;c2.height=H;const g=c2.getContext('2d',{willReadFrequently:true});
+   const out=[];const tick=()=>{
+     g.drawImage(cv,sx,sy,W,H,0,0,W,H);const d=g.getImageData(0,0,W,H).data;let near=0;
+     for(let i=0;i<d.length;i+=4){let best=9;const r=d[i]/255,gr=d[i+1]/255,b=d[i+2]/255;for(const q of curve){const e=Math.hypot(r-q[0],gr-q[1],b-q[2]);if(e<best)best=e;}if(best<0.06)near++;}
+     out.push({f:window.__bossLab.readout().frames,share:near/(W*H)});
+     if(out.length<120)requestAnimationFrame(tick);else resolve(out);};
+   requestAnimationFrame(tick);})`);
+ {const fr=flirRun.map(x=>x.f),span=fr.at(-1)-fr[0],worst=Math.min(...flirRun.map(x=>x.share)),off=flirRun.filter(x=>x.share<0.8).map(x=>x.f);
+  console.log('BOSS-BAIT thermal '+JSON.stringify({samples:flirRun.length,frames:[fr[0],fr.at(-1)],worst:+worst.toFixed(2),median:+flirRun.map(x=>x.share).sort((a,b)=>a-b)[60].toFixed(2),off}));
+  assert(span>=89&&new Set(fr).size>=89,`the thermal run covers 90 consecutive frames (${fr[0]}..${fr.at(-1)}, ${new Set(fr).size} distinct)`);
+  assert.equal(off.length,0,`every frame is the FLIR picture, none flashes to true colour (frames ${off.join(',')} left the ironbow; worst share ${worst.toFixed(2)})`);}
  // the panel's switches gate the player's guns (a gun switched off is not in the seat), and the fight's own switch silences the seat
  const flip=(name)=>evaluate(`[...document.querySelectorAll('.lil-gui .name')].find(n=>n.textContent===${JSON.stringify(name)}).parentElement.querySelector('input').click()`);
  assert.equal(await evaluate(`${B}.gun("bofors")`),'bofors','the 40 mm is in the seat');
