@@ -41,8 +41,9 @@ export const BOSS_FIGHT = freeze({
     // OVER it"): trapped (the bound within `trapBound` m of him and a floor contact on the inside within `trapNear` m, for `trapFor` s) or at random
     // (`hopChance` a second, not while he panics), he climbs to `hopAlt`, crosses to the creature's far side and comes back down; one per `hopCooldown` s.
     // Under the creature (owner, 2026-10-09: "Isao gets stuck too easily under the creature"): his ground point within `underCore` of its half-width from
-    // its centre, or floor contacts within `underNear` m of him on opposite sides (more than 120 degrees apart round him), he escapes at once, up and out
-    // through the near side, cooldown and chance ignored
+    // its centre (at once), or floor contacts within `underNear` m of him on opposite sides (more than 120 degrees apart round him) held `underFor` s (the
+    // predator's long sweeping arms had him escaping 54 to 85 per cent of a run at 15 m, wave B), he escapes, up and out through the near side, cooldown and
+    // chance ignored
     trapBound: 12,         // metres from him to the bound
     trapNear: 25,          // metres: a floor contact this close on the inside: at the bound with the creature at his keep (20 m from its edge) he cannot circle out
     trapFor: 0.8,          // seconds trapped before he hops
@@ -54,7 +55,8 @@ export const BOSS_FIGHT = freeze({
     hopCross: 8,           // seconds at most across before he comes down where he is
     reachHeight: 18,       // metres: above this the creature's floor contacts cannot take him (the hold does not count)
     underCore: 0.5,        // a share of the creature's half-width (`radius`): his ground point this near its centre is under it
-    underNear: 15,         // metres: floor contacts this near him on opposite sides have him under it
+    underNear: 8,          // metres: floor contacts this near him on opposite sides have him under it
+    underFor: 0.5,         // seconds: the contacts must hold him so long, unbroken, before he escapes (his ground point under the core is at once)
   },
   nukeClear: 8,            // the bait mode's NUKE CLEAR cue (wave B, 2026-10-09: "create an opportunity for a clean nuke"): lit while Isao is beyond the MK-9's radius plus this many metres from the creature's centre
   // THE BAIT MODE'S FEAR PER GUN (owner, 2026-10-09: "we want 'fear'... #2 or #3 hits gets it wild temporarily, hurrying away from the impact ... the user learns that he

@@ -29,10 +29,12 @@
 // (`bait.hopRng`), so the erratic flight's draws are the same with or without hops. The far point is held `trapBound` farther inside the bound than the
 // wanted point's inset, so he does not land trapped again.
 // UNDER THE CREATURE (owner, 2026-10-09: "Isao gets stuck too easily under the creature"): his panic backs him off the nearest contact, which under the
-// body swings from side to side and he dithers. `underBait` says he is under it: his ground point within `underCore` of its half-width from its centre,
-// or two floor contacts within `underNear` of him more than 120 degrees apart round him. Then he escapes at once (`why` 'under', the cooldown and the
-// chance ignored, panicking or not): he climbs and flies out together, through the near side (from the centre through him, toward the bound's centre
-// when he is on the centre), to `keep` beyond the edge there, and comes down.
+// body swings from side to side and he dithers. `underBait` says he is under it: his ground point within `underCore` of its half-width from its centre ('core'),
+// or two floor contacts within `underNear` of him more than 120 degrees apart round him ('arms'; wave B: at 15 m the predator's long sweeping arms had him
+// escaping 54 to 85 per cent of a run, so the contacts must be really round him, 8 m, and held `underFor` seconds, `bait.underT`, reset when he is not under).
+// Then he escapes (`why` 'under', the cooldown and the chance ignored, panicking or not), at once under the core, after `underFor` on the arms: he climbs and
+// flies out together, through the near side (from the centre through him, toward the bound's centre when he is on the centre), to `keep` beyond the edge
+// there, and comes down.
 //
 // THE REACH ENVELOPE (owner's predator, 2026-10-09: its arms sweep out to about 90 m, and a keep from the floor contacts' front edge had him under them
 // all the time). When the lab gives the creature's body nodes (`creature.nodes`, [x, z, height] in local metres, every node: the reaching arms with
@@ -66,8 +68,8 @@ function draw(flight) {
 export function makeBait(at, tune, seed = 1) {
   const B = tune.bait, flight = { rng: seed >>> 0, t: 0, speed: B.speed, speedTarget: B.speed, surgeIn: 0, jink: 0, jinkTarget: 0, jinkIn: 0, phase: [0, 0] };
   flight.phase = [draw(flight) * 2 * Math.PI, draw(flight) * 2 * Math.PI];
-  // the fly-over's state: the hop in progress ({ phase, why, dir, alt, t, cross }) or null, the hops so far, the seconds trapped, the cooldown left
-  const hops = { hop: null, hops: 0, trapT: 0, hopWait: 0, hopRng: { rng: Math.imul(seed >>> 0, 0x9E3779B1) >>> 0 } };
+  // the fly-over's state: the hop in progress ({ phase, why, dir, alt, t, cross }) or null, the hops so far, the seconds trapped, the cooldown left, the seconds he has been under it
+  const hops = { hop: null, hops: 0, trapT: 0, hopWait: 0, underT: 0, hopRng: { rng: Math.imul(seed >>> 0, 0x9E3779B1) >>> 0 } };
   return { pos: [at[0], at[1]], heading: 0, hp: B.health, max: B.health, fleeing: false, held: 0, reach: null, flight, ...hops };
 }
 
@@ -196,18 +198,18 @@ export function trappedBait(bait, creature, tune, bound) {
   return false;
 }
 
-// under the creature now: his ground point within `underCore` of its half-width from its centre, or two floor contacts within `underNear` more than
-// 120 degrees apart round him
+// under the creature now: 'core' (his ground point within `underCore` of its half-width from its centre), 'arms' (two floor contacts within `underNear` more
+// than 120 degrees apart round him) or null; the persistence (`underFor`) is `hopBait`'s
 export function underBait(bait, creature, tune) {
   const B = tune.bait, c = creature.centre;
-  if (creature.radius > 0 && Math.hypot(bait.pos[0] - c[0], bait.pos[1] - c[1]) < creature.radius * B.underCore) return true;
+  if (creature.radius > 0 && Math.hypot(bait.pos[0] - c[0], bait.pos[1] - c[1]) < creature.radius * B.underCore) return 'core';
   const near = [];
   for (const p of creature.contacts ?? []) {
     const dx = p[0] - bait.pos[0], dz = p[1] - bait.pos[1], d = Math.hypot(dx, dz);
     if (d < B.underNear && d > 1e-6) near.push([dx / d, dz / d]);
   }
-  for (let i = 0; i < near.length; i++) for (let j = i + 1; j < near.length; j++) if (near[i][0] * near[j][0] + near[i][1] * near[j][1] < -0.5) return true;
-  return false;
+  for (let i = 0; i < near.length; i++) for (let j = i + 1; j < near.length; j++) if (near[i][0] * near[j][0] + near[i][1] * near[j][1] < -0.5) return 'arms';
+  return null;
 }
 
 // the hop's goal: `keep` metres beyond the creature's edge on the side `side` x `dir` (`dir` the unit from its centre toward where he started; side -1
@@ -242,7 +244,7 @@ export function startHop(bait, creature, tune, why, alt, bound = null) {
     if (out(free) - out(near) > tune.bait.keep / 2 && out(far) > out(near)) side = -1;   // the bound took more than half his keep off the near side's goal
   }
   bait.hop = { phase: 'climb', why, dir, side, alt, t: 0, cross: 0 };
-  bait.hops++; bait.trapT = 0; bait.fleeing = false;
+  bait.hops++; bait.trapT = 0; bait.underT = 0; bait.fleeing = false;
   if (bait.flight) { bait.flight.jink = 0; bait.flight.jinkTarget = 0; }
   return bait.hop;
 }
@@ -253,7 +255,11 @@ export function startHop(bait, creature, tune, why, alt, bound = null) {
 export function hopBait(bait, dt, creature, tune, { bound = null, alt = 0, base = 0 } = {}) {
   const B = tune.bait;
   let started = false, ended = false;
-  if (!bait.hop && underBait(bait, creature, tune)) { startHop(bait, creature, tune, 'under', alt, bound); started = true; }   // under it: out at once
+  if (!bait.hop) {   // under its core: out at once; its arms round him: after `underFor` seconds of it without a break
+    const under = underBait(bait, creature, tune);
+    bait.underT = under ? bait.underT + dt : 0;
+    if (under === 'core' || bait.underT >= B.underFor - 1e-9) { startHop(bait, creature, tune, 'under', alt, bound); started = true; }
+  }
   if (!bait.hop) {
     bait.hopWait = Math.max(0, bait.hopWait - dt);
     bait.trapT = trappedBait(bait, creature, tune, bound) ? bait.trapT + dt : 0;

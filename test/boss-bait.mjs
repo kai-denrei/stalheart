@@ -19,8 +19,8 @@ const EPS = 1e-9;
 
 // the content: the bait's numbers, deep-frozen, with Isao's altitude from the game (3.4 wall-heights x 0.03 + half a cell, at 125 m a world unit)
 assert.ok(Object.isFrozen(E), 'the bait content is frozen');
-assert.deepEqual(Object.keys(E).sort(), ['accel', 'altitude', 'bob', 'bobPeriod', 'caught', 'caughtFor', 'envelopeTime', 'erratic', 'flee', 'health', 'hopAlt', 'hopChance', 'hopClimb', 'hopCooldown', 'hopCross', 'hopSpeed', 'jink', 'jinkMax', 'jinkMin', 'keep', 'panic', 'panicHeight', 'reachHeight', 'speed', 'speedMax', 'speedMin', 'surgeMax', 'surgeMin', 'trapBound', 'trapFor', 'trapNear', 'turn', 'underCore', 'underNear']);
-assert.ok(E.trapBound === 12 && E.trapNear === 25 && E.underCore === 0.5 && E.underNear === 15 && E.trapFor === 0.8 && E.hopChance === 0.03 && E.hopCooldown === 8 && E.hopAlt === 30 && E.hopClimb === 20 && E.hopSpeed === 22 && E.reachHeight === 18, 'the fly-over numbers');
+assert.deepEqual(Object.keys(E).sort(), ['accel', 'altitude', 'bob', 'bobPeriod', 'caught', 'caughtFor', 'envelopeTime', 'erratic', 'flee', 'health', 'hopAlt', 'hopChance', 'hopClimb', 'hopCooldown', 'hopCross', 'hopSpeed', 'jink', 'jinkMax', 'jinkMin', 'keep', 'panic', 'panicHeight', 'reachHeight', 'speed', 'speedMax', 'speedMin', 'surgeMax', 'surgeMin', 'trapBound', 'trapFor', 'trapNear', 'turn', 'underCore', 'underFor', 'underNear']);
+assert.ok(E.trapBound === 12 && E.trapNear === 25 && E.underCore === 0.5 && E.underNear === 8 && E.underFor === 0.5 && E.trapFor === 0.8 && E.hopChance === 0.03 && E.hopCooldown === 8 && E.hopAlt === 30 && E.hopClimb === 20 && E.hopSpeed === 22 && E.reachHeight === 18, 'the fly-over numbers');
 assert.ok(E.trapNear > E.keep && E.underNear < E.keep && E.reachHeight < E.hopAlt && E.hopSpeed <= E.speedMax, 'trapped is the creature at his keep, under is closer; the hop flies above the reach, no faster than his band');
 assert.ok(Math.abs(B.altitude - (3.4 * 0.03 + 0.08 / 2) * 125) < 1e-9, `Isao's altitude is the game's 3.4 wall-heights above the surface plus half a cell, in metres: ${B.altitude}`);
 assert.ok(E.erratic === 1 && E.speedMin === 8 && E.speedMax === 26 && E.accel === 30 && E.jinkMin === 0.6 && E.jinkMax === 2 && E.bob === 1.5 && Math.abs(E.jink - 40 * Math.PI / 180) < 1e-12, 'the erratic numbers: on by default, 8-26 m/s, 30 m/s2, jinks of 40 degrees (radians) every 0.6-2 s, a 1.5 m bob');
@@ -379,20 +379,39 @@ let hopLog = null, randomRate = null;
   // never taken, back at his altitude
   const body = bodyAt(0, 0), noisy = { ...T, bait: { ...B, hopChance: 0 } };
   assert.ok(underBait(makeBait([3, 2], T), body, T), 'his ground point near the centre is under it');
-  assert.ok(underBait(makeBait([10, -12], T), body, T), 'between feet on opposite sides is under it');
+  assert.equal(underBait(makeBait([0, -12], T), body, T), 'arms', 'between feet within 8 m on opposite sides is under it');
+  assert.equal(underBait(makeBait([3, 2], T), body, T), 'core', 'on the centre it is the core');
+  assert.ok(!underBait(makeBait([10, -12], T), body, T), 'feet at 12 m on opposite sides (the wave-B arms rule counted them at 15) no longer count');
+  {
+    // held `underFor`: 0.4 s between its feet does not send him out, 0.6 s does; a break resets the count; the core is at once
+    const hold = (at, seconds, brk) => {
+      const b = makeBait(at, noisy); b.hopWait = 99;
+      for (let i = 0, n = Math.round(seconds * 60); i < n; i++) {
+        if (brk !== undefined && i === brk) hopBait(b, DT, bodyAt(500, 500), noisy, { bound: null, alt: 4, base: 4 });   // a frame with the creature far away
+        hopBait(b, DT, body, noisy, { bound: null, alt: 4, base: 4 });
+      }
+      return b;
+    };
+    assert.ok(!hold([0, -12], 0.4).hop, 'between its feet for 0.4 s he stays');
+    assert.ok(hold([0, -12], 0.6).hop?.why === 'under', 'for 0.6 s he escapes');
+    assert.ok(!hold([0, -12], 0.6, 20).hop, 'a break in the middle starts the count over');
+    const once = makeBait([3, 2], noisy); hopBait(once, DT, body, noisy, { bound: null, alt: 4, base: 4 });
+    assert.ok(once.hop?.why === 'under', 'under the core he escapes on the first frame');
+  }
   assert.ok(!underBait(makeBait([0, 40], T), body, T) && !underBait(makeBait([0, 22], T), body, T), 'beside it (outside its feet) is not');
   let clearAt = null, worstUnder = null;
-  for (const at of [[0, 0], [3, 2], [10, -12], [-11, 5]]) {
+  for (const at of [[0, 0], [3, 2], [0, -12], [0, 12]]) {
     const b = makeBait(at, noisy); b.hopWait = 99; b.fleeing = true;   // the cooldown running and a panic on: neither stops the escape
     let t = 0, alt = 4, first = null, taken = false, clear = null;
     for (let i = 0; i < 12 * 60; i++) {
       const r = hopBait(b, DT, body, noisy, { bound, alt, base: 4 });
       if (r) alt = r.alt; else { alt = 4; stepBait(b, DT, body, noisy); }
-      if (i === 0) first = r && b.hop?.why;
+      if (first === null && r && b.hop) first = b.hop.why;   // by 0.6 s at the latest (the arms' hold)
+      if (first === null && t > 0.6) first = 'late';
       taken = taken || baitCaught(b, body, DT, noisy); t += DT;
       if (clear === null && Math.min(...body.contacts.map((p) => dist(p, b.pos))) > 8) clear = t;
     }
-    assert.equal(first, 'under', `under at ${at} he hops out at once`);
+    assert.equal(first, 'under', `under at ${at} he hops out (the core at once, the arms after ${B.underFor} s)`);
     assert.ok(!taken && clear !== null && clear <= 6, `under at ${at}: clear of every contact by 8 m in ${clear?.toFixed(2)} s, not taken`);
     if (clearAt === null || clear > clearAt) { clearAt = clear; worstUnder = at; }
   }

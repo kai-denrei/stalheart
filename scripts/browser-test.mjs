@@ -2287,7 +2287,7 @@ try{
  // centre speed between polls (m/s; from the bound's centre and in the lab's own frame, which re-anchors every 5 m: both are noisy at the
  // top, p90 26 to 46 m/s and maxima to 137 m/s, where the kit's own velocity reads a mean of 8 to 17 m/s, so the tails are not the creature's pace) and the round's losses (each restarted). Logged, not asserted; it reads only bait(), fight() and arena(), so the same
  // probe runs on the tree before wave B. BOSS_UNDER_SET (JSON, { knob name: value }) sets panel knobs first (a variant); each escape's start is
- // logged by its cause: his ground point inside half the body's half-width of its centre ('core'), else floor contacts within 15 m on opposite sides ('arms')
+ // logged by its cause: his ground point inside half the body's half-width of its centre ('core'), else floor contacts within 8 m on opposite sides ('arms'; 15 m on the tree before the escape fix)
  const B='window.__bossLab';
  await go('boss-under','labs.html?sw=0&acceptance=1#boss');
  await until(`!!${B} && ${B}.readout().steps > 0`,60000);
