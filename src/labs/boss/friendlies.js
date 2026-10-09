@@ -19,8 +19,9 @@
 //   `lay`, the ignite burst and the burn loop; the beam TRACKS (the rules' `aimNow` each frame: in front of the creature, clear of the
 //   tank), the ring and the contact bursts with it, `burn` every frame until `until`, then `lift`.
 //
-// THE HOST'S HOOKS (default no-ops): `onTankHit(reason)`, `onLanding(plan, { damage, point })` for every Bofors and MK-9 landing and
-// `onBeam(plan, point)` each frame SOL burns; `point` is the plan's local [x, z], a fresh array each call.
+// THE HOST'S HOOKS (default no-ops): `onTankHit(reason)`, `onLanding(plan, { damage, point })` for every Bofors and MK-9 landing,
+// `onBeam(plan, point)` each frame SOL burns and `onBurn(plan, dt)` each frame a stream or the beam burns (the bait mode's Isao is
+// hurt by them as the creature is); `point` is the plan's local [x, z], a fresh array each call.
 //
 // POSITIONS: plans are in the lab's local metres [x, z]; `surface(x, z)` gives the ground in the planet-centred `sphere` group,
 // where the rings, the tracers, the laser and the explosions all live. `shift(sx, sz)` follows a re-anchor of the lab's frame.
@@ -41,7 +42,7 @@ const Z = new THREE.Vector3(0, 0, 1);
 
 export function createFriendlies(scene, {
   sphere = scene, surface, cellSide = 10, explosions = null, sfx = null, tune, fight, now, creature, tank,
-  onTankHit = () => {}, onLanding = () => {}, onBeam = () => {},
+  onTankHit = () => {}, onLanding = () => {}, onBeam = () => {}, onBurn = () => {},
   enabled = () => ({ rotary: true, bofors: true, nuke: true, sol: true }),
 } = {}) {
   const unit = cellSide / 10;   // scene units per metre
@@ -131,6 +132,7 @@ export function createFriendlies(scene, {
     if (t >= p.until) return true;
     e.voice ??= sfx?.loop(rotary.sound) ?? null;   // loop() is null until the sample decodes: asked again next frame
     if (burn(state, p, dt, c, k).tankHit) onTankHit('the 25 mm');
+    onBurn(p, dt);
     for (e.streamT += dt; e.streamT >= STREAM.every; e.streamT -= STREAM.every) {
       optic.flight(skyPoint(), here.point.toArray(), rotary.ringHex, rotary.travel, STREAM.width);
       explosions?.spawn(`gunship.${rotary.key}`, here.point.toArray(), here.normal.toArray(), cellSide);
@@ -168,6 +170,7 @@ export function createFriendlies(scene, {
     } else if (solOwner === e) laser.aim(here.point, here.normal);
     if (burn(state, p, dt, c, k).tankHit) onTankHit('SOL-88');   // never: the plan spares the tank
     onBeam(p, [...p.at]);
+    onBurn(p, dt);
     e.contactT += dt;
     for (const every = 1 / LASER_CONTACT_RATE; e.contactT >= every; e.contactT -= every) {
       explosions?.spawn('laser.contact', here.point.toArray(), here.normal.toArray(), cellSide);

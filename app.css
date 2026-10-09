@@ -154,6 +154,7 @@
 #boss .sw-hud[hidden]{display:none}
 #boss .ih-row{display:flex;align-items:center;gap:8px;color:#b8ffca}
 #boss .ih-lbl{font-size:10px;letter-spacing:.16em;color:#4fae63}
+#boss .ih-row[hidden]{display:none}
 #boss .ih-num{min-width:7ch}
 #boss .ih-bar{position:relative;width:140px;height:7px;border:1px solid rgba(184,255,202,.45)}
 #boss .ih-bar i{position:absolute;inset:0 auto 0 0;background:#b8ffca;transition:width .25s linear}

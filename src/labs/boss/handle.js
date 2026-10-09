@@ -6,13 +6,18 @@ import { readout as fightReadout } from '../../domain/boss-fight.js';
 
 export function createLabHandle({
   getCreature, getScale, getT, getFight, getGameCam, getReanchors, setScripted, setPin,
-  readout, setLure, setCam, setFight, fireCannon, copySettings, reset, tryReanchor, placeTank, creatureNow,
+  readout, setLure, setCam, setMode, bait, setFight, fireCannon, copySettings, reset, tryReanchor, placeTank, creatureNow,
   plane, drive, keys, state, cam, params, gui, arena, fear, fightTune,
 }) {
   const lab = {
     readout,
     creature: () => getCreature(),
     setLure,
+    // the bait mode: mode('bait') or mode('tank') switches (a new round, as the panel's select does) and returns the mode; bait() is
+    // Isao now, { pos: [x, z], hp, max, heading, alt, gone, fleeing, gap, hits, said } with `gap` his metres beyond the creature's front
+    // edge along the line toward him (null before his first round)
+    mode: (m) => (m === undefined ? state.mode : (setMode(m), state.mode)),
+    bait: () => bait.state(),
     // a stopped tank; `near` puts it `at` native metres from the creature's centre, on the side it already stands. The
     // default 0.05 is inside the kit's 0.075 capture radius and can land under an arm: a prey inside the skin never lets the
     // cradle finish (its minimum gap stays below -0.0005), so a meal is tested from outside the reach, as the kit's prey is

@@ -30,11 +30,13 @@ import { createFriendlies } from './boss/friendlies.js';
 import { createFear } from './boss/fear.js';
 import { createArena, deeper } from './boss/arena.js';
 import { createRound } from './boss/round.js';
+import { createBaitMode } from './boss/bait.js';
 import { createGameCam } from './boss/game-cam.js';
 import { createLabHandle } from './boss/handle.js';
 import { makeFight, startFight, capture, readout as fightReadout } from '../domain/boss-fight.js';
 import { BOSS_FIGHT } from '../content/boss-fight.js';
 import { LASER_AUDIO } from '../content/orbital-laser.js';
+import { voiceSounds } from '../content/voice-hooks.js';
 import { SOUNDS } from '../audiomanifest.js';
 import { createExplosions } from '../fx/explosions.js';
 import { makeTankFeel, stepTankFeel, applyTankFeel, landTankFeel } from '../tankfeel.js';
@@ -118,6 +120,7 @@ export function initBossTab(root) {
       <label>body <select data-k="variant">${CREATURE_VARIANTS.map((v) => `<option value="${v.id}">${v.name}</option>`).join('')}</select></label>
       <label>lure <select data-k="lure"><option value="tank">the tank (WASD)</option><option value="point">a point (click the ground)</option><option value="auto">the figure-eight</option></select></label>
       <label>view <select data-k="view"><option value="chase">chase</option><option value="free">free orbit</option></select></label>
+      <label>mode <select data-k="mode"><option value="tank">tank (WASD)</option><option value="bait">bait (Isao flies, the creature hunts him)</option></select></label>
       <label>camera (V) <select data-k="cam"><option value="lab">lab</option><option value="game">game (rear view)</option></select></label>
       <button type="button" class="sw-run" data-act="disturb">disturb</button>
       <button type="button" class="sw-run" data-act="reset">reset</button>
@@ -161,7 +164,7 @@ export function initBossTab(root) {
   const sphere = new THREE.Group(); scene.add(sphere);
   const rig = new THREE.Group(); rig.name = 'Nih-Dairia rig'; sphere.add(rig);
 
-  const state = { variant: NIH_DAIRIA_VARIANT, lure: 'tank', view: 'chase', cam: 'lab', sizeMetres: NIH_DAIRIA_SIZE_METRES };
+  const state = { variant: NIH_DAIRIA_VARIANT, lure: 'tank', view: 'chase', cam: 'lab', mode: 'tank', sizeMetres: NIH_DAIRIA_SIZE_METRES };
   variantSelect.value = state.variant;   // the default is content's, not the option order's
   const params = { motion: { ...NIH_DAIRIA_MOTION }, phys: { gravity: PHYS.gravity, iterations: PHYS.iterations }, feeding: true, instinct: true };
   let active = false, disposed = false, built = false, raf = 0, last = performance.now(), t = 0;
@@ -199,7 +202,7 @@ export function initBossTab(root) {
   let pin = null;        // { id, shape, until }: pinTo()'s hold of the creature's target on a shape's centre, the routing off
   let blocked = false, cruiseTap = false, lastFastTap = -9;
   // the engine bed: a looped handle, retried every frame while moving (loop() is null until the samples decode), as the game does
-  const audio = makeAudio({ base: '../', sounds: { ...SOUNDS, ...LASER_AUDIO } }); audio.arm();   // the context is born on the first gesture; SOL's burn loop is the laser lab's sample
+  const audio = makeAudio({ base: '../', sounds: { ...SOUNDS, ...LASER_AUDIO, ...voiceSounds() } }); audio.arm();   // the context is born on the first gesture; SOL's burn loop is the laser lab's sample
   let engine = null, engineRunning = false;
   const keys = new Set();
   const isText = (e) => /^(INPUT|SELECT|TEXTAREA)$/.test(e.target?.tagName ?? '');
@@ -213,7 +216,7 @@ export function initBossTab(root) {
     }
     if (k === ' ') { e.preventDefault(); if (!keys.has(k)) fireCannon(); }   // the key-down edge: a held Space does not repeat
     if (k === 'r' && active && !e.repeat && !keys.has(k) && !e.ctrlKey && !e.metaKey && !e.altKey) newRound();   // a new round at the key-down edge (a held R or a browser reload chord does not repeat it)
-    if (k === 'v' && active && !e.repeat && !keys.has(k) && !e.ctrlKey && !e.metaKey && !e.altKey) setCam(state.cam === 'game' ? 'lab' : 'game');   // the driving camera, at the key-down edge
+    if (k === 'v' && active && !e.repeat && !keys.has(k) && tankOn() && !e.ctrlKey && !e.metaKey && !e.altKey) setCam(state.cam === 'game' ? 'lab' : 'game');   // the driving camera, at the key-down edge
     keys.add(k); if (DRIVE_KEYS.includes(k)) e.preventDefault();
   };
   const onUp = (e) => keys.delete(e.key.toLowerCase());
@@ -276,11 +279,12 @@ export function initBossTab(root) {
     for (let i = 0; i < c.length; i++) if (c[i] > 0) contacts.push([b.x[i * 3] * scale, b.x[i * 3 + 2] * scale]);
     return { centre: [m.center.x * scale, m.center.z * scale], velocity: [m.velocity.x * scale, m.velocity.z * scale], radius: native * scale / 2, contacts };
   }
-  const tankNow = () => ({ pos: hullLost ? [1e9, 1e9] : [drive.x, drive.z], radius: fightTune.hull.radius });   // a lost hull is no target
+  const tankOn = () => state.mode === 'tank';   // the bait mode has no tank: hidden, not driven, nobody's prey, the cannon off
+  const tankNow = () => ({ pos: hullLost || !tankOn() ? [1e9, 1e9] : [drive.x, drive.z], radius: fightTune.hull.radius });   // a lost hull is no target
   // THE FEAR (./boss/fear.js, the rules in src/domain/boss-fear.js): what the friendlies report frightens the creature or stuns it
   let stunned = false;   // `motion.active` is held false by a stun in progress
   const fear = createFear({
-    tune: () => fightTune, creature: creatureNow, tank: tankNow, fight: () => fight, now: () => t,
+    tune: () => fightTune, creature: creatureNow, tank: () => (tankOn() ? tankNow() : bait.asTank()), fight: () => fight, now: () => t,
     kit: () => creature, on: () => fightOn.fight && fightOn.fear,
   });
   // THE ARENA (./boss/arena.js, the rules in src/domain/boss-arena.js): two rocks that stay and four obstacles the MK-9 breaks, in the
@@ -291,20 +295,21 @@ export function initBossTab(root) {
     enabled: () => fightOn.obstacles, occupants: () => occupantsNow(), colors: { rock: ground(look.floors.visited), wall: ground(look.floors.spawn) },
   });
   // what no shape may be stood up on: the creature (its centre and its half-width plus 2 m, as creatureNow's radius) and the tank (the hull), unless the hull is lost
-  const occupantsNow = () => [...(creature ? [{ at: [creature.motion.center.x * scale, creature.motion.center.z * scale], radius: native * scale / 2 + 2 }] : []), ...(hullLost ? [] : [{ at: [drive.x, drive.z], radius: fightTune.hull.radius }])];
+  const occupantsNow = () => [...(creature ? [{ at: [creature.motion.center.x * scale, creature.motion.center.z * scale], radius: native * scale / 2 + 2 }] : []), ...(hullLost || !tankOn() ? [] : [{ at: [drive.x, drive.z], radius: fightTune.hull.radius }])];
   const tankBlocker = (x, z) => deeper(body.blocker(x, z), arena.blocker(x, z));   // the body's or the arena's, whichever pushes deeper
   const friendlies = createFriendlies(scene, {
     sphere, surface, cellSide: 10, explosions, sfx: audio, tune: () => fightTune, fight: () => fight, now: () => t,
     creature: creatureNow, tank: tankNow,
     // plans in flight keep landing after a loss or a kill: the arena breaks only in a running fight
-    onLanding: (plan, { point }) => { fear.landed(plan, point); if (fight.phase === 'fight') arena.landed(plan, point); }, onBeam: (plan, point) => fear.beam(plan, point),
-    onTankHit: loseHull, enabled: () => Object.fromEntries(['rotary', 'bofors', 'nuke', 'sol'].map((k) => [k, fightOn.fight && fightOn[k]])),
+    onLanding: (plan, { point }) => { fear.landed(plan, point); bait.hurt(plan); if (fight.phase === 'fight') arena.landed(plan, point); }, onBeam: (plan, point) => fear.beam(plan, point),
+    onBurn: (plan, dt) => bait.burn(plan, dt),   // a landing and a burn hurt Isao as they hurt the creature (./boss/bait.js; nothing out of the bait mode)
+    onTankHit: loseHull, enabled: () => Object.fromEntries(['rotary', 'bofors', 'nuke', 'sol'].map((k) => [k, fightOn.fight && fightOn[k] && tankOn()])),   // the bait mode makes no automatic plans: the player's are the seat's
   });
   // a landing on the hull: the hull goes in a shell's burst and stays hidden until the reset. While it is lost it is nobody's prey:
   // the drive stands still, the lure is not fed, the shooters' provider reports it a world away and the feeding is off (the
   // reset's restoreCreature turns it back on), so the creature cannot take an invisible hull and stretch the card with a meal
   function loseHull(reason) {
-    if (fight.phase !== 'fight') return;
+    if (fight.phase !== 'fight' || !tankOn()) return;
     capture(fight, reason);
     hullLost = true;
     if (creature) creature.motion.feeding.enabled = false;
@@ -313,8 +318,19 @@ export function initBossTab(root) {
     audio.play('blast_fire');
   }
   const round = createRound(stage, {
-    tune: () => fightTune, fight: () => fight, on: () => fightOn.fight,
+    tune: () => fightTune, fight: () => fight, on: () => fightOn.fight, cardExtra: () => bait.cardText(),
     onKilled: dieV1, onLost: () => {}, onReset: () => { resetDue = 0; },
+  });
+  // THE BAIT MODE (./boss/bait.js, the rules in src/domain/boss-bait.js): Isao flies low on autopilot with the creature after him, a bar under
+  // the creature's, his lines as captions. The lab's `mode` switch turns it on; the tank is out while it is
+  const bait = createBaitMode({
+    stage, sphere, tune: () => fightTune, fight: () => fight, now: () => t, creature: creatureNow, route: (from, to) => arena.route(from, to),
+    ground: (x, z) => tankWorld(x, z), tangent: (w) => frameAt(w, planet.radius, 0, frame.east), sfx: audio,
+    burst: (x, z, alt) => {   // his end, the shell's burst where he flew
+      const at = surface(x, z), p = at.point.clone().addScaledVector(at.normal, alt);
+      explosions.spawn('tank.shell', p.toArray(), at.normal.toArray(), 10); audio.play('blast_fire');
+    },
+    caption: (text, seconds) => showCallout(text, seconds * 1000),
   });
   // THE V1 DEATH (owner, 2026-10-08: "set its gravity to 10 (max) and stop all movements")
   function dieV1() {
@@ -324,11 +340,12 @@ export function initBossTab(root) {
   }
   function stepFight(dt, driving) {
     const f = creature.motion.feeding;
-    if (fightOn.fight && state.lure === 'tank' && feedWas === 'hunting' && f.phase !== 'hunting') capture(fight, 'caught');
+    if (fightOn.fight && tankOn() && state.lure === 'tank' && feedWas === 'hunting' && f.phase !== 'hunting') capture(fight, 'caught');
     feedWas = f.phase;
     if (fightOn.fight && driving && fight.phase === 'idle' && resetDue < 0) startFight(fight);
     friendlies.tick(dt);
     round.tick(dt);
+    bait.tick(dt);   // after the round, so a kill the same frame wins over Isao's loss
     if (resetDue >= 0) {   // a meal in progress finishes first, so it counts and the prey is never moved under the kit
       resetDue += dt;
       if (!(MEAL_PHASES.has(f.phase) && f.enabled) || resetDue >= MEAL_WAIT) newRound();
@@ -336,7 +353,7 @@ export function initBossTab(root) {
   }
   const muzzleV = new THREE.Vector3(), aimQ = new THREE.Quaternion(), aimV = new THREE.Vector3();
   function fireCannon() {
-    if (!planet || !frame || !tank.visible || !fightOn.cannon) return false;
+    if (!planet || !frame || !tank.visible || !tankOn() || !fightOn.cannon) return false;
     if (state.lure === 'tank' && MEAL_PHASES.has(creature?.motion.feeding.phase)) return false;   // the prey cannot shoot
     let from = [drive.x, drive.z], dir = plane.heading();
     tank.updateMatrixWorld(true);
@@ -380,7 +397,7 @@ export function initBossTab(root) {
     fight = makeFight(fightTune);
     hullLost = false; feedWas = 'hunting';
     if (!creature || !frame) return;
-    const was = tankWorld();
+    const bm = !tankOn(), was = bm && bait.groundWorld() ? bait.groundWorld() : tankWorld();
     creature.reset(); lastMeals = 0; auto.reset();
     restoreCreature();
     frame = frameAt([0, 1, 0], planet.radius, 0); placeRig(); arenaCentre.set(0, 0, 0);
@@ -389,8 +406,8 @@ export function initBossTab(root) {
     if (d > 1e-6) { dx /= d; dz /= d; } else { dx = 1; dz = 0; }
     const R = fightTune.respawn;
     const at = arena.spawn([cx + dx * R, cz + dz * R]);   // clear of the obstacles by the hull and two metres
-    plane.reset(at[0], at[1], Math.atan2(cx - at[0], cz - at[1]));   // facing the creature
-    tank.visible = true; placeTank(); gameCam?.snap();
+    if (bm) { bait.reset(at); tank.visible = false; }   // Isao `respawn` metres out, clear of the obstacles, whole
+    else { plane.reset(at[0], at[1], Math.atan2(cx - at[0], cz - at[1])); tank.visible = true; placeTank(); gameCam?.snap(); }   // facing the creature
     pointWorld = toWorld(frame, creature.motion.target.toArray(), scale);
   }
   function restoreCreature() {
@@ -406,6 +423,7 @@ export function initBossTab(root) {
     arena.reset(false);   // the frame stays: the obstacles come back where they stand, but not on the creature or the tank (the next round's)
     fight = makeFight(fightTune);
     restoreCreature();
+    if (!tankOn() && bait.has()) bait.reset(bait.pos());   // Isao whole again where he is
     gui.controllersRecursive().forEach((c) => c.updateDisplay());
     return fightOn.fight;
   }
@@ -453,6 +471,7 @@ export function initBossTab(root) {
     const l = toLocal(frame, w, 1); drive.x = l[0]; drive.z = l[2];   // the tank stays put in the world
     cannon.shift(shift[0] * scale, shift[2] * scale);                 // and so do the shells in flight
     friendlies.shift(shift[0] * scale, shift[2] * scale);             // and the strikes' landings
+    bait.shift(shift[0] * scale, shift[2] * scale);                   // and Isao
     fear.shift(shift[0] * scale, shift[2] * scale);                   // and what frightens it
     arena.shift(shift[0] * scale, shift[2] * scale);                  // and the obstacles
     reanchors++;
@@ -557,22 +576,25 @@ export function initBossTab(root) {
     const m = creature.motion, f = m.feeding;
     routed = false;
     tryReanchor(REANCHOR_METRES);
-    const pinned = state.lure === 'tank' && MEAL_PHASES.has(f.phase);
+    const bm = !tankOn();
+    if (bm && !bait.has()) newRound();   // the mode was switched before the creature was here: Isao's first round
+    const pinned = !bm && state.lure === 'tank' && MEAL_PHASES.has(f.phase);
     let driving = false;
-    if (hullLost) { drive.speed = 0; blocked = false; }   // a lost hull neither drives nor reads input (a harness script carries on after the reset)
+    if (hullLost || bm) { drive.speed = 0; blocked = false; }   // a lost hull neither drives nor reads input (a harness script carries on after the reset)
     else if (!pinned) { body.project(); ({ moving: driving, blocked } = plane.step(dt, driveInput(), tankBlocker)); }
     else { drive.speed = 0; scripted = null; blocked = false; }
     const moving = driving || keysHeld() || (scripted && t < scripted.until);
-    m.targetHeld = state.lure === 'tank' && !hullLost ? !!moving : false;   // the point and the auto-lure are never held, nor a lost hull
+    m.targetHeld = bm || (state.lure === 'tank' && !hullLost ? !!moving : false);   // Isao is always held (the hold that takes him is the rules'); the point and the auto-lure are never held, nor a lost hull
+    if (bm) bait.step(dt);
     auto.enabled = state.lure === 'auto';
     // the fear: a stun holds the instinct off (restored only while the fight is on: a kill has set it false for good), a flight
     // replaces the lure with the flee point (local metres to native, as the lure is)
     const fr = fear.step(t);
     if (fr.mode === 'stun') { stunned = true; m.active = false; }
     else if (stunned) { stunned = false; if (fightOn.fight && fight.phase === 'fight') m.active = params.instinct; }
-    if (!f.locked && !(hullLost && state.lure === 'tank')) {
+    if (!f.locked && !(hullLost && state.lure === 'tank' && !bm) && !(bm && bait.gone())) {
       dtNow = dt;
-      const aim = lureTarget();
+      const aim = bm ? lureV.set(bait.pos()[0] / scale, 0, bait.pos()[1] / scale) : lureTarget();
       if (fr.mode === 'flee') aim.set(fr.point[0] / scale, 0, fr.point[1] / scale);
       aim.setY(ARENA.lureHeight);
       routed = false;
@@ -600,10 +622,11 @@ export function initBossTab(root) {
     }
     if (f.meals > lastMeals) {
       lastMeals = f.meals; taken++;
-      if (state.lure === 'tank') { showCallout('TAKEN'); respawnTank(); }
+      if (!bm && state.lure === 'tank') { showCallout('TAKEN'); respawnTank(); }
     }
     if (f.meals < lastMeals) lastMeals = f.meals;
-    if (state.lure === 'tank' && MEAL_PHASES.has(f.phase)) {
+    if (bm) tank.visible = false;
+    else if (state.lure === 'tank' && MEAL_PHASES.has(f.phase)) {
       // the kit holds the prey fixed: the tank is wherever the prey is, and gone once it is concealed
       const p = toWorld(frame, f.preyPosition.toArray(), scale), l = toLocal(frame, p, 1);
       drive.x = l[0]; drive.z = l[2];
@@ -616,7 +639,7 @@ export function initBossTab(root) {
     stepTankFeel(feel, dt, driving, FEEL);
     applyTankFeel(tank, feel, FEEL);
     runEngine(driving);
-    stepFight(dt, driving);
+    stepFight(dt, driving || bm);   // Isao is flying from the round's first frame
     stepCannon(dt);
     arena.sync();   // the obstacles shown, hidden and placed on the frame as it stands now
     // the readout's numbers, per frame, into the rolling means
@@ -652,10 +675,10 @@ export function initBossTab(root) {
   const scenePoint = (w, out) => out.set(w[0], w[1] - planet.radius, w[2]);
   function frameCamera(dt) {
     controls.enabled = state.view === 'free';
-    gameCam?.setOn(state.cam === 'game' && state.view !== 'free');   // the game's own camera takes the chase's place (./boss/game-cam.js)
+    gameCam?.setOn(state.cam === 'game' && state.view !== 'free' && tankOn());   // the game's own camera takes the chase's place (./boss/game-cam.js); it is the tank's, so not in the bait mode
     if (state.view === 'free') { controls.update(); return; }
     if (gameCam?.isOn()) { gameCam.step(dt); return; }
-    const c = creature.motion.center, cw = toWorld(frame, [c.x, 0, c.z], scale), tw = tankWorld();
+    const c = creature.motion.center, cw = toWorld(frame, [c.x, 0, c.z], scale), tw = tankOn() ? tankWorld() : bait.air();   // the chase follows the tank, or Isao in the bait mode
     const up = tmpUp.set(...frame.up);
     const creatureAt = scenePoint(cw, tmpA), tankAt = scenePoint(tw, tmpB);
     const toward = creatureAt.clone().sub(tankAt); toward.addScaledVector(up, -toward.dot(up));
@@ -682,10 +705,10 @@ export function initBossTab(root) {
     }
   }
 
-  function showCallout(text) {
+  function showCallout(text, ms = 1600) {
     while (calloutsEl.children.length >= 3) calloutsEl.firstChild.remove();
     const d = document.createElement('div'); d.className = 'callout co-milestone'; d.textContent = text;
-    calloutsEl.append(d); setTimeout(() => d.remove(), 1600);
+    calloutsEl.append(d); setTimeout(() => d.remove(), ms);
   }
 
   const fmt = (v, n = 2) => v.toFixed(n);
@@ -702,7 +725,7 @@ export function initBossTab(root) {
       arena: { on: fightOn.obstacles, live: arena.live().length, ...(({ pushed, ms }) => ({ pushed, ms }))(arena.stats()) },
       shaderErrors: shaderErrors.slice(), error: fatal ?? frameError, cropped,
       kernel: !!creature?.body.kernel,
-      cam: state.cam, rearMs: gameCam?.isOn() ? gameCam.stats().ms : null,
+      cam: state.cam, rearMs: gameCam?.isOn() ? gameCam.stats().ms : null, mode: state.mode, bait: bait.state(),
     };
   }
   function drawReadout() {
@@ -722,6 +745,7 @@ export function initBossTab(root) {
       + `<br>size ${r.size} m (&times;${fmt(r.scale, 0)}) &middot; ${r.state ?? '—'} &middot; ${r.variant} &middot; lure ${r.lure}`
       + ` &middot; ${r.kernel ? 'wasm kernel' : 'js solver'} &middot; re-anchored ${r.reanchors}`
       + (r.rearMs !== null ? ` &middot; camera game &middot; rear <b>${fmt(r.rearMs)} ms</b>` : '');
+    if (r.mode === 'bait' && r.bait) html += `<br>Isao <b>${fmt(r.bait.hp, 1)}/${r.bait.max}</b> &middot; gap <b>${fmt(r.bait.gap, 1)} m</b> &middot; alt <b>${fmt(r.bait.alt, 1)} m</b> &middot; ${r.bait.gone ? 'gone' : r.bait.fleeing ? 'backing off' : 'circling'}`;
     if (shaderErrors.length) html += `<br><b class="late">shader: ${escapeHtml(shaderErrors[shaderErrors.length - 1])}</b>`;
     if (frameError && t - frameErrorAt < 5) html += `<br><b class="late">${escapeHtml(frameError)}; reset</b>`;
     read.innerHTML = html;
@@ -742,7 +766,7 @@ export function initBossTab(root) {
     const dt = Math.min(0.05, gap), cut = gap > 0.05; t += dt;
     resize();
     if (!planet) return;
-    root.querySelector('[data-keys]').hidden = state.lure !== 'tank';
+    root.querySelector('[data-keys]').hidden = state.lure !== 'tank' || !tankOn();
     if (creature && !loading && !fatal) { step(dt, cut); frameCamera(dt); }
     try {
       renderer.render(scene, cam);
@@ -785,6 +809,7 @@ export function initBossTab(root) {
   fightGui.add(fightOn, 'obstacles').name('obstacles (arena)').onChange((on) => { if (on) arena.settle(); });
   fightGui.add(fightTune.wall, 'clear', 0, 20, 0.5).name('wall clear (m)');
   fightGui.add(fightOn, 'cannon').name('cannon (Space)');
+  fightGui.add(bait.params, 'altitude', 2, 20, 0.5).name('bait altitude (m)');
   fightGui.add(fightTune, 'health', 10, 1000, 10).name('health (at reset)');
   fightGui.add(fightTune, 'warn', 0.2, 4, 0.1).name('warn (s)');
   fightGui.add(fightTune, 'lead', 0, 2, 0.05).name('lead');
@@ -818,6 +843,15 @@ export function initBossTab(root) {
     if (kind === 'point' && creature && frame) pointWorld = toWorld(frame, creature.motion.target.toArray(), scale);
     return true;
   }
+  // the mode: the tank, or Isao as the bait (the tank out); a new round puts the right one `respawn` metres out
+  function setMode(mode) {
+    if (mode !== 'tank' && mode !== 'bait') return false;
+    state.mode = mode; root.querySelector('[data-k="mode"]').value = mode;
+    bait.setOn(mode === 'bait'); keys.clear(); scripted = null;
+    if (mode === 'bait') tank.visible = false;
+    newRound();
+    return true;
+  }
   // the driving camera: the lab's chase or the game's own (./boss/game-cam.js); the switch and V follow each other
   function setCam(mode) {
     if (mode !== 'lab' && mode !== 'game') return false;
@@ -827,6 +861,7 @@ export function initBossTab(root) {
   for (const el of root.querySelectorAll('[data-k]')) el.addEventListener('input', () => {
     const k = el.dataset.k;
     if (k === 'lure') setLure(el.value);
+    else if (k === 'mode') { setMode(el.value); el.blur(); }
     else if (k === 'view') state.view = el.value;
     else if (k === 'cam') { setCam(el.value); el.blur(); }   // the select must not keep V's keystrokes
     else if (k === 'variant' && el.value !== state.variant && planet && !loading) makeCreature(el.value);   // during a load: picked up after it
@@ -861,7 +896,7 @@ export function initBossTab(root) {
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
       renderer.domElement.removeEventListener('pointerup', onPointerUp);
       creature?.dispose(); if (prey) { prey.mesh.geometry.dispose(); prey.mesh.material.dispose(); }
-      gameCam?.dispose(); cannon.dispose(); friendlies.dispose(); arena.dispose(); round.dispose(); explosions.dispose();
+      gameCam?.dispose(); bait.dispose(); cannon.dispose(); friendlies.dispose(); arena.dispose(); round.dispose(); explosions.dispose();
       planetMesh?.userData.dispose(); disposeObj(tank); gui.destroy(); controls.dispose(); renderer.dispose(); renderer.domElement.remove();
       engine?.stop(0); engine = null; audio.dispose();
       if (window.__bossLab === lab) delete window.__bossLab;
@@ -871,7 +906,7 @@ export function initBossTab(root) {
   const lab = createLabHandle({
     getCreature: () => creature, getScale: () => scale, getT: () => t, getFight: () => fight, getGameCam: () => gameCam, getReanchors: () => reanchors,
     setScripted: (v) => { scripted = v; }, setPin: (v) => { pin = v; },
-    readout, setLure, setCam, setFight, fireCannon: () => fireCannon(), copySettings, reset, tryReanchor, placeTank, creatureNow,
+    readout, setLure, setCam, setMode, bait, setFight, fireCannon: () => fireCannon(), copySettings, reset, tryReanchor, placeTank, creatureNow,
     plane, drive, keys, state, cam, params, gui, arena, fear, fightTune,
   });
   if (q.get('acceptance') === '1') window.__bossLab = lab;

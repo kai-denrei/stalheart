@@ -9,6 +9,7 @@
 // `fight()` is read every frame, so the lab may replace the state object (a new round, the switch) at any time. `tune` is part
 // of the lab's contract but unread here: the card's seconds are the state's own (`makeFight` copies them from the tune).
 //
+// `cardExtra()` is text the KILLED card adds after the hits (the bait mode's ` · Isao 9/12`; none in the tank mode).
 // THE BAR is the integrity HUD's gate row (src/fx/integrity-hud.js: `ih-lbl`, `ih-bar > i`, `ih-num`, `ih-low` at a quarter)
 // in the stage's `.sw-hud`, with the fight's clock `m:ss.t` and `hits <n>`; hidden while `on()` is false (the fight switch off).
 import { kill, tick as tickFight } from '../../domain/boss-fight.js';
@@ -20,7 +21,7 @@ export const clockText = (s) => {
   return `${m}:${String(Math.floor(r / 10)).padStart(2, '0')}.${r % 10}`;
 };
 
-export function createRound(stage, { tune, fight, on = () => true, onKilled = () => {}, onLost = () => {}, onReset = () => {} } = {}) {
+export function createRound(stage, { tune, fight, on = () => true, cardExtra = () => '', onKilled = () => {}, onLost = () => {}, onReset = () => {} } = {}) {
   let hud = stage.querySelector('.sw-hud'), ownHud = false;
   if (!hud) { hud = document.createElement('div'); hud.className = 'sw-hud'; stage.append(hud); ownHud = true; }
   const row = document.createElement('div');
@@ -57,7 +58,7 @@ export function createRound(stage, { tune, fight, on = () => true, onKilled = ()
     const s = fight(), shown = !!on();
     if (s !== seen) { seen = s; told = false; card.hidden = true; }
     if (s.phase === 'fight' && s.hp <= 0) kill(s);
-    if (!told && s.phase === 'killed') { told = true; showCard('KILLED', `${clockText(s.clock)} · ${s.hits} hits · R or Reset to restart`); onKilled(); }
+    if (!told && s.phase === 'killed') { told = true; showCard('KILLED', `${clockText(s.clock)} · ${s.hits} hits${cardExtra()} · R or Reset to restart`); onKilled(); }
     if (!told && s.phase === 'lost') { told = true; showCard('LOST', `· ${s.reason ?? '—'}`); onLost(s.reason); }
     // the card stays up while the lab's reset is still due (a meal finishing first); the new round's state hides it above
     if (tickFight(s, dt) === 'reset') { told = false; onReset(); }
