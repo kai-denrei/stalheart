@@ -1,6 +1,6 @@
 {
  "schema": 2,
- "source": "seiyu_voice export A-1 2026-10-09T07:44:39Z: 24 kHz mono WAV, encoded by scripts/import-isao-voice.mjs to mono 64 kbps MP3, no normalisation",
+ "source": "seiyu_voice export A-1 2026-10-09T14:03:18Z: 24 kHz mono WAV, encoded by scripts/import-isao-voice.mjs to mono 64 kbps MP3, no normalisation",
  "files": [
   {
    "path": "assets/audio/isao/mission_04.mp3",
@@ -1468,9 +1468,9 @@
   {
    "path": "assets/audio/isao/bait_close_call_01.mp3",
    "id": "bait_close_call_01",
-   "sha256": "a4c8e48c2ff861806d6d51d961380b8f0bade8717f88740f2750ebba55d20d3b",
-   "bytes": 15764,
-   "sourceSha256": "567504fd9cb517ce2cbe1fd089019750b35e6e20644f3dac3c97ed06b8afa35b"
+   "sha256": "83401e99562a4092bbe6c6c2f2b86266f1e63b8711e9b092a44d2a2d93e7b468",
+   "bytes": 13844,
+   "sourceSha256": "ead0ca01f2372406a05b77d80c7573423deb6727b911c1f6b0a304ef9aba6beb"
   },
   {
    "path": "assets/audio/isao/bait_help_01.mp3",
