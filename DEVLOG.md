@@ -74,6 +74,23 @@ Evidence:
 - --boss, --boss-cam, --boss-fight (survival KILLED at 31.86 s) and the game's --gunship (every gunship-* step) PASS on the same snapshot; npm run check and npm run build green
 - The screenshot of the seat while an MK-9 falls (the session scratchpad's boss-game-seat.png; the step writes artifacts/browser/boss-bait-seat.png): the ironbow optic, orange cell edges on purple ground, the KORP readout with the red DANGER CLOSE banner, the monitor bottom right riding the round; it reads as the game's seat (artifacts/browser/gunship-retina.png)
 
+## 2026-10-09 — The bait mode's arena and feel in the boss lab: a 120 m bound, the gunship on a 200 m orbit with no cut, an erratic Isao, a predator preset and a bait-mode boss health
+
+change · accepted · 2026-10-09-boss-bait-arena-and-feel-landed
+
+Owner, 2026-10-09: a large arena the gunship flies over in a slow regular pattern (the player adjusts the aim, no wild camera cuts), Isao and the creature bound to it, the rocks' thermal flicker, an erratic Isao, a predatory creature; defaults approved (spec docs/superpowers/specs/2026-10-09-boss-bait-arena-and-feel-design.md). Task A fixed the flicker (45c0f0a6), Task B wrote the rules (e7f0be93: orbitAt, clampTo, the outside shape, the erratic flight). This is Task C, the lab, on refactor-run (not pushed), commit 5c6b14bf. Bait mode only; the tank mode is unchanged.
+
+(1) THE BOUND: src/labs/boss/arena.js keeps an outside shape round the arena's centre (shifting with a re-anchor like the shapes, never drawn, broken or counted); in bait mode the push-out takes the body's nodes beyond it back in, Isao's routed wanted point is clamped 10 m inside and the creature's target (after the flee point and the routing) 15 m inside. The ring is a 1.6 m cool-blue additive band built on a world-fixed plane (the frame at the pole each round starts on), tagged warm in the seat's thermal: it reads yellow-orange in the FLIR. (2) THE ORBIT: the seat's platform flies orbitAt on the seat's own clock through the same world-fixed plane, continuous across R, the seat never unmounts. The bank (0.12 rad) is applied to the KORP hull, not to the platform object: sentry-pilot.js reads its aim back through that object's frame, and rolled it would tilt the forward and miss by some twenty metres at the orbit's slant (the optic is treated as a stabilised gimbal); so the camera does not roll. The view keeps its world direction (holdAim) and the reticle slides with the platform at 10.8 to 14.6 m/s. (3) Isao flies the domain's erratic flight seeded by the round's seed, the bob added to his altitude; panel knob 'Isao erratic' 0..1. (4) NIH_DAIRIA_PREDATOR in src/content/nih-dairia.js (speed 0.22, surge 3, pause 0.8, spread 4.5, erratic 3; stretch stays 5, the panel's maximum) is loaded on entering bait mode and the slower preset on entering tank mode. (5) 'bait mode boss health (at reset)' 180, separate from the tank's health (hidden in bait mode). --boss-bait (green, final run): over 30 s of lab clock Isao's max radius 116.7 m and the floor contacts' 119.9 m (the backstop bit); squeezed to 77 m for 15 s, 67.4 and 77.0; the platform swept 89.9 degrees with one mount throughout; Isao's measured speed outside panic p5 10.5, median 19.4, p95 25.2 m/s (the flight's own 8.1 to 25.7), heading rate median 0.94, p95 3.0 rad/s (the turn cap); on 90 frames the view turned at most 0.017 degrees a frame, 1.06 degrees in all against the heading's 4.67. Test changes: the after-R aim is read frame by frame from the R in a rAF (0.1 m on the second frame; a read 300 ms late measured the orbit's drift, 7.6 m), the bound 4 m as instructed; the MK-9 on Isao is repeated after each reload until one lands (the erratic flight can leave a 4.2 s lead); the kills are budgeted 90 s of lab clock with a 300 s real cap; the KILLED card's wait 15 s. --boss, --boss-cam, --boss-fight green.
+
+Alternatives: Banking the platform object itself (rejected: the pilot's aim would miss by about 20 m; sentry-pilot.js is not to be changed); Projecting the orbit and the ring through the lab's re-anchoring frame (rejected: each 5 m re-anchor re-projects a point 300 m out by up to about a metre, a hitch in the camera)
+
+Evidence:
+
+- node scripts/browser-test.mjs --boss-bait from a snapshot (BOSS-BAIT arena, squeezed, camera, after R lines)
+- ARENA_SHOTS screenshots arena-seat.png and arena-chase.png (scratch, looked at)
+- npm test (220 programs), npm run check, npm run build
+- test/nih-dairia-content.mjs (the predator preset inside the panel's ranges)
+
 ## 2026-10-08 — Open: the Nih-Dairia kit is GPL-3.0 and Stalheart's public repository has no licence; the owner decides before any push
 
 issue · observed · 2026-10-08-nih-dairia-kit-is-gpl-licence-open
