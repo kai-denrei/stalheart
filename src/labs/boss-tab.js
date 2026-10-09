@@ -34,6 +34,7 @@ import { createBaitMode } from './boss/bait.js';
 import { createGameSeat } from './boss/game-seat.js';
 import { createGameCam } from './boss/game-cam.js';
 import { createLabHandle } from './boss/handle.js';
+import { settingsBlock, folderGroups } from './boss/settings-copy.js';
 import { makeFight, startFight, capture, readout as fightReadout } from '../domain/boss-fight.js';
 import { BOSS_FIGHT } from '../content/boss-fight.js';
 import { LASER_AUDIO } from '../content/orbital-laser.js';
@@ -57,7 +58,7 @@ import { ARENA } from '../fx/nih-dairia/arena.js';
 import { PHYS } from '../fx/nih-dairia/constants.js';
 import { MOTION_CONTROLS } from '../fx/nih-dairia/motion-settings.js';
 import { CREATURE_VARIANTS } from '../fx/nih-dairia/variants.js';
-import { NIH_DAIRIA_MOTION, NIH_DAIRIA_PREDATOR, NIH_DAIRIA_VARIANT, NIH_DAIRIA_SIZE_METRES, NIH_DAIRIA_LOOK, NIH_DAIRIA_MODELS } from '../content/nih-dairia.js';
+import { NIH_DAIRIA_MOTION, NIH_DAIRIA_PREDATOR, NIH_DAIRIA_PREDATOR_SIZE_METRES, NIH_DAIRIA_VARIANT, NIH_DAIRIA_SIZE_METRES, NIH_DAIRIA_LOOK, NIH_DAIRIA_MODELS } from '../content/nih-dairia.js';
 
 const TANK_R = 3.4;          // the swarm lab's hull scale: MÖRK at its real size
 const CRUISE_TAP = 0.35;     // seconds between two W taps that toggle cruise (td-tab.js noteFastTap)
@@ -132,7 +133,7 @@ export function initBossTab(root) {
       <button type="button" class="sw-run" data-act="disturb">disturb</button>
       <button type="button" class="sw-run" data-act="reset">reset</button>
       <button type="button" class="sw-run" data-act="reanchor">re-anchor now</button>
-      <button type="button" class="sw-run" data-act="copy">copy settings</button>
+      <button type="button" class="sw-run" data-act="copy">copy settings (C)</button>
       <textarea data-copy hidden readonly rows="8"></textarea>
       <p class="sw-note" data-tank-only>A driving tank counts as held and cannot be taken. Stop within reach and it is cradled, covered and
       absorbed; the tank comes back thirty metres out and <b>taken</b> rises. The physics runs at the kit's native scale; size
@@ -140,7 +141,8 @@ export function initBossTab(root) {
       <p class="sw-note" data-bait-only hidden>Bait mode: Isao flies low on autopilot and the creature hunts him; you are in the game's gunship
       seat. Click to lock the mouse and aim with it, <b>Space</b> or the button fires, <b>1 2 3</b> the 25 mm, 40 mm and MK-9 (paint, then
       release; no limit a pass, the reload is the fight folder's knob), <b>V</b> the ship, the wheel zooms, <b>Esc</b> the tank. The fight
-      folder's rotary, Bofors and MK-9 switches gate your guns; every landing hurts Isao as it hurts the creature. <b>R</b> restarts.</p>
+      folder's rotary, Bofors and MK-9 switches gate your guns; every landing hurts Isao as it hurts the creature. <b>R</b> restarts, <b>C</b> copies
+      the values to paste.</p>
       <p class="sw-note" data-state>&nbsp;</p>
     </div>
     <div class="sw-stage">
@@ -229,6 +231,7 @@ export function initBossTab(root) {
     if (k === ' ') { e.preventDefault(); if (!keys.has(k)) fireCannon(); }   // the key-down edge: a held Space does not repeat
     if (k === 'r' && active && !e.repeat && !keys.has(k) && !e.ctrlKey && !e.metaKey && !e.altKey) newRound();   // a new round at the key-down edge (a held R or a browser reload chord does not repeat it)
     if (k === 'v' && active && !e.repeat && !keys.has(k) && tankOn() && !e.ctrlKey && !e.metaKey && !e.altKey) setCam(state.cam === 'game' ? 'lab' : 'game');   // the driving camera, at the key-down edge
+    if (k === 'c' && active && !e.repeat && !keys.has(k) && !seat.owns() && !e.ctrlKey && !e.metaKey && !e.altKey) copySettings();   // the values to paste (the seat's own C is below)
     keys.add(k); if (DRIVE_KEYS.includes(k)) e.preventDefault();
   };
   const onUp = (e) => keys.delete(e.key.toLowerCase());
@@ -359,6 +362,7 @@ export function initBossTab(root) {
     },
     caption: (text, seconds) => showCallout(text, seconds * 1000),
     clamp: (p) => arena.clamp(p, fightTune.bounds.baitMargin),   // his wanted point, after the routing, inside the bound
+    bound: () => { const b = arena.bound(); return b.on ? { at: b.at, radius: b.radius, inset: fightTune.bounds.baitMargin } : null; },   // the fly-over's: trapped against it, and the far side held inside it
   });
   // THE GUNNER SEAT (./boss/game-seat.js): in the bait mode the player sits in the game's own gunship seat (src/sentry-pilot.js), its
   // thermal and its GROUND TRUTH monitor; every round it fires is resolved by the fight through the friendlies' paths
@@ -373,12 +377,13 @@ export function initBossTab(root) {
     clear: () => Math.max(0, stage.getBoundingClientRect().right - gui.domElement.getBoundingClientRect().left),   // what the panel covers: the HUD's readout and the monitor stand left of it
     leave: () => setMode('tank'), pause: () => { paused = !paused; }, onError: (m) => shaderErrors.push(m),
   });
-  // R in the seat: the seat swallows every key in the capture phase; this capture listener is registered before any seat, so it runs first
+  // R and C in the seat: the seat swallows every key in the capture phase; this capture listener is registered before any seat, so it runs first
   // T (the game's top view) is swallowed too: the lab has no map to show, and the seat would hide its HUD for a view it cannot draw
   const onSeatKey = (e) => {
     if (!seat.owns() || !active || isText(e) || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.code === 'KeyT') { e.stopImmediatePropagation(); e.preventDefault(); return; }
     if (e.key.toLowerCase() === 'r' && !e.repeat) newRound();
+    if (e.code === 'KeyC' && !e.repeat) copySettings();   // the values to paste, from the seat
   };
   addEventListener('keydown', onSeatKey, { capture: true });
   // THE V1 DEATH (owner, 2026-10-08: "set its gravity to 10 (max) and stop all movements")
@@ -801,7 +806,7 @@ export function initBossTab(root) {
       + `<br>size ${r.size} m (&times;${fmt(r.scale, 0)}) &middot; ${r.state ?? '—'} &middot; ${r.variant}${r.mode === 'bait' ? '' : ` &middot; lure ${r.lure}`}`
       + ` &middot; ${r.kernel ? 'wasm kernel' : 'js solver'} &middot; re-anchored ${r.reanchors}`
       + (r.rearMs !== null ? ` &middot; camera game &middot; rear <b>${fmt(r.rearMs)} ms</b>` : '');
-    if (r.mode === 'bait' && r.bait) html += `<br>Isao <b>${fmt(r.bait.hp, 1)}/${r.bait.max}</b> &middot; gap <b>${fmt(r.bait.gap, 1)} m</b> &middot; alt <b>${fmt(r.bait.alt, 1)} m</b> &middot; ${r.bait.gone ? 'gone' : r.bait.fleeing ? 'backing off' : 'circling'}`;
+    if (r.mode === 'bait' && r.bait) html += `<br>Isao <b>${fmt(r.bait.hp, 1)}/${r.bait.max}</b> &middot; gap <b>${fmt(r.bait.gap, 1)} m</b> &middot; alt <b>${fmt(r.bait.alt, 1)} m</b> &middot; ${r.bait.gone ? 'gone' : r.bait.hop ? `flying over (${r.bait.hop})` : r.bait.fleeing ? 'backing off' : 'circling'}`;
     if (shaderErrors.length) html += `<br><b class="late">shader: ${escapeHtml(shaderErrors[shaderErrors.length - 1])}</b>`;
     if (frameError && t - frameErrorAt < 5) html += `<br><b class="late">${escapeHtml(frameError)}; reset</b>`;
     read.innerHTML = html;
@@ -874,6 +879,7 @@ export function initBossTab(root) {
   const altCtl = fightGui.add(bait.params, 'altitude', 2, 20, 0.5).name('bait altitude (m)');
   const erraticCtl = fightGui.add(fightTune.bait, 'erratic', 0, 1, 0.05).name('Isao erratic');   // 0 the smooth flight, 1 the bursts, brakes, jinks and bob
   const baitHealthCtl = fightGui.add(baitOpts, 'health', 10, 1000, 10).name('bait mode boss health (at reset)');
+  const hopCtl = fightGui.add(fightTune.bait, 'hopChance', 0, 0.2, 0.005).name('Isao fly-over chance (/s)');   // the random fly-over; 0 leaves only the trapped one
   const reloadCtl = fightGui.add(seat.params, 'reload', 1, 30, 0.5).name('MK-9 reload (s)');   // the seat's MK-9: no limit a pass, this reload between releases
   const healthCtl = fightGui.add(fightTune, 'health', 10, 1000, 10).name('health (at reset)');
   fightGui.add(fightTune, 'warn', 0.2, 4, 0.1).name('warn (s)');
@@ -898,7 +904,7 @@ export function initBossTab(root) {
   fightGui.add(fightTune.sol, 'burn', 0.5, 8, 0.1).name('SOL burn (s)');
   fightGui.add(fightTune.sol, 'dps', 0, 50, 1).name('SOL dps');
   fightGui.add(fightTune.sol, 'radius', 2, 30, 0.5).name('SOL radius (m)');
-  fightGui.add(fightTune, 'seed', 1, 999, 1).name('seed').listen();   // advances each round unless pinned
+  const seedCtl = fightGui.add(fightTune, 'seed', 1, 999, 1).name('seed').listen();   // advances each round unless pinned
   fightGui.add(fightOn, 'pinSeed').name('pin seed');
 
   function setLure(kind) {
@@ -914,7 +920,7 @@ export function initBossTab(root) {
     for (const el of root.querySelectorAll('[data-tank-only]')) el.hidden = bm;
     for (const el of root.querySelectorAll('[data-bait-only]')) el.hidden = !bm;
     solCtl.show(!bm); cannonCtl.show(!bm); healthCtl.show(!bm);   // SOL, the cannon and the tank's health are not in the bait mode; its altitude, erratic, health and the seat's reload are only there
-    for (const c of [altCtl, reloadCtl, erraticCtl, baitHealthCtl]) c.show(bm);
+    for (const c of [altCtl, reloadCtl, erraticCtl, baitHealthCtl, hopCtl]) c.show(bm);
   }
   modePanel();
   // the mode: the tank, or Isao as the bait (the tank out); a new round puts the right one `respawn` metres out
@@ -922,6 +928,7 @@ export function initBossTab(root) {
     if (mode !== 'tank' && mode !== 'bait') return false;
     state.mode = mode; root.querySelector('[data-k="mode"]').value = mode;
     bait.setOn(mode === 'bait'); keys.clear(); scripted = null; cruiseTap = false; seat.release();
+    state.sizeMetres = mode === 'bait' ? NIH_DAIRIA_PREDATOR_SIZE_METRES : NIH_DAIRIA_SIZE_METRES; applySize();   // the predator's 40 m, the tank's 30 (owner, 2026-10-09)
     motionPreset(mode === 'bait' ? NIH_DAIRIA_PREDATOR : NIH_DAIRIA_MOTION);   // the bait mode's predator, the tank's slower creature (item 4)
     if (mode === 'bait') { tank.visible = false; gameCam?.setOn(false); }   // the game camera is the tank's: its rear frame goes and the lens is back before the optic takes it
     modePanel();
@@ -949,12 +956,24 @@ export function initBossTab(root) {
     else if (k === 'variant' && el.value !== state.variant && planet && !loading) makeCreature(el.value);   // during a load: picked up after it
   });
   const copyBox = root.querySelector('[data-copy]');
+  // THE VALUES TO PASTE (owner, 2026-10-09; ./boss/settings-copy.js): every knob the owner tunes, one line a group, to the clipboard (C or the button;
+  // COPIED confirms), else into the box below the buttons, selected. Nothing reads a pasted copy back: the old JSON is gone for the block
+  const knobPaths = new Map([[fightTune, ''], [fightTune.wall, 'wall.'], [fightTune.rotary, 'rotary.'], [fightTune.nuke, 'nuke.'], [fightTune.fear, 'fear.'],
+    [fightTune.fear.weight, 'fear.weight.'], [fightTune.bofors, 'bofors.'], [fightTune.sol, 'sol.'], [fightOn, '']]);
   function copySettings() {
-    const json = JSON.stringify({ version: 1, variant: state.variant, motion: { ...(creature?.settings ?? params.motion) }, sizeMetres: state.sizeMetres }, null, 2);
-    const fallback = () => { copyBox.hidden = false; copyBox.value = json; copyBox.focus(); copyBox.select(); };
-    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(json).then(() => { copyBox.hidden = true; showCallout('COPIED'); }, fallback);
+    const m = creature?.settings ?? params.motion, bm = !tankOn();
+    const { fight: changed, fear: fearNow } = folderGroups(fightGui.controllers, knobPaths, new Set([altCtl, erraticCtl, baitHealthCtl, reloadCtl, hopCtl, seedCtl]));
+    const text = settingsBlock({
+      head: { mode: state.mode, variant: state.variant, size: state.sizeMetres },
+      motion: Object.fromEntries(MOTION_CONTROLS.map((c) => [c.key, m[c.key]])),
+      phys: { gravity: params.phys.gravity, iterations: params.phys.iterations, feeding: params.feeding, instinct: params.instinct },
+      bait: bm ? { altitude: bait.params.altitude, erratic: fightTune.bait.erratic, health: baitOpts.health, reload: seat.params.reload, hopChance: fightTune.bait.hopChance } : null,
+      fight: changed, fear: fearNow,
+    });
+    const fallback = () => { copyBox.hidden = false; copyBox.value = text; copyBox.focus(); copyBox.select(); };
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(() => { copyBox.hidden = true; showCallout('COPIED'); }, fallback);
     else fallback();
-    return json;
+    return text;
   }
   const reset = () => newRound();
   root.querySelector('.sw-side').addEventListener('click', (e) => {

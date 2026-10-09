@@ -10,10 +10,14 @@ export const NIH_DAIRIA_MOTION = Object.freeze({
 // The bait mode's predator (docs/superpowers/specs/2026-10-09-boss-bait-arena-and-feel-design.md, item 4; the owner judges the feel): the
 // slower preset above made dangerous, loaded when the lab enters bait mode (tank mode keeps the slower one; the panel's knobs tune either
 // live). Chase speed 0.22 (0.1), surge duration 3 (2), the pause between bursts 0.8 (1.25), the arms' spread 4.5 (3.5) and the erratic
-// motion 3 (2) a step up; the stretch stays 5, the panel's maximum (src/fx/nih-dairia/motion-settings.js MOTION_CONTROLS)
+// motion 3 (2) a step up; the stretch stays 5, the panel's maximum (src/fx/nih-dairia/motion-settings.js MOTION_CONTROLS). The owner's
+// first values for it (2026-10-09, "to begin set default chase speed 3, reach duration 5, reach sweep 4, size 40. foot grip 3"): chase speed 3,
+// reach duration 5, reach sweep 4, foot grip 3; the rest as above
 export const NIH_DAIRIA_PREDATOR = Object.freeze({
-  ...NIH_DAIRIA_MOTION, speed: 0.22, pullTime: 3, pauseTime: 0.8, erratic: 3, stretch: 5, spread: 4.5,
+  ...NIH_DAIRIA_MOTION, speed: 3, reachTime: 5, pullTime: 3, pauseTime: 0.8, erratic: 3, stretch: 5, spread: 4.5, sweep: 4, grip: 3,
 });
+// the bait mode's size in metres (owner, 2026-10-09: "size 40"); the tank mode keeps NIH_DAIRIA_SIZE_METRES
+export const NIH_DAIRIA_PREDATOR_SIZE_METRES = 40;
 export const NIH_DAIRIA_VARIANT = 'nih-dairia';
 export const NIH_DAIRIA_SIZE_METRES = 30;
 export const NIH_DAIRIA_LOOK = Object.freeze({

@@ -35,6 +35,24 @@ export const BOSS_FIGHT = freeze({
     jinkMin: 0.6, jinkMax: 2,       // seconds: a new jink target this often
     bob: 1.5,              // metres: the altitude bob's amplitude, for the lab to add to his altitude
     bobPeriod: [1.7, 1.05],   // seconds: the bob is two sines of these periods (weights 0.6 and 0.4)
+    // the fly-over (owner, 2026-10-09: "Isao gets stuck between an invisible wall (the boundaries) and the creature too often. once in a while have Isao fly
+    // OVER it"): trapped (the bound within `trapBound` m of him and a floor contact on the inside within `trapNear` m, for `trapFor` s) or at random
+    // (`hopChance` a second, not while he panics), he climbs to `hopAlt`, crosses to the creature's far side and comes back down; one per `hopCooldown` s.
+    // Under the creature (owner, 2026-10-09: "Isao gets stuck too easily under the creature"): his ground point within `underCore` of its half-width from
+    // its centre, or floor contacts within `underNear` m of him on opposite sides (more than 120 degrees apart round him), he escapes at once, up and out
+    // through the near side, cooldown and chance ignored
+    trapBound: 12,         // metres from him to the bound
+    trapNear: 25,          // metres: a floor contact this close on the inside: at the bound with the creature at his keep (20 m from its edge) he cannot circle out
+    trapFor: 0.8,          // seconds trapped before he hops
+    hopChance: 0.03,       // a second: about once in 30 s at random
+    hopCooldown: 8,        // seconds after a hop lands before the next
+    hopAlt: 30,            // metres above the ground: clear of the body's top, about 14 m at 40 m (the rest pose's mesh), with the arms' lift
+    hopClimb: 20,          // metres a second up and down
+    hopSpeed: 22,          // metres a second across
+    hopCross: 8,           // seconds at most across before he comes down where he is
+    reachHeight: 18,       // metres: above this the creature's floor contacts cannot take him (the hold does not count)
+    underCore: 0.5,        // a share of the creature's half-width (`radius`): his ground point this near its centre is under it
+    underNear: 15,         // metres: floor contacts this near him on opposite sides have him under it
   },
   bounds: { radius: 120, baitMargin: 10, creatureMargin: 15 },   // the arena disc round the origin: Isao's wanted point stays radius - baitMargin in, the creature's target radius - creatureMargin, the body's nodes are pushed back inside radius
   orbit: { radius: 200, lap: 120, bank: 0.12 },   // the gunship platform's ground track round the origin: 200 m, one lap per 120 s (10.5 m/s); the bank in radians is about twice the coordinated 0.056 (v squared over r g) so the roll reads on the seat's camera without lurching

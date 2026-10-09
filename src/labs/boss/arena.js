@@ -159,9 +159,12 @@ export function createArena(sphere, { surface, cellSide = 10, explosions = null,
     const reach = extentOf(), within = bounded() ? [...shapes, boundNow()] : shapes;
     let near = false;
     for (const sh of shapes) if (sh.live && Math.hypot(cx - sh.at[0], cz - sh.at[1]) < reach_(sh) + reach) { near = true; break; }
-    if (!near && within !== shapes && Math.hypot(cx - bound.at[0], cz - bound.at[1]) + reach > bound.radius) near = true;
-    if (!near) return;
     const x = body.x, v = body.velocity, n = x.length / 3;
+    if (!near && within !== shapes && Math.hypot(cx - bound.at[0], cz - bound.at[1]) + reach > bound.radius) near = true;
+    // the bound by the nodes themselves: the probing arms stretch past the body's rest extent (a contact stood 121.7 m out of a 120 m bound with the centre
+    // more than the extent inside it, 2026-10-09), so a body that seems clear of the edge is checked node by node
+    if (!near && within !== shapes) for (let i = 0; i < n && !near; i++) if (Math.hypot(x[i * 3] * scale - bound.at[0], x[i * 3 + 2] * scale - bound.at[1]) > bound.radius) near = true;
+    if (!near) return;
     if (pos.length !== n * 3) pos = new Float64Array(n * 3);
     for (let i = 0; i < n; i++) { pos[i * 3] = x[i * 3] * scale; pos[i * 3 + 1] = x[i * 3 + 1] * scale; pos[i * 3 + 2] = x[i * 3 + 2] * scale; }
     const moves = pushOut(pos, within);

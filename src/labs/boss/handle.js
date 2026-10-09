@@ -14,11 +14,17 @@ export function createLabHandle({
     creature: () => getCreature(),
     setLure,
     // the bait mode: mode('bait') or mode('tank') switches (a new round, as the panel's select does) and returns the mode; bait() is
-    // Isao now, { pos: [x, z], hp, max, heading, alt, bob, speed, gone, fleeing, gap, hits, said } with `bob` the erratic flight's altitude
-    // offset, `speed` its speed (m/s) and `gap` his metres beyond the creature's front
-    // edge along the line toward him (null before his first round)
+    // Isao now, { pos: [x, z], hp, max, heading, alt, bob, speed, gone, fleeing, gap, hits, said, hop, hopWhy, hops, trapped } with `bob` the
+    // erratic flight's altitude offset, `speed` its speed (m/s), `gap` his metres beyond the creature's front edge along the line toward him,
+    // `hop` the fly-over's phase ('climb' | 'cross' | 'descend' | null), `hopWhy` why it started ('trapped' | 'random' | 'forced'), `hops` the round's
+    // count and `trapped` the seconds he has been trapped against the bound (null before his first round); `hopWhy` 'under' is the escape from under the
+    // creature; hop() forces a fly-over (false while one
+    // flies, he is gone or the fight is not running)
     mode: (m) => (m === undefined ? state.mode : (setMode(m), state.mode)),
     bait: () => bait.state(),
+    hop: () => bait.hop(),
+    // Isao put under the creature's centre now (the round goes on): the escape's case; false outside a flying round
+    under: () => bait.putAt(creatureNow().centre),
     // the game's gunship seat (bait mode, ./game-seat.js): aim([x, z]) turns the optic onto a local ground point (until the mouse moves it),
     // gun(key) picks 'rotary' | 'bofors' | 'nuke' (the MK-9; 'heavy' and 1-3 too) through the seat's own gun buttons and returns the gun,
     // fire(on) holds or lets go of the trigger (the MK-9's fire(true) is a paint and a release over two frames; in the tank mode
@@ -128,6 +134,7 @@ export function createLabHandle({
       gui.controllersRecursive().forEach((c) => c.updateDisplay());
       return params.instinct;
     },
+    // the values to paste (the C key's and the button's block, ./settings-copy.js), returned as text
     copySettings, reset, reanchor: () => tryReanchor(0),
   };
   return lab;

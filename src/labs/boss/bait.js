@@ -25,9 +25,16 @@
 // held inside the bound (`clamp`, the arena's, `bounds.radius - bounds.baitMargin`); the flight is the domain's erratic one (`bait.erratic`,
 // the panel's `Isao erratic`), seeded by the round's seed, and its `bob` is added to his altitude.
 //
+// THE FLY-OVER (owner, 2026-10-09: "Isao gets stuck between an invisible wall (the boundaries) and the creature too often. once in a while have
+// Isao fly OVER it"): the domain's `hopBait` runs before the autopilot each frame of a running fight, on the real contacts and the bound (`bound()`,
+// the arena's disc with Isao's margin; null with the bound off). While a hop flies, his altitude is the hop's (no bob, no ease to the knob) and the
+// autopilot rests; the creature's target is still his ground point. The hop's start says `bait_flyover` (one of its three lines in turn, the
+// game's voice when the trigger is recorded, else the caption), past the lines' gap but one every FLYOVER_GAP seconds at most. `hop()` forces one (the acceptance's). Under the creature (owner,
+// 2026-10-09: "Isao gets stuck too easily under the creature") the domain's escape hop takes him up and out at once.
+//
 // Positions are the lab's local metres [x, z]; the host gives the ground under a point and the frame there, so this file knows no planet.
 import * as THREE from '../../../vendor/three.module.js';
-import { makeBait, planBait, moveBait, hurtBait, baitCaught } from '../../domain/boss-bait.js';
+import { makeBait, planBait, moveBait, hurtBait, baitCaught, hopBait, startHop } from '../../domain/boss-bait.js';
 import { lineOf, capture } from '../../domain/boss-fight.js';
 import { makeIsaoDrone, preloadFabricator } from '../../units.js';
 import { STORY_SCALE } from '../../content/story-defaults.js';
@@ -48,6 +55,8 @@ const LINES = {
   death: { id: 'bait_death', text: 'What do we say to death?' },
   notToday: { id: 'bait_not_today', text: 'Not today.' },
 };
+const FLYOVER_GAP = 12;   // seconds between two fly-over lines at the least (the first hop of a round always speaks): the escapes from under the owner's predator come every few seconds
+const FLYOVER = ["Flying over, don't shoot!", 'Z-Axis here I come!', 'Max Elevation, wait!'].map((text) => ({ id: 'bait_flyover', text }));   // the owner's words, said in turn
 const CAPTION_SECONDS = 2;
 const HOLD = 2.5;              // seconds a floor contact stays in the planner's picture of the creature after the foot lifts
 const CELL = 2;              // metres: contacts closer than this share an entry of that picture
@@ -57,8 +66,8 @@ const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 // lives in; `tune()` the lab's fight numbers (`.bait`), `fight()` the round's state, `now()` the lab's clock, `creature()` the rules'
 // creature, `route(from, to)` the arena's waypoint, `ground(x, z)` the sphere-space point on the surface and `tangent(world)` the frame
 // there ({ east, up, north }), `burst(x, z, alt)` Isao's end, `caption(text, seconds)` a line on the stage, `sfx` the sound engine,
-// `clamp(point)` the wanted point held inside the arena's bound (a fresh array)
-export function createBaitMode({ stage, sphere, tune, fight, now, creature, route, ground, tangent, burst, caption, sfx, clamp = (p) => [p[0], p[1]] }) {
+// `clamp(point)` the wanted point held inside the arena's bound (a fresh array), `bound()` the bound for the fly-over ({ at, radius, inset } or null)
+export function createBaitMode({ stage, sphere, tune, fight, now, creature, route, ground, tangent, burst, caption, sfx, clamp = (p) => [p[0], p[1]], bound = () => null }) {
   const params = { altitude: ALTITUDE };
   const hud = stage.querySelector('.sw-hud');
   const row = document.createElement('div');
@@ -68,7 +77,7 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
   const fill = row.querySelector('i'), num = row.querySelector('.ih-num');
 
   let on = false, bait = null, alt = ALTITUDE, bob = 0, gone = false, model = null, disposed = false, drawn = '';
-  let hits = 0, lastLineAt = -Infinity, deathAt = null, notTodayDone = false;
+  let hits = 0, lastLineAt = -Infinity, deathAt = null, notTodayDone = false, flyoverAt = -Infinity;
   const air = [0, 0, 0];                        // his place in sphere space
   const held = new Map();                       // cell -> { p, at }: the contacts of the last HOLD seconds, newest position per cell
   let view = null;                              // the creature as the planner sees it this frame
@@ -109,8 +118,7 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
     return { ...c, contacts };
   }
 
-  function say(key) {
-    const line = LINES[key];
+  function say(key, line = LINES[key]) {
     lastLineAt = now(); said.add(key);
     if (ISAO_TRIGGERS[line.id] && isaoSay(sfx, line.id, { force: true, text: line.text })) return;   // recorded: his own voice, the take that matches the caption's words
     caption(line.text, CAPTION_SECONDS);
@@ -123,6 +131,12 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
       if (key === 'death') deathAt = t;
       say(key); return;
     }
+  }
+
+  // the fly-over's line at its start, whatever the lines' gap but at most one each FLYOVER_GAP seconds (the next of the three each hop)
+  function flyover() {
+    if (now() - flyoverAt < FLYOVER_GAP) return;
+    flyoverAt = now(); say('flyover', FLYOVER[(bait.hops - 1) % FLYOVER.length]);
   }
 
   function hit() { hits++; if (hits === 1) due.hurt1 = true; else if (hits === 2) due.hurt2 = true; }
@@ -155,7 +169,7 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
       const T = tune(), c = creature();
       bait = makeBait(at, T, T.seed ?? 1);   // the round's seed: a round flies one way
       bait.heading = Math.atan2(c.centre[1] - at[1], c.centre[0] - at[0]);
-      alt = params.altitude; bob = 0; gone = false; hits = 0; lastLineAt = -Infinity; deathAt = null; notTodayDone = false;
+      alt = params.altitude; bob = 0; gone = false; hits = 0; lastLineAt = -Infinity; deathAt = null; notTodayDone = false; flyoverAt = -Infinity;
       held.clear(); view = null;
       said.clear(); for (const k of Object.keys(due)) due[k] = false;
       drawn = ''; place(); draw();
@@ -176,12 +190,29 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
       if (!on || !bait || gone) return;
       const T = tune();
       if (fight().phase === 'fight') {
-        view = heldView(creature());
-        const want = planBait(bait, view, T);
-        ({ bob } = moveBait(bait, dt, clamp(route(bait.pos, want)), T));
+        const c = creature();
+        view = heldView(c);
+        const flying = hopBait(bait, dt, c, T, { bound: bound(), alt, base: params.altitude });   // the fly-over first: trapped, at random, or flying
+        if (flying) { alt = flying.alt; bob = 0; if (flying.started) flyover(); }
+        else {
+          const want = planBait(bait, view, T);
+          ({ bob } = moveBait(bait, dt, clamp(route(bait.pos, want)), T));
+        }
       }
-      alt += Math.max(-CLIMB * dt, Math.min(CLIMB * dt, params.altitude - alt));
+      if (!bait.hop) alt += Math.max(-CLIMB * dt, Math.min(CLIMB * dt, params.altitude - alt));
       place();
+    },
+    // a fly-over now, from where he is (the acceptance's): false while one flies or he is gone
+    hop() {
+      if (!on || !bait || gone || bait.hop || fight().phase !== 'fight') return false;
+      startHop(bait, creature(), tune(), 'forced', alt, bound()); flyover();
+      return true;
+    },
+    // Isao put at a ground point (local metres) as he flies, the round going on: the acceptance's case of him under the creature
+    putAt(at) {
+      if (!on || !bait || gone) return false;
+      bait.pos[0] = at[0]; bait.pos[1] = at[1]; bait.held = 0; place();
+      return true;
     },
     // a landing the friendlies resolved, or a stream's burn for dt seconds, on him; only in a running fight, and only what touches counts
     hurt(plan) {
@@ -221,7 +252,8 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
     state() {
       if (!bait) return null;
       const c = creature(), here = lineOf(view ?? c, bait);
-      return { pos: [...bait.pos], hp: bait.hp, max: bait.max, heading: bait.heading, alt, bob, speed: bait.flight?.speed ?? null, gone, fleeing: bait.fleeing, gap: dist(bait.pos, c.centre) - here.e, hits, said: [...said] };   // gap: against the held edge
+      return { pos: [...bait.pos], hp: bait.hp, max: bait.max, heading: bait.heading, alt, bob, speed: bait.flight?.speed ?? null, gone, fleeing: bait.fleeing, gap: dist(bait.pos, c.centre) - here.e, hits, said: [...said],
+        hop: bait.hop?.phase ?? null, hopWhy: bait.hop?.why ?? null, hops: bait.hops, trapped: bait.trapT };   // gap: against the held edge; hop: the fly-over's phase
     },
     dispose() {
       disposed = true; row.remove();

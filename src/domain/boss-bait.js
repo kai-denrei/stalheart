@@ -18,6 +18,22 @@
 // closes the error. Panic wins: while any arm is inside `panic` he dashes straight away at `flee`, the jink dropped and the
 // acceleration limit waived, and the speed he leaves the dash at is slewed back down at `accel`.
 //
+// THE FLY-OVER (owner, 2026-10-09: "Isao gets stuck between an invisible wall (the boundaries) and the creature too often. once in a while have Isao
+// fly OVER it"). `hopBait` runs before the autopilot each frame: he is trapped while
+// the bound (`bound`, the lab's arena disc) is within `trapBound` metres of him and a floor contact within `trapNear` lies on the inside (toward the
+// bound's centre from him); trapped for `trapFor` seconds, or on a seeded chance of `hopChance` a second while he is not panicking, he hops. The hop:
+// he climbs on the spot at `hopClimb` m/s to `hopAlt` metres, crosses at `hopSpeed` to the creature's far side (the point `keep` beyond its edge
+// opposite where he started, round its centre as it moves now, held `inset` inside the bound), at most `hopCross` seconds, and comes down at
+// `hopClimb` to the altitude he flies at (`base`); no panic and no jink on the way. The next hop waits `hopCooldown` seconds after the landing. The
+// hold that takes him (`baitCaught`) does not count while the hop has him above `reachHeight`. The chance has its own seeded sequence
+// (`bait.hopRng`), so the erratic flight's draws are the same with or without hops. The far point is held `trapBound` farther inside the bound than the
+// wanted point's inset, so he does not land trapped again.
+// UNDER THE CREATURE (owner, 2026-10-09: "Isao gets stuck too easily under the creature"): his panic backs him off the nearest contact, which under the
+// body swings from side to side and he dithers. `underBait` says he is under it: his ground point within `underCore` of its half-width from its centre,
+// or two floor contacts within `underNear` of him more than 120 degrees apart round him. Then he escapes at once (`why` 'under', the cooldown and the
+// chance ignored, panicking or not): he climbs and flies out together, through the near side (from the centre through him, toward the bound's centre
+// when he is on the centre), to `keep` beyond the edge there, and comes down.
+//
 // Imports only the domain: ./gunship.js's falloff (`splashDamage`) and the fight's `lineOf`.
 
 import { splashDamage } from './gunship.js';
@@ -27,6 +43,7 @@ const AHEAD = 0.5;         // seconds of travel round the circle the wanted poin
 const PULL = 3;            // metres of radial pull per metre the keep distance is out
 const RADIAL_MAX = 24;     // ...at most this many
 const FLEE_STEP = 10;      // metres the wanted point sits beyond him while he backs off
+const ARRIVE = 2;          // metres from the far point at which the hop's cross ends
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 
 // a small seeded generator (mulberry32): `flight.rng` is its 32-bit state; each draw is a number in [0, 1)
@@ -42,7 +59,9 @@ function draw(flight) {
 export function makeBait(at, tune, seed = 1) {
   const B = tune.bait, flight = { rng: seed >>> 0, t: 0, speed: B.speed, speedTarget: B.speed, surgeIn: 0, jink: 0, jinkTarget: 0, jinkIn: 0, phase: [0, 0] };
   flight.phase = [draw(flight) * 2 * Math.PI, draw(flight) * 2 * Math.PI];
-  return { pos: [at[0], at[1]], heading: 0, hp: B.health, max: B.health, fleeing: false, held: 0, flight };
+  // the fly-over's state: the hop in progress ({ phase, why, dir, alt, t, cross }) or null, the hops so far, the seconds trapped, the cooldown left
+  const hops = { hop: null, hops: 0, trapT: 0, hopWait: 0, hopRng: { rng: Math.imul(seed >>> 0, 0x9E3779B1) >>> 0 } };
+  return { pos: [at[0], at[1]], heading: 0, hp: B.health, max: B.health, fleeing: false, held: 0, flight, ...hops };
 }
 
 // the nearest floor contact to a point (null and Infinity with none)
@@ -120,9 +139,105 @@ export function hurtBait(bait, plan, dt) {
 }
 
 // accumulates the time any floor contact is within `caught` metres of his ground point (a broken hold starts over); true once it
-// reaches `caughtFor`
+// reaches `caughtFor`. A hop above `reachHeight` is out of reach: no hold
 export function baitCaught(bait, creature, dt, tune) {
   const B = tune.bait;
+  if (bait.hop && bait.hop.alt > B.reachHeight) { bait.held = 0; return false; }
   bait.held = nearestOf(creature.contacts, bait.pos).d < B.caught ? bait.held + dt : 0;
   return bait.held >= B.caughtFor - 1e-9;
+}
+
+// trapped now: the bound (`{ at, radius }`, local metres; null is no bound) within `trapBound` of him and a floor contact within `trapNear` on the
+// inside of him (its offset from him has a part toward the bound's centre)
+export function trappedBait(bait, creature, tune, bound) {
+  if (!bound) return false;
+  const B = tune.bait, ox = bound.at[0] - bait.pos[0], oz = bound.at[1] - bait.pos[1], out = Math.hypot(ox, oz);
+  if (bound.radius - out > B.trapBound) return false;
+  for (const p of creature.contacts ?? []) {
+    const dx = p[0] - bait.pos[0], dz = p[1] - bait.pos[1];
+    if (Math.hypot(dx, dz) < B.trapNear && (out < 1e-6 || dx * ox + dz * oz > 0)) return true;
+  }
+  return false;
+}
+
+// under the creature now: his ground point within `underCore` of its half-width from its centre, or two floor contacts within `underNear` more than
+// 120 degrees apart round him
+export function underBait(bait, creature, tune) {
+  const B = tune.bait, c = creature.centre;
+  if (creature.radius > 0 && Math.hypot(bait.pos[0] - c[0], bait.pos[1] - c[1]) < creature.radius * B.underCore) return true;
+  const near = [];
+  for (const p of creature.contacts ?? []) {
+    const dx = p[0] - bait.pos[0], dz = p[1] - bait.pos[1], d = Math.hypot(dx, dz);
+    if (d < B.underNear && d > 1e-6) near.push([dx / d, dz / d]);
+  }
+  for (let i = 0; i < near.length; i++) for (let j = i + 1; j < near.length; j++) if (near[i][0] * near[j][0] + near[i][1] * near[j][1] < -0.5) return true;
+  return false;
+}
+
+// the hop's goal: `keep` metres beyond the creature's edge on the side `side` x `dir` (`dir` the unit from its centre toward where he started; side -1
+// the far side, 1 the near side), held `bound.inset + trapBound` metres inside the bound
+function farPoint(creature, dir, tune, bound, side = -1) {
+  const c = creature.centre, u = [side * dir[0], side * dir[1]];
+  let e = 0;
+  for (const p of creature.contacts ?? []) e = Math.max(e, (p[0] - c[0]) * u[0] + (p[1] - c[1]) * u[1]);
+  let x = c[0] + u[0] * (e + tune.bait.keep), z = c[1] + u[1] * (e + tune.bait.keep);
+  if (bound) {
+    const r = Math.max(0, bound.radius - (bound.inset ?? 0) - tune.bait.trapBound), dx = x - bound.at[0], dz = z - bound.at[1], d = Math.hypot(dx, dz);
+    if (d > r) { x = bound.at[0] + dx * r / d; z = bound.at[1] + dz * r / d; }
+  }
+  return [x, z];
+}
+
+// a hop starts now from altitude `alt` (`why`: 'trapped', 'random', 'under' or the caller's own, e.g. 'forced'); the jink is dropped. 'under' flies out
+// through the near side (toward the bound's centre when he is on the creature's centre), the others to the far side
+export function startHop(bait, creature, tune, why, alt, bound = null) {
+  const c = creature.centre, dx = bait.pos[0] - c[0], dz = bait.pos[1] - c[1], d = Math.hypot(dx, dz);
+  let dir = d < 1e-6 ? [0, 1] : [dx / d, dz / d];
+  if (d < 1 && bound) { const bx = bound.at[0] - c[0], bz = bound.at[1] - c[1], b = Math.hypot(bx, bz); if (b > 1e-6) dir = [bx / b, bz / b]; }
+  bait.hop = { phase: 'climb', why, dir, side: why === 'under' ? 1 : -1, alt, t: 0, cross: 0 };
+  bait.hops++; bait.trapT = 0; bait.fleeing = false;
+  if (bait.flight) { bait.flight.jink = 0; bait.flight.jinkTarget = 0; }
+  return bait.hop;
+}
+
+// one frame of the fly-over, before the autopilot: starts a hop when he has been trapped `trapFor` seconds or the chance falls (after the cooldown),
+// and flies the hop in progress. `bound` { at, radius, inset } or null, `alt` his altitude now, `base` the altitude he flies at. Returns null when no
+// hop is flying (the autopilot flies him), else { phase, alt, heading, started, ended } (`phase` the one he was in this frame)
+export function hopBait(bait, dt, creature, tune, { bound = null, alt = 0, base = 0 } = {}) {
+  const B = tune.bait;
+  let started = false, ended = false;
+  if (!bait.hop && underBait(bait, creature, tune)) { startHop(bait, creature, tune, 'under', alt, bound); started = true; }   // under it: out at once
+  if (!bait.hop) {
+    bait.hopWait = Math.max(0, bait.hopWait - dt);
+    bait.trapT = trappedBait(bait, creature, tune, bound) ? bait.trapT + dt : 0;
+    if (bait.hopWait > 0) return null;
+    const trapped = bait.trapT >= B.trapFor - 1e-9;
+    const lucky = !trapped && !bait.fleeing && B.hopChance > 0 && draw(bait.hopRng) < 1 - Math.exp(-B.hopChance * dt);
+    if (!trapped && !lucky) return null;
+    startHop(bait, creature, tune, trapped ? 'trapped' : 'random', alt);
+    started = true;
+  }
+  const h = bait.hop, phase = h.phase, to = farPoint(creature, h.dir, tune, bound, h.side), rate = B.hopClimb * dt;
+  h.t += dt; bait.fleeing = false;
+  const dx = to[0] - bait.pos[0], dz = to[1] - bait.pos[1], d = Math.hypot(dx, dz);
+  if ((phase !== 'climb' || h.why === 'under') && d > 1e-9) {   // across (and on the way down; out from under it, on the way up too), no faster than `hopSpeed`
+    const k = Math.min(B.hopSpeed * dt, d) / d;
+    bait.pos[0] += dx * k; bait.pos[1] += dz * k;
+  }
+  if (d > 1e-9) {   // the heading eases toward the far point, the way he goes
+    let turn = Math.atan2(dz, dx) - bait.heading;
+    turn -= Math.round(turn / (2 * Math.PI)) * 2 * Math.PI;
+    bait.heading += Math.max(-B.turn * dt, Math.min(B.turn * dt, turn));
+  }
+  if (phase === 'climb') {
+    h.alt += Math.max(-rate, Math.min(rate, B.hopAlt - h.alt));
+    if (Math.abs(h.alt - B.hopAlt) < 1e-9) { h.alt = B.hopAlt; h.phase = 'cross'; }
+  } else if (phase === 'cross') {
+    h.cross += dt;
+    if (Math.hypot(to[0] - bait.pos[0], to[1] - bait.pos[1]) <= ARRIVE || h.cross >= B.hopCross) h.phase = 'descend';
+  } else {
+    h.alt += Math.max(-rate, Math.min(rate, base - h.alt));
+    if (Math.abs(h.alt - base) < 1e-9) { h.alt = base; bait.hop = null; bait.hopWait = B.hopCooldown; bait.trapT = 0; ended = true; }
+  }
+  return { phase, alt: h.alt, heading: bait.heading, started, ended };
 }

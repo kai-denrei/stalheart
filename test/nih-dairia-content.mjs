@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { NIH_DAIRIA_MOTION, NIH_DAIRIA_PREDATOR, NIH_DAIRIA_VARIANT, NIH_DAIRIA_SIZE_METRES, NIH_DAIRIA_LOOK, NIH_DAIRIA_MODELS } from '../src/content/nih-dairia.js';
+import { NIH_DAIRIA_MOTION, NIH_DAIRIA_PREDATOR, NIH_DAIRIA_PREDATOR_SIZE_METRES, NIH_DAIRIA_VARIANT, NIH_DAIRIA_SIZE_METRES, NIH_DAIRIA_LOOK, NIH_DAIRIA_MODELS } from '../src/content/nih-dairia.js';
 const lock = JSON.parse(fs.readFileSync(new URL('../docs/nih-dairia-assets.lock.json', import.meta.url), 'utf8'));
 const locked = new Set(lock.files.map((f) => f.path));
 for (const [variant, { bin, json }] of Object.entries(NIH_DAIRIA_MODELS)) {
@@ -24,11 +24,12 @@ assert.deepEqual(NIH_DAIRIA_MOTION, {
 }, "the owner's preset pasted from the boss lab on 2026-10-08 (slower by default)");
 // the bait mode's predator: the slower preset with the pursuit and the arms turned up, every value inside the panel's range
 const { MOTION_CONTROLS } = await import('../src/fx/nih-dairia/motion-settings.js');
-assert.deepEqual(NIH_DAIRIA_PREDATOR, { ...NIH_DAIRIA_MOTION, speed: 0.22, pullTime: 3, pauseTime: 0.8, erratic: 3, stretch: 5, spread: 4.5 }, 'the predator preset (spec item 4)');
+assert.deepEqual(NIH_DAIRIA_PREDATOR, { ...NIH_DAIRIA_MOTION, speed: 3, reachTime: 5, pullTime: 3, pauseTime: 0.8, erratic: 3, stretch: 5, spread: 4.5, sweep: 4, grip: 3 }, "the predator preset (spec item 4, the owner's chase speed 3, reach duration 5, reach sweep 4, foot grip 3 of 2026-10-09)");
 for (const c of MOTION_CONTROLS) assert.ok(NIH_DAIRIA_PREDATOR[c.key] >= c.min && NIH_DAIRIA_PREDATOR[c.key] <= c.max, `predator ${c.key} ${NIH_DAIRIA_PREDATOR[c.key]} inside the panel's ${c.min}..${c.max}`);
 assert.ok(NIH_DAIRIA_PREDATOR.speed > NIH_DAIRIA_MOTION.speed && NIH_DAIRIA_PREDATOR.pauseTime < NIH_DAIRIA_MOTION.pauseTime && NIH_DAIRIA_PREDATOR.pullTime > NIH_DAIRIA_MOTION.pullTime, 'faster, longer surges, shorter pauses than the slower preset');
 assert.ok(Object.isFrozen(NIH_DAIRIA_PREDATOR));
 assert.equal(NIH_DAIRIA_SIZE_METRES, 30);
+assert.equal(NIH_DAIRIA_PREDATOR_SIZE_METRES, 40, "the bait mode's size, the owner's 40 m");
 assert.deepEqual(NIH_DAIRIA_LOOK, {
   pale: '#b8b99a', dark: '#374237', roughness: 0.26, metalness: 0, transmission: 0.65, thickness: 0.012, ior: 1.37,
   attenuationColor: '#939b72', attenuationDistance: 0.035, clearcoat: 0.65, clearcoatRoughness: 0.16,
