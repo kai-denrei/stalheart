@@ -29,6 +29,7 @@
 import { splashDamage } from './gunship.js';
 
 const GOLDEN = 2.399963, SPREAD = 8, KINDS = ['rotary', 'bofors', 'nuke', 'sol'], FAR = { pos: [1e6, 0], radius: 0 };
+const STREAM_HOLD = 0.1;   // a player's stream lives this long past the last hold
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 const nearest = (contacts, at) => contacts.reduce((m, c) => Math.min(m, dist(c, at)), Infinity);
 const tally = () => Object.fromEntries(KINDS.map((k) => [k, 0]));
@@ -37,7 +38,7 @@ export function makeFight(tune) {
   return {
     phase: 'idle', hp: tune.health, max: tune.health, clock: 0, card: 0, cardSeconds: tune.card, reason: null,
     hits: 0, damage: 0, byKind: tally(), strikes: [], seed: Math.abs(Math.floor(tune.seed ?? 1)) || 1,
-    at: null, gun: null, nuke: null, sol: null, burnt: new Set(),
+    player: null, at: null, gun: null, nuke: null, sol: null, burnt: new Set(),
   };
 }
 
@@ -45,7 +46,7 @@ export function makeFight(tune) {
 export function startFight(state) {
   if (state.phase !== 'idle') return;
   Object.assign(state, { phase: 'fight', hp: state.max, clock: 0, card: 0, reason: null, hits: 0, damage: 0, byKind: tally(),
-    strikes: [], at: null, gun: null, nuke: null, sol: null, burnt: new Set() });
+    strikes: [], player: null, at: null, gun: null, nuke: null, sol: null, burnt: new Set() });
 }
 
 // the line from the creature's centre toward the tank: `u` the unit (+z under a metre), `e` the front edge's projection on it
@@ -75,9 +76,10 @@ function solPoint(creature, tank, tune) {
   return p && (p[0] - c[0]) * u[0] + (p[1] - c[1]) * u[1] >= e ? p : [c[0] + u[0] * e, c[1] + u[1] * e];
 }
 
-// the point of a `moving` plan now: the rotary's the floor contact farthest from the tank (the centre with none), SOL's the
+// the point of a `moving` plan now: a player's plan (`player`) stays where the reticle put it, the rotary's the floor contact farthest from the tank (the centre with none), SOL's the
 // tracking point
 export function aimNow(plan, creature, tank, tune) {
+  if (plan.player) return plan.at;
   if (plan.kind === 'sol') return solPoint(creature, tank, tune);
   let best = null, far = -1;
   for (const p of creature.contacts ?? []) { const d = dist(p, tank.pos); if (d > far) { far = d; best = p; } }
@@ -157,6 +159,35 @@ export function schedule(state, now, creature, tune, tank = FAR) {
   return made;
 }
 
+// The gunner seat's shots (bait mode): the same plans the schedule makes, aimed by the player at `at` and made at `now`. The 40 mm
+// is rate-limited to the gun's `rate`, the MK-9 to its reload (`nuke.every`, the first one free); a 25 mm press makes a stream that
+// starts now and lasts 0.1 s, the lab renews it with `holdStream` while the trigger is held (and keeps `plan.at` on the reticle:
+// `aimNow` returns it as it is). A press while the previous stream still lives makes nothing (null). Returns the plan, pushed to
+// `state.strikes` like the schedule's, or null (cooling, a gun switched off, an unknown gun, no fight running)
+export function playerShot(state, gun, at, now, tune) {
+  if (state.phase !== 'fight') return null;
+  const R = tune.rotary, B = tune.bofors, N = tune.nuke, P = state.player ??= { bofors: -Infinity, nuke: -Infinity, stream: null };
+  const make = (kind, p) => { const plan = { kind, at: [at[0], at[1]], ...p, player: true }; state.strikes.push(plan); return plan; };
+  if (gun === 'bofors') {
+    if (B.enabled === false || now - P.bofors < 1 / B.rate - 1e-9) return null;
+    P.bofors = now;
+    return make('bofors', { radius: B.radius, damage: B.damage, showAt: now, fireAt: now, land: now + B.travel, until: now + B.travel });
+  }
+  if (gun === 'nuke') {
+    if (N.enabled === false || now - P.nuke < N.every - 1e-9) return null;
+    P.nuke = now;
+    return make('nuke', { radius: N.radius, damage: N.damage, showAt: now, fireAt: now, land: now + N.travel, until: now + N.travel });
+  }
+  if (gun === 'rotary') {
+    if (R.enabled === false || (P.stream && P.stream.until > now)) return null;
+    return (P.stream = make('rotary', { radius: R.radius, damage: R.dps, showAt: now, fireAt: now, land: now, until: now + STREAM_HOLD, moving: true }));
+  }
+  return null;
+}
+
+// the trigger held: the player's stream lives STREAM_HOLD seconds past `now`
+export function holdStream(plan, now) { plan.until = now + STREAM_HOLD; }
+
 function harm(state, dmg, kind) {
   if (state.phase !== 'fight' || dmg <= 0) return 0;
   const dealt = Math.min(dmg, state.hp);
@@ -200,7 +231,7 @@ export function tick(state, dt) {
   state.card -= dt;
   if (state.card > 0) return null;
   Object.assign(state, { phase: 'idle', hp: state.max, clock: 0, card: 0, reason: null, hits: 0, damage: 0, byKind: tally(),
-    strikes: [], at: null, gun: null, nuke: null, sol: null, burnt: new Set() });
+    strikes: [], player: null, at: null, gun: null, nuke: null, sol: null, burnt: new Set() });
   return 'reset';
 }
 
