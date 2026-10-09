@@ -21,8 +21,8 @@
 //
 // THE HOST'S HOOKS (default no-ops): `onTankHit(reason)`, `onLanding(plan, { damage, point })` for every Bofors and MK-9 landing,
 // `onBeam(plan, point)` each frame SOL burns and `onBurn(plan, dt)` each frame a stream or the beam burns (the bait mode's Isao is
-// hurt by them as the creature is); `point` is the plan's local [x, z], a fresh array each call. `adopt(plan)` takes a plan the
-// player made (src/labs/boss/seat.js) into the same presentation.
+// hurt by them as the creature is); `point` is the plan's local [x, z], a fresh array each call. `adopt(plan)` takes a plan made elsewhere
+// into the same presentation; `resolve(plan, dt)` resolves one with no presentation (the bait mode's game seat, ./game-seat.js).
 //
 // POSITIONS: plans are in the lab's local metres [x, z]; `surface(x, z)` gives the ground in the planet-centred `sphere` group,
 // where the rings, the tracers, the laser and the explosions all live. `shift(sx, sz)` follows a re-anchor of the lab's frame.
@@ -180,9 +180,18 @@ export function createFriendlies(scene, {
     return false;
   }
 
-  // a plan made elsewhere joins the ones in flight and is drawn and resolved as the schedule's are (the bait mode's gunner seat makes
-  // the player's with playerShot; `spares` is the schedule's, so a player's plan hits whatever `tank()` reports, a world away there)
+  // a plan made elsewhere joins the ones in flight and is drawn and resolved as the schedule's are (the schedule's own, each frame)
   function adopt(plan) { pending.push({ plan, ring: null, fired: false, laid: false, contactT: 0, streamT: STREAM.every, voice: null }); return plan; }
+
+  // a plan resolved now, with no presentation of its own: the bait mode's game seat (./game-seat.js) draws and sounds its rounds itself and
+  // asks here at each landing, so the rules and the hooks (the fear, Isao, the arena) hear them as they hear the schedule's. A `moving`
+  // plan burns for dt (the 25 mm's footprint), any other lands
+  function resolve(plan, dt = 0) {
+    const state = fight(), c = creature(), k = tank();
+    if (!plan.moving) { land(plan, state, c, k, plan.kind === 'nuke' ? 'the MK-9' : 'a Bofors round'); return; }
+    if (burn(state, plan, dt, c, k).tankHit) onTankHit('the 25 mm');
+    onBurn(plan, dt);
+  }
 
   function tick(dt) {
     const t = now(), state = fight(), c = creature(), k = tank();
@@ -213,7 +222,7 @@ export function createFriendlies(scene, {
   function shift(sx, sz) { for (const e of pending) { e.plan.at[0] += sx; e.plan.at[1] += sz; } }
 
   return {
-    tick, shift, reset, adopt,
+    tick, shift, reset, adopt, resolve,
     rings: () => pending.reduce((n, e) => n + (e.ring ? 1 : 0), 0),
     dispose() {
       reset();

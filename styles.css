@@ -3969,8 +3969,8 @@ body.mobile-shell #gunship-briefing button, body.mobile-shell #sol82-briefing bu
 /* GROUND TRUTH · IMPACT, bigger in the gunship seat (owner, 2026-09-15): the impact is the payoff, so the monitor grows to
    about 640 x 400 on a wide screen, 16:10, bottom right; its height stops short of the readout above it on shorter screens.
    The Talon and missile feeds keep the small box. The monitor renders at the box's own aspect, so nothing stretches. */
-#tab-td.gunship-seat #story-monitor { width: min(44vw, 640px); height: auto; aspect-ratio: 16 / 10; max-height: max(160px, calc(100vh - 540px)); border-color: #3a8fbf; }
-#tab-td.gunship-seat #story-monitor .head { font-size: 11px; }
+.gunship-seat #story-monitor { width: min(44vw, 640px); height: auto; aspect-ratio: 16 / 10; max-height: max(160px, calc(100vh - 540px)); border-color: #3a8fbf; }
+.gunship-seat #story-monitor .head { font-size: 11px; }   /* the seat's root carries .gunship-seat: the game's #tab-td, the boss lab's stage */
 #story-monitor .feed { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; }
 #story-monitor .head { position: absolute; z-index: 1; left: 6px; top: 4px; font: 600 10px ui-monospace, Menlo, monospace; letter-spacing: 0.08em; color: #9fdcff; text-shadow: 0 0 4px #000; }
 /* the story's fire-control scope for a guided mount: the Sniper workshop's idiom, one panel and a reticle */

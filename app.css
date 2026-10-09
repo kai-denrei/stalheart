@@ -156,28 +156,12 @@
 #boss .ih-row{display:flex;align-items:center;gap:8px;color:#b8ffca}
 #boss .ih-lbl{font-size:10px;letter-spacing:.16em;color:#4fae63}
 #boss .ih-row[hidden]{display:none}
-/* the bait mode's gunner seat (src/labs/boss/seat.js): the optic fills the stage, a dark rim over it, the reticle and the guns' strip */
-#boss .seat{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:5}
-#boss .seat[hidden]{display:none}
-#boss .seat-rim{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 58%,rgba(2,4,6,.62) 100%)}
-#boss .seat-ret{position:absolute;inset:0;width:100%;height:100%}
-#boss .seat-ret circle{fill:rgba(255,179,71,.06);stroke:#ffb347;stroke-width:1.5;stroke-dasharray:5 4}
-#boss .seat-ret path{fill:none;stroke:#fff;stroke-width:2;stroke-linecap:square;filter:drop-shadow(0 0 2px #000)}
-#boss .seat-hud{position:absolute;right:262px;top:14px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:5px 10px;
-  border:1px solid #23303c;background:rgba(6,9,12,.78);color:#8fa5b3;font:600 11px/1.4 ui-monospace,Menlo,monospace;letter-spacing:.12em;
-  border-radius:2px;white-space:nowrap}
-#boss .seat-bar{display:flex;gap:6px;align-items:center}
-#boss .seat-gun{padding:2px 8px;border:1px solid #2c3944;border-radius:2px}
-#boss .seat-gun.on{color:#0a1014;background:#ffb347;border-color:#ffb347}
-#boss .seat-gun.off{opacity:.35;text-decoration:line-through}
-#boss .seat-info{margin-left:8px;color:#b9cdd9;font-variant-numeric:tabular-nums}
-#boss .seat-info.wait{color:#ff9a6b}
-#boss .seat-hint{color:#6b8494;font:10.5px/1.4 ui-monospace,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase}
-/* Isao in the optic: the lab's friendly cyan (the readout's accent), a black halo against the cyan floor grid */
-#boss .seat-isao circle{fill:rgba(127,230,208,.08);stroke:#7fe6d0;stroke-width:2;stroke-dasharray:none;filter:drop-shadow(0 0 2px #000)}
-#boss .seat-isao.edge circle{stroke-dasharray:4 3;fill:none}
-#boss .seat-isao path{fill:#7fe6d0;stroke:#05080b;stroke-width:1}
-#boss .seat-isao text{fill:#7fe6d0;font:700 12px ui-monospace,Menlo,monospace;letter-spacing:.12em;paint-order:stroke;stroke:#05080b;stroke-width:3px}
+/* the bait mode in the game's gunship seat (src/labs/boss/game-seat.js): its HUD over the stage, not the window, so the reticle sits on the
+   view's centre; its readout and the GROUND TRUTH monitor stand left of the lab's panel (--seat-clear: the px of the stage it covers) */
+#boss #sentry-pilot{inset:104px 14px auto}   /* under the lab's creature and Isao bars (.sw-hud) */
+#boss #gunship-hud{position:absolute}
+#boss #gunship-hud .ro{right:calc(var(--seat-clear,0px) + 18px)}
+#boss #story-monitor{position:absolute;right:calc(var(--seat-clear,0px) + 12px)}
 #boss .ih-num{min-width:7ch}
 #boss .ih-bar{position:relative;width:140px;height:7px;border:1px solid rgba(184,255,202,.45)}
 #boss .ih-bar i{position:absolute;inset:0 auto 0 0;background:#b8ffca;transition:width .25s linear}

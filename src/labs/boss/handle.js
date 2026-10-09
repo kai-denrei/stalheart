@@ -18,9 +18,12 @@ export function createLabHandle({
     // edge along the line toward him (null before his first round)
     mode: (m) => (m === undefined ? state.mode : (setMode(m), state.mode)),
     bait: () => bait.state(),
-    // the gunner seat (bait mode): aim([x, z]) puts the reticle on a local ground point (until the pointer moves), gun(key) picks
-    // 'rotary' | 'bofors' | 'nuke' (the MK-9; 'heavy' and 1-3 too) and returns it, fire(on) holds or lets go of the trigger (the MK-9 fires
-    // once per hold; in the tank mode `fire(true)` is the cannon and `fire(false)` does nothing); seat() is { gun, reticle, look, zoom, held, shots: { rotary, bofors, nuke } }
+    // the game's gunship seat (bait mode, ./game-seat.js): aim([x, z]) turns the optic onto a local ground point (until the mouse moves it),
+    // gun(key) picks 'rotary' | 'bofors' | 'nuke' (the MK-9; 'heavy' and 1-3 too) through the seat's own gun buttons and returns the gun,
+    // fire(on) holds or lets go of the trigger (the MK-9's fire(true) is a paint and a release over two frames; in the tank mode
+    // `fire(true)` is the cannon and `fire(false)` does nothing); seat() is { gun, reticle (the impact, local), look (the point a round
+    // opens on), zoom, held, shots: { rotary, bofors, nuke }, altitude (m over the ground), cellMetres, heavy (the MK-9's state), thermal, view },
+    // null while the seat is not mounted
     aim: (at) => seat.aim(at), gun: (key) => seat.gun(key), fire: (on = true) => (state.mode === 'bait' ? seat.fire(on) : (on ? fireCannon() : false)), seat: () => seat.state(),
     // a stopped tank; `near` puts it `at` native metres from the creature's centre, on the side it already stands. The
     // default 0.05 is inside the kit's 0.075 capture radius and can land under an arm: a prey inside the skin never lets the
