@@ -178,7 +178,8 @@ export function initBossTab(root) {
   const sun = new THREE.DirectionalLight(look.sun[0], look.sun[1]); scene.add(sun);
   const fill = new THREE.DirectionalLight(look.sun[0], 0.5); fill.position.set(-200, 120, -160); scene.add(fill);
   scene.add(sun.target, fill.target);   // in the scene, so the lights keep their direction when the gunner's seat scales it to the game's units (./boss/game-seat.js)
-  createDaylight({ hemi, sun, bg: scene.background, day: STORY_DAY.day, tune: STORY_DAY, phase: 0.2 });   // a fixed mid-morning
+  // a fixed mid-morning, no sun or moon sprite: the day rig's disc distance is planet radii in the game and metres here, which put the sun 40 m over the arena (the bright dot in the thermal view, 2026-10-10)
+  createDaylight({ hemi, sun, bg: scene.background, day: STORY_DAY.day, tune: { ...STORY_DAY, discs: null }, phase: 0.2 });
   // the planet's centre is the frame's origin; the story planet's scene puts the pole at y = 0, so the sphere-space group
   // sits one radius down and everything placed through a frame goes in it
   const sphere = new THREE.Group(); scene.add(sphere);
