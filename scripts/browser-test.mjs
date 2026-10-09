@@ -2289,7 +2289,7 @@ try{
  // probe runs on the tree before wave B. BOSS_UNDER_SET (JSON, { knob name: value }) sets panel knobs first (a variant); each escape's start is
  // logged by its cause: his ground point inside half the body's half-width of its centre ('core'), else floor contacts within 8 m on opposite sides ('arms'; 15 m on the tree before the escape fix)
  const B='window.__bossLab';
- await go('boss-under','labs.html?sw=0&acceptance=1#boss');
+ await go('boss-under','labs.html?sw=0&acceptance=1&reeds=0#boss');
  await until(`!!${B} && ${B}.readout().steps > 0`,60000);
  await evaluate(`${B}.mode("bait")`);
  await until(`${B}.fight().phase === "fight" && ${B}.bait() && ${B}.bait().max > 0 && !!${B}.seat()`,30000);
@@ -2335,7 +2335,7 @@ try{
  const B='window.__bossLab',shotPath=process.env.BOSSBAIT_SHOT||join(output,'boss-bait-seat.png');
  const {BOSS_FIGHT}=await import('../src/content/boss-fight.js');
  const {GUNSHIP_GUNS,GUNSHIP_PLATFORM}=await import('../src/content/gunship.js');
- await go('boss-bait','labs.html?sw=0&acceptance=1#boss');
+ await go('boss-bait','labs.html?sw=0&acceptance=1&reeds=0#boss');   // no first wave (--boss-wave is the wave's): the boss at once, as before it
  await until(`!!${B} && ${B}.readout().steps > 0`,60000);
  const world0=await evaluate(`${B}.world()`);   // the lab's scene frame, which the seat takes (scaled and lifted to the game's units) and must give back
  await evaluate(`${B}.camera("game"); ${B}.mode("bait")`);   // the game camera asked for first: the bait mode must take it away
@@ -2364,10 +2364,11 @@ try{
  {const text=await evaluate(`${B}.copySettings()`),lines=text.split('\n');
   console.log('BOSS-BAIT copy\n'+text);
   assert(/^mode=bait variant=\S+ size=40$/.test(lines[0])&&/^motion: speed=1.2 reachTime=5 /.test(lines[1])&&/ sweep=4( |$)/.test(lines[1])&&/ grip=3( |$)/.test(lines[1]),`the block's head and motion lines (${lines.slice(0,2).join(' | ')})`);
-  assert(/^phys: gravity=\S+ iterations=\d+/.test(lines[2])&&/^bait: altitude=\S+ erratic=\S+ health=180 reload=\S+ hopChance=0\.03$/.test(lines[3])&&/^fight: /.test(lines[4])&&/^fear: reach=/.test(lines[5])&&lines.length===8,`the block's phys, bait, fight and fear lines (${lines.slice(2).join(' | ')})`);
+  assert(/^phys: gravity=\S+ iterations=\d+/.test(lines[2])&&/^bait: altitude=\S+ erratic=\S+ health=180 reload=\S+ hopChance=0\.03$/.test(lines[3])&&/^fight: /.test(lines[4])&&/^fear: reach=/.test(lines[5])&&lines.length===9,`the block's phys, bait, fight and fear lines (${lines.slice(2).join(' | ')})`);
   // wave B: the bait mode's fear per gun and temperament, a line each
   assert(/^gun fear: 25mm\.amount=0\.06 25mm\.drain=0\.5 25mm\.flee=10 25mm\.duration=0\.8 25mm\.speed=1\.3 25mm\.erratic=0 40mm\.flee=35 40mm\.duration=2\.5 40mm\.speed=2 40mm\.erratic=2 mk9\.flee=50 mk9\.duration=3\.5 mk9\.speed=2\.5 mk9\.erratic=1 mk9\.stun=0$/.test(lines[6])
-    &&/^temperament: speed=1\.2 lunges=true lungeSpeed=3 everyMin=3 everyMax=8 forMin=0\.6 forMax=1\.2 reach=1\.5 ease=0\.2$/.test(lines[7]),`the block's gun fear and temperament lines (${lines.slice(6).join(' | ')})`);
+    &&/^temperament: speed=1\.2 lunges=true lungeSpeed=3 everyMin=3 everyMax=8 forMin=0\.6 forMax=1\.2 reach=1\.5 ease=0\.2$/.test(lines[7])
+    &&/^wave: count=0 reedHealth=20 size=15 inset=15 corpse=2 clear=45 budget=10 lod=false$/.test(lines[8]),`the block's gun fear, temperament and first wave lines (${lines.slice(6).join(' | ')})`);
   await evaluate(`document.querySelector('#boss [data-callouts]').replaceChildren(); document.querySelector('#boss [data-copy]').hidden=true; document.querySelector('#boss [data-copy]').value=''`);
   const seat0=await evaluate(`${B}.seat().view`);
   await evaluate(`dispatchEvent(new KeyboardEvent("keydown",{key:"c",code:"KeyC",bubbles:true}));dispatchEvent(new KeyboardEvent("keyup",{key:"c",code:"KeyC",bubbles:true}))`);
@@ -3002,6 +3003,91 @@ const killReal=(Date.now()-t0)/1000;
  assert(friends.gui==='none'&&!friends.dev&&friends.current==='playtest',`?playtest=1 hides the knobs' panel and the shell offers PLAYTEST only (${JSON.stringify(friends)})`);
  assert(!friends.handle&&friends.seatClear==='0px',`no acceptance handle, and the seat's HUD uses the full stage (${JSON.stringify(friends)})`);
  current='boss-bait-friends';await finish();
+ } else if(args.includes('--boss-wave')) {
+ // THE BAIT MODE'S FIRST WAVE (owner, 2026-10-09: "wave 1 is 5 to 50 (slider) Reed - four limbs, creatures, smaller (size 15) and with only 20 hp, not 180. once they are
+ // defeated, the bigger Nih Dairia shows up"; src/labs/boss/wave.js, src/domain/boss-wave.js). ?reeds=10: ten Reeds load round the arena 15 m inside the bound, the boss
+ // hidden and unstepped, the bar reading WAVE 1 · REED 10/10 and the fps corner shown; over 8 s of lab clock (60 s real cap) they close on Isao (the mean distance falls by
+ // 10 m or more) and the rules' creature is the Reed nearest him; the fps, the wave's solver ms and its clock logged at 10 Reeds; the 40 mm and then the 25 mm, aimed by
+ // polling at the live Reed farthest from Isao (at least 40 m from him), kill some (both guns' kills logged, at least two in all, 60 s real cap; a lost round restarts
+ // the wave and the count carries on); killReeds() the rest: the bar empties, the boss enters at the arena's centre (visible, stepping, the bar NIH-DAIRIA 180/180)
+ // with Isao at least `wave.clear` - 1 m from it; R restarts the wave (ten Reeds, the boss held back again); a screenshot of the wave in the seat (WAVE_SHOT or the
+ // artifacts' boss-wave.png); then 50 Reeds: they all load and the fps, the solver ms (near the budget), the wave's clock and the off-screen count are logged with the
+ // off-screen half rate off (the default) and on
+ const B='window.__bossLab',shotPath=process.env.WAVE_SHOT||join(output,'boss-wave.png');
+ const {BOSS_FIGHT}=await import('../src/content/boss-fight.js');const WV=BOSS_FIGHT.wave;
+ const setBool=(name,v)=>evaluate(`(()=>{const i=[...document.querySelectorAll('.lil-gui .name')].find(n=>n.textContent===${JSON.stringify(name)}).parentElement.querySelector('input');if(i.checked!==${!!v})i.click();return i.checked;})()`);
+ await go('boss-wave','labs.html?sw=0&acceptance=1&reeds=10#boss');
+ await until(`!!${B} && ${B}.readout().steps > 0`,60000);
+ await evaluate(`${B}.mode("bait")`);
+ await until(`${B}.mode()==="bait" && !!${B}.seat() && ${B}.wave().made===10`,90000);
+ const lbl=()=>evaluate(`document.querySelector('#boss .sw-hud .ih-lbl').textContent`);
+ const rigShown=()=>evaluate(`${B}.creature().mesh.parent.visible`);
+ const W0=await evaluate(`${B}.wave()`),bound=await evaluate(`${B}.arena().bound`);
+ {const radii=W0.reeds.map(r=>Math.hypot(r.centre[0]-bound.at[0],r.centre[1]-bound.at[1]));
+  console.log('BOSS-WAVE loaded '+JSON.stringify({count:W0.count,alive:W0.alive,radii:radii.map(r=>+r.toFixed(1)),label:await lbl()}));
+  assert(W0.count===10&&W0.alive===10&&!W0.boss,`ten Reeds standing, the boss held back (${JSON.stringify({count:W0.count,alive:W0.alive,boss:W0.boss})})`);
+  assert(radii.every(r=>Math.abs(r-(bound.radius-WV.inset))<12),`they start round the arena about ${bound.radius-WV.inset} m out (${radii.map(r=>r.toFixed(0))})`);
+  assert.equal(await lbl(),'WAVE 1 · REED 10/10','the bar reads the wave');
+  assert.equal(await rigShown(),false,'the boss is hidden while the wave stands');}
+ // the hunt: 8 s of lab clock
+ const dIsao=async()=>evaluate(`(()=>{const L=${B},w=L.wave(),b=L.bait();const d=w.reeds.filter(r=>!r.dead&&r.centre).map(r=>Math.hypot(r.centre[0]-b.pos[0],r.centre[1]-b.pos[1]));return {mean:d.reduce((a,x)=>a+x,0)/d.length,min:Math.min(...d),clock:L.arena().clock,phase:L.fight().phase,hunted:w.hunted,fightCentre:L.fight().centre,bossSteps:L.readout().steps}})()`);
+ const h0=await dIsao();let h1=h0;const fps10=[];
+ for(const end=Date.now()+60000;Date.now()<end&&h1.clock-h0.clock<8;){await delay(500);h1=await dIsao();const r=await evaluate(`(()=>{const L=${B},r=L.readout();return {fps:r.fps,solver:r.wave.meanSolver,scale:r.wave.meanScale,lod:r.wave.lod,cost:r.wave.cost}})()`);fps10.push(r);}
+ const corner=await evaluate(`(()=>{const e=document.querySelector('#boss [data-fps]');return {shown:!e.hidden&&getComputedStyle(e).display!=='none',text:e.textContent}})()`);
+ const avg=(a,k)=>a.reduce((s,x)=>s+x[k],0)/a.length;
+ console.log('BOSS-WAVE hunt '+JSON.stringify({from:+h0.mean.toFixed(1),to:+h1.mean.toFixed(1),min:+h1.min.toFixed(1),seconds:+(h1.clock-h0.clock).toFixed(1),hunted:h1.hunted,phase:h1.phase}));
+ console.log('BOSS-WAVE fps at 10 Reeds '+JSON.stringify({fps:+avg(fps10,'fps').toFixed(1),solverMs:+avg(fps10,'solver').toFixed(2),clock:+avg(fps10,'scale').toFixed(3),offscreen:+avg(fps10,'lod').toFixed(1),msPerStep:+avg(fps10,'cost').toFixed(3),corner:corner.text}));
+ assert(h1.clock-h0.clock>=8||h1.phase!=='fight',`8 s of lab clock went by (${(h1.clock-h0.clock).toFixed(1)})`);
+ assert(h0.mean-h1.mean>=10||h1.phase==='lost',`the Reeds close on Isao: the mean distance ${h0.mean.toFixed(1)} -> ${h1.mean.toFixed(1)} m`);
+ assert(h1.hunted!==null,'the rules\' creature is a Reed (the one nearest Isao)');
+ assert(corner.shown&&/^\d+ fps · solver [\d.]+ ms · Reeds \d+\/10/.test(corner.text),`the fps corner shows (${JSON.stringify(corner)})`);
+ // the guns: the 40 mm then the 25 mm, on the live Reed farthest from Isao, at least 40 m from him
+ const fireAt=async(gun,seconds,want)=>{
+  await evaluate(`${B}.gun(${JSON.stringify(gun)})`);let kills=0,last=(await evaluate(`${B}.wave()`)).killed,rounds=0;
+  for(const end=Date.now()+seconds*1000;Date.now()<end&&kills<want;){
+   const tgt=await evaluate(`(()=>{const L=${B},w=L.wave(),b=L.bait();if(!b||b.gone||L.fight().phase!=='fight')return null;let best=null,bd=40;for(const r of w.reeds){if(r.dead||!r.centre)continue;const d=Math.hypot(r.centre[0]-b.pos[0],r.centre[1]-b.pos[1]);if(d>bd){bd=d;best=r.centre;}}return best;})()`);
+   if(tgt){await evaluate(`${B}.aim(${JSON.stringify(tgt)}); ${B}.fire(true)`);}else await evaluate(`${B}.fire(false)`);
+   await delay(120);const k=(await evaluate(`${B}.wave()`)).killed;if(k<last)last=0;if(k>last){kills+=k-last;}last=k;rounds++;
+  }
+  await evaluate(`${B}.fire(false)`);return kills;
+ };
+ const by40=await fireAt('bofors',40,2),by25=await fireAt('rotary',30,1);
+ const W1=await evaluate(`${B}.wave()`);
+ console.log('BOSS-WAVE guns '+JSON.stringify({by40,by25,alive:W1.alive,killed:W1.killed,isao:(await evaluate(`${B}.bait()`)).hp,phase:(await evaluate(`${B}.fight()`)).phase}));
+ assert(by40+by25>=2,`scripted 40 mm and 25 mm fire kills Reeds (${by40} by the 40 mm, ${by25} by the 25 mm)`);
+ // the rest by the cheat: the boss enters
+ await until(`${B}.fight().phase==="fight"`,20000);
+ const killed=await evaluate(`${B}.killReeds()`);
+ await until(`${B}.wave().boss && ${B}.wave().entered`,10000);
+ const entry=await evaluate(`(()=>{const L=${B},a=L.arena().bound.at,e=L.readout().entry;return {isao:e.isao,moved:e.moved,boss:L.fight().centre,at:a,hp:L.fight().hp,max:L.fight().max}})()`);
+ await delay(1500);
+ const after=await evaluate(`(()=>{const L=${B};return {steps:L.readout().steps,label:document.querySelector('#boss .sw-hud .ih-lbl').textContent,num:document.querySelector('#boss .sw-hud .ih-num').textContent,made:L.wave().made}})()`);
+ console.log('BOSS-WAVE boss '+JSON.stringify({killed,isaoFromCentre:+entry.isao.toFixed(1),moved:entry.moved,bossFromCentre:+Math.hypot(entry.boss[0]-entry.at[0],entry.boss[1]-entry.at[1]).toFixed(1),...after,shown:await rigShown()}));
+ assert(killed>=1,'the cheat killed the Reeds left');
+ assert(entry.isao>=WV.clear-1,`Isao is clear of the boss's landing (${entry.isao.toFixed(1)} m from the centre, bound ${WV.clear})`);
+ assert(Math.hypot(entry.boss[0]-entry.at[0],entry.boss[1]-entry.at[1])<10,`the boss stands at the arena's centre (${JSON.stringify(entry)})`);
+ assert(await rigShown(),'the boss is shown');
+ assert(after.steps>0&&after.label==='NIH-DAIRIA'&&after.num===`${entry.max}/${entry.max}`,`the boss steps and the bar is its own, whole (${JSON.stringify(after)})`);
+ // R restarts the wave
+ await evaluate(`dispatchEvent(new KeyboardEvent("keydown",{key:"r",code:"KeyR"})); dispatchEvent(new KeyboardEvent("keyup",{key:"r",code:"KeyR"}))`);
+ await until(`(()=>{const w=${B}.wave();return w.count===10&&w.alive===10&&!w.boss&&w.made===10})()`,60000);
+ assert.equal(await rigShown(),false,'R: the boss held back again');assert.equal(await lbl(),'WAVE 1 · REED 10/10','R: the bar reads the whole wave');
+ // the screenshot: the wave in the seat, zoomed out over the Reeds nearest Isao
+ {const t0=await evaluate(`${B}.arena().clock`);await until(`${B}.arena().clock-${t0}>3`,30000);
+  const at=await evaluate(`(()=>{const L=${B},b=L.bait(),w=L.wave(),c=w.reeds.filter(r=>r.centre).map(r=>r.centre);return [(b.pos[0]+c.reduce((s,p)=>s+p[0],0)/c.length)/2,(b.pos[1]+c.reduce((s,p)=>s+p[1],0)/c.length)/2]})()`);
+  await evaluate(`${B}.aim(${JSON.stringify(at)})`);await delay(1500);
+  const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync(shotPath,Buffer.from(shot.data,'base64'));console.log(`BOSS-WAVE screenshot ${shotPath}`);}
+ // fifty: the fps with the off-screen half rate on and off
+ await evaluate(`${B}.reeds(50)`);
+ await until(`(()=>{const w=${B}.wave();return w.count===50&&w.made===50})()`,120000);
+ const sample=async(seconds)=>{const out=[];for(const end=Date.now()+seconds*1000;Date.now()<end;){await delay(500);out.push(await evaluate(`(()=>{const r=${B}.readout();return {fps:r.fps,solver:r.wave.meanSolver,scale:r.wave.meanScale,lod:r.wave.lod,cost:r.wave.cost,phase:r.fight.phase}})()`));}return out;};
+ await delay(1500);const off50=await sample(5);await setBool('off-screen Reeds at half rate',true);await delay(1500);const on50=await sample(5);await setBool('off-screen Reeds at half rate',false);
+ const row=(a)=>({fps:+avg(a,'fps').toFixed(1),solverMs:+avg(a,'solver').toFixed(2),clock:+avg(a,'scale').toFixed(3),offscreen:+avg(a,'lod').toFixed(1),msPerStep:+avg(a,'cost').toFixed(3)});
+ console.log('BOSS-WAVE fps at 50 Reeds '+JSON.stringify({lodOn:row(on50),lodOff:row(off50),heapMB:await evaluate('performance.memory?+(performance.memory.usedJSHeapSize/1048576).toFixed(0):null')}));
+ assert(avg(off50,'solver')<WV.budget*1.6,`fifty Reeds hold near the solver budget (${avg(off50,'solver').toFixed(1)} ms, budget ${WV.budget})`);
+ const rd=await evaluate(`${B}.readout()`);
+ assert.deepEqual(rd.shaderErrors,[],'no shader errors');assert(!rd.error,`no frame error (${rd.error})`);
+ current='boss-wave';await finish();
  } else if(args.includes('--boss-friends')) {
  // THE FRIENDS' LINK ALONE (2026-10-09, before the push): ?playtest=1&mode=bait opens the bait mode in the game's seat with the dev controls hidden,
  // the friends' note shown, and Esc freeing the mouse without leaving the bait mode

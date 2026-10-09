@@ -160,6 +160,8 @@
 #boss .nk-cue{margin-left:6px;padding:0 5px;border:1px solid #3a444d;color:#56626b;letter-spacing:.14em}
 #boss .nk-cue.nk-on{border-color:#ffb43d;color:#ffd27a;background:rgba(255,180,61,.12)}
 #boss .nk-cue[hidden]{display:none}
+#boss .sw-fps{position:absolute;z-index:7;left:12px;top:16px;padding:1px 6px;font:10.5px ui-monospace,Menlo,monospace;color:#9fb3c2;background:rgba(5,8,11,.6);pointer-events:none;font-variant-numeric:tabular-nums}
+#boss .sw-fps[hidden]{display:none}
 /* the bait mode in the game's gunship seat (src/labs/boss/game-seat.js): its HUD over the stage, not the window, so the reticle sits on the
    view's centre; its readout and the GROUND TRUTH monitor stand left of the lab's panel (--seat-clear: the px of the stage it covers) */
 #boss #sentry-pilot{inset:104px 14px auto}   /* under the lab's creature and Isao bars (.sw-hud) */

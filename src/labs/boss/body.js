@@ -88,12 +88,38 @@ export function createBodyRules({ getCreature, getScale, drive, tune = {} } = {}
     }
   }
   // every body node in local metres, [x, z, height]: the creature's reach as the bait's envelope reads it (src/domain/boss-bait.js `envelopeBait`), the arms with the feet
-  function nodes() {
-    const creature = getCreature(), scale = getScale(), out = [];
-    if (!creature) return out;
-    const b = creature.body, n = b.x.length / 3;
-    for (let i = 0; i < n; i++) out.push([b.x[i * 3] * scale, b.x[i * 3 + 2] * scale, b.x[i * 3 + 1] * scale]);
-    return out;
-  }
+  const nodes = () => nodesOf(getCreature(), getScale());
   return { project, blocker, circleInput, shellHit, shove, nodes };
+}
+
+// THE KIT AS THE RULES SEE IT, for any body at its own scale (the boss, and each Reed of the bait mode's wave, ./wave.js): `kitNow` the centre, its velocity, half the
+// body's extent (`native` its width in native units) and the nodes on the floor, in local metres; `nodesOf` every node [x, z, height]
+export function kitNow(kit, scale, native) {
+  const m = kit.motion, b = kit.body, c = b.contact, contacts = [];
+  for (let i = 0; i < c.length; i++) if (c[i] > 0) contacts.push([b.x[i * 3] * scale, b.x[i * 3 + 2] * scale]);
+  return { centre: [m.center.x * scale, m.center.z * scale], velocity: [m.velocity.x * scale, m.velocity.z * scale], radius: native * scale / 2, contacts };
+}
+export function nodesOf(kit, scale) {
+  const out = [];
+  if (!kit) return out;
+  const b = kit.body, n = b.x.length / 3;
+  for (let i = 0; i < n; i++) out.push([b.x[i * 3] * scale, b.x[i * 3 + 2] * scale, b.x[i * 3 + 1] * scale]);
+  return out;
+}
+
+// THE RE-ANCHOR'S SHIFT of one kit by (sx, sz) native units (moved from boss-tab.js so the wave's Reeds take the same one). Which arrays: with the WebAssembly kernel on,
+// SoftBody replaces body.x, body.previous, body.candidate and body.velocity with Float64Array views on the kernel's memory, so body.x IS kernel.x; the Set below drops the
+// aliases and shifts each buffer once (and still covers the JavaScript fallback, where they are plain arrays). Velocity is untouched. Beyond the solver: the behaviour's
+// target and centres, the feeding cycle's prey and captured points, the cradle's anchor and start shape, the traction anchors, and the gait's feet, swing starts and goals,
+// which are positions in the same plane (the gait pulls each foot toward them; left behind they would drag every leg twenty metres back). The skin is redrawn: update only
+// re-skins when it takes a fixed step, and a frame with none would draw the unshifted skin in the moved rig
+export function shiftKit(kit, sx, sz) {
+  const b = kit.body, m = kit.motion;
+  const buffers = new Set([b.x, b.previous, b.candidate, b.kernel?.x, b.kernel?.previous, b.kernel?.candidate].filter(Boolean));
+  for (const arr of buffers) for (let i = 0; i < arr.length; i += 3) { arr[i] += sx; arr[i + 2] += sz; }
+  for (const arr of [m.traction.anchors, m.cradle.starts]) for (let i = 0; i < arr.length; i += 3) { arr[i] += sx; arr[i + 2] += sz; }
+  const shiftV = (v) => { v.x += sx; v.z += sz; };
+  for (const v of [m.target, m.center, m.torsoCenter, m.feeding.preyPosition, m.feeding.capturedPosition, m.cradle.anchor, b.center]) shiftV(v);
+  for (const list of [m.gait.feet, m.gait.starts, m.gait.goals]) list.forEach(shiftV);
+  b.updateSurface(); kit.appearance.update();
 }

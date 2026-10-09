@@ -99,6 +99,13 @@ export const BOSS_FIGHT = freeze({
       flyover: { priority: 1, cooldown: 12, ttl: 2, variants: 3, chance: 1 / 3 },
     },
   },
+  // THE BAIT MODE'S FIRST WAVE (owner, 2026-10-09: "let's test something with the fps; wave 1 is 5 to 50 (slider) Reed - four limbs, creatures, smaller (size 15) and
+  // with only 20 hp, not 180. once they are defeated, the bigger Nih Dairia shows up"; src/domain/boss-wave.js). `count` Reeds (the panel's slider and ?reeds=N; 0 is the
+  // boss at once) of `reedHealth` hit points and `size` metres, spawned evenly round the arena `inset` metres inside the bound; a dead one lies collapsing `corpse` seconds
+  // before it goes. The last one dead, the boss lands at the arena's centre and Isao is put out to `clear` metres from it if he is nearer. `budget` is the lab's: the
+  // milliseconds of solver a frame the whole wave may take (past it the Reeds' clock runs slower, never a catch-up spiral), `lod` its off-screen Reeds at half rate (off: at
+  // fifty Reeds in the seat it ran the wave's clock at 0.053 and 0.068 against 0.048 and 0.044 with 13 and 27 off-screen, every one crawling, and at ten none or two are off-screen, 2026-10-09)
+  wave: { count: 10, reedHealth: 20, size: 15, inset: 15, corpse: 2, clear: 45, budget: 10, lod: false },
   bounds: { radius: 120, baitMargin: 10, creatureMargin: 15 },   // the arena disc round the origin: Isao's wanted point stays radius - baitMargin in, the creature's target radius - creatureMargin, the body's nodes are pushed back inside radius
   orbit: { radius: 200, lap: 120, bank: 0.12 },   // the gunship platform's ground track round the origin: 200 m, one lap per 120 s (10.5 m/s); the bank in radians is about twice the coordinated 0.056 (v squared over r g) so the roll reads on the seat's camera without lurching
   card: 3,                 // the KILLED / LOST card's seconds before the reset

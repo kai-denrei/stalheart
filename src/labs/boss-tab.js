@@ -24,7 +24,7 @@ import { OrbitControls } from '../../vendor/OrbitControls.js';
 import GUI from '../../vendor/lil-gui.esm.js';
 import { buildUnit, preloadMork } from '../units.js';
 import { createPlaneDrive } from './boss/drive.js';
-import { createBodyRules } from './boss/body.js';
+import { createBodyRules, kitNow, shiftKit } from './boss/body.js';
 import { createCannon } from './boss/cannon.js';
 import { createFriendlies } from './boss/friendlies.js';
 import { createFear } from './boss/fear.js';
@@ -35,8 +35,10 @@ import { createBaitMode } from './boss/bait.js';
 import { createGameSeat } from './boss/game-seat.js';
 import { createGameCam } from './boss/game-cam.js';
 import { createLabHandle } from './boss/handle.js';
+import { createWave } from './boss/wave.js';
 import { settingsBlock, folderGroups } from './boss/settings-copy.js';
 import { makeFight, startFight, capture, readout as fightReadout } from '../domain/boss-fight.js';
+import { entryClear } from '../domain/boss-wave.js';
 import { BOSS_FIGHT } from '../content/boss-fight.js';
 import { LASER_AUDIO } from '../content/orbital-laser.js';
 import { voiceSounds } from '../content/voice-hooks.js';
@@ -85,6 +87,10 @@ const CELL = STORY_RECIPE.metresPerCell;
 // THE BAIT MODE'S BOSS HEALTH (docs/superpowers/specs/2026-10-09-boss-bait-arena-and-feel-design.md, item 5): its own knob, so the owner tunes
 // the kill's length for his aim without touching the tank mode's `health`
 const BAIT_HEALTH = 180;
+// the first wave's slider: up to this many Reeds (owner, 2026-10-09: "5 to 50 (slider)"; 0 is the boss at once)
+const WAVE_MAX = 50;
+// the rules' creature while the wave holds the boss back, for what must not hit it (the friendlies' resolution): nowhere, no contacts
+const NOBODY = Object.freeze({ centre: [1e9, 1e9], velocity: [0, 0], radius: 0, contacts: [] });
 
 // a rolling mean over the last n samples
 function roll(n) {
@@ -153,6 +159,7 @@ export function initBossTab(root) {
     </div>
     <div class="sw-stage">
       <div class="sw-callouts" data-callouts></div>
+      <div class="sw-fps" data-fps hidden></div>
       <div class="sw-keys" data-keys>W A S D / arrows &middot; drive &middot; W twice &middot; cruise &middot; Space &middot; fire</div>
       <div class="sw-read" data-read>generating the story planet&hellip;</div>
     </div>
@@ -196,6 +203,9 @@ export function initBossTab(root) {
   const meanSolver = roll(WINDOW), meanSkin = roll(WINDOW), meanSteps = roll(WINDOW), meanCentre = roll(WINDOW);
   const meanReach = roll(WINDOW), meanSag = roll(WINDOW), meanRender = roll(2), cutFrames = roll(WINDOW);
   let renderMs = 0, readAcc = 0, provokes = 0;
+  // THE FPS CORNER (the wave's experiment, visible in the friends' link too): frames over real time, read twice a second
+  const fpsEl = root.querySelector('[data-fps]');
+  let fpsCount = 0, fpsAt = performance.now(), fps = 0;
   let pointWorld = null;   // the point lure, in sphere space (world-fixed, so a re-anchor never moves it)
   // the auto-lure's arena centre in the creature's local metres: the kit's figure-eight is centred on the local origin, so
   // without this every re-anchor would re-centre it on the creature and it would random-walk off the cap. It takes every
@@ -294,6 +304,8 @@ export function initBossTab(root) {
   // (the panel's fight folder writes it; `makeFight` reads it at each reset, `schedule` every frame); its seed advances a round
   // unless `pinSeed`. `fightOn` holds the switches: `fight` off is the lab as before but for the obstacles, which stay (no shooters, no bar, no round)
   const fightTune = { ...JSON.parse(JSON.stringify(BOSS_FIGHT)), seed: 1 };
+  // THE FIRST WAVE'S SIZE (./boss/wave.js): the panel's slider, or ?reeds=N for the friends' link (0 is the boss at once)
+  if (q.get('reeds') !== null && Number.isFinite(+q.get('reeds'))) fightTune.wave.count = Math.max(0, Math.min(WAVE_MAX, Math.round(+q.get('reeds'))));
   const fightOn = { fight: true, rotary: true, bofors: true, nuke: true, sol: true, fear: true, obstacles: true, cannon: true, pinSeed: false };
   const baitOpts = { health: BAIT_HEALTH };
   const roundTune = () => (state.mode === 'tank' ? fightTune : { ...fightTune, health: baitOpts.health });   // the round's health is the mode's
@@ -302,11 +314,13 @@ export function initBossTab(root) {
   let resetDue = -1;           // seconds a due reset has waited for a meal to finish; -1 when none is due
   let feedWas = 'hunting';     // the feeding phase last frame, for the capture on leaving 'hunting'
   // the creature for the rules, in local metres: the centre, its velocity, half the body's extent, the nodes on the floor
-  function creatureNow() {
-    const m = creature.motion, b = creature.body, c = b.contact, contacts = [];
-    for (let i = 0; i < c.length; i++) if (c[i] > 0) contacts.push([b.x[i * 3] * scale, b.x[i * 3 + 2] * scale]);
-    return { centre: [m.center.x * scale, m.center.z * scale], velocity: [m.velocity.x * scale, m.velocity.z * scale], radius: native * scale / 2, contacts };
-  }
+  const creatureNow = () => kitNow(creature, scale, native);
+  // THE FIRST WAVE (./boss/wave.js) holds the boss back in the bait mode: hidden, not stepped, its fear and the fight's damage off; the rules' creature for Isao's
+  // autopilot, his hold, his lines, the seat's focus and his camera is the Reed nearest him (the boss's own while no Reed has a body yet)
+  const waving = () => !tankOn() && wave.holds();
+  const huntedNow = () => (waving() ? wave.hunted() ?? creatureNow() : creatureNow());
+  const huntedNodes = () => (waving() ? wave.huntedNodes() ?? body.nodes() : body.nodes());
+  const huntedAim = () => (waving() ? wave.huntedAim() ?? creatureAim() : creatureAim());
   const tankOn = () => state.mode === 'tank';   // the bait mode has no tank: hidden, not driven, nobody's prey, the cannon off
   const tankNow = () => ({ pos: hullLost || !tankOn() ? [1e9, 1e9] : [drive.x, drive.z], radius: fightTune.hull.radius });   // a lost hull is no target
   // THE FEAR (./boss/fear.js, the rules in src/domain/boss-fear.js): what the friendlies report frightens the creature or stuns it
@@ -315,7 +329,7 @@ export function initBossTab(root) {
   // round's first 40 mm fright asks Isao for his stagger line
   const fear = createFear({
     tune: () => fightTune, creature: creatureNow, tank: () => (tankOn() ? tankNow() : bait.asTank()), fight: () => fight, now: () => t,
-    kit: () => creature, on: () => fightOn.fight && fightOn.fear,
+    kit: () => creature, on: () => fightOn.fight && fightOn.fear && !waving(),
     gunFear: () => !tankOn(), nodes: () => body.nodes(), onScare: (r) => { if (r.level === 'wild') bait.want('stagger'); },
   });
   // THE TEMPERAMENT (./boss/temperament.js, wave B): in the bait mode one layer writes the creature's live motion, the panel's knobs its base, with the
@@ -343,7 +357,7 @@ export function initBossTab(root) {
   const tankBlocker = (x, z) => deeper(body.blocker(x, z), arena.blocker(x, z));   // the body's or the arena's, whichever pushes deeper
   const friendlies = createFriendlies(scene, {
     sphere, surface, cellSide: CELL, explosions, sfx: audio, tune: () => fightTune, fight: () => fight, now: () => t,
-    creature: creatureNow, tank: tankNow,
+    creature: () => (waving() ? NOBODY : creatureNow()), tank: tankNow,   // the wave's rounds hurt the Reeds (./boss/wave.js), never the boss held back
     // plans in flight keep landing after a loss or a kill: the arena breaks only in a running fight
     onLanding: (plan, { point }) => { fear.landed(plan, point); bait.hurt(plan); if (fight.phase === 'fight') arena.landed(plan, point); }, onBeam: (plan, point) => fear.beam(plan, point),
     onBurn: (plan, dt) => { bait.burn(plan, dt); if (plan.player && plan.kind === 'rotary') fear.round(plan, plan.at); },   // a landing and a burn hurt Isao as they hurt the creature (./boss/bait.js; nothing out of the bait mode); each 25 mm round of the seat's fills the barrage meter
@@ -362,13 +376,13 @@ export function initBossTab(root) {
     audio.play('blast_fire');
   }
   const round = createRound(stage, {
-    tune: () => fightTune, fight: () => fight, on: () => fightOn.fight, cardExtra: () => bait.cardText(),
+    tune: () => fightTune, fight: () => fight, on: () => fightOn.fight, cardExtra: () => bait.cardText(), wave: () => (waving() ? wave.bar() : null),
     onKilled: dieV1, onLost: () => {}, onReset: () => { resetDue = 0; },
   });
   // THE BAIT MODE (./boss/bait.js, the rules in src/domain/boss-bait.js): Isao flies low on autopilot with the creature after him, a bar under
   // the creature's, his lines as captions. The lab's `mode` switch turns it on; the tank is out while it is
   const bait = createBaitMode({
-    stage, sphere, tune: () => fightTune, fight: () => fight, now: () => t, creature: creatureNow, route: (from, to) => arena.route(from, to),
+    stage, sphere, tune: () => fightTune, fight: () => fight, now: () => t, creature: huntedNow, route: (from, to) => arena.route(from, to),
     ground: (x, z) => tankWorld(x, z), tangent: (w) => frameAt(w, planet.radius, 0, frame.east), sfx: audio,
     burst: (x, z, alt) => {   // his end, the shell's burst where he flew
       const at = surface(x, z), p = at.point.clone().addScaledVector(at.normal, alt);
@@ -376,7 +390,7 @@ export function initBossTab(root) {
     },
     caption: (text, seconds) => showCallout(text, seconds * 1000),
     clamp: (p) => arena.clamp(p, fightTune.bounds.baitMargin),   // his wanted point, after the routing, inside the bound
-    hold: (p) => arena.clamp(p, 0), nodes: () => body.nodes(),   // his ground point inside the bound itself after the move; the body's nodes for his reach envelope
+    hold: (p) => arena.clamp(p, 0), nodes: huntedNodes,   // his ground point inside the bound itself after the move; the body's nodes for his reach envelope
     bound: () => { const b = arena.bound(); return b.on ? { at: b.at, radius: b.radius, inset: fightTune.bounds.baitMargin } : null; },   // the fly-over's: trapped against it, and the far side held inside it
     gunner: () => seat.gunner(),   // the player's fire, for his lines
   });
@@ -385,12 +399,13 @@ export function initBossTab(root) {
   const seat = createGameSeat({
     stage, renderer, scene, sphere, camera: cam, audio, explosions, planet: () => planet, ground: (x, z) => tankWorld(x, z),
     local: (p) => { const u = frame.up, k = planet.radius / (p[0] * u[0] + p[1] * u[1] + p[2] * u[2]), l = toLocal(frame, [p[0] * k, p[1] * k, p[2] * k], 1); return [l[0], l[2]]; },
-    tune: () => fightTune, fight: () => fight, now: () => t, creature: creatureNow, isao: () => bait.marker(),
-    parts: () => ({ creature: creature?.mesh, isao: sphere.getObjectByName('Isao'), ring: arena.ring }), resolve: friendlies.resolve,
+    tune: () => fightTune, fight: () => fight, now: () => t, creature: huntedNow, isao: () => bait.marker(),
+    parts: () => ({ creature: waving() ? wave.group : creature?.mesh, isao: sphere.getObjectByName('Isao'), ring: arena.ring }),
+    resolve: (plan, dt) => { friendlies.resolve(plan, dt); wave.resolve(plan, dt); },   // a round of the player's on the boss (none while the wave holds it back), Isao and the arena, and on every live Reed
     orbitGround: fixedWorld,   // the platform's orbit round the arena's centre, world-fixed
-    isaoCam: () => (creature ? bait.cam(creatureAim()) : null),   // the monitor on Isao, looking at the creature (./boss/bait.js ISAO'S CAMERA)
+    isaoCam: () => (creature ? bait.cam(huntedAim()) : null),   // the monitor on Isao, looking at the creature (./boss/bait.js ISAO'S CAMERA)
     gate: () => ({ fight: fightOn.fight, rotary: fightOn.rotary, bofors: fightOn.bofors, nuke: fightOn.nuke }),   // the fight folder's switches gate the player's guns as the schedule's
-    focus: () => { const c = creatureNow().centre, b = bait.pos() ?? c; return [(c[0] + b[0]) / 2, (c[1] + b[1]) / 2]; },
+    focus: () => { const c = huntedNow().centre, b = bait.pos() ?? c; return [(c[0] + b[0]) / 2, (c[1] + b[1]) / 2]; },
     clear: () => panelCover(),   // what the panel covers: the HUD's readout and the monitor stand left of it
     leave: () => { if (!PLAYTEST) setMode('tank'); },   // in the friends' link Esc only frees the mouse (the seat's own first Esc) pause: () => { paused = !paused; }, onError: (m) => shaderErrors.push(m),
   });
@@ -398,6 +413,24 @@ export function initBossTab(root) {
   function creatureAim(lift = 2) {
     const c = creature.motion.center, p = toWorld(frame, [c.x, c.y, c.z], scale);
     return [p[0] + frame.up[0] * lift, p[1] + frame.up[1] * lift, p[2] + frame.up[2] * lift];
+  }
+  // THE FIRST WAVE (./boss/wave.js, the rules src/domain/boss-wave.js): in the bait mode `wave.count` Reeds hunt Isao before the boss; the last one dead, the boss enters
+  const wave = createWave({
+    sphere, tune: () => fightTune, fight: () => fight, now: () => t, motion: () => params.motion, phys: () => ({ ...PHYS, ...params.phys }),
+    ground: (x, z) => tankWorld(x, z), tangent: (w) => frameAt(w, planet.radius, 0, frame.east), spawn: (p) => arena.spawn(p),
+    aim: (from, to) => arena.clamp(arena.route(from, to), fightTune.bounds.creatureMargin),   // the boss's hunt: round the obstacles, then inside the bound
+    isao: () => bait.asTank(), isaoPos: () => (bait.has() && !bait.gone() ? bait.pos() : null), fearOn: () => fightOn.fight && fightOn.fear,
+    camera: () => cam, extentOf: nativeExtent, onError: (m) => { frameError = m; frameErrorAt = t; },
+  });
+  // the boss's entry, the last Reed dead: at the arena's centre (where every round leaves it, unstepped through the wave), Isao put out of its way
+  let entry = null;   // the last entry: { at (the lab clock), isao (metres from the centre), moved (he was put out) }
+  function bossEntry() {
+    fear.reset(); stunned = false; temperament.reset(fightTune.seed);
+    const p = bait.pos(), out = p && entryClear(p, arena.bound().at, fightTune.wave.clear);
+    if (out) bait.putAt(arena.spawn(out));
+    const now = bait.pos();
+    entry = { at: t, isao: now ? Math.hypot(now[0] - arena.bound().at[0], now[1] - arena.bound().at[1]) : null, moved: !!out };   // the readout's: where he stood from the centre once put
+    showCallout('NIH-DAIRIA', 2500);
   }
   // R, C and I in the seat: the seat swallows every key in the capture phase; this capture listener is registered before any seat, so it runs first
   // T (the game's top view) is swallowed too: the lab has no map to show, and the seat would hide its HUD for a view it cannot draw
@@ -480,6 +513,7 @@ export function initBossTab(root) {
     creature.reset(); lastMeals = 0; auto.reset();
     restoreCreature();
     frame = frameAt([0, 1, 0], planet.radius, 0); placeRig(); arenaCentre.set(0, 0, 0);
+    wave.reset(bm ? fightTune.wave.count : 0, arena.bound().at, fightTune.seed);   // the bait mode's first wave round the arena's centre (none in the tank mode)
     const c = creature.motion.center, cx = c.x * scale, cz = c.z * scale, l = toLocal(frame, was, 1);
     let dx = l[0] - cx, dz = l[2] - cz; const d = Math.hypot(dx, dz);
     if (d > 1e-6) { dx /= d; dz /= d; } else { dx = 1; dz = 0; }
@@ -521,24 +555,10 @@ export function initBossTab(root) {
   }
   function applySize() { scale = state.sizeMetres / native; if (frame) placeRig(); }
 
-  // THE RE-ANCHOR. Which arrays: with the WebAssembly kernel on, SoftBody replaces body.x, body.previous, body.candidate and
-  // body.velocity with Float64Array views on the kernel's memory, so body.x IS kernel.x; the Set below drops the aliases and
-  // shifts each buffer once (and still covers the JavaScript fallback, where they are plain arrays). Velocity is untouched.
-  // Beyond the solver: the behaviour's target and centres, the feeding cycle's prey and captured points, the cradle's anchor
-  // and start shape, the traction anchors, and the gait's feet, swing starts and goals, which are positions in the same plane
-  // (the gait pulls each foot toward them; left behind they would drag every leg twenty metres back).
+  // THE RE-ANCHOR (the kit's shift is ./boss/body.js `shiftKit`, the Reeds' too): the creature and the auto-lure's world-fixed arena centre
   function shiftCreature(sx, sz) {
-    const b = creature.body, m = creature.motion;
-    const buffers = new Set([b.x, b.previous, b.candidate, b.kernel?.x, b.kernel?.previous, b.kernel?.candidate].filter(Boolean));
-    for (const arr of buffers) for (let i = 0; i < arr.length; i += 3) { arr[i] += sx; arr[i + 2] += sz; }
-    for (const arr of [m.traction.anchors, m.cradle.starts]) for (let i = 0; i < arr.length; i += 3) { arr[i] += sx; arr[i + 2] += sz; }
     const shiftV = (v) => { v.x += sx; v.z += sz; };
-    for (const v of [m.target, m.center, m.torsoCenter, m.feeding.preyPosition, m.feeding.capturedPosition, m.cradle.anchor, b.center]) shiftV(v);
-    for (const list of [m.gait.feet, m.gait.starts, m.gait.goals]) list.forEach(shiftV);
-    shiftV(arenaCentre);
-    // not redundant with update(): update only re-skins when it takes a fixed step, and a frame with none would draw the
-    // unshifted skin in the moved rig
-    b.updateSurface(); creature.appearance.update();
+    shiftKit(creature, sx, sz); shiftV(arenaCentre);
   }
   function tryReanchor(limit) {
     if (!creature || !frame) return false;
@@ -550,7 +570,7 @@ export function initBossTab(root) {
     frame = next; placeRig();
     const l = toLocal(frame, w, 1); drive.x = l[0]; drive.z = l[2];   // the tank stays put in the world
     // everything placed in the plane stays where it is in the world: the shells in flight, the strikes' landings, Isao, the optic and its reticle, what frightens the creature, the obstacles
-    for (const part of [cannon, friendlies, bait, fear, arena]) part.shift(shift[0] * scale, shift[2] * scale);
+    for (const part of [cannon, friendlies, bait, fear, arena, wave]) part.shift(shift[0] * scale, shift[2] * scale);
     reanchors++;
     return true;
   }
@@ -653,8 +673,9 @@ export function initBossTab(root) {
   function step(dt, cut) {
     const m = creature.motion, f = m.feeding;
     routed = false;
-    tryReanchor(REANCHOR_METRES);
-    const bm = !tankOn();
+    const bm = !tankOn(), held = waving();   // the first wave holds the boss back: hidden and unstepped, so its frame stays on the arena's centre
+    if (!held) tryReanchor(REANCHOR_METRES);
+    rig.visible = !held;
     if (bm && !bait.has()) newRound();   // the mode was switched before the creature was here: Isao's first round
     const pinned = !bm && state.lure === 'tank' && MEAL_PHASES.has(f.phase);
     let driving = false;
@@ -664,14 +685,15 @@ export function initBossTab(root) {
     const moving = driving || keysHeld() || (scripted && t < scripted.until);
     m.targetHeld = bm || (state.lure === 'tank' && !hullLost ? !!moving : false);   // Isao is always held (the hold that takes him is the rules'); the point and the auto-lure are never held, nor a lost hull
     if (bm) bait.step(dt);
+    wave.step(dt);   // the Reeds: hunting him while the wave holds, the dead lying down until they go
     auto.enabled = state.lure === 'auto';
     // the fear: a stun holds the instinct off (restored only while the fight is on: a kill has set it false for good), a flight
     // replaces the lure with the flee point (local metres to native, as the lure is)
-    const fr = fear.step(t);
-    temperament.step(dt, fr.flight);   // the bait mode's live motion: the base, a lunge, the fear's flight
+    const fr = held ? { mode: 'hunt', point: null, flight: null } : fear.step(t);
+    if (!held) temperament.step(dt, fr.flight);   // the bait mode's live motion: the base, a lunge, the fear's flight
     if (fr.mode === 'stun') { stunned = true; m.active = false; }
     else if (stunned) { stunned = false; if (fightOn.fight && fight.phase === 'fight') m.active = params.instinct; }
-    if (!f.locked && !(hullLost && state.lure === 'tank' && !bm) && !(bm && bait.gone())) {
+    if (!held && !f.locked && !(hullLost && state.lure === 'tank' && !bm) && !(bm && bait.gone())) {
       dtNow = dt;
       const aim = bm ? lureV.set(bait.pos()[0] / scale, 0, bait.pos()[1] / scale) : lureTarget();
       if (fr.mode === 'flee') aim.set(fr.point[0] / scale, 0, fr.point[1] / scale);
@@ -692,7 +714,7 @@ export function initBossTab(root) {
     }
     let steps = 0;
     try {
-      steps = creature.update(dt);
+      if (!held) steps = creature.update(dt);
       // the figure-eight reads the kit's target as its own path next frame: it gets the lure's point back, not the waypoint
       if (routed && state.lure === 'auto') m.target.set(rawX, ARENA.lureHeight, rawZ);
     } catch (e) {
@@ -720,11 +742,12 @@ export function initBossTab(root) {
     applyTankFeel(tank, feel, FEEL);
     runEngine(driving);
     stepFight(dt, driving || bm);   // Isao is flying from the round's first frame
+    if (bm && wave.bossEnters()) bossEntry();   // the last Reed fell this frame
     stepCannon(dt);
     arena.sync();   // the obstacles shown, hidden and placed on the frame as it stands now
     // the readout's numbers, per frame, into the rolling means
-    const tm = creature.timings;
-    meanSolver.push(tm.solver); meanSkin.push(tm.skin); meanSteps.push(steps); cutFrames.push(cut ? 1 : 0);
+    const tm = held ? { solver: wave.stats().solver, skin: 0 } : creature.timings;   // the wave's whole solver (its skin inside) while it holds the boss back
+    meanSolver.push(tm.solver); meanSkin.push(tm.skin); meanSteps.push(held ? wave.stats().steps : steps); cutFrames.push(cut ? 1 : 0);
     meanCentre.push(m.velocity.length() * scale);
     meanReach.push(reachLocal() * scale);
     meanSag.push(sagitta(farthestContact() * scale, planet.radius));
@@ -812,6 +835,7 @@ export function initBossTab(root) {
       kernel: !!creature?.body.kernel,
       cam: state.cam, rearMs: gameCam?.isOn() ? gameCam.stats().ms : null, mode: state.mode, bait: bait.state(),
       temper: temperament.state(), gunFear: fear.guns(),   // the bait mode's temperament and fear per gun
+      fps, wave: wave.state(), entry,   // the fps corner's frames a second; the first wave ({ count, alive, killed, made, cleared, boss, entered, reeds, hunted, solver, steps, timeScale, lod, cost, meanSolver, meanScale })
     };
   }
   function drawReadout() {
@@ -835,10 +859,20 @@ export function initBossTab(root) {
       + (r.rearMs !== null ? ` &middot; camera game &middot; rear <b>${fmt(r.rearMs)} ms</b>` : '');
     if (r.mode === 'bait' && r.bait) html += `<br>Isao <b>${fmt(r.bait.hp, 1)}/${r.bait.max}</b> &middot; gap <b>${fmt(r.bait.gap, 1)} m</b> &middot; alt <b>${fmt(r.bait.alt, 1)} m</b> &middot; ${r.bait.gone ? 'gone' : r.bait.hop ? `flying over (${r.bait.hop})` : r.bait.fleeing ? 'backing off' : 'circling'}`
       + ` &middot; temper <b>${r.temper.phase}</b> (lunges <b>${r.temper.lunges}</b>) &middot; barrage <b>${fmt(r.gunFear.meter, 2)}</b> &middot; flinch/wild/panic <b>${r.gunFear.flinch}/${r.gunFear.wild}/${r.gunFear.panic}</b>`;
+    if (r.mode === 'bait' && !r.wave.boss) html += `<br>wave 1 &middot; Reeds <b>${r.wave.alive}/${r.wave.count}</b> (${r.wave.made} made) &middot; solver <b>${fmt(r.wave.meanSolver, 1)} ms</b>`
+      + ` &middot; clock <b>&times;${fmt(r.wave.meanScale)}</b> &middot; off-screen <b>${r.wave.lod}</b> &middot; <b>${fmt(r.wave.cost)} ms</b>/step`;
     if (shaderErrors.length) html += `<br><b class="late">shader: ${escapeHtml(shaderErrors[shaderErrors.length - 1])}</b>`;
     if (frameError && t - frameErrorAt < 5) html += `<br><b class="late">${escapeHtml(frameError)}; reset</b>`;
     read.innerHTML = html;
     stateLine.textContent = `state ${r.state ?? '—'} · feeding ${r.phase ?? '—'}`;
+  }
+  // fps, the solver's ms this frame (the whole wave's while it holds the boss back, else the boss's) and the Reeds standing; the wave's clock when the budget slows it
+  function drawFps() {
+    fpsEl.hidden = tankOn() || !creature;
+    if (fpsEl.hidden) return;
+    const held = waving(), w = wave.stats(), bar = wave.bar();
+    fpsEl.textContent = `${fps.toFixed(0)} fps · solver ${(held ? w.meanSolver : meanSolver.mean()).toFixed(1)} ms · `
+      + (held ? `Reeds ${bar.alive}/${bar.count}${w.meanScale < 0.995 ? ` · clock ×${w.meanScale.toFixed(2)}` : ''}` : 'boss');
   }
   const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
@@ -876,6 +910,8 @@ export function initBossTab(root) {
     }
     readAcc += dt;
     if (readAcc > 0.2 && creature) { readAcc = 0; drawReadout(); }
+    fpsCount++;
+    if (now - fpsAt >= 500) { fps = fpsCount * 1000 / (now - fpsAt); fpsCount = 0; fpsAt = now; drawFps(); }
   }
 
   // --- the panel ----------------------------------------------------------------------------------------------------------
@@ -965,6 +1001,12 @@ export function initBossTab(root) {
   temperGui.add(TM, 'forMin', 0.1, 3, 0.05).name('lunge duration min (s)');
   temperGui.add(TM, 'forMax', 0.1, 3, 0.05).name('lunge duration max (s)');
   temperGui.add(TM, 'reach', 1, 3, 0.05).name('lunge reach boost ×');
+  // THE FIRST WAVE (bait mode): its size and the Reeds' hit points at the next round (R), the solver budget and the off-screen half rate now
+  const waveGui = gui.addFolder('wave 1 (bait)'), WV = fightTune.wave;
+  waveGui.add(WV, 'count', 0, WAVE_MAX, 1).name('Reeds (at R; 0 the boss at once)');
+  waveGui.add(WV, 'reedHealth', 1, 100, 1).name('Reed health (at R)');
+  waveGui.add(WV, 'budget', 2, 40, 0.5).name('wave solver budget (ms)');
+  waveGui.add(WV, 'lod').name('off-screen Reeds at half rate');
 
   function setLure(kind) {
     if (!LURES.includes(kind)) return false;
@@ -980,7 +1022,7 @@ export function initBossTab(root) {
     for (const el of root.querySelectorAll('[data-bait-only]')) el.hidden = PLAYTEST || !bm;
     solCtl.show(!bm); cannonCtl.show(!bm); healthCtl.show(!bm); tankStunCtl.show(!bm);   // SOL, the cannon, the tank's health and its MK-9 stun are not in the bait mode; its altitude, erratic, health and the seat's reload are only there
     for (const c of [altCtl, reloadCtl, erraticCtl, baitHealthCtl, hopCtl]) c.show(bm);
-    gunFearGui.show(bm); temperGui.show(bm);
+    gunFearGui.show(bm); temperGui.show(bm); waveGui.show(bm);
   }
   modePanel();
   // the mode: the tank, or Isao as the bait (the tank out); a new round puts the right one `respawn` metres out
@@ -1037,6 +1079,7 @@ export function initBossTab(root) {
       more: bm ? {   // the bait mode's fear per gun and temperament (wave B)
         'gun fear': Object.fromEntries(['rotary', 'bofors', 'nuke'].flatMap((k) => Object.entries(fightTune.gunFear[k]).map(([p, v]) => [`${{ rotary: '25mm', bofors: '40mm', nuke: 'mk9' }[k]}.${p}`, v]))),
         temperament: { speed: params.motion.speed, ...fightTune.temperament },
+        wave: { ...fightTune.wave },   // the first wave
       } : null,
     });
     const fallback = () => { copyBox.hidden = false; copyBox.value = text; copyBox.focus(); copyBox.select(); };
@@ -1066,7 +1109,7 @@ export function initBossTab(root) {
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
       renderer.domElement.removeEventListener('pointerup', onPointerUp);
       creature?.dispose(); if (prey) { prey.mesh.geometry.dispose(); prey.mesh.material.dispose(); }
-      gameCam?.dispose(); seat.dispose(); bait.dispose(); cannon.dispose(); friendlies.dispose(); arena.dispose(); round.dispose(); explosions.dispose();
+      gameCam?.dispose(); seat.dispose(); wave.dispose(); bait.dispose(); cannon.dispose(); friendlies.dispose(); arena.dispose(); round.dispose(); explosions.dispose();
       planetMesh?.userData.dispose(); disposeObj(tank); gui.destroy(); controls.dispose(); renderer.dispose(); renderer.domElement.remove();
       engine?.stop(0); engine = null; audio.dispose();
       if (window.__bossLab === lab) delete window.__bossLab;
@@ -1077,7 +1120,8 @@ export function initBossTab(root) {
     getCreature: () => creature, getScale: () => scale, getT: () => t, getFight: () => fight, getGameCam: () => gameCam, getReanchors: () => reanchors,
     setScripted: (v) => { scripted = v; }, setPin: (v) => { pin = v; },
     readout, setLure, setCam, setMode, bait, seat, setFight, fireCannon: () => fireCannon(), copySettings, reset, tryReanchor, placeTank, creatureNow, creatureAim, temperament,
-    plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene,
+    plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene, wave,
+    reeds: (n) => { if (n !== undefined) { fightTune.wave.count = Math.max(0, Math.min(WAVE_MAX, Math.round(n))); gui.controllersRecursive().forEach((c) => c.updateDisplay()); newRound(); } return fightTune.wave.count; },
     chase: () => { if (state.view !== 'free' || !creature) return false; chaseCam(); return true; },
   });
   if (q.get('acceptance') === '1') window.__bossLab = lab;
