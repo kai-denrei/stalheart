@@ -7,7 +7,7 @@ import { readout as fightReadout } from '../../domain/boss-fight.js';
 export function createLabHandle({
   getCreature, getScale, getT, getFight, getGameCam, getReanchors, setScripted, setPin,
   readout, setLure, setCam, setMode, bait, seat, setFight, fireCannon, copySettings, reset, tryReanchor, placeTank, creatureNow,
-  plane, drive, keys, state, cam, params, gui, arena, fear, fightTune,
+  plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene,
 }) {
   const lab = {
     readout,
@@ -44,6 +44,9 @@ export function createLabHandle({
     // { mode, eye, look, pose: { eye, look }, rear: { x, y, w, h }, ms }, eye and look where the camera is and pose the game's tankViewPose
     // for the smoothed state, all in the scene's metres; rear the inset's box in device pixels from the canvas's bottom left, ms its cost
     camera: (mode) => (setCam(mode), state.cam),
+    // the scene's frame and the camera's pose, to see that the game seat gives both back (it scales and lifts the scene to the game's units
+    // while it is mounted): { scale, position, camera: { position, quaternion } }
+    world: () => ({ scale: scene.scale.toArray(), position: scene.position.toArray(), camera: { position: cam.position.toArray(), quaternion: cam.quaternion.toArray() } }),
     cam: () => { const gameCam = getGameCam(); return { mode: state.cam, on: !!gameCam?.isOn(), fov: cam.fov, ...(gameCam ? gameCam.state() : {}) }; },
     // scripted input each frame for `seconds`: orbit the creature's centre at `radius` metres with the game's drive
     circle(seconds = 10, radius = 40) { setScripted({ circle: radius, until: getT() + seconds }); return true; },

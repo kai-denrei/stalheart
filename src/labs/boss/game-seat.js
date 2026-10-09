@@ -182,7 +182,7 @@ export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, 
   function mount() {
     const P = planet(), R = P.radius, c = P.cellSide;
     if (indexOf !== P) { index = makeCellIndex(P.graph.centers, c * 1.7); indexOf = P; }
-    const saved = { pos: scene.position.clone(), scale: scene.scale.clone(), near: camera.near, far: camera.far, fov: camera.fov, up: camera.up.clone() };
+    const saved = { pos: scene.position.clone(), scale: scene.scale.clone(), near: camera.near, far: camera.far, fov: camera.fov, up: camera.up.clone(), camPos: camera.position.clone(), camQuat: camera.quaternion.clone() };   // the camera's pose too: the free orbit and the chase pick it up where the tank left it
     scene.scale.setScalar(1 / R); scene.position.set(0, 1, 0); scene.updateMatrixWorld(true);
     camera.near = GAME_LENS.near; camera.far = GAME_LENS.far; camera.updateProjectionMatrix();
     const game = new THREE.Group(); game.name = 'game seat (game units)'; game.scale.setScalar(R); sphere.add(game); game.updateMatrixWorld(true);
@@ -244,15 +244,19 @@ export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, 
     m.monitor = createStoryMonitor(stage);
     m.pilot.mountGunship();
     aimFocus = true;   // after the seat's first tick, which settles its opening aim (the lane's way, straight down)
+    // the seat's own explosions compiled now, as the lab compiles its others (boss-tab.js): not on the first 40 mm landing's frame
+    m.boom.prewarm({ compile: (s, c) => renderer.compile(s, c, scene), getRenderTarget: () => renderer.getRenderTarget(), setRenderTarget: (t) => renderer.setRenderTarget(t) }, camera);
   }
 
   function unmount() {
     const s = m.saved;
     m.pilot.dispose(); m.thermal.dispose(); m.monitor.dispose(); rangeRing(-1);
+    // the KORP model rides the platform, which optic.dispose() only detaches: its geometry, materials and textures go first
+    m.optic.platformObject().traverse((o) => { o.geometry?.dispose?.(); for (const mat of [].concat(o.material ?? [])) { for (const t of Object.values(mat)) if (t?.isTexture) t.dispose(); mat.dispose?.(); } });
     m.drop.dispose(); m.optic.dispose(); m.post.dispose(); m.boom.dispose(); explosions.clear();
     m.game.traverse((o) => { o.geometry?.dispose?.(); o.material?.dispose?.(); }); m.game.removeFromParent();
     scene.position.copy(s.pos); scene.scale.copy(s.scale); scene.updateMatrixWorld(true);
-    camera.near = s.near; camera.far = s.far; camera.fov = s.fov; camera.up.copy(s.up); camera.updateProjectionMatrix();
+    camera.near = s.near; camera.far = s.far; camera.fov = s.fov; camera.up.copy(s.up); camera.position.copy(s.camPos); camera.quaternion.copy(s.camQuat); camera.updateProjectionMatrix(); camera.updateMatrixWorld(true);
     m = null; heavyPress = 0; stream = null;
   }
 

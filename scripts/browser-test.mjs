@@ -2298,9 +2298,10 @@ try{
  const {GUNSHIP_GUNS,GUNSHIP_PLATFORM}=await import('../src/content/gunship.js');
  await go('boss-bait','labs.html?sw=0&acceptance=1#boss');
  await until(`!!${B} && ${B}.readout().steps > 0`,60000);
+ const world0=await evaluate(`${B}.world()`);   // the lab's scene frame, which the seat takes (scaled and lifted to the game's units) and must give back
  await evaluate(`${B}.camera("game"); ${B}.mode("bait")`);   // the game camera asked for first: the bait mode must take it away
  await until(`${B}.fight().phase === "fight" && ${B}.bait() && ${B}.bait().max > 0 && !!${B}.seat()`,30000);
- const S=`(()=>{const f=${B}.fight(),b=${B}.bait(),r=${B}.readout();return {clock:${B}.arena().clock,phase:f.phase,reason:f.reason,hp:f.hp,max:f.max,hits:f.hits,contacts:f.contacts,centre:f.centre,bait:b,seat:${B}.seat(),card:r.fight.card,mode:r.mode}})()`;
+ const S=`(()=>{const f=${B}.fight(),b=${B}.bait(),r=${B}.readout();return {clock:${B}.arena().clock,fclock:f.clock,phase:f.phase,reason:f.reason,hp:f.hp,max:f.max,hits:f.hits,contacts:f.contacts,centre:f.centre,bait:b,seat:${B}.seat(),card:r.fight.card,mode:r.mode}})()`;
  const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
  const far=(s)=>s.contacts.reduce((best,p)=>dist(p,s.bait.pos)>dist(best,s.bait.pos)?p:best,s.contacts[0]??s.centre);   // the creature's contact farthest from Isao
  const pace=async(seconds,each,cap=120000)=>{   // each(s) runs ~10 times a second of real time for `seconds` of lab clock or until it returns true
@@ -2347,6 +2348,32 @@ try{
   console.log('BOSS-BAIT thermal '+JSON.stringify({samples:flirRun.length,frames:[fr[0],fr.at(-1)],worst:+worst.toFixed(2),median:+flirRun.map(x=>x.share).sort((a,b)=>a-b)[60].toFixed(2),off}));
   assert(span>=89&&new Set(fr).size>=89,`the thermal run covers 90 consecutive frames (${fr[0]}..${fr.at(-1)}, ${new Set(fr).size} distinct)`);
   assert.equal(off.length,0,`every frame is the FLIR picture, none flashes to true colour (frames ${off.join(',')} left the ironbow; worst share ${worst.toFixed(2)})`);}
+ // T (the game's top view) is swallowed in the lab: the seat keeps its HUD and its view
+ await evaluate(`dispatchEvent(new KeyboardEvent("keydown",{key:"t",code:"KeyT",bubbles:true}));dispatchEvent(new KeyboardEvent("keyup",{key:"t",code:"KeyT",bubbles:true}))`);await delay(300);
+ assert(await evaluate(`(()=>{const st=document.querySelector('#boss .sw-stage'),h=st.querySelector('#gunship-hud');return !st.classList.contains('pilot-map')&&!!h&&getComputedStyle(h).display!=='none'&&${B}.seat().view!=='map'})()`),'T does not open the game\'s top view in the lab (the HUD stays)');
+ // THE FREE ORBIT picks the camera up where it was before the seat (not a metre from the pole, where the seat's pose left it), and the lab's scene is its own again
+ const setSel=(key,v)=>evaluate(`(()=>{const e=document.querySelector('#boss [data-k="${key}"]');e.value=${JSON.stringify(v)};e.dispatchEvent(new Event('input',{bubbles:true}));return e.value;})()`);
+ await setSel('view','free');await until(`${B}.seat() === null`,10000);await delay(300);
+ const orbit=await evaluate(`${B}.world()`);
+ console.log('BOSS-BAIT free orbit '+JSON.stringify({camera:orbit.camera.position.map(x=>+x.toFixed(1)),scale:orbit.scale,position:orbit.position}));
+ assert(Math.hypot(...orbit.camera.position)>5,`the free orbit does not open about the pole (camera ${JSON.stringify(orbit.camera.position)})`);
+ assert.deepEqual([orbit.scale,orbit.position],[world0.scale,world0.position],'the scene is back in the lab\'s metres in the free orbit');
+ await setSel('view','chase');await until(`!!${B}.seat() && ${B}.fight().phase === "fight"`,15000);
+ // A BODY RELOAD KEEPS THE SEAT: the same panel node through the load, the other body in when it is done (the round restarts then); back again after
+ const variants=await evaluate(`[...document.querySelectorAll('#boss [data-k="variant"] option')].map(o=>o.value)`);
+ const variant0=(await evaluate(`${B}.readout().variant`));
+ if(variants.length>1){
+   const other=variants.find(v=>v!==variant0);
+   await evaluate(`window.__panel0=document.querySelector('#boss #sentry-pilot')`);
+   for(const to of [other,variant0]){
+     await setSel('variant',to);
+     const seen=await evaluate(`new Promise((resolve)=>{const t0=performance.now();let loaded=false,kept=true;const tick=()=>{const r=${B}.readout();if(!r.ready)loaded=true;kept=kept&&!!${B}.seat()&&document.querySelector('#boss #sentry-pilot')===window.__panel0;if((loaded&&r.ready&&r.variant===${JSON.stringify(to)})||performance.now()-t0>60000)resolve({loaded,kept,variant:r.variant,ms:Math.round(performance.now()-t0)});else requestAnimationFrame(tick);};tick();})`);
+     console.log('BOSS-BAIT body reload '+JSON.stringify({to,...seen}));
+     assert(seen.loaded&&seen.variant===to,`the body reloaded to ${to} (${JSON.stringify(seen)})`);
+     assert(seen.kept,'the seat (its panel node) stays mounted through the body reload');
+   }
+   await until(`${B}.fight().phase === "fight" && !!${B}.seat()`,15000);
+ }
  // the panel's switches gate the player's guns (a gun switched off is not in the seat), and the fight's own switch silences the seat
  const flip=(name)=>evaluate(`[...document.querySelectorAll('.lil-gui .name')].find(n=>n.textContent===${JSON.stringify(name)}).parentElement.querySelector('input').click()`);
  assert.equal(await evaluate(`${B}.gun("bofors")`),'bofors','the 40 mm is in the seat');
@@ -2416,7 +2443,7 @@ try{
  assert(r1.hp===r1.max&&r1.bait.hp===r1.bait.max&&!r1.bait.gone,`R restarts the round whole (hp ${r1.hp}/${r1.max}, Isao ${r1.bait.hp}/${r1.bait.max})`);
  await delay(300);const rs=await evaluate(`${B}.seat()`);
  console.log('BOSS-BAIT after R '+JSON.stringify({reticle:rs.reticle,look:rs.look,off:+dist(rs.reticle,rs.look).toFixed(1),heavy:rs.heavy.phase}));
- assert(rs.reticle&&dist(rs.reticle,rs.look)<12,`after R the aim is back on the middle of the creature and Isao (${JSON.stringify({reticle:rs.reticle,look:rs.look})})`);
+ assert(rs.reticle&&dist(rs.reticle,rs.look)<3,`after R the aim is back on the middle of the creature and Isao (${JSON.stringify({reticle:rs.reticle,look:rs.look})})`);
  assert.equal(rs.heavy.phase,'ready','after R the MK-9 is ready (nothing falling, no reload owed)');
  // MULTIPLE NUKES: the MK-9 has no limit a pass; a second goes out after the first lands and the reload (the knob, 6 s) passes. Aimed 120 m out
  // from the creature's centre on the side away from Isao (he circles about 35 m from it: never within the 55 m blast), the reload read from the panel
@@ -2459,15 +2486,20 @@ try{
  assert(/KILLED/.test(pe.card)&&/Isao down/.test(pe.card),`the card is KILLED and reads Isao down (${pe.card})`);
  await evaluate(`${B}.setInstinct(true)`);await restart();await evaluate(`${B}.gun("rotary")`);
  // (d) the scripted kill: the 25 mm held on the creature's far foot, led; a round lost on the way is restarted
- const t0=Date.now();let k={phase:'fight'},restarts=0,kp=null;
+ let t0=Date.now();let k={phase:'fight'},restarts=0,kp=null,r0=(await evaluate(S)).seat.shots.rotary;
  for(const end=t0+90000;Date.now()<end;){
    await delay(200);k=await evaluate(S);
    if(k.phase==='killed')break;
-   if(k.phase==='lost'){restarts++;await restart();kp=null;continue;}
+   if(k.phase==='lost'){restarts++;await restart();kp=null;t0=Date.now();r0=(await evaluate(S)).seat.shots.rotary;continue;}
    await evaluate(`${B}.aim(${JSON.stringify(footLead(k,kp))}); ${B}.fire(true)`);kp=k;
  }
  assert.equal(k.phase,'killed',`the 25 mm on the far foot killed the creature in 90 s of real time (${k.phase} ${k.reason}, hp ${k.hp}/${k.max}, ${restarts} restarts)`);
- console.log('BOSS-BAIT kill '+JSON.stringify({real:+((Date.now()-t0)/1000).toFixed(1),clock:+k.clock.toFixed(1),restarts,isaoHp:k.bait.hp,card:k.card,rounds:k.seat.shots.rotary,hpPerRealSecond:+(k.max/((Date.now()-t0)/1000)).toFixed(2)}));
+const killReal=(Date.now()-t0)/1000;
+ // the rate the records quote is per LAB second (the fight's clock, `fight().clock`): headless advances the lab's clock slower than the wall's, so hp per real second understates it
+ console.log('BOSS-BAIT kill '+JSON.stringify({real:+killReal.toFixed(1),fightClock:+k.fclock.toFixed(1),labClock:+k.clock.toFixed(1),restarts,isaoHp:k.bait.hp,card:k.card,rounds:k.seat.shots.rotary,hpPerRealSecond:+(k.max/killReal).toFixed(2),hpPerLabSecond:+(k.max/k.fclock).toFixed(2),labPerReal:+(k.fclock/killReal).toFixed(2),
+   // what the rate is made of: the rounds this kill fired (30 a second while the trigger is held and the barrels are cool), the damage a round lands when it is in the fight's footprint (0.22), the share that were
+   firedInKill:k.seat.shots.rotary-r0,firingSeconds:+((k.seat.shots.rotary-r0)/GUNSHIP_GUNS.rotary.rate).toFixed(1),hpPerFiringSecond:+(k.max/((k.seat.shots.rotary-r0)/GUNSHIP_GUNS.rotary.rate)).toFixed(2),nominalDps:BOSS_FIGHT.rotary.dps,
+   hitShare:+(k.max/((k.seat.shots.rotary-r0)*GUNSHIP_GUNS.rotary.damage)).toFixed(2)}));
  // the KILLED card holds five seconds, with Isao's hit points on it; the trigger is still held and fires nothing
  const h0=Date.now();let held=0,heldSeat=true;const fired0=(await evaluate(S)).seat.shots.rotary;let fired1=fired0;
  while(Date.now()-h0<5000){const s=await evaluate(S);heldSeat=heldSeat&&s.seat.held;assert.equal(s.phase,'killed','the creature stays dead');if(Date.now()-h0>1500)fired1=s.seat.shots.rotary;assert(/KILLED/.test(s.card??'')&&/Isao (\d+\/\d+|down)/.test(s.card),`the KILLED card holds, Isao on it (${s.card})`);held++;await delay(250);}
@@ -2478,6 +2510,8 @@ try{
  // Esc leaves the seat for the tank, and the lab is the lab again (no seat, the scene back in metres)
  await evaluate(`dispatchEvent(new KeyboardEvent("keydown",{key:"Escape"}))`);
  await until(`${B}.mode() === "tank" && ${B}.seat() === null && !document.querySelector('#boss #sentry-pilot') && !document.querySelector('#boss #story-monitor')`,10000);
+ const worldEnd=await evaluate(`${B}.world()`);
+ assert.deepEqual([worldEnd.scale,worldEnd.position],[world0.scale,world0.position],'Esc gives the scene back in the lab\'s own scale and position');
  const rd=await evaluate(`${B}.readout()`);
  assert.deepEqual(rd.shaderErrors,[],'no shader errors');assert(!rd.error,`no frame error (${rd.error})`);
  current='boss-bait';await finish();

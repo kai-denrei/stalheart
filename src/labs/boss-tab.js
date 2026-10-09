@@ -357,7 +357,12 @@ export function initBossTab(root) {
     leave: () => setMode('tank'), pause: () => { paused = !paused; }, onError: (m) => shaderErrors.push(m),
   });
   // R in the seat: the seat swallows every key in the capture phase; this capture listener is registered before any seat, so it runs first
-  const onSeatKey = (e) => { if (seat.owns() && active && e.key.toLowerCase() === 'r' && !e.repeat && !isText(e) && !e.ctrlKey && !e.metaKey && !e.altKey) newRound(); };
+  // T (the game's top view) is swallowed too: the lab has no map to show, and the seat would hide its HUD for a view it cannot draw
+  const onSeatKey = (e) => {
+    if (!seat.owns() || !active || isText(e) || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.code === 'KeyT') { e.stopImmediatePropagation(); e.preventDefault(); return; }
+    if (e.key.toLowerCase() === 'r' && !e.repeat) newRound();
+  };
   addEventListener('keydown', onSeatKey, { capture: true });
   // THE V1 DEATH (owner, 2026-10-08: "set its gravity to 10 (max) and stop all movements")
   function dieV1() {
@@ -796,7 +801,7 @@ export function initBossTab(root) {
     resize();
     if (!planet) return;
     root.querySelector('[data-keys]').hidden = state.lure !== 'tank' || !tankOn();
-    if (!seat.sync(!tankOn() && state.view !== 'free' && !!creature && !loading && !fatal)) paused = false;   // the game seat is mounted in the bait mode only (its keys are the window's); its pause goes with it
+    if (!seat.sync(!tankOn() && state.view !== 'free' && !!creature && !fatal)) paused = false;   // the game seat is mounted in the bait mode only (its keys are the window's); its pause goes with it. A body reload keeps it (the old creature stands until the new one swaps in; the round restarts then, the seat's tick waits for it)
     if (creature && !loading && !fatal) { if (!paused) step(dt, cut); frameCamera(dt); }
     try {
       const probe = creature && frames % 30 === 29, a = probe ? performance.now() : 0;   // the frame that is the 30th: the render's cost is read off it
@@ -952,7 +957,7 @@ export function initBossTab(root) {
     getCreature: () => creature, getScale: () => scale, getT: () => t, getFight: () => fight, getGameCam: () => gameCam, getReanchors: () => reanchors,
     setScripted: (v) => { scripted = v; }, setPin: (v) => { pin = v; },
     readout, setLure, setCam, setMode, bait, seat, setFight, fireCannon: () => fireCannon(), copySettings, reset, tryReanchor, placeTank, creatureNow,
-    plane, drive, keys, state, cam, params, gui, arena, fear, fightTune,
+    plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene,
   });
   if (q.get('acceptance') === '1') window.__bossLab = lab;
   resize();
