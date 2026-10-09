@@ -15,7 +15,7 @@ const LINES = {
   hurt: { id: 'bait_hurt', texts: ["It's just a flesh wound.", 'This is but a scratch.'] },
   taunt: { id: 'bait_taunt', texts: ['Come at me, bro!'] },
   flyover: { id: 'bait_flyover', texts: ["Flying over, don't shoot!", 'Z-Axis here I come!', 'Max Elevation, wait!'] },
-  closeCall: { id: 'bait_close_call', texts: ['That was TOO close!'] },
+  closeCall: { id: 'bait_close_call', texts: ['That was too close!'] },
   help: { id: 'bait_help', texts: ['I need some help here!'] },
   barrage: { id: 'bait_barrage', texts: ['Shoot a barrage between me and that thing!'] },
   stagger: { id: 'bait_stagger', texts: ['The 40 millimeter seems to stagger it.'] },
