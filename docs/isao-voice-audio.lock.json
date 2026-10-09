@@ -1,6 +1,6 @@
 {
  "schema": 2,
- "source": "seiyu_voice export A-1 2026-10-07T02:29:28Z: 24 kHz mono WAV, encoded by scripts/import-isao-voice.mjs to mono 64 kbps MP3, no normalisation",
+ "source": "seiyu_voice export A-1 2026-10-09T06:46:16Z: 24 kHz mono WAV, encoded by scripts/import-isao-voice.mjs to mono 64 kbps MP3, no normalisation",
  "files": [
   {
    "path": "assets/audio/isao/mission_04.mp3",
@@ -1408,6 +1408,62 @@
    "sha256": "034796194bfc757b055819cad346af3485bb76138417750d3e235c1d9e898eb9",
    "bytes": 21332,
    "sourceSha256": "1ffecde6653888b8430106a665d62d9eb7785213ba14e7b1c66bd0f1e9f95ada"
+  },
+  {
+   "path": "assets/audio/isao/bait_hurt_01.mp3",
+   "id": "bait_hurt_01",
+   "sha256": "0431daeb3b5b6a989909df56aa92fa5e44520c5e9fda3deb68299e81835333c7",
+   "bytes": 16724,
+   "sourceSha256": "959cbfa3c06f44d48822154ba2d33b732abdae96ca14e0268dc967bbe84cd461"
+  },
+  {
+   "path": "assets/audio/isao/bait_hurt_02.mp3",
+   "id": "bait_hurt_02",
+   "sha256": "f5292e9a5929fd8d90427a111636fd4e2461feb7253fbe010a6ac19b6a261316",
+   "bytes": 14804,
+   "sourceSha256": "e5345765537a6c6cd55a86aa7f91a55196807c7d1916d88a11a6c5d07ab2a7c0"
+  },
+  {
+   "path": "assets/audio/isao/bait_taunt_01.mp3",
+   "id": "bait_taunt_01",
+   "sha256": "f9b825cd98fa5108962a09ca2a34fa5f08a5fbec7ed408e3ab98ec3511d1c24d",
+   "bytes": 13268,
+   "sourceSha256": "228f5af0ff046ef38f3db992fa8d7820e1593430f6427eb9700593c92726666f"
+  },
+  {
+   "path": "assets/audio/isao/bait_death_01.mp3",
+   "id": "bait_death_01",
+   "sha256": "acc5b28527bc6fd5499b95c3f015b925ab59ea78673c30374980306f09789f2b",
+   "bytes": 14228,
+   "sourceSha256": "0a967bb8213cccaacf6d358984f5c2c76bf77020ad96a0c6e8b15cd89e688989"
+  },
+  {
+   "path": "assets/audio/isao/bait_not_today_01.mp3",
+   "id": "bait_not_today_01",
+   "sha256": "5daa81324cb0fdd4047470b1f8a7c818d6345485e48e61b27fd25bb9e9b23090",
+   "bytes": 11732,
+   "sourceSha256": "9a06d06a1e07c1c9dce7b253d03dee2c34a8089dc816e4384c570770c69159ab"
+  },
+  {
+   "path": "assets/audio/isao/bait_flyover_01.mp3",
+   "id": "bait_flyover_01",
+   "sha256": "7bd252013fd6576c736b240f65c44612fb00e02418e0df65fafe9eb039e3df9a",
+   "bytes": 15956,
+   "sourceSha256": "f1b8deada0f7ccefd6692f758418e93caf416bebdd560a4ddf5e010a6c1d9e8a"
+  },
+  {
+   "path": "assets/audio/isao/bait_flyover_02.mp3",
+   "id": "bait_flyover_02",
+   "sha256": "83a16060ea0b05b759c574958b452960904a5e3188c727a252957bf9b709fb97",
+   "bytes": 15764,
+   "sourceSha256": "caeb15065758d6d86e17fff7e869d1f202b4242f39e8903c604d760d8f64541d"
+  },
+  {
+   "path": "assets/audio/isao/bait_flyover_03.mp3",
+   "id": "bait_flyover_03",
+   "sha256": "75070b9706f7e446109c1eca1781a79a54847473b2157bcfed503be6ed6cdd8f",
+   "bytes": 15956,
+   "sourceSha256": "7b9403bfb0bf48e2671227e4f9d7d75b273f9c611d24d83561143f084ca3ae90"
   }
  ]
 }
