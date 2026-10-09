@@ -3,7 +3,7 @@
 // destruction, the restore and the clear respawn.
 import assert from 'node:assert/strict';
 import { BOSS_FIGHT as T } from '../src/content/boss-fight.js';
-import { makeArena, footprint, blockAt, route, pushOut, destroyIn, restore, restoreClear, withdrawFrom, clearSpawn } from '../src/domain/boss-arena.js';
+import { makeArena, footprint, blockAt, route, pushOut, destroyIn, restore, restoreClear, withdrawFrom, clearSpawn, clampTo } from '../src/domain/boss-arena.js';
 
 const EPS = 1e-9;
 const near = (a, b, msg) => assert.ok(Math.abs(a - b) < EPS, `${msg}: ${a} vs ${b}`);
@@ -162,4 +162,41 @@ near(ang, 20, 'turned exactly +20 degrees (both +-10 are blocked, +20 comes firs
 const walled = [rock([0, 0], 1000)];
 assert.deepEqual(clearSpawn([5, 5], walled, 4.2), [5, 5], 'no clear bearing: the original point');
 
-console.log(`Boss arena: the rock and the wall footprints (yaw ${[0, 30, 90].join(', ')}), the blocker, the tangent routing, the push-out, ${reach.length} breakables destroyed and restored, and a respawn that turns ${Math.abs(Math.round(ang))} degrees clear.`);
+// the bound (spec 2026-10-09-boss-bait-arena-and-feel-design.md, item 1): the content, `clampTo`, and pushOut's `outside` shape
+{
+  const K = T.bounds;
+  assert.ok(Object.isFrozen(K) && K.radius === 120 && K.baitMargin === 10 && K.creatureMargin === 15, 'the bounds content: 120 m, margins 10 and 15, frozen');
+  assert.ok(K.radius - K.creatureMargin > 0 && K.baitMargin < K.creatureMargin, 'the wanted points sit inside the bound, the creature\'s deeper');
+  const inside = [30, -40], c0 = clampTo(inside, 100);
+  assert.deepEqual(c0, inside, 'inside: unchanged'); assert.notEqual(c0, inside, 'and a fresh array');
+  const out = clampTo([300, 400], 100); near(out[0], 60, 'outside: on the circle toward the point (x)'); near(out[1], 80, 'outside: on the circle toward the point (z)');
+  const on = clampTo([0, -100], 100); near(on[0], 0, 'on the circle: stays (x)'); near(on[1], -100, 'on the circle: stays (z)');
+  assert.deepEqual(clampTo([0, 0], 100), [0, 0], 'the centre stays');
+  assert.deepEqual(clampTo([0, 250], 100).map((v) => Math.round(v)), [0, 100], 'along an axis');
+
+  // pushOut: a node beyond the circle goes back onto it, the normal pointing inward; inner nodes are left alone
+  const bound = { id: 'bound', kind: 'outside', at: [0, 0], radius: 100, height: Infinity, live: true };
+  assert.deepEqual(pushOut([30, 0, 40, 0, 50, 0], [bound]), [], 'inside the circle: no moves');
+  const moves = pushOut([0, 3, 130, 60, 1, 80, -140, 50, 0], [bound]);
+  assert.equal(moves.length, 2, 'two outer nodes move, the inner one does not');
+  assert.deepEqual(moves.map((m) => m.i), [0, 2]);
+  near(moves[0].x, 0, 'node 0 back on the circle (x)'); near(moves[0].z, 100, 'node 0 back on the circle (z)'); near(moves[0].nx, 0, 'inward normal x'); near(moves[0].nz, -1, 'node 0 normal points inward');
+  near(Math.hypot(moves[1].x, moves[1].z), 100, 'node 2 back on the circle'); near(moves[1].nx, 1, 'node 2 normal points inward (+x)'); near(moves[1].nz, 0, 'normal z');
+  assert.deepEqual(pushOut([100, 0, 0], [bound]), [], 'on the circle is not outside');
+  assert.equal(pushOut([101, 500, 0], [bound]).length, 1, 'any height counts: the bound is a wall of infinite height');
+  assert.equal(pushOut([130, 0, 0], [{ ...bound, live: false }]).length, 0, 'a dead bound pushes nothing');
+  const shifted = pushOut([200, 0, 20], [{ ...bound, at: [60, 20] }]);
+  near(shifted[0].x, 160, 'the circle may be centred away from the origin'); near(shifted[0].nx, -1, 'inward normal toward its centre');
+  // mixed with rocks: a node inside a rock goes out of the rock, a node beyond the bound goes in, both in one call
+  const mm = pushOut([0, 2, 52, 0, 2, 140, 0, 2, 0], [rock([0, 50], 8), bound]);
+  assert.deepEqual(mm.map((m) => m.i), [0, 1]); near(mm[0].z, 58, 'the rock pushes outward'); near(mm[0].nz, 1, 'the rock\'s normal points out');
+  near(mm[1].z, 100, 'the bound pushes inward'); near(mm[1].nz, -1, 'the bound\'s normal points in');
+  // a rock sitting on the bound: the deeper of the two wins, one move per node
+  assert.equal(pushOut([0, 2, 99], [rock([0, 99], 8), bound]).length, 1, 'one move per node');
+  assert.equal(pushOut([0, 2, 103], [rock([0, 103], 8), bound]).length, 1, 'one move per node (beyond the edge)');
+  // the other callers meet the bound without breaking: it blocks a tank hull across the edge and the routing ignores it
+  assert.ok(blockAt(0, 104, 4.2, [bound]) && !blockAt(0, 90, 4.2, [bound]), 'blockAt: a tank hull across the edge is blocked');
+  assert.deepEqual(route([0, 0], [10, 10], [bound, rock([100, 100], 5)], 6), [10, 10], 'route does not go round the bound');
+}
+
+console.log(`Boss arena: the rock and the wall footprints (yaw ${[0, 30, 90].join(', ')}), the blocker, the tangent routing, the push-out, ${reach.length} breakables destroyed and restored, and a respawn that turns ${Math.abs(Math.round(ang))} degrees clear, and the ${T.bounds.radius} m bound (clampTo, the outside circle pushing nodes in).`);

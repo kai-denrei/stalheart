@@ -9,9 +9,16 @@ const live = (shapes) => shapes.filter((s) => s.live);
 // the working copy of the layout: every entry (and its arrays) copied, `live: true`; the frozen content is never touched
 export const makeArena = (layout) => layout.map((s) => ({ ...s, at: [...s.at], ...(s.size ? { size: [...s.size] } : {}), live: true }));
 
-// the signed distance from p to the shape's footprint (negative inside) and the outward normal at the nearest boundary point
+// the signed distance from p to the shape's footprint (negative inside) and the outward normal at the nearest boundary point.
+// A shape of kind 'outside' ({ kind, at, radius, height: Infinity, live }) is the arena's bound: its footprint is the plane beyond
+// the circle, so a point beyond the radius is inside it and the normal there points inward
 export function footprint(shape, p) {
   const dx = p[0] - shape.at[0], dz = p[1] - shape.at[1];
+  if (shape.kind === 'outside') {
+    // the bound: the obstacle is everything BEYOND `radius`, so the way out of it (the "outward" normal) points to the centre
+    const len = Math.hypot(dx, dz);
+    return { d: shape.radius - len, n: len > 1e-12 ? [-dx / len, -dz / len] : [-1, 0] };
+  }
   if (shape.kind === 'rock') {
     const len = Math.hypot(dx, dz);
     return { d: len - shape.radius, n: len > 1e-12 ? [dx / len, dz / len] : [1, 0] };
@@ -36,6 +43,12 @@ export function blockAt(x, z, r, shapes) {
     if (depth > 0 && (!best || depth > best.depth)) best = { nx: f.n[0], nz: f.n[1], depth };
   }
   return best;
+}
+
+// a point held inside the disc of `radius` round the origin: unchanged within it, on the circle toward it beyond (a fresh array)
+export function clampTo(point, radius) {
+  const len = Math.hypot(point[0], point[1]);
+  return len <= radius ? [point[0], point[1]] : [point[0] * radius / len, point[1] * radius / len];
 }
 
 // the waypoint's radius is the clearance plus this margin, so the creature passes the edge instead of converging to it
@@ -82,6 +95,7 @@ export function route(c, target, shapes, clear) {
   const sx = target[0] - c[0], sz = target[1] - c[1], len2 = sx * sx + sz * sz;
   let pick = null, pickDist = Infinity;
   for (const sh of live(shapes)) {
+    if (sh.kind === 'outside') continue;                     // the bound is not something to go round
     const R = (sh.kind === 'rock' ? sh.radius : sh.size[0] / 2) + clear;
     const ox = sh.at[0] - c[0], oz = sh.at[1] - c[1], dc = Math.hypot(ox, oz);
     if (footprint(sh, target).d < clear) continue;           // the target is within the clearance of the real footprint: approach it

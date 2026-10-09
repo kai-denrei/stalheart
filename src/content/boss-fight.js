@@ -26,7 +26,18 @@ export const BOSS_FIGHT = freeze({
     turn: 3,               // his heading eases at this many radians a second
     altitude: 17.75,       // metres above the surface: src/fx/isao-worker.js ISAO_ALT 3.4 is in wall-heights (td-tab wallHeight 0.03), so 0.102 world units, plus half a cell (cellSide 0.08 / 2) = 0.142; a 10 m cell is 0.08, so 125 m a world unit
     caught: 3, caughtFor: 0.5,   // a floor contact within this many metres of his ground point for this long takes him
+    // the erratic flight (2026-10-09-boss-bait-arena-and-feel-design.md, item 3): `erratic` 0..1 scales every swing below, 0 is the smooth flight above
+    erratic: 1,            // default on in bait mode
+    speedMin: 8, speedMax: 26,   // bursts and brakes: his speed target is drawn from this band (at erratic 1; the cruise `speed` is the centre of the scale)
+    accel: 30,             // m/s2: the most his speed changes by (the panic dash at `flee` is exempt)
+    surgeMin: 0.5, surgeMax: 1.5,   // seconds: a new speed target this often
+    jink: 40 * Math.PI / 180,       // radians: his course is turned off the wanted point by up to this much, eased at `turn`
+    jinkMin: 0.6, jinkMax: 2,       // seconds: a new jink target this often
+    bob: 1.5,              // metres: the altitude bob's amplitude, for the lab to add to his altitude
+    bobPeriod: [1.7, 1.05],   // seconds: the bob is two sines of these periods (weights 0.6 and 0.4)
   },
+  bounds: { radius: 120, baitMargin: 10, creatureMargin: 15 },   // the arena disc round the origin: Isao's wanted point stays radius - baitMargin in, the creature's target radius - creatureMargin, the body's nodes are pushed back inside radius
+  orbit: { radius: 200, lap: 120, bank: 0.12 },   // the gunship platform's ground track round the origin: 200 m, one lap per 120 s (10.5 m/s); the bank in radians is about twice the coordinated 0.056 (v squared over r g) so the roll reads on the seat's camera without lurching
   card: 3,                 // the KILLED / LOST card's seconds before the reset
   respawn: 40,             // the tank respawns this far out, away from the creature
   deathGravity: 10,        // the v1 death: the lab's gravity knob's maximum, the body collapses
