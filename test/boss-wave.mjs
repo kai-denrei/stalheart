@@ -11,8 +11,9 @@ const EPS = 1e-9;
 const W = T.wave;
 
 // the content: the owner's numbers
-const { emerge: E, coarse: C, carcass: K, ...flat } = W;
-assert.deepEqual(flat, { count: 10, reedHealth: 20, size: 15, corpse: 2, clear: 45, budget: 10, lod: false }, 'the wave');
+const { emerge: E, coarse: C, carcass: K, sinkhole: S, ...flat } = W;
+assert.deepEqual(flat, { count: 20, reedHealth: 20, size: 15, corpse: 2, clear: 45, budget: 10, lod: false }, 'the wave: twenty Reeds by default (owner, 2026-10-10)');
+assert.deepEqual({ ...S }, { reeds: 1, boss: 2 }, 'the game\'s sinkhole one cell wide for the Reeds, two for the boss (owner, 2026-10-10)');
 assert.deepEqual({ ...E }, { gap: 0.6, lead: 0.35, rise: 1.5, depth: 1.15, jitter: 4, fan: 20, fanFor: 2.5, keep: 25 }, 'the emergence: 0.6 s apart, a ~1.5 s rise (owner, 2026-10-10)');
 assert.deepEqual({ ...C }, { on: true, above: 10, hz: 120 }, 'the solver at 120 Hz above ten Reeds (owner, 2026-10-10)');
 assert.deepEqual({ ...K }, { decay: 60, max: 30, dark: 0.75, flat: 0.4, sink: 0.35, cold: 0.6 }, 'the carcass: ~60 s, at most 30');

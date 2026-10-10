@@ -2043,7 +2043,7 @@ try{
  // the game's clock slowly, so a wall-clock bound measures the frame rate, not the fight
  const B='window.__bossLab';
  const F=`(()=>{const f=${B}.fight();return {hp:f.hp,max:f.max,clock:f.clock,hits:f.hits,hpPerSecond:f.hpPerSecond,phase:f.phase,reason:f.reason,strikes:f.strikes,frights:f.frights,stuns:f.stuns,fearMode:f.fearMode,fleeShare:f.fleeShare,stunShare:f.stunShare}})()`;
- await go('boss-fight','labs.html?sw=0&acceptance=1#boss');
+ await go('boss-fight','labs.html?sw=0&acceptance=1&mode=tank#boss');   // the tank mode: the lab opens in the bait mode by default (owner, 2026-10-10)
  await until(`!!${B} && ${B}.readout().steps > 0`,60000);
  await evaluate(`${B}.setLure("tank"); ${B}.setFight(true); ${B}.circle(35, 45)`);
  await until(`${B}.fight().phase === "fight"`,10000);
@@ -2148,7 +2148,7 @@ try{
  // frame-to-frame displacement, in metres, of the same pushed node over the last 3 s, sampled in the page on every frame. Asserted:
  // under 1 ms a frame. The jitter is logged for the owner's judgement. One screenshot, at 9 s, with w1 in view is kept (WALLS_SHOT, or the artifacts' boss-walls-w1.png)
  const B='window.__bossLab';
- await go('boss-walls','labs.html?sw=0&acceptance=1#boss');
+ await go('boss-walls','labs.html?sw=0&acceptance=1&mode=tank#boss');
  await until(`!!${B} && ${B}.readout().steps > 0`,60000);
  await evaluate(`${B}.setFight(false); ${B}.setLure("tank")`);
  await delay(1000);
@@ -2221,7 +2221,7 @@ try{
  // the eye within one cell (10 m) of the pose's eye after the first second, the lens 68, the rear viewport 224 x 140 CSS px bottom right (x2), the
  // renderer's viewport and scissor test put back, V toggles, the lab's chase and its lens come back. One screenshot (BOSSCAM_SHOT or the artifacts' boss-cam.png)
  const B='window.__bossLab',shotPath=process.env.BOSSCAM_SHOT||join(output,'boss-cam.png');
- await go('boss-cam','labs.html?sw=0&acceptance=1#boss',1440,900,'labs.html?sw=0&acceptance=1#boss',2);
+ await go('boss-cam','labs.html?sw=0&acceptance=1&mode=tank#boss',1440,900,'labs.html?sw=0&acceptance=1&mode=tank#boss',2);
  await until(`!!${B} && ${B}.readout().steps > 0`,60000);
  await evaluate(`${B}.setFight(false); ${B}.setLure("tank")`);
  const lab0=await evaluate(`${B}.cam()`);
@@ -2289,7 +2289,7 @@ try{
  // probe runs on the tree before wave B. BOSS_UNDER_SET (JSON, { knob name: value }) sets panel knobs first (a variant); each escape's start is
  // logged by its cause: his ground point inside half the body's half-width of its centre ('core'), else floor contacts within 8 m on opposite sides ('arms'; 15 m on the tree before the escape fix)
  const B='window.__bossLab';
- await go('boss-under','labs.html?sw=0&acceptance=1&reeds=0#boss');
+ await go('boss-under','labs.html?sw=0&acceptance=1&reeds=0&mode=tank#boss');
  await until(`!!${B} && ${B}.readout().steps > 0`,60000);
  await evaluate(`${B}.mode("bait")`);
  await until(`${B}.fight().phase === "fight" && ${B}.bait() && ${B}.bait().max > 0 && !!${B}.seat()`,30000);
@@ -2335,7 +2335,7 @@ try{
  const B='window.__bossLab',shotPath=process.env.BOSSBAIT_SHOT||join(output,'boss-bait-seat.png');
  const {BOSS_FIGHT}=await import('../src/content/boss-fight.js');
  const {GUNSHIP_GUNS,GUNSHIP_PLATFORM}=await import('../src/content/gunship.js');
- await go('boss-bait','labs.html?sw=0&acceptance=1&reeds=0#boss');   // no first wave (--boss-wave is the wave's): the boss at once, as before it
+ await go('boss-bait','labs.html?sw=0&acceptance=1&reeds=0&mode=tank#boss');   // no first wave (--boss-wave is the wave's): the boss at once, as before it
  await until(`!!${B} && ${B}.readout().steps > 0`,60000);
  const world0=await evaluate(`${B}.world()`);   // the lab's scene frame, which the seat takes (scaled and lifted to the game's units) and must give back
  await evaluate(`${B}.camera("game"); ${B}.mode("bait")`);   // the game camera asked for first: the bait mode must take it away
@@ -3047,54 +3047,79 @@ const killReal=(Date.now()-t0)/1000;
  // THE BAIT MODE'S FIRST WAVE (owner, 2026-10-09: "wave 1 is 5 to 50 (slider) Reed - four limbs, creatures, smaller (size 15) and with only 20 hp, not 180. once they are
  // defeated, the bigger Nih Dairia shows up"; src/labs/boss/wave.js, src/domain/boss-wave.js) and ITS SECOND PASS (owner, 2026-10-10: "1) hide the ball in bait mode, 3) Have
  // the Reed and the boss come out of a tremor in the center. 4) try with 20 reed. 5) could we start with 120 HZ when there are more than 10 Reeds, and switch back to 240HZ
- // when there are fewer? 6) we need a low-poly dead Reed Carcass that stays and decays"). The lure is left on `point` in the tank mode first (what drew the ball). ?reeds=10:
- // ten Reeds come up at the arena's centre one after another (each first within 10 m of it, below the surface before it rises, its top climbing; the seat shaken once a
- // Reed at least; Isao never inside the keep-out while it holds; no body thrown: every Reed within 20 m of the centre when up), the boss hidden and unstepped, the bar
- // WAVE 1 · REED 10/10, no prey mesh shown, the step 1/240 s (ten is not more than ten); a screenshot of the emergence (EMERGE_SHOT); over 8 s of lab clock (60 s real cap)
+ // when there are fewer? 6) we need a low-poly dead Reed Carcass that stays and decays") and ITS THIRD (owner, 2026-10-10: "make the default 20 reeds, and make the
+ // default mode when landing on #boss the Bait-Isao mode ... the initial Tremor is not just the ground shaking, it is our sinkhole animation from the game mode"). The page
+ // opens with ?mode=tank and the lure is left on `point` there first (what drew the ball); the default count, 20: the game's own sinkhole (src/game-breaches.js through
+ // src/labs/boss/sinkhole.js: its state the adapter's, the lab floors' program patched with the game's breach ground) opens at the arena's centre, rumbling then open,
+ // and no Reed leaves 'below' before it is ready by the game's spawn rule; twenty Reeds come up out of it one after another (each first within 10 m of the centre, below
+ // the surface before it rises, its top climbing; nothing shaken: the seat's shake unused; Isao never inside the keep-out while it holds; no body thrown: every Reed within
+ // 20 m of the centre when up), then it is sealed with the game's rubble; the boss hidden and unstepped, the bar WAVE 1 · REED 20/20, no prey mesh shown, the step 1/120 s
+ // (more than ten); screenshots of the emergence (EMERGE_SHOT) and of the sinkhole from the seat (SINKHOLE_SHOTS, a directory, else the artifacts: sinkhole-seat.png a
+ // Reed rising out of it, sinkhole-seat-opening.png its ground breaking; with SINKHOLE_SHOTS also the chase's pair after the R restart); over 8 s of lab clock (60 s real cap)
  // once fanned out they close on where Isao was (8 m or more, summed poll by poll) and the rules' creature is the Reed nearest him; the fps logged; the 40 mm and the 25 mm on the live Reed farthest from Isao kill some, and each dead
- // one is laid down as a carcass (the tet cage's surface, under a tenth of the skin's triangles); killReeds() the rest: the boss's tremor and rise at the centre (seen below
- // the surface, Isao kept `wave.clear` out), then visible and stepping, the bar NIH-DAIRIA 180/180, no prey mesh; a screenshot of the field with its carcasses
- // (CARCASS_SHOT); the carcasses' decay shortened to 6 s: they darken, flatten, sink and cool, then go; R restarts the wave (ten Reeds, the boss held back, no carcass);
+ // one is laid down as a carcass (the tet cage's surface, under a tenth of the skin's triangles); killReeds() the rest: the boss's sinkhole (`wave.sinkhole.boss` cells)
+ // opens at the centre and it rises once that is ready (seen below the surface, Isao kept `wave.clear` out), then visible and stepping, the bar NIH-DAIRIA 180/180, no prey mesh; a screenshot of the field with its carcasses
+ // (CARCASS_SHOT); the carcasses' decay shortened to leave the oldest 6 s: they darken, flatten, sink and cool, then go; R restarts the wave (twenty Reeds, the boss held back, no carcass, a fresh sinkhole);
  // then 20 Reeds: the step 1/120 s, thinned to 11 still 1/120 s, to 10 back at 1/240 s, the fastest node's speed traced round the switch (no jolt: the frames after it no
  // faster than 1.5 times the frames before); then 50 Reeds: they all come up, the solver near the budget
  const B='window.__bossLab',shotPath=process.env.WAVE_SHOT||join(output,'boss-wave.png'),emergeShot=process.env.EMERGE_SHOT||join(output,'boss-wave-emerge.png'),carcassShot=process.env.CARCASS_SHOT||join(output,'boss-wave-carcasses.png');
- const {BOSS_FIGHT}=await import('../src/content/boss-fight.js');const WV=BOSS_FIGHT.wave,E=WV.emerge;
+ const sinkDir=process.env.SINKHOLE_SHOTS||output,snap=async(file)=>{const p=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(sinkDir,file),Buffer.from(p.data,'base64'));console.log(`BOSS-WAVE sinkhole screenshot ${join(sinkDir,file)}`);};
+ const {BOSS_FIGHT}=await import('../src/content/boss-fight.js');const WV=BOSS_FIGHT.wave,E=WV.emerge,N=WV.count;
+ assert.equal(N,20,'the default wave is twenty Reeds (owner, 2026-10-10)');
  const setBool=(name,v)=>evaluate(`(()=>{const i=[...document.querySelectorAll('.lil-gui .name')].find(n=>n.textContent===${JSON.stringify(name)}).parentElement.querySelector('input');if(i.checked!==${!!v})i.click();return i.checked;})()`);
  const preyShown=()=>evaluate(`(()=>{let S=${B}.creature().mesh;while(S.parent)S=S.parent;let n=0;S.traverseVisible(o=>{if(o.name==='Nih-Dairia prey')n++;});return n;})()`);
- await go('boss-wave','labs.html?sw=0&acceptance=1&reeds=10#boss');
+ await go('boss-wave','labs.html?sw=0&acceptance=1&mode=tank#boss');
  await until(`!!${B} && ${B}.readout().steps > 0`,60000);
+ assert.equal(await evaluate(`${B}.mode()`),'tank','?mode=tank opens the tank mode');
  await evaluate(`${B}.setLure("point")`);
  await evaluate(`${B}.mode("bait")`);
- await until(`${B}.mode()==="bait" && !!${B}.seat() && ${B}.wave().made===10`,90000);
+ await until(`${B}.mode()==="bait" && !!${B}.seat() && ${B}.wave().made===${N}`,90000);
+ const floorKey=await evaluate(`(()=>{let k=[],S=${B}.creature().mesh;while(S.parent)S=S.parent;S.traverse(o=>{if(o.name==='floors'||o.name==='edges')k.push(o.name+':'+(o.material.customProgramCacheKey?.()??''));});return k;})()`);
+ assert(floorKey.includes('floors:game-breach-ground-v1')&&floorKey.includes('edges:game-breach-ground-v1'),`the lab planet's floors and grid lines carry the game's breach ground (${floorKey})`);
  const lbl=()=>evaluate(`document.querySelector('#boss .sw-hud .ih-lbl').textContent`);
  const rigShown=()=>evaluate(`${B}.creature().mesh.parent.visible`);
  const bound=await evaluate(`${B}.arena().bound`),at=bound.at;
- assert.equal(await lbl(),'WAVE 1 · REED 10/10','the bar reads the wave');
+ assert.equal(await lbl(),`WAVE 1 · REED ${N}/${N}`,'the bar reads the wave');
  assert.equal(await rigShown(),false,'the boss is hidden while the wave stands');
  // the emergence: polled until every Reed is up
  {await evaluate(`${B}.aim(${JSON.stringify(at)})`);
   const seen={};let isaoMin=Infinity,keepSeen=0,shot=false,prey=0,polls=0,upNear=[];
-  for(const end=Date.now()+120000;Date.now()<end;){
-   const s=await evaluate(`(()=>{const L=${B},w=L.wave(),r=L.readout(),b=L.bait();return {reeds:w.reeds.map(x=>({id:x.id,phase:x.phase,top:x.top,first:x.first,centre:x.centre,shown:x.shown})),hz:w.hz,keep:r.keep,isao:b&&!b.gone?b.pos:null,shake:L.seat().shake,err:r.error}})()`);
+  const sk={phases:[],early:0,firstOut:null,opened:null,shots:{}};   // the sinkhole: its phases in order, Reeds out of 'below' before it was ready, its state when the first left
+  for(const end=Date.now()+150000;Date.now()<end;){
+   const s=await evaluate(`(()=>{const L=${B},w=L.wave(),r=L.readout(),b=L.bait(),h=L.sinkhole();return {reeds:w.reeds.map(x=>({id:x.id,phase:x.phase,top:x.top,first:x.first,centre:x.centre,shown:x.shown})),hz:w.hz,keep:r.keep,isao:b&&!b.gone?b.pos:null,shake:L.seat().shake,err:r.error,
+     sink:{module:h.module,open:h.open,who:h.who,caps:h.caps,opens:h.opens,opened:h.opened,visible:h.visible,ground:h.ground,phase:h.breach?.phase??null,ready:h.breach?.ready??null,age:h.breach?.age??null,hole:h.breach?.holeRadius??null,crater:h.breach?.craterRadius??null,look:h.breach?.look??null,env:h.breach?.environment??null,stones:h.breach?.stones??null}}})()`);
    polls++;prey+=await preyShown();
+   {const h=s.sink;const ph=h.open?h.phase:(h.caps?'sealed':'none');if(sk.phases.at(-1)!==ph)sk.phases.push(ph);if(h.open&&!sk.opened)sk.opened=h;
+    const out=s.reeds.filter(r=>r.phase&&r.phase!=='below');if(out.length&&!sk.firstOut)sk.firstOut={...h,out:out.length};if(out.length&&h.open&&h.who==='reeds'&&!h.ready)sk.early++;
+    if(!sk.shots.opening&&h.open&&h.phase==='open'&&h.age>1.6+0.8){await evaluate(`${B}.aim(${JSON.stringify(at)})`);await delay(150);await snap('sinkhole-seat-opening.png');sk.shots.opening=h;}   // aimed again: the orbit slides the view
+    if(!sk.shots.rising&&s.reeds.some(r=>r.phase==='rising'&&r.top>2)){await evaluate(`${B}.aim(${JSON.stringify(at)})`);await delay(150);await snap('sinkhole-seat.png');sk.shots.rising=h;}}
    for(const r of s.reeds){if(!r.phase)continue;const e=seen[r.id]??={phases:[],tops:[],first:r.first,upAt:null};if(e.phases.at(-1)!==r.phase)e.phases.push(r.phase);if(r.phase!=='up')e.tops.push(r.top);if(r.phase==='up'&&!e.upAt){e.upAt=r.centre;upNear.push(Math.hypot(r.centre[0]-at[0],r.centre[1]-at[1]));}}
    if(s.keep&&s.isao){keepSeen++;isaoMin=Math.min(isaoMin,Math.hypot(s.isao[0]-s.keep.at[0],s.isao[1]-s.keep.at[1]));}
    if(!shot&&s.reeds.filter(r=>r.phase==='up').length>=2&&s.reeds.some(r=>r.phase==='rising'||r.phase==='tremor')){const p=await send('Page.captureScreenshot',{format:'png'});writeFileSync(emergeShot,Buffer.from(p.data,'base64'));shot=true;console.log(`BOSS-WAVE emergence screenshot ${emergeShot}`);}
    if(s.reeds.every(r=>r.phase==='up')){seen.hz=s.hz;seen.shake=s.shake;seen.err=s.err;break;}
    await delay(150);
   }
-  const ids=[...Array(10).keys()],first=ids.map(i=>seen[i]?.first?Math.hypot(seen[i].first[0]-at[0],seen[i].first[1]-at[1]):Infinity);
+  const ids=[...Array(N).keys()],first=ids.map(i=>seen[i]?.first?Math.hypot(seen[i].first[0]-at[0],seen[i].first[1]-at[1]):Infinity);
   const under=ids.filter(i=>seen[i]?.tops.length&&seen[i].tops[0]<0).length,climbs=ids.every(i=>!seen[i]||seen[i].tops.every((v,k,a)=>k===0||v>=a[k-1]-1e-6));
   console.log('BOSS-WAVE emergence '+JSON.stringify({first:first.map(d=>+d.toFixed(1)),phases:ids.map(i=>seen[i]?.phases.join('>')),firstTop:ids.map(i=>seen[i]?.tops[0]!==undefined?+seen[i].tops[0].toFixed(2):null),upNear:upNear.map(d=>+d.toFixed(1)),isaoMin:+isaoMin.toFixed(1),keepPolls:keepSeen,polls,prey,hz:seen.hz,shake:seen.shake}));
+  const sAfter=await evaluate(`${B}.sinkhole()`);
+  console.log('BOSS-WAVE sinkhole '+JSON.stringify({phases:sk.phases,early:sk.early,opened:sk.opened&&{module:sk.opened.module,who:sk.opened.who,at:sk.opened.opened?.[0],crater:sk.opened.crater,look:sk.opened.look,env:sk.opened.env,ground:sk.opened.ground},firstOut:sk.firstOut&&{phase:sk.firstOut.phase,ready:sk.firstOut.ready,age:+(sk.firstOut.age??0).toFixed(2),hole:sk.firstOut.hole},shots:Object.fromEntries(Object.entries(sk.shots).map(([k,h])=>[k,{phase:h.phase,age:+h.age.toFixed(2),hole:h.hole,stones:h.stones}])),after:{open:sAfter.open,caps:sAfter.caps,opens:sAfter.opens}}));
+  assert(sk.opened&&sk.opened.module==='src/game-breaches.js'&&sk.opened.who==='reeds'&&sk.opened.env==='planet'&&sk.opened.crater>0,`the game's sinkhole (src/game-breaches.js) opened for the Reeds (${JSON.stringify(sk.opened)})`);
+  assert(Math.hypot(sk.opened.opened[0].at[0]-at[0],sk.opened.opened[0].at[1]-at[1])<1e-6&&sk.opened.opened[0].size===WV.sinkhole.reeds,`at the arena's centre, ${WV.sinkhole.reeds} cell(s) wide (${JSON.stringify(sk.opened.opened)})`);
+  assert(sk.phases.includes('rumbling')&&sk.phases.includes('open')&&sk.phases.indexOf('rumbling')<sk.phases.indexOf('open'),`it rumbled, then the ground broke (${sk.phases.join('>')})`);
+  assert(sk.firstOut&&sk.firstOut.phase==='open'&&sk.firstOut.ready&&sk.firstOut.hole>0&&sk.early===0,`no Reed came out before the sinkhole was ready by the game's rule (${JSON.stringify(sk.firstOut)}, early ${sk.early})`);
+  assert(!sAfter.open&&sAfter.caps===1&&sk.phases.at(-1)==='sealed',`every Reed up, it is sealed with the game's rubble (${JSON.stringify({open:sAfter.open,caps:sAfter.caps,phases:sk.phases})})`);
+  assert(sAfter.opens>=1,'its quake sounded on the opening');
+  assert(sk.shots.rising,'a Reed was caught rising out of it from the seat');
   assert(ids.every(i=>seen[i]?.phases.at(-1)==='up'),`every Reed came up (${JSON.stringify(ids.map(i=>seen[i]?.phases))})`);
   assert(first.every(d=>d<=10),`each Reed's first place within 10 m of the centre (${first.map(d=>d.toFixed(1))})`);
-  assert(under>=8&&climbs,`seen below the surface before it rose, its top climbing (${under} of 10 first seen under)`);
+  assert(under>=N-2&&climbs,`seen below the surface before it rose, its top climbing (${under} of ${N} first seen under)`);
   assert(upNear.every(d=>d<20),`no body thrown by the rise: each within 20 m of the centre once up (${upNear.map(d=>d.toFixed(1))})`);
   assert(keepSeen>0&&isaoMin>=E.keep-0.5,`Isao kept ${E.keep} m off the centre while Reeds came up (${isaoMin.toFixed(1)} m nearest)`);
-  assert(seen.shake.count>=10&&seen.shake.peak>0,`the seat shaken by the tremors (${JSON.stringify(seen.shake)})`);
+  assert(seen.shake.count===0,`nothing shakes the seat: the game's sinkhole shakes no camera (${JSON.stringify(seen.shake)})`);
   assert(!seen.err,`no frame error (${seen.err})`);
   assert.equal(prey,0,'no prey mesh shown in the bait mode (the lure left on point in the tank mode)');
-  assert.equal(seen.hz,240,'ten Reeds step at 1/240 s');}
+  assert.equal(seen.hz,120,'twenty Reeds step at 1/120 s');}
  // the hunt: 8 s of lab clock once every Reed has fanned out
  await until(`${B}.wave().reeds.every(r=>r.dead||r.hunting)`,60000);
  const dIsao=async()=>evaluate(`(()=>{const L=${B},w=L.wave(),b=L.bait();const live=w.reeds.filter(r=>!r.dead&&r.centre);const d=live.map(r=>Math.hypot(r.centre[0]-b.pos[0],r.centre[1]-b.pos[1]));return {mean:d.reduce((a,x)=>a+x,0)/d.length,min:Math.min(...d),clock:L.arena().clock,phase:L.fight().phase,hunted:w.hunted,isao:[...b.pos],at:Object.fromEntries(live.map(r=>[r.id,r.centre]))}})()`);
@@ -3106,11 +3131,11 @@ const killReal=(Date.now()-t0)/1000;
  const corner=await evaluate(`(()=>{const e=document.querySelector('#boss [data-fps]');return {shown:!e.hidden&&getComputedStyle(e).display!=='none',text:e.textContent}})()`);
  const avg=(a,k)=>a.reduce((s,x)=>s+x[k],0)/a.length;
  console.log('BOSS-WAVE hunt '+JSON.stringify({closed:+closed.toFixed(1),from:+h0.mean.toFixed(1),to:+h1.mean.toFixed(1),min:+h1.min.toFixed(1),seconds:+(h1.clock-h0.clock).toFixed(1),hunted:h1.hunted,phase:h1.phase}));
- console.log('BOSS-WAVE fps at 10 Reeds '+JSON.stringify({fps:+avg(fps10,'fps').toFixed(1),solverMs:+avg(fps10,'solver').toFixed(2),clock:+avg(fps10,'scale').toFixed(3),offscreen:+avg(fps10,'lod').toFixed(1),msPerStep:+avg(fps10,'cost').toFixed(3),corner:corner.text}));
+ console.log(`BOSS-WAVE fps at ${N} Reeds `+JSON.stringify({fps:+avg(fps10,'fps').toFixed(1),solverMs:+avg(fps10,'solver').toFixed(2),clock:+avg(fps10,'scale').toFixed(3),offscreen:+avg(fps10,'lod').toFixed(1),msPerStep:+avg(fps10,'cost').toFixed(3),corner:corner.text}));
  assert(h1.clock-h0.clock>=8||h1.phase!=='fight',`8 s of lab clock went by (${(h1.clock-h0.clock).toFixed(1)})`);
  assert(closed>=8||h1.phase==='lost',`the Reeds hunt Isao: ${closed.toFixed(1)} m closed on where he was, poll by poll (the gap ${h0.mean.toFixed(1)} -> ${h1.mean.toFixed(1)} m)`);
  assert(h1.hunted!==null,'the rules\' creature is a Reed (the one nearest Isao)');
- assert(corner.shown&&/^\d+ fps · solver [\d.]+ ms · Reeds \d+\/10 · 240 Hz/.test(corner.text),`the fps corner shows (${JSON.stringify(corner)})`);
+ assert(corner.shown&&new RegExp(`^\\d+ fps · solver [\\d.]+ ms · Reeds \\d+/${N} · \\d+ Hz`).test(corner.text),`the fps corner shows (${JSON.stringify(corner)})`);
  // the guns: the 40 mm then the 25 mm, on the live Reed farthest from Isao, at least 40 m from him
  const fireAt=async(gun,seconds,want)=>{
   await evaluate(`${B}.gun(${JSON.stringify(gun)})`);let kills=0,last=(await evaluate(`${B}.wave()`)).killed,rounds=0;
@@ -3135,10 +3160,14 @@ const killReal=(Date.now()-t0)/1000;
  const killed=await evaluate(`${B}.killReeds()`);
  await until(`${B}.wave().boss && ${B}.wave().entered`,10000);
  {const rises=[];let isaoMin=Infinity;
-  for(const end=Date.now()+30000;Date.now()<end;){const r=await evaluate(`(()=>{const L=${B},r=L.readout(),b=L.bait();return {rise:r.rise,isao:b&&!b.gone?b.pos:null,prey:0}})()`);
-   if(r.isao&&r.rise)isaoMin=Math.min(isaoMin,Math.hypot(r.isao[0]-at[0],r.isao[1]-at[1]));if(!r.rise)break;rises.push(r.rise);await delay(100);}
-  console.log('BOSS-WAVE boss rise '+JSON.stringify({polls:rises.length,phases:[...new Set(rises.map(r=>r.phase))],lifts:rises.map(r=>+r.lift.toFixed(2)).slice(0,12),depth:rises[0]?+rises[0].depth.toFixed(1):null,isaoMin:+isaoMin.toFixed(1)}));
+  let bossHole=null,liftEarly=0;
+  for(const end=Date.now()+60000;Date.now()<end;){const r=await evaluate(`(()=>{const L=${B},r=L.readout(),b=L.bait(),h=L.sinkhole();return {rise:r.rise,isao:b&&!b.gone?b.pos:null,prey:0,sink:{who:h.who,open:h.open,opened:h.opened,ready:h.breach?.ready??null,phase:h.breach?.phase??null,scale:h.breach?.scale??null}}})()`);
+   if(r.isao&&r.rise)isaoMin=Math.min(isaoMin,Math.hypot(r.isao[0]-at[0],r.isao[1]-at[1]));if(!r.rise)break;rises.push(r.rise);
+   if(r.sink.who==='boss'){bossHole??=r.sink;if(!r.sink.ready&&r.rise.lift>0)liftEarly++;}await delay(100);}
+  console.log('BOSS-WAVE boss rise '+JSON.stringify({polls:rises.length,phases:[...new Set(rises.map(r=>r.phase))],lifts:rises.map(r=>+r.lift.toFixed(2)).filter(l=>l>0).slice(0,12),depth:rises[0]?+rises[0].depth.toFixed(1):null,isaoMin:+isaoMin.toFixed(1),hole:bossHole&&{at:bossHole.opened.at(-1),phase:bossHole.phase,scale:bossHole.scale},liftEarly}));
   assert(rises.length>0&&rises[0].lift<0.5&&rises[0].depth>10,`the boss comes up out of the ground (${JSON.stringify(rises.slice(0,3))})`);
+  assert(bossHole&&bossHole.opened.at(-1).who==='boss'&&bossHole.opened.at(-1).size===WV.sinkhole.boss&&Math.hypot(bossHole.opened.at(-1).at[0]-at[0],bossHole.opened.at(-1).at[1]-at[1])<1e-6,`the boss's own sinkhole at the centre, ${WV.sinkhole.boss} cells (${JSON.stringify(bossHole)})`);
+  assert.equal(liftEarly,0,'the boss rises only once its sinkhole is ready');
   assert(rises.every((r,k,a)=>k===0||r.lift>=a[k-1].lift-1e-9),'its lift climbs');
   assert(isaoMin>=WV.clear-1,`Isao kept clear of its rise (${isaoMin.toFixed(1)} m)`);}
  const entry=await evaluate(`(()=>{const L=${B},a=L.arena().bound.at,e=L.readout().entry;return {isao:e.isao,moved:e.moved,boss:L.fight().centre,at:a,hp:L.fight().hp,max:L.fight().max}})()`);
@@ -3156,18 +3185,31 @@ const killReal=(Date.now()-t0)/1000;
   const c=await evaluate(`(()=>{const L=${B},w=L.wave(),b=L.bait();return w.carcasses.length})()`);
   await evaluate(`${B}.aim(${JSON.stringify(at)})`);await delay(1500);
   const p=await send('Page.captureScreenshot',{format:'png'});writeFileSync(carcassShot,Buffer.from(p.data,'base64'));console.log(`BOSS-WAVE carcasses screenshot ${carcassShot} (${c} lying)`);
-  await evaluate(`${B}.carcassDecay(6)`);const track=[];
+  const oldest=Math.max(...(await evaluate(`${B}.wave().carcasses`)).map(x=>x.k*WV.carcass.decay)),shortDecay=+(oldest+6).toFixed(1);   // 6 s left for the oldest: the boss's sinkhole wait leaves them older than 6 s by now
+  await evaluate(`${B}.carcassDecay(${shortDecay})`);const track=[];
   for(const end=Date.now()+60000;Date.now()<end;){const w=await evaluate(`${B}.wave().carcasses`);if(!w.length)break;track.push(w[0]);await delay(400);}
   const left=(await evaluate(`${B}.wave().carcasses`)).length;
-  console.log('BOSS-WAVE decay '+JSON.stringify({polls:track.length,k:track.map(x=>+x.k.toFixed(2)),heat:track.map(x=>+x.heat.toFixed(2)),flat:track.map(x=>+x.flat.toFixed(2)),left}));
+  console.log('BOSS-WAVE decay '+JSON.stringify({decay:shortDecay,polls:track.length,k:track.map(x=>+x.k.toFixed(2)),heat:track.map(x=>+x.heat.toFixed(2)),flat:track.map(x=>+x.flat.toFixed(2)),left}));
   assert(track.length>=3&&track.every((x,k,a)=>k===0||(x.id!==a[k-1].id)||(x.k>=a[k-1].k&&x.heat<=a[k-1].heat+1e-9&&x.flat<=a[k-1].flat+1e-9)),'a carcass darkens, cools and flattens as it decays');
   assert.equal(left,0,'and goes at the decay\'s end');
   await evaluate(`${B}.carcassDecay(${WV.carcass.decay})`);}
  // R restarts the wave
  await evaluate(`dispatchEvent(new KeyboardEvent("keydown",{key:"r",code:"KeyR"})); dispatchEvent(new KeyboardEvent("keyup",{key:"r",code:"KeyR"}))`);
- await until(`(()=>{const w=${B}.wave();return w.count===10&&w.alive===10&&!w.boss&&w.made===10})()`,60000);
- assert.equal(await rigShown(),false,'R: the boss held back again');assert.equal(await lbl(),'WAVE 1 · REED 10/10','R: the bar reads the whole wave');
+ await until(`(()=>{const w=${B}.wave();return w.count===${N}&&w.alive===${N}&&!w.boss&&w.made===${N}})()`,60000);
+ assert.equal(await rigShown(),false,'R: the boss held back again');assert.equal(await lbl(),`WAVE 1 · REED ${N}/${N}`,'R: the bar reads the whole wave');
  assert.equal((await evaluate(`${B}.wave()`)).carcasses.length,0,'R: no carcass left');
+ {const h=await evaluate(`${B}.sinkhole()`);assert(h.open&&h.who==='reeds'&&h.caps===0&&h.breaches===1,`R: a fresh sinkhole for the Reeds, no rubble (${JSON.stringify({open:h.open,who:h.who,caps:h.caps,breaches:h.breaches})})`);}
+ // SINKHOLE_SHOTS: the same opening from the lab's chase (the free view, the orbit put behind Isao as the chase frames him), then back in the seat
+ if(process.env.SINKHOLE_SHOTS){
+  const setSel=(key,v)=>evaluate(`(()=>{const e=document.querySelector('#boss [data-k="${key}"]');e.value=${JSON.stringify(v)};e.dispatchEvent(new Event('input',{bubbles:true}));return e.value;})()`);
+  await setSel('view','free');await until(`${B}.seat() === null`,10000);
+  let opening=false,rising=false;
+  for(const end=Date.now()+90000;Date.now()<end&&!rising;){await evaluate(`${B}.chase()`);await delay(120);
+   const s=await evaluate(`(()=>{const L=${B},h=L.sinkhole();return {phase:h.breach?.phase,age:h.breach?.age??0,rising:L.wave().reeds.some(r=>r.phase==='rising'&&r.top>2)}})()`);
+   if(!opening&&s.phase==='open'&&s.age>1.6+0.8){await evaluate(`${B}.chase()`);await snap('sinkhole-chase-opening.png');opening=true;}
+   if(s.rising){await evaluate(`${B}.chase()`);await snap('sinkhole-chase.png');rising=true;}}
+  assert(rising,'a Reed caught rising out of the sinkhole from the chase');
+  await setSel('view','chase');await until(`!!${B}.seat()`,15000);}
  // the screenshot: the wave in the seat, zoomed out over the Reeds nearest Isao
  {await until(`${B}.wave().reeds.every(r=>r.phase==='up')`,60000);
   const t0=await evaluate(`${B}.arena().clock`);await until(`${B}.arena().clock-${t0}>3`,30000);
@@ -3225,7 +3267,7 @@ const killReal=(Date.now()-t0)/1000;
  // The kit pins stimulus to 1 while a target is set, so the creature stalks before any driving: waking to motion is not
  // testable here (the boss spec's question); the held rule is what driving changes
  const B='window.__bossLab';
- await go('boss','labs.html?sw=0&acceptance=1#boss');
+ await go('boss','labs.html?sw=0&acceptance=1&mode=tank#boss');
  await until(`!!${B} && ${B}.readout().steps > 0`,60000);
  assert((await evaluate(`${B}.readout().solver`))>0,'the solver runs');
  const radius=await evaluate(`(()=>{const g=${B}.creature().mesh.geometry;if(!g.boundingSphere)g.computeBoundingSphere();return g.boundingSphere.radius*${B}.readout().scale;})()`);

@@ -36,6 +36,7 @@ import { createGameSeat } from './boss/game-seat.js';
 import { createGameCam } from './boss/game-cam.js';
 import { createLabHandle } from './boss/handle.js';
 import { createWave } from './boss/wave.js';
+import { createLabSinkhole } from './boss/sinkhole.js';
 import { settingsBlock, folderGroups } from './boss/settings-copy.js';
 import { makeFight, startFight, capture, readout as fightReadout } from '../domain/boss-fight.js';
 import { entryClear, emergence, keepOut } from '../domain/boss-wave.js';
@@ -89,7 +90,6 @@ const CELL = STORY_RECIPE.metresPerCell;
 // the kill's length for his aim without touching the tank mode's `health`
 const BAIT_HEALTH = 180;
 // the first wave's slider: up to this many Reeds (owner, 2026-10-09: "5 to 50 (slider)"; 0 is the boss at once)
-const RUMBLE_GAP = 3;   // seconds: the Reeds' tremors rumble at most this often (the quake's sample is 7 s, one voice)
 const WAVE_MAX = 50;
 // the rules' creature while the wave holds the boss back, for what must not hit it (the friendlies' resolution): nowhere, no contacts
 const NOBODY = Object.freeze({ centre: [1e9, 1e9], velocity: [0, 0], radius: 0, contacts: [] });
@@ -169,7 +169,7 @@ export function initBossTab(root) {
   const stage = root.querySelector('.sw-stage'), read = root.querySelector('[data-read]');
   const stateLine = root.querySelector('[data-state]'), calloutsEl = root.querySelector('[data-callouts]');
   const variantSelect = root.querySelector('[data-k="variant"]');
-  const look = LOOKS.tronColors;
+  const LOOK = 'tronColors', look = LOOKS[LOOK];   // by name too: the game's sinkhole wears the board's look by its name (./boss/sinkhole.js)
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1));
@@ -423,25 +423,19 @@ export function initBossTab(root) {
     aim: (from, to) => arena.clamp(arena.route(from, to), fightTune.bounds.creatureMargin),   // the boss's hunt: round the obstacles, then inside the bound
     isao: () => bait.asTank(), isaoPos: () => (bait.has() && !bait.gone() ? bait.pos() : null), fearOn: () => fightOn.fight && fightOn.fear,
     camera: () => cam, extentOf: nativeExtent, onError: (m) => { frameError = m; frameErrorAt = t; },
-    tremor: (at) => tremor(at, false), hot: () => seat.thermal(),
+    gate: () => sinkhole.who() === 'reeds' && sinkhole.ready(), hot: () => seat.thermal(),
   });
-  // THE TREMOR (owner, 2026-10-10: "Have the Reed and the boss come out of a tremor in the center"): where a Reed or the boss is about to come up, the seat's camera
-  // shaken a little (./boss/game-seat.js `shake`), the back mouth's dust ('rock.dust', the Bofors' smoke at ~5 m; the boss's the mortar's ~10 m) round the point, and the
-  // breach's quake (src/content/breach-defaults.js `sinkhole_quake`, the game's tremor; low-passed to a rumble, at most once in RUMBLE_GAP s for the Reeds, whose
-  // tremors come 0.6 s apart: the sample is seven seconds long and has one voice)
-  let rumbleAt = -Infinity;
-  function tremor(at, big) {
-    const n = big ? 6 : 3, r = big ? 12 : 4;
-    for (let i = 0; i < n; i++) {
-      const a = (i / n + t * 0.37) * 2 * Math.PI, g = surface(at[0] + r * Math.cos(a), at[1] + r * Math.sin(a));
-      fx.spawn(big ? 'mortar.shell' : 'rock.dust', g.point.toArray(), g.normal.toArray(), CELL);
-    }
-    if (big || t - rumbleAt > RUMBLE_GAP) { rumbleAt = t; audio.play('sinkhole_quake', { gain: big ? 1 : 0.6, lowpass: 420 }); }
-    seat.shake(big ? 1 : 0.7);
-  }
-  // THE BOSS'S RISE: its tremor at the arena's centre, then, as a Reed's (src/domain/boss-wave.js `emergence`), its drawing lifted out of the ground over the rise while its
-  // body stands settled on its floor, motion off and out of the fight's reach; Isao kept `wave.clear` metres off the centre until it is up
-  let rise = null;   // { at (the lab clock of its tremor), depth (metres under), lift, phase } while it comes up
+  // THE SINKHOLE (owner, 2026-10-10: "the initial Tremor is not just the ground shaking, it is our sinkhole animation from the game mode"; ./boss/sinkhole.js hosts
+  // the game's src/game-breaches.js): a round of the bait mode opens one at the arena's centre (`wave.sinkhole.reeds` cells wide), the Reeds come up out of it one after
+  // another once it is ready by the game's own spawn rule, and it is sealed with the game's rubble once every one is up; the last Reed dead, another opens there for the
+  // boss (`wave.sinkhole.boss` cells), which rises out of it once that one is ready. Its rumble, its breaking ground and its quake are the game's; nothing is shaken
+  const sinkhole = createLabSinkhole({
+    sphere, renderer, scene, camera: cam, audio, planet: () => planet, ground: (x, z) => tankWorld(x, z),
+    north: (w) => frameAt(w, planet.radius, 0, frame.east).north, look: () => LOOK,
+  });
+  // THE BOSS'S RISE: its sinkhole at the arena's centre and, once that is ready, as a Reed's (src/domain/boss-wave.js `emergence`), its drawing lifted out of the ground
+  // over the rise while its body stands settled on its floor, motion off and out of the fight's reach; Isao kept `wave.clear` metres off the centre until it is up
+  let rise = null;   // { at (the lab clock its sinkhole was ready; null while it opens), depth (metres under), lift, phase } while it comes up
   const upV = new THREE.Vector3();
   function bossHeight() {
     const rest = creature.body.rest; let y0 = Infinity, y1 = -Infinity;
@@ -449,7 +443,8 @@ export function initBossTab(root) {
     return (y1 - Math.min(0, y0)) * scale;
   }
   function stepRise() {
-    const m = creature.motion, e = emergence(t - rise.at, fightTune.wave.emerge);
+    if (rise.at === null && sinkhole.who() === 'boss' && sinkhole.ready()) rise.at = t;
+    const m = creature.motion, e = rise.at === null ? { phase: 'below', lift: 0 } : emergence(t - rise.at, fightTune.wave.emerge);
     rise.lift = e.lift; rise.phase = e.phase;
     placeRig();
     if (e.phase !== 'up') { rig.position.addScaledVector(upV.fromArray(frame.up), -(1 - e.lift) * rise.depth); m.active = false; return; }
@@ -466,8 +461,8 @@ export function initBossTab(root) {
     if (out) bait.putAt(arena.spawn(out));
     const now = bait.pos();
     entry = { at: t, isao: now ? Math.hypot(now[0] - arena.bound().at[0], now[1] - arena.bound().at[1]) : null, moved: !!out };   // the readout's: where he stood from the centre once put
-    rise = { at: t, depth: fightTune.wave.emerge.depth * bossHeight(), lift: 0, phase: 'tremor' };
-    tremor(arena.bound().at, true);
+    rise = { at: null, depth: fightTune.wave.emerge.depth * bossHeight(), lift: 0, phase: 'below' };
+    sinkhole.open(arena.bound().at, fightTune.wave.sinkhole.boss, 'boss');
     showCallout('NIH-DAIRIA', 2500);
   }
   // R, C and I in the seat: the seat swallows every key in the capture phase; this capture listener is registered before any seat, so it runs first
@@ -551,7 +546,8 @@ export function initBossTab(root) {
     creature.reset(); lastMeals = 0; auto.reset();
     restoreCreature();
     frame = frameAt([0, 1, 0], planet.radius, 0); placeRig(); arenaCentre.set(0, 0, 0);
-    wave.reset(bm ? fightTune.wave.count : 0, arena.bound().at, fightTune.seed);   // the bait mode's first wave round the arena's centre (none in the tank mode)
+    const reeds = wave.reset(bm ? fightTune.wave.count : 0, arena.bound().at, fightTune.seed);   // the bait mode's first wave round the arena's centre (none in the tank mode)
+    sinkhole.reset(); if (reeds) sinkhole.open(arena.bound().at, fightTune.wave.sinkhole.reeds, 'reeds');   // its sinkhole
     const c = creature.motion.center, cx = c.x * scale, cz = c.z * scale, l = toLocal(frame, was, 1);
     let dx = l[0] - cx, dz = l[2] - cz; const d = Math.hypot(dx, dz);
     if (d > 1e-6) { dx /= d; dz /= d; } else { dx = 1; dz = 0; }
@@ -665,6 +661,7 @@ export function initBossTab(root) {
     const anchorUp = [0, 1, 0];
     cropped = cropToCap(planetMesh, anchorUp, planet.radius, CAP_CELLS * planet.cellMetres);
     scene.add(planetMesh);
+    sinkhole.patchGround(planetMesh); sinkhole.warm();   // the ground opens with the game's sinkhole, its programs and stone maps linked before the first opening
     sphere.position.set(0, -planet.radius, 0);
     frame = frameAt(anchorUp, planet.radius, 0);
     prey = createPrey(NIH_DAIRIA_LOOK); prey.mesh.visible = false; prey.mesh.name = 'Nih-Dairia prey'; rig.add(prey.mesh);
@@ -675,7 +672,7 @@ export function initBossTab(root) {
     await makeCreature();
     if (disposed || !creature) return;
     pointWorld = toWorld(frame, creature.motion.target.toArray(), scale);
-    if (q.get('mode') === 'bait' && state.mode !== 'bait') setMode('bait');   // ?mode=bait (the friends' link): the lab opens in the bait mode
+    if (q.get('mode') !== 'tank' && state.mode !== 'bait') setMode('bait');   // the lab opens in the bait mode (owner, 2026-10-10: "make the default mode when landing on #boss the Bait-Isao mode"); ?mode=tank opens the tank's
   }
 
   // --- the point lure: a click on the ground ------------------------------------------------------------------------------
@@ -726,6 +723,8 @@ export function initBossTab(root) {
     if (bm) bait.step(dt);
     if (bm) { const k = keepNow(), p = bait.pos(); if (k && p && Math.hypot(p[0] - k.at[0], p[1] - k.at[1]) < k.radius) bait.putAt(keepOut(p, k.at, k.radius)); }   // a fly-over is not held by `hold`: it goes round the centre too
     wave.step(dt);   // the Reeds: hunting him while the wave holds, the dead lying down until they go
+    sinkhole.step(dt);
+    if (sinkhole.who() === 'reeds' && sinkhole.ready() && !wave.keep()) sinkhole.seal();   // every Reed up: the game's rubble over their hole
     auto.enabled = state.lure === 'auto';
     // the fear: a stun holds the instinct off (restored only while the fight is on: a kill has set it false for good), a flight
     // replaces the lure with the flee point (local metres to native, as the lure is)
@@ -875,7 +874,7 @@ export function initBossTab(root) {
       kernel: !!creature?.body.kernel,
       cam: state.cam, rearMs: gameCam?.isOn() ? gameCam.stats().ms : null, mode: state.mode, bait: bait.state(),
       temper: temperament.state(), gunFear: fear.guns(),   // the bait mode's temperament and fear per gun
-      fps, wave: wave.state(), entry, rise: rise ? { ...rise, age: t - rise.at } : null, keep: keepNow(),   // the fps corner's frames a second; the first wave ({ count, alive, killed, made, cleared, boss, entered, reeds, hunted, solver, steps, timeScale, lod, cost, meanSolver, meanScale })
+      fps, wave: wave.state(), entry, rise: rise ? { ...rise, age: rise.at === null ? null : t - rise.at } : null, keep: keepNow(),   // the fps corner's frames a second; the first wave ({ count, alive, killed, made, cleared, boss, entered, reeds, hunted, solver, steps, timeScale, lod, cost, meanSolver, meanScale })
     };
   }
   function drawReadout() {
@@ -1150,7 +1149,7 @@ export function initBossTab(root) {
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
       renderer.domElement.removeEventListener('pointerup', onPointerUp);
       creature?.dispose(); if (prey) { prey.mesh.geometry.dispose(); prey.mesh.material.dispose(); }
-      gameCam?.dispose(); seat.dispose(); wave.dispose(); bait.dispose(); cannon.dispose(); friendlies.dispose(); arena.dispose(); round.dispose(); explosions.dispose();
+      gameCam?.dispose(); seat.dispose(); wave.dispose(); sinkhole.dispose(); bait.dispose(); cannon.dispose(); friendlies.dispose(); arena.dispose(); round.dispose(); explosions.dispose();
       planetMesh?.userData.dispose(); disposeObj(tank); gui.destroy(); controls.dispose(); renderer.dispose(); renderer.domElement.remove();
       engine?.stop(0); engine = null; audio.dispose();
       if (window.__bossLab === lab) delete window.__bossLab;
@@ -1161,7 +1160,7 @@ export function initBossTab(root) {
     getCreature: () => creature, getScale: () => scale, getT: () => t, getFight: () => fight, getGameCam: () => gameCam, getReanchors: () => reanchors,
     setScripted: (v) => { scripted = v; }, setPin: (v) => { pin = v; },
     readout, setLure, setCam, setMode, bait, seat, setFight, fireCannon: () => fireCannon(), copySettings, reset, tryReanchor, placeTank, creatureNow, creatureAim, temperament,
-    plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene, wave,
+    plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene, wave, sinkhole,
     reeds: (n) => { if (n !== undefined) { fightTune.wave.count = Math.max(0, Math.min(WAVE_MAX, Math.round(n))); gui.controllersRecursive().forEach((c) => c.updateDisplay()); newRound(); } return fightTune.wave.count; },
     chase: () => { if (state.view !== 'free' || !creature) return false; chaseCam(); return true; },
   });

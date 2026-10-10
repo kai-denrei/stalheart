@@ -110,14 +110,17 @@ export const BOSS_FIGHT = freeze({
   // fifty Reeds in the seat it ran the wave's clock at 0.053 and 0.068 against 0.048 and 0.044 with 13 and 27 off-screen, every one crawling, and at ten none or two are off-screen, 2026-10-09)
   // THE SECOND PASS (owner, 2026-10-10: "Have the Reed and the boss come out of a tremor in the center ... start with 120 HZ when there are more than 10 Reeds, and
   // switch back to 240HZ when there are fewer ... a low-poly dead Reed Carcass that stays and decays"). `emerge`: each Reed comes up at the arena's centre (`jitter` m
-  // off it), `gap` s after the one before; a tremor (the seat's camera shaken, dust, the quake's rumble) `lead` s, then it rises out of the ground
+  // off it), `gap` s after the one before, out of the game's own sinkhole (owner, 2026-10-10: "the initial Tremor is not just the ground shaking, it is our sinkhole
+  // animation from the game mode"; src/game-breaches.js, opened at the centre `sinkhole.reeds` cells wide for the Reeds and `sinkhole.boss` for the boss, the first
+  // turn once it has opened by the game's own rule, `breaches.ready`; the Reeds' sealed with the game's rubble once every one is up), `lead` s, then it rises out of the ground
   // over `rise` s (drawn from `depth` times its height below), walks out to `fan` m from the centre for at most `fanFor` s and hunts; Isao's planner keeps `keep` m off
   // the centre while any Reed is still to come up (`clear` while the boss rises). `coarse`: the Reeds' solver steps at 1 / `hz` s while more than `above` stand (`on`, the
   // panel's switch), the kit's 1/240 s otherwise; the boss always at the kit's. `carcass`: laid down, a dead Reed's tet cage surface (flat shaded) darkens by `dark`,
   // flattens to `flat` of its height and sinks `sink` of it over `decay` s, its thermal warmth gone by `cold` of the decay; then it goes; at most `max` lie, the oldest
   // going first
-  wave: { count: 10, reedHealth: 20, size: 15, corpse: 2, clear: 45, budget: 10, lod: false,
+  wave: { count: 20, reedHealth: 20, size: 15, corpse: 2, clear: 45, budget: 10, lod: false,
     emerge: { gap: 0.6, lead: 0.35, rise: 1.5, depth: 1.15, jitter: 4, fan: 20, fanFor: 2.5, keep: 25 },
+    sinkhole: { reeds: 1, boss: 2 },   // the game's sinkhole's scale in cells (the game opens every breach one cell wide: a 10 m hole); the boss, 40 m across, comes out of one twice that
     coarse: { on: true, above: 10, hz: 120 },
     carcass: { decay: 60, max: 30, dark: 0.75, flat: 0.4, sink: 0.35, cold: 0.6 } },
   bounds: { radius: 120, baitMargin: 10, creatureMargin: 15 },   // the arena disc round the origin: Isao's wanted point stays radius - baitMargin in, the creature's target radius - creatureMargin, the body's nodes are pushed back inside radius

@@ -7,7 +7,7 @@ import { readout as fightReadout } from '../../domain/boss-fight.js';
 export function createLabHandle({
   getCreature, getScale, getT, getFight, getGameCam, getReanchors, setScripted, setPin,
   readout, setLure, setCam, setMode, bait, seat, setFight, fireCannon, copySettings, reset, tryReanchor, placeTank, creatureNow, creatureAim, temperament,
-  plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene, chase, wave, reeds,
+  plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene, chase, wave, reeds, sinkhole,
 }) {
   const lab = {
     readout,
@@ -37,6 +37,8 @@ export function createLabHandle({
     // killReeds() is the acceptance's cheat: every Reed standing dies now (the number)
     // the second pass (2026-10-10): thinReeds(n) kills the Reeds up down to n standing (the newest first: the step's switch watched), waveTrace(on) starts (true) or
     // stops (false) the per-frame step trace ([{ clock, t, hz, alive, speed (the fastest live node, m/s) }]) and waveTrace() reads it
+    // the emergences' sinkhole (./sinkhole.js): its state, the game's adapter's own view of the open breach in it
+    sinkhole: () => sinkhole.state(),
     wave: () => wave.state(), reeds, killReeds: () => wave.killAll(), thinReeds: (n) => wave.thin(n), waveTrace: (on) => wave.trace(on),
     // coarse(on, above) the 120 Hz switch (the panel's) and the count it needs exceeded (the measurement's), carcassDecay(s) the carcasses' decay seconds (the
     // acceptance shortens it to watch one go); each returns the value
