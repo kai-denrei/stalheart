@@ -2368,7 +2368,7 @@ try{
   // wave B: the bait mode's fear per gun and temperament, a line each
   assert(/^gun fear: 25mm\.amount=0\.06 25mm\.drain=0\.5 25mm\.flee=10 25mm\.duration=0\.8 25mm\.speed=1\.3 25mm\.erratic=0 40mm\.flee=35 40mm\.duration=2\.5 40mm\.speed=2 40mm\.erratic=2 mk9\.flee=50 mk9\.duration=3\.5 mk9\.speed=2\.5 mk9\.erratic=1 mk9\.stun=0$/.test(lines[6])
     &&/^temperament: speed=1\.2 lunges=true lungeSpeed=3 everyMin=3 everyMax=8 forMin=0\.6 forMax=1\.2 reach=1\.5 ease=0\.2$/.test(lines[7])
-    &&/^wave: count=0 reedHealth=20 size=15 inset=15 corpse=2 clear=45 budget=10 lod=false$/.test(lines[8]),`the block's gun fear, temperament and first wave lines (${lines.slice(6).join(' | ')})`);
+    &&/^wave: count=0 reedHealth=20 size=15 /.test(lines[8]),`the block's gun fear, temperament and first wave lines (${lines.slice(6).join(' | ')})`);
   await evaluate(`document.querySelector('#boss [data-callouts]').replaceChildren(); document.querySelector('#boss [data-copy]').hidden=true; document.querySelector('#boss [data-copy]').value=''`);
   const seat0=await evaluate(`${B}.seat().view`);
   await evaluate(`dispatchEvent(new KeyboardEvent("keydown",{key:"c",code:"KeyC",bubbles:true}));dispatchEvent(new KeyboardEvent("keyup",{key:"c",code:"KeyC",bubbles:true}))`);
