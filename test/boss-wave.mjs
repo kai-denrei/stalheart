@@ -1,11 +1,11 @@
 // boss-wave.mjs — the bait mode's first wave (2026-10-09; src/domain/boss-wave.js): N Reeds of 20 hit points, each hurt by the fight's own falloff on its nearest
 // floor contact (a landing splashes, a stream burns by dt), deaths, the wave cleared when the last dies, the boss's entry once, Isao put clear of where it lands,
 // the nearest Reed by its contacts; the second pass (2026-10-10): the emergence at the centre one after another, the fan, the phases of a rise, the 120 Hz step
-// above ten Reeds, a carcass's decay and Isao's keep-out.
+// above ten Reeds and Isao's keep-out (a carcass is test/boss-carcass.mjs's).
 import assert from 'node:assert/strict';
 import { BOSS_FIGHT as T } from '../src/content/boss-fight.js';
 import { splashDamage } from '../src/domain/gunship.js';
-import { makeWave, emergePlan, emergence, waveStep, carcassLook, keepOut, aliveCount, hurtReed, resolveReeds, waveCleared, bossEnters, nearestReed, entryClear } from '../src/domain/boss-wave.js';
+import { makeWave, emergePlan, emergence, waveStep, keepOut, aliveCount, hurtReed, resolveReeds, waveCleared, bossEnters, nearestReed, entryClear } from '../src/domain/boss-wave.js';
 
 const EPS = 1e-9;
 const W = T.wave;
@@ -16,7 +16,7 @@ assert.deepEqual(flat, { count: 20, reedHealth: 20, size: 15, corpse: 2, clear: 
 assert.deepEqual({ ...S }, { reeds: 1, boss: 2 }, 'the game\'s sinkhole one cell wide for the Reeds, two for the boss (owner, 2026-10-10)');
 assert.deepEqual({ ...E }, { gap: 0.6, lead: 0.35, rise: 1.5, depth: 1.15, jitter: 4, fan: 20, fanFor: 2.5, keep: 25 }, 'the emergence: 0.6 s apart, a ~1.5 s rise (owner, 2026-10-10)');
 assert.deepEqual({ ...C }, { on: true, above: 10, hz: 120 }, 'the solver at 120 Hz above ten Reeds (owner, 2026-10-10)');
-assert.deepEqual({ ...K }, { decay: 60, max: 30, dark: 0.75, flat: 0.4, sink: 0.35, cold: 0.6 }, 'the carcass: ~60 s, at most 30');
+assert.ok(K.decay === 60 && K.max === 30, 'the carcass: ~60 s, at most 30');
 assert.ok(Object.isFrozen(W), 'deep-frozen');
 
 // a wave of N: N Reeds, each whole at 20; a wave of 0 is cleared and the boss is in from the start (no entry to announce)
@@ -68,17 +68,6 @@ const PLAN_N = 20;
   assert.equal(waveStep(20, C, fine), 1 / 120); assert.equal(waveStep(11, C, fine), 1 / 120);
   assert.equal(waveStep(10, C, fine), fine); assert.equal(waveStep(0, C, fine), fine);
   assert.equal(waveStep(50, { ...C, on: false }, fine), fine, 'off: always the kit\'s');
-}
-
-// a carcass: fresh, darkening, flattening, sinking and cooling, gone at the decay's end
-{
-  const a = carcassLook(0, K), m = carcassLook(K.decay / 2, K), z = carcassLook(K.decay, K);
-  assert.deepEqual(a, { k: 0, dark: 0, flat: 1, sink: 0, heat: 1, gone: false }, 'fresh: as it fell, warm');
-  assert.ok(m.dark > 0 && m.dark < K.dark && m.flat < 1 && m.flat > K.flat && m.sink > 0 && m.sink < K.sink && !m.gone, 'half way');
-  assert.ok(m.heat > 0 && m.heat < 0.25, `cooling (${m.heat})`);
-  assert.equal(carcassLook(K.decay * K.cold, K).heat, 0, `cold by ${K.cold * 100} % of the decay`);
-  assert.ok(Math.abs(z.dark - K.dark) < 1e-12 && Math.abs(z.flat - K.flat) < 1e-12 && Math.abs(z.sink - K.sink) < 1e-12 && z.gone, 'at the end: dark, flat, sunk and gone');
-  let h = 2; for (let t = 0; t <= K.decay; t += 1) { const l = carcassLook(t, K); assert.ok(l.heat <= h, 'it never warms again'); h = l.heat; }
 }
 
 // Isao's keep-out: a point inside the disc goes out along its bearing, one outside stays (a copy)

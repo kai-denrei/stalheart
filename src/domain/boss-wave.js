@@ -11,9 +11,8 @@
 // Reeds, and switch back to 240HZ when there are fewer? ... a low-poly dead Reed Carcass that stays and decays"): `emergePlan` puts every Reed at the arena's
 // centre (`emerge.jitter` metres off it, toward its own fan direction), `emerge.gap` seconds after the one before, with the point it fans out
 // to (`emerge.fan` metres out, the directions a golden angle apart) before it hunts; `emergence` is one Reed's phase by its age on that clock (below the ground,
-// the tremor, the rise over `emerge.rise` s with its eased lift, up); `waveStep` the solver's fixed step for the Reeds alive (`coarse`); `carcassLook` a dead
-// Reed's carcass by its age (darkened, flattened, sunk and cooled over `carcass.decay` s, then gone); `keepOut` a point pushed out of a disc (Isao's planner
-// kept off the centre while something emerges there).
+// the tremor, the rise over `emerge.rise` s with its eased lift, up); `waveStep` the solver's fixed step for the Reeds alive (`coarse`); `keepOut` a point pushed
+// out of a disc (Isao's planner kept off the centre while something emerges there). A dead Reed's carcass is ./boss-carcass.js's.
 
 import { splashDamage } from './gunship.js';
 
@@ -51,13 +50,6 @@ export function emergence(age, E) {
 
 // the Reeds' fixed step (seconds) for `alive` Reeds: `1 / coarse.hz` while more than `coarse.above` stand (and the switch is on), `fine` (the kit's) otherwise
 export const waveStep = (alive, coarse, fine) => (coarse.on && alive > coarse.above ? 1 / coarse.hz : fine);
-
-// a carcass `age` seconds after it was laid down: `k` the decay's share (0..1), `dark` the share it is darkened by, `flat` its height's scale, `sink` the share
-// of its height it has sunk, `heat` its warmth in the thermal (1 fresh, 0 cold once `carcass.cold` of the decay has gone, squared), `gone` at the decay's end
-export function carcassLook(age, C) {
-  const k = Math.min(1, Math.max(0, age / C.decay)), c = Math.max(0, 1 - k / C.cold);
-  return { k, dark: C.dark * k, flat: 1 - (1 - C.flat) * k, sink: C.sink * k, heat: c * c, gone: age >= C.decay };
-}
 
 // `p` pushed out of the disc of `radius` round `centre` along its bearing (east when on the centre); `p` itself (a copy) outside it
 export const keepOut = (p, centre, radius) => entryClear(p, centre, radius) ?? [p[0], p[1]];

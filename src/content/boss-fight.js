@@ -119,14 +119,24 @@ export const BOSS_FIGHT = freeze({
   // turn once it has opened by the game's own rule, `breaches.ready`; the Reeds' sealed with the game's rubble once every one is up), `lead` s, then it rises out of the ground
   // over `rise` s (drawn from `depth` times its height below), walks out to `fan` m from the centre for at most `fanFor` s and hunts; Isao's planner keeps `keep` m off
   // the centre while any Reed is still to come up (`clear` while the boss rises). `coarse`: the Reeds' solver steps at 1 / `hz` s while more than `above` stand (`on`, the
-  // panel's switch), the kit's 1/240 s otherwise; the boss always at the kit's. `carcass`: laid down, a dead Reed's tet cage surface (flat shaded) darkens by `dark`,
-  // flattens to `flat` of its height and sinks `sink` of it over `decay` s, its thermal warmth gone by `cold` of the decay; then it goes; at most `max` lie, the oldest
-  // going first
+  // panel's switch), the kit's 1/240 s otherwise; the boss always at the kit's. `carcass`: laid down, a dead Reed darkens by `dark` and sinks `sink` of its height
+  // over `decay` s, its thermal warmth gone by `cold` of the decay; then it goes; at most `max` lie, the oldest going first. THE TENTACLES (owner, 2026-10-10: "the
+  // low-poly reeds carcasses are too low poly, they look blocky. can we have them more simple renditions of tentacles? barebone tentacles, and they disintegrate with
+  // further explosions or time"; src/domain/boss-carcass.js): `chain` each limb's nodes in `bins` bands out from the axis (the kit's limb rule: the torso within
+  // `torso`, a limb from `root`, native units), a smooth tube through the bands' centres in `segments` pieces of `sub` rings of `radial` sides, `thin` of the nodes'
+  // spread across the limb's thinner axis and tapering to `tip` of the root's (`taper` the power of the taper); the core an ellipsoid `core` of the torso's spread. `crumble`: the pieces go from each tip inward between `from` and
+  // `to` of the decay (`jitter` of a slot seeded), each shrinking and sagging `drop` m over `time` s. `blast`: an impact breaks the pieces within `radius` m (0: the
+  // round's own), at most `cap` (0: every one): the 25 mm a few, the 40 mm a limb or two, the MK-9 its whole ring; a broken piece is `fling`ed outward at `speed`
+  // and up at `up` m/s under `gravity`, tumbling at `spin` rad/s, whole for `whole` of its flight, gone in `time` s
   wave: { count: 20, reedHealth: 20, size: 15, corpse: 2, clear: 45, budget: 10, lod: false,
     emerge: { gap: 0.6, lead: 0.35, rise: 1.5, depth: 1.15, jitter: 4, fan: 20, fanFor: 2.5, keep: 25 },
     sinkhole: { reeds: 1, boss: 2 },   // the game's sinkhole's scale in cells (the game opens every breach one cell wide: a 10 m hole); the boss, 40 m across, comes out of one twice that
     coarse: { on: true, above: 10, hz: 120 },
-    carcass: { decay: 60, max: 30, dark: 0.75, flat: 0.4, sink: 0.35, cold: 0.6 } },
+    carcass: { decay: 60, max: 30, dark: 0.75, sink: 0.35, cold: 0.6,
+      chain: { torso: 0.022, root: 0.03, bins: 10, segments: 8, sub: 3, radial: 8, thin: 0.6, tip: 0.1, taper: 1.2, core: 0.9 },
+      crumble: { from: 0.15, to: 0.9, jitter: 0.8, time: 1.2, drop: 0.6 },
+      blast: { rotary: { radius: 3, cap: 3 }, bofors: { radius: 8, cap: 0 }, nuke: { radius: 0, cap: 0 } },
+      fling: { time: 0.8, whole: 0.4, speed: 18, up: 12, gravity: 30, spin: 9 } } },
   bounds: { radius: 120, baitMargin: 10, creatureMargin: 15 },   // the arena disc round the origin: Isao's wanted point stays radius - baitMargin in, the creature's target radius - creatureMargin, the body's nodes are pushed back inside radius
   orbit: { radius: 200, lap: 120, bank: 0.12 },   // the gunship platform's ground track round the origin: 200 m, one lap per 120 s (10.5 m/s); the bank in radians is about twice the coordinated 0.056 (v squared over r g) so the roll reads on the seat's camera without lurching
   card: 3,                 // the KILLED / LOST card's seconds before the reset

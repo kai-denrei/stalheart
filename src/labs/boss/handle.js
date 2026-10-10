@@ -7,7 +7,7 @@ import { readout as fightReadout } from '../../domain/boss-fight.js';
 export function createLabHandle({
   getCreature, getScale, getT, getFight, getGameCam, getReanchors, setScripted, setPin,
   readout, setLure, setCam, setMode, bait, seat, setFight, fireCannon, copySettings, reset, tryReanchor, placeTank, creatureNow, creatureAim, temperament,
-  plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene, chase, wave, reeds, sinkhole,
+  plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene, chase, closeTo, wave, reeds, sinkhole,
 }) {
   const lab = {
     readout,
@@ -109,6 +109,8 @@ export function createLabHandle({
     // in the free orbit, the camera put where the lab's chase would (behind Isao in the bait mode, looking past him at the creature), for a
     // screenshot of the hunt; false outside the free orbit
     chase: () => chase(),
+    // in the free orbit, the camera close on the carcass of Reed `id` (`back` m off, `up` m above it), for a screenshot of the tentacles; false outside the free orbit or without it
+    closeTo: (id, back, up) => closeTo(id, back, up),
     // the bound's radius: bounds(r) sets the lab's copy (the ring, the clamps and the backstop follow at once), bounds() reads it. Acceptance only
     // the MK-9 zones for Isao's autopilot on or off (content `bait.nukeAvoid`): off, the acceptance's MK-9s led onto him hit him. Acceptance only
     avoidNukes: (on) => { if (on !== undefined) fightTune.bait.nukeAvoid = !!on; return fightTune.bait.nukeAvoid; },

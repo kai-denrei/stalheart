@@ -3094,9 +3094,10 @@ const killReal=(Date.now()-t0)/1000;
  // (more than ten); screenshots of the emergence (EMERGE_SHOT) and of the sinkhole from the seat (SINKHOLE_SHOTS, a directory, else the artifacts: sinkhole-seat.png a
  // Reed rising out of it, sinkhole-seat-opening.png its ground breaking; with SINKHOLE_SHOTS also the chase's pair after the R restart); over 8 s of lab clock (60 s real cap)
  // once fanned out they close on where Isao was (8 m or more, summed poll by poll) and the rules' creature is the Reed nearest him; the fps logged; the 40 mm and the 25 mm on the live Reed farthest from Isao kill some, and each dead
- // one is laid down as a carcass (the tet cage's surface, under a tenth of the skin's triangles); killReeds() the rest: the boss's sinkhole (`wave.sinkhole.boss` cells)
+ // one is laid down as a carcass (barebone tentacles, owner 2026-10-10: three limbs or more of four pieces or more round a core, under a fifth of the skin's triangles); killReeds() the rest: the boss's sinkhole (`wave.sinkhole.boss` cells)
  // opens at the centre and it rises once that is ready (seen below the surface, Isao kept `wave.clear` out), then visible and stepping, the bar NIH-DAIRIA 180/180, no prey mesh; a screenshot of the field with its carcasses
- // (CARCASS_SHOT); the carcasses' decay shortened to leave the oldest 6 s: they darken, flatten, sink and cool, then go; R restarts the wave (twenty Reeds, the boss held back, no carcass, a fresh sinkhole);
+ // (CARCASS_SHOT); a carcass close in the free orbit (CARCASS_CLOSE_SHOT) and from the seat zoomed in (CARCASS_TENTACLES_SHOT), a 40 mm round on its limb: the pieces
+ // within the break radius fly off (CARCASS_BLAST_SHOT) and the others stay; time crumbles each limb from its tip; the carcasses' decay shortened to leave the oldest 6 s: they darken, sink and cool, then go; R restarts the wave (twenty Reeds, the boss held back, no carcass, a fresh sinkhole);
  // then 20 Reeds: the step 1/120 s, thinned to 11 still 1/120 s, to 10 back at 1/240 s, the fastest node's speed traced round the switch (no jolt: the frames after it no
  // faster than 1.5 times the frames before); then 50 Reeds: they all come up, the solver near the budget
  const B='window.__bossLab',shotPath=process.env.WAVE_SHOT||join(output,'boss-wave.png'),emergeShot=process.env.EMERGE_SHOT||join(output,'boss-wave-emerge.png'),carcassShot=process.env.CARCASS_SHOT||join(output,'boss-wave-carcasses.png');
@@ -3189,8 +3190,8 @@ const killReal=(Date.now()-t0)/1000;
  assert(by40+by25>=2,`scripted 40 mm and 25 mm fire kills Reeds (${by40} by the 40 mm, ${by25} by the 25 mm)`);
  // the dead laid down as carcasses
  {await until(`${B}.wave().laid>=1`,40000);const W2=await evaluate(`${B}.wave()`),c=W2.carcasses;
-  console.log('BOSS-WAVE carcasses '+JSON.stringify({laid:W2.laid,killed:W2.killed,lying:c.length,tris:c.map(x=>x.tris),heat:c.map(x=>+x.heat.toFixed(2))}));
-  assert(c.length>=1&&c.every(x=>x.tris>500&&x.tris<18812/10&&x.shown),`a dead Reed lies as a low-poly carcass (${JSON.stringify(c.map(x=>x.tris))} triangles, the skin's 18812)`);
+  console.log('BOSS-WAVE carcasses '+JSON.stringify({laid:W2.laid,killed:W2.killed,lying:c.length,tris:c.map(x=>x.tris),limbs:c.map(x=>x.limbs.map(l=>l.pieces).join('/')),heat:c.map(x=>+x.heat.toFixed(2)),stats:W2.carcassStats}));
+  assert(c.length>=1&&c.every(x=>x.limbs.filter(l=>l.pieces>=4).length>=3&&x.pieces.some(p=>p.limb<0)&&x.tris>300&&x.tris<18812/5&&x.shown),`a dead Reed lies as barebone tentacles: three limbs or more of four pieces or more round a core (${JSON.stringify(c.map(x=>({limbs:x.limbs,tris:x.tris})))}, the skin's 18812 triangles)`);
   assert(W2.hunted===null||!W2.reeds[W2.hunted].dead,'the dead are no body for the rules');}
  // the rest by the cheat: the boss's tremor and rise at the centre
  await until(`${B}.fight().phase==="fight"`,20000);
@@ -3222,12 +3223,46 @@ const killReal=(Date.now()-t0)/1000;
   const c=await evaluate(`(()=>{const L=${B},w=L.wave(),b=L.bait();return w.carcasses.length})()`);
   await evaluate(`${B}.aim(${JSON.stringify(at)})`);await delay(1500);
   const p=await send('Page.captureScreenshot',{format:'png'});writeFileSync(carcassShot,Buffer.from(p.data,'base64'));console.log(`BOSS-WAVE carcasses screenshot ${carcassShot} (${c} lying)`);
+  // the tentacles close (the free orbit) and from the seat, zoomed in; then a 40 mm round on the freshest one: the pieces within its break radius fly off, the others stay
+  {const setSel=(key,v)=>evaluate(`(()=>{const e=document.querySelector('#boss [data-k="${key}"]');e.value=${JSON.stringify(v)};e.dispatchEvent(new Event('input',{bubbles:true}));return e.value;})()`);
+   const shoot=async(file)=>{const p=await send('Page.captureScreenshot',{format:'png'});writeFileSync(file,Buffer.from(p.data,'base64'));console.log(`BOSS-WAVE carcass screenshot ${file}`);};
+   const wheel=(dy,n)=>evaluate(`(()=>{const cv=document.querySelector('#boss .sw-stage canvas');for(let i=0;i<${n};i++)cv.dispatchEvent(new WheelEvent('wheel',{deltaY:${dy},bubbles:true,cancelable:true}));return ${B}.seat()?.zoom})()`);
+   const fresh=(await evaluate(`${B}.wave().carcasses`)).map(x=>({id:x.id,whole:x.pieces.filter(p=>p.state==='whole').length,core:x.pieces.find(p=>p.limb<0).plane,tip:x.pieces.filter(p=>p.limb===0&&p.state==='whole').sort((a,b)=>b.j-a.j)[0]?.plane})).filter(x=>x.tip).sort((a,b)=>b.whole-a.whole)[0];
+   assert(fresh,'a carcass with a whole limb to shoot at');
+   await setSel('view','free');await until(`${B}.seat() === null`,10000);
+   assert(await evaluate(`${B}.closeTo(${fresh.id},12,8)`),'the free orbit closes on a carcass');await delay(400);await evaluate(`${B}.closeTo(${fresh.id},12,8)`);await delay(200);
+   await shoot(process.env.CARCASS_CLOSE_SHOT||join(output,'boss-wave-carcass-close.png'));
+   await setSel('view','chase');await until(`!!${B}.seat()`,15000);await until(`${B}.fight().phase==="fight"`,20000);
+   await evaluate(`${B}.aim(${JSON.stringify(fresh.core)})`);const zoom=await wheel(-100,16);await delay(1500);await evaluate(`${B}.aim(${JSON.stringify(fresh.core)})`);await delay(300);
+   await shoot(process.env.CARCASS_TENTACLES_SHOT||join(output,'boss-wave-carcass-tentacles.png'));
+   const before=(await evaluate(`${B}.wave().carcasses`)).find(x=>x.id===fresh.id);
+   await evaluate(`${B}.gun("bofors")`);await wheel(-100,16);let hit=null;
+   for(const end=Date.now()+40000;Date.now()<end&&!hit;){await evaluate(`${B}.aim(${JSON.stringify(fresh.tip)}); ${B}.fire(true)`);await delay(60);
+    const b=(await evaluate(`${B}.wave().carcasses`)).find(x=>x.id===fresh.id)?.blasts.find(x=>x.kind==='bofors');if(b)hit=b;}
+   await evaluate(`${B}.fire(false)`);await delay(120);
+   await shoot(process.env.CARCASS_BLAST_SHOT||join(output,'boss-wave-carcass-blast.png'));
+   const flying=(await evaluate(`${B}.wave().carcassStats`)).moving;await delay(1500);
+   const after=(await evaluate(`${B}.wave().carcasses`)).find(x=>x.id===fresh.id);
+   await wheel(100,16);
+   console.log('BOSS-WAVE carcass blast '+JSON.stringify({id:fresh.id,zoom,before:before.pieces.filter(p=>p.state==='whole').length,hit:hit&&{radius:hit.radius,broke:hit.broke.map(d=>+d.toFixed(1)),kept:hit.kept,nearestKept:hit.nearestKept&&+hit.nearestKept.toFixed(1)},flying,after:after&&{whole:after.pieces.filter(p=>p.state==='whole').length,byBlast:after.pieces.filter(p=>p.by==='blast').length,blasts:after.blasts.length}}));
+   assert(hit,'a 40 mm round landed on the carcass');
+   assert(hit.radius===WV.carcass.blast.bofors.radius&&hit.broke.length>=1&&hit.broke.every(d=>d<=hit.radius+1e-9),`it broke the pieces within its ${hit.radius} m (${hit.broke.map(d=>d.toFixed(1))})`);
+   assert(hit.kept>=1&&hit.nearestKept>hit.radius,`and left the others (${hit.kept} whole, the nearest ${hit.nearestKept?.toFixed(1)} m off)`);
+   assert(flying>=1,'the broken pieces fly off');
+   assert(after&&after.pieces.some(p=>p.state==='whole')&&after.pieces.filter(p=>p.by==='blast').every(p=>p.state==='gone'),'the flown pieces are gone, the rest still lies');}
+  // time crumbles the tips first: a piece gone by time only once every piece beyond it on its limb is no longer whole
+  {await until(`${B}.wave().carcasses.some(c=>c.pieces.some(p=>p.by==='time'))`,60000);
+   const cs=await evaluate(`${B}.wave().carcasses`);let byTime=0,bad=[];
+   for(const c of cs)for(const p of c.pieces){if(p.by!=='time')continue;byTime++;if(c.pieces.some(q=>q.limb===p.limb&&q.j>p.j&&q.state==='whole'))bad.push([c.id,p.limb,p.j]);}
+   const tipsGone=cs.filter(c=>c.pieces.some(p=>p.by==='time')).map(c=>c.limbs.map((_,l)=>c.pieces.filter(p=>p.limb===l&&p.state!=='whole').length).join('/'));
+   console.log('BOSS-WAVE crumble '+JSON.stringify({byTime,tipsGone,bad,stats:(await evaluate(`${B}.wave().carcassStats`))}));
+   assert(byTime>=1&&bad.length===0,`time crumbles each limb from its tip inward (${byTime} pieces crumbled, out of order ${JSON.stringify(bad)})`);}
   const oldest=Math.max(...(await evaluate(`${B}.wave().carcasses`)).map(x=>x.k*WV.carcass.decay)),shortDecay=+(oldest+6).toFixed(1);   // 6 s left for the oldest: the boss's sinkhole wait leaves them older than 6 s by now
   await evaluate(`${B}.carcassDecay(${shortDecay})`);const track=[];
   for(const end=Date.now()+60000;Date.now()<end;){const w=await evaluate(`${B}.wave().carcasses`);if(!w.length)break;track.push(w[0]);await delay(400);}
   const left=(await evaluate(`${B}.wave().carcasses`)).length;
-  console.log('BOSS-WAVE decay '+JSON.stringify({decay:shortDecay,polls:track.length,k:track.map(x=>+x.k.toFixed(2)),heat:track.map(x=>+x.heat.toFixed(2)),flat:track.map(x=>+x.flat.toFixed(2)),left}));
-  assert(track.length>=3&&track.every((x,k,a)=>k===0||(x.id!==a[k-1].id)||(x.k>=a[k-1].k&&x.heat<=a[k-1].heat+1e-9&&x.flat<=a[k-1].flat+1e-9)),'a carcass darkens, cools and flattens as it decays');
+  console.log('BOSS-WAVE decay '+JSON.stringify({decay:shortDecay,polls:track.length,k:track.map(x=>+x.k.toFixed(2)),heat:track.map(x=>+x.heat.toFixed(2)),sink:track.map(x=>+x.sink.toFixed(2)),left}));
+  assert(track.length>=3&&track.every((x,k,a)=>k===0||(x.id!==a[k-1].id)||(x.k>=a[k-1].k&&x.heat<=a[k-1].heat+1e-9&&x.sink>=a[k-1].sink-1e-9)),'a carcass darkens, cools and sinks as it decays');
   assert.equal(left,0,'and goes at the decay\'s end');
   await evaluate(`${B}.carcassDecay(${WV.carcass.decay})`);}
  // R restarts the wave

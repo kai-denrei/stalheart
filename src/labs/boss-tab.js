@@ -396,11 +396,13 @@ export function initBossTab(root) {
     bound: () => { const b = arena.bound(); return b.on ? { at: b.at, radius: b.radius, inset: fightTune.bounds.baitMargin } : null; },   // the fly-over's: trapped against it, and the far side held inside it
     gunner: () => seat.gunner(),   // the player's fire, for his lines
   });
+  // a sphere-space point as the lab's local ground point [x, z] (projected to the surface along the frame's up first): the seat's, and the carcasses'
+  const sphereLocal = (p) => { const u = frame.up, k = planet.radius / (p[0] * u[0] + p[1] * u[1] + p[2] * u[2]), l = toLocal(frame, [p[0] * k, p[1] * k, p[2] * k], 1); return [l[0], l[2]]; };
   // THE GUNNER SEAT (./boss/game-seat.js): in the bait mode the player sits in the game's own gunship seat (src/sentry-pilot.js), its
   // thermal and its GROUND TRUTH monitor; every round it fires is resolved by the fight through the friendlies' paths
   const seat = createGameSeat({
     stage, renderer, scene, sphere, camera: cam, audio, explosions, planet: () => planet, ground: (x, z) => tankWorld(x, z),
-    local: (p) => { const u = frame.up, k = planet.radius / (p[0] * u[0] + p[1] * u[1] + p[2] * u[2]), l = toLocal(frame, [p[0] * k, p[1] * k, p[2] * k], 1); return [l[0], l[2]]; },
+    local: sphereLocal,
     tune: () => fightTune, fight: () => fight, now: () => t, creature: huntedNow, isao: () => bait.marker(),
     parts: () => ({ creature: waving() ? wave.group : creature?.mesh, isao: sphere.getObjectByName('Isao'), ring: arena.ring }),
     resolve: (plan, dt) => { friendlies.resolve(plan, dt); wave.resolve(plan, dt); },   // a round of the player's on the boss (none while the wave holds it back), Isao and the arena, and on every live Reed
@@ -423,7 +425,7 @@ export function initBossTab(root) {
     aim: (from, to) => arena.clamp(arena.route(from, to), fightTune.bounds.creatureMargin),   // the boss's hunt: round the obstacles, then inside the bound
     isao: () => bait.asTank(), isaoPos: () => (bait.has() && !bait.gone() ? bait.pos() : null), fearOn: () => fightOn.fight && fightOn.fear,
     camera: () => cam, extentOf: nativeExtent, onError: (m) => { frameError = m; frameErrorAt = t; },
-    gate: () => sinkhole.who() === 'reeds' && sinkhole.ready(), hot: () => seat.thermal(),
+    gate: () => sinkhole.who() === 'reeds' && sinkhole.ready(), hot: () => seat.thermal(), local: sphereLocal,
   });
   // THE SINKHOLE (owner, 2026-10-10: "the initial Tremor is not just the ground shaking, it is our sinkhole animation from the game mode"; ./boss/sinkhole.js hosts
   // the game's src/game-breaches.js): a round of the bait mode opens one at the arena's centre (`wave.sinkhole.reeds` cells wide), the Reeds come up out of it one after
@@ -900,6 +902,7 @@ export function initBossTab(root) {
       + ` &middot; temper <b>${r.temper.phase}</b> (lunges <b>${r.temper.lunges}</b>) &middot; barrage <b>${fmt(r.gunFear.meter, 2)}</b> &middot; flinch/wild/panic <b>${r.gunFear.flinch}/${r.gunFear.wild}/${r.gunFear.panic}</b>`;
     if (r.mode === 'bait' && !r.wave.boss) html += `<br>wave 1 &middot; Reeds <b>${r.wave.alive}/${r.wave.count}</b> (${r.wave.made} made) &middot; solver <b>${fmt(r.wave.meanSolver, 1)} ms</b>`
       + ` &middot; clock <b>&times;${fmt(r.wave.meanScale)}</b> &middot; off-screen <b>${r.wave.lod}</b> &middot; <b>${fmt(r.wave.cost)} ms</b>/step`;
+    if (r.mode === 'bait' && r.wave.carcassStats.count) html += `${r.wave.boss ? '<br>' : ' &middot; '}carcasses <b>${r.wave.carcassStats.count}</b> (<b>${fmt(r.wave.carcassStats.ms, 2)} ms</b>, ${r.wave.carcassStats.moving} pieces moving)`;
     if (shaderErrors.length) html += `<br><b class="late">shader: ${escapeHtml(shaderErrors[shaderErrors.length - 1])}</b>`;
     if (frameError && t - frameErrorAt < 5) html += `<br><b class="late">${escapeHtml(frameError)}; reset</b>`;
     read.innerHTML = html;
@@ -1163,6 +1166,15 @@ export function initBossTab(root) {
     plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene, wave, sinkhole,
     reeds: (n) => { if (n !== undefined) { fightTune.wave.count = Math.max(0, Math.min(WAVE_MAX, Math.round(n))); gui.controllersRecursive().forEach((c) => c.updateDisplay()); newRound(); } return fightTune.wave.count; },
     chase: () => { if (state.view !== 'free' || !creature) return false; chaseCam(); return true; },
+    closeTo: (id, back = 14, up = 9) => {   // the free orbit's camera on carcass `id`, `back` m off along its frame's east and `up` m above it
+      const o = state.view === 'free' && wave.carcassGroup.getObjectByName(`Reed ${id} carcass`), m = o && o.getObjectByName('Reed carcass');
+      if (!m) return false;
+      m.updateWorldMatrix(true, false);
+      const c = m.geometry.boundingSphere.center.clone().applyMatrix4(m.matrixWorld), e = o.matrixWorld.elements;
+      const u = new THREE.Vector3(e[4], e[5], e[6]).normalize(), x = new THREE.Vector3(e[0], e[1], e[2]).normalize();
+      cam.up.copy(u); cam.position.copy(c).addScaledVector(x, back).addScaledVector(u, up); cam.lookAt(c); controls.target.copy(c);
+      return true;
+    },
   });
   if (q.get('acceptance') === '1') window.__bossLab = lab;
   resize();
