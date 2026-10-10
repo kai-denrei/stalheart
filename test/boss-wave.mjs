@@ -1,16 +1,21 @@
 // boss-wave.mjs — the bait mode's first wave (2026-10-09; src/domain/boss-wave.js): N Reeds of 20 hit points, each hurt by the fight's own falloff on its nearest
 // floor contact (a landing splashes, a stream burns by dt), deaths, the wave cleared when the last dies, the boss's entry once, Isao put clear of where it lands,
-// the spawn ring 15 m inside the bound, the nearest Reed by its contacts.
+// the nearest Reed by its contacts; the second pass (2026-10-10): the emergence at the centre one after another, the fan, the phases of a rise, the 120 Hz step
+// above ten Reeds, a carcass's decay and Isao's keep-out.
 import assert from 'node:assert/strict';
 import { BOSS_FIGHT as T } from '../src/content/boss-fight.js';
 import { splashDamage } from '../src/domain/gunship.js';
-import { makeWave, wavePlaces, aliveCount, hurtReed, resolveReeds, waveCleared, bossEnters, nearestReed, entryClear } from '../src/domain/boss-wave.js';
+import { makeWave, emergePlan, emergence, waveStep, carcassLook, keepOut, aliveCount, hurtReed, resolveReeds, waveCleared, bossEnters, nearestReed, entryClear } from '../src/domain/boss-wave.js';
 
 const EPS = 1e-9;
 const W = T.wave;
 
 // the content: the owner's numbers
-assert.deepEqual({ ...W }, { count: 10, reedHealth: 20, size: 15, inset: 15, corpse: 2, clear: 45, budget: 10, lod: false }, 'the wave');
+const { emerge: E, coarse: C, carcass: K, ...flat } = W;
+assert.deepEqual(flat, { count: 10, reedHealth: 20, size: 15, corpse: 2, clear: 45, budget: 10, lod: false }, 'the wave');
+assert.deepEqual({ ...E }, { gap: 0.6, lead: 0.35, rise: 1.5, depth: 1.15, jitter: 4, fan: 20, fanFor: 2.5, keep: 25 }, 'the emergence: 0.6 s apart, a ~1.5 s rise (owner, 2026-10-10)');
+assert.deepEqual({ ...C }, { on: true, above: 10, hz: 120 }, 'the solver at 120 Hz above ten Reeds (owner, 2026-10-10)');
+assert.deepEqual({ ...K }, { decay: 60, max: 30, dark: 0.75, flat: 0.4, sink: 0.35, cold: 0.6 }, 'the carcass: ~60 s, at most 30');
 assert.ok(Object.isFrozen(W), 'deep-frozen');
 
 // a wave of N: N Reeds, each whole at 20; a wave of 0 is cleared and the boss is in from the start (no entry to announce)
@@ -25,13 +30,62 @@ assert.ok(Object.isFrozen(W), 'deep-frozen');
   assert.equal(makeWave(-3, T).count, 0, 'and never below 0');
 }
 
-// the spawn ring: evenly round the centre, `inset` inside the bound's radius
+// the emergence: every Reed within `jitter` of the centre, `gap` s apart on the wave's clock, each fanning out `fan` m to its own direction
+const PLAN_N = 20;
 {
-  const at = [7, -3], ps = wavePlaces(8, T, at, 0.3), r = T.bounds.radius - W.inset;
-  assert.equal(ps.length, 8);
-  for (const p of ps) assert.ok(Math.abs(Math.hypot(p[0] - at[0], p[1] - at[1]) - r) < 1e-9, `on the ring ${r} m out`);
-  const a = ps.map((p) => Math.atan2(p[1] - at[1], p[0] - at[0]));
-  for (let i = 0; i < 8; i++) { const d = ((a[(i + 1) % 8] - a[i]) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI); assert.ok(Math.abs(d - Math.PI / 4) < 1e-9, 'evenly spaced'); }
+  const at = [7, -3], ps = emergePlan(PLAN_N, T, at, 0.3);
+  assert.equal(ps.length, PLAN_N);
+  ps.forEach((p, i) => {
+    assert.ok(Math.abs(Math.hypot(p.at[0] - at[0], p.at[1] - at[1]) - E.jitter) < 1e-9, `Reed ${i} comes up ${E.jitter} m from the centre`);
+    assert.ok(Math.abs(p.emergeAt - i * E.gap) < 1e-9, `Reed ${i} at ${i * E.gap} s`);
+    assert.ok(Math.abs(Math.hypot(p.fan[0] - at[0], p.fan[1] - at[1]) - E.fan) < 1e-9, `and fans out to ${E.fan} m`);
+    const u = [(p.at[0] - at[0]) / E.jitter, (p.at[1] - at[1]) / E.jitter], v = [(p.fan[0] - at[0]) / E.fan, (p.fan[1] - at[1]) / E.fan];
+    assert.ok(Math.abs(u[0] - v[0]) < 1e-9 && Math.abs(u[1] - v[1]) < 1e-9, 'it comes up on its own side of the centre');
+  });
+  // the fan spreads: no two of the first ten within 15 degrees of each other, and the twenty cover every 60 degree sector
+  const ang = ps.map((p) => Math.atan2(p.fan[1] - at[1], p.fan[0] - at[0]));
+  for (let i = 0; i < 10; i++) for (let j = i + 1; j < 10; j++) { const d = Math.abs(((ang[i] - ang[j]) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI); assert.ok(d > Math.PI / 12, `fans ${i} and ${j} apart`); }
+  for (let s0 = 0; s0 < 6; s0++) assert.ok(ang.some((a) => ((a + 2 * Math.PI) % (2 * Math.PI)) >= s0 * Math.PI / 3 && ((a + 2 * Math.PI) % (2 * Math.PI)) < (s0 + 1) * Math.PI / 3), `a Reed fans into sector ${s0}`);
+  assert.deepEqual(emergePlan(0, T), [], 'none');
+}
+
+// one emergence: below, the tremor, the rise (eased, monotone), up
+{
+  assert.deepEqual(emergence(-0.1, E), { phase: 'below', lift: 0 });
+  assert.deepEqual(emergence(0, E), { phase: 'tremor', lift: 0 });
+  assert.equal(emergence(E.lead - 1e-6, E).phase, 'tremor');
+  let last = -1;
+  for (let a = E.lead; a < E.lead + E.rise; a += 0.05) { const e = emergence(a, E); assert.equal(e.phase, 'rising'); assert.ok(e.lift >= last && e.lift >= 0 && e.lift < 1, `the lift climbs (${e.lift})`); last = e.lift; }
+  assert.ok(Math.abs(emergence(E.lead + E.rise / 2, E).lift - 0.5) < 1e-9, 'half way at half the rise');
+  assert.deepEqual(emergence(E.lead + E.rise, E), { phase: 'up', lift: 1 });
+  assert.equal(emergence(NaN, E).phase, 'below', 'no clock yet: below');
+}
+
+// the step: 1/120 s while more than ten stand, the kit's 1/240 s at ten or fewer; the switch off keeps the kit's
+{
+  const fine = 1 / 240;
+  assert.equal(waveStep(20, C, fine), 1 / 120); assert.equal(waveStep(11, C, fine), 1 / 120);
+  assert.equal(waveStep(10, C, fine), fine); assert.equal(waveStep(0, C, fine), fine);
+  assert.equal(waveStep(50, { ...C, on: false }, fine), fine, 'off: always the kit\'s');
+}
+
+// a carcass: fresh, darkening, flattening, sinking and cooling, gone at the decay's end
+{
+  const a = carcassLook(0, K), m = carcassLook(K.decay / 2, K), z = carcassLook(K.decay, K);
+  assert.deepEqual(a, { k: 0, dark: 0, flat: 1, sink: 0, heat: 1, gone: false }, 'fresh: as it fell, warm');
+  assert.ok(m.dark > 0 && m.dark < K.dark && m.flat < 1 && m.flat > K.flat && m.sink > 0 && m.sink < K.sink && !m.gone, 'half way');
+  assert.ok(m.heat > 0 && m.heat < 0.25, `cooling (${m.heat})`);
+  assert.equal(carcassLook(K.decay * K.cold, K).heat, 0, `cold by ${K.cold * 100} % of the decay`);
+  assert.ok(Math.abs(z.dark - K.dark) < 1e-12 && Math.abs(z.flat - K.flat) < 1e-12 && Math.abs(z.sink - K.sink) < 1e-12 && z.gone, 'at the end: dark, flat, sunk and gone');
+  let h = 2; for (let t = 0; t <= K.decay; t += 1) { const l = carcassLook(t, K); assert.ok(l.heat <= h, 'it never warms again'); h = l.heat; }
+}
+
+// Isao's keep-out: a point inside the disc goes out along its bearing, one outside stays (a copy)
+{
+  const c = [5, 5], p = keepOut([8, 9], c, E.keep);
+  assert.ok(Math.abs(Math.hypot(p[0] - 5, p[1] - 5) - E.keep) < 1e-9 && Math.abs(Math.atan2(p[1] - 5, p[0] - 5) - Math.atan2(4, 3)) < 1e-9, 'pushed out along its bearing');
+  const q = [60, 0], k = keepOut(q, c, E.keep);
+  assert.deepEqual(k, q); assert.notEqual(k, q, 'outside: itself, a copy');
 }
 
 // a landing: the fight's falloff on each Reed's nearest contact; a direct 40 mm costs 4, the ring's edge nothing, the MK-9 kills every Reed within its reach
@@ -105,4 +159,4 @@ let streamSeconds = 0;
   assert.deepEqual(entryClear([0, 0], [0, 0], 10), [10, 0], 'on the centre itself, east');
 }
 
-console.log(`boss-wave.mjs: ${W.count} Reeds of ${W.reedHealth} hp by default; a direct 40 mm costs ${B.damage} (five kill one), the 25 mm kills one in ${streamSeconds.toFixed(2)} s, the MK-9 every Reed within ${(N.radius * Math.sqrt(1 - W.reedHealth / N.damage)).toFixed(1)} m; cleared at the last death, the boss enters once, Isao put ${W.clear} m clear of its landing.`);
+console.log(`boss-wave.mjs: ${W.count} Reeds of ${W.reedHealth} hp by default, up from the centre ${E.gap} s apart, the solver at ${C.hz} Hz above ${C.above}, carcasses for ${K.decay} s (at most ${K.max}); a direct 40 mm costs ${B.damage} (five kill one), the 25 mm kills one in ${streamSeconds.toFixed(2)} s, the MK-9 every Reed within ${(N.radius * Math.sqrt(1 - W.reedHealth / N.damage)).toFixed(1)} m; cleared at the last death, the boss enters once, Isao put ${W.clear} m clear of its landing.`);

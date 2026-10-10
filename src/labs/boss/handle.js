@@ -35,7 +35,13 @@ export function createLabHandle({
     // after a wave), reeds: [{ id, hp, dead, hits, body, centre (local), contacts, lod }], hunted (the Reed nearest Isao), solver (ms this frame), steps, timeScale (the
     // wave's clock under the budget), lod (off-screen now), cost (ms a step), meanSolver, meanScale }); reeds(n) sets the count and restarts the round (reeds() reads it);
     // killReeds() is the acceptance's cheat: every Reed standing dies now (the number)
-    wave: () => wave.state(), reeds, killReeds: () => wave.killAll(),
+    // the second pass (2026-10-10): thinReeds(n) kills the Reeds up down to n standing (the newest first: the step's switch watched), waveTrace(on) starts (true) or
+    // stops (false) the per-frame step trace ([{ clock, t, hz, alive, speed (the fastest live node, m/s) }]) and waveTrace() reads it
+    wave: () => wave.state(), reeds, killReeds: () => wave.killAll(), thinReeds: (n) => wave.thin(n), waveTrace: (on) => wave.trace(on),
+    // coarse(on, above) the 120 Hz switch (the panel's) and the count it needs exceeded (the measurement's), carcassDecay(s) the carcasses' decay seconds (the
+    // acceptance shortens it to watch one go); each returns the value
+    coarse: (on, above) => { const C = fightTune.wave.coarse; if (on !== undefined) C.on = !!on; if (above !== undefined) C.above = above; return C.on; },
+    carcassDecay: (s) => { if (s !== undefined) fightTune.wave.carcass.decay = s; return fightTune.wave.carcass.decay; },
     gunFear: () => fear.guns(),
     // the game's gunship seat (bait mode, ./game-seat.js): aim([x, z]) turns the optic onto a local ground point (until the mouse moves it),
     // gun(key) picks 'rotary' | 'bofors' | 'nuke' (the MK-9; 'heavy' and 1-3 too) through the seat's own gun buttons and returns the gun,

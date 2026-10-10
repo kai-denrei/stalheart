@@ -17,21 +17,82 @@
 // THE BUDGET (`wave.budget` ms of solver a frame for the whole wave; the kit steps at 240 Hz and a Reed step costs ~0.6 ms, so ten Reeds want ~24 ms a 60 Hz frame):
 // the frame's need is priced from the running cost of a step, and past the budget the wave's clock runs slower for every Reed alike (`timeScale`), so the frame never
 // spirals into the kit's twelve-step catch-up. With `wave.lod` (off by default: it bought too little), a Reed whose body is outside the camera's view (last frame's matrices) steps every other frame at the
-// frame's dt (half its rate; the seat's camera sees the whole arena zoomed out, so far-but-shown Reeds keep their rate). THE DEAD (the v1 death: motion off, the gravity up) lie `wave.corpse` seconds, then go with their GPU resources.
+// frame's dt (half its rate; the seat's camera sees the whole arena zoomed out, so far-but-shown Reeds keep their rate). THE DEAD (the v1 death: motion off, the gravity up)
+// collapse `wave.corpse` seconds, then are laid down as carcasses (below).
+//
+// THE SECOND PASS (owner, 2026-10-10; the rules src/domain/boss-wave.js `emergePlan`, `emergence`, `waveStep`, `carcassLook`):
+// THE EMERGENCE. Every Reed is made at the arena's centre (a few metres off it, `emergePlan`) and waits below the ground, hidden and unstepped, until its turn on the
+// lab's clock (the turns are what the player sees, so they keep `emerge.gap` s however the budget slows the bodies): then `tremor(at)` (the lab's: the seat's camera
+// shaken, dust, the rumble) and, `emerge.lead` s later, it rises: drawn `emerge.depth` times its rest height below the surface and lifted out over `emerge.rise` s (a
+// drawing's lift, on the lab's clock too) while its body settles
+// on the floor with its motion off (the body is never moved: only the drawing is lowered, so the solver sees a body standing on its floor from the first step, and a
+// quiet one goes to sleep). Up, it walks out to its fan point for at most `emerge.fanFor` s, then hunts. A Reed not up is not a body for the rules (no hits, not
+// hunted). `keep()` is Isao's keep-out while any Reed is still to come up.
+// THE STEP (owner: "start with 120 HZ when there are more than 10 Reeds, and switch back to 240HZ when there are fewer"): `waveStep` on the Reeds alive. The kit's
+// FixedStepper takes its step at construction (`new FixedStepper(P.step)`, src/fx/nih-dairia/creature.js) and keeps it in a closure, but each fixed step simulates
+// `P.step` (the creature's own phys copy, read live): so the lab sets `kit.phys.step` and hands update a dt scaled by `STEP / step`, and the stepper's 1/240 s count
+// becomes 1/120 s ones: no change in the kit. The solver's velocities are (x - previous) / h of each step, so a change of h carries no jolt (the trace below measures it).
+// THE CARCASSES: `corpse` s after a death (and SETTLE s of collapse on the wave's clock) the Reed's body is laid down as its tet cage's outer surface (the solver's own nodes: the Reed's 1,584 triangles against its skin's 18,812
+// ), flat shaded, in the pose it collapsed to and the frame it was drawn in; its solver, kernel, skin and fear go. Each carcass is a material and a transform a
+// frame: darkened, flattened and sunk over `carcass.decay` s, and in the seat's thermal (`hot()`) warm when fresh and cold by `carcass.cold` of the decay (its own
+// emissive: the carcasses are not in the thermal's warm parts, which would hold them warm); then it goes, and at most `carcass.max` lie. They block nothing and are no
+// one's target. A new wave clears them.
 import * as THREE from '../../../vendor/three.module.js';
-import { makeWave, wavePlaces, aliveCount, resolveReeds, hurtReed, waveCleared, bossEnters, nearestReed } from '../../domain/boss-wave.js';
+import { makeWave, emergePlan, emergence, waveStep, carcassLook, aliveCount, resolveReeds, hurtReed, waveCleared, bossEnters, nearestReed } from '../../domain/boss-wave.js';
 import { createNihDairia, loadMonsterCage } from '../../fx/nih-dairia/creature.js';
 import { ARENA } from '../../fx/nih-dairia/arena.js';
 import { NIH_DAIRIA_LOOK, NIH_DAIRIA_MODELS } from '../../content/nih-dairia.js';
 import { createFear } from './fear.js';
 import { createTemperament } from './temperament.js';
 import { kitNow, nodesOf, shiftKit } from './body.js';
+import { HEAT } from '../../fx/thermal-heat.js';
 
 const VARIANT = 'reed';
 const BATCH = 3;            // Reeds made a frame while the wave loads
 const STEP = 1 / 240;       // the kit's fixed step (src/fx/nih-dairia/constants.js PHYS.step), for the budget's price of a frame
 const COST0 = 0.6;          // ms a Reed step costs before any is measured (the probe's, 2026-10-09)
 const WINDOW = 30;          // frames in the running means
+const TRACE = 900;          // frames the step trace keeps (the acceptance's jolt check)
+const SETTLE = 0.4;         // seconds of the wave's clock a dead Reed collapses at least before it is laid down (at most 3 x `corpse` s of the lab's: a slowed wave's dead are not stepped for ever)
+const DEAD_TONE = new THREE.Color(0x2a2420);   // a carcass darkens toward this
+const BLACK = new THREE.Color(0, 0, 0), WHITE_HEAT = new THREE.Color(1, 1, 1);   // a fresh carcass's emissive in the thermal goes from black toward white, as the heat tagging's
+
+// THE COARSE SURFACE of a tet cage (shared by every Reed: the cage's tets are one array): the faces that belong to one tet only, wound outward (away from the tet's
+// fourth node, at rest), over the nodes they use. { index (into nodes), nodes (cage node ids) }
+const coarse = new WeakMap();
+function coarseSurface(cage) {
+  if (coarse.has(cage.tets)) return coarse.get(cage.tets);
+  const faces = new Map(), p = cage.pos;
+  for (const [a, b, c, d] of cage.tets) {
+    for (const f of [[a, b, c, d], [a, b, d, c], [a, c, d, b], [b, c, d, a]]) {
+      const key = f.slice(0, 3).sort((x, y) => x - y).join(',');
+      if (faces.has(key)) faces.delete(key); else faces.set(key, f);
+    }
+  }
+  const remap = new Map(), nodes = [], index = new Uint32Array(faces.size * 3);
+  const id = (n) => { if (!remap.has(n)) { remap.set(n, nodes.length); nodes.push(n); } return remap.get(n); };
+  let k = 0;
+  for (const [a, b, c, o] of faces.values()) {
+    const ux = p[b * 3] - p[a * 3], uy = p[b * 3 + 1] - p[a * 3 + 1], uz = p[b * 3 + 2] - p[a * 3 + 2];
+    const vx = p[c * 3] - p[a * 3], vy = p[c * 3 + 1] - p[a * 3 + 1], vz = p[c * 3 + 2] - p[a * 3 + 2];
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    const out = nx * (p[o * 3] - p[a * 3]) + ny * (p[o * 3 + 1] - p[a * 3 + 1]) + nz * (p[o * 3 + 2] - p[a * 3 + 2]) < 0;
+    index[k++] = id(a); index[k++] = id(out ? b : c); index[k++] = id(out ? c : b);
+  }
+  const s = { index, nodes: Uint32Array.from(nodes) };
+  coarse.set(cage.tets, s);
+  return s;
+}
+// the skin's mean tissue colour (the vertex colours are the rest shape's, one set for every Reed): the carcass's base
+let tissue = null;
+function tissueOf(mesh) {
+  if (tissue) return tissue;
+  const c = mesh.geometry.getAttribute('color');
+  if (!c) return (tissue = new THREE.Color(0.6, 0.45, 0.4));
+  let r = 0, g = 0, b = 0;
+  for (let i = 0; i < c.count; i++) { r += c.getX(i); g += c.getY(i); b += c.getZ(i); }
+  return (tissue = new THREE.Color(r / c.count, g / c.count, b / c.count));
+}
 
 // the parsed cage, copied for one more body: its own surface geometry (positions, normals, index and the optical thickness copied), the rest shared read only
 function cageCopy(cage) {
@@ -48,11 +109,14 @@ function cageCopy(cage) {
 // `now()` the lab's clock; `motion()` the mode's working motion (the Reeds' base, as the boss's), `phys()` the kit's physics for a new body; `ground(x, z)` the
 // sphere point under a local point and `tangent(world)` the frame there; `spawn(point)` a point clear of the obstacles; `aim(from, to)` the hunt's target round the
 // obstacles and inside the bound (the lab's, as the boss's); `isao()` his rules' target ({ pos, radius }) and `isaoPos()` his ground point (null when he is gone);
-// `fearOn()` the fear switch and the fight; `camera()` the lab's camera (the frustum); `extentOf(body)` a body's native width; `onError(message)` a frame's error
-export function createWave({ sphere, tune, fight, now, motion, phys, ground, tangent, spawn, aim, isao, isaoPos, fearOn, camera, extentOf, onError = () => {} }) {
+// `fearOn()` the fear switch and the fight; `camera()` the lab's camera (the frustum); `extentOf(body)` a body's native width; `tremor(at)` a Reed's tremor at a local
+// point (the lab's shake, dust and rumble); `hot()` the seat's thermal on (the carcasses' warmth); `onError(message)` a frame's error
+export function createWave({ sphere, tune, fight, now, motion, phys, ground, tangent, spawn, aim, isao, isaoPos, fearOn, camera, extentOf, tremor = () => {}, hot = () => false, onError = () => {} }) {
   const root = new THREE.Group(); root.name = 'Reed wave'; sphere.add(root);
-  let wave = makeWave(0, tune()), reeds = [], gen = 0, cage = null, disposed = false, frame = 0;
+  const dead = new THREE.Group(); dead.name = 'Reed carcasses'; sphere.add(dead);   // not under `root`: the thermal heats the wave's group, and a carcass cools on its own
+  let wave = makeWave(0, tune()), reeds = [], gen = 0, cage = null, disposed = false, frame = 0, centre = [0, 0];
   let cost = COST0, timeScale = 1, lodNow = 0, solverMs = 0, stepsNow = 0, hunted = null, entered = false;
+  let clock = 0, born = 0, step = STEP, switches = [], trace = null, carcasses = [], laid = 0;
   const meanSolver = [], meanScale = [];
   const target = new THREE.Vector3(), basis = new THREE.Matrix4(), frustum = new THREE.Frustum(), viewM = new THREE.Matrix4(), ball = new THREE.Sphere();
   const push = (a, v) => { a.push(v); if (a.length > WINDOW) a.shift(); };
@@ -64,15 +128,19 @@ export function createWave({ sphere, tune, fight, now, motion, phys, ground, tan
     return cage;
   }
 
-  // one Reed's body at `at` (local metres), its fear and temperament
-  async function makeReed(id, at, base) {
-    const kit = await createNihDairia({ ...motion() }, VARIANT, { models: NIH_DAIRIA_MODELS, look: NIH_DAIRIA_LOOK, phys: { ...phys() }, cage: cageCopy(await loadCage()) });
-    const native = extentOf(kit.body), s = tune().wave.size / native;
-    kit.motion.feeding.enabled = false; kit.motion.active = true;
+  // one Reed's body at its emergence point (local metres), its fear and temperament; below the ground until its turn
+  async function makeReed(id, plan, base) {
+    const parsed = await loadCage();
+    const kit = await createNihDairia({ ...motion() }, VARIANT, { models: NIH_DAIRIA_MODELS, look: NIH_DAIRIA_LOOK, phys: { ...phys() }, cage: cageCopy(parsed) });
+    const native = extentOf(kit.body), s = tune().wave.size / native, at = spawn(plan.at);
+    kit.motion.feeding.enabled = false; kit.motion.active = false;   // still under the ground
     shiftKit(kit, at[0] / s, at[1] / s);   // from the native origin to its place
+    let y0 = Infinity, y1 = -Infinity;
+    for (let i = 1; i < kit.body.rest.length; i += 3) { y0 = Math.min(y0, kit.body.rest[i]); y1 = Math.max(y1, kit.body.rest[i]); }
     const outer = new THREE.Group(), inner = new THREE.Group();
-    outer.name = `Reed ${id}`; inner.add(kit.mesh); outer.add(inner); root.add(outer);
-    const r = { id, kit, s, native, outer, inner, place: [at[0], at[1]], body: null, dead: false, lod: false, gone: false };
+    outer.name = `Reed ${id}`; outer.visible = false; inner.add(kit.mesh); outer.add(inner); root.add(outer);
+    const r = { id, kit, s, native, outer, inner, place: [at[0], at[1]], first: [at[0], at[1]], fan: [...plan.fan], body: null, dead: false, lod: false, gone: false, cage: parsed,
+      emergeAt: Math.max(born + plan.emergeAt, now()), phase: 'below', lift: 0, height: y1 - Math.min(0, y0), fanUntil: 0, deadAt: 0, lowest: 0 };
     r.body = kitNow(kit, s, native);
     r.fear = createFear({ tune, creature: () => r.body ?? fallback, tank: isao, fight, now, kit: () => r.kit, on: fearOn, gunFear: () => true, nodes: () => nodesOf(r.kit, r.s) });
     r.temper = createTemperament({ tune, kit: () => r.kit, base: motion, on: () => !r.dead });
@@ -80,12 +148,13 @@ export function createWave({ sphere, tune, fight, now, motion, phys, ground, tan
     return r;
   }
 
-  async function load(g, places, seed) {
+  async function load(g, plans, seed) {
     try {
-      for (let i = 0; i < places.length; i++) {
+      for (let i = 0; i < plans.length; i++) {
         if (g !== gen || disposed) return;
-        const at = spawn(places[i]), r = await makeReed(i, at, seed);
-        if (g !== gen || disposed) { drop(r); return; }
+        if (wave.reeds[i]?.dead) continue;   // killed before it was made (the acceptance's cheat): no body
+        const r = await makeReed(i, plans[i], seed);
+        if (g !== gen || disposed || wave.reeds[i]?.dead) { drop(r); if (g !== gen || disposed) return; continue; }
         reeds.push(r); place(r);
         if (i % BATCH === BATCH - 1) await new Promise((res) => requestAnimationFrame(res));
       }
@@ -94,23 +163,54 @@ export function createWave({ sphere, tune, fight, now, motion, phys, ground, tan
 
   function drop(r) {
     if (r.gone) return;
-    r.gone = true; root.remove(r.outer); r.kit.dispose();
+    r.gone = true; root.remove(r.outer); r.kit?.dispose(); r.kit = null;
   }
 
-  // drawn through its own frame on the sphere under its centre (see THE PLANE)
+  // drawn through its own frame on the sphere under its centre (see THE PLANE), lowered by what it has still to rise
   function place(r) {
     const c = r.kit.motion.center, w = ground(c.x * r.s, c.z * r.s), tf = tangent(w);
     r.outer.position.set(w[0], w[1], w[2]);
     r.outer.quaternion.setFromRotationMatrix(basis.makeBasis(new THREE.Vector3(...tf.east), new THREE.Vector3(...tf.up), new THREE.Vector3(...tf.north)));
     r.outer.scale.setScalar(r.s);
-    r.inner.position.set(-c.x, 0, -c.z);
+    r.lowest = -(1 - r.lift) * tune().wave.emerge.depth * r.height;   // native units under the surface
+    r.inner.position.set(-c.x, r.lowest, -c.z);
+    r.outer.visible = r.phase !== 'below';
   }
 
-  // the v1 death: every movement off, the gravity up; it lies `corpse` seconds
+  // the v1 death: every movement off, the gravity up; it collapses `corpse` seconds (SETTLE of the wave's clock at least, 3 x `corpse` at most), then is laid down
   function die(r) {
-    r.dead = true;
+    r.dead = true; r.deadAt = clock;
     const k = r.kit.motion;
     k.active = false; k.feeding.enabled = false; r.kit.phys.gravity = tune().deathGravity;
+  }
+
+  // THE CARCASS: the cage's outer surface in the pose it collapsed to, flat shaded, in the frame it was drawn in; the body and its GPU resources go
+  function layDown(r) {
+    const { index, nodes } = coarseSurface(r.cage), x = r.kit.body.x, pos = new Float32Array(nodes.length * 3);
+    for (let i = 0; i < nodes.length; i++) { const n = nodes[i] * 3; pos[i * 3] = x[n]; pos[i * 3 + 1] = x[n + 1]; pos[i * 3 + 2] = x[n + 2]; }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setIndex(new THREE.BufferAttribute(index, 1)); g.computeVertexNormals(); g.computeBoundingSphere();
+    const base = tissueOf(r.kit.mesh).clone(), material = new THREE.MeshStandardMaterial({ color: base, flatShading: true, roughness: 0.95, metalness: 0, emissive: 0x000000 });
+    const mesh = new THREE.Mesh(g, material); mesh.name = 'Reed carcass'; mesh.frustumCulled = false;
+    r.kit.dispose(); r.kit = null; r.fear = null; r.temper = null; r.gone = true;
+    r.inner.add(mesh); root.remove(r.outer); dead.add(r.outer); r.outer.name = `Reed ${r.id} carcass`; r.outer.visible = true;
+    carcasses.push({ id: r.id, outer: r.outer, inner: r.inner, mesh, material, base, born: now(), y: r.inner.position.y, height: r.height, look: carcassLook(0, tune().wave.carcass) });
+    laid++;
+    const max = tune().wave.carcass.max;
+    while (carcasses.length > max) bury(carcasses.shift());
+  }
+  function bury(c) { dead.remove(c.outer); c.mesh.geometry.dispose(); c.material.dispose(); }
+  // each frame: a material and a transform per carcass
+  function decay() {
+    const C = tune().wave.carcass, t = now(), warm = hot();
+    for (const c of carcasses) {
+      const l = c.look = carcassLook(t - c.born, C);
+      if (l.gone) continue;
+      c.inner.scale.y = l.flat; c.inner.position.y = c.y - l.sink * c.height;
+      c.material.color.copy(c.base).lerp(DEAD_TONE, l.dark);
+      c.material.emissive.copy(BLACK).lerp(WHITE_HEAT, warm ? HEAT.warm * l.heat : 0);
+    }
+    if (carcasses.some((c) => c.look.gone)) carcasses = carcasses.filter((c) => (c.look.gone ? (bury(c), false) : true));
   }
 
   // the Reed's body outside the camera's view (last frame's matrices)
@@ -121,66 +221,113 @@ export function createWave({ sphere, tune, fight, now, motion, phys, ground, tan
     ball.copy(g.boundingSphere).applyMatrix4(r.kit.mesh.matrixWorld);
     return !frustum.intersectsSphere(ball);
   }
+  // the fastest node of the Reeds up and alive, local metres a second (the step trace's)
+  function topSpeed() {
+    let v2 = 0;
+    for (const r of reeds) {
+      if (r.dead || r.phase !== 'up') continue;
+      const v = r.kit.body.velocity, s2 = r.s * r.s;
+      for (let i = 0; i < v.length; i += 3) { const q = (v[i] * v[i] + v[i + 1] * v[i + 1] + v[i + 2] * v[i + 2]) * s2; if (q > v2) v2 = q; }
+    }
+    return Math.sqrt(v2);
+  }
 
-  const live = () => reeds.filter((r) => !r.dead && !r.gone);
+  function keep() {
+    if (wave.boss) return null;
+    const made = new Set(reeds.map((r) => r.id));
+    const owed = wave.reeds.some((rr) => !rr.dead && !made.has(rr.id)) || reeds.some((r) => !r.dead && r.phase !== 'up');
+    return owed ? { at: [...centre], radius: tune().wave.emerge.keep } : null;
+  }
+
+  // the bodies the rules see: alive, made and up
+  const live = () => reeds.filter((r) => !r.dead && !r.gone && r.phase === 'up');
 
   return {
     group: root,
-    // a new wave of `count` Reeds round the arena's centre `at` (local), the old ones gone; 0 is no wave (the boss at once). `seed` the round's
+    carcassGroup: dead,
+    // a new wave of `count` Reeds from the arena's centre `at` (local), the old ones and the carcasses gone; 0 is no wave (the boss at once). `seed` the round's
     reset(count, at = [0, 0], seed = 1) {
       gen++;
       for (const r of reeds) drop(r);
-      reeds = []; hunted = null; entered = false; timeScale = 1;
+      for (const c of carcasses) bury(c);
+      reeds = []; carcasses = []; hunted = null; entered = false; timeScale = 1; clock = 0; born = now(); step = STEP; switches = []; laid = 0; centre = [at[0], at[1]];
+      if (trace) trace = [];
       wave = makeWave(count, tune());
-      if (wave.count) load(gen, wavePlaces(wave.count, tune(), at, (seed * 0.61803) % 1 * 2 * Math.PI), seed);
+      if (wave.count) load(gen, emergePlan(wave.count, tune(), at, (seed * 0.61803) % 1 * 2 * Math.PI), seed);
       return wave.count;
     },
     // the wave holds the boss back: Reeds still standing
     holds: () => !wave.boss,
     // true once, when the last Reed dies: the boss enters
     bossEnters: () => { const e = bossEnters(wave); if (e) entered = true; return e; },
-    // each frame: the hunt, the fear and the temperament on last frame's bodies, the budgeted update, the dead laid down and taken away, the bodies read for the rules
+    // Isao's keep-out ({ at, radius }, local) while a Reed is still to come up at the centre; null once every live one is up
+    keep,
+    // each frame: the emergence, the hunt, the fear and the temperament on last frame's bodies, the budgeted update at the step for the Reeds alive, the dead laid
+    // down, the carcasses decayed, the bodies read for the rules
     step(dt) {
       frame++;
-      const T = tune(), W = T.wave, t = now(), prey = isaoPos();
-      // the dead that have lain long enough go
-      for (const r of reeds) if (r.dead && !r.gone && t - wave.reeds[r.id].diedAt >= W.corpse) drop(r);
+      const T = tune(), W = T.wave, E = W.emerge, t = now(), prey = isaoPos();
+      decay();
+      for (const r of reeds) {
+        if (!r.dead || r.gone) continue;
+        const lain = t - wave.reeds[r.id].diedAt;
+        if (r.phase === 'below') drop(r);
+        else if (lain >= W.corpse && (clock - r.deadAt >= SETTLE || lain >= 3 * W.corpse)) layDown(r);
+      }
       reeds = reeds.filter((r) => !r.gone);
-      if (!reeds.length) { solverMs = 0; stepsNow = 0; return; }
+      if (!reeds.length) { solverMs = 0; stepsNow = 0; clock += dt; return; }
+      // the emergence: a tremor as each one's turn comes, motion on once it is up
+      for (const r of reeds) {
+        if (r.dead) continue;
+        const e = emergence(t - r.emergeAt, E), was = r.phase;
+        r.phase = e.phase; r.lift = e.lift;
+        if (was === 'below' && e.phase !== 'below') tremor([r.kit.motion.center.x * r.s, r.kit.motion.center.z * r.s]);
+        if (was !== 'up' && e.phase === 'up') { r.kit.motion.active = true; r.fanUntil = clock + E.fanFor; }
+      }
+      const want = waveStep(aliveCount(wave), W.coarse, STEP);
+      if (want !== step) { switches.push({ clock, t, from: 1 / step, to: 1 / want, alive: aliveCount(wave) }); step = want; }
       const cam = camera();
       if (cam) { cam.updateMatrixWorld(); frustum.setFromProjectionMatrix(viewM.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse)); }
       let need = 0; lodNow = 0;
       for (const r of reeds) {
-        if (!r.dead) {
+        if (r.phase === 'below') continue;   // not stepped: it waits
+        if (!r.dead && r.phase === 'up') {
           const fr = r.fear.step(t);
           r.temper.step(dt, fr.flight);
-          const m = r.kit.motion;
+          const m = r.kit.motion, c = r.body.centre;
           if (fr.mode === 'stun') m.active = false; else m.active = true;
-          if (prey && fr.mode !== 'stun') {
-            const p = aim(r.body.centre, fr.mode === 'flee' ? fr.point : prey);
+          const fanning = clock < r.fanUntil && Math.hypot(c[0] - r.fan[0], c[1] - r.fan[1]) > E.jitter;
+          if (!fanning) r.fanUntil = 0;   // out (or out of time): it hunts from now on
+          const goal = fr.mode === 'flee' ? fr.point : fanning ? r.fan : prey;
+          if (goal && fr.mode !== 'stun') {
+            const p = aim(c, goal);
             m.targetHeld = true;   // Isao is always held, as with the boss: the hold that takes him is the rules'
             r.kit.setTarget(target.set(p[0] / r.s, ARENA.lureHeight, p[1] / r.s));
           }
         }
         r.lod = !!W.lod && !r.dead && far(r, cam);
         if (r.lod) lodNow++;
-        need += (r.lod ? 0.5 : 1) * dt / STEP * cost;
+        need += (r.lod ? 0.5 : 1) * dt / step * cost;
       }
       timeScale = need > W.budget ? W.budget / need : 1;
       let ms = 0, steps = 0;
       for (const r of reeds) {
+        if (r.phase === 'below') continue;
         if (r.lod && ((frame + r.id) & 1)) continue;   // a far Reed steps every other frame
         try {
-          steps += r.kit.update(dt * timeScale);
+          r.kit.phys.step = step;   // each fixed step simulates this; the stepper counts in the kit's 1/240 s, so it is handed dt x (1/240) / step (see THE STEP)
+          steps += r.kit.update(dt * timeScale * STEP / step);
           ms += r.kit.timings.solver + r.kit.timings.skin;
         } catch (e) {   // a non-finite body: back at its place, whole in its shape
           onError(`Reed ${r.id}: ${e.message}`);
           r.kit.reset(); shiftKit(r.kit, r.place[0] / r.s, r.place[1] / r.s);
         }
       }
+      clock += dt * timeScale;
       if (steps > 0) cost = cost * 0.9 + (ms / steps) * 0.1;
       solverMs = ms; stepsNow = steps; push(meanSolver, ms); push(meanScale, timeScale);
       for (const r of reeds) { place(r); if (!r.dead) r.body = kitNow(r.kit, r.s, r.native); }
+      if (trace) { trace.push({ clock, t, hz: Math.round(1 / step), alive: aliveCount(wave), speed: topSpeed() }); if (trace.length > TRACE) trace.shift(); }
       const bodies = live().map((r) => ({ id: r.id, ...r.body, r }));
       hunted = prey ? nearestReed(bodies, prey) : bodies[0] ?? null;
     },
@@ -206,28 +353,49 @@ export function createWave({ sphere, tune, fight, now, motion, phys, ground, tan
       const r = hunted.r, c = r.kit.motion.center, w = ground(c.x * r.s, c.z * r.s), u = tangent(w).up, h = c.y * r.s + lift;
       return [w[0] + u[0] * h, w[1] + u[1] * h, w[2] + u[2] * h];
     },
-    // a re-anchor of the lab's frame moves every local position: each Reed's arrays by the same vector in its own native units, as the boss's
+    // a re-anchor of the lab's frame moves every local position: each Reed's arrays by the same vector in its own native units, as the boss's (the carcasses are
+    // drawn in their own frames on the sphere, which a re-anchor does not move)
     shift(sx, sz) {
       for (const r of reeds) {
-        shiftKit(r.kit, sx / r.s, sz / r.s); r.place[0] += sx; r.place[1] += sz;
+        shiftKit(r.kit, sx / r.s, sz / r.s); r.place[0] += sx; r.place[1] += sz; r.first[0] += sx; r.first[1] += sz; r.fan[0] += sx; r.fan[1] += sz;
         if (r.body) r.body = kitNow(r.kit, r.s, r.native);
       }
+      centre[0] += sx; centre[1] += sz;
     },
-    // the acceptance's cheat: every Reed still standing dies now
+    // the acceptance's cheat: every Reed still standing dies now (one still below the ground goes without a carcass)
     killAll() {
       let n = 0;
       for (const rr of wave.reeds) if (!rr.dead) { hurtReed(wave, rr.id, rr.hp, now()); n++; const r = reeds.find((x) => x.id === rr.id); if (r) die(r); }
       return n;
     },
+    // the acceptance's: the Reeds up and alive killed down to `left` (the newest first), so the step's switch can be watched; the number killed
+    thin(left) {
+      let n = 0;
+      for (const r of [...reeds].reverse()) {
+        if (aliveCount(wave) <= left) break;
+        if (r.dead || r.phase !== 'up') continue;
+        hurtReed(wave, r.id, wave.reeds[r.id].hp, now()); die(r); n++;
+      }
+      return n;
+    },
+    // the step trace (the acceptance's jolt check): on(true) starts it afresh, on(false) stops it; read() is [{ clock, t, hz, alive, speed }] a frame
+    trace: (on) => { if (on !== undefined) trace = on ? [] : null; return trace ? [...trace] : null; },
     // the bar's and the readout's numbers
     bar: () => (wave.boss ? null : { alive: aliveCount(wave), count: wave.count }),
-    stats: () => ({ solver: solverMs, steps: stepsNow, meanSolver: mean(meanSolver), timeScale, meanScale: mean(meanScale), lod: lodNow, cost }),
-    // the handle's view: the wave's count, alive, made (bodies standing or lying), cleared, the boss in, each Reed's hit points and centre (local)
+    stats: () => ({ solver: solverMs, steps: stepsNow, meanSolver: mean(meanSolver), timeScale, meanScale: mean(meanScale), lod: lodNow, cost, hz: Math.round(1 / step), clock }),
+    // the handle's view: the wave's count, alive, made (bodies standing or lying), cleared, the boss in, each Reed's hit points, centre (local), first centre, phase,
+    // lift and top (metres over the surface: below 0 it is still under), hunting (up and done fanning out), the step (hz) and its switches, the carcasses ({ id, age share k, heat, flat, sink, tris })
     state: () => ({
       count: wave.count, alive: aliveCount(wave), killed: wave.killed, made: reeds.length, cleared: waveCleared(wave), boss: wave.boss, entered,
-      reeds: wave.reeds.map((rr) => { const r = reeds.find((x) => x.id === rr.id); return { id: rr.id, hp: rr.hp, dead: rr.dead, hits: rr.hits, body: !!r, centre: r?.body ? [...r.body.centre] : null, contacts: r?.body?.contacts.length ?? 0, lod: !!r?.lod }; }),
+      reeds: wave.reeds.map((rr) => {
+        const r = reeds.find((x) => x.id === rr.id);
+        return { id: rr.id, hp: rr.hp, dead: rr.dead, hits: rr.hits, body: !!r, centre: r?.body ? [...r.body.centre] : null, contacts: r?.body?.contacts.length ?? 0, lod: !!r?.lod,
+          first: r ? [...r.first] : null, phase: r?.phase ?? null, hunting: !!r && !rr.dead && r.phase === 'up' && r.fanUntil === 0, lift: r?.lift ?? null, top: r ? (r.height + r.lowest) * r.s : null, shown: !!r?.outer.visible };
+      }),
       hunted: hunted && !hunted.r.dead ? hunted.id : null, solver: solverMs, steps: stepsNow, timeScale, lod: lodNow, cost, meanSolver: mean(meanSolver), meanScale: mean(meanScale),
+      hz: Math.round(1 / step), clock, switches: switches.map((w) => ({ ...w })), keep: keep(), laid,
+      carcasses: carcasses.map((c) => ({ id: c.id, k: c.look.k, heat: c.look.heat, flat: c.look.flat, sink: c.look.sink, tris: c.mesh.geometry.index.count / 3, shown: c.outer.parent === dead })),
     }),
-    dispose() { disposed = true; gen++; for (const r of reeds) drop(r); reeds = []; sphere.remove(root); },
+    dispose() { disposed = true; gen++; for (const r of reeds) drop(r); for (const c of carcasses) bury(c); reeds = []; carcasses = []; sphere.remove(root); sphere.remove(dead); },
   };
 }

@@ -104,11 +104,22 @@ export const BOSS_FIGHT = freeze({
   },
   // THE BAIT MODE'S FIRST WAVE (owner, 2026-10-09: "let's test something with the fps; wave 1 is 5 to 50 (slider) Reed - four limbs, creatures, smaller (size 15) and
   // with only 20 hp, not 180. once they are defeated, the bigger Nih Dairia shows up"; src/domain/boss-wave.js). `count` Reeds (the panel's slider and ?reeds=N; 0 is the
-  // boss at once) of `reedHealth` hit points and `size` metres, spawned evenly round the arena `inset` metres inside the bound; a dead one lies collapsing `corpse` seconds
-  // before it goes. The last one dead, the boss lands at the arena's centre and Isao is put out to `clear` metres from it if he is nearer. `budget` is the lab's: the
+  // boss at once) of `reedHealth` hit points and `size` metres; a dead one lies collapsing `corpse` seconds before it is laid down as a carcass
+  // (`carcass`, below). The last one dead, the boss lands at the arena's centre and Isao is put out to `clear` metres from it if he is nearer. `budget` is the lab's: the
   // milliseconds of solver a frame the whole wave may take (past it the Reeds' clock runs slower, never a catch-up spiral), `lod` its off-screen Reeds at half rate (off: at
   // fifty Reeds in the seat it ran the wave's clock at 0.053 and 0.068 against 0.048 and 0.044 with 13 and 27 off-screen, every one crawling, and at ten none or two are off-screen, 2026-10-09)
-  wave: { count: 10, reedHealth: 20, size: 15, inset: 15, corpse: 2, clear: 45, budget: 10, lod: false },
+  // THE SECOND PASS (owner, 2026-10-10: "Have the Reed and the boss come out of a tremor in the center ... start with 120 HZ when there are more than 10 Reeds, and
+  // switch back to 240HZ when there are fewer ... a low-poly dead Reed Carcass that stays and decays"). `emerge`: each Reed comes up at the arena's centre (`jitter` m
+  // off it), `gap` s after the one before; a tremor (the seat's camera shaken, dust, the quake's rumble) `lead` s, then it rises out of the ground
+  // over `rise` s (drawn from `depth` times its height below), walks out to `fan` m from the centre for at most `fanFor` s and hunts; Isao's planner keeps `keep` m off
+  // the centre while any Reed is still to come up (`clear` while the boss rises). `coarse`: the Reeds' solver steps at 1 / `hz` s while more than `above` stand (`on`, the
+  // panel's switch), the kit's 1/240 s otherwise; the boss always at the kit's. `carcass`: laid down, a dead Reed's tet cage surface (flat shaded) darkens by `dark`,
+  // flattens to `flat` of its height and sinks `sink` of it over `decay` s, its thermal warmth gone by `cold` of the decay; then it goes; at most `max` lie, the oldest
+  // going first
+  wave: { count: 10, reedHealth: 20, size: 15, corpse: 2, clear: 45, budget: 10, lod: false,
+    emerge: { gap: 0.6, lead: 0.35, rise: 1.5, depth: 1.15, jitter: 4, fan: 20, fanFor: 2.5, keep: 25 },
+    coarse: { on: true, above: 10, hz: 120 },
+    carcass: { decay: 60, max: 30, dark: 0.75, flat: 0.4, sink: 0.35, cold: 0.6 } },
   bounds: { radius: 120, baitMargin: 10, creatureMargin: 15 },   // the arena disc round the origin: Isao's wanted point stays radius - baitMargin in, the creature's target radius - creatureMargin, the body's nodes are pushed back inside radius
   orbit: { radius: 200, lap: 120, bank: 0.12 },   // the gunship platform's ground track round the origin: 200 m, one lap per 120 s (10.5 m/s); the bank in radians is about twice the coordinated 0.056 (v squared over r g) so the roll reads on the seat's camera without lurching
   card: 3,                 // the KILLED / LOST card's seconds before the reset

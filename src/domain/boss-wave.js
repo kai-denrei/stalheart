@@ -6,6 +6,14 @@
 //
 // Local metres on the frame's plane [x, z]; `now` the lab's clock. The bodies the rules see are the lab's ({ id, centre, contacts }, the live Reeds that have a
 // body); a Reed still loading has none and cannot be hit. Imports only ./gunship.js's falloff, so a Reed is hurt exactly as the boss is.
+//
+// THE SECOND PASS (owner, 2026-10-10: "Have the Reed and the boss come out of a tremor in the center ... could we start with 120 HZ when there are more than 10
+// Reeds, and switch back to 240HZ when there are fewer? ... a low-poly dead Reed Carcass that stays and decays"): `emergePlan` puts every Reed at the arena's
+// centre (`emerge.jitter` metres off it, toward its own fan direction), `emerge.gap` seconds after the one before, with the point it fans out
+// to (`emerge.fan` metres out, the directions a golden angle apart) before it hunts; `emergence` is one Reed's phase by its age on that clock (below the ground,
+// the tremor, the rise over `emerge.rise` s with its eased lift, up); `waveStep` the solver's fixed step for the Reeds alive (`coarse`); `carcassLook` a dead
+// Reed's carcass by its age (darkened, flattened, sunk and cooled over `carcass.decay` s, then gone); `keepOut` a point pushed out of a disc (Isao's planner
+// kept off the centre while something emerges there).
 
 import { splashDamage } from './gunship.js';
 
@@ -18,12 +26,41 @@ export function makeWave(count, tune) {
   return { count: n, reeds: Array.from({ length: n }, (_, id) => ({ id, hp, max: hp, dead: false, diedAt: null, hits: 0, burnt: new Set() })), killed: 0, boss: n === 0 };
 }
 
-// where the Reeds start: `count` points evenly round `at` (the arena's centre), `wave.inset` metres inside the bound, the first at angle `phase`
-export function wavePlaces(count, tune, at = [0, 0], phase = 0) {
-  const r = Math.max(0, tune.bounds.radius - tune.wave.inset), out = [];
-  for (let i = 0; i < count; i++) { const a = phase + i * 2 * Math.PI / count; out.push([at[0] + r * Math.cos(a), at[1] + r * Math.sin(a)]); }
+const GOLDEN = Math.PI * (3 - Math.sqrt(5));   // radians: successive directions a golden angle apart spread any count evenly enough
+// where the Reeds come from and go: [{ at, emergeAt, fan }] for `count` Reeds, `at` the emergence point (`emerge.jitter` metres from the arena's centre `centre`,
+// toward its fan direction), `emergeAt` its tremor's time from the wave's start (`emerge.gap` seconds apart, the first at 0), `fan` the point it walks out to first
+// (`emerge.fan` metres from the centre); the first direction is `phase`
+export function emergePlan(count, tune, centre = [0, 0], phase = 0) {
+  const E = tune.wave.emerge, out = [];
+  for (let i = 0; i < count; i++) {
+    const a = phase + i * GOLDEN, u = [Math.cos(a), Math.sin(a)];
+    out.push({ at: [centre[0] + u[0] * E.jitter, centre[1] + u[1] * E.jitter], emergeAt: i * E.gap, fan: [centre[0] + u[0] * E.fan, centre[1] + u[1] * E.fan] });
+  }
   return out;
 }
+
+// one Reed's emergence `age` seconds after its tremor began (negative before): 'below' (waiting under the ground), 'tremor' (the ground shakes, `emerge.lead` s),
+// 'rising' (out of the ground over `emerge.rise` s, `lift` 0..1 smoothstepped) and 'up' (lift 1: it walks)
+export function emergence(age, E) {
+  if (!(age >= 0)) return { phase: 'below', lift: 0 };
+  if (age < E.lead) return { phase: 'tremor', lift: 0 };
+  const k = (age - E.lead) / E.rise;
+  if (k < 1) return { phase: 'rising', lift: k * k * (3 - 2 * k) };
+  return { phase: 'up', lift: 1 };
+}
+
+// the Reeds' fixed step (seconds) for `alive` Reeds: `1 / coarse.hz` while more than `coarse.above` stand (and the switch is on), `fine` (the kit's) otherwise
+export const waveStep = (alive, coarse, fine) => (coarse.on && alive > coarse.above ? 1 / coarse.hz : fine);
+
+// a carcass `age` seconds after it was laid down: `k` the decay's share (0..1), `dark` the share it is darkened by, `flat` its height's scale, `sink` the share
+// of its height it has sunk, `heat` its warmth in the thermal (1 fresh, 0 cold once `carcass.cold` of the decay has gone, squared), `gone` at the decay's end
+export function carcassLook(age, C) {
+  const k = Math.min(1, Math.max(0, age / C.decay)), c = Math.max(0, 1 - k / C.cold);
+  return { k, dark: C.dark * k, flat: 1 - (1 - C.flat) * k, sink: C.sink * k, heat: c * c, gone: age >= C.decay };
+}
+
+// `p` pushed out of the disc of `radius` round `centre` along its bearing (east when on the centre); `p` itself (a copy) outside it
+export const keepOut = (p, centre, radius) => entryClear(p, centre, radius) ?? [p[0], p[1]];
 
 export const aliveCount = (wave) => wave.reeds.reduce((n, r) => n + (r.dead ? 0 : 1), 0);
 
