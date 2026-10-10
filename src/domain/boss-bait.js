@@ -55,6 +55,22 @@
 // straight out at `flee`, the hop's phases going on. (4) His panic picks, of the directions away from the arm, the nearest to straight away that leaves every
 // ring clear. A nuke he cannot outrun is the player's to answer for. With no zones every path is the one before, bit for bit.
 //
+// HIS FLIGHT IS A BODY'S (owner, 2026-10-10: "often when Isao is too close to the enemy, his camera shakes violently, like the 3d model is stuck repeatedly on a
+// wrong path ... it breaks the immersion by looking like physically impossible motion"). The trace (.superpowers/sdd/isao-shake-report.md): the mover stepped him
+// straight at the wanted point at the wanted speed every frame, so every jump of that point was a jump of his velocity, and close to the creature the panic's point
+// (straight away from the NEAREST low arm) swung between two arms nearly as near frame by frame, a zigzag at 32 m/s (with the creature held close, over half the
+// frames above 60 m/s2, the p90 3,600, the panic starting 44 times in 20 s). Now (1) he carries a velocity (`bait.vel`, m/s on the plane) and every mode steers it
+// toward the wanted one by at most `accel` m/s2 cruising and `panicAccel` fleeing a ring or an arm or escaping from under it, his ground point moving by the
+// frame's mean velocity; on a point he is to stop on (`moveBait`'s `stop`) he brakes to arrive (no faster than a stop at that limit allows); (2) his
+// panic flees the sum of every low arm within `panic + panicExit`, each weighted by how far inside that ring it is, with a tenth of the way out from the
+// creature's centre (an arm crossing the ring fades in and out, two arms nearly as near no longer trade places, arms all round him send him out); (3) the panic
+// has hysteresis and a dwell: it starts with an arm inside `panic`, and ends only once every arm is beyond `panic + panicExit` and it has lasted `panicDwell`
+// seconds; (4) a hop's climb and descent ease at `climbAccel` m/s2 (`bait.hop.vy`), its ground velocity at `accel` (out from under the creature or a ring at
+// `panicAccel`), and to stay as quick as the jump it was the phases overlap: he sets off across half way up from the reach to `hopAlt`, and comes down as he
+// brakes onto the far point, flying off round the creature at the cruise as he lands (the autopilot takes him moving, not from a hover). A constraint that moves his ground point (a ring's edge, the lab's bound:
+// `constrainBait`) drops the part of his velocity that pushed into it, so he slides along it. The limits are finite: without `accel`, `panicAccel`, `climbAccel`
+// (a tune without the keys) the steering is immediate, as before.
+//
 // Imports only the domain: ./gunship.js's falloff (`splashDamage`) and the fight's `lineOf`.
 
 import { splashDamage } from './gunship.js';
@@ -65,9 +81,11 @@ const PULL = 3;            // metres of radial pull per metre the keep distance 
 const RADIAL_MAX = 24;     // ...at most this many
 const FLEE_STEP = 10;      // metres the wanted point sits beyond him while he backs off
 const ARRIVE = 2;          // metres from the far point at which the hop's cross ends
+const ALT_NEAR = 0.01;     // metres: a hop's climb or descent this near its altitude, at a vertical speed a frame's ease stops, is there
 const ZONE_PAD = 0.5;      // metres beyond a ring's edge at which a wanted point is put, and the tangent a detour flies
 const PANIC_TURNS = [0, 0.4, -0.4, 0.8, -0.8, 1.2, -1.2, 1.6, -1.6, 2.0, -2.0, 2.4, -2.4, 2.8, -2.8, Math.PI];   // radians off straight away from the arm a panic tries, nearest first
 const ZONE_EDGE = 0.25;    // metres: this close to a detour's circle he flies its tangent
+const OUTWARD = 0.1;       // the panic's weight on the way out from the creature's centre, against an arm's 1 at its contact (HIS FLIGHT IS A BODY'S, above)
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 
 // a small seeded generator (mulberry32): `flight.rng` is its 32-bit state; each draw is a number in [0, 1)
@@ -85,7 +103,8 @@ export function makeBait(at, tune, seed = 1) {
   flight.phase = [draw(flight) * 2 * Math.PI, draw(flight) * 2 * Math.PI];
   // the fly-over's state: the hop in progress ({ phase, why, dir, alt, t, cross }) or null, the hops so far, the seconds trapped, the cooldown left, the seconds he has been under it
   const hops = { hop: null, hops: 0, trapT: 0, hopWait: 0, underT: 0, zoneSide: 0, zoneFlee: false, hopRng: { rng: Math.imul(seed >>> 0, 0x9E3779B1) >>> 0 } };
-  return { pos: [at[0], at[1]], heading: 0, hp: B.health, max: B.health, fleeing: false, held: 0, reach: null, flight, ...hops };
+  // `vel` his ground velocity (m/s), `panicT` the seconds the panic (or its absence) has lasted (HIS FLIGHT IS A BODY'S, above)
+  return { pos: [at[0], at[1]], vel: [0, 0], heading: 0, hp: B.health, max: B.health, fleeing: false, panicT: 0, held: 0, reach: null, flight, ...hops };
 }
 
 // the nearest floor contact to a point (null and Infinity with none)
@@ -108,6 +127,31 @@ function unitOf(a, b, fallback = [0, 1]) {
   const d = dist(a, b);
   return d < 1e-9 ? fallback : [(b[0] - a[0]) / d, (b[1] - a[1]) / d];
 }
+// ---- his flight's body (HIS FLIGHT IS A BODY'S, above) ----
+// the speed toward a point `d` metres off: `speed`, braked so that `accel` m/s2 stops him on it in frames of `dt` (the discrete stop: d = v^2 / 2a + v dt / 2,
+// so the last frame's speed is under accel x dt and the stop itself is within the limit), and never past it in a frame
+const arrive = (d, speed, accel, dt) => {
+  const h = accel * dt / 2;
+  return Math.min(speed, Number.isFinite(accel) ? Math.sqrt(h * h + 2 * accel * d) - h : Infinity, d / dt);
+};
+// his velocity steered toward `target` ([vx, vz] m/s) by at most `accel` x dt (any `accel` not finite: at once), and his ground point moved by the frame's
+// mean velocity (the old and the new: exact for a constant acceleration, so the path is smooth whatever the frames' lengths)
+function steerVel(bait, target, accel, dt) {
+  const v = bait.vel, vx = v[0], vz = v[1], dx = target[0] - vx, dz = target[1] - vz, d = Math.hypot(dx, dz), most = accel * dt;
+  const k = Number.isFinite(most) && d > most ? most / d : 1;
+  v[0] += dx * k; v[1] += dz * k;
+  bait.pos[0] += (vx + v[0]) / 2 * dt; bait.pos[1] += (vz + v[1]) / 2 * dt;
+}
+// his ground point moved to `at` by a constraint (a ring's edge, the lab's bound): the part of his velocity that pushed into the correction is dropped, so he
+// slides along it instead of pressing on it frame after frame
+export function constrainBait(bait, at) {
+  const cx = at[0] - bait.pos[0], cz = at[1] - bait.pos[1], c = Math.hypot(cx, cz);
+  bait.pos[0] = at[0]; bait.pos[1] = at[1];
+  if (c < 1e-9 || !bait.vel) return;
+  const nx = cx / c, nz = cz / c, into = bait.vel[0] * nx + bait.vel[1] * nz;
+  if (into < 0) { bait.vel[0] -= nx * into; bait.vel[1] -= nz * into; }
+}
+
 // a point moved out of every ring it is in, to the ring's edge plus ZONE_PAD on the side of `from` (his position)
 export function pushOut(point, from, zones, margin) {
   let p = point;
@@ -160,7 +204,7 @@ function holdOut(bait, was, zones, margin) {
     const d = dist(bait.pos, z.at);
     if (d >= R) continue;
     const u = unitOf(z.at, bait.pos, unitOf(z.at, was));
-    bait.pos[0] = z.at[0] + u[0] * R; bait.pos[1] = z.at[1] + u[1] * R; held = true;
+    constrainBait(bait, [z.at[0] + u[0] * R, z.at[1] + u[1] * R]); held = true;
   }
   return held;
 }
@@ -200,11 +244,31 @@ export function envelopeBait(bait, creature, dt, tune) {
 // the point he wants now: the one `keep` metres outside the reach envelope (`bait.reach`, else the floor contacts' front edge), a short way ahead round the
 // circle; or, with an arm inside `panic` (a floor contact, or a body node under `panicHeight`), a point straight away from it. Sets `bait.fleeing` for
 // `moveBait` (the cruise or the flee speed)
+// the panic's way out: the sum of the unit vectors away from every low arm within `ring` metres, each weighted by how far inside the ring it is (1 at his
+// ground point, 0 at the ring), plus OUTWARD of the way out from the creature's centre; a unit, continuous as the arms move (`toward` the fallback)
+function panicAway(pos, low, centre, ring) {
+  let x = 0, z = 0;
+  for (const p of low ?? []) {
+    const dx = pos[0] - p[0], dz = pos[1] - p[1], d = Math.hypot(dx, dz);
+    if (d >= ring || d < 1e-9) continue;
+    const w = (ring - d) / ring;
+    x += dx / d * w; z += dz / d * w;
+  }
+  const out = centre ? unitOf(centre, pos, [0, 1]) : [0, 1];
+  x += out[0] * OUTWARD; z += out[1] * OUTWARD;
+  const d = Math.hypot(x, z);
+  return d < 1e-9 ? out : [x / d, z / d];
+}
+
 export function planBait(bait, creature, tune, zones = null) {
-  const B = tune.bait, near = nearestOf(lowOf(creature, B), bait.pos), Z = zones?.length ? zones : null, margin = B.nukeMargin ?? 0;
-  bait.fleeing = near.d < B.panic;
+  const B = tune.bait, low = lowOf(creature, B), near = nearestOf(low, bait.pos), Z = zones?.length ? zones : null, margin = B.nukeMargin ?? 0;
+  // the panic's hysteresis and dwell (HIS FLIGHT IS A BODY'S, above): in at `panic`, out beyond `panic + panicExit` once it has lasted `panicDwell` s
+  // (`bait.panicT`, the mover's clock of it)
+  const exit = B.panic + (B.panicExit ?? 0), was = bait.fleeing;
+  bait.fleeing = was ? near.d < exit || bait.panicT < (B.panicDwell ?? 0) : near.d < B.panic;
+  if (bait.fleeing !== was) bait.panicT = 0;
   if (bait.fleeing) {
-    const away = near.d < 1e-6 ? [0, 1] : [(bait.pos[0] - near.at[0]) / near.d, (bait.pos[1] - near.at[1]) / near.d];
+    const away = panicAway(bait.pos, low, creature.centre, exit);
     if (Z) {   // the direction nearest straight away from the arm that leaves every ring clear (a panic never drives him into one)
       for (const turn of PANIC_TURNS) {
         const c = Math.cos(turn), s = Math.sin(turn), u = [away[0] * c - away[1] * s, away[0] * s + away[1] * c], p = [bait.pos[0] + u[0] * FLEE_STEP, bait.pos[1] + u[1] * FLEE_STEP];
@@ -221,8 +285,12 @@ export function planBait(bait, creature, tune, zones = null) {
 }
 
 // moves him toward `want` for dt seconds at the cruise or the flee speed (stopping on a point nearer than a step) and eases his
-// heading toward the way he moved; returns { want, heading, bob } (`bob` is the altitude offset in metres, 0 at erratic 0)
-export function moveBait(bait, dt, want, tune, zones = null) {
+// heading toward the way he moved; returns { want, heading, bob } (`bob` is the altitude offset in metres, 0 at erratic 0). The planner's points are carrots
+// ahead of him; `stop` true says `want` is a place to stop on (a point pushed out of a ring is one, or the lab's point moved by something other than the
+// bound): he brakes to arrive on it at his limit instead of overshooting and swinging back round it. `wall` ({ at, radius }, local metres, or null) is the
+// bound the lab holds his wanted point inside: his speed OUT toward it is braked so his limit stops him on it, his speed along it is not (a point held on
+// the bound is still a carrot sliding along it: braking onto it had him crawl along the bound, pinned, the creature closing)
+export function moveBait(bait, dt, want, tune, zones = null, stop = false, wall = null) {
   const B = tune.bait, erratic = B.erratic > 0, f = bait.flight, Z = zones?.length ? zones : null, margin = B.nukeMargin ?? 0;
   // inside a ring: straight out of it at the flee speed (the keep, the jinks and the panic overridden); else the wanted point is moved out of the rings and the
   // path to it routed round them (the nuke zones, above)
@@ -231,9 +299,10 @@ export function moveBait(bait, dt, want, tune, zones = null) {
   if (Z) {
     bait.zoneFlee = !!inside;
     if (inside) { want = outOf(bait.pos, inside, want); bait.zoneSide = 0; }
-    else { const to = pushOut(want, bait.pos, Z, margin); want = detour(bait, to, Z, margin); detoured = bait.zoneSide !== 0; }
+    else { const to = pushOut(want, bait.pos, Z, margin); stop = stop || to !== want; want = detour(bait, to, Z, margin); detoured = bait.zoneSide !== 0; }
   } else bait.zoneFlee = false;
-  const flee = bait.fleeing || bait.zoneFlee;
+  const flee = bait.fleeing || bait.zoneFlee, accel = (flee ? B.panicAccel : B.accel) ?? Infinity;
+  bait.panicT = (bait.panicT ?? 0) + dt;   // the panic's dwell (planBait)
   let speed = flee ? B.flee : B.speed, jink = 0;
   if (erratic) {
     const E = Math.min(1, B.erratic);
@@ -252,21 +321,37 @@ export function moveBait(bait, dt, want, tune, zones = null) {
     }
     speed = f.speed;
   }
-  const dx = want[0] - bait.pos[0], dz = want[1] - bait.pos[1], d = Math.hypot(dx, dz), step = speed * dt;
-  if (d > 1e-9) {
-    const k = Math.min(step, d) / d;
-    let mx = dx * k, mz = dz * k;
-    if (jink) { const c = Math.cos(jink), s = Math.sin(jink); [mx, mz] = [mx * c - mz * s, mx * s + mz * c]; }
-    bait.pos[0] += mx; bait.pos[1] += mz;
-    let steered = jink !== 0;
-    if (Z && holdOut(bait, was, Z, margin)) { mx = bait.pos[0] - was[0]; mz = bait.pos[1] - was[1]; steered = true; }   // a step into a ring is held on its edge
-    let turn = (steered ? Math.atan2(mz, mx) : Math.atan2(dz, dx)) - bait.heading;
+  // the velocity he wants: toward the point at the speed, braked to arrive on it, turned by the jink; his own steered to it within the mode's limit
+  const dx = want[0] - bait.pos[0], dz = want[1] - bait.pos[1], d = Math.hypot(dx, dz);
+  let tx = 0, tz = 0;
+  if (d > 1e-9 && dt > 0) {
+    const s = stop ? arrive(d, speed, accel, dt) : Math.min(speed, d / dt);
+    tx = dx / d * s; tz = dz / d * s;
+    if (jink) { const c = Math.cos(jink), sn = Math.sin(jink); [tx, tz] = [tx * c - tz * sn, tx * sn + tz * c]; }
+  }
+  if (wall && dt > 0) {   // the outward part braked to stop on the wall
+    const n = unitOf(wall.at, bait.pos, [0, 0]), out = tx * n[0] + tz * n[1], room = Math.max(0, wall.radius - dist(bait.pos, wall.at));
+    const most = arrive(room, Infinity, accel, dt);
+    if (out > most) { tx -= n[0] * (out - most); tz -= n[1] * (out - most); }
+  }
+  if (!bait.vel) bait.vel = [0, 0];
+  steerVel(bait, [tx, tz], accel, dt);
+  if (Z) holdOut(bait, was, Z, margin);   // a step into a ring is held on its edge
+  if (Math.hypot(bait.vel[0], bait.vel[1]) > 1e-6) {   // the heading eases toward the way he flies
+    let turn = Math.atan2(bait.vel[1], bait.vel[0]) - bait.heading;
     turn -= Math.round(turn / (2 * Math.PI)) * 2 * Math.PI;
     const max = B.turn * dt;
     bait.heading += Math.max(-max, Math.min(max, turn));
   }
-  const bob = erratic ? B.bob * Math.min(1, B.erratic) * (0.6 * Math.sin(2 * Math.PI * f.t / B.bobPeriod[0] + f.phase[0]) + 0.4 * Math.sin(2 * Math.PI * f.t / B.bobPeriod[1] + f.phase[1])) : 0;
-  return { want, heading: bait.heading, bob };
+  return { want, heading: bait.heading, bob: bobOf(bait, B) };
+}
+
+// the altitude bob now (metres; 0 at erratic 0): two sines on the erratic flight's clock, which runs through the hops too (the lab fades the bob out over a hop,
+// and a bob frozen at the hop's start would jump his vertical speed)
+function bobOf(bait, B) {
+  const f = bait.flight;
+  if (!(B.erratic > 0) || !f) return 0;
+  return B.bob * Math.min(1, B.erratic) * (0.6 * Math.sin(2 * Math.PI * f.t / B.bobPeriod[0] + f.phase[0]) + 0.4 * Math.sin(2 * Math.PI * f.t / B.bobPeriod[1] + f.phase[1]));
 }
 
 // the envelope, the plan and the move in one: the autopilot without routing
@@ -357,15 +442,16 @@ export function startHop(bait, creature, tune, why, alt, bound = null, zones = n
     const margin = tune.bait.nukeMargin ?? 0, clear = (sd) => { const g = farPoint(creature, dir, tune, bound, sd); return !zoneOf(g, Z, margin) && !crossing(bait.pos, g, Z, margin); };
     if (!clear(side)) { if (clear(-side)) side = -side; else if (why !== 'under' && why !== 'forced') return null; }
   }
-  bait.hop = { phase: 'climb', why, dir, side, alt, t: 0, cross: 0 };
-  bait.hops++; bait.trapT = 0; bait.underT = 0; bait.fleeing = false;
+  bait.hop = { phase: 'climb', why, dir, side, alt, vy: 0, t: 0, cross: 0 };
+  bait.hops++; bait.trapT = 0; bait.underT = 0; bait.fleeing = false; bait.panicT = 0;
   if (bait.flight) { bait.flight.jink = 0; bait.flight.jinkTarget = 0; }
   return bait.hop;
 }
 
 // one frame of the fly-over, before the autopilot: starts a hop when he has been trapped `trapFor` seconds or the chance falls (after the cooldown),
 // and flies the hop in progress. `bound` { at, radius, inset } or null, `alt` his altitude now, `base` the altitude he flies at. Returns null when no
-// hop is flying (the autopilot flies him), else { phase, alt, heading, started, ended } (`phase` the one he was in this frame)
+// hop is flying (the autopilot flies him), else { phase, alt, vy, bob, heading, started, ended } (`phase` the one he was in this frame, `vy` his vertical
+// speed, `bob` the erratic flight's bob running on)
 export function hopBait(bait, dt, creature, tune, { bound = null, alt = 0, base = 0, zones = null } = {}) {
   const B = tune.bait, Z = zones?.length ? zones : null, margin = B.nukeMargin ?? 0;
   let started = false, ended = false;
@@ -385,6 +471,7 @@ export function hopBait(bait, dt, creature, tune, { bound = null, alt = 0, base 
     started = true;
   }
   const h = bait.hop, phase = h.phase, rate = B.hopClimb * dt;
+  if (B.erratic > 0 && bait.flight) bait.flight.t += dt;   // the bob's clock runs on (bobOf)
   let to = farPoint(creature, h.dir, tune, bound, h.side);
   h.t += dt; bait.fleeing = false;
   const inside = Z ? zoneOf(bait.pos, Z, margin) : null, was = Z ? [bait.pos[0], bait.pos[1]] : null;
@@ -394,26 +481,56 @@ export function hopBait(bait, dt, creature, tune, { bound = null, alt = 0, base 
     if (inside) { steer = outOf(bait.pos, inside, to); bait.zoneSide = 0; }   // in a ring in the middle of a hop: straight out at the flee speed, the phases going on
     else { to = pushOut(to, bait.pos, Z, margin); steer = detour(bait, to, Z, margin); }
   } else bait.zoneFlee = false;
-  const dx = to[0] - bait.pos[0], dz = to[1] - bait.pos[1], d = Math.hypot(dx, dz);
-  if ((phase !== 'climb' || h.why === 'under' || inside) && d > 1e-9) {   // across (and on the way down; out from under it, on the way up too), no faster than `hopSpeed`
-    const sx = steer[0] - bait.pos[0], sz = steer[1] - bait.pos[1], sd = Math.hypot(sx, sz), k = sd > 1e-9 ? Math.min((inside ? B.flee : B.hopSpeed) * dt, sd) / sd : 0;
-    bait.pos[0] += sx * k; bait.pos[1] += sz * k;
-    if (Z) holdOut(bait, was, Z, margin);
+  // the escape from under it and a flight out of a ring steer at `panicAccel`; the other hops (trapped, random, forced) at the cruise's `accel`, their climb's
+  // braking to a hover and its vertical ease together staying a cruise's push
+  const dx = to[0] - bait.pos[0], dz = to[1] - bait.pos[1], d = Math.hypot(dx, dz), accel = (h.why === 'under' || inside ? B.panicAccel : B.accel) ?? Infinity;
+  let tx = 0, tz = 0;   // the velocity he wants: across (and on the way down; out from under it, on the way up too), no faster than `hopSpeed`; else a hover
+  // (once the climb is half way from the reach to the hop's altitude he sets off across: the eased climb and cross overlap, the hop no slower than a jump's)
+  if ((phase !== 'climb' || h.why === 'under' || inside || h.alt >= (B.reachHeight + B.hopAlt) / 2) && d > 1e-9 && dt > 0) {
+    const sx = steer[0] - bait.pos[0], sz = steer[1] - bait.pos[1], sd = Math.hypot(sx, sz);
+    if (sd > 1e-9) { const s = Math.min(arrive(d, inside ? B.flee : B.hopSpeed, accel, dt), sd / dt); tx = sx / sd * s; tz = sz / sd * s; }
+    // coming down onto the far point he flies off round the creature the way the keep does at the cruise, so he lands moving and the autopilot takes him
+    // from there (braked to a hover on the point, he set off again from nothing)
+    if (phase === 'descend' && !inside && steer === to) {
+      if (h.off || d <= ARRIVE) {
+        h.off = true;   // held for the rest of the descent
+        // the keep's own carrot round the creature (a lead along the circle, the radial pull holding the far point's distance from its centre)
+        const c = creature.centre, u = unitOf(c, bait.pos), lead = B.speed * AHEAD;
+        const radial = Math.max(-RADIAL_MAX, Math.min(RADIAL_MAX, (dist(to, c) - dist(bait.pos, c)) * PULL));
+        const cx = -u[1] * lead + u[0] * radial, cz = u[0] * lead + u[1] * radial, cl = Math.hypot(cx, cz) || 1;
+        tx = cx / cl * B.speed; tz = cz / cl * B.speed;
+      }
+    }
   }
+  if (!bait.vel) bait.vel = [0, 0];
+  steerVel(bait, [tx, tz], accel, dt);
+  if (Z) holdOut(bait, was, Z, margin);
   if (d > 1e-9) {   // the heading eases toward the far point, the way he goes
     let turn = Math.atan2(dz, dx) - bait.heading;
     turn -= Math.round(turn / (2 * Math.PI)) * 2 * Math.PI;
     bait.heading += Math.max(-B.turn * dt, Math.min(B.turn * dt, turn));
   }
+  // the altitude: toward the hop's (the climb and the cross) or his own (the descent) at no more than `hopClimb` m/s, the vertical speed eased at `climbAccel`
+  const climbTo = (target) => {
+    const err = target - h.alt, ca = B.climbAccel ?? Infinity;
+    if (!Number.isFinite(ca)) { h.alt += Math.max(-rate, Math.min(rate, err)); return; }
+    const want = dt > 0 ? Math.sign(err) * arrive(Math.abs(err), B.hopClimb, ca, dt) : 0, vy = h.vy ?? 0;
+    h.vy = vy + Math.max(-ca * dt, Math.min(ca * dt, want - vy));
+    h.alt += (vy + h.vy) / 2 * dt;   // the frame's mean vertical speed, as the ground's
+  };
+  const there = (target) => Math.abs(h.alt - target) < ALT_NEAR && Math.abs(h.vy ?? 0) <= (B.climbAccel ?? Infinity) * dt + 1e-9;
   if (phase === 'climb') {
-    h.alt += Math.max(-rate, Math.min(rate, B.hopAlt - h.alt));
-    if (Math.abs(h.alt - B.hopAlt) < 1e-9) { h.alt = B.hopAlt; h.phase = 'cross'; }
+    climbTo(B.hopAlt);
+    if (Math.abs(h.alt - B.hopAlt) < 1e-6 || there(B.hopAlt)) { h.alt = B.hopAlt; h.phase = 'cross'; }   // the last speed is under climbAccel x dt: the cross stops it
   } else if (phase === 'cross') {
+    h.vy = 0;
     h.cross += dt;
-    if (Math.hypot(to[0] - bait.pos[0], to[1] - bait.pos[1]) <= ARRIVE || h.cross >= B.hopCross) h.phase = 'descend';
+    // down once he is within ARRIVE of the far point, or as near as his braking to it takes (the descent and the braking overlap), or after `hopCross` s
+    const sp = Math.hypot(bait.vel[0], bait.vel[1]), brake = Number.isFinite(accel) ? sp * sp / (2 * accel) : 0;
+    if (Math.hypot(to[0] - bait.pos[0], to[1] - bait.pos[1]) <= ARRIVE + brake || h.cross >= B.hopCross) h.phase = 'descend';
   } else {
-    h.alt += Math.max(-rate, Math.min(rate, base - h.alt));
-    if (Math.abs(h.alt - base) < 1e-9) { h.alt = base; bait.hop = null; bait.hopWait = B.hopCooldown; bait.trapT = 0; ended = true; }
+    climbTo(base);
+    if (Math.abs(h.alt - base) < 1e-6 || there(base)) { h.alt = base; bait.hop = null; bait.hopWait = B.hopCooldown; bait.trapT = 0; ended = true; }
   }
-  return { phase, alt: h.alt, heading: bait.heading, started, ended };
+  return { phase, alt: h.alt, vy: h.vy ?? 0, bob: bobOf(bait, B), heading: bait.heading, started, ended };
 }

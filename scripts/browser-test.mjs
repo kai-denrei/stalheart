@@ -3028,6 +3028,43 @@ const killReal=(Date.now()-t0)/1000;
   assert(back.sweep===3.5&&back.speed===ownerKnobs['Chase speed']&&back.size===40,`a reach sweep tweaked in the bait mode survives the round trip through the tank (${JSON.stringify(back)})`);
   assert(tankBack.speed===tankSpeed&&tankBack.size===30,`and the tank's tweak survives the bait mode (${JSON.stringify(tankBack)})`);
   await setKnob('Chase speed',NIH_DAIRIA_MOTION.speed);}
+ // ---- THE SHAKE (owner, 2026-10-10: "often when Isao is too close to the enemy, his camera shakes violently, like the 3d model is stuck repeatedly on a wrong path";
+ // src/domain/boss-bait.js HIS FLIGHT IS A BODY'S, src/labs/boss/bait.js THE SHAKE, .superpowers/sdd/isao-shake-report.md): the creature held close (the bound at
+ // SHAKE_BOUND m, Isao put SHAKE_PUT m off its centre), the default fly-over chance, every frame of SHAKE_SECS s of lab clock recorded in a rAF after the lab's own:
+ // his drawn place (sphere metres) and the ISAO · CAM's eye and look target. On at least SHAKE_SHARE of the frames his drawn acceleration is under SHAKE_ACCEL m/s2
+ // and the camera's look turns under SHAKE_TURN degrees a second (before the fix 44 % were under 60 m/s2, the p90 3,600); the creature was close (a low
+ // arm within the panic's exit ring) on at least SHAKE_CLOSE of them. Frames out of a running round, with him gone, or across a pause or a cut are left out ----
+ {const SHAKE_BOUND=80,SHAKE_PUT=30,SHAKE_SECS=20,SHAKE_SHARE=0.99,SHAKE_ACCEL=60,SHAKE_TURN=360,SHAKE_CLOSE=0.2;
+  await evaluate(`${B}.mode("bait")`);await until(`${B}.mode() === "bait" && ${B}.fight().phase === "fight" && ${B}.bait() && !${B}.bait().gone && !!${B}.seat()`,30000);
+  await setKnob(HOP_KNOB,BOSS_FIGHT.bait.hopChance);await evaluate(`${B}.avoidNukes(true); ${B}.monitorCam(true); ${B}.bounds(${SHAKE_BOUND})`);
+  await evaluate(`(()=>{const c=${B}.fight().centre,b=${B}.bait().pos,d=Math.hypot(b[0]-c[0],b[1]-c[1])||1;${B}.putIsao([c[0]+(b[0]-c[0])/d*${SHAKE_PUT},c[1]+(b[1]-c[1])/d*${SHAKE_PUT}]);})()`);
+  await evaluate(`(()=>{const L=${B},out=[];window.__shakeRec={out,stop:false};const tick=()=>{if(window.__shakeRec.stop)return;const b=L.bait(),m=L.seat()?.monitor,c=L.isaoCam();
+    out.push({t:L.arena().clock,phase:L.fight().phase,gone:!b||b.gone,air:c?.air??null,from:m?.from??null,pos:m?.pos??null,low:b?.near?.low??null,fleeing:!!b?.fleeing,hop:b?.hop??null});requestAnimationFrame(tick);};
+    requestAnimationFrame(tick);})()`);
+  const t0=await evaluate(`${B}.arena().clock`);
+  for(const real=Date.now();Date.now()-real<120000;){await delay(500);if((await evaluate(`${B}.arena().clock`))-t0>=SHAKE_SECS)break;}
+  const rec=await evaluate(`(()=>{window.__shakeRec.stop=true;return window.__shakeRec.out;})()`);
+  await evaluate(`${B}.bounds(${BOSS_FIGHT.bounds.radius})`);
+  const sub=(a,b)=>a.map((x,i)=>x-b[i]),len=(a)=>Math.hypot(...a),unit=(a)=>{const l=len(a);return a.map(x=>x/l);};
+  const ok=(r)=>r.phase==='fight'&&!r.gone&&r.air&&r.from&&r.pos;
+  const acc=[],turn=[],eye=[];let close=0,frames=0,panics=0,hops=0;
+  for(let i=2;i<rec.length;i++){const r=rec[i],q=rec[i-1],o=rec[i-2],dt=r.t-q.t,dq=q.t-o.t;
+    if(!ok(r)||!ok(q)||!ok(o)||dt<=1e-6||dq<=1e-6||dt>0.0501||dq>0.0501)continue;
+    frames++;if(r.low!==null&&r.low<BOSS_FIGHT.bait.panic+(BOSS_FIGHT.bait.panicExit??4))close++;if(r.fleeing&&!q.fleeing)panics++;if(r.hop&&!q.hop)hops++;
+    acc.push(len(sub(sub(r.air,q.air).map(x=>x/dt),sub(q.air,o.air).map(x=>x/dq)))/((dt+dq)/2));   // the centred second difference (the frames' lengths vary)
+    eye.push(len(sub(sub(r.from,q.from).map(x=>x/dt),sub(q.from,o.from).map(x=>x/dq)))/((dt+dq)/2));   // the camera's eye, logged
+    const a=unit(sub(r.pos,r.from)),b=unit(sub(q.pos,q.from));turn.push(Math.acos(Math.max(-1,Math.min(1,a[0]*b[0]+a[1]*b[1]+a[2]*b[2])))*180/Math.PI/dt);}
+  const q=(a,p)=>{const s=[...a].sort((x,y)=>x-y);return +(s[Math.min(s.length-1,Math.floor(p*s.length))]??NaN).toFixed(1);};
+  const shake={frames,lab:+(rec.at(-1).t-rec[0].t).toFixed(1),close:+(close/frames).toFixed(3),panics,hops,
+    accel:{under:+(acc.filter(a=>a<=SHAKE_ACCEL).length/frames).toFixed(4),p50:q(acc,0.5),p90:q(acc,0.9),p99:q(acc,0.99),max:+Math.max(...acc).toFixed(0)},
+    turn:{under:+(turn.filter(w=>w<=SHAKE_TURN).length/frames).toFixed(4),p50:q(turn,0.5),p99:q(turn,0.99),max:+Math.max(...turn).toFixed(0)},
+    eye:{under:+(eye.filter(a=>a<=SHAKE_ACCEL).length/frames).toFixed(4),p50:q(eye,0.5),p90:q(eye,0.9),p99:q(eye,0.99),max:+Math.max(...eye).toFixed(0)}};
+  console.log('BOSS-BAIT shake '+JSON.stringify(shake));
+  assert(frames>=200&&shake.close>=SHAKE_CLOSE,`the creature held close: ${frames} frames, a low arm within ${BOSS_FIGHT.bait.panic+(BOSS_FIGHT.bait.panicExit??4)} m on ${(100*shake.close).toFixed(1)} % (bound ${100*SHAKE_CLOSE} %)`);
+  assert(shake.accel.under>=SHAKE_SHARE,`his drawn acceleration is under ${SHAKE_ACCEL} m/s2 on ${(100*shake.accel.under).toFixed(2)} % of the frames (bound ${100*SHAKE_SHARE} %; ${JSON.stringify(shake.accel)})`);
+  assert(shake.turn.under>=SHAKE_SHARE,`the ISAO · CAM's look turns under ${SHAKE_TURN} degrees a second on ${(100*shake.turn.under).toFixed(2)} % of the frames (bound ${100*SHAKE_SHARE} %; ${JSON.stringify(shake.turn)})`);
+  await evaluate(`${B}.mode("tank")`);await until(`${B}.mode() === "tank" && ${B}.seat() === null`,10000);}
+ // ---- end of THE SHAKE ----
  const rd=await evaluate(`${B}.readout()`);
  assert.deepEqual(rd.shaderErrors,[],'no shader errors');assert(!rd.error,`no frame error (${rd.error})`);
  current='boss-bait';await finish();

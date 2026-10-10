@@ -19,7 +19,7 @@ const EPS = 1e-9;
 
 // the content: the bait's numbers, deep-frozen, with Isao's altitude from the game (3.4 wall-heights x 0.03 + half a cell, at 125 m a world unit)
 assert.ok(Object.isFrozen(E), 'the bait content is frozen');
-assert.deepEqual(Object.keys(E).sort(), ['accel', 'altitude', 'bob', 'bobPeriod', 'caught', 'caughtFor', 'envelopeTime', 'erratic', 'flee', 'health', 'hopAlt', 'hopChance', 'hopClimb', 'hopCooldown', 'hopCross', 'hopSpeed', 'jink', 'jinkMax', 'jinkMin', 'keep', 'nukeAvoid', 'nukeMargin', 'panic', 'panicHeight', 'reachHeight', 'speed', 'speedMax', 'speedMin', 'surgeMax', 'surgeMin', 'trapBound', 'trapFor', 'trapNear', 'turn', 'underCore', 'underFor', 'underNear']);
+assert.deepEqual(Object.keys(E).sort(), ['accel', 'altitude', 'bob', 'bobPeriod', 'caught', 'caughtFor', 'climbAccel', 'envelopeTime', 'erratic', 'flee', 'health', 'hopAlt', 'hopChance', 'hopClimb', 'hopCooldown', 'hopCross', 'hopSpeed', 'jink', 'jinkMax', 'jinkMin', 'keep', 'nukeAvoid', 'nukeMargin', 'panic', 'panicAccel', 'panicDwell', 'panicExit', 'panicHeight', 'reachHeight', 'speed', 'speedMax', 'speedMin', 'surgeMax', 'surgeMin', 'trapBound', 'trapFor', 'trapNear', 'turn', 'underCore', 'underFor', 'underNear']);
 assert.ok(E.trapBound === 12 && E.trapNear === 25 && E.underCore === 0.5 && E.underNear === 8 && E.underFor === 0.5 && E.trapFor === 0.8 && E.hopChance === 0.03 && E.hopCooldown === 8 && E.hopAlt === 30 && E.hopClimb === 20 && E.hopSpeed === 22 && E.reachHeight === 18, 'the fly-over numbers');
 assert.ok(E.trapNear > E.keep && E.underNear < E.keep && E.reachHeight < E.hopAlt && E.hopSpeed <= E.speedMax, 'trapped is the creature at his keep, under is closer; the hop flies above the reach, no faster than his band');
 assert.ok(Math.abs(B.altitude - (3.4 * 0.03 + 0.08 / 2) * 125) < 1e-9, `Isao's altitude is the game's 3.4 wall-heights above the surface plus half a cell, in metres: ${B.altitude}`);
@@ -122,7 +122,8 @@ const envLog = {};
 { const run = () => { const b = makeBait([10, 50], T); for (let i = 0; i < 600; i++) stepBait(b, DT, bodyAt(0, 0), T); return [b.pos, b.heading]; };
   assert.deepEqual(run(), run(), 'two runs from one start are identical'); }
 
-// panic: an arm within `panic` makes him back straight off at `flee`, faster than he cruises
+// panic: an arm within `panic` makes him back straight off, up to `flee`, faster than he cruises; his velocity takes `panicAccel` to get there (HIS FLIGHT
+// IS A BODY'S, src/domain/boss-bait.js: no jump of velocity in any mode)
 {
   const bait = makeBait([0, 30], T), body = bodyAt(0, 0);
   body.contacts.push([0, 30 - (B.panic - 2)]);          // an arm reaches out to ten metres from him
@@ -131,15 +132,27 @@ const envLog = {};
   assert.ok(bait.fleeing, 'an arm inside the panic ring sets him fleeing');
   assert.ok(dist(want, arm) > before, 'the wanted point is farther from the arm');
   moveBait(bait, DT, want, T);
-  assert.ok(Math.abs(dist(bait.pos, x0) - B.flee * DT) < EPS && dist(bait.pos, arm) > before, `a frame of panic moves him ${B.flee} m/s straight away from the arm: ${dist(bait.pos, x0)}`);
+  assert.ok(Math.abs(dist(bait.pos, x0) - B.panicAccel * DT * DT / 2) < EPS && dist(bait.pos, arm) > before, `a frame of panic from a hover gains ${B.panicAccel} m/s2 x dt, away from the arm (moved at the frame's mean speed): ${dist(bait.pos, x0)}`);
   assert.ok(B.flee > B.speed, 'he flees faster than he cruises');
-  for (let i = 1; i < 60; i++) moveBait(bait, DT, planBait(bait, body, T), T);
+  let gain = Infinity, straight = 1, frames = 1;
+  for (let i = 1; i < 60; i++) {
+    const v0 = Math.hypot(...bait.vel);
+    moveBait(bait, DT, planBait(bait, body, T), T);
+    const v = Math.hypot(...bait.vel);
+    if (bait.fleeing) { frames++; gain = Math.min(gain, (v - v0) / DT); straight = Math.min(straight, bait.vel[1] / v); }
+  }
+  assert.ok(frames >= B.panicDwell * 60 && Math.abs(gain - B.panicAccel) < 1e-6 && straight > 0.999, `while he flees his speed grows at ${B.panicAccel} m/s2, straight away from the arm (${frames} frames, ${gain.toFixed(3)} m/s2, cos ${straight.toFixed(4)})`);
   assert.ok(dist(bait.pos, arm) - before >= PANIC_BACK, `a second of panic backs him off by at least ${PANIC_BACK} m: ${(dist(bait.pos, arm) - before).toFixed(1)}`);
   const calm = makeBait([0, 60], T); planBait(calm, bodyAt(0, 0), T); assert.ok(!calm.fleeing, 'far from every arm he is not fleeing');
   // routing: the lab may replace `want`; moveBait follows what it is given, at the cruise speed
+  // (from a hover a one-second step reaches the cruise, his accel being above it, and moves him at the step's mean speed: HIS FLIGHT IS A BODY'S)
   const routed = makeBait([0, 60], T); moveBait(routed, 1, [60, 60], T);
-  assert.ok(Math.abs(dist(routed.pos, [0, 60]) - B.speed) < EPS && routed.pos[1] === 60, `moveBait follows the given point at ${B.speed} m/s: ${routed.pos}`);
-  const near = makeBait([0, 0], T); moveBait(near, 1, [1, 0], T); assert.deepEqual(near.pos, [1, 0], 'he stops on a point nearer than a step');
+  assert.ok(Math.abs(routed.vel[0] - B.speed) < EPS && routed.vel[1] === 0 && Math.abs(dist(routed.pos, [0, 60]) - B.speed / 2) < EPS && routed.pos[1] === 60, `moveBait follows the given point at ${B.speed} m/s: ${routed.pos}, ${routed.vel}`);
+  const near = makeBait([0, 0], T); for (let i = 0; i < 120; i++) moveBait(near, DT, [1, 0], T, null, true);
+  assert.ok(dist(near.pos, [1, 0]) < 1e-3 && Math.hypot(...near.vel) < 1e-3, `he stops on a point he is told to stop on, no overshoot left (${near.pos}, ${near.vel})`);
+  const fast = makeBait([0, 0], T); fast.vel = [B.speedMax, 0]; let over = 0;
+  for (let i = 0; i < 300; i++) { moveBait(fast, DT, [10, 0], T, null, true); over = Math.max(over, fast.pos[0] - 10); }
+  assert.ok(over < 6 && dist(fast.pos, [10, 0]) < 1e-3, `coming in at ${B.speedMax} m/s on a stop 10 m off he brakes at ${B.accel} m/s2 and settles on it (overshoot ${over.toFixed(2)} m)`);
   // the heading eases at `turn` rad/s: a quarter turn needs more than a frame
   const turn = makeBait([0, 0], T); turn.heading = 0; moveBait(turn, DT, [0, 100], T);
   assert.ok(Math.abs(turn.heading - B.turn * DT) < EPS, `the heading eases ${B.turn} rad/s: ${turn.heading}`);
@@ -224,11 +237,12 @@ const hashOf = (calm) => {                   // the recorded run: two scenarios 
   for (let i = 0; i < 600; i++) { const body = bodyAt(0, 0); if (i > 120 && i < 300) body.contacts.push([b.pos[0] + 6, b.pos[1] - 5]); stepBait(b, DT, body, calm); out.push(b.pos[0], b.pos[1], b.heading); }
   return createHash('sha256').update(Buffer.from(new Float64Array(out).buffer)).digest('hex');
 };
-const RECORDED = '0e7ec4edc33f159f5623a25d10528b19a4cea5390d34bed72babc0b148e5d4f5';   // sha256 of that run, recorded on the commit before the erratic flight
-// the run was recorded at the flee of its day, 24 m/s (wave B raised the content's to 32): the rule is unchanged, so the run is replayed on that number
-const T24 = { ...T, bait: { ...B, flee: 24 } };
-assert.equal(hashOf(T24), RECORDED, 'erratic 0 reproduces the smooth flight bit for bit');
-const noKey = { ...T24, bait: Object.fromEntries(Object.entries(T24.bait).filter(([k]) => k !== 'erratic')) };
+// sha256 of that run. First recorded on the commit before the erratic flight (0e7ec4ed..., at the flee of its day, 24 m/s); re-recorded on the content's numbers
+// when his flight became a body's (2026-10-10, the shake: a velocity steered within `accel` / `panicAccel`, the panic's weighted way out with hysteresis), which
+// changes every frame of it by design. It guards that erratic 0 stays the smooth flight from here on
+const RECORDED = '21277e3399170c3c001e98b93c2352c86c0a7947025282a5a6ae60f9f27d438d';
+assert.equal(hashOf(T), RECORDED, 'erratic 0 reproduces the smooth flight bit for bit');
+const noKey = { ...T, bait: Object.fromEntries(Object.entries(T.bait).filter(([k]) => k !== 'erratic')) };
 assert.equal(hashOf(noKey), RECORDED, 'and so does a tune with no erratic key');
 const wild = { ...T, bait: { ...E, erratic: 1 } };
 
@@ -236,6 +250,7 @@ const KEEP_MEDIAN = 4;       // metres: the median keep error with erratic 1 ove
 const SPEED_SLACK = 1e-6;    // m/s: frame arithmetic on a displacement
 const ACCEL_SLACK = 1e-4;    // m/s2
 const SEEDS = [1, 2, 3, 4, 5, 6, 7, 8];
+const SPIN_UP = 60;          // frames: he starts from a hover and takes up to speedMax / accel (0.87 s) to reach his band (HIS FLIGHT IS A BODY'S)
 const median = (a) => { const v = [...a].sort((x, y) => x - y), m = v.length >> 1; return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2; };
 const flyWild = (seed, walk, tune = wild, seconds = 30) => {
   const bait = makeBait([0, 60], tune, seed), log = { err: [], speed: [], accel: [], jinkAt: [], bob: [], jink: [], heading: [], pos: [], fleeFrames: 0, minContact: Infinity };
@@ -244,7 +259,7 @@ const flyWild = (seed, walk, tune = wild, seconds = 30) => {
     const body = bodyAt(walk * i * DT * 0.6, walk * i * DT * 0.8);
     const out = stepBait(bait, DT, body, tune);
     assert.ok(Number.isFinite(out.bob), 'stepBait returns the altitude bob too');
-    const speed = dist(bait.pos, last) / DT, calm = !bait.fleeing && !fleeing[0] && !fleeing[1];
+    const speed = dist(bait.pos, last) / DT, calm = !bait.fleeing && !fleeing[0] && !fleeing[1] && i >= SPIN_UP;
     fleeing = [bait.fleeing, fleeing[0]];
     if (bait.fleeing) log.fleeFrames++;
     if (i > 5 * 60) log.err.push(Math.abs(edgeGap(bait, body) - tune.bait.keep));
@@ -293,12 +308,15 @@ assert.ok(spread(accelWorst) > 0.8 * E.accel, `the acceleration limit is used (a
   for (let i = 0; i < 6 * 60; i++) stepBait(bait, DT, bodyAt(0, 0), wild);
   Object.assign(bait.flight, { jink: 0.6, jinkTarget: 0.6, jinkIn: 5 });   // a hard jink is in play when the arm comes
   const arm = [bait.pos[0] + 5, bait.pos[1] - 4], body = bodyAt(0, 0); body.contacts.push(arm);
-  const before = bait.pos.slice(), away = [(before[0] - arm[0]) / dist(before, arm), (before[1] - arm[1]) / dist(before, arm)];
+  const before = bait.pos.slice(), away = [(before[0] - arm[0]) / dist(before, arm), (before[1] - arm[1]) / dist(before, arm)], v0 = bait.vel.slice();
   stepBait(bait, DT, body, wild);
-  const dx = bait.pos[0] - before[0], dz = bait.pos[1] - before[1];
-  assert.ok(bait.fleeing && Math.abs(Math.hypot(dx, dz) - E.flee * DT) < 1e-9, `panic moves him ${E.flee} m/s at once`);
-  assert.ok(Math.abs((dx * away[0] + dz * away[1]) / Math.hypot(dx, dz) - 1) < 1e-9, 'straight away from the arm, the jink overridden');
-  for (let i = 0; i < 59; i++) stepBait(bait, DT, body, wild);
+  const dvx = bait.vel[0] - v0[0], dvz = bait.vel[1] - v0[1], dv = Math.hypot(dvx, dvz);
+  assert.ok(bait.fleeing && Math.abs(dv - E.panicAccel * DT) < 1e-9, `panic turns his velocity at ${E.panicAccel} m/s2, no faster (${(dv / DT).toFixed(2)})`);
+  assert.ok((dvx * away[0] + dvz * away[1]) / dv > 0.5, `toward the flee straight away from the arm, the jink overridden (cos ${((dvx * away[0] + dvz * away[1]) / dv).toFixed(3)}; the change turns his velocity, so it is not straight away itself)`);
+  for (let i = 0; i < 29; i++) stepBait(bait, DT, body, wild);
+  const sp = Math.hypot(...bait.vel), now = [(bait.pos[0] - arm[0]) / dist(bait.pos, arm), (bait.pos[1] - arm[1]) / dist(bait.pos, arm)], off = (bait.vel[0] * now[0] + bait.vel[1] * now[1]) / sp;
+  assert.ok(off > 0.9 && sp > E.speedMax, `half a second on he flies away from the arm faster than he cruises (${sp.toFixed(1)} m/s, cos ${off.toFixed(3)} to the line from the arm)`);
+  for (let i = 0; i < 29; i++) stepBait(bait, DT, body, wild);
   assert.ok(dist(bait.pos, arm) > dist(before, arm) + 6, `a second of panic backs him off by at least 6 m: ${(dist(bait.pos, arm) - dist(before, arm)).toFixed(1)}`);
 }
 
@@ -407,11 +425,13 @@ let hopLog = null, randomRate = null;
       const r = hopBait(b, DT, body, noisy, { bound, alt, base: 4 });
       if (r) alt = r.alt; else { alt = 4; stepBait(b, DT, body, noisy); }
       if (first === null && r && b.hop) first = b.hop.why;   // by 0.6 s at the latest (the arms' hold)
-      if (first === null && t > 0.6) first = 'late';
+      if (first === null && t > 0.6) first = underBait(b, body, noisy) ? 'late' : 'out';   // between its feet his panic may fly him out of their reach first
       taken = taken || baitCaught(b, body, DT, noisy); t += DT;
       if (clear === null && Math.min(...body.contacts.map((p) => dist(p, b.pos))) > 8) clear = t;
     }
-    assert.equal(first, 'under', `under at ${at} he hops out (the core at once, the arms after ${B.underFor} s)`);
+    // under the core he hops out at once; between its feet he hops after `underFor` s or has flown out by then (since the panic's weighted way out, 2026-10-10,
+    // it no longer dithers between the two nearest feet: it leaves them in about 0.6 s)
+    assert.ok(first === 'under' || (first === 'out' && underBait(makeBait(at, T), body, T) === 'arms'), `under at ${at} he hops out (the core at once, the arms after ${B.underFor} s) or flies out from between its feet (${first})`);
     assert.ok(!taken && clear !== null && clear <= 6, `under at ${at}: clear of every contact by 8 m in ${clear?.toFixed(2)} s, not taken`);
     if (clearAt === null || clear > clearAt) { clearAt = clear; worstUnder = at; }
   }

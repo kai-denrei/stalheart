@@ -25,13 +25,17 @@ export const BOSS_FIGHT = freeze({
     speed: 14, flee: 32,   // his cruise round the creature, and the straight back-off when an arm closes (m/s); the flee 32 (24 before wave B, 2026-10-09) so he outruns the creature's base pace
     panic: 12,             // a floor contact, or a body node under `panicHeight`, this close makes him flee
     panicHeight: 6,        // metres: a body node below this is an arm near the ground for his panic
+    panicExit: 2,          // metres: the panic ends only once every low arm is this far beyond `panic` (hysteresis: it no longer flickers at the ring)
+    panicDwell: 0.25,      // seconds: and once it has lasted this long
+    panicAccel: 50,        // m/s2: the most his velocity changes by in a second fleeing an arm or a ring, or escaping from under the creature (owner, 2026-10-10: the shake when close; finite, so no zigzag); other hops take `accel`
+    climbAccel: 35,        // m/s2: a hop's climb and descent ease their vertical speed (at most `hopClimb`) by this much a second
     turn: 3,               // his heading eases at this many radians a second
     altitude: 17.75,       // metres above the surface: src/fx/isao-worker.js ISAO_ALT 3.4 is in wall-heights (td-tab wallHeight 0.03), so 0.102 world units, plus half a cell (cellSide 0.08 / 2) = 0.142; a 10 m cell is 0.08, so 125 m a world unit
     caught: 3, caughtFor: 0.5,   // a floor contact within this many metres of his ground point for this long takes him
     // the erratic flight (2026-10-09-boss-bait-arena-and-feel-design.md, item 3): `erratic` 0..1 scales every swing below, 0 is the smooth flight above
     erratic: 1,            // default on in bait mode
     speedMin: 8, speedMax: 26,   // bursts and brakes: his speed target is drawn from this band (at erratic 1; the cruise `speed` is the centre of the scale)
-    accel: 30,             // m/s2: the most his speed changes by (the panic dash at `flee` is exempt)
+    accel: 30,             // m/s2: the most his velocity changes by in a second cruising (a burst, a brake, a turn: every change of the wanted point) and hopping; fleeing takes `panicAccel`
     surgeMin: 0.5, surgeMax: 1.5,   // seconds: a new speed target this often
     jink: 40 * Math.PI / 180,       // radians: his course is turned off the wanted point by up to this much, eased at `turn`
     jinkMin: 0.6, jinkMax: 2,       // seconds: a new jink target this often

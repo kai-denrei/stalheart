@@ -56,9 +56,19 @@
 // scheduled plans (`fight().strikes`, kind nuke, between `showAt` and `land`) are the same zones. The domain keeps him `bait.nukeMargin` metres beyond each ring
 // (planBait, moveBait, hopBait: src/domain/boss-bait.js); a nuke he cannot outrun is still the player's to answer for.
 //
+// THE SHAKE (owner, 2026-10-10: "often when Isao is too close to the enemy, his camera shakes violently, like the 3d model is stuck repeatedly on a wrong path";
+// .superpowers/sdd/isao-shake-report.md): his flight is a body's now (src/domain/boss-bait.js HIS FLIGHT IS A BODY'S: a velocity steered within finite limits, the
+// panic's continuous way out with hysteresis). Here: the bound is a wall his speed out toward is braked for (`moveBait`'s `wall`; a routed waypoint he rounds
+// at speed, a point the centre's keep-out moved he stops on: `stop`), the bound's hold and `putAt`
+// drop the part of his velocity that pushed into them (`constrainBait`); the bob fades out over a hop or a panic's dash and back in after it (`fade`, on a
+// critically damped spring, the bob's clock running on: no jump of height or of climb, even when a panic comes mid-fade); a re-anchor keeps him on his very
+// ground point (`shift`); his facing's rate is eased (FACE_ACC, the bearing's rate fed forward, still at most `turn`), the eye ahead of him no longer jolted
+// when a turn catches up; and the camera's look target follows the creature's point on a critically damped spring (CAM_W rad/s: the hunted Reed
+// changing, the boss's centre lurching, no longer whip the picture round), the eye riding his drawn body as it was.
+//
 // Positions are the lab's local metres [x, z]; the host gives the ground under a point and the frame there, so this file knows no planet.
 import * as THREE from '../../../vendor/three.module.js';
-import { makeBait, planBait, moveBait, hurtBait, baitCaught, hopBait, startHop, envelopeBait, reachOf } from '../../domain/boss-bait.js';
+import { makeBait, planBait, moveBait, hurtBait, baitCaught, hopBait, startHop, envelopeBait, reachOf, constrainBait } from '../../domain/boss-bait.js';
 import { lineOf, capture } from '../../domain/boss-fight.js';
 import { makeIsaoDrone, preloadFabricator } from '../../units.js';
 import { STORY_SCALE } from '../../content/story-defaults.js';
@@ -74,6 +84,11 @@ const CELL = 2;              // metres: contacts closer than this share an entry
 const NOSE = 1.5;            // metres: the camera ahead of his origin along his facing (his body is within 1.4 m of it)
 const UNDER = 0.3;           // metres: and under it
 const PITCH = 80 * Math.PI / 180;   // the camera's look is never steeper than this from the horizon
+const FACE_K = 6;            // 1/s: his facing's rate is the bearing's own plus this much of what it is off by (THE SHAKE)
+const FACE_ACC = 15;         // rad/s2: and eases to that rate by at most this (the eye, NOSE metres out, is no longer jolted when the turn catches up)
+const BOB_W = 3;             // rad/s: the bob's share follows 0 through a hop or a panic and 1 after it on a critically damped spring this stiff (THE SHAKE; ~1.5 s)
+const CAM_W = 8;             // rad/s: the camera's look target follows the creature's point on a critically damped spring this stiff (settles in about 0.6 s)
+const CAM_GAP = 0.25;        // seconds: a gap in the lab's clock longer than this (a reset, a pause's end) puts the look target on the point at once
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 const wrap = (a) => a - Math.round(a / (2 * Math.PI)) * 2 * Math.PI;
 
@@ -96,9 +111,11 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
   const fill = row.querySelector('i'), num = row.querySelector('.ih-num');
   const chatter = createChatter({ tune, now, sfx, caption });
 
-  let on = false, bait = null, face = 0, alt = ALTITUDE, bob = 0, gone = false, model = null, disposed = false, drawn = '';
+  let on = false, bait = null, face = 0, faceV = 0, bearing = null, alt = ALTITUDE, bob = 0, fade = 1, fadeV = 0, gone = false, model = null, disposed = false, drawn = '';
+  const look = { at: null, v: [0, 0, 0], t: 0 };   // the camera's look target on its spring (THE SHAKE): sphere metres, its velocity, the lab's clock at its last step
   let zones = [], hits = 0, clear = false, cueKey = '', gunWas = null, quietFrom = 0, escape = null, near = { low: Infinity, node: Infinity };
   const air = [0, 0, 0];                        // his place in sphere space
+  let under = null;                             // the ground point under him when he was last placed (sphere space): a re-anchor keeps him on it
   const held = new Map();                       // cell -> { p, at }: the contacts of the last HOLD seconds, newest position per cell
   let view = null;                              // the creature as the planner sees it this frame
   const counted = new WeakSet();                // the streams that have touched him (one hit each, as the creature's burnt set)
@@ -116,7 +133,9 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
   function place() {
     if (!bait) return;
     const w = ground(bait.pos[0], bait.pos[1]), tf = tangent(w);
-    for (let i = 0; i < 3; i++) air[i] = w[i] + tf.up[i] * (alt + bob);
+    under = w;
+    const g = Math.max(0, Math.min(1, fade));   // the bob's share (THE SHAKE)
+    for (let i = 0; i < 3; i++) air[i] = w[i] + tf.up[i] * (alt + bob * g);
     if (!model) return;
     model.position.set(air[0], air[1], air[2]);
     model.quaternion.setFromRotationMatrix(basis.makeBasis(new THREE.Vector3(...tf.east), new THREE.Vector3(...tf.up), new THREE.Vector3(...tf.north)));
@@ -179,6 +198,19 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
   // a hop's start: the fly-over's line (one hop in three; `force` the acceptance's forced hop); an escape from under the creature asks for help as well
   function flyover(force = false) { if (bait.hop?.why === 'under') chatter.want('help'); chatter.want('flyover', { force }); }
 
+  // the camera's look target one step on along its critically damped spring toward `target` (sphere metres; THE SHAKE), on the lab's clock: a fresh array
+  function follow(target) {
+    const t = now(), dt = t - look.t;
+    look.t = t;
+    if (!look.at || dt < 0 || dt > CAM_GAP) { look.at = [...target]; look.v = [0, 0, 0]; return [...look.at]; }
+    const w = CAM_W, n = Math.max(1, Math.ceil(dt * w)), h = dt / n;   // semi-implicit Euler in steps under 1/w (stable)
+    for (let k = 0; k < n; k++) for (let i = 0; i < 3; i++) {
+      look.v[i] += (w * w * (target[i] - look.at[i]) - 2 * w * look.v[i]) * h;
+      look.at[i] += look.v[i] * h;
+    }
+    return [...look.at];
+  }
+
   function vanish() {
     gone = true;
     if (model) model.visible = false;
@@ -214,8 +246,8 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
     reset(at) {
       const T = tune(), c = creature(); zones = [];
       bait = makeBait(at, T, T.seed ?? 1);   // the round's seed: a round flies one way
-      bait.heading = Math.atan2(c.centre[1] - at[1], c.centre[0] - at[0]); face = bait.heading;
-      alt = params.altitude; bob = 0; gone = false; hits = 0; gunWas = gunner()?.gun ?? null; quietFrom = now(); escape = null;
+      bait.heading = Math.atan2(c.centre[1] - at[1], c.centre[0] - at[0]); face = bait.heading; faceV = 0; bearing = null;
+      alt = params.altitude; bob = 0; fade = 1; fadeV = 0; look.at = null; under = null; gone = false; hits = 0; gunWas = gunner()?.gun ?? null; quietFrom = now(); escape = null;
       held.clear(); view = null;
       chatter.reset(T.seed ?? 1);
       drawn = ''; place(); draw();
@@ -228,25 +260,42 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
     air: () => [...air],
     // a re-anchor of the lab's frame moves every local position by the same vector
     shift(sx, sz) {
-      if (bait) { bait.pos[0] += sx; bait.pos[1] += sz; }
+      if (bait) {
+        bait.pos[0] += sx; bait.pos[1] += sz;
+        // the shift is the frame's in its own metres; on the sphere it misses where he was by millimetres, a jolt in his drawn path every re-anchor (THE SHAKE):
+        // two Newton steps along the ground's east and north put him back on the very point (the tank's `toLocal` does the same)
+        for (let k = 0; under && k < 2; k++) {
+          const w = ground(bait.pos[0], bait.pos[1]), tf = tangent(w), e = [under[0] - w[0], under[1] - w[1], under[2] - w[2]];
+          bait.pos[0] += e[0] * tf.east[0] + e[1] * tf.east[1] + e[2] * tf.east[2];
+          bait.pos[1] += e[0] * tf.north[0] + e[1] * tf.north[1] + e[2] * tf.north[2];
+        }
+      }
       for (const e of held.values()) { e.p[0] += sx; e.p[1] += sz; }
     },
     // the autopilot, each frame of a running fight: plan, route round the obstacles, move; the altitude eases to the knob
     step(dt) {
       if (!on || !bait || gone) return;
       const T = tune(), cc = creature().centre;
-      face += Math.max(-T.bait.turn * dt, Math.min(T.bait.turn * dt, wrap(Math.atan2(cc[1] - bait.pos[1], cc[0] - bait.pos[0]) - face)));   // his body toward the creature (ISAO'S CAMERA)
+      // his body toward the creature (ISAO'S CAMERA): at no more than `turn` rad/s, the rate eased (THE SHAKE), the bearing's own rate fed forward so it does not lag
+      const to = Math.atan2(cc[1] - bait.pos[1], cc[0] - bait.pos[0]), rate = bearing === null || dt <= 0 ? 0 : wrap(to - bearing) / dt;
+      bearing = to;
+      const wantV = Math.max(-T.bait.turn, Math.min(T.bait.turn, rate + FACE_K * wrap(to - face)));
+      faceV += Math.max(-FACE_ACC * dt, Math.min(FACE_ACC * dt, wantV - faceV)); face += faceV * dt;
       if (fight().phase === 'fight') {
         const c = creature();
         view = { ...heldView(c), nodes: nodes() };   // the held contacts and every body node: the planner's reach envelope and panic
         envelopeBait(bait, view, dt, T);   // smoothed through the hops too, so the landing plans from the reach as it is
         zones = zonesNow();
         const flying = hopBait(bait, dt, { ...c, nodes: view.nodes }, T, { bound: bound(), alt, base: params.altitude, zones });   // the fly-over first: trapped, at random, or flying (its goal beyond the reach envelope)
-        if (flying) { alt = flying.alt; bob = 0; if (flying.started) flyover(); escape = null; }
+        if (flying) { alt = flying.alt; bob = flying.bob; if (flying.started) flyover(); escape = null; }
         else {
-          const want = planBait(bait, view, T, zones);
-          ({ bob } = moveBait(bait, dt, clamp(route(bait.pos, want)), T, zones));   // the routed, clamped point may lie in a ring again: the mover moves it out
-          const kept = hold(bait.pos); bait.pos[0] = kept[0]; bait.pos[1] = kept[1];   // a jink off a wanted point on the circle does not carry him out
+          // a routed waypoint is a corner he rounds at speed, as the planner's carrot; the bound that holds the point is a wall his speed out toward is braked for
+          // (the held point slides along it, a carrot still); a point moved by anything else (the centre's keep-out while something comes up) he stops on
+          const want = planBait(bait, view, T, zones), routed = route(bait.pos, want), to = clamp(routed), b = bound();
+          const wall = b ? { at: b.at, radius: b.radius - (b.inset ?? 0) } : null, onWall = wall && Math.abs(dist(to, wall.at) - wall.radius) < 1e-6;
+          const stop = (to[0] !== routed[0] || to[1] !== routed[1]) && !onWall;
+          ({ bob } = moveBait(bait, dt, to, T, zones, stop, wall));   // the routed, clamped point may lie in a ring again: the mover moves it out
+          constrainBait(bait, hold(bait.pos));   // a jink off a wanted point on the circle does not carry him out: he slides along the bound
         }
         nearest(c, view.nodes);
         // an escape from an arm: the nearest low arm through a panic; under `closeEscape` it was a close call once the panic ends with him flying
@@ -254,13 +303,14 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
         else if (escape !== null) { if (escape < T.chatter.triggers.closeEscape) chatter.want('closeCall'); escape = null; }
       } else zones = [];
       if (!bait.hop) alt += Math.max(-CLIMB * dt, Math.min(CLIMB * dt, params.altitude - alt));
+      fadeV += (BOB_W * BOB_W * ((bait.hop || bait.fleeing ? 0 : 1) - fade) - 2 * BOB_W * fadeV) * dt; fade += fadeV * dt;   // the bob out over a hop or a panic's dash, back after it
       place();
     },
     // ISAO'S CAMERA (above): { from, pos } in sphere space, the monitor's eye and the point it looks at; `aim` the creature's point (sphere space); null while he
     // is not in the sky
-    cam(aim) {
+    cam(target) {
       if (!on || !bait || gone) return null;
-      const tf = tangent(ground(bait.pos[0], bait.pos[1])), u = tf.up, cf = Math.cos(face), sf = Math.sin(face), from = [0, 0, 0], d = [0, 0, 0], f = [0, 0, 0];
+      const aim = follow(target), tf = tangent(ground(bait.pos[0], bait.pos[1])), u = tf.up, cf = Math.cos(face), sf = Math.sin(face), from = [0, 0, 0], d = [0, 0, 0], f = [0, 0, 0];
       for (let i = 0; i < 3; i++) { f[i] = tf.east[i] * cf + tf.north[i] * sf; from[i] = air[i] + f[i] * NOSE - u[i] * UNDER; d[i] = aim[i] - from[i]; }
       const dv = d[0] * u[0] + d[1] * u[1] + d[2] * u[2], dh = Math.max(Math.hypot(d[0] - dv * u[0], d[1] - dv * u[1], d[2] - dv * u[2]), Math.abs(dv) / Math.tan(PITCH));
       return { from, pos: [0, 1, 2].map((i) => from[i] + f[i] * dh + u[i] * dv) };
@@ -274,7 +324,7 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
     // Isao put at a ground point (local metres) as he flies, the round going on: the acceptance's case of him under the creature
     putAt(at) {
       if (!on || !bait || gone) return false;
-      bait.pos[0] = at[0]; bait.pos[1] = at[1]; bait.held = 0; place();
+      constrainBait(bait, at); bait.held = 0; place();   // what pushed him into the put is dropped (the wave's clear centre's keep-out, THE SHAKE)
       return true;
     },
     // a landing the friendlies resolved, or a stream's burn for dt seconds, on him; only in a running fight, and only what touches counts
@@ -314,7 +364,7 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
     state() {
       if (!bait) return null;
       const c = creature(), here = lineOf(view ?? c, bait), rho = dist(bait.pos, c.centre), reach = reachOf({ ...c, nodes: nodes() }, bait.pos).e;
-      return { pos: [...bait.pos], hp: bait.hp, max: bait.max, heading: bait.heading, facing: face, alt, bob, speed: bait.flight?.speed ?? null, gone, fleeing: bait.fleeing, gap: rho - here.e, hits, said: chatter.said(),
+      return { pos: [...bait.pos], vel: [...bait.vel], panicT: bait.panicT, fade, hp: bait.hp, max: bait.max, heading: bait.heading, facing: face, alt, bob, speed: bait.flight?.speed ?? null, gone, fleeing: bait.fleeing, gap: rho - here.e, hits, said: chatter.said(),
         lines: chatter.log(), nukeClear: clear, cue: !cue.hidden, near: { ...near },   // the run's lines ({ key, variant, at, via }), the NUKE CLEAR cue (lit, shown), the nearest low arm and body node (m)
         zones: zones.map((q) => ({ at: [...q.at], radius: q.radius, until: q.until })), zoneFlee: bait.zoneFlee, hop: bait.hop?.phase ?? null, hopWhy: bait.hop?.why ?? null, hops: bait.hops, trapped: bait.trapT,
         // the reach envelope: `reach` the outermost node toward him now, `envelope` the planner's smoothed one; `keep` his distance beyond `reach`, `keepSmoothed` beyond `envelope`
