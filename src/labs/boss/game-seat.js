@@ -356,11 +356,13 @@ export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, 
     // the trigger let go (the fight switched off, the mode changed)
     release() { heavyPress = 0; if (m) m.pilot.state.held = false; },
     // the player's fire for Isao's lines (./bait.js): the gun ('rotary' | 'bofors' | 'nuke'), the reticle (local metres; with the MK-9 only, else null), the lab's
-    // clock at the last round of any gun and of the 40 mm; null while the seat is not mounted
+    // clock at the last round of any gun and of the 40 mm, the MK-9 in flight as danger zones (`nukes`: [{ at, radius, until }], the cell it will fall on); null while the seat is not mounted
     gunner() {
       if (!m) return null;
-      const gun = NAME[m.gs.gun], o = gun === 'nuke' ? m.pilot.gunshipOptic() : null;
-      return { gun, reticle: o ? atLocal(o.pos) : null, shotAt: fired.at, fortyAt: fired.forty };
+      const gun = NAME[m.gs.gun], o = gun === 'nuke' ? m.pilot.gunshipOptic() : null, h = heavyState(m.gs, guns), T = tune();
+      // the MK-9 in flight, release to landing, as a danger zone for Isao's autopilot (src/domain/boss-bait.js): its cell now, the ring, the lab's clock at the landing
+      const nukes = h.phase === 'released' || h.phase === 'ignited' ? [{ at: atLocal(m.G.centers[h.ci]), radius: T.nuke.radius, until: now() + h.left }] : [];
+      return { gun, reticle: o ? atLocal(o.pos) : null, shotAt: fired.at, fortyAt: fired.forty, nukes };
     },
     // seconds until the next MK-9 can be released: its fall and reload while one is out
     mk9In() { if (!m) return 0; const h = heavyState(m.gs, guns); return h.phase === 'released' || h.phase === 'ignited' ? h.left + guns.heavy.reload : h.phase === 'reloading' ? h.left : 0; },

@@ -57,6 +57,9 @@ export const BOSS_FIGHT = freeze({
     underCore: 0.5,        // a share of the creature's half-width (`radius`): his ground point this near its centre is under it
     underNear: 8,          // metres: floor contacts this near him on opposite sides have him under it
     underFor: 0.5,         // seconds: the contacts must hold him so long, unbroken, before he escapes (his ground point under the core is at once)
+    // the MK-9 in flight (owner, 2026-10-10: "Have Isao more actively avoid where the Nuke will fall"): from its release to its landing its ring (`nuke.radius`) is a no-go zone for his autopilot, kept to this many metres beyond the ring
+    nukeMargin: 10,
+    nukeAvoid: true,       // false: the autopilot ignores the MK-9s in flight (the acceptance's, which aims them at him; the zones are empty)
   },
   nukeClear: 8,            // the bait mode's NUKE CLEAR cue (wave B, 2026-10-09: "create an opportunity for a clean nuke"): lit while Isao is beyond the MK-9's radius plus this many metres from the creature's centre
   // THE BAIT MODE'S FEAR PER GUN (owner, 2026-10-09: "we want 'fear'... #2 or #3 hits gets it wild temporarily, hurrying away from the impact ... the user learns that he

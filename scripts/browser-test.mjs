@@ -2379,6 +2379,7 @@ try{
   await evaluate(`document.activeElement?.blur?.(); document.querySelector('#boss [data-copy]').hidden=true`);}
  // the random fly-over off for the measured and the aimed runs below (their numbers are the autopilot's); the arena run and the fly-over's own checks put it back
  await setKnob(HOP_KNOB,0);
+ await evaluate(`${B}.avoidNukes(false)`);   // Isao keeps out of a falling MK-9's ring (2026-10-10): off for the runs that aim MK-9s AT him; its own block below puts it back
  const far=(s)=>s.contacts.reduce((best,p)=>dist(p,s.bait.pos)>dist(best,s.bait.pos)?p:best,s.contacts[0]??s.centre);   // the creature's contact farthest from Isao
  const pace=async(seconds,each,cap=120000)=>{   // each(s) runs ~10 times a second of real time for `seconds` of lab clock or until it returns true
    const s0=await evaluate(S),real=Date.now();let s=s0;
@@ -2885,6 +2886,45 @@ try{
    await until(`!['released','ignited'].includes(${B}.seat().heavy.phase)`,20000).catch(()=>{});
  }
  await restart();
+ // ISAO KEEPS OUT OF A FALLING MK-9'S RING (owner, 2026-10-10: "Have Isao more actively avoid where the Nuke will fall. A user mistake leading to friendly fire is fine, but Isao
+ // actively changing direction to enter the radius of the incoming nuke feels wrong"; src/domain/boss-bait.js nuke zones, src/labs/boss/bait.js `zonesNow`): the avoidance on
+ // (`avoidNukes(true)`; it is off for the runs above and below, which aim MK-9s at him), an MK-9 is released 20 m from where his track leads him at the landing (the point led by his
+ // measured velocity over the round's 4.2 s, then moved 20 m away from the arena's centre, rotated 0 and +-90 degrees between the trials, so he has the room to go); the zone appears
+ // in his state at the release, and where escape is physically possible (radius - his distance < flee x the time left) he is outside the MK-9's 55 m ring at the landing
+ // (the last sample with the zone up) and unhurt. His distance from the ring's centre at the landing is logged per trial. [delimited: this block only]
+ {
+  await evaluate(`${B}.avoidNukes(true)`);
+  const NK=BOSS_FIGHT.nuke,FLEE=BOSS_FIGHT.bait.flee,trials=[];
+  for(let attempt=0;attempt<8&&trials.length<3;attempt++){
+    const rot=[0,Math.PI/2,-Math.PI/2][trials.length];
+    await restart();await evaluate(`${B}.gun("nuke")`);await until(`${B}.seat().heavy.phase === "ready"`,30000);
+    const lead=await pace(0.5);   // his velocity over half a second of lab clock
+    const bc=(await evaluate(`${B}.arena().bound`)).at,p=leadAt(lead.s,lead.s0,NK.travel),out=[p[0]-bc[0],p[1]-bc[1]],len=Math.hypot(...out)||1,u=[(out[0]*Math.cos(rot)-out[1]*Math.sin(rot))/len,(out[0]*Math.sin(rot)+out[1]*Math.cos(rot))/len];
+    const aimAt=[p[0]+u[0]*20,p[1]+u[1]*20];
+    await evaluate(`${B}.aim(${JSON.stringify(aimAt)}); ${B}.fire(true); ${B}.fire(false)`);
+    let first=null,last=null,fled=false,lost=null;
+    for(const end=Date.now()+120000;Date.now()<end;){
+      await delay(40);const s=await evaluate(S);
+      if(s.phase!=='fight'){lost=`${s.phase} ${s.reason}`;break;}
+      const z=s.bait.zones?.[0];
+      if(z){const d=dist(s.bait.pos,z.at),left=z.until-s.clock;first??={d,left,zones:s.bait.zones.length};last={d,left,hp:s.bait.hp,gone:s.bait.gone};fled=fled||s.bait.zoneFlee;}
+      else if(first)break;   // the zone is gone: it landed
+    }
+    const end=await evaluate(S);
+    if(!first||lost){console.log('BOSS-BAIT nuke zone trial void '+JSON.stringify({attempt,first,lost}));continue;}   // a round lost to the creature, or the release missed: not a trial of the avoidance
+    const possible=NK.radius-first.d<FLEE*first.left;
+    trials.push({attempt,rot:+rot.toFixed(2),d0:+first.d.toFixed(1),left0:+first.left.toFixed(2),landingD:+last.d.toFixed(1),landingLeft:+last.left.toFixed(2),fled,possible,hp:end.bait.hp,max:end.bait.max,phase:end.phase});
+  }
+  console.log('BOSS-BAIT nuke zones '+JSON.stringify(trials));
+  assert(trials.length>=3,`three MK-9s released near his track in a running round (${trials.length})`);
+  for(const t of trials){
+    if(!t.possible)continue;
+    assert(t.landingD>=NK.radius,`he is outside the MK-9's ${NK.radius} m ring at its landing (${t.landingD} m from its centre, ${t.d0} m at the release; ${JSON.stringify(t)})`);
+    assert(t.hp===t.max&&t.phase==='fight',`and unhurt (${t.hp}/${t.max}, ${t.phase})`);
+  }
+  assert(trials.filter(t=>t.possible).length>=2&&trials.some(t=>t.d0<NK.radius+BOSS_FIGHT.bait.nukeMargin&&t.fled),`escape was possible in at least two trials, one with him inside the ring and its margin at the release who fled (${JSON.stringify(trials)})`);
+  await evaluate(`${B}.avoidNukes(false)`);
+ }
  // the 25 mm on the creature's far foot, led by the centre's measured velocity over the round's two seconds; a round lost on the way is restarted
  const rotaryTravel=GUNSHIP_GUNS.rotary.travel;
  const footLead=(s,p0)=>{const at=far(s);if(!p0||s.clock-p0.clock<0.05)return at;const v=[(s.centre[0]-p0.centre[0])/(s.clock-p0.clock),(s.centre[1]-p0.centre[1])/(s.clock-p0.clock)];return [at[0]+v[0]*rotaryTravel,at[1]+v[1]*rotaryTravel];};

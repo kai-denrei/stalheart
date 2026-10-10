@@ -102,6 +102,8 @@ export function createLabHandle({
     // screenshot of the hunt; false outside the free orbit
     chase: () => chase(),
     // the bound's radius: bounds(r) sets the lab's copy (the ring, the clamps and the backstop follow at once), bounds() reads it. Acceptance only
+    // the MK-9 zones for Isao's autopilot on or off (content `bait.nukeAvoid`): off, the acceptance's MK-9s led onto him hit him. Acceptance only
+    avoidNukes: (on) => { if (on !== undefined) fightTune.bait.nukeAvoid = !!on; return fightTune.bait.nukeAvoid; },
     bounds: (r) => { if (r !== undefined) fightTune.bounds.radius = r; return fightTune.bounds.radius; },
     // the measurement's hold: the creature's target on the shape's centre for `seconds` of lab clock with the routing off, the tank
     // parked behind it (the far side from the creature, outside the shape plus 6 m) and held still; null for an unknown id

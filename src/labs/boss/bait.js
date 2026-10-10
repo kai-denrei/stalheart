@@ -50,6 +50,12 @@
 // horizon. The monitor's camera keeps the planet's up, so a look straight down leaves its roll to the look's azimuth: the bearing to the creature flips as a
 // hop crosses over it, and the picture would spin; the facing turns at `turn` rad/s, and so does the picture.
 //
+// NUKE ZONES (owner, 2026-10-10: "Have Isao more actively avoid where the Nuke will fall. A user mistake leading to friendly fire is fine, but Isao actively
+// changing direction to enter the radius of the incoming nuke feels wrong"): every MK-9 in flight is a no-go zone for his autopilot, release to landing. The player's
+// MK-9 is the seat's (`gunner().nukes`: its painted cell, `nuke.radius`, the clock at its landing; the fight resolves it only AT the landing); the fight's own
+// scheduled plans (`fight().strikes`, kind nuke, between `showAt` and `land`) are the same zones. The domain keeps him `bait.nukeMargin` metres beyond each ring
+// (planBait, moveBait, hopBait: src/domain/boss-bait.js); a nuke he cannot outrun is still the player's to answer for.
+//
 // Positions are the lab's local metres [x, z]; the host gives the ground under a point and the frame there, so this file knows no planet.
 import * as THREE from '../../../vendor/three.module.js';
 import { makeBait, planBait, moveBait, hurtBait, baitCaught, hopBait, startHop, envelopeBait, reachOf } from '../../domain/boss-bait.js';
@@ -91,7 +97,7 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
   const chatter = createChatter({ tune, now, sfx, caption });
 
   let on = false, bait = null, face = 0, alt = ALTITUDE, bob = 0, gone = false, model = null, disposed = false, drawn = '';
-  let hits = 0, clear = false, cueKey = '', gunWas = null, quietFrom = 0, escape = null, near = { low: Infinity, node: Infinity };
+  let zones = [], hits = 0, clear = false, cueKey = '', gunWas = null, quietFrom = 0, escape = null, near = { low: Infinity, node: Infinity };
   const air = [0, 0, 0];                        // his place in sphere space
   const held = new Map();                       // cell -> { p, at }: the contacts of the last HOLD seconds, newest position per cell
   let view = null;                              // the creature as the planner sees it this frame
@@ -128,6 +134,15 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
     const contacts = [];
     for (const [key, e] of held) { if (t - e.at > HOLD) held.delete(key); else contacts.push(e.p); }
     return { ...c, contacts };
+  }
+
+  // the MK-9s in flight as the domain's danger zones, [{ at, radius, until }]: the seat's, and the fight's own plans between their cue and their landing
+  function zonesNow() {
+    const t = now(), out = [];
+    if (tune().bait.nukeAvoid === false) return out;
+    for (const n of gunner()?.nukes ?? []) out.push({ at: [n.at[0], n.at[1]], radius: n.radius, until: n.until });
+    for (const p of fight().strikes ?? []) if (p.kind === 'nuke' && t >= (p.showAt ?? -Infinity) && t < p.land) out.push({ at: [p.at[0], p.at[1]], radius: p.radius, until: p.land });
+    return out;
   }
 
   // the nearest arm near the ground (a floor contact, or a body node under `panicHeight`) and the nearest body node at any height, from his ground point
@@ -197,7 +212,7 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
     gone: () => gone,
     // a new round: Isao at `at`, hit points whole, facing the creature; no line spoken, none due
     reset(at) {
-      const T = tune(), c = creature();
+      const T = tune(), c = creature(); zones = [];
       bait = makeBait(at, T, T.seed ?? 1);   // the round's seed: a round flies one way
       bait.heading = Math.atan2(c.centre[1] - at[1], c.centre[0] - at[0]); face = bait.heading;
       alt = params.altitude; bob = 0; gone = false; hits = 0; gunWas = gunner()?.gun ?? null; quietFrom = now(); escape = null;
@@ -225,18 +240,19 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
         const c = creature();
         view = { ...heldView(c), nodes: nodes() };   // the held contacts and every body node: the planner's reach envelope and panic
         envelopeBait(bait, view, dt, T);   // smoothed through the hops too, so the landing plans from the reach as it is
-        const flying = hopBait(bait, dt, { ...c, nodes: view.nodes }, T, { bound: bound(), alt, base: params.altitude });   // the fly-over first: trapped, at random, or flying (its goal beyond the reach envelope)
+        zones = zonesNow();
+        const flying = hopBait(bait, dt, { ...c, nodes: view.nodes }, T, { bound: bound(), alt, base: params.altitude, zones });   // the fly-over first: trapped, at random, or flying (its goal beyond the reach envelope)
         if (flying) { alt = flying.alt; bob = 0; if (flying.started) flyover(); escape = null; }
         else {
-          const want = planBait(bait, view, T);
-          ({ bob } = moveBait(bait, dt, clamp(route(bait.pos, want)), T));
+          const want = planBait(bait, view, T, zones);
+          ({ bob } = moveBait(bait, dt, clamp(route(bait.pos, want)), T, zones));   // the routed, clamped point may lie in a ring again: the mover moves it out
           const kept = hold(bait.pos); bait.pos[0] = kept[0]; bait.pos[1] = kept[1];   // a jink off a wanted point on the circle does not carry him out
         }
         nearest(c, view.nodes);
         // an escape from an arm: the nearest low arm through a panic; under `closeEscape` it was a close call once the panic ends with him flying
         if (bait.fleeing) escape = Math.min(escape ?? Infinity, near.low);
         else if (escape !== null) { if (escape < T.chatter.triggers.closeEscape) chatter.want('closeCall'); escape = null; }
-      }
+      } else zones = [];
       if (!bait.hop) alt += Math.max(-CLIMB * dt, Math.min(CLIMB * dt, params.altitude - alt));
       place();
     },
@@ -252,7 +268,7 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
     // a fly-over now, from where he is (the acceptance's): false while one flies or he is gone
     hop() {
       if (!on || !bait || gone || bait.hop || fight().phase !== 'fight') return false;
-      startHop(bait, creature(), tune(), 'forced', alt, bound()); flyover(true);
+      startHop(bait, creature(), tune(), 'forced', alt, bound(), zonesNow()); flyover(true);
       return true;
     },
     // Isao put at a ground point (local metres) as he flies, the round going on: the acceptance's case of him under the creature
@@ -300,7 +316,7 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
       const c = creature(), here = lineOf(view ?? c, bait), rho = dist(bait.pos, c.centre), reach = reachOf({ ...c, nodes: nodes() }, bait.pos).e;
       return { pos: [...bait.pos], hp: bait.hp, max: bait.max, heading: bait.heading, facing: face, alt, bob, speed: bait.flight?.speed ?? null, gone, fleeing: bait.fleeing, gap: rho - here.e, hits, said: chatter.said(),
         lines: chatter.log(), nukeClear: clear, cue: !cue.hidden, near: { ...near },   // the run's lines ({ key, variant, at, via }), the NUKE CLEAR cue (lit, shown), the nearest low arm and body node (m)
-        hop: bait.hop?.phase ?? null, hopWhy: bait.hop?.why ?? null, hops: bait.hops, trapped: bait.trapT,
+        zones: zones.map((q) => ({ at: [...q.at], radius: q.radius, until: q.until })), zoneFlee: bait.zoneFlee, hop: bait.hop?.phase ?? null, hopWhy: bait.hop?.why ?? null, hops: bait.hops, trapped: bait.trapT,
         // the reach envelope: `reach` the outermost node toward him now, `envelope` the planner's smoothed one; `keep` his distance beyond `reach`, `keepSmoothed` beyond `envelope`
         reach, envelope: bait.reach?.e ?? null, keep: rho - reach, keepSmoothed: bait.reach ? rho - bait.reach.e : null };   // gap: against the held edge; hop: the fly-over's phase
     },
