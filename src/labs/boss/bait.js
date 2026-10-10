@@ -23,7 +23,9 @@
 // an escape from under the creature, `barrage` a body node within `barrageNear` and no player fire for `barrageQuiet` s, `useForty` no 40 mm for `fortyQuiet` s
 // with a node within `fortyNear`, `nukeCareful` the MK-9 selected or aimed with him inside its ring, `nukeFace` an MK-9 landing within `faceNear` he survives,
 // `flyover` a hop's start (one hop in three; a forced hop always asks), `stagger` the lab's (the round's first 40 mm fright, `want`). The player's fire comes
-// from the seat (`gunner()`: { gun, reticle, shotAt, fortyAt } or null).
+// from the seat (`gunner()`: { gun, reticle, shotAt, fortyAt } or null). THE SECOND PASS (owner, 2026-10-10: "so he doesn't repeat too much" and two event lines): `filler`
+// is the director's own, in the quiet of a running fight (a pool of seventeen, whole before any comes again); `finishHim` once the boss's share of hit points is under a fifth
+// (the fight's own, never a Reed's); `win` `winAfter` s after the KILLED card, with him up (the director's `endLines`; a pyrrhic win says nothing).
 //
 // NUKE CLEAR (wave B: "create an opportunity for a clean nuke"): at the end of his row, lit while he is beyond the MK-9's radius plus `nukeClear` metres from the
 // creature's centre, grey otherwise; shown while he flies in a running round.
@@ -113,7 +115,7 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
 
   let on = false, bait = null, face = 0, faceV = 0, bearing = null, alt = ALTITUDE, bob = 0, fade = 1, fadeV = 0, gone = false, model = null, disposed = false, drawn = '';
   const look = { at: null, v: [0, 0, 0], t: 0 };   // the camera's look target on its spring (THE SHAKE): sphere metres, its velocity, the lab's clock at its last step
-  let zones = [], hits = 0, clear = false, cueKey = '', gunWas = null, quietFrom = 0, escape = null, near = { low: Infinity, node: Infinity };
+  let won = false, zones = [], hits = 0, clear = false, cueKey = '', gunWas = null, quietFrom = 0, escape = null, near = { low: Infinity, node: Infinity };
   const air = [0, 0, 0];                        // his place in sphere space
   let under = null;                             // the ground point under him when he was last placed (sphere space): a re-anchor keeps him on it
   const held = new Map();                       // cell -> { p, at }: the contacts of the last HOLD seconds, newest position per cell
@@ -191,6 +193,7 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
       if (g.gun === 'nuke' && (gunWas !== 'nuke' || (g.reticle && dist(g.reticle, bait.pos) <= T.nuke.radius))) chatter.want('nukeCareful');
       gunWas = g.gun;
     }
+    chatter.events({ phase: fight().phase, hp: fight().hp, max: fight().max, isaoHp: bait.hp });   // the boss under a fifth of its hit points: the finish
     chatter.tick();
   }
 
@@ -247,7 +250,7 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
       const T = tune(), c = creature(); zones = [];
       bait = makeBait(at, T, T.seed ?? 1);   // the round's seed: a round flies one way
       bait.heading = Math.atan2(c.centre[1] - at[1], c.centre[0] - at[0]); face = bait.heading; faceV = 0; bearing = null;
-      alt = params.altitude; bob = 0; fade = 1; fadeV = 0; look.at = null; under = null; gone = false; hits = 0; gunWas = gunner()?.gun ?? null; quietFrom = now(); escape = null;
+      alt = params.altitude; bob = 0; fade = 1; fadeV = 0; look.at = null; under = null; gone = false; hits = 0; won = false; gunWas = gunner()?.gun ?? null; quietFrom = now(); escape = null;
       held.clear(); view = null;
       chatter.reset(T.seed ?? 1);
       drawn = ''; place(); draw();
@@ -353,6 +356,11 @@ export function createBaitMode({ stage, sphere, tune, fight, now, creature, rout
         const T = tune(), c = creature();
         if (baitCaught(bait, c, dt, T)) { capture(s, 'Isao taken'); vanish(); }
         else lines(c);
+      } else if (s.phase === 'killed' && bait.hp > 0) {
+        // the boss is dead and he is not: the situational lines are moot, then a word after the card (none on a pyrrhic win; the filler stays quiet)
+        if (!won) { won = true; chatter.drop(); }
+        chatter.events({ phase: s.phase, hp: s.hp, max: s.max, isaoHp: bait.hp });
+        chatter.tick({ filler: false });
       }
       draw();
     },

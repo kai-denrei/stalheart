@@ -3068,6 +3068,47 @@ const killReal=(Date.now()-t0)/1000;
   assert(shake.turn.under>=SHAKE_SHARE,`the ISAO · CAM's look turns under ${SHAKE_TURN} degrees a second on ${(100*shake.turn.under).toFixed(2)} % of the frames (bound ${100*SHAKE_SHARE} %; ${JSON.stringify(shake.turn)})`);
   await evaluate(`${B}.mode("tank")`);await until(`${B}.mode() === "tank" && ${B}.seat() === null`,10000);}
  // ---- end of THE SHAKE ----
+ // ---- THE SECOND PASS OF THE CHATTER (2026-10-10; src/domain/boss-chatter.js, owner: "so he doesn't repeat too much" and two event lines) ----
+ // over 90 s of lab clock of a quiet fight (no fire, no random fly-over, the situational triggers muted: the creature that hunts him asks for a line every 6 s otherwise) at least three distinct filler lines play, no take twice; the boss's hit points forced to
+ // 15 % say "Finish him!" once however long it stays there; a kill says the win line a beat after the card, once. The director's own output is read (`bait().lines`), not the audio
+ {await evaluate(`${B}.mode("bait")`);await until(`${B}.mode()==="bait" && ${B}.fight().phase === "fight" && ${B}.bait() && ${B}.bait().max > 0 && !!${B}.seat()`,30000);
+  await setKnob(HOP_KNOB,0);
+  const trig=await evaluate(`JSON.stringify(${B}.chatterTune().triggers)`),helpCool=await evaluate(`${B}.chatterTune().lines.help.cooldown`);
+  await evaluate(`(()=>{const C=${B}.chatterTune();Object.assign(C.triggers,{closeRing:0,closeEscape:0,barrageNear:0,fortyNear:0});C.lines.help.cooldown=1e9;})()`);   // help: pinned or out from under, once at most
+  await restart();
+  const lines=async(from,key)=>(await evaluate(`${B}.bait().lines`)).filter(l=>l.at>=from&&(!key||l.key===key));
+  const clock=()=>evaluate(`${B}.arena().clock`);
+  const c0=await clock();let last=c0,restarts=0;
+  for(const end=Date.now()+900000;Date.now()<end&&last-c0<90;){await delay(200);const s=await evaluate(S);last=s.clock;if(s.phase!=='fight'||s.bait.gone){restarts++;await restart();}}
+  const all=await lines(c0),fill=all.filter(l=>l.key==='filler'),takes=fill.map(l=>l.variant);
+  console.log('BOSS-BAIT chatter pool '+JSON.stringify({lab:+(last-c0).toFixed(1),restarts,lines:all.map(l=>`${(l.at-c0).toFixed(1)} ${l.key}${l.key==='filler'||l.variant?`#${l.variant}`:''} ${l.via}`)}));
+  assert(last-c0>=90,`the quiet run covered 90 s of lab clock (${(last-c0).toFixed(1)})`);
+  assert(new Set(takes).size>=3,`at least three distinct chatter lines in the quiet (${takes.join(', ')})`);
+  assert(new Set(takes).size===takes.length,`no chatter line twice before the pool is spent (${takes.join(', ')})`);
+  await restart();
+  // the finish: the boss at 15 % says it once, and not again however long it lies there
+  const f0=await clock();
+  assert(await evaluate(`${B}.bossHp(0.15)`),'the handle puts the boss at 15 % of its hit points');
+  await until(`${B}.bait().lines.some(l => l.key === "finishHim" && l.at >= ${f0})`,120000);
+  const fh=(await lines(f0,'finishHim'))[0];
+  for(const end=Date.now()+600000;Date.now()<end;){await delay(200);if((await clock())-fh.at>=12||(await evaluate(S)).phase!=='fight')break;}
+  const fhs=await lines(f0,'finishHim');
+  console.log('BOSS-BAIT chatter finish '+JSON.stringify({at:+(fh.at-f0).toFixed(2),via:fh.via,count:fhs.length}));
+  assert(fhs.length===1&&fh.via==='voice',`"Finish him!" once, in his voice (${fhs.length}, ${fh.via})`);
+  // the win: a kill says it a beat after the card, once
+  const kAt=await clock();
+  assert(await evaluate(`${B}.killBoss()`),'the handle kills the boss');
+  await until(`${B}.fight().phase==="killed"`,10000);const k0=await clock();
+  await until(`${B}.bait().lines.some(l => l.key === "win" && l.at >= ${kAt})`,120000);
+  const wl=(await lines(kAt,'win'))[0];
+  for(const end=Date.now()+600000;Date.now()<end;){await delay(200);if((await clock())-wl.at>=8)break;}
+  const wins=await lines(kAt,'win'),late=(await lines(k0-0.01)).filter(l=>l.key!=='win');
+  console.log('BOSS-BAIT chatter win '+JSON.stringify({afterKilledS:+(wl.at-k0).toFixed(2),via:wl.via,count:wins.length,others:late.map(l=>l.key)}));
+  assert(wins.length===1&&wl.via==='voice',`the win line once, in his voice (${wins.length}, ${wl.via})`);
+  assert(wl.at-k0>=BOSS_FIGHT.chatter.winAfter-0.2&&wl.at-k0<=BOSS_FIGHT.chatter.winAfter+3,`a beat after the card (${(wl.at-k0).toFixed(2)} s)`);
+  assert(late.length===0,`nothing else after the kill (${late.map(l=>l.key)})`);
+  await evaluate(`(()=>{const C=${B}.chatterTune();Object.assign(C.triggers,${trig});C.lines.help.cooldown=${helpCool};})()`);await restart();await setKnob(HOP_KNOB,BOSS_FIGHT.bait.hopChance);}
+ // ---- end of THE SECOND PASS OF THE CHATTER ----
  const rd=await evaluate(`${B}.readout()`);
  assert.deepEqual(rd.shaderErrors,[],'no shader errors');assert(!rd.error,`no frame error (${rd.error})`);
  current='boss-bait';await finish();

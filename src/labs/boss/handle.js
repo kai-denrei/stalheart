@@ -7,7 +7,7 @@ import { readout as fightReadout } from '../../domain/boss-fight.js';
 export function createLabHandle({
   getCreature, getScale, getT, getFight, getGameCam, getReanchors, setScripted, setPin,
   readout, setLure, setCam, setMode, bait, seat, setFight, fireCannon, copySettings, reset, tryReanchor, placeTank, creatureNow, creatureAim, temperament,
-  plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene, chase, closeTo, wave, reeds, sinkhole, remains, killBoss, closeToBoss,
+  plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene, chase, closeTo, wave, reeds, sinkhole, remains, killBoss, closeToBoss, bossHp,
 }) {
   const lab = {
     readout,
@@ -115,9 +115,12 @@ export function createLabHandle({
     // remains() its carcass's state ({ stage, name, label, limbs, cut, cracked, standing, born, diedAt, faded, skin, opacity, tris, pieces: [{ kind, limb, j, state, hp,
     // max, by, own, plane, hopping }], severed, blasts }, null before it lies), closeToBoss(back, up, at) the free orbit's camera on it (on the local point `at` if
     // given; on the boss's body before it lies; false outside the free orbit)
-    killBoss: () => killBoss(), remains: () => remains.state(), closeToBoss: (back, up, at) => closeToBoss(back, up, at),
+    // bossHp(share) puts the boss's hit points at that share of its maximum in a running fight with the boss up (the finish line's acceptance; false otherwise)
+    killBoss: () => killBoss(), bossHp: (share) => bossHp(share), remains: () => remains.state(), closeToBoss: (back, up, at) => closeToBoss(back, up, at),
     // the bound's radius: bounds(r) sets the lab's copy (the ring, the clamps and the backstop follow at once), bounds() reads it. Acceptance only
     // the MK-9 zones for Isao's autopilot on or off (content `bait.nukeAvoid`): off, the acceptance's MK-9s led onto him hit him. Acceptance only
+    // the chatter director's numbers (content `chatter`, live): the acceptance's quiet fight mutes the situational triggers
+    chatterTune: () => fightTune.chatter,
     avoidNukes: (on) => { if (on !== undefined) fightTune.bait.nukeAvoid = !!on; return fightTune.bait.nukeAvoid; },
     bounds: (r) => { if (r !== undefined) fightTune.bounds.radius = r; return fightTune.bounds.radius; },
     // the measurement's hold: the creature's target on the shape's centre for `seconds` of lab clock with the routing off, the tank

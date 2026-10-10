@@ -1186,7 +1186,8 @@ export function initBossTab(root) {
     setScripted: (v) => { scripted = v; }, setPin: (v) => { pin = v; },
     readout, setLure, setCam, setMode, bait, seat, setFight, fireCannon: () => fireCannon(), copySettings, reset, tryReanchor, placeTank, creatureNow, creatureAim, temperament,
     plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene, wave, sinkhole, remains,
-    killBoss: () => { if (fight.phase !== 'fight' || waving() || rise) return false; fight.hp = 0; return true; },   // the round's own kill on its next tick
+    killBoss: () => { if (fight.phase !== 'fight' || waving() || rise) return false; fight.hp = 0; return true; },
+    bossHp: (share) => { if (fight.phase !== 'fight' || waving() || rise) return false; fight.hp = Math.max(1e-6, share * fight.max); return true; },   // the boss's hit points at `share` of its maximum (the acceptance's)   // the round's own kill on its next tick
     closeToBoss: (back = 30, up = 18, at = null) => {   // the free orbit's camera on the boss's carcass (on the local ground point `at` if given), `back` m off along its frame's east and `up` m above it
       if (state.view !== 'free' || !creature) return false;
       const f = remains.frame() ?? { centre: new THREE.Vector3(...creatureAim(0)), outer: rig };   // the living (or still collapsing) boss: its body's centre in its rig

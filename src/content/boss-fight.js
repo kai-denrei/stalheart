@@ -84,9 +84,15 @@ export const BOSS_FIGHT = freeze({
   // ISAO'S CHATTER (owner, 2026-10-09: "Isao is too verbose with the three lines about elevation. reduce the frequency ... and add more diversity"): a director says one line
   // at a time, at least `gap` seconds apart. Per line: `priority` (the highest wanted line goes first; the situational lines above the fly-over's chatter), `cooldown` (seconds
   // between two of it), `per` (at most this many a round), `ttl` (seconds a want waits for its turn before it is dropped; none: until said), `variants` (its takes:
-  // `ordered` in turn, else at random never the same twice running), `chance` (the share of its triggers that ask), `then`/`after` (a line wanted `after` seconds once it is said)
+  // `ordered` in turn from the take last said, else at random, one not played yet first and never the same twice running), `chance` (the share of its triggers that ask),
+  // `then`/`after` (a line wanted `after` seconds once it is said), `urgent` (ignores the gap, never the line still being said). THE SECOND PASS (owner, 2026-10-10: "so he
+  // doesn't repeat too much" and two event lines): `filler`, the pool of `variants` takes (the recorded `bait_chatter`) said, at the lowest priority, when no line has been said for a
+  // random `quietMin`..`quietMax` s and nothing is wanted: shuffled by the round, the whole pool before any take comes again, carried over the rounds; `finishShare` the boss's share
+  // of hit points under which `finishHim` is said (once); `winAfter` the seconds after the KILLED card that `win` is said (not when Isao is down)
   chatter: {
     gap: 6,
+    filler: { quietMin: 14, quietMax: 22, variants: 17 },
+    finishShare: 0.2, winAfter: 1.5,
     // the lab's triggers (src/labs/boss/bait.js): a landing within `closeRing` m outside his ring, or an escape from an arm that came within `closeEscape` m, is a close
     // call; a body node within `barrageNear` m and no player fire for `barrageQuiet` s asks for a barrage; no 40 mm for `fortyQuiet` s with a node within `fortyNear` m asks
     // for the 40 mm; an MK-9 landing within `faceNear` m that he survives is in his face
@@ -104,6 +110,8 @@ export const BOSS_FIGHT = freeze({
       barrage: { priority: 4, cooldown: 25, ttl: 5 },
       taunt: { priority: 3, per: 1, ttl: 6 },
       flyover: { priority: 1, cooldown: 12, ttl: 2, variants: 3, chance: 1 / 3 },
+      finishHim: { priority: 20, per: 1, ttl: 4, urgent: true },
+      win: { priority: 20, per: 1, ttl: 8, urgent: true },
     },
   },
   // THE BAIT MODE'S FIRST WAVE (owner, 2026-10-09: "let's test something with the fps; wave 1 is 5 to 50 (slider) Reed - four limbs, creatures, smaller (size 15) and
