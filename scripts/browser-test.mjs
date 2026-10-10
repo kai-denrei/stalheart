@@ -3174,10 +3174,10 @@ const killReal=(Date.now()-t0)/1000;
    {const h=s.sink;const ph=h.open?h.phase:(h.caps?'sealed':'none');if(sk.phases.at(-1)!==ph)sk.phases.push(ph);if(h.open&&!sk.opened)sk.opened=h;
     const out=s.reeds.filter(r=>r.phase&&r.phase!=='below');if(out.length&&!sk.firstOut)sk.firstOut={...h,out:out.length};if(out.length&&h.open&&h.who==='reeds'&&!h.ready)sk.early++;
     if(!sk.shots.opening&&h.open&&h.phase==='open'&&h.age>1.6+0.8){await evaluate(`${B}.aim(${JSON.stringify(at)})`);await delay(150);await snap('sinkhole-seat-opening.png');sk.shots.opening=h;}   // aimed again: the orbit slides the view
-    if(!sk.shots.rising&&s.reeds.some(r=>r.phase==='rising'&&r.top>2)){await evaluate(`${B}.aim(${JSON.stringify(at)})`);await delay(150);await snap('sinkhole-seat.png');sk.shots.rising=h;}}
+    if(!sk.shots.rising&&s.reeds.some(r=>r.phase==='haul'&&r.top>2)){await evaluate(`${B}.aim(${JSON.stringify(at)})`);await delay(150);await snap('sinkhole-seat.png');sk.shots.rising=h;}}
    for(const r of s.reeds){if(!r.phase)continue;const e=seen[r.id]??={phases:[],tops:[],first:r.first,upAt:null};if(e.phases.at(-1)!==r.phase)e.phases.push(r.phase);if(r.phase!=='up')e.tops.push(r.top);if(r.phase==='up'&&!e.upAt){e.upAt=r.centre;upNear.push(Math.hypot(r.centre[0]-at[0],r.centre[1]-at[1]));}}
    if(s.keep&&s.isao){keepSeen++;isaoMin=Math.min(isaoMin,Math.hypot(s.isao[0]-s.keep.at[0],s.isao[1]-s.keep.at[1]));}
-   if(!shot&&s.reeds.filter(r=>r.phase==='up').length>=2&&s.reeds.some(r=>r.phase==='rising'||r.phase==='tremor')){const p=await send('Page.captureScreenshot',{format:'png'});writeFileSync(emergeShot,Buffer.from(p.data,'base64'));shot=true;console.log(`BOSS-WAVE emergence screenshot ${emergeShot}`);}
+   if(!shot&&s.reeds.filter(r=>r.phase==='up').length>=2&&s.reeds.some(r=>r.phase!=='up'&&r.phase!=='below')){const p=await send('Page.captureScreenshot',{format:'png'});writeFileSync(emergeShot,Buffer.from(p.data,'base64'));shot=true;console.log(`BOSS-WAVE emergence screenshot ${emergeShot}`);}
    if(s.reeds.every(r=>r.phase==='up')){seen.hz=s.hz;seen.shake=s.shake;seen.err=s.err;break;}
    await delay(150);
   }
@@ -3324,7 +3324,7 @@ const killReal=(Date.now()-t0)/1000;
   await setSel('view','free');await until(`${B}.seat() === null`,10000);
   let opening=false,rising=false;
   for(const end=Date.now()+90000;Date.now()<end&&!rising;){await evaluate(`${B}.chase()`);await delay(120);
-   const s=await evaluate(`(()=>{const L=${B},h=L.sinkhole();return {phase:h.breach?.phase,age:h.breach?.age??0,rising:L.wave().reeds.some(r=>r.phase==='rising'&&r.top>2)}})()`);
+   const s=await evaluate(`(()=>{const L=${B},h=L.sinkhole();return {phase:h.breach?.phase,age:h.breach?.age??0,rising:L.wave().reeds.some(r=>r.phase==='haul'&&r.top>2)}})()`);
    if(!opening&&s.phase==='open'&&s.age>1.6+0.8){await evaluate(`${B}.chase()`);await snap('sinkhole-chase-opening.png');opening=true;}
    if(s.rising){await evaluate(`${B}.chase()`);await snap('sinkhole-chase.png');rising=true;}}
   assert(rising,'a Reed caught rising out of the sinkhole from the chase');
@@ -3364,6 +3364,99 @@ const killReal=(Date.now()-t0)/1000;
  const rd=await evaluate(`${B}.readout()`);
  assert.deepEqual(rd.shaderErrors,[],'no shader errors');assert(!rd.error,`no frame error (${rd.error})`);
  current='boss-wave';await finish();
+ } else if(args.includes('--boss-emerge')) {
+ // PULLING OUT OF THE GROUND AND THE QUAKE (owner, 2026-10-10: "1) we need a tremor/sinkhole animation sound with the first opening. 2) both the smaller Reeds and the
+ // larger boss emerge as if from an elevator, it looks unnatural. let's have them emerge by stretching their limbs, as if they were pulling themselves out from the
+ // depth"; src/labs/boss/sinkhole.js, src/domain/boss-emerge.js, src/labs/boss/pull-out.js). The bait mode (the default) with two Reeds. A spy on the lab's own sound
+ // engine records every play. Before any gesture the page's first opening holds (no quake, nothing opened); a trusted key starts the context and the quake can
+ // sound: the ground opens then, and the spy sees the game's `sinkhole_quake` on that opening, at the camera's distance in the game's units (the lab's log: the
+ // game's gain, a live voice of it when the muted context runs); the boss's opening sounds its own. Each creature's emergence is polled on the lab's clock: its arm
+ // tips over the surface before its torso (the highest tip node against the torso's centre), the tips first seen under it, the torso over it before the emergence
+ // ends (`lead + reach + haul + release`, the boss's own times), no frame error, every node's speed finite and under a bound, the solver's ms logged. Frames every
+ // 0.25 s of the lab's clock through an emergence (EMERGE_FRAMES, a directory, else the artifacts): emerge-reed-seat-NN.png and emerge-boss-seat-NN.png from the
+ // seat zoomed in on the centre; R, then emerge-reed-close-NN.png and emerge-boss-close-NN.png from the free orbit close on the centre
+ const B='window.__bossLab',dir=process.env.EMERGE_FRAMES||output,N=2,GAP=0.25,SPEED=500;   // m/s: the kit's 7 cm body is drawn 85x and 220x in space, not in time, so a limb tip reads in the hundreds
+ const {BOSS_FIGHT}=await import('../src/content/boss-fight.js');const WV=BOSS_FIGHT.wave,E=WV.emerge,EB={...E,...E.boss};
+ const span=(T)=>T.lead+T.reach+T.haul+T.release;
+ const setSel=(key,v)=>evaluate(`(()=>{const e=document.querySelector('#boss [data-k="${key}"]');e.value=${JSON.stringify(v)};e.dispatchEvent(new Event('input',{bubbles:true}));return e.value;})()`);
+ const wheel=(dy,n)=>evaluate(`(()=>{const cv=document.querySelector('#boss .sw-stage canvas');for(let i=0;i<${n};i++)cv.dispatchEvent(new WheelEvent('wheel',{deltaY:${dy},bubbles:true,cancelable:true}));return ${B}.seat()?.zoom})()`);
+ const frame=async(file)=>{const p=await send('Page.captureScreenshot',{format:'png',clip:{x:0,y:0,width:1440,height:900,scale:0.5}});writeFileSync(join(dir,file),Buffer.from(p.data,'base64'));};
+ const plays=()=>evaluate('window.__emergePlays');
+ await go('boss-emerge',`labs.html?sw=0&acceptance=1&reeds=${N}#boss`);
+ await until(`!!${B} && ${B}.mode()==="bait" && !!${B}.seat() && ${B}.wave().made===${N}`,90000);
+ // the spy: every play of the lab's sound engine, with the sinkhole as it stands at that call
+ await evaluate(`(()=>{const a=${B}.audio(),log=window.__emergePlays=[],play=a.play.bind(a);a.play=(key,o={})=>{const h=${B}.sinkhole();log.push({key,dist:o.dist??null,context:a.contextState,who:h.who,phase:h.breach?.phase??null,age:h.breach?.age??null,opens:h.opens,clock:${B}.arena().clock});return play(key,o);};return true;})()`);
+ // the hold: before any gesture nothing opens and nothing sounds
+ {await delay(2500);const h=await evaluate(`${B}.sinkhole()`);
+  console.log('BOSS-EMERGE before the gesture '+JSON.stringify({sound:h.sound,opens:h.opens,phase:h.breach?.phase??null,started:h.breach?.started??null,plays:(await plays()).length}));
+  assert(h.open&&h.who==='reeds'&&h.opens===0&&h.sound.holding&&h.sound.held>0.5&&!h.breach.started,`the first opening holds for its quake (${JSON.stringify(h.sound)}, opens ${h.opens})`);
+  assert(!(await plays()).some(p=>p.key==='sinkhole_quake'),'no quake before the gesture');
+  assert(!(await evaluate(`${B}.wave().reeds.some(r=>r.phase&&r.phase!=='below')`)),'no Reed out while it holds');}
+ // the gesture (a trusted key: T, which the seat swallows, the lab having no top view; a click would ask headless for a pointer lock): the context runs, the quake
+ // can sound, the ground opens with it
+ {await send('Input.dispatchKeyEvent',{type:'keyDown',key:'t',code:'KeyT'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:'t',code:'KeyT'});
+  await until(`${B}.sinkhole().opens>=1`,30000);const h=await evaluate(`${B}.sinkhole()`),p=(await plays()).filter(x=>x.key==='sinkhole_quake');
+  console.log('BOSS-EMERGE the first opening '+JSON.stringify({plays:p,quakes:h.sound.quakes,held:+h.sound.held.toFixed(2),context:await evaluate(`${B}.audio().contextState`)}));
+  assert(p.length===1&&p[0].who==='reeds'&&p[0].opens===1&&p[0].phase==='rumbling'&&p[0].dist>0&&p[0].dist<1,`the game's quake played on the first opening, at the camera's distance in the game's units (${JSON.stringify(p)})`);
+  const q=h.sound.quakes[0];
+  assert(q&&q.who==='reeds'&&/^running/.test(q.context)&&q.voice===true&&q.gain>0.1&&q.gain<=0.8,`the quake sounded: the context running, a live voice of it, the game's gain (${JSON.stringify(q)})`);
+  assert(h.sound.held>2&&h.sound.held<WV.sinkhole.hold,`it opened on the gesture, before the cap (${h.sound.held.toFixed(2)} s held)`);}
+ // one emergence polled on the lab's clock: `read()` is { clock, phase, tip, torso, speed } of the creature followed; frames every GAP s of lab clock from its reach
+ const follow=async(name,read,shots)=>{
+  const rows=[];let next=null,k=0;
+  for(const end=Date.now()+90000;Date.now()<end;){
+   const r=await evaluate(read);if(!r){await delay(100);continue;}
+   rows.push(r);
+   if(shots&&r.phase!=='below'){next??=r.clock;if(r.clock>=next){await frame(`${shots}-${String(k).padStart(2,'0')}.png`);k++;next+=GAP;}}
+   if(r.phase==='up'&&rows.some(x=>x.phase!=='up')){if(shots)for(let i=0;i<2;i++){await delay(250);await frame(`${shots}-${String(k).padStart(2,'0')}.png`);k++;}break;}
+   await delay(60);
+  }
+  return {rows,frames:k};
+ };
+ const check=(name,T,res)=>{
+  const rows=res.rows,pulled=rows.filter(r=>r.tip!==null&&r.torso!==null),from=rows.find(r=>r.phase==='reach')?.clock;
+  const tipAt=pulled.find(r=>r.tip>0),torsoAt=pulled.find(r=>r.torso>0),upAt=rows.find(r=>r.phase==='up');
+  const peak=Math.max(...pulled.map(r=>r.speed)),ms=rows.filter(r=>r.phase!=='below'&&r.phase!=='up').map(r=>r.solver);
+  const sum={phases:[...new Set(rows.map(r=>r.phase))],firstTip:pulled[0]&&+pulled[0].tip.toFixed(2),firstTorso:pulled[0]&&+pulled[0].torso.toFixed(2),tipOver:tipAt&&+(tipAt.clock-from).toFixed(2),torsoOver:torsoAt&&+(torsoAt.clock-from).toFixed(2),
+   up:upAt&&+(upAt.clock-from).toFixed(2),budget:+(span(T)-T.lead).toFixed(2),peak:+peak.toFixed(1),solverMs:{mean:+(ms.reduce((a,x)=>a+x,0)/(ms.length||1)).toFixed(2),max:+Math.max(...ms).toFixed(2)},polls:rows.length,frames:res.frames,errors:[...new Set(rows.map(r=>r.err).filter(Boolean))]};
+  console.log(`BOSS-EMERGE ${name} `+JSON.stringify(sum));
+  const ORDER=['below','tremor','reach','haul','release','up'];
+  assert(sum.phases.every((p,i,a)=>i===0||ORDER.indexOf(p)>ORDER.indexOf(a[i-1])),`${name}: the phases in order (${sum.phases})`);
+  assert(['reach','haul','release','up'].every(p=>sum.phases.includes(p)),`${name}: it reached, hauled, let go and stood (${sum.phases})`);
+  assert(pulled.length>4&&pulled[0].tip<0&&pulled[0].torso<0,`${name}: first seen in the hole, tips and torso under the surface (${JSON.stringify(pulled[0])})`);
+  assert(tipAt&&torsoAt&&tipAt.clock<torsoAt.clock,`${name}: its arm tips over the surface before its torso (${JSON.stringify(sum)})`);
+  assert(torsoAt.clock-from<=span(T)-T.lead+0.25,`${name}: its torso over the surface within the emergence (${(torsoAt.clock-from).toFixed(2)} s of ${(span(T)-T.lead).toFixed(2)})`);
+  assert(pulled.every(r=>Number.isFinite(r.tip)&&Number.isFinite(r.torso)&&Number.isFinite(r.speed))&&peak<SPEED,`${name}: nothing non-finite, no node thrown (fastest ${peak.toFixed(1)} m/s)`);
+  assert.deepEqual(sum.errors,[],`${name}: no frame error`);
+  if(name.startsWith('reed')){const first=rows.find(r=>r.phase!=='below');assert(first&&first.second==='below',`${name}: one after another: the second Reed still below as the first starts (${JSON.stringify(first)})`);}
+ };
+ const reedRead=`(()=>{const L=${B},w=L.wave(),r=w.reeds[0],x=L.readout();return r&&r.phase?{clock:L.arena().clock,phase:r.phase,tip:r.pulled?.tip??null,torso:r.pulled?.torso??null,speed:r.pulled?.speed??0,solver:w.solver,err:x.error,second:w.reeds[1]?.phase??null}:null})()`;
+ const bossRead=`(()=>{const L=${B},x=L.readout(),r=x.rise;return r?{clock:L.arena().clock,phase:r.phase,tip:r.tip,torso:r.torso,speed:r.speed??0,solver:x.solver,err:x.error}:(L.wave().entered?{clock:L.arena().clock,phase:'up',tip:null,torso:null,speed:0,solver:x.solver,err:x.error}:null)})()`;
+ const at=(await evaluate(`${B}.arena().bound`)).at;
+ const seatOn=async(zoom)=>{await evaluate(`${B}.aim(${JSON.stringify(at)})`);await wheel(-100,zoom);await delay(600);await evaluate(`${B}.aim(${JSON.stringify(at)})`);};
+ // the seat: a Reed, then the boss
+ const aimed=(read)=>`(()=>{${B}.aim(${JSON.stringify(at)});return ${read}})()`;   // aimed again every poll: the orbit slides the view
+ await seatOn(6);
+ check('reed (seat)',E,await follow('reed',aimed(reedRead),'emerge-reed-seat'));
+ await until(`${B}.wave().reeds.every(r=>r.phase==='up')`,30000);
+ await until(`${B}.fight().phase==="fight"`,20000);
+ await evaluate(`${B}.killReeds()`);await until(`${B}.wave().entered`,10000);
+ await wheel(100,6);await seatOn(3);
+ check('boss (seat)',EB,await follow('boss',aimed(bossRead),'emerge-boss-seat'));
+ {const p=(await plays()).filter(x=>x.key==='sinkhole_quake');assert(p.length===2&&p[1].who==='boss',`the boss's opening sounds its quake (${JSON.stringify(p)})`);}
+ // R, then the free orbit close on the centre: a Reed, then the boss
+ await evaluate(`${B}.reset()`);await setSel('view','free');await until(`${B}.seat() === null`,10000);
+ const close=async(back,up)=>{await evaluate(`${B}.closeToBoss(${back},${up},${JSON.stringify(at)})`);};
+ await until(`${B}.wave().made===${N}`,30000);await close(34,16);
+ const reedClose=`(()=>{${B}.closeToBoss(34,16,${JSON.stringify(at)});return ${reedRead}})()`;
+ check('reed (close)',E,await follow('reed',reedClose,'emerge-reed-close'));
+ await until(`${B}.wave().reeds.every(r=>r.phase==='up')`,30000);await until(`${B}.fight().phase==="fight"`,20000);
+ await evaluate(`${B}.killReeds()`);await until(`${B}.wave().entered`,10000);
+ const bossClose=`(()=>{${B}.closeToBoss(80,34,${JSON.stringify(at)});return ${bossRead}})()`;
+ check('boss (close)',EB,await follow('boss',bossClose,'emerge-boss-close'));
+ {const p=(await plays()).filter(x=>x.key==='sinkhole_quake');console.log('BOSS-EMERGE quakes '+JSON.stringify(p.map(x=>({who:x.who,dist:+x.dist.toFixed(3),context:x.context}))));
+  assert.equal(p.length,4,'every opening sounded its quake once (two rounds, the Reeds\' and the boss\'s)');}
+ await finish();
  } else if(args.includes('--boss-carcass')) {
  // THE DEAD BOSS'S CARCASS IN STAGES (owner, 2026-10-10: "after the boss is dead, the user should still be able to shoot at its carcass, what would it take to
  // create 'stages of destruction' for the dead boss? limbs getting cut, parts disappearing in explosion, etc."; option A: the Reeds' carcass scaled up;

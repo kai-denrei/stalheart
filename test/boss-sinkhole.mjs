@@ -2,7 +2,8 @@
 // sinkhole animation from the game mode"; src/labs/boss/sinkhole.js over src/game-breaches.js): the breaches live in a group scaled by the planet's radius, so a
 // breach opened at a local point stands on the unit sphere under it, one game cell (`cellSide`) times its size; one is open at a time, an earlier one sealed with
 // the game's rubble; ready is the adapter's (the opening run to its duration); its quake sounds once, on the opening, at the camera's distance in the game's
-// units; the lab's floors and grid lines carry the game's breach ground; a reset takes every breach and cap away. The sinkhole itself is the adapter's test seam.
+// units; the lab's floors and grid lines carry the game's breach ground; a reset takes every breach and cap away; the hole's width in metres; the page's first
+// opening held until its quake can sound (owner, 2026-10-10), at most `hold` s. The sinkhole itself is the adapter's test seam.
 import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three.module.js';
 import { createLabSinkhole } from '../src/labs/boss/sinkhole.js';
@@ -63,4 +64,46 @@ let reedsHole;
 }
 sink.dispose();
 assert.equal(sphere.children.length, 0, 'dispose takes the host away');
-console.log(`boss-sinkhole.mjs: the game's sinkhole (src/game-breaches.js) opened at a local point on the unit sphere in a host scaled by ${R} m, one cell (${(CELL * R).toFixed(0)} m) for the Reeds and two for the boss, one at a time (the earlier sealed with the game's rubble), ready by the adapter's own duration, its quake once on the opening at the camera's game-unit distance, the floors and grid lines patched; a reset clears it.`);
+// the hole's width in local metres (the arms grip its lip): its crater radius, one cell a size
+{
+  const s2 = createLabSinkhole({ sphere, camera, audio, planet: () => planet, ground, north: () => [0, 0, 1], look: () => 'tronColors', makeSinkhole: () => fakeSinkhole() });
+  assert.equal(s2.radius(), 0, 'none open');
+  s2.open([0, 0], 1, 'reeds'); assert.ok(Math.abs(s2.radius() - 10) < 1e-6, `one cell: 10 m (${s2.radius()})`);
+  s2.open([0, 0], 2, 'boss'); assert.ok(Math.abs(s2.radius() - 20) < 1e-6, 'two cells: 20 m');
+  s2.dispose();
+}
+// THE QUAKE (owner, 2026-10-10: "we need a tremor/sinkhole animation sound with the first opening"): the page's first opening holds until the quake can sound (the
+// context running, the sample primed), at most `hold` s; then the quake plays on the opening and is logged; a later opening never waits
+let heldFor = 0, capped = 0;
+{
+  const calls = [], running = [], fake = { play: (name, o) => calls.push({ name, ...o }), whenRunning: (cb) => running.push(cb), prime: () => Promise.resolve(true), contextState: 'suspended @48000Hz', activeVoices: [] };
+  const fxs = [], s3 = createLabSinkhole({ sphere, camera, audio: fake, planet: () => planet, ground, north: () => [0, 0, 1], look: () => 'tronColors', hold: () => 8,
+    makeSinkhole: () => { const fx = fakeSinkhole(); fxs.push(fx); return fx; } });
+  s3.open([0, 0], 1, 'reeds');
+  for (let i = 0; i < 20; i++) s3.step(0.1);
+  assert.equal(fxs.at(-1).triggered, 0, 'held while the quake cannot sound');
+  assert.ok(s3.state().sound.holding && Math.abs(s3.state().sound.held - 2) < 1e-9 && calls.length === 0, `holding, nothing played (${JSON.stringify(s3.state().sound)})`);
+  assert.equal(running.length, 1, 'it asked once to hear of the context');
+  fake.contextState = 'running @48000Hz'; fake.activeVoices = [{ key: 'sinkhole_quake' }];
+  running[0](); await Promise.resolve(); await Promise.resolve();
+  s3.step(0.1);
+  assert.equal(fxs.at(-1).triggered, 1, 'opens once the quake can sound');
+  assert.equal(calls.length, 1); assert.equal(calls[0].name, 'sinkhole_quake');
+  const q = s3.state().sound.quakes[0]; heldFor = q.held;
+  assert.ok(q.who === 'reeds' && q.voice === true && q.context.startsWith('running') && Math.abs(q.held - 2) < 1e-9 && q.gain > 0 && q.gain <= 0.8, `logged with the game's gain (${JSON.stringify(q)})`);
+  // the boss's opening later: no wait
+  s3.open([0, 0], 2, 'boss'); s3.step(0.1);
+  assert.equal(fxs.at(-1).triggered, 1, 'a later opening never waits'); assert.equal(calls.length, 2, 'and sounds its quake');
+  s3.dispose();
+}
+{
+  const fake = { play: () => {}, whenRunning: () => {}, prime: () => Promise.resolve(true) }, fxs = [];
+  const s4 = createLabSinkhole({ sphere, camera, audio: fake, planet: () => planet, ground, north: () => [0, 0, 1], look: () => 'tronColors', hold: () => 1,
+    makeSinkhole: () => { const fx = fakeSinkhole(); fxs.push(fx); return fx; } });
+  s4.open([0, 0], 1, 'reeds');
+  let t = 0; while (!fxs.at(-1).triggered && t < 5) { s4.step(0.1); t += 0.1; }
+  capped = t;
+  assert.ok(fxs.at(-1).triggered === 1 && t > 0.95 && t < 1.25, `no gesture: it opens after the cap anyway (${t.toFixed(2)} s)`);
+  s4.dispose();
+}
+console.log(`boss-sinkhole.mjs: the first opening held ${heldFor.toFixed(1)} s until its quake could sound (${capped.toFixed(1)} s at the cap with no gesture); the game's sinkhole (src/game-breaches.js) opened at a local point on the unit sphere in a host scaled by ${R} m, one cell (${(CELL * R).toFixed(0)} m) for the Reeds and two for the boss, one at a time (the earlier sealed with the game's rubble), ready by the adapter's own duration, its quake once on the opening at the camera's game-unit distance, the floors and grid lines patched; a reset clears it.`);

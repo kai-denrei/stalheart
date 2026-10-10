@@ -24,11 +24,13 @@
 // THE EMERGENCE. Every Reed is made at the arena's centre (a few metres off it, `emergePlan`) and waits below the ground, hidden and unstepped, until the ground
 // has opened (`gate()`, the lab's: the game's own sinkhole at the centre, ./sinkhole.js, ready by the game's spawn rule; owner, 2026-10-10: "the initial Tremor is
 // not just the ground shaking, it is our sinkhole animation from the game mode") and then its turn on the lab's clock (the turns are what the player sees, so they
-// keep `emerge.gap` s however the budget slows the bodies) and, `emerge.lead` s later, it rises: drawn `emerge.depth` times its rest height below the surface and lifted out over `emerge.rise` s (a
-// drawing's lift, on the lab's clock too) while its body settles
-// on the floor with its motion off (the body is never moved: only the drawing is lowered, so the solver sees a body standing on its floor from the first step, and a
-// quiet one goes to sleep). Up, it walks out to its fan point for at most `emerge.fanFor` s, then hunts. A Reed not up is not a body for the rules (no hits, not
-// hunted). `keep()` is Isao's keep-out while any Reed is still to come up.
+// keep `emerge.gap` s however the budget slows the bodies). Then it PULLS ITSELF OUT (owner, 2026-10-10: "both the smaller Reeds and the larger boss emerge as if
+// from an elevator, it looks unnatural. let's have them emerge by stretching their limbs, as if they were pulling themselves out from the depth"; the rule
+// src/domain/boss-emerge.js, the drive ./pull-out.js): drawn `emerge.depth` times its rest height down in the hole, its arms reach up and out over the hole's lip
+// (`hole()`) and grip there, the body hauls itself up (the drawing lifted on the lab's clock while the arms' goals come down with it, so the tips stay planted on
+// the lip) and the arms let go. The body stands on its own floor all along with its motion off: its solver never sees the ground move, only its arms pulled. Up,
+// it walks out to its fan point for at most `emerge.fanFor` s, then hunts. A Reed not up is not a body for the rules (no hits, not hunted). `keep()` is Isao's
+// keep-out while any Reed is still to come up.
 // THE STEP (owner: "start with 120 HZ when there are more than 10 Reeds, and switch back to 240HZ when there are fewer"): `waveStep` on the Reeds alive. The kit's
 // FixedStepper takes its step at construction (`new FixedStepper(P.step)`, src/fx/nih-dairia/creature.js) and keeps it in a closure, but each fixed step simulates
 // `P.step` (the creature's own phys copy, read live): so the lab sets `kit.phys.step` and hands update a dt scaled by `STEP / step`, and the stepper's 1/240 s count
@@ -40,7 +42,8 @@
 // darkens, sinks and cools in the seat's thermal (`hot()`) over `carcass.decay` s; at most `carcass.max` lie. They block nothing and are no one's target. A new wave
 // clears them.
 import * as THREE from '../../../vendor/three.module.js';
-import { makeWave, emergePlan, emergence, waveStep, aliveCount, resolveReeds, hurtReed, waveCleared, bossEnters, nearestReed } from '../../domain/boss-wave.js';
+import { makeWave, emergePlan, waveStep, aliveCount, resolveReeds, hurtReed, waveCleared, bossEnters, nearestReed } from '../../domain/boss-wave.js';
+import { emergence } from '../../domain/boss-emerge.js';
 import { createNihDairia, loadMonsterCage } from '../../fx/nih-dairia/creature.js';
 import { ARENA } from '../../fx/nih-dairia/arena.js';
 import { NIH_DAIRIA_LOOK, NIH_DAIRIA_MODELS } from '../../content/nih-dairia.js';
@@ -48,6 +51,7 @@ import { createFear } from './fear.js';
 import { createTemperament } from './temperament.js';
 import { kitNow, nodesOf, shiftKit } from './body.js';
 import { createCarcasses } from './carcass.js';
+import { createPullOut } from './pull-out.js';
 
 const VARIANT = 'reed';
 const BATCH = 3;            // Reeds made a frame while the wave loads
@@ -72,9 +76,9 @@ function cageCopy(cage) {
 // sphere point under a local point and `tangent(world)` the frame there; `spawn(point)` a point clear of the obstacles; `aim(from, to)` the hunt's target round the
 // obstacles and inside the bound (the lab's, as the boss's); `isao()` his rules' target ({ pos, radius }) and `isaoPos()` his ground point (null when he is gone);
 // `fearOn()` the fear switch and the fight; `camera()` the lab's camera (the frustum); `extentOf(body)` a body's native width; `gate()` true once the ground at the
-// centre is open for them (the lab's sinkhole; the turns count from the first frame it is); `hot()` the seat's thermal on (the carcasses' warmth); `local(world)` a sphere point's
+// centre is open for them (the lab's sinkhole; the turns count from the first frame it is) and `hole()` its radius (local metres: the arms grip its lip); `hot()` the seat's thermal on (the carcasses' warmth); `local(world)` a sphere point's
 // local ground point (the carcasses' pieces as the handle reads them); `onError(message)` a frame's error
-export function createWave({ sphere, tune, fight, now, motion, phys, ground, tangent, spawn, aim, isao, isaoPos, fearOn, camera, extentOf, gate = () => true, hot = () => false, local = null, onError = () => {} }) {
+export function createWave({ sphere, tune, fight, now, motion, phys, ground, tangent, spawn, aim, isao, isaoPos, fearOn, camera, extentOf, gate = () => true, hole = () => 0, hot = () => false, local = null, onError = () => {} }) {
   const root = new THREE.Group(); root.name = 'Reed wave'; sphere.add(root);
   const dead = new THREE.Group(); dead.name = 'Reed carcasses'; sphere.add(dead);   // not under `root`: the thermal heats the wave's group, and a carcass cools on its own
   let wave = makeWave(0, tune()), reeds = [], gen = 0, cage = null, disposed = false, frame = 0, centre = [0, 0];
@@ -104,7 +108,8 @@ export function createWave({ sphere, tune, fight, now, motion, phys, ground, tan
     const outer = new THREE.Group(), inner = new THREE.Group();
     outer.name = `Reed ${id}`; outer.visible = false; inner.add(kit.mesh); outer.add(inner); root.add(outer);
     const r = { id, kit, s, native, outer, inner, place: [at[0], at[1]], first: [at[0], at[1]], fan: [...plan.fan], body: null, dead: false, lod: false, gone: false, cage: parsed,
-      offset: plan.emergeAt, madeAt: now(), emergeAt: Infinity, phase: 'below', lift: 0, height: y1 - Math.min(0, y0), fanUntil: 0, deadAt: 0, lowest: 0 };
+      offset: plan.emergeAt, madeAt: now(), emergeAt: Infinity, phase: 'below', lift: 0, height: y1 - Math.min(0, y0), fanUntil: 0, deadAt: 0, lowest: 0,
+      pull: createPullOut(kit), pulled: null, peak: 0 };
     r.body = kitNow(kit, s, native);
     r.fear = createFear({ tune, creature: () => r.body ?? fallback, tank: isao, fight, now, kit: () => r.kit, on: fearOn, gunFear: () => true, nodes: () => nodesOf(r.kit, r.s) });
     r.temper = createTemperament({ tune, kit: () => r.kit, base: motion, on: () => !r.dead });
@@ -143,7 +148,7 @@ export function createWave({ sphere, tune, fight, now, motion, phys, ground, tan
 
   // the v1 death: every movement off, the gravity up; it collapses `corpse` seconds (SETTLE of the wave's clock at least, 3 x `corpse` at most), then is laid down
   function die(r) {
-    r.dead = true; r.deadAt = clock;
+    r.dead = true; r.deadAt = clock; r.pull.end();
     const k = r.kit.motion;
     k.active = false; k.feeding.enabled = false; r.kit.phys.gravity = tune().deathGravity;
   }
@@ -217,14 +222,19 @@ export function createWave({ sphere, tune, fight, now, motion, phys, ground, tan
       }
       reeds = reeds.filter((r) => !r.gone);
       if (!reeds.length) { solverMs = 0; stepsNow = 0; clock += dt; return; }
-      // the emergence: the turns from the frame the ground is open (one made later waits for its making), motion on once it is up
+      // the emergence: the turns from the frame the ground is open (one made later waits for its making); from its reach to its release the arms pull it out of the
+      // hole (./pull-out.js: the grips on the lip of the hole round the centre, aimed at the reach's start), motion on once it is up
       if (openAt === null && gate()) openAt = t;
       for (const r of reeds) {
         if (r.dead) continue;
         if (openAt !== null && r.emergeAt === Infinity) r.emergeAt = Math.max(openAt + r.offset, r.madeAt);
         const e = emergence(t - r.emergeAt, E), was = r.phase;
         r.phase = e.phase; r.lift = e.lift;
-        if (was !== 'up' && e.phase === 'up') { r.kit.motion.active = true; r.fanUntil = clock + E.fanFor; }
+        if (e.phase === 'reach' || e.phase === 'haul' || e.phase === 'release') {
+          if (!r.pull.active()) { const c = r.kit.motion.center; r.pull.begin([c.x, c.z], r.pull.aim([c.x * r.s, c.z * r.s], r.s, centre, hole(), E), E.drive); }
+          r.pull.frame(e, E.depth * r.height, r.height, E);
+        }
+        if (was !== 'up' && e.phase === 'up') { r.pull.end(); r.kit.motion.active = true; r.fanUntil = clock + E.fanFor; }
       }
       const want = waveStep(aliveCount(wave), W.coarse, STEP);
       if (want !== step) { switches.push({ clock, t, from: 1 / step, to: 1 / want, alive: aliveCount(wave) }); step = want; }
@@ -268,7 +278,10 @@ export function createWave({ sphere, tune, fight, now, motion, phys, ground, tan
       clock += dt * timeScale;
       if (steps > 0) cost = cost * 0.9 + (ms / steps) * 0.1;
       solverMs = ms; stepsNow = steps; push(meanSolver, ms); push(meanScale, timeScale);
-      for (const r of reeds) { place(r); if (!r.dead) r.body = kitNow(r.kit, r.s, r.native); }
+      for (const r of reeds) {
+        place(r); if (!r.dead) r.body = kitNow(r.kit, r.s, r.native);
+        if (r.pull.active() && !r.dead) { const p = r.pull.read(-r.lowest); r.pulled = { tip: p.tip * r.s, torso: p.torso * r.s, speed: p.speed * r.s }; r.peak = Math.max(r.peak, r.pulled.speed); }
+      }
       if (trace) { trace.push({ clock, t, hz: Math.round(1 / step), alive: aliveCount(wave), speed: topSpeed() }); if (trace.length > TRACE) trace.shift(); }
       const bodies = live().map((r) => ({ id: r.id, ...r.body, r }));
       hunted = prey ? nearestReed(bodies, prey) : bodies[0] ?? null;
@@ -327,14 +340,16 @@ export function createWave({ sphere, tune, fight, now, motion, phys, ground, tan
     bar: () => (wave.boss ? null : { alive: aliveCount(wave), count: wave.count }),
     stats: () => ({ solver: solverMs, steps: stepsNow, meanSolver: mean(meanSolver), timeScale, meanScale: mean(meanScale), lod: lodNow, cost, hz: Math.round(1 / step), clock, carcasses: carcasses.stats() }),
     // the handle's view: the wave's count, alive, made (bodies standing or lying), cleared, the boss in, each Reed's hit points, centre (local), first centre, phase,
-    // lift and top (metres over the surface: below 0 it is still under), hunting (up and done fanning out), the step (hz) and its switches, the carcasses (./carcass.js
+    // lift and top (metres over the surface: below 0 it is still under), pulled (while its arms pull it out: { tip, torso } the highest tip node and the torso's centre in
+    // metres over the surface, speed its fastest node in local metres a second) and peak (that speed's most over its emergence), hunting (up and done fanning out), the step (hz) and its switches, the carcasses (./carcass.js
     // state: { id, k, heat, sink, tris, shown, limbs, pieces, blasts }), their stats ({ count, ms, broke, crumbled, moving }) and the last blast on one
     state: () => ({
       count: wave.count, alive: aliveCount(wave), killed: wave.killed, made: reeds.length, cleared: waveCleared(wave), boss: wave.boss, entered,
       reeds: wave.reeds.map((rr) => {
         const r = reeds.find((x) => x.id === rr.id);
         return { id: rr.id, hp: rr.hp, dead: rr.dead, hits: rr.hits, body: !!r, centre: r?.body ? [...r.body.centre] : null, contacts: r?.body?.contacts.length ?? 0, lod: !!r?.lod,
-          first: r ? [...r.first] : null, phase: r?.phase ?? null, hunting: !!r && !rr.dead && r.phase === 'up' && r.fanUntil === 0, lift: r?.lift ?? null, top: r ? (r.height + r.lowest) * r.s : null, shown: !!r?.outer.visible };
+          first: r ? [...r.first] : null, phase: r?.phase ?? null, hunting: !!r && !rr.dead && r.phase === 'up' && r.fanUntil === 0, lift: r?.lift ?? null, top: r ? (r.height + r.lowest) * r.s : null, shown: !!r?.outer.visible,
+          pulled: r?.pulled ? { ...r.pulled } : null, peak: r?.peak ?? 0 };
       }),
       hunted: hunted && !hunted.r.dead ? hunted.id : null, solver: solverMs, steps: stepsNow, timeScale, lod: lodNow, cost, meanSolver: mean(meanSolver), meanScale: mean(meanScale),
       hz: Math.round(1 / step), clock, openAt, switches: switches.map((w) => ({ ...w })), keep: keep(), laid: carcasses.laid(),

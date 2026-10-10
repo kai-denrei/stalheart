@@ -10,8 +10,7 @@
 // THE SECOND PASS (owner, 2026-10-10: "Have the Reed and the boss come out of a tremor in the center ... could we start with 120 HZ when there are more than 10
 // Reeds, and switch back to 240HZ when there are fewer? ... a low-poly dead Reed Carcass that stays and decays"): `emergePlan` puts every Reed at the arena's
 // centre (`emerge.jitter` metres off it, toward its own fan direction), `emerge.gap` seconds after the one before, with the point it fans out
-// to (`emerge.fan` metres out, the directions a golden angle apart) before it hunts; `emergence` is one Reed's phase by its age on that clock (below the ground,
-// the tremor, the rise over `emerge.rise` s with its eased lift, up); `waveStep` the solver's fixed step for the Reeds alive (`coarse`); `keepOut` a point pushed
+// to (`emerge.fan` metres out, the directions a golden angle apart) before it hunts (how it comes up, pulling itself out, is ./boss-emerge.js's); `waveStep` the solver's fixed step for the Reeds alive (`coarse`); `keepOut` a point pushed
 // out of a disc (Isao's planner kept off the centre while something emerges there). A dead Reed's carcass is ./boss-carcass.js's.
 
 import { splashDamage } from './gunship.js';
@@ -36,16 +35,6 @@ export function emergePlan(count, tune, centre = [0, 0], phase = 0) {
     out.push({ at: [centre[0] + u[0] * E.jitter, centre[1] + u[1] * E.jitter], emergeAt: i * E.gap, fan: [centre[0] + u[0] * E.fan, centre[1] + u[1] * E.fan] });
   }
   return out;
-}
-
-// one Reed's emergence `age` seconds after its tremor began (negative before): 'below' (waiting under the ground), 'tremor' (the ground shakes, `emerge.lead` s),
-// 'rising' (out of the ground over `emerge.rise` s, `lift` 0..1 smoothstepped) and 'up' (lift 1: it walks)
-export function emergence(age, E) {
-  if (!(age >= 0)) return { phase: 'below', lift: 0 };
-  if (age < E.lead) return { phase: 'tremor', lift: 0 };
-  const k = (age - E.lead) / E.rise;
-  if (k < 1) return { phase: 'rising', lift: k * k * (3 - 2 * k) };
-  return { phase: 'up', lift: 1 };
 }
 
 // the Reeds' fixed step (seconds) for `alive` Reeds: `1 / coarse.hz` while more than `coarse.above` stand (and the switch is on), `fine` (the kit's) otherwise

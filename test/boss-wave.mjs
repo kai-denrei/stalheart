@@ -1,11 +1,11 @@
 // boss-wave.mjs — the bait mode's first wave (2026-10-09; src/domain/boss-wave.js): N Reeds of 20 hit points, each hurt by the fight's own falloff on its nearest
 // floor contact (a landing splashes, a stream burns by dt), deaths, the wave cleared when the last dies, the boss's entry once, Isao put clear of where it lands,
-// the nearest Reed by its contacts; the second pass (2026-10-10): the emergence at the centre one after another, the fan, the phases of a rise, the 120 Hz step
+// the nearest Reed by its contacts; the second pass (2026-10-10): the emergence at the centre one after another, the fan (how each pulls itself out is test/boss-emerge.mjs's), the 120 Hz step
 // above ten Reeds and Isao's keep-out (a carcass is test/boss-carcass.mjs's).
 import assert from 'node:assert/strict';
 import { BOSS_FIGHT as T } from '../src/content/boss-fight.js';
 import { splashDamage } from '../src/domain/gunship.js';
-import { makeWave, emergePlan, emergence, waveStep, keepOut, aliveCount, hurtReed, resolveReeds, waveCleared, bossEnters, nearestReed, entryClear } from '../src/domain/boss-wave.js';
+import { makeWave, emergePlan, waveStep, keepOut, aliveCount, hurtReed, resolveReeds, waveCleared, bossEnters, nearestReed, entryClear } from '../src/domain/boss-wave.js';
 
 const EPS = 1e-9;
 const W = T.wave;
@@ -13,8 +13,8 @@ const W = T.wave;
 // the content: the owner's numbers
 const { emerge: E, coarse: C, carcass: K, sinkhole: S, ...flat } = W;
 assert.deepEqual(flat, { count: 20, reedHealth: 20, size: 15, corpse: 2, clear: 45, budget: 10, lod: false }, 'the wave: twenty Reeds by default (owner, 2026-10-10)');
-assert.deepEqual({ ...S }, { reeds: 1, boss: 2 }, 'the game\'s sinkhole one cell wide for the Reeds, two for the boss (owner, 2026-10-10)');
-assert.deepEqual({ ...E }, { gap: 0.6, lead: 0.35, rise: 1.5, depth: 1.15, jitter: 4, fan: 20, fanFor: 2.5, keep: 25 }, 'the emergence: 0.6 s apart, a ~1.5 s rise (owner, 2026-10-10)');
+assert.deepEqual({ ...S }, { reeds: 1, boss: 2, hold: 8 }, 'the game\'s sinkhole one cell wide for the Reeds, two for the boss; the first opening waits at most 8 s for its quake (owner, 2026-10-10)');
+assert.ok(E.gap === 0.6 && E.jitter === 4 && E.fan === 20 && E.fanFor === 2.5 && E.keep === 25, 'the emergence: 0.6 s apart round the centre (owner, 2026-10-10)');
 assert.deepEqual({ ...C }, { on: true, above: 10, hz: 120 }, 'the solver at 120 Hz above ten Reeds (owner, 2026-10-10)');
 assert.ok(K.decay === 60 && K.max === 30, 'the carcass: ~60 s, at most 30');
 assert.ok(Object.isFrozen(W), 'deep-frozen');
@@ -48,18 +48,6 @@ const PLAN_N = 20;
   for (let i = 0; i < 10; i++) for (let j = i + 1; j < 10; j++) { const d = Math.abs(((ang[i] - ang[j]) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI); assert.ok(d > Math.PI / 12, `fans ${i} and ${j} apart`); }
   for (let s0 = 0; s0 < 6; s0++) assert.ok(ang.some((a) => ((a + 2 * Math.PI) % (2 * Math.PI)) >= s0 * Math.PI / 3 && ((a + 2 * Math.PI) % (2 * Math.PI)) < (s0 + 1) * Math.PI / 3), `a Reed fans into sector ${s0}`);
   assert.deepEqual(emergePlan(0, T), [], 'none');
-}
-
-// one emergence: below, the tremor, the rise (eased, monotone), up
-{
-  assert.deepEqual(emergence(-0.1, E), { phase: 'below', lift: 0 });
-  assert.deepEqual(emergence(0, E), { phase: 'tremor', lift: 0 });
-  assert.equal(emergence(E.lead - 1e-6, E).phase, 'tremor');
-  let last = -1;
-  for (let a = E.lead; a < E.lead + E.rise; a += 0.05) { const e = emergence(a, E); assert.equal(e.phase, 'rising'); assert.ok(e.lift >= last && e.lift >= 0 && e.lift < 1, `the lift climbs (${e.lift})`); last = e.lift; }
-  assert.ok(Math.abs(emergence(E.lead + E.rise / 2, E).lift - 0.5) < 1e-9, 'half way at half the rise');
-  assert.deepEqual(emergence(E.lead + E.rise, E), { phase: 'up', lift: 1 });
-  assert.equal(emergence(NaN, E).phase, 'below', 'no clock yet: below');
 }
 
 // the step: 1/120 s while more than ten stand, the kit's 1/240 s at ten or fewer; the switch off keeps the kit's

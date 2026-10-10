@@ -40,7 +40,9 @@ import { createRemains } from './boss/remains.js';
 import { createLabSinkhole } from './boss/sinkhole.js';
 import { settingsBlock, folderGroups } from './boss/settings-copy.js';
 import { makeFight, startFight, capture, readout as fightReadout } from '../domain/boss-fight.js';
-import { entryClear, emergence, keepOut } from '../domain/boss-wave.js';
+import { entryClear, keepOut } from '../domain/boss-wave.js';
+import { emergence } from '../domain/boss-emerge.js';
+import { createPullOut } from './boss/pull-out.js';
 import { BOSS_FIGHT } from '../content/boss-fight.js';
 import { LASER_AUDIO } from '../content/orbital-laser.js';
 import { voiceSounds } from '../content/voice-hooks.js';
@@ -428,7 +430,7 @@ export function initBossTab(root) {
     aim: (from, to) => arena.clamp(arena.route(from, to), fightTune.bounds.creatureMargin),   // the boss's hunt: round the obstacles, then inside the bound
     isao: () => bait.asTank(), isaoPos: () => (bait.has() && !bait.gone() ? bait.pos() : null), fearOn: () => fightOn.fight && fightOn.fear,
     camera: () => cam, extentOf: nativeExtent, onError: (m) => { frameError = m; frameErrorAt = t; },
-    gate: () => sinkhole.who() === 'reeds' && sinkhole.ready(), hot: () => seat.thermal(), local: sphereLocal,
+    gate: () => sinkhole.who() === 'reeds' && sinkhole.ready(), hole: () => sinkhole.radius(), hot: () => seat.thermal(), local: sphereLocal,
   });
   // THE BOSS'S CARCASS (./boss/remains.js; owner, 2026-10-10: "after the boss is dead, the user should still be able to shoot at its carcass ... 'stages of
   // destruction' for the dead boss? limbs getting cut, parts disappearing in explosion"): in the bait mode, `bossCarcass.settle` s after KILLED the collapsed body
@@ -441,24 +443,43 @@ export function initBossTab(root) {
   // boss (`wave.sinkhole.boss` cells), which rises out of it once that one is ready. Its rumble, its breaking ground and its quake are the game's; nothing is shaken
   const sinkhole = createLabSinkhole({
     sphere, renderer, scene, camera: cam, audio, planet: () => planet, ground: (x, z) => tankWorld(x, z),
-    north: (w) => frameAt(w, planet.radius, 0, frame.east).north, look: () => LOOK,
+    north: (w) => frameAt(w, planet.radius, 0, frame.east).north, look: () => LOOK, hold: () => fightTune.wave.sinkhole.hold,
   });
-  // THE BOSS'S RISE: its sinkhole at the arena's centre and, once that is ready, as a Reed's (src/domain/boss-wave.js `emergence`), its drawing lifted out of the ground
-  // over the rise while its body stands settled on its floor, motion off and out of the fight's reach; Isao kept `wave.clear` metres off the centre until it is up
-  let rise = null;   // { at (the lab clock its sinkhole was ready; null while it opens), depth (metres under), lift, phase } while it comes up
+  // THE BOSS'S RISE: its sinkhole at the arena's centre and, once that is ready, it pulls itself out as a Reed does (owner, 2026-10-10: "both the smaller Reeds and
+  // the larger boss emerge as if from an elevator ... let's have them emerge by stretching their limbs"; src/domain/boss-emerge.js `emergence` on the boss's own
+  // times `wave.emerge.boss`, ./boss/pull-out.js): drawn `depth` under in the hole, its arms reach up and out over the lip and grip it, the drawing is lifted while
+  // the grips come down with it, the arms let go; its body stands on its floor with its motion off and out of the fight's reach, Isao kept `wave.clear` metres off
+  // the centre until it is up
+  let rise = null;   // { at (the lab clock its sinkhole was ready; null while it opens), depth and height (metres), lift, phase, tip and torso (metres over the surface), speed and peak (m/s) } while it comes up
+  let bossPull = null;   // { of (the creature it drives), pull (./boss/pull-out.js) }
   const upV = new THREE.Vector3();
   function bossHeight() {
     const rest = creature.body.rest; let y0 = Infinity, y1 = -Infinity;
     for (let i = 1; i < rest.length; i += 3) { y0 = Math.min(y0, rest[i]); y1 = Math.max(y1, rest[i]); }
     return (y1 - Math.min(0, y0)) * scale;
   }
+  const bossEmerge = () => { const E = fightTune.wave.emerge; return { ...E, ...E.boss }; };
   function stepRise() {
     if (rise.at === null && sinkhole.who() === 'boss' && sinkhole.ready()) rise.at = t;
-    const m = creature.motion, e = rise.at === null ? { phase: 'below', lift: 0 } : emergence(t - rise.at, fightTune.wave.emerge);
+    const m = creature.motion, E = bossEmerge(), e = emergence(rise.at === null ? -1 : t - rise.at, E);
     rise.lift = e.lift; rise.phase = e.phase;
+    if (e.phase === 'reach' || e.phase === 'haul' || e.phase === 'release') {
+      if (bossPull?.of !== creature) { bossPull?.pull.end(); bossPull = { of: creature, pull: createPullOut(creature) }; }
+      const p = bossPull.pull;
+      if (!p.active()) { const c = m.center; p.begin([c.x, c.z], p.aim([c.x * scale, c.z * scale], scale, arena.bound().at, sinkhole.radius(), E), E.drive); }
+      p.frame(e, rise.depth / scale, rise.height / scale, E);
+    }
     placeRig();
     if (e.phase !== 'up') { rig.position.addScaledVector(upV.fromArray(frame.up), -(1 - e.lift) * rise.depth); m.active = false; return; }
-    rise = null; m.active = params.instinct;
+    endPull(); rise = null; m.active = params.instinct;
+  }
+  // the boss's arms let go (the kit's own step again)
+  function endPull() { bossPull?.pull.end(); bossPull = null; }
+  // after the frame's step: where the pulled boss's tips and torso are against the surface
+  function readRise() {
+    if (!rise || !bossPull?.pull.active()) return;
+    const p = bossPull.pull.read((1 - rise.lift) * rise.depth / scale);
+    rise.tip = p.tip * scale; rise.torso = p.torso * scale; rise.speed = p.speed * scale; rise.peak = Math.max(rise.peak, rise.speed);
   }
   // Isao's planner kept off the arena's centre while a Reed is still to come up there (./boss/wave.js `keep`) or the boss rises
   const keepNow = () => (tankOn() ? null : wave.keep() ?? (rise ? { at: arena.bound().at, radius: fightTune.wave.clear } : null));
@@ -471,7 +492,7 @@ export function initBossTab(root) {
     if (out) bait.putAt(arena.spawn(out));
     const now = bait.pos();
     entry = { at: t, isao: now ? Math.hypot(now[0] - arena.bound().at[0], now[1] - arena.bound().at[1]) : null, moved: !!out };   // the readout's: where he stood from the centre once put
-    rise = { at: null, depth: fightTune.wave.emerge.depth * bossHeight(), lift: 0, phase: 'below' };
+    endPull(); rise = { at: null, depth: bossEmerge().depth * bossHeight(), height: bossHeight(), lift: 0, phase: 'below', tip: null, torso: null, speed: 0, peak: 0 };
     sinkhole.open(arena.bound().at, fightTune.wave.sinkhole.boss, 'boss');
     showCallout('NIH-DAIRIA', 2500);
   }
@@ -552,7 +573,7 @@ export function initBossTab(root) {
   // its rest with the preset's gravity and instinct, the frame back on the origin, the tank `respawn` metres out on the side away
   // from the creature, facing it, and a fresh fight. `taken` stays; a scripted drive (the harness's) carries on
   function newRound() {
-    resetDue = -1; rise = null; deadAt = null; remains.clear();   // the carcass gone, the skin whole (creature.reset below stands the body up)
+    resetDue = -1; rise = null; endPull(); deadAt = null; remains.clear();   // the carcass gone, the skin whole (creature.reset below stands the body up)
     friendlies.reset(); seat.reset(); cannon.clear(); fear.reset(); stunned = false; pin = null;
     arena.reset();   // every obstacle back, where the layout has it (the frame goes back to the origin below)
     if (!fightOn.pinSeed) fightTune.seed = (fightTune.seed | 0) + 1;
@@ -776,6 +797,7 @@ export function initBossTab(root) {
     let steps = 0;
     try {
       if (!held && !lying) steps = creature.update(dt);
+      readRise();
       // the figure-eight reads the kit's target as its own path next frame: it gets the lure's point back, not the waypoint
       if (routed && state.lure === 'auto') m.target.set(rawX, ARENA.lureHeight, rawZ);
     } catch (e) {
@@ -1185,7 +1207,7 @@ export function initBossTab(root) {
     getCreature: () => creature, getScale: () => scale, getT: () => t, getFight: () => fight, getGameCam: () => gameCam, getReanchors: () => reanchors,
     setScripted: (v) => { scripted = v; }, setPin: (v) => { pin = v; },
     readout, setLure, setCam, setMode, bait, seat, setFight, fireCannon: () => fireCannon(), copySettings, reset, tryReanchor, placeTank, creatureNow, creatureAim, temperament,
-    plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene, wave, sinkhole, remains,
+    plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene, wave, sinkhole, remains, audio,
     killBoss: () => { if (fight.phase !== 'fight' || waving() || rise) return false; fight.hp = 0; return true; },
     bossHp: (share) => { if (fight.phase !== 'fight' || waving() || rise) return false; fight.hp = Math.max(1e-6, share * fight.max); return true; },   // the boss's hit points at `share` of its maximum (the acceptance's)   // the round's own kill on its next tick
     closeToBoss: (back = 30, up = 18, at = null) => {   // the free orbit's camera on the boss's carcass (on the local ground point `at` if given), `back` m off along its frame's east and `up` m above it

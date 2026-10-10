@@ -137,8 +137,20 @@ export const BOSS_FIGHT = freeze({
   // round's own), at most `cap` (0: every one): the 25 mm a few, the 40 mm a limb or two, the MK-9 its whole ring; a broken piece is `fling`ed outward at `speed`
   // and up at `up` m/s under `gravity`, tumbling at `spin` rad/s, whole for `whole` of its flight, gone in `time` s
   wave: { count: 20, reedHealth: 20, size: 15, corpse: 2, clear: 45, budget: 10, lod: false,
-    emerge: { gap: 0.6, lead: 0.35, rise: 1.5, depth: 1.15, jitter: 4, fan: 20, fanFor: 2.5, keep: 25 },
-    sinkhole: { reeds: 1, boss: 2 },   // the game's sinkhole's scale in cells (the game opens every breach one cell wide: a 10 m hole); the boss, 40 m across, comes out of one twice that
+    // PULLING OUT (owner, 2026-10-10: "both the smaller Reeds and the larger boss emerge as if from an elevator ... let's have them emerge by stretching their limbs, as
+    // if they were pulling themselves out from the depth"; src/domain/boss-emerge.js, src/labs/boss/pull-out.js): after `lead` s still in the hole (`depth` times its
+    // height under), the arms reach up and out over `reach` s (`stagger` of it apart, arcing `over` of the height above the lip, the hold in over `ramp` of it) to grip
+    // `lip` times the rim's distance (past the rest radius, at most `stretch` times it), the body hauls itself up over `haul` s in `heaves` surges (`surge` deep), the
+    // arms let go over `release` s; `boss` the boss's own times. `drive`: the arm tips' pull toward their grips, an acceleration `kp` per native metre off, `kd` per
+    // native metre a second, at most `amax` native metres a second squared (the kit's own muscles reach 250)
+    emerge: { gap: 0.6, lead: 0.35, reach: 0.8, haul: 2, release: 0.4, ramp: 0.2, depth: 1.15, over: 0.3, stagger: 0.35, heaves: 2, surge: 0.5, lip: 1.05, stretch: 1.7,
+      boss: { reach: 1.2, haul: 3.5, release: 0.5, heaves: 3 },
+      drive: { kp: 3000, kd: 110, amax: 2500 },
+      jitter: 4, fan: 20, fanFor: 2.5, keep: 25 },
+    // the game's sinkhole's scale in cells (the game opens every breach one cell wide: a 10 m hole); the boss, 40 m across, comes out of one twice that. THE QUAKE
+    // (owner, 2026-10-10: "we need a tremor/sinkhole animation sound with the first opening"): the samples wait for the player's first gesture, so the page's first
+    // opening holds (the Reeds still below) until the quake can sound, at most `hold` s; then it opens with the game's quake as the game plays it
+    sinkhole: { reeds: 1, boss: 2, hold: 8 },
     coarse: { on: true, above: 10, hz: 120 },
     carcass: { decay: 60, max: 30, dark: 0.75, sink: 0.35, cold: 0.6,
       chain: { torso: 0.022, root: 0.03, bins: 10, segments: 8, sub: 3, radial: 8, thin: 0.6, tip: 0.1, taper: 1.2, core: 0.9 },

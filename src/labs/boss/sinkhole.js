@@ -14,18 +14,44 @@
 // `update`'s onOpen, at the camera's distance in the game's units), its 1.6 s rumble, then the ground breaking; `ready()` is the adapter's own (the opening run to
 // its `duration`), the rule the game's spawn queue waits on before a body comes out of a breach (src/fx/enemy-step.js). The wall cells the game clears round a
 // breach (`onClear`) are the game's board: the arena's centre is floor, so the lab passes nothing.
+// THE QUAKE (owner, 2026-10-10: "we need a tremor/sinkhole animation sound with the first opening"): played as above, the game's own call. But the lab's samples
+// are decoded only after the player's first gesture (src/audio.js: one context, created in the gesture, that decodes and plays), and a bait round opens its ground
+// on its own a few seconds after the page loads, before most players have clicked: that first quake was refused for a context that did not run yet. So the page's
+// FIRST opening holds its trigger (the adapter is stepped with no time, so it neither triggers nor runs its opening; the Reeds wait below) until the quake can
+// sound, the context running and the sample decoded (`audio.whenRunning`, then `prime`), at most `hold()` seconds; later openings never wait. `quakes` logs every
+// quake played: for whom, the distance (game units), the gain the game's mix gives it (the spec's gain by the distance's falloff), the context's state, whether a
+// voice of it is live just after, and how long its opening was held.
 // AFTERWARDS: `seal()` lays the game's rubble cap over a breach (the adapter's `seal`, the game's sealed sinkhole), and a breach opened while a cap lies hides the
 // caps once its ground breaks (they would sit over the new hole); `reset()` takes every breach and cap away for a new round.
 import * as THREE from '../../../vendor/three.module.js';
 import { createGameBreaches } from '../../game-breaches.js';
 import { makeShaderWarmer } from '../../fx/shader-warm.js';
+import { BREACH_SOUNDS } from '../../content/breach-defaults.js';
+import { DISTANCE_K } from '../../content/audio-defaults.js';
+import { distanceGain } from '../../domain/audiomix.js';
+
+const QUAKE = 'sinkhole_quake';
 
 // `sphere` the planet-centred group in metres, `renderer`/`scene`/`camera` the lab's (the warmer compiles against them), `audio` the lab's sounds (the
 // breach's quake is in them), `planet()` the lab planet ({ radius, cellSide }), `ground(x, z)` the sphere point under a local point, `north(w)` a tangent
-// there (the breach's forward), `look()` the board's look by name; `makeSinkhole` the adapter's test seam (test/boss-sinkhole.mjs)
-export function createLabSinkhole({ sphere, renderer, scene, camera, audio, planet, ground, north, look, makeSinkhole }) {
+// there (the breach's forward), `look()` the board's look by name, `hold()` the most seconds the page's first opening waits for its quake to be able to sound;
+// `makeSinkhole` the adapter's test seam (test/boss-sinkhole.mjs). An `audio` without `whenRunning` (a test's) can always sound
+export function createLabSinkhole({ sphere, renderer, scene, camera, audio, planet, ground, north, look, hold = () => 0, makeSinkhole }) {
   const host = new THREE.Group(); host.name = 'sinkholes (game units)'; sphere.add(host);
   let breaches = null, current = null, who = null, opens = 0, caps = 0, capsShown = true, log = [], patched = [];
+  let canSound = !audio.whenRunning, asked = false, first = true, held = 0, quakes = [];
+  // the quake can sound: the context running and its sample decoded (asked once; the context is born on the player's first gesture)
+  function listen() {
+    if (canSound || asked) return;
+    asked = true;
+    audio.whenRunning(() => { Promise.resolve(audio.prime ? audio.prime(QUAKE) : true).then((ok) => { if (ok) canSound = true; }); });
+  }
+  function quake(opened) {
+    const dist = Math.min(...opened.map(camDist));
+    audio.play(QUAKE, { dist });
+    quakes.push({ who, dist, gain: BREACH_SOUNDS[QUAKE].gain * distanceGain(dist, DISTANCE_K), context: audio.contextState ?? null,
+      voice: audio.activeVoices ? audio.activeVoices.some((v) => v.key === QUAKE) : null, held });
+  }
   const camW = new THREE.Vector3();
   function adapter() {
     if (breaches) return breaches;
@@ -69,11 +95,16 @@ export function createLabSinkhole({ sphere, renderer, scene, camera, audio, plan
     ready: () => !!current && breaches.ready(current),
     // for whom the open breach is ('reeds', 'boss'; null with none open)
     who: () => who,
-    // every frame: the adapter's update (its trigger, the opening, the hole into the ground's uniforms), the quake's sound on the opening, the caps hidden once
+    // the open breach's hole at its full width, local metres (its crater radius in cells, a cell its scale in the game's units, the host's radius); 0 with none open
+    radius: () => { const e = entry(); return e ? e.fx.tune.craterRadius * current.scale.x * planet().radius : 0; },
+    // every frame: the adapter's update (none while the first opening waits for its quake) (its trigger, the opening, the hole into the ground's uniforms), the quake's sound on the opening, the caps hidden once
     // a new breach's ground breaks
     step(dt) {
       if (!breaches) return;
-      breaches.update(dt, () => {}, (opened) => { opens++; audio.play('sinkhole_quake', { dist: Math.min(...opened.map(camDist)) }); });
+      listen();
+      const wait = first && !!current && !canSound && held < hold();   // the page's first opening waits for its quake (above)
+      if (wait) held += dt;
+      breaches.update(wait ? 0 : dt, () => {}, (opened) => { opens++; first = false; quake(opened); });
       const e = entry();
       if (caps && capsShown && e && e.fx.state().phase === 'open') { capsShown = false; breaches.rubbleShow(false); }
     },
@@ -82,11 +113,13 @@ export function createLabSinkhole({ sphere, renderer, scene, camera, audio, plan
       breaches.reset(); breaches.rubbleShow(true); current = null; who = null; caps = 0; capsShown = true; log = [];
     },
     // the handle's view: the module (the adapter's own state of each breach: phase, hole, opening age, ready...), the open one (for whom, where in local
-    // metres is the caller's), the openings sounded, the caps laid, the ground patched
+    // metres is the caller's), the openings sounded, the quake's state (`sound`: can it sound, the seconds the first opening was held, holding now, the quakes
+    // played), the caps laid, the ground patched
     state() {
       const e = entry(), all = breaches ? breaches.state() : [];
       return {
         module: 'src/game-breaches.js', open: !!current, who, opens, caps, capsShown, opened: log.map((o) => ({ ...o })),
+        sound: { can: canSound, held, holding: first && !!current && !canSound && held < hold(), quakes: quakes.map((q) => ({ ...q })) },
         breach: e ? { ...e.fx.state(), age: e.age, started: e.started, ready: breaches.ready(current), craterRadius: e.fx.tune.craterRadius, scale: current.scale.x, name: current.name } : null,
         breaches: all.length, visible: !!current?.visible, ground: [...patched],
       };
