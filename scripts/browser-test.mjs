@@ -2973,10 +2973,13 @@ const killReal=(Date.now()-t0)/1000;
    // what the rate is made of: the rounds this kill fired (30 a second while the trigger is held and the barrels are cool), the damage a round lands when it is in the fight's footprint (0.22), the share that were
    firedInKill:k.seat.shots.rotary-r0,firingSeconds:+((k.seat.shots.rotary-r0)/GUNSHIP_GUNS.rotary.rate).toFixed(1),hpPerFiringSecond:+(k.max/((k.seat.shots.rotary-r0)/GUNSHIP_GUNS.rotary.rate)).toFixed(2),nominalDps:BOSS_FIGHT.rotary.dps,
    hitShare:+(k.max/((k.seat.shots.rotary-r0)*GUNSHIP_GUNS.rotary.damage)).toFixed(2)}));
- // the KILLED card holds five seconds, with Isao's hit points on it; the trigger is still held and fires nothing
- const h0=Date.now();let held=0,heldSeat=true;const fired0=(await evaluate(S)).seat.shots.rotary;let fired1=fired0;
- while(Date.now()-h0<5000){const s=await evaluate(S);heldSeat=heldSeat&&s.seat.held;assert.equal(s.phase,'killed','the creature stays dead');if(Date.now()-h0>1500)fired1=s.seat.shots.rotary;assert(/KILLED/.test(s.card??'')&&/Isao (\d+\/\d+|down)/.test(s.card),`the KILLED card holds, Isao on it (${s.card})`);held++;await delay(250);}
- assert(heldSeat,'the trigger stayed held through the card');assert.equal(fired1,fired0,`a held trigger after KILLED fires nothing (${fired0} -> ${fired1} rounds)`);await evaluate(`${B}.fire(false)`);
+ // the KILLED card holds five seconds, with Isao's hit points on it; the trigger is still held: it fires nothing while the body collapses, and again once its carcass lies
+ // (owner, 2026-10-10: "after the boss is dead, the user should still be able to shoot at its carcass"; src/labs/boss/remains.js, --boss-carcass)
+ const h0=Date.now();let held=0,heldSeat=true;const fired0=(await evaluate(S)).seat.shots.rotary;let fired1=fired0,lying=false;
+ while(Date.now()-h0<5000){const s=await evaluate(S);heldSeat=heldSeat&&s.seat.held;assert.equal(s.phase,'killed','the creature stays dead');if(!lying&&await evaluate(`!!${B}.remains()`)){lying=true;fired1=s.seat.shots.rotary;}assert(/KILLED/.test(s.card??'')&&/Isao (\d+\/\d+|down)/.test(s.card),`the KILLED card holds, Isao on it (${s.card})`);held++;await delay(250);}
+ const fired2=(await evaluate(S)).seat.shots.rotary;
+ assert(heldSeat,'the trigger stayed held through the card');assert(lying,'the carcass lies within the card\'s five seconds');
+ assert(fired1-fired0<=GUNSHIP_GUNS.rotary.rate*0.6+5,`a held trigger fires nothing while the body collapses (${fired0} -> ${fired1} rounds)`);assert(fired2>fired1,`and on its carcass once it lies (${fired1} -> ${fired2} rounds)`);await evaluate(`${B}.fire(false)`);
  const kc=await evaluate(S);
  console.log(`BOSS-BAIT card held ${held} polls over 5 s: ${kc.card}`);
  // THE ROCKS HOLD STILL IN THE THERMAL (owner, 2026-10-09: "the rocks as obstacles display poorly on the thermal, flickering"): the seat's post chain swapped an odd
@@ -3317,6 +3320,101 @@ const killReal=(Date.now()-t0)/1000;
  const rd=await evaluate(`${B}.readout()`);
  assert.deepEqual(rd.shaderErrors,[],'no shader errors');assert(!rd.error,`no frame error (${rd.error})`);
  current='boss-wave';await finish();
+ } else if(args.includes('--boss-carcass')) {
+ // THE DEAD BOSS'S CARCASS IN STAGES (owner, 2026-10-10: "after the boss is dead, the user should still be able to shoot at its carcass, what would it take to
+ // create 'stages of destruction' for the dead boss? limbs getting cut, parts disappearing in explosion, etc."; option A: the Reeds' carcass scaled up;
+ // src/labs/boss/remains.js, src/domain/boss-carcass.js). The bait mode with no wave (the boss at once), killed through the handle: nothing for `settle` s while it
+ // collapses, then the carcass is laid (six limbs of `chain.segments` pieces round a core) while the skin fades out over `fade` s and is hidden, the solver
+ // stopped; the bar row reads INTACT. Three 40 mm landings or more on one limb's middle: nothing breaks before the third (each segment `segmentHp`), then the
+ // limb is cut and its outer piece hops away (its pieces 2 m or more from where they lay) and lies, LIMBS SEVERED n/6. An MK-9 on the core cracks it into 3-5
+ // chunks that hop out and lie: CORE CRACKED. The 40 mm on whatever still stands until SCORCHED. R gives the living boss back (no carcass, the skin whole, the
+ // solver stepping). Screenshots (CARCASS_SHOTS, a directory, else the artifacts): boss-carcass-{fresh,severed,cracked}-{seat,close}.png, from the seat zoomed in
+ // and from the free orbit close
+ const B='window.__bossLab',dir=process.env.CARCASS_SHOTS||output;
+ const {BOSS_FIGHT}=await import('../src/content/boss-fight.js');const BC=BOSS_FIGHT.bossCarcass,K=BC.chain.segments;
+ const shoot=async(file)=>{const p=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(dir,file),Buffer.from(p.data,'base64'));console.log(`BOSS-CARCASS screenshot ${join(dir,file)}`);};
+ const setSel=(key,v)=>evaluate(`(()=>{const e=document.querySelector('#boss [data-k="${key}"]');e.value=${JSON.stringify(v)};e.dispatchEvent(new Event('input',{bubbles:true}));return e.value;})()`);
+ const wheel=(dy,n)=>evaluate(`(()=>{const cv=document.querySelector('#boss .sw-stage canvas');for(let i=0;i<${n};i++)cv.dispatchEvent(new WheelEvent('wheel',{deltaY:${dy},bubbles:true,cancelable:true}));return ${B}.seat()?.zoom})()`);
+ const R=()=>evaluate(`${B}.remains()`),stageText=()=>evaluate(`(()=>{const e=document.querySelector('#boss .sw-hud .rd-stage');return e&&!e.hidden?e.textContent:null})()`);
+ const skin=()=>evaluate(`(()=>{const m=${B}.creature().mesh;return {visible:m.visible,opacity:m.material.opacity,hash:!!m.material.alphaHash}})()`);
+ const coreAt=(r)=>r.pieces.find(p=>p.kind==='core').plane;
+ // both views of the carcass as it is now: the seat zoomed in on `at`, then the free orbit close
+ const views=async(name,at,close=null)=>{
+  await evaluate(`${B}.aim(${JSON.stringify(at)})`);await wheel(-100,10);await delay(1200);await evaluate(`${B}.aim(${JSON.stringify(at)})`);await delay(300);await shoot(`boss-carcass-${name}-seat.png`);await wheel(100,10);
+  const near=JSON.stringify(close??null);await setSel('view','free');await until(`${B}.seat() === null`,10000);await evaluate(`${B}.closeToBoss(26,16,${near})`);await delay(400);await evaluate(`${B}.closeToBoss(26,16,${near})`);await delay(200);
+  await shoot(`boss-carcass-${name}-close.png`);await setSel('view','chase');await until(`!!${B}.seat()`,15000);};
+ await go('boss-carcass','labs.html?sw=0&acceptance=1&reeds=0&mode=bait#boss');
+ await until(`!!${B} && ${B}.mode()==="bait" && !!${B}.seat() && ${B}.fight().phase==="fight" && ${B}.readout().steps>0`,90000);
+ await evaluate(`${B}.avoidNukes(true)`);await delay(1500);
+ assert.equal(await R(),null,'no carcass while the boss lives');
+ // the kill and the conversion
+ await setSel('view','free');await until(`${B}.seat() === null`,10000);await evaluate(`${B}.closeToBoss(30,18)`);await delay(300);   // the cross-fade watched close
+ assert(await evaluate(`${B}.killBoss()`),'the handle kills the boss');
+ await until(`${B}.fight().phase==="killed"`,10000);const k0=await evaluate(`${B}.arena().clock`);
+ await shoot('boss-carcass-dying-close.png');
+ const fade=[];let laidAt=null,midShot=false;
+ for(const end=Date.now()+30000;Date.now()<end;){const s=await evaluate(`(()=>{const L=${B},r=L.remains(),m=L.creature().mesh;return {clock:L.arena().clock,r:r&&{opacity:r.opacity,faded:r.faded,skin:r.skin},skin:{visible:m.visible,opacity:m.material.opacity},steps:L.readout().steps,card:L.readout().fight.card}})()`);
+  if(!s.r){fade.push({t:+(s.clock-k0).toFixed(2),skin:+s.skin.opacity.toFixed(2)});await delay(100);continue;}
+  if(!midShot&&s.r.opacity>=0.35&&s.r.opacity<=0.75){await shoot('boss-carcass-fade-close.png');midShot=true;}
+  laidAt??=s.clock-k0;fade.push({t:+(s.clock-k0).toFixed(2),skin:+s.skin.opacity.toFixed(2),carcass:+s.r.opacity.toFixed(2),shown:s.skin.visible});if(s.r.faded)break;await delay(60);}
+ const r0=await R(),sk0=await skin(),st0=await stageText();
+ const segs=r0.pieces.filter(p=>p.kind==='segment'),limbs=[...new Set(segs.map(p=>p.limb))];
+ const settled=r0.born-r0.diedAt;
+ console.log('BOSS-CARCASS conversion '+JSON.stringify({settled:+settled.toFixed(2),fade:fade.slice(-8),tris:r0.tris,limbs:limbs.map(l=>segs.filter(p=>p.limb===l).length).join('/'),chunks:r0.pieces.filter(p=>p.kind==='chunk').length,skin:sk0,stage:st0,remains:(await evaluate(`${B}.readout()`)).remains}));
+ assert(laidAt!==null&&settled>=BC.settle&&settled<BC.settle+0.5,`the collapse settles ${BC.settle} s before the carcass (${settled.toFixed(2)} s)`);
+ assert(fade.some(f=>f.carcass>0&&f.carcass<1&&f.skin>0&&f.skin<1),'the skin and the carcass cross-fade');
+ assert(r0.faded&&!sk0.visible,'then the skin is hidden');
+ await setSel('view','chase');await until(`!!${B}.seat()`,15000);
+ assert(limbs.length===6&&limbs.every(l=>segs.filter(p=>p.limb===l).length===K)&&r0.pieces.some(p=>p.kind==='core'),`six limbs of ${K} pieces round a core`);
+ assert(r0.pieces.filter(p=>p.kind==='chunk').every(p=>p.state==='hidden'),'its chunks hidden in the core');
+ assert(r0.label==='INTACT'&&st0==='INTACT',`the bar row reads INTACT (${st0})`);
+ {const a=await evaluate(`${B}.creature().body.x[0]`);await delay(800);assert.equal(await evaluate(`${B}.creature().body.x[0]`),a,'the solver is stopped');}
+ await evaluate(`${B}.gun("bofors")`);
+ await views('fresh',coreAt(r0));
+ // three 40 mm landings on one limb's middle: the limb cut, its outer piece away
+ const mid=Math.floor(K/2),target=r0.pieces.find(p=>p.kind==='segment'&&p.limb===limbs[0]&&p.j===mid);
+ await evaluate(`${B}.gun("bofors")`);let landings=0,cut=null,firstBreak=null;
+ for(const end=Date.now()+60000;Date.now()<end&&!cut;){await evaluate(`${B}.aim(${JSON.stringify(target.plane)}); ${B}.fire(true)`);await delay(80);
+  const r=await R();const bl=r.blasts.filter(b=>b.kind==='bofors'&&b.hurt>0);landings=bl.length;if(!firstBreak){const i=bl.findIndex(b=>b.broke>0);if(i>=0)firstBreak=i+1;}cut=r.severed.find(x=>x.limb===limbs[0])??null;}
+ await evaluate(`${B}.fire(false)`);await delay((BC.sever.time+0.6)*1000);
+ const r1=await R(),off=cut&&r1.pieces.filter(p=>p.kind==='segment'&&p.limb===limbs[0]&&cut.js.includes(p.j));
+ const moved=off?off.map((p,k)=>Math.hypot(p.own[0]-cut.from[k][0],p.own[1]-cut.from[k][1])):[];
+ console.log('BOSS-CARCASS sever '+JSON.stringify({limb:limbs[0],aimedJ:mid,landings,firstBreakOn:firstBreak,cut,moved:moved.map(d=>+d.toFixed(1)),states:off&&off.map(p=>p.state),hp:r1.pieces.filter(p=>p.limb===limbs[0]).map(p=>+p.hp.toFixed(1)),stage:await stageText()}));
+ assert(cut,'the 40 mm cut the limb');assert(firstBreak>=BC.segmentHp,`nothing broke before the ${BC.segmentHp}rd landing on it (the first break on landing ${firstBreak})`);
+ assert(cut.js.length>=1&&cut.js.at(-1)===K-1,`the outer piece is cut off to the tip (${cut.js})`);
+ assert(moved.length&&moved.every(d=>d>=2&&d<=14),`it moved away from the cut and lies (${moved.map(d=>d.toFixed(1))} m)`);
+ assert(off.every(p=>p.state!=='whole')&&off.some(p=>p.state==='severed')&&!off.some(p=>p.hopping),'it lies on its own, severed');
+ assert(/^LIMBS SEVERED \d\/6$/.test(await stageText()),`the bar row reads LIMBS SEVERED n/6 (${await stageText()})`);
+ {const lying=off.filter(p=>p.state==='severed'),cutAt=lying.length?[lying.reduce((a,p)=>a+p.plane[0],0)/lying.length,lying.reduce((a,p)=>a+p.plane[1],0)/lying.length]:coreAt(r1);await views('severed',cutAt,cutAt);}
+ // its segments can still be shot: a 40 mm on the severed piece
+ {const sp=(await R()).pieces.find(p=>p.limb===limbs[0]&&p.state==='severed');let hurt=false;
+  for(const end=Date.now()+20000;Date.now()<end&&!hurt;){await evaluate(`${B}.aim(${JSON.stringify(sp.plane)}); ${B}.fire(true)`);await delay(80);const p=(await R()).pieces.find(q=>q.limb===sp.limb&&q.j===sp.j);hurt=p.hp<p.max||p.state!=='severed';}
+  await evaluate(`${B}.fire(false)`);assert(hurt,'a severed piece is still a target');}
+ // the MK-9 on the core: cracked into chunks that hop out and lie
+ await evaluate(`${B}.gun("nuke")`);let cracked=false;const c1=coreAt(await R());
+ for(const end=Date.now()+60000;Date.now()<end&&!cracked;){await evaluate(`${B}.aim(${JSON.stringify(c1)}); ${B}.fire(true)`);await delay(200);await evaluate(`${B}.fire(false)`);await delay(300);cracked=(await R()).cracked;}
+ await delay((BC.chunk.time+0.6)*1000);
+ const r2=await R(),chunks=r2.pieces.filter(p=>p.kind==='chunk');
+ console.log('BOSS-CARCASS crack '+JSON.stringify({cracked,chunks:chunks.map(p=>({state:p.state,hopping:p.hopping,from:+Math.hypot(p.plane[0]-c1[0],p.plane[1]-c1[1]).toFixed(1)})),standing:r2.standing,stage:await stageText(),nuke:r2.blasts.filter(b=>b.kind==='nuke').map(b=>({hurt:b.hurt,broke:b.broke,radius:b.radius}))}));
+ assert(cracked,'the MK-9 cracked the core');
+ assert(chunks.length>=3&&chunks.length<=5&&chunks.every(p=>p.state==='whole'&&!p.hopping),`into 3-5 chunks lying (${chunks.length})`);
+ assert.equal(await stageText(),'CORE CRACKED','the bar row reads CORE CRACKED');
+ await evaluate(`${B}.gun("bofors")`);
+ await views('cracked',c1);
+ // whatever still stands, the 40 mm until SCORCHED
+ {let shots=0;for(const end=Date.now()+120000;Date.now()<end;){const r=await R();if(r.name==='SCORCHED')break;const left=r.pieces.find(p=>p.state==='whole');if(!left)break;
+   await evaluate(`${B}.aim(${JSON.stringify(left.plane)}); ${B}.fire(true)`);await delay(150);shots++;}
+  await evaluate(`${B}.fire(false)`);await delay(1500);const r3=await R(),ms=[];for(let i=0;i<6;i++){ms.push((await evaluate(`${B}.readout()`)).remains.ms);await delay(150);}
+  console.log('BOSS-CARCASS scorched '+JSON.stringify({polls:shots,stage:await stageText(),standing:r3.standing,severedLeft:r3.pieces.filter(p=>p.state==='severed').length,tris:r3.tris,ms:ms.map(x=>+x.toFixed(3))}));
+  assert.equal(r3.name,'SCORCHED','enough fire leaves nothing standing: SCORCHED');assert.equal(await stageText(),'SCORCHED','the bar row reads SCORCHED');}
+ // R: the living boss back
+ await evaluate(`dispatchEvent(new KeyboardEvent("keydown",{key:"r",code:"KeyR"})); dispatchEvent(new KeyboardEvent("keyup",{key:"r",code:"KeyR"}))`);
+ await until(`${B}.fight().phase==="fight" && ${B}.remains()===null`,30000);await delay(1500);
+ {const sk=await skin(),rd=await evaluate(`${B}.readout()`),st=await stageText(),x0=await evaluate(`${B}.creature().body.x[0]`);await delay(500);const x1=await evaluate(`${B}.creature().body.x[0]`);
+  console.log('BOSS-CARCASS restart '+JSON.stringify({skin:sk,steps:rd.steps,stage:st,phase:rd.fight.phase,hp:rd.fight.hp,moved:x1!==x0}));
+  assert(sk.visible&&sk.opacity===1&&!sk.hash,`R: the skin whole (${JSON.stringify(sk)})`);assert(rd.steps>0&&x1!==x0,'R: the solver steps');assert.equal(st,null,'R: no stage on the bar row');
+  assert.deepEqual(rd.shaderErrors,[],'no shader errors');assert(!rd.error,`no frame error (${rd.error})`);}
+ current='boss-carcass';await finish();
  } else if(args.includes('--boss-friends')) {
  // THE FRIENDS' LINK ALONE (2026-10-09, before the push): ?playtest=1&mode=bait opens the bait mode in the game's seat with the dev controls hidden,
  // the friends' note shown, and Esc freeing the mouse without leaving the bait mode

@@ -7,7 +7,7 @@ import { readout as fightReadout } from '../../domain/boss-fight.js';
 export function createLabHandle({
   getCreature, getScale, getT, getFight, getGameCam, getReanchors, setScripted, setPin,
   readout, setLure, setCam, setMode, bait, seat, setFight, fireCannon, copySettings, reset, tryReanchor, placeTank, creatureNow, creatureAim, temperament,
-  plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene, chase, closeTo, wave, reeds, sinkhole,
+  plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene, chase, closeTo, wave, reeds, sinkhole, remains, killBoss, closeToBoss,
 }) {
   const lab = {
     readout,
@@ -111,6 +111,11 @@ export function createLabHandle({
     chase: () => chase(),
     // in the free orbit, the camera close on the carcass of Reed `id` (`back` m off, `up` m above it), for a screenshot of the tentacles; false outside the free orbit or without it
     closeTo: (id, back, up) => closeTo(id, back, up),
+    // THE BOSS'S CARCASS (./remains.js): killBoss() kills the boss now (the round's own kill on its next tick; false outside a running fight with the boss up),
+    // remains() its carcass's state ({ stage, name, label, limbs, cut, cracked, standing, born, diedAt, faded, skin, opacity, tris, pieces: [{ kind, limb, j, state, hp,
+    // max, by, own, plane, hopping }], severed, blasts }, null before it lies), closeToBoss(back, up, at) the free orbit's camera on it (on the local point `at` if
+    // given; on the boss's body before it lies; false outside the free orbit)
+    killBoss: () => killBoss(), remains: () => remains.state(), closeToBoss: (back, up, at) => closeToBoss(back, up, at),
     // the bound's radius: bounds(r) sets the lab's copy (the ring, the clamps and the backstop follow at once), bounds() reads it. Acceptance only
     // the MK-9 zones for Isao's autopilot on or off (content `bait.nukeAvoid`): off, the acceptance's MK-9s led onto him hit him. Acceptance only
     avoidNukes: (on) => { if (on !== undefined) fightTune.bait.nukeAvoid = !!on; return fightTune.bait.nukeAvoid; },

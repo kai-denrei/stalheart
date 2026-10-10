@@ -175,6 +175,8 @@
 #boss .ih-low .ih-num{color:#ff6a88}
 #boss .rd-clock{color:#cfe2ec;min-width:7ch}
 #boss .rd-hits{color:#9fb3c2}
+#boss .rd-stage{color:#ffb347;letter-spacing:.14em}   /* the dead boss's carcass's stage (src/labs/boss/remains.js) */
+#boss .rd-stage[hidden]{display:none}
 #boss .sw-card{position:absolute;top:20%;left:50%;transform:translateX(-50%);z-index:20;padding:10px 16px;
   border:1px solid #23303c;background:rgba(6,9,12,.92);border-radius:3px;pointer-events:none;
   font:11px/1.5 ui-monospace,Menlo,monospace;color:#b9cdd9}

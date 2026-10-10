@@ -137,6 +137,24 @@ export const BOSS_FIGHT = freeze({
       crumble: { from: 0.15, to: 0.9, jitter: 0.8, time: 1.2, drop: 0.6 },
       blast: { rotary: { radius: 3, cap: 3 }, bofors: { radius: 8, cap: 0 }, nuke: { radius: 0, cap: 0 } },
       fling: { time: 0.8, whole: 0.4, speed: 18, up: 12, gravity: 30, spin: 9 } } },
+  // THE BOSS'S CARCASS (owner, 2026-10-10: "after the boss is dead, the user should still be able to shoot at its carcass ... 'stages of destruction' for the dead
+  // boss? limbs getting cut, parts disappearing in explosion, etc."; option A, the Reeds' carcass scaled up; src/domain/boss-carcass.js, src/labs/boss/remains.js):
+  // in the bait mode the dead boss collapses `settle` s, then its skin fades out over `fade` s while the carcass fades in, built as a Reed's (`wave.carcass.chain`)
+  // with `chain` over it: more pieces a limb, thicker tubes, a fuller core. No time decay: it lies until R, only fire takes it apart; its warmth in the thermal
+  // cools over `cool` s. Each limb segment has `segmentHp`, the core `coreHp`, each of its chunks `chunkHp`; a round (`damage[kind]`: `radius` m, 0 the round's own;
+  // at most `cap` targets, 0 every one; `damage` hit points each, 0 destroys: the MK-9) hurts what it reaches and a hurt target darkens toward char (`char` at its
+  // last hit point). A broken segment is flung as a Reed's piece (`fling`); a broken one that is not a tip cuts every segment beyond it off: that piece hops
+  // (`sever`: out `distance` m from the cut, `up` m high, turned `yaw` rad, rocked `tilt`, over `time` s), lies on its own, can still be shot, and crumbles
+  // tip first over `crumble.span` s (each segment shrinking and sagging `drop` m over `time` s). The core cracks into `chunks.min`-`chunks.max` chunks
+  // (`chunks.size` of its radius), each hopping out (`chunk`) and then a target of its own
+  bossCarcass: { settle: 1.5, fade: 0.8, cool: 120, char: 0.85,
+    chain: { segments: 13, radial: 10, thin: 0.8, core: 1.05 },
+    segmentHp: 3, coreHp: 8, chunkHp: 3, chunks: { min: 3, max: 5, size: 0.5 },
+    damage: { rotary: { radius: 2, cap: 3, damage: 0.2 }, bofors: { radius: 3, cap: 0, damage: 1 }, nuke: { radius: 0, cap: 0, damage: 0 } },
+    sever: { distance: 8, up: 3, time: 1.1, yaw: 0.5, tilt: 0.5, char: 0.3 },
+    chunk: { distance: 5, up: 3, time: 0.9, yaw: 1.2, tilt: 0 },
+    crumble: { span: 90, from: 0.1, time: 2.5, drop: 0.8 },
+    fling: { time: 0.9, whole: 0.4, speed: 14, up: 10, gravity: 30, spin: 6 } },
   bounds: { radius: 120, baitMargin: 10, creatureMargin: 15 },   // the arena disc round the origin: Isao's wanted point stays radius - baitMargin in, the creature's target radius - creatureMargin, the body's nodes are pushed back inside radius
   orbit: { radius: 200, lap: 120, bank: 0.12 },   // the gunship platform's ground track round the origin: 200 m, one lap per 120 s (10.5 m/s); the bank in radians is about twice the coordinated 0.056 (v squared over r g) so the roll reads on the seat's camera without lurching
   card: 3,                 // the KILLED / LOST card's seconds before the reset

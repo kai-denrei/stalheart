@@ -11,6 +11,7 @@
 //
 // `cardExtra()` is text the KILLED card adds after the hits (the bait mode's ` · Isao 9/12`; none in the tank mode). `wave()` is the bait mode's first wave while it
 // holds the boss back ({ alive, count }, else null): the row reads `WAVE 1 · REED <alive>/<count>`, its fill the share still standing (./wave.js).
+// `stage()` the dead boss's carcass's stage once KILLED (./remains.js: `INTACT`, `LIMBS SEVERED n/N`, `CORE CRACKED`, `SCORCHED`; null before it lies): the row reads it after the hits.
 // THE BAR is the integrity HUD's gate row (src/fx/integrity-hud.js: `ih-lbl`, `ih-bar > i`, `ih-num`, `ih-low` at a quarter)
 // in the stage's `.sw-hud`, with the fight's clock `m:ss.t` and `hits <n>`; hidden while `on()` is false (the fight switch off).
 import { kill, tick as tickFight } from '../../domain/boss-fight.js';
@@ -22,14 +23,14 @@ export const clockText = (s) => {
   return `${m}:${String(Math.floor(r / 10)).padStart(2, '0')}.${r % 10}`;
 };
 
-export function createRound(stage, { tune, fight, on = () => true, cardExtra = () => '', wave = () => null, onKilled = () => {}, onLost = () => {}, onReset = () => {} } = {}) {
+export function createRound(stage, { tune, fight, on = () => true, cardExtra = () => '', wave = () => null, remains = () => null, onKilled = () => {}, onLost = () => {}, onReset = () => {} } = {}) {
   let hud = stage.querySelector('.sw-hud'), ownHud = false;
   if (!hud) { hud = document.createElement('div'); hud.className = 'sw-hud'; stage.append(hud); ownHud = true; }
   const row = document.createElement('div');
   row.className = 'ih-row ih-gate';
-  row.innerHTML = '<span class="ih-lbl">NIH-DAIRIA</span><span class="ih-bar"><i></i></span><span class="ih-num"></span><span class="rd-clock"></span><span class="rd-hits"></span>';
+  row.innerHTML = '<span class="ih-lbl">NIH-DAIRIA</span><span class="ih-bar"><i></i></span><span class="ih-num"></span><span class="rd-clock"></span><span class="rd-hits"></span><span class="rd-stage" hidden></span>';
   hud.append(row);
-  const lbl = row.querySelector('.ih-lbl'), fill = row.querySelector('i'), num = row.querySelector('.ih-num'), clock = row.querySelector('.rd-clock'), hitsEl = row.querySelector('.rd-hits');
+  const lbl = row.querySelector('.ih-lbl'), fill = row.querySelector('i'), num = row.querySelector('.ih-num'), clock = row.querySelector('.rd-clock'), hitsEl = row.querySelector('.rd-hits'), stageEl = row.querySelector('.rd-stage');
   const card = document.createElement('div');
   card.className = 'sw-card'; card.hidden = true;
   stage.append(card);
@@ -44,8 +45,8 @@ export function createRound(stage, { tune, fight, on = () => true, cardExtra = (
   function draw(s, shown) {
     hud.hidden = !shown;
     if (!shown) return;
-    const w = wave(), share = w ? (w.count > 0 ? w.alive / w.count : 0) : s.max > 0 ? Math.max(0, s.hp / s.max) : 0;
-    const key = `${Math.round(share * 1000)}|${w ? `w${w.alive}/${w.count}` : Math.ceil(s.hp)}|${clockText(s.clock)}|${s.hits}`;
+    const w = wave(), share = w ? (w.count > 0 ? w.alive / w.count : 0) : s.max > 0 ? Math.max(0, s.hp / s.max) : 0, dead = s.phase === 'killed' ? remains() : null;
+    const key = `${Math.round(share * 1000)}|${w ? `w${w.alive}/${w.count}` : Math.ceil(s.hp)}|${clockText(s.clock)}|${s.hits}|${dead}`;
     if (key === drawn) return;
     drawn = key;
     lbl.textContent = w ? `WAVE 1 · REED ${w.alive}/${w.count}` : 'NIH-DAIRIA';
@@ -54,6 +55,7 @@ export function createRound(stage, { tune, fight, on = () => true, cardExtra = (
     row.classList.toggle('ih-low', share <= LOW);
     clock.textContent = clockText(s.clock);
     hitsEl.textContent = `hits ${s.hits}`;
+    stageEl.hidden = !dead; stageEl.textContent = dead ?? '';
   }
 
   function tick(dt) {
@@ -71,6 +73,7 @@ export function createRound(stage, { tune, fight, on = () => true, cardExtra = (
   return {
     tick,
     card: () => (card.hidden ? null : said),
+    stage: () => (stageEl.hidden ? null : stageEl.textContent),
     dispose() { row.remove(); card.remove(); if (ownHud) hud.remove(); },
   };
 }

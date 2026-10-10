@@ -36,6 +36,7 @@ import { createGameSeat } from './boss/game-seat.js';
 import { createGameCam } from './boss/game-cam.js';
 import { createLabHandle } from './boss/handle.js';
 import { createWave } from './boss/wave.js';
+import { createRemains } from './boss/remains.js';
 import { createLabSinkhole } from './boss/sinkhole.js';
 import { settingsBlock, folderGroups } from './boss/settings-copy.js';
 import { makeFight, startFight, capture, readout as fightReadout } from '../domain/boss-fight.js';
@@ -379,6 +380,7 @@ export function initBossTab(root) {
   }
   const round = createRound(stage, {
     tune: () => fightTune, fight: () => fight, on: () => fightOn.fight, cardExtra: () => bait.cardText(), wave: () => (waving() ? wave.bar() : null),
+    remains: () => remains.stage(),   // the dead boss's carcass's stage after KILLED (./boss/remains.js)
     onKilled: dieV1, onLost: () => {}, onReset: () => { resetDue = 0; },
   });
   // THE BAIT MODE (./boss/bait.js, the rules in src/domain/boss-bait.js): Isao flies low on autopilot with the creature after him, a bar under
@@ -405,9 +407,10 @@ export function initBossTab(root) {
     local: sphereLocal,
     tune: () => fightTune, fight: () => fight, now: () => t, creature: huntedNow, isao: () => bait.marker(),
     parts: () => ({ creature: waving() ? wave.group : creature?.mesh, isao: sphere.getObjectByName('Isao'), ring: arena.ring }),
-    resolve: (plan, dt) => { friendlies.resolve(plan, dt); wave.resolve(plan, dt); },   // a round of the player's on the boss (none while the wave holds it back), Isao and the arena, and on every live Reed
+    resolve: (plan, dt) => { if (fight.phase !== 'killed') friendlies.resolve(plan, dt); wave.resolve(plan, dt); remains.blast(plan); },   // a round of the player's on the boss (none while the wave holds it back), Isao and the arena, and on every live Reed; after KILLED on the carcasses only
     orbitGround: fixedWorld,   // the platform's orbit round the arena's centre, world-fixed
     isaoCam: () => (creature ? bait.cam(huntedAim()) : null),   // the monitor on Isao, looking at the creature (./boss/bait.js ISAO'S CAMERA)
+    afterKill: () => remains.present(),   // KILLED: the guns stay live on the boss's carcass
     gate: () => ({ fight: fightOn.fight, rotary: fightOn.rotary, bofors: fightOn.bofors, nuke: fightOn.nuke }),   // the fight folder's switches gate the player's guns as the schedule's
     focus: () => { const c = huntedNow().centre, b = bait.pos() ?? c; return [(c[0] + b[0]) / 2, (c[1] + b[1]) / 2]; },
     clear: () => panelCover(),   // what the panel covers: the HUD's readout and the monitor stand left of it
@@ -427,6 +430,11 @@ export function initBossTab(root) {
     camera: () => cam, extentOf: nativeExtent, onError: (m) => { frameError = m; frameErrorAt = t; },
     gate: () => sinkhole.who() === 'reeds' && sinkhole.ready(), hot: () => seat.thermal(), local: sphereLocal,
   });
+  // THE BOSS'S CARCASS (./boss/remains.js; owner, 2026-10-10: "after the boss is dead, the user should still be able to shoot at its carcass ... 'stages of
+  // destruction' for the dead boss? limbs getting cut, parts disappearing in explosion"): in the bait mode, `bossCarcass.settle` s after KILLED the collapsed body
+  // becomes a tentacle carcass the seat's rounds take apart (the skin fades out, its solver stops); R gives the living boss back
+  const remains = createRemains({ group: sphere, tune: () => fightTune, now: () => t, hot: () => seat.thermal(), ground: (x, z) => tankWorld(x, z), local: sphereLocal });
+  let deadAt = null;   // the lab clock of the bait mode's kill, until its carcass is laid
   // THE SINKHOLE (owner, 2026-10-10: "the initial Tremor is not just the ground shaking, it is our sinkhole animation from the game mode"; ./boss/sinkhole.js hosts
   // the game's src/game-breaches.js): a round of the bait mode opens one at the arena's centre (`wave.sinkhole.reeds` cells wide), the Reeds come up out of it one after
   // another once it is ready by the game's own spawn rule, and it is sealed with the game's rubble once every one is up; the last Reed dead, another opens there for the
@@ -482,6 +490,14 @@ export function initBossTab(root) {
     if (!creature) return;
     creature.motion.active = false; creature.motion.feeding.enabled = false;
     creature.phys.gravity = fightTune.deathGravity;
+    if (!tankOn()) deadAt = t;   // the bait mode's: its carcass once it has settled
+  }
+  // the collapse settled: the carcass laid in the body's pose, the skin fading out and its solver stopped (`remains.present()`), until R
+  function layRemains() {
+    if (deadAt === null || remains.present() || t - deadAt < fightTune.bossCarcass.settle) return;
+    if (fight.phase !== 'killed' || tankOn() || !creature) { deadAt = null; return; }
+    remains.lay(creature, rig, scale, fightTune.seed, deadAt);
+    deadAt = null;
   }
   function stepFight(dt, driving) {
     const f = creature.motion.feeding;
@@ -536,7 +552,7 @@ export function initBossTab(root) {
   // its rest with the preset's gravity and instinct, the frame back on the origin, the tank `respawn` metres out on the side away
   // from the creature, facing it, and a fresh fight. `taken` stays; a scripted drive (the harness's) carries on
   function newRound() {
-    resetDue = -1; rise = null;
+    resetDue = -1; rise = null; deadAt = null; remains.clear();   // the carcass gone, the skin whole (creature.reset below stands the body up)
     friendlies.reset(); seat.reset(); cannon.clear(); fear.reset(); stunned = false; pin = null;
     arena.reset();   // every obstacle back, where the layout has it (the frame goes back to the origin below)
     if (!fightOn.pinSeed) fightTune.seed = (fightTune.seed | 0) + 1;
@@ -568,6 +584,7 @@ export function initBossTab(root) {
   // obstacles stay (their own switch)
   function setFight(on) {
     fightOn.fight = !!on;
+    deadAt = null; remains.clear();
     friendlies.reset(); cannon.clear(); fear.reset(); stunned = false; resetDue = -1; hullLost = false; pin = null;
     arena.reset(false);   // the frame stays: the obstacles come back where they stand, but not on the creature or the tank (the next round's)
     fight = makeFight(roundTune());
@@ -711,7 +728,9 @@ export function initBossTab(root) {
     const m = creature.motion, f = m.feeding;
     routed = false;
     const bm = !tankOn(), held = waving();   // the first wave holds the boss back: hidden and unstepped, so its frame stays on the arena's centre
-    if (!held) tryReanchor(REANCHOR_METRES);
+    layRemains();
+    const lying = remains.present();   // the dead boss is its carcass: no solver, no re-anchor
+    if (!held && !lying) tryReanchor(REANCHOR_METRES);
     rig.visible = !held;
     if (rise) stepRise();   // the boss coming up out of the ground after the wave
     if (bm && !bait.has()) newRound();   // the mode was switched before the creature was here: Isao's first round
@@ -725,6 +744,7 @@ export function initBossTab(root) {
     if (bm) bait.step(dt);
     if (bm) { const k = keepNow(), p = bait.pos(); if (k && p && Math.hypot(p[0] - k.at[0], p[1] - k.at[1]) < k.radius) bait.putAt(keepOut(p, k.at, k.radius)); }   // a fly-over is not held by `hold`: it goes round the centre too
     wave.step(dt);   // the Reeds: hunting him while the wave holds, the dead lying down until they go
+    remains.step();
     sinkhole.step(dt);
     if (sinkhole.who() === 'reeds' && sinkhole.ready() && !wave.keep()) sinkhole.seal();   // every Reed up: the game's rubble over their hole
     auto.enabled = state.lure === 'auto';
@@ -755,7 +775,7 @@ export function initBossTab(root) {
     }
     let steps = 0;
     try {
-      if (!held) steps = creature.update(dt);
+      if (!held && !lying) steps = creature.update(dt);
       // the figure-eight reads the kit's target as its own path next frame: it gets the lure's point back, not the waypoint
       if (routed && state.lure === 'auto') m.target.set(rawX, ARENA.lureHeight, rawZ);
     } catch (e) {
@@ -876,6 +896,7 @@ export function initBossTab(root) {
       kernel: !!creature?.body.kernel,
       cam: state.cam, rearMs: gameCam?.isOn() ? gameCam.stats().ms : null, mode: state.mode, bait: bait.state(),
       temper: temperament.state(), gunFear: fear.guns(),   // the bait mode's temperament and fear per gun
+      remains: remains.stats(), remainsStage: remains.stage(),   // the dead boss's carcass ({ present, ms, broke, moving, hops }) and its stage
       fps, wave: wave.state(), entry, rise: rise ? { ...rise, age: rise.at === null ? null : t - rise.at } : null, keep: keepNow(),   // the fps corner's frames a second; the first wave ({ count, alive, killed, made, cleared, boss, entered, reeds, hunted, solver, steps, timeScale, lod, cost, meanSolver, meanScale })
     };
   }
@@ -903,6 +924,7 @@ export function initBossTab(root) {
     if (r.mode === 'bait' && !r.wave.boss) html += `<br>wave 1 &middot; Reeds <b>${r.wave.alive}/${r.wave.count}</b> (${r.wave.made} made) &middot; solver <b>${fmt(r.wave.meanSolver, 1)} ms</b>`
       + ` &middot; clock <b>&times;${fmt(r.wave.meanScale)}</b> &middot; off-screen <b>${r.wave.lod}</b> &middot; <b>${fmt(r.wave.cost)} ms</b>/step`;
     if (r.mode === 'bait' && r.wave.carcassStats.count) html += `${r.wave.boss ? '<br>' : ' &middot; '}carcasses <b>${r.wave.carcassStats.count}</b> (<b>${fmt(r.wave.carcassStats.ms, 2)} ms</b>, ${r.wave.carcassStats.moving} pieces moving)`;
+    if (r.remains.present) html += `<br>carcass <b>${r.remainsStage}</b> (<b>${fmt(r.remains.ms, 2)} ms</b>, ${r.remains.moving} pieces moving, ${r.remains.hops} hopping, ${r.remains.broke} broken)`;
     if (shaderErrors.length) html += `<br><b class="late">shader: ${escapeHtml(shaderErrors[shaderErrors.length - 1])}</b>`;
     if (frameError && t - frameErrorAt < 5) html += `<br><b class="late">${escapeHtml(frameError)}; reset</b>`;
     read.innerHTML = html;
@@ -1152,7 +1174,7 @@ export function initBossTab(root) {
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
       renderer.domElement.removeEventListener('pointerup', onPointerUp);
       creature?.dispose(); if (prey) { prey.mesh.geometry.dispose(); prey.mesh.material.dispose(); }
-      gameCam?.dispose(); seat.dispose(); wave.dispose(); sinkhole.dispose(); bait.dispose(); cannon.dispose(); friendlies.dispose(); arena.dispose(); round.dispose(); explosions.dispose();
+      remains.clear(); gameCam?.dispose(); seat.dispose(); wave.dispose(); sinkhole.dispose(); bait.dispose(); cannon.dispose(); friendlies.dispose(); arena.dispose(); round.dispose(); explosions.dispose();
       planetMesh?.userData.dispose(); disposeObj(tank); gui.destroy(); controls.dispose(); renderer.dispose(); renderer.domElement.remove();
       engine?.stop(0); engine = null; audio.dispose();
       if (window.__bossLab === lab) delete window.__bossLab;
@@ -1163,7 +1185,17 @@ export function initBossTab(root) {
     getCreature: () => creature, getScale: () => scale, getT: () => t, getFight: () => fight, getGameCam: () => gameCam, getReanchors: () => reanchors,
     setScripted: (v) => { scripted = v; }, setPin: (v) => { pin = v; },
     readout, setLure, setCam, setMode, bait, seat, setFight, fireCannon: () => fireCannon(), copySettings, reset, tryReanchor, placeTank, creatureNow, creatureAim, temperament,
-    plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene, wave, sinkhole,
+    plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene, wave, sinkhole, remains,
+    killBoss: () => { if (fight.phase !== 'fight' || waving() || rise) return false; fight.hp = 0; return true; },   // the round's own kill on its next tick
+    closeToBoss: (back = 30, up = 18, at = null) => {   // the free orbit's camera on the boss's carcass (on the local ground point `at` if given), `back` m off along its frame's east and `up` m above it
+      if (state.view !== 'free' || !creature) return false;
+      const f = remains.frame() ?? { centre: new THREE.Vector3(...creatureAim(0)), outer: rig };   // the living (or still collapsing) boss: its body's centre in its rig
+      f.outer.updateWorldMatrix(true, false);
+      const e = f.outer.matrixWorld.elements, u = new THREE.Vector3(e[4], e[5], e[6]).normalize(), x = new THREE.Vector3(e[0], e[1], e[2]).normalize();
+      const c = (at ? new THREE.Vector3(...tankWorld(at[0], at[1])) : f.centre).applyMatrix4(sphere.matrixWorld);
+      cam.up.copy(u); cam.position.copy(c).addScaledVector(x, back).addScaledVector(u, up); cam.lookAt(c); controls.target.copy(c);
+      return true;
+    },
     reeds: (n) => { if (n !== undefined) { fightTune.wave.count = Math.max(0, Math.min(WAVE_MAX, Math.round(n))); gui.controllersRecursive().forEach((c) => c.updateDisplay()); newRound(); } return fightTune.wave.count; },
     chase: () => { if (state.view !== 'free' || !creature) return false; chaseCam(); return true; },
     closeTo: (id, back = 14, up = 9) => {   // the free orbit's camera on carcass `id`, `back` m off along its frame's east and `up` m above it

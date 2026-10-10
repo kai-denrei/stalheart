@@ -23,16 +23,21 @@ const DEAD_TONE = new THREE.Color(0x2a2420);   // a carcass darkens toward this
 const BLACK = new THREE.Color(0, 0, 0), WHITE_HEAT = new THREE.Color(1, 1, 1);   // a fresh carcass's emissive in the thermal goes from black toward white, as the heat tagging's
 const SHADE = 0.72;         // the skin's mean colour darkened by this for the dead
 const CORE = new THREE.SphereGeometry(1, 10, 8);   // the core's low sphere, scaled to the torso
+const CHUNK = new THREE.IcosahedronGeometry(1, 0);  // a cracked core's chunk (the boss's, ./remains.js), jagged
 
-// the skin's mean tissue colour (the vertex colours are the rest shape's, one set for every Reed)
-let tissue = null;
-function tissueOf(mesh) {
-  if (tissue) return tissue;
-  const c = mesh.geometry.getAttribute('color');
-  if (!c) return (tissue = new THREE.Color(0.6, 0.45, 0.4));
-  let r = 0, g = 0, b = 0;
-  for (let i = 0; i < c.count; i++) { r += c.getX(i); g += c.getY(i); b += c.getZ(i); }
-  return (tissue = new THREE.Color(r / c.count, g / c.count, b / c.count));
+// the skin's mean tissue colour (the vertex colours are the rest shape's, one set for every Reed: cached per variant by its limb count and vertex count; the boss's own)
+const tissues = new Map();
+export function tissueOf(mesh) {
+  const c = mesh.geometry.getAttribute('color'), key = c ? c.count : 0;
+  if (tissues.has(key)) return tissues.get(key);
+  let t = new THREE.Color(0.6, 0.45, 0.4);
+  if (c) {
+    let r = 0, g = 0, b = 0;
+    for (let i = 0; i < c.count; i++) { r += c.getX(i); g += c.getY(i); b += c.getZ(i); }
+    t = new THREE.Color(r / c.count, g / c.count, b / c.count);
+  }
+  tissues.set(key, t);
+  return t;
 }
 
 const rings = new WeakMap();   // per cage (its tets array, shared by every Reed): the rest nodes sorted into limbs of rings
@@ -61,8 +66,10 @@ function smooth(cs) {
   return a;
 }
 
-// THE GEOMETRY of one carcass from its body's nodes (native units): { geometry, pieces: [{ limb, j, v0, v1, i0, i1, centre }], home, homeNormals }
-function build(body, C) {
+// THE GEOMETRY of one carcass from its body's nodes (native units): { geometry, pieces: [{ limb, j, v0, v1, i0, i1, centre, radius }], home, homeNormals, full, core,
+// coreRadii }; `extra` the boss's (./remains.js): `colors` a vertex colour a vertex (white), `chunks` ({ angle, lift } a chunk, ../../domain/boss-carcass.js
+// coreChunks) and `chunkSize` (of the core's radii): the cracked core's chunks after the core, faceted, each its own piece (limb -2, j its number; `radius` native)
+export function build(body, C, extra = {}) {
   const CH = C.chain, x = body.x, { torso, limbs } = ringsOf(body, CH), R = CH.radial, S = CH.sub, K = CH.segments;
   const pos = [], nor = [], idx = [], pieces = [];
   const core = centroid(x, torso);
@@ -100,7 +107,7 @@ function build(body, C) {
       const k0 = j * S, k1 = (j + 1) * S;
       cap(curve.getPointAt(k0 / n), frames.normals[k0], frames.binormals[k0], frames.tangents[k0], radius(k0 / n), -1);
       cap(curve.getPointAt(k1 / n), frames.normals[k1], frames.binormals[k1], frames.tangents[k1], radius(k1 / n), 1);
-      pieces.push({ limb, j, v0, v1: pos.length / 3, i0, i1: idx.length, centre: curve.getPointAt((j + 0.5) / K) });
+      pieces.push({ limb, j, v0, v1: pos.length / 3, i0, i1: idx.length, centre: curve.getPointAt((j + 0.5) / K), radius: radius((j + 0.5) / K) });
     }
   });
   // the core: the low sphere scaled to the torso's spread on each axis (a filled box's half-width from its deviation), its normals the ellipsoid's
@@ -112,13 +119,28 @@ function build(body, C) {
     pos.push(core.x + px * rad[0], core.y + py * rad[1], core.z + pz * rad[2]); nor.push(nx / l, ny / l, nz / l);
   }
   for (const i of CORE.index.array) idx.push(v0 + i);
-  pieces.push({ limb: -1, j: 0, v0, v1: pos.length / 3, i0, i1: idx.length, centre: core });
+  pieces.push({ limb: -1, j: 0, v0, v1: pos.length / 3, i0, i1: idx.length, centre: core, radius: Math.max(rad[0], rad[2]) });
+  // the cracked core's chunks (the boss's): a jagged low icosahedron each, inside the core, flat shaded
+  (extra.chunks ?? []).forEach((ch, k) => {
+    const cr = rad.map((r) => r * extra.chunkSize), c = new THREE.Vector3(core.x + Math.cos(ch.angle) * rad[0] * 0.45, core.y + ch.lift * rad[1] * 0.5, core.z + Math.sin(ch.angle) * rad[2] * 0.45);
+    const ico = CHUNK.attributes.position, w0 = pos.length / 3, j0 = idx.length, a = new THREE.Vector3(), b = new THREE.Vector3(), n = new THREE.Vector3();
+    const jag = (i) => 0.75 + 0.5 * Math.abs(Math.sin(i * 12.9898 + k * 78.233));   // the same corner the same jag: the faces stay closed
+    const keyOf = (x, y, z) => `${x.toFixed(3)},${y.toFixed(3)},${z.toFixed(3)}`, corner = new Map();
+    for (let i = 0; i < ico.count; i += 3) {
+      const tri = [0, 1, 2].map((q) => { const x = ico.getX(i + q), y = ico.getY(i + q), z = ico.getZ(i + q), key = keyOf(x, y, z); if (!corner.has(key)) corner.set(key, jag(corner.size)); const f = corner.get(key); return new THREE.Vector3(c.x + x * cr[0] * f, c.y + y * cr[1] * f, c.z + z * cr[2] * f); });
+      n.crossVectors(a.subVectors(tri[1], tri[0]), b.subVectors(tri[2], tri[0])).normalize();
+      for (const v of tri) { pos.push(v.x, v.y, v.z); nor.push(n.x, n.y, n.z); }
+      idx.push(w0 + i, w0 + i + 1, w0 + i + 2);
+    }
+    pieces.push({ limb: -2, j: k, v0: w0, v1: pos.length / 3, i0: j0, i1: idx.length, centre: c, radius: Math.max(cr[0], cr[2]) });
+  });
   const g = new THREE.BufferGeometry(), home = Float32Array.from(pos), homeNormals = Float32Array.from(nor);
   g.setAttribute('position', new THREE.BufferAttribute(Float32Array.from(pos), 3).setUsage(THREE.DynamicDrawUsage));
   g.setAttribute('normal', new THREE.BufferAttribute(Float32Array.from(nor), 3).setUsage(THREE.DynamicDrawUsage));
+  if (extra.colors) g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(pos.length).fill(1), 3).setUsage(THREE.DynamicDrawUsage));
   const index = new THREE.BufferAttribute(pos.length / 3 > 65535 ? Uint32Array.from(idx) : Uint16Array.from(idx), 1).setUsage(THREE.DynamicDrawUsage);
   g.setIndex(index); g.computeBoundingSphere();
-  return { geometry: g, pieces, home, homeNormals, full: index.array.slice() };
+  return { geometry: g, pieces, home, homeNormals, full: index.array.slice(), core, coreRadii: rad };
 }
 
 // `group` the sphere-space group the carcasses lie in; `tune()` the fight's live numbers (`.wave.carcass`), `now()` the lab's clock, `hot()` the seat's thermal on;
