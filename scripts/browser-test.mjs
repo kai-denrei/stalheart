@@ -3240,7 +3240,10 @@ const killReal=(Date.now()-t0)/1000;
    await shoot(process.env.CARCASS_TENTACLES_SHOT||join(output,'boss-wave-carcass-tentacles.png'));
    const before=(await evaluate(`${B}.wave().carcasses`)).find(x=>x.id===fresh.id);
    await evaluate(`${B}.gun("bofors")`);await wheel(-100,16);let hit=null;
-   for(const end=Date.now()+40000;Date.now()<end&&!hit;){await evaluate(`${B}.aim(${JSON.stringify(fresh.tip)}); ${B}.fire(true)`);await delay(60);
+   // the carcass lies fixed on the sphere but the lab's local plane does not: the boss, in, walks and the frame re-anchors after it, so the tip's local point drifts by tens of metres in seconds; aim at where the tip is NOW
+   for(const end=Date.now()+40000;Date.now()<end&&!hit;){const cur=(await evaluate(`${B}.wave().carcasses`)).find(x=>x.id===fresh.id);
+    const tipNow=cur?.pieces.filter(p=>p.limb===0&&p.state==='whole').sort((a,b)=>b.j-a.j)[0]?.plane??cur?.pieces.find(p=>p.state==='whole')?.plane??fresh.tip;
+    await evaluate(`${B}.aim(${JSON.stringify(tipNow)}); ${B}.fire(true)`);await delay(60);
     const b=(await evaluate(`${B}.wave().carcasses`)).find(x=>x.id===fresh.id)?.blasts.find(x=>x.kind==='bofors');if(b)hit=b;}
    await evaluate(`${B}.fire(false)`);await delay(120);
    await shoot(process.env.CARCASS_BLAST_SHOT||join(output,'boss-wave-carcass-blast.png'));
