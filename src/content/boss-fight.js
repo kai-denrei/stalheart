@@ -90,7 +90,7 @@ export const BOSS_FIGHT = freeze({
   // random `quietMin`..`quietMax` s and nothing is wanted: shuffled by the round, the whole pool before any take comes again, carried over the rounds; `finishShare` the boss's share
   // of hit points under which `finishHim` is said (once); `winAfter` the seconds after the KILLED card that `win` is said (not when Isao is down)
   chatter: {
-    gap: 6,
+    gap: 7,   // (owner, 2026-10-10, 'so he doesn't repeat too much': 6 -> 7, the single-take situational lines' cooldowns stretched to 30-45 s so the filler pool gets the quiet)
     filler: { quietMin: 14, quietMax: 22, variants: 17 },
     finishShare: 0.2, winAfter: 1.5,
     // the lab's triggers (src/labs/boss/bait.js): a landing within `closeRing` m outside his ring, or an escape from an arm that came within `closeEscape` m, is a close
@@ -100,14 +100,14 @@ export const BOSS_FIGHT = freeze({
     lines: {
       death: { priority: 10, per: 1, then: 'notToday', after: 2 },
       notToday: { priority: 10, per: 1 },
-      nukeFace: { priority: 8, cooldown: 20, ttl: 4 },
-      help: { priority: 7, cooldown: 15, ttl: 3 },
-      closeCall: { priority: 7, cooldown: 12, ttl: 2.5 },
+      nukeFace: { priority: 8, cooldown: 30, ttl: 4 },
+      help: { priority: 7, cooldown: 35, ttl: 3 },
+      closeCall: { priority: 7, cooldown: 30, ttl: 2.5 },
       hurt: { priority: 6, per: 2, ttl: 5, variants: 2, ordered: true },
       stagger: { priority: 6, per: 1, ttl: 5 },
-      nukeCareful: { priority: 5, cooldown: 20, ttl: 3 },
-      useForty: { priority: 4, cooldown: 30, ttl: 5 },
-      barrage: { priority: 4, cooldown: 25, ttl: 5 },
+      nukeCareful: { priority: 5, cooldown: 30, ttl: 3 },
+      useForty: { priority: 4, cooldown: 45, ttl: 5 },
+      barrage: { priority: 4, cooldown: 40, ttl: 5 },
       taunt: { priority: 3, per: 1, ttl: 6 },
       flyover: { priority: 1, cooldown: 12, ttl: 2, variants: 3, chance: 1 / 3 },
       finishHim: { priority: 20, per: 1, ttl: 4, urgent: true },

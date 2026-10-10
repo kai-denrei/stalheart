@@ -10,7 +10,7 @@ import { ISAO_TRIGGERS } from '../src/content/isao-voice.js';
 const C = T.chatter, L = C.lines;
 
 // the content: every line the director knows has its recorded trigger and words in the lab, and the takes match the export's
-assert.equal(C.gap, 6, 'the gap is 6 s');
+assert.equal(C.gap, 7, 'the gap is 7 s');
 assert.deepEqual([...Object.keys(L), 'filler'].sort(), Object.keys(CHATTER_LINES).sort(), 'the director\'s lines (and the filler) are the lab\'s');
 assert.equal(CHATTER_LINES.filler.texts.length, C.filler.variants, 'the filler\'s pool is its seventeen takes');
 for (const [k, line] of Object.entries(CHATTER_LINES)) {
@@ -49,9 +49,9 @@ assert.ok(situational.every((k) => L[k].priority > L.flyover.priority), 'every s
   const ch = makeChatter(1);
   want(ch, 'taunt', 0, T); assert.equal(nextLine(ch, 0, T).key, 'taunt');
   want(ch, 'closeCall', 0.5, T);
-  for (let t = 0.5; t < 6; t += 0.1) assert.equal(nextLine(ch, t, T), null, 'nothing inside the gap');
-  assert.equal(nextLine(ch, 6.1, T), null, 'the close call went stale (ttl 2.5 s)');
-  want(ch, 'help', 6.2, T); assert.equal(nextLine(ch, 6.2, T).key, 'help', 'a fresh want after the gap is said at once');
+  for (let t = 0.5; t < C.gap; t += 0.1) assert.equal(nextLine(ch, t, T), null, 'nothing inside the gap');
+  assert.equal(nextLine(ch, C.gap + 0.1, T), null, 'the close call went stale (ttl 2.5 s)');
+  want(ch, 'help', C.gap + 0.2, T); assert.equal(nextLine(ch, C.gap + 0.2, T).key, 'help', 'a fresh want after the gap is said at once');
 }
 
 // the fly-over: about one hop in three (seeded), never the same take twice running, a forced hop always asks
