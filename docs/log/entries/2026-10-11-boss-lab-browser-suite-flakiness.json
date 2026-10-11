@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "id": "2026-10-11-boss-lab-browser-suite-flakiness",
+  "date": "2026-10-11",
+  "type": "issue",
+  "status": "observed",
+  "title": "The boss lab's long browser steps are flaky on this loaded machine: --boss-bait's keep and speed bands, --boss-fight's 15 s Bofors loss; one --boss-wave failure was a stale-aim test bug",
+  "context": "Runs on kainode under a WARN memory guardrail (swap 4-5 GB pinned), one headless Chrome, 2026-10-09 to 2026-10-11.",
+  "outcome": "--boss-bait's keep-distance median (17-23 m) and arena speed band failed 6 of 14 runs after Isao's finite acceleration (0ad1eafb), 0 of 6 before; the owner's call whether to widen them, raise accel or accept. --boss-fight loses the circling tank to a seed-1 Bofors round at 15.03 s on some runs (tank mode, older than the bait mode). --boss-wave's Reed-carcass 40 mm check failed from a0529f83 until 34a7533e: it aimed at the carcass tip's local point recorded once, but the lab's local plane follows the walking boss and re-anchors (the tip's local point moved tens of metres in seconds); fixed in the test, the carcass code was right. Lesson: in the boss lab, re-read a world-fixed thing's local point before every use; local points go stale within seconds.",
+  "alternatives": [],
+  "evidence": [
+    "scripts/browser-test.mjs --boss-bait / --boss-fight / --boss-wave",
+    "34a7533e"
+  ],
+  "supersedes": []
+}

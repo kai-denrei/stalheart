@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "id": "2026-10-11-boss-lab-dead-stays-and-game-camera",
+  "date": "2026-10-11",
+  "type": "change",
+  "status": "accepted",
+  "title": "Records catch-up for 2026-10-08/09: a killed boss stays dead until R, and the tank mode's game camera on V with a rear-view inset",
+  "context": "Owner, 2026-10-08: 'once the creature is killed, leave it dead until a manual restart' and 'introduce another driving mode, the exact same PoV as the rest of the game ... small image-within-image showing the rear-view view, bottom right'. Both landed without their own entries.",
+  "outcome": "fe3ad457: KILLED never counts down (src/domain/boss-fight.js tick); R or the panel's Reset starts a new round; LOST still resets after its card. b429ffbb (spec docs/superpowers/specs/2026-10-08-boss-lab-game-camera-design.md): V toggles the lab's chase and the game's own tankViewPose with TANK_LENS and its copied smoothing (5 rad/s heading, 0.14 a frame), and a REAR feed in the gunship monitor's frame (0.17-0.25 ms); tank mode only. Later the bait mode replaced the seat and the monitor became ISAO · CAM.",
+  "alternatives": [
+    "extracting the game's chase rig from td-tab.js: td-tab has no line slack; the constants were copied by name instead"
+  ],
+  "evidence": [
+    "--boss-fight (KILLED holds 5 s, R revives)",
+    "--boss-cam"
+  ],
+  "supersedes": []
+}

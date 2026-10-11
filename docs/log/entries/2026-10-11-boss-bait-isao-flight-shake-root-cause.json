@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-10-11-boss-bait-isao-flight-shake-root-cause",
+  "date": "2026-10-11",
+  "type": "change",
+  "status": "accepted",
+  "title": "Isao's camera shook near the creature because his mover had no velocity and his panic fled whichever arm was nearest; he now flies as a body",
+  "context": "Owner, 2026-10-10: 'often when Isao is too close to the enemy, his camera shakes violently, like the 3d model is stuck repeatedly on a wrong path'.",
+  "outcome": "Root cause from a per-frame trace (0ad1eafb): every frame set his velocity to the wanted one, and the panic fled the nearest low arm, which swapped between two arms nearly as near frame by frame: a 32 m/s zigzag, 56 % of the frames over 60 m/s2 with the creature close (p90 3,600). Now: a carried velocity steered at accel 30 m/s2 (panicAccel 50), the panic flees the weighted sum of the low arms with hysteresis (in at 12 m, out beyond 14 m, 0.25 s dwell), eased hop phases, the bob and facing on damped springs, the ISAO · CAM look target on a critically damped spring. Held close for 20 s: 99.6-99.9 % of frames under 60 m/s2, the look under 360 deg/s throughout (max 143). Side effect: finite acceleration makes him answer a little later, and --boss-bait's keep and speed-band checks fail more often (see 2026-10-11-boss-lab-browser-suite-flakiness).",
+  "alternatives": [
+    "smoothing the drawn pose only: would hide the zigzag while the flight stayed wrong; fixed at the cause first, smoothing added on top"
+  ],
+  "evidence": [
+    "test/boss-bait-shake.mjs",
+    "the --boss-bait shake block",
+    ".superpowers/sdd/isao-shake-report.md (local)"
+  ],
+  "supersedes": []
+}

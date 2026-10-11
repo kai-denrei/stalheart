@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "id": "2026-10-11-boss-test-site-stalheart-boss-pages",
+  "date": "2026-10-11",
+  "type": "decision",
+  "status": "accepted",
+  "title": "Friends test the boss lab on its own GitHub Pages site, kai-denrei.github.io/stalheart-boss, published from refactor-run by a script; main and the game's Pages are untouched",
+  "context": "Owner, 2026-10-09: 'git commit and git push, and return an url to test this game mode, already set to Bait, Isao Flies, I want to get some friends to play'; he chose a branch preview over merging refactor-run (the unplaytested refactor run) into main. 2026-10-10, shown the githack URL: 'yes, do this instead: kai-denrei.github.io/stalheart-boss/'.",
+  "outcome": "refactor-run is pushed to origin (first push 909a6601). The public repo kai-denrei/stalheart-boss serves Pages from its main root. ~/scripts/publish-stalheart-boss.sh [commit] builds a clean git-archive export of that commit with scripts/build.mjs and publishes dist: its index.html redirects to labs.html?playtest=1&mode=bait&reeds=20#boss (the game's own front page is game.html there), a README names the source commit. Each publish is verified headless (a CDP script: no interstitial, the seat mounted, 0 errors). Builds published this session: 36a6f1ae, a1b22338, 5ede2123, f271fd9a, a0529f83, 47dbb0d8, 99f2a92a, f7fd9b7e. ?playtest=1 hides the dev panel, notes, readout and selects; Esc only frees the mouse there.",
+  "alternatives": [
+    "raw.githack.com commit links (909a6601, 36a6f1ae): worked, but every HTML page passes a 'One more step' interstitial that also drops the #hash, hence boss.html (a hash-free redirect); a third-party dev proxy with no guarantees; retired",
+    "rawcdn.githack.com: redirects binaries (the mp3s, the creature .bin) and 403s through the redirect",
+    "jsDelivr and statically.io: serve .html as text/plain (statically 403s the mp3)",
+    "merging refactor-run into main for the game's own Pages: ships the whole unreviewed refactor run; rejected by the owner"
+  ],
+  "evidence": [
+    "~/scripts/publish-stalheart-boss.sh",
+    "https://github.com/kai-denrei/stalheart-boss",
+    "boss.html, scripts/build.mjs (boss.html in the dist list)",
+    "the --boss-friends step"
+  ],
+  "supersedes": []
+}

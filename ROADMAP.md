@@ -371,7 +371,13 @@ First step, when it is picked up: `@ts-check` on `src/domain` as a trial, to see
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 62 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 63 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### The boss lab's long browser steps are flaky on this loaded machine: --boss-bait's keep and speed bands, --boss-fight's 15 s Bofors loss; one --boss-wave failure was a stale-aim test bug
+
+`2026-10-11-boss-lab-browser-suite-flakiness` · issue · **observed**
+
+Runs on kainode under a WARN memory guardrail (swap 4-5 GB pinned), one headless Chrome, 2026-10-09 to 2026-10-11.
 
 ### Open: the Nih-Dairia kit is GPL-3.0 and Stalheart's public repository has no licence; the owner decides before any push
 

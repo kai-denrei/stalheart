@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "2026-10-11-boss-bait-isao-voices-and-chatter-pool",
+  "date": "2026-10-11",
+  "type": "change",
+  "status": "accepted",
+  "title": "Isao speaks in the bait mode: thirty-four recorded bait lines through a chatter director, a seventeen-line filler pool that never repeats until spent, 'Finish him!' once and a win line",
+  "context": "Owner, 2026-10-08 to 2026-10-10: five bait lines, then three fly-over lines ('record these voices, and enable the voices for Isao during this section'), then 'Isao is too verbose ... add more diversity' (seven lines), then 'New voices for Isao so he doesn't repeat too much' (seventeen, 'Finish Him!' when the boss is low, a win line). 'That was TOO close' was read 'Tee Oh Oh' and re-recorded in lower case.",
+  "outcome": "seiyu_voice section 14 (commits 859f158, 12f6ab7, 9301e2c, e0015ed, 31fc186) holds bait_hurt, bait_taunt, bait_death, bait_not_today, bait_flyover (3), bait_close_call, bait_help, bait_barrage, bait_stagger, bait_use_40, bait_nuke_careful, bait_nuke_face, bait_chatter (17), bait_finish_him (shouted via the pipeline's shout override, not capitals), bait_win; all approved on the owner's instruction and imported (src/content/isao-voice.js, 235 lines). The director (pure, node-tested): one line at a time, 7 s apart; the single-take situational lines wait 30-45 s; the filler plays after 14-22 s of quiet from a seeded shuffle carried across rounds; finish_him once under 20 % boss hp; win 1.5 s after KILLED unless Isao is down; the fly-over line on about one hop in three. In the bait mode the seat's own mk9_release voice line is silenced (the same voice as the bait Isao). Lesson: a plain `isao export` drops the 159 lines that were never approved in the tool; export with --include-unapproved and compare the manifest counts and hashes before importing.",
+  "alternatives": [
+    "captions only until the owner approved in the player: the owner asked for the voices enabled, which is his approval",
+    "TOO in capitals for emphasis: the TTS spelled it; the shout variant gives emphasis"
+  ],
+  "evidence": [
+    "test/boss-chatter.mjs",
+    "the --boss-bait chatter blocks",
+    "docs/isao-voice-audio.lock.json",
+    "~/Dev/seiyu_voice ISAO-VOICE-LINES.md section 14"
+  ],
+  "supersedes": []
+}
