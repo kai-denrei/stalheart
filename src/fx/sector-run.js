@@ -130,7 +130,8 @@ export function createSectorRun(h) {
     const wave = waveOf(b, next), feasting = feastFor(b), r = releaseWave(sector, b.id, t);
     if (feasting) feast = { id: b.id, at: t, scrambled: 0 };
     if (wave.stampede) { h.callout(wave.stampede === 'trickle' ? SECTOR_STAMPEDE.trickleCallout : SECTOR_STAMPEDE.callout, 'co-victory'); stampedes++; }
-    return { r, entries: queueOf(wave, sp) };
+    const q = queueOf(wave, sp);
+    return { r, entries: api.creatures?.(q, b.side) ?? q };   // ?creatures=<family>:<tier> takes its share of the wave (src/fx/creature-enemies.js)
   }
   // how many of the sector's bodies the next pulse would send from the breaches that are open now
   function nextPulseSize() {

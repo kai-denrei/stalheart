@@ -211,8 +211,18 @@ export function createEnemyStep(host) {
       const entry = host.spawnQueue.shift(), { type, sp } = entry;   // a story swarm entry also carries delay, spread and harmless
       if (!sp.alive) continue;   // its gate died while it was queued
       if(!host.gameBreaches.ready(sp.obj)||host.crowdGate.full(entry)){host.spawnQueue.unshift({...entry,at:host.spawnClock()});break;}
-      const spec = ENEMY_SPEC[type]; if (host.storyMode() && !entry.guard && !host.seenTypes.has(type)) { host.seenTypes.add(type); showContact(host.root, type); }   // first contact: src/fx/contact-card.js
-      const obj = (entry.squad ? makeDotSquad : makeDotEnemy)(type, { walker: CREATURE_TINTS[type], walkerHi: accentFor(type) }, entry.dens, entry.squad);
+      spawnOne(entry);
+    }
+  }
+
+  // ONE BODY OUT OF ITS SOURCE: the record pushed (also the creature probe's direct spawn, src/fx/creature-enemies.js). A creature type
+  // (ENEMY_SPEC `body`) gets a proxy for e.obj and its body in the family's kit; a queue entry may carry its own spec (a creature's tier)
+  function spawnOne(entry) {
+    const { type, sp } = entry;
+    {
+      const spec = entry.spec ?? ENEMY_SPEC[type]; if (host.storyMode() && !entry.guard && !host.seenTypes.has(type)) { host.seenTypes.add(type); showContact(host.root, type); }   // first contact: src/fx/contact-card.js
+      const creatures = spec.body ? host.creatures?.() : null;
+      const obj = creatures ? creatures.proxy() : (entry.squad ? makeDotSquad : makeDotEnemy)(type, { walker: CREATURE_TINTS[type], walkerHi: accentFor(type) }, entry.dens, entry.squad);
       const size = spec.size * 0.7;
       const scale0 = host.cellSide() * size;
       obj.scale.setScalar(scale0); obj.userData.s0 = scale0;
@@ -231,6 +241,9 @@ export function createEnemyStep(host) {
         hp: spec.hp * (entry.squad || 1), members: entry.squad || 0, behMult: 1, behUntil: -1, touchCd: -1,
         slowFactor: 1, slowUntil: -1, guard: entry.guard ?? null,
       });
+      const e = host.enemies[host.enemies.length - 1];
+      creatures?.spawn(e, entry);
+      return e;
     }
   }
 
@@ -444,11 +457,11 @@ export function createEnemyStep(host) {
         }
         if (tNow > e.touchCd && !e.harmless) { e.touchCd = tNow + 1.2; host.playerHit(e.type, e.pos); }   // the story's first wave cannot hurt the tank
       }
-    }   let live = 0; for (const e of host.enemies) if (e.alive) host.enemies[live++] = e; host.enemies.length = live;   /* THE DEAD ARE LET GO (2026-09-25): killCreature only marks a record, and every per-frame walk over this array paid for every body ever spawned (~28 KB each, ~100 MB by sector 3). Compacted in place once a frame, after the walk: nothing keeps an index into it across frames */
+    }   let live = 0; for (const e of host.enemies) if (e.alive) host.enemies[live++] = e; host.enemies.length = live; host.creatures?.()?.step(dt);   /* the creatures' bodies follow their records (src/fx/creature-enemies.js) */   /* THE DEAD ARE LET GO (2026-09-25): killCreature only marks a record, and every per-frame walk over this array paid for every body ever spawned (~28 KB each, ~100 MB by sector 3). Compacted in place once a frame, after the walk: nothing keeps an index into it across frames */
   }
 
   function killCreature(e, fx = false) {
-    e.alive = false;
+    e.alive = false; host.creatures?.()?.kill(e, fx);   // a creature's body deflates (fx) or goes
     // gated on fx: killCreature is ALSO called with fx=false to tear the
     // board down (tutorial clear, wave reset, regenerate). Ungated, a
     // regenerate would fire a death-sound storm.
@@ -461,7 +474,7 @@ export function createEnemyStep(host) {
       const d = makeDebris(e.obj, norm3(e.pos));
       host.scene.add(d);
       host.debris.push(d);
-    } else if (fx) {
+    } else if (fx && e.obj.userData.kind !== 'creature') {
       const d = makeDotBurst(CREATURE_TINTS[e.type] ?? 0xffffff, norm3(e.pos), 24);
       d.scale.setScalar(host.cellSide() * 0.6);
       const dp = add3(e.pos, scale3(norm3(e.pos), host.cellSide() * 0.15));
@@ -473,5 +486,5 @@ export function createEnemyStep(host) {
     host.disposeObj(e.obj);
     host.updateHud();
   }
-  return { clearEnemies, spawnEnemies, hopEstimate, addSpawnPoint, seedPortals, gateTakesShell, killPortal, armWave, spawnWave, releaseSpawns, updateEnemies, killCreature };
+  return { clearEnemies, spawnEnemies, hopEstimate, addSpawnPoint, seedPortals, gateTakesShell, killPortal, armWave, spawnWave, releaseSpawns, spawnOne, updateEnemies, killCreature };
 }

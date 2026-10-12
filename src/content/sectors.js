@@ -209,7 +209,7 @@ export const BELTS = freeze(['white', 'grey', 'yellow', 'blue', 'orange', 'green
 export const BELT_OF = freeze({
   amoeba: 'white', phage: 'grey', ghost: 'yellow', scoutufo: 'yellow', saucer: 'blue', jellyfish: 'blue', gslime: 'blue',
   drifter: 'orange', corona: 'green', shellback: 'green', barbed: 'purple', prime: 'purple', rolling: 'brown', phantom: 'black',
-  knot: 'red', jelly: 'red',
+  knot: 'red', jelly: 'red', cutis: 'brown', reed: 'green',
 });
 
 // what makeSectorStats counts from zero: tempoBin is the sparkline's bin in seconds (the spec: kills per 5 s), and the

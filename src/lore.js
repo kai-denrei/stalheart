@@ -507,6 +507,35 @@ export const LORE = {
       + 'asteroid tiles, body wobbling under its own weight, biological '
       + 'dread, hyperreal render, 8k',
   },
+  // THE CREATURES (owner, 2026-10-12): shelved from the ladder, they come only by ?creatures=<family>:<tier> while their cost is measured
+  cutis: {
+    name: 'CUTIS-MAKU',
+    tag: 'trial contact · four sizes',
+    body: 'A skin with nothing inside it that the scanner can name. It does not '
+      + 'walk: it reaches. A stalk goes out, a cup plants, and the whole membrane '
+      + 'pours itself through the neck into the place it chose, then breathes '
+      + 'and does it again. The small ones come in hundreds, a hand wide; the '
+      + 'large one is the width of the pad. Shot through, it does not burst. It '
+      + 'sags into a puddle with the dark core showing, and the puddle fades.',
+    visual: 'translucent veined membrane creature hopping across alien tiles, '
+      + 'a thin stalk reaching ahead to a planted cup, the body pouring through '
+      + 'the neck, dark core visible inside, warm pulse light in the veins, '
+      + 'hyperreal render, 8k',
+  },
+  reed: {
+    name: 'THE REEDS',
+    tag: 'trial contact · the Nih-Dairia family',
+    body: 'Soft bodies on long jointed legs, the young of the thing the crews '
+      + 'call Nih-Dairia. They pursue, they do not wander: whatever moves '
+      + 'nearest is what they follow, and they keep following it through the '
+      + 'gaps between the walls. The catalogue lists four sizes and admits the '
+      + 'fourth is the parent. Its entry has one line: do not let it reach the '
+      + 'Cardion.',
+    visual: 'tall soft-bodied alien creature on long jointed reed-like legs, '
+      + 'pale translucent flesh, stalking across dark asteroid tiles in a '
+      + 'pursuit crouch, smaller young around it, cold rim light, hyperreal '
+      + 'render, 8k',
+  },
   saucer: {
     name: 'SAUCER',
     tag: 'wave 13 · dogfighter',

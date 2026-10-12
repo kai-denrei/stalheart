@@ -102,7 +102,7 @@ import { makeStrike, makeStrikeParams, grantStrikes, stepStrike,
 import { createRadarScope } from './fx/radar-scope.js'; import { createTowerAim } from './fx/tower-aim.js'; import { buildVarsModal } from './fx/vars-modal.js'; import { startVictoryPull } from './fx/victory-pull.js'; import { createShowcaseHooks } from './fx/showcase-hooks.js'; import { createGunshipRig } from './fx/gunship-rig.js';
 import { makeA6, arc as a6Arc } from './heptapod.js';
 import { DEFAULT_TOWER_LOOK, buildTowerLook, preloadLook, lookReady } from './towerlooks.js';
-import { makeAudio } from './audio.js'; import { isaoSay } from './fx/isao-voice.js'; import { createCrowdGate } from './fx/crowd-gate.js'; import { shedSquad, squadDamage } from './fx/squads.js';
+import { makeAudio } from './audio.js'; import { isaoSay } from './fx/isao-voice.js'; import { createCrowdGate } from './fx/crowd-gate.js'; import { createCreatureEnemies } from './fx/creature-enemies.js'; import { shedSquad, squadDamage } from './fx/squads.js';
 
 export function initTdTab(root) {
   const flags = readGameFlags();   // THE URL FLAGS, read once (src/platform/game-flags.js)
@@ -336,7 +336,7 @@ export function initTdTab(root) {
   const warmShaders = makeShaderWarmer(renderer, scene, camera);
   const programWarm = createProgramWarm(renderer, scene, camera);
   const explosions = createExplosions(scene, { onError: (error) => record('explosions.unavailable', { message: error.message }) });
-  const thermalHeat = createThermalHeat(() => ({ warm: [storyBase?.group, playerMesh, ...towers.map((tw) => tw.obj)], hot: [...['stalheart', 'foundry', 'assembly'].map((id) => storyBase?.structure(id)?.holder), isao?.obj] }), { postfx });
+  const thermalHeat = createThermalHeat(() => ({ warm: [storyBase?.group, playerMesh, ...towers.map((tw) => tw.obj), ...creatureEnemies.roots()], hot: [...['stalheart', 'foundry', 'assembly'].map((id) => storyBase?.structure(id)?.holder), isao?.obj] }), { postfx });
   const automated = () => !!story && isAutomated(story.beats.phase(), story.handover);
   // the lab's explosions (src/fx/explosions.js); callers keep their dot bursts when this returns false
   const explode = (use, p) => { const sc = EXPLOSION_SCARE[use]; if (sc) applyScare(enemies, p, { radius: sc.cells * cellSide, seconds: sc.seconds }); return explosions.spawn(use, p, norm3(p), cellSide); };
@@ -3075,7 +3075,10 @@ export function initTdTab(root) {
     ramCombo: () => ramCombo,
     setRamCombo: (v) => (ramCombo = v),
     setRamComboT: (v) => (ramComboT = v),
+    creatures: () => creatureEnemies,
   });
+  const creatureEnemies = createCreatureEnemies({ scene, root, flags, camera, enemies, spawnPoints, canvasHeight: () => renderer.domElement.height, field: () => dungeon, spawn: (q) => enemyStep.spawnOne(q),   // ?creatures=<family>:<tier>, &ramp=1 (src/fx/creature-enemies.js)
+    heart: () => (dungeon && graph ? [graph.centers[dungeon.heart], dungeon.heart, cellSide] : null), breachReady: (o) => gameBreaches.ready(o), perf: () => perfOverlay.sample(), perfOn: () => setPerfOverlay(true, false), damage: (e, dmg) => damageEnemy(e, t, dmg, true, 'tower') });
   function spawnEnemies(...a) { return enemyStep.spawnEnemies(...a); }
   function seedPortals(...a) { return enemyStep.seedPortals(...a); }
   function gateTakesShell(...a) { return enemyStep.gateTakesShell(...a); }
@@ -5276,6 +5279,7 @@ export function initTdTab(root) {
     // a queued spawn is already an enemy to the beats: the second hard core sat in the queue the tick the first died, and the
     // Quiver beat settled with it still to come
     enemies: () => enemies.filter((e) => e.alive && !e.guard).length + spawnQueue.filter((q) => !q.guard).length,   // the site guards are not the beats' business
+    creatures: (q, side) => creatureEnemies.replace(q, side),   // a sector wave's share of ?creatures (src/fx/creature-enemies.js)
     spawn: (type, ci, o = null) => { spawnQueue.push({ type, sp: o?.guard || o?.here ? { ci, alive: true, obj: new THREE.Group() } : story?.source ?? { ci, alive: true, obj: new THREE.Group() }, at: spawnClock, ...o }); },
     brief: (id) => showBrief(id),
     tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null),
@@ -5838,7 +5842,7 @@ export function initTdTab(root) {
         heartAsset: heartSprite?.userData.asset || params.heartLook,
         laser: laserStation.state(),
         heartAssetState: heartSprite?.userData.assetState,
-        performance:perfOverlay.sample(),
+        performance:perfOverlay.sample(), creatureProbe: creatureEnemies.state(),
         programs:renderer.info.programs?.length??-1,
         warm:programWarm.state(),
         shieldClock:t,
@@ -5984,6 +5988,7 @@ export function initTdTab(root) {
       fillGunshipCall: (n) => fillFromKill(gunshipRig.call, n, GUNSHIP_CALL),
       // the skip panel's enemies: a breach opens on the lane outside the gate if none is live, and they rise out of it staggered
       // (emergence only runs from a real breach)
+      creatures: creatureEnemies.test,   // the creature enemies' harness (src/fx/creature-enemies.js)
       spawnFodder: (n, type = 'amoeba') => { if (!story) return 0; if (!story.source?.alive) storyApi.breach(gunshipRig.far()); for (let i = 0; i < n; i++) storyApi.spawn(type, story.source.ci, { spread: 0.8, delay: i * 0.12 }); return n; },
       clearSector: () => {
         endShot();

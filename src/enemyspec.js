@@ -64,6 +64,9 @@ export const CREATURE_TINTS = {
   // but its BODY colour is the shader's, not a dot tint. This entry exists so
   // the radar, the sitrep roster and the debrief have something to draw with.
   jelly: ALARM_HUES.red,
+  // THE CREATURES (owner, 2026-10-12; src/content/creature-enemies.js): solid cores, drawn by their own kits, not by a dot tint
+  cutis: ALARM_HUES.brown,
+  reed: ALARM_HUES.green,
 };
 
 // --- ACCENTS -------------------------------------------------------------
@@ -152,6 +155,11 @@ export const ENEMY_SPEC = {
   saucer:    { hp: 1, speed: 1.55, size: 0.36, rammable: true,  heartDmg: 1, erratic: true, jink: true, bounty: 9 },
   shellback: { hp: 3, speed: 0.9,  size: 0.55, rammable: false, heartDmg: 2, tactician: true, bounty: 24 },
   phantom:   { hp: 2, speed: 1.05, size: 0.48, rammable: false, heartDmg: 2, cloaked: true, bounty: 28 },
+  // THE CREATURES (owner, 2026-10-12: "replace some of the enemies with the Reed and the Cutis-Maku"; src/content/creature-enemies.js):
+  // shelved from the wave plans, they enter only through ?creatures=<family>:<tier> and the probe. `body` names the kit that draws them
+  // (src/fx/creature-bodies.js); a tier's queue entry carries its own spec (hp, speed, size, bounty by size) over these defaults.
+  cutis:     { hp: 2, speed: 0.4, size: 0.27, rammable: false, heartDmg: 2, bounty: 12, body: 'cutis', shelved: true },
+  reed:      { hp: 3, speed: 0.45, size: 0.36, rammable: false, heartDmg: 2, bounty: 14, body: 'reed', shelved: true },
 };
 
 // one new threat per wave, in HokorobiTawaa's difficulty order (agile →

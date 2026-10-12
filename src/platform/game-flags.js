@@ -6,8 +6,8 @@
 import { SHIELD_KNOBS } from '../domain/shield.js';
 
 export const GAME_FLAG_KEYS = Object.freeze([
-  'acceptance', 'blast', 'brief', 'callouts', 'coarse', 'creature', 'day', 'fps', 'gunship', 'heart', 'keyprobe', 'labGalaxySeed', 'labseed',
-  'laser', 'layout', 'look', 'metal', 'mission', 'mobile', 'mode', 'seed', 'sim', 'simcap', 'simfast', 'sky', 'stateprobe', 'tier',
+  'acceptance', 'blast', 'brief', 'callouts', 'coarse', 'creature', 'creatures', 'day', 'fps', 'gunship', 'heart', 'keyprobe', 'labGalaxySeed', 'labseed',
+  'laser', 'layout', 'look', 'metal', 'mission', 'mobile', 'mode', 'ramp', 'seed', 'sim', 'simcap', 'simfast', 'sky', 'stateprobe', 'tier',
   'towerscale', 'vars', 'viewwatch', 'walltops',
 ]);
 
