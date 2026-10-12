@@ -38,6 +38,7 @@ import { createLabHandle } from './boss/handle.js';
 import { createWave } from './boss/wave.js';
 import { createRemains } from './boss/remains.js';
 import { createLabSinkhole } from './boss/sinkhole.js';
+import { createCutisScenario } from './boss/cutis-scenario.js';
 import { settingsBlock, folderGroups } from './boss/settings-copy.js';
 import { makeFight, startFight, capture, readout as fightReadout } from '../domain/boss-fight.js';
 import { entryClear, keepOut } from '../domain/boss-wave.js';
@@ -66,6 +67,7 @@ import { ARENA } from '../fx/nih-dairia/arena.js';
 import { PHYS } from '../fx/nih-dairia/constants.js';
 import { MOTION_CONTROLS } from '../fx/nih-dairia/motion-settings.js';
 import { CREATURE_VARIANTS } from '../fx/nih-dairia/variants.js';
+import { CUTIS_BOSS } from '../content/cutis-maku.js';
 import { NIH_DAIRIA_MOTION, NIH_DAIRIA_PREDATOR, NIH_DAIRIA_PREDATOR_SIZE_METRES, NIH_DAIRIA_VARIANT, NIH_DAIRIA_SIZE_METRES, NIH_DAIRIA_LOOK, NIH_DAIRIA_MODELS } from '../content/nih-dairia.js';
 
 const TANK_R = 3.4;          // the swarm lab's hull scale: MÖRK at its real size
@@ -135,9 +137,14 @@ function cropToCap(group, anchorUp, radius, capMetres) {
 export function initBossTab(root) {
   const q = new URLSearchParams(location.search);
   const PLAYTEST = q.get('playtest') === '1';   // the friends' link: the dev controls hidden, Esc only frees the mouse
+  // THE CREATURE SWITCH (owner, 2026-10-12: "no replacing, we add", "separate scenarios, picked by the switch"): ?creature=cutis builds the Cutis-Maku scenario
+  // (./boss/cutis-scenario.js) in the Reeds' wave's place, the Nih-Dairia boss held back all round; the bait mode only. Anything else is the Nih-Dairia's, unchanged
+  const CUTIS = q.get('creature') === 'cutis';
   root.innerHTML = `<div id="boss">
     <div class="sw-side">
       <h2>boss study</h2>
+      <label>creature <select data-k="creature"><option value="nih-dairia">Nih-Dairia</option><option value="cutis"${CUTIS ? ' selected' : ''}>Cutis-Maku</option></select></label>
+      <p class="sw-note" data-dev ${CUTIS ? '' : 'hidden'}>Cutis-Maku: the bait mode only (the tank mode is the Nih-Dairia's).</p>
       <label data-dev>body <select data-k="variant">${CREATURE_VARIANTS.map((v) => `<option value="${v.id}">${v.name}</option>`).join('')}</select></label>
       <label data-dev data-tank-only>lure <select data-k="lure"><option value="tank">the tank (WASD)</option><option value="point">a point (click the ground)</option><option value="auto">the figure-eight</option></select></label>
       <label data-dev>view <select data-k="view"><option value="chase">chase</option><option value="free">free orbit</option></select></label>
@@ -312,7 +319,7 @@ export function initBossTab(root) {
   // THE FIRST WAVE'S SIZE (./boss/wave.js): the panel's slider, or ?reeds=N for the friends' link (0 is the boss at once)
   if (q.get('reeds') !== null && Number.isFinite(+q.get('reeds'))) fightTune.wave.count = Math.max(0, Math.min(WAVE_MAX, Math.round(+q.get('reeds'))));
   const fightOn = { fight: true, rotary: true, bofors: true, nuke: true, sol: true, fear: true, obstacles: true, cannon: true, pinSeed: false };
-  const baitOpts = { health: BAIT_HEALTH };
+  const baitOpts = { health: CUTIS ? CUTIS_BOSS.health : BAIT_HEALTH };
   const roundTune = () => (state.mode === 'tank' ? fightTune : { ...fightTune, health: baitOpts.health });   // the round's health is the mode's
   let fight = makeFight(roundTune());
   let hullLost = false;        // a landing took the hull: hidden until the reset
@@ -383,7 +390,7 @@ export function initBossTab(root) {
   const round = createRound(stage, {
     tune: () => fightTune, fight: () => fight, on: () => fightOn.fight, cardExtra: () => bait.cardText(), wave: () => (waving() ? wave.bar() : null),
     remains: () => remains.stage(),   // the dead boss's carcass's stage after KILLED (./boss/remains.js)
-    onKilled: dieV1, onLost: () => {}, onReset: () => { resetDue = 0; },
+    onKilled: () => (CUTIS ? wave.killed() : dieV1()), onLost: () => {}, onReset: () => { resetDue = 0; },
   });
   // THE BAIT MODE (./boss/bait.js, the rules in src/domain/boss-bait.js): Isao flies low on autopilot with the creature after him, a bar under
   // the creature's, his lines as captions. The lab's `mode` switch turns it on; the tank is out while it is
@@ -416,7 +423,7 @@ export function initBossTab(root) {
     gate: () => ({ fight: fightOn.fight, rotary: fightOn.rotary, bofors: fightOn.bofors, nuke: fightOn.nuke }),   // the fight folder's switches gate the player's guns as the schedule's
     focus: () => { const c = huntedNow().centre, b = bait.pos() ?? c; return [(c[0] + b[0]) / 2, (c[1] + b[1]) / 2]; },
     clear: () => panelCover(),   // what the panel covers: the HUD's readout and the monitor stand left of it
-    leave: () => { if (!PLAYTEST) setMode('tank'); },   // in the friends' link Esc only frees the mouse (the seat's own first Esc) pause: () => { paused = !paused; }, onError: (m) => shaderErrors.push(m),
+    leave: () => { if (!PLAYTEST && !CUTIS) setMode('tank'); },   // in the friends' link Esc only frees the mouse (the seat's own first Esc) pause: () => { paused = !paused; }, onError: (m) => shaderErrors.push(m),
   });
   // the creature's body centre in sphere space (its mass centre in the rig, the frame's tangent space), `lift` metres up: Isao's camera's aim
   function creatureAim(lift = 2) {
@@ -424,7 +431,12 @@ export function initBossTab(root) {
     return [p[0] + frame.up[0] * lift, p[1] + frame.up[1] * lift, p[2] + frame.up[2] * lift];
   }
   // THE FIRST WAVE (./boss/wave.js, the rules src/domain/boss-wave.js): in the bait mode `wave.count` Reeds hunt Isao before the boss; the last one dead, the boss enters
-  const wave = createWave({
+  const wave = CUTIS ? createCutisScenario({
+    sphere, frame: () => frame, planetR: () => planet?.radius ?? 0, tune: () => fightTune, fight: () => fight, now: () => t, ground: (x, z) => tankWorld(x, z),
+    aim: (from, to) => arena.clamp(arena.route(from, to), fightTune.bounds.creatureMargin), isao: () => bait.asTank(), isaoPos: () => (bait.has() && !bait.gone() ? bait.pos() : null),
+    putIsao: (p) => bait.putAt(arena.spawn(p)), fearOn: () => fightOn.fight && fightOn.fear, on: () => !tankOn(), camera: () => cam, height: () => renderer.domElement.height,
+    sinkhole: () => sinkhole, stage, count: q.get('cutis'), callout: showCallout, stagger: () => bait.want('stagger'),
+  }) : createWave({
     sphere, tune: () => fightTune, fight: () => fight, now: () => t, motion: () => params.motion, phys: () => ({ ...PHYS, ...params.phys }),
     ground: (x, z) => tankWorld(x, z), tangent: (w) => frameAt(w, planet.radius, 0, frame.east), spawn: (p) => arena.spawn(p),
     aim: (from, to) => arena.clamp(arena.route(from, to), fightTune.bounds.creatureMargin),   // the boss's hunt: round the obstacles, then inside the bound
@@ -712,7 +724,7 @@ export function initBossTab(root) {
     await makeCreature();
     if (disposed || !creature) return;
     pointWorld = toWorld(frame, creature.motion.target.toArray(), scale);
-    if (q.get('mode') !== 'tank' && state.mode !== 'bait') setMode('bait');   // the lab opens in the bait mode (owner, 2026-10-10: "make the default mode when landing on #boss the Bait-Isao mode"); ?mode=tank opens the tank's
+    if ((CUTIS || q.get('mode') !== 'tank') && state.mode !== 'bait') setMode('bait');   // the lab opens in the bait mode (owner, 2026-10-10: "make the default mode when landing on #boss the Bait-Isao mode"); ?mode=tank opens the tank's
   }
 
   // --- the point lure: a click on the ground ------------------------------------------------------------------------------
@@ -958,7 +970,7 @@ export function initBossTab(root) {
     if (fpsEl.hidden) return;
     const held = waving(), w = wave.stats(), bar = wave.bar();
     fpsEl.textContent = `${fps.toFixed(0)} fps · solver ${(held ? w.meanSolver : meanSolver.mean()).toFixed(1)} ms · `
-      + (held ? `Reeds ${bar.alive}/${bar.count} · ${w.hz} Hz${w.meanScale < 0.995 ? ` · clock ×${w.meanScale.toFixed(2)}` : ''}` : 'boss');
+      + (held && bar ? `Reeds ${bar.alive}/${bar.count} · ${w.hz} Hz${w.meanScale < 0.995 ? ` · clock ×${w.meanScale.toFixed(2)}` : ''}` : 'boss');
   }
   const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
@@ -1093,6 +1105,7 @@ export function initBossTab(root) {
   waveGui.add(WV, 'reedHealth', 1, 100, 1).name('Reed health (at R)');
   waveGui.add(WV, 'budget', 2, 40, 0.5).name('wave solver budget (ms)');
   waveGui.add(WV, 'lod').name('off-screen Reeds at half rate');
+  if (CUTIS) { wave.panel(gui); for (const f of [...Object.values(folders), bodyGui]) f.hide(); variantSelect.closest('label').hidden = true; }   // the Cutis-Maku's wave, hit multipliers and death first (./boss/cutis-scenario.js); the Nih-Dairia's body knobs and the Reeds' folder hidden
   waveGui.add(WV.coarse, 'on').name(`${WV.coarse.hz} Hz solver above ${WV.coarse.above} Reeds`);   // owner, 2026-10-10: the Reeds' step coarser while many stand
 
   function setLure(kind) {
@@ -1109,7 +1122,7 @@ export function initBossTab(root) {
     for (const el of root.querySelectorAll('[data-bait-only]')) el.hidden = PLAYTEST || !bm;
     solCtl.show(!bm); cannonCtl.show(!bm); healthCtl.show(!bm); tankStunCtl.show(!bm);   // SOL, the cannon, the tank's health and its MK-9 stun are not in the bait mode; its altitude, erratic, health and the seat's reload are only there
     for (const c of [altCtl, reloadCtl, erraticCtl, baitHealthCtl, hopCtl]) c.show(bm);
-    gunFearGui.show(bm); temperGui.show(bm); waveGui.show(bm);
+    gunFearGui.show(bm); temperGui.show(bm); waveGui.show(bm && !CUTIS);
   }
   modePanel();
   // the mode: the tank, or Isao as the bait (the tank out); a new round puts the right one `respawn` metres out
@@ -1119,6 +1132,7 @@ export function initBossTab(root) {
   const modeSize = { tank: NIH_DAIRIA_SIZE_METRES, bait: NIH_DAIRIA_PREDATOR_SIZE_METRES };
   function setMode(mode) {
     if (mode !== 'tank' && mode !== 'bait') return false;
+    if (CUTIS && mode === 'tank') { root.querySelector('[data-k="mode"]').value = state.mode; return false; }   // the Cutis-Maku has no tank mode (v1)
     modeMotion[state.mode] = { ...params.motion }; modeSize[state.mode] = state.sizeMetres;   // the mode left keeps what was tuned in it
     state.mode = mode; root.querySelector('[data-k="mode"]').value = mode;
     bait.setOn(mode === 'bait'); keys.clear(); scripted = null; cruiseTap = false; seat.release();
@@ -1147,6 +1161,7 @@ export function initBossTab(root) {
     else if (k === 'mode') { setMode(el.value); el.blur(); }
     else if (k === 'view') state.view = el.value;
     else if (k === 'cam') { setCam(el.value); el.blur(); }   // the select must not keep V's keystrokes
+    else if (k === 'creature') { const u = new URL(location.href); if (el.value === 'cutis') u.searchParams.set('creature', 'cutis'); else u.searchParams.delete('creature'); location.assign(u.href); }   // the other scenario: the page again with the parameter (the rest of the query and the hash kept)
     else if (k === 'variant' && el.value !== state.variant && planet && !loading) makeCreature(el.value);   // during a load: picked up after it
   });
   const copyBox = root.querySelector('[data-copy]');
@@ -1207,7 +1222,7 @@ export function initBossTab(root) {
     getCreature: () => creature, getScale: () => scale, getT: () => t, getFight: () => fight, getGameCam: () => gameCam, getReanchors: () => reanchors,
     setScripted: (v) => { scripted = v; }, setPin: (v) => { pin = v; },
     readout, setLure, setCam, setMode, bait, seat, setFight, fireCannon: () => fireCannon(), copySettings, reset, tryReanchor, placeTank, creatureNow, creatureAim, temperament,
-    plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene, wave, sinkhole, remains, audio,
+    plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene, wave, sinkhole, remains, audio, cutis: CUTIS ? wave : null,
     killBoss: () => { if (fight.phase !== 'fight' || waving() || rise) return false; fight.hp = 0; return true; },
     bossHp: (share) => { if (fight.phase !== 'fight' || waving() || rise) return false; fight.hp = Math.max(1e-6, share * fight.max); return true; },   // the boss's hit points at `share` of its maximum (the acceptance's)   // the round's own kill on its next tick
     closeToBoss: (back = 30, up = 18, at = null) => {   // the free orbit's camera on the boss's carcass (on the local ground point `at` if given), `back` m off along its frame's east and `up` m above it
