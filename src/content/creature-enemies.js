@@ -85,17 +85,30 @@ export const CREATURE_FOLLOW = freeze({ lead: 1.8, catchRadii: 1.5, fastest: 0.3
 export const CREATURE_DEATH = freeze({ deflate: CUTIS_DEATH.deflate, fade: 6, sink: 0.25 });
 
 // THE PROBE (&ramp=1): first `baseline` s of the sector alone (no probe bodies: its mean and p95), then on top of the running sector,
-// `step` bodies of the tier (the tier's probeStep) every `hold` seconds, at the sector's live breaches (round-robin; none open yet, on a
-// ring of cells `ringHops` hops from the heart); the frame's real ms in a `span` s sliding mean; done when that mean stays above the
+// `step` bodies of the tier (the tier's probeStep) every `hold` seconds, on THE GROUND BEYOND THE GATE (`ground`, below); the frame's
+// real ms in a `span` s sliding mean; done when that mean stays above the
 // limit for `overSeconds` (or `hardCap` bodies, or `maxSeconds`). The limit (`relative`, src/domain/creature-ramp.js rampLimit): the most
 // of `thresholdMs`, the baseline x (1 + `overRatio`) and the baseline + `overMs` (2026-10-12: the sector alone ran at ~20 ms on the M4,
 // so a fixed 16.7 ms said "fits 0" for every tier; the question is what the bodies add). A step's first
 // `settle` s (the spawn's own hitch) are not in its numbers. Up to `perFrame` bodies spawn a frame while the tier is under the target
 // (towers kill them: the probe keeps the count up). Its bodies are harmless (they do not hurt the heart, and the sector does not wait
 // for them). `test`: the browser step's overrides (&ramp=test; headless frame times mean nothing, the counts are not asserted).
+// THE GROUND AND THE DEFENCE (owner, 2026-10-12: "don't spawn the enemies straight into the base without defense, it should be tested
+// against sentries. spawn them beyond the gate, not inside the base, with some sentries already built"; src/domain/probe-ground.js).
+// `ground`: the probe's bodies come up outside the walls, `lo`..`hi` hops out from the front gate over the outside ground, on cells
+// whose way to the heart is the gate (`slack` hops of give), spread over up to `cells` cells at least `apartCells` apart, in turn.
+// `sentries`: `count` sentries stand at boot (the chapters' own build, commitTower; &sentries=N overrides, 0 none, at most the story's
+// ten), on rock touching the outside ground within `reach` hops of the gate, the story's two lane sockets first, `apartCells` apart
+// where the wall allows; their types in `mix` order: the four earned by ?skip=defence (the base's Rotor and Quiver, the Relay and the
+// Mortar of its two expeditions): two Rotors and two Quivers for the single bodies, a Mortar for the swarms' splash, a Relay's slow
+// field to hold them in the others' reach. THE HEART IS HELD while the probe runs (it takes no damage and the sector can neither be
+// lost nor secured: the probe kept stepping only while the sector did, and the unprotected sector fell at ~40 s).
+// `test`: a long run (the browser step checks the probe keeps stepping for a minute of wall time), a budget it never crosses.
 export const CREATURE_PROBE = freeze({
   hold: 4, settle: 1, span: 1, thresholdMs: 16.7, overSeconds: 3, hardCap: 2000, startDelay: 6, maxSeconds: 900, perFrame: 40, ringHops: 18, gapMs: 250,
   baseline: 8, relative: true, overRatio: 0.1, overMs: 1.5,
-  // headless: a short baseline and the fixed tiny budget (the frames mean nothing there; the run only has to end)
-  test: { hold: 1.5, settle: 0, span: 0.5, thresholdMs: 0.5, overSeconds: 1.5, startDelay: 1, maxSeconds: 60, gapMs: 5000, baseline: 1, relative: false },
+  ground: { lo: 8, hi: 20, slack: 2, cells: 24, apartCells: 3 },
+  sentries: { count: 6, max: 10, mix: ['rotor', 'quiver', 'mortar', 'rotor', 'quiver', 'relay'], reach: 3, apartCells: 2 },
+  // headless: a short baseline, a step every 4 s for 75 s of wall time and a budget it never crosses (the frames mean nothing there)
+  test: { hold: 4, settle: 0, span: 0.5, thresholdMs: 1e6, overSeconds: 1.5, startDelay: 1, maxSeconds: 75, gapMs: 5000, baseline: 1, relative: false },
 });
