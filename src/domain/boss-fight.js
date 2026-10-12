@@ -213,6 +213,14 @@ export function burn(state, plan, dt, creature, tank) {
   return { damage, tankHit: !plan.spares && dist(tank.pos, plan.at) < plan.radius + tank.radius };
 }
 
+// a damage another rule has already weighed (the Cutis-Maku scenario's phase multiplier, src/domain/cutis-hits.js `cutisDamage`), on the fight through `harm`: a
+// landing counts one hit, a stream (`moving`) one hit a plan, as `burn` counts them. Returns the damage dealt (0 outside a running fight)
+export function hurt(state, plan, damage) {
+  const dealt = harm(state, damage, plan.kind);
+  if (dealt > 0 && (!plan.moving || !state.burnt.has(plan))) { if (plan.moving) state.burnt.add(plan); state.hits++; }
+  return dealt;
+}
+
 export function capture(state, reason) {
   if (state.phase !== 'fight') return;
   Object.assign(state, { phase: 'lost', reason, card: state.cardSeconds });
