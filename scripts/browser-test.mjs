@@ -1923,10 +1923,10 @@ try{
  } else if(args.includes('--sector-probe')) {
  // A SECTOR'S CLOCK from its start (no assertions): phase, bodies up and queued, each breach's waves released of planned; SECTOR=n
  const T='window.__stalheartTest',n=+process.env.SECTOR||4,dur=(+process.env.PROBE_S||150)*1000;
- await go('sector-probe',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${n}${process.env.PERF?'&fps=1':''}#td`);
+ await go('sector-probe',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${n}${process.env.PERF?'&fps=1':''}${process.env.PROBE_Q??''}#td`);   // PROBE_Q: more of the query (&creatures=cutis:small&ramp=1&sentries=0: the held heart)
  await until(`!!${T} && ${T}.state().sector?.n===${n}`,120000);
  const rows=[],t0=Date.now();let last='';
- while(Date.now()-t0<dur){const r=await evaluate(`(()=>{const s=${T}.state(),c=s.sector;return ['S'+c.n,c.phase,'alive '+s.enemiesAlive,'q '+s.queued,'gs '+(s.gunship.seat?'seat':s.gunship.station?'stn':'-'),'sol '+(s.laser?.phase??'-')+(s.laser?.seated?'*':''),(c.breaches||[]).map(b=>b.side[0]+b.wavesReleased+'/'+b.wavesPlanned+(b.live?'':'x')).join(' '),${process.env.PERF?1:0}&&s.performance?'perf '+s.performance.frameMs.toFixed(0)+'ms cpuE '+s.performance.cpu.enemies.toFixed(1)+' cpuT '+s.performance.cpu.towers.toFixed(1)+' calls '+s.performance.calls+' gpu '+(s.performance.gpuMs?.toFixed(1)??'-'):''].join(' | ');})()`);
+ while(Date.now()-t0<dur){const r=await evaluate(`(()=>{const s=${T}.state(),c=s.sector;return ['S'+c.n,c.phase,'alive '+s.enemiesAlive,'q '+s.queued,'gs '+(s.gunship.seat?'seat':s.gunship.station?'stn':'-'),'sol '+(s.laser?.phase??'-')+(s.laser?.seated?'*':''),(c.breaches||[]).map(b=>b.side[0]+b.wavesReleased+'/'+b.wavesPlanned+(b.live?'':'x')).join(' '),${process.env.PERF?1:0}&&s.performance?'perf '+s.performance.frameMs.toFixed(0)+'ms cpuE '+s.performance.cpu.enemies.toFixed(1)+' cpuT '+s.performance.cpu.towers.toFixed(1)+' calls '+s.performance.calls+' gpu '+(s.performance.gpuMs?.toFixed(1)??'-'):'',s.creatureProbe?.defence?'heart held '+s.creatureProbe.defence.heartHits+' · sentries '+s.creatureProbe.defence.sentries+(s.creatureProbe.probe?' · probe '+s.creatureProbe.probe.phase+' '+s.creatureProbe.probe.steps:''):''].join(' | ');})()`);
   if(r!==last){rows.push(((Date.now()-t0)/1000).toFixed(0)+'s '+r);last=r;}
   if(process.env.PLAY){await evaluate(`${T}.sectorCull(999)`);if(await evaluate(`${T}.state().sector.debriefOpen`)){await evaluate(`${T}.sectorContinue()`);await delay(300);await evaluate(`${T}.sectorContinue()`);}}   // PLAY=1: a player who clears the field and reads on
   await delay(2000);}
@@ -1935,19 +1935,33 @@ try{
  // THE CREATURE ENEMIES AND THEIR PROBE (owner, 2026-10-12; src/fx/creature-enemies.js): each family:tier (CREATURES, default the four Cutis
  // tiers and the four Reed / Nih-Dairia ones) boots a sector with ?creatures=<tier>&ramp=test; its bodies spawn, walk toward the heart with their bodies on their records, a
  // damaged one dies and deflates, the probe ends with its card; 0 page errors. Headless frame times mean nothing: the counts are printed,
- // never asserted. SHOTS=<dir> also saves a close look at a body per tier there
+ // never asserted. THE GROUND AND THE DEFENCE (owner, 2026-10-12: "spawn them beyond the gate, not inside the base, with some sentries
+ // already built"): every creature comes up outside the walls and the probe's own in the band beyond the gate; the sentries stand and
+ // hit a creature (the harness puts a few at the gate's mouth: headless barely walks the band's to them); the probe keeps stepping for a
+ // minute of wall time past the ~40 s the unprotected sector used to fall at, the sector neither lost nor secured; the card says so.
+ // SHOTS=<dir> also saves a close look at a body per tier there, and the wide view of the gate (gate-<tier>.png)
  const T='window.__stalheartTest',shots=process.env.SHOTS||null;if(shots)mkdirSync(shots,{recursive:true});
  const look={small:[1.2,1.8],medium:[2.2,3.2],big:[3.5,5],huge:[8,12]};
  for(const ct of (process.env.CREATURES||'cutis:small,cutis:medium,cutis:big,cutis:huge,reed:small,reed:medium,reed:big,reed:huge').split(',')){
   const [fam,tier]=ct.split(':'),name=`creature-${fam}-${tier}`;
   await go(name,`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${process.env.SECTOR||2}&fps=1&creatures=${encodeURIComponent(ct)}&ramp=test${process.env.REEDLOOK?`&reedlook=${process.env.REEDLOOK}`:''}#td`).catch(async(e)=>{console.log(await evaluate('location.href'),errors,consoleLines.slice(-20));throw e;});
   await until(`!!${T} && ${T}.state().creatureProbe?.probe?.phase==='ramping'`,120000);
+  const rampAt=Date.now(),probeState=`${T}.state().creatureProbe`;
   await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,#td-brief,.contact-card{display:none!important}</style>")');
+  // THE DEFENCE: the sentries stood at boot, near the gate, outside facing; the band beyond the gate
+  const d0=await evaluate(`${probeState}.defence`),g0=await evaluate(`${T}.creatures.ground()`);
+  console.log(`  ${ct}: ${d0.sentries} sentries ${JSON.stringify(d0.types)} on ${JSON.stringify(g0.garrison.map(s=>`${s.cell}@${s.near}${s.socket?'s':''}`))}; gate ${g0.gates}; band ${g0.lo}-${g0.hi} hops, ${g0.band.length} cells (hops ${g0.band.map(b=>b.hops).join(',')}), of ${d0.band?.candidates}`);
+  assert(d0.sentries===d0.asked&&d0.asked>=1,`${ct}: the sentries stand (${JSON.stringify(d0)})`);
+  assert(g0.band.length>=4&&g0.band.every(b=>!b.inside&&b.hops>=g0.lo&&b.hops<=g0.hi),`${ct}: the band is outside the walls, beyond the gate (${JSON.stringify(g0.band)})`);
+  assert(d0.heartHeld===true,`${ct}: the heart is held`);
+  await until(`${probeState}.defence.starts.probe>0`,60000);
   // a record out of its breach whose body is made (a Reed's is made a few a frame once its cage is in)
   const pick=`${T}.creatures.ofTier().find(e=>!(e.emergeAge<1.2)&&${T}.creatures.view(e)?.active)`;
   await until(`!!${pick}`,90000);
   const a=await evaluate(`(()=>{const e=${pick};window.__cw=e;return {id:e.id,cur:e.cur,pos:e.pos,view:${T}.creatures.view(e)};})()`);
   assert(a.view&&a.view.active&&!a.view.dead,`${ct}: the record has its body (${JSON.stringify(a.view)})`);
+  // the sentries' test: a few of the tier at the gate's mouth (in the harness's name: not the probe's)
+  const near=await evaluate(`${T}.creatures.spawnNear(${tier==='huge'?1:tier==='big'?2:4})`);assert(near>=1,`${ct}: the harness's bodies at the gate`);
   await delay(6000);
   const b=await evaluate(`(()=>{const e=window.__cw;return {alive:e.alive,cur:e.cur,pos:e.pos,view:${T}.creatures.view(e)};})()`);
   const moved=Math.hypot(b.pos[0]-a.pos[0],b.pos[1]-a.pos[1],b.pos[2]-a.pos[2]);
@@ -1959,14 +1973,31 @@ try{
   const victim=await evaluate(`(()=>{const e=${pick};if(!e)return null;window.__ch=${T}.creatures.handle(e);const hp=e.hp;${T}.creatures.hurt(e,e.hp+1);return {hp,alive:e.alive};})()`);
   assert(victim&&!victim.alive,`${ct}: damageEnemy kills a creature (${JSON.stringify(victim)})`);
   await until(`(()=>{const v=${T}.creatures.viewHandle(window.__ch);return v&&v.dead&&v.deflate>0.5;})()`,30000).catch(async()=>assert.fail(`${ct}: the dead one deflates (${JSON.stringify(await evaluate(`${T}.creatures.viewHandle(window.__ch)`))} ${JSON.stringify(await evaluate(`(()=>{const s=${T}.state();return {paused:s.paused,shot:s.shot,alive:s.enemiesAlive,c:s.creatureProbe};})()`))})`));
-  await until(`${T}.state().creatureProbe.probe.result?.done===true`,120000).catch(async()=>assert.fail(`${ct}: the probe ends (${JSON.stringify(await evaluate(`${T}.state().creatureProbe`))})`));
-  const r=(await evaluate(`${T}.state().creatureProbe`));
+  await until(`${probeState}.defence.fight.hits>0`,60000).catch(async()=>assert.fail(`${ct}: a sentry hits a creature (${JSON.stringify(await evaluate(`${probeState}.defence`))})`));
+  // THE PROBE KEEPS STEPPING: a minute of wall time from the ramp's start, its step count rising, the sector neither lost nor secured
+  const tl=[];
+  while((tl.length<3||tl[tl.length-1].t<62)&&Date.now()-rampAt<150000){const s=await evaluate(`(()=>{const s=${T}.state(),p=s.creatureProbe.probe;return {t:Math.round((Date.now()-${rampAt})/1000),steps:p.steps,phase:p.phase,target:p.target,alive:s.creatureProbe.alive,sector:s.sector?.phase,n:s.sector?.n,hits:s.creatureProbe.defence.fight.hits,kills:s.creatureProbe.defence.fight.kills,heart:s.creatureProbe.defence.heartHits};})()`);
+   tl.push(s);if(s.phase==='done')break;await delay(10000);}
+  console.log(`  ${ct}: ${tl.map(s=>`${s.t}s steps ${s.steps} alive ${s.alive}/${s.target} S${s.n} ${s.sector} hits ${s.hits} kills ${s.kills} heart ${s.heart}`).join(' · ')}`);
+  assert(tl.length>=3&&tl[tl.length-1].t>=60&&tl.every((s,i)=>i===0||s.steps>tl[i-1].steps),`${ct}: the probe keeps stepping for a minute (${JSON.stringify(tl)})`);
+  assert(tl.every(s=>s.sector==='fighting'),`${ct}: the sector neither lost nor secured while the probe runs`);
+  await until(`${probeState}.probe.result?.done===true`,120000).catch(async()=>assert.fail(`${ct}: the probe ends (${JSON.stringify(await evaluate(probeState))})`));
+  const r=(await evaluate(probeState)),dd=r.defence;
   assert(await evaluate('!!document.querySelector("#creature-probe-card")'),`${ct}: the result card`);
+  assert(/sentries \d+ \(/.test(r.probe.cardText)&&/sentry kills/.test(r.probe.cardText)&&/beyond the gate/.test(r.probe.cardText)&&/heart held/.test(r.probe.cardText),`${ct}: the card's defence lines (${r.probe.cardText})`);
+  assert(dd.starts.inside===0&&dd.starts.probe>0&&dd.starts.probeOutside===dd.starts.probe,`${ct}: every creature came up outside the walls, the probe's beyond the gate (${JSON.stringify(dd.starts)})`);
   const res=r.probe.result;assert(res.baselineMean!==null&&res.limitMs>0,`${ct}: the probe's baseline (${JSON.stringify(res)})`);console.log(`  ${ct}: probe ${res.reason}: baseline ${res.baselineMean}/${res.baselineP95} ms, limit ${res.limitMs}, max ${res.maxAlive} alive (fits ${res.fits}, +${res.msPerBody} ms a body), total ${res.totalAlive}, frame ${res.frameMean}/${res.frameP95} ms, enemies cpu ${res.enemiesCpuMs}, gpu ${res.gpuMs}, ${res.calls} calls, ${res.triangles} tris, re-placed ${res.replaced}; bodies ${JSON.stringify(r.bodies?.families?.[fam]?.[tier])}${res.bodyMs===null?'':`; solver ${res.bodyMs} ms a body at ${res.solverHz} Hz (headless: not meaningful)`}`);
+  console.log(`  ${ct}: defence ${dd.sentries} sentries ${JSON.stringify(dd.types)}, sentry hits ${dd.fight.hits} (${dd.fight.damage.toFixed(1)} damage), kills ${dd.fight.kills} of the tier / ${dd.fight.killsAll}; starts ${JSON.stringify(dd.starts)}; heart damage held ${dd.heartHits}`);
   assert(res.maxAlive>=1,`${ct}: the probe had bodies up`);
   await finish();
   if(shots){writeFileSync(join(shots,`${name}-card.png`),readFileSync(join(output,`${name}.png`)));
-   // the close look (a dive shot holds the world still: last): the record nearest the camera's cell, the camera low over it
+   // THE WIDE VIEW (a dive shot holds the world still: after the checks): high over the outside ground a few hops beyond the gate,
+   // looking back at it: the walls, the gate, the sentries on the wall and the creatures outside
+   await evaluate('document.querySelector("#creature-probe-card")?.remove()');
+   for(const [k,at,hgt,back] of [['wide','gate',+process.env.WIDE_H||30,+process.env.WIDE_B||16],['band','band',14,10]]){
+    const ci=await evaluate(`(()=>{const g=${T}.creatures.ground();const near=g.band.slice().sort((x,y)=>x.hops-y.hops)[0];return ${JSON.stringify(at)}==='band'&&near?near.cell:g.gates[0];})()`);
+    await evaluate(`${T}.showcase.ground(${ci},${hgt},${back})`);await delay(2500);const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(shots,`gate-${fam}-${tier}${k==='wide'?'':'-band'}.png`),Buffer.from(shot.data,'base64'));}
+   // the close look: the record nearest the camera's cell, the camera low over it
    const ci=await evaluate(`(()=>{const e=${pick}??${T}.creatures.ofTier().find(e=>!(e.emergeAge<1.2));return e?e.cur:-1;})()`);
    if(ci>=0){await evaluate(`${T}.showcase.ground(${ci},${look[tier]?.[0]??3},${look[tier]?.[1]??4})`);await delay(2500);const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(shots,`${name}.png`),Buffer.from(shot.data,'base64'));}}
  }
