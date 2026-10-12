@@ -3457,6 +3457,115 @@ const killReal=(Date.now()-t0)/1000;
  {const p=(await plays()).filter(x=>x.key==='sinkhole_quake');console.log('BOSS-EMERGE quakes '+JSON.stringify(p.map(x=>({who:x.who,dist:+x.dist.toFixed(3),context:x.context}))));
   assert.equal(p.length,4,'every opening sounded its quake once (two rounds, the Reeds\' and the boss\'s)');}
  await finish();
+ } else if(args.includes('--boss-cutis')) {
+ // THE CUTIS-MAKU SCENARIO (owner, 2026-10-12: "same scenario as the current one, but with the Cutis-Maku ... no replacing, we add ... separate scenarios, picked by the
+ // switch"; src/labs/boss/cutis-scenario.js, spec docs/superpowers/specs/2026-10-12-cutis-maku-boss-design.md). First the default page (?cutis=N ignored there): the
+ // Nih-Dairia's lab as before, its Reeds' wave (the bar WAVE 1 · REED, then NIH-DAIRIA once they are killed), no Cutis-Maku anywhere; then the panel's creature
+ // dropdown reloads it with ?creature=cutis, the rest of the query and the hash kept: the bait mode only (the tank mode refused), the Nih-Dairia hidden and unstepped,
+ // the panel CUTIS-MAKU, the bar WAVE 1 · CUTIS 4/4; the game's sinkhole opens at the centre and no Cutis comes up before it is ready; all four rise from under the
+ // ground (lift below 0) and emerge onto the surface near the hole (lift 0), Isao kept off the centre meanwhile; a landing during TRANSFER deals 0 (absorbed, flashed)
+ // and during EXTEND more than 0; all four killed: the boss's sinkhole opens (`wave.sinkhole.boss` cells), the boss comes up the same way, the bar CUTIS-MAKU 180/180;
+ // the phase rule on it too; killed: KILLED, its hop held and it deflates into its puddle; R: a new wave, no puddle; 0 page errors, no shader error.
+ // Screenshots (CUTIS_SHOTS, a directory, else the artifacts): boss-cutis-wave-seat.png (the wave from the seat), boss-cutis-wave-close.png (the free orbit near them),
+ // boss-cutis-boss-seat.png and boss-cutis-boss-close.png (the boss), boss-cutis-puddle-close.png (the boss's puddle)
+ const B='window.__bossLab',dir=process.env.CUTIS_SHOTS||output,N=4;
+ const {BOSS_FIGHT}=await import('../src/content/boss-fight.js');const {CUTIS_BOSS}=await import('../src/content/cutis-maku.js');
+ const shoot=async(file)=>{const p=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(dir,file),Buffer.from(p.data,'base64'));console.log(`BOSS-CUTIS screenshot ${join(dir,file)}`);};
+ const setSel=(key,v)=>evaluate(`(()=>{const e=document.querySelector('#boss [data-k="${key}"]');e.value=${JSON.stringify(v)};e.dispatchEvent(new Event('input',{bubbles:true}));return e.value;})()`);
+ const wheel=(dy,n)=>evaluate(`(()=>{const cv=document.querySelector('#boss .sw-stage canvas');for(let i=0;i<${n};i++)cv.dispatchEvent(new WheelEvent('wheel',{deltaY:${dy},bubbles:true,cancelable:true}));return ${B}.seat()?.zoom})()`);
+ const lbl=()=>evaluate(`document.querySelector('#boss .sw-hud .ih-lbl').textContent`);
+ const C=()=>evaluate(`${B}.cutis()`);
+ // in the free orbit, the camera `back` m off and `up` m over the local point `at` (the lab's closeToBoss on a ground point), then back to the seat
+ const close=async(file,at,back,up)=>{await setSel('view','free');await until(`${B}.seat() === null`,10000);await evaluate(`${B}.closeToBoss(${back},${up},${JSON.stringify(at)})`);await delay(500);await evaluate(`${B}.closeToBoss(${back},${up},${JSON.stringify(at)})`);await delay(250);await shoot(file);await setSel('view','chase');await until(`!!${B}.seat()`,15000);};
+ const fromSeat=async(file,at,zoomIn)=>{await evaluate(`${B}.aim(${JSON.stringify(at)})`);await wheel(-100,zoomIn);await delay(900);await evaluate(`${B}.aim(${JSON.stringify(at)})`);await delay(300);await shoot(file);await wheel(100,zoomIn);};
+ // the default page: the Nih-Dairia's, unchanged
+ await go('boss-cutis-default','labs.html?sw=0&acceptance=1&cutis=4#boss');
+ await until(`!!${B} && ${B}.mode()==="bait" && !!${B}.seat()`,90000);
+ {const d=await evaluate(`(()=>{const L=${B};let n=0,S=L.creature().mesh;while(S.parent)S=S.parent;S.traverse(o=>{if(/Cutis/.test(o.name))n++;});return {cutis:L.cutis(),select:document.querySelector('#boss [data-k="creature"]').value,gui:document.querySelector('#boss').parentElement.querySelector('.lil-gui.root > .title').textContent,wave:L.wave().count,scenario:L.wave().scenario??null,cutisObjects:n,lbl:document.querySelector('#boss .sw-hud .ih-lbl').textContent}})()`);
+  console.log('BOSS-CUTIS default '+JSON.stringify(d));
+  assert(d.cutis===null&&d.scenario===null&&d.cutisObjects===0,'the default page builds no Cutis-Maku');
+  assert.equal(d.select,'nih-dairia');assert.equal(d.gui,'NIH-DAIRIA');assert.equal(d.wave,BOSS_FIGHT.wave.count,'the Reeds\' wave, its own count (?cutis is not read)');
+  assert.equal(d.lbl,`WAVE 1 · REED ${BOSS_FIGHT.wave.count}/${BOSS_FIGHT.wave.count}`);
+  await evaluate(`${B}.killReeds()`);await until(`document.querySelector('#boss .sw-hud .ih-lbl').textContent==='NIH-DAIRIA'`,20000);
+  console.log('BOSS-CUTIS default boss '+JSON.stringify(await evaluate(`({lbl:document.querySelector('#boss .sw-hud .ih-lbl').textContent,hp:${B}.fight().hp,entered:${B}.wave().entered})`)));}
+ current='boss-cutis-default';await finish();
+ // the dropdown: the page again with ?creature=cutis
+ current='boss-cutis';consoleLines.length=0;errors.length=0;requests.length=0;
+ await evaluate('window.__beforeSwitch = true');await setSel('creature','cutis');
+ await until(`!window.__beforeSwitch && location.search.includes('creature=cutis') && location.search.includes('acceptance=1') && location.search.includes('cutis=4') && location.hash==='#boss'`,30000);
+ await until(`!!${B} && ${B}.mode()==="bait" && !!${B}.seat() && !!${B}.cutis()`,90000);
+ {const s=await evaluate(`(()=>{const L=${B};return {select:document.querySelector('#boss [data-k="creature"]').value,gui:document.querySelector('#boss').parentElement.querySelector('.lil-gui.root > .title').textContent,lbl:document.querySelector('#boss .sw-hud .ih-lbl').textContent,count:L.cutis().wave.count,tank:L.mode('tank'),rig:L.creature().mesh.parent.visible,x0:L.creature().body.x[0]}})()`);
+  console.log('BOSS-CUTIS switch '+JSON.stringify({...s,url:await evaluate('location.search+location.hash')}));
+  assert.equal(s.select,'cutis');assert.equal(s.gui,'CUTIS-MAKU');assert.equal(s.count,N,'?cutis=4');assert.equal(s.tank,'bait','no tank mode for the Cutis-Maku');
+  assert.equal(s.rig,false,'the Nih-Dairia hidden');assert.equal(s.lbl,`WAVE 1 · CUTIS ${N}/${N}`,'the bar reads the Cutis wave');
+  await delay(600);assert.equal(await evaluate(`${B}.creature().body.x[0]`),s.x0,'the Nih-Dairia not stepped');}
+ // the emergence
+ const at=(await C()).centre,seen={},sk={phases:[],early:0};let keepPolls=0,isaoMin=Infinity,shotWave=false,polls=0;
+ await evaluate(`${B}.aim(${JSON.stringify(at)})`);
+ for(const end=Date.now()+150000;Date.now()<end;){
+  const s=await evaluate(`(()=>{const L=${B},c=L.cutis(),h=L.sinkhole(),b=L.bait();return {c,sink:{open:h.open,who:h.who,ready:h.breach?.ready??null,phase:h.breach?.phase??null,opened:h.opened,caps:h.caps},isao:b&&!b.gone?b.pos:null,err:L.readout().error}})()`);polls++;
+  {const ph=s.sink.open?s.sink.phase:(s.sink.caps?'sealed':'none');if(sk.phases.at(-1)!==ph)sk.phases.push(ph);if(s.sink.open&&!sk.opened)sk.opened=s.sink;}
+  for(const x of s.c.wave.creatures){const e=seen[x.id]??={states:[],lifts:[],up:null};if(e.states.at(-1)!==x.state)e.states.push(x.state);if(x.state==='rising'){e.lifts.push(x.lift);if(s.sink.who==='reeds'&&!s.sink.ready)sk.early++;}if(x.state==='up'&&!e.up)e.up={centre:x.centre,lift:x.lift,radius:x.radius};}
+  if(s.c.keep&&s.isao){keepPolls++;isaoMin=Math.min(isaoMin,Math.hypot(s.isao[0]-s.c.keep.at[0],s.isao[1]-s.c.keep.at[1]));}
+  if(!shotWave&&s.c.wave.emerged>=2){const ups=s.c.wave.creatures.filter(x=>x.state==='up');const mid=[ups.reduce((a,x)=>a+x.centre[0],0)/ups.length,ups.reduce((a,x)=>a+x.centre[1],0)/ups.length];await fromSeat('boss-cutis-wave-seat.png',mid,4);shotWave=true;}
+  if(s.c.wave.emerged===N)break;
+  await delay(150);
+ }
+ {const c=await C(),ids=[...Array(N).keys()];
+  console.log('BOSS-CUTIS emergence '+JSON.stringify({polls,phases:sk.phases,early:sk.early,opened:sk.opened&&sk.opened.opened,states:ids.map(i=>seen[i]?.states.join('>')),firstLift:ids.map(i=>seen[i]?.lifts[0]!==undefined?+seen[i].lifts[0].toFixed(2):null),up:ids.map(i=>seen[i]?.up&&{d:+Math.hypot(seen[i].up.centre[0]-at[0],seen[i].up.centre[1]-at[1]).toFixed(1),lift:seen[i].up.lift}),keepPolls,isaoMin:+isaoMin.toFixed(1),sinkAfter:(await evaluate(`${B}.sinkhole()`)).caps}));
+  assert(sk.opened&&sk.opened.who==='reeds'&&Math.hypot(sk.opened.opened[0].at[0]-at[0],sk.opened.opened[0].at[1]-at[1])<1e-6,'the game\'s sinkhole opened at the centre for the wave');
+  assert(sk.phases.includes('rumbling')&&sk.phases.includes('open'),`it rumbled, then opened (${sk.phases.join('>')})`);
+  assert.equal(sk.early,0,'no Cutis rose before the sinkhole was ready');
+  assert.equal(c.wave.emerged,N,`all ${N} came up (${JSON.stringify(c.wave.creatures.map(x=>x.state))})`);
+  assert(ids.every(i=>seen[i].states.includes('rising')&&seen[i].states.at(-1)==='up'),`each rose, then was up (${ids.map(i=>seen[i].states.join('>'))})`);
+  assert(ids.filter(i=>seen[i].lifts.length&&seen[i].lifts[0]<-1).length>=N-1,'seen under the ground while it rose');
+  assert(ids.every(i=>seen[i].up.lift===0&&Math.hypot(seen[i].up.centre[0]-at[0],seen[i].up.centre[1]-at[1])<30),'each emerged onto the surface near the hole');
+  assert(keepPolls>0&&isaoMin>=BOSS_FIGHT.wave.emerge.keep-0.5,`Isao kept off the centre while they came up (${isaoMin.toFixed(1)} m nearest)`);
+  assert(shotWave,'the wave seen from the seat');}
+ {const c=await C(),up=c.wave.creatures.filter(x=>x.state==='up'),mid=[up.reduce((a,x)=>a+x.centre[0],0)/up.length,up.reduce((a,x)=>a+x.centre[1],0)/up.length];await close('boss-cutis-wave-close.png',mid,22,12);}
+ // the phase rule on a small one
+ {const id=(await C()).wave.creatures.find(x=>x.state==='up').id;
+  const a=await evaluate(`${B}.cutisLand('wave',${id},0.7,'bofors')`),b=await evaluate(`${B}.cutisLand('wave',${id},0.3,'bofors')`),c=await C();
+  console.log('BOSS-CUTIS phase '+JSON.stringify({transfer:a,extend:b,flash:c.flash}));
+  assert(a&&a.stage==='TRANSFER'&&a.damage===0&&a.absorbed&&a.after===a.before,'a landing during TRANSFER deals 0, absorbed');
+  assert(c.flash.fired>=1,'the absorbed flash');
+  assert(b&&b.stage==='EXTEND'&&b.damage>0&&b.after<b.before,'a landing during EXTEND deals more than 0');}
+ // the wave killed: the boss comes up
+ assert.equal(await evaluate(`${B}.cutisKillWave()`)>0,true);
+ await until(`(()=>{const c=${B}.cutis();return c.wave.alive===0&&c.boss.open})()`,20000);
+ assert.equal((await C()).puddles>=1,true,'the dead lie as puddles');
+ {const bs=[];let shot=false;
+  for(const end=Date.now()+150000;Date.now()<end;){const c=await C(),s=await evaluate(`${B}.sinkhole()`);if(bs.at(-1)?.stage!==c.boss.stage)bs.push({stage:c.boss.stage,lift:+c.boss.lift.toFixed(2),who:s.who,size:s.opened.at(-1)?.size});
+   if(c.boss.stage==='up')break;await delay(150);}
+  const c=await C();
+  console.log('BOSS-CUTIS boss '+JSON.stringify({stages:bs,boss:{stage:c.boss.stage,hp:c.boss.hp,radius:+c.boss.radius.toFixed(2),centre:c.boss.centre.map(v=>+v.toFixed(1)),lift:c.boss.lift},lbl:await lbl(),entered:c.entered}));
+  assert(bs.some(b=>b.who==='boss'&&b.size===BOSS_FIGHT.wave.sinkhole.boss),'the boss\'s sinkhole opened');
+  assert(bs.some(b=>b.stage==='rising'&&b.lift<-5),'the boss rose from under the ground');
+  assert.equal(c.boss.stage,'up','the boss came up');assert.equal(c.boss.lift,0);
+  assert.equal(await lbl(),'CUTIS-MAKU','the bar reads CUTIS-MAKU');
+  assert.equal(c.boss.hp,CUTIS_BOSS.health);
+  await fromSeat('boss-cutis-boss-seat.png',c.boss.centre,6);
+  await close('boss-cutis-boss-close.png',c.boss.centre,60,32);}
+ // the phase rule on the boss, then the kill
+ {const a=await evaluate(`${B}.cutisLand('boss',0,0.7,'bofors')`),b=await evaluate(`${B}.cutisLand('boss',0,0.3,'bofors')`);
+  console.log('BOSS-CUTIS boss phase '+JSON.stringify({transfer:a,extend:b,fight:await evaluate(`${B}.fight().hp`)}));
+  assert(a&&a.damage===0&&a.absorbed,'the boss in TRANSFER: absorbed');assert(b&&b.damage>0&&b.after<b.before,'the boss in EXTEND: hurt (the fight\'s hit points)');}
+ assert.equal(await evaluate(`${B}.cutisKillBoss()`),true);
+ await until(`${B}.fight().phase==="killed"`,10000);
+ {const card=await evaluate(`${B}.readout().fight.card`);assert(/^KILLED/.test(card??''),`the KILLED card (${card})`);
+  const d=[];for(const end=Date.now()+60000;Date.now()<end;){const c=await C();d.push(+c.boss.deflate.toFixed(2));if(c.boss.deflate>=1)break;await delay(150);}
+  const c=await C();
+  console.log('BOSS-CUTIS death '+JSON.stringify({deflate:d.filter((v,i,a)=>i===0||v!==a[i-1]),boss:{stage:c.boss.stage,hold:c.boss.hold,opacity:c.boss.opacity},puddles:c.puddles}));
+  assert(d.length>1&&d[0]<1&&c.boss.deflate===1,'its puddle deflates');assert.equal(c.boss.stage,'dead');assert(c.boss.hold,'its hop held');
+  await close('boss-cutis-puddle-close.png',c.boss.centre,60,32);}
+ // R: a new wave, no puddle
+ await evaluate(`dispatchEvent(new KeyboardEvent("keydown",{key:"r",code:"KeyR"})); dispatchEvent(new KeyboardEvent("keyup",{key:"r",code:"KeyR"}))`);
+ await until(`${B}.fight().phase==="fight" && ${B}.cutis().puddles===0 && ${B}.cutis().boss.stage==="waiting"`,30000);
+ {const c=await C(),rd=await evaluate(`${B}.readout()`);
+  console.log('BOSS-CUTIS restart '+JSON.stringify({count:c.wave.count,made:c.wave.made,puddles:c.puddles,lbl:await lbl(),fps:rd.fps,solver:+(rd.wave.meanSolver??0).toFixed(2)}));
+  assert.equal(c.wave.count,N);assert.equal(await lbl(),`WAVE 1 · CUTIS ${N}/${N}`);
+  assert.deepEqual(rd.shaderErrors,[],'no shader errors');assert(!rd.error,`no frame error (${rd.error})`);}
+ current='boss-cutis';await finish();
  } else if(args.includes('--boss-carcass')) {
  // THE DEAD BOSS'S CARCASS IN STAGES (owner, 2026-10-10: "after the boss is dead, the user should still be able to shoot at its carcass, what would it take to
  // create 'stages of destruction' for the dead boss? limbs getting cut, parts disappearing in explosion, etc."; option A: the Reeds' carcass scaled up;

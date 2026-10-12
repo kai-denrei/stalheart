@@ -8,6 +8,7 @@ export function createLabHandle({
   getCreature, getScale, getT, getFight, getGameCam, getReanchors, setScripted, setPin,
   readout, setLure, setCam, setMode, bait, seat, setFight, fireCannon, copySettings, reset, tryReanchor, placeTank, creatureNow, creatureAim, temperament,
   plane, drive, keys, state, cam, params, gui, arena, fear, fightTune, scene, chase, closeTo, wave, reeds, sinkhole, remains, killBoss, closeToBoss, bossHp, audio,
+  cutis = null,
 }) {
   const lab = {
     readout,
@@ -173,6 +174,18 @@ export function createLabHandle({
     },
     // the values to paste (the C key's and the button's block, ./settings-copy.js), returned as text
     copySettings, reset, reanchor: () => tryReanchor(0),
+    // THE CUTIS-MAKU SCENARIO (?creature=cutis, ./cutis-scenario.js; null in the Nih-Dairia's): cutis() is its readout ({ scenario, wave: { count, made, emerged, alive,
+    // killed, cleared, creatures: [{ id, state ('waiting' | 'rising' | 'up' | 'dead' | 'gone'), hp, phase, stage (the hop's COIL..SETTLE, REST), centre (local), radius,
+    // lift, deflate, opacity, hold, pace }] }, boss: { up, stage, open (its sinkhole), hp, max, phase, state, lift, deflate, opacity, centre, radius }, puddles, keep,
+    // lastHits, absorbed, flash, hunted }); cutisLand(who, id, phase, kind) puts a landing of that gun on creature `id` of 'wave' or 'boss' with its hop at `phase` (its
+    // hit: { damage, absorbed, before, after }; null when it is not up); cutisKillWave() every small one now; cutisKillBoss() the boss's hit points to 0 (KILLED on the
+    // round's next tick); cutisDeath(deflate, fade) the death's timings; cutisCount(n) the wave's size and a new round (cutisCount() reads it)
+    cutis: () => cutis?.readout() ?? null,
+    cutisLand: (who, id, phase, kind) => cutis?.land(who, id, phase, kind) ?? null,
+    cutisKillWave: () => cutis?.killAll() ?? 0,
+    cutisKillBoss: () => cutis?.killBoss() ?? false,
+    cutisDeath: (deflate, fade) => cutis?.deathTimes(deflate, fade) ?? null,
+    cutisCount: (n) => { if (!cutis) return null; if (n !== undefined) { cutis.params.count = Math.max(0, Math.round(n)); reset(); } return cutis.params.count; },
   };
   return lab;
 }
