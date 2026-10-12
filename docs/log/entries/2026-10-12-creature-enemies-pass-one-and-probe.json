@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "id": "2026-10-12-creature-enemies-pass-one-and-probe",
+  "date": "2026-10-12",
+  "type": "change",
+  "status": "accepted",
+  "title": "Creature enemies, pass one: the Cutis-Maku in four tiers as story-mode enemies through ?creatures=, and the &ramp=1 probe that prices them in frame time",
+  "context": "Owner, 2026-10-12: replace some of the story's enemies with the Reed and the Cutis-Maku and see how many the game can afford without dropping fps; four scenarios per family (swarm of small, medium swarm, a few big, one huge); 'measure, then decide'; then 'start with a perf probe'. Spec docs/superpowers/specs/2026-10-12-creature-enemies-probe-design.md. Branch creature-enemies, local only.",
+  "outcome": "A creature is an ordinary enemy record (src/fx/enemy-step.js walks it, damageEnemy hurts it, killCreature ends it) whose e.obj is a light proxy; src/fx/creature-bodies.js is the seam: it maps every record into the plane of the heart's surface frame (azimuthal-equidistant, src/domain/surface-projection.js) and drives a family body adapter behind one interface (add/track/kill/free/step/setPlanet/roots/stats/view/dispose). The Cutis family (src/fx/creature-cutis.js) draws one instanced swarm per tier on that plane; a body hunts its record's point 1.8 s ahead, hops faster the further behind, and is re-placed past a leash after a 1.5 s grace (counted). Death: hold, deflate 1.5 s, fade 6 s, slot freed. Tiers, follow, death and probe knobs in src/content/creature-enemies.js (cutis r0 1.5/4/8/20 m, hp 2/6/16/60; reed's table for pass two); ENEMY_SPEC cutis and reed are shelved. ?creatures=<family>:<tier> replaces the tier's share of each sector wave's single bodies (not the canyon's); &ramp=1 adds the tier's step every 4 s at the live breaches, measures the real frame interval in a 1 s sliding mean and stops when it stays over 16.7 ms for 3 s (src/domain/creature-ramp.js), then shows a card and publishes state().creatureProbe. The gunship's thermal heats the swarms as warm. td-tab +5 lines. The Reed / Nih-Dairia adapter is pass two; a ?creatures=reed:* page says so and changes nothing.",
+  "alternatives": [
+    "a body per record as its own Object3D: one draw per body is what the crowd cap already pays for; one instanced swarm per tier is a handful of draws",
+    "a leash with no grace (3 radii or 8 m): a record jumps out of its breach's spread and the small Cutis was re-placed 45 times for 84 bodies headless; with the grace 1 for 84",
+    "the probe's bodies through the spawn queue: the crowd gate would hold them back; they spawn directly and count against the gate"
+  ],
+  "evidence": [
+    "node test/creature-ramp.mjs; node test/surface-projection.mjs (the kit's bend lands on the projection)",
+    "scripts/browser-lock.sh node scripts/browser-test.mjs --creature-probe (four Cutis tiers: spawn, walk, die and deflate, the card; 0 page errors)",
+    "--sector-probe SECTOR=4 identical on the parent commit b1cbabb9 and on this branch without ?creatures (alive 79/169/475/569..., lost at ~40 s, unplayed)",
+    "--crowd-probe green",
+    "headless numbers are not the owner's machine: the probe's counts were printed, never asserted"
+  ],
+  "supersedes": []
+}
