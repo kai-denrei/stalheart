@@ -17,6 +17,17 @@ export function surfaceFrame(origin) {
   return { origin: ey, ex, ey, ez };
 }
 
+// the frame at unit point `p` with `f`'s heading carried over (a body that draws and simulates in a frame of its own re-anchors to the
+// point under it as it walks, src/fx/creature-reed.js): the new ex is f's ex projected onto the tangent plane at p, so the body is not
+// turned when its frame moves (surfaceFrame's fixed reference would turn it near that reference's axis). The old ex parallel to p (a
+// quarter of the planet away) falls back to surfaceFrame(p).
+export function carryFrame(f, p) {
+  const ey = unit(p), d = dot(f.ex, ey), t = [f.ex[0] - ey[0] * d, f.ex[1] - ey[1] * d, f.ex[2] - ey[2] * d];
+  if (Math.hypot(t[0], t[1], t[2]) < 1e-6) return surfaceFrame(p);
+  const ex = unit(t), ez = cross(ex, ey);
+  return { origin: ey, ex, ey, ez };
+}
+
 // the plane point [x, z] of sphere point `p` (normalised) in frame `f`, for a planet of radius `R` (the plane's unit: R = 753 gives
 // metres on the story planet). The origin itself (and its antipode, where the direction is undefined) maps to its arc along +x.
 export function toPlane(f, p, R = 1) {

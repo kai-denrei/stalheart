@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { surfaceFrame, toPlane, fromPlane, planeDistance } from '../src/domain/surface-projection.js';
+import { surfaceFrame, carryFrame, toPlane, fromPlane, planeDistance } from '../src/domain/surface-projection.js';
 // THE SURFACE FRAME AND ITS PLANE (src/domain/surface-projection.js): a right-handed tangent frame, the azimuthal-equidistant
 // projection round its origin (arc distance kept exactly), its inverse, and the kit's own bend (src/fx/cutis-maku/geometry.js) lands on it
 const close = (a, b, eps = 1e-9, msg) => assert.ok(Math.abs(a - b) <= eps, `${msg ?? ''} ${a} vs ${b}`);
@@ -24,4 +24,19 @@ for (const o of [[0, 1, 0], [1, 0, 0], unit([0.3, -0.8, 0.5]), unit([-0.95, 0.1,
   }
 }
 close(planeDistance([0, 0], [3, 4]), 5);
-console.log('Surface projection: a right-handed frame, the azimuthal-equidistant plane round it both ways, and the Cutis kit\'s bend lands on it.');
+// carryFrame: a frame moved to a point near it keeps its heading (a body walking 30 m east still faces east), right-handed, and a short
+// walk east and back west returns the frame it started with
+for (const o of [[0, 1, 0], unit([0.3, -0.8, 0.5]), unit([0.999, 0.01, 0.04])]) {
+  const R = 753, f = surfaceFrame(o), p = fromPlane(f, 30, 0, R), g = carryFrame(f, p);
+  close(Math.hypot(...g.ex), 1); close(dot(g.ex, g.ey), 0); close(dot(g.ez, g.ey), 0); close(dot(g.ex, g.ez), 0);
+  for (let k = 0; k < 3; k++) close(g.ey[k], p[k], 1e-12, 'its origin is the point');
+  const c = [g.ex[1] * g.ey[2] - g.ex[2] * g.ey[1], g.ex[2] * g.ey[0] - g.ex[0] * g.ey[2], g.ex[0] * g.ey[1] - g.ex[1] * g.ey[0]];
+  for (let k = 0; k < 3; k++) close(c[k], g.ez[k], 1e-9, 'ex x ey = ez');
+  // the point 30 m further east in the new frame is 60 m east in the old (the heading carried along the great circle)
+  const q = toPlane(f, fromPlane(g, 30, 0, R), R); close(q[0], 60, 1e-6, 'east stays east'); close(q[1], 0, 1e-6, 'no turn');
+  // a point 10 m north of p in the old frame is 10 m north in the new one, within the projection's stretch
+  const n = toPlane(g, fromPlane(f, 30, 10, R), R); close(n[0], 0, 0.01); close(n[1], 10, 0.01);
+  const back = carryFrame(g, o); for (let k = 0; k < 3; k++) close(back.ex[k], f.ex[k], 1e-9, 'there and back');
+}
+{ const f = surfaceFrame([0, 1, 0]), g = carryFrame(f, f.ex); assert.ok(Math.abs(dot(g.ex, g.ey)) < 1e-9, 'the degenerate quarter-planet carry falls back'); }
+console.log('Surface projection: a right-handed frame, the azimuthal-equidistant plane round it both ways, a frame carried to a nearby point keeps its heading, and the Cutis kit\'s bend lands on it.');
