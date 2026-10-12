@@ -23,7 +23,8 @@ export function createCreatureProbe({ root, family, tier, def, tune, spawn, aliv
     if (ramp.phase === 'done') return;
     const up = alive();
     peakTotal = Math.max(peakTotal, total());
-    stepRamp(ramp, { dt, ms, alive: up });
+    // the ramp runs on the wall clock, not the game's dt (2026-10-12, the headed M4 run: the game's clock gave the probe ~48 s in 900 s of real time)
+    stepRamp(ramp, { dt: ms > 0 ? Math.min(ms, 1000) / 1000 : dt, ms, alive: up });
     if (ramp.phase === 'ramping' && up < ramp.target) spawned += spawn(Math.min(tune.perFrame, ramp.target - up));
     const s = perf?.();
     if (s && ramp.phase === 'ramping') sampleAt = { ...s, alive: up, target: ramp.target, window: windowMean(ramp) };
