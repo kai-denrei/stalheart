@@ -3,14 +3,15 @@
 // damageEnemy, dies through killCreature) whose picture is not its own Object3D but a body in a family's kit. This module sits between
 // the two: it hands the enemy factory a light PROXY for `e.obj` (an empty Object3D with the userData contract downstream code reads, and
 // a stand-in material for the emergence's opacity), maps every record's point into the bodies' plane once a frame, and calls the family's
-// body adapter (src/fx/creature-cutis.js; the Reed family is pass two) behind one interface:
+// body adapter (src/fx/creature-cutis.js, src/fx/creature-reed.js) behind one interface:
 //
-//   family.add(tier, { x, z, angle, lift, pos }) -> handle | null    family.track(handle, { x, z, ax, az, lift, pos, dt }) -> re-placed?
+//   family.add(tier, { x, z, angle, lift, pos, apos }) -> handle | null    family.track(handle, { x, z, ax, az, lift, pos, apos, dt }) -> re-placed?
 //   family.kill(handle)   family.free(handle)   family.step(dt, camera, height)   family.setPlanet(R)
 //   family.roots() -> Object3D[]   family.stats()   family.view(handle)   family.dispose()
 //
 // (x, z) are metres in the plane of the bodies' root: the heart's surface point, +Y the normal, the azimuthal-equidistant projection round
-// it (src/domain/surface-projection.js); `pos` is the record's unit sphere point, for a family that draws through a frame of its own.
+// it (src/domain/surface-projection.js); `pos` is the record's unit sphere point and `apos` the aim's, for a family that draws through a
+// frame of its own (a family's view may give its body's unit `point` instead of a plane `centre`: the seam projects it).
 // The root sits at the heart's point with one unit a metre (scale cellSide / metresPerCell), so a kit that bends its plane onto a sphere
 // of radius R = metresPerCell / cellSide metres lands exactly on the planet.
 import * as THREE from '../../vendor/three.module.js';
@@ -64,7 +65,7 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
   // the point `follow.lead` seconds ahead along the record's walk (cells a second: its spec's speed x its own pace)
   function aheadOf(e) {
     const d = (e.spec?.speed ?? 0) * (e.paceJitter ?? 1) * follow.lead * side, p = e.pos, dir = e.dir ?? [0, 0, 0];
-    return planeOf([p[0] + dir[0] * d, p[1] + dir[1] * d, p[2] + dir[2] * d]);
+    return [p[0] + dir[0] * d, p[1] + dir[1] * d, p[2] + dir[2] * d];
   }
 
   // a new record of a creature type (`e.spec.body` the family, `e.tier` its tier): its body, at the record's point
@@ -72,8 +73,8 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
     place();
     const family = e.spec?.body, a = family && adapter(family), t = a && tiers[family]?.[e.tier];
     if (!t || !frame) return false;
-    const [x, z] = planeOf(e.pos), [ax, az] = aheadOf(e);
-    const h = a.add(e.tier, { x, z, angle: Math.atan2(az - z, ax - x) || 0, lift: liftOf(e, t.r0), pos: e.pos });
+    const [x, z] = planeOf(e.pos), apos = aheadOf(e), [ax, az] = planeOf(apos);
+    const h = a.add(e.tier, { x, z, angle: Math.atan2(az - z, ax - x) || 0, lift: liftOf(e, t.r0), pos: e.pos, apos });
     if (!h) return false;
     live.set(e, { family, h, stamp, r0: t.r0 });
     return true;
@@ -98,12 +99,15 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
       const b = live.get(e);
       if (!b || !e.alive) continue;
       b.stamp = stamp;
-      const [x, z] = planeOf(e.pos), [ax, az] = aheadOf(e);
-      if (adapters.get(b.family).track(b.h, { x, z, ax, az, lift: liftOf(e, b.r0), pos: e.pos, dt })) replaced++;
+      const [x, z] = planeOf(e.pos), apos = aheadOf(e), [ax, az] = planeOf(apos);
+      if (adapters.get(b.family).track(b.h, { x, z, ax, az, lift: liftOf(e, b.r0), pos: e.pos, apos, dt })) replaced++;
     }
     for (const [e, b] of live) if (b.stamp !== stamp) { live.delete(e); adapters.get(b.family).free(b.h); }
     for (const a of adapters.values()) a.step(dt, camera, height);
   }
+
+  // a family's view with its body's unit `point` as a plane `centre` (the harness compares it with the record's)
+  const seen = (v) => (v && v.point && !v.centre && frame ? { ...v, centre: planeOf(v.point) } : v ?? null);
 
   return {
     has, proxy, spawn, kill, step,
@@ -111,10 +115,10 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
     // the bodies' books: up now, re-placed on the leash, and each family's tiers
     stats: () => ({ live: live.size, replaced, planetR: +R.toFixed(1), families: Object.fromEntries([...adapters].map(([k, a]) => [k, a.stats()])) }),
     // one record's body (the harness): its family's view of it, plus where its record is in the plane
-    view: (e) => { const b = live.get(e); return b ? { ...adapters.get(b.family).view(b.h), record: frame ? planeOf(e.pos) : null } : null; },
+    view: (e) => { const b = live.get(e); return b ? { ...seen(adapters.get(b.family).view(b.h)), record: frame ? planeOf(e.pos) : null } : null; },
     // a dead record's body by its handle, kept by the caller before the kill (the harness watches a death play out)
     handleOf: (e) => live.get(e) ?? null,
-    viewHandle: (b) => (b ? adapters.get(b.family)?.view(b.h) ?? null : null),
+    viewHandle: (b) => (b ? seen(adapters.get(b.family)?.view(b.h)) : null),
     dispose() { for (const a of adapters.values()) a.dispose(); adapters.clear(); live.clear(); scene.remove(root); },
   };
 }

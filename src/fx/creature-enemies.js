@@ -2,6 +2,7 @@
 // afford at once without dropping fps"; spec docs/superpowers/specs/2026-10-12-creature-enemies-probe-design.md). The game's one entry:
 //   ?creatures=<family>:<tier>   a share of each sector wave's bodies (the tier's count style) is that tier (`replace`, from src/fx/sector-run.js)
 //   &ramp=1 (or &ramp=test)      the probe (src/fx/creature-probe.js) ramps the tier up on top of the sector and reports what fits
+//   &reedlook=solid              the Reeds without the kit's transmission (src/fx/creature-reed.js: the transmission pass's cost)
 // The records are the enemy loop's (src/fx/enemy-step.js asks for `proxy`, `spawn`, `kill` and `step`); the bodies are drawn by the family's
 // adapter through src/fx/creature-bodies.js. Without ?creatures nothing is built and every call is a no-op: the game is unchanged.
 import * as THREE from '../../vendor/three.module.js';
@@ -11,10 +12,11 @@ import { STORY_RECIPE } from '../content/story-defaults.js';
 import { parseCreatures, shareOf, spreadPicks } from '../domain/creature-ramp.js';
 import { createCreatureBodies } from './creature-bodies.js';
 import { createCutisFamily } from './creature-cutis.js';
+import { createReedFamily } from './creature-reed.js';
 import { createCreatureProbe } from './creature-probe.js';
 import { BLOCKED } from '../dungeon.js';
 
-const FAMILIES = Object.freeze({ cutis: createCutisFamily });   // the Reed / Nih-Dairia family's adapter is pass two
+const FAMILIES = Object.freeze({ cutis: createCutisFamily, reed: createReedFamily });
 const SPECS = new Map();
 // a tier's spec: the family's ENEMY_SPEC entry with the tier's hit points, speed, size and bounty (a queue entry carries it)
 export function tierSpec(family, tier) {
@@ -29,10 +31,12 @@ export function tierSpec(family, tier) {
 export function createCreatureEnemies(host) {
   const parsed = parseCreatures(host.flags.creatures, CREATURE_TIERS);
   const choice = parsed && FAMILIES[parsed.family] ? parsed : null;
-  if (parsed && !choice) console.info(`CREATURES ${parsed.family}:${parsed.tier}: this family's bodies are not built yet (pass two)`);
+  // the probe measures the true cost: the Reeds' solver budget is off while it runs (src/fx/creature-reed.js)
+  const probing = !!(choice && host.flags.ramp && host.flags.ramp !== '0');
+  const families = { ...FAMILIES, reed: (o) => createReedFamily({ ...o, ...(probing ? { budget: null } : {}), solid: host.flags.reedlook === 'solid' }) };
   let bodies = null, probe = null, rr = 0, ring = null;
   const placeholder = new THREE.Group();   // a ring spawn's source: no breach, no emergence
-  const make = () => (bodies ??= createCreatureBodies({ scene: host.scene, families: FAMILIES, tiers: CREATURE_TIERS, follow: CREATURE_FOLLOW, death: CREATURE_DEATH,
+  const make = () => (bodies ??= createCreatureBodies({ scene: host.scene, families, tiers: CREATURE_TIERS, follow: CREATURE_FOLLOW, death: CREATURE_DEATH,
     metresPerCell: STORY_RECIPE.metresPerCell, heart: host.heart }));
 
   const ofTier = (e) => e.alive && e.tier === choice.tier && e.spec?.body === choice.family;
@@ -62,7 +66,7 @@ export function createCreatureEnemies(host) {
     return made;
   }
 
-  if (choice && host.flags.ramp && host.flags.ramp !== '0') {
+  if (probing) {
     const tune = host.flags.ramp === 'test' ? { ...CREATURE_PROBE, ...CREATURE_PROBE.test } : CREATURE_PROBE;
     probe = createCreatureProbe({ root: host.root, family: choice.family, tier: choice.tier, def: CREATURE_TIERS[choice.family][choice.tier], tune, spawn: spawnProbe,
       alive: aliveOfTier, total: () => host.enemies.reduce((n, e) => n + (e.alive ? 1 : 0), 0), perf: host.perf, perfOn: host.perfOn, bodies: () => bodies?.stats() ?? null });

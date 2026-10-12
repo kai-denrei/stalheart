@@ -66,6 +66,9 @@ for (const family of ['cutis', 'reed']) {
   assert.ok(tiers.small.hp >= 2 && tiers.small.hp <= 3, 'small: a mid enemy'); assert.ok(tiers.huge.hp >= 9 * 5, 'huge: well past the jelly boss, a 40 m body');
 }
 for (const k of Object.keys(CREATURE_TIERS.cutis)) assert.equal(CREATURE_TIERS.cutis[k].config.r0, CREATURE_TIERS.cutis[k].r0, 'the kit draws the tier\'s radius');
+assert.deepEqual(Object.values(CREATURE_TIERS.reed).map((t) => [t.r0 * 2, t.variant]), [[4, 'reed'], [8, 'reed'], [15, 'reed'], [40, 'nih-dairia']], 'the owner\'s Reed widths, the Nih-Dairia at the huge');
+assert.deepEqual(Object.values(CREATURE_TIERS.reed).map((t) => t.probeStep), [3, 2, 1, 1], 'the Reeds\' probe steps');
+assert.ok(CREATURE_TIERS.reed.huge.fine && CREATURE_TIERS.reed.big.count.count <= 2 && CREATURE_TIERS.reed.huge.count.count === 1 && CREATURE_TIERS.reed.small.count.max <= 10, 'Reeds are dear: a low share');
 assert.deepEqual([CREATURE_TIERS.cutis.small.r0, CREATURE_TIERS.cutis.medium.r0, CREATURE_TIERS.cutis.big.r0, CREATURE_TIERS.cutis.huge.r0], [1.5, 4, 8, 20], 'the spec\'s Cutis radii');
 assert.equal(CREATURE_PROBE.thresholdMs, 16.7); assert.ok(CREATURE_PROBE.baseline >= 4 && CREATURE_PROBE.relative && CREATURE_PROBE.overRatio > 0 && CREATURE_PROBE.overMs > 0); assert.ok(CREATURE_PROBE.test.baseline <= 2 && CREATURE_PROBE.test.relative === false, 'the headless test stays short'); assert.ok(CREATURE_PROBE.hardCap >= 2000 && CREATURE_PROBE.overSeconds > 0 && CREATURE_PROBE.hold > CREATURE_PROBE.settle);
 assert.ok(CREATURE_FOLLOW.fastest > 0 && CREATURE_FOLLOW.fastest < 1 && CREATURE_FOLLOW.leashRadii >= 3);

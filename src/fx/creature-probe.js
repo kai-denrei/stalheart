@@ -38,10 +38,12 @@ export function createCreatureProbe({ root, family, tier, def, tune, spawn, aliv
       totalAlive: total(), peakTotal, frameMean: r.frameMean, frameP95: r.frameP95,
       enemiesCpuMs: s?.cpu ? +s.cpu.enemies.toFixed(2) : null, frameCpuMs: s?.cpu ? +s.cpu.frame.toFixed(2) : null, gpuMs: s?.gpuMs != null ? +s.gpuMs.toFixed(2) : null,
       calls: s?.calls ?? null, triangles: s?.triangles ?? null, replaced: b?.replaced ?? 0, spawned, slotsRefused: tierStats?.full ?? 0, steps: r.steps,
+      // a family with its own solver (the Reeds, src/fx/creature-reed.js): the ms a body costs a frame, the family's solver ms (running mean), its rate
+      bodyMs: tierStats?.bodyMs ?? null, solverMs: tierStats?.solverMean ?? null, solverHz: tierStats?.hz ?? null,
     };
     console.info(`CREATURE PROBE ${family}:${tier} maxAlive=${result.maxAlive} fits=${result.fits} limitMs=${result.limitMs} baseline=${result.baselineMean}/${result.baselineP95}`
       + ` msPerBody=${result.msPerBody} total=${result.totalAlive} frameMs=${result.frameMean} p95=${result.frameP95}`
-      + ` enemiesCpu=${result.enemiesCpuMs} gpu=${result.gpuMs} calls=${result.calls} tris=${result.triangles} replaced=${result.replaced} reason=${result.reason}`);
+      + `${result.bodyMs === null ? '' : ` bodyMs=${result.bodyMs} solverMs=${result.solverMs} hz=${result.solverHz}`} enemiesCpu=${result.enemiesCpuMs} gpu=${result.gpuMs} calls=${result.calls} tris=${result.triangles} replaced=${result.replaced} reason=${result.reason}`);
     show();
   }
 
@@ -54,9 +56,10 @@ export function createCreatureProbe({ root, family, tier, def, tune, spawn, aliv
     const r = result, n = (v, d = 1) => (v === null || v === undefined ? '—' : typeof v === 'number' ? v.toFixed(d) : v);
     const rows = [
       `<div style="font-size:15px;font-weight:700;letter-spacing:.14em">CREATURE PROBE · ${r.family}:${r.tier}</div>`,
-      r.baselineMean === null ? '' : `<div>sector alone ${n(r.baselineMean)} ms mean · ${n(r.baselineP95)} ms p95${r.baselineOver ? ` · <b>the sector alone runs at ${n(r.baselineMean)} ms</b>, over ${r.thresholdMs} ms: the limit is relative` : ''}</div>`,
+      r.baselineMean === null ? '' : `<div>sector alone ${n(r.baselineMean)} ms mean · ${n(r.baselineP95)} ms p95${r.baselineOver ? ` · <b>the sector alone runs at ${n(r.baselineMean)} ms</b>, over ${r.thresholdMs} ms${tune.relative === false ? '' : ': the limit is relative'}` : ''}</div>`,
       `<div>most ${r.label} alive <b>${r.maxAlive}</b> · within ${n(r.limitMs)} ms <b>${r.fits}</b> · +${n(r.msPerBody, 3)} ms a body · enemies alive ${r.totalAlive} (peak ${r.peakTotal})</div>`,
       `<div>frame ${n(r.frameMean)} ms mean · ${n(r.frameP95)} ms p95 · enemies CPU ${n(r.enemiesCpuMs, 2)} ms · GPU ${r.gpuMs === null ? 'n/a' : `${n(r.gpuMs)} ms`}</div>`,
+      r.bodyMs === null ? '' : `<div>solver ${n(r.bodyMs, 2)} ms a body · ${n(r.solverMs, 1)} ms all bodies · at ${r.solverHz} Hz</div>`,
       `<div>${n(r.calls, 0)} draw calls · ${r.triangles === null ? '—' : `${(r.triangles / 1000).toFixed(1)}k`} tris · re-placed ${r.replaced} · stopped: ${r.reason}</div>`,
       `<div style="opacity:.7">${r.steps.slice(-6).map((s) => `${s.alive}: ${s.mean}/${s.p95}`).join(' · ')} (alive: mean/p95 ms)</div>`,
     ];

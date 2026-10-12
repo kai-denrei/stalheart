@@ -1933,18 +1933,19 @@ try{
  console.log(rows.join('\n'));
  } else if(args.includes('--creature-probe')) {
  // THE CREATURE ENEMIES AND THEIR PROBE (owner, 2026-10-12; src/fx/creature-enemies.js): each family:tier (CREATURES, default the four Cutis
- // tiers) boots a sector with ?creatures=<tier>&ramp=test; its bodies spawn, walk toward the heart with their bodies on their records, a
+ // tiers and the four Reed / Nih-Dairia ones) boots a sector with ?creatures=<tier>&ramp=test; its bodies spawn, walk toward the heart with their bodies on their records, a
  // damaged one dies and deflates, the probe ends with its card; 0 page errors. Headless frame times mean nothing: the counts are printed,
  // never asserted. SHOTS=<dir> also saves a close look at a body per tier there
  const T='window.__stalheartTest',shots=process.env.SHOTS||null;if(shots)mkdirSync(shots,{recursive:true});
  const look={small:[1.2,1.8],medium:[2.2,3.2],big:[3.5,5],huge:[8,12]};
- for(const ct of (process.env.CREATURES||'cutis:small,cutis:medium,cutis:big,cutis:huge').split(',')){
+ for(const ct of (process.env.CREATURES||'cutis:small,cutis:medium,cutis:big,cutis:huge,reed:small,reed:medium,reed:big,reed:huge').split(',')){
   const [fam,tier]=ct.split(':'),name=`creature-${fam}-${tier}`;
-  await go(name,`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${process.env.SECTOR||2}&fps=1&creatures=${encodeURIComponent(ct)}&ramp=test#td`).catch(async(e)=>{console.log(await evaluate('location.href'),errors,consoleLines.slice(-20));throw e;});
+  await go(name,`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${process.env.SECTOR||2}&fps=1&creatures=${encodeURIComponent(ct)}&ramp=test${process.env.REEDLOOK?`&reedlook=${process.env.REEDLOOK}`:''}#td`).catch(async(e)=>{console.log(await evaluate('location.href'),errors,consoleLines.slice(-20));throw e;});
   await until(`!!${T} && ${T}.state().creatureProbe?.probe?.phase==='ramping'`,120000);
   await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,#td-brief,.contact-card{display:none!important}</style>")');
-  await until(`${T}.creatures.ofTier().some(e=>!(e.emergeAge<1.2))`,90000);
-  const pick=`${T}.creatures.ofTier().find(e=>!(e.emergeAge<1.2))`;
+  // a record out of its breach whose body is made (a Reed's is made a few a frame once its cage is in)
+  const pick=`${T}.creatures.ofTier().find(e=>!(e.emergeAge<1.2)&&${T}.creatures.view(e)?.active)`;
+  await until(`!!${pick}`,90000);
   const a=await evaluate(`(()=>{const e=${pick};window.__cw=e;return {id:e.id,cur:e.cur,pos:e.pos,view:${T}.creatures.view(e)};})()`);
   assert(a.view&&a.view.active&&!a.view.dead,`${ct}: the record has its body (${JSON.stringify(a.view)})`);
   await delay(6000);
@@ -1955,18 +1956,18 @@ try{
   assert(!b.alive||moved>0,`${ct}: the record walks`);
   if(b.alive)assert(off<Math.max(3*b.view.radius,8)+b.view.radius*12,`${ct}: the body stays with its record (${off} m)`);
   // a damaged one dies, and its body deflates
-  const victim=await evaluate(`(()=>{const e=${T}.creatures.ofTier().find(e=>!(e.emergeAge<1.2));if(!e)return null;window.__ch=${T}.creatures.handle(e);const hp=e.hp;${T}.creatures.hurt(e,e.hp+1);return {hp,alive:e.alive};})()`);
+  const victim=await evaluate(`(()=>{const e=${pick};if(!e)return null;window.__ch=${T}.creatures.handle(e);const hp=e.hp;${T}.creatures.hurt(e,e.hp+1);return {hp,alive:e.alive};})()`);
   assert(victim&&!victim.alive,`${ct}: damageEnemy kills a creature (${JSON.stringify(victim)})`);
   await until(`(()=>{const v=${T}.creatures.viewHandle(window.__ch);return v&&v.dead&&v.deflate>0.5;})()`,30000).catch(async()=>assert.fail(`${ct}: the dead one deflates (${JSON.stringify(await evaluate(`${T}.creatures.viewHandle(window.__ch)`))} ${JSON.stringify(await evaluate(`(()=>{const s=${T}.state();return {paused:s.paused,shot:s.shot,alive:s.enemiesAlive,c:s.creatureProbe};})()`))})`));
   await until(`${T}.state().creatureProbe.probe.result?.done===true`,120000).catch(async()=>assert.fail(`${ct}: the probe ends (${JSON.stringify(await evaluate(`${T}.state().creatureProbe`))})`));
   const r=(await evaluate(`${T}.state().creatureProbe`));
   assert(await evaluate('!!document.querySelector("#creature-probe-card")'),`${ct}: the result card`);
-  const res=r.probe.result;assert(res.baselineMean!==null&&res.limitMs>0,`${ct}: the probe's baseline (${JSON.stringify(res)})`);console.log(`  ${ct}: probe ${res.reason}: baseline ${res.baselineMean}/${res.baselineP95} ms, limit ${res.limitMs}, max ${res.maxAlive} alive (fits ${res.fits}, +${res.msPerBody} ms a body), total ${res.totalAlive}, frame ${res.frameMean}/${res.frameP95} ms, enemies cpu ${res.enemiesCpuMs}, gpu ${res.gpuMs}, ${res.calls} calls, ${res.triangles} tris, re-placed ${res.replaced}; bodies ${JSON.stringify(r.bodies?.families?.[fam]?.[tier])}`);
+  const res=r.probe.result;assert(res.baselineMean!==null&&res.limitMs>0,`${ct}: the probe's baseline (${JSON.stringify(res)})`);console.log(`  ${ct}: probe ${res.reason}: baseline ${res.baselineMean}/${res.baselineP95} ms, limit ${res.limitMs}, max ${res.maxAlive} alive (fits ${res.fits}, +${res.msPerBody} ms a body), total ${res.totalAlive}, frame ${res.frameMean}/${res.frameP95} ms, enemies cpu ${res.enemiesCpuMs}, gpu ${res.gpuMs}, ${res.calls} calls, ${res.triangles} tris, re-placed ${res.replaced}; bodies ${JSON.stringify(r.bodies?.families?.[fam]?.[tier])}${res.bodyMs===null?'':`; solver ${res.bodyMs} ms a body at ${res.solverHz} Hz (headless: not meaningful)`}`);
   assert(res.maxAlive>=1,`${ct}: the probe had bodies up`);
   await finish();
   if(shots){writeFileSync(join(shots,`${name}-card.png`),readFileSync(join(output,`${name}.png`)));
    // the close look (a dive shot holds the world still: last): the record nearest the camera's cell, the camera low over it
-   const ci=await evaluate(`(()=>{const e=${T}.creatures.ofTier().find(e=>!(e.emergeAge<1.2));return e?e.cur:-1;})()`);
+   const ci=await evaluate(`(()=>{const e=${pick}??${T}.creatures.ofTier().find(e=>!(e.emergeAge<1.2));return e?e.cur:-1;})()`);
    if(ci>=0){await evaluate(`${T}.showcase.ground(${ci},${look[tier]?.[0]??3},${look[tier]?.[1]??4})`);await delay(2500);const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(shots,`${name}.png`),Buffer.from(shot.data,'base64'));}}
  }
  } else if(args.includes('--crowd-probe')) {

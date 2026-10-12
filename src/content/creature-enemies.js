@@ -11,6 +11,8 @@
 // touch the body's own radius.
 import { CUTIS_DEATH } from './cutis-maku.js';
 import { STORY_RECIPE } from './story-defaults.js';
+import { NIH_DAIRIA_PREDATOR } from './nih-dairia.js';
+import { BOSS_FIGHT } from './boss-fight.js';
 
 const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 'object') freeze(v); return Object.freeze(o); };
 const CELL = STORY_RECIPE.metresPerCell;
@@ -37,18 +39,39 @@ export const CREATURE_TIERS = freeze({
     huge: { label: 'CUTIS-MAKU', r0: 20, hp: 60, speed: 0.35, bounty: 150, count: { count: 1 }, probeStep: 1, capacity: 200, multicolored: false,
       config: { ...CUTIS_KIT, r0: 20, reach: 8, cycleDuration: 7, aggression: 1.5 } },
   },
-  // the Nih-Dairia family (pass two: src/fx/nih-dairia, the boss lab's `reed` variant, one soft body each on a frame of its own); the
-  // table is here so the tiers are one decision, the body adapter is not built yet
+  // THE NIH-DAIRIA FAMILY (pass two, src/fx/creature-reed.js: each body one soft body of the ported kit, src/fx/nih-dairia, the boss lab's
+  // `variant`, `r0` x 2 metres wide, on a frame of its own). The kit walks in body lengths a second whatever its size (measured offline,
+  // 2026-10-12, a target always a metre of native ahead: the bait predator's motion 0.73 body lengths a second, chase speed 4 with the pause
+  // 0.3 and the reach 2 1.38), so the small ones get a quick motion and the records of the small and medium tiers walk a little slower
+  // than pass one's table (0.35 and 0.4 cells a second, 5.3 and 6 m/s at the sector's pace). Simulated through src/fx/creature-reed.js (a
+  // record walking straight at its speed, 30 s): the small one 4.1 m behind on average (7.2 at most, none re-placed), the medium 4.4, the
+  // big 3, the Nih-Dairia 10 (its leash 60 m); twelve small ones at 120 Hz 3.9 (2 re-placed in 15 s). Reeds cost: ~0.6 ms a solver step each (the boss
+  // lab's probe, 2026-10-09), so a wave takes a low share of them (`count`).
   reed: {
-    small: { label: 'REED · SMALL', r0: 2, hp: 3, speed: 0.45, bounty: 14, count: { share: 0.5 }, probeStep: 5, capacity: 400 },
-    medium: { label: 'REED · MEDIUM', r0: 4, hp: 8, speed: 0.45, bounty: 28, count: { share: 0.5, max: 30 }, probeStep: 3, capacity: 200 },
-    big: { label: 'REED · BIG', r0: 7.5, hp: 20, speed: 0.4, bounty: 60, count: { count: 3 }, probeStep: 2, capacity: 100 },
-    huge: { label: 'NIH-DAIRIA', r0: 20, hp: 60, speed: 0.35, bounty: 150, count: { count: 1 }, probeStep: 1, capacity: 20 },
+    small: { label: 'REED · SMALL', r0: 2, hp: 3, speed: 0.35, bounty: 14, count: { share: 0.2, max: 6 }, probeStep: 3, capacity: 400, variant: 'reed',
+      motion: { speed: 5, pauseTime: 0.2, reachTime: 1.5 } },
+    medium: { label: 'REED · MEDIUM', r0: 4, hp: 8, speed: 0.4, bounty: 28, count: { share: 0.15, max: 4 }, probeStep: 2, capacity: 200, variant: 'reed',
+      motion: { speed: 4, pauseTime: 0.5, reachTime: 3 } },
+    big: { label: 'REED · BIG', r0: 7.5, hp: 20, speed: 0.4, bounty: 60, count: { count: 2 }, probeStep: 1, capacity: 100, variant: 'reed', motion: {} },
+    huge: { label: 'NIH-DAIRIA', r0: 20, hp: 60, speed: 0.35, bounty: 150, count: { count: 1 }, probeStep: 1, capacity: 20, variant: 'nih-dairia', motion: {}, fine: true },
   },
 });
 
 // the record's size for a tier (ENEMY_SPEC's unit)
 export const tierSize = (t) => sizeOf(t.r0);
+
+// THE NIH-DAIRIA FAMILY'S BODIES (src/fx/creature-reed.js): `motion` the kit's base motion (the boss lab's bait predator; a tier's `motion`
+// over it), `batch` bodies made a frame (the boss lab's BATCH: a wave of Reeds does not freeze a frame), `coarse` the solver at 1 / `hz` s
+// while more than `above` of the family's bodies stand (the boss lab's switch; a `fine` tier, the Nih-Dairia, always at the kit's 1/240 s),
+// `budget` ms of solver a frame for the family outside the probe (the boss lab's wave budget: past it every body's clock runs slower
+// alike; the probe runs without it, it measures the true cost), `reanchor` metres from its frame's origin before a body's frame moves
+// under it (at least `reanchorSizes` of its width). THE DEATH (the v1 death, the boss lab's): its motion off, the gravity to
+// `deathGravity`, it collapses `collapse` s, then its solver stops and it sinks `sink` of its height and fades over `fade` s, and goes
+// (no carcasses in the game yet).
+export const CREATURE_REED = freeze({
+  motion: NIH_DAIRIA_PREDATOR, batch: 3, coarse: { on: true, above: 10, hz: 120 }, budget: 10, reanchor: 20, reanchorSizes: 1,
+  deathGravity: BOSS_FIGHT.deathGravity, collapse: BOSS_FIGHT.wave.corpse, fade: 3, sink: 0.35,
+});
 
 // HOW A BODY FOLLOWS ITS RECORD. The record walks the cell graph (src/fx/enemy-step.js); the body hunts the record's point `lead` seconds
 // ahead along the record's walk, and hops faster the further behind it is: its hop's duration x 1 / (1 + lag / (catchRadii x r)), no
