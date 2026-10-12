@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { BOSS_FIGHT as T_FIGHT } from '../src/content/boss-fight.js';
 import { makeBait, planBait, moveBait, stepBait, hopBait, startHop } from '../src/domain/boss-bait.js';
 
-const DT = 1 / 60, E = T_FIGHT.bait, RADIUS = T_FIGHT.nuke.radius, MARGIN = E.nukeMargin, RING = RADIUS + MARGIN;
+const DT = 1 / 60, E = T_FIGHT.bait, RADIUS = T_FIGHT.nuke.radius, MARGIN = E.nukeMargin, RING = RADIUS + MARGIN, FLEE = E.nukeFlee;
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 const feet = [[-7.7, -12.9], [-6.5, -11.7], [6, -12.9], [7.3, -11.6], [13.6, -0.3], [14.8, 1], [-14.1, -0.4], [-12.9, 1], [-6.6, 11], [7.4, 11], [-7.8, 12.2], [6, 12.2], [8.6, 13.7]];
 const bodyAt = (x, z) => ({ centre: [x, z], velocity: [0, 0], radius: 15, contacts: feet.map((p) => [p[0] + x, p[1] + z]) });
@@ -14,8 +14,9 @@ const zone = (x, z, until = 4.2) => ({ at: [x, z], radius: RADIUS, until });
 const SLACK = 1e-6;
 const log = {};
 
-assert.ok(MARGIN === 10 && RADIUS === 55 && RING === 65, `the margin is 10 m beyond the MK-9's ${RADIUS} m ring`);
-assert.ok(E.flee * T_FIGHT.nuke.travel > RING, 'the flee speed covers a whole ring within an MK-9\'s fall');
+assert.ok(MARGIN === 20 && RADIUS === 55 && RING === 75, `the margin is 20 m beyond the MK-9's ${RADIUS} m ring (owner, 2026-10-12: "more aggressively")`);
+assert.ok(FLEE > E.flee && E.nukeAccel > E.panicAccel, 'he flies out of a ring faster than he backs off an arm');
+assert.ok(FLEE * T_FIGHT.nuke.travel > RING, 'the ring flight covers a whole ring within an MK-9\'s fall');
 
 // NO ZONES: the flight is the one before, bit for bit: null, an empty list and a zone far from the whole run all fly the recorded positions
 {
@@ -68,7 +69,7 @@ for (const erratic of [0, 1]) for (const seed of [1, 2, 3, 4, 5, 6]) for (const 
 assert.ok(minKeep >= RING - SLACK, `round a creature with the ring on his circle he never enters it: nearest ${minKeep.toFixed(2)} m (ring ${RING})`);
 log.keep = minKeep;
 
-// (2) INSIDE A RING AT THE RELEASE: straight out at the flee speed, out of the MK-9's ring within (radius - dist) / flee + 0.5 s and of the margin's within
+// (2) INSIDE A RING AT THE RELEASE: straight out at the ring flight's speed (`nukeFlee`), out of the MK-9's ring within (radius - dist) / flee + 0.5 s and of the margin's within
 // (ring - dist) / flee + 0.5 s; each frame he goes farther from its centre, at no more than the flee speed, whatever the jink and the creature's panic
 let worstOut = 0;
 for (const erratic of [0, 1]) for (const d0 of [0, 5, 20, 40, 54]) for (const arm of [null, 'outside', 'inside']) {
@@ -83,11 +84,12 @@ for (const erratic of [0, 1]) for (const d0 of [0, 5, 20, 40, 54]) for (const ar
     if (d >= RING) ring = (i + 1) * DT;
     if (d0 > 0) assert.ok(d >= last - 1e-9 && bait.zoneFlee || d >= RING, `he goes straight out (${d.toFixed(2)})`);
   }
-  assert.ok(step <= E.flee * DT + 1e-9, `no faster than the flee speed (${(step / DT).toFixed(1)} m/s)`);
-  const bound = (RADIUS - d0) / E.flee + 0.5, boundRing = (RING - d0) / E.flee + 0.5;
+  assert.ok(step <= FLEE * DT + 1e-9, `no faster than the ring flight's speed (${(step / DT).toFixed(1)} m/s)`);
+  const bound = (RADIUS - d0) / FLEE + 0.5, boundRing = (RING - d0) / FLEE + 0.5;
   assert.ok(cleared !== null && cleared <= bound, `erratic ${erratic} from ${d0} m (arm ${arm}): out of the ${RADIUS} m ring in ${cleared?.toFixed(2)} s (bound ${bound.toFixed(2)})`);
   assert.ok(ring !== null && ring <= boundRing, `...and of the margin's in ${ring?.toFixed(2)} s (bound ${boundRing.toFixed(2)})`);
-  worstOut = Math.max(worstOut, cleared - (RADIUS - d0) / E.flee);
+  worstOut = Math.max(worstOut, cleared - (RADIUS - d0) / FLEE);
+  assert.ok(ring < T_FIGHT.nuke.travel, `...before the MK-9's ${T_FIGHT.nuke.travel} s fall lands, from ${d0} m (${ring.toFixed(2)} s)`);
   assert.ok(!bait.zoneFlee || dist(bait.pos, z[0].at) < RING + 1, 'the flag is down once he is clear');
 }
 log.out = worstOut;
@@ -127,12 +129,12 @@ log.out = worstOut;
   const m = makeBait([0, 0], T); startHop(m, body, T, 'forced', 4, bound, null);
   const zz = [zone(5, 5)]; let speed = 0, ring = null, a2 = 4;
   for (let i = 0; i < 10 * 60 && ring === null; i++) { const was = m.pos.slice(); const r = hopBait(m, DT, body, T, { bound, alt: a2, base: 4, zones: zz }); if (!r) break; a2 = r.alt; speed = Math.max(speed, dist(m.pos, was) / DT); if (dist(m.pos, zz[0].at) >= RING) ring = i * DT; }
-  assert.ok(ring !== null && ring <= RING / E.flee + 0.5 && speed <= E.flee + 1e-6, `in a ring mid-hop he flies out in ${ring?.toFixed(2)} s at most ${speed.toFixed(1)} m/s`);
+  assert.ok(ring !== null && ring <= RING / FLEE + 0.5 && speed <= FLEE + 1e-6, `in a ring mid-hop he flies out in ${ring?.toFixed(2)} s at most ${speed.toFixed(1)} m/s`);
 }
 
 // (4) THE PANIC cannot drive him into a ring: an arm behind him with the ring ahead, he backs off along the nearest way that leaves it clear
 {
-  const T = tuneOf(0), arm = { centre: [0, -300], velocity: [0, 0], radius: 15, contacts: [[0, -6]] }, z = [zone(0, 72)];
+  const T = tuneOf(0), arm = { centre: [0, -300], velocity: [0, 0], radius: 15, contacts: [[0, -6]] }, z = [zone(0, RING + 7)];
   const bare = makeBait([0, 0], T); let enters = false;
   for (let i = 0; i < 3 * 60; i++) { stepBait(bare, DT, arm, T); enters = enters || dist(bare.pos, z[0].at) < RING; }
   assert.ok(enters, 'without the ring the panic backs him straight into where it will be');

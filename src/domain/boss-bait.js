@@ -50,7 +50,7 @@
 // edge (`ZONE_PAD` beyond) on the side nearer him, and a path to it that would cross a ring is routed round the ring's tangent (`bait.zoneSide`, the way round
 // kept while the detour lasts; the jink is dropped on it); whatever the jink or the lab's routing does, a step that would take him from outside a ring to
 // inside it is held on its edge. (2) Inside a ring he flies straight out, away from its centre, at `flee`, the keep, the jinks and the creature's panic
-// overridden, until clear (`bait.zoneFlee`). (3) A hop's goal moved out the same way, its crossing routed round the rings, and a hop that is not forced
+// overridden, until clear (`bait.zoneFlee`; at `nukeFlee` and `nukeAccel` when the content gives them, owner, 2026-10-12: "more aggressively"). (3) A hop's goal moved out the same way, its crossing routed round the rings, and a hop that is not forced
 // (not 'under', not 'forced') to a goal its straight path to which crosses a ring tries the other side and else waits; in a ring in the middle of a hop he flies
 // straight out at `flee`, the hop's phases going on. (4) His panic picks, of the directions away from the arm, the nearest to straight away that leaves every
 // ring clear. A nuke he cannot outrun is the player's to answer for. With no zones every path is the one before, bit for bit.
@@ -301,9 +301,9 @@ export function moveBait(bait, dt, want, tune, zones = null, stop = false, wall 
     if (inside) { want = outOf(bait.pos, inside, want); bait.zoneSide = 0; }
     else { const to = pushOut(want, bait.pos, Z, margin); stop = stop || to !== want; want = detour(bait, to, Z, margin); detoured = bait.zoneSide !== 0; }
   } else bait.zoneFlee = false;
-  const flee = bait.fleeing || bait.zoneFlee, accel = (flee ? B.panicAccel : B.accel) ?? Infinity;
+  const flee = bait.fleeing || bait.zoneFlee, accel = (bait.zoneFlee ? B.nukeAccel ?? B.panicAccel : flee ? B.panicAccel : B.accel) ?? Infinity, fleeSpeed = bait.zoneFlee ? B.nukeFlee ?? B.flee : B.flee;
   bait.panicT = (bait.panicT ?? 0) + dt;   // the panic's dwell (planBait)
-  let speed = flee ? B.flee : B.speed, jink = 0;
+  let speed = flee ? fleeSpeed : B.speed, jink = 0;
   if (erratic) {
     const E = Math.min(1, B.erratic);
     f.t += dt;
@@ -312,7 +312,7 @@ export function moveBait(bait, dt, want, tune, zones = null, stop = false, wall 
       f.speedTarget = lo + (hi - lo) * draw(f); f.surgeIn = B.surgeMin + (B.surgeMax - B.surgeMin) * draw(f);
     }
     if ((f.jinkIn -= dt) <= 0) { f.jinkTarget = (draw(f) * 2 - 1) * B.jink * E; f.jinkIn = B.jinkMin + (B.jinkMax - B.jinkMin) * draw(f); }
-    if (flee) { f.speed = B.flee; f.jink = 0; }
+    if (flee) { f.speed = fleeSpeed; f.jink = 0; }
     else {
       const dv = f.speedTarget - f.speed, dj = f.jinkTarget - f.jink;
       f.speed += Math.max(-B.accel * dt, Math.min(B.accel * dt, dv));
@@ -483,12 +483,12 @@ export function hopBait(bait, dt, creature, tune, { bound = null, alt = 0, base 
   } else bait.zoneFlee = false;
   // the escape from under it and a flight out of a ring steer at `panicAccel`; the other hops (trapped, random, forced) at the cruise's `accel`, their climb's
   // braking to a hover and its vertical ease together staying a cruise's push
-  const dx = to[0] - bait.pos[0], dz = to[1] - bait.pos[1], d = Math.hypot(dx, dz), accel = (h.why === 'under' || inside ? B.panicAccel : B.accel) ?? Infinity;
+  const dx = to[0] - bait.pos[0], dz = to[1] - bait.pos[1], d = Math.hypot(dx, dz), accel = (inside ? B.nukeAccel ?? B.panicAccel : h.why === 'under' ? B.panicAccel : B.accel) ?? Infinity;
   let tx = 0, tz = 0;   // the velocity he wants: across (and on the way down; out from under it, on the way up too), no faster than `hopSpeed`; else a hover
   // (once the climb is half way from the reach to the hop's altitude he sets off across: the eased climb and cross overlap, the hop no slower than a jump's)
   if ((phase !== 'climb' || h.why === 'under' || inside || h.alt >= (B.reachHeight + B.hopAlt) / 2) && d > 1e-9 && dt > 0) {
     const sx = steer[0] - bait.pos[0], sz = steer[1] - bait.pos[1], sd = Math.hypot(sx, sz);
-    if (sd > 1e-9) { const s = Math.min(arrive(d, inside ? B.flee : B.hopSpeed, accel, dt), sd / dt); tx = sx / sd * s; tz = sz / sd * s; }
+    if (sd > 1e-9) { const s = Math.min(arrive(d, inside ? B.nukeFlee ?? B.flee : B.hopSpeed, accel, dt), sd / dt); tx = sx / sd * s; tz = sz / sd * s; }
     // coming down onto the far point he flies off round the creature the way the keep does at the cruise, so he lands moving and the autopilot takes him
     // from there (braked to a hover on the point, he set off again from nothing)
     if (phase === 'descend' && !inside && steer === to) {

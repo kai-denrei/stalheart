@@ -383,8 +383,10 @@ export function createGameSeat({ stage, renderer, scene, sphere, camera, audio, 
     gunner() {
       if (!m) return null;
       const gun = NAME[m.gs.gun], o = gun === 'nuke' ? m.pilot.gunshipOptic() : null, h = heavyState(m.gs, guns), T = tune();
-      // the MK-9 in flight, release to landing, as a danger zone for Isao's autopilot (src/domain/boss-bait.js): its cell now, the ring, the lab's clock at the landing
-      const nukes = h.phase === 'released' || h.phase === 'ignited' ? [{ at: atLocal(m.G.centers[h.ci]), radius: T.nuke.radius, until: now() + h.left }] : [];
+      // the MK-9, painted to landing, as a danger zone for Isao's autopilot (src/domain/boss-bait.js): its cell now, the ring, the lab's clock at the landing (owner,
+      // 2026-10-12: "Isao should be more aggressively trying to avoid the nuke blast radius": a painted cell is a zone before its release, landing a fall from now)
+      const flying = h.phase === 'released' || h.phase === 'ignited';
+      const nukes = flying || h.phase === 'painted' ? [{ at: atLocal(m.G.centers[h.ci]), radius: T.nuke.radius, until: now() + (flying ? h.left : guns.heavy.travel) }] : [];
       return { gun, reticle: o ? atLocal(o.pos) : null, shotAt: fired.at, fortyAt: fired.forty, nukes };
     },
     // seconds until the next MK-9 can be released: its fall and reload while one is out

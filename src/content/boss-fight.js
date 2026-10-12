@@ -62,7 +62,8 @@ export const BOSS_FIGHT = freeze({
     underNear: 8,          // metres: floor contacts this near him on opposite sides have him under it
     underFor: 0.5,         // seconds: the contacts must hold him so long, unbroken, before he escapes (his ground point under the core is at once)
     // the MK-9 in flight (owner, 2026-10-10: "Have Isao more actively avoid where the Nuke will fall"): from its release to its landing its ring (`nuke.radius`) is a no-go zone for his autopilot, kept to this many metres beyond the ring
-    nukeMargin: 10,
+    nukeMargin: 20,        // 10 before the owner's 2026-10-12 note ("Isao should be more aggressively trying to avoid the nuke blast radius"), when the painted cell became a zone too
+    nukeFlee: 40, nukeAccel: 80,   // m/s and m/s2: his flight out of a ring (the arm's panic keeps `flee` and `panicAccel`); from a ring's centre he is clear in ~2.4 s of the MK-9's 4.2 s fall
     nukeAvoid: true,       // false: the autopilot ignores the MK-9s in flight (the acceptance's, which aims them at him; the zones are empty)
   },
   nukeClear: 8,            // the bait mode's NUKE CLEAR cue (wave B, 2026-10-09: "create an opportunity for a clean nuke"): lit while Isao is beyond the MK-9's radius plus this many metres from the creature's centre

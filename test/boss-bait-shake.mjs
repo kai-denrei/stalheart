@@ -83,7 +83,7 @@ for (const seed of SEEDS) {
     let mode;
     if (r) { alt = r.alt; mode = why === 'under' || b.zoneFlee ? 'hop-flee' : 'hop'; } else { alt = 4; stepBait(b, DT, body, hopping, zones); mode = b.zoneFlee ? 'ring' : b.fleeing ? 'panic' : 'keep'; }
     modes[mode === 'hop-flee' ? 'hop' : mode]++; lastWhy = b.hop?.why ?? null;
-    const limitOf = (m) => (m === 'keep' || m === 'hop' ? E.accel : E.panicAccel);
+    const limitOf = (m) => (m === 'keep' || m === 'hop' ? E.accel : m === 'ring' || (m === 'hop-flee' && b.zoneFlee) ? E.nukeAccel : E.panicAccel);   // a ring's flight at `nukeAccel` (owner, 2026-10-12)
     const a = dist(b.vel, lastV) / DT, vy = r ? r.vy : 0, ay = Math.abs(vy - lastVy) / DT, limit = limitOf(mode);
     const inRing = zones.some((z) => Math.abs(dist(b.pos, z.at) - z.radius - E.nukeMargin) < 1e-6);
     if (inRing) held++;
