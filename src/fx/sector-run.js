@@ -375,7 +375,7 @@ export function createSectorRun(h) {
       h.collapse(sp); retarget();
       h.callout(`BREACH ${b.id} HELD · +${bonus.kg} KG`, 'co-victory-sub'); h.hud();
     }
-    if (!pending.length && isSecure(sector, stalled() ? 0 : aliveSectorEnemies())) {
+    if (!pending.length && !h.hold?.() && isSecure(sector, stalled() ? 0 : aliveSectorEnemies())) {   // held open while the creature probe runs (src/fx/creature-enemies.js)
       phase = 'secure'; left = SECTOR_TIMING.securePause; sector.securedAt = t;
       h.callout('SECTOR SECURE', 'co-victory'); h.sfx?.('tank_pickup'); h.hud();
     }

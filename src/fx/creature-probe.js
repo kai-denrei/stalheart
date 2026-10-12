@@ -9,8 +9,10 @@ import { makeRamp, stepRamp, rampResult, windowMean } from '../domain/creature-r
 
 // `root` the game's DOM root (the card), `family`/`tier`/`def` the tier, `tune` CREATURE_PROBE (or its test overrides merged), `spawn(n)` adds
 // up to n of the tier's bodies and returns how many it did, `alive()` the tier's records up, `total()` every enemy up, `perf()` the perf
-// overlay's sample (null while off), `perfOn()` turns the overlay on, `bodies()` the bodies' stats, `now()` real milliseconds
-export function createCreatureProbe({ root, family, tier, def, tune, spawn, alive, total, perf, perfOn, bodies, now = () => performance.now() }) {
+// overlay's sample (null while off), `perfOn()` turns the overlay on, `bodies()` the bodies' stats, `defence()` the ground and the
+// garrison (src/fx/creature-enemies.js: the sentries built, their hits and kills on the creatures, the spawn band, the held heart),
+// `now()` real milliseconds
+export function createCreatureProbe({ root, family, tier, def, tune, spawn, alive, total, perf, perfOn, bodies, defence = null, now = () => performance.now() }) {
   const cap = Math.min(tune.hardCap, def.capacity ?? tune.hardCap);
   const ramp = makeRamp({ step: def.probeStep, hold: tune.hold, settle: tune.settle, span: tune.span, thresholdMs: tune.thresholdMs, overSeconds: tune.overSeconds, hardCap: cap,
     startDelay: tune.startDelay, maxSeconds: tune.maxSeconds, gapMs: tune.gapMs, baseline: tune.baseline, relative: tune.relative, overRatio: tune.overRatio, overMs: tune.overMs });
@@ -41,10 +43,13 @@ export function createCreatureProbe({ root, family, tier, def, tune, spawn, aliv
       calls: s?.calls ?? null, triangles: s?.triangles ?? null, replaced: b?.replaced ?? 0, spawned, slotsRefused: tierStats?.full ?? 0, steps: r.steps,
       // a family with its own solver (the Reeds, src/fx/creature-reed.js): the ms a body costs a frame, the family's solver ms (running mean), its rate
       bodyMs: tierStats?.bodyMs ?? null, solverMs: tierStats?.solverMean ?? null, solverHz: tierStats?.hz ?? null,
+      // THE DEFENCE (owner, 2026-10-12): the sentries that stood, what they did to the creatures, where the bodies came up, the heart held
+      ...(defence ? { defence: defence() } : {}),
     };
     console.info(`CREATURE PROBE ${family}:${tier} maxAlive=${result.maxAlive} fits=${result.fits} limitMs=${result.limitMs} baseline=${result.baselineMean}/${result.baselineP95}`
       + ` msPerBody=${result.msPerBody} total=${result.totalAlive} frameMs=${result.frameMean} p95=${result.frameP95}`
-      + `${result.bodyMs === null ? '' : ` bodyMs=${result.bodyMs} solverMs=${result.solverMs} hz=${result.solverHz}`} enemiesCpu=${result.enemiesCpuMs} gpu=${result.gpuMs} calls=${result.calls} tris=${result.triangles} replaced=${result.replaced} reason=${result.reason}`);
+      + `${result.bodyMs === null ? '' : ` bodyMs=${result.bodyMs} solverMs=${result.solverMs} hz=${result.solverHz}`} enemiesCpu=${result.enemiesCpuMs} gpu=${result.gpuMs} calls=${result.calls} tris=${result.triangles} replaced=${result.replaced} reason=${result.reason}`
+      + `${result.defence ? ` sentries=${result.defence.sentries} sentryKills=${result.defence.fight.kills} band=${result.defence.band ? `${result.defence.band.lo}-${result.defence.band.hi}` : '-'} heartHeld=${result.defence.heartHeld}` : ''}`);
     show();
   }
 
@@ -62,6 +67,7 @@ export function createCreatureProbe({ root, family, tier, def, tune, spawn, aliv
       `<div>frame ${n(r.frameMean)} ms mean · ${n(r.frameP95)} ms p95 · enemies CPU ${n(r.enemiesCpuMs, 2)} ms · GPU ${r.gpuMs === null ? 'n/a' : `${n(r.gpuMs)} ms`}</div>`,
       r.bodyMs === null ? '' : `<div>solver ${n(r.bodyMs, 2)} ms a body · ${n(r.solverMs, 1)} ms all bodies · at ${r.solverHz} Hz</div>`,
       `<div>${n(r.calls, 0)} draw calls · ${r.triangles === null ? '—' : `${(r.triangles / 1000).toFixed(1)}k`} tris · re-placed ${r.replaced} · stopped: ${r.reason}</div>`,
+      r.defence ? defenceRows(r.defence) : '',
       `<div style="opacity:.7">${r.steps.slice(-6).map((s) => `${s.alive}: ${s.mean}/${s.p95}`).join(' · ')} (alive: mean/p95 ms)</div>`,
     ];
     card.innerHTML = rows.join('') + '<button type="button" aria-label="Dismiss" style="position:absolute;top:4px;right:6px;background:none;border:0;color:#e8f2f4;font:16px ui-monospace,monospace;cursor:pointer">×</button>';
@@ -70,11 +76,20 @@ export function createCreatureProbe({ root, family, tier, def, tune, spawn, aliv
     root.appendChild(card);
   }
 
+  // the defence's lines: the sentries (count, types), their kills on the creatures, the spawn band, the held heart
+  function defenceRows(d) {
+    const types = Object.entries(d.types).map(([k, v]) => `${v} ${k}`).join(', ') || 'none';
+    const band = d.band ? `${d.band.lo}–${d.band.hi} hops beyond the gate (${d.band.cells} cells)` : 'none (no gate)';
+    return `<div>sentries <b>${d.sentries}</b> (${types}) · sentry kills <b>${d.fight.kills}</b> of the tier (${d.fight.killsAll} creatures, ${d.fight.hits} hits)</div>`
+      + `<div>spawned ${band} · ${d.starts.inside ? `<b>${d.starts.inside} inside the walls</b>` : 'none inside'} · heart ${d.heartHeld ? `held (${Math.round(d.heartHits)} damage off)` : 'not held'}</div>`;
+  }
+
   return {
     step,
+    phase: () => ramp.phase,
     // the test hook's view: the phase, the target, the tier alive, and the result once done
     state: () => ({ family, tier, phase: ramp.phase, target: ramp.target, maxAlive: ramp.maxAlive, steps: ramp.steps.length, spawned, window: +windowMean(ramp).toFixed(2),
-      baselineMean: ramp.base.mean, baselineP95: ramp.base.p95, limitMs: +ramp.limit.toFixed(2), card: !!card?.isConnected, result }),
+      baselineMean: ramp.base.mean, baselineP95: ramp.base.p95, limitMs: +ramp.limit.toFixed(2), card: !!card?.isConnected, cardText: card?.isConnected ? card.textContent : null, result }),
     dispose: () => { card?.remove(); card = null; },
   };
 }

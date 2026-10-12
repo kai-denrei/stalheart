@@ -105,7 +105,7 @@ export const CREATURE_DEATH = freeze({ deflate: CUTIS_DEATH.deflate, fade: 6, si
 // lost nor secured: the probe kept stepping only while the sector did, and the unprotected sector fell at ~40 s).
 // `test`: a long run (the browser step checks the probe keeps stepping for a minute of wall time), a budget it never crosses.
 export const CREATURE_PROBE = freeze({
-  hold: 4, settle: 1, span: 1, thresholdMs: 16.7, overSeconds: 3, hardCap: 2000, startDelay: 6, maxSeconds: 900, perFrame: 40, ringHops: 18, gapMs: 250,
+  hold: 4, settle: 1, span: 1, thresholdMs: 16.7, overSeconds: 3, hardCap: 2000, startDelay: 6, maxSeconds: 900, perFrame: 40, gapMs: 250,
   baseline: 8, relative: true, overRatio: 0.1, overMs: 1.5,
   ground: { lo: 8, hi: 20, slack: 2, cells: 24, apartCells: 3 },
   sentries: { count: 6, max: 10, mix: ['rotor', 'quiver', 'mortar', 'rotor', 'quiver', 'relay'], reach: 3, apartCells: 2 },

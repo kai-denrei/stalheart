@@ -5,7 +5,7 @@ import { sectorDef } from '../src/domain/sectors.js';
 
 // THE SECTOR CLOCK (docs/superpowers/specs/2026-09-24-session-pacing-design.md A and B), driven through fake hooks: no page, no
 // planet. A ring of 120 cells; walking hops from the heart climb 30..59 round it; cells 200.. are the back candidates.
-function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 251, axis: [1, 0, 0] }, firstSector = 1, gate = false, lateStart = true, delivered = [], unlocked = false, sideCandidates = [{ cell: 240, carve: [241, 242, 243] }], backCandidates = [{ cell: 210, hops: 30 }, { cell: 221, hops: 40 }, { cell: 220, hops: 31 }] } = {}) {
+function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 251, axis: [1, 0, 0] }, firstSector = 1, gate = false, lateStart = true, delivered = [], unlocked = false, sideCandidates = [{ cell: 240, carve: [241, 242, 243] }], backCandidates = [{ cell: 210, hops: 30 }, { cell: 221, hops: 40 }, { cell: 220, hops: 31 }], hold = undefined } = {}) {
   const w = { t: 0, enemies: [], queue: [], opened: [], briefs: [], scrambles: 0, backDoors: 0 };
   const centers = [], dist = [];
   for (let i = 0; i < 260; i++) { const a = (i / 120) * Math.PI * 2; centers.push([Math.cos(a), Math.sin(a), i >= 200 ? 1 : 0]); dist.push(i >= 200 ? 30 : 30 + (i % 30)); }
@@ -20,7 +20,7 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
     queued: (sp) => w.queue.some((q) => q.sp === sp), push: (qs) => w.queue.push(...qs), seal: () => {}, clearField: () => {},
     poll: () => ({ passes: 0, drawn: 0, delivered, earned: 0, spent: 0, shieldUp: false, laser: null }),
     bank: () => ({}), pause: () => {}, brief: (id) => w.briefs.push(id), callout: () => {}, hud: () => {}, sfx: () => {}, pay: () => {},
-    centers: () => centers, cellSide: () => 0.001, reload: () => {},
+    centers: () => centers, cellSide: () => 0.001, reload: () => {}, hold,
   });
   w.step = (secs, dt = 0.25) => { for (let k = 0; k < secs / dt; k++) { w.t += dt; w.run.tick(dt); } };
   // the board's spawner: a released pulse becomes live bodies at once (the clock rule does not care how they walk in)
@@ -317,5 +317,22 @@ function world({ canyon = { floor: [250, 251], rock: [252], spawn: 250, mouth: 2
   assert.ok(!log.slice(4).some((l) => l[0] === 'finale'), `leaving the card plays no finale again (${JSON.stringify(log.slice(4))})`);
   assert.equal(run.state().n, SECTOR_DOOR.earliest + 2, 'and the next sector begins');
   assert.equal(run.state().phase, 'fighting');
+}
+// THE CREATURE PROBE HOLDS THE SECTOR OPEN (owner, 2026-10-12; src/fx/creature-enemies.js): every pulse out and every body dead, the
+// sector stays 'fighting' while `hold` says so (the probe keeps stepping), and is secured once it lets go
+{
+  let held = true;
+  const w = world({ hold: () => held });
+  w.step(0.5);
+  for (let guard = 0; guard < 400 && !w.run.state().breaches.every((b) => !b.live && b.wavesReleased >= b.wavesPlanned); guard++) {
+    w.run.release(w.t); w.step(0.5);
+    w.enemies.push(...w.queue.splice(0).map((q) => ({ alive: false, guard: null, breachSource: q.sp.obj, type: q.type })));
+    w.step(SECTOR_TIMING.stall + 1);
+  }
+  assert.ok(w.run.state().breaches.every((b) => b.wavesReleased >= b.wavesPlanned), 'every wave out');
+  w.step(30);
+  assert.equal(w.run.state().phase, 'fighting', 'held open: not secured');
+  held = false; w.step(1);
+  assert.equal(w.run.state().phase, 'secure', 'let go: secured');
 }
 console.log('Sector run: the back door\'s omens, breaches open under the card, pulses on the clock and under the budget, the feast, the scramble and the gate side after it.');

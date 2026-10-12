@@ -3077,8 +3077,9 @@ export function initTdTab(root) {
     setRamComboT: (v) => (ramComboT = v),
     creatures: () => creatureEnemies,
   });
-  const creatureEnemies = createCreatureEnemies({ scene, root, flags, camera, enemies, spawnPoints, canvasHeight: () => renderer.domElement.height, field: () => dungeon, spawn: (q) => enemyStep.spawnOne(q),   // ?creatures=<family>:<tier>, &ramp=1 (src/fx/creature-enemies.js)
-    heart: () => (dungeon && graph ? [graph.centers[dungeon.heart], dungeon.heart, cellSide] : null), breachReady: (o) => gameBreaches.ready(o), perf: () => perfOverlay.sample(), perfOn: () => setPerfOverlay(true, false), damage: (e, dmg) => damageEnemy(e, t, dmg, true, 'tower') });
+  const creatureEnemies = createCreatureEnemies({ scene, root, flags, camera, enemies, canvasHeight: () => renderer.domElement.height, field: () => dungeon, spawn: (q) => enemyStep.spawnOne(q),   // ?creatures=<family>:<tier>, &ramp=1 (src/fx/creature-enemies.js)
+    heart: () => (dungeon && graph ? [graph.centers[dungeon.heart], dungeon.heart, cellSide] : null), perf: () => perfOverlay.sample(), perfOn: () => setPerfOverlay(true, false), damage: (e, dmg) => damageEnemy(e, t, dmg, true, 'harness'),
+    ground: () => (story && graph && dungeon ? { adj: graph.adj, centers: graph.centers, cellSide, open: (ci) => dungeon.tags[ci] !== BLOCKED, inside: (ci) => story.inside(ci), gates: [story.gateCell].filter((c) => c >= 0), sockets: (story.sentrySockets ??= Object.keys(story.socketToward ?? {}).map(Number)), canBuild: (ci) => !placeError(ci) } : null), build: (key, ci) => commitTower(key, ci, 0) });
   function spawnEnemies(...a) { return enemyStep.spawnEnemies(...a); }
   function seedPortals(...a) { return enemyStep.seedPortals(...a); }
   function gateTakesShell(...a) { return enemyStep.gateTakesShell(...a); }
@@ -3181,7 +3182,7 @@ export function initTdTab(root) {
     if (react && spec.slowOnHit) { e.behMult = spec.slowOnHit; e.behUntil = tNow + 1.2; }
     if (react && spec.accelOnHit) { e.behMult = spec.accelOnHit; e.behUntil = tNow + 1.2; }
     e.lastHitT = tNow; // resets the regenerators' out-of-combat clock
-    e.hp -= squadDamage(e, dmg, src);
+    e.hp -= squadDamage(e, dmg, src); creatureEnemies.hit(e, src, dmg);   // the creature probe counts the sentries' work
     for (let k = shedSquad(e) + (e.hp <= 0); k > 0; k--) {   // each body pays, a squad's shed members too
       // any weapon's kill pays — but not the same
       gunshipRig.feed(eco.award(Math.max(1, Math.ceil(spec.bounty * (KILL_PAY[src] ?? 0.5)))));
@@ -3619,7 +3620,7 @@ export function initTdTab(root) {
 
   // The verdict lists (VERDICT_LOW/MID/HIGH, src/content/controller-copy.js): three tiers by how far the run got, picked by score
   function loseGame(reason) {
-    if (player.won) return;
+    if (player.won || creatureEnemies.holds()) return;   // nothing is lost while the creature probe runs (src/fx/creature-enemies.js)
     player.won = true; // stops motion; same flag, sadder modal
     destroyPlayer(); if (sectorRun?.lose(reason)) { ramCombo = 0; ramComboT = 0; syncCombo(); return; }   // the story: LAST TRANSMISSION is the sector debrief
     ramCombo = 0; ramComboT = 0; syncCombo(); // no brag over a lost heart
@@ -3799,7 +3800,7 @@ export function initTdTab(root) {
     eco.leak(); // a breach kills the streak — HK's rule, our Heart
     streakMark = 0;
     if (ws) ws.leaks++; sectorRun?.heartHit(dmg);
-    if (!(lab.on && lab.immortalHeart)) heartHP -= dmg;
+    if (!(lab.on && lab.immortalHeart) && !creatureEnemies.holdHeart(dmg)) heartHP -= dmg;   // the creature probe holds the heart
     heartSprite.userData.hit?.(); // orange/red Wave flare (the story's Stalheart has none: a leak there used to throw every frame)
     updateHud();
     if (heartHP <= 0) loseGame('the heart is lost');
@@ -5243,7 +5244,7 @@ export function initTdTab(root) {
   function makeSectorRun() {
     return createSectorRun({ story, host: root, api: storyApi, waveSize: params.waveSize, threatMult, hardcore: story.hardcore, spawnGap: { spread: SPAWN_SPREAD, max: SPAWN_GAP_MAX }, store: localStorage, rng: () => whim(),
       ready: () => automated() && (story.beats.phase() === 'expedition' || story.handover.stage >= (story.handover.defendStage ?? 8)) && !briefQ && !shotActive() && !syntheticModal?.isOpen() && !paused, firstSector: storyQuery.firstSector,   /* SKIP TUTORIAL opens the run at the back-door sector: its collapse and breach are the first thing the player sees */
-      centers: () => graph.centers, cellSide: () => cellSide, enemies: () => enemies, queue: () => spawnQueue, bank: () => eco.biomass, reload: () => location.reload(),
+      centers: () => graph.centers, cellSide: () => cellSide, enemies: () => enemies, queue: () => spawnQueue, bank: () => eco.biomass, reload: () => location.reload(), hold: () => creatureEnemies.holds(),
       // the ring the gunship's far breach walks: a minute out
       field: () => ({
         cellSide,
