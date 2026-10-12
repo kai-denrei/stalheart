@@ -50,6 +50,7 @@ import { NIH_DAIRIA_LOOK, NIH_DAIRIA_MODELS } from '../../content/nih-dairia.js'
 import { createFear } from './fear.js';
 import { createTemperament } from './temperament.js';
 import { kitNow, nodesOf, shiftKit } from './body.js';
+import { cageCopy } from '../../fx/nih-dairia-kit.js';
 import { createCarcasses } from './carcass.js';
 import { createPullOut } from './pull-out.js';
 
@@ -60,17 +61,6 @@ const COST0 = 0.6;          // ms a Reed step costs before any is measured (the 
 const WINDOW = 30;          // frames in the running means
 const TRACE = 900;          // frames the step trace keeps (the acceptance's jolt check)
 const SETTLE = 0.4;         // seconds of the wave's clock a dead Reed collapses at least before it is laid down (at most 3 x `corpse` s of the lab's: a slowed wave's dead are not stepped for ever)
-// the parsed cage, copied for one more body: its own surface geometry (positions, normals, index and the optical thickness copied), the rest shared read only
-function cageCopy(cage) {
-  const s = cage.surface, g = s.geometry, geometry = new THREE.BufferGeometry(), positions = s.positions.slice();
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3).setUsage(THREE.DynamicDrawUsage));
-  geometry.setAttribute('normal', new THREE.BufferAttribute(g.attributes.normal.array.slice(), 3).setUsage(THREE.DynamicDrawUsage));
-  geometry.setAttribute('opticalThickness', new THREE.BufferAttribute(g.attributes.opticalThickness.array.slice(), 1).setUsage(THREE.DynamicDrawUsage));
-  geometry.setIndex(new THREE.BufferAttribute(g.index.array.slice(), 1));
-  geometry.boundingBox = g.boundingBox.clone(); geometry.boundingSphere = g.boundingSphere.clone();
-  return { ...cage, surface: { ...s, geometry, positions }, opticalSurface: { ...cage.opticalSurface, geometry: new THREE.BufferGeometry() } };
-}
-
 // `sphere` the planet-centred group the Reeds are drawn in; `tune()` the fight's live numbers (`.wave`, `.bounds`, `.deathGravity`, the fear's), `fight()` the round,
 // `now()` the lab's clock; `motion()` the mode's working motion (the Reeds' base, as the boss's), `phys()` the kit's physics for a new body; `ground(x, z)` the
 // sphere point under a local point and `tangent(world)` the frame there; `spawn(point)` a point clear of the obstacles; `aim(from, to)` the hunt's target round the
