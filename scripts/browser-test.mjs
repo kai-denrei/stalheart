@@ -1961,7 +1961,7 @@ try{
   await until(`${T}.state().creatureProbe.probe.result?.done===true`,120000).catch(async()=>assert.fail(`${ct}: the probe ends (${JSON.stringify(await evaluate(`${T}.state().creatureProbe`))})`));
   const r=(await evaluate(`${T}.state().creatureProbe`));
   assert(await evaluate('!!document.querySelector("#creature-probe-card")'),`${ct}: the result card`);
-  const res=r.probe.result;console.log(`  ${ct}: probe ${res.reason}: max ${res.maxAlive} alive (fits ${res.fits}), total ${res.totalAlive}, frame ${res.frameMean}/${res.frameP95} ms, enemies cpu ${res.enemiesCpuMs}, gpu ${res.gpuMs}, ${res.calls} calls, ${res.triangles} tris, re-placed ${res.replaced}; bodies ${JSON.stringify(r.bodies?.families?.[fam]?.[tier])}`);
+  const res=r.probe.result;assert(res.baselineMean!==null&&res.limitMs>0,`${ct}: the probe's baseline (${JSON.stringify(res)})`);console.log(`  ${ct}: probe ${res.reason}: baseline ${res.baselineMean}/${res.baselineP95} ms, limit ${res.limitMs}, max ${res.maxAlive} alive (fits ${res.fits}, +${res.msPerBody} ms a body), total ${res.totalAlive}, frame ${res.frameMean}/${res.frameP95} ms, enemies cpu ${res.enemiesCpuMs}, gpu ${res.gpuMs}, ${res.calls} calls, ${res.triangles} tris, re-placed ${res.replaced}; bodies ${JSON.stringify(r.bodies?.families?.[fam]?.[tier])}`);
   assert(res.maxAlive>=1,`${ct}: the probe had bodies up`);
   await finish();
   if(shots){writeFileSync(join(shots,`${name}-card.png`),readFileSync(join(output,`${name}.png`)));

@@ -61,13 +61,18 @@ export const CREATURE_FOLLOW = freeze({ lead: 1.8, catchRadii: 1.5, fastest: 0.3
 // its slot is free. The game's puddles fade faster than the lab's 20 s: a sector kills hundreds.
 export const CREATURE_DEATH = freeze({ deflate: CUTIS_DEATH.deflate, fade: 6, sink: 0.25 });
 
-// THE PROBE (&ramp=1): on top of the running sector, `step` bodies of the tier (the tier's probeStep) every `hold` seconds, at the sector's
-// live breaches (round-robin; none open yet, on a ring of cells `ringHops` hops from the heart); the frame's real ms in a `span` s
-// sliding mean; done when that mean stays above `thresholdMs` for `overSeconds` (or `hardCap` bodies, or `maxSeconds`). A step's first
+// THE PROBE (&ramp=1): first `baseline` s of the sector alone (no probe bodies: its mean and p95), then on top of the running sector,
+// `step` bodies of the tier (the tier's probeStep) every `hold` seconds, at the sector's live breaches (round-robin; none open yet, on a
+// ring of cells `ringHops` hops from the heart); the frame's real ms in a `span` s sliding mean; done when that mean stays above the
+// limit for `overSeconds` (or `hardCap` bodies, or `maxSeconds`). The limit (`relative`, src/domain/creature-ramp.js rampLimit): the most
+// of `thresholdMs`, the baseline x (1 + `overRatio`) and the baseline + `overMs` (2026-10-12: the sector alone ran at ~20 ms on the M4,
+// so a fixed 16.7 ms said "fits 0" for every tier; the question is what the bodies add). A step's first
 // `settle` s (the spawn's own hitch) are not in its numbers. Up to `perFrame` bodies spawn a frame while the tier is under the target
 // (towers kill them: the probe keeps the count up). Its bodies are harmless (they do not hurt the heart, and the sector does not wait
 // for them). `test`: the browser step's overrides (&ramp=test; headless frame times mean nothing, the counts are not asserted).
 export const CREATURE_PROBE = freeze({
   hold: 4, settle: 1, span: 1, thresholdMs: 16.7, overSeconds: 3, hardCap: 2000, startDelay: 6, maxSeconds: 900, perFrame: 40, ringHops: 18, gapMs: 250,
-  test: { hold: 1.5, settle: 0, span: 0.5, thresholdMs: 0.5, overSeconds: 1.5, startDelay: 1, maxSeconds: 60, gapMs: 5000 },
+  baseline: 8, relative: true, overRatio: 0.1, overMs: 1.5,
+  // headless: a short baseline and the fixed tiny budget (the frames mean nothing there; the run only has to end)
+  test: { hold: 1.5, settle: 0, span: 0.5, thresholdMs: 0.5, overSeconds: 1.5, startDelay: 1, maxSeconds: 60, gapMs: 5000, baseline: 1, relative: false },
 });
