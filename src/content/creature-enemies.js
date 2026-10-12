@@ -53,9 +53,9 @@ export const tierSize = (t) => sizeOf(t.r0);
 // HOW A BODY FOLLOWS ITS RECORD. The record walks the cell graph (src/fx/enemy-step.js); the body hunts the record's point `lead` seconds
 // ahead along the record's walk, and hops faster the further behind it is: its hop's duration x 1 / (1 + lag / (catchRadii x r)), no
 // faster than `fastest` (the boss lab's full lunge is 0.375). Simulated (a body on a wandering record at the tier's speed x the sector's pace
-// 1.5, 60 s): 0 to 2 re-placements per ten bodies a minute, the body 1.2 to 2.4 radii behind on average. Behind by more than max(leashRadii x r, leashMin m) it is put on the record's point
-// (counted: the probe reports how often). `emergeRadii`: rising out of a breach it starts that many radii under the ground.
-export const CREATURE_FOLLOW = freeze({ lead: 1.8, catchRadii: 1.5, fastest: 0.3, leashRadii: 3, leashMin: 8, emergeRadii: 3 });
+// 1.5, 60 s): 0 to 2 re-placements per ten bodies a minute, the body 1.2 to 2.4 radii behind on average. Behind by more than the leash, max(leashRadii x r, leashMin m), for `grace` seconds, or by
+// twice the leash at once, it is put on the record's point (counted: the probe reports how often). `emergeRadii`: rising out of a breach it starts that many radii under the ground.
+export const CREATURE_FOLLOW = freeze({ lead: 1.8, catchRadii: 1.5, fastest: 0.3, leashRadii: 3, leashMin: 8, grace: 1.5, emergeRadii: 3 });
 
 // THE DEATH (CUTIS_DEATH, the boss lab's): its hop held, it deflates over `deflate` s, then fades and sinks `sink` radii over `fade` s, then
 // its slot is free. The game's puddles fade faster than the lab's 20 s: a sector kills hundreds.

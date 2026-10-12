@@ -9,7 +9,7 @@
 //
 // THE FAMILY INTERFACE (what src/fx/creature-bodies.js calls; a second family implements the same):
 //   add(tierKey, { x, z, angle, lift, pos })   -> handle      a body at plane point (x, z) metres, facing `angle`, `lift` m (below 0: under ground)
-//   track(handle, { x, z, ax, az, lift, pos }) -> boolean     follow the record at (x, z), aiming at (ax, az); true when it was re-placed
+//   track(handle, { x, z, ax, az, lift, pos, dt }) -> boolean follow the record at (x, z), aiming at (ax, az); true when it was re-placed
 //   kill(handle)                                              its death starts (it frees its own slot when done)
 //   free(handle)                                              gone now (a board reset)
 //   step(dt, camera, height)                                  advance and draw (the kit's 1/120 s stepping; the LOD from `camera`)
@@ -52,13 +52,17 @@ export function createCutisFamily({ parent, tiers, follow, death }) {
     return { t, i, dead: false };
   }
 
-  function track(h, { x, z, ax = x, az = z, lift = 0 }) {
+  function track(h, { x, z, ax = x, az = z, lift = 0, dt = 0 }) {
     if (!h || h.dead) return false;
     const { t, i } = h, sw = t.swarm, k = i * 3, r = radius(t, i);
-    // how far behind: the nearer of where it stands now and where its hop is landing
+    // how far behind: the nearer of where it stands now and where its hop is landing; past the leash it has `grace` seconds to catch
+    // up (a record that jumps, out of its breach's spread or under a shove, is caught by a hop), past twice the leash none
     const p = sw.position(i), lag = Math.min(Math.hypot(p[0] - x, p[2] - z), Math.hypot(sw.anchor[k] - x, sw.anchor[k + 2] - z));
+    const leash = Math.max(follow.leashRadii * r, follow.leashMin);
     sw.life[i * 4] = lift;
-    if (lag > Math.max(follow.leashRadii * r, follow.leashMin)) {
+    h.behind = lag > leash ? (h.behind ?? 0) + dt : 0;
+    if (lag > 2 * leash || h.behind > follow.grace) {
+      h.behind = 0;
       const a = Math.atan2(az - z, ax - x);
       sw.setTarget(i, ax, az); sw.place(i, x, z, Number.isFinite(a) ? a : 0); sw.life[i * 4] = lift; t.replaced++;
       return true;

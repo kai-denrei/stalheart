@@ -5,7 +5,7 @@
 // a stand-in material for the emergence's opacity), maps every record's point into the bodies' plane once a frame, and calls the family's
 // body adapter (src/fx/creature-cutis.js; the Reed family is pass two) behind one interface:
 //
-//   family.add(tier, { x, z, angle, lift, pos }) -> handle | null    family.track(handle, { x, z, ax, az, lift, pos }) -> re-placed?
+//   family.add(tier, { x, z, angle, lift, pos }) -> handle | null    family.track(handle, { x, z, ax, az, lift, pos, dt }) -> re-placed?
 //   family.kill(handle)   family.free(handle)   family.step(dt, camera, height)   family.setPlanet(R)
 //   family.roots() -> Object3D[]   family.stats()   family.view(handle)   family.dispose()
 //
@@ -99,7 +99,7 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
       if (!b || !e.alive) continue;
       b.stamp = stamp;
       const [x, z] = planeOf(e.pos), [ax, az] = aheadOf(e);
-      if (adapters.get(b.family).track(b.h, { x, z, ax, az, lift: liftOf(e, b.r0), pos: e.pos })) replaced++;
+      if (adapters.get(b.family).track(b.h, { x, z, ax, az, lift: liftOf(e, b.r0), pos: e.pos, dt })) replaced++;
     }
     for (const [e, b] of live) if (b.stamp !== stamp) { live.delete(e); adapters.get(b.family).free(b.h); }
     for (const a of adapters.values()) a.step(dt, camera, height);
