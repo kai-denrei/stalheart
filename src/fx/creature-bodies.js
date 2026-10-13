@@ -25,22 +25,42 @@
 // plane; when the record walks into another hub's region the seam calls family.rehub(handle, hub) first, and the family moves its body's plane state
 // across at the same pose (`hubs.remap(a, b, x, z)` from the seam) and draws it turned by `hubs.quat(hub)` about the planet's centre (the kit's
 // HUB_TURN). Every other family stays on the heart's hub (0), as before.
+// THE ROCK AND THE WALLS (round two, owner 2026-10-13: "the cutis animation clips through walls"): `ground()` -> { adj, centers, blocked(ci) } | null (the
+// board's cell graph, ROCK and WALL its BLOCKED cells) gives hubs.reach(hub, x, z, dx, dz, max, cell): the metres clear along (dx, dz) from plane point
+// (x, z) of that hub (src/domain/body-reach.js), walked over the graph from `cell` (the record's); add and track carry the record's `cell`.
 import * as THREE from '../../vendor/three.module.js';
 import { surfaceFrame, toPlane } from '../domain/surface-projection.js';
-import { hubFrames, icosaHubs, nearestHub, remapPlane, hubTurn } from '../domain/surface-hubs.js';
+import { hubFrames, nearestHub, remapPlane, hubTurn } from '../domain/surface-hubs.js';
+import { createReachQuery } from '../domain/body-reach.js';
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
 // `scene` the game's scene, `families` { name: (opts) => adapter } (made on first use with { parent, tiers, follow, death }), `tiers` the
 // content's CREATURE_TIERS, `follow` CREATURE_FOLLOW, `death` CREATURE_DEATH, `metresPerCell` the planet's (10); `heart()` the heart now:
 // [its unit point, its cell, the board's cell side] (null before the board)
-export function createCreatureBodies({ scene, families, tiers, follow, death, metresPerCell, heart }) {
+export function createCreatureBodies({ scene, families, tiers, follow, death, metresPerCell, heart, ground = () => null, reachStep = 0.25 }) {
   const root = new THREE.Group(); root.name = 'Creature bodies'; scene.add(root);
   const adapters = new Map(), live = new Map();   // family -> adapter; record -> { family, h, stamp }
   const basis = new THREE.Matrix4(), v = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
   let frame = null, at = -1, side = 0, R = 0, stamp = 0, replaced = 0, handed = 0;
   let frames = [], points = [], quats = [];   // the hubs: their frames, unit points and turns into the root's plane (src/domain/surface-hubs.js)
-  const hubs = { count: 12, quat: (k) => quats[k] ?? quats[0], remap: (a, b, x, z) => remapPlane(frames[a], frames[b], x, z, R) };
+  // the board for the reach: refreshed once a frame and at each spawn (its BLOCKED cells change with a breach); `reachStep` cells between samples
+  let board = null, query = null, reaches = 0;
+  function refreshBoard() {
+    const g = ground();
+    if (!g?.adj || !g.centers) { board = query = null; return; }
+    if (!board || board.adj !== g.adj || board.centers !== g.centers || board.blocked !== g.blocked) { board = g; query = createReachQuery({ adj: g.adj, centers: g.centers, blocked: g.blocked, step: reachStep * metresPerCell }); }
+  }
+  // plane point (x, z) of hub k as a point of the sphere's direction (not normalised: the cell walk compares directions), into a scratch array
+  const sp = [0, 0, 0];
+  const sphereOf = (k) => (x, z) => {
+    const f = frames[k] ?? frame, d = Math.hypot(x, z), t = d / R, c = Math.cos(t), s = d > 1e-12 ? Math.sin(t) / d : 0;
+    for (let i = 0; i < 3; i++) sp[i] = f.ey[i] * c + (f.ex[i] * x + f.ez[i] * z) * s;
+    return sp;
+  };
+  let toSphere = [];
+  const hubs = { count: 12, quat: (k) => quats[k] ?? quats[0], remap: (a, b, x, z) => remapPlane(frames[a], frames[b], x, z, R),
+    reach: (k, x, z, dx, dz, max, cell) => { if (!query || !frame) return max; reaches++; return query(toSphere[k] ?? toSphere[0], x, z, dx, dz, max, cell >= 0 ? cell : query.cell); } };
 
   const has = (family) => typeof families[family] === 'function';
   function adapter(family) {
@@ -58,7 +78,7 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
     const [heartPoint, heartIndex, cellSide] = h;
     if (frame && heartIndex === at && cellSide === side) return;
     frame = surfaceFrame(heartPoint); at = heartIndex; side = cellSide;
-    frames = hubFrames(frame); points = frames.map((f) => f.origin); quats = frames.map((f, k) => (k ? hubTurn(frame, f) : [0, 0, 0, 1]));
+    frames = hubFrames(frame); points = frames.map((f) => f.origin); quats = frames.map((f, k) => (k ? hubTurn(frame, f) : [0, 0, 0, 1])); toSphere = frames.map((_, k) => sphereOf(k));
     const metre = cellSide / metresPerCell;
     R = metresPerCell / cellSide;
     root.position.set(frame.origin[0], frame.origin[1], frame.origin[2]);
@@ -89,11 +109,11 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
     speed: (e.spec?.speed ?? 0) * (e.paceJitter ?? 1) * metresPerCell });
   // a new record of a creature type (`e.spec.body` the family, `e.tier` its tier): its body, at the record's point
   function spawn(e) {
-    place();
+    place(); refreshBoard();
     const family = e.spec?.body, a = family && adapter(family), t = a && tiers[family]?.[e.tier];
     if (!t || !frame) return false;
     const hub = hubOf(a, e.pos), [x, z] = planeOf(e.pos, hub), apos = aheadOf(e), [ax, az] = planeOf(apos, hub);
-    const h = a.add(e.tier, { x, z, angle: Math.atan2(az - z, ax - x) || 0, lift: liftOf(e, t.r0), pos: e.pos, apos, hub, ...lookOf(e) });
+    const h = a.add(e.tier, { x, z, angle: Math.atan2(az - z, ax - x) || 0, lift: liftOf(e, t.r0), pos: e.pos, apos, hub, cell: e.cur ?? -1, ...lookOf(e) });
     if (!h) return false;
     live.set(e, { family, h, stamp, r0: t.r0, hub });
     return true;
@@ -112,7 +132,7 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
   // board cleared) goes; then each family steps and draws for `camera` (`height` the canvas's device pixels, the kit's LOD; `cull` false while a second
   // view of the scene is up, so a body off the main camera's view still draws there)
   function step(dt, enemies, camera, height, cull = true) {
-    place();
+    place(); refreshBoard();
     if (!frame) return;
     stamp++;
     for (const e of enemies) {
@@ -122,7 +142,7 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
       const a = adapters.get(b.family), hub = hubOf(a, e.pos, b.hub);
       if (hub !== b.hub) { a.rehub(b.h, hub); b.hub = hub; handed++; }
       const [x, z] = planeOf(e.pos, hub), apos = aheadOf(e), [ax, az] = planeOf(apos, hub);
-      if (a.track(b.h, { x, z, ax, az, lift: liftOf(e, b.r0), pos: e.pos, apos, dt, hub, ...lookOf(e) })) replaced++;
+      if (a.track(b.h, { x, z, ax, az, lift: liftOf(e, b.r0), pos: e.pos, apos, dt, hub, cell: e.cur ?? -1, ...lookOf(e) })) replaced++;
     }
     for (const [e, b] of live) if (b.stamp !== stamp) { live.delete(e); adapters.get(b.family).free(b.h); }
     for (const a of adapters.values()) a.step(dt, camera, height, cull);
@@ -136,9 +156,13 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
     roots: () => [...adapters.values()].flatMap((a) => a.roots()),
     // the bodies' books: up now, re-placed on the leash, handed from one hub to another, the records on each hub, and each family's tiers
     stats: () => { const onHub = new Array(12).fill(0); for (const b of live.values()) onHub[b.hub]++;
-      return { live: live.size, replaced, handed, onHub, planetR: +R.toFixed(1), families: Object.fromEntries([...adapters].map(([k, a]) => [k, a.stats()])) }; },
+      return { live: live.size, replaced, handed, onHub, reaches, planetR: +R.toFixed(1), families: Object.fromEntries([...adapters].map(([k, a]) => [k, a.stats()])) }; },
     // one record's body (the harness): its family's view of it, plus where its record is in its hub's plane
     view: (e) => { const b = live.get(e); return b ? { ...seen(adapters.get(b.family).view(b.h)), record: frame ? planeOf(e.pos, b.hub) : null, hub: b.hub } : null; },
+    // the harness: every family's stalks against the board's BLOCKED cells (a family that keeps none answers null)
+    audit() { refreshBoard(); if (!query) return null; const clear = (hub, cell, x, z, dx, dz, len) => hubs.reach(hub, x, z, dx, dz, len, cell) >= len - 1e-6;
+      const inRock = (hub, cell, x, z) => query.at(toSphere[hub] ?? toSphere[0], x, z, cell >= 0 ? cell : query.cell);
+      return Object.fromEntries([...adapters].filter(([, a]) => a.audit).map(([k, a]) => [k, a.audit(clear, inRock)])); },
     // a dead record's body by its handle, kept by the caller before the kill (the harness watches a death play out)
     handleOf: (e) => live.get(e) ?? null,
     viewHandle: (b) => (b ? seen(adapters.get(b.family)?.view(b.h)) : null),

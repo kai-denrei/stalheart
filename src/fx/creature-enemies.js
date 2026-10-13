@@ -68,8 +68,12 @@ export function createCreatureEnemies(host) {
   const placeholder = new THREE.Group();   // a band spawn's source: no breach, no emergence
   // who fought the creatures: the sentries' hits, damage and kills on the tier's records (every creature record, the waves' share too)
   const fight = { hits: 0, damage: 0, kills: 0, killsAll: 0 }, starts = { n: 0, inside: 0, probe: 0, probeOutside: 0, minHops: null, maxHops: null };
+  // the board for the bodies' reach (round two: the stalks held off ROCK and WALL, src/fx/creature-bodies.js): the story's cell graph and its BLOCKED cells
+  let groundNow = null;
+  const blockedCell = (ci) => !!groundNow && !groundNow.open(ci);
+  const boardOf = () => { groundNow = host.ground?.() ?? null; return groundNow ? { adj: groundNow.adj, centers: groundNow.centers, blocked: blockedCell } : null; };
   const make = () => (bodies ??= createCreatureBodies({ scene: host.scene, families, tiers: { ...CREATURE_TIERS, pearl: PEARL_BODIES }, follow: CREATURE_FOLLOW, death: CREATURE_DEATH,
-    metresPerCell: STORY_RECIPE.metresPerCell, heart: host.heart }));
+    metresPerCell: STORY_RECIPE.metresPerCell, heart: host.heart, ground: boardOf, reachStep: PEARL_FOLLOW.reachStep }));
 
   const ofTier = (e) => e.alive && e.tier === choice.tier && e.spec?.body === choice.family;
   const aliveOfTier = () => { let n = 0; for (const e of host.enemies) if (ofTier(e)) n++; return n; };
@@ -195,7 +199,11 @@ export function createCreatureEnemies(host) {
     state: () => (pearl ? pearlState() : choice || garrison ? { ...(choice ?? {}), alive: choice ? aliveOfTier() : 0, bodies: bodies?.stats() ?? null, probe: probe?.state() ?? null, defence: defence() } : null),
     // the harness's view of the Pearl set: the records alive by type (dressed, and left a dot cloud) and the bodies' books
     // the harness: the bodies' view of a record, a record's handle kept across its death, that handle's view
-    test: { view: (e) => bodies?.view(e) ?? null, handle: (e) => bodies?.handleOf(e) ?? null, viewHandle: (h) => bodies?.viewHandle(h) ?? null, spawn: (n) => (choice ? spawnProbe(n) : 0), ofTier: () => (choice ? host.enemies.filter(ofTier) : []),
+    test: { view: (e) => bodies?.view(e) ?? null, audit: () => bodies?.audit() ?? null,
+      // round two: n of `type` through the story's own spawn on the open cell furthest round the planet from the heart (the antipode's hub)
+      spawnFar: (type, n = 1) => { const g = host.ground?.(), h = host.heart(); if (!g || !h) return 0; let best = -1, bd = Infinity;
+        for (let c = 0; c < g.centers.length; c++) { if (!g.open(c)) continue; const p = g.centers[c], d = (p[0] * h[0][0] + p[1] * h[0][1] + p[2] * h[0][2]) / (Math.hypot(p[0], p[1], p[2]) * Math.hypot(h[0][0], h[0][1], h[0][2])); if (d < bd) { bd = d; best = c; } }
+        let made = 0; for (let k = 0; k < n && best >= 0; k++) if (host.spawn({ type, sp: { ci: best, alive: true, obj: placeholder }, at: 0, spread: 0.5, pace: 1 })) made++; return made; }, handle: (e) => bodies?.handleOf(e) ?? null, viewHandle: (h) => bodies?.viewHandle(h) ?? null, spawn: (n) => (choice ? spawnProbe(n) : 0), ofTier: () => (choice ? host.enemies.filter(ofTier) : []),
       hurt: (e, dmg) => host.damage(e, dmg), pearls: () => host.enemies.filter((e) => e.alive && e.spec?.body === 'pearl'),
       // the ground's view: the gate, the band's cells (each with its hops and whether it is inside the walls), the garrison's cells
       ground: () => { const gr = groundOf(); return gr ? { gates: gr.g.gates, band: gr.band.cells.map((c) => ({ cell: c, hops: gr.hops[c], inside: gr.g.inside(c) })), lo: gr.band.lo, hi: gr.band.hi, made: gr.made, garrison: garrison ?? [] } : null; },

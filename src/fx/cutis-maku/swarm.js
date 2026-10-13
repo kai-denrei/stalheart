@@ -8,6 +8,9 @@
 import { cycleTiming, phaseState, transferProgress, coreContact, KIT_R0 } from './config.js';
 
 export const STEP=1/120;
+// round two: a stalk's cup in body radii (the shader's pad, .58 r) kept clear of the rock, and the turns tried when the way ahead is blocked
+export const REACH_MARGIN=.6;
+const TURNS=[.45,-.45,.9,-.9,1.35,-1.35],STALKS=[[0],[-1.2,1.2],[-1.2,0,1.2]];
 const hash=n=>{const x=Math.sin(n*127.1+311.7)*43758.5453;return x-Math.floor(x);};
 
 export class CutisSwarm {
@@ -27,6 +30,9 @@ export class CutisSwarm {
     // round two (the Pearl set's hubs, src/fx/creature-bodies.js): each instance's projection hub and that hub's turn about the planet's centre
     // [x, y, z, w] (the shader's iHub); instances of different hubs are in different planes and are never each other's neighbours
     this.hub=new Uint8Array(cap);this.hubQuat=new Float32Array(cap*4);for(let i=0;i<cap;i++)this.hubQuat[i*4+3]=1;
+    // round two (owner, 2026-10-13: "the cutis animation clips through walls"): the host's free reach, (i, x, z, dx, dz, max) -> metres clear along the
+    // unit direction (dx, dz) from (x, z) (src/domain/body-reach.js against the board's ROCK and WALL); null is the kit's open plane. See plan().
+    this.reachLimit=null;
     this.occupied=new Float32Array(cap*3);
     for(let i=0;i<cap;i++){this.seed[i]=hash(i+17)*100;this.scale[i]=.85+hash(i+93)*.3;}
     this.reset(0);
@@ -103,11 +109,13 @@ export class CutisSwarm {
       const reach=Math.min(c.reach*radius*(1+.18*hunt),Math.max(0,distance-radius*.55));
       const count=Math.max(1,Math.min(3,Math.round(c.seekCount)));
       this.probeCount[i]=count;
+      if(this.reachLimit)this.clearHeading(i,x,z,reach+radius*REACH_MARGIN,count,distance>1e-4*s?dx/distance:hx/length,distance>1e-4*s?dz/distance:hz/length);
       for(let j=0;j<3;j++){
         const probe=j===0?this.probe0:j===1?this.probe1:this.probe2;
         probe[k]=count===1?0:(j-(count-1)/2)*(count===2?2.4:1.2);
         probe[k+1]=reach*(count===1?1:.58+.42*hash(i*29+this.cycles[i]*13+j*41+5));
         probe[k+2]=j*2.17+hash(i*7+j*19)*1.4;
+        if(this.reachLimit&&j<count)probe[k+1]=this.clearReach(i,x,z,probe[k],probe[k+1],radius);
       }
       this.selectProbe(i,tx,tz);
     }
@@ -118,6 +126,25 @@ export class CutisSwarm {
     const beat=Math.ceil((this.time+duration)/base)*base-this.time;
     this.duration[i]=duration+(beat-duration)*.18*hunt;
     this.idle[i]=!planted&&distance<radius*.7?1:0;
+  }
+  /** Round two: the heading turned toward clear ground when the rock or a wall stops every one of its `count` stalks (their fixed angles off the
+   * heading, as plan lays them) within 3/4 of `want`: of the turns up to 1.35 rad either side, the one whose best stalk makes the most clear way
+   * toward the target (unit (ux, uz)). Only with a host's reachLimit. */
+  clearHeading(i,x,z,want,count,ux,uz) {
+    const k=i*3,hx=this.heading[k],hz=this.heading[k+2],angles=STALKS[count-1];
+    const gain=(dx,dz)=>{let g=-Infinity,clear=0;for(const a of angles){const c=Math.cos(a),s=Math.sin(a),sx=dx*c+dz*s,sz=dz*c-dx*s,f=Math.min(want,this.reachLimit(i,x,z,sx,sz,want));clear=Math.max(clear,f);g=Math.max(g,f*(sx*ux+sz*uz));}return [g,clear];};
+    let [best,clear]=gain(hx,hz);
+    if(clear>=want*.75)return;
+    let bx=hx,bz=hz;
+    for(const a of TURNS){const c=Math.cos(a),s=Math.sin(a),dx=hx*c-hz*s,dz=hx*s+hz*c,[g]=gain(dx,dz);if(g>best+1e-6){best=g;bx=dx;bz=dz;}}
+    this.heading[k]=bx;this.heading[k+2]=bz;
+  }
+  /** Round two: a stalk at `angle` off the heading with `reach` metres, held `REACH_MARGIN` radii (its cup) short of the first blocked point along it,
+   * so neither the stalk, its cup, the anchor at its end nor the transfer along it enters the rock or a wall. */
+  clearReach(i,x,z,angle,reach,radius) {
+    const k=i*3,c=Math.cos(angle),s=Math.sin(angle),hx=this.heading[k],hz=this.heading[k+2],margin=radius*REACH_MARGIN;
+    const free=this.reachLimit(i,x,z,hx*c+hz*s,hz*c-hx*s,reach+margin);
+    return Math.max(0,Math.min(reach,free-margin));
   }
   getSeekingAnchors(i) {
     const k=i*3,y=.018*this.lengthScale;

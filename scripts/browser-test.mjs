@@ -2014,7 +2014,7 @@ try{
  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,#td-brief,.contact-card{display:none!important}</style>")');
  // the sector's own waves: its first bodies come up as Pearl bodies
  await until(`${T}.creatures.pearls().some(e=>!(e.emergeAge<1.2))`,120000).catch(async()=>assert.fail(`the sector's waves come up as Pearl bodies (${JSON.stringify(await evaluate(P))} ${JSON.stringify(await evaluate(`${T}.state().sector`))})`));
- const own=await evaluate(P);console.log(`  sector ${n}'s own waves: ${JSON.stringify(own.byType)}, dressed ${own.dressed}, far ${own.far}`);
+ const own=await evaluate(P);console.log(`  sector ${n}'s own waves: ${JSON.stringify(own.byType)}, dressed ${own.dressed}, undressed ${own.undressed}`);
  // every tier: a few of each tier's types through the story's own spawn
  const types=['amoeba','ghost','saucer','drifter','corona','barbed','rolling','phantom','knot'];
  for(const t of types)await evaluate(`${T}.spawnFodder(${t==='knot'?1:3},${JSON.stringify(t)})`);
@@ -2022,8 +2022,20 @@ try{
  await until(`(()=>{const f=${P}.bodies?.families?.pearl;return !!f&&${JSON.stringify(tiers)}.every(t=>f[t]?.live>0);})()`,90000).catch(async()=>assert.fail(`every Pearl tier has bodies (${JSON.stringify(await evaluate(P))})`));
  await until(`(()=>{const f=${P}.bodies.families.pearl;return ['orange','green','purple','brown','black'].every(t=>f[t].cores>0);})()`,30000).catch(async()=>assert.fail(`the cored tiers draw their pearls (${JSON.stringify(await evaluate(`${P}.bodies`))})`));
  const st=await evaluate(P),fams=st.bodies.families.pearl;
- console.log(`  tiers: ${tiers.map(t=>`${t} ${fams[t].live}${fams[t].cored?` (${fams[t].cores} pearls)`:''} r0 ${fams[t].r0.toFixed(1)}`).join(', ')}; by type ${JSON.stringify(st.byType)}; dressed ${st.dressed}, far ${st.far}`);
- assert.equal(st.far,0,`no record of sector ${n} comes up on the far side`);
+ console.log(`  tiers: ${tiers.map(t=>`${t} ${fams[t].live}${fams[t].cored?` (${fams[t].cores} pearls)`:''} r0 ${fams[t].r0.toFixed(1)}`).join(', ')}; by type ${JSON.stringify(st.byType)}; dressed ${st.dressed}, undressed ${st.undressed}`);
+ assert.equal(st.undressed,0,'no record made again as a dot cloud for want of a body');
+ // ROUND TWO, the far side (owner, 2026-10-13: "there are still a mix of half-dotted and new cutis enemies"): records at the antipode's open cell come up
+ // as Pearl bodies on the antipode's own hub (the twelve hubs, src/domain/surface-hubs.js), on their records
+ const farN=await evaluate(`${T}.creatures.spawnFar('amoeba',4)+${T}.creatures.spawnFar('drifter',2)`);assert.equal(farN,6,'six records at the antipode');
+ const farV=await evaluate(`(()=>{const h=${T}.state().creatureProbe.bodies;const far=${T}.creatures.pearls().filter(e=>{const v=${T}.creatures.view(e);return v&&v.hub!==0;});return {far:far.length,hubs:[...new Set(far.map(e=>${T}.creatures.view(e).hub))],off:Math.max(...far.map(e=>{const v=${T}.creatures.view(e);return Math.hypot(v.centre[0]-v.record[0],v.centre[1]-v.record[1])/v.radius;})),onHub:h.onHub};})()`);
+ console.log(`  the far side: ${JSON.stringify(farV)}`);
+ assert(farV.far>=6&&farV.hubs.length>=1&&farV.off<3,`the antipode's records are bodies on their own hub, on their records (${JSON.stringify(farV)})`);
+ const st2=await evaluate(P);assert(Object.entries(st2.byType).every(([t,o])=>!o.tier||o.dots===0)&&st2.undressed===0,`no mapped type is a dot cloud, the far side included (${JSON.stringify(st2.byType)})`);
+ // ROUND TWO, the rock and the walls (owner: "we need a method to have their feeling/scouting appendage be constrained by the rocks/walls"): over ten
+ // seconds of the sector, no live body's seeking stalk (with most of its cup) or anchor crosses a BLOCKED cell (src/domain/body-reach.js)
+ const audits=[];for(let k=0;k<5;k++){audits.push(await evaluate(`${T}.creatures.audit()?.pearl`));await delay(2000);}
+ console.log(`  stalks against the rock: ${audits.map(a=>a?`${a.bodies} bodies ${a.stalks} stalks ${a.crossing} crossing ${a.inRock} in the rock`:'-').join(' | ')}; reach queries ${await evaluate(`${P}.bodies.reaches`)}`);
+ assert(audits.every(a=>a&&a.bodies>0&&a.crossing===0),`no stalk or anchor crosses the rock or a wall (${JSON.stringify(audits)})`);
  assert(Object.entries(st.byType).every(([t,o])=>!o.tier||o.dots===0),`no mapped type is a dot cloud (${JSON.stringify(st.byType)})`);
  const clouds=await evaluate(`${T}.creatures.pearls().filter(e=>e.obj.userData.kind!=='creature').length`);assert.equal(clouds,0,'every Pearl record carries the stand-in, not a cloud');
  const kept=await evaluate(`(()=>{const p=${T}.creatures.pearls();return p.every(e=>e.spec.hp>0&&e.spec.body==='pearl'&&e.spec.pearl&&e.tier===e.type)&&p.some(e=>e.type==='phantom'&&e.spec.cloaked)&&p.some(e=>e.type==='rolling'&&e.spec.heavy&&!e.spec.rammable)&&p.some(e=>e.type==='amoeba'&&e.spec.rammable);})()`);
