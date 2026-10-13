@@ -6,7 +6,7 @@
 import { makeAudio } from '../audio.js';
 import { SOUNDS } from '../audiomanifest.js';
 import { ISAO_TRIGGERS, ISAO_VOICE_SOURCE } from '../content/isao-voice.js';
-import { VOICE_HOOKS, VOICE_CALLOUTS, VOICE_EVENTS, VOICE_STORE, VOICE_TUNE, voiceKey, voiceSounds } from '../content/voice-hooks.js';
+import { VOICE_HOOKS, VOICE_CALLOUTS, VOICE_EVENTS, VOICE_RARE, VOICE_SEQUENCE, VOICE_STORE, VOICE_TUNE, voiceKey, voiceSounds } from '../content/voice-hooks.js';
 import { createVoiceIndex, readPicks, writePicks, prunePicks, dbGain, PICK_DB, PICK_DUCK } from '../domain/voice-match.js';
 import { unvoicedScript } from '../domain/voice-script.js';
 import { BRIEFS } from '../isaobriefs.js';
@@ -20,6 +20,9 @@ export function voiceCoverage(triggers = ISAO_TRIGGERS, hooks = VOICE_HOOKS, bri
   for (const id of Object.keys(briefs)) { const k = ix.resolve(id); if (k) raised.get(k).push({ kind: 'brief', id }); else silent.push(id); }
   for (const text of VOICE_CALLOUTS) { const k = ix.resolve(text); if (k) raised.get(k).push({ kind: 'callout', id: text }); }
   for (const ev of VOICE_EVENTS) { const k = ix.resolve(ev); if (k) raised.get(k).push({ kind: 'event', id: ev }); }
+  // a moment's rare alternative (the owner's trio) and a sequence's later line (2026-10-13) are raised by the voice itself
+  for (const r of VOICE_RARE) raised.get(r.key)?.push(...r.at.map((id) => ({ kind: 'rare', id })));
+  for (const [from, s] of Object.entries(VOICE_SEQUENCE)) { const k = Object.keys(triggers).find((key) => triggers[key].lines.some((l) => l.id === s.next)); if (k) raised.get(k).push({ kind: 'sequence', id: from }); }
   return { raised, silent, unwired: [...raised].filter(([, m]) => !m.length).map(([k]) => k) };
 }
 

@@ -90,6 +90,49 @@ ok('and never for a line that came too late', heard === null);
   c += 70; ok('then speaks on a good roll', v(s3, 'f')?.id === 'f_01');
   c += 10; ok('a brief\'s first line', v(s3, 'b')?.id === 'b_01');
   c += 1.5; ok('its later line, the same trigger, no rest', v(s3, 'b#2')?.id === 'b_02'); }
+// QUIETER AND VARIED (owner, 2026-10-13: "make him speak less often. Sometimes a line is triggered, sometimes it's silence"): each light
+// trigger's own chance through the injected rand, a gap between any two light lines, the short lines first, the essential untouched
+{ let c = 0, r = 0; const s4 = { play() {}, say: (k) => ({ id: k }), stop() {} };
+  const T4 = { f: { aliases: ['f'], lines: [{ id: 'f_01', text: 'short', duration: 1 }, { id: 'f_02', text: 'a long one', duration: 5 }, { id: 'f_03', text: 'short too', duration: 2 }] },
+    g: { aliases: ['g'], lines: [{ id: 'g_01', text: 'g', duration: 1 }] },
+    e: { aliases: ['e'], lines: [{ id: 'e_01', text: 'short e', duration: 1 }, { id: 'e_02', text: 'a long e', duration: 5 }] } };
+  const tune = { flavor: { chance: 1, rest: 10 }, chance: { g: 0.25 }, lightGap: 20, short: { over: 3, weight: 0 }, gap: 0.2, space: 0, repeat: 1, late: 1.5, gain: 1 };
+  const v = createIsaoVoice({ triggers: T4, hooks: {}, flavor: ['f', 'g'], rare: [], sequence: {}, moments: {}, tune, picks: () => ({ muted: false, off: new Set(), quiet: new Set() }), now: () => c, rand: () => r });
+  r = 0.3; ok('a light trigger speaks on its own chance: 0.3 is over g\'s 0.25', v(s4, 'g') === null);
+  c += 11; r = 0.2; ok('and under it, it speaks', v(s4, 'g')?.id === 'g_01');
+  c += 5; ok('another light line within lightGap of the last one\'s end: silence', v(s4, 'f') === null);
+  c += 17; const longs = [];
+  for (let i = 0; i < 6; i++) { r = [0.99, 0.6, 0.1][i % 3]; longs.push(v(s4, 'f')?.id); c += 31; }
+  ok('past the gap it speaks, a short line every time (the long one weighs 0)', longs.every((id) => id === 'f_01' || id === 'f_03') && longs.includes('f_03'));
+  const es = []; for (let i = 0; i < 4; i++) { r = [0.9, 0.1][i % 2]; es.push(v(s4, 'e')?.id); c += 6; }
+  ok('an essential trigger: no chance, no light gap, its long line as before', es.every(Boolean) && es.includes('e_02')); }
+// THE OWNER'S TRIO: a moment's rare alternative, on its chance, said in place of the moment's own line, then resting its long time;
+// it speaks at a moment no trigger of its own answers (an unvoiced brief)
+{ let c = 0, r = 0; const s5 = { play() {}, say: (k) => ({ id: k }), stop() {} };
+  const T5 = { m: { aliases: ['m'], lines: [{ id: 'm_01', text: 'm', duration: 1 }] }, x: { aliases: ['x'], lines: [{ id: 'x_01', text: 'x', duration: 1 }] } };
+  const v = createIsaoVoice({ triggers: T5, hooks: {}, flavor: [], rare: [{ key: 'x', at: ['m', 'some_brief'], chance: 0.5 }], sequence: {}, moments: {}, tune: { flavor: { chance: 1, rest: 0 }, rest: { x: 100 }, gap: 0.2, space: 0, repeat: 1, late: 1.5, gain: 1 }, picks: () => ({ muted: false, off: new Set(), quiet: new Set() }), now: () => c, rand: () => r });
+  r = 0.7; ok('the rare line loses its roll: the moment\'s own line', v(s5, 'm')?.id === 'm_01');
+  c += 5; r = 0.2; ok('wins it: the rare line in its place', v(s5, 'm')?.id === 'x_01');
+  c += 5; ok('then rests its own long time', v(s5, 'm')?.id === 'm_01');
+  c += 100; ok('and speaks at a moment with no line of its own', v(s5, 'some_brief')?.id === 'x_01');
+  c += 5; ok('which, the rare line resting, stays silent', v(s5, 'some_brief') === null); }
+// THE DYLAN THOMAS PAIR: a line another follows after a beat, the second never said on its own, a forced line cutting the pair
+{ let c = 0; const pl = []; const s6 = { play() {}, say: (k) => (pl.push(k), { id: k }), stop() {} }; const q = [];
+  const T6 = { p: { aliases: ['p'], lines: [{ id: 'p_01', text: 'Do not go gentle', duration: 2 }, { id: 'p_02', text: 'Rage, rage', duration: 3 }] }, n: { aliases: ['n'], lines: [{ id: 'n_01', text: 'nuke', duration: 1 }] }, o: { aliases: ['o'], lines: [{ id: 'o_01', text: 'o', duration: 1 }] } };
+  const v = createIsaoVoice({ triggers: T6, hooks: {}, flavor: [], rare: [], sequence: { p_01: { next: 'p_02', beat: 0.5 } }, moments: {}, tune: { gap: 0.2, space: 0, repeat: 1, late: 1.5, gain: 1 }, picks: () => ({ muted: false, off: new Set(), quiet: new Set() }), now: () => c, rand: () => 0.99, later: (fn, s) => q.push([c + s, fn]) });
+  ok('the pair\'s first line, never its second on its own (rand 0.99 would pick the last)', v(s6, 'p')?.id === 'p_01');
+  ok('the second is due a beat after the first ends', q.length === 1 && Math.abs(q[0][0] - 2.5) < 1e-9);
+  c = 2.2; ok('nothing comes between them', v(s6, 'o') === null);
+  c = q[0][0]; q.shift()[1](); ok('then the second, in order', pl.join(' ') === 'isao_p_01 isao_p_02' && v.log.at(-1).id === 'p_02');
+  c = 7; ok('free once the pair is said', v(s6, 'o')?.id === 'o_01');
+  c = 20; pl.length = 0; v(s6, 'p'); c = 21; v(s6, 'n', { force: true }); c = q[0][0]; q.shift()[1]();
+  ok('a forced line cuts the pair: its second is not said', pl.join(' ') === 'isao_p_01 isao_n_01'); }
+// a sequence on a chance (heart_threat, then heart_threat_more): rolled through the injected rand
+{ let c = 0, r = 0.9; const q = []; const s7 = { play() {}, say: (k) => ({ id: k }), stop() {} };
+  const T7 = { h: { aliases: ['h'], lines: [{ id: 'h_01', text: 'her', duration: 2 }] }, hm: { aliases: ['hm'], lines: [{ id: 'hm_01', text: 'more', duration: 4 }] } };
+  const v = createIsaoVoice({ triggers: T7, hooks: {}, flavor: [], rare: [], sequence: { h_01: { next: 'hm_01', beat: 0.6, chance: 0.5 } }, moments: {}, tune: { gap: 0.2, space: 0, repeat: 1, late: 1.5, gain: 1 }, picks: () => ({ muted: false, off: new Set(), quiet: new Set() }), now: () => c, rand: () => r, later: (fn, s) => q.push([c + s, fn]) });
+  v(s7, 'h'); ok('a lost roll: no follow-up', q.length === 0);
+  c = 10; r = 0.1; v(s7, 'h'); ok('a won roll: the follow-up', q.length === 1); }
 ok('keys', voiceKey('a_01') === 'isao_a_01');
 
 console.log(`\n${n - bad}/${n} passed`);

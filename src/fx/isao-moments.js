@@ -8,13 +8,14 @@ import { isaoSpeak } from './isao-voice.js';
 export function createIsaoMoments(c) {
   // ISAO ON THE HEART'S THREAT, AND IN THE QUIET (owner, 2026-10-07, labs 117 then 118: "when enemies are getting closer to the Stålheart";
   // the flavour lines from lab 106 on, "mostly flavor text"): a hostile within STORY_CALM.heartHops walking hops of the heart says
-  // heart_threat, and heart_threat_more as it ends (the voice's own rest keeps it to once in a while); no hostile up at all, the idle
+  // heart_threat, and heart_threat_more as it ends (the voice's own rest and chance keep it to once in a while); no hostile up at all, the idle
   // flavour (VOICE_FLAVOR: a chance, a long rest), asked every few seconds
   const isaoOnTheHeart = () => {
     const s = c.story(), d = c.dungeon()?.distToHeart, t = c.t(); if (!s || !d) return;
     let near = false, any = false;
     for (const e of c.enemies()) if (e.alive && !e.guard && !e.harmless) { any = true; if (d[e.cur] >= 0 && d[e.cur] <= STORY_CALM.heartHops) { near = true; break; } }
-    if (near) { if (t - (s.threatAskedAt ?? -Infinity) < 5) return; s.threatAskedAt = t; const line = isaoSpeak('heart_threat'); if (line && typeof setTimeout === 'function') setTimeout(() => isaoSpeak('heart_threat_more', { force: true }), (line.duration + 0.6) * 1000); }
+    // heart_threat_more follows its "her" line on its own chance, as the voice's sequence (src/content/voice-hooks.js VOICE_SEQUENCE)
+    if (near) { if (t - (s.threatAskedAt ?? -Infinity) < 5) return; s.threatAskedAt = t; isaoSpeak('heart_threat'); }
     else if (!any && !danger() && t - (s.idleAskedAt ?? -Infinity) >= 5) { s.idleAskedAt = t; isaoSpeak('idle_flavor'); }
   };
   const hopsToHeart = (ci) => c.dungeon()?.distToHeart?.[ci] ?? -1;   // walking hops from the heart, -1 unknown
