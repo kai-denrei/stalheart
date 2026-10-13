@@ -44,11 +44,16 @@ export function eligible(lines, { off = new Set(), qualifier = null } = {}) {
   return (lines ?? []).filter((l) => !off.has(l.id) && (!l.qualifier || l.qualifier === qualifier));
 }
 
-// one of them at random, never the line said last for this trigger while another remains
-export function pickLine(lines, last, roll) {
+// one of them at random, never the line said last for this trigger while another remains. `weight` (a line -> a share, optional):
+// LESS VERBOSE (owner, 2026-10-13: "less verbose in general"): the caller weighs the long lines down, so the short ones come more often
+export function pickLine(lines, last, roll, weight = null) {
   if (!lines.length) return null;
   const pool = lines.length > 1 ? lines.filter((l) => l.id !== last) : lines;
-  return pool[Math.min(pool.length - 1, Math.floor(roll * pool.length))];
+  const w = weight ? pool.map((l) => Math.max(0, Number(weight(l)) || 0)) : null, sum = w ? w.reduce((a, b) => a + b, 0) : 0;
+  if (!(sum > 0)) return pool[Math.min(pool.length - 1, Math.floor(roll * pool.length))];
+  let x = roll * sum;
+  for (let i = 0; i < pool.length; i++) { x -= w[i]; if (x < 0) return pool[i]; }
+  return pool[pool.length - 1];
 }
 
 // the player's picks, as stored: { muted, off: [line ids], quiet: [trigger keys], db, duck }; anything malformed reads as all on.

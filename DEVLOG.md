@@ -78,6 +78,25 @@ Evidence:
 - --pearl-story, --ground-feed, --creature-probe, --boss-cutis pass
 - Known gaps: dying white puddles pinned in a crowded lane can sit up to ~2 m under the hull for frames (live bodies 0.03-0.08 m); the knot grazes drawn walls by up to 0.2 radii squeezed through a lane narrower than it; off-screen leash re-placements remain (white 69 of 250 bodies placed in --pearl-story's crowded run, 4 on-screen as dissolves); the autopilot's walk has no body contact
 
+## 2026-10-13 — Isao quieter and varied: light lines halved by per-trigger chances, a 40 s gap between light lines and short lines first; the owner's Dylan Thomas pair at the final sector and his good/true/beautiful trio as rare lines; twenty-six short agent drafts for review
+
+change · accepted · 2026-10-13-isao-quieter-and-varied
+
+Owner, 2026-10-13, point 3: 'Isao, we need MORE voice lines variety, but less verbose in general… make him speak less often. Sometimes a line is triggered, sometimes it's silence', with five new lines: 'Do not go gently into the good night' followed by 'rage, rage against the dying of the light', and 'The good: our mission to harness the stars' / 'The Truth: our superior technology will prevail' / 'The Beautiful; my work is a form of beauty'. Branch isao-voice-variety from pearl-enemies at 29434e00; spec docs/superpowers/specs/2026-10-13-isao-quieter-and-varied-design.md.
+
+src/fx/isao-voice.js: light triggers (VOICE_FLAVOR, now with repair_underway and heart_threat) speak on their own chance (VOICE_TUNE.chance, default flavor.chance 0.25), rest at least 120 s, never within lightGap 40 s of the last light line's end, and pick lines over 3 s a third as often (short); essential triggers are unchanged. VOICE_RARE: a moment's rare alternative (the trio: the Good at the works in orbit 1 / a collector loaded 0.3 / the quiet 0.01; the Truth at SECTOR SECURE 0.25; the Beautiful at print_done 0.2 / the quiet 0.01; each rests 900 s). VOICE_SEQUENCE: last_stand_01 then last_stand_02 0.6 s later at the final sector's brief (sector_both, BOTH WALLS, once a run; waits up to 8 s for its turn), and heart_threat_01 then heart_threat_more_01 one time in two (was forced every time from isao-moments). breach_sealed_03 ('Still open') only at STILL OPEN. Every roll through the injected rand; the module logs every moment asked (isaoSay.asked). seiyu_voice ce4219b: the owner's five lines approved (the pair at speed 0.84; recorded as the poem reads, 'Do not go gentle into that good night'), twenty-six agent drafts exported unapproved (print_done 05-08, build_start 06-08, stampede 04-07, soft ones 07-10, heart_threat 02-05, breach_sealed 06-08, repair_underway 02-05); imported: 266 lines in 85 triggers. Measured: five headless --voice-rate streams (19.2 game min) replayed through the old and new module, 40 seeds: light lines 0.96 -> 0.50 a game minute (0.40 plus the trio 0.09), essential 1.90 -> 2.19 (the last stand, and essential lines no longer dropped behind chatter), all 2.86 -> 2.69. --opening's welcome check had rotted with bd30e776 (ISAO 02 says a flavour line, not the good frood) and now asks for that.
+
+Alternatives: the poem at the heart going critical: fitting ('the dying of the light'), but the critical warning is essential and the poem would displace it or follow it at the worst moment; the trio as idle_flavor lines: they would sit on its 0.15 chance among 26 others, almost never heard at their own moments; one global chance for every light trigger: the ram chatter and the quiet come at very different rates, so each has its own; approving the agent drafts: approval in the seiyu player is the owner's; they ship unapproved as earlier unreviewed drops did
+
+Evidence:
+
+- test/isao-voice.mjs
+- test/voice-hooks.mjs
+- scripts/browser-test.mjs --voice-rate and --voice (the pair in order in the page, the Good at the works in orbit)
+- --opening, --round22, --sector-probe on the final tree
+- docs/isao-voice-audio.lock.json
+- ~/Dev/seiyu_voice ce4219b
+
 ## 2026-10-13 — Ground events in SAT-3's orbital feed, a corner inset, instead of a camera cut; &cuts=dive keeps the dives
 
 change · accepted · 2026-10-13-ground-feed-inset

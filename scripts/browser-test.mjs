@@ -1783,6 +1783,15 @@ try{
  await until(`(async()=>(await import("./src/fx/isao-voice.js")).isaoSay.log.some(e=>e.played))()`,90000).catch(async()=>assert.fail(`Isao says a line (${JSON.stringify(await evaluate(said))})`));
  const log=await evaluate(said);console.log(`  voice: said ${JSON.stringify(log)}`);
  assert.ok(log.some(e=>e.played&&/^[a-z0-9_]+_\d\d$/.test(e.id)),'a recorded line played in the story');
+ // THE OWNER'S LINES (2026-10-13): the final sector's brief says the Dylan Thomas pair in order, both heard; the orbital works' first
+ // collector in orbit says the Good (its chance is 1 there); their files load in the page
+ const M='(async()=>{const m=await import("./src/fx/isao-voice.js");';
+ await evaluate(`${M}m.isaoFree();m.isaoSpeak("sector_both");})()`);
+ await until(`${M}return m.isaoSay.log.some(e=>e.id==="last_stand_02"&&e.played);})()`,30000).catch(async()=>assert.fail(`the last stand's pair (${JSON.stringify(await evaluate(said))})`));
+ const pair=(await evaluate(said)).filter(e=>/^last_stand_/.test(e.id));console.log(`  voice: the last stand ${JSON.stringify(pair)}`);
+ assert(pair.length===2&&pair[0].id==='last_stand_01'&&pair[1].id==='last_stand_02'&&pair.every(e=>e.played&&!e.failed),'the pair, in order, both played');
+ await evaluate(`${M}m.isaoFree();m.isaoSpeak("works_orbit");})()`);
+ await until(`${M}return m.isaoSay.log.some(e=>e.id==="the_good_01"&&e.played);})()`,20000).catch(async()=>assert.fail(`the Good at the works in orbit (${JSON.stringify(await evaluate(said))})`));
  current='voice-game';await finish();
  } else if(args.includes('--audio-probe')) {
  // THE AUDIO, AS A PLAYER LOADS IT (no harness switches): one click, then what the engine reports (no assertions)
@@ -1825,14 +1834,15 @@ try{
  {const said=await evaluate('(async()=>(await import("./src/fx/isao-voice.js")).isaoSay.log.map(e=>e.id))()');console.log(`  opening: welcome said ${said.join(' ')}`);assert(said.includes('welcome_01'),'Isao says WELCOME! on the first gesture');}
  {const r=await evaluate('(()=>{const b=document.querySelector("#start-gate .wg-key[data-unit=stalheart]");b.scrollIntoView({block:"center"});const q=b.getBoundingClientRect();return 1;})()');await delay(400);const r2=await evaluate('(()=>{const q=document.querySelector("#start-gate .wg-key[data-unit=stalheart]").getBoundingClientRect();return [q.left+q.width/2,q.top+q.height/2];})()');await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:r2[0],y:r2[1]});await delay(2500);
   assert(await evaluate('!document.querySelector("#start-gate .wg-pop").hidden'),'hovering Stålheart shows its wireframe');current='opening-welcome-hover';await finish();}
- /* THE KEYWORDS SOUND (owner, 2026-10-06): ISAO under 01 says DON'T PANIC, under 02 the good frood */
- for(const [k,id] of [[0,'welcome_panic_01'],[1,'welcome_frood_01']]){await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:5,y:5});await delay(300);
+ /* THE KEYWORDS SOUND (owner, 2026-10-06): ISAO under 01 says DON'T PANIC, under 02 one of his flavour lines (owner, 2026-10-07,
+    twenty-ninth notes: bd30e776; this check still asked for the good frood until 2026-10-13) */
+ for(const [k,id] of [[0,/^welcome_panic_01$/],[1,/^idle_flavor_\d\d$/]]){await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:5,y:5});await delay(300);
   await evaluate(`document.querySelectorAll("#start-gate .wg-key[data-unit=isao]")[${k}].scrollIntoView({block:"center"})`);await delay(400);
   const q=await evaluate(`(()=>{const r=document.querySelectorAll("#start-gate .wg-key[data-unit=isao]")[${k}].getBoundingClientRect();return [r.left+r.width/2,r.top+r.height/2];})()`);
   await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:q[0],y:q[1]});await delay(2600);
   const said=await evaluate('(async()=>(await import("./src/fx/isao-voice.js")).isaoSay.log.map(e=>e.id))()');
-  assert(said.includes(id),`hovering ISAO ${k+1} says ${id} (${said.join(' ')})`);}
- console.log('  opening: hovering ISAO says DON\'T PANIC under 01 and the good frood under 02');
+  assert(said.some(x=>id.test(x)),`hovering ISAO ${k+1} says ${id} (${said.join(' ')})`);}
+ console.log('  opening: hovering ISAO says DON\'T PANIC under 01 and a flavour line under 02');
  current='opening-welcome';await evaluate('document.querySelector("#start-gate").scrollTop=0');await send('Input.dispatchMouseEvent',{type:'mouseMoved',x:5,y:5});await delay(400);await finish();
  {const r=await evaluate('(()=>{const q=document.querySelector("#start-gate [data-start]").getBoundingClientRect();return [q.left+q.width/2,q.top+q.height/2];})()');await send('Input.dispatchMouseEvent',{type:'mousePressed',x:r[0],y:r[1],button:'left',clickCount:1});await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:r[0],y:r[1],button:'left',clickCount:1});}
  await until('(async()=>(await import("./src/fx/isao-voice.js")).isaoSay.log.some(e=>e.id==="ad_astra_01"))()',5000).catch(async()=>assert.fail('Ad Astra Per Aspera on START'));
@@ -1931,6 +1941,45 @@ try{
   if(process.env.PLAY){await evaluate(`${T}.sectorCull(999)`);if(await evaluate(`${T}.state().sector.debriefOpen`)){await evaluate(`${T}.sectorContinue()`);await delay(300);await evaluate(`${T}.sectorContinue()`);}}   // PLAY=1: a player who clears the field and reads on
   await delay(2000);}
  console.log(rows.join('\n'));
+ } else if(args.includes('--voice-rate')) {
+ // ISAO'S RATE (owner, 2026-10-13: "make him speak less often. Sometimes a line is triggered, sometimes it's silence"): a sector from its
+ // start with the voice log. Every moment asked of him (src/fx/isao-voice.js isaoSay.asked) and every line said (isaoSay.log), against
+ // the game's clock (shieldClock) and the wall's; printed per trigger, essential and light (VOICE_FLAVOR) apart, lines a minute of
+ // each clock. SECTOR=n (2), PROBE_S (180 s of wall time), CULL=s (the field culled at the doors every s seconds, an ideal defender;
+ // 0: the towers alone), VOICE_OUT=file (the whole stream as JSON, for an offline replay through another tune). Asserts a line is
+ // said and no page error. Headless advances the game's clock slower than the wall's: the game-minute rate is the one to read
+ const T='window.__stalheartTest',n=+process.env.SECTOR||2,dur=(+process.env.PROBE_S||180)*1000,cull=+(process.env.CULL??12);
+ await go('voice-rate',`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${n}#td`);
+ await until(`!!${T} && ${T}.state().sector?.n===${n}`,120000);
+ await send('Input.dispatchMouseEvent',{type:'mousePressed',x:720,y:450,button:'left',clickCount:1});await send('Input.dispatchMouseEvent',{type:'mouseReleased',x:720,y:450,button:'left',clickCount:1});
+ const V='(async()=>{const m=await import("./src/fx/isao-voice.js");return {asked:m.isaoSay.asked.slice(),said:m.isaoSay.log.map(e=>({...e}))};})()';
+ const asked=new Map(),said=new Map(),clock=[],t0=Date.now();let lastCull=0;
+ const pull=async()=>{const s=await evaluate(`(()=>{const s=${T}.state();return {wall:performance.now()/1000,game:s.shieldClock,n:s.sector?.n,phase:s.sector?.phase,alive:s.enemiesAlive};})()`);
+  if(clock.length&&s.wall<clock.at(-1).wall)throw Error('the page reloaded');   // a new run: its clock and logs start again
+  const v=await evaluate(V);for(const a of v.asked)asked.set(a.n,a);for(const e of v.said)said.set(e.n,e);clock.push(s);return s;};
+ // a lost sector's card can start a new run (a reload): the stream so far is kept and the probe ends there
+ let gone=false;
+ while(Date.now()-t0<dur&&!gone){try{await pull();
+  if(cull>0&&Date.now()-lastCull>=cull*1000){lastCull=Date.now();await evaluate(`${T}.sectorCull(999)`);}
+  if(await evaluate(`${T}.state().sector.debriefOpen`)){await evaluate(`${T}.sectorContinue()`);await delay(300);await evaluate(`${T}.sectorContinue()`);}
+  }catch(e){gone=true;console.log(`  voice-rate: the run ended (${String(e).slice(0,120)})`);}
+  await delay(2000);}
+ if(!gone)await pull();
+ const {VOICE_FLAVOR}=await import('../src/content/voice-hooks.js'),light=new Set(VOICE_FLAVOR);
+ const A=[...asked.values()].sort((a,b)=>a.n-b.n),S=[...said.values()].sort((a,b)=>a.n-b.n),c1=clock.at(-1);
+ const brief=A.find(a=>/^sector_[a-z0-9]+$/.test(a.id)&&a.id!=='sector_lost'),c0=brief&&brief.at<clock[0].wall?{wall:brief.at,game:clock[0].game-(clock[0].wall-brief.at)}:clock[0];   // from the sector's brief
+ const gameAt=(w)=>{let a=c0,b=clock.at(-1);for(let i=1;i<clock.length;i++)if(clock[i].wall>=w){a=clock[i-1];b=clock[i];break;}return b.wall>a.wall?a.game+(b.game-a.game)*(w-a.wall)/(b.wall-a.wall):a.game;};
+ const win=S.filter(e=>e.at>=c0.wall),wallMin=(c1.wall-c0.wall)/60,gameMin=(c1.game-c0.game)/60;
+ const by={};for(const e of win){const k=e.trigger;by[k]??={said:0,asked:0,light:light.has(k)};by[k].said++;}
+ for(const a of A.filter(a=>a.at>=c0.wall)){const k=(await evaluate(`(async()=>(await import("./src/fx/isao-voice.js")).isaoSay.index.resolve(${JSON.stringify(a.id)}))()`))??'-';by[k]??={said:0,asked:0,light:light.has(k)};by[k].asked++;}
+ const nLight=win.filter(e=>light.has(e.trigger)).length,nAll=win.length;
+ console.log(`  voice-rate: sector ${n}, ${wallMin.toFixed(2)} wall min, ${gameMin.toFixed(2)} game min (phase ${c1.phase}, sector ${c1.n}), cull every ${cull} s`);
+ console.log(`  voice-rate: ${nAll} lines said (${nLight} light): ${(nAll/gameMin).toFixed(2)} a game minute, light ${(nLight/gameMin).toFixed(2)}; ${(nAll/wallMin).toFixed(2)} a wall minute`);
+ for(const [k,v] of Object.entries(by).sort((a,b)=>b[1].asked-a[1].asked))console.log(`    ${k.padEnd(26)} asked ${String(v.asked).padStart(4)} said ${String(v.said).padStart(3)}${v.light?'  light':''}`);
+ console.log(`  voice-rate: said ${win.map(e=>`${(gameAt(e.at)-c0.game).toFixed(0)}s ${e.id}${e.played?'':'(unplayed)'}`).join(' · ')}`);
+ if(process.env.VOICE_OUT)writeFileSync(process.env.VOICE_OUT,JSON.stringify({sector:n,cull,clock,asked:A,said:S},null,1));
+ assert(nAll>0,'Isao says a line in the sector');
+ current='voice-rate';await finish();
  } else if(args.includes('--creature-probe')) {
  // THE CREATURE ENEMIES AND THEIR PROBE (owner, 2026-10-12; src/fx/creature-enemies.js): each family:tier (CREATURES, default the four Cutis
  // tiers and the four Reed / Nih-Dairia ones) boots a sector with ?creatures=<tier>&ramp=test; its bodies spawn, walk toward the heart with their bodies on their records, a
