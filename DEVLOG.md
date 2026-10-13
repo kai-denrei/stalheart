@@ -115,6 +115,25 @@ Evidence:
 - --pearl-story, --ground-feed, --creature-probe, --boss-cutis pass
 - Known gaps: dying white puddles pinned in a crowded lane can sit up to ~2 m under the hull for frames (live bodies 0.03-0.08 m); the knot grazes drawn walls by up to 0.2 radii squeezed through a lane narrower than it; off-screen leash re-placements remain (white 69 of 250 bodies placed in --pearl-story's crowded run, 4 on-screen as dissolves); the autopilot's walk has no body contact
 
+## 2026-10-13 — No host is handed on: td-tab builds the laser arsenal's own literal and the ending host names the diorama's seven members; NESTED is empty
+
+change · accepted · 2026-10-13-no-host-handed-on
+
+The 2026-10-07 refactor run's host-contracts test (2026-10-07-host-contracts-test) allow-listed two hosts passed on whole, each an open finding: src/fx/laser-station.js handed its host to createLaserArsenal ({ ...host, passEnded: () => leave() }) and src/fx/ending-host.js handed its host to playDiorama. The run's architecture review (2026-10-07-refactor-run-architecture-review) asked for both to close. Refactor round 2, Task 3.
+
+src/td-tab.js builds the arsenal before the station: const laserArsenal = createLaserArsenal(scene, { the 29 members the arsenal reads, one per line, carried from the station's literal with the same source text, plus passEnded: () => laserStation.leave() }) (a lazy call: the arsenal calls it only when a pass closes or the uplink drops, after the station exists); the breaches query both literals need is hoisted once as laserBreaches. The station's literal is one member per line and keeps only what the station reads (arsenal, mobile, centers, heart, enemies, breaches, walls, structures, views, canvas, fov, paused, togglePause, vacate, enter, leave); src/fx/laser-station.js takes host.arsenal instead of creating it and its surface gains leave (the internal leave(), what passEnded called before). src/fx/ending-host.js passes playDiorama a literal of story, startShot, scene, cellSide, hull, isao and spawnIsao (each still read by the diorama; nothing td-tab supplies became unread, td-tab's createEndingHost literal is unchanged). test/host-contracts.mjs: NESTED is empty and the check keeps it so; the arsenal is a contract of its own (53 factories). td-tab +32 lines (the two literals one member per line); later tasks of the round pay it back.
+
+Alternatives: Keep the station building the arsenal and give it a host.arsenalHost member: rejected, it is still a host handed on under another name.; Repeat the breaches filter-and-sort in both literals: rejected, two copies of one query; it is one const used by both.
+
+Evidence:
+
+- Member check (scratch script over espree): the old station literal's 38 members are all carried, each with the same source text (arsenal 29 + passEnded; station 15 + arsenal), laserBreaches resolved to its initializer.
+- test/laser-station.mjs: the station over a fake arsenal and a recording host refuses the seat while no pass is overhead and lights the strip's tank, reaches the arsenal it was given (setOnline, tick, steer at the first live breach), sits at once on a seen briefing (vacate, arsenal.seat(true), enter(groundFov), the strip on laser), and leave() on its surface unseats.
+- undef-diff: no new undefined or unused names (td-tab, laser-station); tdz-check at both literals: none in the dead zone; comments-kept: every word kept but the ending host's rewritten header ('reads', 'which', 'it;', 'takes,', '(src/fx/finale-diorama.js),'), as the plan asks.
+- node test/host-contracts.mjs: Host contracts hold for 53 factories; npm test 253; npm run check (6129 lines under 6400); npm run build.
+- test/ending-host.mjs (the plan's Task 2) does not exist in this worktree yet: the diorama's seven members are not yet asserted there.
+- Browser suites from snapshot t3-hosts (tools/refactor/suites.sh): --laser-game, --laser, --seats, --sectors (the canyon's pass), --finale all pass.
+
 ## 2026-10-13 — Isao quieter and varied: light lines halved by per-trigger chances, a 40 s gap between light lines and short lines first; the owner's Dylan Thomas pair at the final sector and his good/true/beautiful trio as rare lines; twenty-six short agent drafts for review
 
 change · accepted · 2026-10-13-isao-quieter-and-varied

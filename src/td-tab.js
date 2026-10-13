@@ -55,7 +55,7 @@ import { createDaylight } from './fx/daylight.js';
 import { createStoryScope, createScopeFeed } from './fx/story-scope.js';
 import { createSyntheticModal } from './fx/synthetic-modal.js';
 import { mulberry32, randomSeed } from './rng.js';
-import { createLaserStation, structureLostHtml } from './fx/laser-station.js'; import { LASER_GAME } from './content/orbital-laser.js'; import { createGlossaryModals } from './fx/glossary-modals.js'; import { makeTriadIcon, glossCard, GAMEPLAY_TIPS } from './fx/briefing-cards.js';
+import { createLaserStation, structureLostHtml } from './fx/laser-station.js'; import { createLaserArsenal } from './fx/laser-arsenal.js'; import { LASER_GAME } from './content/orbital-laser.js'; import { createGlossaryModals } from './fx/glossary-modals.js'; import { makeTriadIcon, glossCard, GAMEPLAY_TIPS } from './fx/briefing-cards.js';
 import { computeBerths, berthIndexFor } from './berths.js'; import { createProgrammeHost } from './fx/programme-host.js'; import { strikeFallPose, droneRidePose, bastionPose, tankViewPose } from './domain/camera-goal.js'; import { createShopRadial } from './fx/shop-radial.js'; import { berthRun, berthHeading, deployU, easeDeploy, deployFraming } from './domain/deploy-path.js';
 import { createSkyRig } from './fx/sky-rig.js'; import { createIsaoMoments } from './fx/isao-moments.js'; import { createColonyTick } from './fx/colony-tick.js'; import { createAutoSupport } from './fx/auto-support.js';
 import { createCanyonRun } from './fx/canyon-run.js'; import { createEndingHost } from './fx/ending-host.js'; import { createIsaoWorker } from './fx/isao-worker.js'; import { createHullDrive } from './fx/hull-drive.js'; import { createTowerCombat } from './fx/tower-combat.js';
@@ -347,13 +347,33 @@ export function initTdTab(root) {
   const sfx = makeAudio({ seed: 1, sounds:{...SOUNDS,...BREACH_SOUNDS,...(isStoryRoute(location.search)?STORY_SOUNDS:{})} });   // every story page (a bare one has no world=story)
   const gameBreaches=createGameBreaches(scene,camera,sfx,{look:()=>params.look}), diveCuts = flags.cuts === 'dive', groundFeed = createGroundFeed(root, { busy: () => !!storyMonitor?.on() || laserStation.seated() || (shotActive() && shotId() !== 'reveal'), blocked: () => paused || !!syntheticModal?.isOpen(), heart: () => (dungeon ? graph.normals[dungeon.heart] : null), cellSide: () => cellSide });   /* &cuts=dive: the old dives, not SAT-3's feed (src/fx/ground-feed.js) */
   // SOL-82 IN THE ARSENAL (src/fx/laser-station.js): the pass clock, the seat, the beam through the game's own paths
-  const laserStation = createLaserStation(root, scene, {
-    online: LASER_GAME.online || flags.laser === 'online', get mobile() { return mobileShell; },
-    cellSide: () => cellSide, wallHeight: () => params.wallHeight, centers: () => graph.centers, adj: () => graph.adj, tags: () => dungeon.tags, cellAt: (p) => cellIndex(norm3(p)),
-    heart: () => graph.centers[dungeon.heart], heartCell: () => dungeon.heart, lane: () => graph.centers[gunshipRig.lane()], tank: () => player.pos,
-    enemies: () => enemies, breaches: () => spawnPoints.filter((sp) => sp.alive && sp.obj?.userData.breach && !sp.obj.userData.keep).sort((a, b) => (sectorRun?.owns(b) ? 1 : 0) - (sectorRun?.owns(a) ? 1 : 0)), towers: () => towers, walls: () => storyBase?.walls?.() ?? [], anchors: () => storyBase?.anchors?.() ?? new Set(),
-    burnBody: (e) => damageEnemy(e, t, e.hp + 1, true, 'laser'), seal: (sp) => killPortal(sp, 'laser'), burnTower: (tw) => destroyTower(tw), burnWall: (w) => storyBase?.dropWall(w.index),
-    breakCells: (cells) => { if (cells.filter((ci) => breachWallCell(ci)).length) rebuildAfterBreach(); }, burnHeart: () => heartHit(heartHP), burnTank: (p) => playerHit('laser', p),
+  // THE ARSENAL'S OWN LITERAL (refactor round 2, 2026-10-13): the station used to hand its whole host on to the arsenal; the
+  // seat's members stay in the station's literal below. passEnded leaves the seat: a lazy call, run only when a pass closes.
+  const laserBreaches = () => spawnPoints.filter((sp) => sp.alive && sp.obj?.userData.breach && !sp.obj.userData.keep).sort((a, b) => (sectorRun?.owns(b) ? 1 : 0) - (sectorRun?.owns(a) ? 1 : 0));
+  const laserArsenal = createLaserArsenal(scene, {
+    online: LASER_GAME.online || flags.laser === 'online',
+    cellSide: () => cellSide,
+    wallHeight: () => params.wallHeight,
+    centers: () => graph.centers,
+    adj: () => graph.adj,
+    tags: () => dungeon.tags,
+    cellAt: (p) => cellIndex(norm3(p)),
+    heart: () => graph.centers[dungeon.heart],
+    heartCell: () => dungeon.heart,
+    lane: () => graph.centers[gunshipRig.lane()],
+    tank: () => player.pos,
+    enemies: () => enemies,
+    breaches: laserBreaches,
+    towers: () => towers,
+    walls: () => storyBase?.walls?.() ?? [],
+    anchors: () => storyBase?.anchors?.() ?? new Set(),
+    burnBody: (e) => damageEnemy(e, t, e.hp + 1, true, 'laser'),
+    seal: (sp) => killPortal(sp, 'laser'),
+    burnTower: (tw) => destroyTower(tw),
+    burnWall: (w) => storyBase?.dropWall(w.index),
+    breakCells: (cells) => { if (cells.filter((ci) => breachWallCell(ci)).length) rebuildAfterBreach(); },
+    burnHeart: () => heartHit(heartHP),
+    burnTank: (p) => playerHit('laser', p),
     structures: () => storyBase?.standing?.() ?? [],
     // OURS UNDER THE BEAM was the warning; this is the bill
     burnStructure: (id) => {
@@ -372,10 +392,22 @@ export function initTdTab(root) {
     brief: (id) => showBrief(id),
     callout: (x) => showCallout(x, 'co-victory'),
     loop: (key) => sfx.loop(key),
+    passEnded: () => laserStation.leave(),
+  });
+  const laserStation = createLaserStation(root, scene, {
+    arsenal: laserArsenal,
+    get mobile() { return mobileShell; },
+    centers: () => graph.centers,
+    heart: () => graph.centers[dungeon.heart],
+    enemies: () => enemies,
+    breaches: laserBreaches,
+    walls: () => storyBase?.walls?.() ?? [],
+    structures: () => storyBase?.standing?.() ?? [],
     views: () => storyViews,
     canvas: () => renderer.domElement,
     fov: () => camera.fov,
-    paused: (v) => { const was = paused; if (v !== undefined) paused = v; return was; }, togglePause: () => togglePause(),   /* the seat's P shows the pause card, as ESC does (2026-09-25) */
+    paused: (v) => { const was = paused; if (v !== undefined) paused = v; return was; },
+    togglePause: () => togglePause(),   /* the seat's P shows the pause card, as ESC does (2026-09-25) */
     // OCCUPANCY IS EXCLUSIVE (src/domain/seat-view.js): the strip button is caught here, so `vacate` leaves the seat the player was
     // in first; SOL-82 once opened on top of the gunship (owner, 2026-09-23)
     vacate: () => leavePilot(),
