@@ -85,7 +85,7 @@ try{
  await evaluate('window.__stalheartTest.breachNextWave();window.__stalheartTest.breachShell()');
  assert(await evaluate(`window.__stalheartTest.state().breaches.every(b=>b.age>=${age}&&b.ready)`),'Later waves and shells leave the breach open');
  await evaluate('window.__stalheartTest.breachNew()');
- await until('window.__stalheartTest.state().shot==="breach"');current='game-breach-camera';await finish();
+ await until('window.__stalheartTest.state().groundFeed.on&&window.__stalheartTest.state().groundFeed.kind==="breach"');assert.equal(await evaluate('window.__stalheartTest.state().shot'),null,'the new sinkhole is SAT-3\'s feed in the corner box, no camera shot (2026-10-13)');current='game-breach-feed';await finish();
  await until('window.__stalheartTest.state().breaches.every(b=>b.ready)',30000);
  const sources=await evaluate('window.__stalheartTest.state().breaches.length');
  await evaluate('window.__stalheartTest.breachStrike()');
@@ -4094,6 +4094,45 @@ const killReal=(Date.now()-t0)/1000;
  await send('Input.dispatchKeyEvent',{type:'keyDown',key:' ',code:'Space'});await send('Input.dispatchKeyEvent',{type:'keyUp',key:' ',code:'Space'});
  await until(`${W}.state().over`,10000).catch(async()=>assert.fail(`Space skips the montage (${JSON.stringify(await SH())})`));
  await delay(800);current='showcase-skipped';await finish();
+ } else if(args.includes('--ground-feed')) {
+ // THE GROUND FEED (owner, 2026-10-13; src/fx/ground-feed.js, spec docs/superpowers/specs/2026-10-13-ground-feed-inset-design.md): a story sector's
+ // first breach opens SAT-3's orbital feed in the corner box (~30 % of the width) instead of a camera dive: no camera shot and the main camera
+ // where it was for the whole feed, the zoom to the close frame, the HUD's numbers, closed after its length (the old shot's: pre-roll + the
+ // breach + emergeHold + tail); a second event retargets an open feed; the back door's collapse uses the feed; &cuts=dive gives the old shot
+ // back and no feed; 0 page errors throughout (the wait behind the TALON monitor's box is node-tested: test/ground-feed.mjs)
+ const T='window.__stalheartTest',G=`${T}.state().groundFeed`,hide='document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card{display:none!important}</style>")';
+ await go('ground-feed-sinkhole','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=2#td');
+ await until(`!!${T} && ${T}.state().sector?.n===2`,120000);await evaluate(hide);
+ await until(`${G}.on`,120000).catch(async()=>assert.fail(`the sector's first breach opens the feed (${JSON.stringify(await evaluate(G))} ${JSON.stringify(await evaluate(`${T}.state().sector`))})`));
+ const cam0=await evaluate(`${T}.seatState()`);
+ {const g=await evaluate(G);assert.equal(g.kind,'breach');assert.equal(g.label,'SEISMIC EVENT · SINKHOLE');assert(Math.abs(g.box.w-Math.min(1440*0.3,(Math.min(0.26*900,230)+22)*1.6))<4&&Math.abs(g.box.w/g.box.h-1.6)<0.02,`the corner box, 30 % of the width up to the shield pad, 16:10 (${JSON.stringify(g.box)})`);
+  assert.equal(await evaluate('document.querySelector("#ground-feed .title").textContent'),'SAT-3 · ORBITAL FEED');assert(/^GRID \d\d\.\d[NS] \d{3}\.\d[EW]$/.test(g.grid)&&g.seismic>4&&/^T\+\d\d:\d\d$/.test(g.clock),`the HUD (${JSON.stringify(g)})`);}
+ let seen={shots:new Set(),drift:0,zoom:0,t:0,shown:false};
+ for(const t0=Date.now();Date.now()-t0<90000;){const r=await evaluate(`(()=>{const s=${T}.state(),c=${T}.seatState();return {g:s.groundFeed,shot:s.shot,pos:c.pos,view:c.view}})()`);
+  if(!r.g.up)break;seen.shots.add(r.shot);seen.drift=Math.max(seen.drift,Math.hypot(...r.pos.map((v,i)=>v-cam0.pos[i])));seen.zoom=Math.max(seen.zoom,r.g.zoom);seen.t=Math.max(seen.t,r.g.t);
+  if(!seen.shown&&r.g.zoom>6){seen.shown=true;current='ground-feed-sinkhole';await finish();}
+  await delay(250);}
+ const g1=await evaluate(G);console.log(`  the sinkhole's feed: shots ${JSON.stringify([...seen.shots])}, camera moved ${seen.drift.toExponential(2)}, zoom x${seen.zoom}, last t ${seen.t}, ${JSON.stringify(g1)}`);
+ assert(!g1.up&&g1.closed===1&&g1.opened===1,`the feed closed (${JSON.stringify(g1)})`);
+ assert.deepEqual([...seen.shots],[null],'no camera shot through the feed');assert(seen.drift<0.02,`the main camera stayed where it was (moved ${seen.drift})`);assert(seen.zoom>=6,'the zoom reached the close frame');
+ assert(seen.t>11,`the feed ran its length (the dive's 12.5 s; last seen at ${seen.t})`);
+ // a new event while a feed is up retargets it (a static cut), the feed's count unchanged
+ {const cells=await evaluate(`${T}.state().sector.breaches.map(b=>b.cell)`);await evaluate(`${T}.feedAt(${cells[0]},6)`);await until(`${G}.on`,10000);
+  await evaluate(`${T}.feedAt(${cells[1]??cells[0]},6)`);await until(`${G}.retargets===1`,10000);const g=await evaluate(G);assert(g.on&&g.opened===2&&g.t<1,`retargeted (${JSON.stringify(g)})`);}
+ // the back door: its collapse is the feed's too
+ await go('ground-feed-backdoor','index.html?sw=0&acceptance=1&cine=0&world=story&stage=8&phase=expedition#td');
+ await until(`!!${T} && (${T}.state().storyLod||[]).some(l=>l.id==="stalheart")`,90000);await delay(1500);await evaluate(hide);
+ await evaluate(`${T}.begin()`);await until(`!${T}.state().deploying`,30000);await evaluate(`${T}.sectorQuiet(true)`);
+ await until(`(()=>{const s=${T}.state().sector;return !!s&&s.breaches.length>=2&&s.breaches.every(b=>b.live)})()`,90000);
+ await until(`!${G}.up&&!${G}.waiting`,90000);
+ assert(await evaluate(`${T}.openBackDoor()`)>=2,'the mouth came down');await until(`${G}.on&&${G}.kind==="backdoor"`,10000);
+ assert.equal(await evaluate(`${T}.state().shot`),null,'no camera dive over the collapse');assert.equal(await evaluate(G+'.label'),'SEISMIC ALERT · ROCKFALL');
+ await until(`${G}.zoom>2`,30000);await finish();
+ // &cuts=dive: the old establishing dive, and no feed
+ await go('ground-feed-dive','index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=2&cuts=dive#td');
+ await until(`!!${T} && ${T}.state().sector?.n===2`,120000);await evaluate(hide);
+ await until(`${T}.state().shot==="breach"`,120000).catch(async()=>assert.fail(`&cuts=dive keeps the breach dive (${JSON.stringify(await evaluate(G))})`));
+ assert.equal(await evaluate(G+'.opened'),0,'and no feed');await finish();
  } else if(args.includes('--backdoor')) {
  // THE SECOND FRONT: sector gating must not seal the outer world in the story (the back lanes and the far sites live out there)
  await go('backdoor-stage6','index.html?sw=0&acceptance=1&cine=0&world=story&stage=6#td');
@@ -4110,21 +4149,19 @@ const killReal=(Date.now()-t0)/1000;
  const shut=await evaluate('window.__stalheartTest.backCandidates()');assert(shut.length>0&&shut.every(c=>c.side==='back'&&c.route>c.hops+15),`before the collapse the back lanes route through the gate (${JSON.stringify(shut[0])})`);
  await until('!window.__stalheartTest.state().deploying',30000);await delay(500);   // a hull rolling out of its bay owns the camera over any shot
  await evaluate('window.__stalheartTest.sectorQuiet(true)');await until('(()=>{const s=window.__stalheartTest.state().sector;return !!s&&s.breaches.length>=2&&s.breaches.every(b=>b.live)})()',90000);await delay(1500);   // sector 1 opens its own two breaches and their sinkholes clear rock: measure after they stand
- const walls0=await evaluate('window.__stalheartTest.state().wallCount');
  // the frame cost: rAF deltas and long tasks for 2.5 s before the call (baseline) and 2.5 s from the call
  const watch=call=>evaluate(`new Promise(resolve=>{const long=[];const po=new PerformanceObserver(l=>{for(const e of l.getEntries())long.push(+e.duration.toFixed(1));});po.observe({type:'longtask'});let callMs=0,cells=0,last=0,max=0,maxAt=0,frames=0,t0=0;const longAt=[];const tick=()=>{const now=performance.now();if(now-last>max){max=now-last;maxAt=Math.round(now-t0);}last=now;frames++;if(now-t0<2500)requestAnimationFrame(tick);else setTimeout(()=>{po.disconnect();for(const e of performance.getEntriesByType?.('longtask')??[])longAt.push(Math.round(e.startTime-t0));resolve({long,longAt:longAt.filter(v=>v>=0),maxFrame:+max.toFixed(1),maxAt,frames,callMs,cells});},50);};requestAnimationFrame(()=>{t0=last=performance.now();${call?'const a=performance.now();cells=window.__stalheartTest.openBackDoor();callMs=+(performance.now()-a).toFixed(1);':''}requestAnimationFrame(tick);});})`);
- await until('window.__stalheartTest.state().shot===null',20000);await delay(500);   // and after their establishing shot: measured under it, the dive is refused (a shot is live) and the window catches the breach cut's first-use shader link, not the collapse
- const base=await watch(false),hit=await watch(true);
- current='backdoor-dive';await finish();   // at once: the dive reaches the mouth at 1.7 s and blends home from 3.8 s
+ await until('window.__stalheartTest.state().shot===null&&!window.__stalheartTest.state().groundFeed.up&&!window.__stalheartTest.state().groundFeed.waiting',30000);await delay(500);   // and after their ground feed: measured under it, the window catches the feed's first-use shader link, not the collapse
+ const base=await watch(false),walls0=await evaluate('window.__stalheartTest.state().wallCount'),hit=await watch(true);
+ current='backdoor-feed';await finish();   // at once: SAT-3's feed over the mouth (src/fx/ground-feed.js; &cuts=dive is the old dive)
  console.log(`BACKDOOR baseline ${JSON.stringify(base)} collapse ${JSON.stringify(hit)}`);
  assert(hit.cells>=2,`the mouth came down (${hit.cells} cells)`);
- assert.equal(await evaluate('window.__stalheartTest.state().wallCount'),walls0-hit.cells,'the wall count drops by the collapsed cells');
+ {const w=await evaluate('window.__stalheartTest.state().wallCount');assert(walls0-w>=hit.cells,`the wall count drops by the collapsed cells (${walls0} -> ${w}, ${hit.cells} fell; the world runs under the ground feed, where the backdoor dive froze it, so the sector's sinkholes may clear more)`);}
  assert.equal(await evaluate('window.__stalheartTest.backDoorOpen()'),true);
  assert(hit.callMs<100,`the collapse call costs ${hit.callMs} ms`);
  const worst=Math.max(0,...hit.long);assert(worst<=100||worst<=Math.max(0,...base.long)+25,`no long task over 100 ms from the collapse (${hit.long}; baseline ${base.long})`);
- assert.equal(await evaluate('window.__stalheartTest.state().shot'),'backdoor','the dive frames the collapse');
- assert.equal(await evaluate('window.__stalheartTest.openBackDoor()'),0,'a second call does nothing');
- assert.equal(await evaluate('window.__stalheartTest.state().wallCount'),walls0-hit.cells,'and takes no more rock');
+ {const g=await evaluate('window.__stalheartTest.state().groundFeed');assert(g.up&&g.kind==='backdoor'&&g.label==='SEISMIC ALERT · ROCKFALL',`the ground feed frames the collapse (${JSON.stringify(g)})`);assert.equal(await evaluate('window.__stalheartTest.state().shot'),null,'and takes no camera');}
+ assert.deepEqual(await evaluate('(()=>{const T=window.__stalheartTest,w=T.state().wallCount,n=T.openBackDoor();return [n,w-T.state().wallCount]})()'),[0,0],'a second call takes no more rock');
  assert.equal(await evaluate('window.__stalheartTest.state().storyHud.back'),true,'the radar marks the back door');
  const open=await evaluate('window.__stalheartTest.backCandidates()');
  assert(open.length>0&&open[0].side==='back'&&open[0].hops<60&&open[0].route===open[0].hops&&open[0].pos.length===3,`a back lane routes in under 60 hops (${JSON.stringify(open[0])})`);
