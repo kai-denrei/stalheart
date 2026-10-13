@@ -2060,6 +2060,19 @@ try{
  assert(ops.every(o=>!o||Math.abs(o.body-Math.min(1,o.cloud/0.95))<0.25),`the body's opacity follows its record's (${JSON.stringify(ops)})`);
  const am=await evaluate(`(()=>{const e=${T}.creatures.pearls().find(e=>e.type==='amoeba'&&!(e.emergeAge<1.2));return e?${T}.creatures.view(e).opacity:null;})()`);
  assert(am===null||am>0.9,`a soft amoeba is a whole body (${am})`);
+ // ROUND TWO, the ram (owner: "we need some sense of stagger on the enemy, and bump on the tank"): an amoeba rammed (the presentation as the enemy loop
+ // calls it, src/fx/creature-enemies.js) staggers before its deflate (knocked, squashed, held) and the hull jolts; a cored body touched recoils, alive
+ const am2=`${T}.creatures.pearls().find(e=>e.type==='amoeba'&&!(e.emergeAge<1.2)&&${T}.creatures.view(e)?.active)`;await until(`!!${am2}`,30000);
+ const j0=await evaluate(`${T}.creatures.jolt()`);
+ const rr=await evaluate(`(()=>{const e=${am2};window.__ra=${T}.creatures.handle(e);return {ok:${T}.creatures.ram(e),v:${T}.creatures.viewHandle(window.__ra)};})()`);
+ assert(rr.ok&&rr.v.dead&&rr.v.stagger!==null&&rr.v.held,`the rammed amoeba dies into its stagger (${JSON.stringify(rr)})`);
+ await until(`(()=>{const v=${T}.creatures.viewHandle(window.__ra);return v&&v.knocked>v.radius*0.5;})()`,20000).catch(async()=>assert.fail(`the rammed body is knocked (${JSON.stringify(await evaluate(`${T}.creatures.viewHandle(window.__ra)`))})`));
+ const j1=await evaluate(`${T}.creatures.jolt()`);assert(j1&&j1.kicks>j0.kicks&&j1.peak>0,`the hull jolts (${JSON.stringify([j0,j1])})`);
+ const ro=`${T}.creatures.pearls().find(e=>e.type==='rolling'&&!(e.emergeAge<1.2)&&${T}.creatures.view(e)?.active)`;await until(`!!${ro}`,60000);
+ const rc=await evaluate(`(()=>{const e=${ro};window.__rc=e;${T}.creatures.touch(e);return ${T}.creatures.view(e);})()`);
+ assert(rc.recoil!==null&&rc.held&&!rc.dead,`a touched rolling mine recoils, alive (${JSON.stringify(rc)})`);
+ const j2=await evaluate(`${T}.creatures.jolt()`);console.log(`  the ram: stagger ${JSON.stringify(await evaluate(`${T}.creatures.viewHandle(window.__ra)`))}; the touch: recoil ${rc.recoil}; jolt ${JSON.stringify(j2)}`);
+ assert(j2.kicks>j1.kicks,'the touch jolts the hull too');
  const fin=await evaluate(P);console.log(`  books: ${JSON.stringify(fin.bodies.families.pearl)}`);
  if(shots){const ci=await evaluate(`(()=>{const e=${T}.creatures.pearls().find(e=>!(e.emergeAge<1.2));return e?e.cur:-1;})()`);if(ci>=0){await evaluate(`${T}.showcase.ground(${ci},3,4.5)`);await delay(2500);const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(shots,'pearl-close.png'),Buffer.from(shot.data,'base64'));}}
  await finish();

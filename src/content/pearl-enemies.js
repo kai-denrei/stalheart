@@ -86,3 +86,20 @@ export const PEARL_FOLLOW = freeze({
   capacity: { white: 3000, yellow: 2000, blue: 2000, orange: 1000, green: 1000, purple: 800, brown: 600, black: 600 },
   lod: { high: 70, low: 12, highCap: 12, hysteresis: 0.12, horizonRadii: 3 },
 });
+
+// THE RAM AND THE TOUCH, PRESENTED (round two, owner 2026-10-13: "the cutis getting rammed by the tank is not a satisfying animation, we need some sense of
+// stagger on the enemy, and bump on the tank"). Presentation only: who dies, the damage, the combo and the bounty are the game's rules as they were.
+// `stagger`: a rammed soft body, before its deflate: its stalks snapped back, knocked `knockRadii` radii along the tank's heading (and `aside` of its own
+// offset across it) with the knock's speed falling off over `knockSeconds`, squashed flat to `squash` on impact and rebounding as a wobble at `hz`
+// damped by `decay` a second, for `seconds`; then the deflate (CREATURE_DEATH) as before.
+// `recoil`: a cored body the tank touches (the touch damage, or the shield's shove): pushed `knockRadii` back from the tank, a harder wobble, its hop held
+// for `seconds`, then it hunts its record again.
+// `jolt`: the tank's side (src/fx/ram-jolt.js): a pitch kick (`pitch` rad for a body of `refRadius` m, scaled by its radius, `solid` times for a cored body)
+// on a damped spring (`hz`, damping ratio `damping`), a small roll toward the side it was hit, and a camera dip of `dip` cells per rad of pitch; kicks
+// closer together than `gap` s add only `merge` of themselves, and a `load` that each kick fills and that drains at `drain` a second scales every kick by
+// what is left of `loadCap`, so a crowd under the treads is a rumble, not a constant shake; the pitch is clamped at `maxPitch`.
+export const PEARL_IMPACT = freeze({
+  stagger: { seconds: 0.45, knockRadii: 1.4, aside: 0.6, knockSeconds: 0.12, squash: 0.55, hz: 3.2, decay: 5 },
+  recoil: { seconds: 0.5, knockRadii: 0.8, knockSeconds: 0.1, squash: 0.38, hz: 5, decay: 4.5 },
+  jolt: { pitch: 0.035, refRadius: 2.5, solid: 1.8, roll: 0.5, hz: 4.5, damping: 0.35, dip: 1.6, gap: 0.08, merge: 0.3, load: 1, loadCap: 3, drain: 2.5, maxPitch: 0.09 },
+});

@@ -102,8 +102,8 @@ vec4 deform(vec3 bodyN){
   float extension=clamp(seeking+.12*sin(wave)*envelope,0.,1.);
   bool winner=abs(probe.w-iChosenProbe)<.5;
   if(!winner)extension*=1.-smoothstep(.55,.72,phase);
-  // A deflating body draws its stalks back in.
-  extension*=1.-iLife.y;
+  // A deflating body draws its stalks back in (round two: iLife.y below zero is an impact's rebound, taller; the stalks are already snapped back).
+  extension*=1.-clamp(iLife.y,0.,1.);
   if(phase<.1){rest.xz*=1.-.14*sin(phase/.1*3.14159265);rest.y*=1.+.06*sin(phase/.1*3.14159265);}
   vec3 extended=oldRest;
   float neck=mix(1.,uNeck,lead*extension);
@@ -179,9 +179,10 @@ vec4 deform(vec3 bodyN){
     if(distance<shell)p=center+normalize(delta+vec3(0.,.000001*SC,0.))*shell;
   }
   p.y=max(.009*SC,p.y);
-  // Deflate: a puddle. Heights shrink toward the ground, the footprint spreads about the body's centre.
+  // Deflate: a puddle. Heights shrink toward the ground, the footprint spreads about the body's centre. Round two (the ram's stagger and the touch's
+  // recoil, src/fx/creature-pearl.js): the same squash, signed: an impact flattens the body, then its rebound (below zero) stands it taller and narrower.
   float squash=iLife.y;
-  if(squash>0.){
+  if(squash!=0.){
     vec2 centre=mix(iOffset.xz,iAnchor.xz,phase<.62?0.:phase<.85?accelerated:1.);
     p.xz=centre+(p.xz-centre)*(1.+.6*squash);
     p.y=.009*SC+(p.y-.009*SC)*(1.-.92*squash);
@@ -252,7 +253,7 @@ void main(){
   color+=vec3(.85,.93,1.)*window*.9+glow*pulse*gate*vein*.7;
   float alpha=(mix(.25,.85,thick)+rim*.19)*(gl_FrontFacing?.75:.4);
   // A puddle is a thin skin: let the dark core show through.
-  if(uCore<.5)alpha*=mix(1.,.7,vLife.x);
+  if(uCore<.5)alpha*=mix(1.,.7,max(0.,vLife.x));
   if(uCore<.5)alpha*=uOpacity;
   if(uCore>.5){vec3 coreTint=min(veinTint,skin*.45);color=mix(coreTint*.28,coreTint*.9,diffuse)+glow*pulse*.06;alpha=1.;}
   if(uDebug>.5&&uDebug<1.5){color=vPhase<.1?vec3(.9,.65,.2):vPhase<.55?vec3(.3,.7,.8):vPhase<.62?vec3(.95,.3,.2):vPhase<.85?vec3(.7,.35,.9):vec3(.45,.8,.4);alpha=.9;}

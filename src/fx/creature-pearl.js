@@ -24,8 +24,13 @@
 // appendage be constrained by the rocks/walls"): each swarm's reachLimit asks the seam's hubs.reach (src/domain/body-reach.js over the board's BLOCKED
 // cells, from the cell of the slot's record) how far each stalk can go; the kit holds every stalk, its cup and so its anchor and transfer short of it and
 // turns a blocked heading toward clear ground (src/fx/cutis-maku/swarm.js clearHeading / clearReach).
+// THE RAM AND THE TOUCH (round two, owner 2026-10-13: "the cutis getting rammed by the tank is not a satisfying animation, we need some sense of stagger
+// on the enemy"; src/content/pearl-enemies.js PEARL_IMPACT): kill(handle, impact) with an impact { dx, dz } (the plane direction it is knocked) staggers
+// the body before its deflate: its stalks snapped back (the hop held at rest where the body is), knocked along, squashed flat and rebounding (the kit's
+// deflate channel, signed: below zero the body stands taller and narrower); recoil(handle, impact) does the same to a live cored body the tank touched,
+// harder and shorter, and lets it hunt again. The rules are untouched: the seam calls these from the game's own ram and touch.
 // add(type, { x, z, angle, lift, opacity, grow, members, speed, hub, cell }) -> handle | null    track(handle, { x, z, ax, az, lift, dt, opacity, grow, members, speed, hub })
-// rehub(handle, hub)   kill(handle)   free(handle)   step(dt, camera, height, cull)   setPlanet(R)   roots()   stats()   view(handle)   dispose()
+// rehub(handle, hub)   kill(handle, impact)   recoil(handle, impact)   free(handle)   step(dt, camera, height, cull)   setPlanet(R)   roots()   stats()   view(handle)   dispose()
 import * as THREE from '../../vendor/three.module.js';
 import { CutisSwarm, REACH_MARGIN } from './cutis-maku/swarm.js';
 import { DEFAULT_CONFIG } from './cutis-maku/config.js';
@@ -38,8 +43,8 @@ const IDENTITY = [0, 0, 0, 1];
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
 // `parent` the bodies' root, `tiers` the bodies by type (pearlBodies), `follow` CREATURE_FOLLOW, `death` CREATURE_DEATH, `set` PEARL_TIERS, `tune` PEARL_FOLLOW,
-// `hubs` the seam's { quat(k), remap(a, b, x, z) } (without it every body is on the heart's hub)
-export function createPearlFamily({ parent, tiers, follow, death, set, tune, hubs = null }) {
+// `hubs` the seam's { quat(k), remap(a, b, x, z) } (without it every body is on the heart's hub), `impact` PEARL_IMPACT
+export function createPearlFamily({ parent, tiers, follow, death, set, tune, hubs = null, impact: IMPACT = null }) {
   const group = new THREE.Group(); group.name = 'Pearl enemies'; parent.add(group);
   const byId = Object.fromEntries(set.map((t) => [t.id, t]));
   // each tier's base radius: its smallest type's
@@ -57,7 +62,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     const geo = createSwarmGeometry(swarm, { planetR, lod: tune.lod }); geo.group.name = `Pearl ${id}`; group.add(geo.group);
     const cores = def.cored ? createHardCores(swarm, { planetR, levelOf: geo.levelOf }) : null;
     if (cores) { cores.group.name = `Pearl ${id} cores`; group.add(cores.group); }
-    p = { id, def, swarm, geo, cores, owner, free: [], next: 0, dying: new Map(), live: 0, peak: 0, placed: 0, replaced: 0, deaths: 0, full: 0, shed: 0, handed: 0 };
+    p = { id, def, swarm, geo, cores, owner, free: [], next: 0, dying: new Map(), jolts: new Map(), live: 0, peak: 0, placed: 0, replaced: 0, deaths: 0, full: 0, shed: 0, handed: 0, staggers: 0, recoils: 0 };
     pools.set(id, p);
     return p;
   }
@@ -66,7 +71,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     if (p.next < p.swarm.capacity) return p.next++;
     p.full++; return -1;
   }
-  function release(p, i) { p.swarm.active[i] = 0; p.swarm.resetLife(i); p.swarm.hold[i] = 0; p.owner[i] = null; p.free.push(i); }
+  function release(p, i) { p.swarm.active[i] = 0; p.swarm.resetLife(i); p.swarm.hold[i] = 0; p.owner[i] = null; p.jolts.delete(i); p.free.push(i); }
 
   // a spot [across, along] round (x, z) facing (dx, dz)
   const at = (x, z, dx, dz, s) => [x + dx * s[1] + dz * s[0], z + dz * s[1] - dx * s[0]];
@@ -96,10 +101,35 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     return h;
   }
 
-  function die(h, slot) {
+  // THE IMPACT: the stalks snapped back (the hop at rest where the body stands now) and a knock of `d` metres along (dx, dz) to come
+  function snap(sw, i) {
+    const pos = sw.position(i), k = i * 3;
+    for (const a of [sw.offset, sw.anchor, sw.occupied]) { a[k] = pos[0]; a[k + 2] = pos[2]; }
+    sw.phase[i] = 0; sw.plant[k + 2] = 0; sw.forced[i] = 0; sw.idle[i] = 0;
+  }
+  const bump = (sw, i, dx, dz) => { const k = i * 3; for (const a of [sw.offset, sw.anchor, sw.occupied]) { a[k] += dx; a[k + 2] += dz; } };
+  // an impact's state for slot i: its clock, its knock (unit direction and metres) and its tune (PEARL_IMPACT.stagger or .recoil)
+  function impactOf(sw, i, imp, tuneOf, aside = 0) {
+    const r = sw.config.r0 * sw.scale[i], d = Math.hypot(imp.dx, imp.dz) || 1;
+    let dx = imp.dx / d, dz = imp.dz / d;
+    if (aside && imp.ax != null) { dx += imp.ax * aside; dz += imp.az * aside; const l = Math.hypot(dx, dz) || 1; dx /= l; dz /= l; }
+    snap(sw, i);
+    return { t0: clock, dx, dz, metres: tuneOf.knockRadii * r, moved: 0, tune: tuneOf };
+  }
+  // one frame of an impact `t` seconds in: the knock's share since the last frame (falling off over knockSeconds) and the squash (signed: flat, then taller)
+  function impactStep(sw, i, j, t) {
+    const k = j.tune, gone = j.metres * (1 - Math.exp(-t / k.knockSeconds));
+    bump(sw, i, j.dx * (gone - j.moved), j.dz * (gone - j.moved)); j.moved = gone;
+    return k.squash * Math.exp(-k.decay * t) * Math.cos(2 * Math.PI * k.hz * t);
+  }
+
+  function die(h, slot, imp = null) {
     const { p } = h, sw = p.swarm, i = slot.i;
-    sw.hold[i] = 1; sw.life[i * 4] = 0;
-    p.dying.set(i, { at: clock, op: sw.life[i * 4 + 2] }); p.live--; p.deaths++;
+    sw.hold[i] = 1; sw.life[i * 4] = 0; p.jolts.delete(i);
+    // a rammed body staggers first: its deflate starts once the stagger is over
+    const st = imp && IMPACT ? impactOf(sw, i, imp, IMPACT.stagger, IMPACT.stagger.aside) : null;
+    if (st) p.staggers++;
+    p.dying.set(i, { at: clock + (st ? IMPACT.stagger.seconds : 0), op: sw.life[i * 4 + 2], st }); p.live--; p.deaths++;
   }
 
   // the record walked into another hub's region: every live member's plane state, re-projected into the new hub's plane
@@ -147,10 +177,21 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     return replaced;
   }
 
-  function kill(h) {
+  function kill(h, imp = null) {
     if (!h || h.dead) return;
     h.dead = true;
-    for (const slot of h.slots) die(h, slot);
+    for (const slot of h.slots) die(h, slot, imp);
+  }
+
+  // a live body the tank touched (a cored one: it shrugs the ram off): pushed back, a hard wobble, its hop held a moment
+  function recoil(h, imp) {
+    if (!h || h.dead || !IMPACT || !imp) return;
+    const { p } = h, sw = p.swarm;
+    for (const slot of h.slots) {
+      const i = slot.i;
+      if (p.dying.has(i)) continue;
+      sw.hold[i] = 1; p.jolts.set(i, impactOf(sw, i, imp, IMPACT.recoil)); p.recoils++;
+    }
   }
 
   function free(h) {
@@ -168,8 +209,15 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
       const sw = p.swarm;
       for (const [i, d0] of p.dying) {
         const k = clock - d0.at, d = clamp01(k / Math.max(1e-6, death.deflate)), f = clamp01((k - death.deflate) / Math.max(1e-6, death.fade));
-        sw.life[i * 4 + 1] = d; sw.life[i * 4 + 2] = d0.op * (1 - f); sw.life[i * 4] = -f * death.sink * sw.config.r0 * sw.scale[i];
+        // the stagger before it (a ram): the knock all through, the squash until the deflate takes over
+        const sq = d0.st ? impactStep(sw, i, d0.st, clock - d0.st.t0) : 0;
+        sw.life[i * 4 + 1] = k < 0 ? sq : d; sw.life[i * 4 + 2] = d0.op * (1 - f); sw.life[i * 4] = -f * death.sink * sw.config.r0 * sw.scale[i];
         if (f >= 1) { p.dying.delete(i); release(p, i); }
+      }
+      for (const [i, j] of p.jolts) {
+        const t = clock - j.t0;
+        if (!sw.active[i] || t >= j.tune.seconds) { sw.life[i * 4 + 1] = 0; sw.hold[i] = 0; p.jolts.delete(i); continue; }
+        sw.life[i * 4 + 1] = impactStep(sw, i, j, t);
       }
       sw.advance(dt);
       if (camera) { p.geo.update(camera, height, 0, false, false, cull); p.cores?.update(); }
@@ -183,11 +231,11 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
   }
 
   return {
-    add, track, rehub, kill, free, step, setPlanet, hubs: { margin: tune.hubMargin ?? 0.03 },
+    add, track, rehub, kill, recoil, free, step, setPlanet, hubs: { margin: tune.hubMargin ?? 0.03 },
     roots: () => [group],
     // each tier present: bodies up, dying, the most up at once, placed, re-placed on the leash, deaths, squad members shed, refused for want of a slot,
     // the pearls drawn and the bodies drawn at each level [high, low, lowest, culled] (src/fx/cutis-maku/geometry.js)
-    stats: () => Object.fromEntries([...pools.values()].map((p) => [p.id, { live: p.live, dying: p.dying.size, peak: p.peak, placed: p.placed, replaced: p.replaced, deaths: p.deaths, shed: p.shed, full: p.full, handed: p.handed, capacity: p.swarm.capacity, r0: p.swarm.config.r0, cored: p.def.cored, cores: p.cores?.count ?? 0, lod: [...p.geo.lodCounts] }])),
+    stats: () => Object.fromEntries([...pools.values()].map((p) => [p.id, { live: p.live, dying: p.dying.size, peak: p.peak, placed: p.placed, replaced: p.replaced, deaths: p.deaths, shed: p.shed, full: p.full, handed: p.handed, staggers: p.staggers, recoils: p.recoils, capacity: p.swarm.capacity, r0: p.swarm.config.r0, cored: p.def.cored, cores: p.cores?.count ?? 0, lod: [...p.geo.lodCounts] }])),
     // the harness's audit of the stalks against the rock: every live body's seeking stalks (its whole length and most of its cup) and anchor, put to
     // `clear(hub, cell, x, z, dx, dz, len)` (true when the way is clear); a body whose origin itself is on a blocked cell (`inRock`) is counted apart;
     // -> { bodies, stalks, crossing, anchors, inRock }
@@ -220,7 +268,8 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
       if (!slot) return { tier: h.p.id, type: h.type, slots: 0, dead: h.dead };
       const { p } = h, sw = p.swarm, i = slot.i, pos = sw.position(i), L = sw.life;
       return { tier: p.id, type: h.type, slot: i, slots: h.slots.length, centre: [pos[0], pos[2]], radius: sw.config.r0 * sw.scale[i], lift: L[i * 4], deflate: L[i * 4 + 1], opacity: L[i * 4 + 2],
-        stage: sw.getState(i), active: !!sw.active[i], dead: h.dead, hub: h.hub, cored: p.def.cored, pace: +h.pace.toFixed(3), core: p.def.cored ? corePose(sw, i, 0) : null };
+        stage: sw.getState(i), active: !!sw.active[i], dead: h.dead, hub: h.hub,
+        stagger: p.dying.get(i)?.st ? +(clock - p.dying.get(i).st.t0).toFixed(3) : null, knocked: +((p.dying.get(i)?.st ?? p.jolts.get(i))?.moved ?? 0).toFixed(3), recoil: p.jolts.has(i) ? +(clock - p.jolts.get(i).t0).toFixed(3) : null, held: !!sw.hold[i], cored: p.def.cored, pace: +h.pace.toFixed(3), core: p.def.cored ? corePose(sw, i, 0) : null };
     },
     dispose() { for (const p of pools.values()) { p.geo.dispose(); p.cores?.dispose(); } pools.clear(); parent.remove(group); },
   };

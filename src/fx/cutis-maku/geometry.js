@@ -137,10 +137,10 @@ export function createSwarmGeometry(swarm,{ planetR=0, lod=null }={}) {
       for(const [name,size] of specs){const array=level.attributes[name].array,from=source[name],base=name==='iState'?0:i*size;for(let k=0;k<size;k++)array[index*size+k]=from[base+k];}
       // the shadow: under the body's present position, sized with it, spread by a puddle, faded by opacity, deflate and sinking below ground
       const p=swarm.position(i),Li=swarm.life,deflate=Li[i*4+1],radius=r0*swarm.scale[i];
-      const size=radius*1.2*(1+.6*deflate);
+      const size=radius*1.2*(1+.6*Math.max(0,deflate));
       matrix.makeScale(size,size,size).setPosition(p[0],lift,p[2]);
       shadows.setMatrixAt(shown,matrix);
-      fade.array[shown]=Li[i*4+2]*(1-.6*deflate)*(1-Math.min(1,Math.max(0,-Li[i*4]/radius)));
+      fade.array[shown]=Li[i*4+2]*(1-.6*Math.max(0,deflate))*(1-Math.min(1,Math.max(0,-Li[i*4]/radius)));
       for(let k=0;k<4;k++)shadowHub.array[shown*4+k]=swarm.hubQuat[i*4+k];
       shown++;
     }

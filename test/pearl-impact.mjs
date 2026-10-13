@@ -1,0 +1,80 @@
+// pearl-impact.mjs — round two of the Pearl set (owner, 2026-10-13: "the cutis getting rammed by the tank is not a satisfying animation, we need some
+// sense of stagger on the enemy, and bump on the tank"; spec docs/superpowers/specs/2026-10-13-pearl-enemies-design.md, "Round 2"): a rammed body's
+// stagger before its deflate, a cored body's recoil, the kit's signed squash, and the tank's jolt with its crowd cap (src/fx/ram-jolt.js).
+import assert from 'node:assert/strict';
+import * as THREE from '../vendor/three.module.js';
+import { PEARL_TIERS, PEARL_FOLLOW, PEARL_IMPACT } from '../src/content/pearl-enemies.js';
+import { CREATURE_FOLLOW, CREATURE_DEATH } from '../src/content/creature-enemies.js';
+import { createPearlFamily } from '../src/fx/creature-pearl.js';
+import { PEARL_BODIES } from '../src/fx/creature-enemies.js';
+import { MEMBRANE_VERT } from '../src/fx/cutis-maku/shaders.js';
+import { corePose } from '../src/fx/cutis-maku/hard-core.js';
+import { createRamJolt } from '../src/fx/ram-jolt.js';
+
+const close = (a, b, eps, what) => assert(Math.abs(a - b) <= eps, `${what}: ${a} vs ${b}`);
+const S = PEARL_IMPACT.stagger, Rc = PEARL_IMPACT.recoil, J = PEARL_IMPACT.jolt;
+
+// ---- the stagger: a rammed soft body ----
+{
+  const parent = new THREE.Group(), fam = createPearlFamily({ parent, tiers: PEARL_BODIES, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set: PEARL_TIERS, tune: PEARL_FOLLOW, impact: PEARL_IMPACT });
+  fam.setPlanet(753);
+  const a = fam.add('amoeba', { x: 0, z: 0, angle: 0, speed: 12 }), plain = fam.add('amoeba', { x: 40, z: 0, angle: 0, speed: 12 });
+  for (let f = 0; f < 90; f++) { fam.track(a, { x: f * 0.2, z: 0, dt: 1 / 60, speed: 12 }); fam.track(plain, { x: 40, z: 0, dt: 1 / 60 }); fam.step(1 / 60); }
+  const v0 = fam.view(a), r = v0.radius, start = v0.centre;
+  fam.kill(a, { dx: 0, dz: 1, ax: 1, az: 0 }); fam.kill(plain);
+  const v1 = fam.view(a);
+  assert.equal(v1.stage, 'COIL', 'the stalks snapped back: the hop at rest'); assert(v1.held, 'held'); close(v1.centre[0], start[0], 0.5 * r, 'snapped where the body stood');
+  assert.equal(fam.view(plain).stagger, null, 'a death without an impact deflates at once, as before');
+  const seen = []; let minSquash = 0, maxSquash = 0;
+  for (let f = 0; f < 60; f++) { fam.step(1 / 60); const v = fam.view(a); seen.push(v); if (v.stagger < S.seconds) { minSquash = Math.min(minSquash, v.deflate); maxSquash = Math.max(maxSquash, v.deflate); } }
+  close(maxSquash, S.squash, 0.12, 'flattened on impact'); assert(minSquash < -0.1, `then rebounding taller (${minSquash})`);
+  const mid = seen.find((v) => v.stagger >= S.seconds * 0.9);
+  assert(mid.knocked > 0.9 * S.knockRadii * r, `knocked ${mid.knocked} m (${S.knockRadii} radii)`);
+  const moved = [mid.centre[0] - v1.centre[0], mid.centre[1] - v1.centre[1]];
+  assert(moved[1] > 0.7 * mid.knocked && moved[0] > 0.2 * mid.knocked, `along the heading, and aside (${moved.map((x) => x.toFixed(2))})`);
+  const late = seen.at(-1), plainD = fam.view(plain).deflate; assert(late.stagger > S.seconds && late.deflate > 0.2, `then the deflate (${late.deflate})`);
+  close(plainD - late.deflate, S.seconds / CREATURE_DEATH.deflate, 0.05, 'the plain death deflated all along, the stagger\'s seconds ahead'); assert.equal(fam.stats().white.staggers, 1);
+  fam.dispose();
+}
+console.log('PASS the stagger: a rammed body snaps its stalks back, is knocked along the tank\'s heading and aside, squashed flat and rebounding taller, then deflates');
+
+// ---- the recoil: a cored body the tank touched ----
+{
+  const parent = new THREE.Group(), fam = createPearlFamily({ parent, tiers: PEARL_BODIES, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set: PEARL_TIERS, tune: PEARL_FOLLOW, impact: PEARL_IMPACT });
+  fam.setPlanet(753);
+  const b = fam.add('rolling', { x: 0, z: 0, angle: 0, speed: 9 });
+  for (let f = 0; f < 60; f++) { fam.track(b, { x: 0, z: 0, dt: 1 / 60, speed: 9 }); fam.step(1 / 60); }
+  const before = fam.view(b); fam.recoil(b, { dx: -1, dz: 0 });
+  let low = 0, high = 0, held = 0;
+  for (let f = 0; f < 45; f++) { fam.track(b, { x: 0, z: 0, dt: 1 / 60, speed: 9 }); fam.step(1 / 60); const v = fam.view(b); if (v.recoil != null) { held++; low = Math.min(low, v.deflate); high = Math.max(high, v.deflate); } }
+  const after = fam.view(b);
+  assert(high > 0.25 && low < -0.05, `a hard wobble (${high.toFixed(2)} / ${low.toFixed(2)})`); assert(held >= 25 && held <= Rc.seconds * 60 + 1, `held for its recoil (${held} frames)`);
+  assert.equal(after.recoil, null); assert.equal(after.held, false, 'then it hunts again'); assert.equal(after.deflate, 0);
+  assert(!after.dead && fam.stats().brown.recoils === 1 && fam.stats().brown.deaths === 0, 'alive: the rules are the game\'s');
+  // the pearl sits in its shell through the rebound: the kit's squash is signed in the core too
+  const sw = b.p.swarm, i = b.slots[0].i; sw.life[i * 4 + 1] = -0.3; const tall = corePose(sw, i, 0); sw.life[i * 4 + 1] = 0; const rest = corePose(sw, i, 0);
+  assert(tall[1] > rest[1], 'the core rises with the taller shell');
+  assert(Math.hypot(after.centre[0] - before.centre[0], after.centre[1] - before.centre[1]) > 0.5 * Rc.knockRadii * before.radius, 'pushed back');
+  fam.dispose();
+}
+console.log('PASS the recoil: a cored body the tank touches is pushed back with a hard wobble, held a moment, then hunts again, alive');
+assert(MEMBRANE_VERT.includes('if(squash!=0.)') && MEMBRANE_VERT.includes('extension*=1.-clamp(iLife.y,0.,1.)'), 'the shader\'s squash is signed, the stalks clamp');
+
+// ---- the jolt ----
+{
+  const j = createRamJolt(J), at = (n) => { let m = 0; for (let f = 0; f < n; f++) { j.tick(1 / 60); m = Math.max(m, Math.abs(j.state().pitch)); } return m; };
+  j.kick({ radius: J.refRadius }); const one = at(30);
+  assert(one > 0.5 * J.pitch && one < 1.3 * J.pitch, `one ram pitches the hull about ${J.pitch} rad (${one})`);
+  at(120); assert(Math.abs(j.state().pitch) < 1e-3, 'and settles');
+  const hard = createRamJolt(J); hard.kick({ radius: J.refRadius, solid: true, side: 1 }); let hp = 0, roll = 0; for (let f = 0; f < 30; f++) { hard.tick(1 / 60); hp = Math.max(hp, Math.abs(hard.state().pitch)); roll = Math.max(roll, hard.state().roll); }
+  assert(hp > one * 1.4, `a cored body's touch is sharper (${hp} vs ${one})`); assert(roll > 0, 'rolled toward the side it was hit');
+  const big = createRamJolt(J); big.kick({ radius: J.refRadius * 2 }); let bp = 0; for (let f = 0; f < 30; f++) { big.tick(1 / 60); bp = Math.max(bp, Math.abs(big.state().pitch)); }
+  assert(bp > one * 1.6, 'scaled by the body\'s size');
+  // a crowd under the treads: forty rams in two seconds stay a rumble under the clamp
+  const crowd = createRamJolt(J); let cp = 0;
+  for (let f = 0; f < 120; f++) { if (f % 3 === 0) crowd.kick({ radius: J.refRadius * 1.5 }); crowd.tick(1 / 60); cp = Math.max(cp, Math.abs(crowd.state().pitch)); }
+  assert(cp <= J.maxPitch + 1e-9, `clamped (${cp})`); assert(cp < 2.5 * one, `a crowd does not stack into a shake (${cp} vs one ${one})`);
+  const mesh = new THREE.Object3D(), q0 = mesh.quaternion.clone(); j.kick({}); j.tick(1 / 60); j.tick(1 / 60); j.hull(mesh); assert(mesh.quaternion.angleTo(q0) > 0, 'the hull is pitched');
+  assert(j.dip(1) >= 0, 'the camera only dips');
+}
+console.log('PASS the jolt: a pitch kick about its size, sharper for a cored body, rolled to its side, settling; a crowd stays a rumble under the clamp');

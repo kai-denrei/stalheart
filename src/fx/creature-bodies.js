@@ -38,7 +38,7 @@ const clamp01 = (v) => Math.max(0, Math.min(1, v));
 // `scene` the game's scene, `families` { name: (opts) => adapter } (made on first use with { parent, tiers, follow, death }), `tiers` the
 // content's CREATURE_TIERS, `follow` CREATURE_FOLLOW, `death` CREATURE_DEATH, `metresPerCell` the planet's (10); `heart()` the heart now:
 // [its unit point, its cell, the board's cell side] (null before the board)
-export function createCreatureBodies({ scene, families, tiers, follow, death, metresPerCell, heart, ground = () => null, reachStep = 0.25 }) {
+export function createCreatureBodies({ scene, families, tiers, follow, death, metresPerCell, heart, ground = () => null, reachStep = 0.25, impact = null }) {
   const root = new THREE.Group(); root.name = 'Creature bodies'; scene.add(root);
   const adapters = new Map(), live = new Map();   // family -> adapter; record -> { family, h, stamp }
   const basis = new THREE.Matrix4(), v = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
@@ -65,7 +65,7 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
   const has = (family) => typeof families[family] === 'function';
   function adapter(family) {
     let a = adapters.get(family);
-    if (!a && has(family)) { a = families[family]({ parent: root, tiers: tiers[family], follow, death, hubs }); if (R > 0) a.setPlanet(R); adapters.set(family, a); }
+    if (!a && has(family)) { a = families[family]({ parent: root, tiers: tiers[family], follow, death, hubs, impact }); if (R > 0) a.setPlanet(R); adapters.set(family, a); }
     return a ?? null;
   }
   // a record's hub: the nearest to it for a family drawn round the hubs (kept within the family's margin), the heart's for any other
@@ -119,13 +119,29 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
     return true;
   }
 
-  // the record died: `fx` its death plays (deflate, fade); without, it is gone at once (the heart took it, a reset)
+  // a world tangent direction at the record (unit sphere scale) as a unit plane direction in its hub's plane (and the plane direction across it)
+  function planeDir(e, hub, dir) {
+    const p = e.pos, q = [p[0] + dir[0] * 1e-4, p[1] + dir[1] * 1e-4, p[2] + dir[2] * 1e-4], a = planeOf(p, hub), b = planeOf(q, hub), dx = b[0] - a[0], dz = b[1] - a[1], l = Math.hypot(dx, dz);
+    return l > 1e-12 ? { dx: dx / l, dz: dz / l } : null;
+  }
+  // the record died: `fx` its death plays (deflate, fade); without, it is gone at once (the heart took it, a reset). Round two: a record the tank rammed
+  // (e.impact { dir, aside } world tangents, src/fx/creature-enemies.js `rammed`) staggers along them first
   function kill(e, fx = false) {
     const b = live.get(e);
     if (!b) return;
     live.delete(e);
     const a = adapters.get(b.family);
-    if (fx) a.kill(b.h); else a.free(b.h);
+    if (!fx) { a.free(b.h); return; }
+    const d = e.impact && frame ? planeDir(e, b.hub, e.impact.dir) : null, s = d && e.impact.aside ? planeDir(e, b.hub, e.impact.aside) : null;
+    a.kill(b.h, d ? { ...d, ax: s?.dx ?? null, az: s?.dz ?? null } : null);
+  }
+  // a live record the tank touched: its body recoils along the world tangent `dir` (a family without recoil ignores it)
+  function recoil(e, dir) {
+    const b = live.get(e), a = b && adapters.get(b.family);
+    if (!a?.recoil || !frame) return false;
+    const d = planeDir(e, b.hub, dir);
+    if (d) a.recoil(b.h, d);
+    return !!d;
   }
 
   // once a frame, after the records have walked: every body follows its record; a body whose record left the list without dying (the
@@ -152,7 +168,7 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
   const seen = (v) => (v && v.point && !v.centre && frame ? { ...v, centre: planeOf(v.point) } : v ?? null);
 
   return {
-    has, proxy, spawn, kill, step,
+    has, proxy, spawn, kill, recoil, step,
     roots: () => [...adapters.values()].flatMap((a) => a.roots()),
     // the bodies' books: up now, re-placed on the leash, handed from one hub to another, the records on each hub, and each family's tiers
     stats: () => { const onHub = new Array(12).fill(0); for (const b of live.values()) onHub[b.hub]++;

@@ -444,6 +444,7 @@ export function createEnemyStep(host) {
           host.noteStreak();
           host.harvestTankKill(spec);
           }
+          host.creatures?.()?.rammed?.(e);   // a Pearl body staggers under the treads and the hull jolts (src/fx/creature-enemies.js): presentation only
           killCreature(e, true);
           host.checkVictory();
           continue;
@@ -457,10 +458,11 @@ export function createEnemyStep(host) {
             e.shove = { dir: shoveVec(e.pos, host.player.pos, host.player.heading), t: host.shieldTune.shoveLife };
             e.stagUntil = tNow + host.shieldTune.shoveStun;
             host.playerHit(e.type, e.pos);   // the ripple and the hull bump, no HP
+            host.creatures?.()?.touched?.(e);   // a Pearl body recoils off the bubble, the hull jolts
           }
           continue;   // NOT a ram: pays nothing, scores nothing, combo untouched
         }
-        if (tNow > e.touchCd && !e.harmless) { e.touchCd = tNow + 1.2; host.playerHit(e.type, e.pos); }   // the story's first wave cannot hurt the tank
+        if (tNow > e.touchCd && !e.harmless) { e.touchCd = tNow + 1.2; host.playerHit(e.type, e.pos); host.creatures?.()?.touched?.(e); }   // the story's first wave cannot hurt the tank; a Pearl body recoils
       }
     }   let live = 0; for (const e of host.enemies) if (e.alive) host.enemies[live++] = e; host.enemies.length = live; host.creatures?.()?.step(dt);   /* the creatures' bodies follow their records (src/fx/creature-enemies.js) */   /* THE DEAD ARE LET GO (2026-09-25): killCreature only marks a record, and every per-frame walk over this array paid for every body ever spawned (~28 KB each, ~100 MB by sector 3). Compacted in place once a frame, after the walk: nothing keeps an index into it across frames */
   }

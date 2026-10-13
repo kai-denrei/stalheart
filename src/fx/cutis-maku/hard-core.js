@@ -18,7 +18,7 @@ export function corePose(swarm, i, planetR = 0, out = [0, 0, 0, 0]) {
   const lift = L[i * 4], squash = L[i * 4 + 1];
   let { x, y, z } = c.center;
   y = Math.max(.009 * s, y);
-  if (squash > 0) {
+  if (squash !== 0) {   // round two: signed, an impact's rebound below zero (./shaders.js)
     const a = phase < .62 ? 0 : phase < .85 ? transferProgress((phase - .62) / .23, swarm.config.transferAcceleration) : 1;
     const cx = swarm.offset[k] + (swarm.anchor[k] - swarm.offset[k]) * a, cz = swarm.offset[k + 2] + (swarm.anchor[k + 2] - swarm.offset[k + 2]) * a;
     x = cx + (x - cx) * (1 + .6 * squash); z = cz + (z - cz) * (1 + .6 * squash);

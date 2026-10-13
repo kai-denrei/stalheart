@@ -102,7 +102,7 @@ import { makeStrike, makeStrikeParams, grantStrikes, stepStrike,
 import { createRadarScope } from './fx/radar-scope.js'; import { createTowerAim } from './fx/tower-aim.js'; import { buildVarsModal } from './fx/vars-modal.js'; import { startVictoryPull } from './fx/victory-pull.js'; import { createShowcaseHooks } from './fx/showcase-hooks.js'; import { createGunshipRig } from './fx/gunship-rig.js';
 import { makeA6, arc as a6Arc } from './heptapod.js';
 import { DEFAULT_TOWER_LOOK, buildTowerLook, preloadLook, lookReady } from './towerlooks.js';
-import { makeAudio } from './audio.js'; import { isaoSay } from './fx/isao-voice.js'; import { createCrowdGate } from './fx/crowd-gate.js'; import { createCreatureEnemies } from './fx/creature-enemies.js'; import { shedSquad, squadDamage } from './fx/squads.js';
+import { makeAudio } from './audio.js'; import { isaoSay } from './fx/isao-voice.js'; import { createCrowdGate } from './fx/crowd-gate.js'; import { createCreatureEnemies } from './fx/creature-enemies.js'; import { createRamJolt } from './fx/ram-jolt.js'; import { shedSquad, squadDamage } from './fx/squads.js';
 
 export function initTdTab(root) {
   const flags = readGameFlags();   // THE URL FLAGS, read once (src/platform/game-flags.js)
@@ -1679,7 +1679,7 @@ export function initTdTab(root) {
     // child group, where writing rotation is safe). For the rest, compose it
     // onto the unit — rotateX composes, an Euler write would REPLACE the
     // lookAt quaternion set two lines above.
-    if (rf > 0 && !playerMesh.userData.hoverBody) playerMesh.rotateX(-0.05 * rk);
+    if (rf > 0 && !playerMesh.userData.hoverBody) playerMesh.rotateX(-0.05 * rk); ramJolt.hull(playerMesh);   // a Pearl body under the treads or against the hull (src/fx/ram-jolt.js)
     // touchdown: a damped rock on two axes, ~0.9s. Two different frequencies
     // so it reads as suspension settling rather than a single clean wobble.
     // Hover, vibration and touchdown live on the BODY, not the unit — the
@@ -1914,7 +1914,7 @@ export function initTdTab(root) {
       camGoal.quat.copy(tmpCam.quaternion);
       return;
     }
-    const dip = cellSide * 0.95 * bumpFactor() * bumpFactor();
+    const dip = cellSide * 0.95 * bumpFactor() * bumpFactor() + ramJolt.dip(cellSide);
     const kick = cellSide * 0.08 * params.recoil * recoilFactor() * recoilFactor();
     if (mobileShell && params.view === 'pov') params.view = 'third';   // the shell has no first person, whoever wrote it
     poseCamera(tankViewPose({ c: player.pos, h: player.smoothDir, third: params.view === 'third', mobile: mobileShell, dip, kick, wallHeight: params.wallHeight, cellSide, unitScale }), camGoal, true);
@@ -1952,7 +1952,7 @@ export function initTdTab(root) {
   // tank loses pace and the camera dips, like the suspension taking it.
   // Countdown-seconds (not a timestamp) so it works on both clocks.
   const BUMP_LEN = 0.5;
-  let bumpLeft = 0;
+  let bumpLeft = 0; const ramJolt = createRamJolt();   // and the hull's jolt when it hits a Pearl body (src/fx/ram-jolt.js; ?creatures=pearl only)
   const bumpFactor = () => Math.max(0, bumpLeft / BUMP_LEN);
 
   // cannon: firing kicks the tank back (recoil) and heats the barrel
@@ -3078,7 +3078,7 @@ export function initTdTab(root) {
     creatures: () => creatureEnemies,
   });
   const creatureEnemies = createCreatureEnemies({ scene, root, flags, camera, enemies, canvasHeight: () => renderer.domElement.height, field: () => dungeon, spawn: (q) => enemyStep.spawnOne(q),   // ?creatures=<family>:<tier>, &ramp=1 (src/fx/creature-enemies.js)
-    heart: () => (dungeon && graph ? [graph.centers[dungeon.heart], dungeon.heart, cellSide] : null), perf: () => perfOverlay.sample(), perfOn: () => setPerfOverlay(true, false), wide: () => !!storyMonitor?.on() || laserStation.seated(), damage: (e, dmg) => damageEnemy(e, t, dmg, true, 'harness'),
+    heart: () => (dungeon && graph ? [graph.centers[dungeon.heart], dungeon.heart, cellSide] : null), perf: () => perfOverlay.sample(), perfOn: () => setPerfOverlay(true, false), wide: () => !!storyMonitor?.on() || laserStation.seated(), tank: () => player, jolt: ramJolt, damage: (e, dmg) => damageEnemy(e, t, dmg, true, 'harness'),
     ground: () => (story && graph && dungeon ? { adj: graph.adj, centers: graph.centers, cellSide, open: (ci) => dungeon.tags[ci] !== BLOCKED, inside: (ci) => story.inside(ci), gates: [story.gateCell].filter((c) => c >= 0), sockets: (story.sentrySockets ??= Object.keys(story.socketToward ?? {}).map(Number)), canBuild: (ci) => !placeError(ci) } : null), build: (key, ci) => commitTower(key, ci, 0) });
   function spawnEnemies(...a) { return enemyStep.spawnEnemies(...a); }
   function seedPortals(...a) { return enemyStep.seedPortals(...a); }
@@ -4987,7 +4987,7 @@ export function initTdTab(root) {
     // and DEPLOY's first frame meet — so the gate only stops free driving
     const driveFrozen = shotActive() && shotId() !== 'breach';
 
-    bumpLeft = Math.max(0, bumpLeft - dt);
+    bumpLeft = Math.max(0, bumpLeft - dt); ramJolt.tick(dt);
     recoilLeft = Math.max(0, recoilLeft - dt);
     cannonHeat = Math.max(0, cannonHeat - dt);
     // diegetic cannon gauge: the mid-barrel sleeve glows with the heat

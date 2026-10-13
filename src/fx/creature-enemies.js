@@ -31,7 +31,7 @@ import { createReedFamily } from './creature-reed.js';
 import { createCreatureProbe } from './creature-probe.js';
 import { createPearlFamily } from './creature-pearl.js';
 import { gateHops, spawnBand, sentryCells } from '../domain/probe-ground.js';
-import { PEARL_TIERS, PEARL_OF, PEARL_BODY, PEARL_FOLLOW } from '../content/pearl-enemies.js';
+import { PEARL_TIERS, PEARL_OF, PEARL_BODY, PEARL_FOLLOW, PEARL_IMPACT } from '../content/pearl-enemies.js';
 import { pearlBodies } from '../domain/pearl-bodies.js';
 import { SQUADS } from '../content/sectors.js';
 
@@ -50,7 +50,7 @@ export function tierSpec(family, tier) {
 
 // host: { scene, root, flags ({ creatures, ramp }), camera, canvasHeight(), enemies, heart() -> [unit point, cell, cellSide] | null,
 // spawn(entry) -> record | null (the enemy loop's own release), field() the board's dungeon ({ distToHeart, tags }),
-// perf() the perf overlay's sample, perfOn(), wide() a second view of the scene is up (the story monitor, the SOL-82 scope: the bodies are not culled to the main camera), damage(e, dmg) the game's damageEnemy (the harness), ground() -> { adj, centers, cellSide,
+// perf() the perf overlay's sample, perfOn(), tank() the player ({ pos, smoothDir, heading }), jolt the tank's jolt (src/fx/ram-jolt.js), wide() a second view of the scene is up (the story monitor, the SOL-82 scope: the bodies are not culled to the main camera), damage(e, dmg) the game's damageEnemy (the harness), ground() -> { adj, centers, cellSide,
 // open(ci), inside(ci), gates [cells], sockets [cells], canBuild(ci) } | null (the story's base), build(key, ci) -> tower | null the
 // chapters' own build (commitTower) }
 export function createCreatureEnemies(host) {
@@ -73,7 +73,19 @@ export function createCreatureEnemies(host) {
   const blockedCell = (ci) => !!groundNow && !groundNow.open(ci);
   const boardOf = () => { groundNow = host.ground?.() ?? null; return groundNow ? { adj: groundNow.adj, centers: groundNow.centers, blocked: blockedCell } : null; };
   const make = () => (bodies ??= createCreatureBodies({ scene: host.scene, families, tiers: { ...CREATURE_TIERS, pearl: PEARL_BODIES }, follow: CREATURE_FOLLOW, death: CREATURE_DEATH,
-    metresPerCell: STORY_RECIPE.metresPerCell, heart: host.heart, ground: boardOf, reachStep: PEARL_FOLLOW.reachStep }));
+    metresPerCell: STORY_RECIPE.metresPerCell, heart: host.heart, ground: boardOf, reachStep: PEARL_FOLLOW.reachStep, impact: PEARL_IMPACT }));
+  // THE TANK AND A BODY (round two, owner 2026-10-13: "we need some sense of stagger on the enemy, and bump on the tank"): the tank's heading, the record's
+  // offset from it on the ground (the tangent plane at the record) and which side of the heading it is (-1 left .. 1 right)
+  function contact(e) {
+    const t = host.tank?.();
+    if (!t || !e?.pos) return null;
+    const p = e.pos, l = Math.hypot(p[0], p[1], p[2]) || 1, n = [p[0] / l, p[1] / l, p[2] / l], h = t.smoothDir ?? t.heading;
+    const v = [p[0] - t.pos[0], p[1] - t.pos[1], p[2] - t.pos[2]], vn = v[0] * n[0] + v[1] * n[1] + v[2] * n[2], away = [v[0] - n[0] * vn, v[1] - n[1] * vn, v[2] - n[2] * vn];
+    const al = Math.hypot(away[0], away[1], away[2]), hv = h[0] * away[0] + h[1] * away[1] + h[2] * away[2], across = [away[0] - h[0] * hv, away[1] - h[1] * hv, away[2] - h[2] * hv];
+    const right = [n[1] * h[2] - n[2] * h[1], n[2] * h[0] - n[0] * h[2], n[0] * h[1] - n[1] * h[0]], side = al > 1e-12 ? (right[0] * away[0] + right[1] * away[1] + right[2] * away[2]) / al : 0;
+    return { heading: h, away: al > 1e-12 ? away.map((x) => x / al) : h, across: Math.hypot(...across) > 1e-12 ? across : null, side: Math.max(-1, Math.min(1, side)) };
+  }
+  const radiusOf = (e) => (PEARL_BODIES[e.type]?.r0 ?? 2.5) * ((e.obj?.userData?.s0 ?? e.scale0) / (e.scale0 || 1)) * (e.members > 1 ? 1.5 : 1);   // a squad's bodies hit as one bigger
 
   const ofTier = (e) => e.alive && e.tier === choice.tier && e.spec?.body === choice.family;
   const aliveOfTier = () => { let n = 0; for (const e of host.enemies) if (ofTier(e)) n++; return n; };
@@ -131,6 +143,23 @@ export function createCreatureEnemies(host) {
       alive: aliveOfTier, total: () => host.enemies.reduce((n, e) => n + (e.alive ? 1 : 0), 0), perf: host.perf, perfOn: host.perfOn, bodies: () => bodies?.stats() ?? null, defence });
   }
 
+  // the game's ram (src/fx/enemy-step.js, just before the record's kill): a Pearl body staggers along the tank's heading and aside, and the tank jolts
+  function rammed(e) {
+    if (e?.spec?.body !== 'pearl') return;
+    const c = contact(e);
+    if (!c) return;
+    e.impact = { dir: c.heading, aside: c.across };
+    host.jolt?.kick({ radius: radiusOf(e), solid: false, side: c.side });
+  }
+  // a cored body's touch on the tank (the touch damage, or the shield's shove): its body recoils away from the tank, the tank jolts harder
+  function touched(e) {
+    if (e?.spec?.body !== 'pearl') return;
+    const c = contact(e);
+    if (!c) return;
+    bodies?.recoil(e, c.away);
+    host.jolt?.kick({ radius: radiusOf(e), solid: true, side: c.side });
+  }
+
   // the Pearl set's state: the records alive by type with a body and without one (a mapped type's dot cloud: far, or before the switch), the
   // entries dressed and left, and the bodies' books (each tier's swarm)
   function pearlState() {
@@ -167,6 +196,8 @@ export function createCreatureEnemies(host) {
       return true;
     },
     kill(e, fx) { bodies?.kill(e, fx); },
+    // the game's ram (src/fx/enemy-step.js, just before the record's kill) and a cored body's touch on the tank (below)
+    rammed, touched,
     // once a frame after the walk: the bodies follow their records and draw; the probe measures and tops up
     step(dt) {
       standGarrison();
@@ -199,7 +230,10 @@ export function createCreatureEnemies(host) {
     state: () => (pearl ? pearlState() : choice || garrison ? { ...(choice ?? {}), alive: choice ? aliveOfTier() : 0, bodies: bodies?.stats() ?? null, probe: probe?.state() ?? null, defence: defence() } : null),
     // the harness's view of the Pearl set: the records alive by type (dressed, and left a dot cloud) and the bodies' books
     // the harness: the bodies' view of a record, a record's handle kept across its death, that handle's view
-    test: { view: (e) => bodies?.view(e) ?? null, audit: () => bodies?.audit() ?? null,
+    test: { view: (e) => bodies?.view(e) ?? null, audit: () => bodies?.audit() ?? null, jolt: () => host.jolt?.state() ?? null,
+      // round two: the ram's and the touch's presentation as the enemy loop calls it (the harness cannot drive the tank onto a record): rammed, then the
+      // record killed through damageEnemy with its death; touched on a live one
+      ram(e) { rammed(e); host.damage(e, e.hp + 1); return !e.alive; }, touch: (e) => touched(e),
       // round two: n of `type` through the story's own spawn on the open cell furthest round the planet from the heart (the antipode's hub)
       spawnFar: (type, n = 1) => { const g = host.ground?.(), h = host.heart(); if (!g || !h) return 0; let best = -1, bd = Infinity;
         for (let c = 0; c < g.centers.length; c++) { if (!g.open(c)) continue; const p = g.centers[c], d = (p[0] * h[0][0] + p[1] * h[0][1] + p[2] * h[0][2]) / (Math.hypot(p[0], p[1], p[2]) * Math.hypot(h[0][0], h[0][1], h[0][2])); if (d < bd) { bd = d; best = c; } }
