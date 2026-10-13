@@ -63,3 +63,55 @@ camera's pose and `shotActive()` are unchanged through it, the box closes after 
 gives the old shot, 0 page errors. `npm test`, `check`, `build`, `architecture`; the story suites that expect a breach shot are updated
 (story-world acceptance is flaky on main at the Rotor kill: baseline before blaming the branch); `--pearl-story`, `--sector-probe` still
 pass.
+
+## Deviations (the build, 2026-10-13)
+
+Where the code said otherwise, the closest sensible behaviour; each one is in the commits on `feed-inset`.
+
+- **The render is not the story monitor's copy.** Drawing the scene a second time and copying the box's rectangle out to a 2D canvas
+  (`drawImage` from the WebGL canvas, as `story-monitor.js` does) measured +2-3 ms a frame on its own and pushed the p95 frame from ~31 to
+  ~48 ms (headed M4, see Cost). The feed camera draws into its own render target at **30 Hz** (a video feed's rate, `GROUND_FEED.feedHz`),
+  reusing the main pass's world matrices, and one shader quad samples it into the box's rectangle of the game canvas every frame. The look
+  (luminance, green phosphor, scanlines, grain, vignette, the static bursts) is in that shader, not in CSS filter functions; the box is
+  transparent (its frame, the HUD's text, a small 2D canvas for the target box). Safari draws it the same by construction. The seats' CSS
+  looks on `#td-app`'s canvases would tint it, but every seat with one (the gunship's FLIR, SOL-82) holds the box anyway.
+- **Length.** The old shot's whole length is pre-roll + hold + **tail** (`startDiveShot`'s `dur`); the spec's parenthetical left the tail
+  out. The feed keeps the whole length: 12.48 s for the story's sinkhole, 5.6 s for the back door, the reveal's 3.2 s.
+- **The box's size.** 30 % of the width, capped where its top would reach the shield pad (`.tfire-tertiary`, `min(26vh, 230px) + 92px` up
+  from the bottom): 403 px wide at a 900-px-high window (28 % of 1440), 16:10.
+- **SEISMIC's size.** The game's breaches share one radius, so a sinkhole group's size is its count of sinkholes; the back door's is the
+  cells that fell, the reveal's the cells that opened. Each kind has its own base magnitude (GROUND_FEED.seismic).
+- **Framing per kind, and the lens.** The sinkhole keeps ~25 to ~4 cells; the feed camera sits 60 cells up (lenses 23.5 to 3.8 degrees). The
+  rockfall frames 30 to 11 cells (the mouth, its rock and the lane in one picture: at 4 cells it was floor and black rock), the reveal 40 to
+  28 (the campaign board's planet is ~27 cells across, so it is the whole band, as the old orbit frame was).
+- **The reveal keeps its beat.** The rock opening exists only on the campaign board (the debrief's next sector). Its 3.2 s shot freezes the
+  world ("the game speaking"), and the sim's fast-forward ends it at once to run its `onEnd` (the band repainted, the orbit view). That
+  shot stays, frozen beat and `onEnd` and all; only its pose changed: the main camera holds where it was (`gameplayCameraPose`) while
+  SAT-3 shows the band. `&cuts=dive` restores the orbit frame.
+- **Who holds the box.** Besides the TALON / MK-9 monitor and the SOL-82 seat, any live camera shot other than the reveal (a story scene,
+  the showcase's) holds it: the feed waits behind it exactly as behind a seeker. The seat's glide and the showcase montage hide it
+  (`styles.css`), and the module treats them as blocked so its quad does not draw without its frame. The feed is not skippable: it takes
+  nothing.
+- **The world runs under the rockfall.** The old `backdoor` dive was not one of the controller's live shots, so it froze the world for its
+  5.6 s; the feed takes nothing, so the fight goes on while the box shows the collapse (`--backdoor` now counts the wall cells against the
+  moment of the call, since the sector's sinkholes may clear rock meanwhile).
+- **The campaign board's breaches** use the feed too (their old shot was the orbit-only one, no dive), with the shared preset's pre-roll.
+- **The static bursts** are 0.35 s at the open and a retarget and 0.3 s at the close (full for their first half), not ~0.25 s: at 0.25 s a
+  burst read as a flicker.
+- **Harness.** `__stalheartTest.feedAt(ci, hold)` opens a feed over a cell; `state().groundFeed` carries the schedule's counts, the event,
+  the HUD's numbers, the box and the feed camera.
+
+### Cost, measured
+
+Headed Chrome on the M4, 1440 x 900, vsync and the frame limit off, `index.html?skip=defence&sector=2&fps=1&hold=1&creatures=pearl#td`
+after the sector's own first feed: three cycles of 8 s with no feed and 8 s with the feed held over a breach (`feedAt`), the same main view
+(scratchpad `feed/ab.mjs`).
+
+| render path | frame mean off / on | p50 off / on | p95 off / on | feed CPU |
+|---|---|---|---|---|
+| scene every frame, `drawImage` copy (the story monitor's way) | 19.1 / 26.6 ms | 22.8 / 26.2 | 31.5 / 49.5 | 3.1 ms |
+| same at 30 Hz | 19.2 / 24.8 | 22.7 / 26.9 | 31.3 / 48.4 | 3.2 |
+| render target at 30 Hz, shader quad (shipped) | 18.9 / 22.1 | 22.2 / 26.1 | 31.8 / 37.2 | 1.1 |
+
+So the feed costs ~3 ms a frame on average while it is up (~4-12 s per sinkhole group). Turning the Pearl bodies' culling off for it
+(`wide()`) measured within noise of leaving it on (24.4 against 24.8 ms on the copy path).
