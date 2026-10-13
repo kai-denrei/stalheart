@@ -4,6 +4,21 @@ export const DEFAULT_TANK = 'mork';
 export const TURRET_SWEEP = 0.5;
 // the main gun's shell, in cells per second (owner: 3.4 was much too slow) and how far it flies
 export const SHELL_SPEED = 9, SHELL_REACH = 12;
+// THE SHELL'S BLAST (owner, 2026-10-13: "the tank shell should feel and be more powerful. a) give it a stronger AoE and dmg"; then, the same
+// day, replacing b): "make the Tank Shell impact/explosion the same as the 40mm from the Gunship, more intensity, it must feel powerful"). Every
+// body within `radius` cells of the impact takes `peak` x (1 - (d / radius)^2), the 40 mm's own falloff (src/domain/gunship.js splashDamage),
+// and the body struck takes the full `peak` (src/domain/shell-blast.js): the tank's strongest single hit, short of the Thorus's 5 hp. `radius`
+// is the 40 mm's visible burst (its 11 m module at 2.7: ~30 m, 3 cells), so the burst drawn at the radius is the 40 mm's own size and the visual
+// is the damage. The landing (src/fx/shell-blast.js) is the 40 mm's: its two shock rings at `rings` [colour, seconds, x radius] (the 40 mm's
+// 0.7 s and 0.35 s, held longer), its burst ('tank.blast': the 40 mm's module, hotter and slower, src/content/explosions.js) with a white-hot
+// `flash` pop at the core ('tank.flash'), and its report, blast_fire, at `rate` (the 40 mm's 0.7, lower). `kick`: the hull's jolt (src/fx/ram-jolt.js,
+// presentation only: a pitch, a roll and a camera dip, no drag) as a body of `metres` radius would give it, for a landing on the hull, fading to
+// nothing `cells` away (the shot itself already kicks the hull and the camera at the muzzle: the recoil, td-tab FEEL.recoil).
+// Was: 4 to the body struck, 2 within 1 cell, 1 within 2 cells, the 'tank.shell' burst (~4.5 m) and three small rings, blast_fire at 1.
+// The reload (3 s) and the rack (9) are unchanged.
+export const SHELL_BLAST = Object.freeze({ radius: 3, peak: 4.5, rate: 0.6,
+  rings: Object.freeze([Object.freeze([0xffb347, 0.95, 1.6]), Object.freeze([0xffffff, 0.5, 0.7])]), flash: true,
+  kick: Object.freeze({ metres: 3.5, cells: 8 }) });
 // the hull's forward pace on top of the game's speed (operator, 2026-09-13: faster from the first moment, and ramping for a while so a
 // long drive stops being tedious): base at once, toward top with time constant tau (s); steering hard gains `turn` s/s less, idling or
 // reversing bleeds `stop` s/s, and a wall keeps `keep` of the run-up on a head-on hit (a graze keeps more)
