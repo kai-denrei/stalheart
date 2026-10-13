@@ -111,6 +111,9 @@ export function createCreatureEnemies(host) {
   }
 
   const running = () => !!probe && probe.phase() !== 'done';
+  // &hold=1 (2026-10-13, the A/B soaks of the Pearl set against the dot clouds): the heart held as the probe holds it, with or without
+  // ?creatures, so a sector runs its whole programme with nobody at the controls
+  const held = () => running() || host.flags.hold === '1';
   // the card's and the state's view of the ground, the garrison and the fight
   const defence = () => ({
     sentries: garrison ? garrison.length : 0, asked: askedSentries, types: garrison ? garrison.reduce((o, s) => ((o[s.key] = (o[s.key] ?? 0) + 1), o), {}) : {}, cells: garrison?.map((s) => s.cell) ?? [],
@@ -181,8 +184,8 @@ export function createCreatureEnemies(host) {
     },
     // THE HEART IS HELD while the probe runs: a hit is counted, not taken, and the sector neither falls nor ends (src/fx/sector-run.js
     // `hold`); its card up, the game goes on as it would
-    holds: () => running(),
-    holdHeart(dmg) { if (!running()) return false; heartHeld += dmg; return true; },
+    holds: () => held(),
+    holdHeart(dmg) { if (!held()) return false; heartHeld += dmg; return true; },
     roots: () => bodies?.roots() ?? [],
     state: () => (pearl ? pearlState() : choice || garrison ? { ...(choice ?? {}), alive: choice ? aliveOfTier() : 0, bodies: bodies?.stats() ?? null, probe: probe?.state() ?? null, defence: defence() } : null),
     // the harness's view of the Pearl set: the records alive by type (dressed, and left a dot cloud) and the bodies' books
