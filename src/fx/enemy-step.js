@@ -420,7 +420,7 @@ export function createEnemyStep(host) {
           if (tw.hp <= 0) host.killWalker(tw);
         }
       }
-      if (!host.playerDown() && dist3(e.pos, host.player.pos) < touchR) {
+      if (!host.playerDown() && (dist3(e.pos, host.player.pos) < touchR || (e.bodyRam && spec.rammable))) {   // or a light Pearl body the hull itself hit (round four, src/fx/creature-enemies.js)
         if (spec.rammable) {
           // run over: tinted splat under the treads + the weight bump
           const burst = makeDotBurst(CREATURE_TINTS[e.type], n);
@@ -429,7 +429,7 @@ export function createEnemyStep(host) {
           burst.position.set(bp[0], bp[1], bp[2]);
           host.scene.add(burst);
           host.debris.push(burst);
-          host.setBumpLeft(host.BUMP_LEN);
+          if (!spec.lightRam) host.setBumpLeft(host.BUMP_LEN);   // a light Pearl tier (white, yellow) is run over without the drag (round four)
           for (let m = e.members || 1; m > 0; m--) {   // a squad rams as its members
           const kg = host.gunshipRig.feed(host.eco().award(spec.bounty, { ram: true })); // the ram premium
           host.scoreKill(spec.bounty, { src: 'tank', ram: true,

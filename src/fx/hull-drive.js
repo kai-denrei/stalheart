@@ -4,7 +4,7 @@
 // hull-contact, hover-kick, hull-stuck).
 // `host` hands in the controller: its fixed objects and functions as values (MOVES, breachBlocked, bumpFactor, checkAbsorb,
 // containerBlocked, driveRamp, enemies, floorColorOf, freeBlocked, keys, manualActive, nearestWall, orbMeshes, paintCell, params,
-// pedestalBlocked, player, runContext, spawnOneOrb, steerEase, steeringActive, updateHud, wallCushion), what it rebinds or declares later
+// pedestalBlocked, player, runContext, spawnOneOrb, steerEase, steeringActive, updateHud, wallCushion, bodyContact), what it rebinds or declares later
 // as getters (cellIndex, towerCells, cellSide, cruise, dungeon, gotoField, graph, kick, playerDown, portalDist, speedBonus, storyBase, stuck,
 // throttle, whim) and the lets this writes as setters (setAutoMode) and getters with setters (respawnClock, steerHold).
 import { TANK_DRIVE, TANK_STEER, TANK_WALL, TANK_KICK, HULL_STUCK } from '../content/tank.js';
@@ -17,6 +17,8 @@ import { BLOCKED } from '../dungeon.js';
 import { sub3, add3, scale3, dot3, cross3, norm3, len3, dist3, tangentDir } from '../vec3.js';
 
 export function createHullDrive(host) {
+  // round four (the Pearl set, owner 2026-10-13: "the tank should never be able to 'go through' the enemy"): what a body's mass takes off the run-up
+  const scrubBy = (share) => scrubDriveRamp(host.driveRamp, share, TANK_DRIVE), START = [0, 0, 0];   // and where the hull stood when the frame began
   // --- movement over the cell graph ---------------------------------------
   // the projection itself lives in vec3.js, so berths.js (pure, Node-tested)
   // and this file cannot drift apart; the wrapper just supplies `graph`
@@ -142,6 +144,7 @@ export function createHullDrive(host) {
     // only a collision oracle (blocked cell? no entry) and keeps the semantics (current cell, visited, absorption) in sync
     if (manual) {
       host.player.freeMode = true;
+      for (let i = 0; i < 3; i++) START[i] = host.player.pos[i];
       // forward is PLAYER-TRIGGERED: hold W to drive, or double-tap W/▲ for CRUISE (rolls on its own; W boosts, S kills it); the old
       // always-rolls-forward manual proved too aggressive. Keys override (a held key is an explicit act), else the lever's rest is the speed
       const drive = host.keys.slow ? -0.55
@@ -190,6 +193,7 @@ export function createHullDrive(host) {
         if (k > 0) host.player.pos = unstick(host.player.pos, host.graph().centers[host.player.cur], k * HULL_STUCK.rate * host.cellSide() * dt);
       } else stepStuck(host.stuck(), { driving: false, moved: 0, expected: 0, dt }, HULL_STUCK);
       if (!kicking(host.kick())) host.player.pos = host.wallCushion(host.player.pos);
+      host.bodyContact(START, host.player.pos, dt, scrubBy);   // the Pearl bodies, the last word on the hull's place: never inside one (round four, src/fx/creature-enemies.js bodyContact; moves it in place)
       host.stuck().p = host.player.pos.slice();
       const nf = norm3(host.player.pos);
       host.player.heading = norm3(sub3(host.player.heading, scale3(nf, dot3(host.player.heading, nf))));

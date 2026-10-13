@@ -1992,7 +1992,7 @@ export function initTdTab(root) {
     steerEase,
     steeringActive,
     updateHud,
-    wallCushion,
+    wallCushion, bodyContact: (a, b, dt, s) => creatureEnemies.bodyContact(a, b, dt, s),   // the Pearl bodies against the hull (src/fx/creature-enemies.js)
     cellIndex: () => cellIndex,
     towerCells: () => towerCells,
     cellSide: () => cellSide,
@@ -3077,7 +3077,7 @@ export function initTdTab(root) {
     setRamComboT: (v) => (ramComboT = v),
     creatures: () => creatureEnemies,
   });
-  const creatureEnemies = createCreatureEnemies({ scene, root, flags, camera, enemies, canvasHeight: () => renderer.domElement.height, field: () => dungeon, spawn: (q) => enemyStep.spawnOne(q),   // ?creatures=<family>:<tier>, &ramp=1 (src/fx/creature-enemies.js)
+  const creatureEnemies = createCreatureEnemies({ scene, root, flags, camera, enemies, tankMesh: () => playerMesh, canvasHeight: () => renderer.domElement.height, field: () => dungeon, spawn: (q) => enemyStep.spawnOne(q),   // ?creatures=<family>:<tier>, &ramp=1 (src/fx/creature-enemies.js)
     heart: () => (dungeon && graph ? [graph.centers[dungeon.heart], dungeon.heart, cellSide] : null), perf: () => perfOverlay.sample(), perfOn: () => setPerfOverlay(true, false), wide: () => !!storyMonitor?.on() || laserStation.seated() || groundFeed.on(), tank: () => player, jolt: ramJolt, damage: (e, dmg) => damageEnemy(e, t, dmg, true, 'harness'),
     ground: () => (story && graph && dungeon ? { adj: graph.adj, centers: graph.centers, quads: mesh.quads, verts: mesh.vertices, cellSide, open: (ci) => dungeon.tags[ci] !== BLOCKED, inside: (ci) => story.inside(ci), gates: [story.gateCell].filter((c) => c >= 0), sockets: (story.sentrySockets ??= Object.keys(story.socketToward ?? {}).map(Number)), canBuild: (ci) => !placeError(ci) } : null), build: (key, ci) => commitTower(key, ci, 0) });
   function spawnEnemies(...a) { return enemyStep.spawnEnemies(...a); }

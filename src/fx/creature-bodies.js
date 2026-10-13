@@ -135,6 +135,7 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
     const h = a.add(e.tier, lookInto(e, { x, z, angle: Math.atan2(az - z, ax - x) || 0, lift: liftOf(e, t.r0), pos: e.pos, apos, hub, cell: e.cur ?? -1 }));
     if (!h) return false;
     live.set(e, { family, h, stamp, r0: t.r0, hub, apos });
+    h.record = e;   // round four: the hull's contact names the record (hull below)
     return true;
   }
 
@@ -154,6 +155,35 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
     const d = e.impact && frame ? planeDir(e, b.hub, e.impact.dir) : null, s = d && e.impact.aside ? planeDir(e, b.hub, e.impact.aside) : null;
     a.kill(b.h, d ? { ...d, ax: s?.dx ?? null, az: s?.dz ?? null } : null);
   }
+  // ROUND FOUR, THE TANK'S HULL (owner, 2026-10-13: "the tank should never be able to 'go through' the enemy"): `tank` { pos (unit), dir (unit
+  // tangent: the hull's facing), hl, hw (metres: half length and half width) }; each family with hullContact (src/fx/creature-pearl.js) puts its
+  // bodies against the hull in their hubs' planes. `sink` { push(dx, dy, dz) the tank's move (world, unit sphere), touch(record, cored, r) }; the
+  // hubs' boxes are made on first ask, once a call. -> the bodies looked at
+  const boxes = Array.from({ length: 12 }, () => ({ x: 0, z: 0, ux: 1, uz: 0, hl: 0, hw: 0, at: -1 })), A3 = [0, 0, 0], HP = [0, 0], HQ = [0, 0];
+  let hullCall = 0, hullTank = null, hullSink = null;
+  const boxOf = (hub) => {
+    const b = boxes[hub], f = frames[hub] ?? frame;
+    if (!f) return null;
+    if (b.at === hullCall) return b;
+    const t = hullTank, p = t.pos;
+    for (let k = 0; k < 3; k++) A3[k] = p[k] + t.dir[k] * 1e-4;
+    toPlaneInto(f, p, R, HP); toPlaneInto(f, A3, R, HQ);
+    const dx = HQ[0] - HP[0], dz = HQ[1] - HP[1], l = Math.hypot(dx, dz) || 1;
+    b.x = HP[0]; b.z = HP[1]; b.ux = dx / l; b.uz = dz / l; b.hl = t.hl; b.hw = t.hw; b.at = hullCall;
+    return b;
+  };
+  const hullPush = (hub, dx, dz) => { const to = toSphere[hub] ?? toSphere[0], b = boxes[hub], a = to(b.x, b.z), ax = a[0], ay = a[1], az = a[2], c = to(b.x + dx, b.z + dz); hullSink.push(c[0] - ax, c[1] - ay, c[2] - az); };
+  const hullTouch = (h, cored, r, tier) => { if (h.record) hullSink.touch(h.record, cored, r, tier); };
+  const familySink = { push: hullPush, touch: hullTouch, depth: (h, d, tier) => hullSink.depth?.(h, d, tier) };
+  function hull(tank, drive, sink) {
+    place();
+    if (!frame || !tank?.pos) return 0;
+    hullCall++; hullTank = tank; hullSink = sink;
+    let n = 0;
+    for (const a of adapters.values()) if (a.hullContact) n += a.hullContact(boxOf, drive, familySink);
+    return n;
+  }
+
   // a live record the tank touched: its body recoils along the world tangent `dir` (a family without recoil ignores it)
   function recoil(e, dir) {
     const b = live.get(e), a = b && adapters.get(b.family);
@@ -190,10 +220,12 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
   const seen = (v) => (v && v.point && !v.centre && frame ? { ...v, centre: planeOf(v.point) } : v ?? null);
 
   return {
-    has, proxy, spawn, kill, recoil, step,
+    has, proxy, spawn, kill, recoil, step, hull,
     // the record's body stands drawn (a family that makes its bodies later, the Reeds, says so; the others draw at add)
     drawn: (e) => { const b = live.get(e); if (!b) return false; const a = adapters.get(b.family); return a.drawn ? a.drawn(b.h) : true; },
     roots: () => [...adapters.values()].flatMap((a) => a.roots()),
+    // round four: metres a world unit (the planet's radius in metres; the world is the unit sphere)
+    metres: () => R,
     // the bodies' books: up now, re-placed on the leash, handed from one hub to another, the records on each hub, and each family's tiers
     stats: () => { const onHub = new Array(12).fill(0); for (const b of live.values()) onHub[b.hub]++;
       return { live: live.size, replaced, handed, onHub, reaches, clears, planetR: +R.toFixed(1), families: Object.fromEntries([...adapters].map(([k, a]) => [k, a.stats()])) }; },

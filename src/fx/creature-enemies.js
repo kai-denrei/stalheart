@@ -33,6 +33,7 @@ import { createPearlFamily } from './creature-pearl.js';
 import { gateHops, spawnBand, sentryCells } from '../domain/probe-ground.js';
 import { PEARL_TIERS, PEARL_OF, PEARL_BODY, PEARL_FOLLOW, PEARL_IMPACT, PEARL_PACE, PEARL_GAIT, PEARL_WAVES } from '../content/pearl-enemies.js';
 import { pearlBodies, pearlSpeed } from '../domain/pearl-bodies.js';
+import { contactLoss, stepDrag } from '../domain/hull-bodies.js';
 import { SQUADS } from '../content/sectors.js';
 
 const FAMILIES = Object.freeze({ cutis: createCutisFamily, reed: createReedFamily });
@@ -43,7 +44,8 @@ export const PEARL_BODIES = Object.freeze(pearlBodies({ spec: ENEMY_SPEC, of: PE
 // round four: every tier paced, its walk capped at PEARL_PACE's `radii` body radii a second (src/domain/pearl-bodies.js pearlSpeed), its bursts and jink off
 const paced = (s, p, b) => (p ? { ...s, speed: pearlSpeed({ speed: s.speed, mult: p.speed ?? 1, radii: p.radii, r0: b.r0, sectorPace: PEARL_GAIT.sectorPace, metresPerCell: STORY_RECIPE.metresPerCell }),
   ...(p.erratic === false ? { erratic: false } : {}), ...(p.jink === false ? { jink: false } : {}) } : s);
-export const PEARL_SPECS = Object.freeze(Object.fromEntries(Object.entries(PEARL_BODIES).map(([type, b]) => [type, Object.freeze({ ...paced(ENEMY_SPEC[type], PEARL_PACE[b.tier], b), body: 'pearl', pearl: b.tier })])));
+// round four (owner: "white and yellow, should feel very easy to run over"): `lightRam` on a tier PEARL_IMPACT.tiers rams by its body (no run-over drag)
+export const PEARL_SPECS = Object.freeze(Object.fromEntries(Object.entries(PEARL_BODIES).map(([type, b]) => [type, Object.freeze({ ...paced(ENEMY_SPEC[type], PEARL_PACE[b.tier], b), body: 'pearl', pearl: b.tier, ...(PEARL_IMPACT.tiers?.[b.tier]?.ram ? { lightRam: true } : {}) })])));
 export const pearlSpec = (type) => PEARL_SPECS[type] ?? null;
 // a tier's spec: the family's ENEMY_SPEC entry with the tier's hit points, speed, size and bounty (a queue entry carries it)
 export function tierSpec(family, tier) {
@@ -175,15 +177,80 @@ export function createCreatureEnemies(host) {
     const c = contact(e);
     if (!c) return;
     e.impact = { dir: c.heading, aside: c.across };
-    host.jolt?.kick({ radius: radiusOf(e), solid: false, side: c.side });
+    // round four: a light tier's run-over is a light tick on the hull (PEARL_IMPACT.tiers[tier].jolt)
+    host.jolt?.kick({ radius: radiusOf(e) * (PEARL_IMPACT.tiers?.[e.spec.pearl]?.jolt ?? 1), solid: false, side: c.side });
   }
-  // a cored body's touch on the tank (the touch damage, or the shield's shove): its body recoils away from the tank, the tank jolts harder
+  // a cored body's touch on the tank (the touch damage, or the shield's shove): its body recoils away from the tank, the tank jolts harder (round
+  // four: not again when the hull's own contact just did, below)
   function touched(e) {
-    if (e?.spec?.body !== 'pearl') return;
+    if (e?.spec?.body !== 'pearl' || clock - (e.hullAt ?? -9) < PEARL_IMPACT.contact.again) return;
     const c = contact(e);
     if (!c) return;
     bodies?.recoil(e, c.away);
     host.jolt?.kick({ radius: radiusOf(e), solid: true, side: c.side });
+  }
+
+  // ROUND FOUR, THE TANK AGAINST THE BODIES (owner, 2026-10-13: "Cutis collision with Tank; though they are mostly membrane, the tank should never be
+  // able to 'go through' the enemy, they are still made of mass. more precise collision is needed"; PEARL_IMPACT.contact, src/domain/hull-bodies.js).
+  // The ram and the touch stay the game's (src/fx/enemy-step.js: the record's distance decides who dies, the damage, the combo and the bounty); this
+  // is the bodies' and the hull's mass. The hull is the drawn tank's box (its mesh's vertices in the lower part of its height, measured once a mesh,
+  // scaled as it is drawn).
+  // bodyContact(before, cand, dt, scrub) is the drive's (src/fx/hull-drive.js, the free drive's next position): the step is shortened by the speed
+  // share bodies took (recovering), every body is put against the hull at `cand` (src/fx/creature-bodies.js hull, src/fx/creature-pearl.js
+  // hullContact): a soft body in the way is shoved clear along the least move and the tank loses its share of speed on first contact (`scrub`, the
+  // drive's run-up, too), a cored body stops it, pushes it back out of its outline and jolts it (the round-two recoil); after the bodies step
+  // (`step`) any body that walked into the hull is shoved out where it stands. Only under ?creatures=pearl; the autopilot's walk is not touched.
+  const Kc = PEARL_IMPACT.contact, hullTank = { pos: null, dir: null, hl: 0, hw: 0 }, PUSH = [0, 0, 0];
+  let clock = 0, drag = 0, lossNow = 0, coredNow = false, size = null, lastPush = 0;
+  const box3 = new THREE.Box3(), part = new THREE.Box3(), inv = new THREE.Matrix4(), rel = new THREE.Matrix4();
+  function hullAt(pos) {
+    const m = host.tankMesh?.(), t = host.tank?.();
+    if (!m || !t || !bodies) return null;
+    if (size?.mesh !== m) {
+      // the hull's own footprint, once a mesh: its vertices in the lower 45 % of its height (the hull and the treads, not the barrel or the mast)
+      box3.makeEmpty(); m.updateMatrixWorld(true); inv.copy(m.matrixWorld).invert();
+      m.traverse((o) => { const g = o.geometry; if (!g?.attributes?.position) return; if (!g.boundingBox) g.computeBoundingBox(); rel.multiplyMatrices(inv, o.matrixWorld); part.copy(g.boundingBox).applyMatrix4(rel); box3.union(part); });
+      if (box3.isEmpty()) return null;
+      const cut = box3.min.y + 0.45 * (box3.max.y - box3.min.y), v = new THREE.Vector3();
+      let x = 0, z = 0;
+      m.traverse((o) => { const a = o.geometry?.attributes?.position; if (!a) return; rel.multiplyMatrices(inv, o.matrixWorld); for (let i = 0; i < a.count; i++) { v.fromBufferAttribute(a, i).applyMatrix4(rel); if (v.y <= cut) { x = Math.max(x, Math.abs(v.x)); z = Math.max(z, Math.abs(v.z)); } } });
+      size = { mesh: m, x: x || Math.max(-box3.min.x, box3.max.x), z: z || Math.max(-box3.min.z, box3.max.z) };
+    }
+    const metres = bodies.metres() * m.scale.x;
+    hullTank.hl = Math.max(Kc.minHalf, size.z * metres); hullTank.hw = Math.max(Kc.minHalf, size.x * metres);
+    hullTank.pos = pos; hullTank.dir = t.smoothDir ?? t.heading;
+    return hullTank;
+  }
+  // the pushes on the tank: each body's taken only beyond what the others already moved it along its own way
+  const contactSink = {
+    push(dx, dy, dz) { const l = Math.hypot(dx, dy, dz); if (!(l > 0)) return; const along = (PUSH[0] * dx + PUSH[1] * dy + PUSH[2] * dz) / l; if (along >= l) return; const k = (l - along) / l; PUSH[0] += dx * k; PUSH[1] += dy * k; PUSH[2] += dz * k; },
+    touch(e, cored, r, tier) {
+      // a light tier (owner: "white and yellow, should feel very easy to run over"): the hit IS the ram (src/fx/enemy-step.js reads e.bodyRam)
+      const T = PEARL_IMPACT.tiers?.[tier];
+      if (T?.ram && e.alive && e.spec?.rammable) e.bodyRam = true;
+      if (clock - (e.hullAt ?? -9) < Kc.again) { e.hullAt = clock; return; }
+      e.hullAt = clock; fight.contacts = (fight.contacts ?? 0) + 1;
+      if (cored) { coredNow = true; const c = e.alive && contact(e); if (c) { bodies?.recoil(e, c.away); host.jolt?.kick({ radius: radiusOf(e), solid: true, side: c.side }); } }
+      else lossNow = Math.max(lossNow, contactLoss(r, Kc) * (T?.mass ?? 1));
+    },
+  };
+  // after the bodies step: a body pinned between the rock and the hull pushes the hull (the same deduplicated pushes), nothing booked
+  const settleSink = { push: contactSink.push, touch() {} };
+  function bodyContact(before, cand, dt, scrub) {
+    if (!pearl || !bodies || !cand) return cand;
+    drag = stepDrag(drag, dt, Kc);
+    // `cand` is the drive's own fresh point: moved in place (nothing allocated). The speed bodies took, recovering: this frame's step that much shorter
+    const p = cand;
+    if (drag > 1e-3) { const k = 1 - drag; for (let i = 0; i < 3; i++) p[i] = before[i] + (cand[i] - before[i]) * k; const l = Math.hypot(p[0], p[1], p[2]) || 1; p[0] /= l; p[1] /= l; p[2] /= l; }
+    const tank = hullAt(p);
+    if (!tank) return p;
+    PUSH[0] = PUSH[1] = PUSH[2] = 0; lossNow = 0; coredNow = false;
+    bodies.hull(tank, true, contactSink);
+    if (lossNow > 0) { drag = Math.max(drag, lossNow); scrub?.(lossNow); }
+    if (coredNow) { drag = Math.max(drag, Kc.cored); scrub?.(1); }
+    lastPush = Math.hypot(PUSH[0], PUSH[1], PUSH[2]) * bodies.metres();
+    if (PUSH[0] || PUSH[1] || PUSH[2]) { for (let i = 0; i < 3; i++) p[i] += PUSH[i]; const l = Math.hypot(p[0], p[1], p[2]) || 1; p[0] /= l; p[1] /= l; p[2] /= l; }
+    return p;
   }
 
   // the Pearl set's state: the records alive by type with a body and without one (a mapped type's dot cloud: far, or before the switch), the
@@ -223,11 +290,15 @@ export function createCreatureEnemies(host) {
     },
     kill(e, fx) { bodies?.kill(e, fx); },
     // the game's ram (src/fx/enemy-step.js, just before the record's kill) and a cored body's touch on the tank (below)
-    rammed, touched,
+    rammed, touched, bodyContact,
     // once a frame after the walk: the bodies follow their records and draw; the probe measures and tops up
     step(dt) {
       standGarrison();
+      clock += dt;
       if (bodies) bodies.step(dt, host.enemies, host.camera, host.canvasHeight(), !host.wide?.() && !uncull);
+      // round four: a body that walked into the hull where it stands is shoved out of it
+      if (pearl && bodies && host.tank?.()?.pos) { const t = host.tank(), tank = hullAt(t.pos); if (tank) { PUSH[0] = PUSH[1] = PUSH[2] = 0; bodies.hull(tank, false, settleSink);
+        if (PUSH[0] || PUSH[1] || PUSH[2]) { const p = t.pos; for (let i = 0; i < 3; i++) p[i] += PUSH[i]; const l = Math.hypot(p[0], p[1], p[2]) || 1; p[0] /= l; p[1] /= l; p[2] /= l; } } }
       probe?.step(dt);
     },
     // ?creatures: a sector wave's queue entries with the tier's share of its single bodies replaced, spread through the wave (not the
@@ -265,7 +336,19 @@ export function createCreatureEnemies(host) {
       spawnFar: (type, n = 1) => { const g = host.ground?.(), h = host.heart(); if (!g || !h) return 0; let best = -1, bd = Infinity;
         for (let c = 0; c < g.centers.length; c++) { if (!g.open(c)) continue; const p = g.centers[c], d = (p[0] * h[0][0] + p[1] * h[0][1] + p[2] * h[0][2]) / (Math.hypot(p[0], p[1], p[2]) * Math.hypot(h[0][0], h[0][1], h[0][2])); if (d < bd) { bd = d; best = c; } }
         let made = 0; for (let k = 0; k < n && best >= 0; k++) if (host.spawn({ type, sp: { ci: best, alive: true, obj: placeholder }, at: 0, spread: 0.5, pace: 1 })) made++; return made; }, handle: (e) => bodies?.handleOf(e) ?? null, viewHandle: (h) => bodies?.viewHandle(h) ?? null, spawn: (n) => (choice ? spawnProbe(n) : 0), ofTier: () => (choice ? host.enemies.filter(ofTier) : []),
-      hurt: (e, dmg) => host.damage(e, dmg), pearls: () => host.enemies.filter((e) => e.alive && e.spec?.body === 'pearl'),
+      hurt: (e, dmg) => host.damage(e, dmg),
+      // round four: the bodies against the hull where the tank stands, measured (nothing shoved): the deepest overlap (m), the bodies looked at, the
+      // hull's half sizes, the drag (the speed share lost, recovering), the contacts booked; `at` [x, y, z] a position to measure at instead
+      hull: (at = null) => { const t = host.tank?.(), tank = t && hullAt(at ?? t.pos); if (!tank) return null; let deepest = 0, who = null; const n = bodies.hull(tank, null, { push() {}, touch() {}, depth: (h, d, tier) => { if (d > deepest) { deepest = d; who = tier; } } }); return { overlap: +deepest.toFixed(3), tier: who, near: n, hl: +tank.hl.toFixed(2), hw: +tank.hw.toFixed(2), drag: +drag.toFixed(3), push: +lastPush.toFixed(3), contacts: fight.contacts ?? 0 }; },
+      spawnAt: (type, ci) => (host.spawn({ type, sp: { ci, alive: true, obj: placeholder }, at: 0, spread: 0, pace: 1 }) ? 1 : 0),
+      // an open cell's open neighbours
+      neighbours: (ci) => { const g = host.ground?.(); return g ? g.adj[ci].filter((c) => g.open(c)) : []; },
+      // the hull turned to face cell `ci` (its heading and the smoothed facing the mesh and the cameras follow)
+      face: (ci) => { const g = host.ground?.(), t = host.tank?.(); if (!g || !t) return false; const p = t.pos, c = g.centers[ci], l0 = Math.hypot(...p), n = p.map((v) => v / l0), d = [c[0] - p[0], c[1] - p[1], c[2] - p[2]], k = d[0] * n[0] + d[1] * n[1] + d[2] * n[2], f = [d[0] - n[0] * k, d[1] - n[1] * k, d[2] - n[2] * k], l = Math.hypot(...f) || 1;
+        t.heading = f.map((v) => v / l); t.smoothDir = t.heading.slice(); return true; },
+      // the open cell `k` cells straight ahead of the hull (along its facing, over the cell graph), every one on the way open; -1 when the way is not
+      ahead: (k = 3) => { const g = host.ground?.(), t = host.tank?.(); if (!g || !t) return -1; const d = t.smoothDir ?? t.heading; let c = t.cur;
+        for (let s = 0; s < k; s++) { let best = -1, bd = -Infinity; const a = g.centers[c]; for (const nb of g.adj[c]) { const b = g.centers[nb], v = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], l = Math.hypot(...v), dd = (v[0] * d[0] + v[1] * d[1] + v[2] * d[2]) / l; if (dd > bd) { bd = dd; best = nb; } } if (best < 0 || bd < 0.8 || !g.open(best)) return -1; c = best; } return c; }, pearls: () => host.enemies.filter((e) => e.alive && e.spec?.body === 'pearl'),
       // the ground's view: the gate, the band's cells (each with its hops and whether it is inside the walls), the garrison's cells
       ground: () => { const gr = groundOf(); return gr ? { gates: gr.g.gates, band: gr.band.cells.map((c) => ({ cell: c, hops: gr.hops[c], inside: gr.g.inside(c) })), lo: gr.band.lo, hi: gr.band.hi, made: gr.made, garrison: garrison ?? [] } : null; },
       // n of the tier on the outside ground `lo`..`hi` hops from the gate (the harness's: headless barely walks them to the sentries)

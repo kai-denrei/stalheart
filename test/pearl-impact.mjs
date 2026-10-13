@@ -12,7 +12,8 @@ import { corePose } from '../src/fx/cutis-maku/hard-core.js';
 import { createRamJolt } from '../src/fx/ram-jolt.js';
 
 const close = (a, b, eps, what) => assert(Math.abs(a - b) <= eps, `${what}: ${a} vs ${b}`);
-const S = PEARL_IMPACT.stagger, Rc = PEARL_IMPACT.recoil, J = PEARL_IMPACT.jolt;
+// round four: the rammed amoeba is white, whose stagger is its tier's (PEARL_IMPACT.tiers.white.stagger over the base: a run-over reads)
+const S = { ...PEARL_IMPACT.stagger, ...(PEARL_IMPACT.tiers?.white?.stagger ?? {}) }, Rc = PEARL_IMPACT.recoil, J = PEARL_IMPACT.jolt;
 
 // ---- the stagger: a rammed soft body ----
 {

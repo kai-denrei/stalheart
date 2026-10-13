@@ -40,6 +40,7 @@ import { deformInto, footprintDirs } from './cutis-maku/deform.js';
 import { capAngles } from './cutis-maku/config.js';
 import { pearlPace, pearlLead, pearlLeash, squadSpots, pearlWait, pearlCatch } from '../domain/pearl-bodies.js';
 import { createMotionAudit } from './pearl-motion.js';
+import { boxContact } from '../domain/hull-bodies.js';
 
 const IDENTITY = [0, 0, 0, 1];
 
@@ -73,7 +74,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     hubTable(swarm);
     const cores = def.cored ? createHardCores(swarm, { planetR, levelOf: geo.levelOf }) : null;
     if (cores) { cores.group.name = `Pearl ${id} cores`; group.add(cores.group); }
-    p = { id, def, swarm, geo, cores, owner, free: [], next: 0, dying: new Map(), jolts: new Map(), live: 0, peak: 0, placed: 0, replaced: 0, seenReplaced: 0, deaths: 0, full: 0, shed: 0, handed: 0, staggers: 0, recoils: 0 };
+    p = { id, def, swarm, geo, cores, owner, free: [], next: 0, dying: new Map(), jolts: new Map(), live: 0, peak: 0, placed: 0, replaced: 0, seenReplaced: 0, shoved: 0, deaths: 0, full: 0, shed: 0, handed: 0, staggers: 0, recoils: 0 };
     pools.set(id, p);
     return p;
   }
@@ -128,6 +129,8 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     sw.phase[i] = 0; sw.plant[k + 2] = 0; sw.forced[i] = 0; sw.idle[i] = 0;
   }
   const bump = (sw, i, dx, dz) => { const k = i * 3; for (const a of [sw.offset, sw.anchor, sw.occupied]) { a[k] += dx; a[k + 2] += dz; } };
+  // round four (owner: "white and yellow, should feel very easy to run over"): a tier's stagger, PEARL_IMPACT.stagger with its own overrides (cached)
+  const STAG = new Map(), staggerOf = (id) => { let s = STAG.get(id); if (!s) { s = { ...IMPACT?.stagger, ...(IMPACT?.tiers?.[id]?.stagger ?? {}) }; STAG.set(id, s); } return s; };
   // an impact's state for slot i: its clock, its knock (unit direction and metres) and its tune (PEARL_IMPACT.stagger or .recoil)
   function impactOf(sw, i, imp, tuneOf, aside = 0) {
     const r = sw.config.r0 * sw.scale[i], d = Math.hypot(imp.dx, imp.dz) || 1;
@@ -148,9 +151,9 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     const { p } = h, sw = p.swarm, i = slot.i;
     sw.hold[i] = 1; sw.life[i * 4] = 0; p.jolts.delete(i);
     // a rammed body staggers first: its deflate starts once the stagger is over
-    const st = imp && IMPACT ? impactOf(sw, i, imp, IMPACT.stagger, IMPACT.stagger.aside) : null;
+    const S = staggerOf(p.id), st = imp && IMPACT ? impactOf(sw, i, imp, S, S.aside) : null;
     if (st) p.staggers++; else { const was = sw.room[i]; sw.clearBody(i, false); if (was > 0) sw.room[i] = Math.min(was, sw.room[i]); }   // round three: the puddle measured where it lies (squeezed by a wall, not moved), within its hop's room (a body dying mid-transfer is drawn out along it)
-    p.dying.set(i, { at: clock + (st ? IMPACT.stagger.seconds : 0), op: sw.life[i * 4 + 2], st }); p.live--; p.deaths++;
+    p.dying.set(i, { at: clock + (st ? S.seconds : 0), op: sw.life[i * 4 + 2], st }); p.live--; p.deaths++;
   }
 
   // the record walked into another hub's region: every live member's plane state, re-projected into the new hub's plane
@@ -253,6 +256,61 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     }
   }
 
+  // ROUND FOUR, THE TANK (owner, 2026-10-13: "the tank should never be able to 'go through' the enemy, they are still made of mass. more precise
+  // collision is needed"): a body's outline as drawn, its membrane's points round its middle (the shader's deform in JS over the lowest hull's
+  // directions within 33 degrees of the ground, a stalk's points left out: the tank shoves a body, not its feeler) and its pearl's rim, into
+  // OX / OZ; -> the count
+  const OX = new Float64Array(64), OZ = new Float64Array(64), D5 = [0, 0, 0, 0, 1], C4 = [0, 0, 0, 0], RING = new Map();
+  const ringOf = (config) => { const all = footprintDirs(capAngles(config)); let d = RING.get(all); if (!d) { const band = all.filter((n) => Math.abs(n[1]) < 0.55); d = band.filter((_, k) => k % Math.max(1, Math.ceil(band.length / 48)) === 0); RING.set(all, d); } return d; };
+  function outline(p, i) {
+    const sw = p.swarm, dirs = ringOf(sw.config);
+    let n = 0;
+    for (const dir of dirs) { deformInto(sw, i, dir, D5); if (D5[4] < 0.5) continue; OX[n] = D5[0]; OZ[n] = D5[2]; n++; }
+    if (p.def.cored) { corePose(sw, i, 0, C4); for (let a = 0; a < 8 && n < OX.length; a++) { OX[n] = C4[0] + Math.cos(a * Math.PI / 4) * C4[3]; OZ[n] = C4[2] + Math.sin(a * Math.PI / 4) * C4[3]; n++; } }
+    return n;
+  }
+  // the bodies against the tank's hull: `boxOf(hub)` the hull in that hub's plane ({ x, z, ux, uz, hl, hw }, metres) or null; `drive` true while the
+  // tank moves (its next position): a soft body (or any dying one) in its way is shoved out of it along the contact's least move (and off the rock),
+  // and what the rock would not let it give back pushes the tank; a cored body pushes the tank back out of it. Not driving (`drive` false: after the
+  // bodies stepped) every body is shoved out of the hull where it stands; `drive` null only measures (the harness: sink.depth(h, depth) for each
+  // body overlapping). `sink` { push(hub, dx, dz) the tank's move in a hub's plane, touch(h, cored, r) a live body's contact (the caller books the
+  // first one) }. The broad phase is a distance in each hub's plane: a body further than its own reach from the hull's corners is not looked at.
+  const HIT = [0, 0, 0], PADHIT = [0, 0, 0];
+  function hullContact(boxOf, drive, sink) {
+    let n = 0;
+    for (const p of pools.values()) {
+      const sw = p.swarm, cored = p.def.cored;
+      for (let i = 0; i < sw.count; i++) {
+        const h = p.owner[i];
+        if (!sw.active[i] || !h || sw.life[i * 4 + 2] < 0.05) continue;
+        const box = boxOf(sw.hub[i]);
+        if (!box) continue;
+        const pad = IMPACT?.tiers?.[p.id]?.pad ?? 0, r = sw.config.r0 * sw.scale[i], pos = sw.positionInto(i, POS), far = Math.hypot(box.hl, box.hw) + r * 1.8 + pad;
+        if ((pos[0] - box.x) ** 2 + (pos[2] - box.z) ** 2 > far * far) continue;
+        n++;
+        const pts = outline(p, i);
+        boxContact(box, OX, OZ, pts, HIT);
+        let depth = HIT[0];
+        if (drive === null) { if (depth > 0) sink.depth(h, depth, p.id); continue; }
+        const dying = p.dying.has(i);
+        // a light tier's generous hit (round four, PEARL_IMPACT.tiers[tier].pad): the hull grown by `pad` touching the body is a hit, booked
+        if (pad > 0 && drive && !dying && !(depth > 0)) { box.hl += pad; box.hw += pad; boxContact(box, OX, OZ, pts, PADHIT); box.hl -= pad; box.hw -= pad; if (PADHIT[0] > 0) sink.touch(h, false, r, p.id); }
+        if (!(depth > (IMPACT?.contact?.slop ?? 0.02))) continue;
+        const nx = HIT[1], nz = HIT[2];
+        if (drive) sink.touch(h, cored && !dying, r, p.id);   // a dying body is mass too (a rammed one, its puddle): it takes speed, it does not stop the hull
+        if (cored && !dying && drive) { sink.push(sw.hub[i], -nx * depth, -nz * depth); continue; }
+        // shoved: the whole body (its origin, anchor and the transfer between), then off the rock; what the rock took back is the tank's. A soft
+        // body is swept aside as well, toward the side of the hull it is on (`sweep` of the depth: a plough, not a snowplough pushing it ahead)
+        const k = i * 3, x0 = sw.offset[k], z0 = sw.offset[k + 2], vx = -box.uz, vz = box.ux, side = (pos[0] - box.x) * vx + (pos[2] - box.z) * vz >= 0 ? 1 : -1, sweep = (IMPACT?.contact?.sweep ?? 0) * depth * side;
+        bump(sw, i, nx * depth + vx * sweep, nz * depth + vz * sweep); sw.clearBody(i);
+        const gave = (sw.offset[k] - x0) * nx + (sw.offset[k + 2] - z0) * nz;
+        if (depth - gave > 0.01) sink.push(sw.hub[i], -nx * (depth - gave), -nz * (depth - gave));   // pinned against the rock: the hull gives way (driving or not)
+        p.shoved++;
+      }
+    }
+    return n;
+  }
+
   // round four: the record's pace factor (the enemy loop's walk x this): it waits for its body (1 without the gait)
   const paceOf = (h) => (h && !h.dead && gait ? h.wait ?? 1 : 1);
 
@@ -311,13 +369,13 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
   }
 
   return {
-    add, track, rehub, kill, recoil, free, step, setPlanet, paceOf, hubs: { margin: tune.hubMargin ?? 0.03 },
+    add, track, rehub, kill, recoil, free, step, setPlanet, paceOf, hullContact, hubs: { margin: tune.hubMargin ?? 0.03 },
     // round four: the motion audit (./pearl-motion.js): watch(opts) starts it afresh, watch(null) stops it; motion() its report so far (null when off)
     watch(opts) { motion = opts ? createMotionAudit(opts) : null; }, motion: () => motion?.report() ?? null,
     roots: () => [group],
     // each tier present: bodies up, dying, the most up at once, placed, re-placed on the leash, deaths, squad members shed, refused for want of a slot,
     // the pearls drawn and the bodies drawn at each level [high, low, lowest, culled] (src/fx/cutis-maku/geometry.js)
-    stats: () => Object.fromEntries([...pools.values()].map((p) => [p.id, { live: p.live, dying: p.dying.size, peak: p.peak, placed: p.placed, replaced: p.replaced, seenReplaced: p.seenReplaced, deaths: p.deaths, shed: p.shed, full: p.full, handed: p.handed, staggers: p.staggers, recoils: p.recoils, capacity: p.swarm.capacity, r0: p.swarm.config.r0, cored: p.def.cored, cores: p.cores?.count ?? 0, lod: [...p.geo.lodCounts] }])),
+    stats: () => Object.fromEntries([...pools.values()].map((p) => [p.id, { live: p.live, dying: p.dying.size, peak: p.peak, placed: p.placed, replaced: p.replaced, seenReplaced: p.seenReplaced, shoved: p.shoved, deaths: p.deaths, shed: p.shed, full: p.full, handed: p.handed, staggers: p.staggers, recoils: p.recoils, capacity: p.swarm.capacity, r0: p.swarm.config.r0, cored: p.def.cored, cores: p.cores?.count ?? 0, lod: [...p.geo.lodCounts] }])),
     // the harness's audit of the stalks against the rock: every live body's seeking stalks (its whole length and most of its cup) and anchor, put to
     // `clear(hub, cell, x, z, dx, dz, len)` (true when the way is clear); a body whose origin itself is on a blocked cell (`inRock`) is counted apart;
     // -> { bodies, stalks, crossing, anchors, inRock }

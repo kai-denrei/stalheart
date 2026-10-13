@@ -2109,6 +2109,33 @@ try{
  await until(`${T}.creatures.view(window.__sl)?.tint===1`,15000).catch(async()=>assert.fail(`a slowed body is iced (${JSON.stringify(await evaluate(`${T}.creatures.view(window.__sl)`))})`));
  await evaluate(`window.__sl.slowUntil=-1`);
  await until(`${T}.creatures.view(window.__sl)?.tint===0`,15000).catch(async()=>assert.fail(`and thaws (${JSON.stringify(await evaluate(`${T}.creatures.view(window.__sl)`))})`));
+ // ROUND FOUR, THE TANK (owner, 2026-10-13: "the tank should never be able to 'go through' the enemy, they are still made of mass"): the hull placed on
+ // the open ground beyond the gate, turned to a cell three ahead, a soft amoeba and then a cored drifter put there, W held (the real drive, headed);
+ // every frame the hull's overlap with any body (src/fx/creature-enemies.js test.hull, measured), the hull's place: the white one (owner, 2026-10-13:
+ // "white and yellow, should feel very easy to run over") is rammed by the hull's own touch and costs it almost no speed, the cored one stops it and
+ // jolts it; neither is ever inside the hull
+ {const C=`${T}.creatures`;await evaluate(`${T}.showcase.ram(true)`);await delay(400);
+  const used=new Set();
+  for(const [type,cored] of [['amoeba',false],['drifter',true]])for(let attempt=0;attempt<3;attempt++){
+   // a lane not used yet (a body that walked off its lane before the hull came is tried again elsewhere)
+   let target=-1;for(const c of await evaluate(`${C}.ground().band.map(b=>b.cell)`)){if(used.has(c))continue;await evaluate(`${T}.placeTank(${c})`);await delay(80);for(const nb of await evaluate(`${C}.neighbours(${c})`)){await evaluate(`${C}.face(${nb})`);const a=await evaluate(`${C}.ahead(3)`);if(a>=0){target=a;break;}}if(target>=0){used.add(c);break;}}
+   assert(target>=0,'an open lane three cells long beyond the gate');
+   await evaluate(`${C}.face(${target})`);assert.equal(await evaluate(`${C}.spawnAt(${JSON.stringify(type)},${target})`),1,`a ${type} ahead of the hull`);await delay(600);await evaluate(`(()=>{const p=${C}.pearls();window.__hp=p[p.length-1];})()`);await evaluate(`${C}.face(${target})`);
+   const j0=await evaluate(`${C}.jolt()`),c0=(await evaluate(`${C}.hull()`)).contacts;
+   await evaluate(`(()=>{const R=window.__hr=[];const f=()=>{const s=${T}.state(),e=window.__hp,v=${C}.view(e);R.push({t:performance.now(),p:s.playerPosition,h:${C}.hull(),gap:v&&v.record?Math.hypot(v.centre[0]-v.record[0],v.centre[1]-v.record[1]):null,d:Math.hypot(e.pos[0]-s.playerPosition[0],e.pos[1]-s.playerPosition[1],e.pos[2]-s.playerPosition[2])});if(R.length<400&&window.__hr===R)requestAnimationFrame(f);};requestAnimationFrame(f);})()`);
+   await send('Input.dispatchKeyEvent',{type:'keyDown',key:'w',code:'KeyW',windowsVirtualKeyCode:87});await delay(2500);await send('Input.dispatchKeyEvent',{type:'keyUp',key:'w',code:'KeyW',windowsVirtualKeyCode:87});await delay(300);
+   const rec=await evaluate('window.__hr.splice(0)'),R=(await evaluate(P)).bodies.planetR,j1=await evaluate(`${C}.jolt()`),alive=await evaluate('window.__hp.alive');
+   const sp=rec.slice(1).map((r,k)=>{const a=rec[k],dt=(r.t-a.t)/1000;return dt>0?Math.hypot(r.p[0]-a.p[0],r.p[1]-a.p[1],r.p[2]-a.p[2])*R/dt:0;});
+   const first=rec.findIndex(r=>r.h.contacts>c0),over=Math.max(...rec.map(r=>r.h.overlap)),mean=a=>a.reduce((x,v)=>x+v,0)/Math.max(1,a.length);
+   const before=first>3?mean(sp.slice(Math.max(0,first-10),first-1)):null,after=first>0?Math.min(...sp.slice(first-1,first+15)):null;
+   console.log(`  the hull and a ${type} (lane ${attempt+1}): ${rec.length} frames, overlap at most ${over.toFixed(3)} m, first contact at frame ${first}, speed ${before?.toFixed(1)} -> ${after?.toFixed(1)} m/s, contacts ${rec.at(-1).h.contacts-c0}, jolt kicks ${j0.kicks} -> ${j1.kicks} (peak ${j1.peak?.toFixed?.(3)}), alive ${alive}, hull ${rec[0].h.hl} x ${rec[0].h.hw} m (half); top speed ${Math.max(...sp).toFixed(1)} m/s, the record nearest ${(Math.min(...rec.map(r=>r.d))*R).toFixed(1)} m, its body ${Math.max(...rec.map(r=>r.gap??0)).toFixed(1)} m from it at most`);
+   const grazes=rec.filter(r=>r.h.overlap>0.05).length;
+   assert(over<=0.2&&grazes<=2,`the hull is never inside a body (at most ${over} m; ${grazes} frames over 5 cm)`);
+   if(!(first>3&&before>5)){assert(attempt<2,`the hull drove into the ${type} (${JSON.stringify({first,before})})`);continue;}
+   if(cored){assert(after<before*0.25,`a cored body stops the hull (${before} -> ${after})`);assert(j1.kicks>j0.kicks,'and jolts it');}
+   else {assert(!alive,'the white body is run over (the game\'s ram)');assert(after>before*0.6,`and the hull hardly slows (${before} -> ${after})`);}
+   break;}
+  await evaluate(`${T}.showcase.ram(false)`);}
  const fin=await evaluate(P);console.log(`  books: ${JSON.stringify(fin.bodies.families.pearl)}`);
  // the kit's programs link (round two: the first cut of the hubs passed WebGL's sixteen vertex attributes; three logs a failed program to the console)
  const shaderBad=consoleLines.filter(l=>/Shader Error|Too many attributes|VALIDATE_STATUS|Program Info Log/i.test(l));assert.deepEqual(shaderBad,[],'no shader errors');

@@ -27,7 +27,7 @@ function world(log, manual) {
   const fixed = { MOVES: { mork: { speed: () => 1 } }, breachBlocked: () => false, bumpFactor: () => 0, checkAbsorb: rec('absorb'), containerBlocked: () => false, driveRamp: makeDriveRamp(), enemies: [],
     floorColorOf: (ci) => ci, freeBlocked: (p) => tags[near(p)] === imps.BLOCKED, keys: { left: false, right: false, fast: manual, slow: false }, manualActive: () => !st.autoMode, nearestWall: (p) => centers[14],
     orbMeshes: new Map(), paintCell: rec('paint'), params: { creature: 'mork', speed: 1, orbs: 0, directive: 'wander', wallHeight: 0.04 }, pedestalBlocked: () => false, player, runContext: { time: 0 }, spawnOneOrb: rec('orb'),
-    steerEase: makeSteerEase(), steeringActive: () => st.steerHold < 1.2, towerCells: new Set(), updateHud: rec('hud'), wallCushion: (p) => p };
+    steerEase: makeSteerEase(), steeringActive: () => st.steerHold < 1.2, towerCells: new Set(), updateHud: rec('hud'), wallCushion: (p) => p, bodyContact: () => {} };   // round four: no Pearl bodies here (src/fx/creature-enemies.js bodyContact)
   return { st, fixed, player };
 }
 function run(make, manual) {
@@ -35,7 +35,7 @@ function run(make, manual) {
   for (let i = 0; i < 160; i++) { if (manual) w.fixed.keys.left = i > 40 && i < 70; d.advanceMotion(1 / 30); const p = w.player; log.push(['f', p.cur, p.next, r6(p.prog), r6(p.pos), r6(p.heading), r6(p.smoothDir), w.st.autoMode, r6(w.st.steerHold), r6(w.st.respawnClock)]); }
   return log;
 }
-const spec = {"MOVES":"value","breachBlocked":"value","bumpFactor":"value","checkAbsorb":"value","containerBlocked":"value","driveRamp":"value","enemies":"value","floorColorOf":"value","freeBlocked":"value","keys":"value","manualActive":"value","nearestWall":"value","orbMeshes":"value","paintCell":"value","params":"value","pedestalBlocked":"value","player":"value","runContext":"value","spawnOneOrb":"value","steerEase":"value","steeringActive":"value","updateHud":"value","wallCushion":"value","cellIndex":"get","towerCells":"get","cellSide":"get","cruise":"get","dungeon":"get","gotoField":"get","graph":"get","kick":"get","playerDown":"get","portalDist":"get","speedBonus":"get","storyBase":"get","stuck":"get","throttle":"get","whim":"get","autoMode":"set","respawnClock":"set","steerHold":"set"};
+const spec = {"MOVES":"value","breachBlocked":"value","bumpFactor":"value","checkAbsorb":"value","containerBlocked":"value","driveRamp":"value","enemies":"value","floorColorOf":"value","freeBlocked":"value","keys":"value","manualActive":"value","nearestWall":"value","orbMeshes":"value","paintCell":"value","params":"value","pedestalBlocked":"value","player":"value","runContext":"value","spawnOneOrb":"value","steerEase":"value","steeringActive":"value","updateHud":"value","wallCushion":"value","bodyContact":"value","cellIndex":"get","towerCells":"get","cellSide":"get","cruise":"get","dungeon":"get","gotoField":"get","graph":"get","kick":"get","playerDown":"get","portalDist":"get","speedBonus":"get","storyBase":"get","stuck":"get","throttle":"get","whim":"get","autoMode":"set","respawnClock":"set","steerHold":"set"};
 const getN = Object.keys(spec).filter((k) => spec[k] !== 'value');
 let all = '';
 for (const manual of [false, true]) {

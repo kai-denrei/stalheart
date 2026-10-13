@@ -140,7 +140,23 @@ export const PEARL_WAVES = freeze({ scale: 0.35 });
 // on a damped spring (`hz`, damping ratio `damping`), a small roll toward the side it was hit, and a camera dip of `dip` cells per rad of pitch; kicks
 // closer together than `gap` s add only `merge` of themselves, and a `load` that each kick fills and that drains at `drain` a second scales every kick by
 // what is left of `loadCap`, so a crowd under the treads is a rumble, not a constant shake; the pitch is clamped at `maxPitch`.
+// `contact` (round four, owner 2026-10-13: "the tank should never be able to 'go through' the enemy, they are still made of mass. more precise collision
+// is needed"; src/domain/hull-bodies.js, src/fx/creature-enemies.js bodyContact): the hull is its mesh's own box (measured from the drawn tank, at
+// least `minHalf` metres a side); a body (its drawn outline) is never inside it: a soft body is shoved out of its way, the tank losing `loss` of its
+// speed to a body of `refRadius` m on first contact (x its radius squared over that, at most `maxLoss`), recovered over `recover` s; a cored body
+// stops it (`cored` of its speed lost) and pushes it back out; a body counts as touched again only `again` s after it was; overlaps under `slop` m
+// are let be; a soft body shoved is swept aside `sweep` times as far as it is pushed out (toward the side of the hull it is on).
 export const PEARL_IMPACT = freeze({
+  contact: { refRadius: 2.8, loss: 0.25, maxLoss: 0.85, recover: 0.45, cored: 1, again: 0.6, slop: 0.02, minHalf: 1.2, sweep: 1.2 },
+  // PER TIER (owner, 2026-10-13, on round four's slower bodies: "the slower Cutis feel much better, but the lower level ones, white and yellow, should
+  // feel very easy to run over. The threat starts like more of an annoyance."): `mass` x the contact's speed loss (near none: the hull ploughs on),
+  // `pad` metres round the hull within which a body counts as hit (generous: a brush is a ram, never a near miss), `ram` that hit IS the game's ram
+  // (src/fx/enemy-step.js: the record rammed then, its bounty, combo and kill the game's own), `jolt` x the hull's kick (a light tick, not a bump),
+  // `stagger` over PEARL_IMPACT.stagger (a deeper squash and a longer knock, so the run-over reads). The cored tiers keep their weight.
+  tiers: {
+    white: { mass: 0.05, pad: 0.9, ram: true, jolt: 0.3, stagger: { squash: 0.72, knockRadii: 1.8, seconds: 0.55 } },
+    yellow: { mass: 0.05, pad: 0.9, ram: true, jolt: 0.3, stagger: { squash: 0.72, knockRadii: 1.8, seconds: 0.55 } },
+  },
   stagger: { seconds: 0.45, knockRadii: 1.4, aside: 0.6, knockSeconds: 0.12, squash: 0.55, hz: 3.2, decay: 5 },
   recoil: { seconds: 0.5, knockRadii: 0.8, knockSeconds: 0.1, squash: 0.38, hz: 5, decay: 4.5 },
   jolt: { pitch: 0.035, refRadius: 2.5, solid: 1.8, roll: 0.5, hz: 4.5, damping: 0.35, dip: 1.6, gap: 0.08, merge: 0.3, load: 1, loadCap: 3, drain: 2.5, maxPitch: 0.09 },
