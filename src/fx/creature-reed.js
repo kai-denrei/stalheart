@@ -100,7 +100,7 @@ export function createReedFamily({ parent, tiers, follow, knobs = CREATURE_REED,
       h.outer = new THREE.Group(); h.inner = new THREE.Group();
       h.outer.name = `${h.def.label} body`; h.inner.add(kit.mesh); h.outer.add(h.inner); group.add(h.outer);
       bodies.add(h); aim(h); place(h);
-    } catch (e) { errors++; lastError = e.message; h.failed = true; }
+    } catch (e) { errors++; lastError = e.message; h.failed = true; book(h.key).failed = (book(h.key).failed ?? 0) + 1; }
   }
 
   function aim(h) {
@@ -226,10 +226,12 @@ export function createReedFamily({ parent, tiers, follow, knobs = CREATURE_REED,
       let made = 0, dying = 0, waiting = 0;
       for (const h of bodies) if (h.key === key) { if (h.dead) dying++; else made++; }
       for (const h of pending) if (h.key === key) waiting++;
-      return [key, { live: b.alive, made, pending: waiting, dying, peak: b.peak, placed: b.placed, replaced: b.replaced, deaths: b.deaths, full: b.full, capacity: def.capacity, r0: def.r0,
+      return [key, { live: b.alive, made, pending: waiting, failed: b.failed ?? 0, dying, peak: b.peak, placed: b.placed, replaced: b.replaced, deaths: b.deaths, full: b.full, capacity: def.capacity, r0: def.r0,
         variant: def.variant, hz: hzOf(def), solverMs: +solverMs.toFixed(2), solverMean: +meanMs.toFixed(2), bodyMs: +perBody.toFixed(3), steps: stepsNow, stepped, timeScale: +timeScale.toFixed(3),
         budget: budget ?? null, solid, switches, reanchors, errors, lastError }];
     })),
+    // round two (the fable review: the probe counted bodies still being made, or never made, as alive): whether a record's body stands drawn
+    drawn: (h) => !!h?.kit && !h.failed,
     // one body's view, for the harness: its centre's unit point (the seam projects it), its radius, made and standing, dead, the collapse
     // and the fade (0..1), the lift, its behaviour's state, the rate
     view(h) {

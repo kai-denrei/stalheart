@@ -1985,6 +1985,9 @@ try{
   const r=(await evaluate(probeState)),dd=r.defence;
   assert(await evaluate('!!document.querySelector("#creature-probe-card")'),`${ct}: the result card`);
   assert(/sentries \d+ \(/.test(r.probe.cardText)&&/sentry kills/.test(r.probe.cardText)&&/beyond the gate/.test(r.probe.cardText)&&/heart held/.test(r.probe.cardText),`${ct}: the card's defence lines (${r.probe.cardText})`);
+  // round two (the fable review): the card says what was pending, refused and failed; each step books its dying and pending beside its alive
+  assert(/pending \d+/.test(r.probe.cardText)&&/refused \d+ \(\d+ for want of a slot\)/.test(r.probe.cardText),`${ct}: the card's pending and refused (${r.probe.cardText})`);
+  assert(r.probe.result.steps.every(st=>Number.isFinite(st.dying)&&Number.isFinite(st.pending))&&Number.isFinite(r.probe.result.refused),`${ct}: dying and pending per step (${JSON.stringify(r.probe.result.steps.slice(-2))})`);
   assert(dd.starts.inside===0&&dd.starts.probe>0&&dd.starts.probeOutside===dd.starts.probe,`${ct}: every creature came up outside the walls, the probe's beyond the gate (${JSON.stringify(dd.starts)})`);
   const res=r.probe.result;assert(res.baselineMean!==null&&res.limitMs>0,`${ct}: the probe's baseline (${JSON.stringify(res)})`);console.log(`  ${ct}: probe ${res.reason}: baseline ${res.baselineMean}/${res.baselineP95} ms, limit ${res.limitMs}, max ${res.maxAlive} alive (fits ${res.fits}, +${res.msPerBody} ms a body), total ${res.totalAlive}, frame ${res.frameMean}/${res.frameP95} ms, enemies cpu ${res.enemiesCpuMs}, gpu ${res.gpuMs}, ${res.calls} calls, ${res.triangles} tris, re-placed ${res.replaced}; bodies ${JSON.stringify(r.bodies?.families?.[fam]?.[tier])}${res.bodyMs===null?'':`; solver ${res.bodyMs} ms a body at ${res.solverHz} Hz (headless: not meaningful)`}`);
   console.log(`  ${ct}: defence ${dd.sentries} sentries ${JSON.stringify(dd.types)}, sentry hits ${dd.fight.hits} (${dd.fight.damage.toFixed(1)} damage), kills ${dd.fight.kills} of the tier / ${dd.fight.killsAll}; starts ${JSON.stringify(dd.starts)}; heart damage held ${dd.heartHits}`);
@@ -2073,6 +2076,12 @@ try{
  assert(rc.recoil!==null&&rc.held&&!rc.dead,`a touched rolling mine recoils, alive (${JSON.stringify(rc)})`);
  const j2=await evaluate(`${T}.creatures.jolt()`);console.log(`  the ram: stagger ${JSON.stringify(await evaluate(`${T}.creatures.viewHandle(window.__ra)`))}; the touch: recoil ${rc.recoil}; jolt ${JSON.stringify(j2)}`);
  assert(j2.kicks>j1.kicks,'the touch jolts the hull too');
+ // ROUND TWO, the slow's ice (the fable review): a slowed drifter's body (membrane and pearl) is iced for the slow's duration, then thaws
+ const dr=`${T}.creatures.pearls().find(e=>e.type==='drifter'&&!(e.emergeAge<1.2)&&${T}.creatures.view(e)?.active)`;await until(`!!${dr}`,60000);
+ await evaluate(`(()=>{const e=${dr};window.__sl=e;e.slowFactor=0.5;e.slowUntil=1e12;})()`);
+ await until(`${T}.creatures.view(window.__sl)?.tint===1`,15000).catch(async()=>assert.fail(`a slowed body is iced (${JSON.stringify(await evaluate(`${T}.creatures.view(window.__sl)`))})`));
+ await evaluate(`window.__sl.slowUntil=-1`);
+ await until(`${T}.creatures.view(window.__sl)?.tint===0`,15000).catch(async()=>assert.fail(`and thaws (${JSON.stringify(await evaluate(`${T}.creatures.view(window.__sl)`))})`));
  const fin=await evaluate(P);console.log(`  books: ${JSON.stringify(fin.bodies.families.pearl)}`);
  if(shots){const ci=await evaluate(`(()=>{const e=${T}.creatures.pearls().find(e=>!(e.emergeAge<1.2));return e?e.cur:-1;})()`);if(ci>=0){await evaluate(`${T}.showcase.ground(${ci},3,4.5)`);await delay(2500);const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(shots,'pearl-close.png'),Buffer.from(shot.data,'base64'));}}
  await finish();

@@ -54,7 +54,7 @@ uniform float uHardRadius;
 uniform float uTime,uRadius,uNoise,uBreath,uRestCube,uCap,uNeck,uDelay,uCore,uForceCube,uSeekSweep,uSeekRate,uAcceleration,uPlanetR;
 varying vec3 vWorld,vRest,vHeading,vNormal;
 varying float vStretch,vPhase,vSeed,vLead;
-varying vec2 vLife;
+varying vec3 vLife;
 ${PLANET_BEND}
 ${HUB_TURN}
 float hash(vec3 p){return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453);}
@@ -199,7 +199,7 @@ void main(){
   vec3 normal=hubTurn(iHub,cross(a,b));vNormal=dot(normal,normal)>1e-14*SC*SC*SC*SC?normalize(mat3(modelMatrix)*normal):vec3(0,1,0);
   p.xyz=hubPlace(iHub,p.xyz,uPlanetR);
   vWorld=(modelMatrix*vec4(p.xyz,1.)).xyz;
-  vRest=n;vHeading=iHeading;vLead=pow(smoothstep(cos(radians(iProbeCount>1.5?min(uCap,32.):uCap)),1.,turn(n,-probeFor(n).x).z),2.);vSeed=iSeed;vPhase=iPhase;vStretch=p.w;vLife=iLife.yz;
+  vRest=n;vHeading=iHeading;vLead=pow(smoothstep(cos(radians(iProbeCount>1.5?min(uCap,32.):uCap)),1.,turn(n,-probeFor(n).x).z),2.);vSeed=iSeed;vPhase=iPhase;vStretch=p.w;vLife=iLife.yzw;
   gl_Position=projectionMatrix*modelViewMatrix*vec4(p.xyz,1.);
 }
 `;
@@ -213,7 +213,7 @@ uniform float uMulticolored;
 uniform vec3 uPaletteSkin[7],uPaletteVein[7],uPaletteGlow[7];
 varying vec3 vWorld,vRest,vHeading,vNormal;
 varying float vStretch,vPhase,vSeed,vLead;
-varying vec2 vLife;
+varying vec3 vLife;
 vec3 hash3(vec3 p){return fract(sin(vec3(dot(p,vec3(127.1,311.7,74.7)),dot(p,vec3(269.5,183.3,246.1)),dot(p,vec3(113.5,271.9,124.6))))*43758.5453);}
 float veinField(vec3 p){
   vec3 cell=floor(p),f=fract(p);float first=10.,second=10.;
@@ -258,6 +258,9 @@ void main(){
   if(uCore>.5){vec3 coreTint=min(veinTint,skin*.45);color=mix(coreTint*.28,coreTint*.9,diffuse)+glow*pulse*.06;alpha=1.;}
   if(uDebug>.5&&uDebug<1.5){color=vPhase<.1?vec3(.9,.65,.2):vPhase<.55?vec3(.3,.7,.8):vPhase<.62?vec3(.95,.3,.2):vPhase<.85?vec3(.7,.35,.9):vec3(.45,.8,.4);alpha=.9;}
   if(uDebug>1.5){color=mix(vec3(.1,.3,.8),vec3(1.,.2,.05),clamp((vStretch-1.)/5.,0.,1.));alpha=.95;}
+  // Round two (the fable review: the slow tower's ice was lost on these bodies): iLife.w, the body's tint toward ice (0x8fd4ff) at its own brightness,
+  // as the dot cloud turns ice for the slow's duration.
+  color=mix(color,vec3(.56,.83,1.)*(.3+.7*max(max(color.r,color.g),color.b)),clamp(vLife.z,0.,1.)*.8);
   // Thermal: the FLIR lerps the material's emissive toward white; the colour follows, the skin thickens a little.
   float heat=clamp(uHeat.r,0.,1.);
   color=mix(color,vec3(1.),heat);alpha=min(1.,alpha+heat*.25);

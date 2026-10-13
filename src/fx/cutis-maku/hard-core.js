@@ -14,7 +14,7 @@ import { bendPoint, hubPoint } from './shaders.js';
 
 /** The core's centre (plane metres, y up, bent onto the sphere of radius `planetR`; 0 = flat) and radius for instance i, as drawn; `out` [x, y, z, radius]. */
 export function corePose(swarm, i, planetR = 0, out = [0, 0, 0, 0]) {
-  const c = swarm.getCoreContact(i), L = swarm.life, k = i * 3, s = swarm.lengthScale, phase = swarm.phase[i];
+  const c = swarm.coreContactInto(i, swarm.scratchCore), L = swarm.life, k = i * 3, s = swarm.lengthScale, phase = swarm.phase[i];
   const lift = L[i * 4], squash = L[i * 4 + 1];
   let { x, y, z } = c.center;
   y = Math.max(.009 * s, y);
@@ -33,45 +33,57 @@ export function corePose(swarm, i, planetR = 0, out = [0, 0, 0, 0]) {
 
 // ROUND TWO (owner, 2026-10-13, "fps wise we maybe cannot afford them as is"): `levelOf` (./geometry.js, each instance's level this frame) picks the
 // pearl's resolution: the kit's sphere (24 x 16) under a high-hull body, a 10 x 7 one under the others, none under a culled one. Without it every
-// pearl is drawn at the kit's resolution, as before.
+// pearl is drawn at the kit's resolution, as before. And (the fable review): a pearl fading (the phantom's cloak, the death) is drawn by a twin mesh whose
+// material writes no depth, so a faint core cannot cut the membrane behind it out of the picture; the colour is per instance (instanceColor over a white
+// material: the tier's coreTint, toward the slow tower's ice by the body's tint, iLife.w), as the dot clouds' solid cores turn ice when slowed.
+export const ICE = 0x8fd4ff;
 export function createHardCores(swarm, { planetR = 0, levelOf = null } = {}) {
-  const fade = [0, 1].map(() => new THREE.InstancedBufferAttribute(new Float32Array(swarm.capacity), 1).setUsage(THREE.DynamicDrawUsage));
-  const geometries = [new THREE.SphereGeometry(1, 24, 16), new THREE.SphereGeometry(1, 10, 7)];
-  geometries.forEach((g, k) => g.setAttribute('iFade', fade[k]));
-  const material = new THREE.MeshPhysicalMaterial({ color: swarm.config.coreTint ?? 0xff242c, metalness: 0, roughness: .17, clearcoat: 1, clearcoatRoughness: .12, emissive: 0x000000, transparent: true });
-  material.onBeforeCompile = (shader) => {
-    shader.vertexShader = 'attribute float iFade;\nvarying float vFade;\n' + shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vFade = iFade;');
-    shader.fragmentShader = 'varying float vFade;\n' + shader.fragmentShader.replace('#include <dithering_fragment>', '#include <dithering_fragment>\n  gl_FragColor.a *= vFade;');
+  // [fine, coarse] x [opaque, fading]: four meshes, two spheres, two materials
+  const spheres = [new THREE.SphereGeometry(1, 24, 16), new THREE.SphereGeometry(1, 10, 7)];
+  const fade = [0, 1, 2, 3].map(() => new THREE.InstancedBufferAttribute(new Float32Array(swarm.capacity), 1).setUsage(THREE.DynamicDrawUsage));
+  const geometries = fade.map((f, k) => { const g = new THREE.BufferGeometry(), src = spheres[k % 2]; g.setIndex(src.index); for (const n of ['position', 'normal', 'uv']) g.setAttribute(n, src.getAttribute(n)); g.setAttribute('iFade', f); return g; });
+  const patch = (material, key) => {
+    material.onBeforeCompile = (shader) => {
+      shader.vertexShader = 'attribute float iFade;\nvarying float vFade;\n' + shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vFade = iFade;');
+      shader.fragmentShader = 'varying float vFade;\n' + shader.fragmentShader.replace('#include <dithering_fragment>', '#include <dithering_fragment>\n  gl_FragColor.a *= vFade;');
+    };
+    material.customProgramCacheKey = () => key;
+    return material;
   };
-  material.customProgramCacheKey = () => 'cutis-hard-core';
-  const meshes = geometries.map((g) => {
-    const m = new THREE.InstancedMesh(g, material, swarm.capacity);
+  const material = patch(new THREE.MeshPhysicalMaterial({ color: 0xffffff, metalness: 0, roughness: .17, clearcoat: 1, clearcoatRoughness: .12, emissive: 0x000000, transparent: true }), 'cutis-hard-core');
+  const faint = patch(material.clone(), 'cutis-hard-core'); faint.depthWrite = false;
+  const meshes = geometries.map((g, k) => {
+    const m = new THREE.InstancedMesh(g, k < 2 ? material : faint, swarm.capacity);
     m.frustumCulled = false; m.renderOrder = 1; m.count = 0; m.visible = false; m.name = 'Rigid hard cores';
+    m.setColorAt(0, new THREE.Color(1, 1, 1));
     return m;
   });
   const mesh = meshes[0];
   const group = new THREE.Group(); group.name = 'Rigid hard cores'; group.add(...meshes);
-  const pose = new THREE.Object3D(), at = [0, 0, 0, 0], counts = [0, 0];
+  const pose = new THREE.Object3D(), at = [0, 0, 0, 0], counts = [0, 0, 0, 0], tint = new THREE.Color(), ice = new THREE.Color(ICE), base = new THREE.Color();
   let planet = planetR > 0 ? planetR : 0;
   /** Place every active, visible instance's core (a config without a core shape draws none). */
   function update() {
-    counts[0] = counts[1] = 0;
+    counts.fill(0);
     if ((swarm.config.coreShape ?? 0) >= 1) {
+      base.setHex(swarm.config.coreTint ?? 0xff242c);
       for (let i = 0; i < swarm.count; i++) {
         if (!swarm.active[i]) continue;
         const level = levelOf ? levelOf[i] : 0;
         if (level > 2) continue;
-        const k = level === 0 ? 0 : 1, n = counts[k]++;
+        const o = swarm.life[i * 4 + 2], k = (level === 0 ? 0 : 1) + (o < .995 ? 2 : 0), n = counts[k]++;
         corePose(swarm, i, planet, at);
         pose.position.set(at[0], at[1], at[2]); pose.scale.setScalar(at[3]); pose.rotation.set(.2, swarm.seed[i] + swarm.time * .18, .16); pose.updateMatrix();
-        meshes[k].setMatrixAt(n, pose.matrix); fade[k].array[n] = swarm.life[i * 4 + 2];
+        meshes[k].setMatrixAt(n, pose.matrix); fade[k].array[n] = o;
+        meshes[k].setColorAt(n, tint.copy(base).lerp(ice, Math.max(0, Math.min(1, swarm.life[i * 4 + 3]))));
       }
     }
     meshes.forEach((m, k) => {
       m.count = counts[k]; m.visible = counts[k] > 0;
       if (!counts[k]) return;
-      m.instanceMatrix.needsUpdate = true; fade[k].clearUpdateRanges(); fade[k].addUpdateRange(0, counts[k]); fade[k].needsUpdate = true;
+      m.instanceMatrix.needsUpdate = true; m.instanceColor.needsUpdate = true; fade[k].clearUpdateRanges(); fade[k].addUpdateRange(0, counts[k]); fade[k].needsUpdate = true;
     });
   }
-  return { group, mesh, meshes, update, get count() { return counts[0] + counts[1]; }, setPlanetR: (R) => { planet = R > 0 ? R : 0; }, get planetR() { return planet; }, dispose: () => { geometries.forEach((g) => g.dispose()); material.dispose(); meshes.forEach((m) => m.dispose()); } };
+  return { group, mesh, meshes, update, get count() { return counts[0] + counts[1] + counts[2] + counts[3]; }, setPlanetR: (R) => { planet = R > 0 ? R : 0; }, get planetR() { return planet; },
+    dispose: () => { spheres.forEach((g) => g.dispose()); geometries.forEach((g) => g.dispose()); material.dispose(); faint.dispose(); meshes.forEach((m) => m.dispose()); } };
 }

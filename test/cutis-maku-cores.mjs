@@ -95,17 +95,21 @@ console.log('PASS bendPoint is PLANET_BEND term for term, on the sphere');
   assert(dead[1] < alive.center.y * .2 - 1.4, `the core sinks with the puddle (${dead[1]} from ${alive.center.y})`);
   close(dead[3], alive.radius, 1e-12, 'the radius stays');
   const cores = createHardCores(sw, { planetR: R });
-  cores.update(); assert.equal(cores.mesh.count, 2); close(cores.mesh.geometry.getAttribute('iFade').array[0], .4, 1e-6, 'the core fades with the body');
-  sw.active[1] = 0; cores.update(); assert.equal(cores.mesh.count, 1, 'inactive instances draw no core');
-  const m = new THREE.Matrix4(), v = new THREE.Vector3(); cores.mesh.getMatrixAt(0, m); v.setFromMatrixPosition(m); const want = corePose(sw, 0, R);
+  cores.update(); assert.equal(cores.count, 2); assert.equal(cores.meshes[2].count, 1, 'the fading one in the twin that writes no depth (the fable review)'); close(cores.meshes[2].geometry.getAttribute('iFade').array[0], .4, 1e-6, 'the core fades with the body');
+  assert.equal(cores.meshes[2].material.depthWrite, false); assert.equal(cores.meshes[0].material.depthWrite, true);
+  sw.active[1] = 0; cores.update(); assert.equal(cores.count, 1, 'inactive instances draw no core');
+  const m = new THREE.Matrix4(), v = new THREE.Vector3(); cores.meshes[2].getMatrixAt(0, m); v.setFromMatrixPosition(m); const want = corePose(sw, 0, R);
   for (let j = 0; j < 3; j++) close(v.getComponent(j), want[j], 1e-3, 'the instance sits on the pose');
   assert(cores.mesh.material instanceof THREE.MeshPhysicalMaterial && cores.mesh.material.clearcoat === 1 && cores.mesh.material.transparent, 'the pearl material');
   cores.dispose();
   // round two: each pearl at its body's level (./geometry.js levelOf): the kit's sphere under a high hull, a coarse one under the others, none culled
   { sw.active[1] = 1; const sw3 = sw; sw3.place(2, 1, 1, 0); const levelOf = new Uint8Array(sw3.capacity); levelOf.set([0, 2, 3]); const lod = createHardCores(sw3, { planetR: R, levelOf });
-    lod.update(); assert.deepEqual(lod.meshes.map((x) => x.count), [1, 1], 'one fine, one coarse, the culled one none'); assert.equal(lod.count, 2);
+    lod.update(); assert.deepEqual(lod.meshes.map((x) => x.count), [0, 1, 1, 0], 'one fine (fading), one coarse, the culled one none'); assert.equal(lod.count, 2);
     assert(lod.meshes[1].geometry.getAttribute('position').count < lod.meshes[0].geometry.getAttribute('position').count / 3, 'the coarse sphere');
-    close(lod.meshes[1].geometry.getAttribute('iFade').array[0], sw3.life[1 * 4 + 2], 1e-6, 'the coarse one fades with its body'); lod.dispose(); }
+    close(lod.meshes[1].geometry.getAttribute('iFade').array[0], sw3.life[1 * 4 + 2], 1e-6, 'the coarse one fades with its body');
+    // the slow's ice (the fable review): the body's tint (iLife.w) turns its pearl's instance colour from the tier's core tint toward ice
+    const c = new THREE.Color(); lod.meshes[1].getColorAt(0, c); close(c.getHex(), new THREE.Color(sw3.config.coreTint ?? 0xff242c).getHex(), 0, 'the tier\'s colour');
+    sw3.life[1 * 4 + 3] = 1; lod.update(); lod.meshes[1].getColorAt(0, c); assert.equal(c.getHex(), 0x8fd4ff, 'iced'); sw3.life[1 * 4 + 3] = 0; lod.dispose(); }
   const soft = new CutisSwarm({ ...DEFAULT_CONFIG }, { capacity: 2 }); soft.populate(2); const none = createHardCores(soft); none.update(); assert.equal(none.mesh.count, 0, 'a soft swarm draws no cores'); none.dispose();
 }
 console.log('PASS the drawn core: the contact centre, bent as the shell, deflated, faded and sunk with its body; the pearl material; its resolution by its body\'s level');

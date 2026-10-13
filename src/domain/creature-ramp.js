@@ -87,11 +87,11 @@ function startRamp(r) {
 }
 function finish(r, reason) { r.phase = 'done'; r.reason = reason; return r; }
 
-// the result: each step's target, most alive, mean and p95; `fits` the most alive of the last step whose mean was within the limit
+// the result: each step's target, most alive (and, when its caller books them, most dying and pending: round two), mean and p95; `fits` the most alive of the last step whose mean was within the limit
 // (`limitMs`; `thresholdMs` the fixed budget); the baseline's mean and p95 (null without one) and whether it was itself over the
 // budget; `msPerBody` the frame ms one more body costs (the slope over the baseline at its own alive and every measured step)
 export function rampResult(r) {
-  const steps = r.steps.map((s) => ({ target: s.target, alive: s.alive, frames: s.frames.length, mean: +mean(s.frames).toFixed(2), p95: +percentile(s.frames, 0.95).toFixed(2) }));
+  const steps = r.steps.map((s) => ({ target: s.target, alive: s.alive, dying: s.dying ?? 0, pending: s.pending ?? 0, frames: s.frames.length, mean: +mean(s.frames).toFixed(2), p95: +percentile(s.frames, 0.95).toFixed(2) }));
   const ok = steps.filter((s) => s.frames && s.mean <= r.limit);
   const last = r.steps[r.steps.length - 1];
   const tail = r.frames.map((f) => f.ms);

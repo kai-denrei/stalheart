@@ -84,7 +84,7 @@ export function createSwarmGeometry(swarm,{ planetR=0, lod=null }={}) {
   const shadows=new THREE.InstancedMesh(shadowGeometry,shadowMaterial,swarm.capacity);shadows.frustumCulled=false;shadows.renderOrder=0;shadows.count=0;shadows.visible=false;group.add(shadows);
   const eye=new THREE.Vector3(),spot=new THREE.Vector3(),matrix=new THREE.Matrix4(),clip=new THREE.Matrix4(),view=new THREE.Matrix4(),frustum=new THREE.Frustum(),sphere=new THREE.Sphere(),state=new Float32Array(4);
   const levelOf=new Uint8Array(swarm.capacity).fill(1),pixelsOf=new Float32Array(swarm.capacity),big=new Float32Array(swarm.capacity),lodCounts=[0,0,0,0];
-  const specs=Object.entries(sizes);
+  const specs=Object.entries(sizes),at3=[0,0,0];
   const bent=[0,0,0];
   function bend(v) { if(!(planet>0))return v;bendPoint(v.x,v.y,v.z,planet,bent);return v.set(bent[0],bent[1],bent[2]); }
   // the bent point turned to instance i's hub (the shader's hubPlace)
@@ -136,7 +136,7 @@ export function createSwarmGeometry(swarm,{ planetR=0, lod=null }={}) {
       state[0]=swarm.phase[i];state[1]=swarm.seed[i];state[2]=swarm.scale[i];state[3]=swarm.probeCount[i]*4+swarm.chosenProbe[i];
       for(const [name,size] of specs){const array=level.attributes[name].array,from=source[name],base=name==='iState'?0:i*size;for(let k=0;k<size;k++)array[index*size+k]=from[base+k];}
       // the shadow: under the body's present position, sized with it, spread by a puddle, faded by opacity, deflate and sinking below ground
-      const p=swarm.position(i),Li=swarm.life,deflate=Li[i*4+1],radius=r0*swarm.scale[i];
+      const p=swarm.positionInto(i,at3),Li=swarm.life,deflate=Li[i*4+1],radius=r0*swarm.scale[i];
       const size=radius*1.2*(1+.6*Math.max(0,deflate));
       matrix.makeScale(size,size,size).setPosition(p[0],lift,p[2]);
       shadows.setMatrixAt(shown,matrix);

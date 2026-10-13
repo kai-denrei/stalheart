@@ -15,7 +15,7 @@
 // THE RECORD'S LOOK (2026-10-13, the Pearl set, src/fx/creature-pearl.js): add and track also carry what the enemy loop writes on the stand-in for a dot
 // cloud and what the record is: `opacity` (the stand-in material's: the rise out of a breach, the phantom's cloak), `grow` (its scale over the record's
 // own, s0 / scale0: the shrink with hit points and the regenerators' knitting), `members` (a squad's bodies left) and `speed` (m/s, its type's speed x its
-// own pace). A family may ignore them (the Cutis and Reed families do).
+// own pace); round two adds `tint` (1 while the slow tower's ice is on the record). A family may ignore them (the Cutis and Reed families do).
 // The root sits at the heart's point with one unit a metre (scale cellSide / metresPerCell), so a kit that bends its plane onto a sphere
 // of radius R = metresPerCell / cellSide metres lands exactly on the planet.
 // THE HUBS (round two, owner 2026-10-13: "there are still a mix of half-dotted and new cutis enemies"; src/domain/surface-hubs.js): a family whose
@@ -29,7 +29,7 @@
 // board's cell graph, ROCK and WALL its BLOCKED cells) gives hubs.reach(hub, x, z, dx, dz, max, cell): the metres clear along (dx, dz) from plane point
 // (x, z) of that hub (src/domain/body-reach.js), walked over the graph from `cell` (the record's); add and track carry the record's `cell`.
 import * as THREE from '../../vendor/three.module.js';
-import { surfaceFrame, toPlane } from '../domain/surface-projection.js';
+import { surfaceFrame, toPlane, toPlaneInto } from '../domain/surface-projection.js';
 import { hubFrames, nearestHub, remapPlane, hubTurn } from '../domain/surface-hubs.js';
 import { createReachQuery } from '../domain/body-reach.js';
 
@@ -92,30 +92,38 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
   function proxy(reach = 1) {
     const obj = new THREE.Object3D(); obj.name = 'creature record';
     obj.material = { opacity: 1, transparent: true, dispose() {} };
-    Object.assign(obj.userData, { kind: 'creature', lift: 0, reach, tick() {}, setTint() {} });
+    // setTint: the enemy loop's slow tint (src/fx/enemy-step.js), kept for the body (round two: the fable review, the ice was lost on these bodies)
+    Object.assign(obj.userData, { kind: 'creature', lift: 0, reach, tint: null, tick() {}, setTint(c) { obj.userData.tint = c ?? null; } });
     return obj;
   }
 
   const planeOf = (p, hub = 0) => toPlane(frames[hub] ?? frame, p, R);
   // the record's lift under the ground while it rises out of a breach (src/fx/enemy-step.js's emergence, 1.2 s)
   const liftOf = (e, r0) => (e.breachSource && e.emergeAge < 1.2 ? -(1 - clamp01(e.emergeAge / 1.2)) * follow.emergeRadii * r0 : 0);
-  // the point `follow.lead` seconds ahead along the record's walk (cells a second: its spec's speed x its own pace)
-  function aheadOf(e) {
-    const d = (e.spec?.speed ?? 0) * (e.paceJitter ?? 1) * follow.lead * side, p = e.pos, dir = e.dir ?? [0, 0, 0];
-    return [p[0] + dir[0] * d, p[1] + dir[1] * d, p[2] + dir[2] * d];
+  // the point `follow.lead` seconds ahead along the record's walk (cells a second: its spec's speed x its own pace), into `out` (a body's own array)
+  function aheadOf(e, out = [0, 0, 0]) {
+    const d = (e.spec?.speed ?? 0) * (e.paceJitter ?? 1) * follow.lead * side, p = e.pos, dir = e.dir;
+    for (let k = 0; k < 3; k++) out[k] = p[k] + (dir ? dir[k] * d : 0);
+    return out;
   }
 
-  const lookOf = (e) => ({ opacity: e.obj?.material?.opacity, grow: (e.obj?.userData?.s0 ?? e.scale0) / (e.scale0 || 1), members: e.members ?? 0,
-    speed: (e.spec?.speed ?? 0) * (e.paceJitter ?? 1) * metresPerCell });
+  // what the record is and how it looks, written into `o` (round two, the fable review: track's options are one object the seam keeps, not three a
+  // record a frame; a family reads them and keeps none). `tint` 1 while the slow tower's ice is on the record's stand-in (proxy setTint), else 0
+  function lookInto(e, o) {
+    o.opacity = e.obj?.material?.opacity; o.grow = (e.obj?.userData?.s0 ?? e.scale0) / (e.scale0 || 1); o.members = e.members ?? 0;
+    o.speed = (e.spec?.speed ?? 0) * (e.paceJitter ?? 1) * metresPerCell; o.tint = e.obj?.userData?.tint != null ? 1 : 0;
+    return o;
+  }
+  const opt = { x: 0, z: 0, ax: 0, az: 0, lift: 0, pos: null, apos: null, dt: 0, hub: 0, cell: -1, opacity: 1, grow: 1, members: 0, speed: 0, tint: 0 }, xz = [0, 0], axz = [0, 0];
   // a new record of a creature type (`e.spec.body` the family, `e.tier` its tier): its body, at the record's point
   function spawn(e) {
     place(); refreshBoard();
     const family = e.spec?.body, a = family && adapter(family), t = a && tiers[family]?.[e.tier];
     if (!t || !frame) return false;
     const hub = hubOf(a, e.pos), [x, z] = planeOf(e.pos, hub), apos = aheadOf(e), [ax, az] = planeOf(apos, hub);
-    const h = a.add(e.tier, { x, z, angle: Math.atan2(az - z, ax - x) || 0, lift: liftOf(e, t.r0), pos: e.pos, apos, hub, cell: e.cur ?? -1, ...lookOf(e) });
+    const h = a.add(e.tier, lookInto(e, { x, z, angle: Math.atan2(az - z, ax - x) || 0, lift: liftOf(e, t.r0), pos: e.pos, apos, hub, cell: e.cur ?? -1 }));
     if (!h) return false;
-    live.set(e, { family, h, stamp, r0: t.r0, hub });
+    live.set(e, { family, h, stamp, r0: t.r0, hub, apos });
     return true;
   }
 
@@ -157,8 +165,10 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
       b.stamp = stamp;
       const a = adapters.get(b.family), hub = hubOf(a, e.pos, b.hub);
       if (hub !== b.hub) { a.rehub(b.h, hub); b.hub = hub; handed++; }
-      const [x, z] = planeOf(e.pos, hub), apos = aheadOf(e), [ax, az] = planeOf(apos, hub);
-      if (a.track(b.h, { x, z, ax, az, lift: liftOf(e, b.r0), pos: e.pos, apos, dt, hub, cell: e.cur ?? -1, ...lookOf(e) })) replaced++;
+      const f = frames[hub] ?? frame, apos = aheadOf(e, b.apos);
+      toPlaneInto(f, e.pos, R, xz); toPlaneInto(f, apos, R, axz);
+      opt.x = xz[0]; opt.z = xz[1]; opt.ax = axz[0]; opt.az = axz[1]; opt.lift = liftOf(e, b.r0); opt.pos = e.pos; opt.apos = apos; opt.dt = dt; opt.hub = hub; opt.cell = e.cur ?? -1;
+      if (a.track(b.h, lookInto(e, opt))) replaced++;
     }
     for (const [e, b] of live) if (b.stamp !== stamp) { live.delete(e); adapters.get(b.family).free(b.h); }
     for (const a of adapters.values()) a.step(dt, camera, height, cull);
@@ -169,6 +179,8 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
 
   return {
     has, proxy, spawn, kill, recoil, step,
+    // the record's body stands drawn (a family that makes its bodies later, the Reeds, says so; the others draw at add)
+    drawn: (e) => { const b = live.get(e); if (!b) return false; const a = adapters.get(b.family); return a.drawn ? a.drawn(b.h) : true; },
     roots: () => [...adapters.values()].flatMap((a) => a.roots()),
     // the bodies' books: up now, re-placed on the leash, handed from one hub to another, the records on each hub, and each family's tiers
     stats: () => { const onHub = new Array(12).fill(0); for (const b of live.values()) onHub[b.hub]++;

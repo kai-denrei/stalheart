@@ -88,7 +88,11 @@ export function createCreatureEnemies(host) {
   const radiusOf = (e) => (PEARL_BODIES[e.type]?.r0 ?? 2.5) * ((e.obj?.userData?.s0 ?? e.scale0) / (e.scale0 || 1)) * (e.members > 1 ? 1.5 : 1);   // a squad's bodies hit as one bigger
 
   const ofTier = (e) => e.alive && e.tier === choice.tier && e.spec?.body === choice.family;
-  const aliveOfTier = () => { let n = 0; for (const e of host.enemies) if (ofTier(e)) n++; return n; };
+  // round two (the fable review: a record whose body was never made cost nothing and still counted, so "fits N" could be inflated): the probe's alive
+  // is the tier's records whose body stands drawn; the rest are pending (still being made, or failed: the card says which)
+  const aliveOfTier = () => { let n = 0; for (const e of host.enemies) if (ofTier(e) && bodies?.drawn(e)) n++; return n; };
+  const pendingOfTier = () => { let n = 0; for (const e of host.enemies) if (ofTier(e) && !bodies?.drawn(e)) n++; return n; };
+  let refused = 0;   // the probe's spawns the enemy loop did not make (no body for them: src/fx/enemy-step.js spawnOne)
 
   // THE GROUND (src/domain/probe-ground.js): the hops from the front gate over the outside ground, and the band the probe's bodies come
   // up in; worked out again whenever the board's paths change (a breach's blast, the back door falling: its new way in takes the ground
@@ -123,7 +127,7 @@ export function createCreatureEnemies(host) {
     for (let k = 0; k < n; k++) {
       const sp = source();
       if (!sp) break;
-      if (host.spawn({ type: choice.family, spec: tierSpec(choice.family, choice.tier), tier: choice.tier, sp, at: 0, spread: 0.8, pace: 1, harmless: true, probe: true })) made++;
+      if (host.spawn({ type: choice.family, spec: tierSpec(choice.family, choice.tier), tier: choice.tier, sp, at: 0, spread: 0.8, pace: 1, harmless: true, probe: true })) made++; else refused++;
     }
     return made;
   }
@@ -140,7 +144,7 @@ export function createCreatureEnemies(host) {
   });
   if (probing) {
     probe = createCreatureProbe({ root: host.root, family: choice.family, tier: choice.tier, def: CREATURE_TIERS[choice.family][choice.tier], tune, spawn: spawnProbe,
-      alive: aliveOfTier, total: () => host.enemies.reduce((n, e) => n + (e.alive ? 1 : 0), 0), perf: host.perf, perfOn: host.perfOn, bodies: () => bodies?.stats() ?? null, defence });
+      alive: aliveOfTier, pending: pendingOfTier, refused: () => refused, total: () => host.enemies.reduce((n, e) => n + (e.alive ? 1 : 0), 0), perf: host.perf, perfOn: host.perfOn, bodies: () => bodies?.stats() ?? null, defence });
   }
 
   // the game's ram (src/fx/enemy-step.js, just before the record's kill): a Pearl body staggers along the tank's heading and aside, and the tank jolts

@@ -66,15 +66,23 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     pools.set(id, p);
     return p;
   }
+  // the free slots: a binary min-heap, so a new body takes the lowest free slot without sorting the list each spawn (the fable review)
+  function heapPush(a, v) { let i = a.push(v) - 1; while (i > 0) { const up = (i - 1) >> 1; if (a[up] <= v) break; a[i] = a[up]; i = up; } a[i] = v; }
+  function heapPop(a) {
+    const top = a[0], last = a.pop();
+    if (a.length) { let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i, mv = last; if (l < a.length && a[l] < mv) { m = l; mv = a[l]; } if (r < a.length && a[r] < mv) m = r; if (m === i) break; a[i] = a[m]; i = m; } a[i] = last; }
+    return top;
+  }
   function take(p) {
-    if (p.free.length) { p.free.sort((a, b) => b - a); return p.free.pop(); }
+    if (p.free.length) return heapPop(p.free);
     if (p.next < p.swarm.capacity) return p.next++;
     p.full++; return -1;
   }
-  function release(p, i) { p.swarm.active[i] = 0; p.swarm.resetLife(i); p.swarm.hold[i] = 0; p.owner[i] = null; p.jolts.delete(i); p.free.push(i); }
+  function release(p, i) { p.swarm.active[i] = 0; p.swarm.resetLife(i); p.swarm.hold[i] = 0; p.owner[i] = null; p.jolts.delete(i); heapPush(p.free, i); }
 
   // a spot [across, along] round (x, z) facing (dx, dz)
-  const at = (x, z, dx, dz, s) => [x + dx * s[1] + dz * s[0], z + dz * s[1] - dx * s[0]];
+  const at = (x, z, dx, dz, s, out = [0, 0]) => { out[0] = x + dx * s[1] + dz * s[0]; out[1] = z + dz * s[1] - dx * s[0]; return out; };
+  const P = [0, 0], T = [0, 0], POS = [0, 0, 0];   // scratch (the fable review: no arrays a slot a frame)
   const opacityOf = (o) => clamp01((o ?? tune.opacityRef) / tune.opacityRef);
 
   // a slot's hub: the swarm's hub index and its turn (the shader's iHub)
@@ -149,7 +157,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     h.hub = hub; h.p.handed++;
   }
 
-  function track(h, { x, z, ax = x, az = z, lift = 0, dt = 0, opacity, grow = 1, members = 0, speed = h?.speed ?? 0, hub = h?.hub ?? 0, cell = h?.cell ?? -1 }) {
+  function track(h, { x, z, ax = x, az = z, lift = 0, dt = 0, opacity, grow = 1, members = 0, speed = h?.speed ?? 0, hub = h?.hub ?? 0, cell = h?.cell ?? -1, tint = 0 }) {
     if (!h || h.dead) return false;
     h.cell = cell;
     if (hub !== h.hub) rehub(h, hub);
@@ -158,15 +166,17 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     if (members > 0) while (h.slots.length > Math.max(1, members)) { die(h, h.slots.pop()); p.shed++; }
     const d = Math.hypot(ax - x, az - z);
     if (d > 1e-6) { h.dx = (ax - x) / d; h.dz = (az - z) / d; }
-    h.speed = speed; h.op = opacityOf(opacity);
-    const ahead = speed * pearlLead({ cycle: c.cycleDuration, pace: h.pace }, tune), leash = pearlLeash({ r: h.r, speed }, follow, tune);
+    h.op = opacityOf(opacity);
+    // the lead and the leash change only with the record's speed
+    if (speed !== h.speedAt) { h.speed = h.speedAt = speed; h.ahead = speed * pearlLead({ cycle: c.cycleDuration, pace: h.pace }, tune); h.leash = pearlLeash({ r: h.r, speed }, follow, tune); }
+    const ahead = h.ahead, leash = h.leash;
     const ang = Math.atan2(h.dz, h.dx);
     let replaced = false;
     for (const slot of h.slots) {
-      const i = slot.i, k = i * 3, [px, pz] = at(x, z, h.dx, h.dz, slot.s), [tx, tz] = at(x + h.dx * ahead, z + h.dz * ahead, h.dx, h.dz, slot.s);
-      const pos = sw.position(i), lag = Math.min(Math.hypot(pos[0] - px, pos[2] - pz), Math.hypot(sw.anchor[k] - px, sw.anchor[k + 2] - pz));
+      const i = slot.i, k = i * 3, [px, pz] = at(x, z, h.dx, h.dz, slot.s, P), [tx, tz] = at(x + h.dx * ahead, z + h.dz * ahead, h.dx, h.dz, slot.s, T);
+      const pos = sw.positionInto(i, POS), lag = Math.min(Math.hypot(pos[0] - px, pos[2] - pz), Math.hypot(sw.anchor[k] - px, sw.anchor[k + 2] - pz));
       sw.scale[i] = (h.r / c.r0) * grow;
-      sw.life[i * 4] = lift; sw.life[i * 4 + 2] = h.op;
+      sw.life[i * 4] = lift; sw.life[i * 4 + 2] = h.op; sw.life[i * 4 + 3] = tint;   // the slow's ice (the fable review)
       slot.behind = lag > leash ? slot.behind + dt : 0;
       sw.setTarget(i, tx, tz);
       if (lag > 2 * leash || slot.behind > follow.grace) {
@@ -269,7 +279,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
       const { p } = h, sw = p.swarm, i = slot.i, pos = sw.position(i), L = sw.life;
       return { tier: p.id, type: h.type, slot: i, slots: h.slots.length, centre: [pos[0], pos[2]], radius: sw.config.r0 * sw.scale[i], lift: L[i * 4], deflate: L[i * 4 + 1], opacity: L[i * 4 + 2],
         stage: sw.getState(i), active: !!sw.active[i], dead: h.dead, hub: h.hub,
-        stagger: p.dying.get(i)?.st ? +(clock - p.dying.get(i).st.t0).toFixed(3) : null, knocked: +((p.dying.get(i)?.st ?? p.jolts.get(i))?.moved ?? 0).toFixed(3), recoil: p.jolts.has(i) ? +(clock - p.jolts.get(i).t0).toFixed(3) : null, held: !!sw.hold[i], cored: p.def.cored, pace: +h.pace.toFixed(3), core: p.def.cored ? corePose(sw, i, 0) : null };
+        stagger: p.dying.get(i)?.st ? +(clock - p.dying.get(i).st.t0).toFixed(3) : null, knocked: +((p.dying.get(i)?.st ?? p.jolts.get(i))?.moved ?? 0).toFixed(3), recoil: p.jolts.has(i) ? +(clock - p.jolts.get(i).t0).toFixed(3) : null, held: !!sw.hold[i], tint: L[i * 4 + 3], cored: p.def.cored, pace: +h.pace.toFixed(3), core: p.def.cored ? corePose(sw, i, 0) : null };
     },
     dispose() { for (const p of pools.values()) { p.geo.dispose(); p.cores?.dispose(); } pools.clear(); parent.remove(group); },
   };

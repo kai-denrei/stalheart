@@ -183,3 +183,29 @@ console.log('PASS the family: one swarm per tier at each type\'s size, following
   const cutis = createCreatureEnemies({ ...host, flags: { creatures: 'cutis:small' } }); assert.equal(cutis.dress(q), q, '?creatures=cutis leaves the types alone'); cutis.dispose();
 }
 console.log('PASS the switch: ?creatures=pearl dresses a mapped entry in its body (type and spec kept) wherever it comes up, unmapped types and undressed entries keep their own, off by default');
+
+// ---- round two: the fable review's fixes ----
+{
+  // b. the slow's ice: the stand-in's setTint reaches the body's tint channel (the kit's iLife.w: the membrane and the pearl turn ice)
+  const scene = new THREE.Scene(), fams = { pearl: (o) => createPearlFamily({ ...o, set: PEARL_TIERS, tune: PEARL_FOLLOW }) };
+  const { createCreatureBodies } = await import('../src/fx/creature-bodies.js');
+  const bodies = createCreatureBodies({ scene, families: fams, tiers: { pearl: PEARL_BODIES }, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, metresPerCell: 10, heart: () => [[0, 0, 1], 0, 10 / 753] });
+  const obj = bodies.proxy(), e = { pos: [0.01, 0, 1], dir: [0, 0, 0], spec: pearlSpec('drifter'), tier: 'drifter', alive: true, scale0: 1, obj };
+  assert(bodies.spawn(e));
+  const cam = new THREE.PerspectiveCamera(50, 1, .1, 1e5);
+  obj.userData.setTint(0x8fd4ff); bodies.step(1 / 60, [e], cam, 800);
+  const h = bodies.handleOf(e).h, sw = h.p.swarm, i = h.slots[0].i;
+  assert.equal(sw.life[i * 4 + 3], 1, 'a slowed record\'s body is iced'); obj.userData.setTint(null); bodies.step(1 / 60, [e], cam, 800); assert.equal(sw.life[i * 4 + 3], 0, 'and thaws');
+  bodies.dispose();
+  // c. the free slots: the lowest free one first, without sorting
+  const parent = new THREE.Group(), fam2 = createPearlFamily({ parent, tiers: PEARL_BODIES, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set: PEARL_TIERS, tune: PEARL_FOLLOW });
+  const hs = [0, 1, 2, 3, 4, 5].map((k) => fam2.add('amoeba', { x: k * 10, z: 0 }));
+  for (const k of [4, 1, 3]) fam2.free(hs[k]);
+  assert.deepEqual([fam2.add('amoeba', { x: 0, z: 9 }), fam2.add('amoeba', { x: 0, z: 19 }), fam2.add('amoeba', { x: 0, z: 29 })].map((x) => x.slots[0].i), [1, 3, 4], 'the lowest free slot first');
+  // c. the core contact written in place: the same numbers as getCoreContact, no object made
+  const cs = new CutisSwarm({ ...DEFAULT_CONFIG, r0: 2, coreShape: 3, coreSize: .28 }, { capacity: 2 }); cs.populate(2); for (let n = 0; n < 200; n++) cs.step(STEP);
+  const full = cs.getCoreContact(1), into = cs.coreContactInto(1, cs.scratchCore);
+  for (const k of ['x', 'y', 'z']) close(into.center[k], full.center[k], 1e-12, `core centre ${k}`); close(into.radius, full.radius, 1e-12, 'radius'); close(into.u, full.u, 1e-12, 'u');
+  assert.equal(full.rammable, false); assert.deepEqual(cs.positionInto(1, [0, 0, 0]), cs.position(1));
+}
+console.log('PASS the review\'s fixes: a slowed body iced and thawed, the lowest free slot first from a heap, the core contact and position written in place');

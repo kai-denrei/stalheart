@@ -30,12 +30,17 @@ export function carryFrame(f, p) {
 
 // the plane point [x, z] of sphere point `p` (normalised) in frame `f`, for a planet of radius `R` (the plane's unit: R = 753 gives
 // metres on the story planet). The origin itself (and its antipode, where the direction is undefined) maps to its arc along +x.
-export function toPlane(f, p, R = 1) {
-  const q = unit(p), c = Math.max(-1, Math.min(1, dot(q, f.ey))), theta = Math.acos(c);
-  const tx = dot(q, f.ex), tz = dot(q, f.ez), s = Math.hypot(tx, tz);
-  if (s < 1e-12) return [theta * R, 0];
+export const toPlane = (f, p, R = 1) => toPlaneInto(f, p, R, [0, 0]);
+
+// toPlane written into `out` [x, z] (round two of the Pearl set: once a record a frame, nothing allocated)
+export function toPlaneInto(f, p, R, out) {
+  const l = Math.hypot(p[0], p[1], p[2]) || 1, qx = p[0] / l, qy = p[1] / l, qz = p[2] / l;
+  const c = Math.max(-1, Math.min(1, qx * f.ey[0] + qy * f.ey[1] + qz * f.ey[2])), theta = Math.acos(c);
+  const tx = qx * f.ex[0] + qy * f.ex[1] + qz * f.ex[2], tz = qx * f.ez[0] + qy * f.ez[1] + qz * f.ez[2], s = Math.hypot(tx, tz);
+  if (s < 1e-12) { out[0] = theta * R; out[1] = 0; return out; }
   const d = theta * R;
-  return [d * tx / s, d * tz / s];
+  out[0] = d * tx / s; out[1] = d * tz / s;
+  return out;
 }
 
 // the inverse: the unit sphere point of plane point (x, z) in frame `f` (radius `R` in the plane's unit)

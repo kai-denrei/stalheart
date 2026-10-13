@@ -23,7 +23,7 @@ export class CutisSwarm {
     this.probeCount=new Float32Array(cap);this.chosenProbe=new Float32Array(cap);
     this.duration=new Float32Array(cap);this.idle=new Uint8Array(cap);this.cycles=new Uint32Array(cap);
     // per instance: where it hunts [x,z]; the temperament (multiplies the hop cycle's duration, <1 is faster); 1 = the phase does not advance (the nuke's stun);
-    // 1 = stepped and drawn; [lift m (the origin's depth, negative = below ground), deflate 0..1, opacity 0..1, spare]; the planted next anchor [x,z,flag]
+    // 1 = stepped and drawn; [lift m (the origin's depth, negative = below ground), deflate 0..1 (round two: signed, an impact's rebound below 0), opacity 0..1, ice tint 0..1 (round two: the slow)]; the planted next anchor [x,z,flag]
     this.target=new Float32Array(cap*2);this.pace=new Float32Array(cap).fill(1);this.hold=new Uint8Array(cap);this.active=new Uint8Array(cap);
     this.life=new Float32Array(cap*4);this.plant=new Float32Array(cap*3);
     this.forced=new Uint8Array(cap);
@@ -33,6 +33,7 @@ export class CutisSwarm {
     // round two (owner, 2026-10-13: "the cutis animation clips through walls"): the host's free reach, (i, x, z, dx, dz, max) -> metres clear along the
     // unit direction (dx, dz) from (x, z) (src/domain/body-reach.js against the board's ROCK and WALL); null is the kit's open plane. See plan().
     this.reachLimit=null;
+    this.scratchCore={center:{x:0,y:0,z:0},radius:0,u:0};
     this.occupied=new Float32Array(cap*3);
     for(let i=0;i<cap;i++){this.seed[i]=hash(i+17)*100;this.scale[i]=.85+hash(i+93)*.3;}
     this.reset(0);
@@ -191,17 +192,23 @@ export class CutisSwarm {
     while(this.clock>=STEP){this.step(STEP);this.clock-=STEP;n++;}
     return n;
   }
-  position(i) { if((this.config.coreShape??0)>0){const {center}=this.getCoreContact(i);return [center.x,0,center.z];}const k=i*3,t=this.phase[i]<.62?0:transferProgress((this.phase[i]-.62)/.23,this.config.transferAcceleration);return [this.offset[k]+(this.anchor[k]-this.offset[k])*t,0,this.offset[k+2]+(this.anchor[k+2]-this.offset[k+2])*t]; }
+  position(i) { return this.positionInto(i,[0,0,0]); }
+  /** Round two (the fable review: no per-frame garbage): position(i) written into `out` [x, 0, z]. */
+  positionInto(i,out) { if((this.config.coreShape??0)>0){const {center}=this.coreContactInto(i,this.scratchCore);out[0]=center.x;out[1]=0;out[2]=center.z;return out;}const k=i*3,t=this.phase[i]<.62?0:transferProgress((this.phase[i]-.62)/.23,this.config.transferAcceleration);out[0]=this.offset[k]+(this.anchor[k]-this.offset[k])*t;out[1]=0;out[2]=this.offset[k+2]+(this.anchor[k+2]-this.offset[k+2])*t;return out; }
   /** The core on the shared transfer path: the body's centre as the membrane shader's uHardRadius block computes it (one transfer clock, delay uDelay/2), lifted clear of the ground; its radius rigid (coreSize x r). Plane metres, y up, before the shader's ground clamp, deflate, lift and planet bend. */
-  getCoreContact(i) {
-    const config=this.config,spec=coreContact(config),k=i*3,r=config.r0*this.scale[i],phase=this.phase[i],s=this.lengthScale,delay=config.delaySpread;
+  getCoreContact(i) { const c=this.coreContactInto(i,{center:{x:0,y:0,z:0},radius:0,u:0});return {...coreContact(this.config),center:c.center,radius:c.radius,u:c.u}; }
+  /** Round two (the fable review: getCoreContact rebuilt coreContact(config) and three objects a call, twice a cored body a frame): the centre, radius and
+   * transfer share written into `out` { center: { x, y, z }, radius, u }, nothing allocated; getCoreContact is this plus the tier's contact spec. */
+  coreContactInto(i,out) {
+    const config=this.config,k=i*3,r=config.r0*this.scale[i],phase=this.phase[i],s=this.lengthScale,delay=config.delaySpread,center=out.center;
     const transfer=transferProgress((phase-.62)/.23,config.transferAcceleration);
     const u=Math.max(0,Math.min(1,(transfer-delay*.5)/Math.max(.02,1-delay)));
     const travel=2*u-u*u,height=r*.78*((1-u)**2+u*u)+2*(1-u)*u*.014*s;
-    const center={x:this.offset[k]+(this.anchor[k]-this.offset[k])*travel,y:height,z:this.offset[k+2]+(this.anchor[k+2]-this.offset[k+2])*travel};
+    center.x=this.offset[k]+(this.anchor[k]-this.offset[k])*travel;center.y=height;center.z=this.offset[k+2]+(this.anchor[k+2]-this.offset[k+2])*travel;
     if(phase>=.85){const settle=(phase-.85)/.15,recoil=Math.exp(-6*settle)*Math.sin(settle*22)*r*.12*config.wobble;center.x=this.anchor[k]+this.heading[k]*recoil;center.z=this.anchor[k+2]+this.heading[k+2]*recoil;center.y=r*.78;}
-    const radius=spec.collisionRadius*this.scale[i];if(radius>0)center.y=Math.max(center.y,radius*1.3+.018*s);
-    return {...spec,center,radius,u};
+    // coreContact's collisionRadius (r0 x coreSize for a hard core, 0 for a soft body) x the instance's scale
+    const radius=(config.coreShape??0)>=1?config.r0*(config.coreSize??.28)*this.scale[i]:0;if(radius>0)center.y=Math.max(center.y,radius*1.3+.018*s);
+    out.radius=radius;out.u=u;return out;
   }
   contactDamageAt(i,point,unitRadius,dt) { const c=this.getCoreContact(i);return !c.rammable&&Math.hypot(point.x-c.center.x,point.y-c.center.y,point.z-c.center.z)<=c.radius+Math.max(0,unitRadius)?c.contactDamagePerSecond*Math.max(0,dt):0; }
   getState(i) { return this.idle[i]?'REST':phaseState(this.phase[i]); }

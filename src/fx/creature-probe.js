@@ -12,7 +12,11 @@ import { makeRamp, stepRamp, rampResult, windowMean } from '../domain/creature-r
 // overlay's sample (null while off), `perfOn()` turns the overlay on, `bodies()` the bodies' stats, `defence()` the ground and the
 // garrison (src/fx/creature-enemies.js: the sentries built, their hits and kills on the creatures, the spawn band, the held heart),
 // `now()` real milliseconds
-export function createCreatureProbe({ root, family, tier, def, tune, spawn, alive, total, perf, perfOn, bodies, defence = null, now = () => performance.now() }) {
+// Round two (the fable review: a record whose body was not made, a full pool or a Reed cage that failed to load, counted as alive and cost nothing, so
+// "fits N" could be inflated): `alive()` counts only the tier's bodies standing drawn, `pending()` the tier's records whose body is still being made (or
+// never will be), `refused()` the spawns the enemy loop did not make; the spawns top up alive + pending to the target, each step books its most dying and
+// pending beside its alive, and the card says pending, refused, refused for want of a slot and the family's last error.
+export function createCreatureProbe({ root, family, tier, def, tune, spawn, alive, pending = () => 0, refused = () => 0, total, perf, perfOn, bodies, defence = null, now = () => performance.now() }) {
   const cap = Math.min(tune.hardCap, def.capacity ?? tune.hardCap);
   const ramp = makeRamp({ step: def.probeStep, hold: tune.hold, settle: tune.settle, span: tune.span, thresholdMs: tune.thresholdMs, overSeconds: tune.overSeconds, hardCap: cap,
     startDelay: tune.startDelay, maxSeconds: tune.maxSeconds, gapMs: tune.gapMs, baseline: tune.baseline, relative: tune.relative, overRatio: tune.overRatio, overMs: tune.overMs });
@@ -23,11 +27,13 @@ export function createCreatureProbe({ root, family, tier, def, tune, spawn, aliv
     if (last === null) perfOn?.();   // the overlay's sample carries the CPU split, GPU ms, draw calls and triangles
     last = t;
     if (ramp.phase === 'done') return;
-    const up = alive();
+    const up = alive(), wait = pending(), ts = bodies?.()?.families?.[family]?.[tier] ?? null;
     peakTotal = Math.max(peakTotal, total());
     // the ramp runs on the wall clock, not the game's dt (2026-10-12, the headed M4 run: the game's clock gave the probe ~48 s in 900 s of real time)
     stepRamp(ramp, { dt: ms > 0 ? Math.min(ms, 1000) / 1000 : dt, ms, alive: up });
-    if (ramp.phase === 'ramping' && up < ramp.target) spawned += spawn(Math.min(tune.perFrame, ramp.target - up));
+    const cur = ramp.steps[ramp.steps.length - 1];
+    if (cur) { cur.pending = Math.max(cur.pending ?? 0, wait); cur.dying = Math.max(cur.dying ?? 0, ts?.dying ?? 0); }
+    if (ramp.phase === 'ramping' && up + wait < ramp.target) spawned += spawn(Math.min(tune.perFrame, ramp.target - up - wait));
     const s = perf?.();
     if (s && ramp.phase === 'ramping') sampleAt = { ...s, alive: up, target: ramp.target, window: windowMean(ramp) };
     if (ramp.phase === 'done') finish();
@@ -41,6 +47,7 @@ export function createCreatureProbe({ root, family, tier, def, tune, spawn, aliv
       totalAlive: total(), peakTotal, frameMean: r.frameMean, frameP95: r.frameP95,
       enemiesCpuMs: s?.cpu ? +s.cpu.enemies.toFixed(2) : null, frameCpuMs: s?.cpu ? +s.cpu.frame.toFixed(2) : null, gpuMs: s?.gpuMs != null ? +s.gpuMs.toFixed(2) : null,
       calls: s?.calls ?? null, triangles: s?.triangles ?? null, replaced: b?.replaced ?? 0, spawned, slotsRefused: tierStats?.full ?? 0, steps: r.steps,
+      pending: pending(), refused: refused(), failed: tierStats?.failed ?? 0, lastError: tierStats?.lastError ?? null,
       // a family with its own solver (the Reeds, src/fx/creature-reed.js): the ms a body costs a frame, the family's solver ms (running mean), its rate
       bodyMs: tierStats?.bodyMs ?? null, solverMs: tierStats?.solverMean ?? null, solverHz: tierStats?.hz ?? null,
       // THE DEFENCE (owner, 2026-10-12): the sentries that stood, what they did to the creatures, where the bodies came up, the heart held
@@ -48,7 +55,7 @@ export function createCreatureProbe({ root, family, tier, def, tune, spawn, aliv
     };
     console.info(`CREATURE PROBE ${family}:${tier} maxAlive=${result.maxAlive} fits=${result.fits} limitMs=${result.limitMs} baseline=${result.baselineMean}/${result.baselineP95}`
       + ` msPerBody=${result.msPerBody} total=${result.totalAlive} frameMs=${result.frameMean} p95=${result.frameP95}`
-      + `${result.bodyMs === null ? '' : ` bodyMs=${result.bodyMs} solverMs=${result.solverMs} hz=${result.solverHz}`} enemiesCpu=${result.enemiesCpuMs} gpu=${result.gpuMs} calls=${result.calls} tris=${result.triangles} replaced=${result.replaced} reason=${result.reason}`
+      + `${result.bodyMs === null ? '' : ` bodyMs=${result.bodyMs} solverMs=${result.solverMs} hz=${result.solverHz}`} enemiesCpu=${result.enemiesCpuMs} gpu=${result.gpuMs} calls=${result.calls} tris=${result.triangles} replaced=${result.replaced} pending=${result.pending} refused=${result.refused} reason=${result.reason}`
       + `${result.defence ? ` sentries=${result.defence.sentries} sentryKills=${result.defence.fight.kills} band=${result.defence.band ? `${result.defence.band.lo}-${result.defence.band.hi}` : '-'} heartHeld=${result.defence.heartHeld}` : ''}`);
     show();
   }
@@ -67,8 +74,9 @@ export function createCreatureProbe({ root, family, tier, def, tune, spawn, aliv
       `<div>frame ${n(r.frameMean)} ms mean · ${n(r.frameP95)} ms p95 · enemies CPU ${n(r.enemiesCpuMs, 2)} ms · GPU ${r.gpuMs === null ? 'n/a' : `${n(r.gpuMs)} ms`}</div>`,
       r.bodyMs === null ? '' : `<div>solver ${n(r.bodyMs, 2)} ms a body · ${n(r.solverMs, 1)} ms all bodies · at ${r.solverHz} Hz</div>`,
       `<div>${n(r.calls, 0)} draw calls · ${r.triangles === null ? '—' : `${(r.triangles / 1000).toFixed(1)}k`} tris · re-placed ${r.replaced} · stopped: ${r.reason}</div>`,
+      `<div>pending ${r.pending}${r.failed ? ` (${r.failed} failed)` : ''} · refused ${r.refused} (${r.slotsRefused} for want of a slot)${r.lastError ? ` · <b>last error: ${String(r.lastError).replace(/[<>&]/g, '')}</b>` : ''}</div>`,
       r.defence ? defenceRows(r.defence) : '',
-      `<div style="opacity:.7">${r.steps.slice(-6).map((s) => `${s.alive}: ${s.mean}/${s.p95}`).join(' · ')} (alive: mean/p95 ms)</div>`,
+      `<div style="opacity:.7">${r.steps.slice(-6).map((s) => `${s.alive}${s.dying ? ` +${s.dying}d` : ''}${s.pending ? ` +${s.pending}p` : ''}: ${s.mean}/${s.p95}`).join(' · ')} (alive +dying +pending: mean/p95 ms)</div>`,
     ];
     card.innerHTML = rows.join('') + '<button type="button" aria-label="Dismiss" style="position:absolute;top:4px;right:6px;background:none;border:0;color:#e8f2f4;font:16px ui-monospace,monospace;cursor:pointer">×</button>';
     card.querySelector('button').addEventListener('click', (ev) => { ev.stopPropagation(); card.remove(); card = null; });
@@ -88,7 +96,7 @@ export function createCreatureProbe({ root, family, tier, def, tune, spawn, aliv
     step,
     phase: () => ramp.phase,
     // the test hook's view: the phase, the target, the tier alive, and the result once done
-    state: () => ({ family, tier, phase: ramp.phase, target: ramp.target, maxAlive: ramp.maxAlive, steps: ramp.steps.length, spawned, window: +windowMean(ramp).toFixed(2),
+    state: () => ({ family, tier, phase: ramp.phase, target: ramp.target, maxAlive: ramp.maxAlive, steps: ramp.steps.length, spawned, pending: pending(), refused: refused(), window: +windowMean(ramp).toFixed(2),
       baselineMean: ramp.base.mean, baselineP95: ramp.base.p95, limitMs: +ramp.limit.toFixed(2), card: !!card?.isConnected, cardText: card?.isConnected ? card.textContent : null, result }),
     dispose: () => { card?.remove(); card = null; },
   };

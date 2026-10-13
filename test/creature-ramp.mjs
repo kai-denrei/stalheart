@@ -73,3 +73,27 @@ assert.deepEqual([CREATURE_TIERS.cutis.small.r0, CREATURE_TIERS.cutis.medium.r0,
 assert.equal(CREATURE_PROBE.thresholdMs, 16.7); assert.ok(CREATURE_PROBE.baseline >= 4 && CREATURE_PROBE.relative && CREATURE_PROBE.overRatio > 0 && CREATURE_PROBE.overMs > 0); assert.ok(CREATURE_PROBE.test.baseline <= 2 && CREATURE_PROBE.test.relative === false, 'the headless test stays short'); assert.ok(CREATURE_PROBE.hardCap >= 2000 && CREATURE_PROBE.overSeconds > 0 && CREATURE_PROBE.hold > CREATURE_PROBE.settle);
 assert.ok(CREATURE_FOLLOW.fastest > 0 && CREATURE_FOLLOW.fastest < 1 && CREATURE_FOLLOW.leashRadii >= 3);
 console.log('Creature ramp: a baseline of the sector alone, then steps until the frame stays over budget (the last fitting step reported), gaps are not frames, ?creatures parsed, wave shares, the tier table.');
+
+// ---- round two (the fable review): the probe counts only the bodies that stand drawn, tops up alive + pending, books pending, dying and refused ----
+{
+  const { createCreatureProbe } = await import('../src/fx/creature-probe.js');
+  const { CREATURE_PROBE, CREATURE_TIERS } = await import('../src/content/creature-enemies.js');
+  const tune = { ...CREATURE_PROBE, ...CREATURE_PROBE.test, maxSeconds: 30 }, def = { ...CREATURE_TIERS.reed.small, capacity: 40 };
+  let drawn = 0, waiting = [], refusedN = 0, clock = 0, overTarget = 0;
+  const probe = createCreatureProbe({ root: null, family: 'reed', tier: 'small', def, tune, total: () => drawn + waiting.length, perf: () => null,
+    alive: () => drawn, pending: () => waiting.length, refused: () => refusedN, bodies: () => ({ families: { reed: { small: { dying: 2, full: 1, failed: 0, lastError: 'cage small: 404' } } } }),
+    // a body is made three frames after its spawn; one spawn in five is refused (no body)
+    spawn: (n) => { let made = 0; for (let k = 0; k < n; k++) { if ((clock * 7 + k) % 5 === 0) { refusedN++; continue; } waiting.push(3); made++; } return made; },
+    now: () => clock * 16 });
+  for (; clock < 4000 && probe.state().phase !== 'done'; clock++) {
+    waiting = waiting.map((t) => t - 1); drawn += waiting.filter((t) => t <= 0).length; waiting = waiting.filter((t) => t > 0);
+    probe.step(1 / 60);
+    const st = probe.state(); if (drawn + waiting.length > st.target + tune.perFrame) overTarget++;
+  }
+  const s = probe.state(), r = s.result;
+  assert.equal(s.phase, 'done'); assert.equal(overTarget, 0, 'the spawns top up alive + pending to the target, not alive alone');
+  assert(r.steps.some((st) => st.pending > 0) && r.steps.every((st) => st.dying === 2), `each step books its pending and dying (${JSON.stringify(r.steps.slice(0, 3))})`);
+  assert.equal(r.refused, refusedN); assert(r.refused > 0); assert.equal(r.lastError, 'cage small: 404'); assert.equal(r.slotsRefused, 1);
+  assert(r.maxAlive <= drawn, 'alive is the drawn bodies');
+}
+console.log('PASS the probe\'s validity: alive is the bodies standing drawn, alive + pending topped up to the target, pending, dying, refused and the last error booked');
