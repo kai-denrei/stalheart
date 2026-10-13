@@ -4,7 +4,10 @@
 // the settle's recoil, the hard core's padded shell, the squash), not where the planner thinks it is. Plane metres before the planet bend (y up).
 // Used by the audits only: the game never calls it per frame. FOOTPRINT_DIRS is the third (lowest) hull's vertex set as ./geometry.js builds it (the
 // sphere's points outside the three caps and the caps' rings), without three.js: the body directions a footprint audit deforms.
-//   deformInto(swarm, i, n, out)   instance i's deformed point for body direction n [x, y, z] (unit) -> out [x, y, z, reach weight (0 body .. 1 stalk tip)]
+//   deformInto(swarm, i, n, out)   instance i's deformed point for body direction n [x, y, z] (unit) -> out [x, y, z, reach weight (0 body .. 1 stalk tip),
+//                                  body share (round four: 1 body .. 0 stalk, as drawn: a stalk pouring back in its transfer counts back in)]
+import { transferProgress, easeShare } from './config.js';
+
 const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const fract = (v) => v - Math.floor(v);
@@ -40,7 +43,7 @@ export function deformInto(sw, i, n, out = [0, 0, 0, 0]) {
   for (let j = 1; j < 3; j++) if (count > j + 0.5) { const d = turnZ(n[0], n[2], -probes[j][k]); if (d > best) { best = d; pj = j; } }
   const pa = probes[pj][k], pr = probes[pj][k + 1], pw = probes[pj][k + 2];
   const nx = turnX(n[0], n[2], -pa), ny = n[1], nz = turnZ(n[0], n[2], -pa);
-  const transfer = clamp((phase - 0.62) / 0.23, 0, 1), accelerated = Math.pow(transfer, c.transferAcceleration), fold = Math.sin(accelerated * Math.PI);
+  const transfer = clamp((phase - 0.62) / 0.23, 0, 1), accelerated = transferProgress(transfer, c.transferAcceleration, c.transferEase), fold = Math.sin(accelerated * Math.PI);
   const e = extent4(seed * 0.2 + transfer * 2.1);
   const rounded = 1 / Math.pow(Math.pow(Math.abs(n[0]) / Math.max(0.4, e[0]), 6) + Math.pow(Math.abs(n[1]) / Math.max(0.4, e[1]), 6) + Math.pow(Math.abs(n[2]) / Math.max(0.4, e[2]), 6), 1 / 6);
   const lump = noise3(n[0] * 2.6 + seed, n[1] * 2.6 + time * c.breathRate * 0.26, n[2] * 2.6);
@@ -83,7 +86,7 @@ export function deformInto(sw, i, n, out = [0, 0, 0, 0]) {
     const cj = chosen, ca = probes[cj < 0.5 ? 0 : cj < 1.5 ? 1 : 2][k];
     let delay = clamp((1 - turnZ(n[0], n[2], -ca)) * 0.5, 0, 1) * c.delaySpread;
     if (hard > 0) delay = c.delaySpread * 0.5;
-    const u = clamp((accelerated - delay) / Math.max(0.02, 1 - c.delaySpread), 0, 1);
+    const u = easeShare((accelerated - delay) / Math.max(0.02, 1 - c.delaySpread), c.transferEase);
     const endX = ax + orientX(restT[0], restT[2]), endY = restT[1], endZ = az + orientZ(restT[0], restT[2]);
     let cx = ax, cy = 0.014 * SC, cz = az;
     if (winner) {
@@ -99,7 +102,7 @@ export function deformInto(sw, i, n, out = [0, 0, 0, 0]) {
     px = ax + orientX(sx, sz) + hx * r * 0.12 * wob * w; py = sy; pz = az + orientZ(sx, sz) + hz * r * 0.12 * wob * w;
   }
   if (hard > 0) {
-    const bodyU = clamp((accelerated - c.delaySpread * 0.5) / Math.max(0.02, 1 - c.delaySpread), 0, 1), t = 2 * bodyU - bodyU * bodyU;
+    const bodyU = easeShare((accelerated - c.delaySpread * 0.5) / Math.max(0.02, 1 - c.delaySpread), c.transferEase), t = 2 * bodyU - bodyU * bodyU;
     let cx = sw.offset[k] + (ax - sw.offset[k]) * t, cz = sw.offset[k + 2] + (az - sw.offset[k + 2]) * t;
     let cy = r * 0.78 * ((1 - bodyU) * (1 - bodyU) + bodyU * bodyU) + 2 * (1 - bodyU) * bodyU * 0.014 * SC;
     if (phase >= 0.85) { const settle = (phase - 0.85) / 0.15, w = r * 0.12 * Math.exp(-6 * settle) * Math.sin(settle * 22) * sw.params[i * 4 + 3]; cx = ax + hx * w; cz = az + hz * w; cy = r * 0.78; }
@@ -124,14 +127,15 @@ export function deformInto(sw, i, n, out = [0, 0, 0, 0]) {
       px -= axx * d - axz * e; pz -= axz * d + axx * e;
     }
   }
-  out[0] = px; out[1] = py; out[2] = pz; out[3] = phase < 0.1 ? 0 : reach;
+  // round four: out[4] the point's share of the body (1) rather than of a stalk (0): the shader's squeezeW (the motion audit's weight)
+  out[0] = px; out[1] = py; out[2] = pz; out[3] = phase < 0.1 ? 0 : reach; out[4] = phase < 0.1 ? 1 : squeezeW;
   return out;
 }
 
 // the third hull's vertex directions (./geometry.js membraneGeometry at RESOLUTION[2] = [10, 6, 6, 10]): sphere points outside the caps, then each cap's
 // axis and rings (boundary .59 rad, rings spaced by (j / rings)^1.35)
-function hullDirs(ws = 10, hs = 6, rings = 6, sides = 10, boundary = 0.59) {
-  const caps = [-1.2, 0, 1.2].map((a) => [Math.sin(a), 0, Math.cos(a)]), out = [];
+function hullDirs(angles = [-1.2, 0, 1.2], ws = 10, hs = 6, rings = 6, sides = 10, boundary = 0.59) {
+  const caps = angles.map((a) => [Math.sin(a), 0, Math.cos(a)]), out = [];
   for (let iy = 0; iy <= hs; iy++) for (let ix = 0; ix <= ws; ix++) {
     const u = ix / ws, v = iy / hs, p = [-Math.cos(u * 2 * Math.PI) * Math.sin(v * Math.PI), Math.cos(v * Math.PI), Math.sin(u * 2 * Math.PI) * Math.sin(v * Math.PI)];
     if (caps.every((a) => a[0] * p[0] + a[1] * p[1] + a[2] * p[2] < Math.cos(boundary))) out.push(p);
@@ -147,3 +151,6 @@ function hullDirs(ws = 10, hs = 6, rings = 6, sides = 10, boundary = 0.59) {
   return out.map((p) => { const l = Math.hypot(p[0], p[1], p[2]) || 1; return Object.freeze([p[0] / l, p[1] / l, p[2] / l]); });
 }
 export const FOOTPRINT_DIRS = Object.freeze(hullDirs());
+// round four: the third hull's directions for caps at `angles` (./geometry.js capAngles: a two-stalk Pearl swarm's caps are at its fork), cached
+const DIRS_BY = new Map();
+export function footprintDirs(angles) { const key = angles.join(','); let d = DIRS_BY.get(key); if (!d) { d = Object.freeze(hullDirs(angles)); DIRS_BY.set(key, d); } return d; }

@@ -276,6 +276,7 @@ export function createEnemyStep(host) {
       let pace = ENEMY_SPEED * spec.speed * (e.paceJitter ?? 1);
       if (tNow < e.behUntil) pace *= e.behMult; stampScare(e, tNow); pace *= scarePace(e, tNow, SCARE_FREEZE_S); // on-hit reaction window; an impact's scare stops it, then hurries it away (src/domain/impact-scare.js)
       if (tNow < e.slowUntil) pace *= e.slowFactor; // slow-tower debuff
+      if (e.bodyPace != null) pace *= e.bodyPace;   // a Pearl record waits for its body (round four, src/fx/creature-pearl.js paceOf: the body leads)
       // the slow READS for its full duration: the whole cloud tints ice —
       // and so does the solid core, or a slowed drifter would show a frozen
       // cloud around a body still in its own colour

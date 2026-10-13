@@ -19,7 +19,7 @@ export function corePose(swarm, i, planetR = 0, out = [0, 0, 0, 0]) {
   let { x, y, z } = c.center;
   y = Math.max(.009 * s, y);
   if (squash !== 0) {   // round two: signed, an impact's rebound below zero (./shaders.js)
-    const a = phase < .62 ? 0 : phase < .85 ? transferProgress((phase - .62) / .23, swarm.config.transferAcceleration) : 1;
+    const a = phase < .62 ? 0 : phase < .85 ? transferProgress((phase - .62) / .23, swarm.config.transferAcceleration, swarm.config.transferEase) : 1;
     const cx = swarm.offset[k] + (swarm.anchor[k] - swarm.offset[k]) * a, cz = swarm.offset[k + 2] + (swarm.anchor[k + 2] - swarm.offset[k + 2]) * a;
     const room = swarm.room?.[i] ?? 0, spread = room > 0 && squash > 0 ? Math.min(1 + .6 * squash, Math.max(1, room)) : 1 + .6 * squash;   // round three: as far as its room
     x = cx + (x - cx) * spread; z = cz + (z - cz) * spread;

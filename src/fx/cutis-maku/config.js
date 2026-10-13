@@ -50,7 +50,17 @@ export function sanitizeConfig(value,limits={}){
   if(value&&typeof value==='object')for(const c of CUTIS_CONTROLS){const n=value[c.key];if(typeof n==='number'&&Number.isFinite(n)){const [lo,hi]=limits[c.key]??[c.min,c.max];result[c.key]=Math.min(hi,Math.max(lo,n));}}
   result.seekCount=Math.round(result.seekCount);result.coreShape=Math.round(result.coreShape);result.pearlVariant=Math.round(result.pearlVariant);return result;
 }
-export function cycleTiming(duration){const coil=Math.max(.12,duration*.1),remaining=Math.max(.09,duration-coil);return {coil,extend:remaining*.5,anchor:remaining*7/90,transfer:remaining*23/90,settle:remaining/6};}
+// ROUND FOUR of the Pearl set (owner, 2026-10-13: "the moving animations are too jerky, they should feel slower and more organic"): `shares`, the
+// seconds of each stage as shares of the cycle (coil, extend, anchor, transfer, settle; summing to 1), replaces the kit's split (the coil a tenth, at
+// least .12 s, the rest 45:7:23:15) for a swarm whose config carries `timing` (the Pearl set's gait: a longer transfer, so the body moves for more of
+// its cycle and slower); without it the kit's timing is unchanged.
+export function cycleTiming(duration,shares=null){
+  if(shares){const d=Math.max(.2,duration);return {coil:d*shares.coil,extend:d*shares.extend,anchor:d*shares.anchor,transfer:d*shares.transfer,settle:d*shares.settle};}
+  const coil=Math.max(.12,duration*.1),remaining=Math.max(.09,duration-coil);return {coil,extend:remaining*.5,anchor:remaining*7/90,transfer:remaining*23/90,settle:remaining/6};
+}
+// round four (the Pearl set's gait, ./swarm.js forkAngle): the cap axes' angles off the heading. A stalk is drawn from its cap's rings, so a two-stalk
+// swarm whose fork is not the kit's 1.2 rad has its two caps at its fork (and no middle one: caps nearer than twice their .59 rad boundary would overlap)
+export const capAngles=config=>{const f=config?.forkAngle??1.2;return Math.round(config?.seekCount??3)===2&&f!==1.2?[-f,f]:[-1.2,0,1.2];};
 export const PHASES=[{name:'COIL',end:.1},{name:'EXTEND',end:.55},{name:'ANCHOR',end:.62},{name:'TRANSFER',end:.85},{name:'SETTLE',end:1}];
 export function phaseState(phase){return PHASES.find(p=>phase<p.end)?.name??'SETTLE';}
 
@@ -65,7 +75,11 @@ export const CUTIS_PALETTES={
 };
 export function applyPalette(config,key){const {skinTint,veinTint,pulseTint}=CUTIS_PALETTES[key];Object.assign(config,{skinTint,veinTint,pulseTint});}
 export function selectedPalette(config){return Object.entries(CUTIS_PALETTES).find(([,p])=>p.skinTint===config.skinTint&&p.veinTint===config.veinTint&&p.pulseTint===config.pulseTint)?.[0]??'custom';}
-export function transferProgress(t,acceleration){return Math.pow(Math.max(0,Math.min(1,t)),acceleration);}
+// round four: `ease` (the config's transferEase, 0..1) blends the kit's accelerating transfer (t^acceleration: it ends at its fastest, then the settle
+// stops it dead) toward smootherstep (it starts and ends at rest: no velocity step at either end of the hop); the shader's uEase, term for term
+export function transferProgress(t,acceleration,ease=0){const x=Math.max(0,Math.min(1,t)),p=Math.pow(x,acceleration);return ease>0?p+(x*x*x*(x*(x*6-15)+10)-p)*ease:p;}
+/** Round four: a body point's (or the core's) share of the transfer `u` (0..1), eased the same way (smoothstep), so a point that arrives early does not stop dead. */
+export function easeShare(u,ease=0){const x=Math.max(0,Math.min(1,u));return ease>0?x+(x*x*(3-2*x)-x)*ease:x;}
 
 // The kit's tiers.ts: the core shapes, and what a body's core means to its host (soft bodies are rammable, solids are not; both on radar, solids larger
 // with a proximity warning). `collisionRadius` is the core's radius at scale 1 (x the instance's scale), 0 for a soft body.

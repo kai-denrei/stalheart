@@ -8,7 +8,7 @@ import { SHIELD_KNOBS } from '../domain/shield.js';
 export const GAME_FLAG_KEYS = Object.freeze([
   'acceptance', 'blast', 'brief', 'callouts', 'coarse', 'creature', 'creatures', 'cuts', 'day', 'fps', 'gunship', 'heart', 'hold', 'keyprobe', 'labGalaxySeed', 'labseed',
   'laser', 'layout', 'look', 'metal', 'mission', 'mobile', 'mode', 'ramp', 'reedhz', 'reedlook', 'seed', 'sentries', 'sim', 'simcap', 'simfast', 'sky', 'stateprobe', 'tier',
-  'towerscale', 'vars', 'viewwatch', 'walltops',
+  'towerscale', 'vars', 'viewwatch', 'walltops', 'waves',
 ]);
 
 export function readGameFlags(search = globalThis.location?.search ?? '') {

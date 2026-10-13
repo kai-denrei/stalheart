@@ -31,8 +31,8 @@ import { createReedFamily } from './creature-reed.js';
 import { createCreatureProbe } from './creature-probe.js';
 import { createPearlFamily } from './creature-pearl.js';
 import { gateHops, spawnBand, sentryCells } from '../domain/probe-ground.js';
-import { PEARL_TIERS, PEARL_OF, PEARL_BODY, PEARL_FOLLOW, PEARL_IMPACT, PEARL_PACE } from '../content/pearl-enemies.js';
-import { pearlBodies } from '../domain/pearl-bodies.js';
+import { PEARL_TIERS, PEARL_OF, PEARL_BODY, PEARL_FOLLOW, PEARL_IMPACT, PEARL_PACE, PEARL_GAIT, PEARL_WAVES } from '../content/pearl-enemies.js';
+import { pearlBodies, pearlSpeed } from '../domain/pearl-bodies.js';
 import { SQUADS } from '../content/sectors.js';
 
 const FAMILIES = Object.freeze({ cutis: createCutisFamily, reed: createReedFamily });
@@ -40,8 +40,10 @@ const SPECS = new Map();
 // THE PEARL SET: each mapped type's body (tier, r0) and its spec (its type's own ENEMY_SPEC with the body's family, `pearl` its tier; the first waves'
 // tiers paced by PEARL_PACE: the owner's "much slower, a slow controlled threat", their walk slowed and their bursts off)
 export const PEARL_BODIES = Object.freeze(pearlBodies({ spec: ENEMY_SPEC, of: PEARL_OF, tiers: PEARL_TIERS, body: PEARL_BODY }));
-const paced = (s, p) => (p ? { ...s, speed: s.speed * (p.speed ?? 1), ...(p.erratic === false ? { erratic: false } : {}) } : s);
-export const PEARL_SPECS = Object.freeze(Object.fromEntries(Object.entries(PEARL_BODIES).map(([type, b]) => [type, Object.freeze({ ...paced(ENEMY_SPEC[type], PEARL_PACE[b.tier]), body: 'pearl', pearl: b.tier })])));
+// round four: every tier paced, its walk capped at PEARL_PACE's `radii` body radii a second (src/domain/pearl-bodies.js pearlSpeed), its bursts and jink off
+const paced = (s, p, b) => (p ? { ...s, speed: pearlSpeed({ speed: s.speed, mult: p.speed ?? 1, radii: p.radii, r0: b.r0, sectorPace: PEARL_GAIT.sectorPace, metresPerCell: STORY_RECIPE.metresPerCell }),
+  ...(p.erratic === false ? { erratic: false } : {}), ...(p.jink === false ? { jink: false } : {}) } : s);
+export const PEARL_SPECS = Object.freeze(Object.fromEntries(Object.entries(PEARL_BODIES).map(([type, b]) => [type, Object.freeze({ ...paced(ENEMY_SPEC[type], PEARL_PACE[b.tier], b), body: 'pearl', pearl: b.tier })])));
 export const pearlSpec = (type) => PEARL_SPECS[type] ?? null;
 // a tier's spec: the family's ENEMY_SPEC entry with the tier's hit points, speed, size and bounty (a queue entry carries it)
 export function tierSpec(family, tier) {
@@ -65,7 +67,7 @@ export function createCreatureEnemies(host) {
   const askedSentries = host.flags.sentries != null && host.flags.sentries !== '' ? Math.max(0, Math.min(tune.sentries.max, Math.floor(+host.flags.sentries) || 0)) : probing ? tune.sentries.count : 0;
   const pearl = typeof host.flags.creatures === 'string' && host.flags.creatures.toLowerCase() === 'pearl';
   const pearled = { dressed: 0, undressed: 0, squads: 0 };   // entries given a Pearl body, dressed ones made again as dot clouds for want of a slot, squads among the dressed
-  const families = { ...FAMILIES, pearl: (o) => createPearlFamily({ ...o, set: PEARL_TIERS, tune: PEARL_FOLLOW, pace: PEARL_PACE }), reed: (o) => createReedFamily({ ...o, ...(probing ? { budget: null } : {}), solid: host.flags.reedlook === 'solid', hz: Math.max(0, +host.flags.reedhz || 0) || null }) };
+  const families = { ...FAMILIES, pearl: (o) => createPearlFamily({ ...o, set: PEARL_TIERS, tune: PEARL_FOLLOW, pace: PEARL_PACE, gait: PEARL_GAIT }), reed: (o) => createReedFamily({ ...o, ...(probing ? { budget: null } : {}), solid: host.flags.reedlook === 'solid', hz: Math.max(0, +host.flags.reedhz || 0) || null }) };
   let bodies = null, probe = null, rr = 0, ground = null, garrison = null, heartHeld = 0;
   let uncull = false;   // round three, the harness: every body drawn whatever the game camera sees (a showcase shot looks through a camera of its own)
   const placeholder = new THREE.Group();   // a band spawn's source: no breach, no emergence
@@ -150,6 +152,23 @@ export function createCreatureEnemies(host) {
       alive: aliveOfTier, pending: pendingOfTier, refused: () => refused, total: () => host.enemies.reduce((n, e) => n + (e.alive ? 1 : 0), 0), perf: host.perf, perfOn: host.perfOn, bodies: () => bodies?.stats() ?? null, defence });
   }
 
+  // THE WAVES, THINNED (round four, owner 2026-10-13: "Let's reduce the waves at first, to get the animation right"; a temporary tuning stage,
+  // PEARL_WAVES): a sector wave's single bodies of each type cut to PEARL_WAVES.scale of their count (at least one), spread through the wave in its
+  // own order and times; squads, bosses, guards and harmless entries kept. `&waves=full` keeps the whole wave (the crowd tests)
+  const thinning = pearl && host.flags.waves !== 'full' && PEARL_WAVES.scale < 1;
+  let thinned = { kept: 0, cut: 0 };
+  function thin(entries) {
+    if (!thinning || !entries?.length) return entries;
+    const groups = new Map();
+    entries.forEach((q, i) => { if (q.squad || q.guard || q.harmless || ENEMY_SPEC[q.type]?.boss) return; (groups.get(q.type) ?? groups.set(q.type, []).get(q.type)).push(i); });
+    if (!groups.size) return entries;
+    const keep = new Set(entries.map((_, i) => i));
+    for (const idx of groups.values()) { const picks = new Set(spreadPicks(idx.length, Math.max(1, Math.round(idx.length * PEARL_WAVES.scale)))); idx.forEach((i, k) => { if (!picks.has(k)) keep.delete(i); }); }
+    const out = entries.filter((_, i) => keep.has(i));
+    thinned.kept += out.length; thinned.cut += entries.length - out.length;
+    return out;
+  }
+
   // the game's ram (src/fx/enemy-step.js, just before the record's kill): a Pearl body staggers along the tank's heading and aside, and the tank jolts
   function rammed(e) {
     if (e?.spec?.body !== 'pearl') return;
@@ -176,7 +195,7 @@ export function createCreatureEnemies(host) {
       const o = (byType[e.type] ??= { pearl: 0, dots: 0, tier: PEARL_OF[e.type] ?? null });
       if (e.spec?.body === 'pearl') o.pearl++; else o.dots++;
     }
-    return { pearl: true, byType, dressed: pearled.dressed, undressed: pearled.undressed, squads: pearled.squads, bodies: bodies?.stats() ?? null };
+    return { pearl: true, byType, dressed: pearled.dressed, undressed: pearled.undressed, squads: pearled.squads, waves: thinning ? { scale: PEARL_WAVES.scale, ...thinned } : 'full', bodies: bodies?.stats() ?? null };
   }
 
   return {
@@ -214,6 +233,7 @@ export function createCreatureEnemies(host) {
     // ?creatures: a sector wave's queue entries with the tier's share of its single bodies replaced, spread through the wave (not the
     // canyon's swarm: it rises at the far side of the world, where the heart's plane is singular)
     replace(entries, side) {
+      if (pearl) return thin(entries);
       if (!choice || side === 'canyon' || !entries?.length) return entries;
       const singles = [];
       entries.forEach((q, i) => { if (!q.squad && !q.guard && !q.harmless) singles.push(i); });
@@ -237,7 +257,7 @@ export function createCreatureEnemies(host) {
     state: () => (pearl ? pearlState() : choice || garrison ? { ...(choice ?? {}), alive: choice ? aliveOfTier() : 0, bodies: bodies?.stats() ?? null, probe: probe?.state() ?? null, defence: defence() } : null),
     // the harness's view of the Pearl set: the records alive by type (dressed, and left a dot cloud) and the bodies' books
     // the harness: the bodies' view of a record, a record's handle kept across its death, that handle's view
-    test: { view: (e) => bodies?.view(e) ?? null, audit: () => bodies?.audit() ?? null, footprint: () => bodies?.footprint() ?? null, uncull: (on = true) => { uncull = !!on; }, jolt: () => host.jolt?.state() ?? null,
+    test: { view: (e) => bodies?.view(e) ?? null, audit: () => bodies?.audit() ?? null, footprint: () => bodies?.footprint() ?? null, watch: (opts = {}) => make().watch(opts), motion: () => bodies?.motion() ?? null, uncull: (on = true) => { uncull = !!on; }, jolt: () => host.jolt?.state() ?? null,
       // round two: the ram's and the touch's presentation as the enemy loop calls it (the harness cannot drive the tank onto a record): rammed, then the
       // record killed through damageEnemy with its death; touched on a live one
       ram(e) { rammed(e); host.damage(e, e.hp + 1); return !e.alive; }, touch: (e) => touched(e),

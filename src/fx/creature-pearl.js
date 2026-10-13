@@ -36,23 +36,26 @@ import { CutisSwarm, REACH_MARGIN } from './cutis-maku/swarm.js';
 import { DEFAULT_CONFIG } from './cutis-maku/config.js';
 import { createSwarmGeometry } from './cutis-maku/geometry.js';
 import { createHardCores, corePose } from './cutis-maku/hard-core.js';
-import { deformInto, FOOTPRINT_DIRS } from './cutis-maku/deform.js';
-import { pearlPace, pearlLead, pearlLeash, squadSpots } from '../domain/pearl-bodies.js';
+import { deformInto, footprintDirs } from './cutis-maku/deform.js';
+import { capAngles } from './cutis-maku/config.js';
+import { pearlPace, pearlLead, pearlLeash, squadSpots, pearlWait, pearlCatch } from '../domain/pearl-bodies.js';
+import { createMotionAudit } from './pearl-motion.js';
 
 const IDENTITY = [0, 0, 0, 1];
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
 // `parent` the bodies' root, `tiers` the bodies by type (pearlBodies), `follow` CREATURE_FOLLOW, `death` CREATURE_DEATH, `set` PEARL_TIERS, `tune` PEARL_FOLLOW,
-// `hubs` the seam's { quat(k), remap(a, b, x, z) } (without it every body is on the heart's hub), `impact` PEARL_IMPACT, `pace` PEARL_PACE (a tier's hop reach)
-export function createPearlFamily({ parent, tiers, follow, death, set, tune, hubs = null, impact: IMPACT = null, pace = null }) {
+// `hubs` the seam's { quat(k), remap(a, b, x, z) } (without it every body is on the heart's hub), `impact` PEARL_IMPACT, `pace` PEARL_PACE (a tier's hop reach),
+// `gait` PEARL_GAIT (round four: the organic gait; without it the round-three follow, the kit's hop and the leash's re-placement, as before)
+export function createPearlFamily({ parent, tiers, follow, death, set, tune, hubs = null, impact: IMPACT = null, pace = null, gait = null }) {
   const group = new THREE.Group(); group.name = 'Pearl enemies'; parent.add(group);
   const byId = Object.fromEntries(set.map((t) => [t.id, t]));
   // each tier's base radius: its smallest type's
   const baseR0 = {};
   for (const b of Object.values(tiers)) baseR0[b.tier] = Math.min(baseR0[b.tier] ?? Infinity, b.r0);
   const pools = new Map();   // tier id -> { swarm, geo, cores, free, next, dying: Map(slot -> { at, op }), live, peak, placed, replaced, deaths, full, shed }
-  let planetR = 0, clock = 0;
+  let planetR = 0, clock = 0, motion = null;   // round four: the motion audit while the harness or the sim watches (./pearl-motion.js)
 
   function poolOf(id) {
     let p = pools.get(id);
@@ -60,6 +63,8 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     const def = byId[id], config = { ...DEFAULT_CONFIG, ...def.values, r0: baseR0[id], separation: tune.separation ?? DEFAULT_CONFIG.separation };   // the neighbour push eased: the records space themselves
     // the first waves' pace (src/content/pearl-enemies.js PEARL_PACE): a slowed tier hops shorter, so it creeps in frequent hops rather than lunging
     if (pace?.[id]?.reach) config.reach = def.values.reach * pace[id].reach;
+    // round four: the gait's stride for every tier and its keys for the kit (the timing, the eased transfer, the eased turn, the narrow fork, the frame's step)
+    if (gait) Object.assign(config, gait.config, { reach: gait.hop });
     const swarm = new CutisSwarm(config, { capacity: tune.capacity[id] ?? 600 }), owner = new Array(swarm.capacity).fill(null);
     if (hubs?.reach) swarm.reachLimit = (i, x, z, dx, dz, max) => hubs.reach(swarm.hub[i], x, z, dx, dz, max, owner[i]?.cell ?? -1);
     // round three: the body's footprint (its origin, its anchors, its hop's middle, its sweep, a knock, a puddle) held off the rock too
@@ -68,7 +73,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     hubTable(swarm);
     const cores = def.cored ? createHardCores(swarm, { planetR, levelOf: geo.levelOf }) : null;
     if (cores) { cores.group.name = `Pearl ${id} cores`; group.add(cores.group); }
-    p = { id, def, swarm, geo, cores, owner, free: [], next: 0, dying: new Map(), jolts: new Map(), live: 0, peak: 0, placed: 0, replaced: 0, deaths: 0, full: 0, shed: 0, handed: 0, staggers: 0, recoils: 0 };
+    p = { id, def, swarm, geo, cores, owner, free: [], next: 0, dying: new Map(), jolts: new Map(), live: 0, peak: 0, placed: 0, replaced: 0, seenReplaced: 0, deaths: 0, full: 0, shed: 0, handed: 0, staggers: 0, recoils: 0 };
     pools.set(id, p);
     return p;
   }
@@ -99,7 +104,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     const b = tiers[type];
     if (!b) return null;
     const p = poolOf(b.tier), sw = p.swarm, c = sw.config, r = b.r0;
-    const pace = pearlPace({ cycle: c.cycleDuration, reach: c.reach, seek: c.seekCount, r, speed }, tune);
+    const pace = pearlPace({ cycle: c.cycleDuration, reach: c.reach, seek: c.seekCount, r, speed }, gait ? { ...tune, keep: gait.keep, seekEfficiency: gait.seekEfficiency } : tune);
     const h = { p, type, r, pace, speed, slots: [], dead: false, dx: Math.cos(angle), dz: Math.sin(angle), op: opacityOf(opacity), hub, cell };
     const spots = members > 1 ? squadSpots(members, r, tune.squad) : [[0, 0]];
     spots.forEach((s, k) => {
@@ -160,6 +165,9 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
       if (sw.plant[k + 2] > 0) remapXZ(sw.plant, k, a, hub);
       const ahead = hubs.remap(a, hub, ox + hx, oz + hz), dx = ahead[0] - sw.offset[k], dz = ahead[1] - sw.offset[k + 2], d = Math.hypot(dx, dz);
       if (d > 1e-9) { sw.heading[k] = dx / d; sw.heading[k + 2] = dz / d; }
+      // round four: the heading the body is turning toward, turned into the new plane the same way
+      const goal = hubs.remap(a, hub, ox + sw.goal[i * 2], oz + sw.goal[i * 2 + 1]), gx = goal[0] - sw.offset[k], gz = goal[1] - sw.offset[k + 2], gd = Math.hypot(gx, gz);
+      if (gd > 1e-9) { sw.goal[i * 2] = gx / gd; sw.goal[i * 2 + 1] = gz / gd; }
       // round three: the squeeze's axis turned into the new plane as the heading is
       const across = hubs.remap(a, hub, ox + Math.cos(sw.roomAxis[i]), oz + Math.sin(sw.roomAxis[i])), cx = across[0] - sw.offset[k], cz = across[1] - sw.offset[k + 2];
       if (Math.hypot(cx, cz) > 1e-9) sw.roomAxis[i] = Math.atan2(cz, cx);
@@ -176,27 +184,56 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     // the squad sheds: the members its record no longer holds deflate, the last spots first
     if (members > 0) while (h.slots.length > Math.max(1, members)) { die(h, h.slots.pop()); p.shed++; }
     const d = Math.hypot(ax - x, az - z);
-    if (d > 1e-6) { h.dx = (ax - x) / d; h.dz = (az - z) / d; }
+    if (d > 1e-6) {
+      // round four: the record turns at each cell centre at once; the body sees its heading turn over gait.turnSeconds
+      const ux = (ax - x) / d, uz = (az - z) / d, f = gait && dt > 0 && h.seen ? 1 - Math.exp(-dt / gait.turnSeconds) : 1, nx = h.dx + (ux - h.dx) * f, nz = h.dz + (uz - h.dz) * f, l = Math.hypot(nx, nz);
+      if (l > 1e-6) { h.dx = nx / l; h.dz = nz / l; } h.seen = true;
+    }
     h.op = opacityOf(opacity);
     // the lead and the leash change only with the record's speed
     if (speed !== h.speedAt) { h.speed = h.speedAt = speed; h.ahead = speed * pearlLead({ cycle: c.cycleDuration, pace: h.pace }, tune); h.leash = pearlLeash({ r: h.r, speed, hop: c.reach * h.r }, follow, tune); }
-    const ahead = h.ahead, leash = h.leash;
+    const ahead = h.ahead, leash = h.leash, hop = c.reach * h.r;
     const ang = Math.atan2(h.dz, h.dx);
-    let replaced = false;
+    let replaced = false, worst = 0;
     for (const slot of h.slots) {
       const i = slot.i, k = i * 3, [px, pz] = at(x, z, h.dx, h.dz, slot.s, P), [tx, tz] = at(x + h.dx * ahead, z + h.dz * ahead, h.dx, h.dz, slot.s, T);
       const pos = sw.positionInto(i, POS), lag = Math.min(Math.hypot(pos[0] - px, pos[2] - pz), Math.hypot(sw.anchor[k] - px, sw.anchor[k + 2] - pz));
-      sw.scale[i] = (h.r / c.r0) * grow;
+      // round four: a hit's shrink (and the regenerators' knitting) eased over gait.shrinkSeconds, not taken in one frame (a shape pop)
+      const size = (h.r / c.r0) * grow;
+      sw.scale[i] = gait && dt > 0 ? sw.scale[i] + (size - sw.scale[i]) * (1 - Math.exp(-dt / gait.shrinkSeconds)) : size;
       sw.life[i * 4] = lift; sw.life[i * 4 + 2] = h.op; sw.life[i * 4 + 3] = tint;   // the slow's ice (the fable review)
-      slot.behind = lag > leash ? slot.behind + dt : 0;
       sw.setTarget(i, tx, tz);
+      if (gait) {
+        // ROUND FOUR: the body leads, its record waits for it (paceOf), so a body is put back only as the last resort, far behind and out of sight
+        worst = Math.max(worst, lag);
+        const R = gait.replace, far = lag > R.hops * hop;
+        slot.behind = far ? slot.behind + dt : 0;
+        if (slot.swap != null) {
+          // the on-screen last resort as a dissolve, not a pop: faded out where it is stuck, put down on its record, faded in (R.fade s each way)
+          const was = slot.swap; slot.swap += dt;
+          if (was < R.fade && slot.swap >= R.fade) { sw.place(i, px, pz, ang); sw.life[i * 4] = lift; p.replaced++; replaced = true; }
+          sw.life[i * 4 + 2] = h.op * Math.min(1, Math.abs(slot.swap - R.fade) / R.fade);
+          if (slot.swap >= 2 * R.fade) slot.swap = null;
+        } else if (far && slot.behind > R.grace && p.geo.levelOf[i] === 3) {
+          slot.behind = 0; sw.place(i, px, pz, ang); sw.life[i * 4] = lift; sw.life[i * 4 + 2] = h.op; p.replaced++; replaced = true;
+        } else if (far && slot.behind > R.forceGrace) { slot.behind = 0; slot.swap = 0; p.seenReplaced++; }
+        // the hop's pace follows its target smoothly (a pace step mid-hop is a speed step), hurried a little while it lags
+        const want = Math.max(tune.floor, h.pace / pearlCatch(lag, hop, gait.catchUp)), f = dt > 0 ? 1 - Math.exp(-dt / gait.smoothing) : 1;
+        sw.pace[i] = sw.pace[i] > 0 ? sw.pace[i] + (want - sw.pace[i]) * f : want;
+        continue;
+      }
+      slot.behind = lag > leash ? slot.behind + dt : 0;
       if (lag > 2 * leash || slot.behind > follow.grace) {
         slot.behind = 0; sw.place(i, px, pz, ang); sw.life[i * 4] = lift; sw.life[i * 4 + 2] = h.op; p.replaced++; replaced = true;
       }
       sw.pace[i] = Math.max(tune.floor, h.pace / (1 + lag / (follow.catchRadii * h.r)));
     }
+    if (gait) h.wait = pearlWait(worst, hop, gait.wait);
     return replaced;
   }
+
+  // round four: the record's pace factor (the enemy loop's walk x this): it waits for its body (1 without the gait)
+  const paceOf = (h) => (h && !h.dead && gait ? h.wait ?? 1 : 1);
 
   function kill(h, imp = null) {
     if (!h || h.dead) return;
@@ -243,6 +280,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
       hubTable(sw); sw.advance(dt);
       if (camera) { p.geo.update(camera, height, 0, false, false, cull); p.cores?.update(); }
     }
+    motion?.sample(pools, dt);
   }
 
   function setPlanet(R) {
@@ -252,11 +290,13 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
   }
 
   return {
-    add, track, rehub, kill, recoil, free, step, setPlanet, hubs: { margin: tune.hubMargin ?? 0.03 },
+    add, track, rehub, kill, recoil, free, step, setPlanet, paceOf, hubs: { margin: tune.hubMargin ?? 0.03 },
+    // round four: the motion audit (./pearl-motion.js): watch(opts) starts it afresh, watch(null) stops it; motion() its report so far (null when off)
+    watch(opts) { motion = opts ? createMotionAudit(opts) : null; }, motion: () => motion?.report() ?? null,
     roots: () => [group],
     // each tier present: bodies up, dying, the most up at once, placed, re-placed on the leash, deaths, squad members shed, refused for want of a slot,
     // the pearls drawn and the bodies drawn at each level [high, low, lowest, culled] (src/fx/cutis-maku/geometry.js)
-    stats: () => Object.fromEntries([...pools.values()].map((p) => [p.id, { live: p.live, dying: p.dying.size, peak: p.peak, placed: p.placed, replaced: p.replaced, deaths: p.deaths, shed: p.shed, full: p.full, handed: p.handed, staggers: p.staggers, recoils: p.recoils, capacity: p.swarm.capacity, r0: p.swarm.config.r0, cored: p.def.cored, cores: p.cores?.count ?? 0, lod: [...p.geo.lodCounts] }])),
+    stats: () => Object.fromEntries([...pools.values()].map((p) => [p.id, { live: p.live, dying: p.dying.size, peak: p.peak, placed: p.placed, replaced: p.replaced, seenReplaced: p.seenReplaced, deaths: p.deaths, shed: p.shed, full: p.full, handed: p.handed, staggers: p.staggers, recoils: p.recoils, capacity: p.swarm.capacity, r0: p.swarm.config.r0, cored: p.def.cored, cores: p.cores?.count ?? 0, lod: [...p.geo.lodCounts] }])),
     // the harness's audit of the stalks against the rock: every live body's seeking stalks (its whole length and most of its cup) and anchor, put to
     // `clear(hub, cell, x, z, dx, dz, len)` (true when the way is clear); a body whose origin itself is on a blocked cell (`inRock`) is counted apart;
     // -> { bodies, stalks, crossing, anchors, inRock }
@@ -309,7 +349,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
             if (depth >= deepest) { deepest = depth; part = what; }
             if (!out.byPart[what + '#']) out.byPart[what + '#'] = 0; out.byPart[what + '#']++;
           };
-          for (const n of FOOTPRINT_DIRS) { deformInto(sw, i, n, P3); look(P3[0], P3[2], P3[3] > 0.25 ? (stage === 'EXTEND' || stage === 'COIL' || stage === 'ANCHOR' ? 'stalk' : stage) : stage === 'TRANSFER' || stage === 'SETTLE' ? stage : 'body'); }
+          for (const n of footprintDirs(capAngles(sw.config))) { deformInto(sw, i, n, P3); look(P3[0], P3[2], P3[3] > 0.25 ? (stage === 'EXTEND' || stage === 'COIL' || stage === 'ANCHOR' ? 'stalk' : stage) : stage === 'TRANSFER' || stage === 'SETTLE' ? stage : 'body'); }
           if (p.def.cored) { corePose(sw, i, 0, C4); for (let a = 0; a < 8; a++) look(C4[0] + Math.cos(a * Math.PI / 4) * C4[3], C4[2] + Math.sin(a * Math.PI / 4) * C4[3], 'pearl'); }
           const spread = 1 + 0.6 * Math.max(0, sw.life[i * 4 + 1]), room = sw.room[i], sh = r * 1.2 * 0.7 * (room > 0 ? Math.min(spread, room) : spread);   // as ./cutis-maku/geometry.js sizes it
           for (let a = 0; a < 8; a++) look(cx + Math.cos(a * Math.PI / 4) * sh, cz + Math.sin(a * Math.PI / 4) * sh, 'shadow');

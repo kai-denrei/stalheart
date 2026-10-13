@@ -57,6 +57,8 @@ attribute vec4 iLife;
 #define SC (uRadius/.2)
 uniform float uHardRadius;
 uniform float uTime,uRadius,uNoise,uBreath,uRestCube,uCap,uNeck,uDelay,uCore,uForceCube,uSeekSweep,uSeekRate,uAcceleration,uPlanetR;
+// round four (the Pearl set's gait): the transfer eased in and out, 0 the kit's (./config.js transferProgress, easeShare)
+uniform float uEase;
 varying vec3 vWorld,vRest,vHeading,vNormal;
 varying float vStretch,vPhase,vSeed,vLead;
 varying vec3 vLife;
@@ -86,6 +88,7 @@ vec4 deform(vec3 bodyN){
   float phase=iPhase,r=uRadius*iScale,core=mix(1.,.45,uCore);
   float transfer=clamp((phase-.62)/.23,0.,1.);
   float accelerated=pow(transfer,uAcceleration);
+  if(uEase>0.)accelerated=mix(accelerated,transfer*transfer*transfer*(transfer*(transfer*6.-15.)+10.),uEase);
   float fold=sin(accelerated*3.14159265);
   vec3 extent=extent4(iSeed*.2+transfer*2.1);
   float rounded=1./pow(pow(abs(bodyN.x)/max(.4,extent.x),6.)+pow(abs(bodyN.y)/max(.4,extent.y),6.)+pow(abs(bodyN.z)/max(.4,extent.z),6.),1./6.);
@@ -152,6 +155,7 @@ vec4 deform(vec3 bodyN){
     // Vertex-specific delay could otherwise pull the shell away from the core.
     if(uHardRadius>0.)delay=uDelay*.5;
     float u=clamp((accelerated-delay)/max(.02,1.-uDelay),0.,1.);
+    if(uEase>0.)u=mix(u,u*u*(3.-2.*u),uEase);
     vec3 end=iAnchor+orient(rest);end.y=rest.y;
     vec3 anchor=iAnchor;anchor.y=.014*SC;
     // Incoming tissue still funnels through the foothold, but its settled rim
@@ -179,6 +183,7 @@ vec4 deform(vec3 bodyN){
   }
   if(uHardRadius>0.){
     float bodyU=clamp((accelerated-uDelay*.5)/max(.02,1.-uDelay),0.,1.);
+    if(uEase>0.)bodyU=mix(bodyU,bodyU*bodyU*(3.-2.*bodyU),uEase);
     vec3 center=mix(off,iAnchor,2.*bodyU-bodyU*bodyU);
     center.y=r*.78*((1.-bodyU)*(1.-bodyU)+bodyU*bodyU)+2.*(1.-bodyU)*bodyU*.014*SC;
     if(phase>=.85){float settle=(phase-.85)/.15;center=iAnchor+head*r*.12*exp(-6.*settle)*sin(settle*22.)*iParams.w;center.y=r*.78;}

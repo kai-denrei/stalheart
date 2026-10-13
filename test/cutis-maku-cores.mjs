@@ -28,6 +28,7 @@ console.log('PASS the Core keys, CORE_SHAPES, sanitize rounding, coreContact');
 // round three: the positions' .y carry the room, its axis and the sweep's damping, so the block reads them flat (`off`, `head`; ./shaders.js)
 const HARD_BLOCK = `  if(uHardRadius>0.){
     float bodyU=clamp((accelerated-uDelay*.5)/max(.02,1.-uDelay),0.,1.);
+    if(uEase>0.)bodyU=mix(bodyU,bodyU*bodyU*(3.-2.*bodyU),uEase);
     vec3 center=mix(off,iAnchor,2.*bodyU-bodyU*bodyU);
     center.y=r*.78*((1.-bodyU)*(1.-bodyU)+bodyU*bodyU)+2.*(1.-bodyU)*bodyU*.014*SC;
     if(phase>=.85){float settle=(phase-.85)/.15;center=iAnchor+head*r*.12*exp(-6.*settle)*sin(settle*22.)*iParams.w;center.y=r*.78;}
@@ -40,8 +41,10 @@ assert(MEMBRANE_FRAG.includes('if(uCore<.5)alpha*=uOpacity;') && MEMBRANE_FRAG.i
 // the block in JS: the centre the shell is padded round (before the ground clamp, the deflate, the lift and the bend)
 function shaderCentre(sw, i) {
   const c = sw.config, k = i * 3, r = c.r0 * sw.scale[i], SC = c.r0 / .2, phase = sw.phase[i], hard = c.coreSize;
-  const transfer = Math.max(0, Math.min(1, (phase - .62) / .23)), accelerated = Math.pow(transfer, c.transferAcceleration);
-  const bodyU = Math.max(0, Math.min(1, (accelerated - c.delaySpread * .5) / Math.max(.02, 1 - c.delaySpread))), m = 2 * bodyU - bodyU * bodyU;
+  // round four: the eased transfer (uEase: smootherstep toward, the body's share smoothstepped), as the shader's lines above
+  const transfer = Math.max(0, Math.min(1, (phase - .62) / .23)), e = c.transferEase ?? 0, pw = Math.pow(transfer, c.transferAcceleration);
+  const accelerated = pw + (transfer ** 3 * (transfer * (transfer * 6 - 15) + 10) - pw) * e;
+  const b0 = Math.max(0, Math.min(1, (accelerated - c.delaySpread * .5) / Math.max(.02, 1 - c.delaySpread))), bodyU = b0 + (b0 * b0 * (3 - 2 * b0) - b0) * e, m = 2 * bodyU - bodyU * bodyU;
   const ctr = [sw.offset[k] + (sw.anchor[k] - sw.offset[k]) * m, 0, sw.offset[k + 2] + (sw.anchor[k + 2] - sw.offset[k + 2]) * m];
   ctr[1] = r * .78 * ((1 - bodyU) ** 2 + bodyU ** 2) + 2 * (1 - bodyU) * bodyU * .014 * SC;
   if (phase >= .85) { const settle = (phase - .85) / .15, w = r * .12 * Math.exp(-6 * settle) * Math.sin(settle * 22) * sw.params[i * 4 + 3]; ctr[0] = sw.anchor[k] + sw.heading[k] * w; ctr[1] = sw.anchor[k + 1] + sw.heading[k + 1] * w; ctr[2] = sw.anchor[k + 2] + sw.heading[k + 2] * w; ctr[1] = r * .78; }
@@ -49,8 +52,8 @@ function shaderCentre(sw, i) {
   return { ctr, shell: r * hard * 2 };
 }
 // cored bodies at the game's sizes hop after a moving target; at every sampled frame the core (JS) sits on the shader's centre, inside the padded shell
-for (const [r0, size, delaySpread, acc] of [[.2, .28, .25, 1.8], [2.8, .28, .25, 1.8], [4.5, .22, .6, 2.5], [6.7, .18, .9, 2.5]]) {
-  const sw = new CutisSwarm({ ...DEFAULT_CONFIG, r0, coreShape: 3, coreSize: size, delaySpread, transferAcceleration: acc, seekCount: 2, cycleDuration: 2.5 }, { capacity: 4 });
+for (const [r0, size, delaySpread, acc, ease = 0] of [[.2, .28, .25, 1.8], [2.8, .28, .25, 1.8], [4.5, .22, .6, 2.5], [6.7, .18, .9, 2.5], [2.8, .28, .25, 1.8, 1], [4.5, .22, .6, 2.5, 1]]) {
+  const sw = new CutisSwarm({ ...DEFAULT_CONFIG, r0, coreShape: 3, coreSize: size, delaySpread, transferAcceleration: acc, transferEase: ease, seekCount: 2, cycleDuration: 2.5 }, { capacity: 4 });
   sw.reset(3); for (let i = 0; i < 3; i++) { sw.setTarget(i, 40 * r0, i * r0); sw.place(i, i * 3 * r0, 0, 0); sw.scale[i] = .8 + .2 * i; }
   const seen = new Set(); let worst = 0;
   for (let f = 0; f < 120 * 12; f++) {

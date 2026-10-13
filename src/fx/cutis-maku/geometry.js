@@ -7,7 +7,7 @@ import * as THREE from '../../../vendor/three.module.js';
 import { mergeVertices } from '../../../vendor/BufferGeometryUtils.js';
 import { ConvexGeometry } from './convex.js';
 import { createMembraneMaterial, createShadowMaterial, updateMaterial, updateHubs } from './material.js';
-import { KIT_R0, CUTIS_LOD } from './config.js';
+import { KIT_R0, CUTIS_LOD, capAngles } from './config.js';
 import { bendPoint, hubPoint } from './shaders.js';
 
 const sizes={iOffset:3,iHeading:3,iAnchor:3,iState:4,iParams:4,iProbe0:3,iProbe1:3,iProbe2:3,iLife:4};
@@ -15,12 +15,12 @@ const sizes={iOffset:3,iHeading:3,iAnchor:3,iState:4,iParams:4,iProbe0:3,iProbe1
 // the hull's resolution per LOD: [sphere width segments, height segments, cap rings, cap sides]; the kit's two (high ~13k triangles, low ~2.2k) and the
 // round-two third, ~450 triangles for a body a few pixels across
 const RESOLUTION=[[40,24,48,40],[16,12,20,16],[10,6,6,10]];
-/** The kit's membrane hull for one LOD: three ring-aligned cap patches joined into one closed convex membrane. */
-function membraneGeometry(level) {
+/** The kit's membrane hull for one LOD: three ring-aligned cap patches joined into one closed convex membrane (round four: at `angles`). */
+function membraneGeometry(level,angles=[-1.2,0,1.2]) {
   // Ring-aligned caps keep cross-sections coherent even on long curved stalks.
   // A spherical convex hull joins all three patches into one closed membrane.
   const [ws,hs,rings,sides]=RESOLUTION[level];
-  const caps=[-1.2,0,1.2].map(a=>new THREE.Vector3(Math.sin(a),0,Math.cos(a)));
+  const caps=angles.map(a=>new THREE.Vector3(Math.sin(a),0,Math.cos(a)));
   const points=[],base=new THREE.SphereGeometry(1,ws,hs);
   const positions=base.getAttribute('position'),boundary=.59;
   for(let i=0;i<positions.count;i++){
@@ -62,7 +62,7 @@ export function createSwarmGeometry(swarm,{ planetR=0, lod=null }={}) {
   const group=new THREE.Group();group.name='Cutis-Maku';
   const L={...CUTIS_LOD,...(lod??{})};
   let planet=planetR;
-  const hulls=RESOLUTION.map((_,level)=>membraneGeometry(level));
+  const hulls=RESOLUTION.map((_,level)=>membraneGeometry(level,capAngles(swarm.config)));
   const levels=[0,1,2].map(level=>{
     const low=level>0,geometry=hulls[level];
     const attributes=Object.fromEntries(Object.entries(sizes).map(([name,size])=>[name,new THREE.InstancedBufferAttribute(new Float32Array(swarm.capacity*size),size).setUsage(THREE.DynamicDrawUsage)]));

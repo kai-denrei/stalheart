@@ -88,16 +88,46 @@ export const PEARL_FOLLOW = freeze({
   lod: { high: 70, low: 12, highCap: 12, hysteresis: 0.12, horizonRadii: 3 },
 });
 
-// THE FIRST WAVES' PACE (owner, 2026-10-13: "make the initial wave of white and yellow creatures much slower, a slow controlled threat. then we will make
+// THE PACE (round three, owner 2026-10-13: "make the initial wave of white and yellow creatures much slower, a slow controlled threat. then we will make
 // it more hectic later."): the first step of a pacing ramp for the Pearl story, not its last. Per tier, over the mapped types' ENEMY_SPEC: `speed` a
-// multiplier of the record's walk, `erratic` the record's bursts (false: it creeps steadily), and `reach` a multiplier of the tier's hop reach in
-// radii, so a slow record's body creeps in short, frequent hops (src/domain/pearl-bodies.js pearlPace then shortens its cycle to match) instead of
-// sitting through its long cycle and lunging its full reach. Only under ?creatures=pearl (src/fx/creature-enemies.js PEARL_SPECS, src/fx/creature-pearl.js);
-// hit points, bounty, heart damage and the ram are the game's own, the other tiers and the dot clouds unchanged.
-export const PEARL_PACE = freeze({
-  white: { speed: 0.4, erratic: false, reach: 0.7 },
-  yellow: { speed: 0.4, erratic: false, reach: 0.7 },
+// multiplier of the record's walk, `erratic` and `jink` the record's bursts (false: it creeps steadily). Round three slowed white and yellow to 0.4 and
+// shortened their hop (a `reach` multiplier); only under ?creatures=pearl (src/fx/creature-enemies.js PEARL_SPECS, src/fx/creature-pearl.js); hit points,
+// bounty, heart damage and the ram are the game's own, the dot clouds unchanged.
+// ROUND FOUR (owner, 2026-10-13: "the moving animations are too jerky, they should feel slower and more organic ... we can adjust the difficulty of the
+// game by making them more resistant, but slower and organic feeling is a must"): every tier is paced now, and `radii` caps the record's walk at that
+// many of its own body's radii a second at the sector's pace (PEARL_GAIT.sectorPace), whatever its type's speed: a body hops a few radii a stride, so a
+// record walking 4-11 radii a second (the saucer 23 m/s in a 2 m body) had its body's two-second cycle squeezed into 0.4 s, its transfer into five
+// frames (src/fx/pearl-motion.js measured it). The bursts and the saucer's jink are off for every tier (a burst is a lunge). `reach` is not used any
+// more: PEARL_GAIT.hop sets every tier's stride. Hit points, bounty and heart damage stay the game's (the owner raises the hit points later).
+export const PEARL_PACE = freeze(Object.fromEntries(['white', 'yellow', 'blue', 'orange', 'green', 'purple', 'brown', 'black'].map((id) => [id, { speed: 1, radii: id === 'white' || id === 'yellow' ? 0.7 : 0.8, erratic: false, jink: false }])));
+
+// THE GAIT (round four): how a Pearl body moves, over the kit's hop (src/fx/cutis-maku/swarm.js, ./config.js). `hop` the stride, in radii (each
+// tier's reach: a body that keeps up hops about this far a cycle); `config` the kit's keys for the Pearl swarms: `timing` the stages' shares of a
+// cycle (the kit spends a quarter of it in the transfer, the only time the body moves; here half), `transferEase` the transfer eased in and out (the
+// kit's accelerates to its end and stops dead), `turnInCoil` a new heading taken through the coil, not in one frame (the body's lumps turned at
+// once were a shape pop), `maxTurn` rad a hop at most, `headingJitter` the hop's random turn (the kit's .65 rad wide), `forkAngle` a two-stalk body's
+// stalks off its heading (the kit's 1.2 rad zigzags it 69 degrees each side; its hull's caps follow), `frameStep` the frame's own time (no 1/120 s
+// remainder stutter), `wobble` the settle's recoil (the kit's 0.5: a 9 Hz shiver at this cycle); `seekEfficiency` the share of a hop's reach that
+// is way made, by stalks (one, two, three: the narrower fork makes more of it than PEARL_FOLLOW's); `smoothing` s, the time constant the hop's pace
+// follows a new one with (a pace step mid-hop is a speed step); `catchUp` the most a lagging body's hop is hurried (x 1 + catchUp, from one hop behind
+// to two; CREATURE_FOLLOW's catch-up tripled it); `turnSeconds` the time constant of the record's heading as the body sees it (a record turns at each
+// cell centre at once); `shrinkSeconds` the time constant of a hit's shrink (a body shrinks with its hit points). THE RECORD WAITS FOR ITS BODY: `wait`
+// slows the record (src/fx/enemy-step.js) as its body falls behind, from `from` hops to `to` hops down to `min` of its pace, so the body leads and never
+// needs to be put back; `replace` the last resort: a body more than `hops` hops behind for `grace` s is put back on its record only where the camera
+// does not see it, or after `forceGrace` s anywhere as a dissolve (faded out over `fade` s, put back, faded in: never a pop). `sectorPace` the sector's pace the record caps are set at (SECTOR_TIMING.pace: a record walks its
+// spec speed x it, in cells a second, 10 m each).
+export const PEARL_GAIT = freeze({
+  hop: 2.4, sectorPace: 1.5,
+  config: { timing: { coil: 0.1, extend: 0.22, anchor: 0.03, transfer: 0.52, settle: 0.13 }, transferEase: 1, turnInCoil: true, maxTurn: 0.7, headingJitter: 0.3, forkAngle: 0.65, frameStep: true, wobble: 0.15 },
+  keep: 1, seekEfficiency: [1, 0.85, 0.95], smoothing: 0.6, catchUp: 0.5, turnSeconds: 0.5, shrinkSeconds: 0.15,
+  wait: { from: 1, to: 2, min: 0.12 },
+  replace: { hops: 4, grace: 2, forceGrace: 10, fade: 0.35 },
 });
+
+// THE WAVES, THINNED (round four, owner 2026-10-13: "Let's reduce the waves at first, to get the animation right"): A TEMPORARY TUNING STAGE, not a
+// balance. Under ?creatures=pearl each sector wave's single bodies of a type are cut to `scale` of their count (at least one), spread through the
+// wave (src/fx/creature-enemies.js `replace`); squads, bosses, guards and harmless fodder are kept. `&waves=full` turns it off (the crowd tests).
+export const PEARL_WAVES = freeze({ scale: 0.35 });
 
 // THE RAM AND THE TOUCH, PRESENTED (round two, owner 2026-10-13: "the cutis getting rammed by the tank is not a satisfying animation, we need some sense of
 // stagger on the enemy, and bump on the tank"). Presentation only: who dies, the damage, the combo and the bounty are the game's rules as they were.

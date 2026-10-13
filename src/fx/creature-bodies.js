@@ -7,7 +7,7 @@
 //
 //   family.add(tier, { x, z, angle, lift, pos, apos }) -> handle | null    family.track(handle, { x, z, ax, az, lift, pos, apos, dt }) -> re-placed?
 //   family.kill(handle)   family.free(handle)   family.step(dt, camera, height, cull)   family.setPlanet(R)
-//   family.roots() -> Object3D[]   family.stats()   family.view(handle)   family.dispose()
+//   family.roots() -> Object3D[]   family.stats()   family.view(handle)   family.dispose()   family.paceOf(handle) -> the record's pace factor (optional, round four)
 //
 // (x, z) are metres in the plane of the bodies' root: the heart's surface point, +Y the normal, the azimuthal-equidistant projection round
 // it (src/domain/surface-projection.js); `pos` is the record's unit sphere point and `apos` the aim's, for a family that draws through a
@@ -179,6 +179,7 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
       toPlaneInto(f, e.pos, R, xz); toPlaneInto(f, apos, R, axz);
       opt.x = xz[0]; opt.z = xz[1]; opt.ax = axz[0]; opt.az = axz[1]; opt.lift = liftOf(e, b.r0); opt.pos = e.pos; opt.apos = apos; opt.dt = dt; opt.hub = hub; opt.cell = e.cur ?? -1;
       if (a.track(b.h, lookInto(e, opt))) replaced++;
+      e.bodyPace = a.paceOf ? a.paceOf(b.h) : 1;   // round four: the record waits for its body (src/fx/creature-pearl.js paceOf; the enemy loop's walk x this)
     }
     for (const [e, b] of live) if (b.stamp !== stamp) { live.delete(e); adapters.get(b.family).free(b.h); }
     for (const a of adapters.values()) a.step(dt, camera, height, cull);
@@ -206,6 +207,9 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
       const reach = (hub, cell, x, z, dx, dz, len) => hubs.reach(hub, x, z, dx, dz, len, cell);
       const C = [0, 0, 0, 0, 0, 0, 0], clear = (hub, cell, x, z, rho) => hubs.clear(hub, x, z, rho, cell, C, 1)[6];
       return Object.fromEntries([...adapters].filter(([, a]) => a.footprint).map(([k, a]) => [k, a.footprint(inRock, reach, clear)])); },
+    // round four: the motion audit of every family that keeps one (src/fx/pearl-motion.js): watch(opts | null), motion() -> { family: report }
+    watch(opts) { for (const a of adapters.values()) a.watch?.(opts); },
+    motion: () => Object.fromEntries([...adapters].filter(([, a]) => a.motion).map(([k, a]) => [k, a.motion()])),
     // a dead record's body by its handle, kept by the caller before the kill (the harness watches a death play out)
     handleOf: (e) => live.get(e) ?? null,
     viewHandle: (b) => (b ? seen(adapters.get(b.family)?.view(b.h)) : null),

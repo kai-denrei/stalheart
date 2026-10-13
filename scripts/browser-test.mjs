@@ -2024,7 +2024,10 @@ try{
  for(const t of types)await evaluate(`${T}.spawnFodder(${t==='knot'?1:3},${JSON.stringify(t)})`);
  const tiers=['white','yellow','blue','orange','green','purple','brown','black'];
  await until(`(()=>{const f=${P}.bodies?.families?.pearl;return !!f&&${JSON.stringify(tiers)}.every(t=>f[t]?.live>0);})()`,90000).catch(async()=>assert.fail(`every Pearl tier has bodies (${JSON.stringify(await evaluate(P))})`));
+ // round four: the paced bodies may still be off the game camera, so every body is drawn for this look (uncull)
+ await evaluate(`${T}.creatures.uncull(true)`);
  await until(`(()=>{const f=${P}.bodies.families.pearl;return ['orange','green','purple','brown','black'].every(t=>f[t].cores>0);})()`,30000).catch(async()=>assert.fail(`the cored tiers draw their pearls (${JSON.stringify(await evaluate(`${P}.bodies`))})`));
+ await evaluate(`${T}.creatures.uncull(false)`);
  const st=await evaluate(P),fams=st.bodies.families.pearl;
  console.log(`  tiers: ${tiers.map(t=>`${t} ${fams[t].live}${fams[t].cored?` (${fams[t].cores} pearls)`:''} r0 ${fams[t].r0.toFixed(1)}`).join(', ')}; by type ${JSON.stringify(st.byType)}; dressed ${st.dressed}, undressed ${st.undressed}`);
  assert.equal(st.undressed,0,'no record made again as a dot cloud for want of a body');
@@ -2040,7 +2043,14 @@ try{
  // ROUND THREE (owner, 2026-10-13: "there is still some clipping of the Cutis-Pearl through the walls"): every visible part of every body, not only its
  // stalks: over twenty-four seconds, each body's membrane (the shader's deform in JS over the lowest hull's directions), pearl and contact shadow, the
  // live and the dying, against the BLOCKED cells (src/fx/creature-pearl.js footprint; src/domain/body-reach.js query.clearance holds them off)
+ // ROUND FOUR (owner, 2026-10-13: "the moving animations are too jerky, they should feel slower and more organic"): the motion audit watches six bodies a
+ // tier through the footprint audits below (src/fx/pearl-motion.js: the visible centre's speed, acceleration and jerk, each body point's frame move)
+ const rp0=await evaluate(`${P}.bodies.families.pearl`);await evaluate(`${T}.creatures.watch({perTier:6})`);
  const audits=[],prints=[];for(let k=0;k<12;k++){audits.push(await evaluate(`${T}.creatures.audit()?.pearl`));prints.push(await evaluate(`${T}.creatures.footprint()?.pearl`));await delay(2000);}
+ {const mo=(await evaluate(`${T}.creatures.motion()`))?.pearl??{},rp1=await evaluate(`${P}.bodies.families.pearl`);
+  console.log(`  motion (24 s): ${Object.entries(mo).map(([t,m])=>`${t} ${m.bodies} bodies ${m.hops} hops of ${m.cycle} s, speed p95 ${m.speed[1]} r/s, jerk p95 ${m.jerk[0]}, ${m.pops}/${m.shapePops} pops, ${(rp1[t]?.replaced??0)-(rp0[t]?.replaced??0)} re-placed`).join('; ')}`);
+  assert(Object.keys(mo).length>=6&&Object.values(mo).every(m=>m.frames>0&&m.pops===0&&m.shapePops===0),`no Pearl body jumps in a frame (${JSON.stringify(mo)})`);
+  await evaluate(`${T}.creatures.watch(null)`);}
  console.log(`  stalks against the rock: ${audits.map(a=>a?`${a.bodies} bodies ${a.stalks} stalks ${a.crossing} crossing ${a.inRock} in the rock`:'-').join(' | ')}; reach queries ${await evaluate(`${P}.bodies.reaches`)}`);
  console.log(`  crossings: ${JSON.stringify(audits.flatMap(a=>a?.what??[]))}`);assert(audits.every(a=>a&&a.bodies>0&&a.crossing===0),`no stalk or anchor crosses the rock or a wall (${JSON.stringify(audits)})`);
  const tiersSeen=[...new Set(prints.flatMap(f=>Object.entries(f?.byTier??{}).filter(([,v])=>v.bodies>0).map(([k])=>k)))];

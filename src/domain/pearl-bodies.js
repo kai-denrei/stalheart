@@ -6,6 +6,9 @@
 //   pearlLeash    the leash in metres: the most of CREATURE_FOLLOW's (leashRadii x r, leashMin), `leashSeconds` of the record's walk and `leashHops`
 //                 of the body's own hop (`hop` m: its lag is a sawtooth a hop long, so a slow record's body is not put back mid-stride)
 //   squadSpots    where each of a squad's n bodies stands round its record: [across, along] metres in the record's heading frame
+//   pearlSpeed    round four: a type's walk (its spec's speed, cells a second at pace 1) x its tier's multiplier, capped at `radii` of its body a second
+//   pearlWait     round four: the record's pace factor while its body is `lag` metres behind it (the body leads; the record waits for it)
+//   pearlCatch    round four: how much a lagging body's hop is hurried (a pace divisor, 1 .. 1 + catchUp)
 
 // `spec` ENEMY_SPEC, `of` PEARL_OF, `tiers` PEARL_TIERS, `body` PEARL_BODY -> { [type]: { type, tier, r0, cored, rammable } } for every mapped type the spec knows
 export function pearlBodies({ spec, of, tiers, body }) {
@@ -38,3 +41,17 @@ export function squadSpots(n, r, { gap, stagger }) {
   for (let k = 0; k < n; k++) out.push([(k - (n - 1) / 2) * gap * r, (k % 2 ? 0.5 : -0.5) * stagger * r]);
   return out;
 }
+
+// round four: `speed` the spec's (cells/s at pace 1), `mult` and `radii` the tier's (PEARL_PACE), `r0` the body's radius (m), `sectorPace` the pace the
+// cap is set at, `metresPerCell` the planet's -> the paced speed (cells/s at pace 1): the record then walks at most `radii` body radii a second
+export function pearlSpeed({ speed, mult = 1, radii = Infinity, r0, sectorPace, metresPerCell }) {
+  const s = speed * mult;
+  return radii > 0 && radii < Infinity && r0 > 0 ? Math.min(s, (radii * r0) / (sectorPace * metresPerCell)) : s;
+}
+
+const smooth01 = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a || 1e-9))); return t * t * (3 - 2 * t); };
+// round four: `lag` m, `hop` the body's stride (m), `wait` { from, to, min } in hops -> 1 (walk on) .. min (all but stopped), eased between
+export const pearlWait = (lag, hop, { from, to, min }) => (hop > 0 ? 1 - (1 - min) * smooth01(from, to, lag / hop) : 1);
+
+// round four: `lag` m, `hop` m, `catchUp` -> the divisor of the body's hop pace: 1 within a hop of its record, eased to 1 + catchUp at two hops behind
+export const pearlCatch = (lag, hop, catchUp) => 1 + (hop > 0 ? catchUp * smooth01(1, 2, lag / hop) : 0);
