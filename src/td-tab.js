@@ -56,7 +56,7 @@ import { createStoryScope, createScopeFeed } from './fx/story-scope.js';
 import { createSyntheticModal } from './fx/synthetic-modal.js';
 import { mulberry32, randomSeed } from './rng.js';
 import { createLaserStation, structureLostHtml } from './fx/laser-station.js'; import { createLaserArsenal } from './fx/laser-arsenal.js'; import { LASER_GAME } from './content/orbital-laser.js'; import { createGlossaryModals } from './fx/glossary-modals.js'; import { makeTriadIcon, glossCard, GAMEPLAY_TIPS } from './fx/briefing-cards.js';
-import { computeBerths, berthIndexFor } from './berths.js'; import { createProgrammeHost } from './fx/programme-host.js'; import { strikeFallPose, droneRidePose, bastionPose, tankViewPose } from './domain/camera-goal.js'; import { createShopRadial } from './fx/shop-radial.js'; import { berthRun, berthHeading, deployU, easeDeploy, deployFraming } from './domain/deploy-path.js';
+import { computeBerths, berthIndexFor } from './berths.js'; import { createProgrammeHost } from './fx/programme-host.js'; import { strikeFallPose, droneRidePose, bastionPose, tankViewPose } from './domain/camera-goal.js'; import { createShopRadial } from './fx/shop-radial.js'; 
 import { createSkyRig } from './fx/sky-rig.js'; import { createIsaoMoments } from './fx/isao-moments.js'; import { createColonyTick } from './fx/colony-tick.js'; import { createAutoSupport } from './fx/auto-support.js';
 import { createCanyonRun } from './fx/canyon-run.js'; import { createEndingHost } from './fx/ending-host.js'; import { createIsaoWorker } from './fx/isao-worker.js'; import { createHullDrive } from './fx/hull-drive.js'; import { createTowerCombat } from './fx/tower-combat.js';
 import { createEnemyStep } from './fx/enemy-step.js'; import { createTankLaser } from './fx/tank-laser.js'; import { createPlasmaBeams } from './fx/plasma-beams.js'; import { createWarnRing } from './fx/warn-ring.js'; import { createHullHost } from './fx/hull-issue.js'; import { createWaveCard } from './fx/wave-card.js'; import { createTankInput } from './platform/tank-input.js'; import { createBuildPointer } from './fx/build-pointer.js';
@@ -65,7 +65,7 @@ import { wantsSecondary, shellsForAll } from './autofire.js';
 import { PLASMA_DEFAULTS } from './beamdraw.js';
 import { sub3, add3, scale3, dot3, cross3, norm3, len3, dist3, segKey } from './vec3.js';
 import { CREATURES, waveJelly } from './creatures.js';
-import { BRIEFS } from './isaobriefs.js'; import { createBriefQueue } from './fx/brief-queue.js'; import { createEngineAudio } from './fx/engine-audio.js'; import { lookIsao } from './fx/isao-look.js';
+import { BRIEFS } from './isaobriefs.js'; import { createBriefQueue } from './fx/brief-queue.js'; import { createEngineAudio } from './fx/engine-audio.js'; import { createHullDeploy } from './fx/hull-deploy.js'; import { lookIsao } from './fx/isao-look.js';
 import { ACHIEVEMENTS, ACHV_GROUPS, achievement, blankRun, earned, freshlyEarned,
   sanitiseRecord }
   from './achievements.js';
@@ -1148,7 +1148,7 @@ export function initTdTab(root) {
   const ctlState = (tag) => `CTL[${tag}] gen=${runContext.generation} deploys=${deployCount}`
     + ` won=${player.won} down=${playerDown} next=${player.next}`
     + ` free=${player.freeMode} cur=${player.cur}`
-    + ` auto=${autoMode} cruise=${cruise} deploying=${deployActive()}`
+    + ` auto=${autoMode} cruise=${cruise} deploying=${hullDeploy.active()}`
     + ` throttle=${throttle.toFixed(2)} keys=${Object.entries(keys)
       .filter(([, v]) => v).map(([k2]) => k2).join('+') || '-'}`
     + ` paused=${paused}`
@@ -1244,7 +1244,7 @@ export function initTdTab(root) {
     playerDown: () => playerDown,
     buildMode: () => buildMode,
     shots: () => shots,
-    deploy: () => deploy,
+    deploy: () => hullDeploy.state(),
     paused: () => paused,
     cellSide: () => cellSide,
     unitScale: () => unitScale,
@@ -1829,9 +1829,9 @@ export function initTdTab(root) {
     if (pilot?.state.tower && shotId() !== 'takeControl' && pilot.pose(pilot.state.tower, camGoal)) return;
     if (laserStation.pose(camGoal)) return;   // SOL-82's seat: the ground view behind the beam's contact
     // DEPLOY eases the doorway framing into the gameplay framing, so at u=1 handing over the controls changes nothing on screen.
-    if (deploy && !camRaw) {
-      const w = deployEase();
-      deployFramePoseFor(deploy.n, camA);
+    if (hullDeploy.state() && !camRaw) {
+      const w = hullDeploy.ease();
+      deployFramePoseFor(hullDeploy.state().n, camA);
       gameplayCameraPose(camB);
       camGoal.pos.lerpVectors(camA.pos, camB.pos, w);
       camGoal.quat.copy(camA.quat).slerp(camB.quat, w);
@@ -3244,7 +3244,7 @@ export function initTdTab(root) {
   }
 
   function deployShieldNow() {
-    if (player.won || playerDown || paused || deploy || !player.pos) return 'frozen';
+    if (player.won || playerDown || paused || hullDeploy.state() || !player.pos) return 'frozen';
     const r = deployShield(shield, t, shieldTune);
     if (r === 'ok') {
       sfx.play('tank_pickup');
@@ -3632,93 +3632,33 @@ export function initTdTab(root) {
     setRamCombo: (v) => { ramCombo = v; }, setRamComboT: (v) => { ramComboT = v; }, setTankLostDeploys: (v) => { tankLostDeploys = v; }, setPlayerDown: (v) => { playerDown = v; },
   });
 
-  // Respawn beside the HEART, facing outward: the gate is enemy ground by the time you die. DEPLOY is the one way a tank enters the
-  // world: the hull starts at rest in its berth and drives out in manual. "Entirely out" is measured in CELLS (its centre on the exit
-  // cell's), so it holds with no container model loaded. DEPLOY is not auto and not cruise: it ends with the lever at zero.
-  let deploy = null;   // { n, from[3], to[3], segLen, travelled }
-  const deployActive = () => deploy !== null;
-
-  // a berth's run and heading, over the current graph (src/domain/deploy-path.js)
-  const berthSeg = (b) => berthRun(b, graph.centers), berthDir = (b) => berthHeading(b, graph.centers);
-  function deployStart(n) {
-    const b = berths[n];
-    if (!b || !graph) return false;
-    deployCount++;
-    player.freeMode = false; player.virtualStart = null;
-    player.cur = b.ci; player.prev = -1; player.pos = berthSeg(b)[0].slice();
-    player.prog = 0; player.next = b.exit;
-    player.heading = berthDir(b);
-    player.travelDir = player.heading.slice(); player.smoothDir = player.travelDir.slice();
-    player.segLen = Math.max(1e-9, dist3(...berthSeg(b)));
-    throttle = 0; cruise = false; autoMode = false;
-    paintThrottle();
-    engineAudio.stop(0.1, true);
-    // only what is NOT derivable: which berth, and how far out we are. from,
-    // to and segLen were all functions of `n` and drifted-by-construction.
-    // THE FIRST HULL OUT OF A BAY WITH AN AUTHORED ROLL-OUT PLAYS THE CLIP: the parked hull rolls, ours stays hidden until the clip ends where the run ends
-    const cc = lifeContainers[n]; deploy = { n, travelled: 0, age: 0, clip: cc?.rollout && !cc.rolled ? cc.rollout : 0, bay: cc }; if (story?.hull?.held()) { deploy = null; playerDown = true; return true; }   /* NO HULL YET (src/fx/hull-issue.js): a growing page parks it unseen at its berth, not driven, not hit, until the Stålheart rolls it out */ if (deploy.clip) { cc.rolled = cc.rolling = true; cc.roll(0); playerMesh.visible = false; } return true;
-  }
-
-  // THE POSE THE WHOLE DESIGN HANGS OFF. Every prelude's last frame is this,
-  // so "the cinematic's last frame is the first frame of the reset state" is
-  // a property of the code rather than something tuned until it looks right.
-  // A low three-quarter standing where the doors face, so the hull rolls
-  // toward the lens.
-  function deployFramePoseFor(n, out) {
-    const b = berths[n];
-    if (!b) return;
-    // AN AUTHORED ROLL-OUT IS WATCHED FROM BEHIND THE BAY, over its roof, the hull leaving toward the base: the gameplay pose is behind the hull too, so the 8 s blend never swings through it
-    poseCamera(deployFraming(b, graph.centers, graph.normals, !!(lifeContainers[n]?.rollout && (deploy?.clip || !lifeContainers[n].rolled)), params.wallHeight, cellSide), out);
-  }
-
-  // how far through the drive-out we are, eased — the camera blend and the
-  // motion share one progress value so they cannot disagree
-  function deployProgress() { const b = deploy && berths[deploy.n]; return b ? deployU(deploy, b, graph.centers) : 1; }
-  function deployEase() { return easeDeploy(deployProgress()); }
-
-  // ...and the same liveness check on DEPLOY, which owns the camera between
-  // the cinematic's last frame and the player's first. Its length is known:
-  // the berth's own segment at the drive speed. A deploy that has been
-  // running several times that is not deploying — and a stalled one leaves
-  // the hull in its berth with the camera on the berth framing, which is the
-  // other pose that is neither third nor orbit.
-  const DEPLOY_GRACE = 6.0;
-  function deployStep(dt) {
-    if (!deploy) return;
-    const b = berths[deploy.n];
-    if (!b) { deploy = null; return; }
-    const v = params.speed * speedBonus * cellSide * 1.6;
-    deploy.age = (deploy.age || 0) + dt;
-    const segLen = Math.max(1e-9, dist3(...berthSeg(b)));
-    // A DEPLOY WITH NO SPEED IS HUNG BY DEFINITION, so its expected duration is ZERO, not Infinity. The first cut wrote Infinity
-    // here — mathematically honest, and it made the one case this check exists for (`params.speed` at 0, the hull never leaving
-    // the berth) the one case it could never catch.
-    const expect = deploy.clip || (v > 1e-9 ? segLen / v : 0);
-    if (deploy.age > expect * 2 + DEPLOY_GRACE) {
-      console.warn(`SHOTWATCH deploy hung: ${deploy.age.toFixed(1)}s for a ${Number.isFinite(expect) ? expect.toFixed(1) : '∞'}s`
-        + ` run (speed=${params.speed} bonus=${speedBonus}) — handed over`);
-      shots.hung(`deploy ${deploy.age.toFixed(1)}s/${Number.isFinite(expect) ? expect.toFixed(1) : '∞'}s`);
-      deploy.travelled = segLen;   // finish it where it was going, then hand over
-    }
-    deploy.travelled += v * dt; if (deploy.clip) { deploy.bay.roll(deploy.age); playerMesh.visible = false; }   // the clip's clock is the deploy's; a hull rebuilt meanwhile stays hidden
-    const u = deployProgress();
-    const [from, to] = berthSeg(b);
-    const p = [0, 1, 2].map((i) => from[i] + (to[i] - from[i]) * u);
-    player.pos = norm3(p);
-    player.heading = berthDir(b);
-    player.travelDir = player.heading.slice();
-    player.smoothDir = player.travelDir.slice();
-    const ci = cellIndex(player.pos);
-    if (ci !== -1 && ci !== player.cur) arriveAt(ci);
-    if (u >= 1) {
-      // hands over: manual, lever at zero, auto off. Because `keys` is HELD
-      // state, a player already leaning on W drives on without a beat — and
-      // forward is the direction the hull is already going, so the handover
-      // is continuous rather than a stop.
-      if (deploy.clip) { deploy.bay.rolling = false; playerMesh.visible = true; }   // hand over: the authored hull hides, ours stands where it stopped
-      deploy = null; throttle = 0; cruise = false; autoMode = false; paintThrottle();
-    }
-  }
+  // THE HULL'S DEPLOY (src/fx/hull-deploy.js): the berth's drive-out, its camera pose and progress, the hung-deploy watch
+  const hullDeploy = createHullDeploy({
+    player,
+    params,
+    shots,
+    poseCamera,
+    arriveAt,
+    paintThrottle,
+    stopEngine: (fade, quiet) => engineAudio.stop(fade, quiet),
+    berths: () => berths,
+    graph: () => graph,
+    lifeContainers: () => lifeContainers,
+    story: () => story,
+    playerMesh: () => playerMesh,
+    speedBonus: () => speedBonus,
+    cellSide: () => cellSide,
+    cellIndex: () => cellIndex,
+    deployCount: () => deployCount,
+    setDeployCount: (v) => (deployCount = v),
+    setThrottle: (v) => (throttle = v),
+    setCruise: (v) => (cruise = v),
+    setAutoMode: (v) => (autoMode = v),
+    setPlayerDown: (v) => (playerDown = v),
+  });
+  function deployStart(n) { return hullDeploy.start(n); }
+  function deployFramePoseFor(n, out) { return hullDeploy.framePoseFor(n, out); }
+  function deployProgress() { return hullDeploy.progress(); }
 
   function heartHit(dmg = 1) {
 
@@ -4825,9 +4765,9 @@ export function initTdTab(root) {
     // lastFrame keeps updating above so resume has no dt spike.
     if (paused) {
       if (!simSkip) {
-        playerMesh.visible = params.view !== 'pov' && !deploy?.clip && !story?.hull?.held();   // an authored roll-out owns the hull on screen: ours would stand in it, turret sweeping; an unissued hull is not drawn
+        playerMesh.visible = params.view !== 'pov' && !hullDeploy.clip() && !story?.hull?.held();   // an authored roll-out owns the hull on screen: ours would stand in it, turret sweeping; an unissued hull is not drawn
         postfx.render(); storyMonitor?.render(renderer, scene, towerSeekers.find((m) => m.pool === talonPool && m.by === pilot?.state.tower)?.mesh ?? null, cellSide, 0); groundFeed.render(renderer, scene, 0);
-        playerMesh.visible = !deploy?.clip && !story?.hull?.held();
+        playerMesh.visible = !hullDeploy.clip() && !story?.hull?.held();
         radarScope.draw(t); laserStation.render(renderer, scene);   // the sweep keeps turning; a dead scope reads as a crash
       }
       return;
@@ -4862,8 +4802,8 @@ export function initTdTab(root) {
     // hand on the wheel closes it, same rule as the tutorial's opening hold.
     if (shopCi !== -1 && (keys.fast || keys.slow || keys.left || keys.right
       || cruise || throttle !== 0 || keys.fire || keys.laser)) closeShop();
-    if (pilotMode) deploy = null;
-    if (deploy) deployStep(dt);
+    if (pilotMode) hullDeploy.cancel();
+    if (hullDeploy.state()) hullDeploy.step(dt);
     else if (!driveFrozen && !pilotMode) advanceMotion(dt);
     ctlWatch(dt);
     // Isao keeps his shift through the build downtime — the war may be
@@ -5071,7 +5011,7 @@ export function initTdTab(root) {
     scene.backgroundIntensity = sky ? (lab.on ? lab.bgIntensity : SKY_PRESET.intensity) : 1; if (daylight) scene.backgroundIntensity *= 1 - daylight.tick(frozen ? 0 : dt) * (1 - story.day.skyDim);   // the stars fade with the day
     if (simSkip) return; // sim pass: state advanced, nothing painted
     // in PoV the camera sits inside the creature — hide it there
-    playerMesh.visible = params.view !== 'pov' && !deploy?.clip && !story?.hull?.held();   // the bay's authored hull rolls out alone (operator, 2026-09-13: two turrets, one static, one sweeping); no hull before the Stålheart issues it
+    playerMesh.visible = params.view !== 'pov' && !hullDeploy.clip() && !story?.hull?.held();   // the bay's authored hull rolls out alone (operator, 2026-09-13: two turrets, one static, one sweeping); no hull before the Stålheart issues it
     postfx.render();
     // the seeker feed rides behind a TALON in flight; the gunship's monitor is the ground truth at the impact point; otherwise the
     // optic inset on the tracked target
@@ -5308,7 +5248,7 @@ export function initTdTab(root) {
       shotId,
       showBrief,
       deployStart,
-      deployStep,
+      deployStep: hullDeploy.step,
       leavePilot,
       camera,
       startShot,
@@ -5317,13 +5257,13 @@ export function initTdTab(root) {
       setView,
       story: () => story,
       pilot: () => pilot,
-      deploy: () => deploy,
+      deploy: () => hullDeploy.state(),
       t: () => t,
       playerHP: () => playerHP,
       storyViews: () => storyViews,
       setBerths: (v) => { berths = v; },
       setPlayerDown: (v) => { playerDown = v; },
-      setDeploy: (v) => { deploy = v; },
+      setDeploy: (v) => { hullDeploy.set(v); },
       glide: () => seatGlide.begin(camera),
       hud: root,
     });
@@ -5388,7 +5328,7 @@ export function initTdTab(root) {
     view: () => params.view, story: () => story, storyViews: () => storyViews, pilot: () => pilot, pilotMode: () => pilotMode, pilotHost: () => pilotHost, sectorRun: () => sectorRun, gunshipBriefing: () => gunshipBriefing, paused: () => paused,
     setStoryViews: (v) => (storyViews = v), setGunshipBriefing: (v) => (gunshipBriefing = v), setPaused: (v) => { paused = v; },
   }));
-  Object.assign(storyApi, createBackDoor({ storyApi, sfx, explode, showBrief, camDist, showCallout, warnRing, breachWallCell, rebuildAfterBreach, recomputePortalDist, shotActive, camera, startShot, story: () => story, graph: () => graph, dungeon: () => dungeon, cellSide: () => cellSide, paused: () => paused, deploy: () => deploy, pilotMode: () => pilotMode, pilot: () => pilot, groundFeed, diveCuts }));   /* THE SECOND FRONT (src/fx/back-door.js) */
+  Object.assign(storyApi, createBackDoor({ storyApi, sfx, explode, showBrief, camDist, showCallout, warnRing, breachWallCell, rebuildAfterBreach, recomputePortalDist, shotActive, camera, startShot, story: () => story, graph: () => graph, dungeon: () => dungeon, cellSide: () => cellSide, paused: () => paused, deploy: () => hullDeploy.state(), pilotMode: () => pilotMode, pilot: () => pilot, groundFeed, diveCuts }));   /* THE SECOND FRONT (src/fx/back-door.js) */
   // THE SIM RUN'S END (src/platform/sim-run.js): simWatch, which the fast-forward calls after each batch, and the result it publishes
   const { simWatch } = createSimRun({
     player, params, towers, simCurve, campaign, endShot, breachNextSector, setView, SECTORS_TOTAL,
@@ -5502,7 +5442,7 @@ export function initTdTab(root) {
     cellSide: () => cellSide,
     paused: () => paused,
     buildMode: () => buildMode,
-    deploy: () => deploy,
+    deploy: () => hullDeploy.state(),
     playerHP: () => playerHP,
     tankLostDeploys: () => tankLostDeploys,
     playerDown: () => playerDown,
@@ -5511,7 +5451,7 @@ export function initTdTab(root) {
     gotoCi: () => gotoCi,
     playerMesh: () => playerMesh,
     setPaused: (v) => (paused = v),
-    setDeploy: (v) => (deploy = v),
+    setDeploy: (v) => hullDeploy.set(v),
   });
 
   // EVERY SHIELD_TUNE KNOB BY NAME — ?tapOutage=8, ?coolSecs=3, ?shoveCells=1.4.
@@ -5624,9 +5564,9 @@ export function initTdTab(root) {
         drawCalls: renderer.info.render.calls,
         playerPosition: player.pos.slice(),
         playerCell: player.cur,
-        deploying: !!deploy,
-        deployBerth: deploy ? deploy.n : -1,
-        rollingOut: !!deploy?.clip,
+        deploying: !!hullDeploy.state(),
+        deployBerth: hullDeploy.state() ? hullDeploy.state().n : -1,
+        rollingOut: !!hullDeploy.clip(),
         playerBlocked: freeBlocked(player.pos),
         camp: berths.map(b => ({ ...b, open: dungeon.tags[b.ci] !== BLOCKED && dungeon.tags[b.exit] !== BLOCKED,
           clearance: dist3(graph.centers[b.exit], graph.centers[dungeon.heart]) - pedestalRadius() })),
@@ -5779,7 +5719,7 @@ export function initTdTab(root) {
       // through these and nothing else, so it needs no ?acceptance=1
       showcase: createShowcaseHooks({
         camera, enemies, spawnPoints, spawnQueue, towers, player, params, gunship, gunshipCall: gunshipRig.call, explosions, gameBreaches, storyApi, gunshipFar: gunshipRig.far, automated, shotId, endShot, startShot, snapCamera, setView, releaseSpawns, enterPilot, leavePilot, spawnIsao, placeTank: (ci) => gameHooks.placeTank(ci),
-        story: () => story, storyBase: () => storyBase, deploy: () => deploy, playerMesh: () => playerMesh, graph: () => graph, dungeon: () => dungeon, cellSide: () => cellSide, pilot: () => pilot, pilotMode: () => pilotMode, isao: () => isao, rs: () => rs, ramCombo: () => ramCombo, playerHP: () => playerHP,
+        story: () => story, storyBase: () => storyBase, deploy: () => hullDeploy.state(), playerMesh: () => playerMesh, graph: () => graph, dungeon: () => dungeon, cellSide: () => cellSide, pilot: () => pilot, pilotMode: () => pilotMode, isao: () => isao, rs: () => rs, ramCombo: () => ramCombo, playerHP: () => playerHP,
         setPaused: (v) => { paused = v; }, setFollowSuspend: (v) => { followSuspend = v; }, setRamCam: (v) => { showcaseRamCam = v; }, setGunshipTrack: (v) => { gunshipRig.setTrack(v); },
       }),
   };
@@ -5839,7 +5779,7 @@ export function initTdTab(root) {
       cameraPose:(eye,dir,up,goal)=>{tmpCam.position.copy(eye);tmpCam.up.copy(up);tmpCam.lookAt(eye.clone().add(dir));goal.quat.copy(tmpCam.quaternion);}
     });
     pilotPosts=(posts??[]).slice();   // the story hands over its printed mounts
-    deploy=null;endShot();paused=false;
+    hullDeploy.cancel();endShot();paused=false;
     for(let i=0;i<pilotPosts.length;i++)pilotMounts[i]=towerByCell.get(pilotPosts[i]);
     briefs.clear();params.callouts=false;setView('bastion');if(pilotPosts.length)pilot.select(pilotMounts[0]?.key||'rotor');hideRangeRing();snapCamera();   // no posts yet (the gunship's seat before any sentry stands): nothing to install
     if(flags.acceptance==='1')window.__stalheartPilotTest={
