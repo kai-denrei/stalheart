@@ -18,8 +18,16 @@
 // own pace). A family may ignore them (the Cutis and Reed families do).
 // The root sits at the heart's point with one unit a metre (scale cellSide / metresPerCell), so a kit that bends its plane onto a sphere
 // of radius R = metresPerCell / cellSide metres lands exactly on the planet.
+// THE HUBS (round two, owner 2026-10-13: "there are still a mix of half-dotted and new cutis enemies"; src/domain/surface-hubs.js): a family whose
+// adapter says `hubs: { margin }` (the Pearl set) is drawn round twelve hubs, the icosahedron's vertices with the first at the heart, so a body is
+// never more than 0.65 rad from its plane's centre wherever on the planet its record walks (the heart's plane alone is singular at the antipode, where
+// the canyon's swarm comes up). Each record is on its nearest hub (`margin` rad of hysteresis): add and track carry `hub` and (x, z) in that hub's
+// plane; when the record walks into another hub's region the seam calls family.rehub(handle, hub) first, and the family moves its body's plane state
+// across at the same pose (`hubs.remap(a, b, x, z)` from the seam) and draws it turned by `hubs.quat(hub)` about the planet's centre (the kit's
+// HUB_TURN). Every other family stays on the heart's hub (0), as before.
 import * as THREE from '../../vendor/three.module.js';
 import { surfaceFrame, toPlane } from '../domain/surface-projection.js';
+import { hubFrames, icosaHubs, nearestHub, remapPlane, hubTurn } from '../domain/surface-hubs.js';
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
@@ -30,14 +38,18 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
   const root = new THREE.Group(); root.name = 'Creature bodies'; scene.add(root);
   const adapters = new Map(), live = new Map();   // family -> adapter; record -> { family, h, stamp }
   const basis = new THREE.Matrix4(), v = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
-  let frame = null, at = -1, side = 0, R = 0, stamp = 0, replaced = 0;
+  let frame = null, at = -1, side = 0, R = 0, stamp = 0, replaced = 0, handed = 0;
+  let frames = [], points = [], quats = [];   // the hubs: their frames, unit points and turns into the root's plane (src/domain/surface-hubs.js)
+  const hubs = { count: 12, quat: (k) => quats[k] ?? quats[0], remap: (a, b, x, z) => remapPlane(frames[a], frames[b], x, z, R) };
 
   const has = (family) => typeof families[family] === 'function';
   function adapter(family) {
     let a = adapters.get(family);
-    if (!a && has(family)) { a = families[family]({ parent: root, tiers: tiers[family], follow, death }); if (R > 0) a.setPlanet(R); adapters.set(family, a); }
+    if (!a && has(family)) { a = families[family]({ parent: root, tiers: tiers[family], follow, death, hubs }); if (R > 0) a.setPlanet(R); adapters.set(family, a); }
     return a ?? null;
   }
+  // a record's hub: the nearest to it for a family drawn round the hubs (kept within the family's margin), the heart's for any other
+  const hubOf = (a, p, cur = -1) => (a.hubs && points.length ? nearestHub(points, p, cur, a.hubs.margin ?? 0) : 0);
 
   // the root on the heart's point: re-placed when the heart or the cell side changes (a rebuilt board)
   function place() {
@@ -46,6 +58,7 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
     const [heartPoint, heartIndex, cellSide] = h;
     if (frame && heartIndex === at && cellSide === side) return;
     frame = surfaceFrame(heartPoint); at = heartIndex; side = cellSide;
+    frames = hubFrames(frame); points = frames.map((f) => f.origin); quats = frames.map((f, k) => (k ? hubTurn(frame, f) : [0, 0, 0, 1]));
     const metre = cellSide / metresPerCell;
     R = metresPerCell / cellSide;
     root.position.set(frame.origin[0], frame.origin[1], frame.origin[2]);
@@ -63,7 +76,7 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
     return obj;
   }
 
-  const planeOf = (p) => toPlane(frame, p, R);
+  const planeOf = (p, hub = 0) => toPlane(frames[hub] ?? frame, p, R);
   // the record's lift under the ground while it rises out of a breach (src/fx/enemy-step.js's emergence, 1.2 s)
   const liftOf = (e, r0) => (e.breachSource && e.emergeAge < 1.2 ? -(1 - clamp01(e.emergeAge / 1.2)) * follow.emergeRadii * r0 : 0);
   // the point `follow.lead` seconds ahead along the record's walk (cells a second: its spec's speed x its own pace)
@@ -79,10 +92,10 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
     place();
     const family = e.spec?.body, a = family && adapter(family), t = a && tiers[family]?.[e.tier];
     if (!t || !frame) return false;
-    const [x, z] = planeOf(e.pos), apos = aheadOf(e), [ax, az] = planeOf(apos);
-    const h = a.add(e.tier, { x, z, angle: Math.atan2(az - z, ax - x) || 0, lift: liftOf(e, t.r0), pos: e.pos, apos, ...lookOf(e) });
+    const hub = hubOf(a, e.pos), [x, z] = planeOf(e.pos, hub), apos = aheadOf(e), [ax, az] = planeOf(apos, hub);
+    const h = a.add(e.tier, { x, z, angle: Math.atan2(az - z, ax - x) || 0, lift: liftOf(e, t.r0), pos: e.pos, apos, hub, ...lookOf(e) });
     if (!h) return false;
-    live.set(e, { family, h, stamp, r0: t.r0 });
+    live.set(e, { family, h, stamp, r0: t.r0, hub });
     return true;
   }
 
@@ -106,8 +119,10 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
       const b = live.get(e);
       if (!b || !e.alive) continue;
       b.stamp = stamp;
-      const [x, z] = planeOf(e.pos), apos = aheadOf(e), [ax, az] = planeOf(apos);
-      if (adapters.get(b.family).track(b.h, { x, z, ax, az, lift: liftOf(e, b.r0), pos: e.pos, apos, dt, ...lookOf(e) })) replaced++;
+      const a = adapters.get(b.family), hub = hubOf(a, e.pos, b.hub);
+      if (hub !== b.hub) { a.rehub(b.h, hub); b.hub = hub; handed++; }
+      const [x, z] = planeOf(e.pos, hub), apos = aheadOf(e), [ax, az] = planeOf(apos, hub);
+      if (a.track(b.h, { x, z, ax, az, lift: liftOf(e, b.r0), pos: e.pos, apos, dt, hub, ...lookOf(e) })) replaced++;
     }
     for (const [e, b] of live) if (b.stamp !== stamp) { live.delete(e); adapters.get(b.family).free(b.h); }
     for (const a of adapters.values()) a.step(dt, camera, height, cull);
@@ -119,10 +134,11 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
   return {
     has, proxy, spawn, kill, step,
     roots: () => [...adapters.values()].flatMap((a) => a.roots()),
-    // the bodies' books: up now, re-placed on the leash, and each family's tiers
-    stats: () => ({ live: live.size, replaced, planetR: +R.toFixed(1), families: Object.fromEntries([...adapters].map(([k, a]) => [k, a.stats()])) }),
-    // one record's body (the harness): its family's view of it, plus where its record is in the plane
-    view: (e) => { const b = live.get(e); return b ? { ...seen(adapters.get(b.family).view(b.h)), record: frame ? planeOf(e.pos) : null } : null; },
+    // the bodies' books: up now, re-placed on the leash, handed from one hub to another, the records on each hub, and each family's tiers
+    stats: () => { const onHub = new Array(12).fill(0); for (const b of live.values()) onHub[b.hub]++;
+      return { live: live.size, replaced, handed, onHub, planetR: +R.toFixed(1), families: Object.fromEntries([...adapters].map(([k, a]) => [k, a.stats()])) }; },
+    // one record's body (the harness): its family's view of it, plus where its record is in its hub's plane
+    view: (e) => { const b = live.get(e); return b ? { ...seen(adapters.get(b.family).view(b.h)), record: frame ? planeOf(e.pos, b.hub) : null, hub: b.hub } : null; },
     // a dead record's body by its handle, kept by the caller before the kill (the harness watches a death play out)
     handleOf: (e) => live.get(e) ?? null,
     viewHandle: (b) => (b ? seen(adapters.get(b.family)?.view(b.h)) : null),

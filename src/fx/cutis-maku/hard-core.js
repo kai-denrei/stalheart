@@ -10,7 +10,7 @@
 // core per instance (an iFade attribute patched into the material's alpha).
 import * as THREE from '../../../vendor/three.module.js';
 import { transferProgress } from './config.js';
-import { bendPoint } from './shaders.js';
+import { bendPoint, hubPoint } from './shaders.js';
 
 /** The core's centre (plane metres, y up, bent onto the sphere of radius `planetR`; 0 = flat) and radius for instance i, as drawn; `out` [x, y, z, radius]. */
 export function corePose(swarm, i, planetR = 0, out = [0, 0, 0, 0]) {
@@ -26,6 +26,7 @@ export function corePose(swarm, i, planetR = 0, out = [0, 0, 0, 0]) {
   }
   y += phase >= .85 ? 0 : phase >= .62 ? lift * (1 - c.u) * (1 - c.u) : lift;
   bendPoint(x, y, z, planetR, out);
+  if (planetR > 0 && swarm.hubQuat && swarm.hubQuat[i * 4 + 3] !== 1) hubPoint(out[0], out[1], out[2], planetR, swarm.hubQuat, i * 4, out);   // round two: its hub (./shaders.js HUB_TURN)
   out[3] = c.radius;
   return out;
 }

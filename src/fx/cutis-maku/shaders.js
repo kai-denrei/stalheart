@@ -15,6 +15,19 @@ vec3 bendToPlanet(vec3 p,float R){
   return vec3(dir.x*rr*s,p.y*cos(t)-2.*R*h*h,dir.y*rr*s);
 }
 `;
+/** Round two (the Pearl set's projection hubs, src/fx/creature-bodies.js): a body drawn in another hub's plane is bent there and then turned about
+ * the planet's centre (0, -R, 0) by its hub's quaternion q (identity for the hub the group sits on), so one group draws bodies anywhere on the sphere. */
+export const HUB_TURN=`
+vec3 hubTurn(vec4 q,vec3 v){return v+2.*cross(q.xyz,cross(q.xyz,v)+q.w*v);}
+vec3 hubPlace(vec4 q,vec3 p,float R){if(R<=0.)return p;vec3 c=vec3(0.,-R,0.);return hubTurn(q,p-c)+c;}
+`;
+/** HUB_TURN's hubPlace in JS: the bent point (x, y, z) turned about (0, -R, 0) by q = [x, y, z, w] at q[k..k+3]; writes `out`. */
+export function hubPoint(x,y,z,R,q,k=0,out=[0,0,0]) {
+  if(!(R>0)){out[0]=x;out[1]=y;out[2]=z;return out;}
+  const qx=q[k],qy=q[k+1],qz=q[k+2],qw=q[k+3],vx=x,vy=y+R,vz=z;
+  const cx=qy*vz-qz*vy+qw*vx,cy=qz*vx-qx*vz+qw*vy,cz=qx*vy-qy*vx+qw*vz;
+  out[0]=vx+2*(qy*cz-qz*cy);out[1]=vy+2*(qz*cx-qx*cz)-R;out[2]=vz+2*(qx*cy-qy*cx);return out;
+}
 /** PLANET_BEND in JS, the same mapping term for term: (x, y, z) local plane metres (y up) -> the point on the sphere of radius R; R <= 0 leaves it. Writes `out` (or a new array). */
 export function bendPoint(x,y,z,R,out=[0,0,0]) {
   if(!(R>0)){out[0]=x;out[1]=y;out[2]=z;return out;}
@@ -33,6 +46,7 @@ attribute vec4 iState;
 attribute vec4 iParams;
 attribute vec3 iProbe0,iProbe1,iProbe2;
 attribute vec4 iLife;
+attribute vec4 iHub;
 #define iProbeCount floor(iState.w/4.)
 #define iChosenProbe mod(iState.w,4.)
 #define SC (uRadius/.2)
@@ -42,6 +56,7 @@ varying vec3 vWorld,vRest,vHeading,vNormal;
 varying float vStretch,vPhase,vSeed,vLead;
 varying vec2 vLife;
 ${PLANET_BEND}
+${HUB_TURN}
 float hash(vec3 p){return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453);}
 float noise3(vec3 p){vec3 a=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(mix(hash(a),hash(a+vec3(1,0,0)),f.x),mix(hash(a+vec3(0,1,0)),hash(a+vec3(1,1,0)),f.x),f.y),mix(mix(hash(a+vec3(0,0,1)),hash(a+vec3(1,0,1)),f.x),mix(hash(a+vec3(0,1,1)),hash(a+vec3(1,1,1)),f.x),f.y),f.z)*2.-1.;}
 vec3 extent4(float theta){
@@ -180,7 +195,8 @@ void main(){
   vec3 tangent=normalize(cross(axis,n)),bitangent=cross(n,tangent);
   vec4 p=deform(n);
   vec3 a=deform(normalize(n+tangent*.012)).xyz-p.xyz,b=deform(normalize(n+bitangent*.012)).xyz-p.xyz;
-  vec3 normal=cross(a,b);vNormal=dot(normal,normal)>1e-14*SC*SC*SC*SC?normalize(mat3(modelMatrix)*normal):vec3(0,1,0);
+  vec3 normal=hubTurn(iHub,cross(a,b));vNormal=dot(normal,normal)>1e-14*SC*SC*SC*SC?normalize(mat3(modelMatrix)*normal):vec3(0,1,0);
+  p.xyz=hubPlace(iHub,p.xyz,uPlanetR);
   vWorld=(modelMatrix*vec4(p.xyz,1.)).xyz;
   vRest=n;vHeading=iHeading;vLead=pow(smoothstep(cos(radians(iProbeCount>1.5?min(uCap,32.):uCap)),1.,turn(n,-probeFor(n).x).z),2.);vSeed=iSeed;vPhase=iPhase;vStretch=p.w;vLife=iLife.yz;
   gl_Position=projectionMatrix*modelViewMatrix*vec4(p.xyz,1.);
@@ -253,14 +269,16 @@ void main(){
 // The contact shadow: one flat plane per instance (matrix = place and size), bent onto the planet like the body, faded by iFade.
 export const SHADOW_VERT=`
 attribute float iFade;
+attribute vec4 iHub;
 uniform float uPlanetR;
 varying vec2 vUv;
 varying float vFade;
 ${PLANET_BEND}
+${HUB_TURN}
 void main(){
   vUv=uv;vFade=iFade;
   vec3 local=(instanceMatrix*vec4(position,1.)).xyz;
-  gl_Position=projectionMatrix*modelViewMatrix*vec4(bendToPlanet(local,uPlanetR),1.);
+  gl_Position=projectionMatrix*modelViewMatrix*vec4(hubPlace(iHub,bendToPlanet(local,uPlanetR),uPlanetR),1.);
 }
 `;
 

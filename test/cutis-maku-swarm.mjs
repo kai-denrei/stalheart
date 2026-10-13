@@ -162,7 +162,7 @@ assert.equal(phaseState(.3), 'EXTEND');
   const config = { ...DEFAULT_CONFIG, r0: 1.5 }, swarm = new CutisSwarm(config, { capacity: 20 });
   const model = createSwarmGeometry(swarm, { planetR: 750 });
   assert.equal(model.planetR, 750); assert.equal(model.levels.length, 3); assert(model.group.children.includes(model.shadows), 'the shadow is part of the group');
-  const sizes = { iOffset: 3, iHeading: 3, iAnchor: 3, iState: 4, iParams: 4, iProbe0: 3, iProbe1: 3, iProbe2: 3, iLife: 4 };
+  const sizes = { iOffset: 3, iHeading: 3, iAnchor: 3, iState: 4, iParams: 4, iProbe0: 3, iProbe1: 3, iProbe2: 3, iLife: 4, iHub: 4 };
   for (const level of model.levels) {
     assert.deepEqual(Object.keys(level.attributes).sort(), Object.keys(sizes).sort());
     for (const [name, size] of Object.entries(sizes)) { assert.equal(level.attributes[name].itemSize, size, name); assert.equal(level.attributes[name].array.length, 20 * size, name); assert(level.geometry.getAttribute(name) === level.attributes[name] && (!level.coreGeometry || level.coreGeometry.getAttribute(name) === level.attributes[name])); }

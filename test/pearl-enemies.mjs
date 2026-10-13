@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three.module.js';
 import { PEARL_TIERS, PEARL_OF, PEARL_BODY, PEARL_FOLLOW } from '../src/content/pearl-enemies.js';
 import { CREATURE_FOLLOW, CREATURE_DEATH } from '../src/content/creature-enemies.js';
-import { pearlBodies, pearlPace, pearlLead, pearlLeash, squadSpots, arcBetween } from '../src/domain/pearl-bodies.js';
+import { pearlBodies, pearlPace, pearlLead, pearlLeash, squadSpots } from '../src/domain/pearl-bodies.js';
 import { ENEMY_SPEC, INTROS } from '../src/enemyspec.js';
 import { CutisSwarm, STEP } from '../src/fx/cutis-maku/swarm.js';
 import { DEFAULT_CONFIG } from '../src/fx/cutis-maku/config.js';
@@ -71,9 +71,8 @@ console.log('PASS the mapping: every type of the wave programme, the ram verdict
   const s5 = squadSpots(5, 2, { gap: 2.2, stagger: 2 });
   assert.equal(s5.length, 5); close(s5[0][0], -8.8, 1e-12, 'across'); close(s5[4][0], 8.8, 1e-12, 'across'); assert.equal(s5[1][1], 2); assert.equal(s5[2][1], -2);
   close(s5.reduce((a, s) => a + s[0], 0), 0, 1e-12, 'centred'); assert.deepEqual(squadSpots(1, 3, { gap: 2.2, stagger: 2 }), [[0, -3]].map(([a]) => [a, -3]));
-  close(arcBetween([1, 0, 0], [0, 2, 0]), Math.PI / 2, 1e-12, 'arc'); close(arcBetween([1, 0, 0], [-3, 0, 0]), Math.PI, 1e-12, 'antipode'); assert.equal(arcBetween([0, 0, 0], [1, 0, 0]), 0);
 }
-console.log('PASS the following rules: pace, lead, leash, the squad\'s spots, the arc');
+console.log('PASS the following rules: pace, lead, leash, the squad\'s spots');
 
 // ---- the core inside its padded shell, every cored tier at its types' game sizes; the planet bend of the core is the shader's ----
 assert(PLANET_BEND.includes('return vec3(dir.x*rr*s,p.y*cos(t)-2.*R*h*h,dir.y*rr*s);') && MEMBRANE_VERT.includes('return vec4(bendToPlanet(p,uPlanetR),stretch);'), 'the shader bends every deformed point with PLANET_BEND');
@@ -166,14 +165,21 @@ console.log('PASS the family: one swarm per tier at each type\'s size, following
   assert.equal(ce.pearl, true); assert.equal(ce.choice, null);
   const q = { type: 'phantom', sp: { ci: 1, alive: true }, at: 0, pace: 1.5 }, dressed = ce.dress(q);
   assert.notEqual(dressed, q); assert.equal(dressed.type, 'phantom'); assert.equal(dressed.tier, 'phantom'); assert.equal(dressed.spec.body, 'pearl'); assert.equal(dressed.spec.cloaked, true); assert.equal(dressed.spec.pearl, 'black'); assert.equal(dressed.pace, 1.5);
-  assert.equal(ce.dress({ type: 'amoeba', sp: { ci: 2, alive: true } }).spec, undefined, 'the far side keeps its dot cloud');
+  assert.equal(ce.dress({ type: 'amoeba', sp: { ci: 2, alive: true } }).spec.body, 'pearl', 'round two: the far side is dressed too (the hubs)');
+  assert.equal(ce.dress({ type: 'amoeba', undressed: true, sp: { ci: 2, alive: true } }).spec, undefined, 'one made again for want of a body keeps its dot cloud');
   assert.equal(ce.dress({ type: 'jelly', sp: { ci: 1, alive: true } }).spec, undefined, 'an unmapped type keeps its own');
   const cut = { type: 'cutis', spec: { body: 'cutis' }, sp: { ci: 1 } }; assert.equal(ce.dress(cut), cut, 'a creature entry is left alone');
   assert.equal(ce.dress({ type: 'amoeba', squad: 5, sp: { ci: 1, alive: true } }).spec.body, 'pearl');
   assert.equal(ce.proxy({ squad: 5 }).userData.reach, 1.6, 'a squad\'s stand-in keeps the dot squad\'s reach'); assert.equal(ce.proxy({}).userData.reach, 1);
-  const s = ce.state(); assert.equal(s.pearl, true); assert.equal(s.dressed, 2); assert.equal(s.far, 1); assert.equal(s.squads, 1);
+  const s = ce.state(); assert.equal(s.pearl, true); assert.equal(s.dressed, 3); assert.equal(s.undressed, 1); assert.equal(s.squads, 1);
+  // round two: a body that cannot be made (its tier's pool full) says so, and the enemy loop makes the record again as its dot cloud (src/fx/enemy-step.js)
+  { const cap = PEARL_FOLLOW.capacity.black, entry = ce.dress({ type: 'phantom', sp: { ci: 0, alive: true } }), rec = () => ({ pos: [0, 0, 690], dir: [0, 0, 0], spec: entry.spec, alive: true, scale0: 1, obj: ce.proxy({}) });
+    let ok = 0; for (let k = 0; k < cap; k++) if (ce.spawn(rec(), entry)) ok++;
+    assert.equal(ok, cap, 'the pool takes its capacity'); const before = ce.state().dressed;
+    assert.equal(ce.spawn(rec(), entry), false, 'one more is refused, not an invisible stand-in'); assert.equal(ce.state().dressed, before - 1, 'and not booked as dressed');
+    assert.equal(ce.state().bodies.families.pearl.black.full, 1); }
   ce.dispose();
   const off = createCreatureEnemies({ ...host, flags: {} }); assert.equal(off.pearl, false); assert.equal(off.dress(q), q, 'without the switch nothing changes'); assert.equal(off.state(), null); off.dispose();
   const cutis = createCreatureEnemies({ ...host, flags: { creatures: 'cutis:small' } }); assert.equal(cutis.dress(q), q, '?creatures=cutis leaves the types alone'); cutis.dispose();
 }
-console.log('PASS the switch: ?creatures=pearl dresses a mapped entry in its body (type and spec kept), the far side and unmapped types keep their own, off by default');
+console.log('PASS the switch: ?creatures=pearl dresses a mapped entry in its body (type and spec kept) wherever it comes up, unmapped types and undressed entries keep their own, off by default');

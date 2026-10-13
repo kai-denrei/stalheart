@@ -11,9 +11,11 @@
 //                                `dress` is the enemy loop's one call (src/fx/enemy-step.js spawnOne, so the sectors' waves, the feasts, the stampedes, the
 //                                expeditions' guards and the opening's construction waves alike): the entry keeps its type and every one of its type's
 //                                ENEMY_SPEC fields (hit points, speed, heart damage, bounty, regen, erratic, jink, tactician, cloak, slow / accel on hit, heavy,
-//                                boss, rammable), plus `body: 'pearl'`, so everything downstream that reads the type or the spec runs as for the dot cloud. A
-//                                record coming up more than PEARL_FOLLOW.maxArc round the planet from the heart (the canyon's swarm at the far side, where the
-//                                bodies' plane is singular) keeps its dot cloud; a squad is its members' bodies round one record.
+//                                boss, rammable), plus `body: 'pearl'`, so everything downstream that reads the type or the spec runs as for the dot cloud; a
+//                                squad is its members' bodies round one record. Round two (owner, 2026-10-13: "there are still a mix of half-dotted and new
+//                                cutis enemies"): every mapped record is dressed wherever it comes up (the bodies are drawn round twelve hubs,
+//                                src/fx/creature-bodies.js), and a record whose body cannot be made (its tier's pool full) is made again as its own dot cloud
+//                                (src/fx/enemy-step.js spawnOne), never an invisible stand-in.
 // THE PROBE'S GROUND (owner, 2026-10-12): its bodies come up beyond the gate, outside the walls, and sentries stand to meet them; the
 // heart is held while it runs (src/domain/probe-ground.js, CREATURE_PROBE.ground / .sentries).
 // The records are the enemy loop's (src/fx/enemy-step.js asks for `proxy`, `spawn`, `kill` and `step`); the bodies are drawn by the family's
@@ -30,7 +32,7 @@ import { createCreatureProbe } from './creature-probe.js';
 import { createPearlFamily } from './creature-pearl.js';
 import { gateHops, spawnBand, sentryCells } from '../domain/probe-ground.js';
 import { PEARL_TIERS, PEARL_OF, PEARL_BODY, PEARL_FOLLOW } from '../content/pearl-enemies.js';
-import { pearlBodies, arcBetween } from '../domain/pearl-bodies.js';
+import { pearlBodies } from '../domain/pearl-bodies.js';
 import { SQUADS } from '../content/sectors.js';
 
 const FAMILIES = Object.freeze({ cutis: createCutisFamily, reed: createReedFamily });
@@ -48,7 +50,7 @@ export function tierSpec(family, tier) {
 
 // host: { scene, root, flags ({ creatures, ramp }), camera, canvasHeight(), enemies, heart() -> [unit point, cell, cellSide] | null,
 // spawn(entry) -> record | null (the enemy loop's own release), field() the board's dungeon ({ distToHeart, tags }),
-// perf() the perf overlay's sample, perfOn(), wide() a second view of the scene is up (the story monitor: the bodies are not culled to the main camera), damage(e, dmg) the game's damageEnemy (the harness), ground() -> { adj, centers, cellSide,
+// perf() the perf overlay's sample, perfOn(), wide() a second view of the scene is up (the story monitor, the SOL-82 scope: the bodies are not culled to the main camera), damage(e, dmg) the game's damageEnemy (the harness), ground() -> { adj, centers, cellSide,
 // open(ci), inside(ci), gates [cells], sockets [cells], canBuild(ci) } | null (the story's base), build(key, ci) -> tower | null the
 // chapters' own build (commitTower) }
 export function createCreatureEnemies(host) {
@@ -60,7 +62,7 @@ export function createCreatureEnemies(host) {
   // the sentries at boot: &sentries=N (a number, at most the story's cap), else the probe's own count, else none
   const askedSentries = host.flags.sentries != null && host.flags.sentries !== '' ? Math.max(0, Math.min(tune.sentries.max, Math.floor(+host.flags.sentries) || 0)) : probing ? tune.sentries.count : 0;
   const pearl = typeof host.flags.creatures === 'string' && host.flags.creatures.toLowerCase() === 'pearl';
-  const pearled = { dressed: 0, far: 0, squads: 0 };   // entries given a Pearl body, mapped ones left a dot cloud for their arc, squads among the dressed
+  const pearled = { dressed: 0, undressed: 0, squads: 0 };   // entries given a Pearl body, dressed ones made again as dot clouds for want of a slot, squads among the dressed
   const families = { ...FAMILIES, pearl: (o) => createPearlFamily({ ...o, set: PEARL_TIERS, tune: PEARL_FOLLOW }), reed: (o) => createReedFamily({ ...o, ...(probing ? { budget: null } : {}), solid: host.flags.reedlook === 'solid', hz: Math.max(0, +host.flags.reedhz || 0) || null }) };
   let bodies = null, probe = null, rr = 0, ground = null, garrison = null, heartHeld = 0;
   const placeholder = new THREE.Group();   // a band spawn's source: no breach, no emergence
@@ -134,7 +136,7 @@ export function createCreatureEnemies(host) {
       const o = (byType[e.type] ??= { pearl: 0, dots: 0, tier: PEARL_OF[e.type] ?? null });
       if (e.spec?.body === 'pearl') o.pearl++; else o.dots++;
     }
-    return { pearl: true, byType, dressed: pearled.dressed, far: pearled.far, squads: pearled.squads, bodies: bodies?.stats() ?? null };
+    return { pearl: true, byType, dressed: pearled.dressed, undressed: pearled.undressed, squads: pearled.squads, bodies: bodies?.stats() ?? null };
   }
 
   return {
@@ -142,20 +144,23 @@ export function createCreatureEnemies(host) {
     // the enemy loop's factory: a creature type gets a proxy for e.obj, and its body once the record exists
     isCreature: (type) => !!ENEMY_SPEC[type]?.body,
     proxy: (entry) => make().proxy(entry?.squad ? SQUADS.reach : 1),   // a squad's stand-in keeps the dot squad's contact reach
-    // ?creatures=pearl: a queue entry of a mapped type, as it is released, takes its Pearl body (its type and spec otherwise its own)
+    // ?creatures=pearl: a queue entry of a mapped type, as it is released, takes its Pearl body (its type and spec otherwise its own); an entry made
+    // again for want of a body (`undressed`, src/fx/enemy-step.js) keeps its dot cloud
     dress(entry) {
       if (!pearl || !entry || entry.spec?.body || !PEARL_SPECS[entry.type]) return entry;
-      const h = host.heart(), c = h && entry.sp ? host.ground?.()?.centers?.[entry.sp.ci] : null;
-      if (c && arcBetween(c, h[0]) > PEARL_FOLLOW.maxArc) { pearled.far++; return entry; }
+      if (entry.undressed) { pearled.undressed++; return entry; }
       pearled.dressed++; if (entry.squad) pearled.squads++;
-      return { ...entry, spec: PEARL_SPECS[entry.type], tier: entry.type };
+      return { ...entry, spec: PEARL_SPECS[entry.type], tier: entry.type, dressed: true };
     },
+    // the record's body; false when none could be made (the enemy loop then drops the record, or makes a dressed one again as its dot cloud)
     spawn(e, entry) {
-      e.tier = entry.tier ?? 'small'; make().spawn(e);
+      e.tier = entry.tier ?? 'small';
+      if (!make().spawn(e)) { if (entry.dressed) pearled.dressed--; return false; }
       // where every creature record came up: inside the walls is what the owner saw (2026-10-12), and the probe's own against its band
       const gr = groundOf(), h = gr ? gr.hops[e.cur] : -1;
       starts.n++; if (gr?.g.inside(e.cur)) starts.inside++;
       if (entry.probe) { starts.probe++; if (gr && !gr.g.inside(e.cur) && h >= gr.band.lo) starts.probeOutside++; starts.minHops = Math.min(starts.minHops ?? h, h); starts.maxHops = Math.max(starts.maxHops ?? h, h); }
+      return true;
     },
     kill(e, fx) { bodies?.kill(e, fx); },
     // once a frame after the walk: the bodies follow their records and draw; the probe measures and tops up

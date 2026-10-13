@@ -8,9 +8,9 @@ import { mergeVertices } from '../../../vendor/BufferGeometryUtils.js';
 import { ConvexGeometry } from './convex.js';
 import { createMembraneMaterial, createShadowMaterial, updateMaterial } from './material.js';
 import { KIT_R0, CUTIS_LOD } from './config.js';
-import { bendPoint } from './shaders.js';
+import { bendPoint, hubPoint } from './shaders.js';
 
-const sizes={iOffset:3,iHeading:3,iAnchor:3,iState:4,iParams:4,iProbe0:3,iProbe1:3,iProbe2:3,iLife:4};
+const sizes={iOffset:3,iHeading:3,iAnchor:3,iState:4,iParams:4,iProbe0:3,iProbe1:3,iProbe2:3,iLife:4,iHub:4};
 
 // the hull's resolution per LOD: [sphere width segments, height segments, cap rings, cap sides]; the kit's two (high ~13k triangles, low ~2.2k) and the
 // round-two third, ~450 triangles for a body a few pixels across
@@ -55,7 +55,7 @@ function membraneGeometry(level) {
 //   LOD 1   the kit's low hull (~2.2k, single pass) above `low` pixels; its inner core with LOD 2's hull;
 //   LOD 2   the third hull (~450 triangles, the low material) for a body a few pixels across; no inner core (a dark speck under the membrane).
 // A body changes level only `hysteresis` past a threshold, so a body on the boundary does not flicker. `lod` overrides CUTIS_LOD (./config.js) per swarm.
-// `cull` false (a second view of the scene is up, src/fx/story-monitor.js) packs every active body, levels still by the main camera.
+// `cull` false (a second view of the scene is up: src/fx/story-monitor.js, the SOL-82 scope) packs every active body, levels still by the main camera.
 // levelOf[i] is each instance's level this frame (3 culled; ./hard-core.js draws its pearl at the matching resolution and skips a culled one);
 // lodCounts [lod 0, lod 1, lod 2, culled].
 export function createSwarmGeometry(swarm,{ planetR=0, lod=null }={}) {
@@ -79,6 +79,7 @@ export function createSwarmGeometry(swarm,{ planetR=0, lod=null }={}) {
   // Quiet contact shadows support the translucent shader without per-instance shadow maps: a flat plane per active instance, subdivided so it hugs the sphere.
   const shadowGeometry=new THREE.PlaneGeometry(2,2,4,4);shadowGeometry.rotateX(-Math.PI/2);
   const fade=new THREE.InstancedBufferAttribute(new Float32Array(swarm.capacity),1).setUsage(THREE.DynamicDrawUsage);shadowGeometry.setAttribute('iFade',fade);
+  const shadowHub=new THREE.InstancedBufferAttribute(new Float32Array(swarm.capacity*4),4).setUsage(THREE.DynamicDrawUsage);shadowGeometry.setAttribute('iHub',shadowHub);
   const shadowMaterial=createShadowMaterial();
   const shadows=new THREE.InstancedMesh(shadowGeometry,shadowMaterial,swarm.capacity);shadows.frustumCulled=false;shadows.renderOrder=0;shadows.count=0;shadows.visible=false;group.add(shadows);
   const eye=new THREE.Vector3(),spot=new THREE.Vector3(),matrix=new THREE.Matrix4(),clip=new THREE.Matrix4(),view=new THREE.Matrix4(),frustum=new THREE.Frustum(),sphere=new THREE.Sphere(),state=new Float32Array(4);
@@ -86,6 +87,8 @@ export function createSwarmGeometry(swarm,{ planetR=0, lod=null }={}) {
   const specs=Object.entries(sizes);
   const bent=[0,0,0];
   function bend(v) { if(!(planet>0))return v;bendPoint(v.x,v.y,v.z,planet,bent);return v.set(bent[0],bent[1],bent[2]); }
+  // the bent point turned to instance i's hub (the shader's hubPlace)
+  function turn(v,i) { if(!(planet>0)||swarm.hubQuat[i*4+3]===1)return v;hubPoint(v.x,v.y,v.z,planet,swarm.hubQuat,i*4,bent);return v.set(bent[0],bent[1],bent[2]); }
   function setPlanetR(R) {
     planet=R>0?R:0;
     for(const l of levels){l.material.uniforms.uPlanetR.value=planet;if(l.coreMaterial)l.coreMaterial.uniforms.uPlanetR.value=planet;}
@@ -103,7 +106,7 @@ export function createSwarmGeometry(swarm,{ planetR=0, lod=null }={}) {
     group.updateWorldMatrix(true,false);camera.updateMatrixWorld();
     camera.getWorldPosition(eye);group.worldToLocal(eye);
     view.copy(camera.matrixWorld).invert();clip.multiplyMatrices(camera.projectionMatrix,view).multiply(group.matrixWorld);frustum.setFromProjectionMatrix(clip);
-    const source={iOffset:swarm.offset,iHeading:swarm.heading,iAnchor:swarm.anchor,iState:state,iParams:swarm.params,iProbe0:swarm.probe0,iProbe1:swarm.probe1,iProbe2:swarm.probe2,iLife:swarm.life};
+    const source={iOffset:swarm.offset,iHeading:swarm.heading,iAnchor:swarm.anchor,iState:state,iParams:swarm.params,iProbe0:swarm.probe0,iProbe1:swarm.probe1,iProbe2:swarm.probe2,iLife:swarm.life,iHub:swarm.hubQuat};
     const r0=swarm.config.r0,lift=.002*r0/KIT_R0,reach=(swarm.config.reach??15)*1.2+2;
     const pixelsPer=camera.isPerspectiveCamera?height/(2*Math.tan(camera.fov*Math.PI/360)):Infinity;
     // the eye's horizon distance over the planet (its centre at (0, -R, 0) in this plane)
@@ -113,7 +116,7 @@ export function createSwarmGeometry(swarm,{ planetR=0, lod=null }={}) {
     for(let i=0;i<swarm.count;i++){
       if(!swarm.active[i])continue;
       const radius=r0*swarm.scale[i];
-      spot.set(swarm.offset[i*3],radius,swarm.offset[i*3+2]);bend(spot);
+      spot.set(swarm.offset[i*3],radius,swarm.offset[i*3+2]);turn(bend(spot),i);
       const distance=eye.distanceTo(spot),tall=L.horizonRadii*radius;
       sphere.center.copy(spot);sphere.radius=radius*reach;
       if(cull&&(distance>eyeHorizon+Math.sqrt(2*planet*tall+tall*tall)+radius*reach||!frustum.intersectsSphere(sphere))){pixelsOf[i]=-1;continue;}
@@ -138,10 +141,11 @@ export function createSwarmGeometry(swarm,{ planetR=0, lod=null }={}) {
       matrix.makeScale(size,size,size).setPosition(p[0],lift,p[2]);
       shadows.setMatrixAt(shown,matrix);
       fade.array[shown]=Li[i*4+2]*(1-.6*deflate)*(1-Math.min(1,Math.max(0,-Li[i*4]/radius)));
+      for(let k=0;k<4;k++)shadowHub.array[shown*4+k]=swarm.hubQuat[i*4+k];
       shown++;
     }
     shadows.count=shown;shadows.visible=shown>0;shadows.instanceMatrix.needsUpdate=true;
-    fade.clearUpdateRanges();fade.addUpdateRange(0,shown);fade.needsUpdate=true;
+    fade.clearUpdateRanges();fade.addUpdateRange(0,shown);fade.needsUpdate=true;shadowHub.clearUpdateRanges();shadowHub.addUpdateRange(0,shown*4);shadowHub.needsUpdate=true;
     const soft=!((swarm.config.coreShape??0)>=1);
     for(const l of levels){
       l.membrane.count=l.count;l.membrane.visible=l.count>0;

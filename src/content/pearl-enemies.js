@@ -68,8 +68,10 @@ export const PEARL_BODY = freeze({ metresPerSize: 5.6, boss: 1.5 });
 // 0.5 0.03 and 2.9, 0 none and 1.7. At 0.5 the bodies still part a little rather than merge.
 // `squad`: a squad (one record holding SQUADS.size bodies, src/content/sectors.js) is that many bodies round its record, `gap` radii apart across its
 // heading and `stagger` radii along it; a shed member deflates.
-// `maxArc`: a body is drawn in the bodies' plane round the heart (src/fx/creature-bodies.js), whose shape is pressed tangentially by sin(t) / t at an arc t
-// from the heart; a record coming up further than `maxArc` radians round the planet (the canyon's swarm at the far side) keeps its dot cloud.
+// `hubMargin` (round two, owner 2026-10-13: "there are still a mix of half-dotted and new cutis enemies"; it replaces the first round's `maxArc` 1.2, which
+// left the canyon's far-side swarm as dot clouds): a body is drawn in the plane of the nearest of twelve hubs (src/fx/creature-bodies.js,
+// src/domain/surface-hubs.js) and handed to another only once that one is `hubMargin` rad nearer (23 m on the story planet), so a record walking along
+// the boundary is not handed back and forth.
 // `opacityRef`: a dot cloud's settled opacity (the emergence's 0.95): the cloak's and the emergence's opacity on the record's stand-in over it is the body's.
 // `capacity`: instances a tier's swarm holds (the crowd cap allows up to 3500 records, a squad is five bodies).
 // `lod` (round two, owner 2026-10-13: "fps wise we maybe cannot afford them as is"): each tier's swarm geometry's culling and levels over the kit's
@@ -77,7 +79,7 @@ export const PEARL_BODY = freeze({ metresPerSize: 5.6, boss: 1.5 });
 // the lowest hull under `low`; bodies outside the view or below the horizon are not drawn.
 export const PEARL_FOLLOW = freeze({
   keep: 0.8, seekEfficiency: [1, 0.35, 0.75], floor: 0.1, leadHops: 0.6, leashSeconds: 1.5, separation: 0.5,
-  squad: { gap: 2.2, stagger: 2 }, maxArc: 1.2, opacityRef: 0.95,
+  squad: { gap: 2.2, stagger: 2 }, hubMargin: 0.03, opacityRef: 0.95,
   capacity: { white: 3000, yellow: 2000, blue: 2000, orange: 1000, green: 1000, purple: 800, brown: 600, black: 600 },
   lod: { high: 70, low: 12, highCap: 12, hysteresis: 0.12, horizonRadii: 3 },
 });

@@ -242,7 +242,12 @@ export function createEnemyStep(host) {
         slowFactor: 1, slowUntil: -1, guard: entry.guard ?? null,
       });
       const e = host.enemies[host.enemies.length - 1];
-      creatures?.spawn(e, entry);
+      // NO BODY FOR IT (round two, 2026-10-13: a full pool, a cage that failed to load): a record dressed in a Pearl body is made again as its own dot
+      // cloud; any other creature record (the probe's) is not made at all, so it can neither walk unseen nor count as alive
+      if (creatures && creatures.spawn(e, entry) === false) {
+        host.enemies.pop(); host.scene.remove(obj); obj.material?.dispose?.();
+        return entry.dressed ? spawnOne({ ...queued, undressed: true }) : null;
+      }
       return e;
     }
   }

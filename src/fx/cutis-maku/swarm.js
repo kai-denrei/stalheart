@@ -24,6 +24,9 @@ export class CutisSwarm {
     this.target=new Float32Array(cap*2);this.pace=new Float32Array(cap).fill(1);this.hold=new Uint8Array(cap);this.active=new Uint8Array(cap);
     this.life=new Float32Array(cap*4);this.plant=new Float32Array(cap*3);
     this.forced=new Uint8Array(cap);
+    // round two (the Pearl set's hubs, src/fx/creature-bodies.js): each instance's projection hub and that hub's turn about the planet's centre
+    // [x, y, z, w] (the shader's iHub); instances of different hubs are in different planes and are never each other's neighbours
+    this.hub=new Uint8Array(cap);this.hubQuat=new Float32Array(cap*4);for(let i=0;i<cap;i++)this.hubQuat[i*4+3]=1;
     this.occupied=new Float32Array(cap*3);
     for(let i=0;i<cap;i++){this.seed[i]=hash(i+17)*100;this.scale[i]=.85+hash(i+93)*.3;}
     this.reset(0);
@@ -38,6 +41,7 @@ export class CutisSwarm {
       this.offset.fill(0,k,k+3);this.anchor.fill(0,k,k+3);this.occupied.fill(0,k,k+3);
       this.heading[k]=1;this.heading[k+1]=0;this.heading[k+2]=0;
       this.phase[i]=0;this.cycles[i]=0;this.idle[i]=0;this.pace[i]=1;this.hold[i]=0;this.active[i]=0;this.forced[i]=0;
+      this.hub[i]=0;this.hubQuat.fill(0,i*4,i*4+3);this.hubQuat[i*4+3]=1;
       this.target[i*2]=0;this.target[i*2+1]=0;this.plant.fill(0,k,k+3);
       this.resetLife(i);
     }
@@ -79,7 +83,7 @@ export class CutisSwarm {
     // a target on the spot has no direction; keep the heading rather than collapse it to zero
     let hx=distance>1e-4*s?dx/distance:this.heading[k],hz=distance>1e-4*s?dz/distance:this.heading[k+2],sx=0,sz=0,ax=0,az=0,cx=0,cz=0,n=0;
     const near=2.25*s*s,tiny=1e-5*s*s;
-    if(neighbors&&this.count>1)for(let j=0;j<this.count;j++)if(i!==j&&this.active[j]){const q=j*3,ex=x-this.occupied[q],ez=z-this.occupied[q+2],d2=ex*ex+ez*ez;if(d2<near&&d2>tiny){const w=Math.max(0,1-Math.sqrt(d2)/(radius*3));sx+=ex/d2*w*s;sz+=ez/d2*w*s;ax+=this.heading[q];az+=this.heading[q+2];cx-=ex;cz-=ez;n++;}}
+    if(neighbors&&this.count>1)for(let j=0;j<this.count;j++)if(i!==j&&this.active[j]&&this.hub[j]===this.hub[i]){const q=j*3,ex=x-this.occupied[q],ez=z-this.occupied[q+2],d2=ex*ex+ez*ez;if(d2<near&&d2>tiny){const w=Math.max(0,1-Math.sqrt(d2)/(radius*3));sx+=ex/d2*w*s;sz+=ez/d2*w*s;ax+=this.heading[q];az+=this.heading[q+2];cx-=ex;cz-=ez;n++;}}
     hx+=sx*c.separation*.35;hz+=sz*c.separation*.35;
     if(n){hx+=ax/n*c.alignment*.3+cx/n*c.cohesion/s;hz+=az/n*c.alignment*.3+cz/n*c.cohesion/s;}
     const erratic=(hash(i*19+this.cycles[i]*7)-.5)*.65,cos=Math.cos(erratic),sin=Math.sin(erratic),length=Math.hypot(hx,hz)||1;

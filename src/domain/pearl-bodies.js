@@ -5,7 +5,6 @@
 //   pearlLead     how far ahead of its record a body hunts, in seconds of the record's walk: `leadHops` of its own (paced) hop
 //   pearlLeash    the leash in metres: the most of CREATURE_FOLLOW's (leashRadii x r, leashMin) and `leashSeconds` of the record's walk
 //   squadSpots    where each of a squad's n bodies stands round its record: [across, along] metres in the record's heading frame
-//   arcBetween    the angle between two points seen from the planet's centre (radians)
 
 // `spec` ENEMY_SPEC, `of` PEARL_OF, `tiers` PEARL_TIERS, `body` PEARL_BODY -> { [type]: { type, tier, r0, cored, rammable } } for every mapped type the spec knows
 export function pearlBodies({ spec, of, tiers, body }) {
@@ -37,10 +36,4 @@ export function squadSpots(n, r, { gap, stagger }) {
   const out = [];
   for (let k = 0; k < n; k++) out.push([(k - (n - 1) / 2) * gap * r, (k % 2 ? 0.5 : -0.5) * stagger * r]);
   return out;
-}
-
-export function arcBetween(a, b) {
-  const la = Math.hypot(a[0], a[1], a[2]), lb = Math.hypot(b[0], b[1], b[2]);
-  if (!(la > 0) || !(lb > 0)) return 0;
-  return Math.acos(Math.max(-1, Math.min(1, (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]) / (la * lb))));
 }
