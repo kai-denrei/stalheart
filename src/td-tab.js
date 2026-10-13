@@ -5,7 +5,7 @@ import { createBoardSurface } from './fx/board-surface.js'; import { createCampa
 import { startDiveShot } from './fx/dive-shot.js'; import { createCameraShots } from './fx/camera-shot.js'; import { createIntegrityHud } from './fx/integrity-hud.js'; import { createSeatGlide } from './fx/seat-glide.js'; import { viewEdge, viewportLine } from './domain/view-edge.js'; import { boxOverlaps } from './domain/box-overlaps.js'; import { makeShaderWarmer } from './fx/shader-warm.js'; 
 import { BREACH_SOUNDS } from './content/breach-defaults.js';
 import { SOUNDS } from './content/runtime.js';
-import { applyScare } from './domain/impact-scare.js';
+import { applyScare } from './domain/impact-scare.js'; import { createWaveClock } from './domain/wave-clock.js';
 import { EXPLOSION_SCARE } from './content/explosions.js';
 import { createThermalHeat } from './fx/thermal-heat.js';
 import { isAutomated } from './domain/automation.js';
@@ -445,11 +445,8 @@ export function initTdTab(root) {
   // --- wave telegraph: the gate CHARGES (swells, brightens, beats faster, a shock ring each beat) over the last seconds, so the warning
   // is on the thing the enemies come out of. 3.0 exactly: the 3.7 s warning sound starts here and is still running as the first clears the gate
   const WAVE_WARN = CONTENT.breach.duration;      // seconds of charge before the wave lands
-  let waveCharge = 0;         // 0..1 over that window
-  let warnBeat = 0;           // seconds until the next shock ring
-  // >= 0 means a wave is ARMED and counting down. Every route to spawnWave
-  // goes through this, so a wave cannot arrive without its lead-in.
-  let waveIn = -1;
+  // THE WAVE CLOCK (src/domain/wave-clock.js): the armed countdown, the charge, the beat, the gap, the age, the live wave; waveCharge is 0..1 over that window
+  const waveClock = createWaveClock({ warn: WAVE_WARN });
 
   // --- orbital strike -------------------------------------------------------
   // All logic lives in strike.js (pure, tested); this file owns only what it
@@ -607,7 +604,6 @@ export function initTdTab(root) {
   const debris = [];       // scatter effects, tick(dt) -> alive
   const spawnPoints = [];  // { ci, hp, obj, alive, found, mapMarker } — type-agnostic gates
   let wave = 0;
-  let waveActive = false; // a wave's enemies are live/uncleared
 
   // --- THE SPINE -----------------------------------------------------------
   // A RUN IS FIVE SECTORS, and a sector has two phases in order:
@@ -751,8 +747,6 @@ export function initTdTab(root) {
       3400);
     }
   }
-  let interClock = 0;     // anticipation countdown between waves
-  let waveAge = 0;        // seconds since the current wave spawned (safety cap)
   const seenTypes = new Set(); // headline types already revealed this run
   // roster data (tints/specs/intros) lives in enemyspec.js — one source
   // of truth shared with the TD tab (M0 extraction). See that module for
@@ -2674,9 +2668,9 @@ export function initTdTab(root) {
     round: () => round,
     threatMult: () => threatMult,
     storyMode: () => storyMode,
-    waveActive: () => waveActive,
-    waveIn: () => waveIn,
-    interClock: () => interClock,
+    waveActive: () => waveClock.active(),
+    waveIn: () => waveClock.in(),
+    interClock: () => waveClock.inter(),
     waveTimer: () => waveTimer,
     setWaveTimer: (v) => (waveTimer = v),
     // preserveDrawingBuffer: the glossary snapshots toDataURL() this canvas
@@ -3060,14 +3054,14 @@ export function initTdTab(root) {
     setSpawnClock: (v) => (spawnClock = v),
     wave: () => wave,
     setWave: (v) => (wave = v),
-    setWaveActive: (v) => (waveActive = v),
-    setWaveAge: (v) => (waveAge = v),
-    setInterClock: (v) => (interClock = v),
+    setWaveActive: (v) => waveClock.setActive(v),
+    setWaveAge: (v) => waveClock.setAge(v),
+    setInterClock: (v) => waveClock.setInter(v),
     setPortalDist: (v) => (portalDist = v),
-    waveIn: () => waveIn,
-    setWaveIn: (v) => (waveIn = v),
-    setWarnBeat: (v) => (warnBeat = v),
-    setWaveCharge: (v) => (waveCharge = v),
+    waveIn: () => waveClock.in(),
+    setWaveIn: (v) => waveClock.setIn(v),
+    setWarnBeat: (v) => waveClock.setBeat(v),
+    setWaveCharge: (v) => waveClock.setCharge(v),
     nextEnemyId: () => nextEnemyId,
     setNextEnemyId: (v) => (nextEnemyId = v),
     dangerWarnedWave: () => dangerWarnedWave,
@@ -4454,12 +4448,7 @@ export function initTdTab(root) {
   // running, and while the board has no live gate to send it. Factored out of
   // the boss omen, which was the only thing that knew how to work it out —
   // the gates want the same number and two copies of a clock is two clocks.
-  function secsToWave() {
-    if (waveActive) return Infinity;
-    if (waveIn >= 0) return waveIn;
-    if (!spawnPoints.some((sp) => sp.alive)) return Infinity;
-    return params.waveGap - interClock;
-  }
+  function secsToWave() { return waveClock.secsToWave(params.waveGap, () => spawnPoints.some((sp) => sp.alive)); }
 
 
   function buildPortalObj(ci) {
@@ -4744,7 +4733,7 @@ export function initTdTab(root) {
     // hoarding one for the next sector is a legitimate play
     grantStrikes(strike, spawnPoints.filter((sp2) => sp2.alive).length, strikeTune);
     recomputePortalDist();
-    waveActive = false; interClock = 0;
+    waveClock.setActive(false); waveClock.setInter(0);
     player.won = false;
     paused = false;
     msgEl.classList.add('hidden');
@@ -5007,24 +4996,14 @@ export function initTdTab(root) {
         if (!story) { sfx.play('tower_upgrade'); showToast('<div class="wave-num">ORBITAL ASSET ARMED</div>'   /* the story has no strike controls to arm */
           + '<div class="wave-role">ready — arm, paint, launch</div>', 2200); }
       }
-      if (waveIn >= 0) {
-        waveIn -= dt;
-        waveCharge = Math.max(0, Math.min(1, 1 - waveIn / WAVE_WARN));
-        warnBeat -= dt;
-        if (warnBeat <= 0) {
-          // beats accelerate from ~0.7s apart to ~0.18s: the cadence IS the countdown, and it is legible without reading anything
-          warnBeat = 0.72 - 0.54 * waveCharge;
-          for (const sp of spawnPoints) {
-            if (sp.alive) warnRing(sp.ci, CREATURE_TINTS[sp.type] ?? 0xffffff,
-              0.55, cellSide * (1.6 + 1.4 * waveCharge));
-          }
-        }
-        if (waveIn <= 0) { waveIn = -1; spawnWave(); }
+      if (waveClock.in() >= 0) {
+        if (waveClock.countdown(dt)) for (const sp of spawnPoints) if (sp.alive) warnRing(sp.ci, CREATURE_TINTS[sp.type] ?? 0xffffff, 0.55, cellSide * (1.6 + 1.4 * waveClock.charge()));   /* a shock ring each beat (src/domain/wave-clock.js) */
+        if (waveClock.due()) { waveClock.disarm(); spawnWave(); }
       }
-      if (waveActive) {
-        waveAge += dt;
+      if (waveClock.active()) {
+        waveClock.grow(dt);
         if (sectorRun?.pulseGap?.() != null ? sectorRun.pulseOver(spawnQueue) : (!spawnQueue.length && enemies.every((e) => !(e.alive && !e.guard)))) {   /* a sector's pulse ends as its bodies leave the queue */
-          waveActive = false; interClock = 0; waveCharge = 0; if (automated()) fillFromWaveClear(gunshipRig.call, GUNSHIP_CALL);
+          waveClock.clear(); if (automated()) fillFromWaveClear(gunshipRig.call, GUNSHIP_CALL);
           { const p0 = score.points; score.addWave(wave); persistBest(); sectorRun?.note({ type: 'score', points: score.points - p0, kind: 'bonus' }); }
           if (simStyle) {
             simCurve.push({ w: wave, t: Math.round(t), heart: heartHP,
@@ -5036,18 +5015,16 @@ export function initTdTab(root) {
             programmeSpent();
             showBrief('gates');
           } else if (!storyMode) showSitrep(); // the recap IS the cleared card now (not in the story)
-        } else if (waveAge >= params.waveCap && spawnPoints.some((s) => s.alive) && !(lab.on && lab.holdWaves) && !storyMode) {
+        } else if (waveClock.stalled(params.waveCap) && spawnPoints.some((s) => s.alive) && !(lab.on && lab.holdWaves) && !storyMode) {
           armWave(); // safety: the field is stalled — but it still announces
         }
       } else if (spawnPoints.some((s) => s.alive)) {
-        interClock += dt;
+        waveClock.wait(dt);
         // arm early enough that the countdown consumes the last WAVE_WARN of
         // the gap — the total wait from cleared to spawned is unchanged
         const gap = sectorRun?.pulseGap?.() ?? params.waveGap * (wave < 2 ? 1.6 : 1); // breathe early
-        if (interClock >= gap - WAVE_WARN && !(lab.on && lab.holdWaves) && (!storyMode || automated())) armWave();
-      } else if (waveIn < 0) {
-        waveCharge = 0;
-      }
+        if (waveClock.readyToArm(gap) && !(lab.on && lab.holdWaves) && (!storyMode || automated())) armWave();
+      } else if (waveClock.in() < 0) waveClock.idle();
       // the boss omen: brass from the moment the remaining lead crosses 10s.
       // From a cleared field the whole lead is waveGap (armWave overlaps
       // it), so at the default 7s gap the omen owns the entire pre-boss
@@ -5215,7 +5192,7 @@ export function initTdTab(root) {
     laserStation.render(renderer, scene); programWarm.tick(dt);   /* THE SEAT'S FIRST-USE HITCH (src/fx/program-warm.js): the canvas's own programs are linked two objects a frame, here where nothing is bound, instead of 18 at once under the gunner */
   }
 
-  const radarScope = createRadarScope({ ctx: radarCtx, player, camera, towers, enemies, spawnPoints, strike, poleFrame, graph: () => graph, dungeon: () => dungeon, size: () => radarCss, mapMode: () => mapMode, pilot: () => pilot, pilotMode: () => pilotMode, cellSide: () => cellSide, waveCharge: () => waveCharge });   /* THE SCOPE (src/fx/radar-scope.js), painted before story.hud paints over it */
+  const radarScope = createRadarScope({ ctx: radarCtx, player, camera, towers, enemies, spawnPoints, strike, poleFrame, graph: () => graph, dungeon: () => dungeon, size: () => radarCss, mapMode: () => mapMode, pilot: () => pilot, pilotMode: () => pilotMode, cellSide: () => cellSide, waveCharge: () => waveClock.charge() });   /* THE SCOPE (src/fx/radar-scope.js), painted before story.hud paints over it */
 
   const seedOverride = parseInt(flags.seed || '', 10);
   if (Number.isFinite(seedOverride)) params.seed = seedOverride >>> 0; const showcaseMode = showcaseOn(location.search), storyQuery = readStoryQuery(showcaseMode ? '?skip=defence' : location.search), threatMult = storyQuery.threat, storyMode = storyQuery.world === 'story'; root.classList.toggle('story-world', storyMode);   /* the campaign's buttons and key hint stay off in the story (styles.css) */   // tabula rasa past the landing: no old heart, waves, portals, camp or yard
@@ -5416,7 +5393,7 @@ export function initTdTab(root) {
     hullHost: makeHullHost,
     story: () => story,
     sectorRun: () => sectorRun,
-    waveActive: () => waveActive,
+    waveActive: () => waveClock.active(),
     dungeon: () => dungeon,
     tdFullTags: () => tdFullTags,
     storyBase: () => storyBase,
@@ -5881,7 +5858,7 @@ export function initTdTab(root) {
           map:!!pilot?.isMap?.(), laserSeat:laserStation.seated(), locked:!!document.pointerLockElement, shot:shotId(), tankPos:player.pos.slice(),
         };
       },
-      breachNextWave:()=>{waveIn=-1;armWave();},
+      breachNextWave:()=>{waveClock.setIn(-1);armWave();},
       breachStrike:()=>{const sp=spawnPoints.find(s=>s.alive&&s.obj.userData.breach);if(sp)executeStrike(sp.ci,t);},
       breachShell:()=>{const sp=spawnPoints.find(s=>s.alive&&s.obj.userData.breach);if(sp)gateTakesShell(sp);},
       breachSpent:programmeSpent,
@@ -5895,7 +5872,7 @@ export function initTdTab(root) {
       sectorKeepHolding: () => sectorRun?.test.keepHolding(),
       sectorQuiet: (on) => sectorRun?.test.quiet(on),
       sectorReport: () => sectorRun?.test.report() ?? null,
-      breachScenario:()=>{endShot();paused=false;setView('orbit');followSuspend=true;const sp=spawnPoints.find(s=>s.alive);if(sp){buildQ.setFromUnitVectors(BQ_Z,new THREE.Vector3(...graph.centers[sp.ci]).normalize());buildDist=1.65;}waveIn=-1;armWave();},
+      breachScenario:()=>{endShot();paused=false;setView('orbit');followSuspend=true;const sp=spawnPoints.find(s=>s.alive);if(sp){buildQ.setFromUnitVectors(BQ_Z,new THREE.Vector3(...graph.centers[sp.ci]).normalize());buildDist=1.65;}waveClock.setIn(-1);armWave();},
       shieldScenario: () => {
         endShot();paused=true;
         for(const e of enemies){e.alive=false;scene.remove(e.obj);}spawnQueue.length=0;

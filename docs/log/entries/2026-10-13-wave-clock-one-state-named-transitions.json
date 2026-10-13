@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "2026-10-13-wave-clock-one-state-named-transitions",
+  "date": "2026-10-13",
+  "type": "change",
+  "status": "accepted",
+  "title": "The wave clock is one state with named transitions (src/domain/wave-clock.js); six controller lets gone",
+  "context": "Deferred twice: the 2026-09-25 extraction round left the clock in the frame, and the 2026-10-07 refactor run (2026-10-07-warn-ring-module-wave-clock-deferred) kept it there because its lets are read and written at about twenty controller sites and the cleared branch interleaves the clock's writes with spawnWave(), the score, the sim curve, the sector's hold and the sitrep, so a module returning decisions would reorder effects. Refactor round 2 (plan docs/superpowers/plans/2026-10-13-refactor-round-2.md, Task 1) moves it as a state object whose transitions are the original statements under names, called by the frame in its own order.",
+  "outcome": "src/domain/wave-clock.js createWaveClock({ warn }) holds in (waveIn), charge (waveCharge), beat (warnBeat), inter (interClock), age (waveAge) and active (waveActive) with getters, setters returning the written value, and the frame's transitions countdown(dt) (true when a shock ring is due), due, disarm, grow, clear, stalled(cap), wait, readyToArm(gap), idle and secsToWave(gap, alive) (the gates asked only when the rule reaches them, as the controller's secsToWave did). src/td-tab.js: the six lets are gone (their comments in the module; 'waveCharge is 0..1 over that window' stays at the clock's line, the pure-layer scan flags that word in a domain file); the wave card, enemy-step and hull hosts read and write through the clock with their keys unchanged; secsToWave is a hoisted one-liner over the clock; expandRound, the radar scope and the two acceptance adapters call it; the frame's block calls the transitions in the original order (spawnWave still writes the state through enemy-step's setters before the active branch runs). td-tab 6,120 -> 6,097 lines. No behaviour change.",
+  "alternatives": [
+    "A pure decision function returning what the frame should do: rejected (2026-10-07's reason), spawnWave changes the state mid-frame and the cleared branch's effects interleave with the clock's writes.",
+    "Move the frame's whole wave block into the module with callbacks: rejected for this round, the block calls a dozen controller effects (score, sim curve, hold card, sitrep, rings) and would become a host of its own."
+  ],
+  "evidence": [
+    "Side-by-side proof (scratch harness, not committed): the ORIGINAL block (td-tab 5010-5057 at 8bf59188) and the new block over the module, closure names bound to recording fakes, enemy-step's spawnWave/armWave modelled through the lets/setters, 20,000 seeded frames (dt 1/120..1/20, gates/queue/sector/story/lab/automation flags re-rolled about every 40 frames, resets, expandRound, the adapter's re-arm): 8,072 log entries equal, the six values and bossCued equal after every frame, simCurve equal (1,219 rings, 60 waves, 49 clears, 32 sitreps); two mutants (a ring radius, a dropped idle()) are caught.",
+    "node test/wave-clock.mjs: the transitions by name, and the frame's block read from src/td-tab.js over the module for 200 seeded frames against the original block's six values kept every tenth frame (25 rings, 2 spawns, 116 arms, 2 clears, 2 sitreps).",
+    "tools/refactor/undef-diff.mjs: no new undefined or unused names; comments-kept.mjs: every comment word kept; tdz-check at the clock's line: none in the dead zone; node test/host-contracts.mjs: hold for 52 factories.",
+    "npm test 252 programs; npm run check (architecture: 6097 lines under 6400); npm run build.",
+    "Browser suites from snapshot t1-waveclock (tools/refactor/suites.sh): --sectors, --round6, --round7, --pacing, --waves pass; --defense fails at 'no unpiloted tower kill' and --story at 'twelve landmarks at stage 8' (15 vs 12), the same steps and values as the untouched base's battery."
+  ],
+  "supersedes": []
+}
