@@ -33,6 +33,13 @@
 //                                                  the radius that fits there and (ax, az) the axis across it
 //   clearOf(clearance, x, z, rho, steps, out)      clearPush repeated where each move lands (a corner's second wall is the nearest one after the
 //                                                  first move), then the clearance where it ended measured: out [dx, dz, room, ax, az, clear, first]
+// ROUND FOUR (owner, 2026-10-13: "enemies clipping through walls when there are too many"): the rock and the walls are DRAWN as the board's quads
+// (src/fx/board-surface.js extrudes each BLOCKED cell's quad), not as the nearest-centre regions the records walk by; on Stalberg's irregular quads
+// the two differ by a metre or two in places, and a crowd presses its bodies against the walls where the drawn quad reaches past the region. With the
+// board's `quads` and `vertices` (createReachQuery's optional arguments) a point is blocked when it is on a BLOCKED cell's region OR inside a
+// BLOCKED cell's drawn quad (the quad that holds it: its nearest cell's, else one sharing a corner with it), and the clearance's distance to a
+// BLOCKED cell is the nearer of its region's and its quad's (the quad's exact, in the plane through the mapping's derivative at the point).
+//   quadOf(cell, p)                                 the cell whose drawn quad holds the unit point p, looked for from `cell` (-1 when none is found)
 
 const BISECT = 4;
 
@@ -69,22 +76,57 @@ export function nearestCellFrom(adj, centers, start, p) {
   return cur;
 }
 
-export function createReachQuery({ adj, centers, blocked, step }) {
+export function createReachQuery({ adj, centers, blocked, step, quads = null, vertices = null }) {
+  const drawn = quads && vertices ? createQuads(quads, vertices, adj) : null;
+  // round four: on the rock by the region or by the drawn quad
+  const blockedAt = drawn ? (cell, p) => { if (blocked(cell)) return true; const q = drawn.quadOf(cell, p); return q >= 0 && q !== cell && blocked(q); } : (cell) => blocked(cell);
   const query = (toSphere, x, z, dx, dz, max, hint = query.cell) => {
     let cur = hint ?? 0;
-    const free = freeReach(x, z, dx, dz, max, step, (sx, sz) => { cur = nearestCellFrom(adj, centers, cur, toSphere(sx, sz)); return blocked(cur); });
+    const free = freeReach(x, z, dx, dz, max, step, (sx, sz) => { const p = toSphere(sx, sz); cur = nearestCellFrom(adj, centers, cur, p); return blockedAt(cur, p); });
     query.cell = cur;
     return free;
   };
   query.cell = 0;
-  query.at = (toSphere, x, z, hint = query.cell) => { query.cell = nearestCellFrom(adj, centers, hint ?? 0, toSphere(x, z)); return blocked(query.cell); };
-  query.clearance = createClearance(adj, centers, blocked, query);
+  query.at = (toSphere, x, z, hint = query.cell) => { const p = toSphere(x, z); query.cell = nearestCellFrom(adj, centers, hint ?? 0, p); return blockedAt(query.cell, p); };
+  query.quadOf = drawn ? drawn.quadOf : () => -1;
+  query.clearance = createClearance(adj, centers, blocked, query, drawn);
   return query;
+}
+
+// round four: the board's drawn quads. Each cell's quad (its four vertices' unit directions, oriented so the inside is to the left of every edge seen
+// from outside the sphere) and its edges' planes through the sphere's centre, made on first use; a vertex's cells, for the quads sharing a corner;
+// the cell across each edge (`across`: the neighbour sharing the edge's two vertices, -1 at none).
+function createQuads(quads, vertices, adj) {
+  const n = quads.length, edge = new Float64Array(n * 12), vert = new Float64Array(n * 12), done = new Uint8Array(n), over = new Int32Array(n * 4);
+  let corner = null;
+  function make(c) {
+    if (done[c]) return c * 12;
+    const q = quads[c], k = c * 12;
+    for (let i = 0; i < 4; i++) { const v = vertices[q[i]], l = Math.hypot(v[0], v[1], v[2]) || 1; vert[k + i * 3] = v[0] / l; vert[k + i * 3 + 1] = v[1] / l; vert[k + i * 3 + 2] = v[2] / l; }
+    // the quad's winding: its normal (the sum of its edges' crosses) against its centre's direction
+    let sx = 0, sy = 0, sz = 0;
+    for (let i = 0; i < 4; i++) { const a = k + i * 3, b = k + ((i + 1) % 4) * 3; sx += vert[a + 1] * vert[b + 2] - vert[a + 2] * vert[b + 1]; sy += vert[a + 2] * vert[b] - vert[a] * vert[b + 2]; sz += vert[a] * vert[b + 1] - vert[a + 1] * vert[b]; }
+    const sign = sx * vert[k] + sy * vert[k + 1] + sz * vert[k + 2] >= 0 ? 1 : -1;
+    for (let i = 0; i < 4; i++) { const a = k + i * 3, b = k + ((i + 1) % 4) * 3; edge[k + i * 3] = sign * (vert[a + 1] * vert[b + 2] - vert[a + 2] * vert[b + 1]); edge[k + i * 3 + 1] = sign * (vert[a + 2] * vert[b] - vert[a] * vert[b + 2]); edge[k + i * 3 + 2] = sign * (vert[a] * vert[b + 1] - vert[a + 1] * vert[b]); }
+    for (let i = 0; i < 4; i++) { const a = q[i], b = q[(i + 1) % 4]; over[c * 4 + i] = -1; for (const nb of adj[c]) { const r = quads[nb]; if (r.includes(a) && r.includes(b)) { over[c * 4 + i] = nb; break; } } }
+    done[c] = 1;
+    return k;
+  }
+  const across = (c, i) => over[c * 4 + i];
+  const holds = (c, p) => { const k = make(c); for (let i = 0; i < 4; i++) if (edge[k + i * 3] * p[0] + edge[k + i * 3 + 1] * p[1] + edge[k + i * 3 + 2] * p[2] < 0) return false; return true; };
+  function quadOf(cell, p) {
+    if (cell < 0 || cell >= n) return -1;
+    if (holds(cell, p)) return cell;
+    if (!corner) { corner = new Map(); for (let c = 0; c < n; c++) for (const v of quads[c]) { const a = corner.get(v); if (a) a.push(c); else corner.set(v, [c]); } }
+    for (const v of quads[cell]) for (const c of corner.get(v)) if (c !== cell && holds(c, p)) return c;
+    return -1;
+  }
+  return { make, vert, quadOf, holds, across };
 }
 
 // round three: the clearance of a plane point against the BLOCKED region (see the header). `q` is the reach query whose last cell it shares.
 const JE = 0.25;   // metres: the plane step of the mapping's derivative
-function createClearance(adj, centers, blocked, q) {
+function createClearance(adj, centers, blocked, q, drawn = null) {
   const n = centers.length, unit = new Float64Array(n * 3), done = new Uint8Array(n), seen = new Uint32Array(n), ring = [];
   let stamp = 0;
   const P = [0, 0, 0], JX = [0, 0, 0], JZ = [0, 0, 0];
@@ -115,6 +157,47 @@ function createClearance(adj, centers, blocked, q) {
     if (!(l > 0)) return da;
     W[0] = -vx / l; W[1] = -vz / l;
     return l;
+  }
+  // round four: the signed plane distance from P to cell b's drawn quad (negative inside it, that far from its nearest edge) and the unit plane
+  // direction away from it into W: its corners carried into the plane at P through the mapping's derivative (the 2x2 inverse of [JX JZ])
+  const QX = new Float64Array(4), QZ = new Float64Array(4);
+  function quadDistance(b) {
+    // the mapping as unit directions: P's and its derivative's (the tangent part over |P|)
+    const k = drawn.make(b), V = drawn.vert, pl = Math.hypot(P[0], P[1], P[2]) || 1, ux = P[0] / pl, uy = P[1] / pl, uz = P[2] / pl;
+    const jx = (JX[0] * ux + JX[1] * uy + JX[2] * uz), jz = (JZ[0] * ux + JZ[1] * uy + JZ[2] * uz);
+    const X0 = (JX[0] - ux * jx) / pl, X1 = (JX[1] - uy * jx) / pl, X2 = (JX[2] - uz * jx) / pl, Z0 = (JZ[0] - ux * jz) / pl, Z1 = (JZ[1] - uy * jz) / pl, Z2 = (JZ[2] - uz * jz) / pl;
+    const a11 = X0 * X0 + X1 * X1 + X2 * X2, a12 = X0 * Z0 + X1 * Z1 + X2 * Z2, a22 = Z0 * Z0 + Z1 * Z1 + Z2 * Z2, det = a11 * a22 - a12 * a12;
+    if (!(det > 0)) return Infinity;
+    for (let i = 0; i < 4; i++) {
+      const wx = V[k + i * 3] - ux, wy = V[k + i * 3 + 1] - uy, wz = V[k + i * 3 + 2] - uz, r1 = wx * X0 + wy * X1 + wz * X2, r2 = wx * Z0 + wy * Z1 + wz * Z2;
+      QX[i] = (a22 * r1 - a12 * r2) / det; QZ[i] = (a11 * r2 - a12 * r1) / det;
+    }
+    // the plane quad's winding, so an edge's inward side is known; the point (the origin) inside every edge is inside the quad
+    let area = 0; for (let i = 0; i < 4; i++) { const j = (i + 1) % 4; area += QX[i] * QZ[j] - QX[j] * QZ[i]; }
+    const sg = area >= 0 ? 1 : -1;
+    let best = Infinity, bx = 1, bz = 0, inside = true, deep = Infinity, ox = 1, oz = 0, deepAny = Infinity, ax = 1, az = 0;
+    for (let i = 0; i < 4; i++) {
+      const j = (i + 1) % 4, ex = QX[j] - QX[i], ez = QZ[j] - QZ[i], el = Math.hypot(ex, ez) || 1e-12;
+      // the origin's side of the edge (positive: inward) and its outward normal; the way out of a quad the point is in is through an edge into open
+      // ground (an edge shared with another BLOCKED quad leads into more rock), any edge when none is
+      const side = sg * (ex * -QZ[i] - ez * -QX[i]) / el, nx = sg * ez / el, nz = -sg * ex / el, nb = drawn.across(b, i);
+      if (side < 0) inside = false;
+      if (side < deepAny) { deepAny = side; ax = nx; az = nz; }
+      if ((nb < 0 || !blocked(nb)) && side < deep) { deep = side; ox = nx; oz = nz; }
+      // the segment's nearest point to the origin
+      const t = Math.max(0, Math.min(1, -(QX[i] * ex + QZ[i] * ez) / (el * el))), cx = QX[i] + ex * t, cz = QZ[i] + ez * t, d = Math.hypot(cx, cz);
+      if (d < best) { best = d; bx = d > 1e-9 ? -cx / d : nx; bz = d > 1e-9 ? -cz / d : nz; }
+    }
+    if (inside) { if (deep === Infinity) { deep = deepAny; ox = ax; oz = az; } W[0] = ox; W[1] = oz; return -deep; }
+    W[0] = bx; W[1] = bz; return best;
+  }
+  // a BLOCKED cell's distance: its region's lower bound, or its drawn quad's when that is nearer (W the way away from the nearer one)
+  function blockDistance(b) {
+    const d = regionDistance(b);
+    if (!drawn || q.clearQuads === false) return d;   // (the harness may compare without: q.clearQuads false)
+    const wx = W[0], wz = W[1], dq = quadDistance(b);
+    if (dq < Math.max(0, d)) return dq;
+    W[0] = wx; W[1] = wz; return d;
   }
   return function clearance(toSphere, x, z, max, hint, out) {
     let s = toSphere(x, z); P[0] = s[0]; P[1] = s[1]; P[2] = s[2];
@@ -149,8 +232,9 @@ function createClearance(adj, centers, blocked, q) {
       d1 = exit === Infinity ? -max : -Math.max(0, exit); n2x = -n1x; n2z = -n1z;
     } else {
       let m = 0;
-      for (const c of ring) { if (!blocked(c) || m >= DIST.length) continue; DIST[m] = regionDistance(c); WX[m] = W[0]; WZ[m] = W[1]; m++; }
-      for (let k = 0; k < m; k++) if (DIST[k] < d1) { d1 = Math.max(0, DIST[k]); n1x = WX[k]; n1z = WZ[k]; }
+      // round four: a drawn quad may hold the point (a negative distance: the move out is that much longer)
+      for (const c of ring) { if (!blocked(c) || m >= DIST.length) continue; DIST[m] = blockDistance(c); WX[m] = W[0]; WZ[m] = W[1]; m++; }
+      for (let k = 0; k < m; k++) if (DIST[k] < d1) { d1 = drawn ? DIST[k] : Math.max(0, DIST[k]); n1x = WX[k]; n1z = WZ[k]; }
       n2x = -n1x; n2z = -n1z;
       for (let k = 0; k < m; k++) if (DIST[k] < d2 && WX[k] * n1x + WZ[k] * n1z < -0.7) { d2 = Math.max(0, DIST[k]); n2x = WX[k]; n2z = WZ[k]; }
     }

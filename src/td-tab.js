@@ -3079,7 +3079,7 @@ export function initTdTab(root) {
   });
   const creatureEnemies = createCreatureEnemies({ scene, root, flags, camera, enemies, canvasHeight: () => renderer.domElement.height, field: () => dungeon, spawn: (q) => enemyStep.spawnOne(q),   // ?creatures=<family>:<tier>, &ramp=1 (src/fx/creature-enemies.js)
     heart: () => (dungeon && graph ? [graph.centers[dungeon.heart], dungeon.heart, cellSide] : null), perf: () => perfOverlay.sample(), perfOn: () => setPerfOverlay(true, false), wide: () => !!storyMonitor?.on() || laserStation.seated() || groundFeed.on(), tank: () => player, jolt: ramJolt, damage: (e, dmg) => damageEnemy(e, t, dmg, true, 'harness'),
-    ground: () => (story && graph && dungeon ? { adj: graph.adj, centers: graph.centers, cellSide, open: (ci) => dungeon.tags[ci] !== BLOCKED, inside: (ci) => story.inside(ci), gates: [story.gateCell].filter((c) => c >= 0), sockets: (story.sentrySockets ??= Object.keys(story.socketToward ?? {}).map(Number)), canBuild: (ci) => !placeError(ci) } : null), build: (key, ci) => commitTower(key, ci, 0) });
+    ground: () => (story && graph && dungeon ? { adj: graph.adj, centers: graph.centers, quads: mesh.quads, verts: mesh.vertices, cellSide, open: (ci) => dungeon.tags[ci] !== BLOCKED, inside: (ci) => story.inside(ci), gates: [story.gateCell].filter((c) => c >= 0), sockets: (story.sentrySockets ??= Object.keys(story.socketToward ?? {}).map(Number)), canBuild: (ci) => !placeError(ci) } : null), build: (key, ci) => commitTower(key, ci, 0) });
   function spawnEnemies(...a) { return enemyStep.spawnEnemies(...a); }
   function seedPortals(...a) { return enemyStep.seedPortals(...a); }
   function gateTakesShell(...a) { return enemyStep.gateTakesShell(...a); }

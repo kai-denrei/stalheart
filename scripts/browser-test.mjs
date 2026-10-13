@@ -2058,6 +2058,14 @@ try{
  console.log(`  footprint crossings: ${JSON.stringify(prints.flatMap(f=>f?.worst??[]).slice(0,6))}`);
  assert(prints.every(f=>f&&f.bodies>0&&f.crossing===0),`no body's membrane, pearl or shadow crosses the rock or a wall (${JSON.stringify(prints.map(f=>f&&{crossing:f.crossing,byPart:f.byPart,worst:f.worst.slice(0,3)}))})`);
  assert(tiers.every(t=>tiersSeen.includes(t)),`the footprints audited cover every tier (${tiersSeen})`);
+ // ROUND FOUR (owner, 2026-10-13: "enemies clipping through walls when there are too many"): a crowd poured out of one breach (120 amoebas, 40
+ // saucers, 20 drifters), the footprint audited against the walls as DRAWN (the board's quads, src/domain/body-reach.js) as well as the cells' regions:
+ // no body, pearl or shadow across
+ {for(const [t,k] of [['amoeba',120],['saucer',40],['drifter',20]])await evaluate(`${T}.spawnFodder(${k},${JSON.stringify(t)})`);
+  await until(`${T}.creatures.pearls().length>=${+process.env.CROWD_MIN||150}`,60000).catch(async()=>assert.fail(`the crowd comes up (${await evaluate(`${T}.creatures.pearls().length`)})`));
+  const crowd=[];for(let k=0;k<8;k++){await delay(2000);crowd.push(await evaluate(`${T}.creatures.footprint()?.pearl`));}
+  console.log(`  the crowd against the drawn walls: ${crowd.map(f=>f?`${f.bodies} bodies ${f.crossing} crossing`:'-').join(' | ')}; worst ${JSON.stringify(crowd.flatMap(f=>f?.worst??[]).slice(0,3))}`);
+  assert(crowd.every(f=>f&&f.bodies>=100&&f.crossing===0),`no body of the crowd crosses a drawn wall (${JSON.stringify(crowd.map(f=>f&&{bodies:f.bodies,crossing:f.crossing,byPart:f.byPart,worst:f.worst.slice(0,3)}))})`);}
  assert(Object.entries(st.byType).every(([t,o])=>!o.tier||o.dots===0),`no mapped type is a dot cloud (${JSON.stringify(st.byType)})`);
  const clouds=await evaluate(`${T}.creatures.pearls().filter(e=>e.obj.userData.kind!=='creature').length`);assert.equal(clouds,0,'every Pearl record carries the stand-in, not a cloud');
  const kept=await evaluate(`(()=>{const p=${T}.creatures.pearls();return p.every(e=>e.spec.hp>0&&e.spec.body==='pearl'&&e.spec.pearl&&e.tier===e.type)&&p.some(e=>e.type==='phantom'&&e.spec.cloaked)&&p.some(e=>e.type==='rolling'&&e.spec.heavy&&!e.spec.rammable)&&p.some(e=>e.type==='amoeba'&&e.spec.rammable);})()`);

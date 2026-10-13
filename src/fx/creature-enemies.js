@@ -76,7 +76,7 @@ export function createCreatureEnemies(host) {
   // the board for the bodies' reach (round two: the stalks held off ROCK and WALL, src/fx/creature-bodies.js): the story's cell graph and its BLOCKED cells
   let groundNow = null;
   const blockedCell = (ci) => !!groundNow && !groundNow.open(ci);
-  const boardOf = () => { groundNow = host.ground?.() ?? null; return groundNow ? { adj: groundNow.adj, centers: groundNow.centers, blocked: blockedCell } : null; };
+  const boardOf = () => { groundNow = host.ground?.() ?? null; return groundNow ? { adj: groundNow.adj, centers: groundNow.centers, blocked: blockedCell, quads: groundNow.quads ?? null, vertices: groundNow.verts ?? null } : null; };
   const make = () => (bodies ??= createCreatureBodies({ scene: host.scene, families, tiers: { ...CREATURE_TIERS, pearl: PEARL_BODIES }, follow: CREATURE_FOLLOW, death: CREATURE_DEATH,
     metresPerCell: STORY_RECIPE.metresPerCell, heart: host.heart, ground: boardOf, reachStep: PEARL_FOLLOW.reachStep, impact: PEARL_IMPACT }));
   // THE TANK AND A BODY (round two, owner 2026-10-13: "we need some sense of stagger on the enemy, and bump on the tank"): the tank's heading, the record's
@@ -257,7 +257,7 @@ export function createCreatureEnemies(host) {
     state: () => (pearl ? pearlState() : choice || garrison ? { ...(choice ?? {}), alive: choice ? aliveOfTier() : 0, bodies: bodies?.stats() ?? null, probe: probe?.state() ?? null, defence: defence() } : null),
     // the harness's view of the Pearl set: the records alive by type (dressed, and left a dot cloud) and the bodies' books
     // the harness: the bodies' view of a record, a record's handle kept across its death, that handle's view
-    test: { view: (e) => bodies?.view(e) ?? null, audit: () => bodies?.audit() ?? null, footprint: () => bodies?.footprint() ?? null, watch: (opts = {}) => make().watch(opts), motion: () => bodies?.motion() ?? null, uncull: (on = true) => { uncull = !!on; }, jolt: () => host.jolt?.state() ?? null,
+    test: { view: (e) => bodies?.view(e) ?? null, audit: () => bodies?.audit() ?? null, footprint: () => bodies?.footprint() ?? null, watch: (opts = {}) => make().watch(opts), motion: () => bodies?.motion() ?? null, quadClear: (on) => bodies?.quadClear(on) ?? false, uncull: (on = true) => { uncull = !!on; }, jolt: () => host.jolt?.state() ?? null,
       // round two: the ram's and the touch's presentation as the enemy loop calls it (the harness cannot drive the tank onto a record): rammed, then the
       // record killed through damageEnemy with its death; touched on a live one
       ram(e) { rammed(e); host.damage(e, e.hp + 1); return !e.alive; }, touch: (e) => touched(e),

@@ -51,7 +51,8 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
   function refreshBoard() {
     const g = ground();
     if (!g?.adj || !g.centers) { board = query = null; return; }
-    if (!board || board.adj !== g.adj || board.centers !== g.centers || board.blocked !== g.blocked) { board = g; query = createReachQuery({ adj: g.adj, centers: g.centers, blocked: g.blocked, step: reachStep * metresPerCell }); }
+    // round four: the board's drawn quads too (the walls are drawn as them: src/domain/body-reach.js)
+    if (!board || board.adj !== g.adj || board.centers !== g.centers || board.blocked !== g.blocked || board.quads !== g.quads) { board = g; query = createReachQuery({ adj: g.adj, centers: g.centers, blocked: g.blocked, step: reachStep * metresPerCell, quads: g.quads ?? null, vertices: g.vertices ?? null }); }
   }
   // plane point (x, z) of hub k as a point of the sphere's direction (not normalised: the cell walk compares directions), into a scratch array
   const sp = [0, 0, 0];
@@ -203,6 +204,8 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
       const inRock = (hub, cell, x, z) => query.at(toSphere[hub] ?? toSphere[0], x, z, cell >= 0 ? cell : query.cell);
       return Object.fromEntries([...adapters].filter(([, a]) => a.audit).map(([k, a]) => [k, a.audit(clear, inRock)])); },
     // round three: every family's bodies' whole footprint (membrane, pearl, shadow) against the board's BLOCKED cells (src/fx/creature-pearl.js footprint)
+    // round four, the harness: the clearance with or without the drawn quads (the audit always sees them)
+    quadClear(on) { refreshBoard(); if (query) query.clearQuads = !!on; return !!query; },
     footprint() { refreshBoard(); if (!query) return null; const inRock = (hub, cell, x, z) => query.at(toSphere[hub] ?? toSphere[0], x, z, cell >= 0 ? cell : query.cell);
       const reach = (hub, cell, x, z, dx, dz, len) => hubs.reach(hub, x, z, dx, dz, len, cell);
       const C = [0, 0, 0, 0, 0, 0, 0], clear = (hub, cell, x, z, rho) => hubs.clear(hub, x, z, rho, cell, C, 1)[6];

@@ -32,7 +32,7 @@
 // add(type, { x, z, angle, lift, opacity, grow, members, speed, hub, cell }) -> handle | null    track(handle, { x, z, ax, az, lift, dt, opacity, grow, members, speed, hub })
 // rehub(handle, hub)   kill(handle, impact)   recoil(handle, impact)   free(handle)   step(dt, camera, height, cull)   setPlanet(R)   roots()   stats()   view(handle)   dispose()
 import * as THREE from '../../vendor/three.module.js';
-import { CutisSwarm, REACH_MARGIN } from './cutis-maku/swarm.js';
+import { CutisSwarm, REACH_MARGIN, BODY_RADII } from './cutis-maku/swarm.js';
 import { DEFAULT_CONFIG } from './cutis-maku/config.js';
 import { createSwarmGeometry } from './cutis-maku/geometry.js';
 import { createHardCores, corePose } from './cutis-maku/hard-core.js';
@@ -193,10 +193,11 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     // the lead and the leash change only with the record's speed
     if (speed !== h.speedAt) { h.speed = h.speedAt = speed; h.ahead = speed * pearlLead({ cycle: c.cycleDuration, pace: h.pace }, tune); h.leash = pearlLeash({ r: h.r, speed, hop: c.reach * h.r }, follow, tune); }
     const ahead = h.ahead, leash = h.leash, hop = c.reach * h.r;
+    if (gait && h.slots.length > 1) fold(h, x, z);
     const ang = Math.atan2(h.dz, h.dx);
     let replaced = false, worst = 0;
     for (const slot of h.slots) {
-      const i = slot.i, k = i * 3, [px, pz] = at(x, z, h.dx, h.dz, slot.s, P), [tx, tz] = at(x + h.dx * ahead, z + h.dz * ahead, h.dx, h.dz, slot.s, T);
+      const i = slot.i, k = i * 3, s = slot.f ?? slot.s, [px, pz] = at(x, z, h.dx, h.dz, s, P), [tx, tz] = at(x + h.dx * ahead, z + h.dz * ahead, h.dx, h.dz, s, T);
       const pos = sw.positionInto(i, POS), lag = Math.min(Math.hypot(pos[0] - px, pos[2] - pz), Math.hypot(sw.anchor[k] - px, sw.anchor[k + 2] - pz));
       // round four: a hit's shrink (and the regenerators' knitting) eased over gait.shrinkSeconds, not taken in one frame (a shape pop)
       const size = (h.r / c.r0) * grow;
@@ -230,6 +231,26 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     }
     if (gait) h.wait = pearlWait(worst, hop, gait.wait);
     return replaced;
+  }
+
+  // ROUND FOUR (owner, 2026-10-13: "enemies clipping through walls when there are too many"): a squad's members stand across its record's heading
+  // (squadSpots, 2.2 radii apart: five bodies span ~9 radii), and in a passage narrower than that the outer ones were held against the walls, every
+  // hop planned into the rock and cut short there. Folded: a member's spot across is no more than the open ground that side leaves for its body
+  // (BODY_RADII r), and what is cut off goes behind it along the lane, so the squad files through a corridor. Looked at again when the record's cell
+  // changes or its heading turns (two reach queries a squad)
+  function fold(h, x, z) {
+    if (!hubs?.reach) return;
+    const turned = h.foldDx == null || h.dx * h.foldDx + h.dz * h.foldDz < 0.97;
+    if (h.foldCell === h.cell && !turned) return;
+    h.foldCell = h.cell; h.foldDx = h.dx; h.foldDz = h.dz;
+    let span = 0; for (const sl of h.slots) span = Math.max(span, Math.abs(sl.s[0]));
+    const rho = h.r * BODY_RADII; span += rho;
+    const right = hubs.reach(h.hub, x, z, h.dz, -h.dx, span, h.cell), left = hubs.reach(h.hub, x, z, -h.dz, h.dx, span, h.cell);
+    for (const slot of h.slots) {
+      const [a, l] = slot.s, room = a >= 0 ? Math.max(0, right - rho) : Math.max(0, left - rho), excess = Math.max(0, Math.abs(a) - room);
+      if (!excess) { slot.f = null; continue; }
+      (slot.f ??= [0, 0]); slot.f[0] = Math.sign(a) * room; slot.f[1] = l - excess;
+    }
   }
 
   // round four: the record's pace factor (the enemy loop's walk x this): it waits for its body (1 without the gait)
