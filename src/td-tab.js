@@ -1,5 +1,5 @@
 import { createSentryPilot } from './sentry-pilot.js';
-import { DEFAULT_TANK, SHELL_SPEED, SHELL_REACH, TANK_DRIVE, TANK_STEER, TANK_WALL } from './content/tank.js'; import { makeDriveRamp } from './domain/drive-ramp.js'; import { hullDepth, deepensContact } from './domain/hull-contact.js'; import { makeSteerEase, steerBank } from './domain/steer-ease.js'; import { baseFor, restoreSeatView } from './domain/seat-view.js'; import { BASE_REPAIR } from './content/base-programme.js';
+import { DEFAULT_TANK, SHELL_SPEED, SHELL_REACH, TANK_WALL } from './content/tank.js'; import { makeDriveRamp } from './domain/drive-ramp.js'; import { hullDepth, deepensContact } from './domain/hull-contact.js'; import { makeSteerEase } from './domain/steer-ease.js'; import { baseFor, restoreSeatView } from './domain/seat-view.js'; import { BASE_REPAIR } from './content/base-programme.js';
 import { createGameBreaches } from './game-breaches.js'; import { ramShotPose } from './domain/showcase-shot.js';   /* THE RAM BEAT'S OWN FRAMING: low behind the hull (src/domain/showcase-shot.js; the band of cells it drives into is the showcase hooks') */
 import { createBoardSurface } from './fx/board-surface.js'; import { createCampaignDebrief, sparkline } from './fx/campaign-debrief.js'; import { createSectorRun } from './fx/sector-run.js'; import { createBackDoor } from './fx/back-door.js'; import { isaoFace, orbitFrame, tourFrame, tourSeconds } from './domain/story-shots.js';
 import { startDiveShot } from './fx/dive-shot.js'; import { createCameraShots } from './fx/camera-shot.js'; import { createIntegrityHud } from './fx/integrity-hud.js'; import { createSeatGlide } from './fx/seat-glide.js'; import { viewEdge } from './domain/view-edge.js'; import { makeShaderWarmer } from './fx/shader-warm.js'; 
@@ -65,7 +65,7 @@ import { wantsSecondary, shellsForAll } from './autofire.js';
 import { PLASMA_DEFAULTS } from './beamdraw.js';
 import { sub3, add3, scale3, dot3, cross3, norm3, len3, dist3, segKey } from './vec3.js';
 import { CREATURES, waveJelly } from './creatures.js';
-import { BRIEFS } from './isaobriefs.js'; import { createBriefQueue } from './fx/brief-queue.js'; import { lookIsao } from './fx/isao-look.js';
+import { BRIEFS } from './isaobriefs.js'; import { createBriefQueue } from './fx/brief-queue.js'; import { createEngineAudio } from './fx/engine-audio.js'; import { lookIsao } from './fx/isao-look.js';
 import { ACHIEVEMENTS, ACHV_GROUPS, achievement, blankRun, earned, freshlyEarned,
   sanitiseRecord }
   from './achievements.js';
@@ -95,7 +95,7 @@ import { pickTier } from './perftier.js';
 import { applyWeatheredMaterial } from './fx/weathered-material.js'; import { sentryBookFull } from './domain/sentry-cap.js'; import { setTierPlate } from './fx/tier-plate.js';
 import { STICK, stickVector, knobOffset } from './stick.js';
 import { makeBloom } from './postfx.js';
-import { TANK_FEEL, makeTankFeel, stepTankFeel, landTankFeel, fireTankFeel, applyTankFeel, applyTankHealth } from './tankfeel.js';
+import { TANK_FEEL, makeTankFeel, landTankFeel, fireTankFeel, applyTankFeel, applyTankHealth } from './tankfeel.js';
 import { FEEL } from './feelstore.js';
 import { makeStrike, makeStrikeParams, grantStrikes, stepStrike,
   stepFall, fallProgress } from './strike.js'; import { makeGunship, onStation, phaseLeft, selectGun, startStation } from './domain/gunship.js'; import { GUNSHIP_GUNS, GUNSHIP_ORBIT } from './content/gunship.js'; import { createGunshipBriefing } from './fx/gunship-briefing.js'; import { createFoundryFx } from './fx/foundry-fx.js'; import { createExplosions } from './fx/explosions.js';
@@ -2675,7 +2675,7 @@ export function initTdTab(root) {
     // still looping kept looping, and the next run layered its own on top. Two games in, that is two engine beds and every voice
     // either has ever fired still wired to a bus (operator: "the sound started to lag after the second game").
     sfx.panic();
-    stopEngine(0, true);
+    engineAudio.stop(0, true);
     sectorStartWave = 0; sectorsCleared = 0;
     // the record persists; the RUN's facts do not
     run = blankRun();
@@ -3494,7 +3494,7 @@ export function initTdTab(root) {
   const DEATH_HOLD = 1.15; // s of wreck before the modal
   function destroyPlayer() {
     if (!playerMesh) return;
-    stopEngine(0.12, true);   // quiet: the hydraulics don't get to set it down
+    engineAudio.stop(0.12, true);   // quiet: the hydraulics don't get to set it down
     feel.hoverT = 0;          // hover fails instantly — it DROPS
     landTankFeel(feel);       // and rocks hard as it lands
     sfx.play('tank_destroyed');
@@ -3652,7 +3652,7 @@ export function initTdTab(root) {
     player.segLen = Math.max(1e-9, dist3(...berthSeg(b)));
     throttle = 0; cruise = false; autoMode = false;
     paintThrottle();
-    stopEngine(0.1, true);
+    engineAudio.stop(0.1, true);
     // only what is NOT derivable: which berth, and how far out we are. from,
     // to and segLen were all functions of `n` and drifted-by-construction.
     // THE FIRST HULL OUT OF A BAY WITH AN AUTHORED ROLL-OUT PLAYS THE CLIP: the parked hull rolls, ours stays hidden until the clip ends where the run ends
@@ -4728,77 +4728,19 @@ export function initTdTab(root) {
   const mapBg = new THREE.Color(0x080a10);
   let t = 0;
   let lastFrame = performance.now();
-  // --- engine: hydraulics up, thruster bed, hydraulics down ---------------
-  // Three sounds, not one. A single looping sample gave starting and
-  // stopping no weight at all; the hydraulics do that work and the thruster
-  // just carries the middle.
-  //
-  // Speed comes from the ACTUAL per-frame position delta rather than from
-  // the drive inputs. One site then covers manual driving, auto navigation,
-  // and the handoff eased through virtualStart -- and it follows the house
-  // rule of deriving render-coupled values from the render state instead of
-  // re-deriving them with a second set of conventions.
-  let engineHandle = null;
-  let enginePrev = null;    // last frame's position
-  let engineLevel = 0;      // smoothed 0..1
-  let engineIdle = 0;       // s since the tank last moved
-  let engineRunning = false; // has the spool-up played and not been undone?
-  // short: the hydraulics-down cue should answer the STOP, not trail it
-  const ENGINE_STOP = 0.10;  // s of stillness before the bed fades out
-
-
-  function stopEngine(fade = ENGINE_STOP, quiet = false) {
-    if (engineHandle) engineHandle.stop(fade);
-    engineHandle = null;
-    engineLevel = 0;
-    // the rock belongs to SETTING DOWN, not to leaving the tab
-    if (engineRunning && !quiet) { sfx.play('tank_spool_down'); landTankFeel(feel); }
-    engineRunning = false;
-  }
-
-  function updateEngine(dt) {
-    if (!playerMesh || dt <= 0) return;
-    const p = player.pos;
-    if (!enginePrev) { enginePrev = p.slice(); return; }
-
-    // cells/s, normalized against the fastest the tank can legally go
-    const moved = dist3(p, enginePrev);
-    enginePrev = p.slice();
-    const cellsPerSec = moved / dt / cellSide;
-    const top = Math.max(0.001, params.speed * speedBonus * 1.6 * 1.45 * TANK_DRIVE.top); // cruise+boost at a full run-up
-    const target = Math.min(1, cellsPerSec / top);
-
-    // asymmetric smoothing: spin up fast, spool down slow, like an engine
-    const k = target > engineLevel ? 6 : 2.5;
-    engineLevel += (target - engineLevel) * Math.min(1, k * dt);
-
-    const moving = engineLevel > 0.03 && !paused && !player.won;
-    engineIdle = moving ? 0 : engineIdle + dt;
-
-    // slow both ways: an engine SPOOLS. Rising a touch slower than it falls
-    // reads as taking up load, then setting the weight back down.
-    stepTankFeel(feel, dt, engineRunning, FEEL); feel.bank = steerBank(steerEase, TANK_STEER) + kick.roll;   /* the hull rolls into its turn (src/domain/steer-ease.js) */
-
-    if (moving && !engineRunning) {
-      sfx.play('tank_spool_up'); // hydraulics lift it off the deck
-      engineRunning = true;
-    }
-    // RETRY every frame while moving: sfx.loop returns null until the buffer
-    // has decoded, and latching a failed handle is what silenced this bed
-    // for whole sessions.
-    if (moving && !engineHandle) {
-      engineHandle = sfx.loop('tank_thruster', { gain: 0.001, rate: 0.92 });
-    }
-    if (!moving && engineIdle >= ENGINE_STOP) {
-      stopEngine();
-    } else if (engineHandle) {
-      // gain is nearly linear in level; pitch spans 0.92..1.14 so the bed is
-      // felt as effort rather than heard as a repeating clip
-      // floor raised from 0.18: the bed was inaudible at a crawl, so it only
-      // registered at full speed — which read as "the thruster isn't there"
-      engineHandle.set(0.34 + 0.66 * engineLevel, 0.92 + 0.22 * engineLevel);
-    }
-  }
+  // --- engine: hydraulics up, thruster bed, hydraulics down (src/fx/engine-audio.js) ---
+  const engineAudio = createEngineAudio({
+    sfx,
+    feel,
+    player,
+    params,
+    steerEase,
+    playerMesh: () => playerMesh,
+    cellSide: () => cellSide,
+    speedBonus: () => speedBonus,
+    paused: () => paused,
+    kick: () => kick,
+  });
 
   // THE FRAME READOUT (operator, 2026-09-02; src/platform/perf-overlay.js): fps, ms, the frame's workload and the GPU timer
   const perfOverlay = createPerfOverlay(root, {
@@ -4844,7 +4786,7 @@ export function initTdTab(root) {
     const now = performance.now();
     const dt = Math.min((now - lastFrame) / 1000, 0.1); // clamp tab-switch gaps
     perfTick(Math.max(0,(now-lastFrame)/1000));   // the readout rides the loop's OWN dt — it must not take a second one
-    updateEngine(dt);
+    engineAudio.update(dt);
     lastFrame = now;
     // SIM fast-forward: K fixed-dt update passes per painted frame, and
     // only every 4th frame paints at all — the sim math is cheap, the
@@ -5946,7 +5888,7 @@ export function initTdTab(root) {
     dispose() { disposed = true; ramFloat.dispose(); pilot?.dispose(); skipCard?.dispose(); showcase?.dispose(); active = false; storyBase?.dispose(); gameBreaches.dispose();runTimers.dispose(); runContext.dispose(); missilesDisposed=true; missilePool?.dispose(); setPerfOverlay(false,false); },
     setActive(on) {
       active = on;
-      if (!on) stopEngine(0.1, true); // quiet: leaving the tab is not a landing
+      if (!on) engineAudio.stop(0.1, true); // quiet: leaving the tab is not a landing
       if (on) { resize(); snapCamera(); }
       else if (wasPlaying) {
         wasPlaying = false;

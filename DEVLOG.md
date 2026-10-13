@@ -174,6 +174,24 @@ Evidence:
 - --story-world fails at 'the planet pulled back' (state().shot null, expected 'sites') on this branch and identically on its base f2367e17: the sites pull-back was removed on 2026-10-07 and the assertion is stale; every step before it passes (rotor-kill included)
 - npm test (246 programs), npm run check, npm run build, npm run architecture (td-tab 6141 of 6400, 0 lines over 500)
 
+## 2026-10-13 — The engine audio is an fx module (src/fx/engine-audio.js)
+
+change · accepted · 2026-10-13-engine-audio-fx-module
+
+Refactor round 2 (plan docs/superpowers/plans/2026-10-13-refactor-round-2.md, Task 6). The engine (hydraulics up, thruster bed, hydraulics down) was seventy controller lines: five lets, ENGINE_STOP, stopEngine(fade, quiet) and updateEngine(dt), the speed taken from the hull's actual per-frame movement. stopEngine had four call sites (regenerate, destroyPlayer, deployStart, the controller's setActive(false)), updateEngine one (the frame).
+
+src/fx/engine-audio.js createEngineAudio(host) holds the region as it was, every comment with it, and returns { stop, update } (nothing outside read the level, so no getter). Its host is { sfx, feel, player, params, steerEase } as values and getters for the lets it reads (playerMesh, cellSide, speedBonus, paused, kick). td-tab makes it where the region was; the frame calls engineAudio.update(dt) and the four stop sites call engineAudio.stop(...) directly (none is a value in a literal, and none runs before the engine is made: before the move they would have met engineHandle's dead zone the same way), so no hoisted one-liner. TANK_DRIVE, TANK_STEER, steerBank and stepTankFeel leave td-tab's imports. updateEngine also steps the hull's feel and its bank (stepTankFeel, feel.bank from steerBank and the kick's roll), as it did: the move keeps that, and the feel is still not stepped on a frame the engine returns early (no hull mesh, dt <= 0, the first frame). td-tab 5,957 -> 5,899 lines. No behaviour change.
+
+Alternatives: Hoisted one-liners for stopEngine and updateEngine (the plan's suggestion): not needed, their five sites are calls inside functions run after init; rewriting them saves the lines.; Split the feel step out of updateEngine: rejected for a move task, it would reorder the feel against the bed's start and stop within the frame.
+
+Evidence:
+
+- Side-by-side proof (scratch harness, not committed): the ORIGINAL region (td-tab 4731-4801 at b64e2d8f) through new Function under `with` beside the module over the same recording sfx (a bed that is null until decoded), real tank feel objects and real steerBank/stepTankFeel/landTankFeel; 100 seeded scenarios x 2,000 operations (frames with dt 0, negative and 1/120..1/20, moving, creeping or still; stops with every default/explicit fade and quiet combination; pause, a won hull, the mesh missing, speed 0, the bonus, the cell size, the steering rate and the kick's roll re-rolled): 281,524 log entries (cues, bed loops/sets/stops, the feel after every operation) equal, 2,846 spool cues, 59,751 bed settings; two mutants (the kick's roll dropped from the bank, the level not reset on stop) caught.
+- node test/engine-audio.mjs: no sound before a previous position, at dt 0 or without a hull; one spool-up, the bed retried until decoded and then set from the level (gain 0.34..1, pitch 0.92..1.14); the level spins up while moving; stillness fades the bed over ENGINE_STOP with one spool-down and the landing; paused does not count as moving; a quiet stop fades without a cue or a landing.
+- tools/refactor/undef-diff.mjs: no new undefined or unused names; comments-kept.mjs: every comment word kept; tdz-check at the call: none in the dead zone; node test/host-contracts.mjs: hold for 56 factories.
+- npm test 258 programs; npm run check (5899 lines under 6400); npm run build.
+- Browser suites from snapshot t6-engine-001425 (tools/refactor/suites.sh): --seats passes; --defense fails at 'no unpiloted tower kill' ({"tank":0,"tower":0,"strike":0}) after the same two passing steps and --story at 'twelve landmarks at stage 8', the same steps and values as the untouched base's battery.
+
 ## 2026-10-13 — The brief queue is an fx module (src/fx/brief-queue.js)
 
 change · accepted · 2026-10-13-brief-queue-fx-module
