@@ -11,6 +11,8 @@ import * as orbitalStrike from './explosions/orbital-strike.js';
 
 const MODULES = { 'rotary-pop': rotaryPop, 'bofors-burst': boforsBurst, 'howitzer-blast': howitzerBlast, 'orbital-strike': orbitalStrike };
 const Y = new THREE.Vector3(0, 1, 0);
+const HOT = ['white', 'hot', 'warm', 'ember'];
+const glowing = (k) => Object.fromEntries(Object.entries(EXPLOSION_PALETTE).map(([key, hex]) => [key, HOT.includes(key) ? new THREE.Color(hex).multiplyScalar(k) : hex]));
 
 export function createExplosions(scene, { modules = MODULES, onError = () => {} } = {}) {
   const live = [];        // { fx, size }, oldest first
@@ -52,19 +54,21 @@ export function createExplosions(scene, { modules = MODULES, onError = () => {} 
     // modelViewMatrix, in view space, so an object scale shrinks where puffs sit but not how big they are. With uScale
     // in scene units the bend's radius is in scene units too: the distance from the planet's centre to the impact.
     const units = spec.scale * cellSide / METRES_PER_CELL;
-    try { fx = mod.createExplosion({ palette: EXPLOSION_PALETTE, scale: units, seed: seed++, planetRadius: Math.hypot(point[0], point[1], point[2]) }); }
+    // `glow` (a use's intensity, src/content/explosions.js): the flash and fire colours times it, over 1, for the bloom; the smoke keeps its own
+    const palette = spec.glow ? glowing(spec.glow) : EXPLOSION_PALETTE;
+    try { fx = mod.createExplosion({ palette, scale: units, seed: seed++, planetRadius: Math.hypot(point[0], point[1], point[2]) }); }
     catch (error) { available = false; onError(error); return false; }
     fx.object.position.set(point[0], point[1], point[2]);
     fx.object.quaternion.setFromUnitVectors(Y, normal.set(surfaceNormal[0], surfaceNormal[1], surfaceNormal[2]).normalize());
     scene.add(fx.object);
-    live.push({ fx, size });
+    live.push({ fx, size, pace: spec.pace ?? 1 });   // pace: the use's clock (under 1: the same burst, slower and longer)
     spawned[use] = (spawned[use] || 0) + 1;
     return true;
   }
 
   function tick(dt) {
     for (let i = live.length - 1; i >= 0; i--) {
-      live[i].fx.tick(dt);
+      live[i].fx.tick(dt * live[i].pace);
       if (!live[i].fx.alive()) { live[i].fx.dispose(); live.splice(i, 1); }
     }
   }

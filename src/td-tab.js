@@ -81,6 +81,7 @@ import { beamStep, isBeamStep } from './beamranks.js';
 import { marchToTerrain, roundEnd, marchAlongArc, arcOf } from './domain/round-path.js';
 import { impactOf } from './sentryfx.js'; // the package's muzzle recipe is the one master setting
 import { makeSeekerMesh, aimSeeker } from './shotfx.js';
+import { createShellBlast } from './fx/shell-blast.js';
 import { SHIELD_TUNE, SHIELD_KNOBS, makeShield, charge as chargeShield,
   deploy as deployShield, tickShield, stepShieldFrame, restockShield, towerOffline,
   makeArrayStation, refillArray } from './shield.js'; import { SHIELD_ARRAY } from './content/shield-array.js'; import { makePadRing, glowPadRing, shieldPanel } from './fx/shield-array.js'; import { createRamReadout } from './fx/ram-readout.js';
@@ -3325,7 +3326,7 @@ export function initTdTab(root) {
   // heart-distance field is re-laid — everyone's nav sees the new gap,
   // enemies included. Clearing your path can shorten theirs.
   function blastWall(ci) {
-    if (!breachWallCell(ci)) return; story?.shot.add(ci); explode('tank.shell', graph.centers[ci]); if (automated() && story?.hud.route) story.hud.route(simTrunk().map((c) => norm3(graph.centers[c])), 3, t);
+    if (!breachWallCell(ci)) return; story?.shot.add(ci); explode('tank.blast', graph.centers[ci]); if (automated() && story?.hud.route) story.hud.route(simTrunk().map((c) => norm3(graph.centers[c])), 3, t);
     rebuildAfterBreach();
   }
 
@@ -3370,6 +3371,7 @@ export function initTdTab(root) {
     else buildGeometry();
   }
 
+  const shellBlast = createShellBlast({ enemies, damageEnemy, warnRing, explode, scene, debris, sfx, camDist, cellSide: () => cellSide, cellIndex: () => cellIndex });
   function updateProjectiles(dt, tNow) {
     const v = SHELL_SPEED * cellSide, maxDist = SHELL_REACH * cellSide;   // content/tank.js: the shell's pace and reach
     for (let i = projectiles.length - 1; i >= 0; i--) {
@@ -3391,39 +3393,16 @@ export function initTdTab(root) {
       for (const e of enemies) {
         if (!e.alive) continue;
         if (dist3(p.pos, e.pos) < cellSide * Math.max(0.45, (e.size ?? e.spec.size) * 0.8)) {
-          // NINE shells a rack, each one precious — so each one is an
-          // EVENT (operator ruling): a direct hit one-shots everything
-          // below the heavy tier (dmg 4 kills up to the rolling mine;
-          // prime and the Thorus soak it and remember), and the splash
-          // genuinely clears a pocket rather than shaving it.
-          // count what THIS shell kills — direct hit plus the splash below —
-          // by the only honest method: live bodies before and after
+          // NINE shells a rack, each one precious, so each one is an EVENT (operator ruling); since 2026-10-13 the gunship's 40 mm landing
+          // at the shell's blast (src/content/tank.js SHELL_BLAST, src/fx/shell-blast.js). Count what THIS shell kills: live bodies before and after
           const aliveBeforeShell = enemies.reduce((n2, x) => n2 + (x.alive ? 1 : 0), 0);
-          damageEnemy(e, tNow, 4, true, 'tank');
-          const SHELL_R = cellSide * 2.0;
-          for (const e2 of enemies) {
-            if (e2 === e || !e2.alive) continue;
-            const d2 = dist3(p.pos, e2.pos);
-            if (d2 < SHELL_R) {
-              damageEnemy(e2, tNow, d2 < SHELL_R * 0.5 ? 2 : 1, false, 'tank');
-            }
-          }
+          const jolt = shellBlast.land(p.pos, e, tNow, player.pos).jolt; if (jolt > 0) ramJolt.kick({ radius: jolt });   // the 40 mm's landing, hotter; a hull near it jolts (presentation only)
           if (rs) {
             const killedByShell = aliveBeforeShell
               - enemies.reduce((n2, x) => n2 + (x.alive ? 1 : 0), 0);
             rs.shells++;
             if (killedByShell > rs.bestShell.kills) rs.bestShell = { kills: killedByShell, wave };
           }
-          // an explosion you can HEAR and SEE: the heavy blast lands at the impact (fire already played tank_main at the muzzle),
-          // and the strike's full three-ring language at shell scale
-          sfx.play('blast_fire', { dist: camDist(p.pos) });
-          const sci = cellIndex(p.pos);
-          if (sci !== -1) {
-            warnRing(sci, 0xffffff, 0.55, SHELL_R * 1.1);
-            warnRing(sci, 0xffb347, 0.4, SHELL_R * 0.65);
-            warnRing(sci, 0xfff2c0, 0.28, SHELL_R * 0.35);
-          }
-          if (!explode('tank.shell', norm3(p.pos))) { const clip = makeDotBurst(0xfff2c0, norm3(p.pos), 90); clip.scale.setScalar(cellSide * 1.6); const cp = add3(p.pos, scale3(norm3(p.pos), cellSide * 0.15)); clip.position.set(cp[0], cp[1], cp[2]); scene.add(clip); debris.push(clip); }
           hit = true; sectorRun?.note({ type: 'shot', hit: true });
           break;
         }
@@ -5778,7 +5757,7 @@ export function initTdTab(root) {
   const gameHooks = {
       state: () => ({
         enemyTypes: [...new Set(enemies.filter((e) => e.alive).map((e) => e.type))].sort(),
-        explosions: explosions.state(),
+        explosions: explosions.state(), shellBlast: shellBlast.last(),
         pilotRounds: rs?.pilotRounds ?? 0,
         pilotHits: rs?.pilotHits ?? 0,
         pilotTracerGap: rs?.pilotGap ?? null,   // metres, tracer head to impact, widest; null until one lands
@@ -5931,7 +5910,7 @@ export function initTdTab(root) {
       relayOffline: id => towerOffline(shield,id,t),
       refillArrays: () => refillArrays(),
       deployShield: () => {const was=paused;paused=false;const result=deployShieldNow();paused=was;return result;},
-      fireShell: () => fire(),
+      fireShell: (dir) => fire(dir),
       ...laserStation.hooks,   // laserOnline, laserPassNow, laserSeat, laserSteer, laserHold
       showRecordTest: () => {
         rs.bestShell={kills:1000};rs.bestStrike={kills:1001};run.bestStreak=999;rs.maxCombo=1200;

@@ -61,10 +61,10 @@ async function click(selector){
 }
 try{
  await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Server did not start')),10000);server.stdout.once('data',()=>{clearTimeout(timer);resolve();});server.once('error',reject);server.once('exit',code=>{if(code)reject(Error(`Server exited ${code}`));});});
- browser=launchChrome(['--headless=new','--remote-debugging-port=0',`--user-data-dir=${profile}`,'--window-size=1440,987','--hide-scrollbars','--mute-audio'],{watchdogMs:1200000});
+ browser=launchChrome([...(process.env.HEADED==='1'?['--no-first-run','--no-default-browser-check']:['--headless=new']),'--remote-debugging-port=0',`--user-data-dir=${profile}`,'--window-size=1440,987','--hide-scrollbars','--mute-audio'],{watchdogMs:1200000});
  const chromePort=await browser.port;
- const targets=await(await fetch(`http://127.0.0.1:${chromePort}/json`)).json();
- ws=new WebSocket(targets.find(t=>t.type==='page').webSocketDebuggerUrl);await new Promise(r=>ws.addEventListener('open',r,{once:true}));
+ let page=null;for(let k=0;k<50&&!page;k++){page=(await(await fetch(`http://127.0.0.1:${chromePort}/json`)).json()).find(t=>t.type==='page');if(!page)await delay(200);}   // a headed window lists its page a moment later
+ ws=new WebSocket(page.webSocketDebuggerUrl);await new Promise(r=>ws.addEventListener('open',r,{once:true}));
  ws.addEventListener('message',e=>{const m=JSON.parse(e.data);if(m.id&&pending.has(m.id)){const p=pending.get(m.id);pending.delete(m.id);m.error?p.reject(Error(m.error.message)):p.resolve(m.result);}
   if(m.method==='Runtime.consoleAPICalled')consoleLines.push(m.params.args.map(a=>a.value??a.description??'').join(' '));
   if(m.method==='Runtime.exceptionThrown')errors.push(m.params.exceptionDetails.exception?.description||m.params.exceptionDetails.text);
@@ -2144,6 +2144,57 @@ try{
  // the kit's programs link (round two: the first cut of the hubs passed WebGL's sixteen vertex attributes; three logs a failed program to the console)
  const shaderBad=consoleLines.filter(l=>/Shader Error|Too many attributes|VALIDATE_STATUS|Program Info Log/i.test(l));assert.deepEqual(shaderBad,[],'no shader errors');
  if(shots){const ci=await evaluate(`(()=>{const e=${T}.creatures.pearls().find(e=>!(e.emergeAge<1.2));return e?e.cur:-1;})()`);if(ci>=0){await evaluate(`${T}.showcase.ground(${ci},3,4.5)`);await delay(2500);const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(shots,'pearl-close.png'),Buffer.from(shot.data,'base64'));}}
+ await finish();
+ } else if(args.includes('--tank-shell')) {
+ // THE TANK'S SHELL (owner, 2026-10-13: "the tank shell should feel and be more powerful. a) give it a stronger AoE and dmg"; then "make the Tank Shell
+ // impact/explosion the same as the 40mm from the Gunship, more intensity, it must feel powerful"; src/content/tank.js SHELL_BLAST, src/fx/shell-blast.js):
+ // a pile of Pearl bodies, the hull set down among them and a shell fired at the densest: every live body within the blast's radius is hurt, some die,
+ // and the landing is the 40 mm's, hotter ('tank.blast' and the 'tank.flash' pop, the 40 mm's two rings at the shell's radius) and the hull jolts;
+ // 0 page errors. SHOTS=<dir> (with HEADED=1 for the owner) saves the burst, then calls the gunship over a fresh pile, fires a 40 mm round into it,
+ // hands the camera back to the hull parked where it lands and saves that burst from the same chase camera.
+ const T='window.__stalheartTest',P=`${T}.state().creatureProbe`,name='tank-shell',shots=process.env.SHOTS||null;if(shots)mkdirSync(shots,{recursive:true});
+ const {SHELL_BLAST}=await import('../src/content/tank.js');
+ await go(name,'index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=2&fps=1&creatures=pearl&hold=1#td');
+ await until(`!!${T} && ${T}.state().sector?.n===2 && ${P}?.pearl===true`,120000);
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,#td-brief,.contact-card{display:none!important}</style>")');
+ for(const [t,k] of [['amoeba',14],['ghost',6],['drifter',4],['barbed',3]])await evaluate(`${T}.spawnFodder(${k},${JSON.stringify(t)})`);
+ const live=`${T}.creatures.pearls().filter(e=>!(e.emergeAge<1.2))`;
+ await until(`${live}.length>=14`,120000).catch(async()=>assert.fail(`the pile comes up (${await evaluate(`${live}.length`)})`));
+ // the densest body: the most others within ~3 cells (the story planet's cell is ~0.013 of its unit radius)
+ const dense=`(()=>{const L=${live},d=(a,b)=>Math.hypot(a.pos[0]-b.pos[0],a.pos[1]-b.pos[1],a.pos[2]-b.pos[2]);let best=null,bn=-1;for(const e of L){const n=L.reduce((k,o)=>k+(d(e,o)<0.04?1:0),0);if(n>bn){bn=n;best=e;}}return best;})()`;
+ const aim=(e)=>`(()=>{const e=${e},p=${T}.state().playerPosition,l=Math.hypot(...e.pos),n=e.pos.map(x=>x/l),v=e.pos.map((x,i)=>x-p[i]),vn=v[0]*n[0]+v[1]*n[1]+v[2]*n[2],t=v.map((x,i)=>x-n[i]*vn),tl=Math.hypot(...t);return tl>1e-9?t.map(x=>x/tl):null;})()`;
+ const fireAt=async(e)=>{await evaluate(`(()=>{const e=${e};window.__shellTarget=e;${T}.placeTank(e.cur);${shots?`${T}.showcase.follow();`:''}${T}.setAmmo(9);${T}.fireShell(${aim('window.__shellTarget')});})()`);};
+ const x0=(await evaluate(`${T}.state().explosions`)).spawned,j0=(await evaluate(`${T}.creatures.jolt()`))?.kicks??0;
+ await evaluate(`${T}.begin()`);
+ await fireAt(dense);
+ assert.equal(await evaluate(`${T}.state().ammo`),8,`the shell leaves (the rack one short; ${JSON.stringify(await evaluate(`(()=>{const s=${T}.state();return {paused:s.paused,hulls:s.hulls,heat:s.cannonHeat,won:s.won}})()`))})`);
+ await until(`!!${T}.state().shellBlast`,15000).catch(async()=>assert.fail(`the shell lands in the pile (${JSON.stringify(await evaluate(`${T}.state().explosions`))})`));
+ if(shots){await delay(250);const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(shots,'tank-shell-burst.png'),Buffer.from(shot.data,'base64'));}
+ const sb=await evaluate(`${T}.state().shellBlast`),x1=(await evaluate(`${T}.state().explosions`)).spawned,j1=(await evaluate(`${T}.creatures.jolt()`))?.kicks??0;
+ console.log(`  the shell's landing: ${JSON.stringify(sb)}; bursts ${JSON.stringify(x1)}; hull jolts ${j0} -> ${j1}`);
+ assert(sb.inside>=3&&sb.hurt===sb.inside,`every live body inside the ${SHELL_BLAST.radius}-cell blast is hurt (${JSON.stringify(sb)})`);
+ assert(sb.killed>=1,'and the shell kills');
+ assert.equal((x1['tank.blast']??0)-(x0['tank.blast']??0),1,'the landing is the 40 mm\'s burst, hotter');
+ assert.equal((x1['tank.flash']??0)-(x0['tank.flash']??0),1,'with its white-hot pop');
+ assert(sb.exploded&&sb.flashed,'both drawn by the explosion adapter');
+ assert.deepEqual(sb.rings,SHELL_BLAST.rings.map(([,,k])=>+(SHELL_BLAST.radius*k).toFixed(3)),'the 40 mm\'s two rings at the shell\'s radius');
+ assert(sb.jolt>0&&j1>j0,`a landing on the hull jolts it (${sb.jolt} m, kicks ${j0} -> ${j1})`);
+ if(shots){
+  // a 40 mm round into a fresh pile: the seat (its briefing skipped), the track over the pile, the Bofors, one short burst; back to the hull,
+  // parked on the round's impact cell, the chase camera; the round's burst 0.25 s in, as the shell's
+  for(const [t,k] of [['amoeba',22],['ghost',8]])await evaluate(`${T}.spawnFodder(${k},${JSON.stringify(t)})`);
+  await until(`${live}.length>=14`,120000);await delay(3000);
+  const pile=await evaluate(`${dense}.cur`);
+  await evaluate(`${T}.showcase.gunship()`);await delay(300);await evaluate('document.querySelector("#gunship-briefing [data-skip]")?.click()');await delay(800);
+  await until(`${T}.state().gunship.seat`,15000);
+  await evaluate(`${T}.showcase.track(${pile});${T}.showcase.gun('bofors');${T}.showcase.aim(-1.3)`);await delay(1500);
+  const cell=await evaluate(`${T}.state().gunship.aimCell`);assert(cell>=0,'the 40 mm has an impact cell');
+  const b0=(await evaluate(`${T}.state().explosions`)).spawned['gunship.bofors']??0;
+  await evaluate(`${T}.gunshipHold(true)`);await delay(300);await evaluate(`${T}.gunshipHold(false)`);
+  await evaluate(`${T}.showcase.leave();${T}.placeTank(${cell});${T}.showcase.follow()`);
+  await until(`(${T}.state().explosions.spawned['gunship.bofors']??0)>${b0}`,15000).catch(async()=>assert.fail(`the 40 mm round lands (${JSON.stringify(await evaluate(`${T}.state().explosions`))})`));
+  await delay(250);const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(shots,'gunship-40mm-burst.png'),Buffer.from(shot.data,'base64'));
+ }
  await finish();
  } else if(args.includes('--crowd-probe')) {
  // THE CROWD'S COST (no assertions): bodies held on the field at each count, the frame, the enemies' CPU, the draw calls, the GPU

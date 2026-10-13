@@ -18,7 +18,13 @@ export const EXPLOSION_USES = Object.freeze({
   // 4 m body's own length: a flash round the tail in the seat, a burst that leaves the feed's ground visible, and from the
   // tank 340 m below still a white-hot spark on the thermal and bloom, with the exhaust plume carrying the read from there.
   'gunship.ignite': Object.freeze({ module: 'rotary-pop', scale: 0.7 }),
-  'tank.shell': Object.freeze({ module: 'bofors-burst', scale: 0.405 }),     // ~4.5 m, the Bofors' ratio kept
+  'tank.shell': Object.freeze({ module: 'bofors-burst', scale: 0.405 }),     // ~4.5 m, the Bofors' ratio kept (since 2026-10-13 the generic medium burst: the back door's rock, the labs)
+  // THE TANK'S SHELL LANDING (owner, 2026-10-13: "make the Tank Shell impact/explosion the same as the 40mm from the Gunship, more intensity, it must
+  // feel powerful"): the 40 mm's module at the shell's blast radius (src/content/tank.js SHELL_BLAST: 3 cells = 30 m, the 40 mm's own ~30 m), `pace`
+  // 0.75 (the adapter ticks it slower: ~1.6 s for the 40 mm's 1.2) and `glow` 1.5 (its flash and fire colours, not its smoke, times 1.5: over white,
+  // so the bloom takes it); with a white-hot pop at the core, a rotary round's at 2 (~9 m, twice as bright)
+  'tank.blast': Object.freeze({ module: 'bofors-burst', scale: 2.7, pace: 0.75, glow: 1.5 }),
+  'tank.flash': Object.freeze({ module: 'rotary-pop', scale: 2, glow: 2 }),
   'quiver.talon': Object.freeze({ module: 'bofors-burst', scale: 0.7 }),     // ~8 m (owner, 2026-10-02: "slightly bigger, more smoke fumes"; was 0.54)
   // THE MORTAR'S SHELL (owner, 2026-10-02): its dot burst keeps the splash's size; this is the smoke over it, the Bofors' burst at ~7 m
   'mortar.shell': Object.freeze({ module: 'bofors-burst', scale: 0.95 }),   // ~10 m: slower and heavier since 2026-10-02 (was 0.62)
@@ -58,6 +64,7 @@ export const EXPLOSION_SCARE = Object.freeze({
   'tank.shell': Object.freeze({ cells: 2, seconds: 1.2 }),
   'quiver.talon': Object.freeze({ cells: 2.5, seconds: 1.5 }),
   'mortar.shell': Object.freeze({ cells: 2.8, seconds: 1.4 }),
+  'tank.blast': Object.freeze({ cells: 5, seconds: 1.8 }),   // the 40 mm's (2026-10-13; was the shell's 2 cells, 1.2 s)
   'lancer.burn': Object.freeze({ cells: 0.6, seconds: 0.5 }),   // a scorch under the beam: a flinch, not a rout
   'strike.orbital': Object.freeze({ cells: 12, seconds: 3 }),
   'laser.ignite': Object.freeze({ cells: 4, seconds: 1.5 }),   // the strike's own flash: a ring of bodies bolts, the pile under the beam stays to burn
