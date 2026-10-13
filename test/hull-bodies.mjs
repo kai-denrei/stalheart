@@ -82,6 +82,36 @@ console.log('PASS the speed a body\'s mass takes, recovering');
 }
 console.log('PASS the family\'s contact: a hull driven through a soft amoeba shoves it clear, a cored drifter stops it and pushes it back; never inside either');
 
+// ---- the drive's own pace: a hull at 28 m/s (0.47 m a 60 Hz frame) meeting a cored drifter, in the game's frame order ----
+// (--pearl-story, 2026-10-13: the hull's first frames against a cored drifter ended 0.26-0.68 m inside it.) Each frame: the drive's pass at the hull's
+// next place, the touch recoiling a cored body as src/fx/creature-enemies.js's sink does (the recoil snaps its hop: the body reshaped after its depth was
+// taken), the pushes taken; the bodies step; the pass after the step. The hull is measured after its drive and at the frame's end: never inside.
+{
+  const K = PEARL_IMPACT.contact;
+  let afterDrive = 0, atEnd = 0, met = 0;
+  for (let trial = 0; trial < 12; trial++) {
+    const fam = createPearlFamily({ parent: new THREE.Group(), tiers: PEARL_BODIES, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set: PEARL_TIERS, tune: PEARL_FOLLOW, impact: PEARL_IMPACT, pace: PEARL_PACE, gait: PEARL_GAIT });
+    const x0 = 20 + trial * 0.37, z0 = ((trial % 5) - 2) * 0.6, d = fam.add('drifter', { x: x0, z: z0, angle: Math.PI, speed: 2 });
+    for (let f = 0; f < 30 + trial; f++) { fam.track(d, { x: x0, z: z0, dt: 1 / 60, speed: 2 }); fam.step(1 / 60); }   // caught at a different point of its hop
+    const box = { x: 0, z: 0, ux: 1, uz: 0, hl: 4.4, hw: 2.19 }, boxOf = () => box, pushes = [];
+    const sink = { push: (hub, dx, dz) => pushes.push(dx, dz), touch: (h, cored) => { if (cored && !h.recoiled) { h.recoiled = true; met++; fam.recoil(h, { dx: 1, dz: 0 }); } }, depth: () => {} };
+    const take = () => { for (let k = 0; k < pushes.length; k += 2) { box.x += pushes[k]; box.z += pushes[k + 1]; } pushes.length = 0; };
+    const inside = () => { let m = 0; fam.hullContact(boxOf, null, { depth: (h, x) => { m = Math.max(m, x); } }); return m; };
+    for (let f = 0; f < 90; f++) {
+      box.x += 28 / 60;   // W held: the hull presses on at 28 m/s
+      fam.hullContact(boxOf, true, sink); take();
+      afterDrive = Math.max(afterDrive, inside());
+      fam.track(d, { x: x0, z: z0, dt: 1 / 60, speed: 2 }); fam.step(1 / 60);
+      fam.hullContact(boxOf, false, sink); take();
+      atEnd = Math.max(atEnd, inside());
+    }
+  }
+  assert.equal(met, 12, 'the hull met the drifter every time');
+  assert(afterDrive <= K.slop + 0.01, `after the drive's pass the hull is not inside the drifter (${afterDrive.toFixed(3)} m)`);
+  assert(atEnd <= K.slop + 0.01, `nor at the frame's end (${atEnd.toFixed(3)} m)`);
+}
+console.log('PASS a hull at 28 m/s meeting a cored drifter: never inside it, after its drive or at the frame\'s end (the recoil\'s reshaped body shoved on)');
+
 // ---- the light tiers (owner, 2026-10-13: "white and yellow, should feel very easy to run over. The threat starts like more of an annoyance.") ----
 {
   const T = PEARL_IMPACT.tiers;

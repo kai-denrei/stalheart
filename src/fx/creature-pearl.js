@@ -276,7 +276,20 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
   // bodies stepped) every body is shoved out of the hull where it stands; `drive` null only measures (the harness: sink.depth(h, depth) for each
   // body overlapping). `sink` { push(hub, dx, dz) the tank's move in a hub's plane, touch(h, cored, r) a live body's contact (the caller books the
   // first one) }. The broad phase is a distance in each hub's plane: a body further than its own reach from the hull's corners is not looked at.
-  const HIT = [0, 0, 0], PADHIT = [0, 0, 0];
+  const HIT = [0, 0, 0], PADHIT = [0, 0, 0], NOW = [0, 0, 0];
+  // the body measured again where its moves left it (a move re-measures its room off the rock, and so how far its squash may spread; the touch's
+  // recoil snaps its hop: either reshapes it after the depth was taken, 2026-10-13, --pearl-story's drifter 0.03 -> 0.1-0.7 m inside after its own shove):
+  // shoved on along the new least move until no more than `keep` of it is inside the box (at most three times: the rock may refuse) -> the depth left,
+  // its unit move in NOW[1], NOW[2]
+  function shoveOut(p, i, box, keep) {
+    const sw = p.swarm;
+    for (let t = 0; ; t++) {
+      boxContact(box, OX, OZ, outline(p, i), NOW);
+      const extra = NOW[0] - keep;
+      if (t === 3 || !(extra > (IMPACT?.contact?.slop ?? 0.02))) return NOW[0];
+      bump(sw, i, NOW[1] * extra, NOW[2] * extra); sw.clearBody(i);
+    }
+  }
   function hullContact(boxOf, drive, sink) {
     let n = 0;
     for (const p of pools.values()) {
@@ -299,7 +312,8 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
         if (!(depth > (IMPACT?.contact?.slop ?? 0.02))) continue;
         const nx = HIT[1], nz = HIT[2];
         if (drive) sink.touch(h, cored && !dying, r, p.id);   // a dying body is mass too (a rammed one, its puddle): it takes speed, it does not stop the hull
-        if (cored && !dying && drive) { sink.push(sw.hub[i], -nx * depth, -nz * depth); continue; }
+        // a cored body stops the hull: it takes back what it drove in; what the touch's recoil grew the body into the hull since is the body's to give
+        if (cored && !dying && drive) { shoveOut(p, i, box, depth); sink.push(sw.hub[i], -nx * depth, -nz * depth); continue; }
         // shoved: the whole body (its origin, anchor and the transfer between), then off the rock; what the rock took back is the tank's. A soft
         // body is swept aside as well, toward the side of the hull it is on (`sweep` of the depth: a plough, not a snowplough pushing it ahead)
         const k = i * 3, x0 = sw.offset[k], z0 = sw.offset[k + 2], vx = -box.uz, vz = box.ux, side = (pos[0] - box.x) * vx + (pos[2] - box.z) * vz >= 0 ? 1 : -1, sweep = (IMPACT?.contact?.sweep ?? 0) * depth * side;
@@ -317,11 +331,14 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
         }
         // pinned against the rock, the hull gives way (driving or not), as much as the body weighs (a light tier's next to nothing, a dying puddle nothing)
         // and at most `pin` m a frame: a blob pressed into a wall slows the hull, it does not throw it back
-        const left = depth - gave, rest = dying ? 0 : Math.min(IMPACT?.contact?.pin ?? Infinity, left * Math.min(1, IMPACT?.tiers?.[p.id]?.mass ?? 1));
-        if (rest > 0.01) sink.push(sw.hub[i], -nx * rest, -nz * rest);
+        // what is left is measured on the body where its moves left it (shoved on if they reshaped it), not taken from the first depth
+        let left = depth - gave, mx = nx, mz = nz;
+        if (left <= 0.01 && shoveOut(p, i, box, 0) > (IMPACT?.contact?.slop ?? 0.02)) { left = NOW[0]; mx = NOW[1]; mz = NOW[2]; }
+        const rest = dying ? 0 : Math.min(IMPACT?.contact?.pin ?? Infinity, left * Math.min(1, IMPACT?.tiers?.[p.id]?.mass ?? 1));
+        if (rest > 0.01) sink.push(sw.hub[i], -mx * rest, -mz * rest);
         // what neither the rock nor the hull gives is the body's: squashed flat against the wall along the contact (round three's squeeze: its room
         // along that axis, the shader's iOffset.y / iAnchor.y), more each frame the hull presses on
-        if (left - rest > 0.01) { const was = sw.room[i] > 0 && sw.room[i] < 1 ? sw.room[i] : 1; sw.room[i] = Math.max(0.15, was - (left - rest) / (1.2 * r)); sw.roomAxis[i] = Math.atan2(nz, nx); sw.roomAcross[i] = 4; p.squashed++; }
+        if (left - rest > 0.01) { const was = sw.room[i] > 0 && sw.room[i] < 1 ? sw.room[i] : 1; sw.room[i] = Math.max(0.15, was - (left - rest) / (1.2 * r)); sw.roomAxis[i] = Math.atan2(mz, mx); sw.roomAcross[i] = 4; p.squashed++; }
         p.shoved++;
       }
     }
