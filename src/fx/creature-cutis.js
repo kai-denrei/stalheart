@@ -12,7 +12,7 @@
 //   track(handle, { x, z, ax, az, lift, pos, dt }) -> boolean follow the record at (x, z), aiming at (ax, az); true when it was re-placed
 //   kill(handle)                                              its death starts (it frees its own slot when done)
 //   free(handle)                                              gone now (a board reset)
-//   step(dt, camera, height)                                  advance and draw (the kit's 1/120 s stepping; the LOD from `camera`)
+//   step(dt, camera, height, cull)                            advance and draw (the kit's 1/120 s stepping; the LOD and culling from `camera`)
 //   setPlanet(R)                                              the planet's radius in plane units (metres)
 //   roots() -> Object3D[]   stats() -> { [tier]: {...} }      dispose()
 import * as THREE from '../../vendor/three.module.js';
@@ -89,7 +89,7 @@ export function createCutisFamily({ parent, tiers, follow, death }) {
     h.dead = true; t.live--; release(t, i);
   }
 
-  function step(dt, camera, height) {
+  function step(dt, camera, height, cull = true) {
     clock += dt;
     for (const t of swarms.values()) {
       const sw = t.swarm;
@@ -99,7 +99,7 @@ export function createCutisFamily({ parent, tiers, follow, death }) {
         if (f >= 1) { t.dying.delete(i); release(t, i); }
       }
       sw.advance(dt);
-      if (camera) t.geo.update(camera, height, 0, false, !!t.def.multicolored);
+      if (camera) t.geo.update(camera, height, 0, false, !!t.def.multicolored, cull);
     }
   }
 

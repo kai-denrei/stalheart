@@ -5,6 +5,10 @@
 // prototype contactDamage and health, ported as data: the game fights on its own ENEMY_SPEC), CORE_SHAPES and coreContact (the kit's tiers.ts; the
 // tier table itself is Stalheart's copy, src/content/pearl-enemies.js). A config without the Core keys (the boss lab's, the creature probe's) is a soft body.
 export const KIT_R0=0.2;
+// ROUND TWO (owner, 2026-10-13: "fps wise we maybe cannot afford them as is"): the swarm geometry's culling and levels (./geometry.js). `high` and `low`
+// a body's radius in device pixels for the high hull and above the third, lowest one; `highCap` the most high-hull bodies a swarm draws in a frame;
+// `hysteresis` the share past a threshold before a body changes level; `horizonRadii` how tall a body counts (in radii) when it sinks below the horizon.
+export const CUTIS_LOD={high:70,low:12,highCap:24,hysteresis:.12,horizonRadii:3};
 export const DEFAULT_CONFIG={"cycleDuration":4,"aggression":2,"reach":15,"capAngle":10,"seekSweep":0.85,"seekCount":3,"seekRate":1,"transferAcceleration":1,"neckThin":0.5,"delaySpread":0.25,"cubenessPeak":0.9,"wobble":0.5,"r0":0.2,"noiseAmp":0.2,"breathRate":1.5,"cubenessRest":0.25,"pulseSpeed":2,"veinWidth":0.1,"skinTint":12165524,"veinTint":3679278,"pulseTint":15497546,"separation":2,"alignment":0.35,"cohesion":0.15,membraneOpacity:1,coreShape:0,coreSize:.28,pearlVariant:0,coreTint:0xff242c,contactDamage:0,health:60};
 export const CUTIS_CONTROLS=[
   {key:'cycleDuration',label:'Cycle duration',group:'Hunt',min:.5,max:10,step:.05,unit:'s'},

@@ -48,7 +48,7 @@ export function tierSpec(family, tier) {
 
 // host: { scene, root, flags ({ creatures, ramp }), camera, canvasHeight(), enemies, heart() -> [unit point, cell, cellSide] | null,
 // spawn(entry) -> record | null (the enemy loop's own release), field() the board's dungeon ({ distToHeart, tags }),
-// perf() the perf overlay's sample, perfOn(), damage(e, dmg) the game's damageEnemy (the harness), ground() -> { adj, centers, cellSide,
+// perf() the perf overlay's sample, perfOn(), wide() a second view of the scene is up (the story monitor: the bodies are not culled to the main camera), damage(e, dmg) the game's damageEnemy (the harness), ground() -> { adj, centers, cellSide,
 // open(ci), inside(ci), gates [cells], sockets [cells], canBuild(ci) } | null (the story's base), build(key, ci) -> tower | null the
 // chapters' own build (commitTower) }
 export function createCreatureEnemies(host) {
@@ -161,7 +161,7 @@ export function createCreatureEnemies(host) {
     // once a frame after the walk: the bodies follow their records and draw; the probe measures and tops up
     step(dt) {
       standGarrison();
-      if (bodies) bodies.step(dt, host.enemies, host.camera, host.canvasHeight());
+      if (bodies) bodies.step(dt, host.enemies, host.camera, host.canvasHeight(), !host.wide?.());
       probe?.step(dt);
     },
     // ?creatures: a sector wave's queue entries with the tier's share of its single bodies replaced, spread through the wave (not the

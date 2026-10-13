@@ -13,6 +13,8 @@ export function createStoryMonitor(root) {
   let shown = 0, linger = 0;
   return {
     shown: () => shown,
+    // the box is up (its last frame drew a second view of the scene: src/fx/creature-bodies.js stops frustum-culling for the main camera only)
+    on: () => box.style.display !== 'none',
     // mesh: a round in flight (the feed rides behind it); otherwise optic: { from, pos } frames the tracked target through a long lens,
     // fitting `span` scene units (default 1.2 cells) with the eye `lift` above `from` (default 0.6 cells); an optic's own `fov` (degrees,
     // vertical) replaces that 3-30 degree lens (the boss lab's camera on Isao, 2026-10-09; the game's callers give none)

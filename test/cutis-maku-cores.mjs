@@ -101,9 +101,14 @@ console.log('PASS bendPoint is PLANET_BEND term for term, on the sphere');
   for (let j = 0; j < 3; j++) close(v.getComponent(j), want[j], 1e-3, 'the instance sits on the pose');
   assert(cores.mesh.material instanceof THREE.MeshPhysicalMaterial && cores.mesh.material.clearcoat === 1 && cores.mesh.material.transparent, 'the pearl material');
   cores.dispose();
+  // round two: each pearl at its body's level (./geometry.js levelOf): the kit's sphere under a high hull, a coarse one under the others, none culled
+  { sw.active[1] = 1; const sw3 = sw; sw3.place(2, 1, 1, 0); const levelOf = new Uint8Array(sw3.capacity); levelOf.set([0, 2, 3]); const lod = createHardCores(sw3, { planetR: R, levelOf });
+    lod.update(); assert.deepEqual(lod.meshes.map((x) => x.count), [1, 1], 'one fine, one coarse, the culled one none'); assert.equal(lod.count, 2);
+    assert(lod.meshes[1].geometry.getAttribute('position').count < lod.meshes[0].geometry.getAttribute('position').count / 3, 'the coarse sphere');
+    close(lod.meshes[1].geometry.getAttribute('iFade').array[0], sw3.life[1 * 4 + 2], 1e-6, 'the coarse one fades with its body'); lod.dispose(); }
   const soft = new CutisSwarm({ ...DEFAULT_CONFIG }, { capacity: 2 }); soft.populate(2); const none = createHardCores(soft); none.update(); assert.equal(none.mesh.count, 0, 'a soft swarm draws no cores'); none.dispose();
 }
-console.log('PASS the drawn core: the contact centre, bent as the shell, deflated, faded and sunk with its body; the pearl material');
+console.log('PASS the drawn core: the contact centre, bent as the shell, deflated, faded and sunk with its body; the pearl material; its resolution by its body\'s level');
 
 // ---- the materials: a config without the Core keys reads as the opaque soft body it was ----
 {
@@ -114,7 +119,7 @@ console.log('PASS the drawn core: the contact centre, bent as the shell, deflate
   a.dispose();
   const sw = new CutisSwarm({ ...DEFAULT_CONFIG, r0: 2, coreShape: 3 }, { capacity: 4 }); sw.populate(3);
   const geo = createSwarmGeometry(sw, { planetR: 690 }), cam = new THREE.PerspectiveCamera(50, 1, .1, 1e5); cam.position.set(0, 40, 60); cam.updateMatrixWorld();
-  geo.update(cam, 800); assert(geo.levels.every((l) => !l.core.visible), 'a cored body hides the soft inner core'); assert(geo.levels.some((l) => l.membrane.visible));
+  geo.update(cam, 800); assert(geo.levels.every((l) => !l.core?.visible), 'a cored body hides the soft inner core'); assert(geo.levels.some((l) => l.membrane.visible));
   geo.dispose();
 }
 console.log('PASS materials: the soft default, the cored uniforms; the soft inner core hidden under a hard one');

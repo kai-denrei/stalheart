@@ -17,7 +17,7 @@
 // flattening body and fades with it; then the slot is free.
 //
 // add(type, { x, z, angle, lift, opacity, grow, members, speed }) -> handle | null    track(handle, { x, z, ax, az, lift, dt, opacity, grow, members, speed })
-// kill(handle)   free(handle)   step(dt, camera, height)   setPlanet(R)   roots()   stats()   view(handle)   dispose()
+// kill(handle)   free(handle)   step(dt, camera, height, cull)   setPlanet(R)   roots()   stats()   view(handle)   dispose()
 import * as THREE from '../../vendor/three.module.js';
 import { CutisSwarm } from './cutis-maku/swarm.js';
 import { DEFAULT_CONFIG } from './cutis-maku/config.js';
@@ -42,8 +42,8 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune }) {
     if (p) return p;
     const def = byId[id], config = { ...DEFAULT_CONFIG, ...def.values, r0: baseR0[id], separation: tune.separation ?? DEFAULT_CONFIG.separation };   // the neighbour push eased: the records space themselves
     const swarm = new CutisSwarm(config, { capacity: tune.capacity[id] ?? 600 });
-    const geo = createSwarmGeometry(swarm, { planetR }); geo.group.name = `Pearl ${id}`; group.add(geo.group);
-    const cores = def.cored ? createHardCores(swarm, { planetR }) : null;
+    const geo = createSwarmGeometry(swarm, { planetR, lod: tune.lod }); geo.group.name = `Pearl ${id}`; group.add(geo.group);
+    const cores = def.cored ? createHardCores(swarm, { planetR, levelOf: geo.levelOf }) : null;
     if (cores) { cores.group.name = `Pearl ${id} cores`; group.add(cores.group); }
     p = { id, def, swarm, geo, cores, free: [], next: 0, dying: new Map(), live: 0, peak: 0, placed: 0, replaced: 0, deaths: 0, full: 0, shed: 0 };
     pools.set(id, p);
@@ -128,7 +128,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune }) {
     h.dead = true; h.slots = [];
   }
 
-  function step(dt, camera, height) {
+  function step(dt, camera, height, cull = true) {
     clock += dt;
     for (const p of pools.values()) {
       const sw = p.swarm;
@@ -138,7 +138,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune }) {
         if (f >= 1) { p.dying.delete(i); release(p, i); }
       }
       sw.advance(dt);
-      if (camera) { p.geo.update(camera, height, 0, false, false); p.cores?.update(); }
+      if (camera) { p.geo.update(camera, height, 0, false, false, cull); p.cores?.update(); }
     }
   }
 
@@ -151,8 +151,9 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune }) {
   return {
     add, track, kill, free, step, setPlanet,
     roots: () => [group],
-    // each tier present: bodies up, dying, the most up at once, placed, re-placed on the leash, deaths, squad members shed, refused for want of a slot
-    stats: () => Object.fromEntries([...pools.values()].map((p) => [p.id, { live: p.live, dying: p.dying.size, peak: p.peak, placed: p.placed, replaced: p.replaced, deaths: p.deaths, shed: p.shed, full: p.full, capacity: p.swarm.capacity, r0: p.swarm.config.r0, cored: p.def.cored, cores: p.cores?.mesh.count ?? 0 }])),
+    // each tier present: bodies up, dying, the most up at once, placed, re-placed on the leash, deaths, squad members shed, refused for want of a slot,
+    // the pearls drawn and the bodies drawn at each level [high, low, lowest, culled] (src/fx/cutis-maku/geometry.js)
+    stats: () => Object.fromEntries([...pools.values()].map((p) => [p.id, { live: p.live, dying: p.dying.size, peak: p.peak, placed: p.placed, replaced: p.replaced, deaths: p.deaths, shed: p.shed, full: p.full, capacity: p.swarm.capacity, r0: p.swarm.config.r0, cored: p.def.cored, cores: p.cores?.count ?? 0, lod: [...p.geo.lodCounts] }])),
     // one body's view (the harness): its first member's plane centre, radius, life [lift, deflate, opacity], hop stage, the pearl's pose (plane, unbent)
     view(h) {
       if (!h) return null;

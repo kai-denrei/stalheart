@@ -30,34 +30,47 @@ export function corePose(swarm, i, planetR = 0, out = [0, 0, 0, 0]) {
   return out;
 }
 
-export function createHardCores(swarm, { planetR = 0 } = {}) {
-  const geometry = new THREE.SphereGeometry(1, 24, 16);
-  const fade = new THREE.InstancedBufferAttribute(new Float32Array(swarm.capacity), 1).setUsage(THREE.DynamicDrawUsage);
-  geometry.setAttribute('iFade', fade);
+// ROUND TWO (owner, 2026-10-13, "fps wise we maybe cannot afford them as is"): `levelOf` (./geometry.js, each instance's level this frame) picks the
+// pearl's resolution: the kit's sphere (24 x 16) under a high-hull body, a 10 x 7 one under the others, none under a culled one. Without it every
+// pearl is drawn at the kit's resolution, as before.
+export function createHardCores(swarm, { planetR = 0, levelOf = null } = {}) {
+  const fade = [0, 1].map(() => new THREE.InstancedBufferAttribute(new Float32Array(swarm.capacity), 1).setUsage(THREE.DynamicDrawUsage));
+  const geometries = [new THREE.SphereGeometry(1, 24, 16), new THREE.SphereGeometry(1, 10, 7)];
+  geometries.forEach((g, k) => g.setAttribute('iFade', fade[k]));
   const material = new THREE.MeshPhysicalMaterial({ color: swarm.config.coreTint ?? 0xff242c, metalness: 0, roughness: .17, clearcoat: 1, clearcoatRoughness: .12, emissive: 0x000000, transparent: true });
   material.onBeforeCompile = (shader) => {
     shader.vertexShader = 'attribute float iFade;\nvarying float vFade;\n' + shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vFade = iFade;');
     shader.fragmentShader = 'varying float vFade;\n' + shader.fragmentShader.replace('#include <dithering_fragment>', '#include <dithering_fragment>\n  gl_FragColor.a *= vFade;');
   };
   material.customProgramCacheKey = () => 'cutis-hard-core';
-  const mesh = new THREE.InstancedMesh(geometry, material, swarm.capacity);
-  mesh.frustumCulled = false; mesh.renderOrder = 1; mesh.count = 0; mesh.visible = false; mesh.name = 'Rigid hard cores';
-  const group = new THREE.Group(); group.name = 'Rigid hard cores'; group.add(mesh);
-  const pose = new THREE.Object3D(), at = [0, 0, 0, 0];
+  const meshes = geometries.map((g) => {
+    const m = new THREE.InstancedMesh(g, material, swarm.capacity);
+    m.frustumCulled = false; m.renderOrder = 1; m.count = 0; m.visible = false; m.name = 'Rigid hard cores';
+    return m;
+  });
+  const mesh = meshes[0];
+  const group = new THREE.Group(); group.name = 'Rigid hard cores'; group.add(...meshes);
+  const pose = new THREE.Object3D(), at = [0, 0, 0, 0], counts = [0, 0];
   let planet = planetR > 0 ? planetR : 0;
-  /** Place every active instance's core (a config without a core shape draws none). */
+  /** Place every active, visible instance's core (a config without a core shape draws none). */
   function update() {
-    let count = 0;
+    counts[0] = counts[1] = 0;
     if ((swarm.config.coreShape ?? 0) >= 1) {
       for (let i = 0; i < swarm.count; i++) {
         if (!swarm.active[i]) continue;
+        const level = levelOf ? levelOf[i] : 0;
+        if (level > 2) continue;
+        const k = level === 0 ? 0 : 1, n = counts[k]++;
         corePose(swarm, i, planet, at);
         pose.position.set(at[0], at[1], at[2]); pose.scale.setScalar(at[3]); pose.rotation.set(.2, swarm.seed[i] + swarm.time * .18, .16); pose.updateMatrix();
-        mesh.setMatrixAt(count, pose.matrix); fade.array[count] = swarm.life[i * 4 + 2]; count++;
+        meshes[k].setMatrixAt(n, pose.matrix); fade[k].array[n] = swarm.life[i * 4 + 2];
       }
     }
-    mesh.count = count; mesh.visible = count > 0; mesh.instanceMatrix.needsUpdate = true;
-    fade.clearUpdateRanges(); fade.addUpdateRange(0, count); fade.needsUpdate = true;
+    meshes.forEach((m, k) => {
+      m.count = counts[k]; m.visible = counts[k] > 0;
+      if (!counts[k]) return;
+      m.instanceMatrix.needsUpdate = true; fade[k].clearUpdateRanges(); fade[k].addUpdateRange(0, counts[k]); fade[k].needsUpdate = true;
+    });
   }
-  return { group, mesh, update, setPlanetR: (R) => { planet = R > 0 ? R : 0; }, get planetR() { return planet; }, dispose: () => { geometry.dispose(); material.dispose(); mesh.dispose(); } };
+  return { group, mesh, meshes, update, get count() { return counts[0] + counts[1]; }, setPlanetR: (R) => { planet = R > 0 ? R : 0; }, get planetR() { return planet; }, dispose: () => { geometries.forEach((g) => g.dispose()); material.dispose(); meshes.forEach((m) => m.dispose()); } };
 }

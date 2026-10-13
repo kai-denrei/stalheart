@@ -161,13 +161,13 @@ assert.equal(phaseState(.3), 'EXTEND');
 {
   const config = { ...DEFAULT_CONFIG, r0: 1.5 }, swarm = new CutisSwarm(config, { capacity: 20 });
   const model = createSwarmGeometry(swarm, { planetR: 750 });
-  assert.equal(model.planetR, 750); assert.equal(model.levels.length, 2); assert(model.group.children.includes(model.shadows), 'the shadow is part of the group');
+  assert.equal(model.planetR, 750); assert.equal(model.levels.length, 3); assert(model.group.children.includes(model.shadows), 'the shadow is part of the group');
   const sizes = { iOffset: 3, iHeading: 3, iAnchor: 3, iState: 4, iParams: 4, iProbe0: 3, iProbe1: 3, iProbe2: 3, iLife: 4 };
   for (const level of model.levels) {
     assert.deepEqual(Object.keys(level.attributes).sort(), Object.keys(sizes).sort());
-    for (const [name, size] of Object.entries(sizes)) { assert.equal(level.attributes[name].itemSize, size, name); assert.equal(level.attributes[name].array.length, 20 * size, name); assert(level.geometry.getAttribute(name) === level.attributes[name] && level.coreGeometry.getAttribute(name) === level.attributes[name]); }
-    assert(level.geometry.index && level.geometry.getAttribute('position').count > 500, 'a closed indexed hull');
-    for (const m of [level.material, level.coreMaterial]) {
+    for (const [name, size] of Object.entries(sizes)) { assert.equal(level.attributes[name].itemSize, size, name); assert.equal(level.attributes[name].array.length, 20 * size, name); assert(level.geometry.getAttribute(name) === level.attributes[name] && (!level.coreGeometry || level.coreGeometry.getAttribute(name) === level.attributes[name])); }
+    assert(level.geometry.index && level.geometry.getAttribute('position').count > 150, 'a closed indexed hull');
+    for (const m of [level.material, level.coreMaterial].filter(Boolean)) {
       assert(m.emissive instanceof THREE.Color && m.emissiveIntensity === 1 && m.uniforms.uHeat.value === m.emissive, 'thermal binding'); assert.equal(m.uniforms.uPlanetR.value, 750); assert(m.transparent);
       const hot = new Map(); heatMaterial(m, 1, hot); assert.equal(m.uniforms.uHeat.value.r, 1, 'heatMaterial reaches the shader'); restoreMaterial(m, hot); assert.equal(m.uniforms.uHeat.value.r, 0);
     }
@@ -177,17 +177,33 @@ assert.equal(phaseState(.3), 'EXTEND');
   // a group on the sphere's surface, far from the world origin: the LOD is measured locally
   model.group.position.set(0, 750, 0); model.group.updateMatrixWorld(true);
   swarm.reset(10); swarm.setTarget(0, 20, 0);
-  swarm.place(2, 0, 0, 0); swarm.place(5, 300, 0, 1); swarm.life.set([-6, .5, .3, 0], 5 * 4);
+  swarm.place(2, 0, 0, 0); swarm.place(5, 0, -60, 1); swarm.life.set([-6, .5, .3, 0], 5 * 4);
+  swarm.place(6, 300, 0, 0); swarm.place(7, 0, 50, 0);   // round two: beyond the horizon from 3 m up, and behind the camera
   const camera = new THREE.PerspectiveCamera(40, 1, .1, 3000); camera.position.set(0, 750 + 3, 8); camera.updateMatrixWorld(true);
   model.update(camera, 800);
-  const counts = model.levels.map(l => l.count); assert.equal(counts[0] + counts[1], 2, 'only the active two are packed'); assert.equal(counts[0], 1, 'the near one is high LOD (locally, not 750 m from the world origin)'); assert.equal(counts[1], 1);
-  assert.equal(model.shadows.count, 2); assert(model.levels.every(l => l.membrane.count === l.count && l.core.count === l.count && l.membrane.visible === (l.count > 0)));
+  const counts = model.levels.map(l => l.count); assert.equal(counts[0] + counts[1] + counts[2], 2, 'only the active, visible two are packed'); assert.equal(counts[0], 1, 'the near one is high LOD (locally, not 750 m from the world origin)'); assert.equal(counts[1], 1);
+  assert.deepEqual(model.lodCounts, [1, 1, 0, 2], 'the one over the horizon and the one behind are culled'); assert.equal(model.levelOf[6], 3); assert.equal(model.levelOf[7], 3);
+  assert.equal(model.shadows.count, 2); assert(model.levels.every(l => l.membrane.count === l.count && (!l.core || l.core.count === l.count) && l.membrane.visible === (l.count > 0)));
+  assert.equal(model.levels[2].core, null, 'no inner core at the lowest level');
+  assert(model.levels[0].coreGeometry.index === model.levels[1].geometry.index && model.levels[1].coreGeometry.index === model.levels[2].geometry.index, 'each inner core one resolution down');
+  const tris = model.levels.map((l) => l.geometry.index.count / 3); assert(tris[0] > 10000 && tris[1] > 2000 && tris[2] < 600, `hulls ${tris}`);
+  // without culling (a second view up) all four are packed, at their levels
+  model.update(camera, 800, 0, false, false, false); assert.equal(model.lodCounts[3], 0); assert.equal(model.levels[0].count + model.levels[1].count + model.levels[2].count, 4);
+  // the high cap: two bodies over the threshold, a cap of one keeps the larger
+  { const capped = createSwarmGeometry(swarm, { planetR: 750, lod: { highCap: 1 } }); capped.group.position.set(0, 750, 0); capped.group.updateMatrixWorld(true); swarm.place(5, 0, -2, 1);
+    capped.update(camera, 800); assert.equal(capped.levels[0].count, 1, 'one high body'); assert.equal(capped.levelOf[2], 0, 'the nearer kept high'); assert.equal(capped.levelOf[5], 1, 'the other dropped a level'); capped.dispose();
+    swarm.place(5, 0, -60, 1); swarm.life.set([-6, .5, .3, 0], 5 * 4); }
+  // the hysteresis: a body just under the high threshold stays high, one just over it does not come up from low
+  { const h = createSwarmGeometry(swarm, { planetR: 750, lod: { high: 100, hysteresis: .2 } }); h.group.position.set(0, 750, 0); h.group.updateMatrixWorld(true); h.update(camera, 800);
+    camera.position.set(0, 750 + 3, 8 + 3); camera.updateMatrixWorld(true); h.update(camera, 800); assert.equal(h.levelOf[2], 0, 'still high just under the threshold'); h.dispose();
+    camera.position.set(0, 750 + 3, 8); camera.updateMatrixWorld(true); }
+  model.update(camera, 800);
   const high = model.levels[0].attributes, low = model.levels[1].attributes;
   assert.deepEqual(Array.from(high.iLife.array.slice(0, 4)), [0, 0, 1, 0]); const packed = Array.from(low.iLife.array.slice(0, 4)).map(v => Math.round(v * 100) / 100); assert.deepEqual(packed, [-6, .5, .3, 0], 'life travels with its instance');
-  close(high.iOffset.array[0], 0, 0, 'packed offset'); close(low.iOffset.array[0], 300, 1e-4, 'packed offset');
+  close(high.iOffset.array[0], 0, 0, 'packed offset'); close(low.iOffset.array[2], -60, 1e-4, 'packed offset');
   assert.equal(high.iState.array[2], swarm.scale[2]); close(model.shadows.geometry.getAttribute('iFade').array[0], 1, 1e-6, 'full shadow'); assert(model.shadows.geometry.getAttribute('iFade').array[1] < .3 * .7, 'a faded, sunk, flattened one fades its shadow');
   // none active: nothing drawn
-  swarm.reset(10); model.update(camera, 800); assert.equal(model.levels[0].count + model.levels[1].count, 0); assert.equal(model.shadows.visible, false);
+  swarm.reset(10); model.update(camera, 800); assert.equal(model.levels[0].count + model.levels[1].count + model.levels[2].count, 0); assert.equal(model.shadows.visible, false);
   // the shadow material and the strings
   const shadow = createShadowMaterial(); assert.equal(shadow.uniforms.uPlanetR.value, 0); shadow.dispose();
   for (const text of [MEMBRANE_VERT, MEMBRANE_FRAG]) assert(!/\$\{|undefined/.test(text), 'the GLSL is whole');

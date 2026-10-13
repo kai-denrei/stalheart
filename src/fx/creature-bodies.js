@@ -6,7 +6,7 @@
 // body adapter (src/fx/creature-cutis.js, src/fx/creature-reed.js) behind one interface:
 //
 //   family.add(tier, { x, z, angle, lift, pos, apos }) -> handle | null    family.track(handle, { x, z, ax, az, lift, pos, apos, dt }) -> re-placed?
-//   family.kill(handle)   family.free(handle)   family.step(dt, camera, height)   family.setPlanet(R)
+//   family.kill(handle)   family.free(handle)   family.step(dt, camera, height, cull)   family.setPlanet(R)
 //   family.roots() -> Object3D[]   family.stats()   family.view(handle)   family.dispose()
 //
 // (x, z) are metres in the plane of the bodies' root: the heart's surface point, +Y the normal, the azimuthal-equidistant projection round
@@ -96,8 +96,9 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
   }
 
   // once a frame, after the records have walked: every body follows its record; a body whose record left the list without dying (the
-  // board cleared) goes; then each family steps and draws for `camera` (`height` the canvas's device pixels, the kit's LOD)
-  function step(dt, enemies, camera, height) {
+  // board cleared) goes; then each family steps and draws for `camera` (`height` the canvas's device pixels, the kit's LOD; `cull` false while a second
+  // view of the scene is up, so a body off the main camera's view still draws there)
+  function step(dt, enemies, camera, height, cull = true) {
     place();
     if (!frame) return;
     stamp++;
@@ -109,7 +110,7 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
       if (adapters.get(b.family).track(b.h, { x, z, ax, az, lift: liftOf(e, b.r0), pos: e.pos, apos, dt, ...lookOf(e) })) replaced++;
     }
     for (const [e, b] of live) if (b.stamp !== stamp) { live.delete(e); adapters.get(b.family).free(b.h); }
-    for (const a of adapters.values()) a.step(dt, camera, height);
+    for (const a of adapters.values()) a.step(dt, camera, height, cull);
   }
 
   // a family's view with its body's unit `point` as a plane `centre` (the harness compares it with the record's)

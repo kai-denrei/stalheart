@@ -72,8 +72,12 @@ export const PEARL_BODY = freeze({ metresPerSize: 5.6, boss: 1.5 });
 // from the heart; a record coming up further than `maxArc` radians round the planet (the canyon's swarm at the far side) keeps its dot cloud.
 // `opacityRef`: a dot cloud's settled opacity (the emergence's 0.95): the cloak's and the emergence's opacity on the record's stand-in over it is the body's.
 // `capacity`: instances a tier's swarm holds (the crowd cap allows up to 3500 records, a squad is five bodies).
+// `lod` (round two, owner 2026-10-13: "fps wise we maybe cannot afford them as is"): each tier's swarm geometry's culling and levels over the kit's
+// CUTIS_LOD (src/fx/cutis-maku/geometry.js): the high hull only over `high` device pixels of radius and for at most `highCap` bodies a tier (eight tiers),
+// the lowest hull under `low`; bodies outside the view or below the horizon are not drawn.
 export const PEARL_FOLLOW = freeze({
   keep: 0.8, seekEfficiency: [1, 0.35, 0.75], floor: 0.1, leadHops: 0.6, leashSeconds: 1.5, separation: 0.5,
   squad: { gap: 2.2, stagger: 2 }, maxArc: 1.2, opacityRef: 0.95,
   capacity: { white: 3000, yellow: 2000, blue: 2000, orange: 1000, green: 1000, purple: 800, brown: 600, black: 600 },
+  lod: { high: 70, low: 12, highCap: 12, hysteresis: 0.12, horizonRadii: 3 },
 });
