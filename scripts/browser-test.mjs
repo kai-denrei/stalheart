@@ -2028,23 +2028,23 @@ try{
  console.log(`  tiers: ${tiers.map(t=>`${t} ${fams[t].live}${fams[t].cored?` (${fams[t].cores} pearls)`:''} r0 ${fams[t].r0.toFixed(1)}`).join(', ')}; by type ${JSON.stringify(st.byType)}; dressed ${st.dressed}, undressed ${st.undressed}`);
  assert.equal(st.undressed,0,'no record made again as a dot cloud for want of a body');
  // ROUND TWO, the far side (owner, 2026-10-13: "there are still a mix of half-dotted and new cutis enemies"): records at the antipode's open cell come up
- // as Pearl bodies on the antipode's own hub (the twelve hubs, src/domain/surface-hubs.js), on their records
+ // as Pearl bodies on the antipode's own hub (hub 1 of the twelve, src/domain/surface-hubs.js), on their records
  const farN=await evaluate(`${T}.creatures.spawnFar('amoeba',4)+${T}.creatures.spawnFar('drifter',2)`);assert.equal(farN,6,'six records at the antipode');
- const farV=await evaluate(`(()=>{const h=${T}.state().creatureProbe.bodies;const far=${T}.creatures.pearls().filter(e=>{const v=${T}.creatures.view(e);return v&&v.hub!==0;});return {far:far.length,hubs:[...new Set(far.map(e=>${T}.creatures.view(e).hub))],off:Math.max(...far.map(e=>{const v=${T}.creatures.view(e);return Math.hypot(v.centre[0]-v.record[0],v.centre[1]-v.record[1])/v.radius;})),onHub:h.onHub};})()`);
+ const farV=await evaluate(`(()=>{const h=${T}.state().creatureProbe.bodies;const far=${T}.creatures.pearls().filter(e=>{const v=${T}.creatures.view(e);return v&&v.hub===1;});return {far:far.length,hubs:[...new Set(far.map(e=>${T}.creatures.view(e).hub))],off:Math.max(...far.map(e=>{const v=${T}.creatures.view(e);return Math.hypot(v.centre[0]-v.record[0],v.centre[1]-v.record[1])/v.radius;})),onHub:h.onHub};})()`);
  console.log(`  the far side: ${JSON.stringify(farV)}`);
- assert(farV.far>=6&&farV.hubs.length>=1&&farV.off<3,`the antipode's records are bodies on their own hub, on their records (${JSON.stringify(farV)})`);
+ assert(farV.far>=6&&farV.hubs[0]===1&&farV.off<3,`the antipode's records are bodies on their own hub, on their records (${JSON.stringify(farV)})`);
  const st2=await evaluate(P);assert(Object.entries(st2.byType).every(([t,o])=>!o.tier||o.dots===0)&&st2.undressed===0,`no mapped type is a dot cloud, the far side included (${JSON.stringify(st2.byType)})`);
  // ROUND TWO, the rock and the walls (owner: "we need a method to have their feeling/scouting appendage be constrained by the rocks/walls"): over ten
  // seconds of the sector, no live body's seeking stalk (with most of its cup) or anchor crosses a BLOCKED cell (src/domain/body-reach.js)
  const audits=[];for(let k=0;k<5;k++){audits.push(await evaluate(`${T}.creatures.audit()?.pearl`));await delay(2000);}
  console.log(`  stalks against the rock: ${audits.map(a=>a?`${a.bodies} bodies ${a.stalks} stalks ${a.crossing} crossing ${a.inRock} in the rock`:'-').join(' | ')}; reach queries ${await evaluate(`${P}.bodies.reaches`)}`);
- assert(audits.every(a=>a&&a.bodies>0&&a.crossing===0),`no stalk or anchor crosses the rock or a wall (${JSON.stringify(audits)})`);
+ console.log(`  crossings: ${JSON.stringify(audits.flatMap(a=>a?.what??[]))}`);assert(audits.every(a=>a&&a.bodies>0&&a.crossing===0),`no stalk or anchor crosses the rock or a wall (${JSON.stringify(audits)})`);
  assert(Object.entries(st.byType).every(([t,o])=>!o.tier||o.dots===0),`no mapped type is a dot cloud (${JSON.stringify(st.byType)})`);
  const clouds=await evaluate(`${T}.creatures.pearls().filter(e=>e.obj.userData.kind!=='creature').length`);assert.equal(clouds,0,'every Pearl record carries the stand-in, not a cloud');
  const kept=await evaluate(`(()=>{const p=${T}.creatures.pearls();return p.every(e=>e.spec.hp>0&&e.spec.body==='pearl'&&e.spec.pearl&&e.tier===e.type)&&p.some(e=>e.type==='phantom'&&e.spec.cloaked)&&p.some(e=>e.type==='rolling'&&e.spec.heavy&&!e.spec.rammable)&&p.some(e=>e.type==='amoeba'&&e.spec.rammable);})()`);
  assert(kept,'the records keep their types and their specs');
  // a body on its record, then the damage: a rolling mine (4 hp) hit once shrinks with its hit points, then dies and deflates
- const pick=`${T}.creatures.pearls().find(e=>e.type==='rolling'&&!(e.emergeAge<1.2)&&${T}.creatures.view(e)?.active)`;
+ const pick=`${T}.creatures.pearls().find(e=>e.type==='rolling'&&!e.members&&!(e.emergeAge<1.2)&&${T}.creatures.view(e)?.active)`;   /* not a squad: a squad's record does not shrink with its hit points */
  await until(`!!${pick}`,60000);
  const a=await evaluate(`(()=>{const e=${pick};window.__pw=e;const v=${T}.creatures.view(e);${T}.creatures.hurt(e,1);return {hp:e.hp,max:e.spec.hp,alive:e.alive,view:v};})()`);
  assert(a.alive&&a.hp<a.max&&a.view.cored&&a.view.core,`a hit leaves the rolling mine alive and hurt (${JSON.stringify(a)})`);

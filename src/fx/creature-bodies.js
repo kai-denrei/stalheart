@@ -188,7 +188,7 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
     // one record's body (the harness): its family's view of it, plus where its record is in its hub's plane
     view: (e) => { const b = live.get(e); return b ? { ...seen(adapters.get(b.family).view(b.h)), record: frame ? planeOf(e.pos, b.hub) : null, hub: b.hub } : null; },
     // the harness: every family's stalks against the board's BLOCKED cells (a family that keeps none answers null)
-    audit() { refreshBoard(); if (!query) return null; const clear = (hub, cell, x, z, dx, dz, len) => hubs.reach(hub, x, z, dx, dz, len, cell) >= len - 1e-6;
+    audit() { refreshBoard(); if (!query) return null; const clear = (hub, cell, x, z, dx, dz, len) => (clear.free = hubs.reach(hub, x, z, dx, dz, len, cell)) >= len - 1e-6;
       const inRock = (hub, cell, x, z) => query.at(toSphere[hub] ?? toSphere[0], x, z, cell >= 0 ? cell : query.cell);
       return Object.fromEntries([...adapters].filter(([, a]) => a.audit).map(([k, a]) => [k, a.audit(clear, inRock)])); },
     // a dead record's body by its handle, kept by the caller before the kill (the harness watches a death play out)

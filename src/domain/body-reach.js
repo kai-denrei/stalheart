@@ -7,8 +7,8 @@
 //                                                  sampled at whole multiples of `step` and at `max` (the start itself is not tested; the grid does not
 //                                                  depend on `max`, so a shorter look along the same ray samples a subset of a longer one's points), the
 //                                                  boundary refined by bisection
-//   nearestCellFrom(adj, centers, start, p)       the cell whose centre is nearest the unit point p, by greedy descent over the graph from `start`
-//                                                  (the samples along a stalk are a few metres apart: a step or two each)
+//   nearestCellFrom(adj, centers, start, p)       the cell whose centre is nearest the unit point p, by greedy descent over the graph from `start`,
+//                                                  the neighbours' neighbours looked at before it stops (the samples along a stalk are a step or two apart)
 //   createReachQuery({ adj, centers, blocked, step })  -> query(toSphere, x, z, dx, dz, max, hint): freeReach in a plane whose points map onto the
 //                                                  sphere through toSphere(x, z) -> unit point, `hint` a cell near (x, z) (the body's record's); the
 //                                                  query keeps the last cell it found as the next walk's start (query.cell);
@@ -41,6 +41,8 @@ export function nearestCellFrom(adj, centers, start, p) {
   for (let guard = 0; guard < 512; guard++) {
     let next = cur;
     for (const nb of adj[cur]) { const d = dotN(centers[nb], p); if (d > best) { best = d; next = nb; } }
+    // a local best of the graph's irregular cells is not always the nearest: the neighbours' neighbours get a look before the walk stops
+    if (next === cur) for (const nb of adj[cur]) for (const nn of adj[nb]) { const d = dotN(centers[nn], p); if (d > best) { best = d; next = nn; } }
     if (next === cur) return cur;
     cur = next;
   }

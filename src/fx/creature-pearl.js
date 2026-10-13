@@ -264,7 +264,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
           for (const a of sw.getSeekingAnchors(i)) {
             const d = Math.hypot(a.x - x, a.z - z);
             out.stalks++;
-            if (d > 1e-6 && !clear(sw.hub[i], h.cell, x, z, (a.x - x) / d, (a.z - z) / d, d + margin)) out.crossing++;
+            if (d > 1e-6 && !clear(sw.hub[i], h.cell, x, z, (a.x - x) / d, (a.z - z) / d, d + margin)) { out.crossing++; if ((out.what ??= []).length < 4) out.what.push({ tier: p.id, type: h.type, d: +d.toFixed(2), margin: +margin.toFixed(2), free: +clear.free.toFixed(2), stage: sw.getState(i), scale: +sw.scale[i].toFixed(3), cell: h.cell, hub: sw.hub[i], members: h.slots.length }); }
           }
           const ad = Math.hypot(sw.anchor[k] - x, sw.anchor[k + 2] - z);
           out.anchors++;
