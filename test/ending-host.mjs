@@ -178,4 +178,16 @@ const orbital = (got) => got.filter((x) => x[0] === 'playOrbitalFinale');
   const h3 = host({ story: { boards: [board(0, 'x'), board(5, 'y')] }, members: { isao: undefined, spawnIsao: undefined } });
   assert.doesNotThrow(() => h3.host.finale(() => {})); take();
 }
-console.log('Ending host: the interlude is retired; the finale pauses off, stages the diorama when boards stand, and reaches `then` through the orbital finale\'s done.');
+// ---- the diorama is handed exactly its seven members (refactor round 2, Task 3b: `c` is no longer handed on): the story getter is
+// called as a method of the literal playDiorama receives, so `this` inside it is that literal
+{
+  let seen = null;
+  const b0 = board(0, 'b0'), b1 = board(4, 'b1');
+  const h = host({ members: { story: function () { seen = this; return { boards: [b0, b1] }; } } });
+  h.host.finale(() => {});
+  take();
+  assert.ok(seen && seen !== h.c, 'the diorama is handed a literal of its own, not the ending\'s host');
+  assert.deepEqual(Object.keys(seen).sort(), ['cellSide', 'hull', 'isao', 'scene', 'spawnIsao', 'startShot', 'story'], 'exactly story, startShot, scene, cellSide, hull, isao and spawnIsao');
+  for (const k of Object.keys(seen)) assert.equal(seen[k], h.c[k], `${k} is the host's own member, passed through`);
+}
+console.log('Ending host: the interlude is retired; the finale pauses off, stages the diorama (handed its seven members) when boards stand, and reaches `then` through the orbital finale\'s done.');
