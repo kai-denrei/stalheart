@@ -137,7 +137,7 @@ console.log('PASS the motion: the gait\'s bodies follow walking records with no 
 }
 console.log('PASS the frame\'s own step');
 
-// ---- the waves, thinned ----
+// ---- the waves, thinned (no wave said: at the build-up's last; the climb itself is test/pearl-enemies.mjs) ----
 {
   const scene = new THREE.Scene(), heartPoint = [0, 0, 690];
   const host = (flags) => ({ scene, root: null, flags, camera: null, canvasHeight: () => 800, enemies: [], field: () => null, spawn: () => null, heart: () => [heartPoint, 0, 1], ground: () => null, perf: () => null, perfOn() {}, damage() {}, build: () => null });
@@ -145,7 +145,7 @@ console.log('PASS the frame\'s own step');
   const wave = [...q('amoeba', 40), ...q('phage', 20), ...q('amoeba', 3, { squad: 5 }), ...q('knot', 1), ...q('drifter', 2), ...q('ghost', 1, { harmless: true })];
   const ce = createCreatureEnemies(host({ creatures: 'pearl' }));
   const out = ce.replace(wave, 'gate'), count = (a, f) => a.filter(f).length;
-  assert.equal(count(out, (e) => e.type === 'amoeba' && !e.squad), Math.round(40 * PEARL_WAVES.scale)); assert.equal(count(out, (e) => e.type === 'phage'), Math.round(20 * PEARL_WAVES.scale));
+  assert.equal(count(out, (e) => e.type === 'amoeba' && !e.squad), Math.round(40 * PEARL_WAVES.scale.last)); assert.equal(count(out, (e) => e.type === 'phage'), Math.round(20 * PEARL_WAVES.scale.last));
   assert.equal(count(out, (e) => e.type === 'drifter'), 1, 'at least one of a type'); assert.equal(count(out, (e) => e.squad), 3, 'the squads kept');
   assert.equal(count(out, (e) => e.type === 'knot'), 1, 'the boss kept'); assert.equal(count(out, (e) => e.harmless), 1, 'harmless entries kept');
   assert(out.every((e, k) => k === 0 || e.at >= 0), 'the kept entries keep their times');
@@ -154,5 +154,5 @@ console.log('PASS the frame\'s own step');
   assert.equal(createCreatureEnemies(host({})).replace(wave, 'gate'), wave, 'without ?creatures=pearl nothing is thinned');
   ce.dispose();
 }
-console.log('PASS the waves thinned under ?creatures=pearl (a temporary tuning stage): each type\'s singles to PEARL_WAVES.scale, at least one; squads, bosses, harmless kept; &waves=full whole');
+console.log('PASS the waves thinned under ?creatures=pearl: each type\'s singles to PEARL_WAVES.scale.last when no wave is said, at least one; squads, bosses, harmless kept; &waves=full whole');
 

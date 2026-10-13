@@ -124,10 +124,13 @@ export const PEARL_GAIT = freeze({
   replace: { hops: 4, grace: 2, forceGrace: 10, fade: 0.35 },
 });
 
-// THE WAVES, THINNED (round four, owner 2026-10-13: "Let's reduce the waves at first, to get the animation right"): A TEMPORARY TUNING STAGE, not a
-// balance. Under ?creatures=pearl each sector wave's single bodies of a type are cut to `scale` of their count (at least one), spread through the
-// wave (src/fx/creature-enemies.js `replace`); squads, bosses, guards and harmless fodder are kept. `&waves=full` turns it off (the crowd tests).
-export const PEARL_WAVES = freeze({ scale: 0.35 });
+// THE WAVES BUILD UP (owner, 2026-10-14: "a slower build-up of enemies, slower and fewer at the beginning before becoming more intense"; before
+// it round four's flat cut to 0.35, "Let's reduce the waves at first, to get the animation right"). Under ?creatures=pearl a breach's waves climb
+// from `first` to `last` over the waves it has planned (src/domain/pearl-bodies.js pearlBuildUp, straight between): `scale` is the share of a
+// wave's single bodies of a type kept (at least one, spread through the wave; squads, bosses, guards and harmless fodder are kept whole),
+// `pace` multiplies the whole wave's march (every entry's `pace`, src/fx/enemy-step.js paceJitter), under the tier's walk cap (PEARL_PACE radii).
+// Not a balance yet: the owner tunes these on the 8159 tree. `&waves=full` turns both off (the crowd tests).
+export const PEARL_WAVES = freeze({ scale: freeze({ first: 0.15, last: 0.6 }), pace: freeze({ first: 0.6, last: 1 }) });
 
 // THE RAM AND THE TOUCH, PRESENTED (round two, owner 2026-10-13: "the cutis getting rammed by the tank is not a satisfying animation, we need some sense of
 // stagger on the enemy, and bump on the tank"). Presentation only: who dies, the damage, the combo and the bounty are the game's rules as they were.

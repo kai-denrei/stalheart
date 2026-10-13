@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "id": "2026-10-14-pearl-waves-build-up",
+  "date": "2026-10-14",
+  "type": "change",
+  "status": "accepted",
+  "title": "The Pearl set's waves build up: a breach's waves climb from thin and slow to the table's last in share and pace over the waves it has planned (owner, 2026-10-14, on the 8159 tree)",
+  "context": "Owner, 2026-10-14, for the pearl-enemies tree served on :8159: 'we will try a slower build-up of enemies, slower and fewer at the beginning before becoming more intense'. Before it, round four's flat cut (2026-10-13-pearl-enemies-round-four): under ?creatures=pearl every sector wave's single bodies of a type were cut to PEARL_WAVES.scale = 0.35, 'a temporary tuning stage, not a balance'. The sectors plan four waves per breach (src/content/sectors.js waves: 4) and src/domain/sectors.js keeps each breach's wavesReleased and wavesPlanned; a queue entry carries the wave's pace, which src/fx/enemy-step.js folds into the record's paceJitter, under the tier's walk cap (PEARL_PACE radii, src/domain/pearl-bodies.js pearlSpeed).",
+  "outcome": "PEARL_WAVES is two dials with a first and a last: scale { first: 0.15, last: 0.6 } (the share of a wave's single bodies of a type kept, at least one, spread through the wave; squads, bosses, guards and harmless fodder kept whole) and pace { first: 0.6, last: 1 } (the whole wave's march, every entry's pace multiplied). src/domain/pearl-bodies.js pearlBuildUp({ released, planned }, table) is the pure rule: wave 0 at first, the last planned at last, straight between; a breach with one wave planned, or no wave said, is at last. src/fx/sector-run.js sendWave hands the breach's { released, planned } (read before releaseWave counts the wave) to api.creatures, td-tab forwards it, and src/fx/creature-enemies.js replace(entries, side, wave) thins and paces at the climb; state().waves reports kept, cut and the last wave's climb. &waves=full keeps the whole wave at its own pace. Not a balance: the owner tunes the four numbers on the 8159 tree. Tests: test/pearl-enemies.mjs (the rule's ends and middle, the switch at wave 0 and the last, the squad whole, &waves=full) and test/pearl-motion.mjs (the thinning with no wave said, at last). npm test 251, npm run check, npm run architecture (td-tab 6120, unchanged) green.",
+  "alternatives": [
+    "A ramp over the sector's clock instead of the breach's wave count: the sectors' waves are pulsed on the clock already, and a second breach opened late would start thin again under a per-breach count, which is what the owner asked for (each breach's first waves gentle).",
+    "A ramp over the whole campaign (sector 1 gentle, sector 5 full): the sector ladder (threat, ladderStart) climbs that already; the ask was the beginning of a fight.",
+    "Slower hops as well as a slower march (the first waves' shorter hop reach of round three): the walk cap keeps a slowed record's body in step; the hop is left to the tier's pace."
+  ],
+  "evidence": [
+    "node test/pearl-enemies.mjs, node test/pearl-motion.mjs, npm test (251), npm run check, npm run architecture in /Users/minikai/Dev/stalheart-pearl-enemies",
+    "src/content/pearl-enemies.js PEARL_WAVES; src/domain/pearl-bodies.js pearlBuildUp; src/fx/sector-run.js sendWave; src/fx/creature-enemies.js replace/thin; src/td-tab.js the creatures hook"
+  ],
+  "supersedes": []
+}

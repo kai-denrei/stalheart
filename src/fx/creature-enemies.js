@@ -32,7 +32,7 @@ import { createCreatureProbe } from './creature-probe.js';
 import { createPearlFamily } from './creature-pearl.js';
 import { gateHops, spawnBand, sentryCells } from '../domain/probe-ground.js';
 import { PEARL_TIERS, PEARL_OF, PEARL_BODY, PEARL_FOLLOW, PEARL_IMPACT, PEARL_PACE, PEARL_GAIT, PEARL_WAVES } from '../content/pearl-enemies.js';
-import { pearlBodies, pearlSpeed } from '../domain/pearl-bodies.js';
+import { pearlBodies, pearlSpeed, pearlBuildUp } from '../domain/pearl-bodies.js';
 import { contactLoss, stepDrag } from '../domain/hull-bodies.js';
 import { SQUADS } from '../content/sectors.js';
 
@@ -154,19 +154,22 @@ export function createCreatureEnemies(host) {
       alive: aliveOfTier, pending: pendingOfTier, refused: () => refused, total: () => host.enemies.reduce((n, e) => n + (e.alive ? 1 : 0), 0), perf: host.perf, perfOn: host.perfOn, bodies: () => bodies?.stats() ?? null, defence });
   }
 
-  // THE WAVES, THINNED (round four, owner 2026-10-13: "Let's reduce the waves at first, to get the animation right"; a temporary tuning stage,
-  // PEARL_WAVES): a sector wave's single bodies of each type cut to PEARL_WAVES.scale of their count (at least one), spread through the wave in its
-  // own order and times; squads, bosses, guards and harmless entries kept. `&waves=full` keeps the whole wave (the crowd tests)
-  const thinning = pearl && host.flags.waves !== 'full' && PEARL_WAVES.scale < 1;
-  let thinned = { kept: 0, cut: 0 };
-  function thin(entries) {
+  // THE WAVES BUILD UP (owner, 2026-10-14: "slower and fewer at the beginning before becoming more intense"; before it round four's flat cut,
+  // "Let's reduce the waves at first, to get the animation right"; PEARL_WAVES, src/domain/pearl-bodies.js pearlBuildUp): a breach's wave at its
+  // climb keeps `scale` of its single bodies of each type (at least one), spread through the wave in its own order and times, squads, bosses,
+  // guards and harmless entries kept, and the whole wave's march is `pace` of the plan's (every entry's `pace`, src/fx/enemy-step.js).
+  // `wave` is { released, planned } from the breach (src/fx/sector-run.js sendWave); without it the wave is at `last`. `&waves=full` keeps the
+  // whole wave at its own pace (the crowd tests)
+  const thinning = pearl && host.flags.waves !== 'full';
+  let thinned = { kept: 0, cut: 0 }, lastWave = null;
+  function thin(entries, wave) {
     if (!thinning || !entries?.length) return entries;
+    const up = pearlBuildUp(wave, PEARL_WAVES); lastWave = { ...wave, ...up };
     const groups = new Map();
     entries.forEach((q, i) => { if (q.squad || q.guard || q.harmless || ENEMY_SPEC[q.type]?.boss) return; (groups.get(q.type) ?? groups.set(q.type, []).get(q.type)).push(i); });
-    if (!groups.size) return entries;
     const keep = new Set(entries.map((_, i) => i));
-    for (const idx of groups.values()) { const picks = new Set(spreadPicks(idx.length, Math.max(1, Math.round(idx.length * PEARL_WAVES.scale)))); idx.forEach((i, k) => { if (!picks.has(k)) keep.delete(i); }); }
-    const out = entries.filter((_, i) => keep.has(i));
+    for (const idx of groups.values()) { const picks = new Set(spreadPicks(idx.length, Math.max(1, Math.round(idx.length * up.scale)))); idx.forEach((i, k) => { if (!picks.has(k)) keep.delete(i); }); }
+    const out = entries.filter((_, i) => keep.has(i)).map((q) => (up.pace === 1 ? q : { ...q, pace: (q.pace ?? 1) * up.pace }));
     thinned.kept += out.length; thinned.cut += entries.length - out.length;
     return out;
   }
@@ -262,7 +265,7 @@ export function createCreatureEnemies(host) {
       const o = (byType[e.type] ??= { pearl: 0, dots: 0, tier: PEARL_OF[e.type] ?? null });
       if (e.spec?.body === 'pearl') o.pearl++; else o.dots++;
     }
-    return { pearl: true, byType, dressed: pearled.dressed, undressed: pearled.undressed, squads: pearled.squads, waves: thinning ? { scale: PEARL_WAVES.scale, ...thinned } : 'full', bodies: bodies?.stats() ?? null };
+    return { pearl: true, byType, dressed: pearled.dressed, undressed: pearled.undressed, squads: pearled.squads, waves: thinning ? { ...thinned, last: lastWave } : 'full', bodies: bodies?.stats() ?? null };
   }
 
   return {
@@ -303,8 +306,8 @@ export function createCreatureEnemies(host) {
     },
     // ?creatures: a sector wave's queue entries with the tier's share of its single bodies replaced, spread through the wave (not the
     // canyon's swarm: it rises at the far side of the world, where the heart's plane is singular)
-    replace(entries, side) {
-      if (pearl) return thin(entries);
+    replace(entries, side, wave) {
+      if (pearl) return thin(entries, wave);
       if (!choice || side === 'canyon' || !entries?.length) return entries;
       const singles = [];
       entries.forEach((q, i) => { if (!q.squad && !q.guard && !q.harmless) singles.push(i); });

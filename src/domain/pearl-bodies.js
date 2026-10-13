@@ -51,6 +51,15 @@ export function pearlSpeed({ speed, mult = 1, radii = Infinity, r0, sectorPace, 
 
 const smooth01 = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a || 1e-9))); return t * t * (3 - 2 * t); };
 // round four: `lag` m, `hop` the body's stride (m), `wait` { from, to, min } in hops -> 1 (walk on) .. min (all but stopped), eased between
+// THE BUILD-UP (owner, 2026-10-14: "slower and fewer at the beginning before becoming more intense"; PEARL_WAVES): a breach's waves climb from
+// `first` to `last` of each of the table's dials over the waves it has planned, wave 0 at `first`, the last planned at `last`, straight between;
+// a breach with one wave planned (or none said) is at `last`, there is no build-up to make. `f` is the climb (0..1), reported. Pure.
+export function pearlBuildUp({ released = 0, planned = 1 } = {}, table) {
+  const f = planned > 1 ? Math.min(1, Math.max(0, released / (planned - 1))) : 1;
+  const at = ({ first, last }) => first + (last - first) * f;
+  return { f, scale: at(table.scale), pace: at(table.pace) };
+}
+
 export const pearlWait = (lag, hop, { from, to, min }) => (hop > 0 ? 1 - (1 - min) * smooth01(from, to, lag / hop) : 1);
 
 // round four: `lag` m, `hop` m, `catchUp` -> the divisor of the body's hop pace: 1 within a hop of its record, eased to 1 + catchUp at two hops behind

@@ -5259,7 +5259,7 @@ export function initTdTab(root) {
     // a queued spawn is already an enemy to the beats: the second hard core sat in the queue the tick the first died, and the
     // Quiver beat settled with it still to come
     enemies: () => enemies.filter((e) => e.alive && !e.guard).length + spawnQueue.filter((q) => !q.guard).length,   // the site guards are not the beats' business
-    creatures: (q, side) => creatureEnemies.replace(q, side),   // a sector wave's share of ?creatures (src/fx/creature-enemies.js)
+    creatures: (q, side, wave) => creatureEnemies.replace(q, side, wave),   // a sector wave's share of ?creatures, the Pearl set's build-up (src/fx/creature-enemies.js)
     spawn: (type, ci, o = null) => { spawnQueue.push({ type, sp: o?.guard || o?.here ? { ci, alive: true, obj: new THREE.Group() } : story?.source ?? { ci, alive: true, obj: new THREE.Group() }, at: spawnClock, ...o }); },
     brief: (id) => showBrief(id),
     tremor: (ci) => story?.hud.tremor(ci >= 0 ? norm3(graph.centers[ci]) : null),

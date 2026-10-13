@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-10-14-pearl-animation-soft-pearl-hard-gorogoro",
+  "date": "2026-10-14",
+  "type": "decision",
+  "status": "accepted",
+  "title": "The Pearl set's bodies animate by their core: the soft bodies keep the Cutis-Maku pearl animation, the hard-cored bodies take the Cutis-gorogoro rolling animation (owner, 2026-10-14; to port)",
+  "context": "Owner, 2026-10-14: 'keep the Cutis-Maku pearl animation for softcore bodies, and use the new http://localhost:5174/?specimen=cutis-gorogoro animation for the hardcore bodies (they have an extra set of rolling animations)'. The game's Pearl set (src/content/pearl-enemies.js) is the Jelly-Baby pearl lineage (Jelly-Baby 3a985e1, 'hard-core and pearl lineages with mixed tier packs'; the kit under src/fx/cutis-maku), soft tiers the rammable belts and cored tiers (orange onward, the owner's edit) the solid ones. Jelly-Baby f1d7690 adds 'Cutis-gorogoro with anchored momentum-driven rolling and fleeing prey': GOROGORO_TIERS are the Pearl tiers with rollVariant 1, a 10 s cycle and roll durations (src/cutis/swarm/tiers.ts), shown by the Jelly-Baby dev server at ?specimen=cutis-gorogoro (page.ts). Nothing in the game changes with this entry.",
+  "outcome": "Decided: when the Pearl set's bodies are next worked on, a soft (uncored) body keeps the pearl animation it has, and a hard-cored body (PEARL_BODY cored: orange, green, purple, brown, black as the set stands) takes the gorogoro rolling animation, ported from Jelly-Baby f1d7690 onto the vendored three like the kit before it. The port is a round of its own (the kit's deform, swarm and config files take the roll variant; the body's follow against the record's walk must hold for a rolling hull; the --pearl-story and the crowd tests measure it). Recorded now so the direction is on the log before the refactor review's next-round split of src/fx/creature-enemies.js, which should leave room for a second animation per core.",
+  "alternatives": [
+    "Roll every tier: the owner keeps the pearl animation for the soft bodies.",
+    "Port now on the 8159 tree: the owner's playtest round there is the build-up (2026-10-14-pearl-waves-build-up); a kit port is a day's round with its own measurements."
+  ],
+  "evidence": [
+    "/Users/minikai/Dev/Jelly-Baby: git log f1d7690 (gorogoro), 3a985e1 (the pearl lineage); src/cutis/swarm/tiers.ts GOROGORO_TIERS; src/cutis/page.ts ?specimen=cutis-gorogoro; the dev server on :5174",
+    "src/content/pearl-enemies.js PEARL_BODY cored per tier; test/pearl-enemies.mjs asserts the ram verdict per tier"
+  ],
+  "supersedes": []
+}
