@@ -62,7 +62,7 @@ export function createHardCores(swarm, { planetR = 0, levelOf = null } = {}) {
   });
   const mesh = meshes[0];
   const group = new THREE.Group(); group.name = 'Rigid hard cores'; group.add(...meshes);
-  const pose = new THREE.Object3D(), at = [0, 0, 0, 0], counts = [0, 0, 0, 0], tint = new THREE.Color(), ice = new THREE.Color(ICE), base = new THREE.Color();
+  const pose = new THREE.Object3D(), at = [0, 0, 0, 0], counts = [0, 0, 0, 0], tint = new THREE.Color(), ice = new THREE.Color(ICE), base = new THREE.Color(), grey = new THREE.Color();
   let planet = planetR > 0 ? planetR : 0;
   /** Place every active, visible instance's core (a config without a core shape draws none). */
   function update() {
@@ -77,7 +77,11 @@ export function createHardCores(swarm, { planetR = 0, levelOf = null } = {}) {
         corePose(swarm, i, planet, at);
         pose.position.set(at[0], at[1], at[2]); pose.scale.setScalar(at[3]); pose.rotation.set(.2, swarm.seed[i] + swarm.time * .18, .16); pose.updateMatrix();
         meshes[k].setMatrixAt(n, pose.matrix); fade[k].array[n] = o;
-        meshes[k].setColorAt(n, tint.copy(base).lerp(ice, Math.max(0, Math.min(1, swarm.life[i * 4 + 3]))));
+        const w = swarm.life[i * 4 + 3];
+        tint.copy(base).lerp(ice, Math.max(0, Math.min(1, w)));
+        // the Pearl set's death (iLife.w below zero): the pearl too goes near grey at the config's deathTone of its brightness, at once
+        if (w < 0) { const d = Math.min(1, -w), tone = swarm.config.deathTone ?? .22, l = tint.r * .299 + tint.g * .587 + tint.b * .114; grey.setRGB(l, l, l).lerp(tint, .2).multiplyScalar(tone); tint.lerp(grey, d); }
+        meshes[k].setColorAt(n, tint);
       }
     }
     meshes.forEach((m, k) => {

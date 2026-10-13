@@ -79,3 +79,25 @@ assert(MEMBRANE_VERT.includes('if(squash!=0.)') && MEMBRANE_VERT.includes('exten
   assert(j.dip(1) >= 0, 'the camera only dips');
 }
 console.log('PASS the jolt: a pitch kick about its size, sharper for a cored body, rolled to its side, settling; a crowd stays a rumble under the clamp');
+
+// ---- the dead go dark at once (owner, 2026-10-13: "keeping the current dissolving blob, but having it immediately much darker, so it is easier to
+// distinguish against living ones") ----
+{
+  const D = PEARL_IMPACT.death;
+  assert(D.tone <= 0.3 && D.seconds <= 0.15, 'much darker, at once');
+  assert(MEMBRANE_VERT !== undefined);
+  const fam = createPearlFamily({ parent: new THREE.Group(), tiers: PEARL_BODIES, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set: PEARL_TIERS, tune: PEARL_FOLLOW, impact: PEARL_IMPACT });
+  const plain = fam.add('amoeba', { x: 0, z: 0, angle: 0, speed: 2 }), rammed = fam.add('amoeba', { x: 30, z: 0, angle: 0, speed: 2 }), alive = fam.add('amoeba', { x: 60, z: 0, angle: 0, speed: 2 });
+  for (let f = 0; f < 20; f++) { for (const [h, x] of [[plain, 0], [rammed, 30], [alive, 60]]) fam.track(h, { x, z: 0, dt: 1 / 60, speed: 2 }); fam.step(1 / 60); }
+  fam.kill(plain); fam.kill(rammed, { dx: 1, dz: 0 });
+  let t = 0; const at = (h) => fam.view(h).tint;
+  while (t < D.seconds + 0.02) { fam.track(alive, { x: 60, z: 0, dt: 1 / 60, speed: 2 }); fam.step(1 / 60); t += 1 / 60; }
+  assert.equal(at(plain), -1, 'a plain death is fully dark within its seconds'); assert.equal(at(rammed), -1, 'the rammed body too, in its stagger');
+  assert(fam.view(rammed).stagger !== null && fam.view(rammed).deflate <= 0.75, 'still staggering, not yet deflated: dark already');
+  assert.equal(at(alive), 0, 'a live body is not darkened');
+}
+{
+  const { MEMBRANE_FRAG } = await import('../src/fx/cutis-maku/shaders.js');
+  assert(MEMBRANE_FRAG.includes('uniform float uDeadTone;') && MEMBRANE_FRAG.includes('if(vLife.z<0.){'), 'the membrane shader darkens a dead body');
+}
+console.log('PASS the dead go dark at once: a plain death and a rammed body\'s stagger reach the dark within PEARL_IMPACT.death.seconds, the living untouched, the shader\'s uDeadTone');

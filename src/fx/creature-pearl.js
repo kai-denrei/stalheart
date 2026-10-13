@@ -66,6 +66,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     if (pace?.[id]?.reach) config.reach = def.values.reach * pace[id].reach;
     // round four: the gait's stride for every tier and its keys for the kit (the timing, the eased transfer, the eased turn, the narrow fork, the frame's step)
     if (gait) Object.assign(config, gait.config, { reach: gait.hop });
+    if (IMPACT?.death) config.deathTone = IMPACT.death.tone;   // the dead's darkness (PEARL_IMPACT.death)
     const swarm = new CutisSwarm(config, { capacity: tune.capacity[id] ?? 600 }), owner = new Array(swarm.capacity).fill(null);
     if (hubs?.reach) swarm.reachLimit = (i, x, z, dx, dz, max) => hubs.reach(swarm.hub[i], x, z, dx, dz, max, owner[i]?.cell ?? -1);
     // round three: the body's footprint (its origin, its anchors, its hop's middle, its sweep, a knock, a puddle) held off the rock too
@@ -153,7 +154,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     // a rammed body staggers first: its deflate starts once the stagger is over
     const S = staggerOf(p.id), st = imp && IMPACT ? impactOf(sw, i, imp, S, S.aside) : null;
     if (st) p.staggers++; else { const was = sw.room[i]; sw.clearBody(i, false); if (was > 0) sw.room[i] = Math.min(was, sw.room[i]); }   // round three: the puddle measured where it lies (squeezed by a wall, not moved), within its hop's room (a body dying mid-transfer is drawn out along it)
-    p.dying.set(i, { at: clock + (st ? S.seconds : 0), op: sw.life[i * 4 + 2], st }); p.live--; p.deaths++;
+    p.dying.set(i, { at: clock + (st ? S.seconds : 0), op: sw.life[i * 4 + 2], st, t0: clock }); p.live--; p.deaths++;
   }
 
   // the record walked into another hub's region: every live member's plane state, re-projected into the new hub's plane
@@ -349,6 +350,8 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
         // the stagger before it (a ram): the knock all through, the squash until the deflate takes over
         const sq = d0.st ? impactStep(sw, i, d0.st, clock - d0.st.t0) : 0;
         sw.life[i * 4 + 1] = k < 0 ? sq : d; sw.life[i * 4 + 2] = d0.op * (1 - f); sw.life[i * 4] = -f * death.sink * sw.config.r0 * sw.scale[i];
+        // the dead go dark at once, the stagger's moment included (PEARL_IMPACT.death: iLife.w below zero, the ice's channel)
+        if (IMPACT?.death) sw.life[i * 4 + 3] = -Math.min(1, (clock - d0.t0) / Math.max(1e-6, IMPACT.death.seconds));
         if (f >= 1) { p.dying.delete(i); release(p, i); }
       }
       for (const [i, j] of p.jolts) {

@@ -236,6 +236,8 @@ uniform vec3 uSkin,uVein,uGlow;
 uniform vec3 uHeat;
 uniform float uOpacity;
 uniform float uMulticolored;
+// the Pearl set's death (owner, 2026-10-13): a dead body's brightness share (iLife.w below zero: how far into the dark it has gone)
+uniform float uDeadTone;
 uniform vec3 uPaletteSkin[7],uPaletteVein[7],uPaletteGlow[7];
 varying vec3 vWorld,vRest,vHeading,vNormal;
 varying float vStretch,vPhase,vSeed,vLead;
@@ -287,6 +289,9 @@ void main(){
   // Round two (the fable review: the slow tower's ice was lost on these bodies): iLife.w, the body's tint toward ice (0x8fd4ff) at its own brightness,
   // as the dot cloud turns ice for the slow's duration.
   color=mix(color,vec3(.56,.83,1.)*(.3+.7*max(max(color.r,color.g),color.b)),clamp(vLife.z,0.,1.)*.8);
+  // The Pearl set's death (owner, 2026-10-13: "keeping the current dissolving blob, but having it immediately much darker"): iLife.w below zero takes
+  // the body (its skin, veins, pulse, rim and glints, the inner core) toward a near-grey uDeadTone of its brightness
+  if(vLife.z<0.){float d=clamp(-vLife.z,0.,1.),l=dot(color,vec3(.299,.587,.114));color=mix(color,mix(vec3(l),color,.2)*uDeadTone,d);}
   // Thermal: the FLIR lerps the material's emissive toward white; the colour follows, the skin thickens a little.
   float heat=clamp(uHeat.r,0.,1.);
   color=mix(color,vec3(1.),heat);alpha=min(1.,alpha+heat*.25);
