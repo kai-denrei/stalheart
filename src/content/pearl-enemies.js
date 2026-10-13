@@ -88,6 +88,17 @@ export const PEARL_FOLLOW = freeze({
   lod: { high: 70, low: 12, highCap: 12, hysteresis: 0.12, horizonRadii: 3 },
 });
 
+// THE FIRST WAVES' PACE (owner, 2026-10-13: "make the initial wave of white and yellow creatures much slower, a slow controlled threat. then we will make
+// it more hectic later."): the first step of a pacing ramp for the Pearl story, not its last. Per tier, over the mapped types' ENEMY_SPEC: `speed` a
+// multiplier of the record's walk, `erratic` the record's bursts (false: it creeps steadily), and `reach` a multiplier of the tier's hop reach in
+// radii, so a slow record's body creeps in short, frequent hops (src/domain/pearl-bodies.js pearlPace then shortens its cycle to match) instead of
+// sitting through its long cycle and lunging its full reach. Only under ?creatures=pearl (src/fx/creature-enemies.js PEARL_SPECS, src/fx/creature-pearl.js);
+// hit points, bounty, heart damage and the ram are the game's own, the other tiers and the dot clouds unchanged.
+export const PEARL_PACE = freeze({
+  white: { speed: 0.4, erratic: false, reach: 0.7 },
+  yellow: { speed: 0.4, erratic: false, reach: 0.7 },
+});
+
 // THE RAM AND THE TOUCH, PRESENTED (round two, owner 2026-10-13: "the cutis getting rammed by the tank is not a satisfying animation, we need some sense of
 // stagger on the enemy, and bump on the tank"). Presentation only: who dies, the damage, the combo and the bounty are the game's rules as they were.
 // `stagger`: a rammed soft body, before its deflate: its stalks snapped back, knocked `knockRadii` radii along the tank's heading (and `aside` of its own

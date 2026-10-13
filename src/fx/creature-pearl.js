@@ -44,8 +44,8 @@ const IDENTITY = [0, 0, 0, 1];
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
 // `parent` the bodies' root, `tiers` the bodies by type (pearlBodies), `follow` CREATURE_FOLLOW, `death` CREATURE_DEATH, `set` PEARL_TIERS, `tune` PEARL_FOLLOW,
-// `hubs` the seam's { quat(k), remap(a, b, x, z) } (without it every body is on the heart's hub), `impact` PEARL_IMPACT
-export function createPearlFamily({ parent, tiers, follow, death, set, tune, hubs = null, impact: IMPACT = null }) {
+// `hubs` the seam's { quat(k), remap(a, b, x, z) } (without it every body is on the heart's hub), `impact` PEARL_IMPACT, `pace` PEARL_PACE (a tier's hop reach)
+export function createPearlFamily({ parent, tiers, follow, death, set, tune, hubs = null, impact: IMPACT = null, pace = null }) {
   const group = new THREE.Group(); group.name = 'Pearl enemies'; parent.add(group);
   const byId = Object.fromEntries(set.map((t) => [t.id, t]));
   // each tier's base radius: its smallest type's
@@ -58,6 +58,8 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     let p = pools.get(id);
     if (p) return p;
     const def = byId[id], config = { ...DEFAULT_CONFIG, ...def.values, r0: baseR0[id], separation: tune.separation ?? DEFAULT_CONFIG.separation };   // the neighbour push eased: the records space themselves
+    // the first waves' pace (src/content/pearl-enemies.js PEARL_PACE): a slowed tier hops shorter, so it creeps in frequent hops rather than lunging
+    if (pace?.[id]?.reach) config.reach = def.values.reach * pace[id].reach;
     const swarm = new CutisSwarm(config, { capacity: tune.capacity[id] ?? 600 }), owner = new Array(swarm.capacity).fill(null);
     if (hubs?.reach) swarm.reachLimit = (i, x, z, dx, dz, max) => hubs.reach(swarm.hub[i], x, z, dx, dz, max, owner[i]?.cell ?? -1);
     // round three: the body's footprint (its origin, its anchors, its hop's middle, its sweep, a knock, a puddle) held off the rock too

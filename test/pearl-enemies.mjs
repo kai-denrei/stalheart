@@ -4,7 +4,7 @@
 // bent onto the planet as the shader bends the shell, the family (pools, identity, the squad, the cloak, the death) and the switch (dress).
 import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three.module.js';
-import { PEARL_TIERS, PEARL_OF, PEARL_BODY, PEARL_FOLLOW } from '../src/content/pearl-enemies.js';
+import { PEARL_TIERS, PEARL_OF, PEARL_BODY, PEARL_FOLLOW, PEARL_PACE } from '../src/content/pearl-enemies.js';
 import { CREATURE_FOLLOW, CREATURE_DEATH } from '../src/content/creature-enemies.js';
 import { pearlBodies, pearlPace, pearlLead, pearlLeash, squadSpots } from '../src/domain/pearl-bodies.js';
 import { ENEMY_SPEC, INTROS } from '../src/enemyspec.js';
@@ -50,12 +50,22 @@ assert.deepEqual(bodies, PEARL_BODIES);
 for (const [type, b] of Object.entries(bodies)) {
   close(b.r0, ENEMY_SPEC[type].size * 5.6 * (type === 'knot' ? 1.5 : 1), 1e-3, `${type}: r0 = size x 5.6 m${type === 'knot' ? ' x 1.5' : ''}`);
   assert.equal(b.rammable, !b.cored);
-  const s = pearlSpec(type);
-  for (const [k, v] of Object.entries(ENEMY_SPEC[type])) assert.equal(s[k], v, `${type}: the spec keeps ${k}`);
+  const s = pearlSpec(type), slow = PEARL_PACE[b.tier];
+  // the first waves' pace (owner, 2026-10-13: "make the initial wave of white and yellow creatures much slower, a slow controlled threat"): white and
+  // yellow walk at 0.4 of their speed without the erratic bursts; every other key, and every other tier, is the game's own
+  for (const [k, v] of Object.entries(ENEMY_SPEC[type])) {
+    if (slow && k === 'speed') close(s.speed, v * slow.speed, 1e-12, `${type}: the slowed speed`);
+    else if (slow && k === 'erratic') assert.equal(s.erratic, false, `${type}: no erratic bursts`);
+    else assert.equal(s[k], v, `${type}: the spec keeps ${k}`);
+  }
+  if (slow) assert.equal(s.erratic, false, `${type}: creeps steadily`);
+  assert.equal(!!slow, b.tier === 'white' || b.tier === 'yellow', `${type}: only the white and yellow tiers are paced`);
   assert.equal(s.body, 'pearl'); assert.equal(s.pearl, b.tier);
 }
 assert.equal(pearlSpec('jelly'), null);
-console.log('PASS the mapping: every type of the wave programme, the ram verdict = the body, r0 = size x 5.6 (the knot x 1.5), the spec kept whole');
+assert.deepEqual(Object.keys(PEARL_PACE).sort(), ['white', 'yellow']); assert(['amoeba', 'phage', 'ghost', 'scoutufo'].every((t) => Math.abs(pearlSpec(t).speed - 0.4 * ENEMY_SPEC[t].speed) < 1e-12));
+assert.equal(ENEMY_SPEC.amoeba.speed, 1.15, 'the dot-cloud game\'s own spec is untouched');
+console.log('PASS the mapping: every type of the wave programme, the ram verdict = the body, r0 = size x 5.6 (the knot x 1.5), the spec kept whole but the first waves\' pace (white and yellow at 0.4 of their speed, no erratic bursts)');
 
 // ---- the rules ----
 {
