@@ -131,3 +131,65 @@ membrane toward 0x8fd4ff at its own brightness and the pearl's instance colour t
 place, the seam's track options are one object it keeps, toPlaneInto, the follow's lead and leash cached per speed, the free slots a min-heap. d. A
 fading pearl (cloak, death) is drawn by a twin mesh that writes no depth. e. The probe: alive counts only bodies standing drawn, alive + pending are
 topped up to the target, each step books its dying and pending, the card says pending, refused (and for want of a slot) and the family's last error.
+
+## Round 3 (owner's playtest, 2026-10-13)
+
+The owner: "not bad. there is still some clipping of the Cutis-Pearl through the walls." Round 2 held only the seeking stalks off the rock. Then, as its
+own small task, "make the initial wave of white and yellow creatures much slower, a slow controlled threat. then we will make it more hectic later."
+
+### What was crossing (the footprint audit)
+
+`src/fx/cutis-maku/deform.js` is the membrane shader's deform in JS, term for term (rest shape and lumps, stalks with their bow and sideways sweep, the
+cup, the transfer's curve, the settle's recoil, the hard core's padded shell, the squash), run over the lowest hull's 249 vertex directions;
+`creatures.footprint()` (src/fx/creature-pearl.js `footprint`, through the seam) puts every point of every live and dying body, the pearl's rim and the
+contact shadow's visible rim against the board's BLOCKED cells and reports which part, which tier and how deep (seen from the body's centre). Headed
+M4, sector 2, before: 504 of 1,896 body-samples across (26.6 %), the worst 0.86 radii in the settle; a second run 284 of 1,140, 2.27 radii (puddles by a
+wall), yellow 1.96. By part: the body at its anchor (SETTLE, TRANSFER: a body ~1.2 radii wide settling where its cup was held 0.6 radii from the rock),
+the transfer cutting a corner, the stalks' sideways sweep and bow, the body itself after a leash re-placement or a knock, death puddles spreading 1.6x.
+The round-two stalk audit read 0 throughout: it looked at the stalks' centre lines only. A synthetic corridor (every tier, targets swinging into the
+rock) had 43-89 % of samples across.
+
+### The fix
+
+- **The clearance** (`src/domain/body-reach.js` `query.clearance`, `clearPush`, `clearOf`): the plane metres from a point to the nearest BLOCKED region
+  and the way away from it (and the facing wall's), a lower bound from the wedge of each blocked cell's two farthest face half-planes (the board's own
+  nearest-centre rule). The board is Stalberg's organic quads, four neighbours a cell, up to six meeting at a corner: a cell touching the point's corner
+  can be three steps round it, so the cells are gathered by a walk of up to five rings pruned by distance (the first cut, two rings, let bodies 1-2 m
+  into the rock where it missed one), the look capped at 2.2 spacings. clearOf pushes off the near wall, again from where it lands (a corner), centres
+  the point in a corridor narrower than the footprint and reports the room, then measures where it ended. Never more than the truth on an irregular
+  quad board (node, brute force), 0.2-0.3 m short on average.
+- **The plan** (`src/fx/cutis-maku/swarm.js` `clearProbes`, the host's `clearLimit` through the seam's `hubs.clear`): each stalk's tip, the anchor it may
+  become, is moved to where BODY_RADII (1.35) radii of open ground is round it and re-aimed; its whole way must be TRANSFER_RADII (1.2) radii clear
+  (`clearPath`: both ends' discs bound the segment, sqrt(c^2 - (len/2)^2); the middle is measured and both halves looked at where they do not, four
+  levels at most), or SQUEEZE_RADII (0.8) through a passage narrower than the body (the body then squeezed through it); a stalk that is not clear is
+  retried short of the first narrow point, then dropped. The body's room (the least round its origin, tips and way, over its footprint) and the room
+  square to its axis are measured where the room is under 1; the stalks' sweep and bow are damped to the room beside the tips and along the way.
+- **Bodies put down or knocked**: `place` (a new body, a leash re-placement, a squad member) pushes the spot clear; the ram's stagger and the touch's
+  recoil push the knocked body clear each frame (it slides along the wall); a dying body is measured where it lies (its puddle squeezed, not moved),
+  within its hop's room.
+- **The shader** (`MEMBRANE_VERT`): the room, its axis and the sweep's damping ride in the positions' unused `.y` (iOffset.y, iAnchor.y, iHeading.y;
+  the positions read flat), the room across the axis in iParams.z: no new vertex attribute (the sixteen are full). Under its footprint, the body (not its
+  reaching stalk: squeezed along an axis not square to it, a long stalk's tip would swing sideways) is squeezed across the nearest wall and square to it;
+  a puddle and a squash spread only as far as the room; the shadow shrinks with it. deform.js mirrors every term; a node test pins the shader's lines.
+- **The leash**: at least one of the body's own hops (`pearlLeash`, PEARL_FOLLOW.leashHops 1). Bodies held back by the rock fell a hop behind and were
+  put back mid-stride: 170 leash re-placements a minute on sector 2 against the round-two tree's 16; with the squeeze-through and the leash, 19-39.
+
+After, headed M4: sector 2 0 of 1,129-1,437 body-samples across in every run since, sector 6 (the canyon) 0 of 8,290 (25 audits, 400-570 bodies);
+--pearl-story (sector 2, every tier, the far side's hub, `&hold=1` so the longer audit cannot lose the sector under the step): 12 audits over 24 s, 0 of
+~2,000 body-samples (~500,000 points), and the stalk audit 0. Node, the synthetic corridors (20 m and 10 m, with a side branch; every tier at r 2.8,
+brown at 3.64, the knot at 6.72): 0 points on the rock (the knot, wider than the 10 m corridor and squeezed, 1 sample in 7,200 grazing 0.13 radii in its
+transfer; the test allows it 0.2), the bodies covering as much ground as without the clearance. Cost, sector 4 A/B soaks (vsync off, `&hold=1&sentries=6`):
+enemies CPU 1.51 -> 2.19 ms at the old pace, 1.13 -> 1.36-1.56 ms at the new, the frame unchanged (GPU bound); ~10k clearance queries a second at 420
+bodies, none per frame (plan, place and knock only), no per-frame allocation.
+
+Not covered: the rock prisms are drawn as the board's quad polygons while the game's blocked test (and so the clearance) is the nearest cell centre;
+irregular quads differ from that Voronoi boundary by up to a metre or two in places (the 1.35-radii footprint against the ~1.2-radii membrane leaves a
+little margin; the shots did not show it). A body re-placed on its leash still pops (fewer). A squad's five bodies in a corridor narrower than the
+squad are pushed into its middle and overlap each other.
+
+### The first waves' pace
+
+`PEARL_PACE` (src/content/pearl-enemies.js): white (amoeba, phage) and yellow (ghost, scoutufo) walk at 0.4 of their ENEMY_SPEC speed without the
+erratic bursts, applied where PEARL_SPECS is built (src/fx/creature-enemies.js); everything else is the game's own. Their hop reach x0.7, so pearlPace
+shortens their cycle and they creep in steady hops rather than sitting through a long cycle and lunging (offline, ten bodies a type for a minute: 0.8-1.3
+hops a second of ~3 radii, 1.3-1.5 radii behind, no re-placement). The first step of a ramp: "more hectic later".

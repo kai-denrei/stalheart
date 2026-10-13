@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "id": "2026-10-13-pearl-enemies-round-three",
+  "date": "2026-10-13",
+  "type": "change",
+  "status": "accepted",
+  "title": "The Pearl set's round three: every body's whole footprint held off ROCK and WALL, measured by a footprint audit; the first waves slowed",
+  "context": "Owner, 2026-10-13, after round two: \"not bad. there is still some clipping of the Cutis-Pearl through the walls.\" Round two held only the seeking stalks 0.6 radii short of the rock; its audit read the stalks' centre lines and found nothing. Then, as its own small task: \"make the initial wave of white and yellow creatures much slower, a slow controlled threat. then we will make it more hectic later.\" Spec docs/superpowers/specs/2026-10-13-pearl-enemies-design.md, \"Round 3\"; branch pearl-enemies, local.",
+  "outcome": "THE AUDIT: src/fx/cutis-maku/deform.js (the membrane shader's deform in JS over the lowest hull's 249 directions) and creatures.footprint() put every point of every live and dying body, the pearl and the shadow against the BLOCKED cells: before, sector 2 had 504 of 1,896 body-samples across (up to 0.86 radii; another run 2.27, puddles by a wall), mostly the body at its anchor (~1.2 radii wide on an anchor held 0.6 clear), the transfer cutting corners, the stalks' sweep and bow, re-placed and knocked bodies, puddles. THE FIX: src/domain/body-reach.js query.clearance (distance to the nearest blocked region, a wedge lower bound per cell, the cells gathered by a distance-pruned walk of up to five rings: the board's quads meet up to six at a corner), clearPush, clearOf; src/fx/cutis-maku/swarm.js clearProbes moves each stalk's tip to 1.35 radii of open ground, requires its whole way 1.2 radii clear (clearPath, the ends' discs bounding the segment) or 0.8 through a narrower passage (squeezed), retries short of the first narrow point, measures the room and damps the sweep; place and the impacts push bodies clear; the shader squeezes the body (not its stalk) across the nearest wall and square to it, limits a puddle's spread to the room, the shadow shrinks (room, axis, damping and across-room in the positions' unused .y and iParams.z: no new attribute); the leash is at least one hop (PEARL_FOLLOW.leashHops). After: sector 2 and sector 6 0 crossings over thousands of body-samples, --pearl-story 0 over 12 audits with every tier (hold=1 added: the longer audit lost the sector under the step). THE PACE: PEARL_PACE puts white and yellow at 0.4 speed without erratic bursts, their hop reach x0.7 so they creep in steady hops; ENEMY_SPEC and the dot-cloud game unchanged.",
+  "alternatives": [
+    "A shader-side clamp of every vertex to one or two wall lines per instance: rejected, the lines computed at the origin cut wrongly into the open ground a long hop reaches (bends, junctions), and four free floats could carry only two.",
+    "An isotropic shrink of a body that does not fit: kept only for the shadow; a body squeezed across its corridor keeps its length (the knot's presence).",
+    "Squeezing the stalks with the body: rejected, a squeeze along an axis not square to a long stalk swung its tip sideways into the rock (node: 16.8 m for the knot).",
+    "Gathering the blocked cells within two graph rings: rejected after it let bodies 1-2 m into the rock on sector 6 where quads meet six at a corner.",
+    "Requiring the full 1.2-radii way for every hop: bodies stalled at narrow passages and were re-placed on the leash (130-170 a minute on sector 2); a squeezed passage (0.8 radii) and the hop-long leash brought it to 19-39."
+  ],
+  "evidence": [
+    "node test/body-footprint.mjs (the clearance's values, never over the truth on an irregular quad board, every tier and the knot's size in a wide and a narrow corridor with a side branch: no membrane point on the rock, the knot's allowance 0.2 radii)",
+    "node test/pearl-enemies.mjs (the paced specs; the hop-long leash)",
+    "node scripts/browser-test.mjs --pearl-story (footprints: 12 audits over 24 s, 0 crossing, every tier); --creature-probe; --boss-cutis",
+    "Headed M4 audits (scratchpad r3-audit.mjs): sector 2 before 504/1,896 body-samples across, after 0 of 1,129-1,437; sector 6 0 of 8,290",
+    "Headed M4 soaks, sector 4, A/B with the clearance off: enemies CPU 1.51 -> 2.19 ms at the old pace, 1.13 -> 1.36-1.56 ms at the new; frame unchanged",
+    "npm test (246 programs), npm run check, npm run build, npm run architecture"
+  ],
+  "supersedes": []
+}
