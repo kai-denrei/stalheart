@@ -51,8 +51,9 @@ function restExtent(body) {
 // `parent` the bodies' root (the heart's frame, plane metres), `tiers` CREATURE_TIERS.reed, `follow` CREATURE_FOLLOW, `knobs` CREATURE_REED,
 // `budget` the solver's ms a frame (null: none, the probe), `solid` the kit's look without its transmission (&reedlook=solid: a body with
 // transmission makes three.js draw every opaque object of the scene a second time into the transmission target, once a frame however many
-// bodies, ~1500 draw calls on a sector; the probe prices it both ways)
-export function createReedFamily({ parent, tiers, follow, knobs = CREATURE_REED, budget = knobs.budget, solid = false }) {
+// bodies, ~1500 draw calls on a sector; the probe prices it both ways), `hz` the solver's rate for every tier but a `fine` one whatever the
+// count (&reedhz=N, owner 2026-10-13: "masses of small Cutis vs masses of small reeds, which is cheaper"; null: the coarse switch)
+export function createReedFamily({ parent, tiers, follow, knobs = CREATURE_REED, budget = knobs.budget, solid = false, hz = null }) {
   const look = solid ? { ...NIH_DAIRIA_LOOK, transmission: 0 } : NIH_DAIRIA_LOOK;
   const K = knobs;
   const group = new THREE.Group(); group.name = 'Nih-Dairia enemies'; group.matrixAutoUpdate = false; parent.add(group);
@@ -171,7 +172,7 @@ export function createReedFamily({ parent, tiers, follow, knobs = CREATURE_REED,
     // the rate: 1/120 s while many stand (a `fine` tier at the kit's own)
     let standing = 0;
     for (const h of bodies) if (!h.dead && !h.def.fine) standing++;
-    const want = waveStep(standing, K.coarse, STEP);
+    const want = hz > 0 ? 1 / hz : waveStep(standing, K.coarse, STEP);
     if (want !== rate) { rate = want; switches++; }
     const stepOf = (h) => (h.def.fine ? STEP : rate);
     // the budget (outside the probe): the frame's solver priced from the running cost of a step

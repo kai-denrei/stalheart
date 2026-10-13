@@ -3,6 +3,7 @@
 //   ?creatures=<family>:<tier>   a share of each sector wave's bodies (the tier's count style) is that tier (`replace`, from src/fx/sector-run.js)
 //   &ramp=1 (or &ramp=test)      the probe (src/fx/creature-probe.js) ramps the tier up on top of the sector and reports what fits
 //   &reedlook=solid              the Reeds without the kit's transmission (src/fx/creature-reed.js: the transmission pass's cost)
+//   &reedhz=N                    the Reeds' solver at N Hz whatever their count (src/fx/creature-reed.js `hz`; the Nih-Dairia keeps 240)
 //   &sentries=N                  N sentries stand at boot near the gate (CREATURE_PROBE.sentries; the probe's own default without it)
 // THE PROBE'S GROUND (owner, 2026-10-12): its bodies come up beyond the gate, outside the walls, and sentries stand to meet them; the
 // heart is held while it runs (src/domain/probe-ground.js, CREATURE_PROBE.ground / .sentries).
@@ -41,7 +42,7 @@ export function createCreatureEnemies(host) {
   const tune = host.flags.ramp === 'test' ? { ...CREATURE_PROBE, ...CREATURE_PROBE.test } : CREATURE_PROBE;
   // the sentries at boot: &sentries=N (a number, at most the story's cap), else the probe's own count, else none
   const askedSentries = host.flags.sentries != null && host.flags.sentries !== '' ? Math.max(0, Math.min(tune.sentries.max, Math.floor(+host.flags.sentries) || 0)) : probing ? tune.sentries.count : 0;
-  const families = { ...FAMILIES, reed: (o) => createReedFamily({ ...o, ...(probing ? { budget: null } : {}), solid: host.flags.reedlook === 'solid' }) };
+  const families = { ...FAMILIES, reed: (o) => createReedFamily({ ...o, ...(probing ? { budget: null } : {}), solid: host.flags.reedlook === 'solid', hz: Math.max(0, +host.flags.reedhz || 0) || null }) };
   let bodies = null, probe = null, rr = 0, ground = null, garrison = null, heartHeld = 0;
   const placeholder = new THREE.Group();   // a band spawn's source: no breach, no emergence
   // who fought the creatures: the sentries' hits, damage and kills on the tier's records (every creature record, the waves' share too)
