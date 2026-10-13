@@ -6,15 +6,15 @@
 //
 // `host` hands in the controller: its fixed objects and functions as values (storyApi itself, whose backFx the omen members
 // call through as they did, sfx, explode, showBrief, camDist, showCallout, warnRing, breachWallCell, rebuildAfterBreach,
-// recomputePortalDist, shotActive, camera, startShot) and what it rebinds as getters (story, graph, dungeon, cellSide,
-// paused, deploy, pilotMode, pilot).
+// recomputePortalDist, shotActive, camera, startShot, groundFeed, diveCuts) and what it rebinds as getters (story, graph, dungeon,
+// cellSide, paused, deploy, pilotMode, pilot).
 import * as THREE from '../../vendor/three.module.js';
 import { backBreachCells } from '../domain/back-door.js';
 import { createBackOmen } from './back-omen.js';
 import { startDiveShot } from './dive-shot.js';
 
 export function createBackDoor(host) {
-  const { storyApi, sfx, explode, showBrief, camDist, showCallout, warnRing, breachWallCell, rebuildAfterBreach, recomputePortalDist, shotActive, camera, startShot } = host;
+  const { storyApi, sfx, explode, showBrief, camDist, showCallout, warnRing, breachWallCell, rebuildAfterBreach, recomputePortalDist, shotActive, camera, startShot, groundFeed } = host;
   return {
     // THE BACK DOOR FORESHADOWED, THEN THE SCRAMBLE: the omen presentation, built once per story on first use
     backFx: () => host.story()?.backMouth ? (host.story().omen ??= createBackOmen({
@@ -47,8 +47,11 @@ export function createBackDoor(host) {
       showBrief('back_door');
       host.story().hud.tremor(null);
       host.story().hud.back(m.dir);
-      // the dive shot only when nothing else owns the camera, and never over the hull in a crowd (STORY_CALM)
-      if (!host.paused() && !host.deploy() && !shotActive() && !host.pilotMode() && !host.pilot()?.gunship && !storyApi.danger?.()) startDiveShot({ camera, startShot, cellSide: host.cellSide() }, new THREE.Vector3(...m.dir), { id: 'backdoor', preRoll: host.story().backDoor.preRoll, hold: host.story().backDoor.hold, tail: host.story().breachShot.tail ?? 1.8, dive: host.story().backDoor.dive, fromCamera: true });
+      // SAT-3's feed in the corner box (src/fx/ground-feed.js), the old dive's length; with &cuts=dive (diveCuts) the dive shot, only when
+      // nothing else owns the camera, and never over the hull in a crowd (STORY_CALM)
+      const look = { id: 'backdoor', preRoll: host.story().backDoor.preRoll, hold: host.story().backDoor.hold, tail: host.story().breachShot.tail ?? 1.8, dive: host.story().backDoor.dive, fromCamera: true, size: down.length };
+      if (!host.diveCuts) { if (!host.paused()) groundFeed.dive(null, new THREE.Vector3(...m.dir), look); }
+      else if (!host.paused() && !host.deploy() && !shotActive() && !host.pilotMode() && !host.pilot()?.gunship && !storyApi.danger?.()) startDiveShot({ camera, startShot, cellSide: host.cellSide() }, new THREE.Vector3(...m.dir), look);
       return down.length;
     },
     backDoorOpen: () => !!host.story()?.backOpen,

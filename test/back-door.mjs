@@ -65,34 +65,40 @@ for (const c of cands) {
 assert.ok(!cands.some((c) => c.cell === dungeon.spawn), 'the lane end outside the gate is not a back cell');
 
 // 4. the controller's side (src/fx/back-door.js) on this mouth, against a recording controller: the door opens once, its rock
-// comes down with one rebuild, the back sockets face their lane, the dive shot waits for a free camera; the candidates carry
-// their side, the live route and their position
+// comes down with one rebuild, the back sockets face their lane, SAT-3's ground feed shows the rockfall (src/fx/ground-feed.js; with
+// &cuts=dive the dive shot, which waits for a free camera); the candidates carry their side, the live route and their position
 {
   const log = [], rec = (k, ret) => (...a) => { log.push([k, ...a]); return ret; }, live = Uint8Array.from(tags);
-  const s = { paused: false, deploy: null, pilotMode: false, pilot: null, shot: false };
+  const s = { paused: false, deploy: null, pilotMode: false, pilot: null, shot: false }, host = { diveCuts: false };
   const story = { backMouth: mouth, backOpen: false, backSockets: [{ cell: 11, toward: [0, 0, 1] }], socketToward: {}, hud: { tremor: rec('tremor'), back: rec('back') }, backPlanet: planet, backDoor: STORY_BACK_DOOR, breachShot: { tail: 1.8 } };
   const storyApi = {};
-  Object.assign(storyApi, createBackDoor({
+  Object.assign(storyApi, createBackDoor(Object.assign(host, {
     storyApi, sfx: { play: rec('sfx') }, explode: rec('explode', true), showBrief: rec('brief'), camDist: () => 1, showCallout: rec('callout'), warnRing: rec('ring'),
     breachWallCell: (ci) => { if (live[ci] !== BLOCKED) return false; live[ci] = PATH; return true; }, rebuildAfterBreach: rec('rebuild'), recomputePortalDist: rec('portals'),
     shotActive: () => s.shot, camera: new THREE.PerspectiveCamera(), startShot: (shot) => log.push(['shot', shot.id]),
     story: () => story, graph: () => graph, dungeon: () => ({ tags: live, heart, distToHeart: withBack }), cellSide: () => 0.01,
     paused: () => s.paused, deploy: () => s.deploy, pilotMode: () => s.pilotMode, pilot: () => s.pilot,
-  }));
+    groundFeed: { dive: (hooks, dir, o) => log.push(['feed', o.id, dir.toArray().map((v) => +v.toFixed(6)).join(), o.preRoll + o.hold + o.tail, o.size]) },
+  })));
   assert.equal(storyApi.backDoorOpen(), false); assert.equal(storyApi.backTick(0.1), undefined, 'no omen yet, nothing to tick');
   assert.equal(storyApi.openBackDoor(), mouth.cells.length + flank.length, 'the mouth and its flank fall');
   assert.equal(storyApi.backDoorOpen(), true); assert.deepEqual(story.socketToward, { 11: [0, 0, 1] });
   const kinds = log.map((l) => l[0]);
   assert.deepEqual(kinds.filter((k) => k === 'rebuild' || k === 'portals'), ['rebuild', 'portals'], 'one rebuild');
   assert.equal(kinds.filter((k) => k === 'explode').length, mouth.cells.length + flank.length);
-  assert.deepEqual(log.filter((l) => ['brief', 'shot'].includes(l[0])), [['brief', 'back_door'], ['shot', 'backdoor']]);
-  assert.equal(storyApi.openBackDoor(), 0, 'idempotent'); assert.equal(log.filter((l) => l[0] === 'shot').length, 1);
+  assert.deepEqual(log.filter((l) => ['brief', 'shot', 'feed'].includes(l[0])), [['brief', 'back_door'], ['feed', 'backdoor', mouth.dir.map((v) => +v.toFixed(6)).join(), STORY_BACK_DOOR.preRoll + STORY_BACK_DOOR.hold + 1.8, mouth.cells.length + flank.length]], 'the feed, the dive\'s length, no camera shot');
+  assert.equal(storyApi.openBackDoor(), 0, 'idempotent'); assert.equal(log.filter((l) => l[0] === 'feed').length, 1);
   const got = storyApi.backBreachCandidates();
   assert.deepEqual(got.map((c) => c.cell), cands.map((c) => c.cell), 'the domain\'s cells');
   assert.ok(got.every((c) => c.side === 'back' && c.route === withBack[c.cell] && c.pos.join() === graph.centers[c.cell].join() && c.pos !== graph.centers[c.cell]));
-  // a camera already taken: the door still opens, without the dive
+  // the feed takes no camera: it shows under a seat too; paused, nothing
+  story.backOpen = false; s.pilotMode = true; log.length = 0; storyApi.openBackDoor(); assert.equal(log.filter((l) => l[0] === 'feed').length, 1, 'the feed under a seat');
+  story.backOpen = false; s.pilotMode = false; s.paused = true; log.length = 0; storyApi.openBackDoor(); assert.ok(!log.some((l) => l[0] === 'feed' || l[0] === 'shot'), 'nothing while paused'); s.paused = false;
+  // &cuts=dive: the dive shot, only with the camera free
+  host.diveCuts = true; story.backOpen = false; log.length = 0; storyApi.openBackDoor();
+  assert.deepEqual(log.filter((l) => ['shot', 'feed'].includes(l[0])), [['shot', 'backdoor']], 'the old dive');
   story.backOpen = false; s.pilotMode = true; log.length = 0; storyApi.openBackDoor();
-  assert.ok(!log.some((l) => l[0] === 'shot'), 'no dive under a seat');
+  assert.ok(!log.some((l) => l[0] === 'shot' || l[0] === 'feed'), 'no dive under a seat');
   story.backMouth = null; assert.equal(storyApi.backFx(), null); assert.deepEqual(storyApi.backBreachCandidates(), []); assert.equal(storyApi.backOmen({ id: 'x' }), false);
 }
 console.log(`Back door: mouth ${mouth.cells} at ${(mouth.azimuth * 180 / Math.PI).toFixed(1)} deg, flank ${flank}, ${cands.length} breach cells ${cands[0].hops}-${cands.at(-1).hops} hops (gate ${Math.min(...cands.map((c) => c.gateHops))}+), ${shortened} routes shortened.`);

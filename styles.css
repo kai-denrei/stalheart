@@ -3973,6 +3973,21 @@ body.mobile-shell #gunship-briefing button, body.mobile-shell #sol82-briefing bu
 .gunship-seat #story-monitor .head { font-size: 11px; }   /* the seat's root carries .gunship-seat: the game's #tab-td, the boss lab's stage */
 #story-monitor .feed { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; }
 #story-monitor .head { position: absolute; z-index: 1; left: 6px; top: 4px; font: 600 10px ui-monospace, Menlo, monospace; letter-spacing: 0.08em; color: #9fdcff; text-shadow: 0 0 4px #000; }
+/* THE GROUND FEED (owner, 2026-10-13; src/fx/ground-feed.js): a sinkhole, the back door's rockfall and the rock opening in the corner
+   box as SAT-3's orbital video feed instead of a camera cut; the TALON monitor's corner, about 30 % of the width, 16:10. The picture is
+   drawn into the game canvas under this box, its look (green phosphor, scanlines, grain, vignette, static) in the feed's shader, so the
+   box is transparent: the frame, the HUD's text and the target box's canvas only. Its width stops where its top would reach the shield
+   pad (.tfire-tertiary: min(26vh, 230px) + 92px up from the bottom), 403 px on a 900-px-high window. */
+#ground-feed { position: fixed; right: 12px; bottom: 64px; width: max(240px, min(30vw, calc((min(26vh, 230px) + 22px) * 1.6))); aspect-ratio: 16 / 10; border: 1px solid #4f8f5a; border-radius: 4px; z-index: 40; pointer-events: none; overflow: hidden; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.7), 0 0 18px rgba(80, 255, 120, 0.14); font: 600 11px ui-monospace, Menlo, monospace; letter-spacing: 0.08em; color: #c8ffc2; text-shadow: 0 0 4px rgba(120, 255, 140, 0.5), 0 0 2px #000, 0 0 1px #000; }
+#ground-feed .hud { position: absolute; inset: 0; width: 100%; height: 100%; }
+#ground-feed .top, #ground-feed .sub, #ground-feed .foot { position: absolute; left: 8px; right: 8px; display: flex; justify-content: space-between; gap: 10px; white-space: nowrap; }
+#ground-feed .top { top: 6px; }
+#ground-feed .sub { top: 22px; font-size: 10px; color: #9be896; }
+#ground-feed .foot { bottom: 6px; font-size: 10px; }
+#ground-feed .rec { color: #ff6a5a; text-shadow: 0 0 4px rgba(255, 80, 60, 0.7), 0 0 1px #000; animation: gf-rec 1s steps(1) infinite; }
+@keyframes gf-rec { 50% { opacity: 0.15; } }
+body.mobile-shell #ground-feed { width: min(46vw, 420px); bottom: 160px; }
+body.showcase-on #ground-feed, body.seat-gliding #ground-feed { display: none !important; }
 /* the story's fire-control scope for a guided mount: the Sniper workshop's idiom, one panel and a reticle */
 #gunship-hud { position: fixed; inset: 0; z-index: 38; pointer-events: none; --phosphor: #cfeee9; --cyan: #5fe6d6; }
 #gunship-hud .reticle { position: absolute; inset: 0; width: 100%; height: 100%; }

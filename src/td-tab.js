@@ -50,7 +50,7 @@ import { bfsDist, BLOCKED, PATH, ROOM } from './dungeon.js';
 import { buildGameWorld, readStoryQuery, STORY_SOUNDS, takeControlPose } from './platform/story-world.js';
 import { createUnlockHost } from './fx/story-views.js';
 import { buildReadout } from './fx/build-readout.js';
-import { createStoryMonitor } from './fx/story-monitor.js';
+import { createStoryMonitor } from './fx/story-monitor.js'; import { createGroundFeed } from './fx/ground-feed.js';
 import { createDaylight } from './fx/daylight.js';
 import { createStoryScope, createScopeFeed } from './fx/story-scope.js';
 import { createSyntheticModal } from './fx/synthetic-modal.js';
@@ -344,7 +344,7 @@ export function initTdTab(root) {
   // one-shot listeners and the first tap/keypress creates it. Until then
   // every play() is a silent no-op -- the game never waits on audio.
   const sfx = makeAudio({ seed: 1, sounds:{...SOUNDS,...BREACH_SOUNDS,...(isStoryRoute(location.search)?STORY_SOUNDS:{})} });   // every story page (a bare one has no world=story)
-  const gameBreaches=createGameBreaches(scene,camera,sfx,{look:()=>params.look});
+  const gameBreaches=createGameBreaches(scene,camera,sfx,{look:()=>params.look}), diveCuts = flags.cuts === 'dive', groundFeed = createGroundFeed(root, { busy: () => !!storyMonitor?.on() || laserStation.seated() || (shotActive() && shotId() !== 'reveal'), blocked: () => paused || !!syntheticModal?.isOpen(), heart: () => (dungeon ? graph.normals[dungeon.heart] : null), cellSide: () => cellSide });   /* &cuts=dive: the old dives, not SAT-3's feed (src/fx/ground-feed.js) */
   // SOL-82 IN THE ARSENAL (src/fx/laser-station.js): the pass clock, the seat, the beam through the game's own paths
   const laserStation = createLaserStation(root, scene, {
     online: LASER_GAME.online || flags.laser === 'online', get mobile() { return mobileShell; },
@@ -3078,7 +3078,7 @@ export function initTdTab(root) {
     creatures: () => creatureEnemies,
   });
   const creatureEnemies = createCreatureEnemies({ scene, root, flags, camera, enemies, canvasHeight: () => renderer.domElement.height, field: () => dungeon, spawn: (q) => enemyStep.spawnOne(q),   // ?creatures=<family>:<tier>, &ramp=1 (src/fx/creature-enemies.js)
-    heart: () => (dungeon && graph ? [graph.centers[dungeon.heart], dungeon.heart, cellSide] : null), perf: () => perfOverlay.sample(), perfOn: () => setPerfOverlay(true, false), wide: () => !!storyMonitor?.on() || laserStation.seated(), tank: () => player, jolt: ramJolt, damage: (e, dmg) => damageEnemy(e, t, dmg, true, 'harness'),
+    heart: () => (dungeon && graph ? [graph.centers[dungeon.heart], dungeon.heart, cellSide] : null), perf: () => perfOverlay.sample(), perfOn: () => setPerfOverlay(true, false), wide: () => !!storyMonitor?.on() || laserStation.seated() || groundFeed.on(), tank: () => player, jolt: ramJolt, damage: (e, dmg) => damageEnemy(e, t, dmg, true, 'harness'),
     ground: () => (story && graph && dungeon ? { adj: graph.adj, centers: graph.centers, cellSide, open: (ci) => dungeon.tags[ci] !== BLOCKED, inside: (ci) => story.inside(ci), gates: [story.gateCell].filter((c) => c >= 0), sockets: (story.sentrySockets ??= Object.keys(story.socketToward ?? {}).map(Number)), canBuild: (ci) => !placeError(ci) } : null), build: (key, ci) => commitTower(key, ci, 0) });
   function spawnEnemies(...a) { return enemyStep.spawnEnemies(...a); }
   function seedPortals(...a) { return enemyStep.seedPortals(...a); }
@@ -4737,7 +4737,7 @@ export function initTdTab(root) {
     startShot({
       id: 'reveal',
       dur: REVEAL_LEN,
-      poseAt: (u, out) => poseCamera(orbitFrame(revealDir, 3.3), out),   // whole planet in frame, the new band centred — framing unchanged (src/domain/story-shots.js)
+      poseAt: (u, out) => (diveCuts ? poseCamera(orbitFrame(revealDir, 3.3), out) : gameplayCameraPose(out)),   // &cuts=dive: the whole planet, the new band centred (src/domain/story-shots.js); else the view holds and SAT-3 shows the band
       onEnd: () => {
         // the new ground cools back to its true colors; planning begins
         for (const ci of revealCells) paintCell(ci, floorColorOf(ci));
@@ -4745,7 +4745,7 @@ export function initTdTab(root) {
         if (!buildMode) setView('orbit');
         updateHud();
       },
-    });
+    }); if (!diveCuts) groundFeed.dive(null, new THREE.Vector3(...revealDir), { id: 'reveal', hold: REVEAL_LEN, tail: 0, size: revealCells.length });
     buildGeometry();
     // THE SAFETY NET. Breach persistence keeps corridors open, but a tank parked on a later-band lane it reached THROUGH a breach
     // can still have the band gate reseal the ground under it — walls closing over the hull (operator bug report). If the shift
@@ -4963,7 +4963,7 @@ export function initTdTab(root) {
     if (paused) {
       if (!simSkip) {
         playerMesh.visible = params.view !== 'pov' && !deploy?.clip && !story?.hull?.held();   // an authored roll-out owns the hull on screen: ours would stand in it, turret sweeping; an unissued hull is not drawn
-        postfx.render(); storyMonitor?.render(renderer, scene, towerSeekers.find((m) => m.pool === talonPool && m.by === pilot?.state.tower)?.mesh ?? null, cellSide, 0);
+        postfx.render(); storyMonitor?.render(renderer, scene, towerSeekers.find((m) => m.pool === talonPool && m.by === pilot?.state.tower)?.mesh ?? null, cellSide, 0); groundFeed.render(renderer, scene, 0);
         playerMesh.visible = !deploy?.clip && !story?.hull?.held();
         radarScope.draw(t); laserStation.render(renderer, scene);   // the sweep keeps turning; a dead scope reads as a crash
       }
@@ -5084,10 +5084,10 @@ export function initTdTab(root) {
       if(changed){rebuildAfterBreach();recomputePortalDist();}
     },opened=>{
       sfx.play('sinkhole_quake',{dist:Math.min(...opened.map(obj=>camDist(obj.position.toArray())))});
-      // One skippable establishing shot per new group, never per wave.
-      if((wave>0||storyMode)&&!paused&&!shotActive()&&!pilotMode&&!pilot?.gunship&&!laserStation.seated()&&!storyApi.danger?.()&&!opened.every(o=>o.userData.quiet)){   // never while a seat is manned: the cut took the gunner's camera mid-aim (owner, 2026-09-15); the quake still sounds
+      // One feed per new group, never per wave: SAT-3's orbital feed in the corner box takes nothing (src/fx/ground-feed.js); &cuts=dive is the old skippable establishing dive
+      if((wave>0||storyMode)&&!paused&&!opened.every(o=>o.userData.quiet)&&(!diveCuts||!shotActive()&&!pilotMode&&!pilot?.gunship&&!laserStation.seated()&&!storyApi.danger?.())){   // the dive never while a seat is manned: the cut took the gunner's camera mid-aim (owner, 2026-09-15); the quake still sounds
         const sb=storyMode?story?.breachShot:null;   // IN THE STORY: the whole planet through the pre-roll, then as the ground opens a FAST DIVE to a close view over the sinkhole, held while the fodder emerge, then a short blend back
-        startDiveShot({camera,startShot,cellSide},opened[0].position.clone().normalize(),{preRoll:sb?.preRoll??CONTENT.breach.preRoll,hold:sb?CONTENT.breach.duration+(sb.emergeHold??0):0,tail:sb?sb.tail??1.8:1.8,dive:sb});
+        (diveCuts?startDiveShot:groundFeed.dive)({camera,startShot,cellSide},opened[0].position.clone().normalize(),{preRoll:sb?.preRoll??CONTENT.breach.preRoll,hold:sb?CONTENT.breach.duration+(sb.emergeHold??0):0,tail:sb?sb.tail??1.8:1.8,dive:sb,size:opened.length});
       }
     });
     if (!frozen) { tfTick(dt); sectorRun?.tick(dt); }
@@ -5232,7 +5232,7 @@ export function initTdTab(root) {
       dt,
       pilot?.gunship ? pilot.gunshipOptic() : (pilotMode && pilot?.state.tower && missileOf(pilot.state.tower.key) && pilot.state.tower.pilotTarget && !pilot.state.tower.pilotTarget.pilotAim ? { from: perchOf(pilot.state.tower), pos: pilot.state.tower.pilotTarget.pos } : null),
     );
-    radarScope.draw(t); story?.hud.paint(radarCtx, { m: radarCss, cpos: pilot?.state.tower ? graph.centers[pilot.state.tower.ci] : player.pos, up: pilot?.state.tower ? new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray() : player.smoothDir, range: mapMode === 'heart' ? 2.02 : pilotMode ? cellSide * 12 : 1.15, t, mapMode });
+    groundFeed.render(renderer, scene, dt); radarScope.draw(t); story?.hud.paint(radarCtx, { m: radarCss, cpos: pilot?.state.tower ? graph.centers[pilot.state.tower.ci] : player.pos, up: pilot?.state.tower ? new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray() : player.smoothDir, range: mapMode === 'heart' ? 2.02 : pilotMode ? cellSide * 12 : 1.15, t, mapMode });
     laserStation.render(renderer, scene); programWarm.tick(dt);   /* THE SEAT'S FIRST-USE HITCH (src/fx/program-warm.js): the canvas's own programs are linked two objects a frame, here where nothing is bound, instead of 18 at once under the gunner */
   }
 
@@ -5537,7 +5537,7 @@ export function initTdTab(root) {
     view: () => params.view, story: () => story, storyViews: () => storyViews, pilot: () => pilot, pilotMode: () => pilotMode, pilotHost: () => pilotHost, sectorRun: () => sectorRun, gunshipBriefing: () => gunshipBriefing, paused: () => paused,
     setStoryViews: (v) => (storyViews = v), setGunshipBriefing: (v) => (gunshipBriefing = v), setPaused: (v) => { paused = v; },
   }));
-  Object.assign(storyApi, createBackDoor({ storyApi, sfx, explode, showBrief, camDist, showCallout, warnRing, breachWallCell, rebuildAfterBreach, recomputePortalDist, shotActive, camera, startShot, story: () => story, graph: () => graph, dungeon: () => dungeon, cellSide: () => cellSide, paused: () => paused, deploy: () => deploy, pilotMode: () => pilotMode, pilot: () => pilot }));   /* THE SECOND FRONT (src/fx/back-door.js) */
+  Object.assign(storyApi, createBackDoor({ storyApi, sfx, explode, showBrief, camDist, showCallout, warnRing, breachWallCell, rebuildAfterBreach, recomputePortalDist, shotActive, camera, startShot, story: () => story, graph: () => graph, dungeon: () => dungeon, cellSide: () => cellSide, paused: () => paused, deploy: () => deploy, pilotMode: () => pilotMode, pilot: () => pilot, groundFeed, diveCuts }));   /* THE SECOND FRONT (src/fx/back-door.js) */
   // THE SIM RUN'S END (src/platform/sim-run.js): simWatch, which the fast-forward calls after each batch, and the result it publishes
   const { simWatch } = createSimRun({
     player, params, towers, simCurve, campaign, endShot, breachNextSector, setView, SECTORS_TOTAL,
@@ -5835,7 +5835,7 @@ export function initTdTab(root) {
         bays: lifeContainers.map((c) => ({ ci: c.ci, hasTank: c.tanks.length > 0, racked: !!c.tanks[0]?.visible })),
         berthCells: berths.map((b) => b.ci),
         kills: rs.bySrc.tank + rs.bySrc.tower + rs.bySrc.strike,
-        monitorShown: storyMonitor?.shown() ?? 0,
+        monitorShown: storyMonitor?.shown() ?? 0, groundFeed: groundFeed.state(),
         screenOpen: !!syntheticModal?.isOpen(),
         screensOpened: syntheticModal?.opened() ?? 0,
         brassLive: brass?.live() ?? 0,
@@ -5989,7 +5989,7 @@ export function initTdTab(root) {
       fillGunshipCall: (n) => fillFromKill(gunshipRig.call, n, GUNSHIP_CALL),
       // the skip panel's enemies: a breach opens on the lane outside the gate if none is live, and they rise out of it staggered
       // (emergence only runs from a real breach)
-      creatures: creatureEnemies.test,   // the creature enemies' harness (src/fx/creature-enemies.js)
+      creatures: creatureEnemies.test, feedAt: (ci, hold = 30) => groundFeed.dive(null, new THREE.Vector3(...graph.normals[ci]), { hold }),   // the creature enemies' harness (src/fx/creature-enemies.js); SAT-3's feed over a cell (src/fx/ground-feed.js)
       spawnFodder: (n, type = 'amoeba') => { if (!story) return 0; if (!story.source?.alive) storyApi.breach(gunshipRig.far()); for (let i = 0; i < n; i++) storyApi.spawn(type, story.source.ci, { spread: 0.8, delay: i * 0.12 }); return n; },
       clearSector: () => {
         endShot();
