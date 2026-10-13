@@ -57,6 +57,27 @@ Evidence:
 - Headed M4 soaks, sector 4, A/B with the clearance off: enemies CPU 1.51 -> 2.19 ms at the old pace, 1.13 -> 1.36-1.56 ms at the new; frame unchanged
 - npm test (246 programs), npm run check, npm run build, npm run architecture
 
+## 2026-10-13 — The Pearl set's round four: slow organic motion measured by a motion audit, the walls as drawn, the tank never through a body, light white and yellow run-overs, the dead dark at once
+
+change · accepted · 2026-10-13-pearl-enemies-round-four
+
+Owner, 2026-10-13, after round three: "Cutis collision with Tank; though they are mostly membrane, the tank should never be able to 'go through' the enemy, they are still made of mass. more precise collision is needed." / "the moving animations are too jerky, they should feel slower and more organic... slower and organic feeling is a must. Let's reduce the waves at first, to get the animation right." / "enemies clipping through walls when there are too many." Then: "the slower Cutis feel much better, but the lower level ones, white and yellow, should feel very easy to run over. The threat starts like more of an annoyance." and "when the Cutis-Maku dies ... keeping the current dissolving blob, but having it immediately much darker".
+
+MOTION: a motion audit (src/fx/pearl-motion.js) found pearlPace squeezing 2.5-6 s hops into 0.36-1.1 s with transfers of 4-16 frames ending in a dead stop, plus the kit's 1/120 s remainder stutter, one-frame heading turns, catch-up lunges, a two-stalk zigzag and leash teleports. Every tier's record now walks at most 0.7-0.8 body radii a second (no bursts, no jink); PEARL_GAIT: a 2.4-radii stride, half the cycle in an eased transfer (shader uEase mirrored in JS), the heading turned through the coil, a 0.65 rad fork with its caps, the frame's own step, eased pace, turns and shrink; the record waits for its body, a body is put back only off screen or as a dissolve. Waves thinned to 0.35 under ?creatures=pearl as a temporary tuning stage (&waves=full). WALLS: the clearance and the audits see the board's drawn quads as well as the cells' regions; squads fold into a narrow lane. TANK: src/domain/hull-bodies.js, the drawn tank's box against each body's drawn outline in the free drive (the last word on the hull's place) and after the bodies step: soft bodies shoved and swept aside with a mass-based speed loss, cored bodies stop and push back the hull with the round-two jolt; white and yellow (PEARL_IMPACT.tiers): almost no speed loss, a 0.9 m pad in which the hull's touch is the game's ram, no run-over drag, a light jolt, a deeper squash. DEATH: PEARL_IMPACT.death, the body and its pearl to 22 % brightness, near grey, within 0.12 s of death (the stagger included), through iLife.w below zero. CROWD: a pinned body is carried along the hull's axis, then pushes the hull by what it cannot give times its mass (at most 0.12 m a frame), then is squashed against the wall.
+
+Alternatives: Raise the leash and keep the hop's lunge: rejected, the teleports and the five-frame transfers were the jerk the owner saw.; Ease the heading continuously off the stalk caps: tried, the stalks slid off their caps' rings and their vertices popped in and out (shape pops in the extend); turned through the coil instead.; Blame the crowd's separation for the clipping: rejected by measurement, the region audit read 0 with 500 bodies in both trees; the discrepancy is the drawn quads.; Keep the tank's contact at the record distance and only enlarge it: rejected, a record's distance cannot know the body's shape (a hopping body leads its record by up to a hop).
+
+Evidence:
+
+- node test/pearl-motion.mjs, test/body-quads.mjs, test/hull-bodies.mjs, test/pearl-impact.mjs (the dead dark), test/pearl-enemies.mjs, test/cutis-maku-cores.mjs; npm test 250 programs, check, build, architecture
+- Offline motion (8 bodies a tier, a minute, jittery frames): round three 2,000-3,600 pops a tier, jerk p95 28k-345k r/s^3; round four 0 pops, jerk p95 700-2,000, cycles 2-3.2 s moving half
+- Headed M4 sector 2: round three 300-700 pops a tier in 20 s and 59 re-placements; round four 0 pops every tier; --pearl-story 24 s 0 pops
+- Crowd footprint against the drawn walls: sector 4 0 of 3,340, sector 6 0 of 8,333, --pearl-story crowd 0 of 200-360 bodies (before: up to 0.31 m across on the canyon)
+- --pearl-story tank: a white amoeba rammed by the hull's touch, the hull at ~29 m/s on, overlap at most 0.003 m; a cored drifter stops it 28.5 -> 0.3 m/s, overlap at most 0.15 m for a frame
+- Soak sector 4, full waves, same machine: round three 9.98 ms frame, enemies CPU 1.19 ms (361 enemies avg); round four 8.88 ms, 0.58 ms (237)
+- --pearl-story, --ground-feed, --creature-probe, --boss-cutis pass
+- Known gaps: dying white puddles pinned in a crowded lane can sit up to ~2 m under the hull for frames (live bodies 0.03-0.08 m); the knot grazes drawn walls by up to 0.2 radii squeezed through a lane narrower than it; off-screen leash re-placements remain (white 69 of 250 bodies placed in --pearl-story's crowded run, 4 on-screen as dissolves); the autopilot's walk has no body contact
+
 ## 2026-10-13 — Ground events in SAT-3's orbital feed, a corner inset, instead of a camera cut; &cuts=dive keeps the dives
 
 change · accepted · 2026-10-13-ground-feed-inset
