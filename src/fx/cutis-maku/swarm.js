@@ -1,7 +1,11 @@
 // Ported from Jelly-Baby src/cutis/swarm/controller.ts (the owner's own project, commit 0a23df8; GPL-3.0, see ./LICENSE), types stripped; the hop cycle, the probes and the anchor choice are unchanged.
 // Changes from the kit: per-instance state (target, pace, hold, active, life, a planted next anchor) replaces the one shared target and the fixed 300 instances; step(dt) uses each instance's own target;
 // every absolute length scales by config.r0 / KIT_R0 (the kit was tuned at 0.2 m); reset(count) now leaves instances INACTIVE and populate(count) is the kit's old reset; shift() re-anchors the frame; advance() runs the kit's 1/120 s stepping.
-import { cycleTiming, phaseState, transferProgress, KIT_R0 } from './config.js';
+// 3a985e1 (the hard cores, owner 2026-10-13): getCoreContact(i), the rigid core's centre and radius on the SHARED transfer path (the same curve the
+// membrane shader's uHardRadius block pads its shell round: never interpolate the core on its own, the handoff's escape bug), contactDamageAt, and a
+// cored body's position() is its core's centre. The kit's mixed eight-tier preview (configFor / setMixed / speedFor) is the lab's and is not ported:
+// the game keeps one swarm per tier, so every instance's config is the swarm's.
+import { cycleTiming, phaseState, transferProgress, coreContact, KIT_R0 } from './config.js';
 
 export const STEP=1/120;
 const hash=n=>{const x=Math.sin(n*127.1+311.7)*43758.5453;return x-Math.floor(x);};
@@ -156,7 +160,19 @@ export class CutisSwarm {
     while(this.clock>=STEP){this.step(STEP);this.clock-=STEP;n++;}
     return n;
   }
-  position(i) { const k=i*3,t=this.phase[i]<.62?0:transferProgress((this.phase[i]-.62)/.23,this.config.transferAcceleration);return [this.offset[k]+(this.anchor[k]-this.offset[k])*t,0,this.offset[k+2]+(this.anchor[k+2]-this.offset[k+2])*t]; }
+  position(i) { if((this.config.coreShape??0)>0){const {center}=this.getCoreContact(i);return [center.x,0,center.z];}const k=i*3,t=this.phase[i]<.62?0:transferProgress((this.phase[i]-.62)/.23,this.config.transferAcceleration);return [this.offset[k]+(this.anchor[k]-this.offset[k])*t,0,this.offset[k+2]+(this.anchor[k+2]-this.offset[k+2])*t]; }
+  /** The core on the shared transfer path: the body's centre as the membrane shader's uHardRadius block computes it (one transfer clock, delay uDelay/2), lifted clear of the ground; its radius rigid (coreSize x r). Plane metres, y up, before the shader's ground clamp, deflate, lift and planet bend. */
+  getCoreContact(i) {
+    const config=this.config,spec=coreContact(config),k=i*3,r=config.r0*this.scale[i],phase=this.phase[i],s=this.lengthScale,delay=config.delaySpread;
+    const transfer=transferProgress((phase-.62)/.23,config.transferAcceleration);
+    const u=Math.max(0,Math.min(1,(transfer-delay*.5)/Math.max(.02,1-delay)));
+    const travel=2*u-u*u,height=r*.78*((1-u)**2+u*u)+2*(1-u)*u*.014*s;
+    const center={x:this.offset[k]+(this.anchor[k]-this.offset[k])*travel,y:height,z:this.offset[k+2]+(this.anchor[k+2]-this.offset[k+2])*travel};
+    if(phase>=.85){const settle=(phase-.85)/.15,recoil=Math.exp(-6*settle)*Math.sin(settle*22)*r*.12*config.wobble;center.x=this.anchor[k]+this.heading[k]*recoil;center.z=this.anchor[k+2]+this.heading[k+2]*recoil;center.y=r*.78;}
+    const radius=spec.collisionRadius*this.scale[i];if(radius>0)center.y=Math.max(center.y,radius*1.3+.018*s);
+    return {...spec,center,radius,u};
+  }
+  contactDamageAt(i,point,unitRadius,dt) { const c=this.getCoreContact(i);return !c.rammable&&Math.hypot(point.x-c.center.x,point.y-c.center.y,point.z-c.center.z)<=c.radius+Math.max(0,unitRadius)?c.contactDamagePerSecond*Math.max(0,dt):0; }
   getState(i) { return this.idle[i]?'REST':phaseState(this.phase[i]); }
   getAnchor(i) { return {x:this.anchor[i*3],y:this.anchor[i*3+1],z:this.anchor[i*3+2]}; }
   getStretchSegment(i) { const k=i*3;return {from:{x:this.offset[k],y:this.config.r0*this.scale[i],z:this.offset[k+2]},to:this.getAnchor(i),vulnerable:this.phase[i]>=.1&&this.phase[i]<.62,intangible:this.phase[i]>=.62&&this.phase[i]<.85}; }

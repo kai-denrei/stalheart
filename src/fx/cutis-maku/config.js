@@ -1,8 +1,11 @@
-// Ported from Jelly-Baby src/cutis/swarm/config.ts (the owner's own project, commit 0a23df8; GPL-3.0, see ./LICENSE), types stripped.
+// Ported from Jelly-Baby src/cutis/swarm/config.ts (the owner's own project, commit 0a23df8, brought up to 3a985e1 for the Pearl set; GPL-3.0, see ./LICENSE), types stripped.
 // Changes from the kit: loadConfig/saveConfig (localStorage) are dropped; KIT_R0 names the radius the kit's absolute lengths were tuned at;
 // sanitizeConfig takes optional per-key limits so a game-sized r0 (1.5 m, 6 m) is not clamped to the lab's 0.05..1 m.
+// 3a985e1 (the hard-core and Pearl lineages, owner 2026-10-13): the Core keys (membraneOpacity, coreShape, coreSize, pearlVariant, coreTint, and the
+// prototype contactDamage and health, ported as data: the game fights on its own ENEMY_SPEC), CORE_SHAPES and coreContact (the kit's tiers.ts; the
+// tier table itself is Stalheart's copy, src/content/pearl-enemies.js). A config without the Core keys (the boss lab's, the creature probe's) is a soft body.
 export const KIT_R0=0.2;
-export const DEFAULT_CONFIG={"cycleDuration":4,"aggression":2,"reach":15,"capAngle":10,"seekSweep":0.85,"seekCount":3,"seekRate":1,"transferAcceleration":1,"neckThin":0.5,"delaySpread":0.25,"cubenessPeak":0.9,"wobble":0.5,"r0":0.2,"noiseAmp":0.2,"breathRate":1.5,"cubenessRest":0.25,"pulseSpeed":2,"veinWidth":0.1,"skinTint":12165524,"veinTint":3679278,"pulseTint":15497546,"separation":2,"alignment":0.35,"cohesion":0.15};
+export const DEFAULT_CONFIG={"cycleDuration":4,"aggression":2,"reach":15,"capAngle":10,"seekSweep":0.85,"seekCount":3,"seekRate":1,"transferAcceleration":1,"neckThin":0.5,"delaySpread":0.25,"cubenessPeak":0.9,"wobble":0.5,"r0":0.2,"noiseAmp":0.2,"breathRate":1.5,"cubenessRest":0.25,"pulseSpeed":2,"veinWidth":0.1,"skinTint":12165524,"veinTint":3679278,"pulseTint":15497546,"separation":2,"alignment":0.35,"cohesion":0.15,membraneOpacity:1,coreShape:0,coreSize:.28,pearlVariant:0,coreTint:0xff242c,contactDamage:0,health:60};
 export const CUTIS_CONTROLS=[
   {key:'cycleDuration',label:'Cycle duration',group:'Hunt',min:.5,max:10,step:.05,unit:'s'},
   {key:'aggression',label:'Hunting urgency',group:'Hunt',min:0,max:4,step:.05,unit:'×'},
@@ -25,6 +28,13 @@ export const CUTIS_CONTROLS=[
   {key:'skinTint',label:'Membrane tint',group:'Surface',min:0,max:16777215,step:1,unit:'hex',kind:'color'},
   {key:'veinTint',label:'Vein tint',group:'Surface',min:0,max:16777215,step:1,unit:'hex',kind:'color'},
   {key:'pulseTint',label:'Pulse tint',group:'Surface',min:0,max:16777215,step:1,unit:'hex',kind:'color'},
+  {key:'membraneOpacity',optional:true,label:'Membrane opacity',group:'Core',min:.08,max:1,step:.01,unit:'×'},
+  {key:'coreShape',optional:true,label:'Core shape',group:'Core',min:0,max:3,step:1,unit:'shape'},
+  {key:'pearlVariant',optional:true,label:'All-pearl lineage',group:'Core',min:0,max:1,step:1,unit:'on'},
+  {key:'coreSize',optional:true,label:'Core radius',group:'Core',min:.1,max:.75,step:.01,unit:'× body'},
+  {key:'coreTint',optional:true,label:'Core color',group:'Core',min:0,max:16777215,step:1,unit:'hex',kind:'color'},
+  {key:'contactDamage',optional:true,label:'Hard contact damage',group:'Core',min:0,max:100,step:1,unit:'HP/s'},
+  {key:'health',optional:true,label:'Health',group:'Core',min:1,max:1000,step:1,unit:'HP'},
   {key:'separation',label:'Keep distance',group:'Swarm',min:0,max:6,step:.05,unit:'×'},
   {key:'alignment',label:'Heading alignment',group:'Swarm',min:0,max:2,step:.05,unit:'×'},
   {key:'cohesion',label:'Weak cohesion',group:'Swarm',min:0,max:.5,step:.01,unit:'×'},
@@ -34,7 +44,7 @@ export const CUTIS_PRESETS={patient:{cycleDuration:2.5,aggression:.35,reach:4.2,
 export function sanitizeConfig(value,limits={}){
   const result={...DEFAULT_CONFIG};
   if(value&&typeof value==='object')for(const c of CUTIS_CONTROLS){const n=value[c.key];if(typeof n==='number'&&Number.isFinite(n)){const [lo,hi]=limits[c.key]??[c.min,c.max];result[c.key]=Math.min(hi,Math.max(lo,n));}}
-  result.seekCount=Math.round(result.seekCount);return result;
+  result.seekCount=Math.round(result.seekCount);result.coreShape=Math.round(result.coreShape);result.pearlVariant=Math.round(result.pearlVariant);return result;
 }
 export function cycleTiming(duration){const coil=Math.max(.12,duration*.1),remaining=Math.max(.09,duration-coil);return {coil,extend:remaining*.5,anchor:remaining*7/90,transfer:remaining*23/90,settle:remaining/6};}
 export const PHASES=[{name:'COIL',end:.1},{name:'EXTEND',end:.55},{name:'ANCHOR',end:.62},{name:'TRANSFER',end:.85},{name:'SETTLE',end:1}];
@@ -52,3 +62,8 @@ export const CUTIS_PALETTES={
 export function applyPalette(config,key){const {skinTint,veinTint,pulseTint}=CUTIS_PALETTES[key];Object.assign(config,{skinTint,veinTint,pulseTint});}
 export function selectedPalette(config){return Object.entries(CUTIS_PALETTES).find(([,p])=>p.skinTint===config.skinTint&&p.veinTint===config.veinTint&&p.pulseTint===config.pulseTint)?.[0]??'custom';}
 export function transferProgress(t,acceleration){return Math.pow(Math.max(0,Math.min(1,t)),acceleration);}
+
+// The kit's tiers.ts: the core shapes, and what a body's core means to its host (soft bodies are rammable, solids are not; both on radar, solids larger
+// with a proximity warning). `collisionRadius` is the core's radius at scale 1 (x the instance's scale), 0 for a soft body.
+export const CORE_SHAPES=['Soft interior','Dodecahedron','Inverted pyramids','Pearl'];
+export function coreContact(config){const hard=(config.coreShape??0)>=1;return {rammable:!hard,radarVisible:true,radarBlipSize:hard?4:2.5,proximityWarning:hard,contactDamagePerSecond:hard?config.contactDamage??0:0,health:config.health,coreShape:CORE_SHAPES[Math.round(config.coreShape??0)],collisionRadius:hard?config.r0*(config.coreSize??.28):0};}

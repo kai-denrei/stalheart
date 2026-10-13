@@ -1,6 +1,10 @@
 // Ported from Jelly-Baby src/cutis/creature/shaders/membrane.{vert,frag}.glsl (the owner's own project, commit 0a23df8; GPL-3.0, see ./LICENSE), the GLSL as strings.
 // Changes from the kit: every absolute length is times SC = uRadius / 0.2 (the kit's tuning radius); iLife = [lift, deflate, opacity, spare] per instance (lift lowers the origin side only, deflate flattens to a puddle,
 // opacity fades); uPlanetR bends every deformed point exactly onto a sphere (0 = flat); uHeat (the material's emissive Color) pushes the colour toward white for the FLIR; the contact shadow's shaders are here too.
+// 3a985e1 (the hard cores, owner 2026-10-13): uOpacity (the membrane's own opacity, the Pearl set's .65 soft / .32 cored) and uHardRadius (a rigid core of
+// that radius in body radii: the rest shape held clear of it, one transfer clock for the whole body, the shell padded to twice the core's radius round the
+// synchronized centre, src/fx/cutis-maku/swarm.js getCoreContact the same centre in JS); the kit dropped the per-palette multicolour, this port keeps it.
+// bendPoint is PLANET_BEND in JS (the hard cores are placed with it, so the core lands where its shell does).
 
 /** Bend a local point (y up, the origin on the sphere's surface) onto a sphere of radius R: arc d/R, height R+y. y is written as y cos t - 2R sin^2(t/2), the same number without R-sized cancellation in float32. */
 export const PLANET_BEND=`
@@ -11,6 +15,12 @@ vec3 bendToPlanet(vec3 p,float R){
   return vec3(dir.x*rr*s,p.y*cos(t)-2.*R*h*h,dir.y*rr*s);
 }
 `;
+/** PLANET_BEND in JS, the same mapping term for term: (x, y, z) local plane metres (y up) -> the point on the sphere of radius R; R <= 0 leaves it. Writes `out` (or a new array). */
+export function bendPoint(x,y,z,R,out=[0,0,0]) {
+  if(!(R>0)){out[0]=x;out[1]=y;out[2]=z;return out;}
+  const d=Math.hypot(x,z),t=d/R,rr=R+y,s=Math.sin(t),h=Math.sin(t*.5),m=Math.max(d,1e-6);
+  out[0]=x/m*rr*s;out[1]=y*Math.cos(t)-2*R*h*h;out[2]=z/m*rr*s;return out;
+}
 
 export const MEMBRANE_VERT=`
 attribute vec3 iOffset;
@@ -26,6 +36,7 @@ attribute vec4 iLife;
 #define iProbeCount floor(iState.w/4.)
 #define iChosenProbe mod(iState.w,4.)
 #define SC (uRadius/.2)
+uniform float uHardRadius;
 uniform float uTime,uRadius,uNoise,uBreath,uRestCube,uCap,uNeck,uDelay,uCore,uForceCube,uSeekSweep,uSeekRate,uAcceleration,uPlanetR;
 varying vec3 vWorld,vRest,vHeading,vNormal;
 varying float vStretch,vPhase,vSeed,vLead;
@@ -61,7 +72,7 @@ vec4 deform(vec3 bodyN){
   float radius=max(.28,1.+lump*uNoise*1.7+breathe);
   // Rest attractor is deliberately subdued; only a transfer exposes the folded structure.
   float cube=max(uForceCube,uRestCube*.12+iParams.y*fold*fold);
-  vec3 rest=n*mix(radius,rounded,cube)*r;
+  vec3 rest=n*max(mix(radius,rounded,cube),uHardRadius*3.6)*r;
   // Nested cross-sections share their longitudinal coordinates and centerline.
   rest.xy*=core;
   rest.y=rest.y*.82+r*.78;rest.y=max(.012*SC,rest.y);
@@ -113,6 +124,9 @@ vec4 deform(vec3 bodyN){
   if(phase>=.62&&phase<.85){
     vec3 chosen=iChosenProbe<.5?iProbe0:iChosenProbe<1.5?iProbe1:iProbe2;
     float delay=clamp((1.-turn(bodyN,-chosen.x).z)*.5,0.,1.)*uDelay;
+    // A rigid core and its surrounding body share one transfer clock.
+    // Vertex-specific delay could otherwise pull the shell away from the core.
+    if(uHardRadius>0.)delay=uDelay*.5;
     float u=clamp((accelerated-delay)/max(.02,1.-uDelay),0.,1.);
     vec3 end=iAnchor+orient(rest);end.y=rest.y;
     vec3 anchor=iAnchor;anchor.y=.014*SC;
@@ -137,6 +151,17 @@ vec4 deform(vec3 bodyN){
     p=iAnchor+orient(rest);p.y=rest.y;
     p+=iHeading*r*.12*wobble*iParams.w;
     drop=0.;
+  }
+  if(uHardRadius>0.){
+    float bodyU=clamp((accelerated-uDelay*.5)/max(.02,1.-uDelay),0.,1.);
+    vec3 center=mix(iOffset,iAnchor,2.*bodyU-bodyU*bodyU);
+    center.y=r*.78*((1.-bodyU)*(1.-bodyU)+bodyU*bodyU)+2.*(1.-bodyU)*bodyU*.014*SC;
+    if(phase>=.85){float settle=(phase-.85)/.15;center=iAnchor+iHeading*r*.12*exp(-6.*settle)*sin(settle*22.)*iParams.w;center.y=r*.78;}
+    float lift=max(0.,r*uHardRadius*1.3+.018*SC-center.y);center.y+=lift;p.y+=lift;
+    // Protect a padded volume around the synchronized core, including the
+    // triangles spanning neighboring vertices as withdrawn stalks fold inward.
+    vec3 delta=p-center;float distance=length(delta),shell=r*uHardRadius*2.;
+    if(distance<shell)p=center+normalize(delta+vec3(0.,.000001*SC,0.))*shell;
   }
   p.y=max(.009*SC,p.y);
   // Deflate: a puddle. Heights shrink toward the ground, the footprint spreads about the body's centre.
@@ -166,6 +191,7 @@ export const MEMBRANE_FRAG=`
 uniform float uTime,uPulse,uVeinWidth,uCore,uDebug,uLow;
 uniform vec3 uSkin,uVein,uGlow;
 uniform vec3 uHeat;
+uniform float uOpacity;
 uniform float uMulticolored;
 uniform vec3 uPaletteSkin[7],uPaletteVein[7],uPaletteGlow[7];
 varying vec3 vWorld,vRest,vHeading,vNormal;
@@ -211,6 +237,7 @@ void main(){
   float alpha=(mix(.25,.85,thick)+rim*.19)*(gl_FrontFacing?.75:.4);
   // A puddle is a thin skin: let the dark core show through.
   if(uCore<.5)alpha*=mix(1.,.7,vLife.x);
+  if(uCore<.5)alpha*=uOpacity;
   if(uCore>.5){vec3 coreTint=min(veinTint,skin*.45);color=mix(coreTint*.28,coreTint*.9,diffuse)+glow*pulse*.06;alpha=1.;}
   if(uDebug>.5&&uDebug<1.5){color=vPhase<.1?vec3(.9,.65,.2):vPhase<.55?vec3(.3,.7,.8):vPhase<.62?vec3(.95,.3,.2):vPhase<.85?vec3(.7,.35,.9):vec3(.45,.8,.4);alpha=.9;}
   if(uDebug>1.5){color=mix(vec3(.1,.3,.8),vec3(1.,.2,.05),clamp((vStretch-1.)/5.,0.,1.));alpha=.95;}

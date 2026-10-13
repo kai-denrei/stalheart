@@ -1,11 +1,14 @@
 // Ported from Jelly-Baby src/cutis/creature/geometry.ts and the contact shadow of src/cutis/scene.ts (the owner's own project, commit 0a23df8; GPL-3.0, see ./LICENSE), types stripped; the meshes are the kit's.
 // Changes from the kit: ConvexGeometry comes from ./convex.js over the vendored ConvexHull; the iLife attribute; update() packs only ACTIVE instances and picks the LOD in the group's local space (the group sits on the planet);
 // planetR (setPlanetR) bends the membrane and the shadow onto the sphere in their vertex shaders; the shadow is part of the group.
+// 3a985e1: a body with a rigid core (config.coreShape >= 1) hides the soft inner core mesh (the hard core is drawn by ./hard-core.js); the kit's per-tier
+// batches for its mixed preview are not ported (one swarm per tier here). bend() is ./shaders.js bendPoint, PLANET_BEND's JS twin.
 import * as THREE from '../../../vendor/three.module.js';
 import { mergeVertices } from '../../../vendor/BufferGeometryUtils.js';
 import { ConvexGeometry } from './convex.js';
 import { createMembraneMaterial, createShadowMaterial, updateMaterial } from './material.js';
 import { KIT_R0 } from './config.js';
+import { bendPoint } from './shaders.js';
 
 const sizes={iOffset:3,iHeading:3,iAnchor:3,iState:4,iParams:4,iProbe0:3,iProbe1:3,iProbe2:3,iLife:4};
 
@@ -57,12 +60,8 @@ export function createSwarmGeometry(swarm,{ planetR=0 }={}) {
   const shadows=new THREE.InstancedMesh(shadowGeometry,shadowMaterial,swarm.capacity);shadows.frustumCulled=false;shadows.renderOrder=0;shadows.count=0;shadows.visible=false;group.add(shadows);
   const eye=new THREE.Vector3(),spot=new THREE.Vector3(),matrix=new THREE.Matrix4(),state=new Float32Array(4);
   const specs=Object.entries(sizes);
-  function bend(v) {
-    if(!(planet>0))return v;
-    const d=Math.hypot(v.x,v.z),t=d/planet,rr=planet+v.y,f=d>1e-9?rr*Math.sin(t)/d:0;
-    const y=v.y*Math.cos(t)-2*planet*Math.sin(t/2)**2;
-    v.x*=f;v.z*=f;v.y=y;return v;
-  }
+  const bent=[0,0,0];
+  function bend(v) { if(!(planet>0))return v;bendPoint(v.x,v.y,v.z,planet,bent);return v.set(bent[0],bent[1],bent[2]); }
   function setPlanetR(R) {
     planet=R>0?R:0;
     for(const l of levels){l.material.uniforms.uPlanetR.value=planet;l.coreMaterial.uniforms.uPlanetR.value=planet;}
@@ -94,7 +93,8 @@ export function createSwarmGeometry(swarm,{ planetR=0 }={}) {
     }
     shadows.count=shown;shadows.visible=shown>0;shadows.instanceMatrix.needsUpdate=true;
     fade.clearUpdateRanges();fade.addUpdateRange(0,shown);fade.needsUpdate=true;
-    for(const l of levels){l.membrane.count=l.core.count=l.count;l.membrane.visible=l.core.visible=l.count>0;for(const a of Object.values(l.attributes)){a.clearUpdateRanges();a.addUpdateRange(0,l.count*a.itemSize);a.needsUpdate=true;}updateMaterial(l.material,swarm.config,swarm.time,debug,force,multicolored);updateMaterial(l.coreMaterial,swarm.config,swarm.time,debug,force,multicolored);}
+    const soft=!((swarm.config.coreShape??0)>=1);
+    for(const l of levels){l.membrane.count=l.core.count=l.count;l.membrane.visible=l.count>0;l.core.visible=l.count>0&&soft;for(const a of Object.values(l.attributes)){a.clearUpdateRanges();a.addUpdateRange(0,l.count*a.itemSize);a.needsUpdate=true;}updateMaterial(l.material,swarm.config,swarm.time,debug,force,multicolored);updateMaterial(l.coreMaterial,swarm.config,swarm.time,debug,force,multicolored);}
   }
   return {group,levels,shadows,update,setPlanetR,get planetR(){return planet;},dispose:()=>{levels.forEach(l=>{l.geometry.dispose();l.coreGeometry.dispose();l.material.dispose();l.coreMaterial.dispose();l.membrane.dispose();l.core.dispose();});shadowGeometry.dispose();shadowMaterial.dispose();shadows.dispose();}};
 }
