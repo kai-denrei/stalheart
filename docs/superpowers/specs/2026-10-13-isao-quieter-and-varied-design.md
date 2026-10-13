@@ -125,10 +125,9 @@ seiyu player.
 
 Recorded and approved in seiyu_voice (his request is his approval, as with the bait lines), imported (266 lines, 85 triggers).
 
-- **The last stand** — `last_stand_01` "Do not go gentle into that good night." (3.00 s) then `last_stand_02` "Rage, rage against the
-  dying of the light." (3.47 s), both at speed 0.84 (the voice's 0.92 elsewhere), 0.6 s apart (`VOICE_SEQUENCE`). **The owner wrote "Do
-  not go gently into the good night"; the poem reads "Do not go gentle into that good night"; recorded as the poem reads** (his wording
-  is one re-render away). **Where:** the final sector's brief, BOTH WALLS (`sector_both`, a `VOICE_HOOKS` alias), the last fight before
+- **The last stand** — `last_stand_01` "Do not go gently into the good night." (2.90 s) then `last_stand_02` "Rage, rage against the
+  dying of the light." (3.47 s), both at speed 0.84 (the voice's 0.92 elsewhere), 0.6 s apart (`VOICE_SEQUENCE`). **First recorded as the poem reads ("Do not go gentle into that good night");
+  the owner then asked for their own wording, re-recorded (seiyu_voice 918c9b7).** **Where:** the final sector's brief, BOTH WALLS (`sector_both`, a `VOICE_HOOKS` alias), the last fight before
   THE ENDING; once a run, so rarer than "once a sector". Why there: it is the last stand by design (hard cores in every wave, a front on
   each side) and the poem's "dying of the light" is the colony's last fight before the ending; its brief had no recording, so no essential
   line gives way; it waits up to 8 s for its turn if he is speaking as the sector begins (`wait`), and nothing but a forced line comes

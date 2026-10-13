@@ -37,7 +37,7 @@ for (const ev of VOICE_EVENTS.filter((e) => e !== 'mission')) ok(`the ${ev} even
 // QUIETER AND VARIED (owner, 2026-10-13): the owner's lines where the spec puts them, the trio's moments real, the sequences' lines recorded
 { const { isaoSay, createIsaoVoice } = await import('../src/fx/isao-voice.js');
   const said = (id) => ISAO_TRIGGERS[id.replace(/_\d\d$/, '')]?.lines.find((l) => l.id === id);
-  ok('the Dylan Thomas pair, as the poem reads', said('last_stand_01')?.text === 'Do not go gentle into that good night.' && said('last_stand_02')?.text === 'Rage, rage against the dying of the light.');
+  ok('the Dylan Thomas pair, in the owner wording', said('last_stand_01')?.text === 'Do not go gently into the good night.' && said('last_stand_02')?.text === 'Rage, rage against the dying of the light.');
   ok('the trio recorded', /^The Good: our mission to harness the stars/.test(said('the_good_01')?.text) && /^The Truth: our superior technology will prevail/.test(said('the_truth_01')?.text) && /^The Beautiful: my work is a form of beauty/.test(said('the_beautiful_01')?.text));
   ok('the last stand is the final sector\'s brief (BOTH WALLS)', isaoSay.index.resolve('sector_both') === 'last_stand' && BRIEFS.sector_both && /'sector_both'/.test(readFileSync(new URL('fx/sector-run.js', root), 'utf8')));
   for (const [from, sq] of Object.entries(VOICE_SEQUENCE)) ok(`the sequence ${from} -> ${sq.next} is recorded`, !!said(from) && !!said(sq.next));

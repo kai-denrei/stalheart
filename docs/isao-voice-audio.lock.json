@@ -1,6 +1,6 @@
 {
  "schema": 2,
- "source": "seiyu_voice export A-1 2026-10-13T09:21:58Z: 24 kHz mono WAV, encoded by scripts/import-isao-voice.mjs to mono 64 kbps MP3, no normalisation",
+ "source": "seiyu_voice export A-1 2026-10-13T10:20:39Z: 24 kHz mono WAV, encoded by scripts/import-isao-voice.mjs to mono 64 kbps MP3, no normalisation",
  "files": [
   {
    "path": "assets/audio/isao/mission_04.mp3",
@@ -1230,9 +1230,9 @@
   {
    "path": "assets/audio/isao/last_stand_01.mp3",
    "id": "last_stand_01",
-   "sha256": "d359a3d38626219bd21cc0c7108dfa3030d5e08779b066ad0a5f1c859aab22b3",
-   "bytes": 24596,
-   "sourceSha256": "eaf97da20d4c6a44170b1eb2a17b1950d03d79361a79dd1ba475a92065ebad8e"
+   "sha256": "f6722bd28365b5a6cc92296746c2c22fd2796ddb959e94c58d9c0837280d55a1",
+   "bytes": 25172,
+   "sourceSha256": "1f7af9b5c595bc1b8c5695ebd9dc55a28ec1de810e5383e89690af875d76c5a1"
   },
   {
    "path": "assets/audio/isao/last_stand_02.mp3",
