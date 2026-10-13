@@ -174,7 +174,7 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
   };
   const hullPush = (hub, dx, dz) => { const to = toSphere[hub] ?? toSphere[0], b = boxes[hub], a = to(b.x, b.z), ax = a[0], ay = a[1], az = a[2], c = to(b.x + dx, b.z + dz); hullSink.push(c[0] - ax, c[1] - ay, c[2] - az); };
   const hullTouch = (h, cored, r, tier) => { if (h.record) hullSink.touch(h.record, cored, r, tier); };
-  const familySink = { push: hullPush, touch: hullTouch, depth: (h, d, tier) => hullSink.depth?.(h, d, tier) };
+  const familySink = { push: hullPush, touch: hullTouch, depth: (h, d, tier, dying) => hullSink.depth?.(h, d, tier, dying) };
   function hull(tank, drive, sink) {
     place();
     if (!frame || !tank?.pos) return 0;

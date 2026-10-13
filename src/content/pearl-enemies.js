@@ -145,14 +145,15 @@ export const PEARL_WAVES = freeze({ scale: 0.35 });
 // least `minHalf` metres a side); a body (its drawn outline) is never inside it: a soft body is shoved out of its way, the tank losing `loss` of its
 // speed to a body of `refRadius` m on first contact (x its radius squared over that, at most `maxLoss`), recovered over `recover` s; a cored body
 // stops it (`cored` of its speed lost) and pushes it back out; a body counts as touched again only `again` s after it was; overlaps under `slop` m
-// are let be; a soft body shoved is swept aside `sweep` times as far as it is pushed out (toward the side of the hull it is on).
+// are let be; a soft body shoved is swept aside `sweep` times as far as it is pushed out (toward the side of the hull it is on); a body pinned between
+// the hull and the rock pushes the hull back by what it cannot give, times its tier's mass, at most `pin` m a frame (a dying one not at all).
 // `death` (owner, 2026-10-13: "when the Cutis-Maku dies, it becomes very hard to distinguish which ones are alive and which ones are dead... so I
 // propose keeping the current dissolving blob, but having it immediately much darker, so it is easier to distinguish against living ones."): at the
 // moment of death (a rammed body's stagger included: it is dead) the membrane, its veins, pulse and rim, the inner core and the pearl go to `tone` of
 // their brightness, near grey, over `seconds`, and stay so while the blob deflates and dissolves as before (src/fx/cutis-maku/shaders.js uDeadTone).
 export const PEARL_IMPACT = freeze({
   death: { tone: 0.22, seconds: 0.12 },
-  contact: { refRadius: 2.8, loss: 0.25, maxLoss: 0.85, recover: 0.45, cored: 1, again: 0.6, slop: 0.02, minHalf: 1.2, sweep: 1.2 },
+  contact: { refRadius: 2.8, loss: 0.25, maxLoss: 0.85, recover: 0.45, cored: 1, again: 0.6, slop: 0.02, minHalf: 1.2, sweep: 1.2, pin: 0.12 },
   // PER TIER (owner, 2026-10-13, on round four's slower bodies: "the slower Cutis feel much better, but the lower level ones, white and yellow, should
   // feel very easy to run over. The threat starts like more of an annoyance."): `mass` x the contact's speed loss (near none: the hull ploughs on),
   // `pad` metres round the hull within which a body counts as hit (generous: a brush is a ram, never a near miss), `ram` that hit IS the game's ram

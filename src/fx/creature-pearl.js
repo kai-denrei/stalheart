@@ -75,7 +75,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     hubTable(swarm);
     const cores = def.cored ? createHardCores(swarm, { planetR, levelOf: geo.levelOf }) : null;
     if (cores) { cores.group.name = `Pearl ${id} cores`; group.add(cores.group); }
-    p = { id, def, swarm, geo, cores, owner, free: [], next: 0, dying: new Map(), jolts: new Map(), live: 0, peak: 0, placed: 0, replaced: 0, seenReplaced: 0, shoved: 0, deaths: 0, full: 0, shed: 0, handed: 0, staggers: 0, recoils: 0 };
+    p = { id, def, swarm, geo, cores, owner, free: [], next: 0, dying: new Map(), jolts: new Map(), live: 0, peak: 0, placed: 0, replaced: 0, seenReplaced: 0, shoved: 0, squashed: 0, deaths: 0, full: 0, shed: 0, handed: 0, staggers: 0, recoils: 0 };
     pools.set(id, p);
     return p;
   }
@@ -292,7 +292,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
         const pts = outline(p, i);
         boxContact(box, OX, OZ, pts, HIT);
         let depth = HIT[0];
-        if (drive === null) { if (depth > 0) sink.depth(h, depth, p.id); continue; }
+        if (drive === null) { if (depth > 0) sink.depth(h, depth, p.id, p.dying.has(i)); continue; }
         const dying = p.dying.has(i);
         // a light tier's generous hit (round four, PEARL_IMPACT.tiers[tier].pad): the hull grown by `pad` touching the body is a hit, booked
         if (pad > 0 && drive && !dying && !(depth > 0)) { box.hl += pad; box.hw += pad; boxContact(box, OX, OZ, pts, PADHIT); box.hl -= pad; box.hw -= pad; if (PADHIT[0] > 0) sink.touch(h, false, r, p.id); }
@@ -304,8 +304,24 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
         // body is swept aside as well, toward the side of the hull it is on (`sweep` of the depth: a plough, not a snowplough pushing it ahead)
         const k = i * 3, x0 = sw.offset[k], z0 = sw.offset[k + 2], vx = -box.uz, vz = box.ux, side = (pos[0] - box.x) * vx + (pos[2] - box.z) * vz >= 0 ? 1 : -1, sweep = (IMPACT?.contact?.sweep ?? 0) * depth * side;
         bump(sw, i, nx * depth + vx * sweep, nz * depth + vz * sweep); sw.clearBody(i);
-        const gave = (sw.offset[k] - x0) * nx + (sw.offset[k + 2] - z0) * nz;
-        if (depth - gave > 0.01) sink.push(sw.hub[i], -nx * (depth - gave), -nz * (depth - gave));   // pinned against the rock: the hull gives way (driving or not)
+        let gave = (sw.offset[k] - x0) * nx + (sw.offset[k + 2] - z0) * nz;
+        // pinned (the rock gave the move back): carried along the hull's own axis instead, ahead of its nose or behind its tail, whichever it is
+        // nearer (a plough's load in a lane narrower than the sweep); measured again on the moved outline
+        if (depth - gave > 0.01) {
+          const m = outline(p, i), ahead = (pos[0] - box.x) * box.ux + (pos[2] - box.z) * box.uz >= 0, c = box.x * box.ux + box.z * box.uz;
+          let lo = Infinity, hi = -Infinity; for (let q = 0; q < m; q++) { const u = OX[q] * box.ux + OZ[q] * box.uz; if (u < lo) lo = u; if (u > hi) hi = u; }
+          const along = ahead ? Math.max(0, c + box.hl - lo) : -Math.max(0, hi - (c - box.hl)), bx = sw.offset[k], bz = sw.offset[k + 2];
+          if (along) { bump(sw, i, box.ux * along, box.uz * along); sw.clearBody(i); }
+          const moved = (sw.offset[k] - bx) * box.ux + (sw.offset[k + 2] - bz) * box.uz;
+          if (Math.abs(along) > 1e-6 && Math.abs(moved) >= Math.abs(along) - 0.01) gave = depth;   // carried clear
+        }
+        // pinned against the rock, the hull gives way (driving or not), as much as the body weighs (a light tier's next to nothing, a dying puddle nothing)
+        // and at most `pin` m a frame: a blob pressed into a wall slows the hull, it does not throw it back
+        const left = depth - gave, rest = dying ? 0 : Math.min(IMPACT?.contact?.pin ?? Infinity, left * Math.min(1, IMPACT?.tiers?.[p.id]?.mass ?? 1));
+        if (rest > 0.01) sink.push(sw.hub[i], -nx * rest, -nz * rest);
+        // what neither the rock nor the hull gives is the body's: squashed flat against the wall along the contact (round three's squeeze: its room
+        // along that axis, the shader's iOffset.y / iAnchor.y), more each frame the hull presses on
+        if (left - rest > 0.01) { const was = sw.room[i] > 0 && sw.room[i] < 1 ? sw.room[i] : 1; sw.room[i] = Math.max(0.15, was - (left - rest) / (1.2 * r)); sw.roomAxis[i] = Math.atan2(nz, nx); sw.roomAcross[i] = 4; p.squashed++; }
         p.shoved++;
       }
     }
@@ -378,7 +394,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     roots: () => [group],
     // each tier present: bodies up, dying, the most up at once, placed, re-placed on the leash, deaths, squad members shed, refused for want of a slot,
     // the pearls drawn and the bodies drawn at each level [high, low, lowest, culled] (src/fx/cutis-maku/geometry.js)
-    stats: () => Object.fromEntries([...pools.values()].map((p) => [p.id, { live: p.live, dying: p.dying.size, peak: p.peak, placed: p.placed, replaced: p.replaced, seenReplaced: p.seenReplaced, shoved: p.shoved, deaths: p.deaths, shed: p.shed, full: p.full, handed: p.handed, staggers: p.staggers, recoils: p.recoils, capacity: p.swarm.capacity, r0: p.swarm.config.r0, cored: p.def.cored, cores: p.cores?.count ?? 0, lod: [...p.geo.lodCounts] }])),
+    stats: () => Object.fromEntries([...pools.values()].map((p) => [p.id, { live: p.live, dying: p.dying.size, peak: p.peak, placed: p.placed, replaced: p.replaced, seenReplaced: p.seenReplaced, shoved: p.shoved, squashed: p.squashed, deaths: p.deaths, shed: p.shed, full: p.full, handed: p.handed, staggers: p.staggers, recoils: p.recoils, capacity: p.swarm.capacity, r0: p.swarm.config.r0, cored: p.def.cored, cores: p.cores?.count ?? 0, lod: [...p.geo.lodCounts] }])),
     // the harness's audit of the stalks against the rock: every live body's seeking stalks (its whole length and most of its cup) and anchor, put to
     // `clear(hub, cell, x, z, dx, dz, len)` (true when the way is clear); a body whose origin itself is on a blocked cell (`inRock`) is counted apart;
     // -> { bodies, stalks, crossing, anchors, inRock }
