@@ -12,6 +12,10 @@
 // (x, z) are metres in the plane of the bodies' root: the heart's surface point, +Y the normal, the azimuthal-equidistant projection round
 // it (src/domain/surface-projection.js); `pos` is the record's unit sphere point and `apos` the aim's, for a family that draws through a
 // frame of its own (a family's view may give its body's unit `point` instead of a plane `centre`: the seam projects it).
+// THE RECORD'S LOOK (2026-10-13, the Pearl set, src/fx/creature-pearl.js): add and track also carry what the enemy loop writes on the stand-in for a dot
+// cloud and what the record is: `opacity` (the stand-in material's: the rise out of a breach, the phantom's cloak), `grow` (its scale over the record's
+// own, s0 / scale0: the shrink with hit points and the regenerators' knitting), `members` (a squad's bodies left) and `speed` (m/s, its type's speed x its
+// own pace). A family may ignore them (the Cutis and Reed families do).
 // The root sits at the heart's point with one unit a metre (scale cellSide / metresPerCell), so a kit that bends its plane onto a sphere
 // of radius R = metresPerCell / cellSide metres lands exactly on the planet.
 import * as THREE from '../../vendor/three.module.js';
@@ -52,10 +56,10 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
   }
 
   // e.obj for a creature record: nothing to draw, the userData contract (lift 0: the record's point is on the ground; the body has its own)
-  function proxy() {
+  function proxy(reach = 1) {
     const obj = new THREE.Object3D(); obj.name = 'creature record';
     obj.material = { opacity: 1, transparent: true, dispose() {} };
-    Object.assign(obj.userData, { kind: 'creature', lift: 0, reach: 1, tick() {}, setTint() {} });
+    Object.assign(obj.userData, { kind: 'creature', lift: 0, reach, tick() {}, setTint() {} });
     return obj;
   }
 
@@ -68,13 +72,15 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
     return [p[0] + dir[0] * d, p[1] + dir[1] * d, p[2] + dir[2] * d];
   }
 
+  const lookOf = (e) => ({ opacity: e.obj?.material?.opacity, grow: (e.obj?.userData?.s0 ?? e.scale0) / (e.scale0 || 1), members: e.members ?? 0,
+    speed: (e.spec?.speed ?? 0) * (e.paceJitter ?? 1) * metresPerCell });
   // a new record of a creature type (`e.spec.body` the family, `e.tier` its tier): its body, at the record's point
   function spawn(e) {
     place();
     const family = e.spec?.body, a = family && adapter(family), t = a && tiers[family]?.[e.tier];
     if (!t || !frame) return false;
     const [x, z] = planeOf(e.pos), apos = aheadOf(e), [ax, az] = planeOf(apos);
-    const h = a.add(e.tier, { x, z, angle: Math.atan2(az - z, ax - x) || 0, lift: liftOf(e, t.r0), pos: e.pos, apos });
+    const h = a.add(e.tier, { x, z, angle: Math.atan2(az - z, ax - x) || 0, lift: liftOf(e, t.r0), pos: e.pos, apos, ...lookOf(e) });
     if (!h) return false;
     live.set(e, { family, h, stamp, r0: t.r0 });
     return true;
@@ -100,7 +106,7 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
       if (!b || !e.alive) continue;
       b.stamp = stamp;
       const [x, z] = planeOf(e.pos), apos = aheadOf(e), [ax, az] = planeOf(apos);
-      if (adapters.get(b.family).track(b.h, { x, z, ax, az, lift: liftOf(e, b.r0), pos: e.pos, apos, dt })) replaced++;
+      if (adapters.get(b.family).track(b.h, { x, z, ax, az, lift: liftOf(e, b.r0), pos: e.pos, apos, dt, ...lookOf(e) })) replaced++;
     }
     for (const [e, b] of live) if (b.stamp !== stamp) { live.delete(e); adapters.get(b.family).free(b.h); }
     for (const a of adapters.values()) a.step(dt, camera, height);

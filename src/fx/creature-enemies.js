@@ -5,6 +5,15 @@
 //   &reedlook=solid              the Reeds without the kit's transmission (src/fx/creature-reed.js: the transmission pass's cost)
 //   &reedhz=N                    the Reeds' solver at N Hz whatever their count (src/fx/creature-reed.js `hz`; the Nih-Dairia keeps 240)
 //   &sentries=N                  N sentries stand at boot near the gate (CREATURE_PROBE.sentries; the probe's own default without it)
+//   ?creatures=pearl             THE PEARL SET (owner, 2026-10-13: "let's try regular story mode, but we replace the enemies with the Cutis-Maku-Pearl set";
+//                                spec docs/superpowers/specs/2026-10-13-pearl-enemies-design.md): the story runs as it does, and EVERY enemy of a mapped type
+//                                is drawn as its Pearl tier's body instead of its dot cloud (src/fx/creature-pearl.js; the set src/content/pearl-enemies.js).
+//                                `dress` is the enemy loop's one call (src/fx/enemy-step.js spawnOne, so the sectors' waves, the feasts, the stampedes, the
+//                                expeditions' guards and the opening's construction waves alike): the entry keeps its type and every one of its type's
+//                                ENEMY_SPEC fields (hit points, speed, heart damage, bounty, regen, erratic, jink, tactician, cloak, slow / accel on hit, heavy,
+//                                boss, rammable), plus `body: 'pearl'`, so everything downstream that reads the type or the spec runs as for the dot cloud. A
+//                                record coming up more than PEARL_FOLLOW.maxArc round the planet from the heart (the canyon's swarm at the far side, where the
+//                                bodies' plane is singular) keeps its dot cloud; a squad is its members' bodies round one record.
 // THE PROBE'S GROUND (owner, 2026-10-12): its bodies come up beyond the gate, outside the walls, and sentries stand to meet them; the
 // heart is held while it runs (src/domain/probe-ground.js, CREATURE_PROBE.ground / .sentries).
 // The records are the enemy loop's (src/fx/enemy-step.js asks for `proxy`, `spawn`, `kill` and `step`); the bodies are drawn by the family's
@@ -18,10 +27,18 @@ import { createCreatureBodies } from './creature-bodies.js';
 import { createCutisFamily } from './creature-cutis.js';
 import { createReedFamily } from './creature-reed.js';
 import { createCreatureProbe } from './creature-probe.js';
+import { createPearlFamily } from './creature-pearl.js';
 import { gateHops, spawnBand, sentryCells } from '../domain/probe-ground.js';
+import { PEARL_TIERS, PEARL_OF, PEARL_BODY, PEARL_FOLLOW } from '../content/pearl-enemies.js';
+import { pearlBodies, arcBetween } from '../domain/pearl-bodies.js';
+import { SQUADS } from '../content/sectors.js';
 
 const FAMILIES = Object.freeze({ cutis: createCutisFamily, reed: createReedFamily });
 const SPECS = new Map();
+// THE PEARL SET: each mapped type's body (tier, r0) and its spec (its type's own ENEMY_SPEC with the body's family, `pearl` its tier)
+export const PEARL_BODIES = Object.freeze(pearlBodies({ spec: ENEMY_SPEC, of: PEARL_OF, tiers: PEARL_TIERS, body: PEARL_BODY }));
+const PEARL_SPECS = Object.freeze(Object.fromEntries(Object.entries(PEARL_BODIES).map(([type, b]) => [type, Object.freeze({ ...ENEMY_SPEC[type], body: 'pearl', pearl: b.tier })])));
+export const pearlSpec = (type) => PEARL_SPECS[type] ?? null;
 // a tier's spec: the family's ENEMY_SPEC entry with the tier's hit points, speed, size and bounty (a queue entry carries it)
 export function tierSpec(family, tier) {
   const k = `${family}:${tier}`;
@@ -42,12 +59,14 @@ export function createCreatureEnemies(host) {
   const tune = host.flags.ramp === 'test' ? { ...CREATURE_PROBE, ...CREATURE_PROBE.test } : CREATURE_PROBE;
   // the sentries at boot: &sentries=N (a number, at most the story's cap), else the probe's own count, else none
   const askedSentries = host.flags.sentries != null && host.flags.sentries !== '' ? Math.max(0, Math.min(tune.sentries.max, Math.floor(+host.flags.sentries) || 0)) : probing ? tune.sentries.count : 0;
-  const families = { ...FAMILIES, reed: (o) => createReedFamily({ ...o, ...(probing ? { budget: null } : {}), solid: host.flags.reedlook === 'solid', hz: Math.max(0, +host.flags.reedhz || 0) || null }) };
+  const pearl = typeof host.flags.creatures === 'string' && host.flags.creatures.toLowerCase() === 'pearl';
+  const pearled = { dressed: 0, far: 0, squads: 0 };   // entries given a Pearl body, mapped ones left a dot cloud for their arc, squads among the dressed
+  const families = { ...FAMILIES, pearl: (o) => createPearlFamily({ ...o, set: PEARL_TIERS, tune: PEARL_FOLLOW }), reed: (o) => createReedFamily({ ...o, ...(probing ? { budget: null } : {}), solid: host.flags.reedlook === 'solid', hz: Math.max(0, +host.flags.reedhz || 0) || null }) };
   let bodies = null, probe = null, rr = 0, ground = null, garrison = null, heartHeld = 0;
   const placeholder = new THREE.Group();   // a band spawn's source: no breach, no emergence
   // who fought the creatures: the sentries' hits, damage and kills on the tier's records (every creature record, the waves' share too)
   const fight = { hits: 0, damage: 0, kills: 0, killsAll: 0 }, starts = { n: 0, inside: 0, probe: 0, probeOutside: 0, minHops: null, maxHops: null };
-  const make = () => (bodies ??= createCreatureBodies({ scene: host.scene, families, tiers: CREATURE_TIERS, follow: CREATURE_FOLLOW, death: CREATURE_DEATH,
+  const make = () => (bodies ??= createCreatureBodies({ scene: host.scene, families, tiers: { ...CREATURE_TIERS, pearl: PEARL_BODIES }, follow: CREATURE_FOLLOW, death: CREATURE_DEATH,
     metresPerCell: STORY_RECIPE.metresPerCell, heart: host.heart }));
 
   const ofTier = (e) => e.alive && e.tier === choice.tier && e.spec?.body === choice.family;
@@ -103,11 +122,31 @@ export function createCreatureEnemies(host) {
       alive: aliveOfTier, total: () => host.enemies.reduce((n, e) => n + (e.alive ? 1 : 0), 0), perf: host.perf, perfOn: host.perfOn, bodies: () => bodies?.stats() ?? null, defence });
   }
 
+  // the Pearl set's state: the records alive by type with a body and without one (a mapped type's dot cloud: far, or before the switch), the
+  // entries dressed and left, and the bodies' books (each tier's swarm)
+  function pearlState() {
+    const byType = {};
+    for (const e of host.enemies) {
+      if (!e.alive) continue;
+      const o = (byType[e.type] ??= { pearl: 0, dots: 0, tier: PEARL_OF[e.type] ?? null });
+      if (e.spec?.body === 'pearl') o.pearl++; else o.dots++;
+    }
+    return { pearl: true, byType, dressed: pearled.dressed, far: pearled.far, squads: pearled.squads, bodies: bodies?.stats() ?? null };
+  }
+
   return {
-    choice,
+    choice, pearl,
     // the enemy loop's factory: a creature type gets a proxy for e.obj, and its body once the record exists
     isCreature: (type) => !!ENEMY_SPEC[type]?.body,
-    proxy: () => make().proxy(),
+    proxy: (entry) => make().proxy(entry?.squad ? SQUADS.reach : 1),   // a squad's stand-in keeps the dot squad's contact reach
+    // ?creatures=pearl: a queue entry of a mapped type, as it is released, takes its Pearl body (its type and spec otherwise its own)
+    dress(entry) {
+      if (!pearl || !entry || entry.spec?.body || !PEARL_SPECS[entry.type]) return entry;
+      const h = host.heart(), c = h && entry.sp ? host.ground?.()?.centers?.[entry.sp.ci] : null;
+      if (c && arcBetween(c, h[0]) > PEARL_FOLLOW.maxArc) { pearled.far++; return entry; }
+      pearled.dressed++; if (entry.squad) pearled.squads++;
+      return { ...entry, spec: PEARL_SPECS[entry.type], tier: entry.type };
+    },
     spawn(e, entry) {
       e.tier = entry.tier ?? 'small'; make().spawn(e);
       // where every creature record came up: inside the walls is what the owner saw (2026-10-12), and the probe's own against its band
@@ -145,10 +184,11 @@ export function createCreatureEnemies(host) {
     holds: () => running(),
     holdHeart(dmg) { if (!running()) return false; heartHeld += dmg; return true; },
     roots: () => bodies?.roots() ?? [],
-    state: () => (choice || garrison ? { ...(choice ?? {}), alive: choice ? aliveOfTier() : 0, bodies: bodies?.stats() ?? null, probe: probe?.state() ?? null, defence: defence() } : null),
+    state: () => (pearl ? pearlState() : choice || garrison ? { ...(choice ?? {}), alive: choice ? aliveOfTier() : 0, bodies: bodies?.stats() ?? null, probe: probe?.state() ?? null, defence: defence() } : null),
+    // the harness's view of the Pearl set: the records alive by type (dressed, and left a dot cloud) and the bodies' books
     // the harness: the bodies' view of a record, a record's handle kept across its death, that handle's view
     test: { view: (e) => bodies?.view(e) ?? null, handle: (e) => bodies?.handleOf(e) ?? null, viewHandle: (h) => bodies?.viewHandle(h) ?? null, spawn: (n) => (choice ? spawnProbe(n) : 0), ofTier: () => (choice ? host.enemies.filter(ofTier) : []),
-      hurt: (e, dmg) => host.damage(e, dmg),
+      hurt: (e, dmg) => host.damage(e, dmg), pearls: () => host.enemies.filter((e) => e.alive && e.spec?.body === 'pearl'),
       // the ground's view: the gate, the band's cells (each with its hops and whether it is inside the walls), the garrison's cells
       ground: () => { const gr = groundOf(); return gr ? { gates: gr.g.gates, band: gr.band.cells.map((c) => ({ cell: c, hops: gr.hops[c], inside: gr.g.inside(c) })), lo: gr.band.lo, hi: gr.band.hi, made: gr.made, garrison: garrison ?? [] } : null; },
       // n of the tier on the outside ground `lo`..`hi` hops from the gate (the harness's: headless barely walks them to the sentries)

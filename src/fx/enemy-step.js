@@ -217,12 +217,12 @@ export function createEnemyStep(host) {
 
   // ONE BODY OUT OF ITS SOURCE: the record pushed (also the creature probe's direct spawn, src/fx/creature-enemies.js). A creature type
   // (ENEMY_SPEC `body`) gets a proxy for e.obj and its body in the family's kit; a queue entry may carry its own spec (a creature's tier)
-  function spawnOne(entry) {
-    const { type, sp } = entry;
+  function spawnOne(queued) {
+    const entry = host.creatures?.()?.dress?.(queued) ?? queued, { type, sp } = entry;   // ?creatures=pearl dresses a mapped type in its Pearl body (src/fx/creature-enemies.js)
     {
       const spec = entry.spec ?? ENEMY_SPEC[type]; if (host.storyMode() && !entry.guard && !host.seenTypes.has(type)) { host.seenTypes.add(type); showContact(host.root, type); }   // first contact: src/fx/contact-card.js
       const creatures = spec.body ? host.creatures?.() : null;
-      const obj = creatures ? creatures.proxy() : (entry.squad ? makeDotSquad : makeDotEnemy)(type, { walker: CREATURE_TINTS[type], walkerHi: accentFor(type) }, entry.dens, entry.squad);
+      const obj = creatures ? creatures.proxy(entry) : (entry.squad ? makeDotSquad : makeDotEnemy)(type, { walker: CREATURE_TINTS[type], walkerHi: accentFor(type) }, entry.dens, entry.squad);
       const size = spec.size * 0.7;
       const scale0 = host.cellSide() * size;
       obj.scale.setScalar(scale0); obj.userData.s0 = scale0;
