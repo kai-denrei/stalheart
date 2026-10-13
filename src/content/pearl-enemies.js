@@ -60,8 +60,12 @@ export const PEARL_BODY = freeze({ metresPerSize: 5.6, boss: 1.5 });
 // CREATURE_FOLLOW's 1.8 s, which put a fast body 11 radii ahead of its record), and its leash is at least `leashSeconds` of the record's walk (a hopper's
 // lag is a sawtooth a hop long). Simulated offline through src/fx/creature-pearl.js (ten bodies a type for a minute, each on a wandering record at its
 // type's speed and the sector's pace, the erratic bursts in): the one- and three-stalk tiers 1.5-2.6 radii from their records on average and never
-// re-placed; the forking two-stalk ones (blue, orange, green, purple) 2.7-5 radii, 0.2-1.9 re-placements a body-minute; the saucer (23 m/s in a 2 m
-// body, at the floor) worst at ~11 radii and 3.6.
+// re-placed; the forking two-stalk ones (blue, orange, green, purple) 2.8-5 radii, 0.1-2.4 re-placements a body-minute; the saucer (23 m/s in a 2 m
+// body, at the floor) worst at ~11 radii and 3.4.
+// `separation`: the kit's neighbour push (DEFAULT_CONFIG 2) for the Pearl swarms. The records already keep their own spacing, and a body pushed off its
+// record's line falls behind it: the first --pearl-story run re-placed the white tier 160 times for 97 bodies in sector 2's soft flood (yellow 2 for 51);
+// offline, sixty amoebas on a clump of records for 30 s: separation 2 1.9 re-placements a body-minute and 5.3 radii from their records, 1 0.8 and 4.3,
+// 0.5 0.03 and 2.9, 0 none and 1.7. At 0.5 the bodies still part a little rather than merge.
 // `squad`: a squad (one record holding SQUADS.size bodies, src/content/sectors.js) is that many bodies round its record, `gap` radii apart across its
 // heading and `stagger` radii along it; a shed member deflates.
 // `maxArc`: a body is drawn in the bodies' plane round the heart (src/fx/creature-bodies.js), whose shape is pressed tangentially by sin(t) / t at an arc t
@@ -69,7 +73,7 @@ export const PEARL_BODY = freeze({ metresPerSize: 5.6, boss: 1.5 });
 // `opacityRef`: a dot cloud's settled opacity (the emergence's 0.95): the cloak's and the emergence's opacity on the record's stand-in over it is the body's.
 // `capacity`: instances a tier's swarm holds (the crowd cap allows up to 3500 records, a squad is five bodies).
 export const PEARL_FOLLOW = freeze({
-  keep: 0.8, seekEfficiency: [1, 0.35, 0.75], floor: 0.1, leadHops: 0.6, leashSeconds: 1.5,
+  keep: 0.8, seekEfficiency: [1, 0.35, 0.75], floor: 0.1, leadHops: 0.6, leashSeconds: 1.5, separation: 0.5,
   squad: { gap: 2.2, stagger: 2 }, maxArc: 1.2, opacityRef: 0.95,
   capacity: { white: 3000, yellow: 2000, blue: 2000, orange: 1000, green: 1000, purple: 800, brown: 600, black: 600 },
 });

@@ -2001,6 +2001,56 @@ try{
    const ci=await evaluate(`(()=>{const e=${pick}??${T}.creatures.ofTier().find(e=>!(e.emergeAge<1.2));return e?e.cur:-1;})()`);
    if(ci>=0){await evaluate(`${T}.showcase.ground(${ci},${look[tier]?.[0]??3},${look[tier]?.[1]??4})`);await delay(2500);const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(shots,`${name}.png`),Buffer.from(shot.data,'base64'));}}
  }
+ } else if(args.includes('--pearl-story')) {
+ // THE STORY WITH THE PEARL SET (owner, 2026-10-13; src/fx/creature-enemies.js ?creatures=pearl, spec docs/superpowers/specs/2026-10-13-pearl-enemies-design.md):
+ // a story sector (SECTOR, default 2) boots with every mapped type drawn as its Pearl tier's body: the sector's own waves come up as Pearl bodies, and
+ // the harness puts a few of each tier's types through the story's own spawn (spawnFodder: the queue, spawnOne, the dress); every tier's swarm has
+ // bodies, the cored tiers their pearls, no mapped record is a dot cloud (none of sector 2 is on the far side); a body takes damage (it shrinks with
+ // its record's hit points) and dies (deflates into its puddle); a phantom's body fades with its cloak; 0 page errors. SHOTS=<dir> saves a close look.
+ const T='window.__stalheartTest',P=`${T}.state().creatureProbe`,shots=process.env.SHOTS||null;if(shots)mkdirSync(shots,{recursive:true});
+ const n=+process.env.SECTOR||2,name='pearl-story';
+ await go(name,`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${n}&fps=1&creatures=pearl#td`);
+ await until(`!!${T} && ${T}.state().sector?.n===${n} && ${P}?.pearl===true`,120000);
+ await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,#td-brief,.contact-card{display:none!important}</style>")');
+ // the sector's own waves: its first bodies come up as Pearl bodies
+ await until(`${T}.creatures.pearls().some(e=>!(e.emergeAge<1.2))`,120000).catch(async()=>assert.fail(`the sector's waves come up as Pearl bodies (${JSON.stringify(await evaluate(P))} ${JSON.stringify(await evaluate(`${T}.state().sector`))})`));
+ const own=await evaluate(P);console.log(`  sector ${n}'s own waves: ${JSON.stringify(own.byType)}, dressed ${own.dressed}, far ${own.far}`);
+ // every tier: a few of each tier's types through the story's own spawn
+ const types=['amoeba','ghost','saucer','drifter','corona','barbed','rolling','phantom','knot'];
+ for(const t of types)await evaluate(`${T}.spawnFodder(${t==='knot'?1:3},${JSON.stringify(t)})`);
+ const tiers=['white','yellow','blue','orange','green','purple','brown','black'];
+ await until(`(()=>{const f=${P}.bodies?.families?.pearl;return !!f&&${JSON.stringify(tiers)}.every(t=>f[t]?.live>0);})()`,90000).catch(async()=>assert.fail(`every Pearl tier has bodies (${JSON.stringify(await evaluate(P))})`));
+ await until(`(()=>{const f=${P}.bodies.families.pearl;return ['orange','green','purple','brown','black'].every(t=>f[t].cores>0);})()`,30000).catch(async()=>assert.fail(`the cored tiers draw their pearls (${JSON.stringify(await evaluate(`${P}.bodies`))})`));
+ const st=await evaluate(P),fams=st.bodies.families.pearl;
+ console.log(`  tiers: ${tiers.map(t=>`${t} ${fams[t].live}${fams[t].cored?` (${fams[t].cores} pearls)`:''} r0 ${fams[t].r0.toFixed(1)}`).join(', ')}; by type ${JSON.stringify(st.byType)}; dressed ${st.dressed}, far ${st.far}`);
+ assert.equal(st.far,0,`no record of sector ${n} comes up on the far side`);
+ assert(Object.entries(st.byType).every(([t,o])=>!o.tier||o.dots===0),`no mapped type is a dot cloud (${JSON.stringify(st.byType)})`);
+ const clouds=await evaluate(`${T}.creatures.pearls().filter(e=>e.obj.userData.kind!=='creature').length`);assert.equal(clouds,0,'every Pearl record carries the stand-in, not a cloud');
+ const kept=await evaluate(`(()=>{const p=${T}.creatures.pearls();return p.every(e=>e.spec.hp>0&&e.spec.body==='pearl'&&e.spec.pearl&&e.tier===e.type)&&p.some(e=>e.type==='phantom'&&e.spec.cloaked)&&p.some(e=>e.type==='rolling'&&e.spec.heavy&&!e.spec.rammable)&&p.some(e=>e.type==='amoeba'&&e.spec.rammable);})()`);
+ assert(kept,'the records keep their types and their specs');
+ // a body on its record, then the damage: a rolling mine (4 hp) hit once shrinks with its hit points, then dies and deflates
+ const pick=`${T}.creatures.pearls().find(e=>e.type==='rolling'&&!(e.emergeAge<1.2)&&${T}.creatures.view(e)?.active)`;
+ await until(`!!${pick}`,60000);
+ const a=await evaluate(`(()=>{const e=${pick};window.__pw=e;const v=${T}.creatures.view(e);${T}.creatures.hurt(e,1);return {hp:e.hp,max:e.spec.hp,alive:e.alive,view:v};})()`);
+ assert(a.alive&&a.hp<a.max&&a.view.cored&&a.view.core,`a hit leaves the rolling mine alive and hurt (${JSON.stringify(a)})`);
+ const off=Math.hypot(a.view.centre[0]-a.view.record[0],a.view.centre[1]-a.view.record[1]);console.log(`  rolling ${a.view.tier}: body ${off.toFixed(1)} m from its record (r ${a.view.radius.toFixed(1)} m), pace ${a.view.pace}, stage ${a.view.stage}`);
+ assert(off<a.view.radius*16,`the body is with its record (${off} m)`);
+ await until(`${T}.creatures.view(window.__pw)?.radius<${a.view.radius}*0.97`,10000).catch(async()=>assert.fail(`the hurt body shrinks (${JSON.stringify(await evaluate(`${T}.creatures.view(window.__pw)`))} from ${a.view.radius})`));
+ const b=await evaluate(`(()=>{const e=window.__pw;window.__ph=${T}.creatures.handle(e);${T}.creatures.hurt(e,e.hp+1);return {alive:e.alive};})()`);
+ assert(!b.alive,'damageEnemy kills a Pearl record');
+ await until(`(()=>{const v=${T}.creatures.viewHandle(window.__ph);return v&&v.dead&&v.deflate>0.5;})()`,30000).catch(async()=>assert.fail(`the dead one deflates (${JSON.stringify(await evaluate(`${T}.creatures.viewHandle(window.__ph)`))})`));
+ const deaths=await evaluate(`${P}.bodies.families.pearl.brown.deaths`);assert(deaths>=1,'the brown tier books the death');
+ // the cloak: a phantom's body fades with its record's camo (a haze most of the time; a soft amoeba stays whole)
+ const ph=`${T}.creatures.pearls().find(e=>e.type==='phantom'&&!(e.emergeAge<1.2))`;await until(`!!${ph}`,30000);
+ const ops=[];for(let k=0;k<12;k++){ops.push(await evaluate(`(()=>{const e=${ph};return e?{body:+${T}.creatures.view(e).opacity.toFixed(3),cloud:+e.obj.material.opacity.toFixed(3)}:null;})()`));await delay(250);}
+ console.log(`  phantom opacity (body / its record's cloak): ${ops.filter(Boolean).map(o=>`${o.body}/${o.cloud}`).join(' ')}`);
+ assert(ops.some(o=>o&&o.body<0.35),`the cloak fades the phantom's body (${JSON.stringify(ops)})`);
+ assert(ops.every(o=>!o||Math.abs(o.body-Math.min(1,o.cloud/0.95))<0.25),`the body's opacity follows its record's (${JSON.stringify(ops)})`);
+ const am=await evaluate(`(()=>{const e=${T}.creatures.pearls().find(e=>e.type==='amoeba'&&!(e.emergeAge<1.2));return e?${T}.creatures.view(e).opacity:null;})()`);
+ assert(am===null||am>0.9,`a soft amoeba is a whole body (${am})`);
+ const fin=await evaluate(P);console.log(`  books: ${JSON.stringify(fin.bodies.families.pearl)}`);
+ if(shots){const ci=await evaluate(`(()=>{const e=${T}.creatures.pearls().find(e=>!(e.emergeAge<1.2));return e?e.cur:-1;})()`);if(ci>=0){await evaluate(`${T}.showcase.ground(${ci},3,4.5)`);await delay(2500);const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(shots,'pearl-close.png'),Buffer.from(shot.data,'base64'));}}
+ await finish();
  } else if(args.includes('--crowd-probe')) {
  // THE CROWD'S COST (no assertions): bodies held on the field at each count, the frame, the enemies' CPU, the draw calls, the GPU
  const T='window.__stalheartTest';

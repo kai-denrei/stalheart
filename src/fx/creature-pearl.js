@@ -40,7 +40,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune }) {
   function poolOf(id) {
     let p = pools.get(id);
     if (p) return p;
-    const def = byId[id], config = { ...DEFAULT_CONFIG, ...def.values, r0: baseR0[id] };
+    const def = byId[id], config = { ...DEFAULT_CONFIG, ...def.values, r0: baseR0[id], separation: tune.separation ?? DEFAULT_CONFIG.separation };   // the neighbour push eased: the records space themselves
     const swarm = new CutisSwarm(config, { capacity: tune.capacity[id] ?? 600 });
     const geo = createSwarmGeometry(swarm, { planetR }); geo.group.name = `Pearl ${id}`; group.add(geo.group);
     const cores = def.cored ? createHardCores(swarm, { planetR }) : null;
