@@ -8,6 +8,8 @@
 import { cycleTiming, phaseState, transferProgress, coreContact, KIT_R0 } from './config.js';
 
 export const STEP=1/120;
+// round two: the most projection hubs a swarm draws round (src/domain/surface-hubs.js: the icosahedron's twelve)
+export const HUBS=12;
 // round two: a stalk's cup in body radii (the shader's pad, .58 r) kept clear of the rock, and the turns tried when the way ahead is blocked
 export const REACH_MARGIN=.6;
 const TURNS=[.45,-.45,.9,-.9,1.35,-1.35],STALKS=[[0],[-1.2,1.2],[-1.2,0,1.2]];
@@ -27,9 +29,10 @@ export class CutisSwarm {
     this.target=new Float32Array(cap*2);this.pace=new Float32Array(cap).fill(1);this.hold=new Uint8Array(cap);this.active=new Uint8Array(cap);
     this.life=new Float32Array(cap*4);this.plant=new Float32Array(cap*3);
     this.forced=new Uint8Array(cap);
-    // round two (the Pearl set's hubs, src/fx/creature-bodies.js): each instance's projection hub and that hub's turn about the planet's centre
-    // [x, y, z, w] (the shader's iHub); instances of different hubs are in different planes and are never each other's neighbours
-    this.hub=new Uint8Array(cap);this.hubQuat=new Float32Array(cap*4);for(let i=0;i<cap;i++)this.hubQuat[i*4+3]=1;
+    // round two (the Pearl set's hubs, src/fx/creature-bodies.js): each instance's projection hub (0..11) and the hubs' turns about the planet's centre,
+    // [x, y, z, w] each (the shader's uHubs; packed with the probes in iState.w, so the kit's vertex attributes stay within WebGL's sixteen); instances
+    // of different hubs are in different planes and are never each other's neighbours
+    this.hub=new Uint8Array(cap);this.hubTable=new Float32Array(HUBS*4);for(let k=0;k<HUBS;k++)this.hubTable[k*4+3]=1;
     // round two (owner, 2026-10-13: "the cutis animation clips through walls"): the host's free reach, (i, x, z, dx, dz, max) -> metres clear along the
     // unit direction (dx, dz) from (x, z) (src/domain/body-reach.js against the board's ROCK and WALL); null is the kit's open plane. See plan().
     this.reachLimit=null;
@@ -48,7 +51,7 @@ export class CutisSwarm {
       this.offset.fill(0,k,k+3);this.anchor.fill(0,k,k+3);this.occupied.fill(0,k,k+3);
       this.heading[k]=1;this.heading[k+1]=0;this.heading[k+2]=0;
       this.phase[i]=0;this.cycles[i]=0;this.idle[i]=0;this.pace[i]=1;this.hold[i]=0;this.active[i]=0;this.forced[i]=0;
-      this.hub[i]=0;this.hubQuat.fill(0,i*4,i*4+3);this.hubQuat[i*4+3]=1;
+      this.hub[i]=0;
       this.target[i*2]=0;this.target[i*2+1]=0;this.plant.fill(0,k,k+3);
       this.resetLife(i);
     }

@@ -2083,6 +2083,8 @@ try{
  await evaluate(`window.__sl.slowUntil=-1`);
  await until(`${T}.creatures.view(window.__sl)?.tint===0`,15000).catch(async()=>assert.fail(`and thaws (${JSON.stringify(await evaluate(`${T}.creatures.view(window.__sl)`))})`));
  const fin=await evaluate(P);console.log(`  books: ${JSON.stringify(fin.bodies.families.pearl)}`);
+ // the kit's programs link (round two: the first cut of the hubs passed WebGL's sixteen vertex attributes; three logs a failed program to the console)
+ const shaderBad=consoleLines.filter(l=>/Shader Error|Too many attributes|VALIDATE_STATUS|Program Info Log/i.test(l));assert.deepEqual(shaderBad,[],'no shader errors');
  if(shots){const ci=await evaluate(`(()=>{const e=${T}.creatures.pearls().find(e=>!(e.emergeAge<1.2));return e?e.cur:-1;})()`);if(ci>=0){await evaluate(`${T}.showcase.ground(${ci},3,4.5)`);await delay(2500);const shot=await send('Page.captureScreenshot',{format:'png'});writeFileSync(join(shots,'pearl-close.png'),Buffer.from(shot.data,'base64'));}}
  await finish();
  } else if(args.includes('--crowd-probe')) {

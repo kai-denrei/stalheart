@@ -46,7 +46,11 @@ const R = 753, f0 = surfaceFrame([0.3, 0.8, -0.5]);
   assert.equal(nearestHub(pts, nudge(0.01), 0, 0.03), 0, 'just past the bisector: kept'); assert.equal(nearestHub(pts, nudge(0.05), 0, 0.03), 2, 'well past: handed');
   assert.equal(nearestHub(pts, nudge(0.01)), 2, 'no current hub: the nearest');
   // the GLSL carries the turn, the shadow too
-  assert(HUB_TURN.includes('hubPlace') && MEMBRANE_VERT.includes('attribute vec4 iHub') && MEMBRANE_VERT.includes('p.xyz=hubPlace(iHub,p.xyz,uPlanetR)') && SHADOW_VERT.includes('hubPlace(iHub,'));
+  assert(HUB_TURN.includes('hubPlace') && HUB_TURN.includes('uniform vec4 uHubs[12]') && MEMBRANE_VERT.includes('#define iHub hubOf(floor(iState.w/16.))') && MEMBRANE_VERT.includes('p.xyz=hubPlace(iHub,p.xyz,uPlanetR)') && SHADOW_VERT.includes('hubPlace(hubOf(iHubIndex),'));
+  // the attributes stay within WebGL's sixteen with three's own declared for an instanced ShaderMaterial (instanceMatrix 4, position, normal, uv): the
+  // first cut gave the hub a vec4 of its own and the boss lab's headless Chrome refused to link ("Too many attributes (iHub)")
+  const slots = (src) => [...src.matchAll(/attribute\s+(\w+)\s+([\w,\s]+);/g)].reduce((n, [, type, names]) => n + names.split(',').length * (type === 'mat4' ? 4 : 1), 0);
+  assert(slots(MEMBRANE_VERT) + 7 <= 16, `membrane attributes ${slots(MEMBRANE_VERT)} + three's 7`); assert(slots(SHADOW_VERT) + 7 <= 16);
 }
 console.log('PASS the hubs: twelve on the icosahedron, the first at the heart and unturned, every point within 0.65 rad of one, a hub\'s plane turned onto the sphere exactly, the remap, the hysteresis');
 
@@ -66,7 +70,7 @@ console.log('PASS the hubs: twelve on the icosahedron, the first at the heart an
   const sphereOf = (hub, k) => fromPlane(frames[hub], sw[k][i * 3], sw[k][i * 3 + 2], R);
   const o0 = sphereOf(0, 'offset'), a0 = sphereOf(0, 'anchor');
   fam.rehub(h, 2);
-  assert.equal(h.hub, 2); assert.equal(sw.hub[i], 2); assert.deepEqual(Array.from(sw.hubQuat.slice(i * 4, i * 4 + 4)).map((v) => +v.toFixed(6)), quats[2].map((v) => +v.toFixed(6)));
+  assert.equal(h.hub, 2); assert.equal(sw.hub[i], 2); assert.deepEqual(Array.from(sw.hubTable.slice(2 * 4, 2 * 4 + 4)).map((v) => +v.toFixed(6)), quats[2].map((v) => +v.toFixed(6)), 'the swarm\'s table holds hub 2\'s turn');
   const after = corePose(sw, i, R);
   for (let k = 0; k < 3; k++) { close(sphereOf(2, 'offset')[k], o0[k], 1e-6, 'the origin is the same sphere point'); close(sphereOf(2, 'anchor')[k], a0[k], 1e-6, 'the anchor too'); }
   assert(Math.hypot(after[0] - before[0], after[1] - before[1], after[2] - before[2]) < 0.05, `the drawn pearl does not move (${[before, after].map((p) => p.slice(0, 3).map((v) => v.toFixed(3)).join(',')).join(' -> ')})`);

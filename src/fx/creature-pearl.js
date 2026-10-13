@@ -18,7 +18,7 @@
 //
 // THE HUBS (round two, owner 2026-10-13: "there are still a mix of half-dotted and new cutis enemies"): the family is drawn round the seam's twelve hubs
 // (src/fx/creature-bodies.js, src/domain/surface-hubs.js), so every mapped record has a body wherever it is on the planet; a slot keeps its tier's swarm
-// for life and carries its hub (the swarm's hub and hubQuat: the kit's HUB_TURN draws it there); rehub moves a body's plane state (its origin, anchor,
+// for life and carries its hub (the swarm's hub index into its hubTable of turns: the kit's HUB_TURN draws it there); rehub moves a body's plane state (its origin, anchor,
 // hunt point, planted anchor and heading) into the new hub's plane at the same sphere pose, so nothing pops.
 // THE ROCK AND THE WALLS (round two, owner 2026-10-13: "the cutis animation clips through walls ... we need a method to have their feeling/scouting
 // appendage be constrained by the rocks/walls"): each swarm's reachLimit asks the seam's hubs.reach (src/domain/body-reach.js over the board's BLOCKED
@@ -60,6 +60,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     const swarm = new CutisSwarm(config, { capacity: tune.capacity[id] ?? 600 }), owner = new Array(swarm.capacity).fill(null);
     if (hubs?.reach) swarm.reachLimit = (i, x, z, dx, dz, max) => hubs.reach(swarm.hub[i], x, z, dx, dz, max, owner[i]?.cell ?? -1);
     const geo = createSwarmGeometry(swarm, { planetR, lod: tune.lod }); geo.group.name = `Pearl ${id}`; group.add(geo.group);
+    hubTable(swarm);
     const cores = def.cored ? createHardCores(swarm, { planetR, levelOf: geo.levelOf }) : null;
     if (cores) { cores.group.name = `Pearl ${id} cores`; group.add(cores.group); }
     p = { id, def, swarm, geo, cores, owner, free: [], next: 0, dying: new Map(), jolts: new Map(), live: 0, peak: 0, placed: 0, replaced: 0, deaths: 0, full: 0, shed: 0, handed: 0, staggers: 0, recoils: 0 };
@@ -85,8 +86,9 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
   const P = [0, 0], T = [0, 0], POS = [0, 0, 0];   // scratch (the fable review: no arrays a slot a frame)
   const opacityOf = (o) => clamp01((o ?? tune.opacityRef) / tune.opacityRef);
 
-  // a slot's hub: the swarm's hub index and its turn (the shader's iHub)
-  function hubSlot(sw, i, hub) { sw.hub[i] = hub; const q = hubs?.quat(hub) ?? IDENTITY; sw.hubQuat[i * 4] = q[0]; sw.hubQuat[i * 4 + 1] = q[1]; sw.hubQuat[i * 4 + 2] = q[2]; sw.hubQuat[i * 4 + 3] = q[3]; }
+  // a slot's hub (the swarm's hub index); the swarm's table of the hubs' turns, refreshed every step (the heart's frame may move with a rebuilt board)
+  function hubSlot(sw, i, hub) { sw.hub[i] = hub; }
+  function hubTable(sw) { if (!hubs) return; for (let k = 0; k < hubs.count; k++) { const q = hubs.quat(k) ?? IDENTITY; sw.hubTable[k * 4] = q[0]; sw.hubTable[k * 4 + 1] = q[1]; sw.hubTable[k * 4 + 2] = q[2]; sw.hubTable[k * 4 + 3] = q[3]; } }
 
   function add(type, { x, z, angle = 0, lift = 0, opacity, grow = 1, members = 0, speed = 0, hub = 0, cell = -1 }) {
     const b = tiers[type];
@@ -229,7 +231,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
         if (!sw.active[i] || t >= j.tune.seconds) { sw.life[i * 4 + 1] = 0; sw.hold[i] = 0; p.jolts.delete(i); continue; }
         sw.life[i * 4 + 1] = impactStep(sw, i, j, t);
       }
-      sw.advance(dt);
+      hubTable(sw); sw.advance(dt);
       if (camera) { p.geo.update(camera, height, 0, false, false, cull); p.cores?.update(); }
     }
   }

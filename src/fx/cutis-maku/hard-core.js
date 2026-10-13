@@ -26,7 +26,8 @@ export function corePose(swarm, i, planetR = 0, out = [0, 0, 0, 0]) {
   }
   y += phase >= .85 ? 0 : phase >= .62 ? lift * (1 - c.u) * (1 - c.u) : lift;
   bendPoint(x, y, z, planetR, out);
-  if (planetR > 0 && swarm.hubQuat && swarm.hubQuat[i * 4 + 3] !== 1) hubPoint(out[0], out[1], out[2], planetR, swarm.hubQuat, i * 4, out);   // round two: its hub (./shaders.js HUB_TURN)
+  const hub = swarm.hub?.[i] ?? 0;   // round two: its hub (./shaders.js HUB_TURN)
+  if (planetR > 0 && swarm.hubTable && swarm.hubTable[hub * 4 + 3] !== 1) hubPoint(out[0], out[1], out[2], planetR, swarm.hubTable, hub * 4, out);
   out[3] = c.radius;
   return out;
 }

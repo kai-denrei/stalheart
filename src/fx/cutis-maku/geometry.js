@@ -6,11 +6,11 @@
 import * as THREE from '../../../vendor/three.module.js';
 import { mergeVertices } from '../../../vendor/BufferGeometryUtils.js';
 import { ConvexGeometry } from './convex.js';
-import { createMembraneMaterial, createShadowMaterial, updateMaterial } from './material.js';
+import { createMembraneMaterial, createShadowMaterial, updateMaterial, updateHubs } from './material.js';
 import { KIT_R0, CUTIS_LOD } from './config.js';
 import { bendPoint, hubPoint } from './shaders.js';
 
-const sizes={iOffset:3,iHeading:3,iAnchor:3,iState:4,iParams:4,iProbe0:3,iProbe1:3,iProbe2:3,iLife:4,iHub:4};
+const sizes={iOffset:3,iHeading:3,iAnchor:3,iState:4,iParams:4,iProbe0:3,iProbe1:3,iProbe2:3,iLife:4};
 
 // the hull's resolution per LOD: [sphere width segments, height segments, cap rings, cap sides]; the kit's two (high ~13k triangles, low ~2.2k) and the
 // round-two third, ~450 triangles for a body a few pixels across
@@ -79,7 +79,7 @@ export function createSwarmGeometry(swarm,{ planetR=0, lod=null }={}) {
   // Quiet contact shadows support the translucent shader without per-instance shadow maps: a flat plane per active instance, subdivided so it hugs the sphere.
   const shadowGeometry=new THREE.PlaneGeometry(2,2,4,4);shadowGeometry.rotateX(-Math.PI/2);
   const fade=new THREE.InstancedBufferAttribute(new Float32Array(swarm.capacity),1).setUsage(THREE.DynamicDrawUsage);shadowGeometry.setAttribute('iFade',fade);
-  const shadowHub=new THREE.InstancedBufferAttribute(new Float32Array(swarm.capacity*4),4).setUsage(THREE.DynamicDrawUsage);shadowGeometry.setAttribute('iHub',shadowHub);
+  const shadowHub=new THREE.InstancedBufferAttribute(new Float32Array(swarm.capacity),1).setUsage(THREE.DynamicDrawUsage);shadowGeometry.setAttribute('iHubIndex',shadowHub);
   const shadowMaterial=createShadowMaterial();
   const shadows=new THREE.InstancedMesh(shadowGeometry,shadowMaterial,swarm.capacity);shadows.frustumCulled=false;shadows.renderOrder=0;shadows.count=0;shadows.visible=false;group.add(shadows);
   const eye=new THREE.Vector3(),spot=new THREE.Vector3(),matrix=new THREE.Matrix4(),clip=new THREE.Matrix4(),view=new THREE.Matrix4(),frustum=new THREE.Frustum(),sphere=new THREE.Sphere(),state=new Float32Array(4);
@@ -88,7 +88,7 @@ export function createSwarmGeometry(swarm,{ planetR=0, lod=null }={}) {
   const bent=[0,0,0];
   function bend(v) { if(!(planet>0))return v;bendPoint(v.x,v.y,v.z,planet,bent);return v.set(bent[0],bent[1],bent[2]); }
   // the bent point turned to instance i's hub (the shader's hubPlace)
-  function turn(v,i) { if(!(planet>0)||swarm.hubQuat[i*4+3]===1)return v;hubPoint(v.x,v.y,v.z,planet,swarm.hubQuat,i*4,bent);return v.set(bent[0],bent[1],bent[2]); }
+  function turn(v,i) { const h=swarm.hub[i];if(!(planet>0)||swarm.hubTable[h*4+3]===1)return v;hubPoint(v.x,v.y,v.z,planet,swarm.hubTable,h*4,bent);return v.set(bent[0],bent[1],bent[2]); }
   function setPlanetR(R) {
     planet=R>0?R:0;
     for(const l of levels){l.material.uniforms.uPlanetR.value=planet;if(l.coreMaterial)l.coreMaterial.uniforms.uPlanetR.value=planet;}
@@ -106,7 +106,7 @@ export function createSwarmGeometry(swarm,{ planetR=0, lod=null }={}) {
     group.updateWorldMatrix(true,false);camera.updateMatrixWorld();
     camera.getWorldPosition(eye);group.worldToLocal(eye);
     view.copy(camera.matrixWorld).invert();clip.multiplyMatrices(camera.projectionMatrix,view).multiply(group.matrixWorld);frustum.setFromProjectionMatrix(clip);
-    const source={iOffset:swarm.offset,iHeading:swarm.heading,iAnchor:swarm.anchor,iState:state,iParams:swarm.params,iProbe0:swarm.probe0,iProbe1:swarm.probe1,iProbe2:swarm.probe2,iLife:swarm.life,iHub:swarm.hubQuat};
+    const source={iOffset:swarm.offset,iHeading:swarm.heading,iAnchor:swarm.anchor,iState:state,iParams:swarm.params,iProbe0:swarm.probe0,iProbe1:swarm.probe1,iProbe2:swarm.probe2,iLife:swarm.life};
     const r0=swarm.config.r0,lift=.002*r0/KIT_R0,reach=(swarm.config.reach??15)*1.2+2;
     const pixelsPer=camera.isPerspectiveCamera?height/(2*Math.tan(camera.fov*Math.PI/360)):Infinity;
     // the eye's horizon distance over the planet (its centre at (0, -R, 0) in this plane)
@@ -133,7 +133,7 @@ export function createSwarmGeometry(swarm,{ planetR=0, lod=null }={}) {
       if(pixelsOf[i]<0){levelOf[i]=3;lodCounts[3]++;continue;}
       if(levelOf[i]===0&&pixelsOf[i]<floor)levelOf[i]=1;
       const level=levels[levelOf[i]],index=level.count++;lodCounts[levelOf[i]]++;
-      state[0]=swarm.phase[i];state[1]=swarm.seed[i];state[2]=swarm.scale[i];state[3]=swarm.probeCount[i]*4+swarm.chosenProbe[i];
+      state[0]=swarm.phase[i];state[1]=swarm.seed[i];state[2]=swarm.scale[i];state[3]=swarm.hub[i]*16+swarm.probeCount[i]*4+swarm.chosenProbe[i];
       for(const [name,size] of specs){const array=level.attributes[name].array,from=source[name],base=name==='iState'?0:i*size;for(let k=0;k<size;k++)array[index*size+k]=from[base+k];}
       // the shadow: under the body's present position, sized with it, spread by a puddle, faded by opacity, deflate and sinking below ground
       const p=swarm.positionInto(i,at3),Li=swarm.life,deflate=Li[i*4+1],radius=r0*swarm.scale[i];
@@ -141,17 +141,17 @@ export function createSwarmGeometry(swarm,{ planetR=0, lod=null }={}) {
       matrix.makeScale(size,size,size).setPosition(p[0],lift,p[2]);
       shadows.setMatrixAt(shown,matrix);
       fade.array[shown]=Li[i*4+2]*(1-.6*Math.max(0,deflate))*(1-Math.min(1,Math.max(0,-Li[i*4]/radius)));
-      for(let k=0;k<4;k++)shadowHub.array[shown*4+k]=swarm.hubQuat[i*4+k];
+      shadowHub.array[shown]=swarm.hub[i];
       shown++;
     }
     shadows.count=shown;shadows.visible=shown>0;shadows.instanceMatrix.needsUpdate=true;
-    fade.clearUpdateRanges();fade.addUpdateRange(0,shown);fade.needsUpdate=true;shadowHub.clearUpdateRanges();shadowHub.addUpdateRange(0,shown*4);shadowHub.needsUpdate=true;
+    fade.clearUpdateRanges();fade.addUpdateRange(0,shown);fade.needsUpdate=true;shadowHub.clearUpdateRanges();shadowHub.addUpdateRange(0,shown);shadowHub.needsUpdate=true;updateHubs(shadowMaterial,swarm.hubTable);
     const soft=!((swarm.config.coreShape??0)>=1);
     for(const l of levels){
       l.membrane.count=l.count;l.membrane.visible=l.count>0;
-      if(l.core){l.core.count=l.count;l.core.visible=l.count>0&&soft;updateMaterial(l.coreMaterial,swarm.config,swarm.time,debug,force,multicolored);}
+      if(l.core){l.core.count=l.count;l.core.visible=l.count>0&&soft;updateMaterial(l.coreMaterial,swarm.config,swarm.time,debug,force,multicolored);updateHubs(l.coreMaterial,swarm.hubTable);}
       if(l.count>0)for(const a of Object.values(l.attributes)){a.clearUpdateRanges();a.addUpdateRange(0,l.count*a.itemSize);a.needsUpdate=true;}
-      updateMaterial(l.material,swarm.config,swarm.time,debug,force,multicolored);
+      updateMaterial(l.material,swarm.config,swarm.time,debug,force,multicolored);updateHubs(l.material,swarm.hubTable);
     }
   }
   return {group,levels,shadows,update,setPlanetR,levelOf,lodCounts,get planetR(){return planet;},dispose:()=>{levels.forEach(l=>{l.geometry.dispose();l.coreGeometry?.dispose();l.material.dispose();l.coreMaterial?.dispose();l.membrane.dispose();l.core?.dispose();});shadowGeometry.dispose();shadowMaterial.dispose();shadows.dispose();}};

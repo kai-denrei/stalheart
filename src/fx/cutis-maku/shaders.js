@@ -16,10 +16,14 @@ vec3 bendToPlanet(vec3 p,float R){
 }
 `;
 /** Round two (the Pearl set's projection hubs, src/fx/creature-bodies.js): a body drawn in another hub's plane is bent there and then turned about
- * the planet's centre (0, -R, 0) by its hub's quaternion q (identity for the hub the group sits on), so one group draws bodies anywhere on the sphere. */
+ * the planet's centre (0, -R, 0) by its hub's quaternion q (uHubs[hub]; identity for the hub the group sits on), so one group draws bodies anywhere on
+ * the sphere. The hub index rides in an existing attribute (the membrane's iState.w, the shadow's iFade's twin), not a vec4 of its own: the kit's
+ * instanced attributes plus three's declared ones would pass WebGL's sixteen ("Too many attributes"). */
 export const HUB_TURN=`
+uniform vec4 uHubs[12];
 vec3 hubTurn(vec4 q,vec3 v){return v+2.*cross(q.xyz,cross(q.xyz,v)+q.w*v);}
 vec3 hubPlace(vec4 q,vec3 p,float R){if(R<=0.)return p;vec3 c=vec3(0.,-R,0.);return hubTurn(q,p-c)+c;}
+vec4 hubOf(float h){return uHubs[int(clamp(h,0.,11.)+.5)];}
 `;
 /** HUB_TURN's hubPlace in JS: the bent point (x, y, z) turned about (0, -R, 0) by q = [x, y, z, w] at q[k..k+3]; writes `out`. */
 export function hubPoint(x,y,z,R,q,k=0,out=[0,0,0]) {
@@ -46,9 +50,10 @@ attribute vec4 iState;
 attribute vec4 iParams;
 attribute vec3 iProbe0,iProbe1,iProbe2;
 attribute vec4 iLife;
-attribute vec4 iHub;
-#define iProbeCount floor(iState.w/4.)
+// iState.w = hub x 16 + probe count x 4 + chosen probe (round two: the hub packed in)
+#define iProbeCount floor(mod(iState.w,16.)/4.)
 #define iChosenProbe mod(iState.w,4.)
+#define iHub hubOf(floor(iState.w/16.))
 #define SC (uRadius/.2)
 uniform float uHardRadius;
 uniform float uTime,uRadius,uNoise,uBreath,uRestCube,uCap,uNeck,uDelay,uCore,uForceCube,uSeekSweep,uSeekRate,uAcceleration,uPlanetR;
@@ -273,7 +278,7 @@ void main(){
 // The contact shadow: one flat plane per instance (matrix = place and size), bent onto the planet like the body, faded by iFade.
 export const SHADOW_VERT=`
 attribute float iFade;
-attribute vec4 iHub;
+attribute float iHubIndex;
 uniform float uPlanetR;
 varying vec2 vUv;
 varying float vFade;
@@ -282,7 +287,7 @@ ${HUB_TURN}
 void main(){
   vUv=uv;vFade=iFade;
   vec3 local=(instanceMatrix*vec4(position,1.)).xyz;
-  gl_Position=projectionMatrix*modelViewMatrix*vec4(hubPlace(iHub,bendToPlanet(local,uPlanetR),uPlanetR),1.);
+  gl_Position=projectionMatrix*modelViewMatrix*vec4(hubPlace(hubOf(iHubIndex),bendToPlanet(local,uPlanetR),uPlanetR),1.);
 }
 `;
 
