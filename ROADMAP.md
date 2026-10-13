@@ -371,7 +371,13 @@ First step, when it is picked up: `@ts-check` on `src/domain` as a trial, to see
 
 <!-- deban:open:start -->
 
-_Generated from `docs/log/entries/` by `npm run log -- render`. 63 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+_Generated from `docs/log/entries/` by `npm run log -- render`. 64 open: `proposed` means the decision is not made, `observed` means it was seen and not yet resolved._
+
+### --defense's 'no unpiloted tower kill' bisects to d0a7e640 (ground events in SAT-3's feed instead of the camera cut): under the feed the breach's crowd wanders at its sinkhole and never walks to the Rotor; &cuts=dive on the same build walks and kills; the feed's render pass, the reveal pose and the handler's gates are not it. And --story was never a regression: its landmark counts were stale since 2026-09-14 (fixed)
+
+`2026-10-14-defense-red-bisected-to-the-ground-feed` · issue · **observed**
+
+Owner, 2026-10-14: 'bisect the pearl-enemies commits for the --defense and --story reds' (the two reds the refactor round 2 review found on the base 8bf59188, 2026-10-14-refactor-round-2-architecture-review). Method: two detached worktrees, the good end run first, git bisect run over 7d71f381..8bf59188 with node scripts/browser-test.mjs on its own STALHEART_BROWSER_PORT (18155 collides when two suites start together). --defense: green at 7d71f381; good ec4c92d3, f2367e17, 459afa0f; bad 29434e00, 5d19c38b, d0a7e640; first bad d0a7e640 'Ground events in SAT-3's orbital feed instead of a camera cut' (src/fx/ground-feed.js; td-tab calls groundFeed.dive where startDiveShot ran unless &cuts=dive, groundFeed.render each frame, the reveal's poseAt the gameplay pose; back-door the same swap). The step: commitTower('rotor', story.socket), spawnFodder(20) (a breach at gunshipRig.far() when no source is alive), 120 s for killsBySrc.tower to rise. --story: red at 7d71f381 and at the 2026-10-07 review commit d421da6c with the same '15 !== 12'; the review entry never names --story. Its assertion (62fdceee, 2026-09-14) predates 1773d933 (same day, the expedition rules: rocket-c, rocket-d, wreck-b at stage 1), and the next two counts (9 far tiers, 5 at stage 1) were stale the same way.
 
 ### The boss lab's long browser steps are flaky on this loaded machine: --boss-bait's keep and speed bands, --boss-fight's 15 s Bofors loss; one --boss-wave failure was a stale-aim test bug
 
