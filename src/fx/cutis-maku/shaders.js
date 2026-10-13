@@ -78,6 +78,8 @@ vec4 probeFor(vec3 n){
   return probe;
 }
 vec4 deform(vec3 bodyN){
+  // round three: the instance's .y slots carry the room (iOffset.y), its axis (iAnchor.y) and the sweep's damping (iHeading.y); the positions are flat
+  vec3 off=vec3(iOffset.x,0.,iOffset.z),head=vec3(iHeading.x,0.,iHeading.z);
   vec4 probe=probeFor(bodyN);
   vec3 n=turn(bodyN,-probe.x);
 
@@ -122,7 +124,7 @@ vec4 deform(vec3 bodyN){
   // their way sideways, then resolve into the locked contact destination.
   float bow=sin(axial*3.14159265)*extension;
   float feel=axial*envelope;
-  extended.x+=r*(.85*bow*sin(iSeed+1.2)+uSeekSweep*feel*
+  extended.x+=r*(1.-iHeading.y)*(.85*bow*sin(iSeed+1.2)+uSeekSweep*feel*
     (sin(wave+(1.-axial)*2.4)+.3*sin(wave*1.73+iSeed+(1.-axial)*4.)));
   extended.y+=r*(.8*bow+.35*feel*(.5+.5*sin(wave*.7+iSeed)));
   // The last cap rings flare into a rounded, shallow cup rather than a blade.
@@ -137,10 +139,12 @@ vec4 deform(vec3 bodyN){
   float cupY=.018*SC+r*(.16+.12*cos(cupT*3.14159265)*core+.06*disk);
   extended.y=mix(extended.y,cupY+(oldRest.y-r*.78)*.045*core,cup*extension);
   rest=turn(rest,probe.x);extended=turn(extended,probe.x);
-  vec3 p=iOffset+orient(phase<.1?rest:extended);
+  vec3 p=off+orient(phase<.1?rest:extended);
   // Lift: iLife.x is the depth of the origin. The origin side is lowered by all of it, the cup by none; the stalk's reach weight interpolates.
   // The lowering is kept apart and added after the ground clamp, so the clamp cannot undo it.
   float drop=iLife.x*(phase<.1?1.:1.-reach);
+  // round three: how much of the room's squeeze this point takes: the body, not its reaching stalk (whose sweep is damped instead), until it pours in
+  float squeezeW=phase<.62?1.-reach:1.;
   if(phase>=.62&&phase<.85){
     vec3 chosen=iChosenProbe<.5?iProbe0:iChosenProbe<1.5?iProbe1:iProbe2;
     float delay=clamp((1.-turn(bodyN,-chosen.x).z)*.5,0.,1.)*uDelay;
@@ -162,6 +166,7 @@ vec4 deform(vec3 bodyN){
       control=mix(anchor,reservoir,cup);
     }
     p=(1.-u)*(1.-u)*p+2.*(1.-u)*u*control+u*u*end;
+    squeezeW=1.-reach*(1.-u);
     // Only the start of the curve is lowered; the anchor end is on the ground, so the body pours up through the cup.
     drop*=(1.-u)*(1.-u);
   }else if(phase>=.85){
@@ -169,14 +174,14 @@ vec4 deform(vec3 bodyN){
     float wobble=exp(-6.*settle)*sin(settle*22.);
     rest+=bodyN*r*.045*wobble*iParams.w;
     p=iAnchor+orient(rest);p.y=rest.y;
-    p+=iHeading*r*.12*wobble*iParams.w;
+    p+=head*r*.12*wobble*iParams.w;
     drop=0.;
   }
   if(uHardRadius>0.){
     float bodyU=clamp((accelerated-uDelay*.5)/max(.02,1.-uDelay),0.,1.);
-    vec3 center=mix(iOffset,iAnchor,2.*bodyU-bodyU*bodyU);
+    vec3 center=mix(off,iAnchor,2.*bodyU-bodyU*bodyU);
     center.y=r*.78*((1.-bodyU)*(1.-bodyU)+bodyU*bodyU)+2.*(1.-bodyU)*bodyU*.014*SC;
-    if(phase>=.85){float settle=(phase-.85)/.15;center=iAnchor+iHeading*r*.12*exp(-6.*settle)*sin(settle*22.)*iParams.w;center.y=r*.78;}
+    if(phase>=.85){float settle=(phase-.85)/.15;center=iAnchor+head*r*.12*exp(-6.*settle)*sin(settle*22.)*iParams.w;center.y=r*.78;}
     float lift=max(0.,r*uHardRadius*1.3+.018*SC-center.y);center.y+=lift;p.y+=lift;
     // Protect a padded volume around the synchronized core, including the
     // triangles spanning neighboring vertices as withdrawn stalks fold inward.
@@ -189,8 +194,19 @@ vec4 deform(vec3 bodyN){
   float squash=iLife.y;
   if(squash!=0.){
     vec2 centre=mix(iOffset.xz,iAnchor.xz,phase<.62?0.:phase<.85?accelerated:1.);
-    p.xz=centre+(p.xz-centre)*(1.+.6*squash);
+    // round three: a puddle (or a squash) spreads only as far as the body's room lets it (iOffset.y over its footprint; 0 unmeasured)
+    float spread=1.+.6*squash;if(iOffset.y>0.&&squash>0.)spread=min(spread,max(1.,iOffset.y));
+    p.xz=centre+(p.xz-centre)*spread;
     p.y=.009*SC+(p.y-.009*SC)*(1.-.92*squash);
+  }
+  // Round three (owner, 2026-10-13: "there is still some clipping of the Cutis-Pearl through the walls"): a body with less open ground round it than its
+  // footprint (iOffset.y, the room over BODY_RADII r; 0 unmeasured) is squeezed across the nearest wall (iAnchor.y, the axis's angle) about its centre,
+  // so a body wider than its corridor stays off the rock (its stalks are not squeezed:
+  // squeezed along an axis that is not square to them, a long stalk's tip would swing sideways).
+  if(iOffset.y>0.){
+    // and square to it by iParams.z, the room that way (a bend or a corner closing in on a body squeezed in its corridor; 0 unmeasured)
+    float k=min(1.,iOffset.y),k2=iParams.z>0.?min(1.,iParams.z):1.;
+    if(k<1.){vec2 ax=vec2(cos(iAnchor.y),sin(iAnchor.y)),pe=vec2(-ax.y,ax.x),c=mix(iOffset.xz,iAnchor.xz,phase<.62?0.:phase<.85?accelerated:1.),d=p.xz-c;p.xz-=(ax*dot(d,ax)*(1.-k)+pe*dot(d,pe)*(1.-k2))*squeezeW;}
   }
   p.y+=drop;
   float stretch=1.+lead*extension*probe.y/max(.01*SC,r)*(1.-smoothstep(.66,.85,phase))+fold*2.;

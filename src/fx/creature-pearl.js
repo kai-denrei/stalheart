@@ -36,6 +36,7 @@ import { CutisSwarm, REACH_MARGIN } from './cutis-maku/swarm.js';
 import { DEFAULT_CONFIG } from './cutis-maku/config.js';
 import { createSwarmGeometry } from './cutis-maku/geometry.js';
 import { createHardCores, corePose } from './cutis-maku/hard-core.js';
+import { deformInto, FOOTPRINT_DIRS } from './cutis-maku/deform.js';
 import { pearlPace, pearlLead, pearlLeash, squadSpots } from '../domain/pearl-bodies.js';
 
 const IDENTITY = [0, 0, 0, 1];
@@ -59,6 +60,8 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     const def = byId[id], config = { ...DEFAULT_CONFIG, ...def.values, r0: baseR0[id], separation: tune.separation ?? DEFAULT_CONFIG.separation };   // the neighbour push eased: the records space themselves
     const swarm = new CutisSwarm(config, { capacity: tune.capacity[id] ?? 600 }), owner = new Array(swarm.capacity).fill(null);
     if (hubs?.reach) swarm.reachLimit = (i, x, z, dx, dz, max) => hubs.reach(swarm.hub[i], x, z, dx, dz, max, owner[i]?.cell ?? -1);
+    // round three: the body's footprint (its origin, its anchors, its hop's middle, its sweep, a knock, a puddle) held off the rock too
+    if (hubs?.clear) swarm.clearLimit = (i, x, z, rho, out, steps) => hubs.clear(swarm.hub[i], x, z, rho, owner[i]?.cell ?? -1, out, steps);
     const geo = createSwarmGeometry(swarm, { planetR, lod: tune.lod }); geo.group.name = `Pearl ${id}`; group.add(geo.group);
     hubTable(swarm);
     const cores = def.cored ? createHardCores(swarm, { planetR, levelOf: geo.levelOf }) : null;
@@ -130,6 +133,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
   function impactStep(sw, i, j, t) {
     const k = j.tune, gone = j.metres * (1 - Math.exp(-t / k.knockSeconds));
     bump(sw, i, j.dx * (gone - j.moved), j.dz * (gone - j.moved)); j.moved = gone;
+    sw.clearBody(i);   // round three: a knock into a wall slides along it
     return k.squash * Math.exp(-k.decay * t) * Math.cos(2 * Math.PI * k.hz * t);
   }
 
@@ -138,7 +142,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     sw.hold[i] = 1; sw.life[i * 4] = 0; p.jolts.delete(i);
     // a rammed body staggers first: its deflate starts once the stagger is over
     const st = imp && IMPACT ? impactOf(sw, i, imp, IMPACT.stagger, IMPACT.stagger.aside) : null;
-    if (st) p.staggers++;
+    if (st) p.staggers++; else { const was = sw.room[i]; sw.clearBody(i, false); if (was > 0) sw.room[i] = Math.min(was, sw.room[i]); }   // round three: the puddle measured where it lies (squeezed by a wall, not moved), within its hop's room (a body dying mid-transfer is drawn out along it)
     p.dying.set(i, { at: clock + (st ? IMPACT.stagger.seconds : 0), op: sw.life[i * 4 + 2], st }); p.live--; p.deaths++;
   }
 
@@ -154,6 +158,9 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
       if (sw.plant[k + 2] > 0) remapXZ(sw.plant, k, a, hub);
       const ahead = hubs.remap(a, hub, ox + hx, oz + hz), dx = ahead[0] - sw.offset[k], dz = ahead[1] - sw.offset[k + 2], d = Math.hypot(dx, dz);
       if (d > 1e-9) { sw.heading[k] = dx / d; sw.heading[k + 2] = dz / d; }
+      // round three: the squeeze's axis turned into the new plane as the heading is
+      const across = hubs.remap(a, hub, ox + Math.cos(sw.roomAxis[i]), oz + Math.sin(sw.roomAxis[i])), cx = across[0] - sw.offset[k], cz = across[1] - sw.offset[k + 2];
+      if (Math.hypot(cx, cz) > 1e-9) sw.roomAxis[i] = Math.atan2(cz, cx);
       hubSlot(sw, i, hub);
     }
     h.hub = hub; h.p.handed++;
@@ -170,7 +177,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     if (d > 1e-6) { h.dx = (ax - x) / d; h.dz = (az - z) / d; }
     h.op = opacityOf(opacity);
     // the lead and the leash change only with the record's speed
-    if (speed !== h.speedAt) { h.speed = h.speedAt = speed; h.ahead = speed * pearlLead({ cycle: c.cycleDuration, pace: h.pace }, tune); h.leash = pearlLeash({ r: h.r, speed }, follow, tune); }
+    if (speed !== h.speedAt) { h.speed = h.speedAt = speed; h.ahead = speed * pearlLead({ cycle: c.cycleDuration, pace: h.pace }, tune); h.leash = pearlLeash({ r: h.r, speed, hop: c.reach * h.r }, follow, tune); }
     const ahead = h.ahead, leash = h.leash;
     const ang = Math.atan2(h.dz, h.dx);
     let replaced = false;
@@ -273,6 +280,48 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
       }
       return out;
     },
+    // ROUND THREE (owner, 2026-10-13: "there is still some clipping of the Cutis-Pearl through the walls"): the harness's audit of every visible part
+    // of every body against the rock, not only its stalks: the membrane's deformed points (./cutis-maku/deform.js, the shader's deform in JS, over the
+    // third hull's vertex directions), the pearl's rim and the contact shadow's visible rim, for every live body and every dying one still drawn.
+    // `inRock(hub, cell, x, z)` is the blocked test (cell -1: walk on from the last answer), `reach(hub, cell, x, z, dx, dz, len)` the free metres
+    // along a direction. A crossing point's depth is how far past the first blocked point it lies, seen from the body's centre. -> { bodies, points,
+    // crossing (bodies with any part across), byPart { part: bodies }, byTier { tier: { bodies, crossing, maxDepth (m), maxRadii } }, worst [...], near [the six
+    // live bodies nearest the rock, their clearance in radii, with `clear(hub, cell, x, z, max)` given] }
+    footprint(inRock, reach, clear = null) {
+      const out = { bodies: 0, points: 0, crossing: 0, byPart: {}, byTier: {}, worst: [], near: [] }, P3 = [0, 0, 0, 0], C4 = [0, 0, 0, 0];
+      for (const p of pools.values()) {
+        const sw = p.swarm, t = (out.byTier[p.id] ??= { bodies: 0, crossing: 0, maxDepth: 0, maxRadii: 0 });
+        for (let i = 0; i < sw.count; i++) {
+          const h = p.owner[i], dying = p.dying.get(i);
+          if (!sw.active[i] || !h || sw.life[i * 4 + 2] < 0.05) continue;
+          const r = sw.config.r0 * sw.scale[i], hub = sw.hub[i], pos = sw.positionInto(i, POS), cx = pos[0], cz = pos[2];
+          const stage = dying ? (dying.st && clock < dying.at ? 'stagger' : 'dying') : p.jolts.has(i) ? 'recoil' : sw.getState(i);
+          out.bodies++; t.bodies++;
+          if (clear && !dying) { const c0 = clear(hub, h.cell, cx, cz, r * 4) / r; if (out.near.length < 6 || c0 < out.near[5].clear) { out.near.push({ tier: p.id, type: h.type, cell: h.cell, clear: +c0.toFixed(2), room: +sw.room[i].toFixed(2), stage }); out.near.sort((a, b) => a.clear - b.clear); out.near.length = Math.min(6, out.near.length); } }
+          if (inRock(hub, h.cell, cx, cz)) { (out.byPart.origin ??= 0); out.byPart.origin++; out.crossing++; t.crossing++; if (out.worst.length < 12) out.worst.push({ tier: p.id, type: h.type, part: 'origin', stage, r: +r.toFixed(2) }); continue; }
+          let deepest = 0, part = null;
+          const look = (x, z, what) => {
+            out.points++;
+            if (!inRock(hub, -1, x, z)) return;
+            const dx = x - cx, dz = z - cz, d = Math.hypot(dx, dz), free = d > 1e-6 ? reach(hub, h.cell, cx, cz, dx / d, dz / d, d) : 0, depth = Math.max(0, d - free);
+            if (depth >= deepest) { deepest = depth; part = what; }
+            if (!out.byPart[what + '#']) out.byPart[what + '#'] = 0; out.byPart[what + '#']++;
+          };
+          for (const n of FOOTPRINT_DIRS) { deformInto(sw, i, n, P3); look(P3[0], P3[2], P3[3] > 0.25 ? (stage === 'EXTEND' || stage === 'COIL' || stage === 'ANCHOR' ? 'stalk' : stage) : stage === 'TRANSFER' || stage === 'SETTLE' ? stage : 'body'); }
+          if (p.def.cored) { corePose(sw, i, 0, C4); for (let a = 0; a < 8; a++) look(C4[0] + Math.cos(a * Math.PI / 4) * C4[3], C4[2] + Math.sin(a * Math.PI / 4) * C4[3], 'pearl'); }
+          const spread = 1 + 0.6 * Math.max(0, sw.life[i * 4 + 1]), room = sw.room[i], sh = r * 1.2 * 0.7 * (room > 0 ? Math.min(spread, room) : spread);   // as ./cutis-maku/geometry.js sizes it
+          for (let a = 0; a < 8; a++) look(cx + Math.cos(a * Math.PI / 4) * sh, cz + Math.sin(a * Math.PI / 4) * sh, 'shadow');
+          if (!part) continue;
+          out.crossing++; t.crossing++; out.byPart[part] = (out.byPart[part] ?? 0) + 1;
+          if (deepest > t.maxDepth) { t.maxDepth = +deepest.toFixed(2); t.maxRadii = +(deepest / r).toFixed(2); }
+          out.worst.push({ tier: p.id, type: h.type, part, stage, depth: +deepest.toFixed(2), radii: +(deepest / r).toFixed(2), r: +r.toFixed(2), members: h.slots.length, cell: h.cell, hub,
+            room: +sw.room[i].toFixed(2), damp: +sw.sweepDamp[i].toFixed(2), origin: clear ? +clear(hub, h.cell, sw.offset[i * 3], sw.offset[i * 3 + 2], r * 4).toFixed(2) : null,
+            anchor: clear ? +clear(hub, h.cell, sw.anchor[i * 3], sw.anchor[i * 3 + 2], r * 4).toFixed(2) : null });
+        }
+      }
+      out.worst = out.worst.sort((a, b) => (b.depth ?? 99) - (a.depth ?? 99)).slice(0, 12);
+      return out;
+    },
     // one body's view (the harness): its first member's plane centre, radius, life [lift, deflate, opacity], hop stage, the pearl's pose (plane, unbent)
     view(h) {
       if (!h) return null;
@@ -281,7 +330,7 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
       const { p } = h, sw = p.swarm, i = slot.i, pos = sw.position(i), L = sw.life;
       return { tier: p.id, type: h.type, slot: i, slots: h.slots.length, centre: [pos[0], pos[2]], radius: sw.config.r0 * sw.scale[i], lift: L[i * 4], deflate: L[i * 4 + 1], opacity: L[i * 4 + 2],
         stage: sw.getState(i), active: !!sw.active[i], dead: h.dead, hub: h.hub,
-        stagger: p.dying.get(i)?.st ? +(clock - p.dying.get(i).st.t0).toFixed(3) : null, knocked: +((p.dying.get(i)?.st ?? p.jolts.get(i))?.moved ?? 0).toFixed(3), recoil: p.jolts.has(i) ? +(clock - p.jolts.get(i).t0).toFixed(3) : null, held: !!sw.hold[i], tint: L[i * 4 + 3], cored: p.def.cored, pace: +h.pace.toFixed(3), core: p.def.cored ? corePose(sw, i, 0) : null };
+        stagger: p.dying.get(i)?.st ? +(clock - p.dying.get(i).st.t0).toFixed(3) : null, knocked: +((p.dying.get(i)?.st ?? p.jolts.get(i))?.moved ?? 0).toFixed(3), recoil: p.jolts.has(i) ? +(clock - p.jolts.get(i).t0).toFixed(3) : null, held: !!sw.hold[i], tint: L[i * 4 + 3], cored: p.def.cored, room: +sw.room[i].toFixed(3), sweepDamp: +sw.sweepDamp[i].toFixed(3), pace: +h.pace.toFixed(3), core: p.def.cored ? corePose(sw, i, 0) : null };
     },
     dispose() { for (const p of pools.values()) { p.geo.dispose(); p.cores?.dispose(); } pools.clear(); parent.remove(group); },
   };

@@ -2012,7 +2012,8 @@ try{
  // its record's hit points) and dies (deflates into its puddle); a phantom's body fades with its cloak; 0 page errors. SHOTS=<dir> saves a close look.
  const T='window.__stalheartTest',P=`${T}.state().creatureProbe`,shots=process.env.SHOTS||null;if(shots)mkdirSync(shots,{recursive:true});
  const n=+process.env.SECTOR||2,name='pearl-story';
- await go(name,`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${n}&fps=1&creatures=pearl#td`);
+ // round three: hold=1 holds the heart (src/fx/creature-enemies.js), so the longer footprint audit cannot lose the sector under the step (its debrief pauses the game)
+ await go(name,`index.html?sw=0&acceptance=1&cine=0&world=story&skip=defence&sector=${n}&fps=1&creatures=pearl&hold=1#td`);
  await until(`!!${T} && ${T}.state().sector?.n===${n} && ${P}?.pearl===true`,120000);
  await evaluate('document.head.insertAdjacentHTML("beforeend","<style>#controls-card,.tutorial-card,#td-brief,.contact-card{display:none!important}</style>")');
  // the sector's own waves: its first bodies come up as Pearl bodies
@@ -2036,9 +2037,17 @@ try{
  const st2=await evaluate(P);assert(Object.entries(st2.byType).every(([t,o])=>!o.tier||o.dots===0)&&st2.undressed===0,`no mapped type is a dot cloud, the far side included (${JSON.stringify(st2.byType)})`);
  // ROUND TWO, the rock and the walls (owner: "we need a method to have their feeling/scouting appendage be constrained by the rocks/walls"): over ten
  // seconds of the sector, no live body's seeking stalk (with most of its cup) or anchor crosses a BLOCKED cell (src/domain/body-reach.js)
- const audits=[];for(let k=0;k<5;k++){audits.push(await evaluate(`${T}.creatures.audit()?.pearl`));await delay(2000);}
+ // ROUND THREE (owner, 2026-10-13: "there is still some clipping of the Cutis-Pearl through the walls"): every visible part of every body, not only its
+ // stalks: over twenty-four seconds, each body's membrane (the shader's deform in JS over the lowest hull's directions), pearl and contact shadow, the
+ // live and the dying, against the BLOCKED cells (src/fx/creature-pearl.js footprint; src/domain/body-reach.js query.clearance holds them off)
+ const audits=[],prints=[];for(let k=0;k<12;k++){audits.push(await evaluate(`${T}.creatures.audit()?.pearl`));prints.push(await evaluate(`${T}.creatures.footprint()?.pearl`));await delay(2000);}
  console.log(`  stalks against the rock: ${audits.map(a=>a?`${a.bodies} bodies ${a.stalks} stalks ${a.crossing} crossing ${a.inRock} in the rock`:'-').join(' | ')}; reach queries ${await evaluate(`${P}.bodies.reaches`)}`);
  console.log(`  crossings: ${JSON.stringify(audits.flatMap(a=>a?.what??[]))}`);assert(audits.every(a=>a&&a.bodies>0&&a.crossing===0),`no stalk or anchor crosses the rock or a wall (${JSON.stringify(audits)})`);
+ const tiersSeen=[...new Set(prints.flatMap(f=>Object.entries(f?.byTier??{}).filter(([,v])=>v.bodies>0).map(([k])=>k)))];
+ console.log(`  footprints against the rock: ${prints.map(f=>f?`${f.bodies} bodies ${f.crossing} crossing`:'-').join(' | ')}; ${prints.reduce((a,f)=>a+(f?.points??0),0)} points, tiers ${tiersSeen.join(' ')}; clearance queries ${await evaluate(`${P}.bodies.clears`)}`);
+ console.log(`  footprint crossings: ${JSON.stringify(prints.flatMap(f=>f?.worst??[]).slice(0,6))}`);
+ assert(prints.every(f=>f&&f.bodies>0&&f.crossing===0),`no body's membrane, pearl or shadow crosses the rock or a wall (${JSON.stringify(prints.map(f=>f&&{crossing:f.crossing,byPart:f.byPart,worst:f.worst.slice(0,3)}))})`);
+ assert(tiers.every(t=>tiersSeen.includes(t)),`the footprints audited cover every tier (${tiersSeen})`);
  assert(Object.entries(st.byType).every(([t,o])=>!o.tier||o.dots===0),`no mapped type is a dot cloud (${JSON.stringify(st.byType)})`);
  const clouds=await evaluate(`${T}.creatures.pearls().filter(e=>e.obj.userData.kind!=='creature').length`);assert.equal(clouds,0,'every Pearl record carries the stand-in, not a cloud');
  const kept=await evaluate(`(()=>{const p=${T}.creatures.pearls();return p.every(e=>e.spec.hp>0&&e.spec.body==='pearl'&&e.spec.pearl&&e.tier===e.type)&&p.some(e=>e.type==='phantom'&&e.spec.cloaked)&&p.some(e=>e.type==='rolling'&&e.spec.heavy&&!e.spec.rammable)&&p.some(e=>e.type==='amoeba'&&e.spec.rammable);})()`);

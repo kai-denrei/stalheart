@@ -3,7 +3,12 @@
 // against the board's own blocked rule, and a swarm of every Pearl tier whose WHOLE membrane (the shader's deform in JS, src/fx/cutis-maku/deform.js, over
 // the lowest hull's vertex directions) stays off the rock in a wide and a narrow corridor with a side branch, the knot's body wider than the narrow one.
 import assert from 'node:assert/strict';
-import { createReachQuery, clearPush, clearOf } from '../src/domain/body-reach.js';
+import { createReachQuery, nearestCellFrom, freeReach, clearPush, clearOf } from '../src/domain/body-reach.js';
+import { CutisSwarm, STEP, BODY_RADII } from '../src/fx/cutis-maku/swarm.js';
+import { DEFAULT_CONFIG } from '../src/fx/cutis-maku/config.js';
+import { MEMBRANE_VERT } from '../src/fx/cutis-maku/shaders.js';
+import { deformInto, FOOTPRINT_DIRS } from '../src/fx/cutis-maku/deform.js';
+import { PEARL_TIERS } from '../src/content/pearl-enemies.js';
 
 const close = (a, b, eps, what) => assert(Math.abs(a - b) <= eps, `${what}: ${a} vs ${b}`);
 
@@ -67,3 +72,49 @@ console.log('PASS the clearance: the nearest blocked region\'s distance and dire
 }
 console.log('PASS the clearance on an irregular quad board: never more than the truth (the board\'s nearest-centre rule), a few tenths short on average');
 
+// ---- the shader and its JS twin carry the same round-three terms ----
+for (const term of ['vec3 off=vec3(iOffset.x,0.,iOffset.z),head=vec3(iHeading.x,0.,iHeading.z);', 'extended.x+=r*(1.-iHeading.y)*(.85*bow*sin(iSeed+1.2)',
+  'float squeezeW=phase<.62?1.-reach:1.;', 'squeezeW=1.-reach*(1.-u);', 'float spread=1.+.6*squash;if(iOffset.y>0.&&squash>0.)spread=min(spread,max(1.,iOffset.y));',
+  'p.xz-=(ax*dot(d,ax)*(1.-k)+pe*dot(d,pe)*(1.-k2))*squeezeW;']) assert(MEMBRANE_VERT.includes(term), `the membrane shader: ${term}`);
+console.log('PASS the membrane shader\'s room, squeeze and sweep damping are the ones deform.js transcribes');
+
+// ---- every tier's whole membrane in a corridor with a side branch: wide (20 m) and narrow (10 m, narrower than the knot) ----
+for (const [label, open, lane] of [['wide', (x, z) => Math.abs(z) < 15 || (Math.abs(x - 50) < 15 && z > 0), 0], ['narrow', (x, z) => Math.abs(z - 5) < 6 || (Math.abs(x - 50) < 15 && z > 0), 5]]) {
+  const g = grid(40, open), q = createReachQuery({ ...g, step: 1.5 });
+  let hint = 0; const rock = (x, z) => g.blocked(hint = nearestCellFrom(g.adj, g.centers, hint, flat(x, z)));
+  const clear = (x, z, m, o) => q.clearance(flat, x, z, m, -1, o);
+  const bodies = [...PEARL_TIERS.map((t) => [t, 2.8]), [PEARL_TIERS[6], 3.64], [PEARL_TIERS[7], 6.72]];
+  for (const [t, r0] of bodies) {
+    const sw = new CutisSwarm({ ...DEFAULT_CONFIG, ...t.values, r0, separation: 0.5 }, { capacity: 6 });
+    sw.reachLimit = (i, x, z, dx, dz, max) => freeReach(x, z, dx, dz, max, 1.5, rock);
+    sw.clearLimit = (i, x, z, rho, out, steps = 3) => clearOf(clear, x, z, rho, steps, out);
+    const laps = [0, 0, 0, 0];
+    for (let i = 0; i < 4; i++) { sw.setTarget(i, 120, lane); sw.place(i, -120 + i * 8, lane + (i - 1.5) * 2, 0); sw.pace[i] = 0.4; }
+    let worst = 0, checked = 0;
+    const o = [0, 0, 0, 0];
+    for (let n = 0; n < 40 * 120; n++) {
+      // targets that swing across the corridor (half the time into the rock), the bodies lapping round before the grid's edge
+      if (n % 240 === 0) for (let i = 0; i < 4; i++) sw.setTarget(i, Math.min(170, sw.offset[i * 3] + 40), ((n / 240) % 2 ? 1 : -1) * 60);
+      sw.step(STEP);
+      for (let i = 0; i < 4; i++) if (sw.offset[i * 3] > 150 && sw.getState(i) === 'COIL') { laps[i] += 300; sw.place(i, -150, lane, 0); }
+      if (n % 8) continue;
+      for (let i = 0; i < 4; i++) {
+        const c = sw.position(i);
+        for (const d of FOOTPRINT_DIRS) {
+          deformInto(sw, i, d, o); checked++;
+          if (!rock(o[0], o[2])) continue;
+          const dx = o[0] - c[0], dz = o[2] - c[2], l = Math.hypot(dx, dz);
+          worst = Math.max(worst, l - (l > 1e-6 ? freeReach(c[0], c[2], dx, dz, l, 0.25, rock) : 0));
+        }
+      }
+    }
+    const gone = [0, 1, 2, 3].reduce((a, i) => a + laps[i] + sw.offset[i * 3] + 120 - i * 8, 0) / 4;
+    // the knot (its footprint 18 m in a 10 m corridor) is squeezed; a few points of its transfer may graze by a tenth of its radius
+    const allow = label === 'narrow' && r0 > 6 ? 0.2 * r0 : 0.02;
+    assert(worst <= allow, `${label} ${t.id} r0 ${r0}: the membrane ${worst.toFixed(2)} m into the rock (allowed ${allow})`);
+    assert(gone > 120, `${label} ${t.id} r0 ${r0}: the bodies still make their way (${gone.toFixed(0)} m in 40 s)`);
+    if (label === 'narrow' && r0 > 6) assert(sw.room[0] > 0 && sw.room[0] < 1, `the knot is squeezed in the narrow corridor (room ${sw.room[0]})`);
+    assert(checked > 100000, 'the membrane was looked at');
+  }
+}
+console.log(`PASS every Pearl tier's whole membrane (${FOOTPRINT_DIRS.length} hull directions through the shader's deform) off the rock in a wide and a narrow corridor with a side branch, the bodies making their way, the knot squeezed (BODY_RADII ${BODY_RADII})`);

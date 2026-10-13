@@ -28,10 +28,12 @@
 // THE ROCK AND THE WALLS (round two, owner 2026-10-13: "the cutis animation clips through walls"): `ground()` -> { adj, centers, blocked(ci) } | null (the
 // board's cell graph, ROCK and WALL its BLOCKED cells) gives hubs.reach(hub, x, z, dx, dz, max, cell): the metres clear along (dx, dz) from plane point
 // (x, z) of that hub (src/domain/body-reach.js), walked over the graph from `cell` (the record's); add and track carry the record's `cell`.
+// Round three (owner, 2026-10-13: "there is still some clipping of the Cutis-Pearl through the walls"): hubs.clear(hub, x, z, rho, cell, out) the move
+// that puts rho metres of open ground round a plane point, the room there and the axis across it (body-reach.js clearOf, out as the kit's clearLimit).
 import * as THREE from '../../vendor/three.module.js';
 import { surfaceFrame, toPlane, toPlaneInto } from '../domain/surface-projection.js';
 import { hubFrames, nearestHub, remapPlane, hubTurn } from '../domain/surface-hubs.js';
-import { createReachQuery } from '../domain/body-reach.js';
+import { createReachQuery, clearOf } from '../domain/body-reach.js';
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
@@ -45,7 +47,7 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
   let frame = null, at = -1, side = 0, R = 0, stamp = 0, replaced = 0, handed = 0;
   let frames = [], points = [], quats = [];   // the hubs: their frames, unit points and turns into the root's plane (src/domain/surface-hubs.js)
   // the board for the reach: refreshed once a frame and at each spawn (its BLOCKED cells change with a breach); `reachStep` cells between samples
-  let board = null, query = null, reaches = 0;
+  let board = null, query = null, reaches = 0, clears = 0;
   function refreshBoard() {
     const g = ground();
     if (!g?.adj || !g.centers) { board = query = null; return; }
@@ -60,7 +62,15 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
   };
   let toSphere = [];
   const hubs = { count: 12, quat: (k) => quats[k] ?? quats[0], remap: (a, b, x, z) => remapPlane(frames[a], frames[b], x, z, R),
-    reach: (k, x, z, dx, dz, max, cell) => { if (!query || !frame) return max; reaches++; return query(toSphere[k] ?? toSphere[0], x, z, dx, dz, max, cell >= 0 ? cell : query.cell); } };
+    reach: (k, x, z, dx, dz, max, cell) => { if (!query || !frame) return max; reaches++; return query(toSphere[k] ?? toSphere[0], x, z, dx, dz, max, cell >= 0 ? cell : query.cell); },
+    clear: (k, x, z, rho, cell, out, steps = 3) => {
+      if (!query || !frame) { out[0] = out[1] = 0; out[2] = rho; out[3] = 1; out[4] = 0; out[5] = out[6] = rho * 2; return out; }
+      clears++; clearSphere = toSphere[k] ?? toSphere[0]; clearHint = cell >= 0 ? cell : query.cell;
+      return clearOf(clearAt, x, z, rho, steps, out);
+    } };
+  // round three: the clearance walk for hubs.clear (one closure, its hub's mapping and its last cell kept between the steps of one clearOf)
+  let clearSphere = null, clearHint = -1;
+  const clearAt = (x, z, max, out) => { query.clearance(clearSphere, x, z, max, clearHint, out); clearHint = query.cell; return out; };
 
   const has = (family) => typeof families[family] === 'function';
   function adapter(family) {
@@ -184,13 +194,18 @@ export function createCreatureBodies({ scene, families, tiers, follow, death, me
     roots: () => [...adapters.values()].flatMap((a) => a.roots()),
     // the bodies' books: up now, re-placed on the leash, handed from one hub to another, the records on each hub, and each family's tiers
     stats: () => { const onHub = new Array(12).fill(0); for (const b of live.values()) onHub[b.hub]++;
-      return { live: live.size, replaced, handed, onHub, reaches, planetR: +R.toFixed(1), families: Object.fromEntries([...adapters].map(([k, a]) => [k, a.stats()])) }; },
+      return { live: live.size, replaced, handed, onHub, reaches, clears, planetR: +R.toFixed(1), families: Object.fromEntries([...adapters].map(([k, a]) => [k, a.stats()])) }; },
     // one record's body (the harness): its family's view of it, plus where its record is in its hub's plane
     view: (e) => { const b = live.get(e); return b ? { ...seen(adapters.get(b.family).view(b.h)), record: frame ? planeOf(e.pos, b.hub) : null, hub: b.hub } : null; },
     // the harness: every family's stalks against the board's BLOCKED cells (a family that keeps none answers null)
     audit() { refreshBoard(); if (!query) return null; const clear = (hub, cell, x, z, dx, dz, len) => (clear.free = hubs.reach(hub, x, z, dx, dz, len, cell)) >= len - 1e-6;
       const inRock = (hub, cell, x, z) => query.at(toSphere[hub] ?? toSphere[0], x, z, cell >= 0 ? cell : query.cell);
       return Object.fromEntries([...adapters].filter(([, a]) => a.audit).map(([k, a]) => [k, a.audit(clear, inRock)])); },
+    // round three: every family's bodies' whole footprint (membrane, pearl, shadow) against the board's BLOCKED cells (src/fx/creature-pearl.js footprint)
+    footprint() { refreshBoard(); if (!query) return null; const inRock = (hub, cell, x, z) => query.at(toSphere[hub] ?? toSphere[0], x, z, cell >= 0 ? cell : query.cell);
+      const reach = (hub, cell, x, z, dx, dz, len) => hubs.reach(hub, x, z, dx, dz, len, cell);
+      const C = [0, 0, 0, 0, 0, 0, 0], clear = (hub, cell, x, z, rho) => hubs.clear(hub, x, z, rho, cell, C, 1)[6];
+      return Object.fromEntries([...adapters].filter(([, a]) => a.footprint).map(([k, a]) => [k, a.footprint(inRock, reach, clear)])); },
     // a dead record's body by its handle, kept by the caller before the kill (the harness watches a death play out)
     handleOf: (e) => live.get(e) ?? null,
     viewHandle: (b) => (b ? seen(adapters.get(b.family)?.view(b.h)) : null),

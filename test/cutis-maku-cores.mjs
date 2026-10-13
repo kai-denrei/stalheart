@@ -25,11 +25,12 @@ assert.equal(sanitizeConfig({ coreShape: 2.6 }).coreShape, 3); assert.equal(sani
 console.log('PASS the Core keys, CORE_SHAPES, sanitize rounding, coreContact');
 
 // ---- the shader's centre, pinned and transcribed ----
+// round three: the positions' .y carry the room, its axis and the sweep's damping, so the block reads them flat (`off`, `head`; ./shaders.js)
 const HARD_BLOCK = `  if(uHardRadius>0.){
     float bodyU=clamp((accelerated-uDelay*.5)/max(.02,1.-uDelay),0.,1.);
-    vec3 center=mix(iOffset,iAnchor,2.*bodyU-bodyU*bodyU);
+    vec3 center=mix(off,iAnchor,2.*bodyU-bodyU*bodyU);
     center.y=r*.78*((1.-bodyU)*(1.-bodyU)+bodyU*bodyU)+2.*(1.-bodyU)*bodyU*.014*SC;
-    if(phase>=.85){float settle=(phase-.85)/.15;center=iAnchor+iHeading*r*.12*exp(-6.*settle)*sin(settle*22.)*iParams.w;center.y=r*.78;}
+    if(phase>=.85){float settle=(phase-.85)/.15;center=iAnchor+head*r*.12*exp(-6.*settle)*sin(settle*22.)*iParams.w;center.y=r*.78;}
     float lift=max(0.,r*uHardRadius*1.3+.018*SC-center.y);center.y+=lift;p.y+=lift;`;
 assert(MEMBRANE_VERT.includes(HARD_BLOCK), 'the membrane shader\'s hard-core block is the one transcribed below');
 assert(MEMBRANE_VERT.includes('if(uHardRadius>0.)delay=uDelay*.5;'), 'one transfer clock for a cored body');

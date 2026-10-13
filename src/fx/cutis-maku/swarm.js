@@ -8,10 +8,17 @@
 import { cycleTiming, phaseState, transferProgress, coreContact, KIT_R0 } from './config.js';
 
 export const STEP=1/120;
+const TIPS=new Float64Array(14);
 // round two: the most projection hubs a swarm draws round (src/domain/surface-hubs.js: the icosahedron's twelve)
 export const HUBS=12;
 // round two: a stalk's cup in body radii (the shader's pad, .58 r) kept clear of the rock, and the turns tried when the way ahead is blocked
 export const REACH_MARGIN=.6;
+// round three (owner, 2026-10-13: "there is still some clipping of the Cutis-Pearl through the walls"): the open ground a body needs round its origin and
+// each anchor, in radii (its rest membrane reaches ~1.2 r with the lumps, the settle's recoil .12 r more); the stalk's sideways sweep at its tip (the
+// shader's seekSweep x ~1.3), at its middle (the bow .85 r and half the sweep) and at its base (the bow on the body's rim past 1.2 r), in radii, for
+// the damping; a hop's way needs this much room (radii) all along it (the transferring body is ~1.2 r wide), or SQUEEZE_RADII through a passage narrower
+// than that, the body squeezed
+export const BODY_RADII=1.35,SWEEP_TIP=1.15,SWEEP_MID=1.45,SWEEP_BASE=.6,TRANSFER_RADII=1.2,SQUEEZE_RADII=.8;
 const TURNS=[.45,-.45,.9,-.9,1.35,-1.35],STALKS=[[0],[-1.2,1.2],[-1.2,0,1.2]];
 const hash=n=>{const x=Math.sin(n*127.1+311.7)*43758.5453;return x-Math.floor(x);};
 
@@ -36,6 +43,13 @@ export class CutisSwarm {
     // round two (owner, 2026-10-13: "the cutis animation clips through walls"): the host's free reach, (i, x, z, dx, dz, max) -> metres clear along the
     // unit direction (dx, dz) from (x, z) (src/domain/body-reach.js against the board's ROCK and WALL); null is the kit's open plane. See plan().
     this.reachLimit=null;
+    // round three: the host's clearance, (i, x, z, rho, out) -> out [dx, dz, room, ax, az, clear, first]: the move that puts rho metres of open ground
+    // round plane point (x, z), the radius that fits there (< rho in a corridor narrower than the body), the axis across it, the clearance where the move
+    // ends and where it began (src/domain/body-reach.js clearOf against the board's ROCK and WALL); null is the open plane. Per instance: `room` the open ground round the body
+    // over its footprint (BODY_RADII r), 0 = not measured (the shader squeezes the body along `roomAxis`, an angle in the plane, when it is under 1, its
+    // puddle and squash spread counted), and `roomAcross` the room square to that axis (0: not measured; where the room is under 1, a bend or a corner
+    // may close in that way too); `sweepDamp` 0..1 how much of the stalks' sideways sweep and bow is held back (the shader). See clearProbes.
+    this.clearLimit=null;this.room=new Float32Array(cap);this.roomAxis=new Float32Array(cap);this.roomAcross=new Float32Array(cap);this.sweepDamp=new Float32Array(cap);this.scratchClear=new Float64Array(7);this.scratchPath=new Float64Array(7);this.scratchPos=[0,0,0];this.pathFail=1;this.pathMin=Infinity;this.pathAX=1;this.pathAZ=0;this.pathX=0;this.pathZ=0;
     this.scratchCore={center:{x:0,y:0,z:0},radius:0,u:0};
     this.occupied=new Float32Array(cap*3);
     for(let i=0;i<cap;i++){this.seed[i]=hash(i+17)*100;this.scale[i]=.85+hash(i+93)*.3;}
@@ -51,7 +65,7 @@ export class CutisSwarm {
       this.offset.fill(0,k,k+3);this.anchor.fill(0,k,k+3);this.occupied.fill(0,k,k+3);
       this.heading[k]=1;this.heading[k+1]=0;this.heading[k+2]=0;
       this.phase[i]=0;this.cycles[i]=0;this.idle[i]=0;this.pace[i]=1;this.hold[i]=0;this.active[i]=0;this.forced[i]=0;
-      this.hub[i]=0;
+      this.hub[i]=0;this.room[i]=0;this.roomAxis[i]=0;this.roomAcross[i]=0;this.sweepDamp[i]=0;
       this.target[i*2]=0;this.target[i*2+1]=0;this.plant.fill(0,k,k+3);
       this.resetLife(i);
     }
@@ -73,6 +87,8 @@ export class CutisSwarm {
   place(i,x,z,angle=0) {
     const k=i*3;
     this.count=Math.max(this.count,i+1);
+    // round three: a body put down (a new one, one re-placed on its leash, a squad's member off its record's line) stands clear of the rock
+    if(this.clearLimit){const C=this.clearLimit(i,x,z,this.config.r0*this.scale[i]*BODY_RADII,this.scratchClear);x+=C[0];z+=C[1];}
     this.offset[k]=x;this.offset[k+1]=0;this.offset[k+2]=z;
     this.heading[k]=Math.cos(angle);this.heading[k+1]=0;this.heading[k+2]=Math.sin(angle);
     this.phase[i]=0;this.cycles[i]=0;this.idle[i]=0;this.hold[i]=0;this.active[i]=1;this.forced[i]=0;
@@ -107,6 +123,7 @@ export class CutisSwarm {
       this.probe0[k]=0;this.probe0[k+1]=d;this.probe0[k+2]=hash(i*7)*1.4;
       this.anchor[k]=px;this.anchor[k+1]=.018*s;this.anchor[k+2]=pz;this.params[i*4]=d;
       this.plant[k+2]=2;this.forced[i]=1;
+      if(this.clearLimit)this.clearProbes(i,x,z,0,radius);
     } else {
       this.forced[i]=0;
       this.heading[k]=(hx*cos-hz*sin)/length;this.heading[k+2]=(hx*sin+hz*cos)/length;
@@ -121,6 +138,7 @@ export class CutisSwarm {
         probe[k+2]=j*2.17+hash(i*7+j*19)*1.4;
         if(this.reachLimit&&j<count)probe[k+1]=this.clearReach(i,x,z,probe[k],probe[k+1],radius);
       }
+      if(this.clearLimit)this.clearProbes(i,x,z,count,radius);
       this.selectProbe(i,tx,tz);
     }
     /* Selected reach is written by selectProbe. */this.params[i*4+1]=c.cubenessPeak;this.params[i*4+2]=c.pulseSpeed;this.params[i*4+3]=c.wobble;
@@ -149,6 +167,73 @@ export class CutisSwarm {
     const k=i*3,c=Math.cos(angle),s=Math.sin(angle),hx=this.heading[k],hz=this.heading[k+2],margin=radius*REACH_MARGIN;
     const free=this.reachLimit(i,x,z,hx*c+hz*s,hz*c-hx*s,reach+margin);
     return Math.max(0,Math.min(reach,free-margin));
+  }
+  /** Round three: the body's footprint held off the rock and the walls (with a host's clearLimit). Each of the `count` seeking stalks' tips (the anchor
+   * it may become) is moved to where BODY_RADII r of open ground is round it (the body settles there), re-aimed and re-measured, and is shortened
+   * (then dropped) while the straight way to it is not clear (the stalk's ray, round two's cup margin) or its middle has under TRANSFER_RADII r (the
+   * body passes there in its transfer). Then the instance's room (the least round its origin and its tips, over BODY_RADII r: under 1 the shader
+   * squeezes it across the nearest wall) and its sweep damping (the stalks' sideways sweep and bow fitted into the room beside the tips and middles). */
+  clearProbes(i,x,z,count,radius) {
+    const k=i*3,hx=this.heading[k],hz=this.heading[k+2],rho=radius*BODY_RADII,C=this.scratchClear;
+    this.clearLimit(i,x,z,rho,C,1);
+    const origin=C[6],need=Math.min(radius*TRANSFER_RADII,.8*Math.max(0,origin)),squeezed=Math.min(need,radius*SQUEEZE_RADII);
+    let room=Math.min(origin,rho),axis=Math.atan2(C[4],C[3]),axisAt=room,lateral=(origin-radius*1.2)/(radius*SWEEP_BASE),tips=0;
+    TIPS[tips++]=x;TIPS[tips++]=z;
+    for(let j=0;j<count;j++){
+      const probe=j===0?this.probe0:j===1?this.probe1:this.probe2,a=probe[k],c=Math.cos(a),s=Math.sin(a),ux0=hx*c+hz*s,uz0=hz*c-hx*s;
+      let d=probe[k+1],ok=false,vx=0,vz=0,nd=0,tipRoom=0,tipClear=0,tipAxis=0,way=0;
+      for(let tries=0;tries<3&&d>radius*.5;tries++,d=Math.min(d*.6,this.pathFail*nd-radius*.5)){
+        this.clearLimit(i,x+ux0*d,z+uz0*d,rho,C);
+        vx=ux0*d+C[0];vz=uz0*d+C[1];nd=Math.hypot(vx,vz);tipRoom=Math.min(C[2],C[5]);tipClear=C[5];tipAxis=Math.atan2(C[4],C[3]);
+        if(nd<radius*.5)break;
+        // the way to it wide enough for the stalk, its cup and the body's transfer: every point of the segment `need` from the rock; or, where a
+        // passage ahead is narrower than that, wide enough for the body squeezed through it (SQUEEZE_RADII), the room then the passage's
+        this.pathFail=1;this.pathMin=Infinity;way=this.clearPath(i,x,z,origin,x+vx,z+vz,tipClear,need,4,0,1);
+        if(way>=need){ok=true;break;}
+        if(squeezed<need){this.pathFail=1;this.pathMin=Infinity;way=this.clearPath(i,x,z,origin,x+vx,z+vz,tipClear,squeezed,4,0,1);if(way>=squeezed){ok=true;break;}}
+      }
+      if(!ok){probe[k+1]=0;continue;}
+      if(tipRoom<rho&&tips<TIPS.length){TIPS[tips++]=x+vx;TIPS[tips++]=z+vz;}
+      if(tipRoom<axisAt){axisAt=tipRoom;axis=tipAxis;}
+      if(way<need&&this.pathMin<Infinity){if(way<axisAt){axisAt=way;axis=Math.atan2(this.pathAZ,this.pathAX);}if(tips<TIPS.length){TIPS[tips++]=this.pathX;TIPS[tips++]=this.pathZ;}}
+      room=Math.min(room,tipRoom,way);lateral=Math.min(lateral,(tipClear-radius*REACH_MARGIN)/(radius*SWEEP_TIP),(way-radius*.5)/(radius*SWEEP_MID));
+      probe[k]=Math.atan2(hz*vx-hx*vz,vx*hx+vz*hz);probe[k+1]=nd;
+    }
+    this.room[i]=Math.max(.05,Math.min(4,room/rho));this.roomAxis[i]=axis;
+    // under its footprint somewhere on the hop: the room square to the axis too (at the origin, each tight tip and a squeezed way's narrows)
+    let across=4;
+    if(room<rho)for(let t=0;t<tips;t+=2)across=Math.min(across,this.acrossAt(i,TIPS[t],TIPS[t+1],axis,rho));
+    this.roomAcross[i]=across;
+    this.sweepDamp[i]=lateral>=1?0:1-Math.max(0,lateral);
+  }
+  /** Round three: the open ground square to the squeeze's axis at (x, z), both ways, over rho (at most 4). */
+  acrossAt(i,x,z,axis,rho) {
+    if(!this.reachLimit)return 4;
+    const px=-Math.sin(axis),pz=Math.cos(axis);
+    return Math.max(.05,Math.min(this.reachLimit(i,x,z,px,pz,rho),this.reachLimit(i,x,z,-px,-pz,rho))/rho);
+  }
+  /** Round three: a lower bound of the clearance all along the segment from (ax, az) (clearance ca) to (bx, bz) (clearance cb): the rock is outside both
+   * ends' discs, so no nearer than sqrt(min(ca, cb)^2 - (len / 2)^2) to the segment; while that is under `need` the middle is measured and both halves
+   * looked at, `depth` times at most (a corridor's straight way takes a few). Under `need`: the way is not clear, and this.pathFail is the share of
+   * the way (from a) where it was first found short, so the next try reaches no further than that. */
+  clearPath(i,ax,az,ca,bx,bz,cb,need,depth,t0,t1) {
+    const len=Math.hypot(bx-ax,bz-az),c=Math.min(ca,cb),g=c*c-len*len/4>0?Math.sqrt(c*c-len*len/4):0;
+    if(g>=need)return g;
+    if(depth<=0){this.pathFail=Math.min(this.pathFail,t0);return g;}
+    const mx=(ax+bx)/2,mz=(az+bz)/2,tm=(t0+t1)/2,P=this.clearLimit(i,mx,mz,need,this.scratchPath,1),cm=P[6];
+    if(cm<this.pathMin){this.pathMin=cm;this.pathAX=P[3];this.pathAZ=P[4];this.pathX=mx;this.pathZ=mz;}
+    if(cm<need){this.pathFail=Math.min(this.pathFail,tm);return cm;}
+    const g1=this.clearPath(i,ax,az,ca,mx,mz,cm,need,depth-1,t0,tm);
+    return g1<need?g1:Math.min(g1,this.clearPath(i,mx,mz,cm,bx,bz,cb,need,depth-1,tm,t1));
+  }
+  /** Round three: a body at rest moved off the rock (an impact's knock carried it there) and its room measured; with `push` false only measured (a
+   * dying body is not moved: its puddle is squeezed instead). */
+  clearBody(i,push=true) {
+    if(!this.clearLimit)return;
+    const k=i*3,radius=this.config.r0*this.scale[i],rho=radius*BODY_RADII,at=push?null:this.positionInto(i,this.scratchPos),C=this.clearLimit(i,at?at[0]:this.offset[k],at?at[2]:this.offset[k+2],rho,this.scratchClear);
+    if(push)for(const a of [this.offset,this.anchor,this.occupied]){a[k]+=C[0];a[k+2]+=C[1];}
+    this.room[i]=Math.max(.05,Math.min(4,(push?C[5]:C[6])/rho));this.roomAxis[i]=Math.atan2(C[4],C[3]);
+    this.roomAcross[i]=this.room[i]<1?this.acrossAt(i,at?at[0]:this.offset[k],at?at[2]:this.offset[k+2],this.roomAxis[i],rho):4;
   }
   getSeekingAnchors(i) {
     const k=i*3,y=.018*this.lengthScale;

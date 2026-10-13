@@ -3,7 +3,8 @@
 //   pearlBodies   each mapped type's body: its Pearl tier, its radius r0 (the record's size x metresPerSize, a boss x boss), cored or soft
 //   pearlPace     a body's base hop pace (the duration multiplier, < 1 faster): one hop's forward reach covers `keep` of what its record walks a cycle
 //   pearlLead     how far ahead of its record a body hunts, in seconds of the record's walk: `leadHops` of its own (paced) hop
-//   pearlLeash    the leash in metres: the most of CREATURE_FOLLOW's (leashRadii x r, leashMin) and `leashSeconds` of the record's walk
+//   pearlLeash    the leash in metres: the most of CREATURE_FOLLOW's (leashRadii x r, leashMin), `leashSeconds` of the record's walk and `leashHops`
+//                 of the body's own hop (`hop` m: its lag is a sawtooth a hop long, so a slow record's body is not put back mid-stride)
 //   squadSpots    where each of a squad's n bodies stands round its record: [across, along] metres in the record's heading frame
 
 // `spec` ENEMY_SPEC, `of` PEARL_OF, `tiers` PEARL_TIERS, `body` PEARL_BODY -> { [type]: { type, tier, r0, cored, rammable } } for every mapped type the spec knows
@@ -29,7 +30,7 @@ export function pearlPace({ cycle, reach, seek, r, speed }, { keep, seekEfficien
 export const pearlLead = ({ cycle, pace }, { leadHops }) => leadHops * cycle * pace;
 
 // metres: `follow` CREATURE_FOLLOW (leashRadii, leashMin), `tune` PEARL_FOLLOW (leashSeconds)
-export const pearlLeash = ({ r, speed }, follow, tune) => Math.max(follow.leashRadii * r, follow.leashMin, (speed > 0 ? speed : 0) * tune.leashSeconds);
+export const pearlLeash = ({ r, speed, hop = 0 }, follow, tune) => Math.max(follow.leashRadii * r, follow.leashMin, (speed > 0 ? speed : 0) * tune.leashSeconds, (hop > 0 ? hop : 0) * (tune.leashHops ?? 0));
 
 // n bodies round a record: [across, along] metres, `gap` radii apart across, staggered `stagger` radii along (the dot squad's two rows, src/fx/squads.js)
 export function squadSpots(n, r, { gap, stagger }) {

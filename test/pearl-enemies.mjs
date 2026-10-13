@@ -68,6 +68,8 @@ console.log('PASS the mapping: every type of the wave programme, the ram verdict
   close(pearlLead({ cycle: 4, pace: 0.5 }, tune), 0.6 * 2, 1e-12, 'leadHops of its own hop');
   assert(tune.separation < DEFAULT_CONFIG.separation, 'the neighbour push eased for bodies on records');
   assert.equal(pearlLeash({ r: 2, speed: 20 }, CREATURE_FOLLOW, tune), 30); assert.equal(pearlLeash({ r: 2, speed: 1 }, CREATURE_FOLLOW, tune), 8); assert.equal(pearlLeash({ r: 5, speed: 1 }, CREATURE_FOLLOW, tune), 15);
+  // round three: at least one of the body's own hops (a body held off the rock falls a hop behind now and then; a slow record's leash was shorter than a hop)
+  assert.equal(pearlLeash({ r: 2.8, speed: 4.6, hop: 15.7 }, CREATURE_FOLLOW, tune), 15.7); close(pearlLeash({ r: 2.8, speed: 4.6 }, CREATURE_FOLLOW, tune), 8.4, 1e-9, 'without a hop');
   const s5 = squadSpots(5, 2, { gap: 2.2, stagger: 2 });
   assert.equal(s5.length, 5); close(s5[0][0], -8.8, 1e-12, 'across'); close(s5[4][0], 8.8, 1e-12, 'across'); assert.equal(s5[1][1], 2); assert.equal(s5[2][1], -2);
   close(s5.reduce((a, s) => a + s[0], 0), 0, 1e-12, 'centred'); assert.deepEqual(squadSpots(1, 3, { gap: 2.2, stagger: 2 }), [[0, -3]].map(([a]) => [a, -3]));

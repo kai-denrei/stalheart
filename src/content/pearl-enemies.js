@@ -57,7 +57,8 @@ export const PEARL_BODY = freeze({ metresPerSize: 5.6, boss: 1.5 });
 // (its `pace`, < 1 faster) until one hop's reach covers `keep` of what the record walks in a cycle, the reach discounted by the stalks' forward
 // `seekEfficiency` (measured offline, 2026-10-13, a body hunting a far point: one stalk 1, three 0.75, two 0.45, taken at 0.35 since the two forks 69
 // degrees either side also carry the body sideways), no faster than `floor`; it hunts the record's point `leadHops` of its own hop ahead (not
-// CREATURE_FOLLOW's 1.8 s, which put a fast body 11 radii ahead of its record), and its leash is at least `leashSeconds` of the record's walk (a hopper's
+// CREATURE_FOLLOW's 1.8 s, which put a fast body 11 radii ahead of its record), and its leash is at least `leashSeconds` of the record's walk and
+// (round three: a body held off the rock falls a hop behind now and then, and a slow record's leash was shorter than a hop) `leashHops` of its own full hop (a hopper's
 // lag is a sawtooth a hop long). Simulated offline through src/fx/creature-pearl.js (ten bodies a type for a minute, each on a wandering record at its
 // type's speed and the sector's pace, the erratic bursts in): the one- and three-stalk tiers 1.5-2.6 radii from their records on average and never
 // re-placed; the forking two-stalk ones (blue, orange, green, purple) 2.8-5 radii, 0.1-2.4 re-placements a body-minute; the saucer (23 m/s in a 2 m
@@ -81,7 +82,7 @@ export const PEARL_BODY = freeze({ metresPerSize: 5.6, boss: 1.5 });
 // CUTIS_LOD (src/fx/cutis-maku/geometry.js): the high hull only over `high` device pixels of radius and for at most `highCap` bodies a tier (eight tiers),
 // the lowest hull under `low`; bodies outside the view or below the horizon are not drawn.
 export const PEARL_FOLLOW = freeze({
-  keep: 0.8, seekEfficiency: [1, 0.35, 0.75], floor: 0.1, leadHops: 0.6, leashSeconds: 1.5, separation: 0.5,
+  keep: 0.8, seekEfficiency: [1, 0.35, 0.75], floor: 0.1, leadHops: 0.6, leashSeconds: 1.5, leashHops: 1, separation: 0.5,
   squad: { gap: 2.2, stagger: 2 }, hubMargin: 0.03, reachStep: 0.15, opacityRef: 0.95,
   capacity: { white: 3000, yellow: 2000, blue: 2000, orange: 1000, green: 1000, purple: 800, brown: 600, black: 600 },
   lod: { high: 70, low: 12, highCap: 12, hysteresis: 0.12, horizonRadii: 3 },

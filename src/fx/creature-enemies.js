@@ -65,6 +65,7 @@ export function createCreatureEnemies(host) {
   const pearled = { dressed: 0, undressed: 0, squads: 0 };   // entries given a Pearl body, dressed ones made again as dot clouds for want of a slot, squads among the dressed
   const families = { ...FAMILIES, pearl: (o) => createPearlFamily({ ...o, set: PEARL_TIERS, tune: PEARL_FOLLOW }), reed: (o) => createReedFamily({ ...o, ...(probing ? { budget: null } : {}), solid: host.flags.reedlook === 'solid', hz: Math.max(0, +host.flags.reedhz || 0) || null }) };
   let bodies = null, probe = null, rr = 0, ground = null, garrison = null, heartHeld = 0;
+  let uncull = false;   // round three, the harness: every body drawn whatever the game camera sees (a showcase shot looks through a camera of its own)
   const placeholder = new THREE.Group();   // a band spawn's source: no breach, no emergence
   // who fought the creatures: the sentries' hits, damage and kills on the tier's records (every creature record, the waves' share too)
   const fight = { hits: 0, damage: 0, kills: 0, killsAll: 0 }, starts = { n: 0, inside: 0, probe: 0, probeOutside: 0, minHops: null, maxHops: null };
@@ -205,7 +206,7 @@ export function createCreatureEnemies(host) {
     // once a frame after the walk: the bodies follow their records and draw; the probe measures and tops up
     step(dt) {
       standGarrison();
-      if (bodies) bodies.step(dt, host.enemies, host.camera, host.canvasHeight(), !host.wide?.());
+      if (bodies) bodies.step(dt, host.enemies, host.camera, host.canvasHeight(), !host.wide?.() && !uncull);
       probe?.step(dt);
     },
     // ?creatures: a sector wave's queue entries with the tier's share of its single bodies replaced, spread through the wave (not the
@@ -234,7 +235,7 @@ export function createCreatureEnemies(host) {
     state: () => (pearl ? pearlState() : choice || garrison ? { ...(choice ?? {}), alive: choice ? aliveOfTier() : 0, bodies: bodies?.stats() ?? null, probe: probe?.state() ?? null, defence: defence() } : null),
     // the harness's view of the Pearl set: the records alive by type (dressed, and left a dot cloud) and the bodies' books
     // the harness: the bodies' view of a record, a record's handle kept across its death, that handle's view
-    test: { view: (e) => bodies?.view(e) ?? null, audit: () => bodies?.audit() ?? null, jolt: () => host.jolt?.state() ?? null,
+    test: { view: (e) => bodies?.view(e) ?? null, audit: () => bodies?.audit() ?? null, footprint: () => bodies?.footprint() ?? null, uncull: (on = true) => { uncull = !!on; }, jolt: () => host.jolt?.state() ?? null,
       // round two: the ram's and the touch's presentation as the enemy loop calls it (the harness cannot drive the tank onto a record): rammed, then the
       // record killed through damageEnemy with its death; touched on a live one
       ram(e) { rammed(e); host.damage(e, e.hp + 1); return !e.alive; }, touch: (e) => touched(e),
