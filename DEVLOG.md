@@ -174,6 +174,24 @@ Evidence:
 - --story-world fails at 'the planet pulled back' (state().shot null, expected 'sites') on this branch and identically on its base f2367e17: the sites pull-back was removed on 2026-10-07 and the assertion is stale; every step before it passes (rotor-kill included)
 - npm test (246 programs), npm run check, npm run build, npm run architecture (td-tab 6141 of 6400, 0 lines over 500)
 
+## 2026-10-13 — The boot probes (?layout, ?stateprobe, ?keyprobe) are a platform module (src/platform/boot-probes.js)
+
+change · accepted · 2026-10-13-boot-probes-platform-module
+
+Refactor round 2 (plan docs/superpowers/plans/2026-10-13-refactor-round-2.md, Task 4). The three dev probes sat at the end of the controller's init as about ninety lines of console instrumentation that nothing else read; the SHIELD_TUNE knob override sits between the state probe and the key probe and is not a probe.
+
+src/platform/boot-probes.js createBootProbes(host) holds the three blocks as they were, under their flags, every comment with them, and returns { started } (the probes it armed). td-tab calls it where the layout probe began, with a literal one member per line: 19 values (flags, simulateCoarse, mobileShell, toastEl, diagOverlay, camera, player, renderer, params, keys, shotId, msgEl, briefEl, sitrepEl, deployProgress, root, shots, deployShieldNow, shield), 13 getters for the lets the state probe reads when it fires (throttle, stick, cellSide, paused, buildMode, deploy, playerHP, tankLostDeploys, playerDown, dungeon, autoMode, gotoCi, playerMesh) and setPaused/setDeploy for the key probe's two writes. The shield knob block stays in td-tab; the key probe's timer is still registered after the state probe's (the knob block schedules nothing). td-tab no longer imports boxOverlaps or viewportLine. td-tab 6,129 -> 6,036 lines. No behaviour change.
+
+Alternatives: Leave the probes in td-tab as dev-only code: rejected, the round's goal is the controller's size and the probes are self-contained.; Move the shield knob override with them: rejected, it is game tuning from the URL, not a probe.
+
+Evidence:
+
+- Side-by-side proof (scratch harness, not committed): the ORIGINAL three blocks (td-tab 5616-5667, 5669-5699, 5718-5762 at f261c0c1) run through new Function under `with` over recording fakes, beside the module over a host of getters/setters on the same fakes; 8 flag sets x 50 seeds (400 runs), the lets re-rolled before every timer fires, 7,650 timer firings, 39,755 log entries (timers, console lines, DOM writes, dispatched keys, the final paused/deploy/shield) equal; two mutants (setPaused(true), a getter left uncalled) caught.
+- node test/boot-probes.mjs: nothing armed without a flag; the state probe's 71 timers and a line read at fire time; the key probe's order (message hidden, unpaused, shots dropped, deploy cleared before the control call, S then T) and its OK/WRONG verdicts; the layout probe's boxes, skips and overlaps.
+- tools/refactor/undef-diff.mjs: no new undefined or unused names; comments-kept.mjs: every comment word kept; tdz-check at the call: none in the dead zone; node test/host-contracts.mjs: hold for 54 factories.
+- npm test 256 programs; npm run check (6036 lines under 6400); npm run build.
+- Browser suites from snapshot t4-probes-000148: --probe passes mobile-input (keyprobe=1&layout=1) and fails at shell-explosion as the base does; its 15 LAYOUT/KEYPROBE console lines are identical to the base snapshot's; --opening-probe runs (no assertions). A page with ?stateprobe=1&layout=2&keyprobe=1 (--audio-probe on the same snapshot) runs with no page errors.
+
 ## 2026-10-12 — The creature probe's bodies come up beyond the gate, six sentries stand at boot to meet them, and the heart is held while it runs
 
 change · accepted · 2026-10-12-creature-probe-beyond-the-gate-against-sentries
