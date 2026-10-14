@@ -2087,6 +2087,12 @@ try{
   assert.equal(s.selected,'white');assert.equal(s.card.state,'full');assert(s.card.lines>=3,'Isao\'s lines');assert.equal(s.card.warning,null,'white is soft: no warning');
   assert.equal(s.stage.mode,'full');assert.equal(s.stage.force,0,'the high hull forced');assert.equal(s.stage.levels[0],3,`every body at the high hull (${s.stage.levels})`);assert(Array.isArray(s.stage.lure),'the lure runs');}
  await delay(1500);current='bestiary-white';await finish();
+ // SLOW AND FAR (owner, 2026-10-14: "slower animation; longer reach, wider view - they have to reach further to catch the prey"): a body stretches
+ // its stalk more than a body length before it moves, and the lure keeps further off than the pack's full stalk
+ {const s=await st();assert(s.stage.ahead>s.stage.reach&&s.stage.reach>0,`the lure's lead ${s.stage.ahead} m past the full stalk ${s.stage.reach} m`);}
+ await until(`${S}.stage.stalks.some(b=>b&&(b.stage==='EXTEND'||b.stage==='ANCHOR')&&b.reach>2*b.radius&&b.phase>0.44&&b.phase<0.56)`,30000).catch(async()=>assert.fail(`a stalk past a body length (${JSON.stringify((await st()).stage.stalks)})`));
+ {const s=await st();console.log(`  a reach: ${JSON.stringify(s.stage.stalks)}; the lure ${s.stage.ahead} m ahead, the nearest record ${s.stage.nearest} m`);}
+ current='bestiary-white-reach';await finish();
  await press('Enter','Enter');await until(`${S}.stage.bodies===6&&${S}.pack===6`,20000).catch(async()=>assert.fail(`Enter: a pack of six (${JSON.stringify(await st())})`));
  await press('ArrowDown','ArrowDown');await until(`${S}.selected==='orange'`,5000);
  await until(`${S}.stage.entry==='orange'&&${S}.stage.bodies===6`,20000);

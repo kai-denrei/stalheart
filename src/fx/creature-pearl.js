@@ -482,13 +482,14 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
       return out;
     },
     // one body's view (the harness): its first member's plane centre, radius, life [lift, deflate, opacity], hop stage, the pearl's pose (plane, unbent)
+    // `reach` the stalk's length this hop (m, the kit's selected probe) and `phase` the hop's 0..1: the bestiary's stage measures its reach by them (2026-10-14)
     view(h) {
       if (!h) return null;
       const slot = h.slots[0];
       if (!slot) return { tier: h.p.id, type: h.type, slots: 0, dead: h.dead };
       const { p } = h, sw = p.swarm, i = slot.i, pos = sw.position(i), L = sw.life;
       return { tier: p.id, type: h.type, slot: i, slots: h.slots.length, centre: [pos[0], pos[2]], radius: sw.config.r0 * sw.scale[i], lift: L[i * 4], deflate: L[i * 4 + 1], opacity: L[i * 4 + 2],
-        stage: sw.getState(i), active: !!sw.active[i], dead: h.dead, hub: h.hub,
+        stage: sw.getState(i), phase: sw.phase[i], reach: sw.params[i * 4], active: !!sw.active[i], dead: h.dead, hub: h.hub,
         stagger: p.dying.get(i)?.st ? +(clock - p.dying.get(i).st.t0).toFixed(3) : null, knocked: +((p.dying.get(i)?.st ?? p.jolts.get(i))?.moved ?? 0).toFixed(3), recoil: p.jolts.has(i) ? +(clock - p.jolts.get(i).t0).toFixed(3) : null, held: !!sw.hold[i], tint: L[i * 4 + 3], cored: p.def.cored, room: +sw.room[i].toFixed(3), sweepDamp: +sw.sweepDamp[i].toFixed(3), pace: +h.pace.toFixed(3), core: p.def.cored ? corePose(sw, i, 0) : null };
     },
     dispose() { for (const p of pools.values()) { p.geo.dispose(); p.cores?.dispose(); } pools.clear(); parent.remove(group); },

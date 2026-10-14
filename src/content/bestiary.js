@@ -99,21 +99,40 @@ export const CREATURE_SPEC = freeze({ 'nih-dairia': { hp: HUGE.hp, speed: HUGE.s
 // a spot `back` m behind the lure's start; `orbit` the camera (`radius` m out, `height` m up, a turn each `period` s, `fov` degrees) round
 // its focus, `lookUp` m over the ground: the pack's middle with `lure` of the way to the lure, followed over `smooth` s (the disc's centre
 // while the stage is empty), so the pack stays in the frame as it hunts; `disc` the bent ground (radius m, colour); `lureColour` the lure's glow; `level` the kit's level forced
-// (0 the high hull, src/fx/cutis-maku/geometry.js lod.force) with the high cap lifted; `walk` the share of its type's paced walk a body's
-// record keeps behind the lure; `creatureTier` the kit creature's tier staged (src/content/creature-enemies.js CREATURE_TIERS.cutis);
+// (0 the high hull, src/fx/cutis-maku/geometry.js lod.force) with the high cap lifted; `creatureTier` the kit creature's tier staged (src/content/creature-enemies.js CREATURE_TIERS.cutis);
 // `silhouette` the flat colour of a pack met in an earlier run only, in linear light (near black: the lit ground is ~0.02-0.03 linear)
 // THE STAGE LARGER (owner, 2026-10-14: "the 'playground' they are displayed on larger, so that we can see their appendages extending further,
 // that is key. it's ok if they are shown smaller because of that"): the disc 36 -> 54 m, the lure's loop 15 -> 24 m and its lead 6 -> 9, the pack
 // seated wider, the camera's orbit 34 -> 52 m at 32 m up.
+// SLOW AND FAR (owner, 2026-10-14, after looking at it: "bestiary; still unsatisfactory with how we represent the enemy locomotion, the
+// appendage extend a tiny bit, instead of the ominous slow feeling around, everything is too rushed. we need; slower animation; longer reach,
+// wider view - they have to reach further to catch the prey."). ON THE STAGE ONLY: the game's bodies keep their pace (src/fx/bestiary-stage.js
+// makes the stage's family from its own copies of the tables). `body`, each a named multiplier or value over the game's, for the owner to tune:
+//   cycle   x every tier's hop cycle (PEARL_TIERS cycleDuration; the Cutis-Maku's too). A CEILING: the kit's pace only ever shortens a hop
+//           (pearlPace, at most 1), so a body's hop takes its stride over its walk once the cycle is long enough, and with a cycle shorter
+//           than that the body outruns its record and its stalk is cut short (measured: the black tier at x2 stretched 0.8 of a body length)
+//   reach   x the stride (PEARL_GAIT.hop, the kit's reach in body radii, 2.4): the stalk stretches this many times as far before the body moves
+//   speed   x the record's walk (its type's paced walk): the pack's march, and with the stride the hop's real length in time; the lure's
+//           boost x it
+//   lead    x how far ahead of its record a body hunts (PEARL_FOLLOW.leadHops, 0.6 of a hop): a stalk is never longer than the way to the point
+//           it hunts, so without a farther point the longer reach would not show
+//   timing  the hop's stages as shares of its cycle (the game's PEARL_GAIT.config.timing: coil .1, extend .22, anchor .03, transfer .52, settle
+//           .13): here a long, deliberate extend, then the body pouring along the stalk
+// `lure.aheadReach`: the lure keeps this many times the pack's full stalk from every body (at least `lure.ahead` m), so a body stretches for it
+// and nearly never gets it; `lure.pace` its mean speed as a share of the pack's walk (its `period` then follows from its loop; `period` is the
+// empty stage's), so the pack closes on it slowly until it bolts.
+// THE VIEW WIDER with the reach: the disc 54 -> 84 m, the lure's loop 24 -> 36 m, the pack seated 13 -> 34 m behind the lure's start (outside
+// the lure's bolt, twice its lead, so it closes first), 9 m round, the camera's orbit 52 -> 76 m at 32 -> 50 m up, a turn in 140 s, its focus
+// 0.4 of the way to the lure, followed over 2.5 s.
 export const BESTIARY_STAGE = freeze({
   packSizes: [3, 6],
-  lure: { radius: 24, period: 36, ahead: 9, boost: 2.5 },
-  pack: { back: 13, ring: 7 },
-  orbit: { radius: 52, height: 32, period: 96, fov: 38, lookUp: 1.5, lure: 0.35, smooth: 1.2 },
-  disc: { radius: 54, colour: 0x2a3440, rim: 0x3c4b58 },
+  body: { cycle: 4, reach: 1.8, speed: 0.6, lead: 2, timing: { coil: 0.08, extend: 0.4, anchor: 0.04, transfer: 0.36, settle: 0.12 } },
+  lure: { radius: 36, period: 36, ahead: 9, boost: 2.5, aheadReach: 1.15, pace: 0.9 },
+  pack: { back: 34, ring: 9 },
+  orbit: { radius: 76, height: 50, period: 140, fov: 38, lookUp: 1.5, lure: 0.4, smooth: 2.5 },
+  disc: { radius: 84, colour: 0x2a3440, rim: 0x3c4b58 },
   lureColour: 0x8ff3ff,
   level: 0,
-  walk: 1,
   creatureTier: 'small',
   silhouette: [0.003, 0.004, 0.006],
 });

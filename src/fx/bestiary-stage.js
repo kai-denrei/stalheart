@@ -10,13 +10,23 @@
 // and show the card alone, as the spec allows.
 //
 // THE PACK HUNTS. Each body has a record, as in the game: the record walks at the lure at its type's paced walk (the game's pearlSpeed, at
-// the sector's pace; the Cutis-Maku its tier's speed), held under `walk` of the lure's mean speed so the pack chases rather than corners,
+// the sector's pace; the Cutis-Maku its tier's speed; both x body.speed, below), the lure a little slower on average so the pack closes,
 // a little apart from the others, and the body follows its record with the family's own track() (the gait, the stalks, the seek, the turn).
 // The lure (src/domain/bestiary.js lureStep) keeps ahead of the nearest record. THE CAMERA orbits slowly round the pack's middle (a share
 // of the way to the lure, followed smoothly; the disc's centre when the stage is empty), so the hunt stays in the frame; the planet's bend
 // is the game's (uPlanetR, the kit's shader), so the bodies bend as in play. SILHOUETTE (met in an earlier run only): every membrane drawn
 // flat dark and near opaque (a define in the stage's own materials, set before the kit's tone mapping; the game's family is a different instance and never
 // sees it), the pearls hidden, the lure off.
+//
+// SLOW AND FAR (owner, 2026-10-14, after looking at it: "bestiary; still unsatisfactory with how we represent the enemy locomotion, the
+// appendage extend a tiny bit, instead of the ominous slow feeling around, everything is too rushed. we need; slower animation; longer reach,
+// wider view - they have to reach further to catch the prey."): ON THE STAGE ONLY (the game's bodies keep their pace), the family is made with
+// the stage's own copies of the game's tables, changed by BESTIARY_STAGE.body's named multipliers: every tier's hop cycle x `cycle`, the
+// stride (PEARL_GAIT.hop, the kit's reach in radii) x `reach`, the record's walk x `speed`, the hunt point's lead (PEARL_FOLLOW.leadHops) x
+// `lead` (a stalk is never longer than the distance to the point it hunts, src/fx/cutis-maku/swarm.js plan(), so a long reach needs a far
+// point), and the hop's stages as `timing` (a long extend, then the body pouring along the stalk). The Cutis-Maku's cycle x `cycle` and its
+// walk x `speed` (its own reach is already 15 radii). The lure slows with them (its mean speed `lure.pace` of the pack's walk, its boost x
+// `speed`) and keeps `lure.aheadReach` x the pack's full reach from every body, so a body stretches for it and nearly never gets it.
 //
 // createBestiaryStage({ stage }) -> { show(entry, { state, pack }), setPack(n), step(dt, height), render(renderer, target), state(), dispose() }
 import * as THREE from '../../vendor/three.module.js';
@@ -74,14 +84,18 @@ export function createBestiaryStage({ stage = BESTIARY_STAGE } = {}) {
   // --- the families: the game's Pearl family at the high level forced, the cap lifted; the Cutis-Maku's on first use -----------------------------
   const lod = { ...CUTIS_LOD, ...PEARL_FOLLOW.lod, force: S.level, highCap: Math.max(...S.packSizes) };
   const capacity = Object.fromEntries(PEARL_TIERS.map((t) => [t.id, Math.max(...S.packSizes) * 2]));
-  const pearl = createPearlFamily({ parent: world, tiers: BODIES, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set: PEARL_TIERS,
-    tune: { ...PEARL_FOLLOW, lod, capacity }, pace: PEARL_PACE, gait: PEARL_GAIT, impact: PEARL_IMPACT, hubs: { count: 1, quat: () => null } });
+  // the stage's own copies of the game's tables, slowed and stretched by BESTIARY_STAGE.body (see the header)
+  const B = S.body;
+  const set = PEARL_TIERS.map((t) => ({ ...t, values: { ...t.values, cycleDuration: t.values.cycleDuration * B.cycle } }));
+  const gait = { ...PEARL_GAIT, hop: PEARL_GAIT.hop * B.reach, config: { ...PEARL_GAIT.config, timing: B.timing ?? PEARL_GAIT.config.timing } };
+  const pearl = createPearlFamily({ parent: world, tiers: BODIES, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set,
+    tune: { ...PEARL_FOLLOW, lod, capacity, leadHops: PEARL_FOLLOW.leadHops * B.lead }, pace: PEARL_PACE, gait, impact: PEARL_IMPACT, hubs: { count: 1, quat: () => null } });
   pearl.setPlanet(PLANET_R);
   let cutis = null;
   const cutisFamily = () => {
     if (!cutis) {
       const key = S.creatureTier, def = CREATURE_TIERS.cutis[key];
-      cutis = createCutisFamily({ parent: world, tiers: { [key]: { ...def, capacity: Math.max(...S.packSizes) * 2 } }, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, lod });
+      cutis = createCutisFamily({ parent: world, tiers: { [key]: { ...def, capacity: Math.max(...S.packSizes) * 2, config: { ...def.config, cycleDuration: def.config.cycleDuration * B.cycle } } }, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, lod });
       cutis.setPlanet(PLANET_R);
     }
     return cutis;
@@ -109,16 +123,28 @@ export function createBestiaryStage({ stage = BESTIARY_STAGE } = {}) {
   // --- the pack ---------------------------------------------------------------------------------------------------------------------------
   const lureStart = () => { const p0 = lurePoint(0, L); return { phase: 0, dir: 1, x: p0[0], z: p0[1] }; };
   const focus = [0, 0];
-  let entry = null, mode = 'none', pack = S.packSizes[0], records = [], near = [], clock = 0, lureAt = lureStart(), family = null, type = null, kind = null;
+  // where the camera looks: the pack's middle and `orbit.lure` of the way to the lure (the disc's centre while the stage is empty)
+  const aim = () => {
+    if (!records.length) return [0, 0];
+    let fx = 0, fz = 0; for (const r of records) { fx += r.x; fz += r.z; } fx /= records.length; fz /= records.length;
+    return [fx + (lureAt.x - fx) * S.orbit.lure, fz + (lureAt.z - fz) * S.orbit.lure];
+  };
+  let reachM = 0, entry = null, mode = 'none', pack = S.packSizes[0], records = [], near = [], clock = 0, lureAt = lureStart(), family = null, type = null, kind = null;
   const lureLen = (() => { let s = 0; const a = [0, 0], b = [0, 0]; for (let k = 0; k < 400; k++) { lurePoint(k / 400, L, a); lurePoint((k + 1) / 400, L, b); s += Math.hypot(b[0] - a[0], b[1] - a[1]); } return s; })();
-  const lureMean = lureLen / L.period;
+  // the lure slowed with the pack: set at each seat, its mean speed `lure.pace` of the pack's walk (its period from it), its boost x body.speed,
+  // its lead `lure.aheadReach` of the pack's full stalk
+  const LL = { ...L, boost: L.boost * B.speed };
   function clear() { for (const r of records) family?.free(r.h); records = []; near = []; }
   function seat() {
     clear();
     if (mode === 'none') return;
     lureAt = lureStart();
     const { seats } = packSeats(pack, { radius: L.radius, ...S.pack }), start = lurePoint(0, L);
-    const walk = Math.min(kind === 'cutis' ? CREATURE_TIERS.cutis[S.creatureTier].speed * PEARL_GAIT.sectorPace * CELL : packWalk(type), S.walk * lureMean);
+    const walk = (kind === 'cutis' ? CREATURE_TIERS.cutis[S.creatureTier].speed * PEARL_GAIT.sectorPace * CELL : packWalk(type)) * B.speed;
+    LL.period = lureLen / (L.pace * walk);
+    // the pack's full reach (m): a stalk at full stretch; the lure keeps `aheadReach` of it from every body
+    reachM = kind === 'cutis' ? CREATURE_TIERS.cutis[S.creatureTier].config.reach * CREATURE_TIERS.cutis[S.creatureTier].r0 : gait.hop * BODIES[type].r0;
+    LL.ahead = Math.max(L.ahead, reachM * L.aheadReach);
     const r0 = kind === 'cutis' ? CREATURE_TIERS.cutis[S.creatureTier].r0 : BODIES[type].r0;
     records = seats.map(([x, z], k) => {
       const angle = Math.atan2(start[1] - z, start[0] - x);
@@ -126,6 +152,7 @@ export function createBestiaryStage({ stage = BESTIARY_STAGE } = {}) {
       return { x, z, h, walk, r0, k, at: [x, z] };
     });
     near = records.map((r) => r.at);
+    [focus[0], focus[1]] = aim();   // the camera on the pack from its first frame (it is seated far from the centre)
     dress(mode === 'silhouette');
   }
   // an entry in a state: 'full' the pack and the lure; 'silhouette' dark bodies, no lure; 'unseen' or a card-only entry: nothing on the stage
@@ -143,9 +170,7 @@ export function createBestiaryStage({ stage = BESTIARY_STAGE } = {}) {
   function step(dt, height = 600) {
     clock += dt;
     // the camera's slow orbit round its focus: the pack's middle and a share of the way to the lure, followed smoothly
-    let fx = 0, fz = 0;
-    if (records.length) { for (const r of records) { fx += r.x; fz += r.z; } fx /= records.length; fz /= records.length; fx += (lureAt.x - fx) * S.orbit.lure; fz += (lureAt.z - fz) * S.orbit.lure; }
-    const k = 1 - Math.exp(-dt / S.orbit.smooth); focus[0] += (fx - focus[0]) * k; focus[1] += (fz - focus[1]) * k;
+    const [fx, fz] = aim(), k = 1 - Math.exp(-dt / S.orbit.smooth); focus[0] += (fx - focus[0]) * k; focus[1] += (fz - focus[1]) * k;
     const a = (clock / S.orbit.period) * Math.PI * 2;
     bendPoint(focus[0], S.orbit.lookUp, focus[1], PLANET_R, P); const ly = P[1];
     cam.position.set(focus[0] + Math.cos(a) * S.orbit.radius, ly - S.orbit.lookUp + S.orbit.height, focus[1] + Math.sin(a) * S.orbit.radius); cam.lookAt(focus[0], ly, focus[1]); cam.updateMatrixWorld();
@@ -155,7 +180,7 @@ export function createBestiaryStage({ stage = BESTIARY_STAGE } = {}) {
     for (const r of records) {
       const off = ((r.k / records.length) - 0.5) * 2 * S.pack.ring * 0.6, dx0 = lureAt.x - r.x, dz0 = lureAt.z - r.z, dl0 = Math.hypot(dx0, dz0) || 1;
       const tx = lureAt.x - (dz0 / dl0) * off, tz = lureAt.z + (dx0 / dl0) * off, dx = tx - r.x, dz = tz - r.z, d = Math.hypot(dx, dz);
-      const go = Math.min(r.walk * (kind === 'pearl' ? family.paceOf(r.h) : 1) * dt, Math.max(0, d - L.ahead * 0.5));
+      const go = Math.min(r.walk * (kind === 'pearl' ? family.paceOf(r.h) : 1) * dt, Math.max(0, d - LL.ahead * 0.5));
       if (d > 1e-6) { r.x += (dx / d) * go; r.z += (dz / d) * go; }
       for (const o of records) {
         if (o === r) continue;
@@ -164,7 +189,7 @@ export function createBestiaryStage({ stage = BESTIARY_STAGE } = {}) {
       }
       r.at[0] = r.x; r.at[1] = r.z;
     }
-    lureAt = lureStep(lureAt, dt, L, near);
+    lureAt = lureStep(lureAt, dt, LL, near);
     bendPoint(lureAt.x, 0, lureAt.z, PLANET_R, P); lure.position.set(P[0], P[1], P[2]);
     for (const r of records) family.track(r.h, { x: r.x, z: r.z, ax: lureAt.x, az: lureAt.z, dt, speed: r.walk });
     pearl.step(dt, cam, height); cutis?.step(dt, cam, height);
@@ -182,7 +207,9 @@ export function createBestiaryStage({ stage = BESTIARY_STAGE } = {}) {
   }
   return {
     show, setPack, step, render,
-    state: () => ({ entry: entry?.id ?? null, mode, pack, type: kind === 'cutis' ? `cutis:${S.creatureTier}` : type, ...counts(), lure: mode === 'full' ? [+lureAt.x.toFixed(2), +lureAt.z.toFixed(2)] : null,
+    // `stalks` each body's hop: its stage, its phase, its stalk's length this hop (m) and its radius (the harness and the probe of 2026-10-14)
+    state: () => ({ entry: entry?.id ?? null, mode, pack, reach: +reachM.toFixed(2), ahead: +LL.ahead.toFixed(2), period: +LL.period.toFixed(2),
+      stalks: kind === 'pearl' ? records.map((r) => { const v = family.view(r.h); return v && { stage: v.stage, phase: +v.phase.toFixed(3), reach: +v.reach.toFixed(2), radius: +v.radius.toFixed(2), centre: v.centre.map((c) => +c.toFixed(2)) }; }) : [], type: kind === 'cutis' ? `cutis:${S.creatureTier}` : type, ...counts(), lure: mode === 'full' ? [+lureAt.x.toFixed(2), +lureAt.z.toFixed(2)] : null,
       dark: darkened, nearest: records.length ? +Math.min(...records.map((r) => Math.hypot(r.x - lureAt.x, r.z - lureAt.z))).toFixed(2) : null, force: lod.force }),
     dispose() { clear(); pearl.dispose(); cutis?.dispose(); for (const d of disposables) d.dispose(); },
   };
