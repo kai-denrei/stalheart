@@ -15,16 +15,18 @@ const freeze = (o) => { for (const v of Object.values(o)) if (v && typeof v === 
 
 // tiers.ts's rows: [id, name, skin, core, labR0, seekCount, cycleDuration, aggression, coreShape, contactDamage, health]; orange's coreShape is the owner's edit (0 -> 3)
 const ROWS = [
-  ['white', 'White', 0xf2efe5, 0x90979d, 0.12, 1, 6, 0.35, 0, 0, 15],
-  ['yellow', 'Yellow', 0xe6cc53, 0x8c6021, 0.14, 1, 5.5, 0.6, 0, 0, 25],
-  ['orange', 'Orange', 0xeb883e, 0x853b20, 0.16, 2, 5, 1, 3, 0, 40],
-  ['blue', 'Blue', 0x699fc7, 0x25496b, 0.18, 2, 4.5, 1.4, 0, 0, 60],
-  ['green', 'Green', 0x76a76a, 0xc7e8a4, 0.21, 2, 4, 1.8, 3, 8, 100],
-  ['purple', 'Purple', 0xa879c5, 0xdfa9ff, 0.24, 2, 3.5, 2.3, 3, 14, 160],
-  ['brown', 'Brown', 0x956442, 0xf0bc70, 0.28, 3, 3, 3, 3, 22, 240],
-  ['black', 'Black', 0x11151d, 0xff0000, 0.33, 3, 2.5, 4, 3, 35, 360],
+  ['white', 'Cutis-Soft Ivory', 0xf2efe5, 0x90979d, 0.12, 1, 6, 0.35, 0, 0, 15],
+  ['yellow', 'Cutis-Soft Lemon', 0xe6cc53, 0x8c6021, 0.14, 1, 5.5, 0.6, 0, 0, 25],
+  ['orange', 'Cutis-Core Pumpkin', 0xeb883e, 0x853b20, 0.16, 2, 5, 1, 3, 0, 40],
+  ['blue', 'Cutis-Soft Sky', 0x699fc7, 0x25496b, 0.18, 2, 4.5, 1.4, 0, 0, 60],
+  ['green', 'Cutis-Core Emerald', 0x76a76a, 0xc7e8a4, 0.21, 2, 4, 1.8, 3, 8, 100],
+  ['purple', 'Cutis-Core Amethyst', 0xa879c5, 0xdfa9ff, 0.24, 2, 3.5, 2.3, 3, 14, 160],
+  ['brown', 'Cutis-Core Umber', 0x956442, 0xf0bc70, 0.28, 3, 3, 3, 3, 22, 240],
+  ['black', 'Cutis-Core Onyx', 0x11151d, 0xff0000, 0.33, 3, 2.5, 4, 3, 35, 360],
 ];
 // a tier: `values` is the kit config's Pearl part (over src/fx/cutis-maku/config.js DEFAULT_CONFIG; r0 is set per body by the game's size)
+// THE NAMES (owner, 2026-10-14, from the bestiary: "Cutis-Soft Ivory, Cutis-Soft Lemon, Cutis-Soft Sky, etc. for all the colors, then Cutis-Core Pumpkin for
+// orange, Cutis-Core Emerald, etc. for the harder cores"): the soft tiers Cutis-Soft, the cored ones Cutis-Core, each with its colour's name; the ids stay.
 export const PEARL_TIERS = freeze(ROWS.map(([id, name, skin, core, labR0, seekCount, cycleDuration, aggression, coreShape, contactDamage, health], rank) => ({
   id, name, rank: rank + 1, cored: coreShape > 0, labR0,
   values: {

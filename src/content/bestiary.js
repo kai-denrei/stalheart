@@ -34,42 +34,42 @@ export const TERMINAL = freeze({
 // `isao` his lines, dry, slightly humorous, a science-fiction reference here and there, not overdone. A creature's `label` is its card's
 // tier line and `swatch` its colour in the list.
 export const ENTRIES = freeze([
-  { id: 'white', name: 'AMOEBA · PHAGE', kind: 'tier', types: ['amoeba', 'phage'], stage: true, isao: [
+  { id: 'white', name: 'CUTIS-SOFT IVORY', kind: 'tier', types: ['amoeba', 'phage'], stage: true, isao: [
     'Small, soft, and in no hurry to be anything else. They come in numbers because one of them is not an argument.',
     'The amoeba hunts whatever opened the ground. The phage crawls. Both go under the treads with a sound I have stopped finding funny.',
     'If you see one, you are looking at the wrong one.',
   ] },
-  { id: 'yellow', name: 'GHOST · SCOUT', kind: 'tier', types: ['ghost', 'scoutufo'], stage: true, isao: [
+  { id: 'yellow', name: 'CUTIS-SOFT LEMON', kind: 'tier', types: ['ghost', 'scoutufo'], stage: true, isao: [
     'Fast, light, and convinced it is a fighter pilot. It is not.',
     'The scout maps you. The ghost just wants to see what happens. Neither has a plan for the treads.',
     'Rammable. Satisfyingly so.',
   ] },
-  { id: 'blue', name: 'SAUCER · JELLYFISH · SLIME', kind: 'tier', types: ['saucer', 'jellyfish', 'gslime'], stage: true, isao: [
+  { id: 'blue', name: 'CUTIS-SOFT SKY', kind: 'tier', types: ['saucer', 'jellyfish', 'gslime'], stage: true, isao: [
     'Three bad ideas in one belt: a saucer that weaves, a jellyfish that pulses, and a slime that heals if you let it.',
     'Do not let it. Ram the slime first, admire the jellyfish later.',
     'Still soft. Still ours.',
   ] },
-  { id: 'orange', name: 'DRIFTER', kind: 'tier', types: ['drifter'], stage: true, isao: [
+  { id: 'orange', name: 'CUTIS-CORE PUMPKIN', kind: 'tier', types: ['drifter'], stage: true, isao: [
     'The first one with something hard inside. You will notice. The hull will notice more.',
     'It drifts like it has nowhere to be, then it is in front of you. Shoot it; do not drive at it.',
     'A pearl, I think. Nobody asked it to be beautiful.',
   ] },
-  { id: 'green', name: 'VIRUS · SHELLBACK', kind: 'tier', types: ['corona', 'shellback'], stage: true, isao: [
+  { id: 'green', name: 'CUTIS-CORE EMERALD', kind: 'tier', types: ['corona', 'shellback'], stage: true, isao: [
     'Armoured twice over and slowed by what it takes. The shellback waits at the edge of the sentries\' range like it has read the manual.',
     'It has not read the manual. It has read you.',
     'Solid core. The Bofors has opinions about it.',
   ] },
-  { id: 'purple', name: 'BARBED · PRIME', kind: 'tier', types: ['barbed', 'prime'], stage: true, isao: [
+  { id: 'purple', name: 'CUTIS-CORE AMETHYST', kind: 'tier', types: ['barbed', 'prime'], stage: true, isao: [
     'The barbed one speeds up when hit, which is the opposite of what I would do. The prime regenerates, which is the opposite of what I can do.',
     'Hit it harder than it heals. There is no other note.',
     'Cored. Do not test the hull on it; I have the recording.',
   ] },
-  { id: 'brown', name: 'ROLLING MINE', kind: 'tier', types: ['rolling'], stage: true, isao: [
+  { id: 'brown', name: 'CUTIS-CORE UMBER', kind: 'tier', types: ['rolling'], stage: true, isao: [
     'A boulder with intent. Slows when shot, which is less comfort than it sounds.',
     'Epic, the tactical display says. The tactical display did not have to drive round it.',
     'Solid core. Stops the hull dead and keeps the change.',
   ] },
-  { id: 'black', name: 'PHANTOM · THORUS', kind: 'tier', types: ['phantom', 'knot'], stage: true, isao: [
+  { id: 'black', name: 'CUTIS-CORE ONYX', kind: 'tier', types: ['phantom', 'knot'], stage: true, isao: [
     'Optical camouflage, a ghost on the radar, and a boss at the end of it that accelerates when you hurt it.',
     'The phantom is there when the radar says it is not. Trust the ground, not the screen.',
     'Cored. If the thorus is in the log, so was a very long night.',
@@ -102,12 +102,15 @@ export const CREATURE_SPEC = freeze({ 'nih-dairia': { hp: HUGE.hp, speed: HUGE.s
 // (0 the high hull, src/fx/cutis-maku/geometry.js lod.force) with the high cap lifted; `walk` the share of its type's paced walk a body's
 // record keeps behind the lure; `creatureTier` the kit creature's tier staged (src/content/creature-enemies.js CREATURE_TIERS.cutis);
 // `silhouette` the flat colour of a pack met in an earlier run only, in linear light (near black: the lit ground is ~0.02-0.03 linear)
+// THE STAGE LARGER (owner, 2026-10-14: "the 'playground' they are displayed on larger, so that we can see their appendages extending further,
+// that is key. it's ok if they are shown smaller because of that"): the disc 36 -> 54 m, the lure's loop 15 -> 24 m and its lead 6 -> 9, the pack
+// seated wider, the camera's orbit 34 -> 52 m at 32 m up.
 export const BESTIARY_STAGE = freeze({
   packSizes: [3, 6],
-  lure: { radius: 15, period: 36, ahead: 6, boost: 2.5 },
-  pack: { back: 9, ring: 5 },
-  orbit: { radius: 34, height: 21, period: 96, fov: 38, lookUp: 1.5, lure: 0.35, smooth: 1.2 },
-  disc: { radius: 36, colour: 0x2a3440, rim: 0x3c4b58 },
+  lure: { radius: 24, period: 36, ahead: 9, boost: 2.5 },
+  pack: { back: 13, ring: 7 },
+  orbit: { radius: 52, height: 32, period: 96, fov: 38, lookUp: 1.5, lure: 0.35, smooth: 1.2 },
+  disc: { radius: 54, colour: 0x2a3440, rim: 0x3c4b58 },
   lureColour: 0x8ff3ff,
   level: 0,
   walk: 1,

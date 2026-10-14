@@ -2090,7 +2090,7 @@ try{
  await press('Enter','Enter');await until(`${S}.stage.bodies===6&&${S}.pack===6`,20000).catch(async()=>assert.fail(`Enter: a pack of six (${JSON.stringify(await st())})`));
  await press('ArrowDown','ArrowDown');await until(`${S}.selected==='orange'`,5000);
  await until(`${S}.stage.entry==='orange'&&${S}.stage.bodies===6`,20000);
- {const s=await st();assert.equal(s.card.state,'full');assert(/^⚠ SOLID CORE · CANNOT BE RAMMED/.test(s.card.warning||''),`orange's warning (${s.card.warning})`);assert.equal(s.card.head,'ENTRY 04 / 11 · ORANGE TIER');assert.equal(s.stage.type,'drifter');}
+ {const s=await st();assert.equal(s.card.state,'full');assert(/^⚠ SOLID CORE · CANNOT BE RAMMED/.test(s.card.warning||''),`orange's warning (${s.card.warning})`);assert.equal(s.card.head,'ENTRY 04 / 11 · CUTIS-CORE PUMPKIN');assert.equal(s.stage.type,'drifter');}
  await delay(1500);current='bestiary-orange';await finish();
  {const rec=JSON.parse(await evaluate(`localStorage.getItem('stalheart:v1:td.bestiary')`)||'{}');assert(rec.white&&rec.orange&&rec.white.runs===1&&rec.orange.runs===1,`the sightings record holds both (${JSON.stringify(rec)})`);}
  await press('Escape','Escape');await until(`!${S}.open`,5000);

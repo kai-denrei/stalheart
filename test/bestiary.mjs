@@ -16,7 +16,7 @@ const roster = bestiaryRoster({ entries: ENTRIES, tiers: PEARL_TIERS, of: PEARL_
 // 1. the roster: eight tiers up the belt ladder (soft by rank, then cored by rank), then the creatures in the content's order
 assert.deepEqual(roster.map((e) => e.id), ['white', 'yellow', 'blue', 'orange', 'green', 'purple', 'brown', 'black', 'cutis', 'reed', 'nih-dairia']);
 assert.deepEqual(roster.map((e) => e.index), roster.map((_, k) => k + 1)); assert(roster.every((e) => e.total === 11));
-assert.equal(roster[3].kind, 'tier'); assert.equal(roster[3].label, 'ORANGE TIER', 'the spec\'s card example: ENTRY 04 / 11 · ORANGE TIER');
+assert.equal(roster[3].kind, 'tier'); assert.equal(roster[3].label, 'CUTIS-CORE PUMPKIN', 'the spec\'s card example: ENTRY 04 / 11 · CUTIS-CORE PUMPKIN');
 for (const e of roster.filter((x) => x.kind === 'tier')) {
   const t = PEARL_TIERS.find((x) => x.id === e.id);
   assert.equal(e.cored, t.cored); assert.equal(e.swatch, t.values.skinTint, `${e.id}'s swatch is its skin`);
@@ -47,7 +47,7 @@ assert.deepEqual(roster.filter((e) => e.kind === 'tier' && e.cored).map((e) => e
   assert.deepEqual(ENTRY_STATES, ['unseen', 'silhouette', 'full']);
   // the cards for each state
   const full = entryCard(orange, 'full', { spec, labels, log: ['drifter'], copy: TERMINAL, sightings: { orange: { first: '2026-10-14', runs: 3, last: '2026-10-14' } } });
-  assert.equal(full.head, 'ENTRY 04 / 11 · ORANGE TIER'); assert.equal(full.name, 'WAVE SATURN', 'the type met, by its INTROS label');
+  assert.equal(full.head, 'ENTRY 04 / 11 · CUTIS-CORE PUMPKIN'); assert.equal(full.name, 'WAVE SATURN', 'the type met, by its INTROS label');
   assert.equal(full.met, 'MET: run 3 · first 2026-10-14'); assert.equal(full.text.length, 3); assert.equal(full.note, null); assert(full.selectable);
   assert.deepEqual(full.data.map((d) => [d.type, d.hp, d.ram]), [['drifter', 2, 'SOLID CORE']]);
   const sil = entryCard(white, 'silhouette', { spec, labels, log: [], copy: TERMINAL, sightings });

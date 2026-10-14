@@ -26,7 +26,7 @@ export function bestiaryRoster({ entries, tiers, of, spec = {} }) {
   const ladder = (t) => (t.cored ? 100 : 0) + t.rank;
   const tierRows = entries.filter((e) => e.kind === 'tier' && byTier.has(e.id)).sort((a, b) => ladder(byTier.get(a.id)) - ladder(byTier.get(b.id))).map((e) => {
     const t = byTier.get(e.id);
-    return { e, types: Object.keys(of).filter((k) => of[k] === e.id), rank: t.rank, cored: !!t.cored, swatch: t.values?.skinTint ?? 0xffffff, label: `${t.name.toUpperCase()} TIER` };
+    return { e, types: Object.keys(of).filter((k) => of[k] === e.id), rank: t.rank, cored: !!t.cored, swatch: t.values?.skinTint ?? 0xffffff, label: t.name.toUpperCase() };
   });
   const creatureRows = entries.filter((e) => e.kind === 'creature').map((e) => ({ e, types: [...e.types], rank: null, cored: e.types.every((k) => spec[k] ? !spec[k].rammable : true), swatch: e.swatch ?? 0xffffff, label: e.label ?? 'CREATURE' }));
   const rows = [...tierRows, ...creatureRows];
