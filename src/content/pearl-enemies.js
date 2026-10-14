@@ -130,7 +130,11 @@ export const PEARL_GAIT = freeze({
 // wave's single bodies of a type kept (at least one, spread through the wave; squads, bosses, guards and harmless fodder are kept whole),
 // `pace` multiplies the whole wave's march (every entry's `pace`, src/fx/enemy-step.js paceJitter), under the tier's walk cap (PEARL_PACE radii).
 // Not a balance yet: the owner tunes these on the 8159 tree. `&waves=full` turns both off (the crowd tests).
-export const PEARL_WAVES = freeze({ scale: freeze({ first: 0.15, last: 0.6 }), pace: freeze({ first: 0.6, last: 1 }) });
+// FULL WAVES AT THE CLIMB'S END (owner, 2026-10-14, from the swarm lab's Pearl lane: "1200 alive, density 2.6x, file width 1.6x, high px 70, low 12,
+// high cap 12. This plays very well, fps constant at about 58, we can put that in the game"): the lab ran 1,200 bodies at the game's own levels
+// (CUTIS_LOD 70/12, PEARL_FOLLOW's cap 12), so the thinning that round four put in "to get the animation right" is not needed at the end of a
+// breach's climb: \`last\` is 1, every single body of the plan. The start stays few and slow (the build-up).
+export const PEARL_WAVES = freeze({ scale: freeze({ first: 0.15, last: 1 }), pace: freeze({ first: 0.6, last: 1 }) });
 
 // THE RAM AND THE TOUCH, PRESENTED (round two, owner 2026-10-13: "the cutis getting rammed by the tank is not a satisfying animation, we need some sense of
 // stagger on the enemy, and bump on the tank"). Presentation only: who dies, the damage, the combo and the bounty are the game's rules as they were.
