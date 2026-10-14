@@ -33,7 +33,7 @@ import { createPearlFamily } from './creature-pearl.js';
 import { gateHops, spawnBand, sentryCells } from '../domain/probe-ground.js';
 import { PEARL_TIERS, PEARL_OF, PEARL_BODY, PEARL_FOLLOW, PEARL_IMPACT, PEARL_PACE, PEARL_GAIT, PEARL_WAVES } from '../content/pearl-enemies.js';
 import { pearlBodies, pearlSpeed, pearlBuildUp } from '../domain/pearl-bodies.js';
-import { contactLoss, stepDrag } from '../domain/hull-bodies.js';
+import { createHullContact, onUnitSphere } from './hull-contact.js';
 import { SQUADS } from '../content/sectors.js';
 
 const FAMILIES = Object.freeze({ cutis: createCutisFamily, reed: createReedFamily });
@@ -193,67 +193,24 @@ export function createCreatureEnemies(host) {
     host.jolt?.kick({ radius: radiusOf(e), solid: true, side: c.side });
   }
 
-  // ROUND FOUR, THE TANK AGAINST THE BODIES (owner, 2026-10-13: "Cutis collision with Tank; though they are mostly membrane, the tank should never be
-  // able to 'go through' the enemy, they are still made of mass. more precise collision is needed"; PEARL_IMPACT.contact, src/domain/hull-bodies.js).
-  // The ram and the touch stay the game's (src/fx/enemy-step.js: the record's distance decides who dies, the damage, the combo and the bounty); this
-  // is the bodies' and the hull's mass. The hull is the drawn tank's box (its mesh's vertices in the lower part of its height, measured once a mesh,
-  // scaled as it is drawn).
-  // bodyContact(before, cand, dt, scrub) is the drive's (src/fx/hull-drive.js, the free drive's next position): the step is shortened by the speed
-  // share bodies took (recovering), every body is put against the hull at `cand` (src/fx/creature-bodies.js hull, src/fx/creature-pearl.js
-  // hullContact): a soft body in the way is shoved clear along the least move and the tank loses its share of speed on first contact (`scrub`, the
-  // drive's run-up, too), a cored body stops it, pushes it back out of its outline and jolts it (the round-two recoil); after the bodies step
-  // (`step`) any body that walked into the hull is shoved out where it stands. Only under ?creatures=pearl; the autopilot's walk is not touched.
-  const Kc = PEARL_IMPACT.contact, hullTank = { pos: null, dir: null, hl: 0, hw: 0 }, PUSH = [0, 0, 0];
-  let clock = 0, drag = 0, lossNow = 0, coredNow = false, size = null, lastPush = 0;
-  const box3 = new THREE.Box3(), part = new THREE.Box3(), inv = new THREE.Matrix4(), rel = new THREE.Matrix4();
-  function hullAt(pos) {
-    const m = host.tankMesh?.(), t = host.tank?.();
-    if (!m || !t || !bodies) return null;
-    if (size?.mesh !== m) {
-      // the hull's own footprint, once a mesh: its vertices in the lower 45 % of its height (the hull and the treads, not the barrel or the mast)
-      box3.makeEmpty(); m.updateMatrixWorld(true); inv.copy(m.matrixWorld).invert();
-      m.traverse((o) => { const g = o.geometry; if (!g?.attributes?.position) return; if (!g.boundingBox) g.computeBoundingBox(); rel.multiplyMatrices(inv, o.matrixWorld); part.copy(g.boundingBox).applyMatrix4(rel); box3.union(part); });
-      if (box3.isEmpty()) return null;
-      const cut = box3.min.y + 0.45 * (box3.max.y - box3.min.y), v = new THREE.Vector3();
-      let x = 0, z = 0;
-      m.traverse((o) => { const a = o.geometry?.attributes?.position; if (!a) return; rel.multiplyMatrices(inv, o.matrixWorld); for (let i = 0; i < a.count; i++) { v.fromBufferAttribute(a, i).applyMatrix4(rel); if (v.y <= cut) { x = Math.max(x, Math.abs(v.x)); z = Math.max(z, Math.abs(v.z)); } } });
-      size = { mesh: m, x: x || Math.max(-box3.min.x, box3.max.x), z: z || Math.max(-box3.min.z, box3.max.z) };
-    }
-    const metres = bodies.metres() * m.scale.x;
-    hullTank.hl = Math.max(Kc.minHalf, size.z * metres); hullTank.hw = Math.max(Kc.minHalf, size.x * metres);
-    hullTank.pos = pos; hullTank.dir = t.smoothDir ?? t.heading;
-    return hullTank;
-  }
-  // the pushes on the tank: each body's taken only beyond what the others already moved it along its own way
-  const contactSink = {
-    push(dx, dy, dz) { const l = Math.hypot(dx, dy, dz); if (!(l > 0)) return; const along = (PUSH[0] * dx + PUSH[1] * dy + PUSH[2] * dz) / l; if (along >= l) return; const k = (l - along) / l; PUSH[0] += dx * k; PUSH[1] += dy * k; PUSH[2] += dz * k; },
-    touch(e, cored, r, tier) {
-      // a light tier (owner: "white and yellow, should feel very easy to run over"): the hit IS the ram (src/fx/enemy-step.js reads e.bodyRam)
-      const T = PEARL_IMPACT.tiers?.[tier];
-      if (T?.ram && e.alive && e.spec?.rammable) e.bodyRam = true;
-      if (clock - (e.hullAt ?? -9) < Kc.again) { e.hullAt = clock; return; }
-      e.hullAt = clock; fight.contacts = (fight.contacts ?? 0) + 1;
-      if (cored) { coredNow = true; const c = e.alive && contact(e); if (c) { bodies?.recoil(e, c.away); host.jolt?.kick({ radius: radiusOf(e), solid: true, side: c.side }); } }
-      else lossNow = Math.max(lossNow, contactLoss(r, Kc) * (T?.mass ?? 1));
-    },
-  };
-  // after the bodies step: a body pinned between the rock and the hull pushes the hull (the same deduplicated pushes), nothing booked
-  const settleSink = { push: contactSink.push, touch() {} };
+  // ROUND FOUR, THE TANK AGAINST THE BODIES (owner, 2026-10-13: "the tank should never be able to 'go through' the enemy, they are still made of mass";
+  // PEARL_IMPACT.contact): src/fx/hull-contact.js (moved there unchanged, 2026-10-14), on the unit sphere through the bodies' seam. The ram and the touch
+  // stay the game's (src/fx/enemy-step.js: the record's distance decides who dies, the damage, the combo and the bounty); this is the bodies' and the
+  // hull's mass. What a contact does to the record is the game's, here: a light tier's brush IS the ram (owner: "white and yellow, should feel very easy
+  // to run over"; src/fx/enemy-step.js reads e.bodyRam), and a contact booked is counted and, on a cored body, recoils it and jolts the hull (the
+  // round-two recoil). Only under ?creatures=pearl; the autopilot's walk is not touched.
+  let clock = 0;
+  const hullContact = createHullContact({ tune: PEARL_IMPACT, mesh: () => host.tankMesh?.(), heading: () => { const t = host.tank?.(); return t ? t.smoothDir ?? t.heading : null; },
+    metres: () => (bodies ? bodies.metres() : null), hull: (tank, drive, sink) => bodies.hull(tank, drive, sink), ground: onUnitSphere, now: () => clock,
+    brush(e, tier) { if (PEARL_IMPACT.tiers?.[tier]?.ram && e.alive && e.spec?.rammable) e.bodyRam = true; },
+    hit(e, cored) {
+      fight.contacts = (fight.contacts ?? 0) + 1;
+      if (cored) { const c = e.alive && contact(e); if (c) { bodies?.recoil(e, c.away); host.jolt?.kick({ radius: radiusOf(e), solid: true, side: c.side }); } }
+    } });
+  const hullAt = hullContact.hullAt;
   function bodyContact(before, cand, dt, scrub) {
     if (!pearl || !bodies || !cand) return cand;
-    drag = stepDrag(drag, dt, Kc);
-    // `cand` is the drive's own fresh point: moved in place (nothing allocated). The speed bodies took, recovering: this frame's step that much shorter
-    const p = cand;
-    if (drag > 1e-3) { const k = 1 - drag; for (let i = 0; i < 3; i++) p[i] = before[i] + (cand[i] - before[i]) * k; const l = Math.hypot(p[0], p[1], p[2]) || 1; p[0] /= l; p[1] /= l; p[2] /= l; }
-    const tank = hullAt(p);
-    if (!tank) return p;
-    PUSH[0] = PUSH[1] = PUSH[2] = 0; lossNow = 0; coredNow = false;
-    bodies.hull(tank, true, contactSink);
-    if (lossNow > 0) { drag = Math.max(drag, lossNow); scrub?.(lossNow); }
-    if (coredNow) { drag = Math.max(drag, Kc.cored); scrub?.(1); }
-    lastPush = Math.hypot(PUSH[0], PUSH[1], PUSH[2]) * bodies.metres();
-    if (PUSH[0] || PUSH[1] || PUSH[2]) { for (let i = 0; i < 3; i++) p[i] += PUSH[i]; const l = Math.hypot(p[0], p[1], p[2]) || 1; p[0] /= l; p[1] /= l; p[2] /= l; }
-    return p;
+    return hullContact.bodyContact(before, cand, dt, scrub);
   }
 
   // the Pearl set's state: the records alive by type with a body and without one (a mapped type's dot cloud: far, or before the switch), the
@@ -300,8 +257,7 @@ export function createCreatureEnemies(host) {
       clock += dt;
       if (bodies) bodies.step(dt, host.enemies, host.camera, host.canvasHeight(), !host.wide?.() && !uncull);
       // round four: a body that walked into the hull where it stands is shoved out of it
-      if (pearl && bodies && host.tank?.()?.pos) { const t = host.tank(), tank = hullAt(t.pos); if (tank) { PUSH[0] = PUSH[1] = PUSH[2] = 0; bodies.hull(tank, false, settleSink);
-        if (PUSH[0] || PUSH[1] || PUSH[2]) { const p = t.pos; for (let i = 0; i < 3; i++) p[i] += PUSH[i]; const l = Math.hypot(p[0], p[1], p[2]) || 1; p[0] /= l; p[1] /= l; p[2] /= l; } } }
+      if (pearl && bodies && host.tank?.()?.pos) hullContact.settle(host.tank().pos);
       probe?.step(dt);
     },
     // ?creatures: a sector wave's queue entries with the tier's share of its single bodies replaced, spread through the wave (not the
@@ -342,7 +298,7 @@ export function createCreatureEnemies(host) {
       hurt: (e, dmg) => host.damage(e, dmg),
       // round four: the bodies against the hull where the tank stands, measured (nothing shoved): the deepest overlap of a live body (m) and of a dying one, the bodies looked at, the
       // hull's half sizes, the drag (the speed share lost, recovering), the contacts booked; `at` [x, y, z] a position to measure at instead
-      hull: (at = null) => { const t = host.tank?.(), tank = t && hullAt(at ?? t.pos); if (!tank) return null; let deepest = 0, dead = 0, who = null; const n = bodies.hull(tank, null, { push() {}, touch() {}, depth: (h, d, tier, dying) => { if (dying) { dead = Math.max(dead, d); return; } if (d > deepest) { deepest = d; who = tier; } } }); return { overlap: +deepest.toFixed(3), dead: +dead.toFixed(3), tier: who, near: n, hl: +tank.hl.toFixed(2), hw: +tank.hw.toFixed(2), drag: +drag.toFixed(3), push: +lastPush.toFixed(3), contacts: fight.contacts ?? 0 }; },
+      hull: (at = null) => { const t = host.tank?.(), tank = t && hullAt(at ?? t.pos); if (!tank) return null; let deepest = 0, dead = 0, who = null; const n = bodies.hull(tank, null, { push() {}, touch() {}, depth: (h, d, tier, dying) => { if (dying) { dead = Math.max(dead, d); return; } if (d > deepest) { deepest = d; who = tier; } } }); return { overlap: +deepest.toFixed(3), dead: +dead.toFixed(3), tier: who, near: n, hl: +tank.hl.toFixed(2), hw: +tank.hw.toFixed(2), drag: +hullContact.drag().toFixed(3), push: +hullContact.lastPush().toFixed(3), contacts: fight.contacts ?? 0 }; },
       spawnAt: (type, ci) => (host.spawn({ type, sp: { ci, alive: true, obj: placeholder }, at: 0, spread: 0, pace: 1 }) ? 1 : 0),
       // an open cell's open neighbours
       neighbours: (ci) => { const g = host.ground?.(); return g ? g.adj[ci].filter((c) => g.open(c)) : []; },
