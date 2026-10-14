@@ -414,3 +414,23 @@ console.log('story-beats: sector 0, the construction defended');
   run(settled, g5, QUIVER.studyDelay + 0.5); assert.equal(settled.phase(), 'settled', 'not the Quiver\'s delay'); run(settled, g5, CONSTRUCTION.studyDelay - QUIVER.studyDelay); assert.equal(settled.phase(), 'study-talk');
 }
 console.log('story-beats: a tutorial chapter starts where its beats do');
+
+// THE HEAD START (owner, 2026-10-14, the Pearl set the default: "the creatures are much slower now, so they should be closer within range of
+// the rotor when we take control"): a sinkhole that opened QUIET during the tour sends its fodder up the lane, hops - k % depth cells in from
+// it through `laneCell` (a column), carried as the spawn's `cell`; a breach the player watched open keeps its pile at the crater
+{
+  const emerge = { harmless: true, spread: 0.8, stagger: 1.2, pace: 1.7, headStart: { hops: 5, depth: 3 } };
+  const g = fakeGame({ printSeconds: 2 });
+  const beats = makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, rotorDelay: 2, faceDelays: [0.5, 1], fodderEvery: 0, fodderAlive: 6, fodderTotal: 6, fodderEmerge: emerge, earlyBreach: 0, arrival: true, laneCell: (h) => 9000 + h });
+  assert.equal(beats.deploy(g.api), true); run(beats, g, 2);
+  assert.deepEqual(kinds(g, 'breach'), [['breach', 4300]], 'the sinkhole opens quiet, during the tour');
+  assert.deepEqual(kinds(g, 'spawn').map((l) => l[3].cell), [9005, 9004, 9003, 9005, 9004, 9003], 'the fodder rises up the lane, a column hops deep in, depth cells long');
+  assert.ok(kinds(g, 'spawn').every((l) => l[3].harmless && l[3].pace === 1.7), 'the rest of the emergence as before');
+  const g2 = fakeGame({ walk: 3 });
+  const shown = makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, rotorDelay: 2, fodderEvery: 2, fodderAlive: 3, fodderTotal: 5, tremorDelay: 1, breachDelay: 2, overrideDelay: 1, fodderEmerge: emerge, laneCell: (h) => 9000 + h });
+  run(shown, g2, 14); assert.ok(kinds(g2, 'spawn').length >= 1, 'the shown breach spawns');
+  assert.ok(kinds(g2, 'spawn').every((l) => l[3].cell === undefined), 'a breach the player watched open keeps its pile at the crater');
+  const bare = makeStoryBeats({ socket: 4242, lane: 4243, fodder: 4300, gate: 4250, rotorDelay: 2, faceDelays: [0.5, 1], fodderEvery: 0, fodderAlive: 2, fodderTotal: 2, fodderEmerge: emerge, earlyBreach: 0, arrival: true });
+  const g3 = fakeGame({ printSeconds: 2 }); assert.equal(bare.deploy(g3.api), true); run(bare, g3, 2);
+  assert.ok(kinds(g3, 'spawn').length === 2 && kinds(g3, 'spawn').every((l) => l[3].cell === undefined), 'no lane to walk (no laneCell): the crater');
+}

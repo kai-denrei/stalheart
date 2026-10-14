@@ -96,7 +96,13 @@ export const STORY_SCALE = Object.freeze({ rocket: 1.5, isaoMetres: 1.8, tankMet
 // none of them can hurt the tank or the gate. every 0 spawns one a frame; each rises within `stagger` seconds, scattered `spread` cells across the crater
 // `pace` multiplies the swarm's march (src/enemyspec.js amoeba speed): the tutorial's fifty rise in a moment and then WALK, and the
 // player watched that walk for 28 s before the override (QA 2026-09-16). They surge instead; the pile is the beat, not the stroll.
-export const STORY_FODDER = Object.freeze({ total: 50, alive: 50, every: 0, harmless: true, spread: 0.8, stagger: 1.2, pace: 1.7 });
+// THE SWARM IS ALREADY UP THE LANE (owner, 2026-10-14, the Pearl set the default: "the creatures are much slower now, so they should be closer
+// within range of the rotor when we take control"): when the sinkhole opened QUIET, unseen during the beacons' tour (STORY_BEATS.earlyBreach), the
+// fodder rises `headStart.hops` lane cells in from it toward the gate, as a column `headStart.depth` cells deep (the k-th body hops - k % depth
+// in), so the Rotor has them in reach as the tour ends (measured headless: 11.5 cells from the Rotor at the seat before, 4.9 with six hops; the
+// Pearl records walk a fifth of a cell a second, PEARL_PACE radii, so the gate is reached ~25 s into the seat, not ~50).
+// A breach the player watches open (the tremor and the dive shot) keeps its pile at the crater (src/domain/story-beats.js spawnTick)
+export const STORY_FODDER = Object.freeze({ total: 50, alive: 50, every: 0, harmless: true, spread: 0.8, stagger: 1.2, pace: 1.7, headStart: Object.freeze({ hops: 6, depth: 3 }) });
 // emergeHold: the orbit camera holds over the crater after the breach FX. The fifty are all up within `stagger` (1.2 s), so holding
 // six more seconds over a finished pile was watching, not reading: three is the pile seen and the camera released.
 // preRoll: the story's own orbit beat before the dive, overriding the shared breach preset's 1.6 (immutable, and the breach lab

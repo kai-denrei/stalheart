@@ -32,6 +32,7 @@ import { STORY_PHASES } from './automation.js';
 export function makeStoryBeats({
   socket, foundry = null, lane = -1, fodder = -1, gate = -1, rotorDelay = 2, key = 'rotor',
   fodderType = 'amoeba', fodderEvery = 2.5, fodderAlive = 8, fodderTotal = 20, fodderEmerge = null,
+  laneCell = null,          // (hops) => the lane cell that many cells in from the sinkhole toward the gate, or -1: the quiet breach's head start (fodderEmerge.headStart)
   controlDelay = 1.5, tremorDelay = 1.5, breachDelay = 4, overrideDelay = 2.5, spawnDelay = 1, overrideCells = 2.2, earlyBreach = null, tankAfterNuke = null, quiverRise = [], calmMax = Infinity,
   faceDelays = [0.6, 4], commsKills = 5, harvestKills = 10, quiverSocket = -1, quiver = null, startPhase = 'landed',
   gateReady = () => true,   // a growing base: the tremor waits for Isao to print the gate (src/content/base-programme.js)
@@ -59,12 +60,14 @@ export function makeStoryBeats({
   let offered = false, released = !arrival;   // an arrival holds `landed` until its cut
   // STRAIGHT TO THE ACTION: a landing opens the sinkhole while the beacons are toured, so the swarm is up the lane when the Rotor is taken
   const early = arrival && gated && earlyBreach != null;
-  let releasedAt = null, opened = false, nukes0 = null, nukeAt = null;
+  let releasedAt = null, opened = false, quiet = false, nukes0 = null, nukeAt = null;   // quiet: the sinkhole opened unseen, during the tour
   if (late || arrival) faces = 2;
   const enter = (p) => { phase = p; at = clock; };
   const spawnTick = (api) => {
     if (spawned >= fodderTotal || clock < nextSpawn) return;
-    if (api.enemies() < fodderAlive) { api.spawn(fodderType, fodder, fodderEmerge && { harmless: fodderEmerge.harmless, spread: fodderEmerge.spread, pace: fodderEmerge.pace, delay: ((spawned * 0.618034) % 1) * fodderEmerge.stagger }); spawned++; }   // a swarm rises over a spread of moments, golden-ratio spaced
+    // THE HEAD START: a swarm the player did not see come up rises hops - k % depth cells up the lane (a column), not at the crater
+    const hs = quiet && laneCell ? fodderEmerge?.headStart : null, cell = hs ? laneCell(hs.hops - (spawned % hs.depth)) : -1;
+    if (api.enemies() < fodderAlive) { api.spawn(fodderType, fodder, fodderEmerge && { harmless: fodderEmerge.harmless, spread: fodderEmerge.spread, pace: fodderEmerge.pace, delay: ((spawned * 0.618034) % 1) * fodderEmerge.stagger, ...(cell >= 0 ? { cell } : {}) }); spawned++; }   // a swarm rises over a spread of moments, golden-ratio spaced
     nextSpawn = clock + fodderEvery;
   };
   return {
@@ -85,7 +88,7 @@ export function makeStoryBeats({
       // Isao's two faces play over the landing, whatever else is happening: the angry one the moment he is out of the hatch
       if (faces === 0 && clock >= faceDelays[0] && api.isao()) { api.brief?.('rough_landing'); faces = 1; }
       else if (faces === 1 && clock >= faceDelays[1]) { api.brief?.('so_much_to_build'); faces = 2; }
-      if (early && released && !opened && clock - releasedAt >= earlyBreach && STORY_PHASES.indexOf(phase) < STORY_PHASES.indexOf('piloting')) { api.breach?.(fodder, { quiet: true }); opened = true; nextSpawn = clock + spawnDelay; }
+      if (early && released && !opened && clock - releasedAt >= earlyBreach && STORY_PHASES.indexOf(phase) < STORY_PHASES.indexOf('piloting')) { api.breach?.(fodder, { quiet: true }); opened = true; quiet = true; nextSpawn = clock + spawnDelay; }
       if (opened && STORY_PHASES.indexOf(phase) < STORY_PHASES.indexOf('piloting')) spawnTick(api);
       if (fd) for (const e of stepFoundry(fd, dt, foundry)) { api.foundry?.(typeof e === 'string' ? e : e.ev, typeof e === 'string' ? null : e); if (e === 'barrel') api.grant(foundry.feedstockPerBarrel); }
       if (phase === 'landed' && fd && released && faces === 2 && clock >= rotorDelay) { api.foundry?.(deployFoundry(fd), null); api.brief?.('foundry_deploy'); enter('foundry'); }

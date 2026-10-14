@@ -95,11 +95,22 @@ function riseCells(ring, centers, from) {
   return second == null ? [first] : [first, second];
 }
 
+// the unit position `k` cells out from `from` along the great circle to `to` (no further than `to`)
+function alongLane(planet, from, to, k) {
+  const C = planet.graph.centers, f = C[from], t = C[to], span = Math.hypot(t[0] - f[0], t[1] - f[1], t[2] - f[2]) / planet.cellSide;
+  const u = Math.min(1, k / span), v = f.map((x, i) => x + (t[i] - x) * u), l = Math.hypot(...v); return v.map((x) => x / l);
+}
+// the open lane cell `k` cells out from `from` toward `to` (the opening swarm's head start, src/domain/story-beats.js), the nearest open one
+// short of it when that cell is rock, or -1
+function laneCellOut(planet, dungeon, from, to, k) {
+  if (from < 0 || to < 0) return -1;
+  for (let h = Math.max(0, k); h >= 0; h--) { const ci = nearestCell(planet.graph.centers, alongLane(planet, from, to, h)); if (dungeon.tags[ci] !== BLOCKED) return ci; }
+  return -1;
+}
 // a berth on the lane, [a, b] cells out from `from` along the great circle to `to`: { ci, exit, pos, out } as the bays' are, or null
 function laneBerth(planet, dungeon, from, to, [a, b]) {
   if (from < 0 || to < 0) return null;
-  const C = planet.graph.centers, f = C[from], t = C[to], span = Math.hypot(t[0] - f[0], t[1] - f[1], t[2] - f[2]) / planet.cellSide;
-  const at = (k) => { const u = Math.min(1, k / span), v = f.map((x, i) => x + (t[i] - x) * u), l = Math.hypot(...v); return v.map((x) => x / l); };
+  const C = planet.graph.centers, at = (k) => alongLane(planet, from, to, k);
   const pos = at(a), out = at(b), ci = nearestCell(C, pos), exit = nearestCell(C, out);
   return ci === exit || dungeon.tags[ci] === BLOCKED || dungeon.tags[exit] === BLOCKED ? null : { ci, exit, pos, out };
 }
@@ -156,7 +167,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
   // wanders within it. The Quiver's two rise beyond it (STORY_QUIVER.rise), on the horizon as its optic opens, and walk in (owner, 2026-10-05)
   const perch = plan.sockets[1]?.pos ?? null, ring = holdRing(built, planet, plan.cells.forward, STORY_QUIVER.hold, perch), far = holdRing(built, planet, plan.cells.forward, STORY_QUIVER.rise, perch);
   const rise = riseCells(far.size >= 2 ? far : ring, planet.graph.centers, plan.cells.forward);
-  const beats = stage >= 1 ? makeStoryBeats({ fodderEvery: STORY_FODDER.every, fodderAlive: STORY_FODDER.alive, fodderTotal: STORY_FODDER.total, fodderEmerge: STORY_FODDER, socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, ...STORY_BEATS, calmMax: STORY_CALM.maxHold, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER, quiverRise: rise, foundry: FOUNDRY_TUNE, startPhase: phase ?? 'landed', gateReady: () => base.gate().built, construction: hullStep ? STORY_CONSTRUCTION : null, arrival: arrives, foundryCut: chapter?.foundry ?? null }) : null;
+  const beats = stage >= 1 ? makeStoryBeats({ fodderEvery: STORY_FODDER.every, fodderAlive: STORY_FODDER.alive, fodderTotal: STORY_FODDER.total, fodderEmerge: STORY_FODDER, socket: plan.cells.rotor, lane: plan.cells.forward, fodder: plan.gate ? plan.cells.fodder : -1, gate: plan.gate ? plan.gate.cell : -1, laneCell: (hops) => laneCellOut(planet, built.dungeon, plan.cells.fodder, plan.cells.forward, hops), ...STORY_BEATS, calmMax: STORY_CALM.maxHold, key: 'rotor', quiverSocket: plan.cells.quiver, quiver: STORY_QUIVER, quiverRise: rise, foundry: FOUNDRY_TUNE, startPhase: phase ?? 'landed', gateReady: () => base.gate().built, construction: hullStep ? STORY_CONSTRUCTION : null, arrival: arrives, foundryCut: chapter?.foundry ?? null }) : null;
   const story = stage >= 1 ? {
     sockets: new Set(), home: plan.cells.landing, socketLift: 0,
     // the solar array's shield pad (src/content/shield-array.js): its island's centre on the unit sphere, standing once the island is; a build programme stands it later by setting `standing`

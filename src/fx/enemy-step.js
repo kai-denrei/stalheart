@@ -218,7 +218,7 @@ export function createEnemyStep(host) {
   // ONE BODY OUT OF ITS SOURCE: the record pushed (also the creature probe's direct spawn, src/fx/creature-enemies.js). A creature type
   // (ENEMY_SPEC `body`) gets a proxy for e.obj and its body in the family's kit; a queue entry may carry its own spec (a creature's tier)
   function spawnOne(queued) {
-    const entry = host.creatures?.()?.dress?.(queued) ?? queued, { type, sp } = entry;   // ?creatures=pearl dresses a mapped type in its Pearl body (src/fx/creature-enemies.js)
+    const entry = host.creatures?.()?.dress?.(queued) ?? queued, { type, sp } = entry, ci = entry.cell ?? sp.ci;   // `cell`: a body that rises up the lane, not at its source (the opening's head start, src/domain/story-beats.js)   // ?creatures=pearl dresses a mapped type in its Pearl body (src/fx/creature-enemies.js)
     {
       const spec = entry.spec ?? ENEMY_SPEC[type]; if (host.storyMode() && !entry.guard && !host.seenTypes.has(type)) { host.seenTypes.add(type); showContact(host.root, type, spec.pearl); }   // first contact: src/fx/contact-card.js (a Pearl body's card is its tier's)
       const creatures = spec.body ? host.creatures?.() : null;
@@ -227,13 +227,13 @@ export function createEnemyStep(host) {
       const scale0 = host.cellSide() * size;
       obj.scale.setScalar(scale0); obj.userData.s0 = scale0;
       host.scene.add(obj);
-      const exits = host.openNeighbors(sp.ci);
+      const exits = host.openNeighbors(ci);
       host.enemies.push({
         id: (host.setNextEnemyId(host.nextEnemyId() + 1) - 1),
-        type, spec, scale0, size: size * (obj.userData.reach ?? 1),breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:-(entry.delay??0),harmless:!!entry.harmless,emergeOff:entry.spread?(()=>{const [u,v]=tangentBasis(norm3(host.graph().centers[sp.ci])),a=host.whim()()*6.283,r=Math.sqrt(host.whim()())*entry.spread*host.cellSide();return add3(scale3(u,Math.cos(a)*r),scale3(v,Math.sin(a)*r));})():null,   // THE SWARM (owner, 2026-09-13): the whole crater boils, not one point
-        cur: sp.ci, prev: -1,
-        next: exits.length ? exits[Math.floor(host.whim()() * exits.length)] : sp.ci,
-        prog: sp.obj.userData.breach?0:host.whim()() * 0.4, pos: host.graph().centers[sp.ci].slice(), dir: [0, 1, 0],
+        type, spec, scale0, size: size * (obj.userData.reach ?? 1),breachSource:sp.obj.userData.breach?sp.obj:null,emergeAge:-(entry.delay??0),harmless:!!entry.harmless,emergeOff:entry.spread?(()=>{const [u,v]=tangentBasis(norm3(host.graph().centers[ci])),a=host.whim()()*6.283,r=Math.sqrt(host.whim()())*entry.spread*host.cellSide();return add3(scale3(u,Math.cos(a)*r),scale3(v,Math.sin(a)*r));})():null,   // THE SWARM (owner, 2026-09-13): the whole crater boils, not one point
+        cur: ci, prev: -1,
+        next: exits.length ? exits[Math.floor(host.whim()() * exits.length)] : ci,
+        prog: sp.obj.userData.breach?0:host.whim()() * 0.4, pos: host.graph().centers[ci].slice(), dir: [0, 1, 0],
         obj, alive: true, phase: host.whim()() * 6.283,
         // a deterministic pace of its own: identical speeds are what let a
         // clump that chose the same exit stay one silhouette all the way in
