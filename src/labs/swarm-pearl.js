@@ -9,21 +9,28 @@
 // PEARL_TIERS, CREATURE_FOLLOW, CREATURE_DEATH, PEARL_FOLLOW, PEARL_PACE, PEARL_GAIT and PEARL_IMPACT, the bodies PEARL_BODIES (pearlBodies over
 // ENEMY_SPEC), exactly the options src/fx/creature-enemies.js makes the family with. Each body's record walks the lane toward the tank at its
 // paced spec's speed (PEARL_SPECS, the walk cap included) times the sector's pace, and waits for its body as the game's does (paceOf); the
-// family follows it with its plane-metre track(). A record that reaches the tank's end is freed and seated again at the far end of the file, so
-// the lane is always full and always moving. The lab pays what the game pays: the follow, the gait, the kit's step, the draw.
+// family follows it with its plane-metre track(). THE TANK DRIVES AND THE BODIES DIE AT IT (owner, 2026-10-14, after a first look at the
+// lab: "WASD motion for the tank in Pearl mode"; "bodies must not vanish at the tank"): the hull is the dot lane's own drive, the yard model
+// (src/domain/yard-drive.js stepYardDrive) on the tab's held keys, in the Pearl lane's metres, placed on the planet where it stands; every
+// record walks at the hull wherever it is; one that comes within the dot lane's TOUCH of the hull (its ratio to the dot hull, times the game's
+// hull) dies the game's death (family.kill: the deflate, then CREATURE_DEATH's fade), and only once its slot is free is a new body seated at
+// the far end of the file, so the crowd holds at the slider's count. The hull's shove (the game's hullContact) is not wired; the ram's rules
+// are not the lab's here. The lab pays what the game pays: the follow, the gait, the kit's step, the draw.
 //
 // THE PLANET AND THE CAMERA. The bodies bend onto the story planet (GAME_PLANET_R, the kit's uPlanetR) round the tank, which stands at the
 // bend's origin; the ground and the walls are bent with the same bendPoint (the shader's JS twin), so a far body is not sunk in a flat floor.
 // The GAME HEIGHT view is the game's third-person pose at the game's lens (GAME_POSE below), so a body's radius in pixels, and so its level,
-// is what the game would draw; the free orbit starts there. THE LANE is the canyon's (src/content/sectors.js CANYON: 48 cells long, 1.2 cells
-// either side of its line, 10 m a cell). The tank's drive, the ram and the hull contact are off this round; sound off.
+// is what the game would draw, following the hull as it drives; the free orbit starts there. THE LANE is the canyon's (src/content/sectors.js CANYON: 48 cells long, 1.2 cells
+// either side of its line, 10 m a cell). Sound off.
 //
 // THE READINGS (a mean over the last second each): `step`, performance.now() round the records' walk, every track() and family.step() (the
 // follow, the gait, the kit's planning and solver, the geometry packing), per frame (a frame that steps every N pays N frames' worth); `draw`,
 // the dot lane's cost line (the scene rendered in a tight loop blocked on gl.finish(), the median of three) with one more wait: a one-pixel
 // readPixels after the finish. The first headless sweep read gl.finish() alone at 0.1-0.3 ms from 0.2M to 28M triangles (forced to the high
 // hull), flat: Chrome's finish did not wait for the GPU there, and a readback cannot return before the frame is drawn. The counters are the family's stats(): the
-// bodies alive and each level's count (high / mid / low hull, culled) summed over the tiers, with renderer.info's triangles and calls.
+// bodies alive and dying and each level's count (high / mid / low hull, culled) summed over the tiers, with renderer.info's triangles and calls.
+// `fps` (owner, 2026-10-14: "the real frame rate when the crowd is heavy"): requestAnimationFrame's gaps over the last second of wall time,
+// each less the draw probe's own renders in the frame before it (the probe is the lab's, not the game's; `fpsRaw` keeps them in).
 // THE KNOBS each change one thing, live (applyKnobs); RESET puts the game's values back. THE SWEEP runs the knob set at 100, 300, 600 and
 // 1,000 bodies (each seated, settled two seconds, read over three) into a table that copies clean into a log entry: two tables, one knob
 // apart, are what that knob is worth.
@@ -38,6 +45,7 @@ import { STORY_RECIPE, STORY_SANITY, STORY_SCALE } from '../content/story-defaul
 import { CANYON, SECTORS, SECTOR_GENERATOR, SECTOR_HOLD, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_DOOR, SECTOR_CANYON_AGAIN } from '../content/sectors.js';
 import { sectorDef } from '../domain/sectors.js';
 import { tankViewPose } from '../domain/camera-goal.js';
+import { stepYardDrive } from '../domain/yard-drive.js';
 import { TANK_LENS } from '../domain/seat-view.js';
 import { computeWavePlan } from '../enemyspec.js';
 
@@ -55,11 +63,23 @@ const UNIT_M = STORY_SCALE.tankUnit * CELL, WALL_M = STORY_RECIPE.wallMetres;
 // wallHeight = wallMetres, cellSide = metresPerCell, unitScale = tankUnit cells), for a hull at the bend's origin heading down the lane (-z),
 // at the game's lens TANK_LENS (src/domain/seat-view.js). Computed from the game's own function so it cannot drift: the eye ~34 m up and
 // ~29 m behind the hull, looking ~14 m ahead of it, ~5 m up.
-export const GAME_POSE = (() => {
-  const p = tankViewPose({ c: [0, GAME_PLANET_R, 0], h: [0, 0, -1], third: true, mobile: false, dip: 0, kick: 0, wallHeight: WALL_M, cellSide: CELL, unitScale: UNIT_M });
-  const down = (v) => [v[0], v[1] - GAME_PLANET_R, v[2]];
-  return Object.freeze({ eye: Object.freeze(down(p.eye)), look: Object.freeze(down(p.look)), fov: TANK_LENS });
-})();
+export const GAME_POSE = Object.freeze({ ...gamePose(0, 0, Math.PI), fov: TANK_LENS });
+
+// THE HULL ON THE PLANET: its plane point (x, z) and yaw (the yard drive's: 0 is +z, heading (sin, cos)) bent onto the planet as the bodies are
+// (bendPoint) -> { pos (scene), up (the planet's normal there), heading (the tangent it faces) }
+export function hullFrame(x, z, yaw, R = GAME_PLANET_R) {
+  const p = bendPoint(x, 0, z, R), a = bendPoint(x + Math.sin(yaw) * 0.5, 0, z + Math.cos(yaw) * 0.5, R), c = [p[0], p[1] + R, p[2]];
+  const l = Math.hypot(...c), up = c.map((v) => v / l), d = [a[0] - p[0], a[1] - p[1], a[2] - p[2]], k = d[0] * up[0] + d[1] * up[1] + d[2] * up[2];
+  const t = [d[0] - up[0] * k, d[1] - up[1] * k, d[2] - up[2] * k], tl = Math.hypot(...t) || 1;
+  return { pos: p, up, heading: t.map((v) => v / tl) };
+}
+// the game's third-person pose over the hull there (see GAME_POSE) -> { eye, look } in the scene
+export function gamePose(x, z, yaw, R = GAME_PLANET_R) {
+  const f = hullFrame(x, z, yaw, R), c = [f.pos[0], f.pos[1] + R, f.pos[2]];
+  const p = tankViewPose({ c, h: f.heading, third: true, mobile: false, dip: 0, kick: 0, wallHeight: WALL_M, cellSide: CELL, unitScale: UNIT_M });
+  const down = (v) => Object.freeze([v[0], v[1] - R, v[2]]);
+  return { eye: down(p.eye), look: down(p.look) };
+}
 
 // THE LANE, in the bodies' plane (metres; the tank at the origin, the file down -z): the canyon's length and half width (CANYON, cells x 10 m);
 // `fill` the share of the half width the file width slider's 1 spans; `end` where a record loops back (just ahead of the hull's nose);
@@ -88,8 +108,21 @@ export function laneSeats(count, dens, spread, LANE, seed = 0) {
   for (let i = 0; i < n; i++) { const k = i * 17 + 3 + seed * 7919; seats.push({ x: (hash(k, 1) - 0.5) * 2 * w, z: LANE.end - hash(k, 2) * depth }); }
   return { seats, depth };
 }
-// a record past the loop-back end goes back a file's depth (its spacing kept) -> its z, and whether it looped
-export function laneLoop(z, LANE, depth) { return z > LANE.end ? { z: z - depth, looped: true } : { z, looped: false }; }
+// a record's walk at the hull: `step` metres toward (tx, tz), never past it -> [x, z]
+export function walkToward(x, z, tx, tz, step) {
+  const dx = tx - x, dz = tz - z, d = Math.hypot(dx, dz);
+  return d <= step || d < 1e-9 ? [tx, tz] : [x + dx / d * step, z + dz / d * step];
+}
+// within `radius` metres of the hull
+export const touched = (x, z, tx, tz, radius) => (x - tx) ** 2 + (z - tz) ** 2 < radius * radius;
+// where a new body seats: the far end of the file behind the hull (its depth back from the loop-back end, `u` 0..1 a little nearer), on the lane
+export const farSeat = (tankZ, LANE, depth, u = 0) => Math.max(-LANE.len + 10, Math.min(LANE.end, tankZ + LANE.end - depth * (1 - 0.15 * u)));
+// the lane as the yard drive's blockers ([minX, minZ] to [maxX, maxZ]): the two walls and the lane's two ends (the ground runs from +60 m to -len)
+export function laneBoxes(LANE) {
+  const far = -LANE.len, near = 60, w = 40;
+  return [{ min: [-LANE.half - w, far - w], max: [-LANE.half, near + w] }, { min: [LANE.half, far - w], max: [LANE.half + w, near + w] },
+    { min: [-LANE.half - w, near], max: [LANE.half + w, near + w] }, { min: [-LANE.half - w, far - w], max: [LANE.half + w, far] }];
+}
 // the canyon's walls as the bodies' reach (the game asks the board's cells, src/domain/body-reach.js; here two planes): metres clear from
 // x along (dx, dz), at most `max`
 export function laneReach(x, dx, max, half) {
@@ -177,8 +210,11 @@ const PANEL = `
   <b>draw</b> the scene blocked on the GPU. Force 0 lifts the high cap. The core knob hides the soft tiers' inner core; a cored
   tier's pearl stays. Headless numbers are not the owner's machine's: compare two sweeps, one knob apart.</p>`;
 
+// the dot lane's hull ratios (./swarm-tab.js TOUCH and DRIVE_R over its TANK_R) when the host does not give its own
+const HULL_RATIOS = { touch: 4.6 / 3.4, drive: 4.2 / 3.4 };
 // host: { scene, renderer, camera, controls, panel (the element the Pearl controls go in), read and hud (the stage's readouts), tank() the hull,
-// canyon (the dot lane's flat ground, hidden here), lane() -> { count, dens, spread } (the tab's sliders), setCount(n) }
+// canyon (the dot lane's flat ground, hidden here), lane() -> { count, dens, spread } (the tab's sliders), setCount(n), input() -> { throttle,
+// turn } the held keys, hull { touch, drive } the dot lane's touch and drive radii over its hull's }
 export function mountSwarmPearl(host) {
   const { scene, renderer, camera: cam, controls } = host;
   const world = new THREE.Group(); world.name = 'Pearl lane'; scene.add(world);
@@ -233,35 +269,53 @@ export function mountSwarmPearl(host) {
   host.panel.querySelector('[data-preset]').addEventListener('click', () => { knobs = resetKnobs(); syncPanel(); });
   host.panel.querySelector('[data-psweep]').addEventListener('click', () => startSweep());
 
+  // --- the hull: the yard drive on the held keys, in the lane's metres --------------------------------------------------------------------------
+  const ratios = { ...HULL_RATIOS, ...(host.hull ?? {}) }, touchM = UNIT_M * ratios.touch, driveR = UNIT_M * ratios.drive, boxes = laneBoxes(L);
+  const drive = { x: 0, z: 0, yaw: Math.PI, speed: 0, blocked: false }, basis = new THREE.Matrix4(), V = [0, 1, 2].map(() => new THREE.Vector3());
+  function placeHull(tank) {
+    const f = hullFrame(drive.x, drive.z, drive.yaw);
+    tank.position.fromArray(f.pos); V[1].fromArray(f.up); V[2].fromArray(f.heading); V[0].crossVectors(V[1], V[2]);
+    tank.quaternion.setFromRotationMatrix(basis.makeBasis(V[0], V[1], V[2])); tank.scale.setScalar(UNIT_M);
+  }
+
   // --- the camera ------------------------------------------------------------------------------------------------------------------------
-  function poseGame() { cam.position.fromArray(GAME_POSE.eye); cam.up.set(0, 1, 0); cam.lookAt(GAME_POSE.look[0], GAME_POSE.look[1], GAME_POSE.look[2]); }
+  function poseGame() {
+    const p = gamePose(drive.x, drive.z, drive.yaw), f = hullFrame(drive.x, drive.z, drive.yaw);
+    cam.position.fromArray(p.eye); cam.up.fromArray(f.up); cam.lookAt(p.look[0], p.look[1], p.look[2]); return p;
+  }
   function setView(v) {
     view = v === 'free' ? 'free' : 'game';
     controls.enabled = view === 'free';
-    if (view === 'free') { poseGame(); controls.target.fromArray(GAME_POSE.look); controls.update(); }
+    if (view === 'free') { const p = poseGame(); cam.up.set(0, 1, 0); controls.target.fromArray(p.look); controls.update(); }
   }
   setView('game');
 
   // --- the records -----------------------------------------------------------------------------------------------------------------------
-  let recs = [], depth = L.depth, reseat = true;
-  const add = (r) => { r.h = family.add(r.type, { x: r.x, z: r.z, angle: Math.PI / 2, speed: r.speed }); return r; };
+  let recs = [], depth = L.depth, reseat = true, deaths = 0, reseated = 0;
+  const add = (r) => { r.dead = false; r.h = family.add(r.type, { x: r.x, z: r.z, angle: Math.atan2(drive.z - r.z, drive.x - r.x), speed: r.speed }); return r; };
   function seat() {
     for (const r of recs) family.free(r.h);
     const { count, dens, spread } = host.lane();
     const s = laneSeats(count, dens, spread, L), types = seatTypes(count, tier);
     depth = s.depth;
-    recs = s.seats.map((p, i) => add({ x: p.x, z: p.z, type: types[i], speed: (pearlSpec(types[i])?.speed ?? 0) * SECTOR_PACE * CELL, h: null }));
+    recs = s.seats.map((p, i) => add({ x: p.x, z: p.z, x0: p.x, type: types[i], speed: (pearlSpec(types[i])?.speed ?? 0) * SECTOR_PACE * CELL, h: null }));
     reseat = false;
   }
+  const freed = [];
   function simulate(dt) {
+    const tx = drive.x, tz = drive.z;
     for (const r of recs) {
-      if (!r.h) continue;
-      const lp = laneLoop(r.z + r.speed * family.paceOf(r.h) * dt, L, depth);
-      r.z = lp.z;
-      if (lp.looped) { family.free(r.h); add(r); if (!r.h) continue; }
-      family.track(r.h, { x: r.x, z: r.z, ax: r.x, az: r.z + CELL, dt, speed: r.speed });
+      if (!r.h || r.dead) continue;
+      [r.x, r.z] = walkToward(r.x, r.z, tx, tz, r.speed * family.paceOf(r.h) * dt);
+      // at the hull: the game's death; the slot is the body's until its puddle has faded
+      if (touched(r.x, r.z, tx, tz, touchM)) { family.kill(r.h); r.dead = true; deaths++; continue; }
+      family.track(r.h, { x: r.x, z: r.z, ax: tx, az: tz, dt, speed: r.speed });
     }
     family.step(dt, cam, renderer.domElement.height);
+    // the dead whose slot the step freed (all of them first: a new body may take a slot another dead record still names), then their new bodies
+    freed.length = 0;
+    for (const r of recs) if (r.dead && !family.view(r.h).active) freed.push(r);
+    for (const r of freed) { r.x = r.x0; r.z = farSeat(tz, L, depth, hash(reseated, 9)); add(r); reseated++; }
   }
 
   // the draw probe: the dot lane's (render, gl.finish(), the median), then a one-pixel readback, which waits for the frame (see the header)
@@ -276,20 +330,22 @@ export function mountSwarmPearl(host) {
   }
 
   // --- the readings ----------------------------------------------------------------------------------------------------------------------
-  const steps = windowOf(1), draws = windowOf(1);
-  let acc = 0, frameNo = 0, lastDraw = -1, lastRead = -1, clock = 0, last = { alive: 0, levels: [0, 0, 0, 0], tris: 0, calls: 0 };
+  const steps = windowOf(1), draws = windowOf(1), gaps = windowOf(1), rawGaps = windowOf(1);
+  let acc = 0, frameNo = 0, lastDraw = -1, lastRead = -1, clock = 0, probeOwed = 0, last = { alive: 0, dying: 0, levels: [0, 0, 0, 0], tris: 0, calls: 0 };
   function counters() {
-    const levels = [0, 0, 0, 0]; let alive = 0;
-    for (const s of Object.values(family.stats())) { alive += s.live; for (let k = 0; k < 4; k++) levels[k] += s.lod[k]; }
+    const levels = [0, 0, 0, 0]; let alive = 0, dying = 0;
+    for (const s of Object.values(family.stats())) { alive += s.live; dying += s.dying; for (let k = 0; k < 4; k++) levels[k] += s.lod[k]; }
     const inf = renderer.info.render;
-    return { alive, levels, tris: inf.triangles, calls: inf.calls };
+    return { alive, dying, levels, tris: inf.triangles, calls: inf.calls };
   }
+  const fpsOf = (w) => { const m = w.mean(); return m > 0 ? 1000 / m : NaN; };
   const fmt = (v) => (Number.isFinite(v) ? v.toFixed(1) : '…');
   function readLine() {
     const st = steps.mean(), dr = draws.mean(), c = last;
-    host.read.innerHTML = `<b>${c.alive}</b> alive &middot; step <b>${fmt(st)} ms</b> &middot; draw <b>${fmt(dr)} ms</b>`
-      + ` &middot; levels ${c.levels[0]}/${c.levels[1]}/${c.levels[2]} +${c.levels[3]} culled`
-      + `<br>${tris(c.tris)} tris &middot; ${c.calls} calls &middot; ${Number.isFinite(st + dr) ? ((st + dr) / 16.67 * 100).toFixed(0) : '…'}% of a 60 fps frame`;
+    const fps = fpsOf(gaps);
+    host.read.innerHTML = `<b>${c.alive}</b> alive${c.dying ? ` (${c.dying} dying)` : ''} &middot; fps <b>${Number.isFinite(fps) ? Math.round(fps) : '…'}</b>`
+      + ` &middot; step <b>${fmt(st)} ms</b> &middot; draw <b>${fmt(dr)} ms</b>`
+      + `<br>levels ${c.levels[0]}/${c.levels[1]}/${c.levels[2]} +${c.levels[3]} culled &middot; ${tris(c.tris)} tris &middot; ${c.calls} calls &middot; ${Number.isFinite(st + dr) ? ((st + dr) / 16.67 * 100).toFixed(0) : '…'}% of a 60 fps frame`;
     host.hud.innerHTML = `<span class="mode">PEARL &middot; ${tier.toUpperCase()}</span> &middot; ${view === 'game' ? 'GAME HEIGHT' : 'FREE ORBIT'}`
       + (sweep ? ` &middot; <span class="hot">SWEEP ${sweep.n} ${sweep.phase.toUpperCase()}</span>` : '');
   }
@@ -329,13 +385,17 @@ export function mountSwarmPearl(host) {
     nextLeg();
   }
 
-  // --- one frame: the camera, the step (every `every` frames, with the time since), the knobs, the render, the readings -----------------------
-  function frame(dt) {
+  // --- one frame: the hull, the camera, the step (every `every` frames, with the time since), the knobs, the render, the readings --------------
+  // `gap` the requestAnimationFrame gap before this frame, ms (the fps)
+  function frame(dt, gap = NaN) {
     clock += dt; frameNo++; acc += dt;
+    if (Number.isFinite(gap) && gap > 0) { const t = performance.now() / 1000; rawGaps.push(t, gap); gaps.push(t, Math.max(1, gap - probeOwed)); }
+    probeOwed = 0;
     if (reseat) seat();
-    if (view === 'free') controls.update(); else poseGame();
+    stepYardDrive(drive, host.input?.() ?? { throttle: 0, turn: 0 }, dt, boxes, driveR);
     const tank = host.tank();
-    if (tank) { tank.position.set(0, 0, 0); tank.rotation.set(0, Math.PI, 0); tank.scale.setScalar(UNIT_M); }
+    if (tank) placeHull(tank);
+    if (view === 'free') controls.update(); else poseGame();
     let stepMs = 0;
     if (frameNo % Math.max(1, knobs.every) === 0) {
       const a = performance.now(); simulate(acc); stepMs = performance.now() - a; acc = 0;
@@ -345,7 +405,7 @@ export function mountSwarmPearl(host) {
     renderer.render(scene, cam);
     last = counters();
     let drawMs = null;
-    if (clock - lastDraw > 0.2) { lastDraw = clock; drawMs = drawCost(3); draws.push(clock, drawMs); }
+    if (clock - lastDraw > 0.2) { lastDraw = clock; const a = performance.now(); drawMs = drawCost(3); probeOwed = performance.now() - a; draws.push(clock, drawMs); }
     sweepTick(stepMs, drawMs);
     if (clock - lastRead > 0.4) { lastRead = clock; readLine(); }
   }
@@ -361,10 +421,15 @@ export function mountSwarmPearl(host) {
     sweep: startSweep,
     reset: () => { knobs = resetKnobs(); syncPanel(); },
     table: () => tableText,
+    // the harness: `n` live records put on the hull's point (the next step kills them)
+    toTank(n = 1) { let k = 0; for (const r of recs) { if (k >= n) break; if (r.h && !r.dead) { r.x = drive.x; r.z = drive.z; k++; } } return k; },
     state() {
       const geos = family.geometries(), mats = geos.flatMap((g) => g.levels.flatMap((l) => [l.material, l.coreMaterial].filter(Boolean)));
-      return { mode: 'pearl', tier, view, count: host.lane().count, records: recs.length, live: last.alive, levels: last.levels.slice(), tris: last.tris, calls: last.calls,
-        step: steps.mean(), draw: draws.mean(), knobs: { ...knobs }, lod: { ...lod }, tiers: Object.keys(family.stats()),
+      return { mode: 'pearl', tier, view, count: host.lane().count, records: recs.length, live: last.alive, alive: last.alive, dying: last.dying, deaths, reseated,
+        dead: recs.filter((r) => r.dead).length,   // records whose body is dying (none waits: a freed slot is seated the same step)
+        levels: last.levels.slice(), tris: last.tris, calls: last.calls,
+        step: steps.mean(), draw: draws.mean(), fps: fpsOf(gaps), fpsRaw: fpsOf(rawGaps),
+        tank: { x: drive.x, z: drive.z, yaw: drive.yaw, speed: drive.speed, blocked: drive.blocked }, touch: touchM, knobs: { ...knobs }, lod: { ...lod }, tiers: Object.keys(family.stats()),
         noise: mats.map((m) => m.uniforms.uNoise.value), breath: mats.map((m) => m.uniforms.uBreath.value), shadows: geos.map((g) => g.shadows.visible),
         sweeping: !!sweep, sweepAt: sweep ? sweep.n : null, rows: rows.map((r) => ({ ...r, levels: r.levels.slice() })), table: tableText,
         planetR: GAME_PLANET_R, pose: { eye: [...GAME_POSE.eye], look: [...GAME_POSE.look], fov: GAME_POSE.fov } };

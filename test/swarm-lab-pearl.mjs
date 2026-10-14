@@ -1,10 +1,11 @@
 // swarm-lab-pearl.mjs — the swarm lab's Pearl mode (owner, 2026-10-14; spec docs/superpowers/specs/2026-10-14-swarm-lab-pearl-design.md, section 5):
-// the lane seating is pure (spread like the dot lane's, deterministic for a seed, the loop-back), the mix is the canyon's swarm by tier, the knobs set
+// the lane seating is pure (spread like the dot lane's, deterministic for a seed; owner, 2026-10-14, round two: the walk at the hull, the touch, the
+// far seat, the drive's blockers, the hull and the camera on the planet), the mix is the canyon's swarm by tier, the knobs set
 // exactly their own field and RESET puts the game's values back, the geometry's forced level, the sweep table's columns, and the family driven down
 // the lane as the lab drives it.
 import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three.module.js';
-import { laneSeats, laneLoop, laneReach, canyonMix, seatTypes, applyKnobs, knobTargets, resetKnobs, sweepTable, GAME_KNOBS, GAME_LOD, GAME_POSE,
+import { laneSeats, walkToward, touched, farSeat, laneBoxes, hullFrame, gamePose, laneReach, canyonMix, seatTypes, applyKnobs, knobTargets, resetKnobs, sweepTable, GAME_KNOBS, GAME_LOD, GAME_POSE,
   GAME_PLANET_R, PEARL_LANE, TIERS, SWEEP_COUNTS } from '../src/labs/swarm-pearl.js';
 import { CUTIS_LOD } from '../src/fx/cutis-maku/config.js';
 import { createSwarmGeometry } from '../src/fx/cutis-maku/geometry.js';
@@ -25,6 +26,15 @@ assert(GAME_PLANET_R > 740 && GAME_PLANET_R < 770, `~753 m (${GAME_PLANET_R})`);
 assert.equal(GAME_POSE.fov, TANK_LENS);
 assert(GAME_POSE.eye[1] > 30 && GAME_POSE.eye[1] < 38 && GAME_POSE.eye[2] > 25 && GAME_POSE.eye[2] < 33, `the eye high behind the hull (${GAME_POSE.eye})`);
 assert(GAME_POSE.look[2] < -10 && GAME_POSE.look[1] > 3, `looking down the lane (${GAME_POSE.look})`);
+{
+  const p = gamePose(0, 0, Math.PI); for (let k = 0; k < 3; k++) { close(p.eye[k], GAME_POSE.eye[k], 1e-9, 'GAME_POSE is the pose at the origin'); }
+  const f = hullFrame(0, 0, Math.PI); assert.deepEqual(f.pos.map((v) => +v.toFixed(9)), [0, 0, 0]); close(f.heading[2], -1, 1e-6, 'yaw pi heads down the lane');
+  const g = hullFrame(0, -200, Math.PI), q = gamePose(0, -200, Math.PI);
+  assert(g.pos[1] < -20, `a hull 200 m down the lane stands lower on the planet (${g.pos[1]})`); assert(g.up[2] < -0.2, 'its up leans with the planet');
+  close(Math.hypot(...g.heading), 1, 1e-9, 'a unit heading'); close(g.heading[0] * g.up[0] + g.heading[1] * g.up[1] + g.heading[2] * g.up[2], 0, 1e-9, 'tangent to the planet');
+  const d0 = Math.hypot(GAME_POSE.eye[0], GAME_POSE.eye[1], GAME_POSE.eye[2]), d1 = Math.hypot(q.eye[0] - g.pos[0], q.eye[1] - g.pos[1], q.eye[2] - g.pos[2]);
+  close(d1, d0, 1e-6, 'the camera follows the hull at the same distance');
+}
 assert.deepEqual(GAME_LOD, { ...CUTIS_LOD, ...PEARL_FOLLOW.lod }, 'the game\'s levels: the kit\'s under the Pearl set\'s');
 assert.deepEqual(TIERS, [...PEARL_TIERS.map((t) => t.id), 'mix']);
 assert.deepEqual(SWEEP_COUNTS, [100, 300, 600, 1000]);
@@ -46,13 +56,29 @@ console.log('PASS the game\'s numbers: the story planet, the third-person pose a
   assert(Math.max(...wide.map((s) => Math.abs(s.x))) > 2 * Math.max(...narrow.map((s) => Math.abs(s.x))), 'the file width slider widens it');
   for (const s of laneSeats(200, 1, 1.6, PEARL_LANE).seats) assert(Math.abs(s.x) < PEARL_LANE.half, 'never in the wall');
   assert.equal(laneSeats(0, 1, 0.5, PEARL_LANE).seats.length, 0);
-  // the loop-back
-  assert.deepEqual(laneLoop(PEARL_LANE.end - 1, PEARL_LANE, 200), { z: PEARL_LANE.end - 1, looped: false });
-  const lp = laneLoop(PEARL_LANE.end + 0.5, PEARL_LANE, 200); assert(lp.looped); close(lp.z, PEARL_LANE.end + 0.5 - 200, 1e-9, 'back a file\'s depth');
+  // the walk at the hull, the touch, the far seat
+  assert.deepEqual(walkToward(0, -100, 0, 0, 5), [0, -95]); assert.deepEqual(walkToward(3, -4, 0, 0, 10), [0, 0], 'never past the hull');
+  { const [x, z] = walkToward(6, -8, 0, 0, 5); close(x, 3, 1e-9, 'along the line to the hull x'); close(z, -4, 1e-9, 'z'); }
+  assert(touched(0, -9, 0, 0, 9.3)); assert(!touched(0, -9.5, 0, 0, 9.3)); assert(touched(5, 5, 4, 4, 2));
+  close(farSeat(0, PEARL_LANE, 200, 0), PEARL_LANE.end - 200, 1e-9, 'the far end of the file behind a hull at the origin');
+  close(farSeat(-50, PEARL_LANE, 200, 0), -50 + PEARL_LANE.end - 200, 1e-9, 'behind a hull that drove up the lane');
+  assert(farSeat(0, PEARL_LANE, 200, 1) > farSeat(0, PEARL_LANE, 200, 0), 'u a little nearer');
+  assert.equal(farSeat(-460, PEARL_LANE, 200, 0), -PEARL_LANE.len + 10, 'never past the lane\'s end');
+  assert(farSeat(80, PEARL_LANE, 200, 1) <= PEARL_LANE.end, 'never ahead of the file');
   // the walls as the reach
   assert.equal(laneReach(0, 1, 50, 12), 12); assert.equal(laneReach(0, -0.5, 50, 12), 24); assert.equal(laneReach(3, 0, 5, 12), 5); assert.equal(laneReach(11, 1, 4, 12), 1);
 }
-console.log('PASS the lane seating: a deterministic column, spread like the dot lane\'s, density packs it, the loop-back, the walls as the reach');
+// the drive's blockers: the yard drive stops at the walls and the lane's ends
+{
+  const { stepYardDrive } = await import('../src/domain/yard-drive.js'), boxes = laneBoxes(PEARL_LANE), R = 8.45;
+  const d = { x: 0, z: 0, yaw: Math.PI, speed: 0 };
+  for (let f = 0; f < 120; f++) stepYardDrive(d, { throttle: 1, turn: 0 }, 1 / 60, boxes, R);
+  assert(d.z < -10 && Math.abs(d.x) < 1e-6, `W drives down the lane (-z) (${d.z})`);
+  const s = { x: 0, z: -50, yaw: Math.PI / 2, speed: 0 };
+  for (let f = 0; f < 600; f++) stepYardDrive(s, { throttle: 1, turn: 0 }, 1 / 60, boxes, R);
+  assert(s.x <= PEARL_LANE.half - R + 0.5 && s.blocked, `held off the wall (${s.x})`);
+}
+console.log('PASS the lane seating: a deterministic column, spread like the dot lane\'s, density packs it, the walk at the hull, the touch, the far seat, the walls');
 
 // ---- the types ----
 {
@@ -150,25 +176,36 @@ console.log('PASS the sweep\'s table: fixed columns, the four rows, triangles in
   const fam = createPearlFamily({ parent, tiers: PEARL_BODIES, follow: CREATURE_FOLLOW, death: CREATURE_DEATH, set: PEARL_TIERS, tune: { ...PEARL_FOLLOW, lod }, pace: PEARL_PACE, gait: PEARL_GAIT, impact: PEARL_IMPACT, hubs });
   fam.setPlanet(GAME_PLANET_R);
   const n = 60, { seats, depth } = laneSeats(n, 1, 0.5, PEARL_LANE), types = seatTypes(n, 'mix');
-  const recs = seats.map((s, i) => { const speed = pearlSpec(types[i]).speed * PEARL_GAIT.sectorPace * 10; return { ...s, type: types[i], speed, h: fam.add(types[i], { x: s.x, z: s.z, angle: Math.PI / 2, speed }) }; });
+  const recs = seats.map((s, i) => { const speed = pearlSpec(types[i]).speed * PEARL_GAIT.sectorPace * 10; return { ...s, x0: s.x, type: types[i], speed, h: fam.add(types[i], { x: s.x, z: s.z, angle: Math.PI / 2, speed }) }; });
   assert(recs.every((r) => r.h), 'every record seated');
   assert(recs.every((r) => r.speed > 0.5 && r.speed < 6), `the paced walks are a few metres a second (${recs.map((r) => r.speed.toFixed(1))})`);
   const cam = new THREE.PerspectiveCamera(GAME_POSE.fov, 1.4, 0.1, 600); cam.position.fromArray(GAME_POSE.eye); cam.lookAt(...GAME_POSE.look); cam.updateMatrixWorld(); cam.updateProjectionMatrix();
-  // one record already at the end loops on the first frame
-  recs[0].z = PEARL_LANE.end - 0.01;
-  let loops = 0;
-  for (let f = 0; f < 120; f++) {
-    const dt = 1 / 60;
+  // the lab's walk: every record at the hull (the origin); one already within the touch dies the game's death, and only its freed slot seats a new
+  // body at the far end (the lab's two passes: the freed first, then the new bodies)
+  const touchM = 6.84 * 4.6 / 3.4;
+  recs[0].x = 0; recs[0].z = -1;
+  let deaths = 0, reseated = 0, maxDying = 0;
+  const dt = 1 / 60, frames = 60 * (CREATURE_DEATH.deflate + CREATURE_DEATH.fade + 1);
+  for (let f = 0; f < frames; f++) {
     for (const r of recs) {
-      const lp = laneLoop(r.z + r.speed * fam.paceOf(r.h) * dt + (r === recs[0] && f === 0 ? 0.1 : 0), PEARL_LANE, depth); r.z = lp.z;
-      if (lp.looped) { loops++; fam.free(r.h); r.h = fam.add(r.type, { x: r.x, z: r.z, angle: Math.PI / 2, speed: r.speed }); }
-      fam.track(r.h, { x: r.x, z: r.z, ax: r.x, az: r.z + 10, dt, speed: r.speed });
+      if (r.dead) continue;
+      [r.x, r.z] = walkToward(r.x, r.z, 0, 0, r.speed * fam.paceOf(r.h) * dt);
+      if (touched(r.x, r.z, 0, 0, touchM)) { fam.kill(r.h); r.dead = true; deaths++; continue; }
+      fam.track(r.h, { x: r.x, z: r.z, ax: 0, az: 0, dt, speed: r.speed });
     }
     fam.step(dt, cam, 900);
+    const st = Object.values(fam.stats()), dying = st.reduce((s, x) => s + x.dying, 0), live = st.reduce((s, x) => s + x.live, 0);
+    maxDying = Math.max(maxDying, dying);
+    assert.equal(live + dying, n - recs.filter((r) => r.dead && !fam.view(r.h).active).length, 'a body is alive, dying, or its slot free and waiting');
+    const freed = recs.filter((r) => r.dead && !fam.view(r.h).active);
+    for (const r of freed) { r.x = r.x0; r.z = farSeat(0, PEARL_LANE, depth, 0.5); r.dead = false; r.h = fam.add(r.type, { x: r.x, z: r.z, angle: Math.PI / 2, speed: r.speed }); reseated++; }
   }
-  assert(loops >= 1, 'a record at the end looped back');
+  assert(deaths >= 1 && maxDying >= 1, `the touched one died and was seen dying (${deaths}, ${maxDying})`);
+  assert(reseated >= 1, 'its slot freed after the fade, a new body seated at the far end');
+  assert(recs[0].z < -100, `the new body is at the far end (${recs[0].z})`);
   const st = Object.values(fam.stats()), live = st.reduce((s, x) => s + x.live, 0), counted = st.reduce((s, x) => s + x.lod.reduce((a, b) => a + b, 0), 0);
-  assert.equal(live, n, 'the lane stays full'); assert.equal(counted, n, 'the levels plus culled are the bodies alive');
+  const dyingNow = st.reduce((s, x) => s + x.dying, 0);
+  assert.equal(live + dyingNow, n, 'the lane holds its count (alive and dying)'); assert.equal(counted, n, 'the levels plus culled are the bodies drawn, the dying included');
   assert(fam.geometries().length === st.length, 'one geometry a tier present');
   // the knobs reach every level's materials
   applyKnobs({ ...GAME_KNOBS, lumps: false }, knobTargets(fam.geometries(), lod));
@@ -176,4 +213,4 @@ console.log('PASS the sweep\'s table: fixed columns, the four rows, triangles in
   for (const r of recs) fam.free(r.h);
   fam.dispose(); assert.equal(parent.children.length, 0);
 }
-console.log('PASS the family down the lane: the game\'s family on the planet, the records walking and looping, the lane full, the levels summing to the live');
+console.log('PASS the family down the lane: the game\'s family on the planet, the records walking at the hull, the touched one dying the game\'s death, its slot reseated at the far end, the count held');

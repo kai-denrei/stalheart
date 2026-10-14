@@ -197,6 +197,11 @@ export function initSwarmTab(root) {
   const onDown = (e) => { if (isText(e)) return; keys.add(e.key.toLowerCase());
     if (['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase())) e.preventDefault(); };
   const onUp = (e) => keys.delete(e.key.toLowerCase());
+  // the held keys as the drive's throttle and turn (the dot lane's manual tank, and the Pearl lane's hull)
+  const keyInput = () => ({
+    throttle: (keys.has('w') || keys.has('arrowup') ? 1 : 0) - (keys.has('s') || keys.has('arrowdown') ? 1 : 0),
+    turn: (keys.has('a') || keys.has('arrowleft') ? 1 : 0) - (keys.has('d') || keys.has('arrowright') ? 1 : 0),
+  });
   addEventListener('keydown', onDown); addEventListener('keyup', onUp);
   addEventListener('blur', () => keys.clear());
 
@@ -359,8 +364,7 @@ export function initSwarmTab(root) {
     const bite = run.speed;
     let throttle = 0, turn = 0;
     if (state.drive === 'manual') {
-      throttle = (keys.has('w') || keys.has('arrowup') ? 1 : 0) - (keys.has('s') || keys.has('arrowdown') ? 1 : 0);
-      turn = (keys.has('a') || keys.has('arrowleft') ? 1 : 0) - (keys.has('d') || keys.has('arrowright') ? 1 : 0);
+      ({ throttle, turn } = keyInput());
     } else if (state.drive === 'charge') {
       throttle = 1;
       // creep back to the middle of the lane rather than steering off a sine:
@@ -499,13 +503,13 @@ export function initSwarmTab(root) {
     if (running && frames.length + 1) { frames.push(gap); if (gap > 20) late++; }
     if (rebuild && !pearl) build();
     walls.visible = state.walls;
-    root.querySelector('[data-keys]').hidden = !!pearl || state.drive !== 'manual';
+    root.querySelector('[data-keys]').hidden = !pearl && state.drive !== 'manual';   // the Pearl lane's hull is always on the keys
     const w = stage.clientWidth || 1, hh = stage.clientHeight || 1;
     if (renderer.domElement.width !== Math.round(w * renderer.getPixelRatio())) {
       renderer.setSize(w, hh, false); cam.aspect = w / hh; cam.updateProjectionMatrix();
     }
     // the Pearl lane steps, renders and reads its own line (./swarm-pearl.js)
-    if (pearl) { pearl.frame(dt); return; }
+    if (pearl) { pearl.frame(dt, gap); return; }
     step(dt); frameCamera();
     gpuBegin(); renderer.render(scene, cam); gpuEnd();
     // no timer extension: fall back to the stalling probe, slowly, so the
@@ -711,7 +715,8 @@ export function initSwarmTab(root) {
     if (on && !pearl) {
       running = false; sweepQueue = []; sweeping = false; clearBodies(); card.hidden = true; comboEl.hidden = true;
       pearl = mountSwarmPearl({ scene, renderer, camera: cam, controls, panel: pearlEl, read, hud, canyon, tank: () => tank,
-        lane: () => ({ count: state.count, dens: state.dens, spread: state.spread }), setCount: (n) => api.set('count', n) });
+        lane: () => ({ count: state.count, dens: state.dens, spread: state.spread }), setCount: (n) => api.set('count', n),
+        input: keyInput, hull: { touch: TOUCH / TANK_R, drive: DRIVE_R / TANK_R } });
     } else if (!on && pearl) {
       pearl.dispose(); pearl = null; tank.scale.setScalar(TANK_R); rebuild = true;
     }
