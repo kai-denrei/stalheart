@@ -227,6 +227,10 @@ export function createCreatureEnemies(host) {
     return { pearl: true, byType, dressed: pearled.dressed, undressed: pearled.undressed, squads: pearled.squads, waves: thinning ? { ...thinned, last: lastWave } : 'full', bodies: bodies?.stats() ?? null };
   }
 
+  // THE PEARL SET AT BOOT (2026-10-14, the story's default): the first soft tier's swarm and the first cored one's made now, so their membrane, shadow
+  // and pearl materials are on the scene for the program warm (src/fx/program-warm.js) before a body is drawn; the dot clouds' materials were
+  // warmed at boot the same way, and --gunship's first seat linked six Pearl programs without it
+  if (pearl) make().prepare('pearl', [PEARL_TIERS.find((t) => !t.cored)?.id, PEARL_TIERS.find((t) => t.cored)?.id].filter(Boolean));
   return {
     choice, pearl,
     // the enemy loop's factory: a creature type gets a proxy for e.obj, and its body once the record exists

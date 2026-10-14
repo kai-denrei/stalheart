@@ -57,7 +57,9 @@ export function createProgramWarm(renderer, scene, camera, { perFrame = 4, resca
       const now = performance.now();
       if (now - since >= rescanSeconds * 1000) {
         since = now; scans++;
-        let fresh = 0; scene.traverse((o) => { if (!o.material) return; const s = signature(o); if (seen.has(s)) return; seen.add(s); queue.push(o); fresh++; });
+        // DRAWABLES ONLY (2026-10-14, the Pearl set the story's default): a Pearl record's stand-in (src/fx/creature-bodies.js proxy) is an Object3D
+        // carrying an opacity holder as `material` and no geometry; three's compile() reads geometry.morphAttributes and threw, taking the batch with it
+        let fresh = 0; scene.traverse((o) => { if (!o.material || !o.geometry) return; const s = signature(o); if (seen.has(s)) return; seen.add(s); queue.push(o); fresh++; });
         if (fresh) drawDue = true;
       }
       // THE CANVAS SEES THE SCENE ONCE (2026-10-01): scene.background is drawn by the renderer, not by an object, so compile() never links

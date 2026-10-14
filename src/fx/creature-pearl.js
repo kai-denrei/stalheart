@@ -409,6 +409,8 @@ export function createPearlFamily({ parent, tiers, follow, death, set, tune, hub
     // round four: the motion audit (./pearl-motion.js): watch(opts) starts it afresh, watch(null) stops it; motion() its report so far (null when off)
     watch(opts) { motion = opts ? createMotionAudit(opts) : null; }, motion: () => motion?.report() ?? null,
     roots: () => [group],
+    // the tiers' swarms made ahead of their first body (src/fx/creature-enemies.js at boot: their materials are on the scene for src/fx/program-warm.js)
+    prepare: (ids) => { for (const id of ids) if (byId[id]) poolOf(id); },
     // the swarm lab's knobs (src/labs/swarm-pearl.js, owner 2026-10-14): each tier's swarm geometry (./cutis-maku/geometry.js: its levels' meshes and materials, its shadows)
     geometries: () => [...pools.values()].map((p) => p.geo),
     // each tier present: bodies up, dying, the most up at once, placed, re-placed on the leash, deaths, squad members shed, refused for want of a slot,
