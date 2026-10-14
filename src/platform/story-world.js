@@ -169,7 +169,7 @@ export function buildGameWorld({ world, params, stage, scene, sfx = null, landma
     // A TUTORIAL CHAPTER'S START (src/fx/story-entry.js builds it at boot): its number, the steps it prints and the sentries it stands
     // (`berths`: past the hull's issue the Stålheart's door is every berth, as the issue leaves it, src/fx/hull-issue.js)
     chapter: chapter ? { id: chapter.id, n: STORY_CHAPTERS.includes(chapter) ? STORY_CHAPTERS.indexOf(chapter) : STORY_CHAPTERS.length, printed: chapter.printed, head: chapter.head, towers: chapter.towers.map((key) => ({ key, ci: plan.cells[key] ?? -1 })), berths: door && !hullHeld ? [door, door, door] : null } : null,
-    hull: createHullIssue({ held: hullHeld, perk: hullStep?.perk, door, lead: STORY_ROLLOUT.lead }),   // the first hull, held until the Stålheart stands
+    hull: createHullIssue({ held: hullHeld, perk: hullStep?.perk, door, lead: STORY_ROLLOUT.lead, firstWave: STORY_ROLLOUT.firstWave }),   // the first hull, held until the Stålheart stands
     // the MK-9 blasts (src/fx/gunship-rig.js), and the berth the nuke's tank stands on: out of the gate toward the blast, or toward the
     // sinkhole when that line runs into rock
     nukes: [], nukeBerth: (ci) => (ci >= 0 && laneBerth(planet, built.dungeon, plan.cells.forward, ci, STORY_NUKE_TANK.berth)) || laneBerth(planet, built.dungeon, plan.cells.forward, plan.cells.fodder, STORY_NUKE_TANK.berth),

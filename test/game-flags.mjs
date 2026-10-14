@@ -13,4 +13,9 @@ for (const k of GAME_FLAG_KEYS) assert.equal(f[k], q.get(k), k);
 for (const k of SHIELD_KNOBS) assert.equal(f.shield[k.key], q.get(k.key), k.key);
 assert.equal(f.shield[SHIELD_KNOBS[0].key], '8');
 assert.equal(readGameFlags('').acceptance, null);
-console.log('Game flags: one frozen read of the URL, null for an absent flag, the same strings URLSearchParams gives, the shield knobs by name.');
+// THE PEARL SET IS THE STORY'S DEFAULT (owner, 2026-10-14): an absent `creatures` on a story page reads 'pearl'; dots / 0 read null (the dot
+// clouds); the campaign board (?acceptance / ?sim without the story) keeps null; an explicit value is kept as given
+for (const s of ['', '?intro=0', '?skip=defence&sector=2', '?acceptance=1&world=story', '?acceptance=1&skip=wave', '?story=1&acceptance=1']) assert.equal(readGameFlags(s).creatures, 'pearl', s);
+for (const s of ['?acceptance=1', '?sim=style1', '?creatures=dots', '?creatures=DOTS', '?creatures=0', '?acceptance=1&world=story&creatures=dots']) assert.equal(readGameFlags(s).creatures, null, s);
+for (const [s, v] of [['?creatures=pearl', 'pearl'], ['?acceptance=1&creatures=pearl', 'pearl'], ['?skip=defence&creatures=cutis:small&ramp=1', 'cutis:small'], ['?creatures=reed:big', 'reed:big']]) assert.equal(readGameFlags(s).creatures, v, s);
+console.log('Game flags: one frozen read of the URL, null for an absent flag, the same strings URLSearchParams gives, the shield knobs by name; the Pearl set the story\'s default enemies (dots on ?creatures=dots and on the campaign board).');

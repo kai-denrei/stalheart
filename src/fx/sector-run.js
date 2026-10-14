@@ -439,7 +439,8 @@ export function createSectorRun(h) {
     kill(e, src, via = null) {
       if (!stats) return;
       const k = killSource(src, via);
-      note({ type: 'kill', ...k, belt: BELT_OF[e.type], breach: idOfObj(e.breachSource) ?? undefined, t: now() }); progress();
+      // a Pearl body's kill is its tier's belt (the story's default since 2026-10-14: the phage white, the knot black, as drawn; src/content/pearl-enemies.js PEARL_OF)
+      note({ type: 'kill', ...k, belt: e.spec?.pearl ?? BELT_OF[e.type], breach: idOfObj(e.breachSource) ?? undefined, t: now() }); progress();
       if (src === 'ram') note({ type: 'ram', combo: via ?? 0 });
     },
     note,

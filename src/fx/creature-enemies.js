@@ -19,7 +19,9 @@
 // THE PROBE'S GROUND (owner, 2026-10-12): its bodies come up beyond the gate, outside the walls, and sentries stand to meet them; the
 // heart is held while it runs (src/domain/probe-ground.js, CREATURE_PROBE.ground / .sentries).
 // The records are the enemy loop's (src/fx/enemy-step.js asks for `proxy`, `spawn`, `kill` and `step`); the bodies are drawn by the family's
-// adapter through src/fx/creature-bodies.js. Without ?creatures nothing is built and every call is a no-op: the game is unchanged.
+// adapter through src/fx/creature-bodies.js. THE DEFAULT (owner, 2026-10-14: "we are adapting to the new enemies"): a story page with no ?creatures
+// is ?creatures=pearl (src/platform/game-flags.js creaturesFlag, the one place); with ?creatures=dots (or =0), and on the campaign board, the flag
+// reads null, nothing is built and every call is a no-op: the dot clouds as they were.
 import * as THREE from '../../vendor/three.module.js';
 import { ENEMY_SPEC } from '../enemyspec.js';
 import { CREATURE_TIERS, CREATURE_FOLLOW, CREATURE_DEATH, CREATURE_PROBE, tierSize } from '../content/creature-enemies.js';
@@ -67,7 +69,7 @@ export function createCreatureEnemies(host) {
   const tune = host.flags.ramp === 'test' ? { ...CREATURE_PROBE, ...CREATURE_PROBE.test } : CREATURE_PROBE;
   // the sentries at boot: &sentries=N (a number, at most the story's cap), else the probe's own count, else none
   const askedSentries = host.flags.sentries != null && host.flags.sentries !== '' ? Math.max(0, Math.min(tune.sentries.max, Math.floor(+host.flags.sentries) || 0)) : probing ? tune.sentries.count : 0;
-  const pearl = typeof host.flags.creatures === 'string' && host.flags.creatures.toLowerCase() === 'pearl';
+  const pearl = typeof host.flags.creatures === 'string' && host.flags.creatures.toLowerCase() === 'pearl';   // the story's default (src/platform/game-flags.js)
   const pearled = { dressed: 0, undressed: 0, squads: 0 };   // entries given a Pearl body, dressed ones made again as dot clouds for want of a slot, squads among the dressed
   const families = { ...FAMILIES, pearl: (o) => createPearlFamily({ ...o, set: PEARL_TIERS, tune: PEARL_FOLLOW, pace: PEARL_PACE, gait: PEARL_GAIT }), reed: (o) => createReedFamily({ ...o, ...(probing ? { budget: null } : {}), solid: host.flags.reedlook === 'solid', hz: Math.max(0, +host.flags.reedhz || 0) || null }) };
   let bodies = null, probe = null, rr = 0, ground = null, garrison = null, heartHeld = 0;
@@ -225,6 +227,10 @@ export function createCreatureEnemies(host) {
     return { pearl: true, byType, dressed: pearled.dressed, undressed: pearled.undressed, squads: pearled.squads, waves: thinning ? { ...thinned, last: lastWave } : 'full', bodies: bodies?.stats() ?? null };
   }
 
+  // THE PEARL SET AT BOOT (2026-10-14, the story's default): the first soft tier's swarm and the first cored one's made now, so their membrane, shadow
+  // and pearl materials are on the scene for the program warm (src/fx/program-warm.js) before a body is drawn; the dot clouds' materials were
+  // warmed at boot the same way, and --gunship's first seat linked six Pearl programs without it
+  if (pearl) make().prepare('pearl', [PEARL_TIERS.find((t) => !t.cored)?.id, PEARL_TIERS.find((t) => t.cored)?.id].filter(Boolean));
   return {
     choice, pearl,
     // the enemy loop's factory: a creature type gets a proxy for e.obj, and its body once the record exists

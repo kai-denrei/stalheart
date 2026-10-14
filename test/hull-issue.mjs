@@ -6,7 +6,7 @@ import { STORY_ROLLOUT } from '../src/content/story-defaults.js';
 import { BASE_PROGRAMME } from '../src/content/base-programme.js';
 
 // a host that records what the hull issue asks of the controller
-const host = (o = {}) => { const h = { log: [], stands: false, seated: false, busy: true, t: 0, ...o }; return Object.assign(h, { api: { stands: (perk) => { h.log.push(['stands', perk]); return h.stands; }, seated: () => h.seated, busy: () => h.busy, now: () => h.t, issue: (quiet) => h.log.push(['issue', quiet]) } }); };
+const host = (o = {}) => { const h = { log: [], stands: false, seated: false, busy: true, t: 0, fighting: false, ...o }; return Object.assign(h, { api: { stands: (perk) => { h.log.push(['stands', perk]); return h.stands; }, seated: () => h.seated, busy: () => h.busy, fighting: () => h.fighting, now: () => h.t, issue: (quiet) => h.log.push(['issue', quiet]) } }); };
 const issues = (h) => h.log.filter((l) => l[0] === 'issue');
 
 // A GROWING PAGE: no hull until the Stålheart stands, then one roll-out, on camera, and out once it is off the screen
@@ -22,7 +22,7 @@ const issues = (h) => h.log.filter((l) => l[0] === 'issue');
   assert.equal(hull.held(), false); assert.equal(hull.issued(), true); assert.equal(hull.out(), false, 'still on screen');
   hull.tick(h.api); hull.tick(h.api); assert.equal(issues(h).length, 1, 'issued once');
   h.busy = false; hull.tick(h.api); assert.equal(hull.out(), true, 'out once the roll-out is off the screen');
-  assert.deepEqual(hull.state(), { state: 'out', issuedAt: 118.5, quiet: false, door: 7 });
+  assert.deepEqual(hull.state(), { state: 'out', issuedAt: 118.5, quiet: false, door: 7, waited: 0 });
   assert.equal(hull.door(), door); assert.equal(hull.lead, STORY_ROLLOUT.lead);
 }
 // A GUNNER IS NEVER EVICTED (2026-09-23): in the gunship's or SOL-82's seat the hull is set down quietly, and is out at once
@@ -30,6 +30,17 @@ const issues = (h) => h.log.filter((l) => l[0] === 'issue');
   const hull = createHullIssue({ held: true }), h = host({ stands: true, seated: true, busy: false });
   hull.tick(h.api); assert.deepEqual(issues(h), [['issue', true]]);
   hull.tick(h.api); assert.equal(hull.out(), true);
+}
+// THE ROTOR'S FIRST WAVE (2026-10-14, the Pearl set the story's default): a player in a sentry's optic on it keeps the seat until it is cleared,
+// at most `firstWave` s after the Stålheart stands; then the roll-out as before
+{
+  const hull = createHullIssue({ held: true, firstWave: STORY_ROLLOUT.firstWave }), h = host({ stands: true, fighting: true, busy: false, t: 100 });
+  hull.tick(h.api); h.t = 130; hull.tick(h.api); assert.deepEqual(issues(h), [], 'the first wave is still fought: no roll-out');
+  h.fighting = false; h.t = 131; hull.tick(h.api); assert.deepEqual(issues(h), [['issue', false]], 'cleared: it rolls out on camera'); assert.equal(hull.state().waited, 30);
+  const capped = createHullIssue({ held: true, firstWave: STORY_ROLLOUT.firstWave }), c = host({ stands: true, fighting: true, busy: false, t: 100 });
+  capped.tick(c.api); c.t = 100 + STORY_ROLLOUT.firstWave; capped.tick(c.api); assert.deepEqual(issues(c), [['issue', false]], 'never past firstWave s');
+  const none = createHullIssue({ held: true }), d = host({ stands: true, fighting: true, busy: false });
+  none.tick(d.api); assert.deepEqual(issues(d), [['issue', false]], 'without firstWave nothing waits');
 }
 // SKIP TUTORIAL, stage=N, story=N and a late start: the hull is out from the first frame and nothing is ever issued again
 {

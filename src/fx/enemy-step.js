@@ -220,7 +220,7 @@ export function createEnemyStep(host) {
   function spawnOne(queued) {
     const entry = host.creatures?.()?.dress?.(queued) ?? queued, { type, sp } = entry;   // ?creatures=pearl dresses a mapped type in its Pearl body (src/fx/creature-enemies.js)
     {
-      const spec = entry.spec ?? ENEMY_SPEC[type]; if (host.storyMode() && !entry.guard && !host.seenTypes.has(type)) { host.seenTypes.add(type); showContact(host.root, type); }   // first contact: src/fx/contact-card.js
+      const spec = entry.spec ?? ENEMY_SPEC[type]; if (host.storyMode() && !entry.guard && !host.seenTypes.has(type)) { host.seenTypes.add(type); showContact(host.root, type, spec.pearl); }   // first contact: src/fx/contact-card.js (a Pearl body's card is its tier's)
       const creatures = spec.body ? host.creatures?.() : null;
       const obj = creatures ? creatures.proxy(entry) : (entry.squad ? makeDotSquad : makeDotEnemy)(type, { walker: CREATURE_TINTS[type], walkerHi: accentFor(type) }, entry.dens, entry.squad);
       const size = spec.size * 0.7;

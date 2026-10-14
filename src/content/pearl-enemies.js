@@ -1,7 +1,8 @@
 // THE STORY MODE WITH THE CUTIS-MAKU PEARL SET AS ITS ENEMIES (owner, 2026-10-13: "let's try regular story mode, but we replace the enemies with the
 // Cutis-Maku-Pearl set"; spec docs/superpowers/specs/2026-10-13-pearl-enemies-design.md). Pure data: Stalheart's copy of the Pearl set, which game type
 // each tier draws, the bodies' sizes and how a body keeps up with its record. The rules are src/domain/pearl-bodies.js; the drawing is
-// src/fx/creature-pearl.js through src/fx/creature-bodies.js; the switch is ?creatures=pearl (src/fx/creature-enemies.js).
+// src/fx/creature-pearl.js through src/fx/creature-bodies.js; the story's default enemies since 2026-10-14 (src/platform/game-flags.js creaturesFlag),
+// ?creatures=dots for the old dot clouds (src/fx/creature-enemies.js).
 //
 // THE SET. Jelly-Baby src/cutis/swarm/tiers.ts at 3a985e1 (the owner's own project; GPL-3.0, see src/fx/cutis-maku/LICENSE), PEARL_TIERS ported as data:
 // the belt ladder white, yellow, orange, blue, green, purple, brown, black, each with its skin and core tint, the lab's body radius (`labR0`, the ladder's
