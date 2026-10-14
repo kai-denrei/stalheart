@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "id": "2026-10-14-bestiary-terminal-brainstorm",
+  "date": "2026-10-14",
+  "type": "decision",
+  "status": "accepted",
+  "title": "The terminal and the bestiary, decided in the brainstorm: one module for the game and the lab, three pieces with the enemies first, this run's contacts in full and earlier runs' as silhouettes, the eight Pearl tiers plus the kit creatures, packs hunting a lure, Isao's voice; a stage scene on a render target under a terminal frame",
+  "context": "Owner, 2026-10-14: 're-vamp the Units section; Vivarium, Bestiary, Compendium, we will find it a better name and 1) display all the unlocked units in their full glory, enemies at high resolution with smooth animations displaying their movement patterns. 2) each friendly unit as a wireframe (default) and toggleable full detail with animation diorama, each with a small lore-friendly explanation as to what it does, 3) each sentry with wireframe, toggleable full detailed version with shooting animations against pearl-core enemies. All this as if was accessed from a Terminal as a screen-within-a-screen, with HUD elements and a border and CRT like display effects.' The brainstorm's answers, as the spec records them (docs/superpowers/specs/2026-10-14-bestiary-terminal-design.md, its first two paragraphs).",
+  "outcome": "Decided in the brainstorm (the owner's answers): one module serves the game and the lab (the lab with everything unlocked); three pieces, the enemies first (this spec), the friendly units and the sentries as later pieces that become pages of the same terminal; opened from the base console and a key, no HUD element ('we keep the screen hud to minimal'); unlocked is both: this run's contacts in full, earlier runs' entries as silhouettes with a 'no recent reading' note; one entry per Pearl tier (eight) plus the kit creatures (the Cutis-Maku, the Reeds, the Nih-Dairia) as entries of their own once met; each stage a small pack (three or six) hunting a lure, the hard-cored tiers with a warning that they cannot be rammed; the text in Isao's voice, dry, slightly humorous, science-fiction references here and there, not overdone. Approach chosen: a stage scene on a render target under a terminal frame, one WebGL context, the game paused under it. The working name is THE BESTIARY until the owner finds a better one; the code calls the screen the terminal and the page the bestiary so the name can change in content alone. Out of this piece: the friendly units and the sentries (pieces 2 and 3), the better name, Isao's recordings for the new lines, the Nih-Dairia's stage, the carousel's retirement, a HUD element of any kind.",
+  "alternatives": [
+    "The terminal's frame over the live world (the game still drawn under a transparent frame): not chosen. The spec keeps the brainstorm's reasons in the brainstorm itself; read from the chosen design, the game's own frame would keep rendering under the terminal and the bodies would be seen at the game's distance and levels rather than at the high hull on a stage of their own.",
+    "A page of its own (the bestiary as its own route with its own boot and renderer): not chosen; read from the chosen design, it would leave the run to read an entry, where the chosen terminal pauses the run under one WebGL context and serves the lab from the same module.",
+    "The stage scene on a render target under the terminal frame, one WebGL context, the game paused under it: chosen."
+  ],
+  "evidence": [
+    "docs/superpowers/specs/2026-10-14-bestiary-terminal-design.md (commit 575329c5 on branch bestiary), its first two paragraphs and 'Out of this piece'"
+  ],
+  "supersedes": []
+}

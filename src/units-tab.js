@@ -45,6 +45,7 @@ import { SENTRY_TUNE } from './sentry.js';
 import { FONT_NAMES, TYPE_KNOBS, TYPE_FEEL, makeTypeParams, loadTypeFeel, saveTypeFeel,
   formatTypeCode, applyFontPack, currentFontPack, currentShoutPack } from './fonts.js';
 import { LORE, LORE_WORLD, loreText, loreAll } from './lore.js';
+import { createTerminalScreen } from './fx/terminal-screen.js';
 
 let roundTex = null;
 function roundDotTex() {
@@ -619,6 +620,17 @@ export function initUnitsTab(root) {
     b.addEventListener('click', () => setGroup(g));
     groupRow.appendChild(b);
   }
+  // THE TERMINAL AND THE BESTIARY (owner, 2026-10-14: "re-vamp the Units section ... as if was accessed from a Terminal as a screen-within-a-
+  // screen"; src/fx/terminal-screen.js): the game's own terminal over the bench, every entry full, the stage drawn by this bench's renderer
+  // while the bench itself holds still under it; the carousel stays for the models. B opens it too while this tab is up.
+  let benchHeld = false;
+  const terminal = createTerminalScreen(root, { renderer: () => renderer, pause: { get: () => benchHeld, set: (v) => { benchHeld = v; } }, all: true, canOpen: () => active });
+  {
+    const b = document.createElement('button');
+    b.id = 'units-bestiary'; b.type = 'button'; b.textContent = 'BESTIARY'; b.title = 'the terminal: the bestiary (B)';
+    b.addEventListener('click', () => terminal.open());
+    groupRow.appendChild(b);
+  }
 
   function setEngine(on) {
     if (on === running) return;
@@ -821,6 +833,7 @@ export function initUnitsTab(root) {
     const now = performance.now();
     const dt = Math.min((now - last) / 1000, 0.1);
     last = now;
+    if (terminal.frame(dt)) return;   // the terminal over the bench: its stage is the only render
     clock += dt;
     // Drive the unit's own idle animation, so a turret sweeps here as in game.
     // Switchable off: a sweeping turret cannot be judged against the hull
@@ -1576,10 +1589,11 @@ export function initUnitsTab(root) {
       spin:state.spin,animation:state.sweep,demo:state.sweep&&!!demo,range:range?.state()??null,lab:labKey,inset:demo?.sat?{satR:demo.satR,lit:(()=>{if(!insetRenderer)return -1;const gl=insetRenderer.getContext();insetRenderer.render(insetScene,insetCam);let m=0;const px=new Uint8Array(4),c=insetRenderer.domElement;for(let i=0;i<9;i++)for(let j=0;j<9;j++){gl.readPixels(Math.round(c.width*(0.1+0.1*i)),Math.round(c.height*(0.1+0.1*j)),1,1,gl.RGBA,gl.UNSIGNED_BYTE,px);m=Math.max(m,px[0]+px[1]+px[2]);}return m;})(),tris:insetTris}:null,
       missiles:missiles.map(m=>({config:m.config,t:m.t,name:m.mesh.name,position:m.mesh.position.toArray(),ignition:m.mesh.getObjectByName('EXHAUST_FX').visible})) }),
     fire: () => currentEntry?.kind==='tower'?firePattern():fireShell(),
+    bestiary: terminal.test,
   };
 
   return {
-    dispose(){active=false;missilesDisposed=true;clear();missilePool?.dispose();},
+    dispose(){active=false;missilesDisposed=true;clear();missilePool?.dispose();terminal.dispose();},
     setActive(on) {
       active = on;
       if (on) { resize(); show(); }

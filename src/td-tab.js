@@ -50,7 +50,7 @@ import { bfsDist, BLOCKED, PATH, ROOM } from './dungeon.js';
 import { buildGameWorld, readStoryQuery, STORY_SOUNDS, takeControlPose } from './platform/story-world.js';
 import { createUnlockHost } from './fx/story-views.js';
 import { buildReadout } from './fx/build-readout.js';
-import { createStoryMonitor } from './fx/story-monitor.js'; import { createGroundFeed } from './fx/ground-feed.js';
+import { createStoryMonitor } from './fx/story-monitor.js'; import { createGroundFeed } from './fx/ground-feed.js'; import { createTerminalScreen } from './fx/terminal-screen.js';
 import { createDaylight } from './fx/daylight.js';
 import { createStoryScope, createScopeFeed } from './fx/story-scope.js';
 import { createSyntheticModal } from './fx/synthetic-modal.js';
@@ -346,6 +346,8 @@ export function initTdTab(root) {
   // every play() is a silent no-op -- the game never waits on audio.
   const sfx = makeAudio({ seed: 1, sounds:{...SOUNDS,...BREACH_SOUNDS,...(isStoryRoute(location.search)?STORY_SOUNDS:{})} });   // every story page (a bare one has no world=story)
   const gameBreaches=createGameBreaches(scene,camera,sfx,{look:()=>params.look}), diveCuts = flags.cuts === 'dive', groundFeed = createGroundFeed(root, { busy: () => !!storyMonitor?.on() || laserStation.seated() || (shotActive() && shotId() !== 'reveal'), blocked: () => paused || !!syntheticModal?.isOpen(), heart: () => (dungeon ? graph.normals[dungeon.heart] : null), cellSide: () => cellSide });   /* &cuts=dive: the old dives, not SAT-3's feed (src/fx/ground-feed.js) */
+  const bestiary = createTerminalScreen(root, { renderer: () => renderer, pause: { get: () => paused, set: (v) => { paused = v; } }, under: () => !!storyBase?.inside?.('stalheart', player.pos), spot: () => dungeon?.heart ?? -1,   /* THE TERMINAL AND THE BESTIARY (owner, 2026-10-14; src/fx/terminal-screen.js): B, and the console under the Stålheart's gantry */
+    canOpen: () => !!story && automated() && !pilotMode && !laserStation.seated() && !shotActive() && !player.won && !story.debrief?.isOpen() && !gunshipBriefing?.isOpen() && !syntheticModal?.isOpen() && !laserStation.briefingOpen() && !story.hull?.held() });
   // SOL-82 IN THE ARSENAL (src/fx/laser-station.js): the pass clock, the seat, the beam through the game's own paths
   const laserStation = createLaserStation(root, scene, {
     online: LASER_GAME.online || flags.laser === 'online', get mobile() { return mobileShell; },
@@ -4939,7 +4941,7 @@ export function initTdTab(root) {
   function frame(dt, simSkip) {
     // paused: keep presenting the frozen frame (both views), zero sim.
     // lastFrame keeps updating above so resume has no dt spike.
-    if (paused) {
+    if (paused) { if (!simSkip && bestiary.frame(dt)) return;   /* the terminal over the paused game: its stage is the only render (src/fx/terminal-screen.js) */
       if (!simSkip) {
         playerMesh.visible = params.view !== 'pov' && !deploy?.clip && !story?.hull?.held();   // an authored roll-out owns the hull on screen: ours would stand in it, turret sweeping; an unissued hull is not drawn
         postfx.render(); storyMonitor?.render(renderer, scene, towerSeekers.find((m) => m.pool === talonPool && m.by === pilot?.state.tower)?.mesh ?? null, cellSide, 0); groundFeed.render(renderer, scene, 0);
@@ -5165,6 +5167,7 @@ export function initTdTab(root) {
     buildFollowTank(dt);
     // the controls page, once, as the landing hands over (src/fx/controls-card.js)
     if (story) (controlsCard ??= createControlsCard(root, { mobile: mobileShell, briefing: () => (gunshipBriefing ??= createGunshipBriefing(root)).openPaused({ get: () => paused, set: (v) => { paused = v; } }) })).tick(automated() && !pilotMode && !laserStation.seated(), !shotActive() && story.beats.phase() !== 'landed');
+    bestiary.tick();   /* the console's prompt under the Stålheart's gantry and Isao's line about it (src/fx/terminal-screen.js) */
     // the chapter, NEXT, SKIP ALL (src/fx/tutorial-card.js)
     if (story && !storyQuery.skip && !showcaseMode) (skipCard ??= createTutorialCard(root, { search: location.search, from: story.chapter?.n ?? 0, skipLanding: () => /^arrival/.test(shotId() ?? '') && (endShot(), true) })).tick(story.beats.phase(), automated() && (!story.grow || !!sectorRun?.active()));
     // THE SHOWCASE: the montage cuts its own shots over this run (src/fx/showcase.js)
@@ -5968,6 +5971,7 @@ export function initTdTab(root) {
       fillGunshipCall: (n) => fillFromKill(gunshipRig.call, n, GUNSHIP_CALL),
       // the skip panel's enemies: a breach opens on the lane outside the gate if none is live, and they rise out of it staggered
       // (emergence only runs from a real breach)
+      bestiary: bestiary.test,   /* the terminal's harness: open, close, state, note(type) (src/fx/terminal-screen.js) */
       creatures: creatureEnemies.test, feedAt: (ci, hold = 30) => groundFeed.dive(null, new THREE.Vector3(...graph.normals[ci]), { hold }),   // the creature enemies' harness (src/fx/creature-enemies.js); SAT-3's feed over a cell (src/fx/ground-feed.js)
       spawnFodder: (n, type = 'amoeba') => { if (!story) return 0; if (!story.source?.alive) storyApi.breach(gunshipRig.far()); for (let i = 0; i < n; i++) storyApi.spawn(type, story.source.ci, { spread: 0.8, delay: i * 0.12 }); return n; },
       clearSector: () => {

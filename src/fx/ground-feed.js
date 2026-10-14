@@ -19,27 +19,10 @@
 import * as THREE from '../../vendor/three.module.js';
 import { createFeedSchedule, feedTimeline, feedPose, feedZoom, feedGrid, formatGrid, feedClock, seismicMagnitude } from '../domain/feed-schedule.js';
 import { GROUND_FEED } from '../content/ground-feed.js';
+import { createCrtPass, MONO_FEED } from './crt-pass.js';
 
-const VERT = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
-// the render target holds linear light: luminance, encoded, a little contrast, the grain, one dark line in three, the vignette, the
-// static mixed over all of it, then the phosphor's green
-const FRAG = `
-uniform sampler2D map; uniform vec2 res; uniform float time, stat, gain;
-varying vec2 vUv;
-float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
-void main() {
-  vec2 px = floor(vUv * res);
-  vec2 uv = vUv + vec2((hash(vec2(px.y, floor(time * 30.0))) - 0.5) * 0.03 * stat, 0.0);
-  vec3 c = texture2D(map, uv).rgb;
-  float l = pow(clamp(dot(c, vec3(0.2126, 0.7152, 0.0722)) * gain, 0.0, 1.0), 1.0 / 2.2);
-  l = clamp((l - 0.04) * 1.35, 0.0, 1.0);
-  l += (hash(px + floor(time * 24.0) * vec2(91.7, 37.3)) - 0.5) * 0.09;
-  l *= 0.7 + 0.3 * step(1.0, mod(px.y, 3.0));
-  vec2 d = (vUv - 0.5) * vec2(1.2, 1.0); l *= 1.0 - smoothstep(0.38, 0.78, length(d));
-  float sn = hash(floor(px / 2.0) + floor(time * 30.0) * vec2(17.1, 3.7));
-  l = mix(l, sn * 0.85, stat);
-  gl_FragColor = vec4(vec3(0.42, 1.0, 0.45) * l + vec3(0.015, 0.04, 0.02), 1.0);
-}`;
+// the look (luminance, grain, one dark line in three, vignette, static, the phosphor's green) is src/fx/crt-pass.js's mono pass since 2026-10-14
+// (the terminal shares it); the numbers are the feed's own, unchanged (MONO_FEED, test/crt-pass.mjs)
 
 // the page's own states that hide the box (styles.css): the seat's glide and the showcase montage; the quad would draw without its frame
 const hiddenByPage = (cl) => cl.contains('seat-gliding') || cl.contains('showcase-on');
@@ -54,11 +37,9 @@ export function createGroundFeed(root, host) {
   const hud = box.querySelector('.hud'), ctx = hud.getContext('2d');
   const el = (s) => box.querySelector(s), subEl = el('.sub'), gridEl = el('.grid'), zoomEl = el('.zoom'), seisEl = el('.seis'), clockEl = el('.clock');
   el('.title').textContent = k.title;
-  const cam = new THREE.PerspectiveCamera(30, 16 / 10, 0.01, 4), tgt = new THREE.Vector3(), mark = new THREE.Vector3(), size = new THREE.Vector2();
+  const cam = new THREE.PerspectiveCamera(30, 16 / 10, 0.01, 4), tgt = new THREE.Vector3(), mark = new THREE.Vector3();
   const rt = new THREE.WebGLRenderTarget(1, 1, { depthBuffer: true });
-  const uniforms = { map: { value: rt.texture }, res: { value: new THREE.Vector2(1, 1) }, time: { value: 0 }, stat: { value: 0 }, gain: { value: k.gain } };
-  const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FRAG, depthTest: false, depthWrite: false }));
-  quad.frustumCulled = false; const quadScene = new THREE.Scene(); quadScene.add(quad); const quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  const crt = createCrtPass({ ...MONO_FEED, gain: k.gain });
   const tl = {}, pose = { eye: [0, 0, 0], target: [0, 0, 0], up: [0, 0, 0], fov: 30 }, grid = {}, heartAt = [0, 1, 0];
   const rect = { x: 0, y: 0, w: 1, h: 1 };
   let measured = false, shown = false, frames = 0, lastT = 0, cpuMs = 0, due = 0, fresh = true, lastEv = null, lastZoom = -1, lastClock = -1, cellSide = 0.01, magnitude = 0;
@@ -70,7 +51,6 @@ export function createGroundFeed(root, host) {
     const dpr = renderer.getPixelRatio(), fw = Math.max(1, Math.round(rect.w * dpr)), fh = Math.max(1, Math.round(rect.h * dpr));
     if (rt.width !== fw || rt.height !== fh) rt.setSize(fw, fh);
     if (hud.width !== fw || hud.height !== fh) { hud.width = fw; hud.height = fh; }
-    uniforms.res.value.set(fw, fh);
     measured = true;
   }
   const show = (on) => { if (on === shown) return; shown = on; box.style.display = on ? '' : 'none'; if (on) { measured = false; fresh = true; } };
@@ -125,18 +105,15 @@ export function createGroundFeed(root, host) {
       due += dt; const step = 1 / k.feedHz;
       if (fresh || due >= step) { due = fresh ? 0 : Math.min(due - step, step); fresh = false; picture(renderer, scene, f); }
       // CSS px for the viewport and the scissor (three multiplies them by its pixel ratio)
-      uniforms.time.value += dt; uniforms.stat.value = tl.static;
-      renderer.autoClear = false; renderer.setScissorTest(true); renderer.setViewport(rect.x, rect.y, rect.w, rect.h); renderer.setScissor(rect.x, rect.y, rect.w, rect.h);
-      renderer.render(quadScene, quadCam);
-      renderer.setScissorTest(false); renderer.getSize(size); renderer.setViewport(0, 0, size.x, size.y); renderer.autoClear = true;
+      crt.step(dt, tl.static); crt.render(renderer, rt, rect);
       cpuMs += (performance.now() - t0 - cpuMs) * 0.05;   // the feed's CPU side, smoothed (its GPU side is in the perf overlay's frame)
       // the HUD's numbers, rewritten only when they change
       const zq = Math.round(feedZoom(tl.span, k) * 10); if (zq !== lastZoom) { lastZoom = zq; zoomEl.textContent = `ZOOM ×${(zq / 10).toFixed(1)}`; }
       const cq = Math.floor(f.t); if (cq !== lastClock) { lastClock = cq; clockEl.textContent = feedClock(f.t); }
     },
     state: () => ({ on: shown, up: sched.up(), waiting: sched.waiting(), kind: lastEv?.kind ?? null, label: lastEv ? subEl.textContent : null, frames, ...sched.stats(),
-      t: +lastT.toFixed(2), cpuMs: +cpuMs.toFixed(2), zoom: lastZoom / 10, grid: gridEl.textContent, seismic: +magnitude.toFixed(1), clock: clockEl.textContent, static: +(uniforms.stat.value).toFixed(2),
+      t: +lastT.toFixed(2), cpuMs: +cpuMs.toFixed(2), zoom: lastZoom / 10, grid: gridEl.textContent, seismic: +magnitude.toFixed(1), clock: clockEl.textContent, static: +crt.static().toFixed(2),
       box: shown ? { w: rect.w, h: rect.h } : null, cam: shown ? { eye: pose.eye.slice(), target: pose.target.slice(), fov: +pose.fov.toFixed(2) } : null }),
-    dispose() { removeEventListener('resize', remeasure); box.remove(); rt.dispose(); quad.geometry.dispose(); quad.material.dispose(); },
+    dispose() { removeEventListener('resize', remeasure); box.remove(); rt.dispose(); crt.dispose(); },
   };
 }

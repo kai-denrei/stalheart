@@ -1,7 +1,8 @@
 // FIRST CONTACT (owner, 2026-10-02, seventh notes: "Some expose of the types of enemies, once encountered"). The first time a kind of
 // body rises in a story run, Isao's scanner logs it: a small card at the left edge with the creature's colour, its name, what it does
 // (src/enemyspec.js INTROS) and the two facts a driver needs, whether it goes under the treads and how much it takes. It never
-// pauses the game or covers the middle of the screen; cards that arrive together queue, one at a time. The UNITS bench has the rest.
+// pauses the game or covers the middle of the screen; cards that arrive together queue, one at a time. The UNITS bench has the rest, and the
+// terminal's bestiary (B, src/fx/terminal-screen.js) keeps each kind met, this run and across runs.
 import { CREATURE_TINTS, ENEMY_SPEC, INTROS } from '../enemyspec.js';
 import { isaoSpeak } from './isao-voice.js';
 
@@ -10,7 +11,7 @@ const SHOW_MS = 5200;
 export function showContact(root, type) {
   if (!ENEMY_SPEC[type] || !root) return;
   const q = (root.__contacts ??= { queue: [], busy: false, log: [] });
-  q.log.push(type); q.queue.push(type);
+  q.log.push(type); q.queue.push(type); q.note?.(type);   // the bestiary's sighting (onContact)
   if (!q.busy) next();
   function next() {
     const t = q.queue.shift(); if (!t) { q.busy = false; return; }
@@ -27,6 +28,10 @@ export function showContact(root, type) {
     setTimeout(() => { card.classList.add('out'); setTimeout(() => { card.remove(); next(); }, 450); }, SHOW_MS);
   }
 }
+
+// THE BESTIARY'S SIGHTINGS (owner, 2026-10-14; src/fx/terminal-screen.js): a kind's first rise this page is also its sighting across runs, so
+// this is the one place it is noted; `fn(type)` is told each one
+export function onContact(root, fn) { (root.__contacts ??= { queue: [], busy: false, log: [] }).note = fn; }
 
 // the harness: every kind logged this page, in order
 export const contactsLogged = (root) => (root?.__contacts?.log ?? []).slice();

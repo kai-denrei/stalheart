@@ -311,6 +311,22 @@ export function createStoryBase(scene, { plan, placer, metres = 1, kit, skip = [
       }
       return null;
     },
+    // THE CONSOLE UNDER THE GANTRY (owner, 2026-10-14, the terminal and the bestiary: "opened from the base console and a key"; the hull drives
+    // under the Stålheart by the owner's rule of 2026-10-03, so it is not in SOLID_STRUCTURES and solidAt never sees it): whether a unit point
+    // stands inside a standing structure's model box seen from above, in its holder's own frame, `pad` scene units out. The box is measured
+    // once a tier, off the meshes' own bounding boxes
+    inside(id, p, pad = 0) {
+      const st = plan.structures.find((s) => s.id === id), r = st && records.get(id), root = r && (r.near ?? r.far);
+      if (!root || kOf(grown.structures, id, st) < 1 || r.holder.visible === false) return false;
+      if (!r.box || r.box.root !== root) {
+        r.holder.updateWorldMatrix(true, true);
+        const inv = new THREE.Matrix4().copy(r.holder.matrixWorld).invert(), box = new THREE.Box3(), b = new THREE.Box3(), m = new THREE.Matrix4();
+        root.traverse((o) => { if (!o.isMesh || !o.geometry?.attributes.position) return; if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); box.union(b.copy(o.geometry.boundingBox).applyMatrix4(m.multiplyMatrices(inv, o.matrixWorld))); });
+        r.box = { root, inv, scale: r.holder.matrixWorld.getMaxScaleOnAxis(), box };
+      }
+      const v = solidV.set(p[0], p[1], p[2]).applyMatrix4(r.box.inv), b = r.box.box, e = pad / r.box.scale;
+      return v.x >= b.min.x - e && v.x <= b.max.x + e && v.z >= b.min.z - e && v.z <= b.max.z + e;
+    },
     // THE BUILDINGS A WEAPON CAN BURN (SOL-82): every landmark that is standing, printed and shown, with where it stands on the
     // host's sphere. A structure still pending its print, or already concealed by a burn, is not there to be hit.
     standing: () => plan.structures.filter((s) => (kOf(grown.structures, s.id, s)) >= 1 && records.get(s.id)?.holder?.visible !== false)
