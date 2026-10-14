@@ -4964,3 +4964,77 @@ body.seat-gliding #seat-vignette { display: none; }
 @keyframes of-line { 0% { opacity: 0; translate: -50% 8px; } 8% { opacity: 1; translate: -50% 0; } 85% { opacity: 1; } 100% { opacity: 0; } }
 #orbital-finale .of-count { position: absolute; left: 16px; top: 14px; margin: 0; font: 13px/1 ui-monospace, monospace; letter-spacing: 0.14em; color: #62978d; }
 #orbital-finale .of-skip { position: absolute; right: 16px; bottom: 14px; margin: 0; font: 12px/1 ui-monospace, monospace; letter-spacing: 0.14em; color: #62978d; }
+
+/* THE TERMINAL AND THE BESTIARY (owner, 2026-10-14: "as if was accessed from a Terminal as a screen-within-a-screen, with HUD elements and a
+   border and CRT like display effects"; src/fx/terminal-screen.js). The stage's box is the overlay's one hole: transparent, its box-shadow
+   paints the rest of the window black under the panels; the host's canvas shows through it, drawn by the stage and the CRT pass. It sits on
+   the page's body over the shell's own chrome; the host's other overlays hide while it is open (.terminal-open on the host's root), the
+   canvas's holder (#td-app, #units-app) excepted. */
+.terminal-open > :not(#td-app):not(#units-app) { visibility: hidden !important; }
+#terminal { position: fixed; inset: 0; z-index: 150; overflow: hidden; color: #cfe9e2; font: 17px/1.3 var(--font-ui, ui-monospace), ui-monospace, Menlo, monospace; letter-spacing: 0.04em;
+  text-shadow: 0 0 6px rgba(120, 255, 210, 0.28); pointer-events: auto; }
+#terminal[hidden] { display: none; }
+#terminal::after { content: ''; position: absolute; inset: 0; z-index: 5; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.16) 0 1px, transparent 1px 3px), radial-gradient(ellipse at center, transparent 62%, rgba(0, 0, 0, 0.55) 100%); }
+#terminal .t-frame { position: absolute; inset: clamp(8px, 2vmin, 22px); display: grid; grid-template-columns: minmax(170px, 19%) minmax(0, 1fr) minmax(250px, 27%);
+  grid-template-rows: auto minmax(0, 1fr) auto; gap: 12px; padding: 12px 14px; }
+#terminal .t-frame::before { content: ''; position: absolute; inset: 0; z-index: 2; border: 1px solid rgba(150, 230, 205, 0.42); border-radius: 6px; pointer-events: none;
+  box-shadow: inset 0 0 22px rgba(80, 255, 200, 0.07), 0 0 14px rgba(80, 255, 200, 0.08); }
+#terminal .t-corner { position: absolute; z-index: 3; width: 16px; height: 16px; border: 2px solid #8ff3d8; pointer-events: none; }
+#terminal .t-corner.tl { left: -3px; top: -3px; border-right: 0; border-bottom: 0; }
+#terminal .t-corner.tr { right: -3px; top: -3px; border-left: 0; border-bottom: 0; }
+#terminal .t-corner.bl { left: -3px; bottom: -3px; border-right: 0; border-top: 0; }
+#terminal .t-corner.br { right: -3px; bottom: -3px; border-left: 0; border-top: 0; }
+#terminal .t-head, #terminal .t-list, #terminal .t-card, #terminal .t-foot { position: relative; z-index: 1; }
+#terminal .t-head { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 22px; padding-bottom: 6px; border-bottom: 1px solid rgba(150, 230, 205, 0.22); }
+#terminal .t-name { font-size: 1.35em; letter-spacing: 0.16em; color: #eafff7; }
+#terminal .t-hud { display: flex; gap: 18px; flex-wrap: wrap; color: #6f9a8f; font-size: 0.85em; flex: 1; }
+#terminal .t-close { background: none; border: 1px solid rgba(150, 230, 205, 0.35); color: inherit; font: inherit; line-height: 1; padding: 0 8px; cursor: pointer; }
+#terminal .t-list { grid-column: 1; grid-row: 2; margin: 0; padding: 0; list-style: none; overflow-y: auto; }
+#terminal .t-row { display: grid; grid-template-columns: 10px 2.2em minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 4px 6px; cursor: pointer; border: 1px solid transparent; }
+#terminal .t-row .t-nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#terminal .t-row .t-n, #terminal .t-row .t-st { color: #6f9a8f; font-size: 0.85em; }
+#terminal .t-row.on { border-color: rgba(150, 230, 205, 0.55); background: rgba(80, 255, 200, 0.08); }
+#terminal .t-row[data-state="unseen"] { cursor: default; color: #4d625d; }
+#terminal .t-row[data-state="unseen"] .t-sw { opacity: 0.25; }
+#terminal .t-row[data-state="silhouette"] .t-nm { color: #9bb3ad; }
+#terminal .t-sw { display: inline-block; width: 10px; height: 10px; background: var(--sw); box-shadow: 0 0 6px var(--sw); }
+#terminal .t-stage { grid-column: 2; grid-row: 2; position: relative; z-index: 0; background: transparent; box-shadow: 0 0 0 300vmax #020405; border-radius: 3px; }
+#terminal .t-stage::after { content: ''; position: absolute; inset: -1px; border: 1px solid rgba(150, 230, 205, 0.35); border-radius: 3px; pointer-events: none; }
+#terminal .t-stage-hud { position: absolute; left: 10px; right: 10px; top: 8px; display: flex; justify-content: space-between; font-size: 0.85em; color: #a8d9cc; pointer-events: none; }
+#terminal .t-pack { pointer-events: auto; cursor: pointer; }
+#terminal .t-pack b { font-weight: normal; padding: 0 3px; color: #5f8279; }
+#terminal .t-pack b.on { color: #eafff7; border-bottom: 1px solid #8ff3d8; }
+#terminal .t-stage-hud[data-mode="none"] .t-pack { visibility: hidden; }
+#terminal .t-nosig { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); text-align: center; color: #cfe9e2; letter-spacing: 0.2em; pointer-events: none; }
+#terminal .t-card { grid-column: 3; grid-row: 2; overflow-y: auto; padding-right: 4px; }
+#terminal .t-c-head { color: #6f9a8f; font-size: 0.85em; letter-spacing: 0.12em; }
+#terminal .t-c-name { display: flex; align-items: center; gap: 10px; margin: 6px 0 2px; font-size: 1.5em; letter-spacing: 0.1em; color: #eafff7; }
+#terminal .t-c-name .t-sw { width: 14px; height: 14px; }
+#terminal .t-card[data-state="unseen"] .t-c-name .t-sw { opacity: 0.25; box-shadow: none; }
+#terminal .t-c-group { color: #8fb8ad; font-size: 0.9em; margin-bottom: 10px; }
+#terminal .t-data { width: 100%; border-collapse: collapse; font-size: 0.8em; margin-bottom: 8px; }
+#terminal .t-data th { text-align: left; font-weight: normal; color: #5f8279; border-bottom: 1px solid rgba(150, 230, 205, 0.2); padding: 2px 4px 2px 0; }
+#terminal .t-data td { padding: 2px 4px 2px 0; }
+#terminal .t-data td.t-cored { color: #ffb347; }
+#terminal .t-met { color: #8fb8ad; font-size: 0.85em; margin-bottom: 8px; }
+#terminal .t-warn { color: #ffb347; text-shadow: 0 0 8px rgba(255, 179, 71, 0.45); border: 1px solid rgba(255, 179, 71, 0.5); padding: 4px 6px; margin-bottom: 10px; font-size: 0.9em; }
+#terminal .t-warn.blink { animation: t-blink 0.9s steps(2, jump-none) 1; }
+@keyframes t-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.15; } }
+#terminal .t-text p { margin: 0 0 8px; color: #dff3ec; }
+#terminal .t-note { color: #a8c9c0; letter-spacing: 0.12em; border-top: 1px dashed rgba(150, 230, 205, 0.3); padding-top: 8px; }
+#terminal .t-date { white-space: nowrap; }
+#terminal .t-foot { grid-column: 1 / -1; display: flex; justify-content: space-between; padding-top: 6px; border-top: 1px solid rgba(150, 230, 205, 0.22); color: #8fb8ad; font-size: 0.85em; }
+@media (max-width: 760px) {
+  #terminal .t-frame { grid-template-columns: minmax(120px, 34%) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr) auto; }
+  #terminal .t-list { grid-row: 2 / 4; }
+  #terminal .t-stage { grid-column: 2; grid-row: 2; }
+  #terminal .t-card { grid-column: 2; grid-row: 3; }
+}
+@media (prefers-reduced-motion: reduce) { #terminal .t-warn.blink { animation: none; } }
+/* the console's prompt under the Stålheart's gantry: the controls card's style, one line at the bottom of the view */
+#terminal-prompt { position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); z-index: 40; max-width: min(520px, calc(100vw - 32px)); padding: 6px 12px; text-align: center;
+  background: rgba(8, 12, 16, 0.86); border: 1px solid rgba(220, 235, 240, 0.28); color: #dfe8ec; font: 12px/1.45 ui-monospace, Menlo, monospace; pointer-events: none; }
+#terminal-prompt[hidden], #terminal-prompt .t-isao[hidden] { display: none; }
+#terminal-prompt .t-key { font-weight: 700; letter-spacing: 0.14em; }
+#terminal-prompt .t-isao { margin-bottom: 4px; color: #bfe6dc; }

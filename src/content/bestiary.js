@@ -96,22 +96,23 @@ export const CREATURE_SPEC = freeze({ 'nih-dairia': { hp: HUGE.hp, speed: HUGE.s
 
 // THE STAGE (section 4): `packSizes` the pack (Enter toggles); `lure` the lemniscate (`radius` m to each tip, a turn each `period` s; it
 // turns up to 1 + `boost` times faster as the nearest body closes and is never left within `ahead` m of it); `pack` the seats, `ring` m round
-// a spot `back` m behind the lure's start; `orbit` the camera (`radius` m out, `height` m up, a turn each `period` s, `fov` degrees, looking
-// `lookUp` m over the centre); `disc` the bent ground (radius m, colour); `lureColour` the lure's glow; `level` the kit's level forced
+// a spot `back` m behind the lure's start; `orbit` the camera (`radius` m out, `height` m up, a turn each `period` s, `fov` degrees) round
+// its focus, `lookUp` m over the ground: the pack's middle with `lure` of the way to the lure, followed over `smooth` s (the disc's centre
+// while the stage is empty), so the pack stays in the frame as it hunts; `disc` the bent ground (radius m, colour); `lureColour` the lure's glow; `level` the kit's level forced
 // (0 the high hull, src/fx/cutis-maku/geometry.js lod.force) with the high cap lifted; `walk` the share of its type's paced walk a body's
 // record keeps behind the lure; `creatureTier` the kit creature's tier staged (src/content/creature-enemies.js CREATURE_TIERS.cutis);
-// `silhouette` the flat colour of a pack met in an earlier run only
+// `silhouette` the flat colour of a pack met in an earlier run only, in linear light (near black: the lit ground is ~0.02-0.03 linear)
 export const BESTIARY_STAGE = freeze({
   packSizes: [3, 6],
   lure: { radius: 15, period: 36, ahead: 6, boost: 2.5 },
   pack: { back: 9, ring: 5 },
-  orbit: { radius: 44, height: 17, period: 96, fov: 38, lookUp: 1.5 },
+  orbit: { radius: 34, height: 21, period: 96, fov: 38, lookUp: 1.5, lure: 0.35, smooth: 1.2 },
   disc: { radius: 36, colour: 0x2a3440, rim: 0x3c4b58 },
   lureColour: 0x8ff3ff,
   level: 0,
   walk: 1,
   creatureTier: 'small',
-  silhouette: [0.035, 0.04, 0.05],
+  silhouette: [0.003, 0.004, 0.006],
 });
 
 // the terminal's CRT (src/fx/crt-pass.js): colour, not the feed's mono green; a faint cool phosphor cast and a little more light

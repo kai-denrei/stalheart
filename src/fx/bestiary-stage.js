@@ -12,9 +12,10 @@
 // THE PACK HUNTS. Each body has a record, as in the game: the record walks at the lure at its type's paced walk (the game's pearlSpeed, at
 // the sector's pace; the Cutis-Maku its tier's speed), held under `walk` of the lure's mean speed so the pack chases rather than corners,
 // a little apart from the others, and the body follows its record with the family's own track() (the gait, the stalks, the seek, the turn).
-// The lure (src/domain/bestiary.js lureStep) keeps ahead of the nearest record. THE CAMERA orbits the disc's centre slowly; the planet's bend
+// The lure (src/domain/bestiary.js lureStep) keeps ahead of the nearest record. THE CAMERA orbits slowly round the pack's middle (a share
+// of the way to the lure, followed smoothly; the disc's centre when the stage is empty), so the hunt stays in the frame; the planet's bend
 // is the game's (uPlanetR, the kit's shader), so the bodies bend as in play. SILHOUETTE (met in an earlier run only): every membrane drawn
-// flat dark (a define in the stage's own materials, set before the kit's tone mapping; the game's family is a different instance and never
+// flat dark and near opaque (a define in the stage's own materials, set before the kit's tone mapping; the game's family is a different instance and never
 // sees it), the pearls hidden, the lure off.
 //
 // createBestiaryStage({ stage }) -> { show(entry, { state, pack }), setPack(n), step(dt, height), render(renderer, target), state(), dispose() }
@@ -88,22 +89,26 @@ export function createBestiaryStage({ stage = BESTIARY_STAGE } = {}) {
 
   // --- the silhouette: a define in the stage's own membrane materials (patched once each, before the kit's tone mapping) ------------------------
   const patched = new WeakSet();
+  let darkened = 0;   // the materials drawn dark at the last dress (the harness)
   function dress(dark) {
+    darkened = 0;
     const [r, g, b] = S.silhouette.map((v) => (Number.isInteger(v) ? v.toFixed(1) : String(v)));
     for (const root of [...pearl.roots(), ...(cutis?.roots() ?? [])]) root.traverse((o) => {
       const m = o.material;
       if (!o.isMesh || !m) return;
       if (!m.isShaderMaterial) { o.userData.bestiaryHidden = dark; return; }   // the pearls (src/fx/cutis-maku/hard-core.js): hidden in silhouette
       if (!m.fragmentShader.includes('#include <tonemapping_fragment>')) return;   // the contact shadow is dark already
-      if (!patched.has(m)) { patched.add(m); m.fragmentShader = m.fragmentShader.replace('#include <tonemapping_fragment>', `#ifdef ${SILHOUETTE}\n  gl_FragColor.rgb=vec3(${r},${g},${b});\n  #endif\n  #include <tonemapping_fragment>`); m.needsUpdate = true; }
+      if (!patched.has(m)) { patched.add(m); m.fragmentShader = m.fragmentShader.replace('#include <tonemapping_fragment>', `#ifdef ${SILHOUETTE}\n  gl_FragColor=vec4(${r},${g},${b},min(1.,gl_FragColor.a*2.));\n  #endif\n  #include <tonemapping_fragment>`); m.needsUpdate = true; }
       const on = !!m.defines?.[SILHOUETTE];
       if (on !== dark) { m.defines = { ...(m.defines ?? {}) }; if (dark) m.defines[SILHOUETTE] = 1; else delete m.defines[SILHOUETTE]; m.needsUpdate = true; }
+      if (dark) darkened++;
     });
   }
   const hideCores = () => { for (const root of pearl.roots()) root.traverse((o) => { if (o.userData.bestiaryHidden) o.visible = false; }); };
 
   // --- the pack ---------------------------------------------------------------------------------------------------------------------------
   const lureStart = () => { const p0 = lurePoint(0, L); return { phase: 0, dir: 1, x: p0[0], z: p0[1] }; };
+  const focus = [0, 0];
   let entry = null, mode = 'none', pack = S.packSizes[0], records = [], near = [], clock = 0, lureAt = lureStart(), family = null, type = null, kind = null;
   const lureLen = (() => { let s = 0; const a = [0, 0], b = [0, 0]; for (let k = 0; k < 400; k++) { lurePoint(k / 400, L, a); lurePoint((k + 1) / 400, L, b); s += Math.hypot(b[0] - a[0], b[1] - a[1]); } return s; })();
   const lureMean = lureLen / L.period;
@@ -137,9 +142,13 @@ export function createBestiaryStage({ stage = BESTIARY_STAGE } = {}) {
 
   function step(dt, height = 600) {
     clock += dt;
-    // the camera's slow orbit round the disc's centre
+    // the camera's slow orbit round its focus: the pack's middle and a share of the way to the lure, followed smoothly
+    let fx = 0, fz = 0;
+    if (records.length) { for (const r of records) { fx += r.x; fz += r.z; } fx /= records.length; fz /= records.length; fx += (lureAt.x - fx) * S.orbit.lure; fz += (lureAt.z - fz) * S.orbit.lure; }
+    const k = 1 - Math.exp(-dt / S.orbit.smooth); focus[0] += (fx - focus[0]) * k; focus[1] += (fz - focus[1]) * k;
     const a = (clock / S.orbit.period) * Math.PI * 2;
-    cam.position.set(Math.cos(a) * S.orbit.radius, S.orbit.height, Math.sin(a) * S.orbit.radius); cam.lookAt(0, S.orbit.lookUp, 0); cam.updateMatrixWorld();
+    bendPoint(focus[0], S.orbit.lookUp, focus[1], PLANET_R, P); const ly = P[1];
+    cam.position.set(focus[0] + Math.cos(a) * S.orbit.radius, ly - S.orbit.lookUp + S.orbit.height, focus[1] + Math.sin(a) * S.orbit.radius); cam.lookAt(focus[0], ly, focus[1]); cam.updateMatrixWorld();
     lure.visible = mode === 'full'; track.visible = mode === 'full';
     if (mode === 'none') { pearl.step(dt, cam, height); cutis?.step(dt, cam, height); return; }
     // the records: at the lure (each a little to its own side), apart from one another; then the lure, held ahead of them all
@@ -174,7 +183,7 @@ export function createBestiaryStage({ stage = BESTIARY_STAGE } = {}) {
   return {
     show, setPack, step, render,
     state: () => ({ entry: entry?.id ?? null, mode, pack, type: kind === 'cutis' ? `cutis:${S.creatureTier}` : type, ...counts(), lure: mode === 'full' ? [+lureAt.x.toFixed(2), +lureAt.z.toFixed(2)] : null,
-      nearest: records.length ? +Math.min(...records.map((r) => Math.hypot(r.x - lureAt.x, r.z - lureAt.z))).toFixed(2) : null, force: lod.force }),
+      dark: darkened, nearest: records.length ? +Math.min(...records.map((r) => Math.hypot(r.x - lureAt.x, r.z - lureAt.z))).toFixed(2) : null, force: lod.force }),
     dispose() { clear(); pearl.dispose(); cutis?.dispose(); for (const d of disposables) d.dispose(); },
   };
 }
