@@ -2240,7 +2240,7 @@ try{
  // jolts it; neither is ever inside the hull
  {const C=`${T}.creatures`;await evaluate(`${T}.showcase.ram(true)`);await delay(400);
   const used=new Set();
-  for(const [type,cored] of [['amoeba',false],['drifter',true]])for(let attempt=0;attempt<3;attempt++){
+  for(const [type,cored] of [['amoeba',false],['drifter',true]])for(let attempt=0;attempt<5;attempt++){   // five lanes since the full waves (2026-10-14): a body walks off its lane before the hull comes more often in a full crowd
    // a lane not used yet (a body that walked off its lane before the hull came is tried again elsewhere)
    let target=-1;for(const c of await evaluate(`${C}.ground().band.map(b=>b.cell)`)){if(used.has(c))continue;await evaluate(`${T}.placeTank(${c})`);await delay(80);for(const nb of await evaluate(`${C}.neighbours(${c})`)){await evaluate(`${C}.face(${nb})`);const a=await evaluate(`${C}.ahead(3)`);if(a>=0){target=a;break;}}if(target>=0){used.add(c);break;}}
    assert(target>=0,'an open lane three cells long beyond the gate');
@@ -2256,7 +2256,7 @@ try{
    // a live body never inside the hull; a dying puddle pinned in a crowded lane may be, for frames (logged: the known gap)
    const grazes=rec.filter(r=>r.h.overlap>0.05).length,dead=Math.max(...rec.map(r=>r.h.dead??0));console.log(`    a dying body at most ${dead.toFixed(3)} m inside`);
    assert(over<=0.2&&grazes<=2,`the hull is never inside a live body (at most ${over} m; ${grazes} frames over 5 cm)`);
-   if(!(first>3&&before>5)){assert(attempt<2,`the hull drove into the ${type} (${JSON.stringify({first,before})})`);continue;}
+   if(!(first>3&&before>5)){assert(attempt<4,`the hull drove into the ${type} (${JSON.stringify({first,before})})`);continue;}
    if(cored){assert(after<before*0.25,`a cored body stops the hull (${before} -> ${after})`);assert(j1.kicks>j0.kicks,'and jolts it');}
    else {assert(!alive,'the white body is run over (the game\'s ram)');assert(after>before*0.6,`and the hull hardly slows (${before} -> ${after})`);}
    break;}
