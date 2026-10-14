@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "id": "2026-10-14-swarm-lab-pearl-drive-death-fps",
+  "date": "2026-10-14",
+  "type": "change",
+  "status": "accepted",
+  "title": "The swarm lab's Pearl mode, round two: the hull drives on WASD, a body dies the game's death at the hull and only its freed slot seats a new one, and the line reads fps (owner, 2026-10-14, after playing the lab)",
+  "context": "The owner played labs.html#swarm in Pearl mode (2026-10-14-swarm-lab-pearl-mode) and asked for three changes, as the coordinator relayed them: (1) 'WASD motion for the tank in Pearl mode. The dot lane already drives the tank with the keyboard; enable that same drive in Pearl mode' (the spec's 'drive off' withdrawn), 'the tank moves and the bodies keep walking at it (their target follows the tank's position)'; (2) 'Bodies must not vanish at the tank': a body that reached the hull was freed and re-added at the far end with no death, and he saw them 'disappear by themselves'; (3) 'An fps counter ... the real frame rate when the crowd is heavy', shown as `fps 60`. The hull's contact with the bodies (creature-enemies.js hullAt / bodyContact) stays out of scope.",
+  "outcome": "src/labs/swarm-pearl.js: the hull is the dot lane's own drive, stepYardDrive (src/domain/yard-drive.js) on the tab's held keys (swarm-tab.js keyInput, shared with the dot lane's manual tank), in the Pearl lane's metres with the lane's walls and ends as its blockers (laneBoxes) and the dot lane's DRIVE_R over its TANK_R times the game's hull (8.5 m), set on the bent planet where it stands (hullFrame); the game-height camera is the game's tankViewPose over the hull wherever it drives (gamePose; GAME_POSE is that pose at the origin). Every record walks straight at the hull (walkToward) and aims at it; one within the dot lane's TOUCH over its TANK_R times the game's hull (9.3 m) is killed through the family (family.kill: the deflate, then CREATURE_DEATH's six-second fade, the slot freed by the family's step), and in the same step, once every freed slot is known, each of their records seats a new body at the far end of the file behind the hull (farSeat): the records hold at the slider's count, alive plus dying. state() reports alive, dying, deaths, reseated and dead (records whose body is dying; equal to dying, none waits). The line reads `fps N` beside step and draw: requestAnimationFrame's gaps over the last second of wall time, each less the draw probe's own renders in the frame before it (the probe is the lab's, not the game's); state().fpsRaw keeps the probe in. The loop-back (laneLoop) is gone. Headless on the Mac mini at 300 white: fps 49-52 (raw 47-49), step 0.7 ms, draw 3.5-4.2 ms; a body put on the hull died, 13 deaths and 1 re-seat over the next fade, 288 alive + 12 dying = 300; W drove the hull 4.5 m down the lane in a straight line. The hull does not shove the bodies (hullContact not wired) and does not hover (tankfeel not applied); the yard drive's own 265 m radius limit holds it in the first 265 m of the lane.",
+  "alternatives": [
+    "Freeing the dead body at once and seating its replacement on the same frame: the count would hold at alive alone, but the death would be cut short, which is the vanishing the owner saw; the slot is the body's until its puddle has faded, as in the game.",
+    "Records keeping their own lane column and walking +z past a moving hull: the owner asked for the bodies to keep walking at the hull, so the target is its position.",
+    "fps from the raw requestAnimationFrame gaps only: the draw probe's three extra renders and readbacks every 0.2 s are in those gaps and the game has no probe; both are kept, the probe taken out of the one on the line."
+  ],
+  "evidence": [
+    "STALHEART_BROWSER_PORT=18161 node scripts/browser-test.mjs --swarm-pearl (PASS: SWARM PEARL DEATH and DRIVE lines) in /Users/minikai/Dev/stalheart-swarm-lab",
+    "node test/swarm-lab-pearl.mjs (the walk, the touch, the far seat, the drive's blockers, the hull and the camera on the planet, the family's death and re-seat with the count held), node test/pearl-enemies.mjs, npm test (252), npm run check, npm run architecture green",
+    "src/labs/swarm-pearl.js walkToward, touched, farSeat, laneBoxes, hullFrame, gamePose, simulate, the fps windows; src/labs/swarm-tab.js keyInput and the hull ratios"
+  ],
+  "supersedes": []
+}
