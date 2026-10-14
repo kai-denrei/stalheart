@@ -3990,6 +3990,114 @@ const killReal=(Date.now()-t0)/1000;
  const after=await evaluate(`(()=>({mode:document.querySelector('#boss [data-k="mode"]').value,seat:!!document.querySelector('#boss #sentry-pilot')}))()`);
  assert(after.mode==='bait'&&after.seat,`Esc twice keeps the friend in the bait mode and the seat (${JSON.stringify(after)})`);
  current='boss-friends';await finish();
+ } else if(args.includes('--swarm-pearl')) {
+ // THE SWARM LAB'S PEARL MODE (owner, 2026-10-14; spec docs/superpowers/specs/2026-10-14-swarm-lab-pearl-design.md; src/labs/swarm-pearl.js): the enemy
+ // study's bodies switched to Pearl, white, 300 alive within five seconds of the count, the cost line's step and draw finite, the levels plus culled
+ // the 300, the sweep's four rows (printed: headless numbers are this machine's, not the owner's; the deltas between two sweeps are the value),
+ // then lumps off puts uNoise to 0 on every level's material. ROUND TWO (owner, 2026-10-14: WASD for the tank, bodies that die at it instead of
+ // vanishing, an fps reading): the count held as bodies alive plus dying, a body put on the hull dies and its slot seats a new one, the fps finite,
+ // W drives the hull down the lane. Headless frame times are printed, never asserted.
+ const S='window.__stalheartSwarm',P='window.__stalheartSwarmPearl';
+ await go('swarm-pearl','labs.html?sw=0&acceptance=1#swarm');
+ await until(`!!${S} && ${S}.state().built===100`,60000);
+ assert(await evaluate(`${S}.set("bodies","pearl")`));
+ await until(`!!${P}`,10000);
+ assert.equal(await evaluate(`${S}.state().built`),0,'the dot crowd stands down');
+ assert(await evaluate(`${P}.set("tier","white")`));
+ assert(await evaluate(`${S}.set("count",300)`));
+ const t0=Date.now();
+ await until(`${P}.state().records===300 && ${P}.state().live+${P}.state().dying===300`,5000);   // the head of the file reaches the hull within a second: alive plus dying
+ console.log(`SWARM PEARL 300 seated after ${Date.now()-t0} ms`);
+ await until(`Number.isFinite(${P}.state().step) && Number.isFinite(${P}.state().draw) && Number.isFinite(${P}.state().fps)`,15000);
+ {
+  const s=await evaluate(`${P}.state()`);
+  console.log('SWARM PEARL '+JSON.stringify({live:s.live,dying:s.dying,deaths:s.deaths,fps:+s.fps.toFixed(1),fpsRaw:+s.fpsRaw.toFixed(1),step:+s.step.toFixed(2),draw:+s.draw.toFixed(2),levels:s.levels,tris:s.tris,calls:s.calls,tiers:s.tiers}));
+  assert.equal(s.levels.reduce((a,b)=>a+b,0),s.live+s.dying,`the levels plus culled are the bodies drawn, alive and dying (${s.levels}; ${s.live} + ${s.dying})`);
+  assert(s.fps>0&&s.fpsRaw>0,'the frame rate reads');
+  assert.deepEqual(s.tiers,['white'],'one white swarm');
+  assert(s.calls>0&&s.tris>0,'the crowd is drawn');
+  await until('/\\d+ alive/.test(document.querySelector("#swarm [data-read]").textContent) && /fps \\d+/.test(document.querySelector("#swarm [data-read]").textContent)',5000);   // the cost line reads the crowd and the frame rate (it refreshes every 0.4 s)
+  current='swarm-pearl-lane';await finish();current='swarm-pearl';   // the lane at the game's height, 300 white
+ }
+ await evaluate(`${P}.sweep()`);
+ await until(`${P}.state().sweeping===false && ${P}.state().rows.length===4`,240000);
+ {
+  const s=await evaluate(`${P}.state()`);
+  assert.deepEqual(s.rows.map(r=>r.bodies),[100,300,600,1000],'the sweep\'s four counts');
+  for(const r of s.rows){assert(Number.isFinite(r.step)&&Number.isFinite(r.draw),`finite readings at ${r.bodies}`);assert(Math.abs(r.levels.reduce((a,b)=>a+b,0)-r.bodies)<=2,`levels plus culled at ${r.bodies}, the dying included (${r.levels}; four rounded means)`);}
+  assert.equal(s.table.split('\n').length,5,'a header and four rows');
+  assert.equal(await evaluate('document.querySelector("#swarm [data-ptable]").textContent'),s.table,'the table under the panel');
+  console.log('SWARM PEARL SWEEP (headless, this machine)\n'+s.table);
+  await until(`${P}.state().records===300 && ${P}.state().live+${P}.state().dying===300`,10000);   // the count back after the sweep
+  // SWEEPS="force=0;lumps=0,breath=0;every=4" sweeps again with each knob set (over the game's), printed beside the first: the deltas
+  for(const set of (process.env.SWEEPS||'').split(';').map(x=>x.trim()).filter(Boolean)){
+   await evaluate(`${P}.reset()`);
+   for(const [k,v] of set.split(',').map(kv=>kv.split('=')))assert(await evaluate(`${P}.set(${JSON.stringify(k)},${JSON.stringify(v==='0'&&['lumps','breath','shadow','core'].includes(k)?false:v)})`),`knob ${k}`);
+   await evaluate(`${P}.sweep()`);
+   await until(`${P}.state().sweeping===false && ${P}.state().rows.length===4`,240000);
+   console.log(`SWARM PEARL SWEEP ${set}\n`+(await evaluate(`${P}.state().table`)));
+  }
+  await evaluate(`${P}.reset()`);
+ }
+ assert(await evaluate(`${P}.set("lumps",false)`));
+ await until(`${P}.state().noise.length>0 && ${P}.state().noise.every(v=>v===0)`,5000);
+ assert(await evaluate(`${P}.state().breath.some(v=>v>0)`),'breath untouched by the lumps knob');
+ await evaluate(`${P}.reset()`);
+ await until(`${P}.state().noise.every(v=>v>0)`,5000);
+ // a body put on the hull dies the game's death, and only its freed slot seats a new body at the far end: the count held
+ {
+  const d0=await evaluate(`${P}.state()`);
+  assert.equal(await evaluate(`${P}.toTank(1)`),1);
+  await until(`${P}.state().deaths>${d0.deaths}`,5000);
+  await until(`${P}.state().dying>0`,5000);
+  await until(`${P}.state().reseated>${d0.reseated}`,60000);
+  const d1=await evaluate(`${P}.state()`);
+  console.log('SWARM PEARL DEATH '+JSON.stringify({deaths:d1.deaths-d0.deaths,reseated:d1.reseated-d0.reseated,live:d1.live,dying:d1.dying,records:d1.records}));
+  assert.equal(d1.records,300);assert.equal(d1.live+d1.dying,300,'the count held: alive plus dying');assert.equal(d1.dead,d1.dying,'every dead record is a dying body: none waits on a freed slot');
+ }
+ // THE SHELL (round three: "tank shell should be operational"): a body seated 40 m ahead of the hull, Space fires the game's shell, the landing kills it
+ {
+  const b0=await evaluate(`${P}.state()`);
+  assert.equal(await evaluate(`${P}.place(1,40)`),1);
+  await evaluate('dispatchEvent(new KeyboardEvent("keydown",{key:" "}))');await evaluate('dispatchEvent(new KeyboardEvent("keyup",{key:" "}))');
+  await until(`${P}.state().fired>${b0.fired}`,5000);
+  await until(`${P}.state().shellKills>${b0.shellKills}`,10000);
+  const b1=await evaluate(`${P}.state()`);console.log('SWARM PEARL SHELL '+JSON.stringify({fired:b1.fired-b0.fired,kills:b1.shellKills-b0.shellKills,blast:b1.blast,heat:+b1.heat.toFixed(2)}));
+  assert(b1.blast&&b1.blast.killed>=1&&b1.blast.exploded,'the game\'s landing: a kill and its burst');
+ }
+ assert(await evaluate(`${S}.set("count",3)`));await until(`${P}.state().records===3`,5000);   // a near-empty lane: the cruise is the drive's, not the crowd's
+ // WASD with the game's feel (round three, owner 2026-10-14: "the feel of the tank, speed, etc. should be the same as the game"): held W runs the
+ // hull up to the game's cruise (the boss-fight spec's 38 m/s at four seconds; past 35 here) down the lane, straight
+ {
+  const z0=(await evaluate(`${P}.state()`)).tank.z,w0=Date.now();
+  await evaluate('dispatchEvent(new KeyboardEvent("keydown",{key:"w"}))');
+  await until(`${P}.state().tank.speed>35`,20000);
+  const t=(await evaluate(`${P}.state()`)).tank;
+  await evaluate('dispatchEvent(new KeyboardEvent("keyup",{key:"w"}))');
+  console.log(`SWARM PEARL DRIVE cruise ${t.speed.toFixed(1)} m/s (ground ${t.ground.toFixed(1)}) after ${((Date.now()-w0)/1000).toFixed(1)} s wall, ${(z0-t.z).toFixed(0)} m down the lane`);
+  assert(t.z<z0-20&&Math.abs(t.x)<1e-6,'straight down the lane');
+  await until(`${P}.state().tank.speed<1`,20000);   // let go: it rolls to a stop
+ }
+ // THE BUMP (round three: "the bump impact with the creatures should be the same as the game"): a white body seated ahead, held W runs it over
+ // (the game's ram: its stagger and splat, the jolt); a brown cored one stops the hull and pushes it back (the recoil, the hull's push)
+ {
+  const hold=async(cond,ms)=>{await evaluate('dispatchEvent(new KeyboardEvent("keydown",{key:"w"}))');try{await until(cond,ms);}finally{await evaluate('dispatchEvent(new KeyboardEvent("keyup",{key:"w"}))');}await until(`${P}.state().tank.speed<1`,20000);};
+  const s0=await evaluate(`${P}.state()`);
+  assert.equal(await evaluate(`${P}.place(1,30)`),1);
+  await hold(`${P}.state().rams>${s0.rams}`,15000);
+  const s1=await evaluate(`${P}.state()`);console.log('SWARM PEARL RAM '+JSON.stringify({rams:s1.rams-s0.rams,contacts:s1.contacts-s0.contacts,jolt:s1.jolt,dying:s1.dying}));
+  assert(s1.dying>=1,'the run-over body dies the game\'s death');
+  assert(await evaluate(`${P}.set("tier","brown")`));await until(`${P}.state().tiers.includes("brown") && ${P}.state().records===3`,5000);
+  const c0=await evaluate(`${P}.state()`);
+  assert.equal(await evaluate(`${P}.place(1,30)`),1);
+  await hold(`${P}.state().coredTouches>${c0.coredTouches} && ${P}.state().pushMax>0`,15000);
+  const c1=await evaluate(`${P}.state()`);console.log('SWARM PEARL CORED '+JSON.stringify({coredTouches:c1.coredTouches-c0.coredTouches,pushMax:+c1.pushMax.toFixed(3),rams:c1.rams-c0.rams,drag:c1.drag,jolt:c1.jolt}));
+  assert.equal(c1.rams,c0.rams,'a cored body is never run over');
+ }
+ // back to dots: the Pearl lane goes, the dot crowd comes back
+ assert(await evaluate(`${S}.set("bodies","dots")`));
+ await until(`!${P} && ${S}.state().built===3`,10000);   // at the count the bump's checks left
+ await finish();
  } else if(args.includes('--boss')) {
  // THE BOSS LAB (2026-10-08; src/labs/boss-tab.js): Nih-Dairia at thirty metres on the story planet, the tank its prey. The solver steps,
  // the creature is boss-sized in the world, a driving tank inside its reach counts as held and is not taken, a parked one is.
