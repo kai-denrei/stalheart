@@ -4055,14 +4055,17 @@ const killReal=(Date.now()-t0)/1000;
   console.log('SWARM PEARL DEATH '+JSON.stringify({deaths:d1.deaths-d0.deaths,reseated:d1.reseated-d0.reseated,live:d1.live,dying:d1.dying,records:d1.records}));
   assert.equal(d1.records,300);assert.equal(d1.live+d1.dying,300,'the count held: alive plus dying');assert.equal(d1.dead,d1.dying,'every dead record is a dying body: none waits on a freed slot');
  }
- // WASD: the hull is the dot lane's drive on the held keys
+ // WASD with the game's feel (round three, owner 2026-10-14: "the feel of the tank, speed, etc. should be the same as the game"): held W runs the
+ // hull up to the game's cruise (the boss-fight spec's 38 m/s at four seconds; past 35 here) down the lane, straight
  {
-  const z0=(await evaluate(`${P}.state()`)).tank.z;
+  const z0=(await evaluate(`${P}.state()`)).tank.z,w0=Date.now();
   await evaluate('dispatchEvent(new KeyboardEvent("keydown",{key:"w"}))');
-  await until(`${P}.state().tank.z<${z0-3}`,15000);
+  await until(`${P}.state().tank.speed>35`,20000);
+  const t=(await evaluate(`${P}.state()`)).tank;
   await evaluate('dispatchEvent(new KeyboardEvent("keyup",{key:"w"}))');
-  const t=(await evaluate(`${P}.state()`)).tank;console.log('SWARM PEARL DRIVE '+JSON.stringify(t));
-  assert(Math.abs(t.x)<1e-6,'straight down the lane');
+  console.log(`SWARM PEARL DRIVE cruise ${t.speed.toFixed(1)} m/s (ground ${t.ground.toFixed(1)}) after ${((Date.now()-w0)/1000).toFixed(1)} s wall, ${(z0-t.z).toFixed(0)} m down the lane`);
+  assert(t.z<z0-20&&Math.abs(t.x)<1e-6,'straight down the lane');
+  await until(`${P}.state().tank.speed<1`,20000);   // let go: it rolls to a stop
  }
  // back to dots: the Pearl lane goes, the dot crowd comes back
  assert(await evaluate(`${S}.set("bodies","dots")`));

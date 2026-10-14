@@ -10,8 +10,10 @@
 // ENEMY_SPEC), exactly the options src/fx/creature-enemies.js makes the family with. Each body's record walks the lane toward the tank at its
 // paced spec's speed (PEARL_SPECS, the walk cap included) times the sector's pace, and waits for its body as the game's does (paceOf); the
 // family follows it with its plane-metre track(). THE TANK DRIVES AND THE BODIES DIE AT IT (owner, 2026-10-14, after a first look at the
-// lab: "WASD motion for the tank in Pearl mode"; "bodies must not vanish at the tank"): the hull is the dot lane's own drive, the yard model
-// (src/domain/yard-drive.js stepYardDrive) on the tab's held keys, in the Pearl lane's metres, placed on the planet where it stands; every
+// lab: "WASD motion for the tank in Pearl mode"; "bodies must not vanish at the tank"; round three: "the feel of the tank, speed, etc. should be
+// the same as the game"): the hull is the game's drive on a plane as the boss lab drives it (./boss/drive.js: the steering ease, the run-up to the
+// game's cruise, the pace; a double tap of W toggles cruise; the lane's walls are the game's friction), the game's hover and bank (tankfeel.js),
+// on the tab's held keys, in the Pearl lane's metres, placed on the planet where it stands, the game's camera behind it (./boss/game-cam.js); every
 // record walks at the hull wherever it is; one that comes within the dot lane's TOUCH of the hull (its ratio to the dot hull, times the game's
 // hull) dies the game's death (family.kill: the deflate, then CREATURE_DEATH's fade), and only once its slot is free is a new body seated at
 // the far end of the file, so the crowd holds at the slider's count. The hull's shove (the game's hullContact) is not wired; the ram's rules
@@ -45,7 +47,10 @@ import { STORY_RECIPE, STORY_SANITY, STORY_SCALE } from '../content/story-defaul
 import { CANYON, SECTORS, SECTOR_GENERATOR, SECTOR_HOLD, BACK_DOOR_SECTOR, BOTH_WALLS_SECTOR, SECTOR_DOOR, SECTOR_CANYON_AGAIN } from '../content/sectors.js';
 import { sectorDef } from '../domain/sectors.js';
 import { tankViewPose } from '../domain/camera-goal.js';
-import { stepYardDrive } from '../domain/yard-drive.js';
+import { createPlaneDrive } from './boss/drive.js';
+import { createGameCam } from './boss/game-cam.js';
+import { makeTankFeel, stepTankFeel, applyTankFeel } from '../tankfeel.js';
+import { FEEL } from '../feelstore.js';
 import { TANK_LENS } from '../domain/seat-view.js';
 import { computeWavePlan } from '../enemyspec.js';
 
@@ -117,12 +122,22 @@ export function walkToward(x, z, tx, tz, step) {
 export const touched = (x, z, tx, tz, radius) => (x - tx) ** 2 + (z - tz) ** 2 < radius * radius;
 // where a new body seats: the far end of the file behind the hull (its depth back from the loop-back end, `u` 0..1 a little nearer), on the lane
 export const farSeat = (tankZ, LANE, depth, u = 0) => Math.max(-LANE.len + 10, Math.min(LANE.end, tankZ + LANE.end - depth * (1 - 0.15 * u)));
-// the lane as the yard drive's blockers ([minX, minZ] to [maxX, maxZ]): the two walls and the lane's two ends (the ground runs from +60 m to -len)
-export function laneBoxes(LANE) {
-  const far = -LANE.len, near = 60, w = 40;
-  return [{ min: [-LANE.half - w, far - w], max: [-LANE.half, near + w] }, { min: [LANE.half, far - w], max: [LANE.half + w, near + w] },
-    { min: [-LANE.half - w, near], max: [LANE.half + w, near + w] }, { min: [-LANE.half - w, far - w], max: [LANE.half + w, far] }];
+// the lane as the drive's blocker (./boss/drive.js: (x, z) -> null | { nx, nz, depth }, the push out): the two walls and the lane's two ends (the
+// ground runs from +60 m to -len), the hull's centre held `clear` metres off them
+export function laneBlocker(LANE, clear) {
+  const lo = -LANE.half + clear, hi = LANE.half - clear, far = -LANE.len + clear, near = 60 - clear;
+  return (x, z) => {
+    let best = null;
+    const consider = (nx, nz, depth) => { if (depth > 0 && (!best || depth > best.depth)) best = { nx, nz, depth }; };
+    consider(1, 0, lo - x); consider(-1, 0, x - hi); consider(0, 1, far - z); consider(0, -1, z - near);
+    return best;
+  };
 }
+// THE HULL'S WALL CLEARANCE: the game tests the hull's centre against the rock's cells (hull-drive.js freeBlocked, then wallCushion), so its
+// centre reaches about the wall's line; here it is held half its radius off it
+export const WALL_CLEAR = 0.5 * STORY_SCALE.tankUnit * CELL;
+// two W taps closer than this toggle cruise (td-tab.js noteFastTap; ./boss-tab.js CRUISE_TAP)
+const CRUISE_TAP = 0.35;
 // the canyon's walls as the bodies' reach (the game asks the board's cells, src/domain/body-reach.js; here two planes): metres clear from
 // x along (dx, dz), at most `max`
 export function laneReach(x, dx, max, half) {
@@ -270,8 +285,18 @@ export function mountSwarmPearl(host) {
   host.panel.querySelector('[data-psweep]').addEventListener('click', () => startSweep());
 
   // --- the hull: the yard drive on the held keys, in the lane's metres --------------------------------------------------------------------------
-  const ratios = { ...HULL_RATIOS, ...(host.hull ?? {}) }, touchM = UNIT_M * ratios.touch, driveR = UNIT_M * ratios.drive, boxes = laneBoxes(L);
-  const drive = { x: 0, z: 0, yaw: Math.PI, speed: 0, blocked: false }, basis = new THREE.Matrix4(), V = [0, 1, 2].map(() => new THREE.Vector3());
+  const ratios = { ...HULL_RATIOS, ...(host.hull ?? {}) }, touchM = UNIT_M * ratios.touch, blocker = laneBlocker(L, WALL_CLEAR);
+  const feel = makeTankFeel(), hullDrive = createPlaneDrive({ feel, slide: true }), drive = hullDrive.state, basis = new THREE.Matrix4(), V = [0, 1, 2].map(() => new THREE.Vector3());
+  hullDrive.reset(0, 0, Math.PI);
+  let cruiseTap = false, lastTap = -9, moving = false, blocked = false, ground = 0;
+  const isText = (e) => /^(INPUT|SELECT|TEXTAREA)$/.test(e.target?.tagName ?? '');
+  const onKey = (e) => {
+    if (isText(e) || e.repeat) return;
+    const k = e.key.toLowerCase();
+    if (k === 'w' || k === 'arrowup') { const t = performance.now() / 1000; if (t - lastTap < CRUISE_TAP) cruiseTap = true; lastTap = t; }   // a double tap of forward toggles cruise
+  };
+  addEventListener('keydown', onKey);
+  function driveInput() { const i = host.input?.() ?? { throttle: 0, turn: 0 }, tap = cruiseTap; cruiseTap = false; return { ...i, cruiseTap: tap }; }
   function placeHull(tank) {
     const f = hullFrame(drive.x, drive.z, drive.yaw);
     tank.position.fromArray(f.pos); V[1].fromArray(f.up); V[2].fromArray(f.heading); V[0].crossVectors(V[1], V[2]);
@@ -279,6 +304,10 @@ export function mountSwarmPearl(host) {
   }
 
   // --- the camera ------------------------------------------------------------------------------------------------------------------------
+  // the game's camera rig (./boss/game-cam.js: tankViewPose, the smoothed heading, the per-frame lerp) over the hull; its rear inset is not shown
+  // (a detached stage). The lane's scene has the planet's centre one radius down, as the boss lab's
+  const gameCam = createGameCam({ renderer, scene, camera: cam, planetRadius: GAME_PLANET_R, cellSide: CELL,
+    host: { stage: document.createElement('div'), hull: () => { const f = hullFrame(drive.x, drive.z, drive.yaw); return { pos: [f.pos[0], f.pos[1] + GAME_PLANET_R, f.pos[2]], heading: f.heading }; } } });
   function poseGame() {
     const p = gamePose(drive.x, drive.z, drive.yaw), f = hullFrame(drive.x, drive.z, drive.yaw);
     cam.position.fromArray(p.eye); cam.up.fromArray(f.up); cam.lookAt(p.look[0], p.look[1], p.look[2]); return p;
@@ -286,6 +315,7 @@ export function mountSwarmPearl(host) {
   function setView(v) {
     view = v === 'free' ? 'free' : 'game';
     controls.enabled = view === 'free';
+    gameCam.setOn(view === 'game');
     if (view === 'free') { const p = poseGame(); cam.up.set(0, 1, 0); controls.target.fromArray(p.look); controls.update(); }
   }
   setView('game');
@@ -392,10 +422,12 @@ export function mountSwarmPearl(host) {
     if (Number.isFinite(gap) && gap > 0) { const t = performance.now() / 1000; rawGaps.push(t, gap); gaps.push(t, Math.max(1, gap - probeOwed)); }
     probeOwed = 0;
     if (reseat) seat();
-    stepYardDrive(drive, host.input?.() ?? { throttle: 0, turn: 0 }, dt, boxes, driveR);
+    const x0 = drive.x, z0 = drive.z, st = hullDrive.step(dt, driveInput(), blocker);
+    moving = st.moving; blocked = st.blocked; ground = dt > 0 ? Math.hypot(drive.x - x0, drive.z - z0) / dt : 0;
     const tank = host.tank();
-    if (tank) placeHull(tank);
-    if (view === 'free') controls.update(); else poseGame();
+    // the hull where it stands, then the game's hover, idle vibration, touchdown rock and bank (tankfeel.js, the persisted tuning)
+    if (tank) { placeHull(tank); stepTankFeel(feel, dt, moving, FEEL); applyTankFeel(tank, feel, FEEL); }
+    if (view === 'free') controls.update(); else gameCam.step(dt);
     let stepMs = 0;
     if (frameNo % Math.max(1, knobs.every) === 0) {
       const a = performance.now(); simulate(acc); stepMs = performance.now() - a; acc = 0;
@@ -429,7 +461,7 @@ export function mountSwarmPearl(host) {
         dead: recs.filter((r) => r.dead).length,   // records whose body is dying (none waits: a freed slot is seated the same step)
         levels: last.levels.slice(), tris: last.tris, calls: last.calls,
         step: steps.mean(), draw: draws.mean(), fps: fpsOf(gaps), fpsRaw: fpsOf(rawGaps),
-        tank: { x: drive.x, z: drive.z, yaw: drive.yaw, speed: drive.speed, blocked: drive.blocked }, touch: touchM, knobs: { ...knobs }, lod: { ...lod }, tiers: Object.keys(family.stats()),
+        tank: { x: drive.x, z: drive.z, yaw: drive.yaw, speed: drive.speed, ground, cruise: drive.cruise, blocked, bank: feel.bank ?? 0 }, touch: touchM, knobs: { ...knobs }, lod: { ...lod }, tiers: Object.keys(family.stats()),
         noise: mats.map((m) => m.uniforms.uNoise.value), breath: mats.map((m) => m.uniforms.uBreath.value), shadows: geos.map((g) => g.shadows.visible),
         sweeping: !!sweep, sweepAt: sweep ? sweep.n : null, rows: rows.map((r) => ({ ...r, levels: r.levels.slice() })), table: tableText,
         planetR: GAME_PLANET_R, pose: { eye: [...GAME_POSE.eye], look: [...GAME_POSE.look], fov: GAME_POSE.fov } };
@@ -441,6 +473,7 @@ export function mountSwarmPearl(host) {
     frame, api,
     reseat: () => { reseat = true; },
     dispose() {
+      removeEventListener('keydown', onKey); gameCam.dispose();
       for (const r of recs) family.free(r.h);
       family.dispose(); scene.remove(world);
       for (const d of disposables) d.dispose();

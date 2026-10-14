@@ -5,7 +5,7 @@
 // the lane as the lab drives it.
 import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three.module.js';
-import { laneSeats, walkToward, touched, farSeat, laneBoxes, hullFrame, gamePose, laneReach, canyonMix, seatTypes, applyKnobs, knobTargets, resetKnobs, sweepTable, GAME_KNOBS, GAME_LOD, GAME_POSE,
+import { laneSeats, walkToward, touched, farSeat, laneBlocker, WALL_CLEAR, hullFrame, gamePose, laneReach, canyonMix, seatTypes, applyKnobs, knobTargets, resetKnobs, sweepTable, GAME_KNOBS, GAME_LOD, GAME_POSE,
   GAME_PLANET_R, PEARL_LANE, TIERS, SWEEP_COUNTS } from '../src/labs/swarm-pearl.js';
 import { CUTIS_LOD } from '../src/fx/cutis-maku/config.js';
 import { createSwarmGeometry } from '../src/fx/cutis-maku/geometry.js';
@@ -68,17 +68,34 @@ console.log('PASS the game\'s numbers: the story planet, the third-person pose a
   // the walls as the reach
   assert.equal(laneReach(0, 1, 50, 12), 12); assert.equal(laneReach(0, -0.5, 50, 12), 24); assert.equal(laneReach(3, 0, 5, 12), 5); assert.equal(laneReach(11, 1, 4, 12), 1);
 }
-// the drive's blockers: the yard drive stops at the walls and the lane's ends
+// THE GAME'S DRIVE IN THE LANE (round three, owner 2026-10-14: "the feel of the tank, speed, etc. should be the same as the game"): the boss lab's
+// plane drive (the game's ease, run-up and pace) with the lane's walls as the game's friction; the cruise the boss-fight spec measured, 38 m/s
+// after four seconds held, and no 265 m radius
 {
-  const { stepYardDrive } = await import('../src/domain/yard-drive.js'), boxes = laneBoxes(PEARL_LANE), R = 8.45;
-  const d = { x: 0, z: 0, yaw: Math.PI, speed: 0 };
-  for (let f = 0; f < 120; f++) stepYardDrive(d, { throttle: 1, turn: 0 }, 1 / 60, boxes, R);
-  assert(d.z < -10 && Math.abs(d.x) < 1e-6, `W drives down the lane (-z) (${d.z})`);
-  const s = { x: 0, z: -50, yaw: Math.PI / 2, speed: 0 };
-  for (let f = 0; f < 600; f++) stepYardDrive(s, { throttle: 1, turn: 0 }, 1 / 60, boxes, R);
-  assert(s.x <= PEARL_LANE.half - R + 0.5 && s.blocked, `held off the wall (${s.x})`);
+  const { createPlaneDrive } = await import('../src/labs/boss/drive.js'), blocker = laneBlocker(PEARL_LANE, WALL_CLEAR);
+  const d = createPlaneDrive({ feel: {}, slide: true }); d.reset(0, 0, Math.PI);
+  let at4 = 0;
+  for (let f = 1; f <= 60 * 9; f++) { d.step(1 / 60, { throttle: 1, turn: 0 }, blocker); if (f === 240) at4 = d.state.speed; }
+  console.log(`LANE CRUISE ${at4.toFixed(1)} m/s at 4 s held, ${d.state.speed.toFixed(1)} at 9 s, ${(-d.state.z).toFixed(0)} m down the lane`);
+  assert(at4 > 35 && at4 < 41, `the game's cruise at four seconds (${at4})`);
+  assert(-d.state.z > 265, `past the yard drive's 265 m radius (${d.state.z})`); assert(Math.abs(d.state.x) < 1e-6, 'straight down the lane');
+  // into the wall at 30 degrees: held off it, still moving along it, the run-up scrubbed against a free run's
+  const w = createPlaneDrive({ feel: {}, slide: true }), free = createPlaneDrive({ feel: {}, slide: true });
+  w.reset(0, -20, Math.PI + 0.5); free.reset(0, -20, Math.PI);
+  for (let f = 0; f < 240; f++) { w.step(1 / 60, { throttle: 1, turn: 0 }, blocker); free.step(1 / 60, { throttle: 1, turn: 0 }, blocker); }
+  assert(w.state.x <= PEARL_LANE.half - WALL_CLEAR + 1e-6, `held off the wall (${w.state.x})`);
+  assert(w.state.z < -60, `slid along it (${w.state.z})`); assert(w.state.speed > 20 && w.state.speed < free.state.speed, `friction, not a stop (${w.state.speed} < ${free.state.speed})`);
+  assert(Math.abs(Math.sin(w.state.yaw)) < Math.sin(0.5), 'turned along the wall');
+  // the lane's ends
+  const e = createPlaneDrive({ feel: {}, slide: true }); e.reset(0, -400, Math.PI);
+  for (let f = 0; f < 600; f++) e.step(1 / 60, { throttle: 1, turn: 0 }, blocker);
+  assert(e.state.z >= -PEARL_LANE.len + WALL_CLEAR - 1e-6, `held at the lane's far end (${e.state.z})`);
+  // the boss lab's drive without `slide` keeps its thud
+  const b = createPlaneDrive({ feel: {} }); b.reset(0, -20, Math.PI + 0.5);
+  for (let f = 0; f < 240; f++) b.step(1 / 60, { throttle: 1, turn: 0 }, blocker);
+  assert(b.state.speed === 0 || b.state.z > w.state.z, 'without slide the wall still stops the hull');
 }
-console.log('PASS the lane seating: a deterministic column, spread like the dot lane\'s, density packs it, the walk at the hull, the touch, the far seat, the walls');
+console.log('PASS the lane seating and the drive: a deterministic column, the walk at the hull, the touch, the far seat; the game\'s drive to its cruise, the walls as friction, no 265 m radius');
 
 // ---- the types ----
 {
