@@ -106,6 +106,26 @@ Evidence:
 - /Users/minikai/Dev/Jelly-Baby: git log f1d7690 (gorogoro), 3a985e1 (the pearl lineage); src/cutis/swarm/tiers.ts GOROGORO_TIERS; src/cutis/page.ts ?specimen=cutis-gorogoro; the dev server on :5174
 - src/content/pearl-enemies.js PEARL_BODY cored per tier; test/pearl-enemies.mjs asserts the ram verdict per tier
 
+## 2026-10-14 — The opening swarm is already up the lane: when the sinkhole opened quiet during the beacons' tour, the fodder rises STORY_FODDER.headStart hops in from it toward the gate as a column, so the Rotor has it in reach as the seat is taken; a breach the player watches open keeps its pile at the crater
+
+change · accepted · 2026-10-14-opening-swarm-head-start
+
+Owner, 2026-10-14, playing the Pearl default on :8159: "the creatures are much slower now, so they should be closer within range of the rotor when we take control." Measured headless on the bare page (the arrival): the sinkhole opens quiet at ~10 s into the tour (STORY_BEATS.earlyBreach, the owner's 2026-10-05 "enemies closer and already in-sight"), the Rotor is taken at ~20.6 s with the nearest body 11.5 cells away, the Pearl records walk a fifth of a cell a second (PEARL_PACE radii, the owner's "slower and organic feeling is a must"), so the swarm reached the gate ~50 s into the seat; the dot clouds were 8.2 cells away and at the gate in 8 s. The sinkhole itself sits at the end of the 130 m sightline (base-layout.js, the Quiver's long shot, whose hard cores rise 10-13 lane hops out) and cannot come closer.
+
+STORY_FODDER.headStart { hops: 6, depth: 3 } (src/content/story-defaults.js): src/domain/story-beats.js spawnTick, when the breach opened quiet (`quiet`, set by the early breach), asks the new `laneCell(hops)` for the lane cell hops - k % depth in from the sinkhole and carries it as the spawn's `cell`; src/fx/enemy-step.js spawnOne takes `ci = entry.cell ?? sp.ci` for the record's cur, pos, exits and the emergence's basis (the source's breach, delay, spread and pace as before); src/platform/story-world.js laneCellOut walks the great circle from the sinkhole to the forward cell (alongLane, shared with laneBerth) and falls back toward the sinkhole when the cell is rock. The shown breach (the tremor and the dive shot, chapter starts) has `quiet` false: its pile rises at the crater as before. Measured after: the nearest body 5.5 cells from the Rotor at the seat (the Rotor reaches ~6), the gate reached ~24 s into the seat. test/story-beats.mjs: the quiet breach's column 9006, 9005, 9004, ...; the shown breach's spawns carry no cell; no laneCell, no head start. test/enemy-step.mjs's behaviour hash unchanged (the record's cur is its source's cell when no cell is given). A bug caught on the way: the first edit replaced sp.ci inside its own new line (`ci = entry.cell ?? ci`, a temporal dead zone for every spawn without a head start); the enemy-step hash and the browser's console both showed it.
+
+Alternatives: Move the sinkhole closer (base-layout.js sightline 130 m): the Quiver's hard cores rise 10-13 lane hops out on that sightline (STORY_QUIVER.rise) and the nuke's tank berths on it; the opening is not the only scene on the lane.; A faster opening walk for the Pearl fodder (STORY_FODDER.pace 1.7 is ignored by the record cap, PEARL_PACE radii): the owner chose slow bodies and asked for them closer, not faster.; The head start for every opening breach, shown or quiet: the dive shot frames the crater while the fodder emerge (STORY_BREACH emergeHold); bodies six cells up the lane would rise off-frame. The quiet breach has no shot: the fiction is that they came up while the player toured.; Open the sinkhole earlier: it opens at the start of the tour already (earlyBreach 0); a landing cannot open it before the landing.
+
+Evidence:
+
+- src/content/story-defaults.js STORY_FODDER.headStart
+- src/domain/story-beats.js laneCell / quiet / spawnTick
+- src/fx/enemy-step.js spawnOne `cell`
+- src/platform/story-world.js alongLane / laneCellOut
+- test/story-beats.mjs (the head start)
+- the opening probe (scratch): 11.5 cells at the seat before, 5.5 after; the gate at ~70 s before, ~48 s after
+- 2026-10-14-pearl-set-the-story-default (the roll-out's wait, which still covers the chapter starts)
+
 ## 2026-10-14 — --defense's 'no unpiloted tower kill' bisects to d0a7e640 (ground events in SAT-3's feed instead of the camera cut): under the feed the breach's crowd wanders at its sinkhole and never walks to the Rotor; &cuts=dive on the same build walks and kills; the feed's render pass, the reveal pose and the handler's gates are not it. And --story was never a regression: its landmark counts were stale since 2026-09-14 (fixed)
 
 issue · observed · 2026-10-14-defense-red-bisected-to-the-ground-feed
