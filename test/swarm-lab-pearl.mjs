@@ -5,7 +5,7 @@
 // the lane as the lab drives it.
 import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three.module.js';
-import { laneSeats, walkToward, touched, farSeat, laneBlocker, WALL_CLEAR, hullFrame, gamePose, laneReach, canyonMix, seatTypes, applyKnobs, knobTargets, resetKnobs, sweepTable, GAME_KNOBS, GAME_LOD, GAME_POSE,
+import { laneSeats, walkToward, touched, farSeat, laneBlocker, WALL_CLEAR, unbend, hullFrame, gamePose, laneReach, canyonMix, seatTypes, applyKnobs, knobTargets, resetKnobs, sweepTable, GAME_KNOBS, GAME_LOD, GAME_POSE,
   GAME_PLANET_R, PEARL_LANE, TIERS, SWEEP_COUNTS } from '../src/labs/swarm-pearl.js';
 import { CUTIS_LOD } from '../src/fx/cutis-maku/config.js';
 import { createSwarmGeometry } from '../src/fx/cutis-maku/geometry.js';
@@ -96,6 +96,23 @@ console.log('PASS the game\'s numbers: the story planet, the third-person pose a
   assert(b.state.speed === 0 || b.state.z > w.state.z, 'without slide the wall still stops the hull');
 }
 console.log('PASS the lane seating and the drive: a deterministic column, the walk at the hull, the touch, the far seat; the game\'s drive to its cruise, the walls as friction, no 265 m radius');
+
+// ---- the shell (round three, owner 2026-10-14: "tank shell should be operational") ----
+{
+  const { bendPoint } = await import('../src/fx/cutis-maku/shaders.js');
+  for (const [x, z] of [[0, 0], [5, -40], [-11, -300], [3, 55]]) { const u = unbend(bendPoint(x, 0, z, GAME_PLANET_R)); close(u[0], x, 1e-6, `unbend x at ${z}`); close(u[1], z, 1e-6, `unbend z at ${z}`); }
+  // the game's landing (src/fx/shell-blast.js) on lane records, as the lab hands them to it: the struck body the peak, the rest the Bofors' falloff
+  const { createShellBlast } = await import('../src/fx/shell-blast.js'), { SHELL_BLAST } = await import('../src/content/tank.js');
+  const rec = (x, z, hp) => ({ x, z, pos: [x, 0, z], alive: true, hp });
+  const recs = [rec(0, -40, 1), rec(0, -52, 4), rec(0, -80, 1)], died = [];
+  const host = { enemies: recs, damageEnemy: (e, t, dmg) => { e.hp -= dmg; if (e.hp <= 0) { e.alive = false; died.push(e); } }, warnRing() {}, scene: { add() {} }, debris: [], sfx: { play() {} }, camDist: () => 0,
+    explode: () => true, cellSide: () => 10, cellIndex: () => () => -1 };
+  const out = createShellBlast(host).land([0, 0, -40], recs[0], 0, [0, 0, 0]);
+  assert(!recs[0].alive, 'the struck body dies (4.5 against its 1)'); assert(recs[1].alive && recs[1].hp < 4 && recs[1].hp > 0, `12 m off: hurt, not killed (${recs[1].hp})`);
+  assert(recs[2].alive && recs[2].hp === 1, '40 m off: outside the 30 m blast'); assert.equal(SHELL_BLAST.radius * 10, 30);
+  assert(out.jolt > 0, 'a landing 40 m from the hull kicks it');
+}
+console.log('PASS the shell: the bent ground unbent exactly, the game\'s blast on the lane\'s records (the struck one dead, the falloff, the 30 m edge)');
 
 // ---- the types ----
 {

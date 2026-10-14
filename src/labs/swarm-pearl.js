@@ -13,7 +13,13 @@
 // lab: "WASD motion for the tank in Pearl mode"; "bodies must not vanish at the tank"; round three: "the feel of the tank, speed, etc. should be
 // the same as the game"): the hull is the game's drive on a plane as the boss lab drives it (./boss/drive.js: the steering ease, the run-up to the
 // game's cruise, the pace; a double tap of W toggles cruise; the lane's walls are the game's friction), the game's hover and bank (tankfeel.js),
-// on the tab's held keys, in the Pearl lane's metres, placed on the planet where it stands, the game's camera behind it (./boss/game-cam.js); every
+// on the tab's held keys, in the Pearl lane's metres, placed on the planet where it stands, the game's camera behind it (./boss/game-cam.js).
+// THE SHELL (round three: "tank shell should be operational"): Space fires the boss lab's cannon (./boss/cannon.js: the game's shell, its pace and
+// reach, the three-second barrel, the recoil on the hull), the game's hit (a record within cellSide x max(0.45, its size x 0.8) of the shell,
+// td-tab.js updateProjectiles) and the game's landing, createShellBlast (src/fx/shell-blast.js: SHELL_BLAST's 4.5 over 3 cells, the 40 mm's burst
+// and flash) on the lane's records, its damage the game's damageEnemy in short: the hit points off, the body shrunk with them (0.7 + 0.3 x hp share),
+// at none the game's death (family.kill). The blast's scare (td-tab's explode: impact-scare) and its warning rings (they need the board's cells)
+// are not the lane's; every
 // record walks at the hull wherever it is; one that comes within the dot lane's TOUCH of the hull (its ratio to the dot hull, times the game's
 // hull) dies the game's death (family.kill: the deflate, then CREATURE_DEATH's fade), and only once its slot is free is a new body seated at
 // the far end of the file, so the crowd holds at the slider's count. The hull's shove (the game's hullContact) is not wired; the ram's rules
@@ -51,6 +57,9 @@ import { createPlaneDrive } from './boss/drive.js';
 import { createGameCam } from './boss/game-cam.js';
 import { makeTankFeel, stepTankFeel, applyTankFeel } from '../tankfeel.js';
 import { FEEL } from '../feelstore.js';
+import { createCannon } from './boss/cannon.js';
+import { createExplosions } from '../fx/explosions.js';
+import { createShellBlast } from '../fx/shell-blast.js';
 import { TANK_LENS } from '../domain/seat-view.js';
 import { computeWavePlan } from '../enemyspec.js';
 
@@ -121,6 +130,13 @@ export function walkToward(x, z, tx, tz, step) {
 // within `radius` metres of the hull
 export const touched = (x, z, tx, tz, radius) => (x - tx) ** 2 + (z - tz) ** 2 < radius * radius;
 // where a new body seats: the far end of the file behind the hull (its depth back from the loop-back end, `u` 0..1 a little nearer), on the lane
+// a scene point on the bent ground back to its plane point (bendPoint's inverse for y = 0: the arc from the bend's origin) -> [x, z]
+export function unbend(p, R = GAME_PLANET_R) {
+  const cx = p[0], cy = p[1] + R, cz = p[2], h = Math.hypot(cx, cz);
+  if (h < 1e-12) return [0, 0];
+  const d = Math.atan2(h, cy) * R;
+  return [cx / h * d, cz / h * d];
+}
 export const farSeat = (tankZ, LANE, depth, u = 0) => Math.max(-LANE.len + 10, Math.min(LANE.end, tankZ + LANE.end - depth * (1 - 0.15 * u)));
 // the lane as the drive's blocker (./boss/drive.js: (x, z) -> null | { nx, nz, depth }, the push out): the two walls and the lane's two ends (the
 // ground runs from +60 m to -len), the hull's centre held `clear` metres off them
@@ -293,6 +309,7 @@ export function mountSwarmPearl(host) {
   const onKey = (e) => {
     if (isText(e) || e.repeat) return;
     const k = e.key.toLowerCase();
+    if (k === ' ') { e.preventDefault(); fireCannon(); }   // the key-down edge (e.repeat is out above): a held Space does not repeat
     if (k === 'w' || k === 'arrowup') { const t = performance.now() / 1000; if (t - lastTap < CRUISE_TAP) cruiseTap = true; lastTap = t; }   // a double tap of forward toggles cruise
   };
   addEventListener('keydown', onKey);
@@ -322,7 +339,9 @@ export function mountSwarmPearl(host) {
 
   // --- the records -----------------------------------------------------------------------------------------------------------------------
   let recs = [], depth = L.depth, reseat = true, deaths = 0, reseated = 0;
-  const add = (r) => { r.dead = false; r.h = family.add(r.type, { x: r.x, z: r.z, angle: Math.atan2(drive.z - r.z, drive.x - r.x), speed: r.speed }); return r; };
+  // a record as the game's enemy loop keeps one, as far as the lane needs: its spec (PEARL_SPECS: hit points, size, rammable), its hit points,
+  // `size` the record's (ENEMY_SPEC size x 0.7, src/fx/enemy-step.js), `pos` [x, 0, z] and `alive` for the shell's blast
+  const add = (r) => { r.spec = pearlSpec(r.type); r.hp = r.spec.hp; r.size = r.spec.size * 0.7; r.alive = true; (r.pos ??= [0, 0, 0]); r.pos[0] = r.x; r.pos[2] = r.z; r.dead = false; r.h = family.add(r.type, { x: r.x, z: r.z, angle: Math.atan2(drive.z - r.z, drive.x - r.x), speed: r.speed }); return r; };
   function seat() {
     for (const r of recs) family.free(r.h);
     const { count, dens, spread } = host.lane();
@@ -332,14 +351,61 @@ export function mountSwarmPearl(host) {
     reseat = false;
   }
   const freed = [];
+  // the game's death: the record gone, its body deflating (the slot freed by the family's step)
+  function die(r, impact = null) { family.kill(r.h, impact); r.dead = true; r.alive = false; deaths++; }
+
+  // --- the shell (see the header) ----------------------------------------------------------------------------------------------------------
+  const explosions = createExplosions(world, { onError: () => {} }), debris = [], P3 = [0, 0, 0];
+  explosions.prewarm({ compile: (s2, c) => renderer.compile(s2, c, scene), getRenderTarget: () => renderer.getRenderTarget(), setRenderTarget: (t) => renderer.setRenderTarget(t) }, cam);
+  function surface(x, z) { bendPoint(x, 0, z, GAME_PLANET_R, P3); const point = new THREE.Vector3(P3[0], P3[1], P3[2]); return { point, normal: new THREE.Vector3(P3[0], P3[1] + GAME_PLANET_R, P3[2]).normalize() }; }
+  let struck = null, landing = null, shellKills = 0, shellsFired = 0, lastJolt = 0;
+  // the game's damageEnemy, in short: the hit points off, the body shrunk with them (track's grow), at none the game's death
+  function damage(r, dmg) { if (!r.alive) return false; r.hp -= dmg; if (r.hp <= 0) { die(r); shellKills++; return true; } return false; }
+  const blastHost = { enemies: recs, damageEnemy: (e, tNow, dmg) => damage(e, dmg), warnRing() {}, scene: world, debris, sfx: { play() {} }, camDist: () => 0,
+    explode: (use) => (landing ? explosions.spawn(use, landing.point.toArray(), landing.normal.toArray(), CELL) : false), cellSide: () => CELL, cellIndex: () => () => -1 }, blast = createShellBlast(blastHost);
+  // the game's hit: a live record within cellSide x max(0.45, its size x 0.8) of the shell (td-tab.js updateProjectiles)
+  function shellHit(x, z) {
+    for (const r of recs) if (r.alive && Math.hypot(x - r.x, z - r.z) < CELL * Math.max(0.45, r.size * 0.8)) { struck = r; return { x, z }; }
+    return null;
+  }
+  function land(x, z) {
+    landing = surface(x, z); blastHost.enemies = recs;   // seat() makes a new list
+    lastJolt = blast.land([x, 0, z], struck, clock, [drive.x, 0, drive.z]).jolt;
+    struck = null; landing = null;
+  }
+  // no burst at the end of its reach (the game's shell just goes): the cannon gets no explosions of its own
+  const cannon = createCannon(scene, { sphere: world, surface, cellSide: CELL, explosions: null, sfx: null, feel, cool: 3, onHit: land });
+  const muzzleV = new THREE.Vector3(), aimV = new THREE.Vector3(), aimQ = new THREE.Quaternion();
+  function fireCannon() {
+    const tank = host.tank();
+    let from = [drive.x, drive.z], dir = [Math.sin(drive.yaw), Math.cos(drive.yaw)];
+    if (tank) {
+      tank.updateMatrixWorld(true);
+      const muzzle = tank.userData.muzzle, turret = tank.userData.turret;
+      if (muzzle) from = unbend(world.worldToLocal(muzzle.getWorldPosition(muzzleV)).toArray());
+      if (turret && muzzle) {   // the turret's +Z, flattened into the plane by unbending a point a metre along it
+        aimV.set(0, 0, 1).applyQuaternion(turret.getWorldQuaternion(aimQ)).add(muzzleV);
+        const a = unbend(aimV.toArray()), dx = a[0] - from[0], dz = a[1] - from[1];
+        if (Math.hypot(dx, dz) > 1e-3) dir = [dx, dz];
+      }
+    }
+    const ok = cannon.fire(from, dir);
+    if (ok) shellsFired++;
+    return ok;
+  }
+  function stepShells(dt) {
+    cannon.tick(dt, shellHit); explosions.tick(dt);
+    for (let i = debris.length - 1; i >= 0; i--) if (debris[i].userData.tick?.(dt) === false) { world.remove(debris[i]); debris.splice(i, 1); }
+  }
   function simulate(dt) {
     const tx = drive.x, tz = drive.z;
     for (const r of recs) {
       if (!r.h || r.dead) continue;
       [r.x, r.z] = walkToward(r.x, r.z, tx, tz, r.speed * family.paceOf(r.h) * dt);
       // at the hull: the game's death; the slot is the body's until its puddle has faded
-      if (touched(r.x, r.z, tx, tz, touchM)) { family.kill(r.h); r.dead = true; deaths++; continue; }
-      family.track(r.h, { x: r.x, z: r.z, ax: tx, az: tz, dt, speed: r.speed });
+      r.pos[0] = r.x; r.pos[2] = r.z;
+      if (touched(r.x, r.z, tx, tz, touchM)) { die(r); continue; }
+      family.track(r.h, { x: r.x, z: r.z, ax: tx, az: tz, dt, speed: r.speed, grow: 0.7 + 0.3 * Math.max(0, r.hp) / r.spec.hp });
     }
     family.step(dt, cam, renderer.domElement.height);
     // the dead whose slot the step freed (all of them first: a new body may take a slot another dead record still names), then their new bodies
@@ -433,6 +499,7 @@ export function mountSwarmPearl(host) {
       const a = performance.now(); simulate(acc); stepMs = performance.now() - a; acc = 0;
     }
     steps.push(clock, stepMs);
+    stepShells(dt);
     applyKnobs(knobs, knobTargets(family.geometries(), lod));
     renderer.render(scene, cam);
     last = counters();
@@ -454,6 +521,13 @@ export function mountSwarmPearl(host) {
     reset: () => { knobs = resetKnobs(); syncPanel(); },
     table: () => tableText,
     // the harness: `n` live records put on the hull's point (the next step kills them)
+    fire: () => fireCannon(),
+    // the harness: `n` live records seated again `ahead` metres in front of the hull (`across` metres to its left), bodies and all
+    place(n = 1, ahead = 30, across = 0) {
+      let k = 0; const hx = Math.sin(drive.yaw), hz = Math.cos(drive.yaw);
+      for (const r of recs) { if (k >= n) break; if (!r.h || r.dead) continue; family.free(r.h); r.x = drive.x + hx * ahead + hz * across; r.z = drive.z + hz * ahead - hx * across; add(r); k++; }
+      return k;
+    },
     toTank(n = 1) { let k = 0; for (const r of recs) { if (k >= n) break; if (r.h && !r.dead) { r.x = drive.x; r.z = drive.z; k++; } } return k; },
     state() {
       const geos = family.geometries(), mats = geos.flatMap((g) => g.levels.flatMap((l) => [l.material, l.coreMaterial].filter(Boolean)));
@@ -462,6 +536,7 @@ export function mountSwarmPearl(host) {
         levels: last.levels.slice(), tris: last.tris, calls: last.calls,
         step: steps.mean(), draw: draws.mean(), fps: fpsOf(gaps), fpsRaw: fpsOf(rawGaps),
         tank: { x: drive.x, z: drive.z, yaw: drive.yaw, speed: drive.speed, ground, cruise: drive.cruise, blocked, bank: feel.bank ?? 0 }, touch: touchM, knobs: { ...knobs }, lod: { ...lod }, tiers: Object.keys(family.stats()),
+        shells: cannon.shells(), heat: cannon.heat(), fired: shellsFired, shellKills, blast: blast.last(), blastJolt: lastJolt,
         noise: mats.map((m) => m.uniforms.uNoise.value), breath: mats.map((m) => m.uniforms.uBreath.value), shadows: geos.map((g) => g.shadows.visible),
         sweeping: !!sweep, sweepAt: sweep ? sweep.n : null, rows: rows.map((r) => ({ ...r, levels: r.levels.slice() })), table: tableText,
         planetR: GAME_PLANET_R, pose: { eye: [...GAME_POSE.eye], look: [...GAME_POSE.look], fov: GAME_POSE.fov } };
@@ -473,7 +548,8 @@ export function mountSwarmPearl(host) {
     frame, api,
     reseat: () => { reseat = true; },
     dispose() {
-      removeEventListener('keydown', onKey); gameCam.dispose();
+      removeEventListener('keydown', onKey); gameCam.dispose(); cannon.dispose(); explosions.dispose();
+      for (const d of debris) world.remove(d);
       for (const r of recs) family.free(r.h);
       family.dispose(); scene.remove(world);
       for (const d of disposables) d.dispose();

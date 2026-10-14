@@ -4055,6 +4055,16 @@ const killReal=(Date.now()-t0)/1000;
   console.log('SWARM PEARL DEATH '+JSON.stringify({deaths:d1.deaths-d0.deaths,reseated:d1.reseated-d0.reseated,live:d1.live,dying:d1.dying,records:d1.records}));
   assert.equal(d1.records,300);assert.equal(d1.live+d1.dying,300,'the count held: alive plus dying');assert.equal(d1.dead,d1.dying,'every dead record is a dying body: none waits on a freed slot');
  }
+ // THE SHELL (round three: "tank shell should be operational"): a body seated 40 m ahead of the hull, Space fires the game's shell, the landing kills it
+ {
+  const b0=await evaluate(`${P}.state()`);
+  assert.equal(await evaluate(`${P}.place(1,40)`),1);
+  await evaluate('dispatchEvent(new KeyboardEvent("keydown",{key:" "}))');await evaluate('dispatchEvent(new KeyboardEvent("keyup",{key:" "}))');
+  await until(`${P}.state().fired>${b0.fired}`,5000);
+  await until(`${P}.state().shellKills>${b0.shellKills}`,10000);
+  const b1=await evaluate(`${P}.state()`);console.log('SWARM PEARL SHELL '+JSON.stringify({fired:b1.fired-b0.fired,kills:b1.shellKills-b0.shellKills,blast:b1.blast,heat:+b1.heat.toFixed(2)}));
+  assert(b1.blast&&b1.blast.killed>=1&&b1.blast.exploded,'the game\'s landing: a kill and its burst');
+ }
  // WASD with the game's feel (round three, owner 2026-10-14: "the feel of the tank, speed, etc. should be the same as the game"): held W runs the
  // hull up to the game's cruise (the boss-fight spec's 38 m/s at four seconds; past 35 here) down the lane, straight
  {
