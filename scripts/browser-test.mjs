@@ -3990,6 +3990,61 @@ const killReal=(Date.now()-t0)/1000;
  const after=await evaluate(`(()=>({mode:document.querySelector('#boss [data-k="mode"]').value,seat:!!document.querySelector('#boss #sentry-pilot')}))()`);
  assert(after.mode==='bait'&&after.seat,`Esc twice keeps the friend in the bait mode and the seat (${JSON.stringify(after)})`);
  current='boss-friends';await finish();
+ } else if(args.includes('--swarm-pearl')) {
+ // THE SWARM LAB'S PEARL MODE (owner, 2026-10-14; spec docs/superpowers/specs/2026-10-14-swarm-lab-pearl-design.md; src/labs/swarm-pearl.js): the enemy
+ // study's bodies switched to Pearl, white, 300 alive within five seconds of the count, the cost line's step and draw finite, the levels plus culled
+ // the 300, the sweep's four rows (printed: headless numbers are this machine's, not the owner's; the deltas between two sweeps are the value),
+ // then lumps off puts uNoise to 0 on every level's material. Headless frame times are printed, never asserted.
+ const S='window.__stalheartSwarm',P='window.__stalheartSwarmPearl';
+ await go('swarm-pearl','labs.html?sw=0&acceptance=1#swarm');
+ await until(`!!${S} && ${S}.state().built===100`,60000);
+ assert(await evaluate(`${S}.set("bodies","pearl")`));
+ await until(`!!${P}`,10000);
+ assert.equal(await evaluate(`${S}.state().built`),0,'the dot crowd stands down');
+ assert(await evaluate(`${P}.set("tier","white")`));
+ assert(await evaluate(`${S}.set("count",300)`));
+ const t0=Date.now();
+ await until(`${P}.state().live===300`,5000);
+ console.log(`SWARM PEARL 300 live after ${Date.now()-t0} ms`);
+ await until(`Number.isFinite(${P}.state().step) && Number.isFinite(${P}.state().draw)`,15000);
+ {
+  const s=await evaluate(`${P}.state()`);
+  console.log('SWARM PEARL '+JSON.stringify({live:s.live,step:+s.step.toFixed(2),draw:+s.draw.toFixed(2),levels:s.levels,tris:s.tris,calls:s.calls,tiers:s.tiers}));
+  assert.equal(s.levels.reduce((a,b)=>a+b,0),300,`the levels plus culled are the 300 (${s.levels})`);
+  assert.deepEqual(s.tiers,['white'],'one white swarm');
+  assert(s.calls>0&&s.tris>0,'the crowd is drawn');
+  await until('document.querySelector("#swarm [data-read]").textContent.includes("300 alive")',5000);   // the cost line reads the crowd (it refreshes every 0.4 s)
+  current='swarm-pearl-lane';await finish();current='swarm-pearl';   // the lane at the game's height, 300 white
+ }
+ await evaluate(`${P}.sweep()`);
+ await until(`${P}.state().sweeping===false && ${P}.state().rows.length===4`,240000);
+ {
+  const s=await evaluate(`${P}.state()`);
+  assert.deepEqual(s.rows.map(r=>r.bodies),[100,300,600,1000],'the sweep\'s four counts');
+  for(const r of s.rows){assert(Number.isFinite(r.step)&&Number.isFinite(r.draw),`finite readings at ${r.bodies}`);assert.equal(r.levels.reduce((a,b)=>a+b,0),r.bodies,`levels plus culled at ${r.bodies} (${r.levels})`);}
+  assert.equal(s.table.split('\n').length,5,'a header and four rows');
+  assert.equal(await evaluate('document.querySelector("#swarm [data-ptable]").textContent'),s.table,'the table under the panel');
+  console.log('SWARM PEARL SWEEP (headless, this machine)\n'+s.table);
+  await until(`${P}.state().live===300`,10000);   // the count back after the sweep
+  // SWEEPS="force=0;lumps=0,breath=0;every=4" sweeps again with each knob set (over the game's), printed beside the first: the deltas
+  for(const set of (process.env.SWEEPS||'').split(';').map(x=>x.trim()).filter(Boolean)){
+   await evaluate(`${P}.reset()`);
+   for(const [k,v] of set.split(',').map(kv=>kv.split('=')))assert(await evaluate(`${P}.set(${JSON.stringify(k)},${JSON.stringify(v==='0'&&['lumps','breath','shadow','core'].includes(k)?false:v)})`),`knob ${k}`);
+   await evaluate(`${P}.sweep()`);
+   await until(`${P}.state().sweeping===false && ${P}.state().rows.length===4`,240000);
+   console.log(`SWARM PEARL SWEEP ${set}\n`+(await evaluate(`${P}.state().table`)));
+  }
+  await evaluate(`${P}.reset()`);
+ }
+ assert(await evaluate(`${P}.set("lumps",false)`));
+ await until(`${P}.state().noise.length>0 && ${P}.state().noise.every(v=>v===0)`,5000);
+ assert(await evaluate(`${P}.state().breath.some(v=>v>0)`),'breath untouched by the lumps knob');
+ await evaluate(`${P}.reset()`);
+ await until(`${P}.state().noise.every(v=>v>0)`,5000);
+ // back to dots: the Pearl lane goes, the dot crowd comes back
+ assert(await evaluate(`${S}.set("bodies","dots")`));
+ await until(`!${P} && ${S}.state().built===300`,10000);
+ await finish();
  } else if(args.includes('--boss')) {
  // THE BOSS LAB (2026-10-08; src/labs/boss-tab.js): Nih-Dairia at thirty metres on the story planet, the tank its prey. The solver steps,
  // the creature is boss-sized in the world, a driving tank inside its reach counts as held and is not taken, a parked one is.
