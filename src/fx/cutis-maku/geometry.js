@@ -1,6 +1,9 @@
 // Ported from Jelly-Baby src/cutis/creature/geometry.ts and the contact shadow of src/cutis/scene.ts (the owner's own project, commit 0a23df8; GPL-3.0, see ./LICENSE), types stripped; the meshes are the kit's.
 // Changes from the kit: ConvexGeometry comes from ./convex.js over the vendored ConvexHull; the iLife attribute; update() packs only ACTIVE instances and picks the LOD in the group's local space (the group sits on the planet);
 // planetR (setPlanetR) bends the membrane and the shadow onto the sphere in their vertex shaders; the shadow is part of the group.
+// The swarm lab (owner, 2026-10-14: "play with variables in how they are rendered to see where we could gain the most"; spec
+// docs/superpowers/specs/2026-10-14-swarm-lab-pearl-design.md): the `lod` object is read again at every update(), so a lab turning its knobs is
+// seen at once, and it may carry `force` (0, 1 or 2: every drawn body at that level, the high cap off for 0; null or absent: the levels by size, as before); a high cap of 0 draws none high (it indexed past the sorted sizes and let every one through).
 // 3a985e1: a body with a rigid core (config.coreShape >= 1) hides the soft inner core mesh (the hard core is drawn by ./hard-core.js); the kit's per-tier
 // batches for its mixed preview are not ported (one swarm per tier here). bend() is ./shaders.js bendPoint, PLANET_BEND's JS twin.
 import * as THREE from '../../../vendor/three.module.js';
@@ -97,11 +100,13 @@ export function createSwarmGeometry(swarm,{ planetR=0, lod=null }={}) {
   setPlanetR(planetR);
   // a body's level from its radius in device pixels and its last level (the hysteresis)
   function levelFor(pixels,was) {
+    if(L.force!=null&&L.force>=0)return L.force;   // the swarm lab's forced level
     const h=L.hysteresis,hi=L.high*(was===0?1-h:1+h),lo=L.low*(was===2?1+h:1-h);
     return pixels>=hi?0:pixels>=lo?1:2;
   }
   /** Pack the VISIBLE instances, split by LOD (pixels measured in the group's local space, the camera brought into it), and their life into the instance attributes and the shadows; advance the materials. */
   function update(camera,height,debug=0,force=false,multicolored=false,cull=true) {
+    if(lod)Object.assign(L,lod);   // the swarm lab's knobs, live
     levels.forEach(l=>l.count=0);lodCounts.fill(0);
     group.updateWorldMatrix(true,false);camera.updateMatrixWorld();
     camera.getWorldPosition(eye);group.worldToLocal(eye);
@@ -125,7 +130,7 @@ export function createSwarmGeometry(swarm,{ planetR=0, lod=null }={}) {
       if(level===0)big[candidates++]=pixels;
     }
     let floor=-Infinity;
-    if(candidates>L.highCap){const top=big.subarray(0,candidates).sort();floor=top[candidates-L.highCap];}
+    if(candidates>L.highCap&&L.force!==0){const top=big.subarray(0,candidates).sort();floor=L.highCap>0?top[candidates-L.highCap]:Infinity;}
     // pass 2: pack
     let shown=0;
     for(let i=0;i<swarm.count;i++){

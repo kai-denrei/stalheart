@@ -22,8 +22,9 @@ import { createSwarmGeometry } from './cutis-maku/geometry.js';
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
 // `parent` the bodies' root group (plane metres), `tiers` the family's table (src/content/creature-enemies.js CREATURE_TIERS.cutis),
-// `follow` CREATURE_FOLLOW, `death` CREATURE_DEATH
-export function createCutisFamily({ parent, tiers, follow, death }) {
+// `follow` CREATURE_FOLLOW, `death` CREATURE_DEATH, `lod` the swarms' level object (src/fx/cutis-maku/geometry.js; the bestiary's stage forces the high
+// hull, owner 2026-10-14: "enemies at high resolution"; null: the kit's CUTIS_LOD, as before)
+export function createCutisFamily({ parent, tiers, follow, death, lod = null }) {
   const group = new THREE.Group(); group.name = 'Cutis-Maku enemies'; parent.add(group);
   const swarms = new Map();   // tier -> { swarm, geo, free: [], dying: Set, live: number, peak, placed, replaced, deaths }
   let planetR = 0, clock = 0;
@@ -33,7 +34,7 @@ export function createCutisFamily({ parent, tiers, follow, death }) {
     if (t) return t;
     const def = tiers[key];
     const swarm = new CutisSwarm({ ...def.config }, { capacity: def.capacity });
-    const geo = createSwarmGeometry(swarm, { planetR });
+    const geo = createSwarmGeometry(swarm, { planetR, lod });
     geo.group.name = `Cutis-Maku ${key}`; group.add(geo.group);
     t = { key, def, swarm, geo, free: [], next: 0, dying: new Map(), live: 0, peak: 0, placed: 0, replaced: 0, deaths: 0, full: 0 };
     swarms.set(key, t);

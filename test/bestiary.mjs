@@ -66,7 +66,7 @@ assert.deepEqual(roster.filter((e) => e.kind === 'tier' && e.cored).map((e) => e
   for (let k = 0; k < N; k++) { const p = lurePoint(k / N, L), q = lurePoint((k + 1) / N, L); worst = Math.max(worst, Math.hypot(p[0] - q[0], p[1] - q[1])); }
   assert(worst < (L.radius * 8) / N, `smooth: no jump over a period (largest step ${worst.toFixed(4)} m)`);
   // alone it keeps its period
-  let lone = { phase: 0, dir: 1 }; for (let k = 0; k < 60 * L.period; k++) lone = lureStep(lone, 1 / 60, L, null);
+  let lone = { phase: 0, dir: 1 }; for (let k = 0; k < 60 * L.period; k++) lone = lureStep(lone, 1 / 60, L, []);
   assert(Math.min(lone.phase, 1 - lone.phase) < 1e-6, `one turn a period alone (${lone.phase})`);
   { const on = lurePoint(lone.phase, L); assert(Math.hypot(on[0] - lone.x, on[1] - lone.z) < 1e-9, 'alone it stays on its loop'); }
   // a chaser walking at it faster than the lure's mean speed, from the pack's seats: never within `ahead` after a step
@@ -74,7 +74,7 @@ assert.deepEqual(roster.filter((e) => e.kind === 'tier' && e.cored).map((e) => e
   for (const speed of [0.6, 1.2, 2]) {
     const chaser = packSeats(3, { radius: L.radius, ...BESTIARY_STAGE.pack }).seats[0].slice(); let p = { phase: 0, dir: 1 }, closest = Infinity, jump = 0, prev = lurePoint(0, L);
     for (let k = 0; k < 60 * 120; k++) {
-      p = lureStep(p, 1 / 60, L, chaser); const at = [p.x, p.z];
+      p = lureStep(p, 1 / 60, L, [chaser]); const at = [p.x, p.z];
       closest = Math.min(closest, Math.hypot(at[0] - chaser[0], at[1] - chaser[1])); jump = Math.max(jump, Math.hypot(at[0] - prev[0], at[1] - prev[1])); prev = at;
       const dx = at[0] - chaser[0], dz = at[1] - chaser[1], dl = Math.hypot(dx, dz), v = (speed * len) / L.period / 60;
       if (dl > v) { chaser[0] += (dx / dl) * v; chaser[1] += (dz / dl) * v; }
@@ -83,6 +83,17 @@ assert.deepEqual(roster.filter((e) => e.kind === 'tier' && e.cored).map((e) => e
     assert(jump < 0.5, `the lure scurries, it does not leap (largest step ${jump.toFixed(3)} m a frame)`);
     assert(Math.hypot(p.x, p.z) <= L.radius * 1.6 + 1e-9, 'inside its bound');
   }
+}
+
+// a pack of six walking at it from their seats (each toward the lure, faster than its mean): never within `ahead` of any of them
+{
+  const L = BESTIARY_STAGE.lure, pack = packSeats(6, { radius: L.radius, ...BESTIARY_STAGE.pack }).seats.map((s) => s.slice()); let p = { phase: 0, dir: 1 }, closest = Infinity;
+  for (let k = 0; k < 60 * 90; k++) {
+    for (const c of pack) { const dx = (p.x ?? L.radius) - c[0], dz = (p.z ?? 0) - c[1], dl = Math.hypot(dx, dz), v = 3.5 / 60; if (dl > v) { c[0] += (dx / dl) * v; c[1] += (dz / dl) * v; } }
+    p = lureStep(p, 1 / 60, L, pack);
+    for (const c of pack) closest = Math.min(closest, Math.hypot(p.x - c[0], p.z - c[1]));
+  }
+  assert(closest >= L.ahead - 1e-6, `a pack of six never closes within ${L.ahead} m (closest ${closest.toFixed(2)})`);
 }
 
 // 4. the pack: 3 and 6 seats, distinct, on a ring round a spot behind the lure's start

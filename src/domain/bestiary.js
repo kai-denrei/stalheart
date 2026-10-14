@@ -73,30 +73,46 @@ export function lurePoint(phase, { radius }, out = [0, 0]) {
   return out;
 }
 const LOOK = 0.004;   // how far along the loop the lure looks either way before it turns back
-// `lure` { phase, dir, x, z } (dir +1 or -1 along the loop; x, z where it is, which may be off the loop), `nearest` [x, z] of the nearest body
-// or null; `boost` how much faster it runs when the nearest body is at `ahead` (eased from twice that), `settle` s its way back onto the loop
-// once displaced, `bound` m the farthest from the centre it may be shoved. Prey, not a clock: it runs on along the loop and turns back along
-// it when on would close on the nearest body; a closed loop always has a corner a body cutting across it can trap it in, so the lure is never
-// left within `ahead` of the body: it slides off the loop to that distance (its step bounded by the body's own), then eases back on
-// -> a new { phase, dir, x, z }
-export function lureStep(lure, dt, { radius, period, ahead, boost = 2, settle = 1.2, bound = radius * 1.6 }, nearest = null) {
-  const at = [0, 0], dist = (p) => { lurePoint(p, { radius }, at); return Math.hypot(at[0] - nearest[0], at[1] - nearest[1]); };
+// `lure` { phase, dir, x, z } (dir +1 or -1 along the loop; x, z where it is, which may be off the loop), `near` the bodies' [x, z] (a pack:
+// the nearest steers it); `boost` how much faster it runs when the nearest body is at `ahead` (eased from twice that), `settle` s its way back
+// onto the loop once displaced, `bound` m the farthest from the centre it may be shoved. Prey, not a clock: it runs on along the loop and
+// turns back along it when on would close on the nearest body; a closed loop always has a corner a body cutting across it can trap it in,
+// so the lure is never left within `ahead` of any body: it slides off the loop to that distance (its step bounded by the bodies' own), round
+// the bound if it is pinned there, then eases back on -> a new { phase, dir, x, z }
+export function lureStep(lure, dt, { radius, period, ahead, boost = 2, settle = 1.2, bound = radius * 1.6 }, near = []) {
+  const at = [0, 0], was = lurePoint(lure.phase, { radius }), x0 = lure.x ?? was[0], z0 = lure.z ?? was[1];
+  let nearest = null, best = Infinity;
+  for (const b of near) { const d = Math.hypot(b[0] - x0, b[1] - z0); if (d < best) { best = d; nearest = b; } }
+  const dist = (p) => { lurePoint(p, { radius }, at); return Math.hypot(at[0] - nearest[0], at[1] - nearest[1]); };
   let { phase, dir = 1 } = lure, rate = 1;
-  const was = lurePoint(phase, { radius }), x0 = lure.x ?? was[0], z0 = lure.z ?? was[1];
   if (nearest) {
-    const d = Math.hypot(x0 - nearest[0], z0 - nearest[1]);
-    if (d < 2 * ahead && dist(phase - dir * LOOK) > dist(phase + dir * LOOK)) dir = -dir;
-    rate += boost * Math.max(0, Math.min(1, (2 * ahead - d) / ahead));
+    if (best < 2 * ahead && dist(phase - dir * LOOK) > dist(phase + dir * LOOK)) dir = -dir;
+    rate += boost * Math.max(0, Math.min(1, (2 * ahead - best) / ahead));
   }
   let p = phase + dir * (dt / period) * rate; p -= Math.floor(p);
-  // off the loop by what it was, less the settle's share; then held off the nearest body; then inside the bound
+  // off the loop by what it was, less the settle's share; then held off every body (a few passes: a pack can stand on two sides); then the bound
   const t = lurePoint(p, { radius }), keep = Math.exp(-dt / settle);
   let x = t[0] + (x0 - was[0]) * keep, z = t[1] + (z0 - was[1]) * keep;
-  if (nearest) {
-    const dx = x - nearest[0], dz = z - nearest[1], d = Math.hypot(dx, dz);
-    if (d < ahead) { const ux = d > 1e-9 ? dx / d : x0 - nearest[0], uz = d > 1e-9 ? dz / d : z0 - nearest[1], ul = Math.hypot(ux, uz) || 1; x = nearest[0] + (ux / ul) * ahead; z = nearest[1] + (uz / ul) * ahead; }
+  const clear = () => near.every((b) => Math.hypot(x - b[0], z - b[1]) >= ahead - 1e-9);
+  for (let pass = 0; pass < 4 && !clear(); pass++) for (const b of near) {
+    const dx = x - b[0], dz = z - b[1], d = Math.hypot(dx, dz);
+    if (d >= ahead) continue;
+    const ux = d > 1e-9 ? dx / d : x0 - b[0], uz = d > 1e-9 ? dz / d : z0 - b[1], ul = Math.hypot(ux, uz) || 1;
+    x = b[0] + (ux / ul) * ahead; z = b[1] + (uz / ul) * ahead;
   }
-  const r = Math.hypot(x, z); if (r > bound) { x *= bound / r; z *= bound / r; }
+  // at the bound: held on it, and slid round it away from the bodies rather than pinned there (a twentieth of a radian a try, the nearer way)
+  const r = Math.hypot(x, z);
+  if (r > bound) {
+    let a = Math.atan2(z, x); x = Math.cos(a) * bound; z = Math.sin(a) * bound;
+    if (nearest && !clear()) {
+      const a0 = a;
+      for (let k = 1; k <= 64; k++) {
+        const side = [1, -1].find((sg) => { x = Math.cos(a0 + sg * k * 0.05) * bound; z = Math.sin(a0 + sg * k * 0.05) * bound; return clear(); });
+        if (side) { a = a0 + side * k * 0.05; break; }
+      }
+      x = Math.cos(a) * bound; z = Math.sin(a) * bound;
+    }
+  }
   return { phase: p, dir, x, z };
 }
 
